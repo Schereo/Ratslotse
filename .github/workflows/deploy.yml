@@ -1,0 +1,25 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 10.10.10.13
+          username: tim
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 2102
+          proxy_host: 65.108.8.59
+          proxy_username: tim
+          proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          proxy_port: 2102
+          script: |
+            cd ~/app
+            git pull
+            sudo systemctl restart nwz-bot
