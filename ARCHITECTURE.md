@@ -61,14 +61,46 @@ Both pipelines use **GPT-4o** (`response_format={"type": "json_object"}`) for cl
 
 **NWZ digest** (`nwz/classify.py`):
 
-Up to 109 articles are sent in a single prompt. Each article includes category, title, subtitle, and up to 900 characters of body text. The model is asked to match articles to each user topic and return 1–2 sentence German summaries:
+All topics and all articles for a user are sent in **one single GPT-4o call** — there is no per-topic loop. The model performs all matching at once and returns structured JSON.
 
 ```
-For each topic: find matching articles (0–5).
-Return JSON: { "digest": [{ "topic": "...", "articles": [{ "refid", "title", "summary" }] }] }
+SQLite (nwz.sqlite)
+  │
+  ├─ articles for today (up to ~109)          ┐
+  │    refid, category, title, subtitle,       │  bundled into
+  │    body text (≤900 chars each)             │  one prompt
+  │                                            │
+  └─ user's topics (e.g. 3 topics)            ┘
+       name + description each
+              │
+              ▼
+         GPT-4o (gpt-4o)
+         response_format: json_object
+              │
+              ▼
+  {
+    "digest": [
+      {
+        "topic": "Stadion",
+        "articles": [
+          { "refid": "abc", "title": "...", "summary": "1-2 Sätze" },
+          ...
+        ]
+      },
+      { "topic": "Fahrradwege", "articles": [...] }
+    ]
+  }
+              │
+              ▼
+  _format_telegram()
+    → looks up page number per refid from SQLite
+    → renders Telegram HTML  (• Title\n  Summary\n  Seite X)
+              │
+              ▼
+         Telegram API  →  user receives digest
 ```
 
-The `refid` in the response is used to look up the page number from the database for the `Seite X` annotation in the Telegram message.
+Each article snippet is capped at 900 characters to stay within token limits while keeping enough context for accurate matching.
 
 **Council watcher** (`council/watcher.py`):
 
