@@ -20,6 +20,5 @@ jobs:
           proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
           proxy_port: 2102
           script: |
-            cd ~/app
-            git pull
+            cd ~/app && git pull origin main
             sudo systemctl restart nwz-bot
