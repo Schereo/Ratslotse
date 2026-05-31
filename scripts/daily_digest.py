@@ -57,13 +57,14 @@ def main() -> None:
         topic_dicts = [{"name": t.name, "description": t.description} for t in topics]
         print(f"  User {chat_id}: classifying against {len(topics)} topic(s)...")
         digest = build_digest(articles, topic_dicts, ed.publication_date)
-        if not digest:
-            print(f"  User {chat_id}: no matching articles.")
-            continue
-        print(digest)
         if telegram_ready():
-            reply(chat_id, digest)
-            print(f"  User {chat_id}: digest sent.")
+            if digest:
+                reply(chat_id, digest)
+                print(f"  User {chat_id}: digest sent.")
+            else:
+                topic_names = ", ".join(t.name for t in topics)
+                reply(chat_id, f"📰 <b>NWZ Digest – {ed.publication_date}</b>\n\nHeute keine Artikel zu deinen Themen gefunden:\n<i>{topic_names}</i>")
+                print(f"  User {chat_id}: no matches, notification sent.")
         else:
             print("Telegram not configured (set TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID in .env).")
 
