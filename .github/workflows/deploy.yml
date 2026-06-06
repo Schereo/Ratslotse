@@ -37,6 +37,7 @@ jobs:
             --exclude '.env' \
             --exclude 'data/' \
             --exclude '.venv/' \
+            --exclude '.git/' \
             -e "ssh" \
             ./ target:~/app/
 
