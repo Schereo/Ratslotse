@@ -8,7 +8,38 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy via SSH
+      - uses: actions/checkout@v4
+
+      - name: Deploy via rsync
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          cat >> ~/.ssh/config << 'EOF'
+          Host edge
+            HostName 65.108.8.59
+            User tim
+            Port 2102
+            IdentityFile ~/.ssh/id_ed25519
+            StrictHostKeyChecking no
+          Host target
+            HostName 10.10.10.11
+            User tim
+            Port 2102
+            IdentityFile ~/.ssh/id_ed25519
+            ProxyJump edge
+            StrictHostKeyChecking no
+          EOF
+          rsync -az --delete \
+            --exclude '.env' \
+            --exclude 'data/' \
+            --exclude '.venv/' \
+            -e "ssh -F ~/.ssh/config" \
+            ./ target:~/app/
+
+      - name: Restart service
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: 10.10.10.11
@@ -19,6 +50,4 @@ jobs:
           proxy_username: tim
           proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
           proxy_port: 2102
-          script: |
-            cd ~/app && git pull origin main
-            sudo systemctl restart nwz-bot
+          script: sudo systemctl restart nwz-bot
