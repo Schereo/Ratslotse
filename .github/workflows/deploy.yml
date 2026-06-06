@@ -37,7 +37,7 @@ jobs:
             --exclude '.env' \
             --exclude 'data/' \
             --exclude '.venv/' \
-            -e "ssh -F ~/.ssh/config" \
+            -e "ssh" \
             ./ target:~/app/
 
       - name: Restart service
