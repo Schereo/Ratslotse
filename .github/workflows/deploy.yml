@@ -17,21 +17,22 @@ jobs:
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          cat >> ~/.ssh/config << 'EOF'
-          Host edge
-            HostName 65.108.8.59
-            User tim
-            Port 2102
-            IdentityFile ~/.ssh/id_ed25519
-            StrictHostKeyChecking no
-          Host target
-            HostName 10.10.10.11
-            User tim
-            Port 2102
-            IdentityFile ~/.ssh/id_ed25519
-            ProxyJump edge
-            StrictHostKeyChecking no
-          EOF
+          printf '%s\n' \
+            'Host edge' \
+            '  HostName 65.108.8.59' \
+            '  User tim' \
+            '  Port 2102' \
+            '  IdentityFile ~/.ssh/id_ed25519' \
+            '  StrictHostKeyChecking no' \
+            'Host target' \
+            '  HostName 10.10.10.11' \
+            '  User tim' \
+            '  Port 2102' \
+            '  IdentityFile ~/.ssh/id_ed25519' \
+            '  ProxyJump edge' \
+            '  StrictHostKeyChecking no' \
+            > ~/.ssh/config
+          chmod 600 ~/.ssh/config
           rsync -az --delete \
             --exclude '.env' \
             --exclude 'data/' \
