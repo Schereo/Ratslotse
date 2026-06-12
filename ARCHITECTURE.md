@@ -130,11 +130,13 @@ Topics are scoped per `chat_id`. The cron scripts loop over all users and send e
 - `articles_fts` — FTS5 virtual table mirroring articles for search
 - `topics` — per-user topic watchlist (`chat_id`, `name`, `description`)
 - `users` — whitelisted Telegram users
+- `committee_subscriptions` — per-user committee subscriptions (`chat_id`, `committee_name`)
 
 **`council.sqlite`**
 - `council_sessions` — scraped session metadata
 - `council_agenda_items` — agenda items per session
 - `council_alerts_sent` — deduplication table (`ksinr` + `topic_id`)
+- `committee_notifications` — deduplication table for committee summaries (`ksinr` + `chat_id`)
 
 ---
 
@@ -143,6 +145,7 @@ Topics are scoped per `chat_id`. The cron scripts loop over all users and send e
 | Time (UTC) | Script | What it does |
 |---|---|---|
 | 06:30 daily | `daily_digest.py` | Fetches latest NWZ edition, classifies per user, sends digest |
+| 07:00 daily | `check_committees.py` | Sends GPT-4o summaries of upcoming committee sessions to subscribed users |
 | 08:00 + 14:00 daily | `check_council.py` | Scans upcoming council sessions, alerts on new agenda matches |
 
 ---

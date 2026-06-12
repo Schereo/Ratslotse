@@ -68,6 +68,14 @@ CREATE TABLE IF NOT EXISTS topics (
     description TEXT NOT NULL,
     created_at  TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS committee_subscriptions (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_id        INTEGER NOT NULL,
+    committee_name TEXT NOT NULL,
+    created_at     TEXT NOT NULL,
+    UNIQUE(chat_id, committee_name)
+);
 """
 
 
@@ -350,6 +358,44 @@ class Store:
     def delete_topic(self, topic_id: int) -> None:
         self._conn.execute("DELETE FROM topics WHERE id = ?", (topic_id,))
         self._conn.commit()
+
+    # ---- committee subscriptions ----
+
+    def subscribe(self, chat_id: int, committee_name: str) -> bool:
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        try:
+            with self._conn:
+                self._conn.execute(
+                    "INSERT INTO committee_subscriptions (chat_id, committee_name, created_at) VALUES (?, ?, ?)",
+                    (chat_id, committee_name, now),
+                )
+            return True
+        except sqlite3.IntegrityError:
+            return False
+
+    def unsubscribe(self, chat_id: int, committee_name: str) -> bool:
+        with self._conn:
+            cur = self._conn.execute(
+                "DELETE FROM committee_subscriptions WHERE chat_id = ? AND committee_name = ?",
+                (chat_id, committee_name),
+            )
+        return cur.rowcount > 0
+
+    def get_subscriptions(self, chat_id: int) -> list[str]:
+        rows = self._conn.execute(
+            "SELECT committee_name FROM committee_subscriptions WHERE chat_id = ? ORDER BY committee_name",
+            (chat_id,),
+        ).fetchall()
+        return [r[0] for r in rows]
+
+    def get_all_subscriptions(self) -> dict[int, list[str]]:
+        rows = self._conn.execute(
+            "SELECT chat_id, committee_name FROM committee_subscriptions ORDER BY chat_id, committee_name"
+        ).fetchall()
+        result: dict[int, list[str]] = {}
+        for r in rows:
+            result.setdefault(r[0], []).append(r[1])
+        return result
 
     # ---- misc ----
 

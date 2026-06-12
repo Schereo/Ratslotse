@@ -16,7 +16,13 @@ _HELP = """\
 <i>Beispiel:</i>
 <code>/add Radwege | Ausbau und Planung von Radwegen in Oldenburg</code>
 
-Gespeicherte Themen werden täglich gegen die NWZ und den Stadtrat geprüft.\
+Gespeicherte Themen werden täglich gegen die NWZ und den Stadtrat geprüft.
+
+<b>Ausschuss-Abonnements</b>
+/committees — Alle Ausschüsse anzeigen (✅ = abonniert)
+/subscribe <i>Name</i> — Ausschuss abonnieren
+/unsubscribe <i>Name</i> — Abo beenden
+/subscriptions — Deine Ausschuss-Abos anzeigen\
 """
 
 _ADMIN_HELP = """\
@@ -124,6 +130,49 @@ def handle_update(update: dict, db_path: Path) -> None:
             return
         store.delete_topic(topic_id)
         reply(chat_id, f"Thema <b>{_esc(topic.name)}</b> gelöscht.")
+
+    elif command == "/committees":
+        from council.store import CouncilStore
+        council_db = db_path.parent / "council.sqlite"
+        council_store = CouncilStore(council_db)
+        all_names = council_store.get_all_committee_names()
+        council_store.close()
+        if not all_names:
+            reply(chat_id, "Keine Ausschüsse in der Datenbank.")
+        else:
+            subscribed = set(store.get_subscriptions(chat_id))
+            lines = ["<b>Ausschüsse</b>\n"]
+            for name in all_names:
+                marker = "✅ " if name in subscribed else "    "
+                lines.append(f"{marker}{_esc(name)}")
+            lines.append("\nMit <code>/subscribe Name</code> abonnieren.")
+            reply(chat_id, "\n".join(lines))
+
+    elif command == "/subscribe":
+        if not args:
+            reply(chat_id, "Verwendung: <code>/subscribe Ausschussname</code>")
+        elif store.subscribe(chat_id, args):
+            reply(chat_id, f"Ausschuss abonniert: <b>{_esc(args)}</b>")
+        else:
+            reply(chat_id, f"Du hast <b>{_esc(args)}</b> bereits abonniert.")
+
+    elif command == "/unsubscribe":
+        if not args:
+            reply(chat_id, "Verwendung: <code>/unsubscribe Ausschussname</code>")
+        elif store.unsubscribe(chat_id, args):
+            reply(chat_id, f"Abo beendet: <b>{_esc(args)}</b>")
+        else:
+            reply(chat_id, f"Kein Abo für <b>{_esc(args)}</b> gefunden.")
+
+    elif command == "/subscriptions":
+        subs = store.get_subscriptions(chat_id)
+        if not subs:
+            reply(chat_id, "Du hast keine Ausschuss-Abos.")
+        else:
+            lines = ["<b>Deine Ausschuss-Abos</b>\n"]
+            for name in subs:
+                lines.append(f"• {_esc(name)}")
+            reply(chat_id, "\n".join(lines))
 
     # ---- Admin commands ----
 

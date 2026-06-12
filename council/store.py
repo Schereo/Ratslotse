@@ -36,6 +36,13 @@ CREATE TABLE IF NOT EXISTS council_alerts_sent (
     sent_at  TEXT NOT NULL,
     PRIMARY KEY(ksinr, topic_id)
 );
+
+CREATE TABLE IF NOT EXISTS committee_notifications (
+    ksinr    INTEGER NOT NULL,
+    chat_id  INTEGER NOT NULL,
+    sent_at  TEXT NOT NULL,
+    PRIMARY KEY(ksinr, chat_id)
+);
 """
 
 
@@ -125,6 +132,27 @@ class CouncilStore:
             (today, limit),
         ).fetchall()
         return [dict(r) for r in rows]
+
+    def mark_notified(self, ksinr: int, chat_id: int) -> None:
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT OR IGNORE INTO committee_notifications (ksinr, chat_id, sent_at) VALUES (?, ?, ?)",
+                (ksinr, chat_id, now),
+            )
+
+    def was_notified(self, ksinr: int, chat_id: int) -> bool:
+        row = self._conn.execute(
+            "SELECT 1 FROM committee_notifications WHERE ksinr = ? AND chat_id = ?",
+            (ksinr, chat_id),
+        ).fetchone()
+        return row is not None
+
+    def get_all_committee_names(self) -> list[str]:
+        rows = self._conn.execute(
+            "SELECT DISTINCT committee FROM council_sessions ORDER BY committee"
+        ).fetchall()
+        return [r[0] for r in rows]
 
     def agenda_items(self, ksinr: int) -> list[dict]:
         rows = self._conn.execute(
