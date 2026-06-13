@@ -34,12 +34,20 @@ def _format_articles(articles: list[dict]) -> str:
 
 def build_digest(
     articles: list[dict],
-    topics: list[dict],  # [{"name": str, "description": str}]
+    topics: list[dict],  # [{"id": int, "name": str, "description": str}]
     pub_date: str,
-) -> str:
-    """Call OpenAI to match articles to topics; return formatted Telegram message."""
+) -> tuple[str, list[dict]]:
+    """Call OpenAI to match articles to topics.
+
+    Returns (telegram_message, raw_matches) where raw_matches is a list of
+    {"topic_id", "catalog", "refid", "pub_date", "title", "summary"} dicts
+    ready to pass to Store.save_article_matches().
+    """
     client = _get_client()
     refid_to_page = {a["refid"]: a.get("page") for a in articles}
+    refid_to_catalog = {a["refid"]: a["catalog"] for a in articles}
+    refid_to_pub_date = {a["refid"]: a.get("publication_date", pub_date) for a in articles}
+    name_to_id = {t["name"]: t.get("id", 0) for t in topics}
 
     topics_list = "\n".join(
         f"{i}. Name: {t['name']}\n   Beschreibung: {t['description']}"
@@ -58,7 +66,7 @@ def build_digest(
         Hier sind die Themen des Lesers:
         {topics_list}
 
-        Und hier die Artikel der heutigen NWZ-Ausgabe ({pub_date}):
+        Und hier die Artikel der NWZ-Ausgabe ({pub_date}):
 
         {articles_block}
 
@@ -97,7 +105,22 @@ def build_digest(
 
     raw = resp.choices[0].message.content.strip()
     data: dict[str, Any] = json.loads(raw)
-    return _format_telegram(data, pub_date, refid_to_page)
+
+    raw_matches = [
+        {
+            "topic_id": name_to_id.get(te["topic"], 0),
+            "catalog": refid_to_catalog.get(art["refid"], 0),
+            "refid": art["refid"],
+            "pub_date": refid_to_pub_date.get(art["refid"], pub_date),
+            "title": art.get("title", ""),
+            "summary": art.get("summary", ""),
+        }
+        for te in data.get("digest", [])
+        for art in te.get("articles", [])
+        if art.get("refid")
+    ]
+
+    return _format_telegram(data, pub_date, refid_to_page), raw_matches
 
 
 def _format_telegram(

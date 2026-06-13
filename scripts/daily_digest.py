@@ -54,13 +54,16 @@ def main() -> None:
     print(f"Got {len(articles)} articles for {ed.publication_date}.")
 
     for chat_id, topics in all_user_topics.items():
-        topic_dicts = [{"name": t.name, "description": t.description} for t in topics]
+        topic_dicts = [{"id": t.id, "name": t.name, "description": t.description} for t in topics]
         print(f"  User {chat_id}: classifying against {len(topics)} topic(s)...")
-        digest = build_digest(articles, topic_dicts, ed.publication_date)
+        digest, matches = build_digest(articles, topic_dicts, ed.publication_date)
+        store.save_article_matches(chat_id, matches)
+        for t in topics:
+            store.mark_edition_classified(chat_id, t.id, ed.publication_date)
         if telegram_ready():
             if digest:
                 reply(chat_id, digest)
-                print(f"  User {chat_id}: digest sent.")
+                print(f"  User {chat_id}: digest sent ({len(matches)} match(es) stored).")
             else:
                 topic_names = ", ".join(t.name for t in topics)
                 reply(chat_id, f"📰 <b>NWZ Digest – {ed.publication_date}</b>\n\nHeute keine Artikel zu deinen Themen gefunden:\n<i>{topic_names}</i>")

@@ -12,11 +12,14 @@ _HELP = """\
 /topics — Deine gespeicherten Themen anzeigen
 /add <i>Name</i> | <i>Beschreibung</i> — Neues Thema hinzufügen
 /delete <i>ID</i> — Thema löschen
+/history — Archivierte Artikel-Treffer anzeigen
+/history <i>ID</i> — Treffer für ein bestimmtes Thema anzeigen
 
 <i>Beispiel:</i>
 <code>/add Radwege | Ausbau und Planung von Radwegen in Oldenburg</code>
 
 Gespeicherte Themen werden täglich gegen die NWZ und den Stadtrat geprüft.
+Beim Hinzufügen wird sofort in den letzten 30 Tagen gesucht.
 
 <b>Ausschuss-Abonnements</b>
 /subscriptions — Alle Ausschüsse anzeigen und abonnieren (✅ = abonniert)
@@ -78,23 +81,54 @@ def _is_admin(chat_id: int) -> bool:
 
 
 def _send_retroactive_digest(chat_id: int, topic: TopicRow, store: Store) -> None:
-    """After a new topic is added, check the last few editions and send matching articles."""
+    """Classify the last 30 days of editions for a newly added topic and send matches."""
+    from datetime import date, timedelta
     from .classify import build_digest
 
-    articles = store.articles_for_recent_editions(limit_editions=3)
-    if not articles:
+    cutoff = (date.today() - timedelta(days=30)).isoformat()
+    all_dates = [d for d in store.edition_dates() if d >= cutoff]
+    if not all_dates:
         return
 
-    dates = sorted({a["publication_date"] for a in articles}, reverse=True)
-    date_label = f"{dates[-1]} – {dates[0]}" if len(dates) > 1 else dates[0]
+    already_classified = store.classified_pub_dates_for_topic(chat_id, topic.id)
+    pending_dates = [d for d in all_dates if d not in already_classified]
+    if not pending_dates:
+        return
 
-    digest = build_digest(
-        articles=articles,
-        topics=[{"name": topic.name, "description": topic.description}],
-        pub_date=date_label,
-    )
-    if digest:
-        reply(chat_id, f"📚 <b>Rückblick der letzten Ausgaben</b>\n\n{digest}")
+    reply(chat_id, f"🔍 Suche in {len(pending_dates)} Ausgaben der letzten 30 Tage…")
+
+    topic_dict = [{"id": topic.id, "name": topic.name, "description": topic.description}]
+    total_matches: list[dict] = []
+
+    for pub_date in pending_dates:
+        articles = store.articles_for_date(pub_date)
+        if not articles:
+            store.mark_edition_classified(chat_id, topic.id, pub_date)
+            continue
+        _, matches = build_digest(articles, topic_dict, pub_date)
+        store.save_article_matches(chat_id, matches)
+        store.mark_edition_classified(chat_id, topic.id, pub_date)
+        total_matches.extend(matches)
+
+    if not total_matches:
+        reply(chat_id, f"Keine passenden Artikel in den letzten 30 Tagen gefunden.")
+        return
+
+    # Group by date and format
+    from collections import defaultdict
+    by_date: dict[str, list[dict]] = defaultdict(list)
+    for m in total_matches:
+        by_date[m["pub_date"]].append(m)
+
+    lines = [f"📚 <b>Rückblick: {_esc(topic.name)}</b> ({len(total_matches)} Treffer)\n"]
+    for pub_date in sorted(by_date.keys(), reverse=True):
+        d = pub_date.split("-")
+        display = f"{d[2]}.{d[1]}.{d[0]}" if len(d) == 3 else pub_date
+        lines.append(f"📰 <b>{display}</b>")
+        for m in by_date[pub_date]:
+            lines.append(f"• <b>{_esc(m['title'])}</b>\n  {_esc(m['summary'])}")
+        lines.append("")
+    reply(chat_id, "\n".join(lines).rstrip())
 
 
 def handle_update(update: dict, db_path: Path) -> None:
@@ -185,6 +219,54 @@ def handle_update(update: dict, db_path: Path) -> None:
             return
         store.delete_topic(topic_id)
         reply(chat_id, f"Thema <b>{_esc(topic.name)}</b> gelöscht.")
+
+    elif command == "/history":
+        topics = store.get_topics(chat_id)
+        if not topics:
+            reply(chat_id, "Du hast noch keine Themen gespeichert.\n\nMit /add hinzufügen.")
+            return
+
+        if not args or not args.isdigit():
+            # Overview: list all topics with match counts
+            lines = ["<b>📊 Archivierte Artikel-Treffer</b>\n"]
+            has_any = False
+            for t in topics:
+                count = store.count_article_matches(chat_id, t.id)
+                if count > 0:
+                    lines.append(f"• [{t.id}] {_esc(t.name)} — {count} Artikel")
+                    has_any = True
+            if has_any:
+                lines.append("\nDetails: <code>/history ID</code>")
+            else:
+                lines.append("Noch keine archivierten Treffer.\nDer Digest läuft täglich um 06:30 Uhr.")
+            reply(chat_id, "\n".join(lines))
+            return
+
+        topic_id = int(args)
+        topic = next((t for t in topics if t.id == topic_id), None)
+        if not topic:
+            reply(chat_id, f"Kein Thema mit ID {topic_id} gefunden.")
+            return
+
+        matches = store.get_article_matches(chat_id, topic_id, limit=20)
+        if not matches:
+            reply(chat_id, f"Noch keine Treffer für <b>{_esc(topic.name)}</b>.\n\nDer Digest läuft täglich um 06:30 Uhr.")
+            return
+
+        from collections import defaultdict
+        by_date: dict[str, list[dict]] = defaultdict(list)
+        for m in matches:
+            by_date[m["pub_date"]].append(m)
+
+        lines = [f"📋 <b>Archiv: {_esc(topic.name)}</b>\n"]
+        for pub_date in sorted(by_date.keys(), reverse=True):
+            d = pub_date.split("-")
+            display = f"{d[2]}.{d[1]}.{d[0]}" if len(d) == 3 else pub_date
+            lines.append(f"📰 <b>{display}</b>")
+            for m in by_date[pub_date]:
+                lines.append(f"• <b>{_esc(m['title'])}</b>\n  {_esc(m['summary'])}")
+            lines.append("")
+        reply(chat_id, "\n".join(lines).rstrip())
 
     elif command == "/subscriptions":
         _send_committees(chat_id, store, db_path)
