@@ -33,6 +33,9 @@ def main() -> None:
     date_from = (today - timedelta(days=6)).isoformat()
     print(f"Weekly digest for {date_from} – {date_to}")
 
+    all_articles = store.articles_in_range(date_from, date_to)
+    print(f"  {len(all_articles)} total NWZ articles in range for highlights.")
+
     for chat_id in all_user_topics:
         matches = store.get_weekly_matches(chat_id, date_from, date_to)
         if not matches:
@@ -40,7 +43,7 @@ def main() -> None:
             continue
 
         print(f"  User {chat_id}: {len(matches)} match(es) — building digest…")
-        msg = build_weekly_digest(matches, date_from, date_to)
+        msg = build_weekly_digest(matches, date_from, date_to, all_articles=all_articles)
         if not msg:
             print(f"  User {chat_id}: empty digest, skipping.")
             continue

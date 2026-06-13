@@ -553,6 +553,19 @@ class Store:
             ).fetchall()
         ]
 
+    def articles_in_range(self, date_from: str, date_to: str, limit: int = 300) -> list[dict]:
+        """Return all articles from editions in the given date range, sorted by page (ascending)."""
+        rows = self._conn.execute(
+            """SELECT a.page, a.category_name, a.title, e.publication_date
+               FROM articles a
+               JOIN editions e ON e.catalog = a.catalog
+               WHERE e.publication_date >= ? AND e.publication_date <= ?
+               ORDER BY e.publication_date DESC, COALESCE(a.page, 999) ASC, a.priority DESC
+               LIMIT ?""",
+            (date_from, date_to, limit),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
     def get_weekly_matches(self, chat_id: int, date_from: str, date_to: str) -> list[dict]:
         """Return all article matches for a user in the given date range, with page info."""
         rows = self._conn.execute(

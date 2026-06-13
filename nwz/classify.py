@@ -175,10 +175,12 @@ def build_weekly_digest(
     matches: list[dict],  # from store.get_weekly_matches
     date_from: str,
     date_to: str,
+    all_articles: list[dict] | None = None,  # from store.articles_in_range
 ) -> str:
     """Build a weekly summary with GPT-ranked highlights.
 
     matches: list of dicts with topic_name, title, summary, pub_date, page, is_continuation.
+    all_articles: if provided, highlights are chosen from ALL NWZ articles (not just topic matches).
     Returns a formatted Telegram HTML string, or '' if nothing to send.
     """
     if not matches:
@@ -190,21 +192,31 @@ def build_weekly_digest(
         by_topic.setdefault(m["topic_name"], []).append(m)
 
     highlights: list[dict] = []
-    if len(matches) >= 3:
+    source = all_articles if all_articles else matches
+    if len(source) >= 3:
         client = _get_client()
-        lines = []
-        for m in matches:
-            page_info = f"Seite {m['page']}" if m.get("page") else ""
-            cont = " [Fortsetzung]" if m.get("is_continuation") else ""
-            page_str = f" · {page_info}" if page_info else ""
-            lines.append(
-                f"- [{_esc(m['topic_name'])}]{page_str}{cont}: "
-                f"{m['title']} — {m['summary']}"
-            )
-        articles_block = "\n".join(lines)
+        if all_articles:
+            lines = []
+            for a in all_articles:
+                page_str = f"Seite {a['page']} · " if a.get("page") else ""
+                cat = a.get("category_name") or ""
+                date_str = a.get("publication_date", "")
+                lines.append(f"- {page_str}{cat} ({date_str}): {a['title']}")
+            articles_block = "\n".join(lines)
+        else:
+            lines = []
+            for m in matches:
+                page_info = f"Seite {m['page']}" if m.get("page") else ""
+                cont = " [Fortsetzung]" if m.get("is_continuation") else ""
+                page_str = f" · {page_info}" if page_info else ""
+                lines.append(
+                    f"- [{m['topic_name']}]{page_str}{cont}: "
+                    f"{m['title']} — {m['summary']}"
+                )
+            articles_block = "\n".join(lines)
 
         prompt = textwrap.dedent(f"""\
-            Hier sind alle Artikel aus dem NWZ-Nachrichtenarchiv der Woche \
+            Hier sind alle Artikel der NWZ-Ausgaben der Woche \
 ({date_from} bis {date_to}):
 
 {articles_block}
