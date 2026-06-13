@@ -20,9 +20,8 @@ Gespeicherte Themen werden täglich gegen die NWZ und den Stadtrat geprüft.
 
 <b>Ausschuss-Abonnements</b>
 /committees — Alle Ausschüsse anzeigen (✅ = abonniert)
-/subscribe <i>Name</i> — Ausschuss abonnieren
-/unsubscribe <i>Name</i> — Abo beenden
-/subscriptions — Deine Ausschuss-Abos anzeigen\
+/subscriptions — Deine Ausschuss-Abos anzeigen
+/check — Sitzungsagendas für deine Abos jetzt prüfen\
 """
 
 _ADMIN_HELP = """\
@@ -160,50 +159,83 @@ def handle_update(update: dict, db_path: Path) -> None:
             for i, name in enumerate(all_names, 1):
                 marker = "✅" if name in subscribed else "➕"
                 lines.append(f"{i}. {marker} {_esc(name)}")
-            lines.append("\nButtons klicken = abonnieren/kündigen. /subscribe und /unsubscribe funktionieren weiterhin.")
+            lines.append("\nButtons klicken = abonnieren/kündigen.")
             text = "\n".join(lines)
             buttons = _committee_buttons(all_names, subscribed)
             if reply_with_buttons(chat_id, text, buttons) is None:
                 reply(chat_id, text)
 
-    elif command == "/subscribe":
-        if not args:
-            reply(chat_id, "Verwendung: <code>/subscribe Ausschussname</code> oder <code>/subscribe 3</code>")
+    elif command == "/check":
+        subs = store.get_subscriptions(chat_id)
+        if not subs:
+            reply(chat_id, "Du hast keine Ausschuss-Abos. Abonniere Ausschüsse mit /committees.")
             return
-        if args.isdigit():
-            from council.store import CouncilStore
-            cs = CouncilStore(db_path.parent / "council.sqlite")
-            all_names = cs.get_all_committee_names()
-            cs.close()
-            idx = int(args)
-            if not 1 <= idx <= len(all_names):
-                reply(chat_id, f"Ungültige Nummer. Es gibt {len(all_names)} Ausschüsse.")
-                return
-            committee_name = all_names[idx - 1]
-        else:
-            committee_name = args
-        if store.subscribe(chat_id, committee_name):
-            reply(chat_id, f"Ausschuss abonniert: <b>{_esc(committee_name)}</b>")
-        else:
-            reply(chat_id, f"Du hast <b>{_esc(committee_name)}</b> bereits abonniert.")
 
-    elif command == "/unsubscribe":
-        if not args:
-            reply(chat_id, "Verwendung: <code>/unsubscribe Ausschussname</code> oder <code>/unsubscribe 1</code>")
+        from datetime import date, timedelta
+        from council.store import CouncilStore
+        from council.committee_summary import summarize_agenda
+        from council.scraper import AgendaItem
+
+        council_db = db_path.parent / "council.sqlite"
+        council_store = CouncilStore(council_db)
+        sessions = council_store.upcoming_sessions(limit=200)
+
+        if not sessions:
+            council_store.close()
+            reply(
+                chat_id,
+                "Bisher keine Sitzungstermine in der Datenbank. "
+                "Neue Termine werden täglich geprüft, sobald sie veröffentlicht werden.",
+            )
             return
-        if args.isdigit():
-            subs = store.get_subscriptions(chat_id)
-            idx = int(args)
-            if not 1 <= idx <= len(subs):
-                reply(chat_id, f"Ungültige Nummer. Du hast {len(subs)} Abos.")
-                return
-            committee_name = subs[idx - 1]
-        else:
-            committee_name = args
-        if store.unsubscribe(chat_id, committee_name):
-            reply(chat_id, f"Abo beendet: <b>{_esc(committee_name)}</b>")
-        else:
-            reply(chat_id, f"Kein Abo für <b>{_esc(committee_name)}</b> gefunden.")
+
+        cutoff = (date.today() + timedelta(days=90)).isoformat()
+        subscribed = set(subs)
+        relevant = [
+            s for s in sessions
+            if s["committee"] in subscribed and s["session_date"] <= cutoff
+        ]
+
+        if not relevant:
+            council_store.close()
+            reply(chat_id, "Keine bevorstehenden Sitzungen für deine abonnierten Ausschüsse in den nächsten 3 Monaten.")
+            return
+
+        base_url = "https://buergerinfo.oldenburg.de"
+        for session in relevant:
+            ksinr = session["ksinr"]
+            items_raw = council_store.agenda_items(ksinr)
+            agenda_items = [
+                AgendaItem(
+                    item_number=i["item_number"],
+                    title=i["title"],
+                    vorlage_nr=i["vorlage_nr"] or "",
+                    kvonr=i["kvonr"],
+                    is_public=bool(i["is_public"]),
+                )
+                for i in items_raw
+            ]
+            session_url = f"{base_url}/si0057.php?__ksinr={ksinr}"
+            summary = summarize_agenda(
+                committee=session["committee"],
+                session_date=session["session_date"],
+                session_time=session["session_time"],
+                location=session["location"],
+                agenda_items=agenda_items,
+                session_url=session_url,
+            )
+            if summary:
+                reply(chat_id, summary)
+            else:
+                fallback = (
+                    f"<b>{_esc(session['committee'])}</b>\n"
+                    f"📅 {session['session_date']}  {session['session_time']} Uhr\n\n"
+                    f"Tagesordnung enthält nur Routine-TOPs.\n"
+                    f'<a href="{session_url}">Tagesordnung →</a>'
+                )
+                reply(chat_id, fallback)
+
+        council_store.close()
 
     elif command == "/subscriptions":
         subs = store.get_subscriptions(chat_id)
