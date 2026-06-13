@@ -35,6 +35,11 @@ def main() -> None:
     council_store = CouncilStore(COUNCIL_DB)
     scraper = CouncilScraper()
 
+    print("Refreshing committee list from Gremienübersicht…")
+    committees = scraper.fetch_committee_list()
+    council_store.save_committees(committees)
+    print(f"  Saved {len(committees)} committees")
+
     print("Scanning upcoming council sessions…")
     session_ids = scraper.upcoming_session_ids(months_ahead=3)
     print(f"  Found {len(session_ids)} sessions")
