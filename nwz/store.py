@@ -78,15 +78,16 @@ CREATE TABLE IF NOT EXISTS committee_subscriptions (
 );
 
 CREATE TABLE IF NOT EXISTS article_topic_matches (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    chat_id     INTEGER NOT NULL,
-    topic_id    INTEGER NOT NULL,
-    catalog     INTEGER NOT NULL,
-    refid       TEXT NOT NULL,
-    pub_date    TEXT NOT NULL,
-    title       TEXT NOT NULL,
-    summary     TEXT NOT NULL,
-    matched_at  TEXT NOT NULL,
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_id          INTEGER NOT NULL,
+    topic_id         INTEGER NOT NULL,
+    catalog          INTEGER NOT NULL,
+    refid            TEXT NOT NULL,
+    pub_date         TEXT NOT NULL,
+    title            TEXT NOT NULL,
+    summary          TEXT NOT NULL,
+    is_continuation  INTEGER NOT NULL DEFAULT 0,
+    matched_at       TEXT NOT NULL,
     UNIQUE(chat_id, topic_id, catalog, refid)
 );
 CREATE INDEX IF NOT EXISTS idx_atm_lookup ON article_topic_matches(chat_id, topic_id, pub_date DESC);
@@ -155,6 +156,12 @@ class Store:
                         "INSERT OR IGNORE INTO users (chat_id, username, added_at) VALUES (?, ?, ?)",
                         (admin, "admin", now),
                     )
+        atm_cols = {r[1] for r in self._conn.execute("PRAGMA table_info(article_topic_matches)").fetchall()}
+        if atm_cols and "is_continuation" not in atm_cols:
+            with self._conn:
+                self._conn.execute(
+                    "ALTER TABLE article_topic_matches ADD COLUMN is_continuation INTEGER NOT NULL DEFAULT 0"
+                )
         self._conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_topics_chat ON topics(chat_id)"
         )
@@ -422,25 +429,26 @@ class Store:
     # ---- article topic matches ----
 
     def save_article_matches(self, chat_id: int, matches: list[dict]) -> None:
-        """Persist GPT match results. matches: [{"topic_id", "catalog", "refid", "pub_date", "title", "summary"}]"""
+        """Persist GPT match results. matches: [{"topic_id", "catalog", "refid", "pub_date", "title", "summary", "is_continuation"}]"""
         if not matches:
             return
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
             self._conn.executemany(
                 """INSERT OR IGNORE INTO article_topic_matches
-                   (chat_id, topic_id, catalog, refid, pub_date, title, summary, matched_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                   (chat_id, topic_id, catalog, refid, pub_date, title, summary, is_continuation, matched_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 [
                     (chat_id, m["topic_id"], m["catalog"], m["refid"],
-                     m["pub_date"], m["title"], m["summary"], now)
+                     m["pub_date"], m["title"], m["summary"],
+                     int(m.get("is_continuation", False)), now)
                     for m in matches
                 ],
             )
 
     def get_article_matches(self, chat_id: int, topic_id: int, limit: int = 30) -> list[dict]:
         rows = self._conn.execute(
-            """SELECT catalog, refid, pub_date, title, summary, matched_at
+            """SELECT catalog, refid, pub_date, title, summary, is_continuation, matched_at
                FROM article_topic_matches
                WHERE chat_id = ? AND topic_id = ?
                ORDER BY pub_date DESC, id DESC

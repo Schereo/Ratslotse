@@ -36,12 +36,15 @@ def build_digest(
     articles: list[dict],
     topics: list[dict],  # [{"id": int, "name": str, "description": str}]
     pub_date: str,
+    recent_context: dict[str, list[str]] | None = None,  # {topic_name: [recently_sent_titles]}
 ) -> tuple[str, list[dict]]:
     """Call OpenAI to match articles to topics.
 
     Returns (telegram_message, raw_matches) where raw_matches is a list of
-    {"topic_id", "catalog", "refid", "pub_date", "title", "summary"} dicts
+    {"topic_id", "catalog", "refid", "pub_date", "title", "summary", "is_continuation"} dicts
     ready to pass to Store.save_article_matches().
+
+    recent_context: if provided, GPT flags articles that are continuations of already-sent stories.
     """
     client = _get_client()
     refid_to_page = {a["refid"]: a.get("page") for a in articles}
@@ -55,6 +58,20 @@ def build_digest(
     )
     articles_block = _format_articles(articles)
 
+    context_block = ""
+    if recent_context:
+        lines = ["Bereits versendete Artikel der letzten Tage (für Duplikaterkennung):"]
+        for topic_name, titles in recent_context.items():
+            title_list = "; ".join(f'"{t}"' for t in titles[:6])
+            lines.append(f'  Thema "{topic_name}": {title_list}')
+        context_block = "\n".join(lines) + "\n\n"
+
+    continuation_instruction = (
+        'Setze "is_continuation": true wenn ein Artikel erkennbar eine Fortsetzung '
+        "einer der oben gelisteten Geschichten ist (gleicher Vorfall, gleiche Debatte). "
+        'Sonst false.\n' if context_block else ""
+    )
+
     system = textwrap.dedent(f"""\
         Du bist ein Redaktionsassistent, der Zeitungsartikel der Nordwest-Zeitung (NWZ)
         nach thematischen Interessen des Lesers filtert und zusammenfasst.
@@ -66,14 +83,14 @@ def build_digest(
         Hier sind die Themen des Lesers:
         {topics_list}
 
-        Und hier die Artikel der NWZ-Ausgabe ({pub_date}):
+        {context_block}Und hier die Artikel der NWZ-Ausgabe ({pub_date}):
 
         {articles_block}
 
         Aufgabe:
         Für jedes Thema: finde passende Artikel (0–5 Stück).
         Schreibe keine Zusammenfassung für Themen ohne passende Artikel.
-        Gib die Antwort als JSON zurück:
+        {continuation_instruction}Gib die Antwort als JSON zurück:
 
         {{
           "digest": [
@@ -83,7 +100,8 @@ def build_digest(
                 {{
                   "refid": "...",
                   "title": "...",
-                  "summary": "1–2 Sätze auf Deutsch"
+                  "summary": "1–2 Sätze auf Deutsch",
+                  "is_continuation": false
                 }}
               ]
             }}
@@ -114,6 +132,7 @@ def build_digest(
             "pub_date": refid_to_pub_date.get(art["refid"], pub_date),
             "title": art.get("title", ""),
             "summary": art.get("summary", ""),
+            "is_continuation": bool(art.get("is_continuation", False)),
         }
         for te in data.get("digest", [])
         for art in te.get("articles", [])
@@ -143,7 +162,8 @@ def _format_telegram(
             refid = a.get("refid", "")
             page = refid_to_page.get(refid)
             page_info = f"\n  <i>Seite {page}</i>" if page else ""
-            parts.append(f"• <b>{title}</b>\n  {summary}{page_info}")
+            prefix = "🔄" if a.get("is_continuation") else "•"
+            parts.append(f"{prefix} <b>{title}</b>\n  {summary}{page_info}")
 
     if not has_content:
         return ""
