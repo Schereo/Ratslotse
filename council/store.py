@@ -43,6 +43,12 @@ CREATE TABLE IF NOT EXISTS committee_notifications (
     sent_at  TEXT NOT NULL,
     PRIMARY KEY(ksinr, chat_id)
 );
+
+CREATE TABLE IF NOT EXISTS committees (
+    kgrnr   INTEGER,
+    name    TEXT NOT NULL,
+    UNIQUE(name)
+);
 """
 
 
@@ -148,7 +154,20 @@ class CouncilStore:
         ).fetchone()
         return row is not None
 
+    def save_committees(self, committees: list[tuple[str, int | None]]) -> None:
+        with self._conn:
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO committees (name, kgrnr) VALUES (?, ?)",
+                [(name, kgrnr) for name, kgrnr in committees],
+            )
+
     def get_all_committee_names(self) -> list[str]:
+        rows = self._conn.execute(
+            "SELECT name FROM committees ORDER BY name"
+        ).fetchall()
+        if rows:
+            return [r[0] for r in rows]
+        # Fallback: derive names from scraped sessions
         rows = self._conn.execute(
             "SELECT DISTINCT committee FROM council_sessions ORDER BY committee"
         ).fetchall()

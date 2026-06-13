@@ -147,6 +147,23 @@ class CouncilScraper:
             ))
         return items
 
+    def fetch_committee_list(self) -> list[tuple[str, int | None]]:
+        """Fetch all committees (Gremien) from the Gremienübersicht page."""
+        soup = self._get("gr0040.php")
+        result: list[tuple[str, int | None]] = []
+        for td in soup.find_all("td", class_="grname"):
+            a = td.find("a", href=True)
+            if a:
+                name = a.get_text(strip=True)
+                m = re.search(r"__kgrnr=(\d+)", a["href"])
+                kgrnr = int(m.group(1)) if m else None
+            else:
+                name = td.get_text(strip=True)
+                kgrnr = None
+            if name:
+                result.append((name, kgrnr))
+        return result
+
     def fetch_proposal_text(self, kvonr: int) -> str:
         """Fetch the full text of a Vorlage (proposal document)."""
         soup = self._get("vo0050.php", __kvonr=kvonr)
