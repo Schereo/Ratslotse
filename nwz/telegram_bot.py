@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 import requests
 
@@ -71,6 +72,7 @@ def reply_with_buttons(
         timeout=15,
     )
     if not r.ok:
+        logging.error("reply_with_buttons failed: %s %s", r.status_code, r.text)
         return None
     return r.json().get("result", {}).get("message_id")
 
