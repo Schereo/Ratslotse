@@ -40,7 +40,8 @@ def _committee_buttons(all_names: list[str], subscribed: set[str]) -> list[list[
     row: list[dict] = []
     for i, name in enumerate(all_names, 1):
         marker = "✅" if name in subscribed else "➕"
-        row.append({"text": f"{marker} {i}", "callback_data": f"ctoggle:{name}"})
+        # Use index as callback_data to stay well under Telegram's 64-byte limit
+        row.append({"text": f"{marker} {i}", "callback_data": f"ctoggle:{i}"})
         if len(row) == 4:
             rows.append(row)
             row = []
@@ -157,27 +158,52 @@ def handle_update(update: dict, db_path: Path) -> None:
             subscribed = set(store.get_subscriptions(chat_id))
             lines = ["<b>Ausschüsse</b>\n"]
             for i, name in enumerate(all_names, 1):
-                marker = "✅" if name in subscribed else "    "
+                marker = "✅" if name in subscribed else "➕"
                 lines.append(f"{i}. {marker} {_esc(name)}")
             lines.append("\nButtons klicken = abonnieren/kündigen. /subscribe und /unsubscribe funktionieren weiterhin.")
+            text = "\n".join(lines)
             buttons = _committee_buttons(all_names, subscribed)
-            reply_with_buttons(chat_id, "\n".join(lines), buttons)
+            if reply_with_buttons(chat_id, text, buttons) is None:
+                reply(chat_id, text)
 
     elif command == "/subscribe":
         if not args:
-            reply(chat_id, "Verwendung: <code>/subscribe Ausschussname</code>")
-        elif store.subscribe(chat_id, args):
-            reply(chat_id, f"Ausschuss abonniert: <b>{_esc(args)}</b>")
+            reply(chat_id, "Verwendung: <code>/subscribe Ausschussname</code> oder <code>/subscribe 3</code>")
+            return
+        if args.isdigit():
+            from council.store import CouncilStore
+            cs = CouncilStore(db_path.parent / "council.sqlite")
+            all_names = cs.get_all_committee_names()
+            cs.close()
+            idx = int(args)
+            if not 1 <= idx <= len(all_names):
+                reply(chat_id, f"Ungültige Nummer. Es gibt {len(all_names)} Ausschüsse.")
+                return
+            committee_name = all_names[idx - 1]
         else:
-            reply(chat_id, f"Du hast <b>{_esc(args)}</b> bereits abonniert.")
+            committee_name = args
+        if store.subscribe(chat_id, committee_name):
+            reply(chat_id, f"Ausschuss abonniert: <b>{_esc(committee_name)}</b>")
+        else:
+            reply(chat_id, f"Du hast <b>{_esc(committee_name)}</b> bereits abonniert.")
 
     elif command == "/unsubscribe":
         if not args:
-            reply(chat_id, "Verwendung: <code>/unsubscribe Ausschussname</code>")
-        elif store.unsubscribe(chat_id, args):
-            reply(chat_id, f"Abo beendet: <b>{_esc(args)}</b>")
+            reply(chat_id, "Verwendung: <code>/unsubscribe Ausschussname</code> oder <code>/unsubscribe 1</code>")
+            return
+        if args.isdigit():
+            subs = store.get_subscriptions(chat_id)
+            idx = int(args)
+            if not 1 <= idx <= len(subs):
+                reply(chat_id, f"Ungültige Nummer. Du hast {len(subs)} Abos.")
+                return
+            committee_name = subs[idx - 1]
         else:
-            reply(chat_id, f"Kein Abo für <b>{_esc(args)}</b> gefunden.")
+            committee_name = args
+        if store.unsubscribe(chat_id, committee_name):
+            reply(chat_id, f"Abo beendet: <b>{_esc(committee_name)}</b>")
+        else:
+            reply(chat_id, f"Kein Abo für <b>{_esc(committee_name)}</b> gefunden.")
 
     elif command == "/subscriptions":
         subs = store.get_subscriptions(chat_id)
@@ -262,9 +288,25 @@ def handle_callback_query(update: dict, db_path: Path) -> None:
         return
 
     if callback_data.startswith("ctoggle:"):
-        committee_name = callback_data[len("ctoggle:"):]
-        subscribed = set(store.get_subscriptions(chat_id))
+        raw = callback_data[len("ctoggle:"):]
 
+        from council.store import CouncilStore
+        council_db = db_path.parent / "council.sqlite"
+        council_store = CouncilStore(council_db)
+        all_names = council_store.get_all_committee_names()
+        council_store.close()
+
+        if raw.isdigit():
+            idx = int(raw)
+            if not 1 <= idx <= len(all_names):
+                answer_callback_query(callback_query_id, "Ungültiger Ausschuss.")
+                return
+            committee_name = all_names[idx - 1]
+        else:
+            # Legacy: old messages had callback_data = ctoggle:{name}
+            committee_name = raw
+
+        subscribed = set(store.get_subscriptions(chat_id))
         if committee_name in subscribed:
             store.unsubscribe(chat_id, committee_name)
             toast = "❌ Ausschuss gekündigt"
@@ -273,12 +315,6 @@ def handle_callback_query(update: dict, db_path: Path) -> None:
             toast = "✅ Ausschuss abonniert"
 
         answer_callback_query(callback_query_id, toast)
-
-        from council.store import CouncilStore
-        council_db = db_path.parent / "council.sqlite"
-        council_store = CouncilStore(council_db)
-        all_names = council_store.get_all_committee_names()
-        council_store.close()
 
         new_subscribed = set(store.get_subscriptions(chat_id))
         buttons = _committee_buttons(all_names, new_subscribed)
