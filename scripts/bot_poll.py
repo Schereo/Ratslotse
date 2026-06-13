@@ -19,9 +19,22 @@ from nwz.telegram_bot import get_updates, telegram_ready
 from nwz.bot_commands import handle_update, handle_callback_query
 
 DB = ROOT / "data" / "nwz.sqlite"
+COUNCIL_DB = ROOT / "data" / "council.sqlite"
+
+
+def _sync_committee_list() -> None:
+    try:
+        from council.scraper import CouncilScraper
+        from council.store import CouncilStore
+        committees = CouncilScraper().fetch_committee_list()
+        CouncilStore(COUNCIL_DB).save_committees(committees)
+        print(f"Synced {len(committees)} committees.", flush=True)
+    except Exception as e:
+        print(f"Committee sync failed (non-fatal): {e}", flush=True)
 
 
 def main() -> None:
+    _sync_committee_list()
     if not telegram_ready():
         print("TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID not set — aborting.")
         sys.exit(1)
