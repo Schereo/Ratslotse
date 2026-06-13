@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from .store import Store
+from .store import Store, TopicRow
 from .telegram_bot import reply, reply_with_buttons, edit_message_buttons, answer_callback_query
 
 _HELP = """\
@@ -75,6 +75,26 @@ def _admin_chat_id() -> int:
 
 def _is_admin(chat_id: int) -> bool:
     return chat_id == _admin_chat_id()
+
+
+def _send_retroactive_digest(chat_id: int, topic: TopicRow, store: Store) -> None:
+    """After a new topic is added, check the last few editions and send matching articles."""
+    from .classify import build_digest
+
+    articles = store.articles_for_recent_editions(limit_editions=3)
+    if not articles:
+        return
+
+    dates = sorted({a["publication_date"] for a in articles}, reverse=True)
+    date_label = f"{dates[-1]} – {dates[0]}" if len(dates) > 1 else dates[0]
+
+    digest = build_digest(
+        articles=articles,
+        topics=[{"name": topic.name, "description": topic.description}],
+        pub_date=date_label,
+    )
+    if digest:
+        reply(chat_id, f"📚 <b>Rückblick der letzten Ausgaben</b>\n\n{digest}")
 
 
 def handle_update(update: dict, db_path: Path) -> None:
@@ -151,6 +171,7 @@ def handle_update(update: dict, db_path: Path) -> None:
             chat_id,
             f"Thema gespeichert (ID {t.id}):\n<b>{_esc(t.name)}</b>\n{_esc(t.description)}",
         )
+        _send_retroactive_digest(chat_id, t, store)
 
     elif command == "/delete":
         if not args.isdigit():

@@ -399,6 +399,31 @@ class Store:
 
     # ---- misc ----
 
+    def articles_for_recent_editions(self, limit_editions: int = 3, max_articles: int = 150) -> list[dict]:
+        """Return articles from the N most recent editions, newest first, capped at max_articles."""
+        dates = self._conn.execute(
+            "SELECT publication_date FROM editions ORDER BY publication_date DESC LIMIT ?",
+            (limit_editions,),
+        ).fetchall()
+        if not dates:
+            return []
+        placeholders = ",".join("?" * len(dates))
+        date_values = [r[0] for r in dates]
+        return [
+            dict(r)
+            for r in self._conn.execute(
+                f"""SELECT a.catalog, a.refid, a.page, a.category_name, a.title,
+                           a.subtitle, a.authors, a.content_text, a.priority,
+                           e.publication_date
+                    FROM articles a
+                    JOIN editions e ON e.catalog = a.catalog
+                    WHERE e.publication_date IN ({placeholders})
+                    ORDER BY e.publication_date DESC, a.priority DESC
+                    LIMIT ?""",
+                date_values + [max_articles],
+            ).fetchall()
+        ]
+
     def articles_for_date(self, publication_date: str) -> list[dict]:
         return [
             dict(r)
