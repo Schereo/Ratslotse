@@ -553,6 +553,34 @@ class Store:
             ).fetchall()
         ]
 
+    def articles_in_range(self, date_from: str, date_to: str, limit: int = 300) -> list[dict]:
+        """Return all articles from editions in the given date range, sorted by page (ascending)."""
+        rows = self._conn.execute(
+            """SELECT a.page, a.category_name, a.title, e.publication_date
+               FROM articles a
+               JOIN editions e ON e.catalog = a.catalog
+               WHERE e.publication_date >= ? AND e.publication_date <= ?
+               ORDER BY e.publication_date DESC, COALESCE(a.page, 999) ASC, a.priority DESC
+               LIMIT ?""",
+            (date_from, date_to, limit),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def get_weekly_matches(self, chat_id: int, date_from: str, date_to: str) -> list[dict]:
+        """Return all article matches for a user in the given date range, with page info."""
+        rows = self._conn.execute(
+            """SELECT atm.topic_id, t.name AS topic_name, atm.catalog, atm.refid,
+                      atm.pub_date, atm.title, atm.summary, atm.is_continuation,
+                      a.page
+               FROM article_topic_matches atm
+               JOIN topics t ON t.id = atm.topic_id AND t.chat_id = atm.chat_id
+               LEFT JOIN articles a ON a.catalog = atm.catalog AND a.refid = atm.refid
+               WHERE atm.chat_id = ? AND atm.pub_date >= ? AND atm.pub_date <= ?
+               ORDER BY t.id ASC, atm.pub_date DESC, COALESCE(a.page, 999) ASC""",
+            (chat_id, date_from, date_to),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
     def edition_summary(self) -> list[tuple]:
         return self._conn.execute(
             """SELECT e.publication_date, e.title, e.pages,
