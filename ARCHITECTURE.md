@@ -57,7 +57,7 @@ The Oldenburg council information system (`buergerinfo.oldenburg.de`) runs **Ses
 
 ### AI Classification
 
-Both pipelines use **GPT-4o** (`response_format={"type": "json_object"}`) for classification. The logic is intentionally stateless — no fine-tuning, no embeddings, just structured prompts.
+Both pipelines use `response_format={"type": "json_object"}` for classification. The logic is intentionally stateless — no fine-tuning, no embeddings, just structured prompts. The NWZ digest runs on **GPT-4o**; the council tasks (agenda summary + topic matching) run on the cheaper **GPT-4o-mini**, which is sufficient for the short, structured agenda items.
 
 **NWZ digest** (`nwz/classify.py`):
 
@@ -104,7 +104,7 @@ Each article snippet is capped at 900 characters to stay within token limits whi
 
 **Council watcher** (`council/watcher.py`):
 
-Only future sessions with newly published agendas are classified (sessions already in the database are skipped). Agenda item numbers and titles are sent to GPT-4o, which returns which item numbers match which user topics:
+Only future sessions with newly published agendas are classified (sessions already in the database are skipped). Agenda item numbers and titles are sent to GPT-4o-mini, which returns which item numbers match which user topics:
 
 ```
 Return JSON: { "matches": [{ "topic_index": 1, "item_numbers": ["Ö 6.1", "Ö 6.2"] }] }
@@ -137,6 +137,7 @@ Topics are scoped per `chat_id`. The cron scripts loop over all users and send e
 - `council_agenda_items` — agenda items per session
 - `council_alerts_sent` — deduplication table (`ksinr` + `topic_id`)
 - `committee_notifications` — deduplication table for committee summaries (`ksinr` + `chat_id`)
+- `committee_summaries` — cached agenda summary per session (`ksinr` + `agenda_hash`), reused across users and runs to avoid redundant model calls
 
 ---
 

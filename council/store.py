@@ -49,6 +49,14 @@ CREATE TABLE IF NOT EXISTS committees (
     name    TEXT NOT NULL,
     UNIQUE(name)
 );
+
+CREATE TABLE IF NOT EXISTS committee_summaries (
+    ksinr       INTEGER NOT NULL,
+    agenda_hash TEXT NOT NULL,
+    summary     TEXT NOT NULL,
+    created_at  TEXT NOT NULL,
+    PRIMARY KEY(ksinr, agenda_hash)
+);
 """
 
 
@@ -153,6 +161,23 @@ class CouncilStore:
             (ksinr, chat_id),
         ).fetchone()
         return row is not None
+
+    def get_cached_summary(self, ksinr: int, agenda_hash: str) -> str | None:
+        """Return the cached summary for this session+agenda, or None on cache miss.
+        A cached empty string ('') means 'only routine items' and is a valid hit."""
+        row = self._conn.execute(
+            "SELECT summary FROM committee_summaries WHERE ksinr = ? AND agenda_hash = ?",
+            (ksinr, agenda_hash),
+        ).fetchone()
+        return row[0] if row is not None else None
+
+    def save_summary(self, ksinr: int, agenda_hash: str, summary: str) -> None:
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT OR REPLACE INTO committee_summaries (ksinr, agenda_hash, summary, created_at) VALUES (?, ?, ?, ?)",
+                (ksinr, agenda_hash, summary, now),
+            )
 
     def save_committees(self, committees: list[tuple[str, int | None]]) -> None:
         with self._conn:

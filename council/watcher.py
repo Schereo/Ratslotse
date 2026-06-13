@@ -12,7 +12,7 @@ from .scraper import CouncilScraper, CouncilSession
 from .store import CouncilStore
 
 BASE_URL = "https://buergerinfo.oldenburg.de"
-MODEL = "gpt-4o"
+MODEL = "gpt-4o-mini"
 _client: OpenAI | None = None
 
 
