@@ -27,10 +27,12 @@ def summarize_agenda(
     if not agenda_items:
         return ""
 
+    _fragestunde_keywords = ("einwohnerfragestunde", "bürgerfragestunde", "fragestunde")
+
     items_text = "\n".join(
         f"{i.item_number}: {i.title}" + (f" [{i.vorlage_nr}]" if i.vorlage_nr else "")
         for i in agenda_items
-        if i.is_public
+        if i.is_public and not any(kw in i.title.lower() for kw in _fragestunde_keywords)
     )
     if not items_text.strip():
         return ""
@@ -39,6 +41,8 @@ def summarize_agenda(
         Du analysierst Tagesordnungen (TOPs) von Ausschusssitzungen der Stadt Oldenburg.
         Filtere Routine-TOPs heraus: Genehmigung der Tagesordnung, Protokollgenehmigung,
         Mitteilungen, Anfragen, Bekanntgaben, Verschiedenes und sonstige Formalia.
+        Ignoriere außerdem Tagesordnungspunkte die 'Einwohnerfragestunde', 'Bürgerfragestunde'
+        oder ähnliche Bürgerbeteiligungs-Formate betreffen — diese sind Routine und nicht zusammenfassungsrelevant.
         Fasse die verbleibenden inhaltlichen TOPs jeweils in 1-2 Sätzen zusammen.
         Antworte ausschließlich als JSON.
     """)
