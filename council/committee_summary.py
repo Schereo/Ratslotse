@@ -8,7 +8,7 @@ from openai import OpenAI
 
 from .scraper import AgendaItem
 
-MODEL = "gpt-4o"
+MODEL = "gpt-4o-mini"
 
 
 def _esc(text: str) -> str:

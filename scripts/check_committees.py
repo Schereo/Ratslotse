@@ -4,6 +4,7 @@ Run daily via cron: 0 7 * * *
 """
 from __future__ import annotations
 
+import hashlib
 import sys
 from pathlib import Path
 
@@ -21,6 +22,15 @@ from council.committee_summary import summarize_agenda
 
 NWZ_DB = ROOT / "data" / "nwz.sqlite"
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
+
+
+def _agenda_hash(agenda_items) -> str:
+    """Stable fingerprint of the agenda; changes if any item is added/edited/removed."""
+    payload = "\n".join(
+        f"{i.item_number}\t{i.title}\t{i.vorlage_nr or ''}\t{int(i.is_public)}"
+        for i in agenda_items
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
 def main() -> None:
@@ -56,20 +66,21 @@ def main() -> None:
         if not session.is_future or not session.agenda_items:
             continue
 
-        # Find users subscribed to this committee
-        interested = [
+        # Find users subscribed to this committee who haven't been notified yet
+        pending = [
             chat_id
             for chat_id, names in all_subs.items()
-            if session.committee in names
+            if session.committee in names and not council_store.was_notified(ksinr, chat_id)
         ]
-        if not interested:
+        if not pending:
             continue
 
-        for chat_id in interested:
-            if council_store.was_notified(ksinr, chat_id):
-                continue
-
-            print(f"  {session.session_date} {session.committee} → user {chat_id}")
+        # The summary depends only on the session, not the user — compute it once
+        # and cache it so re-runs and late subscribers reuse it instead of paying
+        # for another model call. A cached '' means "only routine TOPs".
+        agenda_hash = _agenda_hash(session.agenda_items)
+        summary = council_store.get_cached_summary(ksinr, agenda_hash)
+        if summary is None:
             summary = summarize_agenda(
                 committee=session.committee,
                 session_date=session.session_date,
@@ -78,18 +89,18 @@ def main() -> None:
                 agenda_items=session.agenda_items,
                 session_url=session.url,
             )
+            council_store.save_summary(ksinr, agenda_hash, summary)
 
-            if summary:
-                reply(chat_id, summary)
-            else:
-                fallback = (
-                    f"<b>{session.committee}</b>\n"
-                    f"📅 {session.session_date}  {session.session_time} Uhr\n\n"
-                    f"Tagesordnung enthält nur Routine-TOPs.\n"
-                    f'<a href="{session.url}">Tagesordnung →</a>'
-                )
-                reply(chat_id, fallback)
+        message = summary or (
+            f"<b>{session.committee}</b>\n"
+            f"📅 {session.session_date}  {session.session_time} Uhr\n\n"
+            f"Tagesordnung enthält nur Routine-TOPs.\n"
+            f'<a href="{session.url}">Tagesordnung →</a>'
+        )
 
+        for chat_id in pending:
+            print(f"  {session.session_date} {session.committee} → user {chat_id}")
+            reply(chat_id, message)
             council_store.mark_notified(ksinr, chat_id)
             notifications_sent += 1
 
