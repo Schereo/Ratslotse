@@ -2,15 +2,12 @@ from __future__ import annotations
 
 import os
 import pytest
-from datetime import date, timedelta
 from unittest.mock import patch, call
 
 from nwz.bot_commands import _committee_buttons, handle_update, handle_callback_query
 from nwz.store import Store
 from council.store import CouncilStore
-from council.scraper import CouncilSession, AgendaItem
-
-FUTURE_DATE = (date.today() + timedelta(days=14)).isoformat()
+from council.scraper import CouncilSession
 
 CHAT_ID = 12345
 COMMITTEES = [
@@ -159,90 +156,89 @@ class TestCommitteesCommand:
 
 
 # ---------------------------------------------------------------------------
-# /check
+# /subscribe
 # ---------------------------------------------------------------------------
 
-class TestCheckCommand:
+class TestSubscribe:
     @patch("nwz.bot_commands.reply")
-    def test_no_subscriptions(self, mock_reply, data_dir):
-        handle_update(_make_msg(CHAT_ID, "/check"), data_dir)
-        mock_reply.assert_called_once()
-        assert "keine" in mock_reply.call_args[0][1].lower()
+    def test_subscribe_by_number(self, mock_reply, data_dir):
+        handle_update(_make_msg(CHAT_ID, "/subscribe 3"), data_dir)
+        store = Store(data_dir)
+        subs = store.get_subscriptions(CHAT_ID)
+        store.close()
+        assert "Finanzausschuss" in subs
+        assert "Finanzausschuss" in mock_reply.call_args[0][1]
 
     @patch("nwz.bot_commands.reply")
-    def test_no_upcoming_sessions(self, mock_reply, data_dir):
-        # data_dir fixture adds sessions with past dates → upcoming_sessions() returns nothing
+    def test_subscribe_by_name(self, mock_reply, data_dir):
+        handle_update(_make_msg(CHAT_ID, "/subscribe Bauausschuss"), data_dir)
         store = Store(data_dir)
-        store.subscribe(CHAT_ID, COMMITTEES[0])
+        subs = store.get_subscriptions(CHAT_ID)
         store.close()
-        handle_update(_make_msg(CHAT_ID, "/check"), data_dir)
-        mock_reply.assert_called_once()
-        text = mock_reply.call_args[0][1]
-        assert "Bisher" in text or "keine" in text.lower()
+        assert "Bauausschuss" in subs
 
     @patch("nwz.bot_commands.reply")
-    def test_no_sessions_for_subscribed_committee(self, mock_reply, data_dir):
-        cs = CouncilStore(data_dir.parent / "council.sqlite")
-        cs.save_session(CouncilSession(100, "Anderer Ausschuss", FUTURE_DATE, "18:00", "Rathaus"))
-        cs.close()
-        store = Store(data_dir)
-        store.subscribe(CHAT_ID, COMMITTEES[0])
-        store.close()
-        handle_update(_make_msg(CHAT_ID, "/check"), data_dir)
-        mock_reply.assert_called_once()
-        assert "keine" in mock_reply.call_args[0][1].lower()
+    def test_subscribe_invalid_number(self, mock_reply, data_dir):
+        handle_update(_make_msg(CHAT_ID, "/subscribe 99"), data_dir)
+        assert "Ungültige" in mock_reply.call_args[0][1]
 
-    @patch("council.committee_summary.summarize_agenda", return_value="<b>GPT-Summary</b>")
     @patch("nwz.bot_commands.reply")
-    def test_sends_summary(self, mock_reply, mock_summarize, data_dir):
-        cs = CouncilStore(data_dir.parent / "council.sqlite")
-        session = CouncilSession(
-            100, COMMITTEES[0], FUTURE_DATE, "18:00", "Rathaus",
-            agenda_items=[AgendaItem("Ö 1", "Wichtiges Thema")],
-        )
-        cs.save_session(session)
-        cs.close()
+    def test_subscribe_already_subscribed(self, mock_reply, data_dir):
         store = Store(data_dir)
-        store.subscribe(CHAT_ID, COMMITTEES[0])
+        store.subscribe(CHAT_ID, "Bauausschuss")
         store.close()
-        handle_update(_make_msg(CHAT_ID, "/check"), data_dir)
-        texts = [c[0][1] for c in mock_reply.call_args_list]
-        assert any("<b>GPT-Summary</b>" in t for t in texts)
+        handle_update(_make_msg(CHAT_ID, "/subscribe Bauausschuss"), data_dir)
+        assert "bereits" in mock_reply.call_args[0][1]
 
-    @patch("council.committee_summary.summarize_agenda", return_value="")
     @patch("nwz.bot_commands.reply")
-    def test_routine_only_fallback(self, mock_reply, mock_summarize, data_dir):
-        cs = CouncilStore(data_dir.parent / "council.sqlite")
-        session = CouncilSession(
-            100, COMMITTEES[0], FUTURE_DATE, "18:00", "Rathaus",
-            agenda_items=[AgendaItem("Ö 1", "Genehmigung der Tagesordnung")],
-        )
-        cs.save_session(session)
-        cs.close()
+    def test_subscribe_number_1_is_first_alphabetically(self, mock_reply, data_dir):
+        handle_update(_make_msg(CHAT_ID, "/subscribe 1"), data_dir)
         store = Store(data_dir)
-        store.subscribe(CHAT_ID, COMMITTEES[0])
+        subs = store.get_subscriptions(CHAT_ID)
         store.close()
-        handle_update(_make_msg(CHAT_ID, "/check"), data_dir)
-        texts = [c[0][1] for c in mock_reply.call_args_list]
-        assert any("Routine" in t for t in texts)
+        assert "Ausschuss für Stadtplanung" in subs
 
-    @patch("council.committee_summary.summarize_agenda", return_value="<b>Summary</b>")
+
+# ---------------------------------------------------------------------------
+# /unsubscribe
+# ---------------------------------------------------------------------------
+
+class TestUnsubscribe:
     @patch("nwz.bot_commands.reply")
-    def test_does_not_mark_notified(self, mock_reply, mock_summarize, data_dir):
-        cs = CouncilStore(data_dir.parent / "council.sqlite")
-        session = CouncilSession(
-            100, COMMITTEES[0], FUTURE_DATE, "18:00", "Rathaus",
-            agenda_items=[AgendaItem("Ö 1", "Wichtiges Thema")],
-        )
-        cs.save_session(session)
-        cs.close()
+    def test_unsubscribe_by_number(self, mock_reply, data_dir):
         store = Store(data_dir)
-        store.subscribe(CHAT_ID, COMMITTEES[0])
+        store.subscribe(CHAT_ID, "Bauausschuss")
+        store.subscribe(CHAT_ID, "Finanzausschuss")
         store.close()
-        handle_update(_make_msg(CHAT_ID, "/check"), data_dir)
-        cs = CouncilStore(data_dir.parent / "council.sqlite")
-        assert not cs.was_notified(100, CHAT_ID)
-        cs.close()
+        # get_subscriptions returns alphabetically: ["Bauausschuss", "Finanzausschuss"]
+        # idx 1 = Bauausschuss
+        handle_update(_make_msg(CHAT_ID, "/unsubscribe 1"), data_dir)
+        store = Store(data_dir)
+        subs = store.get_subscriptions(CHAT_ID)
+        store.close()
+        assert "Bauausschuss" not in subs
+        assert "Finanzausschuss" in subs
+
+    @patch("nwz.bot_commands.reply")
+    def test_unsubscribe_by_name(self, mock_reply, data_dir):
+        store = Store(data_dir)
+        store.subscribe(CHAT_ID, "Finanzausschuss")
+        store.close()
+        handle_update(_make_msg(CHAT_ID, "/unsubscribe Finanzausschuss"), data_dir)
+        store = Store(data_dir)
+        subs = store.get_subscriptions(CHAT_ID)
+        store.close()
+        assert "Finanzausschuss" not in subs
+
+    @patch("nwz.bot_commands.reply")
+    def test_unsubscribe_invalid_number(self, mock_reply, data_dir):
+        handle_update(_make_msg(CHAT_ID, "/unsubscribe 5"), data_dir)
+        assert "Ungültige" in mock_reply.call_args[0][1]
+
+    @patch("nwz.bot_commands.reply")
+    def test_unsubscribe_not_subscribed(self, mock_reply, data_dir):
+        handle_update(_make_msg(CHAT_ID, "/unsubscribe Bauausschuss"), data_dir)
+        assert "Kein Abo" in mock_reply.call_args[0][1]
 
 
 # ---------------------------------------------------------------------------
