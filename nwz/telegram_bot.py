@@ -17,7 +17,7 @@ def get_updates(offset: int = 0, timeout: int = 30) -> list[dict]:
     token = os.environ["TELEGRAM_BOT_TOKEN"]
     r = requests.get(
         f"{TELEGRAM_API}/bot{token}/getUpdates",
-        params={"offset": offset, "timeout": timeout, "allowed_updates": '["message"]'},
+        params={"offset": offset, "timeout": timeout, "allowed_updates": '["message","callback_query"]'},
         timeout=timeout + 5,
     )
     r.raise_for_status()
@@ -53,6 +53,54 @@ def send_message(text: str) -> None:
             timeout=15,
         )
         r.raise_for_status()
+
+
+def reply_with_buttons(
+    chat_id: int | str, text: str, buttons: list[list[dict]]
+) -> int | None:
+    token = os.environ["TELEGRAM_BOT_TOKEN"]
+    r = requests.post(
+        f"{TELEGRAM_API}/bot{token}/sendMessage",
+        json={
+            "chat_id": chat_id,
+            "text": text,
+            "parse_mode": "HTML",
+            "disable_web_page_preview": True,
+            "reply_markup": {"inline_keyboard": buttons},
+        },
+        timeout=15,
+    )
+    if not r.ok:
+        return None
+    return r.json().get("result", {}).get("message_id")
+
+
+def edit_message_buttons(
+    chat_id: int | str, message_id: int, buttons: list[list[dict]]
+) -> bool:
+    token = os.environ["TELEGRAM_BOT_TOKEN"]
+    r = requests.post(
+        f"{TELEGRAM_API}/bot{token}/editMessageReplyMarkup",
+        json={
+            "chat_id": chat_id,
+            "message_id": message_id,
+            "reply_markup": {"inline_keyboard": buttons},
+        },
+        timeout=15,
+    )
+    return r.ok
+
+
+def answer_callback_query(callback_query_id: str, text: str | None = None) -> None:
+    token = os.environ["TELEGRAM_BOT_TOKEN"]
+    payload: dict = {"callback_query_id": callback_query_id}
+    if text:
+        payload["text"] = text
+    requests.post(
+        f"{TELEGRAM_API}/bot{token}/answerCallbackQuery",
+        json=payload,
+        timeout=15,
+    )
 
 
 def _split(text: str, limit: int) -> list[str]:

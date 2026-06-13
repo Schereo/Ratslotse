@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 load_dotenv(ROOT / ".env")
 
 from nwz.telegram_bot import get_updates, telegram_ready
-from nwz.bot_commands import handle_update
+from nwz.bot_commands import handle_update, handle_callback_query
 
 DB = ROOT / "data" / "nwz.sqlite"
 
@@ -32,7 +32,10 @@ def main() -> None:
         try:
             updates = get_updates(offset=offset, timeout=30)
             for u in updates:
-                handle_update(u, DB)
+                if "callback_query" in u:
+                    handle_callback_query(u, DB)
+                else:
+                    handle_update(u, DB)
                 offset = u["update_id"] + 1
         except KeyboardInterrupt:
             print("Stopped.")
