@@ -159,6 +159,60 @@ class TestCommitteesCommand:
 
 
 # ---------------------------------------------------------------------------
+# /subscriptions handler (alias for /committees)
+# ---------------------------------------------------------------------------
+
+class TestSubscriptionsCommand:
+    @patch("nwz.bot_commands.reply")
+    @patch("nwz.bot_commands.reply_with_buttons")
+    def test_empty_db_shows_no_committees(self, mock_rwb, mock_reply, tmp_path, monkeypatch):
+        monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "testtoken")
+        nwz_path = tmp_path / "nwz.sqlite"
+        store = Store(nwz_path)
+        store.add_user(CHAT_ID, "testuser")
+        store.close()
+        handle_update(_make_msg(CHAT_ID, "/subscriptions"), nwz_path)
+        mock_reply.assert_called_once()
+        assert "Keine" in mock_reply.call_args[0][1]
+        mock_rwb.assert_not_called()
+
+    @patch("nwz.bot_commands.reply_with_buttons", return_value=42)
+    def test_with_data_sends_buttons(self, mock_rwb, data_dir):
+        handle_update(_make_msg(CHAT_ID, "/subscriptions"), data_dir)
+        mock_rwb.assert_called_once()
+        _chat_id, text, buttons = mock_rwb.call_args[0]
+        assert _chat_id == CHAT_ID
+        assert len(buttons) > 0
+
+    @patch("nwz.bot_commands.reply_with_buttons", return_value=42)
+    def test_shows_all_committees(self, mock_rwb, data_dir):
+        handle_update(_make_msg(CHAT_ID, "/subscriptions"), data_dir)
+        text = mock_rwb.call_args[0][1]
+        assert "Ausschuss für Stadtplanung" in text
+        assert "Bauausschuss" in text
+        assert "Finanzausschuss" in text
+
+    @patch("nwz.bot_commands.reply_with_buttons", return_value=42)
+    def test_subscribed_shows_checkmark(self, mock_rwb, data_dir):
+        store = Store(data_dir)
+        store.subscribe(CHAT_ID, "Bauausschuss")
+        store.close()
+        handle_update(_make_msg(CHAT_ID, "/subscriptions"), data_dir)
+        text = mock_rwb.call_args[0][1]
+        assert "✅" in text
+        assert "➕" in text
+
+    @patch("nwz.bot_commands.reply")
+    @patch("nwz.bot_commands.reply_with_buttons", return_value=None)
+    def test_fallback_to_reply_when_buttons_fail(self, mock_rwb, mock_reply, data_dir):
+        handle_update(_make_msg(CHAT_ID, "/subscriptions"), data_dir)
+        mock_rwb.assert_called_once()
+        mock_reply.assert_called_once()
+        text = mock_reply.call_args[0][1]
+        assert "Ausschuss" in text
+
+
+# ---------------------------------------------------------------------------
 # /check
 # ---------------------------------------------------------------------------
 
