@@ -171,6 +171,95 @@ def _format_telegram(
     return "\n".join(parts)
 
 
+def build_weekly_digest(
+    matches: list[dict],  # from store.get_weekly_matches
+    date_from: str,
+    date_to: str,
+) -> str:
+    """Build a weekly summary with GPT-ranked highlights.
+
+    matches: list of dicts with topic_name, title, summary, pub_date, page, is_continuation.
+    Returns a formatted Telegram HTML string, or '' if nothing to send.
+    """
+    if not matches:
+        return ""
+
+    # Group by topic
+    by_topic: dict[str, list[dict]] = {}
+    for m in matches:
+        by_topic.setdefault(m["topic_name"], []).append(m)
+
+    highlights: list[dict] = []
+    if len(matches) >= 3:
+        client = _get_client()
+        lines = []
+        for m in matches:
+            page_info = f"Seite {m['page']}" if m.get("page") else ""
+            cont = " [Fortsetzung]" if m.get("is_continuation") else ""
+            page_str = f" · {page_info}" if page_info else ""
+            lines.append(
+                f"- [{_esc(m['topic_name'])}]{page_str}{cont}: "
+                f"{m['title']} — {m['summary']}"
+            )
+        articles_block = "\n".join(lines)
+
+        prompt = textwrap.dedent(f"""\
+            Hier sind alle Artikel aus dem NWZ-Nachrichtenarchiv der Woche \
+({date_from} bis {date_to}):
+
+{articles_block}
+
+Wähle die 3–5 Artikel, die für die Oldenburger Lokalpolitik diese Woche \
+am bedeutsamsten waren. Begründe in einem knappen Satz, warum jeder wichtig ist.
+
+Ausgabe als JSON:
+{{
+  "highlights": [
+    {{"title": "...", "reason": "1 Satz"}}
+  ]
+}}
+
+Nur JSON, kein weiterer Text.\
+        """)
+
+        resp = client.chat.completions.create(
+            model="gpt-4o-mini",
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": "Du bist ein politischer Redakteur für Oldenburger Lokalpolitik."},
+                {"role": "user", "content": prompt},
+            ],
+            max_tokens=600,
+        )
+        data = json.loads(resp.choices[0].message.content.strip())
+        highlights = data.get("highlights", [])
+
+    # Format date range header
+    def _fmt(iso: str) -> str:
+        y, m, d = iso.split("-")
+        return f"{d}.{m}.{y}"
+
+    parts: list[str] = [f"📅 <b>NWZ Wochenrückblick ({_fmt(date_from)}–{_fmt(date_to)})</b>\n"]
+
+    if highlights:
+        parts.append("⭐ <b>Highlights der Woche</b>")
+        for h in highlights:
+            parts.append(f"• <b>{_esc(h.get('title', ''))}</b>\n  <i>{_esc(h.get('reason', ''))}</i>")
+        parts.append("")
+
+    for topic_name, arts in by_topic.items():
+        parts.append(f"📌 <b>{_esc(topic_name)}</b> ({len(arts)} Artikel)")
+        for a in arts:
+            prefix = "🔄" if a.get("is_continuation") else "•"
+            page_info = f" · <i>Seite {a['page']}</i>" if a.get("page") else ""
+            parts.append(
+                f"{prefix} <b>{_esc(a['title'])}</b>{page_info}\n  {_esc(a['summary'])}"
+            )
+        parts.append("")
+
+    return "\n".join(parts).rstrip()
+
+
 def _esc(text: str) -> str:
     """Escape HTML special chars for Telegram HTML parse mode."""
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
