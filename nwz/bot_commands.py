@@ -14,6 +14,7 @@ _HELP = """\
 /delete <i>ID</i> — Thema löschen
 /history — Archivierte Artikel-Treffer anzeigen
 /history <i>ID</i> — Treffer für ein bestimmtes Thema anzeigen
+/search <i>Begriff</i> — Volltext-Suche im Artikel-Archiv
 
 <i>Beispiel:</i>
 <code>/add Radwege | Ausbau und Planung von Radwegen in Oldenburg</code>
@@ -267,6 +268,26 @@ def handle_update(update: dict, db_path: Path) -> None:
                 lines.append(f"• <b>{_esc(m['title'])}</b>\n  {_esc(m['summary'])}")
             lines.append("")
         reply(chat_id, "\n".join(lines).rstrip())
+
+    elif command == "/search":
+        if not args:
+            reply(chat_id, "Verwendung: <code>/search Begriff</code>\n\nBeispiel: <code>/search Stadtpark</code>")
+            return
+        results = store.search(args, limit=5)
+        if not results:
+            reply(chat_id, f"Keine Artikel gefunden für: <i>{_esc(args)}</i>")
+            return
+        lines = [f"🔍 <b>Suche: {_esc(args)}</b>\n"]
+        for r in results:
+            d = r.pub_date.split("-")
+            display_date = f"{d[2]}.{d[1]}.{d[0]}" if len(d) == 3 else r.pub_date
+            # escape the raw excerpt, then restore <mark> as <b>
+            excerpt = _esc(r.excerpt).replace("&lt;mark&gt;", "<b>").replace("&lt;/mark&gt;", "</b>")
+            category = f" · <i>{_esc(r.category_name)}</i>" if r.category_name else ""
+            lines.append(
+                f"📰 <b>{_esc(r.title)}</b> ({display_date}{category})\n  {excerpt}"
+            )
+        reply(chat_id, "\n\n".join(lines))
 
     elif command == "/subscriptions":
         _send_committees(chat_id, store, db_path)
