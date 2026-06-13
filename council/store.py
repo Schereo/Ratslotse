@@ -51,6 +51,13 @@ CREATE TABLE IF NOT EXISTS committees (
     UNIQUE(name)
 );
 
+CREATE TABLE IF NOT EXISTS session_followups_sent (
+    ksinr    INTEGER NOT NULL,
+    chat_id  INTEGER NOT NULL,
+    sent_at  TEXT NOT NULL,
+    PRIMARY KEY(ksinr, chat_id)
+);
+
 CREATE TABLE IF NOT EXISTS committee_summaries (
     ksinr       INTEGER NOT NULL,
     agenda_hash TEXT NOT NULL,
@@ -124,6 +131,32 @@ class CouncilStore:
                 "INSERT OR IGNORE INTO council_alerts_sent (ksinr, topic_id, sent_at) VALUES (?,?,?)",
                 (ksinr, topic_id, now),
             )
+
+    def followup_already_sent(self, ksinr: int, chat_id: int) -> bool:
+        row = self._conn.execute(
+            "SELECT 1 FROM session_followups_sent WHERE ksinr = ? AND chat_id = ?",
+            (ksinr, chat_id),
+        ).fetchone()
+        return row is not None
+
+    def mark_followup_sent(self, ksinr: int, chat_id: int) -> None:
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT OR IGNORE INTO session_followups_sent (ksinr, chat_id, sent_at) VALUES (?, ?, ?)",
+                (ksinr, chat_id, now),
+            )
+
+    def past_sessions_in_window(self, date_from: str, date_to: str) -> list[dict]:
+        """Sessions that took place between date_from and date_to (inclusive)."""
+        rows = self._conn.execute(
+            """SELECT cs.ksinr, cs.committee, cs.session_date, cs.session_time, cs.location
+               FROM council_sessions cs
+               WHERE cs.session_date BETWEEN ? AND ?
+               ORDER BY cs.session_date DESC""",
+            (date_from, date_to),
+        ).fetchall()
+        return [dict(r) for r in rows]
 
     def upcoming_sessions(self, limit: int = 20) -> list[dict]:
         from datetime import date
