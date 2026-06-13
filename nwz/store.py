@@ -76,6 +76,28 @@ CREATE TABLE IF NOT EXISTS committee_subscriptions (
     created_at     TEXT NOT NULL,
     UNIQUE(chat_id, committee_name)
 );
+
+CREATE TABLE IF NOT EXISTS article_topic_matches (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_id     INTEGER NOT NULL,
+    topic_id    INTEGER NOT NULL,
+    catalog     INTEGER NOT NULL,
+    refid       TEXT NOT NULL,
+    pub_date    TEXT NOT NULL,
+    title       TEXT NOT NULL,
+    summary     TEXT NOT NULL,
+    matched_at  TEXT NOT NULL,
+    UNIQUE(chat_id, topic_id, catalog, refid)
+);
+CREATE INDEX IF NOT EXISTS idx_atm_lookup ON article_topic_matches(chat_id, topic_id, pub_date DESC);
+
+CREATE TABLE IF NOT EXISTS topic_classified_editions (
+    chat_id     INTEGER NOT NULL,
+    topic_id    INTEGER NOT NULL,
+    pub_date    TEXT NOT NULL,
+    classified_at TEXT NOT NULL,
+    PRIMARY KEY(chat_id, topic_id, pub_date)
+);
 """
 
 
@@ -397,7 +419,85 @@ class Store:
             result.setdefault(r[0], []).append(r[1])
         return result
 
+    # ---- article topic matches ----
+
+    def save_article_matches(self, chat_id: int, matches: list[dict]) -> None:
+        """Persist GPT match results. matches: [{"topic_id", "catalog", "refid", "pub_date", "title", "summary"}]"""
+        if not matches:
+            return
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.executemany(
+                """INSERT OR IGNORE INTO article_topic_matches
+                   (chat_id, topic_id, catalog, refid, pub_date, title, summary, matched_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                [
+                    (chat_id, m["topic_id"], m["catalog"], m["refid"],
+                     m["pub_date"], m["title"], m["summary"], now)
+                    for m in matches
+                ],
+            )
+
+    def get_article_matches(self, chat_id: int, topic_id: int, limit: int = 30) -> list[dict]:
+        rows = self._conn.execute(
+            """SELECT catalog, refid, pub_date, title, summary, matched_at
+               FROM article_topic_matches
+               WHERE chat_id = ? AND topic_id = ?
+               ORDER BY pub_date DESC, id DESC
+               LIMIT ?""",
+            (chat_id, topic_id, limit),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def count_article_matches(self, chat_id: int, topic_id: int) -> int:
+        row = self._conn.execute(
+            "SELECT COUNT(*) FROM article_topic_matches WHERE chat_id = ? AND topic_id = ?",
+            (chat_id, topic_id),
+        ).fetchone()
+        return row[0] if row else 0
+
+    def mark_edition_classified(self, chat_id: int, topic_id: int, pub_date: str) -> None:
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT OR IGNORE INTO topic_classified_editions (chat_id, topic_id, pub_date, classified_at) VALUES (?, ?, ?, ?)",
+                (chat_id, topic_id, pub_date, now),
+            )
+
+    def classified_pub_dates_for_topic(self, chat_id: int, topic_id: int) -> set[str]:
+        """Return edition dates already classified for this (chat_id, topic_id) pair."""
+        rows = self._conn.execute(
+            "SELECT pub_date FROM topic_classified_editions WHERE chat_id = ? AND topic_id = ?",
+            (chat_id, topic_id),
+        ).fetchall()
+        return {r[0] for r in rows}
+
     # ---- misc ----
+
+    def articles_for_recent_editions(self, limit_editions: int = 3, max_articles: int = 150) -> list[dict]:
+        """Return articles from the N most recent editions, newest first, capped at max_articles."""
+        dates = self._conn.execute(
+            "SELECT publication_date FROM editions ORDER BY publication_date DESC LIMIT ?",
+            (limit_editions,),
+        ).fetchall()
+        if not dates:
+            return []
+        placeholders = ",".join("?" * len(dates))
+        date_values = [r[0] for r in dates]
+        return [
+            dict(r)
+            for r in self._conn.execute(
+                f"""SELECT a.catalog, a.refid, a.page, a.category_name, a.title,
+                           a.subtitle, a.authors, a.content_text, a.priority,
+                           e.publication_date
+                    FROM articles a
+                    JOIN editions e ON e.catalog = a.catalog
+                    WHERE e.publication_date IN ({placeholders})
+                    ORDER BY e.publication_date DESC, a.priority DESC
+                    LIMIT ?""",
+                date_values + [max_articles],
+            ).fetchall()
+        ]
 
     def articles_for_date(self, publication_date: str) -> list[dict]:
         return [

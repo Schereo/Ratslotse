@@ -38,9 +38,10 @@ CREATE TABLE IF NOT EXISTS council_alerts_sent (
 );
 
 CREATE TABLE IF NOT EXISTS committee_notifications (
-    ksinr    INTEGER NOT NULL,
-    chat_id  INTEGER NOT NULL,
-    sent_at  TEXT NOT NULL,
+    ksinr        INTEGER NOT NULL,
+    chat_id      INTEGER NOT NULL,
+    agenda_hash  TEXT NOT NULL DEFAULT '',
+    sent_at      TEXT NOT NULL,
     PRIMARY KEY(ksinr, chat_id)
 );
 
@@ -66,6 +67,15 @@ class CouncilStore:
         self._conn.row_factory = sqlite3.Row
         self._conn.executescript(SCHEMA)
         self._conn.commit()
+        self._migrate()
+
+    def _migrate(self) -> None:
+        cols = {r[1] for r in self._conn.execute("PRAGMA table_info(committee_notifications)").fetchall()}
+        if "agenda_hash" not in cols:
+            with self._conn:
+                self._conn.execute(
+                    "ALTER TABLE committee_notifications ADD COLUMN agenda_hash TEXT NOT NULL DEFAULT ''"
+                )
 
     def close(self) -> None:
         self._conn.close()
@@ -147,12 +157,12 @@ class CouncilStore:
         ).fetchall()
         return [dict(r) for r in rows]
 
-    def mark_notified(self, ksinr: int, chat_id: int) -> None:
+    def mark_notified(self, ksinr: int, chat_id: int, agenda_hash: str = "") -> None:
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
             self._conn.execute(
-                "INSERT OR IGNORE INTO committee_notifications (ksinr, chat_id, sent_at) VALUES (?, ?, ?)",
-                (ksinr, chat_id, now),
+                "INSERT OR REPLACE INTO committee_notifications (ksinr, chat_id, agenda_hash, sent_at) VALUES (?, ?, ?, ?)",
+                (ksinr, chat_id, agenda_hash, now),
             )
 
     def was_notified(self, ksinr: int, chat_id: int) -> bool:
@@ -161,6 +171,15 @@ class CouncilStore:
             (ksinr, chat_id),
         ).fetchone()
         return row is not None
+
+    def get_last_notified_hash(self, ksinr: int, chat_id: int) -> str | None:
+        """Return the agenda_hash that was last used when notifying this user, or None if never notified.
+        An empty string means the row predates hash tracking and should not trigger a re-notification."""
+        row = self._conn.execute(
+            "SELECT agenda_hash FROM committee_notifications WHERE ksinr = ? AND chat_id = ?",
+            (ksinr, chat_id),
+        ).fetchone()
+        return row[0] if row is not None else None
 
     def get_cached_summary(self, ksinr: int, agenda_hash: str) -> str | None:
         """Return the cached summary for this session+agenda, or None on cache miss.
