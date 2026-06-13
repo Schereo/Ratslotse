@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 
 from .store import Store
-from .telegram_bot import reply
+from .telegram_bot import reply, reply_with_buttons, edit_message_buttons, answer_callback_query
 
 _HELP = """\
 <b>Verfügbare Befehle</b>
@@ -33,6 +33,20 @@ _ADMIN_HELP = """\
 /approve <i>chat_id</i> [<i>Name</i>] — Nutzer freischalten
 /revoke <i>chat_id</i> — Nutzer entfernen (inkl. seiner Themen)\
 """
+
+
+def _committee_buttons(all_names: list[str], subscribed: set[str]) -> list[list[dict]]:
+    rows: list[list[dict]] = []
+    row: list[dict] = []
+    for i, name in enumerate(all_names, 1):
+        marker = "✅" if name in subscribed else "➕"
+        row.append({"text": f"{marker} {i}", "callback_data": f"ctoggle:{name}"})
+        if len(row) == 4:
+            rows.append(row)
+            row = []
+    if row:
+        rows.append(row)
+    return rows
 
 
 def _admin_chat_id() -> int:
@@ -142,11 +156,12 @@ def handle_update(update: dict, db_path: Path) -> None:
         else:
             subscribed = set(store.get_subscriptions(chat_id))
             lines = ["<b>Ausschüsse</b>\n"]
-            for name in all_names:
-                marker = "✅ " if name in subscribed else "    "
-                lines.append(f"{marker}{_esc(name)}")
-            lines.append("\nMit <code>/subscribe Name</code> abonnieren.")
-            reply(chat_id, "\n".join(lines))
+            for i, name in enumerate(all_names, 1):
+                marker = "✅" if name in subscribed else "    "
+                lines.append(f"{i}. {marker} {_esc(name)}")
+            lines.append("\nButtons klicken = abonnieren/kündigen. /subscribe und /unsubscribe funktionieren weiterhin.")
+            buttons = _committee_buttons(all_names, subscribed)
+            reply_with_buttons(chat_id, "\n".join(lines), buttons)
 
     elif command == "/subscribe":
         if not args:
@@ -228,6 +243,46 @@ def handle_update(update: dict, db_path: Path) -> None:
 
     else:
         reply(chat_id, f"Unbekannter Befehl: {command}\n\n/help für eine Übersicht.")
+
+
+def handle_callback_query(update: dict, db_path: Path) -> None:
+    cq = update.get("callback_query")
+    if not cq:
+        return
+
+    callback_query_id: str = cq["id"]
+    chat_id: int = cq["from"]["id"]
+    message_id: int = cq["message"]["message_id"]
+    callback_data: str = cq.get("data", "")
+
+    store = Store(db_path)
+
+    if not store.is_user(chat_id):
+        answer_callback_query(callback_query_id, "Nicht autorisiert.")
+        return
+
+    if callback_data.startswith("ctoggle:"):
+        committee_name = callback_data[len("ctoggle:"):]
+        subscribed = set(store.get_subscriptions(chat_id))
+
+        if committee_name in subscribed:
+            store.unsubscribe(chat_id, committee_name)
+            toast = "❌ Ausschuss gekündigt"
+        else:
+            store.subscribe(chat_id, committee_name)
+            toast = "✅ Ausschuss abonniert"
+
+        answer_callback_query(callback_query_id, toast)
+
+        from council.store import CouncilStore
+        council_db = db_path.parent / "council.sqlite"
+        council_store = CouncilStore(council_db)
+        all_names = council_store.get_all_committee_names()
+        council_store.close()
+
+        new_subscribed = set(store.get_subscriptions(chat_id))
+        buttons = _committee_buttons(all_names, new_subscribed)
+        edit_message_buttons(chat_id, message_id, buttons)
 
 
 def _esc(text: str) -> str:
