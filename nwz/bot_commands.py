@@ -19,8 +19,7 @@ _HELP = """\
 Gespeicherte Themen werden täglich gegen die NWZ und den Stadtrat geprüft.
 
 <b>Ausschuss-Abonnements</b>
-/committees — Alle Ausschüsse anzeigen (✅ = abonniert)
-/subscriptions — Deine Ausschuss-Abos anzeigen
+/subscriptions — Alle Ausschüsse anzeigen und abonnieren (✅ = abonniert)
 /check — Sitzungsagendas für deine Abos jetzt prüfen\
 """
 
@@ -47,6 +46,27 @@ def _committee_buttons(all_names: list[str], subscribed: set[str]) -> list[list[
     if row:
         rows.append(row)
     return rows
+
+
+def _send_committees(chat_id: int, store: "Store", db_path: Path) -> None:
+    from council.store import CouncilStore
+    council_db = db_path.parent / "council.sqlite"
+    council_store = CouncilStore(council_db)
+    all_names = council_store.get_all_committee_names()
+    council_store.close()
+    if not all_names:
+        reply(chat_id, "Keine Ausschüsse in der Datenbank.")
+    else:
+        subscribed = set(store.get_subscriptions(chat_id))
+        lines = ["<b>Ausschüsse</b>\n"]
+        for i, name in enumerate(all_names, 1):
+            marker = "✅" if name in subscribed else "➕"
+            lines.append(f"{i}. {marker} {_esc(name)}")
+        lines.append("\nButtons klicken = abonnieren/kündigen.")
+        text = "\n".join(lines)
+        buttons = _committee_buttons(all_names, subscribed)
+        if reply_with_buttons(chat_id, text, buttons) is None:
+            reply(chat_id, text)
 
 
 def _admin_chat_id() -> int:
@@ -145,30 +165,13 @@ def handle_update(update: dict, db_path: Path) -> None:
         store.delete_topic(topic_id)
         reply(chat_id, f"Thema <b>{_esc(topic.name)}</b> gelöscht.")
 
-    elif command == "/committees":
-        from council.store import CouncilStore
-        council_db = db_path.parent / "council.sqlite"
-        council_store = CouncilStore(council_db)
-        all_names = council_store.get_all_committee_names()
-        council_store.close()
-        if not all_names:
-            reply(chat_id, "Keine Ausschüsse in der Datenbank.")
-        else:
-            subscribed = set(store.get_subscriptions(chat_id))
-            lines = ["<b>Ausschüsse</b>\n"]
-            for i, name in enumerate(all_names, 1):
-                marker = "✅" if name in subscribed else "➕"
-                lines.append(f"{i}. {marker} {_esc(name)}")
-            lines.append("\nButtons klicken = abonnieren/kündigen.")
-            text = "\n".join(lines)
-            buttons = _committee_buttons(all_names, subscribed)
-            if reply_with_buttons(chat_id, text, buttons) is None:
-                reply(chat_id, text)
+    elif command == "/subscriptions":
+        _send_committees(chat_id, store, db_path)
 
     elif command == "/check":
         subs = store.get_subscriptions(chat_id)
         if not subs:
-            reply(chat_id, "Du hast keine Ausschuss-Abos. Abonniere Ausschüsse mit /committees.")
+            reply(chat_id, "Du hast keine Ausschuss-Abos. Abonniere Ausschüsse mit /subscriptions.")
             return
 
         from datetime import date, timedelta
@@ -236,16 +239,6 @@ def handle_update(update: dict, db_path: Path) -> None:
                 reply(chat_id, fallback)
 
         council_store.close()
-
-    elif command == "/subscriptions":
-        subs = store.get_subscriptions(chat_id)
-        if not subs:
-            reply(chat_id, "Du hast keine Ausschuss-Abos.")
-        else:
-            lines = ["<b>Deine Ausschuss-Abos</b>\n"]
-            for name in subs:
-                lines.append(f"• {_esc(name)}")
-            reply(chat_id, "\n".join(lines))
 
     # ---- Admin commands ----
 
