@@ -6,34 +6,80 @@ from pathlib import Path
 from .store import Store, TopicRow
 from .telegram_bot import reply, reply_with_buttons, edit_message_buttons, answer_callback_query
 
-_HELP = """\
-<b>Verfügbare Befehle</b>
+_START_NEW_USER = """\
+👋 Willkommen beim NWZ-Bot!
 
-/topics — Deine gespeicherten Themen anzeigen
-/add <i>Name</i> | <i>Beschreibung</i> — Neues Thema hinzufügen
-/delete <i>ID</i> — Thema löschen
-/history — Archivierte Artikel-Treffer anzeigen
-/history <i>ID</i> — Treffer für ein bestimmtes Thema anzeigen
-/search <i>Begriff</i> — Volltext-Suche im Artikel-Archiv
+Dieser Bot liest täglich die <b>Nordwest-Zeitung</b> und beobachtet den \
+<b>Oldenburger Stadtrat</b> für dich — vollautomatisch, personalisiert.
+
+<b>Was der Bot macht:</b>
+📰 <b>NWZ-Digest</b> (täglich 06:30 Uhr)
+  Du legst Themen fest, z. B. "Radwege" oder "Stadtentwicklung". Der Bot schickt \
+dir jeden Morgen nur die Artikel, die wirklich dazu passen.
+
+🏛️ <b>Stadtrat-Alerts</b>
+  Wenn eines deiner Themen auf der Tagesordnung einer Ratssitzung steht, \
+bekommst du vorab eine Zusammenfassung.
+
+📋 <b>Ausschuss-Benachrichtigungen</b>
+  Abonniere einzelne Ausschüsse — du wirst benachrichtigt sobald die Tagesordnung \
+veröffentlicht wird, und nochmals wenn sie sich ändert.
+
+📋 <b>Sitzungs-Nachberichte</b>
+  Nach einer Sitzung sucht der Bot in der NWZ nach Berichten über die Beschlüsse \
+und schickt sie dir.
+
+<b>Du bist noch nicht freigeschaltet.</b>
+Teile dem Administrator deine Chat-ID mit:
+<code>{chat_id}</code>
+
+Er kann dich mit <code>/freischalten {chat_id}</code> hinzufügen.\
+"""
+
+_START_EXISTING_USER = """\
+Hallo, du bist bereits registriert! 👋
+
+<b>Schnellstart:</b>
+• <code>/neu Radwege | Ausbau von Radwegen in Oldenburg</code> — Thema hinzufügen
+• <code>/ausschuesse</code> — Ausschüsse abonnieren
+• <code>/themen</code> — deine gespeicherten Themen anzeigen
+
+Der Bot schickt dir täglich um ~06:30 Uhr deinen personalisierten NWZ-Digest.
+
+Alle Befehle: /hilfe\
+"""
+
+_HELP = """\
+<b>NWZ-Bot — Befehle</b>
+
+<b>Themen & Archiv</b>
+/themen — gespeicherte Themen anzeigen
+/neu <i>Name</i> | <i>Beschreibung</i> — Thema hinzufügen
+/loeschen <i>ID</i> — Thema löschen
+/archiv — archivierte Artikel-Treffer (alle Themen)
+/archiv <i>ID</i> — Treffer für ein bestimmtes Thema
+/suche <i>Begriff</i> — Volltextsuche im Artikel-Archiv
+
+<b>Stadtrat & Ausschüsse</b>
+/ausschuesse — Ausschüsse anzeigen und abonnieren (✅ = abonniert)
+/pruefen — Sitzungsagendas für deine Abos jetzt abrufen
+
+<b>Info</b>
+/hilfe — diese Übersicht
 
 <i>Beispiel:</i>
-<code>/add Radwege | Ausbau und Planung von Radwegen in Oldenburg</code>
+<code>/neu Radwege | Ausbau und Planung von Radwegen in Oldenburg</code>
 
-Gespeicherte Themen werden täglich gegen die NWZ und den Stadtrat geprüft.
-Beim Hinzufügen wird sofort in den letzten 30 Tagen gesucht.
-
-<b>Ausschuss-Abonnements</b>
-/subscriptions — Alle Ausschüsse anzeigen und abonnieren (✅ = abonniert)
-/check — Sitzungsagendas für deine Abos jetzt prüfen\
+Nach dem Hinzufügen sucht der Bot sofort in den letzten 30 Tagen nach passenden Artikeln.\
 """
 
 _ADMIN_HELP = """\
 
 
 <b>Admin-Befehle</b>
-/users — Alle registrierten Nutzer
-/approve <i>chat_id</i> [<i>Name</i>] — Nutzer freischalten
-/revoke <i>chat_id</i> — Nutzer entfernen (inkl. seiner Themen)\
+/nutzer — alle registrierten Nutzer anzeigen
+/freischalten <i>chat_id</i> [<i>Name</i>] — Nutzer freischalten
+/sperren <i>chat_id</i> — Nutzer entfernen (inkl. seiner Themen)\
 """
 
 
@@ -112,10 +158,9 @@ def _send_retroactive_digest(chat_id: int, topic: TopicRow, store: Store) -> Non
         total_matches.extend(matches)
 
     if not total_matches:
-        reply(chat_id, f"Keine passenden Artikel in den letzten 30 Tagen gefunden.")
+        reply(chat_id, "Keine passenden Artikel in den letzten 30 Tagen gefunden.")
         return
 
-    # Group by date and format
     from collections import defaultdict
     by_date: dict[str, list[dict]] = defaultdict(list)
     for m in total_matches:
@@ -148,18 +193,12 @@ def handle_update(update: dict, db_path: Path) -> None:
 
     store = Store(db_path)
 
-    # /start — always allowed, shows status + chat_id
+    # /start — always allowed
     if command == "/start":
         if store.is_user(chat_id):
-            reply(chat_id, "Du bist bereits registriert. Schreib /help für eine Übersicht.")
+            reply(chat_id, _START_EXISTING_USER)
         else:
-            reply(
-                chat_id,
-                f"Hallo! Dieser Bot ist nur für autorisierte Nutzer.\n\n"
-                f"Bitte teile dem Administrator deine Chat-ID mit:\n"
-                f"<code>{chat_id}</code>\n\n"
-                f"Er kann dich dann mit <code>/approve {chat_id}</code> freischalten.",
-            )
+            reply(chat_id, _START_NEW_USER.format(chat_id=chat_id))
         return
 
     # All other commands require whitelist membership
@@ -172,28 +211,29 @@ def handle_update(update: dict, db_path: Path) -> None:
         )
         return
 
-    if command == "/help":
+    if command == "/hilfe":
         text_out = _HELP + (_ADMIN_HELP if _is_admin(chat_id) else "")
         reply(chat_id, text_out)
 
-    elif command == "/topics":
+    elif command == "/themen":
         topics = store.get_topics(chat_id)
         if not topics:
-            reply(chat_id, "Du hast noch keine Themen gespeichert.\n\nMit /add hinzufügen.")
+            reply(chat_id, "Du hast noch keine Themen gespeichert.\n\nMit /neu hinzufügen.")
         else:
             lines = ["<b>Deine Themen</b>\n"]
             for t in topics:
                 lines.append(f"<b>[{t.id}] {_esc(t.name)}</b>\n  {_esc(t.description)}")
-            lines.append("\nMit <code>/delete ID</code> löschen.")
+            lines.append("\nMit <code>/loeschen ID</code> löschen.")
             reply(chat_id, "\n".join(lines))
 
-    elif command == "/add":
+    elif command == "/neu":
         if "|" not in args:
             reply(
                 chat_id,
-                "Format: <code>/add Name | Beschreibung</code>\n\n"
+                "Format: <code>/neu Name | Beschreibung</code>\n\n"
                 "Beispiel:\n"
-                "<code>/add Radwege | Ausbau und Planung von Radwegen in Oldenburg</code>",
+                "<code>/neu Radwege | Ausbau und Planung von Radwegen in Oldenburg</code>\n\n"
+                "Tipp: Eine gute Beschreibung verbessert die Trefferqualität deutlich.",
             )
             return
         name, _, description = args.partition("|")
@@ -204,13 +244,14 @@ def handle_update(update: dict, db_path: Path) -> None:
         t = store.add_topic(chat_id, name, description)
         reply(
             chat_id,
-            f"Thema gespeichert (ID {t.id}):\n<b>{_esc(t.name)}</b>\n{_esc(t.description)}",
+            f"✅ Thema gespeichert (ID {t.id}):\n<b>{_esc(t.name)}</b>\n{_esc(t.description)}\n\n"
+            f"Ab morgen 06:30 Uhr im täglichen Digest. Suche jetzt in den letzten 30 Tagen…",
         )
         _send_retroactive_digest(chat_id, t, store)
 
-    elif command == "/delete":
+    elif command == "/loeschen":
         if not args.isdigit():
-            reply(chat_id, "Verwendung: <code>/delete ID</code>\n\nIDs mit /topics anzeigen.")
+            reply(chat_id, "Verwendung: <code>/loeschen ID</code>\n\nIDs mit /themen anzeigen.")
             return
         topic_id = int(args)
         topics = store.get_topics(chat_id)
@@ -221,14 +262,13 @@ def handle_update(update: dict, db_path: Path) -> None:
         store.delete_topic(topic_id)
         reply(chat_id, f"Thema <b>{_esc(topic.name)}</b> gelöscht.")
 
-    elif command == "/history":
+    elif command == "/archiv":
         topics = store.get_topics(chat_id)
         if not topics:
-            reply(chat_id, "Du hast noch keine Themen gespeichert.\n\nMit /add hinzufügen.")
+            reply(chat_id, "Du hast noch keine Themen gespeichert.\n\nMit /neu hinzufügen.")
             return
 
         if not args or not args.isdigit():
-            # Overview: list all topics with match counts
             lines = ["<b>📊 Archivierte Artikel-Treffer</b>\n"]
             has_any = False
             for t in topics:
@@ -237,7 +277,7 @@ def handle_update(update: dict, db_path: Path) -> None:
                     lines.append(f"• [{t.id}] {_esc(t.name)} — {count} Artikel")
                     has_any = True
             if has_any:
-                lines.append("\nDetails: <code>/history ID</code>")
+                lines.append("\nDetails: <code>/archiv ID</code>")
             else:
                 lines.append("Noch keine archivierten Treffer.\nDer Digest läuft täglich um 06:30 Uhr.")
             reply(chat_id, "\n".join(lines))
@@ -269,9 +309,9 @@ def handle_update(update: dict, db_path: Path) -> None:
             lines.append("")
         reply(chat_id, "\n".join(lines).rstrip())
 
-    elif command == "/search":
+    elif command == "/suche":
         if not args:
-            reply(chat_id, "Verwendung: <code>/search Begriff</code>\n\nBeispiel: <code>/search Stadtpark</code>")
+            reply(chat_id, "Verwendung: <code>/suche Begriff</code>\n\nBeispiel: <code>/suche Stadtpark</code>")
             return
         results = store.search(args, limit=5)
         if not results:
@@ -281,7 +321,6 @@ def handle_update(update: dict, db_path: Path) -> None:
         for r in results:
             d = r.pub_date.split("-")
             display_date = f"{d[2]}.{d[1]}.{d[0]}" if len(d) == 3 else r.pub_date
-            # escape the raw excerpt, then restore <mark> as <b>
             excerpt = _esc(r.excerpt).replace("&lt;mark&gt;", "<b>").replace("&lt;/mark&gt;", "</b>")
             category = f" · <i>{_esc(r.category_name)}</i>" if r.category_name else ""
             lines.append(
@@ -289,13 +328,13 @@ def handle_update(update: dict, db_path: Path) -> None:
             )
         reply(chat_id, "\n\n".join(lines))
 
-    elif command == "/subscriptions":
+    elif command == "/ausschuesse":
         _send_committees(chat_id, store, db_path)
 
-    elif command == "/check":
+    elif command == "/pruefen":
         subs = store.get_subscriptions(chat_id)
         if not subs:
-            reply(chat_id, "Du hast keine Ausschuss-Abos. Abonniere Ausschüsse mit /subscriptions.")
+            reply(chat_id, "Du hast keine Ausschuss-Abos. Abonniere Ausschüsse mit /ausschuesse.")
             return
 
         from datetime import date, timedelta
@@ -364,11 +403,11 @@ def handle_update(update: dict, db_path: Path) -> None:
 
         council_store.close()
 
-    # ---- Admin commands ----
+    # ---- Admin-Befehle ----
 
-    elif command == "/users":
+    elif command == "/nutzer":
         if not _is_admin(chat_id):
-            reply(chat_id, "Unbekannter Befehl. /help für eine Übersicht.")
+            reply(chat_id, "Unbekannter Befehl. /hilfe für eine Übersicht.")
             return
         users = store.get_users()
         if not users:
@@ -384,13 +423,13 @@ def handle_update(update: dict, db_path: Path) -> None:
             )
         reply(chat_id, "\n".join(lines))
 
-    elif command == "/approve":
+    elif command == "/freischalten":
         if not _is_admin(chat_id):
-            reply(chat_id, "Unbekannter Befehl. /help für eine Übersicht.")
+            reply(chat_id, "Unbekannter Befehl. /hilfe für eine Übersicht.")
             return
         tokens = args.split(None, 1)
         if not tokens or not tokens[0].lstrip("-").isdigit():
-            reply(chat_id, "Verwendung: <code>/approve chat_id [Name]</code>")
+            reply(chat_id, "Verwendung: <code>/freischalten chat_id [Name]</code>")
             return
         target = int(tokens[0])
         username = tokens[1].strip() if len(tokens) > 1 else ""
@@ -399,15 +438,17 @@ def handle_update(update: dict, db_path: Path) -> None:
         reply(chat_id, f"Nutzer <code>{target}</code>{label} freigeschaltet.")
         reply(
             target,
-            "Du wurdest freigeschaltet! Schreib /help für eine Übersicht der Befehle.",
+            "🎉 Du wurdest freigeschaltet!\n\n"
+            "Schreib /hilfe für eine Übersicht aller Befehle, oder leg direkt los:\n"
+            "<code>/neu Radwege | Ausbau von Radwegen in Oldenburg</code>",
         )
 
-    elif command == "/revoke":
+    elif command == "/sperren":
         if not _is_admin(chat_id):
-            reply(chat_id, "Unbekannter Befehl. /help für eine Übersicht.")
+            reply(chat_id, "Unbekannter Befehl. /hilfe für eine Übersicht.")
             return
         if not args.lstrip("-").isdigit():
-            reply(chat_id, "Verwendung: <code>/revoke chat_id</code>")
+            reply(chat_id, "Verwendung: <code>/sperren chat_id</code>")
             return
         target = int(args)
         if target == chat_id:
@@ -417,7 +458,7 @@ def handle_update(update: dict, db_path: Path) -> None:
         reply(chat_id, f"Nutzer <code>{target}</code> entfernt (inkl. seiner Themen).")
 
     else:
-        reply(chat_id, f"Unbekannter Befehl: {command}\n\n/help für eine Übersicht.")
+        reply(chat_id, f"Unbekannter Befehl: {command}\n\n/hilfe für eine Übersicht.")
 
 
 def handle_callback_query(update: dict, db_path: Path) -> None:
