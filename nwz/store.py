@@ -330,6 +330,38 @@ class Store:
         ).fetchall()
         return [SearchResult(**dict(r)) for r in rows]
 
+    def search_any_terms(
+        self,
+        terms: list[str],
+        date_from: str = "",
+        date_to: str = "",
+        limit: int = 20,
+    ) -> list[dict]:
+        """FTS5 search with OR logic: any of the given terms must appear.
+        Returns raw article dicts with pub_date and a 600-char content preview."""
+        if not terms:
+            return []
+        fts_query = " OR ".join(terms)
+        date_from_filter = "AND f.pub_date >= ?" if date_from else ""
+        date_to_filter = "AND f.pub_date <= ?" if date_to else ""
+        params: list[Any] = [fts_query]
+        if date_from:
+            params.append(date_from)
+        if date_to:
+            params.append(date_to)
+        params.append(limit)
+        rows = self._conn.execute(
+            f"""SELECT f.catalog, f.refid, f.pub_date, f.category_name,
+                       f.title, f.subtitle, substr(f.content_text, 1, 600) AS content_text
+                FROM articles_fts f
+                WHERE articles_fts MATCH ?
+                {date_from_filter} {date_to_filter}
+                ORDER BY rank
+                LIMIT ?""",
+            params,
+        ).fetchall()
+        return [dict(r) for r in rows]
+
     def get_article(self, catalog: int, refid: str) -> dict | None:
         row = self._conn.execute(
             """SELECT a.*, e.publication_date, e.title AS edition_title
