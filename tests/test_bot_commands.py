@@ -95,7 +95,7 @@ class TestCommitteeButtons:
 
 
 # ---------------------------------------------------------------------------
-# /committees handler
+# /subscriptions handler
 # ---------------------------------------------------------------------------
 
 class TestCommitteesCommand:
@@ -108,14 +108,14 @@ class TestCommitteesCommand:
         store.add_user(CHAT_ID, "testuser")
         store.close()
         # No council data → CouncilStore creates empty DB
-        handle_update(_make_msg(CHAT_ID, "/committees"), nwz_path)
+        handle_update(_make_msg(CHAT_ID, "/subscriptions"), nwz_path)
         mock_reply.assert_called_once()
         assert "Keine" in mock_reply.call_args[0][1]
         mock_rwb.assert_not_called()
 
     @patch("nwz.bot_commands.reply_with_buttons", return_value=42)
     def test_with_data_sends_buttons(self, mock_rwb, data_dir):
-        handle_update(_make_msg(CHAT_ID, "/committees"), data_dir)
+        handle_update(_make_msg(CHAT_ID, "/subscriptions"), data_dir)
         mock_rwb.assert_called_once()
         _chat_id, text, buttons = mock_rwb.call_args[0]
         assert _chat_id == CHAT_ID
@@ -123,7 +123,7 @@ class TestCommitteesCommand:
 
     @patch("nwz.bot_commands.reply_with_buttons", return_value=42)
     def test_list_shows_number_and_name(self, mock_rwb, data_dir):
-        handle_update(_make_msg(CHAT_ID, "/committees"), data_dir)
+        handle_update(_make_msg(CHAT_ID, "/subscriptions"), data_dir)
         text = mock_rwb.call_args[0][1]
         assert "1." in text
         assert "2." in text
@@ -137,7 +137,7 @@ class TestCommitteesCommand:
         store = Store(data_dir)
         store.subscribe(CHAT_ID, "Bauausschuss")
         store.close()
-        handle_update(_make_msg(CHAT_ID, "/committees"), data_dir)
+        handle_update(_make_msg(CHAT_ID, "/subscriptions"), data_dir)
         text = mock_rwb.call_args[0][1]
         assert "✅" in text
         assert "➕" in text
@@ -145,7 +145,7 @@ class TestCommitteesCommand:
     @patch("nwz.bot_commands.reply")
     @patch("nwz.bot_commands.reply_with_buttons", return_value=None)
     def test_fallback_to_reply_when_buttons_fail(self, mock_rwb, mock_reply, data_dir):
-        handle_update(_make_msg(CHAT_ID, "/committees"), data_dir)
+        handle_update(_make_msg(CHAT_ID, "/subscriptions"), data_dir)
         mock_rwb.assert_called_once()
         mock_reply.assert_called_once()
         text = mock_reply.call_args[0][1]
@@ -153,13 +153,13 @@ class TestCommitteesCommand:
 
     @patch("nwz.bot_commands.reply_with_buttons", return_value=42)
     def test_message_fits_in_single_call(self, mock_rwb, data_dir):
-        handle_update(_make_msg(CHAT_ID, "/committees"), data_dir)
+        handle_update(_make_msg(CHAT_ID, "/subscriptions"), data_dir)
         text = mock_rwb.call_args[0][1]
         assert len(text) < 4096
 
 
 # ---------------------------------------------------------------------------
-# /subscriptions handler (alias for /committees)
+# /subscriptions handler (alias for /subscriptions)
 # ---------------------------------------------------------------------------
 
 class TestSubscriptionsCommand:

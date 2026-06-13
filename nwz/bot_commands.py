@@ -19,8 +19,7 @@ _HELP = """\
 Gespeicherte Themen werden täglich gegen die NWZ und den Stadtrat geprüft.
 
 <b>Ausschuss-Abonnements</b>
-/committees — Alle Ausschüsse anzeigen (✅ = abonniert)
-/subscriptions — Alle Ausschüsse anzeigen (✅ = abonniert)
+/subscriptions — Alle Ausschüsse anzeigen und abonnieren (✅ = abonniert)
 /check — Sitzungsagendas für deine Abos jetzt prüfen\
 """
 
@@ -166,13 +165,13 @@ def handle_update(update: dict, db_path: Path) -> None:
         store.delete_topic(topic_id)
         reply(chat_id, f"Thema <b>{_esc(topic.name)}</b> gelöscht.")
 
-    elif command in ("/committees", "/subscriptions"):
+    elif command == "/subscriptions":
         _send_committees(chat_id, store, db_path)
 
     elif command == "/check":
         subs = store.get_subscriptions(chat_id)
         if not subs:
-            reply(chat_id, "Du hast keine Ausschuss-Abos. Abonniere Ausschüsse mit /committees.")
+            reply(chat_id, "Du hast keine Ausschuss-Abos. Abonniere Ausschüsse mit /subscriptions.")
             return
 
         from datetime import date, timedelta
