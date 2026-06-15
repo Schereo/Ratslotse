@@ -92,6 +92,23 @@ def build_digest(
 
         Aufgabe:
         Für jedes Thema: finde passende Artikel (0–5 Stück).
+
+        STRENGES Relevanzkriterium — ein Artikel passt NUR, wenn das Thema
+        ein zentraler Gegenstand des Artikels selbst ist. Der Bezug muss
+        explizit im Artikeltext stehen, nicht erschlossen oder vermutet werden.
+
+        Ein Artikel passt NICHT, wenn:
+        - er nur THEMATISCH VERWANDT ist (z. B. allgemein Kultur/Politik/Sport
+          in Oldenburg), das konkrete Thema aber nicht behandelt;
+        - der Bezug nur SPEKULATIV ist ("könnte für X interessant sein",
+          "X könnte sich damit beschäftigen", "illustriert Engagement, das
+          politisch relevant sein könnte"). Solche Vermutungen sind verboten.
+        - das Thema eine Organisation/Partei/Person ist und diese im Artikel
+          gar nicht VORKOMMT — eine bloße inhaltliche Nähe genügt nicht.
+
+        Im Zweifel: NICHT aufnehmen. Lieber kein Treffer als ein falscher.
+        Die Zusammenfassung muss belegen, WO im Artikel das Thema vorkommt;
+        wenn du das nicht ohne Spekulation kannst, ist es kein Treffer.
         Schreibe keine Zusammenfassung für Themen ohne passende Artikel.
         {continuation_instruction}Gib die Antwort als JSON zurück:
 
