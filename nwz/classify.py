@@ -134,6 +134,7 @@ def build_digest(
     resp = client.chat.completions.create(
         model=MODEL,
         response_format={"type": "json_object"},
+        temperature=0,
         messages=[
             {"role": "system", "content": system},
             {"role": "user", "content": prompt},
