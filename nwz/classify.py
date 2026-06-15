@@ -40,10 +40,16 @@ def _verify_match(client: OpenAI, topic: dict, article: dict) -> bool:
                 "role": "system",
                 "content": (
                     "Du prüfst, ob ein Zeitungsartikel WIRKLICH vom angegebenen Thema handelt. "
-                    "Strenges Kriterium: Das Thema muss ein zentraler Gegenstand des Artikels sein "
-                    "und explizit vorkommen. Bloße Stichwort-Überschneidung (z.B. das Wort 'grün'), "
-                    "thematische Verwandtschaft oder bundesweite Bezüge ohne den im Thema geforderten "
-                    "lokalen/konkreten Bezug zählen NICHT. Antworte nur als JSON: {\"relevant\": true/false}."
+                    "Strenges Kriterium: Das Thema muss ein ZENTRALER Gegenstand des Artikels sein. "
+                    "Eine bloße beiläufige Erwähnung reicht NICHT — insbesondere zählt es nicht, wenn "
+                    "das Thema nur in einer Abstimmungsliste, Aufzählung, Klammer oder Randnotiz "
+                    "vorkommt, während der Artikel eigentlich von etwas anderem handelt "
+                    "(z.B. ein Artikel über einen Stadion-Beschluss, der eine Partei nur in der "
+                    "Ja/Nein-Stimmenliste nennt). Ebenso zählen Stichwort-Überschneidung (z.B. das "
+                    "Wort 'grün'), thematische Verwandtschaft oder bundesweite Bezüge ohne den im "
+                    "Thema geforderten lokalen/konkreten Bezug NICHT. Frage dich: Würde ein Leser "
+                    "sagen, dieser Artikel handelt von dem Thema? Antworte nur als JSON: "
+                    "{\"relevant\": true/false}."
                 ),
             },
             {
