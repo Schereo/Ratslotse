@@ -156,6 +156,18 @@ class Store:
                         "INSERT OR IGNORE INTO users (chat_id, username, added_at) VALUES (?, ?, ?)",
                         (admin, "admin", now),
                     )
+        # Reassign orphaned topics (chat_id=0) to admin — covers topics added
+        # before chat_id was properly set in add_topic().
+        orphan_count = self._conn.execute(
+            "SELECT COUNT(*) FROM topics WHERE chat_id = 0"
+        ).fetchone()[0]
+        if orphan_count > 0:
+            admin = int(os.environ.get("TELEGRAM_CHAT_ID", 0))
+            if admin:
+                with self._conn:
+                    self._conn.execute(
+                        "UPDATE topics SET chat_id = ? WHERE chat_id = 0", (admin,)
+                    )
         atm_cols = {r[1] for r in self._conn.execute("PRAGMA table_info(article_topic_matches)").fetchall()}
         if atm_cols and "is_continuation" not in atm_cols:
             with self._conn:
