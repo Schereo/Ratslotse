@@ -527,9 +527,12 @@ def _esc(text: str) -> str:
 def _vagueness_hint(name: str, description: str) -> str | None:
     """Return a feedback string if the topic description is too vague, else None."""
     from openai import OpenAI
-    client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+    client = OpenAI(
+        api_key=os.environ["OPENROUTER_API_KEY"],
+        base_url="https://openrouter.ai/api/v1",
+    )
     resp = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="openai/gpt-4o-mini",
         temperature=0,
         messages=[
             {

@@ -76,7 +76,10 @@ def _verify_with_gpt(
     candidates: list[dict],
 ) -> list[dict]:
     """Ask GPT which candidate articles report on the outcome of this session."""
-    client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+    client = OpenAI(
+        api_key=os.environ["OPENROUTER_API_KEY"],
+        base_url="https://openrouter.ai/api/v1",
+    )
 
     items_text = "\n".join(
         f"  {i['item_number']}: {i['title']}" + (f" [{i['vorlage_nr']}]" if i.get("vorlage_nr") else "")
@@ -123,7 +126,7 @@ def _verify_with_gpt(
     """)
 
     resp = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="openai/gpt-4o-mini",
         response_format={"type": "json_object"},
         messages=[{"role": "user", "content": prompt}],
         max_tokens=512,

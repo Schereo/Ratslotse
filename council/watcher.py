@@ -12,14 +12,17 @@ from .scraper import CouncilScraper, CouncilSession
 from .store import CouncilStore
 
 BASE_URL = "https://buergerinfo.oldenburg.de"
-MODEL = "gpt-4o-mini"
+MODEL = "openai/gpt-4o-mini"
 _client: OpenAI | None = None
 
 
 def _get_client() -> OpenAI:
     global _client
     if _client is None:
-        _client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+        _client = OpenAI(
+            api_key=os.environ["OPENROUTER_API_KEY"],
+            base_url="https://openrouter.ai/api/v1",
+        )
     return _client
 
 

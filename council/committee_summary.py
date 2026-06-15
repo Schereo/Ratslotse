@@ -8,7 +8,7 @@ from openai import OpenAI
 
 from .scraper import AgendaItem
 
-MODEL = "gpt-4o-mini"
+MODEL = "openai/gpt-4o-mini"
 
 
 def _esc(text: str) -> str:
@@ -63,7 +63,10 @@ def summarize_agenda(
         Gib has_content: false zurück, wenn nur Routine-TOPs übrig bleiben.
     """)
 
-    client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+    client = OpenAI(
+        api_key=os.environ["OPENROUTER_API_KEY"],
+        base_url="https://openrouter.ai/api/v1",
+    )
     resp = client.chat.completions.create(
         model=MODEL,
         response_format={"type": "json_object"},
