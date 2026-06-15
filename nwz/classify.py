@@ -8,6 +8,7 @@ from typing import Any
 from openai import OpenAI
 
 MODEL = "openai/gpt-4o"
+VERIFY_MODEL = "openai/gpt-4o-mini"
 _client: OpenAI | None = None
 
 
@@ -19,6 +20,47 @@ def _get_client() -> OpenAI:
             base_url="https://openrouter.ai/api/v1",
         )
     return _client
+
+
+def _verify_match(client: OpenAI, topic: dict, article: dict) -> bool:
+    """Cheap second-pass check: does the article genuinely deal with the topic?
+
+    Returns True only if the topic is a central, explicit subject of the article.
+    Keyword overlap, thematic kinship or nationwide references without the local/
+    concrete angle the topic asks for do not count.
+    """
+    text = (article.get("content_text") or "")[:1500].replace("\n", " ")
+    resp = client.chat.completions.create(
+        model=VERIFY_MODEL,
+        temperature=0,
+        response_format={"type": "json_object"},
+        max_tokens=20,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "Du prüfst, ob ein Zeitungsartikel WIRKLICH vom angegebenen Thema handelt. "
+                    "Strenges Kriterium: Das Thema muss ein zentraler Gegenstand des Artikels sein "
+                    "und explizit vorkommen. Bloße Stichwort-Überschneidung (z.B. das Wort 'grün'), "
+                    "thematische Verwandtschaft oder bundesweite Bezüge ohne den im Thema geforderten "
+                    "lokalen/konkreten Bezug zählen NICHT. Antworte nur als JSON: {\"relevant\": true/false}."
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    f"Thema: {topic.get('name','')}\n"
+                    f"Themen-Beschreibung: {topic.get('description','')}\n\n"
+                    f"Artikel-Titel: {article.get('title','')}\n"
+                    f"Artikel-Text: {text}"
+                ),
+            },
+        ],
+    )
+    try:
+        return bool(json.loads(resp.choices[0].message.content).get("relevant", False))
+    except (json.JSONDecodeError, AttributeError):
+        return True  # on parse failure, don't drop a possibly-valid match
 
 
 def _format_articles(articles: list[dict]) -> str:
@@ -144,6 +186,24 @@ def build_digest(
 
     raw = resp.choices[0].message.content.strip()
     data: dict[str, Any] = json.loads(raw)
+
+    # Second-pass verification: re-check every candidate match individually with a
+    # cheap model. The first pass classifies all topics + all articles in one call,
+    # which tends to over-match broad topics (e.g. a party name triggering on the
+    # keyword "grün"). Verifying one (topic, article) pair at a time is far more
+    # reliable and drops keyword-only / off-topic false positives.
+    name_to_topic = {t["name"]: t for t in topics}
+    refid_to_article = {a["refid"]: a for a in articles}
+    for te in data.get("digest", []):
+        topic = name_to_topic.get(te.get("topic"))
+        kept = []
+        for art in te.get("articles", []):
+            article = refid_to_article.get(art.get("refid"))
+            if topic is None or article is None:
+                kept.append(art)  # cannot verify — keep rather than silently drop
+            elif _verify_match(client, topic, article):
+                kept.append(art)
+        te["articles"] = kept
 
     raw_matches = [
         {
