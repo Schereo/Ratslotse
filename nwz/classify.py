@@ -39,17 +39,17 @@ def _verify_match(client: OpenAI, topic: dict, article: dict) -> bool:
             {
                 "role": "system",
                 "content": (
-                    "Du prüfst, ob ein Zeitungsartikel WIRKLICH vom angegebenen Thema handelt. "
-                    "Strenges Kriterium: Das Thema muss ein ZENTRALER Gegenstand des Artikels sein. "
-                    "Eine bloße beiläufige Erwähnung reicht NICHT — insbesondere zählt es nicht, wenn "
-                    "das Thema nur in einer Abstimmungsliste, Aufzählung, Klammer oder Randnotiz "
-                    "vorkommt, während der Artikel eigentlich von etwas anderem handelt "
-                    "(z.B. ein Artikel über einen Stadion-Beschluss, der eine Partei nur in der "
-                    "Ja/Nein-Stimmenliste nennt). Ebenso zählen Stichwort-Überschneidung (z.B. das "
-                    "Wort 'grün'), thematische Verwandtschaft oder bundesweite Bezüge ohne den im "
-                    "Thema geforderten lokalen/konkreten Bezug NICHT. Frage dich: Würde ein Leser "
-                    "sagen, dieser Artikel handelt von dem Thema? Antworte nur als JSON: "
-                    "{\"relevant\": true/false}."
+                    "Du prüfst, ob ein Zeitungsartikel eine konkrete, faktische Information zum "
+                    "angegebenen Thema enthält. RELEVANT ist ein Artikel, wenn er das Thema behandelt "
+                    "ODER eine konkrete Tatsache zum verfolgten Akteur liefert — z.B. wie eine Partei/"
+                    "Person abgestimmt hat, was sie gesagt oder getan hat. Das Thema muss NICHT der "
+                    "zentrale Gegenstand sein; eine beiläufige, aber konkrete Nennung (z.B. die Partei "
+                    "in einer Abstimmungsliste) genügt und ist relevant. "
+                    "NICHT relevant ist: bloße Stichwort-Überschneidung (z.B. das Wort 'grün'), reine "
+                    "thematische Verwandtschaft ohne Nennung des Akteurs, oder ein bundesweiter Bezug, "
+                    "obwohl das Thema einen lokalen Bezug (Oldenburg) verlangt. "
+                    "Beachte die Themen-Beschreibung: erfüllt sie einen geforderten lokalen/konkreten "
+                    "Bezug? Antworte nur als JSON: {\"relevant\": true/false}."
                 ),
             },
             {
@@ -141,8 +141,12 @@ def build_digest(
         Aufgabe:
         Für jedes Thema: finde passende Artikel (0–5 Stück).
 
-        STRENGES Relevanzkriterium — ein Artikel passt NUR, wenn das Thema
-        ein zentraler Gegenstand des Artikels selbst ist. Der Bezug muss
+        STRENGES Relevanzkriterium — ein Artikel passt NUR, wenn er das Thema
+        konkret behandelt ODER eine konkrete, faktische Information zum Thema
+        liefert (z. B. das Abstimmungsverhalten, eine Aussage oder Handlung
+        einer genannten Partei/Person). Das Thema muss NICHT der Hauptgegenstand
+        des Artikels sein — eine beiläufige, aber konkrete Nennung des im Thema
+        verfolgten Akteurs (z. B. "Volt stimmte dafür") genügt. Der Bezug muss
         explizit im Artikeltext stehen, nicht erschlossen oder vermutet werden.
 
         Ein Artikel passt NICHT, wenn:
@@ -150,7 +154,10 @@ def build_digest(
           in Oldenburg), das konkrete Thema aber nicht behandelt;
         - der Bezug nur SPEKULATIV ist ("könnte für X interessant sein",
           "X könnte sich damit beschäftigen", "illustriert Engagement, das
-          politisch relevant sein könnte"). Solche Vermutungen sind verboten.
+          politisch relevant sein könnte"). Solche Vermutungen sind verboten;
+        - es sich nur um eine STICHWORT-Überschneidung handelt (z. B. das Wort
+          "grün") oder um einen bundesweiten Bezug, obwohl das Thema einen
+          lokalen Bezug (Oldenburg) verlangt;
         - das Thema eine Organisation/Partei/Person ist und diese im Artikel
           gar nicht VORKOMMT — eine bloße inhaltliche Nähe genügt nicht.
 
