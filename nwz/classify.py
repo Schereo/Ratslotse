@@ -8,6 +8,7 @@ from typing import Any
 from openai import OpenAI
 
 MODEL = "openai/gpt-4o"
+VERIFY_MODEL = "openai/gpt-4o-mini"
 _client: OpenAI | None = None
 
 
@@ -19,6 +20,53 @@ def _get_client() -> OpenAI:
             base_url="https://openrouter.ai/api/v1",
         )
     return _client
+
+
+def _verify_match(client: OpenAI, topic: dict, article: dict) -> bool:
+    """Cheap second-pass check: does the article genuinely deal with the topic?
+
+    Returns True only if the topic is a central, explicit subject of the article.
+    Keyword overlap, thematic kinship or nationwide references without the local/
+    concrete angle the topic asks for do not count.
+    """
+    text = (article.get("content_text") or "")[:1500].replace("\n", " ")
+    resp = client.chat.completions.create(
+        model=VERIFY_MODEL,
+        temperature=0,
+        response_format={"type": "json_object"},
+        max_tokens=20,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "Du prüfst, ob ein Zeitungsartikel eine konkrete, faktische Information zum "
+                    "angegebenen Thema enthält. RELEVANT ist ein Artikel, wenn er das Thema behandelt "
+                    "ODER eine konkrete Tatsache zum verfolgten Akteur liefert — z.B. wie eine Partei/"
+                    "Person abgestimmt hat, was sie gesagt oder getan hat. Das Thema muss NICHT der "
+                    "zentrale Gegenstand sein; eine beiläufige, aber konkrete Nennung (z.B. die Partei "
+                    "in einer Abstimmungsliste) genügt und ist relevant. "
+                    "NICHT relevant ist: bloße Stichwort-Überschneidung (z.B. das Wort 'grün'), reine "
+                    "thematische Verwandtschaft ohne Nennung des Akteurs, oder ein bundesweiter Bezug, "
+                    "obwohl das Thema einen lokalen Bezug (Oldenburg) verlangt. "
+                    "Beachte die Themen-Beschreibung: erfüllt sie einen geforderten lokalen/konkreten "
+                    "Bezug? Antworte nur als JSON: {\"relevant\": true/false}."
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    f"Thema: {topic.get('name','')}\n"
+                    f"Themen-Beschreibung: {topic.get('description','')}\n\n"
+                    f"Artikel-Titel: {article.get('title','')}\n"
+                    f"Artikel-Text: {text}"
+                ),
+            },
+        ],
+    )
+    try:
+        return bool(json.loads(resp.choices[0].message.content).get("relevant", False))
+    except (json.JSONDecodeError, AttributeError):
+        return True  # on parse failure, don't drop a possibly-valid match
 
 
 def _format_articles(articles: list[dict]) -> str:
@@ -93,8 +141,12 @@ def build_digest(
         Aufgabe:
         Für jedes Thema: finde passende Artikel (0–5 Stück).
 
-        STRENGES Relevanzkriterium — ein Artikel passt NUR, wenn das Thema
-        ein zentraler Gegenstand des Artikels selbst ist. Der Bezug muss
+        STRENGES Relevanzkriterium — ein Artikel passt NUR, wenn er das Thema
+        konkret behandelt ODER eine konkrete, faktische Information zum Thema
+        liefert (z. B. das Abstimmungsverhalten, eine Aussage oder Handlung
+        einer genannten Partei/Person). Das Thema muss NICHT der Hauptgegenstand
+        des Artikels sein — eine beiläufige, aber konkrete Nennung des im Thema
+        verfolgten Akteurs (z. B. "Volt stimmte dafür") genügt. Der Bezug muss
         explizit im Artikeltext stehen, nicht erschlossen oder vermutet werden.
 
         Ein Artikel passt NICHT, wenn:
@@ -102,7 +154,10 @@ def build_digest(
           in Oldenburg), das konkrete Thema aber nicht behandelt;
         - der Bezug nur SPEKULATIV ist ("könnte für X interessant sein",
           "X könnte sich damit beschäftigen", "illustriert Engagement, das
-          politisch relevant sein könnte"). Solche Vermutungen sind verboten.
+          politisch relevant sein könnte"). Solche Vermutungen sind verboten;
+        - es sich nur um eine STICHWORT-Überschneidung handelt (z. B. das Wort
+          "grün") oder um einen bundesweiten Bezug, obwohl das Thema einen
+          lokalen Bezug (Oldenburg) verlangt;
         - das Thema eine Organisation/Partei/Person ist und diese im Artikel
           gar nicht VORKOMMT — eine bloße inhaltliche Nähe genügt nicht.
 
@@ -134,6 +189,7 @@ def build_digest(
     resp = client.chat.completions.create(
         model=MODEL,
         response_format={"type": "json_object"},
+        temperature=0,
         messages=[
             {"role": "system", "content": system},
             {"role": "user", "content": prompt},
@@ -143,6 +199,24 @@ def build_digest(
 
     raw = resp.choices[0].message.content.strip()
     data: dict[str, Any] = json.loads(raw)
+
+    # Second-pass verification: re-check every candidate match individually with a
+    # cheap model. The first pass classifies all topics + all articles in one call,
+    # which tends to over-match broad topics (e.g. a party name triggering on the
+    # keyword "grün"). Verifying one (topic, article) pair at a time is far more
+    # reliable and drops keyword-only / off-topic false positives.
+    name_to_topic = {t["name"]: t for t in topics}
+    refid_to_article = {a["refid"]: a for a in articles}
+    for te in data.get("digest", []):
+        topic = name_to_topic.get(te.get("topic"))
+        kept = []
+        for art in te.get("articles", []):
+            article = refid_to_article.get(art.get("refid"))
+            if topic is None or article is None:
+                kept.append(art)  # cannot verify — keep rather than silently drop
+            elif _verify_match(client, topic, article):
+                kept.append(art)
+        te["articles"] = kept
 
     raw_matches = [
         {
