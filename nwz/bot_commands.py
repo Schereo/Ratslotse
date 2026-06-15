@@ -241,6 +241,15 @@ def handle_update(update: dict, db_path: Path) -> None:
         if not name or not description:
             reply(chat_id, "Name und Beschreibung dürfen nicht leer sein.")
             return
+        vague_hint = _vagueness_hint(name, description)
+        if vague_hint:
+            reply(
+                chat_id,
+                f"⚠️ Die Beschreibung klingt noch etwas vage:\n\n<i>{_esc(vague_hint)}</i>\n\n"
+                f"Bitte präzisiere dein Thema mit <code>/neu {_esc(name)} | &lt;genauere Beschreibung&gt;</code> "
+                f"— das verbessert die Trefferqualität deutlich.",
+            )
+            return
         t = store.add_topic(chat_id, name, description)
         reply(
             chat_id,
@@ -513,3 +522,41 @@ def handle_callback_query(update: dict, db_path: Path) -> None:
 
 def _esc(text: str) -> str:
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _vagueness_hint(name: str, description: str) -> str | None:
+    """Return a feedback string if the topic description is too vague, else None."""
+    from openai import OpenAI
+    client = OpenAI(
+        api_key=os.environ["OPENROUTER_API_KEY"],
+        base_url="https://openrouter.ai/api/v1",
+    )
+    resp = client.chat.completions.create(
+        model="openai/gpt-4o-mini",
+        temperature=0,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "Du prüfst ob eine Themen-Beschreibung für einen Nachrichten-Bot präzise genug ist, "
+                    "um zuverlässig relevante Artikel herauszufiltern. "
+                    "Eine Beschreibung ist zu vage wenn sie:\n"
+                    "- allgemeine Absichten statt konkreter Inhalte beschreibt (z.B. 'interessante Themen', 'etwas Spannendes')\n"
+                    "- keine eingrenzbaren Kriterien enthält\n"
+                    "- so breit ist, dass fast alles matchen würde\n\n"
+                    "Antworte NUR mit einem JSON-Objekt: {\"vague\": true/false, \"hint\": \"...\"}. "
+                    "hint ist ein konkreter Verbesserungsvorschlag auf Deutsch (max. 2 Sätze), oder leer wenn nicht vage."
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"Name: {name}\nBeschreibung: {description}",
+            },
+        ],
+        response_format={"type": "json_object"},
+    )
+    import json
+    result = json.loads(resp.choices[0].message.content)
+    if result.get("vague"):
+        return result.get("hint", "")
+    return None
