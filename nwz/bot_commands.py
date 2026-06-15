@@ -241,14 +241,26 @@ def handle_update(update: dict, db_path: Path) -> None:
         if not name or not description:
             reply(chat_id, "Name und Beschreibung dürfen nicht leer sein.")
             return
-        vague_hint = _vagueness_hint(name, description)
-        if vague_hint:
-            reply(
-                chat_id,
-                f"⚠️ Die Beschreibung klingt noch etwas vage:\n\n<i>{_esc(vague_hint)}</i>\n\n"
-                f"Bitte präzisiere dein Thema mit <code>/neu {_esc(name)} | &lt;genauere Beschreibung&gt;</code> "
-                f"— das verbessert die Trefferqualität deutlich.",
+        vague = _vagueness_hint(name, description)
+        if vague:
+            msg = (
+                f"⚠️ Die Beschreibung klingt noch etwas vage:\n\n"
+                f"<i>{_esc(vague['hint'])}</i>\n\n"
             )
+            suggestion = vague.get("suggestion", "").strip()
+            if suggestion:
+                msg += (
+                    f"💡 Vorschlag — einfach kopieren und absenden:\n"
+                    f"<code>/neu {_esc(name)} | {_esc(suggestion)}</code>\n\n"
+                    f"Oder formuliere selbst eine genauere Beschreibung."
+                )
+            else:
+                msg += (
+                    f"Bitte präzisiere dein Thema mit "
+                    f"<code>/neu {_esc(name)} | &lt;genauere Beschreibung&gt;</code> "
+                    f"— das verbessert die Trefferqualität deutlich."
+                )
+            reply(chat_id, msg)
             return
         t = store.add_topic(chat_id, name, description)
         reply(
@@ -524,8 +536,14 @@ def _esc(text: str) -> str:
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
-def _vagueness_hint(name: str, description: str) -> str | None:
-    """Return a feedback string if the topic description is too vague, else None."""
+def _vagueness_hint(name: str, description: str) -> dict | None:
+    """Check whether a topic description is too vague.
+
+    Returns None if the description is precise enough, otherwise a dict
+    {"hint": str, "suggestion": str} where ``hint`` explains the problem and
+    ``suggestion`` is a concrete, ready-to-use improved description.
+    """
+    import json
     from openai import OpenAI
     client = OpenAI(
         api_key=os.environ["OPENROUTER_API_KEY"],
@@ -539,13 +557,24 @@ def _vagueness_hint(name: str, description: str) -> str | None:
                 "role": "system",
                 "content": (
                     "Du prüfst ob eine Themen-Beschreibung für einen Nachrichten-Bot präzise genug ist, "
-                    "um zuverlässig relevante Artikel herauszufiltern. "
+                    "um zuverlässig NUR die wirklich gewünschten Artikel (aus einer Lokalzeitung für "
+                    "Oldenburg) herauszufiltern. Sei streng: im Zweifel ist die Beschreibung zu vage.\n"
                     "Eine Beschreibung ist zu vage wenn sie:\n"
                     "- allgemeine Absichten statt konkreter Inhalte beschreibt (z.B. 'interessante Themen', 'etwas Spannendes')\n"
                     "- keine eingrenzbaren Kriterien enthält\n"
-                    "- so breit ist, dass fast alles matchen würde\n\n"
-                    "Antworte NUR mit einem JSON-Objekt: {\"vague\": true/false, \"hint\": \"...\"}. "
-                    "hint ist ein konkreter Verbesserungsvorschlag auf Deutsch (max. 2 Sätze), oder leer wenn nicht vage."
+                    "- so breit ist, dass viele themenfremde Artikel matchen würden\n"
+                    "- eine Partei, Organisation, Person oder Institution nennt, OHNE den Bezug klar "
+                    "einzugrenzen: Es muss ausdrücklich auf Oldenburg/lokal beschränkt sein UND klarstellen, "
+                    "was NICHT gemeint ist (z.B. keine bundesweiten Partei-/Politiknews). 'Die Grünen – Partei "
+                    "in Oldenburg' ist z.B. ZU VAGE, weil dadurch auch bundesweite Grünen-Nachrichten matchen.\n"
+                    "- ein breites Schlagwort ohne konkrete Akteure/Vorhaben/Orte nutzt "
+                    "(z.B. 'Kommunalwahl in Oldenburg' ohne Eingrenzung auf Kandidaten, Listen, Termine, Ergebnisse)\n\n"
+                    "Antworte NUR mit einem JSON-Objekt: "
+                    "{\"vague\": true/false, \"hint\": \"...\", \"suggestion\": \"...\"}.\n"
+                    "- hint: kurze Erklärung auf Deutsch, warum die Beschreibung zu vage ist (max. 2 Sätze). Leer wenn nicht vage.\n"
+                    "- suggestion: eine konkrete, sofort verwendbare präzisere Beschreibung (1 Satz), die den erkennbaren "
+                    "Wunsch des Nutzers aufgreift und sinnvoll eingrenzt (z.B. Ortsbezug Oldenburg, konkrete Akteure/Vorhaben, "
+                    "Ausschluss themenfremder Treffer). Leer wenn nicht vage."
                 ),
             },
             {
@@ -555,8 +584,10 @@ def _vagueness_hint(name: str, description: str) -> str | None:
         ],
         response_format={"type": "json_object"},
     )
-    import json
     result = json.loads(resp.choices[0].message.content)
     if result.get("vague"):
-        return result.get("hint", "")
+        return {
+            "hint": result.get("hint", ""),
+            "suggestion": result.get("suggestion", ""),
+        }
     return None
