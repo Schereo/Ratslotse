@@ -68,9 +68,30 @@ NWZ_PASSWORD=...
 OPENROUTER_API_KEY=...
 TELEGRAM_BOT_TOKEN=...
 TELEGRAM_CHAT_ID=...
+# Web-Frontend (web/)
+WEB_JWT_SECRET=...          # zufälliges Signiergeheimnis für Session-Tokens
+WEB_ADMIN_EMAIL=...         # diese E-Mail wird bei Registrierung Admin
+TELEGRAM_BOT_USERNAME=mein_nwz_bot
 ```
 
 Credentials liegen in 1Password.
+
+## Web-Frontend (`web/`)
+
+FastAPI-Backend (`web/backend/`) + Next.js-Frontend (`web/frontend/`), läuft auf
+`tk-nwz` neben dem Bot. Teilt sich die SQLite-DBs und die Python-Pakete
+(`nwz`, `council`, `nwz.prompts`). Details + einmalige Einrichtung: `web/README.md`.
+
+- **Services**: `nwz-web-api` (uvicorn :8000), `nwz-web-frontend` (next start :3000),
+  davor nginx als Reverse-Proxy (`/api` → Backend, sonst Frontend).
+- **Deploy**: Die GitHub Action baut bei jedem Merge auf `main` zusätzlich das
+  Frontend (`npm ci && npm run build`), installiert Backend-Deps und startet
+  `nwz-web-api` + `nwz-web-frontend` neu.
+- **sudoers** (`/etc/sudoers.d/tim-nwz`) muss die neuen Services erlauben:
+  `systemctl restart nwz-web-api`, `systemctl restart nwz-web-frontend`.
+- **Prompts** liegen jetzt in `nwz/prompts.py` (DB-Tabelle `prompts` in `nwz.sqlite`)
+  und sind über das Admin-UI live editierbar — Defaults greifen, solange kein Override existiert.
+- **Bot-Befehl** `/verbinden <CODE>` verknüpft einen Web-Account mit dem Telegram-Chat.
 
 ## Nützliche Befehle
 
