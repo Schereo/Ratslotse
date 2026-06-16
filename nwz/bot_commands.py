@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from .classify import _page_from_refid
 from .store import Store, TopicRow
 from .telegram_bot import reply, reply_with_buttons, edit_message_buttons, answer_callback_query
 
@@ -326,7 +327,9 @@ def handle_update(update: dict, db_path: Path) -> None:
             display = f"{d[2]}.{d[1]}.{d[0]}" if len(d) == 3 else pub_date
             lines.append(f"📰 <b>{display}</b>")
             for m in by_date[pub_date]:
-                lines.append(f"• <b>{_esc(m['title'])}</b>\n  {_esc(m['summary'])}")
+                page = _page_from_refid(m.get("refid", ""))
+                page_info = f" · <i>S. {page}</i>" if page else ""
+                lines.append(f"• <b>{_esc(m['title'])}</b>{page_info}\n  {_esc(m['summary'])}")
             lines.append("")
         reply(chat_id, "\n".join(lines).rstrip())
 
