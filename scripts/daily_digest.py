@@ -18,7 +18,7 @@ from nwz.api import NWZClient, from_env
 from nwz.parse import parse_publication
 from nwz.store import Store
 from nwz.classify import build_digest
-from nwz.telegram_bot import reply, telegram_ready
+from nwz.telegram_bot import reply, reply_with_buttons, telegram_ready
 
 FOLDER = 8389  # Oldenburger Nachrichten
 DB = ROOT / "data" / "nwz.sqlite"
@@ -40,6 +40,21 @@ def _backfill_missing(client: NWZClient, store: Store, folder: int) -> None:
         _, articles = parse_publication(xml)
         store.save_edition(e, articles)
         print(f"  → {len(articles)} articles stored.")
+
+
+def _build_read_buttons(matches: list[dict], refid_to_id: dict[str, int]) -> list[list[dict]]:
+    buttons: list[list[dict]] = []
+    row: list[dict] = []
+    for i, m in enumerate(matches, 1):
+        mid = refid_to_id.get(m["refid"])
+        if mid:
+            row.append({"text": f"📖 {i}", "callback_data": f"art:{mid}"})
+            if len(row) == 4:
+                buttons.append(row)
+                row = []
+    if row:
+        buttons.append(row)
+    return buttons
 
 
 def main() -> None:
@@ -91,13 +106,18 @@ def main() -> None:
             articles, topic_dicts, ed.publication_date,
             recent_context=recent_context or None,
         )
-        store.save_article_matches(chat_id, matches)
+        refid_to_id = store.save_article_matches(chat_id, matches)
         for t in topics:
             store.mark_edition_classified(chat_id, t.id, ed.publication_date)
         if telegram_ready():
             if digest:
                 continuations = sum(1 for m in matches if m.get("is_continuation"))
-                reply(chat_id, digest)
+                buttons = _build_read_buttons(matches, refid_to_id)
+                if buttons:
+                    if reply_with_buttons(chat_id, digest, buttons) is None:
+                        reply(chat_id, digest)
+                else:
+                    reply(chat_id, digest)
                 print(f"  User {chat_id}: digest sent ({len(matches)} match(es), {continuations} continuation(s)).")
             else:
                 topic_names = ", ".join(t.name for t in topics)

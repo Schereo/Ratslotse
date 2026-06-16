@@ -472,10 +472,13 @@ class Store:
 
     # ---- article topic matches ----
 
-    def save_article_matches(self, chat_id: int, matches: list[dict]) -> None:
-        """Persist GPT match results. matches: [{"topic_id", "catalog", "refid", "pub_date", "title", "summary", "is_continuation"}]"""
+    def save_article_matches(self, chat_id: int, matches: list[dict]) -> dict[str, int]:
+        """Persist GPT match results. Returns {refid: db_id} for use in Telegram buttons.
+
+        matches: [{"topic_id", "catalog", "refid", "pub_date", "title", "summary", "is_continuation"}]
+        """
         if not matches:
-            return
+            return {}
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
             self._conn.executemany(
@@ -489,6 +492,27 @@ class Store:
                     for m in matches
                 ],
             )
+        refid_to_id: dict[str, int] = {}
+        for m in matches:
+            row = self._conn.execute(
+                "SELECT id FROM article_topic_matches WHERE chat_id=? AND topic_id=? AND catalog=? AND refid=?",
+                (chat_id, m["topic_id"], m["catalog"], m["refid"]),
+            ).fetchone()
+            if row:
+                refid_to_id[m["refid"]] = row[0]
+        return refid_to_id
+
+    def get_full_article_for_match(self, match_id: int) -> dict | None:
+        """Return full article text + metadata for a given article_topic_matches.id."""
+        row = self._conn.execute(
+            """SELECT atm.title, atm.pub_date, atm.summary,
+                      a.content_text, a.category_name, a.page, a.subtitle
+               FROM article_topic_matches atm
+               LEFT JOIN articles a ON a.catalog = atm.catalog AND a.refid = atm.refid
+               WHERE atm.id = ?""",
+            (match_id,),
+        ).fetchone()
+        return dict(row) if row else None
 
     def get_article_matches(self, chat_id: int, topic_id: int, limit: int = 30) -> list[dict]:
         rows = self._conn.execute(

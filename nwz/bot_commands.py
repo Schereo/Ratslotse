@@ -501,6 +501,27 @@ def handle_callback_query(update: dict, db_path: Path) -> None:
         answer_callback_query(callback_query_id, "Nicht autorisiert.")
         return
 
+    if callback_data.startswith("art:"):
+        raw = callback_data[4:]
+        if not raw.isdigit():
+            answer_callback_query(callback_query_id, "Ungültige Artikel-ID.")
+            return
+        match_id = int(raw)
+        article = store.get_full_article_for_match(match_id)
+        answer_callback_query(callback_query_id)
+        if not article or not article.get("content_text"):
+            reply(chat_id, "Volltext nicht verfügbar (Artikel möglicherweise nicht mehr im Archiv).")
+            return
+        d = (article.get("pub_date") or "").split("-")
+        date_str = f"{d[2]}.{d[1]}.{d[0]}" if len(d) == 3 else article.get("pub_date", "")
+        category = f" · <i>{_esc(article['category_name'])}</i>" if article.get("category_name") else ""
+        page_info = f" · <i>S. {article['page']}</i>" if article.get("page") else ""
+        header = f"📰 <b>{_esc(article['title'])}</b>\n<i>{date_str}{category}{page_info}</i>"
+        if article.get("subtitle"):
+            header += f"\n<i>{_esc(article['subtitle'])}</i>"
+        reply(chat_id, header + "\n\n" + _esc(article["content_text"]))
+        return
+
     if callback_data.startswith("ctoggle:"):
         raw = callback_data[len("ctoggle:"):]
 
