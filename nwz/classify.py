@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import json
 import os
-import textwrap
 from typing import Any
 
 from openai import OpenAI
+
+from . import prompts
 
 MODEL = "openai/gpt-4o"
 VERIFY_MODEL = "openai/gpt-4o-mini"
@@ -38,19 +39,7 @@ def _verify_match(client: OpenAI, topic: dict, article: dict) -> bool:
         messages=[
             {
                 "role": "system",
-                "content": (
-                    "Du prüfst, ob ein Zeitungsartikel eine konkrete, faktische Information zum "
-                    "angegebenen Thema enthält. RELEVANT ist ein Artikel, wenn er das Thema behandelt "
-                    "ODER eine konkrete Tatsache zum verfolgten Akteur liefert — z.B. wie eine Partei/"
-                    "Person abgestimmt hat, was sie gesagt oder getan hat. Das Thema muss NICHT der "
-                    "zentrale Gegenstand sein; eine beiläufige, aber konkrete Nennung (z.B. die Partei "
-                    "in einer Abstimmungsliste) genügt und ist relevant. "
-                    "NICHT relevant ist: bloße Stichwort-Überschneidung (z.B. das Wort 'grün'), reine "
-                    "thematische Verwandtschaft ohne Nennung des Akteurs, oder ein bundesweiter Bezug, "
-                    "obwohl das Thema einen lokalen Bezug (Oldenburg) verlangt. "
-                    "Beachte die Themen-Beschreibung: erfüllt sie einen geforderten lokalen/konkreten "
-                    "Bezug? Antworte nur als JSON: {\"relevant\": true/false}."
-                ),
+                "content": prompts.get("nwz_verify_system"),
             },
             {
                 "role": "user",
@@ -123,68 +112,16 @@ def build_digest(
         'Sonst false.\n' if context_block else ""
     )
 
-    system = textwrap.dedent(f"""\
-        Du bist ein Redaktionsassistent, der Zeitungsartikel der Nordwest-Zeitung (NWZ)
-        nach thematischen Interessen des Lesers filtert und zusammenfasst.
-        Ausgabe: kompaktes Deutsch, präzise, ohne Floskeln.
-        Heute: {pub_date}.
-    """)
+    system = prompts.render("nwz_digest_system", pub_date=pub_date)
 
-    prompt = textwrap.dedent(f"""\
-        Hier sind die Themen des Lesers:
-        {topics_list}
-
-        {context_block}Und hier die Artikel der NWZ-Ausgabe ({pub_date}):
-
-        {articles_block}
-
-        Aufgabe:
-        Für jedes Thema: finde passende Artikel (0–5 Stück).
-
-        STRENGES Relevanzkriterium — ein Artikel passt NUR, wenn er das Thema
-        konkret behandelt ODER eine konkrete, faktische Information zum Thema
-        liefert (z. B. das Abstimmungsverhalten, eine Aussage oder Handlung
-        einer genannten Partei/Person). Das Thema muss NICHT der Hauptgegenstand
-        des Artikels sein — eine beiläufige, aber konkrete Nennung des im Thema
-        verfolgten Akteurs (z. B. "Volt stimmte dafür") genügt. Der Bezug muss
-        explizit im Artikeltext stehen, nicht erschlossen oder vermutet werden.
-
-        Ein Artikel passt NICHT, wenn:
-        - er nur THEMATISCH VERWANDT ist (z. B. allgemein Kultur/Politik/Sport
-          in Oldenburg), das konkrete Thema aber nicht behandelt;
-        - der Bezug nur SPEKULATIV ist ("könnte für X interessant sein",
-          "X könnte sich damit beschäftigen", "illustriert Engagement, das
-          politisch relevant sein könnte"). Solche Vermutungen sind verboten;
-        - es sich nur um eine STICHWORT-Überschneidung handelt (z. B. das Wort
-          "grün") oder um einen bundesweiten Bezug, obwohl das Thema einen
-          lokalen Bezug (Oldenburg) verlangt;
-        - das Thema eine Organisation/Partei/Person ist und diese im Artikel
-          gar nicht VORKOMMT — eine bloße inhaltliche Nähe genügt nicht.
-
-        Im Zweifel: NICHT aufnehmen. Lieber kein Treffer als ein falscher.
-        Die Zusammenfassung muss belegen, WO im Artikel das Thema vorkommt;
-        wenn du das nicht ohne Spekulation kannst, ist es kein Treffer.
-        Schreibe keine Zusammenfassung für Themen ohne passende Artikel.
-        {continuation_instruction}Gib die Antwort als JSON zurück:
-
-        {{
-          "digest": [
-            {{
-              "topic": "Themenname",
-              "articles": [
-                {{
-                  "refid": "...",
-                  "title": "...",
-                  "summary": "1–2 Sätze auf Deutsch",
-                  "is_continuation": false
-                }}
-              ]
-            }}
-          ]
-        }}
-
-        Nur JSON, kein weiterer Text.
-    """)
+    prompt = prompts.render(
+        "nwz_digest_user",
+        topics_list=topics_list,
+        context_block=context_block,
+        pub_date=pub_date,
+        articles_block=articles_block,
+        continuation_instruction=continuation_instruction,
+    )
 
     resp = client.chat.completions.create(
         model=MODEL,
@@ -319,30 +256,18 @@ def build_weekly_digest(
                 )
             articles_block = "\n".join(lines)
 
-        prompt = textwrap.dedent(f"""\
-            Hier sind alle Artikel der NWZ-Ausgaben der Woche \
-({date_from} bis {date_to}):
-
-{articles_block}
-
-Wähle die 3–5 Artikel, die für die Oldenburger Lokalpolitik diese Woche \
-am bedeutsamsten waren. Begründe in einem knappen Satz, warum jeder wichtig ist.
-
-Ausgabe als JSON:
-{{
-  "highlights": [
-    {{"title": "...", "reason": "1 Satz"}}
-  ]
-}}
-
-Nur JSON, kein weiterer Text.\
-        """)
+        prompt = prompts.render(
+            "weekly_highlights_user",
+            date_from=date_from,
+            date_to=date_to,
+            articles_block=articles_block,
+        )
 
         resp = client.chat.completions.create(
             model="openai/gpt-4o-mini",
             response_format={"type": "json_object"},
             messages=[
-                {"role": "system", "content": "Du bist ein politischer Redakteur für Oldenburger Lokalpolitik."},
+                {"role": "system", "content": prompts.get("weekly_highlights_system")},
                 {"role": "user", "content": prompt},
             ],
             max_tokens=600,

@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from . import prompts
 from .classify import _page_from_refid
 from .store import Store, TopicRow
 from .telegram_bot import reply, reply_with_buttons, edit_message_buttons, answer_callback_query
@@ -579,27 +580,7 @@ def _vagueness_hint(name: str, description: str) -> dict | None:
         messages=[
             {
                 "role": "system",
-                "content": (
-                    "Du prüfst ob eine Themen-Beschreibung für einen Nachrichten-Bot präzise genug ist, "
-                    "um zuverlässig NUR die wirklich gewünschten Artikel (aus einer Lokalzeitung für "
-                    "Oldenburg) herauszufiltern. Sei streng: im Zweifel ist die Beschreibung zu vage.\n"
-                    "Eine Beschreibung ist zu vage wenn sie:\n"
-                    "- allgemeine Absichten statt konkreter Inhalte beschreibt (z.B. 'interessante Themen', 'etwas Spannendes')\n"
-                    "- keine eingrenzbaren Kriterien enthält\n"
-                    "- so breit ist, dass viele themenfremde Artikel matchen würden\n"
-                    "- eine Partei, Organisation, Person oder Institution nennt, OHNE den Bezug klar "
-                    "einzugrenzen: Es muss ausdrücklich auf Oldenburg/lokal beschränkt sein UND klarstellen, "
-                    "was NICHT gemeint ist (z.B. keine bundesweiten Partei-/Politiknews). 'Die Grünen – Partei "
-                    "in Oldenburg' ist z.B. ZU VAGE, weil dadurch auch bundesweite Grünen-Nachrichten matchen.\n"
-                    "- ein breites Schlagwort ohne konkrete Akteure/Vorhaben/Orte nutzt "
-                    "(z.B. 'Kommunalwahl in Oldenburg' ohne Eingrenzung auf Kandidaten, Listen, Termine, Ergebnisse)\n\n"
-                    "Antworte NUR mit einem JSON-Objekt: "
-                    "{\"vague\": true/false, \"hint\": \"...\", \"suggestion\": \"...\"}.\n"
-                    "- hint: kurze Erklärung auf Deutsch, warum die Beschreibung zu vage ist (max. 2 Sätze). Leer wenn nicht vage.\n"
-                    "- suggestion: eine konkrete, sofort verwendbare präzisere Beschreibung (1 Satz), die den erkennbaren "
-                    "Wunsch des Nutzers aufgreift und sinnvoll eingrenzt (z.B. Ortsbezug Oldenburg, konkrete Akteure/Vorhaben, "
-                    "Ausschluss themenfremder Treffer). Leer wenn nicht vage."
-                ),
+                "content": prompts.get("vagueness_check_system"),
             },
             {
                 "role": "user",
