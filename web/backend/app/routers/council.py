@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from council.store import CouncilStore
 
-from ..deps import get_council_store, get_current_user
+from ..deps import get_council_store, require_active
 
 router = APIRouter(prefix="/api/council", tags=["council"])
 
@@ -13,7 +13,7 @@ BASE_URL = "https://buergerinfo.oldenburg.de"
 
 
 @router.get("/committees")
-def committees(_user: dict = Depends(get_current_user), store: CouncilStore = Depends(get_council_store)) -> dict:
+def committees(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> dict:
     return {"committees": store.get_all_committee_names()}
 
 
@@ -25,7 +25,7 @@ def sessions(
     date_to: str = "",
     scope: str = Query("all", pattern="^(all|upcoming|recent)$"),
     limit: int = Query(50, ge=1, le=200),
-    _user: dict = Depends(get_current_user),
+    _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
 ) -> dict:
     if scope == "upcoming":
@@ -40,7 +40,7 @@ def sessions(
 @router.get("/session/{ksinr}")
 def session_detail(
     ksinr: int,
-    _user: dict = Depends(get_current_user),
+    _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
 ) -> dict:
     session = store.get_session(ksinr)

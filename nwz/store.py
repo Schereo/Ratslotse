@@ -106,7 +106,10 @@ CREATE TABLE IF NOT EXISTS web_users (
     email            TEXT NOT NULL UNIQUE,
     password_hash    TEXT NOT NULL,
     role             TEXT NOT NULL DEFAULT 'user',
+    status           TEXT NOT NULL DEFAULT 'pending',
     telegram_chat_id INTEGER,
+    nwz_username     TEXT,
+    nwz_verified_at  TEXT,
     created_at       TEXT NOT NULL
 );
 
@@ -153,8 +156,12 @@ class Store:
     def __init__(self, path: str | Path):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self._conn = sqlite3.connect(self.path)
+        self._conn = sqlite3.connect(self.path, timeout=15)
         self._conn.row_factory = sqlite3.Row
+        # WAL allows concurrent readers/writer (bot + cron + web API share this
+        # file); busy_timeout lets writers wait instead of failing immediately.
+        self._conn.execute("PRAGMA journal_mode=WAL")
+        self._conn.execute("PRAGMA busy_timeout=5000")
         self._conn.executescript(SCHEMA)
         self._conn.commit()
         self._migrate()
@@ -192,6 +199,17 @@ class Store:
                 self._conn.execute(
                     "ALTER TABLE article_topic_matches ADD COLUMN is_continuation INTEGER NOT NULL DEFAULT 0"
                 )
+        # web_users gained status / NWZ-verification columns after the first cut.
+        wu_cols = {r[1] for r in self._conn.execute("PRAGMA table_info(web_users)").fetchall()}
+        if wu_cols:
+            with self._conn:
+                if "status" not in wu_cols:
+                    # Existing accounts predate approval — treat them as active.
+                    self._conn.execute("ALTER TABLE web_users ADD COLUMN status TEXT NOT NULL DEFAULT 'active'")
+                if "nwz_username" not in wu_cols:
+                    self._conn.execute("ALTER TABLE web_users ADD COLUMN nwz_username TEXT")
+                if "nwz_verified_at" not in wu_cols:
+                    self._conn.execute("ALTER TABLE web_users ADD COLUMN nwz_verified_at TEXT")
         self._conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_topics_chat ON topics(chat_id)"
         )
@@ -233,14 +251,26 @@ class Store:
 
     # ---- web accounts ----
 
-    def create_web_user(self, email: str, password_hash: str, role: str = "user") -> int:
+    def create_web_user(self, email: str, password_hash: str, role: str = "user", status: str = "pending") -> int:
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
             cur = self._conn.execute(
-                "INSERT INTO web_users (email, password_hash, role, created_at) VALUES (?, ?, ?, ?)",
-                (email.lower().strip(), password_hash, role, now),
+                "INSERT INTO web_users (email, password_hash, role, status, created_at) VALUES (?, ?, ?, ?, ?)",
+                (email.lower().strip(), password_hash, role, status, now),
             )
         return cur.lastrowid
+
+    def set_web_user_status(self, user_id: int, status: str) -> None:
+        with self._conn:
+            self._conn.execute("UPDATE web_users SET status = ? WHERE id = ?", (status, user_id))
+
+    def set_nwz_verified(self, user_id: int, nwz_username: str) -> None:
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "UPDATE web_users SET nwz_username = ?, nwz_verified_at = ? WHERE id = ?",
+                (nwz_username, now, user_id),
+            )
 
     def get_web_user_by_email(self, email: str) -> dict | None:
         row = self._conn.execute(
@@ -256,7 +286,8 @@ class Store:
 
     def list_web_users(self) -> list[dict]:
         rows = self._conn.execute(
-            "SELECT id, email, role, telegram_chat_id, created_at FROM web_users ORDER BY created_at"
+            "SELECT id, email, role, status, telegram_chat_id, nwz_username, nwz_verified_at, created_at "
+            "FROM web_users ORDER BY created_at"
         ).fetchall()
         return [dict(r) for r in rows]
 

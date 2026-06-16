@@ -22,6 +22,7 @@ def _set_auth_cookie(response: Response, user_id: int) -> None:
         key=COOKIE_NAME,
         value=token,
         httponly=True,
+        secure=settings.cookie_secure,
         samesite="lax",
         max_age=settings.access_token_expire_minutes * 60,
         path="/",
@@ -33,8 +34,11 @@ def _to_out(user: dict) -> UserOut:
         id=user["id"],
         email=user["email"],
         role=user["role"],
+        status=user.get("status", "active"),
         telegram_chat_id=user.get("telegram_chat_id"),
         linked=bool(user.get("telegram_chat_id")),
+        nwz_verified=bool(user.get("nwz_verified_at")),
+        nwz_username=user.get("nwz_username"),
     )
 
 
@@ -44,9 +48,12 @@ def register(body: RegisterRequest, response: Response, store: Store = Depends(g
     email = str(body.email).lower().strip()
     if store.get_web_user_by_email(email):
         raise HTTPException(status.HTTP_409_CONFLICT, "E-Mail ist bereits registriert.")
-    # First user, or the configured admin email, becomes admin.
-    role = "admin" if (email == settings.web_admin_email.lower() or store.count_web_users() == 0) else "user"
-    user_id = store.create_web_user(email, hash_password(body.password), role)
+    # First user, or the configured admin email, becomes an active admin.
+    # Everyone else starts 'pending' and must be approved by an admin.
+    is_admin = email == settings.web_admin_email.lower() or store.count_web_users() == 0
+    role = "admin" if is_admin else "user"
+    user_status = "active" if is_admin else "pending"
+    user_id = store.create_web_user(email, hash_password(body.password), role, user_status)
     _set_auth_cookie(response, user_id)
     return _to_out(store.get_web_user_by_id(user_id))
 
@@ -62,7 +69,8 @@ def login(body: LoginRequest, response: Response, store: Store = Depends(get_sto
 
 @router.post("/logout")
 def logout(response: Response) -> dict:
-    response.delete_cookie(COOKIE_NAME, path="/")
+    settings = get_settings()
+    response.delete_cookie(COOKIE_NAME, path="/", httponly=True, secure=settings.cookie_secure, samesite="lax")
     return {"ok": True}
 
 

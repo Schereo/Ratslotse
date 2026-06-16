@@ -70,8 +70,11 @@ CREATE TABLE IF NOT EXISTS committee_summaries (
 
 class CouncilStore:
     def __init__(self, path: str | Path):
-        self._conn = sqlite3.connect(path)
+        self._conn = sqlite3.connect(path, timeout=15)
         self._conn.row_factory = sqlite3.Row
+        # WAL + busy_timeout: scraper cron and the web API share this file.
+        self._conn.execute("PRAGMA journal_mode=WAL")
+        self._conn.execute("PRAGMA busy_timeout=5000")
         self._conn.executescript(SCHEMA)
         self._conn.commit()
         self._migrate()

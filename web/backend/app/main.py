@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
-from .routers import admin, auth, council, link, nwz, topics
+from .routers import account, admin, auth, council, link, nwz, topics
 
 settings = get_settings()
 
@@ -24,6 +24,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(account.router)
 app.include_router(link.router)
 app.include_router(nwz.router)
 app.include_router(council.router)

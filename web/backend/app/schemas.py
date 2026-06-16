@@ -19,8 +19,17 @@ class UserOut(BaseModel):
     id: int
     email: str
     role: str
+    status: str = "pending"
     telegram_chat_id: int | None = None
     linked: bool = False
+    nwz_verified: bool = False
+    nwz_username: str | None = None
+
+
+# ---- NWZ credentials ----
+class NwzCredentialsIn(BaseModel):
+    nwz_username: str = Field(min_length=1)
+    nwz_password: str = Field(min_length=1)
 
 
 # ---- linking ----
@@ -73,9 +82,16 @@ class WebUserOut(BaseModel):
     id: int
     email: str
     role: str
+    status: str = "pending"
     telegram_chat_id: int | None = None
+    nwz_username: str | None = None
+    nwz_verified_at: str | None = None
     created_at: str
 
 
 class RoleUpdate(BaseModel):
     role: str  # 'user' | 'admin'
+
+
+class StatusUpdate(BaseModel):
+    status: str  # 'active' | 'pending'

@@ -50,7 +50,27 @@ def get_current_user(request: Request, store: Store = Depends(get_store)) -> dic
     return user
 
 
-def require_linked(user: dict = Depends(get_current_user)) -> dict:
+def require_active(user: dict = Depends(get_current_user)) -> dict:
+    """Account must be approved by an admin (admins are always active)."""
+    if user.get("role") != "admin" and user.get("status") != "active":
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Dein Konto wartet auf Freischaltung durch einen Administrator.",
+        )
+    return user
+
+
+def require_nwz_verified(user: dict = Depends(require_active)) -> dict:
+    """For NWZ content: the user must have verified their own NWZ login."""
+    if not user.get("nwz_verified_at"):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Bitte hinterlege zuerst deine eigenen NWZ-Zugangsdaten.",
+        )
+    return user
+
+
+def require_linked(user: dict = Depends(require_active)) -> dict:
     """For endpoints that need a Telegram-linked account (topics, subscriptions)."""
     if not user.get("telegram_chat_id"):
         raise HTTPException(

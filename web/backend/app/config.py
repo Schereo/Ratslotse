@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     web_jwt_secret: str = "dev-insecure-change-me"
     access_token_expire_minutes: int = 60 * 24 * 7  # 7 days
     web_admin_email: str = ""  # this email is granted admin on registration
+    # Secure cookies require HTTPS (or localhost, which browsers treat as
+    # secure). Keep True for production; tests/non-localhost HTTP set it False.
+    cookie_secure: bool = True
 
     # Databases (shared with the bot)
     nwz_db: str = str(ROOT / "data" / "nwz.sqlite")

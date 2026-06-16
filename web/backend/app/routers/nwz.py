@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from nwz.store import Store
 
-from ..deps import get_current_user, get_store
+from ..deps import get_store, require_nwz_verified
 
 router = APIRouter(prefix="/api/nwz", tags=["nwz"])
 
@@ -19,7 +19,7 @@ def search(
     date_from: str = "",
     date_to: str = "",
     limit: int = Query(40, ge=1, le=100),
-    _user: dict = Depends(get_current_user),
+    _user: dict = Depends(require_nwz_verified),
     store: Store = Depends(get_store),
 ) -> dict:
     results = store.search(q, limit=limit, category=category, date_from=date_from, date_to=date_to)
@@ -27,12 +27,12 @@ def search(
 
 
 @router.get("/categories")
-def categories(_user: dict = Depends(get_current_user), store: Store = Depends(get_store)) -> dict:
+def categories(_user: dict = Depends(require_nwz_verified), store: Store = Depends(get_store)) -> dict:
     return {"categories": store.categories()}
 
 
 @router.get("/editions")
-def editions(_user: dict = Depends(get_current_user), store: Store = Depends(get_store)) -> dict:
+def editions(_user: dict = Depends(require_nwz_verified), store: Store = Depends(get_store)) -> dict:
     rows = store.edition_summary()
     return {
         "editions": [
@@ -52,7 +52,7 @@ def editions(_user: dict = Depends(get_current_user), store: Store = Depends(get
 def article(
     catalog: int,
     refid: str,
-    _user: dict = Depends(get_current_user),
+    _user: dict = Depends(require_nwz_verified),
     store: Store = Depends(get_store),
 ) -> dict:
     art = store.get_article(catalog, refid)

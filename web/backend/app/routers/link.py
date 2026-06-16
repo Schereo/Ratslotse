@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends
 from nwz.store import Store
 
 from ..config import get_settings
-from ..deps import get_current_user, get_store
+from ..deps import get_store, require_active
 from ..schemas import LinkCodeOut, LinkStatusOut
 
 router = APIRouter(prefix="/api/link", tags=["link"])
@@ -25,7 +25,7 @@ def _generate_code(length: int = 6) -> str:
 
 
 @router.post("/request", response_model=LinkCodeOut)
-def request_code(user: dict = Depends(get_current_user), store: Store = Depends(get_store)) -> LinkCodeOut:
+def request_code(user: dict = Depends(require_active), store: Store = Depends(get_store)) -> LinkCodeOut:
     settings = get_settings()
     code = _generate_code()
     store.create_link_code(user["id"], code, ttl_minutes=_TTL_MINUTES)
@@ -37,7 +37,7 @@ def request_code(user: dict = Depends(get_current_user), store: Store = Depends(
 
 
 @router.get("/status", response_model=LinkStatusOut)
-def status(user: dict = Depends(get_current_user), store: Store = Depends(get_store)) -> LinkStatusOut:
+def status(user: dict = Depends(require_active), store: Store = Depends(get_store)) -> LinkStatusOut:
     # Re-read in case the bot linked since login.
     fresh = store.get_web_user_by_id(user["id"])
     chat_id = fresh.get("telegram_chat_id") if fresh else None

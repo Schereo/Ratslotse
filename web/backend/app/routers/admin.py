@@ -7,7 +7,7 @@ from nwz import prompts
 from nwz.store import Store
 
 from ..deps import get_store, require_admin
-from ..schemas import PromptOut, PromptUpdate, RoleUpdate, WebUserOut
+from ..schemas import PromptOut, PromptUpdate, RoleUpdate, StatusUpdate, WebUserOut
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -55,6 +55,25 @@ def set_role(
     if target["id"] == admin["id"] and body.role != "admin":
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Du kannst dir nicht selbst die Adminrechte entziehen.")
     store.set_web_user_role(user_id, body.role)
+    return WebUserOut(**store.get_web_user_by_id(user_id))
+
+
+@router.put("/users/{user_id}/status", response_model=WebUserOut)
+def set_status(
+    user_id: int,
+    body: StatusUpdate,
+    admin: dict = Depends(require_admin),
+    store: Store = Depends(get_store),
+) -> WebUserOut:
+    """Approve ('active') or suspend ('pending') a web account."""
+    if body.status not in ("active", "pending"):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Status muss 'active' oder 'pending' sein.")
+    target = store.get_web_user_by_id(user_id)
+    if not target:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nutzer nicht gefunden.")
+    if target["id"] == admin["id"] and body.status != "active":
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Du kannst dich nicht selbst sperren.")
+    store.set_web_user_status(user_id, body.status)
     return WebUserOut(**store.get_web_user_by_id(user_id))
 
 
