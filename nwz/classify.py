@@ -251,6 +251,7 @@ def _format_telegram(
 ) -> str:
     parts: list[str] = [f"<b>NWZ Digest – {pub_date}</b>\n"]
     has_content = False
+    n = 0
 
     for topic in data.get("digest", []):
         arts = topic.get("articles", [])
@@ -259,13 +260,14 @@ def _format_telegram(
         has_content = True
         parts.append(f"\n📌 <b>{_esc(topic['topic'])}</b>")
         for a in arts:
+            n += 1
             title = _esc(a.get("title", ""))
             summary = _esc(a.get("summary", ""))
             refid = a.get("refid", "")
             page = refid_to_page.get(refid) or _page_from_refid(refid)
-            page_info = f"\n  <i>Seite {page}</i>" if page else ""
+            page_info = f" · <i>S. {page}</i>" if page else ""
             prefix = "🔄" if a.get("is_continuation") else "•"
-            parts.append(f"{prefix} <b>{title}</b>\n  {summary}{page_info}")
+            parts.append(f"[{n}] {prefix} <b>{title}</b>{page_info}\n  {summary}")
 
     if not has_content:
         return ""
