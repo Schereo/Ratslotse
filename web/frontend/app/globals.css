@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-slate-50 text-slate-900 antialiased;
+}
+
+/* Highlighted FTS snippets returned by the backend (<mark> / <b>). */
+.excerpt mark,
+.excerpt b {
+  @apply rounded bg-yellow-200 px-0.5 font-semibold text-slate-900;
+}
