@@ -1,0 +1,296 @@
+[
+  {
+    "id": "stadion_tp_01",
+    "note": "Direkter Artikel über den Stadionbau-Beschluss",
+    "topic": {
+      "name": "Stadion Oldenburg",
+      "description": "Neubau und Planung des Stadions in Oldenburg"
+    },
+    "article": {
+      "refid": "eval_s01",
+      "title": "Stadion-Bau: Mehrheit votiert für Vergabe von Millionen-Auftrag",
+      "content_text": "Der Oldenburger Stadtrat hat mit breiter Mehrheit für die Vergabe des Generalunternehmerauftrags zum Bau des neuen Stadions an der Alexanderstraße gestimmt. Die Gesamtkosten belaufen sich auf rund 45 Millionen Euro. Baubeginn soll im Frühjahr 2027 sein, die Fertigstellung ist für Anfang 2029 geplant. Oberbürgermeister XXX sprach von einem historischen Tag für den Oldenburger Sport. Der VfB Oldenburg und der TV Brake hatten die Entscheidung mit Spannung erwartet. Kritik kam von der FDP-Fraktion, die die Kosten als zu hoch bezeichnete."
+    },
+    "expected": true
+  },
+  {
+    "id": "stadion_tp_02",
+    "note": "Folgeartikel: Zeitplan und erste Baumaßnahmen",
+    "topic": {
+      "name": "Stadion Oldenburg",
+      "description": "Neubau und Planung des Stadions in Oldenburg"
+    },
+    "article": {
+      "refid": "eval_s02",
+      "title": "Nach Stadionentscheidung: Ball soll Anfang 2029 rollen",
+      "content_text": "Einen Tag nach dem historischen Stadtratsbeschluss zum Neubau des Oldenburger Stadions werden erste Details bekannt. Der Architekt des neuen Stadions erläuterte, dass zunächst der alte Tribünentrakt abgerissen werden muss. Dann soll in zwei Bauphasen das neue Multifunktionsstadion entstehen. Die Kapazität soll bei 12.000 Zuschauern liegen. Für Handball-Events ist eine mobile Bestuhlung vorgesehen. Die Verwaltung rechnet mit einem Baubeginn im März 2027."
+    },
+    "expected": true
+  },
+  {
+    "id": "stadion_tn_01",
+    "note": "Sportartikel über VfB-Spiel – kein Bezug zum Stadionbau",
+    "topic": {
+      "name": "Stadion Oldenburg",
+      "description": "Neubau und Planung des Stadions in Oldenburg"
+    },
+    "article": {
+      "refid": "eval_s03",
+      "title": "VfB Oldenburg gewinnt 2:1 gegen Wolfsburg II",
+      "content_text": "Der VfB Oldenburg hat am Samstagabend ein packendes Spiel gegen Wolfsburg II mit 2:1 gewonnen. Vor 3.200 Zuschauern im Marschweg-Stadion trafen Müller und Schmidt für die Hausherren. Trainer Kowalski zeigte sich nach dem Abpfiff zufrieden: 'Die Mannschaft hat Charakter gezeigt.' Mit dem Sieg klettert der VfB auf Platz vier der Tabelle. Das nächste Heimspiel ist am kommenden Samstag."
+    },
+    "expected": false
+  },
+  {
+    "id": "stadion_tn_02",
+    "note": "Stadion in anderer Stadt – kein Lokalbezug Oldenburg",
+    "topic": {
+      "name": "Stadion Oldenburg",
+      "description": "Neubau und Planung des Stadions in Oldenburg"
+    },
+    "article": {
+      "refid": "eval_s04",
+      "title": "Hamburger Volksparkstadion bekommt neues Dach",
+      "content_text": "Das Hamburger Volksparkstadion wird für 120 Millionen Euro modernisiert. Ein neues Membrandach soll die Atmosphäre bei Konzerten und Spielen verbessern. Der Hamburger Senat hat grünes Licht für die Renovierung gegeben. Baubeginn ist im Herbst, Fertigstellung für 2026 geplant. Auch die Infrastruktur rund um das Stadion soll verbessert werden."
+    },
+    "expected": false
+  },
+  {
+    "id": "volt_tp_01",
+    "note": "Volt in Abstimmungsliste – beiläufige aber konkrete Nennung",
+    "topic": {
+      "name": "Volt",
+      "description": "Abstimmungsverhalten und Aktivitäten von Volt im Oldenburger Stadtrat"
+    },
+    "article": {
+      "refid": "eval_v01",
+      "title": "Rat beschließt neues Radwegekonzept mit breiter Mehrheit",
+      "content_text": "Der Oldenburger Stadtrat hat das neue Radwegekonzept 2030 mit großer Mehrheit beschlossen. Das Abstimmungsergebnis: Dafür stimmten SPD (15 Stimmen), Grüne (8), Volt (3) und CDU (12). Dagegen stimmte die FDP (4). Volt-Fraktionssprecher Meier begrüßte das Ergebnis: 'Das ist ein wichtiger Schritt für klimafreundliche Mobilität in Oldenburg.' Das Konzept sieht den Bau von 45 Kilometern neuer Radwege bis 2030 vor."
+    },
+    "expected": true
+  },
+  {
+    "id": "volt_tp_02",
+    "note": "Volt stellt Antrag im Stadtrat – direkte Erwähnung",
+    "topic": {
+      "name": "Volt",
+      "description": "Abstimmungsverhalten und Aktivitäten von Volt im Oldenburger Stadtrat"
+    },
+    "article": {
+      "refid": "eval_v02",
+      "title": "Volt beantragt kostenlose ÖPNV-Tickets für Schüler",
+      "content_text": "Die Volt-Fraktion im Oldenburger Stadtrat hat einen Antrag eingebracht, der kostenlose ÖPNV-Tickets für alle Schüler unter 18 Jahren fordert. Der Antrag soll in der nächsten Ratssitzung behandelt werden. Volt-Stadtrat Jonas Weiss erklärte: 'Wir wollen Familien entlasten und gleichzeitig den öffentlichen Nahverkehr stärken.' Die Verwaltung wurde gebeten, die Kosten zu prüfen."
+    },
+    "expected": true
+  },
+  {
+    "id": "volt_tn_01",
+    "note": "Volt als Bundespartei – kein lokaler Oldenburg-Bezug",
+    "topic": {
+      "name": "Volt",
+      "description": "Abstimmungsverhalten und Aktivitäten von Volt im Oldenburger Stadtrat"
+    },
+    "article": {
+      "refid": "eval_v03",
+      "title": "Volt Deutschland beschließt neues Bundesprogramm zur Europapolitik",
+      "content_text": "Auf dem Bundesparteitag von Volt Deutschland in Köln wurde ein neues Programm zur Europapolitik verabschiedet. Parteivorsitzende Anna Schmitt betonte die Bedeutung einer stärkeren europäischen Integration. Das Programm sieht unter anderem eine Vereinheitlichung der Sozialsysteme in der EU vor. Rund 800 Delegierte aus ganz Deutschland nahmen teil. Oldenburg war nicht Thema des Parteitags."
+    },
+    "expected": false
+  },
+  {
+    "id": "volt_tn_02",
+    "note": "Das Wort 'Volt' als physikalische Einheit – reine Stichwort-Überschneidung",
+    "topic": {
+      "name": "Volt",
+      "description": "Abstimmungsverhalten und Aktivitäten von Volt im Oldenburger Stadtrat"
+    },
+    "article": {
+      "refid": "eval_v04",
+      "title": "EWE baut Schnellladenetz für E-Autos in Oldenburg aus",
+      "content_text": "Der Oldenburger Energieversorger EWE erweitert sein Schnellladenetz für Elektroautos. An 20 neuen Standorten in der Stadt werden Ladepunkte mit bis zu 150 Kilowatt Leistung installiert. Die Ladesäulen liefern Gleichstrom mit 400 Volt. EWE-Sprecher Fischer: 'Bis 2027 werden wir das dichteste Ladenetz in der Region haben.' Die Kosten belaufen sich auf 3,5 Millionen Euro, gefördert durch EU-Mittel."
+    },
+    "expected": false
+  },
+  {
+    "id": "volt_tn_03",
+    "note": "Thematisch verwandt (Klimapolitik), aber Volt nicht erwähnt",
+    "topic": {
+      "name": "Volt",
+      "description": "Abstimmungsverhalten und Aktivitäten von Volt im Oldenburger Stadtrat"
+    },
+    "article": {
+      "refid": "eval_v05",
+      "title": "Klimaprotest vor dem Oldenburger Rathaus",
+      "content_text": "Rund 200 Aktivisten haben am Freitag vor dem Oldenburger Rathaus für mehr Klimaschutz demonstriert. Die Initiative 'Oldenburg für die Zukunft' forderte schnellere Maßnahmen zur CO2-Reduktion. Sprecher Lars Müller: 'Die Stadt muss mehr tun.' Die Demonstration verlief friedlich. SPD und Grüne zeigten sich solidarisch, CDU und FDP kritisierten die Forderungen als unrealistisch."
+    },
+    "expected": false
+  },
+  {
+    "id": "gruene_tp_01",
+    "note": "Grüne Oldenburg nominieren Kandidaten – direkte Erwähnung",
+    "topic": {
+      "name": "Die Grünen",
+      "description": "Parteiaktivitäten der Grünen in Oldenburg"
+    },
+    "article": {
+      "refid": "eval_g01",
+      "title": "Grüne stellen Kandidaten für Kommunalwahl auf",
+      "content_text": "Die Grünen in Oldenburg haben auf ihrer Mitgliederversammlung die Kandidatenliste für die Kommunalwahl 2026 aufgestellt. Auf Platz eins kandidiert die Fraktionsvorsitzende Maria Hoffmann. 'Wir wollen Oldenburg grüner, sozialer und gerechter machen', sagte sie nach der Nominierung. Insgesamt wurden 45 Kandidatinnen und Kandidaten für die Stadtratsliste gewählt."
+    },
+    "expected": true
+  },
+  {
+    "id": "gruene_tp_02",
+    "note": "Abstimmung mit expliziter Nennung der Grünen-Fraktion",
+    "topic": {
+      "name": "Die Grünen",
+      "description": "Parteiaktivitäten der Grünen in Oldenburg"
+    },
+    "article": {
+      "refid": "eval_g02",
+      "title": "Stadtrat lehnt Erweiterung des Gewerbegebiets ab",
+      "content_text": "Der Oldenburger Stadtrat hat die geplante Erweiterung des Gewerbegebiets Tweelbäke mit knapper Mehrheit abgelehnt. Die Grünen-Fraktion hatte den ausschlaggebenden Antrag gestellt und mit SPD-Unterstützung eine Mehrheit gefunden. Grünen-Fraktionschefin Hoffmann: 'Wir schützen damit wertvolle Grünflächen am Stadtrand.' CDU und FDP kritisierten die Entscheidung als wirtschaftsfeindlich."
+    },
+    "expected": true
+  },
+  {
+    "id": "gruene_tn_01",
+    "note": "Das Wort 'grün' als Adjektiv – Stichwort-Überschneidung ohne Partei-Bezug",
+    "topic": {
+      "name": "Die Grünen",
+      "description": "Parteiaktivitäten der Grünen in Oldenburg"
+    },
+    "article": {
+      "refid": "eval_g03",
+      "title": "Grüner Strom für Oldenburger Haushalte",
+      "content_text": "Der Energieversorger EWE bietet ab Januar grünen Ökostrom für alle Haushalte in der Region Oldenburg an. Das neue Tarif-Paket 'EWE NaturStrom' wird ausschließlich aus Windkraft und Solarenergie erzeugt. Kunden zahlen drei Cent mehr pro Kilowattstunde. 'Wir machen grüne Energie für alle erschwinglich', so EWE-Chef Harms. Der Tarif ist auch für Gewerbekunden erhältlich."
+    },
+    "expected": false
+  },
+  {
+    "id": "gruene_tn_02",
+    "note": "Bundesweiter Grünen-Artikel ohne Oldenburg-Bezug",
+    "topic": {
+      "name": "Die Grünen",
+      "description": "Parteiaktivitäten der Grünen in Oldenburg"
+    },
+    "article": {
+      "refid": "eval_g04",
+      "title": "Bundestagsfraktion Grüne beschließt neue Klimastrategie",
+      "content_text": "Die Bundestagsfraktion Bündnis 90/Die Grünen hat auf ihrer Klausur in Berlin eine neue Klimastrategie verabschiedet. Fraktionschefin Katharina Dröge betonte die Notwendigkeit eines schnelleren Kohleausstiegs. Das Papier sieht verbindliche CO2-Ziele für alle Bundesministerien vor. Die Strategie soll in der kommenden Haushaltsdebatte als Grundlage dienen."
+    },
+    "expected": false
+  },
+  {
+    "id": "gruene_tn_03",
+    "note": "Umweltthema in Oldenburg, aber Grüne nicht erwähnt – thematisch verwandt",
+    "topic": {
+      "name": "Die Grünen",
+      "description": "Parteiaktivitäten der Grünen in Oldenburg"
+    },
+    "article": {
+      "refid": "eval_g05",
+      "title": "Oldenburger Bürger fordern mehr Bäume in der Innenstadt",
+      "content_text": "Eine Bürgerinitiative hat 2.000 Unterschriften für mehr Stadtbegrünung gesammelt und dem Oberbürgermeister übergeben. Die Initiative 'Oldenburg blüht' fordert mindestens 500 neue Bäume in der Innenstadt bis 2027. Verwaltungssprecher Köhler sagte, der Antrag werde geprüft. Ein konkreter Beschluss des Stadtrats steht noch aus."
+    },
+    "expected": false
+  },
+  {
+    "id": "kommunalwahl_tp_01",
+    "note": "Direkter Artikel über Kommunalwahl 2026 in Oldenburg",
+    "topic": {
+      "name": "kommunalwahl 2026",
+      "description": "Kommunalwahl 2026 in Oldenburg"
+    },
+    "article": {
+      "refid": "eval_k01",
+      "title": "Kommunalwahl 2026: SPD stellt Kandidatenliste vor",
+      "content_text": "Die SPD Oldenburg hat ihre Kandidatenliste für die Kommunalwahl 2026 vorgestellt. Spitzenkandidat ist der amtierende OB-Kandidat Ulf Prange. 'Wir wollen Oldenburg weiterentwickeln', sagte Prange bei der Vorstellung. Auf der Liste stehen 48 Kandidatinnen und Kandidaten. Die Kommunalwahl findet am 13. September 2026 statt. Alle Parteien stellen derzeit ihre Listen auf."
+    },
+    "expected": true
+  },
+  {
+    "id": "kommunalwahl_tp_02",
+    "note": "Wahlprogramm für Oldenburg 2026",
+    "topic": {
+      "name": "kommunalwahl 2026",
+      "description": "Kommunalwahl 2026 in Oldenburg"
+    },
+    "article": {
+      "refid": "eval_k02",
+      "title": "CDU Oldenburg präsentiert Wahlprogramm zur Kommunalwahl",
+      "content_text": "Die CDU Oldenburg hat ihr Wahlprogramm für die Kommunalwahl am 13. September 2026 vorgestellt. Schwerpunkte sind Wirtschaftsförderung, Sicherheit und Infrastruktur. Stadtverbandsvorsitzender Peter Meier: 'Wir wollen Oldenburg als Wirtschaftsstandort stärken.' Das Programm umfasst 80 Seiten und wurde von 200 Mitgliedern auf einer Versammlung beschlossen."
+    },
+    "expected": true
+  },
+  {
+    "id": "kommunalwahl_tn_01",
+    "note": "Bundestagswahl, nicht Kommunalwahl",
+    "topic": {
+      "name": "kommunalwahl 2026",
+      "description": "Kommunalwahl 2026 in Oldenburg"
+    },
+    "article": {
+      "refid": "eval_k03",
+      "title": "Bundestagswahl 2025: Wahlbeteiligung in Niedersachsen bei 76 Prozent",
+      "content_text": "Bei der Bundestagswahl 2025 lag die Wahlbeteiligung in Niedersachsen bei 76,3 Prozent. In Oldenburg gaben 71.000 Wahlberechtigte ihre Stimme ab. Die SPD gewann beide Direktmandate im Wahlkreis Oldenburg. CDU und Grüne erzielten je ein Mandat über die Landesliste. Die AfD zog mit 12,4 Prozent in den Bundestag ein."
+    },
+    "expected": false
+  },
+  {
+    "id": "kommunalwahl_tn_02",
+    "note": "Kommunalwahl in anderer Stadt (München)",
+    "topic": {
+      "name": "kommunalwahl 2026",
+      "description": "Kommunalwahl 2026 in Oldenburg"
+    },
+    "article": {
+      "refid": "eval_k04",
+      "title": "München wählt: OB-Kandidaten im Überblick",
+      "content_text": "Im März 2026 wählt München einen neuen Stadtrat und Oberbürgermeister. Amtsinhaber Dieter Reiter tritt erneut für die SPD an. Die Grünen schicken Klimaexpertin Anna Bauer ins Rennen. CSU-Kandidat ist der frühere Bürgermeister Karl Schmidt. Rund 1,1 Millionen Münchnerinnen und Münchner sind wahlberechtigt."
+    },
+    "expected": false
+  },
+  {
+    "id": "ob_kandidaten_tp_01",
+    "note": "Artikel über Ulf Prange als OB-Kandidat",
+    "topic": {
+      "name": "OB-Kandidaten",
+      "description": "Kandidaten für die Oberbürgermeisterwahl in Oldenburg, z.B. Ulf Prange und Jascha Rohr"
+    },
+    "article": {
+      "refid": "eval_ob01",
+      "title": "Ulf Prange tritt als OB-Kandidat für SPD in Oldenburg an",
+      "content_text": "Der niedersächsische SPD-Abgeordnete Ulf Prange wird als Kandidat für das Amt des Oberbürgermeisters in Oldenburg antreten. Prange wurde auf einer SPD-Mitgliederversammlung mit 94 Prozent der Stimmen nominiert. 'Ich möchte Oldenburg in die Zukunft führen', sagte der 46-Jährige. Er will seine Kandidatur auf die Bereiche Wirtschaft, Wohnen und Klimaschutz fokussieren. Die OB-Wahl findet zeitgleich mit der Kommunalwahl am 13. September 2026 statt."
+    },
+    "expected": true
+  },
+  {
+    "id": "ob_kandidaten_tp_02",
+    "note": "Jascha Rohr als OB-Kandidat erwähnt",
+    "topic": {
+      "name": "OB-Kandidaten",
+      "description": "Kandidaten für die Oberbürgermeisterwahl in Oldenburg, z.B. Ulf Prange und Jascha Rohr"
+    },
+    "article": {
+      "refid": "eval_ob02",
+      "title": "Grüne nominieren Jascha Rohr für OB-Wahl in Oldenburg",
+      "content_text": "Der Zukunftsforscher und Mitgründer des Lebensgutes Pommritz, Jascha Rohr, soll für die Grünen bei der Oldenburger Oberbürgermeisterwahl antreten. Das beschloss die Partei auf einer Mitgliederversammlung. Rohr betonte, er wolle eine 'andere Art von Politik' machen. Er ist bisher kein Parteimitglied, wird aber von den Grünen unterstützt. Gegen Prange (SPD) und weitere Kandidaten sieht er gute Chancen."
+    },
+    "expected": true
+  },
+  {
+    "id": "ob_kandidaten_tn_01",
+    "note": "OB-Wahl in anderer Stadt – kein Oldenburg-Bezug",
+    "topic": {
+      "name": "OB-Kandidaten",
+      "description": "Kandidaten für die Oberbürgermeisterwahl in Oldenburg, z.B. Ulf Prange und Jascha Rohr"
+    },
+    "article": {
+      "refid": "eval_ob03",
+      "title": "Hannover: OB-Kandidaten stellen sich vor",
+      "content_text": "Vier Kandidaten bewerben sich um das Amt des Oberbürgermeisters in Hannover. Bei einer Podiumsdiskussion in der Oper stellten sie ihre Programme vor. SPD-Kandidat Thomas Weber liegt in Umfragen vorn. CDU, Grüne und FDP schicken eigene Bewerber ins Rennen. Die Wahl findet im September statt. Rund 430.000 Hannoveraner sind wahlberechtigt."
+    },
+    "expected": false
+  }
+]
