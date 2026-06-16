@@ -236,6 +236,14 @@ def build_digest(
     return _format_telegram(data, pub_date, refid_to_page), raw_matches
 
 
+def _page_from_refid(refid: str) -> int | None:
+    """Extract page number from NWZ refid format 'articleid/PAGE/seq'."""
+    parts = refid.split("/")
+    if len(parts) >= 2 and parts[1].isdigit():
+        return int(parts[1])
+    return None
+
+
 def _format_telegram(
     data: dict,
     pub_date: str,
@@ -254,7 +262,7 @@ def _format_telegram(
             title = _esc(a.get("title", ""))
             summary = _esc(a.get("summary", ""))
             refid = a.get("refid", "")
-            page = refid_to_page.get(refid)
+            page = refid_to_page.get(refid) or _page_from_refid(refid)
             page_info = f"\n  <i>Seite {page}</i>" if page else ""
             prefix = "🔄" if a.get("is_continuation") else "•"
             parts.append(f"{prefix} <b>{title}</b>\n  {summary}{page_info}")
