@@ -2,9 +2,13 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { Plus, Trash2, FileText } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { Topic, TopicMatch } from "@/lib/types";
-import { Badge, Button, Card, EmptyState, Input, Spinner, Textarea, formatDate } from "@/components/ui";
+import {
+  Badge, Button, Card, EmptyState, Input, Spinner, Textarea, formatDate,
+  Dialog, DialogContent, DialogHeader, DialogTitle, toast,
+} from "@/components/ui";
 
 export default function TopicsPage() {
   const [topics, setTopics] = useState<Topic[]>([]);
@@ -12,7 +16,6 @@ export default function TopicsPage() {
   const [needsLink, setNeedsLink] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [committees, setCommittees] = useState<string[]>([]);
   const [subscriptions, setSubscriptions] = useState<string[]>([]);
@@ -32,49 +35,61 @@ export default function TopicsPage() {
       setNeedsLink(false);
     } catch (e) {
       if (e instanceof ApiError && e.status === 409) setNeedsLink(true);
+      else toast.error(e instanceof ApiError ? e.message : "Laden fehlgeschlagen.");
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   const addTopic = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setBusy(true);
     try {
       await api.post("/topics", { name, description });
       setName("");
       setDescription("");
+      toast.success("Thema hinzugefügt.");
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Konnte Thema nicht anlegen.");
+      toast.error(err instanceof ApiError ? err.message : "Konnte Thema nicht anlegen.");
     } finally {
       setBusy(false);
     }
   };
 
   const deleteTopic = async (id: number) => {
-    await api.del(`/topics/${id}`);
-    await load();
+    try {
+      await api.del(`/topics/${id}`);
+      toast.success("Thema gelöscht.");
+      await load();
+    } catch {
+      toast.error("Löschen fehlgeschlagen.");
+    }
   };
 
   const viewMatches = async (topic: Topic) => {
-    const data = await api.get<{ matches: TopicMatch[] }>(`/topics/${topic.id}/matches`);
-    setMatchesFor({ topic, matches: data.matches });
+    try {
+      const data = await api.get<{ matches: TopicMatch[] }>(`/topics/${topic.id}/matches`);
+      setMatchesFor({ topic, matches: data.matches });
+    } catch {
+      toast.error("Treffer konnten nicht geladen werden.");
+    }
   };
 
   const toggleSub = async (committee: string) => {
-    if (subscriptions.includes(committee)) {
-      await api.del("/subscriptions", { committee_name: committee });
-    } else {
-      await api.post("/subscriptions", { committee_name: committee });
+    try {
+      if (subscriptions.includes(committee)) {
+        await api.del("/subscriptions", { committee_name: committee });
+      } else {
+        await api.post("/subscriptions", { committee_name: committee });
+      }
+      const subs = await api.get<{ subscriptions: string[] }>("/subscriptions");
+      setSubscriptions(subs.subscriptions);
+    } catch {
+      toast.error("Abo konnte nicht geändert werden.");
     }
-    const subs = await api.get<{ subscriptions: string[] }>("/subscriptions");
-    setSubscriptions(subs.subscriptions);
   };
 
   if (loading) return <Spinner />;
@@ -82,7 +97,7 @@ export default function TopicsPage() {
   if (needsLink) {
     return (
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Meine Themen</h1>
+        <h1 className="text-2xl font-bold text-foreground">Meine Themen</h1>
         <Card className="mt-6 border-amber-200 bg-amber-50 p-6 text-center">
           <p className="text-amber-800">Verknüpfe zuerst dein Konto mit Telegram, um Themen zu verwalten.</p>
           <Link href="/link" className="mt-2 inline-block font-semibold text-amber-900 underline">
@@ -95,8 +110,8 @@ export default function TopicsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-slate-900">Meine Themen</h1>
-      <p className="mt-1 text-sm text-slate-500">Themen, nach denen der Bot täglich die NWZ durchsucht.</p>
+      <h1 className="text-2xl font-bold text-foreground">Meine Themen</h1>
+      <p className="mt-1 text-sm text-muted-foreground">Themen, nach denen der Bot täglich die NWZ durchsucht.</p>
 
       <Card className="mt-6 p-4">
         <form onSubmit={addTopic} className="space-y-3">
@@ -108,9 +123,8 @@ export default function TopicsPage() {
             rows={2}
             required
           />
-          {error && <p className="text-sm text-red-600">{error}</p>}
           <Button type="submit" disabled={busy}>
-            {busy ? "Hinzufügen…" : "Thema hinzufügen"}
+            <Plus className="h-4 w-4" /> {busy ? "Hinzufügen…" : "Thema hinzufügen"}
           </Button>
         </form>
       </Card>
@@ -121,20 +135,20 @@ export default function TopicsPage() {
         ) : (
           topics.map((t) => (
             <Card key={t.id} className="p-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-slate-900">{t.name}</h3>
+                    <h3 className="font-semibold text-foreground">{t.name}</h3>
                     <Badge color="blue">{t.match_count} Treffer</Badge>
                   </div>
-                  <p className="mt-0.5 text-sm text-slate-500">{t.description}</p>
+                  <p className="mt-0.5 text-sm text-muted-foreground">{t.description}</p>
                 </div>
                 <div className="flex shrink-0 gap-2">
                   <Button variant="secondary" size="sm" onClick={() => viewMatches(t)}>
-                    Treffer
+                    <FileText className="h-4 w-4" /> Treffer
                   </Button>
                   <Button variant="danger" size="sm" onClick={() => deleteTopic(t.id)}>
-                    Löschen
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
@@ -143,14 +157,14 @@ export default function TopicsPage() {
         )}
       </div>
 
-      <h2 className="mt-10 text-lg font-bold text-slate-900">Ausschuss-Abos</h2>
-      <p className="mt-1 text-sm text-slate-500">Benachrichtigungen, sobald eine Tagesordnung veröffentlicht wird.</p>
-      <Card className="mt-3 divide-y divide-slate-100">
+      <h2 className="mt-10 text-lg font-bold text-foreground">Ausschuss-Abos</h2>
+      <p className="mt-1 text-sm text-muted-foreground">Benachrichtigungen, sobald eine Tagesordnung veröffentlicht wird.</p>
+      <Card className="mt-3 divide-y divide-border">
         {committees.map((c) => {
           const subscribed = subscriptions.includes(c);
           return (
-            <div key={c} className="flex items-center justify-between px-4 py-2.5">
-              <span className="text-sm text-slate-700">{c}</span>
+            <div key={c} className="flex items-center justify-between gap-3 px-4 py-2.5">
+              <span className="min-w-0 text-sm text-foreground">{c}</span>
               <Button variant={subscribed ? "secondary" : "primary"} size="sm" onClick={() => toggleSub(c)}>
                 {subscribed ? "✓ Abonniert" : "Abonnieren"}
               </Button>
@@ -159,36 +173,33 @@ export default function TopicsPage() {
         })}
       </Card>
 
-      {matchesFor && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4" onClick={() => setMatchesFor(null)}>
-          <Card className="my-8 w-full max-w-2xl p-6">
-            <div onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-slate-900">Treffer: {matchesFor.topic.name}</h2>
-                <Button variant="ghost" size="sm" onClick={() => setMatchesFor(null)}>
-                  ✕
-                </Button>
-              </div>
+      <Dialog open={!!matchesFor} onOpenChange={(o) => !o && setMatchesFor(null)}>
+        <DialogContent>
+          {matchesFor && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Treffer: {matchesFor.topic.name}</DialogTitle>
+              </DialogHeader>
               {matchesFor.matches.length === 0 ? (
-                <p className="mt-4 text-sm text-slate-500">Noch keine archivierten Treffer.</p>
+                <p className="text-sm text-muted-foreground">Noch keine archivierten Treffer.</p>
               ) : (
-                <ul className="mt-4 space-y-3">
+                <ul className="space-y-3">
                   {matchesFor.matches.map((m, i) => (
-                    <li key={i} className="border-b border-slate-100 pb-3 last:border-0">
-                      <div className="flex items-center gap-2 text-xs text-slate-400">
+                    <li key={i} className="border-b border-border pb-3 last:border-0">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <span>{formatDate(m.pub_date)}</span>
                         {m.is_continuation ? <Badge color="amber">Fortsetzung</Badge> : null}
                       </div>
-                      <p className="mt-0.5 font-medium text-slate-900">{m.title}</p>
-                      <p className="text-sm text-slate-600">{m.summary}</p>
+                      <p className="mt-0.5 font-medium text-foreground">{m.title}</p>
+                      <p className="text-sm text-muted-foreground">{m.summary}</p>
                     </li>
                   ))}
                 </ul>
               )}
-            </div>
-          </Card>
-        </div>
-      )}
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

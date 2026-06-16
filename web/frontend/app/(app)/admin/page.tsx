@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Prompt, WebUser, TelegramUser } from "@/lib/types";
-import { Badge, Button, Card, Spinner, Textarea, formatDate } from "@/components/ui";
+import { Badge, Button, Card, Spinner, Textarea, formatDate, toast } from "@/components/ui";
 
 type Tab = "prompts" | "users" | "telegram";
 
@@ -33,7 +33,7 @@ export default function AdminPage() {
             key={t}
             onClick={() => setTab(t)}
             className={`px-4 py-2 text-sm font-medium ${
-              tab === t ? "border-b-2 border-brand-600 text-brand-700" : "text-slate-500 hover:text-slate-700"
+              tab === t ? "border-b-2 border-primary text-primary" : "text-slate-500 hover:text-slate-700"
             }`}
           >
             {label}
@@ -142,28 +142,56 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
   }, [load]);
 
   const setRole = async (id: number, role: "user" | "admin") => {
-    await api.put(`/admin/users/${id}/role`, { role });
-    load();
+    try {
+      await api.put(`/admin/users/${id}/role`, { role });
+      toast.success("Rolle aktualisiert.");
+      load();
+    } catch {
+      toast.error("Rolle konnte nicht geändert werden.");
+    }
+  };
+
+  const setStatus = async (id: number, status: "active" | "pending") => {
+    try {
+      await api.put(`/admin/users/${id}/status`, { status });
+      toast.success(status === "active" ? "Nutzer freigeschaltet." : "Nutzer gesperrt.");
+      load();
+    } catch {
+      toast.error("Status konnte nicht geändert werden.");
+    }
   };
 
   if (loading) return <Spinner />;
 
   return (
-    <Card className="divide-y divide-slate-100">
+    <Card className="divide-y divide-border">
       {users.map((u) => (
-        <div key={u.id} className="flex items-center justify-between px-4 py-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-medium text-slate-900">{u.email}</span>
+        <div key={u.id} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-medium text-foreground">{u.email}</span>
               <Badge color={u.role === "admin" ? "blue" : "slate"}>{u.role}</Badge>
-              {u.telegram_chat_id ? <Badge color="green">verbunden</Badge> : <Badge color="amber">nicht verbunden</Badge>}
+              {u.status === "active" ? <Badge color="green">aktiv</Badge> : <Badge color="amber">wartet</Badge>}
+              {u.telegram_chat_id ? <Badge color="green">Telegram</Badge> : null}
+              {u.nwz_verified_at ? <Badge color="green">NWZ</Badge> : null}
             </div>
-            <p className="text-xs text-slate-400">seit {formatDate(u.created_at.slice(0, 10))}</p>
+            <p className="text-xs text-muted-foreground">seit {formatDate(u.created_at.slice(0, 10))}</p>
           </div>
           {u.id !== currentUserId && (
-            <Button variant="secondary" size="sm" onClick={() => setRole(u.id, u.role === "admin" ? "user" : "admin")}>
-              {u.role === "admin" ? "Zu Nutzer" : "Zu Admin"}
-            </Button>
+            <div className="flex shrink-0 gap-2">
+              {u.status === "active" ? (
+                <Button variant="secondary" size="sm" onClick={() => setStatus(u.id, "pending")}>
+                  Sperren
+                </Button>
+              ) : (
+                <Button variant="primary" size="sm" onClick={() => setStatus(u.id, "active")}>
+                  Freischalten
+                </Button>
+              )}
+              <Button variant="secondary" size="sm" onClick={() => setRole(u.id, u.role === "admin" ? "user" : "admin")}>
+                {u.role === "admin" ? "Zu Nutzer" : "Zu Admin"}
+              </Button>
+            </div>
           )}
         </div>
       ))}

@@ -88,7 +88,7 @@ export default function LinkPage() {
                     href={`https://t.me/${code.bot_username}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="font-medium text-brand-600 hover:underline"
+                    className="font-medium text-primary hover:underline"
                   >
                     @{code.bot_username}
                   </a>
@@ -112,7 +112,7 @@ export default function LinkPage() {
               </ol>
               <p className="mt-4 text-xs text-slate-400">Der Code ist {code.expires_in_minutes} Minuten gültig.</p>
               <div className="mt-4 flex items-center gap-2 text-sm text-slate-500">
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-brand-600" />
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-primary" />
                 Warte auf Bestätigung…
               </div>
             </div>

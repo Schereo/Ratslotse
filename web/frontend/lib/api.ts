@@ -9,6 +9,13 @@ export class ApiError extends Error {
   }
 }
 
+// Global handler invoked when a session expires mid-use (401 on a non-auth
+// endpoint). The AuthProvider registers it to clear state and redirect.
+let unauthorizedHandler: (() => void) | null = null;
+export function setUnauthorizedHandler(fn: (() => void) | null) {
+  unauthorizedHandler = fn;
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(`/api${path}`, {
     credentials: "include",
@@ -18,6 +25,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     },
     ...options,
   });
+
+  if (res.status === 401 && !path.startsWith("/auth/")) {
+    unauthorizedHandler?.();
+  }
 
   if (!res.ok) {
     let detail = `Fehler ${res.status}`;

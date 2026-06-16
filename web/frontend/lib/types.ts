@@ -2,8 +2,11 @@ export interface User {
   id: number;
   email: string;
   role: "user" | "admin";
+  status: "pending" | "active";
   telegram_chat_id: number | null;
   linked: boolean;
+  nwz_verified: boolean;
+  nwz_username: string | null;
 }
 
 export interface SearchResult {
@@ -85,7 +88,10 @@ export interface WebUser {
   id: number;
   email: string;
   role: "user" | "admin";
+  status: "pending" | "active";
   telegram_chat_id: number | null;
+  nwz_username: string | null;
+  nwz_verified_at: string | null;
   created_at: string;
 }
 

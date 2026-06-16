@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
-import { api, ApiError } from "./api";
+import { api, ApiError, setUnauthorizedHandler } from "./api";
 import { User } from "./types";
 
 interface AuthContextValue {
@@ -34,6 +34,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     })();
   }, [refresh]);
+
+  // Clear state when any API call reports the session expired.
+  useEffect(() => {
+    setUnauthorizedHandler(() => setUser(null));
+    return () => setUnauthorizedHandler(null);
+  }, []);
 
   const login = async (email: string, password: string) => {
     const u = await api.post<User>("/auth/login", { email, password });

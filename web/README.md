@@ -18,16 +18,26 @@ Browser
 - **Frontend** (`web/frontend/`): Next.js (App Router) + Tailwind. Spricht das
   Backend über einen Same-Origin-`/api`-Proxy an (siehe `next.config.mjs`).
 
-## Auth & Telegram-Verknüpfung
+## Auth, Freischaltung & Verknüpfung
 
 - Registrierung/Login per E-Mail + Passwort. Sessions als HS256-JWT in einem
-  httpOnly-Cookie. Passwörter werden mit `scrypt` (stdlib) gehasht.
+  httpOnly+Secure-Cookie. Passwörter werden mit `scrypt` (stdlib) gehasht.
 - Der erste registrierte Account **oder** die Adresse aus `WEB_ADMIN_EMAIL`
-  wird automatisch Admin.
-- Verknüpfung mit dem Bot: Im Frontend unter „Telegram verbinden" einen Code
-  erzeugen und dem Bot mit `/verbinden <CODE>` schicken. Damit wird der
-  Telegram-Chat dem Web-Account zugeordnet und freigeschaltet. Themen und
+  wird automatisch aktiver Admin.
+- **Freischaltung durch Admin:** Alle anderen Konten starten als `pending`.
+  Bis ein Admin sie unter Admin → Web-Nutzer freischaltet, sehen sie nur einen
+  Wartehinweis und haben keinen Zugriff auf Inhalte.
+- **Eigene NWZ-Zugangsdaten:** Für die NWZ-Suche muss jeder Nutzer einmalig
+  seine eigenen NWZ-Login-Daten hinterlegen. Diese werden live bei der NWZ
+  geprüft; gespeichert wird nur ein „verifiziert"-Marker und der Benutzername,
+  **nicht das Passwort**. Erst danach sind NWZ-Inhalte zugänglich. (Das
+  Ratsinformationssystem ist öffentlich und braucht das nicht.)
+- **Telegram-Verknüpfung:** Im Frontend unter „Telegram verbinden" einen Code
+  erzeugen und dem Bot mit `/verbinden <CODE>` schicken. Themen und
   Ausschuss-Abos sind danach zwischen Web und Bot geteilt.
+
+Onboarding-Reihenfolge: registrieren → Admin schaltet frei → NWZ-Login
+verifizieren + Telegram verbinden → voller Zugriff.
 
 ## Lokale Entwicklung
 
@@ -52,6 +62,7 @@ BACKEND_URL=http://localhost:8000 npm run dev   # http://localhost:3000
 | `WEB_JWT_SECRET` | Signiergeheimnis für Session-Tokens — **unbedingt setzen** | `dev-insecure-change-me` |
 | `WEB_ADMIN_EMAIL` | Diese E-Mail wird bei Registrierung Admin | – |
 | `TELEGRAM_BOT_USERNAME` | Für die Verbinden-Anleitung im UI | `mein_nwz_bot` |
+| `COOKIE_SECURE` | Secure-Flag fürs Session-Cookie. `true` für HTTPS/localhost; nur für Plain-HTTP-Dev auf `false` setzen | `true` |
 | `CORS_ORIGINS` | Nur für getrennte Dev-Origins nötig (kommagetrennt) | `http://localhost:3000` |
 
 Die DB-Pfade (`NWZ_DB`, `COUNCIL_DB`) zeigen standardmäßig auf `data/` im

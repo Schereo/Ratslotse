@@ -1,61 +1,99 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { Home, Newspaper, Landmark, Tags, Link2, Settings, LogOut, Menu } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { Sheet, SheetContent, SheetTrigger, SheetClose, SheetTitle, Button } from "@/components/ui";
+import { cn } from "@/lib/utils";
 
-const links = [
-  { href: "/dashboard", label: "Übersicht", icon: "🏠" },
-  { href: "/nwz", label: "NWZ-Suche", icon: "📰" },
-  { href: "/council", label: "Ratsinfo", icon: "🏛️" },
-  { href: "/topics", label: "Meine Themen", icon: "📌" },
-  { href: "/link", label: "Telegram", icon: "🔗" },
+const LINKS = [
+  { href: "/dashboard", label: "Übersicht", icon: Home },
+  { href: "/nwz", label: "NWZ-Suche", icon: Newspaper },
+  { href: "/council", label: "Ratsinfo", icon: Landmark },
+  { href: "/topics", label: "Meine Themen", icon: Tags },
+  { href: "/link", label: "Telegram", icon: Link2 },
 ];
 
-export function Sidebar() {
+function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const { user } = useAuth();
+  const items = [...LINKS];
+  if (user?.role === "admin") items.push({ href: "/admin", label: "Admin", icon: Settings });
+
+  return (
+    <nav className="flex-1 space-y-1 px-3">
+      {items.map((l) => {
+        const Icon = l.icon;
+        const active = pathname === l.href || pathname.startsWith(l.href + "/");
+        return (
+          <Link
+            key={l.href}
+            href={l.href}
+            onClick={onNavigate}
+            className={cn(
+              "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+              active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground",
+            )}
+          >
+            <Icon className="h-4 w-4" />
+            {l.label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+function UserFooter() {
   const router = useRouter();
   const { user, logout } = useAuth();
-
   const onLogout = async () => {
     await logout();
     router.replace("/login");
   };
-
-  const navItems = [...links];
-  if (user?.role === "admin") navItems.push({ href: "/admin", label: "Admin", icon: "⚙️" });
-
   return (
-    <aside className="flex w-60 shrink-0 flex-col border-r border-slate-200 bg-white">
-      <div className="px-5 py-5">
-        <span className="text-lg font-bold text-slate-900">NWZ-Bot</span>
-      </div>
-      <nav className="flex-1 space-y-1 px-3">
-        {navItems.map((l) => {
-          const active = pathname === l.href || pathname.startsWith(l.href + "/");
-          return (
-            <Link
-              key={l.href}
-              href={l.href}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                active ? "bg-brand-50 text-brand-700" : "text-slate-600 hover:bg-slate-100"
-              }`}
-            >
-              <span>{l.icon}</span>
-              {l.label}
-            </Link>
-          );
-        })}
-      </nav>
-      <div className="border-t border-slate-200 p-3">
-        <div className="px-2 pb-2 text-xs text-slate-400">{user?.email}</div>
-        <button
-          onClick={onLogout}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
-        >
-          <span>↩</span> Abmelden
-        </button>
-      </div>
+    <div className="border-t border-border p-3">
+      <div className="truncate px-2 pb-2 text-xs text-muted-foreground">{user?.email}</div>
+      <button
+        onClick={onLogout}
+        className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+      >
+        <LogOut className="h-4 w-4" /> Abmelden
+      </button>
+    </div>
+  );
+}
+
+export function DesktopSidebar() {
+  return (
+    <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-card md:flex">
+      <div className="px-5 py-5 text-lg font-bold text-foreground">NWZ-Bot</div>
+      <NavLinks />
+      <UserFooter />
     </aside>
+  );
+}
+
+export function MobileTopbar() {
+  const [open, setOpen] = useState(false);
+  return (
+    <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-border bg-card px-4 py-3 md:hidden">
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetTrigger asChild>
+          <Button variant="ghost" size="icon" aria-label="Menü öffnen">
+            <Menu className="h-5 w-5" />
+          </Button>
+        </SheetTrigger>
+        <SheetContent>
+          <SheetTitle>Navigation</SheetTitle>
+          <div className="px-5 py-5 text-lg font-bold text-foreground">NWZ-Bot</div>
+          <NavLinks onNavigate={() => setOpen(false)} />
+          <UserFooter />
+        </SheetContent>
+      </Sheet>
+      <span className="text-base font-bold text-foreground">NWZ-Bot</span>
+    </header>
   );
 }
