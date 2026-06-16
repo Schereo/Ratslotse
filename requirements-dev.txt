@@ -1,2 +1,5 @@
 pytest>=8.0
 responses>=0.25
+# Backend tests (tests/test_backend_api.py) use FastAPI's TestClient.
+-r web/backend/requirements.txt
+httpx>=0.27
