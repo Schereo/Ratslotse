@@ -99,6 +99,24 @@ CREATE TABLE IF NOT EXISTS topic_classified_editions (
     classified_at TEXT NOT NULL,
     PRIMARY KEY(chat_id, topic_id, pub_date)
 );
+
+-- Web frontend accounts (separate from the Telegram whitelist `users`).
+CREATE TABLE IF NOT EXISTS web_users (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    email            TEXT NOT NULL UNIQUE,
+    password_hash    TEXT NOT NULL,
+    role             TEXT NOT NULL DEFAULT 'user',
+    telegram_chat_id INTEGER,
+    created_at       TEXT NOT NULL
+);
+
+-- One-time codes that link a web account to a Telegram chat via the bot.
+CREATE TABLE IF NOT EXISTS link_codes (
+    code        TEXT PRIMARY KEY,
+    web_user_id INTEGER NOT NULL,
+    created_at  TEXT NOT NULL,
+    expires_at  TEXT NOT NULL
+);
 """
 
 
@@ -208,6 +226,95 @@ class Store:
         with self._conn:
             self._conn.execute("DELETE FROM topics WHERE chat_id = ?", (chat_id,))
             self._conn.execute("DELETE FROM users WHERE chat_id = ?", (chat_id,))
+            self._conn.execute(
+                "UPDATE web_users SET telegram_chat_id = NULL WHERE telegram_chat_id = ?",
+                (chat_id,),
+            )
+
+    # ---- web accounts ----
+
+    def create_web_user(self, email: str, password_hash: str, role: str = "user") -> int:
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            cur = self._conn.execute(
+                "INSERT INTO web_users (email, password_hash, role, created_at) VALUES (?, ?, ?, ?)",
+                (email.lower().strip(), password_hash, role, now),
+            )
+        return cur.lastrowid
+
+    def get_web_user_by_email(self, email: str) -> dict | None:
+        row = self._conn.execute(
+            "SELECT * FROM web_users WHERE email = ?", (email.lower().strip(),)
+        ).fetchone()
+        return dict(row) if row else None
+
+    def get_web_user_by_id(self, user_id: int) -> dict | None:
+        row = self._conn.execute(
+            "SELECT * FROM web_users WHERE id = ?", (user_id,)
+        ).fetchone()
+        return dict(row) if row else None
+
+    def list_web_users(self) -> list[dict]:
+        rows = self._conn.execute(
+            "SELECT id, email, role, telegram_chat_id, created_at FROM web_users ORDER BY created_at"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def set_web_user_role(self, user_id: int, role: str) -> None:
+        with self._conn:
+            self._conn.execute("UPDATE web_users SET role = ? WHERE id = ?", (role, user_id))
+
+    def count_web_users(self) -> int:
+        return self._conn.execute("SELECT COUNT(*) FROM web_users").fetchone()[0]
+
+    def create_link_code(self, web_user_id: int, code: str, ttl_minutes: int = 15) -> None:
+        from datetime import timedelta
+        now = datetime.utcnow()
+        expires = now + timedelta(minutes=ttl_minutes)
+        with self._conn:
+            # one active code per user — replace any previous
+            self._conn.execute("DELETE FROM link_codes WHERE web_user_id = ?", (web_user_id,))
+            self._conn.execute(
+                "INSERT INTO link_codes (code, web_user_id, created_at, expires_at) VALUES (?, ?, ?, ?)",
+                (code, web_user_id, now.isoformat(timespec="seconds"), expires.isoformat(timespec="seconds")),
+            )
+
+    # ---- web account linking ----
+
+    def redeem_link_code(self, code: str, chat_id: int, username: str = "") -> str | None:
+        """Link a web account to this Telegram chat via a one-time code.
+
+        On success: sets web_users.telegram_chat_id, whitelists the chat in
+        `users`, deletes the code, and returns the linked account's email.
+        Returns None if the code is unknown or expired.
+        """
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        row = self._conn.execute(
+            "SELECT web_user_id, expires_at FROM link_codes WHERE code = ?", (code,)
+        ).fetchone()
+        if row is None:
+            return None
+        if row["expires_at"] < now:
+            with self._conn:
+                self._conn.execute("DELETE FROM link_codes WHERE code = ?", (code,))
+            return None
+        web_user_id = row["web_user_id"]
+        email_row = self._conn.execute(
+            "SELECT email FROM web_users WHERE id = ?", (web_user_id,)
+        ).fetchone()
+        if email_row is None:
+            return None
+        with self._conn:
+            self._conn.execute(
+                "UPDATE web_users SET telegram_chat_id = ? WHERE id = ?",
+                (chat_id, web_user_id),
+            )
+            self._conn.execute(
+                "INSERT OR IGNORE INTO users (chat_id, username, added_at) VALUES (?, ?, ?)",
+                (chat_id, username, now),
+            )
+            self._conn.execute("DELETE FROM link_codes WHERE code = ?", (code,))
+        return email_row[0]
 
     # ---- editions ----
 

@@ -258,3 +258,58 @@ class CouncilStore:
             (ksinr,),
         ).fetchall()
         return [dict(r) for r in rows]
+
+    def get_session(self, ksinr: int) -> dict | None:
+        row = self._conn.execute(
+            """SELECT cs.ksinr, cs.committee, cs.session_date, cs.session_time, cs.location,
+                      COUNT(ci.id) AS n_items
+               FROM council_sessions cs
+               LEFT JOIN council_agenda_items ci ON ci.ksinr = cs.ksinr
+               WHERE cs.ksinr = ?
+               GROUP BY cs.ksinr""",
+            (ksinr,),
+        ).fetchone()
+        return dict(row) if row else None
+
+    def search_sessions(
+        self,
+        query: str = "",
+        committee: str = "",
+        date_from: str = "",
+        date_to: str = "",
+        limit: int = 50,
+    ) -> list[dict]:
+        """Search sessions by committee name or agenda item text. Empty query lists by date."""
+        filters: list[str] = []
+        params: list = []
+        if query:
+            filters.append(
+                """(cs.committee LIKE ? OR cs.ksinr IN (
+                       SELECT ksinr FROM council_agenda_items
+                       WHERE title LIKE ? OR vorlage_nr LIKE ?))"""
+            )
+            like = f"%{query}%"
+            params += [like, like, like]
+        if committee:
+            filters.append("cs.committee = ?")
+            params.append(committee)
+        if date_from:
+            filters.append("cs.session_date >= ?")
+            params.append(date_from)
+        if date_to:
+            filters.append("cs.session_date <= ?")
+            params.append(date_to)
+        where = ("WHERE " + " AND ".join(filters)) if filters else ""
+        params.append(limit)
+        rows = self._conn.execute(
+            f"""SELECT cs.ksinr, cs.committee, cs.session_date, cs.session_time, cs.location,
+                       COUNT(ci.id) AS n_items
+                FROM council_sessions cs
+                LEFT JOIN council_agenda_items ci ON ci.ksinr = cs.ksinr
+                {where}
+                GROUP BY cs.ksinr
+                ORDER BY cs.session_date DESC
+                LIMIT ?""",
+            params,
+        ).fetchall()
+        return [dict(r) for r in rows]

@@ -203,6 +203,30 @@ def handle_update(update: dict, db_path: Path) -> None:
             reply(chat_id, _START_NEW_USER.format(chat_id=chat_id))
         return
 
+    # /verbinden — links a web account; allowed before whitelisting, since
+    # redeeming a valid code is itself what grants access.
+    if command == "/verbinden":
+        code = args.strip().split()[0] if args.strip() else ""
+        if not code:
+            reply(
+                chat_id,
+                "Verwendung: <code>/verbinden CODE</code>\n\n"
+                "Den Code bekommst du im Web-Frontend unter „Mit Telegram verbinden“.",
+            )
+            return
+        username = (msg.get("from") or {}).get("first_name", "")
+        email = store.redeem_link_code(code, chat_id, username)
+        if email:
+            reply(
+                chat_id,
+                f"✅ Verbunden mit <b>{_esc(email)}</b>!\n\n"
+                "Dein Web-Account ist jetzt mit diesem Chat verknüpft. "
+                "Schreib /hilfe für eine Übersicht oder leg direkt mit /neu los.",
+            )
+        else:
+            reply(chat_id, "❌ Code ungültig oder abgelaufen. Bitte erzeuge im Web einen neuen Code.")
+        return
+
     # All other commands require whitelist membership
     if not store.is_user(chat_id):
         reply(
