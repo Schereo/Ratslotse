@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Newspaper, Landmark, Tags, Link2, Check, ArrowRight } from "lucide-react";
+import { Newspaper, Landmark, Tags, Link2, Check, ArrowRight, Lock } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Topic } from "@/lib/types";
@@ -46,7 +46,7 @@ export default function DashboardPage() {
         hasTopic={topicCount > 0}
       />
 
-      <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Schnellzugriff</h2>
+      <h2 className="mt-8 text-sm font-semibold text-muted-foreground">Schnellzugriff</h2>
       <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
         {tiles.map((t) => {
           const Icon = t.icon;
@@ -140,10 +140,10 @@ function OnboardingChecklist({
             <span
               className={cn(
                 "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
-                step.done ? "bg-green-100 text-green-700" : "border border-border bg-card text-muted-foreground",
+                step.done ? "bg-green-100 text-green-700" : step.locked ? "border border-border bg-muted text-muted-foreground/50" : "border border-border bg-card text-muted-foreground",
               )}
             >
-              {step.done ? <Check className="h-3.5 w-3.5" /> : i + 1}
+              {step.done ? <Check className="h-3.5 w-3.5" /> : step.locked ? <Lock className="h-3 w-3" /> : i + 1}
             </span>
             <div className="min-w-0 flex-1">
               <p className={cn("text-sm font-medium", step.done ? "text-muted-foreground line-through" : "text-foreground")}>

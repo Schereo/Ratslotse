@@ -133,8 +133,14 @@ function NwzSearch() {
               <option value="">Alle Rubriken</option>
               {categories.map((c) => <option key={c} value={c}>{c}</option>)}
             </Select>
-            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-muted-foreground">Von</span>
+              <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-muted-foreground">Bis</span>
+              <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+            </label>
           </div>
         </form>
       </Card>

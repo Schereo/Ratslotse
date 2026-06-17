@@ -155,11 +155,11 @@ export default function CouncilPage() {
                 </DialogDescription>
               </DialogHeader>
               <div>
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Tagesordnung</h3>
+                <h3 className="text-sm font-semibold text-muted-foreground">Tagesordnung</h3>
                 <ul className="mt-2 divide-y divide-border">
                   {detail.agenda_items.map((it, i) => (
                     <li key={i} className="flex flex-wrap items-start gap-x-3 gap-y-1 py-2">
-                      <span className="shrink-0 font-mono text-xs text-muted-foreground">{it.item_number}</span>
+                      <span className="shrink-0 text-xs font-medium text-muted-foreground">{it.item_number}</span>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm text-foreground">{it.title}</p>
                         {it.vorlage_nr && <p className="text-xs text-muted-foreground">Vorlage {it.vorlage_nr}</p>}
