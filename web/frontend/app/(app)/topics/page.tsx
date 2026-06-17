@@ -172,7 +172,7 @@ export default function TopicsPage() {
                   <Button variant="secondary" size="sm" onClick={() => viewMatches(t)}>
                     <FileText className="h-4 w-4" /> Treffer
                   </Button>
-                  <Button variant="danger" size="sm" onClick={() => setConfirmDeleteId(t.id)} disabled={deleteMutation.isPending}>
+                  <Button variant="danger" size="sm" aria-label="Löschen" onClick={() => setConfirmDeleteId(t.id)} disabled={deleteMutation.isPending}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>

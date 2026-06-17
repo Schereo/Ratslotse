@@ -3,6 +3,7 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests/e2e",
   timeout: 30_000,
+  expect: { timeout: 10_000 }, // auth API call can take a few seconds on first render
   retries: 0,
   workers: 1, // serial so the shared backend DB stays consistent
 

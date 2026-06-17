@@ -30,69 +30,39 @@ test.describe("NWZ Artikelsuche", () => {
   });
 
   test("unlocks search after mock-successful verification", async ({ page }) => {
-    // Mock: credential verify succeeds, returns user with nwz_verified: true
-    await page.route("**/api/account/nwz-credentials", (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          id: 1,
-          email: "admin@test.de",
-          role: "admin",
-          status: "active",
-          linked: false,
-          nwz_verified: true,
-          nwz_username: "testuser",
-          telegram_chat_id: null,
-        }),
-      }),
-    );
-    // Also mock /auth/me to reflect verified state after refresh
+    // Stateful: auth/me returns nwz_verified=false initially, true after POST succeeds.
+    let verified = false;
     await page.route("**/api/auth/me", (route) =>
       route.fulfill({
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
-          id: 1,
-          email: "admin@test.de",
-          role: "admin",
-          status: "active",
-          linked: false,
-          nwz_verified: true,
-          nwz_username: "testuser",
-          telegram_chat_id: null,
+          id: 1, email: "admin@test.de", role: "admin", status: "active",
+          linked: false, nwz_verified: verified, nwz_username: verified ? "testuser" : null, telegram_chat_id: null,
         }),
       }),
     );
-    // Mock search results
-    await page.route("**/api/nwz/search**", (route) =>
+    await page.route("**/api/account/nwz-credentials", (route) => {
+      verified = true;
       route.fulfill({
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
-          results: [
-            {
-              catalog: 1,
-              refid: "abc",
-              pub_date: "2026-06-01",
-              category_name: "Oldenburg",
-              title: "Neues Radwegprojekt in der Innenstadt",
-              subtitle: "Stadtrat beschließt Ausbau",
-              authors: "Max Mustermann",
-              excerpt: "Die Stadt Oldenburg plant einen <mark>Radweg</mark> durch die Innenstadt.",
-              rank: -1.5,
-            },
-          ],
-          count: 1,
+          id: 1, email: "admin@test.de", role: "admin", status: "active",
+          linked: false, nwz_verified: true, nwz_username: "testuser", telegram_chat_id: null,
         }),
+      });
+    });
+    await page.route("**/api/nwz/search**", (route) =>
+      route.fulfill({
+        status: 200, contentType: "application/json",
+        body: JSON.stringify({ results: [], count: 0 }),
       }),
     );
-    // Mock categories
     await page.route("**/api/nwz/categories", (route) =>
       route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ categories: ["Oldenburg", "Wirtschaft"] }),
+        status: 200, contentType: "application/json",
+        body: JSON.stringify({ categories: [] }),
       }),
     );
 
@@ -100,7 +70,7 @@ test.describe("NWZ Artikelsuche", () => {
     await page.getByLabel("NWZ-Benutzername / E-Mail").fill("testuser@nwz.de");
     await page.locator('input[type="password"]').first().fill("secret");
     await page.getByRole("button", { name: "Verifizieren" }).click();
-    // After verification, we should see the search UI
+    // After verification the search UI should appear
     await expect(page.locator('input[placeholder*="Suchbegriff"]')).toBeVisible();
     await page.screenshot({ path: "test-results/screenshots/03-nwz-search-unlocked.png", fullPage: true });
   });

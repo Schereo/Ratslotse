@@ -157,7 +157,7 @@ class Store:
     def __init__(self, path: str | Path):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self._conn = sqlite3.connect(self.path, timeout=15)
+        self._conn = sqlite3.connect(self.path, timeout=15, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         # WAL allows concurrent readers/writer (bot + cron + web API share this
         # file); busy_timeout lets writers wait instead of failing immediately.
