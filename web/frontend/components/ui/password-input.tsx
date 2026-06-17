@@ -13,6 +13,7 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, React.InputHTMLA
       <div className="relative">
         <Input
           ref={ref}
+          id={props.id}
           type={show ? "text" : "password"}
           className={cn("pr-10", className)}
           {...props}

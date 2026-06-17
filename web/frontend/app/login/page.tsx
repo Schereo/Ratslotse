@@ -39,12 +39,12 @@ export default function LoginPage() {
         <p className="mt-3 text-sm text-muted-foreground">Melde dich an, um fortzufahren.</p>
         <form onSubmit={onSubmit} className="mt-6 space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">E-Mail</label>
-            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus autoComplete="email" />
+            <label htmlFor="email" className="mb-1 block text-sm font-medium text-foreground">E-Mail</label>
+            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus autoComplete="email" />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">Passwort</label>
-            <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
+            <label htmlFor="password" className="mb-1 block text-sm font-medium text-foreground">Passwort</label>
+            <PasswordInput id="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Button type="submit" disabled={busy} className="w-full">
