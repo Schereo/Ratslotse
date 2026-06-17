@@ -28,7 +28,10 @@ test.describe("Topics", () => {
       route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ detail: "Konto noch nicht mit Telegram verbunden." }) }),
     );
     await page.goto("/topics");
-    await expect(page.getByText(/Telegram/)).toBeVisible();
+    // Scope to <main>: getByText(/Telegram/) alone matches the sidebar nav link
+    // (always present) and would pass even if the gate never rendered.
+    await expect(page.locator("main").getByText(/Verknüpfe zuerst dein Konto mit Telegram/)).toBeVisible();
+    await expect(page.getByRole("link", { name: /Jetzt verbinden/ })).toBeVisible();
     await page.screenshot({ path: "test-results/screenshots/05-topics-gate.png", fullPage: true });
   });
 

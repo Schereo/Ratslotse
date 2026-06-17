@@ -9,6 +9,9 @@ export default defineConfig({
 
   use: {
     baseURL: "http://localhost:3000",
+    // Disable CSS animations/transitions so screenshots aren't captured mid-fade
+    // (dialogs use a 200ms fade-in/zoom-in that otherwise renders semi-transparent).
+    reducedMotion: "reduce",
     // Full-page screenshot after every test so you can see the UI without a headed browser.
     screenshot: "on",
     // Keep video + trace only on failures — useful for debugging.

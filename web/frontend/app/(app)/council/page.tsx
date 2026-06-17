@@ -82,7 +82,7 @@ export default function CouncilPage() {
               <option value="">Alle Ausschüsse</option>
               {committees.map((c) => <option key={c} value={c}>{c}</option>)}
             </Select>
-            <div className="flex gap-1 rounded-md border border-input bg-card p-1">
+            <div className="flex gap-1 rounded-md bg-muted p-1">
               {(["upcoming", "recent", "all"] as Scope[]).map((s) => (
                 <button
                   key={s}
@@ -90,7 +90,9 @@ export default function CouncilPage() {
                   onClick={() => { setScope(s); setQ(""); setCommittee(""); }}
                   className={cn(
                     "flex-1 rounded-sm px-2 py-1.5 text-sm font-medium transition-colors",
-                    scope === s && !q && !committee ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent",
+                    scope === s && !q && !committee
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:bg-background/60 hover:text-foreground",
                   )}
                 >
                   {s === "upcoming" ? "Kommend" : s === "recent" ? "Vergangen" : "Alle"}
@@ -116,7 +118,7 @@ export default function CouncilPage() {
           )
         ) : (
           <div className="space-y-3">
-            <p className="text-sm font-medium text-muted-foreground">{sessions.length} Sitzungen</p>
+            <p className="text-sm font-medium text-muted-foreground">{sessions.length} {sessions.length === 1 ? "Sitzung" : "Sitzungen"}</p>
             {sessions.map((s) => (
               <button
                 key={s.ksinr}
