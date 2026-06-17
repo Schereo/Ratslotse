@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from . import prompts
+from . import llm, prompts
 from .classify import _page_from_refid
 from .store import Store, TopicRow
 from .telegram_bot import reply, reply_with_buttons, edit_message_buttons, answer_callback_query
@@ -593,12 +593,7 @@ def _vagueness_hint(name: str, description: str) -> dict | None:
     ``suggestion`` is a concrete, ready-to-use improved description.
     """
     import json
-    from openai import OpenAI
-    client = OpenAI(
-        api_key=os.environ["OPENROUTER_API_KEY"],
-        base_url="https://openrouter.ai/api/v1",
-    )
-    resp = client.chat.completions.create(
+    resp = llm.chat_complete(
         model="openai/gpt-4o-mini",
         temperature=0,
         messages=[

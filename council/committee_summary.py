@@ -1,11 +1,8 @@
 from __future__ import annotations
 
 import json
-import os
 
-from openai import OpenAI
-
-from nwz import prompts
+from nwz import llm, prompts
 from .scraper import AgendaItem
 
 MODEL = "openai/gpt-4o-mini"
@@ -40,11 +37,7 @@ def summarize_agenda(
     system = prompts.get("committee_summary_system")
     prompt = prompts.render("committee_summary_user", committee=committee, items_text=items_text)
 
-    client = OpenAI(
-        api_key=os.environ["OPENROUTER_API_KEY"],
-        base_url="https://openrouter.ai/api/v1",
-    )
-    resp = client.chat.completions.create(
+    resp = llm.chat_complete(
         model=MODEL,
         response_format={"type": "json_object"},
         messages=[

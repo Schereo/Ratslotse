@@ -1,29 +1,15 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 from typing import Any
 
-from openai import OpenAI
-
-from nwz import prompts
+from nwz import llm, prompts
 from .scraper import CouncilScraper, CouncilSession
 from .store import CouncilStore
 
 BASE_URL = "https://buergerinfo.oldenburg.de"
 MODEL = "openai/gpt-4o-mini"
-_client: OpenAI | None = None
-
-
-def _get_client() -> OpenAI:
-    global _client
-    if _client is None:
-        _client = OpenAI(
-            api_key=os.environ["OPENROUTER_API_KEY"],
-            base_url="https://openrouter.ai/api/v1",
-        )
-    return _client
 
 
 def _classify_agenda(session: CouncilSession, topics: list[dict]) -> dict[int, list[str]]:
@@ -53,7 +39,7 @@ def _classify_agenda(session: CouncilSession, topics: list[dict]) -> dict[int, l
         topics_text=topics_text,
     )
 
-    resp = _get_client().chat.completions.create(
+    resp = llm.chat_complete(
         model=MODEL,
         response_format={"type": "json_object"},
         messages=[

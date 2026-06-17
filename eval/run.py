@@ -28,9 +28,8 @@ SUITE = "verify"
 
 def build_predict():
     """Construct the real predictor (needs OPENROUTER_API_KEY)."""
-    from nwz.classify import _get_client, _verify_match
-    client = _get_client()
-    return lambda case: _verify_match(client, case["topic"], case["article"])
+    from nwz.classify import _verify_match
+    return lambda case: _verify_match(case["topic"], case["article"])
 
 
 def main() -> None:

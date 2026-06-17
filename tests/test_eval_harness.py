@@ -199,8 +199,8 @@ def test_digest_build_predict_extracts_topic_refid_pairs(monkeypatch):
             ]})
         return json.dumps({"relevant": True})  # pass-2 verify keeps both
 
-    import nwz.classify as classify
-    monkeypatch.setattr(classify, "_get_client", lambda: FakeClient(handler))
+    from nwz import llm
+    monkeypatch.setattr(llm, "get_client", lambda: FakeClient(handler))
 
     predict = run_digest.build_predict()
     assert predict(case) == {(10, "d2/5/1"), (10, "d2/5/2")}
@@ -224,8 +224,8 @@ def test_digest_verifier_can_drop_a_pass1_match(monkeypatch):
         user = kwargs["messages"][1]["content"]
         return json.dumps({"relevant": "Bäume" not in user})
 
-    import nwz.classify as classify
-    monkeypatch.setattr(classify, "_get_client", lambda: FakeClient(handler))
+    from nwz import llm
+    monkeypatch.setattr(llm, "get_client", lambda: FakeClient(handler))
 
     predict = run_digest.build_predict()
     # d2/9/3 (Bäume) should be dropped by the verifier → only the bike lane remains
@@ -243,8 +243,8 @@ def test_watcher_build_predict_maps_index_to_topic_id(monkeypatch):
             {"topic_index": 2, "item_numbers": ["Ö 2"]},
         ]})
 
-    import council.watcher as watcher
-    monkeypatch.setattr(watcher, "_get_client", lambda: FakeClient(handler))
+    from nwz import llm
+    monkeypatch.setattr(llm, "get_client", lambda: FakeClient(handler))
 
     predict = run_watcher.build_predict()
     assert predict(case) == {(10, "Ö 3"), (30, "Ö 2")}
@@ -275,8 +275,8 @@ def test_watcher_end_to_end_scores_perfect_with_oracle(monkeypatch):
                 return json.dumps(ans)
         return json.dumps({"matches": []})
 
-    import council.watcher as watcher
-    monkeypatch.setattr(watcher, "_get_client", lambda: FakeClient(handler))
+    from nwz import llm
+    monkeypatch.setattr(llm, "get_client", lambda: FakeClient(handler))
 
     res = harness.run_labelset_suite(
         "watcher", cases, run_watcher.build_predict(), run_watcher.expected_of,
@@ -297,9 +297,8 @@ def test_committee_build_predict_truthiness(monkeypatch):
         has = "Bebauungsplan" in items or "Radwegekonzept" in items
         return json.dumps({"has_content": has, "items": [{"number": "Ö 2", "summary": "s"}] if has else []})
 
-    import council.committee_summary as cs
-    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")  # read as an arg before our mock runs
-    monkeypatch.setattr(cs, "OpenAI", lambda **kw: FakeClient(handler))
+    from nwz import llm
+    monkeypatch.setattr(llm, "get_client", lambda: FakeClient(handler))
 
     predict = run_committee.build_predict()
     assert predict(content_case) is True
