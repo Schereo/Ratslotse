@@ -263,6 +263,29 @@ def test_admin_users_list_includes_status(client):
     assert "nwz_verified_at" in users[0]
 
 
+# ---- account: change password ----
+def test_change_password_success(client):
+    _register(client)
+    r = client.post(
+        "/api/account/change-password",
+        json={"current_password": "password123", "new_password": "newpassword456"},
+    )
+    assert r.status_code == 200
+    # Old cookie still valid in this request (re-issued), but old password should fail login
+    fresh = TestClient(app)
+    assert fresh.post("/api/auth/login", json={"email": "admin@test.de", "password": "password123"}).status_code == 401
+    assert fresh.post("/api/auth/login", json={"email": "admin@test.de", "password": "newpassword456"}).status_code == 200
+
+
+def test_change_password_wrong_current(client):
+    _register(client)
+    r = client.post(
+        "/api/account/change-password",
+        json={"current_password": "wrong", "new_password": "newpassword456"},
+    )
+    assert r.status_code == 400
+
+
 # ---- link endpoints ----
 def test_link_request_and_status(client):
     _register(client)

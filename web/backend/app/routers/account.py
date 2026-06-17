@@ -1,7 +1,7 @@
-"""Account self-service: verify the user's own NWZ subscription credentials."""
+"""Account self-service: NWZ credentials and password management."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
 from nwz.api import NWZClient
 from nwz.store import Store
@@ -9,8 +9,9 @@ from nwz.store import Store
 from ..config import get_settings
 from ..deps import get_store, require_active
 from ..ratelimit import nwz_creds_limiter
-from ..schemas import NwzCredentialsIn, UserOut
-from .auth import _to_out
+from ..schemas import ChangePasswordRequest, NwzCredentialsIn, UserOut
+from ..security import hash_password, verify_password
+from .auth import _set_auth_cookie, _to_out
 
 router = APIRouter(prefix="/api/account", tags=["account"])
 
@@ -33,3 +34,19 @@ def verify_nwz_credentials(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "NWZ-Login ungültig. Bitte prüfe Benutzername und Passwort.")
     store.set_nwz_verified(user["id"], body.nwz_username.strip())
     return _to_out(store.get_web_user_by_id(user["id"]))
+
+
+@router.post("/change-password", response_model=UserOut)
+def change_password(
+    body: ChangePasswordRequest,
+    response: Response,
+    user: dict = Depends(require_active),
+    store: Store = Depends(get_store),
+) -> UserOut:
+    if not verify_password(body.current_password, user["password_hash"]):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Aktuelles Passwort ist falsch.")
+    store.update_password_hash(user["id"], hash_password(body.new_password))
+    store.increment_token_version(user["id"])
+    updated = store.get_web_user_by_id(user["id"])
+    _set_auth_cookie(response, updated)
+    return _to_out(updated)

@@ -14,4 +14,5 @@ export {
 } from "./dialog";
 export { Sheet, SheetTrigger, SheetClose, SheetContent, SheetTitle } from "./sheet";
 export { Toaster, toast } from "./sonner";
+export { ConfirmDialog } from "./confirm-dialog";
 export { cn, formatDate } from "@/lib/utils";

@@ -110,6 +110,7 @@ CREATE TABLE IF NOT EXISTS web_users (
     telegram_chat_id INTEGER,
     nwz_username     TEXT,
     nwz_verified_at  TEXT,
+    token_version    INTEGER NOT NULL DEFAULT 0,
     created_at       TEXT NOT NULL
 );
 
@@ -210,6 +211,8 @@ class Store:
                     self._conn.execute("ALTER TABLE web_users ADD COLUMN nwz_username TEXT")
                 if "nwz_verified_at" not in wu_cols:
                     self._conn.execute("ALTER TABLE web_users ADD COLUMN nwz_verified_at TEXT")
+                if "token_version" not in wu_cols:
+                    self._conn.execute("ALTER TABLE web_users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0")
         self._conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_topics_chat ON topics(chat_id)"
         )
@@ -297,6 +300,43 @@ class Store:
 
     def count_web_users(self) -> int:
         return self._conn.execute("SELECT COUNT(*) FROM web_users").fetchone()[0]
+
+    def increment_token_version(self, user_id: int) -> int:
+        """Bump token_version so all existing JWTs for this user become invalid."""
+        with self._conn:
+            self._conn.execute(
+                "UPDATE web_users SET token_version = token_version + 1 WHERE id = ?", (user_id,)
+            )
+        row = self._conn.execute("SELECT token_version FROM web_users WHERE id = ?", (user_id,)).fetchone()
+        return row[0] if row else 0
+
+    def update_password_hash(self, user_id: int, password_hash: str) -> None:
+        with self._conn:
+            self._conn.execute(
+                "UPDATE web_users SET password_hash = ? WHERE id = ?", (password_hash, user_id)
+            )
+
+    def get_users_with_topic_count(self) -> list[dict]:
+        """Return telegram users with their topic count in a single query (avoids N+1)."""
+        rows = self._conn.execute(
+            """
+            SELECT u.chat_id, u.username, u.added_at,
+                   COUNT(t.id) AS topic_count
+            FROM users u
+            LEFT JOIN topics t ON t.chat_id = u.chat_id
+            GROUP BY u.chat_id, u.username, u.added_at
+            ORDER BY u.added_at
+            """
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def get_topic_for_user(self, chat_id: int, topic_id: int) -> TopicRow | None:
+        """Fetch a single topic belonging to chat_id — O(1) vs scanning all topics."""
+        row = self._conn.execute(
+            "SELECT id, chat_id, name, description, created_at FROM topics WHERE id = ? AND chat_id = ?",
+            (topic_id, chat_id),
+        ).fetchone()
+        return TopicRow(**dict(row)) if row else None
 
     def create_link_code(self, web_user_id: int, code: str, ttl_minutes: int = 15) -> None:
         from datetime import timedelta

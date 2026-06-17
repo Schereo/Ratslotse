@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -14,6 +14,26 @@ interface LinkCode {
 interface LinkStatus {
   linked: boolean;
   telegram_chat_id: number | null;
+}
+
+function useCountdown(expiresInMinutes: number | null) {
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  const startRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (expiresInMinutes === null) { setSecondsLeft(null); return; }
+    startRef.current = Date.now();
+    setSecondsLeft(expiresInMinutes * 60);
+    const id = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - (startRef.current ?? Date.now())) / 1000);
+      const remaining = expiresInMinutes * 60 - elapsed;
+      if (remaining <= 0) { setSecondsLeft(0); clearInterval(id); }
+      else setSecondsLeft(remaining);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [expiresInMinutes]);
+
+  return secondsLeft;
 }
 
 export default function LinkPage() {
@@ -31,8 +51,11 @@ export default function LinkPage() {
 
   const requestMutation = useMutation({
     mutationFn: () => api.post<LinkCode>("/link/request"),
-    onSuccess: (c) => setCode(c),
+    onSuccess: (c) => { setCode(c); },
   });
+
+  const countdown = useCountdown(code?.expires_in_minutes ?? null);
+  const expired = countdown !== null && countdown <= 0;
 
   const statusData = statusQuery.data;
   const linked = statusData?.linked || user?.linked;
@@ -103,7 +126,15 @@ export default function LinkPage() {
                 </li>
                 <li>Diese Seite aktualisiert sich automatisch, sobald die Verbindung steht.</li>
               </ol>
-              <p className="mt-4 text-xs text-muted-foreground">Der Code ist {code.expires_in_minutes} Minuten gültig.</p>
+              {expired ? (
+                <p className="mt-4 text-xs text-destructive font-medium">Code abgelaufen — bitte neuen Code erzeugen.</p>
+              ) : countdown !== null ? (
+                <p className="mt-4 text-xs text-muted-foreground">
+                  Code gültig noch {Math.floor(countdown / 60)}:{String(countdown % 60).padStart(2, "0")} min
+                </p>
+              ) : (
+                <p className="mt-4 text-xs text-muted-foreground">Der Code ist {code.expires_in_minutes} Minuten gültig.</p>
+              )}
               <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted border-t-primary" />
                 Warte auf Bestätigung…

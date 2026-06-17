@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { Badge, Card } from "@/components/ui";
 
 const tiles = [
-  { href: "/nwz", title: "NWZ-Suche", desc: "Das Artikel-Archiv per Volltext durchsuchen.", icon: Newspaper },
+  { href: "/nwz", title: "Artikelsuche", desc: "Das Artikel-Archiv per Volltext durchsuchen.", icon: Newspaper },
   { href: "/council", title: "Ratsinformationssystem", desc: "Sitzungen und Tagesordnungen durchsuchen.", icon: Landmark },
   { href: "/topics", title: "Meine Themen", desc: "Themen verwalten und Treffer ansehen.", icon: Tags },
   { href: "/link", title: "Telegram verbinden", desc: "Konto mit dem Bot verknüpfen.", icon: Link2 },

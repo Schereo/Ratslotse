@@ -19,6 +19,7 @@ export default function CouncilPage() {
   const [committees, setCommittees] = useState<string[]>([]);
   const [sessions, setSessions] = useState<CouncilSession[]>([]);
   const [loading, setLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
   const [detail, setDetail] = useState<SessionDetail | null>(null);
 
   useEffect(() => {
@@ -27,6 +28,7 @@ export default function CouncilPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setHasSearched(true);
     try {
       const effectiveScope = q || committee ? "all" : scope;
       const data = await api.get<{ sessions: CouncilSession[] }>(
@@ -92,7 +94,9 @@ export default function CouncilPage() {
         {loading ? (
           <Spinner />
         ) : sessions.length === 0 ? (
-          <EmptyState title="Keine Sitzungen gefunden" />
+          hasSearched
+            ? <EmptyState title="Keine Sitzungen gefunden" hint="Versuche andere Suchbegriffe oder Filter." />
+            : <EmptyState title="Noch keine Sitzungen vorhanden" hint="Klicke auf 'Suchen', um Sitzungen zu laden." />
         ) : (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">{sessions.length} Sitzungen</p>

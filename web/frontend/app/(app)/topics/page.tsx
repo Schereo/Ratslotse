@@ -7,7 +7,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
 import { Topic, TopicMatch } from "@/lib/types";
 import {
-  Badge, Button, Card, EmptyState, Input, Spinner, Textarea, formatDate,
+  Badge, Button, Card, ConfirmDialog, EmptyState, Input, Spinner, Textarea, formatDate,
   Dialog, DialogContent, DialogHeader, DialogTitle, toast,
 } from "@/components/ui";
 
@@ -16,6 +16,7 @@ export default function TopicsPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [matchesFor, setMatchesFor] = useState<{ topic: Topic; matches: TopicMatch[] } | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
   const topicsQuery = useQuery({
     queryKey: ["topics"],
@@ -73,8 +74,10 @@ export default function TopicsPage() {
 
   const loading = topicsQuery.isPending;
   const needsLink = topicsQuery.error instanceof ApiError && (topicsQuery.error as ApiError).status === 409;
+  const isError = topicsQuery.isError && !needsLink;
 
   if (loading) return <Spinner />;
+  if (isError) return <p className="text-sm text-destructive mt-6">Fehler beim Laden der Themen. Bitte Seite neu laden.</p>;
 
   if (needsLink) {
     return (
@@ -96,6 +99,14 @@ export default function TopicsPage() {
 
   return (
     <div>
+      <ConfirmDialog
+        open={confirmDeleteId !== null}
+        onOpenChange={(o) => !o && setConfirmDeleteId(null)}
+        title="Thema löschen"
+        description="Alle gespeicherten Treffer für dieses Thema werden ebenfalls gelöscht."
+        confirmLabel="Löschen"
+        onConfirm={() => confirmDeleteId !== null && deleteMutation.mutate(confirmDeleteId)}
+      />
       <h1 className="text-2xl font-bold text-foreground">Meine Themen</h1>
       <p className="mt-1 text-sm text-muted-foreground">Themen, nach denen der Bot täglich die NWZ durchsucht.</p>
 
@@ -136,7 +147,7 @@ export default function TopicsPage() {
                   <Button variant="secondary" size="sm" onClick={() => viewMatches(t)}>
                     <FileText className="h-4 w-4" /> Treffer
                   </Button>
-                  <Button variant="danger" size="sm" onClick={() => deleteMutation.mutate(t.id)} disabled={deleteMutation.isPending}>
+                  <Button variant="danger" size="sm" onClick={() => setConfirmDeleteId(t.id)} disabled={deleteMutation.isPending}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>

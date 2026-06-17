@@ -41,12 +41,15 @@ def get_current_user(request: Request, store: Store = Depends(get_store)) -> dic
     token = _token_from_request(request)
     if not token:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Nicht angemeldet.")
-    sub = decode_access_token(token)
-    if not sub:
+    decoded = decode_access_token(token)
+    if not decoded:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Sitzung ungültig oder abgelaufen.")
+    sub, token_version = decoded
     user = store.get_web_user_by_id(int(sub))
     if not user:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Konto nicht gefunden.")
+    if token_version != user.get("token_version", 0):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Sitzung wurde beendet. Bitte neu anmelden.")
     return user
 
 

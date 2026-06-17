@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Newspaper, Landmark, Tags, Link2, Settings, LogOut, Menu, Moon, Sun } from "lucide-react";
+import { Home, Newspaper, Landmark, Tags, Link2, Settings, LogOut, Menu, Moon, Sun, UserCircle } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
@@ -11,10 +11,11 @@ import { toggleTheme } from "@/lib/theme";
 
 const LINKS = [
   { href: "/dashboard", label: "Übersicht", icon: Home },
-  { href: "/nwz", label: "NWZ-Suche", icon: Newspaper },
+  { href: "/nwz", label: "Artikelsuche", icon: Newspaper },
   { href: "/council", label: "Ratsinfo", icon: Landmark },
   { href: "/topics", label: "Meine Themen", icon: Tags },
   { href: "/link", label: "Telegram", icon: Link2 },
+  { href: "/account", label: "Mein Konto", icon: UserCircle },
 ];
 
 function useDarkMode() {

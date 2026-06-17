@@ -16,9 +16,9 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 COOKIE_NAME = "access_token"
 
 
-def _set_auth_cookie(response: Response, user_id: int) -> None:
+def _set_auth_cookie(response: Response, user: dict) -> None:
     settings = get_settings()
-    token = create_access_token(user_id)
+    token = create_access_token(user["id"], user.get("token_version", 0))
     response.set_cookie(
         key=COOKIE_NAME,
         value=token,
@@ -61,8 +61,9 @@ def register(
     role = "admin" if is_admin else "user"
     user_status = "active" if is_admin else "pending"
     user_id = store.create_web_user(email, hash_password(body.password), role, user_status)
-    _set_auth_cookie(response, user_id)
-    return _to_out(store.get_web_user_by_id(user_id))
+    created_user = store.get_web_user_by_id(user_id)
+    _set_auth_cookie(response, created_user)
+    return _to_out(created_user)
 
 
 @router.post("/login", response_model=UserOut)
@@ -76,7 +77,7 @@ def login(
     user = store.get_web_user_by_email(str(body.email))
     if not user or not verify_password(body.password, user["password_hash"]):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "E-Mail oder Passwort falsch.")
-    _set_auth_cookie(response, user["id"])
+    _set_auth_cookie(response, user)
     return _to_out(user)
 
 

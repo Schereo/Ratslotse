@@ -12,7 +12,7 @@ router = APIRouter(prefix="/api/topics", tags=["topics"])
 
 
 def _own_topic(store: Store, chat_id: int, topic_id: int):
-    topic = next((t for t in store.get_topics(chat_id) if t.id == topic_id), None)
+    topic = store.get_topic_for_user(chat_id, topic_id)
     if topic is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Thema nicht gefunden.")
     return topic
