@@ -54,9 +54,9 @@ test.describe("Ratsinformationssystem", () => {
 
   test("shows session cards loaded from backend", async ({ page }) => {
     await page.goto("/council");
-    // "Bauausschuss" also appears in the committee filter <option> — use the card heading
-    await expect(page.locator("main").getByRole("heading", { name: "Bauausschuss" })).toBeVisible();
-    await expect(page.getByText(/15\. Juli 2026|2026-07-15/)).toBeVisible();
+    // h3 is inside a <button> — Chrome suppresses its heading role, use CSS tag selector
+    await expect(page.locator("main h3", { hasText: "Bauausschuss" })).toBeVisible();
+    await expect(page.getByText(/15\.07\.2026/)).toBeVisible(); // formatDate returns dd.mm.yyyy
     await expect(page.getByText("3 TOP")).toBeVisible();
     await page.screenshot({ path: "test-results/screenshots/04-council-sessions.png", fullPage: true });
   });
@@ -67,8 +67,8 @@ test.describe("Ratsinformationssystem", () => {
     );
 
     await page.goto("/council");
-    // Click the card heading (h3), not the <option> in the filter dropdown
-    await page.locator("main").getByRole("heading", { name: "Bauausschuss" }).click();
+    // Click the card (button) that contains the h3 — target the outer button
+    await page.locator("main button", { hasText: "Bauausschuss" }).first().click();
     // Dialog should open with agenda items
     await expect(page.getByRole("dialog")).toBeVisible();
     await expect(page.getByText("Bebauungsplan Hafen")).toBeVisible();
