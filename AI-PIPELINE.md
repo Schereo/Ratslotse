@@ -160,7 +160,18 @@ eine *präventive* Maßnahme, um das Matching scharf zu halten.
 
 **Konsequenz:** Um die *DB-gestützte* End-to-End-Pipeline lokal zu testen, müsste man
 entweder die Live-Scraper laufen lassen (braucht NWZ- + OpenRouter-Credentials) **oder
-einen Seeder schreiben**. Letzteres ist die zentrale Lücke (s. §7/§8).
+einen Seeder schreiben**.
+
+> **Update (Roadmap-Punkt 2 umgesetzt):** `scripts/seed_demo.py` befüllt jetzt beide
+> DBs mit realistischen Demo-Daten — 3 ganze NWZ-Ausgaben (10 Volltext-Artikel über
+> aufeinanderfolgende Tage) und 4 Ratssitzungen (vergangene + zukünftige, mit TOPs),
+> plus einen Demo-Nutzer mit Themen und Ausschuss-Abos. Die Themen sind so gewählt,
+> dass das Matching echte True/False-Positives hat (z. B. Stadion-Beschluss vs.
+> Handballspiel, lokale Volt-Liste vs. bundesweiter Grünen-Parteitag). Damit lassen
+> sich Digest, Watcher, Ausschuss-Zusammenfassung und Follow-up lokal **ohne
+> Live-Scraping** durchspielen (LLM-Schritte brauchen weiterhin `OPENROUTER_API_KEY`).
+> Aufruf: `python scripts/seed_demo.py [--reset|--clear]`; Ziel-DBs über `NWZ_DB`/
+> `COUNCIL_DB` überschreibbar, Demo-Zeilen nutzen reservierte IDs (≥ 900000).
 
 ---
 
@@ -224,13 +235,14 @@ versionieren, um Regressionen zu sehen.
 - Fälle aus **echten** False Positives/Negatives wachsen lassen, nicht nur synthetisch.
 - Eval in CI: bei jedem Prompt-Change `--compare` gegen Baseline (Regressions-Gate).
 
-### 8.3 Realistischer Seeder / Fixture-Datensatz
+### 8.3 Realistischer Seeder / Fixture-Datensatz — ✅ umgesetzt
 **BP:** Reproduzierbare, realistische Testdaten sind Voraussetzung für End-to-End-Tests.
-**Hier:** Ein `scripts/seed_demo.py` schreiben, das die DB mit **mehreren ganzen
-NWZ-Ausgaben** und **mehreren Ratssitzungen samt TOPs** befüllt (anonymisiert/synthetisch
-oder aus einem einmaligen Live-Pull eingefroren als JSON-Fixture). Damit lassen sich
-Digest, Watcher und Zusammenfassung lokal ohne Live-Scraping durchspielen.
-(Direkte Antwort auf die Ausgangsfrage: genau das fehlt aktuell.)
+**Hier:** `scripts/seed_demo.py` schreibt die DB mit **mehreren ganzen NWZ-Ausgaben**
+und **mehreren Ratssitzungen samt TOPs** (synthetisch, reservierte IDs ≥ 900000,
+idempotent, `--reset`/`--clear`). Damit lassen sich Digest, Watcher und Zusammenfassung
+lokal ohne Live-Scraping durchspielen. *Nächster Schritt:* optional einen Teil als
+eingefrorene JSON-Fixture aus einem einmaligen Live-Pull ergänzen, um echte
+NWZ-/Ratsinfo-Formatierung abzudecken.
 
 ### 8.4 Robustheit: Retry/Backoff + zentraler Client
 **BP:** Exponentielles Backoff respektiert Rate-Limits ohne Durchsatzverlust.
@@ -263,7 +275,7 @@ als Konstanten/Config bündeln (statt verteilt hartkodiert).
 | Prio | Maßnahme | Aufwand | Wirkung |
 |------|----------|---------|---------|
 | **1** | Eval-Baseline einchecken (`--save`) + Eval-Set für Pass-1 & Watcher | M | Macht Qualität überhaupt messbar |
-| **2** | `scripts/seed_demo.py` (ganze Ausgaben + mehrere Sitzungen) | M | Lokale E2E-Tests der Pipeline |
+| **2** | ✅ `scripts/seed_demo.py` (ganze Ausgaben + mehrere Sitzungen) — **erledigt** | M | Lokale E2E-Tests der Pipeline |
 | **3** | Zentraler LLM-Client mit Retry/Backoff (`tenacity`) | S | Keine Crash-Cron-Läufe mehr |
 | **4** | Pydantic-Schema-Validierung der LLM-Antworten | M | Schluss mit stillen Strukturfehlern |
 | **5** | `temperature=0` überall + Follow-up-Prompt nach `prompts.py` | S | Konsistenz, Admin-Editierbarkeit |
