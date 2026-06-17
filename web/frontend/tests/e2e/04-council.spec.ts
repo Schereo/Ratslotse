@@ -73,7 +73,9 @@ test.describe("Ratsinformationssystem", () => {
     await expect(page.getByRole("dialog")).toBeVisible();
     await expect(page.getByText("Bebauungsplan Hafen")).toBeVisible();
     await expect(page.getByText("nichtöffentlich")).toBeVisible();
-    await page.screenshot({ path: "test-results/screenshots/04-council-detail.png", fullPage: true });
+    // animations: "disabled" fast-forwards the dialog fade/zoom so the capture
+    // isn't taken mid-animation (which renders the content semi-transparent).
+    await page.screenshot({ path: "test-results/screenshots/04-council-detail.png", fullPage: true, animations: "disabled" });
   });
 
   test("scope tab change triggers reload", async ({ page }) => {

@@ -121,6 +121,8 @@ test.describe("Topics", () => {
     await page.locator('[aria-label*="Löschen"], button:has([data-lucide="trash-2"])').first().click();
     await expect(page.getByRole("dialog")).toBeVisible();
     await expect(page.getByText("Thema löschen")).toBeVisible();
-    await page.screenshot({ path: "test-results/screenshots/05-topics-confirm-dialog.png", fullPage: true });
+    // animations: "disabled" fast-forwards the dialog fade so the capture isn't
+    // taken mid-animation (which renders the content semi-transparent).
+    await page.screenshot({ path: "test-results/screenshots/05-topics-confirm-dialog.png", fullPage: true, animations: "disabled" });
   });
 });
