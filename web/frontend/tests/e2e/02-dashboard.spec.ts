@@ -12,7 +12,8 @@ test.describe("Dashboard", () => {
 
   test("shows Willkommen headline and email", async ({ page }) => {
     await expect(page.getByRole("heading", { name: "Willkommen zurück" })).toBeVisible();
-    await expect(page.getByText("admin@test.de")).toBeVisible();
+    // Email appears in sidebar AND page header — scope to the <main> content area
+    await expect(page.locator("main").getByText("admin@test.de").first()).toBeVisible();
     await page.screenshot({ path: "test-results/screenshots/02-dashboard.png", fullPage: true });
   });
 
@@ -26,10 +27,12 @@ test.describe("Dashboard", () => {
   });
 
   test("quick-access tiles are all visible", async ({ page }) => {
-    await expect(page.getByText("Artikelsuche")).toBeVisible();
-    await expect(page.getByText("Ratsinformationssystem")).toBeVisible();
-    await expect(page.getByText("Meine Themen")).toBeVisible();
-    await expect(page.getByText("Telegram verbinden")).toBeVisible();
+    // Sidebar nav has the same labels — scope to <main> to get the tile headings only
+    const main = page.locator("main");
+    await expect(main.getByRole("heading", { name: "Artikelsuche" })).toBeVisible();
+    await expect(main.getByRole("heading", { name: "Ratsinformationssystem" })).toBeVisible();
+    await expect(main.getByRole("heading", { name: "Meine Themen" })).toBeVisible();
+    await expect(main.getByRole("heading", { name: "Telegram verbinden" })).toBeVisible();
   });
 
   test("clicking Artikelsuche tile navigates to /nwz", async ({ page }) => {
