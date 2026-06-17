@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Prompt, WebUser, TelegramUser } from "@/lib/types";
-import { Badge, Button, Card, ConfirmDialog, Spinner, Textarea, formatDate, toast } from "@/components/ui";
+import { Badge, Button, Card, ConfirmDialog, PageHeader, Spinner, Textarea, formatDate, toast } from "@/components/ui";
 
 type Tab = "prompts" | "users" | "telegram";
 
@@ -23,7 +23,7 @@ export default function AdminPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-foreground">Admin</h1>
+      <PageHeader title="Admin" description="Prompts, Web-Nutzer und Telegram-Whitelist verwalten." />
       <div className="mt-4 flex gap-1 border-b border-border">
         {([
           ["prompts", "Prompts"],

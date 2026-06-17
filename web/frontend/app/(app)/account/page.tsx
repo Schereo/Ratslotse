@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { Button, Card, Input, Label, toast } from "@/components/ui";
+import { Button, Card, Label, PageHeader, PasswordInput, toast } from "@/components/ui";
 
 export default function AccountPage() {
   const { user } = useAuth();
@@ -39,17 +39,15 @@ export default function AccountPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-foreground">Mein Konto</h1>
-      <p className="mt-1 text-sm text-muted-foreground">{user?.email}</p>
+      <PageHeader title="Mein Konto" description={user?.email} />
 
       <Card className="mt-6 max-w-md p-6">
         <h2 className="font-semibold text-foreground">Passwort ändern</h2>
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           <div>
             <Label htmlFor="current-password">Aktuelles Passwort</Label>
-            <Input
+            <PasswordInput
               id="current-password"
-              type="password"
               className="mt-1"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
@@ -59,9 +57,8 @@ export default function AccountPage() {
           </div>
           <div>
             <Label htmlFor="new-password">Neues Passwort</Label>
-            <Input
+            <PasswordInput
               id="new-password"
-              type="password"
               className="mt-1"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
@@ -72,9 +69,8 @@ export default function AccountPage() {
           </div>
           <div>
             <Label htmlFor="confirm-password">Neues Passwort bestätigen</Label>
-            <Input
+            <PasswordInput
               id="confirm-password"
-              type="password"
               className="mt-1"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}

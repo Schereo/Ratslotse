@@ -6,7 +6,7 @@ import { Clock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { DesktopSidebar, MobileTopbar } from "@/components/nav";
+import { DesktopSidebar, MobileTopbar, MobileBottomNav } from "@/components/nav";
 import { Card, Spinner } from "@/components/ui";
 import type { User } from "@/lib/types";
 
@@ -36,10 +36,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <DesktopSidebar />
       <MobileTopbar />
       <main className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+        <div className="mx-auto max-w-5xl px-4 py-6 pb-24 sm:px-6 sm:py-8 md:pb-8">
           {pending ? <PendingNotice email={user.email} /> : children}
         </div>
       </main>
+      <MobileBottomNav />
     </div>
   );
 }

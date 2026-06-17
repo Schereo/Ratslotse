@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { Badge, Button, Card, Spinner } from "@/components/ui";
+import { Badge, Button, Card, PageHeader, Spinner } from "@/components/ui";
 
 interface LinkCode {
   code: string;
@@ -69,8 +69,7 @@ export default function LinkPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-foreground">Telegram verbinden</h1>
-      <p className="mt-1 text-sm text-muted-foreground">Verknüpfe dein Web-Konto mit dem Telegram-Bot.</p>
+      <PageHeader title="Telegram verbinden" description="Verknüpfe dein Web-Konto mit dem Telegram-Bot." />
 
       {linked ? (
         <Card className="mt-6 p-6">

@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
-import { Plus, Trash2, FileText } from "lucide-react";
+import { Plus, Trash2, FileText, Tags } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
 import { Topic, TopicMatch } from "@/lib/types";
 import {
-  Badge, Button, Card, ConfirmDialog, EmptyState, Input, Spinner, Textarea, formatDate,
+  Badge, Button, Card, CardListSkeleton, ConfirmDialog, EmptyState, Input, PageHeader, Textarea, formatDate,
   Dialog, DialogContent, DialogHeader, DialogTitle, toast,
 } from "@/components/ui";
 
@@ -17,6 +17,7 @@ export default function TopicsPage() {
   const [description, setDescription] = useState("");
   const [matchesFor, setMatchesFor] = useState<{ topic: Topic; matches: TopicMatch[] } | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
   const topicsQuery = useQuery({
     queryKey: ["topics"],
@@ -76,13 +77,29 @@ export default function TopicsPage() {
   const needsLink = topicsQuery.error instanceof ApiError && (topicsQuery.error as ApiError).status === 409;
   const isError = topicsQuery.isError && !needsLink;
 
-  if (loading) return <Spinner />;
-  if (isError) return <p className="text-sm text-destructive mt-6">Fehler beim Laden der Themen. Bitte Seite neu laden.</p>;
+  if (loading) {
+    return (
+      <div>
+        <PageHeader title="Meine Themen" description="Themen, nach denen der Bot täglich die NWZ durchsucht." />
+        <div className="mt-6">
+          <CardListSkeleton rows={3} />
+        </div>
+      </div>
+    );
+  }
+  if (isError) {
+    return (
+      <div>
+        <PageHeader title="Meine Themen" />
+        <p className="mt-6 text-sm text-destructive">Fehler beim Laden der Themen. Bitte Seite neu laden.</p>
+      </div>
+    );
+  }
 
   if (needsLink) {
     return (
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Meine Themen</h1>
+        <PageHeader title="Meine Themen" />
         <Card className="mt-6 border-amber-200 bg-amber-50 p-6 text-center">
           <p className="text-amber-800">Verknüpfe zuerst dein Konto mit Telegram, um Themen zu verwalten.</p>
           <Link href="/link" className="mt-2 inline-block font-semibold text-amber-900 underline">
@@ -107,15 +124,14 @@ export default function TopicsPage() {
         confirmLabel="Löschen"
         onConfirm={() => confirmDeleteId !== null && deleteMutation.mutate(confirmDeleteId)}
       />
-      <h1 className="text-2xl font-bold text-foreground">Meine Themen</h1>
-      <p className="mt-1 text-sm text-muted-foreground">Themen, nach denen der Bot täglich die NWZ durchsucht.</p>
+      <PageHeader title="Meine Themen" description="Themen, nach denen der Bot täglich die NWZ durchsucht." />
 
       <Card className="mt-6 p-4">
         <form
           onSubmit={(e) => { e.preventDefault(); addMutation.mutate({ name, description }); }}
           className="space-y-3"
         >
-          <Input placeholder="Name (z. B. Radwege)" value={name} onChange={(e) => setName(e.target.value)} required />
+          <Input ref={nameInputRef} placeholder="Name (z. B. Radwege)" value={name} onChange={(e) => setName(e.target.value)} required />
           <Textarea
             placeholder="Beschreibung — je konkreter, desto besser (z. B. Ausbau und Planung von Radwegen in Oldenburg)"
             value={description}
@@ -131,7 +147,16 @@ export default function TopicsPage() {
 
       <div className="mt-6 space-y-3">
         {topics.length === 0 ? (
-          <EmptyState title="Noch keine Themen" hint="Füge oben dein erstes Thema hinzu." />
+          <EmptyState
+            icon={Tags}
+            title="Noch keine Themen"
+            hint="Lege ein Thema an, nach dem der Bot täglich die NWZ durchsucht."
+            action={
+              <Button size="sm" onClick={() => { nameInputRef.current?.focus(); nameInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }}>
+                <Plus className="h-4 w-4" /> Erstes Thema anlegen
+              </Button>
+            }
+          />
         ) : (
           topics.map((t) => (
             <Card key={t.id} className="p-4">

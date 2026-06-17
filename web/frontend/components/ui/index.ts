@@ -1,8 +1,11 @@
 export { Button } from "./button";
 export type { ButtonProps } from "./button";
 export { Input, Textarea, Select } from "./input";
+export { PasswordInput } from "./password-input";
 export { Label } from "./label";
 export { Card, Badge, Spinner, EmptyState } from "./card";
+export { Skeleton, CardListSkeleton } from "./skeleton";
+export { PageHeader } from "./page-header";
 export {
   Dialog,
   DialogTrigger,
