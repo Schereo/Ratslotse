@@ -186,9 +186,18 @@ Es **gibt** ein Eval-Harness — ein echter Pluspunkt:
   `--save` schreibt ein Zeitstempel-JSON, `--compare` difft gegen den letzten Lauf
   (Regressions-Tracking).
 - **Aber:** `eval/results/` enthält nur `.gitkeep` — **kein gespeicherter Baseline-Lauf**.
-- **Abdeckung:** nur Pass-2-Verifikation. **Keine** Eval für Pass-1-Digest, den
-  Ratsinfo-Watcher, die Ausschuss-Zusammenfassung, den Follow-up-Matcher oder
-  End-to-End-Verhalten.
+
+> **Update (Roadmap-Punkt 1 weitgehend umgesetzt):** Das Eval-Harness wurde zu einem
+> Framework mit **vier Suiten** ausgebaut (`eval/harness.py` + Runner + `eval/README.md`):
+> `verify` (Pass 2), **`digest`** (Pass 1 + Verify gesamt), **`watcher`** (Tagesordnung →
+> Thema) und **`committee`** (Routine-Filter). Digest/Watcher nutzen mengenbasiertes
+> Scoring (Precision/Recall/F1 über `(Thema, Artikel)`- bzw. `(Thema, TOP)`-Paare),
+> messen also Über- und Unter-Matching zugleich. `python eval/run_all.py` liefert ein
+> Scoreboard; `--save`/`--compare` ermöglichen Baseline-Tracking pro Suite.
+> Die Harness-Logik und die LLM-Verdrahtung sind in `tests/test_eval_harness.py`
+> **offline** (Mock-Klassifikator + Fake-OpenAI-Client, 19 Tests) verifiziert.
+> **Offen:** echte Baseline-Zahlen erzeugen (braucht `OPENROUTER_API_KEY`) und den
+> jeweils besten Lauf einchecken; Cases mit echten Produktiv-Fehltreffern erweitern.
 
 ---
 
@@ -224,16 +233,17 @@ OpenRouters Structured-Outputs (`response_format={"type":"json_schema", …}`) n
 oder die Antwort mit Pydantic validieren + bei Fehler **einmal** mit Fehlertext
 nachfragen. Das eliminiert Lücke #3 und macht das fail-open in `_verify_match` sauberer.
 
-### 8.2 Eval ausbauen + Baseline einchecken (das Wichtigste)
+### 8.2 Eval ausbauen + Baseline einchecken (das Wichtigste) — 🟡 Framework umgesetzt
 **BP:** Held-out, handgelabeltes Ground-Truth-Set; Precision/Recall/F1 gegen den Judge;
 mindestens ~80 % P/R anstreben; gleiche Judge-Config über Vergleiche hinweg; Baseline
 versionieren, um Regressionen zu sehen.
 **Hier:**
-- Sofort einen `eval/run.py --save`-Lauf einchecken → Baseline existiert.
-- Eval-Sets ergänzen: **Pass-1-Digest** (Thema × mehrere Artikel), **Ratsinfo-Watcher**
-  (Tagesordnung × Themen), **Ausschuss-Zusammenfassung** (Routine- vs. Inhalts-TOPs).
-- Fälle aus **echten** False Positives/Negatives wachsen lassen, nicht nur synthetisch.
-- Eval in CI: bei jedem Prompt-Change `--compare` gegen Baseline (Regressions-Gate).
+- ✅ Eval-Sets ergänzt: **Pass-1-Digest**, **Ratsinfo-Watcher**, **Ausschuss-Filter**
+  (`eval/cases_*.json` + Runner, mengenbasiertes Scoring). Siehe `eval/README.md`.
+- ✅ Save/Compare-Workflow pro Suite (`--save`/`--compare`), Harness offline getestet.
+- ⏳ **Offen:** echte `--save`-Baseline pro Suite einchecken (braucht Key).
+- ⏳ Fälle aus **echten** False Positives/Negatives wachsen lassen, nicht nur synthetisch.
+- ⏳ Eval in CI: bei jedem Prompt-Change `--compare` gegen Baseline (Regressions-Gate).
 
 ### 8.3 Realistischer Seeder / Fixture-Datensatz — ✅ umgesetzt
 **BP:** Reproduzierbare, realistische Testdaten sind Voraussetzung für End-to-End-Tests.
@@ -274,7 +284,7 @@ als Konstanten/Config bündeln (statt verteilt hartkodiert).
 
 | Prio | Maßnahme | Aufwand | Wirkung |
 |------|----------|---------|---------|
-| **1** | Eval-Baseline einchecken (`--save`) + Eval-Set für Pass-1 & Watcher | M | Macht Qualität überhaupt messbar |
+| **1** | 🟡 Eval-Framework (4 Suiten, offline getestet) — **gebaut**; Live-Baseline einchecken offen | M | Macht Qualität überhaupt messbar |
 | **2** | ✅ `scripts/seed_demo.py` (ganze Ausgaben + mehrere Sitzungen) — **erledigt** | M | Lokale E2E-Tests der Pipeline |
 | **3** | Zentraler LLM-Client mit Retry/Backoff (`tenacity`) | S | Keine Crash-Cron-Läufe mehr |
 | **4** | Pydantic-Schema-Validierung der LLM-Antworten | M | Schluss mit stillen Strukturfehlern |

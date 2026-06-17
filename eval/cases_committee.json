@@ -1,0 +1,36 @@
+[
+  {
+    "id": "committee_has_content",
+    "note": "Inhaltliche TOPs (Bebauungsplan, Radwegekonzept) neben Routine → has_content soll true sein.",
+    "committee": "Bauausschuss",
+    "session_date": "2026-07-01", "session_time": "18:00", "location": "Rathaus, Saal A",
+    "agenda_items": [
+      {"item_number": "Ö 1", "title": "Genehmigung der Tagesordnung", "vorlage_nr": "", "is_public": true},
+      {"item_number": "Ö 2", "title": "Bebauungsplan Nr. 742 – Alter Hafen", "vorlage_nr": "26/0411", "is_public": true},
+      {"item_number": "Ö 3", "title": "Radwegekonzept Innenstadt", "vorlage_nr": "26/0418", "is_public": true}
+    ],
+    "expected": true
+  },
+  {
+    "id": "committee_routine_only",
+    "note": "Nur Routine-TOPs (Tagesordnung, Mitteilungen, Anfragen) → der LLM-Filter soll has_content=false liefern.",
+    "committee": "Finanzausschuss",
+    "session_date": "2026-07-15", "session_time": "16:00", "location": "Rathaus, Saal C",
+    "agenda_items": [
+      {"item_number": "Ö 1", "title": "Genehmigung der Tagesordnung", "vorlage_nr": "", "is_public": true},
+      {"item_number": "Ö 2", "title": "Mitteilungen der Verwaltung", "vorlage_nr": "", "is_public": true},
+      {"item_number": "Ö 3", "title": "Anfragen und Verschiedenes", "vorlage_nr": "", "is_public": true}
+    ],
+    "expected": false
+  },
+  {
+    "id": "committee_fragestunde_only",
+    "note": "Nur Bürgerfragestunde → wird bereits im Code herausgefiltert, kein LLM-Call, leeres Ergebnis (false).",
+    "committee": "Rat der Stadt",
+    "session_date": "2026-07-20", "session_time": "16:00", "location": "Ratssaal",
+    "agenda_items": [
+      {"item_number": "Ö 1", "title": "Einwohnerfragestunde", "vorlage_nr": "", "is_public": true}
+    ],
+    "expected": false
+  }
+]

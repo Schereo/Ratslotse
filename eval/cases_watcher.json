@@ -1,0 +1,56 @@
+[
+  {
+    "id": "watcher_bauausschuss",
+    "note": "Radwegekonzept → Radverkehr; Bebauungsplan → Bauprojekte. Routine-TOP (Genehmigung) matcht nichts; nicht-öffentlicher TOP wird gar nicht klassifiziert.",
+    "session": {
+      "ksinr": 910001, "committee": "Bauausschuss", "session_date": "2099-07-01",
+      "session_time": "18:00", "location": "Rathaus, Saal A",
+      "agenda_items": [
+        {"item_number": "Ö 1", "title": "Genehmigung der Tagesordnung", "vorlage_nr": "", "is_public": true},
+        {"item_number": "Ö 2", "title": "Bebauungsplan Nr. 742 – Alter Hafen", "vorlage_nr": "26/0411", "is_public": true},
+        {"item_number": "Ö 3", "title": "Radwegekonzept Innenstadt – Sachstandsbericht", "vorlage_nr": "26/0418", "is_public": true},
+        {"item_number": "N 1", "title": "Personalangelegenheit", "vorlage_nr": "", "is_public": false}
+      ]
+    },
+    "topics": [
+      {"id": 10, "name": "Radverkehr Oldenburg", "description": "Ausbau von Radwegen, Radverkehrsführung und Verkehrsberuhigung in Oldenburg."},
+      {"id": 30, "name": "Bauprojekte Oldenburg", "description": "Bebauungspläne, größere Bauvorhaben und Stadtentwicklungsprojekte in Oldenburg."}
+    ],
+    "expected_matches": [[10, "Ö 3"], [30, "Ö 2"]]
+  },
+  {
+    "id": "watcher_stadion",
+    "note": "Stadion-Finanzierung → Stadion-Thema; Radverkehr hat hier keinen passenden TOP.",
+    "session": {
+      "ksinr": 910002, "committee": "Stadtentwicklungsausschuss", "session_date": "2099-07-08",
+      "session_time": "17:00", "location": "Rathaus, Saal B",
+      "agenda_items": [
+        {"item_number": "Ö 1", "title": "Genehmigung der Niederschrift", "vorlage_nr": "", "is_public": true},
+        {"item_number": "Ö 2", "title": "Neubau Fußballstadion Marschweg – Finanzierung", "vorlage_nr": "26/0395", "is_public": true},
+        {"item_number": "Ö 3", "title": "Klimaanpassungskonzept – Baumpflanzprogramm", "vorlage_nr": "26/0402", "is_public": true}
+      ]
+    },
+    "topics": [
+      {"id": 1, "name": "Stadion Oldenburg", "description": "Neubau und Finanzierung des Fußballstadions am Marschweg in Oldenburg."},
+      {"id": 10, "name": "Radverkehr Oldenburg", "description": "Ausbau von Radwegen und Radverkehrsführung in Oldenburg."}
+    ],
+    "expected_matches": [[1, "Ö 2"]]
+  },
+  {
+    "id": "watcher_no_match",
+    "note": "Reine Routine-Tagesordnung — kein TOP passt zum Thema (kein Fehltreffer erwartet).",
+    "session": {
+      "ksinr": 910003, "committee": "Finanzausschuss", "session_date": "2099-07-15",
+      "session_time": "16:00", "location": "Rathaus, Saal C",
+      "agenda_items": [
+        {"item_number": "Ö 1", "title": "Genehmigung der Tagesordnung", "vorlage_nr": "", "is_public": true},
+        {"item_number": "Ö 2", "title": "Mitteilungen der Verwaltung", "vorlage_nr": "", "is_public": true},
+        {"item_number": "Ö 3", "title": "Anfragen und Verschiedenes", "vorlage_nr": "", "is_public": true}
+      ]
+    },
+    "topics": [
+      {"id": 10, "name": "Radverkehr Oldenburg", "description": "Ausbau von Radwegen und Radverkehrsführung in Oldenburg."}
+    ],
+    "expected_matches": []
+  }
+]
