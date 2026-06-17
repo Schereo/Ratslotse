@@ -134,9 +134,9 @@ def build_digest(
         kept = []
         for art in te.get("articles", []):
             article = refid_to_article.get(art.get("refid"))
-            if topic is None or article is None:
-                kept.append(art)  # cannot verify — keep rather than silently drop
-            elif _verify_match(topic, article):
+            if article is None:
+                continue  # hallucinated refid — not in our input, always drop
+            if topic is None or _verify_match(topic, article):
                 kept.append(art)
         te["articles"] = kept
 

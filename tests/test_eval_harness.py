@@ -232,6 +232,31 @@ def test_digest_verifier_can_drop_a_pass1_match(monkeypatch):
     assert predict(case) == {(10, "d2/5/1")}
 
 
+def test_digest_drops_hallucinated_refids(monkeypatch):
+    """Refids the LLM invents that weren't in the input must be silently dropped."""
+    cases = harness.load_cases("cases_digest.json")
+    case = next(c for c in cases if c["id"] == "digest_radverkehr")
+
+    def handler(kwargs):
+        if kwargs["model"] == "openai/gpt-4o":
+            return json.dumps({"digest": [
+                {"topic": "Radverkehr Oldenburg", "articles": [
+                    {"refid": "d2/5/1", "title": "real", "summary": "s", "is_continuation": False},
+                    {"refid": "HALLUCINATED/9999/1", "title": "ghost", "summary": "s", "is_continuation": False},
+                ]},
+            ]})
+        return json.dumps({"relevant": True})  # verifier keeps everything it sees
+
+    from nwz import llm
+    monkeypatch.setattr(llm, "get_client", lambda: FakeClient(handler))
+
+    predict = run_digest.build_predict()
+    result = predict(case)
+    refids = {r for _, r in result}
+    assert "HALLUCINATED/9999/1" not in refids, "hallucinated refid must be dropped"
+    assert (10, "d2/5/1") in result, "real refid must be kept"
+
+
 def test_watcher_build_predict_maps_index_to_topic_id(monkeypatch):
     cases = harness.load_cases("cases_watcher.json")
     case = next(c for c in cases if c["id"] == "watcher_bauausschuss")
@@ -255,8 +280,8 @@ def test_watcher_end_to_end_scores_perfect_with_oracle(monkeypatch):
     correctly → precision/recall/F1 must be 100%."""
     cases = harness.load_cases("cases_watcher.json")
 
-    # Oracle: parse the expected answer from the case via the agenda text. We
-    # instead drive responses per session committee for determinism.
+    # Oracle: keyed on a unique substring of each case's committee name.
+    # topic_index is 1-based into each case's topics list.
     answers = {
         "Bauausschuss": {"matches": [
             {"topic_index": 1, "item_numbers": ["Ö 3"]},
@@ -265,7 +290,17 @@ def test_watcher_end_to_end_scores_perfect_with_oracle(monkeypatch):
         "Stadtentwicklungsausschuss": {"matches": [
             {"topic_index": 1, "item_numbers": ["Ö 2"]},
         ]},
-        "Finanzausschuss": {"matches": []},
+        "Finanzausschuss": {"matches": []},  # watcher_no_match mock case
+        # Real cases added from production data:
+        "Stadtplanung und Bauen": {"matches": [
+            {"topic_index": 1, "item_numbers": [
+                "Ö 5", "Ö 5.1", "Ö 5.2", "Ö 6", "Ö 7", "Ö 7.1", "Ö 7.2", "Ö 8", "Ö 9", "Ö 10.1",
+            ]},
+        ]},
+        "Beteiligungen": {"matches": [  # "Ausschuss für Finanzen und Beteiligungen"
+            {"topic_index": 1, "item_numbers": ["Ö 5"]},
+            {"topic_index": 2, "item_numbers": ["Ö 12.2"]},
+        ]},
     }
 
     def handler(kwargs):
