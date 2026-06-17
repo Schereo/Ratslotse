@@ -18,6 +18,7 @@ os.environ["COUNCIL_DB"] = str(Path(_TMP) / "council.sqlite")
 os.environ["WEB_JWT_SECRET"] = "test-secret"
 os.environ["WEB_ADMIN_EMAIL"] = "admin@test.de"
 os.environ["COOKIE_SECURE"] = "false"  # TestClient uses http://testserver
+os.environ["DISABLE_RATE_LIMIT"] = "1"  # avoid state bleeding across tests
 
 from fastapi.testclient import TestClient  # noqa: E402
 from app.main import app  # noqa: E402

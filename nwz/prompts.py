@@ -314,3 +314,40 @@ def reset(key: str) -> None:
     with conn:
         conn.execute("DELETE FROM prompts WHERE key = ?", (key,))
     conn.close()
+
+
+def validate_template(key: str, content: str) -> str | None:
+    """Validate a prompt template. Returns an error message or None if valid.
+
+    Checks for syntax errors and for placeholder names not present in the
+    original default (those would cause a KeyError at runtime when the bot
+    calls ``render()``).
+    """
+    import string as _string
+
+    try:
+        fields = [(name, fmt) for _, name, fmt, _ in _string.Formatter().parse(content) if name is not None]
+    except ValueError as e:
+        return f"Syntaxfehler im Template: {e}"
+
+    if key in DEFAULTS:
+        default_template = DEFAULTS[key]["template"]
+        try:
+            expected = {name for _, name, _, _ in _string.Formatter().parse(default_template) if name is not None}
+        except ValueError:
+            expected = set()
+        new_fields = {name for name, _ in fields if name and name not in expected}
+        if new_fields:
+            sorted_expected = ", ".join(sorted(expected)) or "(keine)"
+            return (
+                f"Unbekannte Platzhalter: {{{', '.join(sorted(new_fields))}}}. "
+                f"Erlaubt: {sorted_expected}."
+            )
+
+    dummy = {name: "BEISPIEL" for name, _ in fields if name}
+    try:
+        content.format(**dummy)
+    except (KeyError, ValueError, IndexError) as e:
+        return f"Template-Fehler beim Ausfüllen: {e}"
+
+    return None

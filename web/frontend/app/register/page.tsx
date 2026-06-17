@@ -35,24 +35,24 @@ export default function RegisterPage() {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
       <Card className="w-full max-w-sm p-8">
-        <h1 className="text-2xl font-bold text-slate-900">Konto erstellen</h1>
-        <p className="mt-1 text-sm text-slate-500">Registriere dich für das NWZ-Bot-Frontend.</p>
+        <h1 className="text-2xl font-bold text-foreground">Konto erstellen</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Registriere dich für Stadtpuls.</p>
         <form onSubmit={onSubmit} className="mt-6 space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">E-Mail</label>
+            <label className="mb-1 block text-sm font-medium text-foreground">E-Mail</label>
             <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Passwort</label>
+            <label className="mb-1 block text-sm font-medium text-foreground">Passwort</label>
             <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-            <p className="mt-1 text-xs text-slate-400">Mindestens 8 Zeichen.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Mindestens 8 Zeichen.</p>
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <Button type="submit" disabled={busy} className="w-full">
             {busy ? "Erstellen…" : "Konto erstellen"}
           </Button>
         </form>
-        <p className="mt-6 text-center text-sm text-slate-500">
+        <p className="mt-6 text-center text-sm text-muted-foreground">
           Schon registriert?{" "}
           <Link href="/login" className="font-medium text-primary hover:underline">
             Anmelden

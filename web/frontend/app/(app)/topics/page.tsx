@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Plus, Trash2, FileText } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
 import { Topic, TopicMatch } from "@/lib/types";
 import {
@@ -11,63 +12,55 @@ import {
 } from "@/components/ui";
 
 export default function TopicsPage() {
-  const [topics, setTopics] = useState<Topic[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [needsLink, setNeedsLink] = useState(false);
+  const qc = useQueryClient();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [committees, setCommittees] = useState<string[]>([]);
-  const [subscriptions, setSubscriptions] = useState<string[]>([]);
   const [matchesFor, setMatchesFor] = useState<{ topic: Topic; matches: TopicMatch[] } | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [t, subs, com] = await Promise.all([
-        api.get<Topic[]>("/topics"),
-        api.get<{ subscriptions: string[] }>("/subscriptions"),
-        api.get<{ committees: string[] }>("/council/committees"),
-      ]);
-      setTopics(t);
-      setSubscriptions(subs.subscriptions);
-      setCommittees(com.committees);
-      setNeedsLink(false);
-    } catch (e) {
-      if (e instanceof ApiError && e.status === 409) setNeedsLink(true);
-      else toast.error(e instanceof ApiError ? e.message : "Laden fehlgeschlagen.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const topicsQuery = useQuery({
+    queryKey: ["topics"],
+    queryFn: () => api.get<Topic[]>("/topics"),
+  });
 
-  useEffect(() => { load(); }, [load]);
+  const subsQuery = useQuery({
+    queryKey: ["subscriptions"],
+    queryFn: () => api.get<{ subscriptions: string[] }>("/subscriptions").then((d) => d.subscriptions),
+  });
 
-  const addTopic = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    try {
-      await api.post("/topics", { name, description });
+  const committeesQuery = useQuery({
+    queryKey: ["committees"],
+    queryFn: () => api.get<{ committees: string[] }>("/council/committees").then((d) => d.committees),
+  });
+
+  const addMutation = useMutation({
+    mutationFn: ({ name, description }: { name: string; description: string }) =>
+      api.post("/topics", { name, description }),
+    onSuccess: () => {
+      toast.success("Thema hinzugefügt.");
       setName("");
       setDescription("");
-      toast.success("Thema hinzugefügt.");
-      await load();
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Konnte Thema nicht anlegen.");
-    } finally {
-      setBusy(false);
-    }
-  };
+      qc.invalidateQueries({ queryKey: ["topics"] });
+    },
+    onError: (err: Error) => toast.error(err instanceof ApiError ? err.message : "Konnte Thema nicht anlegen."),
+  });
 
-  const deleteTopic = async (id: number) => {
-    try {
-      await api.del(`/topics/${id}`);
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => api.del(`/topics/${id}`),
+    onSuccess: () => {
       toast.success("Thema gelöscht.");
-      await load();
-    } catch {
-      toast.error("Löschen fehlgeschlagen.");
-    }
-  };
+      qc.invalidateQueries({ queryKey: ["topics"] });
+    },
+    onError: () => toast.error("Löschen fehlgeschlagen."),
+  });
+
+  const subMutation = useMutation({
+    mutationFn: ({ committee, subscribed }: { committee: string; subscribed: boolean }) =>
+      subscribed
+        ? api.del("/subscriptions", { committee_name: committee })
+        : api.post("/subscriptions", { committee_name: committee }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["subscriptions"] }),
+    onError: () => toast.error("Abo konnte nicht geändert werden."),
+  });
 
   const viewMatches = async (topic: Topic) => {
     try {
@@ -78,19 +71,8 @@ export default function TopicsPage() {
     }
   };
 
-  const toggleSub = async (committee: string) => {
-    try {
-      if (subscriptions.includes(committee)) {
-        await api.del("/subscriptions", { committee_name: committee });
-      } else {
-        await api.post("/subscriptions", { committee_name: committee });
-      }
-      const subs = await api.get<{ subscriptions: string[] }>("/subscriptions");
-      setSubscriptions(subs.subscriptions);
-    } catch {
-      toast.error("Abo konnte nicht geändert werden.");
-    }
-  };
+  const loading = topicsQuery.isPending;
+  const needsLink = topicsQuery.error instanceof ApiError && (topicsQuery.error as ApiError).status === 409;
 
   if (loading) return <Spinner />;
 
@@ -108,13 +90,20 @@ export default function TopicsPage() {
     );
   }
 
+  const topics = topicsQuery.data ?? [];
+  const subscriptions = subsQuery.data ?? [];
+  const committees = committeesQuery.data ?? [];
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-foreground">Meine Themen</h1>
       <p className="mt-1 text-sm text-muted-foreground">Themen, nach denen der Bot täglich die NWZ durchsucht.</p>
 
       <Card className="mt-6 p-4">
-        <form onSubmit={addTopic} className="space-y-3">
+        <form
+          onSubmit={(e) => { e.preventDefault(); addMutation.mutate({ name, description }); }}
+          className="space-y-3"
+        >
           <Input placeholder="Name (z. B. Radwege)" value={name} onChange={(e) => setName(e.target.value)} required />
           <Textarea
             placeholder="Beschreibung — je konkreter, desto besser (z. B. Ausbau und Planung von Radwegen in Oldenburg)"
@@ -123,8 +112,8 @@ export default function TopicsPage() {
             rows={2}
             required
           />
-          <Button type="submit" disabled={busy}>
-            <Plus className="h-4 w-4" /> {busy ? "Hinzufügen…" : "Thema hinzufügen"}
+          <Button type="submit" disabled={addMutation.isPending}>
+            <Plus className="h-4 w-4" /> {addMutation.isPending ? "Hinzufügen…" : "Thema hinzufügen"}
           </Button>
         </form>
       </Card>
@@ -147,7 +136,7 @@ export default function TopicsPage() {
                   <Button variant="secondary" size="sm" onClick={() => viewMatches(t)}>
                     <FileText className="h-4 w-4" /> Treffer
                   </Button>
-                  <Button variant="danger" size="sm" onClick={() => deleteTopic(t.id)}>
+                  <Button variant="danger" size="sm" onClick={() => deleteMutation.mutate(t.id)} disabled={deleteMutation.isPending}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
@@ -165,7 +154,12 @@ export default function TopicsPage() {
           return (
             <div key={c} className="flex items-center justify-between gap-3 px-4 py-2.5">
               <span className="min-w-0 text-sm text-foreground">{c}</span>
-              <Button variant={subscribed ? "secondary" : "primary"} size="sm" onClick={() => toggleSub(c)}>
+              <Button
+                variant={subscribed ? "secondary" : "primary"}
+                size="sm"
+                onClick={() => subMutation.mutate({ committee: c, subscribed })}
+                disabled={subMutation.isPending}
+              >
                 {subscribed ? "✓ Abonniert" : "Abonnieren"}
               </Button>
             </div>

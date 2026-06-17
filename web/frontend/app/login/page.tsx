@@ -31,15 +31,15 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
       <Card className="w-full max-w-sm p-8">
-        <h1 className="text-2xl font-bold text-slate-900">NWZ-Bot</h1>
-        <p className="mt-1 text-sm text-slate-500">Melde dich an, um fortzufahren.</p>
+        <h1 className="text-2xl font-bold text-foreground">Stadtpuls</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Melde dich an, um fortzufahren.</p>
         <form onSubmit={onSubmit} className="mt-6 space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">E-Mail</label>
+            <label className="mb-1 block text-sm font-medium text-foreground">E-Mail</label>
             <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Passwort</label>
+            <label className="mb-1 block text-sm font-medium text-foreground">Passwort</label>
             <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
@@ -47,7 +47,7 @@ export default function LoginPage() {
             {busy ? "Anmelden…" : "Anmelden"}
           </Button>
         </form>
-        <p className="mt-6 text-center text-sm text-slate-500">
+        <p className="mt-6 text-center text-sm text-muted-foreground">
           Noch kein Konto?{" "}
           <Link href="/register" className="font-medium text-primary hover:underline">
             Registrieren

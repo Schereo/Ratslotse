@@ -140,15 +140,23 @@ function NwzSearch() {
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">{results.length} Treffer</p>
             {results.map((r) => (
-              <Card key={`${r.catalog}-${r.refid}`} className="cursor-pointer p-4 transition-shadow hover:shadow-md" onClick={() => openDetail(r)}>
-                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                  <span>{formatDate(r.pub_date)}</span>
-                  {r.category_name && <Badge>{r.category_name}</Badge>}
-                </div>
-                <h3 className="mt-1 font-semibold text-foreground">{r.title}</h3>
-                {r.subtitle && <p className="text-sm text-muted-foreground">{r.subtitle}</p>}
-                <p className="excerpt mt-1 text-sm text-foreground/80" dangerouslySetInnerHTML={{ __html: r.excerpt }} />
-              </Card>
+              <button
+                key={`${r.catalog}-${r.refid}`}
+                type="button"
+                className="w-full text-left"
+                onClick={() => openDetail(r)}
+                onKeyDown={(e) => e.key === "Enter" && openDetail(r)}
+              >
+                <Card className="p-4 transition-shadow hover:shadow-md">
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                    <span>{formatDate(r.pub_date)}</span>
+                    {r.category_name && <Badge>{r.category_name}</Badge>}
+                  </div>
+                  <h3 className="mt-1 font-semibold text-foreground">{r.title}</h3>
+                  {r.subtitle && <p className="text-sm text-muted-foreground">{r.subtitle}</p>}
+                  <p className="excerpt mt-1 text-sm text-foreground/80" dangerouslySetInnerHTML={{ __html: r.excerpt }} />
+                </Card>
+              </button>
             ))}
           </div>
         )}

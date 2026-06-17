@@ -1,12 +1,13 @@
 """Registration, login, logout, current user."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
 from nwz.store import Store
 
 from ..config import get_settings
 from ..deps import get_current_user, get_store
+from ..ratelimit import login_limiter, register_limiter
 from ..schemas import LoginRequest, RegisterRequest, UserOut
 from ..security import create_access_token, hash_password, verify_password
 
@@ -43,7 +44,13 @@ def _to_out(user: dict) -> UserOut:
 
 
 @router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
-def register(body: RegisterRequest, response: Response, store: Store = Depends(get_store)) -> UserOut:
+def register(
+    request: Request,
+    body: RegisterRequest,
+    response: Response,
+    store: Store = Depends(get_store),
+) -> UserOut:
+    register_limiter.check(request)
     settings = get_settings()
     email = str(body.email).lower().strip()
     if store.get_web_user_by_email(email):
@@ -59,7 +66,13 @@ def register(body: RegisterRequest, response: Response, store: Store = Depends(g
 
 
 @router.post("/login", response_model=UserOut)
-def login(body: LoginRequest, response: Response, store: Store = Depends(get_store)) -> UserOut:
+def login(
+    request: Request,
+    body: LoginRequest,
+    response: Response,
+    store: Store = Depends(get_store),
+) -> UserOut:
+    login_limiter.check(request)
     user = store.get_web_user_by_email(str(body.email))
     if not user or not verify_password(body.password, user["password_hash"]):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "E-Mail oder Passwort falsch.")

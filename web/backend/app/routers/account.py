@@ -1,18 +1,14 @@
-"""Account self-service: verify the user's own NWZ subscription credentials.
-
-We validate the credentials live against the NWZ API but do NOT store the
-password — only a 'verified' marker plus the NWZ username for display. Proving a
-valid subscription is what unlocks access to NWZ content.
-"""
+"""Account self-service: verify the user's own NWZ subscription credentials."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from nwz.api import NWZClient
 from nwz.store import Store
 
 from ..config import get_settings
 from ..deps import get_store, require_active
+from ..ratelimit import nwz_creds_limiter
 from ..schemas import NwzCredentialsIn, UserOut
 from .auth import _to_out
 
@@ -21,10 +17,12 @@ router = APIRouter(prefix="/api/account", tags=["account"])
 
 @router.post("/nwz-credentials", response_model=UserOut)
 def verify_nwz_credentials(
+    request: Request,
     body: NwzCredentialsIn,
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
 ) -> UserOut:
+    nwz_creds_limiter.check(request)
     settings = get_settings()
     client = NWZClient(body.nwz_username.strip(), body.nwz_password)
     try:

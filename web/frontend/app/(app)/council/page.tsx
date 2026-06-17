@@ -97,17 +97,25 @@ export default function CouncilPage() {
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">{sessions.length} Sitzungen</p>
             {sessions.map((s) => (
-              <Card key={s.ksinr} className="cursor-pointer p-4 transition-shadow hover:shadow-md" onClick={() => openDetail(s)}>
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <h3 className="font-semibold text-foreground">{s.committee}</h3>
-                    <p className="mt-0.5 text-sm text-muted-foreground">
-                      {formatDate(s.session_date)} · {s.session_time} Uhr · {s.location}
-                    </p>
+              <button
+                key={s.ksinr}
+                type="button"
+                className="w-full text-left"
+                onClick={() => openDetail(s)}
+                onKeyDown={(e) => e.key === "Enter" && openDetail(s)}
+              >
+                <Card className="p-4 transition-shadow hover:shadow-md">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <h3 className="font-semibold text-foreground">{s.committee}</h3>
+                      <p className="mt-0.5 text-sm text-muted-foreground">
+                        {formatDate(s.session_date)} · {s.session_time} Uhr · {s.location}
+                      </p>
+                    </div>
+                    <Badge color="blue">{s.n_items} TOP</Badge>
                   </div>
-                  <Badge color="blue">{s.n_items} TOP</Badge>
-                </div>
-              </Card>
+                </Card>
+              </button>
             ))}
           </div>
         )}

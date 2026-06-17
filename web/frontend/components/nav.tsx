@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Newspaper, Landmark, Tags, Link2, Settings, LogOut, Menu } from "lucide-react";
+import { Home, Newspaper, Landmark, Tags, Link2, Settings, LogOut, Menu, Moon, Sun } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import { Sheet, SheetContent, SheetTrigger, SheetClose, SheetTitle, Button } from "@/components/ui";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import { toggleTheme } from "@/lib/theme";
 
 const LINKS = [
   { href: "/dashboard", label: "Übersicht", icon: Home },
@@ -15,6 +16,34 @@ const LINKS = [
   { href: "/topics", label: "Meine Themen", icon: Tags },
   { href: "/link", label: "Telegram", icon: Link2 },
 ];
+
+function useDarkMode() {
+  const [dark, setDark] = useState(false);
+  useEffect(() => {
+    setDark(document.documentElement.classList.contains("dark"));
+  }, []);
+  const toggle = () => {
+    toggleTheme();
+    setDark(document.documentElement.classList.contains("dark"));
+  };
+  return { dark, toggle };
+}
+
+function ThemeToggle({ className }: { className?: string }) {
+  const { dark, toggle } = useDarkMode();
+  return (
+    <button
+      onClick={toggle}
+      aria-label={dark ? "Helles Design aktivieren" : "Dunkles Design aktivieren"}
+      className={cn(
+        "flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+        className,
+      )}
+    >
+      {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+    </button>
+  );
+}
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
@@ -55,7 +84,10 @@ function UserFooter() {
   };
   return (
     <div className="border-t border-border p-3">
-      <div className="truncate px-2 pb-2 text-xs text-muted-foreground">{user?.email}</div>
+      <div className="flex items-center justify-between px-2 pb-2">
+        <span className="truncate text-xs text-muted-foreground">{user?.email}</span>
+        <ThemeToggle />
+      </div>
       <button
         onClick={onLogout}
         className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -69,7 +101,7 @@ function UserFooter() {
 export function DesktopSidebar() {
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-card md:flex">
-      <div className="px-5 py-5 text-lg font-bold text-foreground">NWZ-Bot</div>
+      <div className="px-5 py-5 text-lg font-bold text-foreground">Stadtpuls</div>
       <NavLinks />
       <UserFooter />
     </aside>
@@ -88,12 +120,13 @@ export function MobileTopbar() {
         </SheetTrigger>
         <SheetContent>
           <SheetTitle>Navigation</SheetTitle>
-          <div className="px-5 py-5 text-lg font-bold text-foreground">NWZ-Bot</div>
+          <div className="px-5 py-5 text-lg font-bold text-foreground">Stadtpuls</div>
           <NavLinks onNavigate={() => setOpen(false)} />
           <UserFooter />
         </SheetContent>
       </Sheet>
-      <span className="text-base font-bold text-foreground">NWZ-Bot</span>
+      <span className="flex-1 text-base font-bold text-foreground">Stadtpuls</span>
+      <ThemeToggle />
     </header>
   );
 }

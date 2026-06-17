@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Badge, Button, Card, Spinner } from "@/components/ui";
@@ -17,54 +18,46 @@ interface LinkStatus {
 
 export default function LinkPage() {
   const { user, refresh } = useAuth();
-  const [status, setStatus] = useState<LinkStatus | null>(null);
   const [code, setCode] = useState<LinkCode | null>(null);
-  const [loading, setLoading] = useState(true);
 
-  const loadStatus = useCallback(async () => {
-    const s = await api.get<LinkStatus>("/link/status");
-    setStatus(s);
-    return s;
-  }, []);
+  const statusQuery = useQuery({
+    queryKey: ["link-status"],
+    queryFn: () => api.get<LinkStatus>("/link/status"),
+    refetchInterval: (query) => {
+      const isLinked = query.state.data?.linked || user?.linked;
+      return code && !isLinked ? 3000 : false;
+    },
+  });
 
-  useEffect(() => {
-    loadStatus().finally(() => setLoading(false));
-  }, [loadStatus]);
+  const requestMutation = useMutation({
+    mutationFn: () => api.post<LinkCode>("/link/request"),
+    onSuccess: (c) => setCode(c),
+  });
 
-  // Poll for the bot redeeming the code, then refresh the user.
-  useEffect(() => {
-    if (!code || status?.linked) return;
-    const t = setInterval(async () => {
-      const s = await loadStatus();
-      if (s.linked) {
-        await refresh();
-        clearInterval(t);
-      }
-    }, 3000);
-    return () => clearInterval(t);
-  }, [code, status?.linked, loadStatus, refresh]);
+  const statusData = statusQuery.data;
+  const linked = statusData?.linked || user?.linked;
 
-  const requestCode = async () => {
-    const c = await api.post<LinkCode>("/link/request");
-    setCode(c);
-  };
+  // Refresh auth user once the bot redeems the code
+  if (statusData?.linked && !user?.linked) {
+    refresh();
+  }
 
-  if (loading) return <Spinner />;
-
-  const linked = status?.linked || user?.linked;
+  if (statusQuery.isPending) return <Spinner />;
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-slate-900">Telegram verbinden</h1>
-      <p className="mt-1 text-sm text-slate-500">Verknüpfe dein Web-Konto mit dem Telegram-Bot.</p>
+      <h1 className="text-2xl font-bold text-foreground">Telegram verbinden</h1>
+      <p className="mt-1 text-sm text-muted-foreground">Verknüpfe dein Web-Konto mit dem Telegram-Bot.</p>
 
       {linked ? (
         <Card className="mt-6 p-6">
           <div className="flex items-center gap-3">
             <Badge color="green">Verbunden</Badge>
-            <span className="text-sm text-slate-600">Chat-ID: {status?.telegram_chat_id ?? user?.telegram_chat_id}</span>
+            <span className="text-sm text-muted-foreground">
+              Chat-ID: {statusData?.telegram_chat_id ?? user?.telegram_chat_id}
+            </span>
           </div>
-          <p className="mt-3 text-sm text-slate-500">
+          <p className="mt-3 text-sm text-muted-foreground">
             Dein Konto ist mit Telegram verknüpft. Themen und Abos werden mit deinem Bot-Chat geteilt.
           </p>
         </Card>
@@ -72,16 +65,16 @@ export default function LinkPage() {
         <Card className="mt-6 p-6">
           {!code ? (
             <>
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-muted-foreground">
                 Erzeuge einen Verbindungscode und sende ihn dem Bot. So wird dein Konto freigeschaltet.
               </p>
-              <Button className="mt-4" onClick={requestCode}>
-                Verbindungscode erzeugen
+              <Button className="mt-4" onClick={() => requestMutation.mutate()} disabled={requestMutation.isPending}>
+                {requestMutation.isPending ? "Erzeuge…" : "Verbindungscode erzeugen"}
               </Button>
             </>
           ) : (
             <div>
-              <ol className="list-decimal space-y-3 pl-5 text-sm text-slate-600">
+              <ol className="list-decimal space-y-3 pl-5 text-sm text-muted-foreground">
                 <li>
                   Öffne den Bot:{" "}
                   <a
@@ -96,7 +89,7 @@ export default function LinkPage() {
                 <li>
                   Sende diese Nachricht:
                   <div className="mt-1 flex items-center gap-2">
-                    <code className="rounded-lg bg-slate-100 px-3 py-1.5 font-mono text-base font-semibold tracking-wider text-slate-900">
+                    <code className="rounded-lg bg-muted px-3 py-1.5 font-mono text-base font-semibold tracking-wider text-foreground">
                       /verbinden {code.code}
                     </code>
                     <Button
@@ -110,9 +103,9 @@ export default function LinkPage() {
                 </li>
                 <li>Diese Seite aktualisiert sich automatisch, sobald die Verbindung steht.</li>
               </ol>
-              <p className="mt-4 text-xs text-slate-400">Der Code ist {code.expires_in_minutes} Minuten gültig.</p>
-              <div className="mt-4 flex items-center gap-2 text-sm text-slate-500">
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-primary" />
+              <p className="mt-4 text-xs text-muted-foreground">Der Code ist {code.expires_in_minutes} Minuten gültig.</p>
+              <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted border-t-primary" />
                 Warte auf Bestätigung…
               </div>
             </div>

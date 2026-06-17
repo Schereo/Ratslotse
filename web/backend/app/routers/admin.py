@@ -22,6 +22,9 @@ def list_prompts(_admin: dict = Depends(require_admin)) -> list[PromptOut]:
 def update_prompt(key: str, body: PromptUpdate, _admin: dict = Depends(require_admin)) -> PromptOut:
     if key not in prompts.DEFAULTS:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Unbekannter Prompt.")
+    error = prompts.validate_template(key, body.content)
+    if error:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Ungültiges Template: {error}")
     prompts.set_content(key, body.content)
     return PromptOut(**next(p for p in prompts.list_all() if p["key"] == key))
 

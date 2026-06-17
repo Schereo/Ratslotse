@@ -1,5 +1,6 @@
 // Thin fetch wrapper around the same-origin /api backend.
 // Always sends cookies (httpOnly JWT) and surfaces backend error details.
+import { toast } from "sonner";
 
 export class ApiError extends Error {
   status: number;
@@ -27,6 +28,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   });
 
   if (res.status === 401 && !path.startsWith("/auth/")) {
+    toast.info("Sitzung abgelaufen – bitte melde dich erneut an.");
     unauthorizedHandler?.();
   }
 
