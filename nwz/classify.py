@@ -1,12 +1,24 @@
 from __future__ import annotations
 
 import json
+import os
 from typing import Any
 
 from . import llm, prompts
 
 MODEL = "openai/gpt-4o"
 VERIFY_MODEL = "openai/gpt-4o-mini"
+
+# Per-article text budget (in characters) handed to the classifier. Long
+# container articles ("Kurz notiert", "Titelseite") concatenate many unrelated
+# briefs into one row; a tight cap silently hides every brief past the cutoff,
+# so topic-relevant items buried deep in such pages were never seen by the model
+# (e.g. an OB-candidate brief at offset ~2300 in a 4300-char "Kurz notiert").
+# The cap only bites long articles — short ones are already under it — so raising
+# it costs tokens only where the extra context is actually needed. Tunable via
+# env to trade context/cost on very large editions.
+FIRST_PASS_CHARS = int(os.environ.get("NWZ_FIRST_PASS_CHARS", "2400"))
+VERIFY_CHARS = int(os.environ.get("NWZ_VERIFY_CHARS", "3000"))
 
 
 def _verify_match(topic: dict, article: dict) -> bool:
@@ -16,7 +28,7 @@ def _verify_match(topic: dict, article: dict) -> bool:
     Keyword overlap, thematic kinship or nationwide references without the local/
     concrete angle the topic asks for do not count.
     """
-    text = (article.get("content_text") or "")[:1500].replace("\n", " ")
+    text = (article.get("content_text") or "")[:VERIFY_CHARS].replace("\n", " ")
     resp = llm.chat_complete(
         model=VERIFY_MODEL,
         temperature=0,
@@ -47,7 +59,7 @@ def _verify_match(topic: dict, article: dict) -> bool:
 def _format_articles(articles: list[dict]) -> str:
     lines: list[str] = []
     for i, a in enumerate(articles, 1):
-        text = (a.get("content_text") or "")[:900].replace("\n", " ")
+        text = (a.get("content_text") or "")[:FIRST_PASS_CHARS].replace("\n", " ")
         lines.append(
             f"[{i}] refid={a['refid']}\n"
             f"Rubrik: {a.get('category_name','')}\n"
