@@ -758,7 +758,7 @@ class Store:
             dict(r)
             for r in self._conn.execute(
                 """SELECT a.catalog, a.refid, a.page, a.category_name, a.title,
-                          a.subtitle, a.authors, a.content_text, a.priority
+                          a.subtitle, a.authors, a.content_html, a.content_text, a.priority
                    FROM articles a
                    JOIN editions e ON e.catalog = a.catalog
                    WHERE e.publication_date = ?
