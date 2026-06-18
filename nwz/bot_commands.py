@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from . import prompts
 from .classify import _page_from_refid
 from .store import Store, TopicRow
 from .telegram_bot import reply, reply_with_buttons, edit_message_buttons, answer_callback_query
@@ -200,6 +201,30 @@ def handle_update(update: dict, db_path: Path) -> None:
             reply(chat_id, _START_EXISTING_USER)
         else:
             reply(chat_id, _START_NEW_USER.format(chat_id=chat_id))
+        return
+
+    # /verbinden — links a web account; allowed before whitelisting, since
+    # redeeming a valid code is itself what grants access.
+    if command == "/verbinden":
+        code = args.strip().split()[0] if args.strip() else ""
+        if not code:
+            reply(
+                chat_id,
+                "Verwendung: <code>/verbinden CODE</code>\n\n"
+                "Den Code bekommst du im Web-Frontend unter „Mit Telegram verbinden“.",
+            )
+            return
+        username = (msg.get("from") or {}).get("first_name", "")
+        email = store.redeem_link_code(code, chat_id, username)
+        if email:
+            reply(
+                chat_id,
+                f"✅ Verbunden mit <b>{_esc(email)}</b>!\n\n"
+                "Dein Web-Account ist jetzt mit diesem Chat verknüpft. "
+                "Schreib /hilfe für eine Übersicht oder leg direkt mit /neu los.",
+            )
+        else:
+            reply(chat_id, "❌ Code ungültig oder abgelaufen. Bitte erzeuge im Web einen neuen Code.")
         return
 
     # All other commands require whitelist membership
@@ -579,27 +604,7 @@ def _vagueness_hint(name: str, description: str) -> dict | None:
         messages=[
             {
                 "role": "system",
-                "content": (
-                    "Du prüfst ob eine Themen-Beschreibung für einen Nachrichten-Bot präzise genug ist, "
-                    "um zuverlässig NUR die wirklich gewünschten Artikel (aus einer Lokalzeitung für "
-                    "Oldenburg) herauszufiltern. Sei streng: im Zweifel ist die Beschreibung zu vage.\n"
-                    "Eine Beschreibung ist zu vage wenn sie:\n"
-                    "- allgemeine Absichten statt konkreter Inhalte beschreibt (z.B. 'interessante Themen', 'etwas Spannendes')\n"
-                    "- keine eingrenzbaren Kriterien enthält\n"
-                    "- so breit ist, dass viele themenfremde Artikel matchen würden\n"
-                    "- eine Partei, Organisation, Person oder Institution nennt, OHNE den Bezug klar "
-                    "einzugrenzen: Es muss ausdrücklich auf Oldenburg/lokal beschränkt sein UND klarstellen, "
-                    "was NICHT gemeint ist (z.B. keine bundesweiten Partei-/Politiknews). 'Die Grünen – Partei "
-                    "in Oldenburg' ist z.B. ZU VAGE, weil dadurch auch bundesweite Grünen-Nachrichten matchen.\n"
-                    "- ein breites Schlagwort ohne konkrete Akteure/Vorhaben/Orte nutzt "
-                    "(z.B. 'Kommunalwahl in Oldenburg' ohne Eingrenzung auf Kandidaten, Listen, Termine, Ergebnisse)\n\n"
-                    "Antworte NUR mit einem JSON-Objekt: "
-                    "{\"vague\": true/false, \"hint\": \"...\", \"suggestion\": \"...\"}.\n"
-                    "- hint: kurze Erklärung auf Deutsch, warum die Beschreibung zu vage ist (max. 2 Sätze). Leer wenn nicht vage.\n"
-                    "- suggestion: eine konkrete, sofort verwendbare präzisere Beschreibung (1 Satz), die den erkennbaren "
-                    "Wunsch des Nutzers aufgreift und sinnvoll eingrenzt (z.B. Ortsbezug Oldenburg, konkrete Akteure/Vorhaben, "
-                    "Ausschluss themenfremder Treffer). Leer wenn nicht vage."
-                ),
+                "content": prompts.get("vagueness_check_system"),
             },
             {
                 "role": "user",

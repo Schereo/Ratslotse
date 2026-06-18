@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import json
 import os
-import textwrap
 
 from openai import OpenAI
 
+from nwz import prompts
 from .scraper import AgendaItem
 
 MODEL = "openai/gpt-4o-mini"
@@ -37,31 +37,8 @@ def summarize_agenda(
     if not items_text.strip():
         return ""
 
-    system = textwrap.dedent("""\
-        Du analysierst Tagesordnungen (TOPs) von Ausschusssitzungen der Stadt Oldenburg.
-        Filtere Routine-TOPs heraus: Genehmigung der Tagesordnung, Protokollgenehmigung,
-        Mitteilungen, Anfragen, Bekanntgaben, Verschiedenes und sonstige Formalia.
-        Ignoriere außerdem Tagesordnungspunkte die 'Einwohnerfragestunde', 'Bürgerfragestunde'
-        oder ähnliche Bürgerbeteiligungs-Formate betreffen — diese sind Routine und nicht zusammenfassungsrelevant.
-        Fasse die verbleibenden inhaltlichen TOPs jeweils in 1-2 Sätzen zusammen.
-        Antworte ausschließlich als JSON.
-    """)
-
-    prompt = textwrap.dedent(f"""\
-        Ausschuss: {committee}
-        Tagesordnungspunkte:
-        {items_text}
-
-        Format:
-        {{
-          "has_content": true,
-          "items": [
-            {{"number": "Ö 5", "summary": "Kurze Zusammenfassung in 1-2 Sätzen."}},
-            ...
-          ]
-        }}
-        Gib has_content: false zurück, wenn nur Routine-TOPs übrig bleiben.
-    """)
+    system = prompts.get("committee_summary_system")
+    prompt = prompts.render("committee_summary_user", committee=committee, items_text=items_text)
 
     client = OpenAI(
         api_key=os.environ["OPENROUTER_API_KEY"],

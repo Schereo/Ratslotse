@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import json
 import os
-import textwrap
 from pathlib import Path
 from typing import Any
 
 from openai import OpenAI
 
+from nwz import prompts
 from .scraper import CouncilScraper, CouncilSession
 from .store import CouncilStore
 
@@ -44,30 +44,14 @@ def _classify_agenda(session: CouncilSession, topics: list[dict]) -> dict[int, l
         for idx, t in enumerate(topics)
     )
 
-    system = textwrap.dedent("""\
-        Du analysierst Tagesordnungspunkte (TOP) der Oldenburger Stadtratssitzungen
-        und ordnest sie den Interessengebieten des Nutzers zu.
-        Antworte ausschließlich als JSON.
-    """)
-
-    prompt = textwrap.dedent(f"""\
-        Sitzung: {session.committee}, {session.session_date}
-
-        Öffentliche Tagesordnungspunkte:
-        {items_text}
-
-        Themen des Nutzers:
-        {topics_text}
-
-        Gib für jedes Thema an, welche TOP-Nummern passen (leer wenn keiner passt).
-        Format:
-        {{
-          "matches": [
-            {{"topic_index": 1, "item_numbers": ["Ö 6.1", "Ö 6.2"]}},
-            {{"topic_index": 2, "item_numbers": []}}
-          ]
-        }}
-    """)
+    system = prompts.get("council_watcher_system")
+    prompt = prompts.render(
+        "council_watcher_user",
+        committee=session.committee,
+        session_date=session.session_date,
+        items_text=items_text,
+        topics_text=topics_text,
+    )
 
     resp = _get_client().chat.completions.create(
         model=MODEL,

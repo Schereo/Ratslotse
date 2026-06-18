@@ -1,0 +1,15 @@
+[Unit]
+Description=NWZ-Bot Web API (FastAPI/uvicorn)
+After=network.target
+
+[Service]
+Type=simple
+User=tim
+WorkingDirectory=/home/tim/app/web/backend
+EnvironmentFile=/home/tim/app/.env
+ExecStart=/home/tim/app/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

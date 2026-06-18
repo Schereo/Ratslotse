@@ -109,6 +109,22 @@ class NWZClient:
         self._keys[catalog] = (key, time.time())
         return key
 
+    def verify_credentials(self, folder: int) -> bool:
+        """Check whether these NWZ credentials are valid.
+
+        Picks the latest available edition and attempts the authenticated
+        validate step. Returns True/False for credential validity; network or
+        availability problems propagate as exceptions for the caller to handle.
+        """
+        editions = self.available(folder, limit=1)
+        if not editions:
+            raise RuntimeError("Keine NWZ-Ausgabe zum Verifizieren verfügbar.")
+        try:
+            self._validate(editions[0].catalog)
+            return True
+        except RuntimeError:
+            return False
+
     def content_xml(self, catalog: int) -> bytes:
         key = self._validate(catalog)
         r = self._session.get(

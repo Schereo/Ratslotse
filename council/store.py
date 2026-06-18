@@ -70,8 +70,11 @@ CREATE TABLE IF NOT EXISTS committee_summaries (
 
 class CouncilStore:
     def __init__(self, path: str | Path):
-        self._conn = sqlite3.connect(path)
+        self._conn = sqlite3.connect(path, timeout=15)
         self._conn.row_factory = sqlite3.Row
+        # WAL + busy_timeout: scraper cron and the web API share this file.
+        self._conn.execute("PRAGMA journal_mode=WAL")
+        self._conn.execute("PRAGMA busy_timeout=5000")
         self._conn.executescript(SCHEMA)
         self._conn.commit()
         self._migrate()
@@ -256,5 +259,60 @@ class CouncilStore:
                FROM council_agenda_items WHERE ksinr = ?
                ORDER BY id""",
             (ksinr,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def get_session(self, ksinr: int) -> dict | None:
+        row = self._conn.execute(
+            """SELECT cs.ksinr, cs.committee, cs.session_date, cs.session_time, cs.location,
+                      COUNT(ci.id) AS n_items
+               FROM council_sessions cs
+               LEFT JOIN council_agenda_items ci ON ci.ksinr = cs.ksinr
+               WHERE cs.ksinr = ?
+               GROUP BY cs.ksinr""",
+            (ksinr,),
+        ).fetchone()
+        return dict(row) if row else None
+
+    def search_sessions(
+        self,
+        query: str = "",
+        committee: str = "",
+        date_from: str = "",
+        date_to: str = "",
+        limit: int = 50,
+    ) -> list[dict]:
+        """Search sessions by committee name or agenda item text. Empty query lists by date."""
+        filters: list[str] = []
+        params: list = []
+        if query:
+            filters.append(
+                """(cs.committee LIKE ? OR cs.ksinr IN (
+                       SELECT ksinr FROM council_agenda_items
+                       WHERE title LIKE ? OR vorlage_nr LIKE ?))"""
+            )
+            like = f"%{query}%"
+            params += [like, like, like]
+        if committee:
+            filters.append("cs.committee = ?")
+            params.append(committee)
+        if date_from:
+            filters.append("cs.session_date >= ?")
+            params.append(date_from)
+        if date_to:
+            filters.append("cs.session_date <= ?")
+            params.append(date_to)
+        where = ("WHERE " + " AND ".join(filters)) if filters else ""
+        params.append(limit)
+        rows = self._conn.execute(
+            f"""SELECT cs.ksinr, cs.committee, cs.session_date, cs.session_time, cs.location,
+                       COUNT(ci.id) AS n_items
+                FROM council_sessions cs
+                LEFT JOIN council_agenda_items ci ON ci.ksinr = cs.ksinr
+                {where}
+                GROUP BY cs.ksinr
+                ORDER BY cs.session_date DESC
+                LIMIT ?""",
+            params,
         ).fetchall()
         return [dict(r) for r in rows]

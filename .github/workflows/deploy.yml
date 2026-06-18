@@ -40,10 +40,12 @@ jobs:
             --exclude 'data/' \
             --exclude '.venv/' \
             --exclude '.git/' \
+            --exclude 'web/frontend/node_modules/' \
+            --exclude 'web/frontend/.next/' \
             -e "ssh" \
             ./ target:~/app/
 
-      - name: Restart service
+      - name: Restart services and rebuild web
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: 10.10.10.11
@@ -54,4 +56,12 @@ jobs:
           proxy_username: tim
           proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
           proxy_port: 2102
-          script: sudo systemctl restart nwz-bot
+          script: |
+            set -e
+            cd ~/app
+            # Restart the bot first so a web build issue can never block it.
+            sudo systemctl restart nwz-bot
+            # Backend deps (idempotent) + frontend build, then restart web services.
+            .venv/bin/pip install -q -r requirements.txt -r web/backend/requirements.txt
+            cd web/frontend && npm ci --no-audit --no-fund && npm run build
+            sudo systemctl restart nwz-web-api nwz-web-frontend

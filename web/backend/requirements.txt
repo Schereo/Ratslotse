@@ -1,0 +1,7 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+pydantic-settings>=2.2
+python-multipart>=0.0.9
+email-validator>=2.1
+# Password hashing (scrypt) and JWT (HS256) use only the Python standard
+# library — no bcrypt/passlib/cryptography needed.
