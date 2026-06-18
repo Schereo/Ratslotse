@@ -1,0 +1,35 @@
+{
+  "timestamp": "2026-06-17T12:33:54",
+  "suite": "watcher",
+  "cases": 5,
+  "tp": 11,
+  "fp": 2,
+  "tn": null,
+  "fn": 4,
+  "precision": 0.8462,
+  "recall": 0.7333,
+  "f1": 0.7857,
+  "mistakes": [
+    {
+      "id": "watcher_stadtplanung_bebauungsplaene",
+      "note": "Ausschuss für Stadtplanung: Flächen­nutzungsplanänderungen (Stadion, Fliegerhorst, Eßkamp) und Sanierungsgebiet Innenstadt sind klassische Stadtentwicklungs-TOPs. Ö 8 (Stellplatz-Satzung) ebenfalls. Ö 5 und Ö 7 sind Eltern-TOPs der Bebauungsplan-Unterlagen; Ö 10.1 (Baumoratorium) ist ebenfalls Stadtentwicklung. Ö 10.2+10.3 (Begrünung) sind Grenzfälle.",
+      "spurious": [],
+      "missed": [
+        "t1:Ö 10.1",
+        "t1:Ö 5",
+        "t1:Ö 7"
+      ]
+    },
+    {
+      "id": "watcher_finanzausschuss_zuwendungen_fp",
+      "note": "Finanzausschuss: Ö 5 (Stadionplanung) → Stadtentwicklung. Ö 6+7 (Annahme von Zuwendungen) sind Routine-Finanzadmin und matchen NICHT Wirtschaft & Einzelhandel. Ö 12.2 (Straßensanierung) → Verkehr, nicht Wirtschaft.",
+      "spurious": [
+        "t6:Ö 6",
+        "t6:Ö 7"
+      ],
+      "missed": [
+        "t2:Ö 12.2"
+      ]
+    }
+  ]
+}

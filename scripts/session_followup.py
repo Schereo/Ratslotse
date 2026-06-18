@@ -28,7 +28,7 @@ sys.path.insert(0, str(ROOT))
 from dotenv import load_dotenv
 load_dotenv(ROOT / ".env")
 
-from openai import OpenAI
+from nwz.llm import chat_complete
 from nwz.store import Store
 from nwz.telegram_bot import reply, telegram_ready
 from council.store import CouncilStore
@@ -76,11 +76,6 @@ def _verify_with_gpt(
     candidates: list[dict],
 ) -> list[dict]:
     """Ask GPT which candidate articles report on the outcome of this session."""
-    client = OpenAI(
-        api_key=os.environ["OPENROUTER_API_KEY"],
-        base_url="https://openrouter.ai/api/v1",
-    )
-
     items_text = "\n".join(
         f"  {i['item_number']}: {i['title']}" + (f" [{i['vorlage_nr']}]" if i.get("vorlage_nr") else "")
         for i in agenda_items
@@ -125,7 +120,7 @@ def _verify_with_gpt(
         Leere Liste wenn kein Artikel zur Sitzung passt. Nur JSON.
     """)
 
-    resp = client.chat.completions.create(
+    resp = chat_complete(
         model="openai/gpt-4o-mini",
         response_format={"type": "json_object"},
         messages=[{"role": "user", "content": prompt}],

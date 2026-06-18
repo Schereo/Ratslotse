@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Prompt, WebUser, TelegramUser } from "@/lib/types";
-import { Badge, Button, Card, Spinner, Textarea, formatDate, toast } from "@/components/ui";
+import { Badge, Button, Card, ConfirmDialog, PageHeader, Spinner, Textarea, formatDate, toast } from "@/components/ui";
 
 type Tab = "prompts" | "users" | "telegram";
 
@@ -23,7 +23,7 @@ export default function AdminPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-foreground">Admin</h1>
+      <PageHeader title="Admin" description="Prompts, Web-Nutzer und Telegram-Whitelist verwalten." />
       <div className="mt-4 flex gap-1 border-b border-border">
         {([
           ["prompts", "Prompts"],
@@ -51,12 +51,13 @@ export default function AdminPage() {
 }
 
 function PromptsTab() {
-  const { data: prompts = [], isPending } = useQuery({
+  const { data: prompts = [], isPending, isError } = useQuery({
     queryKey: ["admin", "prompts"],
     queryFn: () => api.get<Prompt[]>("/admin/prompts"),
   });
 
   if (isPending) return <Spinner />;
+  if (isError) return <p className="text-sm text-destructive">Fehler beim Laden der Prompts.</p>;
 
   return (
     <div className="space-y-4">
@@ -122,7 +123,7 @@ function PromptEditor({ prompt }: { prompt: Prompt }) {
 
 function UsersTab({ currentUserId }: { currentUserId: number }) {
   const qc = useQueryClient();
-  const { data: users = [], isPending } = useQuery({
+  const { data: users = [], isPending, isError } = useQuery({
     queryKey: ["admin", "users"],
     queryFn: () => api.get<WebUser[]>("/admin/users"),
   });
@@ -148,6 +149,7 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
   });
 
   if (isPending) return <Spinner />;
+  if (isError) return <p className="text-sm text-destructive">Fehler beim Laden der Nutzer.</p>;
 
   return (
     <Card className="divide-y divide-border">
@@ -191,7 +193,9 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
 
 function TelegramTab() {
   const qc = useQueryClient();
-  const { data: users = [], isPending } = useQuery({
+  const [confirmChatId, setConfirmChatId] = useState<number | null>(null);
+
+  const { data: users = [], isPending, isError } = useQuery({
     queryKey: ["admin", "telegram-users"],
     queryFn: async () => {
       const data = await api.get<{ users: TelegramUser[] }>("/admin/telegram-users");
@@ -205,32 +209,38 @@ function TelegramTab() {
     onError: () => toast.error("Entfernen fehlgeschlagen."),
   });
 
-  const remove = (chatId: number) => {
-    if (!confirm("Diesen Telegram-Nutzer entfernen (inkl. seiner Themen)?")) return;
-    removeMutation.mutate(chatId);
-  };
-
   if (isPending) return <Spinner />;
+  if (isError) return <p className="text-sm text-destructive">Fehler beim Laden der Telegram-Nutzer.</p>;
 
   return (
-    <Card className="divide-y divide-border">
-      {users.length === 0 ? (
-        <p className="px-4 py-6 text-center text-sm text-muted-foreground">Keine Telegram-Nutzer.</p>
-      ) : (
-        users.map((u) => (
-          <div key={u.chat_id} className="flex items-center justify-between px-4 py-3">
-            <div>
-              <span className="font-medium text-foreground">{u.username || "(ohne Name)"}</span>
-              <p className="text-xs text-muted-foreground">
-                Chat-ID {u.chat_id} · {u.topic_count} Thema(en) · seit {formatDate(u.added_at.slice(0, 10))}
-              </p>
+    <>
+      <ConfirmDialog
+        open={confirmChatId !== null}
+        onOpenChange={(o) => !o && setConfirmChatId(null)}
+        title="Telegram-Nutzer entfernen"
+        description="Dadurch werden auch alle Themen dieses Nutzers gelöscht. Diese Aktion kann nicht rückgängig gemacht werden."
+        confirmLabel="Entfernen"
+        onConfirm={() => confirmChatId !== null && removeMutation.mutate(confirmChatId)}
+      />
+      <Card className="divide-y divide-border">
+        {users.length === 0 ? (
+          <p className="px-4 py-6 text-center text-sm text-muted-foreground">Keine Telegram-Nutzer.</p>
+        ) : (
+          users.map((u) => (
+            <div key={u.chat_id} className="flex items-center justify-between px-4 py-3">
+              <div>
+                <span className="font-medium text-foreground">{u.username || "(ohne Name)"}</span>
+                <p className="text-xs text-muted-foreground">
+                  Chat-ID {u.chat_id} · {u.topic_count} Thema(en) · seit {formatDate(u.added_at.slice(0, 10))}
+                </p>
+              </div>
+              <Button variant="danger" size="sm" onClick={() => setConfirmChatId(u.chat_id)}>
+                Entfernen
+              </Button>
             </div>
-            <Button variant="danger" size="sm" onClick={() => remove(u.chat_id)}>
-              Entfernen
-            </Button>
-          </div>
-        ))
-      )}
-    </Card>
+          ))
+        )}
+      </Card>
+    </>
   );
 }

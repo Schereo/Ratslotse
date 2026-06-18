@@ -1,29 +1,15 @@
 from __future__ import annotations
 
 import json
-import os
 from typing import Any
 
-from openai import OpenAI
-
-from . import prompts
+from . import llm, prompts
 
 MODEL = "openai/gpt-4o"
 VERIFY_MODEL = "openai/gpt-4o-mini"
-_client: OpenAI | None = None
 
 
-def _get_client() -> OpenAI:
-    global _client
-    if _client is None:
-        _client = OpenAI(
-            api_key=os.environ["OPENROUTER_API_KEY"],
-            base_url="https://openrouter.ai/api/v1",
-        )
-    return _client
-
-
-def _verify_match(client: OpenAI, topic: dict, article: dict) -> bool:
+def _verify_match(topic: dict, article: dict) -> bool:
     """Cheap second-pass check: does the article genuinely deal with the topic?
 
     Returns True only if the topic is a central, explicit subject of the article.
@@ -31,7 +17,7 @@ def _verify_match(client: OpenAI, topic: dict, article: dict) -> bool:
     concrete angle the topic asks for do not count.
     """
     text = (article.get("content_text") or "")[:1500].replace("\n", " ")
-    resp = client.chat.completions.create(
+    resp = llm.chat_complete(
         model=VERIFY_MODEL,
         temperature=0,
         response_format={"type": "json_object"},
@@ -86,7 +72,6 @@ def build_digest(
 
     recent_context: if provided, GPT flags articles that are continuations of already-sent stories.
     """
-    client = _get_client()
     refid_to_page = {a["refid"]: a.get("page") for a in articles}
     refid_to_catalog = {a["refid"]: a["catalog"] for a in articles}
     refid_to_pub_date = {a["refid"]: a.get("publication_date", pub_date) for a in articles}
@@ -123,7 +108,7 @@ def build_digest(
         continuation_instruction=continuation_instruction,
     )
 
-    resp = client.chat.completions.create(
+    resp = llm.chat_complete(
         model=MODEL,
         response_format={"type": "json_object"},
         temperature=0,
@@ -149,9 +134,9 @@ def build_digest(
         kept = []
         for art in te.get("articles", []):
             article = refid_to_article.get(art.get("refid"))
-            if topic is None or article is None:
-                kept.append(art)  # cannot verify — keep rather than silently drop
-            elif _verify_match(client, topic, article):
+            if article is None:
+                continue  # hallucinated refid — not in our input, always drop
+            if topic is None or _verify_match(topic, article):
                 kept.append(art)
         te["articles"] = kept
 
@@ -235,7 +220,6 @@ def build_weekly_digest(
     highlights: list[dict] = []
     source = all_articles if all_articles else matches
     if len(source) >= 3:
-        client = _get_client()
         if all_articles:
             lines = []
             for a in all_articles:
@@ -263,7 +247,7 @@ def build_weekly_digest(
             articles_block=articles_block,
         )
 
-        resp = client.chat.completions.create(
+        resp = llm.chat_complete(
             model="openai/gpt-4o-mini",
             response_format={"type": "json_object"},
             messages=[

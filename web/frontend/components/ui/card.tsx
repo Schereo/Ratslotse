@@ -30,11 +30,27 @@ export function Spinner({ className }: { className?: string }) {
   );
 }
 
-export function EmptyState({ title, hint }: { title: string; hint?: string }) {
+export function EmptyState({
+  title,
+  hint,
+  icon: Icon,
+  action,
+}: {
+  title: string;
+  hint?: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  action?: React.ReactNode;
+}) {
   return (
-    <div className="rounded-xl border border-dashed border-border bg-card p-10 text-center">
-      <p className="font-medium text-muted-foreground">{title}</p>
-      {hint && <p className="mt-1 text-sm text-muted-foreground/70">{hint}</p>}
+    <div className="flex flex-col items-center rounded-xl border border-dashed border-border bg-card px-6 py-12 text-center">
+      {Icon && (
+        <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+          <Icon className="h-6 w-6" />
+        </span>
+      )}
+      <p className="font-medium text-foreground">{title}</p>
+      {hint && <p className="mt-1 max-w-sm text-sm text-muted-foreground">{hint}</p>}
+      {action && <div className="mt-4">{action}</div>}
     </div>
   );
 }

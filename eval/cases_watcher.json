@@ -1,0 +1,556 @@
+[
+  {
+    "id": "watcher_bauausschuss",
+    "note": "Radwegekonzept → Radverkehr; Bebauungsplan → Bauprojekte. Routine-TOP (Genehmigung) matcht nichts; nicht-öffentlicher TOP wird gar nicht klassifiziert.",
+    "session": {
+      "ksinr": 910001,
+      "committee": "Bauausschuss",
+      "session_date": "2099-07-01",
+      "session_time": "18:00",
+      "location": "Rathaus, Saal A",
+      "agenda_items": [
+        {
+          "item_number": "Ö 1",
+          "title": "Genehmigung der Tagesordnung",
+          "vorlage_nr": "",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 2",
+          "title": "Bebauungsplan Nr. 742 – Alter Hafen",
+          "vorlage_nr": "26/0411",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 3",
+          "title": "Radwegekonzept Innenstadt – Sachstandsbericht",
+          "vorlage_nr": "26/0418",
+          "is_public": true
+        },
+        {
+          "item_number": "N 1",
+          "title": "Personalangelegenheit",
+          "vorlage_nr": "",
+          "is_public": false
+        }
+      ]
+    },
+    "topics": [
+      {
+        "id": 10,
+        "name": "Radverkehr Oldenburg",
+        "description": "Ausbau von Radwegen, Radverkehrsführung und Verkehrsberuhigung in Oldenburg."
+      },
+      {
+        "id": 30,
+        "name": "Bauprojekte Oldenburg",
+        "description": "Bebauungspläne, größere Bauvorhaben und Stadtentwicklungsprojekte in Oldenburg."
+      }
+    ],
+    "expected_matches": [
+      [
+        10,
+        "Ö 3"
+      ],
+      [
+        30,
+        "Ö 2"
+      ]
+    ]
+  },
+  {
+    "id": "watcher_stadion",
+    "note": "Stadion-Finanzierung → Stadion-Thema; Radverkehr hat hier keinen passenden TOP.",
+    "session": {
+      "ksinr": 910002,
+      "committee": "Stadtentwicklungsausschuss",
+      "session_date": "2099-07-08",
+      "session_time": "17:00",
+      "location": "Rathaus, Saal B",
+      "agenda_items": [
+        {
+          "item_number": "Ö 1",
+          "title": "Genehmigung der Niederschrift",
+          "vorlage_nr": "",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 2",
+          "title": "Neubau Fußballstadion Marschweg – Finanzierung",
+          "vorlage_nr": "26/0395",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 3",
+          "title": "Klimaanpassungskonzept – Baumpflanzprogramm",
+          "vorlage_nr": "26/0402",
+          "is_public": true
+        }
+      ]
+    },
+    "topics": [
+      {
+        "id": 1,
+        "name": "Stadion Oldenburg",
+        "description": "Neubau und Finanzierung des Fußballstadions am Marschweg in Oldenburg."
+      },
+      {
+        "id": 10,
+        "name": "Radverkehr Oldenburg",
+        "description": "Ausbau von Radwegen und Radverkehrsführung in Oldenburg."
+      }
+    ],
+    "expected_matches": [
+      [
+        1,
+        "Ö 2"
+      ]
+    ]
+  },
+  {
+    "id": "watcher_no_match",
+    "note": "Reine Routine-Tagesordnung — kein TOP passt zum Thema (kein Fehltreffer erwartet).",
+    "session": {
+      "ksinr": 910003,
+      "committee": "Finanzausschuss",
+      "session_date": "2099-07-15",
+      "session_time": "16:00",
+      "location": "Rathaus, Saal C",
+      "agenda_items": [
+        {
+          "item_number": "Ö 1",
+          "title": "Genehmigung der Tagesordnung",
+          "vorlage_nr": "",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 2",
+          "title": "Mitteilungen der Verwaltung",
+          "vorlage_nr": "",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 3",
+          "title": "Anfragen und Verschiedenes",
+          "vorlage_nr": "",
+          "is_public": true
+        }
+      ]
+    },
+    "topics": [
+      {
+        "id": 10,
+        "name": "Radverkehr Oldenburg",
+        "description": "Ausbau von Radwegen und Radverkehrsführung in Oldenburg."
+      }
+    ],
+    "expected_matches": []
+  },
+  {
+    "id": "watcher_stadtplanung_bebauungsplaene",
+    "note": "Ausschuss für Stadtplanung: Flächen­nutzungsplanänderungen (Stadion, Fliegerhorst, Eßkamp) und Sanierungsgebiet Innenstadt sind klassische Stadtentwicklungs-TOPs. Ö 8 (Stellplatz-Satzung) ebenfalls. Ö 5 und Ö 7 sind Eltern-TOPs der Bebauungsplan-Unterlagen; Ö 10.1 (Baumoratorium) ist ebenfalls Stadtentwicklung. Ö 10.2+10.3 (Begrünung) sind Grenzfälle.",
+    "session": {
+      "ksinr": 4604,
+      "committee": "Ausschuss für Stadtplanung und Bauen",
+      "session_date": "2026-03-19",
+      "session_time": "17:00",
+      "location": "",
+      "agenda_items": [
+        {
+          "item_number": "Ö 1",
+          "title": "Feststellung der Beschlussfähigkeit",
+          "vorlage_nr": "",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 2",
+          "title": "Genehmigung der Tagesordnung (öffentlicher Teil) Beschluss: geändert beschlossen",
+          "vorlage_nr": "",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 3",
+          "title": "Genehmigung des Protokolls Nr. 01/26 (öffentlicher Teil) vom 19.02.2026 Beschluss: zurückgestellt/abgesetzt",
+          "vorlage_nr": "",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 4",
+          "title": "Einwohnerfragestunde",
+          "vorlage_nr": "",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 5",
+          "title": "Bauleitplanung Maastrichter Straße",
+          "vorlage_nr": "",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 5.1",
+          "title": "Änderung 82 des Flächennutzungsplanes (Stadion Maastrichter Straße) - Prüfung der Stellungnahmen - Feststellungsbeschluss Beschluss: ungeändert beschlossen",
+          "vorlage_nr": "26/0173",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 5.2",
+          "title": "Bebauungsplan 831 (Stadion Maastrichter Straße) - Prüfung der Stellungnahmen - Satzungsbeschluss Beschluss: ungeändert beschlossen",
+          "vorlage_nr": "26/0172",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 6",
+          "title": "Bebauungsplan N-777 G (Fliegerhorst/Hallensichel Ost/Entlastungsstraße) mit örtlichen Bauvorschriften - Prüfung der Stellungnahmen - Satzungsbeschluss Beschluss: ungeändert beschlossen",
+          "vorlage_nr": "26/0210",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 7",
+          "title": "Bauleitplanung Nördlich Eßkamp/östlich Südbäke",
+          "vorlage_nr": "",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 7.1",
+          "title": "Änderung 84 des Flächennutzungsplanes (nördlich Eßkamp/östlich Südbäke) - Beschluss zur Veröffentlichung des Entwurfs Beschluss: ungeändert beschlossen",
+          "vorlage_nr": "26/0138",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 7.2",
+          "title": "Bebauungsplan 837 (nördlich Eßkamp/östlich Südbäke) - Beschluss zur Veröffentlichung des Entwurfes Beschluss: ungeändert beschlossen",
+          "vorlage_nr": "26/0139",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 8",
+          "title": "Neuaufstellung der Satzung über die Erhebung von Ausgleichsbeträgen für nicht herzustellende Kraftfahrzeug-Einstellplätze (Ablösesatzung) - Satzungsbeschluss Beschluss: ungeändert beschlossen",
+          "vorlage_nr": "26/0171",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 9",
+          "title": "Sanierungsgebiet Mittlere Innenstadt Vorbereitende Untersuchung inklusive Integriertem städtebaulichen Entwicklungskonzept (ISEK) für den Bereich \"Mittlere Innenstadt\" - Bericht Beschluss: zur Kenntnis genommen",
+          "vorlage_nr": "26/0168",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 10",
+          "title": "Anträge der Fraktionen, Gruppen, Rats- und Ausschussmitglieder",
+          "vorlage_nr": "",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 10.1",
+          "title": "Baumoratorium zum Bebauungsplan N-777 G (Fraktion Bündnis 90/ Die Grünen vom 29.09.2025) - Beschlussantrag Beschluss: abgelehnt",
+          "vorlage_nr": "",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 10.2",
+          "title": "Überarbeitung der Richtlinie über die Gewährung von Zuschüssen für Dachbegrünungen in der Stadt Oldenburg (Fassung vom 09.10.2023) (FDP-Fraktion vom 12.12.2025) - Beschlussantrag mit Bericht der Verwaltung Beschluss: zurückgestellt/abgesetzt",
+          "vorlage_nr": "26/0070/1",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 10.3",
+          "title": "Überarbeitung der Richtlinie „Förderprogramm Fassadenbegrünung“ (FDP-Fraktion vom 12.12.2025) - Beschlussantrag mit Bericht der Verwaltung Beschluss: zurückgestellt/abgesetzt",
+          "vorlage_nr": "",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 11",
+          "title": "Anfragen und Anregungen",
+          "vorlage_nr": "",
+          "is_public": true
+        },
+        {
+          "item_number": "N 12",
+          "title": "gesperrte Information",
+          "vorlage_nr": "",
+          "is_public": false
+        },
+        {
+          "item_number": "N 13",
+          "title": "gesperrte Information",
+          "vorlage_nr": "",
+          "is_public": false
+        },
+        {
+          "item_number": "N 14",
+          "title": "gesperrte Information",
+          "vorlage_nr": "",
+          "is_public": false
+        },
+        {
+          "item_number": "N 15",
+          "title": "gesperrte Information",
+          "vorlage_nr": "",
+          "is_public": false
+        },
+        {
+          "item_number": "N 16",
+          "title": "gesperrte Information",
+          "vorlage_nr": "",
+          "is_public": false
+        }
+      ]
+    },
+    "topics": [
+      {
+        "id": 1,
+        "name": "Stadtentwicklung & Bauprojekte Oldenburg",
+        "description": "Neue Bauprojekte, Stadtplanung, Bebauungspläne, Quartiersentwicklung in Oldenburg. Konkrete lokale Vorhaben und Entscheidungen."
+      },
+      {
+        "id": 2,
+        "name": "Verkehr & Radwege Oldenburg",
+        "description": "Radinfrastruktur, Fahrradwege, Kreuzungen, Parkraum, ÖPNV, Straßenbau in Oldenburg. Keine bundesweiten Verkehrspolitik-Debatten."
+      }
+    ],
+    "expected_matches": [
+      [
+        1,
+        "Ö 5"
+      ],
+      [
+        1,
+        "Ö 5.1"
+      ],
+      [
+        1,
+        "Ö 5.2"
+      ],
+      [
+        1,
+        "Ö 6"
+      ],
+      [
+        1,
+        "Ö 7"
+      ],
+      [
+        1,
+        "Ö 7.1"
+      ],
+      [
+        1,
+        "Ö 7.2"
+      ],
+      [
+        1,
+        "Ö 8"
+      ],
+      [
+        1,
+        "Ö 9"
+      ],
+      [
+        1,
+        "Ö 10.1"
+      ]
+    ]
+  },
+  {
+    "id": "watcher_finanzausschuss_zuwendungen_fp",
+    "note": "Finanzausschuss: Ö 5 (Stadionplanung) → Stadtentwicklung. Ö 6+7 (Annahme von Zuwendungen) sind Routine-Finanzadmin und matchen NICHT Wirtschaft & Einzelhandel. Ö 12.2 (Straßensanierung) → Verkehr, nicht Wirtschaft.",
+    "session": {
+      "ksinr": 4637,
+      "committee": "Ausschuss für Finanzen und Beteiligungen",
+      "session_date": "2026-04-08",
+      "session_time": "17:01",
+      "location": "",
+      "agenda_items": [
+        {
+          "item_number": "Ö 1",
+          "title": "Feststellung der Beschlussfähigkeit",
+          "vorlage_nr": "",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 2",
+          "title": "Genehmigung der Tagesordnung (öffentlicher Teil) Beschluss: ungeändert beschlossen",
+          "vorlage_nr": "",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 3",
+          "title": "Genehmigung der Protokolle (öffentlicher Teil)",
+          "vorlage_nr": "",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 3.1",
+          "title": "Genehmigung des Protokolls Nr. 01/26 (öffentlicher Teil) vom 04.02.2026 Beschluss: ungeändert beschlossen",
+          "vorlage_nr": "",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 3.2",
+          "title": "Genehmigung des Protokolls Nr. 02/26 (öffentlicher Teil) vom 25.02.2026 Beschluss: ungeändert beschlossen",
+          "vorlage_nr": "",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 4",
+          "title": "Einwohnerfragestunde",
+          "vorlage_nr": "",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 5",
+          "title": "Sachstandsbericht Stadionplanung - Bericht Beschluss: zur Kenntnis genommen",
+          "vorlage_nr": "26/0232",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 6",
+          "title": "Annahme von Zuwendungen durch den Verwaltungsausschuss - Beschluss Beschluss: ungeändert beschlossen",
+          "vorlage_nr": "26/0206",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 7",
+          "title": "Annahme von Zuwendungen durch den Rat - Beschluss Beschluss: ungeändert beschlossen",
+          "vorlage_nr": "26/0207",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 8",
+          "title": "Unterrichtung des Rates über Kreditaufnahmen, Derivatabschlüsse und Umschuldungen nach § 8 der Kreditrichtlinie - Bericht Beschluss: zur Kenntnis genommen",
+          "vorlage_nr": "26/0227",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 9",
+          "title": "Korrektur Jahresabschluss 2024 der Eric- und Margarethe Collins-Stiftung - Beschluss Beschluss: ungeändert beschlossen",
+          "vorlage_nr": "26/0195",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 10",
+          "title": "Haushaltsvollzug 2026 - Finanz- und Leistungsbericht zum 31. März 2026 -Bericht Beschluss: zur Kenntnis genommen",
+          "vorlage_nr": "26/0155",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 11",
+          "title": "Liquiditätsstand - Bericht Beschluss: zur Kenntnis genommen",
+          "vorlage_nr": "26/0289",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 12",
+          "title": "Anträge der Fraktionen, Gruppen, Rats- und Ausschussmitglieder",
+          "vorlage_nr": "",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 12.1",
+          "title": "Controlling von Großprojekten (CDU-Fraktion vom 22.12.2025) - Beschlussantrag mit Bericht der Verwaltung Beschluss: geändert beschlossen",
+          "vorlage_nr": "26/0229",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 12.2",
+          "title": "Sondervermögen Straßensanierung (CDU-Fraktion vom 20.02.2026) - Beschlussantrag Beschluss: zurückgestellt/abgesetzt",
+          "vorlage_nr": "",
+          "is_public": true
+        },
+        {
+          "item_number": "Ö 13",
+          "title": "Anfragen und Anregungen",
+          "vorlage_nr": "",
+          "is_public": true
+        },
+        {
+          "item_number": "N 14",
+          "title": "gesperrte Information",
+          "vorlage_nr": "",
+          "is_public": false
+        },
+        {
+          "item_number": "N 15",
+          "title": "gesperrte Information",
+          "vorlage_nr": "",
+          "is_public": false
+        },
+        {
+          "item_number": "N 15.1",
+          "title": "gesperrte Information",
+          "vorlage_nr": "",
+          "is_public": false
+        },
+        {
+          "item_number": "N 15.2",
+          "title": "gesperrte Information",
+          "vorlage_nr": "",
+          "is_public": false
+        },
+        {
+          "item_number": "N 16",
+          "title": "gesperrte Information",
+          "vorlage_nr": "",
+          "is_public": false
+        },
+        {
+          "item_number": "N 17",
+          "title": "gesperrte Information",
+          "vorlage_nr": "",
+          "is_public": false
+        },
+        {
+          "item_number": "N 18",
+          "title": "gesperrte Information",
+          "vorlage_nr": "",
+          "is_public": false
+        },
+        {
+          "item_number": "N 19",
+          "title": "gesperrte Information",
+          "vorlage_nr": "",
+          "is_public": false
+        },
+        {
+          "item_number": "N 19.1",
+          "title": "gesperrte Information",
+          "vorlage_nr": "",
+          "is_public": false
+        },
+        {
+          "item_number": "N 20",
+          "title": "gesperrte Information",
+          "vorlage_nr": "",
+          "is_public": false
+        }
+      ]
+    },
+    "topics": [
+      {
+        "id": 1,
+        "name": "Stadtentwicklung & Bauprojekte Oldenburg",
+        "description": "Neue Bauprojekte, Stadtplanung, Bebauungspläne, Quartiersentwicklung in Oldenburg. Konkrete lokale Vorhaben und Entscheidungen."
+      },
+      {
+        "id": 2,
+        "name": "Verkehr & Radwege Oldenburg",
+        "description": "Radinfrastruktur, Fahrradwege, Kreuzungen, Parkraum, ÖPNV, Straßenbau in Oldenburg. Keine bundesweiten Verkehrspolitik-Debatten."
+      },
+      {
+        "id": 6,
+        "name": "Wirtschaft & Einzelhandel Oldenburg",
+        "description": "Unternehmensansiedlungen, Ladenschließungen, Innenstadt-Einzelhandel, Gewerbeflächen in Oldenburg."
+      }
+    ],
+    "expected_matches": [
+      [
+        1,
+        "Ö 5"
+      ],
+      [
+        2,
+        "Ö 12.2"
+      ]
+    ]
+  }
+]

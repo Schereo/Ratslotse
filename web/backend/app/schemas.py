@@ -95,3 +95,8 @@ class RoleUpdate(BaseModel):
 
 class StatusUpdate(BaseModel):
     status: str  # 'active' | 'pending'
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=8, max_length=128)

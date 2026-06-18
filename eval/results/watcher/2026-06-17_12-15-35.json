@@ -1,0 +1,13 @@
+{
+  "timestamp": "2026-06-17T12:15:35",
+  "suite": "watcher",
+  "cases": 3,
+  "tp": 3,
+  "fp": 0,
+  "tn": null,
+  "fn": 0,
+  "precision": 1.0,
+  "recall": 1.0,
+  "f1": 1.0,
+  "mistakes": []
+}

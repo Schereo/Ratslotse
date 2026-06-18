@@ -63,18 +63,20 @@ def _sign(message: bytes, secret: str) -> str:
     return _b64url_encode(sig)
 
 
-def create_access_token(subject: str | int) -> str:
+def create_access_token(subject: str | int, token_version: int = 0) -> str:
     settings = get_settings()
     exp = int(time.time()) + settings.access_token_expire_minutes * 60
     header = _b64url_encode(json.dumps({"alg": "HS256", "typ": "JWT"}).encode())
-    payload = _b64url_encode(json.dumps({"sub": str(subject), "exp": exp}).encode())
+    payload = _b64url_encode(
+        json.dumps({"sub": str(subject), "exp": exp, "ver": token_version}).encode()
+    )
     signing_input = f"{header}.{payload}".encode()
     signature = _sign(signing_input, settings.web_jwt_secret)
     return f"{header}.{payload}.{signature}"
 
 
-def decode_access_token(token: str) -> str | None:
-    """Return the subject (web_user id as str) or None if invalid/expired."""
+def decode_access_token(token: str) -> tuple[str, int] | None:
+    """Return (subject, token_version) or None if the token is invalid/expired."""
     settings = get_settings()
     try:
         header_b64, payload_b64, signature = token.split(".")
@@ -89,4 +91,7 @@ def decode_access_token(token: str) -> str | None:
         return None
     if payload.get("exp", 0) < int(time.time()):
         return None
-    return payload.get("sub")
+    sub = payload.get("sub")
+    if sub is None:
+        return None
+    return sub, int(payload.get("ver", 0))

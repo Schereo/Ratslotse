@@ -83,18 +83,7 @@ def set_status(
 # ---- telegram whitelist ----
 @router.get("/telegram-users")
 def telegram_users(_admin: dict = Depends(require_admin), store: Store = Depends(get_store)) -> dict:
-    users = store.get_users()
-    return {
-        "users": [
-            {
-                "chat_id": u.chat_id,
-                "username": u.username,
-                "added_at": u.added_at,
-                "topic_count": len(store.get_topics(u.chat_id)),
-            }
-            for u in users
-        ]
-    }
+    return {"users": store.get_users_with_topic_count()}
 
 
 @router.delete("/telegram-users/{chat_id}", status_code=status.HTTP_204_NO_CONTENT)

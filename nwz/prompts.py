@@ -69,6 +69,11 @@ DEFAULTS: dict[str, dict[str, str]] = {
             - das Thema eine Organisation/Partei/Person ist und diese im Artikel
               gar nicht VORKOMMT — eine bloße inhaltliche Nähe genügt nicht.
 
+            Ein Artikel kann mehreren Themen gleichzeitig zugeordnet werden, wenn er beide
+            konkret behandelt (Beispiel: ein Artikel über einen Brückenneubau passt sowohl
+            zu 'Stadtentwicklung/Bauprojekte' als auch zu 'Verkehr/Straßenbau', da Brücken
+            Bestandteil der Straßenverkehrsinfrastruktur sind).
+
             Im Zweifel: NICHT aufnehmen. Lieber kein Treffer als ein falscher.
             Die Zusammenfassung muss belegen, WO im Artikel das Thema vorkommt;
             wenn du das nicht ohne Spekulation kannst, ist es kein Treffer.
@@ -107,6 +112,13 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "NICHT relevant ist: bloße Stichwort-Überschneidung (z.B. das Wort 'grün'), reine "
             "thematische Verwandtschaft ohne Nennung des Akteurs, oder ein bundesweiter Bezug, "
             "obwohl das Thema einen lokalen Bezug (Oldenburg) verlangt. "
+            "WICHTIG — Ort als Kulisse ist kein Themenbezug: Wenn ein Straßenname, Radweg oder "
+            "Gebäudename (z.B. 'auf dem Fahrradweg', 'im Alten Gymnasium') nur als Veranstaltungsort "
+            "oder Schauplatz vorkommt, macht das den Artikel NICHT zum Themen-Treffer. Ein Artikel "
+            "über ein Pride-Event auf einem Radweg ist kein Verkehrsartikel; ein Kulturereignis im "
+            "'Alten Gymnasium' ist kein Schulen-Artikel — 'Altes Gymnasium' ist dort ein Gebäudename, "
+            "keine Schule. Prüfe stets: IST der Artikel über das Thema, oder ERWÄHNT er es nur beiläufig "
+            "als Ort? "
             "Beachte die Themen-Beschreibung: erfüllt sie einen geforderten lokalen/konkreten "
             'Bezug? Antworte nur als JSON: {"relevant": true/false}.'
         ),
@@ -199,6 +211,18 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "template": textwrap.dedent("""\
             Du analysierst Tagesordnungspunkte (TOP) der Oldenburger Stadtratssitzungen
             und ordnest sie den Interessengebieten des Nutzers zu.
+
+            RELEVANZREGELN:
+            - Nur TOPs aufnehmen, die das Nutzerthema *konkret* betreffen.
+            - Niemals zuordnen: Beschlussfähigkeit, Tagesordnung/Protokoll genehmigen,
+              Einwohnerfragestunde, Anfragen, Berichte ohne inhaltlichen Bezug.
+            - "Annahme von Zuwendungen" ist Routine-Finanzadministration — kein
+              Wirtschafts- oder Handelsbezug.
+            - Haushaltsmittel für Infrastruktur (z. B. "Sondervermögen Straßensanierung")
+              gehören zum Infrastruktur-Thema (Verkehr), nicht zu allgemeinen Finanzthemen.
+            - Wenn Unter-TOPs (z. B. Ö 5.1, Ö 5.2) einem Thema zugeordnet werden,
+              auch den übergeordneten TOP (z. B. Ö 5) aufnehmen.
+
             Antworte ausschließlich als JSON.
         """),
     },

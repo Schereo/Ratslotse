@@ -15,7 +15,7 @@ class Settings(BaseSettings):
 
     # Auth
     web_jwt_secret: str = "dev-insecure-change-me"
-    access_token_expire_minutes: int = 60 * 24 * 7  # 7 days
+    access_token_expire_minutes: int = 60 * 24  # 1 day
     web_admin_email: str = ""  # this email is granted admin on registration
     # Secure cookies require HTTPS (or localhost, which browsers treat as
     # secure). Keep True for production; tests/non-localhost HTTP set it False.

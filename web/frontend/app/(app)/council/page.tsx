@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Search, ExternalLink } from "lucide-react";
+import { Search, ExternalLink, ChevronRight, Landmark } from "lucide-react";
 import { api, qs, ApiError } from "@/lib/api";
+import { useDebounce } from "@/lib/use-debounce";
 import { CouncilSession, SessionDetail } from "@/lib/types";
 import {
-  Badge, Button, Card, EmptyState, Input, Select, Spinner, formatDate,
+  Badge, Card, CardListSkeleton, EmptyState, Input, PageHeader, Select, formatDate,
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, toast,
 } from "@/components/ui";
 import { cn } from "@/lib/utils";
@@ -18,8 +19,11 @@ export default function CouncilPage() {
   const [scope, setScope] = useState<Scope>("upcoming");
   const [committees, setCommittees] = useState<string[]>([]);
   const [sessions, setSessions] = useState<CouncilSession[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [hasSearched, setHasSearched] = useState(false);
   const [detail, setDetail] = useState<SessionDetail | null>(null);
+
+  const debouncedQ = useDebounce(q, 350);
 
   useEffect(() => {
     api.get<{ committees: string[] }>("/council/committees").then((d) => setCommittees(d.committees)).catch(() => {});
@@ -27,6 +31,7 @@ export default function CouncilPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setHasSearched(true);
     try {
       const effectiveScope = q || committee ? "all" : scope;
       const data = await api.get<{ sessions: CouncilSession[] }>(
@@ -40,10 +45,11 @@ export default function CouncilPage() {
     }
   }, [q, committee, scope]);
 
+  // Instant search on debounced query / filter / scope change (and on mount).
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scope]);
+  }, [debouncedQ, committee, scope]);
 
   const openDetail = async (s: CouncilSession) => {
     try {
@@ -55,18 +61,28 @@ export default function CouncilPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-foreground">Ratsinformationssystem</h1>
-      <p className="mt-1 text-sm text-muted-foreground">Sitzungen und Tagesordnungen des Oldenburger Stadtrats.</p>
+      <PageHeader
+        title="Ratsinformationssystem"
+        description="Sitzungen und Tagesordnungen des Oldenburger Stadtrats."
+      />
 
       <Card className="mt-6 p-4">
-        <form onSubmit={(e) => { e.preventDefault(); load(); }} className="space-y-3">
-          <Input placeholder="In Tagesordnungen suchen (z. B. Bebauungsplan)…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <div className="space-y-3">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              className="pl-9"
+              placeholder="In Tagesordnungen suchen (z. B. Bebauungsplan)…"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+          </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Select value={committee} onChange={(e) => setCommittee(e.target.value)}>
               <option value="">Alle Ausschüsse</option>
               {committees.map((c) => <option key={c} value={c}>{c}</option>)}
             </Select>
-            <div className="flex gap-1 rounded-md border border-input bg-card p-1">
+            <div className="flex gap-1 rounded-md bg-muted p-1">
               {(["upcoming", "recent", "all"] as Scope[]).map((s) => (
                 <button
                   key={s}
@@ -74,7 +90,9 @@ export default function CouncilPage() {
                   onClick={() => { setScope(s); setQ(""); setCommittee(""); }}
                   className={cn(
                     "flex-1 rounded-sm px-2 py-1.5 text-sm font-medium transition-colors",
-                    scope === s && !q && !committee ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent",
+                    scope === s && !q && !committee
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:bg-background/60 hover:text-foreground",
                   )}
                 >
                   {s === "upcoming" ? "Kommend" : s === "recent" ? "Vergangen" : "Alle"}
@@ -82,37 +100,44 @@ export default function CouncilPage() {
               ))}
             </div>
           </div>
-          <Button type="submit" className="w-full sm:w-auto">
-            <Search className="h-4 w-4" /> Suchen
-          </Button>
-        </form>
+        </div>
       </Card>
 
       <div className="mt-6">
         {loading ? (
-          <Spinner />
+          <CardListSkeleton rows={5} />
         ) : sessions.length === 0 ? (
-          <EmptyState title="Keine Sitzungen gefunden" />
+          hasSearched ? (
+            <EmptyState
+              icon={Landmark}
+              title="Keine Sitzungen gefunden"
+              hint="Versuche andere Suchbegriffe oder passe die Filter an."
+            />
+          ) : (
+            <EmptyState icon={Landmark} title="Noch keine Sitzungen vorhanden" />
+          )
         ) : (
           <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">{sessions.length} Sitzungen</p>
+            <p className="text-sm font-medium text-muted-foreground">{sessions.length} {sessions.length === 1 ? "Sitzung" : "Sitzungen"}</p>
             {sessions.map((s) => (
               <button
                 key={s.ksinr}
                 type="button"
-                className="w-full text-left"
+                className="block w-full text-left"
                 onClick={() => openDetail(s)}
-                onKeyDown={(e) => e.key === "Enter" && openDetail(s)}
               >
-                <Card className="p-4 transition-shadow hover:shadow-md">
+                <Card className="card-interactive group p-4">
                   <div className="flex items-center justify-between gap-3">
-                    <div>
+                    <div className="min-w-0">
                       <h3 className="font-semibold text-foreground">{s.committee}</h3>
                       <p className="mt-0.5 text-sm text-muted-foreground">
                         {formatDate(s.session_date)} · {s.session_time} Uhr · {s.location}
                       </p>
                     </div>
-                    <Badge color="blue">{s.n_items} TOP</Badge>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <Badge color="blue">{s.n_items} TOP</Badge>
+                      <ChevronRight className="h-5 w-5 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+                    </div>
                   </div>
                 </Card>
               </button>
@@ -132,11 +157,11 @@ export default function CouncilPage() {
                 </DialogDescription>
               </DialogHeader>
               <div>
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Tagesordnung</h3>
+                <h3 className="text-sm font-semibold text-muted-foreground">Tagesordnung</h3>
                 <ul className="mt-2 divide-y divide-border">
                   {detail.agenda_items.map((it, i) => (
                     <li key={i} className="flex flex-wrap items-start gap-x-3 gap-y-1 py-2">
-                      <span className="shrink-0 font-mono text-xs text-muted-foreground">{it.item_number}</span>
+                      <span className="shrink-0 text-xs font-medium text-muted-foreground">{it.item_number}</span>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm text-foreground">{it.title}</p>
                         {it.vorlage_nr && <p className="text-xs text-muted-foreground">Vorlage {it.vorlage_nr}</p>}

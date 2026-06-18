@@ -3,13 +3,27 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Clock } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { DesktopSidebar, MobileTopbar } from "@/components/nav";
+import { DesktopSidebar, MobileTopbar, MobileBottomNav } from "@/components/nav";
 import { Card, Spinner } from "@/components/ui";
+import type { User } from "@/lib/types";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, refresh } = useAuth();
   const router = useRouter();
+
+  const pending = !!user && user.status === "pending" && user.role !== "admin";
+
+  // Poll /me every 30 s while the account is pending so it auto-unlocks
+  // as soon as an admin approves it — without requiring a page reload.
+  useQuery({
+    queryKey: ["me-poll"],
+    queryFn: () => api.get<User>("/auth/me").then((u) => { refresh(); return u; }),
+    refetchInterval: pending ? 30_000 : false,
+    enabled: pending,
+  });
 
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
@@ -17,17 +31,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   if (loading || !user) return <Spinner />;
 
-  const pending = user.status === "pending" && user.role !== "admin";
-
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
       <DesktopSidebar />
       <MobileTopbar />
       <main className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+        <div className="mx-auto max-w-5xl px-4 py-6 pb-24 sm:px-6 sm:py-8 md:pb-8">
           {pending ? <PendingNotice email={user.email} /> : children}
         </div>
       </main>
+      <MobileBottomNav />
     </div>
   );
 }
