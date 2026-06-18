@@ -22,6 +22,21 @@ VERIFY_MODEL = "openai/gpt-4o-mini"
 FIRST_PASS_CHARS = int(os.environ.get("NWZ_FIRST_PASS_CHARS", "2400"))
 VERIFY_CHARS = int(os.environ.get("NWZ_VERIFY_CHARS", "3000"))
 
+# Newspaper sections that never carry local-Oldenburg topics. Articles in these
+# are skipped before classification — cuts ~⅔ of the articles (and the tokens)
+# and a few cross-section false positives. Recall-safe: unknown/new sections are
+# kept. Override the whole set via NWZ_SKIP_SECTIONS (comma-separated).
+_DEFAULT_SKIP = (
+    "Sport,Sport im Nordwesten,Panorama,Politik,Wirtschaft,"
+    "Niedersachsen und der Norden,Kultur,Gesundheit,Reise,Wellness,Genuss,"
+    "Trends,Balance,Mehr Zeit,Leben,Kino,Auto & Verkehr,Garten,GartenZeit,Beruf,"
+    "Kinderseite,Wort zum Sonntag,Medien & Wetter,Service,Wohnen & Leben,"
+    "Wissenschaft,Menschen,Menschen & Märkte,Sonderbeilage Gesamt,Zusatz,Blickpunkt"
+)
+SKIP_SECTIONS = frozenset(
+    s.strip() for s in os.environ.get("NWZ_SKIP_SECTIONS", _DEFAULT_SKIP).split(",") if s.strip()
+)
+
 # Sub-headline marker that separates the individual briefs inside a container
 # page ("Kurz notiert", "Titelseite"): <div class='h3'>Überschrift</div>.
 _H3_RE = re.compile(r"<div class=['\"]h3['\"]>(.*?)</div>", re.S | re.I)
@@ -161,6 +176,12 @@ def build_digest(
 
     recent_context: if provided, GPT flags articles that are continuations of already-sent stories.
     """
+    # Skip non-local newspaper sections (sport, world, national politics, …) —
+    # they never hold local-Oldenburg topics. Big token saving, recall-safe.
+    articles = [a for a in articles if (a.get("category_name") or "") not in SKIP_SECTIONS]
+    if not articles:
+        return "", []
+
     # Split multi-brief container pages so a buried item is classified on its own.
     units = _split_into_briefs(articles)
     refid_to_orig = {u["refid"]: u["_orig_refid"] for u in units}
