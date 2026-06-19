@@ -103,24 +103,29 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "title": "NWZ-Verifikation (2. Pass)",
         "description": "Günstiger Einzelcheck pro (Thema, Artikel)-Paar, der False Positives aus dem ersten Pass aussortiert.",
         "template": (
-            "Du prüfst, ob ein Zeitungsartikel eine konkrete, faktische Information zum "
-            "angegebenen Thema enthält. RELEVANT ist ein Artikel, wenn er das Thema behandelt "
-            "ODER eine konkrete Tatsache zum verfolgten Akteur liefert — z.B. wie eine Partei/"
-            "Person abgestimmt hat, was sie gesagt oder getan hat. Das Thema muss NICHT der "
-            "zentrale Gegenstand sein; eine beiläufige, aber konkrete Nennung (z.B. die Partei "
-            "in einer Abstimmungsliste) genügt und ist relevant. "
-            "NICHT relevant ist: bloße Stichwort-Überschneidung (z.B. das Wort 'grün'), reine "
-            "thematische Verwandtschaft ohne Nennung des Akteurs, oder ein bundesweiter Bezug, "
-            "obwohl das Thema einen lokalen Bezug (Oldenburg) verlangt. "
-            "WICHTIG — Ort als Kulisse ist kein Themenbezug: Wenn ein Straßenname, Radweg oder "
-            "Gebäudename (z.B. 'auf dem Fahrradweg', 'im Alten Gymnasium') nur als Veranstaltungsort "
-            "oder Schauplatz vorkommt, macht das den Artikel NICHT zum Themen-Treffer. Ein Artikel "
-            "über ein Pride-Event auf einem Radweg ist kein Verkehrsartikel; ein Kulturereignis im "
-            "'Alten Gymnasium' ist kein Schulen-Artikel — 'Altes Gymnasium' ist dort ein Gebäudename, "
-            "keine Schule. Prüfe stets: IST der Artikel über das Thema, oder ERWÄHNT er es nur beiläufig "
-            "als Ort? "
-            "Beachte die Themen-Beschreibung: erfüllt sie einen geforderten lokalen/konkreten "
-            'Bezug? Antworte nur als JSON: {"relevant": true/false}.'
+            "Du prüfst, ob ein Zeitungsartikel RELEVANT für das angegebene Thema ist. "
+            "RELEVANT (true) ist ein Artikel, wenn der Akteur/Gegenstand des Themas konkret "
+            "vorkommt — auch beiläufig: wie eine Partei/Person abgestimmt hat, sich positioniert, "
+            "etwas gesagt/getan/beantragt hat, oder wenn ein konkretes Projekt/Bauvorhaben/Plan "
+            "des Themas behandelt wird. Das Thema muss NICHT der zentrale Gegenstand sein; eine "
+            "Partei in einer Abstimmungs- oder Rednerliste genügt und ist relevant.\n"
+            "NICHT relevant (false) ist:\n"
+            "- STICHWORT statt Akteur: Das Adjektiv bzw. die Farbe 'grün' — 'mehr Grün', "
+            "'Grünfläche', 'Grünanlage', 'Grünstreifen', 'im Grünen', 'grüne Welle' — meint "
+            "Vegetation/Farbe, NICHT die Partei. Eine Partei ist nur gemeint, wenn die PARTEI "
+            "selbst vorkommt (Fraktion, Mitglieder, Kandidaten, 'Die Grünen', 'Bündnis 90', "
+            "'Volt', 'SPD' …).\n"
+            "- FALSCHE IDENTITÄT: Eine Person zählt für ein Parteithema nur, wenn sie dieser "
+            "Partei ANGEHÖRT. Parteilose oder Mitglieder anderer Parteien zählen nicht. "
+            "'Rot/Grün' als Landesregierung ist nicht die lokale Oldenburger Partei.\n"
+            "- FALSCHER ORT: Verlangt das Thema einen Oldenburg-Bezug, sind landes- oder "
+            "bundesweite Vorgänge und Ereignisse mit anderer Dateline (z.B. HANNOVER, WIESMOOR, "
+            "KRUMMHÖRN) ohne konkreten Oldenburg-Bezug NICHT relevant.\n"
+            "- ORT ALS KULISSE: Ein Straßen-, Radweg- oder Gebäudename, der nur als "
+            "Veranstaltungsort/Schauplatz vorkommt (z.B. ein Pride-Event 'auf dem Radweg', ein "
+            "Kulturereignis 'im Alten Gymnasium'), macht den Artikel nicht zum Themen-Treffer.\n"
+            "Beachte die Themen-Beschreibung und ihren geforderten lokalen/konkreten Bezug. "
+            'Antworte nur als JSON: {"relevant": true/false}.'
         ),
     },
     "weekly_highlights_system": {
