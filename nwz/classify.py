@@ -142,9 +142,12 @@ def _verify_match(topic: dict, article: dict) -> bool:
             },
         ],
     )
+    content = resp.choices[0].message.content
+    if not content:
+        return True  # verify model returned no content — don't drop a possibly-valid match
     try:
-        return bool(json.loads(resp.choices[0].message.content).get("relevant", False))
-    except (json.JSONDecodeError, AttributeError):
+        return bool(json.loads(content).get("relevant", False))
+    except (json.JSONDecodeError, AttributeError, TypeError):
         return True  # on parse failure, don't drop a possibly-valid match
 
 
