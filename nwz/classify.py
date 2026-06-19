@@ -9,7 +9,10 @@ from typing import Any
 from . import llm, prompts
 
 MODEL = "openai/gpt-4o"
-VERIFY_MODEL = "openai/gpt-4o-mini"
+# deepseek-v4-flash (with reasoning OFF) is a markedly better and cheaper verifier
+# than gpt-4o-mini here: it rejects far more false positives at a fraction of the
+# cost. Override via NWZ_VERIFY_MODEL.
+VERIFY_MODEL = os.environ.get("NWZ_VERIFY_MODEL", "deepseek/deepseek-v4-flash")
 
 # Per-article text budget (in characters) handed to the classifier. Long
 # container articles ("Kurz notiert", "Titelseite") concatenate many unrelated
@@ -114,18 +117,24 @@ def _resolve_topic(name: str, topics: list[dict]) -> dict | None:
 
 
 def _verify_match(topic: dict, article: dict) -> bool:
-    """Cheap second-pass check: does the article genuinely deal with the topic?
+    """Cheap second-pass check: is the topic genuinely present in the article?
 
-    Returns True only if the topic is a central, explicit subject of the article.
-    Keyword overlap, thematic kinship or nationwide references without the local/
-    concrete angle the topic asks for do not count.
+    The topic need NOT be the central subject — a party in a vote/speaker list
+    counts. Keyword homonyms ('grün' the colour vs. the party), wrong-entity or
+    wrong-place mentions do not. Exact criteria live in the nwz_verify_system
+    prompt.
     """
     text = (article.get("content_text") or "")[:VERIFY_CHARS].replace("\n", " ")
+    # A reasoning model is a poor verifier for this binary check — it drifts to
+    # "relevant when in doubt" (far worse precision) and costs ~10x the tokens —
+    # so turn reasoning off when the verify model is a reasoning (deepseek) model.
+    extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in VERIFY_MODEL else {}
     resp = llm.chat_complete(
         model=VERIFY_MODEL,
         temperature=0,
         response_format={"type": "json_object"},
         max_tokens=20,
+        **extra,
         messages=[
             {
                 "role": "system",
