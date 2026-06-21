@@ -259,15 +259,15 @@ class Store:
                     "SELECT telegram_chat_id FROM web_users WHERE telegram_chat_id IS NOT NULL"
                 ).fetchall()
             }
+            # Only chat_ids that actually own something need a synthetic owner.
+            # The admin (TELEGRAM_CHAT_ID) is covered implicitly via users/topics
+            # once they own data; a fresh DB creates no synthetic accounts.
             chat_ids: set[int] = set()
             chat_ids.update(r[0] for r in self._conn.execute("SELECT DISTINCT chat_id FROM users").fetchall())
             chat_ids.update(r[0] for r in self._conn.execute("SELECT DISTINCT chat_id FROM topics").fetchall())
             if "chat_id" in self._table_cols("committee_subscriptions"):
                 chat_ids.update(r[0] for r in self._conn.execute(
                     "SELECT DISTINCT chat_id FROM committee_subscriptions").fetchall())
-            admin = int(os.environ.get("TELEGRAM_CHAT_ID", 0))
-            if admin:
-                chat_ids.add(admin)
             chat_ids.discard(0)  # 0 = orphan / no owner
             for cid in sorted(chat_ids - linked):
                 # password_hash '!' can never match a bcrypt verify → no login.

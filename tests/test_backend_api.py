@@ -202,10 +202,14 @@ def test_council_session_404(client):
     assert client.get("/api/council/session/999").status_code == 404
 
 
-# ---- topics (need linking) ----
-def test_topics_require_linked_account(client):
+# ---- topics (owned by the web account, no Telegram link required) ----
+def test_topics_work_without_telegram_link(client):
     _register(client)
-    assert client.get("/api/topics").status_code == 409
+    assert client.get("/api/topics").status_code == 200
+    assert client.get("/api/topics").json() == []
+    r = client.post("/api/topics", json={"name": "Radwege", "description": "Ausbau in Oldenburg"})
+    assert r.status_code == 201
+    assert len(client.get("/api/topics").json()) == 1
 
 
 def test_topics_and_subscriptions_flow(client):
