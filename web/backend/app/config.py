@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     council_db: str = str(ROOT / "data" / "council.sqlite")
 
     # Telegram bot username, used to render link instructions in the UI
-    telegram_bot_username: str = "mein_nwz_bot"
+    telegram_bot_username: str = "RatslotseBot"
 
     # CORS: comma-separated origins for local dev. In production the frontend is
     # served same-origin behind nginx, so this is only needed during development.

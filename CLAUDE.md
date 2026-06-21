@@ -71,7 +71,7 @@ TELEGRAM_CHAT_ID=...
 # Web-Frontend (web/)
 WEB_JWT_SECRET=...          # zufälliges Signiergeheimnis für Session-Tokens
 WEB_ADMIN_EMAIL=...         # diese E-Mail wird bei Registrierung Admin
-TELEGRAM_BOT_USERNAME=mein_nwz_bot
+TELEGRAM_BOT_USERNAME=RatslotseBot
 CORS_ORIGINS=https://ratslotse.de   # erlaubte Origins (Prod-Domain)
 ```
 
