@@ -6,7 +6,7 @@ import { Providers } from "./providers";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: "Stadtpuls",
+  title: "Ratslotse",
   description: "Lokale Nachrichten und Ratsinformationen für Oldenburg",
   manifest: "/manifest.json",
 };
