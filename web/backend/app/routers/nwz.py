@@ -48,10 +48,10 @@ def editions(_user: dict = Depends(require_nwz_verified), store: Store = Depends
     }
 
 
-@router.get("/article/{catalog}/{refid}")
+@router.get("/article/{catalog}")
 def article(
     catalog: int,
-    refid: str,
+    refid: str = Query(..., description="Artikel-refid (enthält i. d. R. Slashes)"),
     _user: dict = Depends(require_nwz_verified),
     store: Store = Depends(get_store),
 ) -> dict:
