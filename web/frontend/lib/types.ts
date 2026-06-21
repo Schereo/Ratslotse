@@ -104,3 +104,12 @@ export interface TelegramUser {
   added_at: string;
   topic_count: number;
 }
+
+export interface AdminStats {
+  articles: { total: number; editions: number; fts: number; oldest: string | null; newest: string | null };
+  categories: { name: string; count: number }[];
+  web_users: { total: number; admins: number; active: number; pending: number; nwz_verified: number; linked: number };
+  telegram_users: number;
+  topics: { total: number; users_with_topics: number; matches: number; classified_editions: number; subscriptions: number };
+  council: { sessions: number; upcoming: number; agenda_items: number; committees: number };
+}
