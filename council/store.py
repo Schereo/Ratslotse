@@ -90,6 +90,21 @@ class CouncilStore:
     def close(self) -> None:
         self._conn.close()
 
+    def admin_stats(self) -> dict:
+        """Council counts for the admin dashboard (read-only)."""
+        c = self._conn
+
+        def one(sql: str, *p):
+            row = c.execute(sql, p).fetchone()
+            return row[0] if row else 0
+
+        return {
+            "sessions": one("SELECT COUNT(*) FROM council_sessions"),
+            "upcoming": one("SELECT COUNT(*) FROM council_sessions WHERE session_date >= date('now')"),
+            "agenda_items": one("SELECT COUNT(*) FROM council_agenda_items"),
+            "committees": one("SELECT COUNT(*) FROM committees"),
+        }
+
     def has_session_with_agenda(self, ksinr: int) -> bool:
         row = self._conn.execute(
             "SELECT COUNT(*) FROM council_agenda_items WHERE ksinr = ?", (ksinr,)

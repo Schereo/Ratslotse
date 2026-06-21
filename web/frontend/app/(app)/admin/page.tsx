@@ -5,15 +5,17 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { Prompt, WebUser, TelegramUser } from "@/lib/types";
+import { Prompt, WebUser, TelegramUser, AdminStats } from "@/lib/types";
 import { Badge, Button, Card, ConfirmDialog, PageHeader, Spinner, Textarea, formatDate, toast } from "@/components/ui";
+import { cn } from "@/lib/utils";
+import { categoryLabel } from "@/lib/categories";
 
-type Tab = "prompts" | "users" | "telegram";
+type Tab = "stats" | "prompts" | "users" | "telegram";
 
 export default function AdminPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [tab, setTab] = useState<Tab>("prompts");
+  const [tab, setTab] = useState<Tab>("stats");
 
   if (loading) return <Spinner />;
   if (!user || user.role !== "admin") {
@@ -26,6 +28,7 @@ export default function AdminPage() {
       <PageHeader title="Admin" description="Prompts, Web-Nutzer und Telegram-Whitelist verwalten." />
       <div className="mt-4 flex gap-1 border-b border-border">
         {([
+          ["stats", "Statistik"],
           ["prompts", "Prompts"],
           ["users", "Web-Nutzer"],
           ["telegram", "Telegram-Whitelist"],
@@ -42,11 +45,97 @@ export default function AdminPage() {
         ))}
       </div>
       <div className="mt-6">
+        {tab === "stats" && <StatsTab />}
         {tab === "prompts" && <PromptsTab />}
         {tab === "users" && <UsersTab currentUserId={user.id} />}
         {tab === "telegram" && <TelegramTab />}
       </div>
     </div>
+  );
+}
+
+function StatsTab() {
+  const { data, isPending, isError } = useQuery({
+    queryKey: ["admin", "stats"],
+    queryFn: () => api.get<AdminStats>("/admin/stats"),
+  });
+
+  if (isPending) return <Spinner />;
+  if (isError || !data) return <p className="text-sm text-destructive">Fehler beim Laden der Statistiken.</p>;
+
+  const range =
+    data.articles.oldest && data.articles.newest
+      ? `${formatDate(data.articles.oldest)} – ${formatDate(data.articles.newest)}`
+      : "—";
+
+  return (
+    <div className="space-y-8">
+      <StatSection title="Artikel-Archiv">
+        <Stat label="Artikel" value={data.articles.total} />
+        <Stat label="Ausgaben" value={data.articles.editions} />
+        <Stat label="Volltext-Index" value={data.articles.fts} />
+        <Stat label="Zeitraum" value={range} wide />
+      </StatSection>
+
+      <StatSection title="Web-Nutzer">
+        <Stat label="Gesamt" value={data.web_users.total} />
+        <Stat label="Admins" value={data.web_users.admins} />
+        <Stat label="Aktiv" value={data.web_users.active} />
+        <Stat label="Warten auf Freischaltung" value={data.web_users.pending} />
+        <Stat label="NWZ-verifiziert" value={data.web_users.nwz_verified} />
+        <Stat label="Telegram verknüpft" value={data.web_users.linked} />
+      </StatSection>
+
+      <StatSection title="Telegram & Themen">
+        <Stat label="Telegram-Nutzer" value={data.telegram_users} />
+        <Stat label="Themen" value={data.topics.total} />
+        <Stat label="Nutzer mit Themen" value={data.topics.users_with_topics} />
+        <Stat label="Artikel-Treffer" value={data.topics.matches} />
+        <Stat label="Klassifizierte Editionen" value={data.topics.classified_editions} />
+        <Stat label="Ausschuss-Abos" value={data.topics.subscriptions} />
+      </StatSection>
+
+      <StatSection title="Ratsinformationssystem">
+        <Stat label="Sitzungen" value={data.council.sessions} />
+        <Stat label="davon kommend" value={data.council.upcoming} />
+        <Stat label="Tagesordnungspunkte" value={data.council.agenda_items} />
+        <Stat label="Ausschüsse" value={data.council.committees} />
+      </StatSection>
+
+      {data.categories.length > 0 && (
+        <div>
+          <h3 className="mb-3 text-sm font-semibold text-muted-foreground">Top-Rubriken (Artikel-Archiv)</h3>
+          <Card className="divide-y divide-border">
+            {data.categories.map((cat) => (
+              <div key={cat.name} className="flex items-center justify-between px-4 py-2 text-sm">
+                <span className="text-foreground">{categoryLabel(cat.name)}</span>
+                <span className="font-medium text-muted-foreground">{cat.count.toLocaleString("de-DE")}</span>
+              </div>
+            ))}
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <h3 className="mb-3 text-sm font-semibold text-muted-foreground">{title}</h3>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{children}</div>
+    </div>
+  );
+}
+
+function Stat({ label, value, wide }: { label: string; value: number | string; wide?: boolean }) {
+  return (
+    <Card className={cn("p-4", wide && "col-span-2")}>
+      <p className="text-2xl font-bold text-foreground">
+        {typeof value === "number" ? value.toLocaleString("de-DE") : value}
+      </p>
+      <p className="mt-0.5 text-xs text-muted-foreground">{label}</p>
+    </Card>
   );
 }
 

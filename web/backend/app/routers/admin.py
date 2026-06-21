@@ -3,13 +3,26 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
+from council.store import CouncilStore
 from nwz import prompts
 from nwz.store import Store
 
-from ..deps import get_store, require_admin
+from ..deps import get_council_store, get_store, require_admin
 from ..schemas import PromptOut, PromptUpdate, RoleUpdate, StatusUpdate, WebUserOut
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
+
+
+# ---- stats ----
+@router.get("/stats")
+def stats(
+    _admin: dict = Depends(require_admin),
+    store: Store = Depends(get_store),
+    council: CouncilStore = Depends(get_council_store),
+) -> dict:
+    data = store.admin_stats()
+    data["council"] = council.admin_stats()
+    return data
 
 
 # ---- prompts ----
