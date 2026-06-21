@@ -22,24 +22,24 @@ COUNCIL_DB = ROOT / "data" / "council.sqlite"
 
 def main() -> None:
     store = Store(DB)
-    all_user_topics = store.get_all_user_topics()
+    owner_digests = store.get_all_owner_digests()
 
-    if not all_user_topics:
-        print("No topics saved for any user — nothing to do.")
+    if not owner_digests:
+        print("No topics saved for any owner — nothing to do.")
         return
 
     total_alerts = 0
-    for chat_id, topics in all_user_topics.items():
+    for owner in owner_digests:
         topic_dicts = [
             {"id": t.id, "name": t.name, "description": t.description}
-            for t in topics
+            for t in owner["topics"]
         ]
-        print(f"User {chat_id}: checking {len(topic_dicts)} topic(s): "
+        print(f"Owner {owner['owner_id']} ({owner['delivery_channel']}): checking {len(topic_dicts)} topic(s): "
               f"{[t['name'] for t in topic_dicts]}")
-        alerts = run_watcher(COUNCIL_DB, topic_dicts, months_ahead=3, chat_id=chat_id)
+        alerts = run_watcher(COUNCIL_DB, topic_dicts, months_ahead=3, owner=owner)
         total_alerts += len(alerts)
 
-    print(f"Done — {total_alerts} alert(s) sent across all users.")
+    print(f"Done — {total_alerts} alert(s) sent across all owners.")
 
 
 if __name__ == "__main__":

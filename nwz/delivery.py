@@ -11,7 +11,7 @@ import logging
 
 from .telegram_bot import reply, reply_with_buttons, telegram_ready
 from .email import email_ready, send_email
-from .digest_email import render_digest_email
+from .digest_email import render_digest_email, render_html_email
 
 logger = logging.getLogger("nwz.delivery")
 
@@ -89,4 +89,25 @@ def deliver_digest(
         except Exception:
             logger.exception("email digest send failed for %s", owner.get("email"))
 
+    return sent
+
+
+def deliver_message(owner: dict, message_html: str, email_subject: str) -> list[str]:
+    """Deliver a single formatted message (Telegram-style HTML) to the owner's
+    channel(s). Used for the weekly digest and council notifications. The same
+    text is wrapped in the email shell for email delivery."""
+    sent: list[str] = []
+    if wants_telegram(owner):
+        reply(owner["telegram_chat_id"], message_html)
+        sent.append("telegram")
+    if wants_email(owner):
+        try:
+            send_email(
+                owner["email"], email_subject,
+                render_html_email(email_subject, message_html),
+                text=None,
+            )
+            sent.append("email")
+        except Exception:
+            logger.exception("email message send failed for %s", owner.get("email"))
     return sent

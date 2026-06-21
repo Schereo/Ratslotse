@@ -30,9 +30,9 @@ def main() -> None:
     store = Store(DB)
     cutoff = (date.today() - timedelta(days=LOOKBACK_DAYS)).isoformat()
 
-    all_user_topics = store.get_all_user_topics()
-    if not all_user_topics:
-        print("No users/topics found.")
+    owner_topics = store.get_all_owner_topics()
+    if not owner_topics:
+        print("No owners/topics found.")
         return
 
     all_dates = [d for d in store.edition_dates() if d >= cutoff]
@@ -41,15 +41,15 @@ def main() -> None:
         return
 
     print(f"Found {len(all_dates)} edition(s) from {all_dates[-1]} to {all_dates[0]}.")
-    print(f"Processing {len(all_user_topics)} user(s).\n")
+    print(f"Processing {len(owner_topics)} owner(s).\n")
 
     total_calls = 0
     total_matches = 0
 
-    for chat_id, topics in all_user_topics.items():
-        print(f"User {chat_id} — {len(topics)} topic(s)")
+    for owner_id, topics in owner_topics.items():
+        print(f"Owner {owner_id} — {len(topics)} topic(s)")
         for topic in topics:
-            already_classified = store.classified_pub_dates_for_topic(chat_id, topic.id)
+            already_classified = store.classified_pub_dates_for_topic(owner_id, topic.id)
             pending = [d for d in all_dates if d not in already_classified]
             if not pending:
                 print(f"  [{topic.id}] {topic.name}: already fully classified, skipping.")
@@ -60,11 +60,11 @@ def main() -> None:
 
             for pub_date in pending:
                 articles = store.articles_for_date(pub_date)
-                store.mark_edition_classified(chat_id, topic.id, pub_date)
+                store.mark_edition_classified(owner_id, topic.id, pub_date)
                 if not articles:
                     continue
                 _, matches = build_digest(articles, topic_dict, pub_date)
-                store.save_article_matches(chat_id, matches)
+                store.save_article_matches(owner_id, matches)
                 total_calls += 1
                 total_matches += len(matches)
                 if matches:
