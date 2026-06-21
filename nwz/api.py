@@ -53,14 +53,20 @@ class NWZClient:
         self._key_ttl = 60 * 30  # 30 min — well below observed validity
 
     # ---- public catalog API (no auth) ----
-    def available(self, folder: int, limit: int = 10) -> list[Edition]:
+    def available(self, folder: int, limit: int = 10, date: str | None = None) -> list[Edition]:
+        """List available editions. ``available5.php`` returns ~30 editions around
+        a reference ``date`` (YYYY-MM-DD); without it, the latest ones. Pass an
+        older ``date`` to reach the archive — see :meth:`available_archive`."""
+        params = {
+            "titles": f"{CUSTOMER}/{folder}",
+            "limit": str(limit),
+            "include": "content_version,sections",
+        }
+        if date:
+            params["date"] = date
         r = self._session.get(
             f"{DEVICE}/content/available5.php",
-            params={
-                "titles": f"{CUSTOMER}/{folder}",
-                "limit": str(limit),
-                "include": "content_version,sections",
-            },
+            params=params,
             timeout=30,
         )
         r.raise_for_status()
@@ -77,6 +83,33 @@ class NWZClient:
             )
             for it in items
         ]
+
+    def available_archive(
+        self,
+        folder: int,
+        since: str,
+        until: str | None = None,
+        step_days: int = 20,
+        limit: int = 40,
+    ) -> list[Edition]:
+        """Walk the date-windowed catalog backwards to fetch the whole archive
+        in ``[since, until]`` (YYYY-MM-DD). Each ``available5.php`` call returns a
+        ~30-day window around a reference date, so we step the reference date
+        back in ``step_days`` increments (with overlap) and de-duplicate by
+        catalog. Returns editions sorted oldest→newest."""
+        from datetime import date as _date, timedelta
+
+        until = until or _date.today().isoformat()
+        stop = _date.fromisoformat(since)
+        cur = _date.fromisoformat(until)
+        seen: dict[int, Edition] = {}
+        # Overshoot past `stop` by one window so the boundary is fully covered.
+        while cur >= stop - timedelta(days=step_days):
+            for e in self.available(folder, limit=limit, date=cur.isoformat()):
+                if since <= e.publication_date <= until:
+                    seen[e.catalog] = e
+            cur -= timedelta(days=step_days)
+        return sorted(seen.values(), key=lambda e: e.publication_date)
 
     # ---- gated content ----
     def _validate(self, catalog: int) -> str:
