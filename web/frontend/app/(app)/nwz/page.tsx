@@ -106,7 +106,7 @@ function NwzSearch() {
 
   const openDetail = async (r: SearchResult) => {
     try {
-      setOpenArticle(await api.get<Article>(`/nwz/article/${r.catalog}/${encodeURIComponent(r.refid)}`));
+      setOpenArticle(await api.get<Article>(`/nwz/article/${r.catalog}?refid=${encodeURIComponent(r.refid)}`));
     } catch {
       toast.error("Artikel konnte nicht geladen werden.");
     }
