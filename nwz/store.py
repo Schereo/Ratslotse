@@ -444,6 +444,14 @@ class Store:
 
     # ---- search ----
 
+    @staticmethod
+    def _cat_condition(col: str, category: str, categories: list[str] | None) -> tuple[str, list[str]]:
+        """Build a category filter (single value or IN-list) for `col`."""
+        cats = list(categories) if categories else ([category] if category else [])
+        if not cats:
+            return "", []
+        return f"{col} IN ({','.join('?' * len(cats))})", cats
+
     def search(
         self,
         query: str,
@@ -452,21 +460,21 @@ class Store:
         date_from: str = "",
         date_to: str = "",
         offset: int = 0,
+        categories: list[str] | None = None,
     ) -> list[SearchResult]:
         if not query.strip():
-            return self._recent_articles(limit, category, date_from, date_to, offset)
+            return self._recent_articles(limit, category, date_from, date_to, offset, categories)
 
         # Append * to last token for prefix matching on incomplete words
         terms = query.strip().split()
         fts_query = " ".join(terms[:-1] + [terms[-1] + "*"]) if terms else query
 
-        cat_filter = "AND f.category_name = ?" if category else ""
+        cond, cat_params = self._cat_condition("f.category_name", category, categories)
+        cat_filter = f"AND {cond}" if cond else ""
         date_from_filter = "AND f.pub_date >= ?" if date_from else ""
         date_to_filter = "AND f.pub_date <= ?" if date_to else ""
 
-        params: list[Any] = [fts_query]
-        if category:
-            params.append(category)
+        params: list[Any] = [fts_query, *cat_params]
         if date_from:
             params.append(date_from)
         if date_to:
@@ -495,12 +503,14 @@ class Store:
         date_from: str,
         date_to: str,
         offset: int = 0,
+        categories: list[str] | None = None,
     ) -> list[SearchResult]:
         filters = []
         params: list[Any] = []
-        if category:
-            filters.append("a.category_name = ?")
-            params.append(category)
+        cond, cat_params = self._cat_condition("a.category_name", category, categories)
+        if cond:
+            filters.append(cond)
+            params.extend(cat_params)
         if date_from:
             filters.append("e.publication_date >= ?")
             params.append(date_from)
@@ -530,14 +540,16 @@ class Store:
         category: str = "",
         date_from: str = "",
         date_to: str = "",
+        categories: list[str] | None = None,
     ) -> int:
         """Total articles a search() with these filters matches (all pages)."""
         if not query.strip():
             filters = []
             params: list[Any] = []
-            if category:
-                filters.append("a.category_name = ?")
-                params.append(category)
+            cond, cat_params = self._cat_condition("a.category_name", category, categories)
+            if cond:
+                filters.append(cond)
+                params.extend(cat_params)
             if date_from:
                 filters.append("e.publication_date >= ?")
                 params.append(date_from)
@@ -552,12 +564,11 @@ class Store:
 
         terms = query.strip().split()
         fts_query = " ".join(terms[:-1] + [terms[-1] + "*"]) if terms else query
-        cat_filter = "AND f.category_name = ?" if category else ""
+        cond, cat_params = self._cat_condition("f.category_name", category, categories)
+        cat_filter = f"AND {cond}" if cond else ""
         date_from_filter = "AND f.pub_date >= ?" if date_from else ""
         date_to_filter = "AND f.pub_date <= ?" if date_to else ""
-        params = [fts_query]
-        if category:
-            params.append(category)
+        params = [fts_query, *cat_params]
         if date_from:
             params.append(date_from)
         if date_to:
