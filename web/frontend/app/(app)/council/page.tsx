@@ -135,7 +135,7 @@ export default function CouncilPage() {
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
-                      <Badge color="blue">{s.n_items} TOP</Badge>
+                      <Badge color="blue">{s.n_items} {s.n_items === 1 ? "TOP" : "TOPs"}</Badge>
                       <ChevronRight className="h-5 w-5 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
                     </div>
                   </div>

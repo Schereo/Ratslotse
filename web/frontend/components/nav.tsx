@@ -110,7 +110,7 @@ function UserFooter() {
 
 export function DesktopSidebar() {
   return (
-    <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-card md:flex">
+    <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-card md:flex md:sticky md:top-0 md:h-screen md:self-start md:overflow-y-auto">
       <div className="px-5 py-5">
         <Brand />
       </div>
