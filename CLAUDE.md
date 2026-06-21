@@ -73,9 +73,23 @@ WEB_JWT_SECRET=...          # zufälliges Signiergeheimnis für Session-Tokens
 WEB_ADMIN_EMAIL=...         # diese E-Mail wird bei Registrierung Admin
 TELEGRAM_BOT_USERNAME=RatslotseBot
 CORS_ORIGINS=https://ratslotse.de   # erlaubte Origins (Prod-Domain)
+# E-Mail-Zustellung (Resend) — von den Digest-Cronjobs genutzt
+RESEND_API_KEY=...                  # Sending-only Key aus resend.com/api-keys
+EMAIL_FROM=Ratslotse <noreply@ratslotse.de>   # Absender (Domain muss in Resend verifiziert sein)
+APP_BASE_URL=https://ratslotse.de   # Basis-URL für Links in E-Mails (Default: ratslotse.de)
 ```
 
 Credentials liegen in 1Password.
+
+### E-Mail-Zustellung
+
+Nutzer wählen pro Konto einen Zustellkanal (`telegram` / `email` / `both`,
+`web_users.delivery_channel`). Die Digest-Cronjobs (`daily_digest.py`,
+`weekly_digest.py`) und die Stadtrat-Crons liefern über `nwz/delivery.py` an den
+gewählten Kanal. E-Mail läuft über **Resend** (`nwz/email.py`); die Absender-
+Domain `ratslotse.de` muss einmalig in Resend per DNS (SPF/DKIM) verifiziert
+werden. Ohne `RESEND_API_KEY` wird E-Mail still übersprungen (Telegram bleibt
+unberührt).
 
 ## Web-Frontend (`web/`)
 
