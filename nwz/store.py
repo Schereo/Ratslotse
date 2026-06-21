@@ -668,6 +668,25 @@ class Store:
         self._conn.execute("DELETE FROM topics WHERE id = ?", (topic_id,))
         self._conn.commit()
 
+    def update_topic(self, topic_id: int, name: str, description: str) -> None:
+        self._conn.execute(
+            "UPDATE topics SET name = ?, description = ? WHERE id = ?",
+            (name.strip(), description.strip(), topic_id),
+        )
+        self._conn.commit()
+
+    def reset_topic_for_reclassify(self, chat_id: int, topic_id: int) -> None:
+        """Drop a topic's matches and classified-editions cache so it re-runs from scratch."""
+        with self._conn:
+            self._conn.execute(
+                "DELETE FROM article_topic_matches WHERE chat_id = ? AND topic_id = ?",
+                (chat_id, topic_id),
+            )
+            self._conn.execute(
+                "DELETE FROM topic_classified_editions WHERE chat_id = ? AND topic_id = ?",
+                (chat_id, topic_id),
+            )
+
     # ---- committee subscriptions ----
 
     def subscribe(self, chat_id: int, committee_name: str) -> bool:

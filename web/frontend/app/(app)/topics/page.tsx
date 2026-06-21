@@ -2,10 +2,10 @@
 
 import { useState, useRef } from "react";
 import Link from "next/link";
-import { Plus, Trash2, FileText, Tags } from "lucide-react";
+import { Plus, Trash2, FileText, Tags, Pencil, RefreshCw } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
-import { Topic, TopicMatch } from "@/lib/types";
+import { Topic, TopicMatch, Article } from "@/lib/types";
 import {
   Badge, Button, Card, CardListSkeleton, ConfirmDialog, EmptyState, Input, PageHeader, Textarea, formatDate,
   Dialog, DialogContent, DialogHeader, DialogTitle, toast,
@@ -17,11 +17,16 @@ export default function TopicsPage() {
   const [description, setDescription] = useState("");
   const [matchesFor, setMatchesFor] = useState<{ topic: Topic; matches: TopicMatch[] } | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [editing, setEditing] = useState<Topic | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [reclassifyEndsAt, setReclassifyEndsAt] = useState<number | null>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
   const topicsQuery = useQuery({
     queryKey: ["topics"],
     queryFn: () => api.get<Topic[]>("/topics"),
+    refetchInterval: () => (reclassifyEndsAt && Date.now() < reclassifyEndsAt ? 5000 : false),
   });
 
   const subsQuery = useQuery({
@@ -54,6 +59,33 @@ export default function TopicsPage() {
     },
     onError: () => toast.error("Löschen fehlgeschlagen."),
   });
+
+  const editMutation = useMutation({
+    mutationFn: (vars: { id: number; name: string; description: string }) =>
+      api.put(`/topics/${vars.id}`, { name: vars.name, description: vars.description }),
+    onSuccess: () => {
+      toast.success("Thema aktualisiert.");
+      setEditing(null);
+      qc.invalidateQueries({ queryKey: ["topics"] });
+    },
+    onError: (err: Error) => toast.error(err instanceof ApiError ? err.message : "Konnte Thema nicht ändern."),
+  });
+
+  const reclassifyMutation = useMutation({
+    mutationFn: (id: number) => api.post(`/topics/${id}/reclassify`),
+    onSuccess: () => {
+      toast.success("Neu-Klassifizierung gestartet — das dauert 1–2 Min. Die Treffer aktualisieren sich automatisch.");
+      setReclassifyEndsAt(Date.now() + 180_000);
+      qc.invalidateQueries({ queryKey: ["topics"] });
+    },
+    onError: (err: Error) => toast.error(err instanceof ApiError ? err.message : "Konnte nicht neu klassifizieren."),
+  });
+
+  const startEdit = (t: Topic) => {
+    setEditing(t);
+    setEditName(t.name);
+    setEditDescription(t.description);
+  };
 
   const subMutation = useMutation({
     mutationFn: ({ committee, subscribed }: { committee: string; subscribed: boolean }) =>
@@ -168,9 +200,20 @@ export default function TopicsPage() {
                   </div>
                   <p className="mt-0.5 text-sm text-muted-foreground">{t.description}</p>
                 </div>
-                <div className="flex shrink-0 gap-2">
+                <div className="flex shrink-0 flex-wrap gap-2">
                   <Button variant="secondary" size="sm" onClick={() => viewMatches(t)}>
                     <FileText className="h-4 w-4" /> Treffer
+                  </Button>
+                  <Button variant="secondary" size="sm" onClick={() => startEdit(t)}>
+                    <Pencil className="h-4 w-4" /> Bearbeiten
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => reclassifyMutation.mutate(t.id)}
+                    disabled={reclassifyMutation.isPending}
+                  >
+                    <RefreshCw className="h-4 w-4" /> Neu klassifizieren
                   </Button>
                   <Button variant="danger" size="sm" aria-label="Löschen" onClick={() => setConfirmDeleteId(t.id)} disabled={deleteMutation.isPending}>
                     <Trash2 className="h-4 w-4" />
@@ -203,6 +246,28 @@ export default function TopicsPage() {
         })}
       </Card>
 
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Thema bearbeiten</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => { e.preventDefault(); if (editing) editMutation.mutate({ id: editing.id, name: editName, description: editDescription }); }}
+            className="space-y-3"
+          >
+            <Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Name" required />
+            <Textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} rows={3} placeholder="Beschreibung" required />
+            <div className="flex items-center justify-end gap-2">
+              <Button type="button" variant="secondary" onClick={() => setEditing(null)}>Abbrechen</Button>
+              <Button type="submit" disabled={editMutation.isPending}>{editMutation.isPending ? "Speichern…" : "Speichern"}</Button>
+            </div>
+          </form>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Tipp: Nach dem Ändern „Neu klassifizieren", damit die Treffer zur neuen Beschreibung passen.
+          </p>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!matchesFor} onOpenChange={(o) => !o && setMatchesFor(null)}>
         <DialogContent>
           {matchesFor && (
@@ -215,14 +280,7 @@ export default function TopicsPage() {
               ) : (
                 <ul className="space-y-3">
                   {matchesFor.matches.map((m, i) => (
-                    <li key={i} className="border-b border-border pb-3 last:border-0">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span>{formatDate(m.pub_date)}</span>
-                        {m.is_continuation ? <Badge color="amber">Fortsetzung</Badge> : null}
-                      </div>
-                      <p className="mt-0.5 font-medium text-foreground">{m.title}</p>
-                      <p className="text-sm text-muted-foreground">{m.summary}</p>
-                    </li>
+                    <MatchItem key={i} m={m} />
                   ))}
                 </ul>
               )}
@@ -231,5 +289,49 @@ export default function TopicsPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function MatchItem({ m }: { m: TopicMatch }) {
+  const [article, setArticle] = useState<Article | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [shown, setShown] = useState(false);
+
+  const toggle = async () => {
+    if (shown) { setShown(false); return; }
+    if (article) { setShown(true); return; }
+    setLoading(true);
+    try {
+      const a = await api.get<Article>(`/nwz/article/${m.catalog}?refid=${encodeURIComponent(m.refid)}`);
+      setArticle(a);
+      setShown(true);
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError && err.status === 403
+          ? "Hinterlege deine NWZ-Zugangsdaten, um den ganzen Artikel zu sehen."
+          : "Artikel konnte nicht geladen werden.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <li className="border-b border-border pb-3 last:border-0">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <span>{formatDate(m.pub_date)}</span>
+        {m.is_continuation ? <Badge color="amber">Fortsetzung</Badge> : null}
+      </div>
+      <p className="mt-0.5 font-medium text-foreground">{m.title}</p>
+      <p className="text-sm text-muted-foreground">{m.summary}</p>
+      <button type="button" onClick={toggle} className="mt-1 text-xs font-medium text-primary hover:underline">
+        {loading ? "Lädt…" : shown ? "Artikel ausblenden" : "Ganzen Artikel anzeigen"}
+      </button>
+      {shown && article && (
+        <div className="mt-2 whitespace-pre-wrap rounded-md bg-muted/50 p-3 text-sm leading-relaxed text-foreground/90">
+          {article.content_text}
+        </div>
+      )}
+    </li>
   );
 }
