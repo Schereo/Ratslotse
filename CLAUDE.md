@@ -72,6 +72,7 @@ TELEGRAM_CHAT_ID=...
 WEB_JWT_SECRET=...          # zufälliges Signiergeheimnis für Session-Tokens
 WEB_ADMIN_EMAIL=...         # diese E-Mail wird bei Registrierung Admin
 TELEGRAM_BOT_USERNAME=mein_nwz_bot
+CORS_ORIGINS=https://ratslotse.de   # erlaubte Origins (Prod-Domain)
 ```
 
 Credentials liegen in 1Password.
@@ -82,8 +83,12 @@ FastAPI-Backend (`web/backend/`) + Next.js-Frontend (`web/frontend/`), läuft au
 `tk-nwz` neben dem Bot. Teilt sich die SQLite-DBs und die Python-Pakete
 (`nwz`, `council`, `nwz.prompts`). Details + einmalige Einrichtung: `web/README.md`.
 
-- **Services**: `nwz-web-api` (uvicorn :8000), `nwz-web-frontend` (next start :3000),
-  davor nginx als Reverse-Proxy (`/api` → Backend, sonst Frontend).
+- **Services**: `nwz-web-api` (uvicorn 127.0.0.1:8000), `nwz-web-frontend`
+  (next start :3000). Öffentlich über **Caddy auf der Edge-VM** (`tk-edge-vm`),
+  das TLS terminiert und auf `tk-nwz:3000` proxyt; Next.js reicht `/api/*` selbst
+  ans Backend weiter (kein lokales nginx). Live unter **ratslotse.de**. Der
+  Caddy-Block trägt `header_up X-Forwarded-For {http.request.remote.host}`
+  (sicherheitskritisch — verhindert Rate-Limit-Bypass via XFF-Spoofing).
 - **Deploy**: Die GitHub Action baut bei jedem Merge auf `main` zusätzlich das
   Frontend (`npm ci && npm run build`), installiert Backend-Deps und startet
   `nwz-web-api` + `nwz-web-frontend` neu.
