@@ -3,6 +3,8 @@ const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
 
 const nextConfig = {
   reactStrictMode: true,
+  // Don't advertise the framework in the X-Powered-By header.
+  poweredByHeader: false,
   // Proxy API calls to the FastAPI backend so the frontend always talks to a
   // same-origin /api (no CORS, cookies work). In production nginx may handle
   // /api directly; this rewrite is the fallback / dev convenience.
@@ -23,6 +25,7 @@ const nextConfig = {
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+          { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
           {
             key: "Content-Security-Policy",
             value: [
