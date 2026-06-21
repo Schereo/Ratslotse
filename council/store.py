@@ -39,10 +39,10 @@ CREATE TABLE IF NOT EXISTS council_alerts_sent (
 
 CREATE TABLE IF NOT EXISTS committee_notifications (
     ksinr        INTEGER NOT NULL,
-    chat_id      INTEGER NOT NULL,
+    owner_id     INTEGER NOT NULL,
     agenda_hash  TEXT NOT NULL DEFAULT '',
     sent_at      TEXT NOT NULL,
-    PRIMARY KEY(ksinr, chat_id)
+    PRIMARY KEY(ksinr, owner_id)
 );
 
 CREATE TABLE IF NOT EXISTS committees (
@@ -53,9 +53,9 @@ CREATE TABLE IF NOT EXISTS committees (
 
 CREATE TABLE IF NOT EXISTS session_followups_sent (
     ksinr    INTEGER NOT NULL,
-    chat_id  INTEGER NOT NULL,
+    owner_id INTEGER NOT NULL,
     sent_at  TEXT NOT NULL,
-    PRIMARY KEY(ksinr, chat_id)
+    PRIMARY KEY(ksinr, owner_id)
 );
 
 CREATE TABLE IF NOT EXISTS committee_summaries (
@@ -69,7 +69,12 @@ CREATE TABLE IF NOT EXISTS committee_summaries (
 
 
 class CouncilStore:
-    def __init__(self, path: str | Path):
+    def __init__(self, path: str | Path, nwz_db_path: str | Path | None = None):
+        self._path = path
+        # Sibling nwz.sqlite holds the chat_id→owner_id map for the migration.
+        if nwz_db_path is None and isinstance(path, (str, Path)) and str(path) != ":memory:":
+            nwz_db_path = Path(path).parent / "nwz.sqlite"
+        self._nwz_db_path = nwz_db_path
         self._conn = sqlite3.connect(path, timeout=15)
         self._conn.row_factory = sqlite3.Row
         # WAL + busy_timeout: scraper cron and the web API share this file.
@@ -86,6 +91,68 @@ class CouncilStore:
                 self._conn.execute(
                     "ALTER TABLE committee_notifications ADD COLUMN agenda_hash TEXT NOT NULL DEFAULT ''"
                 )
+        self._migrate_owner_id()
+
+    def _migrate_owner_id(self) -> None:
+        """Re-key the per-recipient dedup tables from Telegram chat_id to the
+        canonical owner_id (=web_users.id). The map lives in the sibling
+        nwz.sqlite; existing rows are backfilled via it. Idempotent."""
+        cn_cols = {r[1] for r in self._conn.execute("PRAGMA table_info(committee_notifications)").fetchall()}
+        sf_cols = {r[1] for r in self._conn.execute("PRAGMA table_info(session_followups_sent)").fetchall()}
+        if "owner_id" in cn_cols and "owner_id" in sf_cols:
+            return  # already migrated
+
+        # Build chat_id -> owner_id from nwz.sqlite if available.
+        chat_to_owner: dict[int, int] = {}
+        nwz_path = self._nwz_db_path
+        if nwz_path is not None and Path(str(nwz_path)).exists():
+            try:
+                src = sqlite3.connect(str(nwz_path), timeout=15)
+                chat_to_owner = {
+                    r[0]: r[1] for r in src.execute(
+                        "SELECT telegram_chat_id, id FROM web_users WHERE telegram_chat_id IS NOT NULL"
+                    ).fetchall()
+                }
+                src.close()
+            except sqlite3.Error:
+                chat_to_owner = {}
+
+        with self._conn:
+            if "owner_id" not in cn_cols:
+                old = self._conn.execute(
+                    "SELECT ksinr, chat_id, agenda_hash, sent_at FROM committee_notifications"
+                ).fetchall()
+                self._conn.execute("DROP TABLE committee_notifications")
+                self._conn.execute(
+                    "CREATE TABLE committee_notifications ("
+                    " ksinr INTEGER NOT NULL, owner_id INTEGER NOT NULL,"
+                    " agenda_hash TEXT NOT NULL DEFAULT '', sent_at TEXT NOT NULL,"
+                    " PRIMARY KEY(ksinr, owner_id))"
+                )
+                for r in old:
+                    owner = chat_to_owner.get(r[1])
+                    if owner is not None:
+                        self._conn.execute(
+                            "INSERT OR IGNORE INTO committee_notifications (ksinr, owner_id, agenda_hash, sent_at) "
+                            "VALUES (?, ?, ?, ?)", (r[0], owner, r[2], r[3])
+                        )
+            if "owner_id" not in sf_cols:
+                old = self._conn.execute(
+                    "SELECT ksinr, chat_id, sent_at FROM session_followups_sent"
+                ).fetchall()
+                self._conn.execute("DROP TABLE session_followups_sent")
+                self._conn.execute(
+                    "CREATE TABLE session_followups_sent ("
+                    " ksinr INTEGER NOT NULL, owner_id INTEGER NOT NULL, sent_at TEXT NOT NULL,"
+                    " PRIMARY KEY(ksinr, owner_id))"
+                )
+                for r in old:
+                    owner = chat_to_owner.get(r[1])
+                    if owner is not None:
+                        self._conn.execute(
+                            "INSERT OR IGNORE INTO session_followups_sent (ksinr, owner_id, sent_at) "
+                            "VALUES (?, ?, ?)", (r[0], owner, r[2])
+                        )
 
     def close(self) -> None:
         self._conn.close()
@@ -135,19 +202,19 @@ class CouncilStore:
                 (ksinr, topic_id, now),
             )
 
-    def followup_already_sent(self, ksinr: int, chat_id: int) -> bool:
+    def followup_already_sent(self, ksinr: int, owner_id: int) -> bool:
         row = self._conn.execute(
-            "SELECT 1 FROM session_followups_sent WHERE ksinr = ? AND chat_id = ?",
-            (ksinr, chat_id),
+            "SELECT 1 FROM session_followups_sent WHERE ksinr = ? AND owner_id = ?",
+            (ksinr, owner_id),
         ).fetchone()
         return row is not None
 
-    def mark_followup_sent(self, ksinr: int, chat_id: int) -> None:
+    def mark_followup_sent(self, ksinr: int, owner_id: int) -> None:
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
             self._conn.execute(
-                "INSERT OR IGNORE INTO session_followups_sent (ksinr, chat_id, sent_at) VALUES (?, ?, ?)",
-                (ksinr, chat_id, now),
+                "INSERT OR IGNORE INTO session_followups_sent (ksinr, owner_id, sent_at) VALUES (?, ?, ?)",
+                (ksinr, owner_id, now),
             )
 
     def past_sessions_in_window(self, date_from: str, date_to: str) -> list[dict]:
@@ -193,27 +260,27 @@ class CouncilStore:
         ).fetchall()
         return [dict(r) for r in rows]
 
-    def mark_notified(self, ksinr: int, chat_id: int, agenda_hash: str = "") -> None:
+    def mark_notified(self, ksinr: int, owner_id: int, agenda_hash: str = "") -> None:
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
             self._conn.execute(
-                "INSERT OR REPLACE INTO committee_notifications (ksinr, chat_id, agenda_hash, sent_at) VALUES (?, ?, ?, ?)",
-                (ksinr, chat_id, agenda_hash, now),
+                "INSERT OR REPLACE INTO committee_notifications (ksinr, owner_id, agenda_hash, sent_at) VALUES (?, ?, ?, ?)",
+                (ksinr, owner_id, agenda_hash, now),
             )
 
-    def was_notified(self, ksinr: int, chat_id: int) -> bool:
+    def was_notified(self, ksinr: int, owner_id: int) -> bool:
         row = self._conn.execute(
-            "SELECT 1 FROM committee_notifications WHERE ksinr = ? AND chat_id = ?",
-            (ksinr, chat_id),
+            "SELECT 1 FROM committee_notifications WHERE ksinr = ? AND owner_id = ?",
+            (ksinr, owner_id),
         ).fetchone()
         return row is not None
 
-    def get_last_notified_hash(self, ksinr: int, chat_id: int) -> str | None:
-        """Return the agenda_hash that was last used when notifying this user, or None if never notified.
+    def get_last_notified_hash(self, ksinr: int, owner_id: int) -> str | None:
+        """Return the agenda_hash that was last used when notifying this owner, or None if never notified.
         An empty string means the row predates hash tracking and should not trigger a re-notification."""
         row = self._conn.execute(
-            "SELECT agenda_hash FROM committee_notifications WHERE ksinr = ? AND chat_id = ?",
-            (ksinr, chat_id),
+            "SELECT agenda_hash FROM committee_notifications WHERE ksinr = ? AND owner_id = ?",
+            (ksinr, owner_id),
         ).fetchone()
         return row[0] if row is not None else None
 

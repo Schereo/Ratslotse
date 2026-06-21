@@ -73,16 +73,6 @@ def require_nwz_verified(user: dict = Depends(require_active)) -> dict:
     return user
 
 
-def require_linked(user: dict = Depends(require_active)) -> dict:
-    """For endpoints that need a Telegram-linked account (topics, subscriptions)."""
-    if not user.get("telegram_chat_id"):
-        raise HTTPException(
-            status.HTTP_409_CONFLICT,
-            "Konto noch nicht mit Telegram verbunden. Bitte zuerst verknüpfen.",
-        )
-    return user
-
-
 def require_admin(user: dict = Depends(get_current_user)) -> dict:
     if user.get("role") != "admin":
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Adminrechte erforderlich.")

@@ -1,3 +1,5 @@
+export type DeliveryChannel = "telegram" | "email" | "both";
+
 export interface User {
   id: number;
   email: string;
@@ -5,6 +7,7 @@ export interface User {
   status: "pending" | "active";
   telegram_chat_id: number | null;
   linked: boolean;
+  delivery_channel: DeliveryChannel;
   nwz_verified: boolean;
   nwz_username: string | null;
 }

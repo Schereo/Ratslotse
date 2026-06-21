@@ -6,6 +6,7 @@ import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Button, Card, Label, PageHeader, PasswordInput, toast } from "@/components/ui";
 import { TelegramLink } from "@/components/telegram-link";
+import { DeliverySettings } from "@/components/delivery-settings";
 
 export default function AccountPage() {
   const { user } = useAuth();
@@ -85,6 +86,8 @@ export default function AccountPage() {
             </Button>
           </form>
         </Card>
+
+        <DeliverySettings />
 
         <TelegramLink />
       </div>

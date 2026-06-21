@@ -100,7 +100,7 @@ def _committee_buttons(all_names: list[str], subscribed: set[str]) -> list[list[
     return rows
 
 
-def _send_committees(chat_id: int, store: "Store", db_path: Path) -> None:
+def _send_committees(chat_id: int, owner_id: int, store: "Store", db_path: Path) -> None:
     from council.store import CouncilStore
     council_db = db_path.parent / "council.sqlite"
     council_store = CouncilStore(council_db)
@@ -109,7 +109,7 @@ def _send_committees(chat_id: int, store: "Store", db_path: Path) -> None:
     if not all_names:
         reply(chat_id, "Keine Ausschüsse in der Datenbank.")
     else:
-        subscribed = set(store.get_subscriptions(chat_id))
+        subscribed = set(store.get_subscriptions(owner_id))
         lines = ["<b>Ausschüsse</b>\n"]
         for i, name in enumerate(all_names, 1):
             marker = "✅" if name in subscribed else "➕"
@@ -129,7 +129,7 @@ def _is_admin(chat_id: int) -> bool:
     return chat_id == _admin_chat_id()
 
 
-def _send_retroactive_digest(chat_id: int, topic: TopicRow, store: Store) -> None:
+def _send_retroactive_digest(chat_id: int, owner_id: int, topic: TopicRow, store: Store) -> None:
     """Classify the last 30 days of editions for a newly added topic and send matches."""
     from datetime import date, timedelta
     from .classify import build_digest
@@ -139,7 +139,7 @@ def _send_retroactive_digest(chat_id: int, topic: TopicRow, store: Store) -> Non
     if not all_dates:
         return
 
-    already_classified = store.classified_pub_dates_for_topic(chat_id, topic.id)
+    already_classified = store.classified_pub_dates_for_topic(owner_id, topic.id)
     pending_dates = [d for d in all_dates if d not in already_classified]
     if not pending_dates:
         return
@@ -152,11 +152,11 @@ def _send_retroactive_digest(chat_id: int, topic: TopicRow, store: Store) -> Non
     for pub_date in pending_dates:
         articles = store.articles_for_date(pub_date)
         if not articles:
-            store.mark_edition_classified(chat_id, topic.id, pub_date)
+            store.mark_edition_classified(owner_id, topic.id, pub_date)
             continue
         _, matches = build_digest(articles, topic_dict, pub_date)
-        store.save_article_matches(chat_id, matches)
-        store.mark_edition_classified(chat_id, topic.id, pub_date)
+        store.save_article_matches(owner_id, matches)
+        store.mark_edition_classified(owner_id, topic.id, pub_date)
         total_matches.extend(matches)
 
     if not total_matches:
@@ -237,12 +237,16 @@ def handle_update(update: dict, db_path: Path) -> None:
         )
         return
 
+    # Resolve this chat to its canonical owner (creates a synthetic web account
+    # for Telegram-only users on first use). chat_id is only a delivery target.
+    owner_id = store.ensure_owner_for_chat(chat_id)
+
     if command == "/hilfe":
         text_out = _HELP + (_ADMIN_HELP if _is_admin(chat_id) else "")
         reply(chat_id, text_out)
 
     elif command == "/themen":
-        topics = store.get_topics(chat_id)
+        topics = store.get_topics(owner_id)
         if not topics:
             reply(chat_id, "Du hast noch keine Themen gespeichert.\n\nMit /neu hinzufügen.")
         else:
@@ -288,20 +292,20 @@ def handle_update(update: dict, db_path: Path) -> None:
                 )
             reply(chat_id, msg)
             return
-        t = store.add_topic(chat_id, name, description)
+        t = store.add_topic(owner_id, name, description)
         reply(
             chat_id,
             f"✅ Thema gespeichert (ID {t.id}):\n<b>{_esc(t.name)}</b>\n{_esc(t.description)}\n\n"
             f"Ab morgen 06:30 Uhr im täglichen Digest. Suche jetzt in den letzten 30 Tagen…",
         )
-        _send_retroactive_digest(chat_id, t, store)
+        _send_retroactive_digest(chat_id, owner_id, t, store)
 
     elif command == "/loeschen":
         if not args.isdigit():
             reply(chat_id, "Verwendung: <code>/loeschen ID</code>\n\nIDs mit /themen anzeigen.")
             return
         topic_id = int(args)
-        topics = store.get_topics(chat_id)
+        topics = store.get_topics(owner_id)
         topic = next((t for t in topics if t.id == topic_id), None)
         if not topic:
             reply(chat_id, f"Kein Thema mit ID {topic_id} gefunden.")
@@ -310,7 +314,7 @@ def handle_update(update: dict, db_path: Path) -> None:
         reply(chat_id, f"Thema <b>{_esc(topic.name)}</b> gelöscht.")
 
     elif command == "/archiv":
-        topics = store.get_topics(chat_id)
+        topics = store.get_topics(owner_id)
         if not topics:
             reply(chat_id, "Du hast noch keine Themen gespeichert.\n\nMit /neu hinzufügen.")
             return
@@ -319,7 +323,7 @@ def handle_update(update: dict, db_path: Path) -> None:
             lines = ["<b>📊 Archivierte Artikel-Treffer</b>\n"]
             has_any = False
             for t in topics:
-                count = store.count_article_matches(chat_id, t.id)
+                count = store.count_article_matches(owner_id, t.id)
                 if count > 0:
                     lines.append(f"• [{t.id}] {_esc(t.name)} — {count} Artikel")
                     has_any = True
@@ -336,7 +340,7 @@ def handle_update(update: dict, db_path: Path) -> None:
             reply(chat_id, f"Kein Thema mit ID {topic_id} gefunden.")
             return
 
-        matches = store.get_article_matches(chat_id, topic_id, limit=20)
+        matches = store.get_article_matches(owner_id, topic_id, limit=20)
         if not matches:
             reply(chat_id, f"Noch keine Treffer für <b>{_esc(topic.name)}</b>.\n\nDer Digest läuft täglich um 06:30 Uhr.")
             return
@@ -378,10 +382,10 @@ def handle_update(update: dict, db_path: Path) -> None:
         reply(chat_id, "\n\n".join(lines))
 
     elif command == "/ausschuesse":
-        _send_committees(chat_id, store, db_path)
+        _send_committees(chat_id, owner_id, store, db_path)
 
     elif command == "/pruefen":
-        subs = store.get_subscriptions(chat_id)
+        subs = store.get_subscriptions(owner_id)
         if not subs:
             reply(chat_id, "Du hast keine Ausschuss-Abos. Abonniere Ausschüsse mit /ausschuesse.")
             return
@@ -464,7 +468,8 @@ def handle_update(update: dict, db_path: Path) -> None:
             return
         lines = ["<b>Registrierte Nutzer</b>\n"]
         for u in users:
-            topics = store.get_topics(u.chat_id)
+            u_owner = store.get_owner_id_for_chat(u.chat_id)
+            topics = store.get_topics(u_owner) if u_owner is not None else []
             label = _esc(u.username) if u.username else "–"
             lines.append(
                 f"<code>{u.chat_id}</code> {label} · {len(topics)} Thema(en)\n"
@@ -526,6 +531,8 @@ def handle_callback_query(update: dict, db_path: Path) -> None:
         answer_callback_query(callback_query_id, "Nicht autorisiert.")
         return
 
+    owner_id = store.ensure_owner_for_chat(chat_id)
+
     if callback_data.startswith("art:"):
         raw = callback_data[4:]
         if not raw.isdigit():
@@ -566,17 +573,17 @@ def handle_callback_query(update: dict, db_path: Path) -> None:
             # Legacy: old messages had callback_data = ctoggle:{name}
             committee_name = raw
 
-        subscribed = set(store.get_subscriptions(chat_id))
+        subscribed = set(store.get_subscriptions(owner_id))
         if committee_name in subscribed:
-            store.unsubscribe(chat_id, committee_name)
+            store.unsubscribe(owner_id, committee_name)
             toast = "❌ Ausschuss gekündigt"
         else:
-            store.subscribe(chat_id, committee_name)
+            store.subscribe(owner_id, committee_name)
             toast = "✅ Ausschuss abonniert"
 
         answer_callback_query(callback_query_id, toast)
 
-        new_subscribed = set(store.get_subscriptions(chat_id))
+        new_subscribed = set(store.get_subscriptions(owner_id))
         buttons = _committee_buttons(all_names, new_subscribed)
         edit_message_buttons(chat_id, message_id, buttons)
 

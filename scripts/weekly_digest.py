@@ -16,15 +16,15 @@ load_dotenv(ROOT / ".env")
 
 from nwz.store import Store
 from nwz.classify import build_weekly_digest
-from nwz.telegram_bot import reply, telegram_ready
+from nwz.delivery import deliver_message
 
 DB = ROOT / "data" / "nwz.sqlite"
 
 
 def main() -> None:
     store = Store(DB)
-    all_user_topics = store.get_all_user_topics()
-    if not all_user_topics:
+    owner_digests = store.get_all_owner_digests()
+    if not owner_digests:
         print("No topics saved — nothing to do.")
         return
 
@@ -36,23 +36,21 @@ def main() -> None:
     all_articles = store.articles_in_range(date_from, date_to)
     print(f"  {len(all_articles)} total NWZ articles in range for highlights.")
 
-    for chat_id in all_user_topics:
-        matches = store.get_weekly_matches(chat_id, date_from, date_to)
+    for owner in owner_digests:
+        owner_id = owner["owner_id"]
+        matches = store.get_weekly_matches(owner_id, date_from, date_to)
         if not matches:
-            print(f"  User {chat_id}: no matches this week, skipping.")
+            print(f"  Owner {owner_id}: no matches this week, skipping.")
             continue
 
-        print(f"  User {chat_id}: {len(matches)} match(es) — building digest…")
+        print(f"  Owner {owner_id}: {len(matches)} match(es) — building digest…")
         msg = build_weekly_digest(matches, date_from, date_to, all_articles=all_articles)
         if not msg:
-            print(f"  User {chat_id}: empty digest, skipping.")
+            print(f"  Owner {owner_id}: empty digest, skipping.")
             continue
 
-        if telegram_ready():
-            reply(chat_id, msg)
-            print(f"  User {chat_id}: sent.")
-        else:
-            print("Telegram not configured (set TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID in .env).")
+        sent = deliver_message(owner, msg, email_subject=f"Ratslotse – Wochenrückblick {date_from} – {date_to}")
+        print(f"  Owner {owner_id}: delivered via {sent or 'nothing'}.")
 
 
 if __name__ == "__main__":

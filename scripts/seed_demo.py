@@ -302,14 +302,17 @@ def _council_path() -> Path:
 def clear_demo(store: Store, council: CouncilStore) -> None:
     """Remove only demo-owned rows (reserved IDs / demo chat) from both DBs."""
     conn = store._conn
+    owner_id = store.get_owner_id_for_chat(DEMO_CHAT_ID)
     with conn:
         conn.execute("DELETE FROM articles WHERE catalog >= ?", (DEMO_CATALOG_BASE,))
         conn.execute("DELETE FROM articles_fts WHERE catalog >= ?", (DEMO_CATALOG_BASE,))
         conn.execute("DELETE FROM editions WHERE catalog >= ?", (DEMO_CATALOG_BASE,))
-        conn.execute("DELETE FROM topics WHERE chat_id = ?", (DEMO_CHAT_ID,))
-        conn.execute("DELETE FROM committee_subscriptions WHERE chat_id = ?", (DEMO_CHAT_ID,))
-        conn.execute("DELETE FROM article_topic_matches WHERE chat_id = ?", (DEMO_CHAT_ID,))
-        conn.execute("DELETE FROM topic_classified_editions WHERE chat_id = ?", (DEMO_CHAT_ID,))
+        if owner_id is not None:
+            conn.execute("DELETE FROM topics WHERE owner_id = ?", (owner_id,))
+            conn.execute("DELETE FROM committee_subscriptions WHERE owner_id = ?", (owner_id,))
+            conn.execute("DELETE FROM article_topic_matches WHERE owner_id = ?", (owner_id,))
+            conn.execute("DELETE FROM topic_classified_editions WHERE owner_id = ?", (owner_id,))
+            conn.execute("DELETE FROM web_users WHERE id = ? AND email LIKE 'tg-%@local'", (owner_id,))
         conn.execute("DELETE FROM users WHERE chat_id = ?", (DEMO_CHAT_ID,))
     ccon = council._conn
     with ccon:
@@ -344,10 +347,11 @@ def seed(store: Store, council: CouncilStore) -> dict[str, int]:
 
     # --- demo Telegram user + topics + subscriptions ---
     store.add_user(DEMO_CHAT_ID, "demo")
+    owner_id = store.ensure_owner_for_chat(DEMO_CHAT_ID)
     for name, desc in TOPICS:
-        store.add_topic(DEMO_CHAT_ID, name, desc)
+        store.add_topic(owner_id, name, desc)
     for committee, _ in COMMITTEES:
-        store.subscribe(DEMO_CHAT_ID, committee)
+        store.subscribe(owner_id, committee)
 
     # --- council committees + sessions ---
     council.save_committees(COMMITTEES)

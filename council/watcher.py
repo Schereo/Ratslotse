@@ -92,19 +92,24 @@ def run_watcher(
     db_path: str | Path,
     topics: list[dict],
     months_ahead: int = 3,
-    chat_id: int | str | None = None,
+    owner: dict | None = None,
 ) -> list[str]:
     """
     Scrape upcoming sessions, classify new ones against topics, send alerts.
     Returns list of alert messages sent.
     topics: [{"id": int, "name": str, "description": str}]
-    chat_id: Telegram chat to send alerts to; defaults to TELEGRAM_CHAT_ID env var.
+    owner: delivery target dict {delivery_channel, telegram_chat_id, email}.
+           Defaults to a Telegram-only owner using TELEGRAM_CHAT_ID.
     """
     import os
-    from nwz.telegram_bot import reply, telegram_ready
+    from nwz.delivery import deliver_message
 
-    if chat_id is None:
-        chat_id = int(os.environ.get("TELEGRAM_CHAT_ID", 0))
+    if owner is None:
+        owner = {
+            "delivery_channel": "telegram",
+            "telegram_chat_id": int(os.environ.get("TELEGRAM_CHAT_ID", 0)),
+            "email": None,
+        }
 
     scraper = CouncilScraper()
     store = CouncilStore(db_path)
@@ -142,8 +147,7 @@ def run_watcher(
                 continue
             msg = _format_alert(session, {topic_idx: item_numbers}, topics)
             print(f"    Match: topic={topics[topic_idx]['name']!r} items={item_numbers}")
-            if telegram_ready():
-                reply(chat_id, msg)
+            deliver_message(owner, msg, email_subject="Ratslotse – Ihr Thema im Stadtrat")
             alerts_sent.append(msg)
             store.mark_alert_sent(ksinr, topic_id)
 

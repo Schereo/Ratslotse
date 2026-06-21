@@ -30,7 +30,7 @@ load_dotenv(ROOT / ".env")
 
 from nwz.llm import chat_complete
 from nwz.store import Store
-from nwz.telegram_bot import reply, telegram_ready
+from nwz.delivery import deliver_message
 from council.store import CouncilStore
 
 NWZ_DB = ROOT / "data" / "nwz.sqlite"
@@ -167,7 +167,8 @@ def main() -> None:
 
     nwz_store = Store(NWZ_DB)
     council_store = CouncilStore(COUNCIL_DB)
-    all_subs = nwz_store.get_all_subscriptions()
+    all_subs = nwz_store.get_all_subscriptions()       # {owner_id: [committee_name]}
+    targets = nwz_store.get_subscription_targets()     # {owner_id: {channel, chat, email}}
 
     if not all_subs:
         print("No committee subscriptions found.")
@@ -184,9 +185,9 @@ def main() -> None:
         ksinr = session["ksinr"]
 
         pending = [
-            chat_id for chat_id, names in all_subs.items()
+            owner_id for owner_id, names in all_subs.items()
             if session["committee"] in names
-            and not council_store.followup_already_sent(ksinr, chat_id)
+            and not council_store.followup_already_sent(ksinr, owner_id)
         ]
         if not pending:
             continue
@@ -215,8 +216,8 @@ def main() -> None:
             window_closed = today > date.fromisoformat(article_date_to)
             if window_closed:
                 print(f"    No articles found, window closed — marking done.")
-                for chat_id in pending:
-                    council_store.mark_followup_sent(ksinr, chat_id)
+                for owner_id in pending:
+                    council_store.mark_followup_sent(ksinr, owner_id)
             else:
                 print(f"    No articles yet, will retry tomorrow.")
             continue
@@ -228,19 +229,21 @@ def main() -> None:
             window_closed = today > date.fromisoformat(article_date_to)
             if window_closed:
                 print(f"    GPT: no relevant articles, window closed — marking done.")
-                for chat_id in pending:
-                    council_store.mark_followup_sent(ksinr, chat_id)
+                for owner_id in pending:
+                    council_store.mark_followup_sent(ksinr, owner_id)
             else:
                 print(f"    GPT: no relevant articles yet, will retry tomorrow.")
             continue
 
-        print(f"    {len(matches)} relevant article(s) — sending to {len(pending)} user(s).")
+        print(f"    {len(matches)} relevant article(s) — sending to {len(pending)} owner(s).")
         message = _format_message(session, matches)
+        subject = f"Ratslotse – Nachbericht {session['committee']}"
 
-        for chat_id in pending:
-            if telegram_ready():
-                reply(chat_id, message)
-            council_store.mark_followup_sent(ksinr, chat_id)
+        for owner_id in pending:
+            target = targets.get(owner_id)
+            if target:
+                deliver_message(target, message, email_subject=subject)
+            council_store.mark_followup_sent(ksinr, owner_id)
             followups_sent += 1
 
     nwz_store.close()

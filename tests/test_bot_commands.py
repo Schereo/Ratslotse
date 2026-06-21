@@ -135,7 +135,7 @@ class TestCommitteesCommand:
     @patch("nwz.bot_commands.reply_with_buttons", return_value=42)
     def test_subscribed_shows_checkmark(self, mock_rwb, data_dir):
         store = Store(data_dir)
-        store.subscribe(CHAT_ID, "Bauausschuss")
+        store.subscribe(store.ensure_owner_for_chat(CHAT_ID),"Bauausschuss")
         store.close()
         handle_update(_make_msg(CHAT_ID, "/ausschuesse"), data_dir)
         text = mock_rwb.call_args[0][1]
@@ -195,7 +195,7 @@ class TestSubscriptionsCommand:
     @patch("nwz.bot_commands.reply_with_buttons", return_value=42)
     def test_subscribed_shows_checkmark(self, mock_rwb, data_dir):
         store = Store(data_dir)
-        store.subscribe(CHAT_ID, "Bauausschuss")
+        store.subscribe(store.ensure_owner_for_chat(CHAT_ID),"Bauausschuss")
         store.close()
         handle_update(_make_msg(CHAT_ID, "/ausschuesse"), data_dir)
         text = mock_rwb.call_args[0][1]
@@ -227,7 +227,7 @@ class TestCheckCommand:
     def test_no_upcoming_sessions(self, mock_reply, data_dir):
         # data_dir fixture adds sessions with past dates → upcoming_sessions() returns nothing
         store = Store(data_dir)
-        store.subscribe(CHAT_ID, COMMITTEES[0])
+        store.subscribe(store.ensure_owner_for_chat(CHAT_ID),COMMITTEES[0])
         store.close()
         handle_update(_make_msg(CHAT_ID, "/pruefen"), data_dir)
         mock_reply.assert_called_once()
@@ -240,7 +240,7 @@ class TestCheckCommand:
         cs.save_session(CouncilSession(100, "Anderer Ausschuss", FUTURE_DATE, "18:00", "Rathaus"))
         cs.close()
         store = Store(data_dir)
-        store.subscribe(CHAT_ID, COMMITTEES[0])
+        store.subscribe(store.ensure_owner_for_chat(CHAT_ID),COMMITTEES[0])
         store.close()
         handle_update(_make_msg(CHAT_ID, "/pruefen"), data_dir)
         mock_reply.assert_called_once()
@@ -257,7 +257,7 @@ class TestCheckCommand:
         cs.save_session(session)
         cs.close()
         store = Store(data_dir)
-        store.subscribe(CHAT_ID, COMMITTEES[0])
+        store.subscribe(store.ensure_owner_for_chat(CHAT_ID),COMMITTEES[0])
         store.close()
         handle_update(_make_msg(CHAT_ID, "/pruefen"), data_dir)
         texts = [c[0][1] for c in mock_reply.call_args_list]
@@ -274,7 +274,7 @@ class TestCheckCommand:
         cs.save_session(session)
         cs.close()
         store = Store(data_dir)
-        store.subscribe(CHAT_ID, COMMITTEES[0])
+        store.subscribe(store.ensure_owner_for_chat(CHAT_ID),COMMITTEES[0])
         store.close()
         handle_update(_make_msg(CHAT_ID, "/pruefen"), data_dir)
         texts = [c[0][1] for c in mock_reply.call_args_list]
@@ -291,7 +291,7 @@ class TestCheckCommand:
         cs.save_session(session)
         cs.close()
         store = Store(data_dir)
-        store.subscribe(CHAT_ID, COMMITTEES[0])
+        store.subscribe(store.ensure_owner_for_chat(CHAT_ID),COMMITTEES[0])
         store.close()
         handle_update(_make_msg(CHAT_ID, "/pruefen"), data_dir)
         cs = CouncilStore(data_dir.parent / "council.sqlite")
@@ -309,7 +309,7 @@ class TestCallbackQuery:
     def test_subscribe_via_button(self, mock_answer, mock_edit, data_dir):
         handle_callback_query(_make_cq(CHAT_ID, 42, "ctoggle:2"), data_dir)
         store = Store(data_dir)
-        subs = store.get_subscriptions(CHAT_ID)
+        subs = store.get_subscriptions(store.ensure_owner_for_chat(CHAT_ID))
         store.close()
         assert "Bauausschuss" in subs
         mock_answer.assert_called_once_with("cq1", "✅ Ausschuss abonniert")
@@ -319,11 +319,11 @@ class TestCallbackQuery:
     @patch("nwz.bot_commands.answer_callback_query")
     def test_unsubscribe_via_button(self, mock_answer, mock_edit, data_dir):
         store = Store(data_dir)
-        store.subscribe(CHAT_ID, "Bauausschuss")
+        store.subscribe(store.ensure_owner_for_chat(CHAT_ID),"Bauausschuss")
         store.close()
         handle_callback_query(_make_cq(CHAT_ID, 42, "ctoggle:2"), data_dir)
         store = Store(data_dir)
-        subs = store.get_subscriptions(CHAT_ID)
+        subs = store.get_subscriptions(store.ensure_owner_for_chat(CHAT_ID))
         store.close()
         assert "Bauausschuss" not in subs
         mock_answer.assert_called_once_with("cq1", "❌ Ausschuss gekündigt")
@@ -358,7 +358,7 @@ class TestCallbackQuery:
         # Old messages sent ctoggle:{name} — must still work
         handle_callback_query(_make_cq(CHAT_ID, 42, "ctoggle:Bauausschuss"), data_dir)
         store = Store(data_dir)
-        subs = store.get_subscriptions(CHAT_ID)
+        subs = store.get_subscriptions(store.ensure_owner_for_chat(CHAT_ID))
         store.close()
         assert "Bauausschuss" in subs
 
