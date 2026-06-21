@@ -6,8 +6,9 @@ import { api, qs, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useDebounce } from "@/lib/use-debounce";
 import { Article, SearchResult } from "@/lib/types";
+import { categoryLabel } from "@/lib/categories";
 import {
-  Badge, Button, Card, CardListSkeleton, EmptyState, Input, Label, PageHeader, Select, DateField, formatDate,
+  Badge, Button, Card, CardListSkeleton, EmptyState, Input, Label, PageHeader, Pagination, Select, DateField, formatDate,
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, PasswordInput, toast,
 } from "@/components/ui";
 
@@ -67,13 +68,17 @@ function NwzCredentialsGate({ onVerified }: { onVerified: () => Promise<void> })
   );
 }
 
+const PAGE_SIZE = 50;
+
 function NwzSearch() {
   const [q, setQ] = useState("");
   const [category, setCategory] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [page, setPage] = useState(1);
   const [categories, setCategories] = useState<string[]>([]);
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [openArticle, setOpenArticle] = useState<Article | null>(null);
 
@@ -86,23 +91,23 @@ function NwzSearch() {
   const search = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await api.get<{ results: SearchResult[] }>(
-        `/nwz/search${qs({ q, category, date_from: dateFrom, date_to: dateTo, limit: 50 })}`,
+      const data = await api.get<{ results: SearchResult[]; total: number }>(
+        `/nwz/search${qs({ q, category, date_from: dateFrom, date_to: dateTo, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE })}`,
       );
       setResults(data.results);
+      setTotal(data.total);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Suche fehlgeschlagen.");
     } finally {
       setLoading(false);
     }
-  }, [q, category, dateFrom, dateTo]);
+  }, [q, category, dateFrom, dateTo, page]);
 
-  // Instant search: re-run whenever the debounced query or any filter changes
-  // (also fires on mount, since debouncedQ initialises to "").
+  // Instant search on debounced query / filter / page change (also on mount).
   useEffect(() => {
     search();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedQ, category, dateFrom, dateTo]);
+  }, [debouncedQ, category, dateFrom, dateTo, page]);
 
   const openDetail = async (r: SearchResult) => {
     try {
@@ -124,25 +129,25 @@ function NwzSearch() {
               className="pl-9"
               placeholder="Suchbegriff (z. B. Radwege, Stadtpark)…"
               value={q}
-              onChange={(e) => setQ(e.target.value)}
+              onChange={(e) => { setQ(e.target.value); setPage(1); }}
               autoFocus
             />
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <label className="flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">Rubrik</span>
-              <Select value={category} onChange={(e) => setCategory(e.target.value)}>
+              <Select value={category} onChange={(e) => { setCategory(e.target.value); setPage(1); }}>
                 <option value="">Alle Rubriken</option>
-                {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+                {categories.map((c) => <option key={c} value={c}>{categoryLabel(c)}</option>)}
               </Select>
             </label>
             <label className="flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">Von</span>
-              <DateField value={dateFrom} onChange={setDateFrom} />
+              <DateField value={dateFrom} onChange={(v) => { setDateFrom(v); setPage(1); }} />
             </label>
             <label className="flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">Bis</span>
-              <DateField value={dateTo} onChange={setDateTo} />
+              <DateField value={dateTo} onChange={(v) => { setDateTo(v); setPage(1); }} />
             </label>
           </div>
         </form>
@@ -159,7 +164,7 @@ function NwzSearch() {
           />
         ) : (
           <div className="space-y-3">
-            <p className="text-sm font-medium text-muted-foreground">{results.length} Treffer</p>
+            <p className="text-sm font-medium text-muted-foreground">{total} Treffer</p>
             {results.map((r) => (
               <button
                 key={`${r.catalog}-${r.refid}`}
@@ -172,7 +177,7 @@ function NwzSearch() {
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                         <span>{formatDate(r.pub_date)}</span>
-                        {r.category_name && <Badge>{r.category_name}</Badge>}
+                        {r.category_name && <Badge>{categoryLabel(r.category_name)}</Badge>}
                       </div>
                       <h3 className="mt-1 font-semibold text-foreground">{r.title}</h3>
                       {r.subtitle && <p className="line-clamp-1 text-sm text-muted-foreground">{r.subtitle}</p>}
@@ -183,6 +188,12 @@ function NwzSearch() {
                 </Card>
               </button>
             ))}
+            <Pagination
+              page={page}
+              totalPages={Math.ceil(total / PAGE_SIZE)}
+              onChange={(p) => { setPage(p); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+              className="pt-2"
+            />
           </div>
         )}
       </div>
