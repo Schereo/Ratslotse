@@ -21,7 +21,7 @@ NWZ ePaper (Visiolink)          Oldenburg Council (SessionNet)
                        │
                   Telegram API
                        │
-                   @mein_nwz_bot
+                   @RatslotseBot
 ```
 
 ---

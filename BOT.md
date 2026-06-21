@@ -1,12 +1,12 @@
 # Telegram Bot – Multi-User Guide
 
-The bot (`@mein_nwz_bot`) uses a **whitelist**: only approved users can interact with it. Each user has their own independent set of topics.
+The bot (`@RatslotseBot`) uses a **whitelist**: only approved users can interact with it. Each user has their own independent set of topics.
 
 ---
 
 ## Adding a Friend
 
-1. They message `@mein_nwz_bot` with `/start`
+1. They message `@RatslotseBot` with `/start`
 2. The bot replies with their chat ID, e.g. `Your chat ID: 123456789`
 3. You (the admin) send the bot:
    ```

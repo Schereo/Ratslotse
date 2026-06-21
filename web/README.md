@@ -69,7 +69,7 @@ BACKEND_URL=http://localhost:8000 npm run dev   # http://localhost:3000
 |----------|-------|---------|
 | `WEB_JWT_SECRET` | Signiergeheimnis für Session-Tokens — **unbedingt setzen** | `dev-insecure-change-me` |
 | `WEB_ADMIN_EMAIL` | Diese E-Mail wird bei Registrierung Admin | – |
-| `TELEGRAM_BOT_USERNAME` | Für die Verbinden-Anleitung im UI | `mein_nwz_bot` |
+| `TELEGRAM_BOT_USERNAME` | Für die Verbinden-Anleitung im UI | `RatslotseBot` |
 | `COOKIE_SECURE` | Secure-Flag fürs Session-Cookie. `true` für HTTPS/localhost; nur für Plain-HTTP-Dev auf `false` setzen | `true` |
 | `CORS_ORIGINS` | Erlaubte Origins (kommagetrennt). In Prod auf die echte Domain setzen (z. B. `https://ratslotse.de`); same-origin braucht streng genommen kein CORS | `http://localhost:3000` |
 
