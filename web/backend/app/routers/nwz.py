@@ -19,11 +19,13 @@ def search(
     date_from: str = "",
     date_to: str = "",
     limit: int = Query(40, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     _user: dict = Depends(require_nwz_verified),
     store: Store = Depends(get_store),
 ) -> dict:
-    results = store.search(q, limit=limit, category=category, date_from=date_from, date_to=date_to)
-    return {"query": q, "count": len(results), "results": [asdict(r) for r in results]}
+    results = store.search(q, limit=limit, category=category, date_from=date_from, date_to=date_to, offset=offset)
+    total = store.count_results(q, category=category, date_from=date_from, date_to=date_to)
+    return {"query": q, "count": len(results), "total": total, "results": [asdict(r) for r in results]}
 
 
 @router.get("/categories")

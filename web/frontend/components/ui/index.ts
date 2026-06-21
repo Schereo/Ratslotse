@@ -7,6 +7,7 @@ export { Label } from "./label";
 export { Card, Badge, Spinner, EmptyState } from "./card";
 export { Skeleton, CardListSkeleton } from "./skeleton";
 export { PageHeader } from "./page-header";
+export { Pagination } from "./pagination";
 export {
   Dialog,
   DialogTrigger,
