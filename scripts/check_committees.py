@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 load_dotenv(ROOT / ".env")
 
 from nwz.store import Store
-from nwz.telegram_bot import reply
+from nwz.delivery import deliver_message
 from council.store import CouncilStore
 from council.scraper import CouncilScraper
 from council.committee_summary import summarize_agenda
@@ -35,7 +35,8 @@ def _agenda_hash(agenda_items) -> str:
 
 def main() -> None:
     nwz_store = Store(NWZ_DB)
-    all_subs = nwz_store.get_all_subscriptions()
+    all_subs = nwz_store.get_all_subscriptions()       # {owner_id: [committee_name]}
+    targets = nwz_store.get_subscription_targets()     # {owner_id: {channel, chat, email}}
     nwz_store.close()
 
     if not all_subs:
@@ -76,14 +77,14 @@ def main() -> None:
         # "already notified, skip" to avoid a one-off spurious update blast.
         pending_new: list[int] = []
         pending_update: list[int] = []
-        for chat_id, names in all_subs.items():
+        for owner_id, names in all_subs.items():
             if session.committee not in names:
                 continue
-            last_hash = council_store.get_last_notified_hash(ksinr, chat_id)
+            last_hash = council_store.get_last_notified_hash(ksinr, owner_id)
             if last_hash is None:
-                pending_new.append(chat_id)
+                pending_new.append(owner_id)
             elif last_hash and last_hash != agenda_hash:
-                pending_update.append(chat_id)
+                pending_update.append(owner_id)
 
         if not pending_new and not pending_update:
             continue
@@ -109,17 +110,24 @@ def main() -> None:
             f'<a href="{session.url}">Tagesordnung →</a>'
         )
 
-        for chat_id in pending_new:
-            print(f"  {session.session_date} {session.committee} → user {chat_id} (neu)")
-            reply(chat_id, base_message)
-            council_store.mark_notified(ksinr, chat_id, agenda_hash)
+        subject = f"Ratslotse – {session.committee}"
+        for owner_id in pending_new:
+            target = targets.get(owner_id)
+            if not target:
+                continue
+            print(f"  {session.session_date} {session.committee} → owner {owner_id} (neu)")
+            deliver_message(target, base_message, email_subject=subject)
+            council_store.mark_notified(ksinr, owner_id, agenda_hash)
             notifications_sent += 1
 
         update_prefix = "🔄 <b>Tagesordnung wurde aktualisiert</b>\n\n"
-        for chat_id in pending_update:
-            print(f"  {session.session_date} {session.committee} → user {chat_id} (Änderung)")
-            reply(chat_id, update_prefix + base_message)
-            council_store.mark_notified(ksinr, chat_id, agenda_hash)
+        for owner_id in pending_update:
+            target = targets.get(owner_id)
+            if not target:
+                continue
+            print(f"  {session.session_date} {session.committee} → owner {owner_id} (Änderung)")
+            deliver_message(target, update_prefix + base_message, email_subject=subject)
+            council_store.mark_notified(ksinr, owner_id, agenda_hash)
             notifications_sent += 1
 
     council_store.close()
