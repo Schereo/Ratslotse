@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/auth";
 import { useDebounce } from "@/lib/use-debounce";
 import { Article, SearchResult } from "@/lib/types";
 import {
-  Badge, Button, Card, CardListSkeleton, EmptyState, Input, Label, PageHeader, Select, formatDate,
+  Badge, Button, Card, CardListSkeleton, EmptyState, Input, Label, PageHeader, Select, DateField, formatDate,
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, PasswordInput, toast,
 } from "@/components/ui";
 
@@ -129,17 +129,20 @@ function NwzSearch() {
             />
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Select value={category} onChange={(e) => setCategory(e.target.value)}>
-              <option value="">Alle Rubriken</option>
-              {categories.map((c) => <option key={c} value={c}>{c}</option>)}
-            </Select>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-muted-foreground">Rubrik</span>
+              <Select value={category} onChange={(e) => setCategory(e.target.value)}>
+                <option value="">Alle Rubriken</option>
+                {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+              </Select>
+            </label>
             <label className="flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">Von</span>
-              <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+              <DateField value={dateFrom} onChange={setDateFrom} />
             </label>
             <label className="flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">Bis</span>
-              <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+              <DateField value={dateTo} onChange={setDateTo} />
             </label>
           </div>
         </form>
