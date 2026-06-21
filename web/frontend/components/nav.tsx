@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Newspaper, Landmark, Tags, Link2, Settings, LogOut, Menu, Moon, Sun, UserCircle } from "lucide-react";
+import { Home, Newspaper, Landmark, Tags, Settings, LogOut, Menu, Moon, Sun, UserCircle } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, Button } from "@/components/ui";
 import { Brand, BrandMark } from "@/components/brand";
@@ -15,7 +15,6 @@ const LINKS = [
   { href: "/nwz", label: "Artikelsuche", icon: Newspaper },
   { href: "/council", label: "Ratsinfo", icon: Landmark },
   { href: "/topics", label: "Meine Themen", icon: Tags },
-  { href: "/link", label: "Telegram", icon: Link2 },
   { href: "/account", label: "Mein Konto", icon: UserCircle },
 ];
 
