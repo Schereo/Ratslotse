@@ -7,7 +7,7 @@ import { registerAdmin, loginAdmin, ADMIN_EMAIL, ADMIN_PASSWORD } from "./helper
 test.describe("Auth", () => {
   test("register creates admin and lands on link/dashboard", async ({ page }) => {
     await page.goto("/register");
-    await expect(page.getByText("Stadtpuls")).toBeVisible();
+    await expect(page.getByText("Ratslotse")).toBeVisible();
 
     await page.locator("#email").fill(ADMIN_EMAIL);
     await page.locator("#password").fill(ADMIN_PASSWORD);

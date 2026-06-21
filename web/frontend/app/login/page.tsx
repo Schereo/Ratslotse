@@ -34,7 +34,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm p-8">
         <div className="flex items-center gap-3">
           <BrandMark />
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Stadtpuls</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Ratslotse</h1>
         </div>
         <p className="mt-3 text-sm text-muted-foreground">Melde dich an, um fortzufahren.</p>
         <form onSubmit={onSubmit} className="mt-6 space-y-4">

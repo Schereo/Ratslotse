@@ -141,7 +141,7 @@ export function MobileTopbar() {
       </Sheet>
       <div className="flex flex-1 items-center gap-2">
         <BrandMark className="h-7 w-7" />
-        <span className="text-base font-bold tracking-tight text-foreground">Stadtpuls</span>
+        <span className="text-base font-bold tracking-tight text-foreground">Ratslotse</span>
       </div>
       <ThemeToggle />
     </header>

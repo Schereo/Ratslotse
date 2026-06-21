@@ -40,7 +40,7 @@ export default function RegisterPage() {
           <BrandMark />
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Konto erstellen</h1>
         </div>
-        <p className="mt-3 text-sm text-muted-foreground">Registriere dich für Stadtpuls.</p>
+        <p className="mt-3 text-sm text-muted-foreground">Registriere dich für Ratslotse.</p>
         <form onSubmit={onSubmit} className="mt-6 space-y-4">
           <div>
             <label htmlFor="email" className="mb-1 block text-sm font-medium text-foreground">E-Mail</label>

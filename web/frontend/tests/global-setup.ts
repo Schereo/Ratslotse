@@ -12,7 +12,7 @@ let proc: ChildProcess | null = null;
 
 export default async function globalSetup() {
   const repoRoot = path.resolve(__dirname, "../../../../");
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "stadtpuls-e2e-"));
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "ratslotse-e2e-"));
   const nwzDb = path.join(tmpDir, "nwz.sqlite");
   const councilDb = path.join(tmpDir, "council.sqlite");
 

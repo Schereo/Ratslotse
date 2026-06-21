@@ -37,7 +37,7 @@ async def lifespan(app: FastAPI):  # noqa: ANN001
 settings = get_settings()
 
 app = FastAPI(
-    title="Stadtpuls",
+    title="Ratslotse",
     description="Lokale Nachrichten und Ratsinformationen für Oldenburg.",
     version="1.0.0",
     lifespan=lifespan,

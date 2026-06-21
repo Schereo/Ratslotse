@@ -1,6 +1,6 @@
 {
-  "name": "Stadtpuls",
-  "short_name": "Stadtpuls",
+  "name": "Ratslotse",
+  "short_name": "Ratslotse",
   "description": "Lokale Nachrichten und Ratsinformationen für Oldenburg",
   "start_url": "/",
   "display": "standalone",

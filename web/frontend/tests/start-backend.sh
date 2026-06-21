@@ -5,7 +5,7 @@
 set -e
 
 REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
-TMP_DIR="$(mktemp -d /tmp/stadtpuls-e2e-XXXXXX)"
+TMP_DIR="$(mktemp -d /tmp/ratslotse-e2e-XXXXXX)"
 
 export NWZ_DB="$TMP_DIR/nwz.sqlite"
 export COUNCIL_DB="$TMP_DIR/council.sqlite"
