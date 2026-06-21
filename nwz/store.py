@@ -61,8 +61,13 @@ CREATE TABLE IF NOT EXISTS users (
     added_at   TEXT NOT NULL
 );
 
+-- `owner_id` (= web_users.id) is the canonical owner of topics, matches and
+-- subscriptions. A Telegram chat is only a *delivery target* now, resolved via
+-- web_users.telegram_chat_id. `topics.chat_id` is kept for backward-compat /
+-- rollback; it is no longer used for ownership queries.
 CREATE TABLE IF NOT EXISTS topics (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner_id    INTEGER NOT NULL DEFAULT 0,
     chat_id     INTEGER NOT NULL DEFAULT 0,
     name        TEXT NOT NULL,
     description TEXT NOT NULL,
@@ -71,15 +76,15 @@ CREATE TABLE IF NOT EXISTS topics (
 
 CREATE TABLE IF NOT EXISTS committee_subscriptions (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
-    chat_id        INTEGER NOT NULL,
+    owner_id       INTEGER NOT NULL,
     committee_name TEXT NOT NULL,
     created_at     TEXT NOT NULL,
-    UNIQUE(chat_id, committee_name)
+    UNIQUE(owner_id, committee_name)
 );
 
 CREATE TABLE IF NOT EXISTS article_topic_matches (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
-    chat_id          INTEGER NOT NULL,
+    owner_id         INTEGER NOT NULL,
     topic_id         INTEGER NOT NULL,
     catalog          INTEGER NOT NULL,
     refid            TEXT NOT NULL,
@@ -88,19 +93,22 @@ CREATE TABLE IF NOT EXISTS article_topic_matches (
     summary          TEXT NOT NULL,
     is_continuation  INTEGER NOT NULL DEFAULT 0,
     matched_at       TEXT NOT NULL,
-    UNIQUE(chat_id, topic_id, catalog, refid)
+    UNIQUE(owner_id, topic_id, catalog, refid)
 );
-CREATE INDEX IF NOT EXISTS idx_atm_lookup ON article_topic_matches(chat_id, topic_id, pub_date DESC);
+CREATE INDEX IF NOT EXISTS idx_atm_lookup ON article_topic_matches(owner_id, topic_id, pub_date DESC);
 
 CREATE TABLE IF NOT EXISTS topic_classified_editions (
-    chat_id     INTEGER NOT NULL,
+    owner_id    INTEGER NOT NULL,
     topic_id    INTEGER NOT NULL,
     pub_date    TEXT NOT NULL,
     classified_at TEXT NOT NULL,
-    PRIMARY KEY(chat_id, topic_id, pub_date)
+    PRIMARY KEY(owner_id, topic_id, pub_date)
 );
 
 -- Web frontend accounts (separate from the Telegram whitelist `users`).
+-- Every owner has a row here — including Telegram-only users, for whom the
+-- migration creates a synthetic row (sentinel email tg-<chat_id>@local).
+-- delivery_channel ∈ {telegram, email, both}.
 CREATE TABLE IF NOT EXISTS web_users (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
     email            TEXT NOT NULL UNIQUE,
@@ -108,6 +116,7 @@ CREATE TABLE IF NOT EXISTS web_users (
     role             TEXT NOT NULL DEFAULT 'user',
     status           TEXT NOT NULL DEFAULT 'pending',
     telegram_chat_id INTEGER,
+    delivery_channel TEXT NOT NULL DEFAULT 'telegram',
     nwz_username     TEXT,
     nwz_verified_at  TEXT,
     token_version    INTEGER NOT NULL DEFAULT 0,
@@ -140,6 +149,7 @@ class SearchResult:
 @dataclass
 class TopicRow:
     id: int
+    owner_id: int
     chat_id: int
     name: str
     description: str
@@ -217,6 +227,119 @@ class Store:
             "CREATE INDEX IF NOT EXISTS idx_topics_chat ON topics(chat_id)"
         )
         self._conn.commit()
+        self._migrate_owner_id()
+
+    def _table_cols(self, table: str) -> set[str]:
+        return {r[1] for r in self._conn.execute(f"PRAGMA table_info({table})").fetchall()}
+
+    def _migrate_owner_id(self) -> None:
+        """Move ownership from Telegram chat_id to a canonical owner_id (=web_users.id).
+
+        Idempotent: each step is guarded on whether its target column exists.
+        Telegram-only chat_ids (no web account) get a synthetic web_users row so
+        every owner has a stable id. The chat_id stays only as a delivery target
+        (web_users.telegram_chat_id) and on topics for rollback.
+        """
+        wu_cols = self._table_cols("web_users")
+        if not wu_cols:
+            return  # web_users not created yet (shouldn't happen — SCHEMA runs first)
+
+        with self._conn:
+            # 1. delivery_channel column on web_users.
+            if "delivery_channel" not in wu_cols:
+                self._conn.execute(
+                    "ALTER TABLE web_users ADD COLUMN delivery_channel TEXT NOT NULL DEFAULT 'telegram'"
+                )
+
+            # 2. Synthetic web_users for every chat_id that owns something but has
+            #    no web account yet (incl. the admin from TELEGRAM_CHAT_ID).
+            now = datetime.utcnow().isoformat(timespec="seconds")
+            linked = {
+                r[0] for r in self._conn.execute(
+                    "SELECT telegram_chat_id FROM web_users WHERE telegram_chat_id IS NOT NULL"
+                ).fetchall()
+            }
+            chat_ids: set[int] = set()
+            chat_ids.update(r[0] for r in self._conn.execute("SELECT DISTINCT chat_id FROM users").fetchall())
+            chat_ids.update(r[0] for r in self._conn.execute("SELECT DISTINCT chat_id FROM topics").fetchall())
+            if "chat_id" in self._table_cols("committee_subscriptions"):
+                chat_ids.update(r[0] for r in self._conn.execute(
+                    "SELECT DISTINCT chat_id FROM committee_subscriptions").fetchall())
+            admin = int(os.environ.get("TELEGRAM_CHAT_ID", 0))
+            if admin:
+                chat_ids.add(admin)
+            chat_ids.discard(0)  # 0 = orphan / no owner
+            for cid in sorted(chat_ids - linked):
+                # password_hash '!' can never match a bcrypt verify → no login.
+                self._conn.execute(
+                    "INSERT OR IGNORE INTO web_users "
+                    "(email, password_hash, role, status, telegram_chat_id, delivery_channel, created_at) "
+                    "VALUES (?, '!', 'user', 'active', ?, 'telegram', ?)",
+                    (f"tg-{cid}@local", cid, now),
+                )
+
+            # 3. topics.owner_id (ADD COLUMN — no constraint change needed).
+            if "owner_id" not in self._table_cols("topics"):
+                self._conn.execute("ALTER TABLE topics ADD COLUMN owner_id INTEGER NOT NULL DEFAULT 0")
+            self._conn.execute(
+                "UPDATE topics SET owner_id = COALESCE("
+                "  (SELECT id FROM web_users WHERE telegram_chat_id = topics.chat_id), 0) "
+                "WHERE owner_id = 0"
+            )
+            self._conn.execute("CREATE INDEX IF NOT EXISTS idx_topics_owner ON topics(owner_id)")
+
+            # 4. Rebuild the constrained tables so their PK/UNIQUE is on owner_id.
+            #    (chat_id is dropped here; it is recoverable via web_users.)
+            if "owner_id" not in self._table_cols("committee_subscriptions"):
+                self._conn.execute(
+                    "CREATE TABLE committee_subscriptions_new ("
+                    " id INTEGER PRIMARY KEY AUTOINCREMENT, owner_id INTEGER NOT NULL,"
+                    " committee_name TEXT NOT NULL, created_at TEXT NOT NULL,"
+                    " UNIQUE(owner_id, committee_name))"
+                )
+                self._conn.execute(
+                    "INSERT OR IGNORE INTO committee_subscriptions_new (id, owner_id, committee_name, created_at) "
+                    "SELECT cs.id, wu.id, cs.committee_name, cs.created_at FROM committee_subscriptions cs "
+                    "JOIN web_users wu ON wu.telegram_chat_id = cs.chat_id"
+                )
+                self._conn.execute("DROP TABLE committee_subscriptions")
+                self._conn.execute("ALTER TABLE committee_subscriptions_new RENAME TO committee_subscriptions")
+
+            if "owner_id" not in self._table_cols("article_topic_matches"):
+                self._conn.execute(
+                    "CREATE TABLE article_topic_matches_new ("
+                    " id INTEGER PRIMARY KEY AUTOINCREMENT, owner_id INTEGER NOT NULL, topic_id INTEGER NOT NULL,"
+                    " catalog INTEGER NOT NULL, refid TEXT NOT NULL, pub_date TEXT NOT NULL,"
+                    " title TEXT NOT NULL, summary TEXT NOT NULL, is_continuation INTEGER NOT NULL DEFAULT 0,"
+                    " matched_at TEXT NOT NULL, UNIQUE(owner_id, topic_id, catalog, refid))"
+                )
+                self._conn.execute(
+                    "INSERT OR IGNORE INTO article_topic_matches_new "
+                    "(id, owner_id, topic_id, catalog, refid, pub_date, title, summary, is_continuation, matched_at) "
+                    "SELECT atm.id, wu.id, atm.topic_id, atm.catalog, atm.refid, atm.pub_date, atm.title, "
+                    "       atm.summary, atm.is_continuation, atm.matched_at "
+                    "FROM article_topic_matches atm JOIN web_users wu ON wu.telegram_chat_id = atm.chat_id"
+                )
+                self._conn.execute("DROP TABLE article_topic_matches")
+                self._conn.execute("ALTER TABLE article_topic_matches_new RENAME TO article_topic_matches")
+                self._conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_atm_lookup "
+                    "ON article_topic_matches(owner_id, topic_id, pub_date DESC)"
+                )
+
+            if "owner_id" not in self._table_cols("topic_classified_editions"):
+                self._conn.execute(
+                    "CREATE TABLE topic_classified_editions_new ("
+                    " owner_id INTEGER NOT NULL, topic_id INTEGER NOT NULL, pub_date TEXT NOT NULL,"
+                    " classified_at TEXT NOT NULL, PRIMARY KEY(owner_id, topic_id, pub_date))"
+                )
+                self._conn.execute(
+                    "INSERT OR IGNORE INTO topic_classified_editions_new (owner_id, topic_id, pub_date, classified_at) "
+                    "SELECT wu.id, tce.topic_id, tce.pub_date, tce.classified_at FROM topic_classified_editions tce "
+                    "JOIN web_users wu ON wu.telegram_chat_id = tce.chat_id"
+                )
+                self._conn.execute("DROP TABLE topic_classified_editions")
+                self._conn.execute("ALTER TABLE topic_classified_editions_new RENAME TO topic_classified_editions")
 
     def close(self) -> None:
         self._conn.close()
@@ -244,13 +367,31 @@ class Store:
             )
 
     def remove_user(self, chat_id: int) -> None:
+        """Remove a Telegram chat from the whitelist and unlink it.
+
+        Deletes the chat's owned data (topics + their matches/classified rows +
+        committee subscriptions) when the owner is a synthetic Telegram-only
+        account; for a real web account we only unlink the chat and keep the
+        data so the user can still reach it on the web.
+        """
+        owner_id = self.get_owner_id_for_chat(chat_id)
         with self._conn:
-            self._conn.execute("DELETE FROM topics WHERE chat_id = ?", (chat_id,))
             self._conn.execute("DELETE FROM users WHERE chat_id = ?", (chat_id,))
-            self._conn.execute(
-                "UPDATE web_users SET telegram_chat_id = NULL WHERE telegram_chat_id = ?",
-                (chat_id,),
-            )
+            if owner_id is not None:
+                row = self._conn.execute(
+                    "SELECT email FROM web_users WHERE id = ?", (owner_id,)
+                ).fetchone()
+                is_synthetic = bool(row) and str(row[0]).startswith("tg-") and str(row[0]).endswith("@local")
+                if is_synthetic:
+                    self._conn.execute("DELETE FROM topics WHERE owner_id = ?", (owner_id,))
+                    self._conn.execute("DELETE FROM article_topic_matches WHERE owner_id = ?", (owner_id,))
+                    self._conn.execute("DELETE FROM topic_classified_editions WHERE owner_id = ?", (owner_id,))
+                    self._conn.execute("DELETE FROM committee_subscriptions WHERE owner_id = ?", (owner_id,))
+                    self._conn.execute("DELETE FROM web_users WHERE id = ?", (owner_id,))
+                else:
+                    self._conn.execute(
+                        "UPDATE web_users SET telegram_chat_id = NULL WHERE id = ?", (owner_id,)
+                    )
 
     # ---- web accounts ----
 
@@ -266,6 +407,38 @@ class Store:
     def set_web_user_status(self, user_id: int, status: str) -> None:
         with self._conn:
             self._conn.execute("UPDATE web_users SET status = ? WHERE id = ?", (status, user_id))
+
+    def set_delivery_channel(self, owner_id: int, channel: str) -> None:
+        with self._conn:
+            self._conn.execute(
+                "UPDATE web_users SET delivery_channel = ? WHERE id = ?", (channel, owner_id)
+            )
+
+    # ---- owner resolution (chat_id <-> owner_id) ----
+
+    def get_owner_id_for_chat(self, chat_id: int) -> int | None:
+        """Return the owner_id (web_users.id) a Telegram chat maps to, or None."""
+        row = self._conn.execute(
+            "SELECT id FROM web_users WHERE telegram_chat_id = ?", (chat_id,)
+        ).fetchone()
+        return row[0] if row else None
+
+    def ensure_owner_for_chat(self, chat_id: int, username: str = "") -> int:
+        """Return the owner_id for a Telegram chat, creating a synthetic
+        Telegram-only web account on first use so the chat always has a stable
+        owner. Used by the bot after the whitelist check."""
+        owner_id = self.get_owner_id_for_chat(chat_id)
+        if owner_id is not None:
+            return owner_id
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            cur = self._conn.execute(
+                "INSERT INTO web_users "
+                "(email, password_hash, role, status, telegram_chat_id, delivery_channel, created_at) "
+                "VALUES (?, '!', 'user', 'active', ?, 'telegram', ?)",
+                (f"tg-{chat_id}@local", chat_id, now),
+            )
+        return cur.lastrowid
 
     def set_nwz_verified(self, user_id: int, nwz_username: str) -> None:
         now = datetime.utcnow().isoformat(timespec="seconds")
@@ -323,18 +496,19 @@ class Store:
             SELECT u.chat_id, u.username, u.added_at,
                    COUNT(t.id) AS topic_count
             FROM users u
-            LEFT JOIN topics t ON t.chat_id = u.chat_id
+            LEFT JOIN web_users wu ON wu.telegram_chat_id = u.chat_id
+            LEFT JOIN topics t ON t.owner_id = wu.id
             GROUP BY u.chat_id, u.username, u.added_at
             ORDER BY u.added_at
             """
         ).fetchall()
         return [dict(r) for r in rows]
 
-    def get_topic_for_user(self, chat_id: int, topic_id: int) -> TopicRow | None:
-        """Fetch a single topic belonging to chat_id — O(1) vs scanning all topics."""
+    def get_topic_for_owner(self, owner_id: int, topic_id: int) -> TopicRow | None:
+        """Fetch a single topic belonging to owner_id — O(1) vs scanning all topics."""
         row = self._conn.execute(
-            "SELECT id, chat_id, name, description, created_at FROM topics WHERE id = ? AND chat_id = ?",
-            (topic_id, chat_id),
+            "SELECT id, owner_id, chat_id, name, description, created_at FROM topics WHERE id = ? AND owner_id = ?",
+            (topic_id, owner_id),
         ).fetchone()
         return TopicRow(**dict(row)) if row else None
 
@@ -375,7 +549,12 @@ class Store:
         ).fetchone()
         if email_row is None:
             return None
+        # If this chat was already used via the bot it has a synthetic owner.
+        # Merge that owner's data into the real web account, then drop it.
+        existing_owner = self.get_owner_id_for_chat(chat_id)
         with self._conn:
+            if existing_owner is not None and existing_owner != web_user_id:
+                self._merge_owner(existing_owner, web_user_id)
             self._conn.execute(
                 "UPDATE web_users SET telegram_chat_id = ? WHERE id = ?",
                 (chat_id, web_user_id),
@@ -386,6 +565,32 @@ class Store:
             )
             self._conn.execute("DELETE FROM link_codes WHERE code = ?", (code,))
         return email_row[0]
+
+    def _merge_owner(self, src_owner: int, dst_owner: int) -> None:
+        """Move all owned rows from src_owner to dst_owner and delete src.
+
+        Must be called inside an open transaction. UPDATE OR IGNORE avoids
+        UNIQUE collisions (dst keeps its row, the duplicate src row is dropped
+        with the source owner)."""
+        c = self._conn
+        c.execute("UPDATE topics SET owner_id = ? WHERE owner_id = ?", (dst_owner, src_owner))
+        c.execute(
+            "UPDATE OR IGNORE article_topic_matches SET owner_id = ? WHERE owner_id = ?",
+            (dst_owner, src_owner),
+        )
+        c.execute(
+            "UPDATE OR IGNORE topic_classified_editions SET owner_id = ? WHERE owner_id = ?",
+            (dst_owner, src_owner),
+        )
+        c.execute(
+            "UPDATE OR IGNORE committee_subscriptions SET owner_id = ? WHERE owner_id = ?",
+            (dst_owner, src_owner),
+        )
+        # Drop any rows that couldn't move (duplicates) and the source account.
+        c.execute("DELETE FROM article_topic_matches WHERE owner_id = ?", (src_owner,))
+        c.execute("DELETE FROM topic_classified_editions WHERE owner_id = ?", (src_owner,))
+        c.execute("DELETE FROM committee_subscriptions WHERE owner_id = ?", (src_owner,))
+        c.execute("DELETE FROM web_users WHERE id = ?", (src_owner,))
 
     # ---- editions ----
 
@@ -637,32 +842,70 @@ class Store:
 
     # ---- topics ----
 
-    def get_topics(self, chat_id: int) -> list[TopicRow]:
+    def get_topics(self, owner_id: int) -> list[TopicRow]:
         rows = self._conn.execute(
-            "SELECT id, chat_id, name, description, created_at FROM topics WHERE chat_id = ? ORDER BY id",
-            (chat_id,),
+            "SELECT id, owner_id, chat_id, name, description, created_at FROM topics WHERE owner_id = ? ORDER BY id",
+            (owner_id,),
         ).fetchall()
         return [TopicRow(**dict(r)) for r in rows]
 
-    def get_all_user_topics(self) -> dict[int, list[TopicRow]]:
-        """Return {chat_id: [topics]} for all users that have at least one topic."""
+    def get_all_owner_topics(self) -> dict[int, list[TopicRow]]:
+        """Return {owner_id: [topics]} for all owners that have at least one topic."""
         rows = self._conn.execute(
-            "SELECT id, chat_id, name, description, created_at FROM topics ORDER BY chat_id, id"
+            "SELECT id, owner_id, chat_id, name, description, created_at FROM topics ORDER BY owner_id, id"
         ).fetchall()
         result: dict[int, list[TopicRow]] = {}
         for r in rows:
             t = TopicRow(**dict(r))
-            result.setdefault(t.chat_id, []).append(t)
+            result.setdefault(t.owner_id, []).append(t)
         return result
 
-    def add_topic(self, chat_id: int, name: str, description: str) -> TopicRow:
+    def get_all_owner_digests(self) -> list[dict]:
+        """Return per-owner digest targets for the cron: one dict per owner that
+        has ≥1 topic, with delivery channel + reachable addresses.
+
+        [{owner_id, delivery_channel, telegram_chat_id, email, topics: [TopicRow]}]
+        """
+        rows = self._conn.execute(
+            """SELECT wu.id AS owner_id, wu.delivery_channel, wu.telegram_chat_id, wu.email,
+                      t.id, t.owner_id AS t_owner, t.chat_id, t.name, t.description, t.created_at
+               FROM web_users wu
+               JOIN topics t ON t.owner_id = wu.id
+               ORDER BY wu.id, t.id"""
+        ).fetchall()
+        owners: dict[int, dict] = {}
+        for r in rows:
+            o = owners.get(r["owner_id"])
+            if o is None:
+                o = {
+                    "owner_id": r["owner_id"],
+                    "delivery_channel": r["delivery_channel"],
+                    "telegram_chat_id": r["telegram_chat_id"],
+                    "email": r["email"],
+                    "topics": [],
+                }
+                owners[r["owner_id"]] = o
+            o["topics"].append(TopicRow(
+                id=r["id"], owner_id=r["t_owner"], chat_id=r["chat_id"],
+                name=r["name"], description=r["description"], created_at=r["created_at"],
+            ))
+        return list(owners.values())
+
+    def add_topic(self, owner_id: int, name: str, description: str) -> TopicRow:
         now = datetime.utcnow().isoformat(timespec="seconds")
+        # chat_id kept in sync as the owner's current Telegram target (0 if none),
+        # purely for backward-compat; ownership is via owner_id.
+        chat_row = self._conn.execute(
+            "SELECT telegram_chat_id FROM web_users WHERE id = ?", (owner_id,)
+        ).fetchone()
+        chat_id = (chat_row[0] if chat_row and chat_row[0] is not None else 0)
         cur = self._conn.execute(
-            "INSERT INTO topics (chat_id, name, description, created_at) VALUES (?, ?, ?, ?)",
-            (chat_id, name.strip(), description.strip(), now),
+            "INSERT INTO topics (owner_id, chat_id, name, description, created_at) VALUES (?, ?, ?, ?, ?)",
+            (owner_id, chat_id, name.strip(), description.strip(), now),
         )
         self._conn.commit()
-        return TopicRow(id=cur.lastrowid, chat_id=chat_id, name=name, description=description, created_at=now)
+        return TopicRow(id=cur.lastrowid, owner_id=owner_id, chat_id=chat_id,
+                        name=name, description=description, created_at=now)
 
     def delete_topic(self, topic_id: int) -> None:
         self._conn.execute("DELETE FROM topics WHERE id = ?", (topic_id,))
@@ -675,59 +918,70 @@ class Store:
         )
         self._conn.commit()
 
-    def reset_topic_for_reclassify(self, chat_id: int, topic_id: int) -> None:
+    def reset_topic_for_reclassify(self, owner_id: int, topic_id: int) -> None:
         """Drop a topic's matches and classified-editions cache so it re-runs from scratch."""
         with self._conn:
             self._conn.execute(
-                "DELETE FROM article_topic_matches WHERE chat_id = ? AND topic_id = ?",
-                (chat_id, topic_id),
+                "DELETE FROM article_topic_matches WHERE owner_id = ? AND topic_id = ?",
+                (owner_id, topic_id),
             )
             self._conn.execute(
-                "DELETE FROM topic_classified_editions WHERE chat_id = ? AND topic_id = ?",
-                (chat_id, topic_id),
+                "DELETE FROM topic_classified_editions WHERE owner_id = ? AND topic_id = ?",
+                (owner_id, topic_id),
             )
 
     # ---- committee subscriptions ----
 
-    def subscribe(self, chat_id: int, committee_name: str) -> bool:
+    def subscribe(self, owner_id: int, committee_name: str) -> bool:
         now = datetime.utcnow().isoformat(timespec="seconds")
         try:
             with self._conn:
                 self._conn.execute(
-                    "INSERT INTO committee_subscriptions (chat_id, committee_name, created_at) VALUES (?, ?, ?)",
-                    (chat_id, committee_name, now),
+                    "INSERT INTO committee_subscriptions (owner_id, committee_name, created_at) VALUES (?, ?, ?)",
+                    (owner_id, committee_name, now),
                 )
             return True
         except sqlite3.IntegrityError:
             return False
 
-    def unsubscribe(self, chat_id: int, committee_name: str) -> bool:
+    def unsubscribe(self, owner_id: int, committee_name: str) -> bool:
         with self._conn:
             cur = self._conn.execute(
-                "DELETE FROM committee_subscriptions WHERE chat_id = ? AND committee_name = ?",
-                (chat_id, committee_name),
+                "DELETE FROM committee_subscriptions WHERE owner_id = ? AND committee_name = ?",
+                (owner_id, committee_name),
             )
         return cur.rowcount > 0
 
-    def get_subscriptions(self, chat_id: int) -> list[str]:
+    def get_subscriptions(self, owner_id: int) -> list[str]:
         rows = self._conn.execute(
-            "SELECT committee_name FROM committee_subscriptions WHERE chat_id = ? ORDER BY committee_name",
-            (chat_id,),
+            "SELECT committee_name FROM committee_subscriptions WHERE owner_id = ? ORDER BY committee_name",
+            (owner_id,),
         ).fetchall()
         return [r[0] for r in rows]
 
     def get_all_subscriptions(self) -> dict[int, list[str]]:
+        """Return {owner_id: [committee_name]} for all owners with subscriptions."""
         rows = self._conn.execute(
-            "SELECT chat_id, committee_name FROM committee_subscriptions ORDER BY chat_id, committee_name"
+            "SELECT owner_id, committee_name FROM committee_subscriptions ORDER BY owner_id, committee_name"
         ).fetchall()
         result: dict[int, list[str]] = {}
         for r in rows:
             result.setdefault(r[0], []).append(r[1])
         return result
 
+    def get_subscription_targets(self) -> dict[int, dict]:
+        """Return {owner_id: {delivery_channel, telegram_chat_id, email}} for all
+        owners that have ≥1 committee subscription — delivery info for the crons."""
+        rows = self._conn.execute(
+            """SELECT DISTINCT wu.id AS owner_id, wu.delivery_channel,
+                      wu.telegram_chat_id, wu.email
+               FROM committee_subscriptions cs JOIN web_users wu ON wu.id = cs.owner_id"""
+        ).fetchall()
+        return {r["owner_id"]: dict(r) for r in rows}
+
     # ---- article topic matches ----
 
-    def save_article_matches(self, chat_id: int, matches: list[dict]) -> dict[str, int]:
+    def save_article_matches(self, owner_id: int, matches: list[dict]) -> dict[str, int]:
         """Persist GPT match results. Returns {refid: db_id} for use in Telegram buttons.
 
         matches: [{"topic_id", "catalog", "refid", "pub_date", "title", "summary", "is_continuation"}]
@@ -738,10 +992,10 @@ class Store:
         with self._conn:
             self._conn.executemany(
                 """INSERT OR IGNORE INTO article_topic_matches
-                   (chat_id, topic_id, catalog, refid, pub_date, title, summary, is_continuation, matched_at)
+                   (owner_id, topic_id, catalog, refid, pub_date, title, summary, is_continuation, matched_at)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 [
-                    (chat_id, m["topic_id"], m["catalog"], m["refid"],
+                    (owner_id, m["topic_id"], m["catalog"], m["refid"],
                      m["pub_date"], m["title"], m["summary"],
                      int(m.get("is_continuation", False)), now)
                     for m in matches
@@ -750,8 +1004,8 @@ class Store:
         refid_to_id: dict[str, int] = {}
         for m in matches:
             row = self._conn.execute(
-                "SELECT id FROM article_topic_matches WHERE chat_id=? AND topic_id=? AND catalog=? AND refid=?",
-                (chat_id, m["topic_id"], m["catalog"], m["refid"]),
+                "SELECT id FROM article_topic_matches WHERE owner_id=? AND topic_id=? AND catalog=? AND refid=?",
+                (owner_id, m["topic_id"], m["catalog"], m["refid"]),
             ).fetchone()
             if row:
                 refid_to_id[m["refid"]] = row[0]
@@ -769,37 +1023,37 @@ class Store:
         ).fetchone()
         return dict(row) if row else None
 
-    def get_article_matches(self, chat_id: int, topic_id: int, limit: int = 30) -> list[dict]:
+    def get_article_matches(self, owner_id: int, topic_id: int, limit: int = 30) -> list[dict]:
         rows = self._conn.execute(
             """SELECT catalog, refid, pub_date, title, summary, is_continuation, matched_at
                FROM article_topic_matches
-               WHERE chat_id = ? AND topic_id = ?
+               WHERE owner_id = ? AND topic_id = ?
                ORDER BY pub_date DESC, id DESC
                LIMIT ?""",
-            (chat_id, topic_id, limit),
+            (owner_id, topic_id, limit),
         ).fetchall()
         return [dict(r) for r in rows]
 
-    def count_article_matches(self, chat_id: int, topic_id: int) -> int:
+    def count_article_matches(self, owner_id: int, topic_id: int) -> int:
         row = self._conn.execute(
-            "SELECT COUNT(*) FROM article_topic_matches WHERE chat_id = ? AND topic_id = ?",
-            (chat_id, topic_id),
+            "SELECT COUNT(*) FROM article_topic_matches WHERE owner_id = ? AND topic_id = ?",
+            (owner_id, topic_id),
         ).fetchone()
         return row[0] if row else 0
 
-    def mark_edition_classified(self, chat_id: int, topic_id: int, pub_date: str) -> None:
+    def mark_edition_classified(self, owner_id: int, topic_id: int, pub_date: str) -> None:
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
             self._conn.execute(
-                "INSERT OR IGNORE INTO topic_classified_editions (chat_id, topic_id, pub_date, classified_at) VALUES (?, ?, ?, ?)",
-                (chat_id, topic_id, pub_date, now),
+                "INSERT OR IGNORE INTO topic_classified_editions (owner_id, topic_id, pub_date, classified_at) VALUES (?, ?, ?, ?)",
+                (owner_id, topic_id, pub_date, now),
             )
 
-    def classified_pub_dates_for_topic(self, chat_id: int, topic_id: int) -> set[str]:
-        """Return edition dates already classified for this (chat_id, topic_id) pair."""
+    def classified_pub_dates_for_topic(self, owner_id: int, topic_id: int) -> set[str]:
+        """Return edition dates already classified for this (owner_id, topic_id) pair."""
         rows = self._conn.execute(
-            "SELECT pub_date FROM topic_classified_editions WHERE chat_id = ? AND topic_id = ?",
-            (chat_id, topic_id),
+            "SELECT pub_date FROM topic_classified_editions WHERE owner_id = ? AND topic_id = ?",
+            (owner_id, topic_id),
         ).fetchall()
         return {r[0] for r in rows}
 
@@ -857,18 +1111,18 @@ class Store:
         ).fetchall()
         return [dict(r) for r in rows]
 
-    def get_weekly_matches(self, chat_id: int, date_from: str, date_to: str) -> list[dict]:
-        """Return all article matches for a user in the given date range, with page info."""
+    def get_weekly_matches(self, owner_id: int, date_from: str, date_to: str) -> list[dict]:
+        """Return all article matches for an owner in the given date range, with page info."""
         rows = self._conn.execute(
             """SELECT atm.topic_id, t.name AS topic_name, atm.catalog, atm.refid,
                       atm.pub_date, atm.title, atm.summary, atm.is_continuation,
                       a.page
                FROM article_topic_matches atm
-               JOIN topics t ON t.id = atm.topic_id AND t.chat_id = atm.chat_id
+               JOIN topics t ON t.id = atm.topic_id AND t.owner_id = atm.owner_id
                LEFT JOIN articles a ON a.catalog = atm.catalog AND a.refid = atm.refid
-               WHERE atm.chat_id = ? AND atm.pub_date >= ? AND atm.pub_date <= ?
+               WHERE atm.owner_id = ? AND atm.pub_date >= ? AND atm.pub_date <= ?
                ORDER BY t.id ASC, atm.pub_date DESC, COALESCE(a.page, 999) ASC""",
-            (chat_id, date_from, date_to),
+            (owner_id, date_from, date_to),
         ).fetchall()
         return [dict(r) for r in rows]
 

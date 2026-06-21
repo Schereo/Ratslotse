@@ -9,11 +9,32 @@ from nwz.store import Store
 from ..config import get_settings
 from ..deps import get_store, require_active
 from ..ratelimit import nwz_creds_limiter
-from ..schemas import ChangePasswordRequest, NwzCredentialsIn, UserOut
+from ..schemas import ChangePasswordRequest, DeliveryUpdate, NwzCredentialsIn, UserOut
 from ..security import hash_password, verify_password
 from .auth import _set_auth_cookie, _to_out
 
 router = APIRouter(prefix="/api/account", tags=["account"])
+
+
+@router.put("/delivery", response_model=UserOut)
+def set_delivery(
+    body: DeliveryUpdate,
+    user: dict = Depends(require_active),
+    store: Store = Depends(get_store),
+) -> UserOut:
+    """Choose where the digest is delivered: telegram, email, or both."""
+    channel = body.delivery_channel
+    if channel in ("email", "both"):
+        email = str(user.get("email", ""))
+        if email.startswith("tg-") and email.endswith("@local"):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Keine E-Mail-Adresse hinterlegt.")
+    if channel in ("telegram", "both") and not user.get("telegram_chat_id"):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Für Telegram-Zustellung musst du zuerst dein Konto mit Telegram verbinden.",
+        )
+    store.set_delivery_channel(user["id"], channel)
+    return _to_out(store.get_web_user_by_id(user["id"]))
 
 
 @router.post("/nwz-credentials", response_model=UserOut)

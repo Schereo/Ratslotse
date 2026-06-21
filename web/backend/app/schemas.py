@@ -22,6 +22,7 @@ class UserOut(BaseModel):
     status: str = "pending"
     telegram_chat_id: int | None = None
     linked: bool = False
+    delivery_channel: str = "telegram"
     nwz_verified: bool = False
     nwz_username: str | None = None
 
@@ -100,3 +101,8 @@ class StatusUpdate(BaseModel):
 class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str = Field(min_length=8, max_length=128)
+
+
+# ---- delivery channel ----
+class DeliveryUpdate(BaseModel):
+    delivery_channel: str = Field(pattern="^(telegram|email|both)$")

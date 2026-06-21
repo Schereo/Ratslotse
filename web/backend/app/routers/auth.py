@@ -38,6 +38,7 @@ def _to_out(user: dict) -> UserOut:
         status=user.get("status", "active"),
         telegram_chat_id=user.get("telegram_chat_id"),
         linked=bool(user.get("telegram_chat_id")),
+        delivery_channel=user.get("delivery_channel", "telegram"),
         nwz_verified=bool(user.get("nwz_verified_at")),
         nwz_username=user.get("nwz_username"),
     )
@@ -61,6 +62,9 @@ def register(
     role = "admin" if is_admin else "user"
     user_status = "active" if is_admin else "pending"
     user_id = store.create_web_user(email, hash_password(body.password), role, user_status)
+    # New web accounts have no Telegram yet — default to email delivery so they
+    # actually receive their digest. They can switch channels later in /account.
+    store.set_delivery_channel(user_id, "email")
     created_user = store.get_web_user_by_id(user_id)
     _set_auth_cookie(response, created_user)
     return _to_out(created_user)
