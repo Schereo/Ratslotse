@@ -1,9 +1,13 @@
 """Registration, login, logout, current user."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+import html as _html
+import logging
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
 
 from nwz.store import Store
+from nwz.email import send_email
 
 from ..config import get_settings
 from ..deps import get_current_user, get_store
@@ -11,9 +15,55 @@ from ..ratelimit import login_limiter, register_limiter
 from ..schemas import LoginRequest, RegisterRequest, UserOut
 from ..security import create_access_token, hash_password, verify_password
 
+logger = logging.getLogger("nwz.web.auth")
+
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 COOKIE_NAME = "access_token"
+
+
+def _notify_admins_pending(new_email: str) -> None:
+    """Background task: email every admin that a new account awaits approval."""
+    settings = get_settings()
+    if not settings.resend_api_key:
+        return
+    store = Store(settings.nwz_db)
+    try:
+        admins = [
+            u["email"] for u in store.list_web_users()
+            if u.get("role") == "admin" and not str(u.get("email", "")).endswith("@local")
+        ]
+    finally:
+        store.close()
+    if not admins:
+        return
+
+    admin_url = f"{settings.app_base_url.rstrip('/')}/admin"
+    safe_email = _html.escape(new_email)
+    subject = "Ratslotse – neue Registrierung wartet auf Freischaltung"
+    body = (
+        "<div style='max-width:560px;margin:0 auto;padding:24px 16px;"
+        "font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a'>"
+        "<div style='font-size:20px;font-weight:700;color:#2563eb'>Ratslotse</div>"
+        "<p style='margin:20px 0 8px'>Eine neue Person hat sich registriert und wartet auf Freischaltung:</p>"
+        f"<p style='margin:0 0 20px;font-weight:600'>{safe_email}</p>"
+        f"<a href='{admin_url}' style='display:inline-block;background:#2563eb;color:#fff;"
+        "text-decoration:none;padding:10px 18px;border-radius:8px;font-size:14px'>"
+        "Im Admin-Bereich freischalten →</a>"
+        "<p style='margin-top:20px;color:#94a3b8;font-size:12px'>"
+        "Du bekommst diese E-Mail, weil du ein Ratslotse-Administrator bist.</p>"
+        "</div>"
+    )
+    text = (
+        f"Neue Registrierung wartet auf Freischaltung: {new_email}\n\n"
+        f"Im Admin-Bereich freischalten: {admin_url}\n"
+    )
+    for addr in admins:
+        try:
+            send_email(addr, subject, body, text=text,
+                       api_key=settings.resend_api_key, sender=settings.email_from)
+        except Exception:
+            logger.exception("admin pending-registration notice failed for %s", addr)
 
 
 def _set_auth_cookie(response: Response, user: dict) -> None:
@@ -49,6 +99,7 @@ def register(
     request: Request,
     body: RegisterRequest,
     response: Response,
+    background: BackgroundTasks,
     store: Store = Depends(get_store),
 ) -> UserOut:
     register_limiter.check(request)
@@ -67,6 +118,9 @@ def register(
     store.set_delivery_channel(user_id, "email")
     created_user = store.get_web_user_by_id(user_id)
     _set_auth_cookie(response, created_user)
+    # Ping the admins so they know someone is waiting to be approved.
+    if user_status == "pending":
+        background.add_task(_notify_admins_pending, email)
     return _to_out(created_user)
 
 
