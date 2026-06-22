@@ -21,6 +21,7 @@ import sys
 import textwrap
 from datetime import date, timedelta
 from pathlib import Path
+from urllib.parse import quote
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -143,6 +144,12 @@ def _esc(text: str) -> str:
     return str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
+def _article_url(catalog, refid: str) -> str:
+    """Deep link that opens the full NWZ article in the web reader."""
+    base = os.environ.get("APP_BASE_URL", "https://ratslotse.de").rstrip("/")
+    return f"{base}/nwz?catalog={catalog}&refid={quote(str(refid), safe='')}"
+
+
 def _format_message(session: dict, articles: list[dict]) -> str:
     d = session["session_date"].split("-")
     display_date = f"{d[2]}.{d[1]}.{d[0]}" if len(d) == 3 else session["session_date"]
@@ -155,6 +162,9 @@ def _format_message(session: dict, articles: list[dict]) -> str:
     for a in articles:
         lines.append(f"• <b>{_esc(a.get('title', ''))}</b>")
         lines.append(f"  {_esc(a.get('gpt_summary', ''))}")
+        if a.get("catalog") and a.get("refid"):
+            url = _article_url(a["catalog"], a["refid"])
+            lines.append(f'  <a href="{url}">Ganzen Artikel lesen →</a>')
     lines.append("")
     lines.append(f'<a href="{session_url}">Zur Sitzungsseite →</a>')
     return "\n".join(lines)
