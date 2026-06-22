@@ -397,4 +397,24 @@ class CouncilStore:
                 LIMIT ?""",
             params,
         ).fetchall()
-        return [dict(r) for r in rows]
+        sessions = [dict(r) for r in rows]
+        # When searching by text, attach the agenda items that match the query so
+        # the UI can show them inline (and highlight them) without a second fetch.
+        if query and sessions:
+            ksinrs = [s["ksinr"] for s in sessions]
+            placeholders = ",".join("?" * len(ksinrs))
+            like = f"%{query}%"
+            matched = self._conn.execute(
+                f"""SELECT ksinr, item_number, title, vorlage_nr, kvonr, is_public
+                    FROM council_agenda_items
+                    WHERE ksinr IN ({placeholders}) AND (title LIKE ? OR vorlage_nr LIKE ?)
+                    ORDER BY ksinr, id""",
+                [*ksinrs, like, like],
+            ).fetchall()
+            by_ksinr: dict[int, list[dict]] = {}
+            for r in matched:
+                d = dict(r)
+                by_ksinr.setdefault(d.pop("ksinr"), []).append(d)
+            for s in sessions:
+                s["matched_items"] = by_ksinr.get(s["ksinr"], [])
+        return sessions

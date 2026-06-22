@@ -45,6 +45,8 @@ export interface CouncilSession {
   session_time: string;
   location: string;
   n_items: number;
+  // Present on text search: the agenda items that matched the query.
+  matched_items?: AgendaItem[];
 }
 
 export interface AgendaItem {
