@@ -36,7 +36,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <DesktopSidebar />
       <MobileTopbar />
       <main className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-5xl px-4 py-6 pb-24 sm:px-6 sm:py-8 md:pb-8">
+        <div className="mx-auto max-w-5xl px-4 py-6 pb-[calc(env(safe-area-inset-bottom)+6rem)] sm:px-6 sm:py-8 md:pb-8">
           {pending ? <PendingNotice email={user.email} /> : children}
         </div>
       </main>

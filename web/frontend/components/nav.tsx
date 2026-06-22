@@ -122,11 +122,11 @@ export function DesktopSidebar() {
 export function MobileTopbar() {
   const [open, setOpen] = useState(false);
   return (
-    <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-border bg-card/95 px-4 py-3 backdrop-blur md:hidden">
+    <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-border bg-card/95 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] backdrop-blur md:hidden">
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
-          <Button variant="ghost" size="icon" aria-label="Menü öffnen">
-            <Menu className="h-5 w-5" />
+          <Button variant="ghost" size="icon" aria-label="Menü öffnen" className="h-11 w-11">
+            <Menu className="h-6 w-6" />
           </Button>
         </SheetTrigger>
         <SheetContent>
@@ -163,7 +163,7 @@ export function MobileBottomNav() {
             href={l.href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition-colors",
+              "flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium transition-colors",
               active ? "text-primary" : "text-muted-foreground hover:text-foreground",
             )}
           >
