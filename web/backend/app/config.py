@@ -35,6 +35,13 @@ class Settings(BaseSettings):
     # The NWZ folder used for the digest (Oldenburger Nachrichten)
     nwz_folder: int = 8389
 
+    # Email (Resend) — used to notify admins about pending registrations.
+    # Read from .env directly (the cron jobs use os.environ via load_dotenv;
+    # the backend passes these explicitly so it doesn't depend on the process env).
+    resend_api_key: str = ""
+    email_from: str = "Ratslotse <noreply@ratslotse.de>"
+    app_base_url: str = "https://ratslotse.de"
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
