@@ -13,6 +13,11 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#2563eb",
+  width: "device-width",
+  initialScale: 1,
+  // Extend the page into the iOS safe areas so env(safe-area-inset-*) reports
+  // real values — required for the bottom nav to clear the home indicator.
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
