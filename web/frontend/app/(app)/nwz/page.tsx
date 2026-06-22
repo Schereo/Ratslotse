@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { Search, ShieldCheck, ChevronRight, Newspaper } from "lucide-react";
 import { api, qs, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -16,7 +17,12 @@ export default function NwzSearchPage() {
   const { user, refresh } = useAuth();
 
   if (!user?.nwz_verified) return <NwzCredentialsGate onVerified={refresh} />;
-  return <NwzSearch />;
+  // Suspense boundary required because NwzSearch reads useSearchParams().
+  return (
+    <Suspense>
+      <NwzSearch />
+    </Suspense>
+  );
 }
 
 function NwzCredentialsGate({ onVerified }: { onVerified: () => Promise<void> }) {
@@ -83,10 +89,23 @@ function NwzSearch() {
   const [openArticle, setOpenArticle] = useState<Article | null>(null);
 
   const debouncedQ = useDebounce(q, 350);
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     api.get<{ categories: string[] }>("/nwz/categories").then((d) => setCategories(d.categories)).catch(() => {});
   }, []);
+
+  // Deep link from email/Telegram (e.g. session follow-up): open a specific
+  // article on load when ?catalog=…&refid=… is present.
+  useEffect(() => {
+    const catalog = searchParams.get("catalog");
+    const refid = searchParams.get("refid");
+    if (!catalog || !refid) return;
+    api.get<Article>(`/nwz/article/${catalog}?refid=${encodeURIComponent(refid)}`)
+      .then(setOpenArticle)
+      .catch(() => toast.error("Artikel konnte nicht geladen werden."));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const search = useCallback(async () => {
     setLoading(true);
