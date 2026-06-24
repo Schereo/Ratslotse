@@ -112,23 +112,37 @@ PROTOKOLL:
 {text}"""
 
 
+def _strip_fences(content: str) -> str:
+    """Strip a ```json … ``` markdown fence the model sometimes adds."""
+    c = content.strip()
+    if c.startswith("```"):
+        c = c.strip("`").strip()
+        if c.lower().startswith("json"):
+            c = c[4:].strip()
+    return c
+
+
 def extract_protocol(text: str, model: str = MODEL):
-    """Run the LLM extraction. Returns (data_dict, usage). Raises on an empty/
-    unparseable response so the caller can mark the protocol failed and continue."""
+    """Run the LLM extraction. Returns (data_dict, usage). Retries once on an
+    empty/unparseable response (deepseek occasionally returns null content);
+    raises if it still fails so the caller can mark the protocol failed."""
     extra: dict = {}
     if "deepseek" in model:
         # Reasoning tokens can starve the output budget and yield null content.
         extra = {"extra_body": {"reasoning": {"enabled": False}}}
-    resp = llm.chat_complete(
-        model=model,
-        temperature=0,
-        response_format={"type": "json_object"},
-        max_tokens=8000,
-        messages=[{"role": "user", "content": _PROMPT.format(text=text[:MAX_INPUT_CHARS])}],
-        **extra,
-    )
-    content = resp.choices[0].message.content
-    if not content:
-        raise ValueError("empty LLM response")
-    data = json.loads(content)
-    return data, resp.usage
+    messages = [{"role": "user", "content": _PROMPT.format(text=text[:MAX_INPUT_CHARS])}]
+    last_err: Exception = ValueError("no response")
+    for _ in range(2):
+        resp = llm.chat_complete(
+            model=model, temperature=0, response_format={"type": "json_object"},
+            max_tokens=8000, messages=messages, **extra,
+        )
+        content = _strip_fences(resp.choices[0].message.content or "")
+        if content:
+            try:
+                return json.loads(content), resp.usage
+            except json.JSONDecodeError as exc:
+                last_err = exc
+        else:
+            last_err = ValueError("empty LLM response")
+    raise last_err
