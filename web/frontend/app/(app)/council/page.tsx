@@ -116,6 +116,15 @@ const OUTCOME_CHIPS: { value: string; label: string }[] = [
   { value: "vertagt", label: "Vertagt" },
 ];
 
+function FilterField({ label, className, children }: { label: string; className?: string; children: React.ReactNode }) {
+  return (
+    <div className={className}>
+      <p className="mb-1.5 text-xs font-medium text-muted-foreground">{label}</p>
+      {children}
+    </div>
+  );
+}
+
 function DecisionsTab({ committees }: { committees: string[] }) {
   const [q, setQ] = useState("");
   const [committee, setCommittee] = useState("");
@@ -163,8 +172,24 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   return (
     <div>
       <Card className="mt-4 p-4">
-        <div className="space-y-3">
-          <div className="relative">
+        {/* Tier 1 — primary: what am I looking at + free-text search. */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="flex shrink-0 gap-1 rounded-lg bg-muted p-1">
+            {(["vote", "report"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => { setMode(m); setOutcome(""); setPage(1); }}
+                className={cn(
+                  "rounded-md px-4 py-1.5 text-sm font-medium transition-colors",
+                  mode === m ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {m === "vote" ? "Beschlüsse" : "Berichte"}
+              </button>
+            ))}
+          </div>
+          <div className="relative flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               className="pl-9"
@@ -173,59 +198,46 @@ function DecisionsTab({ committees }: { committees: string[] }) {
               onChange={(e) => { setQ(e.target.value); setPage(1); }}
             />
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex gap-1 rounded-md bg-muted p-1">
-              {(["vote", "report"] as const).map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => { setMode(m); setOutcome(""); setPage(1); }}
-                  className={cn(
-                    "rounded-sm px-3 py-1.5 text-sm font-medium transition-colors",
-                    mode === m ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {m === "vote" ? "Beschlüsse" : "Berichte"}
-                </button>
-              ))}
-            </div>
-            <Select value={sort} onChange={(e) => { setSort(e.target.value); setPage(1); }} className="ml-auto w-auto">
-              {SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-            </Select>
-          </div>
+        </div>
+
+        {/* Tier 2 — refine: labelled, secondary. Separated from the primary row. */}
+        <div className="mt-4 grid grid-cols-1 gap-x-4 gap-y-3 border-t border-border pt-4 sm:grid-cols-2">
           {!isReport && (
-            <div className="flex gap-1 overflow-x-auto rounded-md bg-muted p-1">
-              {OUTCOME_CHIPS.map((o) => (
-                <button
-                  key={o.value}
-                  type="button"
-                  onClick={() => { setOutcome(o.value); setPage(1); }}
-                  className={cn(
-                    "flex-1 whitespace-nowrap rounded-sm px-2 py-1.5 text-sm font-medium transition-colors",
-                    outcome === o.value ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {o.label}
-                </button>
-              ))}
-            </div>
+            <FilterField label="Ergebnis" className="sm:col-span-2">
+              <div className="flex gap-1 overflow-x-auto rounded-md bg-muted p-1">
+                {OUTCOME_CHIPS.map((o) => (
+                  <button
+                    key={o.value}
+                    type="button"
+                    onClick={() => { setOutcome(o.value); setPage(1); }}
+                    className={cn(
+                      "flex-1 whitespace-nowrap rounded-sm px-2 py-1.5 text-sm font-medium transition-colors",
+                      outcome === o.value ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+            </FilterField>
           )}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <FilterField label="Ausschuss">
             <Select value={committee} onChange={(e) => { setCommittee(e.target.value); setPage(1); }}>
               <option value="">Alle Ausschüsse</option>
               {committees.map((c) => <option key={c} value={c}>{c}</option>)}
             </Select>
+          </FilterField>
+          <FilterField label="Sortierung">
+            <Select value={sort} onChange={(e) => { setSort(e.target.value); setPage(1); }}>
+              {SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </Select>
+          </FilterField>
+          <FilterField label="Zeitraum" className="sm:col-span-2">
             <div className="grid grid-cols-2 gap-2">
-              <label className="flex flex-col gap-1">
-                <span className="text-xs text-muted-foreground">Von</span>
-                <DateField value={dateFrom} onChange={(v) => { setDateFrom(v); setPage(1); }} />
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-xs text-muted-foreground">Bis</span>
-                <DateField value={dateTo} onChange={(v) => { setDateTo(v); setPage(1); }} />
-              </label>
+              <DateField value={dateFrom} onChange={(v) => { setDateFrom(v); setPage(1); }} />
+              <DateField value={dateTo} onChange={(v) => { setDateTo(v); setPage(1); }} />
             </div>
-          </div>
+          </FilterField>
         </div>
       </Card>
 
