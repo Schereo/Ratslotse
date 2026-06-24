@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Search, ExternalLink, ChevronDown, Landmark, Scale, Users, FileText } from "lucide-react";
+import Link from "next/link";
+import { Search, ExternalLink, ChevronDown, ChevronRight, Landmark, Scale, Users } from "lucide-react";
 import { api, qs, ApiError } from "@/lib/api";
 import { useDebounce } from "@/lib/use-debounce";
 import {
@@ -10,6 +11,7 @@ import {
 import {
   Badge, Card, CardListSkeleton, DateField, EmptyState, Input, PageHeader, Pagination, Select, Spinner, formatDate, toast,
 } from "@/components/ui";
+import { OutcomeBadge } from "@/components/decision-ui";
 import { cn } from "@/lib/utils";
 
 type Scope = "all" | "upcoming" | "recent";
@@ -36,24 +38,6 @@ function Highlight({ text, query }: { text: string; query: string }) {
       </mark>
       {text.slice(idx + q.length)}
     </>
-  );
-}
-
-const OUTCOME_META: Record<DecisionOutcome, { label: string; cls: string }> = {
-  angenommen: { label: "Angenommen", cls: "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-300" },
-  abgelehnt: { label: "Abgelehnt", cls: "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300" },
-  vertagt: { label: "Vertagt", cls: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300" },
-  zur_kenntnis: { label: "Zur Kenntnis", cls: "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300" },
-  kein_beschluss: { label: "Kein Beschluss", cls: "bg-muted text-muted-foreground" },
-};
-
-function OutcomeBadge({ outcome }: { outcome: DecisionOutcome | null }) {
-  if (!outcome) return null;
-  const m = OUTCOME_META[outcome] ?? OUTCOME_META.kein_beschluss;
-  return (
-    <span className={cn("shrink-0 whitespace-nowrap rounded-md px-2.5 py-0.5 text-xs font-medium", m.cls)}>
-      {m.label}
-    </span>
   );
 }
 
@@ -90,37 +74,29 @@ function VoteLine({ d }: { d: CouncilDecision }) {
 function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
   const isSub = d.kind === "subvote";
   return (
-    <Card className={cn("p-4", isSub && "border-l-2 border-l-border bg-muted/30")}>
-      <div className="flex items-start justify-between gap-3">
-        <span className="text-xs text-muted-foreground">
-          {isSub ? `Teilabstimmung · TOP ${d.parent_item}` : `${d.committee} · ${formatDate(d.session_date)}`}
-        </span>
-        <OutcomeBadge outcome={d.outcome} />
-      </div>
-      <div className="mt-1.5 font-medium text-foreground">
-        {!isSub && d.item_number && <span className="text-muted-foreground">TOP {d.item_number} · </span>}
-        <Highlight text={d.title ?? ""} query={query} />
-      </div>
-      {d.beschluss && (
-        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-          <Highlight text={d.beschluss} query={query} />
-        </p>
-      )}
-      <VoteLine d={d} />
-      {!isSub && (
-        <div className="mt-3 flex flex-wrap items-center gap-4 text-xs">
-          {!query && <span className="text-muted-foreground">{d.committee} · {formatDate(d.session_date)}</span>}
-          {d.protocol_url && (
-            <a href={d.protocol_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
-              <FileText className="h-3.5 w-3.5" /> Protokoll
-            </a>
-          )}
-          <a href={sessionUrl(d.ksinr)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-muted-foreground hover:text-primary">
-            <ExternalLink className="h-3.5 w-3.5" /> Zur Sitzung
-          </a>
+    <Link href={`/council/decision/${d.id}`} className="block">
+      <Card className={cn("card-interactive group p-4", isSub && "border-l-2 border-l-border bg-muted/30")}>
+        <div className="flex items-start justify-between gap-3">
+          <span className="text-xs text-muted-foreground">
+            {isSub ? `Teilabstimmung · TOP ${d.parent_item}` : `${d.committee} · ${formatDate(d.session_date)}`}
+          </span>
+          <OutcomeBadge outcome={d.outcome} />
         </div>
-      )}
-    </Card>
+        <div className="mt-1.5 flex items-start gap-2">
+          <div className="min-w-0 flex-1 font-medium text-foreground">
+            {!isSub && d.item_number && <span className="text-muted-foreground">TOP {d.item_number} · </span>}
+            <Highlight text={d.title ?? ""} query={query} />
+          </div>
+          <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+        </div>
+        {d.beschluss && (
+          <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+            <Highlight text={d.beschluss} query={query} />
+          </p>
+        )}
+        <VoteLine d={d} />
+      </Card>
+    </Link>
   );
 }
 

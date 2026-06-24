@@ -95,6 +95,22 @@ export interface SessionDetail extends CouncilSession {
   url: string;
 }
 
+export interface VorlageStop {
+  ksinr: number;
+  committee: string;
+  session_date: string;
+  item_number: string;
+}
+
+export interface DecisionDetail {
+  decision: CouncilDecision;
+  attendance: Attendee[];
+  sub_votes: CouncilDecision[];
+  vorlage_journey: VorlageStop[];
+  ratsinfo_url: string;
+  vorlage_url?: string | null;
+}
+
 export interface Topic {
   id: number;
   name: string;

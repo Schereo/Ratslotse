@@ -75,6 +75,30 @@ def decisions(
     return {"total": total, "decisions": rows}
 
 
+@router.get("/decision/{decision_id}")
+def decision_detail(
+    decision_id: int,
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    d = store.get_decision(decision_id)
+    if not d:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Beschluss nicht gefunden.")
+    out: dict = {
+        "decision": d,
+        "attendance": store.get_attendance(d["ksinr"]),
+        "ratsinfo_url": f"{BASE_URL}/si0057.php?__ksinr={d['ksinr']}",
+        "sub_votes": [],
+        "vorlage_journey": [],
+    }
+    if d.get("kind") == "decision" and d.get("item_number"):
+        out["sub_votes"] = store.get_subvotes(d["ksinr"], d["item_number"])
+    if d.get("vorlage_nr"):
+        out["vorlage_journey"] = store.vorlage_journey(d["vorlage_nr"])
+        out["vorlage_url"] = f"{BASE_URL}/vo0050.php?__kvonr={d['kvonr']}" if d.get("kvonr") else None
+    return out
+
+
 @router.get("/decision-stats")
 def decision_stats(
     _user: dict = Depends(require_active),

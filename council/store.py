@@ -667,6 +667,37 @@ class CouncilStore:
         ).fetchone()
         return row[0] if row else 0
 
+    def get_decision(self, decision_id: int) -> dict | None:
+        row = self._conn.execute(
+            """SELECT d.*, cs.committee, cs.session_date, p.document_url AS protocol_url
+               FROM council_decisions d
+               JOIN council_sessions cs ON cs.ksinr = d.ksinr
+               LEFT JOIN council_protocols p ON p.ksinr = d.ksinr
+               WHERE d.id = ?""",
+            (decision_id,),
+        ).fetchone()
+        return self._decision_row(row) if row else None
+
+    def get_subvotes(self, ksinr: int, parent_item: str) -> list[dict]:
+        rows = self._conn.execute(
+            "SELECT * FROM council_decisions WHERE ksinr = ? AND kind = 'subvote' AND parent_item = ? ORDER BY position",
+            (ksinr, parent_item),
+        ).fetchall()
+        return [self._decision_row(r) for r in rows]
+
+    def vorlage_journey(self, vorlage_nr: str) -> list[dict]:
+        """All sessions where a Vorlage appears on the agenda — its path through
+        the committees and the council, oldest first."""
+        rows = self._conn.execute(
+            """SELECT DISTINCT cs.ksinr, cs.committee, cs.session_date, ci.item_number
+               FROM council_agenda_items ci
+               JOIN council_sessions cs ON cs.ksinr = ci.ksinr
+               WHERE ci.vorlage_nr = ?
+               ORDER BY cs.session_date""",
+            (vorlage_nr,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
     def get_protocols_raw(self) -> list[dict]:
         """All stored protocols with their raw text — for re-extraction without
         re-downloading the PDFs."""
