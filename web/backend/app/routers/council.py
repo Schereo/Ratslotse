@@ -47,5 +47,34 @@ def session_detail(
     if not session:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Sitzung nicht gefunden.")
     session["agenda_items"] = store.agenda_items(ksinr)
+    # Past sessions may have a parsed protocol → enrich with decisions + attendance.
+    session["decisions"] = store.get_decisions(ksinr)
+    session["attendance"] = store.get_attendance(ksinr)
+    session["has_protocol"] = store.has_protocol(ksinr)
     session["url"] = f"{BASE_URL}/si0057.php?__ksinr={ksinr}"
     return session
+
+
+@router.get("/decisions")
+def decisions(
+    q: str = "",
+    committee: str = "",
+    outcome: str = Query("", pattern="^(|angenommen|abgelehnt|vertagt|zur_kenntnis|kein_beschluss)$"),
+    faction: str = "",
+    date_from: str = "",
+    date_to: str = "",
+    kind: str = Query("", pattern="^(|decision|subvote)$"),
+    limit: int = Query(100, ge=1, le=300),
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    rows = store.search_decisions(q, committee, outcome, faction, date_from, date_to, kind, limit)
+    return {"count": len(rows), "decisions": rows}
+
+
+@router.get("/decision-stats")
+def decision_stats(
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    return store.protocol_stats()
