@@ -586,19 +586,12 @@ class CouncilStore:
             d["factions"] = []
         return d
 
-    def search_decisions(
-        self,
-        query: str = "",
-        committee: str = "",
-        outcome: str = "",
-        faction: str = "",
-        date_from: str = "",
-        date_to: str = "",
-        kind: str = "",
-        limit: int = 100,
-    ) -> list[dict]:
-        """Search extracted decisions, joined with their session (committee + date).
-        Mirrors the shape of ``search_sessions`` for the Phase-2 frontend."""
+    # Outcomes grouped into "real votes" vs "reports / no decision".
+    _VOTE_OUTCOMES = ("angenommen", "abgelehnt", "vertagt")
+    _REPORT_OUTCOMES = ("zur_kenntnis", "kein_beschluss")
+
+    def _decision_where(self, query, committee, outcome, faction, date_from, date_to, kind, category):
+        """Build the WHERE clause + params shared by search and count."""
         filters: list[str] = []
         params: list = []
         if query:
@@ -611,6 +604,12 @@ class CouncilStore:
         if outcome:
             filters.append("d.outcome = ?")
             params.append(outcome)
+        if category == "vote":
+            filters.append(f"d.outcome IN ({','.join('?' * len(self._VOTE_OUTCOMES))})")
+            params += list(self._VOTE_OUTCOMES)
+        elif category == "report":
+            filters.append(f"(d.outcome IN ({','.join('?' * len(self._REPORT_OUTCOMES))}) OR d.outcome IS NULL)")
+            params += list(self._REPORT_OUTCOMES)
         if kind:
             filters.append("d.kind = ?")
             params.append(kind)
@@ -624,7 +623,25 @@ class CouncilStore:
             filters.append("cs.session_date <= ?")
             params.append(date_to)
         where = ("WHERE " + " AND ".join(filters)) if filters else ""
-        params.append(limit)
+        return where, params
+
+    def search_decisions(
+        self,
+        query: str = "",
+        committee: str = "",
+        outcome: str = "",
+        faction: str = "",
+        date_from: str = "",
+        date_to: str = "",
+        kind: str = "",
+        category: str = "",
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[dict]:
+        """Search extracted decisions, joined with their session (committee + date).
+        ``category`` is "vote" (decided) or "report" (zur Kenntnis / no decision)."""
+        where, params = self._decision_where(query, committee, outcome, faction,
+                                              date_from, date_to, kind, category)
         rows = self._conn.execute(
             f"""SELECT d.*, cs.committee, cs.session_date, p.document_url AS protocol_url
                 FROM council_decisions d
@@ -632,10 +649,23 @@ class CouncilStore:
                 LEFT JOIN council_protocols p ON p.ksinr = d.ksinr
                 {where}
                 ORDER BY cs.session_date DESC, d.position
-                LIMIT ?""",
-            params,
+                LIMIT ? OFFSET ?""",
+            [*params, limit, offset],
         ).fetchall()
         return [self._decision_row(r) for r in rows]
+
+    def count_decisions(
+        self, query="", committee="", outcome="", faction="", date_from="", date_to="",
+        kind="", category="",
+    ) -> int:
+        where, params = self._decision_where(query, committee, outcome, faction,
+                                             date_from, date_to, kind, category)
+        row = self._conn.execute(
+            f"""SELECT COUNT(*) FROM council_decisions d
+                JOIN council_sessions cs ON cs.ksinr = d.ksinr {where}""",
+            params,
+        ).fetchone()
+        return row[0] if row else 0
 
     def get_protocols_raw(self) -> list[dict]:
         """All stored protocols with their raw text — for re-extraction without

@@ -64,12 +64,15 @@ def decisions(
     date_from: str = "",
     date_to: str = "",
     kind: str = Query("", pattern="^(|decision|subvote)$"),
-    limit: int = Query(100, ge=1, le=300),
+    category: str = Query("", pattern="^(|vote|report)$"),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
 ) -> dict:
-    rows = store.search_decisions(q, committee, outcome, faction, date_from, date_to, kind, limit)
-    return {"count": len(rows), "decisions": rows}
+    total = store.count_decisions(q, committee, outcome, faction, date_from, date_to, kind, category)
+    rows = store.search_decisions(q, committee, outcome, faction, date_from, date_to, kind, category, limit, offset)
+    return {"total": total, "decisions": rows}
 
 
 @router.get("/decision-stats")
