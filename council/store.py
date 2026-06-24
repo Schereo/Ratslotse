@@ -1,11 +1,22 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from pathlib import Path
 
 import sqlite3
 
 from .scraper import CouncilSession, AgendaItem
+
+
+def _int_or_none(v) -> int | None:
+    """Coerce an LLM value to int, tolerating strings/None/non-numerics."""
+    if v is None:
+        return None
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return None
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS council_sessions (
@@ -65,6 +76,51 @@ CREATE TABLE IF NOT EXISTS committee_summaries (
     created_at  TEXT NOT NULL,
     PRIMARY KEY(ksinr, agenda_hash)
 );
+
+-- Parsed public session protocols (Niederschriften). One row per session.
+CREATE TABLE IF NOT EXISTS council_protocols (
+    ksinr         INTEGER PRIMARY KEY,
+    document_id   INTEGER,
+    document_url  TEXT,
+    protocol_nr   TEXT,
+    session_start TEXT,
+    session_end   TEXT,
+    raw_text      TEXT,
+    n_pages       INTEGER,
+    model         TEXT,
+    extracted_at  TEXT NOT NULL,
+    status        TEXT NOT NULL DEFAULT 'ok'   -- ok | failed
+);
+
+-- One row per decision / agenda item extracted from a protocol.
+CREATE TABLE IF NOT EXISTS council_decisions (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    ksinr        INTEGER NOT NULL,
+    position     INTEGER NOT NULL,
+    item_number  TEXT,
+    title        TEXT,
+    beschluss    TEXT,
+    outcome      TEXT,                          -- angenommen|abgelehnt|vertagt|zur_kenntnis|kein_beschluss
+    vote         TEXT,                          -- einstimmig|mehrheitlich|null
+    gegenstimmen INTEGER,
+    enthaltungen INTEGER,
+    factions     TEXT,                          -- JSON array
+    vorlage_nr   TEXT,
+    kvonr        INTEGER,
+    raw_result   TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_decisions_ksinr ON council_decisions(ksinr);
+
+-- One row per attendee per session.
+CREATE TABLE IF NOT EXISTS council_attendance (
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    ksinr   INTEGER NOT NULL,
+    name    TEXT,
+    party   TEXT,
+    role    TEXT,                               -- vorsitz|mitglied|verwaltung|protokoll|gast
+    note    TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_attendance_ksinr ON council_attendance(ksinr);
 """
 
 
@@ -418,3 +474,144 @@ class CouncilStore:
             for s in sessions:
                 s["matched_items"] = by_ksinr.get(s["ksinr"], [])
         return sessions
+
+    # ---- protocols / decisions / attendance ----
+
+    def has_protocol(self, ksinr: int) -> bool:
+        row = self._conn.execute(
+            "SELECT 1 FROM council_protocols WHERE ksinr = ? AND status = 'ok'", (ksinr,)
+        ).fetchone()
+        return row is not None
+
+    def save_protocol(
+        self,
+        ksinr: int,
+        document: dict,
+        meta: dict,
+        raw_text: str,
+        n_pages: int,
+        model: str,
+        decisions: list[dict],
+        attendance: list[dict],
+        status: str = "ok",
+    ) -> None:
+        """Persist a parsed protocol with its decisions + attendance (replacing any
+        prior rows for this session). One transaction."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT OR REPLACE INTO council_protocols "
+                "(ksinr, document_id, document_url, protocol_nr, session_start, session_end, "
+                " raw_text, n_pages, model, extracted_at, status) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (ksinr, document.get("document_id"), document.get("url"), meta.get("protocol_nr"),
+                 meta.get("session_start"), meta.get("session_end"), raw_text, n_pages, model, now, status),
+            )
+            self._conn.execute("DELETE FROM council_decisions WHERE ksinr = ?", (ksinr,))
+            self._conn.execute("DELETE FROM council_attendance WHERE ksinr = ?", (ksinr,))
+            for pos, d in enumerate(decisions):
+                self._conn.execute(
+                    "INSERT INTO council_decisions "
+                    "(ksinr, position, item_number, title, beschluss, outcome, vote, "
+                    " gegenstimmen, enthaltungen, factions, vorlage_nr, kvonr, raw_result) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (ksinr, pos, d.get("item_number"), d.get("title"), d.get("beschluss"),
+                     d.get("outcome"), d.get("vote"), _int_or_none(d.get("gegenstimmen")),
+                     _int_or_none(d.get("enthaltungen")),
+                     json.dumps(d.get("factions") or [], ensure_ascii=False),
+                     d.get("vorlage_nr"), _int_or_none(d.get("kvonr")), d.get("raw_result")),
+                )
+            for a in attendance:
+                self._conn.execute(
+                    "INSERT INTO council_attendance (ksinr, name, party, role, note) VALUES (?, ?, ?, ?, ?)",
+                    (ksinr, a.get("name"), a.get("party"), a.get("role"), a.get("note")),
+                )
+
+    def mark_protocol_failed(self, ksinr: int, document: dict) -> None:
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT OR REPLACE INTO council_protocols "
+                "(ksinr, document_id, document_url, extracted_at, status) VALUES (?, ?, ?, ?, 'failed')",
+                (ksinr, document.get("document_id"), document.get("url"), now),
+            )
+
+    def get_decisions(self, ksinr: int) -> list[dict]:
+        rows = self._conn.execute(
+            "SELECT * FROM council_decisions WHERE ksinr = ? ORDER BY position", (ksinr,)
+        ).fetchall()
+        return [self._decision_row(r) for r in rows]
+
+    def get_attendance(self, ksinr: int) -> list[dict]:
+        rows = self._conn.execute(
+            "SELECT name, party, role, note FROM council_attendance WHERE ksinr = ? ORDER BY id", (ksinr,)
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    @staticmethod
+    def _decision_row(r) -> dict:
+        d = dict(r)
+        try:
+            d["factions"] = json.loads(d.get("factions") or "[]")
+        except (json.JSONDecodeError, TypeError):
+            d["factions"] = []
+        return d
+
+    def search_decisions(
+        self,
+        query: str = "",
+        committee: str = "",
+        outcome: str = "",
+        faction: str = "",
+        date_from: str = "",
+        date_to: str = "",
+        limit: int = 100,
+    ) -> list[dict]:
+        """Search extracted decisions, joined with their session (committee + date).
+        Mirrors the shape of ``search_sessions`` for the Phase-2 frontend."""
+        filters: list[str] = []
+        params: list = []
+        if query:
+            filters.append("(d.title LIKE ? OR d.beschluss LIKE ?)")
+            like = f"%{query}%"
+            params += [like, like]
+        if committee:
+            filters.append("cs.committee = ?")
+            params.append(committee)
+        if outcome:
+            filters.append("d.outcome = ?")
+            params.append(outcome)
+        if faction:
+            filters.append("d.factions LIKE ?")
+            params.append(f"%{faction}%")
+        if date_from:
+            filters.append("cs.session_date >= ?")
+            params.append(date_from)
+        if date_to:
+            filters.append("cs.session_date <= ?")
+            params.append(date_to)
+        where = ("WHERE " + " AND ".join(filters)) if filters else ""
+        params.append(limit)
+        rows = self._conn.execute(
+            f"""SELECT d.*, cs.committee, cs.session_date
+                FROM council_decisions d
+                JOIN council_sessions cs ON cs.ksinr = d.ksinr
+                {where}
+                ORDER BY cs.session_date DESC, d.position
+                LIMIT ?""",
+            params,
+        ).fetchall()
+        return [self._decision_row(r) for r in rows]
+
+    def protocol_stats(self) -> dict:
+        c = self._conn
+
+        def one(sql: str) -> int:
+            row = c.execute(sql).fetchone()
+            return row[0] if row else 0
+
+        return {
+            "protocols": one("SELECT COUNT(*) FROM council_protocols WHERE status='ok'"),
+            "decisions": one("SELECT COUNT(*) FROM council_decisions"),
+            "attendance": one("SELECT COUNT(*) FROM council_attendance"),
+        }
