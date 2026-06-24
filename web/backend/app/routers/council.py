@@ -65,13 +65,14 @@ def decisions(
     date_to: str = "",
     kind: str = Query("", pattern="^(|decision|subvote)$"),
     category: str = Query("", pattern="^(|vote|report)$"),
+    sort: str = Query("date_desc", pattern="^(date_desc|date_asc|faction)$"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
 ) -> dict:
     total = store.count_decisions(q, committee, outcome, faction, date_from, date_to, kind, category)
-    rows = store.search_decisions(q, committee, outcome, faction, date_from, date_to, kind, category, limit, offset)
+    rows = store.search_decisions(q, committee, outcome, faction, date_from, date_to, kind, category, sort, limit, offset)
     return {"total": total, "decisions": rows}
 
 

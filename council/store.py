@@ -635,11 +635,18 @@ class CouncilStore:
         date_to: str = "",
         kind: str = "",
         category: str = "",
+        sort: str = "date_desc",
         limit: int = 50,
         offset: int = 0,
     ) -> list[dict]:
         """Search extracted decisions, joined with their session (committee + date).
-        ``category`` is "vote" (decided) or "report" (zur Kenntnis / no decision)."""
+        ``category`` is "vote" (decided) or "report" (zur Kenntnis / no decision).
+        ``sort`` ∈ {date_desc, date_asc, faction}."""
+        order = {
+            "date_asc": "cs.session_date ASC, d.position",
+            # Non-empty factions first ('["…' < '[]'), grouped, newest within.
+            "faction": "d.factions ASC, cs.session_date DESC",
+        }.get(sort, "cs.session_date DESC, d.position")
         where, params = self._decision_where(query, committee, outcome, faction,
                                               date_from, date_to, kind, category)
         rows = self._conn.execute(
@@ -648,7 +655,7 @@ class CouncilStore:
                 JOIN council_sessions cs ON cs.ksinr = d.ksinr
                 LEFT JOIN council_protocols p ON p.ksinr = d.ksinr
                 {where}
-                ORDER BY cs.session_date DESC, d.position
+                ORDER BY {order}
                 LIMIT ? OFFSET ?""",
             [*params, limit, offset],
         ).fetchall()

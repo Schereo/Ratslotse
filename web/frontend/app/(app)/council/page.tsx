@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Search, ExternalLink, ChevronDown, ChevronRight, Landmark, Scale, Users } from "lucide-react";
 import { api, qs, ApiError } from "@/lib/api";
 import { useDebounce } from "@/lib/use-debounce";
@@ -75,26 +76,26 @@ function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
   const isSub = d.kind === "subvote";
   return (
     <Link href={`/council/decision/${d.id}`} className="block">
-      <Card className={cn("card-interactive group p-4", isSub && "border-l-2 border-l-border bg-muted/30")}>
-        <div className="flex items-start justify-between gap-3">
-          <span className="text-xs text-muted-foreground">
-            {isSub ? `Teilabstimmung · TOP ${d.parent_item}` : `${d.committee} · ${formatDate(d.session_date)}`}
-          </span>
-          <OutcomeBadge outcome={d.outcome} />
-        </div>
-        <div className="mt-1.5 flex items-start gap-2">
-          <div className="min-w-0 flex-1 font-medium text-foreground">
+      <Card className={cn("card-interactive group flex items-center gap-3 p-4", isSub && "border-l-2 border-l-border bg-muted/30")}>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs text-muted-foreground">
+              {isSub ? `Teilabstimmung · TOP ${d.parent_item}` : `${d.committee} · ${formatDate(d.session_date)}`}
+            </span>
+            <OutcomeBadge outcome={d.outcome} />
+          </div>
+          <div className="mt-1.5 font-medium text-foreground">
             {!isSub && d.item_number && <span className="text-muted-foreground">TOP {d.item_number} · </span>}
             <Highlight text={d.title ?? ""} query={query} />
           </div>
-          <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+          {d.beschluss && (
+            <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+              <Highlight text={d.beschluss} query={query} />
+            </p>
+          )}
+          <VoteLine d={d} />
         </div>
-        {d.beschluss && (
-          <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-            <Highlight text={d.beschluss} query={query} />
-          </p>
-        )}
-        <VoteLine d={d} />
+        <ChevronRight className="h-5 w-5 shrink-0 self-center text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
       </Card>
     </Link>
   );
@@ -102,19 +103,25 @@ function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
 
 const PAGE_SIZE = 50;
 
-// Each result filter maps to the query params it sets ("Berichte" = zur Kenntnis).
-const RESULT_FILTERS: { value: string; label: string; query: Record<string, string> }[] = [
-  { value: "", label: "Alle", query: {} },
-  { value: "angenommen", label: "Angenommen", query: { outcome: "angenommen" } },
-  { value: "abgelehnt", label: "Abgelehnt", query: { outcome: "abgelehnt" } },
-  { value: "vertagt", label: "Vertagt", query: { outcome: "vertagt" } },
-  { value: "report", label: "Berichte", query: { category: "report" } },
+const SORTS: { value: string; label: string }[] = [
+  { value: "date_desc", label: "Neueste zuerst" },
+  { value: "date_asc", label: "Älteste zuerst" },
+  { value: "faction", label: "Nach Fraktion" },
+];
+
+const OUTCOME_CHIPS: { value: string; label: string }[] = [
+  { value: "", label: "Alle" },
+  { value: "angenommen", label: "Angenommen" },
+  { value: "abgelehnt", label: "Abgelehnt" },
+  { value: "vertagt", label: "Vertagt" },
 ];
 
 function DecisionsTab({ committees }: { committees: string[] }) {
   const [q, setQ] = useState("");
   const [committee, setCommittee] = useState("");
-  const [result, setResult] = useState("");
+  const [mode, setMode] = useState<"vote" | "report">("vote");
+  const [outcome, setOutcome] = useState("");
+  const [sort, setSort] = useState("date_desc");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
@@ -126,9 +133,13 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const rf = RESULT_FILTERS.find((f) => f.value === result)?.query ?? {};
       const data = await api.get<{ total: number; decisions: CouncilDecision[] }>(
-        `/council/decisions${qs({ q, committee, date_from: dateFrom, date_to: dateTo, ...rf, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE })}`,
+        `/council/decisions${qs({
+          q, committee, category: mode, sort,
+          outcome: mode === "vote" ? outcome : "",
+          date_from: dateFrom, date_to: dateTo,
+          limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE,
+        })}`,
       );
       setDecisions(data.decisions);
       setTotal(data.total);
@@ -137,15 +148,17 @@ function DecisionsTab({ committees }: { committees: string[] }) {
     } finally {
       setLoading(false);
     }
-  }, [q, committee, result, dateFrom, dateTo, page]);
+  }, [q, committee, mode, outcome, sort, dateFrom, dateTo, page]);
 
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedQ, committee, result, dateFrom, dateTo, page]);
+  }, [debouncedQ, committee, mode, outcome, sort, dateFrom, dateTo, page]);
 
   const query = q.trim();
   const totalPages = Math.ceil(total / PAGE_SIZE);
+  const isReport = mode === "report";
+  const noun = isReport ? (total === 1 ? "Bericht" : "Berichte") : (total === 1 ? "Beschluss" : "Beschlüsse");
 
   return (
     <div>
@@ -153,38 +166,65 @@ function DecisionsTab({ committees }: { committees: string[] }) {
         <div className="space-y-3">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input className="pl-9" placeholder="Beschlüsse durchsuchen (z. B. Haushalt, Radwege)…" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} />
+            <Input
+              className="pl-9"
+              placeholder={isReport ? "Berichte durchsuchen…" : "Beschlüsse durchsuchen (z. B. Haushalt, Radwege)…"}
+              value={q}
+              onChange={(e) => { setQ(e.target.value); setPage(1); }}
+            />
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Select value={committee} onChange={(e) => { setCommittee(e.target.value); setPage(1); }}>
-              <option value="">Alle Ausschüsse</option>
-              {committees.map((c) => <option key={c} value={c}>{c}</option>)}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex gap-1 rounded-md bg-muted p-1">
+              {(["vote", "report"] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => { setMode(m); setOutcome(""); setPage(1); }}
+                  className={cn(
+                    "rounded-sm px-3 py-1.5 text-sm font-medium transition-colors",
+                    mode === m ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {m === "vote" ? "Beschlüsse" : "Berichte"}
+                </button>
+              ))}
+            </div>
+            <Select value={sort} onChange={(e) => { setSort(e.target.value); setPage(1); }} className="ml-auto w-auto">
+              {SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
             </Select>
+          </div>
+          {!isReport && (
             <div className="flex gap-1 overflow-x-auto rounded-md bg-muted p-1">
-              {RESULT_FILTERS.map((o) => (
+              {OUTCOME_CHIPS.map((o) => (
                 <button
                   key={o.value}
                   type="button"
-                  onClick={() => { setResult(o.value); setPage(1); }}
+                  onClick={() => { setOutcome(o.value); setPage(1); }}
                   className={cn(
                     "flex-1 whitespace-nowrap rounded-sm px-2 py-1.5 text-sm font-medium transition-colors",
-                    result === o.value ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+                    outcome === o.value ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
                   )}
                 >
                   {o.label}
                 </button>
               ))}
             </div>
-          </div>
+          )}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground">Von</span>
-              <DateField value={dateFrom} onChange={(v) => { setDateFrom(v); setPage(1); }} />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground">Bis</span>
-              <DateField value={dateTo} onChange={(v) => { setDateTo(v); setPage(1); }} />
-            </label>
+            <Select value={committee} onChange={(e) => { setCommittee(e.target.value); setPage(1); }}>
+              <option value="">Alle Ausschüsse</option>
+              {committees.map((c) => <option key={c} value={c}>{c}</option>)}
+            </Select>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-muted-foreground">Von</span>
+                <DateField value={dateFrom} onChange={(v) => { setDateFrom(v); setPage(1); }} />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-muted-foreground">Bis</span>
+                <DateField value={dateTo} onChange={(v) => { setDateTo(v); setPage(1); }} />
+              </label>
+            </div>
           </div>
         </div>
       </Card>
@@ -193,12 +233,10 @@ function DecisionsTab({ committees }: { committees: string[] }) {
         {loading ? (
           <CardListSkeleton rows={5} />
         ) : decisions.length === 0 ? (
-          <EmptyState icon={Scale} title="Keine Beschlüsse gefunden" hint="Andere Suche/Filter — oder das Protokoll ist noch nicht veröffentlicht." />
+          <EmptyState icon={Scale} title={`Keine ${isReport ? "Berichte" : "Beschlüsse"} gefunden`} hint="Andere Suche/Filter — oder das Protokoll ist noch nicht veröffentlicht." />
         ) : (
           <div className="space-y-2.5">
-            <p className="text-sm font-medium text-muted-foreground">
-              {total} {total === 1 ? "Beschluss" : "Beschlüsse"}
-            </p>
+            <p className="text-sm font-medium text-muted-foreground">{total} {noun}</p>
             {decisions.map((d) => <DecisionCard key={d.id} d={d} query={query} />)}
             <Pagination page={page} totalPages={totalPages} onChange={setPage} className="pt-2" />
           </div>
@@ -405,9 +443,16 @@ function SessionsTab({ committees }: { committees: string[] }) {
   );
 }
 
-export default function CouncilPage() {
-  const [tab, setTab] = useState<Tab>("sessions");
+function CouncilInner() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  // Tab lives in the URL (?tab=decisions) so the browser back button from a
+  // decision detail page returns to the right tab.
+  const tab: Tab = searchParams.get("tab") === "decisions" ? "decisions" : "sessions";
   const [committees, setCommittees] = useState<string[]>([]);
+
+  const setTab = (t: Tab) =>
+    router.replace(t === "decisions" ? "/council?tab=decisions" : "/council", { scroll: false });
 
   useEffect(() => {
     api.get<{ committees: string[] }>("/council/committees").then((d) => setCommittees(d.committees)).catch(() => {});
@@ -435,5 +480,13 @@ export default function CouncilPage() {
 
       {tab === "sessions" ? <SessionsTab committees={committees} /> : <DecisionsTab committees={committees} />}
     </div>
+  );
+}
+
+export default function CouncilPage() {
+  return (
+    <Suspense>
+      <CouncilInner />
+    </Suspense>
   );
 }
