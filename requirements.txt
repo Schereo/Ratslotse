@@ -3,3 +3,4 @@ python-dotenv>=1.0
 openai>=1.30
 tenacity>=8.2
 beautifulsoup4
+pypdf>=4.0
