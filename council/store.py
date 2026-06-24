@@ -97,6 +97,8 @@ CREATE TABLE IF NOT EXISTS council_decisions (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     ksinr        INTEGER NOT NULL,
     position     INTEGER NOT NULL,
+    kind         TEXT NOT NULL DEFAULT 'decision', -- decision | subvote
+    parent_item  TEXT,                          -- TOP number a subvote belongs to
     item_number  TEXT,
     title        TEXT,
     beschluss    TEXT,
@@ -147,6 +149,16 @@ class CouncilStore:
                 self._conn.execute(
                     "ALTER TABLE committee_notifications ADD COLUMN agenda_hash TEXT NOT NULL DEFAULT ''"
                 )
+        # council_decisions gained sub-vote columns (kind / parent_item).
+        dec_cols = {r[1] for r in self._conn.execute("PRAGMA table_info(council_decisions)").fetchall()}
+        if dec_cols:
+            with self._conn:
+                if "kind" not in dec_cols:
+                    self._conn.execute(
+                        "ALTER TABLE council_decisions ADD COLUMN kind TEXT NOT NULL DEFAULT 'decision'"
+                    )
+                if "parent_item" not in dec_cols:
+                    self._conn.execute("ALTER TABLE council_decisions ADD COLUMN parent_item TEXT")
         self._migrate_owner_id()
 
     def _migrate_owner_id(self) -> None:
@@ -483,6 +495,20 @@ class CouncilStore:
         ).fetchone()
         return row is not None
 
+    def _insert_decision(self, ksinr, position, kind, parent_item, item_number, title,
+                         beschluss, outcome, vote, gegenstimmen, enthaltungen, factions,
+                         vorlage_nr, kvonr, raw_result) -> None:
+        self._conn.execute(
+            "INSERT INTO council_decisions "
+            "(ksinr, position, kind, parent_item, item_number, title, beschluss, outcome, "
+            " vote, gegenstimmen, enthaltungen, factions, vorlage_nr, kvonr, raw_result) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (ksinr, position, kind, parent_item, item_number, title, beschluss, outcome,
+             vote, _int_or_none(gegenstimmen), _int_or_none(enthaltungen),
+             json.dumps(factions or [], ensure_ascii=False),
+             vorlage_nr, _int_or_none(kvonr), raw_result),
+        )
+
     def save_protocol(
         self,
         ksinr: int,
@@ -509,18 +535,21 @@ class CouncilStore:
             )
             self._conn.execute("DELETE FROM council_decisions WHERE ksinr = ?", (ksinr,))
             self._conn.execute("DELETE FROM council_attendance WHERE ksinr = ?", (ksinr,))
-            for pos, d in enumerate(decisions):
-                self._conn.execute(
-                    "INSERT INTO council_decisions "
-                    "(ksinr, position, item_number, title, beschluss, outcome, vote, "
-                    " gegenstimmen, enthaltungen, factions, vorlage_nr, kvonr, raw_result) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    (ksinr, pos, d.get("item_number"), d.get("title"), d.get("beschluss"),
-                     d.get("outcome"), d.get("vote"), _int_or_none(d.get("gegenstimmen")),
-                     _int_or_none(d.get("enthaltungen")),
-                     json.dumps(d.get("factions") or [], ensure_ascii=False),
-                     d.get("vorlage_nr"), _int_or_none(d.get("kvonr")), d.get("raw_result")),
-                )
+            pos = 0
+            for d in decisions:
+                self._insert_decision(ksinr, pos, "decision", None,
+                                      d.get("item_number"), d.get("title"), d.get("beschluss"),
+                                      d.get("outcome"), d.get("vote"), d.get("gegenstimmen"),
+                                      d.get("enthaltungen"), d.get("factions"),
+                                      d.get("vorlage_nr"), d.get("kvonr"), d.get("raw_result"))
+                pos += 1
+                for sv in d.get("sub_votes") or []:
+                    self._insert_decision(ksinr, pos, "subvote", d.get("item_number"),
+                                          d.get("item_number"), sv.get("description"), None,
+                                          sv.get("outcome"), sv.get("vote"), sv.get("gegenstimmen"),
+                                          sv.get("enthaltungen"), sv.get("factions"),
+                                          None, None, sv.get("raw_result"))
+                    pos += 1
             for a in attendance:
                 self._conn.execute(
                     "INSERT INTO council_attendance (ksinr, name, party, role, note) VALUES (?, ?, ?, ?, ?)",
@@ -565,6 +594,7 @@ class CouncilStore:
         faction: str = "",
         date_from: str = "",
         date_to: str = "",
+        kind: str = "",
         limit: int = 100,
     ) -> list[dict]:
         """Search extracted decisions, joined with their session (committee + date).
@@ -581,6 +611,9 @@ class CouncilStore:
         if outcome:
             filters.append("d.outcome = ?")
             params.append(outcome)
+        if kind:
+            filters.append("d.kind = ?")
+            params.append(kind)
         if faction:
             filters.append("d.factions LIKE ?")
             params.append(f"%{faction}%")
@@ -593,15 +626,25 @@ class CouncilStore:
         where = ("WHERE " + " AND ".join(filters)) if filters else ""
         params.append(limit)
         rows = self._conn.execute(
-            f"""SELECT d.*, cs.committee, cs.session_date
+            f"""SELECT d.*, cs.committee, cs.session_date, p.document_url AS protocol_url
                 FROM council_decisions d
                 JOIN council_sessions cs ON cs.ksinr = d.ksinr
+                LEFT JOIN council_protocols p ON p.ksinr = d.ksinr
                 {where}
                 ORDER BY cs.session_date DESC, d.position
                 LIMIT ?""",
             params,
         ).fetchall()
         return [self._decision_row(r) for r in rows]
+
+    def get_protocols_raw(self) -> list[dict]:
+        """All stored protocols with their raw text — for re-extraction without
+        re-downloading the PDFs."""
+        rows = self._conn.execute(
+            "SELECT ksinr, document_id, document_url, raw_text, n_pages "
+            "FROM council_protocols WHERE raw_text IS NOT NULL AND raw_text != ''"
+        ).fetchall()
+        return [dict(r) for r in rows]
 
     def protocol_stats(self) -> dict:
         c = self._conn

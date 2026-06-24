@@ -74,14 +74,24 @@ Ausschusssitzung in Oldenburg. Antworte mit NUR JSON in genau dieser Form:
     {{
       "item_number": "TOP-Nummer wie '9.4'",
       "title": "TOP-Titel",
-      "beschluss": "Wortlaut des gefassten Beschlusses, sinngemäß gekürzt",
+      "beschluss": "Wortlaut des gefassten Beschlusses (Endergebnis), sinngemäß gekürzt",
       "outcome": "angenommen|abgelehnt|vertagt|zur_kenntnis|kein_beschluss",
       "vote": "einstimmig|mehrheitlich oder null",
       "gegenstimmen": Zahl oder null,
       "enthaltungen": Zahl oder null,
-      "factions": ["Fraktionen, die Anträge/Änderungslisten stellten, sonst leer"],
+      "factions": ["Fraktionen, die zu diesem TOP Anträge/Änderungslisten stellten, sonst leer"],
       "vorlage_nr": "Vorlagennummer wie '26/0042' oder null",
-      "raw_result": "der Original-Abstimmungssatz, z.B. '- mehrheitlich bei fünf Gegenstimmen abgelehnt -'"
+      "raw_result": "der Original-Abstimmungssatz des Endergebnisses",
+      "sub_votes": [
+        {{
+          "description": "worüber abgestimmt wurde, z.B. 'Änderungsliste der BSW-Fraktion'",
+          "outcome": "angenommen|abgelehnt|vertagt",
+          "vote": "einstimmig|mehrheitlich oder null",
+          "gegenstimmen": Zahl oder null,
+          "factions": ["antragstellende Fraktion(en)"],
+          "raw_result": "der Original-Abstimmungssatz dieser Teilabstimmung"
+        }}
+      ]
     }}
   ]
 }}
@@ -91,8 +101,10 @@ Regeln:
 Formalia (Feststellung der Beschlussfähigkeit, Genehmigung der Tagesordnung, \
 Genehmigung von Protokollen) WEGLASSEN.
 - "outcome" = "zur_kenntnis", wenn nur ein Bericht zur Kenntnis genommen wurde.
-- Wenn mehrere Teilabstimmungen vorkommen, fasse das Endergebnis in "outcome"/"vote" \
-zusammen und nenne in "raw_result" die wesentlichen Abstimmungen.
+- "sub_votes": JEDE einzelne Teilabstimmung (z.B. über Änderungslisten/Anträge \
+einzelner Fraktionen) als eigenen Eintrag. Wenn es keine Teilabstimmungen gab: leere Liste.
+- Das Haupt-"outcome"/"vote"/"beschluss" beschreibt das ENDergebnis des TOP, die \
+sub_votes die einzelnen Abstimmungen davor.
 - Zahlen als Zahl ausschreiben (z.B. "fünf" -> 5).
 - Erfinde nichts; fehlende Werte = null.
 

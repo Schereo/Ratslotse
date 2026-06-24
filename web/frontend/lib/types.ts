@@ -57,8 +57,41 @@ export interface AgendaItem {
   is_public: number;
 }
 
+export type DecisionOutcome =
+  | "angenommen" | "abgelehnt" | "vertagt" | "zur_kenntnis" | "kein_beschluss";
+
+export interface CouncilDecision {
+  id: number;
+  ksinr: number;
+  kind: "decision" | "subvote";
+  parent_item: string | null;
+  item_number: string | null;
+  title: string | null;
+  beschluss: string | null;
+  outcome: DecisionOutcome | null;
+  vote: string | null;
+  gegenstimmen: number | null;
+  enthaltungen: number | null;
+  factions: string[];
+  vorlage_nr: string | null;
+  raw_result: string | null;
+  committee: string;
+  session_date: string;
+  protocol_url: string | null;
+}
+
+export interface Attendee {
+  name: string | null;
+  party: string | null;
+  role: string | null;
+  note: string | null;
+}
+
 export interface SessionDetail extends CouncilSession {
   agenda_items: AgendaItem[];
+  decisions?: CouncilDecision[];
+  attendance?: Attendee[];
+  has_protocol?: boolean;
   url: string;
 }
 
