@@ -8,7 +8,7 @@ import {
   CouncilSession, SessionDetail, AgendaItem, CouncilDecision, DecisionOutcome,
 } from "@/lib/types";
 import {
-  Badge, Card, CardListSkeleton, EmptyState, Input, PageHeader, Select, Spinner, formatDate, toast,
+  Badge, Card, CardListSkeleton, DateField, EmptyState, Input, PageHeader, Pagination, Select, Spinner, formatDate, toast,
 } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
@@ -64,15 +64,25 @@ function VoteLine({ d }: { d: CouncilDecision }) {
   if (d.enthaltungen) parts.push(`${d.enthaltungen} Enthaltungen`);
   if (parts.length === 0 && d.factions.length === 0) return null;
   return (
-    <div className="mt-2.5 flex flex-wrap items-center gap-2">
+    <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
       {parts.length > 0 && (
         <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
           <Scale className="h-3.5 w-3.5" /> {parts.join(" · ")}
         </span>
       )}
-      {d.factions.map((f) => (
-        <span key={f} className="rounded-md bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">{f}</span>
-      ))}
+      {d.factions.length > 0 && (
+        <span
+          className="inline-flex flex-wrap items-center gap-1.5"
+          title="Fraktion(en), die zu diesem Punkt einen Antrag oder eine Änderungsliste eingebracht haben"
+        >
+          <span className="text-xs text-muted-foreground">
+            {d.kind === "subvote" ? "Antrag von:" : "Anträge von:"}
+          </span>
+          {d.factions.map((f) => (
+            <span key={f} className="rounded-md bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">{f}</span>
+          ))}
+        </span>
+      )}
     </div>
   );
 }
@@ -114,41 +124,52 @@ function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
   );
 }
 
-const OUTCOME_FILTERS: { value: string; label: string }[] = [
-  { value: "", label: "Alle" },
-  { value: "angenommen", label: "Angenommen" },
-  { value: "abgelehnt", label: "Abgelehnt" },
-  { value: "vertagt", label: "Vertagt" },
+const PAGE_SIZE = 50;
+
+// Each result filter maps to the query params it sets ("Berichte" = zur Kenntnis).
+const RESULT_FILTERS: { value: string; label: string; query: Record<string, string> }[] = [
+  { value: "", label: "Alle", query: {} },
+  { value: "angenommen", label: "Angenommen", query: { outcome: "angenommen" } },
+  { value: "abgelehnt", label: "Abgelehnt", query: { outcome: "abgelehnt" } },
+  { value: "vertagt", label: "Vertagt", query: { outcome: "vertagt" } },
+  { value: "report", label: "Berichte", query: { category: "report" } },
 ];
 
 function DecisionsTab({ committees }: { committees: string[] }) {
   const [q, setQ] = useState("");
   const [committee, setCommittee] = useState("");
-  const [outcome, setOutcome] = useState("");
+  const [result, setResult] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [page, setPage] = useState(1);
   const [decisions, setDecisions] = useState<CouncilDecision[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const debouncedQ = useDebounce(q, 350);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await api.get<{ decisions: CouncilDecision[] }>(
-        `/council/decisions${qs({ q, committee, outcome, limit: 150 })}`,
+      const rf = RESULT_FILTERS.find((f) => f.value === result)?.query ?? {};
+      const data = await api.get<{ total: number; decisions: CouncilDecision[] }>(
+        `/council/decisions${qs({ q, committee, date_from: dateFrom, date_to: dateTo, ...rf, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE })}`,
       );
       setDecisions(data.decisions);
+      setTotal(data.total);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Laden fehlgeschlagen.");
     } finally {
       setLoading(false);
     }
-  }, [q, committee, outcome]);
+  }, [q, committee, result, dateFrom, dateTo, page]);
 
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedQ, committee, outcome]);
+  }, [debouncedQ, committee, result, dateFrom, dateTo, page]);
 
   const query = q.trim();
+  const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
     <div>
@@ -156,28 +177,38 @@ function DecisionsTab({ committees }: { committees: string[] }) {
         <div className="space-y-3">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input className="pl-9" placeholder="Beschlüsse durchsuchen (z. B. Haushalt, Radwege)…" value={q} onChange={(e) => setQ(e.target.value)} />
+            <Input className="pl-9" placeholder="Beschlüsse durchsuchen (z. B. Haushalt, Radwege)…" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} />
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Select value={committee} onChange={(e) => setCommittee(e.target.value)}>
+            <Select value={committee} onChange={(e) => { setCommittee(e.target.value); setPage(1); }}>
               <option value="">Alle Ausschüsse</option>
               {committees.map((c) => <option key={c} value={c}>{c}</option>)}
             </Select>
             <div className="flex gap-1 overflow-x-auto rounded-md bg-muted p-1">
-              {OUTCOME_FILTERS.map((o) => (
+              {RESULT_FILTERS.map((o) => (
                 <button
                   key={o.value}
                   type="button"
-                  onClick={() => setOutcome(o.value)}
+                  onClick={() => { setResult(o.value); setPage(1); }}
                   className={cn(
                     "flex-1 whitespace-nowrap rounded-sm px-2 py-1.5 text-sm font-medium transition-colors",
-                    outcome === o.value ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+                    result === o.value ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
                   )}
                 >
                   {o.label}
                 </button>
               ))}
             </div>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-muted-foreground">Von</span>
+              <DateField value={dateFrom} onChange={(v) => { setDateFrom(v); setPage(1); }} />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-muted-foreground">Bis</span>
+              <DateField value={dateTo} onChange={(v) => { setDateTo(v); setPage(1); }} />
+            </label>
           </div>
         </div>
       </Card>
@@ -190,9 +221,10 @@ function DecisionsTab({ committees }: { committees: string[] }) {
         ) : (
           <div className="space-y-2.5">
             <p className="text-sm font-medium text-muted-foreground">
-              {decisions.length} {decisions.length === 1 ? "Beschluss" : "Beschlüsse"}
+              {total} {total === 1 ? "Beschluss" : "Beschlüsse"}
             </p>
             {decisions.map((d) => <DecisionCard key={d.id} d={d} query={query} />)}
+            <Pagination page={page} totalPages={totalPages} onChange={setPage} className="pt-2" />
           </div>
         )}
       </div>
