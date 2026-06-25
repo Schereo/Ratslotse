@@ -58,7 +58,7 @@ Beim Wechsel auf einen neuen Server:
    - `30 6 * * *` — daily_digest.py
    - `0 7 * * *` — check_committees.py
    - `0 8,14 * * *` — check_council.py
-   - `0 9 * * *` — check_protocols.py (neu veröffentlichte Sitzungsprotokolle parsen)
+   - `0 9 * * *` — check_protocols.py (neu veröffentlichte Sitzungsprotokolle parsen **und** neue Beschlüsse per LLM in Themenfelder klassifizieren — `classify_decisions.py` läuft am Ende mit)
 9. Actions-SSH-Key in `authorized_keys` auf **beiden** VMs eintragen (tk-edge-vm + tk-nwz)
 
 ## .env Variablen
@@ -78,6 +78,9 @@ CORS_ORIGINS=https://ratslotse.de   # erlaubte Origins (Prod-Domain)
 RESEND_API_KEY=...                  # Sending-only Key aus resend.com/api-keys
 EMAIL_FROM=Ratslotse <noreply@ratslotse.de>   # Absender (Domain muss in Resend verifiziert sein)
 APP_BASE_URL=https://ratslotse.de   # Basis-URL für Links in E-Mails (Default: ratslotse.de)
+# Stadtrat-LLM (optional, Defaults greifen)
+COUNCIL_PROTOCOL_MODEL=deepseek/deepseek-v4-pro   # Protokoll-Extraktion (protocols.py)
+COUNCIL_TOPIC_MODEL=deepseek/deepseek-v4-pro      # Themenfeld-Klassifikation (topics.py)
 ```
 
 Credentials liegen in 1Password.

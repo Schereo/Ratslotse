@@ -109,9 +109,13 @@ CREATE TABLE IF NOT EXISTS council_decisions (
     factions     TEXT,                          -- JSON array
     vorlage_nr   TEXT,
     kvonr        INTEGER,
-    raw_result   TEXT
+    raw_result   TEXT,
+    policy_field TEXT,                          -- one key from council.topics.POLICY_FIELDS
+    policy_tags  TEXT,                          -- JSON array of finer-grained tags
+    summary      TEXT                           -- one-line neutral summary
 );
 CREATE INDEX IF NOT EXISTS idx_decisions_ksinr ON council_decisions(ksinr);
+CREATE INDEX IF NOT EXISTS idx_decisions_field ON council_decisions(policy_field);
 
 -- One row per attendee per session.
 CREATE TABLE IF NOT EXISTS council_attendance (
@@ -159,6 +163,13 @@ class CouncilStore:
                     )
                 if "parent_item" not in dec_cols:
                     self._conn.execute("ALTER TABLE council_decisions ADD COLUMN parent_item TEXT")
+                # Topic classification (council.topics) — additive.
+                for col in ("policy_field", "policy_tags", "summary"):
+                    if col not in dec_cols:
+                        self._conn.execute(f"ALTER TABLE council_decisions ADD COLUMN {col} TEXT")
+                self._conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_decisions_field ON council_decisions(policy_field)"
+                )
         self._migrate_owner_id()
 
     def _migrate_owner_id(self) -> None:
@@ -580,27 +591,31 @@ class CouncilStore:
     @staticmethod
     def _decision_row(r) -> dict:
         d = dict(r)
-        try:
-            d["factions"] = json.loads(d.get("factions") or "[]")
-        except (json.JSONDecodeError, TypeError):
-            d["factions"] = []
+        for key in ("factions", "policy_tags"):
+            try:
+                d[key] = json.loads(d.get(key) or "[]")
+            except (json.JSONDecodeError, TypeError):
+                d[key] = []
         return d
 
     # Outcomes grouped into "real votes" vs "reports / no decision".
     _VOTE_OUTCOMES = ("angenommen", "abgelehnt", "vertagt")
     _REPORT_OUTCOMES = ("zur_kenntnis", "kein_beschluss")
 
-    def _decision_where(self, query, committee, outcome, faction, date_from, date_to, kind, category):
+    def _decision_where(self, query, committee, outcome, faction, date_from, date_to, kind, category, field=""):
         """Build the WHERE clause + params shared by search and count."""
         filters: list[str] = []
         params: list = []
         if query:
-            filters.append("(d.title LIKE ? OR d.beschluss LIKE ?)")
+            filters.append("(d.title LIKE ? OR d.beschluss LIKE ? OR d.summary LIKE ?)")
             like = f"%{query}%"
-            params += [like, like]
+            params += [like, like, like]
         if committee:
             filters.append("cs.committee = ?")
             params.append(committee)
+        if field:
+            filters.append("d.policy_field = ?")
+            params.append(field)
         if outcome:
             filters.append("d.outcome = ?")
             params.append(outcome)
@@ -636,19 +651,20 @@ class CouncilStore:
         kind: str = "",
         category: str = "",
         sort: str = "date_desc",
+        field: str = "",
         limit: int = 50,
         offset: int = 0,
     ) -> list[dict]:
         """Search extracted decisions, joined with their session (committee + date).
         ``category`` is "vote" (decided) or "report" (zur Kenntnis / no decision).
-        ``sort`` ∈ {date_desc, date_asc, faction}."""
+        ``field`` filters by policy field; ``sort`` ∈ {date_desc, date_asc, faction}."""
         order = {
             "date_asc": "cs.session_date ASC, d.position",
             # Non-empty factions first ('["…' < '[]'), grouped, newest within.
             "faction": "d.factions ASC, cs.session_date DESC",
         }.get(sort, "cs.session_date DESC, d.position")
         where, params = self._decision_where(query, committee, outcome, faction,
-                                              date_from, date_to, kind, category)
+                                              date_from, date_to, kind, category, field)
         rows = self._conn.execute(
             f"""SELECT d.*, cs.committee, cs.session_date, p.document_url AS protocol_url
                 FROM council_decisions d
@@ -663,10 +679,10 @@ class CouncilStore:
 
     def count_decisions(
         self, query="", committee="", outcome="", faction="", date_from="", date_to="",
-        kind="", category="",
+        kind="", category="", field="",
     ) -> int:
         where, params = self._decision_where(query, committee, outcome, faction,
-                                             date_from, date_to, kind, category)
+                                             date_from, date_to, kind, category, field)
         row = self._conn.execute(
             f"""SELECT COUNT(*) FROM council_decisions d
                 JOIN council_sessions cs ON cs.ksinr = d.ksinr {where}""",
@@ -702,6 +718,44 @@ class CouncilStore:
                WHERE ci.vorlage_nr = ?
                ORDER BY cs.session_date""",
             (vorlage_nr,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def get_unclassified_decisions(self, limit: int | None = None) -> list[dict]:
+        """Decisions without a policy field yet — for the classification backfill/cron.
+        Returns id + the fields the classifier needs (title, beschluss, committee)."""
+        sql = ("SELECT d.id, d.title, d.beschluss, cs.committee "
+               "FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr "
+               "WHERE d.policy_field IS NULL ORDER BY d.id")
+        if limit:
+            sql += f" LIMIT {int(limit)}"
+        return [dict(r) for r in self._conn.execute(sql).fetchall()]
+
+    def set_classifications(self, results: dict) -> int:
+        """Bulk-write classification results: id -> {field, tags, summary}."""
+        rows = [
+            (r["field"], json.dumps(r.get("tags") or [], ensure_ascii=False), r.get("summary"), did)
+            for did, r in results.items()
+        ]
+        with self._conn:
+            self._conn.executemany(
+                "UPDATE council_decisions SET policy_field = ?, policy_tags = ?, summary = ? WHERE id = ?",
+                rows,
+            )
+        return len(rows)
+
+    def reset_classifications(self) -> None:
+        """Clear all topic classifications — for a full re-classify (e.g. taxonomy change)."""
+        with self._conn:
+            self._conn.execute(
+                "UPDATE council_decisions SET policy_field = NULL, policy_tags = NULL, summary = NULL"
+            )
+
+    def policy_field_stats(self) -> list[dict]:
+        """Count of classified decisions per policy field, most frequent first."""
+        rows = self._conn.execute(
+            "SELECT policy_field AS field, COUNT(*) AS count FROM council_decisions "
+            "WHERE policy_field IS NOT NULL GROUP BY policy_field ORDER BY count DESC"
         ).fetchall()
         return [dict(r) for r in rows]
 

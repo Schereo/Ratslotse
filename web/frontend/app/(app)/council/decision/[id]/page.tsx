@@ -7,7 +7,7 @@ import { ArrowLeft, ExternalLink, FileText, FileDown, Users, Scale } from "lucid
 import { api, ApiError } from "@/lib/api";
 import { DecisionDetail, CouncilDecision } from "@/lib/types";
 import { Card, Spinner, EmptyState, formatDate, toast } from "@/components/ui";
-import { OutcomeBadge, VoteBar } from "@/components/decision-ui";
+import { OutcomeBadge, VoteBar, FieldBadge } from "@/components/decision-ui";
 import { cn } from "@/lib/utils";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -62,6 +62,14 @@ export default function DecisionDetailPage() {
             {d.committee} · {formatDate(d.session_date)}{d.item_number ? ` · TOP ${d.item_number}` : ""}
           </p>
           <h1 className="mt-1 text-xl font-semibold text-foreground">{d.title}</h1>
+          {(d.policy_field || d.policy_tags.length > 0) && (
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              <FieldBadge field={d.policy_field} />
+              {d.policy_tags.map((t) => (
+                <span key={t} className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">{t}</span>
+              ))}
+            </div>
+          )}
         </div>
         <OutcomeBadge outcome={d.outcome} />
       </div>

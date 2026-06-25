@@ -1,6 +1,32 @@
 import { CouncilDecision, DecisionOutcome } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
+// Short labels for the policy-field badge (full labels come from /council/fields).
+// Mirrors council.topics.POLICY_FIELDS.
+export const POLICY_FIELD_LABELS: Record<string, string> = {
+  verkehr: "Verkehr",
+  klima_umwelt: "Klima & Umwelt",
+  bauen_wohnen: "Bauen & Wohnen",
+  soziales_gesundheit: "Soziales",
+  bildung: "Bildung",
+  finanzen: "Finanzen",
+  kultur_sport: "Kultur & Sport",
+  wirtschaft: "Wirtschaft",
+  sicherheit_ordnung: "Sicherheit",
+  verwaltung_digital: "Verwaltung",
+  migration_integration: "Migration",
+  sonstiges: "Sonstiges",
+};
+
+export function FieldBadge({ field, className }: { field: string | null; className?: string }) {
+  if (!field) return null;
+  return (
+    <span className={cn("inline-flex items-center rounded-md bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground", className)}>
+      {POLICY_FIELD_LABELS[field] ?? field}
+    </span>
+  );
+}
+
 export const OUTCOME_META: Record<DecisionOutcome, { label: string; cls: string }> = {
   angenommen: { label: "Angenommen", cls: "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-300" },
   abgelehnt: { label: "Abgelehnt", cls: "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300" },

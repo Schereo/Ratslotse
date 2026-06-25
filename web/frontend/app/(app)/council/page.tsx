@@ -7,12 +7,12 @@ import { Search, ExternalLink, ChevronDown, ChevronRight, Landmark, Scale, Users
 import { api, qs, ApiError } from "@/lib/api";
 import { useDebounce } from "@/lib/use-debounce";
 import {
-  CouncilSession, SessionDetail, AgendaItem, CouncilDecision, DecisionOutcome,
+  CouncilSession, SessionDetail, AgendaItem, CouncilDecision, DecisionOutcome, PolicyField,
 } from "@/lib/types";
 import {
   Badge, Card, CardListSkeleton, DateField, EmptyState, Input, PageHeader, Pagination, Select, Spinner, formatDate, toast,
 } from "@/components/ui";
-import { OutcomeBadge } from "@/components/decision-ui";
+import { OutcomeBadge, FieldBadge } from "@/components/decision-ui";
 import { cn } from "@/lib/utils";
 
 type Scope = "all" | "upcoming" | "recent";
@@ -79,9 +79,10 @@ function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
       <Card className={cn("card-interactive group flex items-center gap-3 p-4", isSub && "border-l-2 border-l-border bg-muted/30")}>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
-            <span className="text-xs text-muted-foreground">
-              {isSub ? `Teilabstimmung · TOP ${d.parent_item}` : `${d.committee} · ${formatDate(d.session_date)}`}
-            </span>
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+              {!isSub && <FieldBadge field={d.policy_field} />}
+              <span>{isSub ? `Teilabstimmung · TOP ${d.parent_item}` : `${d.committee} · ${formatDate(d.session_date)}`}</span>
+            </div>
             <OutcomeBadge outcome={d.outcome} />
           </div>
           <div className="mt-1.5 font-medium text-foreground">
@@ -131,6 +132,8 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   const [mode, setMode] = useState<"vote" | "report">("vote");
   const [outcome, setOutcome] = useState("");
   const [sort, setSort] = useState("date_desc");
+  const [field, setField] = useState("");
+  const [fields, setFields] = useState<PolicyField[]>([]);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
@@ -139,12 +142,16 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   const [loading, setLoading] = useState(true);
   const debouncedQ = useDebounce(q, 350);
 
+  useEffect(() => {
+    api.get<{ fields: PolicyField[] }>("/council/fields").then((d) => setFields(d.fields)).catch(() => {});
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const data = await api.get<{ total: number; decisions: CouncilDecision[] }>(
         `/council/decisions${qs({
-          q, committee, category: mode, sort,
+          q, committee, category: mode, sort, field,
           outcome: mode === "vote" ? outcome : "",
           date_from: dateFrom, date_to: dateTo,
           limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE,
@@ -157,12 +164,12 @@ function DecisionsTab({ committees }: { committees: string[] }) {
     } finally {
       setLoading(false);
     }
-  }, [q, committee, mode, outcome, sort, dateFrom, dateTo, page]);
+  }, [q, committee, mode, outcome, sort, field, dateFrom, dateTo, page]);
 
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedQ, committee, mode, outcome, sort, dateFrom, dateTo, page]);
+  }, [debouncedQ, committee, mode, outcome, sort, field, dateFrom, dateTo, page]);
 
   const query = q.trim();
   const totalPages = Math.ceil(total / PAGE_SIZE);
@@ -201,9 +208,9 @@ function DecisionsTab({ committees }: { committees: string[] }) {
         </div>
 
         {/* Tier 2 — refine: labelled, secondary. Separated from the primary row. */}
-        <div className="mt-4 grid grid-cols-1 gap-x-4 gap-y-3 border-t border-border pt-4 sm:grid-cols-2">
+        <div className="mt-4 space-y-3 border-t border-border pt-4">
           {!isReport && (
-            <FilterField label="Ergebnis" className="sm:col-span-2">
+            <FilterField label="Ergebnis">
               <div className="flex gap-1 overflow-x-auto rounded-md bg-muted p-1">
                 {OUTCOME_CHIPS.map((o) => (
                   <button
@@ -221,18 +228,28 @@ function DecisionsTab({ committees }: { committees: string[] }) {
               </div>
             </FilterField>
           )}
-          <FilterField label="Ausschuss">
-            <Select value={committee} onChange={(e) => { setCommittee(e.target.value); setPage(1); }}>
-              <option value="">Alle Ausschüsse</option>
-              {committees.map((c) => <option key={c} value={c}>{c}</option>)}
-            </Select>
-          </FilterField>
-          <FilterField label="Sortierung">
-            <Select value={sort} onChange={(e) => { setSort(e.target.value); setPage(1); }}>
-              {SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-            </Select>
-          </FilterField>
-          <FilterField label="Zeitraum" className="sm:col-span-2">
+          <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-3">
+            {fields.length > 0 && (
+              <FilterField label="Themenfeld">
+                <Select value={field} onChange={(e) => { setField(e.target.value); setPage(1); }}>
+                  <option value="">Alle Themenfelder</option>
+                  {fields.map((f) => <option key={f.key} value={f.key}>{f.label} ({f.count})</option>)}
+                </Select>
+              </FilterField>
+            )}
+            <FilterField label="Ausschuss">
+              <Select value={committee} onChange={(e) => { setCommittee(e.target.value); setPage(1); }}>
+                <option value="">Alle Ausschüsse</option>
+                {committees.map((c) => <option key={c} value={c}>{c}</option>)}
+              </Select>
+            </FilterField>
+            <FilterField label="Sortierung">
+              <Select value={sort} onChange={(e) => { setSort(e.target.value); setPage(1); }}>
+                {SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </Select>
+            </FilterField>
+          </div>
+          <FilterField label="Zeitraum">
             <div className="grid grid-cols-2 gap-2">
               <DateField value={dateFrom} onChange={(v) => { setDateFrom(v); setPage(1); }} />
               <DateField value={dateTo} onChange={(v) => { setDateTo(v); setPage(1); }} />
