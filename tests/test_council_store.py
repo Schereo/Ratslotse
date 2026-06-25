@@ -191,6 +191,23 @@ def test_decisions_fts(tmp_path):
     assert store.search_decisions_fts("zz") == []  # terms < 3 chars dropped
 
 
+def test_entities(tmp_path):
+    store = CouncilStore(_old_db(tmp_path / "old.sqlite"))  # seeds a session ksinr=1
+    for i in (60, 61):
+        store._conn.execute(
+            "INSERT INTO council_decisions(id,ksinr,position,kind,item_number,title,beschluss,outcome,policy_field,amount_eur) "
+            "VALUES (?,1,0,'decision','1',?,'b','angenommen','bauen_wohnen',1000000.0)", (i, f"Fliegerhorst {i}"))
+    store._conn.commit()
+    store.save_entities([("fliegerhorst", "Fliegerhorst", "ort", 2)],
+                        [("fliegerhorst", 60), ("fliegerhorst", 61)])
+    assert [e["slug"] for e in store.list_entities()] == ["fliegerhorst"]
+    assert [e["slug"] for e in store.entities_for_decision(60)] == ["fliegerhorst"]
+    d = store.entity_detail("fliegerhorst")
+    assert d and len(d["decisions"]) == 2 and d["money"] == 2_000_000
+    assert d["fields"] == [{"field": "bauen_wohnen", "n": 2}]
+    assert store.entity_detail("does-not-exist") is None
+
+
 def test_embedding_vectors(tmp_path):
     store = CouncilStore(_old_db(tmp_path / "old.sqlite"))
     store.save_embeddings([(1, b"abcd"), (2, b"efgh")])

@@ -250,6 +250,19 @@ class CouncilStore:
             "CREATE VIRTUAL TABLE IF NOT EXISTS council_decisions_fts "
             "USING fts5(content, tokenize=\"unicode61 remove_diacritics 2\")"
         )
+        # Named entities (projects/places/organizations) and their decision links —
+        # the basis for the entity ("Themen-") pages. Rebuilt by scripts/extract_entities.py.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_entities ("
+            "id INTEGER PRIMARY KEY, slug TEXT UNIQUE NOT NULL, name TEXT NOT NULL, "
+            "kind TEXT, n INTEGER NOT NULL DEFAULT 0)"
+        )
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_entity_links ("
+            "entity_id INTEGER NOT NULL, decision_id INTEGER NOT NULL, "
+            "PRIMARY KEY (entity_id, decision_id))"
+        )
+        self._conn.execute("CREATE INDEX IF NOT EXISTS idx_entlink_dec ON council_entity_links(decision_id)")
         self._migrate_owner_id()
 
     def _migrate_owner_id(self) -> None:
@@ -887,6 +900,69 @@ class CouncilStore:
             return []
         # FTS5 rank is negative (more negative = better); flip so larger = better.
         return [(r[0], -float(r[1])) for r in rows]
+
+    def decisions_for_entities(self) -> list[dict]:
+        """Main decisions (id, title, beschluss) for the entity-extraction backfill."""
+        return [dict(r) for r in self._conn.execute(
+            "SELECT id, title, beschluss FROM council_decisions WHERE kind = 'decision'")]
+
+    def save_entities(self, entities: list[tuple], links: list[tuple]) -> int:
+        """Full rebuild of the entity tables. ``entities`` = (slug, name, kind, n);
+        ``links`` = (slug, decision_id)."""
+        with self._conn:
+            self._conn.execute("DELETE FROM council_entity_links")
+            self._conn.execute("DELETE FROM council_entities")
+            self._conn.executemany(
+                "INSERT INTO council_entities(slug, name, kind, n) VALUES (?,?,?,?)", entities)
+            id_by_slug = {r["slug"]: r["id"] for r in self._conn.execute("SELECT id, slug FROM council_entities")}
+            rows = [(id_by_slug[s], d) for s, d in links if s in id_by_slug]
+            self._conn.executemany(
+                "INSERT OR IGNORE INTO council_entity_links(entity_id, decision_id) VALUES (?,?)", rows)
+        return len(entities)
+
+    def list_entities(self, limit: int = 300, kind: str = "") -> list[dict]:
+        """Entities for the directory, most-referenced first."""
+        sql = "SELECT slug, name, kind, n FROM council_entities"
+        params: list = []
+        if kind:
+            sql += " WHERE kind = ?"
+            params.append(kind)
+        sql += " ORDER BY n DESC, name LIMIT ?"
+        params.append(limit)
+        return [dict(r) for r in self._conn.execute(sql, params)]
+
+    def entities_for_decision(self, decision_id: int) -> list[dict]:
+        """Entities mentioned in a decision (shown on its detail page)."""
+        return [dict(r) for r in self._conn.execute(
+            "SELECT e.slug, e.name, e.kind FROM council_entity_links el "
+            "JOIN council_entities e ON e.id = el.entity_id WHERE el.decision_id = ? ORDER BY e.n DESC",
+            (decision_id,))]
+
+    def entity_detail(self, slug: str) -> dict | None:
+        """An entity with all its decisions (newest first) and aggregates."""
+        from collections import Counter
+
+        ent = self._conn.execute(
+            "SELECT id, slug, name, kind, n FROM council_entities WHERE slug = ?", (slug,)).fetchone()
+        if not ent:
+            return None
+        rows = self._conn.execute(
+            """SELECT d.*, cs.committee, cs.session_date, p.document_url AS protocol_url
+               FROM council_entity_links el JOIN council_decisions d ON d.id = el.decision_id
+               JOIN council_sessions cs ON cs.ksinr = d.ksinr
+               LEFT JOIN council_protocols p ON p.ksinr = d.ksinr
+               WHERE el.entity_id = ? ORDER BY cs.session_date DESC""", (ent["id"],)).fetchall()
+        decisions = [self._decision_row(r) for r in rows]
+        money = sum(d["amount_eur"] for d in decisions if d.get("amount_eur"))
+        parties = sorted({p for d in decisions for p in d.get("parties", [])}, key=order_key)
+        fieldc = Counter(d["policy_field"] for d in decisions if d.get("policy_field"))
+        return {
+            "entity": {"slug": ent["slug"], "name": ent["name"], "kind": ent["kind"], "n": ent["n"]},
+            "decisions": decisions,
+            "money": round(money) if money else 0,
+            "parties": parties,
+            "fields": [{"field": f, "n": c} for f, c in fieldc.most_common()],
+        }
 
     def decisions_for_amount(self, only_missing: bool = False) -> list[dict]:
         """Main decisions with their text, for the € extraction backfill."""
