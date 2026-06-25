@@ -938,6 +938,11 @@ class CouncilStore:
         with self._conn:
             self._conn.execute("DELETE FROM council_goal_links WHERE goal = ?", (goal,))
 
+    def linked_decision_ids(self, goal: str) -> set:
+        """Decision ids already linked to a goal (any relevance) — for incremental runs."""
+        return {r[0] for r in self._conn.execute(
+            "SELECT decision_id FROM council_goal_links WHERE goal = ?", (goal,))}
+
     def goal_summary(self) -> dict:
         """Per goal: counts of relevant decisions by stance."""
         agg: dict[str, dict] = {}
