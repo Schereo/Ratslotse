@@ -78,6 +78,15 @@ export interface CouncilDecision {
   committee: string;
   session_date: string;
   protocol_url: string | null;
+  policy_field: string | null;
+  policy_tags: string[];
+  summary: string | null;
+}
+
+export interface PolicyField {
+  key: string;
+  label: string;
+  count: number;
 }
 
 export interface Attendee {
