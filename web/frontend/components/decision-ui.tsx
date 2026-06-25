@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 
 /** Compact clickable card linking to a decision's detail page — shared by the
  *  Q&A sources, "Ähnliche Beschlüsse" and goal decision lists. */
-export function DecisionLinkCard({ id, title, committee, session_date, field, leading, sub }: {
+export function DecisionLinkCard({ id, title, committee, session_date, field, leading, sub, score }: {
   id: number;
   title: string | null;
   committee: string;
@@ -17,6 +17,7 @@ export function DecisionLinkCard({ id, title, committee, session_date, field, le
   field?: string | null;
   leading?: React.ReactNode;
   sub?: string | null;
+  score?: number;
 }) {
   return (
     <Link href={`/council/decision/${id}`} className="block">
@@ -26,6 +27,11 @@ export function DecisionLinkCard({ id, title, committee, session_date, field, le
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             {field !== undefined && <FieldBadge field={field} />}
             <span className="text-xs text-muted-foreground">{committee} · {formatDate(session_date)}</span>
+            {score !== undefined && (
+              <span className="rounded bg-muted px-1.5 text-xs font-medium tabular-nums text-muted-foreground" title="Ähnlichkeit zur Frage">
+                {Math.round(score * 100)}%
+              </span>
+            )}
           </div>
           <p className="mt-1 text-sm font-medium text-foreground">{title}</p>
           {sub && <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{sub}</p>}

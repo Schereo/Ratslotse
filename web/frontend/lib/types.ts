@@ -93,7 +93,7 @@ export interface PolicyField {
 export interface QaSource {
   id: number; title: string | null; summary: string | null;
   policy_field: string | null; outcome: DecisionOutcome | null;
-  session_date: string; committee: string;
+  session_date: string; committee: string; score?: number;
 }
 
 export interface QaAnswer {
