@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -8,6 +9,25 @@ import sqlite3
 
 from .scraper import CouncilSession, AgendaItem
 from .parties import normalize_party, order_key
+
+
+def _norm_title(t: str) -> str:
+    """Normalised title for dedup: drops amounts, years, doc-suffixes and punctuation
+    so the same matter across committees ('… - Beschluss' vs '…') and recurring series
+    ('… 11.716.000 Euro …' vs '… 10.632.200 Euro …') collapse to one key."""
+    t = (t or "").lower()
+    t = re.sub(r"[\d.,]+", " ", t)  # amounts, years, budget numbers
+    t = re.sub(r"\b(euro|eur|mio|mrd|beschluss|bericht|antrag|vorlage)\b", " ", t)
+    t = re.sub(r"[^a-zäöüß ]", " ", t)  # punctuation, €, dashes
+    return re.sub(r"\s+", " ", t).strip()
+
+
+def _dedup_key(title: str, decision_id: int) -> str:
+    """Collapse key for near-duplicate titles. Only meaningful (long enough) normalised
+    titles collapse; short/sparse ones fall back to the id so distinct decisions with
+    tiny titles are never merged."""
+    nt = _norm_title(title)
+    return nt if len(nt) >= 12 else f"\x00id{decision_id}"
 
 
 def _int_or_none(v) -> int | None:
@@ -865,9 +885,10 @@ class CouncilStore:
         seen: set = set()
         out: list[dict] = []
         for r in rows:
-            # Same matter across committees keeps the title + amount but gets a revised
-            # Vorlage-Nr ("22/0348" → "22/0348/1"), so dedupe on title + amount.
-            key = ((r["title"] or "").strip().lower(), round(r["amount_eur"]))
+            # Dedup on the normalised title: collapses the same matter across committees
+            # ("… - Beschluss" vs "…") and recurring annual series (different amounts,
+            # same wording). Rows are amount-desc, so the kept entry is the largest.
+            key = _dedup_key(r["title"], r["id"])
             if key in seen:
                 continue
             seen.add(key)
@@ -1094,7 +1115,13 @@ class CouncilStore:
         return [dict(r) for r in rows]
 
     def get_similar(self, decision_id: int, limit: int = 5) -> list[dict]:
-        """The most similar decisions to ``decision_id`` (precomputed), best first."""
+        """The most similar decisions to ``decision_id`` (precomputed), best first.
+        Near-duplicate twins (the same matter in another committee, or a recurring
+        series) are collapsed via the normalised title, so the neighbours shown are
+        genuinely distinct rather than the Ausschuss/Rat copy of this very decision."""
+        base = self._conn.execute(
+            "SELECT title FROM council_decisions WHERE id = ?", (decision_id,)
+        ).fetchone()
         rows = self._conn.execute(
             """SELECT d.id, d.title, d.summary, d.policy_field, d.outcome,
                       cs.session_date, cs.committee, sl.score
@@ -1102,9 +1129,19 @@ class CouncilStore:
                JOIN council_decisions d ON d.id = sl.neighbor_id
                JOIN council_sessions cs ON cs.ksinr = d.ksinr
                WHERE sl.decision_id = ? ORDER BY sl.rank LIMIT ?""",
-            (decision_id, limit),
+            (decision_id, limit * 5),
         ).fetchall()
-        return [dict(r) for r in rows]
+        seen = {_dedup_key(base["title"], decision_id) if base else ""}
+        out: list[dict] = []
+        for r in rows:
+            key = _dedup_key(r["title"], r["id"])
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(dict(r))
+            if len(out) >= limit:
+                break
+        return out
 
     def get_decisions_by_ids(self, ids: list[int]) -> list[dict]:
         """Fetch decisions by id, preserving the given order (for Q&A citations)."""
