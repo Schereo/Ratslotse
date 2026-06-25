@@ -177,6 +177,19 @@ export interface NewsLink {
   catalog: number; refid: string; title: string | null; pub_date: string | null; score: number;
 }
 
+export interface Entity {
+  slug: string; name: string; kind: string; n: number;
+}
+
+export interface EntityDetail {
+  entity: Entity;
+  decisions: CouncilDecision[];
+  money: number;
+  parties: string[];
+  fields: { field: string; n: number }[];
+  field_labels: Record<string, string>;
+}
+
 export interface DecisionDetail {
   decision: CouncilDecision;
   attendance: Attendee[];
@@ -185,6 +198,7 @@ export interface DecisionDetail {
   vorlage_journey: VorlageStop[];
   similar: SimilarDecision[];
   news: NewsLink[];
+  entities: Entity[];
   ratsinfo_url: string;
   vorlage_url?: string | null;
 }
