@@ -163,6 +163,10 @@ export interface SimilarDecision {
   session_date: string; committee: string; score: number;
 }
 
+export interface NewsLink {
+  catalog: number; refid: string; title: string | null; pub_date: string | null; score: number;
+}
+
 export interface DecisionDetail {
   decision: CouncilDecision;
   attendance: Attendee[];
@@ -170,6 +174,7 @@ export interface DecisionDetail {
   sub_votes: CouncilDecision[];
   vorlage_journey: VorlageStop[];
   similar: SimilarDecision[];
+  news: NewsLink[];
   ratsinfo_url: string;
   vorlage_url?: string | null;
 }

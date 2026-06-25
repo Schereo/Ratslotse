@@ -180,6 +180,19 @@ def test_party_filter(tmp_path):
     assert store.count_decisions(party="CDU") == 1 and store.count_decisions(party="SPD") == 0
 
 
+def test_news_links(tmp_path):
+    store = CouncilStore(_old_db(tmp_path / "old.sqlite"))
+    store.set_news_links([
+        (1, 5, "abc", "Hauptbericht", "2025-01-01", 0.7),
+        (1, 5, "def", "Kurzmeldung", "2025-02-01", 0.6),
+    ])
+    n = store.get_news_for_decision(1)
+    assert len(n) == 2 and n[0]["score"] == 0.7 and n[0]["title"] == "Hauptbericht"  # by score
+    assert store.decision_dates().get(1) == "2025-01-01"
+    store.set_news_links([])  # replaces
+    assert store.get_news_for_decision(1) == []
+
+
 def test_qa_resolve_citations():
     from council.qa import resolve_citations
     answer = "Beschlossen [2030], ein Modell [3269, 3346] und ungültig [9999]."

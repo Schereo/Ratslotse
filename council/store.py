@@ -158,6 +158,18 @@ CREATE TABLE IF NOT EXISTS council_embeddings (
     decision_id INTEGER PRIMARY KEY,
     vector      BLOB NOT NULL
 );
+
+-- Press coverage: NWZ articles matched to a decision (semantic + temporal).
+CREATE TABLE IF NOT EXISTS council_news_links (
+    decision_id INTEGER NOT NULL,
+    catalog     INTEGER NOT NULL,
+    refid       TEXT NOT NULL,
+    title       TEXT,
+    pub_date    TEXT,
+    score       REAL NOT NULL,
+    PRIMARY KEY (decision_id, catalog, refid)
+);
+CREATE INDEX IF NOT EXISTS idx_news_decision ON council_news_links(decision_id);
 """
 
 
@@ -1004,6 +1016,27 @@ class CouncilStore:
         return self._conn.execute(
             "SELECT decision_id, vector FROM council_embeddings ORDER BY decision_id"
         ).fetchall()
+
+    def decision_dates(self) -> dict:
+        """{decision_id: session_date} for main decisions (temporal news matching)."""
+        return {r["id"]: r["session_date"] for r in self._conn.execute(
+            "SELECT d.id, cs.session_date FROM council_decisions d "
+            "JOIN council_sessions cs ON cs.ksinr = d.ksinr WHERE d.kind = 'decision'")}
+
+    def set_news_links(self, rows: list[tuple]) -> int:
+        """Replace all press links. rows = (decision_id, catalog, refid, title, pub_date, score)."""
+        with self._conn:
+            self._conn.execute("DELETE FROM council_news_links")
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_news_links "
+                "(decision_id, catalog, refid, title, pub_date, score) VALUES (?, ?, ?, ?, ?, ?)", rows)
+        return len(rows)
+
+    def get_news_for_decision(self, decision_id: int, limit: int = 4) -> list[dict]:
+        rows = self._conn.execute(
+            "SELECT catalog, refid, title, pub_date, score FROM council_news_links "
+            "WHERE decision_id = ? ORDER BY score DESC LIMIT ?", (decision_id, limit)).fetchall()
+        return [dict(r) for r in rows]
 
     def get_similar(self, decision_id: int, limit: int = 5) -> list[dict]:
         """The most similar decisions to ``decision_id`` (precomputed), best first."""
