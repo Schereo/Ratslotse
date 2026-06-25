@@ -129,6 +129,18 @@ CREATE TABLE IF NOT EXISTS council_attendance (
     note    TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_attendance_ksinr ON council_attendance(ksinr);
+
+-- Goal tracking: which decisions concern an overarching city goal, and whether
+-- they advance / hinder / are neutral toward it (council.goals).
+CREATE TABLE IF NOT EXISTS council_goal_links (
+    goal        TEXT NOT NULL,
+    decision_id INTEGER NOT NULL,
+    relevant    INTEGER NOT NULL DEFAULT 0,
+    stance      TEXT,                              -- voran|bremst|neutral
+    rationale   TEXT,
+    PRIMARY KEY (goal, decision_id)
+);
+CREATE INDEX IF NOT EXISTS idx_goal_links_goal ON council_goal_links(goal);
 """
 
 
@@ -837,6 +849,69 @@ class CouncilStore:
             "contention": contention,
             "alliances": alliances,
         }
+
+    # --- Goal tracking ------------------------------------------------------
+    def get_goal_candidates(self, keywords: list[str], limit: int = 400) -> list[dict]:
+        """Decisions whose text/tags match any of a goal's keywords (candidates
+        for LLM relevance + stance assessment)."""
+        if not keywords:
+            return []
+        clause = " OR ".join(
+            ["d.title LIKE ? OR d.beschluss LIKE ? OR d.summary LIKE ? OR d.policy_tags LIKE ?"] * len(keywords)
+        )
+        params: list = []
+        for kw in keywords:
+            p = f"%{kw}%"
+            params += [p, p, p, p]
+        params.append(limit)
+        rows = self._conn.execute(
+            f"""SELECT d.id, d.title, d.beschluss, d.summary, cs.session_date
+                FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr
+                WHERE d.kind = 'decision' AND ({clause})
+                ORDER BY cs.session_date DESC LIMIT ?""",
+            params,
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def save_goal_links(self, goal: str, results: dict) -> int:
+        """Upsert assessment results for a goal: id -> {relevant, stance, grund}."""
+        rows = [(goal, did, 1 if r.get("relevant") else 0, r.get("stance"), r.get("grund"))
+                for did, r in results.items()]
+        with self._conn:
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_goal_links (goal, decision_id, relevant, stance, rationale) "
+                "VALUES (?, ?, ?, ?, ?)", rows,
+            )
+        return len(rows)
+
+    def clear_goal_links(self, goal: str) -> None:
+        with self._conn:
+            self._conn.execute("DELETE FROM council_goal_links WHERE goal = ?", (goal,))
+
+    def goal_summary(self) -> dict:
+        """Per goal: counts of relevant decisions by stance."""
+        agg: dict[str, dict] = {}
+        for goal, stance, c in self._conn.execute(
+            "SELECT goal, stance, COUNT(*) FROM council_goal_links WHERE relevant = 1 GROUP BY goal, stance"
+        ):
+            g = agg.setdefault(goal, {"voran": 0, "bremst": 0, "neutral": 0, "total": 0})
+            g[stance] = c
+            g["total"] += c
+        return agg
+
+    def goal_detail(self, goal: str) -> list[dict]:
+        """Relevant decisions linked to a goal, newest first, with stance + rationale."""
+        rows = self._conn.execute(
+            """SELECT d.id, d.title, d.summary, d.policy_field, d.outcome,
+                      cs.session_date, cs.committee, gl.stance, gl.rationale
+               FROM council_goal_links gl
+               JOIN council_decisions d ON d.id = gl.decision_id
+               JOIN council_sessions cs ON cs.ksinr = d.ksinr
+               WHERE gl.goal = ? AND gl.relevant = 1
+               ORDER BY cs.session_date DESC""",
+            (goal,),
+        ).fetchall()
+        return [dict(r) for r in rows]
 
     def get_protocols_raw(self) -> list[dict]:
         """All stored protocols with their raw text — for re-extraction without

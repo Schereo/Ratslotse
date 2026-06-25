@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from council.store import CouncilStore
 from council.topics import POLICY_FIELDS
+from council.goals import GOALS
 
 from ..deps import get_council_store, require_active
 
@@ -121,6 +122,31 @@ def analysis(_user: dict = Depends(require_active), store: CouncilStore = Depend
     data = store.party_analysis()
     data["field_labels"] = {k: POLICY_FIELDS[k][0] for k in data["topic_matrix"]["fields"]}
     return data
+
+
+_EMPTY_GOAL = {"voran": 0, "bremst": 0, "neutral": 0, "total": 0}
+
+
+@router.get("/goals")
+def goals(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> dict:
+    """City goals with how many decisions advance / hinder / are neutral toward them."""
+    summary = store.goal_summary()
+    out = [{"key": key, "label": g["label"], "description": g["description"],
+            **summary.get(key, _EMPTY_GOAL)} for key, g in GOALS.items()]
+    return {"goals": out}
+
+
+@router.get("/goal/{key}")
+def goal_detail(key: str, _user: dict = Depends(require_active),
+                store: CouncilStore = Depends(get_council_store)) -> dict:
+    g = GOALS.get(key)
+    if not g:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Ziel nicht gefunden.")
+    return {
+        "key": key, "label": g["label"], "description": g["description"],
+        "summary": store.goal_summary().get(key, _EMPTY_GOAL),
+        "decisions": store.goal_detail(key),
+    }
 
 
 @router.get("/decision-stats")
