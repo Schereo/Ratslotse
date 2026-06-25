@@ -3,7 +3,7 @@
 import { BarChart3 } from "lucide-react";
 import { PartyAnalysis } from "@/lib/types";
 import { Card, Spinner, EmptyState } from "@/components/ui";
-import { POLICY_FIELD_LABELS } from "@/components/decision-ui";
+import { POLICY_FIELD_LABELS, PartyBadge } from "@/components/decision-ui";
 import { useFetch } from "@/lib/use-fetch";
 
 function Block({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
@@ -43,7 +43,7 @@ function Heatmap({ a }: { a: PartyAnalysis }) {
         <tbody>
           {parties.map((p) => (
             <tr key={p}>
-              <td className="sticky left-0 z-10 whitespace-nowrap bg-card py-1 pr-3 font-medium text-foreground">{p}</td>
+              <td className="sticky left-0 z-10 whitespace-nowrap bg-card py-1 pr-3"><PartyBadge party={p} /></td>
               {fields.map((f) => {
                 const c = matrix[p]?.[f] ?? 0;
                 const op = c ? 0.1 + 0.9 * (c / max) : 0;
@@ -76,7 +76,7 @@ function SuccessRates({ a }: { a: PartyAnalysis }) {
         const dec = r.angenommen + r.abgelehnt + r.vertagt || 1;
         return (
           <div key={r.party} className="flex items-center gap-3">
-            <div className="w-24 shrink-0 truncate text-sm font-medium text-foreground sm:w-32">{r.party}</div>
+            <div className="w-24 shrink-0 sm:w-32"><PartyBadge party={r.party} /></div>
             <div className="flex h-5 flex-1 overflow-hidden rounded bg-muted">
               <div className="bg-green-500/80" style={{ width: `${(r.angenommen / dec) * 100}%` }} />
               <div className="bg-red-500/80" style={{ width: `${(r.abgelehnt / dec) * 100}%` }} />

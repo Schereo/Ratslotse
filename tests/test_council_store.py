@@ -161,3 +161,20 @@ def test_embedding_vectors(tmp_path):
     assert len(rows) == 2 and bytes(rows[0]["vector"]) == b"abcd"
     store.save_embeddings([(3, b"xyz")])  # replaces everything
     assert [r["decision_id"] for r in store.get_embeddings()] == [3]
+
+
+def test_party_filter(tmp_path):
+    store = CouncilStore(_old_db(tmp_path / "old.sqlite"))
+    store._conn.execute(
+        "INSERT INTO council_decisions (id,ksinr,position,kind,item_number,title,beschluss,outcome,factions) "
+        "VALUES (40,1,0,'decision','1','A','b','angenommen',?)", (json.dumps(["Bündnis 90/Die Grünen", "Fossil Free"]),))
+    store._conn.execute(
+        "INSERT INTO council_decisions (id,ksinr,position,kind,item_number,title,beschluss,outcome,factions) "
+        "VALUES (41,1,0,'decision','2','B','b','angenommen',?)", (json.dumps(["CDU"]),))
+    store._conn.commit()
+
+    # _decision_row exposes normalised parties (Fossil Free filtered out).
+    assert store.get_decision(40)["parties"] == ["Grüne"]
+    assert store.decision_ids_for_party("Grüne") == [40]
+    assert [x["id"] for x in store.search_decisions(party="Grüne")] == [40]
+    assert store.count_decisions(party="CDU") == 1 and store.count_decisions(party="SPD") == 0

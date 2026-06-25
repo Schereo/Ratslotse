@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, ExternalLink, FileText, FileDown, Users, Scale, ChevronRight } from "lucide-react";
 import { DecisionDetail, CouncilDecision } from "@/lib/types";
 import { Card, Spinner, EmptyState, formatDate } from "@/components/ui";
-import { OutcomeBadge, VoteBar, FieldBadge } from "@/components/decision-ui";
+import { OutcomeBadge, VoteBar, FieldBadge, PartyBadge } from "@/components/decision-ui";
 import { cn } from "@/lib/utils";
 import { useFetch } from "@/lib/use-fetch";
 
@@ -31,6 +31,8 @@ export default function DecisionDetailPage() {
   if (!data) return <EmptyState icon={Scale} title="Beschluss nicht gefunden" />;
 
   const d = data.decision;
+  const unanimous = d.outcome === "angenommen"
+    && (d.vote === "einstimmig" || ((d.gegenstimmen ?? 0) === 0 && (d.enthaltungen ?? 0) === 0));
   const present = presentMembers(data.attendance);
   const byParty: Record<string, number> = {};
   for (const a of data.attendance) {
@@ -67,9 +69,22 @@ export default function DecisionDetailPage() {
         <div className="mt-4 rounded-lg bg-muted/60 p-4 text-sm leading-relaxed text-foreground">{d.beschluss}</div>
       )}
 
+      {d.parties.length > 0 && (
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <span className="text-sm text-muted-foreground">Antrag von:</span>
+          {d.parties.map((p) => <PartyBadge key={p} party={p} />)}
+        </div>
+      )}
+
       {(d.outcome === "angenommen" || d.outcome === "abgelehnt" || d.vote) && (
         <Section title="Abstimmung">
           <VoteBar d={d} presentCount={present || undefined} />
+          {unanimous && data.present_parties.length > 0 && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted-foreground">Einstimmig — dafür stimmten die anwesenden Fraktionen:</span>
+              {data.present_parties.map((p) => <PartyBadge key={p} party={p} />)}
+            </div>
+          )}
           {d.raw_result && (
             <p className="mt-2 text-xs italic text-muted-foreground">
               „{d.raw_result.replace(/^[-\s]+|[-\s]+$/g, "")}"
