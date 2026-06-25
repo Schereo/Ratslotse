@@ -15,10 +15,11 @@ import {
 import { OutcomeBadge, FieldBadge } from "@/components/decision-ui";
 import { AnalysisTab } from "@/components/council-analysis";
 import { GoalsTab } from "@/components/council-goals";
+import { QaTab } from "@/components/council-qa";
 import { cn } from "@/lib/utils";
 
 type Scope = "all" | "upcoming" | "recent";
-type Tab = "sessions" | "decisions" | "analysis" | "goals";
+type Tab = "sessions" | "decisions" | "analysis" | "goals" | "ask";
 
 const sessionUrl = (ksinr: number) => `https://buergerinfo.oldenburg.de/si0057.php?__ksinr=${ksinr}`;
 
@@ -480,7 +481,7 @@ function CouncilInner() {
   // Tab lives in the URL (?tab=decisions) so the browser back button from a
   // decision detail page returns to the right tab.
   const param = searchParams.get("tab");
-  const tab: Tab = param === "decisions" || param === "analysis" || param === "goals" ? param : "sessions";
+  const tab: Tab = param === "decisions" || param === "analysis" || param === "goals" || param === "ask" ? param : "sessions";
   const [committees, setCommittees] = useState<string[]>([]);
 
   const setTab = (t: Tab) =>
@@ -495,7 +496,7 @@ function CouncilInner() {
       <PageHeader title="Ratsinformationssystem" description="Sitzungen, Tagesordnungen und Beschlüsse des Oldenburger Stadtrats." />
 
       <div className="mt-6 flex flex-wrap gap-1 rounded-md bg-muted p-1">
-        {([["sessions", "Sitzungen & Tagesordnungen"], ["decisions", "Beschlüsse"], ["analysis", "Parteien & Analyse"], ["goals", "Ziele"]] as [Tab, string][]).map(([t, label]) => (
+        {([["sessions", "Sitzungen & Tagesordnungen"], ["decisions", "Beschlüsse"], ["analysis", "Parteien & Analyse"], ["goals", "Ziele"], ["ask", "Frag den Rat"]] as [Tab, string][]).map(([t, label]) => (
           <button
             key={t}
             type="button"
@@ -513,7 +514,8 @@ function CouncilInner() {
       {tab === "sessions" ? <SessionsTab committees={committees} />
         : tab === "decisions" ? <DecisionsTab committees={committees} />
         : tab === "analysis" ? <AnalysisTab />
-        : <GoalsTab />}
+        : tab === "goals" ? <GoalsTab />
+        : <QaTab />}
     </div>
   );
 }

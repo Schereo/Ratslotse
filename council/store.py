@@ -913,6 +913,21 @@ class CouncilStore:
         ).fetchall()
         return [dict(r) for r in rows]
 
+    def get_decisions_by_ids(self, ids: list[int]) -> list[dict]:
+        """Fetch decisions by id, preserving the given order (for Q&A citations)."""
+        if not ids:
+            return []
+        ph = ",".join("?" * len(ids))
+        rows = self._conn.execute(
+            f"""SELECT d.id, d.title, d.summary, d.policy_field, d.outcome,
+                       cs.session_date, cs.committee
+                FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr
+                WHERE d.id IN ({ph})""",
+            ids,
+        ).fetchall()
+        by_id = {r["id"]: dict(r) for r in rows}
+        return [by_id[i] for i in ids if i in by_id]
+
     def get_protocols_raw(self) -> list[dict]:
         """All stored protocols with their raw text — for re-extraction without
         re-downloading the PDFs."""

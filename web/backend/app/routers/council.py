@@ -2,10 +2,12 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
 
 from council.store import CouncilStore
 from council.topics import POLICY_FIELDS
 from council.goals import GOALS
+from council import qa
 
 from ..deps import get_council_store, require_active
 
@@ -147,6 +149,23 @@ def goal_detail(key: str, _user: dict = Depends(require_active),
         "summary": store.goal_summary().get(key, _EMPTY_GOAL),
         "decisions": store.goal_detail(key),
     }
+
+
+class AskBody(BaseModel):
+    question: str
+
+
+@router.post("/ask")
+def ask(body: AskBody, _user: dict = Depends(require_active),
+        store: CouncilStore = Depends(get_council_store)) -> dict:
+    """Answer a free-text question from the decisions, with cited sources."""
+    q = body.question.strip()
+    if len(q) < 4:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Bitte eine etwas längere Frage stellen.")
+    keywords = qa.extract_keywords(q)
+    candidates = store.get_goal_candidates(keywords, limit=20)
+    answer, cited = qa.answer_question(q, candidates)
+    return {"answer": answer, "keywords": keywords, "sources": store.get_decisions_by_ids(cited)}
 
 
 @router.get("/decision-stats")

@@ -112,3 +112,20 @@ def test_goal_links(tmp_path):
 
     store.clear_goal_links("klima_2035")
     assert store.goal_summary() == {}
+
+
+def test_qa_keywords_and_fetch(tmp_path):
+    from council.qa import extract_keywords
+    assert "radverkehr" in extract_keywords("Was wurde zum Radverkehr beschlossen?")
+    kw = extract_keywords("Welche Photovoltaik-Projekte gibt es?")
+    assert "photovoltaik" in kw  # hyphenated compound is split
+    assert "welche" not in kw    # stopword dropped
+
+    store = CouncilStore(_old_db(tmp_path / "old.sqlite"))
+    store._conn.execute(
+        "INSERT INTO council_decisions (id,ksinr,position,kind,item_number,title,beschluss,outcome) "
+        "VALUES (30,1,0,'decision','1','A','b','angenommen')"
+    )
+    store._conn.commit()
+    got = store.get_decisions_by_ids([30, 999])  # 999 missing → skipped, order preserved
+    assert len(got) == 1 and got[0]["id"] == 30
