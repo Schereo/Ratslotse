@@ -39,14 +39,20 @@ def _assess_chunk(goal_key: str, batch: list[dict]) -> dict:
         return {"status": "failed", "error": repr(exc)}
 
 
-def process(council_db: Path, batch_size: int = 12, workers: int = 8, only: str | None = None) -> dict:
+def process(council_db: Path, batch_size: int = 12, workers: int = 8,
+            only: str | None = None, incremental: bool = False) -> dict:
     store = CouncilStore(council_db)
     links = tok_in = tok_out = 0
     for goal_key, goal in goals.GOALS.items():
         if only and goal_key != only:
             continue
-        cands = store.get_goal_candidates(goal["keywords"])
-        store.clear_goal_links(goal_key)
+        # Incremental (daily cron): only assess decisions not yet linked to this goal,
+        # and keep existing links. Full run: rebuild the goal from scratch.
+        cands = store.get_goal_candidates(goal["keywords"], exclude_goal=goal_key if incremental else None)
+        if not incremental:
+            store.clear_goal_links(goal_key)
+        if incremental and not cands:
+            continue
         batches = [cands[i:i + batch_size] for i in range(0, len(cands), batch_size)]
         print(f"{goal_key}: {len(cands)} candidates in {len(batches)} batch(es)", flush=True)
         with ThreadPoolExecutor(max_workers=workers) as ex:
@@ -73,9 +79,10 @@ def main() -> int:
     ap.add_argument("--batch-size", type=int, default=12)
     ap.add_argument("--workers", type=int, default=8)
     ap.add_argument("--only", default=None, help="restrict to one goal key")
+    ap.add_argument("--incremental", action="store_true", help="only assess newly unlinked decisions")
     args = ap.parse_args()
 
-    stats = process(args.db, args.batch_size, args.workers, args.only)
+    stats = process(args.db, args.batch_size, args.workers, args.only, args.incremental)
     print(f"\n=== done: {stats['links']} links ===")
     print(f"Tokens: {stats['tokens_in']:,} in + {stats['tokens_out']:,} out → ${stats['cost']:.4f}")
     return 0
