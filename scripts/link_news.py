@@ -13,6 +13,7 @@ fastembed is intentionally NOT in requirements — install it for this run:
 from __future__ import annotations
 
 import argparse
+import re
 import sqlite3
 import sys
 from datetime import date
@@ -38,6 +39,23 @@ def _ordinal(d) -> int:
         return 0
 
 
+import re
+
+# Generic civic words that don't make a topical match (a decision and an article
+# both mentioning "Oldenburg/Stadt" must not count as related).
+_GENERIC = {
+    "oldenburg", "stadt", "städtische", "städtischen", "städtischer", "rates", "stadtrat",
+    "beschluss", "bericht", "berichts", "ausschuss", "sitzung", "vorlage", "antrag", "antrags",
+    "verwaltung", "fraktion", "gremium", "kenntnis", "drucksache", "jahre", "jahres", "jahren",
+    "neue", "neuen", "neuer", "weitere", "weiteren", "sollen", "werden", "wurde", "wird",
+}
+
+
+def _words(text: str) -> set:
+    """Topical content words (≥5 letters, minus generic civic terms)."""
+    return {w for w in re.findall(r"[a-zäöüß]{5,}", (text or "").lower()) if w not in _GENERIC}
+
+
 def process(council_db: Path, nwz_db: Path, top_k: int = 3,
             threshold: float = 0.58, window_days: int = 120) -> dict:
     import numpy as np
@@ -51,6 +69,8 @@ def process(council_db: Path, nwz_db: Path, top_k: int = 3,
     dvecs = np.frombuffer(b"".join(bytes(r["vector"]) for r in drows), dtype="float32").reshape(len(dids), -1)
     ddates = store.decision_dates()
     dord = np.array([_ordinal(ddates.get(i)) for i in dids])
+    dtext = {r["id"]: r["text"] for r in store.decisions_for_embedding()}
+    dwords = [_words(dtext.get(i, "")) for i in dids]
 
     nwz = sqlite3.connect(nwz_db)
     nwz.row_factory = sqlite3.Row
@@ -64,6 +84,7 @@ def process(council_db: Path, nwz_db: Path, top_k: int = 3,
     atexts = [f"{a['title'] or ''}. {a['subtitle'] or ''}".strip() for a in arts]
     avecs = embeddings.embed(atexts)
     aord = np.array([_ordinal(a["pub_date"]) for a in arts])
+    awords = [_words(t) for t in atexts]
 
     out: list[tuple] = []
     block = 400
@@ -79,6 +100,8 @@ def process(council_db: Path, nwz_db: Path, top_k: int = 3,
                 s = float(row[j])
                 if s < threshold:
                     break
+                if not (dwords[i] & awords[j]):  # require a shared topical word
+                    continue
                 a = arts[j]
                 out.append((dids[i], a["catalog"], a["refid"], a["title"], a["pub_date"], s))
         print(f"  {min(start + block, len(dids))}/{len(dids)}", flush=True)
