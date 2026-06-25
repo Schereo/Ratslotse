@@ -16,6 +16,14 @@ router = APIRouter(prefix="/api/council", tags=["council"])
 BASE_URL = "https://buergerinfo.oldenburg.de"
 
 
+def _ratsinfo_url(ksinr: int) -> str:
+    return f"{BASE_URL}/si0057.php?__ksinr={ksinr}"
+
+
+def _vorlage_url(kvonr: int) -> str:
+    return f"{BASE_URL}/vo0050.php?__kvonr={kvonr}"
+
+
 @router.get("/committees")
 def committees(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> dict:
     return {"committees": store.get_all_committee_names()}
@@ -67,7 +75,7 @@ def session_detail(
     session["decisions"] = store.get_decisions(ksinr)
     session["attendance"] = store.get_attendance(ksinr)
     session["has_protocol"] = store.has_protocol(ksinr)
-    session["url"] = f"{BASE_URL}/si0057.php?__ksinr={ksinr}"
+    session["url"] = _ratsinfo_url(ksinr)
     return session
 
 
@@ -106,7 +114,7 @@ def decision_detail(
     out: dict = {
         "decision": d,
         "attendance": store.get_attendance(d["ksinr"]),
-        "ratsinfo_url": f"{BASE_URL}/si0057.php?__ksinr={d['ksinr']}",
+        "ratsinfo_url": _ratsinfo_url(d["ksinr"]),
         "sub_votes": [],
         "vorlage_journey": [],
     }
@@ -114,7 +122,7 @@ def decision_detail(
         out["sub_votes"] = store.get_subvotes(d["ksinr"], d["item_number"])
     if d.get("vorlage_nr"):
         out["vorlage_journey"] = store.vorlage_journey(d["vorlage_nr"])
-        out["vorlage_url"] = f"{BASE_URL}/vo0050.php?__kvonr={d['kvonr']}" if d.get("kvonr") else None
+        out["vorlage_url"] = _vorlage_url(d["kvonr"]) if d.get("kvonr") else None
     return out
 
 
