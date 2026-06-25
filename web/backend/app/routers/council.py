@@ -4,6 +4,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from council.store import CouncilStore
+from council.topics import POLICY_FIELDS
 
 from ..deps import get_council_store, require_active
 
@@ -15,6 +16,18 @@ BASE_URL = "https://buergerinfo.oldenburg.de"
 @router.get("/committees")
 def committees(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> dict:
     return {"committees": store.get_all_committee_names()}
+
+
+@router.get("/fields")
+def fields(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> dict:
+    """Policy fields that have at least one classified decision, with label + count."""
+    counts = {r["field"]: r["count"] for r in store.policy_field_stats()}
+    out = [
+        {"key": key, "label": POLICY_FIELDS[key][0], "count": counts[key]}
+        for key in POLICY_FIELDS if counts.get(key)
+    ]
+    out.sort(key=lambda f: f["count"], reverse=True)
+    return {"fields": out}
 
 
 @router.get("/sessions")
@@ -66,13 +79,15 @@ def decisions(
     kind: str = Query("", pattern="^(|decision|subvote)$"),
     category: str = Query("", pattern="^(|vote|report)$"),
     sort: str = Query("date_desc", pattern="^(date_desc|date_asc|faction)$"),
+    field: str = "",
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
 ) -> dict:
-    total = store.count_decisions(q, committee, outcome, faction, date_from, date_to, kind, category)
-    rows = store.search_decisions(q, committee, outcome, faction, date_from, date_to, kind, category, sort, limit, offset)
+    total = store.count_decisions(q, committee, outcome, faction, date_from, date_to, kind, category, field)
+    rows = store.search_decisions(q, committee, outcome, faction, date_from, date_to, kind, category,
+                                  sort=sort, field=field, limit=limit, offset=offset)
     return {"total": total, "decisions": rows}
 
 
