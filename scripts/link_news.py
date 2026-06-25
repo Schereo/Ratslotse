@@ -75,16 +75,19 @@ def process(council_db: Path, nwz_db: Path, top_k: int = 3,
     nwz = sqlite3.connect(nwz_db)
     nwz.row_factory = sqlite3.Row
     arts = nwz.execute(
-        "SELECT a.catalog, a.refid, a.title, a.subtitle, f.pub_date "
+        "SELECT a.catalog, a.refid, a.title, a.subtitle, a.content_text, f.pub_date "
         "FROM articles a JOIN articles_fts f ON f.catalog = a.catalog AND f.refid = a.refid"
     ).fetchall()
     nwz.close()
 
     print(f"Embedding {len(arts)} articles…", flush=True)
-    atexts = [f"{a['title'] or ''}. {a['subtitle'] or ''}".strip() for a in arts]
+    # Include the article body so the embedding reflects the actual topic, not just
+    # generic civic vocabulary in short titles (which caused spurious matches).
+    atexts = [f"{a['title'] or ''}. {a['subtitle'] or ''}. {(a['content_text'] or '')[:500]}".strip() for a in arts]
     avecs = embeddings.embed(atexts)
     aord = np.array([_ordinal(a["pub_date"]) for a in arts])
-    awords = [_words(t) for t in atexts]
+    # Lexical guard uses the headline only (specific), not the body (too many words).
+    awords = [_words(f"{a['title'] or ''}. {a['subtitle'] or ''}") for a in arts]
 
     out: list[tuple] = []
     block = 400
