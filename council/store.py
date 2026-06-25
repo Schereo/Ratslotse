@@ -938,6 +938,9 @@ class CouncilStore:
             money[r["q"]] += r["eur"] or 0
         top_fields = sorted(per_field, key=lambda f: -sum(per_field[f].values()))[:6]
 
+        # Procedural tags aren't "topics" — keep them out of the emerging list.
+        procedural = {"bericht", "annahme", "vertagung", "kenntnisnahme", "beschluss",
+                      "antrag", "anfrage", "mitteilung", "vorlage", "abstimmung", "resolution"}
         recent = set(all_q[-2:])
         tagc: Counter = Counter()
         for r in self._conn.execute(
@@ -949,7 +952,9 @@ class CouncilStore:
             if r["q"] in recent:
                 try:
                     for t in json.loads(r["tags"] or "[]"):
-                        tagc[str(t).strip()] += 1
+                        t = str(t).strip()
+                        if t and t.lower() not in procedural:
+                            tagc[t] += 1
                 except (ValueError, TypeError):
                     pass
 
