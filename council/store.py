@@ -243,6 +243,13 @@ class CouncilStore:
                 self._conn.execute(
                     "CREATE INDEX IF NOT EXISTS idx_decisions_field ON council_decisions(policy_field)"
                 )
+        # Full-text index for hybrid (BM25 + vector) retrieval. rowid = decision id;
+        # diacritics folded so "Radweg"/"radweg" and German umlauts match. Populated by
+        # scripts/build_decisions_fts.py (and the daily cron).
+        self._conn.execute(
+            "CREATE VIRTUAL TABLE IF NOT EXISTS council_decisions_fts "
+            "USING fts5(content, tokenize=\"unicode61 remove_diacritics 2\")"
+        )
         self._migrate_owner_id()
 
     def _migrate_owner_id(self) -> None:
@@ -850,6 +857,36 @@ class CouncilStore:
             self._conn.execute(
                 "UPDATE council_decisions SET policy_field = NULL, policy_tags = NULL, summary = NULL"
             )
+
+    def rebuild_fts(self) -> int:
+        """(Re)build the full-text index from all main decisions (title + beschluss + summary)."""
+        with self._conn:
+            self._conn.execute("DELETE FROM council_decisions_fts")
+            self._conn.execute(
+                "INSERT INTO council_decisions_fts(rowid, content) "
+                "SELECT id, REPLACE(COALESCE(title,'') || ' ' || COALESCE(beschluss,'') || ' ' "
+                "|| COALESCE(summary,''), 'ß', 'ss') "  # unicode61 folds ä/ö/ü but not ß
+                "FROM council_decisions WHERE kind = 'decision'"
+            )
+        return self._conn.execute("SELECT COUNT(*) FROM council_decisions_fts").fetchone()[0]
+
+    def search_decisions_fts(self, query: str, limit: int = 40) -> list[tuple]:
+        """BM25 keyword search → ``[(decision_id, score)]`` (larger = better). Terms are
+        OR-combined for recall; returns ``[]`` on an empty or invalid query."""
+        terms = [t for t in re.findall(r"[0-9a-zäöü]+", query.lower().replace("ß", "ss")) if len(t) >= 3][:12]
+        if not terms:
+            return []
+        match = " OR ".join(terms)
+        try:
+            rows = self._conn.execute(
+                "SELECT rowid, rank FROM council_decisions_fts WHERE council_decisions_fts MATCH ? "
+                "ORDER BY rank LIMIT ?",
+                (match, limit),
+            ).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        # FTS5 rank is negative (more negative = better); flip so larger = better.
+        return [(r[0], -float(r[1])) for r in rows]
 
     def decisions_for_amount(self, only_missing: bool = False) -> list[dict]:
         """Main decisions with their text, for the € extraction backfill."""

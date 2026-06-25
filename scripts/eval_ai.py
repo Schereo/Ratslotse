@@ -73,7 +73,7 @@ def eval_qa(store: CouncilStore) -> dict:
     miss, ok = [], 0
     for g in gold:
         q = g["question"]
-        hits = emb.search(store, qa.expand_query(q), top_k=10, min_score=0.4)
+        hits = emb.hybrid_search(store, q, qa.expand_query(q), top_k=10)
         srcs = store.get_decisions_by_ids([h[0] for h in hits])
         if g.get("expect_refuse"):
             ans = qa.answer_question(q, srcs)

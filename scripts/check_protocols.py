@@ -46,6 +46,11 @@ def main() -> None:
     # Extract € amounts from any decisions still missing one (regex, no cost).
     astats = extract_amounts(COUNCIL_DB, only_missing=True)
     print(f"€ amounts: {astats['with_amount']}/{astats['decisions']} newly scanned.")
+    # Keep the full-text index in sync for hybrid retrieval (pure SQLite, instant).
+    from council.store import CouncilStore
+    _store = CouncilStore(COUNCIL_DB)
+    print(f"FTS rebuilt: {_store.rebuild_fts()} decisions indexed.")
+    _store.close()
 
 
 if __name__ == "__main__":
