@@ -158,7 +158,7 @@ export default function TechnikPage() {
             </p>
             <p>Auf diesem Gold-Set zeigt sich (Stand der jüngsten Messung):</p>
             <ul className="ml-4 list-disc space-y-1">
-              <li><strong className="text-foreground">Themenfeld:</strong> ~88 % stimmen mit der unabhängigen Einordnung überein. Die meisten Abweichungen betreffen Beschlüsse, die echt zwei Themenfelder berühren.</li>
+              <li><strong className="text-foreground">Themenfeld:</strong> ~93 % stimmen mit der unabhängigen Einordnung überein. Die verbleibenden Abweichungen betreffen fast nur Beschlüsse, die echt zwei Themenfelder berühren.</li>
               <li><strong className="text-foreground">Ziel-Bewertung:</strong> die Richtung (bringt voran ↔ bremst) wird verlässlich getroffen — kein einziger Richtungsfehler. Unschärfe gibt es nur an der Grenze „neutral".</li>
               <li><strong className="text-foreground">Frag den Rat:</strong> im Test ausschließlich belegte Antworten — keine erfundenen Fakten, keine falschen Quellen, und ehrliches „nichts gefunden", wenn es nichts gibt.</li>
             </ul>
