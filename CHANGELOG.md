@@ -9,8 +9,22 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 ## [Unreleased]
 
 ### Geplant
-- Semantische **Embeddings** statt Keyword-Retrieval (bessere Treffer für Ziel-Tracking und „Frag den Rat", Clustering, verwandte Beschlüsse)
-- Weitere Querverbindungen: Vorgangs-Dossiers, Geld-Tracking, News-Verknüpfung, Auto-Rückblicke
+- Ziel-Retrieval ebenfalls semantisch (track_goals nutzt noch Keywords)
+- Weitere Querverbindungen: Geld-Tracking, Auto-Rückblicke, News-Verknüpfung, Vorgangs-Dossiers
+
+## [0.9.0] – 2026-06-25
+
+### Hinzugefügt
+- **Ähnliche Beschlüsse** (semantische Embeddings): fastembed/ONNX bettet jeden Beschluss offline ein, die Detailseite zeigt die nächsten Nachbarn. (#64)
+- **Semantische Suche für „Frag den Rat"**: die Frage wird eingebettet und gegen die Beschluss-Vektoren gesucht — findet Beschlüsse auch ohne Wort-Übereinstimmung, mit Keyword-Fallback (kein Crash ohne fastembed). (#65)
+
+### Geändert
+- Ziele auf Oldenburgs **echte Pläne** gegründet (Klimaschutzplan 2035, Mobilitätsplan 2030, Bündnis Wohnen, Innenstadt-/Digitalstrategie) — Labels, Beschreibungen und Keywords aus den Plänen. (#60)
+- Ziel-Tracking läuft **inkrementell im täglichen Cron** (nur neue Beschlüsse). (#61)
+- Kompaktere Council-Tab-Leiste (Icons + kurze Labels). (#62)
+
+### Refactoring
+- `useFetch`-Hook + URL-Helfer entkoppeln Daten-Lade-Boilerplate. (#63)
 
 ## [0.8.0] – 2026-06-25
 
@@ -69,7 +83,8 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 ### Hinzugefügt
 - Grundlage: NWZ-Scraper, OpenRouter-basierter Klassifikator, Telegram-Bot und erstes Web-Frontend (FastAPI-Backend + Next.js-Frontend). (#24, #17)
 
-[Unreleased]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.5.1...v0.6.0
