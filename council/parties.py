@@ -1,29 +1,35 @@
-"""Normalise Oldenburg council party / faction names.
+"""Normalise Oldenburg council faction / group names to real parties.
 
-The protocols spell the same party many ways ("Bündnis 90/Die Grünen" vs
-"DIE GRÜNEN", "Gruppe DIE LINKE./Piratenpartei" vs "DIE LINKE./Piratenpartei")
-and the attendance lists mix in non-party roles (Verwaltung, Gast, beratend…).
-``normalize_party`` collapses the variants to a canonical short label and returns
-``None`` for non-parties, so party-level aggregation is meaningful.
+Grounded in the actual 2021–2026 council (oldenburg.de, NWZ), incl. the mid-term
+changes: BSW = the former Die-Linke members (switched 2024), the FDP/Volt group
+dissolved into FDP + Volt, the new group "Für Oldenburg" (2024). See the
+[[reference_oldenburg_rat]] memory.
+
+``normalize_party`` is a **whitelist**: only recognised factions/groups map to a
+canonical label; everything else (administration, advisory boards, NGOs/initiatives
+like BUND/NABU/ADFC/Fossil Free, named individuals) returns ``None`` so it is left
+out of the party analysis.
 """
 from __future__ import annotations
 
-# Substrings that mark a non-party row (administration, guests, advisory roles…).
+# Substrings that mark a NON-party row (kept out of the analysis).
 _NON_PARTY = (
-    "verwaltung", "gast", "beratend", "protokoll", "schriftführ", "oberbürgermeister",
-    "baurat", "dezernent", "stadtkämmerer", "presse", "gleichstellung",
+    "verwaltung", "beratend", "gast", "protokoll", "schriftführ", "oberbürgermeister",
+    "baurat", "dezernent", "stadtkämmerer", "beauftragt", "beirat", "vertretung",
+    "elternrat", "naturschutz", "nabu", "bund", "adfc", "fossil free", "agenda",
+    "ratsfrau", "ratsherr", "prof.", "dr. ", "herr ", "frau ",
 )
 
-# Checked top-to-bottom; first hit wins, so put the more specific rules first
-# (e.g. "fdp/volt" before "fdp", else FDP/Volt would collapse into FDP).
+# Recognised factions/groups, checked top-to-bottom (most specific first).
 _RULES: list[tuple[tuple[str, ...], str]] = [
     (("grüne", "grünen"), "Grüne"),
-    (("linke", "piraten"), "DIE LINKE/Piraten"),
-    (("fdp/volt",), "FDP/Volt"),
-    (("fossil free",), "Fossil Free"),
-    (("für oldenburg",), "Für Oldenburg"),
+    (("bsw",), "BSW"),                       # ex-Die-Linke members (2024)
+    (("linke",), "Die Linke"),               # joint group + solo Linke (→ BSW 2024)
+    (("piraten",), "Piraten"),               # Piraten after the Linke split
+    (("fdp/volt",), "FDP/Volt"),             # dissolved group (historical)
+    (("für oldenburg",), "Für Oldenburg"),   # new group (2024)
     (("wfo", "lkr"), "WFO/LKR"),
-    (("bsw",), "BSW"),
+    (("ibo", "live"), "IBO/LiVe"),
     (("afd",), "AfD"),
     (("spd",), "SPD"),
     (("cdu",), "CDU"),
@@ -31,15 +37,15 @@ _RULES: list[tuple[tuple[str, ...], str]] = [
     (("volt",), "Volt"),
 ]
 
-# Preferred display order (most active first) for stable UI sorting.
+# Display order (current / most active first), then historical.
 CANONICAL_ORDER = [
-    "Grüne", "SPD", "CDU", "FDP", "DIE LINKE/Piraten", "FDP/Volt", "BSW", "AfD",
-    "Volt", "Fossil Free", "WFO/LKR", "Für Oldenburg",
+    "Grüne", "SPD", "CDU", "BSW", "FDP", "Für Oldenburg", "Volt", "AfD",
+    "Die Linke", "Piraten", "FDP/Volt", "WFO/LKR", "IBO/LiVe",
 ]
 
 
 def normalize_party(raw: str | None) -> str | None:
-    """Canonical short label for a party, or None for non-parties / empty."""
+    """Canonical party/group label, or None for non-parties / unknown."""
     if not raw:
         return None
     low = raw.strip().lower()
@@ -48,8 +54,7 @@ def normalize_party(raw: str | None) -> str | None:
     for needles, label in _RULES:
         if any(n in low for n in needles):
             return label
-    # Unknown but plausibly a party/group — keep the cleaned original.
-    return raw.strip()
+    return None  # unknown → not a recognised party
 
 
 def order_key(party: str) -> tuple[int, str]:
