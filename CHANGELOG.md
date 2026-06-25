@@ -8,6 +8,9 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+### Behoben
+- **Themenfeld-Klassifikation:** Rechnungsdokumente (Jahresabschluss, Wirtschaftsplan, Haushaltsplan …) einer Fach-Einrichtung landen jetzt zuverlässig unter `finanzen` statt beim Fachthema; 115 Beschlüsse re-klassifiziert. Themenfeld-Genauigkeit im Gold-Eval 88 % → **93 %** (Gesamt → 90 %). (#94)
+
 ### Geplant
 - Entitäten-Graph / Themen-Seiten + Vorgangs-Dossier
 
