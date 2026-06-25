@@ -1,3 +1,6 @@
+"use client";
+
+import { useRouter } from "next/navigation";
 import { CouncilDecision, DecisionOutcome } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -19,11 +22,17 @@ export const POLICY_FIELD_LABELS: Record<string, string> = {
 };
 
 export function FieldBadge({ field, className }: { field: string | null; className?: string }) {
+  const router = useRouter();
   if (!field) return null;
   return (
-    <span className={cn("inline-flex items-center rounded-md bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground", className)}>
+    <button
+      type="button"
+      title="Beschlüsse dieses Themenfelds"
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(`/council?tab=decisions&field=${field}`); }}
+      className={cn("inline-flex items-center rounded-md bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground transition-colors hover:bg-secondary/70", className)}
+    >
       {POLICY_FIELD_LABELS[field] ?? field}
-    </span>
+    </button>
   );
 }
 
@@ -42,6 +51,20 @@ export function OutcomeBadge({ outcome }: { outcome: DecisionOutcome | null }) {
     <span className={cn("shrink-0 whitespace-nowrap rounded-md px-2.5 py-0.5 text-xs font-medium", m.cls)}>
       {m.label}
     </span>
+  );
+}
+
+export function PartyBadge({ party, className }: { party: string; className?: string }) {
+  const router = useRouter();
+  return (
+    <button
+      type="button"
+      title="Beschlüsse dieser Partei"
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(`/council?tab=decisions&party=${encodeURIComponent(party)}`); }}
+      className={cn("inline-flex items-center rounded-md border border-border px-2 py-0.5 text-xs font-medium text-foreground transition-colors hover:bg-muted", className)}
+    >
+      {party}
+    </button>
   );
 }
 

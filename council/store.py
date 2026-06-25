@@ -7,6 +7,7 @@ from pathlib import Path
 import sqlite3
 
 from .scraper import CouncilSession, AgendaItem
+from .parties import normalize_party, order_key
 
 
 def _int_or_none(v) -> int | None:
@@ -626,16 +627,39 @@ class CouncilStore:
                 d[key] = json.loads(d.get(key) or "[]")
             except (json.JSONDecodeError, TypeError):
                 d[key] = []
+        # Normalised Antragsteller parties (real factions only, deduped).
+        d["parties"] = sorted({p for p in (normalize_party(f) for f in d["factions"]) if p}, key=order_key)
         return d
 
     # Outcomes grouped into "real votes" vs "reports / no decision".
     _VOTE_OUTCOMES = ("angenommen", "abgelehnt", "vertagt")
     _REPORT_OUTCOMES = ("zur_kenntnis", "kein_beschluss")
 
-    def _decision_where(self, query, committee, outcome, faction, date_from, date_to, kind, category, field=""):
+    def decision_ids_for_party(self, party: str) -> list[int]:
+        """IDs of main decisions whose Antragsteller (normalised) includes ``party``."""
+        from council.parties import normalize_party
+        ids = []
+        for row in self._conn.execute("SELECT id, factions FROM council_decisions WHERE kind = 'decision'"):
+            try:
+                arr = json.loads(row["factions"] or "[]")
+            except (json.JSONDecodeError, TypeError):
+                arr = []
+            if any(normalize_party(f) == party for f in arr):
+                ids.append(row["id"])
+        return ids
+
+    def _decision_where(self, query, committee, outcome, faction, date_from, date_to,
+                        kind, category, field="", party_ids=None):
         """Build the WHERE clause + params shared by search and count."""
         filters: list[str] = []
         params: list = []
+        if party_ids is not None:
+            # Restrict to a party's decisions (ids precomputed via normalisation).
+            if party_ids:
+                filters.append(f"d.id IN ({','.join('?' * len(party_ids))})")
+                params += party_ids
+            else:
+                filters.append("0")  # party given but no matches
         if query:
             filters.append("(d.title LIKE ? OR d.beschluss LIKE ? OR d.summary LIKE ?)")
             like = f"%{query}%"
@@ -682,19 +706,22 @@ class CouncilStore:
         category: str = "",
         sort: str = "date_desc",
         field: str = "",
+        party: str = "",
         limit: int = 50,
         offset: int = 0,
     ) -> list[dict]:
         """Search extracted decisions, joined with their session (committee + date).
         ``category`` is "vote" (decided) or "report" (zur Kenntnis / no decision).
-        ``field`` filters by policy field; ``sort`` ∈ {date_desc, date_asc, faction}."""
+        ``field`` filters by policy field, ``party`` by normalised Antragsteller;
+        ``sort`` ∈ {date_desc, date_asc, faction}."""
         order = {
             "date_asc": "cs.session_date ASC, d.position",
             # Non-empty factions first ('["…' < '[]'), grouped, newest within.
             "faction": "d.factions ASC, cs.session_date DESC",
         }.get(sort, "cs.session_date DESC, d.position")
+        party_ids = self.decision_ids_for_party(party) if party else None
         where, params = self._decision_where(query, committee, outcome, faction,
-                                              date_from, date_to, kind, category, field)
+                                              date_from, date_to, kind, category, field, party_ids)
         rows = self._conn.execute(
             f"""SELECT d.*, cs.committee, cs.session_date, p.document_url AS protocol_url
                 FROM council_decisions d
@@ -709,10 +736,11 @@ class CouncilStore:
 
     def count_decisions(
         self, query="", committee="", outcome="", faction="", date_from="", date_to="",
-        kind="", category="", field="",
+        kind="", category="", field="", party="",
     ) -> int:
+        party_ids = self.decision_ids_for_party(party) if party else None
         where, params = self._decision_where(query, committee, outcome, faction,
-                                             date_from, date_to, kind, category, field)
+                                             date_from, date_to, kind, category, field, party_ids)
         row = self._conn.execute(
             f"""SELECT COUNT(*) FROM council_decisions d
                 JOIN council_sessions cs ON cs.ksinr = d.ksinr {where}""",

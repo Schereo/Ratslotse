@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from council.store import CouncilStore
 from council.topics import POLICY_FIELDS
 from council.goals import GOALS
+from council.parties import normalize_party, order_key
 from council import qa
 
 from ..deps import get_council_store, require_active
@@ -91,14 +92,15 @@ def decisions(
     category: str = Query("", pattern="^(|vote|report)$"),
     sort: str = Query("date_desc", pattern="^(date_desc|date_asc|faction)$"),
     field: str = "",
+    party: str = "",
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
 ) -> dict:
-    total = store.count_decisions(q, committee, outcome, faction, date_from, date_to, kind, category, field)
+    total = store.count_decisions(q, committee, outcome, faction, date_from, date_to, kind, category, field, party)
     rows = store.search_decisions(q, committee, outcome, faction, date_from, date_to, kind, category,
-                                  sort=sort, field=field, limit=limit, offset=offset)
+                                  sort=sort, field=field, party=party, limit=limit, offset=offset)
     return {"total": total, "decisions": rows}
 
 
@@ -111,9 +113,14 @@ def decision_detail(
     d = store.get_decision(decision_id)
     if not d:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Beschluss nicht gefunden.")
+    attendance = store.get_attendance(d["ksinr"])
+    # Voting members present (for the "unanimous → these factions approved" hint).
+    present = {normalize_party(a["party"]) for a in attendance
+               if (a.get("role") or "mitglied") in ("vorsitz", "mitglied")}
     out: dict = {
         "decision": d,
-        "attendance": store.get_attendance(d["ksinr"]),
+        "attendance": attendance,
+        "present_parties": sorted((p for p in present if p), key=order_key),
         "ratsinfo_url": _ratsinfo_url(d["ksinr"]),
         "sub_votes": [],
         "vorlage_journey": [],

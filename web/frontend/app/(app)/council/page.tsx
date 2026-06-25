@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Search, ExternalLink, ChevronDown, ChevronRight, Landmark, Scale, Users, BarChart3, Target, Sparkles } from "lucide-react";
+import { Search, ExternalLink, ChevronDown, ChevronRight, Landmark, Scale, Users, BarChart3, Target, Sparkles, X } from "lucide-react";
 import { api, qs, ApiError } from "@/lib/api";
 import { useDebounce } from "@/lib/use-debounce";
 import {
@@ -135,7 +135,6 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   const [mode, setMode] = useState<"vote" | "report">("vote");
   const [outcome, setOutcome] = useState("");
   const [sort, setSort] = useState("date_desc");
-  const [field, setField] = useState("");
   const [fields, setFields] = useState<PolicyField[]>([]);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -144,6 +143,19 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const debouncedQ = useDebounce(q, 350);
+
+  // Field + party live in the URL so the analysis and badges can deep-link to a filtered list.
+  const sp = useSearchParams();
+  const router = useRouter();
+  const field = sp.get("field") ?? "";
+  const party = sp.get("party") ?? "";
+  const setUrlParam = (key: string, val: string) => {
+    const params = new URLSearchParams(sp.toString());
+    params.set("tab", "decisions");
+    if (val) params.set(key, val); else params.delete(key);
+    router.replace(`/council?${params.toString()}`, { scroll: false });
+    setPage(1);
+  };
 
   useEffect(() => {
     api.get<{ fields: PolicyField[] }>("/council/fields").then((d) => setFields(d.fields)).catch(() => {});
@@ -154,7 +166,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
     try {
       const data = await api.get<{ total: number; decisions: CouncilDecision[] }>(
         `/council/decisions${qs({
-          q, committee, category: mode, sort, field,
+          q, committee, category: mode, sort, field, party,
           outcome: mode === "vote" ? outcome : "",
           date_from: dateFrom, date_to: dateTo,
           limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE,
@@ -167,12 +179,12 @@ function DecisionsTab({ committees }: { committees: string[] }) {
     } finally {
       setLoading(false);
     }
-  }, [q, committee, mode, outcome, sort, field, dateFrom, dateTo, page]);
+  }, [q, committee, mode, outcome, sort, field, party, dateFrom, dateTo, page]);
 
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedQ, committee, mode, outcome, sort, field, dateFrom, dateTo, page]);
+  }, [debouncedQ, committee, mode, outcome, sort, field, party, dateFrom, dateTo, page]);
 
   const query = q.trim();
   const totalPages = Math.ceil(total / PAGE_SIZE);
@@ -234,7 +246,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
           <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-3">
             {fields.length > 0 && (
               <FilterField label="Themenfeld">
-                <Select value={field} onChange={(e) => { setField(e.target.value); setPage(1); }}>
+                <Select value={field} onChange={(e) => setUrlParam("field", e.target.value)}>
                   <option value="">Alle Themenfelder</option>
                   {fields.map((f) => <option key={f.key} value={f.key}>{f.label} ({f.count})</option>)}
                 </Select>
@@ -260,6 +272,19 @@ function DecisionsTab({ committees }: { committees: string[] }) {
           </FilterField>
         </div>
       </Card>
+
+      {party && (
+        <div className="mt-4 flex items-center gap-2 text-sm">
+          <span className="text-muted-foreground">Anträge von:</span>
+          <button
+            type="button"
+            onClick={() => setUrlParam("party", "")}
+            className="inline-flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90"
+          >
+            {party} <X className="h-3 w-3" />
+          </button>
+        </div>
+      )}
 
       <div className="mt-6">
         {loading ? (

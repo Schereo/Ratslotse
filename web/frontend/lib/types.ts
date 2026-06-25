@@ -73,6 +73,7 @@ export interface CouncilDecision {
   gegenstimmen: number | null;
   enthaltungen: number | null;
   factions: string[];
+  parties: string[];
   vorlage_nr: string | null;
   raw_result: string | null;
   committee: string;
@@ -165,6 +166,7 @@ export interface SimilarDecision {
 export interface DecisionDetail {
   decision: CouncilDecision;
   attendance: Attendee[];
+  present_parties: string[];
   sub_votes: CouncilDecision[];
   vorlage_journey: VorlageStop[];
   similar: SimilarDecision[];
