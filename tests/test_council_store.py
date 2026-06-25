@@ -132,3 +132,23 @@ def test_qa_keywords_and_fetch(tmp_path):
     store._conn.commit()
     got = store.get_decisions_by_ids([30, 999])  # 999 missing → skipped, order preserved
     assert len(got) == 1 and got[0]["id"] == 30
+
+
+def test_similar_neighbours(tmp_path):
+    store = CouncilStore(_old_db(tmp_path / "old.sqlite"))
+    for i in (10, 11, 12):
+        store._conn.execute(
+            f"INSERT INTO council_decisions (id,ksinr,position,kind,item_number,title,beschluss,outcome) "
+            f"VALUES ({i},1,0,'decision','1','T{i}','b','angenommen')"
+        )
+    store._conn.commit()
+
+    store.set_similar([(10, 11, 0, 0.9), (10, 12, 1, 0.7), (11, 10, 0, 0.9)])
+    sim = store.get_similar(10)
+    assert [s["id"] for s in sim] == [11, 12]  # ordered by rank
+    assert sim[0]["score"] == 0.9 and sim[0]["title"] == "T11"
+    assert store.get_similar(12) == []  # no neighbours stored for 12
+    # set_similar replaces everything
+    store.set_similar([(10, 12, 0, 0.8)])
+    assert [s["id"] for s in store.get_similar(10)] == [12]
+    assert any(e["id"] == 10 and "T10" in e["text"] for e in store.decisions_for_embedding())

@@ -141,6 +141,16 @@ CREATE TABLE IF NOT EXISTS council_goal_links (
     PRIMARY KEY (goal, decision_id)
 );
 CREATE INDEX IF NOT EXISTS idx_goal_links_goal ON council_goal_links(goal);
+
+-- Precomputed nearest neighbours per decision (semantic embeddings, council.embeddings).
+CREATE TABLE IF NOT EXISTS council_similar (
+    decision_id INTEGER NOT NULL,
+    neighbor_id INTEGER NOT NULL,
+    rank        INTEGER NOT NULL,
+    score       REAL NOT NULL,
+    PRIMARY KEY (decision_id, neighbor_id)
+);
+CREATE INDEX IF NOT EXISTS idx_similar_decision ON council_similar(decision_id);
 """
 
 
@@ -916,6 +926,41 @@ class CouncilStore:
                WHERE gl.goal = ? AND gl.relevant = 1
                ORDER BY cs.session_date DESC""",
             (goal,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    # --- Semantic similarity (precomputed offline) --------------------------
+    def decisions_for_embedding(self) -> list[dict]:
+        """All main decisions with a short text for embedding (id + text)."""
+        rows = self._conn.execute(
+            "SELECT id, title, summary, beschluss FROM council_decisions WHERE kind = 'decision'"
+        ).fetchall()
+        out = []
+        for r in rows:
+            text = f"{r['title'] or ''}. {r['summary'] or r['beschluss'] or ''}".strip()
+            out.append({"id": r["id"], "text": text[:500]})
+        return out
+
+    def set_similar(self, rows: list[tuple]) -> int:
+        """Replace all similarity links. ``rows`` = (decision_id, neighbor_id, rank, score)."""
+        with self._conn:
+            self._conn.execute("DELETE FROM council_similar")
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_similar (decision_id, neighbor_id, rank, score) "
+                "VALUES (?, ?, ?, ?)", rows,
+            )
+        return len(rows)
+
+    def get_similar(self, decision_id: int, limit: int = 5) -> list[dict]:
+        """The most similar decisions to ``decision_id`` (precomputed), best first."""
+        rows = self._conn.execute(
+            """SELECT d.id, d.title, d.summary, d.policy_field, d.outcome,
+                      cs.session_date, cs.committee, sl.score
+               FROM council_similar sl
+               JOIN council_decisions d ON d.id = sl.neighbor_id
+               JOIN council_sessions cs ON cs.ksinr = d.ksinr
+               WHERE sl.decision_id = ? ORDER BY sl.rank LIMIT ?""",
+            (decision_id, limit),
         ).fetchall()
         return [dict(r) for r in rows]
 

@@ -117,6 +117,7 @@ def decision_detail(
         "ratsinfo_url": _ratsinfo_url(d["ksinr"]),
         "sub_votes": [],
         "vorlage_journey": [],
+        "similar": store.get_similar(decision_id, limit=5),
     }
     if d.get("kind") == "decision" and d.get("item_number"):
         out["sub_votes"] = store.get_subvotes(d["ksinr"], d["item_number"])
