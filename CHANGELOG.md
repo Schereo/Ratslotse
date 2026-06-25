@@ -9,8 +9,20 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 ## [Unreleased]
 
 ### Geplant
-- Ziel-Retrieval ebenfalls semantisch (track_goals nutzt noch Keywords)
-- Weitere Querverbindungen: Geld-Tracking, Auto-Rückblicke, News-Verknüpfung, Vorgangs-Dossiers
+- Weitere Features: Geld-Tracking, Auto-Rückblicke, Vorgangs-Dossiers
+
+## [0.11.0] – 2026-06-25
+
+### Hinzugefügt
+- **News-Verknüpfung:** Beschlüsse werden mit den NWZ-Artikeln verknüpft, die sie berichten (Embeddings + Zeitfenster + lexikalischer Themen-Filter); die Detailseite zeigt „In der Presse". (#71, #74)
+- **Ähnlichkeits-Score** je Treffer in „Frag den Rat" und „Ähnliche Beschlüsse" — transparentes Ranking. (#73)
+
+### Geändert
+- **Frag den Rat** deutlich besser: die Frage wird zuerst in Themen-Suchbegriffe expandiert (statt der rohen Frage, die generische Beschlüsse holte) — Treffer sind jetzt klar themenrelevant. (#73)
+- **Ziel-Tracking** nutzt zusätzlich semantisches Retrieval (Keyword ∪ Embeddings) → besserer Recall (2.266 statt 1.658 Zuordnungen). (#70)
+
+### Behoben
+- **Abstimmungs-Leiste:** Farben folgen jetzt dem Ausgang — abgelehnte Beschlüsse zeigen rot-dominant statt grün (sah vorher aus wie angenommen). (#72)
 
 ## [0.10.1] – 2026-06-25
 
@@ -100,7 +112,8 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 ### Hinzugefügt
 - Grundlage: NWZ-Scraper, OpenRouter-basierter Klassifikator, Telegram-Bot und erstes Web-Frontend (FastAPI-Backend + Next.js-Frontend). (#24, #17)
 
-[Unreleased]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.10.1...HEAD
+[Unreleased]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.10.1...v0.11.0
 [0.10.1]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.8.0...v0.9.0
