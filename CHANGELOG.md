@@ -9,7 +9,15 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 ## [Unreleased]
 
 ### Geplant
-- Weitere Features: Auto-Rückblicke, Vorgangs-Dossiers
+- Trend-Dashboard „Was bewegt den Rat?", Entitäten-Graph / Themen-Seiten + Vorgangs-Dossier
+
+## [0.14.0] – 2026-06-25
+
+### Hinzugefügt
+- **Eval-Harness:** festes Gold-Set (`tests/eval/*.jsonl`) + `scripts/eval_ai.py`, das Klassifikation, Ziel-Stance und QA-Retrieval live dagegen scort — ein Regressions-Wächter gegen stille Qualitäts-Rückfälle. (#84)
+
+### Geändert
+- **Frag den Rat — Hybrid-Retrieval + Reranker (RAG-SOTA):** Volltext-Index (BM25, ß→ss + Diakritika-Folding) ∪ Vektoren auf der expandierten Frage, dann ein multilingualer Cross-Encoder (fastembed jina-reranker-v2) re-sortiert gegen die Originalfrage. QA-Treffer im Gold-Eval **83 % → 100 %** (Gesamt 95 % → 98 %); behebt keyword-lastige Ranking-Lücken (z. B. „Spielplätze"). Embedding-/Reranker-Modelle werden beim Service-Start vorgewärmt. (#85, #87)
 
 ## [0.13.0] – 2026-06-25
 
@@ -130,7 +138,8 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 ### Hinzugefügt
 - Grundlage: NWZ-Scraper, OpenRouter-basierter Klassifikator, Telegram-Bot und erstes Web-Frontend (FastAPI-Backend + Next.js-Frontend). (#24, #17)
 
-[Unreleased]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.10.1...v0.11.0
