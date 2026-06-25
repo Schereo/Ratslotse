@@ -62,6 +62,11 @@ Regeln:
   "sicherheit_ordnung"), NICHT nach "finanzen". "finanzen" nur, wenn der Beschluss
   selbst der Haushalt, ein Wirtschaftsplan, eine städtische Beteiligung oder eine
   Steuer/Abgabe ist.
+- Rechnungs-/Bilanzdokumente — Jahresabschluss, Lagebericht, Wirtschaftsplan,
+  Haushaltsplan, Jahresrechnung, Bilanz, Gesamtabschluss — gehören IMMER zu
+  "finanzen", auch wenn sie eine Fach-Einrichtung betreffen: „Wirtschaftsplan des
+  Abfallwirtschaftsbetriebs" → finanzen (nicht klima_umwelt); „Jahresabschluss der
+  Volkshochschule" → finanzen (nicht bildung).
 
 EINTRÄGE:
 {items}"""
