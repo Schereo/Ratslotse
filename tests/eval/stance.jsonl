@@ -1,18 +1,71 @@
-{"decision_id": 667, "goal": "verkehrswende", "stance": "neutral", "note": "Straßenwidmung — Verwaltungsakt"}
-{"decision_id": 4275, "goal": "innenstadt", "stance": "voran", "note": "Geschäfts-Förderrichtlinie"}
-{"decision_id": 2730, "goal": "bildung_betreuung", "stance": "neutral", "note": "Corona-Sachstand, zur Kenntnis"}
-{"decision_id": 6816, "goal": "bildung_betreuung", "stance": "voran", "note": "Neubau Grundschule Wechloy"}
-{"decision_id": 5377, "goal": "klima_2035", "stance": "neutral", "note": "Klimaschutz-Aktivitäten Bericht"}
-{"decision_id": 1025, "goal": "bildung_betreuung", "stance": "voran", "note": "Umsetzung Schulentwicklungs-Gutachten"}
-{"decision_id": 2680, "goal": "bildung_betreuung", "stance": "neutral", "note": "Mensaabrechnungs-Satzung"}
-{"decision_id": 610, "goal": "innenstadt", "stance": "neutral", "note": "Innenstadtstrategie, zur Kenntnis"}
-{"decision_id": 3438, "goal": "bildung_betreuung", "stance": "neutral", "note": "Schulbezirke-Anpassung"}
-{"decision_id": 6028, "goal": "digitalisierung", "stance": "neutral", "note": "Sachstandsbericht"}
-{"decision_id": 8484, "goal": "klima_2035", "stance": "voran", "note": "Klima-Wettbewerb beschlossen"}
-{"decision_id": 5233, "goal": "wohnungsbau", "stance": "neutral", "note": "Aussprache zu Vortrag, zur Kenntnis"}
-{"decision_id": 3236, "goal": "verkehrswende", "stance": "bremst", "note": "Streichung Parkgebühren — gegen Verkehrswende"}
-{"decision_id": 3179, "goal": "klima_2035", "stance": "neutral", "note": "FFF-Leitantrag vertagt"}
-{"decision_id": 3563, "goal": "verkehrswende", "stance": "voran", "note": "B-Plan Fuß- und Radweg"}
-{"decision_id": 8138, "goal": "bildung_betreuung", "stance": "neutral", "note": "Oberschul-Bericht, zur Kenntnis"}
-{"decision_id": 5845, "goal": "bildung_betreuung", "stance": "voran", "note": "Maßnahmenplan Kita-Ausbau"}
-{"decision_id": 2289, "goal": "klima_2035", "stance": "voran", "note": "Stabsstelle Klimaschutz beschlossen"}
+{"decision_id": 5797, "goal": "wohnungsbau", "stance": "neutral"}
+{"decision_id": 3224, "goal": "klima_2035", "stance": "voran"}
+{"decision_id": 2224, "goal": "wohnungsbau", "stance": "voran"}
+{"decision_id": 1887, "goal": "innenstadt", "stance": "neutral"}
+{"decision_id": 3089, "goal": "verkehrswende", "stance": "neutral"}
+{"decision_id": 1224, "goal": "wohnungsbau", "stance": "voran"}
+{"decision_id": 6593, "goal": "wohnungsbau", "stance": "neutral"}
+{"decision_id": 5802, "goal": "digitalisierung", "stance": "neutral"}
+{"decision_id": 4392, "goal": "bildung_betreuung", "stance": "neutral"}
+{"decision_id": 4513, "goal": "wohnungsbau", "stance": "neutral"}
+{"decision_id": 5851, "goal": "bildung_betreuung", "stance": "voran"}
+{"decision_id": 3355, "goal": "digitalisierung", "stance": "neutral"}
+{"decision_id": 553, "goal": "wohnungsbau", "stance": "voran"}
+{"decision_id": 2641, "goal": "innenstadt", "stance": "neutral"}
+{"decision_id": 3091, "goal": "verkehrswende", "stance": "neutral"}
+{"decision_id": 3684, "goal": "klima_2035", "stance": "bremst"}
+{"decision_id": 1167, "goal": "bildung_betreuung", "stance": "neutral"}
+{"decision_id": 3716, "goal": "wohnungsbau", "stance": "neutral"}
+{"decision_id": 6492, "goal": "bildung_betreuung", "stance": "neutral"}
+{"decision_id": 1204, "goal": "wohnungsbau", "stance": "voran"}
+{"decision_id": 7514, "goal": "verkehrswende", "stance": "neutral"}
+{"decision_id": 7494, "goal": "wohnungsbau", "stance": "voran"}
+{"decision_id": 5252, "goal": "wohnungsbau", "stance": "neutral"}
+{"decision_id": 4010, "goal": "digitalisierung", "stance": "neutral"}
+{"decision_id": 5159, "goal": "klima_2035", "stance": "neutral"}
+{"decision_id": 4240, "goal": "klima_2035", "stance": "neutral"}
+{"decision_id": 7624, "goal": "verkehrswende", "stance": "voran"}
+{"decision_id": 7586, "goal": "bildung_betreuung", "stance": "neutral"}
+{"decision_id": 6893, "goal": "innenstadt", "stance": "voran"}
+{"decision_id": 6057, "goal": "bildung_betreuung", "stance": "neutral"}
+{"decision_id": 2736, "goal": "digitalisierung", "stance": "neutral"}
+{"decision_id": 2621, "goal": "verkehrswende", "stance": "neutral"}
+{"decision_id": 3433, "goal": "digitalisierung", "stance": "neutral"}
+{"decision_id": 4678, "goal": "digitalisierung", "stance": "neutral"}
+{"decision_id": 2565, "goal": "klima_2035", "stance": "voran"}
+{"decision_id": 4587, "goal": "wohnungsbau", "stance": "neutral"}
+{"decision_id": 3892, "goal": "wohnungsbau", "stance": "neutral"}
+{"decision_id": 1532, "goal": "verkehrswende", "stance": "neutral"}
+{"decision_id": 2470, "goal": "bildung_betreuung", "stance": "neutral"}
+{"decision_id": 1897, "goal": "bildung_betreuung", "stance": "neutral"}
+{"decision_id": 4996, "goal": "bildung_betreuung", "stance": "voran"}
+{"decision_id": 6893, "goal": "digitalisierung", "stance": "neutral"}
+{"decision_id": 5720, "goal": "verkehrswende", "stance": "neutral"}
+{"decision_id": 8459, "goal": "wohnungsbau", "stance": "voran"}
+{"decision_id": 8358, "goal": "wohnungsbau", "stance": "voran"}
+{"decision_id": 5630, "goal": "wohnungsbau", "stance": "voran"}
+{"decision_id": 6630, "goal": "bildung_betreuung", "stance": "neutral"}
+{"decision_id": 6921, "goal": "klima_2035", "stance": "neutral"}
+{"decision_id": 5305, "goal": "bildung_betreuung", "stance": "voran"}
+{"decision_id": 4265, "goal": "wohnungsbau", "stance": "neutral"}
+{"decision_id": 2933, "goal": "wohnungsbau", "stance": "voran"}
+{"decision_id": 6563, "goal": "wohnungsbau", "stance": "voran"}
+{"decision_id": 8584, "goal": "wohnungsbau", "stance": "voran"}
+{"decision_id": 6078, "goal": "klima_2035", "stance": "voran"}
+{"decision_id": 8503, "goal": "bildung_betreuung", "stance": "voran"}
+{"decision_id": 1288, "goal": "bildung_betreuung", "stance": "neutral"}
+{"decision_id": 4594, "goal": "wohnungsbau", "stance": "neutral"}
+{"decision_id": 5693, "goal": "klima_2035", "stance": "voran"}
+{"decision_id": 2606, "goal": "wohnungsbau", "stance": "neutral"}
+{"decision_id": 4227, "goal": "bildung_betreuung", "stance": "neutral"}
+{"decision_id": 3462, "goal": "klima_2035", "stance": "neutral"}
+{"decision_id": 2425, "goal": "wohnungsbau", "stance": "neutral"}
+{"decision_id": 1493, "goal": "innenstadt", "stance": "neutral"}
+{"decision_id": 6469, "goal": "verkehrswende", "stance": "neutral"}
+{"decision_id": 629, "goal": "wohnungsbau", "stance": "neutral"}
+{"decision_id": 4707, "goal": "innenstadt", "stance": "neutral"}
+{"decision_id": 6860, "goal": "wohnungsbau", "stance": "neutral"}
+{"decision_id": 7490, "goal": "verkehrswende", "stance": "voran"}
+{"decision_id": 497, "goal": "bildung_betreuung", "stance": "voran"}
+{"decision_id": 1148, "goal": "verkehrswende", "stance": "neutral"}
+{"decision_id": 3549, "goal": "klima_2035", "stance": "voran"}

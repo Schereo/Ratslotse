@@ -57,6 +57,11 @@ export default function LoginPage() {
             Registrieren
           </Link>
         </p>
+        <p className="mt-2 text-center text-sm text-muted-foreground">
+          <Link href="/technik" className="hover:text-foreground hover:underline">
+            Wie funktioniert Ratslotse? →
+          </Link>
+        </p>
       </Card>
     </div>
   );
