@@ -1,10 +1,26 @@
 "use client";
 
 import { BarChart3 } from "lucide-react";
-import { PartyAnalysis } from "@/lib/types";
+import { PartyAnalysis, CouncilDecision } from "@/lib/types";
 import { Card, Spinner, EmptyState } from "@/components/ui";
-import { POLICY_FIELD_LABELS, PartyBadge } from "@/components/decision-ui";
+import { POLICY_FIELD_LABELS, PartyBadge, DecisionLinkCard } from "@/components/decision-ui";
 import { useFetch } from "@/lib/use-fetch";
+
+function FinanceBlock() {
+  const { data } = useFetch<{ decisions: CouncilDecision[] }>("/council/finance");
+  if (!data || data.decisions.length === 0) return null;
+  return (
+    <Block title="Größte Finanzbeschlüsse"
+      hint="Beschlüsse mit dem höchsten im Text genannten Betrag (ohne Jahresabschlüsse/Haushaltspläne — automatisch erkannt).">
+      <div className="space-y-2">
+        {data.decisions.map((d) => (
+          <DecisionLinkCard key={d.id} id={d.id} title={d.title} committee={d.committee}
+            session_date={d.session_date} field={d.policy_field} amount={d.amount_eur} />
+        ))}
+      </div>
+    </Block>
+  );
+}
 
 function Block({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
@@ -159,6 +175,7 @@ export function AnalysisTab() {
       <Block title="Häufige Allianzen" hint="Parteien, die Anträge gemeinsam einbringen.">
         <Alliances a={data} />
       </Block>
+      <FinanceBlock />
     </div>
   );
 }

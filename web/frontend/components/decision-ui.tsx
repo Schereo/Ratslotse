@@ -7,9 +7,15 @@ import { CouncilDecision, DecisionOutcome } from "@/lib/types";
 import { Card, formatDate } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
+/** Format a euro amount compactly: 563.000 € / 3,4 Mio. €. */
+export function formatEuro(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toLocaleString("de-DE", { maximumFractionDigits: 1 })} Mio. €`;
+  return `${Math.round(n).toLocaleString("de-DE")} €`;
+}
+
 /** Compact clickable card linking to a decision's detail page — shared by the
  *  Q&A sources, "Ähnliche Beschlüsse" and goal decision lists. */
-export function DecisionLinkCard({ id, title, committee, session_date, field, leading, sub, score }: {
+export function DecisionLinkCard({ id, title, committee, session_date, field, leading, sub, score, amount }: {
   id: number;
   title: string | null;
   committee: string;
@@ -18,6 +24,7 @@ export function DecisionLinkCard({ id, title, committee, session_date, field, le
   leading?: React.ReactNode;
   sub?: string | null;
   score?: number;
+  amount?: number | null;
 }) {
   return (
     <Link href={`/council/decision/${id}`} className="block">
@@ -30,6 +37,11 @@ export function DecisionLinkCard({ id, title, committee, session_date, field, le
             {score !== undefined && (
               <span className="rounded bg-muted px-1.5 text-xs font-medium tabular-nums text-muted-foreground" title="Ähnlichkeit zur Frage">
                 {Math.round(score * 100)}%
+              </span>
+            )}
+            {amount != null && (
+              <span className="rounded bg-emerald-500/10 px-1.5 text-xs font-semibold tabular-nums text-emerald-700 dark:text-emerald-400" title="Im Beschlusstext genannter Betrag">
+                {formatEuro(amount)}
               </span>
             )}
           </div>

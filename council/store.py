@@ -113,7 +113,8 @@ CREATE TABLE IF NOT EXISTS council_decisions (
     raw_result   TEXT,
     policy_field TEXT,                          -- one key from council.topics.POLICY_FIELDS
     policy_tags  TEXT,                          -- JSON array of finer-grained tags
-    summary      TEXT                           -- one-line neutral summary
+    summary      TEXT,                          -- one-line neutral summary
+    amount_eur   REAL                           -- largest € amount in the text (council.money)
 );
 CREATE INDEX IF NOT EXISTS idx_decisions_ksinr ON council_decisions(ksinr);
 -- NB: the policy_field index is created in _migrate(), not here — on an existing
@@ -210,6 +211,8 @@ class CouncilStore:
                 for col in ("policy_field", "policy_tags", "summary"):
                     if col not in dec_cols:
                         self._conn.execute(f"ALTER TABLE council_decisions ADD COLUMN {col} TEXT")
+                if "amount_eur" not in dec_cols:
+                    self._conn.execute("ALTER TABLE council_decisions ADD COLUMN amount_eur REAL")
                 self._conn.execute(
                     "CREATE INDEX IF NOT EXISTS idx_decisions_field ON council_decisions(policy_field)"
                 )
@@ -820,6 +823,42 @@ class CouncilStore:
             self._conn.execute(
                 "UPDATE council_decisions SET policy_field = NULL, policy_tags = NULL, summary = NULL"
             )
+
+    def decisions_for_amount(self, only_missing: bool = False) -> list[dict]:
+        """Main decisions with their text, for the € extraction backfill."""
+        sql = "SELECT id, title, beschluss FROM council_decisions WHERE kind = 'decision'"
+        if only_missing:
+            sql += " AND amount_eur IS NULL"
+        return [dict(r) for r in self._conn.execute(sql)]
+
+    def set_amounts(self, rows: list[tuple]) -> int:
+        """Bulk-write amount_eur. rows = (amount_or_None, decision_id)."""
+        with self._conn:
+            self._conn.executemany("UPDATE council_decisions SET amount_eur = ? WHERE id = ?", rows)
+        return len(rows)
+
+    # Accounting / whole-budget reports — their figures are balance totals, not a
+    # discrete spending decision, so they're kept out of the "largest" view.
+    _ACCOUNTING_TITLES = (
+        "jahresabschluss", "lagebericht", "gesamtabschluss", "wirtschaftsplan",
+        "haushaltsplan", "haushaltssatzung", "nachtragshaushalt", "finanzbericht",
+        "beteiligungsbericht", "jahresrechnung", "quartalsbericht", "zwischenbericht",
+    )
+
+    def largest_financial_decisions(self, limit: int = 25) -> list[dict]:
+        """Main decisions with the largest recognised € amount (excluding accounting reports)."""
+        clauses = " AND ".join(["LOWER(d.title) NOT LIKE ?"] * len(self._ACCOUNTING_TITLES))
+        params = [f"%{k}%" for k in self._ACCOUNTING_TITLES]
+        rows = self._conn.execute(
+            f"""SELECT d.*, cs.committee, cs.session_date, p.document_url AS protocol_url
+                FROM council_decisions d
+                JOIN council_sessions cs ON cs.ksinr = d.ksinr
+                LEFT JOIN council_protocols p ON p.ksinr = d.ksinr
+                WHERE d.kind = 'decision' AND d.amount_eur IS NOT NULL AND {clauses}
+                ORDER BY d.amount_eur DESC LIMIT ?""",
+            [*params, limit],
+        ).fetchall()
+        return [self._decision_row(r) for r in rows]
 
     def policy_field_stats(self) -> list[dict]:
         """Count of classified decisions per policy field, most frequent first."""
