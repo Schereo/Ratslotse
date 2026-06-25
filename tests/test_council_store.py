@@ -152,3 +152,12 @@ def test_similar_neighbours(tmp_path):
     store.set_similar([(10, 12, 0, 0.8)])
     assert [s["id"] for s in store.get_similar(10)] == [12]
     assert any(e["id"] == 10 and "T10" in e["text"] for e in store.decisions_for_embedding())
+
+
+def test_embedding_vectors(tmp_path):
+    store = CouncilStore(_old_db(tmp_path / "old.sqlite"))
+    store.save_embeddings([(1, b"abcd"), (2, b"efgh")])
+    rows = store.get_embeddings()
+    assert len(rows) == 2 and bytes(rows[0]["vector"]) == b"abcd"
+    store.save_embeddings([(3, b"xyz")])  # replaces everything
+    assert [r["decision_id"] for r in store.get_embeddings()] == [3]

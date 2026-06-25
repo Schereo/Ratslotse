@@ -151,6 +151,12 @@ CREATE TABLE IF NOT EXISTS council_similar (
     PRIMARY KEY (decision_id, neighbor_id)
 );
 CREATE INDEX IF NOT EXISTS idx_similar_decision ON council_similar(decision_id);
+
+-- Raw decision embedding vectors (float32 blob) for query-time semantic search.
+CREATE TABLE IF NOT EXISTS council_embeddings (
+    decision_id INTEGER PRIMARY KEY,
+    vector      BLOB NOT NULL
+);
 """
 
 
@@ -950,6 +956,21 @@ class CouncilStore:
                 "VALUES (?, ?, ?, ?)", rows,
             )
         return len(rows)
+
+    def save_embeddings(self, rows: list[tuple]) -> int:
+        """Replace all decision vectors. ``rows`` = (decision_id, float32 bytes)."""
+        with self._conn:
+            self._conn.execute("DELETE FROM council_embeddings")
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_embeddings (decision_id, vector) VALUES (?, ?)", rows,
+            )
+        return len(rows)
+
+    def get_embeddings(self) -> list:
+        """All (decision_id, vector-blob) rows — caller rebuilds the matrix."""
+        return self._conn.execute(
+            "SELECT decision_id, vector FROM council_embeddings ORDER BY decision_id"
+        ).fetchall()
 
     def get_similar(self, decision_id: int, limit: int = 5) -> list[dict]:
         """The most similar decisions to ``decision_id`` (precomputed), best first."""

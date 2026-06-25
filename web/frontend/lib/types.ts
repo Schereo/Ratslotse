@@ -97,7 +97,7 @@ export interface QaSource {
 
 export interface QaAnswer {
   answer: string;
-  keywords: string[];
+  mode?: string;
   sources: QaSource[];
 }
 

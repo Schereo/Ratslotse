@@ -167,14 +167,24 @@ class AskBody(BaseModel):
 @router.post("/ask")
 def ask(body: AskBody, _user: dict = Depends(require_active),
         store: CouncilStore = Depends(get_council_store)) -> dict:
-    """Answer a free-text question from the decisions, with cited sources."""
+    """Answer a free-text question from the decisions, with cited sources.
+    Retrieves candidates semantically (embeddings) when available, else by keyword."""
     q = body.question.strip()
     if len(q) < 4:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Bitte eine etwas längere Frage stellen.")
-    keywords = qa.extract_keywords(q)
-    candidates = store.get_goal_candidates(keywords, limit=20)
+    candidates, mode = None, "keyword"
+    try:
+        from council import embeddings as emb
+        hits = emb.search(store, q, top_k=20)
+        if hits:
+            candidates = store.get_decisions_by_ids([h[0] for h in hits])
+            mode = "semantisch"
+    except Exception:  # noqa: BLE001 — fastembed missing/any failure → keyword fallback
+        candidates = None
+    if not candidates:
+        candidates = store.get_goal_candidates(qa.extract_keywords(q), limit=20)
     answer, cited = qa.answer_question(q, candidates)
-    return {"answer": answer, "keywords": keywords, "sources": store.get_decisions_by_ids(cited)}
+    return {"answer": answer, "mode": mode, "sources": store.get_decisions_by_ids(cited)}
 
 
 @router.get("/decision-stats")

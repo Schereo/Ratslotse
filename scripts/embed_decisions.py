@@ -61,6 +61,8 @@ def process(db: Path, top_k: int = 6, threshold: float = 0.45, batch: int = 256)
         print(f"  {min(start + batch, n)}/{n}", flush=True)
 
     store.set_similar(out)
+    # Store the raw vectors too, for query-time semantic search (QA / goals).
+    store.save_embeddings([(ids[i], vecs[i].tobytes()) for i in range(n)])
     store.close()
     return {"decisions": n, "links": len(out)}
 

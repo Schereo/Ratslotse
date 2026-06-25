@@ -35,3 +35,40 @@ def embed(texts: list[str]):
     norms = np.linalg.norm(vecs, axis=1, keepdims=True)
     norms[norms == 0] = 1.0
     return vecs / norms
+
+
+# Decision-vector matrix, loaded once per process. Re-run embed_decisions.py +
+# restart the service to refresh it.
+_matrix_cache: tuple | None = None
+
+
+def _matrix(store):
+    global _matrix_cache
+    if _matrix_cache is None:
+        import numpy as np
+
+        rows = store.get_embeddings()
+        ids = [r["decision_id"] for r in rows]
+        if rows:
+            buf = b"".join(bytes(r["vector"]) for r in rows)
+            mat = np.frombuffer(buf, dtype="float32").reshape(len(ids), -1)
+        else:
+            mat = np.zeros((0, 0), dtype="float32")
+        _matrix_cache = (ids, mat)
+    return _matrix_cache
+
+
+def search(store, query: str, top_k: int = 20) -> list[tuple]:
+    """Semantic search over stored decision vectors → ``[(decision_id, score)]``,
+    best first. Raises ImportError if fastembed is unavailable (caller falls back)."""
+    import numpy as np
+
+    ids, mat = _matrix(store)
+    if not ids:
+        return []
+    qv = embed([query])[0]  # lazy-imports fastembed
+    scores = mat @ qv
+    k = min(top_k, len(ids))
+    idx = np.argpartition(-scores, k - 1)[:k]
+    idx = idx[np.argsort(-scores[idx])]
+    return [(ids[i], float(scores[i])) for i in idx]
