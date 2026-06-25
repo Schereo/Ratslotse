@@ -86,7 +86,9 @@ export default function TechnikPage() {
               </Step>
               <Step n={4} title="Anreicherung">
                 Regeln und Modelle ergänzen: erkannte €-Beträge, normalisierte Antragstellenden-
-                Fraktionen, Verknüpfungen zu Stadtzielen und zu Presseartikeln.
+                Fraktionen, Verknüpfungen zu Stadtzielen und zu Presseartikeln, sowie benannte
+                Entitäten (Projekte, Orte, Organisationen) — die Grundlage für die Themen-Seiten,
+                die alles zu einem Begriff wie „Fliegerhorst" bündeln.
               </Step>
             </div>
           </Section>
