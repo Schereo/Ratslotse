@@ -37,7 +37,10 @@ def _load(name: str) -> list[dict]:
 def eval_topics(store: CouncilStore) -> dict:
     gold = _load("topics.jsonl")
     decs = [d for d in (store.get_decision(g["id"]) for g in gold) if d]
-    results, _ = topics.classify_batch(decs)
+    results: dict = {}
+    for i in range(0, len(decs), 25):  # batch so a large gold set doesn't overflow one prompt
+        batch_res, _ = topics.classify_batch(decs[i:i + 25])
+        results.update(batch_res)
     miss, ok = [], 0
     for g in gold:
         pred = (results.get(g["id"]) or {}).get("field")
@@ -56,7 +59,10 @@ def eval_stance(store: CouncilStore) -> dict:
     miss, ok = [], 0
     for goal_key, items in by_goal.items():
         decs = [d for d in (store.get_decision(i["decision_id"]) for i in items) if d]
-        results, _ = goals.assess_batch(goal_key, decs)
+        results: dict = {}
+        for j in range(0, len(decs), 25):
+            r, _ = goals.assess_batch(goal_key, decs[j:j + 25])
+            results.update(r)
         for i in items:
             pred = (results.get(i["decision_id"]) or {}).get("stance")
             if pred == i["stance"]:
