@@ -74,7 +74,7 @@ export function QaTab() {
               <div className="space-y-2">
                 {res.sources.map((s) => (
                   <DecisionLinkCard key={s.id} id={s.id} title={s.title} committee={s.committee}
-                    session_date={s.session_date} field={s.policy_field} sub={s.summary} />
+                    session_date={s.session_date} field={s.policy_field} sub={s.summary} score={s.score} />
                 ))}
               </div>
             </div>

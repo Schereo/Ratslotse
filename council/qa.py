@@ -47,6 +47,29 @@ BESCHLÜSSE:
 Antworte knapp (2–5 Sätze) auf Deutsch, mit id-Zitaten."""
 
 
+_EXPAND_PROMPT = """Wandle die Frage in 4–8 deutsche Suchbegriffe um (Substantive und nahe Synonyme zum Thema) für eine semantische Suche in Stadtrats-Beschlüssen. KEINE Floskeln wie "Was wurde", "beschlossen", "Stadtrat". Nur die Begriffe, durch Leerzeichen getrennt.
+
+FRAGE: {question}
+SUCHBEGRIFFE:"""
+
+
+def expand_query(question: str, model: str = MODEL) -> str:
+    """Turn a question into focused topical search terms. The raw question's
+    boilerplate ("Was wurde zum … beschlossen?") dilutes the topic and retrieves
+    generic decisions; expanded terms (e.g. "Radverkehr Fahrrad Radweg Fahrradstraße")
+    retrieve far better. Falls back to the question on any error."""
+    extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
+    try:
+        resp = llm.chat_complete(
+            model=model, temperature=0, max_tokens=60,
+            messages=[{"role": "user", "content": _EXPAND_PROMPT.format(question=question.strip()[:300])}], **extra,
+        )
+        terms = " ".join((resp.choices[0].message.content or "").split())
+        return terms or question
+    except Exception:  # noqa: BLE001
+        return question
+
+
 def answer_question(question: str, candidates: list[dict], model: str = MODEL):
     """Synthesise an answer from retrieved candidates. Returns ``(answer, cited_ids)``."""
     context = "\n".join(

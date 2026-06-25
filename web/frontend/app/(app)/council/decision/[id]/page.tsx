@@ -152,7 +152,7 @@ export default function DecisionDetailPage() {
           <div className="space-y-2">
             {data.similar.map((s) => (
               <DecisionLinkCard key={s.id} id={s.id} title={s.title} committee={s.committee}
-                session_date={s.session_date} field={s.policy_field} />
+                session_date={s.session_date} field={s.policy_field} score={s.score} />
             ))}
           </div>
         </Section>
