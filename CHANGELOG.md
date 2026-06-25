@@ -11,6 +11,16 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 ### Geplant
 - Weitere Features: Auto-Rückblicke, Vorgangs-Dossiers
 
+## [0.13.0] – 2026-06-25
+
+### Geändert
+- **KI-Qualität nach Gold-Audit** (alle Features blind gegen Claude-Gold-Label geprüft): der **Themenfeld-Klassifikator** ordnet Gremien-/Ausschussbesetzungen jetzt `verwaltung_digital` zu (statt nach Themenwort) und Förderbeschlüsse nach Sachbereich statt `finanzen`; 76 betroffene Beschlüsse re-klassifiziert (119/119 Besetzungen jetzt korrekt). Das **Ziel-Tracking** wertet „zur Kenntnis genommene" Berichte und vertagte Punkte als `neutral` (außer konkretem Fortschritt); 286 Links re-bewertet, der überhöhte `voran`-Zähler korrigiert (984 → 705). (#82)
+- **Ähnliche Beschlüsse** und **Größte Finanzbeschlüsse** fassen Quasi-Dubletten zusammen (gleiche Sache in Ausschuss/Rat, wiederkehrende Serien) — Dedup über Vorlage-Nr **und** normalisierten Titel. (#80, #81)
+- Kleinere Politur: Betrag-Badge auch in der Beschlüsse-Liste, „1 Gegenstimme/Enthaltung" im Singular, Betrag-Badge ohne €-Dopplung. (#80)
+
+### Behoben
+- **Test-Suite verschickte echte E-Mails** über Resend: der Registrierungs-Test nutzte die Live-`RESEND_API_KEY` aus der lokalen `.env` und feuerte bei jedem Lauf echte Admin-Benachrichtigungen. Eine `conftest.py` erzwingt jetzt `RESEND_API_KEY=""`, sodass `send_email()` im Test garantiert ein No-op ist. (#83)
+
 ## [0.12.0] – 2026-06-25
 
 ### Hinzugefügt
@@ -120,7 +130,8 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 ### Hinzugefügt
 - Grundlage: NWZ-Scraper, OpenRouter-basierter Klassifikator, Telegram-Bot und erstes Web-Frontend (FastAPI-Backend + Next.js-Frontend). (#24, #17)
 
-[Unreleased]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.10.1...v0.11.0
 [0.10.1]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.10.0...v0.10.1
