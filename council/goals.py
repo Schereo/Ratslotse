@@ -86,7 +86,14 @@ Für JEDEN Beschluss liefere:
 - "grund": max. ein kurzer Satz (deutsch)
 
 Antworte mit NUR JSON: {{"results": [{{"id": <id>, "relevant": <true|false>, "stance": "<voran|bremst|neutral>", "grund": "..."}}]}}
-Regeln: jede vorgelegte id genau einmal mit exakt dieser id; im Zweifel relevant=false.
+Regeln:
+- jede vorgelegte id genau einmal mit exakt dieser id; im Zweifel relevant=false.
+- Der Ausgang steht in [eckigen Klammern]. Beschlüsse, die nur ZUR KENNTNIS genommen
+  wurden (Berichte, [zur_kenntnis]) oder VERTAGT sind ([vertagt]), bringen das Ziel
+  NICHT voran → "neutral" — AUSSER der Text dokumentiert konkret bereits umgesetzten
+  oder beschlossenen Fortschritt. Reine Sachstands-/Prüfberichte, Absichts­erklärungen
+  und Resolutionen sind "neutral". "voran" nur bei einem tatsächlich gefassten,
+  zielfördernden Beschluss ([angenommen]).
 
 BESCHLÜSSE:
 {items}"""
@@ -97,7 +104,8 @@ def _render(decisions: list[dict]) -> str:
     for d in decisions:
         text = d.get("summary") or d.get("beschluss") or ""
         text = " ".join(text.split())[:300]
-        lines.append(f'- id {d["id"]}: {(d.get("title") or "").strip()} — {text}')
+        outcome = d.get("outcome") or "?"
+        lines.append(f'- id {d["id"]} [{outcome}]: {(d.get("title") or "").strip()} — {text}')
     return "\n".join(lines)
 
 

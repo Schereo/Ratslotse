@@ -1010,7 +1010,7 @@ class CouncilStore:
             params.append(exclude_goal)
         params.append(limit)
         rows = self._conn.execute(
-            f"""SELECT d.id, d.title, d.beschluss, d.summary, cs.session_date
+            f"""SELECT d.id, d.title, d.beschluss, d.summary, d.outcome, cs.session_date
                 FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr
                 WHERE d.kind = 'decision' AND ({clause}){exclude_sql}
                 ORDER BY cs.session_date DESC LIMIT ?""",
