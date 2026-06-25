@@ -837,28 +837,42 @@ class CouncilStore:
             self._conn.executemany("UPDATE council_decisions SET amount_eur = ? WHERE id = ?", rows)
         return len(rows)
 
-    # Accounting / whole-budget reports — their figures are balance totals, not a
-    # discrete spending decision, so they're kept out of the "largest" view.
-    _ACCOUNTING_TITLES = (
+    # Titles excluded from the "largest" view: accounting / whole-budget reports
+    # (balance totals, not a discrete decision) and treasury operations (debt
+    # refinancing / credit reporting) — neither is "the city spends X on Y".
+    _NON_SPENDING_TITLES = (
         "jahresabschluss", "lagebericht", "gesamtabschluss", "wirtschaftsplan",
         "haushaltsplan", "haushaltssatzung", "nachtragshaushalt", "finanzbericht",
         "beteiligungsbericht", "jahresrechnung", "quartalsbericht", "zwischenbericht",
+        "umschuldung", "kreditrichtlinie", "kassenkredite",
     )
 
     def largest_financial_decisions(self, limit: int = 25) -> list[dict]:
-        """Main decisions with the largest recognised € amount (excluding accounting reports)."""
-        clauses = " AND ".join(["LOWER(d.title) NOT LIKE ?"] * len(self._ACCOUNTING_TITLES))
-        params = [f"%{k}%" for k in self._ACCOUNTING_TITLES]
+        """Decisions with the largest recognised € amount, deduped across committees
+        (same Vorlage decided in Ausschuss + Rat → one entry) and excluding
+        accounting/treasury items."""
+        clauses = " AND ".join(["LOWER(d.title) NOT LIKE ?"] * len(self._NON_SPENDING_TITLES))
+        params = [f"%{k}%" for k in self._NON_SPENDING_TITLES]
         rows = self._conn.execute(
             f"""SELECT d.*, cs.committee, cs.session_date, p.document_url AS protocol_url
                 FROM council_decisions d
                 JOIN council_sessions cs ON cs.ksinr = d.ksinr
                 LEFT JOIN council_protocols p ON p.ksinr = d.ksinr
                 WHERE d.kind = 'decision' AND d.amount_eur IS NOT NULL AND {clauses}
-                ORDER BY d.amount_eur DESC LIMIT ?""",
-            [*params, limit],
+                ORDER BY d.amount_eur DESC LIMIT 300""",
+            params,
         ).fetchall()
-        return [self._decision_row(r) for r in rows]
+        seen: set = set()
+        out: list[dict] = []
+        for r in rows:
+            key = r["vorlage_nr"] or (r["title"], r["amount_eur"])
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(self._decision_row(r))
+            if len(out) >= limit:
+                break
+        return out
 
     def policy_field_stats(self) -> list[dict]:
         """Count of classified decisions per policy field, most frequent first."""
