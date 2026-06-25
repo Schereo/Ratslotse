@@ -21,6 +21,7 @@ load_dotenv(ROOT / ".env")
 
 from scripts.backfill_protocols import process_range  # noqa: E402
 from scripts.classify_decisions import process as classify_decisions  # noqa: E402
+from scripts.extract_amounts import process as extract_amounts  # noqa: E402
 from scripts.track_goals import process as track_goals  # noqa: E402
 
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
@@ -42,6 +43,9 @@ def main() -> None:
     # decisions not yet linked to each goal, so this is cheap to run daily).
     gstats = track_goals(COUNCIL_DB, incremental=True)
     print(f"Goal links added: {gstats['links']} → ${gstats['cost']:.4f}.")
+    # Extract € amounts from any decisions still missing one (regex, no cost).
+    astats = extract_amounts(COUNCIL_DB, only_missing=True)
+    print(f"€ amounts: {astats['with_amount']}/{astats['decisions']} newly scanned.")
 
 
 if __name__ == "__main__":

@@ -143,6 +143,12 @@ def analysis(_user: dict = Depends(require_active), store: CouncilStore = Depend
     return data
 
 
+@router.get("/finance")
+def finance(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> dict:
+    """Decisions with the largest € volume recognised in their text (excl. accounting reports)."""
+    return {"decisions": store.largest_financial_decisions(limit=25)}
+
+
 _EMPTY_GOAL = {"voran": 0, "bremst": 0, "neutral": 0, "total": 0}
 
 

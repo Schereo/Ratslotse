@@ -82,6 +82,7 @@ export interface CouncilDecision {
   policy_field: string | null;
   policy_tags: string[];
   summary: string | null;
+  amount_eur: number | null;
 }
 
 export interface PolicyField {
