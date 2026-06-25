@@ -52,6 +52,16 @@ Regeln:
 - Gib für JEDE vorgelegte id genau ein Ergebnis mit exakt derselben id zurück.
 - "field" MUSS einer der Schlüssel sein; im Zweifel "sonstiges".
 - Erfinde nichts; fasse nur den vorgelegten Text zusammen.
+- Berufung, Besetzung, Umbesetzung oder Benennung von Mitgliedern in Ausschüssen,
+  Gremien, Beiräten, Aufsichtsräten oder Kommissionen → IMMER "verwaltung_digital"
+  (Gremien/Wahlen), unabhängig vom Fachthema des Gremiums (eine Schulausschuss-
+  Besetzung ist "verwaltung_digital", nicht "bildung"; ein Sportausschuss-Sitz
+  ebenso, nicht "kultur_sport").
+- Bei Förder-, Zuwendungs- oder Bewilligungsbeschlüssen richtet sich "field" nach dem
+  geförderten SACHBEREICH (Jugendkulturverein → "kultur_sport", Feuerwehr →
+  "sicherheit_ordnung"), NICHT nach "finanzen". "finanzen" nur, wenn der Beschluss
+  selbst der Haushalt, ein Wirtschaftsplan, eine städtische Beteiligung oder eine
+  Steuer/Abgabe ist.
 
 EINTRÄGE:
 {items}"""
