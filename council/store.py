@@ -22,12 +22,19 @@ def _norm_title(t: str) -> str:
     return re.sub(r"\s+", " ", t).strip()
 
 
-def _dedup_key(title: str, decision_id: int) -> str:
-    """Collapse key for near-duplicate titles. Only meaningful (long enough) normalised
-    titles collapse; short/sparse ones fall back to the id so distinct decisions with
-    tiny titles are never merged."""
+def _dedup_keys(title: str, vorlage_nr, decision_id: int) -> list[str]:
+    """Collapse keys for a decision: the base Vorlage-Nr (strongest signal — same
+    matter across committees/revisions, '22/0348' == '22/0348/1', and robust to title
+    spelling variants) and the normalised title (catches recurring series under
+    different Vorlagen). Two rows collapse if they share EITHER. Short/sparse titles
+    fall back to the id so distinct tiny-title decisions are never merged."""
+    keys: list[str] = []
+    if vorlage_nr and str(vorlage_nr).strip():
+        # Keep the base Vorlage (first two segments): "22/0348/1" → "22/0348".
+        keys.append("v:" + "/".join(str(vorlage_nr).strip().split("/")[:2]))
     nt = _norm_title(title)
-    return nt if len(nt) >= 12 else f"\x00id{decision_id}"
+    keys.append("t:" + nt if len(nt) >= 12 else f"\x00id{decision_id}")
+    return keys
 
 
 def _int_or_none(v) -> int | None:
@@ -885,13 +892,13 @@ class CouncilStore:
         seen: set = set()
         out: list[dict] = []
         for r in rows:
-            # Dedup on the normalised title: collapses the same matter across committees
-            # ("… - Beschluss" vs "…") and recurring annual series (different amounts,
-            # same wording). Rows are amount-desc, so the kept entry is the largest.
-            key = _dedup_key(r["title"], r["id"])
-            if key in seen:
+            # Collapse the same matter (shared Vorlage across committees/revisions) and
+            # recurring series (same title, different Vorlage). Rows are amount-desc, so
+            # the kept entry is the largest.
+            keys = _dedup_keys(r["title"], r["vorlage_nr"], r["id"])
+            if any(k in seen for k in keys):
                 continue
-            seen.add(key)
+            seen.update(keys)
             out.append(self._decision_row(r))
             if len(out) >= limit:
                 break
@@ -1120,10 +1127,10 @@ class CouncilStore:
         series) are collapsed via the normalised title, so the neighbours shown are
         genuinely distinct rather than the Ausschuss/Rat copy of this very decision."""
         base = self._conn.execute(
-            "SELECT title FROM council_decisions WHERE id = ?", (decision_id,)
+            "SELECT title, vorlage_nr FROM council_decisions WHERE id = ?", (decision_id,)
         ).fetchone()
         rows = self._conn.execute(
-            """SELECT d.id, d.title, d.summary, d.policy_field, d.outcome,
+            """SELECT d.id, d.title, d.vorlage_nr, d.summary, d.policy_field, d.outcome,
                       cs.session_date, cs.committee, sl.score
                FROM council_similar sl
                JOIN council_decisions d ON d.id = sl.neighbor_id
@@ -1131,13 +1138,13 @@ class CouncilStore:
                WHERE sl.decision_id = ? ORDER BY sl.rank LIMIT ?""",
             (decision_id, limit * 5),
         ).fetchall()
-        seen = {_dedup_key(base["title"], decision_id) if base else ""}
+        seen = set(_dedup_keys(base["title"], base["vorlage_nr"], decision_id)) if base else set()
         out: list[dict] = []
         for r in rows:
-            key = _dedup_key(r["title"], r["id"])
-            if key in seen:
+            keys = _dedup_keys(r["title"], r["vorlage_nr"], r["id"])
+            if any(k in seen for k in keys):
                 continue
-            seen.add(key)
+            seen.update(keys)
             out.append(dict(r))
             if len(out) >= limit:
                 break

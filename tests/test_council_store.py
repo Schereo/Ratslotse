@@ -154,6 +154,28 @@ def test_similar_neighbours(tmp_path):
     assert any(e["id"] == 10 and "T10" in e["text"] for e in store.decisions_for_embedding())
 
 
+def test_dedup_keys():
+    from council.store import _dedup_keys
+
+    def collide(a, b):
+        return bool(set(a) & set(b))
+
+    # Same base Vorlage across committees/revisions collapses ("22/0348" == "22/0348/1").
+    assert collide(_dedup_keys("Ausfallbürgschaft Klinikum lang", "22/0348", 1),
+                   _dedup_keys("Ausfallbürgschaft Klinikum kurz", "22/0348/1", 2))
+    # Same Vorlage but a title spelling variant still collapses (via the Vorlage key).
+    assert collide(_dedup_keys("VWG Förderantrags lang genug", "23/0587", 5),
+                   _dedup_keys("VWG Förderantrages lang genug", "23/0587", 6))
+    # Recurring series: different Vorlage, identical wording collapses (via the title key).
+    assert collide(_dedup_keys("Überplanmäßige Bewilligung Teilhaushalt zehn", "20/1", 1),
+                   _dedup_keys("Überplanmäßige Bewilligung Teilhaushalt zehn", "21/2", 2))
+    # Genuinely distinct decisions do not collapse.
+    assert not collide(_dedup_keys("Radweg Nadorster Straße Ausbau", "20/1", 1),
+                       _dedup_keys("Kita Neubau Kreyenbrück Planung", "21/2", 2))
+    # Tiny titles without a Vorlage fall back to the id (never merge distinct decisions).
+    assert not collide(_dedup_keys("T10", None, 10), _dedup_keys("T11", None, 11))
+
+
 def test_embedding_vectors(tmp_path):
     store = CouncilStore(_old_db(tmp_path / "old.sqlite"))
     store.save_embeddings([(1, b"abcd"), (2, b"efgh")])
