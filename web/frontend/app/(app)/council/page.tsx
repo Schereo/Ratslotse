@@ -13,10 +13,11 @@ import {
   Badge, Card, CardListSkeleton, DateField, EmptyState, Input, PageHeader, Pagination, Select, Spinner, formatDate, toast,
 } from "@/components/ui";
 import { OutcomeBadge, FieldBadge } from "@/components/decision-ui";
+import { AnalysisTab } from "@/components/council-analysis";
 import { cn } from "@/lib/utils";
 
 type Scope = "all" | "upcoming" | "recent";
-type Tab = "sessions" | "decisions";
+type Tab = "sessions" | "decisions" | "analysis";
 
 const sessionUrl = (ksinr: number) => `https://buergerinfo.oldenburg.de/si0057.php?__ksinr=${ksinr}`;
 
@@ -477,11 +478,12 @@ function CouncilInner() {
   const router = useRouter();
   // Tab lives in the URL (?tab=decisions) so the browser back button from a
   // decision detail page returns to the right tab.
-  const tab: Tab = searchParams.get("tab") === "decisions" ? "decisions" : "sessions";
+  const param = searchParams.get("tab");
+  const tab: Tab = param === "decisions" || param === "analysis" ? param : "sessions";
   const [committees, setCommittees] = useState<string[]>([]);
 
   const setTab = (t: Tab) =>
-    router.replace(t === "decisions" ? "/council?tab=decisions" : "/council", { scroll: false });
+    router.replace(t === "sessions" ? "/council" : `/council?tab=${t}`, { scroll: false });
 
   useEffect(() => {
     api.get<{ committees: string[] }>("/council/committees").then((d) => setCommittees(d.committees)).catch(() => {});
@@ -491,8 +493,8 @@ function CouncilInner() {
     <div>
       <PageHeader title="Ratsinformationssystem" description="Sitzungen, Tagesordnungen und Beschlüsse des Oldenburger Stadtrats." />
 
-      <div className="mt-6 inline-flex gap-1 rounded-md bg-muted p-1">
-        {([["sessions", "Sitzungen & Tagesordnungen"], ["decisions", "Beschlüsse"]] as [Tab, string][]).map(([t, label]) => (
+      <div className="mt-6 flex flex-wrap gap-1 rounded-md bg-muted p-1">
+        {([["sessions", "Sitzungen & Tagesordnungen"], ["decisions", "Beschlüsse"], ["analysis", "Parteien & Analyse"]] as [Tab, string][]).map(([t, label]) => (
           <button
             key={t}
             type="button"
@@ -507,7 +509,9 @@ function CouncilInner() {
         ))}
       </div>
 
-      {tab === "sessions" ? <SessionsTab committees={committees} /> : <DecisionsTab committees={committees} />}
+      {tab === "sessions" ? <SessionsTab committees={committees} />
+        : tab === "decisions" ? <DecisionsTab committees={committees} />
+        : <AnalysisTab />}
     </div>
   );
 }

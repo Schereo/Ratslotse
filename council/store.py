@@ -761,6 +761,83 @@ class CouncilStore:
         ).fetchall()
         return [dict(r) for r in rows]
 
+    def party_analysis(self, top_parties: int = 8) -> dict:
+        """Aggregate party behaviour from motions (Antragsteller = the ``factions``
+        on a decision): a party × policy-field heatmap, per-party success rates,
+        per-field contention and party co-sponsorships. Only ~13 % of decisions name
+        an Antragsteller, so this reflects *active motions*, not every vote."""
+        from collections import Counter
+        from itertools import combinations
+
+        from council.parties import normalize_party, order_key
+
+        rows = self._conn.execute(
+            "SELECT factions, policy_field, outcome, gegenstimmen, enthaltungen "
+            "FROM council_decisions WHERE kind = 'decision'"
+        ).fetchall()
+
+        party_field: dict[str, Counter] = {}
+        party_outcome: dict[str, Counter] = {}
+        party_total: Counter = Counter()
+        field_motion: Counter = Counter()      # motions per field (heatmap columns)
+        field_total: Counter = Counter()       # decided votes per field (contention)
+        field_contested: Counter = Counter()
+        pairs: Counter = Counter()
+        with_factions = 0
+
+        for fac, field, outcome, gegen, enth in rows:
+            if field and outcome in ("angenommen", "abgelehnt", "vertagt"):
+                field_total[field] += 1
+                if (gegen or 0) > 0 or (enth or 0) > 0:
+                    field_contested[field] += 1
+            try:
+                arr = json.loads(fac or "[]")
+            except (json.JSONDecodeError, TypeError):
+                arr = []
+            parties = sorted({p for p in (normalize_party(x) for x in arr) if p}, key=order_key)
+            if not parties:
+                continue
+            with_factions += 1
+            for p in parties:
+                party_total[p] += 1
+                if field:
+                    party_field.setdefault(p, Counter())[field] += 1
+                    field_motion[field] += 1
+                if outcome:
+                    party_outcome.setdefault(p, Counter())[outcome] += 1
+            for a, b in combinations(parties, 2):
+                pairs[(a, b)] += 1
+
+        top = sorted((p for p, _ in party_total.most_common(top_parties)), key=order_key)
+        fields_present = [f for f, _ in field_motion.most_common()]
+        matrix = {p: {f: party_field.get(p, Counter()).get(f, 0) for f in fields_present} for p in top}
+
+        success = []
+        for p in party_total:
+            oc = party_outcome.get(p, Counter())
+            decided = oc["angenommen"] + oc["abgelehnt"]
+            success.append({
+                "party": p, "motions": party_total[p],
+                "angenommen": oc["angenommen"], "abgelehnt": oc["abgelehnt"], "vertagt": oc["vertagt"],
+                "rate": round(oc["angenommen"] / decided, 3) if decided else None,
+            })
+        success.sort(key=lambda s: s["motions"], reverse=True)
+
+        contention = [
+            {"field": f, "total": field_total[f], "contested": field_contested[f],
+             "contested_rate": round(field_contested[f] / field_total[f], 3)}
+            for f in sorted(field_total, key=lambda f: field_total[f], reverse=True)
+        ]
+        alliances = [{"a": a, "b": b, "count": c} for (a, b), c in pairs.most_common(12)]
+
+        return {
+            "coverage": {"with_factions": with_factions, "total": len(rows)},
+            "topic_matrix": {"parties": top, "fields": fields_present, "matrix": matrix},
+            "success_rates": success,
+            "contention": contention,
+            "alliances": alliances,
+        }
+
     def get_protocols_raw(self) -> list[dict]:
         """All stored protocols with their raw text — for re-extraction without
         re-downloading the PDFs."""

@@ -89,6 +89,22 @@ export interface PolicyField {
   count: number;
 }
 
+export interface PartyAnalysis {
+  coverage: { with_factions: number; total: number };
+  topic_matrix: {
+    parties: string[];
+    fields: string[];
+    matrix: Record<string, Record<string, number>>;
+  };
+  success_rates: {
+    party: string; motions: number;
+    angenommen: number; abgelehnt: number; vertagt: number; rate: number | null;
+  }[];
+  contention: { field: string; total: number; contested: number; contested_rate: number }[];
+  alliances: { a: string; b: string; count: number }[];
+  field_labels: Record<string, string>;
+}
+
 export interface Attendee {
   name: string | null;
   party: string | null;

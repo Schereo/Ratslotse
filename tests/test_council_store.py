@@ -4,9 +4,8 @@ The key case: opening a database whose ``council_decisions`` predates the topic
 classification columns must migrate cleanly. A column-dependent index in the
 static SCHEMA (run before the migration) broke this in production once.
 """
+import json
 import sqlite3
-
-import pytest
 
 from council.store import CouncilStore
 
@@ -67,3 +66,29 @@ def test_classification_roundtrip_and_filter(tmp_path):
     store.reset_classifications()
     assert len(store.get_unclassified_decisions()) == 1
     assert store.policy_field_stats() == []
+
+
+def test_party_analysis(tmp_path):
+    store = CouncilStore(_old_db(tmp_path / "old.sqlite"))
+    motions = [
+        (["Bündnis 90/Die Grünen"], "verkehr", "angenommen", 0, 0),
+        (["Bündnis 90/DIE GRÜNEN", "SPD"], "klima_umwelt", "angenommen", 2, 1),
+        (["CDU"], "finanzen", "abgelehnt", 5, 0),
+        (["Verwaltung"], "finanzen", "angenommen", 0, 0),  # non-party → ignored
+    ]
+    for i, (fac, field, oc, g, e) in enumerate(motions, start=10):
+        store._conn.execute(
+            "INSERT INTO council_decisions "
+            "(ksinr,position,kind,item_number,title,beschluss,outcome,gegenstimmen,enthaltungen,factions,policy_field) "
+            "VALUES (1,?,'decision',?,?,?,?,?,?,?,?)",
+            (i, str(i), "T", "B", oc, g, e, json.dumps(fac), field),
+        )
+    store._conn.commit()
+
+    a = store.party_analysis()
+    assert a["coverage"]["with_factions"] == 3  # the Verwaltung-only motion is excluded
+    # The two Grünen spellings collapse to one party.
+    gruene = next(s for s in a["success_rates"] if s["party"] == "Grüne")
+    assert gruene["motions"] == 2 and gruene["angenommen"] == 2 and gruene["rate"] == 1.0
+    assert a["topic_matrix"]["matrix"]["Grüne"]["verkehr"] == 1
+    assert {"a": "Grüne", "b": "SPD", "count": 1} in a["alliances"]

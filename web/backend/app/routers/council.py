@@ -115,6 +115,14 @@ def decision_detail(
     return out
 
 
+@router.get("/analysis")
+def analysis(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> dict:
+    """Party behaviour: topic heatmap, success rates, contention, alliances."""
+    data = store.party_analysis()
+    data["field_labels"] = {k: POLICY_FIELDS[k][0] for k in data["topic_matrix"]["fields"]}
+    return data
+
+
 @router.get("/decision-stats")
 def decision_stats(
     _user: dict = Depends(require_active),
