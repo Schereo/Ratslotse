@@ -1,8 +1,40 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ChevronRight } from "lucide-react";
 import { CouncilDecision, DecisionOutcome } from "@/lib/types";
+import { Card, formatDate } from "@/components/ui";
 import { cn } from "@/lib/utils";
+
+/** Compact clickable card linking to a decision's detail page — shared by the
+ *  Q&A sources, "Ähnliche Beschlüsse" and goal decision lists. */
+export function DecisionLinkCard({ id, title, committee, session_date, field, leading, sub }: {
+  id: number;
+  title: string | null;
+  committee: string;
+  session_date: string;
+  field?: string | null;
+  leading?: React.ReactNode;
+  sub?: string | null;
+}) {
+  return (
+    <Link href={`/council/decision/${id}`} className="block">
+      <Card className="card-interactive group flex items-start gap-3 p-3">
+        {leading}
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            {field !== undefined && <FieldBadge field={field} />}
+            <span className="text-xs text-muted-foreground">{committee} · {formatDate(session_date)}</span>
+          </div>
+          <p className="mt-1 text-sm font-medium text-foreground">{title}</p>
+          {sub && <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{sub}</p>}
+        </div>
+        <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 self-center text-muted-foreground/40 group-hover:text-primary" />
+      </Card>
+    </Link>
+  );
+}
 
 // Short labels for the policy-field badge (full labels come from /council/fields).
 // Mirrors council.topics.POLICY_FIELDS.
