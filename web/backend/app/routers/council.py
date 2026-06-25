@@ -125,6 +125,7 @@ def decision_detail(
         "sub_votes": [],
         "vorlage_journey": [],
         "similar": store.get_similar(decision_id, limit=5),
+        "news": store.get_news_for_decision(decision_id),
     }
     if d.get("kind") == "decision" and d.get("item_number"):
         out["sub_votes"] = store.get_subvotes(d["ksinr"], d["item_number"])

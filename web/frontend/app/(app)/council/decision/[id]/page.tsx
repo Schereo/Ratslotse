@@ -2,9 +2,9 @@
 
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ExternalLink, FileText, FileDown, Users, Scale } from "lucide-react";
+import { ArrowLeft, ExternalLink, FileText, FileDown, Users, Scale, Newspaper } from "lucide-react";
 import { DecisionDetail, CouncilDecision } from "@/lib/types";
-import { Spinner, EmptyState, formatDate } from "@/components/ui";
+import { Card, Spinner, EmptyState, formatDate } from "@/components/ui";
 import { OutcomeBadge, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard } from "@/components/decision-ui";
 import { cn } from "@/lib/utils";
 import { useFetch } from "@/lib/use-fetch";
@@ -153,6 +153,25 @@ export default function DecisionDetailPage() {
             {data.similar.map((s) => (
               <DecisionLinkCard key={s.id} id={s.id} title={s.title} committee={s.committee}
                 session_date={s.session_date} field={s.policy_field} />
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {data.news.length > 0 && (
+        <Section title="In der Presse">
+          <div className="space-y-2">
+            {data.news.map((n) => (
+              <Link key={`${n.catalog}-${n.refid}`} href={`/nwz?catalog=${n.catalog}&refid=${encodeURIComponent(n.refid)}`} className="block">
+                <Card className="card-interactive group flex items-center gap-3 p-3">
+                  <Newspaper className="h-4 w-4 shrink-0 self-center text-muted-foreground" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-foreground">{n.title}</p>
+                    <p className="text-xs text-muted-foreground">NWZ{n.pub_date ? ` · ${formatDate(n.pub_date)}` : ""}</p>
+                  </div>
+                  <ExternalLink className="h-3.5 w-3.5 shrink-0 self-center text-muted-foreground/40 group-hover:text-primary" />
+                </Card>
+              </Link>
             ))}
           </div>
         </Section>
