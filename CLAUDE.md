@@ -81,6 +81,20 @@ APP_BASE_URL=https://ratslotse.de   # Basis-URL für Links in E-Mails (Default: 
 # Stadtrat-LLM (optional, Defaults greifen)
 COUNCIL_PROTOCOL_MODEL=deepseek/deepseek-v4-pro   # Protokoll-Extraktion (protocols.py)
 COUNCIL_TOPIC_MODEL=deepseek/deepseek-v4-pro      # Themenfeld-Klassifikation (topics.py)
+COUNCIL_GOAL_MODEL=deepseek/deepseek-v4-pro       # Ziel-Bewertung (goals.py)
+COUNCIL_EMBED_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2  # Embeddings (embeddings.py)
+```
+
+### Ähnliche Beschlüsse (Embeddings)
+
+`scripts/embed_decisions.py` berechnet semantische Nachbarn je Beschluss (Tabelle
+`council_similar`) für die „Ähnliche Beschlüsse"-Sektion. Nutzt **fastembed** (ONNX,
+kein torch) — bewusst **nicht** in `requirements.txt`, damit Deploy + Web-Service
+unberührt bleiben (der Web-Service liest nur die vorberechneten Nachbarn). Manuell
+auf prod ausführen, wenn neue Beschlüsse dazukommen:
+
+```bash
+ssh tk-nwz "cd ~/app && .venv/bin/pip install fastembed && .venv/bin/python scripts/embed_decisions.py"
 ```
 
 Credentials liegen in 1Password.

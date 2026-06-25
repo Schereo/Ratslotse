@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ExternalLink, FileText, FileDown, Users, Scale } from "lucide-react";
+import { ArrowLeft, ExternalLink, FileText, FileDown, Users, Scale, ChevronRight } from "lucide-react";
 import { DecisionDetail, CouncilDecision } from "@/lib/types";
 import { Card, Spinner, EmptyState, formatDate } from "@/components/ui";
 import { OutcomeBadge, VoteBar, FieldBadge } from "@/components/decision-ui";
@@ -127,6 +127,27 @@ export default function DecisionDetailPage() {
           <div className="flex flex-wrap gap-1.5">
             {Object.entries(byParty).sort((a, b) => b[1] - a[1]).map(([p, n]) => (
               <span key={p} className="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">{p} {n}</span>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {data.similar.length > 0 && (
+        <Section title="Ähnliche Beschlüsse">
+          <div className="space-y-2">
+            {data.similar.map((s) => (
+              <Link key={s.id} href={`/council/decision/${s.id}`} className="block">
+                <Card className="card-interactive group flex items-center gap-3 p-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <FieldBadge field={s.policy_field} />
+                      <span className="text-xs text-muted-foreground">{s.committee} · {formatDate(s.session_date)}</span>
+                    </div>
+                    <p className="mt-1 text-sm font-medium text-foreground">{s.title}</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 shrink-0 self-center text-muted-foreground/40 group-hover:text-primary" />
+                </Card>
+              </Link>
             ))}
           </div>
         </Section>

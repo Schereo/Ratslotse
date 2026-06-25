@@ -156,11 +156,18 @@ export interface VorlageStop {
   item_number: string;
 }
 
+export interface SimilarDecision {
+  id: number; title: string | null; summary: string | null;
+  policy_field: string | null; outcome: DecisionOutcome | null;
+  session_date: string; committee: string; score: number;
+}
+
 export interface DecisionDetail {
   decision: CouncilDecision;
   attendance: Attendee[];
   sub_votes: CouncilDecision[];
   vorlage_journey: VorlageStop[];
+  similar: SimilarDecision[];
   ratsinfo_url: string;
   vorlage_url?: string | null;
 }
