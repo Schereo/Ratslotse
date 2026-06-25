@@ -101,32 +101,46 @@ export function PartyBadge({ party, className }: { party: string; className?: st
 }
 
 /** Aggregate vote visualisation. The protocols record totals (Gegenstimmen /
- *  Enthaltungen), not per-party votes, so "Mehrheit" is the unlabelled rest. */
+ *  Enthaltungen), not per-party votes. Colours follow the outcome — green = für
+ *  den Antrag, red = dagegen — so the majority block is red for a rejected motion
+ *  (its "Gegenstimmen" are then the outvoted minority that voted *for*). */
 export function VoteBar({ d, presentCount }: { d: CouncilDecision; presentCount?: number }) {
   const gegen = d.gegenstimmen ?? 0;
   const enth = d.enthaltungen ?? 0;
+  const rejected = d.outcome === "abgelehnt";
+  const deferred = d.outcome === "vertagt";
+  const majColor = rejected ? "bg-red-500/80" : deferred ? "bg-amber-500/80" : "bg-green-500/80";
+  const dissentColor = rejected ? "bg-green-500/80" : "bg-red-500/80";
   const unanimous = d.vote === "einstimmig" || (gegen === 0 && enth === 0);
 
   if (unanimous) {
     return (
       <div>
-        <div className="h-3 rounded-full bg-green-500/80" />
-        <p className="mt-1.5 text-xs text-muted-foreground">Einstimmig</p>
+        <div className={cn("h-3 rounded-full", majColor)} />
+        <p className="mt-1.5 text-xs text-muted-foreground">
+          {rejected ? "Einstimmig abgelehnt" : deferred ? "Einstimmig vertagt" : "Einstimmig angenommen"}
+        </p>
       </div>
     );
   }
   // No per-vote roll-call → approximate the majority block so the bar is readable.
-  const ja = presentCount && presentCount > gegen + enth ? presentCount - gegen - enth : (gegen + enth) * 3;
+  const majSize = presentCount && presentCount > gegen + enth ? presentCount - gegen - enth : (gegen + enth) * 3;
   return (
     <div>
       <div className="flex h-3 overflow-hidden rounded-full">
-        <div className="bg-green-500/80" style={{ flexGrow: Math.max(ja, 1) }} />
-        {gegen > 0 && <div className="bg-red-500/80" style={{ flexGrow: gegen }} />}
+        <div className={majColor} style={{ flexGrow: Math.max(majSize, 1) }} />
+        {gegen > 0 && <div className={dissentColor} style={{ flexGrow: gegen }} />}
         {enth > 0 && <div className="bg-amber-500/80" style={{ flexGrow: enth }} />}
       </div>
       <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-        <span className="inline-flex items-center gap-1.5"><Dot cls="bg-green-500/80" /> Mehrheit</span>
-        {gegen > 0 && <span className="inline-flex items-center gap-1.5"><Dot cls="bg-red-500/80" /> {gegen} Gegenstimmen</span>}
+        <span className="inline-flex items-center gap-1.5">
+          <Dot cls={majColor} /> {rejected ? "Mehrheit dagegen" : deferred ? "Mehrheit (vertagt)" : "Mehrheit dafür"}
+        </span>
+        {gegen > 0 && (
+          <span className="inline-flex items-center gap-1.5">
+            <Dot cls={dissentColor} /> {rejected ? `${gegen} dafür` : `${gegen} Gegenstimmen`}
+          </span>
+        )}
         {enth > 0 && <span className="inline-flex items-center gap-1.5"><Dot cls="bg-amber-500/80" /> {enth} Enthaltungen</span>}
       </div>
     </div>
