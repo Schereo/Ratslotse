@@ -126,6 +126,7 @@ def decision_detail(
         "vorlage_journey": [],
         "similar": store.get_similar(decision_id, limit=5),
         "news": store.get_news_for_decision(decision_id),
+        "entities": store.entities_for_decision(decision_id),
     }
     if d.get("kind") == "decision" and d.get("item_number"):
         out["sub_votes"] = store.get_subvotes(d["ksinr"], d["item_number"])
@@ -154,6 +155,25 @@ def trends(_user: dict = Depends(require_active), store: CouncilStore = Depends(
     """Council activity over time: decisions + € volume per quarter by field, emerging tags."""
     data = store.activity_trends()
     data["field_labels"] = {k: POLICY_FIELDS[k][0] for k in data["fields"]}
+    return data
+
+
+@router.get("/entities")
+def entities_list(kind: str = "", _user: dict = Depends(require_active),
+                  store: CouncilStore = Depends(get_council_store)) -> dict:
+    """Directory of named entities (projects/places/organizations), most-referenced first."""
+    return {"entities": store.list_entities(limit=400, kind=kind)}
+
+
+@router.get("/entity/{slug}")
+def entity(slug: str, _user: dict = Depends(require_active),
+           store: CouncilStore = Depends(get_council_store)) -> dict:
+    """An entity ('Themen-') page: all its decisions plus money/parties/field aggregates."""
+    data = store.entity_detail(slug)
+    if not data:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Thema nicht gefunden.")
+    data["field_labels"] = {f["field"]: POLICY_FIELDS[f["field"]][0]
+                            for f in data["fields"] if f["field"] in POLICY_FIELDS}
     return data
 
 

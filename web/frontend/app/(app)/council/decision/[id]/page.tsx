@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ExternalLink, FileText, FileDown, Users, Scale, Newspaper } from "lucide-react";
+import { ArrowLeft, ExternalLink, FileText, FileDown, Users, Scale, Newspaper, Tag } from "lucide-react";
 import { DecisionDetail, CouncilDecision } from "@/lib/types";
 import { Card, Spinner, EmptyState, formatDate } from "@/components/ui";
 import { OutcomeBadge, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard, formatEuro } from "@/components/decision-ui";
@@ -58,6 +58,17 @@ export default function DecisionDetailPage() {
               <FieldBadge field={d.policy_field} />
               {d.policy_tags.map((t) => (
                 <span key={t} className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">{t}</span>
+              ))}
+            </div>
+          )}
+          {data.entities.length > 0 && (
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              {data.entities.map((e) => (
+                <Link key={e.slug} href={`/council/thema/${e.slug}`}
+                  className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-0.5 text-xs text-foreground transition-colors hover:bg-muted"
+                  title={`Alle Beschlüsse zu „${e.name}"`}>
+                  <Tag className="h-3 w-3 text-muted-foreground" />{e.name}
+                </Link>
               ))}
             </div>
           )}
