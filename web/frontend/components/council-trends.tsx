@@ -34,7 +34,7 @@ function StackedDecisions({ d }: { d: Trends }) {
     <div>
       <div className="flex h-48 items-end gap-1.5">
         {d.quarters.map((q, qi) => (
-          <div key={q} className="flex flex-1 flex-col justify-end" title={`${qLabel(q)}: ${totals[qi]} Beschlüsse`}>
+          <div key={q} className="flex h-full flex-1 flex-col justify-end" title={`${qLabel(q)}: ${totals[qi]} Beschlüsse`}>
             <div className="flex flex-col-reverse overflow-hidden rounded-sm" style={{ height: `${(totals[qi] / max) * 100}%` }}>
               {d.fields.map((f, fi) => {
                 const v = d.by_field[f]?.[qi] ?? 0;
@@ -65,7 +65,7 @@ function MoneyBars({ d }: { d: Trends }) {
     <div>
       <div className="flex h-32 items-end gap-1.5">
         {d.quarters.map((q, qi) => (
-          <div key={q} className="flex flex-1 flex-col justify-end" title={`${qLabel(q)}: ${formatEuro(d.money[qi])}`}>
+          <div key={q} className="flex h-full flex-1 flex-col justify-end" title={`${qLabel(q)}: ${formatEuro(d.money[qi])}`}>
             <div className="rounded-sm bg-emerald-500/70" style={{ height: `${(d.money[qi] / max) * 100}%`, minHeight: d.money[qi] > 0 ? 2 : 0 }} />
           </div>
         ))}
