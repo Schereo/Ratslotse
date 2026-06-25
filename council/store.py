@@ -851,9 +851,11 @@ class CouncilStore:
         }
 
     # --- Goal tracking ------------------------------------------------------
-    def get_goal_candidates(self, keywords: list[str], limit: int = 400) -> list[dict]:
+    def get_goal_candidates(self, keywords: list[str], limit: int = 400,
+                            exclude_goal: str | None = None) -> list[dict]:
         """Decisions whose text/tags match any of a goal's keywords (candidates
-        for LLM relevance + stance assessment)."""
+        for LLM relevance + stance assessment). With ``exclude_goal`` set, skips
+        decisions already linked to that goal — for the incremental daily cron."""
         if not keywords:
             return []
         clause = " OR ".join(
@@ -863,11 +865,15 @@ class CouncilStore:
         for kw in keywords:
             p = f"%{kw}%"
             params += [p, p, p, p]
+        exclude_sql = ""
+        if exclude_goal:
+            exclude_sql = " AND d.id NOT IN (SELECT decision_id FROM council_goal_links WHERE goal = ?)"
+            params.append(exclude_goal)
         params.append(limit)
         rows = self._conn.execute(
             f"""SELECT d.id, d.title, d.beschluss, d.summary, cs.session_date
                 FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr
-                WHERE d.kind = 'decision' AND ({clause})
+                WHERE d.kind = 'decision' AND ({clause}){exclude_sql}
                 ORDER BY cs.session_date DESC LIMIT ?""",
             params,
         ).fetchall()

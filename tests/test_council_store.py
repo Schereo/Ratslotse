@@ -110,6 +110,9 @@ def test_goal_links(tmp_path):
     det = store.goal_detail("klima_2035")
     assert len(det) == 1 and det[0]["stance"] == "voran" and det[0]["title"].startswith("Photovoltaik")
 
+    # Incremental cron: a decision already linked to the goal is excluded.
+    assert all(c["id"] != 20 for c in store.get_goal_candidates(["photovoltaik"], exclude_goal="klima_2035"))
+
     store.clear_goal_links("klima_2035")
     assert store.goal_summary() == {}
 

@@ -21,6 +21,7 @@ load_dotenv(ROOT / ".env")
 
 from scripts.backfill_protocols import process_range  # noqa: E402
 from scripts.classify_decisions import process as classify_decisions  # noqa: E402
+from scripts.track_goals import process as track_goals  # noqa: E402
 
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
 LOOKBACK_DAYS = 90
@@ -37,6 +38,10 @@ def main() -> None:
     cstats = classify_decisions(COUNCIL_DB)
     print(f"Classified {cstats['classified']} decision(s), {cstats['failed']} failed "
           f"→ ${cstats['cost']:.4f}.")
+    # Assess newly classified decisions against the city goals (incremental — only
+    # decisions not yet linked to each goal, so this is cheap to run daily).
+    gstats = track_goals(COUNCIL_DB, incremental=True)
+    print(f"Goal links added: {gstats['links']} → ${gstats['cost']:.4f}.")
 
 
 if __name__ == "__main__":
