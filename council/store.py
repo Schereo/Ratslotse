@@ -115,7 +115,9 @@ CREATE TABLE IF NOT EXISTS council_decisions (
     summary      TEXT                           -- one-line neutral summary
 );
 CREATE INDEX IF NOT EXISTS idx_decisions_ksinr ON council_decisions(ksinr);
-CREATE INDEX IF NOT EXISTS idx_decisions_field ON council_decisions(policy_field);
+-- NB: the policy_field index is created in _migrate(), not here — on an existing
+-- DB this whole SCHEMA runs (via executescript) BEFORE the migration adds the
+-- column, so indexing policy_field here would fail with "no such column".
 
 -- One row per attendee per session.
 CREATE TABLE IF NOT EXISTS council_attendance (
