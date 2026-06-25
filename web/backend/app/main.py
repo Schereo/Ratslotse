@@ -28,9 +28,28 @@ def _startup_checks() -> None:
         )
 
 
+def _warm_models() -> None:
+    """Warm the embedding + reranker models in a background thread, so the first
+    Q&A request after a restart isn't degraded — a cold reranker load makes
+    hybrid_search fall back to the weaker vector-only order. Best-effort: if
+    fastembed/the model is missing, Q&A simply uses its fallback path."""
+    import threading
+
+    def _load() -> None:
+        try:
+            from council import embeddings as emb
+            emb.embed(["warmup"])
+            emb.rerank("warmup", [(0, "warmup")])
+        except Exception:  # noqa: BLE001
+            pass
+
+    threading.Thread(target=_load, daemon=True).start()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # noqa: ANN001
     _startup_checks()
+    _warm_models()
     yield
 
 
