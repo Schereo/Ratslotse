@@ -865,7 +865,9 @@ class CouncilStore:
         seen: set = set()
         out: list[dict] = []
         for r in rows:
-            key = r["vorlage_nr"] or (r["title"], r["amount_eur"])
+            # Same matter across committees keeps the title + amount but gets a revised
+            # Vorlage-Nr ("22/0348" → "22/0348/1"), so dedupe on title + amount.
+            key = ((r["title"] or "").strip().lower(), round(r["amount_eur"]))
             if key in seen:
                 continue
             seen.add(key)
