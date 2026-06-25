@@ -1,12 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { Sparkles, Send, ChevronRight } from "lucide-react";
+import { Sparkles, Send } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { QaAnswer } from "@/lib/types";
-import { Card, Input, Spinner, formatDate, toast } from "@/components/ui";
-import { FieldBadge } from "@/components/decision-ui";
+import { Card, Input, Spinner, toast } from "@/components/ui";
+import { DecisionLinkCard } from "@/components/decision-ui";
 
 const EXAMPLES = [
   "Was wurde zum Radverkehr beschlossen?",
@@ -74,19 +73,8 @@ export function QaTab() {
               </p>
               <div className="space-y-2">
                 {res.sources.map((s) => (
-                  <Link key={s.id} href={`/council/decision/${s.id}`} className="block">
-                    <Card className="card-interactive group flex items-center gap-3 p-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                          <FieldBadge field={s.policy_field} />
-                          <span className="text-xs text-muted-foreground">{s.committee} · {formatDate(s.session_date)}</span>
-                        </div>
-                        <p className="mt-1 text-sm font-medium text-foreground">{s.title}</p>
-                        {s.summary && <p className="line-clamp-1 text-xs text-muted-foreground">{s.summary}</p>}
-                      </div>
-                      <ChevronRight className="h-4 w-4 shrink-0 self-center text-muted-foreground/40 group-hover:text-primary" />
-                    </Card>
-                  </Link>
+                  <DecisionLinkCard key={s.id} id={s.id} title={s.title} committee={s.committee}
+                    session_date={s.session_date} field={s.policy_field} sub={s.summary} />
                 ))}
               </div>
             </div>

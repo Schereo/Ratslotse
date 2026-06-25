@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { Target, ChevronRight, ArrowRight } from "lucide-react";
+import { Target, ArrowRight } from "lucide-react";
 import { GoalSummary, GoalDetail } from "@/lib/types";
-import { Card, Spinner, EmptyState, formatDate } from "@/components/ui";
+import { Card, Spinner, EmptyState } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { useFetch } from "@/lib/use-fetch";
+import { DecisionLinkCard } from "@/components/decision-ui";
 
 const STANCE = {
   voran: { label: "bringt voran", bar: "bg-green-500/80", chip: "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-300" },
@@ -50,17 +50,9 @@ function GoalDetailView({ goalKey }: { goalKey: string }) {
         {shown.map((d) => {
           const st = STANCE[(d.stance as Stance)] ?? STANCE.neutral;
           return (
-            <Link key={d.id} href={`/council/decision/${d.id}`} className="block">
-              <Card className="card-interactive group flex items-start gap-3 p-3">
-                <span className={cn("mt-0.5 shrink-0 whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium", st.chip)}>{st.label}</span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-foreground">{d.title}</p>
-                  <p className="text-xs text-muted-foreground">{d.committee} · {formatDate(d.session_date)}</p>
-                  {d.rationale && <p className="mt-0.5 text-xs italic text-muted-foreground">{d.rationale}</p>}
-                </div>
-                <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 self-center text-muted-foreground/40 group-hover:text-primary" />
-              </Card>
-            </Link>
+            <DecisionLinkCard key={d.id} id={d.id} title={d.title} committee={d.committee}
+              session_date={d.session_date} sub={d.rationale}
+              leading={<span className={cn("mt-0.5 shrink-0 whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium", st.chip)}>{st.label}</span>} />
           );
         })}
         {shown.length === 0 && <p className="py-4 text-center text-sm text-muted-foreground">Keine Beschlüsse in dieser Kategorie.</p>}

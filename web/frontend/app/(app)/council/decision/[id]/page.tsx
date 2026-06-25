@@ -2,10 +2,10 @@
 
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ExternalLink, FileText, FileDown, Users, Scale, ChevronRight } from "lucide-react";
+import { ArrowLeft, ExternalLink, FileText, FileDown, Users, Scale } from "lucide-react";
 import { DecisionDetail, CouncilDecision } from "@/lib/types";
-import { Card, Spinner, EmptyState, formatDate } from "@/components/ui";
-import { OutcomeBadge, VoteBar, FieldBadge, PartyBadge } from "@/components/decision-ui";
+import { Spinner, EmptyState, formatDate } from "@/components/ui";
+import { OutcomeBadge, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard } from "@/components/decision-ui";
 import { cn } from "@/lib/utils";
 import { useFetch } from "@/lib/use-fetch";
 
@@ -151,18 +151,8 @@ export default function DecisionDetailPage() {
         <Section title="Ähnliche Beschlüsse">
           <div className="space-y-2">
             {data.similar.map((s) => (
-              <Link key={s.id} href={`/council/decision/${s.id}`} className="block">
-                <Card className="card-interactive group flex items-center gap-3 p-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <FieldBadge field={s.policy_field} />
-                      <span className="text-xs text-muted-foreground">{s.committee} · {formatDate(s.session_date)}</span>
-                    </div>
-                    <p className="mt-1 text-sm font-medium text-foreground">{s.title}</p>
-                  </div>
-                  <ChevronRight className="h-4 w-4 shrink-0 self-center text-muted-foreground/40 group-hover:text-primary" />
-                </Card>
-              </Link>
+              <DecisionLinkCard key={s.id} id={s.id} title={s.title} committee={s.committee}
+                session_date={s.session_date} field={s.policy_field} />
             ))}
           </div>
         </Section>
