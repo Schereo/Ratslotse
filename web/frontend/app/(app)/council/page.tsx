@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Search, ExternalLink, ChevronDown, ChevronRight, Landmark, Scale, Users, BarChart3, Target, Sparkles, X } from "lucide-react";
+import { Search, ExternalLink, ChevronDown, ChevronRight, Landmark, Scale, Users, BarChart3, Target, Sparkles, TrendingUp, X } from "lucide-react";
 import { api, qs, ApiError } from "@/lib/api";
 import { useDebounce } from "@/lib/use-debounce";
 import {
@@ -14,12 +14,13 @@ import {
 } from "@/components/ui";
 import { OutcomeBadge, FieldBadge, formatEuro } from "@/components/decision-ui";
 import { AnalysisTab } from "@/components/council-analysis";
+import { TrendsTab } from "@/components/council-trends";
 import { GoalsTab } from "@/components/council-goals";
 import { QaTab } from "@/components/council-qa";
 import { cn } from "@/lib/utils";
 
 type Scope = "all" | "upcoming" | "recent";
-type Tab = "sessions" | "decisions" | "analysis" | "goals" | "ask";
+type Tab = "sessions" | "decisions" | "analysis" | "trends" | "goals" | "ask";
 
 const sessionUrl = (ksinr: number) => `https://buergerinfo.oldenburg.de/si0057.php?__ksinr=${ksinr}`;
 
@@ -511,7 +512,7 @@ function CouncilInner() {
   // Tab lives in the URL (?tab=decisions) so the browser back button from a
   // decision detail page returns to the right tab.
   const param = searchParams.get("tab");
-  const tab: Tab = param === "decisions" || param === "analysis" || param === "goals" || param === "ask" ? param : "sessions";
+  const tab: Tab = param === "decisions" || param === "analysis" || param === "trends" || param === "goals" || param === "ask" ? param : "sessions";
   const [committees, setCommittees] = useState<string[]>([]);
 
   const setTab = (t: Tab) =>
@@ -530,6 +531,7 @@ function CouncilInner() {
           ["sessions", "Sitzungen", Landmark],
           ["decisions", "Beschlüsse", Scale],
           ["analysis", "Analyse", BarChart3],
+          ["trends", "Trends", TrendingUp],
           ["goals", "Ziele", Target],
           ["ask", "Fragen", Sparkles],
         ] as [Tab, string, typeof Landmark][]).map(([t, label, Icon]) => (
@@ -550,6 +552,7 @@ function CouncilInner() {
       {tab === "sessions" ? <SessionsTab committees={committees} />
         : tab === "decisions" ? <DecisionsTab committees={committees} />
         : tab === "analysis" ? <AnalysisTab />
+        : tab === "trends" ? <TrendsTab />
         : tab === "goals" ? <GoalsTab />
         : <QaTab />}
     </div>

@@ -911,6 +911,56 @@ class CouncilStore:
         "umschuldung", "kreditrichtlinie", "kassenkredite",
     )
 
+    def activity_trends(self, quarters: int = 12) -> dict:
+        """Council activity over time for the trends view: decisions and recognised €
+        volume per quarter (split by the busiest policy fields), plus the most active
+        tags in the recent quarters."""
+        from collections import Counter
+
+        q_expr = ("substr(cs.session_date,1,4) || '-Q' || "
+                  "((CAST(substr(cs.session_date,6,2) AS INTEGER)+2)/3)")
+        rows = self._conn.execute(
+            f"""SELECT {q_expr} AS q, d.policy_field AS field,
+                       COUNT(*) AS n, COALESCE(SUM(d.amount_eur), 0) AS eur
+                FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr
+                WHERE d.kind = 'decision' AND cs.session_date IS NOT NULL
+                      AND d.policy_field IS NOT NULL
+                GROUP BY q, field"""
+        ).fetchall()
+        all_q = sorted({r["q"] for r in rows})[-quarters:]
+        qset = set(all_q)
+        per_field: dict[str, dict] = {}
+        money = {q: 0.0 for q in all_q}
+        for r in rows:
+            if r["q"] not in qset:
+                continue
+            per_field.setdefault(r["field"], {q: 0 for q in all_q})[r["q"]] = r["n"]
+            money[r["q"]] += r["eur"] or 0
+        top_fields = sorted(per_field, key=lambda f: -sum(per_field[f].values()))[:6]
+
+        recent = set(all_q[-2:])
+        tagc: Counter = Counter()
+        for r in self._conn.execute(
+            f"""SELECT d.policy_tags AS tags, {q_expr} AS q
+                FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr
+                WHERE d.kind = 'decision' AND d.policy_tags IS NOT NULL
+                      AND cs.session_date IS NOT NULL"""
+        ):
+            if r["q"] in recent:
+                try:
+                    for t in json.loads(r["tags"] or "[]"):
+                        tagc[str(t).strip()] += 1
+                except (ValueError, TypeError):
+                    pass
+
+        return {
+            "quarters": all_q,
+            "fields": top_fields,
+            "by_field": {f: [per_field[f][q] for q in all_q] for f in top_fields},
+            "money": [round(money[q]) for q in all_q],
+            "emerging": [{"tag": t, "n": c} for t, c in tagc.most_common(12) if c >= 2],
+        }
+
     def largest_financial_decisions(self, limit: int = 25) -> list[dict]:
         """Decisions with the largest recognised € amount, deduped across committees
         (same Vorlage decided in Ausschuss + Rat → one entry) and excluding
