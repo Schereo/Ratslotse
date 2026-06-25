@@ -1,0 +1,6 @@
+{"question": "Was wurde zum Radverkehr beschlossen?", "expect_any": ["radweg", "fahrrad", "radverkehr"]}
+{"question": "Welche Beschlüsse gab es zum Klimaschutz?", "expect_any": ["klima", "klimaschutz", "co2"]}
+{"question": "Was wurde über Spielplätze beschlossen?", "expect_any": ["spielplatz", "spielleitplan", "spielflä"]}
+{"question": "Gab es Entscheidungen zu Geflüchtetenunterkünften?", "expect_any": ["geflüchtet", "asyl", "unterkunft", "kgu", "flüchtling"]}
+{"question": "Was wurde zur Kindertagesbetreuung beschlossen?", "expect_any": ["kita", "kindertages", "betreuung", "krippe"]}
+{"question": "Hat der Rat über ein Tempolimit auf der Autobahn entschieden?", "expect_refuse": true, "note": "Bundesangelegenheit — Rat ist nicht zuständig, sollte verneinen"}
