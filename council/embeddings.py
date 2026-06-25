@@ -58,9 +58,10 @@ def _matrix(store):
     return _matrix_cache
 
 
-def search(store, query: str, top_k: int = 20) -> list[tuple]:
+def search(store, query: str, top_k: int = 20, min_score: float = 0.0) -> list[tuple]:
     """Semantic search over stored decision vectors → ``[(decision_id, score)]``,
-    best first. Raises ImportError if fastembed is unavailable (caller falls back)."""
+    best first, keeping only scores ≥ ``min_score``. Raises ImportError if fastembed
+    is unavailable (caller falls back)."""
     import numpy as np
 
     ids, mat = _matrix(store)
@@ -71,4 +72,4 @@ def search(store, query: str, top_k: int = 20) -> list[tuple]:
     k = min(top_k, len(ids))
     idx = np.argpartition(-scores, k - 1)[:k]
     idx = idx[np.argsort(-scores[idx])]
-    return [(ids[i], float(scores[i])) for i in idx]
+    return [(ids[i], float(scores[i])) for i in idx if scores[i] >= min_score]

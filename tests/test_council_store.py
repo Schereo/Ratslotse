@@ -178,3 +178,12 @@ def test_party_filter(tmp_path):
     assert store.decision_ids_for_party("Grüne") == [40]
     assert [x["id"] for x in store.search_decisions(party="Grüne")] == [40]
     assert store.count_decisions(party="CDU") == 1 and store.count_decisions(party="SPD") == 0
+
+
+def test_qa_resolve_citations():
+    from council.qa import resolve_citations
+    answer = "Beschlossen [2030], ein Modell [3269, 3346] und ungültig [9999]."
+    cleaned, cited = resolve_citations(answer, {2030, 3269, 3346})
+    assert cited == [2030, 3269, 3346]   # multi-id bracket is parsed
+    assert "[3269, 3346]" in cleaned
+    assert "9999" not in cleaned          # invalid citation stripped from the text

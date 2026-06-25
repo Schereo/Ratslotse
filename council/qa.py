@@ -61,6 +61,23 @@ def answer_question(question: str, candidates: list[dict], model: str = MODEL):
         messages=[{"role": "user", "content": prompt}], **extra,
     )
     answer = (resp.choices[0].message.content or "").strip()
-    valid = {c["id"] for c in candidates}
-    cited = [i for i in dict.fromkeys(int(x) for x in re.findall(r"\[(\d+)\]", answer)) if i in valid]
-    return answer, cited
+    return resolve_citations(answer, {c["id"] for c in candidates})
+
+
+def resolve_citations(answer: str, valid: set[int]):
+    """Parse `[id]` / `[id, id, …]` citations → ``(cleaned_answer, cited_ids)``.
+    Keeps only ids we actually retrieved (``valid``), preserving order, and strips
+    any invalid citation numbers from the text so no dangling [N] is shown."""
+    cited: list[int] = []
+    for group in re.findall(r"\[([\d,\s]+)\]", answer):
+        for num in re.findall(r"\d+", group):
+            v = int(num)
+            if v in valid and v not in cited:
+                cited.append(v)
+
+    def _clean(m: "re.Match") -> str:
+        nums = [n for n in re.findall(r"\d+", m.group(1)) if int(n) in valid]
+        return f" [{', '.join(nums)}]" if nums else ""
+
+    cleaned = re.sub(r"\s*\[([\d,\s]+)\]", _clean, answer).strip()
+    return cleaned, cited
