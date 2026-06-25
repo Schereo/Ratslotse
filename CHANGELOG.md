@@ -9,8 +9,23 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 ## [Unreleased]
 
 ### Geplant
-- Schritt 2 der KI-Roadmap: Parteien-Profil (Themen-Heatmap, Erfolgsquoten, Streitgrad, Allianz-Karte)
-- Embeddings & semantische Suche, Ziel-Tracking (RAG), Querverbindungen
+- Semantische **Embeddings** statt Keyword-Retrieval (bessere Treffer für Ziel-Tracking und „Frag den Rat", Clustering, verwandte Beschlüsse)
+- Weitere Querverbindungen: Vorgangs-Dossiers, Geld-Tracking, News-Verknüpfung, Auto-Rückblicke
+
+## [0.8.0] – 2026-06-25
+
+### Hinzugefügt
+- **Frag den Stadtrat** (Schritt 4 der KI-Roadmap): KI-Q&A über die Beschlüsse. Freitextfrage → Keyword-Retrieval → LLM-Antwort, die nur aus den gefundenen Beschlüssen zitiert (mit verlinkten Quellen) und ehrlich sagt, wenn nichts passt. (#59)
+
+## [0.7.0] – 2026-06-25
+
+### Hinzugefügt
+- **Ziel-Tracking** (Schritt 3): neue „Ziele"-Tab zeigt je Stadtziel (Klimaneutralität 2035, Verkehrswende, Wohnungsbau, Kita/Schule, Innenstadt, Digitalisierung), wie viele Beschlüsse es voranbringen / bremsen / neutral berühren, mit aufklappbarer Beschlussliste. LLM-Bewertung über keyword-retrievte Kandidaten. (#58)
+
+## [0.6.0] – 2026-06-25
+
+### Hinzugefügt
+- **Parteien-Profil** (Schritt 2): neue „Parteien & Analyse"-Tab — Themen-Heatmap (Partei × Themenfeld), Erfolgsquoten der Anträge, Streitgrad je Themenfeld, häufige Allianzen. Fraktionsnamen werden normalisiert. (#57)
 
 ## [0.5.1] – 2026-06-25
 
@@ -54,7 +69,10 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 ### Hinzugefügt
 - Grundlage: NWZ-Scraper, OpenRouter-basierter Klassifikator, Telegram-Bot und erstes Web-Frontend (FastAPI-Backend + Next.js-Frontend). (#24, #17)
 
-[Unreleased]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.7.0...v0.8.0
+[0.7.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.6.0...v0.7.0
+[0.6.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.3.0...v0.4.0
