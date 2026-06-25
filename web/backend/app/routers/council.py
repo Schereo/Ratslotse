@@ -182,16 +182,19 @@ def ask(body: AskBody, _user: dict = Depends(require_active),
     candidates, mode = None, "keyword"
     try:
         from council import embeddings as emb
-        hits = emb.search(store, q, top_k=20)
+        hits = emb.search(store, q, top_k=30, min_score=0.3)
         if hits:
             candidates = store.get_decisions_by_ids([h[0] for h in hits])
             mode = "semantisch"
     except Exception:  # noqa: BLE001 — fastembed missing/any failure → keyword fallback
         candidates = None
     if not candidates:
-        candidates = store.get_goal_candidates(qa.extract_keywords(q), limit=20)
-    answer, cited = qa.answer_question(q, candidates)
-    return {"answer": answer, "mode": mode, "sources": store.get_decisions_by_ids(cited)}
+        candidates = store.get_goal_candidates(qa.extract_keywords(q), limit=25)
+        candidates = store.get_decisions_by_ids([c["id"] for c in candidates])
+    answer, _cited = qa.answer_question(q, candidates)
+    # Show all retrieved/matched decisions as sources (more results for broad
+    # questions), not only the ones the answer happened to cite.
+    return {"answer": answer, "mode": mode, "sources": candidates[:25]}
 
 
 @router.get("/decision-stats")

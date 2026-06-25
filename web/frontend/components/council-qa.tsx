@@ -70,7 +70,7 @@ export function QaTab() {
           {res.sources.length > 0 && (
             <div>
               <p className="mb-2 text-xs font-medium text-muted-foreground">
-                Quellen ({res.sources.length}){res.mode ? ` · ${res.mode === "semantisch" ? "semantische Suche" : "Stichwortsuche"}` : ""}
+                Gefundene Beschlüsse ({res.sources.length}){res.mode ? ` · ${res.mode === "semantisch" ? "semantische Suche" : "Stichwortsuche"}` : ""}
               </p>
               <div className="space-y-2">
                 {res.sources.map((s) => (
