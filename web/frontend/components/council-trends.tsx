@@ -32,15 +32,15 @@ function StackedDecisions({ d }: { d: Trends }) {
   const label = (f: string) => d.field_labels[f] ?? POLICY_FIELD_LABELS[f] ?? f;
   return (
     <div>
-      <div className="flex h-48 items-end gap-1.5">
+      <div className="flex items-end gap-1.5" style={{ height: 190 }}>
         {d.quarters.map((q, qi) => (
-          <div key={q} className="flex h-full flex-1 flex-col justify-end" title={`${qLabel(q)}: ${totals[qi]} Beschlüsse`}>
-            <div className="flex flex-col-reverse overflow-hidden rounded-sm" style={{ height: `${(totals[qi] / max) * 100}%` }}>
-              {d.fields.map((f, fi) => {
-                const v = d.by_field[f]?.[qi] ?? 0;
-                return v ? <div key={f} style={{ height: `${(v / totals[qi]) * 100}%`, background: COLORS[fi % COLORS.length] }} /> : null;
-              })}
-            </div>
+          <div key={q} className="flex flex-1 flex-col-reverse overflow-hidden rounded-sm"
+            style={{ height: `${(totals[qi] / max) * 100}%`, minHeight: totals[qi] > 0 ? 3 : 0 }}
+            title={`${qLabel(q)}: ${totals[qi]} Beschlüsse`}>
+            {d.fields.map((f, fi) => {
+              const v = d.by_field[f]?.[qi] ?? 0;
+              return v ? <div key={f} style={{ height: `${(v / totals[qi]) * 100}%`, background: COLORS[fi % COLORS.length] }} /> : null;
+            })}
           </div>
         ))}
       </div>
@@ -63,11 +63,11 @@ function MoneyBars({ d }: { d: Trends }) {
   const max = Math.max(1, ...d.money);
   return (
     <div>
-      <div className="flex h-32 items-end gap-1.5">
+      <div className="flex items-end gap-1.5" style={{ height: 130 }}>
         {d.quarters.map((q, qi) => (
-          <div key={q} className="flex h-full flex-1 flex-col justify-end" title={`${qLabel(q)}: ${formatEuro(d.money[qi])}`}>
-            <div className="rounded-sm bg-emerald-500/70" style={{ height: `${(d.money[qi] / max) * 100}%`, minHeight: d.money[qi] > 0 ? 2 : 0 }} />
-          </div>
+          <div key={q} className="flex-1 rounded-sm bg-emerald-500/70"
+            style={{ height: `${(d.money[qi] / max) * 100}%`, minHeight: d.money[qi] > 0 ? 2 : 0 }}
+            title={`${qLabel(q)}: ${formatEuro(d.money[qi])}`} />
         ))}
       </div>
       <div className="mt-1.5 flex gap-1.5 text-[10px] text-muted-foreground">
