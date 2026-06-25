@@ -12,7 +12,7 @@ import {
 import {
   Badge, Card, CardListSkeleton, DateField, EmptyState, Input, PageHeader, Pagination, Select, Spinner, formatDate, toast,
 } from "@/components/ui";
-import { OutcomeBadge, FieldBadge } from "@/components/decision-ui";
+import { OutcomeBadge, FieldBadge, formatEuro } from "@/components/decision-ui";
 import { AnalysisTab } from "@/components/council-analysis";
 import { GoalsTab } from "@/components/council-goals";
 import { QaTab } from "@/components/council-qa";
@@ -85,6 +85,11 @@ function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
             <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
               {!isSub && <FieldBadge field={d.policy_field} />}
               <span>{isSub ? `Teilabstimmung · TOP ${d.parent_item}` : `${d.committee} · ${formatDate(d.session_date)}`}</span>
+              {!isSub && d.amount_eur != null && (
+                <span className="rounded bg-emerald-500/10 px-1.5 font-semibold tabular-nums text-emerald-700 dark:text-emerald-400" title="Im Beschlusstext genannter Betrag">
+                  {formatEuro(d.amount_eur)}
+                </span>
+              )}
             </div>
             <OutcomeBadge outcome={d.outcome} />
           </div>
