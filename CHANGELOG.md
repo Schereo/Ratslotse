@@ -11,6 +11,14 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 ### Geplant
 - Entitäten-Graph / Themen-Seiten + Vorgangs-Dossier
 
+## [0.16.0] – 2026-06-25
+
+### Hinzugefügt
+- **Öffentliche Technik-Seite** (`/technik`): erklärt fortführbar die Verarbeitungskette (Extraktion → Klassifikation → Embeddings → Hybrid-Retrieval mit Reranker → RAG), Ziel-Tracking, News, Geld, Parteien, Qualitätsmessung und Grenzen — ohne Login erreichbar, von der Login-Seite verlinkt. (#92, #93)
+
+### Geändert
+- **Eval-Gold-Set 4,5× vergrößert** (43 → ~197 Fälle: 120 Themenfeld, 71 Ziel-Stance, 6 QA) per Doppel-Annotation (zwei unabhängige Durchläufe, nur Übereinstimmungen übernommen). Repräsentative Baseline jetzt **87 %** (Themenfeld 88 %, Ziel-Stance 83 % mit 0 Richtungsfehlern, Frag-den-Rat 100 % ohne Halluzinationen) — die vorherigen 95 % auf 19 leichten Fällen hatten die Leistung überschätzt. `eval_ai.py` batcht große Sets. (#92)
+
 ## [0.15.0] – 2026-06-25
 
 ### Hinzugefügt
@@ -143,7 +151,8 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 ### Hinzugefügt
 - Grundlage: NWZ-Scraper, OpenRouter-basierter Klassifikator, Telegram-Bot und erstes Web-Frontend (FastAPI-Backend + Next.js-Frontend). (#24, #17)
 
-[Unreleased]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.15.0...HEAD
+[Unreleased]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.16.0...HEAD
+[0.16.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.12.0...v0.13.0
