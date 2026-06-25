@@ -9,7 +9,12 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 ## [Unreleased]
 
 ### Geplant
-- Trend-Dashboard „Was bewegt den Rat?", Entitäten-Graph / Themen-Seiten + Vorgangs-Dossier
+- Entitäten-Graph / Themen-Seiten + Vorgangs-Dossier
+
+## [0.15.0] – 2026-06-25
+
+### Hinzugefügt
+- **Trend-Dashboard „Was bewegt den Rat?"** (neuer Trends-Tab): Beschlüsse je Quartal gestapelt nach den aktivsten Themenfeldern, erkanntes Finanzvolumen je Quartal, und die häufigsten (nicht-prozeduralen) Schlagworte der letzten zwei Quartale — klickbar in eine gefilterte Beschlussliste. Reine Aggregation der vorhandenen klassifizierten Daten, ohne neue Abhängigkeit. (#88, #91)
 
 ## [0.14.0] – 2026-06-25
 
@@ -138,7 +143,8 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 ### Hinzugefügt
 - Grundlage: NWZ-Scraper, OpenRouter-basierter Klassifikator, Telegram-Bot und erstes Web-Frontend (FastAPI-Backend + Next.js-Frontend). (#24, #17)
 
-[Unreleased]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.11.0...v0.12.0
