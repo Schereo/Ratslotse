@@ -39,6 +39,25 @@ def _assess_chunk(goal_key: str, batch: list[dict]) -> dict:
         return {"status": "failed", "error": repr(exc)}
 
 
+def _candidates(store, goal_key: str, goal: dict, incremental: bool) -> list[dict]:
+    """Keyword candidates ∪ semantic neighbours of the goal description.
+    Semantic recall catches decisions that don't use the keywords (esp. 'bremst').
+    Falls back to keyword-only if fastembed/embeddings aren't available."""
+    exclude = goal_key if incremental else None
+    cands = store.get_goal_candidates(goal["keywords"], exclude_goal=exclude)
+    seen = {c["id"] for c in cands}
+    try:
+        from council import embeddings
+        skip = store.linked_decision_ids(goal_key) if incremental else set()
+        query = f"{goal['label']}. {goal['description']}"
+        sem_ids = [i for i, _ in embeddings.search(store, query, top_k=150, min_score=0.3)
+                   if i not in seen and i not in skip]
+        cands += store.get_decisions_by_ids(sem_ids)
+    except Exception:  # noqa: BLE001 — no embeddings → keyword-only
+        pass
+    return cands
+
+
 def process(council_db: Path, batch_size: int = 12, workers: int = 8,
             only: str | None = None, incremental: bool = False) -> dict:
     store = CouncilStore(council_db)
@@ -48,7 +67,7 @@ def process(council_db: Path, batch_size: int = 12, workers: int = 8,
             continue
         # Incremental (daily cron): only assess decisions not yet linked to this goal,
         # and keep existing links. Full run: rebuild the goal from scratch.
-        cands = store.get_goal_candidates(goal["keywords"], exclude_goal=goal_key if incremental else None)
+        cands = _candidates(store, goal_key, goal, incremental)
         if not incremental:
             store.clear_goal_links(goal_key)
         if incremental and not cands:
