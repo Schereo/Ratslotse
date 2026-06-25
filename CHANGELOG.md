@@ -12,6 +12,14 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 - Ziel-Retrieval ebenfalls semantisch (track_goals nutzt noch Keywords)
 - Weitere Querverbindungen: Geld-Tracking, Auto-Rückblicke, News-Verknüpfung, Vorgangs-Dossiers
 
+## [0.10.0] – 2026-06-25
+
+### Geändert
+- Parteien-Normalisierung an die **echte Ratsstruktur 2021–26** angepasst (recherchiert): Whitelist realer Fraktionen/Gruppen inkl. der Wechsel (BSW = ehem. Die Linke, FDP/Volt aufgelöst, Gruppe Für Oldenburg). Nicht-Parteien (BUND, NABU, ADFC, Fossil Free, Beiräte, Verwaltung, Einzelpersonen) sind jetzt aus der Partei-Analyse gefiltert. (#66)
+
+### Hinzugefügt
+- **Beschlüsse verknüpft:** Partei-Filter (Klick auf eine Partei in der Analyse → ihre Beschlüsse), klickbare Themenfeld-Badges → gefilterte Liste, „Antrag von"-Labels auf der Detailseite, und bei einstimmigen Beschlüssen die anwesenden Fraktionen als Zustimmung. Partei + Feld liegen in der URL (deep-linkbar). (#67)
+
 ## [0.9.0] – 2026-06-25
 
 ### Hinzugefügt
@@ -83,7 +91,8 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 ### Hinzugefügt
 - Grundlage: NWZ-Scraper, OpenRouter-basierter Klassifikator, Telegram-Bot und erstes Web-Frontend (FastAPI-Backend + Next.js-Frontend). (#24, #17)
 
-[Unreleased]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.6.0...v0.7.0
