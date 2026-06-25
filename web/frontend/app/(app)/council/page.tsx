@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Search, ExternalLink, ChevronDown, ChevronRight, Landmark, Scale, Users } from "lucide-react";
+import { Search, ExternalLink, ChevronDown, ChevronRight, Landmark, Scale, Users, BarChart3, Target, Sparkles } from "lucide-react";
 import { api, qs, ApiError } from "@/lib/api";
 import { useDebounce } from "@/lib/use-debounce";
 import {
@@ -493,20 +493,26 @@ function CouncilInner() {
 
   return (
     <div>
-      <PageHeader title="Ratsinformationssystem" description="Sitzungen, Tagesordnungen und Beschlüsse des Oldenburger Stadtrats." />
+      <PageHeader title="Ratsinformationssystem" description="Sitzungen, Beschlüsse, Parteien-Analyse, Stadtziele und KI-Fragen zum Oldenburger Stadtrat." />
 
-      <div className="mt-6 flex flex-wrap gap-1 rounded-md bg-muted p-1">
-        {([["sessions", "Sitzungen & Tagesordnungen"], ["decisions", "Beschlüsse"], ["analysis", "Parteien & Analyse"], ["goals", "Ziele"], ["ask", "Frag den Rat"]] as [Tab, string][]).map(([t, label]) => (
+      <div className="mt-6 flex gap-1 overflow-x-auto rounded-md bg-muted p-1">
+        {([
+          ["sessions", "Sitzungen", Landmark],
+          ["decisions", "Beschlüsse", Scale],
+          ["analysis", "Analyse", BarChart3],
+          ["goals", "Ziele", Target],
+          ["ask", "Fragen", Sparkles],
+        ] as [Tab, string, typeof Landmark][]).map(([t, label, Icon]) => (
           <button
             key={t}
             type="button"
             onClick={() => setTab(t)}
             className={cn(
-              "rounded-sm px-3 py-1.5 text-sm font-medium transition-colors",
+              "inline-flex shrink-0 items-center gap-1.5 rounded-sm px-3 py-1.5 text-sm font-medium transition-colors",
               tab === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
             )}
           >
-            {label}
+            <Icon className="h-4 w-4" /> {label}
           </button>
         ))}
       </div>
