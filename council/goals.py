@@ -21,27 +21,34 @@ MODEL = os.environ.get("COUNCIL_GOAL_MODEL", "deepseek/deepseek-v4-pro")
 
 # key -> {label, description, keywords}. User-extensible config.
 GOALS: dict[str, dict] = {
+    # Grounded in Oldenburg's actual plans (oldenburg.de), 2026-06.
     "klima_2035": {
         "label": "Klimaneutralität 2035",
-        "description": "Das Ziel der Stadt Oldenburg, bis 2035 klimaneutral zu werden: "
-                       "Treibhausgase senken, erneuerbare Energien, Wärmewende, energetische Sanierung, Klimaanpassung.",
-        "keywords": ["klimaneutral", "klimaschutz", "CO2", "treibhausgas", "erneuerbar", "photovoltaik",
-                     "solar", "windkraft", "wärmewende", "fernwärme", "energetische sanierung", "klimaanpassung"],
+        "description": "Ratsbeschluss vom April 2021: Oldenburg soll bis 2035 klimaneutral werden. "
+                       "Zentrales Instrument ist der Klimaschutzplan Oldenburg 2035 mit 90 Maßnahmen, "
+                       "Schwerpunkt Gebäude/Strom/Wärme; Vermeidung und Verminderung von Treibhausgasen vor Kompensation.",
+        "keywords": ["klimaneutral", "klimaschutz", "klimaschutzplan", "klimaziel", "CO2", "treibhausgas",
+                     "erneuerbar", "photovoltaik", "solar", "windkraft", "wärmewende", "wärmeplanung",
+                     "fernwärme", "energetische sanierung", "klimaanpassung"],
     },
     "verkehrswende": {
-        "label": "Verkehrswende & Radverkehr",
-        "description": "Verlagerung des Verkehrs auf Rad, Fuß und ÖPNV; sichere Radwege, Tempo 30, "
-                       "Ausbau des Nahverkehrs, weniger Autoverkehr in der Stadt.",
-        "keywords": ["radverkehr", "radweg", "fahrrad", "öpnv", "bus", "tempo 30", "fußverkehr",
-                     "verkehrswende", "fahrradstraße", "nahverkehr", "schutzstreifen",
-                     "parkhaus", "tiefgarage", "stellplatz"],  # incl. car-infra (potential "bremst")
+        "label": "Mobilitätsplan 2030 (Verkehrswende)",
+        "description": "Mobilitätsplan Oldenburg 2030 (Ratsbeschluss Juni 2023, Motto: 100 Prozent fürs Klima): "
+                       "nachhaltige Mobilität bis 2030 mit zwölf Teilkonzepten — Radverkehrs-Premiumnetz, Fahrradstraßen/-zonen, "
+                       "durchgängige ÖPNV-Spur am Wallring, Mobilstationen, E-Ladeinfrastruktur, Parkraummanagement, Park&Ride.",
+        "keywords": ["radverkehr", "radweg", "fahrradstraße", "fahrradzone", "premiumnetz", "fahrrad",
+                     "öpnv", "busspur", "wallring", "mobilitätsstation", "ladeinfrastruktur", "tempo 30",
+                     "fußverkehr", "verkehrswende", "parkraummanagement", "park&ride", "modal split",
+                     "verkehrsfläche", "parkhaus", "stellplatz"],
     },
     "wohnungsbau": {
-        "label": "Bezahlbarer Wohnungsbau",
-        "description": "Schaffung von bezahlbarem und sozialem Wohnraum, Nachverdichtung, "
-                       "neue Wohnquartiere, Mietpreisbindung.",
-        "keywords": ["wohnungsbau", "wohnraum", "sozialwohnung", "sozialer wohnungsbau", "miete",
-                     "bebauungsplan", "wohnquartier", "nachverdichtung", "baulandentwicklung"],
+        "label": "Bezahlbarer Wohnraum",
+        "description": "Schaffung und Erhalt von bezahlbarem Mietwohnraum (städtisches Wohnungsbauförderungs"
+                       "programm, Arbeitskreis Bündnis Wohnen in Oldenburg): preisgünstiger Neubau, "
+                       "sozialer Wohnungsbau, Nachverdichtung, neue Wohnquartiere.",
+        "keywords": ["wohnungsbau", "wohnungsbauförderung", "bündnis wohnen", "wohnraum", "mietwohnraum",
+                     "preisgünstig", "sozialwohnung", "sozialer wohnungsbau", "bebauungsplan",
+                     "wohnquartier", "nachverdichtung", "baulandentwicklung"],
     },
     "bildung_betreuung": {
         "label": "Kita- & Schulausbau",
@@ -51,18 +58,18 @@ GOALS: dict[str, dict] = {
                      "schulneubau", "schulsanierung", "grundschule", "betreuungsplatz"],
     },
     "innenstadt": {
-        "label": "Lebendige Innenstadt",
-        "description": "Stärkung der Innenstadt: Einzelhandel, Aufenthaltsqualität, gegen Leerstand, "
-                       "Fußgängerzone, Märkte und Veranstaltungen.",
-        "keywords": ["innenstadt", "fußgängerzone", "einzelhandel", "leerstand", "city",
-                     "aufenthaltsqualität", "wochenmarkt", "innenstadtentwicklung"],
+        "label": "Innenstadtstrategie",
+        "description": "Innenstadtstrategie (Arbeitskreis Bündnis Innenstadt, 2020): Stärkung der Innenstadt — "
+                       "Einzelhandel, Aufenthaltsqualität, gegen Leerstand, Fußgängerzone, Märkte und Veranstaltungen.",
+        "keywords": ["innenstadt", "innenstadtstrategie", "bündnis innenstadt", "fußgängerzone", "einzelhandel",
+                     "leerstand", "aufenthaltsqualität", "wochenmarkt", "innenstadtentwicklung"],
     },
     "digitalisierung": {
-        "label": "Digitale Verwaltung",
-        "description": "Digitalisierung der Stadtverwaltung und Infrastruktur: Online-Dienste, "
-                       "Breitband/Glasfaser, IT-Modernisierung, Smart City.",
-        "keywords": ["digital", "online-dienst", "breitband", "glasfaser", "smart city",
-                     "e-government", "it-", "verwaltungsdigitalisierung"],
+        "label": "Digitalisierungsstrategie & Smart City",
+        "description": "Digitalisierungsstrategie (Stadtrat Dezember 2023): Transparenz, Effizienz und IT-Sicherheit, "
+                       "Optimierung von Verwaltungsprozessen, Stärkung der Bürgerbeteiligung; Smart City Oldenburg.",
+        "keywords": ["digital", "digitalisierungsstrategie", "smart city", "online-dienst", "e-government",
+                     "verwaltungsprozess", "bürgerbeteiligung", "it-sicherheit", "breitband", "glasfaser"],
     },
 }
 
