@@ -92,3 +92,23 @@ def test_party_analysis(tmp_path):
     assert gruene["motions"] == 2 and gruene["angenommen"] == 2 and gruene["rate"] == 1.0
     assert a["topic_matrix"]["matrix"]["Grüne"]["verkehr"] == 1
     assert {"a": "Grüne", "b": "SPD", "count": 1} in a["alliances"]
+
+
+def test_goal_links(tmp_path):
+    store = CouncilStore(_old_db(tmp_path / "old.sqlite"))
+    store._conn.execute(
+        "INSERT INTO council_decisions (id,ksinr,position,kind,item_number,title,beschluss,outcome,policy_field) "
+        "VALUES (20,1,0,'decision','1','Photovoltaik Schuldach','Solaranlage aufs Dach','angenommen','klima_umwelt')"
+    )
+    store._conn.commit()
+
+    cands = store.get_goal_candidates(["photovoltaik", "solar"])
+    assert any(c["id"] == 20 for c in cands)
+
+    store.save_goal_links("klima_2035", {20: {"relevant": True, "stance": "voran", "grund": "Solar."}})
+    assert store.goal_summary()["klima_2035"] == {"voran": 1, "bremst": 0, "neutral": 0, "total": 1}
+    det = store.goal_detail("klima_2035")
+    assert len(det) == 1 and det[0]["stance"] == "voran" and det[0]["title"].startswith("Photovoltaik")
+
+    store.clear_goal_links("klima_2035")
+    assert store.goal_summary() == {}

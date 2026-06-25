@@ -89,6 +89,23 @@ export interface PolicyField {
   count: number;
 }
 
+export interface GoalSummary {
+  key: string; label: string; description: string;
+  voran: number; bremst: number; neutral: number; total: number;
+}
+
+export interface GoalDecision {
+  id: number; title: string | null; summary: string | null;
+  policy_field: string | null; outcome: DecisionOutcome | null;
+  session_date: string; committee: string; stance: string; rationale: string | null;
+}
+
+export interface GoalDetail {
+  key: string; label: string; description: string;
+  summary: { voran: number; bremst: number; neutral: number; total: number };
+  decisions: GoalDecision[];
+}
+
 export interface PartyAnalysis {
   coverage: { with_factions: number; total: number };
   topic_matrix: {
