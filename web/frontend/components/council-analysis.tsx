@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { BarChart3 } from "lucide-react";
-import { api, ApiError } from "@/lib/api";
 import { PartyAnalysis } from "@/lib/types";
-import { Card, Spinner, EmptyState, toast } from "@/components/ui";
+import { Card, Spinner, EmptyState } from "@/components/ui";
 import { POLICY_FIELD_LABELS } from "@/components/decision-ui";
+import { useFetch } from "@/lib/use-fetch";
 
 function Block({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
@@ -133,15 +132,7 @@ function Alliances({ a }: { a: PartyAnalysis }) {
 }
 
 export function AnalysisTab() {
-  const [data, setData] = useState<PartyAnalysis | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    api.get<PartyAnalysis>("/council/analysis")
-      .then(setData)
-      .catch((e) => { if (e instanceof ApiError) toast.error(e.message); })
-      .finally(() => setLoading(false));
-  }, []);
+  const { data, loading } = useFetch<PartyAnalysis>("/council/analysis");
 
   if (loading) return <div className="py-10"><Spinner /></div>;
   if (!data || data.coverage.with_factions === 0) {

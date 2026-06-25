@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Target, ChevronRight, ArrowRight } from "lucide-react";
-import { api, ApiError } from "@/lib/api";
 import { GoalSummary, GoalDetail } from "@/lib/types";
-import { Card, Spinner, EmptyState, formatDate, toast } from "@/components/ui";
+import { Card, Spinner, EmptyState, formatDate } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import { useFetch } from "@/lib/use-fetch";
 
 const STANCE = {
   voran: { label: "bringt voran", bar: "bg-green-500/80", chip: "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-300" },
@@ -28,16 +28,8 @@ function StanceBar({ s }: { s: { voran: number; bremst: number; neutral: number;
 }
 
 function GoalDetailView({ goalKey }: { goalKey: string }) {
-  const [data, setData] = useState<GoalDetail | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data, loading } = useFetch<GoalDetail>(`/council/goal/${goalKey}`);
   const [filter, setFilter] = useState<Stance | "">("");
-
-  useEffect(() => {
-    setLoading(true);
-    api.get<GoalDetail>(`/council/goal/${goalKey}`).then(setData)
-      .catch((e) => { if (e instanceof ApiError) toast.error(e.message); })
-      .finally(() => setLoading(false));
-  }, [goalKey]);
 
   if (loading) return <div className="py-6"><Spinner /></div>;
   if (!data) return null;
@@ -78,17 +70,11 @@ function GoalDetailView({ goalKey }: { goalKey: string }) {
 }
 
 export function GoalsTab() {
-  const [goals, setGoals] = useState<GoalSummary[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, loading } = useFetch<{ goals: GoalSummary[] }>("/council/goals");
   const [open, setOpen] = useState<string | null>(null);
 
-  useEffect(() => {
-    api.get<{ goals: GoalSummary[] }>("/council/goals").then((d) => setGoals(d.goals))
-      .catch((e) => { if (e instanceof ApiError) toast.error(e.message); })
-      .finally(() => setLoading(false));
-  }, []);
-
   if (loading) return <div className="py-10"><Spinner /></div>;
+  const goals = data?.goals ?? [];
   const tracked = goals.some((g) => g.total > 0);
   if (!tracked) return <EmptyState icon={Target} title="Ziel-Tracking wird vorbereitet" hint="Die Beschlüsse werden gerade den Stadtzielen zugeordnet." />;
 

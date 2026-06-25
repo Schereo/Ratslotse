@@ -1,14 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ExternalLink, FileText, FileDown, Users, Scale } from "lucide-react";
-import { api, ApiError } from "@/lib/api";
 import { DecisionDetail, CouncilDecision } from "@/lib/types";
-import { Card, Spinner, EmptyState, formatDate, toast } from "@/components/ui";
+import { Card, Spinner, EmptyState, formatDate } from "@/components/ui";
 import { OutcomeBadge, VoteBar, FieldBadge } from "@/components/decision-ui";
 import { cn } from "@/lib/utils";
+import { useFetch } from "@/lib/use-fetch";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -26,20 +25,10 @@ function presentMembers(att: DecisionDetail["attendance"]): number {
 export default function DecisionDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const [data, setData] = useState<DecisionDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-
-  useEffect(() => {
-    setLoading(true);
-    api.get<DecisionDetail>(`/council/decision/${params.id}`)
-      .then(setData)
-      .catch((err) => { setError(true); if (err instanceof ApiError && err.status !== 404) toast.error(err.message); })
-      .finally(() => setLoading(false));
-  }, [params.id]);
+  const { data, loading } = useFetch<DecisionDetail>(`/council/decision/${params.id}`);
 
   if (loading) return <div className="py-10"><Spinner /></div>;
-  if (error || !data) return <EmptyState icon={Scale} title="Beschluss nicht gefunden" />;
+  if (!data) return <EmptyState icon={Scale} title="Beschluss nicht gefunden" />;
 
   const d = data.decision;
   const present = presentMembers(data.attendance);
