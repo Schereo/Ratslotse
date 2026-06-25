@@ -120,6 +120,15 @@ export interface GoalDetail {
   decisions: GoalDecision[];
 }
 
+export interface Trends {
+  quarters: string[];
+  fields: string[];
+  by_field: Record<string, number[]>;
+  money: number[];
+  emerging: { tag: string; n: number }[];
+  field_labels: Record<string, string>;
+}
+
 export interface PartyAnalysis {
   coverage: { with_factions: number; total: number };
   topic_matrix: {

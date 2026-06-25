@@ -149,6 +149,14 @@ def finance(_user: dict = Depends(require_active), store: CouncilStore = Depends
     return {"decisions": store.largest_financial_decisions(limit=25)}
 
 
+@router.get("/trends")
+def trends(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> dict:
+    """Council activity over time: decisions + € volume per quarter by field, emerging tags."""
+    data = store.activity_trends()
+    data["field_labels"] = {k: POLICY_FIELDS[k][0] for k in data["fields"]}
+    return data
+
+
 _EMPTY_GOAL = {"voran": 0, "bremst": 0, "neutral": 0, "total": 0}
 
 
