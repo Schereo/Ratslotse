@@ -5,3 +5,6 @@ python-multipart>=0.0.9
 email-validator>=2.1
 # Password hashing (scrypt) and JWT (HS256) use only the Python standard
 # library — no bcrypt/passlib/cryptography needed.
+# Cosine math for semantic Q&A retrieval. (fastembed is intentionally NOT here —
+# it's installed manually on prod; /ask falls back to keyword search without it.)
+numpy>=1.26
