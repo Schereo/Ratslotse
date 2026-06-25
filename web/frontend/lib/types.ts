@@ -89,6 +89,18 @@ export interface PolicyField {
   count: number;
 }
 
+export interface QaSource {
+  id: number; title: string | null; summary: string | null;
+  policy_field: string | null; outcome: DecisionOutcome | null;
+  session_date: string; committee: string;
+}
+
+export interface QaAnswer {
+  answer: string;
+  keywords: string[];
+  sources: QaSource[];
+}
+
 export interface GoalSummary {
   key: string; label: string; description: string;
   voran: number; bremst: number; neutral: number; total: number;
