@@ -12,6 +12,15 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 - Ziel-Retrieval ebenfalls semantisch (track_goals nutzt noch Keywords)
 - Weitere Querverbindungen: Geld-Tracking, Auto-Rückblicke, News-Verknüpfung, Vorgangs-Dossiers
 
+## [0.10.1] – 2026-06-25
+
+### Behoben
+- „Frag den Rat": Mehrfach-Zitate wie `[3269, 3346]` wurden in den Quellen nicht erkannt (Regex nur für Einzel-IDs) — die Antwort verwies auf Beschlüsse, die unten nicht auftauchten. Zitat-Auflösung jetzt als getestete Funktion (Mehrfach-IDs + ungültige Zitate entfernt). (#68)
+
+### Geändert
+- „Frag den Rat" zeigt jetzt **alle gefundenen Beschlüsse** (semantisch top-30, Score ≥ 0.3) statt nur der zitierten — breite Fragen liefern deutlich mehr Treffer. (#68)
+- Refactoring: gemeinsame `DecisionLinkCard` statt drei kopierter Karten (QA, Ähnliche, Ziele). (#69)
+
 ## [0.10.0] – 2026-06-25
 
 ### Geändert
@@ -91,7 +100,8 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 ### Hinzugefügt
 - Grundlage: NWZ-Scraper, OpenRouter-basierter Klassifikator, Telegram-Bot und erstes Web-Frontend (FastAPI-Backend + Next.js-Frontend). (#24, #17)
 
-[Unreleased]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.10.1...HEAD
+[0.10.1]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.7.0...v0.8.0
