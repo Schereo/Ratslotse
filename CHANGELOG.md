@@ -8,11 +8,13 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.17.0] – 2026-06-25
+
+### Hinzugefügt
+- **Themen-Seiten (Entitäten):** ein LLM extrahiert wiederkehrende Eigennamen (Projekte, Orte, Organisationen) aus allen Beschlüssen; der neue **Themen-Tab** listet sie (1.008 Entitäten), und jede Themen-Seite bündelt alle zugehörigen Beschlüsse als Timeline plus erkanntes Finanzvolumen, beteiligte Fraktionen und Themenfeld-Verteilung (z. B. „Fliegerhorst": 164 Beschlüsse, 345 Mio. €). Beschluss-Detailseiten verlinken die genannten Entitäten. (#96, #97)
+
 ### Behoben
 - **Themenfeld-Klassifikation:** Rechnungsdokumente (Jahresabschluss, Wirtschaftsplan, Haushaltsplan …) einer Fach-Einrichtung landen jetzt zuverlässig unter `finanzen` statt beim Fachthema; 115 Beschlüsse re-klassifiziert. Themenfeld-Genauigkeit im Gold-Eval 88 % → **93 %** (Gesamt → 90 %). (#94)
-
-### Geplant
-- Entitäten-Graph / Themen-Seiten + Vorgangs-Dossier
 
 ## [0.16.0] – 2026-06-25
 
@@ -154,7 +156,8 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 ### Hinzugefügt
 - Grundlage: NWZ-Scraper, OpenRouter-basierter Klassifikator, Telegram-Bot und erstes Web-Frontend (FastAPI-Backend + Next.js-Frontend). (#24, #17)
 
-[Unreleased]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.16.0...HEAD
+[Unreleased]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.17.0...HEAD
+[0.17.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.13.0...v0.14.0
