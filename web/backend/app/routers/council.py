@@ -189,14 +189,19 @@ def ask(body: AskBody, _user: dict = Depends(require_active),
     candidates, mode = None, "keyword"
     try:
         from council import embeddings as emb
-        # Expand the question into topical terms first — the raw question retrieves
-        # generic decisions; expanded terms rank the actually-relevant ones far higher.
-        hits = emb.search(store, qa.expand_query(q), top_k=30, min_score=0.4)
+        # Hybrid retrieval (BM25 + vector on the expanded query) reranked by a
+        # cross-encoder against the original question — far better ranking than pure
+        # vector for keyword-y questions (e.g. "Spielplätze"). Rerank scores are logits,
+        # so min-max-normalise them to 0–1 for the displayed relevance badge.
+        hits = emb.hybrid_search(store, q, qa.expand_query(q), top_k=25)
         if hits:
             candidates = store.get_decisions_by_ids([h[0] for h in hits])
-            scores = {h[0]: h[1] for h in hits}
+            raw = [h[1] for h in hits]
+            lo, hi = min(raw), max(raw)
+            rng = (hi - lo) or 1.0
+            norm = {h[0]: (h[1] - lo) / rng for h in hits}
             for c in candidates:
-                c["score"] = round(scores.get(c["id"], 0.0), 3)
+                c["score"] = round(norm.get(c["id"], 0.0), 3)
             mode = "semantisch"
     except Exception:  # noqa: BLE001 — fastembed missing/any failure → keyword fallback
         candidates = None

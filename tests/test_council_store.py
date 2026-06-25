@@ -176,6 +176,21 @@ def test_dedup_keys():
     assert not collide(_dedup_keys("T10", None, 10), _dedup_keys("T11", None, 11))
 
 
+def test_decisions_fts(tmp_path):
+    store = CouncilStore(_old_db(tmp_path / "old.sqlite"))
+    for i, (t, b) in enumerate([("Radweg Nadorster Straße", "Ausbau eines Radwegs beschlossen"),
+                                ("Haushaltssatzung 2024", "Der Haushalt wird beschlossen")], 1):
+        store._conn.execute(
+            "INSERT INTO council_decisions(id,ksinr,position,kind,item_number,title,beschluss,outcome) "
+            "VALUES (?,1,0,'decision','1',?,?,'angenommen')", (i, t, b))
+    store._conn.commit()
+    assert store.rebuild_fts() == 2
+    assert store.search_decisions_fts("radweg")[0][0] == 1
+    assert store.search_decisions_fts("nadorster strasse")[0][0] == 1  # ß → ss folding
+    assert store.search_decisions_fts("haushalt")[0][0] == 2
+    assert store.search_decisions_fts("zz") == []  # terms < 3 chars dropped
+
+
 def test_embedding_vectors(tmp_path):
     store = CouncilStore(_old_db(tmp_path / "old.sqlite"))
     store.save_embeddings([(1, b"abcd"), (2, b"efgh")])

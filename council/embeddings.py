@@ -58,6 +58,51 @@ def _matrix(store):
     return _matrix_cache
 
 
+# Multilingual cross-encoder reranker (incl. German). Lazy-loaded like the embedder;
+# the web service falls back to pure vector order if fastembed/the model is missing.
+RERANK_MODEL = os.environ.get("COUNCIL_RERANK_MODEL", "jinaai/jina-reranker-v2-base-multilingual")
+_reranker = None
+
+
+def _get_reranker():
+    global _reranker
+    if _reranker is None:
+        from fastembed.rerank.cross_encoder import TextCrossEncoder  # lazy
+        _reranker = TextCrossEncoder(RERANK_MODEL)
+    return _reranker
+
+
+def rerank(query: str, docs: list[tuple]) -> list[tuple]:
+    """Reorder ``(id, text)`` candidates by cross-encoder relevance to ``query``.
+    Returns ``[(id, score)]`` best first. Raises ImportError if fastembed is missing."""
+    if not docs:
+        return []
+    scores = list(_get_reranker().rerank(query, [d[1] for d in docs]))
+    ranked = sorted(zip((d[0] for d in docs), scores), key=lambda x: -x[1])
+    return [(i, float(s)) for i, s in ranked]
+
+
+def hybrid_search(store, query: str, expanded: str, top_k: int = 25, pool: int = 45) -> list[tuple]:
+    """Hybrid retrieval (RAG-SOTA): vector candidates (on the expanded query) ∪ BM25
+    candidates (FTS), reranked by a cross-encoder against the *original* question.
+    Returns ``[(decision_id, score)]``. Degrades gracefully: no reranker → vector order
+    plus BM25-only extras; no fastembed at all → caller's keyword fallback via search()."""
+    vec = search(store, expanded, top_k=pool, min_score=0.2)  # may raise ImportError → caller falls back
+    bm = store.search_decisions_fts(f"{query} {expanded}", limit=pool)
+    cand_ids = list(dict.fromkeys([i for i, _ in vec] + [i for i, _ in bm]))
+    if not cand_ids:
+        return []
+    docs = store.get_decisions_by_ids(cand_ids)
+    pairs = [(d["id"], f"{d.get('title') or ''}. {d.get('summary') or ''}") for d in docs]
+    try:
+        return rerank(query, pairs)[:top_k]
+    except Exception:  # noqa: BLE001 — reranker model/dep missing → keep vector order
+        seen = {i for i, _ in vec}
+        order = [i for i, _ in vec] + [i for i in cand_ids if i not in seen]
+        sc = dict(vec)
+        return [(i, sc.get(i, 0.0)) for i in order[:top_k]]
+
+
 def search(store, query: str, top_k: int = 20, min_score: float = 0.0) -> list[tuple]:
     """Semantic search over stored decision vectors → ``[(decision_id, score)]``,
     best first, keeping only scores ≥ ``min_score``. Raises ImportError if fastembed
