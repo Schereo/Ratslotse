@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ExternalLink, FileText, FileDown, Users, Scale, Newspaper, Euro } from "lucide-react";
+import { ArrowLeft, ExternalLink, FileText, FileDown, Users, Scale, Newspaper } from "lucide-react";
 import { DecisionDetail, CouncilDecision } from "@/lib/types";
 import { Card, Spinner, EmptyState, formatDate } from "@/components/ui";
 import { OutcomeBadge, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard, formatEuro } from "@/components/decision-ui";
@@ -71,8 +71,8 @@ export default function DecisionDetailPage() {
 
       {d.amount_eur != null && (
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 px-3 py-1.5 text-sm font-semibold text-emerald-700 dark:text-emerald-400">
-            <Euro className="h-4 w-4" /> {formatEuro(d.amount_eur)}
+          <span className="rounded-lg bg-emerald-500/10 px-3 py-1.5 text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+            {formatEuro(d.amount_eur)}
           </span>
           <span className="text-xs text-muted-foreground">im Beschlusstext genannter Betrag (automatisch erkannt)</span>
         </div>

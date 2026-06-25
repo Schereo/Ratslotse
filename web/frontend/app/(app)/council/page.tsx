@@ -48,8 +48,8 @@ function Highlight({ text, query }: { text: string; query: string }) {
 function VoteLine({ d }: { d: CouncilDecision }) {
   const parts: string[] = [];
   if (d.vote) parts.push(d.vote);
-  if (d.gegenstimmen) parts.push(`${d.gegenstimmen} Gegenstimmen`);
-  if (d.enthaltungen) parts.push(`${d.enthaltungen} Enthaltungen`);
+  if (d.gegenstimmen) parts.push(`${d.gegenstimmen} ${d.gegenstimmen === 1 ? "Gegenstimme" : "Gegenstimmen"}`);
+  if (d.enthaltungen) parts.push(`${d.enthaltungen} ${d.enthaltungen === 1 ? "Enthaltung" : "Enthaltungen"}`);
   if (parts.length === 0 && d.factions.length === 0) return null;
   return (
     <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
