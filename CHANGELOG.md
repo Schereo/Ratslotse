@@ -9,7 +9,15 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 ## [Unreleased]
 
 ### Geplant
-- Weitere Features: Geld-Tracking, Auto-Rückblicke, Vorgangs-Dossiers
+- Weitere Features: Auto-Rückblicke, Vorgangs-Dossiers
+
+## [0.12.0] – 2026-06-25
+
+### Hinzugefügt
+- **Geld-Tracking:** der im Beschlusstext genannte Betrag wird heuristisch erkannt (€/EUR/Euro, Mio./Mrd.-Skalierung, Einheitspreise wie „275 €/m²" ausgeschlossen) und auf der Detailseite angezeigt. Neue Sektion **„Größte Finanzbeschlüsse"** in der Analyse-Tab (Top nach Betrag, Dubletten über Ausschuss/Rat zusammengefasst, ohne Bilanz-/Haushalts-/Treasury-Posten). Regex-Extraktion ohne LLM, läuft im täglichen Cron mit. (#76, #77, #78)
+
+### Geändert
+- **News-Verknüpfung** deutlich präziser: Artikel werden über ihren **Inhalt** eingebettet (nicht nur die Überschrift) und müssen ein themenspezifisches Wort mit dem Beschluss teilen — die vorherigen Fehltreffer (z. B. „Gesamtabschluss" ↔ „Oldenburg-Termine") sind weg, 157 belastbare statt 956 verrauschter Verknüpfungen. (#74, #75)
 
 ## [0.11.0] – 2026-06-25
 
@@ -112,7 +120,8 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 ### Hinzugefügt
 - Grundlage: NWZ-Scraper, OpenRouter-basierter Klassifikator, Telegram-Bot und erstes Web-Frontend (FastAPI-Backend + Next.js-Frontend). (#24, #17)
 
-[Unreleased]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.10.1...v0.11.0
 [0.10.1]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/Schereo/kommunalwahl-scraper/compare/v0.9.0...v0.10.0
