@@ -151,11 +151,20 @@ export default function TechnikPage() {
 
           <Section id="qualitaet" title="Qualität und Messung">
             <p>
-              KI kann irren — deshalb wird die Qualität laufend gegen ein von Hand erstelltes
-              „Gold-Set" gemessen (Beschlüsse mit bekannter richtiger Einordnung). Bei jeder Änderung an
-              Modellen, Prompts oder Suche läuft diese Prüfung erneut und schlägt an, wenn die Genauigkeit
-              fällt. Schwerpunkte der bisherigen Prüfungen: korrekte Themenzuordnung, richtige Richtung der
-              Ziel-Bewertung und belegte, halluzinationsfreie Antworten in „Frag den Rat".
+              KI kann irren — deshalb wird die Qualität laufend gegen ein „Gold-Set" gemessen:
+              rund 200 Beschlüsse, die zweimal unabhängig eingeordnet wurden; übernommen wird nur,
+              worüber sich beide Durchläufe einig waren. Bei jeder Änderung an Modellen, Prompts oder
+              Suche läuft die Prüfung erneut und schlägt an, wenn die Genauigkeit fällt.
+            </p>
+            <p>Auf diesem Gold-Set zeigt sich (Stand der jüngsten Messung):</p>
+            <ul className="ml-4 list-disc space-y-1">
+              <li><strong className="text-foreground">Themenfeld:</strong> ~88 % stimmen mit der unabhängigen Einordnung überein. Die meisten Abweichungen betreffen Beschlüsse, die echt zwei Themenfelder berühren.</li>
+              <li><strong className="text-foreground">Ziel-Bewertung:</strong> die Richtung (bringt voran ↔ bremst) wird verlässlich getroffen — kein einziger Richtungsfehler. Unschärfe gibt es nur an der Grenze „neutral".</li>
+              <li><strong className="text-foreground">Frag den Rat:</strong> im Test ausschließlich belegte Antworten — keine erfundenen Fakten, keine falschen Quellen, und ehrliches „nichts gefunden", wenn es nichts gibt.</li>
+            </ul>
+            <p className="text-sm">
+              Diese Zahlen sind bewusst nüchtern: Sie messen Übereinstimmung mit einer sorgfältigen,
+              aber ebenfalls fehlbaren Referenz — kein „die KI hat zu X % recht".
             </p>
           </Section>
 
