@@ -8,6 +8,11 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.28.0] – 2026-06-26
+
+### Geändert
+- **Entitäts-Extraktion (`extract_entities`) jetzt inkrementell** statt Voll-Rebuild bei jedem Lauf. NER läuft nur noch über *neue* Beschlüsse; die Roh-Beobachtungen liegen in `council_entity_obs` (append-only, slug-keyed), `council_entity_scanned` merkt bereits gescannte Beschlüsse, und `council_entities`/-links werden daraus ohne LLM neu abgeleitet. Hält die Themen-Seiten/Karten mit neuen Beschlüssen frisch, ohne wöchentlich alles neu zu scannen — und löst das `min_n`-Problem korrekt (eine Entität, die einmal jetzt und einmal später auftaucht, überschreitet die Schwelle, weil die frühe Beobachtung erhalten bleibt). `--full` erzwingt einen kompletten Re-Scan. (#114)
+
 ## [0.27.1] – 2026-06-26
 
 ### Geändert
