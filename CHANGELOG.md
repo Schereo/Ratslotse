@@ -8,6 +8,11 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.37.1] – 2026-06-26
+
+### Hinzugefügt
+- **Changelog auf der Website:** öffentliche Seite `/changelog`, die diese CHANGELOG.md rendert; im Footer verlinkt (Landing + eingeloggter Bereich). (#132)
+
 ## [0.37.0] – 2026-06-26
 
 ### Hinzugefügt
