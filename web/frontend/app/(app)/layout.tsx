@@ -35,15 +35,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen flex-col md:flex-row">
       <DesktopSidebar />
       <MobileTopbar />
-      <main className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-5xl px-4 py-6 pb-[calc(env(safe-area-inset-bottom)+6rem)] sm:px-6 sm:py-8 md:pb-8">
+      <main className="flex flex-1 flex-col overflow-y-auto pb-[calc(env(safe-area-inset-bottom)+5rem)] md:pb-0">
+        <div className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
           {pending ? <PendingNotice email={user.email} /> : children}
-          <footer className="mt-10 border-t border-border pt-4 text-center text-xs text-muted-foreground">
-            <a href="/impressum" className="hover:text-foreground">Impressum</a>
-            {" · "}
-            <a href="/datenschutz" className="hover:text-foreground">Datenschutz</a>
-          </footer>
         </div>
+        <footer className="border-t border-border bg-background/85 py-3 text-center text-xs text-muted-foreground backdrop-blur md:sticky md:bottom-0">
+          <a href="/impressum" className="hover:text-foreground">Impressum</a>
+          {" · "}
+          <a href="/datenschutz" className="hover:text-foreground">Datenschutz</a>
+        </footer>
       </main>
       <MobileBottomNav />
     </div>
