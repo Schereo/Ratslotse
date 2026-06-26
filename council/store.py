@@ -367,6 +367,20 @@ class CouncilStore:
             "committees": one("SELECT COUNT(*) FROM committees"),
         }
 
+    def public_stats(self) -> dict:
+        """Headline aggregate counts for the public landing page (no content)."""
+        c = self._conn
+
+        def one(sql: str) -> int:
+            row = c.execute(sql).fetchone()
+            return row[0] if row else 0
+
+        return {
+            "decisions": one("SELECT COUNT(*) FROM council_decisions WHERE kind = 'decision'"),
+            "sessions": one("SELECT COUNT(*) FROM council_sessions"),
+            "entities": one("SELECT COUNT(*) FROM council_entities"),
+        }
+
     def has_session_with_agenda(self, ksinr: int) -> bool:
         row = self._conn.execute(
             "SELECT COUNT(*) FROM council_agenda_items WHERE ksinr = ?", (ksinr,)

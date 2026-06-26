@@ -8,6 +8,11 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.36.0] – 2026-06-26
+
+### Hinzugefügt
+- **Aufgewertete Landing Page:** animiertes Partikel-Netzwerk im Hero (leichtgewichtiges Canvas, kein three.js; respektiert „reduzierte Bewegung"), Scroll-Einblend-Animationen der Feature-Karten und **echte Live-Zahlen** (Beschlüsse/Sitzungen/Themen, hochzählend) über den neuen öffentlichen Endpoint `/api/council/public-stats`. (#127)
+
 ## [0.35.1] – 2026-06-26
 
 ### Behoben
