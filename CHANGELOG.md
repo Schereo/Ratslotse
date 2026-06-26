@@ -8,6 +8,11 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.38.0] – 2026-06-26
+
+### Hinzugefügt
+- **Themen ↔ Ratsbeschlüsse:** Jedes angelegte Thema findet jetzt nicht nur passende NWZ-Artikel, sondern auch die semantisch passenden **Ratsbeschlüsse** (Embedding-Matching gegen die vorberechneten Beschluss-Vektoren). Im Themen-View erscheint pro Thema ein grüner „Beschlüsse"-Zähler und ein Dialog mit den Treffern (Titel, Gremium, Datum, Relevanz-Score, verlinkt zum Beschluss). Das Matching läuft offline und wird wöchentlich im `weekly_enrich`-Cron aktualisiert (`scripts/match_topics_decisions.py`, direkt nach den Embeddings). (#133)
+
 ## [0.37.1] – 2026-06-26
 
 ### Hinzugefügt
