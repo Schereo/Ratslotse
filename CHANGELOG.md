@@ -8,6 +8,11 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.34.0] – 2026-06-26
+
+### Hinzugefügt
+- **Öffentliche Landing Page** unter `/`: erklärt Ratslotse (Features, amtliche Quelle) und führt über einen Button oben rechts in die App — „Zum Dashboard" (eingeloggt) bzw. „Anmelden". Ersetzt den bisherigen Redirect und gibt der Startseite echten, indexierbaren Inhalt (SEO). (#123)
+
 ## [0.33.0] – 2026-06-26
 
 ### Hinzugefügt
