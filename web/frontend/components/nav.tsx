@@ -10,6 +10,7 @@ import {
 import { useAuth } from "@/lib/auth";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, Button } from "@/components/ui";
 import { Brand, BrandMark } from "@/components/brand";
+import { FeedbackButton } from "@/components/feedback";
 import { cn } from "@/lib/utils";
 import { toggleTheme } from "@/lib/theme";
 
@@ -160,6 +161,7 @@ function UserFooter({ onNavigate }: { onNavigate?: () => void }) {
         </Link>
         <ThemeToggle />
       </div>
+      <FeedbackButton onNavigate={onNavigate} />
       <button
         onClick={onLogout}
         className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground"

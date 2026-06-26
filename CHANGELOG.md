@@ -8,6 +8,14 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.41.0] – 2026-06-26
+
+### Hinzugefügt
+- **Feedback-Funktion** im Menü unten links: ein „Feedback"-Button öffnet einen Dialog mit Art-Auswahl (Feature-Vorschlag / Fehler / Sonstiges) und Freitext. Das Feedback geht per E-Mail an den Betreiber (Reply-To = die Konto-Adresse des Nutzers, damit direkt geantwortet werden kann). Empfänger via `FEEDBACK_EMAIL` (Default: `WEB_ADMIN_EMAIL`). Neuer Endpoint `POST /api/feedback`. (#140)
+
+### Behoben
+- **NWZ-Kachel nur noch für freigeschaltete Konten:** Die „Artikelsuche"-Kachel im Dashboard-Schnellzugriff wurde bisher allen Nutzern angezeigt, obwohl die NWZ-Funktion manuell freizuschalten ist. Sie ist jetzt — wie die Nav-Sektion — auf freigeschaltete Konten/Admins beschränkt. (#140)
+
 ## [0.40.0] – 2026-06-26
 
 ### Hinzugefügt

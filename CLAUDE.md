@@ -82,6 +82,7 @@ CORS_ORIGINS=https://ratslotse.de   # erlaubte Origins (Prod-Domain)
 RESEND_API_KEY=...                  # Sending-only Key aus resend.com/api-keys
 EMAIL_FROM=Ratslotse <noreply@ratslotse.de>   # Absender (Domain muss in Resend verifiziert sein)
 APP_BASE_URL=https://ratslotse.de   # Basis-URL für Links in E-Mails (Default: ratslotse.de)
+FEEDBACK_EMAIL=...                  # Empfänger des Nutzer-Feedbacks (Default: WEB_ADMIN_EMAIL)
 # Stadtrat-LLM (optional, Defaults greifen)
 COUNCIL_PROTOCOL_MODEL=deepseek/deepseek-v4-pro   # Protokoll-Extraktion (protocols.py)
 COUNCIL_TOPIC_MODEL=deepseek/deepseek-v4-pro      # Themenfeld-Klassifikation (topics.py)

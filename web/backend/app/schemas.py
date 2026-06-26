@@ -112,3 +112,9 @@ class ChangePasswordRequest(BaseModel):
 # ---- delivery channel ----
 class DeliveryUpdate(BaseModel):
     delivery_channel: str = Field(pattern="^(telegram|email|both)$")
+
+
+# ---- feedback ----
+class FeedbackIn(BaseModel):
+    kind: str = Field(pattern="^(feature|bug|other)$")
+    message: str = Field(min_length=3, max_length=4000)
