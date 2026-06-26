@@ -8,6 +8,11 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.31.1] – 2026-06-26
+
+### Hinzugefügt
+- Datenschutz-Hinweis unter dem „Frag den Rat"-Eingabefeld: bitte keine personenbezogenen/sensiblen Daten eingeben (Anfragen gehen an einen externen KI-Dienst). (#120)
+
 ## [0.31.0] – 2026-06-26
 
 ### Geändert

@@ -129,6 +129,9 @@ export function QaTab() {
           <Send className="h-4 w-4" /> Fragen
         </button>
       </form>
+      <p className="-mt-2 text-xs text-muted-foreground/70">
+        Bitte keine personenbezogenen oder sensiblen Daten eingeben — Anfragen werden zur Beantwortung an einen externen KI-Dienst übermittelt.
+      </p>
 
       {showIntro && (
         <div className="flex flex-wrap gap-2">
