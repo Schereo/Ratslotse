@@ -8,8 +8,6 @@ export interface User {
   telegram_chat_id: number | null;
   linked: boolean;
   delivery_channel: DeliveryChannel;
-  nwz_verified: boolean;
-  nwz_username: string | null;
   nwz_fulltext_allowed: boolean;
 }
 
@@ -268,8 +266,6 @@ export interface WebUser {
   role: "user" | "admin";
   status: "pending" | "active";
   telegram_chat_id: number | null;
-  nwz_username: string | null;
-  nwz_verified_at: string | null;
   nwz_fulltext_allowed: boolean;
   created_at: string;
 }

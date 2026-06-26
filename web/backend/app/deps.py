@@ -63,16 +63,6 @@ def require_active(user: dict = Depends(get_current_user)) -> dict:
     return user
 
 
-def require_nwz_verified(user: dict = Depends(require_active)) -> dict:
-    """For NWZ content: the user must have verified their own NWZ login."""
-    if not user.get("nwz_verified_at"):
-        raise HTTPException(
-            status.HTTP_403_FORBIDDEN,
-            "Bitte hinterlege zuerst deine eigenen NWZ-Zugangsdaten.",
-        )
-    return user
-
-
 def require_admin(user: dict = Depends(get_current_user)) -> dict:
     if user.get("role") != "admin":
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Adminrechte erforderlich.")

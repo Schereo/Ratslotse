@@ -38,13 +38,6 @@ def fresh_dbs():
     yield
 
 
-def _verify_nwz(client):
-    """Mark the current account's NWZ credentials as verified (mocking the live check)."""
-    with patch("app.routers.account.NWZClient") as MockClient:
-        MockClient.return_value.verify_credentials.return_value = True
-        return client.post("/api/account/nwz-credentials", json={"nwz_username": "u", "nwz_password": "p"})
-
-
 @pytest.fixture
 def client():
     return TestClient(app)
@@ -75,7 +68,6 @@ def test_register_first_user_is_admin(client):
     assert r.json()["role"] == "admin"
     assert r.json()["status"] == "active"
     assert r.json()["linked"] is False
-    assert r.json()["nwz_verified"] is False
 
 
 def test_second_user_is_pending(client):
@@ -143,41 +135,17 @@ def test_admin_can_change_role(client):
 # ---- nwz search ----
 def test_nwz_search_empty(client):
     _register(client)
-    _verify_nwz(client)
     r = client.get("/api/nwz/search?q=test")
     assert r.status_code == 200 and r.json()["count"] == 0
 
 
 def test_nwz_article_404(client):
     _register(client)
-    _verify_nwz(client)
     assert client.get("/api/nwz/article/1/missing").status_code == 404
 
 
 def test_nwz_requires_auth(client):
     assert client.get("/api/nwz/search?q=x").status_code == 401
-
-
-def test_nwz_blocked_until_credentials_verified(client):
-    _register(client)  # active admin, but no NWZ creds yet
-    assert client.get("/api/nwz/search?q=x").status_code == 403
-
-
-def test_nwz_credentials_invalid(client):
-    _register(client)
-    with patch("app.routers.account.NWZClient") as MockClient:
-        MockClient.return_value.verify_credentials.return_value = False
-        r = client.post("/api/account/nwz-credentials", json={"nwz_username": "u", "nwz_password": "bad"})
-    assert r.status_code == 400
-
-
-def test_nwz_credentials_verify_unlocks(client):
-    _register(client)
-    r = _verify_nwz(client)
-    assert r.status_code == 200
-    assert r.json()["nwz_verified"] is True
-    assert r.json()["nwz_username"] == "u"
-    assert client.get("/api/nwz/search?q=x").status_code == 200
 
 
 # ---- council ----
@@ -264,7 +232,7 @@ def test_admin_users_list_includes_status(client):
     _register(client)
     users = client.get("/api/admin/users").json()
     assert users[0]["status"] == "active"
-    assert "nwz_verified_at" in users[0]
+    assert "nwz_fulltext_allowed" in users[0]
 
 
 # ---- account: change password ----

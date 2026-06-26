@@ -2,75 +2,23 @@
 
 import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Search, ShieldCheck, ChevronRight, Newspaper } from "lucide-react";
+import { Search, ChevronRight, Newspaper } from "lucide-react";
 import { api, qs, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useDebounce } from "@/lib/use-debounce";
 import { Article, SearchResult } from "@/lib/types";
 import { categoryLabel } from "@/lib/categories";
 import {
-  Badge, Button, Card, CardListSkeleton, EmptyState, Input, Label, PageHeader, Pagination, Select, DateField, formatDate,
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, PasswordInput, toast,
+  Badge, Card, CardListSkeleton, EmptyState, Input, PageHeader, Pagination, Select, DateField, formatDate,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, toast,
 } from "@/components/ui";
 
 export default function NwzSearchPage() {
-  const { user, refresh } = useAuth();
-
-  if (!user?.nwz_verified) return <NwzCredentialsGate onVerified={refresh} />;
   // Suspense boundary required because NwzSearch reads useSearchParams().
   return (
     <Suspense>
       <NwzSearch />
     </Suspense>
-  );
-}
-
-function NwzCredentialsGate({ onVerified }: { onVerified: () => Promise<void> }) {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    try {
-      await api.post("/account/nwz-credentials", { nwz_username: username, nwz_password: password });
-      toast.success("NWZ-Zugang verifiziert.");
-      await onVerified();
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Verifizierung fehlgeschlagen.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div>
-      <PageHeader title="Artikelsuche" description="Volltextsuche im Artikel-Archiv der Nordwest-Zeitung." />
-      <Card className="mx-auto mt-6 max-w-md p-6">
-        <div className="flex items-center gap-2">
-          <ShieldCheck className="h-5 w-5 text-primary" />
-          <h2 className="font-semibold text-foreground">Eigene NWZ-Zugangsdaten</h2>
-        </div>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Um NWZ-Inhalte zu durchsuchen, hinterlege bitte deine eigenen NWZ-Login-Daten. Wir prüfen sie
-          einmalig bei der NWZ und speichern <b>nicht</b> dein Passwort.
-        </p>
-        <form onSubmit={submit} className="mt-4 space-y-3">
-          <div>
-            <Label htmlFor="nwz-user">NWZ-Benutzername / E-Mail</Label>
-            <Input id="nwz-user" className="mt-1" value={username} onChange={(e) => setUsername(e.target.value)} required autoFocus />
-          </div>
-          <div>
-            <Label htmlFor="nwz-pass">NWZ-Passwort</Label>
-            <PasswordInput id="nwz-pass" className="mt-1" value={password} onChange={(e) => setPassword(e.target.value)} required />
-          </div>
-          <Button type="submit" disabled={busy} className="w-full">
-            {busy ? "Prüfe…" : "Verifizieren"}
-          </Button>
-        </form>
-      </Card>
-    </div>
   );
 }
 

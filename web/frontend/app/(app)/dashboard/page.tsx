@@ -2,24 +2,23 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Newspaper, Landmark, Tags, Link2, Check, ArrowRight, Lock } from "lucide-react";
+import { Newspaper, Landmark, Tags, Link2, Check, ArrowRight, Sparkles, BarChart3, Map, type LucideIcon } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Topic } from "@/lib/types";
-import { Badge, Button, Card, PageHeader } from "@/components/ui";
-import { cn } from "@/lib/utils";
+import { Badge, Card, PageHeader } from "@/components/ui";
 
 const tiles = [
-  { href: "/nwz", title: "Artikelsuche", desc: "Das Artikel-Archiv per Volltext durchsuchen.", icon: Newspaper },
-  { href: "/council", title: "Ratsinformationssystem", desc: "Sitzungen und Tagesordnungen durchsuchen.", icon: Landmark },
+  { href: "/council", title: "Ratsinformationssystem", desc: "Beschlüsse, KI-Fragen, Sitzungen, Themen und Analysen.", icon: Landmark },
   { href: "/topics", title: "Meine Themen", desc: "Themen verwalten und Treffer ansehen.", icon: Tags },
+  { href: "/nwz", title: "Artikelsuche", desc: "Schlagzeilen aus der NWZ zu Ratsthemen.", icon: Newspaper },
   { href: "/link", title: "Telegram verbinden", desc: "Konto mit dem Bot verknüpfen.", icon: Link2 },
 ];
 
 export default function DashboardPage() {
   const { user } = useAuth();
 
-  // Topic count drives the third onboarding step; only queryable once linked.
+  // Topic count marks the "first topic" step done; only queryable once linked.
   const topicsQuery = useQuery({
     queryKey: ["topics"],
     queryFn: () => api.get<Topic[]>("/topics"),
@@ -32,19 +31,10 @@ export default function DashboardPage() {
       <PageHeader
         title="Willkommen zurück"
         description={user?.email}
-        action={
-          <div className="flex flex-wrap gap-2">
-            {user?.linked ? <Badge color="green">Telegram verbunden</Badge> : <Badge color="amber">Telegram offen</Badge>}
-            {user?.nwz_verified ? <Badge color="green">NWZ verifiziert</Badge> : <Badge color="amber">NWZ offen</Badge>}
-          </div>
-        }
+        action={user?.linked ? <Badge color="green">Telegram verbunden</Badge> : <Badge color="amber">Telegram offen</Badge>}
       />
 
-      <OnboardingChecklist
-        nwzVerified={!!user?.nwz_verified}
-        linked={!!user?.linked}
-        hasTopic={topicCount > 0}
-      />
+      <FirstSteps linked={!!user?.linked} hasTopic={topicCount > 0} />
 
       <h2 className="mt-8 text-sm font-semibold text-muted-foreground">Schnellzugriff</h2>
       <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -71,98 +61,78 @@ export default function DashboardPage() {
   );
 }
 
-function OnboardingChecklist({
-  nwzVerified,
-  linked,
-  hasTopic,
-}: {
-  nwzVerified: boolean;
-  linked: boolean;
-  hasTopic: boolean;
-}) {
-  const steps = [
+type Step = { icon: LucideIcon; title: string; desc: string; href: string; done?: boolean };
+
+function FirstSteps({ linked, hasTopic }: { linked: boolean; hasTopic: boolean }) {
+  const steps: Step[] = [
     {
-      done: nwzVerified,
-      title: "NWZ-Zugang verifizieren",
-      desc: "Hinterlege einmalig deine NWZ-Login-Daten, um Artikel zu durchsuchen.",
-      href: "/nwz",
-      cta: "Verifizieren",
+      icon: Sparkles,
+      title: "Stell dem Rat eine Frage",
+      desc: "Beispiel-Frage: Was wurde zum Fliegerhorst beschlossen? Die KI findet die passenden Beschlüsse und antwortet mit Quellen.",
+      href: "/council?tab=decisions&mode=fragen",
     },
     {
-      done: linked,
-      title: "Telegram verbinden",
-      desc: "Verknüpfe dein Konto mit dem Bot für Benachrichtigungen.",
-      href: "/link",
-      cta: "Verbinden",
+      icon: Landmark,
+      title: "Beschlüsse durchstöbern",
+      desc: "Volltextsuche mit Filtern nach Fraktion, Themenfeld und Geldbeträgen.",
+      href: "/council",
     },
     {
-      done: hasTopic,
+      icon: BarChart3,
+      title: "Die Analyse erkunden",
+      desc: "Wer ist im Rat aktiv, wo fließt das Geld, welche Themen bewegen — Parteien, Personen, Finanzen, Trends.",
+      href: "/council?tab=analysis",
+    },
+    {
+      icon: Map,
+      title: "Themen-Seiten mit Karten",
+      desc: "Gebiete und Straßen mit KI-Beschreibung und eingezeichneter Karte.",
+      href: "/council?tab=themen",
+    },
+    {
+      icon: Tags,
       title: "Erstes Thema anlegen",
-      desc: linked ? "Lege ein Thema an, nach dem der Bot täglich sucht." : "Zuerst Telegram verbinden.",
+      desc: "Lege ein Thema an und werde über neue Beschlüsse dazu benachrichtigt.",
       href: "/topics",
-      cta: "Thema anlegen",
-      locked: !linked,
+      done: hasTopic,
+    },
+    {
+      icon: Link2,
+      title: "Telegram verbinden",
+      desc: "Optional: Benachrichtigungen direkt per Telegram statt per E-Mail.",
+      href: "/link",
+      done: linked,
     },
   ];
 
-  const doneCount = steps.filter((s) => s.done).length;
-  const pct = Math.round((doneCount / steps.length) * 100);
-
-  // Once everything's set up, the checklist disappears to reduce clutter.
-  if (doneCount === steps.length) return null;
-
-  // Index of the next actionable (not done, not locked) step — only it gets the CTA.
-  const nextIdx = steps.findIndex((s) => !s.done && !s.locked);
-
   return (
     <Card className="mt-6 p-5">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="font-semibold text-foreground">Erste Schritte</h2>
-          <p className="text-sm text-muted-foreground">Schließe die Einrichtung ab, um alle Funktionen zu nutzen.</p>
-        </div>
-        <span className="shrink-0 text-sm font-medium text-muted-foreground">{doneCount}/{steps.length}</span>
-      </div>
-
-      <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
-        <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${pct}%` }} />
-      </div>
-
-      <ol className="mt-4 space-y-2">
-        {steps.map((step, i) => (
-          <li
-            key={step.title}
-            className={cn(
-              "flex items-center gap-3 rounded-lg border p-3 transition-colors",
-              step.done ? "border-border bg-muted/40" : i === nextIdx ? "border-primary/40 bg-primary/5" : "border-border",
-            )}
-          >
-            <span
-              className={cn(
-                "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
-                step.done ? "bg-green-100 text-green-700" : step.locked ? "border border-border bg-muted text-muted-foreground/50" : "border border-border bg-card text-muted-foreground",
-              )}
+      <h2 className="font-semibold text-foreground">Erste Schritte</h2>
+      <p className="text-sm text-muted-foreground">Entdecke, was Ratslotse kann.</p>
+      <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {steps.map((step) => {
+          const Icon = step.icon;
+          return (
+            <Link
+              key={step.title}
+              href={step.href}
+              className="group flex items-start gap-3 rounded-lg border border-border p-3 transition-colors hover:border-primary/40 hover:bg-primary/5"
             >
-              {step.done ? <Check className="h-3.5 w-3.5" /> : step.locked ? <Lock className="h-3 w-3" /> : i + 1}
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className={cn("text-sm font-medium", step.done ? "text-muted-foreground line-through" : "text-foreground")}>
-                {step.title}
-              </p>
-              <p className="text-xs text-muted-foreground">{step.desc}</p>
-            </div>
-            {step.done ? (
-              <Badge color="green">Erledigt</Badge>
-            ) : i === nextIdx ? (
-              <Button asChild size="sm">
-                <Link href={step.href}>
-                  {step.cta} <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-            ) : null}
-          </li>
-        ))}
-      </ol>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                {step.done ? <Check className="h-4 w-4 text-green-600" /> : <Icon className="h-4 w-4" />}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-medium text-foreground">{step.title}</p>
+                  {step.done && <Badge color="green">Erledigt</Badge>}
+                </div>
+                <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{step.desc}</p>
+              </div>
+              <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+            </Link>
+          );
+        })}
+      </div>
     </Card>
   );
 }

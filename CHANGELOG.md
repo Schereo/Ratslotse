@@ -8,6 +8,14 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.30.0] – 2026-06-26
+
+### Entfernt
+- **NWZ-Zugangsdaten-Feature komplett entfernt.** Es werden keine NWZ-Logins mehr gespeichert (kein `nwz-credentials`-Endpoint, keine `nwz_verified`-Verifikation, `require_nwz_verified` weg). NWZ-Inhalte sind für angemeldete Nutzer als Überschriften + Links zugänglich; den Volltext schaltet ein Admin pro Nutzer frei (`nwz_fulltext_allowed`). Auch aus dem Onboarding entfernt. (#118)
+
+### Geändert
+- **Onboarding/Dashboard neu:** statt der NWZ-Verifizierung jetzt einladende „Erste Schritte" zum Kennenlernen der Plattform — Frag den Rat, Beschlüsse durchstöbern, Analyse, Themen-Seiten mit Karten, erstes Thema anlegen, Telegram verbinden. (#118)
+
 ## [0.29.2] – 2026-06-26
 
 ### Behoben

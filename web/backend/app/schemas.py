@@ -23,15 +23,7 @@ class UserOut(BaseModel):
     telegram_chat_id: int | None = None
     linked: bool = False
     delivery_channel: str = "telegram"
-    nwz_verified: bool = False
-    nwz_username: str | None = None
     nwz_fulltext_allowed: bool = False
-
-
-# ---- NWZ credentials ----
-class NwzCredentialsIn(BaseModel):
-    nwz_username: str = Field(min_length=1)
-    nwz_password: str = Field(min_length=1)
 
 
 # ---- linking ----
@@ -86,8 +78,6 @@ class WebUserOut(BaseModel):
     role: str
     status: str = "pending"
     telegram_chat_id: int | None = None
-    nwz_username: str | None = None
-    nwz_verified_at: str | None = None
     nwz_fulltext_allowed: bool = False
     created_at: str
 
