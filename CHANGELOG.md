@@ -8,6 +8,11 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.27.1] – 2026-06-26
+
+### Geändert
+- **Anwesenheits-Badges jetzt auch in den Fraktionsfarben.** Auf den Beschluss- und Sitzungs-Detailseiten waren die Partei-Chips in der Anwesenheit noch grau (eigene Spans mit Rohnamen). Jetzt normalisiert („Bündnis 90/Die Grünen" → „Grüne") und brandfarbig wie überall sonst (geteilte `PartyAttendanceBadge`). (#113)
+
 ## [0.27.0] – 2026-06-26
 
 ### Geändert

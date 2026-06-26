@@ -120,9 +120,27 @@ const PARTY_BRAND: Record<string, { bg: string; fg: string }> = {
   "Piraten": { bg: "#ff7a00", fg: "#ffffff" },
 };
 
+// Map a raw or normalised faction name to the canonical short label (mirrors the
+// backend council.parties order; FDP before Volt so "FDP/Volt" → FDP).
+const PARTY_NORM: [string, string][] = [
+  ["grün", "Grüne"], ["bsw", "BSW"], ["linke", "Die Linke"], ["piraten", "Piraten"],
+  ["für oldenburg", "Für Oldenburg"], ["wfo", "WFO/LKR"], ["lkr", "WFO/LKR"],
+  ["ibo", "IBO/LiVe"], ["spd", "SPD"], ["cdu", "CDU"], ["afd", "AfD"], ["fdp", "FDP"], ["volt", "Volt"],
+];
+
+export function normalizeParty(raw: string): string {
+  const p = raw.toLowerCase();
+  for (const [needle, label] of PARTY_NORM) if (p.includes(needle)) return label;
+  return raw;
+}
+
+export function partyBrand(party: string): { bg: string; fg: string } | null {
+  return PARTY_BRAND[normalizeParty(party)] ?? null;
+}
+
 export function PartyBadge({ party, className }: { party: string; className?: string }) {
   const router = useRouter();
-  const brand = PARTY_BRAND[party];
+  const brand = partyBrand(party);
   return (
     <button
       type="button"
@@ -137,6 +155,19 @@ export function PartyBadge({ party, className }: { party: string; className?: st
     >
       {party}
     </button>
+  );
+}
+
+/** Non-interactive faction + count chip (attendance lists), brand-coloured. */
+export function PartyAttendanceBadge({ party, n }: { party: string; n: number }) {
+  const brand = partyBrand(party);
+  return (
+    <span
+      style={brand ? { backgroundColor: brand.bg, color: brand.fg } : undefined}
+      className={cn("rounded-md px-2 py-0.5 text-xs font-medium", !brand && "bg-muted text-muted-foreground")}
+    >
+      {party} {n}
+    </span>
   );
 }
 
