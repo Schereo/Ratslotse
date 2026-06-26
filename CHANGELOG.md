@@ -8,6 +8,11 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.22.0] – 2026-06-26
+
+### Geändert
+- **UI von 6 auf 4 Tabs konsolidiert.** Die KI-Fragensuche ist jetzt der **„KI-Frage"-Modus** des neuen ersten Tabs **Suche** (neben der Stichwort-Beschlusssuche — beide zeigen dieselben Beschluss-Karten, fühlt sich wie *eine* Suche an). **Ziele** ist eine Unterkategorie von **Analyse** (neben Parteien / Finanzen / Trends). Verbleibende Tabs: **Suche · Sitzungen · Themen · Analyse**, Suche als Standard-Einstieg. Alte Links (`?tab=ask`, `?tab=goals`, `?tab=trends`) leiten automatisch auf ihren neuen Ort um. (#105)
+
 ## [0.21.0] – 2026-06-26
 
 ### Hinzugefügt

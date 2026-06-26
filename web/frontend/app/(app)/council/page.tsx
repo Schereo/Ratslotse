@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Search, ExternalLink, ChevronDown, ChevronRight, Landmark, Scale, Users, BarChart3, Target, Sparkles, Tag, X } from "lucide-react";
+import { Search, ExternalLink, ChevronDown, ChevronRight, Landmark, Scale, Users, BarChart3, Sparkles, Tag, X } from "lucide-react";
 import { api, qs, ApiError } from "@/lib/api";
 import { useDebounce } from "@/lib/use-debounce";
 import {
@@ -15,12 +15,11 @@ import {
 import { OutcomeBadge, FieldBadge, formatEuro } from "@/components/decision-ui";
 import { AnalysisTab } from "@/components/council-analysis";
 import { EntitiesTab } from "@/components/council-entities";
-import { GoalsTab } from "@/components/council-goals";
 import { QaTab } from "@/components/council-qa";
 import { cn } from "@/lib/utils";
 
 type Scope = "all" | "upcoming" | "recent";
-type Tab = "sessions" | "decisions" | "themen" | "analysis" | "goals" | "ask";
+type Tab = "sessions" | "decisions" | "themen" | "analysis";
 
 const sessionUrl = (ksinr: number) => `https://buergerinfo.oldenburg.de/si0057.php?__ksinr=${ksinr}`;
 
@@ -507,24 +506,59 @@ function SessionsTab({ committees }: { committees: string[] }) {
   );
 }
 
+// The combined "Suche" tab: keyword search (DecisionsTab) and the AI question mode
+// (QaTab) as two lenses on the same decisions, switched by ?mode. Both render the
+// same decision cards, so it reads as one search rather than two features.
+function SearchTab({ committees }: { committees: string[] }) {
+  const sp = useSearchParams();
+  const router = useRouter();
+  const mode: "suchen" | "fragen" = sp.get("mode") === "fragen" ? "fragen" : "suchen";
+  const setMode = (m: "suchen" | "fragen") => {
+    const params = new URLSearchParams(sp.toString());
+    params.set("tab", "decisions");
+    if (m === "suchen") params.delete("mode"); else params.set("mode", m);
+    router.replace(`/council?${params.toString()}`, { scroll: false });
+  };
+  return (
+    <div>
+      <div className="mt-4 flex gap-1 rounded-md bg-muted p-1 sm:w-fit">
+        {([["suchen", "Suchen", Search], ["fragen", "KI-Frage", Sparkles]] as const).map(([m, lbl, Icon]) => (
+          <button key={m} type="button" onClick={() => setMode(m)}
+            className={cn(
+              "inline-flex flex-1 items-center justify-center gap-1.5 rounded-sm px-4 py-1.5 text-sm font-medium transition-colors sm:flex-none",
+              mode === m ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+            )}>
+            <Icon className="h-4 w-4" /> {lbl}
+          </button>
+        ))}
+      </div>
+      {mode === "suchen" ? <DecisionsTab committees={committees} /> : <QaTab />}
+    </div>
+  );
+}
+
 function CouncilInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  // Tab lives in the URL (?tab=decisions) so the browser back button from a
-  // decision detail page returns to the right tab.
+  // Tab lives in the URL (?tab=…) so the browser back button from a decision detail
+  // page returns to the right tab. The combined search is the default landing.
   const param = searchParams.get("tab");
-  // The standalone "Trends" tab became a sub-tab of Analyse — keep old links working.
-  const tab: Tab = param === "trends" ? "analysis"
-    : param === "decisions" || param === "themen" || param === "analysis" || param === "goals" || param === "ask" ? param
-    : "sessions";
+  const tab: Tab =
+    param === "ask" ? "decisions"                              // QA is now the "KI-Frage" mode of Suche
+    : param === "trends" || param === "goals" ? "analysis"     // now Analyse sub-tabs
+    : param === "sessions" || param === "themen" || param === "analysis" ? param
+    : "decisions";
   const [committees, setCommittees] = useState<string[]>([]);
 
+  // Keep old standalone-tab links working by redirecting them to their new home.
   useEffect(() => {
-    if (param === "trends") router.replace("/council?tab=analysis&sub=trends", { scroll: false });
+    if (param === "ask") router.replace("/council?tab=decisions&mode=fragen", { scroll: false });
+    else if (param === "goals") router.replace("/council?tab=analysis&sub=ziele", { scroll: false });
+    else if (param === "trends") router.replace("/council?tab=analysis&sub=trends", { scroll: false });
   }, [param, router]);
 
   const setTab = (t: Tab) =>
-    router.replace(t === "sessions" ? "/council" : `/council?tab=${t}`, { scroll: false });
+    router.replace(t === "decisions" ? "/council" : `/council?tab=${t}`, { scroll: false });
 
   useEffect(() => {
     api.get<{ committees: string[] }>("/council/committees").then((d) => setCommittees(d.committees)).catch(() => {});
@@ -532,16 +566,14 @@ function CouncilInner() {
 
   return (
     <div>
-      <PageHeader title="Ratsinformationssystem" description="Sitzungen, Beschlüsse, Parteien-Analyse, Stadtziele und KI-Fragen zum Oldenburger Stadtrat." />
+      <PageHeader title="Ratsinformationssystem" description="Beschlüsse durchsuchen, KI-Fragen stellen, Sitzungen, Themen und Analysen zum Oldenburger Stadtrat." />
 
       <div className="mt-6 flex gap-1 overflow-x-auto rounded-md bg-muted p-1">
         {([
+          ["decisions", "Suche", Search],
           ["sessions", "Sitzungen", Landmark],
-          ["decisions", "Beschlüsse", Scale],
           ["themen", "Themen", Tag],
           ["analysis", "Analyse", BarChart3],
-          ["goals", "Ziele", Target],
-          ["ask", "Fragen", Sparkles],
         ] as [Tab, string, typeof Landmark][]).map(([t, label, Icon]) => (
           <button
             key={t}
@@ -557,12 +589,10 @@ function CouncilInner() {
         ))}
       </div>
 
-      {tab === "sessions" ? <SessionsTab committees={committees} />
-        : tab === "decisions" ? <DecisionsTab committees={committees} />
+      {tab === "decisions" ? <SearchTab committees={committees} />
+        : tab === "sessions" ? <SessionsTab committees={committees} />
         : tab === "themen" ? <EntitiesTab />
-        : tab === "analysis" ? <AnalysisTab />
-        : tab === "goals" ? <GoalsTab />
-        : <QaTab />}
+        : <AnalysisTab />}
     </div>
   );
 }

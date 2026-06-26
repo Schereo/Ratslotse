@@ -61,7 +61,7 @@ function GoalDetailView({ goalKey }: { goalKey: string }) {
   );
 }
 
-export function GoalsTab() {
+export function GoalsView() {
   const { data, loading } = useFetch<{ goals: GoalSummary[] }>("/council/goals");
   const [open, setOpen] = useState<string | null>(null);
 
@@ -71,7 +71,7 @@ export function GoalsTab() {
   if (!tracked) return <EmptyState icon={Target} title="Ziel-Tracking wird vorbereitet" hint="Die Beschlüsse werden gerade den Stadtzielen zugeordnet." />;
 
   return (
-    <div className="mt-4 space-y-3">
+    <div className="space-y-3">
       <div className="rounded-lg border border-border bg-muted/40 p-3 text-xs leading-relaxed text-muted-foreground">
         Wie viele Ratsbeschlüsse jedes übergeordnete Ziel <span className="font-medium text-foreground">voranbringen</span>,
         ihm <span className="font-medium text-foreground">entgegenwirken</span> oder es neutral berühren. Das misst die

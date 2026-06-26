@@ -1,12 +1,13 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { BarChart3, Users, Euro, TrendingUp } from "lucide-react";
+import { BarChart3, Users, Euro, TrendingUp, Target } from "lucide-react";
 import { PartyAnalysis, FinanceData } from "@/lib/types";
 import { Card, Spinner, EmptyState } from "@/components/ui";
 import { POLICY_FIELD_LABELS, PartyBadge, DecisionLinkCard, formatEuro } from "@/components/decision-ui";
 import { useFetch } from "@/lib/use-fetch";
 import { TrendsView } from "@/components/council-trends";
+import { GoalsView } from "@/components/council-goals";
 import { cn } from "@/lib/utils";
 
 function Block({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
@@ -220,18 +221,19 @@ function FinanceView() {
   );
 }
 
-type AnalysisSub = "parteien" | "finanzen" | "trends";
+type AnalysisSub = "parteien" | "finanzen" | "trends" | "ziele";
 const SUB_TABS: [AnalysisSub, string, typeof Users][] = [
   ["parteien", "Parteien", Users],
   ["finanzen", "Finanzen", Euro],
   ["trends", "Trends", TrendingUp],
+  ["ziele", "Ziele", Target],
 ];
 
 export function AnalysisTab() {
   const sp = useSearchParams();
   const router = useRouter();
   const raw = sp.get("sub");
-  const sub: AnalysisSub = raw === "finanzen" || raw === "trends" ? raw : "parteien";
+  const sub: AnalysisSub = raw === "finanzen" || raw === "trends" || raw === "ziele" ? raw : "parteien";
   const setSub = (s: AnalysisSub) => {
     const params = new URLSearchParams(sp.toString());
     params.set("tab", "analysis");
@@ -252,7 +254,8 @@ export function AnalysisTab() {
           </button>
         ))}
       </div>
-      {sub === "parteien" ? <PartiesView /> : sub === "finanzen" ? <FinanceView /> : <TrendsView />}
+      {sub === "parteien" ? <PartiesView /> : sub === "finanzen" ? <FinanceView />
+        : sub === "trends" ? <TrendsView /> : <GoalsView />}
     </div>
   );
 }
