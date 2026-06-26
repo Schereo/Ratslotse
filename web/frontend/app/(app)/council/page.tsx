@@ -137,7 +137,6 @@ function FilterField({ label, className, children }: { label: string; className?
 function DecisionsTab({ committees }: { committees: string[] }) {
   const [q, setQ] = useState("");
   const [committee, setCommittee] = useState("");
-  const [mode, setMode] = useState<"vote" | "report">("vote");
   const [outcome, setOutcome] = useState("");
   const [sort, setSort] = useState("date_desc");
   const [fields, setFields] = useState<PolicyField[]>([]);
@@ -155,6 +154,10 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   // Date range also lives in the URL so the Trends quarter bars can deep-link here.
   const dateFrom = sp.get("date_from") ?? "";
   const dateTo = sp.get("date_to") ?? "";
+  // Beschlüsse (votes) / Berichte (reports) / Alle (both) — in the URL so the
+  // Themenfeld-Rückblicke can deep-link to the combined "Alle" view.
+  const catParam = sp.get("cat");
+  const mode: "vote" | "report" | "all" = catParam === "report" || catParam === "all" ? catParam : "vote";
   const setUrlParam = (key: string, val: string) => {
     const params = new URLSearchParams(sp.toString());
     params.set("tab", "decisions");
@@ -172,7 +175,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
     try {
       const data = await api.get<{ total: number; decisions: CouncilDecision[] }>(
         `/council/decisions${qs({
-          q, committee, category: mode, sort, field, party,
+          q, committee, category: mode === "all" ? "" : mode, sort, field, party,
           outcome: mode === "vote" ? outcome : "",
           date_from: dateFrom, date_to: dateTo,
           limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE,
@@ -195,7 +198,9 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   const query = q.trim();
   const totalPages = Math.ceil(total / PAGE_SIZE);
   const isReport = mode === "report";
-  const noun = isReport ? (total === 1 ? "Bericht" : "Berichte") : (total === 1 ? "Beschluss" : "Beschlüsse");
+  const noun = mode === "all"
+    ? (total === 1 ? "Vorgang" : "Vorgänge")
+    : isReport ? (total === 1 ? "Bericht" : "Berichte") : (total === 1 ? "Beschluss" : "Beschlüsse");
 
   return (
     <div>
@@ -203,17 +208,17 @@ function DecisionsTab({ committees }: { committees: string[] }) {
         {/* Tier 1 — primary: what am I looking at + free-text search. */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="flex shrink-0 gap-1 rounded-lg bg-muted p-1">
-            {(["vote", "report"] as const).map((m) => (
+            {(["vote", "report", "all"] as const).map((m) => (
               <button
                 key={m}
                 type="button"
-                onClick={() => { setMode(m); setOutcome(""); setPage(1); }}
+                onClick={() => { setUrlParam("cat", m === "vote" ? "" : m); setOutcome(""); }}
                 className={cn(
                   "rounded-md px-4 py-1.5 text-sm font-medium transition-colors",
                   mode === m ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                {m === "vote" ? "Beschlüsse" : "Berichte"}
+                {m === "vote" ? "Beschlüsse" : m === "report" ? "Berichte" : "Alle"}
               </button>
             ))}
           </div>
@@ -230,7 +235,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
 
         {/* Tier 2 — refine: labelled, secondary. Separated from the primary row. */}
         <div className="mt-4 space-y-3 border-t border-border pt-4">
-          {!isReport && (
+          {mode === "vote" && (
             <FilterField label="Ergebnis">
               <div className="flex gap-1 overflow-x-auto rounded-md bg-muted p-1">
                 {OUTCOME_CHIPS.map((o) => (
