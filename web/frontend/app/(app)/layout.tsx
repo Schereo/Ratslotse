@@ -43,6 +43,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <a href="/impressum" className="hover:text-foreground">Impressum</a>
           {" · "}
           <a href="/datenschutz" className="hover:text-foreground">Datenschutz</a>
+          {" · "}
+          <a href="/changelog" className="hover:text-foreground">Changelog</a>
         </footer>
       </main>
       <MobileBottomNav />
