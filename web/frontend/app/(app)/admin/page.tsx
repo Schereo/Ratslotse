@@ -10,7 +10,7 @@ import { Badge, Button, Card, ConfirmDialog, PageHeader, Spinner, Textarea, form
 import { cn } from "@/lib/utils";
 import { categoryLabel } from "@/lib/categories";
 
-type Tab = "stats" | "prompts" | "users" | "telegram";
+type Tab = "stats" | "llm" | "prompts" | "users" | "telegram";
 
 export default function AdminPage() {
   const { user, loading } = useAuth();
@@ -29,6 +29,7 @@ export default function AdminPage() {
       <div className="mt-4 flex gap-1 border-b border-border">
         {([
           ["stats", "Statistik"],
+          ["llm", "LLM-Kosten"],
           ["prompts", "Prompts"],
           ["users", "Web-Nutzer"],
           ["telegram", "Telegram-Whitelist"],
@@ -46,6 +47,7 @@ export default function AdminPage() {
       </div>
       <div className="mt-6">
         {tab === "stats" && <StatsTab />}
+        {tab === "llm" && <LlmUsageTab />}
         {tab === "prompts" && <PromptsTab />}
         {tab === "users" && <UsersTab currentUserId={user.id} />}
         {tab === "telegram" && <TelegramTab />}
@@ -136,6 +138,78 @@ function Stat({ label, value, wide }: { label: string; value: number | string; w
       </p>
       <p className="mt-0.5 text-xs text-muted-foreground">{label}</p>
     </Card>
+  );
+}
+
+type LlmFeature = {
+  feature: string; calls: number; prompt_tokens: number; completion_tokens: number;
+  cost: number; models: string[]; first: string; last: string;
+};
+type LlmUsage = { features: LlmFeature[]; total_cost: number; total_calls: number };
+
+const FEATURE_LABELS: Record<string, string> = {
+  protokoll_extraktion: "Protokoll-Extraktion",
+  themen_klassifikation: "Themenfeld-Klassifikation",
+  ziel_bewertung: "Ziel-Bewertung",
+  entitaeten_ner: "Entitäten-Erkennung",
+  entitaeten_beschreibung: "Themen-Beschreibungen",
+  qa_query_expansion: "Frag den Rat — Suchbegriffe",
+  qa_antwort: "Frag den Rat — Antwort",
+  nwz_klassifikation: "NWZ-Artikel-Klassifikation",
+};
+
+function LlmUsageTab() {
+  const { data, isPending, isError } = useQuery({
+    queryKey: ["admin", "llm-usage"],
+    queryFn: () => api.get<LlmUsage>("/admin/llm-usage"),
+  });
+
+  if (isPending) return <Spinner />;
+  if (isError || !data) return <p className="text-sm text-destructive">Fehler beim Laden der LLM-Nutzung.</p>;
+  if (data.features.length === 0) {
+    return <p className="text-sm text-muted-foreground">Noch keine LLM-Nutzung erfasst — die Erfassung beginnt mit dem nächsten Lauf (Klassifikation, Entitäten, Frag den Rat …).</p>;
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <Stat label="Geschätzte Kosten gesamt" value={`$${data.total_cost.toFixed(2)}`} />
+        <Stat label="LLM-Aufrufe gesamt" value={data.total_calls} />
+        <Stat label="Features" value={data.features.length} />
+      </div>
+      <Card className="overflow-x-auto p-0">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border text-left text-xs text-muted-foreground">
+              <th className="px-4 py-2.5 font-medium">Feature</th>
+              <th className="px-4 py-2.5 text-right font-medium">Aufrufe</th>
+              <th className="px-4 py-2.5 text-right font-medium">Input-Tokens</th>
+              <th className="px-4 py-2.5 text-right font-medium">Output-Tokens</th>
+              <th className="px-4 py-2.5 text-right font-medium">Kosten (gesch.)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.features.map((f) => (
+              <tr key={f.feature} className="border-b border-border last:border-0">
+                <td className="px-4 py-2.5">
+                  <span className="font-medium text-foreground">{FEATURE_LABELS[f.feature] ?? f.feature}</span>
+                  {f.models.length > 0 && <span className="ml-2 text-xs text-muted-foreground">{f.models.join(", ")}</span>}
+                </td>
+                <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">{f.calls.toLocaleString("de-DE")}</td>
+                <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">{f.prompt_tokens.toLocaleString("de-DE")}</td>
+                <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">{f.completion_tokens.toLocaleString("de-DE")}</td>
+                <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-foreground">${f.cost.toFixed(2)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
+      <p className="text-xs leading-relaxed text-muted-foreground/70">
+        Kosten geschätzt aus den erfassten Token-Zahlen × hinterlegten Modellpreisen. Die Erfassung läuft ab
+        Einführung dieser Seite (frühere Läufe sind nicht enthalten). Streaming-Antworten liefern je nach Anbieter
+        nicht immer eine Token-Angabe.
+      </p>
+    </div>
   );
 }
 

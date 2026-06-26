@@ -111,7 +111,7 @@ def classify_batch(decisions: list[dict], model: str = MODEL):
     last_err: Exception = ValueError("no response")
     for _ in range(2):
         resp = llm.chat_complete(
-            model=model, temperature=0, response_format={"type": "json_object"},
+            model=model, _feature="themen_klassifikation", temperature=0, response_format={"type": "json_object"},
             max_tokens=4000, messages=messages, **extra,
         )
         content = _strip_fences(resp.choices[0].message.content or "")

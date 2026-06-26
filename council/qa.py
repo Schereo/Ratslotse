@@ -61,7 +61,7 @@ def expand_query(question: str, model: str = MODEL) -> str:
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
     try:
         resp = llm.chat_complete(
-            model=model, temperature=0, max_tokens=60,
+            model=model, _feature="qa_query_expansion", temperature=0, max_tokens=60,
             messages=[{"role": "user", "content": _EXPAND_PROMPT.format(question=question.strip()[:300])}], **extra,
         )
         terms = " ".join((resp.choices[0].message.content or "").split())
@@ -87,7 +87,7 @@ def _answer_messages(question: str, candidates: list[dict]) -> tuple[list[dict],
 def answer_question(question: str, candidates: list[dict], model: str = MODEL):
     """Synthesise an answer from retrieved candidates. Returns ``(answer, cited_ids)``."""
     messages, extra = _answer_messages(question, candidates)
-    resp = llm.chat_complete(model=model, temperature=0.2, max_tokens=600, messages=messages, **extra)
+    resp = llm.chat_complete(model=model, _feature="qa_antwort", temperature=0.2, max_tokens=600, messages=messages, **extra)
     answer = (resp.choices[0].message.content or "").strip()
     return resolve_citations(answer, {c["id"] for c in candidates})
 
@@ -97,7 +97,7 @@ def answer_stream(question: str, candidates: list[dict], model: str = MODEL):
     UI can render the answer as it is written. Citation resolution is the caller's
     job once the full text is assembled (see resolve_citations)."""
     messages, extra = _answer_messages(question, candidates)
-    yield from llm.chat_stream(model=model, temperature=0.2, max_tokens=600, messages=messages, **extra)
+    yield from llm.chat_stream(model=model, _feature="qa_antwort", temperature=0.2, max_tokens=600, messages=messages, **extra)
 
 
 def resolve_citations(answer: str, valid: set[int]):
