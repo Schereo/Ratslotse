@@ -104,14 +104,36 @@ export function OutcomeBadge({ outcome }: { outcome: DecisionOutcome | null }) {
   );
 }
 
+// Official party brand colours (bg + readable text) — a brand-accurate, logo-like
+// chip for each faction. Not the trademarked logo artwork: just the party colour +
+// its own short name, which keeps it legally clean and covers every faction. Local
+// groups without an established brand colour fall back to the neutral badge.
+const PARTY_BRAND: Record<string, { bg: string; fg: string }> = {
+  "SPD": { bg: "#E3000F", fg: "#ffffff" },
+  "CDU": { bg: "#16181d", fg: "#ffffff" },
+  "Grüne": { bg: "#46962b", fg: "#ffffff" },
+  "FDP": { bg: "#ffd400", fg: "#1a1a1a" },
+  "AfD": { bg: "#009ee0", fg: "#ffffff" },
+  "Volt": { bg: "#562883", fg: "#ffffff" },
+  "Die Linke": { bg: "#be3075", fg: "#ffffff" },
+  "BSW": { bg: "#7a1f2b", fg: "#ffffff" },
+  "Piraten": { bg: "#ff7a00", fg: "#ffffff" },
+};
+
 export function PartyBadge({ party, className }: { party: string; className?: string }) {
   const router = useRouter();
+  const brand = PARTY_BRAND[party];
   return (
     <button
       type="button"
-      title="Beschlüsse dieser Partei"
+      title={`Beschlüsse: ${party}`}
       onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(`/council?tab=decisions&party=${encodeURIComponent(party)}`); }}
-      className={cn("inline-flex items-center rounded-md border border-border px-2 py-0.5 text-xs font-medium text-foreground transition-colors hover:bg-muted", className)}
+      style={brand ? { backgroundColor: brand.bg, color: brand.fg } : undefined}
+      className={cn(
+        "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold transition-opacity hover:opacity-85",
+        !brand && "border border-border font-medium text-foreground transition-colors hover:bg-muted",
+        className,
+      )}
     >
       {party}
     </button>

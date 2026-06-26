@@ -8,6 +8,11 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.27.0] – 2026-06-26
+
+### Geändert
+- **Partei-Badges in den offiziellen Fraktionsfarben** statt neutraler grauer Chips — eine klare, markengenaue Partei-Identität überall (Personen, Beschlüsse, Analyse). Bewusst die Parteifarbe + das Kürzel, nicht die geschützte Logo-Grafik; lokale Gruppen ohne etablierte Markenfarbe behalten das neutrale Badge. (#112)
+
 ## [0.26.0] – 2026-06-26
 
 ### Behoben
