@@ -26,7 +26,6 @@ _RULES: list[tuple[tuple[str, ...], str]] = [
     (("bsw",), "BSW"),                       # ex-Die-Linke members (2024)
     (("linke",), "Die Linke"),               # joint group + solo Linke (→ BSW 2024)
     (("piraten",), "Piraten"),               # Piraten after the Linke split
-    (("fdp/volt",), "FDP/Volt"),             # dissolved group (historical)
     (("für oldenburg",), "Für Oldenburg"),   # new group (2024)
     (("wfo", "lkr"), "WFO/LKR"),
     (("ibo", "live"), "IBO/LiVe"),
@@ -40,7 +39,7 @@ _RULES: list[tuple[tuple[str, ...], str]] = [
 # Display order (current / most active first), then historical.
 CANONICAL_ORDER = [
     "Grüne", "SPD", "CDU", "BSW", "FDP", "Für Oldenburg", "Volt", "AfD",
-    "Die Linke", "Piraten", "FDP/Volt", "WFO/LKR", "IBO/LiVe",
+    "Die Linke", "Piraten", "WFO/LKR", "IBO/LiVe",
 ]
 
 

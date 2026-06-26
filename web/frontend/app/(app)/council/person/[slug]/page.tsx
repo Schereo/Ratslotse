@@ -43,8 +43,8 @@ export default function PersonPage() {
       </p>
 
       <div className="mt-4 rounded-lg border border-border bg-muted/40 p-3 text-xs leading-relaxed text-muted-foreground">
-        Aus den Anwesenheitslisten der Protokolle. Präsenz zeigt Aktivität, nicht das Stimmverhalten — Protokolle nennen
-        namentliche Einzelstimmen nur selten.
+        Aus den Anwesenheitslisten der Protokolle (erfasst ab 2018). Präsenz zeigt Aktivität, nicht das Stimmverhalten —
+        Protokolle nennen namentliche Einzelstimmen nur selten.
       </div>
 
       {data.committees.length > 0 && (
