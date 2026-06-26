@@ -8,6 +8,14 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.29.0] – 2026-06-26
+
+### Hinzugefügt
+- **Impressum (`/impressum`) und Datenschutzerklärung (`/datenschutz`)** als öffentliche Seiten (vor Login erreichbar; im Footer von Login + eingeloggtem Bereich verlinkt). Pflichtangaben nach § 5 DDG / § 18 MStV bzw. Art. 13 DSGVO (Verarbeiter, KI-Drittland-Hinweis, „nur essenzielles Cookie"). Inhalte sind ein Entwurf und vor dem Öffentlich-gehen anwaltlich zu prüfen. (#115)
+
+### Geändert
+- **NWZ-Volltext nur noch für manuell freigeschaltete Nutzer.** Neues Flag `web_users.nwz_fulltext_allowed`; ein Admin schaltet es pro Nutzer im Admin-Bereich frei. Alle anderen sehen nur Überschrift + Metadaten (Suche ohne Text-Auszug, Artikel ohne Volltext) — als Reaktion auf die urheberrechtliche Bewertung. Das Gating wird serverseitig erzwungen; das Frontend zeigt einen Hinweis. (#115)
+
 ## [0.28.0] – 2026-06-26
 
 ### Geändert

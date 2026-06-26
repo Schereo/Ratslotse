@@ -87,6 +87,7 @@ function NwzSearch() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [openArticle, setOpenArticle] = useState<Article | null>(null);
+  const { user } = useAuth();
 
   const debouncedQ = useDebounce(q, 350);
   const searchParams = useSearchParams();
@@ -200,7 +201,9 @@ function NwzSearch() {
                       </div>
                       <h3 className="mt-1 font-semibold text-foreground">{r.title}</h3>
                       {r.subtitle && <p className="line-clamp-1 text-sm text-muted-foreground">{r.subtitle}</p>}
-                      <p className="excerpt mt-1 line-clamp-2 text-sm text-foreground/80" dangerouslySetInnerHTML={{ __html: r.excerpt }} />
+                      {user?.nwz_fulltext_allowed && r.excerpt && (
+                        <p className="excerpt mt-1 line-clamp-2 text-sm text-foreground/80" dangerouslySetInnerHTML={{ __html: r.excerpt }} />
+                      )}
                     </div>
                     <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
                   </div>
@@ -233,9 +236,16 @@ function NwzSearch() {
                   <p className="text-sm text-muted-foreground">{openArticle.authors.replace(/\|/g, ", ")}</p>
                 )}
               </DialogHeader>
-              <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
-                {openArticle.content_text}
-              </div>
+              {user?.nwz_fulltext_allowed ? (
+                <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
+                  {openArticle.content_text}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-amber-300/50 bg-amber-50 p-3 text-sm leading-relaxed text-amber-900 dark:border-amber-400/20 dark:bg-amber-950/40 dark:text-amber-200">
+                  Der vollständige Artikeltext ist nur für manuell freigeschaltete Nutzer sichtbar. Überschrift
+                  und Erscheinungsdatum stehen oben; der Artikel ist in der NWZ (Print/ePaper) verfügbar.
+                </div>
+              )}
             </>
           )}
         </DialogContent>

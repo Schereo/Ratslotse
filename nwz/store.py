@@ -119,6 +119,7 @@ CREATE TABLE IF NOT EXISTS web_users (
     delivery_channel TEXT NOT NULL DEFAULT 'telegram',
     nwz_username     TEXT,
     nwz_verified_at  TEXT,
+    nwz_fulltext_allowed INTEGER NOT NULL DEFAULT 0,
     token_version    INTEGER NOT NULL DEFAULT 0,
     created_at       TEXT NOT NULL
 );
@@ -221,6 +222,8 @@ class Store:
                     self._conn.execute("ALTER TABLE web_users ADD COLUMN nwz_username TEXT")
                 if "nwz_verified_at" not in wu_cols:
                     self._conn.execute("ALTER TABLE web_users ADD COLUMN nwz_verified_at TEXT")
+                if "nwz_fulltext_allowed" not in wu_cols:
+                    self._conn.execute("ALTER TABLE web_users ADD COLUMN nwz_fulltext_allowed INTEGER NOT NULL DEFAULT 0")
                 if "token_version" not in wu_cols:
                     self._conn.execute("ALTER TABLE web_users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0")
         self._conn.execute(
@@ -448,6 +451,15 @@ class Store:
                 (nwz_username, now, user_id),
             )
 
+    def set_nwz_fulltext_allowed(self, user_id: int, allowed: bool) -> None:
+        """Admin gate: allow a specific user to read full NWZ article text.
+        Everyone else gets headline + link only."""
+        with self._conn:
+            self._conn.execute(
+                "UPDATE web_users SET nwz_fulltext_allowed = ? WHERE id = ?",
+                (1 if allowed else 0, user_id),
+            )
+
     def get_web_user_by_email(self, email: str) -> dict | None:
         row = self._conn.execute(
             "SELECT * FROM web_users WHERE email = ?", (email.lower().strip(),)
@@ -462,8 +474,8 @@ class Store:
 
     def list_web_users(self) -> list[dict]:
         rows = self._conn.execute(
-            "SELECT id, email, role, status, telegram_chat_id, nwz_username, nwz_verified_at, created_at "
-            "FROM web_users ORDER BY created_at"
+            "SELECT id, email, role, status, telegram_chat_id, nwz_username, nwz_verified_at, "
+            "nwz_fulltext_allowed, created_at FROM web_users ORDER BY created_at"
         ).fetchall()
         return [dict(r) for r in rows]
 

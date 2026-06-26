@@ -10,6 +10,7 @@ export interface User {
   delivery_channel: DeliveryChannel;
   nwz_verified: boolean;
   nwz_username: string | null;
+  nwz_fulltext_allowed: boolean;
 }
 
 export interface SearchResult {
@@ -269,6 +270,7 @@ export interface WebUser {
   telegram_chat_id: number | null;
   nwz_username: string | null;
   nwz_verified_at: string | null;
+  nwz_fulltext_allowed: boolean;
   created_at: string;
 }
 
