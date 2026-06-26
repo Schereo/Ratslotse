@@ -31,10 +31,11 @@ const nextConfig = {
             value: [
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+              "worker-src 'self' blob:",
               "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: blob: https://*.basemaps.cartocdn.com",
+              "img-src 'self' data: blob: https://*.basemaps.cartocdn.com https://*.openfreemap.org",
               "font-src 'self'",
-              "connect-src 'self'",
+              "connect-src 'self' https://*.openfreemap.org",
               "frame-ancestors 'none'",
             ].join("; "),
           },
