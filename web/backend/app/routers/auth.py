@@ -1,8 +1,11 @@
 """Registration, login, logout, current user."""
 from __future__ import annotations
 
+import hashlib
 import html as _html
 import logging
+import secrets
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
 
@@ -11,8 +14,8 @@ from nwz.email import send_email
 
 from ..config import get_settings
 from ..deps import get_current_user, get_store
-from ..ratelimit import login_limiter, register_limiter
-from ..schemas import LoginRequest, RegisterRequest, UserOut
+from ..ratelimit import forgot_password_limiter, login_limiter, register_limiter
+from ..schemas import ForgotPasswordRequest, LoginRequest, RegisterRequest, ResetPasswordRequest, UserOut
 from ..security import create_access_token, hash_password, verify_password
 
 logger = logging.getLogger("nwz.web.auth")
@@ -148,3 +151,69 @@ def logout(response: Response) -> dict:
 @router.get("/me", response_model=UserOut)
 def me(user: dict = Depends(get_current_user)) -> UserOut:
     return _to_out(user)
+
+
+def _send_reset_email(email: str, raw_token: str) -> None:
+    """Background task: email a one-hour password-reset link (best-effort)."""
+    settings = get_settings()
+    if not settings.resend_api_key:
+        return
+    link = f"{settings.app_base_url.rstrip('/')}/reset-password?token={raw_token}"
+    subject = "Ratslotse – Passwort zurücksetzen"
+    body = (
+        "<div style='max-width:560px;margin:0 auto;padding:24px 16px;"
+        "font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a'>"
+        "<div style='font-size:20px;font-weight:700;color:#2563eb'>Ratslotse</div>"
+        "<p style='margin:20px 0 8px'>Du hast angefordert, dein Passwort zurückzusetzen. Über den "
+        "folgenden Link kannst du ein neues Passwort vergeben — er ist <b>1 Stunde</b> gültig:</p>"
+        f"<a href='{link}' style='display:inline-block;background:#2563eb;color:#fff;"
+        "text-decoration:none;padding:10px 18px;border-radius:8px;font-size:14px'>Neues Passwort setzen →</a>"
+        "<p style='margin-top:20px;color:#94a3b8;font-size:12px'>"
+        "Wenn du das nicht warst, ignoriere diese E-Mail — dein Passwort bleibt unverändert.</p>"
+        "</div>"
+    )
+    text = (
+        "Passwort zurücksetzen bei Ratslotse.\n\n"
+        f"Neues Passwort setzen (1 Stunde gültig): {link}\n\n"
+        "Wenn du das nicht warst, ignoriere diese E-Mail.\n"
+    )
+    try:
+        send_email(email, subject, body, text=text, api_key=settings.resend_api_key, sender=settings.email_from)
+    except Exception:
+        logger.exception("password-reset email failed for %s", email)
+
+
+@router.post("/forgot-password")
+def forgot_password(
+    request: Request,
+    body: ForgotPasswordRequest,
+    background: BackgroundTasks,
+    store: Store = Depends(get_store),
+) -> dict:
+    """Start a password reset. Always returns 200 — never reveals whether an account
+    exists (no enumeration). A one-hour, single-use token is emailed if it does."""
+    forgot_password_limiter.check(request)
+    email = str(body.email).lower().strip()
+    user = store.get_web_user_by_email(email)
+    # Skip synthetic Telegram-only accounts (tg-…@local have no real inbox).
+    if user and not email.endswith("@local"):
+        raw = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(raw.encode()).hexdigest()
+        expires = (datetime.utcnow() + timedelta(hours=1)).isoformat(timespec="seconds")
+        store.create_password_reset(int(user["id"]), token_hash, expires)
+        background.add_task(_send_reset_email, email, raw)
+    return {"ok": True}
+
+
+@router.post("/reset-password")
+def reset_password(body: ResetPasswordRequest, store: Store = Depends(get_store)) -> dict:
+    """Set a new password from a valid reset token, then invalidate all sessions."""
+    token_hash = hashlib.sha256(body.token.encode()).hexdigest()
+    now = datetime.utcnow().isoformat(timespec="seconds")
+    user_id = store.consume_password_reset(token_hash, now)
+    if user_id is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            "Der Link ist ungültig oder abgelaufen. Bitte fordere einen neuen an.")
+    store.update_password_hash(user_id, hash_password(body.new_password))
+    store.increment_token_version(user_id)
+    return {"ok": True}

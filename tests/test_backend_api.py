@@ -148,6 +148,50 @@ def test_nwz_requires_auth(client):
     assert client.get("/api/nwz/search?q=x").status_code == 401
 
 
+# ---- password reset + account deletion ----
+def test_forgot_password_no_enumeration(client):
+    _register(client)  # admin@test.de
+    assert client.post("/api/auth/forgot-password", json={"email": "admin@test.de"}).status_code == 200
+    # An unknown address gets the same 200 — no account enumeration.
+    assert client.post("/api/auth/forgot-password", json={"email": "nobody@test.de"}).status_code == 200
+
+
+def test_password_reset_flow(client):
+    _register(client)
+    with patch("app.routers.auth.secrets.token_urlsafe", return_value="known-token"):
+        assert client.post("/api/auth/forgot-password", json={"email": "admin@test.de"}).status_code == 200
+    assert client.post("/api/auth/reset-password",
+                       json={"token": "known-token", "new_password": "newpass12345"}).status_code == 200
+    fresh = TestClient(app)
+    assert fresh.post("/api/auth/login", json={"email": "admin@test.de", "password": "newpass12345"}).status_code == 200
+    assert fresh.post("/api/auth/login", json={"email": "admin@test.de", "password": "password123"}).status_code == 401
+
+
+def test_reset_password_invalid_token(client):
+    _register(client)
+    assert client.post("/api/auth/reset-password",
+                       json={"token": "bogus", "new_password": "whatever12345"}).status_code == 400
+
+
+def test_reset_token_single_use(client):
+    _register(client)
+    with patch("app.routers.auth.secrets.token_urlsafe", return_value="once-token"):
+        client.post("/api/auth/forgot-password", json={"email": "admin@test.de"})
+    assert client.post("/api/auth/reset-password",
+                       json={"token": "once-token", "new_password": "newpass12345"}).status_code == 200
+    assert client.post("/api/auth/reset-password",
+                       json={"token": "once-token", "new_password": "another12345"}).status_code == 400
+
+
+def test_delete_account(client):
+    _register(client)  # admin@test.de
+    client.post("/api/topics", json={"name": "X", "description": "Testthema zum Mitlöschen."})
+    assert client.delete("/api/account").status_code == 204
+    # Account + data are gone — a fresh login fails.
+    fresh = TestClient(app)
+    assert fresh.post("/api/auth/login", json={"email": "admin@test.de", "password": "password123"}).status_code == 401
+
+
 # ---- council ----
 def test_council_sessions_and_detail(client):
     _register(client)

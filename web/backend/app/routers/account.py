@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from nwz.store import Store
 
+from ..config import get_settings
 from ..deps import get_store, require_active
 from ..schemas import ChangePasswordRequest, DeliveryUpdate, UserOut
 from ..security import hash_password, verify_password
@@ -48,3 +49,16 @@ def change_password(
     updated = store.get_web_user_by_id(user["id"])
     _set_auth_cookie(response, updated)
     return _to_out(updated)
+
+
+@router.delete("", status_code=status.HTTP_204_NO_CONTENT)
+def delete_account(
+    response: Response,
+    user: dict = Depends(require_active),
+    store: Store = Depends(get_store),
+) -> None:
+    """Permanently delete the account and all data keyed to it (DSGVO right to erasure)."""
+    store.delete_web_user(user["id"])
+    settings = get_settings()
+    response.delete_cookie("access_token", path="/", httponly=True,
+                           secure=settings.cookie_secure, samesite="lax")

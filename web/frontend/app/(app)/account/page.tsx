@@ -1,18 +1,32 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { Button, Card, Label, PageHeader, PasswordInput, toast } from "@/components/ui";
+import { Button, Card, ConfirmDialog, Label, PageHeader, PasswordInput, toast } from "@/components/ui";
 import { TelegramLink } from "@/components/telegram-link";
 import { DeliverySettings } from "@/components/delivery-settings";
 
 export default function AccountPage() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const router = useRouter();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  const deleteMutation = useMutation({
+    mutationFn: () => api.del("/account"),
+    onSuccess: async () => {
+      toast.success("Dein Konto wurde gelöscht.");
+      await logout();
+      router.replace("/");
+    },
+    onError: (err) =>
+      toast.error(err instanceof ApiError ? err.message : "Konto konnte nicht gelöscht werden."),
+  });
 
   const changeMutation = useMutation({
     mutationFn: () =>
@@ -90,7 +104,27 @@ export default function AccountPage() {
         <DeliverySettings />
 
         <TelegramLink />
+
+        <Card className="border-destructive/30 p-6">
+          <h2 className="font-semibold text-destructive">Konto löschen</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Löscht dein Konto und alle zugehörigen Daten (Themen, Treffer, Abos) unwiderruflich.
+          </p>
+          <Button variant="danger" className="mt-4" onClick={() => setDeleteOpen(true)} disabled={deleteMutation.isPending}>
+            {deleteMutation.isPending ? "Lösche…" : "Konto löschen"}
+          </Button>
+        </Card>
       </div>
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="Konto endgültig löschen?"
+        description="Diese Aktion kann nicht rückgängig gemacht werden. Dein Konto und alle zugehörigen Daten (Themen, Treffer, Abos) werden dauerhaft gelöscht."
+        confirmLabel="Endgültig löschen"
+        variant="danger"
+        onConfirm={() => deleteMutation.mutate()}
+      />
     </div>
   );
 }

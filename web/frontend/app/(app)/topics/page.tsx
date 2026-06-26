@@ -112,7 +112,7 @@ export default function TopicsPage() {
   if (loading) {
     return (
       <div>
-        <PageHeader title="Meine Themen" description="Themen, nach denen der Bot täglich die NWZ durchsucht." />
+        <PageHeader title="Meine Themen" description="Themen, nach denen der Bot täglich für dich sucht." />
         <div className="mt-6">
           <CardListSkeleton rows={3} />
         </div>
@@ -156,7 +156,7 @@ export default function TopicsPage() {
         confirmLabel="Löschen"
         onConfirm={() => confirmDeleteId !== null && deleteMutation.mutate(confirmDeleteId)}
       />
-      <PageHeader title="Meine Themen" description="Themen, nach denen der Bot täglich die NWZ durchsucht." />
+      <PageHeader title="Meine Themen" description="Themen, nach denen der Bot täglich für dich sucht." />
 
       <Card className="mt-6 p-4">
         <form
@@ -182,7 +182,7 @@ export default function TopicsPage() {
           <EmptyState
             icon={Tags}
             title="Noch keine Themen"
-            hint="Lege ein Thema an, nach dem der Bot täglich die NWZ durchsucht."
+            hint="Lege ein Thema an, nach dem der Bot täglich für dich sucht."
             action={
               <Button size="sm" onClick={() => { nameInputRef.current?.focus(); nameInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }}>
                 <Plus className="h-4 w-4" /> Erstes Thema anlegen
