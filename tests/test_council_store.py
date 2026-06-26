@@ -283,6 +283,34 @@ def test_entity_money_dedup(tmp_path):
     assert store.entity_detail("halle")["money"] == 800000
 
 
+def test_council_members_merge_by_slug(tmp_path):
+    store = CouncilStore(_old_db(tmp_path / "old.sqlite"))  # session 1 = Rat, 2025-01-01
+    store._conn.execute("INSERT INTO council_sessions VALUES (2,'Bauausschuss','2025-02-01','17:00','Rathaus','2025-02-01')")
+    rows = [
+        (1, "Dr. Max Mustermann", "SPD", "vorsitz"),   # title variant of the same person …
+        (2, "Max Mustermann", "SPD", "mitglied"),       # … merges by slug → one entry, unique key
+        (1, "Erika Musterfrau", "CDU", "mitglied"),
+        (1, "Frau Schmidt", "", "verwaltung"),          # excluded role
+    ]
+    for ksinr, name, party, role in rows:
+        store._conn.execute("INSERT INTO council_attendance(ksinr,name,party,role) VALUES (?,?,?,?)", (ksinr, name, party, role))
+    store._conn.commit()
+
+    members = store.list_members()
+    slugs = [m["slug"] for m in members]
+    assert "max-mustermann" in slugs and "erika-musterfrau" in slugs
+    assert "frau-schmidt" not in slugs                       # verwaltung excluded
+    assert len(set(slugs)) == len(slugs)                     # unique keys (the filter bug)
+    mm = next(m for m in members if m["slug"] == "max-mustermann")
+    assert mm["n"] == 2 and mm["committees"] == 2 and mm["party"] == "SPD"
+
+    d = store.member_detail("max-mustermann")
+    assert d and d["n_sessions"] == 2 and d["party"] == "SPD"
+    chairs = {c["committee"]: c["chair"] for c in d["committees"]}
+    assert chairs["Rat"] is True and chairs["Bauausschuss"] is False
+    assert store.member_detail("gibt-es-nicht") is None
+
+
 def test_embedding_vectors(tmp_path):
     store = CouncilStore(_old_db(tmp_path / "old.sqlite"))
     store.save_embeddings([(1, b"abcd"), (2, b"efgh")])

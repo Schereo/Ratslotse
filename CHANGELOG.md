@@ -8,6 +8,15 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.26.0] – 2026-06-26
+
+### Behoben
+- **Ratsmitglieder: Fraktionsfilter funktioniert wieder + keine Doppel-Einträge.** Personen wurden je Namens-Schreibweise getrennt geführt („Dr. Hans Hermann Schreier" ≠ „Hans Hermann Schreier"); da der Slug Titel entfernt, kollidierten React-Keys → die Liste filterte nicht mehr. Mandatsträger:innen werden jetzt **per Slug zusammengeführt** (Namensvarianten = eine Person, eindeutige Keys, Sitzungen/Gremien summiert). (#111)
+
+### Geändert
+- **FDP/Volt getrennt geführt:** die aufgelöste Gruppe „FDP/Volt" ist keine eigene Fraktion mehr — FDP und Volt erscheinen separat (Gruppen-Einträge zählen zur fortbestehenden FDP). (#111)
+- **Disclaimer bei den Ratsmitgliedern:** Hinweis, dass nur Sitzungen ab 2018 erfasst sind. (#111)
+
 ## [0.25.0] – 2026-06-26
 
 ### Hinzugefügt

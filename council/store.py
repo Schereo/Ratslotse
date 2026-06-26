@@ -1059,71 +1059,82 @@ class CouncilStore:
         toks = [t for t in re.split(r"[^a-z0-9]+", s) if t and t not in CouncilStore._HONORIFICS]
         return "-".join(toks)
 
-    def _dominant_parties(self) -> dict:
-        """name → most-frequent normalised party, across their member attendances."""
+    def list_members(self) -> list[dict]:
+        """Council members from attendance (role mitglied/vorsitz), grouped by *slug* so
+        title variants of the same person ("Dr. X" and "X") merge into ONE entry (and the
+        React list gets unique keys). Per person: canonical (most-frequent) name, dominant
+        party, distinct sessions attended and committees served. The member directory."""
         from collections import Counter, defaultdict
         from council.parties import normalize_party
-        c: dict = defaultdict(Counter)
-        for r in self._conn.execute(
-            "SELECT name, party FROM council_attendance "
-            "WHERE role IN ('mitglied','vorsitz') AND party IS NOT NULL AND party != ''"):
-            p = normalize_party(r["party"])
-            if p:
-                c[r["name"]][p] += 1
-        return {n: cc.most_common(1)[0][0] for n, cc in c.items() if cc}
-
-    def list_members(self) -> list[dict]:
-        """Council members (attendance role mitglied/vorsitz) with dominant party, number
-        of sessions attended and committees served on — the member directory."""
-        stats = self._conn.execute(
-            """SELECT a.name, COUNT(DISTINCT a.ksinr) n, COUNT(DISTINCT cs.committee) committees,
-                      MIN(cs.session_date) first, MAX(cs.session_date) last
+        rows = self._conn.execute(
+            """SELECT a.name, a.ksinr, a.party, cs.committee, cs.session_date
                FROM council_attendance a JOIN council_sessions cs ON cs.ksinr = a.ksinr
-               WHERE a.role IN ('mitglied','vorsitz') AND a.name IS NOT NULL AND a.name != ''
-               GROUP BY a.name"""
+               WHERE a.role IN ('mitglied','vorsitz') AND a.name IS NOT NULL AND a.name != ''"""
         ).fetchall()
-        party = self._dominant_parties()
-        out = [{"slug": self._person_slug(r["name"]), "name": r["name"], "party": party.get(r["name"]),
-                "n": r["n"], "committees": r["committees"], "first": r["first"], "last": r["last"]}
-               for r in stats]
+        g: dict = defaultdict(lambda: {"names": Counter(), "ksinrs": set(), "committees": set(),
+                                       "first": None, "last": None, "parties": Counter()})
+        for r in rows:
+            sl = self._person_slug(r["name"])
+            if not sl:
+                continue
+            e = g[sl]
+            e["names"][r["name"]] += 1
+            e["ksinrs"].add(r["ksinr"])
+            e["committees"].add(r["committee"])
+            d = r["session_date"]
+            e["first"] = d if e["first"] is None else min(e["first"], d)
+            e["last"] = d if e["last"] is None else max(e["last"], d)
+            p = normalize_party(r["party"]) if r["party"] else None
+            if p:
+                e["parties"][p] += 1
+        out = [{"slug": sl, "name": e["names"].most_common(1)[0][0],
+                "party": e["parties"].most_common(1)[0][0] if e["parties"] else None,
+                "n": len(e["ksinrs"]), "committees": len(e["committees"]),
+                "first": e["first"], "last": e["last"]}
+               for sl, e in g.items()]
         out.sort(key=lambda m: -m["n"])
         return out
 
     def member_detail(self, slug: str) -> dict | None:
-        """One member: party, sessions, active span, committees served (with counts and
-        chair flag) and their most recent sessions."""
+        """One member — all name variants merged by slug: party, sessions, active span,
+        committees served (with counts and chair flag) and their most recent sessions."""
+        from collections import Counter
+        from council.parties import normalize_party
         names = [r["name"] for r in self._conn.execute(
             "SELECT DISTINCT name FROM council_attendance WHERE role IN ('mitglied','vorsitz') "
             "AND name IS NOT NULL AND name != ''")]
-        name = next((n for n in names if self._person_slug(n) == slug), None)
-        if not name:
+        matched = [n for n in names if self._person_slug(n) == slug]
+        if not matched:
             return None
-        from collections import Counter
-        from council.parties import normalize_party
+        ph = ",".join("?" * len(matched))
+        name = Counter(  # canonical = most-frequent spelling
+            r["name"] for r in self._conn.execute(
+                f"SELECT name FROM council_attendance WHERE name IN ({ph}) AND role IN ('mitglied','vorsitz')",
+                matched)).most_common(1)[0][0]
         pc: Counter = Counter()
         for r in self._conn.execute(
-            "SELECT party FROM council_attendance WHERE name=? AND role IN ('mitglied','vorsitz') "
-            "AND party IS NOT NULL AND party != ''", (name,)):
+            f"SELECT party FROM council_attendance WHERE name IN ({ph}) AND role IN ('mitglied','vorsitz') "
+            "AND party IS NOT NULL AND party != ''", matched):
             p = normalize_party(r["party"])
             if p:
                 pc[p] += 1
         chairs = {r["committee"] for r in self._conn.execute(
-            "SELECT DISTINCT cs.committee FROM council_attendance a JOIN council_sessions cs ON cs.ksinr=a.ksinr "
-            "WHERE a.name=? AND a.role='vorsitz'", (name,))}
+            f"SELECT DISTINCT cs.committee FROM council_attendance a JOIN council_sessions cs ON cs.ksinr=a.ksinr "
+            f"WHERE a.name IN ({ph}) AND a.role='vorsitz'", matched)}
         committees = self._conn.execute(
-            """SELECT cs.committee, COUNT(DISTINCT a.ksinr) n
-               FROM council_attendance a JOIN council_sessions cs ON cs.ksinr = a.ksinr
-               WHERE a.name=? AND a.role IN ('mitglied','vorsitz')
-               GROUP BY cs.committee ORDER BY n DESC""", (name,)).fetchall()
+            f"""SELECT cs.committee, COUNT(DISTINCT a.ksinr) n
+                FROM council_attendance a JOIN council_sessions cs ON cs.ksinr = a.ksinr
+                WHERE a.name IN ({ph}) AND a.role IN ('mitglied','vorsitz')
+                GROUP BY cs.committee ORDER BY n DESC""", matched).fetchall()
         span = self._conn.execute(
-            """SELECT COUNT(DISTINCT a.ksinr) n, MIN(cs.session_date) first, MAX(cs.session_date) last
-               FROM council_attendance a JOIN council_sessions cs ON cs.ksinr = a.ksinr
-               WHERE a.name=? AND a.role IN ('mitglied','vorsitz')""", (name,)).fetchone()
+            f"""SELECT COUNT(DISTINCT a.ksinr) n, MIN(cs.session_date) first, MAX(cs.session_date) last
+                FROM council_attendance a JOIN council_sessions cs ON cs.ksinr = a.ksinr
+                WHERE a.name IN ({ph}) AND a.role IN ('mitglied','vorsitz')""", matched).fetchone()
         recent = self._conn.execute(
-            """SELECT cs.ksinr, cs.committee, cs.session_date FROM council_attendance a
-               JOIN council_sessions cs ON cs.ksinr = a.ksinr
-               WHERE a.name=? AND a.role IN ('mitglied','vorsitz')
-               ORDER BY cs.session_date DESC LIMIT 12""", (name,)).fetchall()
+            f"""SELECT cs.ksinr, cs.committee, cs.session_date FROM council_attendance a
+                JOIN council_sessions cs ON cs.ksinr = a.ksinr
+                WHERE a.name IN ({ph}) AND a.role IN ('mitglied','vorsitz')
+                ORDER BY cs.session_date DESC LIMIT 12""", matched).fetchall()
         return {
             "name": name, "slug": slug, "party": pc.most_common(1)[0][0] if pc else None,
             "n_sessions": span["n"], "active_from": span["first"], "active_to": span["last"],
