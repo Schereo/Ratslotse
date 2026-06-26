@@ -87,6 +87,11 @@ COUNCIL_PROTOCOL_MODEL=deepseek/deepseek-v4-pro   # Protokoll-Extraktion (protoc
 COUNCIL_TOPIC_MODEL=deepseek/deepseek-v4-pro      # Themenfeld-Klassifikation (topics.py)
 COUNCIL_GOAL_MODEL=deepseek/deepseek-v4-pro       # Ziel-Bewertung (goals.py)
 COUNCIL_EMBED_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2  # Embeddings (embeddings.py)
+# OpenRouter Provider-Routing (DSGVO, Defaults greifen) — nwz/llm.py schließt China-Anbieter
+# aus und verlangt ZDR/keine Daten-Sammlung, damit KI-Anfragen nicht nach China gehen.
+NWZ_OPENROUTER_ROUTING=on            # "off" deaktiviert den Provider-Block komplett (Notausschalter)
+NWZ_OPENROUTER_IGNORE=deepseek,baidu,streamlake,siliconflow,alibaba  # ausgeschlossene Anbieter-Slugs
+NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflicht
 ```
 
 ### Ähnliche Beschlüsse (Embeddings)
