@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Tag } from "lucide-react";
 import { EntityDetail } from "@/lib/types";
@@ -7,6 +8,12 @@ import { Spinner, EmptyState } from "@/components/ui";
 import { DecisionLinkCard, PartyBadge, FieldBadge, formatEuro } from "@/components/decision-ui";
 import { ENTITY_KIND } from "@/components/council-entities";
 import { useFetch } from "@/lib/use-fetch";
+
+// Leaflet needs `window` → load the map client-only.
+const EntityMap = dynamic(() => import("@/components/entity-map").then((m) => m.EntityMap), {
+  ssr: false,
+  loading: () => <div className="h-64 w-full animate-pulse rounded-lg border border-border bg-muted/40" />,
+});
 
 export default function EntityPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -37,6 +44,12 @@ export default function EntityPage() {
         <p className="mt-4 rounded-lg border border-border bg-muted/40 p-3.5 text-sm leading-relaxed text-foreground/90">
           {data.description}
         </p>
+      )}
+
+      {data.geo && (
+        <div className="mt-4">
+          <EntityMap geo={data.geo} name={data.entity.name} />
+        </div>
       )}
 
       {data.fields.length > 0 && (

@@ -8,6 +8,11 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.21.0] – 2026-06-26
+
+### Hinzugefügt
+- **Karte auf den Themen-Seiten:** Orte, Straßen und Gebiete werden über OpenStreetMap (Nominatim, auf die Oldenburger Bounding-Box begrenzt) geokodiert und als interaktive Karte gezeigt — mit **eingezeichneter Geometrie**, wo vorhanden (Straßen als Linie, Gebiete wie der Fliegerhorst als Fläche/Polygon), sonst als Punkt. Geo-Daten in `council_entity_meta`; schlanke Leaflet-Einbindung mit OSM-Kacheln (keine externen Skripte, CircleMarker statt Icon-Bildern), client-only geladen. Backfill `geocode_entities.py` (≤ 1 Anfrage/s, eigener User-Agent). (#104)
+
 ## [0.20.0] – 2026-06-26
 
 ### Hinzugefügt
