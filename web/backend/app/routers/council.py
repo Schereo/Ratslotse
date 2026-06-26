@@ -174,6 +174,13 @@ def entities_list(kind: str = "", _user: dict = Depends(require_active),
     return {"entities": store.list_entities(limit=400, kind=kind)}
 
 
+@router.get("/entities-map")
+def entities_map(_user: dict = Depends(require_active),
+                 store: CouncilStore = Depends(get_council_store)) -> dict:
+    """All geocoded entities (points) for the city-wide map."""
+    return {"entities": store.list_entities_geo()}
+
+
 @router.get("/entity/{slug}")
 def entity(slug: str, _user: dict = Depends(require_active),
            store: CouncilStore = Depends(get_council_store)) -> dict:
