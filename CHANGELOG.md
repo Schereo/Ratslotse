@@ -8,6 +8,16 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.19.0] – 2026-06-26
+
+### Geändert
+- **Frag den Rat — Antwort und Quellen streamen jetzt live (Server-Sent Events):** statt ~7 s Blank-Spinner zeigt die Suche Fortschritts-Schritte (Frage übersetzen → durchsuchen → antworten), blendet die **gefundenen Beschlüsse sofort nach dem Reranking ein** (~2 s) und schreibt die **Antwort Token für Token**. Puffert ein Proxy den Stream, rendert der Client denselben Endzustand am Stück. (#100)
+- **Relevanz-Score absolut statt relativ:** der angezeigte Prozentwert ist jetzt die Sigmoid-Funktion des Reranker-Logits (echte Relevanz) statt einer Min-Max-Normalisierung — der schwächste Treffer wird nicht mehr künstlich auf „0 % passend" gedrückt. (#100)
+- **Mehr Treffer:** die Fragensuche zeigt bis zu **40** statt 25 Beschlüsse (nahezu irrelevante Tail-Treffer < 10 % werden ausgefiltert). (#100)
+
+### Hinzugefügt
+- Live-Ladeindikator mit echtem Arbeitsschritt **und** rotierenden Status-Wörtern; vom Modell zitierte Quellen werden hervorgehoben. (#100)
+
 ## [0.18.0] – 2026-06-26
 
 ### Geändert

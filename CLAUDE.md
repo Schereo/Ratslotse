@@ -9,7 +9,10 @@
 
 ## Deployment
 
-Push auf `main` löst automatisch die GitHub Action aus (`.github/workflows/deploy.yml`):
+**Nur ein gemergter Pull Request** nach `main` löst die Deploy-Action aus
+(`.github/workflows/deploy.yml`, Trigger `pull_request: types:[closed]` + Bedingung
+`merged == true`). Ein **direkter Push auf `main` deployt NICHT** — er läuft nur durch
+die Tests. Zum Ausliefern also immer: Branch → PR → Merge. Die Action macht dann:
 
 1. Checkout des Repos auf dem GitHub Actions Runner
 2. rsync der Dateien auf `tk-nwz:~/app/` (via ProxyJump durch `tk-edge-vm`)
