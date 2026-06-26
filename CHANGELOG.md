@@ -8,6 +8,11 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.39.0] – 2026-06-26
+
+### Hinzugefügt
+- **Auto-Rückblicke je Themenfeld:** Auf der Analyse-Seite („Was bewegt den Rat?") steht jetzt pro Politikfeld eine KI-generierte Kurzfassung in Fließtext — „Was hat den Rat im Bereich Verkehr / Bauen / … zuletzt beschäftigt?". Die Rückblicke entstehen offline aus den jüngsten Beschlüssen je Feld (`council/recaps.py` + `scripts/generate_field_recaps.py`), werden in `council_field_recaps` gespeichert und wöchentlich im `weekly_enrich`-Cron aufgefrischt (je Feld ≈ monatlich, dank Freshness-Skip). Neuer Endpoint `GET /api/council/field-recaps`. (#134)
+
 ## [0.38.0] – 2026-06-26
 
 ### Hinzugefügt

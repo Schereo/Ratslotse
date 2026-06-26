@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { TrendingUp } from "lucide-react";
-import { Trends } from "@/lib/types";
+import { Trends, FieldRecap } from "@/lib/types";
 import { Card, Spinner, EmptyState } from "@/components/ui";
 import { POLICY_FIELD_LABELS, formatEuro } from "@/components/decision-ui";
 import { useFetch } from "@/lib/use-fetch";
@@ -114,6 +114,32 @@ function MoneyBars({ d, onQuarter }: { d: Trends; onQuarter: (q: string) => void
   );
 }
 
+function FieldRecaps() {
+  const { data } = useFetch<{ recaps: FieldRecap[] }>("/council/field-recaps");
+  const recaps = data?.recaps ?? [];
+  if (recaps.length === 0) return null;
+  return (
+    <Block title="Rückblick je Themenfeld" hint="KI-generierte Kurzfassung, was den Rat zuletzt je Bereich beschäftigt hat — automatisch aus den Beschlüssen zusammengefasst.">
+      <div className="grid gap-3 sm:grid-cols-2">
+        {recaps.map((r) => (
+          <div key={r.policy_field} className="rounded-lg border border-border bg-muted/20 p-3.5">
+            <div className="flex items-baseline justify-between gap-2">
+              <h4 className="text-sm font-semibold text-foreground">{r.field_label}</h4>
+              <Link
+                href={`/council?tab=decisions&field=${r.policy_field}`}
+                className="shrink-0 text-xs text-muted-foreground transition-colors hover:text-primary"
+              >
+                {r.n_decisions} Beschlüsse →
+              </Link>
+            </div>
+            <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{r.summary}</p>
+          </div>
+        ))}
+      </div>
+    </Block>
+  );
+}
+
 export function TrendsView() {
   const { data, loading } = useFetch<Trends>("/council/trends");
   const router = useRouter();
@@ -128,6 +154,7 @@ export function TrendsView() {
   };
   return (
     <div className="space-y-4">
+      <FieldRecaps />
       <Block title="Beschlüsse je Quartal" hint="Wie viel der Rat entscheidet — und in welchen Themenfeldern. Balken anklicken für das Quartal.">
         <StackedDecisions d={data} onQuarter={onQuarter} />
       </Block>
