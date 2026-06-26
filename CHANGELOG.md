@@ -8,6 +8,11 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.36.2] – 2026-06-26
+
+### Behoben
+- **iOS-Mobile:** Eingabefelder (Input/Textarea/Select) haben auf dem Handy jetzt 16px Schrift, damit Safari beim Fokussieren nicht mehr automatisch hineinzoomt. Vorher blieb die Seite nach dem Login eingezoomt und die Bottom-Nav war erst nach manuellem Rauszoomen richtig sichtbar. (#129)
+
 ## [0.36.1] – 2026-06-26
 
 ### Geändert
