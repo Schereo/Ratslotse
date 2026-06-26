@@ -1,13 +1,14 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { BarChart3, Users, Euro, TrendingUp, Target } from "lucide-react";
+import { BarChart3, Users, Euro, TrendingUp, Target, User } from "lucide-react";
 import { PartyAnalysis, FinanceData } from "@/lib/types";
 import { Card, Spinner, EmptyState } from "@/components/ui";
 import { POLICY_FIELD_LABELS, PartyBadge, DecisionLinkCard, formatEuro } from "@/components/decision-ui";
 import { useFetch } from "@/lib/use-fetch";
 import { TrendsView } from "@/components/council-trends";
 import { GoalsView } from "@/components/council-goals";
+import { PersonenView } from "@/components/council-members";
 import { cn } from "@/lib/utils";
 
 function Block({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
@@ -221,9 +222,10 @@ function FinanceView() {
   );
 }
 
-type AnalysisSub = "parteien" | "finanzen" | "trends" | "ziele";
+type AnalysisSub = "parteien" | "finanzen" | "trends" | "ziele" | "personen";
 const SUB_TABS: [AnalysisSub, string, typeof Users][] = [
   ["parteien", "Parteien", Users],
+  ["personen", "Personen", User],
   ["finanzen", "Finanzen", Euro],
   ["trends", "Trends", TrendingUp],
   ["ziele", "Ziele", Target],
@@ -233,7 +235,7 @@ export function AnalysisTab() {
   const sp = useSearchParams();
   const router = useRouter();
   const raw = sp.get("sub");
-  const sub: AnalysisSub = raw === "finanzen" || raw === "trends" || raw === "ziele" ? raw : "parteien";
+  const sub: AnalysisSub = raw === "finanzen" || raw === "trends" || raw === "ziele" || raw === "personen" ? raw : "parteien";
   const setSub = (s: AnalysisSub) => {
     const params = new URLSearchParams(sp.toString());
     params.set("tab", "analysis");
@@ -254,8 +256,8 @@ export function AnalysisTab() {
           </button>
         ))}
       </div>
-      {sub === "parteien" ? <PartiesView /> : sub === "finanzen" ? <FinanceView />
-        : sub === "trends" ? <TrendsView /> : <GoalsView />}
+      {sub === "parteien" ? <PartiesView /> : sub === "personen" ? <PersonenView />
+        : sub === "finanzen" ? <FinanceView /> : sub === "trends" ? <TrendsView /> : <GoalsView />}
     </div>
   );
 }

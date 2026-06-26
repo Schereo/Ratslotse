@@ -1036,6 +1036,90 @@ class CouncilStore:
                 "WHERE geo_tried=1 OR lat IS NOT NULL")
         return cur.rowcount
 
+    # --- Council members (from attendance: who sits on the council) ------------------
+    _MEMBER_ROLES = ("mitglied", "vorsitz")  # exclude verwaltung/protokoll/gast/beratend
+    _HONORIFICS = {"prof", "dr", "dipl", "ing", "med"}
+
+    @staticmethod
+    def _person_slug(name: str) -> str:
+        s = name.lower().replace("ä", "ae").replace("ö", "oe").replace("ü", "ue").replace("ß", "ss")
+        toks = [t for t in re.split(r"[^a-z0-9]+", s) if t and t not in CouncilStore._HONORIFICS]
+        return "-".join(toks)
+
+    def _dominant_parties(self) -> dict:
+        """name → most-frequent normalised party, across their member attendances."""
+        from collections import Counter, defaultdict
+        from council.parties import normalize_party
+        c: dict = defaultdict(Counter)
+        for r in self._conn.execute(
+            "SELECT name, party FROM council_attendance "
+            "WHERE role IN ('mitglied','vorsitz') AND party IS NOT NULL AND party != ''"):
+            p = normalize_party(r["party"])
+            if p:
+                c[r["name"]][p] += 1
+        return {n: cc.most_common(1)[0][0] for n, cc in c.items() if cc}
+
+    def list_members(self) -> list[dict]:
+        """Council members (attendance role mitglied/vorsitz) with dominant party, number
+        of sessions attended and committees served on — the member directory."""
+        stats = self._conn.execute(
+            """SELECT a.name, COUNT(DISTINCT a.ksinr) n, COUNT(DISTINCT cs.committee) committees,
+                      MIN(cs.session_date) first, MAX(cs.session_date) last
+               FROM council_attendance a JOIN council_sessions cs ON cs.ksinr = a.ksinr
+               WHERE a.role IN ('mitglied','vorsitz') AND a.name IS NOT NULL AND a.name != ''
+               GROUP BY a.name"""
+        ).fetchall()
+        party = self._dominant_parties()
+        out = [{"slug": self._person_slug(r["name"]), "name": r["name"], "party": party.get(r["name"]),
+                "n": r["n"], "committees": r["committees"], "first": r["first"], "last": r["last"]}
+               for r in stats]
+        out.sort(key=lambda m: -m["n"])
+        return out
+
+    def member_detail(self, slug: str) -> dict | None:
+        """One member: party, sessions, active span, committees served (with counts and
+        chair flag) and their most recent sessions."""
+        names = [r["name"] for r in self._conn.execute(
+            "SELECT DISTINCT name FROM council_attendance WHERE role IN ('mitglied','vorsitz') "
+            "AND name IS NOT NULL AND name != ''")]
+        name = next((n for n in names if self._person_slug(n) == slug), None)
+        if not name:
+            return None
+        from collections import Counter
+        from council.parties import normalize_party
+        pc: Counter = Counter()
+        for r in self._conn.execute(
+            "SELECT party FROM council_attendance WHERE name=? AND role IN ('mitglied','vorsitz') "
+            "AND party IS NOT NULL AND party != ''", (name,)):
+            p = normalize_party(r["party"])
+            if p:
+                pc[p] += 1
+        chairs = {r["committee"] for r in self._conn.execute(
+            "SELECT DISTINCT cs.committee FROM council_attendance a JOIN council_sessions cs ON cs.ksinr=a.ksinr "
+            "WHERE a.name=? AND a.role='vorsitz'", (name,))}
+        committees = self._conn.execute(
+            """SELECT cs.committee, COUNT(DISTINCT a.ksinr) n
+               FROM council_attendance a JOIN council_sessions cs ON cs.ksinr = a.ksinr
+               WHERE a.name=? AND a.role IN ('mitglied','vorsitz')
+               GROUP BY cs.committee ORDER BY n DESC""", (name,)).fetchall()
+        span = self._conn.execute(
+            """SELECT COUNT(DISTINCT a.ksinr) n, MIN(cs.session_date) first, MAX(cs.session_date) last
+               FROM council_attendance a JOIN council_sessions cs ON cs.ksinr = a.ksinr
+               WHERE a.name=? AND a.role IN ('mitglied','vorsitz')""", (name,)).fetchone()
+        recent = self._conn.execute(
+            """SELECT cs.ksinr, cs.committee, cs.session_date FROM council_attendance a
+               JOIN council_sessions cs ON cs.ksinr = a.ksinr
+               WHERE a.name=? AND a.role IN ('mitglied','vorsitz')
+               ORDER BY cs.session_date DESC LIMIT 12""", (name,)).fetchall()
+        return {
+            "name": name, "slug": slug, "party": pc.most_common(1)[0][0] if pc else None,
+            "n_sessions": span["n"], "active_from": span["first"], "active_to": span["last"],
+            "committees": [{"committee": r["committee"], "n": r["n"], "chair": r["committee"] in chairs}
+                           for r in committees],
+            "recent": [{"ksinr": r["ksinr"], "committee": r["committee"], "session_date": r["session_date"]}
+                       for r in recent],
+        }
+
     def decisions_for_amount(self, only_missing: bool = False) -> list[dict]:
         """Main decisions with their text, for the € extraction backfill."""
         sql = "SELECT id, title, beschluss FROM council_decisions WHERE kind = 'decision'"

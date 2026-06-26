@@ -209,6 +209,18 @@ export interface EntityDetail {
   field_labels: Record<string, string>;
 }
 
+export interface Member {
+  slug: string; name: string; party: string | null;
+  n: number; committees: number; first: string | null; last: string | null;
+}
+
+export interface MemberDetail {
+  name: string; slug: string; party: string | null;
+  n_sessions: number; active_from: string | null; active_to: string | null;
+  committees: { committee: string; n: number; chair: boolean }[];
+  recent: { ksinr: number; committee: string; session_date: string }[];
+}
+
 export interface DecisionDetail {
   decision: CouncilDecision;
   attendance: Attendee[];
