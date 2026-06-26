@@ -1000,6 +1000,13 @@ class CouncilStore:
         params.append(limit)
         return [dict(r) for r in self._conn.execute(sql, params)]
 
+    def list_entities_geo(self) -> list[dict]:
+        """Geocoded entities (points) for the city-wide map — slug, name, kind, n, lat, lon."""
+        return [dict(r) for r in self._conn.execute(
+            "SELECT e.slug, e.name, e.kind, e.n, m.lat, m.lon "
+            "FROM council_entities e JOIN council_entity_meta m ON m.slug = e.slug "
+            "WHERE m.lat IS NOT NULL AND m.lon IS NOT NULL ORDER BY e.n DESC")]
+
     def entities_for_decision(self, decision_id: int) -> list[dict]:
         """Entities mentioned in a decision (shown on its detail page)."""
         return [dict(r) for r in self._conn.execute(

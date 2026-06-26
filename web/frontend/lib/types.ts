@@ -191,6 +191,10 @@ export interface Entity {
   slug: string; name: string; kind: string; n: number;
 }
 
+export interface EntityMapPoint {
+  slug: string; name: string; kind: string; n: number; lat: number; lon: number;
+}
+
 export interface EntityGeo {
   lat: number;
   lon: number;

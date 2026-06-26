@@ -8,6 +8,11 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.32.0] – 2026-06-26
+
+### Hinzugefügt
+- **Stadtweite Karte** im Themen-Tab: Umschalter Liste/Karte zeigt alle verorteten Themen (Orte, Straßen, Projekte) als anklickbare Punkte auf einer Oldenburg-Karte — Punktgröße nach Zahl der Beschlüsse, Farbe nach Art, Klick öffnet das Thema. Neuer Endpoint `/council/entities-map` + `list_entities_geo()`. (#121)
+
 ## [0.31.1] – 2026-06-26
 
 ### Hinzugefügt
