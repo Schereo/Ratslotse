@@ -334,7 +334,6 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
               <Badge color={u.role === "admin" ? "blue" : "slate"}>{u.role}</Badge>
               {u.status === "active" ? <Badge color="green">aktiv</Badge> : <Badge color="amber">wartet</Badge>}
               {u.telegram_chat_id ? <Badge color="green">Telegram</Badge> : null}
-              {u.nwz_verified_at ? <Badge color="green">NWZ</Badge> : null}
               {u.nwz_fulltext_allowed ? <Badge color="blue">Volltext</Badge> : null}
             </div>
             <p className="text-xs text-muted-foreground">seit {formatDate(u.created_at.slice(0, 10))}</p>

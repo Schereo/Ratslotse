@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from nwz.store import Store
 
-from ..deps import get_store, require_nwz_verified
+from ..deps import get_store, require_active
 
 router = APIRouter(prefix="/api/nwz", tags=["nwz"])
 
@@ -46,7 +46,7 @@ def search(
     date_to: str = "",
     limit: int = Query(40, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    _user: dict = Depends(require_nwz_verified),
+    _user: dict = Depends(require_active),
     store: Store = Depends(get_store),
 ) -> dict:
     cats = _resolve_category(category)
@@ -61,12 +61,12 @@ def search(
 
 
 @router.get("/categories")
-def categories(_user: dict = Depends(require_nwz_verified), store: Store = Depends(get_store)) -> dict:
+def categories(_user: dict = Depends(require_active), store: Store = Depends(get_store)) -> dict:
     return {"categories": _grouped_categories(store.categories())}
 
 
 @router.get("/editions")
-def editions(_user: dict = Depends(require_nwz_verified), store: Store = Depends(get_store)) -> dict:
+def editions(_user: dict = Depends(require_active), store: Store = Depends(get_store)) -> dict:
     rows = store.edition_summary()
     return {
         "editions": [
@@ -86,7 +86,7 @@ def editions(_user: dict = Depends(require_nwz_verified), store: Store = Depends
 def article(
     catalog: int,
     refid: str = Query(..., description="Artikel-refid (enthält i. d. R. Slashes)"),
-    _user: dict = Depends(require_nwz_verified),
+    _user: dict = Depends(require_active),
     store: Store = Depends(get_store),
 ) -> dict:
     art = store.get_article(catalog, refid)

@@ -89,8 +89,6 @@ def _to_out(user: dict) -> UserOut:
         telegram_chat_id=user.get("telegram_chat_id"),
         linked=bool(user.get("telegram_chat_id")),
         delivery_channel=user.get("delivery_channel", "telegram"),
-        nwz_verified=bool(user.get("nwz_verified_at")),
-        nwz_username=user.get("nwz_username"),
         nwz_fulltext_allowed=bool(user.get("nwz_fulltext_allowed")),
     )
 
