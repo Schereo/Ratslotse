@@ -8,6 +8,15 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.35.0] – 2026-06-26
+
+### Hinzugefügt
+- **Passwort vergessen / zurücksetzen** per E-Mail: Seiten `/forgot-password` + `/reset-password` (Link auf der Login-Seite). Einmal-gültige, **gehashte** Token mit 1-Stunde-Ablauf, **keine E-Mail-Enumeration**, Rate-Limit, Versand über Resend; nach dem Zurücksetzen werden alle bestehenden Sessions ungültig. (#125)
+- **Konto löschen** (DSGVO – Recht auf Löschung): `DELETE /api/account` entfernt Konto + alle zugehörigen Daten (Themen, Treffer, Abos, Token); im Konto-Bereich mit Bestätigungsdialog, danach automatischer Logout. (#125)
+
+### Geändert
+- „Meine Themen": der Hinweistext referenziert nicht mehr die NWZ. (Hinweis: Themen matchen aktuell NWZ-Artikel; Beschlüsse/Ausschüsse werden separat über Ausschuss-Abos benachrichtigt.) (#125)
+
 ## [0.34.1] – 2026-06-26
 
 ### Geändert

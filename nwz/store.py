@@ -131,6 +131,14 @@ CREATE TABLE IF NOT EXISTS link_codes (
     created_at  TEXT NOT NULL,
     expires_at  TEXT NOT NULL
 );
+
+-- Single-use password-reset tokens (only the sha256 hash is stored) with expiry.
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    token_hash TEXT PRIMARY KEY,
+    user_id    INTEGER NOT NULL,
+    expires_at TEXT NOT NULL,
+    used       INTEGER NOT NULL DEFAULT 0
+);
 """
 
 
@@ -500,6 +508,40 @@ class Store:
             self._conn.execute(
                 "UPDATE web_users SET password_hash = ? WHERE id = ?", (password_hash, user_id)
             )
+
+    def create_password_reset(self, user_id: int, token_hash: str, expires_at: str) -> None:
+        """Store a single-use password-reset token (only its sha256 hash). Drops the
+        user's prior unused tokens so requesting a new link invalidates old ones."""
+        with self._conn:
+            self._conn.execute("DELETE FROM password_reset_tokens WHERE user_id = ?", (user_id,))
+            self._conn.execute(
+                "INSERT INTO password_reset_tokens(token_hash, user_id, expires_at, used) VALUES (?,?,?,0)",
+                (token_hash, user_id, expires_at),
+            )
+
+    def consume_password_reset(self, token_hash: str, now: str) -> int | None:
+        """Validate + burn a reset token: returns the user_id if it exists, is unused and
+        not expired (then marks it used); otherwise None."""
+        row = self._conn.execute(
+            "SELECT user_id, expires_at, used FROM password_reset_tokens WHERE token_hash = ?",
+            (token_hash,),
+        ).fetchone()
+        if not row or row["used"] or row["expires_at"] <= now:
+            return None
+        with self._conn:
+            self._conn.execute("UPDATE password_reset_tokens SET used = 1 WHERE token_hash = ?", (token_hash,))
+        return int(row["user_id"])
+
+    def delete_web_user(self, user_id: int) -> None:
+        """Hard-delete a web account and everything keyed to it (GDPR: right to erasure)."""
+        with self._conn:
+            self._conn.execute("DELETE FROM topics WHERE owner_id = ?", (user_id,))
+            self._conn.execute("DELETE FROM article_topic_matches WHERE owner_id = ?", (user_id,))
+            self._conn.execute("DELETE FROM topic_classified_editions WHERE owner_id = ?", (user_id,))
+            self._conn.execute("DELETE FROM committee_subscriptions WHERE owner_id = ?", (user_id,))
+            self._conn.execute("DELETE FROM link_codes WHERE web_user_id = ?", (user_id,))
+            self._conn.execute("DELETE FROM password_reset_tokens WHERE user_id = ?", (user_id,))
+            self._conn.execute("DELETE FROM web_users WHERE id = ?", (user_id,))
 
     def get_users_with_topic_count(self) -> list[dict]:
         """Return telegram users with their topic count in a single query (avoids N+1)."""
