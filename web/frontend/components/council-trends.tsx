@@ -119,20 +119,18 @@ function FieldRecaps() {
   const recaps = data?.recaps ?? [];
   if (recaps.length === 0) return null;
   return (
-    <Block title="Rückblick je Themenfeld" hint="KI-generierte Kurzfassung, was den Rat zuletzt je Bereich beschäftigt hat — automatisch aus den Beschlüssen zusammengefasst.">
+    <Block title="Rückblick je Themenfeld" hint="KI-generierte Kurzfassung der jeweils neuesten Beschlüsse je Bereich — was den Rat zuletzt beschäftigt hat.">
       <div className="grid gap-3 sm:grid-cols-2">
         {recaps.map((r) => (
-          <div key={r.policy_field} className="rounded-lg border border-border bg-muted/20 p-3.5">
-            <div className="flex items-baseline justify-between gap-2">
-              <h4 className="text-sm font-semibold text-foreground">{r.field_label}</h4>
-              <Link
-                href={`/council?tab=decisions&field=${r.policy_field}`}
-                className="shrink-0 text-xs text-muted-foreground transition-colors hover:text-primary"
-              >
-                {r.n_decisions} Beschlüsse →
-              </Link>
-            </div>
+          <div key={r.policy_field} className="flex flex-col rounded-lg border border-border bg-muted/20 p-3.5">
+            <h4 className="text-sm font-semibold text-foreground">{r.field_label}</h4>
             <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{r.summary}</p>
+            <Link
+              href={`/council?tab=decisions&field=${r.policy_field}${r.period_from ? `&date_from=${r.period_from}` : ""}${r.period_to ? `&date_to=${r.period_to}` : ""}`}
+              className="mt-2.5 inline-flex w-fit text-xs text-muted-foreground transition-colors hover:text-primary"
+            >
+              Basierend auf den {r.n_decisions} neuesten Beschlüssen →
+            </Link>
           </div>
         ))}
       </div>

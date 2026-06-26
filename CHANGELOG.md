@@ -8,6 +8,11 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.39.3] – 2026-06-26
+
+### Geändert
+- **Themenfeld-Rückblicke: Beschluss-Bezug klargestellt.** Die Angabe „20 Beschlüsse" wirkte wie eine Gesamtzahl, war aber der Umfang, auf dem die Kurzfassung beruht (die neuesten Beschlüsse je Feld). Steht jetzt als „Basierend auf den 20 neuesten Beschlüssen →" unter dem Text und verlinkt direkt auf genau diese Beschlüsse (Feld + Zeitfenster des Rückblicks) statt auf alle Beschlüsse des Feldes. (#137)
+
 ## [0.39.2] – 2026-06-26
 
 ### Geändert
