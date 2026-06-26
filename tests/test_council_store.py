@@ -238,6 +238,32 @@ def test_money_by_field_and_trends_drivers(tmp_path):
     assert drv and drv["title"] == "Neubau Schwimmbad" and drv["eur"] == 5_000_000
 
 
+def test_entity_meta_description_and_geo(tmp_path):
+    store = CouncilStore(_old_db(tmp_path / "old.sqlite"))  # session ksinr=1
+    store._conn.execute(
+        "INSERT INTO council_decisions(id,ksinr,position,kind,item_number,title,beschluss,outcome,policy_field) "
+        "VALUES (80,1,0,'decision','1','Fliegerhorst Bebauungsplan','Beschluss','angenommen','bauen_wohnen')")
+    store._conn.commit()
+    store.save_entities([("fliegerhorst", "Fliegerhorst", "ort", 1)], [("fliegerhorst", 80)])
+
+    # description: missing → set → read back via entity_detail; idempotent backfill list
+    assert [e["slug"] for e in store.entities_without_description()] == ["fliegerhorst"]
+    d = store.entity_detail("fliegerhorst")
+    assert d["description"] is None and d["geo"] is None
+    assert store.entity_decisions_brief("fliegerhorst")[0]["title"] == "Fliegerhorst Bebauungsplan"
+    store.set_entity_descriptions([("fliegerhorst", "Ein ehemaliges Militärgelände im Norden.")])
+    assert store.entities_without_description() == []
+    assert store.entity_detail("fliegerhorst")["description"] == "Ein ehemaliges Militärgelände im Norden."
+
+    # geo: place entity is geocode-pending → set → exposed (geojson parsed), description kept
+    assert [e["slug"] for e in store.entities_to_geocode()] == ["fliegerhorst"]
+    store.set_entity_geo("fliegerhorst", 53.17, 8.24, '{"type":"Point","coordinates":[8.24,53.17]}')
+    assert store.entities_to_geocode() == []
+    full = store.entity_detail("fliegerhorst")
+    assert full["geo"]["lat"] == 53.17 and full["geo"]["geojson"]["type"] == "Point"
+    assert full["description"] == "Ein ehemaliges Militärgelände im Norden."
+
+
 def test_embedding_vectors(tmp_path):
     store = CouncilStore(_old_db(tmp_path / "old.sqlite"))
     store.save_embeddings([(1, b"abcd"), (2, b"efgh")])

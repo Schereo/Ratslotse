@@ -192,8 +192,16 @@ export interface Entity {
   slug: string; name: string; kind: string; n: number;
 }
 
+export interface EntityGeo {
+  lat: number;
+  lon: number;
+  geojson: { type: string; coordinates: unknown } | null;
+}
+
 export interface EntityDetail {
   entity: Entity;
+  description: string | null;
+  geo: EntityGeo | null;
   decisions: CouncilDecision[];
   money: number;
   parties: string[];

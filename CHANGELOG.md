@@ -8,6 +8,11 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.20.0] – 2026-06-26
+
+### Hinzugefügt
+- **Themen-Seiten mit KI-Beschreibung:** jede Themen-Seite (Fliegerhorst, Klinikum, Nadorster Straße …) bekommt einen kurzen, sachlichen Einführungstext — *was* das Thema ist und *warum* es den Stadtrat beschäftigt, streng aus den zugehörigen Beschlüssen + gesichertem Allgemeinwissen über Oldenburg erzeugt (der Prompt verbietet Spekulation und erfundene Zahlen). Gespeichert in `council_entity_meta` (slug-basiert, überlebt die Entitäten-Neuberechnung). (#103)
+
 ## [0.19.1] – 2026-06-26
 
 ### Behoben
