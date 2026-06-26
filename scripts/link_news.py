@@ -56,8 +56,19 @@ def _words(text: str) -> set:
     return {w for w in re.findall(r"[a-zäöüß]{5,}", (text or "").lower()) if w not in _GENERIC}
 
 
+def _topical_match(dwords: set, awords: set) -> bool:
+    """A decision↔article pair shares a real topic only if it shares a *specific*
+    compound (≥9 letters, e.g. "Fliegerhorst", "Klävemann") or at least two content
+    words. A single generic-ish shared word is too weak — a budget decision and a
+    national tax article both mentioning "Steuer", or an Ausfallbürgschaft and a
+    Starkregen article both mentioning "Wasser", must NOT count as related. This is
+    the precision guard that removes the spurious cross-topic press matches."""
+    shared = dwords & awords
+    return any(len(w) >= 9 for w in shared) or len(shared) >= 2
+
+
 def process(council_db: Path, nwz_db: Path, top_k: int = 3,
-            threshold: float = 0.58, window_days: int = 120) -> dict:
+            threshold: float = 0.60, window_days: int = 120) -> dict:
     import numpy as np
 
     store = CouncilStore(council_db)
@@ -103,7 +114,7 @@ def process(council_db: Path, nwz_db: Path, top_k: int = 3,
                 s = float(row[j])
                 if s < threshold:
                     break
-                if not (dwords[i] & awords[j]):  # require a shared topical word
+                if not _topical_match(dwords[i], awords[j]):  # specific word or ≥2 shared
                     continue
                 a = arts[j]
                 out.append((dids[i], a["catalog"], a["refid"], a["title"], a["pub_date"], s))
@@ -119,7 +130,7 @@ def main() -> int:
     ap.add_argument("--db", type=Path, default=COUNCIL_DB)
     ap.add_argument("--nwz-db", type=Path, default=NWZ_DB)
     ap.add_argument("--top-k", type=int, default=3)
-    ap.add_argument("--threshold", type=float, default=0.58)
+    ap.add_argument("--threshold", type=float, default=0.60)
     ap.add_argument("--window-days", type=int, default=120)
     args = ap.parse_args()
 

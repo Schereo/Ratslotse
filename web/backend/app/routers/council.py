@@ -220,7 +220,11 @@ class AskBody(BaseModel):
 # the near-irrelevant tail from the displayed sources (sigmoid relevance).
 QA_TOP_K = 40
 QA_ANSWER_N = 20
-QA_MIN_SCORE = 0.1
+QA_MIN_SCORE = 0.2
+# jina-reranker-v2 logits are negative-centred (a clearly relevant match still scores
+# below 0), so a raw sigmoid under-sells good hits (~50 % for the top result). Shift by
+# a fixed bias so a relevant decision reads as a high-but-honest relevance.
+QA_RERANK_BIAS = 1.5
 
 
 def _qa_retrieve(store: CouncilStore, q: str, expanded: str) -> tuple[list[dict], str]:
@@ -236,7 +240,7 @@ def _qa_retrieve(store: CouncilStore, q: str, expanded: str) -> tuple[list[dict]
             score = {h[0]: h[1] for h in hits}
             for c in candidates:
                 logit = score.get(c["id"])
-                c["score"] = round(1.0 / (1.0 + math.exp(-logit)), 3) if logit is not None else None
+                c["score"] = round(1.0 / (1.0 + math.exp(-(logit + QA_RERANK_BIAS))), 3) if logit is not None else None
             return [c for c in candidates if (c.get("score") or 0) >= QA_MIN_SCORE] or candidates, "semantisch"
     except Exception:  # noqa: BLE001 — fastembed missing/any failure → keyword fallback
         pass

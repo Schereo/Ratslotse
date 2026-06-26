@@ -8,6 +8,12 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.19.1] – 2026-06-26
+
+### Behoben
+- **Frag den Rat — Relevanz-Score realistischer kalibriert:** der Cross-Encoder (jina-reranker-v2) gibt negativ-zentrierte Logits aus, weshalb die rohe Sigmoid-Funktion auch klar relevante Treffer mit nur ~50 % zeigte. Ein fester Bias verschiebt das auf eine ehrliche, aber nicht mehr untertriebene Skala (Top-Treffer ~80–90 %). (#102)
+- **Presse-Verknüpfung präziser:** ein Beschluss und ein Artikel gelten nur noch als verwandt, wenn sie ein *spezifisches* Kompositum (z. B. „Fliegerhorst", „Klävemann") oder **mindestens zwei** inhaltliche Wörter teilen — vorher reichte ein einzelnes generisches Wort, was thematisch fremde Treffer erzeugte (z. B. „Ausfallbürgschaft → Starkregen", „Wirtschaftsförderung → Trump"). Schwelle leicht angehoben (0,58 → 0,60); erfordert einen `link_news.py`-Neulauf. (#102)
+
 ## [0.19.0] – 2026-06-26
 
 ### Geändert
