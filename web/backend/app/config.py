@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     resend_api_key: str = ""
     email_from: str = "Ratslotse <noreply@ratslotse.de>"
     app_base_url: str = "https://ratslotse.de"
+    feedback_email: str = ""  # where user feedback is sent; falls back to web_admin_email
 
     @property
     def cors_origin_list(self) -> list[str]:

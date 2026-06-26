@@ -25,6 +25,10 @@ export default function DashboardPage() {
     enabled: !!user?.linked,
   });
   const topicCount = topicsQuery.data?.length ?? 0;
+  // NWZ is a manually-unlocked feature — hide its quick-access tile from normal users
+  // (mirrors the nav gating); the press links on decisions handle the rest.
+  const showNwz = !!user?.nwz_fulltext_allowed || user?.role === "admin";
+  const visibleTiles = tiles.filter((t) => t.href !== "/nwz" || showNwz);
 
   return (
     <div>
@@ -38,7 +42,7 @@ export default function DashboardPage() {
 
       <h2 className="mt-8 text-sm font-semibold text-muted-foreground">Schnellzugriff</h2>
       <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {tiles.map((t) => {
+        {visibleTiles.map((t) => {
           const Icon = t.icon;
           return (
             <Link key={t.href} href={t.href}>

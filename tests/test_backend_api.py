@@ -379,3 +379,42 @@ def test_link_request_and_status(client):
     assert client.get("/api/link/status").json()["linked"] is False
     _link("admin@test.de")
     assert client.get("/api/link/status").json()["linked"] is True
+
+
+# ---- feedback ----
+def test_feedback_sends_email(client):
+    from types import SimpleNamespace
+    _register(client)  # admin@test.de
+    sent = {}
+
+    def fake_send(to, subject, html, **kw):
+        sent.update(to=to, subject=subject, reply_to=kw.get("reply_to"), text=kw.get("text"))
+        return "msg-id"
+
+    fake_settings = SimpleNamespace(
+        resend_api_key="x", feedback_email="ops@test.de",
+        web_admin_email="admin@test.de", email_from="Ratslotse <f@x.de>")
+    with patch("app.routers.feedback.send_email", side_effect=fake_send), \
+         patch("app.routers.feedback.get_settings", return_value=fake_settings):
+        r = client.post("/api/feedback", json={"kind": "feature", "message": "Bitte Dark Mode für die Karte"})
+    assert r.status_code == 200 and r.json()["ok"] is True
+    assert sent["to"] == "ops@test.de"
+    assert sent["reply_to"] == "admin@test.de"          # operator can reply straight to the user
+    assert "Feature-Vorschlag" in sent["subject"]
+    assert "Dark Mode" in sent["text"]
+
+
+def test_feedback_validation(client):
+    _register(client)
+    assert client.post("/api/feedback", json={"kind": "nope", "message": "hallo welt"}).status_code == 422
+    assert client.post("/api/feedback", json={"kind": "bug", "message": "x"}).status_code == 422  # too short
+
+
+def test_feedback_ok_without_email_config(client):
+    """No Resend key / recipient → still returns ok (best-effort), no error to the user."""
+    from types import SimpleNamespace
+    _register(client)
+    fake = SimpleNamespace(resend_api_key="", feedback_email="", web_admin_email="", email_from="")
+    with patch("app.routers.feedback.get_settings", return_value=fake):
+        r = client.post("/api/feedback", json={"kind": "other", "message": "Test ohne Mail-Config"})
+    assert r.status_code == 200 and r.json()["ok"] is True
