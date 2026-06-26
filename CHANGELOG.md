@@ -8,6 +8,11 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.24.0] – 2026-06-26
+
+### Hinzugefügt
+- **Ratsmitglieder-Profile (neuer „Personen"-Bereich in Analyse):** aus den Anwesenheitslisten der Protokolle — ein durchsuchbares Verzeichnis aller Mandatsträger:innen (Fraktion, Sitzungszahl, Gremien), und je Person eine Profilseite mit Fraktion, besuchten Sitzungen, aktivem Zeitraum, Gremien (mit Vorsitz-Kennzeichnung) und den letzten Sitzungen. „Wer vertritt mich?" als neuer Einstieg — gemessen wird die **Präsenz**, nicht das Stimmverhalten (Protokolle nennen namentliche Einzelstimmen selten). (#108)
+
 ## [0.23.1] – 2026-06-26
 
 ### Behoben

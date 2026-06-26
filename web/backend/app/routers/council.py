@@ -186,6 +186,23 @@ def entity(slug: str, _user: dict = Depends(require_active),
     return data
 
 
+@router.get("/members")
+def members(_user: dict = Depends(require_active),
+            store: CouncilStore = Depends(get_council_store)) -> dict:
+    """Directory of council members (from attendance): party, sessions, committees."""
+    return {"members": store.list_members()}
+
+
+@router.get("/person/{slug}")
+def person(slug: str, _user: dict = Depends(require_active),
+           store: CouncilStore = Depends(get_council_store)) -> dict:
+    """A council member's profile: party, sessions, active span, committees, recent sessions."""
+    data = store.member_detail(slug)
+    if not data:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Ratsmitglied nicht gefunden.")
+    return data
+
+
 _EMPTY_GOAL = {"voran": 0, "bremst": 0, "neutral": 0, "total": 0}
 
 
