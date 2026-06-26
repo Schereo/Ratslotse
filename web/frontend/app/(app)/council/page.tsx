@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Search, ExternalLink, ChevronDown, ChevronRight, Landmark, Scale, Users, BarChart3, Sparkles, Tag, X } from "lucide-react";
+import { Search, ExternalLink, ChevronDown, ChevronRight, Landmark, Scale, Users, Sparkles, X } from "lucide-react";
 import { api, qs, ApiError } from "@/lib/api";
 import { useDebounce } from "@/lib/use-debounce";
 import {
@@ -537,6 +537,15 @@ function SearchTab({ committees }: { committees: string[] }) {
   );
 }
 
+// Navigation between these views now lives in the left sidebar (Ratsinfo section),
+// so the page only needs a per-view title/description instead of an in-page tab bar.
+const TAB_META: Record<Tab, { title: string; description: string }> = {
+  decisions: { title: "Beschlüsse", description: "Beschlüsse durchsuchen oder dem Rat eine KI-Frage stellen." },
+  sessions: { title: "Sitzungen", description: "Sitzungen und Tagesordnungen von Rat und Ausschüssen." },
+  themen: { title: "Themen", description: "Wiederkehrende Orte, Projekte und Organisationen — als Liste oder Karte." },
+  analysis: { title: "Analyse", description: "Parteien, Personen, Finanzen, Trends und Ziele im Überblick." },
+};
+
 function CouncilInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -557,38 +566,14 @@ function CouncilInner() {
     else if (param === "trends") router.replace("/council?tab=analysis&sub=trends", { scroll: false });
   }, [param, router]);
 
-  const setTab = (t: Tab) =>
-    router.replace(t === "decisions" ? "/council" : `/council?tab=${t}`, { scroll: false });
-
   useEffect(() => {
     api.get<{ committees: string[] }>("/council/committees").then((d) => setCommittees(d.committees)).catch(() => {});
   }, []);
 
+  const meta = TAB_META[tab];
   return (
     <div>
-      <PageHeader title="Ratsinformationssystem" description="Beschlüsse durchsuchen, KI-Fragen stellen, Sitzungen, Themen und Analysen zum Oldenburger Stadtrat." />
-
-      <div className="mt-6 flex gap-1 overflow-x-auto rounded-md bg-muted p-1">
-        {([
-          ["decisions", "Suche", Search],
-          ["sessions", "Sitzungen", Landmark],
-          ["themen", "Themen", Tag],
-          ["analysis", "Analyse", BarChart3],
-        ] as [Tab, string, typeof Landmark][]).map(([t, label, Icon]) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setTab(t)}
-            className={cn(
-              "inline-flex shrink-0 items-center gap-1.5 rounded-sm px-3 py-1.5 text-sm font-medium transition-colors",
-              tab === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            <Icon className="h-4 w-4" /> {label}
-          </button>
-        ))}
-      </div>
-
+      <PageHeader title={meta.title} description={meta.description} />
       {tab === "decisions" ? <SearchTab committees={committees} />
         : tab === "sessions" ? <SessionsTab committees={committees} />
         : tab === "themen" ? <EntitiesTab />
