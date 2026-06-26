@@ -8,6 +8,11 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.39.2] – 2026-06-26
+
+### Geändert
+- **Themen-Karte: Zoom auf den Stadtkern nachgeschärft.** Statt einer Perzentil-Box rahmt die Karte jetzt das Dichtezentrum direkt — sie zentriert auf den Median aller Punkte und fittet auf alles im 7-km-Radius. Dadurch füllt der Oldenburger Kern den Ausschnitt zuverlässiger; vereinzelte Außenpunkte (Berne, Hude, Bad Zwischenahn) verschieben den Ausschnitt nicht mehr. (#136)
+
 ## [0.39.1] – 2026-06-26
 
 ### Geändert
