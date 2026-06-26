@@ -70,6 +70,43 @@ def slug(name: str) -> str:
     return "-".join(tokens)
 
 
+_KIND_DE = {"ort": "Ort / Straße / Gebiet", "organisation": "Organisation", "projekt": "Projekt"}
+
+_DESCRIBE_PROMPT = """Du schreibst eine kurze, sachliche Einordnung für die Themen-Seite „{name}" ({kind}) im Oldenburger Ratsinformationssystem.
+
+Beschlüsse des Stadtrats zu diesem Thema (neueste zuerst):
+{decisions}
+
+Schreibe 2–4 Sätze auf Deutsch:
+- Was ist „{name}"? Bei Orten/Straßen/Gebieten: wo es ungefähr liegt und was es besonders oder kommunalpolitisch relevant macht. Bei Organisationen: was sie ist/tut. Bei Projekten: worum es geht.
+- Warum beschäftigt es den Stadtrat — der rote Faden der Beschlüsse.
+
+Strikt nur gesichertes Wissen: stütze dich auf die Beschlüsse oben und allgemein bekannte, unstrittige Fakten über Oldenburg. Wenn du etwas nicht sicher weißt, lass es weg — KEINE Spekulation, keine erfundenen Zahlen, Jahre oder Adressen. Neutral, ohne Wertung. Beginne direkt mit der Sache (kein „Diese Seite…", kein „„{name}" ist ein Thema…")."""
+
+
+def describe(name: str, kind: str, decisions: list[dict], model: str = MODEL) -> str | None:
+    """A short, grounded description of an entity for its Themen page. Strictly based on
+    the decisions + safe general knowledge (the prompt forbids speculation). Returns
+    None on failure so the caller can skip it."""
+    lines = []
+    for d in decisions[:40]:
+        t = (d.get("title") or "").strip()
+        s = " ".join((d.get("summary") or "").split())[:160]
+        dt = (d.get("session_date") or "")[:10]
+        lines.append(f"- {dt}: {t}{' — ' + s if s else ''}")
+    prompt = _DESCRIBE_PROMPT.format(name=name, kind=_KIND_DE.get(kind, kind), decisions="\n".join(lines))
+    extra: dict = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
+    try:
+        resp = llm.chat_complete(
+            model=model, temperature=0.3, max_tokens=400,
+            messages=[{"role": "user", "content": prompt}], **extra,
+        )
+        return " ".join((resp.choices[0].message.content or "").split()).strip() or None
+    except Exception:  # noqa: BLE001
+        logger.warning("describe failed for %s", name, exc_info=True)
+        return None
+
+
 def extract_batch(decisions: list[dict], model: str = MODEL):
     """One LLM call over a batch → ``(results_by_id, usage)`` with
     id -> ``[{"name", "kind"}]``. Retries once; raises if nothing usable."""

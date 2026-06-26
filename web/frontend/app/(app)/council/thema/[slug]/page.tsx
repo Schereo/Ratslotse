@@ -33,6 +33,12 @@ export default function EntityPage() {
         {data.money > 0 && <> · <span className="font-medium text-emerald-700 dark:text-emerald-400">{formatEuro(data.money)}</span> erkannt</>}
       </p>
 
+      {data.description && (
+        <p className="mt-4 rounded-lg border border-border bg-muted/40 p-3.5 text-sm leading-relaxed text-foreground/90">
+          {data.description}
+        </p>
+      )}
+
       {data.fields.length > 0 && (
         <div className="mt-4 flex flex-wrap items-center gap-1.5">
           {data.fields.map((f) => (

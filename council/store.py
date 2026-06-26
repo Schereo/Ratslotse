@@ -263,6 +263,13 @@ class CouncilStore:
             "PRIMARY KEY (entity_id, decision_id))"
         )
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_entlink_dec ON council_entity_links(decision_id)")
+        # Per-entity enrichment (LLM description + geocoding) keyed by *slug* so it
+        # survives the full rebuild of council_entities by extract_entities.py.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_entity_meta ("
+            "slug TEXT PRIMARY KEY, description TEXT, "
+            "lat REAL, lon REAL, geojson TEXT, geo_tried INTEGER NOT NULL DEFAULT 0)"
+        )
         self._migrate_owner_id()
 
     def _migrate_owner_id(self) -> None:
@@ -956,13 +963,69 @@ class CouncilStore:
         money = sum(d["amount_eur"] for d in decisions if d.get("amount_eur"))
         parties = sorted({p for d in decisions for p in d.get("parties", [])}, key=order_key)
         fieldc = Counter(d["policy_field"] for d in decisions if d.get("policy_field"))
+        meta = self._conn.execute(
+            "SELECT description, lat, lon, geojson FROM council_entity_meta WHERE slug = ?", (slug,)).fetchone()
+        geo = None
+        if meta and meta["lat"] is not None and meta["lon"] is not None:
+            geo = {"lat": meta["lat"], "lon": meta["lon"],
+                   "geojson": json.loads(meta["geojson"]) if meta["geojson"] else None}
         return {
             "entity": {"slug": ent["slug"], "name": ent["name"], "kind": ent["kind"], "n": ent["n"]},
+            "description": meta["description"] if meta else None,
+            "geo": geo,
             "decisions": decisions,
             "money": round(money) if money else 0,
             "parties": parties,
             "fields": [{"field": f, "n": c} for f, c in fieldc.most_common()],
         }
+
+    def entities_without_description(self) -> list[dict]:
+        """Entities still lacking an LLM description, most-decisions first — for the
+        describe backfill. Description/geo live in council_entity_meta (keyed by slug)
+        so they survive the full rebuild of council_entities."""
+        rows = self._conn.execute(
+            "SELECT e.slug, e.name, e.kind, e.n FROM council_entities e "
+            "LEFT JOIN council_entity_meta m ON m.slug = e.slug "
+            "WHERE m.description IS NULL OR m.description = '' ORDER BY e.n DESC"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def entity_decisions_brief(self, slug: str, limit: int = 40) -> list[dict]:
+        """Lightweight decision list (title/summary/field/date) of an entity — the
+        grounding context for the description prompt."""
+        rows = self._conn.execute(
+            """SELECT d.title, d.summary, d.policy_field, cs.session_date
+               FROM council_entities e
+               JOIN council_entity_links el ON el.entity_id = e.id
+               JOIN council_decisions d ON d.id = el.decision_id
+               JOIN council_sessions cs ON cs.ksinr = d.ksinr
+               WHERE e.slug = ? ORDER BY cs.session_date DESC LIMIT ?""", (slug, limit)).fetchall()
+        return [dict(r) for r in rows]
+
+    def set_entity_descriptions(self, rows: list[tuple]) -> int:
+        """Upsert (slug, description) into entity meta, preserving the geo columns."""
+        with self._conn:
+            self._conn.executemany(
+                "INSERT INTO council_entity_meta(slug, description) VALUES (?, ?) "
+                "ON CONFLICT(slug) DO UPDATE SET description = excluded.description", rows)
+        return len(rows)
+
+    def entities_to_geocode(self) -> list[dict]:
+        """Place/street/area entities not yet geocoded — for the geocode backfill."""
+        rows = self._conn.execute(
+            "SELECT e.slug, e.name, e.kind FROM council_entities e "
+            "LEFT JOIN council_entity_meta m ON m.slug = e.slug "
+            "WHERE e.kind = 'ort' AND (m.geo_tried IS NULL OR m.geo_tried = 0) ORDER BY e.n DESC"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def set_entity_geo(self, slug: str, lat: float | None, lon: float | None, geojson: str | None) -> None:
+        """Store geocoding result (or mark as tried with NULLs) for an entity slug."""
+        with self._conn:
+            self._conn.execute(
+                "INSERT INTO council_entity_meta(slug, lat, lon, geojson, geo_tried) VALUES (?,?,?,?,1) "
+                "ON CONFLICT(slug) DO UPDATE SET lat=excluded.lat, lon=excluded.lon, "
+                "geojson=excluded.geojson, geo_tried=1", (slug, lat, lon, geojson))
 
     def decisions_for_amount(self, only_missing: bool = False) -> list[dict]:
         """Main decisions with their text, for the € extraction backfill."""
