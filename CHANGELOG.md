@@ -8,6 +8,15 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.41.1] – 2026-06-26
+
+### Behoben
+- **NWZonline-Suchlink ging ins Leere:** Die URL braucht einen Trailing-Slash (`/suche/?query=…`) — vorher (`/suche?query=…`) blieb das Suchfeld leer. Jetzt landet die Schlagzeile direkt in der NWZ-Suche.
+- **Veralteter NWZ-Login-Hinweis entfernt:** Im Themen-Treffer-Dialog stand noch „Hinterlege deine NWZ-Zugangsdaten …", obwohl die NWZ-Anmeldung pro Nutzer längst entfällt. Ersetzt durch denselben dezenten NWZonline-Link; die Datenschutzerklärung erwähnt keine NWZ-Zugangsdaten-Erhebung mehr.
+
+### Geändert
+- **NWZ-Hinweis entschärft:** Bei nicht freigeschalteten Konten steht jetzt nur noch ein kleiner „Bei NWZonline lesen ↗"-Link statt eines Hinweises auf zweistufigen Zugang (kein „Volltext nur für freigeschaltete Konten" mehr). Gemeinsame Komponente für Artikel-Ansicht + Themen-Treffer.
+
 ## [0.41.0] – 2026-06-26
 
 ### Hinzugefügt

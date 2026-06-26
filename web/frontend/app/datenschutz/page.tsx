@@ -45,7 +45,6 @@ export default function DatenschutzPage() {
             <ul className="list-disc space-y-1 pl-5">
               <li><strong>Konto:</strong> E-Mail-Adresse und ein Passwort-Hash (das Passwort selbst wird nicht im Klartext gespeichert).</li>
               <li><strong>Telegram (optional):</strong> die Chat-ID, wenn du den Telegram-Bot verknüpfst.</li>
-              <li><strong>NWZ-Zugang (optional):</strong> dein NWZ-Benutzername zur Verifikation. <strong>Dein NWZ-Passwort wird nicht gespeichert</strong> — es wird einmalig zur Prüfung an die NWZ übermittelt und danach verworfen.</li>
               <li><strong>Themen &amp; Watchlists:</strong> die von dir angelegten Suchthemen und Benachrichtigungseinstellungen.</li>
               <li><strong>„Frag den Rat"-Anfragen:</strong> die von dir eingegebenen Fragen, um eine KI-Antwort zu erzeugen.</li>
               <li><strong>Server-Logs:</strong> beim Aufruf technische Daten wie IP-Adresse, Zeitpunkt und User-Agent — zur Sicherheit und Fehleranalyse.</li>

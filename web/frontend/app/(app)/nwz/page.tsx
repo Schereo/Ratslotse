@@ -2,12 +2,13 @@
 
 import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Search, ChevronRight, Newspaper, ExternalLink } from "lucide-react";
+import { Search, ChevronRight, Newspaper } from "lucide-react";
 import { api, qs, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useDebounce } from "@/lib/use-debounce";
 import { Article, SearchResult } from "@/lib/types";
 import { categoryLabel } from "@/lib/categories";
+import { NwzReadHint } from "@/components/nwz-link";
 import {
   Badge, Card, CardListSkeleton, EmptyState, Input, PageHeader, Pagination, Select, DateField, formatDate,
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, toast,
@@ -190,19 +191,8 @@ function NwzSearch() {
                   {openArticle.content_text}
                 </div>
               ) : (
-                <div className="space-y-3 rounded-lg border border-amber-300/50 bg-amber-50 p-3.5 text-sm leading-relaxed text-amber-900 dark:border-amber-400/20 dark:bg-amber-950/40 dark:text-amber-200">
-                  <p>
-                    Der vollständige Artikeltext ist nur für manuell freigeschaltete Konten sichtbar. Du kannst
-                    den Artikel aber direkt bei der NWZ nachlesen (ggf. NWZ-Plus):
-                  </p>
-                  <a
-                    href={`https://www.nwzonline.de/suche?query=${encodeURIComponent(openArticle.title || "")}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-md border border-amber-400/60 bg-background/60 px-3 py-1.5 text-sm font-medium text-amber-900 transition-colors hover:bg-background dark:border-amber-400/30 dark:text-amber-100"
-                  >
-                    <ExternalLink className="h-4 w-4" /> Auf NWZonline suchen
-                  </a>
+                <div className="pt-1">
+                  <NwzReadHint title={openArticle.title || ""} />
                 </div>
               )}
             </>
