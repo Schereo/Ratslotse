@@ -1,29 +1,41 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { Home, Newspaper, Landmark, Tags, Settings, LogOut, Menu, Moon, Sun, UserCircle } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import {
+  Home, Newspaper, Landmark, Tags, Settings, LogOut, Menu, Moon, Sun, UserCircle,
+  Gavel, CalendarDays, Tag, BarChart3,
+} from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, Button } from "@/components/ui";
 import { Brand, BrandMark } from "@/components/brand";
 import { cn } from "@/lib/utils";
 import { toggleTheme } from "@/lib/theme";
 
-const LINKS = [
-  { href: "/dashboard", label: "Übersicht", icon: Home },
-  { href: "/nwz", label: "Artikelsuche", icon: Newspaper },
-  { href: "/council", label: "Ratsinfo", icon: Landmark },
-  { href: "/topics", label: "Meine Themen", icon: Tags },
-  { href: "/account", label: "Mein Konto", icon: UserCircle },
+type Item = { href: string; label: string; icon: typeof Home };
+
+const OVERVIEW: Item = { href: "/dashboard", label: "Übersicht", icon: Home };
+const PERSONAL: Item = { href: "/topics", label: "Meine Themen", icon: Tags };
+
+// Ratsinfo sub-pages (the council page's tabs), surfaced directly in the nav.
+const COUNCIL_ITEMS: (Item & { tab: string })[] = [
+  { href: "/council", label: "Beschlüsse", icon: Gavel, tab: "decisions" },
+  { href: "/council?tab=sessions", label: "Sitzungen", icon: CalendarDays, tab: "sessions" },
+  { href: "/council?tab=themen", label: "Themen", icon: Tag, tab: "themen" },
+  { href: "/council?tab=analysis", label: "Analyse", icon: BarChart3, tab: "analysis" },
 ];
 
-// Primary destinations shown in the mobile bottom tab bar (thumb-friendly).
-const PRIMARY = [
+const NWZ_ITEMS: Item[] = [
+  { href: "/nwz", label: "Artikelsuche", icon: Newspaper },
+];
+
+// Mobile bottom tab bar (thumb-friendly) — the four most-used destinations.
+const PRIMARY: Item[] = [
   { href: "/dashboard", label: "Start", icon: Home },
-  { href: "/nwz", label: "Suche", icon: Newspaper },
   { href: "/council", label: "Ratsinfo", icon: Landmark },
   { href: "/topics", label: "Themen", icon: Tags },
+  { href: "/account", label: "Konto", icon: UserCircle },
 ];
 
 function useDarkMode() {
@@ -54,47 +66,98 @@ function ThemeToggle({ className }: { className?: string }) {
   );
 }
 
-function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
+function SectionHeader({ children }: { children: React.ReactNode }) {
+  return <p className="px-3 pb-1 pt-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">{children}</p>;
+}
+
+function NavItem({ item, active, onNavigate }: { item: Item; active: boolean; onNavigate?: () => void }) {
+  const Icon = item.icon;
+  return (
+    <Link
+      href={item.href}
+      onClick={onNavigate}
+      className={cn(
+        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+        active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground",
+      )}
+    >
+      <Icon className="h-4 w-4" />
+      {item.label}
+    </Link>
+  );
+}
+
+function NavLinksInner({ activeTab, onNavigate }: { activeTab: string; onNavigate?: () => void }) {
   const pathname = usePathname();
   const { user } = useAuth();
-  const items = [...LINKS];
-  if (user?.role === "admin") items.push({ href: "/admin", label: "Admin", icon: Settings });
+  const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
+  const onCouncil = pathname === "/council" || pathname.startsWith("/council/");
+  const showNwz = !!user?.nwz_fulltext_allowed || user?.role === "admin";
 
   return (
     <nav className="flex-1 space-y-1 px-3">
-      {items.map((l) => {
-        const Icon = l.icon;
-        const active = pathname === l.href || pathname.startsWith(l.href + "/");
-        return (
-          <Link
-            key={l.href}
-            href={l.href}
-            onClick={onNavigate}
-            className={cn(
-              "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-              active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground",
-            )}
-          >
-            <Icon className="h-4 w-4" />
-            {l.label}
-          </Link>
-        );
-      })}
+      <NavItem item={OVERVIEW} active={isActive("/dashboard")} onNavigate={onNavigate} />
+
+      <SectionHeader>Ratsinfo</SectionHeader>
+      {COUNCIL_ITEMS.map((l) => (
+        <NavItem key={l.href} item={l} active={onCouncil && activeTab === l.tab} onNavigate={onNavigate} />
+      ))}
+
+      {showNwz && (
+        <>
+          <SectionHeader>NWZ</SectionHeader>
+          {NWZ_ITEMS.map((l) => <NavItem key={l.href} item={l} active={isActive(l.href)} onNavigate={onNavigate} />)}
+        </>
+      )}
+
+      <div className="pt-3" />
+      <NavItem item={PERSONAL} active={isActive("/topics")} onNavigate={onNavigate} />
+      {user?.role === "admin" && (
+        <NavItem item={{ href: "/admin", label: "Admin", icon: Settings }} active={isActive("/admin")} onNavigate={onNavigate} />
+      )}
     </nav>
   );
 }
 
-function UserFooter() {
+function NavLinksWithParams({ onNavigate }: { onNavigate?: () => void }) {
+  const tab = useSearchParams().get("tab") || "decisions";
+  return <NavLinksInner activeTab={tab} onNavigate={onNavigate} />;
+}
+
+function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
+  // useSearchParams must sit under a Suspense boundary; the fallback renders the
+  // same nav with the default (decisions) tab so there is no empty flash.
+  return (
+    <Suspense fallback={<NavLinksInner activeTab="decisions" onNavigate={onNavigate} />}>
+      <NavLinksWithParams onNavigate={onNavigate} />
+    </Suspense>
+  );
+}
+
+function UserFooter({ onNavigate }: { onNavigate?: () => void }) {
+  const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
   const onLogout = async () => {
     await logout();
     router.replace("/login");
   };
+  const accountActive = pathname === "/account";
   return (
     <div className="border-t border-border p-3">
-      <div className="flex items-center justify-between px-2 pb-2">
-        <span className="truncate text-xs text-muted-foreground">{user?.email}</span>
+      <div className="flex items-center justify-between gap-2 pb-2">
+        <Link
+          href="/account"
+          onClick={onNavigate}
+          title="Mein Konto"
+          className={cn(
+            "flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-xs transition-colors",
+            accountActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground",
+          )}
+        >
+          <UserCircle className="h-4 w-4 shrink-0" />
+          <span className="truncate">{user?.email}</span>
+        </Link>
         <ThemeToggle />
       </div>
       <button
@@ -135,7 +198,7 @@ export function MobileTopbar() {
             <Brand />
           </div>
           <NavLinks onNavigate={() => setOpen(false)} />
-          <UserFooter />
+          <UserFooter onNavigate={() => setOpen(false)} />
         </SheetContent>
       </Sheet>
       <div className="flex flex-1 items-center gap-2">
