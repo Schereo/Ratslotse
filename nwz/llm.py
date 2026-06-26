@@ -68,6 +68,40 @@ def _with_model_params(kwargs: dict[str, Any]) -> dict[str, Any]:
     return merged
 
 
+# OpenRouter provider routing (DSGVO). DeepSeek is an open-weights model served by many
+# providers; by default OpenRouter may pick the cheapest — DeepSeek's own China API. The
+# "Frag den Rat" user question is the sensitive payload, so we never route to China-based
+# providers and prefer endpoints that neither retain nor train on prompts (zdr +
+# data_collection=deny). The same open weights then run at a Western provider (e.g.
+# GMICloud/DeepInfra) — still cheap, no China transfer. Tunable without a deploy:
+# NWZ_OPENROUTER_IGNORE (comma-separated slugs), NWZ_OPENROUTER_ZDR=0 to drop the ZDR
+# requirement, NWZ_OPENROUTER_ROUTING=off to disable the block entirely (emergency valve
+# if the routing ever empties the endpoint pool).
+_IGNORE_CN_DEFAULT = "deepseek,baidu,streamlake,siliconflow,alibaba"
+
+
+def _routing_extra_body() -> dict[str, Any]:
+    if os.environ.get("NWZ_OPENROUTER_ROUTING", "on").strip().lower() == "off":
+        return {}
+    provider: dict[str, Any] = {"data_collection": "deny"}
+    ignore = [s.strip() for s in os.environ.get("NWZ_OPENROUTER_IGNORE", _IGNORE_CN_DEFAULT).split(",") if s.strip()]
+    if ignore:
+        provider["ignore"] = ignore
+    if os.environ.get("NWZ_OPENROUTER_ZDR", "1").strip().lower() not in ("0", "false", "off", "no"):
+        provider["zdr"] = True
+    return {"provider": provider}
+
+
+def _with_routing(kwargs: dict[str, Any]) -> dict[str, Any]:
+    """Merge the OpenRouter provider-routing block into the request's extra_body
+    (a caller-supplied 'provider' wins, so call sites can still override)."""
+    rb = _routing_extra_body()
+    if not rb:
+        return kwargs
+    extra_body = {**rb, **(kwargs.get("extra_body") or {})}
+    return {**kwargs, "extra_body": extra_body}
+
+
 _client: OpenAI | None = None
 
 
@@ -104,7 +138,7 @@ def _is_transient(exc: BaseException) -> bool:
     reraise=True,
 )
 def _create(**kwargs: Any):
-    return get_client().chat.completions.create(**_with_model_params(kwargs))
+    return get_client().chat.completions.create(**_with_model_params(_with_routing(kwargs)))
 
 
 def _record_usage(feature: str | None, model: str | None, usage_obj: Any) -> None:

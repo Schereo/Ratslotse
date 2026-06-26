@@ -8,6 +8,11 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.31.0] – 2026-06-26
+
+### Geändert
+- **KI-Anfragen (OpenRouter) routen nicht mehr nach China.** `nwz/llm.py` setzt einen Provider-Routing-Block: China-basierte Anbieter (DeepSeek, Baidu, StreamLake, SiliconFlow, Alibaba) werden ausgeschlossen, und es werden nur Endpunkte ohne Daten-Speicherung/-Training genutzt (`zdr` + `data_collection=deny`). Dasselbe DeepSeek-Modell läuft damit bei einem westlichen Anbieter (verifiziert: Together, USA — DPF-gedeckt) — weiterhin günstig, kein China-Transfer. Per Env justierbar/abschaltbar (`NWZ_OPENROUTER_ROUTING/IGNORE/ZDR`). (#119)
+
 ## [0.30.0] – 2026-06-26
 
 ### Entfernt

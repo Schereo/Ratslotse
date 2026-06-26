@@ -107,7 +107,22 @@ def test_chat_complete_delegates_to_get_client(monkeypatch):
     class _FakeClient:
         chat = type("", (), {"completions": _FakeCompletions()})()
 
+    monkeypatch.setenv("NWZ_OPENROUTER_ROUTING", "off")  # test pure delegation, no routing block
     monkeypatch.setattr(llm, "get_client", lambda: _FakeClient())
     result = llm.chat_complete(model="openai/gpt-4o-mini", messages=[])
     assert result == "response"
     assert calls == [{"model": "openai/gpt-4o-mini", "messages": []}]
+
+
+def test_provider_routing_excludes_china_and_requires_zdr(monkeypatch):
+    for var in ("NWZ_OPENROUTER_ROUTING", "NWZ_OPENROUTER_IGNORE", "NWZ_OPENROUTER_ZDR"):
+        monkeypatch.delenv(var, raising=False)
+    provider = llm._routing_extra_body()["provider"]
+    assert provider["zdr"] is True
+    assert provider["data_collection"] == "deny"
+    assert {"deepseek", "baidu", "alibaba"} <= set(provider["ignore"])
+
+
+def test_provider_routing_disabled_by_env(monkeypatch):
+    monkeypatch.setenv("NWZ_OPENROUTER_ROUTING", "off")
+    assert llm._routing_extra_body() == {}
