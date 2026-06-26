@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, ExternalLink, FileText, FileDown, Users, Scale, Newspaper, Tag } from "lucide-react";
 import { DecisionDetail, CouncilDecision } from "@/lib/types";
 import { Card, Spinner, EmptyState, formatDate } from "@/components/ui";
-import { OutcomeBadge, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard, formatEuro } from "@/components/decision-ui";
+import { OutcomeBadge, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
 import { cn } from "@/lib/utils";
 import { useFetch } from "@/lib/use-fetch";
 
@@ -37,7 +37,7 @@ export default function DecisionDetailPage() {
   const byParty: Record<string, number> = {};
   for (const a of data.attendance) {
     if (a.role === "verwaltung" || a.role === "protokoll" || a.role === "gast") continue;
-    const p = a.party || "—";
+    const p = normalizeParty(a.party || "—");
     byParty[p] = (byParty[p] ?? 0) + 1;
   }
 
@@ -161,7 +161,7 @@ export default function DecisionDetailPage() {
         <Section title={`Anwesenheit (${data.attendance.length})`}>
           <div className="flex flex-wrap gap-1.5">
             {Object.entries(byParty).sort((a, b) => b[1] - a[1]).map(([p, n]) => (
-              <span key={p} className="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">{p} {n}</span>
+              <PartyAttendanceBadge key={p} party={p} n={n} />
             ))}
           </div>
         </Section>

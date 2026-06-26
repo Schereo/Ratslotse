@@ -12,7 +12,7 @@ import {
 import {
   Badge, Card, CardListSkeleton, DateField, EmptyState, Input, PageHeader, Pagination, Select, Spinner, formatDate, toast,
 } from "@/components/ui";
-import { OutcomeBadge, FieldBadge, formatEuro } from "@/components/decision-ui";
+import { OutcomeBadge, FieldBadge, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
 import { AnalysisTab } from "@/components/council-analysis";
 import { EntitiesTab } from "@/components/council-entities";
 import { QaTab } from "@/components/council-qa";
@@ -329,7 +329,7 @@ function AttendanceSection({ detail }: { detail: SessionDetail }) {
   const byParty: Record<string, number> = {};
   for (const a of att) {
     if (a.role === "verwaltung" || a.role === "protokoll" || a.role === "gast") continue;
-    const p = a.party || "—";
+    const p = normalizeParty(a.party || "—");
     byParty[p] = (byParty[p] ?? 0) + 1;
   }
   return (
@@ -339,7 +339,7 @@ function AttendanceSection({ detail }: { detail: SessionDetail }) {
       </p>
       <div className="mt-2 flex flex-wrap gap-1.5">
         {Object.entries(byParty).sort((a, b) => b[1] - a[1]).map(([p, n]) => (
-          <span key={p} className="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">{p} {n}</span>
+          <PartyAttendanceBadge key={p} party={p} n={n} />
         ))}
       </div>
     </div>
