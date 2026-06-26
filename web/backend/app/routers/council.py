@@ -146,8 +146,13 @@ def analysis(_user: dict = Depends(require_active), store: CouncilStore = Depend
 
 @router.get("/finance")
 def finance(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> dict:
-    """Decisions with the largest € volume recognised in their text (excl. accounting reports)."""
-    return {"decisions": store.largest_financial_decisions(limit=25)}
+    """Largest € decisions + recognised volume per policy field (excl. accounting reports)."""
+    by_field = store.money_by_field()
+    return {
+        "decisions": store.largest_financial_decisions(limit=25),
+        "by_field": by_field,
+        "field_labels": {r["field"]: POLICY_FIELDS[r["field"]][0] for r in by_field},
+    }
 
 
 @router.get("/trends")

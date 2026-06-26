@@ -8,6 +8,18 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.18.0] – 2026-06-26
+
+### Geändert
+- **Analyse-Tab mit Sub-Navigation:** der frühere eigenständige „Trends"-Tab ist jetzt eine Unterkategorie von **Analyse** (Parteien / Finanzen / Trends) — Trends sind ebenfalls Auswertungen. Alte `?tab=trends`-Links leiten automatisch auf `Analyse → Trends` um. (#99)
+
+### Hinzugefügt
+- **Finanzen-Auswertung „Wofür fließt das Geld?":** erkanntes Finanzvolumen je Themenfeld (dedupliziert, ohne Buchhaltungsdokumente), als Balken mit Summe und Beschluss-Anzahl, klickbar in die Beschlüsse des Felds — neben den „Größten Finanzbeschlüssen". (#99)
+- **Erklärbare Trends:** die Quartals-Balken (Beschlüsse **und** Finanzvolumen) sind anklickbar und öffnen die Beschlüsse genau dieses Quartals; der Geld-Chart nennt den größten erkannten Einzelposten und zeigt je Quartal den größten Posten als Tooltip — eine faktische „Erklärung" der Ausschläge ohne KI-Raterei. (#99)
+
+### Behoben
+- **Finanzvolumen je Quartal** schließt jetzt Buchhaltungsdokumente (Haushaltsplan, Jahresabschluss, Wirtschaftsplan …) aus — vorher überdeckten deren Budget-Größenordnungen die tatsächlichen Ausgaben-Beschlüsse. Konsistent mit „Größte Finanzbeschlüsse" und „Wofür fließt das Geld?". (#99)
+
 ## [0.17.0] – 2026-06-25
 
 ### Hinzugefügt

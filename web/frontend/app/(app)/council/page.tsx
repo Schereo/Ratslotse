@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Search, ExternalLink, ChevronDown, ChevronRight, Landmark, Scale, Users, BarChart3, Target, Sparkles, TrendingUp, Tag, X } from "lucide-react";
+import { Search, ExternalLink, ChevronDown, ChevronRight, Landmark, Scale, Users, BarChart3, Target, Sparkles, Tag, X } from "lucide-react";
 import { api, qs, ApiError } from "@/lib/api";
 import { useDebounce } from "@/lib/use-debounce";
 import {
@@ -14,14 +14,13 @@ import {
 } from "@/components/ui";
 import { OutcomeBadge, FieldBadge, formatEuro } from "@/components/decision-ui";
 import { AnalysisTab } from "@/components/council-analysis";
-import { TrendsTab } from "@/components/council-trends";
 import { EntitiesTab } from "@/components/council-entities";
 import { GoalsTab } from "@/components/council-goals";
 import { QaTab } from "@/components/council-qa";
 import { cn } from "@/lib/utils";
 
 type Scope = "all" | "upcoming" | "recent";
-type Tab = "sessions" | "decisions" | "themen" | "analysis" | "trends" | "goals" | "ask";
+type Tab = "sessions" | "decisions" | "themen" | "analysis" | "goals" | "ask";
 
 const sessionUrl = (ksinr: number) => `https://buergerinfo.oldenburg.de/si0057.php?__ksinr=${ksinr}`;
 
@@ -143,8 +142,6 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   const [outcome, setOutcome] = useState("");
   const [sort, setSort] = useState("date_desc");
   const [fields, setFields] = useState<PolicyField[]>([]);
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
   const [decisions, setDecisions] = useState<CouncilDecision[]>([]);
   const [total, setTotal] = useState(0);
@@ -156,6 +153,9 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   const router = useRouter();
   const field = sp.get("field") ?? "";
   const party = sp.get("party") ?? "";
+  // Date range also lives in the URL so the Trends quarter bars can deep-link here.
+  const dateFrom = sp.get("date_from") ?? "";
+  const dateTo = sp.get("date_to") ?? "";
   const setUrlParam = (key: string, val: string) => {
     const params = new URLSearchParams(sp.toString());
     params.set("tab", "decisions");
@@ -273,8 +273,8 @@ function DecisionsTab({ committees }: { committees: string[] }) {
           </div>
           <FilterField label="Zeitraum">
             <div className="grid grid-cols-2 gap-2">
-              <DateField value={dateFrom} onChange={(v) => { setDateFrom(v); setPage(1); }} />
-              <DateField value={dateTo} onChange={(v) => { setDateTo(v); setPage(1); }} />
+              <DateField value={dateFrom} onChange={(v) => setUrlParam("date_from", v)} />
+              <DateField value={dateTo} onChange={(v) => setUrlParam("date_to", v)} />
             </div>
           </FilterField>
         </div>
@@ -513,8 +513,15 @@ function CouncilInner() {
   // Tab lives in the URL (?tab=decisions) so the browser back button from a
   // decision detail page returns to the right tab.
   const param = searchParams.get("tab");
-  const tab: Tab = param === "decisions" || param === "themen" || param === "analysis" || param === "trends" || param === "goals" || param === "ask" ? param : "sessions";
+  // The standalone "Trends" tab became a sub-tab of Analyse — keep old links working.
+  const tab: Tab = param === "trends" ? "analysis"
+    : param === "decisions" || param === "themen" || param === "analysis" || param === "goals" || param === "ask" ? param
+    : "sessions";
   const [committees, setCommittees] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (param === "trends") router.replace("/council?tab=analysis&sub=trends", { scroll: false });
+  }, [param, router]);
 
   const setTab = (t: Tab) =>
     router.replace(t === "sessions" ? "/council" : `/council?tab=${t}`, { scroll: false });
@@ -533,7 +540,6 @@ function CouncilInner() {
           ["decisions", "Beschlüsse", Scale],
           ["themen", "Themen", Tag],
           ["analysis", "Analyse", BarChart3],
-          ["trends", "Trends", TrendingUp],
           ["goals", "Ziele", Target],
           ["ask", "Fragen", Sparkles],
         ] as [Tab, string, typeof Landmark][]).map(([t, label, Icon]) => (
@@ -555,7 +561,6 @@ function CouncilInner() {
         : tab === "decisions" ? <DecisionsTab committees={committees} />
         : tab === "themen" ? <EntitiesTab />
         : tab === "analysis" ? <AnalysisTab />
-        : tab === "trends" ? <TrendsTab />
         : tab === "goals" ? <GoalsTab />
         : <QaTab />}
     </div>

@@ -208,6 +208,36 @@ def test_entities(tmp_path):
     assert store.entity_detail("does-not-exist") is None
 
 
+def test_money_by_field_and_trends_drivers(tmp_path):
+    store = CouncilStore(_old_db(tmp_path / "old.sqlite"))  # session ksinr=1, date 2025-01-01
+    seed = [
+        # id, title, field, amount, vorlage_nr
+        (70, "Neubau Schwimmbad", "kultur_sport", 5_000_000.0, "22/0100"),
+        (71, "Neubau Schwimmbad", "kultur_sport", 5_000_000.0, "22/0100/1"),  # Rat-Zwilling → dedupliziert
+        (72, "Sanierung Radweg", "verkehr", 2_000_000.0, "22/0200"),
+        (73, "Jahresabschluss 2023 der Stadt", "finanzen", 999_000_000.0, "22/0300"),  # Buchhaltung → ausgeschlossen
+    ]
+    for i, title, field, amt, vnr in seed:
+        store._conn.execute(
+            "INSERT INTO council_decisions(id,ksinr,position,kind,item_number,title,beschluss,"
+            "outcome,policy_field,amount_eur,vorlage_nr) "
+            "VALUES (?,1,0,'decision','1',?,'b','angenommen',?,?,?)", (i, title, field, amt, vnr))
+    store._conn.commit()
+
+    # Buchhaltung raus, Zwilling dedupliziert → Schwimmbad einmal (5M), Radweg 2M.
+    assert store.money_by_field() == [
+        {"field": "kultur_sport", "total": 5_000_000, "n": 1},
+        {"field": "verkehr", "total": 2_000_000, "n": 1},
+    ]
+
+    t = store.activity_trends()
+    qi = t["quarters"].index("2025-Q1")
+    # Geldbalken schließen den 999-Mio-Jahresabschluss aus (5M + 2M, Zwilling hier mitgezählt).
+    assert t["money"][qi] == 12_000_000
+    drv = t["money_drivers"][qi]
+    assert drv and drv["title"] == "Neubau Schwimmbad" and drv["eur"] == 5_000_000
+
+
 def test_embedding_vectors(tmp_path):
     store = CouncilStore(_old_db(tmp_path / "old.sqlite"))
     store.save_embeddings([(1, b"abcd"), (2, b"efgh")])

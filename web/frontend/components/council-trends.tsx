@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { TrendingUp } from "lucide-react";
 import { Trends } from "@/lib/types";
@@ -16,6 +17,15 @@ function qLabel(q: string) {
   return `${quarter} '${y.slice(2)}`;
 }
 
+// "2024-Q3" → calendar date range for deep-linking into the decisions list.
+const Q_START: Record<number, string> = { 1: "01-01", 2: "04-01", 3: "07-01", 4: "10-01" };
+const Q_END: Record<number, string> = { 1: "03-31", 2: "06-30", 3: "09-30", 4: "12-31" };
+function quarterRange(q: string): { from: string; to: string } {
+  const [y, qq] = q.split("-Q");
+  const qi = Math.min(4, Math.max(1, parseInt(qq, 10) || 1));
+  return { from: `${y}-${Q_START[qi]}`, to: `${y}-${Q_END[qi]}` };
+}
+
 function Block({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
     <Card className="p-4 sm:p-5">
@@ -26,7 +36,7 @@ function Block({ title, hint, children }: { title: string; hint?: string; childr
   );
 }
 
-function StackedDecisions({ d }: { d: Trends }) {
+function StackedDecisions({ d, onQuarter }: { d: Trends; onQuarter: (q: string) => void }) {
   const totals = d.quarters.map((_, qi) => d.fields.reduce((s, f) => s + (d.by_field[f]?.[qi] ?? 0), 0));
   const max = Math.max(1, ...totals);
   const label = (f: string) => d.field_labels[f] ?? POLICY_FIELD_LABELS[f] ?? f;
@@ -34,14 +44,17 @@ function StackedDecisions({ d }: { d: Trends }) {
     <div>
       <div className="flex items-end gap-1.5" style={{ height: 190 }}>
         {d.quarters.map((q, qi) => (
-          <div key={q} className="flex flex-1 flex-col-reverse overflow-hidden rounded-sm"
-            style={{ height: `${(totals[qi] / max) * 100}%`, minHeight: totals[qi] > 0 ? 3 : 0 }}
-            title={`${qLabel(q)}: ${totals[qi]} Beschlüsse`}>
-            {d.fields.map((f, fi) => {
-              const v = d.by_field[f]?.[qi] ?? 0;
-              return v ? <div key={f} style={{ height: `${(v / totals[qi]) * 100}%`, background: COLORS[fi % COLORS.length] }} /> : null;
-            })}
-          </div>
+          <button key={q} type="button" onClick={() => onQuarter(q)}
+            className="group flex h-full flex-1 flex-col justify-end rounded-sm transition-colors hover:bg-muted/50"
+            title={`${qLabel(q)}: ${totals[qi]} Beschlüsse — klicken für die Beschlüsse dieses Quartals`}>
+            <div className="flex flex-col-reverse overflow-hidden rounded-sm opacity-90 transition-opacity group-hover:opacity-100"
+              style={{ height: `${(totals[qi] / max) * 100}%`, minHeight: totals[qi] > 0 ? 3 : 0 }}>
+              {d.fields.map((f, fi) => {
+                const v = d.by_field[f]?.[qi] ?? 0;
+                return v ? <div key={f} style={{ height: `${(v / totals[qi]) * 100}%`, background: COLORS[fi % COLORS.length] }} /> : null;
+              })}
+            </div>
+          </button>
         ))}
       </div>
       <div className="mt-1.5 flex gap-1.5 text-[10px] text-muted-foreground">
@@ -55,29 +68,53 @@ function StackedDecisions({ d }: { d: Trends }) {
           </span>
         ))}
       </div>
+      <p className="mt-2 text-[11px] text-muted-foreground/70">Balken anklicken, um die Beschlüsse eines Quartals zu öffnen.</p>
     </div>
   );
 }
 
-function MoneyBars({ d }: { d: Trends }) {
+function MoneyBars({ d, onQuarter }: { d: Trends; onQuarter: (q: string) => void }) {
   const max = Math.max(1, ...d.money);
+  const drivers = d.money_drivers ?? [];
+  // The single largest recognised item across the shown quarters — a concrete
+  // anchor for "what is this money?".
+  let topI = -1;
+  drivers.forEach((dr, i) => { if (dr && (topI < 0 || dr.eur > (drivers[topI]?.eur ?? 0))) topI = i; });
+  const top = topI >= 0 ? drivers[topI] : null;
   return (
     <div>
       <div className="flex items-end gap-1.5" style={{ height: 130 }}>
-        {d.quarters.map((q, qi) => (
-          <div key={q} className="flex-1 rounded-sm bg-emerald-500/70"
-            style={{ height: `${(d.money[qi] / max) * 100}%`, minHeight: d.money[qi] > 0 ? 2 : 0 }}
-            title={`${qLabel(q)}: ${formatEuro(d.money[qi])}`} />
-        ))}
+        {d.quarters.map((q, qi) => {
+          const dr = drivers[qi];
+          const tip = `${qLabel(q)}: ${formatEuro(d.money[qi])}`
+            + (dr ? ` · größter Posten: ${dr.title} (${formatEuro(dr.eur)})` : "");
+          return (
+            <button key={q} type="button" onClick={() => onQuarter(q)}
+              className="group flex h-full flex-1 flex-col justify-end rounded-sm transition-colors hover:bg-muted/50"
+              title={tip}>
+              <div className="rounded-sm bg-emerald-500/70 transition-colors group-hover:bg-emerald-500"
+                style={{ height: `${(d.money[qi] / max) * 100}%`, minHeight: d.money[qi] > 0 ? 2 : 0 }} />
+            </button>
+          );
+        })}
       </div>
       <div className="mt-1.5 flex gap-1.5 text-[10px] text-muted-foreground">
         {d.quarters.map((q) => <span key={q} className="flex-1 text-center">{qLabel(q)}</span>)}
       </div>
+      {top && (
+        <p className="mt-2.5 text-xs leading-relaxed text-muted-foreground">
+          Größter erkannter Einzelposten:{" "}
+          <Link href={`/council/decision/${top.id}`} className="font-medium text-foreground hover:text-primary hover:underline">
+            {top.title}
+          </Link>{" "}
+          <span className="whitespace-nowrap text-muted-foreground/80">— {formatEuro(top.eur)} ({qLabel(d.quarters[topI])})</span>
+        </p>
+      )}
     </div>
   );
 }
 
-export function TrendsTab() {
+export function TrendsView() {
   const { data, loading } = useFetch<Trends>("/council/trends");
   const router = useRouter();
 
@@ -85,13 +122,17 @@ export function TrendsTab() {
   if (!data || data.quarters.length === 0) {
     return <EmptyState icon={TrendingUp} title="Noch keine Trends" hint="Es sind noch nicht genug datierte, klassifizierte Beschlüsse vorhanden." />;
   }
+  const onQuarter = (q: string) => {
+    const { from, to } = quarterRange(q);
+    router.push(`/council?tab=decisions&date_from=${from}&date_to=${to}`);
+  };
   return (
-    <div className="mt-4 space-y-4">
-      <Block title="Beschlüsse je Quartal" hint="Wie viel der Rat entscheidet — und in welchen Themenfeldern.">
-        <StackedDecisions d={data} />
+    <div className="space-y-4">
+      <Block title="Beschlüsse je Quartal" hint="Wie viel der Rat entscheidet — und in welchen Themenfeldern. Balken anklicken für das Quartal.">
+        <StackedDecisions d={data} onQuarter={onQuarter} />
       </Block>
-      <Block title="Erkanntes Finanzvolumen je Quartal" hint="Summe der im Beschlusstext genannten Beträge (automatisch erkannt, grobe Größenordnung).">
-        <MoneyBars d={data} />
+      <Block title="Erkanntes Finanzvolumen je Quartal" hint="Summe der im Beschlusstext genannten Beträge (ohne Jahresabschlüsse/Haushaltspläne — grobe Größenordnung).">
+        <MoneyBars d={data} onQuarter={onQuarter} />
       </Block>
       {data.emerging.length > 0 && (
         <Block title="Aktuell aufkommende Themen" hint="Häufigste Schlagworte der letzten zwei Quartale.">
