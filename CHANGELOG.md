@@ -8,6 +8,11 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.23.1] – 2026-06-26
+
+### Behoben
+- **Themen-Seiten bleiben automatisch frisch:** die schwereren LLM-/Embedding-Backfills (Entitäten, Beschreibungen, Geocoding, Presse-Links, „Ähnliche Beschlüsse") liefen bisher nur manuell und wären mit neuen Beschlüssen veraltet. Neuer wöchentlicher Cron `weekly_enrich.py` zieht sie nach (So 03:00, jede Stufe unabhängig). (#107)
+
 ## [0.23.0] – 2026-06-26
 
 ### Geändert
