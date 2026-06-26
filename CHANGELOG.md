@@ -8,6 +8,11 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.40.0] – 2026-06-26
+
+### Hinzugefügt
+- **NWZ-Artikel: „Auf NWZonline suchen"-Link für nicht freigeschaltete Konten.** Wer keinen NWZ-Volltext-Zugang hat, sieht beim Öffnen eines verlinkten Artikels (z. B. über „In der Presse") jetzt neben Überschrift/Datum einen Button, der die Schlagzeile direkt in der NWZonline-Suche öffnet — so ist der Artikel an der Originalquelle auffindbar (statt nur ein Hinweis ohne Weg). Freigeschaltete Konten sehen weiterhin den Volltext. Hintergrund: Das e-Paper-Feed (Visiolink) enthält keine kanonische Webseiten-URL je Artikel (`external_id` ist eine UUID, kein Online-Artikel-Link), daher ein Such- statt Deeplink. (#139)
+
 ## [0.39.4] – 2026-06-26
 
 ### Hinzugefügt
