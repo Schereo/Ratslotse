@@ -8,6 +8,12 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.39.4] – 2026-06-26
+
+### Hinzugefügt
+- **Beschluss-Liste: dritte Ansicht „Alle".** Neben „Beschlüsse" (Abstimmungen) und „Berichte" (zur Kenntnis) gibt es jetzt „Alle", die beide zusammen zeigt (`category=""`). Der Modus liegt in der URL (`cat=vote|report|all`), sodass von außen darauf verlinkt werden kann.
+- **Themenfeld-Rückblicke verlinken auf „Alle".** „Basierend auf den 20 neuesten Beschlüssen →" führt jetzt auf die „Alle"-Ansicht (Feld + Zeitfenster) — damit stimmt die Trefferzahl mit den 20 zusammengefassten Vorgängen überein (vorher zeigte die reine Beschluss-Ansicht weniger, weil enthaltene Berichte ausgeblendet waren). (#138)
+
 ## [0.39.3] – 2026-06-26
 
 ### Geändert

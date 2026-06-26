@@ -126,7 +126,7 @@ function FieldRecaps() {
             <h4 className="text-sm font-semibold text-foreground">{r.field_label}</h4>
             <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{r.summary}</p>
             <Link
-              href={`/council?tab=decisions&field=${r.policy_field}${r.period_from ? `&date_from=${r.period_from}` : ""}${r.period_to ? `&date_to=${r.period_to}` : ""}`}
+              href={`/council?tab=decisions&field=${r.policy_field}&cat=all${r.period_from ? `&date_from=${r.period_from}` : ""}${r.period_to ? `&date_to=${r.period_to}` : ""}`}
               className="mt-2.5 inline-flex w-fit text-xs text-muted-foreground transition-colors hover:text-primary"
             >
               Basierend auf den {r.n_decisions} neuesten Beschlüssen →
