@@ -120,12 +120,23 @@ export interface GoalDetail {
   decisions: GoalDecision[];
 }
 
+export interface MoneyDriver {
+  id: number; title: string; eur: number;
+}
+
 export interface Trends {
   quarters: string[];
   fields: string[];
   by_field: Record<string, number[]>;
   money: number[];
+  money_drivers: (MoneyDriver | null)[];
   emerging: { tag: string; n: number }[];
+  field_labels: Record<string, string>;
+}
+
+export interface FinanceData {
+  decisions: CouncilDecision[];
+  by_field: { field: string; total: number; n: number }[];
   field_labels: Record<string, string>;
 }
 

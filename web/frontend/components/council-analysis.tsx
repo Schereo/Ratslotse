@@ -1,26 +1,13 @@
 "use client";
 
-import { BarChart3 } from "lucide-react";
-import { PartyAnalysis, CouncilDecision } from "@/lib/types";
+import { useSearchParams, useRouter } from "next/navigation";
+import { BarChart3, Users, Euro, TrendingUp } from "lucide-react";
+import { PartyAnalysis, FinanceData } from "@/lib/types";
 import { Card, Spinner, EmptyState } from "@/components/ui";
-import { POLICY_FIELD_LABELS, PartyBadge, DecisionLinkCard } from "@/components/decision-ui";
+import { POLICY_FIELD_LABELS, PartyBadge, DecisionLinkCard, formatEuro } from "@/components/decision-ui";
 import { useFetch } from "@/lib/use-fetch";
-
-function FinanceBlock() {
-  const { data } = useFetch<{ decisions: CouncilDecision[] }>("/council/finance");
-  if (!data || data.decisions.length === 0) return null;
-  return (
-    <Block title="Größte Finanzbeschlüsse"
-      hint="Beschlüsse mit dem höchsten im Text genannten Betrag (ohne Jahresabschlüsse/Haushaltspläne — automatisch erkannt).">
-      <div className="space-y-2">
-        {data.decisions.map((d) => (
-          <DecisionLinkCard key={d.id} id={d.id} title={d.title} committee={d.committee}
-            session_date={d.session_date} field={d.policy_field} amount={d.amount_eur} />
-        ))}
-      </div>
-    </Block>
-  );
-}
+import { TrendsView } from "@/components/council-trends";
+import { cn } from "@/lib/utils";
 
 function Block({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
@@ -147,16 +134,14 @@ function Alliances({ a }: { a: PartyAnalysis }) {
   );
 }
 
-export function AnalysisTab() {
+function PartiesView() {
   const { data, loading } = useFetch<PartyAnalysis>("/council/analysis");
-
   if (loading) return <div className="py-10"><Spinner /></div>;
   if (!data || data.coverage.with_factions === 0) {
     return <EmptyState icon={BarChart3} title="Noch keine Analyse möglich" hint="Es sind noch keine Beschlüsse mit benanntem Antragsteller klassifiziert." />;
   }
-
   return (
-    <div className="mt-4 space-y-4">
+    <div className="space-y-4">
       <div className="rounded-lg border border-border bg-muted/40 p-3 text-xs leading-relaxed text-muted-foreground">
         Auswertung der <span className="font-medium text-foreground">{data.coverage.with_factions}</span> Beschlüsse
         mit benanntem Antragsteller (von {data.coverage.total}). Protokolle nennen selten namentliche Einzelstimmen —
@@ -175,7 +160,99 @@ export function AnalysisTab() {
       <Block title="Häufige Allianzen" hint="Parteien, die Anträge gemeinsam einbringen.">
         <Alliances a={data} />
       </Block>
-      <FinanceBlock />
+    </div>
+  );
+}
+
+function MoneyByField({ data }: { data: FinanceData }) {
+  const router = useRouter();
+  const rows = data.by_field;
+  if (!rows.length) return null;
+  const max = Math.max(1, ...rows.map((f) => f.total));
+  const total = rows.reduce((s, f) => s + f.total, 0);
+  const label = (f: string) => data.field_labels[f] ?? POLICY_FIELD_LABELS[f] ?? f;
+  return (
+    <div className="space-y-1.5">
+      {rows.map((f) => (
+        <button key={f.field} type="button"
+          onClick={() => router.push(`/council?tab=decisions&field=${f.field}`)}
+          className="group flex w-full items-center gap-3 rounded-md px-1 py-1 text-left transition-colors hover:bg-muted/50">
+          <div className="w-28 shrink-0 truncate text-sm text-foreground sm:w-44">{label(f.field)}</div>
+          <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted">
+            <div className="h-full rounded-full bg-emerald-500/70 transition-colors group-hover:bg-emerald-500" style={{ width: `${(f.total / max) * 100}%` }} />
+          </div>
+          <div className="w-32 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+            {formatEuro(f.total)} <span className="text-muted-foreground/60">· {f.n}</span>
+          </div>
+        </button>
+      ))}
+      <p className="pt-1.5 text-xs leading-relaxed text-muted-foreground/70">
+        Summe automatisch erkannter Beträge je Themenfeld (ohne Jahresabschlüsse/Haushaltspläne) — zusammen
+        rund {formatEuro(total)}. Zahl = Beschlüsse mit Betrag. Anklicken öffnet die Beschlüsse des Felds.
+      </p>
+    </div>
+  );
+}
+
+function FinanceView() {
+  const { data, loading } = useFetch<FinanceData>("/council/finance");
+  if (loading) return <div className="py-10"><Spinner /></div>;
+  if (!data || (data.decisions.length === 0 && data.by_field.length === 0)) {
+    return <EmptyState icon={Euro} title="Noch keine Finanzdaten" hint="Es wurden noch keine €-Beträge aus Beschlüssen erkannt." />;
+  }
+  return (
+    <div className="space-y-4">
+      <Block title="Wofür fließt das Geld?" hint="Erkanntes Finanzvolumen je Themenfeld — welche Felder die größten Summen bewegen.">
+        <MoneyByField data={data} />
+      </Block>
+      {data.decisions.length > 0 && (
+        <Block title="Größte Finanzbeschlüsse"
+          hint="Beschlüsse mit dem höchsten im Text genannten Betrag (ohne Jahresabschlüsse/Haushaltspläne — automatisch erkannt).">
+          <div className="space-y-2">
+            {data.decisions.map((d) => (
+              <DecisionLinkCard key={d.id} id={d.id} title={d.title} committee={d.committee}
+                session_date={d.session_date} field={d.policy_field} amount={d.amount_eur} />
+            ))}
+          </div>
+        </Block>
+      )}
+    </div>
+  );
+}
+
+type AnalysisSub = "parteien" | "finanzen" | "trends";
+const SUB_TABS: [AnalysisSub, string, typeof Users][] = [
+  ["parteien", "Parteien", Users],
+  ["finanzen", "Finanzen", Euro],
+  ["trends", "Trends", TrendingUp],
+];
+
+export function AnalysisTab() {
+  const sp = useSearchParams();
+  const router = useRouter();
+  const raw = sp.get("sub");
+  const sub: AnalysisSub = raw === "finanzen" || raw === "trends" ? raw : "parteien";
+  const setSub = (s: AnalysisSub) => {
+    const params = new URLSearchParams(sp.toString());
+    params.set("tab", "analysis");
+    if (s === "parteien") params.delete("sub"); else params.set("sub", s);
+    router.replace(`/council?${params.toString()}`, { scroll: false });
+  };
+
+  return (
+    <div className="mt-4 space-y-4">
+      <div className="flex gap-1 rounded-md bg-muted p-1 sm:w-fit">
+        {SUB_TABS.map(([s, lbl, Icon]) => (
+          <button key={s} type="button" onClick={() => setSub(s)}
+            className={cn(
+              "inline-flex flex-1 items-center justify-center gap-1.5 rounded-sm px-4 py-1.5 text-sm font-medium transition-colors sm:flex-none",
+              sub === s ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+            )}>
+            <Icon className="h-4 w-4" /> {lbl}
+          </button>
+        ))}
+      </div>
+      {sub === "parteien" ? <PartiesView /> : sub === "finanzen" ? <FinanceView /> : <TrendsView />}
     </div>
   );
 }

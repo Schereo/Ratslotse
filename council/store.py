@@ -996,8 +996,7 @@ class CouncilStore:
         q_expr = ("substr(cs.session_date,1,4) || '-Q' || "
                   "((CAST(substr(cs.session_date,6,2) AS INTEGER)+2)/3)")
         rows = self._conn.execute(
-            f"""SELECT {q_expr} AS q, d.policy_field AS field,
-                       COUNT(*) AS n, COALESCE(SUM(d.amount_eur), 0) AS eur
+            f"""SELECT {q_expr} AS q, d.policy_field AS field, COUNT(*) AS n
                 FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr
                 WHERE d.kind = 'decision' AND cs.session_date IS NOT NULL
                       AND d.policy_field IS NOT NULL
@@ -1006,13 +1005,27 @@ class CouncilStore:
         all_q = sorted({r["q"] for r in rows})[-quarters:]
         qset = set(all_q)
         per_field: dict[str, dict] = {}
-        money = {q: 0.0 for q in all_q}
         for r in rows:
             if r["q"] not in qset:
                 continue
             per_field.setdefault(r["field"], {q: 0 for q in all_q})[r["q"]] = r["n"]
-            money[r["q"]] += r["eur"] or 0
         top_fields = sorted(per_field, key=lambda f: -sum(per_field[f].values()))[:6]
+
+        # Recognised € per quarter — exclude accounting/treasury docs (Haushaltsplan,
+        # Jahresabschluss …) so the bars reflect actual spending, not budget volumes.
+        mclauses = " AND ".join(["LOWER(d.title) NOT LIKE ?"] * len(self._NON_SPENDING_TITLES))
+        mparams = [f"%{k}%" for k in self._NON_SPENDING_TITLES]
+        money = {q: 0.0 for q in all_q}
+        for r in self._conn.execute(
+            f"""SELECT {q_expr} AS q, COALESCE(SUM(d.amount_eur), 0) AS eur
+                FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr
+                WHERE d.kind = 'decision' AND d.amount_eur IS NOT NULL
+                      AND cs.session_date IS NOT NULL AND {mclauses}
+                GROUP BY q""",
+            mparams,
+        ):
+            if r["q"] in qset:
+                money[r["q"]] = r["eur"] or 0
 
         # Procedural tags aren't "topics" — keep them out of the emerging list.
         procedural = {"bericht", "annahme", "vertagung", "kenntnisnahme", "beschluss",
@@ -1034,11 +1047,26 @@ class CouncilStore:
                 except (ValueError, TypeError):
                     pass
 
+        # Biggest single financial decision per quarter (excl. accounting, reusing the
+        # filter above) — the factual "what drove this quarter" behind the money bars.
+        drivers: dict[str, dict] = {}
+        for r in self._conn.execute(
+            f"""SELECT {q_expr} AS q, d.id AS id, d.title AS title, d.amount_eur AS eur
+                FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr
+                WHERE d.kind = 'decision' AND d.amount_eur IS NOT NULL
+                      AND cs.session_date IS NOT NULL AND {mclauses}
+                ORDER BY d.amount_eur DESC""",
+            mparams,
+        ):
+            if r["q"] in qset and r["q"] not in drivers:
+                drivers[r["q"]] = {"id": r["id"], "title": r["title"], "eur": round(r["eur"] or 0)}
+
         return {
             "quarters": all_q,
             "fields": top_fields,
             "by_field": {f: [per_field[f][q] for q in all_q] for f in top_fields},
             "money": [round(money[q]) for q in all_q],
+            "money_drivers": [drivers.get(q) for q in all_q],
             "emerging": [{"tag": t, "n": c} for t, c in tagc.most_common(12) if c >= 2],
         }
 
@@ -1070,6 +1098,35 @@ class CouncilStore:
             out.append(self._decision_row(r))
             if len(out) >= limit:
                 break
+        return out
+
+    def money_by_field(self) -> list[dict]:
+        """Recognised € volume per policy field (excl. accounting/treasury), deduped
+        like the largest-list so the same matter across committees/revisions isn't
+        double-counted. For the 'Wofür fließt das Geld?' breakdown."""
+        clauses = " AND ".join(["LOWER(d.title) NOT LIKE ?"] * len(self._NON_SPENDING_TITLES))
+        params = [f"%{k}%" for k in self._NON_SPENDING_TITLES]
+        rows = self._conn.execute(
+            f"""SELECT d.id, d.title, d.vorlage_nr, d.policy_field AS field, d.amount_eur AS eur
+                FROM council_decisions d
+                WHERE d.kind = 'decision' AND d.amount_eur IS NOT NULL
+                      AND d.policy_field IS NOT NULL AND {clauses}
+                ORDER BY d.amount_eur DESC""",
+            params,
+        ).fetchall()
+        seen: set = set()
+        agg: dict[str, dict] = {}
+        for r in rows:
+            keys = _dedup_keys(r["title"], r["vorlage_nr"], r["id"])
+            if any(k in seen for k in keys):
+                continue
+            seen.update(keys)
+            a = agg.setdefault(r["field"], {"field": r["field"], "total": 0.0, "n": 0})
+            a["total"] += r["eur"] or 0
+            a["n"] += 1
+        out = sorted(agg.values(), key=lambda x: -x["total"])
+        for a in out:
+            a["total"] = round(a["total"])
         return out
 
     def policy_field_stats(self) -> list[dict]:
