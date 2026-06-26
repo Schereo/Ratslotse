@@ -36,7 +36,7 @@ export default function DatenschutzPage() {
         <div className="mt-6 space-y-6">
           <Section title="Verantwortlicher">
             <p>
-              Tim Sigl, Krusenweg 26, 261235 Oldenburg ·{" "}
+              Tim Sigl, Krusenweg 26, 26135 Oldenburg ·{" "}
               <a href="mailto:ratslotse@timsigl.de" className="text-primary hover:underline">ratslotse@timsigl.de</a>
             </p>
           </Section>
