@@ -242,6 +242,49 @@ def test_topics_and_subscriptions_flow(client):
     assert client.get("/api/topics").json() == []
 
 
+def test_topic_decision_matching(client):
+    """A topic surfaces its semantically matched council decisions (decision_count + /decisions)."""
+    owner_id = _register(client).json()["id"]
+    tid = client.post("/api/topics", json={"name": "Radverkehr", "description": "Radwege in Oldenburg"}).json()["id"]
+
+    # Seed a council decision (session + decision) — the offline matcher would store the link below.
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(77, "Verkehrsausschuss", "2026-03-01", "18:00", "Rathaus",
+                                   agenda_items=[AgendaItem("Ö 1", "Radweg Haarenufer")]))
+    cs._insert_decision(77, 0, "decision", None, "1", "Radweg Haarenufer ausbauen",
+                        "Beschluss", "angenommen", None, None, None, [], None, None, None)
+    cs._conn.commit()
+    did = cs._conn.execute("SELECT id FROM council_decisions WHERE ksinr = 77").fetchone()[0]
+    cs.close()
+
+    st = Store(NWZ_DB)
+    assert st.save_topic_decision_matches(tid, owner_id, [(did, 0.81)]) == 1
+    assert st.topic_decision_counts(owner_id) == {tid: 1}
+    st.close()
+
+    # decision_count surfaces in the topic list…
+    topic = next(t for t in client.get("/api/topics").json() if t["id"] == tid)
+    assert topic["decision_count"] == 1
+    # …and the decisions endpoint joins to the council store (title, committee, score).
+    decisions = client.get(f"/api/topics/{tid}/decisions").json()["decisions"]
+    assert len(decisions) == 1
+    assert decisions[0]["title"] == "Radweg Haarenufer ausbauen"
+    assert decisions[0]["committee"] == "Verkehrsausschuss"
+    assert round(decisions[0]["score"], 2) == 0.81
+
+
+def test_topic_decisions_replace_on_rerun(client):
+    """Re-running the matcher replaces a topic's matches (no stale duplicates)."""
+    owner_id = _register(client).json()["id"]
+    tid = client.post("/api/topics", json={"name": "X", "description": "y"}).json()["id"]
+    st = Store(NWZ_DB)
+    st.save_topic_decision_matches(tid, owner_id, [(1, 0.7), (2, 0.6)])
+    st.save_topic_decision_matches(tid, owner_id, [(2, 0.9)])  # rerun → replaces
+    assert [m["decision_id"] for m in st.get_topic_decision_matches(tid)] == [2]
+    assert st.topic_decision_counts(owner_id) == {tid: 1}
+    st.close()
+
+
 def test_cannot_delete_foreign_topic(client):
     _register(client)
     _link("admin@test.de")

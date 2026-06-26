@@ -97,6 +97,18 @@ CREATE TABLE IF NOT EXISTS article_topic_matches (
 );
 CREATE INDEX IF NOT EXISTS idx_atm_lookup ON article_topic_matches(owner_id, topic_id, pub_date DESC);
 
+-- Semantic matches between a user topic and council decisions (computed offline by
+-- scripts/match_topics_decisions.py from the precomputed decision embeddings).
+CREATE TABLE IF NOT EXISTS council_topic_matches (
+    topic_id    INTEGER NOT NULL,
+    owner_id    INTEGER NOT NULL,
+    decision_id INTEGER NOT NULL,
+    score       REAL NOT NULL,
+    matched_at  TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY (topic_id, decision_id)
+);
+CREATE INDEX IF NOT EXISTS idx_ctm_topic ON council_topic_matches(topic_id);
+
 CREATE TABLE IF NOT EXISTS topic_classified_editions (
     owner_id    INTEGER NOT NULL,
     topic_id    INTEGER NOT NULL,
@@ -943,6 +955,31 @@ class Store:
             (owner_id,),
         ).fetchall()
         return [TopicRow(**dict(r)) for r in rows]
+
+    def save_topic_decision_matches(self, topic_id: int, owner_id: int, matches: list[tuple]) -> int:
+        """Replace a topic's matched council decisions. ``matches`` = [(decision_id, score)]."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute("DELETE FROM council_topic_matches WHERE topic_id = ?", (topic_id,))
+            self._conn.executemany(
+                "INSERT OR IGNORE INTO council_topic_matches(topic_id, owner_id, decision_id, score, matched_at) "
+                "VALUES (?,?,?,?,?)",
+                [(topic_id, owner_id, int(did), float(sc), now) for did, sc in matches],
+            )
+        return len(matches)
+
+    def get_topic_decision_matches(self, topic_id: int) -> list[dict]:
+        """Matched council decisions for a topic — {decision_id, score}, best first."""
+        return [dict(r) for r in self._conn.execute(
+            "SELECT decision_id, score FROM council_topic_matches WHERE topic_id = ? ORDER BY score DESC",
+            (topic_id,))]
+
+    def topic_decision_counts(self, owner_id: int) -> dict[int, int]:
+        """{topic_id: number of matched council decisions} for an owner's topics."""
+        rows = self._conn.execute(
+            "SELECT topic_id, COUNT(*) AS n FROM council_topic_matches WHERE owner_id = ? GROUP BY topic_id",
+            (owner_id,)).fetchall()
+        return {r["topic_id"]: r["n"] for r in rows}
 
     def get_all_owner_topics(self) -> dict[int, list[TopicRow]]:
         """Return {owner_id: [topics]} for all owners that have at least one topic."""

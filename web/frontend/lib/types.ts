@@ -243,6 +243,17 @@ export interface Topic {
   description: string;
   created_at: string;
   match_count: number;
+  decision_count: number;
+}
+
+export interface TopicDecision {
+  id: number;
+  title: string;
+  committee: string;
+  session_date: string;
+  policy_field: string | null;
+  outcome: string | null;
+  score: number;
 }
 
 export interface TopicMatch {

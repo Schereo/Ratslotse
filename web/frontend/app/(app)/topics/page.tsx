@@ -2,10 +2,11 @@
 
 import { useState, useRef } from "react";
 import Link from "next/link";
-import { Plus, Trash2, FileText, Tags, Pencil, RefreshCw } from "lucide-react";
+import { Plus, Trash2, FileText, Tags, Pencil, RefreshCw, Landmark } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
-import { Topic, TopicMatch, Article } from "@/lib/types";
+import { Topic, TopicMatch, TopicDecision, Article } from "@/lib/types";
+import { DecisionLinkCard } from "@/components/decision-ui";
 import {
   Badge, Button, Card, CardListSkeleton, ConfirmDialog, EmptyState, Input, PageHeader, Textarea, formatDate,
   Dialog, DialogContent, DialogHeader, DialogTitle, toast,
@@ -16,6 +17,7 @@ export default function TopicsPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [matchesFor, setMatchesFor] = useState<{ topic: Topic; matches: TopicMatch[] } | null>(null);
+  const [decisionsFor, setDecisionsFor] = useState<{ topic: Topic; decisions: TopicDecision[] } | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [editing, setEditing] = useState<Topic | null>(null);
   const [editName, setEditName] = useState("");
@@ -102,6 +104,15 @@ export default function TopicsPage() {
       setMatchesFor({ topic, matches: data.matches });
     } catch {
       toast.error("Treffer konnten nicht geladen werden.");
+    }
+  };
+
+  const viewDecisions = async (topic: Topic) => {
+    try {
+      const data = await api.get<{ decisions: TopicDecision[] }>(`/topics/${topic.id}/decisions`);
+      setDecisionsFor({ topic, decisions: data.decisions });
+    } catch {
+      toast.error("Beschlüsse konnten nicht geladen werden.");
     }
   };
 
@@ -197,6 +208,7 @@ export default function TopicsPage() {
                   <div className="flex items-center gap-2">
                     <h3 className="font-semibold text-foreground">{t.name}</h3>
                     <Badge color="blue">{t.match_count} Treffer</Badge>
+                    {t.decision_count > 0 && <Badge color="green">{t.decision_count} Beschlüsse</Badge>}
                   </div>
                   <p className="mt-0.5 text-sm text-muted-foreground">{t.description}</p>
                 </div>
@@ -204,6 +216,11 @@ export default function TopicsPage() {
                   <Button variant="secondary" size="sm" onClick={() => viewMatches(t)}>
                     <FileText className="h-4 w-4" /> Treffer
                   </Button>
+                  {t.decision_count > 0 && (
+                    <Button variant="secondary" size="sm" onClick={() => viewDecisions(t)}>
+                      <Landmark className="h-4 w-4" /> Beschlüsse
+                    </Button>
+                  )}
                   <Button variant="secondary" size="sm" onClick={() => startEdit(t)}>
                     <Pencil className="h-4 w-4" /> Bearbeiten
                   </Button>
@@ -283,6 +300,28 @@ export default function TopicsPage() {
                     <MatchItem key={i} m={m} />
                   ))}
                 </ul>
+              )}
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!decisionsFor} onOpenChange={(o) => !o && setDecisionsFor(null)}>
+        <DialogContent>
+          {decisionsFor && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Beschlüsse: {decisionsFor.topic.name}</DialogTitle>
+              </DialogHeader>
+              {decisionsFor.decisions.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Noch keine passenden Beschlüsse.</p>
+              ) : (
+                <div className="space-y-2">
+                  {decisionsFor.decisions.map((d) => (
+                    <DecisionLinkCard key={d.id} id={d.id} title={d.title} committee={d.committee}
+                      session_date={d.session_date} field={d.policy_field} score={d.score} />
+                  ))}
+                </div>
               )}
             </>
           )}
