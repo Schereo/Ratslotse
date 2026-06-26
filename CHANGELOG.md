@@ -8,6 +8,14 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.33.0] – 2026-06-26
+
+### Hinzugefügt
+- **SEO-Grundlage:** Root-Metadaten + OpenGraph/Twitter-Tags (schöne Link-Vorschauen), `robots.txt` und `sitemap.xml`. Indexiert die öffentlichen Marketing-/Rechtsseiten; die Ratsinhalte folgen mit dem Öffentlich-Gang. (#122)
+
+### Geändert
+- **Seitennavigation neu gegliedert:** Obertitel **Ratsinfo** mit den Unterseiten Beschlüsse/Sitzungen/Themen/Analyse direkt in der Nav, und **NWZ** (Artikelsuche) nur noch für freigeschaltete Nutzer bzw. Admins. „Mein Konto" ist ins E-Mail-Feld unten links integriert; eigener Menüpunkt entfällt. (#122)
+
 ## [0.32.0] – 2026-06-26
 
 ### Hinzugefügt

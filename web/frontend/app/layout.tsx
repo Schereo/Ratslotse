@@ -6,9 +6,25 @@ import { Providers } from "./providers";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: "Ratslotse",
-  description: "Lokale Nachrichten und Ratsinformationen für Oldenburg",
+  metadataBase: new URL("https://ratslotse.de"),
+  title: "Ratslotse — Oldenburger Ratsinformationen verständlich",
+  description:
+    "Ratslotse macht die Beschlüsse des Oldenburger Stadtrats durchsuchbar, vergleichbar und verständlich — mit KI-Fragen, Themen-Seiten, Karten und Analysen.",
+  applicationName: "Ratslotse",
   manifest: "/manifest.json",
+  openGraph: {
+    type: "website",
+    locale: "de_DE",
+    siteName: "Ratslotse",
+    url: "https://ratslotse.de",
+    title: "Ratslotse — Oldenburger Ratsinformationen verständlich",
+    description: "Beschlüsse des Oldenburger Stadtrats durchsuchbar, vergleichbar und verständlich.",
+  },
+  twitter: {
+    card: "summary",
+    title: "Ratslotse",
+    description: "Oldenburger Ratsinformationen verständlich.",
+  },
 };
 
 export const viewport: Viewport = {
