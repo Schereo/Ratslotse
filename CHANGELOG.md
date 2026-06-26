@@ -8,6 +8,11 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.24.1] – 2026-06-26
+
+### Behoben
+- **Doppelt gezählte Summen auf den Themen-Seiten:** das erkannte Finanzvolumen einer Entität summierte denselben Vorgang doppelt, wenn er in Ausschuss **und** Rat beschlossen wurde (z. B. Alexanderstraße 600k → fälschlich 1,2 Mio). Jetzt zählen Zwillinge (gleiche Vorlage/Titel) einmal und Buchhaltungsdokumente sind ausgeschlossen — konsistent mit „Größte Finanzbeschlüsse" und „Wofür fließt das Geld?". (#109)
+
 ## [0.24.0] – 2026-06-26
 
 ### Hinzugefügt

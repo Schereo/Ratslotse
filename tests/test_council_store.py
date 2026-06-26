@@ -193,10 +193,10 @@ def test_decisions_fts(tmp_path):
 
 def test_entities(tmp_path):
     store = CouncilStore(_old_db(tmp_path / "old.sqlite"))  # seeds a session ksinr=1
-    for i in (60, 61):
+    for i, t in ((60, "Bebauungsplan Fliegerhorst Nord"), (61, "Altlastensanierung Fliegerhorst Süd")):
         store._conn.execute(
             "INSERT INTO council_decisions(id,ksinr,position,kind,item_number,title,beschluss,outcome,policy_field,amount_eur) "
-            "VALUES (?,1,0,'decision','1',?,'b','angenommen','bauen_wohnen',1000000.0)", (i, f"Fliegerhorst {i}"))
+            "VALUES (?,1,0,'decision','1',?,'b','angenommen','bauen_wohnen',1000000.0)", (i, t))
     store._conn.commit()
     store.save_entities([("fliegerhorst", "Fliegerhorst", "ort", 2)],
                         [("fliegerhorst", 60), ("fliegerhorst", 61)])
@@ -262,6 +262,25 @@ def test_entity_meta_description_and_geo(tmp_path):
     full = store.entity_detail("fliegerhorst")
     assert full["geo"]["lat"] == 53.17 and full["geo"]["geojson"]["type"] == "Point"
     assert full["description"] == "Ein ehemaliges Militärgelände im Norden."
+
+
+def test_entity_money_dedup(tmp_path):
+    store = CouncilStore(_old_db(tmp_path / "old.sqlite"))  # session ksinr=1
+    seed = [
+        (70, "Neubau Halle", "22/0100", 600000.0),
+        (71, "Neubau Halle", "22/0100/1", 600000.0),  # Rat-Zwilling derselben Vorlage → einmal
+        (72, "Sanierung Dach", "22/0200", 200000.0),
+        (73, "Jahresabschluss 2023 der Hallen GmbH", "22/0300", 99000000.0),  # Buchhaltung → raus
+    ]
+    for i, title, vnr, amt in seed:
+        store._conn.execute(
+            "INSERT INTO council_decisions(id,ksinr,position,kind,item_number,title,beschluss,"
+            "outcome,amount_eur,vorlage_nr) VALUES (?,1,0,'decision','1',?,'b','angenommen',?,?)",
+            (i, title, amt, vnr))
+    store._conn.commit()
+    store.save_entities([("halle", "Halle", "ort", 4)], [("halle", i) for i in (70, 71, 72, 73)])
+    # 600k (Zwilling einmal) + 200k = 800k; der 99-Mio-Jahresabschluss ist ausgeschlossen.
+    assert store.entity_detail("halle")["money"] == 800000
 
 
 def test_embedding_vectors(tmp_path):

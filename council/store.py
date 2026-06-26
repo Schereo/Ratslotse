@@ -960,7 +960,20 @@ class CouncilStore:
                LEFT JOIN council_protocols p ON p.ksinr = d.ksinr
                WHERE el.entity_id = ? ORDER BY cs.session_date DESC""", (ent["id"],)).fetchall()
         decisions = [self._decision_row(r) for r in rows]
-        money = sum(d["amount_eur"] for d in decisions if d.get("amount_eur"))
+        # Recognised € deduped: the same matter decided in Ausschuss + Rat (shared
+        # Vorlage / title) counts ONCE, and accounting/treasury docs (balance-sheet
+        # totals, not spending) are excluded — so the entity total isn't double-counted
+        # or inflated (e.g. Alexanderstraße 600k once, not 1,2 Mio).
+        _seen: set = set()
+        money = 0.0
+        for d in sorted((x for x in decisions if x.get("amount_eur")), key=lambda x: -x["amount_eur"]):
+            if any(k in (d.get("title") or "").lower() for k in self._NON_SPENDING_TITLES):
+                continue
+            keys = _dedup_keys(d.get("title"), d.get("vorlage_nr"), d["id"])
+            if any(k in _seen for k in keys):
+                continue
+            _seen.update(keys)
+            money += d["amount_eur"]
         parties = sorted({p for d in decisions for p in d.get("parties", [])}, key=order_key)
         fieldc = Counter(d["policy_field"] for d in decisions if d.get("policy_field"))
         meta = self._conn.execute(
