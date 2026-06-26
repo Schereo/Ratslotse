@@ -62,6 +62,11 @@ export default function LoginPage() {
             Wie funktioniert Ratslotse? →
           </Link>
         </p>
+        <p className="mt-4 border-t border-border pt-4 text-center text-xs text-muted-foreground">
+          <Link href="/impressum" className="hover:text-foreground hover:underline">Impressum</Link>
+          {" · "}
+          <Link href="/datenschutz" className="hover:text-foreground hover:underline">Datenschutz</Link>
+        </p>
       </Card>
     </div>
   );

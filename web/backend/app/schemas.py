@@ -25,6 +25,7 @@ class UserOut(BaseModel):
     delivery_channel: str = "telegram"
     nwz_verified: bool = False
     nwz_username: str | None = None
+    nwz_fulltext_allowed: bool = False
 
 
 # ---- NWZ credentials ----
@@ -87,6 +88,7 @@ class WebUserOut(BaseModel):
     telegram_chat_id: int | None = None
     nwz_username: str | None = None
     nwz_verified_at: str | None = None
+    nwz_fulltext_allowed: bool = False
     created_at: str
 
 
@@ -96,6 +98,10 @@ class RoleUpdate(BaseModel):
 
 class StatusUpdate(BaseModel):
     status: str  # 'active' | 'pending'
+
+
+class NwzFulltextUpdate(BaseModel):
+    allowed: bool
 
 
 class ChangePasswordRequest(BaseModel):

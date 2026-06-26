@@ -38,6 +38,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <main className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-5xl px-4 py-6 pb-[calc(env(safe-area-inset-bottom)+6rem)] sm:px-6 sm:py-8 md:pb-8">
           {pending ? <PendingNotice email={user.email} /> : children}
+          <footer className="mt-10 border-t border-border pt-4 text-center text-xs text-muted-foreground">
+            <a href="/impressum" className="hover:text-foreground">Impressum</a>
+            {" · "}
+            <a href="/datenschutz" className="hover:text-foreground">Datenschutz</a>
+          </footer>
         </div>
       </main>
       <MobileBottomNav />

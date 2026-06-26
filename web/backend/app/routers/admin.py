@@ -8,7 +8,7 @@ from nwz import prompts
 from nwz.store import Store
 
 from ..deps import get_council_store, get_store, require_admin
-from ..schemas import PromptOut, PromptUpdate, RoleUpdate, StatusUpdate, WebUserOut
+from ..schemas import NwzFulltextUpdate, PromptOut, PromptUpdate, RoleUpdate, StatusUpdate, WebUserOut
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -97,6 +97,20 @@ def set_status(
     if target["id"] == admin["id"] and body.status != "active":
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Du kannst dich nicht selbst sperren.")
     store.set_web_user_status(user_id, body.status)
+    return WebUserOut(**store.get_web_user_by_id(user_id))
+
+
+@router.put("/users/{user_id}/nwz-fulltext", response_model=WebUserOut)
+def set_nwz_fulltext(
+    user_id: int,
+    body: NwzFulltextUpdate,
+    _admin: dict = Depends(require_admin),
+    store: Store = Depends(get_store),
+) -> WebUserOut:
+    """Manually allow/revoke full NWZ article text for a specific user."""
+    if not store.get_web_user_by_id(user_id):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nutzer nicht gefunden.")
+    store.set_nwz_fulltext_allowed(user_id, body.allowed)
     return WebUserOut(**store.get_web_user_by_id(user_id))
 
 

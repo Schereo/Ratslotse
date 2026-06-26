@@ -52,7 +52,12 @@ def search(
     cats = _resolve_category(category)
     results = store.search(q, limit=limit, date_from=date_from, date_to=date_to, offset=offset, categories=cats)
     total = store.count_results(q, date_from=date_from, date_to=date_to, categories=cats)
-    return {"query": q, "count": len(results), "total": total, "results": [asdict(r) for r in results]}
+    rows = [asdict(r) for r in results]
+    if not _user.get("nwz_fulltext_allowed"):
+        # Headline + link only for non-unlocked users — strip the body excerpt.
+        for row in rows:
+            row["excerpt"] = ""
+    return {"query": q, "count": len(results), "total": total, "results": rows}
 
 
 @router.get("/categories")
@@ -87,4 +92,8 @@ def article(
     art = store.get_article(catalog, refid)
     if not art:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Artikel nicht gefunden.")
+    if not _user.get("nwz_fulltext_allowed"):
+        # Headline + metadata only; the body stays gated until an admin unlocks it.
+        art["content_text"] = ""
+        art["content_html"] = ""
     return art

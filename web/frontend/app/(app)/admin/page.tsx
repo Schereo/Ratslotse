@@ -311,6 +311,16 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
     onError: () => toast.error("Status konnte nicht geändert werden."),
   });
 
+  const fulltextMutation = useMutation({
+    mutationFn: ({ id, allowed }: { id: number; allowed: boolean }) =>
+      api.put(`/admin/users/${id}/nwz-fulltext`, { allowed }),
+    onSuccess: (_, vars) => {
+      toast.success(vars.allowed ? "NWZ-Volltext freigeschaltet." : "NWZ-Volltext entzogen.");
+      qc.invalidateQueries({ queryKey: ["admin", "users"] });
+    },
+    onError: () => toast.error("Volltext-Freigabe konnte nicht geändert werden."),
+  });
+
   if (isPending) return <Spinner />;
   if (isError) return <p className="text-sm text-destructive">Fehler beim Laden der Nutzer.</p>;
 
@@ -325,6 +335,7 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
               {u.status === "active" ? <Badge color="green">aktiv</Badge> : <Badge color="amber">wartet</Badge>}
               {u.telegram_chat_id ? <Badge color="green">Telegram</Badge> : null}
               {u.nwz_verified_at ? <Badge color="green">NWZ</Badge> : null}
+              {u.nwz_fulltext_allowed ? <Badge color="blue">Volltext</Badge> : null}
             </div>
             <p className="text-xs text-muted-foreground">seit {formatDate(u.created_at.slice(0, 10))}</p>
           </div>
@@ -345,6 +356,13 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
                 onClick={() => roleMutation.mutate({ id: u.id, role: u.role === "admin" ? "user" : "admin" })}
               >
                 {u.role === "admin" ? "Zu Nutzer" : "Zu Admin"}
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => fulltextMutation.mutate({ id: u.id, allowed: !u.nwz_fulltext_allowed })}
+              >
+                {u.nwz_fulltext_allowed ? "Volltext entziehen" : "Volltext erlauben"}
               </Button>
             </div>
           )}
