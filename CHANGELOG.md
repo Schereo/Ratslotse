@@ -8,6 +8,11 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.29.1] – 2026-06-26
+
+### Geändert
+- Admins sehen den NWZ-Volltext ohne separate Freischaltung (Admin-Bypass des `nwz_fulltext_allowed`-Gates) — die manuelle Freischaltung gilt für reguläre Nutzer. (#116)
+
 ## [0.29.0] – 2026-06-26
 
 ### Hinzugefügt
