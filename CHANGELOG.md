@@ -8,6 +8,11 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.25.0] – 2026-06-26
+
+### Hinzugefügt
+- **Admin: LLM-Kosten pro Feature.** Neuer Admin-Tab „LLM-Kosten" listet die Modell-Nutzung je Feature (Protokoll-Extraktion, Themenfeld-Klassifikation, Ziel-Bewertung, Entitäten-Erkennung, Themen-Beschreibungen, Frag-den-Rat …) mit Aufrufen, Input-/Output-Tokens und geschätzten Kosten. Jeder LLM-Aufruf wird best-effort mit einem Feature-Tag in `llm_usage` (nwz.sqlite) erfasst; Kosten aus Token × hinterlegten Modellpreisen. (#110)
+
 ## [0.24.1] – 2026-06-26
 
 ### Behoben

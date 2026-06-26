@@ -134,7 +134,7 @@ def extract_protocol(text: str, model: str = MODEL):
     last_err: Exception = ValueError("no response")
     for _ in range(2):
         resp = llm.chat_complete(
-            model=model, temperature=0, response_format={"type": "json_object"},
+            model=model, _feature="protokoll_extraktion", temperature=0, response_format={"type": "json_object"},
             max_tokens=8000, messages=messages, **extra,
         )
         content = _strip_fences(resp.choices[0].message.content or "")

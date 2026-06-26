@@ -119,7 +119,7 @@ def assess_batch(goal_key: str, decisions: list[dict], model: str = MODEL):
     valid = {d["id"] for d in decisions}
     last_err: Exception = ValueError("no response")
     for _ in range(2):
-        resp = llm.chat_complete(model=model, temperature=0, response_format={"type": "json_object"},
+        resp = llm.chat_complete(model=model, _feature="ziel_bewertung", temperature=0, response_format={"type": "json_object"},
                                  max_tokens=4000, messages=messages, **extra)
         content = _strip_fences(resp.choices[0].message.content or "")
         if not content:

@@ -98,7 +98,7 @@ def describe(name: str, kind: str, decisions: list[dict], model: str = MODEL) ->
     extra: dict = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
     try:
         resp = llm.chat_complete(
-            model=model, temperature=0.3, max_tokens=400,
+            model=model, _feature="entitaeten_beschreibung", temperature=0.3, max_tokens=400,
             messages=[{"role": "user", "content": prompt}], **extra,
         )
         return " ".join((resp.choices[0].message.content or "").split()).strip() or None
@@ -116,7 +116,7 @@ def extract_batch(decisions: list[dict], model: str = MODEL):
     last_err: Exception = ValueError("no response")
     for _ in range(2):
         resp = llm.chat_complete(
-            model=model, temperature=0, response_format={"type": "json_object"},
+            model=model, _feature="entitaeten_ner", temperature=0, response_format={"type": "json_object"},
             max_tokens=4000, messages=[{"role": "user", "content": prompt}], **extra,
         )
         content = _strip_fences(resp.choices[0].message.content or "")

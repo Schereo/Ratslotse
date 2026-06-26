@@ -103,6 +103,24 @@ def _is_transient(exc: BaseException) -> bool:
     stop=stop_after_attempt(4),
     reraise=True,
 )
+def _create(**kwargs: Any):
+    return get_client().chat.completions.create(**_with_model_params(kwargs))
+
+
+def _record_usage(feature: str | None, model: str | None, usage_obj: Any) -> None:
+    """Best-effort: log this call's token usage under ``feature`` (for the admin LLM
+    page). Never raises — usage tracking must not affect the LLM call itself."""
+    if not feature or usage_obj is None:
+        return
+    try:
+        from nwz import usage
+        usage.record(feature, model,
+                     getattr(usage_obj, "prompt_tokens", 0) or 0,
+                     getattr(usage_obj, "completion_tokens", 0) or 0)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def chat_complete(**kwargs: Any):
     """Call chat.completions.create() with per-model defaults + retry on errors.
 
@@ -111,19 +129,26 @@ def chat_complete(**kwargs: Any):
     4 times with exponential back-off (2 s → 4 s → 8 s → 60 s cap) for 429
     rate-limit, 5xx server errors, and network failures. Non-transient client
     errors (4xx other than 429) propagate immediately without retry.
+
+    Pass ``_feature="…"`` to record this call's token usage per feature for the admin
+    LLM page (stripped before the API call; best-effort).
     """
-    return get_client().chat.completions.create(**_with_model_params(kwargs))
+    feature = kwargs.pop("_feature", None)
+    resp = _create(**kwargs)
+    _record_usage(feature, kwargs.get("model"), getattr(resp, "usage", None))
+    return resp
 
 
 def chat_stream(**kwargs: Any):
     """Stream content deltas as they are generated — used for the live "Frag den Rat"
-    answer so the UI can render tokens as they arrive. Same per-model params and
-    connect-time retry as chat_complete (the retried call returns the stream object;
-    a mid-stream failure propagates without retry). Yields non-empty text chunks."""
-    stream = chat_complete(stream=True, **kwargs)
-    for chunk in stream:
-        if not chunk.choices:
-            continue
-        text = chunk.choices[0].delta.content
-        if text:
-            yield text
+    answer. Same per-model params and connect-time retry as chat_complete. Pass
+    ``_feature="…"`` to record token usage (requests the usage chunk; best-effort).
+    Yields non-empty text chunks."""
+    feature = kwargs.pop("_feature", None)
+    if feature:
+        kwargs.setdefault("stream_options", {"include_usage": True})
+    for chunk in _create(stream=True, **kwargs):
+        if getattr(chunk, "usage", None):
+            _record_usage(feature, kwargs.get("model"), chunk.usage)
+        if chunk.choices and chunk.choices[0].delta.content:
+            yield chunk.choices[0].delta.content

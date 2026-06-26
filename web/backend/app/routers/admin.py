@@ -25,6 +25,13 @@ def stats(
     return data
 
 
+@router.get("/llm-usage")
+def llm_usage(_admin: dict = Depends(require_admin)) -> dict:
+    """Per-feature LLM token usage + estimated cost (from llm_usage in nwz.sqlite)."""
+    from nwz import usage
+    return usage.summary()
+
+
 # ---- prompts ----
 @router.get("/prompts", response_model=list[PromptOut])
 def list_prompts(_admin: dict = Depends(require_admin)) -> list[PromptOut]:
