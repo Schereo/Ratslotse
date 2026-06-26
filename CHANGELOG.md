@@ -8,6 +8,11 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.35.1] – 2026-06-26
+
+### Behoben
+- Der Footer (Impressum/Datenschutz) klebt jetzt am unteren Rand (Desktop sticky, mobil über der Bottom-Nav) statt bei wenig Inhalt mitten in der Seite zu schweben. (#126)
+
 ## [0.35.0] – 2026-06-26
 
 ### Hinzugefügt
