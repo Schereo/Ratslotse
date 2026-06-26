@@ -181,6 +181,12 @@ def entities_map(_user: dict = Depends(require_active),
     return {"entities": store.list_entities_geo()}
 
 
+@router.get("/public-stats")
+def public_stats(store: CouncilStore = Depends(get_council_store)) -> dict:
+    """Aggregate headline counts for the public landing page — no auth, no content."""
+    return store.public_stats()
+
+
 @router.get("/entity/{slug}")
 def entity(slug: str, _user: dict = Depends(require_active),
            store: CouncilStore = Depends(get_council_store)) -> dict:
