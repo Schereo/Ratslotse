@@ -256,6 +256,16 @@ export interface TopicDecision {
   score: number;
 }
 
+export interface FieldRecap {
+  policy_field: string;
+  field_label: string;
+  summary: string;
+  n_decisions: number;
+  period_from: string;
+  period_to: string;
+  generated_at: string;
+}
+
 export interface TopicMatch {
   catalog: number;
   refid: string;

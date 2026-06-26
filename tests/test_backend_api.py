@@ -214,6 +214,32 @@ def test_council_session_404(client):
     assert client.get("/api/council/session/999").status_code == 404
 
 
+def test_field_recaps_endpoint(client):
+    """Field recaps surface via /council/field-recaps with the German label resolved."""
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_field_recap("verkehr", "Der Rat hat zuletzt mehrere Radwege beschlossen.", 12,
+                        "2026-01-10", "2026-06-01", "2026-06-26T00:00:00")
+    cs.close()
+    data = client.get("/api/council/field-recaps").json()["recaps"]
+    assert len(data) == 1
+    assert data[0]["policy_field"] == "verkehr"
+    assert data[0]["field_label"] == "Verkehr & Mobilität"
+    assert data[0]["n_decisions"] == 12 and "Radwege" in data[0]["summary"]
+
+
+def test_recaps_render_items_falls_back_to_beschluss():
+    """_render_items uses summary when present, else the raw beschluss, and keeps the outcome."""
+    from council.recaps import _render_items
+    out = _render_items([
+        {"session_date": "2026-06-01", "title": "Radweg Haarenufer", "summary": "Ausbau beschlossen", "outcome": "angenommen"},
+        {"session_date": "2026-05-01", "title": "Brücke Y", "beschluss": "Sanierung wird beauftragt", "outcome": "abgelehnt"},
+    ])
+    assert "Radweg Haarenufer — Ausbau beschlossen" in out
+    assert "Brücke Y — Sanierung wird beauftragt" in out  # falls back to beschluss
+    assert "[abgelehnt]" in out
+
+
 # ---- topics (owned by the web account, no Telegram link required) ----
 def test_topics_work_without_telegram_link(client):
     _register(client)

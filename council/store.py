@@ -187,6 +187,17 @@ CREATE TABLE IF NOT EXISTS council_embeddings (
     vector      BLOB NOT NULL
 );
 
+-- Auto-generated LLM recap per policy field ("Was bewegte den Rat im Bereich X?",
+-- council.recaps). One row per field, replaced when regenerated (≈ monthly via cron).
+CREATE TABLE IF NOT EXISTS council_field_recaps (
+    policy_field TEXT PRIMARY KEY,
+    summary      TEXT NOT NULL,
+    n_decisions  INTEGER NOT NULL,
+    period_from  TEXT NOT NULL DEFAULT '',
+    period_to    TEXT NOT NULL DEFAULT '',
+    generated_at TEXT NOT NULL
+);
+
 -- Press coverage: NWZ articles matched to a decision (semantic + temporal).
 CREATE TABLE IF NOT EXISTS council_news_links (
     decision_id INTEGER NOT NULL,
@@ -1587,6 +1598,31 @@ class CouncilStore:
         return self._conn.execute(
             "SELECT decision_id, vector FROM council_embeddings ORDER BY decision_id"
         ).fetchall()
+
+    # ---- field recaps (auto-generated LLM summaries per policy field) ----
+
+    def save_field_recap(self, policy_field: str, summary: str, n_decisions: int,
+                         period_from: str, period_to: str, generated_at: str) -> None:
+        """Upsert the recap for one policy field (replaces the previous one)."""
+        with self._conn:
+            self._conn.execute(
+                "INSERT OR REPLACE INTO council_field_recaps "
+                "(policy_field, summary, n_decisions, period_from, period_to, generated_at) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (policy_field, summary, n_decisions, period_from, period_to, generated_at),
+            )
+
+    def get_field_recaps(self) -> list[dict]:
+        """All field recaps, busiest field first."""
+        rows = self._conn.execute(
+            "SELECT policy_field, summary, n_decisions, period_from, period_to, generated_at "
+            "FROM council_field_recaps ORDER BY n_decisions DESC, policy_field"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def field_recaps_by_key(self) -> dict[str, dict]:
+        """{policy_field: recap-row} — for the cron's freshness check."""
+        return {r["policy_field"]: r for r in self.get_field_recaps()}
 
     def decision_dates(self) -> dict:
         """{decision_id: session_date} for main decisions (temporal news matching)."""

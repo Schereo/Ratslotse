@@ -11,6 +11,7 @@ press links and "Ähnliche Beschlüsse" are heavier and run here, once a week, i
     4. Presse-Links            link_news.py          — re-matches decisions ↔ NWZ
     5. Embeddings/Ähnliche     embed_decisions.py    — re-embeds for "Ähnliche Beschlüsse"
     6. Themen ↔ Beschlüsse     match_topics_decisions.py — matcht Nutzer-Themen gegen Beschlüsse
+    7. Themenfeld-Rückblicke   generate_field_recaps.py  — LLM-Kurzrückblick je Politikfeld (≈ monatlich)
 
 Each step runs independently — a failure in one does NOT stop the others. Steps 2–3
 are idempotent (only-missing); 1, 4, 5 are full rebuilds (cheap enough weekly).
@@ -33,6 +34,7 @@ STEPS: list[tuple[str, str]] = [
     ("Presse-Links", "link_news.py"),
     ("Embeddings / Ähnliche", "embed_decisions.py"),
     ("Themen ↔ Beschlüsse", "match_topics_decisions.py"),
+    ("Themenfeld-Rückblicke", "generate_field_recaps.py"),
 ]
 
 

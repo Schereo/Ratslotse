@@ -167,6 +167,15 @@ def trends(_user: dict = Depends(require_active), store: CouncilStore = Depends(
     return data
 
 
+@router.get("/field-recaps")
+def field_recaps(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> dict:
+    """Auto-generated plain-language recaps per policy field ("Was bewegte den Rat im Bereich X?")."""
+    recaps = store.get_field_recaps()
+    for r in recaps:
+        r["field_label"] = POLICY_FIELDS.get(r["policy_field"], (r["policy_field"],))[0]
+    return {"recaps": recaps}
+
+
 @router.get("/entities")
 def entities_list(kind: str = "", _user: dict = Depends(require_active),
                   store: CouncilStore = Depends(get_council_store)) -> dict:
