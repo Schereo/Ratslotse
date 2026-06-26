@@ -283,6 +283,41 @@ def test_entity_money_dedup(tmp_path):
     assert store.entity_detail("halle")["money"] == 800000
 
 
+def test_entity_obs_incremental(tmp_path):
+    """Incremental NER: scan only new decisions, retain raw observations so an entity
+    seen once now + again later still crosses the min_n threshold."""
+    store = CouncilStore(_old_db(tmp_path / "old.sqlite"))  # session 1, decision id=1
+    for i, title in [(2, "Beschluss zum Fliegerhorst"), (3, "Sanierung Rathaus")]:
+        store._conn.execute(
+            "INSERT INTO council_decisions(id,ksinr,position,kind,item_number,title,beschluss,outcome) "
+            "VALUES (?,1,0,'decision','1',?,'b','angenommen')", (i, title))
+    store._conn.commit()
+
+    # First pass scans decisions 1 + 2.
+    store.add_entity_observations(
+        [(1, "fliegerhorst", "Fliegerhorst", "ort"),
+         (2, "fliegerhorst", "Fliegerhorst", "ort"),
+         (1, "rathaus", "Rathaus", "ort")],
+        [1, 2])
+    store.rebuild_entities_from_obs(min_n=2)
+    assert store.scanned_entity_decision_ids() == {1, 2}
+    slugs = {e["slug"]: e["n"] for e in store.list_entities()}
+    assert slugs.get("fliegerhorst") == 2           # 2 decisions → published
+    assert "rathaus" not in slugs                    # only 1 so far → below threshold
+
+    # Incremental pass: decision 3 also mentions Rathaus → it now crosses min_n,
+    # because the earlier observation (decision 1) was retained.
+    store.add_entity_observations([(3, "rathaus", "Rathaus", "ort")], [3])
+    store.rebuild_entities_from_obs(min_n=2)
+    assert store.scanned_entity_decision_ids() == {1, 2, 3}
+    assert {e["slug"]: e["n"] for e in store.list_entities()}.get("rathaus") == 2
+
+    # --full reset clears observations + scan marks.
+    store.reset_entity_obs()
+    assert store.scanned_entity_decision_ids() == set()
+    assert store.rebuild_entities_from_obs(min_n=2) == (0, 0)
+
+
 def test_council_members_merge_by_slug(tmp_path):
     store = CouncilStore(_old_db(tmp_path / "old.sqlite"))  # session 1 = Rat, 2025-01-01
     store._conn.execute("INSERT INTO council_sessions VALUES (2,'Bauausschuss','2025-02-01','17:00','Rathaus','2025-02-01')")

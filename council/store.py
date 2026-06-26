@@ -270,6 +270,22 @@ class CouncilStore:
             "slug TEXT PRIMARY KEY, description TEXT, "
             "lat REAL, lon REAL, geojson TEXT, geo_tried INTEGER NOT NULL DEFAULT 0)"
         )
+        # Raw, append-only entity observations (one row per slug×decision) — the
+        # source of truth so incremental NER runs (scripts/extract_entities.py) can
+        # re-derive council_entities/links with the min-n threshold WITHOUT re-scanning
+        # old decisions, and so an entity seen once now + again later still crosses the
+        # threshold (its early observation is retained). council_entity_scanned records
+        # every decision already passed through the LLM (incl. those yielding no entity)
+        # so it is never re-scanned.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_entity_obs ("
+            "decision_id INTEGER NOT NULL, slug TEXT NOT NULL, name TEXT NOT NULL, "
+            "kind TEXT, PRIMARY KEY (decision_id, slug))"
+        )
+        self._conn.execute("CREATE INDEX IF NOT EXISTS idx_entobs_slug ON council_entity_obs(slug)")
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_entity_scanned (decision_id INTEGER PRIMARY KEY)"
+        )
         self._migrate_owner_id()
 
     def _migrate_owner_id(self) -> None:
@@ -926,6 +942,52 @@ class CouncilStore:
             self._conn.executemany(
                 "INSERT OR IGNORE INTO council_entity_links(entity_id, decision_id) VALUES (?,?)", rows)
         return len(entities)
+
+    def scanned_entity_decision_ids(self) -> set[int]:
+        """Decision ids already passed through entity NER — lets extract_entities.py
+        scan only new decisions on incremental runs."""
+        return {r[0] for r in self._conn.execute("SELECT decision_id FROM council_entity_scanned")}
+
+    def add_entity_observations(self, obs: list[tuple], scanned_ids: list[int]) -> None:
+        """Append raw (decision_id, slug, name, kind) entity observations and mark the
+        given decisions scanned. Idempotent per (decision, slug) / decision."""
+        with self._conn:
+            self._conn.executemany(
+                "INSERT OR IGNORE INTO council_entity_obs(decision_id, slug, name, kind) "
+                "VALUES (?,?,?,?)", obs)
+            self._conn.executemany(
+                "INSERT OR IGNORE INTO council_entity_scanned(decision_id) VALUES (?)",
+                [(i,) for i in scanned_ids])
+
+    def rebuild_entities_from_obs(self, min_n: int = 2) -> tuple[int, int]:
+        """Re-derive council_entities + links from the raw observations, keeping slugs
+        seen in >= min_n distinct decisions (most frequent name/kind spelling wins).
+        Cheap — no LLM — so it runs after every incremental NER pass."""
+        from collections import Counter, defaultdict
+        names: dict = defaultdict(Counter)
+        kinds: dict = defaultdict(Counter)
+        dec_ids: dict = defaultdict(set)
+        for did, slug, name, kind in self._conn.execute(
+                "SELECT decision_id, slug, name, kind FROM council_entity_obs"):
+            names[slug][name] += 1
+            if kind:
+                kinds[slug][kind] += 1
+            dec_ids[slug].add(did)
+        ent_rows, link_rows = [], []
+        for slug, ids in dec_ids.items():
+            if len(ids) < min_n:
+                continue
+            kind = kinds[slug].most_common(1)[0][0] if kinds[slug] else None
+            ent_rows.append((slug, names[slug].most_common(1)[0][0], kind, len(ids)))
+            link_rows.extend((slug, did) for did in ids)
+        self.save_entities(ent_rows, link_rows)
+        return len(ent_rows), len(link_rows)
+
+    def reset_entity_obs(self) -> None:
+        """Clear raw observations + scan marks for a full re-scan (extract_entities --full)."""
+        with self._conn:
+            self._conn.execute("DELETE FROM council_entity_obs")
+            self._conn.execute("DELETE FROM council_entity_scanned")
 
     def list_entities(self, limit: int = 300, kind: str = "") -> list[dict]:
         """Entities for the directory, most-referenced first."""
