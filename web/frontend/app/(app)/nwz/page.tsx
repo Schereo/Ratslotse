@@ -88,6 +88,7 @@ function NwzSearch() {
   const [loading, setLoading] = useState(true);
   const [openArticle, setOpenArticle] = useState<Article | null>(null);
   const { user } = useAuth();
+  const fulltextAllowed = user?.role === "admin" || !!user?.nwz_fulltext_allowed;
 
   const debouncedQ = useDebounce(q, 350);
   const searchParams = useSearchParams();
@@ -201,7 +202,7 @@ function NwzSearch() {
                       </div>
                       <h3 className="mt-1 font-semibold text-foreground">{r.title}</h3>
                       {r.subtitle && <p className="line-clamp-1 text-sm text-muted-foreground">{r.subtitle}</p>}
-                      {user?.nwz_fulltext_allowed && r.excerpt && (
+                      {fulltextAllowed && r.excerpt && (
                         <p className="excerpt mt-1 line-clamp-2 text-sm text-foreground/80" dangerouslySetInnerHTML={{ __html: r.excerpt }} />
                       )}
                     </div>
@@ -236,7 +237,7 @@ function NwzSearch() {
                   <p className="text-sm text-muted-foreground">{openArticle.authors.replace(/\|/g, ", ")}</p>
                 )}
               </DialogHeader>
-              {user?.nwz_fulltext_allowed ? (
+              {fulltextAllowed ? (
                 <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
                   {openArticle.content_text}
                 </div>
