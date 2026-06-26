@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Search, Sparkles, MapPin, BarChart3, Bell, Landmark, ArrowRight } from "lucide-react";
+import { Search, Sparkles, MapPin, BarChart3, Bell, Landmark } from "lucide-react";
 import { BrandMark } from "@/components/brand";
 import { HeaderCTA } from "@/components/landing-cta";
-import { HeroCanvas } from "@/components/hero-canvas";
-import { LiveStats } from "@/components/live-stats";
+import { HeroSection } from "@/components/hero-section";
 import { Reveal } from "@/components/reveal";
 
 export const metadata: Metadata = {
@@ -36,29 +35,8 @@ export default function LandingPage() {
       </header>
 
       <main>
-        {/* Hero */}
-        <section className="relative overflow-hidden">
-          <HeroCanvas />
-          <div className="relative z-10 mx-auto max-w-3xl px-5 py-16 text-center sm:py-28">
-            <p className="text-sm font-medium text-primary">Stadtrat Oldenburg</p>
-            <h1 className="mt-3 text-4xl font-bold tracking-tight text-foreground sm:text-6xl">
-              Was beschließt eigentlich der Rat?
-            </h1>
-            <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-muted-foreground">
-              Ratslotse macht die Beschlüsse des Oldenburger Stadtrats durchsuchbar, vergleichbar und verständlich —
-              mit KI-Fragen, Themen-Karten und Analysen. Aus der amtlichen Quelle, ohne PDF-Wälzen.
-            </p>
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-              <Link href="/register" className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition-opacity hover:opacity-90">
-                Kostenlos registrieren <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link href="/technik" className="inline-flex items-center rounded-lg border border-border bg-background/70 px-5 py-2.5 text-sm font-medium text-foreground backdrop-blur transition-colors hover:bg-muted">
-                Wie es funktioniert
-              </Link>
-            </div>
-            <LiveStats />
-          </div>
-        </section>
+        {/* Hero (switchable a/b via ?hero= for the live comparison) */}
+        <HeroSection />
 
         {/* Features */}
         <section className="border-y border-border bg-muted/30">
