@@ -8,6 +8,11 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.29.2] – 2026-06-26
+
+### Behoben
+- Korrekte PLZ (26135) im Impressum + Datenschutz. (#117)
+
 ## [0.29.1] – 2026-06-26
 
 ### Geändert

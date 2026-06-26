@@ -34,7 +34,7 @@ export default function ImpressumPage() {
             <p>
               Tim Sigl<br />
               Krusenweg 26<br />
-              261235 Oldenburg<br />
+              26135 Oldenburg<br />
               Deutschland
             </p>
           </Section>
