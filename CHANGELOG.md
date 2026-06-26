@@ -8,6 +8,11 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.34.1] – 2026-06-26
+
+### Geändert
+- Die doppelte In-Page-Tableiste (Suche/Sitzungen/Themen/Analyse) im Ratsinfo entfällt — die Navigation läuft jetzt über die Sidebar; der Seitentitel wechselt stattdessen pro Ansicht (Beschlüsse/Sitzungen/Themen/Analyse). (#124)
+
 ## [0.34.0] – 2026-06-26
 
 ### Hinzugefügt
