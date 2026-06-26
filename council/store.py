@@ -1027,6 +1027,15 @@ class CouncilStore:
                 "ON CONFLICT(slug) DO UPDATE SET lat=excluded.lat, lon=excluded.lon, "
                 "geojson=excluded.geojson, geo_tried=1", (slug, lat, lon, geojson))
 
+    def reset_geo(self) -> int:
+        """Clear all geocoding (lat/lon/geojson, geo_tried) so it can be recomputed —
+        e.g. after improving the geocoder. Keeps descriptions. Returns rows reset."""
+        with self._conn:
+            cur = self._conn.execute(
+                "UPDATE council_entity_meta SET lat=NULL, lon=NULL, geojson=NULL, geo_tried=0 "
+                "WHERE geo_tried=1 OR lat IS NOT NULL")
+        return cur.rowcount
+
     def decisions_for_amount(self, only_missing: bool = False) -> list[dict]:
         """Main decisions with their text, for the € extraction backfill."""
         sql = "SELECT id, title, beschluss FROM council_decisions WHERE kind = 'decision'"

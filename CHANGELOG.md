@@ -8,6 +8,11 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.23.0] – 2026-06-26
+
+### Geändert
+- **Karten auf den Themen-Seiten deutlich aufgewertet:** minimalistische CARTO-Kacheln im Stil der Seite (hell/dunkel, wechseln live mit dem Theme) statt der bunten Standard-OSM-Kacheln; **Straßen werden vollständig** gezeichnet (alle Segmente via Overpass statt nur einem Teilstück von Nominatim); und die Ansicht zoomt bei kleinen Orten/Straßen nicht mehr zu nah heran (maxZoom gesenkt, retina-scharf). (#106)
+
 ## [0.22.0] – 2026-06-26
 
 ### Geändert
