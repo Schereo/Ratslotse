@@ -7,6 +7,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
 import { Topic, TopicMatch, TopicDecision, Article } from "@/lib/types";
 import { DecisionLinkCard } from "@/components/decision-ui";
+import { NwzReadHint } from "@/components/nwz-link";
 import {
   Badge, Button, Card, CardListSkeleton, ConfirmDialog, EmptyState, Input, PageHeader, Textarea, formatDate,
   Dialog, DialogContent, DialogHeader, DialogTitle, toast,
@@ -344,12 +345,8 @@ function MatchItem({ m }: { m: TopicMatch }) {
       const a = await api.get<Article>(`/nwz/article/${m.catalog}?refid=${encodeURIComponent(m.refid)}`);
       setArticle(a);
       setShown(true);
-    } catch (err) {
-      toast.error(
-        err instanceof ApiError && err.status === 403
-          ? "Hinterlege deine NWZ-Zugangsdaten, um den ganzen Artikel zu sehen."
-          : "Artikel konnte nicht geladen werden.",
-      );
+    } catch {
+      toast.error("Artikel konnte nicht geladen werden.");
     } finally {
       setLoading(false);
     }
@@ -367,9 +364,13 @@ function MatchItem({ m }: { m: TopicMatch }) {
         {loading ? "Lädt…" : shown ? "Artikel ausblenden" : "Ganzen Artikel anzeigen"}
       </button>
       {shown && article && (
-        <div className="mt-2 whitespace-pre-wrap rounded-md bg-muted/50 p-3 text-sm leading-relaxed text-foreground/90">
-          {article.content_text}
-        </div>
+        article.content_text ? (
+          <div className="mt-2 whitespace-pre-wrap rounded-md bg-muted/50 p-3 text-sm leading-relaxed text-foreground/90">
+            {article.content_text}
+          </div>
+        ) : (
+          <div className="mt-2"><NwzReadHint title={article.title} /></div>
+        )
       )}
     </li>
   );

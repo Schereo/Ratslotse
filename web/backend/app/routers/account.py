@@ -1,4 +1,4 @@
-"""Account self-service: NWZ credentials and password management."""
+"""Account self-service: delivery channel, password, account deletion."""
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
