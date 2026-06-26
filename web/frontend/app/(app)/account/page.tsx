@@ -57,7 +57,7 @@ export default function AccountPage() {
     <div>
       <PageHeader title="Mein Konto" description={user?.email} />
 
-      <div className="mt-6 max-w-md space-y-6">
+      <div className="mt-6 grid max-w-4xl items-start gap-6 lg:grid-cols-2">
         <Card className="p-6">
           <h2 className="font-semibold text-foreground">Passwort ändern</h2>
           <form onSubmit={handleSubmit} className="mt-4 space-y-4">
