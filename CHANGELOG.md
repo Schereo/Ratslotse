@@ -8,6 +8,11 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.39.1] – 2026-06-26
+
+### Geändert
+- **Themen-Karte größer & auf Oldenburg zentriert:** Die stadtweite Themen-Karte ist jetzt deutlich höher (72 vh) und rahmt den dichten Stadtkern statt aller Punkte. Einzelne weit entfernte Ausreißer (Berne, Hude, Bad Zwischenahn) zoomen die Karte nicht mehr heraus, sodass Oldenburg groß und detailliert sichtbar ist. (#135)
+
 ## [0.39.0] – 2026-06-26
 
 ### Hinzugefügt

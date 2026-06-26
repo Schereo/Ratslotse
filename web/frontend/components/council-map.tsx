@@ -61,8 +61,22 @@ export function CouncilMap({ points }: { points: EntityMapPoint[] }) {
         marker.on("click", () => router.push(`/council/thema/${p.slug}`));
         latlngs.push([p.lat, p.lon]);
       }
-      if (latlngs.length) map.fitBounds(latlngs, { padding: [30, 30], maxZoom: 15 });
-      else map.setView([53.1435, 8.2146], 12); // Oldenburg centre fallback
+      if (latlngs.length >= 12) {
+        // Frame the dense core (≈ Oldenburg city), not the few scattered edge points:
+        // a couple of far outliers (Berne, Hude, …) would otherwise zoom the whole map
+        // out and shrink the city to a tiny blob. Fit to the 3–97 percentile box.
+        const lats = latlngs.map((p) => p[0]).sort((a, b) => a - b);
+        const lons = latlngs.map((p) => p[1]).sort((a, b) => a - b);
+        const q = (arr: number[], f: number) => arr[Math.min(arr.length - 1, Math.floor(arr.length * f))];
+        map.fitBounds(
+          [[q(lats, 0.03), q(lons, 0.03)], [q(lats, 0.97), q(lons, 0.97)]],
+          { padding: [20, 20], maxZoom: 14 },
+        );
+      } else if (latlngs.length) {
+        map.fitBounds(latlngs, { padding: [30, 30], maxZoom: 14 });
+      } else {
+        map.setView([53.1435, 8.2146], 12); // Oldenburg centre fallback
+      }
     })();
     return () => {
       cancelled = true;
@@ -77,7 +91,7 @@ export function CouncilMap({ points }: { points: EntityMapPoint[] }) {
   return (
     <div
       ref={ref}
-      className="h-[28rem] w-full overflow-hidden rounded-lg border border-border"
+      className="h-[72vh] min-h-[30rem] w-full overflow-hidden rounded-lg border border-border"
       aria-label="Stadtweite Themen-Karte"
     />
   );
