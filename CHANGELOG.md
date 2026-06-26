@@ -8,6 +8,11 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.37.0] – 2026-06-26
+
+### Hinzugefügt
+- **3D-Karte von Oldenburg im Landing-Hero:** eine gekippte, langsam rotierende MapLibre-Karte mit extrudierten 3D-Gebäuden (freie, schlüssellose OpenStreetMap-Tiles via OpenFreeMap), als Showcase neben dem Text (zweispaltig auf großen Viewports). Lädt nur clientseitig; bei Tile-Fehler greift das Partikel-Netzwerk als Fallback. CSP um `worker-src blob:` + die Tile-Domain erweitert. (#131)
+
 ## [0.36.2] – 2026-06-26
 
 ### Behoben

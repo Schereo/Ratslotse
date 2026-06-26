@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Search, Sparkles, MapPin, BarChart3, Bell, Landmark } from "lucide-react";
+import { Search, Sparkles, MapPin, BarChart3, Bell, Landmark, ArrowRight } from "lucide-react";
 import { BrandMark } from "@/components/brand";
 import { HeaderCTA } from "@/components/landing-cta";
-import { HeroSection } from "@/components/hero-section";
+import { HeroCanvas } from "@/components/hero-canvas";
+import { HeroMapFrame } from "@/components/hero-map-frame";
+import { LiveStats } from "@/components/live-stats";
 import { Reveal } from "@/components/reveal";
 
 export const metadata: Metadata = {
@@ -35,8 +37,34 @@ export default function LandingPage() {
       </header>
 
       <main>
-        {/* Hero (switchable a/b via ?hero= for the live comparison) */}
-        <HeroSection />
+        {/* Hero — text (server-rendered for SEO) + framed 3D Oldenburg map */}
+        <section className="relative overflow-hidden">
+          <HeroCanvas />
+          <div className="relative z-10 mx-auto grid max-w-6xl items-center gap-10 px-5 py-16 sm:py-24 lg:grid-cols-2">
+            <div className="text-center lg:text-left">
+              <p className="text-sm font-medium text-primary">Stadtrat Oldenburg</p>
+              <h1 className="mt-3 text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
+                Was beschließt eigentlich der Rat?
+              </h1>
+              <p className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground lg:mx-0">
+                Ratslotse macht die Beschlüsse des Oldenburger Stadtrats durchsuchbar, vergleichbar und verständlich —
+                mit KI-Fragen, Themen-Karten und Analysen. Aus der amtlichen Quelle, ohne PDF-Wälzen.
+              </p>
+              <div className="mt-8 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
+                <Link href="/register" className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition-opacity hover:opacity-90">
+                  Kostenlos registrieren <ArrowRight className="h-4 w-4" />
+                </Link>
+                <Link href="/technik" className="inline-flex items-center rounded-lg border border-border bg-background/70 px-5 py-2.5 text-sm font-medium text-foreground backdrop-blur transition-colors hover:bg-muted">
+                  Wie es funktioniert
+                </Link>
+              </div>
+              <LiveStats />
+            </div>
+            <div className="hidden lg:block">
+              <HeroMapFrame />
+            </div>
+          </div>
+        </section>
 
         {/* Features */}
         <section className="border-y border-border bg-muted/30">
