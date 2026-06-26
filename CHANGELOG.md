@@ -8,6 +8,11 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.36.1] – 2026-06-26
+
+### Geändert
+- „Mein Konto": die Karten (Passwort / Zustellung / Telegram / Konto löschen) stehen bei großem Viewport nebeneinander (zweispaltiges Grid) statt in einer schmalen Spalte. (#128)
+
 ## [0.36.0] – 2026-06-26
 
 ### Hinzugefügt
