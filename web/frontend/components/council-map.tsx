@@ -61,17 +61,15 @@ export function CouncilMap({ points }: { points: EntityMapPoint[] }) {
         marker.on("click", () => router.push(`/council/thema/${p.slug}`));
         latlngs.push([p.lat, p.lon]);
       }
-      if (latlngs.length >= 12) {
-        // Frame the dense core (≈ Oldenburg city), not the few scattered edge points:
-        // a couple of far outliers (Berne, Hude, …) would otherwise zoom the whole map
-        // out and shrink the city to a tiny blob. Fit to the 3–97 percentile box.
-        const lats = latlngs.map((p) => p[0]).sort((a, b) => a - b);
-        const lons = latlngs.map((p) => p[1]).sort((a, b) => a - b);
-        const q = (arr: number[], f: number) => arr[Math.min(arr.length - 1, Math.floor(arr.length * f))];
-        map.fitBounds(
-          [[q(lats, 0.03), q(lons, 0.03)], [q(lats, 0.97), q(lons, 0.97)]],
-          { padding: [20, 20], maxZoom: 14 },
-        );
+      if (latlngs.length >= 8) {
+        // Frame the dense Oldenburg core, not the scattered far points (Berne, Hude, Bad
+        // Zwischenahn …): centre on the median point and fit to everything within ~7 km of
+        // it, so a handful of distant outliers don't shrink the whole city to a tiny blob.
+        const median = (xs: number[]) => xs.slice().sort((a, b) => a - b)[xs.length >> 1];
+        const cLat = median(latlngs.map((p) => p[0]));
+        const cLon = median(latlngs.map((p) => p[1]));
+        const core = latlngs.filter(([la, lo]) => Math.hypot((la - cLat) * 111, (lo - cLon) * 67) < 7);
+        map.fitBounds(core.length >= 5 ? core : latlngs, { padding: [24, 24], maxZoom: 15 });
       } else if (latlngs.length) {
         map.fitBounds(latlngs, { padding: [30, 30], maxZoom: 14 });
       } else {
