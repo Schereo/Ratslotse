@@ -70,21 +70,34 @@ def expand_query(question: str, model: str = MODEL) -> str:
         return question
 
 
-def answer_question(question: str, candidates: list[dict], model: str = MODEL):
-    """Synthesise an answer from retrieved candidates. Returns ``(answer, cited_ids)``."""
-    context = "\n".join(
+def _build_context(candidates: list[dict]) -> str:
+    return "\n".join(
         f"[{c['id']}] {(c.get('title') or '').strip()} ({c.get('session_date')}): "
         f"{(c.get('summary') or c.get('beschluss') or '').strip()[:200]}"
         for c in candidates
     ) or "(keine passenden Beschlüsse gefunden)"
-    prompt = _PROMPT.format(question=question.strip()[:300], context=context)
-    extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
-    resp = llm.chat_complete(
-        model=model, temperature=0.2, max_tokens=600,
-        messages=[{"role": "user", "content": prompt}], **extra,
-    )
+
+
+def _answer_messages(question: str, candidates: list[dict]) -> tuple[list[dict], dict]:
+    prompt = _PROMPT.format(question=question.strip()[:300], context=_build_context(candidates))
+    extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in MODEL else {}
+    return [{"role": "user", "content": prompt}], extra
+
+
+def answer_question(question: str, candidates: list[dict], model: str = MODEL):
+    """Synthesise an answer from retrieved candidates. Returns ``(answer, cited_ids)``."""
+    messages, extra = _answer_messages(question, candidates)
+    resp = llm.chat_complete(model=model, temperature=0.2, max_tokens=600, messages=messages, **extra)
     answer = (resp.choices[0].message.content or "").strip()
     return resolve_citations(answer, {c["id"] for c in candidates})
+
+
+def answer_stream(question: str, candidates: list[dict], model: str = MODEL):
+    """Stream the answer text deltas (same prompt/context as answer_question) so the
+    UI can render the answer as it is written. Citation resolution is the caller's
+    job once the full text is assembled (see resolve_citations)."""
+    messages, extra = _answer_messages(question, candidates)
+    yield from llm.chat_stream(model=model, temperature=0.2, max_tokens=600, messages=messages, **extra)
 
 
 def resolve_citations(answer: str, valid: set[int]):

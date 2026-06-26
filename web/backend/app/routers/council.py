@@ -1,7 +1,11 @@
 """Ratsinformationssystem: browse and search sessions, agenda items, committees."""
 from __future__ import annotations
 
+import json
+import math
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from council.store import CouncilStore
@@ -211,40 +215,92 @@ class AskBody(BaseModel):
     question: str
 
 
+# Q&A sizing: show up to QA_TOP_K reranked decisions as sources, feed the most
+# relevant QA_ANSWER_N to the LLM for a focused, cited answer. QA_MIN_SCORE drops
+# the near-irrelevant tail from the displayed sources (sigmoid relevance).
+QA_TOP_K = 40
+QA_ANSWER_N = 20
+QA_MIN_SCORE = 0.1
+
+
+def _qa_retrieve(store: CouncilStore, q: str, expanded: str) -> tuple[list[dict], str]:
+    """Hybrid retrieval + cross-encoder rerank → candidates in relevance order, each
+    with an *absolute* relevance score: the sigmoid of the reranker logit, NOT a
+    min-max normalisation (which forced the weakest hit to a misleading 0 %). Falls
+    back to keyword retrieval when embeddings/the reranker are unavailable."""
+    try:
+        from council import embeddings as emb
+        hits = emb.hybrid_search(store, q, expanded, top_k=QA_TOP_K, pool=55)
+        if hits:
+            candidates = store.get_decisions_by_ids([h[0] for h in hits])  # preserves order
+            score = {h[0]: h[1] for h in hits}
+            for c in candidates:
+                logit = score.get(c["id"])
+                c["score"] = round(1.0 / (1.0 + math.exp(-logit)), 3) if logit is not None else None
+            return [c for c in candidates if (c.get("score") or 0) >= QA_MIN_SCORE] or candidates, "semantisch"
+    except Exception:  # noqa: BLE001 — fastembed missing/any failure → keyword fallback
+        pass
+    cands = store.get_goal_candidates(qa.extract_keywords(q), limit=QA_TOP_K)
+    return store.get_decisions_by_ids([c["id"] for c in cands]), "keyword"
+
+
+def _sse(obj: dict) -> str:
+    return f"data: {json.dumps(obj, ensure_ascii=False)}\n\n"
+
+
+def _qa_source(c: dict) -> dict:
+    return {
+        "id": c["id"], "title": c.get("title"), "summary": c.get("summary"),
+        "policy_field": c.get("policy_field"), "outcome": c.get("outcome"),
+        "session_date": c.get("session_date"), "committee": c.get("committee"),
+        "score": c.get("score"),
+    }
+
+
 @router.post("/ask")
 def ask(body: AskBody, _user: dict = Depends(require_active),
-        store: CouncilStore = Depends(get_council_store)) -> dict:
-    """Answer a free-text question from the decisions, with cited sources.
-    Retrieves candidates semantically (embeddings) when available, else by keyword."""
+        store: CouncilStore = Depends(get_council_store)) -> StreamingResponse:
+    """Answer a free-text question from the decisions, streamed as Server-Sent Events:
+    progress steps → the ranked source decisions (the moment retrieval+rerank finish)
+    → the answer token-by-token → a final event with the cited ids. Streaming makes
+    the wait feel far shorter (sources show in ~2 s) and degrades gracefully if a
+    proxy buffers it (the client then renders the same final state at once)."""
     q = body.question.strip()
     if len(q) < 4:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Bitte eine etwas längere Frage stellen.")
-    candidates, mode = None, "keyword"
-    try:
-        from council import embeddings as emb
-        # Hybrid retrieval (BM25 + vector on the expanded query) reranked by a
-        # cross-encoder against the original question — far better ranking than pure
-        # vector for keyword-y questions (e.g. "Spielplätze"). Rerank scores are logits,
-        # so min-max-normalise them to 0–1 for the displayed relevance badge.
-        hits = emb.hybrid_search(store, q, qa.expand_query(q), top_k=25)
-        if hits:
-            candidates = store.get_decisions_by_ids([h[0] for h in hits])
-            raw = [h[1] for h in hits]
-            lo, hi = min(raw), max(raw)
-            rng = (hi - lo) or 1.0
-            norm = {h[0]: (h[1] - lo) / rng for h in hits}
-            for c in candidates:
-                c["score"] = round(norm.get(c["id"], 0.0), 3)
-            mode = "semantisch"
-    except Exception:  # noqa: BLE001 — fastembed missing/any failure → keyword fallback
-        candidates = None
-    if not candidates:
-        candidates = store.get_goal_candidates(qa.extract_keywords(q), limit=25)
-        candidates = store.get_decisions_by_ids([c["id"] for c in candidates])
-    answer, _cited = qa.answer_question(q, candidates)
-    # Show all retrieved/matched decisions as sources (more results for broad
-    # questions), not only the ones the answer happened to cite.
-    return {"answer": answer, "mode": mode, "sources": candidates[:25]}
+
+    def gen():
+        try:
+            yield _sse({"type": "step", "step": "expand"})
+            expanded = qa.expand_query(q)
+            yield _sse({"type": "step", "step": "search"})
+            candidates, mode = _qa_retrieve(store, q, expanded)
+            yield _sse({"type": "sources", "mode": mode, "sources": [_qa_source(c) for c in candidates]})
+            yield _sse({"type": "step", "step": "answer"})
+            if not candidates:
+                yield _sse({"type": "token", "text": "Dazu habe ich keine passenden Beschlüsse gefunden."})
+                yield _sse({"type": "done", "cited": []})
+                return
+            ctx = candidates[:QA_ANSWER_N]
+            parts: list[str] = []
+            try:
+                for delta in qa.answer_stream(q, ctx):
+                    parts.append(delta)
+                    yield _sse({"type": "token", "text": delta})
+            except Exception:  # noqa: BLE001 — streaming failed mid-way → one-shot fallback
+                if not parts:
+                    ans, _ = qa.answer_question(q, ctx)
+                    parts.append(ans)
+                    yield _sse({"type": "token", "text": ans})
+            _, cited = qa.resolve_citations("".join(parts), {c["id"] for c in candidates})
+            yield _sse({"type": "done", "cited": cited})
+        except Exception:  # noqa: BLE001 — surface a terminal error to the client
+            yield _sse({"type": "error", "message": "Frage fehlgeschlagen."})
+
+    return StreamingResponse(
+        gen(), media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @router.get("/decision-stats")

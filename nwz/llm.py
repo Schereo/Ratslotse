@@ -113,3 +113,17 @@ def chat_complete(**kwargs: Any):
     errors (4xx other than 429) propagate immediately without retry.
     """
     return get_client().chat.completions.create(**_with_model_params(kwargs))
+
+
+def chat_stream(**kwargs: Any):
+    """Stream content deltas as they are generated — used for the live "Frag den Rat"
+    answer so the UI can render tokens as they arrive. Same per-model params and
+    connect-time retry as chat_complete (the retried call returns the stream object;
+    a mid-stream failure propagates without retry). Yields non-empty text chunks."""
+    stream = chat_complete(stream=True, **kwargs)
+    for chunk in stream:
+        if not chunk.choices:
+            continue
+        text = chunk.choices[0].delta.content
+        if text:
+            yield text
