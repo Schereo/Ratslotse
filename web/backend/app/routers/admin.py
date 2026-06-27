@@ -1,16 +1,54 @@
 """Admin: edit LLM prompts, manage web users and the Telegram whitelist."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+import logging
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 
 from council.store import CouncilStore
 from nwz import prompts
+from nwz.email import send_email
 from nwz.store import Store
 
+from ..config import get_settings
 from ..deps import get_council_store, get_store, require_admin
 from ..schemas import NwzFulltextUpdate, PromptOut, PromptUpdate, RoleUpdate, StatusUpdate, WebUserOut
 
+logger = logging.getLogger("nwz.web.admin")
+
 router = APIRouter(prefix="/api/admin", tags=["admin"])
+
+
+def _send_activation_email(email: str) -> None:
+    """Best-effort: tell a user their account was approved (status pending → active)."""
+    settings = get_settings()
+    if not settings.resend_api_key or not email:
+        return
+    login = f"{settings.app_base_url.rstrip('/')}/login"
+    body = (
+        "<div style='max-width:560px;margin:0 auto;padding:24px 16px;"
+        "font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a'>"
+        "<div style='font-size:20px;font-weight:700;color:#2563eb'>Ratslotse</div>"
+        "<p style='margin:20px 0 8px'>Gute Nachrichten: Dein Konto wurde freigeschaltet — du kannst dich "
+        "jetzt anmelden und loslegen.</p>"
+        f"<a href='{login}' style='display:inline-block;background:#2563eb;color:#fff;"
+        "text-decoration:none;padding:10px 18px;border-radius:8px;font-size:14px'>Jetzt anmelden &rarr;</a>"
+        "<p style='margin-top:20px;color:#94a3b8;font-size:12px'>"
+        "Fragen oder Feedback? Antworte einfach auf diese E-Mail.</p></div>"
+    )
+    text = (
+        "Dein Ratslotse-Konto wurde freigeschaltet.\n\n"
+        f"Jetzt anmelden: {login}\n\n"
+        "Fragen oder Feedback? Antworte einfach auf diese E-Mail.\n"
+    )
+    try:
+        send_email(
+            email, "Ratslotse – dein Konto ist freigeschaltet", body, text=text,
+            reply_to=settings.feedback_email or settings.web_admin_email or None,
+            api_key=settings.resend_api_key, sender=settings.email_from,
+        )
+    except Exception:  # noqa: BLE001 — approval must not fail on a mail hiccup
+        logger.exception("activation email failed for %s", email)
 
 
 # ---- stats ----
@@ -85,10 +123,11 @@ def set_role(
 def set_status(
     user_id: int,
     body: StatusUpdate,
+    background: BackgroundTasks,
     admin: dict = Depends(require_admin),
     store: Store = Depends(get_store),
 ) -> WebUserOut:
-    """Approve ('active') or suspend ('pending') a web account."""
+    """Approve ('active') or suspend ('pending') a web account. Emails the user on first approval."""
     if body.status not in ("active", "pending"):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Status muss 'active' oder 'pending' sein.")
     target = store.get_web_user_by_id(user_id)
@@ -97,6 +136,9 @@ def set_status(
     if target["id"] == admin["id"] and body.status != "active":
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Du kannst dich nicht selbst sperren.")
     store.set_web_user_status(user_id, body.status)
+    # Notify the user only on the pending → active transition (not on re-saves/no-ops).
+    if body.status == "active" and target.get("status") != "active":
+        background.add_task(_send_activation_email, target.get("email", ""))
     return WebUserOut(**store.get_web_user_by_id(user_id))
 
 

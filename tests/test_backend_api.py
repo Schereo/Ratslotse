@@ -132,6 +132,36 @@ def test_admin_can_change_role(client):
     assert r.status_code == 200 and r.json()["role"] == "admin"
 
 
+def test_activation_emails_user_on_approve(client):
+    from types import SimpleNamespace
+    _register(client)  # admin
+    TestClient(app).post("/api/auth/register", json={"email": "bob@test.de", "password": "password123"})  # pending
+    bob = next(u for u in client.get("/api/admin/users").json() if u["email"] == "bob@test.de")
+    assert bob["status"] == "pending"
+
+    sent = {}
+    fake_settings = SimpleNamespace(resend_api_key="x", app_base_url="https://ratslotse.de",
+                                    email_from="F <f@x.de>", feedback_email="", web_admin_email="admin@test.de")
+
+    def fake_send(to, subject, html, **kw):
+        sent.update(to=to, subject=subject)
+        return "id"
+
+    with patch("app.routers.admin.send_email", side_effect=fake_send), \
+         patch("app.routers.admin.get_settings", return_value=fake_settings):
+        r = client.put(f"/api/admin/users/{bob['id']}/status", json={"status": "active"})
+    assert r.status_code == 200 and r.json()["status"] == "active"
+    assert sent.get("to") == "bob@test.de"
+    assert "freigeschaltet" in sent.get("subject", "").lower()
+
+    # Re-saving 'active' (no transition) must NOT send a second mail.
+    sent.clear()
+    with patch("app.routers.admin.send_email", side_effect=fake_send), \
+         patch("app.routers.admin.get_settings", return_value=fake_settings):
+        client.put(f"/api/admin/users/{bob['id']}/status", json={"status": "active"})
+    assert sent == {}
+
+
 # ---- nwz search ----
 def test_nwz_search_empty(client):
     _register(client)
