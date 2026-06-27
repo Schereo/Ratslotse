@@ -8,6 +8,11 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.42.1] – 2026-06-27
+
+### Behoben
+- **„Erste Schritte" haken jetzt beim Anklicken ab:** Die Aktions-Schritte (Frag den Rat, Beschlüsse, Analyse, Themen-Karten) hatten kein Abschluss-Signal und blieben dauerhaft offen. Ein Schritt wird jetzt als erledigt markiert, sobald man ihn öffnet (client-seitig gemerkt); „Thema anlegen"/„Telegram" gelten weiter zusätzlich über ihre echte Bedingung als erledigt. (#143)
+
 ## [0.42.0] – 2026-06-26
 
 ### Hinzugefügt

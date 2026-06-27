@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Newspaper, Landmark, Tags, Link2, Check, ArrowRight, Sparkles, BarChart3, Map, type LucideIcon } from "lucide-react";
@@ -65,48 +66,48 @@ export default function DashboardPage() {
   );
 }
 
-type Step = { icon: LucideIcon; title: string; desc: string; href: string; done?: boolean };
+const ONBOARDING_KEY = "ratslotse:onboarding-visited";
+
+type Step = { id: string; icon: LucideIcon; title: string; desc: string; href: string; done?: boolean };
 
 function FirstSteps({ linked, hasTopic }: { linked: boolean; hasTopic: boolean }) {
+  // Onboarding is a nudge, not critical state — track opened steps client-side so a step
+  // ticks off as soon as it's clicked (the action steps have no other completion signal).
+  // Read in an effect (not during render) to avoid an SSR hydration mismatch.
+  const [visited, setVisited] = useState<string[]>([]);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(ONBOARDING_KEY);
+      if (raw) setVisited(JSON.parse(raw));
+    } catch { /* ignore unreadable storage */ }
+  }, []);
+  const markVisited = (id: string) =>
+    setVisited((prev) => {
+      if (prev.includes(id)) return prev;
+      const next = [...prev, id];
+      try { localStorage.setItem(ONBOARDING_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+
   const steps: Step[] = [
-    {
-      icon: Sparkles,
-      title: "Stell dem Rat eine Frage",
+    { id: "frag", icon: Sparkles, title: "Stell dem Rat eine Frage",
       desc: "Beispiel-Frage: Was wurde zum Fliegerhorst beschlossen? Die KI findet die passenden Beschlüsse und antwortet mit Quellen.",
-      href: "/council?tab=decisions&mode=fragen",
-    },
-    {
-      icon: Landmark,
-      title: "Beschlüsse durchstöbern",
+      href: "/council?tab=decisions&mode=fragen" },
+    { id: "beschluesse", icon: Landmark, title: "Beschlüsse durchstöbern",
       desc: "Volltextsuche mit Filtern nach Fraktion, Themenfeld und Geldbeträgen.",
-      href: "/council",
-    },
-    {
-      icon: BarChart3,
-      title: "Die Analyse erkunden",
+      href: "/council" },
+    { id: "analyse", icon: BarChart3, title: "Die Analyse erkunden",
       desc: "Wer ist im Rat aktiv, wo fließt das Geld, welche Themen bewegen — Parteien, Personen, Finanzen, Trends.",
-      href: "/council?tab=analysis",
-    },
-    {
-      icon: Map,
-      title: "Themen-Seiten mit Karten",
+      href: "/council?tab=analysis" },
+    { id: "karten", icon: Map, title: "Themen-Seiten mit Karten",
       desc: "Gebiete und Straßen mit KI-Beschreibung und eingezeichneter Karte.",
-      href: "/council?tab=themen",
-    },
-    {
-      icon: Tags,
-      title: "Erstes Thema anlegen",
+      href: "/council?tab=themen" },
+    { id: "thema", icon: Tags, title: "Erstes Thema anlegen",
       desc: "Lege ein Thema an und werde über neue Beschlüsse dazu benachrichtigt.",
-      href: "/topics",
-      done: hasTopic,
-    },
-    {
-      icon: Link2,
-      title: "Telegram verbinden",
+      href: "/topics", done: hasTopic },
+    { id: "telegram", icon: Link2, title: "Telegram verbinden",
       desc: "Optional: Benachrichtigungen direkt per Telegram statt per E-Mail.",
-      href: "/link",
-      done: linked,
-    },
+      href: "/link", done: linked },
   ];
 
   return (
@@ -116,19 +117,21 @@ function FirstSteps({ linked, hasTopic }: { linked: boolean; hasTopic: boolean }
       <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
         {steps.map((step) => {
           const Icon = step.icon;
+          const done = step.done || visited.includes(step.id);
           return (
             <Link
-              key={step.title}
+              key={step.id}
               href={step.href}
+              onClick={() => markVisited(step.id)}
               className="group flex items-start gap-3 rounded-lg border border-border p-3 transition-colors hover:border-primary/40 hover:bg-primary/5"
             >
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                {step.done ? <Check className="h-4 w-4 text-green-600" /> : <Icon className="h-4 w-4" />}
+                {done ? <Check className="h-4 w-4 text-green-600" /> : <Icon className="h-4 w-4" />}
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-sm font-medium text-foreground">{step.title}</p>
-                  {step.done && <Badge color="green">Erledigt</Badge>}
+                  {done && <Badge color="green">Erledigt</Badge>}
                 </div>
                 <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{step.desc}</p>
               </div>
