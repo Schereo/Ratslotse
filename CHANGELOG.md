@@ -8,6 +8,11 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+## [0.42.0] – 2026-06-26
+
+### Hinzugefügt
+- **Freischaltungs-E-Mail:** Wenn ein Konto vom Admin freigeschaltet wird (Status `pending` → `active`), bekommt die Person automatisch eine E-Mail „Dein Konto ist freigeschaltet" mit Anmelde-Link. Wird nur beim echten Übergang verschickt (nicht beim erneuten Speichern eines bereits aktiven Kontos) und ist best-effort (eine Mail-Panne blockiert die Freischaltung nicht). (#142)
+
 ## [0.41.1] – 2026-06-26
 
 ### Behoben
