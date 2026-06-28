@@ -1,4 +1,7 @@
-# KI-Pipeline — Ist-Stand & Verbesserungspotenzial
+---
+title: KI-Pipeline
+description: Wie NWZ-Digest und Ratsinfo-Matching per LLM funktionieren — Ist-Stand, Schwachstellen, Roadmap.
+---
 
 > Stand: 2026-06-17. Dieses Dokument beschreibt, wie die KI-gestützte Extraktion
 > und das Topic-Matching aus **NWZ** (Nordwest-Zeitung) und dem **Ratsinformationssystem**

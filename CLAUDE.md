@@ -58,10 +58,13 @@ Beim Wechsel auf einen neuen Server:
    tim ALL=(ALL) NOPASSWD: /bin/systemctl restart nwz-bot, ...
    ```
 8. Cron-Jobs für `tim` einrichten:
+   - `0 3 * * *` — backup_db.py (tägliches SQLite-Backup, hält die letzten 7 Kopien je DB)
    - `30 6 * * *` — daily_digest.py
    - `0 7 * * *` — check_committees.py
    - `0 8,14 * * *` — check_council.py
    - `0 9 * * *` — check_protocols.py (neu veröffentlichte Sitzungsprotokolle parsen **und** neue Beschlüsse per LLM in Themenfelder klassifizieren — `classify_decisions.py` läuft am Ende mit)
+   - `0 14 * * *` — session_followup.py (NWZ-Nachberichte zu vergangenen abonnierten Sitzungen suchen und versenden)
+   - `0 17 * * 5` — weekly_digest.py (freitags: wöchentlicher NWZ-Überblick)
    - `0 3 * * 0` — weekly_enrich.py (wöchentlich die schwereren LLM-/Embedding-Backfills nachziehen, damit Themen-Seiten/Karten/Presse-Links/„Ähnliche Beschlüsse" mit neuen Beschlüssen frisch bleiben: extract_entities → describe_entities → geocode_entities → link_news → embed_decisions → match_topics_decisions (Themen↔Beschlüsse) → generate_field_recaps (Themenfeld-Rückblicke, KI, ≈ monatlich); Log nach `data/weekly_enrich.log`)
 9. Actions-SSH-Key in `authorized_keys` auf **beiden** VMs eintragen (tk-edge-vm + tk-nwz)
 
@@ -140,6 +143,21 @@ FastAPI-Backend (`web/backend/`) + Next.js-Frontend (`web/frontend/`), läuft au
 - **Prompts** liegen jetzt in `nwz/prompts.py` (DB-Tabelle `prompts` in `nwz.sqlite`)
   und sind über das Admin-UI live editierbar — Defaults greifen, solange kein Override existiert.
 - **Bot-Befehl** `/verbinden <CODE>` verknüpft einen Web-Account mit dem Telegram-Chat.
+
+## Technik-Doku (`docs-site/`)
+
+Astro-Starlight-Site mit Architektur, KI-Pipeline und ADRs, ausgeliefert unter
+**ratslotse.de/docs**. Quelle: `docs-site/src/content/docs/`. Lokal: `cd docs-site
+&& npm install && npm run dev` (Node ≥ 22).
+
+- **CI**: `.github/workflows/docs.yml` baut die Site bei jedem PR (Build-Gate).
+  `docs-review.yml` lässt Claude pro PR die Doku auf Drift prüfen (Kommentar-Modus,
+  braucht Repo-Secret `ANTHROPIC_API_KEY`).
+- **Deploy**: Die Deploy-Action baut die Site und rsync't `docs-site/dist/` nach
+  `edge:~/docs/` (= `/home/tim/docs` auf der Edge-VM).
+- **Serving**: Caddy auf der Edge-VM liefert `/home/tim/docs` unter `/docs` aus.
+  **Einmalig** den `ratslotse.de`-Block anpassen — Vorlage: `deploy/Caddy-docs.snippet`,
+  dann `sudo systemctl reload caddy`.
 
 ## Nützliche Befehle
 

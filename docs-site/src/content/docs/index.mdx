@@ -1,0 +1,50 @@
+---
+title: Ratslotse — Technische Dokumentation
+description: Architektur, KI-Pipeline und Architekturentscheidungen hinter ratslotse.de.
+template: splash
+hero:
+  tagline: Wie der Ratslotse Oldenburger Lokalpolitik scrapt, per LLM klassifiziert und personalisiert ausliefert.
+  actions:
+    - text: Architektur ansehen
+      link: /docs/architektur/
+      icon: right-arrow
+      variant: primary
+    - text: Entscheidungen (ADRs)
+      link: /docs/adr/
+      icon: open-book
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+Diese Doku richtet sich an Entwickler:innen und Betreiber. Sie erklärt, **wie**
+das System gebaut ist und **warum** es so gebaut ist. Endnutzer-Hilfe steht
+direkt im Bot (`/hilfe`) und auf [ratslotse.de](https://ratslotse.de).
+
+<CardGrid stagger>
+	<Card title="Architektur" icon="puzzle">
+		Zwei Scraper (NWZ ePaper + SessionNet) speisen eine gemeinsame SQLite-DB.
+		Telegram-Bot und Web-Frontend sitzen darauf.
+		[→ Architektur](/docs/architektur/)
+	</Card>
+	<Card title="KI-Pipeline" icon="open-book">
+		Wie Artikel und Tagesordnungen per LLM (über OpenRouter) gegen Nutzerthemen
+		gematcht werden — inkl. Eval und Modellvergleich.
+		[→ KI-Pipeline](/docs/ki-pipeline/)
+	</Card>
+	<Card title="Produkt" icon="comment">
+		Bot-Befehle, Nutzerverwaltung und das Beschlüsse-Feature aus den
+		Sitzungsprotokollen.
+		[→ Telegram-Bot](/docs/bot/)
+	</Card>
+	<Card title="Entscheidungen" icon="approve-check">
+		Architecture Decision Records: die wichtigen Technik-Weichen und warum sie
+		so gestellt wurden.
+		[→ ADRs](/docs/adr/)
+	</Card>
+</CardGrid>
+
+:::note[Interne Doku]
+Das Repo ist privat. Infrastruktur-Details (Hosts, IPs, Cron-Setup) stehen
+bewusst in `CLAUDE.md` im Repo-Root und werden hier nur verlinkt, nicht dupliziert.
+:::

@@ -99,8 +99,7 @@ Repo-Root — dieselben Dateien wie der Bot.
    ```
    Caddy holt das TLS-Zertifikat automatisch. Das `header_up` ist
    **sicherheitskritisch** (sonst lässt sich `X-Forwarded-For` spoofen und der
-   Rate-Limiter umgehen) — nicht entfernen. `deploy/nginx-nwz-web.conf` bleibt
-   nur als Referenz für ein alternatives lokales-nginx-Setup.
+   Rate-Limiter umgehen) — nicht entfernen.
 7. **Passwordless sudo** (`/etc/sudoers.d/tim-nwz`) um die neuen Services ergänzen:
    ```
    tim ALL=(ALL) NOPASSWD: /bin/systemctl restart nwz-bot, /bin/systemctl restart nwz-web-api, /bin/systemctl restart nwz-web-frontend

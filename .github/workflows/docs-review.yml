@@ -1,0 +1,58 @@
+name: Docs-Review (KI)
+
+# Prüft bei jedem PR, ob Code-Änderungen die Dokumentation veralten lassen, und
+# postet Vorschläge als PR-Kommentar. KOMMENTAR-MODUS: Die Permissions geben nur
+# `contents: read` — die Action kann also NICHTS committen, nur kommentieren.
+#
+# VORAUSSETZUNG: Repo-Secret `ANTHROPIC_API_KEY` (Settings → Secrets → Actions).
+# Ohne das Secret schlägt der Job fehl — dann Secret hinzufügen oder diesen
+# Workflow deaktivieren/löschen. Kosten fallen pro Lauf an (ein LLM-Review je PR).
+#
+# Läuft bewusst nur bei opened/reopened/ready_for_review (nicht bei jedem Push auf
+# den PR) — das hält die Kosten niedrig. Für Re-Review bei jedem Push `synchronize`
+# zu den types ergänzen.
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  docs-review:
+    # Keine Forks (Secrets stehen Fork-PRs ohnehin nicht zur Verfügung).
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Du bist Dokumentations-Reviewer für dieses Repository.
+
+            Aufgabe: Prüfe die Änderungen dieses Pull Requests (den Diff gegen den
+            Basis-Branch) darauf, ob sie Dokumentation veralten lassen.
+
+            Relevante Doku:
+            - Markdown im Repo-Root: README.md, CLAUDE.md, scripts/README.md
+            - Die Starlight-Doku unter docs-site/src/content/docs/ — insbesondere
+              architektur.md, ki-pipeline.md, modellvergleich.md, bot.md,
+              beschluesse.md, eval.md und die ADRs unter adr/
+
+            Achte auf konkrete Drift, z. B.: geänderte/entfernte Skripte oder
+            Cron-Zeiten, geänderte Bot-Befehle (nwz/bot_commands.py), geänderte
+            Env-Variablen, neue/entfernte Services, geänderte LLM-Modelle/Provider,
+            geänderte Deploy-Schritte. Eine NEUE folgenreiche Technik-Entscheidung
+            sollte ggf. einen neuen ADR bekommen.
+
+            Ausgabe: Poste GENAU EINEN PR-Kommentar.
+            - Wenn Anpassungen nötig sind: liste pro betroffener Doku-Stelle den
+              Dateipfad und einen konkreten Vorschlag (gerne als Diff-Snippet).
+            - Wenn nichts anzupassen ist: ein kurzer Satz, dass die Doku aktuell ist.
+            Committe NICHTS — nur kommentieren. Antworte auf Deutsch.

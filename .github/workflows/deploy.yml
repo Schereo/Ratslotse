@@ -12,6 +12,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Build docs site
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: docs-site/package-lock.json
+
+      - name: npm ci + build (docs-site)
+        working-directory: docs-site
+        run: |
+          npm ci
+          npm run build
+
       - name: Deploy via rsync
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
@@ -42,8 +55,16 @@ jobs:
             --exclude '.git/' \
             --exclude 'web/frontend/node_modules/' \
             --exclude 'web/frontend/.next/' \
+            --exclude 'docs-site/node_modules/' \
+            --exclude 'docs-site/dist/' \
             -e "ssh" \
             ./ target:~/app/
+
+          # Statische Doku auf die Edge-VM, wo Caddy sie unter /docs ausliefert
+          # (siehe deploy/Caddy-docs.snippet). Eigenes Verzeichnis -> --delete ok.
+          rsync -az --delete \
+            -e "ssh" \
+            docs-site/dist/ edge:~/docs/
 
       - name: Restart services and rebuild web
         uses: appleboy/ssh-action@v1.0.3
