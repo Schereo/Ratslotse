@@ -58,6 +58,7 @@ Artikel, die erkennbar eine Fortsetzung einer bereits gemeldeten Geschichte sind
 |--------|----------|
 | `/start` | Bot vorstellen / Befehlsübersicht |
 | `/hilfe` | Alle Befehle im Überblick |
+| `/verbinden CODE` | Web-Konto (ratslotse.de) mit diesem Chat verknüpfen |
 
 ### Admin
 
@@ -73,11 +74,18 @@ Artikel, die erkennbar eine Fortsetzung einer bereits gemeldeten Geschichte sind
 
 | Zeit | Script | Aufgabe |
 |------|--------|---------|
+| 03:00 täglich | `backup_db.py` | SQLite-Backup (hält die letzten 7 Kopien je DB) |
 | 06:30 täglich | `daily_digest.py` | NWZ-Ausgabe holen, klassifizieren, Digest versenden |
 | 07:00 täglich | `check_committees.py` | Ausschuss-Tagesordnungen prüfen, Abonnenten benachrichtigen |
 | 08:00 + 14:00 täglich | `check_council.py` | Stadtratssitzungen auf Themen-Matches prüfen |
+| 09:00 täglich | `check_protocols.py` | Neue Sitzungsprotokolle parsen + Beschlüsse klassifizieren |
 | 14:00 täglich | `session_followup.py` | NWZ-Nachberichte zu vergangenen Sitzungen suchen und versenden |
 | 17:00 freitags | `weekly_digest.py` | Wöchentlichen Überblick erstellen und versenden |
+| 03:00 sonntags | `weekly_enrich.py` | Schwerere LLM-/Embedding-Backfills nachziehen (Themen, Karten, Presse-Links) |
+
+> Vollständige Cron-/systemd-Einrichtung: siehe [CLAUDE.md](CLAUDE.md). Beim
+> Synchronisieren der Zeitpläne ist die laufende `crontab -l` auf dem Server
+> maßgeblich.
 
 ---
 
@@ -88,10 +96,22 @@ Alle Credentials in `~/app/.env` auf dem Server:
 ```env
 NWZ_USERNAME=...
 NWZ_PASSWORD=...
-OPENAI_API_KEY=...
+OPENROUTER_API_KEY=...
 TELEGRAM_BOT_TOKEN=...
 TELEGRAM_CHAT_ID=...   # Chat-ID des Administrators
 ```
+
+Die vollständige Variablenliste (Web-Frontend, E-Mail-Zustellung, LLM-Modelle)
+steht in [CLAUDE.md](CLAUDE.md). Die `.env` liegt **nur auf dem Server**, nicht
+im Repo.
+
+---
+
+## Web-Frontend
+
+Neben dem Telegram-Bot gibt es ein Web-Frontend unter **[ratslotse.de](https://ratslotse.de)**
+(FastAPI + Next.js): Themen verwalten, Artikel-Archiv durchsuchen, Stadtrats­beschlüsse
+nach Themenfeldern erkunden. Setup und Architektur: [web/README.md](web/README.md).
 
 ---
 
@@ -99,4 +119,4 @@ TELEGRAM_CHAT_ID=...   # Chat-ID des Administrators
 
 Siehe [ARCHITECTURE.md](ARCHITECTURE.md) für Infos zu Scraping, Datenbankschema, KI-Klassifizierung und Deployment.
 
-**Stack:** Python 3.12 · SQLite (FTS5) · OpenAI API (GPT-4o / GPT-4o-mini) · Telegram Bot API · systemd · GitHub Actions
+**Stack:** Python 3.12 · SQLite (FTS5) · OpenRouter (LLM-Routing, DSGVO-konform) · Telegram Bot API · FastAPI + Next.js · systemd · Caddy · GitHub Actions

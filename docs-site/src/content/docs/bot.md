@@ -1,4 +1,7 @@
-# Telegram-Bot – Anleitung
+---
+title: Telegram-Bot
+description: Befehle und Nutzerverwaltung des @RatslotseBot.
+---
 
 Der Bot (`@RatslotseBot`) arbeitet mit einer **Whitelist**: Nur freigeschaltete
 Nutzer können ihn verwenden. Jeder Nutzer hat seine **eigenen** Themen und Abos.
