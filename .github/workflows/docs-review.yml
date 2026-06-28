@@ -33,6 +33,10 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Pass the default token so the action skips the GitHub-App/OIDC token
+          # exchange (we don't install the Claude GitHub App). pull-requests:write
+          # above lets it post the review comment.
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           prompt: |
             Du bist Dokumentations-Reviewer für dieses Repository.
 
