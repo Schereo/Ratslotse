@@ -262,4 +262,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    from nwz.alerts import run_guarded
+    run_guarded("session_followup", main)

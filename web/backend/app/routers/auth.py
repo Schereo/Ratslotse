@@ -14,9 +14,19 @@ from nwz.email import send_email
 
 from ..config import get_settings
 from ..deps import get_current_user, get_store
-from ..ratelimit import forgot_password_limiter, login_limiter, register_limiter
-from ..schemas import ForgotPasswordRequest, LoginRequest, RegisterRequest, ResetPasswordRequest, UserOut
+from ..ratelimit import forgot_password_limiter, login_limiter, register_limiter, verify_email_limiter
+from ..schemas import (
+    ForgotPasswordRequest,
+    LoginRequest,
+    RegisterRequest,
+    ResetPasswordRequest,
+    UserOut,
+    VerifyEmailRequest,
+)
 from ..security import create_access_token, hash_password, verify_password
+
+# Email-verification links stay valid for 24h (more forgiving than the 1h reset link).
+_VERIFY_TTL_HOURS = 24
 
 logger = logging.getLogger("nwz.web.auth")
 
@@ -93,6 +103,7 @@ def _to_out(user: dict) -> UserOut:
         linked=bool(user.get("telegram_chat_id")),
         delivery_channel=user.get("delivery_channel", "telegram"),
         nwz_fulltext_allowed=bool(user.get("nwz_fulltext_allowed")),
+        email_verified=bool(user.get("email_verified")),
     )
 
 
@@ -114,15 +125,29 @@ def register(
     is_admin = email == settings.web_admin_email.lower() or store.count_web_users() == 0
     role = "admin" if is_admin else "user"
     user_status = "active" if is_admin else "pending"
-    user_id = store.create_web_user(email, hash_password(body.password), role, user_status)
+    # Admins (deployment owner) skip verification; so does the no-email case, since
+    # we can't send a link then — otherwise the account could never be confirmed.
+    can_send_email = bool(settings.resend_api_key)
+    verified = is_admin or not can_send_email
+    user_id = store.create_web_user(
+        email, hash_password(body.password), role, user_status, email_verified=verified
+    )
     # New web accounts have no Telegram yet — default to email delivery so they
     # actually receive their digest. They can switch channels later in /account.
     store.set_delivery_channel(user_id, "email")
     created_user = store.get_web_user_by_id(user_id)
     _set_auth_cookie(response, created_user)
-    # Ping the admins so they know someone is waiting to be approved.
     if user_status == "pending":
-        background.add_task(_notify_admins_pending, email)
+        if verified:
+            # Can't verify the address (email not configured) — ping admins now.
+            background.add_task(_notify_admins_pending, email)
+        else:
+            # Send a verification link; admins are pinged once it's confirmed real.
+            raw = secrets.token_urlsafe(32)
+            token_hash = hashlib.sha256(raw.encode()).hexdigest()
+            expires = (datetime.utcnow() + timedelta(hours=_VERIFY_TTL_HOURS)).isoformat(timespec="seconds")
+            store.create_email_verification(user_id, token_hash, expires)
+            background.add_task(_send_verification_email, email, raw)
     return _to_out(created_user)
 
 
@@ -216,4 +241,80 @@ def reset_password(body: ResetPasswordRequest, store: Store = Depends(get_store)
                             "Der Link ist ungültig oder abgelaufen. Bitte fordere einen neuen an.")
     store.update_password_hash(user_id, hash_password(body.new_password))
     store.increment_token_version(user_id)
+    return {"ok": True}
+
+
+def _send_verification_email(email: str, raw_token: str) -> None:
+    """Background task: email a verification link (valid 24h, best-effort)."""
+    settings = get_settings()
+    if not settings.resend_api_key:
+        return
+    link = f"{settings.app_base_url.rstrip('/')}/verify-email?token={raw_token}"
+    subject = "Ratslotse – E-Mail bestätigen"
+    body = (
+        "<div style='max-width:560px;margin:0 auto;padding:24px 16px;"
+        "font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a'>"
+        "<div style='font-size:20px;font-weight:700;color:#2563eb'>Ratslotse</div>"
+        "<p style='margin:20px 0 8px'>Willkommen! Bitte bestätige deine E-Mail-Adresse über den "
+        "folgenden Link — er ist <b>24 Stunden</b> gültig:</p>"
+        f"<a href='{link}' style='display:inline-block;background:#2563eb;color:#fff;"
+        "text-decoration:none;padding:10px 18px;border-radius:8px;font-size:14px'>E-Mail bestätigen →</a>"
+        "<p style='margin-top:20px;color:#94a3b8;font-size:12px'>"
+        "Wenn du dich nicht registriert hast, ignoriere diese E-Mail.</p>"
+        "</div>"
+    )
+    text = (
+        "Willkommen bei Ratslotse.\n\n"
+        f"Bitte bestätige deine E-Mail (24 Stunden gültig): {link}\n\n"
+        "Wenn du dich nicht registriert hast, ignoriere diese E-Mail.\n"
+    )
+    try:
+        send_email(email, subject, body, text=text, api_key=settings.resend_api_key, sender=settings.email_from)
+    except Exception:
+        logger.exception("verification email failed for %s", email)
+
+
+@router.post("/verify-email", response_model=UserOut)
+def verify_email(
+    body: VerifyEmailRequest,
+    background: BackgroundTasks,
+    store: Store = Depends(get_store),
+) -> UserOut:
+    """Confirm an email address from a valid verification token."""
+    token_hash = hashlib.sha256(body.token.encode()).hexdigest()
+    now = datetime.utcnow().isoformat(timespec="seconds")
+    user_id = store.consume_email_verification(token_hash, now)
+    if user_id is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            "Der Bestätigungslink ist ungültig oder abgelaufen. "
+                            "Bitte fordere einen neuen an.")
+    store.set_email_verified(user_id, True)
+    user = store.get_web_user_by_id(user_id)
+    # Now that the address is confirmed, ping admins to approve (if still pending).
+    if user and user.get("status") == "pending":
+        background.add_task(_notify_admins_pending, user["email"])
+    return _to_out(user)
+
+
+@router.post("/resend-verification")
+def resend_verification(
+    request: Request,
+    background: BackgroundTasks,
+    user: dict = Depends(get_current_user),
+    store: Store = Depends(get_store),
+) -> dict:
+    """Re-send the verification link to the logged-in user's address."""
+    verify_email_limiter.check(request)
+    settings = get_settings()
+    if user.get("email_verified"):
+        return {"ok": True}  # already verified — no-op
+    email = str(user["email"])
+    if not settings.resend_api_key or email.endswith("@local"):
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE,
+                            "E-Mail-Versand ist nicht konfiguriert.")
+    raw = secrets.token_urlsafe(32)
+    token_hash = hashlib.sha256(raw.encode()).hexdigest()
+    expires = (datetime.utcnow() + timedelta(hours=_VERIFY_TTL_HOURS)).isoformat(timespec="seconds")
+    store.create_email_verification(int(user["id"]), token_hash, expires)
+    background.add_task(_send_verification_email, email, raw)
     return {"ok": True}

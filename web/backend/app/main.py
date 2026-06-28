@@ -55,11 +55,19 @@ async def lifespan(app: FastAPI):  # noqa: ANN001
 
 settings = get_settings()
 
+# Expose the interactive API docs only outside production. cookie_secure is our
+# prod signal (True in prod, False for local/test HTTP) — there's no reason to
+# advertise the full schema + endpoints publicly.
+_expose_docs = not settings.cookie_secure
+
 app = FastAPI(
     title="Ratslotse",
     description="Lokale Nachrichten und Ratsinformationen für Oldenburg.",
     version="1.0.0",
     lifespan=lifespan,
+    docs_url="/docs" if _expose_docs else None,
+    redoc_url="/redoc" if _expose_docs else None,
+    openapi_url="/openapi.json" if _expose_docs else None,
 )
 
 # Only trust proxy headers forwarded from localhost (nginx/gunicorn on the same host).

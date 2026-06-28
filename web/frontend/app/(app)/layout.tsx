@@ -1,28 +1,30 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Clock } from "lucide-react";
+import { Clock, MailWarning } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { DesktopSidebar, MobileTopbar, MobileBottomNav } from "@/components/nav";
-import { Card, Spinner } from "@/components/ui";
+import { Button, Card, Spinner, toast } from "@/components/ui";
 import type { User } from "@/lib/types";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading, refresh } = useAuth();
   const router = useRouter();
 
+  const needsVerify = !!user && !user.email_verified && user.role !== "admin";
   const pending = !!user && user.status === "pending" && user.role !== "admin";
+  const gated = needsVerify || pending;
 
-  // Poll /me every 30 s while the account is pending so it auto-unlocks
-  // as soon as an admin approves it — without requiring a page reload.
+  // Poll /me every 30 s while the account is gated (email unverified or awaiting
+  // approval) so it auto-unlocks without a page reload.
   useQuery({
     queryKey: ["me-poll"],
     queryFn: () => api.get<User>("/auth/me").then((u) => { refresh(); return u; }),
-    refetchInterval: pending ? 30_000 : false,
-    enabled: pending,
+    refetchInterval: gated ? 30_000 : false,
+    enabled: gated,
   });
 
   useEffect(() => {
@@ -37,7 +39,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <MobileTopbar />
       <main className="flex flex-1 flex-col overflow-y-auto pb-[calc(env(safe-area-inset-bottom)+5rem)] md:pb-0">
         <div className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
-          {pending ? <PendingNotice email={user.email} /> : children}
+          {needsVerify ? <VerifyNotice email={user.email} /> : pending ? <PendingNotice email={user.email} /> : children}
         </div>
         <footer className="border-t border-border bg-background/85 py-3 text-center text-xs text-muted-foreground backdrop-blur md:sticky md:bottom-0">
           <a href="/impressum" className="hover:text-foreground">Impressum</a>
@@ -49,6 +51,38 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </main>
       <MobileBottomNav />
     </div>
+  );
+}
+
+function VerifyNotice({ email }: { email: string }) {
+  const [busy, setBusy] = useState(false);
+
+  const resend = async () => {
+    setBusy(true);
+    try {
+      await api.post("/auth/resend-verification");
+      toast.success("Bestätigungs-E-Mail wurde erneut gesendet.");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Senden fehlgeschlagen.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card className="mx-auto mt-10 max-w-md p-8 text-center">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
+        <MailWarning className="h-6 w-6 text-blue-600" />
+      </div>
+      <h1 className="mt-4 text-xl font-bold text-foreground">Bitte bestätige deine E-Mail</h1>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Wir haben einen Bestätigungslink an <span className="font-medium">{email}</span> geschickt.
+        Klick den Link, um fortzufahren. Schau auch im Spam-Ordner nach.
+      </p>
+      <Button onClick={resend} disabled={busy} variant="secondary" className="mt-5">
+        {busy ? "Senden…" : "E-Mail erneut senden"}
+      </Button>
+    </Card>
   );
 }
 

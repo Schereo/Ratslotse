@@ -133,6 +133,7 @@ CREATE TABLE IF NOT EXISTS web_users (
     nwz_verified_at  TEXT,
     nwz_fulltext_allowed INTEGER NOT NULL DEFAULT 0,
     token_version    INTEGER NOT NULL DEFAULT 0,
+    email_verified   INTEGER NOT NULL DEFAULT 0,
     created_at       TEXT NOT NULL
 );
 
@@ -146,6 +147,14 @@ CREATE TABLE IF NOT EXISTS link_codes (
 
 -- Single-use password-reset tokens (only the sha256 hash is stored) with expiry.
 CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    token_hash TEXT PRIMARY KEY,
+    user_id    INTEGER NOT NULL,
+    expires_at TEXT NOT NULL,
+    used       INTEGER NOT NULL DEFAULT 0
+);
+
+-- Single-use email-verification tokens (only the sha256 hash is stored) with expiry.
+CREATE TABLE IF NOT EXISTS email_verification_tokens (
     token_hash TEXT PRIMARY KEY,
     user_id    INTEGER NOT NULL,
     expires_at TEXT NOT NULL,
@@ -246,6 +255,11 @@ class Store:
                     self._conn.execute("ALTER TABLE web_users ADD COLUMN nwz_fulltext_allowed INTEGER NOT NULL DEFAULT 0")
                 if "token_version" not in wu_cols:
                     self._conn.execute("ALTER TABLE web_users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0")
+                if "email_verified" not in wu_cols:
+                    # Existing accounts predate email verification — treat them as
+                    # verified so the new gate never locks anyone out.
+                    self._conn.execute("ALTER TABLE web_users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0")
+                    self._conn.execute("UPDATE web_users SET email_verified = 1")
         self._conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_topics_chat ON topics(chat_id)"
         )
@@ -418,12 +432,14 @@ class Store:
 
     # ---- web accounts ----
 
-    def create_web_user(self, email: str, password_hash: str, role: str = "user", status: str = "pending") -> int:
+    def create_web_user(self, email: str, password_hash: str, role: str = "user",
+                        status: str = "pending", email_verified: bool = False) -> int:
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
             cur = self._conn.execute(
-                "INSERT INTO web_users (email, password_hash, role, status, created_at) VALUES (?, ?, ?, ?, ?)",
-                (email.lower().strip(), password_hash, role, status, now),
+                "INSERT INTO web_users (email, password_hash, role, status, email_verified, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (email.lower().strip(), password_hash, role, status, 1 if email_verified else 0, now),
             )
         return cur.lastrowid
 
@@ -457,8 +473,8 @@ class Store:
         with self._conn:
             cur = self._conn.execute(
                 "INSERT INTO web_users "
-                "(email, password_hash, role, status, telegram_chat_id, delivery_channel, created_at) "
-                "VALUES (?, '!', 'user', 'active', ?, 'telegram', ?)",
+                "(email, password_hash, role, status, telegram_chat_id, delivery_channel, email_verified, created_at) "
+                "VALUES (?, '!', 'user', 'active', ?, 'telegram', 1, ?)",
                 (f"tg-{chat_id}@local", chat_id, now),
             )
         return cur.lastrowid
@@ -495,7 +511,7 @@ class Store:
     def list_web_users(self) -> list[dict]:
         rows = self._conn.execute(
             "SELECT id, email, role, status, telegram_chat_id, nwz_username, nwz_verified_at, "
-            "nwz_fulltext_allowed, created_at FROM web_users ORDER BY created_at"
+            "nwz_fulltext_allowed, email_verified, created_at FROM web_users ORDER BY created_at"
         ).fetchall()
         return [dict(r) for r in rows]
 
@@ -544,6 +560,38 @@ class Store:
             self._conn.execute("UPDATE password_reset_tokens SET used = 1 WHERE token_hash = ?", (token_hash,))
         return int(row["user_id"])
 
+    def set_email_verified(self, user_id: int, verified: bool = True) -> None:
+        with self._conn:
+            self._conn.execute(
+                "UPDATE web_users SET email_verified = ? WHERE id = ?",
+                (1 if verified else 0, user_id),
+            )
+
+    def create_email_verification(self, user_id: int, token_hash: str, expires_at: str) -> None:
+        """Store a single-use email-verification token (only its sha256 hash). Drops the
+        user's prior unused tokens so requesting a new link invalidates old ones."""
+        with self._conn:
+            self._conn.execute("DELETE FROM email_verification_tokens WHERE user_id = ?", (user_id,))
+            self._conn.execute(
+                "INSERT INTO email_verification_tokens(token_hash, user_id, expires_at, used) VALUES (?,?,?,0)",
+                (token_hash, user_id, expires_at),
+            )
+
+    def consume_email_verification(self, token_hash: str, now: str) -> int | None:
+        """Validate + burn a verification token: returns the user_id if it exists, is
+        unused and not expired (then marks it used); otherwise None."""
+        row = self._conn.execute(
+            "SELECT user_id, expires_at, used FROM email_verification_tokens WHERE token_hash = ?",
+            (token_hash,),
+        ).fetchone()
+        if not row or row["used"] or row["expires_at"] <= now:
+            return None
+        with self._conn:
+            self._conn.execute(
+                "UPDATE email_verification_tokens SET used = 1 WHERE token_hash = ?", (token_hash,)
+            )
+        return int(row["user_id"])
+
     def delete_web_user(self, user_id: int) -> None:
         """Hard-delete a web account and everything keyed to it (GDPR: right to erasure)."""
         with self._conn:
@@ -553,6 +601,7 @@ class Store:
             self._conn.execute("DELETE FROM committee_subscriptions WHERE owner_id = ?", (user_id,))
             self._conn.execute("DELETE FROM link_codes WHERE web_user_id = ?", (user_id,))
             self._conn.execute("DELETE FROM password_reset_tokens WHERE user_id = ?", (user_id,))
+            self._conn.execute("DELETE FROM email_verification_tokens WHERE user_id = ?", (user_id,))
             self._conn.execute("DELETE FROM web_users WHERE id = ?", (user_id,))
 
     def get_users_with_topic_count(self) -> list[dict]:
