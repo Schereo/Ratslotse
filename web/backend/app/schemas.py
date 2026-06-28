@@ -24,6 +24,10 @@ class ResetPasswordRequest(BaseModel):
     new_password: str = Field(min_length=8, max_length=128)
 
 
+class VerifyEmailRequest(BaseModel):
+    token: str = Field(min_length=1)
+
+
 class UserOut(BaseModel):
     id: int
     email: str
@@ -33,6 +37,7 @@ class UserOut(BaseModel):
     linked: bool = False
     delivery_channel: str = "telegram"
     nwz_fulltext_allowed: bool = False
+    email_verified: bool = False
 
 
 # ---- linking ----
@@ -89,6 +94,7 @@ class WebUserOut(BaseModel):
     status: str = "pending"
     telegram_chat_id: int | None = None
     nwz_fulltext_allowed: bool = False
+    email_verified: bool = False
     created_at: str
 
 

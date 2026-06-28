@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
+// Next's dev server (HMR/React Refresh) needs 'unsafe-eval'; a production build
+// does not — so only allow it in development to keep the prod CSP tight.
+const isDev = process.env.NODE_ENV !== "production";
 
 const nextConfig = {
   reactStrictMode: true,
@@ -30,7 +33,7 @@ const nextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+              `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
               "worker-src 'self' blob:",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https://*.basemaps.cartocdn.com https://*.openfreemap.org",

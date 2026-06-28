@@ -9,6 +9,7 @@ export interface User {
   linked: boolean;
   delivery_channel: DeliveryChannel;
   nwz_fulltext_allowed: boolean;
+  email_verified: boolean;
 }
 
 export interface SearchResult {
@@ -292,6 +293,7 @@ export interface WebUser {
   status: "pending" | "active";
   telegram_chat_id: number | null;
   nwz_fulltext_allowed: boolean;
+  email_verified: boolean;
   created_at: string;
 }
 

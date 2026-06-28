@@ -448,3 +448,52 @@ def test_feedback_ok_without_email_config(client):
     with patch("app.routers.feedback.get_settings", return_value=fake):
         r = client.post("/api/feedback", json={"kind": "other", "message": "Test ohne Mail-Config"})
     assert r.status_code == 200 and r.json()["ok"] is True
+
+
+# ---- email verification ----
+import hashlib  # noqa: E402
+from datetime import datetime, timedelta  # noqa: E402
+
+
+def test_register_marks_verified_without_email_config(client):
+    """With no Resend key configured we can't send a link, so accounts are created
+    already-verified — otherwise they could never be confirmed."""
+    _register(client)  # admin
+    r = _register(client, email="bob@test.de")
+    assert r.status_code == 201
+    assert r.json()["email_verified"] is True
+
+
+def test_verify_email_endpoint(client):
+    _register(client)  # admin
+    _register(client, email="bob@test.de")
+    store = Store(NWZ_DB)
+    uid = store.get_web_user_by_email("bob@test.de")["id"]
+    store.set_email_verified(uid, False)  # pretend the link was sent, not yet clicked
+    raw = "verify-token-123"
+    token_hash = hashlib.sha256(raw.encode()).hexdigest()
+    exp = (datetime.utcnow() + timedelta(hours=1)).isoformat(timespec="seconds")
+    store.create_email_verification(uid, token_hash, exp)
+    store.close()
+
+    # bad token rejected
+    assert client.post("/api/auth/verify-email", json={"token": "nope"}).status_code == 400
+    # valid token verifies the address
+    r = client.post("/api/auth/verify-email", json={"token": raw})
+    assert r.status_code == 200 and r.json()["email_verified"] is True
+    store = Store(NWZ_DB)
+    assert store.get_web_user_by_email("bob@test.de")["email_verified"] == 1
+    store.close()
+    # single-use: replaying the same token fails
+    assert client.post("/api/auth/verify-email", json={"token": raw}).status_code == 400
+
+
+def test_email_verification_token_expiry():
+    store = Store(NWZ_DB)
+    uid = store.create_web_user("exp@test.de", "h", "user", "pending", email_verified=False)
+    token_hash = hashlib.sha256(b"expired").hexdigest()
+    past = (datetime.utcnow() - timedelta(hours=1)).isoformat(timespec="seconds")
+    store.create_email_verification(uid, token_hash, past)
+    now = datetime.utcnow().isoformat(timespec="seconds")
+    assert store.consume_email_verification(token_hash, now) is None
+    store.close()
