@@ -15,6 +15,7 @@ const config: Config = {
     extend: {
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],
+        display: ["var(--font-display)", "var(--font-inter)", "system-ui", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -50,6 +51,14 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        signal: {
+          DEFAULT: "hsl(var(--signal))",
+          foreground: "hsl(var(--signal-foreground))",
+        },
+      },
+      boxShadow: {
+        // Weicher Ambient-Schatten für angehobene Karten (statt hartem shadow-md).
+        lifted: "0 6px 24px -8px hsl(var(--primary) / 0.18), 0 2px 8px -4px hsl(var(--foreground) / 0.08)",
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -65,10 +74,16 @@ const config: Config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        // Sanftes Auf-und-ab-Schweben fürs Maskottchen (wie ein Boot in der Dünung).
+        bob: {
+          "0%, 100%": { transform: "translateY(0) rotate(-1.5deg)" },
+          "50%": { transform: "translateY(-6px) rotate(1.5deg)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        bob: "bob 4s ease-in-out infinite",
       },
     },
   },

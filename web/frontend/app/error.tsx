@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { Card, Button } from "@/components/ui";
-import { BrandMark } from "@/components/brand";
+import { Mascot } from "@/components/mascot";
 
 export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
@@ -11,15 +11,12 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
   }, [error]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
+    <div className="flex min-h-screen items-center justify-center bg-waves px-4">
       <Card className="w-full max-w-sm p-8 text-center">
-        <div className="flex items-center justify-center gap-3">
-          <BrandMark />
-          <span className="text-2xl font-bold tracking-tight text-foreground">Fehler</span>
-        </div>
+        <Mascot pose="confused" className="mx-auto h-24 w-24" />
         <h1 className="mt-4 text-lg font-semibold text-foreground">Etwas ist schiefgelaufen</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Bitte versuche es erneut. Falls das Problem bleibt, lade die Seite neu.
+          Da ist Lotti kurz vom Kurs abgekommen. Bitte versuche es erneut — falls das Problem bleibt, lade die Seite neu.
         </p>
         <Button onClick={reset} className="mt-6 w-full">Erneut versuchen</Button>
       </Card>

@@ -3,8 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api";
-import { Button, Card, Input } from "@/components/ui";
-import { BrandMark } from "@/components/brand";
+import { Button, Input } from "@/components/ui";
+import { AuthShell } from "@/components/auth-shell";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -27,12 +27,7 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <Card className="w-full max-w-sm p-8">
-        <div className="flex items-center gap-3">
-          <BrandMark />
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Passwort vergessen</h1>
-        </div>
+    <AuthShell title="Passwort über Bord?" pose="confused">
         {sent ? (
           <>
             <p className="mt-3 text-sm text-muted-foreground">
@@ -63,7 +58,6 @@ export default function ForgotPasswordPage() {
             </p>
           </>
         )}
-      </Card>
-    </div>
+    </AuthShell>
   );
 }

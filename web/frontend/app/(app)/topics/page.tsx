@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import Link from "next/link";
-import { Plus, Trash2, FileText, Tags, Pencil, RefreshCw, Landmark } from "lucide-react";
+import { Plus, Trash2, FileText, Pencil, RefreshCw, Landmark } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
 import { Topic, TopicMatch, TopicDecision, Article } from "@/lib/types";
@@ -192,7 +192,7 @@ export default function TopicsPage() {
       <div className="mt-6 space-y-3">
         {topics.length === 0 ? (
           <EmptyState
-            icon={Tags}
+            mascot="wave"
             title="Noch keine Themen"
             hint="Lege ein Thema an, nach dem der Bot täglich für dich sucht."
             action={

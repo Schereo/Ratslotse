@@ -4,8 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
-import { Button, Card, Input, PasswordInput } from "@/components/ui";
-import { BrandMark } from "@/components/brand";
+import { Button, Input, PasswordInput } from "@/components/ui";
+import { AuthShell } from "@/components/auth-shell";
 
 export default function RegisterPage() {
   const { register } = useAuth();
@@ -34,13 +34,10 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <Card className="w-full max-w-sm p-8">
-        <div className="flex items-center gap-3">
-          <BrandMark />
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Konto erstellen</h1>
-        </div>
-        <p className="mt-3 text-sm text-muted-foreground">Registriere dich für Ratslotse.</p>
+    <AuthShell title="Leinen los!" pose="celebrate">
+        <p className="mt-3 text-sm text-muted-foreground">
+          Erstelle dein kostenloses Konto — Lotti lotst dich danach durch die ersten Schritte.
+        </p>
         <form onSubmit={onSubmit} className="mt-6 space-y-4">
           <div>
             <label htmlFor="email" className="mb-1 block text-sm font-medium text-foreground">E-Mail</label>
@@ -62,7 +59,6 @@ export default function RegisterPage() {
             Anmelden
           </Link>
         </p>
-      </Card>
-    </div>
+    </AuthShell>
   );
 }

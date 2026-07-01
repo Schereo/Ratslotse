@@ -4,8 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
-import { Button, Card, Input, PasswordInput } from "@/components/ui";
-import { BrandMark } from "@/components/brand";
+import { Button, Input, PasswordInput } from "@/components/ui";
+import { AuthShell } from "@/components/auth-shell";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -30,13 +30,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <Card className="w-full max-w-sm p-8">
-        <div className="flex items-center gap-3">
-          <BrandMark />
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Ratslotse</h1>
-        </div>
-        <p className="mt-3 text-sm text-muted-foreground">Melde dich an, um fortzufahren.</p>
+    <AuthShell title="Moin!" pose="wave">
+        <p className="mt-3 text-sm text-muted-foreground">Willkommen zurück — melde dich an, um fortzufahren.</p>
         <form onSubmit={onSubmit} className="mt-6 space-y-4">
           <div>
             <label htmlFor="email" className="mb-1 block text-sm font-medium text-foreground">E-Mail</label>
@@ -72,7 +67,6 @@ export default function LoginPage() {
           {" · "}
           <Link href="/datenschutz" className="hover:text-foreground hover:underline">Datenschutz</Link>
         </p>
-      </Card>
-    </div>
+    </AuthShell>
   );
 }
