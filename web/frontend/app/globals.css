@@ -106,6 +106,40 @@
   }
 }
 
+/* Konfetti (components/confetti.tsx): von oben einregnen und dabei drehen. */
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(115vh) rotate(540deg);
+    opacity: 0.7;
+  }
+}
+.animate-confetti-fall {
+  animation: confetti-fall 2.5s ease-in forwards;
+}
+
+/* Druck: Navigation/Chrome raus, Inhalt volle Breite — Beschluss-Seiten
+   lassen sich so sauber ausdrucken oder als PDF weitergeben. */
+@media print {
+  aside,
+  header,
+  nav,
+  footer,
+  .print-hidden {
+    display: none !important;
+  }
+  main {
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+  body {
+    background: #fff;
+  }
+}
+
 /* Honour users who prefer fewer animations. */
 @media (prefers-reduced-motion: reduce) {
   *,

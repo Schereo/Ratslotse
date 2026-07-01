@@ -11,7 +11,7 @@ import {
   CouncilSession, SessionDetail, AgendaItem, CouncilDecision, DecisionOutcome, PolicyField,
 } from "@/lib/types";
 import {
-  Badge, Button, Card, CardListSkeleton, DateField, EmptyState, Input, PageHeader, Pagination, Select,
+  Badge, Button, Card, CardListSkeleton, DateField, EmptyState, Input, PageHeader, Pagination, Segmented, Select,
   Sheet, SheetContent, SheetTitle, SheetTrigger, Spinner, formatDate, toast,
 } from "@/components/ui";
 import { OutcomeBadge, FieldBadge, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
@@ -169,6 +169,14 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   // Field + party live in the URL so the analysis and badges can deep-link to a filtered list.
   const sp = useSearchParams();
   const router = useRouter();
+
+  // ?q= aus der URL übernehmen (Deep-Link aus der Command-Palette) — einmalig
+  // nach dem Mount, um keinen Hydration-Mismatch im Input zu erzeugen.
+  useEffect(() => {
+    const urlQ = sp.get("q");
+    if (urlQ) setQ(urlQ);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const field = sp.get("field") ?? "";
   const party = sp.get("party") ?? "";
   // Date range also lives in the URL so the Trends quarter bars can deep-link here.
@@ -235,21 +243,12 @@ function DecisionsTab({ committees }: { committees: string[] }) {
     <div className="space-y-3">
       {mode === "vote" && (
         <FilterField label="Ergebnis">
-          <div className="flex gap-1 overflow-x-auto rounded-md bg-muted p-1">
-            {OUTCOME_CHIPS.map((o) => (
-              <button
-                key={o.value}
-                type="button"
-                onClick={() => { setOutcome(o.value); setPage(1); }}
-                className={cn(
-                  "flex-1 whitespace-nowrap rounded-sm px-2 py-1.5 text-sm font-medium transition-colors",
-                  outcome === o.value ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {o.label}
-              </button>
-            ))}
-          </div>
+          <Segmented
+            className="overflow-x-auto"
+            value={outcome}
+            onChange={(o) => { setOutcome(o); setPage(1); }}
+            options={OUTCOME_CHIPS.map((o) => ({ value: o.value, label: o.label }))}
+          />
         </FilterField>
       )}
       <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-3">
@@ -287,21 +286,17 @@ function DecisionsTab({ committees }: { committees: string[] }) {
       <Card className="mt-4 p-4">
         {/* Tier 1 — primary: what am I looking at + free-text search. */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="flex shrink-0 gap-1 rounded-lg bg-muted p-1">
-            {(["vote", "report", "all"] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => { setUrlParam("cat", m === "vote" ? "" : m); setOutcome(""); }}
-                className={cn(
-                  "rounded-md px-4 py-1.5 text-sm font-medium transition-colors",
-                  mode === m ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {m === "vote" ? "Beschlüsse" : m === "report" ? "Berichte" : "Alle"}
-              </button>
-            ))}
-          </div>
+          <Segmented
+            className="shrink-0"
+            tone="primary"
+            value={mode}
+            onChange={(m) => { setUrlParam("cat", m === "vote" ? "" : m); setOutcome(""); }}
+            options={[
+              { value: "vote", label: "Beschlüsse" },
+              { value: "report", label: "Berichte" },
+              { value: "all", label: "Alle" },
+            ]}
+          />
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -494,21 +489,16 @@ function SessionsTab({ committees }: { committees: string[] }) {
               <option value="">Alle Ausschüsse</option>
               {committees.map((c) => <option key={c} value={c}>{c}</option>)}
             </Select>
-            <div className="flex gap-1 rounded-md bg-muted p-1">
-              {(["upcoming", "recent", "all"] as Scope[]).map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => { setScope(s); setQ(""); setCommittee(""); }}
-                  className={cn(
-                    "flex-1 rounded-sm px-2 py-1.5 text-sm font-medium transition-colors",
-                    scope === s && !q && !committee ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {s === "upcoming" ? "Kommend" : s === "recent" ? "Vergangen" : "Alle"}
-                </button>
-              ))}
-            </div>
+            <Segmented
+              tone="primary"
+              value={q || committee ? undefined : scope}
+              onChange={(s) => { setScope(s); setQ(""); setCommittee(""); }}
+              options={[
+                { value: "upcoming", label: "Kommend" },
+                { value: "recent", label: "Vergangen" },
+                { value: "all", label: "Alle" },
+              ]}
+            />
           </div>
         </div>
       </Card>
@@ -603,18 +593,15 @@ function SearchTab({ committees }: { committees: string[] }) {
   };
   return (
     <div>
-      <div className="mt-4 flex gap-1 rounded-md bg-muted p-1 sm:w-fit">
-        {([["suchen", "Suchen", Search], ["fragen", "KI-Frage", Sparkles]] as const).map(([m, lbl, Icon]) => (
-          <button key={m} type="button" onClick={() => setMode(m)}
-            data-tour={m === "fragen" ? "ki-frage-tab" : undefined}
-            className={cn(
-              "inline-flex flex-1 items-center justify-center gap-1.5 rounded-sm px-4 py-1.5 text-sm font-medium transition-colors sm:flex-none",
-              mode === m ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
-            )}>
-            <Icon className="h-4 w-4" /> {lbl}
-          </button>
-        ))}
-      </div>
+      <Segmented
+        className="mt-4 sm:w-fit"
+        value={mode}
+        onChange={setMode}
+        options={[
+          { value: "suchen", label: "Suchen", icon: Search },
+          { value: "fragen", label: "KI-Frage", icon: Sparkles, tour: "ki-frage-tab" },
+        ]}
+      />
       {mode === "suchen" ? <DecisionsTab committees={committees} /> : <QaTab />}
     </div>
   );
@@ -657,6 +644,19 @@ function CouncilInner() {
   return (
     <div>
       <PageHeader title={meta.title} description={meta.description} />
+      {/* Mobil fehlt die Sidebar — dieser Umschalter macht Sitzungen/Themen/Analyse
+          ohne Burger-Menü erreichbar. Desktop: Navigation bleibt in der Sidebar. */}
+      <Segmented
+        className="mt-3 overflow-x-auto md:hidden"
+        value={tab}
+        onChange={(t) => router.replace(`/council?tab=${t}`, { scroll: false })}
+        options={[
+          { value: "decisions", label: "Beschlüsse" },
+          { value: "sessions", label: "Sitzungen" },
+          { value: "themen", label: "Themen" },
+          { value: "analysis", label: "Analyse" },
+        ]}
+      />
       {tab === "decisions" ? <SearchTab committees={committees} />
         : tab === "sessions" ? <SessionsTab committees={committees} />
         : tab === "themen" ? <EntitiesTab />

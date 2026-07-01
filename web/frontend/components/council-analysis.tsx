@@ -3,14 +3,13 @@
 import { useSearchParams, useRouter } from "next/navigation";
 import { Users, Euro, TrendingUp, Target, User } from "lucide-react";
 import { PartyAnalysis, FinanceData } from "@/lib/types";
-import { Card, Spinner, EmptyState } from "@/components/ui";
+import { Card, Segmented, Spinner, EmptyState } from "@/components/ui";
 import { POLICY_FIELD_LABELS, PartyBadge, DecisionLinkCard, formatEuro } from "@/components/decision-ui";
 import { useFetch } from "@/lib/use-fetch";
 import { ChartExplainer } from "@/components/chart-explainer";
 import { TrendsView } from "@/components/council-trends";
 import { GoalsView } from "@/components/council-goals";
 import { PersonenView } from "@/components/council-members";
-import { cn } from "@/lib/utils";
 
 function Block({ title, hint, explain, children }: { title: string; hint?: string; explain?: React.ReactNode; children: React.ReactNode }) {
   return (
@@ -289,17 +288,12 @@ export function AnalysisTab() {
 
   return (
     <div className="mt-4 space-y-4">
-      <div className="flex gap-1 rounded-md bg-muted p-1 sm:w-fit">
-        {SUB_TABS.map(([s, lbl, Icon]) => (
-          <button key={s} type="button" onClick={() => setSub(s)}
-            className={cn(
-              "inline-flex flex-1 items-center justify-center gap-1.5 rounded-sm px-4 py-1.5 text-sm font-medium transition-colors sm:flex-none",
-              sub === s ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
-            )}>
-            <Icon className="h-4 w-4" /> {lbl}
-          </button>
-        ))}
-      </div>
+      <Segmented
+        className="overflow-x-auto sm:w-fit"
+        value={sub}
+        onChange={setSub}
+        options={SUB_TABS.map(([s, lbl, Icon]) => ({ value: s, label: lbl, icon: Icon }))}
+      />
       {sub === "parteien" ? <PartiesView /> : sub === "personen" ? <PersonenView />
         : sub === "finanzen" ? <FinanceView /> : sub === "trends" ? <TrendsView /> : <GoalsView />}
     </div>

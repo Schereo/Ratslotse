@@ -10,6 +10,8 @@ import { initPush } from "@/lib/push";
 import { DesktopSidebar, MobileTopbar, MobileBottomNav } from "@/components/nav";
 import { SlashSearchShortcut } from "@/components/keyboard-shortcuts";
 import { GuidedTour } from "@/components/tour";
+import { CommandPalette } from "@/components/command-palette";
+import { BackToTop } from "@/components/back-to-top";
 import { Button, Card, Spinner, toast } from "@/components/ui";
 import type { User } from "@/lib/types";
 
@@ -53,6 +55,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </a>
       <SlashSearchShortcut />
       <GuidedTour />
+      <CommandPalette />
+      <BackToTop />
       <DesktopSidebar />
       <MobileTopbar />
       <main id="main" tabIndex={-1} className="flex flex-1 flex-col overflow-y-auto outline-none pb-[calc(env(safe-area-inset-bottom)+5rem)] md:pb-0">

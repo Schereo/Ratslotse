@@ -45,7 +45,17 @@ function StackedDecisions({ d, onQuarter }: { d: Trends; onQuarter: (q: string) 
   const label = (f: string) => d.field_labels[f] ?? POLICY_FIELD_LABELS[f] ?? f;
   return (
     <div>
-      <div className="flex items-end gap-1.5" style={{ height: 190 }}>
+      {/* Screenreader-Fassung: die Balken selbst tragen ihre Zahlen nur im title. */}
+      <table className="sr-only">
+        <caption>Beschlüsse je Quartal</caption>
+        <thead><tr><th scope="col">Quartal</th><th scope="col">Beschlüsse</th></tr></thead>
+        <tbody>
+          {d.quarters.map((q, qi) => (
+            <tr key={q}><th scope="row">{qLabel(q)}</th><td>{totals[qi]}</td></tr>
+          ))}
+        </tbody>
+      </table>
+      <div aria-hidden className="flex items-end gap-1.5" style={{ height: 190 }}>
         {d.quarters.map((q, qi) => (
           <button key={q} type="button" onClick={() => onQuarter(q)}
             className="group flex h-full flex-1 flex-col justify-end rounded-sm transition-colors hover:bg-muted/50"
@@ -86,7 +96,17 @@ function MoneyBars({ d, onQuarter }: { d: Trends; onQuarter: (q: string) => void
   const top = topI >= 0 ? drivers[topI] : null;
   return (
     <div>
-      <div className="flex items-end gap-1.5" style={{ height: 130 }}>
+      {/* Screenreader-Fassung der Quartals-Summen. */}
+      <table className="sr-only">
+        <caption>Erkanntes Finanzvolumen je Quartal</caption>
+        <thead><tr><th scope="col">Quartal</th><th scope="col">Summe</th></tr></thead>
+        <tbody>
+          {d.quarters.map((q, qi) => (
+            <tr key={q}><th scope="row">{qLabel(q)}</th><td>{formatEuro(d.money[qi])}</td></tr>
+          ))}
+        </tbody>
+      </table>
+      <div aria-hidden className="flex items-end gap-1.5" style={{ height: 130 }}>
         {d.quarters.map((q, qi) => {
           const dr = drivers[qi];
           const tip = `${qLabel(q)}: ${formatEuro(d.money[qi])}`

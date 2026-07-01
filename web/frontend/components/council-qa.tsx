@@ -5,7 +5,7 @@ import { Sparkles, Send, Loader2 } from "lucide-react";
 import { Mascot } from "@/components/mascot";
 import { QaSource } from "@/lib/types";
 import { apiUrl, authHeaders } from "@/lib/api";
-import { Card, Input, toast } from "@/components/ui";
+import { Button, Card, Input, toast } from "@/components/ui";
 import { DecisionLinkCard } from "@/components/decision-ui";
 
 const EXAMPLES = [
@@ -128,10 +128,9 @@ export function QaTab() {
           <Input data-search className="pl-9" placeholder="Frag den Stadtrat — z. B. „Was wurde zum Radverkehr beschlossen?“"
             value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
-        <button type="submit" disabled={loading || q.trim().length < 4}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50">
-          <Send className="h-4 w-4" /> Fragen
-        </button>
+        <Button type="submit" disabled={loading || q.trim().length < 4}>
+          <Send /> Fragen
+        </Button>
       </form>
       <p className="-mt-2 text-xs text-muted-foreground/70">
         Bitte keine personenbezogenen oder sensiblen Daten eingeben — Anfragen werden zur Beantwortung an einen externen KI-Dienst übermittelt.
