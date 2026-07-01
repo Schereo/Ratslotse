@@ -66,6 +66,12 @@
   body {
     @apply bg-background text-foreground antialiased;
   }
+  /* Sichtbarer Tastatur-Fokus für Links (Karten-Links, Nav, Footer) —
+     Buttons/Inputs bringen ihren eigenen focus-visible-Ring mit. */
+  a:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
   /* Überschriften tragen die Display-Schrift (Bricolage Grotesque).
      hyphens: deutsche Komposita („Ratsinformationssystem") brechen auf
      schmalen Screens sauber um — html hat lang="de". */

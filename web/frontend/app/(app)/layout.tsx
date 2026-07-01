@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/auth";
 import { initPush } from "@/lib/push";
 import { DesktopSidebar, MobileTopbar, MobileBottomNav } from "@/components/nav";
 import { SlashSearchShortcut } from "@/components/keyboard-shortcuts";
+import { GuidedTour } from "@/components/tour";
 import { Button, Card, Spinner, toast } from "@/components/ui";
 import type { User } from "@/lib/types";
 
@@ -43,10 +44,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
+      {/* Screenreader/Tastatur: direkt zum Inhalt, an Sidebar und Topbar vorbei. */}
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground"
+      >
+        Zum Inhalt springen
+      </a>
       <SlashSearchShortcut />
+      <GuidedTour />
       <DesktopSidebar />
       <MobileTopbar />
-      <main className="flex flex-1 flex-col overflow-y-auto pb-[calc(env(safe-area-inset-bottom)+5rem)] md:pb-0">
+      <main id="main" tabIndex={-1} className="flex flex-1 flex-col overflow-y-auto outline-none pb-[calc(env(safe-area-inset-bottom)+5rem)] md:pb-0">
         <div className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
           {needsVerify ? <VerifyNotice email={user.email} /> : pending ? <PendingNotice email={user.email} /> : children}
         </div>

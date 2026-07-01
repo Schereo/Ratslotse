@@ -3,13 +3,14 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Newspaper, Landmark, Tags, Link2, Check, ArrowRight, Sparkles, BarChart3, Map, type LucideIcon } from "lucide-react";
+import { Newspaper, Landmark, Tags, Link2, Check, ArrowRight, Sparkles, BarChart3, Map, Play, type LucideIcon } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Topic } from "@/lib/types";
-import { Badge, Card, PageHeader } from "@/components/ui";
+import { Badge, Button, Card, PageHeader } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
 import { LotsenTipp } from "@/components/lotsen-tipp";
+import { startGuidedTour } from "@/components/tour";
 
 const tiles = [
   { href: "/council", title: "Ratsinformationssystem", desc: "Beschlüsse, KI-Fragen, Sitzungen, Themen und Analysen.", icon: Landmark },
@@ -118,11 +119,18 @@ function FirstSteps({ linked, hasTopic }: { linked: boolean; hasTopic: boolean }
   const allDone = doneCount === steps.length;
 
   return (
-    <Card className="mt-6 overflow-hidden">
+    <Card className="mt-6 overflow-hidden" data-tour="erste-schritte">
       <div className="flex items-center gap-4 border-b border-border bg-primary/5 px-5 py-4">
         <Mascot pose={allDone ? "celebrate" : "wave"} className="h-16 w-16 shrink-0" />
         <div className="min-w-0 flex-1">
-          <h2 className="font-semibold text-foreground">{allDone ? "Kurs gehalten — alles erkundet!" : "Erste Schritte mit Lotti"}</h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-semibold text-foreground">{allDone ? "Kurs gehalten — alles erkundet!" : "Erste Schritte mit Lotti"}</h2>
+            {!allDone && (
+              <Button variant="secondary" size="sm" onClick={startGuidedTour} className="h-7 px-2.5 text-xs">
+                <Play className="!size-3" /> Tour starten
+              </Button>
+            )}
+          </div>
           <p className="text-sm text-muted-foreground">
             {allDone
               ? "Du kennst jetzt alle Ecken von Ratslotse. Lotti meldet sich, sobald es Neues gibt."

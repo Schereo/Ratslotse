@@ -14,14 +14,16 @@ import { FeedbackButton } from "@/components/feedback";
 import { cn } from "@/lib/utils";
 import { toggleTheme } from "@/lib/theme";
 
-type Item = { href: string; label: string; icon: typeof Home };
+// `tour` markiert Elemente als Anker für die Lotti-Tour (components/tour.tsx);
+// Sidebar und Bottom-Nav tragen denselben Wert — die Tour nimmt das sichtbare.
+type Item = { href: string; label: string; icon: typeof Home; tour?: string };
 
 const OVERVIEW: Item = { href: "/dashboard", label: "Übersicht", icon: Home };
-const PERSONAL: Item = { href: "/topics", label: "Meine Themen", icon: Tags };
+const PERSONAL: Item = { href: "/topics", label: "Meine Themen", icon: Tags, tour: "nav-themen" };
 
 // Ratsinfo sub-pages (the council page's tabs), surfaced directly in the nav.
 const COUNCIL_ITEMS: (Item & { tab: string })[] = [
-  { href: "/council", label: "Beschlüsse", icon: Gavel, tab: "decisions" },
+  { href: "/council", label: "Beschlüsse", icon: Gavel, tab: "decisions", tour: "nav-ratsinfo" },
   { href: "/council?tab=sessions", label: "Sitzungen", icon: CalendarDays, tab: "sessions" },
   { href: "/council?tab=themen", label: "Themen", icon: Tag, tab: "themen" },
   { href: "/council?tab=analysis", label: "Analyse", icon: BarChart3, tab: "analysis" },
@@ -34,8 +36,8 @@ const NWZ_ITEMS: Item[] = [
 // Mobile bottom tab bar (thumb-friendly) — the four most-used destinations.
 const PRIMARY: Item[] = [
   { href: "/dashboard", label: "Start", icon: Home },
-  { href: "/council", label: "Ratsinfo", icon: Landmark },
-  { href: "/topics", label: "Themen", icon: Tags },
+  { href: "/council", label: "Ratsinfo", icon: Landmark, tour: "nav-ratsinfo" },
+  { href: "/topics", label: "Themen", icon: Tags, tour: "nav-themen" },
   { href: "/account", label: "Konto", icon: UserCircle },
 ];
 
@@ -77,6 +79,7 @@ function NavItem({ item, active, onNavigate }: { item: Item; active: boolean; on
     <Link
       href={item.href}
       onClick={onNavigate}
+      data-tour={item.tour}
       className={cn(
         "relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
         active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground",
@@ -228,6 +231,7 @@ export function MobileBottomNav() {
             key={l.href}
             href={l.href}
             aria-current={active ? "page" : undefined}
+            data-tour={l.tour}
             className={cn(
               "flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition-colors",
               active ? "text-primary" : "text-muted-foreground hover:text-foreground",

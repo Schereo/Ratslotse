@@ -6,16 +6,18 @@ import { PartyAnalysis, FinanceData } from "@/lib/types";
 import { Card, Spinner, EmptyState } from "@/components/ui";
 import { POLICY_FIELD_LABELS, PartyBadge, DecisionLinkCard, formatEuro } from "@/components/decision-ui";
 import { useFetch } from "@/lib/use-fetch";
+import { ChartExplainer } from "@/components/chart-explainer";
 import { TrendsView } from "@/components/council-trends";
 import { GoalsView } from "@/components/council-goals";
 import { PersonenView } from "@/components/council-members";
 import { cn } from "@/lib/utils";
 
-function Block({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
+function Block({ title, hint, explain, children }: { title: string; hint?: string; explain?: React.ReactNode; children: React.ReactNode }) {
   return (
     <Card className="p-4 sm:p-5">
       <h3 className="text-sm font-semibold text-foreground">{title}</h3>
       {hint && <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{hint}</p>}
+      {explain && <ChartExplainer>{explain}</ChartExplainer>}
       <div className="mt-3.5">{children}</div>
     </Card>
   );
@@ -150,13 +152,44 @@ function PartiesView() {
         diese Analyse zeigt daher, <span className="font-medium text-foreground">wer welche Anträge einbringt</span> und
         wie sie ausgehen, nicht das Stimmverhalten jeder Fraktion bei jeder Abstimmung.
       </div>
-      <Block title="Wer bringt welche Themen ein?" hint="Anträge je Partei und Themenfeld — dunkler = mehr.">
+      <Block
+        title="Wer bringt welche Themen ein?"
+        hint="Anträge je Partei und Themenfeld — dunkler = mehr."
+        explain={
+          <>
+            Jede Zeile ist eine Fraktion, jede Spalte ein Themenfeld; die Zahl zählt die dort eingebrachten
+            Anträge — je dunkler die Zelle, desto mehr. Lesebeispiel: Eine dunkle Zelle bei „Verkehr“ heißt,
+            diese Fraktion treibt Verkehrsthemen besonders voran. Gezählt wird, <em>wer den Antrag stellt</em> —
+            nicht, wer wie abstimmt.
+          </>
+        }
+      >
         <Heatmap a={data} />
       </Block>
-      <Block title="Erfolgsquote der Anträge" hint="Wie die eingebrachten Anträge je Partei ausgehen.">
+      <Block
+        title="Erfolgsquote der Anträge"
+        hint="Wie die eingebrachten Anträge je Partei ausgehen."
+        explain={
+          <>
+            Jeder Balken zeigt, wie die Anträge einer Fraktion ausgehen: grün angenommen, rot abgelehnt, gelb
+            vertagt. Die Prozentzahl rechts zählt nur entschiedene Anträge. Vorsicht beim Deuten: Eine hohe
+            Quote kann „mehrheitsfähig“ heißen — oder dass eine Fraktion vor allem stellt, was sicher durchgeht.
+          </>
+        }
+      >
         <SuccessRates a={data} />
       </Block>
-      <Block title="Streitgrad nach Themenfeld" hint="Welche Themen den Rat spalten, welche Konsens sind.">
+      <Block
+        title="Streitgrad nach Themenfeld"
+        hint="Welche Themen den Rat spalten, welche Konsens sind."
+        explain={
+          <>
+            Der Balken misst, wie oft Abstimmungen in diesem Themenfeld <em>nicht</em> einstimmig waren — es
+            gab also Gegenstimmen oder Enthaltungen. 0 % wäre reiner Konsens; hohe Werte markieren die
+            Reizthemen des Rats.
+          </>
+        }
+      >
         <Contention a={data} />
       </Block>
       <Block title="Häufige Allianzen" hint="Parteien, die Anträge gemeinsam einbringen.">
@@ -204,7 +237,18 @@ function FinanceView() {
   }
   return (
     <div className="space-y-4">
-      <Block title="Wofür fließt das Geld?" hint="Erkanntes Finanzvolumen je Themenfeld — welche Felder die größten Summen bewegen.">
+      <Block
+        title="Wofür fließt das Geld?"
+        hint="Erkanntes Finanzvolumen je Themenfeld — welche Felder die größten Summen bewegen."
+        explain={
+          <>
+            Summiert die Euro-Beträge, die in den Beschlusstexten automatisch erkannt wurden — das ist{" "}
+            <em>nicht der offizielle Haushalt</em>, sondern eine Größenordnung aus den Entscheidungen selbst.
+            Jahresabschlüsse und Haushaltspläne sind bewusst ausgenommen, sonst würden sie alles überstrahlen.
+            Ein Klick auf eine Zeile öffnet die Beschlüsse dahinter.
+          </>
+        }
+      >
         <MoneyByField data={data} />
       </Block>
       {data.decisions.length > 0 && (

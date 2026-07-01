@@ -150,7 +150,7 @@ export function QaTab() {
 
       {/* Live progress: Lotti sucht — real step + a rotating playful word. */}
       {loading && !answer && (
-        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+        <div role="status" className="flex items-center gap-3 text-sm text-muted-foreground">
           <Mascot pose="search" bob className="h-14 w-14 shrink-0" />
           <div>
             <span className="flex items-center gap-2 font-medium text-foreground">
@@ -166,7 +166,9 @@ export function QaTab() {
       {answer && (
         <div className="flex items-start gap-3">
           <Mascot pose={loading ? "search" : "point"} className="mt-1 hidden h-12 w-12 shrink-0 sm:block" />
-          <Card className="flex-1 rounded-2xl rounded-tl-sm p-4">
+          {/* aria-busy: Screenreader warten, bis der Stream fertig ist; die
+              Fertig-Meldung unten (role=status) sagt dann aktiv Bescheid. */}
+          <Card aria-busy={loading} className="flex-1 rounded-2xl rounded-tl-sm p-4">
             <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
               {answer}
               {loading && step === "answer" && <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-primary align-text-bottom" />}
@@ -195,9 +197,12 @@ export function QaTab() {
       )}
 
       {answer && !loading && (
-        <p className="text-xs text-muted-foreground/70">
-          Antwort von einer KI aus den gefundenen Beschlüssen erzeugt — kann unvollständig sein. Immer die Quellen prüfen.
-        </p>
+        <>
+          <p role="status" className="sr-only">Antwort vollständig.</p>
+          <p className="text-xs text-muted-foreground/70">
+            Antwort von einer KI aus den gefundenen Beschlüssen erzeugt — kann unvollständig sein. Immer die Quellen prüfen.
+          </p>
+        </>
       )}
     </div>
   );

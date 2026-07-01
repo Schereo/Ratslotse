@@ -306,6 +306,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               data-search
+              data-tour="beschluss-suche"
               className="pl-9"
               placeholder={isReport ? "Berichte durchsuchen…" : "Beschlüsse durchsuchen (z. B. Haushalt, Radwege)…"}
               value={q}
@@ -605,6 +606,7 @@ function SearchTab({ committees }: { committees: string[] }) {
       <div className="mt-4 flex gap-1 rounded-md bg-muted p-1 sm:w-fit">
         {([["suchen", "Suchen", Search], ["fragen", "KI-Frage", Sparkles]] as const).map(([m, lbl, Icon]) => (
           <button key={m} type="button" onClick={() => setMode(m)}
+            data-tour={m === "fragen" ? "ki-frage-tab" : undefined}
             className={cn(
               "inline-flex flex-1 items-center justify-center gap-1.5 rounded-sm px-4 py-1.5 text-sm font-medium transition-colors sm:flex-none",
               mode === m ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
