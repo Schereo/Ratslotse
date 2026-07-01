@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { Map as LeafletMap, TileLayer } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { EntityMapPoint } from "@/lib/types";
+import { themaHref } from "@/lib/routes";
 
 // Minimalist CARTO basemaps, swapped live with the site theme (same as EntityMap).
 const TILES = {
@@ -58,7 +59,7 @@ export function CouncilMap({ points }: { points: EntityMapPoint[] }) {
           fillOpacity: 0.55,
         }).addTo(map);
         marker.bindTooltip(`${p.name} · ${p.n} ${p.n === 1 ? "Beschluss" : "Beschlüsse"}`);
-        marker.on("click", () => router.push(`/council/thema/${p.slug}`));
+        marker.on("click", () => router.push(themaHref(p.slug)));
         latlngs.push([p.lat, p.lon]);
       }
       if (latlngs.length >= 8) {

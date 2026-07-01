@@ -6,6 +6,7 @@ import { TrendingUp } from "lucide-react";
 import { Trends, FieldRecap } from "@/lib/types";
 import { Card, Spinner, EmptyState } from "@/components/ui";
 import { POLICY_FIELD_LABELS, formatEuro } from "@/components/decision-ui";
+import { decisionHref } from "@/lib/routes";
 import { useFetch } from "@/lib/use-fetch";
 
 // Distinct, dark-mode-safe series colours for the top policy fields.
@@ -104,7 +105,7 @@ function MoneyBars({ d, onQuarter }: { d: Trends; onQuarter: (q: string) => void
       {top && (
         <p className="mt-2.5 text-xs leading-relaxed text-muted-foreground">
           Größter erkannter Einzelposten:{" "}
-          <Link href={`/council/decision/${top.id}`} className="font-medium text-foreground hover:text-primary hover:underline">
+          <Link href={decisionHref(top.id)} className="font-medium text-foreground hover:text-primary hover:underline">
             {top.title}
           </Link>{" "}
           <span className="whitespace-nowrap text-muted-foreground/80">— {formatEuro(top.eur)} ({qLabel(d.quarters[topI])})</span>

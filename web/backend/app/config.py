@@ -15,7 +15,11 @@ class Settings(BaseSettings):
 
     # Auth
     web_jwt_secret: str = "dev-insecure-change-me"
-    access_token_expire_minutes: int = 60 * 24  # 1 day
+    access_token_expire_minutes: int = 60 * 24  # 1 day (web cookie sessions)
+    # Native-app clients (Capacitor) store the JWT in secure device storage and
+    # can't rely on silent cookie refresh, so they get a much longer-lived token.
+    # Revocation still works via token_version (bumped on password change/reset).
+    app_access_token_expire_minutes: int = 60 * 24 * 90  # 90 days
     web_admin_email: str = ""  # this email is granted admin on registration
     # Secure cookies require HTTPS (or localhost, which browsers treat as
     # secure). Keep True for production; tests/non-localhost HTTP set it False.

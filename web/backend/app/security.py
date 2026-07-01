@@ -63,9 +63,12 @@ def _sign(message: bytes, secret: str) -> str:
     return _b64url_encode(sig)
 
 
-def create_access_token(subject: str | int, token_version: int = 0) -> str:
+def create_access_token(
+    subject: str | int, token_version: int = 0, expires_minutes: int | None = None
+) -> str:
     settings = get_settings()
-    exp = int(time.time()) + settings.access_token_expire_minutes * 60
+    minutes = settings.access_token_expire_minutes if expires_minutes is None else expires_minutes
+    exp = int(time.time()) + minutes * 60
     header = _b64url_encode(json.dumps({"alg": "HS256", "typ": "JWT"}).encode())
     payload = _b64url_encode(
         json.dumps({"sub": str(subject), "exp": exp, "ver": token_version}).encode()

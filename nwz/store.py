@@ -160,6 +160,18 @@ CREATE TABLE IF NOT EXISTS email_verification_tokens (
     expires_at TEXT NOT NULL,
     used       INTEGER NOT NULL DEFAULT 0
 );
+
+-- Native-app push device tokens (APNs on iOS, FCM on Android). One row per
+-- device; the platform push `token` is the primary key so re-registering the
+-- same device is an upsert. owner_id = web_users.id.
+CREATE TABLE IF NOT EXISTS push_tokens (
+    token      TEXT PRIMARY KEY,
+    owner_id   INTEGER NOT NULL,
+    platform   TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    last_seen  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_push_tokens_owner ON push_tokens(owner_id);
 """
 
 
@@ -452,6 +464,51 @@ class Store:
             self._conn.execute(
                 "UPDATE web_users SET delivery_channel = ? WHERE id = ?", (channel, owner_id)
             )
+
+    # ---- native-app push device tokens ----
+
+    def add_push_token(self, owner_id: int, token: str, platform: str) -> None:
+        """Register (or refresh) a device push token for an owner. Re-registering
+        the same token upserts owner/platform/last_seen — covers OS token rotation
+        and a device being handed to a different account."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT INTO push_tokens (token, owner_id, platform, created_at, last_seen) "
+                "VALUES (?, ?, ?, ?, ?) "
+                "ON CONFLICT(token) DO UPDATE SET owner_id = excluded.owner_id, "
+                "platform = excluded.platform, last_seen = excluded.last_seen",
+                (token, owner_id, platform, now, now),
+            )
+
+    def remove_push_token(self, token: str) -> None:
+        """Drop a device token (logout on device, or APNs/FCM reported it stale)."""
+        with self._conn:
+            self._conn.execute("DELETE FROM push_tokens WHERE token = ?", (token,))
+
+    def get_push_tokens_for_owner(self, owner_id: int) -> list[dict]:
+        """Return [{token, platform}] for all of an owner's registered devices."""
+        rows = self._conn.execute(
+            "SELECT token, platform FROM push_tokens WHERE owner_id = ?", (owner_id,)
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def _attach_push_tokens(self, by_owner: dict[int, dict]) -> None:
+        """Fill each owner dict's ``push_tokens`` list in a single query. Used by
+        the digest/subscription delivery-target helpers so ``nwz.delivery`` can
+        reach registered devices without its own DB handle."""
+        for o in by_owner.values():
+            o.setdefault("push_tokens", [])
+        if not by_owner:
+            return
+        placeholders = ",".join("?" * len(by_owner))
+        for pr in self._conn.execute(
+            f"SELECT owner_id, token, platform FROM push_tokens WHERE owner_id IN ({placeholders})",
+            tuple(by_owner.keys()),
+        ).fetchall():
+            o = by_owner.get(pr["owner_id"])
+            if o is not None:
+                o["push_tokens"].append({"token": pr["token"], "platform": pr["platform"]})
 
     # ---- owner resolution (chat_id <-> owner_id) ----
 
@@ -1045,7 +1102,8 @@ class Store:
         """Return per-owner digest targets for the cron: one dict per owner that
         has ≥1 topic, with delivery channel + reachable addresses.
 
-        [{owner_id, delivery_channel, telegram_chat_id, email, topics: [TopicRow]}]
+        [{owner_id, delivery_channel, telegram_chat_id, email,
+          push_tokens: [{token, platform}], topics: [TopicRow]}]
         """
         rows = self._conn.execute(
             """SELECT wu.id AS owner_id, wu.delivery_channel, wu.telegram_chat_id, wu.email,
@@ -1063,6 +1121,7 @@ class Store:
                     "delivery_channel": r["delivery_channel"],
                     "telegram_chat_id": r["telegram_chat_id"],
                     "email": r["email"],
+                    "push_tokens": [],
                     "topics": [],
                 }
                 owners[r["owner_id"]] = o
@@ -1070,6 +1129,7 @@ class Store:
                 id=r["id"], owner_id=r["t_owner"], chat_id=r["chat_id"],
                 name=r["name"], description=r["description"], created_at=r["created_at"],
             ))
+        self._attach_push_tokens(owners)  # each owner's registered push devices
         return list(owners.values())
 
     def add_topic(self, owner_id: int, name: str, description: str) -> TopicRow:
@@ -1151,14 +1211,16 @@ class Store:
         return result
 
     def get_subscription_targets(self) -> dict[int, dict]:
-        """Return {owner_id: {delivery_channel, telegram_chat_id, email}} for all
-        owners that have ≥1 committee subscription — delivery info for the crons."""
+        """Return {owner_id: {delivery_channel, telegram_chat_id, email, push_tokens}}
+        for all owners that have ≥1 committee subscription — delivery info for the crons."""
         rows = self._conn.execute(
             """SELECT DISTINCT wu.id AS owner_id, wu.delivery_channel,
                       wu.telegram_chat_id, wu.email
                FROM committee_subscriptions cs JOIN web_users wu ON wu.id = cs.owner_id"""
         ).fetchall()
-        return {r["owner_id"]: dict(r) for r in rows}
+        targets = {r["owner_id"]: dict(r) for r in rows}
+        self._attach_push_tokens(targets)
+        return targets
 
     # ---- article topic matches ----
 

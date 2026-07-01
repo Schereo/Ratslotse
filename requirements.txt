@@ -4,3 +4,9 @@ openai>=1.30
 tenacity>=8.2
 beautifulsoup4
 pypdf>=4.0
+# Native-app push delivery (nwz/push.py): APNs needs HTTP/2 (httpx[http2]) and
+# ES256 signing (cryptography); FCM v1 uses a service account (google-auth).
+# All optional — nwz.push degrades to a no-op when unconfigured/uninstalled.
+httpx[http2]>=0.27
+cryptography>=42.0
+google-auth>=2.29

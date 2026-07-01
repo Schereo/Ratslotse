@@ -1,4 +1,4 @@
-export type DeliveryChannel = "telegram" | "email" | "both";
+export type DeliveryChannel = "telegram" | "email" | "both" | "push";
 
 export interface User {
   id: number;
@@ -10,6 +10,8 @@ export interface User {
   delivery_channel: DeliveryChannel;
   nwz_fulltext_allowed: boolean;
   email_verified: boolean;
+  // Present only on native-app auth responses; the web relies on the cookie.
+  access_token?: string | null;
 }
 
 export interface SearchResult {

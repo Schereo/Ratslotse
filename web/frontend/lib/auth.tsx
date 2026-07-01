@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
 import { api, ApiError, setUnauthorizedHandler } from "./api";
+import { loadToken, setToken } from "./token";
 import { User } from "./types";
 
 interface AuthContextValue {
@@ -30,6 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     (async () => {
+      await loadToken(); // hydrate the stored bearer token (native app) before the first /me
       await refresh();
       setLoading(false);
     })();
@@ -43,16 +45,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     const u = await api.post<User>("/auth/login", { email, password });
+    await setToken(u.access_token ?? null); // persist bearer token (native app only)
     setUser(u);
   };
 
   const register = async (email: string, password: string) => {
     const u = await api.post<User>("/auth/register", { email, password });
+    await setToken(u.access_token ?? null);
     setUser(u);
   };
 
   const logout = async () => {
     await api.post("/auth/logout");
+    await setToken(null);
     setUser(null);
   };
 
