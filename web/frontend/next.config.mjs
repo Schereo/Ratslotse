@@ -18,6 +18,14 @@ async function rewrites() {
       source: "/api/:path*",
       destination: `${BACKEND_URL}/api/:path*`,
     },
+    // Apple fetches the AASA (Universal Links) at the extensionless URL but
+    // requires Content-Type application/json. The file keeps a .json extension
+    // on disk so Next's static serving sets the right type; this maps the
+    // extensionless URL onto it — no webserver config needed.
+    {
+      source: "/.well-known/apple-app-site-association",
+      destination: "/.well-known/apple-app-site-association.json",
+    },
   ];
 }
 

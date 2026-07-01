@@ -30,6 +30,34 @@ def _plain(text_html: str, limit: int = 180) -> str:
     return (t[: limit - 1] + "…") if len(t) > limit else t
 
 
+def _send_push_and_prune(devices: list[dict], title: str, body: str, data: dict[str, str]) -> None:
+    """Send a push and drop the device tokens APNs/FCM reported as gone (app
+    deleted, token rotated), so future sends stop retrying them. Opens its own
+    Store handle — same NWZ_DB-env/repo default as the cron scripts — because
+    callers only pass owner dicts, not their DB connection. Best-effort."""
+    stale = send_push(devices, title, body, data)
+    if not stale:
+        return
+    try:
+        import os
+        from pathlib import Path
+
+        from .store import Store
+
+        db = os.environ.get("NWZ_DB") or str(
+            Path(__file__).resolve().parent.parent / "data" / "nwz.sqlite"
+        )
+        store = Store(db)
+        try:
+            for token in stale:
+                store.remove_push_token(token)
+        finally:
+            store.close()
+        logger.info("pruned %d stale push token(s)", len(stale))
+    except Exception:
+        logger.exception("pruning stale push tokens failed")
+
+
 def _build_read_buttons(matches: list[dict], refid_to_id: dict[str, int]) -> list[list[dict]]:
     buttons: list[list[dict]] = []
     row: list[dict] = []
@@ -113,7 +141,7 @@ def deliver_digest(
     if wants_push(owner) and matches:
         first = (matches[0].get("title") or "").strip()
         body = f"{len(matches)} neue Artikel zu deinen Themen" + (f": {first}" if first else "")
-        send_push(owner["push_tokens"], "Ratslotse – neue Treffer", body, {"url": "/topics"})
+        _send_push_and_prune(owner["push_tokens"], "Ratslotse – neue Treffer", body, {"url": "/topics"})
         sent.append("push")
 
     return sent
@@ -138,6 +166,6 @@ def deliver_message(owner: dict, message_html: str, email_subject: str) -> list[
         except Exception:
             logger.exception("email message send failed for %s", owner.get("email"))
     if wants_push(owner):
-        send_push(owner["push_tokens"], email_subject, _plain(message_html), {"url": "/dashboard"})
+        _send_push_and_prune(owner["push_tokens"], email_subject, _plain(message_html), {"url": "/dashboard"})
         sent.append("push")
     return sent

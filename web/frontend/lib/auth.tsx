@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
 import { api, ApiError, setUnauthorizedHandler } from "./api";
 import { loadToken, setToken } from "./token";
+import { unregisterPush } from "./push";
 import { User } from "./types";
 
 interface AuthContextValue {
@@ -56,6 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
+    await unregisterPush(); // while still authenticated — stops pushes for this account
     await api.post("/auth/logout");
     await setToken(null);
     setUser(null);

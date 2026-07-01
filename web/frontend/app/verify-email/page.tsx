@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
+import { setToken } from "@/lib/token";
+import type { User } from "@/lib/types";
 import { Button, Card, Spinner } from "@/components/ui";
 import { BrandMark } from "@/components/brand";
 import { useAuth } from "@/lib/auth";
@@ -23,7 +25,10 @@ function VerifyInner() {
     ran.current = true; // verify exactly once, even under StrictMode double-mount
     (async () => {
       try {
-        await api.post("/auth/verify-email", { token });
+        const u = await api.post<User>("/auth/verify-email", { token });
+        // Native app via deep link: the backend hands back a bearer token so the
+        // user lands logged-in. On the web access_token is null → no-op.
+        if (u.access_token) await setToken(u.access_token);
         setState("ok");
         try { await refresh(); } catch { /* not logged in — fine */ }
       } catch (err) {

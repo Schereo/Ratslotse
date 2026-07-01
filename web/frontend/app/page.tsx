@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Search, Sparkles, MapPin, BarChart3, Bell, Landmark, ArrowRight } from "lucide-react";
 import { BrandMark } from "@/components/brand";
 import { HeaderCTA } from "@/components/landing-cta";
+import { NativeRedirect } from "@/components/native-redirect";
 import { HeroCanvas } from "@/components/hero-canvas";
 import { HeroMapFrame } from "@/components/hero-map-frame";
 import { LiveStats } from "@/components/live-stats";
@@ -26,6 +27,7 @@ const FEATURES = [
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background">
+      <NativeRedirect />
       <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-3.5">
           <Link href="/" className="flex items-center gap-2">

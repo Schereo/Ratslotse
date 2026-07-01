@@ -9,8 +9,11 @@ import { isNativeApp, nativePlatform } from "./platform";
 import { api } from "./api";
 
 let initialized = false;
+// The OS-issued device token, kept so logout can unregister it server-side.
+let deviceToken: string | null = null;
 
 async function postToken(value: string): Promise<void> {
+  deviceToken = value;
   try {
     await api.post("/push/register", { token: value, platform: nativePlatform() ?? "ios" });
   } catch {
@@ -32,6 +35,18 @@ export async function initPush(navigate: (path: string) => void): Promise<void> 
   // Already granted on a previous launch? Refresh the token silently.
   const perm = await PushNotifications.checkPermissions();
   if (perm.receive === "granted") await PushNotifications.register();
+}
+
+/** Drop this device's token server-side — called on logout while the session is
+ *  still valid, so the device stops receiving the old account's notifications.
+ *  The OS permission stays granted; the next login re-registers. No-op on web. */
+export async function unregisterPush(): Promise<void> {
+  if (!isNativeApp() || !deviceToken) return;
+  try {
+    await api.post("/push/unregister", { token: deviceToken });
+  } catch {
+    /* offline is fine — a later login re-homes the token to its account */
+  }
 }
 
 /** Prompt for notification permission and register this device.

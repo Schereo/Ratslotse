@@ -572,6 +572,42 @@ def test_push_register_validates_platform(client):
                        json={"token": "x", "platform": "windows"}).status_code == 422
 
 
+def test_app_verify_email_returns_bearer_token(client):
+    """Verification opened via the app deep link should land logged-in: an
+    `X-Client: app` verify-email gets a bearer token in the body."""
+    _register(client)  # admin (active)
+    store = Store(NWZ_DB)
+    uid = store.get_web_user_by_email("admin@test.de")["id"]
+    raw = "app-verify-token"
+    exp = (datetime.utcnow() + timedelta(hours=1)).isoformat(timespec="seconds")
+    store.create_email_verification(uid, hashlib.sha256(raw.encode()).hexdigest(), exp)
+    store.close()
+
+    r = TestClient(app).post("/api/auth/verify-email", json={"token": raw},
+                             headers={"X-Client": "app"})
+    assert r.status_code == 200
+    token = r.json()["access_token"]
+    assert isinstance(token, str) and token
+    me = TestClient(app).get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me.status_code == 200 and me.json()["email_verified"] is True
+
+
+def test_cors_preflight_allows_app_webview_origin():
+    """The Capacitor WebView origins are allowed by default (no .env needed):
+    the app's cross-origin fetches must pass the browser-engine CORS preflight."""
+    r = TestClient(app).options(
+        "/api/auth/login",
+        headers={
+            "Origin": "capacitor://localhost",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type,x-client,authorization",
+        },
+    )
+    assert r.status_code == 200
+    assert r.headers["access-control-allow-origin"] == "capacitor://localhost"
+    assert r.headers.get("access-control-allow-credentials") == "true"
+
+
 def test_push_unregister_is_scoped_to_owner(client):
     """One account can't drop another's device token."""
     _register(client)  # admin (active), cookie on `client`

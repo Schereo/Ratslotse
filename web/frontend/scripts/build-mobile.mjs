@@ -15,13 +15,16 @@ import { join } from "node:path";
 const API_DIR = "app/api";
 const API_STASH = "app/_api.disabled";
 
+// Must match the backend origin the app talks to (lib/platform.ts apiBase()).
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "https://ratslotse.de";
+
 const CSP = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://*.basemaps.cartocdn.com https://*.openfreemap.org",
   "font-src 'self'",
-  "connect-src 'self' https://ratslotse.de https://*.openfreemap.org https://*.basemaps.cartocdn.com",
+  `connect-src 'self' ${API_BASE} https://*.openfreemap.org https://*.basemaps.cartocdn.com`,
   "worker-src 'self' blob:",
 ].join("; ");
 

@@ -35,6 +35,11 @@ class Settings(BaseSettings):
     # CORS: comma-separated origins for local dev. In production the frontend is
     # served same-origin behind nginx, so this is only needed during development.
     cors_origins: str = "http://localhost:3000"
+    # The Capacitor apps load the UI from a local WebView origin and call the
+    # backend cross-origin (bearer auth): iOS pages live on capacitor://localhost,
+    # Android on https://localhost. Fixed non-web origins, always appended so the
+    # apps work without extra .env setup.
+    app_cors_origins: str = "capacitor://localhost,https://localhost"
 
     # The NWZ folder used for the digest (Oldenburger Nachrichten)
     nwz_folder: int = 8389
@@ -49,7 +54,12 @@ class Settings(BaseSettings):
 
     @property
     def cors_origin_list(self) -> list[str]:
-        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        merged = f"{self.cors_origins},{self.app_cors_origins}"
+        out: list[str] = []
+        for o in (s.strip() for s in merged.split(",")):
+            if o and o not in out:
+                out.append(o)
+        return out
 
 
 @lru_cache
