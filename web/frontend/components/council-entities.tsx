@@ -8,6 +8,7 @@ import { Entity, EntityMapPoint } from "@/lib/types";
 import { Card, Input, Spinner, EmptyState } from "@/components/ui";
 import { useFetch } from "@/lib/use-fetch";
 import { cn } from "@/lib/utils";
+import { themaHref } from "@/lib/routes";
 import { KIND_COLOR } from "@/components/council-map";
 
 // Leaflet needs `window`, so the map is client-only (ssr:false).
@@ -25,7 +26,7 @@ export const ENTITY_KIND: Record<string, { label: string; Icon: typeof MapPin }>
 export function EntityChip({ e }: { e: Entity }) {
   const k = ENTITY_KIND[e.kind] ?? ENTITY_KIND.projekt;
   return (
-    <Link href={`/council/thema/${e.slug}`} className="block">
+    <Link href={themaHref(e.slug)} className="block">
       <Card className="card-interactive flex items-center gap-2.5 p-3">
         <k.Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
         <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{e.name}</span>

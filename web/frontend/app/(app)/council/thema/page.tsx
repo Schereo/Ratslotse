@@ -1,7 +1,8 @@
 "use client";
 
+import { Suspense } from "react";
 import dynamic from "next/dynamic";
-import { useParams, useRouter } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { ArrowLeft, Tag } from "lucide-react";
 import { EntityDetail } from "@/lib/types";
 import { Spinner, EmptyState } from "@/components/ui";
@@ -15,10 +16,10 @@ const EntityMap = dynamic(() => import("@/components/entity-map").then((m) => m.
   loading: () => <div className="h-64 w-full animate-pulse rounded-lg border border-border bg-muted/40" />,
 });
 
-export default function EntityPage() {
-  const { slug } = useParams<{ slug: string }>();
+function EntityInner() {
+  const slug = useSearchParams().get("slug");
   const router = useRouter();
-  const { data, loading } = useFetch<EntityDetail>(`/council/entity/${slug}`);
+  const { data, loading } = useFetch<EntityDetail>(slug ? `/council/entity/${slug}` : null);
 
   if (loading) return <div className="py-10"><Spinner /></div>;
   if (!data) {
@@ -78,5 +79,13 @@ export default function EntityPage() {
         ))}
       </div>
     </div>
+  );
+}
+
+export default function EntityPage() {
+  return (
+    <Suspense fallback={<div className="py-10"><Spinner /></div>}>
+      <EntityInner />
+    </Suspense>
   );
 }

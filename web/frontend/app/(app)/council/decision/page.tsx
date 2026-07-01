@@ -1,11 +1,13 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ExternalLink, FileText, FileDown, Users, Scale, Newspaper, Tag } from "lucide-react";
 import { DecisionDetail, CouncilDecision } from "@/lib/types";
 import { Card, Spinner, EmptyState, formatDate } from "@/components/ui";
 import { OutcomeBadge, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
+import { themaHref } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 import { useFetch } from "@/lib/use-fetch";
 
@@ -22,10 +24,10 @@ function presentMembers(att: DecisionDetail["attendance"]): number {
   return att.filter((a) => a.role === "vorsitz" || a.role === "mitglied" || !a.role).length;
 }
 
-export default function DecisionDetailPage() {
-  const params = useParams<{ id: string }>();
+function DecisionDetailInner() {
+  const id = useSearchParams().get("id");
   const router = useRouter();
-  const { data, loading } = useFetch<DecisionDetail>(`/council/decision/${params.id}`);
+  const { data, loading } = useFetch<DecisionDetail>(id ? `/council/decision/${id}` : null);
 
   if (loading) return <div className="py-10"><Spinner /></div>;
   if (!data) return <EmptyState icon={Scale} title="Beschluss nicht gefunden" />;
@@ -64,7 +66,7 @@ export default function DecisionDetailPage() {
           {data.entities.length > 0 && (
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
               {data.entities.map((e) => (
-                <Link key={e.slug} href={`/council/thema/${e.slug}`}
+                <Link key={e.slug} href={themaHref(e.slug)}
                   className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-0.5 text-xs text-foreground transition-colors hover:bg-muted"
                   title={`Alle Beschlüsse zu „${e.name}"`}>
                   <Tag className="h-3 w-3 text-muted-foreground" />{e.name}
@@ -216,5 +218,13 @@ export default function DecisionDetailPage() {
         </Link>
       </div>
     </div>
+  );
+}
+
+export default function DecisionDetailPage() {
+  return (
+    <Suspense fallback={<div className="py-10"><Spinner /></div>}>
+      <DecisionDetailInner />
+    </Suspense>
   );
 }

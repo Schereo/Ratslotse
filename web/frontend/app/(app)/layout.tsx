@@ -6,6 +6,7 @@ import { Clock, MailWarning } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { initPush } from "@/lib/push";
 import { DesktopSidebar, MobileTopbar, MobileBottomNav } from "@/components/nav";
 import { Button, Card, Spinner, toast } from "@/components/ui";
 import type { User } from "@/lib/types";
@@ -30,6 +31,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
   }, [user, loading, router]);
+
+  // Wire native push once a user is present: device token → backend, tap → route.
+  // No-op on the web and when notifications aren't permitted.
+  useEffect(() => {
+    if (user) void initPush((path) => router.push(path));
+  }, [user, router]);
 
   if (loading || !user) return <Spinner />;
 

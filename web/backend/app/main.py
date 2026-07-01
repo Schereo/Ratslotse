@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from .config import get_settings
-from .routers import account, admin, auth, council, feedback, link, nwz, topics
+from .routers import account, admin, auth, council, feedback, link, nwz, push, topics
 
 
 def _startup_checks() -> None:
@@ -90,6 +90,7 @@ app.include_router(topics.router)
 app.include_router(topics.sub_router)
 app.include_router(admin.router)
 app.include_router(feedback.router)
+app.include_router(push.router)
 
 
 @app.exception_handler(RequestValidationError)

@@ -6,11 +6,12 @@ import { Search, Users } from "lucide-react";
 import { Member } from "@/lib/types";
 import { Card, Input, Select, Spinner, EmptyState } from "@/components/ui";
 import { PartyBadge } from "@/components/decision-ui";
+import { personHref } from "@/lib/routes";
 import { useFetch } from "@/lib/use-fetch";
 
 function MemberChip({ m }: { m: Member }) {
   return (
-    <Link href={`/council/person/${m.slug}`} className="block">
+    <Link href={personHref(m.slug)} className="block">
       <Card className="card-interactive flex items-center gap-3 p-3">
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-foreground">{m.name}</p>

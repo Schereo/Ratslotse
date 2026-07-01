@@ -497,3 +497,133 @@ def test_email_verification_token_expiry():
     now = datetime.utcnow().isoformat(timespec="seconds")
     assert store.consume_email_verification(token_hash, now) is None
     store.close()
+
+
+# ---- native app: bearer token + push notifications ----
+def test_web_register_has_null_access_token(client):
+    """Browser clients authenticate via the cookie — no token in the body."""
+    r = _register(client)
+    assert r.status_code == 201 and r.json()["access_token"] is None
+
+
+def test_app_register_returns_bearer_token(client):
+    """`X-Client: app` gets a JWT in the body that authenticates without a cookie."""
+    r = _register(client, email="admin@test.de")
+    assert r.status_code == 201  # ensure the account exists first
+    # A fresh app client registers a *new* account and receives a token.
+    app_client = TestClient(app)
+    r2 = app_client.post(
+        "/api/auth/register",
+        json={"email": "appuser@test.de", "password": "password123"},
+        headers={"X-Client": "app"},
+    )
+    token = r2.json()["access_token"]
+    assert isinstance(token, str) and token
+    # The token alone (no cookies) authenticates /me.
+    bare = TestClient(app)
+    me = bare.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me.status_code == 200 and me.json()["email"] == "appuser@test.de"
+
+
+def test_app_login_returns_bearer_token(client):
+    _register(client)
+    fresh = TestClient(app)
+    withhdr = fresh.post("/api/auth/login",
+                         json={"email": "admin@test.de", "password": "password123"},
+                         headers={"X-Client": "app"})
+    assert isinstance(withhdr.json()["access_token"], str) and withhdr.json()["access_token"]
+    plain = fresh.post("/api/auth/login", json={"email": "admin@test.de", "password": "password123"})
+    assert plain.json()["access_token"] is None
+
+
+def test_app_flow_bearer_registers_push_device(client):
+    """End-to-end app path: register (app) → bearer token → register a device token."""
+    r = client.post("/api/auth/register",
+                    json={"email": "admin@test.de", "password": "password123"},
+                    headers={"X-Client": "app"})
+    token = r.json()["access_token"]
+    bearer = {"Authorization": f"Bearer {token}"}
+    only_bearer = TestClient(app)  # no cookies
+
+    assert only_bearer.post("/api/push/register",
+                            json={"token": "dev-tok-1", "platform": "ios"},
+                            headers=bearer).status_code == 204
+    store = Store(NWZ_DB)
+    uid = store.get_web_user_by_email("admin@test.de")["id"]
+    assert [t["token"] for t in store.get_push_tokens_for_owner(uid)] == ["dev-tok-1"]
+    store.close()
+
+    assert only_bearer.post("/api/push/unregister",
+                            json={"token": "dev-tok-1"}, headers=bearer).status_code == 204
+    store = Store(NWZ_DB)
+    assert store.get_push_tokens_for_owner(uid) == []
+    store.close()
+
+
+def test_push_register_requires_auth():
+    assert TestClient(app).post(
+        "/api/push/register", json={"token": "x", "platform": "ios"}
+    ).status_code == 401
+
+
+def test_push_register_validates_platform(client):
+    _register(client)  # admin is active; client keeps the session cookie
+    assert client.post("/api/push/register",
+                       json={"token": "x", "platform": "windows"}).status_code == 422
+
+
+def test_app_verify_email_returns_bearer_token(client):
+    """Verification opened via the app deep link should land logged-in: an
+    `X-Client: app` verify-email gets a bearer token in the body."""
+    _register(client)  # admin (active)
+    store = Store(NWZ_DB)
+    uid = store.get_web_user_by_email("admin@test.de")["id"]
+    raw = "app-verify-token"
+    exp = (datetime.utcnow() + timedelta(hours=1)).isoformat(timespec="seconds")
+    store.create_email_verification(uid, hashlib.sha256(raw.encode()).hexdigest(), exp)
+    store.close()
+
+    r = TestClient(app).post("/api/auth/verify-email", json={"token": raw},
+                             headers={"X-Client": "app"})
+    assert r.status_code == 200
+    token = r.json()["access_token"]
+    assert isinstance(token, str) and token
+    me = TestClient(app).get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me.status_code == 200 and me.json()["email_verified"] is True
+
+
+def test_cors_preflight_allows_app_webview_origin():
+    """The Capacitor WebView origins are allowed by default (no .env needed):
+    the app's cross-origin fetches must pass the browser-engine CORS preflight."""
+    r = TestClient(app).options(
+        "/api/auth/login",
+        headers={
+            "Origin": "capacitor://localhost",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type,x-client,authorization",
+        },
+    )
+    assert r.status_code == 200
+    assert r.headers["access-control-allow-origin"] == "capacitor://localhost"
+    assert r.headers.get("access-control-allow-credentials") == "true"
+
+
+def test_push_unregister_is_scoped_to_owner(client):
+    """One account can't drop another's device token."""
+    _register(client)  # admin (active), cookie on `client`
+    assert client.post("/api/push/register",
+                       json={"token": "adm-dev", "platform": "ios"}).status_code == 204
+    # Register bob on a separate client so `client` keeps the admin session cookie
+    # (TestClient persists Set-Cookie, so registering bob here would clobber it).
+    bob = TestClient(app).post("/api/auth/register",
+                               json={"email": "bob@test.de", "password": "password123"}).json()
+    assert client.put(f"/api/admin/users/{bob['id']}/status",
+                      json={"status": "active"}).status_code == 200
+    bob_client = TestClient(app)
+    bob_client.post("/api/auth/login", json={"email": "bob@test.de", "password": "password123"})
+    # Bob's unregister of the admin's token is a no-op (still 204), token survives.
+    assert bob_client.post("/api/push/unregister", json={"token": "adm-dev"}).status_code == 204
+    store = Store(NWZ_DB)
+    admin_uid = store.get_web_user_by_email("admin@test.de")["id"]
+    assert [t["token"] for t in store.get_push_tokens_for_owner(admin_uid)] == ["adm-dev"]
+    store.close()

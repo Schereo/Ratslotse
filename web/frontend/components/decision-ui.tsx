@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { CouncilDecision, DecisionOutcome } from "@/lib/types";
 import { Card, formatDate } from "@/components/ui";
+import { decisionHref } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 /** Format a euro amount compactly: 563.000 € / 3,4 Mio. €. */
@@ -27,7 +28,7 @@ export function DecisionLinkCard({ id, title, committee, session_date, field, le
   amount?: number | null;
 }) {
   return (
-    <Link href={`/council/decision/${id}`} className="block">
+    <Link href={decisionHref(id)} className="block">
       <Card className="card-interactive group flex items-start gap-3 p-3">
         {leading}
         <div className="min-w-0 flex-1">

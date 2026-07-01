@@ -93,7 +93,28 @@ def _set_auth_cookie(response: Response, user: dict) -> None:
     )
 
 
-def _to_out(user: dict) -> UserOut:
+def _is_app_client(request: Request) -> bool:
+    """The native (Capacitor) app sends `X-Client: app`; browsers don't."""
+    return request.headers.get("X-Client", "").lower() == "app"
+
+
+def _app_access_token(request: Request, user: dict) -> str | None:
+    """Mint a long-lived bearer token for native-app clients to store on-device.
+
+    Browsers rely on the httpOnly cookie set by ``_set_auth_cookie`` and get
+    ``None`` here (the token is never exposed to page JS). The app can't persist
+    cross-site cookies reliably, so it carries the token in the Authorization
+    header instead — which ``deps.get_current_user`` already accepts.
+    """
+    if not _is_app_client(request):
+        return None
+    settings = get_settings()
+    return create_access_token(
+        user["id"], user.get("token_version", 0), settings.app_access_token_expire_minutes
+    )
+
+
+def _to_out(user: dict, access_token: str | None = None) -> UserOut:
     return UserOut(
         id=user["id"],
         email=user["email"],
@@ -104,6 +125,7 @@ def _to_out(user: dict) -> UserOut:
         delivery_channel=user.get("delivery_channel", "telegram"),
         nwz_fulltext_allowed=bool(user.get("nwz_fulltext_allowed")),
         email_verified=bool(user.get("email_verified")),
+        access_token=access_token,
     )
 
 
@@ -148,7 +170,7 @@ def register(
             expires = (datetime.utcnow() + timedelta(hours=_VERIFY_TTL_HOURS)).isoformat(timespec="seconds")
             store.create_email_verification(user_id, token_hash, expires)
             background.add_task(_send_verification_email, email, raw)
-    return _to_out(created_user)
+    return _to_out(created_user, _app_access_token(request, created_user))
 
 
 @router.post("/login", response_model=UserOut)
@@ -163,7 +185,7 @@ def login(
     if not user or not verify_password(body.password, user["password_hash"]):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "E-Mail oder Passwort falsch.")
     _set_auth_cookie(response, user)
-    return _to_out(user)
+    return _to_out(user, _app_access_token(request, user))
 
 
 @router.post("/logout")
@@ -276,6 +298,7 @@ def _send_verification_email(email: str, raw_token: str) -> None:
 
 @router.post("/verify-email", response_model=UserOut)
 def verify_email(
+    request: Request,
     body: VerifyEmailRequest,
     background: BackgroundTasks,
     store: Store = Depends(get_store),
@@ -293,7 +316,9 @@ def verify_email(
     # Now that the address is confirmed, ping admins to approve (if still pending).
     if user and user.get("status") == "pending":
         background.add_task(_notify_admins_pending, user["email"])
-    return _to_out(user)
+    # If the app opened this via a deep link (verification tapped on-device),
+    # hand back a bearer token so it lands logged-in.
+    return _to_out(user, _app_access_token(request, user))
 
 
 @router.post("/resend-verification")

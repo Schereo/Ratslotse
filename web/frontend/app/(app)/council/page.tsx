@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Search, ExternalLink, ChevronDown, ChevronRight, Landmark, Scale, Users, Sparkles, X } from "lucide-react";
 import { api, qs, ApiError } from "@/lib/api";
+import { decisionHref } from "@/lib/routes";
 import { useDebounce } from "@/lib/use-debounce";
 import {
   CouncilSession, SessionDetail, AgendaItem, CouncilDecision, DecisionOutcome, PolicyField,
@@ -78,7 +79,7 @@ function VoteLine({ d }: { d: CouncilDecision }) {
 function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
   const isSub = d.kind === "subvote";
   return (
-    <Link href={`/council/decision/${d.id}`} className="block">
+    <Link href={decisionHref(d.id)} className="block">
       <Card className={cn("card-interactive group flex items-center gap-3 p-4", isSub && "border-l-2 border-l-border bg-muted/30")}>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">

@@ -38,6 +38,10 @@ class UserOut(BaseModel):
     delivery_channel: str = "telegram"
     nwz_fulltext_allowed: bool = False
     email_verified: bool = False
+    # Populated only for native-app clients (which send `X-Client: app`) on
+    # login/register/verify-email. Web clients authenticate via the httpOnly
+    # cookie and leave this null.
+    access_token: str | None = None
 
 
 # ---- linking ----
@@ -117,10 +121,20 @@ class ChangePasswordRequest(BaseModel):
 
 # ---- delivery channel ----
 class DeliveryUpdate(BaseModel):
-    delivery_channel: str = Field(pattern="^(telegram|email|both)$")
+    delivery_channel: str = Field(pattern="^(telegram|email|both|push)$")
 
 
 # ---- feedback ----
 class FeedbackIn(BaseModel):
     kind: str = Field(pattern="^(feature|bug|other)$")
     message: str = Field(min_length=3, max_length=4000)
+
+
+# ---- push notifications (native app) ----
+class PushRegisterRequest(BaseModel):
+    token: str = Field(min_length=1, max_length=512)
+    platform: str = Field(pattern="^(ios|android)$")
+
+
+class PushUnregisterRequest(BaseModel):
+    token: str = Field(min_length=1, max_length=512)

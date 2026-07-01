@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Sparkles, Send, Loader2 } from "lucide-react";
 import { QaSource } from "@/lib/types";
+import { apiUrl, authHeaders } from "@/lib/api";
 import { Card, Input, toast } from "@/components/ui";
 import { DecisionLinkCard } from "@/components/decision-ui";
 
@@ -68,10 +69,12 @@ export function QaTab() {
     setCited([]);
 
     try {
-      const res = await fetch("/api/council/ask", {
+      // Absolute URL + bearer in the app (no Next proxy route there); same-origin
+      // /api on web, where the route handler streams the SSE unbuffered.
+      const res = await fetch(apiUrl("/council/ask"), {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ question: text }),
         signal: ctrl.signal,
       });
