@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { BarChart3, Users, Euro, TrendingUp, Target, User } from "lucide-react";
+import { Users, Euro, TrendingUp, Target, User } from "lucide-react";
 import { PartyAnalysis, FinanceData } from "@/lib/types";
 import { Card, Spinner, EmptyState } from "@/components/ui";
 import { POLICY_FIELD_LABELS, PartyBadge, DecisionLinkCard, formatEuro } from "@/components/decision-ui";
@@ -140,7 +140,7 @@ function PartiesView() {
   const { data, loading } = useFetch<PartyAnalysis>("/council/analysis");
   if (loading) return <div className="py-10"><Spinner /></div>;
   if (!data || data.coverage.with_factions === 0) {
-    return <EmptyState icon={BarChart3} title="Noch keine Analyse möglich" hint="Es sind noch keine Beschlüsse mit benanntem Antragsteller klassifiziert." />;
+    return <EmptyState mascot="sleep" title="Noch keine Analyse möglich" hint="Es sind noch keine Beschlüsse mit benanntem Antragsteller klassifiziert." />;
   }
   return (
     <div className="space-y-4">
@@ -200,7 +200,7 @@ function FinanceView() {
   const { data, loading } = useFetch<FinanceData>("/council/finance");
   if (loading) return <div className="py-10"><Spinner /></div>;
   if (!data || (data.decisions.length === 0 && data.by_field.length === 0)) {
-    return <EmptyState icon={Euro} title="Noch keine Finanzdaten" hint="Es wurden noch keine €-Beträge aus Beschlüssen erkannt." />;
+    return <EmptyState mascot="sleep" title="Noch keine Finanzdaten" hint="Es wurden noch keine €-Beträge aus Beschlüssen erkannt." />;
   }
   return (
     <div className="space-y-4">

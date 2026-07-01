@@ -1,23 +1,19 @@
 import Link from "next/link";
-import { Card, Button } from "@/components/ui";
-import { BrandMark } from "@/components/brand";
+import { Button } from "@/components/ui";
+import { Mascot } from "@/components/mascot";
 
 export default function NotFound() {
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <Card className="w-full max-w-sm p-8 text-center">
-        <div className="flex items-center justify-center gap-3">
-          <BrandMark />
-          <span className="text-2xl font-bold tracking-tight text-foreground">404</span>
-        </div>
-        <h1 className="mt-4 text-lg font-semibold text-foreground">Seite nicht gefunden</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Diese Seite gibt es nicht (mehr). Vielleicht hilft die Startseite weiter.
-        </p>
-        <Link href="/" className="mt-6 inline-block w-full">
-          <Button className="w-full">Zur Startseite</Button>
-        </Link>
-      </Card>
+    <div className="flex min-h-screen flex-col items-center justify-center bg-waves px-4 text-center">
+      <Mascot pose="confused" bob className="h-36 w-36" />
+      <p className="mt-4 font-display text-6xl font-bold tracking-tight text-primary">404</p>
+      <h1 className="mt-3 text-xl font-semibold text-foreground">Da hat sich Lotti verflogen.</h1>
+      <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
+        Diese Seite gibt es nicht (mehr) — hier ist nur offenes Wasser. Zurück auf Kurs?
+      </p>
+      <Link href="/" className="mt-6 inline-block">
+        <Button>Zur Startseite</Button>
+      </Link>
     </div>
   );
 }

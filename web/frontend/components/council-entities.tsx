@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { MapPin, Building2, Boxes, Search, Tag, List, Map as MapIcon } from "lucide-react";
+import { MapPin, Building2, Boxes, Search, List, Map as MapIcon } from "lucide-react";
 import { Entity, EntityMapPoint } from "@/lib/types";
 import { Card, Input, Spinner, EmptyState } from "@/components/ui";
 import { useFetch } from "@/lib/use-fetch";
@@ -44,7 +44,7 @@ export function EntitiesTab() {
   if (loading) return <div className="py-10"><Spinner /></div>;
   const all = data?.entities ?? [];
   if (all.length === 0) {
-    return <EmptyState icon={Tag} title="Noch keine Themen" hint="Es wurden noch keine wiederkehrenden Eigennamen aus den Beschlüssen extrahiert." />;
+    return <EmptyState mascot="sleep" title="Noch keine Themen" hint="Es wurden noch keine wiederkehrenden Eigennamen aus den Beschlüssen extrahiert." />;
   }
   const needle = q.trim().toLowerCase();
   const filtered = needle ? all.filter((e) => e.name.toLowerCase().includes(needle)) : all;
@@ -54,7 +54,7 @@ export function EntitiesTab() {
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input className="pl-9" placeholder="Thema suchen — z. B. Fliegerhorst, Klinikum, Nadorster Straße"
+          <Input data-search className="pl-9" placeholder="Thema suchen — z. B. Fliegerhorst, Klinikum, Nadorster Straße"
             value={q} onChange={(e) => setQ(e.target.value)} disabled={view === "map"} />
         </div>
         <div className="flex shrink-0 rounded-lg border border-border p-0.5">
@@ -89,7 +89,7 @@ function MapView() {
   if (loading) return <div className="flex h-[28rem] items-center justify-center rounded-lg border border-border"><Spinner /></div>;
   const points = data?.entities ?? [];
   if (points.length === 0) {
-    return <EmptyState icon={MapPin} title="Noch keine verorteten Themen" hint="Sobald Orte und Straßen geokodiert sind, erscheinen sie hier auf der Karte." />;
+    return <EmptyState mascot="search" title="Noch keine verorteten Themen" hint="Sobald Orte und Straßen geokodiert sind, erscheinen sie hier auf der Karte." />;
   }
   return (
     <div className="space-y-3">

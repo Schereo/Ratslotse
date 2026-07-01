@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Search, Users } from "lucide-react";
+import { Search } from "lucide-react";
 import { Member } from "@/lib/types";
 import { Card, Input, Select, Spinner, EmptyState } from "@/components/ui";
 import { PartyBadge } from "@/components/decision-ui";
@@ -33,7 +33,7 @@ export function PersonenView() {
   if (loading) return <div className="py-10"><Spinner /></div>;
   const all = data?.members ?? [];
   if (all.length === 0) {
-    return <EmptyState icon={Users} title="Keine Ratsmitglieder" hint="Es wurden noch keine Anwesenheiten aus den Protokollen erfasst." />;
+    return <EmptyState mascot="sleep" title="Keine Ratsmitglieder" hint="Es wurden noch keine Anwesenheiten aus den Protokollen erfasst." />;
   }
   const parties = Array.from(new Set(all.map((m) => m.party).filter((p): p is string => !!p))).sort();
   const needle = q.trim().toLowerCase();
@@ -48,7 +48,7 @@ export function PersonenView() {
       <div className="flex flex-col gap-2 sm:flex-row">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input className="pl-9" placeholder="Name suchen…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <Input data-search className="pl-9" placeholder="Name suchen…" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
         <Select value={party} onChange={(e) => setParty(e.target.value)} className="sm:w-56">
           <option value="">Alle Fraktionen</option>

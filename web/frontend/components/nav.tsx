@@ -78,10 +78,11 @@ function NavItem({ item, active, onNavigate }: { item: Item; active: boolean; on
       href={item.href}
       onClick={onNavigate}
       className={cn(
-        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+        "relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
         active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground",
       )}
     >
+      {active && <span className="absolute inset-y-1.5 left-0 w-1 rounded-full bg-primary" aria-hidden />}
       <Icon className="h-4 w-4" />
       {item.label}
     </Link>
@@ -228,11 +229,13 @@ export function MobileBottomNav() {
             href={l.href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium transition-colors",
+              "flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition-colors",
               active ? "text-primary" : "text-muted-foreground hover:text-foreground",
             )}
           >
-            <Icon className={cn("h-5 w-5 transition-transform", active && "scale-110")} />
+            <span className={cn("rounded-full px-3.5 py-1 transition-colors", active && "bg-primary/10")}>
+              <Icon className={cn("h-5 w-5 transition-transform", active && "scale-110")} />
+            </span>
             {l.label}
           </Link>
         );

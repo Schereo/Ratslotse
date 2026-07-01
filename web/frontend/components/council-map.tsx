@@ -15,7 +15,7 @@ const TILES = {
 
 // Marker colour by entity kind (the legend in the Themen tab mirrors this).
 export const KIND_COLOR: Record<string, string> = {
-  ort: "#2563eb",
+  ort: "#0764a6",
   organisation: "#7c3aed",
   projekt: "#059669",
 };
