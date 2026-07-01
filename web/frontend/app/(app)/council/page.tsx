@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Search, ExternalLink, ChevronDown, ChevronRight, Scale, Users, Sparkles, X } from "lucide-react";
+import { Search, ExternalLink, ChevronDown, ChevronRight, Scale, SlidersHorizontal, Users, Sparkles, X } from "lucide-react";
 import { api, qs, ApiError } from "@/lib/api";
 import { decisionHref } from "@/lib/routes";
 import { useDebounce } from "@/lib/use-debounce";
@@ -11,7 +11,8 @@ import {
   CouncilSession, SessionDetail, AgendaItem, CouncilDecision, DecisionOutcome, PolicyField,
 } from "@/lib/types";
 import {
-  Badge, Card, CardListSkeleton, DateField, EmptyState, Input, PageHeader, Pagination, Select, Spinner, formatDate, toast,
+  Badge, Button, Card, CardListSkeleton, DateField, EmptyState, Input, PageHeader, Pagination, Select,
+  Sheet, SheetContent, SheetTitle, SheetTrigger, Spinner, formatDate, toast,
 } from "@/components/ui";
 import { OutcomeBadge, FieldBadge, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
 import { AnalysisTab } from "@/components/council-analysis";
@@ -94,7 +95,7 @@ function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
             </div>
             <OutcomeBadge outcome={d.outcome} />
           </div>
-          <div className="mt-1.5 font-medium text-foreground">
+          <div className="mt-1.5 hyphens-auto font-medium text-foreground">
             {!isSub && d.item_number && <span className="text-muted-foreground">TOP {d.item_number} · </span>}
             <Highlight text={d.title ?? ""} query={query} />
           </div>
@@ -135,6 +136,23 @@ function FilterField({ label, className, children }: { label: string; className?
   );
 }
 
+/** Aktiver Filter als entfernbarer Chip (mobile Ansicht). */
+function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
+  return (
+    <span className="inline-flex max-w-full items-center gap-1 rounded-full bg-primary/10 py-1 pl-2.5 pr-1 text-xs font-medium text-primary">
+      <span className="truncate">{label}</span>
+      <button
+        type="button"
+        onClick={onClear}
+        aria-label={`Filter „${label}“ entfernen`}
+        className="rounded-full p-0.5 transition-colors hover:bg-primary/15"
+      >
+        <X className="h-3 w-3" />
+      </button>
+    </span>
+  );
+}
+
 function DecisionsTab({ committees }: { committees: string[] }) {
   const [q, setQ] = useState("");
   const [committee, setCommittee] = useState("");
@@ -142,6 +160,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   const [sort, setSort] = useState("date_desc");
   const [fields, setFields] = useState<PolicyField[]>([]);
   const [page, setPage] = useState(1);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [decisions, setDecisions] = useState<CouncilDecision[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -159,13 +178,18 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   // Themenfeld-Rückblicke can deep-link to the combined "Alle" view.
   const catParam = sp.get("cat");
   const mode: "vote" | "report" | "all" = catParam === "report" || catParam === "all" ? catParam : "vote";
-  const setUrlParam = (key: string, val: string) => {
+  // Mehrere Params in EINEM replace ändern — zwei Aufrufe nacheinander würden
+  // sich gegenseitig überschreiben (beide bauen auf demselben sp-Snapshot auf).
+  const setUrlParams = (entries: Record<string, string>) => {
     const params = new URLSearchParams(sp.toString());
     params.set("tab", "decisions");
-    if (val) params.set(key, val); else params.delete(key);
+    for (const [key, val] of Object.entries(entries)) {
+      if (val) params.set(key, val); else params.delete(key);
+    }
     router.replace(`/council?${params.toString()}`, { scroll: false });
     setPage(1);
   };
+  const setUrlParam = (key: string, val: string) => setUrlParams({ [key]: val });
 
   useEffect(() => {
     api.get<{ fields: PolicyField[] }>("/council/fields").then((d) => setFields(d.fields)).catch(() => {});
@@ -203,6 +227,61 @@ function DecisionsTab({ committees }: { committees: string[] }) {
     ? (total === 1 ? "Vorgang" : "Vorgänge")
     : isReport ? (total === 1 ? "Bericht" : "Berichte") : (total === 1 ? "Beschluss" : "Beschlüsse");
 
+  // Zeitraum zählt als EIN Filter; Sortierung ist eine Einstellung, kein Filter.
+  const activeFilterCount = [outcome, field, committee, dateFrom || dateTo].filter(Boolean).length;
+
+  // Ein JSX-Baum, zwei Einbauorte: Desktop inline in der Karte, mobil im Bottom-Sheet.
+  const refineFilters = (
+    <div className="space-y-3">
+      {mode === "vote" && (
+        <FilterField label="Ergebnis">
+          <div className="flex gap-1 overflow-x-auto rounded-md bg-muted p-1">
+            {OUTCOME_CHIPS.map((o) => (
+              <button
+                key={o.value}
+                type="button"
+                onClick={() => { setOutcome(o.value); setPage(1); }}
+                className={cn(
+                  "flex-1 whitespace-nowrap rounded-sm px-2 py-1.5 text-sm font-medium transition-colors",
+                  outcome === o.value ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </FilterField>
+      )}
+      <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-3">
+        {fields.length > 0 && (
+          <FilterField label="Themenfeld">
+            <Select value={field} onChange={(e) => setUrlParam("field", e.target.value)}>
+              <option value="">Alle Themenfelder</option>
+              {fields.map((f) => <option key={f.key} value={f.key}>{f.label} ({f.count})</option>)}
+            </Select>
+          </FilterField>
+        )}
+        <FilterField label="Ausschuss">
+          <Select value={committee} onChange={(e) => { setCommittee(e.target.value); setPage(1); }}>
+            <option value="">Alle Ausschüsse</option>
+            {committees.map((c) => <option key={c} value={c}>{c}</option>)}
+          </Select>
+        </FilterField>
+        <FilterField label="Sortierung">
+          <Select value={sort} onChange={(e) => { setSort(e.target.value); setPage(1); }}>
+            {SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+          </Select>
+        </FilterField>
+      </div>
+      <FilterField label="Zeitraum">
+        <div className="grid grid-cols-2 gap-2">
+          <DateField value={dateFrom} onChange={(v) => setUrlParam("date_from", v)} />
+          <DateField value={dateTo} onChange={(v) => setUrlParam("date_to", v)} />
+        </div>
+      </FilterField>
+    </div>
+  );
+
   return (
     <div>
       <Card className="mt-4 p-4">
@@ -226,6 +305,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
+              data-search
               className="pl-9"
               placeholder={isReport ? "Berichte durchsuchen…" : "Beschlüsse durchsuchen (z. B. Haushalt, Radwege)…"}
               value={q}
@@ -234,54 +314,49 @@ function DecisionsTab({ committees }: { committees: string[] }) {
           </div>
         </div>
 
-        {/* Tier 2 — refine: labelled, secondary. Separated from the primary row. */}
-        <div className="mt-4 space-y-3 border-t border-border pt-4">
-          {mode === "vote" && (
-            <FilterField label="Ergebnis">
-              <div className="flex gap-1 overflow-x-auto rounded-md bg-muted p-1">
-                {OUTCOME_CHIPS.map((o) => (
-                  <button
-                    key={o.value}
-                    type="button"
-                    onClick={() => { setOutcome(o.value); setPage(1); }}
-                    className={cn(
-                      "flex-1 whitespace-nowrap rounded-sm px-2 py-1.5 text-sm font-medium transition-colors",
-                      outcome === o.value ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    {o.label}
-                  </button>
-                ))}
-              </div>
-            </FilterField>
-          )}
-          <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-3">
-            {fields.length > 0 && (
-              <FilterField label="Themenfeld">
-                <Select value={field} onChange={(e) => setUrlParam("field", e.target.value)}>
-                  <option value="">Alle Themenfelder</option>
-                  {fields.map((f) => <option key={f.key} value={f.key}>{f.label} ({f.count})</option>)}
-                </Select>
-              </FilterField>
-            )}
-            <FilterField label="Ausschuss">
-              <Select value={committee} onChange={(e) => { setCommittee(e.target.value); setPage(1); }}>
-                <option value="">Alle Ausschüsse</option>
-                {committees.map((c) => <option key={c} value={c}>{c}</option>)}
-              </Select>
-            </FilterField>
-            <FilterField label="Sortierung">
-              <Select value={sort} onChange={(e) => { setSort(e.target.value); setPage(1); }}>
-                {SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-              </Select>
-            </FilterField>
-          </div>
-          <FilterField label="Zeitraum">
-            <div className="grid grid-cols-2 gap-2">
-              <DateField value={dateFrom} onChange={(v) => setUrlParam("date_from", v)} />
-              <DateField value={dateTo} onChange={(v) => setUrlParam("date_to", v)} />
+        {/* Tier 2 — refine: Desktop inline; mobil hinter „Filter“-Button im Bottom-Sheet. */}
+        <div className="mt-4 hidden border-t border-border pt-4 md:block">{refineFilters}</div>
+        <div className="mt-3 border-t border-border pt-3 md:hidden">
+          <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+            <SheetTrigger asChild>
+              <Button variant="secondary" size="sm" className="w-full">
+                <SlidersHorizontal /> Filter & Sortierung{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="bottom" className="p-5">
+              <SheetTitle>Filter & Sortierung</SheetTitle>
+              <p className="pb-4 pr-8 font-display text-lg font-semibold text-foreground" aria-hidden>
+                Filter & Sortierung
+              </p>
+              {refineFilters}
+              <Button className="mt-5 w-full" onClick={() => setFiltersOpen(false)}>
+                {loading ? "Ergebnisse anzeigen" : `${total} ${noun} anzeigen`}
+              </Button>
+            </SheetContent>
+          </Sheet>
+          {activeFilterCount > 0 && (
+            <div className="mt-2.5 flex flex-wrap gap-1.5">
+              {outcome && (
+                <FilterChip
+                  label={`Ergebnis: ${OUTCOME_CHIPS.find((o) => o.value === outcome)?.label ?? outcome}`}
+                  onClear={() => { setOutcome(""); setPage(1); }}
+                />
+              )}
+              {field && (
+                <FilterChip
+                  label={fields.find((f) => f.key === field)?.label ?? field}
+                  onClear={() => setUrlParam("field", "")}
+                />
+              )}
+              {committee && <FilterChip label={committee} onClear={() => { setCommittee(""); setPage(1); }} />}
+              {(dateFrom || dateTo) && (
+                <FilterChip
+                  label={`${dateFrom ? formatDate(dateFrom) : "…"} – ${dateTo ? formatDate(dateTo) : "heute"}`}
+                  onClear={() => setUrlParams({ date_from: "", date_to: "" })}
+                />
+              )}
             </div>
-          </FilterField>
+          )}
         </div>
       </Card>
 
@@ -411,7 +486,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
         <div className="space-y-3">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input className="pl-9" placeholder="In Tagesordnungen suchen (z. B. Bebauungsplan)…" value={q} onChange={(e) => setQ(e.target.value)} />
+            <Input data-search className="pl-9" placeholder="In Tagesordnungen suchen (z. B. Bebauungsplan)…" value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Select value={committee} onChange={(e) => setCommittee(e.target.value)}>

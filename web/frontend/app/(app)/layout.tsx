@@ -8,6 +8,7 @@ import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { initPush } from "@/lib/push";
 import { DesktopSidebar, MobileTopbar, MobileBottomNav } from "@/components/nav";
+import { SlashSearchShortcut } from "@/components/keyboard-shortcuts";
 import { Button, Card, Spinner, toast } from "@/components/ui";
 import type { User } from "@/lib/types";
 
@@ -42,6 +43,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
+      <SlashSearchShortcut />
       <DesktopSidebar />
       <MobileTopbar />
       <main className="flex flex-1 flex-col overflow-y-auto pb-[calc(env(safe-area-inset-bottom)+5rem)] md:pb-0">

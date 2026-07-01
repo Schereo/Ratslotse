@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/auth";
 import { Topic } from "@/lib/types";
 import { Badge, Card, PageHeader } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
+import { LotsenTipp } from "@/components/lotsen-tipp";
 
 const tiles = [
   { href: "/council", title: "Ratsinformationssystem", desc: "Beschlüsse, KI-Fragen, Sitzungen, Themen und Analysen.", icon: Landmark },
@@ -41,6 +42,8 @@ export default function DashboardPage() {
       />
 
       <FirstSteps linked={!!user?.linked} hasTopic={topicCount > 0} />
+
+      <LotsenTipp className="mt-6" />
 
       <h2 className="mt-8 text-sm font-semibold text-muted-foreground">Schnellzugriff</h2>
       <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">

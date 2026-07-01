@@ -5,9 +5,10 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ExternalLink, FileText, FileDown, Users, Newspaper, Tag } from "lucide-react";
 import { DecisionDetail, CouncilDecision } from "@/lib/types";
-import { Card, Spinner, EmptyState, formatDate } from "@/components/ui";
+import { Card, DetailSkeleton, EmptyState, formatDate } from "@/components/ui";
 import { OutcomeBadge, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
-import { themaHref } from "@/lib/routes";
+import { decisionHref, themaHref } from "@/lib/routes";
+import { ShareButton } from "@/components/share-button";
 import { cn } from "@/lib/utils";
 import { useFetch } from "@/lib/use-fetch";
 
@@ -29,7 +30,7 @@ function DecisionDetailInner() {
   const router = useRouter();
   const { data, loading } = useFetch<DecisionDetail>(id ? `/council/decision/${id}` : null);
 
-  if (loading) return <div className="py-10"><Spinner /></div>;
+  if (loading) return <DetailSkeleton />;
   if (!data) return <EmptyState mascot="confused" title="Beschluss nicht gefunden" />;
 
   const d = data.decision;
@@ -45,9 +46,12 @@ function DecisionDetailInner() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <button onClick={() => router.back()} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-4 w-4" /> Zurück
-      </button>
+      <div className="flex items-center justify-between gap-3">
+        <button onClick={() => router.back()} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-4 w-4" /> Zurück
+        </button>
+        <ShareButton path={decisionHref(d.id)} title={d.title ?? "Beschluss des Oldenburger Stadtrats"} />
+      </div>
 
       <div className="mt-3 flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -223,7 +227,7 @@ function DecisionDetailInner() {
 
 export default function DecisionDetailPage() {
   return (
-    <Suspense fallback={<div className="py-10"><Spinner /></div>}>
+    <Suspense fallback={<DetailSkeleton />}>
       <DecisionDetailInner />
     </Suspense>
   );

@@ -48,7 +48,7 @@ export function PersonenView() {
       <div className="flex flex-col gap-2 sm:flex-row">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input className="pl-9" placeholder="Name suchen…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <Input data-search className="pl-9" placeholder="Name suchen…" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
         <Select value={party} onChange={(e) => setParty(e.target.value)} className="sm:w-56">
           <option value="">Alle Fraktionen</option>

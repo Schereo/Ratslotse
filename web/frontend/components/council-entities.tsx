@@ -54,7 +54,7 @@ export function EntitiesTab() {
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input className="pl-9" placeholder="Thema suchen — z. B. Fliegerhorst, Klinikum, Nadorster Straße"
+          <Input data-search className="pl-9" placeholder="Thema suchen — z. B. Fliegerhorst, Klinikum, Nadorster Straße"
             value={q} onChange={(e) => setQ(e.target.value)} disabled={view === "map"} />
         </div>
         <div className="flex shrink-0 rounded-lg border border-border p-0.5">

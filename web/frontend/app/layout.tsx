@@ -30,7 +30,11 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0764a6",
+  // Statusleiste folgt dem System-Farbschema und passt so zur Topbar der App.
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f6f9fb" },
+    { media: "(prefers-color-scheme: dark)", color: "#09111b" },
+  ],
   width: "device-width",
   initialScale: 1,
   // Extend the page into the iOS safe areas so env(safe-area-inset-*) reports

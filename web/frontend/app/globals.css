@@ -66,11 +66,14 @@
   body {
     @apply bg-background text-foreground antialiased;
   }
-  /* Überschriften tragen die Display-Schrift (Bricolage Grotesque). */
+  /* Überschriften tragen die Display-Schrift (Bricolage Grotesque).
+     hyphens: deutsche Komposita („Ratsinformationssystem") brechen auf
+     schmalen Screens sauber um — html hat lang="de". */
   h1,
   h2,
   h3 {
     @apply font-display;
+    hyphens: auto;
   }
 }
 

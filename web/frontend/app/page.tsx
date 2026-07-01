@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Search, Sparkles, MapPin, BarChart3, Bell, Landmark, ArrowRight } from "lucide-react";
 import { Brand } from "@/components/brand";
 import { Mascot } from "@/components/mascot";
+import { LandingQaDemo } from "@/components/landing-qa-demo";
 import { HeaderCTA } from "@/components/landing-cta";
 import { NativeRedirect } from "@/components/native-redirect";
 import { HeroCanvas } from "@/components/hero-canvas";
@@ -70,6 +71,17 @@ export default function LandingPage() {
               <HeroMapFrame />
             </div>
           </div>
+        </section>
+
+        {/* KI-Frage-Demo — das Killerfeature direkt zeigen statt nur beschreiben */}
+        <section className="mx-auto max-w-3xl px-5 pb-16 pt-4">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold tracking-tight text-foreground">Frag den Rat — in normaler Sprache</h2>
+            <p className="mx-auto mt-2 max-w-xl text-muted-foreground">
+              Die KI durchsucht alle Beschlüsse des Stadtrats und antwortet mit Quellen. So sieht das aus:
+            </p>
+          </div>
+          <LandingQaDemo />
         </section>
 
         {/* Features */}

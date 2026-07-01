@@ -8,8 +8,9 @@ import { POLICY_FIELD_LABELS, formatEuro } from "@/components/decision-ui";
 import { decisionHref } from "@/lib/routes";
 import { useFetch } from "@/lib/use-fetch";
 
-// Distinct, dark-mode-safe series colours for the top policy fields.
-const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444", "#06b6d4"];
+// Distinct, dark-mode-safe series colours for the top policy fields —
+// abgeleitet aus der Markenpalette (Hafenblau, Signal-Orange, Gold der Mütze).
+const COLORS = ["#1c86c8", "#f66623", "#0d9488", "#f2b441", "#8b6ce8", "#e4577e"];
 
 function qLabel(q: string) {
   // "2024-Q3" → "Q3 '24"

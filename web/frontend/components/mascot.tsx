@@ -1,4 +1,5 @@
 import * as React from "react";
+import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -255,16 +256,29 @@ export function MascotTip({
   title,
   children,
   className,
+  onDismiss,
 }: {
   pose?: MascotPose;
   title?: string;
   children: React.ReactNode;
   className?: string;
+  /** Zeigt ein kleines X in der Sprechblase (z. B. „Tipp ausblenden"). */
+  onDismiss?: () => void;
 }) {
   return (
     <div className={cn("flex items-end gap-3", className)}>
       <Mascot pose={pose} className="h-16 w-16 shrink-0" />
-      <div className="relative flex-1 rounded-2xl rounded-bl-sm border border-border bg-card p-3.5 shadow-sm">
+      <div className={cn("relative flex-1 rounded-2xl rounded-bl-sm border border-border bg-card p-3.5 shadow-sm", onDismiss && "pr-9")}>
+        {onDismiss && (
+          <button
+            type="button"
+            onClick={onDismiss}
+            aria-label="Tipp ausblenden"
+            className="absolute right-2 top-2 rounded-md p-1 text-muted-foreground/60 transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
         {title && <p className="text-sm font-semibold text-foreground">{title}</p>}
         <div className={cn("text-sm leading-relaxed text-muted-foreground", title && "mt-0.5")}>{children}</div>
       </div>

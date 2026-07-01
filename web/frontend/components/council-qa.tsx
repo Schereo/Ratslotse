@@ -125,7 +125,7 @@ export function QaTab() {
       <form onSubmit={(e) => { e.preventDefault(); ask(q); }} className="flex gap-2">
         <div className="relative flex-1">
           <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input className="pl-9" placeholder="Frag den Stadtrat — z. B. „Was wurde zum Radverkehr beschlossen?“"
+          <Input data-search className="pl-9" placeholder="Frag den Stadtrat — z. B. „Was wurde zum Radverkehr beschlossen?“"
             value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
         <button type="submit" disabled={loading || q.trim().length < 4}

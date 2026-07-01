@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ArrowLeft, User, ExternalLink, Gavel } from "lucide-react";
 import { MemberDetail } from "@/lib/types";
-import { Card, Spinner, EmptyState, formatDate } from "@/components/ui";
+import { Card, DetailSkeleton, EmptyState, formatDate } from "@/components/ui";
 import { PartyBadge } from "@/components/decision-ui";
 import { useFetch } from "@/lib/use-fetch";
 
@@ -24,7 +24,7 @@ function PersonInner() {
   const router = useRouter();
   const { data, loading } = useFetch<MemberDetail>(slug ? `/council/person/${slug}` : null);
 
-  if (loading) return <div className="py-10"><Spinner /></div>;
+  if (loading) return <DetailSkeleton />;
   if (!data) return <EmptyState mascot="confused" title="Ratsmitglied nicht gefunden" hint="Zu diesem Namen gibt es keine Anwesenheitsdaten." />;
 
   return (
@@ -90,7 +90,7 @@ function PersonInner() {
 
 export default function PersonPage() {
   return (
-    <Suspense fallback={<div className="py-10"><Spinner /></div>}>
+    <Suspense fallback={<DetailSkeleton />}>
       <PersonInner />
     </Suspense>
   );
