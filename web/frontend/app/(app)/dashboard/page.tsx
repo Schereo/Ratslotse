@@ -8,6 +8,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Topic } from "@/lib/types";
 import { Badge, Card, PageHeader } from "@/components/ui";
+import { Mascot } from "@/components/mascot";
 
 const tiles = [
   { href: "/council", title: "Ratsinformationssystem", desc: "Beschlüsse, KI-Fragen, Sitzungen, Themen und Analysen.", icon: Landmark },
@@ -34,7 +35,7 @@ export default function DashboardPage() {
   return (
     <div>
       <PageHeader
-        title="Willkommen zurück"
+        title="Moin!"
         description={user?.email}
         action={user?.linked ? <Badge color="green">Telegram verbunden</Badge> : <Badge color="amber">Telegram offen</Badge>}
       />
@@ -110,11 +111,34 @@ function FirstSteps({ linked, hasTopic }: { linked: boolean; hasTopic: boolean }
       href: "/link", done: linked },
   ];
 
+  const doneCount = steps.filter((s) => s.done || visited.includes(s.id)).length;
+  const allDone = doneCount === steps.length;
+
   return (
-    <Card className="mt-6 p-5">
-      <h2 className="font-semibold text-foreground">Erste Schritte</h2>
-      <p className="text-sm text-muted-foreground">Entdecke, was Ratslotse kann.</p>
-      <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+    <Card className="mt-6 overflow-hidden">
+      <div className="flex items-center gap-4 border-b border-border bg-primary/5 px-5 py-4">
+        <Mascot pose={allDone ? "celebrate" : "wave"} className="h-16 w-16 shrink-0" />
+        <div className="min-w-0 flex-1">
+          <h2 className="font-semibold text-foreground">{allDone ? "Kurs gehalten — alles erkundet!" : "Erste Schritte mit Lotti"}</h2>
+          <p className="text-sm text-muted-foreground">
+            {allDone
+              ? "Du kennst jetzt alle Ecken von Ratslotse. Lotti meldet sich, sobald es Neues gibt."
+              : "Moin! Ich bin Lotti und lotse dich einmal durch alles, was Ratslotse kann."}
+          </p>
+          <div className="mt-2 flex items-center gap-2">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-primary/15">
+              <div
+                className="h-full rounded-full bg-primary transition-all duration-500"
+                style={{ width: `${(doneCount / steps.length) * 100}%` }}
+              />
+            </div>
+            <span className="shrink-0 text-xs font-medium tabular-nums text-muted-foreground">
+              {doneCount}/{steps.length}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 gap-2 p-5 sm:grid-cols-2">
         {steps.map((step) => {
           const Icon = step.icon;
           const done = step.done || visited.includes(step.id);

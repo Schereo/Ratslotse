@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Search, Sparkles, MapPin, BarChart3, Bell, Landmark, ArrowRight } from "lucide-react";
-import { BrandMark } from "@/components/brand";
+import { Brand } from "@/components/brand";
+import { Mascot } from "@/components/mascot";
 import { HeaderCTA } from "@/components/landing-cta";
 import { NativeRedirect } from "@/components/native-redirect";
 import { HeroCanvas } from "@/components/hero-canvas";
@@ -30,9 +31,8 @@ export default function LandingPage() {
       <NativeRedirect />
       <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-3.5">
-          <Link href="/" className="flex items-center gap-2">
-            <BrandMark />
-            <span className="font-semibold text-foreground">Ratslotse</span>
+          <Link href="/">
+            <Brand />
           </Link>
           <HeaderCTA />
         </div>
@@ -44,8 +44,11 @@ export default function LandingPage() {
           <HeroCanvas />
           <div className="relative z-10 mx-auto grid max-w-6xl items-center gap-10 px-5 py-16 sm:py-24 lg:grid-cols-2">
             <div className="text-center lg:text-left">
-              <p className="text-sm font-medium text-primary">Stadtrat Oldenburg</p>
-              <h1 className="mt-3 text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
+              <Mascot pose="wave" bob className="mx-auto mb-5 h-24 w-24 lg:hidden" />
+              <p className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                Stadtrat Oldenburg
+              </p>
+              <h1 className="mt-4 text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
                 Was beschließt eigentlich der Rat?
               </h1>
               <p className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground lg:mx-0">
@@ -53,16 +56,17 @@ export default function LandingPage() {
                 mit KI-Fragen, Themen-Karten und Analysen. Aus der amtlichen Quelle, ohne PDF-Wälzen.
               </p>
               <div className="mt-8 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
-                <Link href="/register" className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition-opacity hover:opacity-90">
+                <Link href="/register" className="inline-flex items-center gap-1.5 rounded-xl bg-brand-gradient px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-lifted transition-all hover:-translate-y-0.5 hover:opacity-95">
                   Kostenlos registrieren <ArrowRight className="h-4 w-4" />
                 </Link>
-                <Link href="/technik" className="inline-flex items-center rounded-lg border border-border bg-background/70 px-5 py-2.5 text-sm font-medium text-foreground backdrop-blur transition-colors hover:bg-muted">
+                <Link href="/technik" className="inline-flex items-center rounded-xl border border-border bg-background/70 px-5 py-2.5 text-sm font-medium text-foreground backdrop-blur transition-colors hover:bg-muted">
                   Wie es funktioniert
                 </Link>
               </div>
               <LiveStats />
             </div>
-            <div className="hidden lg:block">
+            <div className="relative hidden lg:block">
+              <Mascot pose="wave" bob className="absolute -top-12 right-4 z-10 h-28 w-28" />
               <HeroMapFrame />
             </div>
           </div>
@@ -91,10 +95,13 @@ export default function LandingPage() {
         </section>
 
         {/* Closing CTA */}
-        <section className="mx-auto max-w-3xl px-5 py-16 text-center">
-          <h2 className="text-2xl font-bold tracking-tight text-foreground">Bereit, reinzuschauen?</h2>
-          <p className="mt-2 text-muted-foreground">Konto erstellen und den Rat durchsuchen — kostenlos.</p>
-          <div className="mt-6 flex justify-center">
+        <section className="mx-auto max-w-3xl px-5 py-16">
+          <div className="flex flex-col items-center gap-5 rounded-3xl border border-border bg-card p-8 text-center shadow-lifted sm:p-10">
+            <Mascot pose="celebrate" className="h-24 w-24" />
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight text-foreground">Bereit, reinzuschauen?</h2>
+              <p className="mt-2 text-muted-foreground">Konto erstellen und den Rat durchsuchen — kostenlos.</p>
+            </div>
             <HeaderCTA />
           </div>
         </section>

@@ -3,7 +3,7 @@
 import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ExternalLink, FileText, FileDown, Users, Scale, Newspaper, Tag } from "lucide-react";
+import { ArrowLeft, ExternalLink, FileText, FileDown, Users, Newspaper, Tag } from "lucide-react";
 import { DecisionDetail, CouncilDecision } from "@/lib/types";
 import { Card, Spinner, EmptyState, formatDate } from "@/components/ui";
 import { OutcomeBadge, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
@@ -30,7 +30,7 @@ function DecisionDetailInner() {
   const { data, loading } = useFetch<DecisionDetail>(id ? `/council/decision/${id}` : null);
 
   if (loading) return <div className="py-10"><Spinner /></div>;
-  if (!data) return <EmptyState icon={Scale} title="Beschluss nicht gefunden" />;
+  if (!data) return <EmptyState mascot="confused" title="Beschluss nicht gefunden" />;
 
   const d = data.decision;
   const unanimous = d.outcome === "angenommen"

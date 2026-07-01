@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Search, ChevronRight, Newspaper } from "lucide-react";
+import { Search, ChevronRight } from "lucide-react";
 import { api, qs, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useDebounce } from "@/lib/use-debounce";
@@ -128,7 +128,7 @@ function NwzSearch() {
           <CardListSkeleton rows={5} />
         ) : results.length === 0 ? (
           <EmptyState
-            icon={Newspaper}
+            mascot="search"
             title="Keine Artikel gefunden"
             hint="Versuche andere Suchbegriffe oder passe die Filter an."
           />

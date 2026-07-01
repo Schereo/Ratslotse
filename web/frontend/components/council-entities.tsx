@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { MapPin, Building2, Boxes, Search, Tag, List, Map as MapIcon } from "lucide-react";
+import { MapPin, Building2, Boxes, Search, List, Map as MapIcon } from "lucide-react";
 import { Entity, EntityMapPoint } from "@/lib/types";
 import { Card, Input, Spinner, EmptyState } from "@/components/ui";
 import { useFetch } from "@/lib/use-fetch";
@@ -44,7 +44,7 @@ export function EntitiesTab() {
   if (loading) return <div className="py-10"><Spinner /></div>;
   const all = data?.entities ?? [];
   if (all.length === 0) {
-    return <EmptyState icon={Tag} title="Noch keine Themen" hint="Es wurden noch keine wiederkehrenden Eigennamen aus den Beschlüssen extrahiert." />;
+    return <EmptyState mascot="sleep" title="Noch keine Themen" hint="Es wurden noch keine wiederkehrenden Eigennamen aus den Beschlüssen extrahiert." />;
   }
   const needle = q.trim().toLowerCase();
   const filtered = needle ? all.filter((e) => e.name.toLowerCase().includes(needle)) : all;
@@ -89,7 +89,7 @@ function MapView() {
   if (loading) return <div className="flex h-[28rem] items-center justify-center rounded-lg border border-border"><Spinner /></div>;
   const points = data?.entities ?? [];
   if (points.length === 0) {
-    return <EmptyState icon={MapPin} title="Noch keine verorteten Themen" hint="Sobald Orte und Straßen geokodiert sind, erscheinen sie hier auf der Karte." />;
+    return <EmptyState mascot="search" title="Noch keine verorteten Themen" hint="Sobald Orte und Straßen geokodiert sind, erscheinen sie hier auf der Karte." />;
   }
   return (
     <div className="space-y-3">

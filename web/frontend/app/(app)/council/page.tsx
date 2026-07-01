@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Search, ExternalLink, ChevronDown, ChevronRight, Landmark, Scale, Users, Sparkles, X } from "lucide-react";
+import { Search, ExternalLink, ChevronDown, ChevronRight, Scale, Users, Sparkles, X } from "lucide-react";
 import { api, qs, ApiError } from "@/lib/api";
 import { decisionHref } from "@/lib/routes";
 import { useDebounce } from "@/lib/use-debounce";
@@ -302,7 +302,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
         {loading ? (
           <CardListSkeleton rows={5} />
         ) : decisions.length === 0 ? (
-          <EmptyState icon={Scale} title={`Keine ${isReport ? "Berichte" : "Beschlüsse"} gefunden`} hint="Andere Suche/Filter — oder das Protokoll ist noch nicht veröffentlicht." />
+          <EmptyState mascot="search" title={`Keine ${isReport ? "Berichte" : "Beschlüsse"} gefunden`} hint="Andere Suche/Filter — oder das Protokoll ist noch nicht veröffentlicht." />
         ) : (
           <div className="space-y-2.5">
             <p className="text-sm font-medium text-muted-foreground">{total} {noun}</p>
@@ -441,7 +441,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
         {loading ? (
           <CardListSkeleton rows={5} />
         ) : sessions.length === 0 ? (
-          <EmptyState icon={Landmark} title={hasSearched ? "Keine Sitzungen gefunden" : "Noch keine Sitzungen vorhanden"} hint={hasSearched ? "Versuche andere Suchbegriffe oder Filter." : undefined} />
+          <EmptyState mascot="search" title={hasSearched ? "Keine Sitzungen gefunden" : "Noch keine Sitzungen vorhanden"} hint={hasSearched ? "Versuche andere Suchbegriffe oder Filter." : undefined} />
         ) : (
           <div className="space-y-3">
             <p className="text-sm font-medium text-muted-foreground">{sessions.length} {sessions.length === 1 ? "Sitzung" : "Sitzungen"}</p>

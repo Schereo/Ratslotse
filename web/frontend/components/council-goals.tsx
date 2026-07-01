@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Target, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { GoalSummary, GoalDetail } from "@/lib/types";
 import { Card, Spinner, EmptyState } from "@/components/ui";
 import { cn } from "@/lib/utils";
@@ -68,7 +68,7 @@ export function GoalsView() {
   if (loading) return <div className="py-10"><Spinner /></div>;
   const goals = data?.goals ?? [];
   const tracked = goals.some((g) => g.total > 0);
-  if (!tracked) return <EmptyState icon={Target} title="Ziel-Tracking wird vorbereitet" hint="Die Beschlüsse werden gerade den Stadtzielen zugeordnet." />;
+  if (!tracked) return <EmptyState mascot="sleep" title="Ziel-Tracking wird vorbereitet" hint="Die Beschlüsse werden gerade den Stadtzielen zugeordnet." />;
 
   return (
     <div className="space-y-3">

@@ -4,8 +4,8 @@
   "description": "Lokale Nachrichten und Ratsinformationen für Oldenburg",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f8fafc",
-  "theme_color": "#2563eb",
+  "background_color": "#f6f9fb",
+  "theme_color": "#0764a6",
   "icons": [
     {
       "src": "/icon-192.png",

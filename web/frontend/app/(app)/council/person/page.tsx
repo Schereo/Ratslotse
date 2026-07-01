@@ -25,7 +25,7 @@ function PersonInner() {
   const { data, loading } = useFetch<MemberDetail>(slug ? `/council/person/${slug}` : null);
 
   if (loading) return <div className="py-10"><Spinner /></div>;
-  if (!data) return <EmptyState icon={User} title="Ratsmitglied nicht gefunden" hint="Zu diesem Namen gibt es keine Anwesenheitsdaten." />;
+  if (!data) return <EmptyState mascot="confused" title="Ratsmitglied nicht gefunden" hint="Zu diesem Namen gibt es keine Anwesenheitsdaten." />;
 
   return (
     <div className="mx-auto max-w-3xl">

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Search, Users } from "lucide-react";
+import { Search } from "lucide-react";
 import { Member } from "@/lib/types";
 import { Card, Input, Select, Spinner, EmptyState } from "@/components/ui";
 import { PartyBadge } from "@/components/decision-ui";
@@ -33,7 +33,7 @@ export function PersonenView() {
   if (loading) return <div className="py-10"><Spinner /></div>;
   const all = data?.members ?? [];
   if (all.length === 0) {
-    return <EmptyState icon={Users} title="Keine Ratsmitglieder" hint="Es wurden noch keine Anwesenheiten aus den Protokollen erfasst." />;
+    return <EmptyState mascot="sleep" title="Keine Ratsmitglieder" hint="Es wurden noch keine Anwesenheiten aus den Protokollen erfasst." />;
   }
   const parties = Array.from(new Set(all.map((m) => m.party).filter((p): p is string => !!p))).sort();
   const needle = q.trim().toLowerCase();

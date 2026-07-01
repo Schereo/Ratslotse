@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Sparkles, Send, Loader2 } from "lucide-react";
+import { Mascot } from "@/components/mascot";
 import { QaSource } from "@/lib/types";
 import { apiUrl, authHeaders } from "@/lib/api";
 import { Card, Input, toast } from "@/components/ui";
@@ -147,23 +148,31 @@ export function QaTab() {
         </div>
       )}
 
-      {/* Live progress: real step + a rotating playful word. */}
-      {loading && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />
-          <span className="font-medium text-foreground">{step ? STEP_LABELS[step] : "Wird vorbereitet"}…</span>
-          <span className="hidden text-muted-foreground/70 sm:inline">· {word}</span>
+      {/* Live progress: Lotti sucht — real step + a rotating playful word. */}
+      {loading && !answer && (
+        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+          <Mascot pose="search" bob className="h-14 w-14 shrink-0" />
+          <div>
+            <span className="flex items-center gap-2 font-medium text-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+              {step ? STEP_LABELS[step] : "Wird vorbereitet"}…
+            </span>
+            <span className="hidden text-xs text-muted-foreground/70 sm:inline">{word}</span>
+          </div>
         </div>
       )}
 
-      {/* Answer streams in as soon as the first token arrives. */}
+      {/* Answer streams in as soon as the first token arrives — Lotti überbringt sie. */}
       {answer && (
-        <Card className="p-4">
-          <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-            {answer}
-            {loading && step === "answer" && <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-primary align-text-bottom" />}
-          </p>
-        </Card>
+        <div className="flex items-start gap-3">
+          <Mascot pose={loading ? "search" : "point"} className="mt-1 hidden h-12 w-12 shrink-0 sm:block" />
+          <Card className="flex-1 rounded-2xl rounded-tl-sm p-4">
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+              {answer}
+              {loading && step === "answer" && <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-primary align-text-bottom" />}
+            </p>
+          </Card>
+        </div>
       )}
 
       {/* Sources appear the moment retrieval + rerank finish — before the answer. */}

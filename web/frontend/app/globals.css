@@ -3,49 +3,59 @@
 @tailwind utilities;
 
 @layer base {
+  /*
+   * „Nordsee & Signal" — die Ratslotse-Farbwelt.
+   * Basis ist ein tiefes Hafenblau (mehr Teal als das übliche UI-Blau),
+   * dazu Signal-Orange als Akzent: die traditionelle Farbe der Lotsenboote.
+   */
   :root {
-    --background: 210 40% 98%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 204 45% 97.5%;
+    --foreground: 212 55% 11%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 212 55% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 72.2% 50.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.6rem;
+    --popover-foreground: 212 55% 11%;
+    --primary: 205 92% 34%;
+    --primary-foreground: 204 45% 98%;
+    --secondary: 206 42% 94%;
+    --secondary-foreground: 212 55% 14%;
+    --muted: 206 40% 94%;
+    --muted-foreground: 209 18% 42%;
+    --accent: 206 45% 93%;
+    --accent-foreground: 212 55% 14%;
+    --destructive: 0 72% 48%;
+    --destructive-foreground: 204 45% 98%;
+    --border: 208 32% 89%;
+    --input: 208 30% 85%;
+    --ring: 205 92% 34%;
+    --radius: 0.75rem;
+    /* Signal-Orange (Lotsenboot): Maskottchen, Highlights, sparsame Akzente. */
+    --signal: 19 92% 55%;
+    --signal-foreground: 0 0% 100%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 217.2 32.6% 10%;
-    --card-foreground: 210 40% 98%;
-    --popover: 217.2 32.6% 10%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 50.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    --background: 213 50% 7%;
+    --foreground: 204 40% 96%;
+    --card: 212 42% 11%;
+    --card-foreground: 204 40% 96%;
+    --popover: 212 42% 11%;
+    --popover-foreground: 204 40% 96%;
+    --primary: 202 90% 60%;
+    --primary-foreground: 213 60% 10%;
+    --secondary: 211 36% 17%;
+    --secondary-foreground: 204 40% 96%;
+    --muted: 211 36% 16%;
+    --muted-foreground: 208 22% 65%;
+    --accent: 211 36% 18%;
+    --accent-foreground: 204 40% 96%;
+    --destructive: 0 70% 56%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 211 36% 17%;
+    --input: 211 36% 21%;
+    --ring: 202 90% 60%;
+    --signal: 19 95% 60%;
+    --signal-foreground: 213 60% 10%;
   }
 }
 
@@ -56,12 +66,34 @@
   body {
     @apply bg-background text-foreground antialiased;
   }
+  /* Überschriften tragen die Display-Schrift (Bricolage Grotesque). */
+  h1,
+  h2,
+  h3 {
+    @apply font-display;
+  }
 }
 
 @layer components {
   /* Subtle lift for clickable cards — the Linear/Stripe hover affordance. */
   .card-interactive {
-    @apply cursor-pointer transition-all duration-150 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md;
+    @apply cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lifted;
+  }
+
+  /* Sanfter Marken-Verlauf für Hero-Flächen und Primär-CTAs. */
+  .bg-brand-gradient {
+    background-image: linear-gradient(135deg, hsl(202 90% 44%) 0%, hsl(208 92% 32%) 100%);
+  }
+  .dark .bg-brand-gradient {
+    background-image: linear-gradient(135deg, hsl(201 90% 55%) 0%, hsl(208 80% 40%) 100%);
+  }
+
+  /* Dezente Wellen-Textur (Lotsen-Motiv) für Hintergrund-Flächen. */
+  .bg-waves {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='24' viewBox='0 0 120 24'%3E%3Cpath d='M0 12c10-8 20-8 30 0s20 8 30 0 20-8 30 0 20 8 30 0' fill='none' stroke='%230764a6' stroke-opacity='0.07' stroke-width='2'/%3E%3C/svg%3E");
+  }
+  .dark .bg-waves {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='24' viewBox='0 0 120 24'%3E%3Cpath d='M0 12c10-8 20-8 30 0s20 8 30 0 20-8 30 0 20 8 30 0' fill='none' stroke='%233db1f5' stroke-opacity='0.08' stroke-width='2'/%3E%3C/svg%3E");
   }
 }
 

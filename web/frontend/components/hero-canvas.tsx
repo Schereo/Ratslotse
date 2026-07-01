@@ -22,7 +22,7 @@ export function HeroCanvas() {
 
     const brand = () => {
       const v = getComputedStyle(document.documentElement).getPropertyValue("--primary").trim();
-      return v ? `hsl(${v})` : "#2563eb";
+      return v ? `hsl(${v})` : "#0764a6";
     };
     let color = brand();
 

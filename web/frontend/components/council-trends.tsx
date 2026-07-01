@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { TrendingUp } from "lucide-react";
 import { Trends, FieldRecap } from "@/lib/types";
 import { Card, Spinner, EmptyState } from "@/components/ui";
 import { POLICY_FIELD_LABELS, formatEuro } from "@/components/decision-ui";
@@ -145,7 +144,7 @@ export function TrendsView() {
 
   if (loading) return <div className="py-10"><Spinner /></div>;
   if (!data || data.quarters.length === 0) {
-    return <EmptyState icon={TrendingUp} title="Noch keine Trends" hint="Es sind noch nicht genug datierte, klassifizierte Beschlüsse vorhanden." />;
+    return <EmptyState mascot="sleep" title="Noch keine Trends" hint="Es sind noch nicht genug datierte, klassifizierte Beschlüsse vorhanden." />;
   }
   const onQuarter = (q: string) => {
     const { from, to } = quarterRange(q);
