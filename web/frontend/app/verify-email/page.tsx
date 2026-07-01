@@ -7,8 +7,8 @@ import { CheckCircle2, XCircle } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { setToken } from "@/lib/token";
 import type { User } from "@/lib/types";
-import { Button, Card, Spinner } from "@/components/ui";
-import { BrandMark } from "@/components/brand";
+import { Button, Spinner } from "@/components/ui";
+import { AuthShell } from "@/components/auth-shell";
 import { useAuth } from "@/lib/auth";
 
 type State = "missing" | "verifying" | "ok" | "error";
@@ -81,16 +81,10 @@ function VerifyInner() {
 
 export default function VerifyEmailPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <Card className="w-full max-w-sm p-8">
-        <div className="flex items-center gap-3">
-          <BrandMark />
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">E-Mail bestätigen</h1>
-        </div>
-        <Suspense fallback={<p className="mt-6 text-sm text-muted-foreground">Lädt…</p>}>
-          <VerifyInner />
-        </Suspense>
-      </Card>
-    </div>
+    <AuthShell title="E-Mail bestätigen" pose="search">
+      <Suspense fallback={<p className="mt-6 text-sm text-muted-foreground">Lädt…</p>}>
+        <VerifyInner />
+      </Suspense>
+    </AuthShell>
   );
 }

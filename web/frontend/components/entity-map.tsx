@@ -41,7 +41,7 @@ export function EntityMap({ geo, name }: { geo: EntityGeo; name: string }) {
       observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
 
       const primary = getComputedStyle(document.documentElement).getPropertyValue("--primary").trim();
-      const color = primary ? `hsl(${primary})` : "#3b82f6";
+      const color = primary ? `hsl(${primary})` : "#0764a6";
       const dot = { radius: 7, color, weight: 2, fillColor: color, fillOpacity: 0.5 };
 
       if (geo.geojson) {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Search, ChevronRight, Newspaper } from "lucide-react";
+import { Search, ChevronRight } from "lucide-react";
 import { api, qs, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useDebounce } from "@/lib/use-debounce";
@@ -96,6 +96,7 @@ function NwzSearch() {
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
+              data-search
               className="pl-9"
               placeholder="Suchbegriff (z. B. Radwege, Stadtpark)…"
               value={q}
@@ -128,7 +129,7 @@ function NwzSearch() {
           <CardListSkeleton rows={5} />
         ) : results.length === 0 ? (
           <EmptyState
-            icon={Newspaper}
+            mascot="search"
             title="Keine Artikel gefunden"
             hint="Versuche andere Suchbegriffe oder passe die Filter an."
           />

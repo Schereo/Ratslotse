@@ -34,7 +34,7 @@ npm install
 npm run build:mobile          # produces ./out
 npx cap add ios
 npx cap add android
-npx @capacitor/assets generate --iconBackgroundColor '#2563eb' --iconBackgroundColorDark '#0b1220'
+npx @capacitor/assets generate --iconBackgroundColor '#0764a6' --iconBackgroundColorDark '#09111b'
 npm run cap:sync
 ```
 

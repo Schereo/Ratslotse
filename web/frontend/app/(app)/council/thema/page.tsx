@@ -3,9 +3,9 @@
 import { Suspense } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams, useRouter } from "next/navigation";
-import { ArrowLeft, Tag } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { EntityDetail } from "@/lib/types";
-import { Spinner, EmptyState } from "@/components/ui";
+import { DetailSkeleton, EmptyState } from "@/components/ui";
 import { DecisionLinkCard, PartyBadge, FieldBadge, formatEuro } from "@/components/decision-ui";
 import { ENTITY_KIND } from "@/components/council-entities";
 import { useFetch } from "@/lib/use-fetch";
@@ -21,9 +21,9 @@ function EntityInner() {
   const router = useRouter();
   const { data, loading } = useFetch<EntityDetail>(slug ? `/council/entity/${slug}` : null);
 
-  if (loading) return <div className="py-10"><Spinner /></div>;
+  if (loading) return <DetailSkeleton />;
   if (!data) {
-    return <EmptyState icon={Tag} title="Thema nicht gefunden" hint="Zu diesem Begriff gibt es (noch) keine Sammelseite." />;
+    return <EmptyState mascot="confused" title="Thema nicht gefunden" hint="Zu diesem Begriff gibt es (noch) keine Sammelseite." />;
   }
   const k = ENTITY_KIND[data.entity.kind] ?? ENTITY_KIND.projekt;
   return (
@@ -84,7 +84,7 @@ function EntityInner() {
 
 export default function EntityPage() {
   return (
-    <Suspense fallback={<div className="py-10"><Spinner /></div>}>
+    <Suspense fallback={<DetailSkeleton />}>
       <EntityInner />
     </Suspense>
   );

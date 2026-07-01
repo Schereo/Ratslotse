@@ -1,9 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Bricolage_Grotesque } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+// Display-Schrift für Überschriften und Wortmarke — gibt der UI ihren Charakter.
+const bricolage = Bricolage_Grotesque({ subsets: ["latin"], variable: "--font-display" });
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://ratslotse.de"),
@@ -28,7 +30,11 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#2563eb",
+  // Statusleiste folgt dem System-Farbschema und passt so zur Topbar der App.
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f6f9fb" },
+    { media: "(prefers-color-scheme: dark)", color: "#09111b" },
+  ],
   width: "device-width",
   initialScale: 1,
   // Extend the page into the iOS safe areas so env(safe-area-inset-*) reports
@@ -38,7 +44,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="de" className={inter.variable} suppressHydrationWarning>
+    <html lang="de" className={`${inter.variable} ${bricolage.variable}`} suppressHydrationWarning>
       <body>
         <Providers>{children}</Providers>
       </body>

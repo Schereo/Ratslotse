@@ -1,5 +1,6 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { Mascot, type MascotPose } from "@/components/mascot";
 
 export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return <div className={cn("rounded-xl border border-border bg-card text-card-foreground shadow-sm", className)} {...props} />;
@@ -34,19 +35,26 @@ export function EmptyState({
   title,
   hint,
   icon: Icon,
+  mascot,
   action,
 }: {
   title: string;
   hint?: string;
   icon?: React.ComponentType<{ className?: string }>;
+  /** Lotti statt Icon zeigen — Pose passend zum Kontext (search/sleep/confused/…). */
+  mascot?: MascotPose;
   action?: React.ReactNode;
 }) {
   return (
     <div className="flex flex-col items-center rounded-xl border border-dashed border-border bg-card px-6 py-12 text-center">
-      {Icon && (
-        <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-          <Icon className="h-6 w-6" />
-        </span>
+      {mascot ? (
+        <Mascot pose={mascot} bob className="mb-3 h-24 w-24" />
+      ) : (
+        Icon && (
+          <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+            <Icon className="h-6 w-6" />
+          </span>
+        )
       )}
       <p className="font-medium text-foreground">{title}</p>
       {hint && <p className="mt-1 max-w-sm text-sm text-muted-foreground">{hint}</p>}
