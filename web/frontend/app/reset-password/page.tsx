@@ -4,8 +4,8 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api, ApiError } from "@/lib/api";
-import { Button, Card, PasswordInput, toast } from "@/components/ui";
-import { BrandMark } from "@/components/brand";
+import { Button, PasswordInput, toast } from "@/components/ui";
+import { AuthShell } from "@/components/auth-shell";
 
 function ResetForm() {
   const router = useRouter();
@@ -61,16 +61,10 @@ function ResetForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <Card className="w-full max-w-sm p-8">
-        <div className="flex items-center gap-3">
-          <BrandMark />
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Neues Passwort</h1>
-        </div>
-        <Suspense fallback={<p className="mt-6 text-sm text-muted-foreground">Lädt…</p>}>
-          <ResetForm />
-        </Suspense>
-      </Card>
-    </div>
+    <AuthShell title="Neues Passwort" pose="wave">
+      <Suspense fallback={<p className="mt-6 text-sm text-muted-foreground">Lädt…</p>}>
+        <ResetForm />
+      </Suspense>
+    </AuthShell>
   );
 }

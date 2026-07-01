@@ -11,18 +11,18 @@ test.describe("Dashboard", () => {
   });
 
   test("shows Willkommen headline and email", async ({ page }) => {
-    await expect(page.getByRole("heading", { name: "Willkommen zurück" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Moin!" })).toBeVisible();
     // Email appears in sidebar AND page header — scope to the <main> content area
     await expect(page.locator("main").getByText("admin@test.de").first()).toBeVisible();
     await page.screenshot({ path: "test-results/screenshots/02-dashboard.png", fullPage: true });
   });
 
-  test("onboarding checklist is visible and shows first step as next", async ({ page }) => {
-    await expect(page.getByText("Erste Schritte")).toBeVisible();
-    // Progress — "0/3"
-    await expect(page.getByText(/0\/3/)).toBeVisible();
-    // First actionable step gets a CTA button
-    await expect(page.getByRole("link", { name: /Verifizieren/ })).toBeVisible();
+  test("onboarding checklist is visible and shows progress", async ({ page }) => {
+    await expect(page.getByText("Erste Schritte mit Lotti")).toBeVisible();
+    // Fortschrittszähler „n/6" neben dem Balken
+    await expect(page.getByText(/\d\/6/)).toBeVisible();
+    // Erster Schritt ist verlinkt
+    await expect(page.getByRole("link", { name: /Stell dem Rat eine Frage/ })).toBeVisible();
     await page.screenshot({ path: "test-results/screenshots/02-onboarding.png", fullPage: true });
   });
 
