@@ -26,13 +26,16 @@ channel alongside email/Telegram.
 
 ## One-time setup (on the Mac)
 
+**Already done and committed** (`ios/`, `android/`, icons/splash, entitlements) —
+kept for reference in case the native projects ever need regenerating:
+
 Requires **Node ≥ 22** (Capacitor 8 CLI) and a current Xcode / Android Studio.
 
 ```bash
 cd web/frontend
 npm install
 npm run build:mobile          # produces ./out
-npx cap add ios
+npx cap add ios               # scaffolds with SPM (CapApp-SPM), not CocoaPods
 npx cap add android
 npx @capacitor/assets generate --iconBackgroundColor '#0764a6' --iconBackgroundColorDark '#09111b'
 npm run cap:sync
@@ -40,15 +43,45 @@ npm run cap:sync
 
 Icons/splash are generated from `assets/logo.png` (1024×1024, committed —
 regenerate from the design source or `sips -z 1024 1024 public/icon-512.png
---out assets/logo.png`).
+--out assets/logo.png`). The generator also touches `public/manifest.json` and
+a stray `icons/` dir (PWA mode) — revert those, the site has its own icons.
 
-### Xcode capabilities (Signing & Capabilities → + Capability)
+### Xcode capabilities
 
-- **Push Notifications** — required for APNs.
-- **Associated Domains** — add `applinks:ratslotse.de` (Universal Links: email
-  verify/reset links and push taps open the app).
+Already wired in the committed project (`App/App.entitlements`, referenced via
+`CODE_SIGN_ENTITLEMENTS` in both configs): **Push Notifications**
+(`aps-environment`, auto-switched to `production` at distribution) and
+**Associated Domains** (`applinks:ratslotse.de` — Universal Links for email
+verify/reset links and push taps).
 
 Android: drop `google-services.json` into `android/app/` (FCM).
+
+### Fresh Mac / fresh Xcode (App Store install) — pitfalls
+
+1. Activate Xcode and install its system resources, otherwise CoreSimulator
+   registers no runtimes (`simctl list runtimes` empty, `actool` fails with
+   `supportedRuntimes=[]`, and Xcode's GUI platform download dead-loops on a
+   `Duplicate of <UUID>` error):
+   ```bash
+   sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+   sudo xcodebuild -runFirstLaunch
+   xcodebuild -downloadPlatform iOS      # simulator runtime, ~8.5 GB
+   ```
+2. Don't `simctl runtime delete` a *duplicate* runtime entry — both entries
+   share one MobileAsset image, deleting the dupe purges the good one too.
+
+### Build & run from the CLI (no Xcode GUI needed)
+
+```bash
+cd web/frontend/ios/App
+xcodebuild -project App.xcodeproj -scheme App -configuration Debug \
+  -sdk iphonesimulator -derivedDataPath build build
+xcrun simctl boot "Ratslotse iPhone 17"   # once: simctl create "Ratslotse iPhone 17" \
+                                          #   com.apple.CoreSimulator.SimDeviceType.iPhone-17 \
+                                          #   com.apple.CoreSimulator.SimRuntime.iOS-26-5
+xcrun simctl install booted build/Build/Products/Debug-iphonesimulator/App.app
+xcrun simctl launch booted de.ratslotse.app
+```
 
 ## Push credentials (backend `.env`)
 
