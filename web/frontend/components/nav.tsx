@@ -4,7 +4,7 @@ import { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
-  Home, Newspaper, Landmark, Tags, Search, Settings, LogOut, Menu, Monitor, Moon, Sun, UserCircle,
+  Home, Landmark, Tags, Search, Settings, LogOut, Menu, Monitor, Moon, Sun, UserCircle,
   Gavel, CalendarDays, Tag, BarChart3,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
@@ -28,10 +28,6 @@ const COUNCIL_ITEMS: (Item & { tab: string })[] = [
   { href: "/council?tab=sessions", label: "Sitzungen", icon: CalendarDays, tab: "sessions" },
   { href: "/council?tab=themen", label: "Themen", icon: Tag, tab: "themen" },
   { href: "/council?tab=analysis", label: "Analyse", icon: BarChart3, tab: "analysis" },
-];
-
-const NWZ_ITEMS: Item[] = [
-  { href: "/nwz", label: "Artikelsuche", icon: Newspaper },
 ];
 
 // Mobile bottom tab bar (thumb-friendly) — the four most-used destinations.
@@ -99,7 +95,6 @@ function NavLinksInner({ activeTab, onNavigate }: { activeTab: string; onNavigat
   const { user } = useAuth();
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
   const onCouncil = pathname === "/council" || pathname.startsWith("/council/");
-  const showNwz = !!user?.nwz_fulltext_allowed || user?.role === "admin";
 
   return (
     <nav className="flex-1 space-y-1 px-3">
@@ -109,13 +104,6 @@ function NavLinksInner({ activeTab, onNavigate }: { activeTab: string; onNavigat
       {COUNCIL_ITEMS.map((l) => (
         <NavItem key={l.href} item={l} active={onCouncil && activeTab === l.tab} onNavigate={onNavigate} />
       ))}
-
-      {showNwz && (
-        <>
-          <SectionHeader>NWZ</SectionHeader>
-          {NWZ_ITEMS.map((l) => <NavItem key={l.href} item={l} active={isActive(l.href)} onNavigate={onNavigate} />)}
-        </>
-      )}
 
       <div className="pt-3" />
       <NavItem item={PERSONAL} active={isActive("/topics")} onNavigate={onNavigate} />

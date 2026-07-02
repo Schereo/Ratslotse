@@ -9,6 +9,7 @@ import { Card, DetailSkeleton, EmptyState, formatDate } from "@/components/ui";
 import { OutcomeBadge, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
 import { decisionHref, themaHref } from "@/lib/routes";
 import { ShareButton } from "@/components/share-button";
+import { nwzSearchUrl } from "@/components/nwz-link";
 import { trackRecentDecision } from "@/lib/recent";
 import { cn } from "@/lib/utils";
 import { useFetch } from "@/lib/use-fetch";
@@ -191,22 +192,16 @@ function DecisionDetailInner() {
         </Section>
       )}
 
-      {data.news.length > 0 && (
+      {d.title && (
         <Section title="In der Presse">
-          <div className="space-y-2">
-            {data.news.map((n) => (
-              <Link key={`${n.catalog}-${n.refid}`} href={`/nwz?catalog=${n.catalog}&refid=${encodeURIComponent(n.refid)}`} className="block">
-                <Card className="card-interactive group flex items-center gap-3 p-3">
-                  <Newspaper className="h-4 w-4 shrink-0 self-center text-muted-foreground" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-foreground">{n.title}</p>
-                    <p className="text-xs text-muted-foreground">NWZ{n.pub_date ? ` · ${formatDate(n.pub_date)}` : ""}</p>
-                  </div>
-                  <ExternalLink className="h-3.5 w-3.5 shrink-0 self-center text-muted-foreground/40 group-hover:text-primary" />
-                </Card>
-              </Link>
-            ))}
-          </div>
+          <a
+            href={nwzSearchUrl(d.title)}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+          >
+            <Newspaper className="h-4 w-4" /> Bei NWZonline nach Berichten suchen
+          </a>
         </Section>
       )}
 
