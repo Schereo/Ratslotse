@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Landmark, Tags, Link2, Check, ArrowRight, Sparkles, BarChart3, Map, Play, type LucideIcon } from "lucide-react";
+import { Landmark, Tags, Check, ArrowRight, Sparkles, BarChart3, Map, Play, type LucideIcon } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Topic } from "@/lib/types";
@@ -17,30 +17,24 @@ import { ConfettiBurst } from "@/components/confetti";
 const tiles = [
   { href: "/council", title: "Ratsinformationssystem", desc: "Beschlüsse, KI-Fragen, Sitzungen, Themen und Analysen.", icon: Landmark },
   { href: "/topics", title: "Meine Themen", desc: "Themen verwalten und Treffer ansehen.", icon: Tags },
-  { href: "/link", title: "Telegram verbinden", desc: "Konto mit dem Bot verknüpfen.", icon: Link2 },
 ];
 
 export default function DashboardPage() {
   const { user } = useAuth();
 
-  // Topic count marks the "first topic" step done; only queryable once linked.
+  // Topic count marks the "first topic" onboarding step done.
   const topicsQuery = useQuery({
     queryKey: ["topics"],
     queryFn: () => api.get<Topic[]>("/topics"),
-    enabled: !!user?.linked,
   });
   const topicCount = topicsQuery.data?.length ?? 0;
   const visibleTiles = tiles;
 
   return (
     <div>
-      <PageHeader
-        title="Moin!"
-        description={user?.email}
-        action={user?.linked ? <Badge color="green">Telegram verbunden</Badge> : <Badge color="amber">Telegram offen</Badge>}
-      />
+      <PageHeader title="Moin!" description={user?.email} />
 
-      <FirstSteps linked={!!user?.linked} hasTopic={topicCount > 0} />
+      <FirstSteps hasTopic={topicCount > 0} />
 
       <LotsenTipp className="mt-6" />
 
@@ -76,7 +70,7 @@ const CELEBRATED_KEY = "ratslotse:onboarding-celebrated";
 
 type Step = { id: string; icon: LucideIcon; title: string; desc: string; href: string; done?: boolean };
 
-function FirstSteps({ linked, hasTopic }: { linked: boolean; hasTopic: boolean }) {
+function FirstSteps({ hasTopic }: { hasTopic: boolean }) {
   // Onboarding is a nudge, not critical state — track opened steps client-side so a step
   // ticks off as soon as it's clicked (the action steps have no other completion signal).
   // Read in an effect (not during render) to avoid an SSR hydration mismatch.
@@ -111,9 +105,6 @@ function FirstSteps({ linked, hasTopic }: { linked: boolean; hasTopic: boolean }
     { id: "thema", icon: Tags, title: "Erstes Thema anlegen",
       desc: "Lege ein Thema an und werde über neue Beschlüsse dazu benachrichtigt.",
       href: "/topics", done: hasTopic },
-    { id: "telegram", icon: Link2, title: "Telegram verbinden",
-      desc: "Optional: Benachrichtigungen direkt per Telegram statt per E-Mail.",
-      href: "/link", done: linked },
   ];
 
   const doneCount = steps.filter((s) => s.done || visited.includes(s.id)).length;

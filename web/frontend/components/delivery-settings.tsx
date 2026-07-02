@@ -10,10 +10,9 @@ import { Card, toast } from "@/components/ui";
 import type { DeliveryChannel, User } from "@/lib/types";
 
 const OPTIONS: { value: DeliveryChannel; title: string; desc: string }[] = [
-  { value: "email", title: "E-Mail", desc: "Digest an deine E-Mail-Adresse." },
-  { value: "telegram", title: "Telegram", desc: "Digest in deinen Bot-Chat (Konto muss verbunden sein)." },
-  { value: "both", title: "Beides", desc: "Digest per E-Mail und Telegram." },
+  { value: "email", title: "E-Mail", desc: "Benachrichtigung an deine E-Mail-Adresse." },
   { value: "push", title: "Push (App)", desc: "Mitteilung direkt auf dieses Gerät." },
+  { value: "both", title: "Beides", desc: "Per E-Mail und Push." },
 ];
 
 /** Choose where the daily digest is delivered. */
@@ -36,7 +35,6 @@ export function DeliverySettings() {
   });
 
   const current = user?.delivery_channel ?? "email";
-  const linked = !!user?.linked;
 
   // Push only makes sense in the app; still surface it if it's already the active
   // channel (e.g. set on another device) so the selection is visible on the web.
@@ -58,13 +56,12 @@ export function DeliverySettings() {
     <Card className="p-6">
       <h2 className="font-semibold text-foreground">Zustellung</h2>
       <p className="mt-2 text-sm text-muted-foreground">
-        Wähle, wie du deinen täglichen Digest bekommst.
+        Wähle, wie du Benachrichtigungen zu deinen Themen bekommst.
       </p>
       <div className="mt-4 space-y-2">
         {options.map((opt) => {
-          const needsTelegram = (opt.value === "telegram" || opt.value === "both") && !linked;
           const pushUnavailable = opt.value === "push" && !native;
-          const blocked = needsTelegram || pushUnavailable;
+          const blocked = pushUnavailable;
           const active = current === opt.value;
           return (
             <button
@@ -90,7 +87,6 @@ export function DeliverySettings() {
                 <span className="block text-sm font-medium text-foreground">{opt.title}</span>
                 <span className="block text-xs text-muted-foreground">
                   {opt.desc}
-                  {needsTelegram && " — zuerst Telegram verbinden."}
                   {pushUnavailable && " — nur in der App verfügbar."}
                 </span>
               </span>

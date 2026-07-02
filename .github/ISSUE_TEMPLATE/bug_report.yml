@@ -26,7 +26,8 @@ body:
       options:
         - Web-Frontend
         - Backend/API
-        - Telegram-Bot
+        - Mobile-App (iOS/Android)
+        - Benachrichtigungen (Push/E-Mail)
         - Deployment/CI
         - Doku
         - Sonstiges

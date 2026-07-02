@@ -98,18 +98,13 @@ def run_watcher(
     Scrape upcoming sessions, classify new ones against topics, send alerts.
     Returns list of alert messages sent.
     topics: [{"id": int, "name": str, "description": str}]
-    owner: delivery target dict {delivery_channel, telegram_chat_id, email}.
-           Defaults to a Telegram-only owner using TELEGRAM_CHAT_ID.
+    owner: delivery target dict {delivery_channel, email, ...}. When omitted
+           (eval/tests), a no-op owner is used and no message is delivered.
     """
-    import os
     from nwz.delivery import deliver_message
 
     if owner is None:
-        owner = {
-            "delivery_channel": "telegram",
-            "telegram_chat_id": int(os.environ.get("TELEGRAM_CHAT_ID", 0)),
-            "email": None,
-        }
+        owner = {"delivery_channel": "email", "email": None}
 
     scraper = CouncilScraper()
     store = CouncilStore(db_path)

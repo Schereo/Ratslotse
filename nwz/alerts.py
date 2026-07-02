@@ -1,8 +1,7 @@
 """Admin failure alerts for unattended cron jobs.
 
-A crashing cron previously failed silently (only visible in journald). These
-helpers send a best-effort Telegram message to the admin (TELEGRAM_CHAT_ID) and
-re-raise, so the failure is both *noticed* and still surfaces a non-zero exit.
+Wraps a cron entrypoint so a crash is logged with a full traceback (visible in
+journald / the cron log) and still re-raised, surfacing a non-zero exit.
 """
 from __future__ import annotations
 
@@ -16,16 +15,9 @@ logger = logging.getLogger("nwz.alerts")
 
 
 def notify_admin(text: str) -> None:
-    """Send a best-effort Telegram message to the admin. Never raises."""
-    try:
-        from nwz.telegram_bot import send_message, telegram_ready
-
-        if not telegram_ready():
-            logger.warning("admin alert skipped — Telegram not configured")
-            return
-        send_message(text)
-    except Exception:  # noqa: BLE001 — alerting must never crash the caller
-        logger.exception("admin alert failed")
+    """Record an admin-facing failure notice. Currently logs only (surfaces in
+    journald / the cron log); never raises."""
+    logger.error("admin alert: %s", text)
 
 
 def run_guarded(name: str, fn: Callable[[], None]) -> None:

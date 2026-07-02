@@ -19,12 +19,12 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 
 Diese Doku richtet sich an Entwickler:innen und Betreiber. Sie erklärt, **wie**
 das System gebaut ist und **warum** es so gebaut ist. Endnutzer-Hilfe steht
-direkt im Bot (`/hilfe`) und auf [ratslotse.de](https://ratslotse.de).
+direkt auf [ratslotse.de](https://ratslotse.de).
 
 <CardGrid stagger>
 	<Card title="Architektur" icon="puzzle">
 		Ein Scraper (SessionNet/Ratsinfo) speist eine SQLite-DB.
-		Telegram-Bot und Web-Frontend sitzen darauf.
+		Das Web-Frontend sitzt darauf.
 		[→ Architektur](/docs/architektur/)
 	</Card>
 	<Card title="KI-Pipeline" icon="open-book">
@@ -33,9 +33,9 @@ direkt im Bot (`/hilfe`) und auf [ratslotse.de](https://ratslotse.de).
 		[→ KI-Pipeline](/docs/ki-pipeline/)
 	</Card>
 	<Card title="Produkt" icon="comment">
-		Bot-Befehle, Nutzerverwaltung und das Beschlüsse-Feature aus den
-		Sitzungsprotokollen.
-		[→ Telegram-Bot](/docs/bot/)
+		Das Beschlüsse-Feature aus den Sitzungsprotokollen: Extraktion und
+		Themenfeld-Klassifikation.
+		[→ Beschlüsse](/docs/beschluesse/)
 	</Card>
 	<Card title="Entscheidungen" icon="approve-check">
 		Architecture Decision Records: die wichtigen Technik-Weichen und warum sie
@@ -44,7 +44,8 @@ direkt im Bot (`/hilfe`) und auf [ratslotse.de](https://ratslotse.de).
 	</Card>
 </CardGrid>
 
-:::note[Interne Doku]
-Das Repo ist privat. Infrastruktur-Details (Hosts, IPs, Cron-Setup) stehen
-bewusst in `CLAUDE.md` im Repo-Root und werden hier nur verlinkt, nicht dupliziert.
+:::note[Für Entwickler:innen]
+Das Repo ist Open Source (AGPL-3.0). Betriebs-Details (Server-Setup, Cron-Zeilen,
+sudoers) stehen in `CLAUDE.md` im Repo-Root; konkrete Hosts und Secrets liegen
+ausschließlich auf dem Server, nie im Git.
 :::

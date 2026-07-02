@@ -19,8 +19,7 @@ Jeder Eintrag folgt dem Schema **Status · Kontext · Entscheidung · Konsequenz
 | [0003](/docs/adr/0003-fastembed-statt-torch/) | fastembed (ONNX) statt torch für Embeddings | Akzeptiert |
 | [0004](/docs/adr/0004-caddy-statt-nginx/) | Caddy auf der Edge-VM statt lokalem nginx | Akzeptiert |
 | [0005](/docs/adr/0005-sqlite-fts5/) | SQLite + FTS5 als einzige Datenbank | Akzeptiert |
-| [0006](/docs/adr/0006-zwei-pass-klassifikation/) | Zwei-Pass-Klassifikation (breit + Verifier) | Akzeptiert |
-| [0007](/docs/adr/0007-long-polling/) | Long-Polling statt Webhook für den Bot | Akzeptiert |
+| [0007](/docs/adr/0007-long-polling/) | Long-Polling statt Webhook für den Bot | Abgelöst |
 | [0008](/docs/adr/0008-deploy-nur-bei-merge/) | Deploy nur bei gemergtem PR | Akzeptiert |
 
 > Neue Entscheidung? Neue Datei `NNNN-kurz-titel.md` mit demselben Schema und

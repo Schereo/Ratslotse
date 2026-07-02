@@ -25,7 +25,7 @@ export default function RegisterPage() {
     setBusy(true);
     try {
       await register(email, password);
-      router.replace("/link");
+      router.replace("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registrierung fehlgeschlagen.");
     } finally {

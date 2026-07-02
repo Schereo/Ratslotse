@@ -4,12 +4,6 @@
 mehrere Skripte importieren sich gegenseitig per `from scripts.<name> import …`
 und die Cron-/systemd-Pfade auf dem Server verweisen auf diese Speicherorte.
 
-## Dauerläufer (systemd)
-
-| Skript | Service | Zweck |
-|--------|---------|-------|
-| `bot_poll.py` | `nwz-bot` | Telegram-Bot, pollt dauerhaft |
-
 ## Geplant (Cron)
 
 Zeitpläne stehen in den jeweiligen Docstrings; maßgeblich ist die laufende

@@ -5,19 +5,15 @@
 [![Live: ratslotse.de](https://img.shields.io/badge/live-ratslotse.de-0764a6)](https://ratslotse.de)
 
 Macht die Arbeit des **Oldenburger Stadtrats** durchsuchbar, vergleichbar und
-verständlich — über ein Web-Frontend ([ratslotse.de](https://ratslotse.de)) und
-einen persönlichen Telegram-Bot, vollautomatisch und personalisiert.
-
-> **Hinweis:** Eine frühere Integration der Nordwest-Zeitung (Scraping und
-> KI-Analyse von Zeitungsartikeln) wurde aus rechtlichen Gründen **entfernt**. Im
-> Produkt bleibt nur ein **scraping-freier NWZonline-Suchlink** zu Beschluss-Themen.
+verständlich — über ein Web-Frontend ([ratslotse.de](https://ratslotse.de)),
+vollautomatisch und personalisiert.
 
 ---
 
 ## Features
 
 ### 🏛️ Stadtrat-Alerts
-Der Bot überwacht automatisch alle kommenden Stadtratssitzungen. Wenn eines deiner
+Ratslotse überwacht automatisch alle kommenden Stadtratssitzungen. Wenn eines deiner
 Themen auf der Tagesordnung steht, bekommst du vorab eine Benachrichtigung mit den
 relevanten Tagesordnungspunkten.
 
@@ -31,35 +27,11 @@ wirst du erneut benachrichtigt.
 Volltextsuche über alle Beschlüsse, Filter nach Fraktion, Themenfeld und
 Geldbeträgen, KI-Fragen in normaler Sprache mit Quellen, Themen-Seiten mit Karten
 und Analysen (Parteien, Personen, Finanzen, Trends). Zu jedem Beschluss ein
-scraping-freier Suchlink zu NWZonline für Presseberichte.
+Suchlink zu NWZonline für Presseberichte.
 
-### 📰 Deine Themen
-Lege Themen an (z. B. *„Radwege"*, *„Stadtentwicklung"*). Der Bot meldet sich, sobald
-der Rat dazu etwas beschließt — per Telegram oder E-Mail.
-
----
-
-## Bot-Befehle
-
-### Themen
-| Befehl | Funktion |
-|--------|----------|
-| `/neu Name \| Beschreibung` | Thema hinzufügen |
-| `/themen` | Gespeicherte Themen anzeigen |
-| `/loeschen ID` | Thema löschen |
-
-### Stadtrat & Ausschüsse
-| Befehl | Funktion |
-|--------|----------|
-| `/ausschuesse` | Alle Ausschüsse anzeigen, per Button abonnieren/kündigen |
-| `/pruefen` | Tagesordnungen für abonnierte Ausschüsse jetzt abrufen |
-
-### Info & Admin
-| Befehl | Funktion |
-|--------|----------|
-| `/start`, `/hilfe` | Bot vorstellen / Befehlsübersicht |
-| `/verbinden CODE` | Web-Konto (ratslotse.de) mit diesem Chat verknüpfen |
-| `/nutzer`, `/freischalten`, `/sperren` | Nutzerverwaltung (Admin) |
+### 🔖 Deine Themen
+Lege Themen an (z. B. *„Radwege"*, *„Stadtentwicklung"*). Ratslotse meldet sich, sobald
+der Rat dazu etwas beschließt — per Web-Push oder E-Mail.
 
 ---
 
@@ -85,8 +57,7 @@ Alle Credentials in `~/app/.env` auf dem Server:
 
 ```env
 OPENROUTER_API_KEY=...
-TELEGRAM_BOT_TOKEN=...
-TELEGRAM_CHAT_ID=...   # Chat-ID des Administrators
+RESEND_API_KEY=...   # E-Mail-Versand (Resend), sending-only Key
 ```
 
 Die vollständige Variablenliste (Web-Frontend, E-Mail-Zustellung, LLM-Modelle)
@@ -97,8 +68,8 @@ im Repo.
 
 ## Web-Frontend
 
-Neben dem Telegram-Bot gibt es ein Web-Frontend unter
-**[ratslotse.de](https://ratslotse.de)** (FastAPI + Next.js): Themen verwalten,
+Das Web-Frontend unter
+**[ratslotse.de](https://ratslotse.de)** (FastAPI + Next.js) ist das Herzstück: Themen verwalten,
 Stadtratsbeschlüsse nach Themenfeldern erkunden, KI-Fragen stellen, Analysen und
 Karten. Setup und Architektur: [web/README.md](web/README.md).
 
@@ -110,7 +81,7 @@ Technik-Doku unter **[ratslotse.de/docs](https://ratslotse.de/docs)** (Quelle in
 `docs-site/`): Architektur, KI-Pipeline und ADRs.
 
 **Stack:** Python 3.12 · SQLite (FTS5) · OpenRouter (LLM-Routing, DSGVO-konform) ·
-Telegram Bot API · FastAPI + Next.js · systemd · Caddy · GitHub Actions
+FastAPI + Next.js · Capacitor (iOS/Android) · systemd · Caddy · GitHub Actions
 
 ---
 

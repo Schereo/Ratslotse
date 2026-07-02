@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef } from "react";
-import Link from "next/link";
 import { Plus, Trash2, Landmark, Pencil } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
@@ -95,8 +94,7 @@ export default function TopicsPage() {
   };
 
   const loading = topicsQuery.isPending;
-  const needsLink = topicsQuery.error instanceof ApiError && (topicsQuery.error as ApiError).status === 409;
-  const isError = topicsQuery.isError && !needsLink;
+  const isError = topicsQuery.isError;
 
   const HEADER_DESC = "Themen, über deren neue Ratsbeschlüsse du benachrichtigt wirst.";
 
@@ -115,20 +113,6 @@ export default function TopicsPage() {
       <div>
         <PageHeader title="Meine Themen" />
         <p className="mt-6 text-sm text-destructive">Fehler beim Laden der Themen. Bitte Seite neu laden.</p>
-      </div>
-    );
-  }
-
-  if (needsLink) {
-    return (
-      <div>
-        <PageHeader title="Meine Themen" />
-        <Card className="mt-6 border-amber-200 bg-amber-50 p-6 text-center">
-          <p className="text-amber-800">Verknüpfe zuerst dein Konto mit Telegram, um Themen zu verwalten.</p>
-          <Link href="/link" className="mt-2 inline-block font-semibold text-amber-900 underline">
-            Jetzt verbinden →
-          </Link>
-        </Card>
       </div>
     );
   }

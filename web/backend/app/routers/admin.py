@@ -154,18 +154,3 @@ def set_nwz_fulltext(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Nutzer nicht gefunden.")
     store.set_nwz_fulltext_allowed(user_id, body.allowed)
     return WebUserOut(**store.get_web_user_by_id(user_id))
-
-
-# ---- telegram whitelist ----
-@router.get("/telegram-users")
-def telegram_users(_admin: dict = Depends(require_admin), store: Store = Depends(get_store)) -> dict:
-    return {"users": store.get_users_with_topic_count()}
-
-
-@router.delete("/telegram-users/{chat_id}", status_code=status.HTTP_204_NO_CONTENT)
-def remove_telegram_user(
-    chat_id: int,
-    _admin: dict = Depends(require_admin),
-    store: Store = Depends(get_store),
-) -> None:
-    store.remove_user(chat_id)

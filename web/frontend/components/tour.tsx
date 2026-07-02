@@ -51,7 +51,7 @@ const STEPS: TourStep[] = [
   {
     id: "themen", route: "/council?tab=decisions", anchor: "nav-themen", pose: "point",
     title: "Deine Themen",
-    text: "Lege Suchbegriffe an, die dich interessieren — bei neuen Beschlüssen dazu melde ich mich per Telegram oder E-Mail.",
+    text: "Lege Suchbegriffe an, die dich interessieren — bei neuen Beschlüssen dazu melde ich mich per Push oder E-Mail.",
   },
   {
     id: "fertig", pose: "celebrate",

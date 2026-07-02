@@ -33,9 +33,7 @@ class UserOut(BaseModel):
     email: str
     role: str
     status: str = "pending"
-    telegram_chat_id: int | None = None
-    linked: bool = False
-    delivery_channel: str = "telegram"
+    delivery_channel: str = "email"
     nwz_fulltext_allowed: bool = False
     email_verified: bool = False
     # Populated only for native-app clients (which send `X-Client: app`) on
@@ -45,18 +43,8 @@ class UserOut(BaseModel):
 
 
 # ---- linking ----
-class LinkCodeOut(BaseModel):
-    code: str
-    bot_username: str
-    expires_in_minutes: int
 
 
-class LinkStatusOut(BaseModel):
-    linked: bool
-    telegram_chat_id: int | None = None
-
-
-# ---- topics ----
 class TopicIn(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     description: str = Field(min_length=1, max_length=2000)
@@ -95,7 +83,6 @@ class WebUserOut(BaseModel):
     email: str
     role: str
     status: str = "pending"
-    telegram_chat_id: int | None = None
     nwz_fulltext_allowed: bool = False
     email_verified: bool = False
     created_at: str
@@ -120,7 +107,7 @@ class ChangePasswordRequest(BaseModel):
 
 # ---- delivery channel ----
 class DeliveryUpdate(BaseModel):
-    delivery_channel: str = Field(pattern="^(telegram|email|both|push)$")
+    delivery_channel: str = Field(pattern="^(email|both|push)$")
 
 
 # ---- feedback ----

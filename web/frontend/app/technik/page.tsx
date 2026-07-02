@@ -58,9 +58,8 @@ export default function TechnikPage() {
           <Section id="daten" title="Datengrundlage">
             <p>
               Quelle sind die öffentlichen Sitzungsprotokolle des Oldenburger Ratsinformationssystems
-              (RIS) sowie — für die Presse-Verknüpfung — Artikel der Nordwest-Zeitung. Ratslotse
-              verarbeitet ausschließlich öffentlich zugängliche Dokumente und ist <em>kein</em> amtliches
-              Angebot der Stadt.
+              (RIS). Ratslotse verarbeitet ausschließlich öffentlich zugängliche Dokumente und ist
+              <em>kein</em> amtliches Angebot der Stadt.
             </p>
           </Section>
 
@@ -183,7 +182,7 @@ export default function TechnikPage() {
         <footer className="mt-12 border-t border-border pt-6 text-sm text-muted-foreground">
           <p>
             Ratslotse ist ein offenes Projekt. Quellcode und technische Details:{" "}
-            <a href="https://github.com/Schereo/kommunalwahl-scraper" target="_blank" rel="noreferrer" className="text-primary hover:underline">GitHub</a>.
+            <a href="https://github.com/Schereo/Ratslotse" target="_blank" rel="noreferrer" className="text-primary hover:underline">GitHub</a>.
           </p>
         </footer>
       </main>
