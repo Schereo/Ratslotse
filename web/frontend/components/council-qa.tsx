@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Sparkles, Send, Loader2 } from "lucide-react";
 import { Mascot } from "@/components/mascot";
 import { QaSource } from "@/lib/types";
 import { apiUrl, authHeaders } from "@/lib/api";
 import { Button, Card, Input, toast } from "@/components/ui";
 import { DecisionLinkCard } from "@/components/decision-ui";
+import { cn } from "@/lib/utils";
 
 const EXAMPLES = [
   "Was wurde zum Radverkehr beschlossen?",
@@ -43,7 +44,29 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   const [mode, setMode] = useState<string | null>(null);
   const [cited, setCited] = useState<number[]>([]);
   const [word, setWord] = useState(PLAYFUL[0]);
+  // Kurzes Aufblitzen der Quelle, zu der eine Fußnote gerade gesprungen ist.
+  const [flashId, setFlashId] = useState<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  // [id]-Zitate im Antworttext → Fußnoten-Nummern in Reihenfolge des ersten
+  // Auftauchens. Nur IDs, die wirklich in den Quellen vorkommen.
+  const idToNum = useMemo(() => {
+    const valid = new Set(sources.map((s) => s.id));
+    const map = new Map<number, number>();
+    for (const g of answer.matchAll(/\[([\d,\s]+)\]/g)) {
+      for (const n of g[1].match(/\d+/g) ?? []) {
+        const id = Number(n);
+        if (valid.has(id) && !map.has(id)) map.set(id, map.size + 1);
+      }
+    }
+    return map;
+  }, [answer, sources]);
+
+  const jumpToSource = (id: number) => {
+    document.getElementById(`qa-source-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    setFlashId(id);
+    window.setTimeout(() => setFlashId((f) => (f === id ? null : f)), 1600);
+  };
 
   // Rotate the playful word while loading.
   useEffect(() => {
@@ -174,7 +197,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
               Fertig-Meldung unten (role=status) sagt dann aktiv Bescheid. */}
           <Card aria-busy={loading} className="flex-1 rounded-2xl rounded-tl-sm p-4">
             <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-              {answer}
+              <AnswerWithCitations text={answer} idToNum={idToNum} onJump={jumpToSource} />
               {loading && step === "answer" && <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-primary align-text-bottom" />}
             </p>
           </Card>
@@ -191,7 +214,24 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
           </p>
           <div className="space-y-2">
             {sources.map((s) => (
-              <div key={s.id} className={citedSet.has(s.id) ? "rounded-lg ring-1 ring-primary/40" : ""}>
+              <div
+                key={s.id}
+                id={`qa-source-${s.id}`}
+                className={cn(
+                  "relative rounded-lg transition-shadow",
+                  citedSet.has(s.id) && "ring-1 ring-primary/40",
+                  flashId === s.id && "ring-2 ring-primary",
+                )}
+              >
+                {/* Fußnoten-Nummer der Quelle — korrespondiert mit den Chips im Antworttext. */}
+                {idToNum.has(s.id) && (
+                  <span
+                    aria-hidden
+                    className="absolute -left-2 -top-2 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground shadow-sm"
+                  >
+                    {idToNum.get(s.id)}
+                  </span>
+                )}
                 <DecisionLinkCard id={s.id} title={s.title} committee={s.committee}
                   session_date={s.session_date} field={s.policy_field} sub={s.summary} score={s.score} />
               </div>
@@ -209,5 +249,50 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * Antworttext mit klickbaren Fußnoten: Das LLM zitiert Beschlüsse als "[id]" —
+ * roh wären das kryptische Zahlen wie [4711]. Hier werden sie zu nummerierten
+ * Chips (1, 2, …), die zur zitierten Quelle scrollen. IDs, die nicht in den
+ * Quellen vorkommen, werden gar nicht erst angezeigt (Absicherung zusätzlich
+ * zum Backend-Zitat-Resolver).
+ */
+function AnswerWithCitations({
+  text,
+  idToNum,
+  onJump,
+}: {
+  text: string;
+  idToNum: Map<number, number>;
+  onJump: (id: number) => void;
+}) {
+  const parts = text.split(/(\[[\d,\s]+\])/g);
+  return (
+    <>
+      {parts.map((part, i) => {
+        const m = /^\[([\d,\s]+)\]$/.exec(part);
+        if (!m) return <span key={i}>{part}</span>;
+        const ids = (m[1].match(/\d+/g) ?? []).map(Number).filter((id) => idToNum.has(id));
+        if (ids.length === 0) return null;
+        return (
+          <span key={i} className="whitespace-nowrap">
+            {ids.map((id) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => onJump(id)}
+                title="Zur zitierten Quelle springen"
+                aria-label={`Quelle ${idToNum.get(id)} anzeigen`}
+                className="mx-0.5 inline-flex h-4 min-w-4 -translate-y-[3px] items-center justify-center rounded bg-primary/10 px-1 align-baseline text-[10px] font-semibold leading-none text-primary transition-colors hover:bg-primary/20"
+              >
+                {idToNum.get(id)}
+              </button>
+            ))}
+          </span>
+        );
+      })}
+    </>
   );
 }

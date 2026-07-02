@@ -38,7 +38,15 @@ def _warm_models() -> None:
     def _load() -> None:
         try:
             from council import embeddings as emb
-            emb.embed(["warmup"])
+            from council.store import CouncilStore
+
+            # search() lädt Embedder UND die Vektor-Matrix (die vorher erst bei
+            # der ersten Frage aus SQLite kam); rerank() den Cross-Encoder.
+            store = CouncilStore(get_settings().council_db)
+            try:
+                emb.search(store, "warmup", top_k=1)
+            finally:
+                store.close()
             emb.rerank("warmup", [(0, "warmup")])
         except Exception:  # noqa: BLE001
             pass
