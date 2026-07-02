@@ -24,7 +24,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+load_dotenv(ROOT / ".env")  # für die Alert-Mail (RESEND_API_KEY, ALERT_EMAIL)
 
 STEPS: list[tuple[str, str]] = [
     ("Entitäten (NER)", "extract_entities.py"),
@@ -53,5 +57,14 @@ def main() -> int:
     return 1 if failed else 0
 
 
+def _guarded_main() -> None:
+    """main() meldet Teil-Fehler über den Exit-Code, nicht per Exception —
+    für den Alert-Weg (run_guarded) in eine Exception übersetzen."""
+    if main():
+        raise RuntimeError("mindestens ein Teil-Schritt ist fehlgeschlagen (Details im Log)")
+
+
 if __name__ == "__main__":
-    raise SystemExit(main())
+    from nwz.alerts import run_guarded
+
+    run_guarded("weekly_enrich", _guarded_main)
