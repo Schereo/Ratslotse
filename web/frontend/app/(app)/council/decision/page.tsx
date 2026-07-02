@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ExternalLink, FileText, FileDown, Users, Newspaper, Tag } from "lucide-react";
@@ -25,6 +25,25 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function presentMembers(att: DecisionDetail["attendance"]): number {
   return att.filter((a) => a.role === "vorsitz" || a.role === "mitglied" || !a.role).length;
+}
+
+/** Sachverhalt/Begründung aus der eingelesenen Vorlage — eingeklappt auf wenige
+ *  Zeilen, weil die Auszüge lang sein können. */
+function VorlageExcerpt({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  const long = text.length > 420;
+  return (
+    <div className="rounded-lg border border-border bg-card p-4">
+      <p className={cn("whitespace-pre-line text-sm leading-relaxed text-foreground", !open && long && "line-clamp-5")}>
+        {text}
+      </p>
+      {long && (
+        <button onClick={() => setOpen((o) => !o)} className="mt-2 text-xs font-medium text-primary hover:underline">
+          {open ? "Weniger anzeigen" : "Mehr anzeigen"}
+        </button>
+      )}
+    </div>
+  );
 }
 
 function DecisionDetailInner() {
@@ -150,6 +169,12 @@ function DecisionDetailInner() {
         </Section>
       )}
 
+      {data.vorlage?.excerpt && (
+        <Section title={`Aus der Vorlage${data.vorlage.art ? ` · ${data.vorlage.art}` : ""}`}>
+          <VorlageExcerpt text={data.vorlage.excerpt} />
+        </Section>
+      )}
+
       {data.vorlage_journey.length > 1 && (
         <Section title={`Weg der Vorlage ${d.vorlage_nr ?? ""}`}>
           <div className="ml-1 flex flex-col gap-3 border-l-2 border-border pl-4">
@@ -210,6 +235,11 @@ function DecisionDetailInner() {
         {data.vorlage_url && (
           <a href={data.vorlage_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs text-foreground hover:bg-muted">
             <FileText className="h-3.5 w-3.5" /> Vorlage {d.vorlage_nr}
+          </a>
+        )}
+        {data.vorlage?.document_url && (
+          <a href={data.vorlage.document_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs text-foreground hover:bg-muted">
+            <FileDown className="h-3.5 w-3.5" /> Vorlage (PDF)
           </a>
         )}
         {d.protocol_url && (

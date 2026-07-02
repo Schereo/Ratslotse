@@ -60,12 +60,16 @@ def expand_query(question: str, model: str = MODEL) -> str:
 def _build_context(candidates: list[dict]) -> str:
     """Eine Zeile pro Beschluss: id, Titel, Gremium, Datum, Ergebnis + Kern des
     Beschlusstexts. 450 Zeichen statt 200 und die Metadaten machen die Antworten
-    spürbar konkreter — bei ~20 Kandidaten immer noch nur wenige Cent."""
+    spürbar konkreter — bei ~20 Kandidaten immer noch nur wenige Cent. Wenn der
+    Aufrufer einen Vorlagen-Auszug (Sachverhalt/Begründung) beigelegt hat, kommt
+    der mit — das ist das *Warum* hinter dem Beschluss."""
     lines = []
     for c in candidates:
         meta = " · ".join(p for p in (c.get("committee"), c.get("session_date"), c.get("outcome")) if p)
         body = (c.get("summary") or c.get("beschluss") or "").strip()[:450]
-        lines.append(f"[{c['id']}] {(c.get('title') or '').strip()} ({meta}): {body}")
+        vorlage = (c.get("vorlage_excerpt") or "").strip()
+        suffix = f" — Aus der Vorlage: {vorlage}" if vorlage else ""
+        lines.append(f"[{c['id']}] {(c.get('title') or '').strip()} ({meta}): {body}{suffix}")
     return "\n".join(lines) or "(keine passenden Beschlüsse gefunden)"
 
 

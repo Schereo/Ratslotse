@@ -209,6 +209,15 @@ export interface DecisionDetail {
   entities: Entity[];
   ratsinfo_url: string;
   vorlage_url?: string | null;
+  /** Eingelesener Vorlagen-Text (Sachverhalt/Begründung) zum Beschluss. */
+  vorlage?: {
+    vorlage_nr: string | null;
+    title: string | null;
+    art: string | null;
+    document_url: string | null;
+    n_pages: number | null;
+    excerpt: string | null;
+  } | null;
 }
 
 export interface Topic {

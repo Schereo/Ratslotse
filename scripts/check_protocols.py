@@ -20,6 +20,7 @@ sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
 from scripts.backfill_protocols import process_range  # noqa: E402
+from scripts.backfill_vorlagen import process_missing as fetch_vorlagen  # noqa: E402
 from scripts.classify_decisions import process as classify_decisions  # noqa: E402
 from scripts.extract_amounts import process as extract_amounts  # noqa: E402
 from scripts.track_goals import process as track_goals  # noqa: E402
@@ -46,6 +47,13 @@ def main() -> None:
     # Extract € amounts from any decisions still missing one (regex, no cost).
     astats = extract_amounts(COUNCIL_DB, only_missing=True)
     print(f"€ amounts: {astats['with_amount']}/{astats['decisions']} newly scanned.")
+    # Ingest Vorlagen texts for new agenda items (network + pypdf only, no LLM).
+    # Newest first + capped, so a normal day fetches a handful; the historic bulk
+    # is scripts/backfill_vorlagen.py without limit. Runs before the FTS rebuild
+    # so fresh Sachverhalt wording is searchable the same day.
+    vstats = fetch_vorlagen(COUNCIL_DB, limit=300)
+    print(f"Vorlagen: {vstats['fetched']} ingested, {vstats['no_pdf']} without PDF/text, "
+          f"{vstats['failed']} failed.")
     # Keep the full-text index in sync for hybrid retrieval (pure SQLite, instant).
     from council.store import CouncilStore
     _store = CouncilStore(COUNCIL_DB)

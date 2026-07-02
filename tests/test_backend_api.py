@@ -237,6 +237,28 @@ def test_council_session_404(client):
     assert client.get("/api/council/session/999").status_code == 404
 
 
+def test_decision_detail_includes_vorlage(client):
+    """Der Beschluss liefert den eingelesenen Vorlagen-Auszug mit — und die
+    vorlage_url wird über unsere Tabelle aufgelöst (Protokolle kennen kein kvonr)."""
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(88, "Rat der Stadt", "2026-02-01", "18:00", "Rathaus",
+                                   agenda_items=[AgendaItem("Ö 2", "Radweg", vorlage_nr="26/0400", kvonr=901)]))
+    cs._insert_decision(88, 0, "decision", None, "Ö 2", "Radweg bauen", "Wird gebaut.",
+                        "angenommen", None, None, None, [], "26/0400", None, None)
+    cs._conn.commit()
+    did = cs._conn.execute("SELECT id FROM council_decisions WHERE ksinr = 88").fetchone()[0]
+    cs.save_vorlage({"kvonr": 901, "vorlage_nr": "26/0400", "title": "Radweg", "art": "Beschlussvorlage",
+                     "document_id": 12, "document_url": "https://buergerinfo.oldenburg.de/getfile.php?id=12",
+                     "raw_text": "Sachverhalt:\nDie Stadt plant einen Radweg entlang der Haaren.",
+                     "n_pages": 3, "status": "ok"})
+    cs.close()
+    data = client.get(f"/api/council/decision/{did}").json()
+    assert data["vorlage"]["art"] == "Beschlussvorlage"
+    assert "Radweg entlang der Haaren" in data["vorlage"]["excerpt"]
+    assert "kvonr=901" in data["vorlage_url"]
+
+
 def test_field_recaps_endpoint(client):
     """Field recaps surface via /council/field-recaps with the German label resolved."""
     _register(client)
