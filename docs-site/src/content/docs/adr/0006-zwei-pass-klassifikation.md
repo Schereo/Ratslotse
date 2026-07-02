@@ -1,42 +1,28 @@
 ---
-title: 0006 — Zwei-Pass-Klassifikation
-description: Breiter Sammel-Pass plus paarweiser Verifier für hohe Precision.
+title: 0006 — Zwei-Pass-Klassifikation (überholt)
+description: Historisch — die zweistufige NWZ-Artikel-Klassifikation wurde mit dem NWZ-Feature ausgegliedert.
 sidebar:
   order: 6
+  badge: Überholt
 ---
 
-**Status:** Akzeptiert
+**Status:** Überholt (2026-07)
 
 ## Kontext
 
-Der NWZ-Digest soll Artikel zu Nutzerthemen matchen — mit **hoher Precision**
-(keine Fehltreffer, sonst verliert der Nutzer Vertrauen) bei brauchbarem Recall.
-Ein einzelner breiter LLM-Call über alle Themen × alle Artikel über-matched
-systematisch: breite Themen ziehen Artikel über reine Stichwort-Überschneidung an
-(z. B. ein Parteiname, der nur am Rand fällt).
+Diese Entscheidung betraf die frühere **NWZ-Zeitungs-Integration**: eine
+zweistufige LLM-Klassifikation (breiter Sammel-Pass + paarweiser Verifier), um
+Zeitungsartikel mit hoher Precision auf Nutzerthemen zu matchen.
 
-## Entscheidung
+## Warum überholt
 
-Eine **zweistufige** Klassifikation (`nwz/classify.py`):
+Die NWZ-Integration (Scraping der Artikel und deren KI-Klassifikation) wurde aus
+rechtlichen Gründen aus diesem Repository entfernt und in ein separates, privates
+Repository ausgegliedert. Im Produkt bleibt nur ein **scraping-freier
+NWZonline-Suchlink** zu Beschluss-Themen.
 
-1. **Pass 1 — Sammeln (breit):** Ein einziger `gpt-4o`-Call über alle Themen ×
-   alle Artikel (Text je auf ~900 Zeichen gekürzt), `temperature=0`, JSON-Mode.
-   Liefert Kandidatenpaare. Optimiert auf Recall.
-2. **Pass 2 — Verifizieren (scharf):** Für **jedes** Kandidatenpaar (Thema,
-   Artikel) ein eigener `gpt-4o-mini`-Call (Text bis ~1500 Zeichen), der nur
-   `{"relevant": bool}` zurückgibt. Filtert die Über-Matches von Pass 1 heraus.
-
-Bei JSON-Parse-Fehlern im Verifier wird der Match **behalten** (fail-open) —
-schützt Recall.
-
-## Konsequenzen
-
-- **Plus:** Deutlich höhere Precision als ein Einzel-Call, ohne Recall stark zu
-  opfern. Das billige `gpt-4o-mini` trägt den teuren N-fachen Verify-Schritt.
-- **Plus:** Klare Trennung der Verantwortlichkeiten — Pass 1 „findet", Pass 2
-  „entscheidet".
-- **Minus:** Pass 2 macht **N Einzel-Calls** (ein Call pro Paar) — der größte
-  Kostentreiber der Pipeline. Batching/Caching sind als Optimierung notiert (siehe
-  [KI-Pipeline](/docs/ki-pipeline/) → Roadmap).
-- **Minus:** fail-open kann einzelne Fehltreffer durchlassen, wenn der Verifier
-  ungültiges JSON liefert.
+Das Muster selbst — breiter Recall-Pass, dann scharfer paarweiser Verifier — bleibt
+als allgemeines Klassifikationsmuster gültig; im aktuellen Repo wird es aber nicht
+mehr eingesetzt. Die verbleibenden LLM-Schritte (Ausschuss-Zusammenfassung,
+Themen-Watcher, Beschluss-Klassifikation) sind in [KI-Pipeline](/docs/ki-pipeline/)
+beschrieben.

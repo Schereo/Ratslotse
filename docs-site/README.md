@@ -24,8 +24,8 @@ npm run preview        # gebaute Site lokal ansehen
 
 ## Verhältnis zu den Markdown-Docs im Repo-Root
 
-Die ursprünglichen `ARCHITECTURE.md`, `AI-PIPELINE.md`, `MODELLVERGLEICH.md`,
-`BOT.md`, `eval/README.md`, `docs/beschluesse-feature.md` wurden hierher migriert.
+Die ursprünglichen Root-Docs (`ARCHITECTURE.md`, `AI-PIPELINE.md`,
+`MODELLVERGLEICH.md`, `BOT.md` …) wurden hierher migriert und aus dem Root entfernt.
 `CLAUDE.md` bleibt die maßgebliche **Betriebs-/Infra-Doku** im Root und wird hier
 nur referenziert, nicht dupliziert.
 

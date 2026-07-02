@@ -23,7 +23,6 @@ export default defineConfig({
 					label: 'KI & Qualität',
 					items: [
 						{ slug: 'ki-pipeline' },
-						{ slug: 'modellvergleich' },
 						{ slug: 'eval' },
 					],
 				},
