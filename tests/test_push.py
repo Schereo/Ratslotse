@@ -77,6 +77,16 @@ def test_unregistered_is_pruned_without_fallback():
     assert client.calls == [PROD]
 
 
+def test_env_restricted_key_falls_back_and_delivers():
+    """Portal-beschränkter .p8-Key (nur Sandbox): Prod lehnt den Provider-JWT
+    mit 403 BadEnvironmentKeyInToken ab — Zustellung über das andere Gateway."""
+    client = FakeClient(
+        {PROD: [FakeResp(403, "BadEnvironmentKeyInToken")], SBX: [FakeResp(200)]}
+    )
+    assert push._send_apns(client, ["tok"], "t", "b", {}) == []
+    assert client.calls == [PROD, SBX]
+
+
 def test_use_sandbox_flips_primary_gateway(monkeypatch):
     monkeypatch.setenv("APNS_USE_SANDBOX", "1")
     client = FakeClient({SBX: [FakeResp(200)]})
