@@ -297,6 +297,17 @@ class CouncilStore:
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS council_entity_scanned (decision_id INTEGER PRIMARY KEY)"
         )
+        # Vorlagen full text (council.vorlagen): the Sachverhalt/Begründung behind a
+        # decision. Keyed by kvonr (the SessionNet document id); vorlage_nr is the
+        # human number ("26/0330") decisions/agenda items reference.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_vorlagen ("
+            "kvonr INTEGER PRIMARY KEY, vorlage_nr TEXT, title TEXT, art TEXT, "
+            "document_id INTEGER, document_url TEXT, raw_text TEXT, n_pages INTEGER, "
+            "fetched_at TEXT NOT NULL, "
+            "status TEXT NOT NULL DEFAULT 'ok')"  # ok | empty | no_pdf | failed
+        )
+        self._conn.execute("CREATE INDEX IF NOT EXISTS idx_vorlagen_nr ON council_vorlagen(vorlage_nr)")
         self._migrate_owner_id()
 
     def _migrate_owner_id(self) -> None:
@@ -889,6 +900,71 @@ class CouncilStore:
         ).fetchall()
         return [dict(r) for r in rows]
 
+    # --- Vorlagen (full text of proposal documents, council.vorlagen) ----------
+
+    def missing_vorlage_kvonrs(self, limit: int | None = None) -> list[int]:
+        """kvonrs referenced by agenda items but not ingested yet, newest sessions
+        first (so the daily capped run always covers the current business). Rows
+        with status 'failed' count as missing — they get retried."""
+        sql = (
+            "SELECT ci.kvonr FROM council_agenda_items ci "
+            "JOIN council_sessions cs ON cs.ksinr = ci.ksinr "
+            "WHERE ci.kvonr IS NOT NULL AND ci.kvonr NOT IN "
+            "  (SELECT kvonr FROM council_vorlagen WHERE status != 'failed') "
+            "GROUP BY ci.kvonr ORDER BY MAX(cs.session_date) DESC"
+        )
+        if limit:
+            sql += f" LIMIT {int(limit)}"
+        return [r[0] for r in self._conn.execute(sql).fetchall()]
+
+    def save_vorlage(self, row: dict) -> None:
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT OR REPLACE INTO council_vorlagen "
+                "(kvonr, vorlage_nr, title, art, document_id, document_url, "
+                " raw_text, n_pages, fetched_at, status) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                (row["kvonr"], row.get("vorlage_nr"), row.get("title"), row.get("art"),
+                 row.get("document_id"), row.get("document_url"), row.get("raw_text"),
+                 row.get("n_pages"), now, row.get("status", "ok")),
+            )
+
+    def mark_vorlage_failed(self, kvonr: int) -> None:
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT OR REPLACE INTO council_vorlagen (kvonr, fetched_at, status) "
+                "VALUES (?, ?, 'failed')", (kvonr, now),
+            )
+
+    def get_vorlage_by_nr(self, vorlage_nr: str) -> dict | None:
+        """The Vorlage row for a decision's vorlage_nr. Falls back to the base
+        number ("22/0348/1" → "22/0348") because protocols sometimes cite a
+        revision the agenda linked under its base document."""
+        nr = (vorlage_nr or "").strip()
+        if not nr:
+            return None
+        base = "/".join(nr.split("/")[:2])
+        row = self._conn.execute(
+            "SELECT * FROM council_vorlagen WHERE vorlage_nr IN (?, ?) "
+            "ORDER BY (vorlage_nr = ?) DESC, kvonr DESC LIMIT 1",
+            (nr, base, nr),
+        ).fetchone()
+        return dict(row) if row else None
+
+    def vorlage_texts_for(self, vorlage_nrs: list[str]) -> dict[str, str]:
+        """Batch raw texts for Q&A context enrichment: exact vorlage_nr → text
+        (only rows that actually have text). Best-effort — no base-nr fallback."""
+        nrs = sorted({(n or "").strip() for n in vorlage_nrs if n and str(n).strip()})
+        if not nrs:
+            return {}
+        ph = ",".join("?" * len(nrs))
+        rows = self._conn.execute(
+            f"SELECT vorlage_nr, raw_text FROM council_vorlagen "
+            f"WHERE vorlage_nr IN ({ph}) AND status = 'ok'", nrs,
+        ).fetchall()
+        return {r["vorlage_nr"]: r["raw_text"] for r in rows if r["raw_text"]}
+
     def get_unclassified_decisions(self, limit: int | None = None) -> list[dict]:
         """Decisions without a policy field yet — for the classification backfill/cron.
         Returns id + the fields the classifier needs (title, beschluss, committee)."""
@@ -920,14 +996,21 @@ class CouncilStore:
             )
 
     def rebuild_fts(self) -> int:
-        """(Re)build the full-text index from all main decisions (title + beschluss + summary)."""
+        """(Re)build the full-text index from all main decisions (title + beschluss +
+        summary + the first chunk of the Vorlage text, so Sachverhalt wording is
+        findable). The Vorlage join is grouped because distinct kvonrs can in theory
+        share a vorlage_nr — duplicate rowids would break the FTS insert."""
         with self._conn:
             self._conn.execute("DELETE FROM council_decisions_fts")
             self._conn.execute(
                 "INSERT INTO council_decisions_fts(rowid, content) "
-                "SELECT id, REPLACE(COALESCE(title,'') || ' ' || COALESCE(beschluss,'') || ' ' "
-                "|| COALESCE(summary,''), 'ß', 'ss') "  # unicode61 folds ä/ö/ü but not ß
-                "FROM council_decisions WHERE kind = 'decision'"
+                "SELECT d.id, REPLACE(COALESCE(d.title,'') || ' ' || COALESCE(d.beschluss,'') || ' ' "
+                "|| COALESCE(d.summary,'') || ' ' || COALESCE(v.vtext,''), 'ß', 'ss') "  # unicode61 folds ä/ö/ü but not ß
+                "FROM council_decisions d "
+                "LEFT JOIN (SELECT vorlage_nr, substr(MAX(raw_text), 1, 8000) AS vtext "
+                "           FROM council_vorlagen WHERE status = 'ok' GROUP BY vorlage_nr) v "
+                "  ON v.vorlage_nr = d.vorlage_nr "
+                "WHERE d.kind = 'decision'"
             )
         return self._conn.execute("SELECT COUNT(*) FROM council_decisions_fts").fetchone()[0]
 
@@ -1680,8 +1763,8 @@ class CouncilStore:
             return []
         ph = ",".join("?" * len(ids))
         rows = self._conn.execute(
-            f"""SELECT d.id, d.title, d.summary, d.policy_field, d.outcome,
-                       cs.session_date, cs.committee
+            f"""SELECT d.id, d.title, d.summary, d.beschluss, d.vorlage_nr,
+                       d.policy_field, d.outcome, cs.session_date, cs.committee
                 FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr
                 WHERE d.id IN ({ph})""",
             ids,
