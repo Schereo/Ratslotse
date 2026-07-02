@@ -81,7 +81,7 @@ function StatsTab() {
         <Stat label="Gesamt" value={data.web_users.total} />
         <Stat label="Admins" value={data.web_users.admins} />
         <Stat label="Aktiv" value={data.web_users.active} />
-        <Stat label="Warten auf Freischaltung" value={data.web_users.pending} />
+        <Stat label="Nicht aktiv (unbestätigt/gesperrt)" value={data.web_users.pending} />
         <Stat label="NWZ-verifiziert" value={data.web_users.nwz_verified} />
       </StatSection>
 

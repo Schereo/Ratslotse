@@ -35,8 +35,9 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 COOKIE_NAME = "access_token"
 
 
-def _notify_admins_pending(new_email: str) -> None:
-    """Background task: email every admin that a new account awaits approval."""
+def _notify_admins_registration(new_email: str) -> None:
+    """Background task: FYI-email to every admin that a new (verified) account
+    just activated itself — accounts no longer need manual approval."""
     settings = get_settings()
     if not settings.resend_api_key:
         return
@@ -53,23 +54,25 @@ def _notify_admins_pending(new_email: str) -> None:
 
     admin_url = f"{settings.app_base_url.rstrip('/')}/admin"
     safe_email = _html.escape(new_email)
-    subject = "Ratslotse – neue Registrierung wartet auf Freischaltung"
+    subject = "Ratslotse – neue Registrierung"
     body = (
         "<div style='max-width:560px;margin:0 auto;padding:24px 16px;"
         "font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a'>"
         "<div style='font-size:20px;font-weight:700;color:#2563eb'>Ratslotse</div>"
-        "<p style='margin:20px 0 8px'>Eine neue Person hat sich registriert und wartet auf Freischaltung:</p>"
+        "<p style='margin:20px 0 8px'>Eine neue Person hat sich registriert, die E-Mail-Adresse "
+        "bestätigt und ist jetzt aktiv:</p>"
         f"<p style='margin:0 0 20px;font-weight:600'>{safe_email}</p>"
         f"<a href='{admin_url}' style='display:inline-block;background:#2563eb;color:#fff;"
         "text-decoration:none;padding:10px 18px;border-radius:8px;font-size:14px'>"
-        "Im Admin-Bereich freischalten →</a>"
+        "Im Admin-Bereich ansehen →</a>"
         "<p style='margin-top:20px;color:#94a3b8;font-size:12px'>"
-        "Du bekommst diese E-Mail, weil dein Ratslotse-Konto Admin-Rechte hat.</p>"
+        "Nur zur Info — es ist nichts zu tun. Du bekommst diese E-Mail, weil dein "
+        "Ratslotse-Konto Admin-Rechte hat.</p>"
         "</div>"
     )
     text = (
-        f"Neue Registrierung wartet auf Freischaltung: {new_email}\n\n"
-        f"Im Admin-Bereich freischalten: {admin_url}\n"
+        f"Neue Registrierung (bestätigt & aktiv): {new_email}\n\n"
+        f"Im Admin-Bereich ansehen: {admin_url}\n"
     )
     for addr in admins:
         try:
@@ -141,33 +144,30 @@ def register(
     if store.get_web_user_by_email(email):
         raise HTTPException(status.HTTP_409_CONFLICT, "E-Mail ist bereits registriert.")
     # First user, or the configured admin email, becomes an active admin.
-    # Everyone else starts 'pending' and must be approved by an admin.
     is_admin = email == settings.web_admin_email.lower() or store.count_web_users() == 0
     role = "admin" if is_admin else "user"
-    user_status = "active" if is_admin else "pending"
-    # Admins (deployment owner) skip verification; so does the no-email case, since
-    # we can't send a link then — otherwise the account could never be confirmed.
+    # Confirming the email address activates the account — no manual admin
+    # approval anymore. Admins skip verification; so does the no-email case,
+    # since we can't send a link then (the account could never be confirmed).
     can_send_email = bool(settings.resend_api_key)
     verified = is_admin or not can_send_email
+    user_status = "active" if verified else "pending"
     user_id = store.create_web_user(
         email, hash_password(body.password), role, user_status, email_verified=verified
     )
-    # New web accounts have no Telegram yet — default to email delivery so they
-    # actually receive their digest. They can switch channels later in /account.
+    # Default to email delivery so new accounts actually receive notifications.
+    # They can switch channels later in /account.
     store.set_delivery_channel(user_id, "email")
     created_user = store.get_web_user_by_id(user_id)
     _set_auth_cookie(response, created_user)
     if user_status == "pending":
-        if verified:
-            # Can't verify the address (email not configured) — ping admins now.
-            background.add_task(_notify_admins_pending, email)
-        else:
-            # Send a verification link; admins are pinged once it's confirmed real.
-            raw = secrets.token_urlsafe(32)
-            token_hash = hashlib.sha256(raw.encode()).hexdigest()
-            expires = (datetime.utcnow() + timedelta(hours=_VERIFY_TTL_HOURS)).isoformat(timespec="seconds")
-            store.create_email_verification(user_id, token_hash, expires)
-            background.add_task(_send_verification_email, email, raw)
+        # Send a verification link; confirming it activates the account and
+        # pings the admins (FYI) once the address is confirmed real.
+        raw = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(raw.encode()).hexdigest()
+        expires = (datetime.utcnow() + timedelta(hours=_VERIFY_TTL_HOURS)).isoformat(timespec="seconds")
+        store.create_email_verification(user_id, token_hash, expires)
+        background.add_task(_send_verification_email, email, raw)
     return _to_out(created_user, _app_access_token(request, created_user))
 
 
@@ -311,9 +311,13 @@ def verify_email(
                             "Bitte fordere einen neuen an.")
     store.set_email_verified(user_id, True)
     user = store.get_web_user_by_id(user_id)
-    # Now that the address is confirmed, ping admins to approve (if still pending).
+    # A confirmed address activates the account — no manual admin approval.
+    # (Suspended accounts can't reach this: their tokens are already consumed
+    # and resend-verification no-ops for verified addresses.)
     if user and user.get("status") == "pending":
-        background.add_task(_notify_admins_pending, user["email"])
+        store.set_web_user_status(user_id, "active")
+        user = store.get_web_user_by_id(user_id)
+        background.add_task(_notify_admins_registration, user["email"])
     # If the app opened this via a deep link (verification tapped on-device),
     # hand back a bearer token so it lands logged-in.
     return _to_out(user, _app_access_token(request, user))

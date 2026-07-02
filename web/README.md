@@ -24,18 +24,20 @@ denselben Same-Origin-`/api`-Proxy von Next.
 - **Frontend** (`web/frontend/`): Next.js (App Router) + Tailwind. Spricht das
   Backend über einen Same-Origin-`/api`-Proxy an (siehe `next.config.mjs`).
 
-## Auth & Freischaltung
+## Auth & Aktivierung
 
 - Registrierung/Login per E-Mail + Passwort. Sessions als HS256-JWT in einem
   httpOnly+Secure-Cookie. Passwörter werden mit `scrypt` (stdlib) gehasht.
 - Der erste registrierte Account **oder** die Adresse aus `WEB_ADMIN_EMAIL`
   wird automatisch aktiver Admin.
-- **Freischaltung durch Admin:** Alle anderen Konten starten als `pending`.
-  Bis ein Admin sie unter Admin → Web-Nutzer freischaltet, sehen sie nur einen
-  Wartehinweis und haben keinen Zugriff auf Inhalte.
+- **Aktivierung durch E-Mail-Bestätigung:** Neue Konten starten als `pending`
+  und werden mit dem Klick auf den Bestätigungslink (24 h gültig) automatisch
+  aktiv — keine manuelle Freischaltung. Admins bekommen eine FYI-Mail und können
+  Konten unter Admin → Web-Nutzer:innen jederzeit sperren/entsperren.
+  (Ohne konfigurierten `RESEND_API_KEY` — z. B. lokal — sind neue Konten sofort
+  aktiv, weil kein Link verschickt werden kann.)
 
-Onboarding-Reihenfolge: registrieren → E-Mail verifizieren → Admin schaltet frei
-→ voller Zugriff.
+Onboarding-Reihenfolge: registrieren → E-Mail bestätigen → voller Zugriff.
 
 ## Lokale Entwicklung
 
