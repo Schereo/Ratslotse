@@ -6,7 +6,31 @@ on:
     branches: [main]
 
 jobs:
+  # Sicherheitsnetz vor dem Deploy: derselbe Testlauf wie in test.yml, hier als
+  # harte Abhängigkeit. Ein roter Lauf blockiert den Deploy — ein direkt (ohne
+  # grünen PR-Check) gemergter Stand kann Produktion nicht mehr erreichen.
+  # (Lehre aus dem #154-Ausfall: roter CI wurde gemergt und deployt.)
+  test:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Run tests
+        run: python -m pytest tests/ -q
+
   deploy:
+    needs: test
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
