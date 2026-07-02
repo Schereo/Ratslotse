@@ -262,7 +262,8 @@ function PromptEditor({ prompt }: { prompt: Prompt }) {
         </div>
         <code className="text-xs text-muted-foreground">{prompt.key}</code>
       </div>
-      <Textarea className="mt-3" rows={Math.min(16, content.split("\n").length + 1)} value={content} onChange={(e) => setContent(e.target.value)} />
+      {/* Prompt-Templates sind „Code" — hier ist Mono gewollt (Platzhalter, Einrückung). */}
+      <Textarea className="mt-3 font-mono" rows={Math.min(16, content.split("\n").length + 1)} value={content} onChange={(e) => setContent(e.target.value)} />
       <div className="mt-3 flex items-center gap-2">
         <Button size="sm" onClick={() => saveMutation.mutate(content)} disabled={busy || !dirty}>
           {saveMutation.isPending ? "Speichern…" : "Speichern"}
