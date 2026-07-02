@@ -91,13 +91,16 @@ export function LandingQaDemo() {
 
   return (
     <div ref={ref} className="relative mt-8 rounded-2xl border border-border bg-card p-5 shadow-lifted sm:p-6">
-      <span className="absolute right-4 top-4 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      {/* Sitzt auf der Kartenkante (halb über dem Rahmen) — dort kann kein
+          Inhalt (z. B. der „Fragen"-Button) das Badge verdecken. */}
+      <span className="absolute -top-2.5 right-5 rounded-full border border-border bg-muted px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground shadow-sm">
         Demo
       </span>
 
-      {/* Nachgebaute Frage-Zeile */}
+      {/* Nachgebaute Frage-Zeile — min-w-0, damit die nowrap-Frage auf schmalen
+          Viewports das Feld nicht aufbläht und den Button aus der Karte drückt. */}
       <div className="flex gap-2">
-        <div className="relative flex-1">
+        <div className="relative min-w-0 flex-1">
           <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <div className="flex h-10 items-center overflow-hidden whitespace-nowrap rounded-lg border border-input bg-background pl-9 pr-3 text-sm text-foreground">
             {typed || <span className="text-muted-foreground">Frag den Stadtrat…</span>}
