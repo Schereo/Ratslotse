@@ -12,6 +12,7 @@ import { SlashSearchShortcut } from "@/components/keyboard-shortcuts";
 import { GuidedTour } from "@/components/tour";
 import { CommandPalette } from "@/components/command-palette";
 import { BackToTop } from "@/components/back-to-top";
+import { PeekingChick } from "@/components/peeking-chick";
 import { Button, Card, Spinner, toast } from "@/components/ui";
 import type { User } from "@/lib/types";
 
@@ -57,6 +58,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <GuidedTour />
       <CommandPalette />
       <BackToTop />
+      <PeekingChick />
       <DesktopSidebar />
       <MobileTopbar />
       <main id="main" tabIndex={-1} className="flex flex-1 flex-col overflow-y-auto outline-none pb-[calc(env(safe-area-inset-bottom)+5rem)] md:pb-0">
@@ -116,8 +118,8 @@ function PendingNotice({ email }: { email: string }) {
       </div>
       <h1 className="mt-4 text-xl font-bold text-foreground">Konto wartet auf Freischaltung</h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Dein Konto <span className="font-medium">{email}</span> wurde erstellt und muss noch von einem
-        Administrator freigeschaltet werden. Du wirst informiert, sobald es so weit ist.
+        Dein Konto <span className="font-medium">{email}</span> wurde erstellt und muss noch
+        freigeschaltet werden. Du wirst informiert, sobald es so weit ist.
       </p>
     </Card>
   );

@@ -121,6 +121,90 @@
   animation: confetti-fall 2.5s ease-in forwards;
 }
 
+/* ── Lotti-Animationen ──────────────────────────────────────────────────────
+   SVG-Teil-Transforms brauchen `transform-box: fill-box`, damit der Ursprung
+   relativ zum jeweiligen Element liegt. Alle Keyframes werden vom globalen
+   prefers-reduced-motion-Block weiter unten automatisch stillgelegt. */
+.lotti-eyes {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lotti-blink 5.4s ease-in-out infinite;
+}
+@keyframes lotti-blink {
+  0%, 91%, 100% { transform: scaleY(1); }
+  94%, 96% { transform: scaleY(0.1); }
+}
+.lotti-breathe {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: lotti-breathe 3.8s ease-in-out infinite;
+}
+@keyframes lotti-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03, 0.98); }
+}
+.lotti-wave {
+  transform-box: fill-box;
+  transform-origin: left bottom;
+  animation: lotti-wave 1.5s ease-in-out infinite;
+}
+@keyframes lotti-wave {
+  0%, 100% { transform: rotate(2deg); }
+  30% { transform: rotate(-15deg); }
+  70% { transform: rotate(8deg); }
+}
+.lotti-sway {
+  transform-box: fill-box;
+  transform-origin: top center;
+  animation: lotti-sway 2.9s ease-in-out infinite;
+}
+@keyframes lotti-sway {
+  0%, 100% { transform: rotate(-3.5deg); }
+  50% { transform: rotate(3.5deg); }
+}
+/* Schal-Ende wedelt leicht im Wind (hängt am oberen Ende fest). */
+.lotti-scarf-tail {
+  transform-box: fill-box;
+  transform-origin: top center;
+  animation: lotti-sway 3.6s ease-in-out infinite;
+}
+/* Wehende Fahne — kippt sanft um die Stangen-Seite (links). */
+.lotti-flag {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: lotti-flag 2.4s ease-in-out infinite;
+}
+@keyframes lotti-flag {
+  0%, 100% { transform: skewY(-3deg) scaleX(0.97); }
+  50% { transform: skewY(4deg) scaleX(1); }
+}
+.lotti-hop {
+  animation: lotti-hop 1.9s ease-in-out infinite;
+}
+@keyframes lotti-hop {
+  0%, 100% { transform: translateY(0); }
+  35%, 55% { transform: translateY(-12%); }
+}
+/* Küken, das von der Seite hereinschaut und wieder verschwindet. */
+@keyframes lotti-peek {
+  0%, 100% { transform: translateY(115%) rotate(6deg); }
+  12%, 88% { transform: translateY(8%) rotate(-3deg); }
+}
+.animate-peek {
+  animation: lotti-peek 5.4s ease-in-out both;
+}
+/* Sanft driftende Wolken in der Hero-Hafenszene. */
+.animate-cloud-drift {
+  animation: cloud-drift 26s ease-in-out infinite;
+}
+.animate-cloud-drift-slow {
+  animation: cloud-drift 40s ease-in-out infinite;
+}
+@keyframes cloud-drift {
+  0%, 100% { transform: translateX(-5%); }
+  50% { transform: translateX(6%); }
+}
+
 /* Druck: Navigation/Chrome raus, Inhalt volle Breite — Beschluss-Seiten
    lassen sich so sauber ausdrucken oder als PDF weitergeben. */
 @media print {

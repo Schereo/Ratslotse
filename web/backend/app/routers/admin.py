@@ -112,7 +112,7 @@ def set_role(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Rolle muss 'user' oder 'admin' sein.")
     target = store.get_web_user_by_id(user_id)
     if not target:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nutzer nicht gefunden.")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nutzer:in nicht gefunden.")
     if target["id"] == admin["id"] and body.role != "admin":
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Du kannst dir nicht selbst die Adminrechte entziehen.")
     store.set_web_user_role(user_id, body.role)
@@ -132,7 +132,7 @@ def set_status(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Status muss 'active' oder 'pending' sein.")
     target = store.get_web_user_by_id(user_id)
     if not target:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nutzer nicht gefunden.")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nutzer:in nicht gefunden.")
     if target["id"] == admin["id"] and body.status != "active":
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Du kannst dich nicht selbst sperren.")
     store.set_web_user_status(user_id, body.status)
@@ -151,6 +151,6 @@ def set_nwz_fulltext(
 ) -> WebUserOut:
     """Manually allow/revoke full NWZ article text for a specific user."""
     if not store.get_web_user_by_id(user_id):
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nutzer nicht gefunden.")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nutzer:in nicht gefunden.")
     store.set_nwz_fulltext_allowed(user_id, body.allowed)
     return WebUserOut(**store.get_web_user_by_id(user_id))

@@ -2,12 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Search, Sparkles, MapPin, BarChart3, Bell, Landmark, ArrowRight } from "lucide-react";
 import { Brand } from "@/components/brand";
-import { Mascot } from "@/components/mascot";
+import { SeasonalMascot } from "@/components/seasonal-mascot";
+import { HeroScene } from "@/components/hero-scene";
+import { PeekingChick } from "@/components/peeking-chick";
 import { LandingQaDemo } from "@/components/landing-qa-demo";
 import { HeaderCTA } from "@/components/landing-cta";
 import { NativeRedirect } from "@/components/native-redirect";
-import { HeroCanvas } from "@/components/hero-canvas";
-import { HeroMapFrame } from "@/components/hero-map-frame";
 import { LiveStats } from "@/components/live-stats";
 import { Reveal } from "@/components/reveal";
 
@@ -30,6 +30,7 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background">
       <NativeRedirect />
+      <PeekingChick />
       <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-3.5">
           <Link href="/">
@@ -40,12 +41,13 @@ export default function LandingPage() {
       </header>
 
       <main>
-        {/* Hero — text (server-rendered for SEO) + framed 3D Oldenburg map */}
+        {/* Hero — text (server-rendered for SEO) + Lotti-Familien-Hafenszene */}
         <section className="relative overflow-hidden">
-          <HeroCanvas />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-sky-50 to-transparent dark:from-slate-900/40" aria-hidden />
+          <div className="pointer-events-none absolute inset-0 bg-waves opacity-60" aria-hidden />
           <div className="relative z-10 mx-auto grid max-w-6xl items-center gap-10 px-5 py-16 sm:py-24 lg:grid-cols-2">
             <div className="text-center lg:text-left">
-              <Mascot pose="wave" bob className="mx-auto mb-5 h-24 w-24 lg:hidden" />
+              <SeasonalMascot pose="wave" bob className="mx-auto mb-5 h-24 w-24 lg:hidden" />
               <p className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
                 Stadtrat Oldenburg
               </p>
@@ -66,9 +68,8 @@ export default function LandingPage() {
               </div>
               <LiveStats />
             </div>
-            <div className="relative hidden lg:block">
-              <Mascot pose="wave" bob className="absolute -top-12 right-4 z-10 h-28 w-28" />
-              <HeroMapFrame />
+            <div className="relative">
+              <HeroScene />
             </div>
           </div>
         </section>
@@ -109,7 +110,7 @@ export default function LandingPage() {
         {/* Closing CTA */}
         <section className="mx-auto max-w-3xl px-5 py-16">
           <div className="flex flex-col items-center gap-5 rounded-3xl border border-border bg-card p-8 text-center shadow-lifted sm:p-10">
-            <Mascot pose="celebrate" className="h-24 w-24" />
+            <SeasonalMascot pose="celebrate" className="h-24 w-24" />
             <div>
               <h2 className="text-2xl font-bold tracking-tight text-foreground">Bereit, reinzuschauen?</h2>
               <p className="mt-2 text-muted-foreground">Konto erstellen und den Rat durchsuchen — kostenlos.</p>
