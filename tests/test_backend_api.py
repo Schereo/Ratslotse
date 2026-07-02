@@ -246,8 +246,8 @@ def test_recaps_render_items_falls_back_to_beschluss():
     assert "[abgelehnt]" in out
 
 
-# ---- topics (owned by the web account, no Telegram link required) ----
-def test_topics_work_without_telegram_link(client):
+# ---- topics (owned by the web account) ----
+def test_topics_work_for_active_user(client):
     _register(client)
     assert client.get("/api/topics").status_code == 200
     assert client.get("/api/topics").json() == []

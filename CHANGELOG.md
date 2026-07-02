@@ -8,6 +8,13 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+### Entfernt
+- **Telegram-Bot entfernt:** Benachrichtigungen laufen jetzt ausschließlich über
+  **Web-Push** (iOS/Android-App) und **E-Mail**. Der Telegram-Bot, die
+  Konto-Verknüpfung (`/verbinden`) und die Zustelloption „Telegram" sind weg; die
+  Zustellkanäle sind jetzt `email` / `push` / `both`. Bestehende Konten mit Kanal
+  „Telegram" werden serverseitig auf E-Mail/Push migriert.
+
 ## [0.42.1] – 2026-06-27
 
 ### Behoben

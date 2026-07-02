@@ -4,7 +4,7 @@ The iOS/Android apps are the **same Next.js frontend**, statically exported and
 wrapped in a Capacitor 8 native shell. They talk to the existing FastAPI backend
 at an absolute origin with a **bearer token** (see `lib/platform.ts`,
 `lib/token.ts`), so no cookies/proxy are involved. Native **push** is a delivery
-channel alongside email/Telegram.
+channel alongside email.
 
 ## What's already wired in the repo
 

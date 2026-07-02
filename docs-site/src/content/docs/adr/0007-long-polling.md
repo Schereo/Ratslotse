@@ -1,11 +1,14 @@
 ---
 title: 0007 — Long-Polling statt Webhook
-description: Der Telegram-Bot pollt, statt einen Webhook-Endpunkt zu betreiben.
+description: Der Telegram-Bot pollte, statt einen Webhook-Endpunkt zu betreiben (abgelöst).
 sidebar:
   order: 7
+  badge: Abgelöst
 ---
 
-**Status:** Akzeptiert
+**Status:** Abgelöst — der Telegram-Bot wurde entfernt; **Web-Push** (APNs/FCM) und
+**E-Mail** übernehmen die Benachrichtigungen. Dieser ADR bleibt als historischer
+Kontext erhalten.
 
 ## Kontext
 

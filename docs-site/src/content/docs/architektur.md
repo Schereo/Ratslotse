@@ -1,11 +1,11 @@
 ---
 title: Architektur
-description: Überblick über Stadtrat-Scraper, Datenbank, KI-Klassifikation, Bot und Deployment.
+description: Überblick über Stadtrat-Scraper, Datenbank, KI-Klassifikation, Benachrichtigungen und Deployment.
 ---
 
 Ein Scraper für das Oldenburger Ratsinformationssystem speist eine SQLite-Datenbank.
-Ein Telegram-Bot übernimmt die Nutzerverwaltung und liefert personalisierte
-Benachrichtigungen; ein Web-Frontend (FastAPI + Next.js) sitzt auf denselben Datenbanken.
+Ein Web-Frontend (FastAPI + Next.js) sitzt auf denselben Datenbanken und liefert
+personalisierte Benachrichtigungen per E-Mail und Web-Push.
 
 ```
         Oldenburger Stadtrat (SessionNet)
@@ -18,11 +18,9 @@ Benachrichtigungen; ein Web-Frontend (FastAPI + Next.js) sitzt auf denselben Dat
                      │
               council/watcher.py
                      │
-     nwz/bot_commands.py · scripts/bot_poll.py
+                nwz/delivery.py
                      │
-                Telegram API
-                     │
-                 @RatslotseBot
+        E-Mail (Resend) · Web-Push (APNs/FCM)
 ```
 
 :::note
@@ -57,14 +55,14 @@ konfigurierbare Modelle (Default: `deepseek/deepseek-v4-pro`, siehe `CLAUDE.md`)
 
 Details, Schwachstellen und Roadmap: siehe [KI-Pipeline](/docs/ki-pipeline/).
 
-### Multi-User-Telegram-Bot (`nwz/bot_commands.py`, `scripts/bot_poll.py`)
+### Benachrichtigungen (`nwz/delivery.py`)
 
-Der Bot nutzt **Long-Polling** (`getUpdates` mit 30-s-Timeout) — kein Webhook,
-kein offener Port. Nutzer liegen in der Tabelle `users`; nur freigeschaltete
-Nutzer können interagieren. Der Admin (über `TELEGRAM_CHAT_ID` in der `.env`)
-schaltet Nutzer mit `/freischalten` und `/sperren`. Themen sind pro `chat_id`
-isoliert; die Cron-Skripte iterieren über alle Nutzer und versenden personalisierte
-Ratsinfo-Benachrichtigungen. Volle Befehlsübersicht: [Telegram-Bot](/docs/bot/).
+Jeder Nutzer wählt pro Konto einen Zustellkanal (`email` / `push` / `both`,
+`web_users.delivery_channel`). Die Cron-Skripte iterieren über alle Nutzer mit
+Themen und liefern personalisierte Ratsinfo-Benachrichtigungen über
+`nwz/delivery.py`: **E-Mail** via Resend (`nwz/email.py`) und **Web-Push** auf die
+registrierten App-Geräte via APNs/FCM (`nwz/push.py`). Fehlt das Secret eines
+Kanals, wird dieser Kanal still übersprungen.
 
 ---
 
@@ -75,7 +73,7 @@ Ratsinfo-Benachrichtigungen. Volle Befehlsübersicht: [Telegram-Bot](/docs/bot/)
 - `web_users` — Web-Konten (E-Mail, Passwort-Hash, Rolle, Status)
 - `topics` — Themen-Watchlist pro Nutzer (`owner_id`, `name`, `description`)
 - `committee_subscriptions` — Ausschuss-Abos pro Nutzer
-- `push_tokens`, `link_codes`, `email_verification_tokens` — App-Push & Konto-Verknüpfung
+- `push_tokens`, `email_verification_tokens` — App-Push & E-Mail-Verifikation
 - `prompts` — live editierbare Prompt-Overrides (Admin-UI)
 
 **`council.sqlite`**
@@ -107,7 +105,7 @@ Die vollständige, maßgebliche Liste steht in `CLAUDE.md` (und gespiegelt in
 ## Deployment
 
 - **App-Server:** `app-server` (private IP `<app-server>`), erreichbar per SSH-Jump über die Edge-VM `edge-vm` (`<edge-host>:<port>`). Vollständige Topologie in `CLAUDE.md`.
-- **Prozesse:** systemd — `nwz-bot` (Bot), `nwz-web-api` (FastAPI/uvicorn), `nwz-web-frontend` (Next.js).
+- **Prozesse:** systemd — `nwz-web-api` (FastAPI/uvicorn), `nwz-web-frontend` (Next.js).
 - **TLS/Routing:** **Caddy** auf der Edge-VM terminiert TLS und proxyt auf `app-server:3000` (kein lokales nginx).
 - **CI/CD:** GitHub Actions. **Nur ein gemergter Pull Request nach `main`** löst den Deploy aus (rsync + Service-Restart + Frontend-Build). Ein direkter Push auf `main` läuft nur durch die Tests und deployt **nicht**.
 - **Secrets:** `.env` liegt nur auf dem Server (nicht im Git); der Deploy-SSH-Key ist GitHub-Actions-Secret.

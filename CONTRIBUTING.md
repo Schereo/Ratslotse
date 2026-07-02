@@ -15,9 +15,9 @@ zugänglicher oder korrekter machen, sind willkommen.
 ## Vor dem Pull Request
 
 - **Tests laufen lassen:** `python -m pytest tests/ -q` (grün halten).
-- **Backend-Import prüfen:** `cd web/backend && python -c "import app.main"` und
-  `python -c "import scripts.bot_poll"` — beides muss ohne Fehler durchlaufen
-  (Python 3.12).
+- **Backend-Import prüfen:** `python -c "import nwz, council, scripts.check_council"`
+  (Repo-Root) und `cd web/backend && python -c "import app.main"` — beides muss ohne
+  Fehler durchlaufen (Python 3.12).
 - **Frontend baut:** `cd web/frontend && npm run build`.
 - **Doku baut** (falls `docs-site/` betroffen): `cd docs-site && npm run build`.
 - **Keine Secrets/Infra** im Diff (Keys, echte Server-IPs/Hosts, personenbezogene

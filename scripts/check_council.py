@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Scan upcoming Oldenburg council sessions, classify agendas, send per-user Telegram alerts.
+"""Scan upcoming Oldenburg council sessions, classify agendas, send per-user alerts (email/push).
 Run periodically via cron: 0 8,14 * * * /path/to/.venv/bin/python /path/to/scripts/check_council.py
 """
 from __future__ import annotations

@@ -1,9 +1,9 @@
 # Ratslotse
 
 Macht die Arbeit des **Oldenburger Stadtrats** durchsuchbar, vergleichbar und
-verständlich — über ein Web-Frontend ([ratslotse.de](https://ratslotse.de)) und
-einen persönlichen Telegram-Bot. Aus dem amtlichen Ratsinformationssystem, per LLM
-aufbereitet.
+verständlich — über ein Web-Frontend ([ratslotse.de](https://ratslotse.de)) mit
+Web-Push- und E-Mail-Benachrichtigungen. Aus dem amtlichen Ratsinformationssystem,
+per LLM aufbereitet.
 
 > Diese Datei ist die Kurz-Orientierung für Contributor:innen und Coding-Agents.
 > Ausführliche Technik-Doku: [ratslotse.de/docs](https://ratslotse.de/docs)
@@ -14,8 +14,8 @@ aufbereitet.
 | Pfad | Inhalt |
 |------|--------|
 | `council/` | Stadtrat-Scraper (SessionNet/Bürgerinfo), Protokoll-Parsing, LLM-Klassifikation, Watcher |
-| `nwz/` | Geteilte Infrastruktur: LLM-Client (`llm.py`), SQLite-Store (`store.py`), E-Mail, Telegram, Push, Prompts. *(Der Paketname ist historisch — eine frühere Zeitungs-Integration wurde entfernt, siehe unten.)* |
-| `scripts/` | Cron-Jobs & Ops-Tools (`bot_poll.py`, `check_*.py`, `weekly_enrich.py`, …) |
+| `nwz/` | Geteilte Infrastruktur: LLM-Client (`llm.py`), SQLite-Store (`store.py`), E-Mail, Push, Prompts. *(Der Paketname ist historisch — eine frühere Zeitungs-Integration wurde entfernt, siehe unten.)* |
+| `scripts/` | Cron-Jobs & Ops-Tools (`check_*.py`, `daily_digest.py`, `weekly_enrich.py`, …) |
 | `web/backend/` | FastAPI-Backend (uvicorn) |
 | `web/frontend/` | Next.js-Frontend (+ Capacitor für iOS/Android) |
 | `docs-site/` | Astro-Starlight-Technik-Doku |
@@ -66,11 +66,8 @@ Nicht überschrieben werden `.env`, `data/`, `.venv/`.
 
 ```
 OPENROUTER_API_KEY=...
-TELEGRAM_BOT_TOKEN=...
-TELEGRAM_CHAT_ID=...                 # Admin-Chat-ID
 WEB_JWT_SECRET=...                   # Signiergeheimnis für Session-Tokens
 WEB_ADMIN_EMAIL=...                  # diese E-Mail wird bei Registrierung Admin
-TELEGRAM_BOT_USERNAME=RatslotseBot
 CORS_ORIGINS=https://ratslotse.de
 RESEND_API_KEY=...                   # E-Mail-Versand (Resend), sending-only Key
 EMAIL_FROM=Ratslotse <noreply@ratslotse.de>
@@ -97,11 +94,10 @@ NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflic
 - **„Ähnliche Beschlüsse"** (`scripts/embed_decisions.py`): berechnet semantische
   Nachbarn per **fastembed** (ONNX, kein torch) — bewusst **nicht** in
   `requirements.txt`, damit Deploy + Web-Service unberührt bleiben.
-- **E-Mail-Zustellung**: Nutzer wählen pro Konto `telegram` / `email` / `both`
-  (`web_users.delivery_channel`). E-Mail über Resend (`nwz/email.py`); ohne
-  `RESEND_API_KEY` still übersprungen.
+- **Zustellung**: Nutzer wählen pro Konto `email` / `push` / `both`
+  (`web_users.delivery_channel`). E-Mail über Resend (`nwz/email.py`), Push über
+  APNs/FCM (`nwz/push.py`); ohne `RESEND_API_KEY` wird E-Mail still übersprungen.
 - **Prompts** liegen in `nwz/prompts.py` (DB-Tabelle `prompts`) und sind über das
   Admin-UI live editierbar — Defaults greifen, solange kein Override existiert.
 - **Sicherheit**: Der Reverse-Proxy setzt `X-Forwarded-For` selbst
   (verhindert Rate-Limit-Bypass via XFF-Spoofing).
-- **Bot-Befehl** `/verbinden <CODE>` verknüpft einen Web-Account mit dem Telegram-Chat.

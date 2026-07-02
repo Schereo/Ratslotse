@@ -15,7 +15,7 @@ type Tip = { pose: MascotPose; text: string; href?: string; label?: string };
 const TIPS: Tip[] = [
   {
     pose: "wave",
-    text: "Stell dir die Zustellung ein — Benachrichtigungen zu deinen Themen kommen per Telegram oder E-Mail.",
+    text: "Stell dir die Zustellung ein — Benachrichtigungen zu deinen Themen kommen per Push oder E-Mail.",
     href: "/account",
     label: "Zustellung einstellen",
   },

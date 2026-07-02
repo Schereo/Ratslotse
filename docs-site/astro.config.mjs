@@ -28,7 +28,7 @@ export default defineConfig({
 				},
 				{
 					label: 'Produkt',
-					items: [{ slug: 'bot' }, { slug: 'beschluesse' }],
+					items: [{ slug: 'beschluesse' }],
 				},
 				{
 					label: 'Entscheidungen (ADRs)',

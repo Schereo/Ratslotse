@@ -1,17 +1,17 @@
 /**
- * Topics & Subscriptions: needs-link gate, add/delete topic, confirm dialog.
+ * Topics & Subscriptions: add/delete topic, confirm dialog, empty state.
  */
 import { test, expect } from "@playwright/test";
 import { loginAdmin } from "./helpers";
 
-function mockLinkedUser(page: import("@playwright/test").Page) {
+function mockUser(page: import("@playwright/test").Page) {
   return page.route("**/api/auth/me", (route) =>
     route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({
         id: 1, email: "admin@test.de", role: "admin", status: "active",
-        linked: true, nwz_verified: false, nwz_username: null, telegram_chat_id: 555,
+        email_verified: true, delivery_channel: "email",
       }),
     }),
   );
@@ -22,21 +22,7 @@ test.describe("Topics", () => {
     await loginAdmin(page);
   });
 
-  test("shows 'link Telegram' gate when not linked", async ({ page }) => {
-    // No mock → real API, account is not linked
-    await page.route("**/api/topics", (route) =>
-      route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ detail: "Konto noch nicht mit Telegram verbunden." }) }),
-    );
-    await page.goto("/topics");
-    // Scope to <main>: getByText(/Telegram/) alone matches the sidebar nav link
-    // (always present) and would pass even if the gate never rendered.
-    await expect(page.locator("main").getByText(/Verknüpfe zuerst dein Konto mit Telegram/)).toBeVisible();
-    await expect(page.getByRole("link", { name: /Jetzt verbinden/ })).toBeVisible();
-    await page.screenshot({ path: "test-results/screenshots/05-topics-gate.png", fullPage: true });
-  });
-
-  test("shows empty state with CTA when linked but no topics", async ({ page }) => {
-    await mockLinkedUser(page);
+  test("shows empty state with CTA when no topics", async ({ page }) => {
     await page.route("**/api/topics", (route) =>
       route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([]) }),
     );
@@ -54,7 +40,7 @@ test.describe("Topics", () => {
   });
 
   test("CTA in empty state focuses the name input", async ({ page }) => {
-    await mockLinkedUser(page);
+    await mockUser(page);
     await page.route("**/api/topics", (route) =>
       route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([]) }),
     );
@@ -73,7 +59,7 @@ test.describe("Topics", () => {
   });
 
   test("shows topic list with match count badge", async ({ page }) => {
-    await mockLinkedUser(page);
+    await mockUser(page);
     await page.route("**/api/topics", (route) =>
       route.fulfill({
         status: 200,
@@ -99,7 +85,7 @@ test.describe("Topics", () => {
   });
 
   test("delete opens confirm dialog, not window.confirm", async ({ page }) => {
-    await mockLinkedUser(page);
+    await mockUser(page);
     await page.route("**/api/topics", (route) =>
       route.fulfill({
         status: 200,

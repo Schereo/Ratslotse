@@ -115,10 +115,10 @@ CREATE TABLE IF NOT EXISTS topic_classified_editions (
     PRIMARY KEY(owner_id, topic_id, pub_date)
 );
 
--- Web frontend accounts (separate from the Telegram whitelist `users`).
--- Every owner has a row here — including Telegram-only users, for whom the
--- migration creates a synthetic row (sentinel email tg-<chat_id>@local).
--- delivery_channel ∈ {telegram, email, both}.
+-- Web frontend accounts. delivery_channel ∈ {email, push, both}.
+-- `telegram_chat_id` is a legacy column retained for backward-compatible data
+-- (older rows that were once migrated from the removed Telegram bot); it is no
+-- longer written to and can be dropped in a future schema migration.
 CREATE TABLE IF NOT EXISTS web_users (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
     email            TEXT NOT NULL UNIQUE,
@@ -126,21 +126,13 @@ CREATE TABLE IF NOT EXISTS web_users (
     role             TEXT NOT NULL DEFAULT 'user',
     status           TEXT NOT NULL DEFAULT 'pending',
     telegram_chat_id INTEGER,
-    delivery_channel TEXT NOT NULL DEFAULT 'telegram',
+    delivery_channel TEXT NOT NULL DEFAULT 'email',
     nwz_username     TEXT,
     nwz_verified_at  TEXT,
     nwz_fulltext_allowed INTEGER NOT NULL DEFAULT 0,
     token_version    INTEGER NOT NULL DEFAULT 0,
     email_verified   INTEGER NOT NULL DEFAULT 0,
     created_at       TEXT NOT NULL
-);
-
--- One-time codes that link a web account to a Telegram chat via the bot.
-CREATE TABLE IF NOT EXISTS link_codes (
-    code        TEXT PRIMARY KEY,
-    web_user_id INTEGER NOT NULL,
-    created_at  TEXT NOT NULL,
-    expires_at  TEXT NOT NULL
 );
 
 -- Single-use password-reset tokens (only the sha256 hash is stored) with expiry.
@@ -194,13 +186,6 @@ class TopicRow:
     name: str
     description: str
     created_at: str
-
-
-@dataclass
-class UserRow:
-    chat_id: int
-    username: str
-    added_at: str
 
 
 class Store:
@@ -295,7 +280,7 @@ class Store:
             # 1. delivery_channel column on web_users.
             if "delivery_channel" not in wu_cols:
                 self._conn.execute(
-                    "ALTER TABLE web_users ADD COLUMN delivery_channel TEXT NOT NULL DEFAULT 'telegram'"
+                    "ALTER TABLE web_users ADD COLUMN delivery_channel TEXT NOT NULL DEFAULT 'email'"
                 )
 
             # 2. Synthetic web_users for every chat_id that owns something but has
@@ -391,55 +376,6 @@ class Store:
     def close(self) -> None:
         self._conn.close()
 
-    # ---- users ----
-
-    def get_users(self) -> list[UserRow]:
-        rows = self._conn.execute(
-            "SELECT chat_id, username, added_at FROM users ORDER BY added_at"
-        ).fetchall()
-        return [UserRow(**dict(r)) for r in rows]
-
-    def is_user(self, chat_id: int) -> bool:
-        row = self._conn.execute(
-            "SELECT 1 FROM users WHERE chat_id = ?", (chat_id,)
-        ).fetchone()
-        return row is not None
-
-    def add_user(self, chat_id: int, username: str = "") -> None:
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self._conn:
-            self._conn.execute(
-                "INSERT OR REPLACE INTO users (chat_id, username, added_at) VALUES (?, ?, ?)",
-                (chat_id, username, now),
-            )
-
-    def remove_user(self, chat_id: int) -> None:
-        """Remove a Telegram chat from the whitelist and unlink it.
-
-        Deletes the chat's owned data (topics + their matches/classified rows +
-        committee subscriptions) when the owner is a synthetic Telegram-only
-        account; for a real web account we only unlink the chat and keep the
-        data so the user can still reach it on the web.
-        """
-        owner_id = self.get_owner_id_for_chat(chat_id)
-        with self._conn:
-            self._conn.execute("DELETE FROM users WHERE chat_id = ?", (chat_id,))
-            if owner_id is not None:
-                row = self._conn.execute(
-                    "SELECT email FROM web_users WHERE id = ?", (owner_id,)
-                ).fetchone()
-                is_synthetic = bool(row) and str(row[0]).startswith("tg-") and str(row[0]).endswith("@local")
-                if is_synthetic:
-                    self._conn.execute("DELETE FROM topics WHERE owner_id = ?", (owner_id,))
-                    self._conn.execute("DELETE FROM article_topic_matches WHERE owner_id = ?", (owner_id,))
-                    self._conn.execute("DELETE FROM topic_classified_editions WHERE owner_id = ?", (owner_id,))
-                    self._conn.execute("DELETE FROM committee_subscriptions WHERE owner_id = ?", (owner_id,))
-                    self._conn.execute("DELETE FROM web_users WHERE id = ?", (owner_id,))
-                else:
-                    self._conn.execute(
-                        "UPDATE web_users SET telegram_chat_id = NULL WHERE id = ?", (owner_id,)
-                    )
-
     # ---- web accounts ----
 
     def create_web_user(self, email: str, password_hash: str, role: str = "user",
@@ -507,32 +443,6 @@ class Store:
             o = by_owner.get(pr["owner_id"])
             if o is not None:
                 o["push_tokens"].append({"token": pr["token"], "platform": pr["platform"]})
-
-    # ---- owner resolution (chat_id <-> owner_id) ----
-
-    def get_owner_id_for_chat(self, chat_id: int) -> int | None:
-        """Return the owner_id (web_users.id) a Telegram chat maps to, or None."""
-        row = self._conn.execute(
-            "SELECT id FROM web_users WHERE telegram_chat_id = ?", (chat_id,)
-        ).fetchone()
-        return row[0] if row else None
-
-    def ensure_owner_for_chat(self, chat_id: int, username: str = "") -> int:
-        """Return the owner_id for a Telegram chat, creating a synthetic
-        Telegram-only web account on first use so the chat always has a stable
-        owner. Used by the bot after the whitelist check."""
-        owner_id = self.get_owner_id_for_chat(chat_id)
-        if owner_id is not None:
-            return owner_id
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self._conn:
-            cur = self._conn.execute(
-                "INSERT INTO web_users "
-                "(email, password_hash, role, status, telegram_chat_id, delivery_channel, email_verified, created_at) "
-                "VALUES (?, '!', 'user', 'active', ?, 'telegram', 1, ?)",
-                (f"tg-{chat_id}@local", chat_id, now),
-            )
-        return cur.lastrowid
 
     def set_nwz_verified(self, user_id: int, nwz_username: str) -> None:
         now = datetime.utcnow().isoformat(timespec="seconds")
@@ -654,25 +564,9 @@ class Store:
             self._conn.execute("DELETE FROM article_topic_matches WHERE owner_id = ?", (user_id,))
             self._conn.execute("DELETE FROM topic_classified_editions WHERE owner_id = ?", (user_id,))
             self._conn.execute("DELETE FROM committee_subscriptions WHERE owner_id = ?", (user_id,))
-            self._conn.execute("DELETE FROM link_codes WHERE web_user_id = ?", (user_id,))
             self._conn.execute("DELETE FROM password_reset_tokens WHERE user_id = ?", (user_id,))
             self._conn.execute("DELETE FROM email_verification_tokens WHERE user_id = ?", (user_id,))
             self._conn.execute("DELETE FROM web_users WHERE id = ?", (user_id,))
-
-    def get_users_with_topic_count(self) -> list[dict]:
-        """Return telegram users with their topic count in a single query (avoids N+1)."""
-        rows = self._conn.execute(
-            """
-            SELECT u.chat_id, u.username, u.added_at,
-                   COUNT(t.id) AS topic_count
-            FROM users u
-            LEFT JOIN web_users wu ON wu.telegram_chat_id = u.chat_id
-            LEFT JOIN topics t ON t.owner_id = wu.id
-            GROUP BY u.chat_id, u.username, u.added_at
-            ORDER BY u.added_at
-            """
-        ).fetchall()
-        return [dict(r) for r in rows]
 
     def get_topic_for_owner(self, owner_id: int, topic_id: int) -> TopicRow | None:
         """Fetch a single topic belonging to owner_id — O(1) vs scanning all topics."""
@@ -681,18 +575,6 @@ class Store:
             (topic_id, owner_id),
         ).fetchone()
         return TopicRow(**dict(row)) if row else None
-
-    def create_link_code(self, web_user_id: int, code: str, ttl_minutes: int = 15) -> None:
-        from datetime import timedelta
-        now = datetime.utcnow()
-        expires = now + timedelta(minutes=ttl_minutes)
-        with self._conn:
-            # one active code per user — replace any previous
-            self._conn.execute("DELETE FROM link_codes WHERE web_user_id = ?", (web_user_id,))
-            self._conn.execute(
-                "INSERT INTO link_codes (code, web_user_id, created_at, expires_at) VALUES (?, ?, ?, ?)",
-                (code, web_user_id, now.isoformat(timespec="seconds"), expires.isoformat(timespec="seconds")),
-            )
 
     def admin_stats(self) -> dict:
         """Aggregate counts for the admin dashboard (read-only)."""
@@ -723,9 +605,7 @@ class Store:
                 "active": one("SELECT COUNT(*) FROM web_users WHERE status = 'active'"),
                 "pending": one("SELECT COUNT(*) FROM web_users WHERE status = 'pending'"),
                 "nwz_verified": one("SELECT COUNT(*) FROM web_users WHERE nwz_verified_at IS NOT NULL"),
-                "linked": one("SELECT COUNT(*) FROM web_users WHERE telegram_chat_id IS NOT NULL"),
             },
-            "telegram_users": one("SELECT COUNT(*) FROM users"),
             "topics": {
                 "total": one("SELECT COUNT(*) FROM topics"),
                 "users_with_topics": one("SELECT COUNT(DISTINCT chat_id) FROM topics"),
@@ -734,74 +614,6 @@ class Store:
                 "subscriptions": one("SELECT COUNT(*) FROM committee_subscriptions"),
             },
         }
-
-    # ---- web account linking ----
-
-    def redeem_link_code(self, code: str, chat_id: int, username: str = "") -> str | None:
-        """Link a web account to this Telegram chat via a one-time code.
-
-        On success: sets web_users.telegram_chat_id, whitelists the chat in
-        `users`, deletes the code, and returns the linked account's email.
-        Returns None if the code is unknown or expired.
-        """
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        row = self._conn.execute(
-            "SELECT web_user_id, expires_at FROM link_codes WHERE code = ?", (code,)
-        ).fetchone()
-        if row is None:
-            return None
-        if row["expires_at"] < now:
-            with self._conn:
-                self._conn.execute("DELETE FROM link_codes WHERE code = ?", (code,))
-            return None
-        web_user_id = row["web_user_id"]
-        email_row = self._conn.execute(
-            "SELECT email FROM web_users WHERE id = ?", (web_user_id,)
-        ).fetchone()
-        if email_row is None:
-            return None
-        # If this chat was already used via the bot it has a synthetic owner.
-        # Merge that owner's data into the real web account, then drop it.
-        existing_owner = self.get_owner_id_for_chat(chat_id)
-        with self._conn:
-            if existing_owner is not None and existing_owner != web_user_id:
-                self._merge_owner(existing_owner, web_user_id)
-            self._conn.execute(
-                "UPDATE web_users SET telegram_chat_id = ? WHERE id = ?",
-                (chat_id, web_user_id),
-            )
-            self._conn.execute(
-                "INSERT OR IGNORE INTO users (chat_id, username, added_at) VALUES (?, ?, ?)",
-                (chat_id, username, now),
-            )
-            self._conn.execute("DELETE FROM link_codes WHERE code = ?", (code,))
-        return email_row[0]
-
-    def _merge_owner(self, src_owner: int, dst_owner: int) -> None:
-        """Move all owned rows from src_owner to dst_owner and delete src.
-
-        Must be called inside an open transaction. UPDATE OR IGNORE avoids
-        UNIQUE collisions (dst keeps its row, the duplicate src row is dropped
-        with the source owner)."""
-        c = self._conn
-        c.execute("UPDATE topics SET owner_id = ? WHERE owner_id = ?", (dst_owner, src_owner))
-        c.execute(
-            "UPDATE OR IGNORE article_topic_matches SET owner_id = ? WHERE owner_id = ?",
-            (dst_owner, src_owner),
-        )
-        c.execute(
-            "UPDATE OR IGNORE topic_classified_editions SET owner_id = ? WHERE owner_id = ?",
-            (dst_owner, src_owner),
-        )
-        c.execute(
-            "UPDATE OR IGNORE committee_subscriptions SET owner_id = ? WHERE owner_id = ?",
-            (dst_owner, src_owner),
-        )
-        # Drop any rows that couldn't move (duplicates) and the source account.
-        c.execute("DELETE FROM article_topic_matches WHERE owner_id = ?", (src_owner,))
-        c.execute("DELETE FROM topic_classified_editions WHERE owner_id = ?", (src_owner,))
-        c.execute("DELETE FROM committee_subscriptions WHERE owner_id = ?", (src_owner,))
-        c.execute("DELETE FROM web_users WHERE id = ?", (src_owner,))
 
     # ---- editions ----
 
