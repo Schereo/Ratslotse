@@ -34,8 +34,6 @@ erlaubt.
 | `/themen` | Eigene gespeicherte Themen anzeigen |
 | `/neu <Name> \| <Beschreibung>` | Neues Thema anlegen |
 | `/loeschen <ID>` | Thema per ID löschen |
-| `/archiv [<ID>]` | Archivierte Artikel-Treffer (alle Themen oder ein Thema) |
-| `/suche <Begriff>` | Volltextsuche im Artikel-Archiv |
 | `/ausschuesse` | Ausschüsse anzeigen und abonnieren (✅ = abonniert) |
 | `/pruefen` | Sitzungsagendas für deine Abos jetzt abrufen |
 | `/verbinden <CODE>` | Web-Konto mit diesem Chat verknüpfen |
@@ -44,8 +42,7 @@ erlaubt.
 ```
 /neu Radwege | Ausbau und Planung von Radwegen in Oldenburg
 ```
-Nach dem Hinzufügen sucht der Bot sofort in den letzten 30 Tagen nach passenden
-Artikeln.
+Der Bot meldet sich, sobald der Rat zu einem deiner Themen etwas beschließt.
 
 ---
 
@@ -63,7 +60,7 @@ Admin = wer `TELEGRAM_CHAT_ID` in der `.env` gesetzt hat.
 
 ## So funktioniert's
 
-- Der tägliche NWZ-Digest und der Stadtrat-Watcher laufen **pro Nutzer** — jeder
+- Der Stadtrat-Watcher läuft **pro Nutzer** — jeder
   bekommt nur Treffer zu seinen eigenen Themen und Abos.
 - Themen-IDs sind persönlich; `/loeschen 3` löscht nur *dein* Thema #3.
 

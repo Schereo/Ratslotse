@@ -9,7 +9,7 @@ sidebar:
 
 ## Kontext
 
-Die App braucht LLM-Inferenz an mehreren Stellen (NWZ-Digest, Ausschuss-
+Die App braucht LLM-Inferenz an mehreren Stellen (Ausschuss-
 Zusammenfassung, Topic-Matching, Protokoll-Extraktion). Anforderungen:
 
 - Modelle frei wählbar und pro Aufgabe austauschbar, ohne Code-Umbau.
@@ -29,7 +29,7 @@ Alle LLM-Aufrufe laufen über **OpenRouter** mit dem offiziellen `openai`-SDK
 - **Plus:** Ein einziger Key, ein SDK, viele Modelle. Modellwechsel ist eine
   Env-Änderung, kein Deploy von Code. Provider-Routing-Regeln (ADR 0002) lassen
   sich zentral durchsetzen.
-- **Plus:** Der Modellvergleich (siehe [Modellvergleich](/docs/modellvergleich/))
+- **Plus:** Ein Modellvergleich
   konnte ohne Integrationsaufwand mehrere Anbieter gegeneinander testen.
 - **Minus:** Zusätzliche Abhängigkeit von OpenRouter als Vermittler (eine weitere
   Ausfall-/Latenzquelle). Einige OpenAI-spezifische Features (z. B. strikte
