@@ -72,6 +72,9 @@ RESEND_API_KEY=...                   # E-Mail-Versand (Resend), sending-only Key
 EMAIL_FROM=Ratslotse <noreply@ratslotse.de>
 APP_BASE_URL=https://ratslotse.de
 FEEDBACK_EMAIL=...                   # Empfänger des Nutzer-Feedbacks
+ALERT_EMAIL=...                      # Cron-Fehler-Alarme (Fallback: WEB_ADMIN_EMAIL)
+BACKUP_RSYNC_TARGET=user@host:pfad/  # optional: Off-Site-Mirror der DB-Backups
+BACKUP_RSYNC_SSH_PORT=22             # SSH-Port des Backup-Ziels
 # Stadtrat-LLM (optional, Defaults greifen)
 COUNCIL_PROTOCOL_MODEL=deepseek/deepseek-v4-pro
 COUNCIL_TOPIC_MODEL=deepseek/deepseek-v4-pro
@@ -86,10 +89,13 @@ NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflic
 
 ## Wissenswertes
 
-- **Cron-Jobs** (auf dem Server): `backup_db.py` (täglich), `check_committees.py`,
+- **Cron-Jobs** (auf dem Server): `backup_db.py` (täglich, mit optionalem
+  Off-Site-Mirror per `BACKUP_RSYNC_TARGET`), `check_committees.py`,
   `check_council.py`, `check_protocols.py` (Protokolle → Beschluss-Klassifikation),
   `weekly_enrich.py` (wöchentliche LLM-/Embedding-Backfills: Entitäten, Geocoding,
-  Embeddings, Themen↔Beschlüsse, Themenfeld-Rückblicke).
+  Embeddings, Themen↔Beschlüsse, Themenfeld-Rückblicke). Alle laufen in
+  `run_guarded` (`nwz/alerts.py`): Ein Crash wird geloggt **und** per E-Mail an
+  `ALERT_EMAIL`/`WEB_ADMIN_EMAIL` gemeldet.
 - **„Ähnliche Beschlüsse"** (`scripts/embed_decisions.py`): berechnet semantische
   Nachbarn per **fastembed** (ONNX, kein torch) — bewusst **nicht** in
   `requirements.txt`, damit Deploy + Web-Service unberührt bleiben.
