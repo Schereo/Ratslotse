@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import math
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -15,6 +15,7 @@ from council.parties import normalize_party, order_key
 from council import qa
 
 from ..deps import get_council_store, require_active
+from ..ratelimit import qa_limiter
 
 router = APIRouter(prefix="/api/council", tags=["council"])
 
@@ -301,13 +302,14 @@ def _qa_source(c: dict) -> dict:
 
 
 @router.post("/ask")
-def ask(body: AskBody, _user: dict = Depends(require_active),
+def ask(body: AskBody, request: Request, _user: dict = Depends(require_active),
         store: CouncilStore = Depends(get_council_store)) -> StreamingResponse:
     """Answer a free-text question from the decisions, streamed as Server-Sent Events:
     progress steps → the ranked source decisions (the moment retrieval+rerank finish)
     → the answer token-by-token → a final event with the cited ids. Streaming makes
     the wait feel far shorter (sources show in ~2 s) and degrades gracefully if a
     proxy buffers it (the client then renders the same final state at once)."""
+    qa_limiter.check(request)  # LLM-Kosten pro Aufruf — nicht unbegrenzt feuern lassen
     q = body.question.strip()
     if len(q) < 4:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Bitte eine etwas längere Frage stellen.")

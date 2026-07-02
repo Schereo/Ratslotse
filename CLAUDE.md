@@ -73,6 +73,7 @@ EMAIL_FROM=Ratslotse <noreply@ratslotse.de>
 APP_BASE_URL=https://ratslotse.de
 FEEDBACK_EMAIL=...                   # Empfänger des Nutzer-Feedbacks
 ALERT_EMAIL=...                      # Cron-Fehler-Alarme (Fallback: WEB_ADMIN_EMAIL)
+FASTEMBED_CACHE_PATH=~/.cache/fastembed  # persistenter Modell-Cache (sonst /tmp → weg beim Reboot)
 BACKUP_RSYNC_TARGET=user@host:pfad/  # optional: Off-Site-Mirror der DB-Backups
 BACKUP_RSYNC_SSH_PORT=22             # SSH-Port des Backup-Ziels
 # Stadtrat-LLM (optional, Defaults greifen)
