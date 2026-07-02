@@ -22,14 +22,17 @@ export function HeroScene() {
           <ellipse cx={300} cy={98} rx={30} ry={15} />
           <ellipse cx={324} cy={92} rx={22} ry={13} />
         </g>
-        {/* Wasser */}
+        {/* Wasser (hinten) — die Familie füllt die Karte; ein Horizont-Detail
+            (z. B. Segelboot) wäre immer verdeckt, deshalb bewusst keins. */}
         <path d="M0,214 C60,204 120,224 200,214 C280,204 340,224 400,214 L400,300 L0,300 Z" fill="hsl(var(--primary))" opacity={0.16} />
+        {/* Wasser (vorne) */}
         <path d="M0,232 C70,224 130,242 200,232 C270,222 330,242 400,232 L400,300 L0,300 Z" fill="hsl(var(--primary))" opacity={0.22} />
-        {/* kleiner Steg */}
+        {/* Steg, auf dem die Familie steht */}
         <g>
-          <rect x={150} y={230} width={100} height={9} rx={2} fill="#B5895A" />
-          <rect x={158} y={239} width={7} height={22} fill="#946E42" />
-          <rect x={235} y={239} width={7} height={22} fill="#946E42" />
+          <rect x={112} y={230} width={176} height={9} rx={2} fill="#B5895A" />
+          <rect x={120} y={239} width={7} height={22} fill="#946E42" />
+          <rect x={196} y={239} width={7} height={22} fill="#946E42" />
+          <rect x={272} y={239} width={7} height={22} fill="#946E42" />
         </g>
         {/* Boje */}
         <g className="animate-bob" style={{ transformOrigin: "330px 210px" }}>
@@ -39,8 +42,8 @@ export function HeroScene() {
         </g>
       </svg>
 
-      {/* Familie auf dem Steg */}
-      <div className="absolute inset-x-0 bottom-[16%] flex justify-center">
+      {/* Familie (Lotti, Küken, Partner-Möwe) auf dem Steg */}
+      <div className="absolute inset-x-0 bottom-[19%] flex justify-center">
         <SeasonalFamily chicks={3} />
       </div>
 

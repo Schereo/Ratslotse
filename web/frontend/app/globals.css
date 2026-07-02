@@ -162,6 +162,12 @@
   0%, 100% { transform: rotate(-3.5deg); }
   50% { transform: rotate(3.5deg); }
 }
+/* Schal-Ende wedelt leicht im Wind (hängt am oberen Ende fest). */
+.lotti-scarf-tail {
+  transform-box: fill-box;
+  transform-origin: top center;
+  animation: lotti-sway 3.6s ease-in-out infinite;
+}
 /* Wehende Fahne — kippt sanft um die Stangen-Seite (links). */
 .lotti-flag {
   transform-box: fill-box;

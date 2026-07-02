@@ -33,6 +33,7 @@ const C = {
   beak: "#F66623",
   beakDark: "#D9531E",
   gold: "#F2B441",
+  goldDark: "#D99A1F",
   blush: "#FFAD85",
   zzz: "#8CA6BC",
   // Outfit-Farben
@@ -187,6 +188,15 @@ const Cap = ({ tilt = -5 }: { tilt?: number }) => (
   </g>
 );
 
+/** Südwester (Fischer-Regenhut) — für Lottis Partner-Möwe in der Familie. */
+const Souwester = ({ tilt = -4 }: { tilt?: number }) => (
+  <g transform={`rotate(${tilt} 100 52)`}>
+    <ellipse cx={100} cy={57} rx={52} ry={13} fill={C.goldDark} />
+    <path d="M64,57 C64,33 80,23 100,23 C120,23 136,33 136,57 C124,52 112,49.5 100,49.5 C88,49.5 76,52 64,57 Z" fill={C.gold} />
+    <path d="M70,50 C79,46.5 89,44.8 100,44.8 C111,44.8 121,46.5 130,50" stroke={C.goldDark} strokeWidth={2} fill="none" strokeLinecap="round" />
+  </g>
+);
+
 /** Lotsenmütze mit Regenbogen-Band (Pride). */
 const CapPride = ({ tilt = -5 }: { tilt?: number }) => (
   <g transform={`rotate(${tilt} 100 52)`}>
@@ -278,13 +288,15 @@ const FallingLeaf = () => (
   </g>
 );
 
+/** Ohrenschützer, über der Mütze getragen: Bügel wölbt sich über die Kappe,
+    Muscheln sitzen seitlich am Kopf (nicht vor den Augen). */
 const Earmuffs = () => (
   <g>
-    <path d="M58,84 C74,74 126,74 142,84" stroke={C.scarfCool} strokeWidth={5} fill="none" strokeLinecap="round" />
-    <circle cx={57} cy={96} r={11} fill={C.scarfCool} />
-    <circle cx={143} cy={96} r={11} fill={C.scarfCool} />
-    <circle cx={57} cy={96} r={6} fill="#FFFFFF" opacity={0.85} />
-    <circle cx={143} cy={96} r={6} fill="#FFFFFF" opacity={0.85} />
+    <path d="M57,90 C57,-6 143,-6 143,90" stroke={C.scarfCool} strokeWidth={5} fill="none" strokeLinecap="round" />
+    <circle cx={57} cy={93} r={11} fill={C.scarfCool} />
+    <circle cx={143} cy={93} r={11} fill={C.scarfCool} />
+    <circle cx={57} cy={93} r={6} fill="#FFFFFF" opacity={0.85} />
+    <circle cx={143} cy={93} r={6} fill="#FFFFFF" opacity={0.85} />
   </g>
 );
 
@@ -361,40 +373,40 @@ const Zzz = () => (
 /* ── Posen: Körper + Flügel + Gesicht (OHNE Kopfbedeckung — die kommt je nach
       Thema separat dazu, damit Feiertags-Hüte die Mütze ersetzen können). ─── */
 
-type PoseParts = { body: React.ReactNode; capTilt: number; eyesBlink: boolean };
+type PoseParts = { body: React.ReactNode; capTilt: number };
 
 function poseParts(pose: MascotPose, animated: boolean): PoseParts {
   const eyeCls = animated ? "lotti-eyes" : undefined;
   switch (pose) {
     case "point":
       return {
-        capTilt: -4, eyesBlink: true,
+        capTilt: -4,
         body: (<><Tail /><Body /><WingLeft /><WingRightPoint /><Feet /><g className={eyeCls}><EyesHappy /></g><BeakSmile /><Blush /></>),
       };
     case "celebrate":
       return {
-        capTilt: -8, eyesBlink: false,
+        capTilt: -8,
         body: (<><Tail /><WingRightWave /><Body /><g transform="scale(-1,1) translate(-200,0)"><WingRightWave /></g><Feet /><EyesJoy /><BeakOpen /><Blush /></>),
       };
     case "search":
       return {
-        capTilt: -4, eyesBlink: false,
+        capTilt: -4,
         body: (<><Tail /><Body /><WingLeft /><Feet /><Spyglass /><BeakHm /><Blush /></>),
       };
     case "confused":
       return {
-        capTilt: 9, eyesBlink: true,
+        capTilt: 9,
         body: (<><Tail /><Body /><WingLeft /><WingRightFolded /><Feet /><g className={eyeCls}><EyesPuzzled /></g><BeakHm /><Blush /><QuestionMark /></>),
       };
     case "sleep":
       return {
-        capTilt: -14, eyesBlink: false,
+        capTilt: -14,
         body: (<><Tail /><Body /><WingLeft /><WingRightFolded /><Feet /><EyesSleep /><BeakHm /><Blush /><Zzz /></>),
       };
     case "wave":
     default:
       return {
-        capTilt: -6, eyesBlink: true,
+        capTilt: -6,
         body: (<><Tail /><g className={animated ? "lotti-wave" : undefined}><WingRightWave /></g><Body /><WingLeft /><Feet /><g className={eyeCls}><EyesHappy /></g><BeakOpen /><Blush /></>),
       };
   }
@@ -402,14 +414,16 @@ function poseParts(pose: MascotPose, animated: boolean): PoseParts {
 
 /* ── Outfit: Kopfbedeckung + Add-ons je nach Thema ────────────────────────── */
 
-function Headwear({ theme, tilt }: { theme: MascotTheme | null; tilt: number }) {
+export type MascotHat = "cap" | "souwester";
+
+function Headwear({ theme, tilt, hat = "cap" }: { theme: MascotTheme | null; tilt: number; hat?: MascotHat }) {
   switch (theme?.holiday) {
     case "halloween": return <WitchHat tilt={tilt - 1} />;
     case "christmas": return <SantaHat tilt={tilt} />;
     case "easter": return <BunnyEars tilt={tilt} />;
     case "pride": return <CapPride tilt={tilt} />;
     default:
-      return <Cap tilt={tilt} />;
+      return hat === "souwester" ? <Souwester tilt={tilt} /> : <Cap tilt={tilt} />;
   }
 }
 
@@ -439,6 +453,8 @@ export function Mascot({
   bob = false,
   animated = true,
   theme = null,
+  hat = "cap",
+  decorative = false,
   label,
 }: {
   pose?: MascotPose;
@@ -449,6 +465,10 @@ export function Mascot({
   animated?: boolean;
   /** Jahreszeit-/Feiertags-Outfit. Meist über <SeasonalMascot/> gesetzt. */
   theme?: MascotTheme | null;
+  /** Kopfbedeckung ohne Feiertag: Lotsenmütze (Lotti) oder Südwester (Partner). */
+  hat?: MascotHat;
+  /** Rein dekorativ (z. B. in der Familien-Gruppe): fürs Screenreader unsichtbar. */
+  decorative?: boolean;
   label?: string;
 }) {
   const parts = poseParts(pose, animated);
@@ -456,13 +476,14 @@ export function Mascot({
   return (
     <svg
       viewBox="0 0 200 200"
-      role="img"
-      aria-label={aria}
+      role={decorative ? undefined : "img"}
+      aria-label={decorative ? undefined : aria}
+      aria-hidden={decorative || undefined}
       className={cn("h-28 w-28 select-none", bob && "animate-bob", className)}
     >
       <g className={animated ? "lotti-breathe" : undefined}>
         {parts.body}
-        <Headwear theme={theme} tilt={parts.capTilt} />
+        <Headwear theme={theme} tilt={parts.capTilt} hat={hat} />
         <Outfit theme={theme} />
       </g>
     </svg>
@@ -471,15 +492,74 @@ export function Mascot({
 
 /* ── Küken (Lottis Familie) ───────────────────────────────────────────────── */
 
+/** Mini-Weihnachtsmütze fürs Küken. */
+const ChickSantaHat = () => (
+  <g transform="translate(0 6) rotate(-8 60 38)">
+    <path d="M38,44 C40,26 52,18 64,20 C76,22 84,30 86,42 Z" fill={C.santa} />
+    <path d="M78,26 C86,20 92,20 95,25" stroke={C.santa} strokeWidth={7} strokeLinecap="round" fill="none" />
+    <circle cx={97} cy={27} r={4.5} fill="#FFFFFF" />
+    <path d="M37,42 C53,36 71,36 87,42" stroke="#FFFFFF" strokeWidth={6.5} strokeLinecap="round" fill="none" />
+  </g>
+);
+
+/** Mini-Hasenohren fürs Küken. */
+const ChickBunnyEars = () => (
+  <g transform="rotate(-4 60 36)">
+    <path d="M48,44 C44,32 43,18 47,8 C53,10 56,26 55,42 Z" fill={C.bunny} stroke={C.wingTip} strokeWidth={1.2} />
+    <path d="M72,44 C76,32 77,18 73,8 C67,10 64,26 65,42 Z" fill={C.bunny} stroke={C.wingTip} strokeWidth={1.2} />
+    <path d="M49,38 C47.5,30 47.3,21 49.3,14 C51.6,17 52.7,28 52.6,38 Z" fill={C.bunnyPink} />
+    <path d="M71,38 C72.5,30 72.7,21 70.7,14 C68.4,17 67.3,28 67.4,38 Z" fill={C.bunnyPink} />
+    <path d="M44,45 C53,41.5 67,41.5 76,45 C70,48.5 50,48.5 44,45 Z" fill={C.bunny} stroke={C.wingTip} strokeWidth={1} />
+  </g>
+);
+
+/** Mini-Schal fürs Küken (Winter). */
+const ChickScarf = () => (
+  <>
+    <path d="M32,86 C42,96 78,96 88,86 C86,93 80,98 73,100 C68,94 52,94 47,100 C40,98 34,93 32,86 Z" fill={C.scarfCool} />
+    <g className="lotti-scarf-tail">
+      <path d="M70,96 C75,101 77,109 76,116 C70,115 66,110 65,104 C66,101 68,98 70,96 Z" fill={C.scarfCool} />
+    </g>
+  </>
+);
+
+/** Winziger Regenbogen-Wimpel fürs Küken (Pride). */
+const ChickPennant = () => (
+  <g>
+    <rect x={92} y={56} width={2.6} height={38} rx={1.3} fill={C.navyDark} />
+    <circle cx={93.3} cy={56} r={2.2} fill={C.gold} />
+    <g transform="translate(94.6 58)">
+      <g className="lotti-flag">
+        {PRIDE.map((col, i) => (
+          <rect key={col} x={0} y={i * 2.4} width={17} height={2.4} fill={col} />
+        ))}
+      </g>
+    </g>
+  </g>
+);
+
+/** Feiertags-/Jahreszeit-Accessoire fürs Küken — bewusst sparsamer als bei Lotti. */
+function ChickOutfit({ theme }: { theme: MascotTheme | null }) {
+  if (!theme) return null;
+  if (theme.holiday === "christmas") return <ChickSantaHat />;
+  if (theme.holiday === "easter") return <ChickBunnyEars />;
+  if (theme.holiday === "pride") return <ChickPennant />;
+  if (!theme.holiday && theme.season === "winter") return <ChickScarf />;
+  return null;
+}
+
 /**
  * Ein kleines Möwenküken — runder, flauschiger, riesige Kulleraugen, mit einer
- * kecken Federtolle statt Mütze. `hop` lässt es hüpfen.
+ * kecken Federtolle statt Mütze. `hop` lässt es hüpfen; `theme` zieht ihm zu
+ * Weihnachten/Ostern/Pride/Winter ein Mini-Accessoire an.
  */
 export function Chick({
   className,
   hop = false,
   animated = true,
   tone = "orange",
+  theme = null,
+  decorative = false,
   label = "Ein Möwenküken",
 }: {
   className?: string;
@@ -487,15 +567,19 @@ export function Chick({
   animated?: boolean;
   /** Schnabel-/Füßchen-Ton, damit die Geschwister sich leicht unterscheiden. */
   tone?: "orange" | "gold";
+  theme?: MascotTheme | null;
+  /** Rein dekorativ (z. B. in der Familien-Gruppe): fürs Screenreader unsichtbar. */
+  decorative?: boolean;
   label?: string;
 }) {
   const beak = tone === "gold" ? C.gold : C.beak;
-  const beakDark = tone === "gold" ? "#D99A1F" : C.beakDark;
+  const beakDark = tone === "gold" ? C.goldDark : C.beakDark;
   return (
     <svg
       viewBox="0 0 120 120"
-      role="img"
-      aria-label={label}
+      role={decorative ? undefined : "img"}
+      aria-label={decorative ? undefined : label}
+      aria-hidden={decorative || undefined}
       className={cn("h-16 w-16 select-none", hop && "lotti-hop", className)}
     >
       <g className={animated ? "lotti-breathe" : undefined}>
@@ -524,14 +608,16 @@ export function Chick({
         {/* Bäckchen */}
         <ellipse cx={40} cy={82} rx={5} ry={3.4} fill={C.blush} opacity={0.55} />
         <ellipse cx={80} cy={82} rx={5} ry={3.4} fill={C.blush} opacity={0.55} />
+        <ChickOutfit theme={theme} />
       </g>
     </svg>
   );
 }
 
 /**
- * Die ganze Familie: Lotti mit ein paar Küken daneben. Für die Landing und
- * fröhliche Leerzustände. Die Küken hüpfen leicht versetzt.
+ * Die ganze Familie: Lotti, ihre Partner-Möwe (mit Südwester) und die Küken
+ * dazwischen. Für die Landing und fröhliche Leerzustände. Die Küken hüpfen
+ * leicht versetzt; das Outfit-Thema gilt für alle.
  */
 export function MascotFamily({
   className,
@@ -543,16 +629,23 @@ export function MascotFamily({
   chicks?: number;
 }) {
   const delays = ["0s", "0.5s", "0.9s", "1.3s"];
+  const aria = theme
+    ? `Lotti, die Lotsenmöwe, mit ihrer Familie — ${mascotThemeLabel(theme)}`
+    : "Lotti, die Lotsenmöwe, mit ihrer Familie";
   return (
-    <div className={cn("flex items-end justify-center gap-1", className)}>
-      <Mascot pose="wave" theme={theme} bob className="h-32 w-32 sm:h-40 sm:w-40" />
+    <div role="img" aria-label={aria} className={cn("flex items-end justify-center gap-1", className)}>
+      <Mascot pose="wave" theme={theme} bob decorative className="h-32 w-32 sm:h-40 sm:w-40" />
       <div className="flex items-end gap-0.5">
         {Array.from({ length: Math.max(0, Math.min(4, chicks)) }).map((_, i) => (
           <span key={i} style={{ animationDelay: delays[i % delays.length] }} className="lotti-hop inline-block">
-            <Chick hop={false} tone={i % 2 === 0 ? "orange" : "gold"} className={i === 1 ? "h-20 w-20" : "h-14 w-14"} />
+            <Chick tone={i % 2 === 0 ? "orange" : "gold"} theme={theme} decorative className={i === 1 ? "h-16 w-16" : "h-14 w-14"} />
           </span>
         ))}
       </div>
+      {/* Partner-Möwe: gespiegelt, damit sie zu den Küken schaut. */}
+      <span className="inline-block -scale-x-100">
+        <Mascot pose="point" hat="souwester" theme={theme} decorative className="h-28 w-28 sm:h-36 sm:w-36" />
+      </span>
     </div>
   );
 }

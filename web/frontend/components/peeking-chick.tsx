@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Chick } from "@/components/mascot";
+import { useMascotTheme } from "@/components/seasonal-mascot";
 import { cn } from "@/lib/utils";
 
 /**
@@ -11,6 +12,7 @@ import { cn } from "@/lib/utils";
  * CSS unsichtbar (kein Hereinfahren).
  */
 export function PeekingChick() {
+  const theme = useMascotTheme();
   const [visible, setVisible] = useState(false);
   const [side, setSide] = useState<"left" | "right">("right");
   const [tone, setTone] = useState<"orange" | "gold">("orange");
@@ -43,7 +45,7 @@ export function PeekingChick() {
       )}
     >
       <div className="animate-peek">
-        <Chick tone={tone} className="h-16 w-16 drop-shadow-lg sm:h-20 sm:w-20" />
+        <Chick tone={tone} theme={theme} decorative className="h-16 w-16 drop-shadow-lg sm:h-20 sm:w-20" />
       </div>
     </div>
   );
