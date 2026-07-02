@@ -129,7 +129,10 @@ def _apns_post(client, host: str, tok: str, jwt: str, topic: str, payload: dict)
         pass
     if resp.status_code == 410 or reason == "Unregistered":
         return "gone", reason
-    if reason == "BadDeviceToken":
+    # BadDeviceToken: the *device token* belongs to the other environment.
+    # BadEnvironmentKeyInToken: the *.p8 key* is portal-restricted to the other
+    # environment. Same remedy either way — retry against the other gateway.
+    if reason in ("BadDeviceToken", "BadEnvironmentKeyInToken"):
         return "wrong-env", reason
     return "error", f"{resp.status_code} {reason}"
 

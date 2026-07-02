@@ -72,16 +72,26 @@ Android: drop `google-services.json` into `android/app/` (FCM).
 
 ### Build & run from the CLI (no Xcode GUI needed)
 
+Build with a `-destination` (NOT bare `-sdk iphonesimulator` — that defaults to
+an x86_64 slice, which runs under Rosetta in the simulator and **silently
+disables remote push**; APNs in the simulator needs a native arm64 app):
+
 ```bash
 cd web/frontend/ios/App
 xcodebuild -project App.xcodeproj -scheme App -configuration Debug \
-  -sdk iphonesimulator -derivedDataPath build build
+  -destination 'platform=iOS Simulator,name=Ratslotse iPhone 17' \
+  -derivedDataPath build build
 xcrun simctl boot "Ratslotse iPhone 17"   # once: simctl create "Ratslotse iPhone 17" \
                                           #   com.apple.CoreSimulator.SimDeviceType.iPhone-17 \
                                           #   com.apple.CoreSimulator.SimRuntime.iOS-26-5
 xcrun simctl install booted build/Build/Products/Debug-iphonesimulator/App.app
 xcrun simctl launch booted de.ratslotse.app
 ```
+
+Simulator push (Apple-silicon Macs) works end-to-end: the team id is set in the
+project (`DEVELOPMENT_TEAM`), `AppDelegate.swift` forwards the APNs token to the
+Capacitor plugin (a required manual step per the plugin README), and the device
+registers a *sandbox* token — delivered via the sender's gateway fallback.
 
 ## Push credentials (backend `.env`)
 
