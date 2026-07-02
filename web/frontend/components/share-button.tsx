@@ -18,7 +18,7 @@ export function ShareButton({ path, title, className }: { path: string; title: s
         await navigator.share({ title, url });
         return;
       } catch (e) {
-        if ((e as Error).name === "AbortError") return; // Nutzer hat den Share-Dialog geschlossen
+        if ((e as Error).name === "AbortError") return; // Nutzer:in hat den Share-Dialog geschlossen
         /* Share-API vorhanden, aber blockiert (z. B. WKWebView) → Clipboard-Fallback */
       }
     }

@@ -58,7 +58,7 @@ def require_active(user: dict = Depends(get_current_user)) -> dict:
     if user.get("role") != "admin" and user.get("status") != "active":
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
-            "Dein Konto wartet auf Freischaltung durch einen Administrator.",
+            "Dein Konto wartet noch auf Freischaltung.",
         )
     return user
 

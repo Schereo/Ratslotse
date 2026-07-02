@@ -141,13 +141,13 @@ function PartiesView() {
   const { data, loading } = useFetch<PartyAnalysis>("/council/analysis");
   if (loading) return <div className="py-10"><Spinner /></div>;
   if (!data || data.coverage.with_factions === 0) {
-    return <EmptyState mascot="sleep" title="Noch keine Analyse möglich" hint="Es sind noch keine Beschlüsse mit benanntem Antragsteller klassifiziert." />;
+    return <EmptyState mascot="sleep" title="Noch keine Analyse möglich" hint="Es sind noch keine Beschlüsse mit benannter antragstellender Person klassifiziert." />;
   }
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-border bg-muted/40 p-3 text-xs leading-relaxed text-muted-foreground">
         Auswertung der <span className="font-medium text-foreground">{data.coverage.with_factions}</span> Beschlüsse
-        mit benanntem Antragsteller (von {data.coverage.total}). Protokolle nennen selten namentliche Einzelstimmen —
+        mit benannter antragstellender Person (von {data.coverage.total}). Protokolle nennen selten namentliche Einzelstimmen —
         diese Analyse zeigt daher, <span className="font-medium text-foreground">wer welche Anträge einbringt</span> und
         wie sie ausgehen, nicht das Stimmverhalten jeder Fraktion bei jeder Abstimmung.
       </div>

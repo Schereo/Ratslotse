@@ -64,7 +64,7 @@ def _notify_admins_pending(new_email: str) -> None:
         "text-decoration:none;padding:10px 18px;border-radius:8px;font-size:14px'>"
         "Im Admin-Bereich freischalten →</a>"
         "<p style='margin-top:20px;color:#94a3b8;font-size:12px'>"
-        "Du bekommst diese E-Mail, weil du ein Ratslotse-Administrator bist.</p>"
+        "Du bekommst diese E-Mail, weil dein Ratslotse-Konto Admin-Rechte hat.</p>"
         "</div>"
     )
     text = (

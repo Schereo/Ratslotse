@@ -59,7 +59,7 @@ export function LotsenTipp({ className }: { className?: string }) {
     } catch {
       /* Storage gesperrt — Tipp trotzdem zeigen */
     }
-    // Tageszähler statt Zufall: alle Nutzer sehen pro Tag denselben Tipp,
+    // Tageszähler statt Zufall: alle Nutzer:innen sehen pro Tag denselben Tipp,
     // und über die Woche kommt jeder Tipp einmal dran.
     const day = Math.floor(Date.now() / 86_400_000);
     setTip(TIPS[day % TIPS.length]);

@@ -25,13 +25,13 @@ export default function AdminPage() {
 
   return (
     <div>
-      <PageHeader title="Admin" description="Prompts und Web-Nutzer verwalten." />
+      <PageHeader title="Admin" description="Prompts und Web-Nutzer:innen verwalten." />
       <div className="mt-4 flex gap-1 border-b border-border">
         {([
           ["stats", "Statistik"],
           ["llm", "LLM-Kosten"],
           ["prompts", "Prompts"],
-          ["users", "Web-Nutzer"],
+          ["users", "Web-Nutzer:innen"],
         ] as [Tab, string][]).map(([t, label]) => (
           <button
             key={t}
@@ -77,7 +77,7 @@ function StatsTab() {
         <Stat label="Zeitraum" value={range} wide />
       </StatSection>
 
-      <StatSection title="Web-Nutzer">
+      <StatSection title="Web-Nutzer:innen">
         <Stat label="Gesamt" value={data.web_users.total} />
         <Stat label="Admins" value={data.web_users.admins} />
         <Stat label="Aktiv" value={data.web_users.active} />
@@ -87,7 +87,7 @@ function StatsTab() {
 
       <StatSection title="Themen">
         <Stat label="Themen" value={data.topics.total} />
-        <Stat label="Nutzer mit Themen" value={data.topics.users_with_topics} />
+        <Stat label="Nutzer:innen mit Themen" value={data.topics.users_with_topics} />
         <Stat label="Ausschuss-Abos" value={data.topics.subscriptions} />
       </StatSection>
 
@@ -299,7 +299,7 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
     mutationFn: ({ id, status }: { id: number; status: "active" | "pending" }) =>
       api.put(`/admin/users/${id}/status`, { status }),
     onSuccess: (_, vars) => {
-      toast.success(vars.status === "active" ? "Nutzer freigeschaltet." : "Nutzer gesperrt.");
+      toast.success(vars.status === "active" ? "Nutzer:in freigeschaltet." : "Nutzer:in gesperrt.");
       qc.invalidateQueries({ queryKey: ["admin", "users"] });
     },
     onError: () => toast.error("Status konnte nicht geändert werden."),
@@ -316,7 +316,7 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
   });
 
   if (isPending) return <Spinner />;
-  if (isError) return <p className="text-sm text-destructive">Fehler beim Laden der Nutzer.</p>;
+  if (isError) return <p className="text-sm text-destructive">Fehler beim Laden der Nutzer:innen.</p>;
 
   return (
     <Card className="divide-y divide-border">
@@ -347,7 +347,7 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
                 size="sm"
                 onClick={() => roleMutation.mutate({ id: u.id, role: u.role === "admin" ? "user" : "admin" })}
               >
-                {u.role === "admin" ? "Zu Nutzer" : "Zu Admin"}
+                {u.role === "admin" ? "Zu Nutzer:in" : "Zu Admin"}
               </Button>
               <Button
                 variant="secondary"
