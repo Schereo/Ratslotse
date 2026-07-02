@@ -44,7 +44,7 @@ export default function DatenschutzPage() {
           <Section title="Welche Daten wir verarbeiten">
             <ul className="list-disc space-y-1 pl-5">
               <li><strong>Konto:</strong> E-Mail-Adresse und ein Passwort-Hash (das Passwort selbst wird nicht im Klartext gespeichert).</li>
-              <li><strong>Telegram (optional):</strong> die Chat-ID, wenn du den Telegram-Bot verknüpfst.</li>
+              <li><strong>Push (optional):</strong> ein Geräte-Token, wenn du App-Push-Benachrichtigungen aktivierst.</li>
               <li><strong>Themen &amp; Watchlists:</strong> die von dir angelegten Suchthemen und Benachrichtigungseinstellungen.</li>
               <li><strong>„Frag den Rat"-Anfragen:</strong> die von dir eingegebenen Fragen, um eine KI-Antwort zu erzeugen.</li>
               <li><strong>Server-Logs:</strong> beim Aufruf technische Daten wie IP-Adresse, Zeitpunkt und User-Agent — zur Sicherheit und Fehleranalyse.</li>
@@ -66,7 +66,7 @@ export default function DatenschutzPage() {
               <li><strong>KI-Verarbeitung (OpenRouter):</strong> „Frag den Rat"-Anfragen werden zur Beantwortung an einen externen KI-Dienst übermittelt; dabei kann eine Übermittlung in ein Drittland erfolgen. <strong>Bitte gib keine personenbezogenen oder sensiblen Daten in die Fragen ein.</strong></li>
               <li><strong>Resend:</strong> Versand von Benachrichtigungs-E-Mails (nur, wenn du E-Mail als Kanal wählst).</li>
               <li><strong>CARTO:</strong> Die Kartendarstellung lädt Kartenkacheln von CARTO; dabei wird deine IP-Adresse an CARTO übermittelt.</li>
-              <li><strong>Telegram:</strong> Zustellung von Benachrichtigungen (nur bei verknüpftem Telegram-Konto).</li>
+              <li><strong>Apple / Google (Push):</strong> App-Benachrichtigungen werden über den Push-Dienst des Betriebssystems (APNs bzw. FCM) zugestellt — nur, wenn du Push als Kanal aktivierst.</li>
             </ul>
           </Section>
 

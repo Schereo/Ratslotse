@@ -6,7 +6,6 @@ import { useMutation } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Button, Card, ConfirmDialog, Label, PageHeader, PasswordInput, toast } from "@/components/ui";
-import { TelegramLink } from "@/components/telegram-link";
 import { DeliverySettings } from "@/components/delivery-settings";
 
 export default function AccountPage() {
@@ -102,8 +101,6 @@ export default function AccountPage() {
         </Card>
 
         <DeliverySettings />
-
-        <TelegramLink />
 
         <Card className="border-destructive/30 p-6">
           <h2 className="font-semibold text-destructive">Konto löschen</h2>

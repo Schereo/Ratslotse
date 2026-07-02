@@ -32,7 +32,6 @@ test.describe("Dashboard", () => {
     await expect(main.getByRole("heading", { name: "Artikelsuche" })).toBeVisible();
     await expect(main.getByRole("heading", { name: "Ratsinformationssystem" })).toBeVisible();
     await expect(main.getByRole("heading", { name: "Meine Themen" })).toBeVisible();
-    await expect(main.getByRole("heading", { name: "Telegram verbinden" })).toBeVisible();
   });
 
   test("clicking Artikelsuche tile navigates to /nwz", async ({ page }) => {

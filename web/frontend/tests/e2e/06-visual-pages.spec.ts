@@ -12,7 +12,6 @@ const PAGES = [
   { name: "dashboard", path: "/dashboard", auth: true },
   { name: "council", path: "/council", auth: true },
   { name: "topics", path: "/topics", auth: true },
-  { name: "link", path: "/link", auth: true },
   { name: "account", path: "/account", auth: true },
 ];
 
@@ -40,9 +39,6 @@ for (const vp of VIEWPORTS) {
         );
         await page.route("**/api/subscriptions", (r) =>
           r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ subscriptions: [] }) }),
-        );
-        await page.route("**/api/link/status", (r) =>
-          r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ linked: false, telegram_chat_id: null }) }),
         );
 
         if (pg.auth) {

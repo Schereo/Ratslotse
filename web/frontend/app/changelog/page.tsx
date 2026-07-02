@@ -84,7 +84,7 @@ export default function ChangelogPage() {
             {versions.map((v) => (
               <section key={v.version} className="border-t border-border pt-6">
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                  <h2 className="text-lg font-semibold text-foreground">v{v.version}</h2>
+                  <h2 className="text-lg font-semibold text-foreground">{v.version === "Unreleased" ? "Unreleased" : `v${v.version}`}</h2>
                   {v.date && <span className="text-xs text-muted-foreground">{v.date}</span>}
                 </div>
                 {v.sections.map((s) => (

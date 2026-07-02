@@ -1,8 +1,7 @@
 """Transactional email via Resend.
 
-Mirrors the env-driven, requests-based style of ``telegram_bot.py``. The
-Resend API key is a *sending-only* key and lives only in ``.env`` /
-1Password — never in the repo.
+Env-driven and requests-based. The Resend API key is a *sending-only* key and
+lives only in ``.env`` / 1Password — never in the repo.
 
 Set ``RESEND_API_KEY`` to enable sending. ``EMAIL_FROM`` overrides the
 default sender (must be on a domain verified in the Resend dashboard).

@@ -1,12 +1,10 @@
-export type DeliveryChannel = "telegram" | "email" | "both" | "push";
+export type DeliveryChannel = "email" | "both" | "push";
 
 export interface User {
   id: number;
   email: string;
   role: "user" | "admin";
   status: "pending" | "active";
-  telegram_chat_id: number | null;
-  linked: boolean;
   delivery_channel: DeliveryChannel;
   nwz_fulltext_allowed: boolean;
   email_verified: boolean;
@@ -256,24 +254,16 @@ export interface WebUser {
   email: string;
   role: "user" | "admin";
   status: "pending" | "active";
-  telegram_chat_id: number | null;
   nwz_fulltext_allowed: boolean;
   email_verified: boolean;
   created_at: string;
 }
 
-export interface TelegramUser {
-  chat_id: number;
-  username: string;
-  added_at: string;
-  topic_count: number;
-}
 
 export interface AdminStats {
   articles: { total: number; editions: number; fts: number; oldest: string | null; newest: string | null };
   categories: { name: string; count: number }[];
-  web_users: { total: number; admins: number; active: number; pending: number; nwz_verified: number; linked: number };
-  telegram_users: number;
+  web_users: { total: number; admins: number; active: number; pending: number; nwz_verified: number };
   topics: { total: number; users_with_topics: number; matches: number; classified_editions: number; subscriptions: number };
   council: { sessions: number; upcoming: number; agenda_items: number; committees: number };
 }

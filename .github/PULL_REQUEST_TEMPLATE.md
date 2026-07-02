@@ -15,7 +15,7 @@
 ## Checkliste
 
 - [ ] `pytest tests/ -q` grün
-- [ ] Backend-Import ok (`import app.main`, `import scripts.bot_poll`, Python 3.12)
+- [ ] Backend-Import ok (`import app.main`, `import nwz, council, scripts.check_council`, Python 3.12)
 - [ ] Frontend baut (`npm run build`), falls betroffen
 - [ ] Doku aktualisiert / Doku baut, falls betroffen
 - [ ] Keine Secrets, echten Server-IPs/Hosts oder personenbezogenen Daten im Diff
