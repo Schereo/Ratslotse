@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Sparkles, Send, Loader2 } from "lucide-react";
 import { Mascot } from "@/components/mascot";
 import { QaSource } from "@/lib/types";
@@ -34,7 +34,7 @@ const MODE_LABEL: Record<string, string> = {
   keyword: "Stichwortsuche",
 };
 
-export function QaTab() {
+export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<Step | null>(null);
@@ -121,31 +121,36 @@ export function QaTab() {
   const citedSet = new Set(cited);
 
   return (
-    <div className="mt-4 space-y-4">
-      <form onSubmit={(e) => { e.preventDefault(); ask(q); }} className="flex gap-2">
-        <div className="relative flex-1">
-          <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input data-search className="pl-9" placeholder="Frag den Stadtrat — z. B. „Was wurde zum Radverkehr beschlossen?“"
-            value={q} onChange={(e) => setQ(e.target.value)} />
-        </div>
-        <Button type="submit" disabled={loading || q.trim().length < 4}>
-          <Send /> Fragen
-        </Button>
-      </form>
-      <p className="-mt-2 text-xs text-muted-foreground/70">
-        Bitte keine personenbezogenen oder sensiblen Daten eingeben — Anfragen werden zur Beantwortung an einen externen KI-Dienst übermittelt.
-      </p>
+    <div className="mt-3 space-y-4">
+      {/* Gleiche weiße Karte wie im Such-Modus (Umschalter oben drin) — beim
+          Wechsel Suchen ↔ KI-Frage springt das Layout nicht mehr. */}
+      <Card className="p-4">
+        {modeToggle && <div className="mb-3">{modeToggle}</div>}
+        <form onSubmit={(e) => { e.preventDefault(); ask(q); }} className="flex gap-2">
+          <div className="relative flex-1">
+            <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input data-search className="pl-9" placeholder="Frag den Stadtrat — z. B. „Was wurde zum Radverkehr beschlossen?“"
+              value={q} onChange={(e) => setQ(e.target.value)} />
+          </div>
+          <Button type="submit" disabled={loading || q.trim().length < 4}>
+            <Send /> Fragen
+          </Button>
+        </form>
+        <p className="mt-2 text-xs text-muted-foreground/70">
+          Bitte keine personenbezogenen oder sensiblen Daten eingeben — Anfragen werden zur Beantwortung an einen externen KI-Dienst übermittelt.
+        </p>
 
-      {showIntro && (
-        <div className="flex flex-wrap gap-2">
-          {EXAMPLES.map((ex) => (
-            <button key={ex} type="button" onClick={() => ask(ex)}
-              className="rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-              {ex}
-            </button>
-          ))}
-        </div>
-      )}
+        {showIntro && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {EXAMPLES.map((ex) => (
+              <button key={ex} type="button" onClick={() => ask(ex)}
+                className="rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+                {ex}
+              </button>
+            ))}
+          </div>
+        )}
+      </Card>
 
       {/* Live progress: Lotti sucht — real step + a rotating playful word. */}
       {loading && !answer && (
