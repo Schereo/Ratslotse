@@ -59,12 +59,15 @@ def test_register_first_user_is_admin(client):
     assert r.json()["status"] == "active"
 
 
-def test_second_user_is_pending(client):
+def test_second_user_active_without_email_config(client):
+    # Ohne RESEND_API_KEY kann kein Bestätigungslink verschickt werden — das
+    # Konto ist sofort aktiv (statt unbestätigbar zu hängen). Mit E-Mail-Versand
+    # startet es 'pending' bis zur Bestätigung (siehe Verify-Flow-Test).
     _register(client)
     r = _register(client, email="bob@test.de")
     assert r.status_code == 201
     assert r.json()["role"] == "user"
-    assert r.json()["status"] == "pending"
+    assert r.json()["status"] == "active"
 
 
 def test_duplicate_email_conflicts(client):
@@ -122,11 +125,17 @@ def test_admin_can_change_role(client):
 
 
 def test_activation_emails_user_on_approve(client):
+    """Entsperren (pending→active) durch den Admin verschickt die Freischalt-Mail —
+    der letzte verbliebene manuelle Übergang, seit Konten sich per E-Mail-
+    Bestätigung selbst aktivieren."""
     from types import SimpleNamespace
     _register(client)  # admin
-    TestClient(app).post("/api/auth/register", json={"email": "bob@test.de", "password": "password123"})  # pending
+    TestClient(app).post("/api/auth/register", json={"email": "bob@test.de", "password": "password123"})  # aktiv (kein Mail-Versand konfiguriert)
     bob = next(u for u in client.get("/api/admin/users").json() if u["email"] == "bob@test.de")
-    assert bob["status"] == "pending"
+    assert bob["status"] == "active"
+    # Admin sperrt bob — damit es wieder einen pending→active-Übergang gibt.
+    r = client.put(f"/api/admin/users/{bob['id']}/status", json={"status": "pending"})
+    assert r.status_code == 200 and r.json()["status"] == "pending"
 
     sent = {}
     fake_settings = SimpleNamespace(resend_api_key="x", app_base_url="https://ratslotse.de",
@@ -320,19 +329,46 @@ def test_cannot_delete_foreign_topic(client):
     assert client.delete("/api/topics/9999").status_code == 404
 
 
-# ---- admin approval flow ----
-def test_pending_user_blocked_until_approved(client):
-    _register(client)  # admin
+# ---- Aktivierung durch E-Mail-Bestätigung (keine Admin-Freischaltung) ----
+def test_unverified_user_blocked_until_email_confirmed(client):
+    """Mit konfiguriertem E-Mail-Versand: Registrieren → pending + gesperrt;
+    der Klick auf den Bestätigungslink aktiviert das Konto automatisch."""
+    import re
+    from types import SimpleNamespace
+
+    _register(client)  # admin belegt den Admin-Slot
+    sent = {}
+    fake_settings = SimpleNamespace(
+        resend_api_key="x", app_base_url="https://ratslotse.de",
+        email_from="F <f@x.de>", feedback_email="", web_admin_email="admin@test.de",
+        cookie_secure=False, access_token_expire_minutes=60, nwz_db=str(NWZ_DB),
+    )
+
+    def fake_send(to, subject, html, **kw):
+        sent.update(to=to, subject=subject, text=kw.get("text", ""))
+        return "id"
+
     bob = TestClient(app)
-    bob.post("/api/auth/register", json={"email": "bob@test.de", "password": "password123"})
-    # pending bob cannot use active-gated endpoints
+    with patch("app.routers.auth.send_email", side_effect=fake_send), \
+         patch("app.routers.auth.get_settings", return_value=fake_settings):
+        r = bob.post("/api/auth/register", json={"email": "bob@test.de", "password": "password123"})
+    assert r.status_code == 201 and r.json()["status"] == "pending"
+    assert sent.get("to") == "bob@test.de"  # Bestätigungs-Mail ging raus
+
+    # Unbestätigt = kein Zugriff auf aktive Endpunkte
     assert bob.get("/api/council/sessions").status_code == 403
-    # admin approves
-    users = client.get("/api/admin/users").json()
-    bob_id = next(u["id"] for u in users if u["email"] == "bob@test.de")
-    r = client.put(f"/api/admin/users/{bob_id}/status", json={"status": "active"})
-    assert r.status_code == 200 and r.json()["status"] == "active"
-    # now bob has access
+
+    # Link aus der Mail einlösen → Konto ist aktiv, Admins bekommen eine FYI-Mail
+    token = re.search(r"token=([\w~.-]+)", sent["text"]).group(1)
+    sent.clear()
+    with patch("app.routers.auth.send_email", side_effect=fake_send), \
+         patch("app.routers.auth.get_settings", return_value=fake_settings):
+        v = bob.post("/api/auth/verify-email", json={"token": token})
+    assert v.status_code == 200
+    assert v.json()["status"] == "active" and v.json()["email_verified"] is True
+    assert sent.get("to") == "admin@test.de"  # FYI an Admin, kein To-do
+
+    # Jetzt hat bob Zugriff — ganz ohne Admin-Freischaltung
     assert bob.get("/api/council/sessions").status_code == 200
 
 
