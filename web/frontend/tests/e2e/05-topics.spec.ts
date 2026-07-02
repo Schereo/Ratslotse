@@ -65,8 +65,8 @@ test.describe("Topics", () => {
         status: 200,
         contentType: "application/json",
         body: JSON.stringify([
-          { id: 1, name: "Radwege", description: "Ausbau in Oldenburg", created_at: "2026-06-01", match_count: 7 },
-          { id: 2, name: "Stadtpark", description: "Neue Grünflächen", created_at: "2026-06-02", match_count: 0 },
+          { id: 1, name: "Radwege", description: "Ausbau in Oldenburg", created_at: "2026-06-01", decision_count: 7 },
+          { id: 2, name: "Stadtpark", description: "Neue Grünflächen", created_at: "2026-06-02", decision_count: 0 },
         ]),
       }),
     );
@@ -79,7 +79,7 @@ test.describe("Topics", () => {
 
     await page.goto("/topics");
     await expect(page.getByText("Radwege")).toBeVisible();
-    await expect(page.getByText("7 Treffer")).toBeVisible();
+    await expect(page.getByText("7 Beschlüsse")).toBeVisible();
     await expect(page.getByText("Stadtpark")).toBeVisible();
     await page.screenshot({ path: "test-results/screenshots/05-topics-list.png", fullPage: true });
   });
@@ -91,7 +91,7 @@ test.describe("Topics", () => {
         status: 200,
         contentType: "application/json",
         body: JSON.stringify([
-          { id: 1, name: "Radwege", description: "Ausbau", created_at: "2026-06-01", match_count: 3 },
+          { id: 1, name: "Radwege", description: "Ausbau", created_at: "2026-06-01", decision_count: 3 },
         ]),
       }),
     );
