@@ -29,14 +29,13 @@ test.describe("Dashboard", () => {
   test("quick-access tiles are all visible", async ({ page }) => {
     // Sidebar nav has the same labels — scope to <main> to get the tile headings only
     const main = page.locator("main");
-    await expect(main.getByRole("heading", { name: "Artikelsuche" })).toBeVisible();
     await expect(main.getByRole("heading", { name: "Ratsinformationssystem" })).toBeVisible();
     await expect(main.getByRole("heading", { name: "Meine Themen" })).toBeVisible();
   });
 
-  test("clicking Artikelsuche tile navigates to /nwz", async ({ page }) => {
-    await page.getByRole("link", { name: "Artikelsuche" }).first().click();
-    await page.waitForURL("/nwz");
+  test("clicking Ratsinformationssystem tile navigates to /council", async ({ page }) => {
+    await page.locator("main").getByRole("link", { name: /Ratsinformationssystem/ }).first().click();
+    await page.waitForURL("/council");
     await page.screenshot({ path: "test-results/screenshots/02-tile-navigation.png", fullPage: true });
   });
 

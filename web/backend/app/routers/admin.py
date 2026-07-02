@@ -12,7 +12,7 @@ from nwz.store import Store
 
 from ..config import get_settings
 from ..deps import get_council_store, get_store, require_admin
-from ..schemas import NwzFulltextUpdate, PromptOut, PromptUpdate, RoleUpdate, StatusUpdate, WebUserOut
+from ..schemas import PromptOut, PromptUpdate, RoleUpdate, StatusUpdate, WebUserOut
 
 logger = logging.getLogger("nwz.web.admin")
 
@@ -139,18 +139,4 @@ def set_status(
     # Notify the user only on the pending → active transition (not on re-saves/no-ops).
     if body.status == "active" and target.get("status") != "active":
         background.add_task(_send_activation_email, target.get("email", ""))
-    return WebUserOut(**store.get_web_user_by_id(user_id))
-
-
-@router.put("/users/{user_id}/nwz-fulltext", response_model=WebUserOut)
-def set_nwz_fulltext(
-    user_id: int,
-    body: NwzFulltextUpdate,
-    _admin: dict = Depends(require_admin),
-    store: Store = Depends(get_store),
-) -> WebUserOut:
-    """Manually allow/revoke full NWZ article text for a specific user."""
-    if not store.get_web_user_by_id(user_id):
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nutzer:in nicht gefunden.")
-    store.set_nwz_fulltext_allowed(user_id, body.allowed)
     return WebUserOut(**store.get_web_user_by_id(user_id))
