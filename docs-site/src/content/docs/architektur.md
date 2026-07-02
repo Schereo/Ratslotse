@@ -23,12 +23,6 @@ personalisierte Benachrichtigungen per E-Mail und Web-Push.
         E-Mail (Resend) · Web-Push (APNs/FCM)
 ```
 
-:::note
-Ein früherer NWZ-Zeitungs-Scraper wurde aus rechtlichen Gründen in ein separates,
-privates Repository ausgegliedert. Im Produkt bleibt nur ein **scraping-freier
-NWZonline-Suchlink** zu Beschluss-Themen. Alles Folgende beschreibt die Stadtrat-Seite.
-:::
-
 ---
 
 ## Komponenten

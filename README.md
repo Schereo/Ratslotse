@@ -8,10 +8,6 @@ Macht die Arbeit des **Oldenburger Stadtrats** durchsuchbar, vergleichbar und
 verständlich — über ein Web-Frontend ([ratslotse.de](https://ratslotse.de)),
 vollautomatisch und personalisiert.
 
-> **Hinweis:** Eine frühere Integration der Nordwest-Zeitung (Scraping und
-> KI-Analyse von Zeitungsartikeln) wurde aus rechtlichen Gründen **entfernt**. Im
-> Produkt bleibt nur ein **scraping-freier NWZonline-Suchlink** zu Beschluss-Themen.
-
 ---
 
 ## Features
@@ -31,7 +27,7 @@ wirst du erneut benachrichtigt.
 Volltextsuche über alle Beschlüsse, Filter nach Fraktion, Themenfeld und
 Geldbeträgen, KI-Fragen in normaler Sprache mit Quellen, Themen-Seiten mit Karten
 und Analysen (Parteien, Personen, Finanzen, Trends). Zu jedem Beschluss ein
-scraping-freier Suchlink zu NWZonline für Presseberichte.
+Suchlink zu NWZonline für Presseberichte.
 
 ### 🔖 Deine Themen
 Lege Themen an (z. B. *„Radwege"*, *„Stadtentwicklung"*). Ratslotse meldet sich, sobald

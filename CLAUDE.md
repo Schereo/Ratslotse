@@ -14,20 +14,19 @@ per LLM aufbereitet.
 | Pfad | Inhalt |
 |------|--------|
 | `council/` | Stadtrat-Scraper (SessionNet/Bürgerinfo), Protokoll-Parsing, LLM-Klassifikation, Watcher |
-| `nwz/` | Geteilte Infrastruktur: LLM-Client (`llm.py`), SQLite-Store (`store.py`), E-Mail, Push, Prompts. *(Der Paketname ist historisch — eine frühere Zeitungs-Integration wurde entfernt, siehe unten.)* |
+| `nwz/` | Geteilte Infrastruktur: LLM-Client (`llm.py`), SQLite-Store (`store.py`), E-Mail, Push, Prompts. *(Der Paketname `nwz/` ist historisch.)* |
 | `scripts/` | Cron-Jobs & Ops-Tools (`check_*.py`, `daily_digest.py`, `weekly_enrich.py`, …) |
 | `web/backend/` | FastAPI-Backend (uvicorn) |
 | `web/frontend/` | Next.js-Frontend (+ Capacitor für iOS/Android) |
 | `docs-site/` | Astro-Starlight-Technik-Doku |
 | `eval/` | Eval-Harness für die LLM-Qualität |
 
-## Frühere NWZ-Integration (entfernt)
+## Zum Paketnamen `nwz/`
 
-Eine frühere Integration der Nordwest-Zeitung (Scraping + KI-Analyse von Artikeln)
-wurde aus rechtlichen Gründen entfernt. Im Produkt bleibt nur ein **scraping-freier
-NWZonline-Suchlink** zu Beschluss-Themen (`web/frontend/components/nwz-link.tsx`).
-Das `nwz/`-Paket trägt weiterhin diesen Namen, enthält aber nur noch geteilte
-Infrastruktur.
+Der Paketname `nwz/` ist historisch und enthält heute nur noch geteilte
+Infrastruktur (LLM-Client, Store, E-Mail, Push, Prompts). Auf Beschluss-Seiten
+gibt es einen Link zur NWZonline-Suche nach dem jeweiligen Thema
+(`web/frontend/components/nwz-link.tsx`).
 
 ## Lokale Entwicklung
 
