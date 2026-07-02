@@ -1,0 +1,33 @@
+# Caddy-Block für die Edge-VM (edge-vm), um die Starlight-Doku unter
+# ratslotse.de/docs auszuliefern.
+#
+# Die GitHub-Action rsync't die gebaute Doku bei jedem Merge nach
+#   edge:~/docs/   (= /home/<user>/docs)
+# Caddy liefert dieses Verzeichnis statisch unter /docs aus; alles andere geht
+# weiter an Next.js auf app-server:3000.
+#
+# EINMALIG anzuwenden: den bestehenden `ratslotse.de { ... }`-Block in
+# /etc/caddy/Caddyfile auf der Edge-VM durch diese Fassung ersetzen, dann
+#   sudo systemctl reload caddy
+#
+# Hinweise:
+# - `handle_path /docs*` strippt das /docs-Präfix; die statische Site nutzt
+#   absolute /docs/...-Asset-Pfade (base: '/docs'), das passt zusammen.
+# - file_server liefert für Verzeichnisse automatisch index.html.
+# - Das `header_up X-Forwarded-For` im Proxy ist SICHERHEITSKRITISCH (verhindert
+#   XFF-Spoofing/Rate-Limit-Bypass) — nicht entfernen.
+
+ratslotse.de {
+	# Statische Technik-Doku unter /docs
+	handle_path /docs* {
+		root * /home/<user>/docs
+		file_server
+	}
+
+	# Alles andere -> Next.js auf dem App-Server
+	handle {
+		reverse_proxy <app-server>:3000 {
+			header_up X-Forwarded-For {http.request.remote.host}
+		}
+	}
+}

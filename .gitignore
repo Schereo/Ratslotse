@@ -1,0 +1,10 @@
+.env
+data/
+.venv/
+__pycache__/
+*.pyc
+*.sqlite
+*.log
+.pytest_cache/
+web/frontend/.next/
+web/frontend/node_modules/

@@ -1,0 +1,43 @@
+name: 🐛 Bug melden
+description: Etwas funktioniert nicht wie erwartet
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: Was ist passiert?
+      description: Was hast du erwartet, was ist stattdessen passiert?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Schritte zum Reproduzieren
+      placeholder: |
+        1. Gehe zu …
+        2. Klicke auf …
+        3. Fehler erscheint
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Bereich
+      options:
+        - Web-Frontend
+        - Backend/API
+        - Telegram-Bot
+        - Deployment/CI
+        - Doku
+        - Sonstiges
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Umgebung
+      placeholder: "z. B. Browser + Version, Mobil/Desktop, App/Web"
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots / Logs (optional)

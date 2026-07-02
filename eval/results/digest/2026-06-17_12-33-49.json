@@ -1,0 +1,32 @@
+{
+  "timestamp": "2026-06-17T12:33:49",
+  "suite": "digest",
+  "cases": 5,
+  "tp": 8,
+  "fp": 2,
+  "tn": null,
+  "fn": 1,
+  "precision": 0.8,
+  "recall": 0.8889,
+  "f1": 0.8421,
+  "mistakes": [
+    {
+      "id": "digest_cäcilienbrücke_multi_topic",
+      "note": "Cäcilienbrücke-Neubau ist sowohl Stadtentwicklung als auch Verkehr (Doppelmatch). Regenbogenstreifen ist primär ein Pride-Symbol – kein Verkehrsinfrastruktur-Artikel. Lokomotive mit Oldenburg-Werbung ist keines von beiden.",
+      "spurious": [
+        "t2:2550904/2/1"
+      ],
+      "missed": [
+        "t2:2550904/3/1"
+      ]
+    },
+    {
+      "id": "digest_road_construction_brief",
+      "note": "Artikel ohne Titel: Straßensperrung Pophankenweg/Technologiepark matcht Verkehr trotz fehlendem Titel. Anne-Frank-Ausstellung und Kriminalreportage sind Negativbeispiele.",
+      "spurious": [
+        "t3:2551343/14/3"
+      ],
+      "missed": []
+    }
+  ]
+}

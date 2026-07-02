@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 🔐 Sicherheitslücke
+    url: https://github.com/Schereo/Ratslotse/security/advisories/new
+    about: Bitte Sicherheitsprobleme vertraulich über eine private Security Advisory melden, nicht als Issue.
+  - name: 🌐 Ratslotse (Live)
+    url: https://ratslotse.de
+    about: Die laufende Anwendung.

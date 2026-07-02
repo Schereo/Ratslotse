@@ -1,0 +1,23 @@
+{
+  "name": "Ratslotse",
+  "short_name": "Ratslotse",
+  "description": "Lokale Nachrichten und Ratsinformationen für Oldenburg",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f6f9fb",
+  "theme_color": "#f6f9fb",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

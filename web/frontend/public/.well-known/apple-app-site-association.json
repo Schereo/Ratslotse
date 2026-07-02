@@ -1,0 +1,17 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "YM87689GUY.de.ratslotse.app",
+        "paths": [
+          "/verify-email",
+          "/reset-password",
+          "/dashboard",
+          "/topics",
+          "/council*"
+        ]
+      }
+    ]
+  }
+}

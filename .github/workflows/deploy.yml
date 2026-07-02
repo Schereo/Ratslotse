@@ -1,0 +1,88 @@
+name: Deploy to VPS
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+jobs:
+  deploy:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build docs site
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: docs-site/package-lock.json
+
+      - name: npm ci + build (docs-site)
+        working-directory: docs-site
+        run: |
+          npm ci
+          npm run build
+
+      - name: Deploy via rsync
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' \
+            'Host edge' \
+            "  HostName ${{ secrets.VPS_PROXY_HOST }}" \
+            "  User ${{ secrets.VPS_USER }}" \
+            "  Port ${{ secrets.VPS_SSH_PORT }}" \
+            '  IdentityFile ~/.ssh/id_ed25519' \
+            '  StrictHostKeyChecking no' \
+            'Host target' \
+            "  HostName ${{ secrets.VPS_HOST }}" \
+            "  User ${{ secrets.VPS_USER }}" \
+            "  Port ${{ secrets.VPS_SSH_PORT }}" \
+            '  IdentityFile ~/.ssh/id_ed25519' \
+            '  ProxyJump edge' \
+            '  StrictHostKeyChecking no' \
+            > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+          rsync -az --delete \
+            --exclude '.env' \
+            --exclude 'data/' \
+            --exclude '.venv/' \
+            --exclude '.git/' \
+            --exclude 'web/frontend/node_modules/' \
+            --exclude 'web/frontend/.next/' \
+            --exclude 'docs-site/node_modules/' \
+            --exclude 'docs-site/dist/' \
+            -e "ssh" \
+            ./ target:~/app/
+
+          # Statische Doku auf die Edge-VM, wo Caddy sie unter /docs ausliefert
+          # (siehe deploy/Caddy-docs.snippet). Eigenes Verzeichnis -> --delete ok.
+          rsync -az --delete \
+            -e "ssh" \
+            docs-site/dist/ edge:~/docs/
+
+      - name: Restart services and rebuild web
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          proxy_host: ${{ secrets.VPS_PROXY_HOST }}
+          proxy_username: ${{ secrets.VPS_USER }}
+          proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          proxy_port: ${{ secrets.VPS_SSH_PORT }}
+          script: |
+            set -e
+            cd ~/app
+            # Restart the bot first so a web build issue can never block it.
+            sudo systemctl restart nwz-bot
+            # Backend deps (idempotent) + frontend build, then restart web services.
+            .venv/bin/pip install -q -r requirements.txt -r web/backend/requirements.txt
+            cd web/frontend && npm ci --no-audit --no-fund && npm run build
+            sudo systemctl restart nwz-web-api nwz-web-frontend
