@@ -8,7 +8,6 @@ import { useAuth } from "@/lib/auth";
 import { Prompt, WebUser, AdminStats } from "@/lib/types";
 import { Badge, Button, Card, ConfirmDialog, PageHeader, Spinner, Textarea, formatDate, toast } from "@/components/ui";
 import { cn } from "@/lib/utils";
-import { categoryLabel } from "@/lib/categories";
 
 type Tab = "stats" | "llm" | "prompts" | "users";
 
@@ -63,26 +62,13 @@ function StatsTab() {
   if (isPending) return <Spinner />;
   if (isError || !data) return <p className="text-sm text-destructive">Fehler beim Laden der Statistiken.</p>;
 
-  const range =
-    data.articles.oldest && data.articles.newest
-      ? `${formatDate(data.articles.oldest)} – ${formatDate(data.articles.newest)}`
-      : "—";
-
   return (
     <div className="space-y-8">
-      <StatSection title="Artikel-Archiv">
-        <Stat label="Artikel" value={data.articles.total} />
-        <Stat label="Ausgaben" value={data.articles.editions} />
-        <Stat label="Volltext-Index" value={data.articles.fts} />
-        <Stat label="Zeitraum" value={range} wide />
-      </StatSection>
-
       <StatSection title="Web-Nutzer:innen">
         <Stat label="Gesamt" value={data.web_users.total} />
         <Stat label="Admins" value={data.web_users.admins} />
         <Stat label="Aktiv" value={data.web_users.active} />
         <Stat label="Nicht aktiv (unbestätigt/gesperrt)" value={data.web_users.pending} />
-        <Stat label="NWZ-verifiziert" value={data.web_users.nwz_verified} />
       </StatSection>
 
       <StatSection title="Themen">
@@ -97,20 +83,6 @@ function StatsTab() {
         <Stat label="Tagesordnungspunkte" value={data.council.agenda_items} />
         <Stat label="Ausschüsse" value={data.council.committees} />
       </StatSection>
-
-      {data.categories.length > 0 && (
-        <div>
-          <h3 className="mb-3 text-sm font-semibold text-muted-foreground">Top-Rubriken (Artikel-Archiv)</h3>
-          <Card className="divide-y divide-border">
-            {data.categories.map((cat) => (
-              <div key={cat.name} className="flex items-center justify-between px-4 py-2 text-sm">
-                <span className="text-foreground">{categoryLabel(cat.name)}</span>
-                <span className="font-medium text-muted-foreground">{cat.count.toLocaleString("de-DE")}</span>
-              </div>
-            ))}
-          </Card>
-        </div>
-      )}
     </div>
   );
 }
@@ -149,7 +121,6 @@ const FEATURE_LABELS: Record<string, string> = {
   entitaeten_beschreibung: "Themen-Beschreibungen",
   qa_query_expansion: "Frag den Rat — Suchbegriffe",
   qa_antwort: "Frag den Rat — Antwort",
-  nwz_klassifikation: "NWZ-Artikel-Klassifikation",
 };
 
 function LlmUsageTab() {
@@ -305,16 +276,6 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
     onError: () => toast.error("Status konnte nicht geändert werden."),
   });
 
-  const fulltextMutation = useMutation({
-    mutationFn: ({ id, allowed }: { id: number; allowed: boolean }) =>
-      api.put(`/admin/users/${id}/nwz-fulltext`, { allowed }),
-    onSuccess: (_, vars) => {
-      toast.success(vars.allowed ? "NWZ-Volltext freigeschaltet." : "NWZ-Volltext entzogen.");
-      qc.invalidateQueries({ queryKey: ["admin", "users"] });
-    },
-    onError: () => toast.error("Volltext-Freigabe konnte nicht geändert werden."),
-  });
-
   if (isPending) return <Spinner />;
   if (isError) return <p className="text-sm text-destructive">Fehler beim Laden der Nutzer:innen.</p>;
 
@@ -327,7 +288,6 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
               <span className="font-medium text-foreground">{u.email}</span>
               <Badge color={u.role === "admin" ? "blue" : "slate"}>{u.role}</Badge>
               {u.status === "active" ? <Badge color="green">aktiv</Badge> : <Badge color="amber">wartet</Badge>}
-              {u.nwz_fulltext_allowed ? <Badge color="blue">Volltext</Badge> : null}
             </div>
             <p className="text-xs text-muted-foreground">seit {formatDate(u.created_at.slice(0, 10))}</p>
           </div>
@@ -348,13 +308,6 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
                 onClick={() => roleMutation.mutate({ id: u.id, role: u.role === "admin" ? "user" : "admin" })}
               >
                 {u.role === "admin" ? "Zu Nutzer:in" : "Zu Admin"}
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => fulltextMutation.mutate({ id: u.id, allowed: !u.nwz_fulltext_allowed })}
-              >
-                {u.nwz_fulltext_allowed ? "Volltext entziehen" : "Volltext erlauben"}
               </Button>
             </div>
           )}

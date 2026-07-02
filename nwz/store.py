@@ -444,23 +444,6 @@ class Store:
             if o is not None:
                 o["push_tokens"].append({"token": pr["token"], "platform": pr["platform"]})
 
-    def set_nwz_verified(self, user_id: int, nwz_username: str) -> None:
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self._conn:
-            self._conn.execute(
-                "UPDATE web_users SET nwz_username = ?, nwz_verified_at = ? WHERE id = ?",
-                (nwz_username, now, user_id),
-            )
-
-    def set_nwz_fulltext_allowed(self, user_id: int, allowed: bool) -> None:
-        """Admin gate: allow a specific user to read full NWZ article text.
-        Everyone else gets headline + link only."""
-        with self._conn:
-            self._conn.execute(
-                "UPDATE web_users SET nwz_fulltext_allowed = ? WHERE id = ?",
-                (1 if allowed else 0, user_id),
-            )
-
     def get_web_user_by_email(self, email: str) -> dict | None:
         row = self._conn.execute(
             "SELECT * FROM web_users WHERE email = ?", (email.lower().strip(),)
@@ -475,8 +458,8 @@ class Store:
 
     def list_web_users(self) -> list[dict]:
         rows = self._conn.execute(
-            "SELECT id, email, role, status, telegram_chat_id, nwz_username, nwz_verified_at, "
-            "nwz_fulltext_allowed, email_verified, created_at FROM web_users ORDER BY created_at"
+            "SELECT id, email, role, status, email_verified, created_at "
+            "FROM web_users ORDER BY created_at"
         ).fetchall()
         return [dict(r) for r in rows]
 
@@ -584,33 +567,16 @@ class Store:
             row = c.execute(sql, p).fetchone()
             return row[0] if row else 0
 
-        categories = [
-            {"name": r[0] or "—", "count": r[1]}
-            for r in c.execute(
-                "SELECT category_name, COUNT(*) FROM articles GROUP BY category_name ORDER BY 2 DESC LIMIT 8"
-            ).fetchall()
-        ]
         return {
-            "articles": {
-                "total": one("SELECT COUNT(*) FROM articles"),
-                "editions": one("SELECT COUNT(*) FROM editions"),
-                "fts": one("SELECT COUNT(*) FROM articles_fts"),
-                "oldest": one("SELECT MIN(publication_date) FROM editions"),
-                "newest": one("SELECT MAX(publication_date) FROM editions"),
-            },
-            "categories": categories,
             "web_users": {
                 "total": one("SELECT COUNT(*) FROM web_users"),
                 "admins": one("SELECT COUNT(*) FROM web_users WHERE role = 'admin'"),
                 "active": one("SELECT COUNT(*) FROM web_users WHERE status = 'active'"),
                 "pending": one("SELECT COUNT(*) FROM web_users WHERE status = 'pending'"),
-                "nwz_verified": one("SELECT COUNT(*) FROM web_users WHERE nwz_verified_at IS NOT NULL"),
             },
             "topics": {
                 "total": one("SELECT COUNT(*) FROM topics"),
-                "users_with_topics": one("SELECT COUNT(DISTINCT chat_id) FROM topics"),
-                "matches": one("SELECT COUNT(*) FROM article_topic_matches"),
-                "classified_editions": one("SELECT COUNT(*) FROM topic_classified_editions"),
+                "users_with_topics": one("SELECT COUNT(DISTINCT owner_id) FROM topics"),
                 "subscriptions": one("SELECT COUNT(*) FROM committee_subscriptions"),
             },
         }

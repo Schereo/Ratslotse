@@ -124,7 +124,6 @@ def _to_out(user: dict, access_token: str | None = None) -> UserOut:
         role=user["role"],
         status=user.get("status", "active"),
         delivery_channel=user.get("delivery_channel", "email"),
-        nwz_fulltext_allowed=bool(user.get("nwz_fulltext_allowed")),
         email_verified=bool(user.get("email_verified")),
         access_token=access_token,
     )

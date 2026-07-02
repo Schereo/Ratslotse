@@ -34,15 +34,11 @@ class UserOut(BaseModel):
     role: str
     status: str = "pending"
     delivery_channel: str = "email"
-    nwz_fulltext_allowed: bool = False
     email_verified: bool = False
     # Populated only for native-app clients (which send `X-Client: app`) on
     # login/register/verify-email. Web clients authenticate via the httpOnly
     # cookie and leave this null.
     access_token: str | None = None
-
-
-# ---- linking ----
 
 
 class TopicIn(BaseModel):
@@ -83,7 +79,6 @@ class WebUserOut(BaseModel):
     email: str
     role: str
     status: str = "pending"
-    nwz_fulltext_allowed: bool = False
     email_verified: bool = False
     created_at: str
 
@@ -94,10 +89,6 @@ class RoleUpdate(BaseModel):
 
 class StatusUpdate(BaseModel):
     status: str  # 'active' | 'pending'
-
-
-class NwzFulltextUpdate(BaseModel):
-    allowed: bool
 
 
 class ChangePasswordRequest(BaseModel):

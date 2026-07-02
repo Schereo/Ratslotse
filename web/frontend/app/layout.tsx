@@ -23,7 +23,9 @@ export const metadata: Metadata = {
     description: "Beschlüsse des Oldenburger Stadtrats durchsuchbar, vergleichbar und verständlich.",
   },
   twitter: {
-    card: "summary",
+    // Großes Vorschaubild (1200×630) statt Mini-Thumbnail — das Bild selbst
+    // kommt per Datei-Konvention aus app/twitter-image.png.
+    card: "summary_large_image",
     title: "Ratslotse",
     description: "Oldenburger Ratsinformationen verständlich.",
   },
