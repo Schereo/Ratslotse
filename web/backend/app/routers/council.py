@@ -13,6 +13,7 @@ from council.topics import POLICY_FIELDS
 from council.goals import GOALS
 from council.parties import normalize_party, order_key
 from council import qa
+from council import vorlagen as vorlagen_mod
 
 from ..deps import get_council_store, require_active
 from ..ratelimit import qa_limiter
@@ -138,6 +139,18 @@ def decision_detail(
     if d.get("vorlage_nr"):
         out["vorlage_journey"] = store.vorlage_journey(d["vorlage_nr"])
         out["vorlage_url"] = _vorlage_url(d["kvonr"]) if d.get("kvonr") else None
+        # Ingested Vorlage text (Sachverhalt/Begründung) — the why behind the
+        # decision. Also our only kvonr source: protocols never carry one.
+        v = store.get_vorlage_by_nr(d["vorlage_nr"])
+        if v:
+            out["vorlage"] = {
+                "vorlage_nr": v.get("vorlage_nr"), "title": v.get("title"),
+                "art": v.get("art"), "document_url": v.get("document_url"),
+                "n_pages": v.get("n_pages"),
+                "excerpt": vorlagen_mod.excerpt(v.get("raw_text") or "", 2600) or None,
+            }
+            if not out["vorlage_url"] and v.get("kvonr"):
+                out["vorlage_url"] = _vorlage_url(v["kvonr"])
     return out
 
 
@@ -327,6 +340,14 @@ def ask(body: AskBody, request: Request, _user: dict = Depends(require_active),
                 yield _sse({"type": "done", "cited": []})
                 return
             ctx = candidates[:QA_ANSWER_N]
+            try:  # Vorlagen-Auszüge (Sachverhalt) beilegen — best-effort
+                texts = store.vorlage_texts_for([c.get("vorlage_nr") or "" for c in ctx])
+                for c in ctx:
+                    t = texts.get((c.get("vorlage_nr") or "").strip())
+                    if t:
+                        c["vorlage_excerpt"] = vorlagen_mod.excerpt(t, 350)
+            except Exception:  # noqa: BLE001
+                pass
             parts: list[str] = []
             try:
                 for delta in qa.answer_stream(q, ctx):
