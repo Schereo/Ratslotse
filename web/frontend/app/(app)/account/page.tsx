@@ -15,9 +15,12 @@ export default function AccountPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
 
   const deleteMutation = useMutation({
-    mutationFn: () => api.del("/account"),
+    // Löschung verlangt das aktuelle Passwort — eine offene Session allein
+    // (fremder Zugriff aufs Gerät) darf das Konto nicht zerstören können.
+    mutationFn: () => api.del("/account", { current_password: deletePassword }),
     onSuccess: async () => {
       toast.success("Dein Konto wurde gelöscht.");
       await logout();
@@ -106,8 +109,23 @@ export default function AccountPage() {
           <h2 className="font-semibold text-destructive">Konto löschen</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Löscht dein Konto und alle zugehörigen Daten (Themen, Treffer, Abos) unwiderruflich.
+            Zur Bestätigung brauchst du dein aktuelles Passwort.
           </p>
-          <Button variant="danger" className="mt-4" onClick={() => setDeleteOpen(true)} disabled={deleteMutation.isPending}>
+          <div className="mt-4 max-w-xs space-y-1.5">
+            <Label htmlFor="delete-password">Aktuelles Passwort</Label>
+            <PasswordInput
+              id="delete-password"
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              autoComplete="current-password"
+            />
+          </div>
+          <Button
+            variant="danger"
+            className="mt-4"
+            onClick={() => setDeleteOpen(true)}
+            disabled={!deletePassword || deleteMutation.isPending}
+          >
             {deleteMutation.isPending ? "Lösche…" : "Konto löschen"}
           </Button>
         </Card>

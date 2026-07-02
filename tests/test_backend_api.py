@@ -198,10 +198,18 @@ def test_reset_token_single_use(client):
                        json={"token": "once-token", "new_password": "another12345"}).status_code == 400
 
 
-def test_delete_account(client):
+def test_delete_account_requires_password(client):
     _register(client)  # admin@test.de
     client.post("/api/topics", json={"name": "X", "description": "Testthema zum Mitlöschen."})
-    assert client.delete("/api/account").status_code == 204
+    # Ohne bzw. mit falschem Passwort bleibt das Konto bestehen.
+    assert client.request("DELETE", "/api/account").status_code == 422
+    r = client.request("DELETE", "/api/account", json={"current_password": "falsches-passwort"})
+    assert r.status_code == 400
+    assert client.get("/api/auth/me").status_code == 200
+    # Mit korrektem Passwort: weg.
+    assert client.request(
+        "DELETE", "/api/account", json={"current_password": "password123"}
+    ).status_code == 204
     # Account + data are gone — a fresh login fails.
     fresh = TestClient(app)
     assert fresh.post("/api/auth/login", json={"email": "admin@test.de", "password": "password123"}).status_code == 401
