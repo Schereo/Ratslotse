@@ -54,11 +54,14 @@ def get_current_user(request: Request, store: Store = Depends(get_store)) -> dic
 
 
 def require_active(user: dict = Depends(get_current_user)) -> dict:
-    """Account must be approved by an admin (admins are always active)."""
+    """Account must be active: email confirmed and not suspended by an admin
+    (admins are always active)."""
     if user.get("role") != "admin" and user.get("status") != "active":
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
-            "Dein Konto wartet noch auf Freischaltung.",
+            "Bitte bestätige zuerst deine E-Mail-Adresse."
+            if not user.get("email_verified")
+            else "Dein Konto ist derzeit deaktiviert.",
         )
     return user
 

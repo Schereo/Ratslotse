@@ -110,16 +110,19 @@ function VerifyNotice({ email }: { email: string }) {
   );
 }
 
+/** Nach der Auto-Aktivierung bedeutet `pending` bei verifizierter Adresse:
+    von einem Admin deaktiviert (Moderation). */
 function PendingNotice({ email }: { email: string }) {
   return (
     <Card className="mx-auto mt-10 max-w-md p-8 text-center">
       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-100">
         <Clock className="h-6 w-6 text-amber-600" />
       </div>
-      <h1 className="mt-4 text-xl font-bold text-foreground">Konto wartet auf Freischaltung</h1>
+      <h1 className="mt-4 text-xl font-bold text-foreground">Konto ist deaktiviert</h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Dein Konto <span className="font-medium">{email}</span> wurde erstellt und muss noch
-        freigeschaltet werden. Du wirst informiert, sobald es so weit ist.
+        Dein Konto <span className="font-medium">{email}</span> ist derzeit deaktiviert.
+        Wenn du meinst, dass das ein Irrtum ist, melde dich gern per E-Mail — die
+        Kontaktadresse steht im Impressum.
       </p>
     </Card>
   );

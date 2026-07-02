@@ -7,6 +7,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert
+- **Keine Admin-Freischaltung mehr:** Neue Konten sind direkt nach der
+  E-Mail-Bestätigung aktiv — niemand wartet mehr auf manuelle Freigabe. Admins
+  bekommen weiterhin eine Info-Mail zu neuen Registrierungen und können Konten
+  im Admin-Bereich sperren/entsperren (Moderation bleibt möglich).
+
 ### Entfernt
 - **Telegram-Bot entfernt:** Benachrichtigungen laufen jetzt ausschließlich über
   **Web-Push** (iOS/Android-App) und **E-Mail**. Der Telegram-Bot, die
