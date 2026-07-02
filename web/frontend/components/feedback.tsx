@@ -74,7 +74,7 @@ export function FeedbackButton({ onNavigate }: { onNavigate?: () => void }) {
             </div>
           </form>
           <p className="mt-2 text-xs text-muted-foreground">
-            Geht direkt per E-Mail an den Betreiber; Antwort ggf. an deine Konto-Adresse.
+            Geht direkt per E-Mail an uns; Antwort ggf. an deine Konto-Adresse.
           </p>
         </DialogContent>
       </Dialog>

@@ -60,7 +60,7 @@ function VerifyInner() {
           <CheckCircle2 className="h-5 w-5 text-emerald-600" /> E-Mail bestätigt.
         </div>
         <p className="text-sm text-muted-foreground">
-          Danke! Dein Konto wird nun von einem Administrator freigeschaltet.
+          Danke! Dein Konto wird nun freigeschaltet.
         </p>
         <Link href="/dashboard"><Button className="w-full">Weiter zum Dashboard</Button></Link>
       </div>
