@@ -47,16 +47,6 @@ def _register(client, email="admin@test.de", password="password123"):
     return client.post("/api/auth/register", json={"email": email, "password": password})
 
 
-def _link(email):
-    """Simulate the bot redeeming a link code, returning the linked chat_id."""
-    store = Store(NWZ_DB)
-    uid = store.get_web_user_by_email(email)["id"]
-    store.create_link_code(uid, "LINK01")
-    store.redeem_link_code("LINK01", 555, "Tester")
-    store.close()
-    return 555
-
-
 # ---- auth ----
 def test_health(client):
     assert client.get("/api/health").json() == {"status": "ok"}
@@ -67,7 +57,6 @@ def test_register_first_user_is_admin(client):
     assert r.status_code == 201
     assert r.json()["role"] == "admin"
     assert r.json()["status"] == "active"
-    assert r.json()["linked"] is False
 
 
 def test_second_user_is_pending(client):
@@ -269,7 +258,6 @@ def test_topics_work_without_telegram_link(client):
 
 def test_topics_and_subscriptions_flow(client):
     _register(client)
-    _link("admin@test.de")
     # add topic
     r = client.post("/api/topics", json={"name": "Radwege", "description": "Ausbau in Oldenburg"})
     assert r.status_code == 201
@@ -329,7 +317,6 @@ def test_topic_decisions_replace_on_rerun(client):
 
 def test_cannot_delete_foreign_topic(client):
     _register(client)
-    _link("admin@test.de")
     assert client.delete("/api/topics/9999").status_code == 404
 
 
@@ -340,7 +327,6 @@ def test_pending_user_blocked_until_approved(client):
     bob.post("/api/auth/register", json={"email": "bob@test.de", "password": "password123"})
     # pending bob cannot use active-gated endpoints
     assert bob.get("/api/council/sessions").status_code == 403
-    assert bob.get("/api/link/status").status_code == 403
     # admin approves
     users = client.get("/api/admin/users").json()
     bob_id = next(u["id"] for u in users if u["email"] == "bob@test.de")
@@ -387,13 +373,6 @@ def test_change_password_wrong_current(client):
 
 
 # ---- link endpoints ----
-def test_link_request_and_status(client):
-    _register(client)
-    code = client.post("/api/link/request").json()
-    assert len(code["code"]) == 6 and code["expires_in_minutes"] == 15
-    assert client.get("/api/link/status").json()["linked"] is False
-    _link("admin@test.de")
-    assert client.get("/api/link/status").json()["linked"] is True
 
 
 # ---- feedback ----

@@ -1,30 +1,31 @@
-"""Channel-aware digest delivery: Telegram, email, or both.
+"""Channel-aware notification delivery: email and/or push.
 
-Centralises the per-owner delivery decision so the daily and weekly cron jobs
-don't each re-implement it. An owner is a dict with at least
-``delivery_channel``, ``telegram_chat_id`` and ``email`` (as returned by
-``Store.get_all_owner_digests``).
+Centralises the per-owner delivery decision so the cron jobs don't each
+re-implement it. An owner is a dict with at least ``delivery_channel``,
+``email`` and ``push_tokens`` (as returned by the store's owner queries).
+
+Channels: ``email``, ``push``, or ``both`` (= email + push). A former Telegram
+channel was removed; push notifications replace it.
 """
 from __future__ import annotations
 
 import logging
 import re
 
-from .telegram_bot import reply, reply_with_buttons, telegram_ready
 from .email import email_ready, send_email
 from .push import push_ready, send_push
-from .digest_email import render_digest_email, render_html_email
+from .digest_email import render_html_email
 
 logger = logging.getLogger("nwz.delivery")
 
 
 def is_synthetic_email(email: str | None) -> bool:
-    """True for the sentinel address of a Telegram-only synthetic account."""
+    """True for the sentinel address of a legacy account without a real email."""
     return bool(email) and email.startswith("tg-") and email.endswith("@local")
 
 
 def _plain(text_html: str, limit: int = 180) -> str:
-    """Collapse Telegram-style HTML to a short plain-text push body."""
+    """Collapse HTML to a short plain-text push body."""
     t = re.sub(r"<[^>]+>", "", text_html or "")
     t = re.sub(r"\s+", " ", t).strip()
     return (t[: limit - 1] + "…") if len(t) > limit else t
@@ -58,32 +59,9 @@ def _send_push_and_prune(devices: list[dict], title: str, body: str, data: dict[
         logger.exception("pruning stale push tokens failed")
 
 
-def _build_read_buttons(matches: list[dict], refid_to_id: dict[str, int]) -> list[list[dict]]:
-    buttons: list[list[dict]] = []
-    row: list[dict] = []
-    for i, m in enumerate(matches, 1):
-        mid = refid_to_id.get(m["refid"])
-        if mid:
-            row.append({"text": f"📖 {i}", "callback_data": f"art:{mid}"})
-            if len(row) == 4:
-                buttons.append(row)
-                row = []
-    if row:
-        buttons.append(row)
-    return buttons
-
-
-def wants_telegram(owner: dict) -> bool:
-    return (
-        owner.get("delivery_channel", "telegram") in ("telegram", "both")
-        and bool(owner.get("telegram_chat_id"))
-        and telegram_ready()
-    )
-
-
 def wants_email(owner: dict) -> bool:
     return (
-        owner.get("delivery_channel", "telegram") in ("email", "both")
+        owner.get("delivery_channel", "email") in ("email", "both")
         and not is_synthetic_email(owner.get("email"))
         and bool(owner.get("email"))
         and email_ready()
@@ -91,70 +69,21 @@ def wants_email(owner: dict) -> bool:
 
 
 def wants_push(owner: dict) -> bool:
-    """Push is a first-class digest channel (delivery_channel == 'push'): the user
-    gets notifications on their registered app devices instead of Telegram/email.
-    Requires ≥1 device token and configured APNs/FCM credentials."""
+    """Push notifications on the user's registered app devices. Requires ≥1 device
+    token and configured APNs/FCM credentials."""
     return (
-        owner.get("delivery_channel", "telegram") == "push"
+        owner.get("delivery_channel", "email") in ("push", "both")
         and bool(owner.get("push_tokens"))
         and push_ready()
     )
 
 
-def deliver_digest(
-    owner: dict,
-    topics: list,
-    digest_text: str,
-    matches: list[dict],
-    refid_to_id: dict[str, int],
-    pub_date: str,
-    empty_text: str | None = None,
-) -> list[str]:
-    """Deliver one owner's digest to their chosen channel(s).
-
-    Telegram mirrors the old behaviour (matches → digest with read buttons,
-    otherwise the ``empty_text`` notice). Email is only sent when there are
-    matches — no daily "nothing found" spam. Returns the channels delivered to.
-    """
-    sent: list[str] = []
-
-    if wants_telegram(owner):
-        chat_id = owner["telegram_chat_id"]
-        if digest_text:
-            buttons = _build_read_buttons(matches, refid_to_id)
-            if not buttons or reply_with_buttons(chat_id, digest_text, buttons) is None:
-                reply(chat_id, digest_text)
-            sent.append("telegram")
-        elif empty_text:
-            reply(chat_id, empty_text)
-            sent.append("telegram")
-
-    if wants_email(owner) and matches:
-        subject, html_body, text_body = render_digest_email(topics, matches, pub_date)
-        try:
-            send_email(owner["email"], subject, html_body, text=text_body)
-            sent.append("email")
-        except Exception:
-            logger.exception("email digest send failed for %s", owner.get("email"))
-
-    # Push mirrors email: only when there are matches (no daily "nothing found").
-    if wants_push(owner) and matches:
-        first = (matches[0].get("title") or "").strip()
-        body = f"{len(matches)} neue Artikel zu deinen Themen" + (f": {first}" if first else "")
-        _send_push_and_prune(owner["push_tokens"], "Ratslotse – neue Treffer", body, {"url": "/topics"})
-        sent.append("push")
-
-    return sent
-
-
 def deliver_message(owner: dict, message_html: str, email_subject: str) -> list[str]:
-    """Deliver a single formatted message (Telegram-style HTML) to the owner's
-    channel(s). Used for the weekly digest and council notifications. The same
-    text is wrapped in the email shell for email delivery."""
+    """Deliver a single formatted message (HTML) to the owner's channel(s).
+    Used for the weekly digest and council notifications. The same text is
+    wrapped in the email shell for email delivery and stripped to plain text for
+    the push body."""
     sent: list[str] = []
-    if wants_telegram(owner):
-        reply(owner["telegram_chat_id"], message_html)
-        sent.append("telegram")
     if wants_email(owner):
         try:
             send_email(
