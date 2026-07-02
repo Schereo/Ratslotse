@@ -67,6 +67,7 @@ class TopicOut(BaseModel):
     name: str
     description: str
     created_at: str
+    match_count: int = 0
     decision_count: int = 0
 
 

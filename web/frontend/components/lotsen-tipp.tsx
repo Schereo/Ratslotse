@@ -15,13 +15,13 @@ type Tip = { pose: MascotPose; text: string; href?: string; label?: string };
 const TIPS: Tip[] = [
   {
     pose: "wave",
-    text: "Stell dir die Zustellung ein — Benachrichtigungen zu deinen Themen kommen per Telegram oder E-Mail.",
+    text: "Freitags um 17 Uhr kommt der Wochenrückblick — dein NWZ-Überblick der Woche, per Telegram oder E-Mail.",
     href: "/account",
     label: "Zustellung einstellen",
   },
   {
     pose: "point",
-    text: "Auf jeder Beschluss-Seite kannst du unter „In der Presse“ direkt bei NWZonline nach Berichten dazu suchen.",
+    text: "Zu vielen Beschlüssen findest du unten auf der Beschluss-Seite passende NWZ-Artikel — Abschnitt „In der Presse“.",
   },
   {
     pose: "search",

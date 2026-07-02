@@ -1,7 +1,8 @@
-# Ratslotse Web
+# NWZ-Bot Web
 
-Web-Frontend: Ratsinformationssystem, Themen-Verwaltung und Admin (Prompts &
-Nutzer). Teilt sich die SQLite-Datenbanken und die Python-Logik mit dem Bot.
+Web-Frontend für die Bot-Capabilities: NWZ-Suche, Ratsinformationssystem,
+Themen-Verwaltung und Admin (Prompts & Nutzer). Teilt sich die SQLite-Datenbanken
+und die Python-Logik mit dem Bot.
 
 ```
 Browser
@@ -19,7 +20,7 @@ auf Loopback bleibt (nicht öffentlich). Lokal/Dev läuft alles ohne Caddy über
 denselben Same-Origin-`/api`-Proxy von Next.
 
 - **Backend** (`web/backend/`): FastAPI. Importiert die bestehenden Pakete
-  `nwz` und `council` (Stores, `nwz.prompts`). Keine eigene
+  `nwz` und `council` (Stores, `nwz.prompts`, `classify`). Keine eigene
   Datenhaltung außer den Tabellen `web_users` und `link_codes` in `nwz.sqlite`.
 - **Frontend** (`web/frontend/`): Next.js (App Router) + Tailwind. Spricht das
   Backend über einen Same-Origin-`/api`-Proxy an (siehe `next.config.mjs`).
@@ -33,11 +34,17 @@ denselben Same-Origin-`/api`-Proxy von Next.
 - **Freischaltung durch Admin:** Alle anderen Konten starten als `pending`.
   Bis ein Admin sie unter Admin → Web-Nutzer freischaltet, sehen sie nur einen
   Wartehinweis und haben keinen Zugriff auf Inhalte.
+- **Eigene NWZ-Zugangsdaten:** Für die NWZ-Suche muss jeder Nutzer einmalig
+  seine eigenen NWZ-Login-Daten hinterlegen. Diese werden live bei der NWZ
+  geprüft; gespeichert wird nur ein „verifiziert"-Marker und der Benutzername,
+  **nicht das Passwort**. Erst danach sind NWZ-Inhalte zugänglich. (Das
+  Ratsinformationssystem braucht keine NWZ-Zugangsdaten, ist aber **nicht**
+  anonym öffentlich — jedes freigeschaltete Konto kann es einsehen.)
 - **Telegram-Verknüpfung:** Im Frontend unter „Telegram verbinden" einen Code
   erzeugen und dem Bot mit `/verbinden <CODE>` schicken. Themen und
   Ausschuss-Abos sind danach zwischen Web und Bot geteilt.
 
-Onboarding-Reihenfolge: registrieren → Admin schaltet frei → loslegen
+Onboarding-Reihenfolge: registrieren → Admin schaltet frei → NWZ-Login
 verifizieren + Telegram verbinden → voller Zugriff.
 
 ## Lokale Entwicklung

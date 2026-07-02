@@ -4,7 +4,7 @@
 Usage:
     python eval/run_all.py [--save] [--compare]
 
-Runs the watcher and committee suites in turn. Needs
+Runs verify, digest, watcher and committee suites in turn. Needs
 OPENROUTER_API_KEY. A failing suite (e.g. missing key) is reported but does not
 abort the others.
 """
@@ -19,11 +19,19 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from dotenv import load_dotenv
 load_dotenv()
 
-from eval import harness, run_watcher, run_committee  # noqa: E402
+from eval import harness, run, run_digest, run_watcher, run_committee  # noqa: E402
 
 
 def _run_one(name: str) -> dict | None:
     try:
+        if name == "verify":
+            cases = harness.load_cases("cases.json")
+            return harness.run_binary_suite(name, cases, run.build_predict())
+        if name == "digest":
+            cases = harness.load_cases("cases_digest.json")
+            return harness.run_labelset_suite(
+                name, cases, run_digest.build_predict(), run_digest.expected_of,
+                label_str=run_digest.label_str)
         if name == "watcher":
             cases = harness.load_cases("cases_watcher.json")
             return harness.run_labelset_suite(
@@ -43,7 +51,7 @@ def main() -> None:
     parser.add_argument("--compare", action="store_true")
     args = parser.parse_args()
 
-    suites = ["watcher", "committee"]
+    suites = ["verify", "digest", "watcher", "committee"]
     results: list[dict] = []
     for name in suites:
         print(f"\n=== {name} ===")
