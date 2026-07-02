@@ -1,0 +1,44 @@
+# Manuell auslösbarer Ops-Lauf: holt alle fehlenden Vorlagen-Volltexte auf dem
+# Server nach und baut anschließend den FTS-Index neu. Nutzt denselben
+# Deploy-Key/ProxyJump wie deploy.yml — praktisch, wenn lokal kein SSH-Zugang
+# verfügbar ist. Keine Inputs, fester Befehl; nur Collaborator können triggern.
+name: "Ops: Vorlagen-Backfill"
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ops-vorlagen-backfill
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run backfill + FTS rebuild on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          proxy_host: ${{ secrets.VPS_PROXY_HOST }}
+          proxy_username: ${{ secrets.VPS_USER }}
+          proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          proxy_port: ${{ secrets.VPS_SSH_PORT }}
+          # Der volle Erstlauf über ~5.000 Vorlagen dauert deutlich länger als
+          # die 10-Minuten-Default-Grenze der Action.
+          command_timeout: 120m
+          script: |
+            set -e
+            cd ~/app
+            .venv/bin/python scripts/backfill_vorlagen.py
+            .venv/bin/python - <<'PY'
+            from council.store import CouncilStore
+            s = CouncilStore("data/council.sqlite")
+            n = s.rebuild_fts()
+            counts = dict(s._conn.execute(
+                "SELECT status, COUNT(*) FROM council_vorlagen GROUP BY status").fetchall())
+            print(f"FTS neu aufgebaut: {n} Beschlüsse indexiert · Vorlagen-Status: {counts}")
+            s.close()
+            PY
