@@ -72,7 +72,7 @@ Neues Modul **`council/protocols.py`**:
 - `extract_pdf_text(url) -> (text, n_pages)` — via `pypdf`.
 - `extract_protocol(text, model) -> dict` — **ein LLM-Call** → `{protocol_nr, start,
   end, attendance[], decisions[]}`. Robust gegen deepseek-null-content (Retry/Guard,
-  wie im NWZ-Klassifizierer). **Kein** Themen-Matching hier (das ist per-owner, Phase 3).
+  ). **Kein** Themen-Matching hier (das ist per-owner, Phase 3).
 
 **`scripts/backfill_protocols.py`** — Backfill über Datumsbereich (`--since`, Default
 `2023-01-01`, `--until`, `--force`, `--delay`): Sitzungen je Monat enumerieren →

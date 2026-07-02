@@ -59,20 +59,15 @@ Beim Wechsel auf einen neuen Server:
    ```
 8. Cron-Jobs für `tim` einrichten:
    - `0 3 * * *` — backup_db.py (tägliches SQLite-Backup, hält die letzten 7 Kopien je DB)
-   - `30 6 * * *` — daily_digest.py
    - `0 7 * * *` — check_committees.py
    - `0 8,14 * * *` — check_council.py
    - `0 9 * * *` — check_protocols.py (neu veröffentlichte Sitzungsprotokolle parsen **und** neue Beschlüsse per LLM in Themenfelder klassifizieren — `classify_decisions.py` läuft am Ende mit)
-   - `0 14 * * *` — session_followup.py (NWZ-Nachberichte zu vergangenen abonnierten Sitzungen suchen und versenden)
-   - `0 17 * * 5` — weekly_digest.py (freitags: wöchentlicher NWZ-Überblick)
-   - `0 3 * * 0` — weekly_enrich.py (wöchentlich die schwereren LLM-/Embedding-Backfills nachziehen, damit Themen-Seiten/Karten/Presse-Links/„Ähnliche Beschlüsse" mit neuen Beschlüssen frisch bleiben: extract_entities → describe_entities → geocode_entities → link_news → embed_decisions → match_topics_decisions (Themen↔Beschlüsse) → generate_field_recaps (Themenfeld-Rückblicke, KI, ≈ monatlich); Log nach `data/weekly_enrich.log`)
+   - `0 3 * * 0` — weekly_enrich.py (wöchentlich die schwereren LLM-/Embedding-Backfills nachziehen, damit Themen-Seiten/Karten/„Ähnliche Beschlüsse" mit neuen Beschlüssen frisch bleiben: extract_entities → describe_entities → geocode_entities → embed_decisions → match_topics_decisions (Themen↔Beschlüsse) → generate_field_recaps (Themenfeld-Rückblicke, KI, ≈ monatlich); Log nach `data/weekly_enrich.log`)
 9. Actions-SSH-Key in `authorized_keys` auf **beiden** VMs eintragen (tk-edge-vm + tk-nwz)
 
 ## .env Variablen
 
 ```
-NWZ_USERNAME=...
-NWZ_PASSWORD=...
 OPENROUTER_API_KEY=...
 TELEGRAM_BOT_TOKEN=...
 TELEGRAM_CHAT_ID=...
@@ -81,7 +76,7 @@ WEB_JWT_SECRET=...          # zufälliges Signiergeheimnis für Session-Tokens
 WEB_ADMIN_EMAIL=...         # diese E-Mail wird bei Registrierung Admin
 TELEGRAM_BOT_USERNAME=RatslotseBot
 CORS_ORIGINS=https://ratslotse.de   # erlaubte Origins (Prod-Domain)
-# E-Mail-Zustellung (Resend) — von den Digest-Cronjobs genutzt
+# E-Mail-Zustellung (Resend) — von den Cronjobs genutzt
 RESEND_API_KEY=...                  # Sending-only Key aus resend.com/api-keys
 EMAIL_FROM=Ratslotse <noreply@ratslotse.de>   # Absender (Domain muss in Resend verifiziert sein)
 APP_BASE_URL=https://ratslotse.de   # Basis-URL für Links in E-Mails (Default: ratslotse.de)
@@ -116,8 +111,7 @@ Credentials liegen in 1Password.
 ### E-Mail-Zustellung
 
 Nutzer wählen pro Konto einen Zustellkanal (`telegram` / `email` / `both`,
-`web_users.delivery_channel`). Die Digest-Cronjobs (`daily_digest.py`,
-`weekly_digest.py`) und die Stadtrat-Crons liefern über `nwz/delivery.py` an den
+`web_users.delivery_channel`). Die Stadtrat-Crons liefern über `nwz/delivery.py` an den
 gewählten Kanal. E-Mail läuft über **Resend** (`nwz/email.py`); die Absender-
 Domain `ratslotse.de` muss einmalig in Resend per DNS (SPF/DKIM) verifiziert
 werden. Ohne `RESEND_API_KEY` wird E-Mail still übersprungen (Telegram bleibt
@@ -170,6 +164,6 @@ ssh tk-host "qm guest exec 105 -- journalctl -u nwz-bot -n 50 --no-pager"
 # Service-Status
 ssh tk-nwz "systemctl status nwz-bot"
 
-# Digest manuell auslösen
-ssh tk-nwz "cd ~/app && .venv/bin/python scripts/daily_digest.py"
+# Stadtrat-Watcher manuell auslösen
+ssh tk-nwz "cd ~/app && .venv/bin/python scripts/check_council.py"
 ```
