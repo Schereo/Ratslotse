@@ -105,6 +105,12 @@ class ChangePasswordRequest(BaseModel):
     new_password: str = Field(min_length=8, max_length=128)
 
 
+class DeleteAccountRequest(BaseModel):
+    """Konto-Löschung verlangt das aktuelle Passwort — eine (evtl. offen
+    liegende) Session allein darf das Konto nicht zerstören können."""
+    current_password: str = Field(min_length=1)
+
+
 # ---- delivery channel ----
 class DeliveryUpdate(BaseModel):
     delivery_channel: str = Field(pattern="^(email|both|push)$")
