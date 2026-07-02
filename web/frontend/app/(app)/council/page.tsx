@@ -608,15 +608,12 @@ function SearchTab({ committees }: { committees: string[] }) {
       ]}
     />
   );
-  // Im Such-Modus wohnt der Umschalter in der Suchkarte (eine Ebene weniger);
-  // im KI-Modus steht er über der Frage-Ansicht, damit man zurückwechseln kann.
+  // Beide Modi zeigen den Umschalter oben IN ihrer weißen Karte — identische
+  // Optik, kein Layout-Sprung beim Wechsel zwischen Suchen und KI-Frage.
   return mode === "suchen" ? (
     <DecisionsTab committees={committees} modeToggle={modeToggle} />
   ) : (
-    <div>
-      <div className="mt-3">{modeToggle}</div>
-      <QaTab />
-    </div>
+    <QaTab modeToggle={modeToggle} />
   );
 }
 
@@ -657,21 +654,9 @@ function CouncilInner() {
   return (
     <div>
       <PageHeader title={meta.title} description={meta.description} />
-      {/* Mobil fehlt die Sidebar — dieser Umschalter macht Sitzungen/Themen/Analyse
-          ohne Burger-Menü erreichbar. Desktop: Navigation bleibt in der Sidebar. */}
-      {/* Kompakte Paddings, damit alle vier Tabs auf 375 px passen; die
-          Scrollbar (hässlicher grauer Balken) bleibt als Fallback unsichtbar. */}
-      <Segmented
-        className="no-scrollbar mt-3 overflow-x-auto md:hidden [&>button]:px-2 [&>button]:text-[13px]"
-        value={tab}
-        onChange={(t) => router.replace(`/council?tab=${t}`, { scroll: false })}
-        options={[
-          { value: "decisions", label: "Beschlüsse" },
-          { value: "sessions", label: "Sitzungen" },
-          { value: "themen", label: "Themen" },
-          { value: "analysis", label: "Analyse" },
-        ]}
-      />
+      {/* Bewusst KEINE eigene Tab-Leiste hier: Sitzungen/Themen/Analyse sind mobil
+          übers Burger-Menü erreichbar — eine dritte Navigation (neben Burger und
+          Bottom-Nav) verwirrte mehr, als sie half. */}
       {tab === "decisions" ? <SearchTab committees={committees} />
         : tab === "sessions" ? <SessionsTab committees={committees} />
         : tab === "themen" ? <EntitiesTab />
