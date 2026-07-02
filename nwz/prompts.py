@@ -122,6 +122,31 @@ DEFAULTS: dict[str, dict[str, str]] = {
             }}
         """),
     },
+    "qa_suchbegriffe": {
+        "title": "Frag den Rat – Suchbegriffe",
+        "description": "Übersetzt die Nutzerfrage in Suchbegriffe für die semantische Beschluss-Suche.",
+        "template": (
+            "Wandle die Frage in 4–8 deutsche Suchbegriffe um (Substantive und nahe Synonyme "
+            "zum Thema) für eine semantische Suche in Stadtrats-Beschlüssen. KEINE Floskeln wie "
+            '"Was wurde", "beschlossen", "Stadtrat". Nur die Begriffe, durch Leerzeichen getrennt.\n\n'
+            "FRAGE: {question}\n"
+            "SUCHBEGRIFFE:"
+        ),
+    },
+    "qa_antwort": {
+        "title": "Frag den Rat – Antwort",
+        "description": "Formuliert die Antwort ausschließlich aus den gefundenen Beschlüssen, mit [id]-Zitaten.",
+        "template": (
+            "Beantworte die Frage NUR anhand der folgenden Beschlüsse des Oldenburger Stadtrats.\n"
+            "Wenn die Beschlüsse die Frage nicht beantworten, sage das ehrlich und rate nicht.\n"
+            "Zitiere jeden genutzten Beschluss mit seiner id in eckigen Klammern, z. B. [123].\n"
+            "Passen mehrere Beschlüsse, nenne die neuesten zuerst und gib ihr Datum an.\n\n"
+            "FRAGE: {question}\n\n"
+            "BESCHLÜSSE:\n"
+            "{context}\n\n"
+            "Antworte knapp (2–5 Sätze) auf Deutsch, mit id-Zitaten."
+        ),
+    },
 }
 
 

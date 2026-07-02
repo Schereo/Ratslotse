@@ -10,7 +10,7 @@ from __future__ import annotations
 import os
 import re
 
-from nwz import llm
+from nwz import llm, prompts
 from council.topics import _strip_fences  # noqa: F401  (kept for symmetry / future use)
 
 MODEL = os.environ.get("COUNCIL_QA_MODEL", "deepseek/deepseek-v4-pro")
@@ -35,22 +35,8 @@ def extract_keywords(question: str) -> list[str]:
     return out[:8]
 
 
-_PROMPT = """Beantworte die Frage NUR anhand der folgenden Beschlüsse des Oldenburger Stadtrats.
-Wenn die Beschlüsse die Frage nicht beantworten, sage das ehrlich und rate nicht.
-Zitiere jeden genutzten Beschluss mit seiner id in eckigen Klammern, z. B. [123].
-
-FRAGE: {question}
-
-BESCHLÜSSE:
-{context}
-
-Antworte knapp (2–5 Sätze) auf Deutsch, mit id-Zitaten."""
-
-
-_EXPAND_PROMPT = """Wandle die Frage in 4–8 deutsche Suchbegriffe um (Substantive und nahe Synonyme zum Thema) für eine semantische Suche in Stadtrats-Beschlüssen. KEINE Floskeln wie "Was wurde", "beschlossen", "Stadtrat". Nur die Begriffe, durch Leerzeichen getrennt.
-
-FRAGE: {question}
-SUCHBEGRIFFE:"""
+# Die Prompt-Templates leben in nwz/prompts.py („qa_antwort" / „qa_suchbegriffe")
+# und sind — wie alle anderen — über das Admin-UI live editierbar.
 
 
 def expand_query(question: str, model: str = MODEL) -> str:
@@ -60,9 +46,10 @@ def expand_query(question: str, model: str = MODEL) -> str:
     retrieve far better. Falls back to the question on any error."""
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
     try:
+        prompt = prompts.render("qa_suchbegriffe", question=question.strip()[:300])
         resp = llm.chat_complete(
             model=model, _feature="qa_query_expansion", temperature=0, max_tokens=60,
-            messages=[{"role": "user", "content": _EXPAND_PROMPT.format(question=question.strip()[:300])}], **extra,
+            messages=[{"role": "user", "content": prompt}], **extra,
         )
         terms = " ".join((resp.choices[0].message.content or "").split())
         return terms or question
@@ -71,15 +58,19 @@ def expand_query(question: str, model: str = MODEL) -> str:
 
 
 def _build_context(candidates: list[dict]) -> str:
-    return "\n".join(
-        f"[{c['id']}] {(c.get('title') or '').strip()} ({c.get('session_date')}): "
-        f"{(c.get('summary') or c.get('beschluss') or '').strip()[:200]}"
-        for c in candidates
-    ) or "(keine passenden Beschlüsse gefunden)"
+    """Eine Zeile pro Beschluss: id, Titel, Gremium, Datum, Ergebnis + Kern des
+    Beschlusstexts. 450 Zeichen statt 200 und die Metadaten machen die Antworten
+    spürbar konkreter — bei ~20 Kandidaten immer noch nur wenige Cent."""
+    lines = []
+    for c in candidates:
+        meta = " · ".join(p for p in (c.get("committee"), c.get("session_date"), c.get("outcome")) if p)
+        body = (c.get("summary") or c.get("beschluss") or "").strip()[:450]
+        lines.append(f"[{c['id']}] {(c.get('title') or '').strip()} ({meta}): {body}")
+    return "\n".join(lines) or "(keine passenden Beschlüsse gefunden)"
 
 
 def _answer_messages(question: str, candidates: list[dict]) -> tuple[list[dict], dict]:
-    prompt = _PROMPT.format(question=question.strip()[:300], context=_build_context(candidates))
+    prompt = prompts.render("qa_antwort", question=question.strip()[:300], context=_build_context(candidates))
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in MODEL else {}
     return [{"role": "user", "content": prompt}], extra
 
