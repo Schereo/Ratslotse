@@ -163,22 +163,9 @@ def test_activation_emails_user_on_approve(client):
 
 
 # ---- nwz search ----
-def test_nwz_search_empty(client):
-    _register(client)
-    r = client.get("/api/nwz/search?q=test")
-    assert r.status_code == 200 and r.json()["count"] == 0
 
 
-def test_nwz_article_404(client):
-    _register(client)
-    assert client.get("/api/nwz/article/1/missing").status_code == 404
 
-
-def test_nwz_requires_auth(client):
-    assert client.get("/api/nwz/search?q=x").status_code == 401
-
-
-# ---- password reset + account deletion ----
 def test_forgot_password_no_enumeration(client):
     _register(client)  # admin@test.de
     assert client.post("/api/auth/forgot-password", json={"email": "admin@test.de"}).status_code == 200
@@ -375,7 +362,6 @@ def test_admin_users_list_includes_status(client):
     _register(client)
     users = client.get("/api/admin/users").json()
     assert users[0]["status"] == "active"
-    assert "nwz_fulltext_allowed" in users[0]
 
 
 # ---- account: change password ----
