@@ -4,20 +4,32 @@ import os
 from pathlib import Path
 
 from . import llm, prompts
+from .classify import _page_from_refid
 from .store import Store, TopicRow
 from .telegram_bot import reply, reply_with_buttons, edit_message_buttons, answer_callback_query
 
 _START_NEW_USER = """\
-👋 Willkommen beim Ratslotse-Bot!
+👋 Willkommen beim NWZ-Bot!
 
-Dieser Bot beobachtet den <b>Oldenburger Stadtrat</b> für dich und benachrichtigt dich zu deinen Themen — vollautomatisch.
+Dieser Bot liest täglich die <b>Nordwest-Zeitung</b> und beobachtet den \
+<b>Oldenburger Stadtrat</b> für dich — vollautomatisch, personalisiert.
 
 <b>Was der Bot macht:</b>
+📰 <b>NWZ-Digest</b> (täglich 06:30 Uhr)
+  Du legst Themen fest, z. B. "Radwege" oder "Stadtentwicklung". Der Bot schickt \
+dir jeden Morgen nur die Artikel, die wirklich dazu passen.
+
 🏛️ <b>Stadtrat-Alerts</b>
-  Wenn eines deiner Themen auf der Tagesordnung einer Ratssitzung steht, bekommst du vorab eine Zusammenfassung.
+  Wenn eines deiner Themen auf der Tagesordnung einer Ratssitzung steht, \
+bekommst du vorab eine Zusammenfassung.
 
 📋 <b>Ausschuss-Benachrichtigungen</b>
-  Abonniere einzelne Ausschüsse — du wirst benachrichtigt, sobald die Tagesordnung veröffentlicht wird, und nochmals wenn sie sich ändert.
+  Abonniere einzelne Ausschüsse — du wirst benachrichtigt sobald die Tagesordnung \
+veröffentlicht wird, und nochmals wenn sie sich ändert.
+
+📋 <b>Sitzungs-Nachberichte</b>
+  Nach einer Sitzung sucht der Bot in der NWZ nach Berichten über die Beschlüsse \
+und schickt sie dir.
 
 <b>Du bist noch nicht freigeschaltet.</b>
 Teile dem Administrator deine Chat-ID mit:
@@ -34,20 +46,23 @@ Hallo, du bist bereits registriert! 👋
 • <code>/ausschuesse</code> — Ausschüsse abonnieren
 • <code>/themen</code> — deine gespeicherten Themen anzeigen
 
-Der Bot meldet sich, sobald der Rat zu einem deiner Themen etwas beschließt.
+Der Bot schickt dir täglich um ~06:30 Uhr deinen personalisierten NWZ-Digest.
 
 Alle Befehle: /hilfe\
 """
 
 _HELP = """\
-<b>Ratslotse-Bot — Befehle</b>
+<b>NWZ-Bot — Befehle</b>
 
-<b>Themen</b>
+<b>Themen & Archiv</b>
 /themen — gespeicherte Themen anzeigen
 /neu <i>Name</i> | <i>Beschreibung</i> — Thema hinzufügen
 /loeschen <i>ID</i> — Thema löschen
+/archiv — archivierte Artikel-Treffer (alle Themen)
+/archiv <i>ID</i> — Treffer für ein bestimmtes Thema
+/suche <i>Begriff</i> — Volltextsuche im Artikel-Archiv
 
-<b>Stadtrat &amp; Ausschüsse</b>
+<b>Stadtrat & Ausschüsse</b>
 /ausschuesse — Ausschüsse anzeigen und abonnieren (✅ = abonniert)
 /pruefen — Sitzungsagendas für deine Abos jetzt abrufen
 
@@ -57,7 +72,7 @@ _HELP = """\
 <i>Beispiel:</i>
 <code>/neu Radwege | Ausbau und Planung von Radwegen in Oldenburg</code>
 
-Wir melden uns, sobald der Rat zu einem deiner Themen etwas beschließt.\
+Nach dem Hinzufügen sucht der Bot sofort in den letzten 30 Tagen nach passenden Artikeln.\
 """
 
 _ADMIN_HELP = """\
@@ -112,6 +127,56 @@ def _admin_chat_id() -> int:
 
 def _is_admin(chat_id: int) -> bool:
     return chat_id == _admin_chat_id()
+
+
+def _send_retroactive_digest(chat_id: int, owner_id: int, topic: TopicRow, store: Store) -> None:
+    """Classify the last 30 days of editions for a newly added topic and send matches."""
+    from datetime import date, timedelta
+    from .classify import build_digest
+
+    cutoff = (date.today() - timedelta(days=30)).isoformat()
+    all_dates = [d for d in store.edition_dates() if d >= cutoff]
+    if not all_dates:
+        return
+
+    already_classified = store.classified_pub_dates_for_topic(owner_id, topic.id)
+    pending_dates = [d for d in all_dates if d not in already_classified]
+    if not pending_dates:
+        return
+
+    reply(chat_id, f"🔍 Suche in {len(pending_dates)} Ausgaben der letzten 30 Tage…")
+
+    topic_dict = [{"id": topic.id, "name": topic.name, "description": topic.description}]
+    total_matches: list[dict] = []
+
+    for pub_date in pending_dates:
+        articles = store.articles_for_date(pub_date)
+        if not articles:
+            store.mark_edition_classified(owner_id, topic.id, pub_date)
+            continue
+        _, matches = build_digest(articles, topic_dict, pub_date)
+        store.save_article_matches(owner_id, matches)
+        store.mark_edition_classified(owner_id, topic.id, pub_date)
+        total_matches.extend(matches)
+
+    if not total_matches:
+        reply(chat_id, "Keine passenden Artikel in den letzten 30 Tagen gefunden.")
+        return
+
+    from collections import defaultdict
+    by_date: dict[str, list[dict]] = defaultdict(list)
+    for m in total_matches:
+        by_date[m["pub_date"]].append(m)
+
+    lines = [f"📚 <b>Rückblick: {_esc(topic.name)}</b> ({len(total_matches)} Treffer)\n"]
+    for pub_date in sorted(by_date.keys(), reverse=True):
+        d = pub_date.split("-")
+        display = f"{d[2]}.{d[1]}.{d[0]}" if len(d) == 3 else pub_date
+        lines.append(f"📰 <b>{display}</b>")
+        for m in by_date[pub_date]:
+            lines.append(f"• <b>{_esc(m['title'])}</b>\n  {_esc(m['summary'])}")
+        lines.append("")
+    reply(chat_id, "\n".join(lines).rstrip())
 
 
 def handle_update(update: dict, db_path: Path) -> None:
@@ -231,8 +296,9 @@ def handle_update(update: dict, db_path: Path) -> None:
         reply(
             chat_id,
             f"✅ Thema gespeichert (ID {t.id}):\n<b>{_esc(t.name)}</b>\n{_esc(t.description)}\n\n"
-            f"Wir melden uns, sobald der Rat zu deinem Thema etwas beschließt.",
+            f"Ab morgen 06:30 Uhr im täglichen Digest. Suche jetzt in den letzten 30 Tagen…",
         )
+        _send_retroactive_digest(chat_id, owner_id, t, store)
 
     elif command == "/loeschen":
         if not args.isdigit():
@@ -246,6 +312,74 @@ def handle_update(update: dict, db_path: Path) -> None:
             return
         store.delete_topic(topic_id)
         reply(chat_id, f"Thema <b>{_esc(topic.name)}</b> gelöscht.")
+
+    elif command == "/archiv":
+        topics = store.get_topics(owner_id)
+        if not topics:
+            reply(chat_id, "Du hast noch keine Themen gespeichert.\n\nMit /neu hinzufügen.")
+            return
+
+        if not args or not args.isdigit():
+            lines = ["<b>📊 Archivierte Artikel-Treffer</b>\n"]
+            has_any = False
+            for t in topics:
+                count = store.count_article_matches(owner_id, t.id)
+                if count > 0:
+                    lines.append(f"• [{t.id}] {_esc(t.name)} — {count} Artikel")
+                    has_any = True
+            if has_any:
+                lines.append("\nDetails: <code>/archiv ID</code>")
+            else:
+                lines.append("Noch keine archivierten Treffer.\nDer Digest läuft täglich um 06:30 Uhr.")
+            reply(chat_id, "\n".join(lines))
+            return
+
+        topic_id = int(args)
+        topic = next((t for t in topics if t.id == topic_id), None)
+        if not topic:
+            reply(chat_id, f"Kein Thema mit ID {topic_id} gefunden.")
+            return
+
+        matches = store.get_article_matches(owner_id, topic_id, limit=20)
+        if not matches:
+            reply(chat_id, f"Noch keine Treffer für <b>{_esc(topic.name)}</b>.\n\nDer Digest läuft täglich um 06:30 Uhr.")
+            return
+
+        from collections import defaultdict
+        by_date: dict[str, list[dict]] = defaultdict(list)
+        for m in matches:
+            by_date[m["pub_date"]].append(m)
+
+        lines = [f"📋 <b>Archiv: {_esc(topic.name)}</b>\n"]
+        for pub_date in sorted(by_date.keys(), reverse=True):
+            d = pub_date.split("-")
+            display = f"{d[2]}.{d[1]}.{d[0]}" if len(d) == 3 else pub_date
+            lines.append(f"📰 <b>{display}</b>")
+            for m in by_date[pub_date]:
+                page = _page_from_refid(m.get("refid", ""))
+                page_info = f" · <i>S. {page}</i>" if page else ""
+                lines.append(f"• <b>{_esc(m['title'])}</b>{page_info}\n  {_esc(m['summary'])}")
+            lines.append("")
+        reply(chat_id, "\n".join(lines).rstrip())
+
+    elif command == "/suche":
+        if not args:
+            reply(chat_id, "Verwendung: <code>/suche Begriff</code>\n\nBeispiel: <code>/suche Stadtpark</code>")
+            return
+        results = store.search(args, limit=5)
+        if not results:
+            reply(chat_id, f"Keine Artikel gefunden für: <i>{_esc(args)}</i>")
+            return
+        lines = [f"🔍 <b>Suche: {_esc(args)}</b>\n"]
+        for r in results:
+            d = r.pub_date.split("-")
+            display_date = f"{d[2]}.{d[1]}.{d[0]}" if len(d) == 3 else r.pub_date
+            excerpt = _esc(r.excerpt).replace("&lt;mark&gt;", "<b>").replace("&lt;/mark&gt;", "</b>")
+            category = f" · <i>{_esc(r.category_name)}</i>" if r.category_name else ""
+            lines.append(
+                f"📰 <b>{_esc(r.title)}</b> ({display_date}{category})\n  {excerpt}"
+            )
+        reply(chat_id, "\n\n".join(lines))
 
     elif command == "/ausschuesse":
         _send_committees(chat_id, owner_id, store, db_path)
@@ -398,6 +532,27 @@ def handle_callback_query(update: dict, db_path: Path) -> None:
         return
 
     owner_id = store.ensure_owner_for_chat(chat_id)
+
+    if callback_data.startswith("art:"):
+        raw = callback_data[4:]
+        if not raw.isdigit():
+            answer_callback_query(callback_query_id, "Ungültige Artikel-ID.")
+            return
+        match_id = int(raw)
+        article = store.get_full_article_for_match(match_id)
+        answer_callback_query(callback_query_id)
+        if not article or not article.get("content_text"):
+            reply(chat_id, "Volltext nicht verfügbar (Artikel möglicherweise nicht mehr im Archiv).")
+            return
+        d = (article.get("pub_date") or "").split("-")
+        date_str = f"{d[2]}.{d[1]}.{d[0]}" if len(d) == 3 else article.get("pub_date", "")
+        category = f" · <i>{_esc(article['category_name'])}</i>" if article.get("category_name") else ""
+        page_info = f" · <i>S. {article['page']}</i>" if article.get("page") else ""
+        header = f"📰 <b>{_esc(article['title'])}</b>\n<i>{date_str}{category}{page_info}</i>"
+        if article.get("subtitle"):
+            header += f"\n<i>{_esc(article['subtitle'])}</i>"
+        reply(chat_id, header + "\n\n" + _esc(article["content_text"]))
+        return
 
     if callback_data.startswith("ctoggle:"):
         raw = callback_data[len("ctoggle:"):]

@@ -1,0 +1,59 @@
+{
+  "description": "Ground-truth true positives: which (topic, article) pairs genuinely match, for precision/recall evaluation of the NWZ topic classifier. Tokens are 'catalog~refid' referencing the local scraped data (data/nwz.sqlite).",
+  "source": "User 463107821 on tk-nwz, 7 named-entity topics WITHOUT topic 9 (Stadtteile).",
+  "edition_range": "2026-05-19 .. 2026-06-18 (30 NWZ editions, Oldenburger Nachrichten)",
+  "method": "Built via a dual-judge + tiebreak workflow (70 agents) reading full article text, then 2 manual corrections for under-counted local party mentions (see 'corrections').",
+  "criterion": "Inclusive: the topic entity need NOT be the article's central subject — a party in a council vote/speaker list, a candidate event, a project mention counts. Keyword homonyms ('grün' vs the party), wrong-entity/wrong-place, and statewide-without-Oldenburg do NOT.",
+  "total_true_positives": 24,
+  "corrections": [
+    {
+      "token": "166648~2548808/1/1",
+      "topic": "Die Grünen",
+      "reason": "'Stadt will mehr Grün auf dem Bahnhofsvorplatz' enthält 'Maik Niederstein (Grüne)' mit Wortmeldung im Verkehrsausschuss — lokale Partei-Positionierung, vom Workflow übersehen."
+    },
+    {
+      "token": "166684~2552151/43/1",
+      "topic": "kommunalwahl 2026",
+      "reason": "'Nicht jede Laterne gehört dem Wahlkampf' — explizit über die Kommunalwahl am 13.9.2026 und den Wahlkampf."
+    }
+  ],
+  "goldByTopic": {
+    "Fliegerhorststraße": [
+      "166522~2536295/14/1",
+      "166648~2548808/14/1"
+    ],
+    "Bebauungsplan 851": [
+      "166522~2536295/17/1"
+    ],
+    "IQON": [
+      "166536~2537332/10/1",
+      "166592~2542895/10/1"
+    ],
+    "Wohnheim Tegelbusch": [],
+    "Die Grünen": [
+      "166522~2536295/14/1",
+      "166522~2536295/17/1",
+      "166557~2539701/1/1",
+      "166585~2542126/1/3",
+      "166592~2542895/15/1",
+      "166648~2548808/14/1",
+      "166676~2551343/18/1",
+      "166676~2551343/21/1",
+      "166648~2548808/1/1"
+    ],
+    "kommunalwahl 2026": [
+      "166522~2536295/1/1",
+      "166662~2550420/12/2",
+      "166662~2550420/17/4",
+      "166676~2551343/18/1",
+      "166684~2552151/43/1"
+    ],
+    "etwas über die Oberbürgermeisterkandidaten": [
+      "166550~2538927/11/1",
+      "166655~2549537/17/2",
+      "166662~2550420/12/2",
+      "166662~2550420/17/4",
+      "166684~2552151/17/3"
+    ]
+  }
+}

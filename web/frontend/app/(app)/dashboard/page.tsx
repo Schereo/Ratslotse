@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Landmark, Tags, Link2, Check, ArrowRight, Sparkles, BarChart3, Map, Play, type LucideIcon } from "lucide-react";
+import { Newspaper, Landmark, Tags, Link2, Check, ArrowRight, Sparkles, BarChart3, Map, Play, type LucideIcon } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Topic } from "@/lib/types";
@@ -17,6 +17,7 @@ import { ConfettiBurst } from "@/components/confetti";
 const tiles = [
   { href: "/council", title: "Ratsinformationssystem", desc: "Beschlüsse, KI-Fragen, Sitzungen, Themen und Analysen.", icon: Landmark },
   { href: "/topics", title: "Meine Themen", desc: "Themen verwalten und Treffer ansehen.", icon: Tags },
+  { href: "/nwz", title: "Artikelsuche", desc: "Schlagzeilen aus der NWZ zu Ratsthemen.", icon: Newspaper },
   { href: "/link", title: "Telegram verbinden", desc: "Konto mit dem Bot verknüpfen.", icon: Link2 },
 ];
 
@@ -30,7 +31,10 @@ export default function DashboardPage() {
     enabled: !!user?.linked,
   });
   const topicCount = topicsQuery.data?.length ?? 0;
-  const visibleTiles = tiles;
+  // NWZ is a manually-unlocked feature — hide its quick-access tile from normal users
+  // (mirrors the nav gating); the press links on decisions handle the rest.
+  const showNwz = !!user?.nwz_fulltext_allowed || user?.role === "admin";
+  const visibleTiles = tiles.filter((t) => t.href !== "/nwz" || showNwz);
 
   return (
     <div>

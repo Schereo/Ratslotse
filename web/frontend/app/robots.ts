@@ -8,7 +8,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/api/", "/admin", "/account", "/dashboard", "/topics", "/link", "/council"],
+      disallow: ["/api/", "/admin", "/account", "/dashboard", "/topics", "/nwz", "/link", "/council"],
     },
     sitemap: "https://ratslotse.de/sitemap.xml",
     host: "https://ratslotse.de",

@@ -22,6 +22,137 @@ _DB_PATH = Path(__file__).resolve().parent.parent / "data" / "nwz.sqlite"
 # in the admin UI. The template is what the model receives after .format().
 
 DEFAULTS: dict[str, dict[str, str]] = {
+    "nwz_digest_system": {
+        "title": "NWZ-Digest – System",
+        "description": "Rolle des Modells beim täglichen Abgleich von Artikeln mit Themen. Platzhalter: {pub_date}.",
+        "template": textwrap.dedent("""\
+            Du bist ein Redaktionsassistent, der Zeitungsartikel der Nordwest-Zeitung (NWZ)
+            nach thematischen Interessen des Lesers filtert und zusammenfasst.
+            Ausgabe: kompaktes Deutsch, präzise, ohne Floskeln.
+            Heute: {pub_date}.
+        """),
+    },
+    "nwz_digest_user": {
+        "title": "NWZ-Digest – Aufgabe",
+        "description": (
+            "Die eigentliche Klassifizierungs-Aufgabe inkl. Relevanzkriterien und JSON-Format. "
+            "Platzhalter: {topics_list}, {context_block}, {pub_date}, {articles_block}, {continuation_instruction}."
+        ),
+        "template": textwrap.dedent("""\
+            Hier sind die Themen des Lesers:
+            {topics_list}
+
+            {context_block}Und hier die Artikel der NWZ-Ausgabe ({pub_date}):
+
+            {articles_block}
+
+            Aufgabe:
+            Für jedes Thema: finde passende Artikel (0–5 Stück).
+
+            STRENGES Relevanzkriterium — ein Artikel passt NUR, wenn er das Thema
+            konkret behandelt ODER eine konkrete, faktische Information zum Thema
+            liefert (z. B. das Abstimmungsverhalten, eine Aussage oder Handlung
+            einer genannten Partei/Person). Das Thema muss NICHT der Hauptgegenstand
+            des Artikels sein — eine beiläufige, aber konkrete Nennung des im Thema
+            verfolgten Akteurs (z. B. "Volt stimmte dafür") genügt. Der Bezug muss
+            explizit im Artikeltext stehen, nicht erschlossen oder vermutet werden.
+
+            Ein Artikel passt NICHT, wenn:
+            - er nur THEMATISCH VERWANDT ist (z. B. allgemein Kultur/Politik/Sport
+              in Oldenburg), das konkrete Thema aber nicht behandelt;
+            - der Bezug nur SPEKULATIV ist ("könnte für X interessant sein",
+              "X könnte sich damit beschäftigen", "illustriert Engagement, das
+              politisch relevant sein könnte"). Solche Vermutungen sind verboten;
+            - es sich nur um eine STICHWORT-Überschneidung handelt (z. B. das Wort
+              "grün") oder um einen bundesweiten Bezug, obwohl das Thema einen
+              lokalen Bezug (Oldenburg) verlangt;
+            - das Thema eine Organisation/Partei/Person ist und diese im Artikel
+              gar nicht VORKOMMT — eine bloße inhaltliche Nähe genügt nicht.
+
+            Ein Artikel kann mehreren Themen gleichzeitig zugeordnet werden, wenn er beide
+            konkret behandelt (Beispiel: ein Artikel über einen Brückenneubau passt sowohl
+            zu 'Stadtentwicklung/Bauprojekte' als auch zu 'Verkehr/Straßenbau', da Brücken
+            Bestandteil der Straßenverkehrsinfrastruktur sind).
+
+            Im Zweifel: NICHT aufnehmen. Lieber kein Treffer als ein falscher.
+            Die Zusammenfassung muss belegen, WO im Artikel das Thema vorkommt;
+            wenn du das nicht ohne Spekulation kannst, ist es kein Treffer.
+            Schreibe keine Zusammenfassung für Themen ohne passende Artikel.
+            {continuation_instruction}Gib die Antwort als JSON zurück:
+
+            {{
+              "digest": [
+                {{
+                  "topic": "Themenname",
+                  "articles": [
+                    {{
+                      "refid": "...",
+                      "title": "...",
+                      "summary": "1–2 Sätze auf Deutsch",
+                      "is_continuation": false
+                    }}
+                  ]
+                }}
+              ]
+            }}
+
+            Nur JSON, kein weiterer Text.
+        """),
+    },
+    "nwz_verify_system": {
+        "title": "NWZ-Verifikation (2. Pass)",
+        "description": "Günstiger Einzelcheck pro (Thema, Artikel)-Paar, der False Positives aus dem ersten Pass aussortiert.",
+        "template": (
+            "Du prüfst, ob ein Zeitungsartikel RELEVANT für das angegebene Thema ist. "
+            "RELEVANT (true) ist ein Artikel, wenn der Akteur/Gegenstand des Themas konkret "
+            "vorkommt — auch beiläufig: wie eine Partei/Person abgestimmt hat, sich positioniert, "
+            "etwas gesagt/getan/beantragt hat, oder wenn ein konkretes Projekt/Bauvorhaben/Plan "
+            "des Themas behandelt wird. Das Thema muss NICHT der zentrale Gegenstand sein; eine "
+            "Partei in einer Abstimmungs- oder Rednerliste genügt und ist relevant.\n"
+            "NICHT relevant (false) ist:\n"
+            "- STICHWORT statt Akteur: Das Adjektiv bzw. die Farbe 'grün' — 'mehr Grün', "
+            "'Grünfläche', 'Grünanlage', 'Grünstreifen', 'im Grünen', 'grüne Welle' — meint "
+            "Vegetation/Farbe, NICHT die Partei. Eine Partei ist nur gemeint, wenn die PARTEI "
+            "selbst vorkommt (Fraktion, Mitglieder, Kandidaten, 'Die Grünen', 'Bündnis 90', "
+            "'Volt', 'SPD' …).\n"
+            "- FALSCHE IDENTITÄT: Eine Person zählt für ein Parteithema nur, wenn sie dieser "
+            "Partei ANGEHÖRT. Parteilose oder Mitglieder anderer Parteien zählen nicht. "
+            "'Rot/Grün' als Landesregierung ist nicht die lokale Oldenburger Partei.\n"
+            "- FALSCHER ORT: Verlangt das Thema einen Oldenburg-Bezug, sind landes- oder "
+            "bundesweite Vorgänge und Ereignisse mit anderer Dateline (z.B. HANNOVER, WIESMOOR, "
+            "KRUMMHÖRN) ohne konkreten Oldenburg-Bezug NICHT relevant.\n"
+            "- ORT ALS KULISSE: Ein Straßen-, Radweg- oder Gebäudename, der nur als "
+            "Veranstaltungsort/Schauplatz vorkommt (z.B. ein Pride-Event 'auf dem Radweg', ein "
+            "Kulturereignis 'im Alten Gymnasium'), macht den Artikel nicht zum Themen-Treffer.\n"
+            "Beachte die Themen-Beschreibung und ihren geforderten lokalen/konkreten Bezug. "
+            'Antworte nur als JSON: {"relevant": true/false}.'
+        ),
+    },
+    "weekly_highlights_system": {
+        "title": "Wochenrückblick – System",
+        "description": "Rolle des Modells beim wöchentlichen Highlights-Ranking.",
+        "template": "Du bist ein politischer Redakteur für Oldenburger Lokalpolitik.",
+    },
+    "weekly_highlights_user": {
+        "title": "Wochenrückblick – Aufgabe",
+        "description": "Auswahl der wichtigsten Artikel der Woche. Platzhalter: {date_from}, {date_to}, {articles_block}.",
+        "template": textwrap.dedent("""\
+            Hier sind alle Artikel der NWZ-Ausgaben der Woche ({date_from} bis {date_to}):
+
+            {articles_block}
+
+            Wähle die 3–5 Artikel, die für die Oldenburger Lokalpolitik diese Woche am bedeutsamsten waren. Begründe in einem knappen Satz, warum jeder wichtig ist.
+
+            Ausgabe als JSON:
+            {{
+              "highlights": [
+                {{"title": "...", "reason": "1 Satz"}}
+              ]
+            }}
+
+            Nur JSON, kein weiterer Text.
+        """),
+    },
     "vagueness_check_system": {
         "title": "Vagheits-Prüfung bei neuem Thema",
         "description": "Prüft, ob eine Themen-Beschreibung präzise genug ist, und schlägt eine bessere vor.",

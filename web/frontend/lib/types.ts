@@ -14,6 +14,32 @@ export interface User {
   access_token?: string | null;
 }
 
+export interface SearchResult {
+  catalog: number;
+  refid: string;
+  pub_date: string;
+  category_name: string;
+  title: string;
+  subtitle: string;
+  authors: string;
+  excerpt: string;
+  rank: number;
+}
+
+export interface Article {
+  catalog: number;
+  refid: string;
+  page: number | null;
+  category_name: string;
+  title: string;
+  subtitle: string;
+  authors: string;
+  content_text: string;
+  content_html: string;
+  publication_date: string;
+  edition_title: string;
+}
+
 export interface CouncilSession {
   ksinr: number;
   committee: string;
@@ -219,6 +245,7 @@ export interface Topic {
   name: string;
   description: string;
   created_at: string;
+  match_count: number;
   decision_count: number;
 }
 
@@ -240,6 +267,16 @@ export interface FieldRecap {
   period_from: string;
   period_to: string;
   generated_at: string;
+}
+
+export interface TopicMatch {
+  catalog: number;
+  refid: string;
+  pub_date: string;
+  title: string;
+  summary: string;
+  is_continuation: number;
+  matched_at: string;
 }
 
 export interface Prompt {

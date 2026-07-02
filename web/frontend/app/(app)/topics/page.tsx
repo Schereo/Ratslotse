@@ -2,13 +2,14 @@
 
 import { useState, useRef } from "react";
 import Link from "next/link";
-import { Plus, Trash2, Landmark, Pencil } from "lucide-react";
+import { Plus, Trash2, FileText, Pencil, RefreshCw, Landmark } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
-import { Topic, TopicDecision } from "@/lib/types";
+import { Topic, TopicMatch, TopicDecision, Article } from "@/lib/types";
 import { DecisionLinkCard } from "@/components/decision-ui";
+import { NwzReadHint } from "@/components/nwz-link";
 import {
-  Badge, Button, Card, CardListSkeleton, ConfirmDialog, EmptyState, Input, PageHeader, Textarea,
+  Badge, Button, Card, CardListSkeleton, ConfirmDialog, EmptyState, Input, PageHeader, Textarea, formatDate,
   Dialog, DialogContent, DialogHeader, DialogTitle, toast,
 } from "@/components/ui";
 
@@ -16,16 +17,19 @@ export default function TopicsPage() {
   const qc = useQueryClient();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [matchesFor, setMatchesFor] = useState<{ topic: Topic; matches: TopicMatch[] } | null>(null);
   const [decisionsFor, setDecisionsFor] = useState<{ topic: Topic; decisions: TopicDecision[] } | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [editing, setEditing] = useState<Topic | null>(null);
   const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
+  const [reclassifyEndsAt, setReclassifyEndsAt] = useState<number | null>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
   const topicsQuery = useQuery({
     queryKey: ["topics"],
     queryFn: () => api.get<Topic[]>("/topics"),
+    refetchInterval: () => (reclassifyEndsAt && Date.now() < reclassifyEndsAt ? 5000 : false),
   });
 
   const subsQuery = useQuery({
@@ -70,6 +74,16 @@ export default function TopicsPage() {
     onError: (err: Error) => toast.error(err instanceof ApiError ? err.message : "Konnte Thema nicht ändern."),
   });
 
+  const reclassifyMutation = useMutation({
+    mutationFn: (id: number) => api.post(`/topics/${id}/reclassify`),
+    onSuccess: () => {
+      toast.success("Neu-Klassifizierung gestartet — das dauert 1–2 Min. Die Treffer aktualisieren sich automatisch.");
+      setReclassifyEndsAt(Date.now() + 180_000);
+      qc.invalidateQueries({ queryKey: ["topics"] });
+    },
+    onError: (err: Error) => toast.error(err instanceof ApiError ? err.message : "Konnte nicht neu klassifizieren."),
+  });
+
   const startEdit = (t: Topic) => {
     setEditing(t);
     setEditName(t.name);
@@ -85,6 +99,15 @@ export default function TopicsPage() {
     onError: () => toast.error("Abo konnte nicht geändert werden."),
   });
 
+  const viewMatches = async (topic: Topic) => {
+    try {
+      const data = await api.get<{ matches: TopicMatch[] }>(`/topics/${topic.id}/matches`);
+      setMatchesFor({ topic, matches: data.matches });
+    } catch {
+      toast.error("Treffer konnten nicht geladen werden.");
+    }
+  };
+
   const viewDecisions = async (topic: Topic) => {
     try {
       const data = await api.get<{ decisions: TopicDecision[] }>(`/topics/${topic.id}/decisions`);
@@ -98,12 +121,10 @@ export default function TopicsPage() {
   const needsLink = topicsQuery.error instanceof ApiError && (topicsQuery.error as ApiError).status === 409;
   const isError = topicsQuery.isError && !needsLink;
 
-  const HEADER_DESC = "Themen, über deren neue Ratsbeschlüsse du benachrichtigt wirst.";
-
   if (loading) {
     return (
       <div>
-        <PageHeader title="Meine Themen" description={HEADER_DESC} />
+        <PageHeader title="Meine Themen" description="Themen, nach denen der Bot täglich für dich sucht." />
         <div className="mt-6">
           <CardListSkeleton rows={3} />
         </div>
@@ -143,11 +164,11 @@ export default function TopicsPage() {
         open={confirmDeleteId !== null}
         onOpenChange={(o) => !o && setConfirmDeleteId(null)}
         title="Thema löschen"
-        description="Das Thema und seine Benachrichtigungen werden entfernt."
+        description="Alle gespeicherten Treffer für dieses Thema werden ebenfalls gelöscht."
         confirmLabel="Löschen"
         onConfirm={() => confirmDeleteId !== null && deleteMutation.mutate(confirmDeleteId)}
       />
-      <PageHeader title="Meine Themen" description={HEADER_DESC} />
+      <PageHeader title="Meine Themen" description="Themen, nach denen der Bot täglich für dich sucht." />
 
       <Card className="mt-6 p-4">
         <form
@@ -173,7 +194,7 @@ export default function TopicsPage() {
           <EmptyState
             mascot="wave"
             title="Noch keine Themen"
-            hint="Lege ein Thema an — wir melden uns, sobald der Rat etwas dazu beschließt."
+            hint="Lege ein Thema an, nach dem der Bot täglich für dich sucht."
             action={
               <Button size="sm" onClick={() => { nameInputRef.current?.focus(); nameInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }}>
                 <Plus className="h-4 w-4" /> Erstes Thema anlegen
@@ -187,11 +208,15 @@ export default function TopicsPage() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <h3 className="font-semibold text-foreground">{t.name}</h3>
+                    <Badge color="blue">{t.match_count} Treffer</Badge>
                     {t.decision_count > 0 && <Badge color="green">{t.decision_count} Beschlüsse</Badge>}
                   </div>
                   <p className="mt-0.5 text-sm text-muted-foreground">{t.description}</p>
                 </div>
                 <div className="flex shrink-0 flex-wrap gap-2">
+                  <Button variant="secondary" size="sm" onClick={() => viewMatches(t)}>
+                    <FileText className="h-4 w-4" /> Treffer
+                  </Button>
                   {t.decision_count > 0 && (
                     <Button variant="secondary" size="sm" onClick={() => viewDecisions(t)}>
                       <Landmark className="h-4 w-4" /> Beschlüsse
@@ -199,6 +224,14 @@ export default function TopicsPage() {
                   )}
                   <Button variant="secondary" size="sm" onClick={() => startEdit(t)}>
                     <Pencil className="h-4 w-4" /> Bearbeiten
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => reclassifyMutation.mutate(t.id)}
+                    disabled={reclassifyMutation.isPending}
+                  >
+                    <RefreshCw className="h-4 w-4" /> Neu klassifizieren
                   </Button>
                   <Button variant="danger" size="sm" aria-label="Löschen" onClick={() => setConfirmDeleteId(t.id)} disabled={deleteMutation.isPending}>
                     <Trash2 className="h-4 w-4" />
@@ -247,6 +280,30 @@ export default function TopicsPage() {
               <Button type="submit" disabled={editMutation.isPending}>{editMutation.isPending ? "Speichern…" : "Speichern"}</Button>
             </div>
           </form>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Tipp: Nach dem Ändern „Neu klassifizieren", damit die Treffer zur neuen Beschreibung passen.
+          </p>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!matchesFor} onOpenChange={(o) => !o && setMatchesFor(null)}>
+        <DialogContent>
+          {matchesFor && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Treffer: {matchesFor.topic.name}</DialogTitle>
+              </DialogHeader>
+              {matchesFor.matches.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Noch keine archivierten Treffer.</p>
+              ) : (
+                <ul className="space-y-3">
+                  {matchesFor.matches.map((m, i) => (
+                    <MatchItem key={i} m={m} />
+                  ))}
+                </ul>
+              )}
+            </>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -272,5 +329,49 @@ export default function TopicsPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function MatchItem({ m }: { m: TopicMatch }) {
+  const [article, setArticle] = useState<Article | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [shown, setShown] = useState(false);
+
+  const toggle = async () => {
+    if (shown) { setShown(false); return; }
+    if (article) { setShown(true); return; }
+    setLoading(true);
+    try {
+      const a = await api.get<Article>(`/nwz/article/${m.catalog}?refid=${encodeURIComponent(m.refid)}`);
+      setArticle(a);
+      setShown(true);
+    } catch {
+      toast.error("Artikel konnte nicht geladen werden.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <li className="border-b border-border pb-3 last:border-0">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <span>{formatDate(m.pub_date)}</span>
+        {m.is_continuation ? <Badge color="amber">Fortsetzung</Badge> : null}
+      </div>
+      <p className="mt-0.5 font-medium text-foreground">{m.title}</p>
+      <p className="text-sm text-muted-foreground">{m.summary}</p>
+      <button type="button" onClick={toggle} className="mt-1 text-xs font-medium text-primary hover:underline">
+        {loading ? "Lädt…" : shown ? "Artikel ausblenden" : "Ganzen Artikel anzeigen"}
+      </button>
+      {shown && article && (
+        article.content_text ? (
+          <div className="mt-2 whitespace-pre-wrap rounded-md bg-muted/50 p-3 text-sm leading-relaxed text-foreground/90">
+            {article.content_text}
+          </div>
+        ) : (
+          <div className="mt-2"><NwzReadHint title={article.title} /></div>
+        )
+      )}
+    </li>
   );
 }

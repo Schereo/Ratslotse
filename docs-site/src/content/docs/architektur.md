@@ -1,39 +1,51 @@
 ---
 title: Architektur
-description: Überblick über Stadtrat-Scraper, Datenbank, KI-Klassifikation, Bot und Deployment.
+description: Überblick über Scraper, Datenbank, KI-Klassifikation, Bot und Deployment.
 ---
 
-Ein Scraper für das Oldenburger Ratsinformationssystem speist eine SQLite-Datenbank.
-Ein Telegram-Bot übernimmt die Nutzerverwaltung und liefert personalisierte
-Benachrichtigungen; ein Web-Frontend (FastAPI + Next.js) sitzt auf denselben Datenbanken.
+Zwei unabhängige Scraper speisen eine gemeinsame SQLite-Datenbank. Ein Telegram-Bot
+übernimmt die Nutzerverwaltung und liefert personalisierte Benachrichtigungen; ein
+Web-Frontend (FastAPI + Next.js) sitzt auf denselben Datenbanken.
 
 ```
-        Oldenburger Stadtrat (SessionNet)
-                     │
-             council/scraper.py
-             council/protocols.py
-                     │
-              council/store.py
-              (council.sqlite)  ── web_users, topics (nwz.sqlite)
-                     │
-              council/watcher.py
-                     │
-     nwz/bot_commands.py · scripts/bot_poll.py
-                     │
-                Telegram API
-                     │
-                 @RatslotseBot
+NWZ ePaper (Visiolink)          Oldenburger Stadtrat (SessionNet)
+        │                                    │
+   nwz/api.py                        council/scraper.py
+   nwz/parse.py                             │
+        │                           council/store.py
+   nwz/store.py                     (council.sqlite)
+   (nwz.sqlite)                             │
+        │                           council/watcher.py
+   nwz/classify.py                          │
+        │                                   │
+        └──────────────┬────────────────────┘
+                       │
+         nwz/bot_commands.py · scripts/bot_poll.py
+                       │
+                  Telegram API
+                       │
+                   @RatslotseBot
 ```
-
-:::note
-Ein früherer NWZ-Zeitungs-Scraper wurde aus rechtlichen Gründen in ein separates,
-privates Repository ausgegliedert. Im Produkt bleibt nur ein **scraping-freier
-NWZonline-Suchlink** zu Beschluss-Themen. Alles Folgende beschreibt die Stadtrat-Seite.
-:::
 
 ---
 
 ## Komponenten
+
+### NWZ-ePaper-Scraper (`nwz/`)
+
+Die NWZ nutzt die **Visiolink**-Plattform. Es gibt keine öffentliche API — der
+Auth-Flow wurde aus dem JavaScript-Bundle der SPA rekonstruiert.
+
+**Auth-Flow:**
+
+1. `POST login.nwzonline.de` → JWT
+2. `POST login-api.e-pages.dk/v1/.../publication/{catalog}/user` → Session-Key (30-min-TTL, im Speicher gecacht)
+3. `GET front.e-pages.dk/session-cc/{key}/nwz/{catalog}/content/default5.php` → XML mit den vollständigen Artikeltexten
+
+`nwz/parse.py` wandelt das XML in `Article`-Dataclasses (Titel, Untertitel,
+Autoren, Rubrik, Fließtext, Seitenzahl). `nwz/store.py` persistiert Ausgaben und
+Artikel in SQLite mit einer **FTS5**-Volltexttabelle (Tokenizer
+`unicode61 remove_diacritics 2` für deutsche Umlaute).
 
 ### Stadtrat-Watcher (`council/`)
 
@@ -50,10 +62,12 @@ schon versendet wurden — das verhindert Doppel-Benachrichtigungen.
 ### KI-Klassifikation
 
 Die Klassifikation läuft über **OpenRouter** (OpenAI-SDK) und ist bewusst
-zustandslos — kein Fine-Tuning, strukturierte Prompts mit JSON-Mode. Ausschuss-
-Zusammenfassung und Topic-Matching laufen auf `gpt-4o-mini`. Die Protokoll-Pipelines
-(Beschlussextraktion, Themenfeld-Klassifikation, Rückblicke) nutzen über Env-Variablen
-konfigurierbare Modelle (Default: `deepseek/deepseek-v4-pro`, siehe `CLAUDE.md`).
+zustandslos — kein Fine-Tuning, strukturierte Prompts mit JSON-Mode. Der
+NWZ-Digest nutzt `gpt-4o` (Pass 1) und `gpt-4o-mini` (Pass 2); Ausschuss-
+Zusammenfassung und Topic-Matching laufen auf dem günstigeren `gpt-4o-mini`. Die
+neueren Protokoll-Pipelines (Beschlussextraktion, Themenfeld-Klassifikation,
+Rückblicke) nutzen über Env-Variablen konfigurierbare Modelle (Default:
+`deepseek/deepseek-v4-pro`, siehe `CLAUDE.md`).
 
 Details, Schwachstellen und Roadmap: siehe [KI-Pipeline](/docs/ki-pipeline/).
 
@@ -63,19 +77,21 @@ Der Bot nutzt **Long-Polling** (`getUpdates` mit 30-s-Timeout) — kein Webhook,
 kein offener Port. Nutzer liegen in der Tabelle `users`; nur freigeschaltete
 Nutzer können interagieren. Der Admin (über `TELEGRAM_CHAT_ID` in der `.env`)
 schaltet Nutzer mit `/freischalten` und `/sperren`. Themen sind pro `chat_id`
-isoliert; die Cron-Skripte iterieren über alle Nutzer und versenden personalisierte
-Ratsinfo-Benachrichtigungen. Volle Befehlsübersicht: [Telegram-Bot](/docs/bot/).
+isoliert; die Cron-Skripte iterieren über alle Nutzer und versenden je einen
+personalisierten Digest. Volle Befehlsübersicht: [Telegram-Bot](/docs/bot/).
 
 ---
 
 ## Datenbankschema
 
-**`nwz.sqlite`** (Konten & Themen — der Paketname `nwz/` ist historisch)
+**`nwz.sqlite`**
 
-- `web_users` — Web-Konten (E-Mail, Passwort-Hash, Rolle, Status)
-- `topics` — Themen-Watchlist pro Nutzer (`owner_id`, `name`, `description`)
+- `editions` — eine Zeile je geladene ePaper-Ausgabe
+- `articles` — vollständiger Artikelinhalt, an `editions` gekoppelt
+- `articles_fts` — FTS5-Volltexttabelle (Spiegel von `articles`)
+- `topics` — Themen-Watchlist pro Nutzer (`chat_id`, `name`, `description`)
+- `users` — freigeschaltete Telegram-Nutzer
 - `committee_subscriptions` — Ausschuss-Abos pro Nutzer
-- `push_tokens`, `link_codes`, `email_verification_tokens` — App-Push & Konto-Verknüpfung
 - `prompts` — live editierbare Prompt-Overrides (Admin-UI)
 
 **`council.sqlite`**
@@ -97,9 +113,12 @@ Die vollständige, maßgebliche Liste steht in `CLAUDE.md` (und gespiegelt in
 | Zeit | Skript | Aufgabe |
 |---|---|---|
 | 03:00 täglich | `backup_db.py` | SQLite-Backup (7 Kopien je DB) |
+| 06:30 täglich | `daily_digest.py` | NWZ-Ausgabe holen, klassifizieren, Digest versenden |
 | 07:00 täglich | `check_committees.py` | Ausschuss-Tagesordnungen zusammenfassen |
 | 08:00 + 14:00 täglich | `check_council.py` | Stadtratssitzungen auf Themen-Matches prüfen |
 | 09:00 täglich | `check_protocols.py` | Protokolle parsen + Beschlüsse klassifizieren |
+| 14:00 täglich | `session_followup.py` | NWZ-Nachberichte zu vergangenen Sitzungen |
+| 17:00 freitags | `weekly_digest.py` | Wöchentlicher Überblick |
 | 03:00 sonntags | `weekly_enrich.py` | LLM-/Embedding-Backfills |
 
 ---
