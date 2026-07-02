@@ -7,8 +7,6 @@ from pathlib import Path
 from datetime import datetime
 from typing import Any
 
-from .api import Edition
-from .parse import Article
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS editions (
@@ -812,53 +810,6 @@ class Store:
             "SELECT content_version FROM editions WHERE catalog = ?", (catalog,)
         ).fetchone()
         return row is not None and row[0] >= content_version
-
-    def save_edition(self, edition: Edition, articles: list[Article]) -> None:
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self._conn:
-            self._conn.execute(
-                """INSERT OR REPLACE INTO editions
-                   (catalog, customer, folder, title, publication_date, pages,
-                    content_version, fetched_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    edition.catalog, edition.customer, edition.folder,
-                    edition.title, edition.publication_date, edition.pages,
-                    edition.content_version, now,
-                ),
-            )
-            # Remove old FTS rows for this catalog
-            self._conn.execute("DELETE FROM articles WHERE catalog = ?", (edition.catalog,))
-            self._conn.execute(
-                "DELETE FROM articles_fts WHERE catalog = ?", (edition.catalog,)
-            )
-            rows: list[tuple[Any, ...]] = []
-            fts_rows: list[tuple[Any, ...]] = []
-            for a in articles:
-                rows.append((
-                    edition.catalog, a.refid, a.external_id, a.page,
-                    a.category_number, a.category_name, a.title, a.subtitle,
-                    "|".join(a.authors), a.content_html, a.content_text, a.priority,
-                ))
-                fts_rows.append((
-                    edition.catalog, a.refid, edition.publication_date,
-                    a.category_name, a.title, a.subtitle,
-                    " ".join(a.authors), a.content_text,
-                ))
-            self._conn.executemany(
-                """INSERT INTO articles
-                   (catalog, refid, external_id, page, category_number, category_name,
-                    title, subtitle, authors, content_html, content_text, priority)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                rows,
-            )
-            self._conn.executemany(
-                """INSERT INTO articles_fts
-                   (catalog, refid, pub_date, category_name, title, subtitle,
-                    authors, content_text)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                fts_rows,
-            )
 
     # ---- search ----
 
