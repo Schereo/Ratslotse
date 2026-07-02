@@ -7,6 +7,7 @@ import { Card, Spinner, EmptyState } from "@/components/ui";
 import { POLICY_FIELD_LABELS, formatEuro } from "@/components/decision-ui";
 import { decisionHref } from "@/lib/routes";
 import { useFetch } from "@/lib/use-fetch";
+import { ChartExplainer } from "@/components/chart-explainer";
 
 // Distinct, dark-mode-safe series colours for the top policy fields —
 // abgeleitet aus der Markenpalette (Hafenblau, Signal-Orange, Gold der Mütze).
@@ -27,11 +28,12 @@ function quarterRange(q: string): { from: string; to: string } {
   return { from: `${y}-${Q_START[qi]}`, to: `${y}-${Q_END[qi]}` };
 }
 
-function Block({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
+function Block({ title, hint, explain, children }: { title: string; hint?: string; explain?: React.ReactNode; children: React.ReactNode }) {
   return (
     <Card className="p-4 sm:p-5">
       <h3 className="text-sm font-semibold text-foreground">{title}</h3>
       {hint && <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{hint}</p>}
+      {explain && <ChartExplainer>{explain}</ChartExplainer>}
       <div className="mt-4">{children}</div>
     </Card>
   );
@@ -43,7 +45,17 @@ function StackedDecisions({ d, onQuarter }: { d: Trends; onQuarter: (q: string) 
   const label = (f: string) => d.field_labels[f] ?? POLICY_FIELD_LABELS[f] ?? f;
   return (
     <div>
-      <div className="flex items-end gap-1.5" style={{ height: 190 }}>
+      {/* Screenreader-Fassung: die Balken selbst tragen ihre Zahlen nur im title. */}
+      <table className="sr-only">
+        <caption>Beschlüsse je Quartal</caption>
+        <thead><tr><th scope="col">Quartal</th><th scope="col">Beschlüsse</th></tr></thead>
+        <tbody>
+          {d.quarters.map((q, qi) => (
+            <tr key={q}><th scope="row">{qLabel(q)}</th><td>{totals[qi]}</td></tr>
+          ))}
+        </tbody>
+      </table>
+      <div aria-hidden className="flex items-end gap-1.5" style={{ height: 190 }}>
         {d.quarters.map((q, qi) => (
           <button key={q} type="button" onClick={() => onQuarter(q)}
             className="group flex h-full flex-1 flex-col justify-end rounded-sm transition-colors hover:bg-muted/50"
@@ -84,7 +96,17 @@ function MoneyBars({ d, onQuarter }: { d: Trends; onQuarter: (q: string) => void
   const top = topI >= 0 ? drivers[topI] : null;
   return (
     <div>
-      <div className="flex items-end gap-1.5" style={{ height: 130 }}>
+      {/* Screenreader-Fassung der Quartals-Summen. */}
+      <table className="sr-only">
+        <caption>Erkanntes Finanzvolumen je Quartal</caption>
+        <thead><tr><th scope="col">Quartal</th><th scope="col">Summe</th></tr></thead>
+        <tbody>
+          {d.quarters.map((q, qi) => (
+            <tr key={q}><th scope="row">{qLabel(q)}</th><td>{formatEuro(d.money[qi])}</td></tr>
+          ))}
+        </tbody>
+      </table>
+      <div aria-hidden className="flex items-end gap-1.5" style={{ height: 130 }}>
         {d.quarters.map((q, qi) => {
           const dr = drivers[qi];
           const tip = `${qLabel(q)}: ${formatEuro(d.money[qi])}`
@@ -154,10 +176,30 @@ export function TrendsView() {
   return (
     <div className="space-y-4">
       <FieldRecaps />
-      <Block title="Beschlüsse je Quartal" hint="Wie viel der Rat entscheidet — und in welchen Themenfeldern. Balken anklicken für das Quartal.">
+      <Block
+        title="Beschlüsse je Quartal"
+        hint="Wie viel der Rat entscheidet — und in welchen Themenfeldern. Balken anklicken für das Quartal."
+        explain={
+          <>
+            Jede Säule ist ein Quartal, die Farben stapeln die Themenfelder. Hohe Säulen sind
+            entscheidungsreiche Monate (oft vor der Sommerpause), die Farbanteile verraten, welche Themen
+            gerade dominieren. Ein Klick auf eine Säule öffnet alle Beschlüsse dieses Quartals.
+          </>
+        }
+      >
         <StackedDecisions d={data} onQuarter={onQuarter} />
       </Block>
-      <Block title="Erkanntes Finanzvolumen je Quartal" hint="Summe der im Beschlusstext genannten Beträge (ohne Jahresabschlüsse/Haushaltspläne — grobe Größenordnung).">
+      <Block
+        title="Erkanntes Finanzvolumen je Quartal"
+        hint="Summe der im Beschlusstext genannten Beträge (ohne Jahresabschlüsse/Haushaltspläne — grobe Größenordnung)."
+        explain={
+          <>
+            Wie viel Geld die Beschlüsse eines Quartals bewegt haben — summiert aus den im Text erkannten
+            Beträgen. Ein einzelnes Großprojekt kann eine Säule dominieren; der „größte Einzelposten“
+            darunter ordnet das ein.
+          </>
+        }
+      >
         <MoneyBars d={data} onQuarter={onQuarter} />
       </Block>
       {data.emerging.length > 0 && (

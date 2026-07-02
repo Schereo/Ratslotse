@@ -20,13 +20,24 @@ export function applyTheme(theme: Theme) {
   }
 }
 
-export function toggleTheme() {
-  const current = getTheme();
-  const root = document.documentElement;
-  const isDarkNow = root.classList.contains("dark");
-  applyTheme(isDarkNow ? "light" : "dark");
+/**
+ * Zyklus hell → dunkel → System. Der alte Zweipunkt-Toggle war eine Sackgasse:
+ * Einmal umgeschaltet, kam man nie zurück in den System-Modus.
+ * Gibt den neuen Modus zurück, damit die UI Icon/Label aktualisieren kann.
+ */
+export function cycleTheme(): Theme {
+  const order: Theme[] = ["light", "dark", "system"];
+  const next = order[(order.indexOf(getTheme()) + 1) % order.length];
+  applyTheme(next);
+  return next;
 }
 
 export function initTheme() {
   applyTheme(getTheme());
+  // Im System-Modus live auf Wechsel des OS-Farbschemas reagieren.
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+    if (getTheme() === "system") applyTheme("system");
+  });
 }
+
+export type { Theme };

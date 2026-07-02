@@ -4,7 +4,7 @@ import { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
-  Home, Newspaper, Landmark, Tags, Settings, LogOut, Menu, Moon, Sun, UserCircle,
+  Home, Newspaper, Landmark, Tags, Search, Settings, LogOut, Menu, Monitor, Moon, Sun, UserCircle,
   Gavel, CalendarDays, Tag, BarChart3,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
@@ -12,16 +12,19 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle, Button } from "@/compone
 import { Brand, BrandMark } from "@/components/brand";
 import { FeedbackButton } from "@/components/feedback";
 import { cn } from "@/lib/utils";
-import { toggleTheme } from "@/lib/theme";
+import { cycleTheme, getTheme, type Theme } from "@/lib/theme";
+import { openCommandPalette } from "@/components/command-palette";
 
-type Item = { href: string; label: string; icon: typeof Home };
+// `tour` markiert Elemente als Anker für die Lotti-Tour (components/tour.tsx);
+// Sidebar und Bottom-Nav tragen denselben Wert — die Tour nimmt das sichtbare.
+type Item = { href: string; label: string; icon: typeof Home; tour?: string };
 
 const OVERVIEW: Item = { href: "/dashboard", label: "Übersicht", icon: Home };
-const PERSONAL: Item = { href: "/topics", label: "Meine Themen", icon: Tags };
+const PERSONAL: Item = { href: "/topics", label: "Meine Themen", icon: Tags, tour: "nav-themen" };
 
 // Ratsinfo sub-pages (the council page's tabs), surfaced directly in the nav.
 const COUNCIL_ITEMS: (Item & { tab: string })[] = [
-  { href: "/council", label: "Beschlüsse", icon: Gavel, tab: "decisions" },
+  { href: "/council", label: "Beschlüsse", icon: Gavel, tab: "decisions", tour: "nav-ratsinfo" },
   { href: "/council?tab=sessions", label: "Sitzungen", icon: CalendarDays, tab: "sessions" },
   { href: "/council?tab=themen", label: "Themen", icon: Tag, tab: "themen" },
   { href: "/council?tab=analysis", label: "Analyse", icon: BarChart3, tab: "analysis" },
@@ -34,35 +37,36 @@ const NWZ_ITEMS: Item[] = [
 // Mobile bottom tab bar (thumb-friendly) — the four most-used destinations.
 const PRIMARY: Item[] = [
   { href: "/dashboard", label: "Start", icon: Home },
-  { href: "/council", label: "Ratsinfo", icon: Landmark },
-  { href: "/topics", label: "Themen", icon: Tags },
+  { href: "/council", label: "Ratsinfo", icon: Landmark, tour: "nav-ratsinfo" },
+  { href: "/topics", label: "Themen", icon: Tags, tour: "nav-themen" },
   { href: "/account", label: "Konto", icon: UserCircle },
 ];
 
-function useDarkMode() {
-  const [dark, setDark] = useState(false);
-  useEffect(() => {
-    setDark(document.documentElement.classList.contains("dark"));
-  }, []);
-  const toggle = () => {
-    toggleTheme();
-    setDark(document.documentElement.classList.contains("dark"));
-  };
-  return { dark, toggle };
-}
+const THEME_META: Record<Theme, { icon: typeof Sun; label: string }> = {
+  light: { icon: Sun, label: "Hell" },
+  dark: { icon: Moon, label: "Dunkel" },
+  system: { icon: Monitor, label: "System" },
+};
 
+/** Dreistufig hell → dunkel → System (folgt dem OS), statt der alten Zweier-Sackgasse. */
 function ThemeToggle({ className }: { className?: string }) {
-  const { dark, toggle } = useDarkMode();
+  // Erst nach dem Mount aus localStorage lesen (SSR-Hydration).
+  const [theme, setTheme] = useState<Theme>("system");
+  useEffect(() => {
+    setTheme(getTheme());
+  }, []);
+  const { icon: Icon, label } = THEME_META[theme];
   return (
     <button
-      onClick={toggle}
-      aria-label={dark ? "Helles Design aktivieren" : "Dunkles Design aktivieren"}
+      onClick={() => setTheme(cycleTheme())}
+      title={`Design: ${label} — klicken zum Wechseln`}
+      aria-label={`Design wechseln (aktuell: ${label})`}
       className={cn(
         "flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
         className,
       )}
     >
-      {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+      <Icon className="h-4 w-4" />
     </button>
   );
 }
@@ -77,6 +81,7 @@ function NavItem({ item, active, onNavigate }: { item: Item; active: boolean; on
     <Link
       href={item.href}
       onClick={onNavigate}
+      data-tour={item.tour}
       className={cn(
         "relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
         active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground",
@@ -176,8 +181,19 @@ function UserFooter({ onNavigate }: { onNavigate?: () => void }) {
 export function DesktopSidebar() {
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-card md:flex md:sticky md:top-0 md:h-screen md:self-start md:overflow-y-auto">
-      <div className="px-5 py-5">
+      <div className="px-5 pb-2 pt-5">
         <Brand />
+      </div>
+      <div className="px-3 pb-3">
+        <button
+          type="button"
+          onClick={openCommandPalette}
+          className="flex w-full items-center gap-2 rounded-lg border border-input bg-background px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+        >
+          <Search className="h-4 w-4" />
+          <span className="flex-1 text-left">Suchen…</span>
+          <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium">⌘K</kbd>
+        </button>
       </div>
       <NavLinks />
       <UserFooter />
@@ -206,8 +222,16 @@ export function MobileTopbar() {
       </Sheet>
       <div className="flex flex-1 items-center gap-2">
         <BrandMark className="h-7 w-7" />
-        <span className="text-base font-bold tracking-tight text-foreground">Ratslotse</span>
+        <span className="font-display text-base font-bold tracking-tight text-foreground">Ratslotse</span>
       </div>
+      <button
+        type="button"
+        onClick={openCommandPalette}
+        aria-label="Suchen und Befehle öffnen"
+        className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+      >
+        <Search className="h-4 w-4" />
+      </button>
       <ThemeToggle />
     </header>
   );
@@ -228,6 +252,7 @@ export function MobileBottomNav() {
             key={l.href}
             href={l.href}
             aria-current={active ? "page" : undefined}
+            data-tour={l.tour}
             className={cn(
               "flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition-colors",
               active ? "text-primary" : "text-muted-foreground hover:text-foreground",

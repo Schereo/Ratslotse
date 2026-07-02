@@ -17,6 +17,7 @@ export {
   DialogTitle,
   DialogDescription,
 } from "./dialog";
+export { Segmented, type SegmentedOption } from "./segmented";
 export { Sheet, SheetTrigger, SheetClose, SheetContent, SheetTitle } from "./sheet";
 export { Toaster, toast } from "./sonner";
 export { ConfirmDialog } from "./confirm-dialog";

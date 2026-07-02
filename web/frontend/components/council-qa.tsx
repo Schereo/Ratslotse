@@ -5,7 +5,7 @@ import { Sparkles, Send, Loader2 } from "lucide-react";
 import { Mascot } from "@/components/mascot";
 import { QaSource } from "@/lib/types";
 import { apiUrl, authHeaders } from "@/lib/api";
-import { Card, Input, toast } from "@/components/ui";
+import { Button, Card, Input, toast } from "@/components/ui";
 import { DecisionLinkCard } from "@/components/decision-ui";
 
 const EXAMPLES = [
@@ -128,10 +128,9 @@ export function QaTab() {
           <Input data-search className="pl-9" placeholder="Frag den Stadtrat — z. B. „Was wurde zum Radverkehr beschlossen?“"
             value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
-        <button type="submit" disabled={loading || q.trim().length < 4}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50">
-          <Send className="h-4 w-4" /> Fragen
-        </button>
+        <Button type="submit" disabled={loading || q.trim().length < 4}>
+          <Send /> Fragen
+        </Button>
       </form>
       <p className="-mt-2 text-xs text-muted-foreground/70">
         Bitte keine personenbezogenen oder sensiblen Daten eingeben — Anfragen werden zur Beantwortung an einen externen KI-Dienst übermittelt.
@@ -150,7 +149,7 @@ export function QaTab() {
 
       {/* Live progress: Lotti sucht — real step + a rotating playful word. */}
       {loading && !answer && (
-        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+        <div role="status" className="flex items-center gap-3 text-sm text-muted-foreground">
           <Mascot pose="search" bob className="h-14 w-14 shrink-0" />
           <div>
             <span className="flex items-center gap-2 font-medium text-foreground">
@@ -166,7 +165,9 @@ export function QaTab() {
       {answer && (
         <div className="flex items-start gap-3">
           <Mascot pose={loading ? "search" : "point"} className="mt-1 hidden h-12 w-12 shrink-0 sm:block" />
-          <Card className="flex-1 rounded-2xl rounded-tl-sm p-4">
+          {/* aria-busy: Screenreader warten, bis der Stream fertig ist; die
+              Fertig-Meldung unten (role=status) sagt dann aktiv Bescheid. */}
+          <Card aria-busy={loading} className="flex-1 rounded-2xl rounded-tl-sm p-4">
             <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
               {answer}
               {loading && step === "answer" && <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-primary align-text-bottom" />}
@@ -195,9 +196,12 @@ export function QaTab() {
       )}
 
       {answer && !loading && (
-        <p className="text-xs text-muted-foreground/70">
-          Antwort von einer KI aus den gefundenen Beschlüssen erzeugt — kann unvollständig sein. Immer die Quellen prüfen.
-        </p>
+        <>
+          <p role="status" className="sr-only">Antwort vollständig.</p>
+          <p className="text-xs text-muted-foreground/70">
+            Antwort von einer KI aus den gefundenen Beschlüssen erzeugt — kann unvollständig sein. Immer die Quellen prüfen.
+          </p>
+        </>
       )}
     </div>
   );

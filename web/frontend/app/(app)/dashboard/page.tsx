@@ -3,13 +3,16 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Newspaper, Landmark, Tags, Link2, Check, ArrowRight, Sparkles, BarChart3, Map, type LucideIcon } from "lucide-react";
+import { Newspaper, Landmark, Tags, Link2, Check, ArrowRight, Sparkles, BarChart3, Map, Play, type LucideIcon } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Topic } from "@/lib/types";
-import { Badge, Card, PageHeader } from "@/components/ui";
+import { Badge, Button, Card, PageHeader } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
 import { LotsenTipp } from "@/components/lotsen-tipp";
+import { RecentDecisions } from "@/components/recent-decisions";
+import { startGuidedTour } from "@/components/tour";
+import { ConfettiBurst } from "@/components/confetti";
 
 const tiles = [
   { href: "/council", title: "Ratsinformationssystem", desc: "Beschlüsse, KI-Fragen, Sitzungen, Themen und Analysen.", icon: Landmark },
@@ -45,6 +48,8 @@ export default function DashboardPage() {
 
       <LotsenTipp className="mt-6" />
 
+      <RecentDecisions className="mt-8" />
+
       <h2 className="mt-8 text-sm font-semibold text-muted-foreground">Schnellzugriff</h2>
       <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
         {visibleTiles.map((t) => {
@@ -71,6 +76,7 @@ export default function DashboardPage() {
 }
 
 const ONBOARDING_KEY = "ratslotse:onboarding-visited";
+const CELEBRATED_KEY = "ratslotse:onboarding-celebrated";
 
 type Step = { id: string; icon: LucideIcon; title: string; desc: string; href: string; done?: boolean };
 
@@ -117,12 +123,31 @@ function FirstSteps({ linked, hasTopic }: { linked: boolean; hasTopic: boolean }
   const doneCount = steps.filter((s) => s.done || visited.includes(s.id)).length;
   const allDone = doneCount === steps.length;
 
+  // Einmaliges Konfetti, wenn der letzte Schritt abgehakt wird.
+  const [celebrate, setCelebrate] = useState(false);
+  useEffect(() => {
+    if (!allDone) return;
+    try {
+      if (localStorage.getItem(CELEBRATED_KEY)) return;
+      localStorage.setItem(CELEBRATED_KEY, "1");
+      setCelebrate(true);
+    } catch { /* ignore */ }
+  }, [allDone]);
+
   return (
-    <Card className="mt-6 overflow-hidden">
+    <Card className="mt-6 overflow-hidden" data-tour="erste-schritte">
+      {celebrate && <ConfettiBurst onDone={() => setCelebrate(false)} />}
       <div className="flex items-center gap-4 border-b border-border bg-primary/5 px-5 py-4">
         <Mascot pose={allDone ? "celebrate" : "wave"} className="h-16 w-16 shrink-0" />
         <div className="min-w-0 flex-1">
-          <h2 className="font-semibold text-foreground">{allDone ? "Kurs gehalten — alles erkundet!" : "Erste Schritte mit Lotti"}</h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-semibold text-foreground">{allDone ? "Kurs gehalten — alles erkundet!" : "Erste Schritte mit Lotti"}</h2>
+            {!allDone && (
+              <Button variant="secondary" size="sm" onClick={startGuidedTour} className="h-7 px-2.5 text-xs">
+                <Play className="!size-3" /> Tour starten
+              </Button>
+            )}
+          </div>
           <p className="text-sm text-muted-foreground">
             {allDone
               ? "Du kennst jetzt alle Ecken von Ratslotse. Lotti meldet sich, sobald es Neues gibt."

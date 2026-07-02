@@ -9,6 +9,8 @@ import { DetailSkeleton, EmptyState } from "@/components/ui";
 import { DecisionLinkCard, PartyBadge, FieldBadge, formatEuro } from "@/components/decision-ui";
 import { ENTITY_KIND } from "@/components/council-entities";
 import { useFetch } from "@/lib/use-fetch";
+import { themaHref } from "@/lib/routes";
+import { ShareButton } from "@/components/share-button";
 
 // Leaflet needs `window` → load the map client-only.
 const EntityMap = dynamic(() => import("@/components/entity-map").then((m) => m.EntityMap), {
@@ -28,9 +30,12 @@ function EntityInner() {
   const k = ENTITY_KIND[data.entity.kind] ?? ENTITY_KIND.projekt;
   return (
     <div className="mx-auto max-w-3xl">
-      <button onClick={() => router.back()} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-4 w-4" /> Zurück
-      </button>
+      <div className="print-hidden flex items-center justify-between gap-3">
+        <button onClick={() => router.back()} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-4 w-4" /> Zurück
+        </button>
+        <ShareButton path={themaHref(data.entity.slug)} title={`${data.entity.name} — Ratslotse`} />
+      </div>
 
       <div className="mt-3 flex items-center gap-2.5">
         <k.Icon className="h-6 w-6 shrink-0 text-muted-foreground" />

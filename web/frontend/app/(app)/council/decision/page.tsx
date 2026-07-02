@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ExternalLink, FileText, FileDown, Users, Newspaper, Tag } from "lucide-react";
@@ -9,6 +9,7 @@ import { Card, DetailSkeleton, EmptyState, formatDate } from "@/components/ui";
 import { OutcomeBadge, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
 import { decisionHref, themaHref } from "@/lib/routes";
 import { ShareButton } from "@/components/share-button";
+import { trackRecentDecision } from "@/lib/recent";
 import { cn } from "@/lib/utils";
 import { useFetch } from "@/lib/use-fetch";
 
@@ -30,6 +31,12 @@ function DecisionDetailInner() {
   const router = useRouter();
   const { data, loading } = useFetch<DecisionDetail>(id ? `/council/decision/${id}` : null);
 
+  // Für „Zuletzt angesehen" (Dashboard) und die Command-Palette merken.
+  useEffect(() => {
+    const dec = data?.decision;
+    if (dec) trackRecentDecision({ id: dec.id, title: dec.title ?? "Beschluss", committee: dec.committee, session_date: dec.session_date });
+  }, [data]);
+
   if (loading) return <DetailSkeleton />;
   if (!data) return <EmptyState mascot="confused" title="Beschluss nicht gefunden" />;
 
@@ -46,7 +53,7 @@ function DecisionDetailInner() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <div className="flex items-center justify-between gap-3">
+      <div className="print-hidden flex items-center justify-between gap-3">
         <button onClick={() => router.back()} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> Zurück
         </button>
@@ -203,7 +210,7 @@ function DecisionDetailInner() {
         </Section>
       )}
 
-      <div className="mt-6 flex flex-wrap gap-2 border-t border-border pt-5">
+      <div className="print-hidden mt-6 flex flex-wrap gap-2 border-t border-border pt-5">
         {data.vorlage_url && (
           <a href={data.vorlage_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs text-foreground hover:bg-muted">
             <FileText className="h-3.5 w-3.5" /> Vorlage {d.vorlage_nr}
