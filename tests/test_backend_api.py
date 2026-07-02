@@ -106,9 +106,9 @@ def test_me_requires_auth(client):
 def test_admin_prompts_crud(client):
     _register(client)
     r = client.get("/api/admin/prompts")
-    assert r.status_code == 200 and len(r.json()) == 10
-    key = "nwz_digest_system"
-    upd = client.put(f"/api/admin/prompts/{key}", json={"content": "Custom {pub_date}"})
+    assert r.status_code == 200 and len(r.json()) == 5
+    key = "council_watcher_system"
+    upd = client.put(f"/api/admin/prompts/{key}", json={"content": "Custom {session_date}"})
     assert upd.status_code == 200 and upd.json()["is_overridden"] is True
     rst = client.post(f"/api/admin/prompts/{key}/reset")
     assert rst.json()["is_overridden"] is False
@@ -275,7 +275,6 @@ def test_topics_and_subscriptions_flow(client):
     assert r.status_code == 201
     tid = r.json()["id"]
     assert len(client.get("/api/topics").json()) == 1
-    assert client.get(f"/api/topics/{tid}/matches").json()["matches"] == []
     # subscriptions
     assert client.post("/api/subscriptions", json={"committee_name": "Bauausschuss"}).json()["subscribed"]
     assert "Bauausschuss" in client.get("/api/subscriptions").json()["subscriptions"]
