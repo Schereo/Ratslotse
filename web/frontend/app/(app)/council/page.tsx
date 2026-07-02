@@ -48,11 +48,14 @@ function Highlight({ text, query }: { text: string; query: string }) {
 }
 
 function VoteLine({ d }: { d: CouncilDecision }) {
+  // Defensiv: Ein einzelner kaputter Datensatz (factions kein Array — der Store
+  // json.dumps't unbesehen) darf nie die ganze Seite in die Error-Boundary reißen.
+  const factions = Array.isArray(d.factions) ? d.factions : [];
   const parts: string[] = [];
   if (d.vote) parts.push(d.vote);
   if (d.gegenstimmen) parts.push(`${d.gegenstimmen} ${d.gegenstimmen === 1 ? "Gegenstimme" : "Gegenstimmen"}`);
   if (d.enthaltungen) parts.push(`${d.enthaltungen} ${d.enthaltungen === 1 ? "Enthaltung" : "Enthaltungen"}`);
-  if (parts.length === 0 && d.factions.length === 0) return null;
+  if (parts.length === 0 && factions.length === 0) return null;
   return (
     <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
       {parts.length > 0 && (
@@ -60,7 +63,7 @@ function VoteLine({ d }: { d: CouncilDecision }) {
           <Scale className="h-3.5 w-3.5" /> {parts.join(" · ")}
         </span>
       )}
-      {d.factions.length > 0 && (
+      {factions.length > 0 && (
         <span
           className="inline-flex flex-wrap items-center gap-1.5"
           title="Fraktion(en), die zu diesem Punkt einen Antrag oder eine Änderungsliste eingebracht haben"
@@ -68,7 +71,7 @@ function VoteLine({ d }: { d: CouncilDecision }) {
           <span className="text-xs text-muted-foreground">
             {d.kind === "subvote" ? "Antrag von:" : "Anträge von:"}
           </span>
-          {d.factions.map((f) => (
+          {factions.map((f) => (
             <span key={f} className="rounded-md bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">{f}</span>
           ))}
         </span>
@@ -153,7 +156,7 @@ function FilterChip({ label, onClear }: { label: string; onClear: () => void }) 
   );
 }
 
-function DecisionsTab({ committees }: { committees: string[] }) {
+function DecisionsTab({ committees, modeToggle }: { committees: string[]; modeToggle?: React.ReactNode }) {
   const [q, setQ] = useState("");
   const [committee, setCommittee] = useState("");
   const [outcome, setOutcome] = useState("");
@@ -283,7 +286,10 @@ function DecisionsTab({ committees }: { committees: string[] }) {
 
   return (
     <div>
-      <Card className="mt-4 p-4">
+      <Card className="mt-3 p-4">
+        {/* Tier 0 — Suchen/KI-Frage wohnt IN der Karte statt als eigene Ebene
+            darüber: spart auf dem Handy eine Zeile + Abstand vor dem Inhalt. */}
+        {modeToggle && <div className="mb-3">{modeToggle}</div>}
         {/* Tier 1 — primary: what am I looking at + free-text search. */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <Segmented
@@ -303,7 +309,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
               data-search
               data-tour="beschluss-suche"
               className="pl-9"
-              placeholder={isReport ? "Berichte durchsuchen…" : "Beschlüsse durchsuchen (z. B. Haushalt, Radwege)…"}
+              placeholder={isReport ? "Berichte durchsuchen…" : "Suchen (z. B. Haushalt, Radwege)…"}
               value={q}
               onChange={(e) => { setQ(e.target.value); setPage(1); }}
             />
@@ -591,18 +597,25 @@ function SearchTab({ committees }: { committees: string[] }) {
     if (m === "suchen") params.delete("mode"); else params.set("mode", m);
     router.replace(`/council?${params.toString()}`, { scroll: false });
   };
-  return (
+  const modeToggle = (
+    <Segmented
+      className="sm:w-fit"
+      value={mode}
+      onChange={setMode}
+      options={[
+        { value: "suchen", label: "Suchen", icon: Search },
+        { value: "fragen", label: "KI-Frage", icon: Sparkles, tour: "ki-frage-tab" },
+      ]}
+    />
+  );
+  // Im Such-Modus wohnt der Umschalter in der Suchkarte (eine Ebene weniger);
+  // im KI-Modus steht er über der Frage-Ansicht, damit man zurückwechseln kann.
+  return mode === "suchen" ? (
+    <DecisionsTab committees={committees} modeToggle={modeToggle} />
+  ) : (
     <div>
-      <Segmented
-        className="mt-4 sm:w-fit"
-        value={mode}
-        onChange={setMode}
-        options={[
-          { value: "suchen", label: "Suchen", icon: Search },
-          { value: "fragen", label: "KI-Frage", icon: Sparkles, tour: "ki-frage-tab" },
-        ]}
-      />
-      {mode === "suchen" ? <DecisionsTab committees={committees} /> : <QaTab />}
+      <div className="mt-3">{modeToggle}</div>
+      <QaTab />
     </div>
   );
 }
@@ -646,8 +659,10 @@ function CouncilInner() {
       <PageHeader title={meta.title} description={meta.description} />
       {/* Mobil fehlt die Sidebar — dieser Umschalter macht Sitzungen/Themen/Analyse
           ohne Burger-Menü erreichbar. Desktop: Navigation bleibt in der Sidebar. */}
+      {/* Kompakte Paddings, damit alle vier Tabs auf 375 px passen; die
+          Scrollbar (hässlicher grauer Balken) bleibt als Fallback unsichtbar. */}
       <Segmented
-        className="mt-3 overflow-x-auto md:hidden"
+        className="no-scrollbar mt-3 overflow-x-auto md:hidden [&>button]:px-2 [&>button]:text-[13px]"
         value={tab}
         onChange={(t) => router.replace(`/council?tab=${t}`, { scroll: false })}
         options={[

@@ -135,7 +135,8 @@ function DecisionDetailInner() {
               <div key={s.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2.5">
                 <div className="min-w-0 text-sm">
                   {s.title}
-                  {s.factions.length > 0 && (
+                  {/* Defensiv wie in VoteLine: factions kann bei kaputten Daten ein String sein. */}
+                  {Array.isArray(s.factions) && s.factions.length > 0 && (
                     <span className="ml-2 text-xs text-muted-foreground">({s.factions.join(", ")})</span>
                   )}
                 </div>

@@ -229,7 +229,9 @@ export function MobileBottomNav() {
   const pathname = usePathname();
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+      // /85 + blur-lg statt /95 + blur(8px): sichtbarer „Material"-Effekt wie
+      // bei der nativen iOS-Tab-Bar, ohne die Lesbarkeit zu gefährden.
+      className="fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-card/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg md:hidden"
       aria-label="Hauptnavigation"
     >
       {PRIMARY.map((l) => {
@@ -242,7 +244,8 @@ export function MobileBottomNav() {
             aria-current={active ? "page" : undefined}
             data-tour={l.tour}
             className={cn(
-              "flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition-colors",
+              // active:scale-95 = spürbares Touch-Feedback beim Antippen.
+              "flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition-[color,transform] duration-150 active:scale-95",
               active ? "text-primary" : "text-muted-foreground hover:text-foreground",
             )}
           >

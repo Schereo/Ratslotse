@@ -20,7 +20,10 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTML
     <textarea
       ref={ref}
       className={cn(
-        "flex min-h-[80px] w-full rounded-md border border-input bg-card px-3 py-2 font-mono text-base sm:text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50",
+        // Bewusst KEIN font-mono: Textareas sind normale Fließtext-Eingaben
+        // (Themen-Beschreibung, Feedback …). Der Admin-Prompt-Editor setzt
+        // sich sein Mono gezielt per className.
+        "flex min-h-[80px] w-full rounded-md border border-input bg-card px-3 py-2 text-base sm:text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50",
         className,
       )}
       {...props}
