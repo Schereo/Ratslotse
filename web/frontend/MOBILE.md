@@ -87,11 +87,16 @@ xcrun simctl launch booted de.ratslotse.app
 
 ```
 # iOS — Apple push (token-based .p8, no Firebase)
-APNS_KEY_P8=/path/AuthKey_XXXX.p8     # or the PEM contents inline
+# Key OUTSIDE ~/app (e.g. /home/tim/secrets/) — the deploy rsync --delete would
+# remove anything under ~/app that isn't in the repo/excludes.
+APNS_KEY_P8=/home/tim/secrets/AuthKey_XXXX.p8   # or the PEM contents inline
 APNS_KEY_ID=XXXXXXXXXX
 APNS_TEAM_ID=YYYYYYYYYY
 APNS_TOPIC=de.ratslotse.app
-# APNS_USE_SANDBOX=1                   # for dev/TestFlight debug builds
+# APNS_USE_SANDBOX=1   # optional: try the sandbox gateway first. Not required —
+#                      # on BadDeviceToken the sender retries the other gateway,
+#                      # so Xcode debug builds (sandbox tokens) and TestFlight/
+#                      # App Store builds (production tokens) coexist automatically.
 # Android — FCM v1
 FCM_PROJECT_ID=ratslotse-xxxxx
 FCM_CREDENTIALS=/path/service-account.json

@@ -99,39 +99,71 @@ def _apns_jwt() -> str:
     return jwt
 
 
+def _apns_hosts() -> tuple[str, str]:
+    """(primary, fallback) gateway order. Production first; APNS_USE_SANDBOX=1
+    flips the preference (saves the extra round-trip in dev-heavy phases)."""
+    if os.environ.get("APNS_USE_SANDBOX") == "1":
+        return APNS_SANDBOX_HOST, APNS_PROD_HOST
+    return APNS_PROD_HOST, APNS_SANDBOX_HOST
+
+
+def _apns_post(client, host: str, tok: str, jwt: str, topic: str, payload: dict) -> tuple[str, str]:
+    """One delivery attempt. Returns (status, detail) with status one of
+    'ok' | 'gone' (token expired there) | 'wrong-env' (token belongs to the
+    other APNs environment) | 'error'."""
+    resp = client.post(
+        f"{host}/3/device/{tok}",
+        headers={
+            "authorization": f"bearer {jwt}",
+            "apns-topic": topic,
+            "apns-push-type": "alert",
+        },
+        json=payload,
+    )
+    if resp.status_code == 200:
+        return "ok", ""
+    reason = ""
+    try:
+        reason = resp.json().get("reason", "")
+    except Exception:  # noqa: BLE001
+        pass
+    if resp.status_code == 410 or reason == "Unregistered":
+        return "gone", reason
+    if reason == "BadDeviceToken":
+        return "wrong-env", reason
+    return "error", f"{resp.status_code} {reason}"
+
+
 def _send_apns(client, tokens: list[str], title: str, body: str, data: dict[str, str]) -> list[str]:
     """POST one alert per device over the shared HTTP/2 client. Returns tokens
-    Apple reports as gone (410) or invalid, so the caller can prune them."""
-    host = APNS_SANDBOX_HOST if os.environ.get("APNS_USE_SANDBOX") == "1" else APNS_PROD_HOST
+    Apple reports as gone or invalid, so the caller can prune them.
+
+    Devices from Xcode debug builds carry *sandbox* tokens, TestFlight/App-Store
+    builds *production* ones — and the server can't tell them apart. APNs rejects
+    a token sent to the wrong gateway with BadDeviceToken, so on that reason the
+    send retries once against the other gateway. Both build kinds thus coexist
+    with a single server config; only tokens both gateways reject are pruned."""
+    primary, fallback = _apns_hosts()
     topic = os.environ["APNS_TOPIC"]
     jwt = _apns_jwt()
     payload = {"aps": {"alert": {"title": title, "body": body}, "sound": "default"}, **data}
     stale: list[str] = []
     for tok in tokens:
         try:
-            resp = client.post(
-                f"{host}/3/device/{tok}",
-                headers={
-                    "authorization": f"bearer {jwt}",
-                    "apns-topic": topic,
-                    "apns-push-type": "alert",
-                },
-                json=payload,
-            )
+            status, detail = _apns_post(client, primary, tok, jwt, topic, payload)
+            if status == "wrong-env":
+                status, detail = _apns_post(client, fallback, tok, jwt, topic, payload)
+                if status == "ok":
+                    logger.info("APNs delivered via fallback gateway (mixed build envs)")
+                elif status == "wrong-env":
+                    status = "gone"  # rejected by both environments — token is garbage
         except Exception:  # noqa: BLE001 — one bad device must not sink the batch
             logger.exception("APNs send failed for a device")
             continue
-        if resp.status_code == 200:
-            continue
-        reason = ""
-        try:
-            reason = resp.json().get("reason", "")
-        except Exception:  # noqa: BLE001
-            pass
-        if resp.status_code == 410 or reason in ("BadDeviceToken", "Unregistered"):
+        if status == "gone":
             stale.append(tok)
-        else:
-            logger.warning("APNs rejected a device (%s %s)", resp.status_code, reason)
+        elif status == "error":
+            logger.warning("APNs rejected a device (%s)", detail)
     return stale
 
 
