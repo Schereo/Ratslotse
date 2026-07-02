@@ -138,3 +138,33 @@ Notes for review/submission:
   Store requirement for apps with registration.
 - Android push routes through FCM (Google as processor) — worth a line on the
   Datenschutz page; iOS via APNs stays with Apple.
+
+## App-Store-Einreichung (Checkliste)
+
+Im Repo bereits erledigt:
+
+- `PrivacyInfo.xcprivacy` (Pflicht seit 2024): E-Mail, Nutzerinhalte (Themen),
+  Push-Geräte-Token — je „App-Funktionalität", verknüpft, kein Tracking; dazu
+  UserDefaults **CA92.1** (Capacitor Preferences speichert das Bearer-Token).
+  Die Capacitor-Core-Pakete bringen eigene Manifeste mit; `@capacitor/preferences`
+  nicht — daher die Deklaration hier.
+- `ITSAppUsesNonExemptEncryption = false` (nur Standard-HTTPS) — keine
+  Export-Compliance-Rückfrage bei jedem Upload.
+- Build mit **Xcode 26** (seit 28.04.2026 Pflicht für Neueinreichungen/Updates).
+
+In App Store Connect vor der ersten Einreichung (manuell):
+
+1. **EU-DSA-Trader-Status** deklarieren (Pflicht; ohne Deklaration keine
+   Einreichung). Nicht-kommerzielles Privatprojekt → „Non-Trader" plausibel.
+2. **Privacy Nutrition Labels** — muss zum Manifest passen: E-Mail,
+   Nutzerinhalte, Geräte-ID (Push-Token); „Daten werden nicht zum Tracking
+   verwendet".
+3. **Demo-Konto** in den App-Review-Informationen hinterlegen (App ist
+   login-pflichtig — Guideline 2.1; häufigster Rejection-Grund).
+4. **Screenshots**: nur iPhone — die App ist iPhone-only
+   (`TARGETED_DEVICE_FAMILY = 1`; auf dem iPad läuft sie im
+   Kompatibilitätsmodus, ohne iPad-Screenshot-Pflicht).
+5. Altersfreigabe-Fragebogen (läuft auf 4+ hinaus), Support-URL
+   (https://ratslotse.de), Datenschutz-URL (https://ratslotse.de/datenschutz).
+6. In den Review-Notes die nativen Mehrwerte nennen (Push-Themen-Alerts,
+   Universal Links) — beugt einer 4.2-„Webseiten-Wrapper"-Rückfrage vor.
