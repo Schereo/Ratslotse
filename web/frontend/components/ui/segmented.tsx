@@ -44,7 +44,9 @@ export function Segmented<T extends string>({
             aria-pressed={active}
             data-tour={o.tour}
             className={cn(
-              "inline-flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium transition-colors",
+              // Press-Feedback wie beim Button — Segment-Wechsel ist eine der
+              // häufigsten Berührungen der App (Tabs, Filter).
+              "inline-flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium transition-[color,background-color,transform] duration-150 ease-out-strong active:scale-[0.97]",
               active
                 ? tone === "primary"
                   ? "bg-primary text-primary-foreground shadow-sm"

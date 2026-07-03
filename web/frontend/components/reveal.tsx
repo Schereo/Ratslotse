@@ -25,7 +25,9 @@ export function Reveal({ children, className, delay = 0 }: { children: React.Rea
     <div
       ref={ref}
       style={{ transitionDelay: `${delay}ms` }}
-      className={cn("transition-all duration-700 ease-out", shown ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0", className)}
+      // 500 ms mit starker Kurve statt 700 ms Standard-ease-out: gleiche Ruhe,
+      // weniger Zähigkeit. Nur die zwei Properties, die sich wirklich ändern.
+      className={cn("transition-[opacity,transform] duration-500 ease-out-strong", shown ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0", className)}
     >
       {children}
     </div>

@@ -25,7 +25,10 @@ export const SheetContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed z-50 flex flex-col border-border bg-card shadow-lg transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-200 data-[state=open]:duration-300",
+        // iOS-artige Drawer-Kurve (ease-drawer) statt ease-in-out; Exit bewusst
+        // schneller als der Eintritt. Das lose "transition" davor war wirkungslos
+        // (die Bewegung kommt aus animate-in/out) und ist raus.
+        "fixed z-50 flex flex-col border-border bg-card shadow-lg ease-drawer data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-200 data-[state=open]:duration-300",
         SIDE_CLASSES[side],
         className,
       )}
