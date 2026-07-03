@@ -219,7 +219,11 @@ class CouncilStore:
         if nwz_db_path is None and isinstance(path, (str, Path)) and str(path) != ":memory:":
             nwz_db_path = Path(path).parent / "nwz.sqlite"
         self._nwz_db_path = nwz_db_path
-        self._conn = sqlite3.connect(path, timeout=15)
+        # check_same_thread=False wie im nwz-Store: FastAPI führt sync-Dependencies
+        # und Endpoint in (potenziell verschiedenen) Threadpool-Threads aus — die
+        # Verbindung wandert also zwischen Threads. Sicher, weil jede Anfrage ihre
+        # eigene Store-Instanz bekommt (keine parallele Nutzung EINER Verbindung).
+        self._conn = sqlite3.connect(path, timeout=15, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         # WAL + busy_timeout: scraper cron and the web API share this file.
         self._conn.execute("PRAGMA journal_mode=WAL")
@@ -1243,15 +1247,46 @@ class CouncilStore:
             self._conn.execute("DELETE FROM council_entity_scanned")
 
     def list_entities(self, limit: int = 300, kind: str = "") -> list[dict]:
-        """Entities for the directory, most-referenced first."""
-        sql = "SELECT slug, name, kind, n FROM council_entities"
-        params: list = []
+        """Entities for the directory, most-referenced first — angereichert um
+        Aktualität (letzte Sitzung, Beschlüsse der letzten 12 Monate), damit das
+        Frontend nach „gerade aktiv" statt nur nach Lebenszeit-Summe (seit 2018)
+        priorisieren kann."""
+        from datetime import date, timedelta
+        cutoff = (date.today() - timedelta(days=365)).isoformat()
+        sql = (
+            "SELECT e.slug, e.name, e.kind, e.n, MAX(cs.session_date) AS last_date, "
+            "SUM(CASE WHEN cs.session_date >= ? THEN 1 ELSE 0 END) AS n_recent "
+            "FROM council_entities e "
+            "LEFT JOIN council_entity_links l ON l.entity_id = e.id "
+            "LEFT JOIN council_decisions d ON d.id = l.decision_id "
+            "LEFT JOIN council_sessions cs ON cs.ksinr = d.ksinr "
+        )
+        params: list = [cutoff]
         if kind:
-            sql += " WHERE kind = ?"
+            sql += "WHERE e.kind = ? "
             params.append(kind)
-        sql += " ORDER BY n DESC, name LIMIT ?"
+        sql += "GROUP BY e.id ORDER BY e.n DESC, e.name LIMIT ?"
         params.append(limit)
-        return [dict(r) for r in self._conn.execute(sql, params)]
+        rows = [dict(r) for r in self._conn.execute(sql, params)]
+        for r in rows:
+            r["n_recent"] = r["n_recent"] or 0
+        return rows
+
+    def trending_tags(self, days_back: int = 180, limit: int = 12) -> list[dict]:
+        """Häufigste policy_tags der letzten Monate — Futter für anklickbare
+        Themen-Vorschläge („was gerade den Rat beschäftigt")."""
+        from datetime import date, timedelta
+        cutoff = (date.today() - timedelta(days=days_back)).isoformat()
+        rows = self._conn.execute(
+            """SELECT je.value AS tag, COUNT(*) AS n
+               FROM council_decisions d
+               JOIN council_sessions cs ON cs.ksinr = d.ksinr, json_each(d.policy_tags) je
+               WHERE d.kind = 'decision' AND d.policy_tags IS NOT NULL
+                 AND cs.session_date >= ?
+               GROUP BY je.value ORDER BY n DESC, tag LIMIT ?""",
+            (cutoff, limit),
+        ).fetchall()
+        return [{"tag": r["tag"], "n": r["n"]} for r in rows]
 
     def list_entities_geo(self) -> list[dict]:
         """Geocoded entities (points) for the city-wide map — slug, name, kind, n, lat, lon."""

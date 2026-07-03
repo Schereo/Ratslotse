@@ -36,11 +36,21 @@ export function EntityChip({ e }: { e: Entity }) {
   );
 }
 
-/** Größere Karte für die Top-Themen: Zahl + relativer Balken machen auf einen
- *  Blick sichtbar, was den Rat wirklich beschäftigt. */
-function TopEntityCard({ e, maxN }: { e: Entity; maxN: number }) {
+/** „zuletzt Mai 2026" aus einem ISO-Datum. */
+function lastLabel(d?: string | null): string | null {
+  if (!d) return null;
+  const date = new Date(d);
+  if (isNaN(date.getTime())) return null;
+  return date.toLocaleDateString("de-DE", { month: "short", year: "numeric" });
+}
+
+/** Größere Karte für die gerade aktiven Top-Themen: die 12-Monats-Zahl trägt,
+ *  Gesamtzahl und letzte Sitzung liefern den Langzeit-Kontext. */
+function TopEntityCard({ e, maxRecent }: { e: Entity; maxRecent: number }) {
   const k = ENTITY_KIND[e.kind] ?? ENTITY_KIND.projekt;
   const color = KIND_COLOR[e.kind] ?? KIND_COLOR.projekt;
+  const recent = e.n_recent ?? 0;
+  const last = lastLabel(e.last_date);
   return (
     <Link href={themaHref(e.slug)} className="block">
       <Card className="card-interactive h-full p-4">
@@ -49,14 +59,17 @@ function TopEntityCard({ e, maxN }: { e: Entity; maxN: number }) {
             <k.Icon className="h-5 w-5" />
           </span>
           <span className="text-right">
-            <span className="block text-xl font-bold tabular-nums leading-none text-foreground">{e.n}</span>
-            <span className="text-[11px] text-muted-foreground">Beschlüsse</span>
+            <span className="block text-xl font-bold tabular-nums leading-none text-foreground">{recent}</span>
+            <span className="text-[11px] text-muted-foreground">in 12 Monaten</span>
           </span>
         </div>
         <p className="mt-2.5 truncate font-medium text-foreground" title={e.name}>{e.name}</p>
         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-          <div className="h-full rounded-full" style={{ width: `${Math.max(6, (e.n / maxN) * 100)}%`, background: color }} />
+          <div className="h-full rounded-full" style={{ width: `${Math.max(6, (recent / maxRecent) * 100)}%`, background: color }} />
         </div>
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          {e.n} insgesamt{last ? ` · zuletzt ${last}` : ""}
+        </p>
       </Card>
     </Link>
   );
@@ -87,11 +100,21 @@ export function EntitiesTab() {
     .filter((e) => (kind ? e.kind === kind : true))
     .filter((e) => (needle ? e.name.toLowerCase().includes(needle) : true));
   const points = (geo?.entities ?? []).filter((p) => (kind ? p.kind === kind : true));
-  const maxN = Math.max(1, ...all.map((e) => e.n));
+  const maxRecent = Math.max(1, ...all.map((e) => e.n_recent ?? 0));
 
-  // Ohne Suche: Top-Themen groß, der Rest kompakt. Mit Suche: einfach die Treffer.
-  const top = needle ? [] : filtered.slice(0, 6);
-  const rest = needle ? filtered : filtered.slice(6);
+  // Ohne Suche: die gerade AKTIVEN Themen groß (12-Monats-Beschlüsse, dann
+  // letzte Sitzung) — nicht die Lebenszeit-Summe seit 2018, sonst thront ein
+  // seit Jahren ruhendes Thema ewig oben. Der Rest kompakt nach Gesamtzahl.
+  // Mit Suche: einfach die Treffer.
+  const byActivity = [...filtered].sort(
+    (a, b) =>
+      (b.n_recent ?? 0) - (a.n_recent ?? 0) ||
+      (b.last_date ?? "").localeCompare(a.last_date ?? "") ||
+      b.n - a.n,
+  );
+  const top = needle ? [] : byActivity.filter((e) => (e.n_recent ?? 0) > 0).slice(0, 6);
+  const topSlugs = new Set(top.map((e) => e.slug));
+  const rest = needle ? filtered : filtered.filter((e) => !topSlugs.has(e.slug));
 
   return (
     <div className="mt-4 space-y-4">
@@ -140,15 +163,18 @@ export function EntitiesTab() {
       ) : (
         <>
           {top.length > 0 && (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {top.map((e) => <TopEntityCard key={e.slug} e={e} maxN={maxN} />)}
-            </div>
+            <>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/70">Gerade aktiv</p>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {top.map((e) => <TopEntityCard key={e.slug} e={e} maxRecent={maxRecent} />)}
+              </div>
+            </>
           )}
           {rest.length > 0 && (
             <>
               {top.length > 0 && (
                 <p className="pt-1 text-xs text-muted-foreground">
-                  Alle weiteren Themen — klicken für sämtliche Beschlüsse dazu.
+                  Alle weiteren Themen (nach Gesamtzahl) — klicken für sämtliche Beschlüsse dazu.
                 </p>
               )}
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">

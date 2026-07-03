@@ -27,6 +27,17 @@ export default function TopicsPage() {
     queryFn: () => api.get<Topic[]>("/topics"),
   });
 
+  // Anklickbare Vorschläge aus den echten Daten: die häufigsten
+  // Beschluss-Schlagworte der letzten sechs Monate (Backend filtert
+  // bereits angelegte Themen heraus).
+  const suggestionsQuery = useQuery({
+    queryKey: ["topic-suggestions"],
+    queryFn: () =>
+      api
+        .get<{ suggestions: { name: string; description: string; n: number }[] }>("/topics/suggestions")
+        .then((d) => d.suggestions),
+  });
+
   const subsQuery = useQuery({
     queryKey: ["subscriptions"],
     queryFn: () => api.get<{ subscriptions: string[] }>("/subscriptions").then((d) => d.subscriptions),
@@ -45,6 +56,7 @@ export default function TopicsPage() {
       setName("");
       setDescription("");
       qc.invalidateQueries({ queryKey: ["topics"] });
+      qc.invalidateQueries({ queryKey: ["topic-suggestions"] });
     },
     onError: (err: Error) => toast.error(err instanceof ApiError ? err.message : "Konnte Thema nicht anlegen."),
   });
@@ -133,7 +145,30 @@ export default function TopicsPage() {
       />
       <PageHeader title="Meine Themen" description={HEADER_DESC} />
 
-      <Card className="mt-6 p-4">
+      {(suggestionsQuery.data?.length ?? 0) > 0 && (
+        <div className="mt-6">
+          <p className="text-sm font-medium text-foreground">
+            Gerade aktuell im Rat — mit einem Klick als eigenes Thema übernehmen:
+          </p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {suggestionsQuery.data!.map((s) => (
+              <button
+                key={s.name}
+                type="button"
+                title={s.description}
+                disabled={addMutation.isPending}
+                onClick={() => addMutation.mutate({ name: s.name, description: s.description })}
+                className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-[color,background-color,transform] duration-150 ease-out-strong hover:bg-primary/10 active:scale-[0.97] disabled:opacity-50"
+              >
+                <Plus className="h-3 w-3" /> {s.name}
+                <span className="text-primary/60">· {s.n} Beschlüsse</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <Card className="mt-4 p-4">
         <form
           onSubmit={(e) => { e.preventDefault(); addMutation.mutate({ name, description }); }}
           className="space-y-3"
@@ -195,7 +230,9 @@ export default function TopicsPage() {
       </div>
 
       <h2 className="mt-10 text-lg font-bold text-foreground">Ausschuss-Abos</h2>
-      <p className="mt-1 text-sm text-muted-foreground">Benachrichtigungen, sobald eine Tagesordnung veröffentlicht wird.</p>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Benachrichtigungen, sobald eine Tagesordnung veröffentlicht wird — und noch einmal, wenn sie sich danach ändert.
+      </p>
       <Card className="mt-3 divide-y divide-border">
         {committees.map((c) => {
           const subscribed = subscriptions.includes(c);
