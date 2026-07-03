@@ -151,14 +151,17 @@ def decision_detail(
             }
             if not out["vorlage_url"] and v.get("kvonr"):
                 out["vorlage_url"] = _vorlage_url(v["kvonr"])
+        out["anlagen"] = store.anlagen_for_vorlage_nr(d["vorlage_nr"])
     return out
 
 
 @router.get("/analysis")
 def analysis(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> dict:
-    """Party behaviour: topic heatmap, success rates, contention, alliances."""
+    """Party behaviour: topic heatmap, success rates, contention, alliances —
+    plus Erfolgsquoten der eingereichten Fraktions-Anträge (aus den Anlagen)."""
     data = store.party_analysis()
     data["field_labels"] = {k: POLICY_FIELDS[k][0] for k in data["topic_matrix"]["fields"]}
+    data["antrag_stats"] = store.antrag_stats()
     return data
 
 

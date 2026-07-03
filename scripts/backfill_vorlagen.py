@@ -65,7 +65,9 @@ def process_missing(council_db: Path, limit: int | None = None, workers: int = 6
                 no_pdf += 1
                 continue
             row = r["row"]
+            anlagen = row.pop("anlagen", [])
             store.save_vorlage(row)
+            store.save_anlagen(row["kvonr"], anlagen)
             if row["status"] == "ok":
                 fetched += 1
             else:

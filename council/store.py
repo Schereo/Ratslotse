@@ -305,9 +305,26 @@ class CouncilStore:
             "kvonr INTEGER PRIMARY KEY, vorlage_nr TEXT, title TEXT, art TEXT, "
             "document_id INTEGER, document_url TEXT, raw_text TEXT, n_pages INTEGER, "
             "fetched_at TEXT NOT NULL, "
-            "status TEXT NOT NULL DEFAULT 'ok')"  # ok | empty | no_pdf | failed
+            "status TEXT NOT NULL DEFAULT 'ok', "  # ok | empty | no_pdf | failed
+            "anlagen_scanned INTEGER NOT NULL DEFAULT 0)"
         )
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_vorlagen_nr ON council_vorlagen(vorlage_nr)")
+        # anlagen_scanned kam nach dem ersten Deploy der Tabelle dazu.
+        vcols = {r[1] for r in self._conn.execute("PRAGMA table_info(council_vorlagen)").fetchall()}
+        if "anlagen_scanned" not in vcols:
+            self._conn.execute(
+                "ALTER TABLE council_vorlagen ADD COLUMN anlagen_scanned INTEGER NOT NULL DEFAULT 0"
+            )
+        # Anlagen zu Vorlagen: alle als Label+Link, Fraktions-Anträge zusätzlich mit
+        # PDF-Text und erkannten Antragstellern (council.vorlagen/_build_anlage_rows).
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_anlagen ("
+            "document_id INTEGER PRIMARY KEY, kvonr INTEGER NOT NULL, label TEXT, "
+            "url TEXT, is_antrag INTEGER NOT NULL DEFAULT 0, antragsteller TEXT, "
+            "raw_text TEXT, n_pages INTEGER, fetched_at TEXT NOT NULL, "
+            "status TEXT NOT NULL DEFAULT 'listed')"  # listed | ok | empty | failed
+        )
+        self._conn.execute("CREATE INDEX IF NOT EXISTS idx_anlagen_kvonr ON council_anlagen(kvonr)")
         self._migrate_owner_id()
 
     def _migrate_owner_id(self) -> None:
@@ -965,6 +982,128 @@ class CouncilStore:
         ).fetchall()
         return {r["vorlage_nr"]: r["raw_text"] for r in rows if r["raw_text"]}
 
+    # --- Anlagen (documents attached to a Vorlage, incl. fraction motions) -----
+
+    def save_anlagen(self, kvonr: int, rows: list[dict]) -> int:
+        """Store the Anlagen of one Vorlage and mark it scanned. Existing
+        document_ids are kept (their text was ingested earlier); only new ones
+        are inserted — so daily re-scans of recent sessions stay cheap."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        new = 0
+        with self._conn:
+            for r in rows:
+                cur = self._conn.execute(
+                    "INSERT OR IGNORE INTO council_anlagen "
+                    "(document_id, kvonr, label, url, is_antrag, antragsteller, "
+                    " raw_text, n_pages, fetched_at, status) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                    (r["document_id"], kvonr, r.get("label"), r.get("url"),
+                     r.get("is_antrag", 0),
+                     json.dumps(r.get("antragsteller") or [], ensure_ascii=False),
+                     r.get("raw_text"), r.get("n_pages"), now, r.get("status", "listed")),
+                )
+                new += cur.rowcount
+            self._conn.execute(
+                "UPDATE council_vorlagen SET anlagen_scanned = 1 WHERE kvonr = ?", (kvonr,)
+            )
+        return new
+
+    def kvonrs_without_anlagen_scan(self, limit: int | None = None) -> list[int]:
+        """Ingested Vorlagen whose page has not been scanned for Anlagen yet,
+        newest first (kvonr is monotonic enough for that)."""
+        sql = ("SELECT kvonr FROM council_vorlagen WHERE anlagen_scanned = 0 "
+               "ORDER BY kvonr DESC")
+        if limit:
+            sql += f" LIMIT {int(limit)}"
+        return [r[0] for r in self._conn.execute(sql).fetchall()]
+
+    def kvonrs_for_anlagen_rescan(self, days_back: int = 45) -> list[dict]:
+        """Vorlagen on agendas of recent/upcoming sessions — re-scanned daily
+        because Änderungsanträge often land on the page days after the Vorlage.
+        Returns ``[{kvonr, known_ids}]`` so the fetcher skips known documents."""
+        from datetime import date, timedelta
+        cutoff = (date.today() - timedelta(days=days_back)).isoformat()
+        rows = self._conn.execute(
+            """SELECT DISTINCT ci.kvonr FROM council_agenda_items ci
+               JOIN council_sessions cs ON cs.ksinr = ci.ksinr
+               WHERE ci.kvonr IS NOT NULL AND cs.session_date >= ?""", (cutoff,),
+        ).fetchall()
+        out = []
+        for r in rows:
+            known = [k[0] for k in self._conn.execute(
+                "SELECT document_id FROM council_anlagen WHERE kvonr = ?", (r[0],)).fetchall()]
+            out.append({"kvonr": r[0], "known_ids": known})
+        return out
+
+    def anlagen_for_vorlage_nr(self, vorlage_nr: str) -> list[dict]:
+        """Anlagen for a decision's Vorlage (base-nr fallback like
+        ``get_vorlage_by_nr``), motions first, each with parsed Antragsteller."""
+        v = self.get_vorlage_by_nr(vorlage_nr)
+        if not v:
+            return []
+        rows = self._conn.execute(
+            "SELECT document_id, label, url, is_antrag, antragsteller, status "
+            "FROM council_anlagen WHERE kvonr = ? ORDER BY is_antrag DESC, label",
+            (v["kvonr"],),
+        ).fetchall()
+        out = []
+        for r in rows:
+            d = dict(r)
+            try:
+                d["antragsteller"] = json.loads(d.get("antragsteller") or "[]")
+            except (json.JSONDecodeError, TypeError):
+                d["antragsteller"] = []
+            out.append(d)
+        return out
+
+    def antrag_stats(self) -> dict:
+        """Erfolgsquoten der Fraktions-Anträge: Antrag-Anlage → Vorlage → deren
+        Beschlüsse. Gezählt wird je Antragsteller-Partei der KLARE Endstand der
+        Vorlage — bevorzugt der Beschluss des Rats selbst, sonst der letzte
+        Ausschuss-Beschluss mit angenommen/abgelehnt. Mehrparteien-Anträge zählen
+        für jede Partei. Methodik entspricht bewusst politik-vor-ort (Rat zuerst,
+        nur klare Outcomes), aber über unsere volle Historie."""
+        from council.parties import order_key
+
+        antraege = self._conn.execute(
+            """SELECT a.document_id, a.antragsteller, v.vorlage_nr
+               FROM council_anlagen a JOIN council_vorlagen v ON v.kvonr = a.kvonr
+               WHERE a.is_antrag = 1 AND a.antragsteller != '[]'
+                 AND v.vorlage_nr IS NOT NULL AND v.vorlage_nr != ''""",
+        ).fetchall()
+
+        per_party: dict[str, dict] = {}
+        n_mit_beschluss = 0
+        for row in antraege:
+            base = "/".join(row["vorlage_nr"].split("/")[:2])
+            # Trägt eine Vorlage mehrere Antrag-Anlagen (Änderungsanträge mehrerer
+            # Parteien), zählt der Vorlagen-Endstand für jeden dieser Anträge.
+            decision = self._conn.execute(
+                """SELECT d.outcome, cs.committee FROM council_decisions d
+                   JOIN council_sessions cs ON cs.ksinr = d.ksinr
+                   WHERE d.kind = 'decision' AND d.outcome IN ('angenommen','abgelehnt')
+                     AND (d.vorlage_nr = ? OR d.vorlage_nr LIKE ?)
+                   ORDER BY (cs.committee LIKE 'Rat%') DESC, cs.session_date DESC
+                   LIMIT 1""", (base, base + "/%"),
+            ).fetchone()
+            if not decision:
+                continue
+            n_mit_beschluss += 1
+            try:
+                parties = json.loads(row["antragsteller"] or "[]")
+            except (json.JSONDecodeError, TypeError):
+                parties = []
+            for p in parties:
+                s = per_party.setdefault(p, {"party": p, "n": 0, "angenommen": 0, "abgelehnt": 0})
+                s["n"] += 1
+                s[decision["outcome"]] += 1
+
+        stats = sorted(per_party.values(), key=lambda s: (-s["n"], order_key(s["party"])))
+        return {
+            "parties": stats,
+            "n_antraege": len(antraege),
+            "n_mit_beschluss": n_mit_beschluss,
+        }
+
     def get_unclassified_decisions(self, limit: int | None = None) -> list[dict]:
         """Decisions without a policy field yet — for the classification backfill/cron.
         Returns id + the fields the classifier needs (title, beschluss, committee)."""
@@ -997,19 +1136,25 @@ class CouncilStore:
 
     def rebuild_fts(self) -> int:
         """(Re)build the full-text index from all main decisions (title + beschluss +
-        summary + the first chunk of the Vorlage text, so Sachverhalt wording is
-        findable). The Vorlage join is grouped because distinct kvonrs can in theory
-        share a vorlage_nr — duplicate rowids would break the FTS insert."""
+        summary + the first chunk of the Vorlage text + the first chunk of attached
+        motion texts, so Sachverhalt AND original Antrag wording are findable). The
+        joins are grouped because distinct kvonrs can in theory share a vorlage_nr —
+        duplicate rowids would break the FTS insert."""
         with self._conn:
             self._conn.execute("DELETE FROM council_decisions_fts")
             self._conn.execute(
                 "INSERT INTO council_decisions_fts(rowid, content) "
                 "SELECT d.id, REPLACE(COALESCE(d.title,'') || ' ' || COALESCE(d.beschluss,'') || ' ' "
-                "|| COALESCE(d.summary,'') || ' ' || COALESCE(v.vtext,''), 'ß', 'ss') "  # unicode61 folds ä/ö/ü but not ß
+                "|| COALESCE(d.summary,'') || ' ' || COALESCE(v.vtext,'') || ' ' || COALESCE(an.atext,''), "
+                "'ß', 'ss') "  # unicode61 folds ä/ö/ü but not ß
                 "FROM council_decisions d "
                 "LEFT JOIN (SELECT vorlage_nr, substr(MAX(raw_text), 1, 8000) AS vtext "
                 "           FROM council_vorlagen WHERE status = 'ok' GROUP BY vorlage_nr) v "
                 "  ON v.vorlage_nr = d.vorlage_nr "
+                "LEFT JOIN (SELECT cv.vorlage_nr, substr(GROUP_CONCAT(a.raw_text, ' '), 1, 4000) AS atext "
+                "           FROM council_anlagen a JOIN council_vorlagen cv ON cv.kvonr = a.kvonr "
+                "           WHERE a.is_antrag = 1 AND a.status = 'ok' GROUP BY cv.vorlage_nr) an "
+                "  ON an.vorlage_nr = d.vorlage_nr "
                 "WHERE d.kind = 'decision'"
             )
         return self._conn.execute("SELECT COUNT(*) FROM council_decisions_fts").fetchone()[0]

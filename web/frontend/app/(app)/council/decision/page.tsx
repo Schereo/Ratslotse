@@ -175,6 +175,27 @@ function DecisionDetailInner() {
         </Section>
       )}
 
+      {(data.anlagen?.length ?? 0) > 0 && (
+        <Section title={`Anlagen (${data.anlagen!.length})`}>
+          <div className="flex flex-col gap-1.5">
+            {data.anlagen!.map((an) => (
+              <a key={an.document_id} href={an.url ?? undefined} target="_blank" rel="noreferrer"
+                className="group flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm transition-colors hover:bg-muted">
+                <span className="flex min-w-0 items-center gap-2">
+                  <FileDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <span className="truncate text-foreground">{an.label || "Dokument"}</span>
+                </span>
+                {an.is_antrag === 1 && an.antragsteller.length > 0 && (
+                  <span className="flex shrink-0 items-center gap-1">
+                    {an.antragsteller.map((p) => <PartyBadge key={p} party={p} />)}
+                  </span>
+                )}
+              </a>
+            ))}
+          </div>
+        </Section>
+      )}
+
       {data.vorlage_journey.length > 1 && (
         <Section title={`Weg der Vorlage ${d.vorlage_nr ?? ""}`}>
           <div className="ml-1 flex flex-col gap-3 border-l-2 border-border pl-4">
