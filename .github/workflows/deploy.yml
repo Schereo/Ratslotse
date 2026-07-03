@@ -79,16 +79,18 @@ jobs:
             --exclude '.git/' \
             --exclude 'web/frontend/node_modules/' \
             --exclude 'web/frontend/.next/' \
+            --exclude 'web/frontend/public/docs/' \
             --exclude 'docs-site/node_modules/' \
             --exclude 'docs-site/dist/' \
             -e "ssh" \
             ./ target:~/app/
 
-          # Statische Doku auf die Edge-VM, wo Caddy sie unter /docs ausliefert
-          # (siehe deploy/Caddy-docs.snippet). Eigenes Verzeichnis -> --delete ok.
+          # Statische Doku nach public/docs des Frontends — Next.js liefert sie
+          # unter ratslotse.de/docs aus (Rewrites in next.config.mjs), die Edge
+          # braucht dafür keine Konfiguration. Eigenes Verzeichnis -> --delete ok.
           rsync -az --delete \
             -e "ssh" \
-            docs-site/dist/ edge:~/docs/
+            docs-site/dist/ target:~/app/web/frontend/public/docs/
 
       - name: Restart services and rebuild web
         uses: appleboy/ssh-action@v1.0.3
