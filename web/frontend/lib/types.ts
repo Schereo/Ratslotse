@@ -169,6 +169,10 @@ export interface NewsLink {
 
 export interface Entity {
   slug: string; name: string; kind: string; n: number;
+  /** Datum der letzten Sitzung mit Beschluss zu diesem Thema. */
+  last_date?: string | null;
+  /** Beschlüsse der letzten 12 Monate — Basis der „gerade aktiv"-Priorisierung. */
+  n_recent?: number;
 }
 
 export interface EntityMapPoint {

@@ -217,3 +217,30 @@ def test_qa_context_includes_vorlage_excerpt():
     assert "— Aus der Vorlage: Sachverhalt: Darum geht es wirklich." in ctx
     # Ohne Auszug bleibt die Zeile unverändert schlank.
     assert "Aus der Vorlage" not in _build_context([{"id": 6, "title": "X", "summary": "S"}])
+
+
+def test_list_entities_recency_and_trending_tags(store):
+    """Aktualitäts-Felder je Entity + Trend-Tags der letzten Monate."""
+    from datetime import date, timedelta
+    recent = (date.today() - timedelta(days=30)).isoformat()
+    old = "2019-05-01"
+    store.save_session(CouncilSession(1, "Rat der Stadt", recent, "17:00", "Rathaus"))
+    store.save_session(CouncilSession(2, "Rat der Stadt", old, "17:00", "Rathaus"))
+    for ks, tags in [(1, '["Radverkehr", "Wärmeplanung"]'), (2, '["Radverkehr"]')]:
+        store._insert_decision(ks, 0, "decision", None, "Ö 1", f"D{ks}", "B", "angenommen",
+                               None, None, None, [], None, None, None)
+    with store._conn:
+        store._conn.execute("UPDATE council_decisions SET policy_tags='[\"Radverkehr\", \"Wärmeplanung\"]' WHERE ksinr=1")
+        store._conn.execute("UPDATE council_decisions SET policy_tags='[\"Radverkehr\"]' WHERE ksinr=2")
+        ids = [r[0] for r in store._conn.execute("SELECT id FROM council_decisions ORDER BY id").fetchall()]
+        # Entity „aktiv": Beschluss von vor 30 Tagen; „ruhend": nur 2019.
+        store._conn.execute("INSERT INTO council_entities (id, slug, name, kind, n) VALUES (1,'aktiv','Aktiv','ort',1)")
+        store._conn.execute("INSERT INTO council_entities (id, slug, name, kind, n) VALUES (2,'ruhend','Ruhend','ort',5)")
+        store._conn.execute("INSERT INTO council_entity_links VALUES (1, ?)", (ids[0],))
+        store._conn.execute("INSERT INTO council_entity_links VALUES (2, ?)", (ids[1],))
+    ents = {e["slug"]: e for e in store.list_entities()}
+    assert ents["aktiv"]["n_recent"] == 1 and ents["aktiv"]["last_date"] == recent
+    assert ents["ruhend"]["n_recent"] == 0 and ents["ruhend"]["last_date"] == old
+    # Trending: nur der junge Beschluss zählt → Radverkehr 1, Wärmeplanung 1; alt fällt raus.
+    tags = {t["tag"]: t["n"] for t in store.trending_tags(days_back=180)}
+    assert tags == {"Radverkehr": 1, "Wärmeplanung": 1}
