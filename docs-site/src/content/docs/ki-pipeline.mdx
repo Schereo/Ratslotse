@@ -1,0 +1,117 @@
+---
+title: KI-Pipeline
+description: Wie das Ratsinfo-Matching und die Beschluss-Aufbereitung per LLM funktionieren.
+---
+
+import Mermaid from '../../components/Mermaid.astro';
+
+Dieses Dokument beschreibt die KI-gestützten Schritte rund um das
+**Ratsinformationssystem** (Oldenburger Stadtrat): Ausschuss-Zusammenfassungen,
+Themen-Matching (Watcher) und die Beschluss-Aufbereitung. Alle LLM-Aufrufe
+laufen über **OpenRouter** (siehe [ADR 0001](/docs/adr/0001-openrouter/)).
+
+Die Pipeline-Qualität entscheidet über den Produktwert: Sie bestimmt, wie
+zuverlässig relevante Tagesordnungspunkte und Beschlüsse zu den Themen der
+Nutzer gefunden werden — bei hoher **Precision** (keine Fehltreffer) *und*
+brauchbarem **Recall**.
+
+Wichtig vorab: **Das Scraping selbst nutzt kein LLM.** Tagesordnungen und
+Protokolle werden per BeautifulSoup bzw. pypdf strukturiert eingelesen; das LLM
+kommt **erst beim Zusammenfassen, Matchen und Klassifizieren** zum Einsatz.
+Vorlagen und Anlagen werden sogar komplett ohne LLM ausgewertet.
+
+<Mermaid code={`
+flowchart TD
+    subgraph Quellen["Gescrapte Quellen — ohne LLM eingelesen"]
+        AG["Tagesordnungen"]
+        PR["Sitzungsprotokolle (PDF)"]
+        VO["Vorlagen & Anlagen (PDF)"]
+    end
+
+    AG --> ZSF["LLM: Sitzungs-Zusammenfassung
+    je Ausschuss"]
+    AG --> MATCH["LLM: Matching gegen
+    Nutzer-Themen"]
+    PR --> EXTR["LLM: Beschluss-Extraktion
+    (ein Aufruf je Protokoll)"]
+    EXTR --> KLASS["LLM: Themenfeld-
+    Klassifikation"]
+    KLASS --> ENRICH["LLM & Embeddings (wöchentlich):
+    Entitäten · Geocoding · Ähnliche · Rückblicke"]
+    VO -->|"pypdf + Wortlisten,
+    ganz ohne LLM"| TEXTE["Volltexte &
+    Antragsteller"]
+
+    ZSF --> N["Benachrichtigungen
+    E-Mail · Push"]
+    MATCH --> N
+    KLASS --> F1["Filter · Analyse ·
+    Karte · Trends"]
+    TEXTE --> F2["Beschluss-Seiten ·
+    Suche · KI-Frage"]
+`} />
+
+| Pipeline | Quelle | Rhythmus |
+|----------|--------|----------|
+| **Ausschuss-Zusammenfassung** | Tagesordnungen | täglich |
+| **Watcher (Themen-Matching)** | Tagesordnungen | mehrmals täglich |
+| **Protokoll-Extraktion + Beschluss-Klassifikation** | Sitzungsprotokolle | täglich |
+| **Anreicherung** (Entitäten, Embeddings, Rückblicke) | Beschlüsse | wöchentlich |
+
+## Ausschuss-Zusammenfassungen
+
+- Ausschussliste aktualisieren, kommende Sitzungen (3 Monate voraus) scannen.
+- Pro Sitzung mit Tagesordnung wird ein **Hash der Agenda** gebildet — er dient
+  als Cache-Schlüssel *und* zur Änderungserkennung (neue vs. geänderte
+  Tagesordnung).
+- Routine-TOPs („Genehmigung der Niederschrift", Fragestunde …) filtert bereits
+  der Code vor, erst dann fasst das LLM zusammen (JSON-Mode). Das Ergebnis wird
+  je Agenda-Stand **gecacht** — dieselbe Tagesordnung wird nie zweimal
+  zusammengefasst.
+
+## Watcher / Themen-Matching
+
+- Pro Nutzer werden nur **zukünftige** Sitzungen mit Tagesordnung
+  klassifiziert, die dieser Nutzer noch nicht gesehen hat — ändert sich eine
+  Tagesordnung, wird erneut geprüft und benachrichtigt.
+- Das LLM bekommt die öffentlichen TOPs und die nummerierte Themenliste des
+  Nutzers und liefert die Treffer-Paare als JSON. Alerts werden dedupliziert.
+- Der Prompt liegt zentral in der Prompt-Verwaltung und ist über das Admin-UI
+  editierbar.
+
+## Protokolle & Beschluss-Klassifikation
+
+Neu veröffentlichte Sitzungsprotokolle werden geparst, Beschlüsse extrahiert
+(**ein** LLM-Aufruf je Protokoll) und je Beschluss per LLM in **Themenfelder**
+eingeordnet — die Grundlage für Filter, Analyse und die Themenfeld-Rückblicke.
+Details zu den Dokumenten und dem Datenmodell:
+[Ratsdokumente & Beschlüsse](/docs/beschluesse/).
+
+## Wöchentliche Anreicherung
+
+Zieht die schwereren LLM-/Embedding-Backfills nach, damit Themen-Seiten, Karte
+und „Ähnliche Beschlüsse" frisch bleiben: Entitäten-Extraktion → Beschreibungen
+→ Geocoding → Embeddings/Ähnliche → Themen↔Beschlüsse-Matching →
+Themenfeld-Rückblicke.
+
+## LLM-Integration
+
+| Aspekt | Status |
+|--------|--------|
+| Provider | OpenRouter via `openai`-SDK, mit DSGVO-Provider-Routing (siehe [ADR 0002](/docs/adr/0002-dsgvo-provider-routing/)) |
+| Structured Output | JSON-Mode (`response_format={"type":"json_object"}`) |
+| Caching | Ausschuss-Zusammenfassungen per Agenda-Hash |
+| Prompts | zentral verwaltet, admin-editierbar (DB-Overrides über Code-Defaults) |
+| Modelle | je Aufgabe per Env-Variable wählbar, Defaults greifen |
+
+## Evaluation
+
+Das Eval-Harness ([Details](/docs/eval/)) misst die Qualität der beiden
+Matching-Pipelines gegen handgelabelte Fälle:
+
+- **`watcher`** — Tagesordnung → Thema (mengenbasiertes Precision/Recall/F1-
+  Scoring über `(Thema, TOP)`-Paare).
+- **`committee`** — der Routine-Filter der Ausschuss-Zusammenfassungen.
+
+Ein Runner liefert das Scoreboard; gespeicherte Baselines machen Prompt- und
+Modell-Änderungen vergleichbar, statt „gefühlt" besser zu sein.

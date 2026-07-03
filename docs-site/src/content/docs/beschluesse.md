@@ -31,8 +31,8 @@ der Nutzer:innen.
 
 ## Datenmodell (`council.sqlite`)
 
-Phase 1 baut drei Tabellen. Sie sind bewusst so geschnitten, dass spätere Features
-andocken können (siehe „Forward-looking").
+Die Protokoll-Auswertung lebt in drei Tabellen. Sie sind bewusst so geschnitten,
+dass spätere Features andocken können (siehe „Forward-looking").
 
 ```
 council_protocols          -- eine Zeile je verarbeitetem Protokoll
@@ -98,45 +98,36 @@ council_anlagen            -- eine Zeile je Anlage einer Vorlage
   Beschlüsse gegen Nutzer-Themen klassifizieren (+ strenger Verify-Pass) →
   „Beschlüsse zu deinen Themen" + Benachrichtigung.
 
-## Pipeline (Phase 1)
+## Pipeline
 
-Neues Modul **`council/protocols.py`**:
+Das Modul **`council/protocols.py`** erledigt drei Schritte:
 
-- `find_protocol(ksinr, scraper) -> dict|None` — öffentliches Protokoll-PDF auf der
-  Sitzungsseite erkennen (`getfile`-Link mit „Protokoll … öffentlich").
-- `extract_pdf_text(url) -> (text, n_pages)` — via `pypdf`.
-- `extract_protocol(text, model) -> dict` — **ein LLM-Call** → `{protocol_nr, start,
-  end, attendance[], decisions[]}`. Robust gegen deepseek-null-content (Retry/Guard,
-  ). **Kein** Themen-Matching hier (das ist per-owner, Phase 3).
+- das öffentliche **Protokoll-PDF erkennen** (Dokument-Link mit dem Label
+  „Protokoll … öffentlich" auf der Sitzungsseite),
+- den **Text extrahieren** (pypdf — die PDFs tragen seit 2018 eine Textebene,
+  kein OCR nötig),
+- **ein LLM-Aufruf je Protokoll** → Metadaten, Anwesenheit und alle Beschlüsse
+  als strukturiertes JSON (robust gegen leere Modell-Antworten).
 
-**`scripts/backfill_protocols.py`** — Backfill über Datumsbereich (`--since`, Default
-`2023-01-01`, `--until`, `--force`, `--delay`): Sitzungen je Monat enumerieren →
-vergangene mit öffentlichem Protokoll, die noch nicht verarbeitet sind (`has_protocol`)
-→ Download, Extraktion, Speicherung. Idempotent, fehlertolerant pro Protokoll,
-Token-/Kostenausweis.
+Ein idempotenter Backfill über Datumsbereiche hat den Bestand seit 2018
+eingelesen; der tägliche Lauf zieht **neu veröffentlichte** Protokolle nach und
+lädt Vorlagen-/Anlagen-Volltexte (inkl. Rescan der letzten Wochen, s. o.).
 
-**`scripts/check_protocols.py`** — Cron: kürzlich vergangene Sitzungen auf **neu
-veröffentlichte** Protokolle prüfen und nachziehen (z. B. `0 9 * * *`).
+## Im Web
 
-`pypdf` kommt in `requirements.txt`.
+**`/council` (Ratsinformationssystem)** hat zwei Tabs:
 
-## Phase 2 (Frontend) — Notiz zur Integration
+- **„Sitzungen & Tagesordnungen"** — die TOP-Suche über kommende und vergangene
+  Sitzungen.
+- **„Beschlüsse"** — Volltextsuche mit Filtern (Ausschuss / Datum / Ergebnis /
+  Fraktion / Themenfeld).
 
-Statt einer neuen Seite bekommt **`/council` (Ratsinformationssystem) Tabs**:
+Die Beschluss-Detailseite zeigt Abstimmung, Anwesenheit, „Aus der Vorlage",
+das Anlagen-Dossier und Links zu den Original-PDFs; die Analyse rechnet daraus
+u. a. Erfolgsquoten je Fraktion.
 
-- **„Sitzungen & Tagesordnungen"** (bestehende TOP-Suche)
-- **„Beschlüsse"** (neue Suche: Volltext + Filter Ausschuss / Datum / Ergebnis /
-  Fraktion / Thema)
+## Ausbau-Stand
 
-Die Backend-Such-API für Beschlüsse (`search_decisions(...)`) wird bewusst wie die
-bestehende `search_sessions(...)` geformt, damit das Frontend dieselben Muster
-wiederverwenden kann. Beschluss-Detail kann Anwesenheit + Link zum Protokoll-PDF
-und zur Vorlage zeigen.
-
-## Phasen
-
-1. **Daten:** Schema + Extraktionsmodul + Store-Methoden + Backfill/Cron. ✅
-2. **Web:** Tabs auf `/council`, Beschluss-Suche + -Detail, Anwesenheit. ✅
-3. **Themen-Tie-in:** Beschlüsse↔Nutzer-Themen (+ Verify-Pass) + Benachrichtigung. ✅
-4. **Vorlagen & Anlagen:** Volltexte, Antragsteller, Erfolgsquoten. ✅
-5. **Offen:** Personen-/Gremien-Stammdaten (kp-Seiten), Redebeiträge.
+Daten, Web-UI, Themen-Anbindung (Beschlüsse ↔ Nutzer-Themen mit Verify-Pass
+und Benachrichtigung) sowie Vorlagen & Anlagen sind produktiv. **Offen:**
+Personen-/Gremien-Stammdaten des SessionNet, Redebeiträge.

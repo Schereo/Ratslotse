@@ -1,0 +1,134 @@
+---
+title: Architektur
+description: Überblick über Stadtrat-Scraper, Datenbank, KI-Klassifikation, Benachrichtigungen und Deployment.
+---
+
+import Mermaid from '../../components/Mermaid.astro';
+
+Ein Scraper für das Oldenburger Ratsinformationssystem speist eine
+SQLite-Datenbank. Ein Web-Frontend (FastAPI + Next.js) sitzt auf denselben
+Daten und liefert personalisierte Benachrichtigungen per E-Mail und Web-Push.
+
+<Mermaid code={`
+flowchart TD
+    RIS["Oldenburger Ratsinformationssystem
+    (SessionNet)"]
+    SCRAPER["Scraper (council/)
+    Sitzungen · Protokolle · Vorlagen · Anlagen"]
+    DB[("SQLite
+    Ratsdaten · Konten & Themen")]
+    LLM["LLM via OpenRouter
+    zusammenfassen · matchen · klassifizieren"]
+    API["FastAPI-Backend"]
+    WEB["Next.js-Frontend
+    ratslotse.de · iOS-App"]
+    NOTIFY["Benachrichtigungen
+    E-Mail (Resend) · Web-Push (APNs/FCM)"]
+
+    RIS -->|"HTML & PDFs — ohne LLM"| SCRAPER
+    SCRAPER --> DB
+    DB <--> LLM
+    DB --> API
+    API --> WEB
+    DB --> NOTIFY
+`} />
+
+Welche Dokumente im Einzelnen ausgewertet werden und was daraus entsteht, zeigt
+die Übersichtsgrafik unter [Ratsdokumente & Beschlüsse](/docs/beschluesse/).
+
+---
+
+## Komponenten
+
+### Stadtrat-Scraper (`council/`)
+
+Das Ratsinformationssystem (`buergerinfo.oldenburg.de`) läuft auf **SessionNet**
+(Somacos GmbH). Es gibt keine öffentliche API — die Seiten werden mit
+BeautifulSoup4 gescrapt:
+
+- die **Kalenderseite** liefert alle Sitzungen eines Monats,
+- die **Sitzungs-Detailseite** Kopfdaten (Datum/Zeit/Ort) und die
+  Tagesordnungstabelle (TOPs mit `Ö` sind öffentlich, `N` nicht-öffentlich),
+- die **Vorlagen-Seite** Vorlagen- und Anlagen-PDFs (`council/vorlagen.py`,
+  ausgewertet ganz ohne LLM).
+
+Der Store merkt sich, welche Sitzungen bereits gesehen und welche Alerts schon
+versendet wurden — das verhindert Doppel-Benachrichtigungen.
+
+### KI-Klassifikation
+
+Die Klassifikation läuft über **OpenRouter** (OpenAI-SDK) und ist bewusst
+zustandslos — kein Fine-Tuning, strukturierte Prompts mit JSON-Mode. Die
+Modelle sind je Aufgabe über Env-Variablen konfigurierbar; Defaults greifen
+ohne Konfiguration.
+
+Details: siehe [KI-Pipeline](/docs/ki-pipeline/).
+
+### Benachrichtigungen
+
+Jeder Nutzer wählt pro Konto einen Zustellkanal (`email` / `push` / `both`).
+Die geplanten Jobs iterieren über alle Nutzer mit Themen und liefern
+personalisierte Ratsinfo-Benachrichtigungen: **E-Mail** via Resend und
+**Web-Push** auf die registrierten App-Geräte via APNs/FCM. Fehlt das Secret
+eines Kanals, wird dieser Kanal still übersprungen.
+
+---
+
+## Datenbankschema
+
+Zwei SQLite-Dateien: eine für Konten & Themen, eine für die Ratsdaten
+(siehe [ADR 0005](/docs/adr/0005-sqlite-fts5/)).
+
+**Konten & Themen**
+
+- `web_users` — Web-Konten (E-Mail, Passwort-Hash, Rolle, Status)
+- `topics` — Themen-Watchlist pro Nutzer (`owner_id`, `name`, `description`)
+- `committee_subscriptions` — Ausschuss-Abos pro Nutzer
+- `push_tokens`, `email_verification_tokens` — App-Push & E-Mail-Verifikation
+- `prompts` — live editierbare Prompt-Overrides (Admin-UI)
+
+**Ratsdaten (`council.sqlite`)**
+
+- `council_sessions` — gescrapte Sitzungs-Metadaten
+- `council_agenda_items` — Tagesordnungspunkte je Sitzung
+- `council_alerts_sent`, `committee_notifications` — Deduplizierung der Benachrichtigungen
+- `committee_summaries` — gecachte Agenda-Zusammenfassungen
+- `council_protocols`, `council_decisions`, `council_attendance`,
+  `council_vorlagen`, `council_anlagen` — Dokument-Auswertung
+  (siehe [Beschlüsse](/docs/beschluesse/))
+
+---
+
+## Geplante Jobs
+
+Alle Auswertungen laufen als geplante Jobs auf dem Server — jeder Lauf ist
+idempotent und meldet Fehler per E-Mail an die Betreiber-Adresse:
+
+| Rhythmus | Aufgabe |
+|---|---|
+| täglich | Datenbank-Backup (rotierend, optional off-site gespiegelt) |
+| täglich | Ausschuss-Tagesordnungen zusammenfassen |
+| mehrmals täglich | Sitzungen auf Themen-Treffer prüfen (inkl. geänderter Tagesordnungen) |
+| täglich | neue Protokolle parsen, Beschlüsse klassifizieren, Vorlagen nachladen |
+| wöchentlich | LLM-/Embedding-Backfills: Entitäten, Geocoding, Ähnliche Beschlüsse, Rückblicke |
+
+---
+
+## Deployment
+
+- **Hosting:** ein App-Server hinter einer Edge-VM; **Caddy** auf der Edge
+  terminiert TLS und proxyt auf das Next.js-Frontend
+  (siehe [ADR 0004](/docs/adr/0004-caddy-statt-nginx/)).
+- **Prozesse:** Backend (FastAPI/uvicorn) und Frontend (Next.js) laufen als
+  systemd-Services.
+- **CI/CD:** GitHub Actions. **Nur ein gemergter Pull Request nach `main`**
+  löst den Deploy aus (rsync + Service-Restart + Frontend-Build) — ein direkter
+  Push auf `main` läuft nur durch die Tests
+  (siehe [ADR 0008](/docs/adr/0008-deploy-nur-bei-merge/)).
+- **Secrets:** `.env` liegt nur auf dem Server, nie im Git; der Deploy-Key ist
+  ein GitHub-Actions-Secret.
+
+:::tip
+Diese Seite ist die Architektur-Übersicht für Mitlesende. Konkrete Hosts,
+Zeitpläne und Server-Details stehen bewusst nicht in dieser öffentlichen Doku.
+:::
