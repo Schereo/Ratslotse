@@ -1,25 +1,33 @@
 ---
-title: "Feature: Sitzungsprotokolle & Beschlüsse"
-description: Datenmodell und Pipeline der Protokoll-Auswertung.
+title: "Feature: Ratsdokumente & Beschlüsse"
+description: Welche Dokumente ausgewertet werden — Protokolle, Vorlagen, Anlagen — und das Datenmodell dahinter.
 ---
 
-Auswertung der öffentlichen Sitzungsprotokolle (Niederschriften) des Oldenburger
-Stadtrats: strukturierte **Beschlüsse**, **Abstimmungen/Fraktionen** und
-**Anwesenheit** — durchsuchbar im Web, optional verknüpft mit den Themen der
-Nutzer.
+Auswertung der öffentlichen Dokumente des Oldenburger Ratsinformationssystems:
+**Sitzungsprotokolle** (→ Beschlüsse, Abstimmungen, Anwesenheit), **Vorlagen**
+(→ Sachverhalt & Begründung) und **Anlagen** (→ Original-Anträge der Fraktionen
+mit Antragsteller-Erkennung) — durchsuchbar im Web, verknüpft mit den Themen
+der Nutzer:innen.
 
-## Faktenlage (an echten Protokollen verifiziert)
+![Diagramm: Welche Dokumente Ratslotse auswertet — Sitzungskalender, Protokolle, Vorlagen und Anlagen — und welche Features daraus entstehen](../../assets/dokumente-pipeline.svg)
+
+## Faktenlage (an echten Dokumenten verifiziert)
 
 - Vergangene Sitzungen tragen ein **„Protokoll (öffentlich)"-PDF** (`getfile.php?id=…`),
   erkennbar am Label. Veröffentlicht mit Verzögerung (Tage–Wochen).
 - Inhalt pro Protokoll: Metadaten (Protokoll-Nr., Datum, Beginn/Ende), **Teilnehmer
   mit Fraktion**, und pro TOP **Beschlusstext + Abstimmungsergebnis** (einstimmig /
   mehrheitlich bei N Gegenstimmen, welche Fraktion, angenommen/abgelehnt/vertagt).
-- **Volumen:** ~8,8 Sitzungen/Monat, Archiv ≥ 2023, ~85–90 % der vergangenen
-  Sitzungen haben ein öffentliches Protokoll → **~300–350 Protokolle** für den
-  Backfill 2023–heute.
-- **Kosten:** LLM-Extraktion ≈ **$0,007/Protokoll** (deepseek-v4-pro, 1 Call/Protokoll)
-  → Komplett-Backfill **~$2–3 einmalig**, laufend ~$1/Jahr.
+- **Bestand:** lückenlos **seit Januar 2018** (~100 Sitzungen/Jahr, ~820 Protokolle,
+  über 7.700 Beschlüsse). Kalendereinträge ohne veröffentlichtes Protokoll (Absagen)
+  sind normal und werden bei jedem Lauf erneut geprüft.
+- **Vorlagen** (~5.000) tragen ihren Inhalt **nur im PDF** — die `vo0050`-Seite
+  liefert bloß Metadaten (Betreff, Nr., Art). Es gibt **keine Vorlagen-Art
+  „Antrag"**: Die Original-Anträge der Fraktionen hängen als **Anlagen-PDFs**
+  an den Vorlagen.
+- **Kosten:** LLM braucht nur die Protokoll-Extraktion ≈ **$0,007/Protokoll**
+  (1 Call/Protokoll) und die Klassifikation. Vorlagen und Anlagen werden **ohne
+  LLM** ausgewertet (pypdf + Wortlisten) — ihr Backfill kostet $0.
 
 ## Datenmodell (`council.sqlite`)
 
@@ -49,19 +57,46 @@ council_attendance         -- eine Zeile je Person je Sitzung
 besseren Prompts neu auswerten können. Beschlüsse tragen `vorlage_nr`/`kvonr`, damit
 sie später mit Vorlagen verknüpfbar sind.
 
-### Forward-looking (NICHT in Phase 1, aber vom Schema vorbereitet)
+### Vorlagen & Anlagen (`council/vorlagen.py`)
 
-- **`council_proposals`** (kvonr, vorlage_nr, title, full_text, type) — Vorlagen
-  speichern (Scraper hat `fetch_proposal_text`); Beschlüsse linken via kvonr →
-  „was wurde vorgeschlagen vs. beschlossen", Volltextsuche in Vorlagen.
+Seither dazugekommen — beide Dokumentklassen werden **ohne LLM** ausgewertet:
+
+```
+council_vorlagen           -- eine Zeile je Vorlage (kvonr = SessionNet-Dokument-ID)
+  kvonr PK, vorlage_nr, title, art,      -- art: Beschlussvorlage | Berichtsvorlage | …
+  document_id, document_url,
+  raw_text, n_pages,                     -- pypdf-Volltext (Sachverhalt & Begründung)
+  fetched_at, status,                    -- ok | empty | no_pdf | failed
+  anlagen_scanned
+
+council_anlagen            -- eine Zeile je Anlage einer Vorlage
+  document_id PK, kvonr, label, url,
+  is_antrag,                             -- Label-Muster: Antrag/Änderungsantrag/Anfrage
+  antragsteller,                         -- JSON, erkannte Fraktionen (Wortlisten, parties_in_text)
+  raw_text, n_pages,                     -- Volltext NUR für Anträge
+  fetched_at, status                     -- listed | ok | empty | failed
+```
+
+- **Beschluss ↔ Vorlage** läuft über `vorlage_nr` (mit Basis-Fallback:
+  `22/0348/1` → `22/0348`) — Protokolle liefern nie ein `kvonr`.
+- **Antragsteller-Erkennung:** Label zuerst („Antrag der SPD-Fraktion …"), sonst
+  erste PDF-Seite; Mehrparteien-Labels („Antrag SPD CDU Grüne FDP") zählen für
+  alle. Wortgrenzen verhindern Fehltreffer („Begrünung" ≠ Grüne).
+- **Täglicher Rescan** der letzten 45 Tage: Änderungsanträge landen oft erst
+  kurz vor der Sitzung auf der Vorlagen-Seite; bereits eingelesene Dokumente
+  werden nicht erneut geladen.
+- Daraus entstehen: „Aus der Vorlage" + Anlagen-Dossier auf der Beschluss-Seite,
+  die **Erfolgsquoten je Fraktion** in der Analyse, Vorlagen-/Antragstext im
+  FTS-Index und im Kontext der KI-Frage.
+
+### Forward-looking (vom Schema vorbereitet)
+
 - **`council_persons`** — normalisierte Politiker:innen aus `council_attendance`
   → Anwesenheits-Statistik, perspektivisch Abstimmungs-/Wahlverhalten je Person.
-- **`council_decision_matches`** (owner_id, topic_id, ksinr, decision_id) — Phase 3:
+  (Die Personen-/Gremien-Stammdatenseiten des SessionNet sind noch nicht angebunden.)
+- **`council_decision_matches`** (owner_id, topic_id, ksinr, decision_id) —
   Beschlüsse gegen Nutzer-Themen klassifizieren (+ strenger Verify-Pass) →
-  „Beschlüsse zu deinen Themen" + Benachrichtigung. Spiegelt `article_topic_matches`.
-- **`council_documents`** (ksinr, doc_id, label, type) — alle Anhänge katalogisieren
-  (Aushang/Vorlage/Anträge/Protokoll).
-- **FTS** auf `council_decisions` (title+beschluss) für schnelle Volltextsuche.
+  „Beschlüsse zu deinen Themen" + Benachrichtigung.
 
 ## Pipeline (Phase 1)
 
@@ -100,8 +135,8 @@ und zur Vorlage zeigen.
 
 ## Phasen
 
-1. **Daten (dieser PR):** Schema + Extraktionsmodul + Store-Methoden + Backfill/Cron.
-   Lokal getestet; Prod-Backfill nach Deploy.
-2. **Web:** Tabs auf `/council`, Beschluss-Suche + -Detail, Anwesenheit.
-3. **Themen-Tie-in:** Beschlüsse↔Nutzer-Themen (+ Verify-Pass) + Benachrichtigung.
-4. **Optional später:** Vorlagen-Texte, Personen-/Fraktions-Statistiken, Redebeiträge.
+1. **Daten:** Schema + Extraktionsmodul + Store-Methoden + Backfill/Cron. ✅
+2. **Web:** Tabs auf `/council`, Beschluss-Suche + -Detail, Anwesenheit. ✅
+3. **Themen-Tie-in:** Beschlüsse↔Nutzer-Themen (+ Verify-Pass) + Benachrichtigung. ✅
+4. **Vorlagen & Anlagen:** Volltexte, Antragsteller, Erfolgsquoten. ✅
+5. **Offen:** Personen-/Gremien-Stammdaten (kp-Seiten), Redebeiträge.

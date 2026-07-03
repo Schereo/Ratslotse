@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 656" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" role="img" aria-label="Welche Dokumente Ratslotse auswertet und was daraus entsteht">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#5b87a6"/>
+    </marker>
+  </defs>
+
+  <!-- Titel -->
+  <text x="480" y="30" text-anchor="middle" font-size="18" font-weight="700" fill="#2e86c6">Welche Dokumente Ratslotse auswertet — und was daraus entsteht</text>
+
+  <!-- Spaltenköpfe -->
+  <text x="150" y="62" text-anchor="middle" font-size="12" font-weight="600" fill="#5b87a6" letter-spacing="0.06em">RATSINFORMATIONSSYSTEM</text>
+  <text x="495" y="62" text-anchor="middle" font-size="12" font-weight="600" fill="#5b87a6" letter-spacing="0.06em">DAS ZIEHEN WIR HERAUS</text>
+  <text x="828" y="62" text-anchor="middle" font-size="12" font-weight="600" fill="#5b87a6" letter-spacing="0.06em">DAS ENTSTEHT DARAUS</text>
+
+  <!-- ═ Zeile 1: Kalender & Tagesordnung ═ -->
+  <rect x="20" y="76" width="260" height="104" rx="12" fill="#0b4a75"/>
+  <text x="36" y="104" font-size="14.5" font-weight="700" fill="#ffffff">Sitzungskalender &amp;</text>
+  <text x="36" y="122" font-size="14.5" font-weight="700" fill="#ffffff">Tagesordnung</text>
+  <text x="36" y="144" font-size="11.5" fill="#bcd9ee">HTML · Kalender + Sitzungsseite</text>
+  <text x="36" y="160" font-size="11.5" fill="#bcd9ee">alle Gremien, öffentliche TOPs</text>
+  <line x1="280" y1="128" x2="322" y2="128" stroke="#5b87a6" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="326" y="76" width="340" height="104" rx="12" fill="#ffffff" stroke="#94b8d0" stroke-width="1.5"/>
+  <rect x="342" y="90" width="96" height="20" rx="10" fill="#e8f2fa"/>
+  <text x="390" y="104" text-anchor="middle" font-size="11" font-weight="600" fill="#0764a6">HTML-Parsing</text>
+  <text x="342" y="130" font-size="12.5" fill="#1c3345">Termine, Gremien, Sitzungsort</text>
+  <text x="342" y="147" font-size="12.5" fill="#1c3345">Tagesordnungspunkte (Ö/N)</text>
+  <text x="342" y="164" font-size="12.5" fill="#1c3345">Verweise auf Vorlagen (kvonr)</text>
+
+  <!-- ═ Zeile 2: Protokoll ═ -->
+  <rect x="20" y="196" width="260" height="104" rx="12" fill="#0b4a75"/>
+  <text x="36" y="224" font-size="14.5" font-weight="700" fill="#ffffff">Sitzungsprotokoll</text>
+  <text x="36" y="244" font-size="11.5" fill="#bcd9ee">PDF je Sitzung · ~820 Protokolle</text>
+  <text x="36" y="260" font-size="11.5" fill="#bcd9ee">lückenlos seit Januar 2018</text>
+  <line x1="280" y1="248" x2="322" y2="248" stroke="#5b87a6" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="326" y="196" width="340" height="104" rx="12" fill="#ffffff" stroke="#94b8d0" stroke-width="1.5"/>
+  <rect x="342" y="210" width="180" height="20" rx="10" fill="#e8f2fa"/>
+  <text x="432" y="224" text-anchor="middle" font-size="11" font-weight="600" fill="#0764a6">LLM-Extraktion + Klassifikation</text>
+  <text x="342" y="250" font-size="12.5" fill="#1c3345">Beschlüsse: Wortlaut, Ergebnis, Teilabstimmungen,</text>
+  <text x="342" y="267" font-size="12.5" fill="#1c3345">Gegenstimmen/Enthaltungen · Anwesenheit je Fraktion</text>
+  <text x="342" y="284" font-size="12.5" fill="#1c3345">12 Themenfelder · Entitäten · €-Beträge · Stadtziele</text>
+
+  <!-- ═ Zeile 3: Vorlage ═ -->
+  <rect x="20" y="316" width="260" height="104" rx="12" fill="#0b4a75"/>
+  <text x="36" y="344" font-size="14.5" font-weight="700" fill="#ffffff">Vorlage</text>
+  <text x="36" y="364" font-size="11.5" fill="#bcd9ee">PDF · das Dokument hinter jedem TOP</text>
+  <text x="36" y="380" font-size="11.5" fill="#bcd9ee">~5.000 Beschluss- &amp; Berichtsvorlagen</text>
+  <line x1="280" y1="368" x2="322" y2="368" stroke="#5b87a6" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="326" y="316" width="340" height="104" rx="12" fill="#ffffff" stroke="#94b8d0" stroke-width="1.5"/>
+  <rect x="342" y="330" width="126" height="20" rx="10" fill="#e8f2fa"/>
+  <text x="405" y="344" text-anchor="middle" font-size="11" font-weight="600" fill="#0764a6">pypdf — ohne LLM</text>
+  <text x="342" y="370" font-size="12.5" fill="#1c3345">Sachverhalt &amp; Begründung im Volltext</text>
+  <text x="342" y="387" font-size="12.5" fill="#1c3345">Art (Beschluss-/Berichtsvorlage)</text>
+  <text x="342" y="404" font-size="12.5" fill="#1c3345">Verknüpfung Vorlage ↔ Beschluss</text>
+
+  <!-- ═ Zeile 4: Anlagen ═ -->
+  <rect x="20" y="436" width="260" height="104" rx="12" fill="#0b4a75"/>
+  <text x="36" y="464" font-size="14.5" font-weight="700" fill="#ffffff">Anlagen</text>
+  <text x="36" y="484" font-size="11.5" fill="#bcd9ee">PDFs an der Vorlage: Fraktions-Anträge,</text>
+  <text x="36" y="500" font-size="11.5" fill="#bcd9ee">Änderungsanträge, Karten, Bilanzen …</text>
+  <line x1="280" y1="488" x2="322" y2="488" stroke="#5b87a6" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="326" y="436" width="340" height="104" rx="12" fill="#ffffff" stroke="#94b8d0" stroke-width="1.5"/>
+  <rect x="342" y="450" width="150" height="20" rx="10" fill="#e8f2fa"/>
+  <text x="417" y="464" text-anchor="middle" font-size="11" font-weight="600" fill="#0764a6">pypdf + Wortlisten</text>
+  <text x="342" y="490" font-size="12.5" fill="#1c3345">Anträge: Volltext + Antragsteller-Fraktion(en)</text>
+  <text x="342" y="507" font-size="12.5" fill="#1c3345">→ Erfolgsquoten je Fraktion</text>
+  <text x="342" y="524" font-size="12.5" fill="#1c3345">übrige Anlagen: Titel + Direktlink</text>
+
+  <!-- Bündel-Pfeile Mitte → Features -->
+  <path d="M666 128 C 700 128, 700 240, 712 288" fill="none" stroke="#5b87a6" stroke-width="2"/>
+  <path d="M666 248 C 696 248, 698 270, 712 296" fill="none" stroke="#5b87a6" stroke-width="2"/>
+  <path d="M666 368 C 696 368, 698 340, 712 314" fill="none" stroke="#5b87a6" stroke-width="2"/>
+  <path d="M666 488 C 700 488, 700 370, 712 322" fill="none" stroke="#5b87a6" stroke-width="2"/>
+  <line x1="708" y1="305" x2="722" y2="305" stroke="#5b87a6" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Feature-Panel -->
+  <rect x="726" y="76" width="214" height="464" rx="14" fill="#ffffff" stroke="#f0b28a" stroke-width="1.5"/>
+  <g font-size="13" font-weight="600" fill="#7c3410">
+    <rect x="740" y="92" width="186" height="50" rx="10" fill="#fdeadd" stroke="#f0b28a"/>
+    <text x="754" y="114">🔎 Suche &amp; Volltext</text>
+    <text x="754" y="132" font-size="11" font-weight="400" fill="#a05a2c">inkl. Sachverhalt &amp; Anträge</text>
+
+    <rect x="740" y="152" width="186" height="50" rx="10" fill="#fdeadd" stroke="#f0b28a"/>
+    <text x="754" y="174">🤖 KI-Frage an den Rat</text>
+    <text x="754" y="192" font-size="11" font-weight="400" fill="#a05a2c">Antwort mit Quellen-Zitaten</text>
+
+    <rect x="740" y="212" width="186" height="50" rx="10" fill="#fdeadd" stroke="#f0b28a"/>
+    <text x="754" y="234">📄 Beschluss-Dossier</text>
+    <text x="754" y="252" font-size="11" font-weight="400" fill="#a05a2c">Abstimmung, Vorlage, Anlagen</text>
+
+    <rect x="740" y="272" width="186" height="50" rx="10" fill="#fdeadd" stroke="#f0b28a"/>
+    <text x="754" y="294">📊 Analyse</text>
+    <text x="754" y="312" font-size="11" font-weight="400" fill="#a05a2c">Erfolgsquoten, Finanzen, Trends</text>
+
+    <rect x="740" y="332" width="186" height="50" rx="10" fill="#fdeadd" stroke="#f0b28a"/>
+    <text x="754" y="354">🗺️ Karte &amp; Themenseiten</text>
+    <text x="754" y="372" font-size="11" font-weight="400" fill="#a05a2c">Orte, Projekte, Organisationen</text>
+
+    <rect x="740" y="392" width="186" height="50" rx="10" fill="#fdeadd" stroke="#f0b28a"/>
+    <text x="754" y="414">🔔 Benachrichtigungen</text>
+    <text x="754" y="432" font-size="11" font-weight="400" fill="#a05a2c">Push &amp; E-Mail zu deinen Themen</text>
+
+    <rect x="740" y="452" width="186" height="50" rx="10" fill="#fdeadd" stroke="#f0b28a"/>
+    <text x="754" y="474">📚 Themenfeld-Rückblicke</text>
+    <text x="754" y="492" font-size="11" font-weight="400" fill="#a05a2c">„Was bewegte den Rat?“</text>
+  </g>
+
+  <!-- Fußnote -->
+  <text x="480" y="586" text-anchor="middle" font-size="11.5" fill="#5b87a6">Datenbestand lückenlos seit Januar 2018 · Aktualisierung täglich per Cron · nicht-öffentliche TOPs (N) bleiben außen vor</text>
+  <text x="480" y="604" text-anchor="middle" font-size="11.5" fill="#5b87a6">LLM nur für Protokoll-Extraktion und Klassifikation (DSGVO-Provider-Routing) — Vorlagen und Anlagen werden ohne LLM ausgewertet</text>
+</svg>

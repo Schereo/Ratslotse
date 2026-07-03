@@ -12,6 +12,7 @@ personalisierte Benachrichtigungen per E-Mail und Web-Push.
                      │
              council/scraper.py
              council/protocols.py
+             council/vorlagen.py          ← Vorlagen- & Anlagen-PDFs (ohne LLM)
                      │
               council/store.py
               (council.sqlite)  ── web_users, topics (nwz.sqlite)
@@ -22,6 +23,9 @@ personalisierte Benachrichtigungen per E-Mail und Web-Push.
                      │
         E-Mail (Resend) · Web-Push (APNs/FCM)
 ```
+
+Welche Dokumente im Einzelnen ausgewertet werden und was daraus entsteht, zeigt
+die Übersichtsgrafik unter [Ratsdokumente & Beschlüsse](/docs/beschluesse/).
 
 ---
 
