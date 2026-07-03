@@ -314,11 +314,13 @@ function FinanceView() {
 }
 
 type AnalysisSub = "parteien" | "finanzen" | "trends" | "ziele" | "personen";
+// Trends zuerst und als Default: Rückblicke + Quartals-Trends sind der
+// zugänglichste Einstieg in die Analyse — Parteien/Personen sind die Vertiefung.
 const SUB_TABS: [AnalysisSub, string, typeof Users][] = [
+  ["trends", "Trends", TrendingUp],
   ["parteien", "Parteien", Users],
   ["personen", "Personen", User],
   ["finanzen", "Finanzen", Euro],
-  ["trends", "Trends", TrendingUp],
   ["ziele", "Ziele", Target],
 ];
 
@@ -326,11 +328,11 @@ export function AnalysisTab() {
   const sp = useSearchParams();
   const router = useRouter();
   const raw = sp.get("sub");
-  const sub: AnalysisSub = raw === "finanzen" || raw === "trends" || raw === "ziele" || raw === "personen" ? raw : "parteien";
+  const sub: AnalysisSub = raw === "finanzen" || raw === "parteien" || raw === "ziele" || raw === "personen" ? raw : "trends";
   const setSub = (s: AnalysisSub) => {
     const params = new URLSearchParams(sp.toString());
     params.set("tab", "analysis");
-    if (s === "parteien") params.delete("sub"); else params.set("sub", s);
+    if (s === "trends") params.delete("sub"); else params.set("sub", s);
     router.replace(`/council?${params.toString()}`, { scroll: false });
   };
 
