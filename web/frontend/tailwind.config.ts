@@ -85,6 +85,13 @@ const config: Config = {
         "accordion-up": "accordion-up 0.2s ease-out",
         bob: "bob 4s ease-in-out infinite",
       },
+      // Starke Kurven als Utilities (ease-out-strong, ease-drawer …) —
+      // die Werte stehen als CSS-Variablen in globals.css.
+      transitionTimingFunction: {
+        "out-strong": "var(--ease-out-strong)",
+        "in-out-strong": "var(--ease-in-out-strong)",
+        drawer: "var(--ease-drawer)",
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],

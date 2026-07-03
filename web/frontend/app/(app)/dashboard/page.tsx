@@ -143,7 +143,7 @@ function FirstSteps({ hasTopic }: { hasTopic: boolean }) {
           <div className="mt-2 flex items-center gap-2">
             <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-primary/15">
               <div
-                className="h-full rounded-full bg-primary transition-all duration-500"
+                className="h-full rounded-full bg-primary transition-[width] duration-500 ease-out-strong"
                 style={{ width: `${(doneCount / steps.length) * 100}%` }}
               />
             </div>

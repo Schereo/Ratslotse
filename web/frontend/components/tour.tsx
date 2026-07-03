@@ -221,7 +221,9 @@ export function GuidedTour() {
       {/* Abdunkelung — mit Spotlight-Loch, solange es ein Ziel gibt. */}
       {rect ? (
         <div
-          className="pointer-events-none fixed rounded-xl transition-all duration-300"
+          // Der Spotlight wandert zwischen Zielen (Onboarding, selten) — Bewegung
+          // auf dem Screen bekommt die starke in-out-Kurve; Properties explizit.
+          className="pointer-events-none fixed rounded-xl transition-[top,left,width,height] duration-300 ease-in-out-strong"
           style={{
             top: rect.top,
             left: rect.left,
@@ -261,7 +263,7 @@ export function GuidedTour() {
                 {STEPS.map((s, i) => (
                   <span
                     key={s.id}
-                    className={`h-1.5 rounded-full transition-all ${i === stepIndex ? "w-4 bg-primary" : "w-1.5 bg-muted-foreground/30"}`}
+                    className={`h-1.5 rounded-full transition-[width,background-color] duration-200 ease-out-strong ${i === stepIndex ? "w-4 bg-primary" : "w-1.5 bg-muted-foreground/30"}`}
                   />
                 ))}
               </div>

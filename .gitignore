@@ -8,3 +8,8 @@ __pycache__/
 .pytest_cache/
 web/frontend/.next/
 web/frontend/node_modules/
+
+# Lokal installierte Agent-Skills (npx skills add …) — Fremdinhalte, nicht committen
+.agents/
+.claude/skills/
+skills-lock.json

@@ -26,7 +26,9 @@ export function Badge({ children, color = "slate", className }: { children: Reac
 export function Spinner({ className }: { className?: string }) {
   return (
     <div className={cn("flex items-center justify-center p-8", className)}>
-      <div className="h-6 w-6 animate-spin rounded-full border-2 border-muted border-t-primary" />
+      {/* 600 ms statt 1 s Umdrehung: ein schnellerer Spinner lässt dieselbe
+          Ladezeit kürzer wirken (wahrgenommene Performance). */}
+      <div className="h-6 w-6 animate-spin rounded-full border-2 border-muted border-t-primary [animation-duration:600ms]" />
     </div>
   );
 }

@@ -32,6 +32,12 @@
     /* Signal-Orange (Lotsenboot): Maskottchen, Highlights, sparsame Akzente. */
     --signal: 19 92% 55%;
     --signal-foreground: 0 0% 100%;
+    /* Starke Easing-Kurven (animations.dev): die CSS-Standardkurven sind zu
+       schwach. out = Eintritte/Feedback, in-out = Bewegung auf dem Screen,
+       drawer = iOS-artige Sheet-Kurve (Ionic). */
+    --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
+    --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   }
 
   .dark {
@@ -84,9 +90,26 @@
 }
 
 @layer components {
-  /* Subtle lift for clickable cards — the Linear/Stripe hover affordance. */
+  /* Subtle lift for clickable cards — the Linear/Stripe hover affordance.
+     Kein transition-all (nur die drei Properties, die sich wirklich ändern),
+     starke ease-out-Kurve — und der Hover-Lift nur für echte Zeiger: auf
+     Touch löst Tippen sonst einen „klebrigen" Hover aus, der bis zum nächsten
+     Tap stehen bleibt. Touch bekommt stattdessen Press-Feedback (scale). */
   .card-interactive {
-    @apply cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lifted;
+    @apply cursor-pointer;
+    transition:
+      transform 200ms var(--ease-out-strong),
+      border-color 200ms ease,
+      box-shadow 200ms ease;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .card-interactive:hover {
+      @apply border-primary/35 shadow-lifted;
+      transform: translateY(-2px);
+    }
+  }
+  .card-interactive:active {
+    transform: scale(0.99);
   }
 
   /* Sanfter Marken-Verlauf für Hero-Flächen und Primär-CTAs. */

@@ -191,14 +191,17 @@ export function CommandPalette() {
   return (
     <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=open]:fade-in-0" />
+        {/* Bewusst KEINE Öffnungs-Animation: ⌘K ist eine Tastatur-Aktion, die
+            dutzende Male am Tag feuert — jede Animation macht sie gefühlt
+            langsamer (Raycast-Prinzip). */}
+        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50" />
         <DialogPrimitive.Content
           onOpenAutoFocus={(e) => {
             // Fokus direkt ins Suchfeld statt auf den Dialog-Container.
             e.preventDefault();
             (document.getElementById("cmdk-input") as HTMLInputElement | null)?.focus();
           }}
-          className="fixed left-1/2 top-[12vh] z-50 w-[min(94vw,560px)] -translate-x-1/2 overflow-hidden rounded-2xl border border-border bg-card shadow-lifted data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
+          className="fixed left-1/2 top-[12vh] z-50 w-[min(94vw,560px)] -translate-x-1/2 overflow-hidden rounded-2xl border border-border bg-card shadow-lifted"
         >
           <DialogPrimitive.Title className="sr-only">Suche und Befehle</DialogPrimitive.Title>
           <div className="flex items-center gap-2 border-b border-border px-4">
