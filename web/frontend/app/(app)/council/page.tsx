@@ -622,7 +622,7 @@ function SearchTab({ committees }: { committees: string[] }) {
 const TAB_META: Record<Tab, { title: string; description: string }> = {
   decisions: { title: "Beschlüsse", description: "Beschlüsse durchsuchen oder dem Rat eine KI-Frage stellen." },
   sessions: { title: "Sitzungen", description: "Sitzungen und Tagesordnungen von Rat und Ausschüssen." },
-  themen: { title: "Themen", description: "Wiederkehrende Orte, Projekte und Organisationen — als Liste oder Karte." },
+  themen: { title: "Themen", description: "Was den Rat wo beschäftigt — auf der Stadtkarte und als Liste." },
   analysis: { title: "Analyse", description: "Parteien, Personen, Finanzen, Trends und Ziele im Überblick." },
 };
 

@@ -6,6 +6,7 @@ import type { Map as LeafletMap, TileLayer } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { EntityMapPoint } from "@/lib/types";
 import { themaHref } from "@/lib/routes";
+import { cn } from "@/lib/utils";
 
 // Minimalist CARTO basemaps, swapped live with the site theme (same as EntityMap).
 const TILES = {
@@ -24,7 +25,7 @@ export const KIND_COLOR: Record<string, string> = {
 // decisions reference it. Plain Leaflet + CARTO tiles, client-only (load via
 // next/dynamic ssr:false), theme-reactive like EntityMap. CircleMarkers only — no
 // marker-icon images to fetch (CSP img-src stays limited to the tiles).
-export function CouncilMap({ points }: { points: EntityMapPoint[] }) {
+export function CouncilMap({ points, className }: { points: EntityMapPoint[]; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const router = useRouter();
@@ -90,7 +91,7 @@ export function CouncilMap({ points }: { points: EntityMapPoint[] }) {
   return (
     <div
       ref={ref}
-      className="h-[72vh] min-h-[30rem] w-full overflow-hidden rounded-lg border border-border"
+      className={cn("h-[72vh] min-h-[30rem] w-full overflow-hidden rounded-lg border border-border", className)}
       aria-label="Stadtweite Themen-Karte"
     />
   );
