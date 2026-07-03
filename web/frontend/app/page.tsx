@@ -10,6 +10,7 @@ import { HeaderCTA } from "@/components/landing-cta";
 import { NativeRedirect } from "@/components/native-redirect";
 import { LiveStats } from "@/components/live-stats";
 import { Reveal } from "@/components/reveal";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Ratslotse — Oldenburger Ratsinformationen verständlich",
@@ -17,13 +18,16 @@ export const metadata: Metadata = {
     "Beschlüsse des Oldenburger Stadtrats durchsuchen, KI-Fragen stellen, Themen auf der Karte sehen und Parteien, Personen und Finanzen analysieren. Aus dem amtlichen Ratsinformationssystem, verständlich aufbereitet.",
 };
 
+// Bento-Anordnung statt drei gleicher Spalten: `wide`-Karten spannen auf
+// Desktop zwei Spalten (Zick-Zack 2-1 / 1-2 / 1-2), `hero` hebt das
+// Killerfeature farblich heraus.
 const FEATURES = [
+  { icon: Sparkles, title: "Frag den Rat", desc: "Stell eine Frage in normaler Sprache; die KI findet die passenden Beschlüsse und antwortet mit Quellen und Fußnoten.", wide: true, hero: true },
   { icon: Search, title: "Beschlüsse durchsuchen", desc: "Volltextsuche mit Filtern nach Fraktion, Themenfeld und Geldbeträgen — statt PDF-Wälzen." },
-  { icon: Sparkles, title: "Frag den Rat", desc: "Stell eine Frage in normaler Sprache; die KI findet die passenden Beschlüsse und antwortet mit Quellen." },
   { icon: MapPin, title: "Themen & Karte", desc: "Orte, Straßen und Projekte mit KI-Beschreibung — und auf einer Stadtkarte, wo der Rat aktiv ist." },
-  { icon: BarChart3, title: "Analyse", desc: "Wer ist im Rat präsent, wo fließt das Geld, welche Themen bewegen — Parteien, Personen, Finanzen, Trends." },
-  { icon: Bell, title: "Benachrichtigungen", desc: "Lege Themen an und werde bei neuen Beschlüssen informiert — per Push oder E-Mail." },
+  { icon: BarChart3, title: "Analyse", desc: "Wer ist im Rat präsent, wo fließt das Geld, welche Themen bewegen — Parteien, Personen, Finanzen, Trends.", wide: true },
   { icon: Landmark, title: "Amtliche Quelle", desc: "Direkt aus dem Ratsinformationssystem der Stadt Oldenburg, verlinkt zu den Originaldokumenten." },
+  { icon: Bell, title: "Benachrichtigungen", desc: "Lege Themen an und werde bei neuen Beschlüssen informiert — per Push oder E-Mail, sobald der Rat entscheidet.", wide: true },
 ];
 
 export default function LandingPage() {
@@ -31,6 +35,13 @@ export default function LandingPage() {
     <div className="min-h-screen bg-background">
       <NativeRedirect />
       <PeekingChick />
+      {/* Tastatur-Nutzer:innen springen direkt zum Inhalt (visuell versteckt bis fokussiert). */}
+      <a
+        href="#inhalt"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-primary-foreground"
+      >
+        Zum Inhalt springen
+      </a>
       <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-3.5">
           <Link href="/">
@@ -40,7 +51,7 @@ export default function LandingPage() {
         </div>
       </header>
 
-      <main>
+      <main id="inhalt">
         {/* Hero — text (server-rendered for SEO) + Lotti-Familien-Hafenszene */}
         <section className="relative overflow-hidden">
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-sky-50 to-transparent dark:from-slate-900/40" aria-hidden />
@@ -51,7 +62,7 @@ export default function LandingPage() {
               <p className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
                 Stadtrat Oldenburg
               </p>
-              <h1 className="mt-4 text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
+              <h1 className="mt-4 text-balance text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
                 Was beschließt eigentlich der Rat?
               </h1>
               <p className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground lg:mx-0">
@@ -77,7 +88,7 @@ export default function LandingPage() {
         {/* KI-Frage-Demo — das Killerfeature direkt zeigen statt nur beschreiben */}
         <section className="mx-auto max-w-3xl px-5 pb-16 pt-4">
           <div className="text-center">
-            <h2 className="text-2xl font-bold tracking-tight text-foreground">Frag den Rat — in normaler Sprache</h2>
+            <h2 className="text-balance text-2xl font-bold tracking-tight text-foreground">Frag den Rat — in normaler Sprache</h2>
             <p className="mx-auto mt-2 max-w-xl text-muted-foreground">
               Die KI durchsucht alle Beschlüsse des Stadtrats und antwortet mit Quellen. So sieht das aus:
             </p>
@@ -85,20 +96,33 @@ export default function LandingPage() {
           <LandingQaDemo />
         </section>
 
-        {/* Features */}
+        {/* Features — asymmetrisches Bento statt drei gleicher Spalten */}
         <section className="border-y border-border bg-muted/30">
           <div className="mx-auto max-w-5xl px-5 py-16">
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {FEATURES.map((f, i) => {
                 const Icon = f.icon;
                 return (
-                  <Reveal key={f.title} delay={i * 80}>
-                    <div className="h-full rounded-xl border border-border bg-background p-5 transition-shadow hover:shadow-md">
-                      <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <Reveal key={f.title} delay={i * 80} className={f.wide ? "lg:col-span-2" : undefined}>
+                    <div
+                      className={cn(
+                        "h-full rounded-xl border p-5 transition-[box-shadow,border-color] duration-200",
+                        "[@media(hover:hover)_and_(pointer:fine)]:hover:border-primary/30 [@media(hover:hover)_and_(pointer:fine)]:hover:shadow-lifted",
+                        f.hero
+                          ? "border-primary/25 bg-gradient-to-br from-primary/[0.07] to-transparent"
+                          : "border-border bg-background",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "flex h-10 w-10 items-center justify-center rounded-lg",
+                          f.hero ? "bg-primary text-primary-foreground shadow-sm shadow-primary/30" : "bg-primary/10 text-primary",
+                        )}
+                      >
                         <Icon className="h-5 w-5" />
                       </span>
                       <h3 className="mt-3 font-semibold text-foreground">{f.title}</h3>
-                      <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{f.desc}</p>
+                      <p className="mt-1 max-w-prose text-sm leading-relaxed text-muted-foreground">{f.desc}</p>
                     </div>
                   </Reveal>
                 );
