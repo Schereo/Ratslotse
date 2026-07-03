@@ -113,6 +113,14 @@ class FeedbackIn(BaseModel):
     message: str = Field(min_length=3, max_length=4000)
 
 
+# ---- onboarding ----
+class OnboardingUpdate(BaseModel):
+    """Fortschritts-Patch: erledigte Schritte (Whitelist im Router) und/oder
+    das „Kurs abgeschlossen"-Flag."""
+    steps: list[str] = Field(default_factory=list, max_length=16)
+    celebrated: bool | None = None
+
+
 # ---- push notifications (native app) ----
 class PushRegisterRequest(BaseModel):
     token: str = Field(min_length=1, max_length=512)
