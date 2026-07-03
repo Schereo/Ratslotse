@@ -16,6 +16,9 @@ export type SegmentedOption<T extends string> = {
   label: React.ReactNode;
   icon?: LucideIcon;
   tour?: string;
+  /** Dezenter Glanz-Lockruf (Sweep + funkelndes Icon), solange die Option
+   *  NICHT aktiv ist — für Features, die entdeckt werden wollen (KI-Frage). */
+  sparkle?: boolean;
 };
 
 export function Segmented<T extends string>({
@@ -36,6 +39,7 @@ export function Segmented<T extends string>({
       {options.map((o) => {
         const active = o.value === value;
         const Icon = o.icon;
+        const twinkle = !!o.sparkle && !active;
         return (
           <button
             key={o.value}
@@ -52,9 +56,10 @@ export function Segmented<T extends string>({
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "bg-card text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground",
+              twinkle && "qa-glint",
             )}
           >
-            {Icon && <Icon className="h-4 w-4" />}
+            {Icon && <Icon className={cn("h-4 w-4", twinkle && "qa-sparkle text-signal")} />}
             {o.label}
           </button>
         );

@@ -216,6 +216,47 @@
 .animate-peek {
   animation: lotti-peek 5.4s ease-in-out both;
 }
+/* ── KI-Frage-Lockruf ───────────────────────────────────────────────────────
+   Seltener Glanz-Sweep über das inaktive KI-Frage-Segment + funkelndes Icon —
+   macht das Killerfeature entdeckbar. Hört auf, sobald die erste Frage
+   gestellt wurde (localStorage-Flag, gesetzt in council-qa). Der Sweep ruht
+   ~70 % des Loops: ein Aufblitzen, kein Dauer-Geflacker. Beides legt der
+   globale prefers-reduced-motion-Block still. */
+.qa-glint {
+  position: relative;
+  overflow: hidden;
+}
+.qa-glint::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -45%;
+  width: 45%;
+  background: linear-gradient(
+    105deg,
+    transparent,
+    hsl(var(--primary) / 0.16) 40%,
+    hsl(var(--signal) / 0.3) 60%,
+    transparent
+  );
+  animation: qa-glint 5.6s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes qa-glint {
+  0%, 72% { transform: translateX(0); }
+  96%, 100% { transform: translateX(330%); }
+}
+.qa-sparkle {
+  animation: qa-sparkle 5.6s ease-in-out infinite;
+}
+@keyframes qa-sparkle {
+  0%, 68%, 100% { transform: scale(1) rotate(0deg); }
+  76% { transform: scale(1.3) rotate(14deg); }
+  84% { transform: scale(0.92) rotate(-8deg); }
+  90% { transform: scale(1.12) rotate(4deg); }
+}
+
 /* Sanft driftende Wolken in der Hero-Hafenszene. */
 .animate-cloud-drift {
   animation: cloud-drift 26s ease-in-out infinite;
