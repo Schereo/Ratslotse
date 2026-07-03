@@ -244,3 +244,26 @@ def test_list_entities_recency_and_trending_tags(store):
     # Trending: nur der junge Beschluss zählt → Radverkehr 1, Wärmeplanung 1; alt fällt raus.
     tags = {t["tag"]: t["n"] for t in store.trending_tags(days_back=180)}
     assert tags == {"Radverkehr": 1, "Wärmeplanung": 1}
+
+
+def test_parties_for_faction_gruppen_multi_mapping():
+    """Gruppen-Anträge zählen für jede beteiligte Partei; Non-Parteien nicht."""
+    from council.parties import parties_for_faction
+    assert parties_for_faction("Gruppe FDP/Volt") == ["FDP", "Volt"]
+    assert parties_for_faction("FDP/Volt-Gruppe") == ["FDP", "Volt"]
+    assert parties_for_faction("SPD-Fraktion") == ["SPD"]
+    assert parties_for_faction("Verwaltung") == []
+    assert parties_for_faction("WFO/LKR") == []  # keine Partei mehr
+    assert parties_for_faction(None) == []
+
+
+def test_decision_row_zaehlt_gruppe_fuer_beide_parteien(store):
+    _seed_session(store)
+    store._insert_decision(1, 0, "decision", None, "Ö 1", "Radweg", "B", "angenommen",
+                           None, None, None, ["Gruppe FDP/Volt"], None, None, None)
+    store._conn.commit()
+    d = store.get_decisions(1)[0]
+    assert d["parties"] == ["FDP", "Volt"]
+    # decision_ids_for_party findet den Beschluss über BEIDE Parteien
+    assert store.decision_ids_for_party("FDP") == [d["id"]]
+    assert store.decision_ids_for_party("Volt") == [d["id"]]

@@ -21,13 +21,16 @@ _NON_PARTY = (
 )
 
 # Recognised factions/groups, checked top-to-bottom (most specific first).
+# Ratsgruppen wandeln sich über die Wahlperiode (FDP/Volt-Gruppe → getrennt,
+# Linke → BSW-Wechsler 2024): die LABELS in den Dokumenten tragen die Zeit —
+# ein alter „Gruppe FDP/Volt"-Antrag zählt über parties_for_faction() für
+# beide Parteien, neue Anträge nennen nur noch die einzelne Fraktion.
 _RULES: list[tuple[tuple[str, ...], str]] = [
     (("grüne", "grünen"), "Grüne"),
     (("bsw",), "BSW"),                       # ex-Die-Linke members (2024)
     (("linke",), "Die Linke"),               # joint group + solo Linke (→ BSW 2024)
     (("piraten",), "Piraten"),               # Piraten after the Linke split
     (("für oldenburg",), "Für Oldenburg"),   # new group (2024)
-    (("wfo", "lkr"), "WFO/LKR"),
     (("ibo", "live"), "IBO/LiVe"),
     (("afd",), "AfD"),
     (("spd",), "SPD"),
@@ -39,7 +42,7 @@ _RULES: list[tuple[tuple[str, ...], str]] = [
 # Display order (current / most active first), then historical.
 CANONICAL_ORDER = [
     "Grüne", "SPD", "CDU", "BSW", "FDP", "Für Oldenburg", "Volt", "AfD",
-    "Die Linke", "Piraten", "WFO/LKR", "IBO/LiVe",
+    "Die Linke", "Piraten", "IBO/LiVe",
 ]
 
 
@@ -59,6 +62,21 @@ def normalize_party(raw: str | None) -> str | None:
 def order_key(party: str) -> tuple[int, str]:
     """Sort key putting the well-known parties first, then alphabetical."""
     return (CANONICAL_ORDER.index(party) if party in CANONICAL_ORDER else len(CANONICAL_ORDER), party)
+
+
+def parties_for_faction(raw: str | None) -> list[str]:
+    """Alle Parteien hinter einem Fraktions-/Gruppen-Label eines Antrags:
+    „Gruppe FDP/Volt" → ["FDP", "Volt"] (der Antrag zählt für beide),
+    „SPD-Fraktion" → ["SPD"]. Non-Partei-Labels (Verwaltung, Beiräte,
+    Initiativen …) → leere Liste. Für ANTRÄGE gedacht — bei Personen
+    (Anwesenheit) bleibt ``normalize_party`` richtig, denn eine Person gehört
+    genau einer Fraktion an."""
+    if not raw:
+        return []
+    low = raw.strip().lower()
+    if not low or any(x in low for x in _NON_PARTY):
+        return []
+    return parties_in_text(raw)
 
 
 def parties_in_text(text: str | None) -> list[str]:

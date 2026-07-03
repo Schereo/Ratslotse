@@ -8,7 +8,7 @@ from pathlib import Path
 import sqlite3
 
 from .scraper import CouncilSession, AgendaItem
-from .parties import normalize_party, order_key
+from .parties import normalize_party, order_key, parties_for_faction
 
 
 def _norm_title(t: str) -> str:
@@ -770,7 +770,8 @@ class CouncilStore:
             except (json.JSONDecodeError, TypeError):
                 d[key] = []
         # Normalised Antragsteller parties (real factions only, deduped).
-        d["parties"] = sorted({p for p in (normalize_party(f) for f in d["factions"]) if p}, key=order_key)
+        # Multi-Mapping: ein Gruppen-Label („FDP/Volt") zählt für jede Partei.
+        d["parties"] = sorted({p for f in d["factions"] for p in parties_for_faction(f)}, key=order_key)
         return d
 
     # Outcomes grouped into "real votes" vs "reports / no decision".
@@ -778,15 +779,15 @@ class CouncilStore:
     _REPORT_OUTCOMES = ("zur_kenntnis", "kein_beschluss")
 
     def decision_ids_for_party(self, party: str) -> list[int]:
-        """IDs of main decisions whose Antragsteller (normalised) includes ``party``."""
-        from council.parties import normalize_party
+        """IDs of main decisions whose Antragsteller includes ``party`` —
+        Gruppen-Labels („FDP/Volt") matchen für jede beteiligte Partei."""
         ids = []
         for row in self._conn.execute("SELECT id, factions FROM council_decisions WHERE kind = 'decision'"):
             try:
                 arr = json.loads(row["factions"] or "[]")
             except (json.JSONDecodeError, TypeError):
                 arr = []
-            if any(normalize_party(f) == party for f in arr):
+            if any(party in parties_for_faction(f) for f in arr):
                 ids.append(row["id"])
         return ids
 
@@ -1066,7 +1067,7 @@ class CouncilStore:
         Ausschuss-Beschluss mit angenommen/abgelehnt. Mehrparteien-Anträge zählen
         für jede Partei. Methodik entspricht bewusst politik-vor-ort (Rat zuerst,
         nur klare Outcomes), aber über unsere volle Historie."""
-        from council.parties import order_key
+        from council.parties import CANONICAL_ORDER, order_key
 
         antraege = self._conn.execute(
             """SELECT a.document_id, a.antragsteller, v.vorlage_nr
@@ -1097,6 +1098,10 @@ class CouncilStore:
             except (json.JSONDecodeError, TypeError):
                 parties = []
             for p in parties:
+                # Nur anerkannte Parteien zählen — in älteren Anlagen-Zeilen
+                # können inzwischen entfernte Labels (z. B. WFO/LKR) stehen.
+                if p not in CANONICAL_ORDER:
+                    continue
                 s = per_party.setdefault(p, {"party": p, "n": 0, "angenommen": 0, "abgelehnt": 0})
                 s["n"] += 1
                 s[decision["outcome"]] += 1
@@ -1682,7 +1687,7 @@ class CouncilStore:
         from collections import Counter
         from itertools import combinations
 
-        from council.parties import normalize_party, order_key
+        from council.parties import order_key, parties_for_faction
 
         rows = self._conn.execute(
             "SELECT factions, policy_field, outcome, gegenstimmen, enthaltungen "
@@ -1707,7 +1712,8 @@ class CouncilStore:
                 arr = json.loads(fac or "[]")
             except (json.JSONDecodeError, TypeError):
                 arr = []
-            parties = sorted({p for p in (normalize_party(x) for x in arr) if p}, key=order_key)
+            # Multi-Mapping: „Gruppe FDP/Volt" zählt für FDP UND Volt.
+            parties = sorted({p for x in arr for p in parties_for_faction(x)}, key=order_key)
             if not parties:
                 continue
             with_factions += 1

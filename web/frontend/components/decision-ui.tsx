@@ -121,11 +121,13 @@ const PARTY_BRAND: Record<string, { bg: string; fg: string }> = {
   "Piraten": { bg: "#ff7a00", fg: "#ffffff" },
 };
 
-// Map a raw or normalised faction name to the canonical short label (mirrors the
-// backend council.parties order; FDP before Volt so "FDP/Volt" → FDP).
+// Map a raw or normalised faction name to the canonical short label (mirrors
+// backend council.parties; WFO/LKR ist keine Partei und dort entfernt).
+// Für Antragsteller-LISTEN liefert das Backend bereits Multi-Mapping
+// („FDP/Volt" → beide) — dieses Single-Mapping dient Personen/Badges.
 const PARTY_NORM: [string, string][] = [
   ["grün", "Grüne"], ["bsw", "BSW"], ["linke", "Die Linke"], ["piraten", "Piraten"],
-  ["für oldenburg", "Für Oldenburg"], ["wfo", "WFO/LKR"], ["lkr", "WFO/LKR"],
+  ["für oldenburg", "Für Oldenburg"],
   ["ibo", "IBO/LiVe"], ["spd", "SPD"], ["cdu", "CDU"], ["afd", "AfD"], ["fdp", "FDP"], ["volt", "Volt"],
 ];
 
