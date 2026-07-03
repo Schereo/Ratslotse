@@ -26,3 +26,6 @@ android/app/src/main/assets/capacitor.config.json
 android/app/src/main/res/xml/config.xml
 android/capacitor-cordova-android-plugins/
 **/xcuserdata/
+
+# Technik-Doku: baut docs-site/, kopiert der Deploy nach public/docs (nie committen)
+/public/docs/
