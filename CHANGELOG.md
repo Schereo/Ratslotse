@@ -7,34 +7,121 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+_Nichts — alle Änderungen sind versioniert._
+
+## [1.2.0] – 2026-07-03
+
+Anträge, Themen-Karte & Feinschliff.
+
+### Hinzugefügt
+- **Fraktions-Anträge ausgewertet:** Die Original-Anträge der Fraktionen (Anlagen
+  der Vorlagen) werden eingelesen — mit automatischer Antragsteller-Erkennung.
+  Die Analyse zeigt echte **Erfolgsquoten je Fraktion** aus den eingereichten
+  Dokumenten, Beschluss-Seiten ein **Anlagen-Dossier** (Anträge, Karten,
+  Bilanzen) mit Direktlinks. (#174)
+- **Technik-Doku live:** Die ausführliche Doku ist unter `/docs` erreichbar —
+  inklusive Übersichtsgrafik „Welche Dokumente werten wir aus?". Sie ersetzt
+  die bisherige Technik-Seite und ist im Footer verlinkt. (#175, #176, #186)
+- **Themen-Vorschläge zum Anklicken:** „Meine Themen" schlägt die häufigsten
+  Beschluss-Schlagworte der letzten sechs Monate vor — ein Klick legt das Thema
+  mit fertiger Beschreibung an. (#184)
+- **Glitzer-Hinweis auf die KI-Frage:** Der Umschalter funkelt dezent, bis die
+  erste Frage gestellt wurde — danach ist Ruhe. (#182)
+
+### Geändert
+- **Themen-Seite neu:** Die Stadtkarte steht immer oben (kein verstecktes
+  Toggle mehr), Filter-Chips nach Art (Orte/Organisationen/Projekte) filtern
+  Karte und Liste gemeinsam, und die Top-Reihe priorisiert nach **Aktivität
+  der letzten 12 Monate** statt nach Lebenszeit-Summe. (#181, #184)
+- **Themenfeld-Rückblicke als Digest-Karten:** Kernaussage + Stichpunkte mit
+  Feld-Icons statt langer Textblöcke; die Analyse öffnet jetzt standardmäßig
+  auf **Trends**. (#183, #185)
+- **Motion-Feinschliff nach Design-Engineering-Standards:** stärkere
+  Easing-Kurven, Press-Feedback auf Buttons und Umschaltern, ⌘K öffnet ohne
+  Animation, Karten-Hover feuert nicht mehr auf Touch. (#177)
+- **Landing:** asymmetrisches Feature-Bento mit „Frag den Rat" als Hero-Karte,
+  dezentes Filmkorn auf der Hafenszene, Glas-Effekt auf der mobilen Tab-Bar.
+  (#178, #179)
+
+### Behoben
+- Die Technik-Doku unter `/docs` war seit jeher nicht erreichbar (fehlende
+  Proxy-Route) — sie wird jetzt direkt von der App ausgeliefert. (#176)
+- Der Feedback-Dialog verschwand auf dem Handy sofort wieder (er hing im
+  Menü-Sheet und wurde mit ihm geschlossen). (#180)
+- Die KI-Demo auf der Landing ließ die Seite beim Text-Streaming wachsen —
+  die Karte reserviert jetzt von Anfang an ihre End-Höhe. (#181)
+- Sporadische Serverfehler unter parallelen Anfragen behoben
+  (SQLite-Verbindungen waren nicht threadfest). (#184)
+
 ### Betrieb
-- **Cron-Alarme per E-Mail:** Schlägt ein Cron-Job fehl, geht zusätzlich zum
-  Log eine E-Mail an `ALERT_EMAIL` (Fallback `WEB_ADMIN_EMAIL`) — bisher waren
-  Fehler nach dem Telegram-Aus nur im Server-Log sichtbar. Alle Cron-Skripte
-  (auch `check_protocols`, `weekly_enrich`, `backup_db`) laufen jetzt in dieser
-  Absicherung.
-- **Off-Site-Backups:** `backup_db.py` spiegelt die tägliche 7-Tage-Rotation
-  optional per rsync auf einen zweiten Host (`BACKUP_RSYNC_TARGET`) — bisher
-  lagen alle Backups nur auf demselben Server.
-- **Deploy nur noch mit grünen Tests:** Der Deploy-Workflow führt den
-  pytest-Lauf jetzt selbst aus und deployt nur bei Erfolg.
+- Ops-Workflows per Knopfdruck: Vorlagen-/Anlagen-Backfill und
+  Rückblick-Regeneration laufen über GitHub Actions. (#173, #185)
+
+## [1.1.0] – 2026-07-02
+
+Frag den Rat v2 & Vorlagen-Volltexte.
+
+### Hinzugefügt
+- **Vorlagen-Volltexte:** Sachverhalt und Begründung jeder Vorlage (~5.000
+  Dokumente seit 2018) werden eingelesen — sichtbar auf den Beschluss-Seiten
+  („Aus der Vorlage"), durchsuchbar und Teil des KI-Kontexts. (#172)
+- **Klickbare Fußnoten in KI-Antworten:** Zitate erscheinen als nummerierte
+  Chips; ein Klick springt zur Quelle, die Quellen tragen die Nummern. (#171)
+- **KI-Prompts im Admin-UI editierbar** — Ton und Format der Antworten lassen
+  sich ohne Deploy anpassen. (#171)
+
+### Geändert
+- **Konkretere KI-Antworten:** mehr Kontext je Beschluss (inkl. Gremium, Datum,
+  Ergebnis), neueste Beschlüsse werden zuerst genannt. (#171)
+
+### Betrieb
+- Rate-Limit für die KI-Frage (10 Fragen / 10 Minuten), vollständiges
+  Modell-Warm-up beim Start und persistenter Modell-Cache — die erste Frage
+  nach einem Deploy ist so schnell wie jede andere. (#171)
+
+## [1.0.0] – 2026-07-02
+
+Open-Source-Go-Live von Ratslotse.
+
+### Hinzugefügt
+- **Lotti-Familie:** Maskottchen mit Küken, saisonalen Outfits und
+  Feiertags-Spezials; neue Hafenszene auf der Landing. (#161)
+- Social-Media-Vorschaubild (OG-Image) und Launch-Feinschliff. (#166)
+- Konto-Löschung verlangt das Passwort und verabschiedet sich per E-Mail. (#167)
 
 ### Geändert
 - **Keine Admin-Freischaltung mehr:** Neue Konten sind direkt nach der
-  E-Mail-Bestätigung aktiv — niemand wartet mehr auf manuelle Freigabe. Admins
-  bekommen weiterhin eine Info-Mail zu neuen Registrierungen und können Konten
-  im Admin-Bereich sperren/entsperren (Moderation bleibt möglich).
+  E-Mail-Bestätigung aktiv — niemand wartet mehr auf manuelle Freigabe.
+  Admins können Konten weiterhin moderieren. (#163)
+- KI-Frage und Suche teilen sich dasselbe Karten-Layout; die überzählige
+  mobile Zwischen-Navigation ist entfernt. (#170)
+- Robustheit im Web-UI: Fehler einzelner Seiten erhalten die App-Shell,
+  defensives Rendering bei unerwarteten Daten. (#169)
+- iOS-App: Privacy-Manifest, App-Store-Compliance, iPhone-only. (#168)
+
+### Behoben
+- Der „Demo"-Hinweis der Landing-KI-Demo wurde vom Fragen-Button verdeckt. (#162)
 
 ### Entfernt
-- **Telegram-Bot entfernt:** Benachrichtigungen laufen jetzt ausschließlich über
-  **Web-Push** (iOS/Android-App) und **E-Mail**. Der Telegram-Bot, die
-  Konto-Verknüpfung (`/verbinden`) und die Zustelloption „Telegram" sind weg; die
-  Zustellkanäle sind jetzt `email` / `push` / `both`. Bestehende Konten mit Kanal
-  „Telegram" werden serverseitig auf E-Mail/Push migriert.
+- **Telegram-Bot entfernt:** Benachrichtigungen laufen ausschließlich über
+  **Web-Push** (iOS/Android-App) und **E-Mail**; die Zustellkanäle sind
+  `email` / `push` / `both`. Bestehende Telegram-Konten wurden serverseitig
+  migriert. (#159)
+
+### Betrieb
+- **Cron-Alarme per E-Mail:** Schlägt ein Cron-Job fehl, geht zusätzlich zum
+  Log eine E-Mail an die Betreiber-Adresse. (#165)
+- **Off-Site-Backups:** Die tägliche Backup-Rotation kann per rsync auf einen
+  zweiten Host gespiegelt werden. (#165)
+- **Deploy nur mit grünen Tests:** Der Deploy-Workflow führt die Tests selbst
+  aus und bricht bei Fehlern ab. (#164)
 
 ---
 
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/commits/main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v1.2.0...main
+[1.2.0]: https://github.com/Schereo/Ratslotse/compare/v1.1.0...v1.2.0
+[1.1.0]: https://github.com/Schereo/Ratslotse/compare/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/Schereo/Ratslotse/releases/tag/v1.0.0

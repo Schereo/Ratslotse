@@ -58,9 +58,9 @@ export default function LoginPage() {
           </Link>
         </p>
         <p className="mt-2 text-center text-sm text-muted-foreground">
-          <Link href="/technik" className="hover:text-foreground hover:underline">
+          <a href="/docs" className="hover:text-foreground hover:underline">
             Wie funktioniert Ratslotse? →
-          </Link>
+          </a>
         </p>
         <p className="mt-4 border-t border-border pt-4 text-center text-xs text-muted-foreground">
           <Link href="/impressum" className="hover:text-foreground hover:underline">Impressum</Link>

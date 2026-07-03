@@ -8,7 +8,7 @@ const BASE = "https://ratslotse.de";
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
     { url: `${BASE}/`, changeFrequency: "monthly", priority: 1 },
-    { url: `${BASE}/technik`, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${BASE}/docs`, changeFrequency: "monthly", priority: 0.6 },
     { url: `${BASE}/impressum`, changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE}/datenschutz`, changeFrequency: "yearly", priority: 0.3 },
   ];
