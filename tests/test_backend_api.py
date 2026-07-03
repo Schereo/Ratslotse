@@ -505,6 +505,47 @@ def test_feedback_ok_without_email_config(client):
     assert r.status_code == 200 and r.json()["ok"] is True
 
 
+# ---- onboarding (serverseitiger Kurs-Fortschritt) ----
+def test_onboarding_requires_auth():
+    assert TestClient(app).get("/api/onboarding").status_code == 401
+
+
+def test_onboarding_starts_empty(client):
+    _register(client)
+    assert client.get("/api/onboarding").json() == {"steps": [], "celebrated": False}
+
+
+def test_onboarding_merges_steps_idempotently(client):
+    _register(client)
+    r = client.post("/api/onboarding", json={"steps": ["frag", "analyse"]})
+    assert r.status_code == 200 and set(r.json()["steps"]) == {"frag", "analyse"}
+    # Doppelt melden ändert nichts, neue Schritte kommen dazu.
+    r = client.post("/api/onboarding", json={"steps": ["frag", "karten"]})
+    assert set(r.json()["steps"]) == {"frag", "analyse", "karten"}
+    assert r.json()["celebrated"] is False
+
+
+def test_onboarding_filters_unknown_steps(client):
+    _register(client)
+    r = client.post("/api/onboarding", json={"steps": ["frag", "hacken", "<script>"]})
+    assert r.json()["steps"] == ["frag"]
+
+
+def test_onboarding_celebrated_persists(client):
+    _register(client)
+    client.post("/api/onboarding", json={"steps": ["frag"], "celebrated": True})
+    got = client.get("/api/onboarding").json()
+    assert got["celebrated"] is True and got["steps"] == ["frag"]
+
+
+def test_onboarding_is_per_account(client):
+    _register(client)
+    client.post("/api/onboarding", json={"steps": ["frag"]})
+    other = TestClient(app)
+    _register(other, email="bob@test.de")
+    assert other.get("/api/onboarding").json() == {"steps": [], "celebrated": False}
+
+
 # ---- email verification ----
 import hashlib  # noqa: E402
 from datetime import datetime, timedelta  # noqa: E402
