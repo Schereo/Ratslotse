@@ -81,6 +81,9 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   const ask = async (question: string) => {
     const text = question.trim();
     if (text.length < 4) return;
+    // Erste Frage gestellt → der Glitzer-Lockruf auf dem KI-Frage-Umschalter
+    // hat seinen Job getan (Segmented sparkle, siehe council/page.tsx).
+    try { localStorage.setItem("ratslotse:qa-benutzt", "1"); } catch {}
     abortRef.current?.abort();
     const ctrl = new AbortController();
     abortRef.current = ctrl;
