@@ -11,13 +11,17 @@ export default defineConfig({
 		starlight({
 			title: 'Ratslotse — Technik',
 			description:
-				'Interne technische Dokumentation: Architektur, KI-Pipeline und Architekturentscheidungen.',
+				'Technische Dokumentation zu ratslotse.de: Architektur, KI-Pipeline und Architekturentscheidungen.',
+			social: [
+				{ icon: 'github', label: 'GitHub', href: 'https://github.com/Schereo/Ratslotse' },
+			],
 			defaultLocale: 'root',
 			locales: {
 				root: { label: 'Deutsch', lang: 'de' },
 			},
 			pagination: true,
 			sidebar: [
+				{ label: '↩ Zurück zur App', link: 'https://ratslotse.de/dashboard' },
 				{ label: 'Architektur', items: [{ slug: 'architektur' }] },
 				{
 					label: 'KI & Qualität',
