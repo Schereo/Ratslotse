@@ -172,15 +172,17 @@ export function DesktopSidebar() {
       <div className="px-5 pb-2 pt-5">
         <Brand />
       </div>
-      <div className="px-3 pb-3">
+      {/* Suche als Ghost-Zeile im Nav-Stil statt Input-Kasten — wirkt sonst
+          gedrungen zwischen Logo und Navigation. */}
+      <div className="px-3 pb-2">
         <button
           type="button"
           onClick={openCommandPalette}
-          className="flex w-full items-center gap-2 rounded-lg border border-input bg-background px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           <Search className="h-4 w-4" />
-          <span className="flex-1 text-left">Suchen…</span>
-          <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium">⌘K</kbd>
+          <span className="flex-1 text-left">Suchen</span>
+          <kbd className="rounded border border-border/70 bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground/80">⌘K</kbd>
         </button>
       </div>
       <NavLinks />

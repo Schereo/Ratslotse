@@ -8,6 +8,9 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geändert
+- **Ruhigere Sidebar:** Die Suche ist kein gedrungenes Eingabefeld mehr,
+  sondern fügt sich als schlanke Zeile in die Navigation ein (⌘K wie gehabt).
+  (#191)
 - **Onboarding-Kurs merkt sich den Fortschritt am Konto:** „Erste Schritte mit
   Lotti" zählt jetzt geräteübergreifend — Schritte gelten als erledigt, sobald
   die jeweilige Seite besucht wird (nicht nur per Klick auf die Kurs-Kachel),
