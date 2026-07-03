@@ -90,6 +90,11 @@ NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflic
 
 ## Wissenswertes
 
+- **Changelog-Pflicht:** Jeder nutzerrelevante PR ergänzt einen Eintrag unter
+  `## [Unreleased]` in `CHANGELOG.md` (Keep-a-Changelog, deutsch, „(#PR)"
+  anhängen). Beim Versionsschnitt: Unreleased → `## [x.y.z] – Datum`,
+  annotierten Git-Tag `vx.y.z` setzen + pushen, Compare-Links am Dateiende
+  nachziehen. Die Seite ratslotse.de/changelog rendert die Datei zur Build-Zeit.
 - **Cron-Jobs** (auf dem Server): `backup_db.py` (täglich, mit optionalem
   Off-Site-Mirror per `BACKUP_RSYNC_TARGET`), `check_committees.py`,
   `check_council.py`, `check_protocols.py` (Protokolle → Beschluss-Klassifikation;

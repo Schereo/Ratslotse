@@ -7,7 +7,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-_Nichts — alle Änderungen sind versioniert._
+### Behoben
+- **Ratsgruppen zählen für alle beteiligten Parteien:** Anträge der früheren
+  FDP/Volt-Gruppe werden jetzt sowohl FDP als auch Volt zugerechnet (nach der
+  Trennung zählen neue Anträge automatisch nur für die jeweilige Fraktion, weil
+  die Dokument-Labels die Zeit tragen). „WFO/LKR" war keine Partei und ist aus
+  allen Auswertungen entfernt. (#187)
 
 ## [1.2.0] – 2026-07-03
 
