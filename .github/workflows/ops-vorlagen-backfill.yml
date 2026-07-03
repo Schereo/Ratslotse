@@ -1,5 +1,6 @@
-# Manuell auslösbarer Ops-Lauf: holt alle fehlenden Vorlagen-Volltexte auf dem
-# Server nach und baut anschließend den FTS-Index neu. Nutzt denselben
+# Manuell auslösbarer Ops-Lauf: holt alle fehlenden Vorlagen-Volltexte und
+# Anlagen (inkl. Fraktions-Anträge mit Antragsteller-Erkennung) auf dem Server
+# nach und baut anschließend den FTS-Index neu. Nutzt denselben
 # Deploy-Key/ProxyJump wie deploy.yml — praktisch, wenn lokal kein SSH-Zugang
 # verfügbar ist. Keine Inputs, fester Befehl; nur Collaborator können triggern.
 name: "Ops: Vorlagen-Backfill"
@@ -33,12 +34,17 @@ jobs:
             set -e
             cd ~/app
             .venv/bin/python scripts/backfill_vorlagen.py
+            .venv/bin/python scripts/backfill_anlagen.py
             .venv/bin/python - <<'PY'
             from council.store import CouncilStore
             s = CouncilStore("data/council.sqlite")
             n = s.rebuild_fts()
             counts = dict(s._conn.execute(
                 "SELECT status, COUNT(*) FROM council_vorlagen GROUP BY status").fetchall())
+            anl = dict(s._conn.execute(
+                "SELECT is_antrag, COUNT(*) FROM council_anlagen GROUP BY is_antrag").fetchall())
+            stats = s.antrag_stats()
             print(f"FTS neu aufgebaut: {n} Beschlüsse indexiert · Vorlagen-Status: {counts}")
+            print(f"Anlagen: {anl} · Anträge mit Beschluss: {stats['n_mit_beschluss']}/{stats['n_antraege']}")
             s.close()
             PY

@@ -59,3 +59,28 @@ def normalize_party(raw: str | None) -> str | None:
 def order_key(party: str) -> tuple[int, str]:
     """Sort key putting the well-known parties first, then alphabetical."""
     return (CANONICAL_ORDER.index(party) if party in CANONICAL_ORDER else len(CANONICAL_ORDER), party)
+
+
+def parties_in_text(text: str | None) -> list[str]:
+    """Every recognised party mentioned in a free-text snippet (Anlagen-Label wie
+    "Antrag SPD CDU Grüne FDP" oder erste PDF-Seite), in canonical order, deduped.
+
+    Unlike ``normalize_party`` (whole-string, one label) this scans token-wise with
+    word boundaries — "Begrünung" must NOT count as "Grüne". Non-party context is
+    not filtered here; callers use this on Antrag documents where a party mention
+    means authorship."""
+    import re as _re
+
+    if not text:
+        return []
+    low = text.lower()
+    found: list[str] = []
+    for needles, label in _RULES:
+        if label in found:
+            continue
+        for n in needles:
+            # "wfo"/"lkr" style tuples: any needle counts on its own.
+            if _re.search(rf"(?<![a-zäöüß]){_re.escape(n)}(?![a-zäöüß])", low):
+                found.append(label)
+                break
+    return sorted(found, key=order_key)
