@@ -38,6 +38,10 @@ function parse(md: string): Version[] {
       cur.sections.push(sec);
     } else if (line.startsWith("- ") && cur && sec) {
       sec.items.push(line.slice(2).trim());
+    } else if (/^\s{2,}\S/.test(line) && cur && sec && sec.items.length > 0) {
+      // Umbruch-Folgezeile eines Eintrags (Markdown auf ~80 Zeichen umbrochen)
+      // — an den letzten Punkt anhängen statt sie zu verlieren.
+      sec.items[sec.items.length - 1] += " " + line.trim();
     }
   }
   // Drop an empty "Unreleased" block.

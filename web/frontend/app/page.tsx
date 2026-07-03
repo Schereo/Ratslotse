@@ -73,9 +73,10 @@ export default function LandingPage() {
                 <Link href="/register" className="inline-flex items-center gap-1.5 rounded-xl bg-brand-gradient px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-lifted transition-[opacity,transform] duration-200 ease-out-strong active:scale-[0.97] [@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-0.5 [@media(hover:hover)_and_(pointer:fine)]:hover:opacity-95">
                   Kostenlos registrieren <ArrowRight className="h-4 w-4" />
                 </Link>
-                <Link href="/technik" className="inline-flex items-center rounded-xl border border-border bg-background/70 px-5 py-2.5 text-sm font-medium text-foreground backdrop-blur transition-colors hover:bg-muted">
+                {/* /docs ist die statische Technik-Doku außerhalb des App-Routers — plain <a>. */}
+                <a href="/docs" className="inline-flex items-center rounded-xl border border-border bg-background/70 px-5 py-2.5 text-sm font-medium text-foreground backdrop-blur transition-colors hover:bg-muted">
                   Wie es funktioniert
-                </Link>
+                </a>
               </div>
               <LiveStats />
             </div>
@@ -148,7 +149,7 @@ export default function LandingPage() {
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-5 py-6 text-sm text-muted-foreground">
           <span>© Ratslotse — Ratsinformationen für Oldenburg</span>
           <div className="flex flex-wrap gap-4">
-            <Link href="/technik" className="hover:text-foreground">Technik</Link>
+            <a href="/docs" className="hover:text-foreground">Technik-Doku</a>
             <Link href="/changelog" className="hover:text-foreground">Changelog</Link>
             <Link href="/impressum" className="hover:text-foreground">Impressum</Link>
             <Link href="/datenschutz" className="hover:text-foreground">Datenschutz</Link>
