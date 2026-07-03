@@ -26,33 +26,56 @@ async function rewrites() {
       source: "/.well-known/apple-app-site-association",
       destination: "/.well-known/apple-app-site-association.json",
     },
+    // Die Technik-Doku (Astro-Starlight-Build) liegt als statische Site in
+    // public/docs/ (kopiert der Deploy dorthin). Rewrites hier sind
+    // "afterFiles": echte Dateien (/docs/_astro/…) gewinnen, nur
+    // Verzeichnis-URLs werden auf ihre index.html gemappt — /docs braucht
+    // damit keinen eigenen Webserver auf der Edge.
+    { source: "/docs", destination: "/docs/index.html" },
+    { source: "/docs/:path*", destination: "/docs/:path*/index.html" },
   ];
+}
+
+// Basis-Security-Header für alle Antworten.
+const BASE_HEADERS = [
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+  { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
+];
+
+// CSP als Funktion: die Doku-Suche (Pagefind) braucht WebAssembly, der Rest
+// der Site nicht. Zwei matchende CSP-Header würden sich zur strengsten
+// Schnittmenge kombinieren — deshalb unten zwei sich ausschließende Muster.
+function csp({ wasm = false } = {}) {
+  return [
+    "default-src 'self'",
+    `script-src 'self' 'unsafe-inline'${wasm ? " 'wasm-unsafe-eval'" : ""}${isDev ? " 'unsafe-eval'" : ""}`,
+    "worker-src 'self' blob:",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob: https://*.basemaps.cartocdn.com https://*.openfreemap.org",
+    "font-src 'self'",
+    "connect-src 'self' https://*.openfreemap.org",
+    "frame-ancestors 'none'",
+  ].join("; ");
 }
 
 async function headers() {
   return [
     {
-      source: "/(.*)",
-      headers: [
-        { key: "X-Frame-Options", value: "DENY" },
-        { key: "X-Content-Type-Options", value: "nosniff" },
-        { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-        { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
-        { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
-        {
-          key: "Content-Security-Policy",
-          value: [
-            "default-src 'self'",
-            `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
-            "worker-src 'self' blob:",
-            "style-src 'self' 'unsafe-inline'",
-            "img-src 'self' data: blob: https://*.basemaps.cartocdn.com https://*.openfreemap.org",
-            "font-src 'self'",
-            "connect-src 'self' https://*.openfreemap.org",
-            "frame-ancestors 'none'",
-          ].join("; "),
-        },
-      ],
+      // Alle Seiten AUSSER /docs …
+      source: "/((?!docs).*)",
+      headers: [...BASE_HEADERS, { key: "Content-Security-Policy", value: csp() }],
+    },
+    {
+      // … die Doku separat, mit WASM-Erlaubnis für die Pagefind-Suche.
+      source: "/docs/:path*",
+      headers: [...BASE_HEADERS, { key: "Content-Security-Policy", value: csp({ wasm: true }) }],
+    },
+    {
+      source: "/docs",
+      headers: [...BASE_HEADERS, { key: "Content-Security-Policy", value: csp({ wasm: true }) }],
     },
   ];
 }
