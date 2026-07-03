@@ -36,6 +36,12 @@ async function rewrites() {
   ];
 }
 
+// Die alte /technik-Seite ist durch die Technik-Doku unter /docs ersetzt —
+// alte Bookmarks/Suchtreffer landen per Permanent-Redirect am neuen Ort.
+async function redirects() {
+  return [{ source: "/technik", destination: "/docs", permanent: true }];
+}
+
 // Basis-Security-Header für alle Antworten.
 const BASE_HEADERS = [
   { key: "X-Frame-Options", value: "DENY" },
@@ -94,7 +100,7 @@ const nextConfig = {
         // The static export can't run the Next image optimizer.
         images: { unoptimized: true },
       }
-    : { rewrites, headers }),
+    : { rewrites, redirects, headers }),
 };
 
 export default nextConfig;
