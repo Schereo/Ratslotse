@@ -47,6 +47,35 @@ def list_topics(user: dict = Depends(require_active), store: Store = Depends(get
     return out
 
 
+@router.get("/suggestions")
+def topic_suggestions(
+    user: dict = Depends(require_active),
+    store: Store = Depends(get_store),
+    council: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Anklickbare Themen-Vorschläge aus den echten Daten: die häufigsten
+    Beschluss-Schlagworte der letzten sechs Monate — ohne Themen, die der
+    Account schon angelegt hat. Ein Klick im Frontend legt den Vorschlag
+    direkt als eigenes Thema an."""
+    existing = {t.name.strip().lower() for t in store.get_topics(user["id"])}
+    out = []
+    for t in council.trending_tags(days_back=180, limit=16):
+        name = t["tag"].strip()
+        if not name or name.lower() in existing:
+            continue
+        out.append({
+            "name": name[:1].upper() + name[1:],
+            "description": (
+                f"Neue Beschlüsse, Planungen und Maßnahmen des Oldenburger "
+                f"Stadtrats rund um das Thema {name}."
+            ),
+            "n": t["n"],
+        })
+        if len(out) >= 6:
+            break
+    return {"suggestions": out}
+
+
 @router.post("", response_model=TopicOut, status_code=status.HTTP_201_CREATED)
 def add_topic(body: TopicIn, user: dict = Depends(require_active), store: Store = Depends(get_store)) -> TopicOut:
     t = store.add_topic(user["id"], body.name, body.description)
