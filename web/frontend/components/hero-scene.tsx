@@ -49,6 +49,18 @@ export function HeroScene() {
 
       {/* sanfter Vignette-Rahmen */}
       <div className="pointer-events-none absolute inset-0 rounded-[2rem] ring-1 ring-inset ring-white/20" aria-hidden />
+
+      {/* Filmkorn — bewusst NUR auf der Szene, nicht auf der Seite: nimmt der
+          Illustration die digitale Sterilität, ohne Text-Lesbarkeit zu kosten.
+          feTurbulence-Noise als Data-URI, overlay-geblendet. */}
+      <div
+        className="pointer-events-none absolute inset-0 rounded-[2rem] opacity-[0.18] mix-blend-overlay dark:opacity-25"
+        style={{
+          backgroundImage:
+            "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
+        }}
+        aria-hidden
+      />
     </div>
   );
 }

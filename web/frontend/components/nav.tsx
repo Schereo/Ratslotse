@@ -229,9 +229,10 @@ export function MobileBottomNav() {
   const pathname = usePathname();
   return (
     <nav
-      // /85 + blur-lg statt /95 + blur(8px): sichtbarer „Material"-Effekt wie
-      // bei der nativen iOS-Tab-Bar, ohne die Lesbarkeit zu gefährden.
-      className="fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-card/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg md:hidden"
+      // Echtes Glas statt nur Blur (iOS-Look): halbtransparente Fläche +
+      // backdrop-saturate, eine 1-px-Lichtkante innen (simuliert die
+      // Kanten-Brechung) und ein weicher Schatten nach oben für Tiefe.
+      className="fixed inset-x-0 bottom-0 z-40 flex border-t border-border/50 bg-card/70 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl backdrop-saturate-150 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.45),0_-10px_28px_-14px_rgba(2,32,71,0.22)] dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),0_-10px_28px_-14px_rgba(0,0,0,0.5)] md:hidden"
       aria-label="Hauptnavigation"
     >
       {PRIMARY.map((l) => {
