@@ -11,8 +11,8 @@ sollen messbar besser/schlechter werden, statt „gefühlt".
 
 | Suite | Misst | Komponente | Scoring | Cases |
 |-------|-------|-----------|---------|-------|
-| `watcher` | Tagesordnung → Thema | `council.watcher._classify_agenda` | Label-Sets | `cases_watcher.json` |
-| `committee` | Routine-Filter (Inhalt ja/nein) | `council.committee_summary.summarize_agenda` | binär | `cases_committee.json` |
+| `watcher` | Tagesordnung → Thema | `council/watcher.py` | Label-Sets | `cases_watcher.json` |
+| `committee` | Routine-Filter (Inhalt ja/nein) | `council/committee_summary.py` | binär | `cases_committee.json` |
 
 **Binär**: eine Ja/Nein-Entscheidung pro Fall → TP/FP/TN/FN + Precision/Recall/F1.
 **Label-Sets**: pro Fall wird eine *Menge* von Treffern vorhergesagt (z. B. die
