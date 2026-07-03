@@ -257,6 +257,31 @@ def test_decision_detail_includes_vorlage(client):
     assert data["vorlage"]["art"] == "Beschlussvorlage"
     assert "Radweg entlang der Haaren" in data["vorlage"]["excerpt"]
     assert "kvonr=901" in data["vorlage_url"]
+    assert data["anlagen"] == []  # keine Anlagen geseedet → leere Liste, kein Fehlen
+
+
+def test_decision_detail_lists_anlagen_and_analysis_has_antrag_stats(client):
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(89, "Rat der Stadt", "2026-03-01", "18:00", "Rathaus",
+                                   agenda_items=[AgendaItem("Ö 3", "Lastenräder", vorlage_nr="26/0500", kvonr=902)]))
+    cs._insert_decision(89, 0, "decision", None, "Ö 3", "Lastenräder fördern", "Wird gefördert.",
+                        "angenommen", None, None, None, [], "26/0500", None, None)
+    cs._conn.commit()
+    did = cs._conn.execute("SELECT id FROM council_decisions WHERE ksinr = 89").fetchone()[0]
+    cs.save_vorlage({"kvonr": 902, "vorlage_nr": "26/0500", "title": "Lastenräder", "art": "Beschlussvorlage",
+                     "raw_text": "Sachverhalt: Förderung.", "n_pages": 2, "status": "ok"})
+    cs.save_anlagen(902, [
+        {"document_id": 77, "url": "https://x/77", "label": "Antrag der SPD-Fraktion vom 01.02.2026",
+         "is_antrag": 1, "antragsteller": ["SPD"], "raw_text": "Wir beantragen…", "status": "ok"},
+        {"document_id": 78, "url": "https://x/78", "label": "Anlage - Standortkarte", "status": "listed"},
+    ])
+    cs.close()
+    data = client.get(f"/api/council/decision/{did}").json()
+    assert [a["document_id"] for a in data["anlagen"]] == [77, 78]  # Antrag zuerst
+    assert data["anlagen"][0]["antragsteller"] == ["SPD"]
+    stats = client.get("/api/council/analysis").json()["antrag_stats"]
+    assert {"party": "SPD", "n": 1, "angenommen": 1, "abgelehnt": 0} in stats["parties"]
 
 
 def test_field_recaps_endpoint(client):

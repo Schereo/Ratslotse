@@ -20,6 +20,8 @@ sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
 from scripts.backfill_protocols import process_range  # noqa: E402
+from scripts.backfill_anlagen import process_missing as fetch_anlagen_missing  # noqa: E402
+from scripts.backfill_anlagen import rescan_recent as rescan_recent_anlagen  # noqa: E402
 from scripts.backfill_vorlagen import process_missing as fetch_vorlagen  # noqa: E402
 from scripts.classify_decisions import process as classify_decisions  # noqa: E402
 from scripts.extract_amounts import process as extract_amounts  # noqa: E402
@@ -54,6 +56,13 @@ def main() -> None:
     vstats = fetch_vorlagen(COUNCIL_DB, limit=300)
     print(f"Vorlagen: {vstats['fetched']} ingested, {vstats['no_pdf']} without PDF/text, "
           f"{vstats['failed']} failed.")
+    # Anlagen: catch-up for never-scanned Vorlagen + re-scan of recent agendas —
+    # Änderungsanträge landen oft erst Tage nach der Vorlage auf der Seite.
+    astats2 = fetch_anlagen_missing(COUNCIL_DB, limit=300)
+    rstats = rescan_recent_anlagen(COUNCIL_DB)
+    print(f"Anlagen: {astats2['anlagen'] + rstats['anlagen']} neu "
+          f"({astats2['antraege'] + rstats['antraege']} Anträge), "
+          f"{astats2['failed'] + rstats['failed']} Fehler.")
     # Keep the full-text index in sync for hybrid retrieval (pure SQLite, instant).
     from council.store import CouncilStore
     _store = CouncilStore(COUNCIL_DB)

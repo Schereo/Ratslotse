@@ -104,6 +104,36 @@ function SuccessRates({ a }: { a: PartyAnalysis }) {
   );
 }
 
+/** Erfolgsquoten auf Basis der eingereichten Antrags-DOKUMENTE (Anlagen der
+ *  Vorlagen) — belastbarer als die Protokoll-Erwähnungen, daher bevorzugt. */
+function AntragSuccessRates({ a }: { a: PartyAnalysis }) {
+  const stats = a.antrag_stats!;
+  const rows = stats.parties.filter((r) => r.n >= 5);
+  return (
+    <div className="space-y-2.5">
+      {rows.map((r) => (
+        <div key={r.party} className="flex items-center gap-3">
+          <div className="w-24 shrink-0 sm:w-32"><PartyBadge party={r.party} /></div>
+          <div className="flex h-5 flex-1 overflow-hidden rounded bg-muted">
+            <div className="bg-green-500/80" style={{ width: `${(r.angenommen / r.n) * 100}%` }} />
+            <div className="bg-red-500/80" style={{ width: `${(r.abgelehnt / r.n) * 100}%` }} />
+          </div>
+          <div className="w-24 shrink-0 text-right text-xs text-muted-foreground">
+            {Math.round((r.angenommen / r.n) * 100)}% ang. · {r.n}
+          </div>
+        </div>
+      ))}
+      <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1 text-xs text-muted-foreground">
+        <Dot cls="bg-green-500/80" label="angenommen" />
+        <Dot cls="bg-red-500/80" label="abgelehnt" />
+        <span className="text-muted-foreground/70">
+          · Zahl = entschiedene Anträge · nur Antragsteller mit mindestens 5 · aus {stats.n_mit_beschluss} von {stats.n_antraege} Antrags-Dokumenten
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function Contention({ a }: { a: PartyAnalysis }) {
   return (
     <div className="space-y-2">
@@ -165,19 +195,37 @@ function PartiesView() {
       >
         <Heatmap a={data} />
       </Block>
-      <Block
-        title="Erfolgsquote der Anträge"
-        hint="Wie die eingebrachten Anträge je Partei ausgehen."
-        explain={
-          <>
-            Jeder Balken zeigt, wie die Anträge einer Fraktion ausgehen: grün angenommen, rot abgelehnt, gelb
-            vertagt. Die Prozentzahl rechts zählt nur entschiedene Anträge. Vorsicht beim Deuten: Eine hohe
-            Quote kann „mehrheitsfähig“ heißen — oder dass eine Fraktion vor allem stellt, was sicher durchgeht.
-          </>
-        }
-      >
-        <SuccessRates a={data} />
-      </Block>
+      {data.antrag_stats && data.antrag_stats.parties.some((r) => r.n >= 5) ? (
+        <Block
+          title="Erfolgsquote der Anträge"
+          hint="Wie die eingereichten Anträge der Fraktionen ausgehen — aus den Original-Antragsdokumenten."
+          explain={
+            <>
+              Gezählt werden die im Ratsinformationssystem eingereichten Antrags-Dokumente der Fraktionen
+              (inkl. Änderungsanträge) und der klare Endstand der zugehörigen Vorlage — bevorzugt der Beschluss
+              des Rats selbst: grün angenommen, rot abgelehnt. Vertagte/offene Anträge zählen nicht mit.
+              Vorsicht beim Deuten: Eine hohe Quote kann „mehrheitsfähig“ heißen — oder dass eine Fraktion vor
+              allem stellt, was sicher durchgeht.
+            </>
+          }
+        >
+          <AntragSuccessRates a={data} />
+        </Block>
+      ) : (
+        <Block
+          title="Erfolgsquote der Anträge"
+          hint="Wie die eingebrachten Anträge je Partei ausgehen."
+          explain={
+            <>
+              Jeder Balken zeigt, wie die Anträge einer Fraktion ausgehen: grün angenommen, rot abgelehnt, gelb
+              vertagt. Die Prozentzahl rechts zählt nur entschiedene Anträge. Vorsicht beim Deuten: Eine hohe
+              Quote kann „mehrheitsfähig“ heißen — oder dass eine Fraktion vor allem stellt, was sicher durchgeht.
+            </>
+          }
+        >
+          <SuccessRates a={data} />
+        </Block>
+      )}
       <Block
         title="Streitgrad nach Themenfeld"
         hint="Welche Themen den Rat spalten, welche Konsens sind."

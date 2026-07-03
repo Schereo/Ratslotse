@@ -127,6 +127,12 @@ export interface PartyAnalysis {
   contention: { field: string; total: number; contested: number; contested_rate: number }[];
   alliances: { a: string; b: string; count: number }[];
   field_labels: Record<string, string>;
+  /** Erfolgsquoten der eingereichten Antrags-Dokumente (Anlagen-Ingestion). */
+  antrag_stats?: {
+    parties: { party: string; n: number; angenommen: number; abgelehnt: number }[];
+    n_antraege: number;
+    n_mit_beschluss: number;
+  } | null;
 }
 
 export interface Attendee {
@@ -218,6 +224,15 @@ export interface DecisionDetail {
     n_pages: number | null;
     excerpt: string | null;
   } | null;
+  /** Anlagen der Vorlage (Anträge zuerst, mit erkannten Antragstellern). */
+  anlagen?: {
+    document_id: number;
+    label: string | null;
+    url: string | null;
+    is_antrag: number;
+    antragsteller: string[];
+    status: string;
+  }[];
 }
 
 export interface Topic {
