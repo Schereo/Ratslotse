@@ -13,6 +13,7 @@ import { LotsenTipp } from "@/components/lotsen-tipp";
 import { RecentDecisions } from "@/components/recent-decisions";
 import { startGuidedTour } from "@/components/tour";
 import { ConfettiBurst } from "@/components/confetti";
+import { useOnboarding, type StepId } from "@/components/onboarding";
 
 const tiles = [
   { href: "/council", title: "Ratsinformationssystem", desc: "Beschlüsse, KI-Fragen, Sitzungen, Themen und Analysen.", icon: Landmark },
@@ -65,29 +66,17 @@ export default function DashboardPage() {
   );
 }
 
-const ONBOARDING_KEY = "ratslotse:onboarding-visited";
-const CELEBRATED_KEY = "ratslotse:onboarding-celebrated";
-
-type Step = { id: string; icon: LucideIcon; title: string; desc: string; href: string; done?: boolean };
+type Step = { id: StepId; icon: LucideIcon; title: string; desc: string; href: string; done?: boolean };
 
 function FirstSteps({ hasTopic }: { hasTopic: boolean }) {
-  // Onboarding is a nudge, not critical state — track opened steps client-side so a step
-  // ticks off as soon as it's clicked (the action steps have no other completion signal).
-  // Read in an effect (not during render) to avoid an SSR hydration mismatch.
-  const [visited, setVisited] = useState<string[]>([]);
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(ONBOARDING_KEY);
-      if (raw) setVisited(JSON.parse(raw));
-    } catch { /* ignore unreadable storage */ }
-  }, []);
-  const markVisited = (id: string) =>
-    setVisited((prev) => {
-      if (prev.includes(id)) return prev;
-      const next = [...prev, id];
-      try { localStorage.setItem(ONBOARDING_KEY, JSON.stringify(next)); } catch { /* ignore */ }
-      return next;
-    });
+  // Fortschritt liegt serverseitig am Konto (geräteübergreifend); besuchte
+  // Seiten meldet der globale OnboardingTracker. Der Klick auf eine Kachel
+  // hakt zusätzlich sofort ab (optimistisches Update, fühlt sich direkter an).
+  const { ready, state, markSteps, setCelebrated } = useOnboarding();
+  const visited = state.steps;
+  const markVisited = (id: StepId) => {
+    if (!visited.includes(id)) markSteps([id]);
+  };
 
   const steps: Step[] = [
     { id: "frag", icon: Sparkles, title: "Stell dem Rat eine Frage",
@@ -110,16 +99,25 @@ function FirstSteps({ hasTopic }: { hasTopic: boolean }) {
   const doneCount = steps.filter((s) => s.done || visited.includes(s.id)).length;
   const allDone = doneCount === steps.length;
 
-  // Einmaliges Konfetti, wenn der letzte Schritt abgehakt wird.
+  // Einmaliges Konfetti, wenn der letzte Schritt abgehakt wird — das Flag
+  // wandert zum Server, damit kein anderes Gerät erneut feiert. `celebrate`
+  // steuert nur das Konfetti-Overlay (ConfettiBurst setzt es nach der
+  // Animation zurück); `justFinished` hält die Gruß-Karte bis zum nächsten
+  // Seitenbesuch sichtbar.
   const [celebrate, setCelebrate] = useState(false);
+  const [justFinished, setJustFinished] = useState(false);
   useEffect(() => {
-    if (!allDone) return;
-    try {
-      if (localStorage.getItem(CELEBRATED_KEY)) return;
-      localStorage.setItem(CELEBRATED_KEY, "1");
-      setCelebrate(true);
-    } catch { /* ignore */ }
-  }, [allDone]);
+    if (!ready || !allDone || state.celebrated || justFinished) return;
+    setJustFinished(true);
+    setCelebrate(true);
+    setCelebrated();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, allDone, state.celebrated, justFinished]);
+
+  // Kurs abgeschlossen (auf irgendeinem Gerät) → Karte verschwindet. Nur die
+  // Sitzung, in der gerade der letzte Haken fiel, zeigt noch Konfetti + Gruß.
+  if (!ready) return null;
+  if (state.celebrated && !justFinished) return null;
 
   return (
     <Card className="mt-6 overflow-hidden" data-tour="erste-schritte">

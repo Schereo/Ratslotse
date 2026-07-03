@@ -8,6 +8,11 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geändert
+- **Onboarding-Kurs merkt sich den Fortschritt am Konto:** „Erste Schritte mit
+  Lotti" zählt jetzt geräteübergreifend — Schritte gelten als erledigt, sobald
+  die jeweilige Seite besucht wird (nicht nur per Klick auf die Kurs-Kachel),
+  und nach dem Abschluss verschwindet der Kurs vom Dashboard. Bisheriger
+  Fortschritt wird automatisch übernommen. (#190)
 - **Technik-Doku aufgeräumt:** interaktive Diagramme (Mermaid) für Architektur
   und KI-Pipeline, Betriebs-Interna (Zeitpläne, interne Funktionsnamen,
   To-do-Listen) entfernt, veraltete Formulierungen aus der Zeit vor dem

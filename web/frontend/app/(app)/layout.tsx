@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Clock, MailWarning } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -12,6 +12,7 @@ import { SlashSearchShortcut } from "@/components/keyboard-shortcuts";
 import { GuidedTour } from "@/components/tour";
 import { CommandPalette } from "@/components/command-palette";
 import { FeedbackDialog } from "@/components/feedback";
+import { OnboardingTracker } from "@/components/onboarding";
 import { BackToTop } from "@/components/back-to-top";
 import { PeekingChick } from "@/components/peeking-chick";
 import { Button, Card, Spinner, toast } from "@/components/ui";
@@ -59,6 +60,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <GuidedTour />
       <CommandPalette />
       <FeedbackDialog />
+      {/* useSearchParams braucht eine Suspense-Grenze (CSR-Bailout beim Prerender). */}
+      <Suspense fallback={null}>
+        <OnboardingTracker />
+      </Suspense>
       <BackToTop />
       <PeekingChick />
       <DesktopSidebar />

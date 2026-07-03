@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import sqlite3
 from dataclasses import dataclass
@@ -255,6 +256,10 @@ class Store:
                     # verified so the new gate never locks anyone out.
                     self._conn.execute("ALTER TABLE web_users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0")
                     self._conn.execute("UPDATE web_users SET email_verified = 1")
+                if "onboarding" not in wu_cols:
+                    # Onboarding-Fortschritt geräteübergreifend am Konto
+                    # (JSON: {"steps": [...], "celebrated": bool}).
+                    self._conn.execute("ALTER TABLE web_users ADD COLUMN onboarding TEXT")
         self._conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_topics_chat ON topics(chat_id)"
         )
@@ -398,6 +403,39 @@ class Store:
             self._conn.execute(
                 "UPDATE web_users SET delivery_channel = ? WHERE id = ?", (channel, owner_id)
             )
+
+    def get_onboarding(self, user_id: int) -> dict:
+        """Onboarding-Fortschritt des Kontos: {"steps": [...], "celebrated": bool}.
+        Am Konto statt im localStorage, damit er auf jedem Gerät derselbe ist."""
+        row = self._conn.execute(
+            "SELECT onboarding FROM web_users WHERE id = ?", (user_id,)
+        ).fetchone()
+        raw = row[0] if row else None
+        if raw:
+            try:
+                data = json.loads(raw)
+                steps = [s for s in data.get("steps", []) if isinstance(s, str)]
+                return {"steps": steps, "celebrated": bool(data.get("celebrated"))}
+            except (TypeError, ValueError):
+                pass
+        return {"steps": [], "celebrated": False}
+
+    def update_onboarding(
+        self, user_id: int, steps: list[str] | None = None, celebrated: bool | None = None
+    ) -> dict:
+        """Schritte idempotent dazumergen und/oder das Abschluss-Flag setzen."""
+        cur = self.get_onboarding(user_id)
+        for s in steps or []:
+            if s not in cur["steps"]:
+                cur["steps"].append(s)
+        if celebrated is not None:
+            cur["celebrated"] = bool(celebrated)
+        with self._conn:
+            self._conn.execute(
+                "UPDATE web_users SET onboarding = ? WHERE id = ?",
+                (json.dumps(cur, ensure_ascii=False), user_id),
+            )
+        return cur
 
     # ---- native-app push device tokens ----
 
