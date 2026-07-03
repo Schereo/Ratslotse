@@ -29,7 +29,7 @@ export function BackToTop() {
       onClick={toTop}
       aria-label="Nach oben scrollen"
       className={cn(
-        "fixed bottom-[calc(env(safe-area-inset-bottom)+5rem)] right-4 z-40 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-lifted transition-all hover:text-foreground md:bottom-14 md:right-6 print:hidden",
+        "fixed bottom-[calc(env(safe-area-inset-bottom)+5rem)] right-4 z-40 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-lifted transition-[opacity,transform,color] duration-200 ease-out-strong hover:text-foreground active:scale-95 md:bottom-14 md:right-6 print:hidden",
         show ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-3 opacity-0",
       )}
     >
