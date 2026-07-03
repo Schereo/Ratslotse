@@ -7,6 +7,13 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert
+- **Technik-Doku aufgeräumt:** interaktive Diagramme (Mermaid) für Architektur
+  und KI-Pipeline, Betriebs-Interna (Zeitpläne, interne Funktionsnamen,
+  To-do-Listen) entfernt, veraltete Formulierungen aus der Zeit vor dem
+  Open-Source-Release bereinigt. Die Doku verlinkt jetzt zurück zur App und
+  aufs GitHub-Repo. (#189)
+
 ### Behoben
 - **Ratsgruppen zählen für alle beteiligten Parteien:** Anträge der früheren
   FDP/Volt-Gruppe werden jetzt sowohl FDP als auch Volt zugerechnet (nach der

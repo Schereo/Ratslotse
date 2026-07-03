@@ -1,0 +1,66 @@
+---
+/**
+ * Client-seitiges Mermaid-Rendering — gebundelt aus node_modules (kein CDN,
+ * CSP-konform). Der Diagramm-Quelltext kommt als Prop `code`; das Script folgt
+ * dem Starlight-Theme (data-theme auf <html>) und rendert beim Umschalten neu.
+ */
+const { code } = Astro.props;
+---
+
+<div class="mermaid-block" data-source={code}>
+  <pre class="mermaid-loading">{code}</pre>
+</div>
+
+<style>
+  .mermaid-block {
+    margin: 1.5rem 0;
+    overflow-x: auto;
+  }
+  /* :global — das SVG wird zur Laufzeit injiziert und trägt Astros Scope-Attribut nicht. */
+  .mermaid-block :global(svg) {
+    max-width: 100%;
+    height: auto;
+  }
+  /* Auf schmalen Screens nicht ins Unlesbare schrumpfen — lieber im Block scrollen. */
+  @media (max-width: 640px) {
+    .mermaid-block :global(svg) {
+      max-width: none !important; /* überstimmt mermaids Inline-max-width */
+      min-width: 620px;
+    }
+  }
+  .mermaid-loading {
+    font-size: 0.75rem;
+    opacity: 0.5;
+  }
+</style>
+
+<script>
+  import mermaid from "mermaid";
+
+  const isDark = () => document.documentElement.dataset.theme === "dark";
+  let seq = 0;
+
+  async function renderAll() {
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: isDark() ? "dark" : "neutral",
+      fontFamily: "ui-sans-serif, system-ui, sans-serif",
+    });
+    for (const block of document.querySelectorAll<HTMLElement>(".mermaid-block")) {
+      const source = block.dataset.source ?? "";
+      try {
+        const { svg } = await mermaid.render(`mmd-${seq++}`, source);
+        block.innerHTML = svg;
+      } catch {
+        // Quelltext stehen lassen, wenn das Diagramm nicht parst.
+      }
+    }
+  }
+
+  renderAll();
+  // Theme-Wechsel (Starlight togglet data-theme) → mit passender Palette neu rendern.
+  new MutationObserver(renderAll).observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["data-theme"],
+  });
+</script>
