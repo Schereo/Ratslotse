@@ -2,6 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import {
+  ArrowRight, Briefcase, Bus, Cog, Construction, Euro as EuroIcon, Globe,
+  GraduationCap, HeartHandshake, Leaf, Shield, Tag, Trophy, type LucideIcon,
+} from "lucide-react";
 import { Trends, FieldRecap } from "@/lib/types";
 import { Card, Spinner, EmptyState } from "@/components/ui";
 import { POLICY_FIELD_LABELS, formatEuro } from "@/components/decision-ui";
@@ -137,25 +141,84 @@ function MoneyBars({ d, onQuarter }: { d: Trends; onQuarter: (q: string) => void
   );
 }
 
+// Ein Icon je Themenfeld — der visuelle Anker, der die Karten unterscheidbar
+// macht, ohne zwölf konkurrierende Farben einzuführen.
+const FIELD_ICON: Record<string, LucideIcon> = {
+  verkehr: Bus,
+  klima_umwelt: Leaf,
+  bauen_wohnen: Construction,
+  soziales_gesundheit: HeartHandshake,
+  bildung: GraduationCap,
+  finanzen: EuroIcon,
+  kultur_sport: Trophy,
+  wirtschaft: Briefcase,
+  sicherheit_ordnung: Shield,
+  verwaltung_digital: Cog,
+  migration_integration: Globe,
+  sonstiges: Tag,
+};
+
+/** Neues Recap-Format: Zeile 1 = Kernaussage, danach "- "-Stichpunkte.
+ *  Ältere Rückblicke in der DB sind noch Fließtext → Prosa-Fallback. */
+function parseRecap(summary: string): { lead: string; bullets: string[] } | null {
+  const lines = summary.split("\n").map((l) => l.trim()).filter(Boolean);
+  const bullets = lines.filter((l) => /^[-–•]\s+/.test(l)).map((l) => l.replace(/^[-–•]\s+/, ""));
+  if (bullets.length < 2) return null;
+  const lead = lines.filter((l) => !/^[-–•]\s+/.test(l)).join(" ");
+  return { lead, bullets };
+}
+
+function RecapCard({ r }: { r: FieldRecap }) {
+  const Icon = FIELD_ICON[r.policy_field] ?? Tag;
+  const parsed = parseRecap(r.summary);
+  const href = `/council?tab=decisions&field=${r.policy_field}&cat=all${r.period_from ? `&date_from=${r.period_from}` : ""}${r.period_to ? `&date_to=${r.period_to}` : ""}`;
+  return (
+    <div className="flex flex-col rounded-xl border border-border bg-card p-4">
+      <div className="flex items-center gap-2.5">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <Icon className="h-4 w-4" />
+        </span>
+        <h4 className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">{r.field_label}</h4>
+        <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-xs tabular-nums text-muted-foreground" title="ausgewertete Beschlüsse">
+          {r.n_decisions}
+        </span>
+      </div>
+
+      {parsed ? (
+        <>
+          <p className="mt-3 text-sm font-medium leading-snug text-foreground">{parsed.lead}</p>
+          <ul className="mt-2.5 flex-1 space-y-1.5">
+            {parsed.bullets.map((b, i) => (
+              <li key={i} className="flex gap-2 text-sm leading-relaxed text-muted-foreground">
+                <span className="mt-[0.62rem] h-px w-3 shrink-0 bg-primary/50" aria-hidden />
+                <span>{b}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : (
+        // Fallback für Bestands-Rückblicke im alten Fließtext-Format.
+        <p className="mt-3 flex-1 text-sm leading-relaxed text-muted-foreground">{r.summary}</p>
+      )}
+
+      <Link
+        href={href}
+        className="mt-3 inline-flex w-fit items-center gap-1 border-t border-border pt-2.5 text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
+      >
+        Die {r.n_decisions} Beschlüsse dahinter <ArrowRight className="h-3 w-3" />
+      </Link>
+    </div>
+  );
+}
+
 function FieldRecaps() {
   const { data } = useFetch<{ recaps: FieldRecap[] }>("/council/field-recaps");
   const recaps = data?.recaps ?? [];
   if (recaps.length === 0) return null;
   return (
     <Block title="Rückblick je Themenfeld" hint="KI-generierte Kurzfassung der jeweils neuesten Beschlüsse je Bereich — was den Rat zuletzt beschäftigt hat.">
-      <div className="grid gap-3 sm:grid-cols-2">
-        {recaps.map((r) => (
-          <div key={r.policy_field} className="flex flex-col rounded-lg border border-border bg-muted/20 p-3.5">
-            <h4 className="text-sm font-semibold text-foreground">{r.field_label}</h4>
-            <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{r.summary}</p>
-            <Link
-              href={`/council?tab=decisions&field=${r.policy_field}&cat=all${r.period_from ? `&date_from=${r.period_from}` : ""}${r.period_to ? `&date_to=${r.period_to}` : ""}`}
-              className="mt-2.5 inline-flex w-fit text-xs text-muted-foreground transition-colors hover:text-primary"
-            >
-              Basierend auf den {r.n_decisions} neuesten Beschlüssen →
-            </Link>
-          </div>
-        ))}
+      <div className="grid items-start gap-3 sm:grid-cols-2">
+        {recaps.map((r) => <RecapCard key={r.policy_field} r={r} />)}
       </div>
     </Block>
   );
