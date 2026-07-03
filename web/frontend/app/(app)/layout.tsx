@@ -11,6 +11,7 @@ import { DesktopSidebar, MobileTopbar, MobileBottomNav } from "@/components/nav"
 import { SlashSearchShortcut } from "@/components/keyboard-shortcuts";
 import { GuidedTour } from "@/components/tour";
 import { CommandPalette } from "@/components/command-palette";
+import { FeedbackDialog } from "@/components/feedback";
 import { BackToTop } from "@/components/back-to-top";
 import { PeekingChick } from "@/components/peeking-chick";
 import { Button, Card, Spinner, toast } from "@/components/ui";
@@ -57,6 +58,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <SlashSearchShortcut />
       <GuidedTour />
       <CommandPalette />
+      <FeedbackDialog />
       <BackToTop />
       <PeekingChick />
       <DesktopSidebar />
