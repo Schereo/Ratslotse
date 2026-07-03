@@ -591,6 +591,13 @@ function SearchTab({ committees }: { committees: string[] }) {
   const sp = useSearchParams();
   const router = useRouter();
   const mode: "suchen" | "fragen" = sp.get("mode") === "fragen" ? "fragen" : "suchen";
+  // Glitzer-Lockruf auf dem KI-Frage-Segment, bis die erste Frage gestellt
+  // wurde (Flag setzt council-qa). Default true = kein Glitzern vor dem
+  // Mount-Check, damit SSR und Client identisch rendern.
+  const [qaUsed, setQaUsed] = useState(true);
+  useEffect(() => {
+    setQaUsed(localStorage.getItem("ratslotse:qa-benutzt") === "1");
+  }, [mode]);
   const setMode = (m: "suchen" | "fragen") => {
     const params = new URLSearchParams(sp.toString());
     params.set("tab", "decisions");
@@ -604,7 +611,7 @@ function SearchTab({ committees }: { committees: string[] }) {
       onChange={setMode}
       options={[
         { value: "suchen", label: "Suchen", icon: Search },
-        { value: "fragen", label: "KI-Frage", icon: Sparkles, tour: "ki-frage-tab" },
+        { value: "fragen", label: "KI-Frage", icon: Sparkles, tour: "ki-frage-tab", sparkle: !qaUsed },
       ]}
     />
   );
