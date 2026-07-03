@@ -98,7 +98,7 @@ def test_me_requires_auth(client):
 def test_admin_prompts_crud(client):
     _register(client)
     r = client.get("/api/admin/prompts")
-    assert r.status_code == 200 and len(r.json()) == 7
+    assert r.status_code == 200 and len(r.json()) == 8
     key = "council_watcher_system"
     upd = client.put(f"/api/admin/prompts/{key}", json={"content": "Angepasster Watcher-Systemprompt."})
     assert upd.status_code == 200 and upd.json()["is_overridden"] is True

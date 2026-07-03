@@ -133,6 +133,24 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "SUCHBEGRIFFE:"
         ),
     },
+    "recap_themenfeld": {
+        "title": "Themenfeld-Rückblick",
+        "description": "Wöchentliche Kurzfassung je Themenfeld: eine Kernaussage + Stichpunkte. Platzhalter: {field}, {items}.",
+        "template": (
+            "Du schreibst einen kurzen, neutralen Rückblick für die Bürger:innen Oldenburgs:\n"
+            "Was hat den Stadtrat im Themenfeld „{field}“ zuletzt beschäftigt?\n\n"
+            "Hier die jüngsten Beschlüsse/Berichte in diesem Feld (neueste zuerst):\n"
+            "{items}\n\n"
+            "Antworte in GENAU diesem Format (kein Markdown außer den Spiegelstrichen):\n"
+            "Zeile 1: die EINE Kernaussage des Feldes — ein prägnanter Satz, max. 90 Zeichen, ohne Einleitung.\n"
+            'Danach 3 bis 4 Zeilen, jede beginnt mit "- ": je EIN konkreter Punkt '
+            "(Vorhaben, Ort, Entscheidung mit Ergebnis), max. 140 Zeichen pro Punkt.\n\n"
+            "Regeln:\n"
+            "- Nenne konkrete Vorhaben/Orte/Zahlen, wenn sie in den Einträgen vorkommen.\n"
+            "- Neutral und sachlich: keine Wertung, keine Partei-Bewertung, keine Empfehlungen.\n"
+            "- Erfinde nichts; stütze dich ausschließlich auf die vorgelegten Einträge."
+        ),
+    },
     "qa_antwort": {
         "title": "Frag den Rat – Antwort",
         "description": "Formuliert die Antwort ausschließlich aus den gefundenen Beschlüssen, mit [id]-Zitaten.",
