@@ -196,7 +196,40 @@ function DecisionDetailInner() {
         </Section>
       )}
 
-      {data.vorlage_journey.length > 1 && (
+      {data.beratungsfolge && data.beratungsfolge.length > 0 ? (
+        <Section title={`Weg der Vorlage ${d.vorlage_nr ?? ""}`}>
+          {/* Offizielle Beratungsfolge aus dem Ratsinfo: Ergebnis je Station,
+              geplante künftige Beratungen inklusive. */}
+          <div className="ml-1 flex flex-col gap-3 border-l-2 border-border pl-4">
+            {data.beratungsfolge.map((b, i) => {
+              const current = b.ksinr != null && b.ksinr === d.ksinr;
+              return (
+                <div key={`${b.ksinr ?? "x"}-${b.datum ?? i}-${b.gremium}`} className="relative">
+                  <span className={cn(
+                    "absolute -left-[21px] top-1.5 h-2 w-2 rounded-full",
+                    current ? "bg-primary" : b.future ? "border border-primary/60 bg-background" : "bg-border",
+                  )} />
+                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                    <span className={cn("text-sm", current ? "font-medium text-foreground" : "text-foreground")}>
+                      {b.gremium}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {b.datum ? formatDate(b.datum) : "Termin offen"}
+                      {b.is_public === 0 && " · nichtöffentlich"}
+                      {current && " · hier"}
+                    </span>
+                    {b.future ? (
+                      <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary">geplant</span>
+                    ) : b.ergebnis ? (
+                      <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">{b.ergebnis}</span>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Section>
+      ) : data.vorlage_journey.length > 1 ? (
         <Section title={`Weg der Vorlage ${d.vorlage_nr ?? ""}`}>
           <div className="ml-1 flex flex-col gap-3 border-l-2 border-border pl-4">
             {data.vorlage_journey.map((stop) => {
@@ -216,7 +249,7 @@ function DecisionDetailInner() {
             })}
           </div>
         </Section>
-      )}
+      ) : null}
 
       {Object.keys(byParty).length > 0 && (
         <Section title={`Anwesenheit (${data.attendance.length})`}>

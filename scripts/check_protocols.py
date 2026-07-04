@@ -22,6 +22,8 @@ load_dotenv(ROOT / ".env")
 from scripts.backfill_protocols import process_range  # noqa: E402
 from scripts.backfill_anlagen import process_missing as fetch_anlagen_missing  # noqa: E402
 from scripts.backfill_anlagen import rescan_recent as rescan_recent_anlagen  # noqa: E402
+from scripts.backfill_beratungen import process_missing as fetch_beratungen_missing  # noqa: E402
+from scripts.backfill_beratungen import rescan_recent as rescan_beratungen  # noqa: E402
 from scripts.backfill_vorlagen import process_missing as fetch_vorlagen  # noqa: E402
 from scripts.classify_decisions import process as classify_decisions  # noqa: E402
 from scripts.extract_amounts import process as extract_amounts  # noqa: E402
@@ -63,6 +65,13 @@ def main() -> None:
     print(f"Anlagen: {astats2['anlagen'] + rstats['anlagen']} neu "
           f"({astats2['antraege'] + rstats['antraege']} Anträge), "
           f"{astats2['failed'] + rstats['failed']} Fehler.")
+    # Beratungsfolge: neue Vorlagen nachziehen + bewegliche aktualisieren
+    # (nachgetragene Ergebnisse, neu angesetzte künftige Stationen).
+    bstats = fetch_beratungen_missing(COUNCIL_DB, limit=300)
+    b2stats = rescan_beratungen(COUNCIL_DB)
+    print(f"Beratungsfolge: {bstats['stationen'] + b2stats['stationen']} Stationen "
+          f"({bstats['geplant'] + b2stats['geplant']} geplant), "
+          f"{bstats['failed'] + b2stats['failed']} Fehler.")
     # Keep the full-text index in sync for hybrid retrieval (pure SQLite, instant).
     from council.store import CouncilStore
     _store = CouncilStore(COUNCIL_DB)
