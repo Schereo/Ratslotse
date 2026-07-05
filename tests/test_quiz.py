@@ -202,3 +202,45 @@ def test_store_estimate_roundtrip(tmp_path):
     assert "answer_value" not in p  # Lösung nicht in der Runde
     full = store.get_quiz_question(p["id"])
     assert full["answer_value"] == 12000.0
+
+
+# ---- Reichere Antworten: Detail, Karte, Bild --------------------------------
+
+def test_license_ok():
+    assert quiz._license_ok("CC BY-SA 4.0")
+    assert quiz._license_ok("CC0")
+    assert quiz._license_ok("Public domain")
+    assert not quiz._license_ok("Fair use")          # unfrei → verwerfen
+    assert not quiz._license_ok("")
+    assert not quiz._license_ok(None)
+
+
+def test_enrich_row(monkeypatch):
+    monkeypatch.setattr(quiz, "commons_image", lambda s: {
+        "url": "http://img", "author": "A", "license": "CC BY 4.0",
+        "license_url": "http://l", "source_url": "http://s"})
+    monkeypatch.setattr(quiz, "geocode_place", lambda s: (53.14, 8.21))
+    row = {}
+    quiz.enrich_row(row, "Schloss Oldenburg")
+    assert row["image_url"] == "http://img" and row["image_license"] == "CC BY 4.0"
+    assert row["lat"] == 53.14 and row["lon"] == 8.21 and row["place_label"] == "Schloss Oldenburg"
+    row2 = {}
+    quiz.enrich_row(row2, "")           # kein subject → keine Anreicherung, kein Netz
+    assert row2 == {}
+
+
+def test_generate_attaches_detail_and_media(monkeypatch):
+    qs = [{"category": "orte", "difficulty": "leicht", "question": "Was ist das Schloss?",
+           "options": ["A", "B", "C", "D"], "correct_index": 0, "explanation": "kurz",
+           "detail": "Das Schloss war die Residenz der Großherzöge.", "subject": "Schloss Oldenburg"}]
+    monkeypatch.setattr(quiz.llm, "chat_complete", _fake_llm(qs))
+    monkeypatch.setattr(quiz, "commons_image", lambda s: {
+        "url": "http://img", "author": "A", "license": "CC BY 4.0",
+        "license_url": "http://l", "source_url": "http://s"})
+    monkeypatch.setattr(quiz, "geocode_place", lambda s: (53.14, 8.21))
+    rows = quiz.generate_for_area("stadtteil", "Oldenburg", "Oldenburg", "x" * 500,
+                                  n=1, source_type="wikipedia", source_ref="http://w", verify=False)
+    r = rows[0]
+    assert r["detail"] == "Das Schloss war die Residenz der Großherzöge."
+    assert r["image_url"] == "http://img" and r["image_license"] == "CC BY 4.0"
+    assert r["lat"] == 53.14 and r["place_label"] == "Schloss Oldenburg"

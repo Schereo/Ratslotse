@@ -1,13 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { Check, X, ExternalLink, ThumbsUp, ThumbsDown, ArrowRight, RotateCcw, Send } from "lucide-react";
+import dynamic from "next/dynamic";
+import { Check, X, ExternalLink, ThumbsUp, ThumbsDown, ArrowRight, RotateCcw, Send, ChevronDown, ChevronUp } from "lucide-react";
 import { QuizQuestion, QuizAnswerResult } from "@/lib/types";
 import { Card, Button, Input } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
 import { ConfettiBurst } from "@/components/confetti";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+
+// Leaflet ist client-only + schwer → erst laden, wenn eine Karte gebraucht wird.
+const LocatorMap = dynamic(() => import("@/components/quiz-locator-map").then((m) => m.LocatorMap), {
+  ssr: false,
+  loading: () => <div className="h-44 w-full animate-pulse rounded-lg bg-muted" />,
+});
 
 export const CATEGORY_LABEL: Record<string, string> = {
   geschichte: "Geschichte",
@@ -46,6 +53,7 @@ export function QuizPlay({ questions, onExit, onComplete, title }: {
   const [correct, setCorrect] = useState(0);
   const [done, setDone] = useState(false);
   const [guess, setGuess] = useState<number | null>(null);
+  const [showMore, setShowMore] = useState(false);
 
   const q = questions[idx];
   const isEstimate = q.qtype === "estimate";
@@ -87,7 +95,7 @@ export function QuizPlay({ questions, onExit, onComplete, title }: {
       return;
     }
     setIdx((i) => i + 1);
-    setChosen(null); setResult(null); setRated(null); setGuess(null);
+    setChosen(null); setResult(null); setRated(null); setGuess(null); setShowMore(false);
     setComment(""); setCommentSent(false);
   }
 
@@ -217,6 +225,49 @@ export function QuizPlay({ questions, onExit, onComplete, title }: {
             {result.explanation && (
               <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{result.explanation}</p>
             )}
+
+            {/* „Mehr dazu": ausführliche Erklärung, Foto (mit Bildnachweis) und
+                eine kleine Karte — nur wenn zur Frage vorhanden, aufklappbar. */}
+            {(result.detail || result.image || result.map) && (
+              <div className="mt-2">
+                <button type="button" onClick={() => setShowMore((v) => !v)}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                  {showMore ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                  {showMore ? "Weniger" : "Mehr dazu"}
+                </button>
+                {showMore && (
+                  <div className="mt-2 space-y-3">
+                    {result.detail && (
+                      <p className="text-sm leading-relaxed text-foreground">{result.detail}</p>
+                    )}
+                    {result.image && (
+                      <figure className="overflow-hidden rounded-lg border border-border">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={result.image.url} alt={result.map?.label || "Foto zur Frage"}
+                             className="max-h-64 w-full object-cover" />
+                        <figcaption className="px-2 py-1 text-[11px] leading-snug text-muted-foreground">
+                          Foto: {result.image.author || "unbekannt"}
+                          {result.image.license && (
+                            <> · {result.image.license_url ? (
+                              <a href={result.image.license_url} target="_blank" rel="noreferrer" className="hover:underline">{result.image.license}</a>
+                            ) : result.image.license}</>
+                          )}
+                          {" · "}
+                          {result.image.source_url ? (
+                            <a href={result.image.source_url} target="_blank" rel="noreferrer" className="hover:underline">Wikimedia Commons</a>
+                          ) : "Wikimedia Commons"}
+                        </figcaption>
+                      </figure>
+                    )}
+                    {result.map && (
+                      <LocatorMap lat={result.map.lat} lon={result.map.lon} label={result.map.label}
+                                  className="h-44 w-full" />
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
               {result.source_ref && result.source_type ? (
                 result.source_ref.startsWith("http") ? (

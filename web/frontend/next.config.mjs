@@ -60,7 +60,7 @@ function csp({ wasm = false } = {}) {
     `script-src 'self' 'unsafe-inline'${wasm ? " 'wasm-unsafe-eval'" : ""}${isDev ? " 'unsafe-eval'" : ""}`,
     "worker-src 'self' blob:",
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: https://*.basemaps.cartocdn.com https://*.openfreemap.org",
+    "img-src 'self' data: blob: https://*.basemaps.cartocdn.com https://*.openfreemap.org https://upload.wikimedia.org",
     "font-src 'self'",
     "connect-src 'self' https://*.openfreemap.org",
     "frame-ancestors 'none'",

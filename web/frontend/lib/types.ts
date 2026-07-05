@@ -344,6 +344,13 @@ export interface QuizQuestion {
   source_type: string | null;
   source_ref: string | null;
 }
+export interface QuizImageCredit {
+  url: string;
+  author: string | null;
+  license: string | null;
+  license_url: string | null;
+  source_url: string | null;
+}
 export interface QuizAnswerResult {
   correct: boolean;
   correct_index: number;
@@ -353,6 +360,9 @@ export interface QuizAnswerResult {
   explanation: string | null;
   source_type: string | null;
   source_ref: string | null;
+  detail?: string | null;
+  map?: { lat: number; lon: number; label: string | null } | null;
+  image?: QuizImageCredit | null;
 }
 export interface QuizBadge {
   key: string;
