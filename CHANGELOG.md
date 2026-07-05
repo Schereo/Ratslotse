@@ -48,6 +48,8 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   aufs GitHub-Repo. (#189)
 
 ### Behoben
+- Auf dem Handy konnte die Stadtkarte über der Navigation und anderen
+  Elementen liegen — die Karte bleibt jetzt unter Kopf- und Fußleiste. (#194)
 - **Ratsgruppen zählen für alle beteiligten Parteien:** Anträge der früheren
   FDP/Volt-Gruppe werden jetzt sowohl FDP als auch Volt zugerechnet (nach der
   Trennung zählen neue Anträge automatisch nur für die jeweilige Fraktion, weil

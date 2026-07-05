@@ -210,7 +210,9 @@ export function CouncilMap({ points, outlines, className }: {
       className={cn(
         full
           ? "fixed inset-0 z-[100] bg-background"
-          : cn("relative overflow-hidden border border-border", className),
+          // isolate: der Vollbild-Button (z-[1000]) und die Leaflet-Panes
+          // dürfen inline nicht über Topbar/Bottom-Nav (z-40) stechen.
+          : cn("relative isolate overflow-hidden border border-border", className),
       )}
     >
       <div ref={ref} className="h-full w-full" aria-label="Stadtweite Themen-Karte" />

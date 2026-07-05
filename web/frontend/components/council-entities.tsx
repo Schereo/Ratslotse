@@ -267,7 +267,8 @@ export function EntitiesTab() {
           <Spinner />
         </div>
       ) : (geo?.entities.length ?? 0) > 0 ? (
-        <div className="relative">
+        // isolate: Karte + Hinweis-Overlay (z-500) bleiben unter Topbar/Bottom-Nav (z-40).
+        <div className="relative isolate z-0">
           <CouncilMap points={points} outlines={outlines} className="h-[38vh] min-h-[17rem] max-h-[26rem] rounded-xl" />
           <p className="pointer-events-none absolute bottom-2.5 left-2.5 z-[500] rounded-md bg-background/85 px-2 py-1 text-[11px] text-muted-foreground backdrop-blur">
             {selectedST.size > 0
