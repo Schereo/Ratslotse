@@ -8,6 +8,10 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geändert
+- **Bessere Karte im Dunkelmodus:** Die dunkle Stadtkarte ist jetzt ein
+  gut lesbarer grauer Slate-Ton (invertierte Voyager-Basemap) statt fast
+  schwarz — Straßen, Waldgebiete und Wasser sind zur Orientierung erkennbar.
+  (#196)
 - **Karten-Labels ohne Überlappung:** Die Themen-Namen auf der Karte werden
   jetzt mit Kollisionsvermeidung platziert — die wichtigsten Themen (nach
   Beschlusszahl) zuerst, was nicht frei steht, erscheint beim Heranzoomen.
