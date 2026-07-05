@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Check, X, ExternalLink, ThumbsUp, ThumbsDown, ArrowRight, RotateCcw } from "lucide-react";
+import { Check, X, ExternalLink, ThumbsUp, ThumbsDown, ArrowRight, RotateCcw, Send } from "lucide-react";
 import { QuizQuestion, QuizAnswerResult } from "@/lib/types";
-import { Card, Button } from "@/components/ui";
+import { Card, Button, Input } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
 import { ConfettiBurst } from "@/components/confetti";
 import { api } from "@/lib/api";
@@ -40,6 +40,8 @@ export function QuizPlay({ questions, onExit, onComplete, title }: {
   const [chosen, setChosen] = useState<number | null>(null);
   const [result, setResult] = useState<QuizAnswerResult | null>(null);
   const [rated, setRated] = useState<"gut" | "schlecht" | null>(null);
+  const [comment, setComment] = useState("");
+  const [commentSent, setCommentSent] = useState(false);
   const [points, setPoints] = useState(0);
   const [correct, setCorrect] = useState(0);
   const [done, setDone] = useState(false);
@@ -86,11 +88,21 @@ export function QuizPlay({ questions, onExit, onComplete, title }: {
     }
     setIdx((i) => i + 1);
     setChosen(null); setResult(null); setRated(null); setGuess(null);
+    setComment(""); setCommentSent(false);
   }
 
   function rate(verdict: "gut" | "schlecht") {
     setRated(verdict);
+    // Bewertung sofort speichern; bei „schlecht" darf optional noch ein Grund folgen.
     void api.post("/quiz/rate", { question_id: q.id, verdict }).catch(() => {});
+  }
+
+  function sendComment() {
+    const text = comment.trim();
+    setCommentSent(true);
+    if (!text) return; // leer = übersprungen, die „schlecht"-Wertung steht schon
+    // Upsert: dieselbe Wertung, jetzt mit Begründung.
+    void api.post("/quiz/rate", { question_id: q.id, verdict: "schlecht", comment: text.slice(0, 500) }).catch(() => {});
   }
 
   if (done) {
@@ -238,6 +250,23 @@ export function QuizPlay({ questions, onExit, onComplete, title }: {
                 )}
               </span>
             </div>
+            {/* Nach 👎 optional (nicht Pflicht) ein Grund — hilft, schlechte
+                Fragen gezielt zu ersetzen. Die Wertung selbst ist schon gebucht. */}
+            {rated === "schlecht" && !commentSent && (
+              <div className="mt-2 flex items-center gap-2">
+                <Input
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") sendComment(); }}
+                  maxLength={500}
+                  placeholder="Optional: Was ist an der Frage schlecht?"
+                  className="h-8 text-sm"
+                />
+                <Button variant="secondary" size="sm" className="shrink-0" onClick={sendComment}>
+                  <Send className="!size-3.5" /> Senden
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </Card>

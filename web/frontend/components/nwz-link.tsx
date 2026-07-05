@@ -1,10 +1,29 @@
 import { ExternalLink } from "lucide-react";
 
-/** NWZonline search for a headline — the e-Paper feed carries no canonical article URL,
- *  so we link to the search (which surfaces the article). Trailing slash is required:
- *  /suche/?query=… works, /suche?query=… leaves the search box empty. */
+/** Kurze, saubere Suchanfrage aus einem (oft sehr langen, bürokratischen)
+ *  Beschlusstitel. Lange Titel mit Klammer-Zusätzen, Daten und „- Bericht"-
+ *  Anhängseln bringen die NWZ-Suche clientseitig zum Hängen (Dauer-Ladeschleife);
+ *  darum reduzieren wir auf die ersten Schlagworte. */
+export function nwzQuery(title: string): string {
+  // Hinweis: JS-\b ist ASCII-only und greift nach „ß"/„§" nicht — darum enden
+  // die Schwanz-Muster auf Whitespace statt auf \b.
+  const cleaned = (title || "")
+    .replace(/\([^)]*\)/g, " ")                    // Klammer-Zusätze, z. B. (Stadtplanung)
+    .replace(/\s[-–—]\s.*$/, " ")                  // alles ab „ - Bericht/Antrag/…"
+    .replace(/\s(?:zum stichtag|gemäß|nach §|für den zeitraum)\s.*$/i, " ")  // Datum/Paragraph/Zeitraum
+    .replace(/\svom\s+\d.*$/i, " ")                // „vom 5. Mai 2025" (nur vor Datum)
+    .replace(/["«»„""'']/g, " ")                    // Anführungszeichen
+    .replace(/\s+/g, " ")
+    .trim();
+  const words = cleaned.split(" ").filter(Boolean).slice(0, 6).join(" ");
+  return words.length > 60 ? words.slice(0, 60).trim() : words;
+}
+
+/** NWZonline-Suche zu einem Beschluss — der e-Paper-Feed hat keine kanonische
+ *  Artikel-URL, deshalb die Suche. Schrägstrich Pflicht: /suche/?query=… füllt
+ *  das Suchfeld, /suche?query=… lässt es leer. Query wird gekürzt (siehe oben). */
 export function nwzSearchUrl(title: string): string {
-  return `https://www.nwzonline.de/suche/?query=${encodeURIComponent(title || "")}`;
+  return `https://www.nwzonline.de/suche/?query=${encodeURIComponent(nwzQuery(title))}`;
 }
 
 /** A small, neutral "read at NWZonline" link — no mention of access tiers. */
