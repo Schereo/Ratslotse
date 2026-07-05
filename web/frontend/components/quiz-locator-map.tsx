@@ -7,13 +7,15 @@ import { cn } from "@/lib/utils";
 
 const VOYAGER = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
 
-/** Kleine, nicht-interaktive Karte mit EINEM Marker — zeigt in der Auflösung,
- *  wo ein Ort/eine Straße/ein Gebäude liegt. CircleMarker statt Icon-Bild, damit
- *  die CSP img-src eng bleibt. Theme-reaktiv wie die Themen-Karte. */
-export function LocatorMap({ lat, lon, label, className }: {
+/** Kleine, nicht-interaktive Karte für die Auflösung: zeigt entweder einen
+ *  Punkt (Einzelort/Gebäude) ODER eine Straßen-Linie (`geojson`), je nachdem was
+ *  das Backend verlässlich ermitteln konnte. CircleMarker/Polyline statt
+ *  Icon-Bild, damit die CSP img-src eng bleibt. Theme-reaktiv. */
+export function LocatorMap({ lat, lon, label, geojson, className }: {
   lat: number;
   lon: number;
   label?: string | null;
+  geojson?: object | null;
   className?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -33,17 +35,26 @@ export function LocatorMap({ lat, lon, label, className }: {
           doubleClickZoom: false, attributionControl: true,
         });
         mapRef.current = map;
-        map.setView([lat, lon], 15);
+        map.setView([lat, lon], 15);   // Initial-View vor den Layern (fitBounds crasht sonst)
         const tiles = L.tileLayer(VOYAGER, {
           maxZoom: 18, detectRetina: true, subdomains: "abcd",
           attribution: "&copy; OpenStreetMap, &copy; CARTO",
         }).addTo(map);
         observer = new MutationObserver(() => tiles.setUrl(VOYAGER));
         observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-        const marker = L.circleMarker([lat, lon], {
-          radius: 8, color: "#0764a6", weight: 2, fillColor: "#0764a6", fillOpacity: 0.7,
-        }).addTo(map);
-        if (label) marker.bindTooltip(label, { permanent: true, direction: "top", offset: [0, -8] });
+        if (geojson) {
+          // Straßen-Linie (kompakt & eindeutig, vom Backend geprüft).
+          const layer = L.geoJSON(geojson as never, {
+            style: { color: "#0764a6", weight: 4, opacity: 0.85, lineCap: "round" },
+          }).addTo(map);
+          const b = layer.getBounds();
+          if (b.isValid()) map.fitBounds(b, { padding: [24, 24], maxZoom: 16 });
+        } else {
+          const marker = L.circleMarker([lat, lon], {
+            radius: 8, color: "#0764a6", weight: 2, fillColor: "#0764a6", fillOpacity: 0.7,
+          }).addTo(map);
+          if (label) marker.bindTooltip(label, { permanent: true, direction: "top", offset: [0, -8] });
+        }
       } catch (err) {
         console.error("[LocatorMap] Initialisierung fehlgeschlagen:", err);
       }
@@ -55,7 +66,7 @@ export function LocatorMap({ lat, lon, label, className }: {
       mapRef.current = null;
       try { m?.remove(); } catch { /* Karte ohnehin weg */ }
     };
-  }, [lat, lon, label]);
+  }, [lat, lon, label, geojson]);
 
   return (
     <div className={cn("relative isolate overflow-hidden rounded-lg border border-border", className)}>

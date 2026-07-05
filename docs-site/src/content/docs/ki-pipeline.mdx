@@ -131,6 +131,15 @@ des Wikipedia-Artikels. Genutzt werden **nur frei lizenzierte** Bilder (CC/PD;
 Fair-Use fliegt raus), immer **mit Bildnachweis** (Autor, Lizenz, Link) direkt
 aus der Commons-API.
 
+Bei der Karte hat Verlässlichkeit Vorrang: Für **eindeutige, kompakte Straßen**
+zeichnet das Backend die echte **Linie** (OpenStreetMap/Overpass), aber nur wenn
+die Geometrie klein genug ist — verstreute oder mehrfach vergebene Straßennamen
+(mehrere „Mittelwege") werden **verworfen**, damit nie eine falsche Stelle
+markiert wird. Einen Punkt-Marker gibt es sonst nur für bekannte Einzelorte (die
+einen Wikipedia-Artikel haben). Fachbegriffe in der Erklärung (z. B.
+„Vergnügungsstätte", „Bebauungsplan") unterlegt das Frontend mit einem
+Hover-Glossar.
+
 ## LLM-Integration
 
 | Aspekt | Status |

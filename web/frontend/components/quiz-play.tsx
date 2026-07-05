@@ -7,6 +7,7 @@ import { QuizQuestion, QuizAnswerResult } from "@/lib/types";
 import { Card, Button, Input } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
 import { ConfettiBurst } from "@/components/confetti";
+import { GlossaryText } from "@/components/glossary-text";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -223,7 +224,7 @@ export function QuizPlay({ questions, onExit, onComplete, title }: {
               </p>
             )}
             {result.explanation && (
-              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{result.explanation}</p>
+              <p className="mt-1 text-sm leading-relaxed text-muted-foreground"><GlossaryText text={result.explanation} /></p>
             )}
 
             {/* „Mehr dazu": ausführliche Erklärung, Foto (mit Bildnachweis) und
@@ -238,7 +239,7 @@ export function QuizPlay({ questions, onExit, onComplete, title }: {
                 {showMore && (
                   <div className="mt-2 space-y-3">
                     {result.detail && (
-                      <p className="text-sm leading-relaxed text-foreground">{result.detail}</p>
+                      <p className="text-sm leading-relaxed text-foreground"><GlossaryText text={result.detail} /></p>
                     )}
                     {result.image && (
                       <figure className="overflow-hidden rounded-lg border border-border">
@@ -261,7 +262,7 @@ export function QuizPlay({ questions, onExit, onComplete, title }: {
                     )}
                     {result.map && (
                       <LocatorMap lat={result.map.lat} lon={result.map.lon} label={result.map.label}
-                                  className="h-44 w-full" />
+                                  geojson={result.map.geojson} className="h-44 w-full" />
                     )}
                   </div>
                 )}
