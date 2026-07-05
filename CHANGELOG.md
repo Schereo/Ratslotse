@@ -8,6 +8,11 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geändert
+- **Fairere, lehrreichere Quizfragen:** Die Fragen-Erzeugung zielt jetzt auf
+  einen „Aha-Moment" beim Auflösen — mehrheitlich leichte bis mittlere Fragen
+  (keine obskuren Randfiguren oder beliebigen Jahreszahlen), und die Erklärung
+  vermittelt das *Warum*, statt nur die Antwort zu wiederholen. Wirkt auf neu
+  erzeugte Fragen. (#203)
 - **Grenzstadtteile in mehreren Wahlbereichen:** Stadtteile, die über eine
   Wahlbereichs-Grenze reichen, werden jetzt in **allen** zugehörigen
   Wahlbereichen gelistet statt nur im überwiegenden — z. B. Bürgerfelde (1 + 3),
@@ -63,6 +68,14 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   eines Punkts). Bewusst zurückhaltend: Bei mehrdeutigen oder weit verstreuten
   Straßennamen bleibt die Karte lieber leer, statt eine falsche Stelle zu zeigen.
   (#202)
+- **Tipp bei kniffligen Fragen:** Schwerere Quizfragen können jetzt einen
+  optionalen **Tipp** anbieten — ein Klick auf „Tipp anzeigen" gibt vor dem
+  Auflösen einen Denkanstoß, ohne die Lösung zu verraten. (#203)
+- **Ganze Gebiete auf der Antwort-Karte:** Geht eine Frage um einen Stadtteil
+  (oder eine Person/Sache von dort), zeichnet die Auflösungs-Karte jetzt das
+  **ganze Gebiet** als Fläche ein — zusätzlich zu den bisherigen Punkt- und
+  Straßen-Markierungen (die Stadtteil-Grenzen kennen wir selbst, also immer
+  verlässlich). (#203)
 - **Wahlbereiche auf der Themen-Karte:** Der Stadtteil-Filter kennt jetzt die
   6 Kommunalwahl-Wahlbereiche der Stadt Oldenburg — ein Klick wählt alle
   Stadtteile eines Wahlbereichs (Zuordnung geometrisch aus den offiziellen
@@ -108,6 +121,9 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   in einer Dauer-Ladeschleife auf. Der Link „Bei NWZonline nach Berichten suchen"
   nutzt jetzt eine gekürzte, saubere Suchanfrage (Schlagworte statt kompletter
   Titel). (#200)
+- **Quiz-Quelle verweist auf die richtige Seite:** Bei Fragen zu einer Person
+  oder Sache verlinkt „Quelle: Wikipedia" jetzt deren **eigenen Artikel** (z. B.
+  Hermann Lehmkuhl) statt der Stadtteil-Seite, aus der die Frage stammt. (#203)
 - Der neue Stadtteil-Filter verschob auf dem Handy das ganze Themen-Layout
   seitlich (die Filter-Chips passten nicht mehr in eine Zeile) — sie brechen
   jetzt sauber um, und das Stadtteil-Menü öffnet als bildschirmfüllendes

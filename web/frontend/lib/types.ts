@@ -341,6 +341,8 @@ export interface QuizQuestion {
   unit?: string | null;
   range_min?: number | null;
   range_max?: number | null;
+  /** Optionaler Tipp, der vor dem Auflösen eingeblendet werden kann. */
+  hint?: string | null;
   source_type: string | null;
   source_ref: string | null;
 }

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
-import { Check, X, ExternalLink, ThumbsUp, ThumbsDown, ArrowRight, RotateCcw, Send, ChevronDown, ChevronUp } from "lucide-react";
+import { Check, X, ExternalLink, ThumbsUp, ThumbsDown, ArrowRight, RotateCcw, Send, ChevronDown, ChevronUp, Lightbulb } from "lucide-react";
 import { QuizQuestion, QuizAnswerResult } from "@/lib/types";
 import { Card, Button, Input } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
@@ -55,6 +55,7 @@ export function QuizPlay({ questions, onExit, onComplete, title }: {
   const [done, setDone] = useState(false);
   const [guess, setGuess] = useState<number | null>(null);
   const [showMore, setShowMore] = useState(false);
+  const [hintShown, setHintShown] = useState(false);
 
   const q = questions[idx];
   const isEstimate = q.qtype === "estimate";
@@ -97,7 +98,7 @@ export function QuizPlay({ questions, onExit, onComplete, title }: {
     }
     setIdx((i) => i + 1);
     setChosen(null); setResult(null); setRated(null); setGuess(null); setShowMore(false);
-    setComment(""); setCommentSent(false);
+    setHintShown(false); setComment(""); setCommentSent(false);
   }
 
   function rate(verdict: "gut" | "schlecht") {
@@ -156,6 +157,22 @@ export function QuizPlay({ questions, onExit, onComplete, title }: {
           <span className="text-muted-foreground">{DIFF_LABEL[q.difficulty] ?? q.difficulty}</span>
         </div>
         <h2 className="mt-3 text-lg font-semibold leading-snug text-foreground">{q.question}</h2>
+
+        {/* Optionaler Tipp — hilft bei schweren Fragen, ohne die Lösung zu
+            verraten. Nur vor dem Auflösen anbietbar. */}
+        {q.hint && chosen === null && (
+          hintShown ? (
+            <p className="mt-3 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-foreground">
+              <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+              <span>{q.hint}</span>
+            </p>
+          ) : (
+            <button type="button" onClick={() => setHintShown(true)}
+              className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-amber-600 hover:underline dark:text-amber-500">
+              <Lightbulb className="h-4 w-4" /> Tipp anzeigen
+            </button>
+          )
+        )}
 
         {isEstimate ? (
           <div className="mt-6">

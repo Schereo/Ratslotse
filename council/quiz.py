@@ -277,26 +277,48 @@ def commons_image(subject: str) -> dict | None:
         return None
 
 
-def enrich_row(row: dict, subject: str) -> None:
-    """Row best-effort mit Bild und Karte anreichern (verändert `row` in place).
-    `subject` = zentrales reales Ding der Frage.
+def wikipedia_page_url(subject: str) -> str | None:
+    """Kanonische URL des deutschen Wikipedia-Artikels zum Subjekt (Person, Ort,
+    Bauwerk) — für einen **präzisen** „Quelle"-Link auf genau dieses Ding statt
+    auf die Gebiets-Seite (z. B. „Hermann Lehmkuhl" statt „Bloherfelde"). None
+    bei Begriffsklärung oder fehlendem Artikel."""
+    subject = (subject or "").strip()
+    if len(subject) < 3:
+        return None
+    try:
+        s = requests.get(_WIKI_SUMMARY + subject.replace(" ", "_"), headers=_UA, timeout=20)
+        if s.status_code != 200:
+            return None
+        summary = s.json()
+        if summary.get("type") == "disambiguation":
+            return None
+        return ((summary.get("content_urls") or {}).get("desktop") or {}).get("page") or None
+    except (requests.RequestException, ValueError, KeyError):
+        return None
+
+
+def enrich_row(row: dict, subject: str, *, area_type: str | None = None,
+               area_key: str | None = None) -> None:
+    """Row best-effort mit Bild, Karte und präzisem Quelle-Link anreichern
+    (verändert `row` in place). `subject` = zentrales reales Ding der Frage.
 
     Die Kartenlogik ist bewusst zurückhaltend, damit NIE eine falsche Stelle
-    gezeigt wird:
+    gezeigt wird — in absteigender Genauigkeit:
     - kompakte, eindeutige Straße → **Linie** (Overpass, Ausdehnungs-Guard);
-    - sonst nur ein **Punkt**, wenn es ein bekannter Einzelort ist (hat einen
-      Wikipedia-Artikel, also auch ein Foto). Reine Straßennamen ohne kompakte
-      Geometrie bekommen KEINEN Pin — mehrdeutige Namen (mehrere „Mittelwege")
-      würden sonst evtl. am falschen Ort landen."""
+    - bekannter Einzelort (hat einen Wikipedia-Artikel/Foto) → **Punkt**;
+    - sonst, falls die Frage einem Stadtteil zuzuordnen ist, das ganze
+      **Gebiet** als Polygon (wir besitzen die Polygone → immer verlässlich).
+    Reine, mehrdeutige Straßennamen ohne kompakte Geometrie bekommen KEINEN
+    Pin (mehrere „Mittelwege" würden sonst am falschen Ort landen)."""
     subject = (subject or "").strip()
-    if not subject:
+    if not subject and area_type != "stadtteil":
         return
-    img = commons_image(subject)
+    img = commons_image(subject) if subject else None
     if img:
         row.update({"image_url": img["url"], "image_author": img["author"],
                     "image_license": img["license"], "image_license_url": img["license_url"],
                     "image_source_url": img["source_url"]})
-    line = street_line(subject)
+    line = street_line(subject) if subject else None
     if line:
         pts = [pt for seg in line for pt in seg]  # [lon, lat]
         row["lat"] = sum(p[1] for p in pts) / len(pts)
@@ -307,15 +329,38 @@ def enrich_row(row: dict, subject: str) -> None:
         coords = geocode_place(subject)
         if coords:
             row["lat"], row["lon"], row["place_label"] = coords[0], coords[1], subject
+    if row.get("lat") is None:
+        # Noch kein Punkt/keine Linie → das ganze GEBIET einzeichnen: den
+        # Stadtteil des Subjekts, sonst den Stadtteil der Frage selbst.
+        poly_name = subject if geo.is_stadtteil(subject) else (
+            area_key if area_type == "stadtteil" else None)
+        poly = geo.stadtteil_polygon(poly_name) if poly_name else None
+        center = geo.stadtteil_center(poly_name) if poly else None
+        if poly and center:
+            row["lat"], row["lon"] = center
+            row["place_label"] = poly_name
+            row["geojson"] = json.dumps(poly, ensure_ascii=False)
+    # „Quelle"-Link präzisieren: bei Wikipedia-Fragen auf den Artikel des
+    # konkreten Subjekts verlinken (die Frage stammt aus dem Gebiets-Artikel,
+    # aber die Person/Sache hat eine eigene, hilfreichere Seite).
+    if subject and row.get("source_type") == "wikipedia":
+        page = wikipedia_page_url(subject)
+        if page:
+            row["source_ref"] = page
 
 
 # --- Prompt + Generierung ----------------------------------------------------
 
 _SYSTEM = (
     "Du erstellst ein allgemeinverständliches Quiz über Oldenburg für interessierte "
-    "Bürger:innen. Fragen sollen Spaß machen und Wissen über die Stadt vermitteln — "
-    "NICHT technisch-bürokratisch (keine Fragen nach Aktenzeichen, Bebauungsplan-Nummern, "
-    "Paragraphen oder Sitzungs-Formalien)."
+    "Bürger:innen. Fragen sollen Spaß machen, FAIR sein und etwas über die Stadt "
+    "beibringen — NICHT technisch-bürokratisch (keine Aktenzeichen, Bebauungsplan-"
+    "Nummern, Paragraphen oder Sitzungs-Formalien) und NICHT bloßes Detail-Trivia zu "
+    "obskuren Randfiguren oder Jahreszahlen, die niemand kennt. Eine Frage ist gut, "
+    "wenn ihre Auflösung einen Aha-Moment auslöst: Die Erklärung soll etwas "
+    "Einprägsames, Überraschendes oder Verständnis-Stiftendes vermitteln — nicht nur "
+    "die richtige Antwort wiederholen. Lieber bekannte, bedeutsame Dinge als beliebige "
+    "Fakten."
 )
 
 
@@ -330,7 +375,11 @@ Regeln:
 - Jede Frage hat GENAU 4 Antwortmöglichkeiten, davon genau eine richtig.
 - Die richtige Antwort muss EINDEUTIG aus den Quellen belegbar sein; die drei
   falschen plausibel, aber klar falsch.
-- Allgemeinverständlich, nicht technisch. Keine Aktenzeichen/Paragraphen.
+- Allgemeinverständlich und FAIR: Die Mehrheit der Fragen leicht bis mittel,
+  nur wenige schwer. Keine Aktenzeichen/Paragraphen, keine obskuren Randfiguren
+  oder beliebigen Jahreszahlen — bevorzuge Bekanntes und Bedeutsames.
+- "explanation" = 1 einprägsamer Satz mit dem WARUM/Aha-Effekt (nicht bloß die
+  Antwort wiederholen), damit man beim Auflösen etwas lernt.
 - Verteile über die Kategorien: {cats}.
   · geschichte = Gründung/Eingemeindung/Namensherkunft/historische Ereignisse
   · orte = Wahrzeichen, Bauwerke, Parks, Plätze, Straßen
@@ -341,6 +390,8 @@ Regeln:
     Jahr) und "range_min"/"range_max" (plausible Slider-Grenzen, der Wert liegt
     klar dazwischen) — STATT options/correct_index.
 - ZUSATZINFOS je Frage (optional, nur wenn aus den Quellen sinnvoll):
+  · "hint" = ein kurzer Tipp (1 Satz), der beim Nachdenken hilft, OHNE die
+    Antwort zu verraten — besonders bei schwereren Fragen.
   · "detail" = 2–3 Sätze ausführlichere Erklärung (nur aus den Quellen).
   · "subject" = das zentrale REALE Ding der Frage (Gebäude, Wahrzeichen, Ort,
     Straße oder Person), exakt wie der deutsche Wikipedia-Artikel heißt (z. B.
@@ -353,7 +404,8 @@ Antworte mit NUR JSON (Multiple Choice ODER, für schaetzen, qtype=estimate):
 {{"questions": [
   {{"category": "geschichte", "difficulty": "leicht",
     "question": "…?", "options": ["A","B","C","D"], "correct_index": 0,
-    "explanation": "1 kurzer Satz, warum richtig",
+    "explanation": "1 einprägsamer Satz mit dem Aha-Effekt (nicht die Antwort wiederholen)",
+    "hint": "kurzer Tipp, ohne die Lösung zu verraten",
     "detail": "2–3 Sätze mehr Kontext aus den Quellen",
     "subject": "Schloss Oldenburg",
     "source": "kurze Herkunft, z. B. 'Wikipedia' oder 'Ratsbeschluss 2025'"}},
@@ -477,6 +529,7 @@ def generate_for_area(area_type: str, area_key: str, area_label: str, sources: s
             "question": q["question"].strip(),
             "explanation": (q.get("explanation") or "").strip()[:300] or None,
             "detail": (q.get("detail") or "").strip()[:600] or None,
+            "hint": (q.get("hint") or "").strip()[:200] or None,
             "source_type": source_type, "source_ref": source_ref,
             "content_hash": h,
         }
@@ -494,8 +547,8 @@ def generate_for_area(area_type: str, area_key: str, area_label: str, sources: s
             correct_val = opts[q["correct_index"]]
             random.shuffle(opts)
             row.update({"qtype": "mc", "options": opts, "correct_index": opts.index(correct_val)})
-        # Foto (Commons) + Locator-Karte zum realen Thema — best-effort, Netz.
+        # Foto (Commons) + Locator-Karte + präziser Quelle-Link — best-effort, Netz.
         if enrich:
-            enrich_row(row, q.get("subject") or "")
+            enrich_row(row, q.get("subject") or "", area_type=area_type, area_key=area_key)
         rows.append(row)
     return rows
