@@ -124,7 +124,12 @@ function StadtteilFilter({ names, counts, selected, onChange }: {
         <ChevronDown className={cn("h-3 w-3 transition-transform", open && "rotate-180")} />
       </button>
       {open && (
-        <div className="absolute right-0 z-[60] mt-2 w-72 rounded-xl border border-border bg-card p-3 shadow-lg">
+        // Desktop: Dropdown rechts unter dem Chip. Mobil: unten verankertes
+        // Sheet über der Tab-Bar (w-72 + right-0 ragte sonst aus dem Bild, weil
+        // der Chip mittig in Zeile 2 sitzt).
+        <div className="z-[60] rounded-xl border border-border bg-card p-3 shadow-lg
+          max-sm:fixed max-sm:inset-x-3 max-sm:bottom-[calc(5rem+env(safe-area-inset-bottom))] max-sm:max-h-[70vh] max-sm:overflow-y-auto
+          sm:absolute sm:right-0 sm:mt-2 sm:w-72">
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs font-medium text-foreground">Karte nach Stadtteilen filtern</p>
             {selected.size > 0 && (
@@ -285,7 +290,10 @@ export function EntitiesTab() {
           <Input data-search className="pl-9" placeholder="Thema suchen — z. B. Fliegerhorst, Klinikum, Nadorster Straße"
             value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
-        <div className="flex shrink-0 flex-wrap gap-1.5">
+        {/* w-full auf Mobile: eigene, umbrechende Zeile. shrink-0 (früher hier)
+            gab dem Container seine max-content-Breite — alle Chips in EINER
+            Reihe —, was auf schmalen Screens über den Viewport lief. */}
+        <div className="flex w-full flex-wrap gap-1.5 sm:w-auto">
           <button type="button" onClick={() => setKind("")}
             className={cn("rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
               kind === "" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground")}>
