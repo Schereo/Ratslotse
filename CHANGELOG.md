@@ -8,6 +8,13 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geändert
+- **Quiz-Startseite aufgeräumt:** Statt einer einzigen überladenen Auswahlseite
+  gibt es jetzt **„Weiterspielen"** (spielt die letzten Einstellungen weiter, mit
+  einer kurzen Beschreibung, was das war) und **„Neues Spiel"** als
+  **mehrstufigen Assistenten** (Wahlbereich → Themen → Stadtteile → Kategorien,
+  Schritt für Schritt durchklicken). Die Statistik steht als **Kurzform oben**,
+  die ausführliche Auswertung (Fortschritt je Gebiet, Serie, Abzeichen) auf einer
+  **eigenen Seite** (`/quiz/stats`). (#205)
 - **Fairere, lehrreichere Quizfragen:** Die Fragen-Erzeugung zielt jetzt auf
   einen „Aha-Moment" beim Auflösen — mehrheitlich leichte bis mittlere Fragen
   (keine obskuren Randfiguren oder beliebigen Jahreszahlen), und die Erklärung
