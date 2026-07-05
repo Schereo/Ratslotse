@@ -1,0 +1,185 @@
+"use client";
+
+import { useState } from "react";
+import { Check, X, ExternalLink, ThumbsUp, ThumbsDown, ArrowRight, RotateCcw } from "lucide-react";
+import { QuizQuestion, QuizAnswerResult } from "@/lib/types";
+import { Card, Button } from "@/components/ui";
+import { Mascot } from "@/components/mascot";
+import { ConfettiBurst } from "@/components/confetti";
+import { api } from "@/lib/api";
+import { cn } from "@/lib/utils";
+
+export const CATEGORY_LABEL: Record<string, string> = {
+  geschichte: "Geschichte",
+  orte: "Orte & Wahrzeichen",
+  menschen: "Menschen",
+  ratspolitik: "Ratspolitik",
+  schaetzen: "Schätzfrage",
+};
+const SOURCE_LABEL: Record<string, string> = {
+  wikipedia: "Wikipedia",
+  stadt: "Stadt Oldenburg",
+  ratsinfo: "Ratsinformationssystem",
+};
+const DIFF_LABEL: Record<string, string> = { leicht: "leicht", mittel: "mittel", schwer: "schwer" };
+
+/** Spielt eine Runde Fragen durch: eine Frage nach der anderen, sofortiges
+ *  Feedback (Lösung, Erklärung, Quelle, Bewertung), am Ende eine Zusammenfassung. */
+export function QuizPlay({ questions, onExit }: { questions: QuizQuestion[]; onExit: () => void }) {
+  const [idx, setIdx] = useState(0);
+  const [chosen, setChosen] = useState<number | null>(null);
+  const [result, setResult] = useState<QuizAnswerResult | null>(null);
+  const [rated, setRated] = useState<"gut" | "schlecht" | null>(null);
+  const [points, setPoints] = useState(0);
+  const [correct, setCorrect] = useState(0);
+  const [done, setDone] = useState(false);
+
+  const q = questions[idx];
+
+  async function choose(i: number) {
+    if (chosen !== null) return;
+    setChosen(i);
+    try {
+      const r = await api.post<QuizAnswerResult>("/quiz/answer", { question_id: q.id, selected_index: i });
+      setResult(r);
+      setPoints((p) => p + r.points);
+      if (r.correct) setCorrect((c) => c + 1);
+    } catch {
+      setResult({ correct: false, correct_index: -1, points: 0, explanation: null, source_type: null, source_ref: null });
+    }
+  }
+
+  function next() {
+    if (idx + 1 >= questions.length) { setDone(true); return; }
+    setIdx((i) => i + 1);
+    setChosen(null); setResult(null); setRated(null);
+  }
+
+  function rate(verdict: "gut" | "schlecht") {
+    setRated(verdict);
+    void api.post("/quiz/rate", { question_id: q.id, verdict }).catch(() => {});
+  }
+
+  if (done) {
+    const quote = Math.round((correct / questions.length) * 100);
+    return (
+      <Card className="relative mx-auto max-w-xl overflow-hidden p-8 text-center">
+        {correct > 0 && <ConfettiBurst />}
+        <Mascot pose={quote >= 60 ? "celebrate" : "wave"} className="mx-auto h-20 w-20" />
+        <h2 className="mt-3 text-2xl font-bold text-foreground">
+          {correct} von {questions.length} richtig
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {points} {points === 1 ? "Punkt" : "Punkte"} · Trefferquote {quote} %
+        </p>
+        <p className="mt-4 text-sm text-foreground">
+          {quote >= 80 ? "Stark — du kennst dich aus!" : quote >= 50 ? "Gut gemacht. Da geht noch mehr!" : "Weiter üben lohnt sich — du wirst besser."}
+        </p>
+        <Button onClick={onExit} className="mt-6"><RotateCcw className="!size-4" /> Zur Auswahl</Button>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-xl">
+      {/* Fortschritt */}
+      <div className="mb-4 flex items-center gap-3">
+        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+          <div className="h-full rounded-full bg-primary transition-[width] duration-300 ease-out-strong"
+               style={{ width: `${(idx / questions.length) * 100}%` }} />
+        </div>
+        <span className="shrink-0 text-xs font-medium tabular-nums text-muted-foreground">
+          {idx + 1}/{questions.length}
+        </span>
+      </div>
+
+      <Card className="p-5">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="rounded-md bg-primary/10 px-2 py-0.5 font-medium text-primary">
+            {CATEGORY_LABEL[q.category] ?? q.category}
+          </span>
+          <span className="text-muted-foreground">{DIFF_LABEL[q.difficulty] ?? q.difficulty}</span>
+        </div>
+        <h2 className="mt-3 text-lg font-semibold leading-snug text-foreground">{q.question}</h2>
+
+        <div className="mt-4 flex flex-col gap-2">
+          {q.options.map((opt, i) => {
+            const isChosen = chosen === i;
+            const isCorrect = result && i === result.correct_index;
+            const state = result
+              ? isCorrect ? "correct" : isChosen ? "wrong" : "idle"
+              : "idle";
+            return (
+              <button
+                key={i}
+                type="button"
+                disabled={chosen !== null}
+                onClick={() => choose(i)}
+                className={cn(
+                  "flex items-center justify-between gap-3 rounded-lg border px-4 py-3 text-left text-sm transition-colors",
+                  state === "idle" && "border-border hover:border-primary/50 hover:bg-primary/5 disabled:opacity-60",
+                  state === "correct" && "border-green-500 bg-green-500/10 text-foreground",
+                  state === "wrong" && "border-red-500 bg-red-500/10 text-foreground",
+                )}
+              >
+                <span>{opt}</span>
+                {state === "correct" && <Check className="h-4 w-4 shrink-0 text-green-600" />}
+                {state === "wrong" && <X className="h-4 w-4 shrink-0 text-red-600" />}
+              </button>
+            );
+          })}
+        </div>
+
+        {result && (
+          <div className="mt-4 rounded-lg border border-border bg-muted/40 p-3">
+            <p className="text-sm font-medium text-foreground">
+              {result.correct ? `Richtig! +${result.points}` : "Leider falsch."}
+            </p>
+            {result.explanation && (
+              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{result.explanation}</p>
+            )}
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+              {result.source_ref && result.source_type ? (
+                result.source_ref.startsWith("http") ? (
+                  <a href={result.source_ref} target="_blank" rel="noreferrer"
+                     className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                    Quelle: {SOURCE_LABEL[result.source_type] ?? result.source_type}
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                ) : (
+                  <span className="text-xs text-muted-foreground">
+                    Quelle: {SOURCE_LABEL[result.source_type] ?? result.source_type}
+                  </span>
+                )
+              ) : <span />}
+              {/* Qualitäts-Bewertung — hilft schlechte Fragen auszutauschen */}
+              <span className="inline-flex items-center gap-1.5">
+                {rated ? (
+                  <span className="text-xs text-muted-foreground">Danke fürs Feedback</span>
+                ) : (
+                  <>
+                    <span className="text-xs text-muted-foreground">Gute Frage?</span>
+                    <button type="button" aria-label="Gute Frage" onClick={() => rate("gut")}
+                      className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-green-600">
+                      <ThumbsUp className="h-4 w-4" />
+                    </button>
+                    <button type="button" aria-label="Schlechte Frage melden" onClick={() => rate("schlecht")}
+                      className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-red-600">
+                      <ThumbsDown className="h-4 w-4" />
+                    </button>
+                  </>
+                )}
+              </span>
+            </div>
+          </div>
+        )}
+      </Card>
+
+      <div className="mt-4 flex justify-end">
+        <Button onClick={next} disabled={chosen === null}>
+          {idx + 1 >= questions.length ? "Ergebnis" : "Weiter"} <ArrowRight className="!size-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}

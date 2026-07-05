@@ -18,6 +18,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import random
 import re
 
 import requests
@@ -279,13 +280,18 @@ def generate_for_area(area_type: str, area_key: str, area_label: str, sources: s
         if verify and not verify_question(sources, q):
             continue
         seen.add(h)
+        # Antworten mischen — das LLM legt die richtige Antwort sonst gern auf
+        # Position A (gameable).
+        opts = [o.strip() for o in q["options"]]
+        correct_val = opts[q["correct_index"]]
+        random.shuffle(opts)
         rows.append({
             "area_type": area_type, "area_key": area_key,
             "category": q["category"],
             "difficulty": q.get("difficulty") if q.get("difficulty") in DIFFICULTIES else "mittel",
             "question": q["question"].strip(),
-            "options": [o.strip() for o in q["options"]],
-            "correct_index": q["correct_index"],
+            "options": opts,
+            "correct_index": opts.index(correct_val),
             "explanation": (q.get("explanation") or "").strip()[:300] or None,
             "source_type": source_type, "source_ref": source_ref,
             "content_hash": h,

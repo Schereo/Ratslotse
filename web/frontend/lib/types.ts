@@ -313,3 +313,42 @@ export interface AdminStats {
   topics: { total: number; users_with_topics: number; subscriptions: number };
   council: { sessions: number; upcoming: number; agenda_items: number; committees: number };
 }
+
+// ---- Quiz ----
+export interface QuizAreaEntry {
+  key: string;
+  label?: string;
+  wahlbereich?: number;
+  stadtteile?: string[];
+  questions: number;
+  points: number;
+}
+export interface QuizAreas {
+  wahlbereiche: QuizAreaEntry[];
+  stadtteile: QuizAreaEntry[];
+  themen: QuizAreaEntry[];
+  categories: string[];
+}
+export interface QuizQuestion {
+  id: number;
+  area_type: string;
+  area_key: string;
+  category: string;
+  difficulty: string;
+  question: string;
+  options: string[];
+  source_type: string | null;
+  source_ref: string | null;
+}
+export interface QuizAnswerResult {
+  correct: boolean;
+  correct_index: number;
+  points: number;
+  explanation: string | null;
+  source_type: string | null;
+  source_ref: string | null;
+}
+export interface QuizStats {
+  by_area: { area_type: string; area_key: string; points: number; answered: number; correct: number; last_at: string | null }[];
+  total: { points: number; answered: number; correct: number };
+}
