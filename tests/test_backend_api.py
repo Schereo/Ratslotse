@@ -546,6 +546,183 @@ def test_onboarding_is_per_account(client):
     assert other.get("/api/onboarding").json() == {"steps": [], "celebrated": False}
 
 
+# ---- quiz ----
+def _seed_quiz(area_key="Osternburg", area_type="stadtteil", n=3, category="geschichte",
+               difficulty="mittel"):
+    """Seed n Quizfragen für ein Gebiet in die (throwaway) council.sqlite."""
+    from council import quiz as quizmod
+    store = CouncilStore(COUNCIL_DB)
+    rows = []
+    for i in range(n):
+        text = f"Testfrage {category} {i} zu {area_key}?"  # je Kategorie eindeutig (Dedup)
+        rows.append({
+            "area_type": area_type, "area_key": area_key, "category": category,
+            "difficulty": difficulty, "question": text,
+            "options": ["A", "B", "C", "D"], "correct_index": 1,
+            "explanation": "weil B", "source_type": "wikipedia", "source_ref": "http://w",
+            "content_hash": quizmod._content_hash(area_type, area_key, text),
+        })
+    store.save_quiz_questions(rows)
+    store.close()
+
+
+def _seed_estimate(area_key="Osternburg", value=12000.0, unit="Einwohner",
+                   lo=2000.0, hi=30000.0, difficulty="mittel"):
+    """Seed eine Schätzfrage (qtype=estimate) in die throwaway council.sqlite."""
+    from council import quiz as quizmod
+    store = CouncilStore(COUNCIL_DB)
+    text = f"Schätzfrage {area_key} {value}?"
+    store.save_quiz_questions([{
+        "area_type": "stadtteil", "area_key": area_key, "category": "schaetzen",
+        "difficulty": difficulty, "question": text, "qtype": "estimate",
+        "options": [], "correct_index": 0,
+        "answer_value": value, "answer_unit": unit, "range_min": lo, "range_max": hi,
+        "explanation": "…", "source_type": "wikipedia", "source_ref": "http://w",
+        "content_hash": quizmod._content_hash("stadtteil", area_key, text),
+    }])
+    store.close()
+
+
+def test_quiz_requires_auth():
+    assert TestClient(app).get("/api/quiz/areas").status_code == 401
+
+
+def test_quiz_areas_lists_seeded(client):
+    _register(client)
+    _seed_quiz("Osternburg", n=3)  # Osternburg → Wahlbereich 5
+    data = client.get("/api/quiz/areas").json()
+    st = {a["key"]: a for a in data["stadtteile"]}
+    assert st["Osternburg"]["questions"] == 3 and st["Osternburg"]["wahlbereich"] == 5
+    wb = {a["key"]: a for a in data["wahlbereiche"]}
+    assert wb["5"]["questions"] == 3 and "Osternburg" in wb["5"]["stadtteile"]
+
+
+def test_quiz_round_hides_answer(client):
+    _register(client)
+    _seed_quiz("Osternburg", n=3)
+    q = client.get("/api/quiz/round?areas=stadtteil:Osternburg&n=2").json()["questions"]
+    assert len(q) == 2
+    for item in q:
+        assert "correct_index" not in item and "explanation" not in item
+        assert len(item["options"]) == 4
+
+
+def test_quiz_wahlbereich_expands(client):
+    _register(client)
+    _seed_quiz("Osternburg", n=2)
+    q = client.get("/api/quiz/round?areas=wahlbereich:5&n=10").json()["questions"]
+    assert len(q) == 2  # Osternburg ist in Wahlbereich 5
+
+
+def test_quiz_answer_scores_and_reveals(client):
+    _register(client)
+    _seed_quiz("Osternburg", n=1, difficulty="schwer")
+    qid = client.get("/api/quiz/round?areas=stadtteil:Osternburg").json()["questions"][0]["id"]
+    r = client.post("/api/quiz/answer", json={"question_id": qid, "selected_index": 1}).json()
+    assert r["correct"] is True and r["points"] == 3 and r["correct_index"] == 1
+    assert r["explanation"] == "weil B" and r["source_ref"] == "http://w"
+    # zweite Frage falsch → 0 Punkte
+    _seed_quiz("Osternburg", n=1, category="orte")
+    qid2 = [x["id"] for x in client.get("/api/quiz/round?areas=stadtteil:Osternburg&n=10").json()["questions"]
+            if x["id"] != qid][0]
+    r2 = client.post("/api/quiz/answer", json={"question_id": qid2, "selected_index": 0}).json()
+    assert r2["correct"] is False and r2["points"] == 0
+
+
+def test_quiz_stats_aggregate_per_area(client):
+    _register(client)
+    _seed_quiz("Osternburg", n=2)
+    for item in client.get("/api/quiz/round?areas=stadtteil:Osternburg&n=10").json()["questions"]:
+        client.post("/api/quiz/answer", json={"question_id": item["id"], "selected_index": 1})
+    stats = client.get("/api/quiz/stats").json()
+    assert stats["total"]["answered"] == 2 and stats["total"]["correct"] == 2
+    area = next(a for a in stats["by_area"] if a["area_key"] == "Osternburg")
+    assert area["points"] == 4  # 2× mittel
+
+
+def test_quiz_rating_and_admin_flag(client):
+    _register(client)  # erster Nutzer = admin
+    _seed_quiz("Osternburg", n=1)
+    qid = client.get("/api/quiz/round?areas=stadtteil:Osternburg").json()["questions"][0]["id"]
+    assert client.post("/api/quiz/rate", json={"question_id": qid, "verdict": "schlecht",
+                                               "comment": "unklar"}).json()["ok"] is True
+    flagged = client.get("/api/admin/quiz/flagged").json()["flagged"]
+    assert any(f["question_id"] == qid and f["bad"] == 1 for f in flagged)
+    # ausmustern → fliegt aus den Runden UND aus der Bewertungs-Liste
+    client.post(f"/api/admin/quiz/{qid}/retire")
+    assert client.get("/api/quiz/round?areas=stadtteil:Osternburg&n=10").json()["questions"] == []
+    flagged_after = client.get("/api/admin/quiz/flagged").json()["flagged"]
+    assert all(f["question_id"] != qid for f in flagged_after)
+
+
+def test_quiz_scores_per_account(client):
+    _register(client)
+    _seed_quiz("Osternburg", n=1)
+    qid = client.get("/api/quiz/round?areas=stadtteil:Osternburg").json()["questions"][0]["id"]
+    client.post("/api/quiz/answer", json={"question_id": qid, "selected_index": 1})
+    bob = TestClient(app)
+    _register(bob, email="bob@test.de")
+    assert bob.get("/api/quiz/stats").json()["total"]["answered"] == 0
+
+
+def test_quiz_review_collects_wrong_and_clears_on_correct(client):
+    _register(client)
+    _seed_quiz("Osternburg", n=2)
+    qs = client.get("/api/quiz/round?areas=stadtteil:Osternburg&n=10").json()["questions"]
+    client.post("/api/quiz/answer", json={"question_id": qs[0]["id"], "selected_index": 0})  # falsch
+    client.post("/api/quiz/answer", json={"question_id": qs[1]["id"], "selected_index": 1})  # richtig
+    review = client.get("/api/quiz/review").json()["questions"]
+    ids = {q["id"] for q in review}
+    assert qs[0]["id"] in ids and qs[1]["id"] not in ids
+    for q in review:  # Wiederhol-Fragen kommen ohne Lösung
+        assert "correct_index" not in q
+    # später richtig → fliegt aus dem „Meine Fehler"-Stapel
+    client.post("/api/quiz/answer", json={"question_id": qs[0]["id"], "selected_index": 1})
+    assert client.get("/api/quiz/review").json()["questions"] == []
+
+
+def test_quiz_daily_deterministic_and_completable(client):
+    _register(client)
+    _seed_quiz("Osternburg", n=8)
+    d1 = client.get("/api/quiz/daily").json()
+    assert d1["done"] is None and len(d1["questions"]) == 5
+    d2 = client.get("/api/quiz/daily").json()  # gleicher Tag → gleicher Fragensatz
+    assert {q["id"] for q in d1["questions"]} == {q["id"] for q in d2["questions"]}
+    for q in d1["questions"]:
+        client.post("/api/quiz/answer", json={"question_id": q["id"], "selected_index": 1})
+    r = client.post("/api/quiz/daily/complete", json={"correct": 5, "total": 5, "points": 10}).json()
+    assert r["ok"] is True and r["streak"] == 1
+    after = client.get("/api/quiz/daily").json()
+    assert after["done"]["correct"] == 5 and after["questions"] == []
+
+
+def test_quiz_stats_streak_wrong_and_badges(client):
+    _register(client)
+    _seed_quiz("Osternburg", n=6)
+    for q in client.get("/api/quiz/round?areas=stadtteil:Osternburg&n=10").json()["questions"]:
+        client.post("/api/quiz/answer", json={"question_id": q["id"], "selected_index": 1})
+    s = client.get("/api/quiz/stats").json()
+    assert s["streak"] == 1 and s["wrong"] == 0 and s["daily_done"] is False
+    assert "Osternburg-Kenner" in {b["label"] for b in s["badges"]}  # 6× richtig, 100 %
+
+
+def test_quiz_estimate_slider_scores_by_proximity(client):
+    _register(client)
+    _seed_estimate("Osternburg", value=12000.0, difficulty="schwer")  # schwer = 3 Punkte
+    q = client.get("/api/quiz/round?areas=stadtteil:Osternburg&n=5").json()["questions"][0]
+    assert q["qtype"] == "estimate" and q["unit"] == "Einwohner"
+    assert "answer_value" not in q and q["range_min"] == 2000 and q["range_max"] == 30000
+    # exakt → volle Punkte
+    r = client.post("/api/quiz/answer", json={"question_id": q["id"], "value": 12000}).json()
+    assert r["correct"] is True and r["points"] == 3 and r["answer_value"] == 12000
+    # ~8 % daneben → „nah dran", Teilpunkte, gilt als richtig (≤15 %)
+    r2 = client.post("/api/quiz/answer", json={"question_id": q["id"], "value": 13000}).json()
+    assert r2["correct"] is True and r2["points"] == 2
+    # weit daneben → 0 Punkte, nicht richtig
+    r3 = client.post("/api/quiz/answer", json={"question_id": q["id"], "value": 29000}).json()
+    assert r3["correct"] is False and r3["points"] == 0
+
+
 # ---- email verification ----
 import hashlib  # noqa: E402
 from datetime import datetime, timedelta  # noqa: E402

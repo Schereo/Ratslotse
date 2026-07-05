@@ -1,0 +1,35 @@
+# Manuell auslösbarer Ops-Lauf: generiert auf dem Server die Quizfragen für
+# alle Gebiete (Stadtteile + große Themen) bis zur Ziel-Fragenzahl. Quellen:
+# Wikipedia + oldenburg.de + eigene Ratsdaten; ein Verify-Pass behält nur
+# belegte Fragen. Idempotent (nur Gebiete unter Ziel). Nutzt denselben
+# Deploy-Key/ProxyJump wie deploy.yml. Keine Inputs, fester Befehl.
+name: "Ops: Quiz-Backfill"
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ops-quiz-backfill
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate quiz questions on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          proxy_host: ${{ secrets.VPS_PROXY_HOST }}
+          proxy_username: ${{ secrets.VPS_USER }}
+          proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          proxy_port: ${{ secrets.VPS_SSH_PORT }}
+          # Erstlauf: ~31 Stadtteile + ~12 Themen, je ein LLM-Aufruf + Verify.
+          command_timeout: 60m
+          script: |
+            set -e
+            cd ~/app
+            .venv/bin/python scripts/generate_quiz.py --target 10

@@ -7,3 +7,5 @@
 export const decisionHref = (id: number | string) => `/council/decision?id=${id}`;
 export const personHref = (slug: string) => `/council/person?slug=${encodeURIComponent(slug)}`;
 export const themaHref = (slug: string) => `/council/thema?slug=${encodeURIComponent(slug)}`;
+/** Quiz-Start, optional mit vorgewähltem Gebiet (z. B. "wahlbereich:3"). */
+export const quizHref = (area?: string) => (area ? `/quiz?area=${encodeURIComponent(area)}` : "/quiz");

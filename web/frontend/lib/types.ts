@@ -313,3 +313,79 @@ export interface AdminStats {
   topics: { total: number; users_with_topics: number; subscriptions: number };
   council: { sessions: number; upcoming: number; agenda_items: number; committees: number };
 }
+
+// ---- Quiz ----
+export interface QuizAreaEntry {
+  key: string;
+  label?: string;
+  wahlbereich?: number;
+  stadtteile?: string[];
+  questions: number;
+  points: number;
+}
+export interface QuizAreas {
+  wahlbereiche: QuizAreaEntry[];
+  stadtteile: QuizAreaEntry[];
+  themen: QuizAreaEntry[];
+  categories: string[];
+}
+export interface QuizQuestion {
+  id: number;
+  area_type: string;
+  area_key: string;
+  category: string;
+  difficulty: string;
+  question: string;
+  options: string[];
+  qtype?: "mc" | "estimate";
+  unit?: string | null;
+  range_min?: number | null;
+  range_max?: number | null;
+  source_type: string | null;
+  source_ref: string | null;
+}
+export interface QuizAnswerResult {
+  correct: boolean;
+  correct_index: number;
+  points: number;
+  answer_value?: number | null;
+  unit?: string | null;
+  explanation: string | null;
+  source_type: string | null;
+  source_ref: string | null;
+}
+export interface QuizBadge {
+  key: string;
+  label: string;
+  tier: "bronze" | "silber" | "gold";
+}
+export interface QuizStats {
+  by_area: { area_type: string; area_key: string; points: number; answered: number; correct: number; last_at: string | null }[];
+  total: { points: number; answered: number; correct: number };
+  wrong: number;
+  streak: number;
+  badges: QuizBadge[];
+  daily_done: boolean;
+}
+export interface QuizDailyResult {
+  day: string;
+  correct: number;
+  total: number;
+  points: number;
+  completed_at: string;
+}
+export interface QuizDaily {
+  day: string;
+  done: QuizDailyResult | null;
+  questions: QuizQuestion[];
+}
+export interface QuizFlagged {
+  question_id: number;
+  bad: number;
+  good: number;
+  question: string;
+  area_type: string;
+  area_key: string;
+  options: string[];
+  correct_index: number;
+}

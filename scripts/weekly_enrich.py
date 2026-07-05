@@ -41,6 +41,9 @@ STEPS: list[tuple[str, str]] = [
     # Requests) — Mandatswechsel und neue Ausschuss-Besetzungen kommen so
     # spätestens nach einer Woche an.
     ("Personen-Stammdaten (Ratsinfo)", "backfill_stammdaten.py"),
+    # Quizfragen auffüllen (LLM) — nur Gebiete unter Ziel-Fragenzahl, ersetzt
+    # ausgemusterte Fragen und deckt neue Beschluss-Themen ab.
+    ("Quizfragen", "generate_quiz.py"),
 ]
 
 
