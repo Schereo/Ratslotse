@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, ExternalLink, FileText, FileDown, Users, Newspaper, Tag } from "lucide-react";
 import { DecisionDetail, CouncilDecision } from "@/lib/types";
 import { Card, DetailSkeleton, EmptyState, formatDate } from "@/components/ui";
-import { OutcomeBadge, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
+import { OutcomeBadge, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard, ImportanceMeter, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
 import { decisionHref, themaHref } from "@/lib/routes";
 import { ShareButton } from "@/components/share-button";
 import { nwzSearchUrl } from "@/components/nwz-link";
@@ -126,6 +126,12 @@ function DecisionDetailInner() {
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <span className="text-sm text-muted-foreground">Antrag von:</span>
           {d.parties.map((p) => <PartyBadge key={p} party={p} />)}
+        </div>
+      )}
+
+      {d.kind !== "subvote" && data.importance_breakdown && (
+        <div className="mt-4">
+          <ImportanceMeter score={data.importance_breakdown.score} signals={data.importance_breakdown.signals} />
         </div>
       )}
 

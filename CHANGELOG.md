@@ -30,6 +30,14 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   der Maus in den Vordergrund. (#195)
 
 ### Hinzugefügt
+- **Wichtige Beschlüsse erkennen:** Jeder Beschluss bekommt einen
+  **Wichtigkeits-Score** (0–100) — geschätzt aus Geldbetrag, Umstrittenheit
+  (Gegenstimmen / knappe Abstimmung), Verbindlichkeit & Gremien-Ebene (Satzung
+  im Rat vs. Routine im Fachausschuss) und Länge des Beratungswegs. Bedeutende
+  Beschlüsse tragen in den Listen ein **„Wichtig"**-Zeichen, lassen sich per
+  **„Wichtigste zuerst"** sortieren, und die Beschluss-Seite schlüsselt
+  transparent auf, welche Signale den Score treiben. Auch das Quiz zieht so
+  bevorzugt wichtige statt beliebiger Beschlüsse heran. (#204)
 - **Oldenburg-Quiz:** Ein neues Quiz zum spielerischen Kennenlernen der Stadt.
   Wähle einen **Wahlbereich**, **Stadtteil** oder ein großes stadtweites
   **Thema** und beantworte Multiple-Choice-Fragen aus fünf Kategorien
