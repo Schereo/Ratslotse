@@ -141,7 +141,8 @@ CREATE TABLE IF NOT EXISTS council_decisions (
     policy_field TEXT,                          -- one key from council.topics.POLICY_FIELDS
     policy_tags  TEXT,                          -- JSON array of finer-grained tags
     summary      TEXT,                          -- one-line neutral summary
-    amount_eur   REAL                           -- largest € amount in the text (council.money)
+    amount_eur   REAL,                          -- largest € amount in the text (council.money)
+    importance   INTEGER                        -- Wichtigkeits-Score 0–100 (council.importance), per Backfill
 );
 CREATE INDEX IF NOT EXISTS idx_decisions_ksinr ON council_decisions(ksinr);
 -- NB: the policy_field index is created in _migrate(), not here — on an existing
@@ -255,8 +256,14 @@ class CouncilStore:
                         self._conn.execute(f"ALTER TABLE council_decisions ADD COLUMN {col} TEXT")
                 if "amount_eur" not in dec_cols:
                     self._conn.execute("ALTER TABLE council_decisions ADD COLUMN amount_eur REAL")
+                # Wichtigkeits-Score (council.importance) — additiv, per Backfill befüllt.
+                if "importance" not in dec_cols:
+                    self._conn.execute("ALTER TABLE council_decisions ADD COLUMN importance INTEGER")
                 self._conn.execute(
                     "CREATE INDEX IF NOT EXISTS idx_decisions_field ON council_decisions(policy_field)"
+                )
+                self._conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_decisions_importance ON council_decisions(importance)"
                 )
         # Full-text index for hybrid (BM25 + vector) retrieval. rowid = decision id;
         # diacritics folded so "Radweg"/"radweg" and German umlauts match. Populated by
@@ -373,8 +380,8 @@ class CouncilStore:
             "qtype TEXT NOT NULL DEFAULT 'mc', "                  # mc | estimate (Schätzfrage-Slider)
             "answer_value REAL, answer_unit TEXT, "              # estimate: richtige Zahl + Einheit
             "range_min REAL, range_max REAL, "                   # estimate: Slider-Grenzen
-            "detail TEXT, "                                       # „Mehr dazu": ausführliche Erklärung
-            "lat REAL, lon REAL, place_label TEXT, geojson TEXT, "  # Locator-Karte (Punkt oder Straßen-Linie)
+            "detail TEXT, hint TEXT, "                             # „Mehr dazu" + optionaler Tipp (vor dem Auflösen)
+            "lat REAL, lon REAL, place_label TEXT, geojson TEXT, "  # Locator-Karte (Punkt, Linie oder Gebiets-Polygon)
             "image_url TEXT, image_author TEXT, image_license TEXT, "  # Foto (Wikimedia Commons)
             "image_license_url TEXT, image_source_url TEXT, "    # Bildnachweis
             "generated_at TEXT NOT NULL)"
@@ -382,6 +389,7 @@ class CouncilStore:
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_quiz_area ON council_quiz_questions(area_type, area_key)")
         self._migrate_quiz_estimate()
         self._migrate_quiz_media()
+        self._migrate_quiz_hint()
         self._migrate_owner_id()
 
     def _migrate_quiz_estimate(self) -> None:
@@ -407,6 +415,14 @@ class CouncilStore:
             for name, decl in adds:
                 if name not in cols:
                     self._conn.execute(f"ALTER TABLE council_quiz_questions ADD COLUMN {name} {decl}")
+
+    def _migrate_quiz_hint(self) -> None:
+        """„Tipp": optionaler Hinweis, der vor dem Auflösen angezeigt werden kann
+        (idempotent in bestehende Quiz-Tabellen nachgerüstet)."""
+        cols = {r[1] for r in self._conn.execute("PRAGMA table_info(council_quiz_questions)").fetchall()}
+        if "hint" not in cols:
+            with self._conn:
+                self._conn.execute("ALTER TABLE council_quiz_questions ADD COLUMN hint TEXT")
 
     def _migrate_owner_id(self) -> None:
         """Re-key the per-recipient dedup tables from Telegram chat_id to the
@@ -933,11 +949,13 @@ class CouncilStore:
         """Search extracted decisions, joined with their session (committee + date).
         ``category`` is "vote" (decided) or "report" (zur Kenntnis / no decision).
         ``field`` filters by policy field, ``party`` by normalised Antragsteller;
-        ``sort`` ∈ {date_desc, date_asc, faction}."""
+        ``sort`` ∈ {date_desc, date_asc, faction, importance}."""
         order = {
             "date_asc": "cs.session_date ASC, d.position",
             # Non-empty factions first ('["…' < '[]'), grouped, newest within.
             "faction": "d.factions ASC, cs.session_date DESC",
+            # Wichtigste zuerst; NULL-Scores (noch nicht berechnet) landen hinten.
+            "importance": "d.importance IS NULL, d.importance DESC, cs.session_date DESC",
         }.get(sort, "cs.session_date DESC, d.position")
         party_ids = self.decision_ids_for_party(party) if party else None
         where, params = self._decision_where(query, committee, outcome, faction,
@@ -953,6 +971,32 @@ class CouncilStore:
             [*params, limit, offset],
         ).fetchall()
         return [self._decision_row(r) for r in rows]
+
+    def backfill_importance(self, only_missing: bool = False) -> int:
+        """(Neu-)Berechnung des Wichtigkeits-Scores (``council.importance``) für
+        alle Beschlüsse → Spalte ``council_decisions.importance``. Braucht das
+        Gremium (JOIN Sitzung) und die Länge der Beratungsfolge (COUNT über
+        ``kvonr``). Idempotent; gibt die Zahl aktualisierter Zeilen zurück.
+        Läuft in ``scripts/weekly_enrich.py`` (nach dem Scrapen von Beschlüssen
+        und Beratungen) und im Erstlauf-Skript ``scripts/score_importance.py``."""
+        from council import importance as _imp
+        where = "WHERE d.importance IS NULL" if only_missing else ""
+        rows = self._conn.execute(
+            f"""SELECT d.*, cs.committee,
+                       (SELECT COUNT(*) FROM council_beratungen b WHERE b.kvonr = d.kvonr) AS n_beratungen
+                FROM council_decisions d
+                JOIN council_sessions cs ON cs.ksinr = d.ksinr
+                {where}"""
+        ).fetchall()
+        n = 0
+        with self._conn:
+            for r in rows:
+                d = dict(r)
+                score = _imp.importance_score(d, n_beratungen=(d.get("n_beratungen") or None))
+                self._conn.execute(
+                    "UPDATE council_decisions SET importance = ? WHERE id = ?", (score, d["id"]))
+                n += 1
+        return n
 
     def count_decisions(
         self, query="", committee="", outcome="", faction="", date_from="", date_to="",
@@ -1272,9 +1316,9 @@ class CouncilStore:
                     "(area_type, area_key, category, difficulty, question, options, "
                     " correct_index, explanation, source_type, source_ref, content_hash, "
                     " status, qtype, answer_value, answer_unit, range_min, range_max, "
-                    " detail, lat, lon, place_label, geojson, image_url, image_author, image_license, "
+                    " detail, hint, lat, lon, place_label, geojson, image_url, image_author, image_license, "
                     " image_license_url, image_source_url, generated_at) "
-                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     (r["area_type"], r["area_key"], r["category"], r.get("difficulty", "mittel"),
                      r["question"], json.dumps(r.get("options", []), ensure_ascii=False),
                      int(r.get("correct_index", 0)), r.get("explanation"),
@@ -1282,7 +1326,7 @@ class CouncilStore:
                      r.get("status", "active"), r.get("qtype", "mc"),
                      r.get("answer_value"), r.get("answer_unit"),
                      r.get("range_min"), r.get("range_max"),
-                     r.get("detail"), r.get("lat"), r.get("lon"), r.get("place_label"), r.get("geojson"),
+                     r.get("detail"), r.get("hint"), r.get("lat"), r.get("lon"), r.get("place_label"), r.get("geojson"),
                      r.get("image_url"), r.get("image_author"), r.get("image_license"),
                      r.get("image_license_url"), r.get("image_source_url"), now),
                 )
@@ -1303,6 +1347,9 @@ class CouncilStore:
             "question": r["question"], "options": options, "qtype": qtype,
             "source_type": r["source_type"], "source_ref": r["source_ref"],
         }
+        # Tipp gehört zur Frage (vor dem Auflösen anzeigbar), nicht zur Lösung.
+        if "hint" in keys and r["hint"]:
+            out["hint"] = r["hint"]
         if qtype == "estimate":
             # Slider-Grenzen + Einheit gehören zur Frage (nicht die Lösung).
             out["unit"] = r["answer_unit"]
