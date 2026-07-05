@@ -361,7 +361,7 @@ export interface QuizAnswerResult {
   source_type: string | null;
   source_ref: string | null;
   detail?: string | null;
-  map?: { lat: number; lon: number; label: string | null } | null;
+  map?: { lat: number; lon: number; label: string | null; geojson?: object | null } | null;
   image?: QuizImageCredit | null;
 }
 export interface QuizBadge {

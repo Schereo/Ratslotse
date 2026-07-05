@@ -54,6 +54,15 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Straßen, Gebäuden) und ein **Foto** zeigen. Fotos kommen aus **Wikimedia
   Commons** — ausschließlich frei lizenziert und stets **mit Bildnachweis**
   (Autor, Lizenz, Quelle). (#201)
+- **Fachbegriffe zum Nachschlagen:** In der Quiz-Auflösung sind Begriffe wie
+  „Vergnügungsstätte", „Bebauungsplan" oder „Satzung" dezent unterstrichen — beim
+  Überfahren (bzw. Antippen) erscheint eine kurze, allgemeinverständliche
+  Erklärung. (#202)
+- **Straßen als Linie auf der Antwort-Karte:** Geht es um eine konkrete Straße,
+  zeichnet die kleine Karte in der Auflösung deren echten Verlauf ein (statt nur
+  eines Punkts). Bewusst zurückhaltend: Bei mehrdeutigen oder weit verstreuten
+  Straßennamen bleibt die Karte lieber leer, statt eine falsche Stelle zu zeigen.
+  (#202)
 - **Wahlbereiche auf der Themen-Karte:** Der Stadtteil-Filter kennt jetzt die
   6 Kommunalwahl-Wahlbereiche der Stadt Oldenburg — ein Klick wählt alle
   Stadtteile eines Wahlbereichs (Zuordnung geometrisch aus den offiziellen

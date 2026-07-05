@@ -215,18 +215,50 @@ def test_license_ok():
     assert not quiz._license_ok(None)
 
 
-def test_enrich_row(monkeypatch):
+def test_enrich_row_point_for_landmark(monkeypatch):
+    # Bekannter Einzelort (hat Bild) + keine kompakte Straße → Punkt-Pin.
     monkeypatch.setattr(quiz, "commons_image", lambda s: {
         "url": "http://img", "author": "A", "license": "CC BY 4.0",
         "license_url": "http://l", "source_url": "http://s"})
+    monkeypatch.setattr(quiz, "street_line", lambda s, **k: None)
     monkeypatch.setattr(quiz, "geocode_place", lambda s: (53.14, 8.21))
     row = {}
     quiz.enrich_row(row, "Schloss Oldenburg")
     assert row["image_url"] == "http://img" and row["image_license"] == "CC BY 4.0"
     assert row["lat"] == 53.14 and row["lon"] == 8.21 and row["place_label"] == "Schloss Oldenburg"
+    assert "geojson" not in row
     row2 = {}
     quiz.enrich_row(row2, "")           # kein subject → keine Anreicherung, kein Netz
     assert row2 == {}
+
+
+def test_enrich_row_line_for_street(monkeypatch):
+    # Kompakte, eindeutige Straße → Linie (geojson), NICHT der (evtl. falsche) Pin.
+    monkeypatch.setattr(quiz, "commons_image", lambda s: None)
+    monkeypatch.setattr(quiz, "street_line", lambda s, **k: [[[8.20, 53.17], [8.21, 53.17]]])
+    monkeypatch.setattr(quiz, "geocode_place", lambda s: (99.0, 99.0))  # darf NICHT genutzt werden
+    row = {}
+    quiz.enrich_row(row, "Theodor-Pekol-Straße")
+    import json as _json
+    gj = _json.loads(row["geojson"])
+    assert gj["type"] == "MultiLineString" and gj["coordinates"][0][0] == [8.20, 53.17]
+    assert abs(row["lat"] - 53.17) < 0.01 and abs(row["lon"] - 8.205) < 0.01  # Mittelpunkt der Linie
+    assert row["place_label"] == "Theodor-Pekol-Straße"
+
+
+def test_street_line_extent_guard(monkeypatch):
+    # Kompakte Straße → Linie; weit verstreute (mehrere gleichnamige) → None.
+    def fake_get(url, **kw):
+        return SimpleNamespace(status_code=200, json=lambda: fake_get.payload, raise_for_status=lambda: None)
+    monkeypatch.setattr(quiz.requests, "get", fake_get)
+    fake_get.payload = {"elements": [{"type": "way", "geometry": [
+        {"lat": 53.170, "lon": 8.198}, {"lat": 53.171, "lon": 8.199}]}]}
+    assert quiz.street_line("Theodor-Pekol-Straße") is not None
+    # zwei Stücke ~8 km auseinander → verstreut → verworfen
+    fake_get.payload = {"elements": [
+        {"type": "way", "geometry": [{"lat": 53.12, "lon": 8.20}]},
+        {"type": "way", "geometry": [{"lat": 53.20, "lon": 8.28}]}]}
+    assert quiz.street_line("Mittelweg") is None
 
 
 def test_generate_attaches_detail_and_media(monkeypatch):
@@ -237,6 +269,7 @@ def test_generate_attaches_detail_and_media(monkeypatch):
     monkeypatch.setattr(quiz, "commons_image", lambda s: {
         "url": "http://img", "author": "A", "license": "CC BY 4.0",
         "license_url": "http://l", "source_url": "http://s"})
+    monkeypatch.setattr(quiz, "street_line", lambda s, **k: None)
     monkeypatch.setattr(quiz, "geocode_place", lambda s: (53.14, 8.21))
     rows = quiz.generate_for_area("stadtteil", "Oldenburg", "Oldenburg", "x" * 500,
                                   n=1, source_type="wikipedia", source_ref="http://w", verify=False)
