@@ -101,6 +101,9 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Bauprojekt), führt die Auflösung mit einem Klick zu den passenden **echten
   Ratsbeschlüssen** in der Beschluss-Suche — so kann man tiefer einsteigen,
   statt bei der Quizfrage stehenzubleiben. (#208)
+- **Zoombare Antwort-Karten:** Die kleinen Karten in der Quiz-Auflösung lassen
+  sich jetzt zoomen und verschieben (Zoom-Buttons, Doppelklick, Pinch); nur das
+  Mausrad-Zoom bleibt aus, damit die Seite normal weiterscrollt. (#207)
 - **Wahlbereiche auf der Themen-Karte:** Der Stadtteil-Filter kennt jetzt die
   6 Kommunalwahl-Wahlbereiche der Stadt Oldenburg — ein Klick wählt alle
   Stadtteile eines Wahlbereichs (Zuordnung geometrisch aus den offiziellen
