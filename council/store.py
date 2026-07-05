@@ -1297,6 +1297,34 @@ class CouncilStore:
         picked = (fresh + used)[:limit]
         return [self._quiz_row(r, with_answer=False) for r in picked]
 
+    def pick_quiz_questions_by_ids(self, ids: list[int], limit: int) -> list[dict]:
+        """Aktive Fragen (OHNE Lösung) zu einer Id-Liste, gemischt und gedeckelt —
+        für den „Meine Fehler"-Wiederholmodus. Retirte Fragen fallen raus."""
+        if not ids:
+            return []
+        ph = ",".join("?" * len(ids))
+        rows = list(self._conn.execute(
+            f"SELECT * FROM council_quiz_questions WHERE id IN ({ph}) AND status = 'active'",
+            ids).fetchall())
+        import random
+        random.shuffle(rows)
+        return [self._quiz_row(r, with_answer=False) for r in rows[:limit]]
+
+    def daily_quiz_questions(self, day: str, n: int = 5) -> list[dict]:
+        """Die Tages-Challenge: n aus dem Datum deterministisch geseedete Fragen,
+        OHNE Lösung — derselbe Satz für alle an einem Tag. Über alle Gebiete."""
+        ids = [r[0] for r in self._conn.execute(
+            "SELECT id FROM council_quiz_questions WHERE status = 'active' ORDER BY id"
+        ).fetchall()]
+        if not ids:
+            return []
+        import random
+        pick = random.Random(day).sample(ids, min(n, len(ids)))
+        ph = ",".join("?" * len(pick))
+        by_id = {r["id"]: r for r in self._conn.execute(
+            f"SELECT * FROM council_quiz_questions WHERE id IN ({ph})", pick).fetchall()}
+        return [self._quiz_row(by_id[i], with_answer=False) for i in pick if i in by_id]
+
     def quiz_area_counts(self) -> dict:
         """Aktive Fragen je Gebiet: {(area_type, area_key): n}."""
         rows = self._conn.execute(

@@ -2,13 +2,15 @@
 
 import { Suspense, useMemo, useState } from "react";
 import { Search, Play, MapPin, Landmark, Sparkles } from "lucide-react";
-import { QuizAreas, QuizQuestion, QuizStats } from "@/lib/types";
+import { QuizAreas, QuizQuestion, QuizStats, QuizDaily } from "@/lib/types";
 import { PageHeader, Card, Button, Input, Spinner, EmptyState, toast } from "@/components/ui";
 import { useFetch } from "@/lib/use-fetch";
 import { api, qs } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { QuizPlay, CATEGORY_LABEL } from "@/components/quiz-play";
-import { QuizProgress } from "@/components/quiz-progress";
+import { QuizProgress, QuizDailyCard } from "@/components/quiz-progress";
+
+type RoundKind = "normal" | "review" | "daily";
 
 function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
@@ -31,11 +33,13 @@ function QuizInner() {
   const [reloadKey, setReloadKey] = useState(0);
   const { data, loading } = useFetch<QuizAreas>(`/quiz/areas?v=${reloadKey}`);
   const { data: stats } = useFetch<QuizStats>(`/quiz/stats?v=${reloadKey}`);
+  const { data: daily } = useFetch<QuizDaily>(`/quiz/daily?v=${reloadKey}`);
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [cats, setCats] = useState<Set<string>>(new Set());
   const [q, setQ] = useState("");
   const [starting, setStarting] = useState(false);
   const [round, setRound] = useState<QuizQuestion[] | null>(null);
+  const [kind, setKind] = useState<RoundKind>("normal");
 
   const themeLabels = useMemo(
     () => Object.fromEntries((data?.themen ?? []).map((t) => [t.key, t.label ?? t.key])),
@@ -59,10 +63,19 @@ function QuizInner() {
 
   if (round) {
     // Nach der Runde: zurück zur Auswahl UND Fortschritt/Punkte neu laden.
-    return <QuizPlay questions={round} onExit={() => { setRound(null); setReloadKey((k) => k + 1); }} />;
+    const title = kind === "daily" ? "Tägliche Challenge" : kind === "review" ? "Meine Fehler" : undefined;
+    const onComplete = kind === "daily"
+      ? (r: { correct: number; total: number; points: number }) => {
+          void api.post("/quiz/daily/complete", r).catch(() => {});
+        }
+      : undefined;
+    return (
+      <QuizPlay questions={round} title={title} onComplete={onComplete}
+        onExit={() => { setRound(null); setReloadKey((k) => k + 1); }} />
+    );
   }
 
-  async function startRound(areaList: string[], catList: string[]) {
+  async function startRound(areaList: string[], catList: string[], roundKind: RoundKind = "normal") {
     if (!areaList.length) return;
     setStarting(true);
     try {
@@ -72,6 +85,7 @@ function QuizInner() {
         toast.info("Für diese Auswahl gibt es (noch) keine offenen Fragen. Andere Gebiete probieren?");
         return;
       }
+      setKind(roundKind);
       setRound(res.questions);
     } catch {
       toast.error("Runde konnte nicht geladen werden.");
@@ -80,6 +94,29 @@ function QuizInner() {
     }
   }
   const start = () => startRound([...sel], [...cats]);
+
+  async function startReview() {
+    setStarting(true);
+    try {
+      const res = await api.get<{ questions: QuizQuestion[] }>("/quiz/review?n=10");
+      if (!res.questions.length) {
+        toast.info("Keine offenen Fehler — stark!");
+        return;
+      }
+      setKind("review");
+      setRound(res.questions);
+    } catch {
+      toast.error("Runde konnte nicht geladen werden.");
+    } finally {
+      setStarting(false);
+    }
+  }
+
+  function startDaily() {
+    if (!daily || daily.done || !daily.questions.length) return;
+    setKind("daily");
+    setRound(daily.questions);
+  }
 
   return (
     <div>
@@ -90,9 +127,13 @@ function QuizInner() {
           hint="Die Fragen werden aus Wikipedia, der Stadt-Website und den Ratsdaten erzeugt. Schau bald wieder vorbei." />
       ) : (
         <div className="mt-2 space-y-6 pb-28 md:pb-0">
+          {daily && (
+            <QuizDailyCard done={daily.done} count={daily.questions.length} onStart={startDaily} />
+          )}
+
           {stats && stats.total.answered > 0 && (
             <QuizProgress stats={stats} themeLabels={themeLabels}
-              onPractice={(area) => startRound([area], [])} />
+              onPractice={(area) => startRound([area], [])} onReview={startReview} />
           )}
 
           {catalog.wahlbereiche.length > 0 && (

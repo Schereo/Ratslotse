@@ -24,8 +24,15 @@ const SOURCE_LABEL: Record<string, string> = {
 const DIFF_LABEL: Record<string, string> = { leicht: "leicht", mittel: "mittel", schwer: "schwer" };
 
 /** Spielt eine Runde Fragen durch: eine Frage nach der anderen, sofortiges
- *  Feedback (Lösung, Erklärung, Quelle, Bewertung), am Ende eine Zusammenfassung. */
-export function QuizPlay({ questions, onExit }: { questions: QuizQuestion[]; onExit: () => void }) {
+ *  Feedback (Lösung, Erklärung, Quelle, Bewertung), am Ende eine Zusammenfassung.
+ *  `onComplete` meldet das Endergebnis (z. B. um die Tages-Challenge zu buchen);
+ *  `title` beschriftet den Runden-Kontext (Tages-Challenge / Meine Fehler). */
+export function QuizPlay({ questions, onExit, onComplete, title }: {
+  questions: QuizQuestion[];
+  onExit: () => void;
+  onComplete?: (r: { correct: number; total: number; points: number }) => void;
+  title?: string;
+}) {
   const [idx, setIdx] = useState(0);
   const [chosen, setChosen] = useState<number | null>(null);
   const [result, setResult] = useState<QuizAnswerResult | null>(null);
@@ -50,7 +57,11 @@ export function QuizPlay({ questions, onExit }: { questions: QuizQuestion[]; onE
   }
 
   function next() {
-    if (idx + 1 >= questions.length) { setDone(true); return; }
+    if (idx + 1 >= questions.length) {
+      setDone(true);
+      onComplete?.({ correct, total: questions.length, points });
+      return;
+    }
     setIdx((i) => i + 1);
     setChosen(null); setResult(null); setRated(null);
   }
@@ -82,6 +93,7 @@ export function QuizPlay({ questions, onExit }: { questions: QuizQuestion[]; onE
 
   return (
     <div className="mx-auto max-w-xl">
+      {title && <p className="mb-2 text-sm font-semibold text-primary">{title}</p>}
       {/* Fortschritt */}
       <div className="mb-4 flex items-center gap-3">
         <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">

@@ -134,6 +134,12 @@ class QuizRateIn(BaseModel):
     comment: str | None = Field(default=None, max_length=500)
 
 
+class QuizDailyIn(BaseModel):
+    correct: int = Field(ge=0, le=50)
+    total: int = Field(ge=1, le=50)
+    points: int = Field(ge=0, le=500)
+
+
 # ---- push notifications (native app) ----
 class PushRegisterRequest(BaseModel):
     token: str = Field(min_length=1, max_length=512)

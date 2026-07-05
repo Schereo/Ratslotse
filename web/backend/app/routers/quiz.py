@@ -6,6 +6,8 @@ View auf ihre Stadtteile (keine eigenen Fragen) — der Filter expandiert sie.
 """
 from __future__ import annotations
 
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from council import geo
@@ -13,12 +15,40 @@ from council.store import CouncilStore
 from nwz.store import Store
 
 from ..deps import get_council_store, get_store, require_active, require_admin
-from ..schemas import QuizAnswerIn, QuizRateIn
+from ..schemas import QuizAnswerIn, QuizDailyIn, QuizRateIn
 
 router = APIRouter(prefix="/api/quiz", tags=["quiz"])
 
 CATEGORIES = ["geschichte", "orte", "menschen", "ratspolitik", "schaetzen"]
 _POINTS = {"leicht": 1, "mittel": 2, "schwer": 3}
+DAILY_N = 5
+
+
+def _today() -> str:
+    return datetime.utcnow().strftime("%Y-%m-%d")
+
+
+def _badges(stats: dict, streak: int, theme_labels: dict[str, str]) -> list[dict]:
+    """Abzeichen aus dem Fortschritt ableiten: Punkte-Meilensteine, Serien und
+    Gebiets-„Kenner" (≥5 Fragen mit ≥80 % Trefferquote)."""
+    out: list[dict] = []
+    pts = stats["total"]["points"]
+    if pts >= 250:
+        out.append({"key": "punkte", "label": "250 Punkte", "tier": "gold"})
+    elif pts >= 100:
+        out.append({"key": "punkte", "label": "100 Punkte", "tier": "silber"})
+    elif pts >= 25:
+        out.append({"key": "punkte", "label": "25 Punkte", "tier": "bronze"})
+    if streak >= 7:
+        out.append({"key": "serie", "label": "7-Tage-Serie", "tier": "gold"})
+    elif streak >= 3:
+        out.append({"key": "serie", "label": "3-Tage-Serie", "tier": "silber"})
+    for a in stats["by_area"]:
+        if a["answered"] >= 5 and a["correct"] / a["answered"] >= 0.8:
+            name = theme_labels.get(a["area_key"], a["area_key"]) if a["area_type"] == "thema" else a["area_key"]
+            out.append({"key": f"kenner:{a['area_type']}:{a['area_key']}",
+                        "label": f"{name}-Kenner", "tier": "bronze"})
+    return out
 
 
 def _expand(areas: list[str]) -> list[tuple[str, str]]:
@@ -113,10 +143,54 @@ def rate(payload: QuizRateIn,
     return {"ok": True}
 
 
+@router.get("/review")
+def review(n: int = Query(10, ge=1, le=30),
+           user: dict = Depends(require_active),
+           store: Store = Depends(get_store),
+           council: CouncilStore = Depends(get_council_store)) -> dict:
+    """„Meine Fehler" — zuletzt falsch beantwortete Fragen zum Wiederholen
+    (spaced repetition). Richtig beantwortet fliegt eine Frage aus dem Stapel."""
+    ids = store.quiz_wrong_question_ids(user["id"])
+    return {"questions": council.pick_quiz_questions_by_ids(ids, n)}
+
+
+@router.get("/daily")
+def daily(user: dict = Depends(require_active),
+          store: Store = Depends(get_store),
+          council: CouncilStore = Depends(get_council_store)) -> dict:
+    """Die heutige Tages-Challenge (5 Fragen, für alle gleich) + mein Ergebnis,
+    falls ich sie heute schon gespielt habe."""
+    day = _today()
+    done = store.quiz_daily_result(user["id"], day)
+    return {"day": day, "done": done,
+            "questions": [] if done else council.daily_quiz_questions(day, DAILY_N)}
+
+
+@router.post("/daily/complete")
+def daily_complete(payload: QuizDailyIn,
+                   user: dict = Depends(require_active),
+                   store: Store = Depends(get_store)) -> dict:
+    """Tages-Challenge abschließen (Einzelantworten liefen bereits über /answer;
+    hier nur Abschluss festhalten für „heute erledigt" + Serie)."""
+    day = _today()
+    store.record_quiz_daily(user["id"], day, payload.correct, payload.total, payload.points)
+    return {"ok": True, "day": day, "streak": store.quiz_streak(user["id"])}
+
+
 @router.get("/stats")
-def stats(user: dict = Depends(require_active), store: Store = Depends(get_store)) -> dict:
-    """Fortschritt je Gebiet + Gesamt — Grundlage des „meine Schwächen"-Dashboards."""
-    return store.quiz_stats(user["id"])
+def stats(user: dict = Depends(require_active),
+          store: Store = Depends(get_store),
+          council: CouncilStore = Depends(get_council_store)) -> dict:
+    """Fortschritt je Gebiet + Gesamt, plus Serie, Abzeichen, „Meine Fehler"-Zahl
+    und ob die heutige Challenge erledigt ist — Grundlage des Dashboards."""
+    s = store.quiz_stats(user["id"])
+    streak = store.quiz_streak(user["id"])
+    theme_labels = {t["area_key"]: t["label"] for t in council.quiz_themes()}
+    s["wrong"] = len(store.quiz_wrong_question_ids(user["id"]))
+    s["streak"] = streak
+    s["badges"] = _badges(s, streak, theme_labels)
+    s["daily_done"] = store.quiz_daily_result(user["id"], _today()) is not None
+    return s
 
 
 # ---- Admin: schlecht bewertete Fragen sichten & ausmustern ----

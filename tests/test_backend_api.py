@@ -648,6 +648,47 @@ def test_quiz_scores_per_account(client):
     assert bob.get("/api/quiz/stats").json()["total"]["answered"] == 0
 
 
+def test_quiz_review_collects_wrong_and_clears_on_correct(client):
+    _register(client)
+    _seed_quiz("Osternburg", n=2)
+    qs = client.get("/api/quiz/round?areas=stadtteil:Osternburg&n=10").json()["questions"]
+    client.post("/api/quiz/answer", json={"question_id": qs[0]["id"], "selected_index": 0})  # falsch
+    client.post("/api/quiz/answer", json={"question_id": qs[1]["id"], "selected_index": 1})  # richtig
+    review = client.get("/api/quiz/review").json()["questions"]
+    ids = {q["id"] for q in review}
+    assert qs[0]["id"] in ids and qs[1]["id"] not in ids
+    for q in review:  # Wiederhol-Fragen kommen ohne Lösung
+        assert "correct_index" not in q
+    # später richtig → fliegt aus dem „Meine Fehler"-Stapel
+    client.post("/api/quiz/answer", json={"question_id": qs[0]["id"], "selected_index": 1})
+    assert client.get("/api/quiz/review").json()["questions"] == []
+
+
+def test_quiz_daily_deterministic_and_completable(client):
+    _register(client)
+    _seed_quiz("Osternburg", n=8)
+    d1 = client.get("/api/quiz/daily").json()
+    assert d1["done"] is None and len(d1["questions"]) == 5
+    d2 = client.get("/api/quiz/daily").json()  # gleicher Tag → gleicher Fragensatz
+    assert {q["id"] for q in d1["questions"]} == {q["id"] for q in d2["questions"]}
+    for q in d1["questions"]:
+        client.post("/api/quiz/answer", json={"question_id": q["id"], "selected_index": 1})
+    r = client.post("/api/quiz/daily/complete", json={"correct": 5, "total": 5, "points": 10}).json()
+    assert r["ok"] is True and r["streak"] == 1
+    after = client.get("/api/quiz/daily").json()
+    assert after["done"]["correct"] == 5 and after["questions"] == []
+
+
+def test_quiz_stats_streak_wrong_and_badges(client):
+    _register(client)
+    _seed_quiz("Osternburg", n=6)
+    for q in client.get("/api/quiz/round?areas=stadtteil:Osternburg&n=10").json()["questions"]:
+        client.post("/api/quiz/answer", json={"question_id": q["id"], "selected_index": 1})
+    s = client.get("/api/quiz/stats").json()
+    assert s["streak"] == 1 and s["wrong"] == 0 and s["daily_done"] is False
+    assert "Osternburg-Kenner" in {b["label"] for b in s["badges"]}  # 6× richtig, 100 %
+
+
 # ---- email verification ----
 import hashlib  # noqa: E402
 from datetime import datetime, timedelta  # noqa: E402

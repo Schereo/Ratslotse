@@ -189,6 +189,17 @@ CREATE TABLE IF NOT EXISTS quiz_ratings (
     created_at  TEXT NOT NULL,
     PRIMARY KEY (owner_id, question_id)
 );
+
+-- Abgeschlossene Tages-Challenge je Nutzer & Tag (für Ergebnis + Serie).
+CREATE TABLE IF NOT EXISTS quiz_daily (
+    owner_id     INTEGER NOT NULL,
+    day          TEXT NOT NULL,          -- YYYY-MM-DD (UTC)
+    correct      INTEGER NOT NULL,
+    total        INTEGER NOT NULL,
+    points       INTEGER NOT NULL,
+    completed_at TEXT NOT NULL,
+    PRIMARY KEY (owner_id, day)
+);
 """
 
 
@@ -501,6 +512,60 @@ class Store:
         return {(r["area_type"], r["area_key"]): r["points"] or 0 for r in self._conn.execute(
             "SELECT area_type, area_key, SUM(points) points FROM quiz_answers "
             "WHERE owner_id = ? GROUP BY area_type, area_key", (owner_id,)).fetchall()}
+
+    def quiz_wrong_question_ids(self, owner_id: int) -> list[int]:
+        """Der „Meine Fehler"-Stapel: Fragen, deren JÜNGSTE Antwort dieses
+        Nutzers falsch war. Wird die Frage später richtig beantwortet, fällt sie
+        raus (id = letzter Versuch). Für den Wiederhol-/Lernmodus."""
+        return [r[0] for r in self._conn.execute(
+            "SELECT question_id FROM quiz_answers a "
+            "WHERE owner_id = ? AND correct = 0 AND id = ("
+            "  SELECT MAX(id) FROM quiz_answers "
+            "  WHERE owner_id = a.owner_id AND question_id = a.question_id) "
+            "ORDER BY id DESC", (owner_id,)).fetchall()]
+
+    def quiz_streak(self, owner_id: int) -> int:
+        """Aktuelle Serie: aufeinanderfolgende Kalendertage (UTC) mit mindestens
+        einer beantworteten Frage, die heute oder gestern endet (sonst 0)."""
+        days = [r[0] for r in self._conn.execute(
+            "SELECT DISTINCT substr(answered_at,1,10) d FROM quiz_answers "
+            "WHERE owner_id = ? ORDER BY d DESC", (owner_id,)).fetchall()]
+        if not days:
+            return 0
+        from datetime import date
+        today = datetime.utcnow().date()
+        cur = date.fromisoformat(days[0])
+        if (today - cur).days > 1:      # letzte Aktivität älter als gestern → Serie gerissen
+            return 0
+        streak = 1
+        for prev in days[1:]:
+            p = date.fromisoformat(prev)
+            if (cur - p).days == 1:
+                streak += 1
+                cur = p
+            else:
+                break
+        return streak
+
+    def record_quiz_daily(self, owner_id: int, day: str, correct: int, total: int,
+                          points: int) -> None:
+        """Ergebnis der Tages-Challenge festhalten (idempotent, eins je Tag)."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT INTO quiz_daily (owner_id, day, correct, total, points, completed_at) "
+                "VALUES (?,?,?,?,?,?) ON CONFLICT(owner_id, day) DO UPDATE SET "
+                "correct=excluded.correct, total=excluded.total, points=excluded.points, "
+                "completed_at=excluded.completed_at",
+                (owner_id, day, correct, total, points, now))
+
+    def quiz_daily_result(self, owner_id: int, day: str) -> dict | None:
+        """Mein Ergebnis der Tages-Challenge eines Tages (oder None)."""
+        r = self._conn.execute(
+            "SELECT day, correct, total, points, completed_at FROM quiz_daily "
+            "WHERE owner_id = ? AND day = ?", (owner_id, day)).fetchone()
+        return {"day": r["day"], "correct": r["correct"], "total": r["total"],
+                "points": r["points"], "completed_at": r["completed_at"]} if r else None
 
     def rate_quiz_question(self, owner_id: int, question_id: int, verdict: str,
                            comment: str | None = None) -> None:

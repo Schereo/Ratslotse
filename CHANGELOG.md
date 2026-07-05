@@ -29,6 +29,11 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   schwache Fragen später ersetzt werden. Deine **Punkte und Trefferquoten
   werden je Gebiet gespeichert**: Das Fortschritts-Dashboard zeigt deine
   schwächsten Gebiete zuerst und bietet gezieltes „Üben". (#198)
+- **Quiz-Lernmodus & Motivation:** Dazu kommen eine **tägliche Challenge**
+  (5 Fragen, jeden Tag neu und für alle gleich), ein **„Meine Fehler"-Stapel**
+  zum gezielten Wiederholen zuletzt falsch beantworteter Fragen (spaced
+  repetition, wie beim Führerschein-Lernen), **Serien** (🔥 Tage in Folge) und
+  **Abzeichen** (Punkte-Meilensteine, Gebiets-„Kenner"). (#198)
 - **Wahlbereiche auf der Themen-Karte:** Der Stadtteil-Filter kennt jetzt die
   6 Kommunalwahl-Wahlbereiche der Stadt Oldenburg — ein Klick wählt alle
   Stadtteile eines Wahlbereichs (Zuordnung geometrisch aus den offiziellen

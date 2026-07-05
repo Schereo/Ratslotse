@@ -348,9 +348,30 @@ export interface QuizAnswerResult {
   source_type: string | null;
   source_ref: string | null;
 }
+export interface QuizBadge {
+  key: string;
+  label: string;
+  tier: "bronze" | "silber" | "gold";
+}
 export interface QuizStats {
   by_area: { area_type: string; area_key: string; points: number; answered: number; correct: number; last_at: string | null }[];
   total: { points: number; answered: number; correct: number };
+  wrong: number;
+  streak: number;
+  badges: QuizBadge[];
+  daily_done: boolean;
+}
+export interface QuizDailyResult {
+  day: string;
+  correct: number;
+  total: number;
+  points: number;
+  completed_at: string;
+}
+export interface QuizDaily {
+  day: string;
+  done: QuizDailyResult | null;
+  questions: QuizQuestion[];
 }
 export interface QuizFlagged {
   question_id: number;
