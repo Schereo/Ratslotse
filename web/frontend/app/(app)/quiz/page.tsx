@@ -9,6 +9,7 @@ import { api, qs } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { QuizPlay, CATEGORY_LABEL } from "@/components/quiz-play";
 import { QuizProgress, QuizDailyCard } from "@/components/quiz-progress";
+import { QuizMapPlay, QuizMapCard } from "@/components/quiz-map-play";
 
 type RoundKind = "normal" | "review" | "daily";
 
@@ -40,6 +41,7 @@ function QuizInner() {
   const [starting, setStarting] = useState(false);
   const [round, setRound] = useState<QuizQuestion[] | null>(null);
   const [kind, setKind] = useState<RoundKind>("normal");
+  const [mapTargets, setMapTargets] = useState<string[] | null>(null);
 
   const themeLabels = useMemo(
     () => Object.fromEntries((data?.themen ?? []).map((t) => [t.key, t.label ?? t.key])),
@@ -60,6 +62,11 @@ function QuizInner() {
   if (loading) return <div className="py-10"><Spinner /></div>;
   const catalog = data ?? { wahlbereiche: [], stadtteile: [], themen: [], categories: [] };
   const empty = !catalog.wahlbereiche.length && !catalog.stadtteile.length && !catalog.themen.length;
+
+  if (mapTargets) {
+    return <QuizMapPlay targets={mapTargets}
+      onExit={() => { setMapTargets(null); setReloadKey((k) => k + 1); }} />;
+  }
 
   if (round) {
     // Nach der Runde: zurück zur Auswahl UND Fortschritt/Punkte neu laden.
@@ -118,6 +125,19 @@ function QuizInner() {
     setRound(daily.questions);
   }
 
+  async function startMap() {
+    setStarting(true);
+    try {
+      const res = await api.get<{ questions: { target: string }[] }>("/quiz/map-round?n=5");
+      if (!res.questions.length) return;
+      setMapTargets(res.questions.map((q) => q.target));
+    } catch {
+      toast.error("Karten-Quiz konnte nicht geladen werden.");
+    } finally {
+      setStarting(false);
+    }
+  }
+
   return (
     <div>
       <PageHeader title="Oldenburg-Quiz" description="Teste dein Wissen über deine Stadt — nach Wahlbereich, Stadtteil oder großem Thema." />
@@ -130,6 +150,7 @@ function QuizInner() {
           {daily && (
             <QuizDailyCard done={daily.done} count={daily.questions.length} onStart={startDaily} />
           )}
+          <QuizMapCard onStart={startMap} />
 
           {stats && stats.total.answered > 0 && (
             <QuizProgress stats={stats} themeLabels={themeLabels}

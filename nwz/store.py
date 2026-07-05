@@ -519,7 +519,7 @@ class Store:
         raus (id = letzter Versuch). Für den Wiederhol-/Lernmodus."""
         return [r[0] for r in self._conn.execute(
             "SELECT question_id FROM quiz_answers a "
-            "WHERE owner_id = ? AND correct = 0 AND id = ("
+            "WHERE owner_id = ? AND correct = 0 AND question_id > 0 AND id = ("
             "  SELECT MAX(id) FROM quiz_answers "
             "  WHERE owner_id = a.owner_id AND question_id = a.question_id) "
             "ORDER BY id DESC", (owner_id,)).fetchall()]

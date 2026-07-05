@@ -318,7 +318,7 @@ export interface AdminStats {
 export interface QuizAreaEntry {
   key: string;
   label?: string;
-  wahlbereich?: number;
+  wahlbereiche?: number[];
   stadtteile?: string[];
   questions: number;
   points: number;

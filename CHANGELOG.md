@@ -8,6 +8,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geändert
+- **Grenzstadtteile in mehreren Wahlbereichen:** Stadtteile, die über eine
+  Wahlbereichs-Grenze reichen, werden jetzt in **allen** zugehörigen
+  Wahlbereichen gelistet statt nur im überwiegenden — z. B. Bürgerfelde (1 + 3),
+  Osternburg (5 + 2), Haarentor (3 + 6). Ermittelt aus der Flächen-Überlappung
+  der Stadtteil-Polygone mit den offiziellen Wahlbereich-Grenzen (≥ 10 %). Wirkt
+  auf den Karten-Filter und die Quiz-Gebietsauswahl. (#199)
 - **Bessere Karte im Dunkelmodus:** Die dunkle Stadtkarte ist jetzt ein
   gut lesbarer grauer Slate-Ton (invertierte Voyager-Basemap) statt fast
   schwarz — Straßen, Waldgebiete und Wasser sind zur Orientierung erkennbar.
@@ -37,6 +43,9 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 - **Schätzfragen mit Slider:** Schätzfragen (Einwohner, Fläche, Beträge …) lassen
   sich per Schieberegler beantworten — je näher an der richtigen Zahl, desto mehr
   Punkte (statt vier fester Bereiche). (#198)
+- **Karten-Quiz:** „Wo liegt Stadtteil X?" — die Oldenburg-Karte mit allen
+  Stadtteilen; man tippt den gesuchten direkt auf der Karte an, die Auflösung
+  färbt den richtigen Stadtteil grün. Rein geografisch erzeugt (ohne KI). (#199)
 - **Wahlbereiche auf der Themen-Karte:** Der Stadtteil-Filter kennt jetzt die
   6 Kommunalwahl-Wahlbereiche der Stadt Oldenburg — ein Klick wählt alle
   Stadtteile eines Wahlbereichs (Zuordnung geometrisch aus den offiziellen
