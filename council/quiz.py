@@ -364,7 +364,12 @@ _SYSTEM = (
     "wenn ihre Auflösung einen Aha-Moment auslöst: Die Erklärung soll etwas "
     "Einprägsames, Überraschendes oder Verständnis-Stiftendes vermitteln — nicht nur "
     "die richtige Antwort wiederholen. Lieber bekannte, bedeutsame Dinge als beliebige "
-    "Fakten."
+    "Fakten. Zwei harte Regeln: (1) RELEVANZ — keine belanglosen Verfahrens-Zahlen "
+    "(wie viele Menschen zu einem Workshop kamen, wie viele Ideen oder Stellungnahmen "
+    "eingingen, exakte Sitzungs- oder Beschlussdaten); daraus lernt niemand etwas über "
+    "die Stadt. (2) EINDEUTIGKEIT — jede Frage steht FÜR SICH und benennt das gemeinte "
+    "Ding konkret (Stadtteil, Projekt, Ort ausschreiben), nie vage von dem Stadtteil "
+    "oder dem neuen Quartier sprechen."
 )
 
 
@@ -388,11 +393,16 @@ Regeln:
   · geschichte = Gründung/Eingemeindung/Namensherkunft/historische Ereignisse
   · orte = Wahrzeichen, Bauwerke, Parks, Plätze, Straßen
   · menschen = bekannte Personen, Ratsmitglieder
-  · ratspolitik = aktuelle Beschlüsse/Projekte des Stadtrats (nur aus Ratsdaten)
+  · ratspolitik = aktuelle Beschlüsse/Projekte des Stadtrats (nur aus Ratsdaten) —
+    WAS wurde beschlossen und warum ist es bedeutsam, nicht das genaue Datum eines
+    Verfahrensschritts. Das Projekt/den Ort konkret benennen.
   · schaetzen = eine SCHÄTZFRAGE als Slider: setze "qtype":"estimate" mit
     "answer_value" (die richtige Zahl), "unit" (z. B. Einwohner, Hektar, Euro,
     Jahr) und "range_min"/"range_max" (plausible Slider-Grenzen, der Wert liegt
-    klar dazwischen) — STATT options/correct_index.
+    klar dazwischen) — STATT options/correct_index. NUR sinnvolle, einprägsame
+    Größen (Einwohnerzahl, Fläche, Gründungsjahr, Bausumme großer Projekte,
+    Entfernung) — NIEMALS belanglose Zählungen (Workshop-Teilnehmer, eingereichte
+    Ideen/Stellungnahmen, Zahl der Sitzungen).
 - ZUSATZINFOS je Frage (optional, nur wenn aus den Quellen sinnvoll):
   · "hint" = ein kurzer Tipp (1 Satz), der beim Nachdenken hilft, OHNE die
     Antwort zu verraten — besonders bei schwereren Fragen.
@@ -401,6 +411,10 @@ Regeln:
     Straße oder Person), exakt wie der deutsche Wikipedia-Artikel heißt (z. B.
     "Schloss Oldenburg", "Cäcilienbrücke") — nur für Foto & Karte. Weglassen,
     wenn es kein konkretes reales Ding gibt.
+  · "topic" = bei Rats-/Projekt-Fragen ein kurzes Such-Stichwort, mit dem man
+    verwandte Beschlüsse findet (z. B. "Lebensquartier", "Fliegerhorst",
+    "Cäcilienbrücke"). Damit verlinken wir „Beschlüsse dazu". Nur setzen, wenn es
+    ein echtes Ratsthema ist (v. a. Kategorie ratspolitik).
 - Wenn eine Kategorie aus den Quellen nicht seriös bedienbar ist, lass sie weg.
 - Sprache: Deutsch. difficulty ∈ leicht|mittel|schwer.
 
@@ -411,10 +425,10 @@ Antworte mit NUR JSON (Multiple Choice ODER, für schaetzen, qtype=estimate):
     "explanation": "1 einprägsamer Satz mit dem Aha-Effekt (nicht die Antwort wiederholen)",
     "hint": "kurzer Tipp, ohne die Lösung zu verraten",
     "detail": "2–3 Sätze mehr Kontext aus den Quellen",
-    "subject": "Schloss Oldenburg",
+    "subject": "Schloss Oldenburg", "topic": "Schloss Oldenburg",
     "source": "kurze Herkunft, z. B. 'Wikipedia' oder 'Ratsbeschluss 2025'"}},
   {{"category": "schaetzen", "difficulty": "mittel", "qtype": "estimate",
-    "question": "Wie viele Einwohner hat der Stadtteil etwa?",
+    "question": "Wie viele Einwohner hat Osternburg etwa?",
     "answer_value": 12000, "unit": "Einwohner", "range_min": 2000, "range_max": 30000,
     "explanation": "laut Quelle rund 12.000", "source": "Wikipedia"}}
 ]}}"""
@@ -534,6 +548,7 @@ def generate_for_area(area_type: str, area_key: str, area_label: str, sources: s
             "explanation": (q.get("explanation") or "").strip()[:300] or None,
             "detail": (q.get("detail") or "").strip()[:600] or None,
             "hint": (q.get("hint") or "").strip()[:200] or None,
+            "topic": (q.get("topic") or "").strip()[:80] or None,
             "source_type": source_type, "source_ref": source_ref,
             "content_hash": h,
         }

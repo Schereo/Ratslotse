@@ -139,7 +139,8 @@ def answer(payload: QuizAnswerIn,
     # „Mehr dazu": ausführliche Erklärung, Locator-Karte, Bild (mit Bildnachweis).
     resp = {"explanation": q.get("explanation"),
             "source_type": q.get("source_type"), "source_ref": q.get("source_ref"),
-            "detail": q.get("detail"), "map": q.get("map"), "image": q.get("image")}
+            "detail": q.get("detail"), "topic": q.get("topic"),
+            "map": q.get("map"), "image": q.get("image")}
     if q.get("qtype") == "estimate":
         if payload.value is None:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "Schätzwert fehlt.")
