@@ -10,14 +10,14 @@ import type { StadtteilFeature } from "@/lib/stadtteile";
 import { themaHref } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
-// CARTO-Basemaps, live mit dem Site-Theme getauscht. Hell: Voyager statt
-// light_all — light_all ist fast konturlos; Voyager zeigt Straßennetz,
-// Grünflächen und Wasser deutlich, bleibt aber ruhig genug fürs Design.
-// Dunkel: dark_all + dezenter CSS-Boost (globals.css, .leaflet-tile).
-const TILES = {
-  light: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-  dark: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-};
+// CARTO Voyager als Basemap — zeigt Straßennetz, Grünflächen und Wasser
+// deutlich (light_all/dark_all sind fast konturlos bzw. fast schwarz). Für den
+// Dunkelmodus dieselben Tiles, per CSS-Filter zu einem grauen Slate-Ton
+// invertiert (globals.css, .dark .leaflet-tile) — heller und besser lesbar als
+// dark_all. Beide Modi teilen die URL; der Filter macht den Unterschied, also
+// lädt der Theme-Wechsel keine Tiles neu.
+const VOYAGER = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+const TILES = { light: VOYAGER, dark: VOYAGER };
 
 // Marker colour by entity kind (the legend in the Themen tab mirrors this).
 export const KIND_COLOR: Record<string, string> = {
