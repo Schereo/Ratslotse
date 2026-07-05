@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronRight } from "lucide-react";
-import { CouncilDecision, DecisionOutcome } from "@/lib/types";
+import { ChevronRight, Flame } from "lucide-react";
+import { CouncilDecision, DecisionOutcome, ImportanceBreakdown } from "@/lib/types";
 import { Card, formatDate } from "@/components/ui";
 import { decisionHref } from "@/lib/routes";
 import { cn } from "@/lib/utils";
@@ -84,6 +84,78 @@ export function FieldBadge({ field, className }: { field: string | null; classNa
     >
       {POLICY_FIELD_LABELS[field] ?? field}
     </button>
+  );
+}
+
+export const IMPORTANCE_HINT =
+  "Geschätzte Wichtigkeit für die Stadt — aus Geldbetrag, Umstrittenheit (Gegenstimmen), Verbindlichkeit & Gremien-Ebene und Länge des Beratungswegs.";
+
+/** Kompakter „Wichtig"-Chip für Listen — nur ab einer Schwelle sichtbar, damit
+ *  nur wirklich bedeutende Beschlüsse hervorstechen (statt jede Karte zu füllen). */
+export function ImportanceBadge({ score, minShow = 55, className }: {
+  score?: number | null; minShow?: number; className?: string;
+}) {
+  if (score == null || score < minShow) return null;
+  const strong = score >= 70;
+  return (
+    <span
+      title={`Wichtigkeit ${score}/100 — ${IMPORTANCE_HINT}`}
+      className={cn(
+        "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-semibold",
+        strong ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
+               : "bg-amber-500/10 text-amber-700/80 dark:text-amber-300/70",
+        className,
+      )}
+    >
+      <Flame className="h-3 w-3" /> Wichtig
+    </span>
+  );
+}
+
+const IMPORTANCE_SIGNAL_LABEL: Record<keyof ImportanceBreakdown["signals"], string> = {
+  geld: "Geldbetrag", umstritten: "Umstrittenheit",
+  verbindlich: "Verbindlichkeit & Ebene", aufwand: "Beratungsaufwand",
+};
+
+/** Ausführliche Wichtigkeits-Anzeige auf der Beschluss-Seite: Score + welche
+ *  Signale ihn treiben — beantwortet transparent „woran macht man das fest?". */
+export function ImportanceMeter({ score, signals, className }: {
+  score: number;
+  signals?: ImportanceBreakdown["signals"];
+  className?: string;
+}) {
+  const keys = Object.keys(IMPORTANCE_SIGNAL_LABEL) as (keyof ImportanceBreakdown["signals"])[];
+  return (
+    <div className={cn("rounded-lg border border-border p-3", className)}>
+      <div className="flex items-center justify-between">
+        <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground">
+          <Flame className="h-4 w-4 text-amber-500" /> Wichtigkeit
+        </span>
+        <span className="text-sm font-semibold tabular-nums text-foreground">
+          {score}<span className="text-muted-foreground">/100</span>
+        </span>
+      </div>
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+        <div className="h-full rounded-full bg-amber-500 transition-[width] duration-500" style={{ width: `${score}%` }} />
+      </div>
+      {signals && (
+        <ul className="mt-3 space-y-1.5">
+          {keys.map((k) => (
+            <li key={k} className="flex items-center gap-2 text-xs">
+              <span className="w-36 shrink-0 text-muted-foreground">{IMPORTANCE_SIGNAL_LABEL[k]}</span>
+              {signals[k] == null ? (
+                <span className="italic text-muted-foreground/60">keine Daten</span>
+              ) : (
+                <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                  <span className="block h-full rounded-full bg-amber-500/70" style={{ width: `${Math.round((signals[k] as number) * 100)}%` }} />
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="mt-2 text-[11px] leading-snug text-muted-foreground">{IMPORTANCE_HINT}</p>
+    </div>
   );
 }
 

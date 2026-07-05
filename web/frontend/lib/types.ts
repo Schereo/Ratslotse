@@ -56,6 +56,8 @@ export interface CouncilDecision {
   policy_tags: string[];
   summary: string | null;
   amount_eur: number | null;
+  /** Wichtigkeits-Score 0–100 (council.importance); null = noch nicht berechnet. */
+  importance?: number | null;
 }
 
 export interface PolicyField {
@@ -228,8 +230,16 @@ export interface Beratung {
   future: boolean;
 }
 
+export interface ImportanceBreakdown {
+  score: number;
+  /** 0–1 je Signal, null wenn das Signal für diesen Beschluss fehlt. */
+  signals: { geld: number | null; umstritten: number | null; verbindlich: number | null; aufwand: number | null };
+}
+
 export interface DecisionDetail {
   decision: CouncilDecision;
+  /** Aufschlüsselung, warum der Beschluss als wichtig gilt. */
+  importance_breakdown?: ImportanceBreakdown | null;
   attendance: Attendee[];
   present_parties: string[];
   sub_votes: CouncilDecision[];
