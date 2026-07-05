@@ -70,6 +70,43 @@ def _features() -> list[dict]:
         return []
 
 
+@lru_cache(maxsize=1)
+def _by_name() -> dict[str, dict]:
+    """Stadtteilname → GeoJSON-Feature (für die Polygon-Ausgabe)."""
+    return {n: f for f in _features()
+            if (n := (f.get("properties") or {}).get("name"))}
+
+
+def is_stadtteil(name: str) -> bool:
+    """True, wenn `name` ein bekannter Oldenburger Stadtteil ist (Polygon da)."""
+    return bool(name) and name in _by_name()
+
+
+def stadtteil_polygon(name: str) -> dict | None:
+    """GeoJSON-Geometrie (Polygon/MultiPolygon) eines Stadtteils, oder None.
+    Für die Quiz-Auflösungskarte, wenn kein Punkt/keine Straße vorliegt: das
+    ganze Gebiet wird eingezeichnet. Wir besitzen die Polygone selbst → das ist
+    immer verlässlich (nie eine falsche Stelle, anders als bei geratenen Pins)."""
+    geom = (_by_name().get(name or "") or {}).get("geometry") or {}
+    if geom.get("type") in ("Polygon", "MultiPolygon") and geom.get("coordinates"):
+        return {"type": geom["type"], "coordinates": geom["coordinates"]}
+    return None
+
+
+def stadtteil_center(name: str) -> tuple[float, float] | None:
+    """Grober Mittelpunkt (Bounding-Box-Zentrum) eines Stadtteils → (lat, lon),
+    für Initial-View/Label der Karte. None, wenn unbekannt."""
+    geom = stadtteil_polygon(name)
+    if not geom:
+        return None
+    polys = geom["coordinates"] if geom["type"] == "MultiPolygon" else [geom["coordinates"]]
+    lons = [pt[0] for poly in polys for ring in poly for pt in ring]
+    lats = [pt[1] for poly in polys for ring in poly for pt in ring]
+    if not lons:
+        return None
+    return ((min(lats) + max(lats)) / 2, (min(lons) + max(lons)) / 2)
+
+
 def _in_ring(lon: float, lat: float, ring: list[list[float]]) -> bool:
     inside = False
     j = len(ring) - 1
