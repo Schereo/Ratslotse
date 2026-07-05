@@ -46,6 +46,9 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 - **Karten-Quiz:** „Wo liegt Stadtteil X?" — die Oldenburg-Karte mit allen
   Stadtteilen; man tippt den gesuchten direkt auf der Karte an, die Auflösung
   färbt den richtigen Stadtteil grün. Rein geografisch erzeugt (ohne KI). (#199)
+- **Grund beim Melden einer Quizfrage:** Wer eine Frage mit 👎 bewertet, kann
+  jetzt optional (keine Pflicht) angeben, was daran schlecht ist — Admins sehen
+  die Begründung in der Bewertungs-Liste. (#200)
 - **Wahlbereiche auf der Themen-Karte:** Der Stadtteil-Filter kennt jetzt die
   6 Kommunalwahl-Wahlbereiche der Stadt Oldenburg — ein Klick wählt alle
   Stadtteile eines Wahlbereichs (Zuordnung geometrisch aus den offiziellen
@@ -86,6 +89,11 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   aufs GitHub-Repo. (#189)
 
 ### Behoben
+- **NWZonline-Link lädt nicht mehr endlos:** Bei sehr langen Beschlusstiteln
+  (mit Klammer-Zusätzen, Datum, „- Bericht"-Anhang) hängte sich die NWZ-Suche
+  in einer Dauer-Ladeschleife auf. Der Link „Bei NWZonline nach Berichten suchen"
+  nutzt jetzt eine gekürzte, saubere Suchanfrage (Schlagworte statt kompletter
+  Titel). (#200)
 - Der neue Stadtteil-Filter verschob auf dem Handy das ganze Themen-Layout
   seitlich (die Filter-Chips passten nicht mehr in eine Zeile) — sie brechen
   jetzt sauber um, und das Stadtteil-Menü öffnet als bildschirmfüllendes
