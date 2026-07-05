@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
-import { Check, X, ExternalLink, ThumbsUp, ThumbsDown, ArrowRight, RotateCcw, Send, ChevronDown, ChevronUp, Lightbulb } from "lucide-react";
+import { Check, X, ExternalLink, ThumbsUp, ThumbsDown, ArrowRight, RotateCcw, Send, ChevronDown, ChevronUp, Lightbulb, Scale } from "lucide-react";
 import { QuizQuestion, QuizAnswerResult } from "@/lib/types";
 import { Card, Button, Input } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
@@ -242,6 +242,16 @@ export function QuizPlay({ questions, onExit, onComplete, title }: {
             )}
             {result.explanation && (
               <p className="mt-1 text-sm leading-relaxed text-muted-foreground"><GlossaryText text={result.explanation} /></p>
+            )}
+
+            {/* „Beschlüsse dazu": verwandte Ratsbeschlüsse zum Thema — öffnet die
+                Beschluss-Suche in neuem Tab, damit die Runde nicht verloren geht. */}
+            {result.topic && (
+              <a href={`/council?tab=decisions&q=${encodeURIComponent(result.topic)}`}
+                 target="_blank" rel="noreferrer"
+                 className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/5 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/10">
+                <Scale className="h-3.5 w-3.5" /> Beschlüsse dazu <ExternalLink className="h-3 w-3" />
+              </a>
             )}
 
             {/* „Mehr dazu": ausführliche Erklärung, Foto (mit Bildnachweis) und

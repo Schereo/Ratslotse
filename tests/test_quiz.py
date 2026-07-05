@@ -352,3 +352,25 @@ def test_generate_attaches_hint(monkeypatch):
                                   n=1, source_type="wikipedia", source_ref="http://w",
                                   verify=False, enrich=False)
     assert rows[0]["hint"] == "Ein Politiker des 19. Jahrhunderts."
+
+
+def test_topic_roundtrip(tmp_path):
+    # „Beschlüsse dazu": topic gehört zur Auflösung, NICHT in die Runde.
+    store = CouncilStore(tmp_path / "c.sqlite")
+    row = _row("Bloherfelde", "Was beschloss der Rat?", "ratspolitik")
+    row["topic"] = "Lebensquartier"
+    store.save_quiz_questions([row])
+    q = store.pick_quiz_questions([("stadtteil", "Bloherfelde")], None, [], 5)[0]
+    assert "topic" not in q                       # nicht in der Runde
+    assert store.get_quiz_question(q["id"])["topic"] == "Lebensquartier"
+
+
+def test_generate_attaches_topic(monkeypatch):
+    qs = [{"category": "ratspolitik", "difficulty": "mittel", "question": "Was wurde beschlossen?",
+           "options": ["A", "B", "C", "D"], "correct_index": 0, "explanation": "kurz",
+           "topic": "Fliegerhorst"}]
+    monkeypatch.setattr(quiz.llm, "chat_complete", _fake_llm(qs))
+    rows = quiz.generate_for_area("stadtteil", "Bloherfelde", "Bloherfelde", "x" * 500,
+                                  n=1, source_type="wikipedia", source_ref="http://w",
+                                  verify=False, enrich=False)
+    assert rows[0]["topic"] == "Fliegerhorst"
