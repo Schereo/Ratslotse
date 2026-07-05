@@ -7,10 +7,12 @@ import { cn } from "@/lib/utils";
 
 const VOYAGER = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
 
-/** Kleine, nicht-interaktive Karte für die Auflösung: zeigt entweder einen
- *  Punkt (Einzelort/Gebäude) ODER eine Straßen-Linie (`geojson`), je nachdem was
- *  das Backend verlässlich ermitteln konnte. CircleMarker/Polyline statt
- *  Icon-Bild, damit die CSP img-src eng bleibt. Theme-reaktiv. */
+/** Kleine Auflösungs-Karte: zeigt entweder einen Punkt (Einzelort/Gebäude), eine
+ *  Straßen-Linie oder ein Gebiets-Polygon (`geojson`), je nachdem was das Backend
+ *  verlässlich ermitteln konnte. Zoom- und verschiebbar (Buttons, Doppelklick,
+ *  Pinch); nur das Mausrad-Zoom bleibt aus, damit es das Seiten-Scrollen nicht
+ *  kapert. CircleMarker/Polyline statt Icon-Bild, damit die CSP img-src eng
+ *  bleibt. Theme-reaktiv. */
 export function LocatorMap({ lat, lon, label, geojson, className }: {
   lat: number;
   lon: number;
@@ -31,8 +33,10 @@ export function LocatorMap({ lat, lon, label, geojson, className }: {
         ref.current.innerHTML = "";
         delete (ref.current as HTMLDivElement & { _leaflet_id?: number })._leaflet_id;
         const map = L.map(ref.current, {
-          scrollWheelZoom: false, dragging: false, zoomControl: false,
-          doubleClickZoom: false, attributionControl: true,
+          // Zoom (Buttons/Doppelklick/Pinch) + Verschieben an, Mausrad-Zoom aus
+          // (sonst zoomt die Karte statt die Seite zu scrollen).
+          scrollWheelZoom: false, dragging: true, zoomControl: true,
+          doubleClickZoom: true, touchZoom: true, attributionControl: true,
         });
         mapRef.current = map;
         map.setView([lat, lon], 15);   // Initial-View vor den Layern (fitBounds crasht sonst)
