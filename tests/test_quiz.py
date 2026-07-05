@@ -18,8 +18,20 @@ from council.store import CouncilStore
 def test_geo_taxonomy():
     assert len(geo.stadtteile()) == 31
     assert geo.WAHLBEREICHE == [1, 2, 3, 4, 5, 6]
-    assert geo.wahlbereich_of("Osternburg") == 5
+    assert geo.wahlbereiche_of("Osternburg") == [5, 2]      # überwiegend 5, ragt in 2
+    assert geo.wahlbereiche_of("Eversten") == [6]
     assert "Fliegerhorst" in geo.stadtteile_im_wahlbereich(3)
+
+
+def test_geo_multi_wahlbereich():
+    # Grenzstadtteile werden in ALLEN zugehörigen Wahlbereichen gelistet.
+    assert geo.wahlbereiche_of("Bürgerfelde") == [1, 3]     # der Fall aus dem Feedback
+    assert "Bürgerfelde" in geo.stadtteile_im_wahlbereich(1)
+    assert "Bürgerfelde" in geo.stadtteile_im_wahlbereich(3)
+    assert "Osternburg" in geo.stadtteile_im_wahlbereich(5)
+    assert "Osternburg" in geo.stadtteile_im_wahlbereich(2)
+    # eindeutige Stadtteile bleiben einfach
+    assert geo.stadtteile_im_wahlbereich(6).count("Nordmoslesfehn") == 1
 
 
 def test_geo_point_in_stadtteil():

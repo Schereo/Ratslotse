@@ -141,6 +141,11 @@ class QuizDailyIn(BaseModel):
     points: int = Field(ge=0, le=500)
 
 
+class QuizMapIn(BaseModel):
+    target: str = Field(min_length=1, max_length=60)   # gefragter Stadtteil
+    clicked: str = Field(min_length=1, max_length=60)   # angeklickter Stadtteil
+
+
 # ---- push notifications (native app) ----
 class PushRegisterRequest(BaseModel):
     token: str = Field(min_length=1, max_length=512)

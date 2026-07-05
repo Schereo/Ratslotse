@@ -592,9 +592,11 @@ def test_quiz_areas_lists_seeded(client):
     _seed_quiz("Osternburg", n=3)  # Osternburg → Wahlbereich 5
     data = client.get("/api/quiz/areas").json()
     st = {a["key"]: a for a in data["stadtteile"]}
-    assert st["Osternburg"]["questions"] == 3 and st["Osternburg"]["wahlbereich"] == 5
+    assert st["Osternburg"]["questions"] == 3 and st["Osternburg"]["wahlbereiche"] == [5, 2]
     wb = {a["key"]: a for a in data["wahlbereiche"]}
-    assert wb["5"]["questions"] == 3 and "Osternburg" in wb["5"]["stadtteile"]
+    # Grenzstadtteil Osternburg wird in BEIDEN Wahlbereichen (5 und 2) gelistet
+    for b in ("5", "2"):
+        assert wb[b]["questions"] == 3 and "Osternburg" in wb[b]["stadtteile"]
 
 
 def test_quiz_round_hides_answer(client):
@@ -721,6 +723,25 @@ def test_quiz_estimate_slider_scores_by_proximity(client):
     # weit daneben → 0 Punkte, nicht richtig
     r3 = client.post("/api/quiz/answer", json={"question_id": q["id"], "value": 29000}).json()
     assert r3["correct"] is False and r3["points"] == 0
+
+
+def test_quiz_map_round_and_answer(client):
+    _register(client)
+    r = client.get("/api/quiz/map-round?n=5").json()
+    assert len(r["questions"]) == 5
+    assert all(q["question"].startswith("Wo liegt") and q["target"] for q in r["questions"])
+    # richtig verorten → 2 Punkte
+    res = client.post("/api/quiz/map-answer", json={"target": "Osternburg", "clicked": "Osternburg"}).json()
+    assert res["correct"] is True and res["points"] == 2 and res["target"] == "Osternburg"
+    # daneben → 0 Punkte
+    res2 = client.post("/api/quiz/map-answer", json={"target": "Eversten", "clicked": "Nadorst"}).json()
+    assert res2["correct"] is False and res2["points"] == 0
+    # unbekannter Stadtteil → 400
+    assert client.post("/api/quiz/map-answer", json={"target": "Nirgendwo", "clicked": "X"}).status_code == 400
+    # zählt auf den Stadtteil-Fortschritt, aber NICHT in den „Meine Fehler"-Stapel
+    stats = client.get("/api/quiz/stats").json()
+    assert stats["total"]["answered"] == 2 and stats["total"]["points"] == 2 and stats["wrong"] == 0
+    assert client.get("/api/quiz/review").json()["questions"] == []
 
 
 # ---- email verification ----
