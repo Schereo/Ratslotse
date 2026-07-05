@@ -7,6 +7,13 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert
+- **Karten-Labels ohne Überlappung:** Die Themen-Namen auf der Karte werden
+  jetzt mit Kollisionsvermeidung platziert — die wichtigsten Themen (nach
+  Beschlusszahl) zuerst, was nicht frei steht, erscheint beim Heranzoomen.
+  Labels sind klickbar wie ihre Punkte und heben sich beim Überfahren mit
+  der Maus in den Vordergrund. (#195)
+
 ### Hinzugefügt
 - **Wahlbereiche auf der Themen-Karte:** Der Stadtteil-Filter kennt jetzt die
   6 Kommunalwahl-Wahlbereiche der Stadt Oldenburg — ein Klick wählt alle
