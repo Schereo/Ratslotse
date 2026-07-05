@@ -49,6 +49,11 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 - **Grund beim Melden einer Quizfrage:** Wer eine Frage mit 👎 bewertet, kann
   jetzt optional (keine Pflicht) angeben, was daran schlecht ist — Admins sehen
   die Begründung in der Bewertungs-Liste. (#200)
+- **Reichere Quiz-Antworten („Mehr dazu"):** Die Auflösung einer Frage kann jetzt
+  optional eine **ausführlichere Erklärung**, eine kleine **Karte** (bei Orten,
+  Straßen, Gebäuden) und ein **Foto** zeigen. Fotos kommen aus **Wikimedia
+  Commons** — ausschließlich frei lizenziert und stets **mit Bildnachweis**
+  (Autor, Lizenz, Quelle). (#201)
 - **Wahlbereiche auf der Themen-Karte:** Der Stadtteil-Filter kennt jetzt die
   6 Kommunalwahl-Wahlbereiche der Stadt Oldenburg — ein Klick wählt alle
   Stadtteile eines Wahlbereichs (Zuordnung geometrisch aus den offiziellen

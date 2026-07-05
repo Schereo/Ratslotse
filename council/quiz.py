@@ -161,6 +161,106 @@ def council_facts(store, *, stadtteil: str | None = None, slug: str | None = Non
     return "\n".join(lines)[:4000]
 
 
+# --- Anreicherung: Locator-Karte + Wikimedia-Commons-Bild --------------------
+
+_NOMINATIM = "https://nominatim.openstreetmap.org/search"
+_WIKI_SUMMARY = "https://de.wikipedia.org/api/rest_v1/page/summary/"
+_COMMONS_API = "https://commons.wikimedia.org/w/api.php"
+# Oldenburg grob (verwirft Nominatim-Treffer außerhalb der Stadt): lon/lat.
+_OL_BBOX = (8.13, 53.10, 8.31, 53.23)
+# Freie Lizenzen, die wir MIT Nennung nutzen dürfen (Präfix, case-insensitiv).
+_FREE_LICENSES = ("cc0", "cc-zero", "public domain", "cc by", "cc-by", "pdm")
+
+
+def _strip_html(s: str | None) -> str:
+    return re.sub(r"\s+", " ", BeautifulSoup(s or "", "html.parser").get_text()).strip()
+
+
+def geocode_place(place: str) -> tuple[float, float] | None:
+    """Koordinaten eines Orts/einer Straße in Oldenburg (Nominatim, best-effort).
+    Treffer außerhalb Oldenburgs werden verworfen (kein spuriöser Marker)."""
+    place = (place or "").strip()
+    if len(place) < 3:
+        return None
+    try:
+        r = requests.get(_NOMINATIM, headers=_UA, timeout=20, params={
+            "q": f"{place}, Oldenburg (Oldenburg), Deutschland", "format": "json",
+            "limit": 1, "viewbox": "8.13,53.23,8.31,53.10", "bounded": 1,
+        })
+        r.raise_for_status()
+        hits = r.json()
+        if not hits:
+            return None
+        lat, lon = float(hits[0]["lat"]), float(hits[0]["lon"])
+        lo1, la1, lo2, la2 = _OL_BBOX
+        if la1 <= lat <= la2 and lo1 <= lon <= lo2:
+            return lat, lon
+    except (requests.RequestException, ValueError, KeyError, IndexError):
+        pass
+    return None
+
+
+def _license_ok(short: str | None) -> bool:
+    s = (short or "").strip().lower()
+    return bool(s) and any(s.startswith(p) for p in _FREE_LICENSES)
+
+
+def commons_image(subject: str) -> dict | None:
+    """Frei lizenziertes Foto zum Thema von Wikimedia Commons — via Lead-Bild des
+    deutschen Wikipedia-Artikels. Liefert URL + Bildnachweis (Autor, Lizenz,
+    Quelle) oder None. NUR Commons-Bilder mit freier Lizenz (Fair-Use raus)."""
+    subject = (subject or "").strip()
+    if len(subject) < 3:
+        return None
+    try:
+        s = requests.get(_WIKI_SUMMARY + subject.replace(" ", "_"), headers=_UA, timeout=20)
+        if s.status_code != 200:
+            return None
+        summary = s.json()
+        img = (summary.get("originalimage") or {}).get("source") or ""
+        if "/wikipedia/commons/" not in img:  # lokale/Fair-Use-Bilder ausschließen
+            return None
+        fname = img.rsplit("/", 1)[-1]
+        c = requests.get(_COMMONS_API, headers=_UA, timeout=20, params={
+            "action": "query", "format": "json", "titles": f"File:{fname}",
+            "prop": "imageinfo", "iiprop": "url|extmetadata", "iiurlwidth": 640,
+        })
+        c.raise_for_status()
+        pages = c.json().get("query", {}).get("pages", {})
+        info = next(iter(pages.values()), {}).get("imageinfo", [{}])[0]
+        meta = info.get("extmetadata", {})
+        def mv(k):  # noqa: E306
+            return (meta.get(k) or {}).get("value")
+        if not _license_ok(mv("LicenseShortName")):
+            return None
+        return {
+            "url": info.get("thumburl") or img,
+            "author": (_strip_html(mv("Artist")) or "unbekannt")[:120],
+            "license": mv("LicenseShortName"),
+            "license_url": mv("LicenseUrl"),
+            "source_url": info.get("descriptionurl")
+                or summary.get("content_urls", {}).get("desktop", {}).get("page"),
+        }
+    except (requests.RequestException, ValueError, KeyError, IndexError):
+        return None
+
+
+def enrich_row(row: dict, subject: str) -> None:
+    """Row mit Bild (Commons) und Koordinaten (Nominatim) zum Thema anreichern —
+    best-effort, verändert `row` in place. `subject` = zentrales reales Ding."""
+    subject = (subject or "").strip()
+    if not subject:
+        return
+    img = commons_image(subject)
+    if img:
+        row.update({"image_url": img["url"], "image_author": img["author"],
+                    "image_license": img["license"], "image_license_url": img["license_url"],
+                    "image_source_url": img["source_url"]})
+    coords = geocode_place(subject)
+    if coords:
+        row["lat"], row["lon"], row["place_label"] = coords[0], coords[1], subject
+
+
 # --- Prompt + Generierung ----------------------------------------------------
 
 _SYSTEM = (
@@ -192,6 +292,12 @@ Regeln:
     "answer_value" (die richtige Zahl), "unit" (z. B. Einwohner, Hektar, Euro,
     Jahr) und "range_min"/"range_max" (plausible Slider-Grenzen, der Wert liegt
     klar dazwischen) — STATT options/correct_index.
+- ZUSATZINFOS je Frage (optional, nur wenn aus den Quellen sinnvoll):
+  · "detail" = 2–3 Sätze ausführlichere Erklärung (nur aus den Quellen).
+  · "subject" = das zentrale REALE Ding der Frage (Gebäude, Wahrzeichen, Ort,
+    Straße oder Person), exakt wie der deutsche Wikipedia-Artikel heißt (z. B.
+    "Schloss Oldenburg", "Cäcilienbrücke") — nur für Foto & Karte. Weglassen,
+    wenn es kein konkretes reales Ding gibt.
 - Wenn eine Kategorie aus den Quellen nicht seriös bedienbar ist, lass sie weg.
 - Sprache: Deutsch. difficulty ∈ leicht|mittel|schwer.
 
@@ -200,6 +306,8 @@ Antworte mit NUR JSON (Multiple Choice ODER, für schaetzen, qtype=estimate):
   {{"category": "geschichte", "difficulty": "leicht",
     "question": "…?", "options": ["A","B","C","D"], "correct_index": 0,
     "explanation": "1 kurzer Satz, warum richtig",
+    "detail": "2–3 Sätze mehr Kontext aus den Quellen",
+    "subject": "Schloss Oldenburg",
     "source": "kurze Herkunft, z. B. 'Wikipedia' oder 'Ratsbeschluss 2025'"}},
   {{"category": "schaetzen", "difficulty": "mittel", "qtype": "estimate",
     "question": "Wie viele Einwohner hat der Stadtteil etwa?",
@@ -289,9 +397,10 @@ def verify_question(sources: str, q: dict) -> bool:
 
 def generate_for_area(area_type: str, area_key: str, area_label: str, sources: str,
                       *, n: int = 8, source_type: str, source_ref: str,
-                      verify: bool = True) -> list[dict]:
-    """Fragen für ein Gebiet generieren, validieren, (optional) verifizieren.
-    Gibt speicherfertige Dict-Zeilen zurück (mit content_hash)."""
+                      verify: bool = True, enrich: bool = True) -> list[dict]:
+    """Fragen für ein Gebiet generieren, validieren, (optional) verifizieren und
+    (optional) mit Bild/Karte anreichern. Gibt speicherfertige Dict-Zeilen
+    zurück (mit content_hash)."""
     if len((sources or "").strip()) < 200:
         return []  # zu wenig Quellstoff für seriöse Fragen
     resp = llm.chat_complete(
@@ -319,6 +428,7 @@ def generate_for_area(area_type: str, area_key: str, area_label: str, sources: s
             "difficulty": q.get("difficulty") if q.get("difficulty") in DIFFICULTIES else "mittel",
             "question": q["question"].strip(),
             "explanation": (q.get("explanation") or "").strip()[:300] or None,
+            "detail": (q.get("detail") or "").strip()[:600] or None,
             "source_type": source_type, "source_ref": source_ref,
             "content_hash": h,
         }
@@ -336,5 +446,8 @@ def generate_for_area(area_type: str, area_key: str, area_label: str, sources: s
             correct_val = opts[q["correct_index"]]
             random.shuffle(opts)
             row.update({"qtype": "mc", "options": opts, "correct_index": opts.index(correct_val)})
+        # Foto (Commons) + Locator-Karte zum realen Thema — best-effort, Netz.
+        if enrich:
+            enrich_row(row, q.get("subject") or "")
         rows.append(row)
     return rows

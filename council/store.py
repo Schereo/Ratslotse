@@ -373,10 +373,15 @@ class CouncilStore:
             "qtype TEXT NOT NULL DEFAULT 'mc', "                  # mc | estimate (Schätzfrage-Slider)
             "answer_value REAL, answer_unit TEXT, "              # estimate: richtige Zahl + Einheit
             "range_min REAL, range_max REAL, "                   # estimate: Slider-Grenzen
+            "detail TEXT, "                                       # „Mehr dazu": ausführliche Erklärung
+            "lat REAL, lon REAL, place_label TEXT, "            # Locator-Karte in der Auflösung
+            "image_url TEXT, image_author TEXT, image_license TEXT, "  # Foto (Wikimedia Commons)
+            "image_license_url TEXT, image_source_url TEXT, "    # Bildnachweis
             "generated_at TEXT NOT NULL)"
         )
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_quiz_area ON council_quiz_questions(area_type, area_key)")
         self._migrate_quiz_estimate()
+        self._migrate_quiz_media()
         self._migrate_owner_id()
 
     def _migrate_quiz_estimate(self) -> None:
@@ -385,6 +390,18 @@ class CouncilStore:
         cols = {r[1] for r in self._conn.execute("PRAGMA table_info(council_quiz_questions)").fetchall()}
         adds = [("qtype", "TEXT NOT NULL DEFAULT 'mc'"), ("answer_value", "REAL"),
                 ("answer_unit", "TEXT"), ("range_min", "REAL"), ("range_max", "REAL")]
+        with self._conn:
+            for name, decl in adds:
+                if name not in cols:
+                    self._conn.execute(f"ALTER TABLE council_quiz_questions ADD COLUMN {name} {decl}")
+
+    def _migrate_quiz_media(self) -> None:
+        """„Reichere Antworten": Detailtext, Locator-Karte und Bild (mit
+        Bildnachweis) in bestehende Quiz-Tabellen nachrüsten (idempotent)."""
+        cols = {r[1] for r in self._conn.execute("PRAGMA table_info(council_quiz_questions)").fetchall()}
+        adds = [("detail", "TEXT"), ("lat", "REAL"), ("lon", "REAL"), ("place_label", "TEXT"),
+                ("image_url", "TEXT"), ("image_author", "TEXT"), ("image_license", "TEXT"),
+                ("image_license_url", "TEXT"), ("image_source_url", "TEXT")]
         with self._conn:
             for name, decl in adds:
                 if name not in cols:
@@ -1254,14 +1271,19 @@ class CouncilStore:
                     "(area_type, area_key, category, difficulty, question, options, "
                     " correct_index, explanation, source_type, source_ref, content_hash, "
                     " status, qtype, answer_value, answer_unit, range_min, range_max, "
-                    " generated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    " detail, lat, lon, place_label, image_url, image_author, image_license, "
+                    " image_license_url, image_source_url, generated_at) "
+                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     (r["area_type"], r["area_key"], r["category"], r.get("difficulty", "mittel"),
                      r["question"], json.dumps(r.get("options", []), ensure_ascii=False),
                      int(r.get("correct_index", 0)), r.get("explanation"),
                      r.get("source_type"), r.get("source_ref"), r.get("content_hash"),
                      r.get("status", "active"), r.get("qtype", "mc"),
                      r.get("answer_value"), r.get("answer_unit"),
-                     r.get("range_min"), r.get("range_max"), now),
+                     r.get("range_min"), r.get("range_max"),
+                     r.get("detail"), r.get("lat"), r.get("lon"), r.get("place_label"),
+                     r.get("image_url"), r.get("image_author"), r.get("image_license"),
+                     r.get("image_license_url"), r.get("image_source_url"), now),
                 )
                 new += cur.rowcount
         return new
@@ -1290,6 +1312,16 @@ class CouncilStore:
             out["explanation"] = r["explanation"]
             if qtype == "estimate":
                 out["answer_value"] = r["answer_value"]
+            # „Mehr dazu" — Detailtext, Locator-Karte und Bild gehören zur
+            # Auflösung (nicht in die Runde). Nur wenn die Spalten existieren.
+            if "detail" in keys:
+                out["detail"] = r["detail"]
+                if r["lat"] is not None and r["lon"] is not None:
+                    out["map"] = {"lat": r["lat"], "lon": r["lon"], "label": r["place_label"]}
+                if r["image_url"]:
+                    out["image"] = {"url": r["image_url"], "author": r["image_author"],
+                                    "license": r["image_license"], "license_url": r["image_license_url"],
+                                    "source_url": r["image_source_url"]}
         return out
 
     def get_quiz_question(self, question_id: int, *, with_answer: bool = True) -> dict | None:
