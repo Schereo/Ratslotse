@@ -8,6 +8,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geändert
+- **Grenzstadtteile in mehreren Wahlbereichen:** Stadtteile, die über eine
+  Wahlbereichs-Grenze reichen, werden jetzt in **allen** zugehörigen
+  Wahlbereichen gelistet statt nur im überwiegenden — z. B. Bürgerfelde (1 + 3),
+  Osternburg (5 + 2), Haarentor (3 + 6). Ermittelt aus der Flächen-Überlappung
+  der Stadtteil-Polygone mit den offiziellen Wahlbereich-Grenzen (≥ 10 %). Wirkt
+  auf den Karten-Filter und die Quiz-Gebietsauswahl. (#PR)
 - **Bessere Karte im Dunkelmodus:** Die dunkle Stadtkarte ist jetzt ein
   gut lesbarer grauer Slate-Ton (invertierte Voyager-Basemap) statt fast
   schwarz — Straßen, Waldgebiete und Wasser sind zur Orientierung erkennbar.

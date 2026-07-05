@@ -592,9 +592,11 @@ def test_quiz_areas_lists_seeded(client):
     _seed_quiz("Osternburg", n=3)  # Osternburg → Wahlbereich 5
     data = client.get("/api/quiz/areas").json()
     st = {a["key"]: a for a in data["stadtteile"]}
-    assert st["Osternburg"]["questions"] == 3 and st["Osternburg"]["wahlbereich"] == 5
+    assert st["Osternburg"]["questions"] == 3 and st["Osternburg"]["wahlbereiche"] == [5, 2]
     wb = {a["key"]: a for a in data["wahlbereiche"]}
-    assert wb["5"]["questions"] == 3 and "Osternburg" in wb["5"]["stadtteile"]
+    # Grenzstadtteil Osternburg wird in BEIDEN Wahlbereichen (5 und 2) gelistet
+    for b in ("5", "2"):
+        assert wb[b]["questions"] == 3 and "Osternburg" in wb[b]["stadtteile"]
 
 
 def test_quiz_round_hides_answer(client):

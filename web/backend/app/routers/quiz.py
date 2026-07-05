@@ -78,7 +78,7 @@ def areas(user: dict = Depends(require_active),
     for name in geo.stadtteile():
         n = counts.get(("stadtteil", name), 0)
         if n:
-            stadtteile.append({"key": name, "wahlbereich": geo.wahlbereich_of(name),
+            stadtteile.append({"key": name, "wahlbereiche": geo.wahlbereiche_of(name),
                                "questions": n, "points": points.get(("stadtteil", name), 0)})
     wahlbereiche = []
     for wb in geo.WAHLBEREICHE:
