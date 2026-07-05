@@ -631,9 +631,11 @@ def test_quiz_rating_and_admin_flag(client):
                                                "comment": "unklar"}).json()["ok"] is True
     flagged = client.get("/api/admin/quiz/flagged").json()["flagged"]
     assert any(f["question_id"] == qid and f["bad"] == 1 for f in flagged)
-    # ausmustern → fliegt aus den Runden
+    # ausmustern → fliegt aus den Runden UND aus der Bewertungs-Liste
     client.post(f"/api/admin/quiz/{qid}/retire")
     assert client.get("/api/quiz/round?areas=stadtteil:Osternburg&n=10").json()["questions"] == []
+    flagged_after = client.get("/api/admin/quiz/flagged").json()["flagged"]
+    assert all(f["question_id"] != qid for f in flagged_after)
 
 
 def test_quiz_scores_per_account(client):

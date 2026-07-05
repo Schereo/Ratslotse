@@ -2,12 +2,13 @@
 
 import { Suspense, useMemo, useState } from "react";
 import { Search, Play, MapPin, Landmark, Sparkles } from "lucide-react";
-import { QuizAreas, QuizQuestion } from "@/lib/types";
+import { QuizAreas, QuizQuestion, QuizStats } from "@/lib/types";
 import { PageHeader, Card, Button, Input, Spinner, EmptyState, toast } from "@/components/ui";
 import { useFetch } from "@/lib/use-fetch";
 import { api, qs } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { QuizPlay, CATEGORY_LABEL } from "@/components/quiz-play";
+import { QuizProgress } from "@/components/quiz-progress";
 
 function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
@@ -25,12 +26,21 @@ function Points({ n }: { n: number }) {
 }
 
 function QuizInner() {
-  const { data, loading } = useFetch<QuizAreas>("/quiz/areas");
+  // reloadKey bumpt nach jeder gespielten Runde die Datenpfade → Punkte &
+  // Fortschritt aktualisieren sich beim Zurückkehren zur Auswahl.
+  const [reloadKey, setReloadKey] = useState(0);
+  const { data, loading } = useFetch<QuizAreas>(`/quiz/areas?v=${reloadKey}`);
+  const { data: stats } = useFetch<QuizStats>(`/quiz/stats?v=${reloadKey}`);
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [cats, setCats] = useState<Set<string>>(new Set());
   const [q, setQ] = useState("");
   const [starting, setStarting] = useState(false);
   const [round, setRound] = useState<QuizQuestion[] | null>(null);
+
+  const themeLabels = useMemo(
+    () => Object.fromEntries((data?.themen ?? []).map((t) => [t.key, t.label ?? t.key])),
+    [data],
+  );
 
   const toggle = (set: Set<string>, key: string, upd: (s: Set<string>) => void) => {
     const next = new Set(set);
@@ -48,15 +58,16 @@ function QuizInner() {
   const empty = !catalog.wahlbereiche.length && !catalog.stadtteile.length && !catalog.themen.length;
 
   if (round) {
-    return <QuizPlay questions={round} onExit={() => { setRound(null); }} />;
+    // Nach der Runde: zurück zur Auswahl UND Fortschritt/Punkte neu laden.
+    return <QuizPlay questions={round} onExit={() => { setRound(null); setReloadKey((k) => k + 1); }} />;
   }
 
-  async function start() {
-    if (!sel.size) return;
+  async function startRound(areaList: string[], catList: string[]) {
+    if (!areaList.length) return;
     setStarting(true);
     try {
       const res = await api.get<{ questions: QuizQuestion[] }>(
-        "/quiz/round" + qs({ areas: [...sel].join(","), categories: [...cats].join(","), n: 10 }));
+        "/quiz/round" + qs({ areas: areaList.join(","), categories: catList.join(","), n: 10 }));
       if (!res.questions.length) {
         toast.info("Für diese Auswahl gibt es (noch) keine offenen Fragen. Andere Gebiete probieren?");
         return;
@@ -68,6 +79,7 @@ function QuizInner() {
       setStarting(false);
     }
   }
+  const start = () => startRound([...sel], [...cats]);
 
   return (
     <div>
@@ -78,6 +90,11 @@ function QuizInner() {
           hint="Die Fragen werden aus Wikipedia, der Stadt-Website und den Ratsdaten erzeugt. Schau bald wieder vorbei." />
       ) : (
         <div className="mt-2 space-y-6 pb-28 md:pb-0">
+          {stats && stats.total.answered > 0 && (
+            <QuizProgress stats={stats} themeLabels={themeLabels}
+              onPractice={(area) => startRound([area], [])} />
+          )}
+
           {catalog.wahlbereiche.length > 0 && (
             <section>
               <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">

@@ -1316,12 +1316,16 @@ class CouncilStore:
                 "UPDATE council_quiz_questions SET status = 'retired' WHERE id = ?", (question_id,))
 
     def quiz_questions_by_ids(self, ids: list[int]) -> list[dict]:
-        """Fragen (mit Lösung) zu einer Id-Liste — für die Admin-Sichtung."""
+        """Aktive Fragen (mit Lösung) zu einer Id-Liste — für die Admin-Sichtung.
+        Bereits ausgemusterte Fragen fallen raus, damit sie nach dem Ausmustern
+        aus der Bewertungs-Liste verschwinden (ihre Alt-Bewertungen bleiben in
+        nwz.sqlite, laufen aber ins Leere)."""
         if not ids:
             return []
         ph = ",".join("?" * len(ids))
         rows = self._conn.execute(
-            f"SELECT * FROM council_quiz_questions WHERE id IN ({ph})", ids).fetchall()
+            f"SELECT * FROM council_quiz_questions WHERE id IN ({ph}) AND status = 'active'",
+            ids).fetchall()
         return [self._quiz_row(r, with_answer=True) for r in rows]
 
     def quiz_stats_total(self) -> dict:

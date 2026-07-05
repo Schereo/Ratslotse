@@ -352,3 +352,13 @@ export interface QuizStats {
   by_area: { area_type: string; area_key: string; points: number; answered: number; correct: number; last_at: string | null }[];
   total: { points: number; answered: number; correct: number };
 }
+export interface QuizFlagged {
+  question_id: number;
+  bad: number;
+  good: number;
+  question: string;
+  area_type: string;
+  area_key: string;
+  options: string[];
+  correct_index: number;
+}
