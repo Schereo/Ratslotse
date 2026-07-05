@@ -337,6 +337,10 @@ export interface QuizQuestion {
   difficulty: string;
   question: string;
   options: string[];
+  qtype?: "mc" | "estimate";
+  unit?: string | null;
+  range_min?: number | null;
+  range_max?: number | null;
   source_type: string | null;
   source_ref: string | null;
 }
@@ -344,6 +348,8 @@ export interface QuizAnswerResult {
   correct: boolean;
   correct_index: number;
   points: number;
+  answer_value?: number | null;
+  unit?: string | null;
   explanation: string | null;
   source_type: string | null;
   source_ref: string | null;

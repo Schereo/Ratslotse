@@ -138,3 +138,55 @@ def test_store_pick_category_filter(tmp_path):
     ])
     only_orte = store.pick_quiz_questions([("stadtteil", "Nadorst")], ["orte"], [], 10)
     assert len(only_orte) == 1 and only_orte[0]["category"] == "orte"
+
+
+# ---- Schätzfrage-Slider (estimate) ------------------------------------------
+
+def test_valid_estimate():
+    good = {"qtype": "estimate", "category": "schaetzen",
+            "question": "Wie viele Einwohner hat X etwa?",
+            "answer_value": 12000, "unit": "Einwohner", "range_min": 2000, "range_max": 30000}
+    assert quiz._valid(good)
+    assert not quiz._valid({**good, "answer_value": 30000})   # nicht strikt innerhalb
+    assert not quiz._valid({**good, "answer_value": 1000})    # unter range_min
+    assert not quiz._valid({**good, "unit": ""})              # Einheit fehlt
+    assert not quiz._valid({**good, "range_min": "x"})        # nicht numerisch
+    assert not quiz._valid({**good, "answer_value": True})    # bool zählt nicht als Zahl
+
+
+def test_generate_estimate_question(monkeypatch):
+    qs = [{"category": "schaetzen", "difficulty": "mittel", "qtype": "estimate",
+           "question": "Wie viele Einwohner hat X etwa?",
+           "answer_value": 12000, "unit": "Einwohner", "range_min": 2000, "range_max": 30000,
+           "explanation": "rund 12.000"}]
+    monkeypatch.setattr(quiz.llm, "chat_complete", _fake_llm(qs))
+    rows = quiz.generate_for_area("stadtteil", "Osternburg", "Osternburg", "x" * 500,
+                                  n=1, source_type="wikipedia", source_ref="http://w", verify=False)
+    assert len(rows) == 1
+    r = rows[0]
+    assert r["qtype"] == "estimate" and r["answer_value"] == 12000.0
+    assert r["answer_unit"] == "Einwohner" and r["range_min"] == 2000.0 and r["range_max"] == 30000.0
+    assert r["options"] == [] and r["correct_index"] == 0
+
+
+def _estimate_row(area_key: str, question: str) -> dict:
+    return {"area_type": "stadtteil", "area_key": area_key, "category": "schaetzen",
+            "difficulty": "mittel", "question": question, "qtype": "estimate",
+            "options": [], "correct_index": 0,
+            "answer_value": 12000.0, "answer_unit": "Einwohner",
+            "range_min": 2000.0, "range_max": 30000.0,
+            "explanation": "rund 12.000", "source_type": "wikipedia", "source_ref": "http://w",
+            "content_hash": quiz._content_hash("stadtteil", area_key, question)}
+
+
+def test_store_estimate_roundtrip(tmp_path):
+    store = CouncilStore(tmp_path / "c.sqlite")
+    assert store.save_quiz_questions([_estimate_row("Osternburg", "Wie viele Einwohner?")]) == 1
+    picked = store.pick_quiz_questions([("stadtteil", "Osternburg")], None, [], 5)
+    assert len(picked) == 1
+    p = picked[0]
+    assert p["qtype"] == "estimate" and p["unit"] == "Einwohner"
+    assert p["range_min"] == 2000.0 and p["range_max"] == 30000.0
+    assert "answer_value" not in p  # Lösung nicht in der Runde
+    full = store.get_quiz_question(p["id"])
+    assert full["answer_value"] == 12000.0

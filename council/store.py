@@ -365,15 +365,30 @@ class CouncilStore:
             "area_type TEXT NOT NULL, area_key TEXT NOT NULL, "  # stadtteil|wahlbereich|thema
             "category TEXT NOT NULL, "                            # geschichte|orte|menschen|ratspolitik|schaetzen
             "difficulty TEXT NOT NULL DEFAULT 'mittel', "         # leicht|mittel|schwer
-            "question TEXT NOT NULL, options TEXT NOT NULL, "     # options = JSON-Array (4)
+            "question TEXT NOT NULL, options TEXT NOT NULL, "     # options = JSON-Array (4); [] bei estimate
             "correct_index INTEGER NOT NULL, explanation TEXT, "
             "source_type TEXT, source_ref TEXT, "                # wikipedia|stadt|ratsinfo · URL/id
             "content_hash TEXT UNIQUE, "                          # Dedup
             "status TEXT NOT NULL DEFAULT 'active', "             # active|retired
+            "qtype TEXT NOT NULL DEFAULT 'mc', "                  # mc | estimate (Schätzfrage-Slider)
+            "answer_value REAL, answer_unit TEXT, "              # estimate: richtige Zahl + Einheit
+            "range_min REAL, range_max REAL, "                   # estimate: Slider-Grenzen
             "generated_at TEXT NOT NULL)"
         )
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_quiz_area ON council_quiz_questions(area_type, area_key)")
+        self._migrate_quiz_estimate()
         self._migrate_owner_id()
+
+    def _migrate_quiz_estimate(self) -> None:
+        """Schätzfrage-Slider: numerische Felder für qtype='estimate' in
+        bestehende Quiz-Tabellen nachrüsten (idempotent)."""
+        cols = {r[1] for r in self._conn.execute("PRAGMA table_info(council_quiz_questions)").fetchall()}
+        adds = [("qtype", "TEXT NOT NULL DEFAULT 'mc'"), ("answer_value", "REAL"),
+                ("answer_unit", "TEXT"), ("range_min", "REAL"), ("range_max", "REAL")]
+        with self._conn:
+            for name, decl in adds:
+                if name not in cols:
+                    self._conn.execute(f"ALTER TABLE council_quiz_questions ADD COLUMN {name} {decl}")
 
     def _migrate_owner_id(self) -> None:
         """Re-key the per-recipient dedup tables from Telegram chat_id to the
@@ -1238,12 +1253,15 @@ class CouncilStore:
                     "INSERT OR IGNORE INTO council_quiz_questions "
                     "(area_type, area_key, category, difficulty, question, options, "
                     " correct_index, explanation, source_type, source_ref, content_hash, "
-                    " status, generated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    " status, qtype, answer_value, answer_unit, range_min, range_max, "
+                    " generated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     (r["area_type"], r["area_key"], r["category"], r.get("difficulty", "mittel"),
-                     r["question"], json.dumps(r["options"], ensure_ascii=False),
-                     int(r["correct_index"]), r.get("explanation"),
+                     r["question"], json.dumps(r.get("options", []), ensure_ascii=False),
+                     int(r.get("correct_index", 0)), r.get("explanation"),
                      r.get("source_type"), r.get("source_ref"), r.get("content_hash"),
-                     r.get("status", "active"), now),
+                     r.get("status", "active"), r.get("qtype", "mc"),
+                     r.get("answer_value"), r.get("answer_unit"),
+                     r.get("range_min"), r.get("range_max"), now),
                 )
                 new += cur.rowcount
         return new
@@ -1254,15 +1272,24 @@ class CouncilStore:
             options = json.loads(r["options"])
         except (json.JSONDecodeError, TypeError):
             options = []
+        keys = r.keys()
+        qtype = (r["qtype"] if "qtype" in keys else None) or "mc"
         out = {
             "id": r["id"], "area_type": r["area_type"], "area_key": r["area_key"],
             "category": r["category"], "difficulty": r["difficulty"],
-            "question": r["question"], "options": options,
+            "question": r["question"], "options": options, "qtype": qtype,
             "source_type": r["source_type"], "source_ref": r["source_ref"],
         }
+        if qtype == "estimate":
+            # Slider-Grenzen + Einheit gehören zur Frage (nicht die Lösung).
+            out["unit"] = r["answer_unit"]
+            out["range_min"] = r["range_min"]
+            out["range_max"] = r["range_max"]
         if with_answer:
             out["correct_index"] = r["correct_index"]
             out["explanation"] = r["explanation"]
+            if qtype == "estimate":
+                out["answer_value"] = r["answer_value"]
         return out
 
     def get_quiz_question(self, question_id: int, *, with_answer: bool = True) -> dict | None:

@@ -173,7 +173,7 @@ _SYSTEM = (
 
 def _user_prompt(area_label: str, sources: str, n: int) -> str:
     cats = ", ".join(CATEGORIES)
-    return f"""Erstelle {n} Multiple-Choice-Quizfragen über „{area_label}" (Oldenburg).
+    return f"""Erstelle {n} Quizfragen über „{area_label}" (Oldenburg). Die meisten sind Multiple Choice; Schätzfragen dürfen Slider-Fragen sein (siehe unten).
 
 QUELLEN (nur hieraus Fakten nehmen — NICHTS erfinden):
 {sources}
@@ -188,16 +188,23 @@ Regeln:
   · orte = Wahrzeichen, Bauwerke, Parks, Plätze, Straßen
   · menschen = bekannte Personen, Ratsmitglieder
   · ratspolitik = aktuelle Beschlüsse/Projekte des Stadtrats (nur aus Ratsdaten)
-  · schaetzen = eine Schätzfrage mit 4 Zahl-Bereichen (Einwohner, Fläche, €-Betrag)
+  · schaetzen = eine SCHÄTZFRAGE als Slider: setze "qtype":"estimate" mit
+    "answer_value" (die richtige Zahl), "unit" (z. B. Einwohner, Hektar, Euro,
+    Jahr) und "range_min"/"range_max" (plausible Slider-Grenzen, der Wert liegt
+    klar dazwischen) — STATT options/correct_index.
 - Wenn eine Kategorie aus den Quellen nicht seriös bedienbar ist, lass sie weg.
 - Sprache: Deutsch. difficulty ∈ leicht|mittel|schwer.
 
-Antworte mit NUR JSON:
+Antworte mit NUR JSON (Multiple Choice ODER, für schaetzen, qtype=estimate):
 {{"questions": [
   {{"category": "geschichte", "difficulty": "leicht",
     "question": "…?", "options": ["A","B","C","D"], "correct_index": 0,
     "explanation": "1 kurzer Satz, warum richtig",
-    "source": "geschichte|orte … kurze Herkunft, z. B. 'Wikipedia' oder 'Ratsbeschluss 2025'"}}
+    "source": "kurze Herkunft, z. B. 'Wikipedia' oder 'Ratsbeschluss 2025'"}},
+  {{"category": "schaetzen", "difficulty": "mittel", "qtype": "estimate",
+    "question": "Wie viele Einwohner hat der Stadtteil etwa?",
+    "answer_value": 12000, "unit": "Einwohner", "range_min": 2000, "range_max": 30000,
+    "explanation": "laut Quelle rund 12.000", "source": "Wikipedia"}}
 ]}}"""
 
 
@@ -218,7 +225,7 @@ def _parse(content: str) -> list[dict]:
     return data.get("questions", []) if isinstance(data, dict) else []
 
 
-def _valid(q: dict) -> bool:
+def _valid_mc(q: dict) -> bool:
     opts = q.get("options")
     ci = q.get("correct_index")
     return (
@@ -231,19 +238,45 @@ def _valid(q: dict) -> bool:
     )
 
 
+def _valid_estimate(q: dict) -> bool:
+    """Schätzfrage-Slider: numerischer Wert klar innerhalb der Slider-Grenzen,
+    Einheit gesetzt."""
+    v, lo, hi = q.get("answer_value"), q.get("range_min"), q.get("range_max")
+    return (
+        isinstance(q.get("question"), str) and len(q["question"]) > 8
+        and q.get("category") in CATEGORIES
+        and all(isinstance(x, (int, float)) and not isinstance(x, bool) for x in (v, lo, hi))
+        and lo < v < hi
+        and isinstance(q.get("unit"), str) and bool(q["unit"].strip())
+    )
+
+
+def _valid(q: dict) -> bool:
+    return _valid_estimate(q) if q.get("qtype") == "estimate" else _valid_mc(q)
+
+
 def verify_question(sources: str, q: dict) -> bool:
     """Günstiger Zweit-Check: ist die richtige Antwort eindeutig aus den Quellen
-    belegt und die anderen klar falsch? Bei Zweifel/Fehler → verwerfen."""
-    correct = q["options"][q["correct_index"]]
-    others = ", ".join(o for i, o in enumerate(q["options"]) if i != q["correct_index"])
-    prompt = (
-        f"Quelltext:\n{sources[:6000]}\n\n"
-        f"Frage: {q['question']}\n"
-        f"Als richtig markierte Antwort: {correct}\n"
-        f"Andere Antworten: {others}\n\n"
-        "Ist die richtige Antwort EINDEUTIG aus dem Quelltext belegt UND sind die anderen "
-        "klar falsch? Antworte nur mit JA oder NEIN."
-    )
+    belegt (bei MC auch: andere klar falsch)? Bei Zweifel/Fehler → verwerfen."""
+    if q.get("qtype") == "estimate":
+        prompt = (
+            f"Quelltext:\n{sources[:6000]}\n\n"
+            f"Schätzfrage: {q['question']}\n"
+            f"Behaupteter richtiger Wert: {q['answer_value']} {q.get('unit', '')}\n\n"
+            "Ist dieser Zahlenwert EINDEUTIG aus dem Quelltext belegt (exakt oder sehr nah)? "
+            "Antworte nur mit JA oder NEIN."
+        )
+    else:
+        correct = q["options"][q["correct_index"]]
+        others = ", ".join(o for i, o in enumerate(q["options"]) if i != q["correct_index"])
+        prompt = (
+            f"Quelltext:\n{sources[:6000]}\n\n"
+            f"Frage: {q['question']}\n"
+            f"Als richtig markierte Antwort: {correct}\n"
+            f"Andere Antworten: {others}\n\n"
+            "Ist die richtige Antwort EINDEUTIG aus dem Quelltext belegt UND sind die anderen "
+            "klar falsch? Antworte nur mit JA oder NEIN."
+        )
     try:
         resp = llm.chat_complete(
             model=VERIFY_MODEL, _feature="quiz_verify", temperature=0, max_tokens=5,
@@ -280,20 +313,28 @@ def generate_for_area(area_type: str, area_key: str, area_label: str, sources: s
         if verify and not verify_question(sources, q):
             continue
         seen.add(h)
-        # Antworten mischen — das LLM legt die richtige Antwort sonst gern auf
-        # Position A (gameable).
-        opts = [o.strip() for o in q["options"]]
-        correct_val = opts[q["correct_index"]]
-        random.shuffle(opts)
-        rows.append({
+        row = {
             "area_type": area_type, "area_key": area_key,
             "category": q["category"],
             "difficulty": q.get("difficulty") if q.get("difficulty") in DIFFICULTIES else "mittel",
             "question": q["question"].strip(),
-            "options": opts,
-            "correct_index": opts.index(correct_val),
             "explanation": (q.get("explanation") or "").strip()[:300] or None,
             "source_type": source_type, "source_ref": source_ref,
             "content_hash": h,
-        })
+        }
+        if q.get("qtype") == "estimate":
+            row.update({
+                "qtype": "estimate", "options": [], "correct_index": 0,
+                "answer_value": float(q["answer_value"]),
+                "answer_unit": q["unit"].strip()[:40],
+                "range_min": float(q["range_min"]), "range_max": float(q["range_max"]),
+            })
+        else:
+            # Antworten mischen — das LLM legt die richtige Antwort sonst gern auf
+            # Position A (gameable).
+            opts = [o.strip() for o in q["options"]]
+            correct_val = opts[q["correct_index"]]
+            random.shuffle(opts)
+            row.update({"qtype": "mc", "options": opts, "correct_index": opts.index(correct_val)})
+        rows.append(row)
     return rows

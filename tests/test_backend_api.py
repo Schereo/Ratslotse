@@ -566,6 +566,23 @@ def _seed_quiz(area_key="Osternburg", area_type="stadtteil", n=3, category="gesc
     store.close()
 
 
+def _seed_estimate(area_key="Osternburg", value=12000.0, unit="Einwohner",
+                   lo=2000.0, hi=30000.0, difficulty="mittel"):
+    """Seed eine Schätzfrage (qtype=estimate) in die throwaway council.sqlite."""
+    from council import quiz as quizmod
+    store = CouncilStore(COUNCIL_DB)
+    text = f"Schätzfrage {area_key} {value}?"
+    store.save_quiz_questions([{
+        "area_type": "stadtteil", "area_key": area_key, "category": "schaetzen",
+        "difficulty": difficulty, "question": text, "qtype": "estimate",
+        "options": [], "correct_index": 0,
+        "answer_value": value, "answer_unit": unit, "range_min": lo, "range_max": hi,
+        "explanation": "…", "source_type": "wikipedia", "source_ref": "http://w",
+        "content_hash": quizmod._content_hash("stadtteil", area_key, text),
+    }])
+    store.close()
+
+
 def test_quiz_requires_auth():
     assert TestClient(app).get("/api/quiz/areas").status_code == 401
 
@@ -687,6 +704,23 @@ def test_quiz_stats_streak_wrong_and_badges(client):
     s = client.get("/api/quiz/stats").json()
     assert s["streak"] == 1 and s["wrong"] == 0 and s["daily_done"] is False
     assert "Osternburg-Kenner" in {b["label"] for b in s["badges"]}  # 6× richtig, 100 %
+
+
+def test_quiz_estimate_slider_scores_by_proximity(client):
+    _register(client)
+    _seed_estimate("Osternburg", value=12000.0, difficulty="schwer")  # schwer = 3 Punkte
+    q = client.get("/api/quiz/round?areas=stadtteil:Osternburg&n=5").json()["questions"][0]
+    assert q["qtype"] == "estimate" and q["unit"] == "Einwohner"
+    assert "answer_value" not in q and q["range_min"] == 2000 and q["range_max"] == 30000
+    # exakt → volle Punkte
+    r = client.post("/api/quiz/answer", json={"question_id": q["id"], "value": 12000}).json()
+    assert r["correct"] is True and r["points"] == 3 and r["answer_value"] == 12000
+    # ~8 % daneben → „nah dran", Teilpunkte, gilt als richtig (≤15 %)
+    r2 = client.post("/api/quiz/answer", json={"question_id": q["id"], "value": 13000}).json()
+    assert r2["correct"] is True and r2["points"] == 2
+    # weit daneben → 0 Punkte, nicht richtig
+    r3 = client.post("/api/quiz/answer", json={"question_id": q["id"], "value": 29000}).json()
+    assert r3["correct"] is False and r3["points"] == 0
 
 
 # ---- email verification ----

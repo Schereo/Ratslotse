@@ -34,6 +34,9 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   zum gezielten Wiederholen zuletzt falsch beantworteter Fragen (spaced
   repetition, wie beim Führerschein-Lernen), **Serien** (🔥 Tage in Folge) und
   **Abzeichen** (Punkte-Meilensteine, Gebiets-„Kenner"). (#198)
+- **Schätzfragen mit Slider:** Schätzfragen (Einwohner, Fläche, Beträge …) lassen
+  sich per Schieberegler beantworten — je näher an der richtigen Zahl, desto mehr
+  Punkte (statt vier fester Bereiche). (#198)
 - **Wahlbereiche auf der Themen-Karte:** Der Stadtteil-Filter kennt jetzt die
   6 Kommunalwahl-Wahlbereiche der Stadt Oldenburg — ein Klick wählt alle
   Stadtteile eines Wahlbereichs (Zuordnung geometrisch aus den offiziellen

@@ -124,7 +124,8 @@ class OnboardingUpdate(BaseModel):
 # ---- quiz ----
 class QuizAnswerIn(BaseModel):
     question_id: int
-    selected_index: int = Field(ge=0, le=3)
+    selected_index: int | None = Field(default=None, ge=0, le=3)  # Multiple Choice
+    value: float | None = None                                    # Schätzfrage (Slider)
     time_ms: int | None = Field(default=None, ge=0)
 
 

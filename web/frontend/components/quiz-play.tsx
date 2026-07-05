@@ -23,6 +23,9 @@ const SOURCE_LABEL: Record<string, string> = {
 };
 const DIFF_LABEL: Record<string, string> = { leicht: "leicht", mittel: "mittel", schwer: "schwer" };
 
+const nf = new Intl.NumberFormat("de-DE");
+const fmt = (n: number | null | undefined) => (n == null ? "?" : nf.format(Math.round(n)));
+
 /** Spielt eine Runde Fragen durch: eine Frage nach der anderen, sofortiges
  *  Feedback (Lösung, Erklärung, Quelle, Bewertung), am Ende eine Zusammenfassung.
  *  `onComplete` meldet das Endergebnis (z. B. um die Tages-Challenge zu buchen);
@@ -40,8 +43,14 @@ export function QuizPlay({ questions, onExit, onComplete, title }: {
   const [points, setPoints] = useState(0);
   const [correct, setCorrect] = useState(0);
   const [done, setDone] = useState(false);
+  const [guess, setGuess] = useState<number | null>(null);
 
   const q = questions[idx];
+  const isEstimate = q.qtype === "estimate";
+  const eMin = q.range_min ?? 0;
+  const eMax = q.range_max ?? 100;
+  const eStep = Math.max(1, Math.round((eMax - eMin) / 100));
+  const eCurrent = guess ?? Math.round((eMin + eMax) / 2);
 
   async function choose(i: number) {
     if (chosen !== null) return;
@@ -56,6 +65,19 @@ export function QuizPlay({ questions, onExit, onComplete, title }: {
     }
   }
 
+  async function submitEstimate(value: number) {
+    if (chosen !== null) return;
+    setChosen(value);
+    try {
+      const r = await api.post<QuizAnswerResult>("/quiz/answer", { question_id: q.id, value });
+      setResult(r);
+      setPoints((p) => p + r.points);
+      if (r.correct) setCorrect((c) => c + 1);
+    } catch {
+      setResult({ correct: false, correct_index: -1, points: 0, answer_value: null, unit: null, explanation: null, source_type: null, source_ref: null });
+    }
+  }
+
   function next() {
     if (idx + 1 >= questions.length) {
       setDone(true);
@@ -63,7 +85,7 @@ export function QuizPlay({ questions, onExit, onComplete, title }: {
       return;
     }
     setIdx((i) => i + 1);
-    setChosen(null); setResult(null); setRated(null);
+    setChosen(null); setResult(null); setRated(null); setGuess(null);
   }
 
   function rate(verdict: "gut" | "schlecht") {
@@ -114,39 +136,72 @@ export function QuizPlay({ questions, onExit, onComplete, title }: {
         </div>
         <h2 className="mt-3 text-lg font-semibold leading-snug text-foreground">{q.question}</h2>
 
-        <div className="mt-4 flex flex-col gap-2">
-          {q.options.map((opt, i) => {
-            const isChosen = chosen === i;
-            const isCorrect = result && i === result.correct_index;
-            const state = result
-              ? isCorrect ? "correct" : isChosen ? "wrong" : "idle"
-              : "idle";
-            return (
-              <button
-                key={i}
-                type="button"
-                disabled={chosen !== null}
-                onClick={() => choose(i)}
-                className={cn(
-                  "flex items-center justify-between gap-3 rounded-lg border px-4 py-3 text-left text-sm transition-colors",
-                  state === "idle" && "border-border hover:border-primary/50 hover:bg-primary/5 disabled:opacity-60",
-                  state === "correct" && "border-green-500 bg-green-500/10 text-foreground",
-                  state === "wrong" && "border-red-500 bg-red-500/10 text-foreground",
-                )}
-              >
-                <span>{opt}</span>
-                {state === "correct" && <Check className="h-4 w-4 shrink-0 text-green-600" />}
-                {state === "wrong" && <X className="h-4 w-4 shrink-0 text-red-600" />}
-              </button>
-            );
-          })}
-        </div>
+        {isEstimate ? (
+          <div className="mt-6">
+            <div className="mb-3 text-center text-3xl font-bold tabular-nums text-foreground">
+              {fmt(eCurrent)}{" "}
+              {q.unit && <span className="text-lg font-medium text-muted-foreground">{q.unit}</span>}
+            </div>
+            <input
+              type="range" min={eMin} max={eMax} step={eStep} value={eCurrent}
+              disabled={chosen !== null}
+              onChange={(e) => setGuess(Number(e.target.value))}
+              aria-label="Schätzwert"
+              className="w-full accent-primary disabled:opacity-60"
+            />
+            <div className="mt-1 flex justify-between text-xs tabular-nums text-muted-foreground">
+              <span>{fmt(eMin)}</span>
+              <span>{fmt(eMax)}</span>
+            </div>
+            {chosen === null && (
+              <Button className="mt-4 w-full" onClick={() => submitEstimate(eCurrent)}>
+                Schätzung abgeben
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="mt-4 flex flex-col gap-2">
+            {q.options.map((opt, i) => {
+              const isChosen = chosen === i;
+              const isCorrect = result && i === result.correct_index;
+              const state = result
+                ? isCorrect ? "correct" : isChosen ? "wrong" : "idle"
+                : "idle";
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  disabled={chosen !== null}
+                  onClick={() => choose(i)}
+                  className={cn(
+                    "flex items-center justify-between gap-3 rounded-lg border px-4 py-3 text-left text-sm transition-colors",
+                    state === "idle" && "border-border hover:border-primary/50 hover:bg-primary/5 disabled:opacity-60",
+                    state === "correct" && "border-green-500 bg-green-500/10 text-foreground",
+                    state === "wrong" && "border-red-500 bg-red-500/10 text-foreground",
+                  )}
+                >
+                  <span>{opt}</span>
+                  {state === "correct" && <Check className="h-4 w-4 shrink-0 text-green-600" />}
+                  {state === "wrong" && <X className="h-4 w-4 shrink-0 text-red-600" />}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {result && (
           <div className="mt-4 rounded-lg border border-border bg-muted/40 p-3">
             <p className="text-sm font-medium text-foreground">
-              {result.correct ? `Richtig! +${result.points}` : "Leider falsch."}
+              {result.correct
+                ? `Richtig! +${result.points}`
+                : result.points > 0 ? `Nah dran! +${result.points}` : "Leider daneben."}
             </p>
+            {isEstimate && result.answer_value != null && (
+              <p className="mt-1 text-sm text-foreground">
+                Richtige Antwort:{" "}
+                <span className="font-semibold tabular-nums">{fmt(result.answer_value)} {result.unit}</span>
+              </p>
+            )}
             {result.explanation && (
               <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{result.explanation}</p>
             )}

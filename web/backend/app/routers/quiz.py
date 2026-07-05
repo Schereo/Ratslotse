@@ -113,22 +113,42 @@ def round_(areas: str = Query(..., description="komma-separiert, z. B. wahlberei
     return {"questions": questions}
 
 
+def _estimate_score(guess: float, actual: float | None, diff_points: int) -> tuple[bool, int]:
+    """Schätzfrage: Punkte nach relativer Nähe. ≤5 % → voll, ≤15 % → 2/3,
+    ≤30 % → 1/3, sonst 0. „Richtig" = innerhalb 15 %."""
+    if actual is None:
+        return False, 0
+    err = abs(guess - actual) / max(abs(actual), 1.0)
+    frac = 1.0 if err <= 0.05 else 0.66 if err <= 0.15 else 0.33 if err <= 0.30 else 0.0
+    return err <= 0.15, round(diff_points * frac)
+
+
 @router.post("/answer")
 def answer(payload: QuizAnswerIn,
            user: dict = Depends(require_active),
            store: Store = Depends(get_store),
            council: CouncilStore = Depends(get_council_store)) -> dict:
-    """Antwort auswerten, Punkte buchen, Lösung + Erklärung + Quelle zurückgeben."""
+    """Antwort auswerten, Punkte buchen, Lösung + Erklärung + Quelle zurückgeben.
+    Multiple Choice über selected_index, Schätzfrage über value (Slider)."""
     q = council.get_quiz_question(payload.question_id)
     if not q:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Frage nicht gefunden.")
-    correct = payload.selected_index == q["correct_index"]
-    pts = _POINTS.get(q["difficulty"], 1) if correct else 0
+    diff_pts = _POINTS.get(q["difficulty"], 1)
+    resp = {"explanation": q.get("explanation"),
+            "source_type": q.get("source_type"), "source_ref": q.get("source_ref")}
+    if q.get("qtype") == "estimate":
+        if payload.value is None:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Schätzwert fehlt.")
+        correct, pts = _estimate_score(payload.value, q.get("answer_value"), diff_pts)
+        resp.update({"correct": correct, "correct_index": -1, "points": pts,
+                     "answer_value": q.get("answer_value"), "unit": q.get("unit")})
+    else:
+        correct = payload.selected_index == q["correct_index"]
+        pts = diff_pts if correct else 0
+        resp.update({"correct": correct, "correct_index": q["correct_index"], "points": pts})
     store.record_quiz_answer(user["id"], q["id"], q["area_type"], q["area_key"],
                              q["category"], correct, pts)
-    return {"correct": correct, "correct_index": q["correct_index"], "points": pts,
-            "explanation": q.get("explanation"),
-            "source_type": q.get("source_type"), "source_ref": q.get("source_ref")}
+    return resp
 
 
 @router.post("/rate")
