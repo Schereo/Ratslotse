@@ -27,6 +27,28 @@ export function loadStadtteile(): Promise<StadtteilFeature[]> {
   return cache;
 }
 
+/** Kommunalwahl-Wahlbereiche der Stadt Oldenburg (1–6): Zuordnung der
+ *  Stadtteile per Punkt-in-Polygon gegen die offiziellen Wahlbereich-Polygone
+ *  (openGEOdata Stadt Oldenburg, FeatureServer „Wahlen", Layer 1; Stand
+ *  2026-07). Grenzstadtteile, die über eine Wahlbereichs-Grenze lappen
+ *  (z. B. Bürgerfelde, Osternburg), sind dem überwiegenden Bereich
+ *  zugeordnet — für den Karten-Filter ist das die richtige Granularität. */
+export const WAHLBEREICH: Record<string, number> = {
+  "Bürgeresch": 1, "Bürgerfelde": 1, "Donnerschwee": 1, "Ehnernviertel": 1, "Ziegelhof": 1,
+  "Bahnhofsviertel": 2, "Dobbenviertel": 2, "Drielake": 2, "Gerichtsviertel": 2,
+  "Haarenesch": 2, "Innenstadt": 2, "Neuenwege": 2,
+  "Bloherfelde": 3, "Dietrichsfeld": 3, "Fliegerhorst": 3, "Haarentor": 3, "Wechloy": 3,
+  "Alexandersfeld": 4, "Bornhorst": 4, "Etzhorn": 4, "Nadorst": 4, "Ofenerdiek": 4, "Ohmstede": 4,
+  "Bümmerstede": 5, "Drielaker-Moor": 5, "Kreyenbrück": 5, "Krusenbusch": 5,
+  "Osternburg": 5, "Tweelbäke": 5,
+  "Eversten": 6, "Nordmoslesfehn": 6,
+};
+
+/** Stadtteil-Namen je Wahlbereich, [1..6]. */
+export function stadtteileImWahlbereich(wb: number): string[] {
+  return Object.keys(WAHLBEREICH).filter((name) => WAHLBEREICH[name] === wb);
+}
+
 /** Ray-Casting: liegt (lon, lat) im Ring? */
 function inRing(lon: number, lat: number, ring: number[][]): boolean {
   let inside = false;

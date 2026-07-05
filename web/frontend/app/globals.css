@@ -326,3 +326,16 @@
 .themen-map-label::before {
   display: none;
 }
+
+/* Dunkle Karten-Tiles (CARTO dark_all) sind sehr flach — etwas Helligkeit und
+   Sättigung zurückgeben, damit Straßen und Grünzüge zur Orientierung taugen. */
+.dark .leaflet-container img.leaflet-tile {
+  filter: brightness(1.14) saturate(1.5) contrast(1.04);
+}
+
+/* Leaflet-Panes tragen interne z-Indizes bis ~700 — ohne Isolation stechen
+   sie auf Mobile über Topbar/Bottom-Nav (z-40). isolate fängt sie im
+   Karten-Container ein; gilt für alle Karten (Themen + Themen-Detail). */
+.leaflet-container {
+  isolation: isolate;
+}
