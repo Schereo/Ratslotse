@@ -329,6 +329,33 @@ class CouncilStore:
             "status TEXT NOT NULL DEFAULT 'listed')"  # listed | ok | empty | failed
         )
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_anlagen_kvonr ON council_anlagen(kvonr)")
+        # Beratungsfolge je Vorlage (council.stammdaten): die offiziellen
+        # Stationen einer Vorlage durch die Gremien — inkl. geplanter künftiger
+        # Beratungen (ergebnis dann NULL). Je kvonr komplett ersetzt, weil
+        # Stationen dazukommen und Ergebnisse nachgetragen werden.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_beratungen ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, kvonr INTEGER NOT NULL, "
+            "datum TEXT, gremium TEXT NOT NULL DEFAULT '', top TEXT, "
+            "is_public INTEGER, ergebnis TEXT, ksinr INTEGER, "
+            "fetched_at TEXT NOT NULL)"
+        )
+        self._conn.execute("CREATE INDEX IF NOT EXISTS idx_beratungen_kvonr ON council_beratungen(kvonr)")
+        # Mandatsträger + Gremien-Mitgliedschaften (council.stammdaten). Die
+        # Fraktion ist nur der AKTUELLE RIS-Stand — SessionNet überschreibt
+        # Fraktionen rückwirkend; die Historie liefert council_attendance.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_persons ("
+            "kpenr INTEGER PRIMARY KEY, name TEXT NOT NULL, "
+            "fraktion_aktuell TEXT, fetched_at TEXT NOT NULL)"
+        )
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_memberships ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, kpenr INTEGER NOT NULL, "
+            "kgrnr INTEGER, gremium TEXT NOT NULL, rolle TEXT, "
+            "von TEXT, bis TEXT, fetched_at TEXT NOT NULL)"
+        )
+        self._conn.execute("CREATE INDEX IF NOT EXISTS idx_memberships_kpenr ON council_memberships(kpenr)")
         self._migrate_owner_id()
 
     def _migrate_owner_id(self) -> None:
@@ -1060,6 +1087,127 @@ class CouncilStore:
             out.append(d)
         return out
 
+    # --- Beratungsfolge (official per-Vorlage consultation path) ---------------
+
+    def save_beratungen(self, kvonr: int, rows: list[dict]) -> int:
+        """Replace the Beratungsfolge of one Vorlage. Full replace per kvonr —
+        stations get added over time and results are filled in afterwards, so a
+        merge would leave stale planned rows behind."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute("DELETE FROM council_beratungen WHERE kvonr = ?", (kvonr,))
+            for r in rows:
+                self._conn.execute(
+                    "INSERT INTO council_beratungen "
+                    "(kvonr, datum, gremium, top, is_public, ergebnis, ksinr, fetched_at) "
+                    "VALUES (?,?,?,?,?,?,?,?)",
+                    (kvonr, r.get("datum"), r.get("gremium") or "", r.get("top"),
+                     None if r.get("is_public") is None else int(bool(r.get("is_public"))),
+                     r.get("ergebnis"), r.get("ksinr"), now),
+                )
+        return len(rows)
+
+    def get_beratungen(self, kvonr: int) -> list[dict]:
+        rows = self._conn.execute(
+            "SELECT datum, gremium, top, is_public, ergebnis, ksinr "
+            "FROM council_beratungen WHERE kvonr = ? "
+            "ORDER BY datum IS NULL, datum", (kvonr,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def kvonrs_without_beratungen(self, limit: int | None = None) -> list[int]:
+        """Ingested Vorlagen whose Beratungsfolge has never been fetched,
+        newest first."""
+        sql = ("SELECT v.kvonr FROM council_vorlagen v "
+               "WHERE v.kvonr NOT IN (SELECT DISTINCT kvonr FROM council_beratungen) "
+               "ORDER BY v.kvonr DESC")
+        if limit:
+            sql += f" LIMIT {int(limit)}"
+        return [r[0] for r in self._conn.execute(sql).fetchall()]
+
+    def kvonrs_for_beratungen_rescan(self, days_back: int = 45, days_ahead: int = 120) -> list[int]:
+        """Vorlagen whose Beratungsfolge is likely still moving: on an agenda of
+        a recent session OR with a planned/unresolved station (future date or
+        missing result) — those get re-fetched daily so nachgetragene
+        Ergebnisse und neue Stationen ankommen."""
+        from datetime import date, timedelta
+        cutoff = (date.today() - timedelta(days=days_back)).isoformat()
+        horizon = (date.today() + timedelta(days=days_ahead)).isoformat()
+        rows = self._conn.execute(
+            """SELECT DISTINCT ci.kvonr FROM council_agenda_items ci
+               JOIN council_sessions cs ON cs.ksinr = ci.ksinr
+               WHERE ci.kvonr IS NOT NULL AND cs.session_date >= ?
+               UNION
+               SELECT DISTINCT b.kvonr FROM council_beratungen b
+               WHERE (b.ergebnis IS NULL AND b.datum <= ?) OR b.datum >= ?""",
+            (cutoff, horizon, date.today().isoformat()),
+        ).fetchall()
+        return [r[0] for r in rows]
+
+    # --- Personen-Stammdaten (Mandatsträger + Mitgliedschaften) ----------------
+
+    def save_person(self, kpenr: int, name: str, fraktion_aktuell: str | None) -> None:
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT INTO council_persons (kpenr, name, fraktion_aktuell, fetched_at) "
+                "VALUES (?,?,?,?) ON CONFLICT(kpenr) DO UPDATE SET "
+                "name=excluded.name, fraktion_aktuell=excluded.fraktion_aktuell, "
+                "fetched_at=excluded.fetched_at",
+                (kpenr, name, fraktion_aktuell, now),
+            )
+
+    def save_memberships(self, kpenr: int, rows: list[dict]) -> int:
+        """Replace all Gremien-Mitgliedschaften of one person (full refresh)."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute("DELETE FROM council_memberships WHERE kpenr = ?", (kpenr,))
+            for r in rows:
+                self._conn.execute(
+                    "INSERT INTO council_memberships "
+                    "(kpenr, kgrnr, gremium, rolle, von, bis, fetched_at) VALUES (?,?,?,?,?,?,?)",
+                    (kpenr, r.get("kgrnr"), r.get("gremium") or "", r.get("rolle"),
+                     r.get("von"), r.get("bis"), now),
+                )
+        return len(rows)
+
+    def list_person_kpenrs(self) -> list[int]:
+        return [r[0] for r in self._conn.execute(
+            "SELECT kpenr FROM council_persons ORDER BY kpenr").fetchall()]
+
+    def person_stammdaten_for_names(self, names: list[str]) -> dict | None:
+        """RIS-Stammdaten für eine Person, gematcht über die Namens-Slugs der
+        Anwesenheitsdaten: aktuelle Fraktion (RIS-Stand) + offizielle
+        Gremien-Mitgliedschaften mit von/bis, neueste zuerst."""
+        if not names:
+            return None
+        want = {self._person_slug(n) for n in names}
+        person = None
+        for r in self._conn.execute("SELECT kpenr, name, fraktion_aktuell FROM council_persons"):
+            if self._person_slug(r["name"]) in want:
+                person = dict(r)
+                break
+        if not person:
+            return None
+        ms = self._conn.execute(
+            "SELECT kgrnr, gremium, rolle, von, bis FROM council_memberships "
+            "WHERE kpenr = ? ORDER BY (bis IS NULL) DESC, COALESCE(bis,'9999') DESC, von DESC",
+            (person["kpenr"],),
+        ).fetchall()
+        person["memberships"] = [dict(r) for r in ms]
+        return person
+
+    def stammdaten_stats(self) -> dict:
+        one = lambda sql: self._conn.execute(sql).fetchone()[0]  # noqa: E731
+        return {
+            "personen": one("SELECT COUNT(*) FROM council_persons"),
+            "mitgliedschaften": one("SELECT COUNT(*) FROM council_memberships"),
+            "vorlagen_mit_beratungen": one("SELECT COUNT(DISTINCT kvonr) FROM council_beratungen"),
+            "beratungen": one("SELECT COUNT(*) FROM council_beratungen"),
+            "geplante_beratungen": one(
+                "SELECT COUNT(*) FROM council_beratungen WHERE datum > date('now')"),
+        }
+
     def antrag_stats(self) -> dict:
         """Erfolgsquoten der Fraktions-Anträge: Antrag-Anlage → Vorlage → deren
         Beschlüsse. Gezählt wird je Antragsteller-Partei der KLARE Endstand der
@@ -1497,9 +1645,41 @@ class CouncilStore:
                 JOIN council_sessions cs ON cs.ksinr = a.ksinr
                 WHERE a.name IN ({ph}) AND a.role IN ('mitglied','vorsitz')
                 ORDER BY cs.session_date DESC LIMIT 12""", matched).fetchall()
+        # Fraktions-Verlauf aus der Anwesenheit: aufeinanderfolgende Sitzungen
+        # derselben Fraktion zu Phasen zusammengefasst — die einzige echte
+        # Zeitreihe, denn das Ratsinfo überschreibt Fraktionen rückwirkend.
+        runs: list[dict] = []
+        for r in self._conn.execute(
+            f"""SELECT cs.session_date d, a.party FROM council_attendance a
+                JOIN council_sessions cs ON cs.ksinr = a.ksinr
+                WHERE a.name IN ({ph}) AND a.role IN ('mitglied','vorsitz')
+                  AND a.party IS NOT NULL AND a.party != ''
+                ORDER BY cs.session_date""", matched):
+            p = normalize_party(r["party"])
+            if not p:
+                continue
+            if runs and runs[-1]["party"] == p:
+                runs[-1]["last"] = r["d"]
+                runs[-1]["n"] += 1
+            else:
+                runs.append({"party": p, "first": r["d"], "last": r["d"], "n": 1})
+        # Einzelne Ausreißer-Sitzungen (Tippfehler im Protokoll) zwischen zwei
+        # Phasen derselben Fraktion glätten, dann angrenzende Phasen mergen.
+        cleaned = [run for i, run in enumerate(runs)
+                   if not (run["n"] == 1 and 0 < i < len(runs) - 1
+                           and runs[i - 1]["party"] == runs[i + 1]["party"] != run["party"])]
+        timeline: list[dict] = []
+        for run in cleaned:
+            if timeline and timeline[-1]["party"] == run["party"]:
+                timeline[-1]["last"] = run["last"]
+                timeline[-1]["n"] += run["n"]
+            else:
+                timeline.append(dict(run))
         return {
             "name": name, "slug": slug, "party": pc.most_common(1)[0][0] if pc else None,
             "n_sessions": span["n"], "active_from": span["first"], "active_to": span["last"],
+            "faction_timeline": timeline,
+            "ris": self.person_stammdaten_for_names(matched),
             "committees": [{"committee": r["committee"], "n": r["n"], "chair": r["committee"] in chairs}
                            for r in committees],
             "recent": [{"ksinr": r["ksinr"], "committee": r["committee"], "session_date": r["session_date"]}

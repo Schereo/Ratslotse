@@ -37,6 +37,10 @@ STEPS: list[tuple[str, str]] = [
     ("Embeddings / Ähnliche", "embed_decisions.py"),
     ("Themen ↔ Beschlüsse", "match_topics_decisions.py"),
     ("Themenfeld-Rückblicke", "generate_field_recaps.py"),
+    # Personen-/Gremien-Stammdaten aus dem Ratsinfo (kein LLM, ein paar hundert
+    # Requests) — Mandatswechsel und neue Ausschuss-Besetzungen kommen so
+    # spätestens nach einer Woche an.
+    ("Personen-Stammdaten (Ratsinfo)", "backfill_stammdaten.py"),
 ]
 
 
