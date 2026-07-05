@@ -337,10 +337,13 @@
   box-shadow: 0 2px 8px rgb(0 0 0 / 0.25);
 }
 
-/* Dunkle Karten-Tiles (CARTO dark_all) sind sehr flach — etwas Helligkeit und
-   Sättigung zurückgeben, damit Straßen und Grünzüge zur Orientierung taugen. */
+/* Dark-Mode-Karte: die helle Voyager-Basemap per Filter zu einem grauen
+   Slate-Ton invertieren. hue-rotate hält Wasser/Grün in etwa an ihrem Platz,
+   die gedämpfte Sättigung/Kontrast ergibt einen ruhigen, aber gut lesbaren
+   Grauton — deutlich heller und kontrastreicher als das fast schwarze
+   dark_all, sodass Straßen und Waldgebiete erkennbar bleiben. */
 .dark .leaflet-container img.leaflet-tile {
-  filter: brightness(1.14) saturate(1.5) contrast(1.04);
+  filter: invert(1) hue-rotate(175deg) brightness(1) contrast(0.82) saturate(0.7);
 }
 
 /* Leaflet-Panes tragen interne z-Indizes bis ~700 — ohne Isolation stechen
