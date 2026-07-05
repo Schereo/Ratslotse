@@ -48,8 +48,55 @@ function PersonInner() {
         Protokolle nennen namentliche Einzelstimmen nur selten.
       </div>
 
+      {data.faction_timeline.length > 1 && (
+        <Section title="Fraktions-Verlauf">
+          {/* Abgeleitet aus der Anwesenheit je Sitzung — das Ratsinfo selbst
+              überschreibt Fraktionen rückwirkend und taugt nicht als Historie. */}
+          <div className="flex flex-wrap items-center gap-2">
+            {data.faction_timeline.map((f, i) => (
+              <div key={`${f.party}-${f.first}`} className="flex items-center gap-2">
+                {i > 0 && <span className="text-muted-foreground/50">→</span>}
+                <span className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5">
+                  <PartyBadge party={f.party} />
+                  <span className="text-xs tabular-nums text-muted-foreground">
+                    {formatDate(f.first)} – {formatDate(f.last)}
+                  </span>
+                </span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Zeiträume aus den Sitzungs-Anwesenheiten abgeleitet (taggenau ist nur der Sitzungsrhythmus).
+          </p>
+        </Section>
+      )}
+
+      {data.ris && data.ris.memberships.length > 0 && (
+        <Section title="Mitgliedschaften laut Ratsinfo">
+          <div className="space-y-1.5">
+            {data.ris.memberships.map((m, i) => (
+              <div key={`${m.gremium}-${m.von}-${i}`}
+                className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 rounded-lg border border-border px-3 py-2">
+                <span className="min-w-0 text-sm text-foreground">
+                  {m.gremium}
+                  {m.rolle && !/^(Mitglied|Ratsmitglied|Ausschussmitglied)$/.test(m.rolle) && (
+                    <span className="ml-2 rounded bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary">{m.rolle}</span>
+                  )}
+                </span>
+                <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                  {m.von ? formatDate(m.von) : "?"} – {m.bis ? formatDate(m.bis) : "heute"}
+                </span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Offizielle Gremien-Zeiträume aus dem Ratsinformationssystem (zurück bis 2001, auch vor unserer Protokoll-Erfassung).
+          </p>
+        </Section>
+      )}
+
       {data.committees.length > 0 && (
-        <Section title="Gremien">
+        <Section title="Präsenz je Gremium">
           <div className="space-y-2">
             {data.committees.map((c) => (
               <div key={c.committee} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2.5">

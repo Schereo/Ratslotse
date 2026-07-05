@@ -89,11 +89,36 @@ council_anlagen            -- eine Zeile je Anlage einer Vorlage
   die **Erfolgsquoten je Fraktion** in der Analyse, Vorlagen-/Antragstext im
   FTS-Index und im Kontext der KI-Frage.
 
+### Beratungsfolge & Personen-Stammdaten (`council/stammdaten.py`)
+
+Drei weitere Seitentypen des Ratsinfos, ebenfalls ohne LLM ausgewertet:
+
+```
+council_beratungen         -- eine Zeile je Beratungsstation einer Vorlage
+  kvonr, datum, gremium, top, is_public,
+  ergebnis,                              -- NULL = geplant/ohne Ergebnis
+  ksinr                                  -- Link zur Sitzung
+
+council_persons            -- Mandatsträger (kpenr = SessionNet-Personen-ID)
+  kpenr PK, name, fraktion_aktuell       -- Fraktion NUR als aktueller Stand!
+
+council_memberships        -- Gremien-Mitgliedschaften je Person
+  kpenr, kgrnr, gremium, rolle, von, bis -- zurück bis 2001
+```
+
+- Die **Beratungsfolge** zeigt den offiziellen Weg jeder Vorlage durch die
+  Gremien — mit Ergebnis je Station und erst **geplanten künftigen**
+  Beratungen. Sichtbar als „Weg der Vorlage" auf den Beschluss-Seiten.
+- **Wichtig:** Das Ratsinfo überschreibt Fraktionszugehörigkeiten
+  **rückwirkend** mit dem aktuellen Stand (an einem Fraktionswechsler
+  verifiziert). Der **Fraktions-Verlauf** einer Person wird deshalb aus
+  unseren Anwesenheitsdaten je Sitzung abgeleitet — die Ratsinfo-Fraktion
+  dient nur als aktueller Stand.
+- Kontaktdaten der Personenseiten (Adresse, Telefon, Beruf) werden bewusst
+  **nicht** übernommen.
+
 ### Forward-looking (vom Schema vorbereitet)
 
-- **`council_persons`** — normalisierte Politiker:innen aus `council_attendance`
-  → Anwesenheits-Statistik, perspektivisch Abstimmungs-/Wahlverhalten je Person.
-  (Die Personen-/Gremien-Stammdatenseiten des SessionNet sind noch nicht angebunden.)
 - **`council_decision_matches`** (owner_id, topic_id, ksinr, decision_id) —
   Beschlüsse gegen Nutzer-Themen klassifizieren (+ strenger Verify-Pass) →
   „Beschlüsse zu deinen Themen" + Benachrichtigung.
@@ -129,5 +154,7 @@ u. a. Erfolgsquoten je Fraktion.
 ## Ausbau-Stand
 
 Daten, Web-UI, Themen-Anbindung (Beschlüsse ↔ Nutzer-Themen mit Verify-Pass
-und Benachrichtigung) sowie Vorlagen & Anlagen sind produktiv. **Offen:**
-Personen-/Gremien-Stammdaten des SessionNet, Redebeiträge.
+und Benachrichtigung), Vorlagen & Anlagen sowie Beratungsfolge und
+Personen-/Gremien-Stammdaten sind produktiv. **Offen:** Redebeiträge (stehen
+nicht im Ratsinfo), namentliche Abstimmungen (existieren dort nicht — die
+Protokolle bleiben die einzige Abstimmungsquelle).

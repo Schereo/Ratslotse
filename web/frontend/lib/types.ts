@@ -204,8 +204,28 @@ export interface Member {
 export interface MemberDetail {
   name: string; slug: string; party: string | null;
   n_sessions: number; active_from: string | null; active_to: string | null;
+  /** Fraktions-Verlauf aus der Anwesenheit: Phasen je Fraktion, älteste zuerst. */
+  faction_timeline: { party: string; first: string; last: string; n: number }[];
+  /** Offizielle Stammdaten aus dem Ratsinfo (falls die Person dort verlinkt ist). */
+  ris: {
+    kpenr: number;
+    name: string;
+    fraktion_aktuell: string | null;
+    memberships: { kgrnr: number | null; gremium: string; rolle: string | null; von: string | null; bis: string | null }[];
+  } | null;
   committees: { committee: string; n: number; chair: boolean }[];
   recent: { ksinr: number; committee: string; session_date: string }[];
+}
+
+/** Eine Station der offiziellen Beratungsfolge einer Vorlage. */
+export interface Beratung {
+  datum: string | null;
+  gremium: string;
+  top: string | null;
+  is_public: number | null;
+  ergebnis: string | null;
+  ksinr: number | null;
+  future: boolean;
 }
 
 export interface DecisionDetail {
@@ -214,6 +234,9 @@ export interface DecisionDetail {
   present_parties: string[];
   sub_votes: CouncilDecision[];
   vorlage_journey: VorlageStop[];
+  /** Offizielle Beratungsfolge aus dem Ratsinfo — mit Ergebnis je Station und
+   *  geplanten künftigen Beratungen. Fehlt, solange sie nicht gescrapt ist. */
+  beratungsfolge?: Beratung[];
   similar: SimilarDecision[];
   news: NewsLink[];
   entities: Entity[];

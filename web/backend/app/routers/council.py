@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import math
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
@@ -152,6 +153,16 @@ def decision_detail(
             if not out["vorlage_url"] and v.get("kvonr"):
                 out["vorlage_url"] = _vorlage_url(v["kvonr"])
         out["anlagen"] = store.anlagen_for_vorlage_nr(d["vorlage_nr"])
+        # Offizielle Beratungsfolge aus dem Ratsinfo — reicher als die aus
+        # unseren Tagesordnungen abgeleitete Journey (Ergebnis je Station,
+        # geplante künftige Beratungen). Die Journey bleibt der Fallback.
+        kv = d.get("kvonr") or (v.get("kvonr") if v else None)
+        if kv:
+            today = date.today().isoformat()
+            out["beratungsfolge"] = [
+                {**b, "future": bool(b["datum"] and b["datum"] > today)}
+                for b in store.get_beratungen(kv)
+            ]
     return out
 
 

@@ -1,0 +1,43 @@
+# Manuell auslösbarer Ops-Lauf: holt auf dem Server die Beratungsfolge aller
+# eingelesenen Vorlagen (vo0053) und die Personen-/Gremien-Stammdaten
+# (Mandatsträger aller Wahlperioden + Mitgliedschaften) nach. Reines
+# Netz-Parsing, kein LLM. Nutzt denselben Deploy-Key/ProxyJump wie deploy.yml —
+# praktisch, wenn lokal kein SSH-Zugang verfügbar ist. Keine Inputs, feste
+# Befehle; nur Collaborator können triggern.
+name: "Ops: Stammdaten-Backfill"
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ops-stammdaten-backfill
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run Stammdaten + Beratungsfolge backfill on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          proxy_host: ${{ secrets.VPS_PROXY_HOST }}
+          proxy_username: ${{ secrets.VPS_USER }}
+          proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          proxy_port: ${{ secrets.VPS_SSH_PORT }}
+          # Erstlauf: ~5.000 Beratungsfolge-Seiten + ~300 Personen-Abrufe.
+          command_timeout: 120m
+          script: |
+            set -e
+            cd ~/app
+            .venv/bin/python scripts/backfill_stammdaten.py
+            .venv/bin/python scripts/backfill_beratungen.py
+            .venv/bin/python - <<'PY'
+            from council.store import CouncilStore
+            s = CouncilStore("data/council.sqlite")
+            print("Stand:", s.stammdaten_stats())
+            s.close()
+            PY

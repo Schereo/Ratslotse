@@ -7,6 +7,16 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt
+- **Weg der Vorlage, offiziell:** Beschluss-Seiten zeigen die Beratungsfolge
+  aus dem Ratsinfo — jede Station mit Gremium, Datum und Ergebnis, inklusive
+  erst **geplanter künftiger** Beratungen. (#192)
+- **Personen-Profile mit Geschichte:** Fraktions-Verlauf (wer wann in welcher
+  Fraktion war, abgeleitet aus den Sitzungs-Anwesenheiten — das Ratsinfo
+  selbst überschreibt Fraktionen rückwirkend) und die offiziellen
+  Gremien-Mitgliedschaften mit Zeiträumen **zurück bis 2001**. Kontaktdaten
+  der Ratsinfo-Personenseiten werden bewusst nicht übernommen. (#192)
+
 ### Geändert
 - **Ruhigere Sidebar:** Die Suche ist kein gedrungenes Eingabefeld mehr,
   sondern fügt sich als schlanke Zeile in die Navigation ein (⌘K wie gehabt).
