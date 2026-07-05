@@ -649,7 +649,8 @@ def test_quiz_rating_and_admin_flag(client):
     assert client.post("/api/quiz/rate", json={"question_id": qid, "verdict": "schlecht",
                                                "comment": "unklar"}).json()["ok"] is True
     flagged = client.get("/api/admin/quiz/flagged").json()["flagged"]
-    assert any(f["question_id"] == qid and f["bad"] == 1 for f in flagged)
+    entry = next(f for f in flagged if f["question_id"] == qid)
+    assert entry["bad"] == 1 and entry["comments"] == "unklar"  # optionaler Grund kommt durch
     # ausmustern → fliegt aus den Runden UND aus der Bewertungs-Liste
     client.post(f"/api/admin/quiz/{qid}/retire")
     assert client.get("/api/quiz/round?areas=stadtteil:Osternburg&n=10").json()["questions"] == []

@@ -368,6 +368,9 @@ function QuizModerationTab() {
               {f.options[f.correct_index] && (
                 <p className="mt-0.5 text-xs text-muted-foreground">Richtige Antwort: {f.options[f.correct_index]}</p>
               )}
+              {f.comments && (
+                <p className="mt-1 text-xs italic text-muted-foreground">„{f.comments}"</p>
+              )}
             </div>
             <Button variant="danger" size="sm" className="shrink-0"
                     disabled={retire.isPending}

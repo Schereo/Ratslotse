@@ -383,6 +383,7 @@ export interface QuizFlagged {
   question_id: number;
   bad: number;
   good: number;
+  comments: string | null;
   question: string;
   area_type: string;
   area_key: string;

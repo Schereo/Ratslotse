@@ -580,14 +580,18 @@ class Store:
 
     def quiz_flagged_questions(self, min_bad: int = 1) -> list[dict]:
         """Fragen mit mindestens ``min_bad`` Schlecht-Bewertungen, schlechteste
-        zuerst — für die Admin-Sichtung. Cross-DB: liefert nur die Ids + Zähler,
-        die Fragentexte holt der Router aus council.sqlite."""
+        zuerst — für die Admin-Sichtung. Cross-DB: liefert Ids + Zähler + die
+        (optionalen) Begründungen; die Fragentexte holt der Router aus
+        council.sqlite."""
         rows = self._conn.execute(
             "SELECT question_id, "
-            "  SUM(verdict='schlecht') bad, SUM(verdict='gut') good "
+            "  SUM(verdict='schlecht') bad, SUM(verdict='gut') good, "
+            "  group_concat(CASE WHEN verdict='schlecht' AND comment IS NOT NULL "
+            "    AND trim(comment) != '' THEN comment END, ' • ') comments "
             "FROM quiz_ratings GROUP BY question_id "
             "HAVING bad >= ? ORDER BY bad DESC, good ASC", (min_bad,)).fetchall()
-        return [{"question_id": r["question_id"], "bad": r["bad"], "good": r["good"]} for r in rows]
+        return [{"question_id": r["question_id"], "bad": r["bad"], "good": r["good"],
+                 "comments": r["comments"]} for r in rows]
 
     # ---- native-app push device tokens ----
 
