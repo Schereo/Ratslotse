@@ -43,10 +43,17 @@ export function LocatorMap({ lat, lon, label, geojson, className }: {
         observer = new MutationObserver(() => tiles.setUrl(VOYAGER));
         observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
         if (geojson) {
-          // Straßen-Linie (kompakt & eindeutig, vom Backend geprüft).
+          // Entweder eine Straßen-Linie (kompakt & eindeutig) ODER ein ganzes
+          // Gebiets-Polygon (Stadtteil) — beide vom Backend geliefert. Fläche
+          // wird dezent gefüllt, Linie kräftig gestrichelt.
+          const gtype = (geojson as { type?: string }).type;
+          const isArea = gtype === "Polygon" || gtype === "MultiPolygon";
           const layer = L.geoJSON(geojson as never, {
-            style: { color: "#0764a6", weight: 4, opacity: 0.85, lineCap: "round" },
+            style: isArea
+              ? { color: "#0764a6", weight: 2, opacity: 0.9, fillColor: "#0764a6", fillOpacity: 0.12 }
+              : { color: "#0764a6", weight: 4, opacity: 0.85, lineCap: "round" },
           }).addTo(map);
+          if (isArea && label) layer.bindTooltip(label, { permanent: true, direction: "center" });
           const b = layer.getBounds();
           if (b.isValid()) map.fitBounds(b, { padding: [24, 24], maxZoom: 16 });
         } else {

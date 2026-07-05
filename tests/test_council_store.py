@@ -39,7 +39,7 @@ def test_migrates_pre_classification_db(tmp_path):
     store = CouncilStore(db)  # used to raise "no such column: policy_field"
 
     cols = {r[1] for r in store._conn.execute("PRAGMA table_info(council_decisions)").fetchall()}
-    assert {"policy_field", "policy_tags", "summary"} <= cols
+    assert {"policy_field", "policy_tags", "summary", "importance"} <= cols
     idx = {r[1] for r in store._conn.execute("PRAGMA index_list(council_decisions)").fetchall()}
     assert "idx_decisions_field" in idx
     # The existing row survived and is simply unclassified.

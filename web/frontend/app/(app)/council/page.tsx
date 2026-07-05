@@ -14,7 +14,7 @@ import {
   Badge, Button, Card, CardListSkeleton, DateField, EmptyState, Input, PageHeader, Pagination, Segmented, Select,
   Sheet, SheetContent, SheetTitle, SheetTrigger, Spinner, formatDate, toast,
 } from "@/components/ui";
-import { OutcomeBadge, FieldBadge, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
+import { OutcomeBadge, FieldBadge, ImportanceBadge, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
 import { AnalysisTab } from "@/components/council-analysis";
 import { EntitiesTab } from "@/components/council-entities";
 import { QaTab } from "@/components/council-qa";
@@ -95,6 +95,7 @@ function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
                   {formatEuro(d.amount_eur)}
                 </span>
               )}
+              {!isSub && <ImportanceBadge score={d.importance} />}
             </div>
             <OutcomeBadge outcome={d.outcome} />
           </div>
@@ -120,6 +121,7 @@ const PAGE_SIZE = 50;
 const SORTS: { value: string; label: string }[] = [
   { value: "date_desc", label: "Neueste zuerst" },
   { value: "date_asc", label: "Älteste zuerst" },
+  { value: "importance", label: "Wichtigste zuerst" },
   { value: "faction", label: "Nach Fraktion" },
 ];
 

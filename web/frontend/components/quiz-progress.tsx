@@ -1,6 +1,7 @@
 "use client";
 
-import { TrendingUp, Play, MapPin, Sparkles, Flame, RotateCcw } from "lucide-react";
+import Link from "next/link";
+import { TrendingUp, Play, MapPin, Sparkles, Flame, RotateCcw, ChevronRight } from "lucide-react";
 import { QuizStats, QuizBadge } from "@/lib/types";
 import { Card, Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
@@ -26,6 +27,36 @@ function Stat({ value, label }: { value: string | number; label: string }) {
       <div className="text-2xl font-bold tabular-nums text-foreground">{value}</div>
       <div className="text-xs text-muted-foreground">{label}</div>
     </div>
+  );
+}
+
+/** Kompakte Statistik-Zeile für die Quiz-Startseite: nur die Kernzahlen +
+ *  Direktlink „Meine Fehler üben" und zur ausführlichen Statistik-Seite. Die
+ *  Details (je-Gebiet-Balken, Abzeichen) liegen unter /quiz/stats, damit die
+ *  Startseite übersichtlich bleibt. */
+export function QuizStatsStrip({ stats, onReview }: { stats: QuizStats; onReview: () => void }) {
+  const total = quote(stats.total.correct, stats.total.answered);
+  return (
+    <Card className="flex flex-wrap items-center gap-x-6 gap-y-3 p-4">
+      <Stat value={stats.total.points} label={stats.total.points === 1 ? "Punkt" : "Punkte"} />
+      <Stat value={`${total} %`} label="Trefferquote" />
+      {stats.streak > 0 && (
+        <div className="flex items-center gap-1.5">
+          <Flame className="h-6 w-6 text-orange-500" />
+          <Stat value={stats.streak} label="Tage-Serie" />
+        </div>
+      )}
+      <div className="ml-auto flex flex-wrap items-center gap-x-4 gap-y-2">
+        {stats.wrong > 0 && (
+          <Button variant="secondary" size="sm" onClick={onReview}>
+            <RotateCcw className="!size-4" /> {stats.wrong} {stats.wrong === 1 ? "Fehler" : "Fehler"} üben
+          </Button>
+        )}
+        <Link href="/quiz/stats" className="inline-flex items-center gap-0.5 text-sm font-medium text-primary hover:underline">
+          Alle Statistiken <ChevronRight className="h-4 w-4" />
+        </Link>
+      </div>
+    </Card>
   );
 }
 

@@ -271,9 +271,84 @@ def test_generate_attaches_detail_and_media(monkeypatch):
         "license_url": "http://l", "source_url": "http://s"})
     monkeypatch.setattr(quiz, "street_line", lambda s, **k: None)
     monkeypatch.setattr(quiz, "geocode_place", lambda s: (53.14, 8.21))
+    monkeypatch.setattr(quiz, "wikipedia_page_url", lambda s: None)  # kein Netz
     rows = quiz.generate_for_area("stadtteil", "Oldenburg", "Oldenburg", "x" * 500,
                                   n=1, source_type="wikipedia", source_ref="http://w", verify=False)
     r = rows[0]
     assert r["detail"] == "Das Schloss war die Residenz der Großherzöge."
     assert r["image_url"] == "http://img" and r["image_license"] == "CC BY 4.0"
     assert r["lat"] == 53.14 and r["place_label"] == "Schloss Oldenburg"
+
+
+# ---- Ganze Gebiete + präziser Quelle-Link + Tipp ----------------------------
+
+def test_geo_stadtteil_polygon():
+    # Wir besitzen die Polygone selbst → immer verlässlich einzeichenbar.
+    assert geo.is_stadtteil("Bloherfelde") and geo.is_stadtteil("Osternburg")
+    assert not geo.is_stadtteil("Bremen") and not geo.is_stadtteil("")
+    poly = geo.stadtteil_polygon("Bloherfelde")
+    assert poly and poly["type"] in ("Polygon", "MultiPolygon") and poly["coordinates"]
+    assert geo.stadtteil_polygon("Bremen") is None
+    lat, lon = geo.stadtteil_center("Bloherfelde")
+    assert 53.10 < lat < 53.23 and 8.13 < lon < 8.31   # im Oldenburger Stadtgebiet
+
+
+def test_enrich_row_area_polygon_fallback():
+    # Kein konkretes Subjekt, aber die Frage gehört zu einem Stadtteil → das
+    # ganze Gebiet als Polygon (kein Netz nötig, nur die eigene GeoJSON-Datei).
+    row = {}
+    quiz.enrich_row(row, "", area_type="stadtteil", area_key="Osternburg")
+    gj = json.loads(row["geojson"])
+    assert gj["type"] in ("Polygon", "MultiPolygon")
+    assert row["place_label"] == "Osternburg" and row["lat"] is not None
+    # Gebiet nur, wenn es sich um einen Stadtteil handelt:
+    themen_row = {}
+    quiz.enrich_row(themen_row, "", area_type="thema", area_key="fliegerhorst")
+    assert themen_row == {}
+
+
+def test_enrich_row_source_link_to_subject(monkeypatch):
+    # Der Lehmkuhl-Fall: Frage stammt aus dem Bloherfelde-Artikel, aber die
+    # Person hat eine eigene Seite → „Quelle" verlinkt die Person, nicht das
+    # Gebiet; zugleich wird das Gebiet als Polygon gezeichnet.
+    monkeypatch.setattr(quiz, "commons_image", lambda s: None)
+    monkeypatch.setattr(quiz, "street_line", lambda s, **k: None)
+    monkeypatch.setattr(quiz, "wikipedia_page_url",
+                        lambda s: "https://de.wikipedia.org/wiki/Hermann_Lehmkuhl")
+    row = {"source_type": "wikipedia", "source_ref": "https://de.wikipedia.org/wiki/Bloherfelde"}
+    quiz.enrich_row(row, "Hermann Lehmkuhl", area_type="stadtteil", area_key="Bloherfelde")
+    assert row["source_ref"] == "https://de.wikipedia.org/wiki/Hermann_Lehmkuhl"
+    assert json.loads(row["geojson"])["type"] in ("Polygon", "MultiPolygon")  # Bloherfelde
+    # Bei Nicht-Wikipedia-Quellen (z. B. Ratsbeschluss) NICHT überschreiben:
+    rats = {"source_type": "ratsinfo", "source_ref": "decision:42"}
+    monkeypatch.setattr(quiz, "wikipedia_page_url", lambda s: "https://de.wikipedia.org/wiki/X")
+    quiz.enrich_row(rats, "Irgendwer", area_type="thema", area_key="x")
+    assert rats["source_ref"] == "decision:42"
+
+
+def test_hint_roundtrip(tmp_path):
+    # Tipp gehört zur Frage (vor dem Auflösen sichtbar), nicht zur Lösung.
+    store = CouncilStore(tmp_path / "c.sqlite")
+    row = _row("Eversten", "Knifflige Frage?")
+    row["hint"] = "Denk an das Wahrzeichen."
+    store.save_quiz_questions([row])
+    picked = store.pick_quiz_questions([("stadtteil", "Eversten")], None, [], 5)
+    assert picked[0]["hint"] == "Denk an das Wahrzeichen."
+    # Frage ohne Tipp liefert kein hint-Feld:
+    plain = _row("Eversten", "Einfache Frage?")
+    store.save_quiz_questions([plain])
+    got = [p for p in store.pick_quiz_questions([("stadtteil", "Eversten")], None, [], 5)
+           if p["question"] == "Einfache Frage?"][0]
+    assert "hint" not in got
+
+
+def test_generate_attaches_hint(monkeypatch):
+    qs = [{"category": "menschen", "difficulty": "schwer", "question": "Wer war X?",
+           "options": ["A", "B", "C", "D"], "correct_index": 0, "explanation": "kurz",
+           "hint": "Ein Politiker des 19. Jahrhunderts."}]
+    monkeypatch.setattr(quiz.llm, "chat_complete", _fake_llm(qs))
+    monkeypatch.setattr(quiz, "wikipedia_page_url", lambda s: None)
+    rows = quiz.generate_for_area("stadtteil", "Bloherfelde", "Bloherfelde", "x" * 500,
+                                  n=1, source_type="wikipedia", source_ref="http://w",
+                                  verify=False, enrich=False)
+    assert rows[0]["hint"] == "Ein Politiker des 19. Jahrhunderts."

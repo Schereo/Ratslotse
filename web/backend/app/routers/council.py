@@ -14,6 +14,7 @@ from council.topics import POLICY_FIELDS
 from council.goals import GOALS
 from council.parties import normalize_party, order_key
 from council import qa
+from council import importance
 from council import vorlagen as vorlagen_mod
 
 from ..deps import get_council_store, require_active
@@ -97,7 +98,7 @@ def decisions(
     date_to: str = "",
     kind: str = Query("", pattern="^(|decision|subvote)$"),
     category: str = Query("", pattern="^(|vote|report)$"),
-    sort: str = Query("date_desc", pattern="^(date_desc|date_asc|faction)$"),
+    sort: str = Query("date_desc", pattern="^(date_desc|date_asc|faction|importance)$"),
     field: str = "",
     party: str = "",
     limit: int = Query(50, ge=1, le=200),
@@ -135,6 +136,10 @@ def decision_detail(
         "news": store.get_news_for_decision(decision_id),
         "entities": store.entities_for_decision(decision_id),
     }
+    # Wichtigkeits-Aufschlüsselung (welche Signale trieben den Score) — erklärt
+    # transparent, warum ein Beschluss als wichtig gilt.
+    n_ber = len(store.get_beratungen(d["kvonr"])) if d.get("kvonr") else None
+    out["importance_breakdown"] = importance.importance_breakdown(d, n_beratungen=n_ber)
     if d.get("kind") == "decision" and d.get("item_number"):
         out["sub_votes"] = store.get_subvotes(d["ksinr"], d["item_number"])
     if d.get("vorlage_nr"):

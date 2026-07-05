@@ -47,7 +47,8 @@ council_decisions          -- eine Zeile je TOP/Beschluss
   gegenstimmen, enthaltungen,            -- nullable INTEGER
   factions,                              -- JSON-Array (z.B. ["SPD","CDU","FDP"])
   vorlage_nr, kvonr,                     -- Link zur Vorlage (für später)
-  raw_result                             -- Roh-String der Abstimmung
+  raw_result,                            -- Roh-String der Abstimmung
+  importance                             -- Wichtigkeits-Score 0–100 (council/importance.py, per Backfill)
 
 council_attendance         -- eine Zeile je Person je Sitzung
   id PK, ksinr, name, party, role, note  -- role: vorsitz|mitglied|verwaltung|protokoll|gast
@@ -145,11 +146,21 @@ lädt Vorlagen-/Anlagen-Volltexte (inkl. Rescan der letzten Wochen, s. o.).
 - **„Sitzungen & Tagesordnungen"** — die TOP-Suche über kommende und vergangene
   Sitzungen.
 - **„Beschlüsse"** — Volltextsuche mit Filtern (Ausschuss / Datum / Ergebnis /
-  Fraktion / Themenfeld).
+  Fraktion / Themenfeld), sortierbar auch nach **Wichtigkeit** („Wichtigste
+  zuerst"). Bedeutende Beschlüsse tragen ein „Wichtig"-Zeichen.
 
 Die Beschluss-Detailseite zeigt Abstimmung, Anwesenheit, „Aus der Vorlage",
 das Anlagen-Dossier und Links zu den Original-PDFs; die Analyse rechnet daraus
 u. a. Erfolgsquoten je Fraktion.
+
+Der **Wichtigkeits-Score** (0–100, `council/importance.py`) ist eine bewusst
+einfache, transparente Heuristik — kein ML: Er verrechnet Geldbetrag,
+Umstrittenheit (Gegenstimmen / knappe Abstimmung), Verbindlichkeit & Gremien-
+Ebene (Satzung im Rat vs. Routine im Fachausschuss) und die Länge des
+Beratungswegs. Fehlt ein Signal (kein €-Betrag, keine Abstimmung), fällt es aus
+der Gewichtung, statt als 0 zu zählen. Die Beschluss-Seite schlüsselt auf,
+welche Signale den Score treiben. Berechnet per Backfill
+(`scripts/score_importance.py`, wöchentlich in `weekly_enrich`).
 
 ## Ausbau-Stand
 

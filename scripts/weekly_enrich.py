@@ -41,6 +41,10 @@ STEPS: list[tuple[str, str]] = [
     # Requests) — Mandatswechsel und neue Ausschuss-Besetzungen kommen so
     # spätestens nach einer Woche an.
     ("Personen-Stammdaten (Ratsinfo)", "backfill_stammdaten.py"),
+    # Wichtigkeits-Score der Beschlüsse neu berechnen (kein LLM) — hebt wichtige
+    # Beschlüsse in Listen und im Quiz hervor. Vor dem Quiz, damit dessen
+    # „ratspolitik"-Fragen die frischen Scores nutzen.
+    ("Wichtigkeits-Score", "score_importance.py"),
     # Quizfragen auffüllen (LLM) — nur Gebiete unter Ziel-Fragenzahl, ersetzt
     # ausgemusterte Fragen und deckt neue Beschluss-Themen ab.
     ("Quizfragen", "generate_quiz.py"),
