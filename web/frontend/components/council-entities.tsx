@@ -1,15 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { MapPin, Building2, Boxes, Search } from "lucide-react";
+import { MapPin, Building2, Boxes, Search, ChevronDown, X } from "lucide-react";
 import { Entity, EntityMapPoint } from "@/lib/types";
 import { Card, Input, Spinner, EmptyState } from "@/components/ui";
 import { useFetch } from "@/lib/use-fetch";
 import { cn } from "@/lib/utils";
 import { themaHref } from "@/lib/routes";
 import { KIND_COLOR } from "@/components/council-map";
+import { loadStadtteile, stadtteilFor, type StadtteilFeature } from "@/lib/stadtteile";
 
 // Leaflet needs `window`, so the map is client-only (ssr:false).
 const CouncilMap = dynamic(() => import("@/components/council-map").then((m) => m.CouncilMap), {
@@ -77,11 +78,95 @@ function TopEntityCard({ e, maxRecent }: { e: Entity; maxRecent: number }) {
 
 type KindFilter = "" | "ort" | "organisation" | "projekt";
 
+/** Kompakter Mehrfach-Auswahl-Popover für die 31 Stadtteile — filtert die
+ *  Punkte auf der Karte (die Liste darunter bleibt vollständig). */
+function StadtteilFilter({ names, counts, selected, onChange }: {
+  names: string[];
+  counts: Record<string, number>;
+  selected: Set<string>;
+  onChange: (next: Set<string>) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("pointerdown", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const toggle = (name: string) => {
+    const next = new Set(selected);
+    if (next.has(name)) next.delete(name); else next.add(name);
+    onChange(next);
+  };
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+          selected.size > 0 ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground",
+        )}
+      >
+        <MapPin className="h-3.5 w-3.5" />
+        {selected.size > 0 ? `Stadtteile · ${selected.size}` : "Stadtteile"}
+        <ChevronDown className={cn("h-3 w-3 transition-transform", open && "rotate-180")} />
+      </button>
+      {open && (
+        <div className="absolute right-0 z-[60] mt-2 w-72 rounded-xl border border-border bg-card p-3 shadow-lg">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-medium text-foreground">Karte nach Stadtteilen filtern</p>
+            {selected.size > 0 && (
+              <button type="button" onClick={() => onChange(new Set())}
+                className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline">
+                <X className="h-3 w-3" /> Zurücksetzen
+              </button>
+            )}
+          </div>
+          <div className="mt-2 grid max-h-72 grid-cols-2 gap-x-3 gap-y-0.5 overflow-y-auto overscroll-contain pr-1">
+            {names.map((name) => (
+              <label key={name} className="flex cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 text-xs text-foreground hover:bg-muted">
+                <input
+                  type="checkbox"
+                  checked={selected.has(name)}
+                  onChange={() => toggle(name)}
+                  className="h-3.5 w-3.5 rounded border-border accent-[hsl(var(--primary))]"
+                />
+                <span className="min-w-0 flex-1 truncate">{name}</span>
+                <span className="shrink-0 tabular-nums text-muted-foreground/70">{counts[name] ?? 0}</span>
+              </label>
+            ))}
+          </div>
+          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+            Grenzen: © OpenStreetMap-Mitwirkende
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function EntitiesTab() {
   const { data, loading } = useFetch<{ entities: Entity[] }>("/council/entities");
   const { data: geo, loading: geoLoading } = useFetch<{ entities: EntityMapPoint[] }>("/council/entities-map");
   const [q, setQ] = useState("");
   const [kind, setKind] = useState<KindFilter>("");
+  const [stadtteile, setStadtteile] = useState<StadtteilFeature[]>([]);
+  const [selectedST, setSelectedST] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    void loadStadtteile().then(setStadtteile);
+  }, []);
 
   const all = useMemo(() => data?.entities ?? [], [data]);
   const counts = useMemo(() => {
@@ -89,6 +174,33 @@ export function EntitiesTab() {
     for (const e of all) c[e.kind] = (c[e.kind] ?? 0) + 1;
     return c;
   }, [all]);
+
+  // Stadtteil je Kartenpunkt (einmal berechnet); Punkte außerhalb Oldenburgs → null.
+  const pointST = useMemo(() => {
+    const m = new Map<string, string | null>();
+    if (stadtteile.length) {
+      for (const p of geo?.entities ?? []) m.set(p.slug, stadtteilFor(p.lat, p.lon, stadtteile));
+    }
+    return m;
+  }, [geo, stadtteile]);
+  const stCounts = useMemo(() => {
+    const c: Record<string, number> = {};
+    for (const st of pointST.values()) if (st) c[st] = (c[st] ?? 0) + 1;
+    return c;
+  }, [pointST]);
+
+  // Punkte + Grenz-Overlays memoisiert — die Karte remountet sonst bei jedem
+  // Tastendruck in der Suche (Array-Identität ist ihre Effect-Dependency).
+  const points = useMemo(
+    () => (geo?.entities ?? [])
+      .filter((p) => (kind ? p.kind === kind : true))
+      .filter((p) => (selectedST.size ? selectedST.has(pointST.get(p.slug) ?? "") : true)),
+    [geo, kind, selectedST, pointST],
+  );
+  const outlines = useMemo(
+    () => (selectedST.size ? stadtteile.filter((f) => selectedST.has(f.properties.name)) : undefined),
+    [stadtteile, selectedST],
+  );
 
   if (loading) return <div className="py-10"><Spinner /></div>;
   if (all.length === 0) {
@@ -99,7 +211,6 @@ export function EntitiesTab() {
   const filtered = all
     .filter((e) => (kind ? e.kind === kind : true))
     .filter((e) => (needle ? e.name.toLowerCase().includes(needle) : true));
-  const points = (geo?.entities ?? []).filter((p) => (kind ? p.kind === kind : true));
   const maxRecent = Math.max(1, ...all.map((e) => e.n_recent ?? 0));
 
   // Ohne Suche: die gerade AKTIVEN Themen groß (12-Monats-Beschlüsse, dann
@@ -125,11 +236,13 @@ export function EntitiesTab() {
         <div className="flex h-[38vh] min-h-[17rem] max-h-[26rem] items-center justify-center rounded-xl border border-border">
           <Spinner />
         </div>
-      ) : points.length > 0 ? (
+      ) : (geo?.entities.length ?? 0) > 0 ? (
         <div className="relative">
-          <CouncilMap points={points} className="h-[38vh] min-h-[17rem] max-h-[26rem] rounded-xl" />
+          <CouncilMap points={points} outlines={outlines} className="h-[38vh] min-h-[17rem] max-h-[26rem] rounded-xl" />
           <p className="pointer-events-none absolute bottom-2.5 left-2.5 z-[500] rounded-md bg-background/85 px-2 py-1 text-[11px] text-muted-foreground backdrop-blur">
-            {points.length} verortete Themen · Punktgröße = Beschlüsse · klicken öffnet das Thema
+            {selectedST.size > 0
+              ? `${points.length} von ${geo!.entities.length} Punkten · ${selectedST.size} ${selectedST.size === 1 ? "Stadtteil" : "Stadtteile"} ausgewählt`
+              : `${points.length} verortete Themen · Punktgröße = Beschlüsse · klicken öffnet das Thema`}
           </p>
         </div>
       ) : null}
@@ -155,6 +268,14 @@ export function EntitiesTab() {
               {ENTITY_KIND[k].plural} · {counts[k] ?? 0}
             </button>
           ))}
+          {stadtteile.length > 0 && (geo?.entities.length ?? 0) > 0 && (
+            <StadtteilFilter
+              names={stadtteile.map((f) => f.properties.name)}
+              counts={stCounts}
+              selected={selectedST}
+              onChange={setSelectedST}
+            />
+          )}
         </div>
       </div>
 

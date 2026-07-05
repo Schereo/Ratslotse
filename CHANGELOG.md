@@ -8,6 +8,13 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Themen-Karte rundum verbessert:** Nahe herangezoomt (oder gefiltert)
+  stehen die Themen-Namen direkt an den Punkten — kein Antippen mehr nötig,
+  um zu sehen, worum es geht. Die Karte merkt sich ihren Ausschnitt (Zurück
+  vom Thema landet nicht mehr in der Gesamtansicht), lässt sich per Knopf im
+  **Vollbild** anzeigen und nach **Stadtteilen filtern** — ausgewählte
+  Stadtteile werden mit Grenze eingezeichnet und die Karte zoomt darauf
+  (Grenzen: © OpenStreetMap-Mitwirkende). (#193)
 - **Weg der Vorlage, offiziell:** Beschluss-Seiten zeigen die Beratungsfolge
   aus dem Ratsinfo — jede Station mit Gremium, Datum und Ergebnis, inklusive
   erst **geplanter künftiger** Beratungen. (#192)

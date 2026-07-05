@@ -308,3 +308,21 @@
 .dark .excerpt b {
   @apply bg-yellow-900 text-yellow-100;
 }
+
+/* Permanente Themen-Labels auf der Stadtkarte (ab Nahzoom) — folgt dem Theme,
+   ohne Leaflets weiße Standard-Sprechblase samt Pfeilspitze. */
+.themen-map-label {
+  background: hsl(var(--background) / 0.92);
+  color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.375rem;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.1);
+}
+.themen-map-label::before {
+  display: none;
+}
