@@ -59,6 +59,10 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   aufs GitHub-Repo. (#189)
 
 ### Behoben
+- Der neue Stadtteil-Filter verschob auf dem Handy das ganze Themen-Layout
+  seitlich (die Filter-Chips passten nicht mehr in eine Zeile) — sie brechen
+  jetzt sauber um, und das Stadtteil-Menü öffnet als bildschirmfüllendes
+  Auswahl-Feld statt halb aus dem Bild zu ragen. (#197)
 - Auf dem Handy konnte die Stadtkarte über der Navigation und anderen
   Elementen liegen — die Karte bleibt jetzt unter Kopf- und Fußleiste. (#194)
 - **Ratsgruppen zählen für alle beteiligten Parteien:** Anträge der früheren
