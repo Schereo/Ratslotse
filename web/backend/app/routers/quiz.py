@@ -6,6 +6,7 @@ View auf ihre Stadtteile (keine eigenen Fragen) — der Filter expandiert sie.
 """
 from __future__ import annotations
 
+import random
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -15,13 +16,14 @@ from council.store import CouncilStore
 from nwz.store import Store
 
 from ..deps import get_council_store, get_store, require_active, require_admin
-from ..schemas import QuizAnswerIn, QuizDailyIn, QuizRateIn
+from ..schemas import QuizAnswerIn, QuizDailyIn, QuizMapIn, QuizRateIn
 
 router = APIRouter(prefix="/api/quiz", tags=["quiz"])
 
 CATEGORIES = ["geschichte", "orte", "menschen", "ratspolitik", "schaetzen"]
 _POINTS = {"leicht": 1, "mittel": 2, "schwer": 3}
 DAILY_N = 5
+MAP_POINTS = 2  # feste Punkte je richtig verorteten Stadtteil
 
 
 def _today() -> str:
@@ -195,6 +197,31 @@ def daily_complete(payload: QuizDailyIn,
     day = _today()
     store.record_quiz_daily(user["id"], day, payload.correct, payload.total, payload.points)
     return {"ok": True, "day": day, "streak": store.quiz_streak(user["id"])}
+
+
+@router.get("/map-round")
+def map_round(n: int = Query(5, ge=1, le=15), _user: dict = Depends(require_active)) -> dict:
+    """Karten-Quiz: n zufällige Stadtteile zum Verorten. Deterministisch aus der
+    Geografie (kein LLM, keine DB) — die Karte selbst ist die Antwortfläche."""
+    names = geo.stadtteile()
+    random.shuffle(names)
+    return {"questions": [{"target": t, "question": f"Wo liegt {t}?"} for t in names[:n]]}
+
+
+@router.post("/map-answer")
+def map_answer(payload: QuizMapIn,
+               user: dict = Depends(require_active),
+               store: Store = Depends(get_store)) -> dict:
+    """Karten-Antwort auswerten: richtig, wenn der angeklickte Stadtteil der
+    gefragte ist. Zählt (wie andere Antworten) auf den Stadtteil-Fortschritt."""
+    if payload.target not in geo.WAHLBEREICH:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unbekannter Stadtteil.")
+    correct = payload.clicked == payload.target
+    pts = MAP_POINTS if correct else 0
+    # question_id=0 = Karten-Frage (keine DB-Frage); fliegt aus dem „Meine
+    # Fehler"-Stapel (quiz_wrong_question_ids filtert question_id > 0).
+    store.record_quiz_answer(user["id"], 0, "stadtteil", payload.target, "orte", correct, pts)
+    return {"correct": correct, "target": payload.target, "points": pts}
 
 
 @router.get("/stats")

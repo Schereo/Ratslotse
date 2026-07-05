@@ -725,6 +725,25 @@ def test_quiz_estimate_slider_scores_by_proximity(client):
     assert r3["correct"] is False and r3["points"] == 0
 
 
+def test_quiz_map_round_and_answer(client):
+    _register(client)
+    r = client.get("/api/quiz/map-round?n=5").json()
+    assert len(r["questions"]) == 5
+    assert all(q["question"].startswith("Wo liegt") and q["target"] for q in r["questions"])
+    # richtig verorten → 2 Punkte
+    res = client.post("/api/quiz/map-answer", json={"target": "Osternburg", "clicked": "Osternburg"}).json()
+    assert res["correct"] is True and res["points"] == 2 and res["target"] == "Osternburg"
+    # daneben → 0 Punkte
+    res2 = client.post("/api/quiz/map-answer", json={"target": "Eversten", "clicked": "Nadorst"}).json()
+    assert res2["correct"] is False and res2["points"] == 0
+    # unbekannter Stadtteil → 400
+    assert client.post("/api/quiz/map-answer", json={"target": "Nirgendwo", "clicked": "X"}).status_code == 400
+    # zählt auf den Stadtteil-Fortschritt, aber NICHT in den „Meine Fehler"-Stapel
+    stats = client.get("/api/quiz/stats").json()
+    assert stats["total"]["answered"] == 2 and stats["total"]["points"] == 2 and stats["wrong"] == 0
+    assert client.get("/api/quiz/review").json()["questions"] == []
+
+
 # ---- email verification ----
 import hashlib  # noqa: E402
 from datetime import datetime, timedelta  # noqa: E402

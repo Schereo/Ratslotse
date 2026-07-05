@@ -43,6 +43,9 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 - **Schätzfragen mit Slider:** Schätzfragen (Einwohner, Fläche, Beträge …) lassen
   sich per Schieberegler beantworten — je näher an der richtigen Zahl, desto mehr
   Punkte (statt vier fester Bereiche). (#198)
+- **Karten-Quiz:** „Wo liegt Stadtteil X?" — die Oldenburg-Karte mit allen
+  Stadtteilen; man tippt den gesuchten direkt auf der Karte an, die Auflösung
+  färbt den richtigen Stadtteil grün. Rein geografisch erzeugt (ohne KI). (#PR)
 - **Wahlbereiche auf der Themen-Karte:** Der Stadtteil-Filter kennt jetzt die
   6 Kommunalwahl-Wahlbereiche der Stadt Oldenburg — ein Klick wählt alle
   Stadtteile eines Wahlbereichs (Zuordnung geometrisch aus den offiziellen
