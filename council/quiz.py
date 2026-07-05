@@ -151,7 +151,11 @@ def council_facts(store, *, stadtteil: str | None = None, slug: str | None = Non
         ent = det.get("entity") or {}
         if det.get("description"):
             lines.append(f"{ent.get('name', s)}: {det['description']}")
-        for d in (det.get("decisions") or [])[:6]:
+        # Wichtigste Beschlüsse zuerst (council.importance) — so drehen sich die
+        # „ratspolitik"-Fragen um bedeutsame statt beliebige Beschlüsse.
+        decs = sorted(det.get("decisions") or [],
+                      key=lambda d: (d.get("importance") or 0), reverse=True)
+        for d in decs[:6]:
             bits = [d.get("session_date", "")[:10], d.get("title", "").strip()]
             if d.get("outcome"):
                 bits.append(f"[{d['outcome']}]")
