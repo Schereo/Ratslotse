@@ -356,6 +356,23 @@ class CouncilStore:
             "von TEXT, bis TEXT, fetched_at TEXT NOT NULL)"
         )
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_memberships_kpenr ON council_memberships(kpenr)")
+        # Quizfragen (council.quiz): generierte Multiple-Choice-Fragen je Gebiet
+        # (Stadtteil/Wahlbereich/Thema), gegroundet in Wikipedia/Stadt-Website/
+        # Ratsdaten. status='retired' fliegt aus den Runden (schlecht bewertet).
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_quiz_questions ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "area_type TEXT NOT NULL, area_key TEXT NOT NULL, "  # stadtteil|wahlbereich|thema
+            "category TEXT NOT NULL, "                            # geschichte|orte|menschen|ratspolitik|schaetzen
+            "difficulty TEXT NOT NULL DEFAULT 'mittel', "         # leicht|mittel|schwer
+            "question TEXT NOT NULL, options TEXT NOT NULL, "     # options = JSON-Array (4)
+            "correct_index INTEGER NOT NULL, explanation TEXT, "
+            "source_type TEXT, source_ref TEXT, "                # wikipedia|stadt|ratsinfo · URL/id
+            "content_hash TEXT UNIQUE, "                          # Dedup
+            "status TEXT NOT NULL DEFAULT 'active', "             # active|retired
+            "generated_at TEXT NOT NULL)"
+        )
+        self._conn.execute("CREATE INDEX IF NOT EXISTS idx_quiz_area ON council_quiz_questions(area_type, area_key)")
         self._migrate_owner_id()
 
     def _migrate_owner_id(self) -> None:
@@ -1206,6 +1223,112 @@ class CouncilStore:
             "beratungen": one("SELECT COUNT(*) FROM council_beratungen"),
             "geplante_beratungen": one(
                 "SELECT COUNT(*) FROM council_beratungen WHERE datum > date('now')"),
+        }
+
+    # --- Quiz (generierte Fragen je Gebiet) -----------------------------------
+
+    def save_quiz_questions(self, rows: list[dict]) -> int:
+        """Neue Quizfragen speichern; Duplikate (gleicher content_hash) werden
+        übersprungen. Gibt die Zahl neu eingefügter Fragen zurück."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        new = 0
+        with self._conn:
+            for r in rows:
+                cur = self._conn.execute(
+                    "INSERT OR IGNORE INTO council_quiz_questions "
+                    "(area_type, area_key, category, difficulty, question, options, "
+                    " correct_index, explanation, source_type, source_ref, content_hash, "
+                    " status, generated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (r["area_type"], r["area_key"], r["category"], r.get("difficulty", "mittel"),
+                     r["question"], json.dumps(r["options"], ensure_ascii=False),
+                     int(r["correct_index"]), r.get("explanation"),
+                     r.get("source_type"), r.get("source_ref"), r.get("content_hash"),
+                     r.get("status", "active"), now),
+                )
+                new += cur.rowcount
+        return new
+
+    @staticmethod
+    def _quiz_row(r: sqlite3.Row, *, with_answer: bool) -> dict:
+        try:
+            options = json.loads(r["options"])
+        except (json.JSONDecodeError, TypeError):
+            options = []
+        out = {
+            "id": r["id"], "area_type": r["area_type"], "area_key": r["area_key"],
+            "category": r["category"], "difficulty": r["difficulty"],
+            "question": r["question"], "options": options,
+            "source_type": r["source_type"], "source_ref": r["source_ref"],
+        }
+        if with_answer:
+            out["correct_index"] = r["correct_index"]
+            out["explanation"] = r["explanation"]
+        return out
+
+    def get_quiz_question(self, question_id: int, *, with_answer: bool = True) -> dict | None:
+        """Eine Frage (per id) — inkl. Lösung, für die Auswertung."""
+        r = self._conn.execute(
+            "SELECT * FROM council_quiz_questions WHERE id = ? AND status = 'active'",
+            (question_id,),
+        ).fetchone()
+        return self._quiz_row(r, with_answer=with_answer) if r else None
+
+    def pick_quiz_questions(self, areas: list[tuple[str, str]], categories: list[str] | None,
+                            exclude_ids: list[int] | None, limit: int) -> list[dict]:
+        """Fragen für eine Runde: aus den gewählten Gebieten (area_type, area_key),
+        optional auf Kategorien gefiltert, ohne die schon beantworteten
+        (exclude_ids) — aufgefüllt mit beantworteten, falls sonst zu wenige.
+        OHNE Lösung (die kommt beim Auswerten). Zufällige Reihenfolge."""
+        if not areas:
+            return []
+        area_clause = " OR ".join("(area_type = ? AND area_key = ?)" for _ in areas)
+        params: list = [x for pair in areas for x in pair]
+        sql = f"SELECT * FROM council_quiz_questions WHERE status = 'active' AND ({area_clause})"
+        if categories:
+            sql += " AND category IN (%s)" % ",".join("?" * len(categories))
+            params += categories
+        rows = self._conn.execute(sql, params).fetchall()
+        seen = set(exclude_ids or [])
+        fresh = [r for r in rows if r["id"] not in seen]
+        used = [r for r in rows if r["id"] in seen]
+        import random  # deterministische Reihenfolge ist hier unerwünscht
+        random.shuffle(fresh)
+        random.shuffle(used)
+        picked = (fresh + used)[:limit]
+        return [self._quiz_row(r, with_answer=False) for r in picked]
+
+    def quiz_area_counts(self) -> dict:
+        """Aktive Fragen je Gebiet: {(area_type, area_key): n}."""
+        rows = self._conn.execute(
+            "SELECT area_type, area_key, COUNT(*) n FROM council_quiz_questions "
+            "WHERE status = 'active' GROUP BY area_type, area_key"
+        ).fetchall()
+        return {(r["area_type"], r["area_key"]): r["n"] for r in rows}
+
+    def quiz_counts_below(self, target: int) -> dict:
+        """Aktive Fragenzahl je Gebiet (für idempotenten Backfill: nur Gebiete
+        unter dem Ziel neu befüllen)."""
+        return {k: v for k, v in self.quiz_area_counts().items() if v < target}
+
+    def retire_quiz_question(self, question_id: int) -> None:
+        with self._conn:
+            self._conn.execute(
+                "UPDATE council_quiz_questions SET status = 'retired' WHERE id = ?", (question_id,))
+
+    def quiz_questions_by_ids(self, ids: list[int]) -> list[dict]:
+        """Fragen (mit Lösung) zu einer Id-Liste — für die Admin-Sichtung."""
+        if not ids:
+            return []
+        ph = ",".join("?" * len(ids))
+        rows = self._conn.execute(
+            f"SELECT * FROM council_quiz_questions WHERE id IN ({ph})", ids).fetchall()
+        return [self._quiz_row(r, with_answer=True) for r in rows]
+
+    def quiz_stats_total(self) -> dict:
+        one = lambda sql: self._conn.execute(sql).fetchone()[0]  # noqa: E731
+        return {
+            "fragen": one("SELECT COUNT(*) FROM council_quiz_questions WHERE status='active'"),
+            "gebiete": one("SELECT COUNT(DISTINCT area_type||area_key) FROM council_quiz_questions WHERE status='active'"),
         }
 
     def antrag_stats(self) -> dict:
