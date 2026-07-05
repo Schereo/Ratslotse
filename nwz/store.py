@@ -163,6 +163,32 @@ CREATE TABLE IF NOT EXISTS push_tokens (
     last_seen  TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_push_tokens_owner ON push_tokens(owner_id);
+
+-- Quiz-Antworten (Punkte je Konto). Gebiet + Kategorie sind DENORMALISIERT,
+-- weil die Fragen in council.sqlite liegen (kein DB-übergreifender Join) — so
+-- aggregiert die Statistik ohne Zugriff auf die Fragen-DB.
+CREATE TABLE IF NOT EXISTS quiz_answers (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner_id    INTEGER NOT NULL,
+    question_id INTEGER NOT NULL,
+    area_type   TEXT NOT NULL,
+    area_key    TEXT NOT NULL,
+    category    TEXT NOT NULL,
+    correct     INTEGER NOT NULL,
+    points      INTEGER NOT NULL,
+    answered_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_quiz_answers_owner ON quiz_answers(owner_id, area_type, area_key);
+
+-- Nutzer-Bewertung einer Frage (Qualitäts-Kreislauf → schlechte ausmustern).
+CREATE TABLE IF NOT EXISTS quiz_ratings (
+    owner_id    INTEGER NOT NULL,
+    question_id INTEGER NOT NULL,
+    verdict     TEXT NOT NULL,          -- gut | schlecht
+    comment     TEXT,
+    created_at  TEXT NOT NULL,
+    PRIMARY KEY (owner_id, question_id)
+);
 """
 
 
@@ -436,6 +462,67 @@ class Store:
                 (json.dumps(cur, ensure_ascii=False), user_id),
             )
         return cur
+
+    # ---- Quiz: Antworten (Punkte je Gebiet) + Bewertungen ----
+
+    def record_quiz_answer(self, owner_id: int, question_id: int, area_type: str,
+                           area_key: str, category: str, correct: bool, points: int) -> None:
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT INTO quiz_answers (owner_id, question_id, area_type, area_key, "
+                "category, correct, points, answered_at) VALUES (?,?,?,?,?,?,?,?)",
+                (owner_id, question_id, area_type, area_key, category, int(correct), points, now),
+            )
+
+    def quiz_answered_ids(self, owner_id: int) -> list[int]:
+        return [r[0] for r in self._conn.execute(
+            "SELECT DISTINCT question_id FROM quiz_answers WHERE owner_id = ?", (owner_id,)).fetchall()]
+
+    def quiz_stats(self, owner_id: int) -> dict:
+        """Fortschritt je Gebiet: Punkte, beantwortet, richtig, zuletzt gespielt —
+        plus Gesamtsumme. Grundlage des „meine Schwächen"-Dashboards."""
+        rows = self._conn.execute(
+            "SELECT area_type, area_key, "
+            "  SUM(points) points, COUNT(*) answered, SUM(correct) correct, "
+            "  MAX(answered_at) last_at "
+            "FROM quiz_answers WHERE owner_id = ? GROUP BY area_type, area_key", (owner_id,)).fetchall()
+        by_area = [{"area_type": r["area_type"], "area_key": r["area_key"],
+                    "points": r["points"] or 0, "answered": r["answered"],
+                    "correct": r["correct"] or 0, "last_at": r["last_at"]} for r in rows]
+        tot = self._conn.execute(
+            "SELECT COALESCE(SUM(points),0) points, COUNT(*) answered, COALESCE(SUM(correct),0) correct "
+            "FROM quiz_answers WHERE owner_id = ?", (owner_id,)).fetchone()
+        return {"by_area": by_area,
+                "total": {"points": tot["points"], "answered": tot["answered"], "correct": tot["correct"]}}
+
+    def quiz_points_by_area(self, owner_id: int) -> dict:
+        """{(area_type, area_key): points} — für die Gebiets-Kacheln der Auswahl."""
+        return {(r["area_type"], r["area_key"]): r["points"] or 0 for r in self._conn.execute(
+            "SELECT area_type, area_key, SUM(points) points FROM quiz_answers "
+            "WHERE owner_id = ? GROUP BY area_type, area_key", (owner_id,)).fetchall()}
+
+    def rate_quiz_question(self, owner_id: int, question_id: int, verdict: str,
+                           comment: str | None = None) -> None:
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT INTO quiz_ratings (owner_id, question_id, verdict, comment, created_at) "
+                "VALUES (?,?,?,?,?) ON CONFLICT(owner_id, question_id) DO UPDATE SET "
+                "verdict=excluded.verdict, comment=excluded.comment, created_at=excluded.created_at",
+                (owner_id, question_id, verdict, comment, now),
+            )
+
+    def quiz_flagged_questions(self, min_bad: int = 1) -> list[dict]:
+        """Fragen mit mindestens ``min_bad`` Schlecht-Bewertungen, schlechteste
+        zuerst — für die Admin-Sichtung. Cross-DB: liefert nur die Ids + Zähler,
+        die Fragentexte holt der Router aus council.sqlite."""
+        rows = self._conn.execute(
+            "SELECT question_id, "
+            "  SUM(verdict='schlecht') bad, SUM(verdict='gut') good "
+            "FROM quiz_ratings GROUP BY question_id "
+            "HAVING bad >= ? ORDER BY bad DESC, good ASC", (min_bad,)).fetchall()
+        return [{"question_id": r["question_id"], "bad": r["bad"], "good": r["good"]} for r in rows]
 
     # ---- native-app push device tokens ----
 

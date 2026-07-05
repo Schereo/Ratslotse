@@ -1331,6 +1331,15 @@ class CouncilStore:
             "gebiete": one("SELECT COUNT(DISTINCT area_type||area_key) FROM council_quiz_questions WHERE status='active'"),
         }
 
+    def quiz_themes(self) -> list[dict]:
+        """Themen-Gebiete mit aktiven Fragen: {area_key(slug), label(name)}.
+        Der Anzeigename kommt aus council_entities (Fallback: slug)."""
+        rows = self._conn.execute(
+            "SELECT DISTINCT q.area_key, e.name FROM council_quiz_questions q "
+            "LEFT JOIN council_entities e ON e.slug = q.area_key "
+            "WHERE q.area_type = 'thema' AND q.status = 'active'").fetchall()
+        return [{"area_key": r["area_key"], "label": r["name"] or r["area_key"]} for r in rows]
+
     def antrag_stats(self) -> dict:
         """Erfolgsquoten der Fraktions-Anträge: Antrag-Anlage → Vorlage → deren
         Beschlüsse. Gezählt wird je Antragsteller-Partei der KLARE Endstand der
