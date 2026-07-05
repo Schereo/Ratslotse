@@ -5,11 +5,11 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { Prompt, WebUser, AdminStats } from "@/lib/types";
+import { Prompt, WebUser, AdminStats, QuizFlagged } from "@/lib/types";
 import { Badge, Button, Card, ConfirmDialog, PageHeader, Spinner, Textarea, formatDate, toast } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
-type Tab = "stats" | "llm" | "prompts" | "users";
+type Tab = "stats" | "llm" | "prompts" | "users" | "quiz";
 
 export default function AdminPage() {
   const { user, loading } = useAuth();
@@ -31,6 +31,7 @@ export default function AdminPage() {
           ["llm", "LLM-Kosten"],
           ["prompts", "Prompts"],
           ["users", "Web-Nutzer:innen"],
+          ["quiz", "Quiz"],
         ] as [Tab, string][]).map(([t, label]) => (
           <button
             key={t}
@@ -48,6 +49,7 @@ export default function AdminPage() {
         {tab === "llm" && <LlmUsageTab />}
         {tab === "prompts" && <PromptsTab />}
         {tab === "users" && <UsersTab currentUserId={user.id} />}
+        {tab === "quiz" && <QuizModerationTab />}
       </div>
     </div>
   );
@@ -315,6 +317,67 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
         </div>
       ))}
     </Card>
+  );
+}
+
+/** Schlecht bewertete Quizfragen (👎) sichten und ausmustern. Ausgemusterte
+ *  Fragen fliegen aus künftigen Runden; der nächste Generierungslauf füllt das
+ *  Gebiet wieder auf. Datenquelle: GET /admin/quiz/flagged. */
+function QuizModerationTab() {
+  const qc = useQueryClient();
+  const { data, isPending, isError } = useQuery({
+    queryKey: ["admin", "quiz", "flagged"],
+    queryFn: () => api.get<{ flagged: QuizFlagged[] }>("/admin/quiz/flagged"),
+  });
+
+  const retire = useMutation({
+    mutationFn: (id: number) => api.post(`/admin/quiz/${id}/retire`),
+    onSuccess: () => {
+      toast.success("Frage ausgemustert. Der nächste Generierungslauf erzeugt Ersatz.");
+      qc.invalidateQueries({ queryKey: ["admin", "quiz", "flagged"] });
+    },
+    onError: () => toast.error("Frage konnte nicht ausgemustert werden."),
+  });
+
+  if (isPending) return <Spinner />;
+  if (isError) return <p className="text-sm text-destructive">Fehler beim Laden der Bewertungen.</p>;
+  const flagged = data?.flagged ?? [];
+  if (!flagged.length)
+    return (
+      <Card className="p-8 text-center text-sm text-muted-foreground">
+        Keine schlecht bewerteten Fragen. 🎉
+      </Card>
+    );
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-muted-foreground">
+        Von Nutzer:innen als „schlecht" markierte Fragen, meist-gemeldete zuerst.
+        Ausmustern nimmt die Frage aus künftigen Runden.
+      </p>
+      <Card className="divide-y divide-border">
+        {flagged.map((f) => (
+          <div key={f.question_id} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge color="slate">{f.area_type}: {f.area_key}</Badge>
+                <Badge color="red">👎 {f.bad}</Badge>
+                {f.good > 0 && <Badge color="green">👍 {f.good}</Badge>}
+              </div>
+              <p className="mt-1.5 text-sm font-medium text-foreground">{f.question}</p>
+              {f.options[f.correct_index] && (
+                <p className="mt-0.5 text-xs text-muted-foreground">Richtige Antwort: {f.options[f.correct_index]}</p>
+              )}
+            </div>
+            <Button variant="danger" size="sm" className="shrink-0"
+                    disabled={retire.isPending}
+                    onClick={() => retire.mutate(f.question_id)}>
+              Ausmustern
+            </Button>
+          </div>
+        ))}
+      </Card>
+    </div>
   );
 }
 

@@ -121,6 +121,26 @@ class OnboardingUpdate(BaseModel):
     celebrated: bool | None = None
 
 
+# ---- quiz ----
+class QuizAnswerIn(BaseModel):
+    question_id: int
+    selected_index: int | None = Field(default=None, ge=0, le=3)  # Multiple Choice
+    value: float | None = None                                    # Schätzfrage (Slider)
+    time_ms: int | None = Field(default=None, ge=0)
+
+
+class QuizRateIn(BaseModel):
+    question_id: int
+    verdict: str = Field(pattern="^(gut|schlecht)$")
+    comment: str | None = Field(default=None, max_length=500)
+
+
+class QuizDailyIn(BaseModel):
+    correct: int = Field(ge=0, le=50)
+    total: int = Field(ge=1, le=50)
+    points: int = Field(ge=0, le=500)
+
+
 # ---- push notifications (native app) ----
 class PushRegisterRequest(BaseModel):
     token: str = Field(min_length=1, max_length=512)

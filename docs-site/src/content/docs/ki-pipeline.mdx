@@ -57,6 +57,7 @@ flowchart TD
 | **Watcher (Themen-Matching)** | Tagesordnungen | mehrmals täglich |
 | **Protokoll-Extraktion + Beschluss-Klassifikation** | Sitzungsprotokolle | täglich |
 | **Anreicherung** (Entitäten, Embeddings, Rückblicke) | Beschlüsse | wöchentlich |
+| **Quiz-Fragen** (Generierung + Verify-Pass) | Wikipedia · Stadt-Website · Ratsdaten | Backfill (manuell + wöchentlich) |
 
 ## Ausschuss-Zusammenfassungen
 
@@ -93,6 +94,29 @@ Zieht die schwereren LLM-/Embedding-Backfills nach, damit Themen-Seiten, Karte
 und „Ähnliche Beschlüsse" frisch bleiben: Entitäten-Extraktion → Beschreibungen
 → Geocoding → Embeddings/Ähnliche → Themen↔Beschlüsse-Matching →
 Themenfeld-Rückblicke.
+
+## Quiz-Fragen
+
+Das **Oldenburg-Quiz** erzeugt seine Multiple-Choice-Fragen per LLM, aber
+**streng geerdet**. Pro Gebiet (Stadtteil, Wahlbereich oder stadtweites Thema)
+sammelt der Code zuerst Quelltexte — **Wikipedia** (Stadtteil-Artikel), die
+**Stadt-Website** oldenburg.de und die **eigenen Ratsdaten** — und legt sie dem
+LLM vor. Das Modell formuliert daraus Fragen mit vier Antwortoptionen,
+Erklärung, Kategorie und **Quellenangabe**; es erfindet nichts frei.
+
+Ein zweiter, günstiger **Verify-Pass** (kleines Modell) verwirft Fragen, die
+nicht eindeutig aus der Quelle belegbar sind. Antwortoptionen werden gemischt
+(die richtige Antwort liegt sonst gern auf Position A), Dubletten fängt ein
+`content_hash`. Zusätzlich bewerten **Nutzer:innen** jede Frage nach dem
+Beantworten (👍/👎) — schlecht bewertete erscheinen in einer Admin-Liste und
+werden ausgemustert; da der Backfill nur Gebiete **unter** der Ziel-Fragenzahl
+auffüllt, erzeugt der nächste Lauf automatisch Ersatz.
+
+Die Fragen liegen in `council.sqlite` (generierter, regenerierbarer Inhalt),
+Punkte und Bewertungen in `nwz.sqlite` (pro Konto). Der Backfill
+(`scripts/generate_quiz.py`) läuft als Auffüll-Schritt der wöchentlichen
+Anreicherung und lässt sich für den Erstlauf manuell über einen Ops-Workflow
+anstoßen.
 
 ## LLM-Integration
 

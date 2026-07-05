@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Home, Landmark, Tags, Search, Settings, LogOut, Menu, Monitor, Moon, Sun, UserCircle,
-  Gavel, CalendarDays, Tag, BarChart3,
+  Gavel, CalendarDays, Tag, BarChart3, Trophy,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, Button } from "@/components/ui";
@@ -21,6 +21,7 @@ type Item = { href: string; label: string; icon: typeof Home; tour?: string };
 
 const OVERVIEW: Item = { href: "/dashboard", label: "Übersicht", icon: Home };
 const PERSONAL: Item = { href: "/topics", label: "Meine Themen", icon: Tags, tour: "nav-themen" };
+const QUIZ: Item = { href: "/quiz", label: "Quiz", icon: Trophy };
 
 // Ratsinfo sub-pages (the council page's tabs), surfaced directly in the nav.
 const COUNCIL_ITEMS: (Item & { tab: string })[] = [
@@ -107,6 +108,7 @@ function NavLinksInner({ activeTab, onNavigate }: { activeTab: string; onNavigat
 
       <div className="pt-3" />
       <NavItem item={PERSONAL} active={isActive("/topics")} onNavigate={onNavigate} />
+      <NavItem item={QUIZ} active={isActive("/quiz")} onNavigate={onNavigate} />
       {user?.role === "admin" && (
         <NavItem item={{ href: "/admin", label: "Admin", icon: Settings }} active={isActive("/admin")} onNavigate={onNavigate} />
       )}
