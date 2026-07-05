@@ -374,7 +374,7 @@ class CouncilStore:
             "answer_value REAL, answer_unit TEXT, "              # estimate: richtige Zahl + Einheit
             "range_min REAL, range_max REAL, "                   # estimate: Slider-Grenzen
             "detail TEXT, "                                       # „Mehr dazu": ausführliche Erklärung
-            "lat REAL, lon REAL, place_label TEXT, "            # Locator-Karte in der Auflösung
+            "lat REAL, lon REAL, place_label TEXT, geojson TEXT, "  # Locator-Karte (Punkt oder Straßen-Linie)
             "image_url TEXT, image_author TEXT, image_license TEXT, "  # Foto (Wikimedia Commons)
             "image_license_url TEXT, image_source_url TEXT, "    # Bildnachweis
             "generated_at TEXT NOT NULL)"
@@ -400,6 +400,7 @@ class CouncilStore:
         Bildnachweis) in bestehende Quiz-Tabellen nachrüsten (idempotent)."""
         cols = {r[1] for r in self._conn.execute("PRAGMA table_info(council_quiz_questions)").fetchall()}
         adds = [("detail", "TEXT"), ("lat", "REAL"), ("lon", "REAL"), ("place_label", "TEXT"),
+                ("geojson", "TEXT"),
                 ("image_url", "TEXT"), ("image_author", "TEXT"), ("image_license", "TEXT"),
                 ("image_license_url", "TEXT"), ("image_source_url", "TEXT")]
         with self._conn:
@@ -1271,9 +1272,9 @@ class CouncilStore:
                     "(area_type, area_key, category, difficulty, question, options, "
                     " correct_index, explanation, source_type, source_ref, content_hash, "
                     " status, qtype, answer_value, answer_unit, range_min, range_max, "
-                    " detail, lat, lon, place_label, image_url, image_author, image_license, "
+                    " detail, lat, lon, place_label, geojson, image_url, image_author, image_license, "
                     " image_license_url, image_source_url, generated_at) "
-                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     (r["area_type"], r["area_key"], r["category"], r.get("difficulty", "mittel"),
                      r["question"], json.dumps(r.get("options", []), ensure_ascii=False),
                      int(r.get("correct_index", 0)), r.get("explanation"),
@@ -1281,7 +1282,7 @@ class CouncilStore:
                      r.get("status", "active"), r.get("qtype", "mc"),
                      r.get("answer_value"), r.get("answer_unit"),
                      r.get("range_min"), r.get("range_max"),
-                     r.get("detail"), r.get("lat"), r.get("lon"), r.get("place_label"),
+                     r.get("detail"), r.get("lat"), r.get("lon"), r.get("place_label"), r.get("geojson"),
                      r.get("image_url"), r.get("image_author"), r.get("image_license"),
                      r.get("image_license_url"), r.get("image_source_url"), now),
                 )
@@ -1317,7 +1318,14 @@ class CouncilStore:
             if "detail" in keys:
                 out["detail"] = r["detail"]
                 if r["lat"] is not None and r["lon"] is not None:
-                    out["map"] = {"lat": r["lat"], "lon": r["lon"], "label": r["place_label"]}
+                    m = {"lat": r["lat"], "lon": r["lon"], "label": r["place_label"]}
+                    gj = r["geojson"] if "geojson" in keys else None
+                    if gj:
+                        try:
+                            m["geojson"] = json.loads(gj)
+                        except (json.JSONDecodeError, TypeError):
+                            pass
+                    out["map"] = m
                 if r["image_url"]:
                     out["image"] = {"url": r["image_url"], "author": r["image_author"],
                                     "license": r["image_license"], "license_url": r["image_license_url"],

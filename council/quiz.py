@@ -164,6 +164,7 @@ def council_facts(store, *, stadtteil: str | None = None, slug: str | None = Non
 # --- Anreicherung: Locator-Karte + Wikimedia-Commons-Bild --------------------
 
 _NOMINATIM = "https://nominatim.openstreetmap.org/search"
+_OVERPASS = "https://overpass-api.de/api/interpreter"
 _WIKI_SUMMARY = "https://de.wikipedia.org/api/rest_v1/page/summary/"
 _COMMONS_API = "https://commons.wikimedia.org/w/api.php"
 # Oldenburg grob (verwirft Nominatim-Treffer außerhalb der Stadt): lon/lat.
@@ -198,6 +199,37 @@ def geocode_place(place: str) -> tuple[float, float] | None:
     except (requests.RequestException, ValueError, KeyError, IndexError):
         pass
     return None
+
+
+def street_line(name: str, max_km: float = 2.0) -> list | None:
+    """Geometrie einer benannten Straße in Oldenburg als Liste von Linienzügen
+    (GeoJSON-Reihenfolge [[[lon,lat], …], …]) — aber NUR, wenn die Straße
+    **kompakt** ist (Gesamt-Ausdehnung < max_km). Mehrfach vergebene bzw. weit
+    verstreute Namen (z. B. mehrere „Mittelwege") werden so verworfen, damit nie
+    eine falsche Stelle markiert wird. Best-effort über Overpass."""
+    name = (name or "").strip()
+    if len(name) < 3 or '"' in name or "\\" in name:
+        return None
+    lo1, la1, lo2, la2 = _OL_BBOX
+    query = (f'[out:json][timeout:20];way["highway"]["name"="{name}"]'
+             f'({la1},{lo1},{la2},{lo2});out geom;')
+    try:
+        r = requests.get(_OVERPASS, headers=_UA, timeout=25, params={"data": query})
+        if r.status_code != 200:
+            return None
+        ways = [e for e in r.json().get("elements", [])
+                if e.get("type") == "way" and e.get("geometry")]
+        if not ways:
+            return None
+        pts = [(p["lat"], p["lon"]) for w in ways for p in w["geometry"]]
+        la = [p[0] for p in pts]
+        lo = [p[1] for p in pts]
+        extent = max((max(la) - min(la)) * 111, (max(lo) - min(lo)) * 67)
+        if extent > max_km:                       # verstreut/mehrdeutig → keine Karte
+            return None
+        return [[[p["lon"], p["lat"]] for p in w["geometry"]] for w in ways]
+    except (requests.RequestException, ValueError, KeyError):
+        return None
 
 
 def _license_ok(short: str | None) -> bool:
@@ -246,8 +278,16 @@ def commons_image(subject: str) -> dict | None:
 
 
 def enrich_row(row: dict, subject: str) -> None:
-    """Row mit Bild (Commons) und Koordinaten (Nominatim) zum Thema anreichern —
-    best-effort, verändert `row` in place. `subject` = zentrales reales Ding."""
+    """Row best-effort mit Bild und Karte anreichern (verändert `row` in place).
+    `subject` = zentrales reales Ding der Frage.
+
+    Die Kartenlogik ist bewusst zurückhaltend, damit NIE eine falsche Stelle
+    gezeigt wird:
+    - kompakte, eindeutige Straße → **Linie** (Overpass, Ausdehnungs-Guard);
+    - sonst nur ein **Punkt**, wenn es ein bekannter Einzelort ist (hat einen
+      Wikipedia-Artikel, also auch ein Foto). Reine Straßennamen ohne kompakte
+      Geometrie bekommen KEINEN Pin — mehrdeutige Namen (mehrere „Mittelwege")
+      würden sonst evtl. am falschen Ort landen."""
     subject = (subject or "").strip()
     if not subject:
         return
@@ -256,9 +296,17 @@ def enrich_row(row: dict, subject: str) -> None:
         row.update({"image_url": img["url"], "image_author": img["author"],
                     "image_license": img["license"], "image_license_url": img["license_url"],
                     "image_source_url": img["source_url"]})
-    coords = geocode_place(subject)
-    if coords:
-        row["lat"], row["lon"], row["place_label"] = coords[0], coords[1], subject
+    line = street_line(subject)
+    if line:
+        pts = [pt for seg in line for pt in seg]  # [lon, lat]
+        row["lat"] = sum(p[1] for p in pts) / len(pts)
+        row["lon"] = sum(p[0] for p in pts) / len(pts)
+        row["place_label"] = subject
+        row["geojson"] = json.dumps({"type": "MultiLineString", "coordinates": line}, ensure_ascii=False)
+    elif img:                                     # bekannter Einzelort → Punkt vertretbar
+        coords = geocode_place(subject)
+        if coords:
+            row["lat"], row["lon"], row["place_label"] = coords[0], coords[1], subject
 
 
 # --- Prompt + Generierung ----------------------------------------------------
