@@ -380,7 +380,7 @@ class CouncilStore:
             "qtype TEXT NOT NULL DEFAULT 'mc', "                  # mc | estimate (Schätzfrage-Slider)
             "answer_value REAL, answer_unit TEXT, "              # estimate: richtige Zahl + Einheit
             "range_min REAL, range_max REAL, "                   # estimate: Slider-Grenzen
-            "detail TEXT, hint TEXT, "                             # „Mehr dazu" + optionaler Tipp (vor dem Auflösen)
+            "detail TEXT, hint TEXT, topic TEXT, "                 # „Mehr dazu" + Tipp + Such-Stichwort für Beschlüsse
             "lat REAL, lon REAL, place_label TEXT, geojson TEXT, "  # Locator-Karte (Punkt, Linie oder Gebiets-Polygon)
             "image_url TEXT, image_author TEXT, image_license TEXT, "  # Foto (Wikimedia Commons)
             "image_license_url TEXT, image_source_url TEXT, "    # Bildnachweis
@@ -417,12 +417,14 @@ class CouncilStore:
                     self._conn.execute(f"ALTER TABLE council_quiz_questions ADD COLUMN {name} {decl}")
 
     def _migrate_quiz_hint(self) -> None:
-        """„Tipp": optionaler Hinweis, der vor dem Auflösen angezeigt werden kann
-        (idempotent in bestehende Quiz-Tabellen nachgerüstet)."""
+        """„Tipp" (vor dem Auflösen) + „topic" (Such-Stichwort für „Beschlüsse
+        dazu") — idempotent in bestehende Quiz-Tabellen nachgerüstet."""
         cols = {r[1] for r in self._conn.execute("PRAGMA table_info(council_quiz_questions)").fetchall()}
-        if "hint" not in cols:
-            with self._conn:
+        with self._conn:
+            if "hint" not in cols:
                 self._conn.execute("ALTER TABLE council_quiz_questions ADD COLUMN hint TEXT")
+            if "topic" not in cols:
+                self._conn.execute("ALTER TABLE council_quiz_questions ADD COLUMN topic TEXT")
 
     def _migrate_owner_id(self) -> None:
         """Re-key the per-recipient dedup tables from Telegram chat_id to the
@@ -1316,9 +1318,9 @@ class CouncilStore:
                     "(area_type, area_key, category, difficulty, question, options, "
                     " correct_index, explanation, source_type, source_ref, content_hash, "
                     " status, qtype, answer_value, answer_unit, range_min, range_max, "
-                    " detail, hint, lat, lon, place_label, geojson, image_url, image_author, image_license, "
+                    " detail, hint, topic, lat, lon, place_label, geojson, image_url, image_author, image_license, "
                     " image_license_url, image_source_url, generated_at) "
-                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     (r["area_type"], r["area_key"], r["category"], r.get("difficulty", "mittel"),
                      r["question"], json.dumps(r.get("options", []), ensure_ascii=False),
                      int(r.get("correct_index", 0)), r.get("explanation"),
@@ -1326,7 +1328,7 @@ class CouncilStore:
                      r.get("status", "active"), r.get("qtype", "mc"),
                      r.get("answer_value"), r.get("answer_unit"),
                      r.get("range_min"), r.get("range_max"),
-                     r.get("detail"), r.get("hint"), r.get("lat"), r.get("lon"), r.get("place_label"), r.get("geojson"),
+                     r.get("detail"), r.get("hint"), r.get("topic"), r.get("lat"), r.get("lon"), r.get("place_label"), r.get("geojson"),
                      r.get("image_url"), r.get("image_author"), r.get("image_license"),
                      r.get("image_license_url"), r.get("image_source_url"), now),
                 )
@@ -1358,6 +1360,9 @@ class CouncilStore:
         if with_answer:
             out["correct_index"] = r["correct_index"]
             out["explanation"] = r["explanation"]
+            # Such-Stichwort für „Beschlüsse dazu" (verwandte Ratsbeschlüsse).
+            if "topic" in keys and r["topic"]:
+                out["topic"] = r["topic"]
             if qtype == "estimate":
                 out["answer_value"] = r["answer_value"]
             # „Mehr dazu" — Detailtext, Locator-Karte und Bild gehören zur

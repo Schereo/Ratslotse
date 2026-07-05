@@ -15,6 +15,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Schritt für Schritt durchklicken). Die Statistik steht als **Kurzform oben**,
   die ausführliche Auswertung (Fortschritt je Gebiet, Serie, Abzeichen) auf einer
   **eigenen Seite** (`/quiz/stats`). (#205)
+- **Relevantere & eindeutigere Quizfragen:** Die Fragen-Erzeugung meidet jetzt
+  belangloses Verfahrens-Trivia (Workshop-Teilnehmerzahlen, Anzahl eingereichter
+  Ideen, exakte Sitzungsdaten) und benennt das gemeinte Ding **konkret** (den
+  Stadtteil/das Projekt ausschreiben statt „der neue Stadtteil"). Schätzfragen
+  nur noch für sinnvolle Größen (Einwohner, Fläche, Bausummen …). Wirkt auf neu
+  erzeugte Fragen. (#208)
 - **Fairere, lehrreichere Quizfragen:** Die Fragen-Erzeugung zielt jetzt auf
   einen „Aha-Moment" beim Auflösen — mehrheitlich leichte bis mittlere Fragen
   (keine obskuren Randfiguren oder beliebigen Jahreszahlen), und die Erklärung
@@ -91,6 +97,10 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   **ganze Gebiet** als Fläche ein — zusätzlich zu den bisherigen Punkt- und
   Straßen-Markierungen (die Stadtteil-Grenzen kennen wir selbst, also immer
   verlässlich). (#203)
+- **„Beschlüsse dazu" bei Quizfragen:** Geht es um ein Ratsthema (z. B. ein
+  Bauprojekt), führt die Auflösung mit einem Klick zu den passenden **echten
+  Ratsbeschlüssen** in der Beschluss-Suche — so kann man tiefer einsteigen,
+  statt bei der Quizfrage stehenzubleiben. (#208)
 - **Zoombare Antwort-Karten:** Die kleinen Karten in der Quiz-Auflösung lassen
   sich jetzt zoomen und verschieben (Zoom-Buttons, Doppelklick, Pinch); nur das
   Mausrad-Zoom bleibt aus, damit die Seite normal weiterscrollt. (#207)

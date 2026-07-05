@@ -373,6 +373,8 @@ export interface QuizAnswerResult {
   source_type: string | null;
   source_ref: string | null;
   detail?: string | null;
+  /** Such-Stichwort für „Beschlüsse dazu" (verlinkt in die Beschluss-Suche). */
+  topic?: string | null;
   map?: { lat: number; lon: number; label: string | null; geojson?: object | null } | null;
   image?: QuizImageCredit | null;
 }
