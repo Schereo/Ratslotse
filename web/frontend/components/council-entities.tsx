@@ -10,7 +10,7 @@ import { useFetch } from "@/lib/use-fetch";
 import { cn } from "@/lib/utils";
 import { themaHref } from "@/lib/routes";
 import { KIND_COLOR } from "@/components/council-map";
-import { loadStadtteile, stadtteilFor, type StadtteilFeature } from "@/lib/stadtteile";
+import { loadStadtteile, stadtteilFor, stadtteileImWahlbereich, type StadtteilFeature } from "@/lib/stadtteile";
 
 // Leaflet needs `window`, so the map is client-only (ssr:false).
 const CouncilMap = dynamic(() => import("@/components/council-map").then((m) => m.CouncilMap), {
@@ -134,7 +134,37 @@ function StadtteilFilter({ names, counts, selected, onChange }: {
               </button>
             )}
           </div>
-          <div className="mt-2 grid max-h-72 grid-cols-2 gap-x-3 gap-y-0.5 overflow-y-auto overscroll-contain pr-1">
+          {/* Schnellauswahl: die 6 Kommunalwahl-Wahlbereiche togglen ihre
+              Stadtteile als Gruppe (aktiv = alle Stadtteile des Bereichs an). */}
+          <div className="mt-2">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">Wahlbereiche</p>
+            <div className="mt-1 flex flex-wrap gap-1">
+              {[1, 2, 3, 4, 5, 6].map((wb) => {
+                const gruppe = stadtteileImWahlbereich(wb);
+                const active = gruppe.every((n) => selected.has(n));
+                return (
+                  <button
+                    key={wb}
+                    type="button"
+                    title={gruppe.join(", ")}
+                    onClick={() => {
+                      const next = new Set(selected);
+                      if (active) gruppe.forEach((n) => next.delete(n));
+                      else gruppe.forEach((n) => next.add(n));
+                      onChange(next);
+                    }}
+                    className={cn(
+                      "rounded-md border px-2 py-1 text-[11px] font-medium tabular-nums transition-colors",
+                      active ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    WB {wb}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="mt-2 grid max-h-64 grid-cols-2 gap-x-3 gap-y-0.5 overflow-y-auto overscroll-contain pr-1">
             {names.map((name) => (
               <label key={name} className="flex cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 text-xs text-foreground hover:bg-muted">
                 <input
@@ -149,7 +179,7 @@ function StadtteilFilter({ names, counts, selected, onChange }: {
             ))}
           </div>
           <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-            Grenzen: © OpenStreetMap-Mitwirkende
+            Grenzen: © OpenStreetMap-Mitwirkende · Wahlbereiche: Stadt Oldenburg (openGEOdata)
           </p>
         </div>
       )}

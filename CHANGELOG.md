@@ -8,6 +8,14 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Wahlbereiche auf der Themen-Karte:** Der Stadtteil-Filter kennt jetzt die
+  6 Kommunalwahl-Wahlbereiche der Stadt Oldenburg — ein Klick wählt alle
+  Stadtteile eines Wahlbereichs (Zuordnung geometrisch aus den offiziellen
+  Wahlbereich-Polygonen, openGEOdata Stadt Oldenburg). (#194)
+- **Kontrastreichere Stadtkarte:** Hell nutzt jetzt CARTO Voyager (Straßen,
+  Grünflächen und Wasser klar erkennbar statt fast konturlos), Dunkel bekommt
+  einen dezenten Helligkeits-/Sättigungs-Boost — Orientierung ohne Bruch im
+  Design. (#194)
 - **Themen-Karte rundum verbessert:** Nahe herangezoomt (oder gefiltert)
   stehen die Themen-Namen direkt an den Punkten — kein Antippen mehr nötig,
   um zu sehen, worum es geht. Die Karte merkt sich ihren Ausschnitt (Zurück
