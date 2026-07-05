@@ -10,9 +10,12 @@ import type { StadtteilFeature } from "@/lib/stadtteile";
 import { themaHref } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
-// Minimalist CARTO basemaps, swapped live with the site theme (same as EntityMap).
+// CARTO-Basemaps, live mit dem Site-Theme getauscht. Hell: Voyager statt
+// light_all — light_all ist fast konturlos; Voyager zeigt Straßennetz,
+// Grünflächen und Wasser deutlich, bleibt aber ruhig genug fürs Design.
+// Dunkel: dark_all + dezenter CSS-Boost (globals.css, .leaflet-tile).
 const TILES = {
-  light: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+  light: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
   dark: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
 };
 
@@ -207,7 +210,9 @@ export function CouncilMap({ points, outlines, className }: {
       className={cn(
         full
           ? "fixed inset-0 z-[100] bg-background"
-          : cn("relative overflow-hidden border border-border", className),
+          // isolate: der Vollbild-Button (z-[1000]) und die Leaflet-Panes
+          // dürfen inline nicht über Topbar/Bottom-Nav (z-40) stechen.
+          : cn("relative isolate overflow-hidden border border-border", className),
       )}
     >
       <div ref={ref} className="h-full w-full" aria-label="Stadtweite Themen-Karte" />
