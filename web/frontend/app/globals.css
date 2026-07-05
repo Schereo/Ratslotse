@@ -326,6 +326,16 @@
 .themen-map-label::before {
   display: none;
 }
+/* Labels sind klickbar (interactive-Tooltip → navigiert wie der Punkt) und
+   heben sich beim Hovern über die Nachbarn — Überlappungs-Reste lesbar machen. */
+.themen-map-label.leaflet-interactive {
+  cursor: pointer;
+  pointer-events: auto;
+}
+.themen-map-label:hover {
+  z-index: 100 !important;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.25);
+}
 
 /* Dunkle Karten-Tiles (CARTO dark_all) sind sehr flach — etwas Helligkeit und
    Sättigung zurückgeben, damit Straßen und Grünzüge zur Orientierung taugen. */

@@ -106,12 +106,18 @@ export function CouncilMap({ points, outlines, className }: {
         ).addTo(map);
       }
 
+      type Dir = "top" | "bottom" | "right" | "left";
       const latlngs: [number, number][] = [];
-      const markers: { marker: ReturnType<typeof L.circleMarker>; label: string; hover: string }[] = [];
+      const markers: {
+        marker: ReturnType<typeof L.circleMarker>;
+        label: string; hover: string; n: number; radius: number;
+        dir: Dir | null | undefined; // undefined = noch nie gebunden
+      }[] = [];
       for (const p of points) {
         const color = KIND_COLOR[p.kind] ?? KIND_COLOR.projekt;
+        const radius = Math.min(12, 4 + Math.sqrt(p.n));
         const marker = L.circleMarker([p.lat, p.lon], {
-          radius: Math.min(12, 4 + Math.sqrt(p.n)),
+          radius,
           color,
           weight: 1.5,
           fillColor: color,
@@ -120,23 +126,64 @@ export function CouncilMap({ points, outlines, className }: {
         const hover = `${p.name} · ${p.n} ${p.n === 1 ? "Beschluss" : "Beschlüsse"}`;
         marker.on("click", () => router.push(themaHref(p.slug)));
         latlngs.push([p.lat, p.lon]);
-        markers.push({ marker, label: p.name, hover });
+        markers.push({ marker, label: p.name, hover, n: p.n, radius, dir: undefined });
       }
 
-      // Nah dran: Namen permanent an den Punkten; weiter draußen: Hover-Tooltip.
-      let labelled: boolean | null = null;
-      const applyLabels = () => {
-        const want = map.getZoom() >= LABEL_ZOOM || markers.length <= LABEL_MAX_POINTS;
-        if (want === labelled) return;
-        labelled = want;
-        for (const { marker, label, hover } of markers) {
-          marker.unbindTooltip();
-          marker.bindTooltip(want ? label : hover, want
-            ? { permanent: true, direction: "top", offset: [0, -6], className: "themen-map-label" }
-            : {});
+      // Label-Layout mit Kollisionsvermeidung, zweiphasig: erst alle sichtbaren
+      // Labels binden, dann die ECHTEN DOM-Rechtecke messen und — nach Gewicht
+      // (Beschlusszahl) priorisiert — kollidierende wieder ausblenden. Messen
+      // statt Nachrechnen: Leaflets Tooltip-Positionierung (Anker + CSS-Margins)
+      // exakt zu simulieren driftet, gemessen ist garantiert überlappungsfrei.
+      // Verdeckte Punkte behalten den Hover-Tooltip; Heranzoomen schafft Platz
+      // und zeigt mehr Namen. Läuft synchron in einem Frame — kein Flackern.
+      const GAP = 3;
+      type Rect = { x1: number; y1: number; x2: number; y2: number };
+      const overlaps = (a: Rect, b: Rect) =>
+        a.x1 < b.x2 + GAP && b.x1 < a.x2 + GAP && a.y1 < b.y2 + GAP && b.y1 < a.y2 + GAP;
+      const sorted = [...markers].sort((a, b) => b.n - a.n);
+      const showLabel = (m: (typeof markers)[number]) => {
+        m.marker.unbindTooltip();
+        // interactive: Label hebt sich beim Hovern (CSS) und ist klickbar wie
+        // sein Punkt (Klick-Events laufen auf den gebundenen Marker).
+        m.marker.bindTooltip(m.label, {
+          permanent: true, direction: "top", offset: [0, -(m.radius + 4)],
+          className: "themen-map-label", interactive: true,
+        });
+        m.dir = "top";
+      };
+      const showHover = (m: (typeof markers)[number]) => {
+        m.marker.unbindTooltip();
+        m.marker.bindTooltip(m.hover, {});
+        m.dir = null;
+      };
+
+      const layoutLabels = () => {
+        const zoomedIn = map.getZoom() >= LABEL_ZOOM || markers.length <= LABEL_MAX_POINTS;
+        const size = map.getSize();
+        // Phase 1: Kandidaten (im erweiterten Viewport) permanent binden.
+        for (const m of sorted) {
+          let want = false;
+          if (zoomedIn) {
+            const pt = map.latLngToContainerPoint(m.marker.getLatLng());
+            want = pt.x > -120 && pt.x < size.x + 120 && pt.y > -40 && pt.y < size.y + 60;
+          }
+          if (want && m.dir !== "top") showLabel(m);
+          else if (!want && m.dir !== null) showHover(m);
+        }
+        if (!zoomedIn) return;
+        // Phase 2: reale Rechtecke einsammeln, Kollisionen nach Priorität lösen.
+        const placed: Rect[] = [];
+        for (const m of sorted) {
+          if (m.dir !== "top") continue;
+          const el = m.marker.getTooltip()?.getElement();
+          if (!el) continue;
+          const b = el.getBoundingClientRect();
+          const rect = { x1: b.left, y1: b.top, x2: b.right, y2: b.bottom };
+          if (placed.some((p) => overlaps(p, rect))) showHover(m);
+          else placed.push(rect);
         }
       };
-      map.on("zoomend", applyLabels);
+      map.on("zoomend moveend", layoutLabels);
 
       // Letzten Ausschnitt wiederherstellen (Zurück-Navigation, Filterwechsel) —
       // sonst zoomt die Karte bei jedem Mount wieder auf die Gesamtansicht raus.
@@ -161,7 +208,7 @@ export function CouncilMap({ points, outlines, className }: {
       } else {
         map.setView([53.1435, 8.2146], 12); // Oldenburg centre fallback
       }
-      applyLabels();
+      layoutLabels();
       map.on("moveend", () => {
         const c = map.getCenter();
         try {
