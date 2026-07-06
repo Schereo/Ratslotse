@@ -8,6 +8,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Behoben
+- **Personen zeigen ihre letzte Fraktion:** Ratsmitglieder, die die Fraktion
+  gewechselt haben (z. B. FDP → Volt oder Die Linke → BSW), wurden in der
+  Personen-Liste und auf der Personen-Seite unter ihrer **häufigsten** statt
+  ihrer **aktuellen** Fraktion geführt. Jetzt zählt die letzte aktive Fraktion
+  (aus der jüngsten Sitzungs-Anwesenheit bzw. dem Ende des
+  Fraktions-Verlaufs). (#212)
 - **Quiz-Feinschliff aus dem Spielen:** Karten-Pins, die nur „Oldenburg" als
   Ganzes markierten (z. B. bei Fragen zu Bewegungen), entfallen — auch bei schon
   vorhandenen Fragen. Der **Fortschrittsbalken** zeigt jetzt die aktuelle Frage
