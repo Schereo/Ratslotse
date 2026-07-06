@@ -53,6 +53,18 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   der Maus in den Vordergrund. (#195)
 
 ### Hinzugefügt
+- **Haushalts-Quiz mit Diagrammen:** Neues Quiz-Thema **„Stadt-Haushalt"** mit
+  zwölf Fragen direkt aus den **beschlossenen Haushaltsplänen** der Stadt
+  (2020–2026, offizielle PDFs als Quelle verlinkt): Gesamtausgaben, Defizit,
+  die großen Ausgabenblöcke, Erträge, Anteils- und Ranking-Fragen sowie
+  **Zeitreihen** („Um wie viel sind die Ausgaben seit 2020 gewachsen?"). Die
+  Auflösung zeigt je nach Frage ein animiertes **Balkendiagramm**, einen
+  **Donut** (Anteil an den Gesamtausgaben) oder eine **Trendlinie** über die
+  Haushaltsjahre — und erklärt die Zusammensetzung inklusive gesetzlich
+  gebundener **Pflichtaufgaben** vs. frei gestaltbarer **freiwilliger
+  Leistungen**. Dazu acht neue Glossar-Begriffe (Ergebnishaushalt,
+  Teilhaushalt, Gewerbesteuer, Schlüsselzuweisung …). Komplett ohne KI
+  erzeugt — jede Zahl 1:1 aus dem Plan. (#211)
 - **Lotti spielt mit:** Im Quiz reagiert die Lotsenmöwe jetzt auf jede Antwort —
   sie jubelt bei richtig, winkt bei „nah dran" und schaut ratlos bei daneben,
   immer mit einem kurzen aufmunternden Spruch. Auch auf dem Ergebnis-Bildschirm
