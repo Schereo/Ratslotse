@@ -42,6 +42,20 @@ WAHLBEREICH: dict[str, list[int]] = {
 WAHLBEREICHE = sorted({w for ws in WAHLBEREICH.values() for w in ws})
 
 
+# Bezeichnungen, die die GANZE Stadt meinen — ein Punkt-Marker dafür (mitten in
+# die Innenstadt gepinnt) trägt keine Information und wirkt wie ein Fehler.
+_CITY_NAMES = frozenset({
+    "oldenburg", "oldenburg (oldb)", "oldenburg (oldenburg)",
+    "stadt oldenburg", "oldenburg (oldbg)",
+})
+
+
+def is_city_generic(name: str | None) -> bool:
+    """True, wenn `name` nur „Oldenburg" als Ganzes bezeichnet (kein konkreter
+    Ort) — solche Karten-Pins werden unterdrückt."""
+    return (name or "").strip().lower() in _CITY_NAMES
+
+
 def stadtteile() -> list[str]:
     """Alle Stadtteilnamen (alphabetisch)."""
     return sorted(WAHLBEREICH)

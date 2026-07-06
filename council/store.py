@@ -1370,6 +1370,7 @@ class CouncilStore:
             if "detail" in keys:
                 out["detail"] = r["detail"]
                 if r["lat"] is not None and r["lon"] is not None:
+                    from council import geo  # lokal: store bleibt ohne Geo-Pflicht importierbar
                     m = {"lat": r["lat"], "lon": r["lon"], "label": r["place_label"]}
                     gj = r["geojson"] if "geojson" in keys else None
                     if gj:
@@ -1377,7 +1378,10 @@ class CouncilStore:
                             m["geojson"] = json.loads(gj)
                         except (json.JSONDecodeError, TypeError):
                             pass
-                    out["map"] = m
+                    # Punkt-Pin, der nur „Oldenburg" als Ganzes markiert, trägt
+                    # nichts — unterdrücken (heilt auch schon gespeicherte Fragen).
+                    if "geojson" in m or not geo.is_city_generic(m["label"]):
+                        out["map"] = m
                 if r["image_url"]:
                     out["image"] = {"url": r["image_url"], "author": r["image_author"],
                                     "license": r["image_license"], "license_url": r["image_license_url"],
