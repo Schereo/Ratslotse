@@ -84,7 +84,7 @@ def test_build_questions_grounded_and_asymmetric():
     assert top["options"][top["correct_index"]] == "Soziales und Gesundheit"
     assert len(top["options"]) == 4 and len(set(top["options"])) == 4
     # Ertrags-MC → Finanzmanagement und Recht.
-    ertrag = next(q for q in mc if "Erträge" in q["question"])
+    ertrag = next(q for q in mc if "Einnahmen" in q["question"])
     assert ertrag["options"][ertrag["correct_index"]] == "Finanzmanagement und Recht"
 
 

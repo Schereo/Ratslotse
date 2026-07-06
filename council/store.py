@@ -1551,22 +1551,27 @@ class CouncilStore:
             "SELECT DISTINCT year FROM council_haushalt ORDER BY year")]
 
     def refresh_quiz_payloads(self, rows: list[dict]) -> int:
-        """Deterministisch erzeugte Fragen (gleicher content_hash) auffrischen:
-        Chart, Erklärung, Detail und Schätzwerte aktualisieren — z. B. wenn neu
-        eingelesene Haushaltsjahre die Trendlinie verlängern. Neue Fragen legt
-        weiterhin save_quiz_questions an (INSERT OR IGNORE)."""
+        """Deterministisch erzeugte Fragen (gleicher content_hash — die Haushalts-
+        Fragen nutzen STABILE Schlüssel statt des Fragetexts) auffrischen: Frage,
+        Tipp, Optionen, Chart, Erklärung, Detail und Schätzwerte aktualisieren —
+        z. B. wenn neue Haushaltsjahre die Trendlinie verlängern oder Texte
+        nachgebessert werden. Neue Fragen legt weiterhin save_quiz_questions an
+        (INSERT OR IGNORE)."""
         n = 0
         with self._conn:
             for r in rows:
                 if not r.get("content_hash"):
                     continue
                 cur = self._conn.execute(
-                    "UPDATE council_quiz_questions SET chart = ?, explanation = ?, detail = ?, "
-                    "answer_value = ?, range_min = ?, range_max = ? "
+                    "UPDATE council_quiz_questions SET question = ?, hint = ?, "
+                    "options = ?, correct_index = ?, chart = ?, explanation = ?, "
+                    "detail = ?, answer_value = ?, range_min = ?, range_max = ? "
                     "WHERE content_hash = ? AND status = 'active'",
-                    (r.get("chart"), r.get("explanation"), r.get("detail"),
-                     r.get("answer_value"), r.get("range_min"), r.get("range_max"),
-                     r["content_hash"]))
+                    (r.get("question"), r.get("hint"),
+                     json.dumps(r.get("options") or [], ensure_ascii=False),
+                     r.get("correct_index"), r.get("chart"), r.get("explanation"),
+                     r.get("detail"), r.get("answer_value"), r.get("range_min"),
+                     r.get("range_max"), r["content_hash"]))
                 n += cur.rowcount
         return n
 
