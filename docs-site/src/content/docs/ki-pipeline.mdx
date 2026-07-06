@@ -123,15 +123,19 @@ geografisch, ganz **ohne LLM** — die Fragen entstehen deterministisch aus den
 Stadtteil-Polygonen, die Karte selbst ist die Antwortfläche.
 
 Auch die **Haushalts-Fragen** (Thema „Stadt-Haushalt") entstehen **ohne LLM**:
-`council/haushalt.py` parst die „Übersicht Ergebnishaushalt" aus dem
-**beschlossenen** Haushaltsplan-PDF der Stadt (oldenburg.de), validiert die
-Teilhaushalts-Zeilen gegen die Summenzeile und baut daraus Schätz- und
-Multiple-Choice-Fragen per Template — jede Zahl stammt 1:1 aus dem Plan, jede
-Frage verlinkt das PDF als Quelle. Die Auflösung liefert ein **Balkendiagramm**
-der Aufwendungen je Teilhaushalt mit (JSON in der Frage, gerendert im
-Frontend) und erklärt die Zusammensetzung (Pflichtaufgaben vs. freiwillige
-Leistungen — beides im Glossar). Eingelesen wird einmal je Haushaltsjahr
-(`scripts/ingest_haushalt.py`).
+`council/haushalt.py` parst die „Übersicht Ergebnishaushalt" aus den
+**beschlossenen** Haushaltsplan-PDFs der Stadt (oldenburg.de, aktuelles Jahr
+plus Archiv ab 2020; das 2024er-PDF hat eine defekte Text-Kodierung und wird
+übersprungen), validiert die Teilhaushalts-Zeilen gegen die Summenzeile und
+baut daraus Schätz- und Multiple-Choice-Fragen per Template — jede Zahl stammt
+1:1 aus dem Plan, jede Frage verlinkt das PDF als Quelle. Die Auflösung liefert
+je nach Frage ein **Balkendiagramm** (Aufwendungen/Erträge je Teilhaushalt),
+einen **Donut** (Anteil an den Gesamtausgaben) oder eine **Trendlinie** über
+die Haushaltsjahre mit (JSON in der Frage, gerendert im Frontend) und erklärt
+die Zusammensetzung (Pflichtaufgaben vs. freiwillige Leistungen — beides im
+Glossar). Eingelesen wird einmal je Haushaltsjahr
+(`scripts/ingest_haushalt.py`); ein Re-Ingest frischt bestehende Fragen auf
+(z. B. verlängert er die Trendlinie um neue Jahre).
 
 **Reichere Antworten:** Zu jeder Frage kann die Auflösung optional eine
 ausführlichere Erklärung, eine kleine Locator-Karte und ein Foto zeigen. Das LLM

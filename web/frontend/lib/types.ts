@@ -377,8 +377,9 @@ export interface QuizAnswerResult {
   topic?: string | null;
   map?: { lat: number; lon: number; label: string | null; geojson?: object | null } | null;
   image?: QuizImageCredit | null;
-  /** Balken-Diagramm der Auflösung (z. B. Haushalts-Aufwendungen je Bereich). */
+  /** Diagramm der Auflösung (Haushalts-Fragen): Balken, Donut oder Trendlinie. */
   chart?: {
+    type?: "bars" | "share" | "trend";
     title: string;
     unit: string;
     items: { label: string; value: number; highlight?: boolean }[];
