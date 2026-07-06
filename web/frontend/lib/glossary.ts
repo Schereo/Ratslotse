@@ -44,4 +44,14 @@ export const GLOSSARY: Record<string, string> = {
     "Eine direkte Abstimmung der Bürger:innen über eine kommunale Sachfrage, so bindend wie ein Ratsbeschluss.",
   "Konzession":
     "Eine behördliche Erlaubnis, ein bestimmtes Gewerbe oder Recht auszuüben (z. B. Strom- oder Gasnetz zu betreiben).",
+  // Krankenhaus-Versorgungsstufen (niedersächsische Krankenhausplanung) —
+  // tauchen in Fragen zum Klinikum auf.
+  "Maximalversorgung":
+    "Die höchste Krankenhaus-Stufe: deckt praktisch alle Fachrichtungen ab, inklusive hochspezialisierter Medizin — in der Region meist nur ein Haus (hier: das Klinikum Oldenburg).",
+  "Schwerpunktversorgung":
+    "Die zweithöchste Krankenhaus-Stufe: deutlich mehr Fachabteilungen als die Grundversorgung, aber nicht das komplette Spektrum eines Maximalversorgers.",
+  "Grundversorgung":
+    "Die Basis-Stufe eines Krankenhauses: Innere Medizin und Chirurgie für die wohnortnahe Standardversorgung.",
+  "Fachkrankenhaus":
+    "Ein Krankenhaus, das auf ein bestimmtes Gebiet spezialisiert ist (z. B. Psychiatrie oder Lungenheilkunde), statt die volle Breite anzubieten.",
 };

@@ -7,6 +7,16 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Behoben
+- **Quiz-Feinschliff aus dem Spielen:** Karten-Pins, die nur „Oldenburg" als
+  Ganzes markierten (z. B. bei Fragen zu Bewegungen), entfallen — auch bei schon
+  vorhandenen Fragen. Der **Fortschrittsbalken** zeigt jetzt die aktuelle Frage
+  (bei „3/5" ist er 60 % voll). **Schätzfragen** starten den Slider bewusst
+  außerhalb der Mitte (und die Spannen werden asymmetrisch erzeugt) — „gar nicht
+  bewegen" ist keine Gewinnstrategie mehr. Neu im Glossar: die
+  Krankenhaus-**Versorgungsstufen** (Maximal-/Schwerpunkt-/Grundversorgung,
+  Fachkrankenhaus). (#210)
+
 ### Geändert
 - **Quiz-Startseite aufgeräumt:** Statt einer einzigen überladenen Auswahlseite
   gibt es jetzt **„Weiterspielen"** (spielt die letzten Einstellungen weiter, mit

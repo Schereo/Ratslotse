@@ -62,7 +62,12 @@ export function QuizPlay({ questions, onExit, onComplete, title }: {
   const eMin = q.range_min ?? 0;
   const eMax = q.range_max ?? 100;
   const eStep = Math.max(1, Math.round((eMax - eMin) / 100));
-  const eCurrent = guess ?? Math.round((eMin + eMax) / 2);
+  // Start bewusst NICHT in der Mitte: Die Spannen liegen oft symmetrisch um die
+  // richtige Zahl — wer den Slider gar nicht bewegte, lag damit „zufällig"
+  // richtig. Deterministisch je Frage bei ~22 % bzw. ~78 % der Spanne.
+  const eStart = Math.min(eMax, Math.max(eMin,
+    Math.round((eMin + (eMax - eMin) * (q.id % 2 === 0 ? 0.22 : 0.78)) / eStep) * eStep));
+  const eCurrent = guess ?? eStart;
 
   async function choose(i: number) {
     if (chosen !== null) return;
@@ -138,11 +143,12 @@ export function QuizPlay({ questions, onExit, onComplete, title }: {
   return (
     <div className="mx-auto max-w-xl">
       {title && <p className="mb-2 text-sm font-semibold text-primary">{title}</p>}
-      {/* Fortschritt */}
+      {/* Fortschritt — der Balken zeigt die AKTUELLE Frage (wie das Label
+          „3/5"), nicht nur die schon abgeschlossenen. */}
       <div className="mb-4 flex items-center gap-3">
         <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
           <div className="h-full rounded-full bg-primary transition-[width] duration-300 ease-out-strong"
-               style={{ width: `${(idx / questions.length) * 100}%` }} />
+               style={{ width: `${((idx + 1) / questions.length) * 100}%` }} />
         </div>
         <span className="shrink-0 text-xs font-medium tabular-nums text-muted-foreground">
           {idx + 1}/{questions.length}
