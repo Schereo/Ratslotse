@@ -43,6 +43,11 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   der Maus in den Vordergrund. (#195)
 
 ### Hinzugefügt
+- **Lotti spielt mit:** Im Quiz reagiert die Lotsenmöwe jetzt auf jede Antwort —
+  sie jubelt bei richtig, winkt bei „nah dran" und schaut ratlos bei daneben,
+  immer mit einem kurzen aufmunternden Spruch. Auch auf dem Ergebnis-Bildschirm
+  (Fragen- und Karten-Quiz) feiert sie mit bzw. macht Mut für die nächste
+  Runde. (#209)
 - **Wichtige Beschlüsse erkennen:** Jeder Beschluss bekommt einen
   **Wichtigkeits-Score** (0–100) — geschätzt aus Geldbetrag, Umstrittenheit
   (Gegenstimmen / knappe Abstimmung), Verbindlichkeit & Gremien-Ebene (Satzung

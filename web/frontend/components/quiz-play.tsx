@@ -34,6 +34,48 @@ const DIFF_LABEL: Record<string, string> = { leicht: "leicht", mittel: "mittel",
 const nf = new Intl.NumberFormat("de-DE");
 const fmt = (n: number | null | undefined) => (n == null ? "?" : nf.format(Math.round(n)));
 
+// Lottis Reaktionen auf die Auflösung — kurz und aufmunternd, nie belehrend.
+// Deterministisch je Frage gewählt (q.id), damit der Spruch beim Re-Render
+// (Bewerten, „Mehr dazu") stabil bleibt.
+const LOTTI_RIGHT = [
+  "Volltreffer — du kennst dich aus!",
+  "Sauber, das saß!",
+  "Genau richtig. Weiter so!",
+  "Stark — nichts zu lotsen, du kennst den Kurs.",
+];
+const LOTTI_CLOSE = [
+  "Fast! Das war richtig knapp.",
+  "Nah dran — gutes Gespür!",
+];
+const LOTTI_WRONG = [
+  "Macht nichts — jetzt weißt du's!",
+  "Kein Ding, daraus lernt man.",
+  "Knifflige Frage! Beim nächsten Mal sitzt sie.",
+  "Halb so wild — die nächste holst du dir.",
+];
+const lottiSays = (pool: string[], seed: number) => pool[seed % pool.length];
+
+/** Lottis Reaktion auf eine Antwort: jubelt bei richtig, winkt bei „nah dran",
+ *  schaut ratlos bei daneben — plus ein kurzer aufmunternder Spruch. Dekorativ
+ *  fürs Screenreader (die Verdikt-Zeile sagt alles). Auch im Karten-Quiz. */
+export function LottiReaction({ outcome, seed, children }: {
+  outcome: "right" | "close" | "wrong";
+  seed: number;
+  children: React.ReactNode;
+}) {
+  const pose = outcome === "right" ? "celebrate" : outcome === "close" ? "wave" : "confused";
+  const pool = outcome === "right" ? LOTTI_RIGHT : outcome === "close" ? LOTTI_CLOSE : LOTTI_WRONG;
+  return (
+    <div className="flex items-center gap-2.5">
+      <Mascot decorative pose={pose} className="h-14 w-14 shrink-0" />
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-foreground">{children}</p>
+        <p className="text-xs text-muted-foreground">{lottiSays(pool, seed)}</p>
+      </div>
+    </div>
+  );
+}
+
 /** Spielt eine Runde Fragen durch: eine Frage nach der anderen, sofortiges
  *  Feedback (Lösung, Erklärung, Quelle, Bewertung), am Ende eine Zusammenfassung.
  *  `onComplete` meldet das Endergebnis (z. B. um die Tages-Challenge zu buchen);
@@ -117,18 +159,26 @@ export function QuizPlay({ questions, onExit, onComplete, title }: {
 
   if (done) {
     const quote = Math.round((correct / questions.length) * 100);
+    // Lotti feiert mit — bzw. muntert auf: Pose und Botschaft folgen der Quote,
+    // aber sie ist IMMER auf deiner Seite (nie enttäuscht).
+    const pose = quote >= 80 ? "celebrate" : quote >= 50 ? "wave" : "point";
+    const cheer =
+      quote >= 80 ? "Stark — du kennst dich richtig gut aus! Ich bin beeindruckt."
+      : quote >= 50 ? "Gut gemacht! Da geht noch mehr — ich zeig dir gern Neues."
+      : "Kopf hoch — jede Runde macht dich schlauer. Ich bleib an deiner Seite!";
     return (
       <Card className="relative mx-auto max-w-xl overflow-hidden p-8 text-center">
         {correct > 0 && <ConfettiBurst />}
-        <Mascot pose={quote >= 60 ? "celebrate" : "wave"} className="mx-auto h-20 w-20" />
+        <Mascot pose={pose} bob className="mx-auto h-24 w-24" />
         <h2 className="mt-3 text-2xl font-bold text-foreground">
           {correct} von {questions.length} richtig
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
           {points} {points === 1 ? "Punkt" : "Punkte"} · Trefferquote {quote} %
         </p>
-        <p className="mt-4 text-sm text-foreground">
-          {quote >= 80 ? "Stark — du kennst dich aus!" : quote >= 50 ? "Gut gemacht. Da geht noch mehr!" : "Weiter üben lohnt sich — du wirst besser."}
+        {/* Lottis Zuspruch — als Sprechblase unter ihr. */}
+        <p className="mx-auto mt-4 max-w-sm rounded-2xl rounded-tl-sm border border-border bg-muted/40 px-4 py-2.5 text-sm text-foreground">
+          {cheer}
         </p>
         <Button onClick={onExit} className="mt-6"><RotateCcw className="!size-4" /> Zur Auswahl</Button>
       </Card>
@@ -229,11 +279,12 @@ export function QuizPlay({ questions, onExit, onComplete, title }: {
 
         {result && (
           <div className="mt-4 rounded-lg border border-border bg-muted/40 p-3">
-            <p className="text-sm font-medium text-foreground">
+            <LottiReaction seed={q.id}
+              outcome={result.correct ? "right" : result.points > 0 ? "close" : "wrong"}>
               {result.correct
                 ? `Richtig! +${result.points}`
                 : result.points > 0 ? `Nah dran! +${result.points}` : "Leider daneben."}
-            </p>
+            </LottiReaction>
             {isEstimate && result.answer_value != null && (
               <p className="mt-1 text-sm text-foreground">
                 Richtige Antwort:{" "}
