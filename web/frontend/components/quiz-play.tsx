@@ -8,6 +8,7 @@ import { Card, Button, Input } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
 import { ConfettiBurst } from "@/components/confetti";
 import { GlossaryText } from "@/components/glossary-text";
+import { QuizChart } from "@/components/quiz-chart";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -311,6 +312,10 @@ export function QuizPlay({ questions, onExit, onComplete, title }: {
                 <Scale className="h-3.5 w-3.5" /> Beschlüsse dazu <ExternalLink className="h-3 w-3" />
               </a>
             )}
+
+            {/* Diagramm der Auflösung (Haushalts-Fragen): Balken, Donut oder
+                Trendlinie — animiert, der gefragte Bereich hervorgehoben. */}
+            {result.chart && <QuizChart chart={result.chart} className="mt-3" />}
 
             {/* „Mehr dazu": ausführliche Erklärung, Foto (mit Bildnachweis) und
                 eine kleine Karte — nur wenn zur Frage vorhanden, aufklappbar. */}

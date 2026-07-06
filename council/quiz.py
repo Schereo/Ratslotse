@@ -80,6 +80,20 @@ def _relevant(text: str, name: str) -> bool:
     return len(text) > 1000 and "oldenburg" in low and name.lower() in low
 
 
+def _clip(text: str, n: int) -> str:
+    """Quelltext auf ~n Zeichen kappen — aber an einer SATZ-/Zeilengrenze.
+    Ein mitten in der Zahl abgeschnittener Satz („…mit rund 1") hat das LLM
+    nachweislich zum Erfinden der fehlenden Ziffern verleitet (Review-Finding)."""
+    if len(text) <= n:
+        return text
+    cut = text[:n]
+    for sep in ("\n", ". "):
+        pos = cut.rfind(sep)
+        if pos > n * 0.6:  # nicht zu viel wegwerfen, falls Sätze sehr lang sind
+            return cut[:pos + 1].rstrip()
+    return cut
+
+
 def fetch_wikipedia(name: str) -> tuple[str, str] | None:
     """Plaintext-Extrakt des deutschen Wikipedia-Artikels zum Oldenburger
     Stadtteil → (text, url). Direkte Titel zuerst, dann Volltextsuche; nur
@@ -88,7 +102,7 @@ def fetch_wikipedia(name: str) -> tuple[str, str] | None:
     for title in (_WIKI_OVERRIDE.get(name, name), f"{name} (Oldenburg)", f"{name} (Oldb)"):
         got = _wiki_extract(title)
         if got and _relevant(got[0], name):
-            return got[0][:8000], got[1]
+            return _clip(got[0], 8000), got[1]
     for title in _wiki_search(f"{name} Oldenburg Stadtteil"):
         # Der Artikel muss nach dem Stadtteil BENANNT sein — sonst grabscht die
         # Suche einen Artikel, der den Namen nur beiläufig erwähnt (z. B.
@@ -97,7 +111,7 @@ def fetch_wikipedia(name: str) -> tuple[str, str] | None:
             continue
         got = _wiki_extract(title)
         if got and _relevant(got[0], name):
-            return got[0][:8000], got[1]
+            return _clip(got[0], 8000), got[1]
     return None
 
 
@@ -127,7 +141,7 @@ def fetch_stadt_text(name: str) -> tuple[str, str] | None:
             tag.decompose()
         main = psoup.select_one("main, #content, .content") or psoup.body
         text = re.sub(r"\s{2,}", " ", main.get_text(" ", strip=True)) if main else ""
-        return (text[:4000], url) if len(text) > 400 else None
+        return (_clip(text, 4000), url) if len(text) > 400 else None
     except (requests.RequestException, ValueError):
         return None
 
@@ -162,7 +176,7 @@ def council_facts(store, *, stadtteil: str | None = None, slug: str | None = Non
             if d.get("amount_eur"):
                 bits.append(f"{int(d['amount_eur']):,} €".replace(",", "."))
             lines.append("- " + " ".join(b for b in bits if b))
-    return "\n".join(lines)[:4000]
+    return _clip("\n".join(lines), 4000)
 
 
 # --- Anreicherung: Locator-Karte + Wikimedia-Commons-Bild --------------------
@@ -391,8 +405,28 @@ Regeln:
 - Allgemeinverständlich und FAIR: Die Mehrheit der Fragen leicht bis mittel,
   nur wenige schwer. Keine Aktenzeichen/Paragraphen, keine obskuren Randfiguren
   oder beliebigen Jahreszahlen — bevorzuge Bekanntes und Bedeutsames.
-- "explanation" = 1 einprägsamer Satz mit dem WARUM/Aha-Effekt (nicht bloß die
-  Antwort wiederholen), damit man beim Auflösen etwas lernt.
+- "explanation" = 1 einprägsamer Satz mit dem WARUM/Aha-Effekt. Sie darf die
+  richtige Antwort weder wörtlich noch sinngemäß bloß wiederholen, sondern
+  liefert mindestens EINE zusätzliche, quellengedeckte Information: ein Warum,
+  eine Folge, einen Heute-Bezug oder einen Vergleichsanker (bei Zahlen immer!).
+  Selbsttest: Streiche die Antwort aus der explanation — bleibt nichts Neues,
+  schreib sie neu. Formuliere über die STADT, nie über die Quelle (kein „laut
+  Quelle", kein „der Artikel sagt" — die Quelle wird separat verlinkt). Gibt
+  die Quelle keinen Zusatzfakt her, lass die Frage weg.
+- SPRACHE & OPTIONEN: Frage und Optionen sind korrektes, natürliches Deutsch
+  (Bezüge/Numerus prüfen). Alle vier Optionen haben ähnliche Länge, gleichen
+  Stil und gleiche Granularität (keine tagesgenauen neben jahresgenauen
+  Angaben); die richtige darf nicht die längste oder präziseste sein. Keine
+  absurden oder witzigen Distraktoren — jede falsche Option muss eine Antwort
+  sein, die eine informierte Bürgerin ernsthaft erwägen könnte.
+- DATEN & UNSICHERES: Die richtige Antwort ist NIE ein exaktes Tagesdatum;
+  Jahreszahl-Antworten nur, wenn das Jahr selbst etwas erzählt (Gründung,
+  Eingemeindung, Zerstörung) — und die falschen Jahre liegen deutlich
+  auseinander. Kein „könnte" in Fragen: Bei mehrdeutiger Quellenlage nach der
+  überlieferten/dokumentierten Deutung fragen. Benennungen (Straßen, Schulen,
+  Plätze) nur behaupten, wenn die Quelle sie ausdrücklich nennt; Personen, die
+  die Quelle als NS-belastet oder völkisch ausweist, nie als neutrale oder
+  positive Quiz-Antwort verwenden.
 - Verteile über die Kategorien: {cats}.
   · geschichte = Gründung/Eingemeindung/Namensherkunft/historische Ereignisse
   · orte = Wahrzeichen, Bauwerke, Parks, Plätze, Straßen
@@ -436,9 +470,10 @@ Antworte mit NUR JSON (Multiple Choice ODER, für schaetzen, qtype=estimate):
     "subject": "Schloss Oldenburg", "topic": "Schloss Oldenburg",
     "source": "kurze Herkunft, z. B. 'Wikipedia' oder 'Ratsbeschluss 2025'"}},
   {{"category": "schaetzen", "difficulty": "mittel", "qtype": "estimate",
-    "question": "Wie viele Einwohner hat Osternburg etwa?",
+    "question": "Wie viele Einwohner hat der Beispiel-Stadtteil etwa?",
     "answer_value": 12000, "unit": "Einwohner", "range_min": 2000, "range_max": 30000,
-    "explanation": "laut Quelle rund 12.000", "source": "Wikipedia"}}
+    "explanation": "Damit ist der Stadtteil für sich so groß wie eine Kleinstadt — bis zur Eingemeindung war er eine eigene Gemeinde.",
+    "source": "Wikipedia"}}
 ]}}"""
 
 
@@ -481,35 +516,63 @@ def _valid_estimate(q: dict) -> bool:
         and q.get("category") in CATEGORIES
         and all(isinstance(x, (int, float)) and not isinstance(x, bool) for x in (v, lo, hi))
         and lo < v < hi
+        # Mittelpunkts-Guard: Antwort im mittleren Fünftel = der unbewegte
+        # Slider gewinnt (Review-Finding) → Frage verwerfen.
+        and abs((v - lo) / (hi - lo) - 0.5) > 0.10
         and isinstance(q.get("unit"), str) and bool(q["unit"].strip())
     )
 
 
 def _valid(q: dict) -> bool:
+    # Schätzfragen MÜSSEN Slider sein — als MC mit vier Zahlen-Optionen sind sie
+    # weder fair noch lehrreich (Review-Finding: 3 von 5 kamen als MC).
+    if q.get("category") == "schaetzen" and q.get("qtype") != "estimate":
+        return False
     return _valid_estimate(q) if q.get("qtype") == "estimate" else _valid_mc(q)
+
+
+def _extra_texts(q: dict) -> str:
+    """Erklärung/Detail/Tipp einer Frage als Block für den Verify-Pass —
+    Halluzinationen leben erfahrungsgemäß in den ZUSATZTEXTEN, nicht in der
+    Antwort selbst (Review-Findings: erfundener „Reichstag", falsche Zahlen)."""
+    bits = [q.get("explanation"), q.get("detail"), q.get("hint")]
+    return "\n".join(b for b in bits if b)
 
 
 def verify_question(sources: str, q: dict) -> bool:
     """Günstiger Zweit-Check: ist die richtige Antwort eindeutig aus den Quellen
-    belegt (bei MC auch: andere klar falsch)? Bei Zweifel/Fehler → verwerfen."""
+    belegt (bei MC auch: andere klar falsch), beantwortet sie die Frage logisch
+    sinnvoll, und enthalten Erklärung/Detail/Tipp nichts Unbelegtes? Sieht
+    denselben (vollen) Quellstring wie die Generierung — ein kürzeres Fenster
+    hat korrekte Ratsdaten-Fragen systematisch verworfen (fail-closed). Bei
+    Zweifel/Fehler → verwerfen."""
+    extra = _extra_texts(q)
+    extra_block = (f"\nErklärungstexte der Frage:\n{extra}\n" if extra else "")
+    checks = (
+        "Antworte nur mit JA, wenn ALLES zutrifft, sonst NEIN:\n"
+        "1. Der Wert/die Antwort ist EINDEUTIG aus dem Quelltext belegt.\n"
+        "2. Die Antwort beantwortet die gestellte Frage logisch sinnvoll "
+        "(keine Zirkelfrage, kein falscher Bezug).\n"
+        "3. Keine Aussage der Erklärungstexte widerspricht dem Quelltext oder "
+        "behauptet Fakten, die dort nicht stehen."
+    )
     if q.get("qtype") == "estimate":
         prompt = (
-            f"Quelltext:\n{sources[:6000]}\n\n"
+            f"Quelltext:\n{sources}\n\n"
             f"Schätzfrage: {q['question']}\n"
-            f"Behaupteter richtiger Wert: {q['answer_value']} {q.get('unit', '')}\n\n"
-            "Ist dieser Zahlenwert EINDEUTIG aus dem Quelltext belegt (exakt oder sehr nah)? "
-            "Antworte nur mit JA oder NEIN."
+            f"Behaupteter richtiger Wert: {q['answer_value']} {q.get('unit', '')}\n"
+            f"{extra_block}\n{checks}"
         )
     else:
         correct = q["options"][q["correct_index"]]
         others = ", ".join(o for i, o in enumerate(q["options"]) if i != q["correct_index"])
         prompt = (
-            f"Quelltext:\n{sources[:6000]}\n\n"
+            f"Quelltext:\n{sources}\n\n"
             f"Frage: {q['question']}\n"
             f"Als richtig markierte Antwort: {correct}\n"
-            f"Andere Antworten: {others}\n\n"
-            "Ist die richtige Antwort EINDEUTIG aus dem Quelltext belegt UND sind die anderen "
-            "klar falsch? Antworte nur mit JA oder NEIN."
+            f"Andere Antworten: {others}\n"
+            f"{extra_block}\n{checks}\n"
+            "Zusätzlich müssen die anderen Antworten klar falsch sein."
         )
     try:
         resp = llm.chat_complete(
