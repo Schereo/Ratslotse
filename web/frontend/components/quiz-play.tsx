@@ -160,16 +160,17 @@ export function QuizPlay({ questions, onExit, onComplete, title }: {
   if (done) {
     const quote = Math.round((correct / questions.length) * 100);
     // Lotti feiert mit — bzw. muntert auf: Pose und Botschaft folgen der Quote,
-    // aber sie ist IMMER auf deiner Seite (nie enttäuscht).
+    // aber sie ist IMMER auf deiner Seite (nie enttäuscht). Ab 90 % tanzt sie.
     const pose = quote >= 80 ? "celebrate" : quote >= 50 ? "wave" : "point";
     const cheer =
-      quote >= 80 ? "Stark — du kennst dich richtig gut aus! Ich bin beeindruckt."
+      quote >= 90 ? "Sensationell — fast fehlerfrei! Da tanzt die Möwe!"
+      : quote >= 80 ? "Stark — du kennst dich richtig gut aus! Ich bin beeindruckt."
       : quote >= 50 ? "Gut gemacht! Da geht noch mehr — ich zeig dir gern Neues."
       : "Kopf hoch — jede Runde macht dich schlauer. Ich bleib an deiner Seite!";
     return (
       <Card className="relative mx-auto max-w-xl overflow-hidden p-8 text-center">
         {correct > 0 && <ConfettiBurst />}
-        <Mascot pose={pose} bob className="mx-auto h-24 w-24" />
+        <Mascot pose={pose} bob dance={quote >= 90} className="mx-auto h-24 w-24" />
         <h2 className="mt-3 text-2xl font-bold text-foreground">
           {correct} von {questions.length} richtig
         </h2>

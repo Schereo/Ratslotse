@@ -52,16 +52,17 @@ export function QuizMapPlay({ targets, onExit }: { targets: string[]; onExit: ()
 
   if (done) {
     const quote = Math.round((correct / targets.length) * 100);
-    // Lotti feiert mit bzw. muntert auf — wie im Fragen-Quiz.
+    // Lotti feiert mit bzw. muntert auf — wie im Fragen-Quiz. Ab 90 % tanzt sie.
     const pose = quote >= 80 ? "celebrate" : quote >= 50 ? "wave" : "point";
     const cheer =
-      quote >= 80 ? "Top — du kennst deine Stadtteile wie deine Westentasche!"
+      quote >= 90 ? "Sensationell — du kennst deine Stadtteile wie deine Westentasche! Da tanzt die Möwe!"
+      : quote >= 80 ? "Top — du kennst deine Stadtteile richtig gut!"
       : quote >= 50 ? "Gut! Ein paar Ecken zeige ich dir gern noch."
       : "Macht nichts — beim Erkunden lernt man die Stadt am besten kennen. Ich flieg voraus!";
     return (
       <Card className="relative mx-auto max-w-xl overflow-hidden p-8 text-center">
         {correct > 0 && <ConfettiBurst />}
-        <Mascot pose={pose} bob className="mx-auto h-24 w-24" />
+        <Mascot pose={pose} bob dance={quote >= 90} className="mx-auto h-24 w-24" />
         <h2 className="mt-3 text-2xl font-bold text-foreground">{correct} von {targets.length} gefunden</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           {points} {points === 1 ? "Punkt" : "Punkte"} · Trefferquote {quote} %
