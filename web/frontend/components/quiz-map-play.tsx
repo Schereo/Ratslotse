@@ -81,10 +81,11 @@ export function QuizMapPlay({ targets, onExit }: { targets: string[]; onExit: ()
       <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-primary">
         <MapPin className="h-4 w-4" /> Karten-Quiz
       </p>
+      {/* Balken zeigt die AKTUELLE Frage (wie das Label), nicht nur erledigte. */}
       <div className="mb-4 flex items-center gap-3">
         <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
           <div className="h-full rounded-full bg-primary transition-[width] duration-300 ease-out-strong"
-               style={{ width: `${(idx / targets.length) * 100}%` }} />
+               style={{ width: `${((idx + 1) / targets.length) * 100}%` }} />
         </div>
         <span className="shrink-0 text-xs font-medium tabular-nums text-muted-foreground">{idx + 1}/{targets.length}</span>
       </div>

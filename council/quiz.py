@@ -313,8 +313,12 @@ def enrich_row(row: dict, subject: str, *, area_type: str | None = None,
     - sonst, falls die Frage einem Stadtteil zuzuordnen ist, das ganze
       **Gebiet** als Polygon (wir besitzen die Polygone → immer verlässlich).
     Reine, mehrdeutige Straßennamen ohne kompakte Geometrie bekommen KEINEN
-    Pin (mehrere „Mittelwege" würden sonst am falschen Ort landen)."""
+    Pin (mehrere „Mittelwege" würden sonst am falschen Ort landen). Und meint
+    das Subjekt nur „Oldenburg" als Ganzes (Bewegungen, stadtweite Themen),
+    gibt es keinen Pin — ein Marker mitten in der Innenstadt trägt nichts."""
     subject = (subject or "").strip()
+    if geo.is_city_generic(subject):
+        subject = ""  # ganze Stadt → kein Foto-/Karten-Subjekt (Gebiets-Fallback bleibt)
     if not subject and area_type != "stadtteil":
         return
     img = commons_image(subject) if subject else None
@@ -399,7 +403,9 @@ Regeln:
   · schaetzen = eine SCHÄTZFRAGE als Slider: setze "qtype":"estimate" mit
     "answer_value" (die richtige Zahl), "unit" (z. B. Einwohner, Hektar, Euro,
     Jahr) und "range_min"/"range_max" (plausible Slider-Grenzen, der Wert liegt
-    klar dazwischen) — STATT options/correct_index. NUR sinnvolle, einprägsame
+    klar dazwischen — aber NICHT in der Mitte der Spanne: wähle die Grenzen
+    asymmetrisch, sonst ist der unbewegte Slider schon die Lösung) — STATT
+    options/correct_index. NUR sinnvolle, einprägsame
     Größen (Einwohnerzahl, Fläche, Gründungsjahr, Bausumme großer Projekte,
     Entfernung) — NIEMALS belanglose Zählungen (Workshop-Teilnehmer, eingereichte
     Ideen/Stellungnahmen, Zahl der Sitzungen).
@@ -410,7 +416,9 @@ Regeln:
   · "subject" = das zentrale REALE Ding der Frage (Gebäude, Wahrzeichen, Ort,
     Straße oder Person), exakt wie der deutsche Wikipedia-Artikel heißt (z. B.
     "Schloss Oldenburg", "Cäcilienbrücke") — nur für Foto & Karte. Weglassen,
-    wenn es kein konkretes reales Ding gibt.
+    wenn es kein konkretes reales Ding gibt — insbesondere NICHT bei Bewegungen,
+    Organisationen, Vereinen oder wenn nur die ganze Stadt gemeint ist (ein
+    Karten-Pin auf ganz Oldenburg hilft niemandem).
   · "topic" = bei Rats-/Projekt-Fragen ein kurzes Such-Stichwort, mit dem man
     verwandte Beschlüsse findet (z. B. "Lebensquartier", "Fliegerhorst",
     "Cäcilienbrücke"). Damit verlinken wir „Beschlüsse dazu". Nur setzen, wenn es

@@ -374,3 +374,45 @@ def test_generate_attaches_topic(monkeypatch):
                                   n=1, source_type="wikipedia", source_ref="http://w",
                                   verify=False, enrich=False)
     assert rows[0]["topic"] == "Fliegerhorst"
+
+
+# ---- Stadt-generische Karten-Pins unterdrücken -------------------------------
+
+def test_is_city_generic():
+    assert geo.is_city_generic("Oldenburg")
+    assert geo.is_city_generic(" oldenburg (Oldb) ")
+    assert geo.is_city_generic("Stadt Oldenburg")
+    assert not geo.is_city_generic("Schloss Oldenburg")
+    assert not geo.is_city_generic("Osternburg")
+    assert not geo.is_city_generic(None)
+
+
+def test_city_generic_map_suppressed_on_read(tmp_path):
+    # Ein Punkt-Pin, der nur „Oldenburg" markiert, wird beim LESEN unterdrückt —
+    # heilt auch schon gespeicherte Fragen; echte Orte bleiben.
+    store = CouncilStore(tmp_path / "c.sqlite")
+    generic = _row("Bürgerfelde", "Frage zur Bewegung?")
+    generic.update({"lat": 53.143, "lon": 8.214, "place_label": "Oldenburg (Oldb)"})
+    real = _row("Bürgerfelde", "Frage zum Schloss?")
+    real.update({"lat": 53.137, "lon": 8.211, "place_label": "Schloss Oldenburg"})
+    store.save_quiz_questions([generic, real])
+    by_q = {p["question"]: store.get_quiz_question(p["id"])
+            for p in store.pick_quiz_questions([("stadtteil", "Bürgerfelde")], None, [], 5)}
+    assert "map" not in by_q["Frage zur Bewegung?"]
+    assert by_q["Frage zum Schloss?"]["map"]["label"] == "Schloss Oldenburg"
+
+
+def test_enrich_row_skips_city_generic_subject(monkeypatch):
+    # „Oldenburg" als Subjekt → keine Netz-Lookups, kein Pin …
+    calls = []
+    monkeypatch.setattr(quiz, "commons_image", lambda s: calls.append(s) or None)
+    monkeypatch.setattr(quiz, "street_line", lambda s, **k: calls.append(s) or None)
+    monkeypatch.setattr(quiz, "geocode_place", lambda s: calls.append(s) or (53.14, 8.21))
+    row = {}
+    quiz.enrich_row(row, "Oldenburg (Oldb)", area_type="thema", area_key="fff")
+    assert row == {} and calls == []
+    # … aber der Gebiets-Fallback greift weiter, wenn die Frage zu einem
+    # Stadtteil gehört (Polygon statt sinnlosem Stadt-Pin).
+    row2 = {}
+    quiz.enrich_row(row2, "Stadt Oldenburg", area_type="stadtteil", area_key="Bürgerfelde")
+    assert json.loads(row2["geojson"])["type"] in ("Polygon", "MultiPolygon")
