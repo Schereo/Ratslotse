@@ -377,6 +377,12 @@ export interface QuizAnswerResult {
   topic?: string | null;
   map?: { lat: number; lon: number; label: string | null; geojson?: object | null } | null;
   image?: QuizImageCredit | null;
+  /** Balken-Diagramm der Auflösung (z. B. Haushalts-Aufwendungen je Bereich). */
+  chart?: {
+    title: string;
+    unit: string;
+    items: { label: string; value: number; highlight?: boolean }[];
+  } | null;
 }
 export interface QuizBadge {
   key: string;

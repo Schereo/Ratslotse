@@ -53,6 +53,16 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   der Maus in den Vordergrund. (#195)
 
 ### Hinzugefügt
+- **Haushalts-Quiz mit Diagramm:** Neues Quiz-Thema **„Stadt-Haushalt"** —
+  Fragen wie „Wofür gibt Oldenburg am meisten Geld aus?" oder „Wie groß ist das
+  geplante Defizit?" kommen direkt aus dem **beschlossenen Haushaltsplan** der
+  Stadt (offizielles PDF als Quelle verlinkt). Die Auflösung zeigt ein
+  **Balkendiagramm** der Aufwendungen je Teilhaushalt (der gefragte Bereich
+  hervorgehoben) und erklärt, wie sich der Haushalt zusammensetzt — inklusive
+  des Unterschieds zwischen gesetzlich gebundenen **Pflichtaufgaben** und frei
+  gestaltbaren **freiwilligen Leistungen**. Dazu acht neue Glossar-Begriffe
+  (Ergebnishaushalt, Teilhaushalt, Gewerbesteuer, Schlüsselzuweisung …).
+  Komplett ohne KI erzeugt — jede Zahl 1:1 aus dem Plan. (#211)
 - **Lotti spielt mit:** Im Quiz reagiert die Lotsenmöwe jetzt auf jede Antwort —
   sie jubelt bei richtig, winkt bei „nah dran" und schaut ratlos bei daneben,
   immer mit einem kurzen aufmunternden Spruch. Auch auf dem Ergebnis-Bildschirm

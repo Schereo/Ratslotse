@@ -312,6 +312,37 @@ export function QuizPlay({ questions, onExit, onComplete, title }: {
               </a>
             )}
 
+            {/* Diagramm der Auflösung (z. B. Haushalts-Aufwendungen je Bereich):
+                schlichte Balkenliste, der gefragte Bereich ist hervorgehoben. */}
+            {result.chart && result.chart.items.length > 0 && (
+              <div className="mt-3 rounded-lg border border-border bg-background/60 p-3">
+                <p className="text-xs font-semibold text-foreground">{result.chart.title}</p>
+                <ul className="mt-2 space-y-1.5">
+                  {result.chart.items.map((it) => {
+                    const max = Math.max(...result.chart!.items.map((x) => x.value), 1);
+                    return (
+                      <li key={it.label} className="flex items-center gap-2 text-xs">
+                        <span className={cn("w-32 shrink-0 truncate sm:w-40",
+                          it.highlight ? "font-semibold text-foreground" : "text-muted-foreground")}
+                          title={it.label}>
+                          {it.label}
+                        </span>
+                        <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted">
+                          <span className={cn("block h-full rounded-full",
+                            it.highlight ? "bg-amber-500" : "bg-primary/60")}
+                            style={{ width: `${Math.max((it.value / max) * 100, 1.5)}%` }} />
+                        </span>
+                        <span className="w-12 shrink-0 text-right tabular-nums text-muted-foreground">
+                          {fmt(it.value)}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <p className="mt-1.5 text-[11px] text-muted-foreground">Angaben in {result.chart.unit}</p>
+              </div>
+            )}
+
             {/* „Mehr dazu": ausführliche Erklärung, Foto (mit Bildnachweis) und
                 eine kleine Karte — nur wenn zur Frage vorhanden, aufklappbar. */}
             {(result.detail || result.image || result.map) && (

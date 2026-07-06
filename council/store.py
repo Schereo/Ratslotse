@@ -380,13 +380,26 @@ class CouncilStore:
             "qtype TEXT NOT NULL DEFAULT 'mc', "                  # mc | estimate (Schätzfrage-Slider)
             "answer_value REAL, answer_unit TEXT, "              # estimate: richtige Zahl + Einheit
             "range_min REAL, range_max REAL, "                   # estimate: Slider-Grenzen
-            "detail TEXT, hint TEXT, topic TEXT, "                 # „Mehr dazu" + Tipp + Such-Stichwort für Beschlüsse
+            "detail TEXT, hint TEXT, topic TEXT, chart TEXT, "     # „Mehr dazu" + Tipp + Beschluss-Stichwort + Diagramm (JSON)
             "lat REAL, lon REAL, place_label TEXT, geojson TEXT, "  # Locator-Karte (Punkt, Linie oder Gebiets-Polygon)
             "image_url TEXT, image_author TEXT, image_license TEXT, "  # Foto (Wikimedia Commons)
             "image_license_url TEXT, image_source_url TEXT, "    # Bildnachweis
             "generated_at TEXT NOT NULL)"
         )
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_quiz_area ON council_quiz_questions(area_type, area_key)")
+        # Stadt-Haushalt (council.haushalt): Ergebnishaushalt je Teilhaushalt und
+        # Jahr, geparst aus den offiziellen Haushaltsplan-PDFs (oldenburg.de).
+        # Grundlage der Haushalts-Quizfragen samt Diagramm.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_haushalt ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "year INTEGER NOT NULL, "
+            "bereich TEXT NOT NULL, "                             # Teilhaushalt-Name; 'Summe' = Gesamtzeile
+            "ertraege REAL, aufwendungen REAL, ergebnis REAL, "  # ordentlich, in Euro
+            "is_summe INTEGER NOT NULL DEFAULT 0, "
+            "source_url TEXT, fetched_at TEXT NOT NULL, "
+            "UNIQUE(year, bereich))"
+        )
         self._migrate_quiz_estimate()
         self._migrate_quiz_media()
         self._migrate_quiz_hint()
@@ -418,13 +431,13 @@ class CouncilStore:
 
     def _migrate_quiz_hint(self) -> None:
         """„Tipp" (vor dem Auflösen) + „topic" (Such-Stichwort für „Beschlüsse
-        dazu") — idempotent in bestehende Quiz-Tabellen nachgerüstet."""
+        dazu") + „chart" (Diagramm-JSON der Auflösung) — idempotent in
+        bestehende Quiz-Tabellen nachgerüstet."""
         cols = {r[1] for r in self._conn.execute("PRAGMA table_info(council_quiz_questions)").fetchall()}
         with self._conn:
-            if "hint" not in cols:
-                self._conn.execute("ALTER TABLE council_quiz_questions ADD COLUMN hint TEXT")
-            if "topic" not in cols:
-                self._conn.execute("ALTER TABLE council_quiz_questions ADD COLUMN topic TEXT")
+            for name in ("hint", "topic", "chart"):
+                if name not in cols:
+                    self._conn.execute(f"ALTER TABLE council_quiz_questions ADD COLUMN {name} TEXT")
 
     def _migrate_owner_id(self) -> None:
         """Re-key the per-recipient dedup tables from Telegram chat_id to the
@@ -1318,9 +1331,9 @@ class CouncilStore:
                     "(area_type, area_key, category, difficulty, question, options, "
                     " correct_index, explanation, source_type, source_ref, content_hash, "
                     " status, qtype, answer_value, answer_unit, range_min, range_max, "
-                    " detail, hint, topic, lat, lon, place_label, geojson, image_url, image_author, image_license, "
+                    " detail, hint, topic, chart, lat, lon, place_label, geojson, image_url, image_author, image_license, "
                     " image_license_url, image_source_url, generated_at) "
-                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     (r["area_type"], r["area_key"], r["category"], r.get("difficulty", "mittel"),
                      r["question"], json.dumps(r.get("options", []), ensure_ascii=False),
                      int(r.get("correct_index", 0)), r.get("explanation"),
@@ -1328,7 +1341,8 @@ class CouncilStore:
                      r.get("status", "active"), r.get("qtype", "mc"),
                      r.get("answer_value"), r.get("answer_unit"),
                      r.get("range_min"), r.get("range_max"),
-                     r.get("detail"), r.get("hint"), r.get("topic"), r.get("lat"), r.get("lon"), r.get("place_label"), r.get("geojson"),
+                     r.get("detail"), r.get("hint"), r.get("topic"), r.get("chart"),
+                     r.get("lat"), r.get("lon"), r.get("place_label"), r.get("geojson"),
                      r.get("image_url"), r.get("image_author"), r.get("image_license"),
                      r.get("image_license_url"), r.get("image_source_url"), now),
                 )
@@ -1363,6 +1377,12 @@ class CouncilStore:
             # Such-Stichwort für „Beschlüsse dazu" (verwandte Ratsbeschlüsse).
             if "topic" in keys and r["topic"]:
                 out["topic"] = r["topic"]
+            # Diagramm der Auflösung (z. B. Haushalts-Balken) — JSON-Spalte.
+            if "chart" in keys and r["chart"]:
+                try:
+                    out["chart"] = json.loads(r["chart"])
+                except (json.JSONDecodeError, TypeError):
+                    pass
             if qtype == "estimate":
                 out["answer_value"] = r["answer_value"]
             # „Mehr dazu" — Detailtext, Locator-Karte und Bild gehören zur
@@ -1486,14 +1506,44 @@ class CouncilStore:
             "gebiete": one("SELECT COUNT(DISTINCT area_type||area_key) FROM council_quiz_questions WHERE status='active'"),
         }
 
+    # Themen ohne Entität dahinter (kuratierte Spezial-Gebiete) → Anzeigename.
+    _THEMA_LABELS = {"haushalt": "Stadt-Haushalt"}
+
     def quiz_themes(self) -> list[dict]:
         """Themen-Gebiete mit aktiven Fragen: {area_key(slug), label(name)}.
-        Der Anzeigename kommt aus council_entities (Fallback: slug)."""
+        Der Anzeigename kommt aus council_entities (Fallback: kuratierte
+        Labels, dann slug)."""
         rows = self._conn.execute(
             "SELECT DISTINCT q.area_key, e.name FROM council_quiz_questions q "
             "LEFT JOIN council_entities e ON e.slug = q.area_key "
             "WHERE q.area_type = 'thema' AND q.status = 'active'").fetchall()
-        return [{"area_key": r["area_key"], "label": r["name"] or r["area_key"]} for r in rows]
+        return [{"area_key": r["area_key"],
+                 "label": r["name"] or self._THEMA_LABELS.get(r["area_key"], r["area_key"])}
+                for r in rows]
+
+    # --- Stadt-Haushalt (council.haushalt) -----------------------------------
+
+    def save_haushalt(self, year: int, rows: list[dict], source_url: str) -> int:
+        """Ergebnishaushalt eines Jahres speichern — ersetzt den bisherigen
+        Stand des Jahres komplett (Re-Ingest idempotent)."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute("DELETE FROM council_haushalt WHERE year = ?", (year,))
+            for r in rows:
+                self._conn.execute(
+                    "INSERT INTO council_haushalt (year, bereich, ertraege, aufwendungen, "
+                    " ergebnis, is_summe, source_url, fetched_at) VALUES (?,?,?,?,?,?,?,?)",
+                    (year, r["bereich"], r.get("ertraege"), r.get("aufwendungen"),
+                     r.get("ergebnis"), int(r.get("is_summe", 0)), source_url, now))
+        return len(rows)
+
+    def get_haushalt(self, year: int) -> list[dict]:
+        """Ergebnishaushalt eines Jahres (Teilhaushalte + Summenzeile)."""
+        rows = self._conn.execute(
+            "SELECT bereich, ertraege, aufwendungen, ergebnis, is_summe, source_url "
+            "FROM council_haushalt WHERE year = ? ORDER BY is_summe, aufwendungen DESC",
+            (year,)).fetchall()
+        return [dict(r) for r in rows]
 
     def antrag_stats(self) -> dict:
         """Erfolgsquoten der Fraktions-Anträge: Antrag-Anlage → Vorlage → deren
