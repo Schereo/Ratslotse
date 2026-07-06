@@ -6,6 +6,7 @@ import { MapPin, Play, ArrowRight, RotateCcw } from "lucide-react";
 import { Card, Button } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
 import { ConfettiBurst } from "@/components/confetti";
+import { LottiReaction } from "@/components/quiz-play";
 import { api } from "@/lib/api";
 
 // Leaflet ist client-only + schwer → erst beim Spielen laden.
@@ -51,16 +52,24 @@ export function QuizMapPlay({ targets, onExit }: { targets: string[]; onExit: ()
 
   if (done) {
     const quote = Math.round((correct / targets.length) * 100);
+    // Lotti feiert mit bzw. muntert auf — wie im Fragen-Quiz. Ab 90 % tanzt sie.
+    const pose = quote >= 80 ? "celebrate" : quote >= 50 ? "wave" : "point";
+    const cheer =
+      quote >= 90 ? "Sensationell — du kennst deine Stadtteile wie deine Westentasche! Da tanzt die Möwe!"
+      : quote >= 80 ? "Top — du kennst deine Stadtteile richtig gut!"
+      : quote >= 50 ? "Gut! Ein paar Ecken zeige ich dir gern noch."
+      : "Macht nichts — beim Erkunden lernt man die Stadt am besten kennen. Ich flieg voraus!";
     return (
       <Card className="relative mx-auto max-w-xl overflow-hidden p-8 text-center">
         {correct > 0 && <ConfettiBurst />}
-        <Mascot pose={quote >= 60 ? "celebrate" : "wave"} className="mx-auto h-20 w-20" />
+        <Mascot pose={pose} bob dance={quote >= 90} className="mx-auto h-24 w-24" />
         <h2 className="mt-3 text-2xl font-bold text-foreground">{correct} von {targets.length} gefunden</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           {points} {points === 1 ? "Punkt" : "Punkte"} · Trefferquote {quote} %
         </p>
-        <p className="mt-4 text-sm text-foreground">
-          {quote >= 80 ? "Top — du kennst deine Stadtteile!" : quote >= 50 ? "Gut! Ein paar Ecken noch." : "Weiter erkunden lohnt sich."}
+        {/* Lottis Zuspruch — als Sprechblase unter ihr. */}
+        <p className="mx-auto mt-4 max-w-sm rounded-2xl rounded-tl-sm border border-border bg-muted/40 px-4 py-2.5 text-sm text-foreground">
+          {cheer}
         </p>
         <Button onClick={onExit} className="mt-6"><RotateCcw className="!size-4" /> Zur Auswahl</Button>
       </Card>
@@ -98,9 +107,9 @@ export function QuizMapPlay({ targets, onExit }: { targets: string[]; onExit: ()
 
         {result && (
           <div className="mt-3 rounded-lg border border-border bg-muted/40 p-3">
-            <p className="text-sm font-medium text-foreground">
+            <LottiReaction seed={idx} outcome={result.correct ? "right" : "wrong"}>
               {result.correct ? `Richtig! +${result.points}` : "Leider daneben."}
-            </p>
+            </LottiReaction>
             {!result.correct && (
               <p className="mt-1 text-sm text-muted-foreground">
                 <span className="font-medium text-foreground">{target}</span> ist grün markiert

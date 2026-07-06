@@ -451,6 +451,7 @@ export function Mascot({
   pose = "wave",
   className,
   bob = false,
+  dance = false,
   animated = true,
   theme = null,
   hat = "cap",
@@ -461,6 +462,8 @@ export function Mascot({
   className?: string;
   /** Sanft schaukeln lassen (wie ein Boot in der Dünung). */
   bob?: boolean;
+  /** Freudentanz (wippen + hüpfen) — für besonders gute Quiz-Runden. */
+  dance?: boolean;
   /** Blinzeln, Atmen, Winken. Default an; global via prefers-reduced-motion aus. */
   animated?: boolean;
   /** Jahreszeit-/Feiertags-Outfit. Meist über <SeasonalMascot/> gesetzt. */
@@ -479,12 +482,15 @@ export function Mascot({
       role={decorative ? undefined : "img"}
       aria-label={decorative ? undefined : aria}
       aria-hidden={decorative || undefined}
-      className={cn("h-28 w-28 select-none", bob && "animate-bob", className)}
+      className={cn("h-28 w-28 select-none", bob && !dance && "animate-bob", className)}
     >
-      <g className={animated ? "lotti-breathe" : undefined}>
-        {parts.body}
-        <Headwear theme={theme} tilt={parts.capTilt} hat={hat} />
-        <Outfit theme={theme} />
+      {/* Tanz als eigene Hülle — komponiert mit dem Atmen der inneren Gruppe. */}
+      <g className={dance ? "lotti-dance" : undefined}>
+        <g className={animated ? "lotti-breathe" : undefined}>
+          {parts.body}
+          <Headwear theme={theme} tilt={parts.capTilt} hat={hat} />
+          <Outfit theme={theme} />
+        </g>
       </g>
     </svg>
   );

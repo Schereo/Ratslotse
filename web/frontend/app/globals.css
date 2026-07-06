@@ -166,6 +166,18 @@
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.03, 0.98); }
 }
+/* Freudentanz bei besonders guten Runden: wippen + hüpfen (vom Fuß aus gedreht). */
+.lotti-dance {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: lotti-dance 1.1s ease-in-out infinite;
+}
+@keyframes lotti-dance {
+  0%, 100% { transform: rotate(-7deg) translateY(0); }
+  25% { transform: rotate(0deg) translateY(-8px); }
+  50% { transform: rotate(7deg) translateY(0); }
+  75% { transform: rotate(0deg) translateY(-8px); }
+}
 .lotti-wave {
   transform-box: fill-box;
   transform-origin: left bottom;
