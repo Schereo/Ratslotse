@@ -170,3 +170,36 @@ def test_member_detail_faction_timeline(tmp_path):
     assert [t["party"] for t in tl] == ["Die Linke"]
     assert tl[0]["first"] == "2023-01-01" and tl[0]["last"] == "2024-09-01"
     store.close()
+
+
+def test_member_party_is_latest_not_most_frequent(tmp_path):
+    """Der Lükermann-Fall: mehr FDP-Sitzungen früher, weniger Volt-Sitzungen
+    zuletzt → angezeigt wird die LETZTE aktive Fraktion (Volt), nicht die
+    häufigste (FDP) — in der Personen-Liste UND im Detail."""
+    store = CouncilStore(tmp_path / "c.sqlite")
+    with store._conn:
+        sessions = [(1, "2022-01-01"), (2, "2022-06-01"), (3, "2023-01-01"),
+                    (4, "2023-06-01"), (5, "2024-01-01"), (6, "2024-06-01")]
+        for ksinr, d in sessions:
+            store._conn.execute(
+                "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, location, fetched_at) "
+                "VALUES (?, 'Rat', ?, '18:00', '', '')", (ksinr, d))
+        parties = ["FDP", "FDP", "FDP", "FDP", "Volt", "Volt"]  # 4× FDP > 2× Volt
+        for (ksinr, _), p in zip(sessions, parties):
+            store._conn.execute(
+                "INSERT INTO council_attendance (ksinr, name, party, role, note) "
+                "VALUES (?, 'Jens Lükermann', ?, 'mitglied', NULL)", (ksinr, p))
+    [m] = store.list_members()
+    assert m["party"] == "Volt"
+    detail = store.member_detail(store._person_slug("Jens Lükermann"))
+    assert detail["party"] == "Volt"
+    # Sitzung ohne Fraktionsangabe NACH dem Wechsel ändert nichts (kein Rückfall):
+    with store._conn:
+        store._conn.execute(
+            "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, location, fetched_at) "
+            "VALUES (7, 'Rat', '2024-09-01', '18:00', '', '')")
+        store._conn.execute(
+            "INSERT INTO council_attendance (ksinr, name, party, role, note) "
+            "VALUES (7, 'Jens Lükermann', NULL, 'mitglied', NULL)")
+    [m] = store.list_members()
+    assert m["party"] == "Volt"

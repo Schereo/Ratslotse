@@ -1939,8 +1939,10 @@ class CouncilStore:
     def list_members(self) -> list[dict]:
         """Council members from attendance (role mitglied/vorsitz), grouped by *slug* so
         title variants of the same person ("Dr. X" and "X") merge into ONE entry (and the
-        React list gets unique keys). Per person: canonical (most-frequent) name, dominant
-        party, distinct sessions attended and committees served. The member directory."""
+        React list gets unique keys). Per person: canonical (most-frequent) name, die
+        **letzte aktive Fraktion** (nicht die häufigste — Wechsler wie FDP→Volt oder
+        Linke→BSW würden sonst ewig unter der alten laufen), distinct sessions attended
+        and committees served. The member directory."""
         from collections import Counter, defaultdict
         from council.parties import normalize_party
         rows = self._conn.execute(
@@ -1949,7 +1951,7 @@ class CouncilStore:
                WHERE a.role IN ('mitglied','vorsitz') AND a.name IS NOT NULL AND a.name != ''"""
         ).fetchall()
         g: dict = defaultdict(lambda: {"names": Counter(), "ksinrs": set(), "committees": set(),
-                                       "first": None, "last": None, "parties": Counter()})
+                                       "first": None, "last": None, "party_at": None})
         for r in rows:
             sl = self._person_slug(r["name"])
             if not sl:
@@ -1962,10 +1964,11 @@ class CouncilStore:
             e["first"] = d if e["first"] is None else min(e["first"], d)
             e["last"] = d if e["last"] is None else max(e["last"], d)
             p = normalize_party(r["party"]) if r["party"] else None
-            if p:
-                e["parties"][p] += 1
+            # Fraktion der JÜNGSTEN Sitzung mit Fraktionsangabe merken.
+            if p and (e["party_at"] is None or d >= e["party_at"][0]):
+                e["party_at"] = (d, p)
         out = [{"slug": sl, "name": e["names"].most_common(1)[0][0],
-                "party": e["parties"].most_common(1)[0][0] if e["parties"] else None,
+                "party": e["party_at"][1] if e["party_at"] else None,
                 "n": len(e["ksinrs"]), "committees": len(e["committees"]),
                 "first": e["first"], "last": e["last"]}
                for sl, e in g.items()]
@@ -1988,13 +1991,6 @@ class CouncilStore:
             r["name"] for r in self._conn.execute(
                 f"SELECT name FROM council_attendance WHERE name IN ({ph}) AND role IN ('mitglied','vorsitz')",
                 matched)).most_common(1)[0][0]
-        pc: Counter = Counter()
-        for r in self._conn.execute(
-            f"SELECT party FROM council_attendance WHERE name IN ({ph}) AND role IN ('mitglied','vorsitz') "
-            "AND party IS NOT NULL AND party != ''", matched):
-            p = normalize_party(r["party"])
-            if p:
-                pc[p] += 1
         chairs = {r["committee"] for r in self._conn.execute(
             f"SELECT DISTINCT cs.committee FROM council_attendance a JOIN council_sessions cs ON cs.ksinr=a.ksinr "
             f"WHERE a.name IN ({ph}) AND a.role='vorsitz'", matched)}
@@ -2043,7 +2039,10 @@ class CouncilStore:
             else:
                 timeline.append(dict(run))
         return {
-            "name": name, "slug": slug, "party": pc.most_common(1)[0][0] if pc else None,
+            "name": name, "slug": slug,
+            # Letzte aktive Fraktion (Ende der geglätteten Zeitreihe) — nicht die
+            # häufigste: Wechsler (FDP→Volt, Linke→BSW) zeigen sonst die alte.
+            "party": timeline[-1]["party"] if timeline else None,
             "n_sessions": span["n"], "active_from": span["first"], "active_to": span["last"],
             "faction_timeline": timeline,
             "ris": self.person_stammdaten_for_names(matched),
