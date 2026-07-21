@@ -8,6 +8,15 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geändert
+- **Neue Startseite mit „Heute im Rat" (Design 2a, M2):** Unter dem Kopf der
+  Landing läuft jetzt eine dezente **Live-Leiste**: Tagt heute ein Gremium,
+  steht dort orange „HEUTE IM RAT" mit Uhrzeit und den ersten
+  Tagesordnungspunkten; sonst der nächste Termin — und in den Ferien schlicht
+  „Sitzungspause bis …". Der **Hero** zeigt rechts die **echte KI-Demo** (mit
+  Lotti und „LIVE AUSPROBIEREN"-Badge) statt einer Illustration, links den
+  großen Titel mit orangenem **„Kostenlos registrieren"** und den Kennzahlen
+  als schlanker Belegzeile. Die Hafenszene mit der Lotsen-Familie wird zum
+  ruhigen Band darunter. (#223)
 - **Meine Themen aufgeräumt (Design 3a, M2):** Neues Thema legst du jetzt über
   den orangenen **„+ Neues Thema"**-Knopf im Kopf an (Dialog statt
   Dauerformular). Die Themen stehen als **Karten im Zweier-Raster** — mit
