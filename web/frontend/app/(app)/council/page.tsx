@@ -15,6 +15,7 @@ import {
   Sheet, SheetContent, SheetTitle, SheetTrigger, Spinner, formatDate, toast,
 } from "@/components/ui";
 import { OutcomeBadge, OutcomeDot, ImportanceBadge, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
+import { ChipPopover, DateRangeChip } from "@/components/filter-chips";
 import { AnalysisTab } from "@/components/council-analysis";
 import { EntitiesTab } from "@/components/council-entities";
 import { QaTab } from "@/components/council-qa";
@@ -164,7 +165,7 @@ function FilterChip({ label, onClear }: { label: string; onClear: () => void }) 
   );
 }
 
-function DecisionsTab({ committees, modeToggle }: { committees: string[]; modeToggle?: React.ReactNode }) {
+function DecisionsTab({ committees }: { committees: string[] }) {
   const [q, setQ] = useState("");
   const [committee, setCommittee] = useState("");
   const [outcome, setOutcome] = useState("");
@@ -294,81 +295,111 @@ function DecisionsTab({ committees, modeToggle }: { committees: string[]; modeTo
 
   return (
     <div>
-      <Card className="mt-3 p-4">
-        {/* Tier 0 — Suchen/KI-Frage wohnt IN der Karte statt als eigene Ebene
-            darüber: spart auf dem Handy eine Zeile + Abstand vor dem Inhalt. */}
-        {modeToggle && <div className="mb-3">{modeToggle}</div>}
-        {/* Tier 1 — primary: what am I looking at + free-text search. */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <Segmented
-            className="shrink-0"
-            tone="primary"
-            value={mode}
-            onChange={(m) => { setUrlParam("cat", m === "vote" ? "" : m); setOutcome(""); }}
-            options={[
-              { value: "vote", label: "Beschlüsse" },
-              { value: "report", label: "Berichte" },
-              { value: "all", label: "Alle" },
-            ]}
-          />
-          <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              data-search
-              data-tour="beschluss-suche"
-              className="pl-9"
-              placeholder={isReport ? "Berichte durchsuchen…" : "Suchen (z. B. Haushalt, Radwege)…"}
-              value={q}
-              onChange={(e) => { setQ(e.target.value); setPage(1); }}
-            />
-          </div>
-        </div>
+      {/* RL-501: großes Suchfeld über der Liste, Filter als Chip-Zeile
+          (Desktop: Popover-Chips; mobil bleibt das Bottom-Sheet). */}
+      <div className="relative mt-3">
+        <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          data-search
+          data-tour="beschluss-suche"
+          className="h-12 rounded-[14px] pl-11 text-base"
+          placeholder={isReport ? "Berichte durchsuchen…" : "Suchen (z. B. Haushalt, Radwege)…"}
+          value={q}
+          onChange={(e) => { setQ(e.target.value); setPage(1); }}
+        />
+      </div>
 
-        {/* Tier 2 — refine: Desktop inline; mobil hinter „Filter“-Button im Bottom-Sheet. */}
-        <div className="mt-4 hidden border-t border-border pt-4 md:block">{refineFilters}</div>
-        <div className="mt-3 border-t border-border pt-3 md:hidden">
-          <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
-            <SheetTrigger asChild>
-              <Button variant="secondary" size="sm" className="w-full">
-                <SlidersHorizontal /> Filter & Sortierung{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="bottom" className="p-5">
-              <SheetTitle>Filter & Sortierung</SheetTitle>
-              <p className="pb-4 pr-8 font-display text-lg font-semibold text-foreground" aria-hidden>
-                Filter & Sortierung
-              </p>
-              {refineFilters}
-              <Button className="mt-5 w-full" onClick={() => setFiltersOpen(false)}>
-                {loading ? "Ergebnisse anzeigen" : `${total} ${noun} anzeigen`}
-              </Button>
-            </SheetContent>
-          </Sheet>
-          {activeFilterCount > 0 && (
-            <div className="mt-2.5 flex flex-wrap gap-1.5">
-              {outcome && (
-                <FilterChip
-                  label={`Ergebnis: ${OUTCOME_CHIPS.find((o) => o.value === outcome)?.label ?? outcome}`}
-                  onClear={() => { setOutcome(""); setPage(1); }}
-                />
-              )}
-              {field && (
-                <FilterChip
-                  label={fields.find((f) => f.key === field)?.label ?? field}
-                  onClear={() => setUrlParam("field", "")}
-                />
-              )}
-              {committee && <FilterChip label={committee} onClear={() => { setCommittee(""); setPage(1); }} />}
-              {(dateFrom || dateTo) && (
-                <FilterChip
-                  label={`${dateFrom ? formatDate(dateFrom) : "…"} – ${dateTo ? formatDate(dateTo) : "heute"}`}
-                  onClear={() => setUrlParams({ date_from: "", date_to: "" })}
-                />
-              )}
-            </div>
-          )}
+      <div className="mt-3 hidden flex-wrap items-center gap-2 md:flex">
+        <ChipPopover
+          label="Beschlüsse"
+          clearable={false}
+          value={mode}
+          options={[
+            { value: "vote", label: "Beschlüsse" },
+            { value: "report", label: "Berichte" },
+            { value: "all", label: "Alle Vorgänge" },
+          ]}
+          onChange={(m) => { setUrlParam("cat", m === "vote" ? "" : m); setOutcome(""); }}
+        />
+        {fields.length > 0 && (
+          <ChipPopover
+            label="Themenfeld"
+            value={field}
+            display={fields.find((f) => f.key === field)?.label}
+            options={fields.map((f) => ({ value: f.key, label: `${f.label} (${f.count})` }))}
+            onChange={(v) => setUrlParam("field", v)}
+          />
+        )}
+        <ChipPopover
+          label="Ausschuss"
+          value={committee}
+          options={committees.map((c) => ({ value: c, label: c }))}
+          onChange={(v) => { setCommittee(v); setPage(1); }}
+        />
+        {mode === "vote" && (
+          <ChipPopover
+            label="Ergebnis"
+            value={outcome}
+            options={OUTCOME_CHIPS.filter((o) => o.value !== "")}
+            onChange={(v) => { setOutcome(v); setPage(1); }}
+          />
+        )}
+        <DateRangeChip from={dateFrom} to={dateTo} onChange={(f, t) => setUrlParams({ date_from: f, date_to: t })} />
+        <div className="ml-auto">
+          <ChipPopover
+            ghost
+            clearable={false}
+            label="Sortierung"
+            value={sort}
+            display={SORTS.find((s) => s.value === sort)?.label}
+            options={SORTS}
+            onChange={(v) => { setSort(v); setPage(1); }}
+          />
         </div>
-      </Card>
+      </div>
+
+      <div className="mt-3 md:hidden">
+        <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+          <SheetTrigger asChild>
+            <Button variant="secondary" size="sm" className="w-full">
+              <SlidersHorizontal /> Filter & Sortierung{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="bottom" className="p-5">
+            <SheetTitle>Filter & Sortierung</SheetTitle>
+            <p className="pb-4 pr-8 font-display text-lg font-semibold text-foreground" aria-hidden>
+              Filter & Sortierung
+            </p>
+            {refineFilters}
+            <Button className="mt-5 w-full" onClick={() => setFiltersOpen(false)}>
+              {loading ? "Ergebnisse anzeigen" : `${total} ${noun} anzeigen`}
+            </Button>
+          </SheetContent>
+        </Sheet>
+        {activeFilterCount > 0 && (
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
+            {outcome && (
+              <FilterChip
+                label={`Ergebnis: ${OUTCOME_CHIPS.find((o) => o.value === outcome)?.label ?? outcome}`}
+                onClear={() => { setOutcome(""); setPage(1); }}
+              />
+            )}
+            {field && (
+              <FilterChip
+                label={fields.find((f) => f.key === field)?.label ?? field}
+                onClear={() => setUrlParam("field", "")}
+              />
+            )}
+            {committee && <FilterChip label={committee} onClear={() => { setCommittee(""); setPage(1); }} />}
+            {(dateFrom || dateTo) && (
+              <FilterChip
+                label={`${dateFrom ? formatDate(dateFrom) : "…"} – ${dateTo ? formatDate(dateTo) : "heute"}`}
+                onClear={() => setUrlParams({ date_from: "", date_to: "" })}
+              />
+            )}
+          </div>
+        )}
+      </div>
 
       {party && (
         <div className="mt-4 flex items-center gap-2 text-sm">
@@ -387,10 +418,32 @@ function DecisionsTab({ committees, modeToggle }: { committees: string[]; modeTo
         {loading ? (
           <CardListSkeleton rows={5} />
         ) : decisions.length === 0 ? (
-          <EmptyState mascot="search" title={`Keine ${isReport ? "Berichte" : "Beschlüsse"} gefunden`} hint="Andere Suche/Filter — oder das Protokoll ist noch nicht veröffentlicht." />
+          <EmptyState
+            mascot="search"
+            title={`Keine ${isReport ? "Berichte" : "Beschlüsse"} gefunden`}
+            hint="Andere Suche/Filter — oder frag die KI: Sie sucht semantisch statt wortwörtlich."
+            action={
+              <Button
+                variant="signal"
+                size="sm"
+                onClick={() => {
+                  const params = new URLSearchParams(sp.toString());
+                  params.set("tab", "decisions");
+                  params.set("mode", "fragen");
+                  if (query) params.set("q", query);
+                  router.replace(`/council?${params.toString()}`, { scroll: false });
+                }}
+              >
+                <Sparkles /> KI-Frage stellen
+              </Button>
+            }
+          />
         ) : (
           <div className="space-y-2.5">
-            <p className="text-sm font-medium text-muted-foreground">{total} {noun}</p>
+            <p className="text-sm font-medium text-muted-foreground">
+              {total} {noun}
+              {query && <> zu <strong className="font-semibold text-foreground">{query}</strong></>}
+            </p>
             {decisions.map((d) => <DecisionCard key={d.id} d={d} query={query} />)}
             <Pagination page={page} totalPages={totalPages} onChange={setPage} className="pt-2" />
           </div>
@@ -597,11 +650,17 @@ function SessionsTab({ committees }: { committees: string[] }) {
 // same decision cards, so it reads as one search rather than two features.
 function SearchTab({ committees }: { committees: string[] }) {
   const sp = useSearchParams();
+  const mode: "suchen" | "fragen" = sp.get("mode") === "fragen" ? "fragen" : "suchen";
+  // Umschalter lebt jetzt im Seitenkopf (RL-501, 6a) — die Tabs rendern ohne.
+  return mode === "suchen" ? <DecisionsTab committees={committees} /> : <QaTab />;
+}
+
+/** „Suchen | KI-Frage"-Umschalter im Seitenkopf (RL-501); qa-glint-Lockruf
+ *  bleibt, bis die erste Frage gestellt wurde (Flag setzt council-qa). */
+function SearchModeToggle() {
+  const sp = useSearchParams();
   const router = useRouter();
   const mode: "suchen" | "fragen" = sp.get("mode") === "fragen" ? "fragen" : "suchen";
-  // Glitzer-Lockruf auf dem KI-Frage-Segment, bis die erste Frage gestellt
-  // wurde (Flag setzt council-qa). Default true = kein Glitzern vor dem
-  // Mount-Check, damit SSR und Client identisch rendern.
   const [qaUsed, setQaUsed] = useState(true);
   useEffect(() => {
     setQaUsed(localStorage.getItem("ratslotse:qa-benutzt") === "1");
@@ -612,7 +671,7 @@ function SearchTab({ committees }: { committees: string[] }) {
     if (m === "suchen") params.delete("mode"); else params.set("mode", m);
     router.replace(`/council?${params.toString()}`, { scroll: false });
   };
-  const modeToggle = (
+  return (
     <Segmented
       className="sm:w-fit"
       value={mode}
@@ -623,19 +682,12 @@ function SearchTab({ committees }: { committees: string[] }) {
       ]}
     />
   );
-  // Beide Modi zeigen den Umschalter oben IN ihrer weißen Karte — identische
-  // Optik, kein Layout-Sprung beim Wechsel zwischen Suchen und KI-Frage.
-  return mode === "suchen" ? (
-    <DecisionsTab committees={committees} modeToggle={modeToggle} />
-  ) : (
-    <QaTab modeToggle={modeToggle} />
-  );
 }
 
 // Navigation between these views now lives in the left sidebar (Ratsinfo section),
 // so the page only needs a per-view title/description instead of an in-page tab bar.
 const TAB_META: Record<Tab, { title: string; description: string }> = {
-  decisions: { title: "Beschlüsse", description: "Beschlüsse durchsuchen oder dem Rat eine KI-Frage stellen." },
+  decisions: { title: "Suchen & Fragen", description: "Beschlüsse durchsuchen oder dem Rat eine KI-Frage stellen." },
   sessions: { title: "Sitzungen", description: "Sitzungen und Tagesordnungen von Rat und Ausschüssen." },
   themen: { title: "Themen", description: "Was den Rat wo beschäftigt — auf der Stadtkarte und als Liste." },
   analysis: { title: "Analyse", description: "Parteien, Personen, Finanzen, Trends und Ziele im Überblick." },
@@ -668,7 +720,11 @@ function CouncilInner() {
   const meta = TAB_META[tab];
   return (
     <div>
-      <PageHeader title={meta.title} description={meta.description} />
+      <PageHeader
+        title={meta.title}
+        description={meta.description}
+        action={tab === "decisions" ? <SearchModeToggle /> : undefined}
+      />
       {/* Bewusst KEINE eigene Tab-Leiste hier: Sitzungen/Themen/Analyse sind mobil
           übers Burger-Menü erreichbar — eine dritte Navigation (neben Burger und
           Bottom-Nav) verwirrte mehr, als sie half. */}

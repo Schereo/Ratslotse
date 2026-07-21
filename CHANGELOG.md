@@ -8,6 +8,15 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geändert
+- **Suche mit Filter-Chips (Design 1a, M2):** Die Beschluss-Suche hat jetzt ein
+  großes Suchfeld und darunter eine **Chip-Zeile** ([Beschlüsse ▾] · Themenfeld
+  · Ausschuss · Ergebnis · Zeitraum, rechts die Sortierung) — aktive Filter
+  füllen sich blau und lassen sich per ✕ direkt löschen; die Auswahl öffnet
+  sich als leichtes Popover (mobil weiterhin als Bottom-Sheet). Der
+  **„Suchen | KI-Frage"-Umschalter** sitzt jetzt oben im Seitenkopf. Findet
+  die Suche nichts, bietet Lotti direkt **„KI-Frage stellen"** an — die Frage
+  übernimmt den Suchtext. Alle Filter-Links (aus Analyse, Karten, Badges)
+  funktionieren unverändert. (#219)
 - **„Heute"-Briefing statt Übersicht (Design 2a, M2):** Die Startseite nach dem
   Login ist jetzt ein tägliches Briefing: Begrüßung mit Lotti und Datum,
   daneben die zentrale Aktion **„Frag den Rat"**, darunter drei Karten —
