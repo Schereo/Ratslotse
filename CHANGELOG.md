@@ -8,6 +8,16 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geändert
+- **Design „Feinschliff 2a" — Fundament & Navigation (M1):** Erster Schritt des
+  neuen Designs. Die **Seitenleiste** führt jetzt direkt zu *Heute, Suchen &
+  Fragen, Sitzungen, Stadtkarte* (vorher „Themen"-Tab) *und Analyse*, darunter
+  der Bereich *Persönlich*; aktive Einträge sind eine ruhige Fläche statt eines
+  Balkens. Die **mobile Leiste** bekommt eine zentrale orangene
+  **„Fragen"-Taste**, die direkt zur KI-Frage führt. **Ergebnisse in Listen**
+  zeigen Punkt + Wort („● Angenommen") statt farbiger Kästen, **Beträge**
+  stehen als fette Zahl rechts, und der **Beschlusstext** auf der Detailseite
+  liegt auf einer ruhigen blauen Fläche mit Label. Seitentitel in der
+  Markenschrift. (#217)
 - **Karten-Quiz nutzt den Bildschirm:** Die „Wo liegt …?"-Karte wächst jetzt
   mit dem Fenster (bis ca. 900 × 720 Pixel auf großen Bildschirmen statt fix
   ~530 × 440) und zoomt das Stadtgebiet passgenauer ein. Bei Größenänderungen

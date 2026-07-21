@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Home, Landmark, Tags, Search, Settings, LogOut, Menu, Monitor, Moon, Sun, UserCircle,
-  Gavel, CalendarDays, Tag, BarChart3, Trophy,
+  CalendarDays, BarChart3, Trophy, Sparkles, Map as MapIcon,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, Button } from "@/components/ui";
@@ -19,25 +19,29 @@ import { openCommandPalette } from "@/components/command-palette";
 // Sidebar und Bottom-Nav tragen denselben Wert — die Tour nimmt das sichtbare.
 type Item = { href: string; label: string; icon: typeof Home; tour?: string };
 
-const OVERVIEW: Item = { href: "/dashboard", label: "Übersicht", icon: Home };
+// Sidebar 2a (RL-201): fünf Hauptziele flach, danach Abschnitt PERSÖNLICH.
+// „Stadtkarte" = der bisherige Themen-Tab (Unterscheidung von „Meine Themen").
+const MAIN_ITEMS: (Item & { tab?: string })[] = [
+  { href: "/dashboard", label: "Heute", icon: Home },
+  { href: "/council", label: "Suchen & Fragen", icon: Search, tab: "decisions", tour: "nav-ratsinfo" },
+  { href: "/council?tab=sessions", label: "Sitzungen", icon: CalendarDays, tab: "sessions" },
+  { href: "/council?tab=themen", label: "Stadtkarte", icon: MapIcon, tab: "themen" },
+  { href: "/council?tab=analysis", label: "Analyse", icon: BarChart3, tab: "analysis" },
+];
 const PERSONAL: Item = { href: "/topics", label: "Meine Themen", icon: Tags, tour: "nav-themen" };
 const QUIZ: Item = { href: "/quiz", label: "Quiz", icon: Trophy };
 
-// Ratsinfo sub-pages (the council page's tabs), surfaced directly in the nav.
-const COUNCIL_ITEMS: (Item & { tab: string })[] = [
-  { href: "/council", label: "Beschlüsse", icon: Gavel, tab: "decisions", tour: "nav-ratsinfo" },
-  { href: "/council?tab=sessions", label: "Sitzungen", icon: CalendarDays, tab: "sessions" },
-  { href: "/council?tab=themen", label: "Themen", icon: Tag, tab: "themen" },
-  { href: "/council?tab=analysis", label: "Analyse", icon: BarChart3, tab: "analysis" },
-];
-
-// Mobile bottom tab bar (thumb-friendly) — the four most-used destinations.
-const PRIMARY: Item[] = [
-  { href: "/dashboard", label: "Start", icon: Home },
+// Mobile Bottom-Nav (RL-201): 4 Ziele + zentrale „Fragen"-Taste in Signal-
+// Orange (angehoben, 54 px) — Route direkt in den KI-Frage-Modus.
+const PRIMARY_LEFT: Item[] = [
+  { href: "/dashboard", label: "Heute", icon: Home },
   { href: "/council", label: "Ratsinfo", icon: Landmark, tour: "nav-ratsinfo" },
+];
+const PRIMARY_RIGHT: Item[] = [
   { href: "/topics", label: "Themen", icon: Tags, tour: "nav-themen" },
   { href: "/account", label: "Konto", icon: UserCircle },
 ];
+const FRAGEN_HREF = "/council?tab=decisions&mode=fragen";
 
 const THEME_META: Record<Theme, { icon: typeof Sun; label: string }> = {
   light: { icon: Sun, label: "Hell" },
@@ -79,12 +83,13 @@ function NavItem({ item, active, onNavigate }: { item: Item; active: boolean; on
       href={item.href}
       onClick={onNavigate}
       data-tour={item.tour}
+      aria-current={active ? "page" : undefined}
       className={cn(
-        "relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+        // Aktiv = Pill (RL-102): Fläche + Farbe, kein Akzent-Balken mehr.
+        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
         active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground",
       )}
     >
-      {active && <span className="absolute inset-y-1.5 left-0 w-1 rounded-full bg-primary" aria-hidden />}
       <Icon className="h-4 w-4" />
       {item.label}
     </Link>
@@ -99,14 +104,16 @@ function NavLinksInner({ activeTab, onNavigate }: { activeTab: string; onNavigat
 
   return (
     <nav className="flex-1 space-y-1 px-3">
-      <NavItem item={OVERVIEW} active={isActive("/dashboard")} onNavigate={onNavigate} />
-
-      <SectionHeader>Ratsinfo</SectionHeader>
-      {COUNCIL_ITEMS.map((l) => (
-        <NavItem key={l.href} item={l} active={onCouncil && activeTab === l.tab} onNavigate={onNavigate} />
+      {MAIN_ITEMS.map((l) => (
+        <NavItem
+          key={l.href}
+          item={l}
+          active={l.tab ? onCouncil && activeTab === l.tab : isActive(l.href)}
+          onNavigate={onNavigate}
+        />
       ))}
 
-      <div className="pt-3" />
+      <SectionHeader>Persönlich</SectionHeader>
       <NavItem item={PERSONAL} active={isActive("/topics")} onNavigate={onNavigate} />
       <NavItem item={QUIZ} active={isActive("/quiz")} onNavigate={onNavigate} />
       {user?.role === "admin" && (
@@ -239,28 +246,45 @@ export function MobileBottomNav() {
       className="fixed inset-x-0 bottom-0 z-40 flex border-t border-border/50 bg-card/70 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl backdrop-saturate-150 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.45),0_-10px_28px_-14px_rgba(2,32,71,0.22)] dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),0_-10px_28px_-14px_rgba(0,0,0,0.5)] md:hidden"
       aria-label="Hauptnavigation"
     >
-      {PRIMARY.map((l) => {
-        const Icon = l.icon;
-        const active = pathname === l.href || pathname.startsWith(l.href + "/");
-        return (
-          <Link
-            key={l.href}
-            href={l.href}
-            aria-current={active ? "page" : undefined}
-            data-tour={l.tour}
-            className={cn(
-              // active:scale-95 = spürbares Touch-Feedback beim Antippen.
-              "flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition-[color,transform] duration-150 active:scale-95",
-              active ? "text-primary" : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            <span className={cn("rounded-full px-3.5 py-1 transition-colors", active && "bg-primary/10")}>
-              <Icon className={cn("h-5 w-5 transition-transform", active && "scale-110")} />
-            </span>
-            {l.label}
-          </Link>
-        );
-      })}
+      {PRIMARY_LEFT.map((l) => (
+        <BottomNavItem key={l.href} item={l} active={pathname === l.href || pathname.startsWith(l.href + "/")} />
+      ))}
+      {/* Zentrale „Fragen"-Taste (RL-201): DIE Signal-Handlung der Bottom-Nav —
+          angehoben über der Leiste, führt direkt in den KI-Frage-Modus. */}
+      <Link
+        href={FRAGEN_HREF}
+        aria-label="Frag den Rat — KI-Frage stellen"
+        className="flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium text-muted-foreground transition-[color,transform] duration-150 active:scale-95"
+      >
+        <span className="-mt-[22px] flex h-[54px] w-[54px] items-center justify-center rounded-full bg-signal text-signal-foreground shadow-[0_8px_22px_-10px_hsl(19_92%_45%/0.6)] ring-4 ring-background">
+          <Sparkles className="h-6 w-6" />
+        </span>
+        Fragen
+      </Link>
+      {PRIMARY_RIGHT.map((l) => (
+        <BottomNavItem key={l.href} item={l} active={pathname === l.href || pathname.startsWith(l.href + "/")} />
+      ))}
     </nav>
+  );
+}
+
+function BottomNavItem({ item, active }: { item: Item; active: boolean }) {
+  const Icon = item.icon;
+  return (
+    <Link
+      href={item.href}
+      aria-current={active ? "page" : undefined}
+      data-tour={item.tour}
+      className={cn(
+        // active:scale-95 = spürbares Touch-Feedback beim Antippen.
+        "flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition-[color,transform] duration-150 active:scale-95",
+        active ? "text-primary" : "text-muted-foreground hover:text-foreground",
+      )}
+    >
+      <span className={cn("rounded-full px-3.5 py-1 transition-colors", active && "bg-primary/10")}>
+        <Icon className={cn("h-5 w-5 transition-transform", active && "scale-110")} />
+      </span>
+      {item.label}
+    </Link>
   );
 }

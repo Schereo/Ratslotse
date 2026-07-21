@@ -14,7 +14,7 @@ import {
   Badge, Button, Card, CardListSkeleton, DateField, EmptyState, Input, PageHeader, Pagination, Segmented, Select,
   Sheet, SheetContent, SheetTitle, SheetTrigger, Spinner, formatDate, toast,
 } from "@/components/ui";
-import { OutcomeBadge, FieldBadge, ImportanceBadge, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
+import { OutcomeBadge, OutcomeDot, ImportanceBadge, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
 import { AnalysisTab } from "@/components/council-analysis";
 import { EntitiesTab } from "@/components/council-entities";
 import { QaTab } from "@/components/council-qa";
@@ -84,23 +84,21 @@ function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
   const isSub = d.kind === "subvote";
   return (
     <Link href={decisionHref(d.id)} className="block">
-      <Card className={cn("card-interactive group flex items-center gap-3 p-4", isSub && "border-l-2 border-l-border bg-muted/30")}>
+      {/* RL-103: links max. 3 Metaelemente (Punkt+Wort · Gremium·Datum·TOP ·
+          Wichtig), Betrag als rechtsbündige Spalte; Subvote ohne Akzent-Border
+          (RL-102), stattdessen nur die „Teilabstimmung"-Metazeile + Tönung. */}
+      <Card className={cn("card-interactive group flex items-center gap-3 p-4", isSub && "bg-muted/30")}>
         <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-              {!isSub && <FieldBadge field={d.policy_field} />}
-              <span>{isSub ? `Teilabstimmung · TOP ${d.parent_item}` : `${d.committee} · ${formatDate(d.session_date)}`}</span>
-              {!isSub && d.amount_eur != null && (
-                <span className="rounded bg-emerald-500/10 px-1.5 font-semibold tabular-nums text-emerald-700 dark:text-emerald-400" title="Im Beschlusstext genannter Betrag">
-                  {formatEuro(d.amount_eur)}
-                </span>
-              )}
-              {!isSub && <ImportanceBadge score={d.importance} />}
-            </div>
-            <OutcomeBadge outcome={d.outcome} />
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
+            <OutcomeDot outcome={d.outcome} />
+            <span>
+              {isSub
+                ? `Teilabstimmung · TOP ${d.parent_item}`
+                : `${d.committee} · ${formatDate(d.session_date)}${d.item_number ? ` · TOP ${d.item_number}` : ""}`}
+            </span>
+            {!isSub && <ImportanceBadge score={d.importance} />}
           </div>
           <div className="mt-1.5 hyphens-auto font-medium text-foreground">
-            {!isSub && d.item_number && <span className="text-muted-foreground">TOP {d.item_number} · </span>}
             <Highlight text={d.title ?? ""} query={query} />
           </div>
           {d.beschluss && (
@@ -110,6 +108,14 @@ function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
           )}
           <VoteLine d={d} />
         </div>
+        {!isSub && d.amount_eur != null && (
+          <span
+            className="shrink-0 self-center text-right text-base font-bold tabular-nums text-foreground"
+            title="Im Beschlusstext genannter Betrag"
+          >
+            {formatEuro(d.amount_eur)}
+          </span>
+        )}
         <ChevronRight className="h-5 w-5 shrink-0 self-center text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
       </Card>
     </Link>

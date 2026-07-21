@@ -14,6 +14,9 @@ const buttonVariants = cva(
         secondary: "border border-input bg-card text-foreground hover:bg-accent",
         danger: "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-sm",
         ghost: "text-foreground hover:bg-accent",
+        // RL-101: DIE eine Signal-Handlung pro Screen (Registrieren, „Frag den
+        // Rat", Neues Thema …) — Orange-Fill gibt es nur hier + bei „neu"-Badges.
+        signal: "bg-signal text-signal-foreground shadow-[0_8px_22px_-10px_hsl(19_92%_45%/0.6)] hover:opacity-[0.92]",
       },
       size: {
         sm: "h-8 px-3",
