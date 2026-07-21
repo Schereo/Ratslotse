@@ -52,6 +52,10 @@ class TopicOut(BaseModel):
     description: str
     created_at: str
     decision_count: int = 0
+    # Jüngster Beschluss-Treffer (RL-701: „letzter Treffer"-Zeile der Themen-Karte)
+    last_hit_id: int | None = None
+    last_hit_title: str | None = None
+    last_hit_date: str | None = None
 
 
 # ---- subscriptions ----

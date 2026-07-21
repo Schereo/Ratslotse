@@ -30,11 +30,25 @@ def _own_topic(store: Store, owner_id: int, topic_id: int):
 
 
 @router.get("", response_model=list[TopicOut])
-def list_topics(user: dict = Depends(require_active), store: Store = Depends(get_store)) -> list[TopicOut]:
+def list_topics(
+    user: dict = Depends(require_active),
+    store: Store = Depends(get_store),
+    council: CouncilStore = Depends(get_council_store),
+) -> list[TopicOut]:
     owner_id = user["id"]
     dec_counts = store.topic_decision_counts(owner_id)
+    topics = store.get_topics(owner_id)
+    # Jüngster Treffer je Thema (RL-701): Kandidaten je Thema sammeln, Beschlüsse
+    # in EINEM Batch nachschlagen, dann pro Thema das neueste Sitzungsdatum wählen.
+    cand: dict[int, list[int]] = {t.id: [m["decision_id"] for m in store.get_topic_decision_matches(t.id)[:10]]
+                                  for t in topics}
+    all_ids = [d for ids in cand.values() for d in ids]
+    by_id = {d["id"]: d for d in council.get_decisions_by_ids(all_ids)} if all_ids else {}
     out = []
-    for t in store.get_topics(owner_id):
+    for t in topics:
+        hits = sorted((by_id[d] for d in cand.get(t.id, []) if d in by_id),
+                      key=lambda d: d.get("session_date") or "", reverse=True)
+        last = hits[0] if hits else None
         out.append(
             TopicOut(
                 id=t.id,
@@ -42,6 +56,9 @@ def list_topics(user: dict = Depends(require_active), store: Store = Depends(get
                 description=t.description,
                 created_at=t.created_at,
                 decision_count=dec_counts.get(t.id, 0),
+                last_hit_id=last["id"] if last else None,
+                last_hit_title=last["title"] if last else None,
+                last_hit_date=last.get("session_date") if last else None,
             )
         )
     return out

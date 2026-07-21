@@ -8,6 +8,13 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geändert
+- **Meine Themen aufgeräumt (Design 3a, M2):** Neues Thema legst du jetzt über
+  den orangenen **„+ Neues Thema"**-Knopf im Kopf an (Dialog statt
+  Dauerformular). Die Themen stehen als **Karten im Zweier-Raster** — mit
+  Stift/Papierkorb-Symbolen, dem **jüngsten Treffer** als anklickbarer Zeile
+  mit Orange-Punkt und „n Beschlüsse insgesamt · alle ansehen". Die
+  **Ausschuss-Abos** schalten sich per **Schalter** (wie vom Handy gewohnt)
+  statt über Abonnieren-Knöpfe. (#222)
 - **Beschluss-Seite als Dokument (Design 3a, M2):** Oben eine kompakte
   **Statuszeile** (● Ergebnis · Gremium · Datum · TOP · Aktenzeichen ·
   „Wichtig"-Chip mit Punktzahl), der Titel groß in der Markenschrift, darunter

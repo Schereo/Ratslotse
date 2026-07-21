@@ -278,6 +278,9 @@ export interface Topic {
   description: string;
   created_at: string;
   decision_count: number;
+  last_hit_id?: number | null;
+  last_hit_title?: string | null;
+  last_hit_date?: string | null;
 }
 
 export interface TopicDecision {
