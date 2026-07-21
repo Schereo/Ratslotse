@@ -8,6 +8,15 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geändert
+- **Beschluss-Seite als Dokument (Design 3a, M2):** Oben eine kompakte
+  **Statuszeile** (● Ergebnis · Gremium · Datum · TOP · Aktenzeichen ·
+  „Wichtig"-Chip mit Punktzahl), der Titel groß in der Markenschrift, darunter
+  zweispaltig: links der Vorgang (Beschlusstext, Anträge, Weg der Vorlage,
+  Vorlagen-Auszug, Ähnliche), rechts eine **Meta-Spalte** mit Karten für
+  Abstimmung, **Betrag** (groß in Orange), Antragsteller, **Dokumente** (alle
+  Links gebündelt) und Anwesenheit. Fehlen Abstimmung oder Betrag, erklärt die
+  Karte das Fehlen, statt zu verschwinden. Mobil bleibt alles einspaltig —
+  erst der Text, dann die Meta-Daten. (#221)
 - **KI-Frage-Zustände nach Design 6a/4a (M2):** Die Antwort kommt als
   Sprechblase neben Lotti, der Ladezustand wohnt in einem gestrichelten
   Container, und findet die KI **keine passenden Beschlüsse**, sagt sie das
