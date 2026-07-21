@@ -60,6 +60,8 @@ export default function AccountPage() {
       <PageHeader title="Mein Konto" description={user?.email} />
 
       <div className="mt-6 grid max-w-4xl items-start gap-6 lg:grid-cols-2">
+        <DeliverySettings />
+
         <Card className="p-6">
           <h2 className="font-semibold text-foreground">Passwort ändern</h2>
           <form onSubmit={handleSubmit} className="mt-4 space-y-4">
@@ -103,9 +105,7 @@ export default function AccountPage() {
           </form>
         </Card>
 
-        <DeliverySettings />
-
-        <Card className="border-destructive/30 p-6">
+        <Card className="border-destructive/30 p-6 lg:col-span-2">
           <h2 className="font-semibold text-destructive">Konto löschen</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Löscht dein Konto und alle zugehörigen Daten (Themen, Treffer, Abos) unwiderruflich.
