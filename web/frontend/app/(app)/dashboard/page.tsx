@@ -11,6 +11,7 @@ import { Badge, Button, Card, PageHeader } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
 import { LotsenTipp } from "@/components/lotsen-tipp";
 import { RecentDecisions } from "@/components/recent-decisions";
+import { SitzungspauseBanner } from "@/components/sitzungspause-banner";
 import { startGuidedTour } from "@/components/tour";
 import { ConfettiBurst } from "@/components/confetti";
 import { useOnboarding, type StepId } from "@/components/onboarding";
@@ -34,6 +35,9 @@ export default function DashboardPage() {
   return (
     <div>
       <PageHeader title="Moin!" description={user?.email} />
+
+      {/* Sitzungspause (Schulferien/Wahl) — nur sichtbar, wenn gerade Pause ist. */}
+      <SitzungspauseBanner className="mt-6" />
 
       <FirstSteps hasTopic={topicCount > 0} />
 
