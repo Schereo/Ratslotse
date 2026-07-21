@@ -91,6 +91,27 @@ def sitzungspause(
     return pause_mod.sitzungspause(date.today(), next_date)
 
 
+@router.get("/zahl-der-woche")
+def zahl_der_woche(
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """RL-905: größter Beschluss-Betrag der letzten 7 Tage (Fallback 30);
+    ganz ohne Treffer zählt die Karte die Beschlüsse der Woche. Die Satz-
+    Formulierung übernimmt das Frontend — hier nur Rohdaten."""
+    from datetime import timedelta
+    today = date.today()
+    for days in (7, 30):
+        top = store.top_amount_since((today - timedelta(days=days)).isoformat())
+        if top:
+            return {"kind": "betrag", "amount_eur": top["amount_eur"],
+                    "decision_id": top["id"], "title": top["title"],
+                    "session_date": top["session_date"], "window_days": days}
+    return {"kind": "anzahl",
+            "count": store.count_decisions_since((today - timedelta(days=7)).isoformat()),
+            "window_days": 7}
+
+
 @router.get("/session/{ksinr}")
 def session_detail(
     ksinr: int,
