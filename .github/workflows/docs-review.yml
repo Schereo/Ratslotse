@@ -31,8 +31,16 @@ jobs:
           fetch-depth: 0
 
       - uses: anthropics/claude-code-action@v1
+        # Beratender Bot, kein Qualitäts-Gate: Scheitert der Review (z. B.
+        # leeres API-Guthaben, 21.07.2026), soll der PR nicht rot werden —
+        # es fehlt dann schlicht der Review-Kommentar. Echte Workflow-Defekte
+        # fallen dadurch weniger auf (bewusster Trade-off).
+        continue-on-error: true
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Fehlerausgabe sichtbar machen (Läufe scheiterten ab 21.07. sofort
+          # mit verstecktem Fehler); Diff+Doku passen locker in den Kontext.
+          show_full_output: true
           # Pass the default token so the action skips the GitHub-App/OIDC token
           # exchange (we don't install the Claude GitHub App). pull-requests:write
           # above lets it post the review comment.
