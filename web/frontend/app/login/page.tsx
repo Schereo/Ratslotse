@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { Button, Input, PasswordInput } from "@/components/ui";
 import { AuthShell } from "@/components/auth-shell";
+import { AppleSignInButton } from "@/components/apple-sign-in-button";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -32,17 +33,21 @@ export default function LoginPage() {
   return (
     <AuthShell title="Moin!" pose="wave">
         <p className="mt-3 text-sm text-muted-foreground">Willkommen zurück — melde dich an, um fortzufahren.</p>
-        <form onSubmit={onSubmit} className="mt-6 space-y-4">
+        <div className="mt-6">
+          {/* RL-1001: Apple steht immer an erster Stelle (nur in der App sichtbar). */}
+          <AppleSignInButton label="Mit Apple anmelden" />
+        </div>
+        <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <label htmlFor="email" className="mb-1 block text-sm font-medium text-foreground">E-Mail</label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus autoComplete="email" />
+            <Input id="email" type="email" className="h-11" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus autoComplete="email" />
           </div>
           <div>
             <label htmlFor="password" className="mb-1 block text-sm font-medium text-foreground">Passwort</label>
-            <PasswordInput id="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
+            <PasswordInput id="password" className="h-11" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
-          <Button type="submit" disabled={busy} className="w-full">
+          <Button type="submit" disabled={busy} className="h-11 w-full">
             {busy ? "Anmelden…" : "Anmelden"}
           </Button>
         </form>

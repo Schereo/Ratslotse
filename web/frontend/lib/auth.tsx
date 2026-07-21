@@ -11,6 +11,7 @@ interface AuthContextValue {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
+  loginWithApple: (identityToken: string) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -56,6 +57,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(u);
   };
 
+  const loginWithApple = async (identityToken: string) => {
+    // RL-1002: Backend verifiziert das Token gegen Apples JWKS und meldet an
+    // (bzw. verknüpft/erstellt das Konto).
+    const u = await api.post<User>("/auth/apple", { identity_token: identityToken });
+    await setToken(u.access_token ?? null);
+    setUser(u);
+  };
+
   const logout = async () => {
     await unregisterPush(); // while still authenticated — stops pushes for this account
     await api.post("/auth/logout");
@@ -64,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, refresh }}>
+    <AuthContext.Provider value={{ user, loading, login, register, loginWithApple, logout, refresh }}>
       {children}
     </AuthContext.Provider>
   );

@@ -133,6 +133,8 @@ CREATE TABLE IF NOT EXISTS web_users (
     nwz_fulltext_allowed INTEGER NOT NULL DEFAULT 0,
     token_version    INTEGER NOT NULL DEFAULT 0,
     email_verified   INTEGER NOT NULL DEFAULT 0,
+    apple_sub        TEXT,                       -- Sign in with Apple: stabile Apple-User-ID (RL-1002)
+    password_set     INTEGER NOT NULL DEFAULT 1, -- 0 = Apple-only-Konto ohne selbst gewähltes Passwort
     created_at       TEXT NOT NULL
 );
 
@@ -330,6 +332,18 @@ class Store:
                     # Onboarding-Fortschritt geräteübergreifend am Konto
                     # (JSON: {"steps": [...], "celebrated": bool}).
                     self._conn.execute("ALTER TABLE web_users ADD COLUMN onboarding TEXT")
+                # Sign in with Apple (RL-1002): stabile Apple-User-ID +
+                # Kennzeichen, ob je ein eigenes Passwort gesetzt wurde.
+                if "apple_sub" not in wu_cols:
+                    self._conn.execute("ALTER TABLE web_users ADD COLUMN apple_sub TEXT")
+                if "password_set" not in wu_cols:
+                    self._conn.execute(
+                        "ALTER TABLE web_users ADD COLUMN password_set INTEGER NOT NULL DEFAULT 1"
+                    )
+        self._conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_web_users_apple_sub "
+            "ON web_users(apple_sub) WHERE apple_sub IS NOT NULL"
+        )
         self._conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_topics_chat ON topics(chat_id)"
         )
@@ -463,6 +477,25 @@ class Store:
                 (email.lower().strip(), password_hash, role, status, 1 if email_verified else 0, now),
             )
         return cur.lastrowid
+
+    def get_web_user_by_apple_sub(self, apple_sub: str) -> dict | None:
+        row = self._conn.execute(
+            "SELECT * FROM web_users WHERE apple_sub = ?", (apple_sub,)
+        ).fetchone()
+        return dict(row) if row else None
+
+    def link_apple_sub(self, user_id: int, apple_sub: str, *, password_set: bool | None = None) -> None:
+        """Apple-ID mit einem Konto verknüpfen (RL-1002). password_set=False
+        markiert frisch per Apple erstellte Konten ohne eigenes Passwort."""
+        with self._conn:
+            self._conn.execute(
+                "UPDATE web_users SET apple_sub = ? WHERE id = ?", (apple_sub, user_id)
+            )
+            if password_set is not None:
+                self._conn.execute(
+                    "UPDATE web_users SET password_set = ? WHERE id = ?",
+                    (1 if password_set else 0, user_id),
+                )
 
     def set_web_user_status(self, user_id: int, status: str) -> None:
         with self._conn:
@@ -709,7 +742,10 @@ class Store:
     def update_password_hash(self, user_id: int, password_hash: str) -> None:
         with self._conn:
             self._conn.execute(
-                "UPDATE web_users SET password_hash = ? WHERE id = ?", (password_hash, user_id)
+                # Wer ein Passwort setzt (auch per Reset-Link), hat danach eines —
+                # relevant für Apple-only-Konten (password_set war dort 0).
+                "UPDATE web_users SET password_hash = ?, password_set = 1 WHERE id = ?",
+                (password_hash, user_id),
             )
 
     def create_password_reset(self, user_id: int, token_hash: str, expires_at: str) -> None:

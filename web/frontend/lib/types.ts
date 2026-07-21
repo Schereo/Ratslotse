@@ -7,6 +7,9 @@ export interface User {
   status: "pending" | "active";
   delivery_channel: DeliveryChannel;
   email_verified: boolean;
+  // Sign in with Apple (RL-1002): verknüpft? Hat das Konto ein eigenes Passwort?
+  apple_linked?: boolean;
+  has_password?: boolean;
   // Present only on native-app auth responses; the web relies on the cookie.
   access_token?: string | null;
 }
