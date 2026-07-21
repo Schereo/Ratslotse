@@ -8,6 +8,11 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geändert
+- **Konto-Seite mit Schaltern (Design 6a, M2):** Benachrichtigungen steuerst du
+  jetzt über zwei **Schalter** — E-Mail und Push getrennt (mindestens einer
+  bleibt an) — und kannst dir eine **Test-Benachrichtigung** schicken, um die
+  Zustellung zu prüfen. Die Konto-löschen-Zone spannt rot markiert über die
+  volle Breite. (#224)
 - **Neue Startseite mit „Heute im Rat" (Design 2a, M2):** Unter dem Kopf der
   Landing läuft jetzt eine dezente **Live-Leiste**: Tagt heute ein Gremium,
   steht dort orange „HEUTE IM RAT" mit Uhrzeit und den ersten
