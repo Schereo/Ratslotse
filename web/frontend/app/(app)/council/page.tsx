@@ -539,18 +539,20 @@ function SessionsTab({ committees }: { committees: string[] }) {
   }, [debouncedQ, committee, scope]);
 
   const toggle = async (s: CouncilSession) => {
-    const willExpand = !expanded[s.ksinr];
-    setExpanded((prev) => ({ ...prev, [s.ksinr]: willExpand }));
-    if (willExpand && !detail[s.ksinr]) {
-      setDetailLoading((prev) => ({ ...prev, [s.ksinr]: true }));
+    const ksinr = s.ksinr;
+    if (ksinr == null) return; // terminierte Sitzung ohne Tagesordnung
+    const willExpand = !expanded[ksinr];
+    setExpanded((prev) => ({ ...prev, [ksinr]: willExpand }));
+    if (willExpand && !detail[ksinr]) {
+      setDetailLoading((prev) => ({ ...prev, [ksinr]: true }));
       try {
-        const d = await api.get<SessionDetail>(`/council/session/${s.ksinr}`);
-        setDetail((prev) => ({ ...prev, [s.ksinr]: d }));
+        const d = await api.get<SessionDetail>(`/council/session/${ksinr}`);
+        setDetail((prev) => ({ ...prev, [ksinr]: d }));
       } catch {
         toast.error("Sitzung konnte nicht geladen werden.");
-        setExpanded((prev) => ({ ...prev, [s.ksinr]: false }));
+        setExpanded((prev) => ({ ...prev, [ksinr]: false }));
       } finally {
-        setDetailLoading((prev) => ({ ...prev, [s.ksinr]: false }));
+        setDetailLoading((prev) => ({ ...prev, [ksinr]: false }));
       }
     }
   };
@@ -595,6 +597,27 @@ function SessionsTab({ committees }: { committees: string[] }) {
           <div className="space-y-3">
             <p className="text-sm font-medium text-muted-foreground">{sessions.length} {sessions.length === 1 ? "Sitzung" : "Sitzungen"}</p>
             {sessions.map((s) => {
+              // Terminierte Sitzung aus dem RIS-Kalender: noch keine
+              // Tagesordnung veröffentlicht → nichts zum Aufklappen/Verlinken.
+              if (s.ksinr == null) {
+                return (
+                  <Card key={`${s.committee}|${s.session_date}|${s.session_time}`} className="p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <DateTile iso={s.session_date} />
+                        <div className="min-w-0">
+                          <h3 className="truncate font-display text-base font-bold text-foreground">{s.committee}</h3>
+                          <p className="mt-0.5 text-sm text-muted-foreground">
+                            {s.session_time ? `${s.session_time} Uhr` : "Uhrzeit folgt"}
+                            {s.location && ` · ${s.location}`}
+                          </p>
+                        </div>
+                      </div>
+                      <Badge className="shrink-0">Tagesordnung folgt</Badge>
+                    </div>
+                  </Card>
+                );
+              }
               const isExpanded = !!expanded[s.ksinr];
               const matched = s.matched_items ?? [];
               const d = detail[s.ksinr];
