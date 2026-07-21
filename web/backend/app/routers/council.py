@@ -18,7 +18,9 @@ from council import importance
 from council import sitzungspause as pause_mod
 from council import vorlagen as vorlagen_mod
 
-from ..deps import get_council_store, require_active
+from nwz.store import Store
+
+from ..deps import get_council_store, get_store, require_active
 from ..ratelimit import qa_limiter
 
 router = APIRouter(prefix="/api/council", tags=["council"])
@@ -59,8 +61,9 @@ def sessions(
     date_to: str = "",
     scope: str = Query("all", pattern="^(all|upcoming|recent)$"),
     limit: int = Query(50, ge=1, le=200),
-    _user: dict = Depends(require_active),
+    user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
+    nwz: Store = Depends(get_store),
 ) -> dict:
     if scope == "upcoming":
         rows = store.upcoming_sessions(limit=limit)
@@ -68,6 +71,16 @@ def sessions(
         rows = store.recent_sessions(limit=limit)
     else:
         rows = store.search_sessions(q, committee, date_from, date_to, limit=limit)
+
+    # RL-902: „n TOPs zu deinen Themen" — Treffer der Tagesordnungs-
+    # Klassifikation für die eingeloggte Nutzer:in (eine Batch-Abfrage).
+    ksinrs = [r["ksinr"] for r in rows if r.get("ksinr")]
+    mine = nwz.agenda_matches_for_owner(user["id"], ksinrs)
+    for r in rows:
+        matches = mine.get(r.get("ksinr") or 0)
+        if matches:
+            r["my_topic_items"] = matches
+
     return {"count": len(rows), "sessions": rows}
 
 

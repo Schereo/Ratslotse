@@ -19,7 +19,11 @@ import { useOnboarding, type StepId } from "@/components/onboarding";
 const FRAGEN_HREF = "/council?tab=decisions&mode=fragen";
 
 // ksinr null = terminiert, Tagesordnung noch nicht veröffentlicht.
-type UpcomingSession = { ksinr: number | null; committee: string; session_date: string; session_time: string; n_items: number };
+type UpcomingSession = {
+  ksinr: number | null; committee: string; session_date: string; session_time: string; n_items: number;
+  // RL-902: TOPs, die zu eigenen Themen passen.
+  my_topic_items?: { item_number: string; topic_name: string }[];
+};
 type TopicHit = { topic_name: string; id: number; title: string; committee: string; session_date: string };
 type ZahlDerWoche =
   | { kind: "betrag"; amount_eur: number; decision_id: number; title: string; session_date: string; window_days: number }
@@ -112,7 +116,12 @@ export default function DashboardPage() {
                   {fmtDay(s.session_date)}
                 </span>
                 <span className="min-w-0 flex-1 truncate text-sm text-foreground">{s.committee}</span>
-                {s.n_items > 0 && (
+                {(s.my_topic_items?.length ?? 0) > 0 ? (
+                  /* RL-902: persönlicher Treffer schlägt den generischen TOPs-Chip. */
+                  <span className="shrink-0 rounded-full bg-signal/10 px-2 py-0.5 text-[11px] font-semibold text-signal">
+                    {new Set(s.my_topic_items!.map((m) => m.item_number)).size} zu deinen Themen
+                  </span>
+                ) : s.n_items > 0 && (
                   <span className="shrink-0 rounded-full bg-signal/10 px-2 py-0.5 text-[11px] font-semibold text-signal">
                     {s.n_items} TOPs
                   </span>
