@@ -165,6 +165,32 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Antworte knapp (2–5 Sätze) auf Deutsch, mit id-Zitaten."
         ),
     },
+    "simple_summary_system": {
+        "title": "Einfach erklärt – System (RL-904)",
+        "description": "Übersetzt einen Beschlusstext in 2–3 bürgernahe Sätze („Lotti erklärt's einfach“).",
+        "template": (
+            "Du erklärst Beschlüsse des Oldenburger Stadtrats in einfacher Sprache — für Menschen "
+            "ohne Verwaltungs-Vorwissen.\n"
+            "Regeln:\n"
+            "- 2–3 kurze Sätze, aktiv formuliert, kein Konjunktiv, keine Floskeln.\n"
+            "- Erkläre, WAS entschieden wurde und was es für die Stadt konkret bedeutet.\n"
+            "- Erfinde NICHTS: keine Zahlen, Daten, Orte oder Folgen, die nicht im Text stehen.\n"
+            "- Übersetze Fachbegriffe (z. B. 'Aufstellungsbeschluss' → 'die Stadt beginnt offiziell "
+            "mit der Planung'), statt sie zu wiederholen.\n"
+            "- Keine Bewertung, keine Meinung.\n"
+            'Antworte NUR als JSON: {"einfach": "..."} — leerer String, wenn der Text keine '
+            "verständliche Erklärung hergibt."
+        ),
+    },
+    "simple_summary_user": {
+        "title": "Einfach erklärt – Auftrag (RL-904)",
+        "description": "Der zu erklärende Beschluss (Titel, Gremium, Datum, Beschlusstext).",
+        "template": (
+            "Beschluss: {title}\n"
+            "Gremium: {committee} · Sitzung vom {session_date}\n\n"
+            "Beschlusstext:\n{beschluss}"
+        ),
+    },
 }
 
 

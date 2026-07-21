@@ -8,6 +8,11 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **„Lotti erklärt's einfach" (M3):** Beschluss-Seiten bekommen unter dem
+  amtlichen Beschlusstext eine **2–3-Satz-Erklärung in einfacher Sprache** —
+  ohne Verwaltungsdeutsch, mit klarem KI-Hinweis. Erzeugt automatisch für
+  echte Beschlüsse mit substanziellem Beschlusstext; der Bestand seit 2018
+  füllt sich wochenweise auf (neueste zuerst). Prompt im Admin-UI anpassbar. (#229)
 - **„n TOPs zu deinen Themen" (M3):** Ratslotse zeigt dir jetzt direkt an,
   wenn eine kommende Sitzung Tagesordnungspunkte zu deinen Themen enthält —
   als oranger Hinweis auf der Sitzungs-Karte und im Heute-Briefing; im

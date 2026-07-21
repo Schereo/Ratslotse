@@ -37,6 +37,9 @@ STEPS: list[tuple[str, str]] = [
     ("Embeddings / Ähnliche", "embed_decisions.py"),
     ("Themen ↔ Beschlüsse", "match_topics_decisions.py"),
     ("Themenfeld-Rückblicke", "generate_field_recaps.py"),
+    # „Einfach erklärt"-Kurzfassungen (RL-904): 500er-Wochentranche, neueste
+    # zuerst — der Alt-Bestand seit 2018 füllt sich so über einige Wochen auf.
+    ("Einfach erklärt", "generate_simple_summaries.py"),
     # Personen-/Gremien-Stammdaten aus dem Ratsinfo (kein LLM, ein paar hundert
     # Requests) — Mandatswechsel und neue Ausschuss-Besetzungen kommen so
     # spätestens nach einer Woche an.
