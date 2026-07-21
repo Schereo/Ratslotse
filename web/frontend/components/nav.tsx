@@ -7,6 +7,8 @@ import {
   Home, Landmark, Tags, Search, Settings, LogOut, Menu, Monitor, Moon, Sun, UserCircle,
   CalendarDays, BarChart3, Trophy, Sparkles, Map as MapIcon,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, Button } from "@/components/ui";
 import { Brand, BrandMark } from "@/components/brand";
@@ -18,6 +20,27 @@ import { openCommandPalette } from "@/components/command-palette";
 // `tour` markiert Elemente als Anker für die Lotti-Tour (components/tour.tsx);
 // Sidebar und Bottom-Nav tragen denselben Wert — die Tour nimmt das sichtbare.
 type Item = { href: string; label: string; icon: typeof Home; tour?: string };
+
+/** RL-903: Zahl ungesehener Themen-Treffer — der Orange-Zähler an
+ *  „Meine Themen". Ruhig gepollt (60 s), 0 blendet aus. */
+function useUnreadTopicHits(): number {
+  const { data } = useQuery({
+    queryKey: ["topics-unread"],
+    queryFn: () => api.get<{ total: number }>("/topics/unread-count"),
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  });
+  return data?.total ?? 0;
+}
+
+function UnreadBadge({ n }: { n: number }) {
+  if (n <= 0) return null;
+  return (
+    <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-signal px-1.5 text-[11px] font-bold tabular-nums text-signal-foreground">
+      {n > 99 ? "99+" : n}
+    </span>
+  );
+}
 
 // Sidebar 2a (RL-201): fünf Hauptziele flach, danach Abschnitt PERSÖNLICH.
 // „Stadtkarte" = der bisherige Themen-Tab (Unterscheidung von „Meine Themen").
@@ -76,7 +99,7 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
   return <p className="px-3 pb-1 pt-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">{children}</p>;
 }
 
-function NavItem({ item, active, onNavigate }: { item: Item; active: boolean; onNavigate?: () => void }) {
+function NavItem({ item, active, badge = 0, onNavigate }: { item: Item; active: boolean; badge?: number; onNavigate?: () => void }) {
   const Icon = item.icon;
   return (
     <Link
@@ -92,6 +115,7 @@ function NavItem({ item, active, onNavigate }: { item: Item; active: boolean; on
     >
       <Icon className="h-4 w-4" />
       {item.label}
+      <UnreadBadge n={badge} />
     </Link>
   );
 }
@@ -101,6 +125,7 @@ function NavLinksInner({ activeTab, onNavigate }: { activeTab: string; onNavigat
   const { user } = useAuth();
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
   const onCouncil = pathname === "/council" || pathname.startsWith("/council/");
+  const unread = useUnreadTopicHits();
 
   return (
     <nav className="flex-1 space-y-1 px-3">
@@ -114,7 +139,7 @@ function NavLinksInner({ activeTab, onNavigate }: { activeTab: string; onNavigat
       ))}
 
       <SectionHeader>Persönlich</SectionHeader>
-      <NavItem item={PERSONAL} active={isActive("/topics")} onNavigate={onNavigate} />
+      <NavItem item={PERSONAL} active={isActive("/topics")} badge={unread} onNavigate={onNavigate} />
       <NavItem item={QUIZ} active={isActive("/quiz")} onNavigate={onNavigate} />
       {user?.role === "admin" && (
         <NavItem item={{ href: "/admin", label: "Admin", icon: Settings }} active={isActive("/admin")} onNavigate={onNavigate} />
@@ -270,6 +295,9 @@ export function MobileBottomNav() {
 
 function BottomNavItem({ item, active }: { item: Item; active: boolean }) {
   const Icon = item.icon;
+  // Oranger Punkt am Themen-Tab bei ungesehenen Treffern (RL-903).
+  const unread = useUnreadTopicHits();
+  const showDot = item.href === "/topics" && unread > 0;
   return (
     <Link
       href={item.href}
@@ -281,8 +309,9 @@ function BottomNavItem({ item, active }: { item: Item; active: boolean }) {
         active ? "text-primary" : "text-muted-foreground hover:text-foreground",
       )}
     >
-      <span className={cn("rounded-full px-3.5 py-1 transition-colors", active && "bg-primary/10")}>
+      <span className={cn("relative rounded-full px-3.5 py-1 transition-colors", active && "bg-primary/10")}>
         <Icon className={cn("h-5 w-5 transition-transform", active && "scale-110")} />
+        {showDot && <span className="absolute right-1.5 top-0 h-2 w-2 rounded-full bg-signal ring-2 ring-card" aria-hidden />}
       </span>
       {item.label}
     </Link>

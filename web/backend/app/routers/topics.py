@@ -37,6 +37,7 @@ def list_topics(
 ) -> list[TopicOut]:
     owner_id = user["id"]
     dec_counts = store.topic_decision_counts(owner_id)
+    unseen = store.unseen_hit_counts(owner_id)
     topics = store.get_topics(owner_id)
     # Jüngster Treffer je Thema (RL-701): Kandidaten je Thema sammeln, Beschlüsse
     # in EINEM Batch nachschlagen, dann pro Thema das neueste Sitzungsdatum wählen.
@@ -59,6 +60,7 @@ def list_topics(
                 last_hit_id=last["id"] if last else None,
                 last_hit_title=last["title"] if last else None,
                 last_hit_date=last.get("session_date") if last else None,
+                unread_count=unseen.get(t.id, 0),
             )
         )
     return out
@@ -123,6 +125,21 @@ def update_topic(
         created_at=t.created_at,
         decision_count=len(store.get_topic_decision_matches(topic_id)),
     )
+
+
+@router.get("/unread-count")
+def unread_count(user: dict = Depends(require_active), store: Store = Depends(get_store)) -> dict:
+    """RL-903: Gesamtzahl ungesehener Themen-Treffer — der Orange-Zähler an
+    „Meine Themen" in der Seitenleiste."""
+    return {"total": sum(store.unseen_hit_counts(user["id"]).values())}
+
+
+@router.post("/{topic_id}/seen")
+def mark_seen(topic_id: int, user: dict = Depends(require_active), store: Store = Depends(get_store)) -> dict:
+    """RL-903: alle aktuellen Treffer eines Themas als gesehen markieren —
+    das Frontend ruft das beim Öffnen der Beschlussliste des Themas."""
+    _own_topic(store, user["id"], topic_id)
+    return {"marked": store.mark_topic_hits_seen(user["id"], topic_id)}
 
 
 @router.get("/latest-hits")

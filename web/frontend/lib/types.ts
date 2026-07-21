@@ -281,6 +281,7 @@ export interface Topic {
   last_hit_id?: number | null;
   last_hit_title?: string | null;
   last_hit_date?: string | null;
+  unread_count?: number;
 }
 
 export interface TopicDecision {
