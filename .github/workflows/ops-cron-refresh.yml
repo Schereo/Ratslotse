@@ -1,0 +1,48 @@
+# Manuell auslösbarer Ops-Lauf: startet einen der regulären Cron-Jobs sofort
+# auf dem Server — z. B. nach einem Fix, damit neue Daten nicht erst beim
+# nächsten planmäßigen Lauf ankommen. Nutzt denselben Deploy-Key/ProxyJump wie
+# deploy.yml — praktisch, wenn lokal kein SSH-Zugang verfügbar ist.
+# Das choice-Input ist eine feste Liste (keine freie Eingabe → keine
+# Shell-Injection-Fläche); nur Collaborator können triggern. Die Skripte
+# laufen wie im Cron in run_guarded (Crash → Alert-Mail).
+name: "Ops: Cron-Job sofort ausführen"
+
+on:
+  workflow_dispatch:
+    inputs:
+      script:
+        description: "Welcher Cron-Job?"
+        required: true
+        type: choice
+        default: check_committees
+        options:
+          - check_committees
+          - check_council
+          - check_protocols
+          - weekly_enrich
+
+concurrency:
+  group: ops-cron-refresh
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Run ${{ inputs.script }} on server"
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          proxy_host: ${{ secrets.VPS_PROXY_HOST }}
+          proxy_username: ${{ secrets.VPS_USER }}
+          proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          proxy_port: ${{ secrets.VPS_SSH_PORT }}
+          # weekly_enrich (LLM-/Embedding-Backfills) kann lange laufen.
+          command_timeout: 120m
+          script: |
+            set -e
+            cd ~/app
+            .venv/bin/python scripts/${{ inputs.script }}.py
