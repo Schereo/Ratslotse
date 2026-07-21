@@ -18,7 +18,8 @@ import { useOnboarding, type StepId } from "@/components/onboarding";
 
 const FRAGEN_HREF = "/council?tab=decisions&mode=fragen";
 
-type UpcomingSession = { ksinr: number; committee: string; session_date: string; session_time: string; n_items: number };
+// ksinr null = terminiert, Tagesordnung noch nicht veröffentlicht.
+type UpcomingSession = { ksinr: number | null; committee: string; session_date: string; session_time: string; n_items: number };
 type TopicHit = { topic_name: string; id: number; title: string; committee: string; session_date: string };
 type ZahlDerWoche =
   | { kind: "betrag"; amount_eur: number; decision_id: number; title: string; session_date: string; window_days: number }
@@ -103,7 +104,7 @@ export default function DashboardPage() {
           <div className="mt-3 flex-1 space-y-1">
             {sessions.slice(0, 3).map((s) => (
               <Link
-                key={s.ksinr}
+                key={s.ksinr ?? `${s.committee}|${s.session_date}`}
                 href="/council?tab=sessions"
                 className="flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-accent"
               >

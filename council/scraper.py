@@ -23,6 +23,21 @@ class AgendaItem:
 
 
 @dataclass
+class ScheduledSession:
+    """Terminierte Sitzung aus dem Sitzungskalender, noch OHNE Tagesordnung.
+
+    SessionNet verlinkt eine Sitzung erst, wenn ihre Tagesordnung
+    veröffentlicht ist — vorher steht sie nur als Text im Kalender
+    (kein __ksinr im HTML, si0057.php antwortet mit 302). Ohne dieses
+    Parsing wären neue Terminpläne wochenlang unsichtbar.
+    """
+    committee: str
+    session_date: str       # YYYY-MM-DD
+    session_time: str = ""  # HH:MM oder ""
+    location: str = ""
+
+
+@dataclass
 class CouncilSession:
     ksinr: int
     committee: str
@@ -40,6 +55,94 @@ class CouncilSession:
         return f"{BASE}/si0057.php?__ksinr={self.ksinr}"
 
 
+_RSS_DATE_RE = re.compile(r"Datum:\s*(\d{2})\.(\d{2})\.(\d{4})")
+_RSS_TIME_RE = re.compile(r"Zeit:\s*(\d{2}:\d{2})")
+_RSS_ORT_RE = re.compile(r"Ort:\s*(.+)$")
+_RSS_GREMIUM_RE = re.compile(r"Gremium:\s*(.+?)\s*Datum:")
+
+
+def _extract_rss_scheduled(xml_text: str) -> list[ScheduledSession]:
+    """Sitzungs-Items aus dem RIS-RSS-Feed (rssfeed.php?filter=s).
+
+    Ergänzt den Kalender: nichtöffentliche Gremien (z. B. Verwaltungsausschuss)
+    fehlen in der Kalenderansicht, stehen aber im Feed. Beschreibung hat das
+    feste Format "Gremium: … Datum: DD.MM.YYYY Zeit: HH:MM Uhr Ort: …".
+    """
+    import warnings
+
+    from bs4 import XMLParsedAsHTMLWarning
+
+    out: list[ScheduledSession] = []
+    with warnings.catch_warnings():
+        # html.parser reicht für das flache RSS-Format völlig; lxml (für
+        # features="xml") ist bewusst keine Abhängigkeit.
+        warnings.simplefilter("ignore", XMLParsedAsHTMLWarning)
+        soup = BeautifulSoup(xml_text, "html.parser")
+    for item in soup.find_all("item"):
+        title = item.find("title")
+        desc = item.find("description")
+        if not title or not desc or not title.get_text(strip=True).startswith("Sitzung:"):
+            continue
+        text = desc.get_text(" ", strip=True)
+        m_date = _RSS_DATE_RE.search(text)
+        m_gremium = _RSS_GREMIUM_RE.search(text)
+        if not m_date or not m_gremium:
+            continue
+        d, mo, y = m_date.groups()
+        m_time = _RSS_TIME_RE.search(text)
+        m_ort = _RSS_ORT_RE.search(text)
+        out.append(ScheduledSession(
+            committee=m_gremium.group(1),
+            session_date=f"{y}-{mo}-{d}",
+            session_time=m_time.group(1) if m_time else "",
+            location=m_ort.group(1).strip() if m_ort else "",
+        ))
+    return out
+
+
+def _extract_session_ids(soup: BeautifulSoup) -> list[int]:
+    ids: list[int] = []
+    for a in soup.find_all("a", href=True):
+        m = re.search(r"__ksinr=(\d+)", a["href"])
+        if m:
+            ksinr = int(m.group(1))
+            if ksinr not in ids:
+                ids.append(ksinr)
+    return ids
+
+
+def _extract_scheduled(soup: BeautifulSoup, year: int, month: int) -> list[ScheduledSession]:
+    """Kalenderzeilen parsen: <td class="silink"> trägt Gremium/Zeit/Ort,
+    der Tag steht in <td class="smc_fct_day"> derselben Zeile."""
+    out: list[ScheduledSession] = []
+    for cell in soup.find_all("td", class_="silink"):
+        header = cell.find("div", class_="smc-el-h")
+        committee = header.get_text(" ", strip=True) if header else ""
+        if not committee:
+            continue
+        row = cell.find_parent("tr")
+        day_cell = row.find("td", class_="smc_fct_day") if row else None
+        day_text = day_cell.get_text(strip=True) if day_cell else ""
+        if not day_text.isdigit():
+            continue
+        session_time = ""
+        location_parts: list[str] = []
+        for li in cell.find_all("li"):
+            text = li.get_text(" ", strip=True)
+            m = _TIME_RE.search(text)
+            if m and not session_time:
+                session_time = m.group(1)
+            elif text:
+                location_parts.append(text)
+        out.append(ScheduledSession(
+            committee=committee,
+            session_date=f"{year:04d}-{month:02d}-{int(day_text):02d}",
+            session_time=session_time,
+            location=", ".join(location_parts),
+        ))
+    return out
+
+
 class CouncilScraper:
     def __init__(self, delay: float = 0.5):
         self._s = requests.Session()
@@ -54,26 +157,49 @@ class CouncilScraper:
 
     def session_ids_for_month(self, year: int, month: int) -> list[int]:
         soup = self._get("si0040.php", __cjahr=year, __cmonat=month)
-        ids: list[int] = []
-        for a in soup.find_all("a", href=True):
-            m = re.search(r"__ksinr=(\d+)", a["href"])
-            if m:
-                ksinr = int(m.group(1))
-                if ksinr not in ids:
-                    ids.append(ksinr)
-        return ids
+        return _extract_session_ids(soup)
+
+    def calendar_month(self, year: int, month: int) -> tuple[list[int], list[ScheduledSession]]:
+        """One calendar fetch → (verlinkte Sitzungs-IDs, alle terminierten Sitzungen).
+
+        Terminierte Sitzungen stehen auch dann im Kalender, wenn noch keine
+        Tagesordnung veröffentlicht ist (dann ohne Link/ksinr).
+        """
+        soup = self._get("si0040.php", __cjahr=year, __cmonat=month)
+        return _extract_session_ids(soup), _extract_scheduled(soup, year, month)
 
     def upcoming_session_ids(self, months_ahead: int = 3) -> list[int]:
         """Collect all session IDs for today's month through months_ahead months ahead."""
+        return self.upcoming_calendar(months_ahead=months_ahead)[0]
+
+    def rss_scheduled(self) -> list[ScheduledSession]:
+        """Terminierte Sitzungen aus dem RSS-Feed (ergänzt nichtöffentliche
+        Gremien, die die Kalenderansicht nicht listet). Best effort."""
+        try:
+            r = self._s.get(f"{BASE}/rssfeed.php", params={"filter": "s"}, timeout=20)
+            r.raise_for_status()
+            time.sleep(self._delay)
+        except requests.RequestException:
+            return []
+        return _extract_rss_scheduled(r.text)
+
+    def upcoming_calendar(self, months_ahead: int = 3) -> tuple[list[int], list[ScheduledSession]]:
+        """Kalender von diesem Monat bis months_ahead Monate voraus:
+        (verlinkte Sitzungs-IDs, terminierte Sitzungen — auch ohne Tagesordnung).
+        Der RSS-Feed läuft mit ein; Duplikate filtert der Store über den
+        Primärschlüssel (Gremium, Datum, Zeit)."""
         ids: list[int] = []
+        scheduled: list[ScheduledSession] = []
         today = date.today()
         for delta in range(months_ahead + 1):
             target = today.replace(day=1) + timedelta(days=32 * delta)
-            month_ids = self.session_ids_for_month(target.year, target.month)
+            month_ids, month_scheduled = self.calendar_month(target.year, target.month)
             for sid in month_ids:
                 if sid not in ids:
                     ids.append(sid)
-        return ids
+            scheduled.extend(month_scheduled)
+        scheduled.extend(self.rss_scheduled())
+        return ids, scheduled
 
     def fetch_session(self, ksinr: int) -> CouncilSession | None:
         soup = self._get("si0057.php", __ksinr=ksinr)

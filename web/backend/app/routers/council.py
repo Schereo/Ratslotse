@@ -112,7 +112,8 @@ def heute(store: CouncilStore = Depends(get_council_store)) -> dict:
     sessions_today = [s for s in upcoming if str(s["session_date"])[:10] == today]
     if sessions_today:
         s = sessions_today[0]
-        items = [i for i in store.agenda_items(s["ksinr"]) if i.get("is_public")]
+        # Terminierte Sitzungen (aus dem Kalender) haben noch keinen ksinr.
+        items = [i for i in store.agenda_items(s["ksinr"]) if i.get("is_public")] if s.get("ksinr") else []
         data = {
             "state": "heute",
             "committee": s["committee"],

@@ -39,10 +39,8 @@ def main() -> None:
     targets = nwz_store.get_subscription_targets()     # {owner_id: {channel, chat, email}}
     nwz_store.close()
 
-    if not all_subs:
-        print("No subscriptions found, nothing to do.")
-        return
-
+    # Daten werden auch OHNE Abonnements aktualisiert — die Web-App zeigt
+    # Sitzungen und Terminplan für alle Nutzer:innen, nicht nur Abonnenten.
     council_store = CouncilStore(COUNCIL_DB)
     scraper = CouncilScraper()
 
@@ -52,8 +50,11 @@ def main() -> None:
     print(f"  Saved {len(committees)} committees")
 
     print("Scanning upcoming council sessions…")
-    session_ids = scraper.upcoming_session_ids(months_ahead=3)
-    print(f"  Found {len(session_ids)} sessions")
+    session_ids, scheduled = scraper.upcoming_calendar(months_ahead=3)
+    # Terminierte Sitzungen ohne veröffentlichte Tagesordnung (kein ksinr im
+    # Kalender-HTML) — sonst bleibt ein frisch publizierter Terminplan unsichtbar.
+    council_store.replace_scheduled_sessions(scheduled)
+    print(f"  Found {len(session_ids)} sessions with agenda, {len(scheduled)} scheduled dates")
 
     notifications_sent = 0
 
@@ -64,6 +65,8 @@ def main() -> None:
 
         council_store.save_session(session)
 
+        if not all_subs:
+            continue
         if not session.is_future or not session.agenda_items:
             continue
 

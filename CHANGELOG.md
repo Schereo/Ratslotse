@@ -7,6 +7,16 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Behoben
+- **Terminplan sichtbar, sobald das RIS ihn veröffentlicht:** Das
+  Ratsinformationssystem verlinkt Sitzungen erst, wenn ihre Tagesordnung
+  online steht — frisch veröffentlichte Sitzungstermine (wie der Terminplan
+  ab August) waren für Ratslotse deshalb wochenlang unsichtbar. Jetzt liest
+  der Scraper zusätzlich die **Kalenderansicht und den RSS-Feed** des RIS und
+  zeigt terminierte Sitzungen mit dem Hinweis **„Tagesordnung folgt"** auf
+  der Sitzungen-Seite, im Heute-Briefing und in der Landing-Leiste; auch der
+  Sitzungspause-Hinweis kennt damit das „wieder ab"-Datum. (#227)
+
 ### Hinzugefügt
 - **„Neu"-Zähler für deine Themen (M3):** Ratslotse merkt sich jetzt, welche
   Beschluss-Treffer du schon gesehen hast. Ungesehene zählen als **oranger

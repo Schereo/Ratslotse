@@ -110,8 +110,11 @@ def run_watcher(
     store = CouncilStore(db_path)
 
     print("Scanning council calendar…")
-    session_ids = scraper.upcoming_session_ids(months_ahead=months_ahead)
-    print(f"  Found {len(session_ids)} sessions in next {months_ahead} months")
+    session_ids, scheduled = scraper.upcoming_calendar(months_ahead=months_ahead)
+    # Terminplan mitschreiben: Sitzungen ohne veröffentlichte Tagesordnung
+    # haben noch keinen ksinr, sollen aber in der App schon sichtbar sein.
+    store.replace_scheduled_sessions(scheduled)
+    print(f"  Found {len(session_ids)} sessions with agenda, {len(scheduled)} scheduled dates")
 
     alerts_sent: list[str] = []
 

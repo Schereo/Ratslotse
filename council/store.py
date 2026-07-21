@@ -69,6 +69,19 @@ CREATE TABLE IF NOT EXISTS council_agenda_items (
     FOREIGN KEY(ksinr) REFERENCES council_sessions(ksinr)
 );
 
+-- Terminierte Sitzungen aus dem Sitzungskalender, noch ohne veröffentlichte
+-- Tagesordnung (und damit ohne ksinr — SessionNet verlinkt erst bei
+-- Veröffentlichung). Wird bei jedem Scrape komplett ersetzt; abgesagte
+-- Termine verschwinden so von selbst.
+CREATE TABLE IF NOT EXISTS council_scheduled_sessions (
+    committee     TEXT NOT NULL,
+    session_date  TEXT NOT NULL,
+    session_time  TEXT NOT NULL DEFAULT '',
+    location      TEXT NOT NULL DEFAULT '',
+    fetched_at    TEXT NOT NULL,
+    PRIMARY KEY (committee, session_date, session_time)
+);
+
 CREATE TABLE IF NOT EXISTS council_alerts_sent (
     ksinr    INTEGER NOT NULL,
     topic_id INTEGER NOT NULL,
@@ -603,7 +616,26 @@ class CouncilStore:
         ).fetchall()
         return [dict(r) for r in rows]
 
+    def replace_scheduled_sessions(self, rows: list) -> None:
+        """Terminplan komplett ersetzen (rows: ScheduledSession-Objekte).
+
+        Voller Austausch statt Upsert: Der Kalender ist die Quelle der
+        Wahrheit — verlegte oder abgesagte Termine verschwinden so mit.
+        """
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute("DELETE FROM council_scheduled_sessions")
+            self._conn.executemany(
+                """INSERT OR REPLACE INTO council_scheduled_sessions
+                   (committee, session_date, session_time, location, fetched_at)
+                   VALUES (?, ?, ?, ?, ?)""",
+                [(r.committee, r.session_date, r.session_time, r.location, now) for r in rows],
+            )
+
     def upcoming_sessions(self, limit: int = 20) -> list[dict]:
+        """Kommende Sitzungen: echte (mit ksinr/Tagesordnung) plus terminierte
+        aus dem Kalender (ksinr NULL), solange keine echte Sitzung desselben
+        Gremiums am selben Tag existiert."""
         from datetime import date
         today = date.today().isoformat()
         rows = self._conn.execute(
@@ -613,9 +645,18 @@ class CouncilStore:
                LEFT JOIN council_agenda_items ci ON ci.ksinr = cs.ksinr
                WHERE cs.session_date >= ?
                GROUP BY cs.ksinr
-               ORDER BY cs.session_date ASC
+               UNION ALL
+               SELECT NULL AS ksinr, ss.committee, ss.session_date, ss.session_time, ss.location,
+                      0 AS n_items
+               FROM council_scheduled_sessions ss
+               WHERE ss.session_date >= ?
+                 AND NOT EXISTS (
+                     SELECT 1 FROM council_sessions cs2
+                     WHERE cs2.committee = ss.committee AND cs2.session_date = ss.session_date
+                 )
+               ORDER BY session_date ASC, session_time ASC
                LIMIT ?""",
-            (today, limit),
+            (today, today, limit),
         ).fetchall()
         return [dict(r) for r in rows]
 
