@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { Sparkles, Send, Loader2 } from "lucide-react";
 import { Mascot } from "@/components/mascot";
 import { QaSource } from "@/lib/types";
@@ -189,7 +190,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
 
       {/* Live progress: Lotti sucht — real step + a rotating playful word. */}
       {loading && !answer && (
-        <div role="status" className="flex items-center gap-3 text-sm text-muted-foreground">
+        <div role="status" className="flex items-center gap-3 rounded-xl border-2 border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
           <Mascot pose="search" bob className="h-14 w-14 shrink-0" />
           <div>
             <span className="flex items-center gap-2 font-medium text-foreground">
@@ -204,10 +205,11 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
       {/* Answer streams in as soon as the first token arrives — Lotti überbringt sie. */}
       {answer && (
         <div className="flex items-start gap-3">
-          <Mascot pose={loading ? "search" : "point"} className="mt-1 hidden h-12 w-12 shrink-0 sm:block" />
+          <Mascot pose={loading ? "search" : "point"} className="mt-1 hidden h-14 w-14 shrink-0 sm:block" />
           {/* aria-busy: Screenreader warten, bis der Stream fertig ist; die
-              Fertig-Meldung unten (role=status) sagt dann aktiv Bescheid. */}
-          <Card aria-busy={loading} className="flex-1 rounded-2xl rounded-tl-sm p-4">
+              Fertig-Meldung unten (role=status) sagt dann aktiv Bescheid.
+              Bubble-Radien nach 6a: 18 px, oben links 6 px (Sprechblase). */}
+          <Card aria-busy={loading} className="flex-1 rounded-[18px] rounded-tl-[6px] p-4">
             <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
               <AnswerWithCitations text={answer} idToNum={idToNum} onJump={jumpToSource} />
               {loading && step === "answer" && <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-primary align-text-bottom" />}
@@ -248,6 +250,32 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                   session_date={s.session_date} field={s.policy_field} sub={s.summary} score={s.score} />
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {answer && !loading && sources.length === 0 && (
+        <div className="flex items-start gap-3 rounded-xl border border-border bg-muted/30 p-4">
+          <Mascot pose="confused" decorative className="h-12 w-12 shrink-0" />
+          <div className="min-w-0">
+            <p className="text-sm text-foreground">
+              Dazu habe ich keine passenden Beschlüsse gefunden — vielleicht hat der Rat dazu (noch) nichts entschieden.
+            </p>
+            <div className="mt-2.5 flex flex-wrap gap-2">
+              <Link
+                href={`/topics?neu=${encodeURIComponent(q.trim())}`}
+                className="rounded-full border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+              >
+                Als Thema anlegen — wir melden uns, sobald es Neues gibt
+              </Link>
+              <button
+                type="button"
+                onClick={() => document.querySelector<HTMLInputElement>("input[data-search]")?.focus()}
+                className="rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                Frage umformulieren
+              </button>
+            </div>
           </div>
         </div>
       )}

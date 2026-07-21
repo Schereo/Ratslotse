@@ -8,6 +8,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geändert
+- **KI-Frage-Zustände nach Design 6a/4a (M2):** Die Antwort kommt als
+  Sprechblase neben Lotti, der Ladezustand wohnt in einem gestrichelten
+  Container, und findet die KI **keine passenden Beschlüsse**, sagt sie das
+  ehrlich — mit zwei direkten Auswegen: **„Als Thema anlegen"** (öffnet Meine
+  Themen mit vorbefülltem Namen, damit du benachrichtigt wirst, sobald der Rat
+  dazu entscheidet) und **„Frage umformulieren"**. (#220)
 - **Suche mit Filter-Chips (Design 1a, M2):** Die Beschluss-Suche hat jetzt ein
   großes Suchfeld und darunter eine **Chip-Zeile** ([Beschlüsse ▾] · Themenfeld
   · Ausschuss · Ergebnis · Zeitraum, rechts die Sortierung) — aktive Filter
