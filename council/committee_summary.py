@@ -19,8 +19,14 @@ def summarize_agenda(
     location: str,
     agenda_items: list[AgendaItem],
     session_url: str,
-) -> str:
-    """Return Telegram HTML summary of a committee session, or '' if only routine items."""
+) -> str | None:
+    """Return HTML summary of a committee session, or '' if only routine items.
+
+    Returns ``None`` when the LLM response could not be parsed (auch nach
+    Retry) — der Aufrufer schickt dann eine Benachrichtigung ohne
+    Zusammenfassung und darf das Ergebnis NICHT cachen, damit der nächste
+    Lauf es erneut versucht ('' dagegen ist ein gültiger Cache-Treffer).
+    """
     if not agenda_items:
         return ""
 
@@ -37,16 +43,36 @@ def summarize_agenda(
     system = prompts.get("committee_summary_system")
     prompt = prompts.render("committee_summary_user", committee=committee, items_text=items_text)
 
-    resp = llm.chat_complete(
-        model=MODEL,
-        response_format={"type": "json_object"},
-        messages=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": prompt},
-        ],
-        max_tokens=1024,
-    )
-    data = json.loads(resp.choices[0].message.content)
+    # Trotz response_format=json_object liefern Modelle vereinzelt kein valides
+    # JSON (leerer Content, Markdown-Zaun, Prosa) — das crashte den ganzen
+    # Cron-Lauf. Daher: Zaun abstreifen + ein frischer Versuch, sonst None.
+    data: dict | None = None
+    for _attempt in range(2):
+        resp = llm.chat_complete(
+            model=MODEL,
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": prompt},
+            ],
+            max_tokens=1024,
+            _feature="committee_summary",
+        )
+        content = (resp.choices[0].message.content or "").strip()
+        if content.startswith("```"):
+            content = content.strip("`")
+            content = content[content.find("{"):]
+        try:
+            parsed = json.loads(content)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(parsed, dict):
+            data = parsed
+            break
+    if data is None:
+        print(f"  committee_summary: kein valides JSON für {committee} am {session_date} "
+              f"— Benachrichtigung geht ohne Zusammenfassung raus")
+        return None
 
     if not data.get("has_content") or not data.get("items"):
         return ""
