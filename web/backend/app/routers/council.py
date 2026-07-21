@@ -15,6 +15,7 @@ from council.goals import GOALS
 from council.parties import normalize_party, order_key
 from council import qa
 from council import importance
+from council import sitzungspause as pause_mod
 from council import vorlagen as vorlagen_mod
 
 from ..deps import get_council_store, require_active
@@ -68,6 +69,26 @@ def sessions(
     else:
         rows = store.search_sessions(q, committee, date_from, date_to, limit=limit)
     return {"count": len(rows), "sessions": rows}
+
+
+@router.get("/sitzungspause")
+def sitzungspause(
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Läuft gerade eine Sitzungspause (Schulferien / Wahl-Übergang)?
+
+    Der Rat pausiert laut Stadt in den Schulferien; die Übersicht zeigt dann
+    ein Banner, damit sich niemand über ausbleibende neue Sitzungen wundert.
+    """
+    upcoming = store.upcoming_sessions(limit=1)
+    next_date: date | None = None
+    if upcoming:
+        try:
+            next_date = date.fromisoformat(str(upcoming[0]["session_date"])[:10])
+        except ValueError:
+            next_date = None
+    return pause_mod.sitzungspause(date.today(), next_date)
 
 
 @router.get("/session/{ksinr}")
