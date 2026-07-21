@@ -74,6 +74,16 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   der Maus in den Vordergrund. (#195)
 
 ### Hinzugefügt
+- **Sitzungspause-Hinweis auf der Übersicht:** Der Rat und seine Ausschüsse
+  pausieren in den Schulferien (so hält es die Stadt grundsätzlich — und
+  unsere Sitzungshistorie seit 2018 bestätigt es). Während einer Pause zeigt
+  die Übersicht jetzt ein Banner mit dem Grund („Sommerpause · bis
+  12. August"), wann es voraussichtlich weitergeht bzw. dem nächsten schon
+  veröffentlichten Termin — damit sich niemand wundert, warum keine neuen
+  Sitzungen erscheinen. 2026 erklärt es zusätzlich die Besonderheit
+  **Kommunalwahl** (Wahltag 13. September, Ende der Wahlperiode 31. Oktober,
+  Konstituierung des neuen Rats im November). Ferientermine: amtliche
+  Niedersachsen-Daten bis Sommer 2027. (#215)
 - **Haushalts-Quiz mit Diagrammen:** Neues Quiz-Thema **„Stadt-Haushalt"** mit
   zwölf Fragen direkt aus den **beschlossenen Haushaltsplänen** der Stadt
   (2020–2026, offizielle PDFs als Quelle verlinkt): Gesamtausgaben, Defizit,
