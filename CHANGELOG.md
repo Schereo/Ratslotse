@@ -7,6 +7,13 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt
+- **„Neu"-Zähler für deine Themen (M3):** Ratslotse merkt sich jetzt, welche
+  Beschluss-Treffer du schon gesehen hast. Ungesehene zählen als **oranger
+  Zähler an „Meine Themen"** in der Seitenleiste (mobil als Punkt am
+  Themen-Tab) und als **„n neu"-Abzeichen** auf der Themen-Karte. Öffnest du
+  die Beschlussliste eines Themas, gilt alles als gesehen. (#226)
+
 ### Geändert
 - **Sitzungen als Kalender-Karten (Design 6a, M2):** Jede Sitzung trägt links
   eine **Datums-Kachel** (Monat + Tag), der Gremiumsname steht in der

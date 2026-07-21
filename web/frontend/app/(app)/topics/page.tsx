@@ -115,6 +115,13 @@ function TopicsInner() {
     try {
       const data = await api.get<{ decisions: TopicDecision[] }>(`/topics/${topic.id}/decisions`);
       setDecisionsFor({ topic, decisions: data.decisions });
+      // RL-903: Öffnen der Liste = gesehen. Badge/Zähler frisch ziehen.
+      if ((topic.unread_count ?? 0) > 0) {
+        api.post(`/topics/${topic.id}/seen`, {}).then(() => {
+          qc.invalidateQueries({ queryKey: ["topics"] });
+          qc.invalidateQueries({ queryKey: ["topics-unread"] });
+        }).catch(() => {});
+      }
     } catch {
       toast.error("Beschlüsse konnten nicht geladen werden.");
     }
@@ -234,7 +241,14 @@ function TopicsInner() {
           topics.map((t) => (
             <Card key={t.id} className="flex flex-col p-4">
               <div className="flex items-start justify-between gap-2">
-                <h3 className="min-w-0 font-display text-base font-bold text-foreground">{t.name}</h3>
+                <h3 className="flex min-w-0 items-center gap-2 font-display text-base font-bold text-foreground">
+                  <span className="truncate">{t.name}</span>
+                  {(t.unread_count ?? 0) > 0 && (
+                    <span className="shrink-0 rounded-full bg-signal px-2 py-0.5 text-[11px] font-bold text-signal-foreground">
+                      {t.unread_count} neu
+                    </span>
+                  )}
+                </h3>
                 <div className="flex shrink-0 items-center gap-1">
                   <button
                     type="button"
