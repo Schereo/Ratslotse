@@ -24,7 +24,8 @@ function useCountUp(target: number, run: boolean, ms = 1300): number {
 }
 
 // Real headline numbers (public endpoint, no auth) that count up when scrolled into view.
-export function LiveStats() {
+// `inline` (RL-302): einzeilige Belegzeile unter den Hero-CTAs statt 3er-Grid.
+export function LiveStats({ inline = false }: { inline?: boolean } = {}) {
   const [stats, setStats] = useState<Stats | null>(null);
   const [inView, setInView] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -57,6 +58,22 @@ export function LiveStats() {
     { n: sessions, label: "Sitzungen" },
     { n: entities, label: "Themen" },
   ];
+
+  if (inline) {
+    return (
+      <p ref={ref} className="mt-6 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-sm text-muted-foreground lg:justify-start">
+        {items.map((it, i) => (
+          <span key={it.label} className="inline-flex items-baseline gap-1.5">
+            {i > 0 && <span aria-hidden className="pr-2 text-muted-foreground/50">·</span>}
+            <span className="font-display text-base font-bold tabular-nums text-foreground">
+              {stats ? it.n.toLocaleString("de-DE") : "—"}
+            </span>
+            {it.label}
+          </span>
+        ))}
+      </p>
+    );
+  }
 
   return (
     <div ref={ref} className="mx-auto mt-14 grid max-w-lg grid-cols-3 gap-4 sm:gap-8">

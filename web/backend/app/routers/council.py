@@ -91,6 +91,52 @@ def sitzungspause(
     return pause_mod.sitzungspause(date.today(), next_date)
 
 
+# 15-Minuten-Cache für die öffentliche Heute-Leiste (RL-901) — ein Dict statt
+# Infrastruktur: der Endpoint ist public und würde sonst je Landing-Aufruf
+# Agenda-Zeilen lesen.
+_HEUTE_CACHE: dict = {"at": 0.0, "data": None}
+
+
+@router.get("/heute")
+def heute(store: CouncilStore = Depends(get_council_store)) -> dict:
+    """RL-901: „Heute im Rat" für die Landing — public (wie public-stats).
+    Drei Zustände: Sitzung heute (mit 2 Top-TOPs + Restzähler) · nächste
+    Sitzung · Sitzungspause. Cache 15 min."""
+    import time
+    now = time.time()
+    if _HEUTE_CACHE["data"] is not None and now - _HEUTE_CACHE["at"] < 900:
+        return _HEUTE_CACHE["data"]
+
+    today = date.today().isoformat()
+    upcoming = store.upcoming_sessions(limit=10)
+    sessions_today = [s for s in upcoming if str(s["session_date"])[:10] == today]
+    if sessions_today:
+        s = sessions_today[0]
+        items = [i for i in store.agenda_items(s["ksinr"]) if i.get("is_public")]
+        data = {
+            "state": "heute",
+            "committee": s["committee"],
+            "session_time": s.get("session_time") or "",
+            "tops": [str(i.get("title") or "")[:90] for i in items[:2]],
+            "rest": max(len(items) - 2, 0),
+            "n_sessions_today": len(sessions_today),
+        }
+    elif upcoming:
+        s = upcoming[0]
+        data = {
+            "state": "naechste",
+            "committee": s["committee"],
+            "session_date": s["session_date"],
+            "session_time": s.get("session_time") or "",
+        }
+    else:
+        p = pause_mod.sitzungspause(date.today(), None)
+        data = {"state": "pause", "label": p["label"], "until": p["until"]}
+
+    _HEUTE_CACHE.update(at=now, data=data)
+    return data
+
+
 @router.get("/zahl-der-woche")
 def zahl_der_woche(
     _user: dict = Depends(require_active),

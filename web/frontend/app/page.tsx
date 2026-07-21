@@ -3,12 +3,13 @@ import Link from "next/link";
 import { Search, Sparkles, MapPin, BarChart3, Bell, Landmark, ArrowRight } from "lucide-react";
 import { Brand } from "@/components/brand";
 import { SeasonalMascot } from "@/components/seasonal-mascot";
-import { HeroScene } from "@/components/hero-scene";
 import { PeekingChick } from "@/components/peeking-chick";
 import { LandingQaDemo } from "@/components/landing-qa-demo";
 import { HeaderCTA } from "@/components/landing-cta";
 import { NativeRedirect } from "@/components/native-redirect";
 import { LiveStats } from "@/components/live-stats";
+import { HeuteLeiste } from "@/components/heute-leiste";
+import { SeasonalFamily } from "@/components/seasonal-mascot";
 import { Reveal } from "@/components/reveal";
 import { cn } from "@/lib/utils";
 
@@ -51,18 +52,19 @@ export default function LandingPage() {
         </div>
       </header>
 
+      <HeuteLeiste />
+
       <main id="inhalt">
         {/* Hero — text (server-rendered for SEO) + Lotti-Familien-Hafenszene */}
         <section className="relative overflow-hidden">
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-sky-50 to-transparent dark:from-slate-900/40" aria-hidden />
           <div className="pointer-events-none absolute inset-0 bg-waves opacity-60" aria-hidden />
-          <div className="relative z-10 mx-auto grid max-w-6xl items-center gap-10 px-5 py-16 sm:py-24 lg:grid-cols-2">
+          <div className="relative z-10 mx-auto grid max-w-6xl items-center gap-12 px-5 py-16 sm:py-20 lg:grid-cols-2 lg:gap-10">
             <div className="text-center lg:text-left">
-              <SeasonalMascot pose="wave" bob className="mx-auto mb-5 h-24 w-24 lg:hidden" />
               <p className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
                 Stadtrat Oldenburg
               </p>
-              <h1 className="mt-4 text-balance text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
+              <h1 className="mt-4 hyphens-none text-balance font-display text-[40px] font-extrabold leading-[1.05] tracking-tight text-foreground sm:text-[52px] lg:text-[62px]">
                 Was beschließt eigentlich der Rat?
               </h1>
               <p className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground lg:mx-0">
@@ -70,7 +72,8 @@ export default function LandingPage() {
                 mit KI-Fragen, Themen-Karten und Analysen. Aus der amtlichen Quelle, ohne PDF-Wälzen.
               </p>
               <div className="mt-8 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
-                <Link href="/register" className="inline-flex items-center gap-1.5 rounded-xl bg-brand-gradient px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-lifted transition-[opacity,transform] duration-200 ease-out-strong active:scale-[0.97] [@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-0.5 [@media(hover:hover)_and_(pointer:fine)]:hover:opacity-95">
+                {/* DIE eine Signal-Handlung der Landing (RL-101). */}
+                <Link href="/register" className="inline-flex items-center gap-1.5 rounded-xl bg-signal px-5 py-2.5 text-sm font-semibold text-signal-foreground shadow-[0_8px_22px_-10px_hsl(19_92%_45%/0.6)] transition-[opacity,transform] duration-200 ease-out-strong active:scale-[0.97] [@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-0.5 [@media(hover:hover)_and_(pointer:fine)]:hover:opacity-95">
                   Kostenlos registrieren <ArrowRight className="h-4 w-4" />
                 </Link>
                 {/* /docs ist die statische Technik-Doku außerhalb des App-Routers — plain <a>. */}
@@ -78,23 +81,29 @@ export default function LandingPage() {
                   Wie es funktioniert
                 </a>
               </div>
-              <LiveStats />
+              <LiveStats inline />
             </div>
-            <div className="relative">
-              <HeroScene />
+            {/* Live-Demo als Hero-Beweis (RL-302): Lotti schwebt über der Karte,
+                Badge „LIVE AUSPROBIEREN"; Autoplay + Sizer aus landing-qa-demo. */}
+            <div className="relative mt-8 lg:mt-0">
+              <SeasonalMascot pose="point" bob className="pointer-events-none absolute -top-14 right-16 z-10 h-[104px] w-[104px] sm:-top-16 sm:h-[116px] sm:w-[116px]" />
+              <span className="absolute -top-3 left-5 z-10 rounded-full bg-signal px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-signal-foreground shadow-sm">
+                Live ausprobieren
+              </span>
+              <LandingQaDemo />
             </div>
           </div>
         </section>
 
-        {/* KI-Frage-Demo — das Killerfeature direkt zeigen statt nur beschreiben */}
-        <section className="mx-auto max-w-3xl px-5 pb-16 pt-4">
-          <div className="text-center">
-            <h2 className="text-balance text-2xl font-bold tracking-tight text-foreground">Frag den Rat — in normaler Sprache</h2>
-            <p className="mx-auto mt-2 max-w-xl text-muted-foreground">
-              Die KI durchsucht alle Beschlüsse des Stadtrats und antwortet mit Quellen. So sieht das aus:
+        {/* Familien-Fries: die Hafenszene weicht der Demo im Hero und wird zum
+            ruhigen Band — Claim links, Lotti-Familie rechts (RL-302). */}
+        <section className="border-y border-border bg-muted/20">
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-6 px-5 py-8">
+            <p className="max-w-md text-balance font-display text-lg font-bold text-foreground">
+              Die ganze Lotsen-Familie an Bord — damit Stadtpolitik kein Fachchinesisch bleibt.
             </p>
+            <SeasonalFamily className="h-20 sm:h-24" />
           </div>
-          <LandingQaDemo />
         </section>
 
         {/* Features — asymmetrisches Bento statt drei gleicher Spalten */}
