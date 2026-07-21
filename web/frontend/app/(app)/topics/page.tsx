@@ -1,26 +1,32 @@
 "use client";
 
 import { useState, useRef, useEffect, Suspense } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Plus, Trash2, Landmark, Pencil } from "lucide-react";
+import { Plus, Trash2, Pencil } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
 import { Topic, TopicDecision } from "@/lib/types";
 import { DecisionLinkCard } from "@/components/decision-ui";
 import {
-  Badge, Button, Card, CardListSkeleton, ConfirmDialog, EmptyState, Input, PageHeader, Textarea,
-  Dialog, DialogContent, DialogHeader, DialogTitle, toast,
+  Button, Card, CardListSkeleton, ConfirmDialog, EmptyState, Input, PageHeader, Textarea,
+  Dialog, DialogContent, DialogHeader, DialogTitle, Switch, formatDate, toast,
 } from "@/components/ui";
+import { decisionHref } from "@/lib/routes";
 
 function TopicsInner() {
   const qc = useQueryClient();
   const [name, setName] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
   // ?neu= aus der URL (KI-Frage ohne Treffer → „Als Thema anlegen"):
-  // Namen vorbefüllen, einmalig nach dem Mount.
+  // Namen vorbefüllen UND den Anlege-Dialog direkt öffnen.
   const spNeu = useSearchParams();
   useEffect(() => {
     const neu = spNeu.get("neu");
-    if (neu) setName((prev) => prev || neu);
+    if (neu) {
+      setName((prev) => prev || neu);
+      setCreateOpen(true);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [description, setDescription] = useState("");
@@ -152,7 +158,15 @@ function TopicsInner() {
         confirmLabel="Löschen"
         onConfirm={() => confirmDeleteId !== null && deleteMutation.mutate(confirmDeleteId)}
       />
-      <PageHeader title="Meine Themen" description={HEADER_DESC} />
+      <PageHeader
+        title="Meine Themen"
+        description={HEADER_DESC}
+        action={
+          <Button variant="signal" onClick={() => setCreateOpen(true)}>
+            <Plus /> Neues Thema
+          </Button>
+        }
+      />
 
       {(suggestionsQuery.data?.length ?? 0) > 0 && (
         <div className="mt-6">
@@ -177,61 +191,97 @@ function TopicsInner() {
         </div>
       )}
 
-      <Card className="mt-4 p-4">
-        <form
-          onSubmit={(e) => { e.preventDefault(); addMutation.mutate({ name, description }); }}
-          className="space-y-3"
-        >
-          <Input ref={nameInputRef} placeholder="Name (z. B. Radwege)" value={name} onChange={(e) => setName(e.target.value)} required />
-          <Textarea
-            placeholder="Beschreibung — je konkreter, desto besser (z. B. Ausbau und Planung von Radwegen in Oldenburg)"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={2}
-            required
-          />
-          <Button type="submit" disabled={addMutation.isPending}>
-            <Plus className="h-4 w-4" /> {addMutation.isPending ? "Hinzufügen…" : "Thema hinzufügen"}
-          </Button>
-        </form>
-      </Card>
+      <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) { setName(""); setDescription(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Neues Thema</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => { e.preventDefault(); addMutation.mutate({ name, description }, { onSuccess: () => setCreateOpen(false) }); }}
+            className="space-y-3"
+          >
+            <Input ref={nameInputRef} autoFocus placeholder="Name (z. B. Radwege)" value={name} onChange={(e) => setName(e.target.value)} required />
+            <Textarea
+              placeholder="Beschreibung — je konkreter, desto besser (z. B. Ausbau und Planung von Radwegen in Oldenburg)"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              required
+            />
+            <div className="flex items-center justify-end gap-2">
+              <Button type="button" variant="secondary" onClick={() => setCreateOpen(false)}>Abbrechen</Button>
+              <Button type="submit" disabled={addMutation.isPending}>
+                {addMutation.isPending ? "Hinzufügen…" : "Thema anlegen"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
-      <div className="mt-6 space-y-3">
+      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
         {topics.length === 0 ? (
           <EmptyState
             mascot="wave"
             title="Noch keine Themen"
             hint="Lege ein Thema an — wir melden uns, sobald der Rat etwas dazu beschließt."
             action={
-              <Button size="sm" onClick={() => { nameInputRef.current?.focus(); nameInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }}>
+              <Button size="sm" onClick={() => setCreateOpen(true)}>
                 <Plus className="h-4 w-4" /> Erstes Thema anlegen
               </Button>
             }
           />
         ) : (
           topics.map((t) => (
-            <Card key={t.id} className="p-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-foreground">{t.name}</h3>
-                    {t.decision_count > 0 && <Badge color="green">{t.decision_count} Beschlüsse</Badge>}
-                  </div>
-                  <p className="mt-0.5 text-sm text-muted-foreground">{t.description}</p>
-                </div>
-                <div className="flex shrink-0 flex-wrap gap-2">
-                  {t.decision_count > 0 && (
-                    <Button variant="secondary" size="sm" onClick={() => viewDecisions(t)}>
-                      <Landmark className="h-4 w-4" /> Beschlüsse
-                    </Button>
-                  )}
-                  <Button variant="secondary" size="sm" onClick={() => startEdit(t)}>
-                    <Pencil className="h-4 w-4" /> Bearbeiten
-                  </Button>
-                  <Button variant="danger" size="sm" aria-label="Löschen" onClick={() => setConfirmDeleteId(t.id)} disabled={deleteMutation.isPending}>
+            <Card key={t.id} className="flex flex-col p-4">
+              <div className="flex items-start justify-between gap-2">
+                <h3 className="min-w-0 font-display text-base font-bold text-foreground">{t.name}</h3>
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    aria-label={`Thema „${t.name}" bearbeiten`}
+                    onClick={() => startEdit(t)}
+                    className="flex h-[30px] w-[30px] items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Thema „${t.name}" löschen`}
+                    onClick={() => setConfirmDeleteId(t.id)}
+                    disabled={deleteMutation.isPending}
+                    className="flex h-[30px] w-[30px] items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                  >
                     <Trash2 className="h-4 w-4" />
-                  </Button>
+                  </button>
                 </div>
+              </div>
+              <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">{t.description}</p>
+              {t.last_hit_title && (
+                <Link
+                  href={t.last_hit_id ? decisionHref(t.last_hit_id) : "#"}
+                  className="mt-3 flex items-start gap-2 rounded-lg bg-muted/40 px-2.5 py-2 transition-colors hover:bg-muted"
+                >
+                  <span className="mt-1.5 h-[7px] w-[7px] shrink-0 rounded-full bg-signal" aria-hidden />
+                  <span className="min-w-0">
+                    <span className="line-clamp-2 text-sm text-foreground">{t.last_hit_title}</span>
+                    {t.last_hit_date && (
+                      <span className="text-xs text-muted-foreground">{formatDate(t.last_hit_date)}</span>
+                    )}
+                  </span>
+                </Link>
+              )}
+              <div className="mt-auto pt-3">
+                {t.decision_count > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => viewDecisions(t)}
+                    className="text-sm font-medium text-primary hover:underline"
+                  >
+                    {t.decision_count} {t.decision_count === 1 ? "Beschluss" : "Beschlüsse"} insgesamt · alle ansehen
+                  </button>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Noch keine Treffer — wir melden uns, sobald der Rat dazu entscheidet.</p>
+                )}
               </div>
             </Card>
           ))
@@ -248,14 +298,12 @@ function TopicsInner() {
           return (
             <div key={c} className="flex items-center justify-between gap-3 px-4 py-2.5">
               <span className="min-w-0 text-sm text-foreground">{c}</span>
-              <Button
-                variant={subscribed ? "secondary" : "primary"}
-                size="sm"
-                onClick={() => subMutation.mutate({ committee: c, subscribed })}
+              <Switch
+                checked={subscribed}
+                aria-label={`${c} ${subscribed ? "abbestellen" : "abonnieren"}`}
+                onCheckedChange={() => subMutation.mutate({ committee: c, subscribed })}
                 disabled={subMutation.isPending}
-              >
-                {subscribed ? "✓ Abonniert" : "Abonnieren"}
-              </Button>
+              />
             </div>
           );
         })}
