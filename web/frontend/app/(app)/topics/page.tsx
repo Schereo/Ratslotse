@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { Plus, Trash2, Landmark, Pencil } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
@@ -11,9 +12,17 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, toast,
 } from "@/components/ui";
 
-export default function TopicsPage() {
+function TopicsInner() {
   const qc = useQueryClient();
   const [name, setName] = useState("");
+  // ?neu= aus der URL (KI-Frage ohne Treffer → „Als Thema anlegen"):
+  // Namen vorbefüllen, einmalig nach dem Mount.
+  const spNeu = useSearchParams();
+  useEffect(() => {
+    const neu = spNeu.get("neu");
+    if (neu) setName((prev) => prev || neu);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [description, setDescription] = useState("");
   const [decisionsFor, setDecisionsFor] = useState<{ topic: Topic; decisions: TopicDecision[] } | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
@@ -293,5 +302,14 @@ export default function TopicsPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function TopicsPage() {
+  // useSearchParams (Vorbefüllung ?neu=) braucht eine Suspense-Grenze.
+  return (
+    <Suspense>
+      <TopicsInner />
+    </Suspense>
   );
 }
