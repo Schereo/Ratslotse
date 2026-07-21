@@ -27,6 +27,7 @@ from scripts.backfill_beratungen import rescan_recent as rescan_beratungen  # no
 from scripts.backfill_vorlagen import process_missing as fetch_vorlagen  # noqa: E402
 from scripts.classify_decisions import process as classify_decisions  # noqa: E402
 from scripts.extract_amounts import process as extract_amounts  # noqa: E402
+from scripts.generate_simple_summaries import process as generate_simple  # noqa: E402
 from scripts.track_goals import process as track_goals  # noqa: E402
 
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
@@ -51,6 +52,11 @@ def main() -> None:
     # Extract € amounts from any decisions still missing one (regex, no cost).
     astats = extract_amounts(COUNCIL_DB, only_missing=True)
     print(f"€ amounts: {astats['with_amount']}/{astats['decisions']} newly scanned.")
+    # „Einfach erklärt"-Kurzfassungen für frisch geparste Beschlüsse (RL-904).
+    # Klein limitiert — der Tageszuwachs ist eine Handvoll; den Alt-Bestand
+    # arbeitet weekly_enrich in Wochen-Tranchen ab.
+    sstats = generate_simple(COUNCIL_DB, limit=60)
+    print(f"Einfach erklärt: {sstats['written']} neu, {sstats['failed']} ohne Ergebnis.")
     # Ingest Vorlagen texts for new agenda items (network + pypdf only, no LLM).
     # Newest first + capped, so a normal day fetches a handful; the historic bulk
     # is scripts/backfill_vorlagen.py without limit. Runs before the FTS rebuild

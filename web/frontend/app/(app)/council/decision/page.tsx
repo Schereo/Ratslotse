@@ -11,6 +11,8 @@ import { decisionHref, themaHref } from "@/lib/routes";
 import { ShareButton } from "@/components/share-button";
 import { nwzSearchUrl } from "@/components/nwz-link";
 import { trackRecentDecision } from "@/lib/recent";
+import { Mascot } from "@/components/mascot";
+import { useMascotTheme } from "@/components/seasonal-mascot";
 import { cn } from "@/lib/utils";
 import { useFetch } from "@/lib/use-fetch";
 
@@ -28,6 +30,26 @@ function Section({ title, children }: { title: string; children: React.ReactNode
     <div className="mt-6">
       <h2 className="text-sm font-semibold text-muted-foreground">{title}</h2>
       <div className="mt-2.5">{children}</div>
+    </div>
+  );
+}
+
+/** RL-904: „Lotti erklärt's einfach" — 2–3 bürgernahe Sätze nach dem
+ *  Beschlusstext, mit festem KI-Hinweis. */
+function SimpleSummaryCard({ text }: { text: string }) {
+  const theme = useMascotTheme();
+  return (
+    <div className="mt-4 flex gap-3 rounded-xl border border-border bg-card p-4">
+      <Mascot pose="point" theme={theme} decorative className="h-12 w-12 shrink-0" />
+      <div className="min-w-0">
+        <p className="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+          Lotti erklärt&rsquo;s einfach
+        </p>
+        <p className="mt-1 text-sm leading-relaxed text-foreground">{text}</p>
+        <p className="mt-1.5 text-xs text-muted-foreground">
+          KI-Kurzfassung — verbindlich ist der Beschlusstext oben.
+        </p>
+      </div>
     </div>
   );
 }
@@ -138,6 +160,8 @@ function DecisionDetailInner() {
               <p className="mt-1.5 text-sm leading-relaxed text-foreground">{d.beschluss}</p>
             </div>
           )}
+
+          {d.simple_summary && <SimpleSummaryCard text={d.simple_summary} />}
 
           {data.sub_votes.length > 0 && (
             <Section title="Anträge & Teilabstimmungen">

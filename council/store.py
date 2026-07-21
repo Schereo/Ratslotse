@@ -155,7 +155,8 @@ CREATE TABLE IF NOT EXISTS council_decisions (
     policy_tags  TEXT,                          -- JSON array of finer-grained tags
     summary      TEXT,                          -- one-line neutral summary
     amount_eur   REAL,                          -- largest € amount in the text (council.money)
-    importance   INTEGER                        -- Wichtigkeits-Score 0–100 (council.importance), per Backfill
+    importance   INTEGER,                       -- Wichtigkeits-Score 0–100 (council.importance), per Backfill
+    simple_summary TEXT                         -- „Lotti erklärt's einfach": 2–3 bürgernahe Sätze (RL-904)
 );
 CREATE INDEX IF NOT EXISTS idx_decisions_ksinr ON council_decisions(ksinr);
 -- NB: the policy_field index is created in _migrate(), not here — on an existing
@@ -272,6 +273,9 @@ class CouncilStore:
                 # Wichtigkeits-Score (council.importance) — additiv, per Backfill befüllt.
                 if "importance" not in dec_cols:
                     self._conn.execute("ALTER TABLE council_decisions ADD COLUMN importance INTEGER")
+                # „Lotti erklärt's einfach" (RL-904) — additiv, per Backfill befüllt.
+                if "simple_summary" not in dec_cols:
+                    self._conn.execute("ALTER TABLE council_decisions ADD COLUMN simple_summary TEXT")
                 self._conn.execute(
                     "CREATE INDEX IF NOT EXISTS idx_decisions_field ON council_decisions(policy_field)"
                 )
@@ -1067,6 +1071,29 @@ class CouncilStore:
             params,
         ).fetchone()
         return row[0] if row else 0
+
+    def decisions_needing_simple_summary(self, limit: int | None = None) -> list[dict]:
+        """Beschlüsse ohne „einfach erklärt"-Kurzfassung (RL-904): nur echte
+        Beschlüsse mit substanziellem Beschlusstext, neueste zuerst — so holt
+        ein limitierter Backfill die relevantesten zuerst nach."""
+        sql = """SELECT d.id, d.title, d.beschluss, d.summary, cs.committee, cs.session_date
+                 FROM council_decisions d
+                 JOIN council_sessions cs ON cs.ksinr = d.ksinr
+                 WHERE d.kind = 'decision' AND d.simple_summary IS NULL
+                   AND d.beschluss IS NOT NULL AND length(d.beschluss) >= 200
+                 ORDER BY cs.session_date DESC, d.id"""
+        args: tuple = ()
+        if limit is not None:
+            sql += " LIMIT ?"
+            args = (limit,)
+        return [dict(r) for r in self._conn.execute(sql, args).fetchall()]
+
+    def save_simple_summary(self, decision_id: int, text: str) -> None:
+        with self._conn:
+            self._conn.execute(
+                "UPDATE council_decisions SET simple_summary = ? WHERE id = ?",
+                (text, decision_id),
+            )
 
     def get_decision(self, decision_id: int) -> dict | None:
         row = self._conn.execute(

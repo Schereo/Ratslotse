@@ -62,6 +62,8 @@ export interface CouncilDecision {
   amount_eur: number | null;
   /** Wichtigkeits-Score 0–100 (council.importance); null = noch nicht berechnet. */
   importance?: number | null;
+  /** „Lotti erklärt's einfach" (RL-904): 2–3 bürgernahe Sätze, per Backfill. */
+  simple_summary?: string | null;
 }
 
 export interface PolicyField {
