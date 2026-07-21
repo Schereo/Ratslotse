@@ -1575,6 +1575,29 @@ class CouncilStore:
                 n += cur.rowcount
         return n
 
+    def top_amount_since(self, date_from: str) -> dict | None:
+        """Größter im Beschlusstext erkannter Betrag seit ``date_from`` — die
+        „Zahl der Woche" fürs Heute-Briefing (RL-905)."""
+        row = self._conn.execute(
+            """SELECT d.id, d.title, d.amount_eur, s.session_date
+               FROM council_decisions d
+               JOIN council_sessions s ON s.ksinr = d.ksinr
+               WHERE s.session_date >= ? AND d.amount_eur IS NOT NULL
+                 AND d.kind = 'decision'
+               ORDER BY d.amount_eur DESC LIMIT 1""",
+            (date_from,),
+        ).fetchone()
+        return dict(row) if row else None
+
+    def count_decisions_since(self, date_from: str) -> int:
+        """Anzahl Beschlüsse seit ``date_from`` (Fallback der Zahl der Woche)."""
+        return int(self._conn.execute(
+            """SELECT COUNT(*) FROM council_decisions d
+               JOIN council_sessions s ON s.ksinr = d.ksinr
+               WHERE s.session_date >= ?""",
+            (date_from,),
+        ).fetchone()[0])
+
     def antrag_stats(self) -> dict:
         """Erfolgsquoten der Fraktions-Anträge: Antrag-Anlage → Vorlage → deren
         Beschlüsse. Gezählt wird je Antragsteller-Partei der KLARE Endstand der

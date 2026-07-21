@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from nwz.store import Store
 from council.store import CouncilStore
@@ -106,6 +106,31 @@ def update_topic(
         created_at=t.created_at,
         decision_count=len(store.get_topic_decision_matches(topic_id)),
     )
+
+
+@router.get("/latest-hits")
+def latest_hits(
+    limit: int = Query(2, ge=1, le=10),
+    user: dict = Depends(require_active),
+    store: Store = Depends(get_store),
+    council: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Die jüngsten Beschluss-Treffer über ALLE Themen des Kontos — für die
+    „Neu zu deinen Themen"-Karte im Heute-Briefing (RL-401). Vor der
+    {topic_id}-Route registriert, damit „latest-hits" nicht als ID parst."""
+    pairs: list[tuple[str, int]] = []
+    for t in store.get_topics(user["id"]):
+        pairs += [(t.name, m["decision_id"]) for m in store.get_topic_decision_matches(t.id)[:10]]
+    by_id = {d["id"]: d for d in council.get_decisions_by_ids([d_id for _, d_id in pairs])}
+    rows = [
+        {"topic_name": name, "id": d["id"], "title": d["title"],
+         "committee": d["committee"], "session_date": d["session_date"]}
+        for name, d_id in pairs if (d := by_id.get(d_id))
+    ]
+    rows.sort(key=lambda r: r["session_date"] or "", reverse=True)
+    seen: set[int] = set()
+    out = [r for r in rows if not (r["id"] in seen or seen.add(r["id"]))]
+    return {"hits": out[:limit]}
 
 
 @router.get("/{topic_id}/decisions")
