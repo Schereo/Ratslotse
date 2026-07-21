@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from .config import get_settings
-from .routers import account, admin, auth, council, feedback, onboarding, push, quiz, topics
+from .routers import account, admin, auth, auth_apple, council, feedback, onboarding, push, quiz, topics
 
 
 def _startup_checks() -> None:
@@ -90,6 +90,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(auth_apple.router)
 app.include_router(account.router)
 app.include_router(council.router)
 app.include_router(topics.router)

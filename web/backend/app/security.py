@@ -78,6 +78,61 @@ def create_access_token(
     return f"{header}.{payload}.{signature}"
 
 
+# --- RS256-Verifikation (Sign in with Apple, RL-1002) ------------------------
+# Nur VERIFIKATION eines fremden RSA-Signums (öffentlicher Schlüssel aus dem
+# Apple-JWKS) — dafür reicht die Schulbuch-Formel sig^e mod n plus der
+# deterministische EMSA-PKCS1-v1_5-Vergleich. Bewusst stdlib-pur, wie der
+# Rest dieses Moduls; es gibt hier keine Geheimnis-Operationen.
+
+# DigestInfo-Präfix für SHA-256 (RFC 8017, EMSA-PKCS1-v1_5).
+_SHA256_DIGEST_INFO = bytes.fromhex("3031300d060960864801650304020105000420")
+
+
+def _rsa_verify_pkcs1_sha256(message: bytes, signature: bytes, n: int, e: int) -> bool:
+    k = (n.bit_length() + 7) // 8
+    if len(signature) != k:
+        return False
+    em = pow(int.from_bytes(signature, "big"), e, n).to_bytes(k, "big")
+    expected = (
+        b"\x00\x01"
+        + b"\xff" * (k - 3 - len(_SHA256_DIGEST_INFO) - 32)
+        + b"\x00"
+        + _SHA256_DIGEST_INFO
+        + hashlib.sha256(message).digest()
+    )
+    return hmac.compare_digest(em, expected)
+
+
+def decode_rs256_token(token: str, jwks_keys: list[dict]) -> dict | None:
+    """Verify an RS256 JWT against a JWKS key list and return its payload.
+
+    Checks signature (kid-matched key), and ``exp``. Issuer/audience checks are
+    the caller's job — they're deployment-specific. Returns None on any failure.
+    """
+    try:
+        header_b64, payload_b64, signature_b64 = token.split(".")
+        header = json.loads(_b64url_decode(header_b64))
+        payload = json.loads(_b64url_decode(payload_b64))
+        signature = _b64url_decode(signature_b64)
+    except (ValueError, json.JSONDecodeError):
+        return None
+    if header.get("alg") != "RS256":
+        return None
+    key = next((k for k in jwks_keys if k.get("kid") == header.get("kid")), None)
+    if not key or key.get("kty") != "RSA":
+        return None
+    try:
+        n = int.from_bytes(_b64url_decode(key["n"]), "big")
+        e = int.from_bytes(_b64url_decode(key["e"]), "big")
+    except (KeyError, ValueError):
+        return None
+    if not _rsa_verify_pkcs1_sha256(f"{header_b64}.{payload_b64}".encode(), signature, n, e):
+        return None
+    if payload.get("exp", 0) < int(time.time()):
+        return None
+    return payload
+
+
 def decode_access_token(token: str) -> tuple[str, int] | None:
     """Return (subject, token_version) or None if the token is invalid/expired."""
     settings = get_settings()
