@@ -16,6 +16,7 @@ import {
 } from "@/components/ui";
 import { OutcomeBadge, OutcomeDot, ImportanceBadge, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
 import { ChipPopover, DateRangeChip } from "@/components/filter-chips";
+import { SitzungspauseBanner } from "@/components/sitzungspause-banner";
 import { AnalysisTab } from "@/components/council-analysis";
 import { EntitiesTab } from "@/components/council-entities";
 import { QaTab } from "@/components/council-qa";
@@ -453,16 +454,29 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   );
 }
 
+/** Monats/Tages-Kachel 50 px (RL-801, Design 6a-Sitzungen). */
+function DateTile({ iso }: { iso: string }) {
+  const d = new Date(iso + "T12:00:00");
+  return (
+    <span className="w-[50px] shrink-0 rounded-lg border border-border bg-muted/40 py-1 text-center">
+      <span className="block font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+        {d.toLocaleDateString("de-DE", { month: "short" }).replace(".", "")}
+      </span>
+      <span className="block font-display text-lg font-bold leading-tight text-foreground">{d.getDate()}</span>
+    </span>
+  );
+}
+
 function AgendaRow({ it, query, outcome }: { it: AgendaItem; query: string; outcome?: DecisionOutcome | null }) {
   const hit = itemMatches(it, query);
   return (
     <li className={cn("flex flex-wrap items-start gap-x-3 gap-y-1 rounded-md px-2 py-2", hit && "bg-amber-50 dark:bg-amber-950/40")}>
-      <span className="shrink-0 text-xs font-medium text-muted-foreground">{it.item_number}</span>
+      <span className="w-7 shrink-0 text-xs font-medium text-muted-foreground">{it.item_number}</span>
       <div className="min-w-0 flex-1">
         <p className="text-sm text-foreground"><Highlight text={it.title} query={query} /></p>
         {it.vorlage_nr && <p className="text-xs text-muted-foreground">Vorlage <Highlight text={it.vorlage_nr} query={query} /></p>}
       </div>
-      {outcome ? <OutcomeBadge outcome={outcome} /> : !it.is_public ? <Badge color="amber">nichtöffentlich</Badge> : null}
+      {outcome ? <OutcomeDot outcome={outcome} /> : !it.is_public ? <Badge color="amber">nichtöffentlich</Badge> : null}
     </li>
   );
 }
@@ -545,6 +559,8 @@ function SessionsTab({ committees }: { committees: string[] }) {
 
   return (
     <div>
+      {/* RL-801/402: kompakter Pause-Hinweis direkt über der Liste. */}
+      <SitzungspauseBanner compact className="mt-4" />
       <Card className="mt-4 p-4">
         <div className="space-y-3">
           <div className="relative">
@@ -589,9 +605,12 @@ function SessionsTab({ committees }: { committees: string[] }) {
               return (
                 <Card key={s.ksinr} className="overflow-hidden p-0">
                   <button type="button" onClick={() => toggle(s)} className="group flex w-full items-center justify-between gap-3 p-4 text-left transition-colors hover:bg-muted/40">
-                    <div className="min-w-0">
-                      <h3 className="font-semibold text-foreground">{s.committee}</h3>
-                      <p className="mt-0.5 text-sm text-muted-foreground">{formatDate(s.session_date)} · {s.session_time} Uhr · {s.location}</p>
+                    <div className="flex min-w-0 items-center gap-3">
+                      <DateTile iso={s.session_date} />
+                      <div className="min-w-0">
+                        <h3 className="truncate font-display text-base font-bold text-foreground">{s.committee}</h3>
+                        <p className="mt-0.5 text-sm text-muted-foreground">{s.session_time} Uhr · {s.location}</p>
+                      </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
                       <Badge color="blue">{s.n_items} {s.n_items === 1 ? "TOP" : "TOPs"}</Badge>

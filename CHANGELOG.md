@@ -8,6 +8,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geändert
+- **Sitzungen als Kalender-Karten (Design 6a, M2):** Jede Sitzung trägt links
+  eine **Datums-Kachel** (Monat + Tag), der Gremiumsname steht in der
+  Markenschrift, und aufgeklappte Tagesordnungen bekommen eine saubere
+  Nummern-Spalte; Ergebnisse erscheinen als Punkt + Wort. Oben weist der
+  kompakte **Sitzungspause-Hinweis** mit schlafender Lotti auf Ferien hin —
+  inklusive „wieder ab"-Datum, sobald ein Termin bekannt ist. (#225)
 - **Konto-Seite mit Schaltern (Design 6a, M2):** Benachrichtigungen steuerst du
   jetzt über zwei **Schalter** — E-Mail und Push getrennt (mindestens einer
   bleibt an) — und kannst dir eine **Test-Benachrichtigung** schicken, um die
