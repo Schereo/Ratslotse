@@ -58,13 +58,17 @@ export function QuizMap({ picked, solution, disabled, onPick, className }: {
   useEffect(() => {
     let cancelled = false;
     let observer: MutationObserver | null = null;
+    let resize: ResizeObserver | null = null;
     void (async () => {
       try {
         const L = (await import("leaflet")).default;
         if (cancelled || !ref.current || !ref.current.isConnected || mapRef.current) return;
-        ref.current.innerHTML = "";
-        delete (ref.current as HTMLDivElement & { _leaflet_id?: number })._leaflet_id;
-        const map = L.map(ref.current, { scrollWheelZoom: false, attributionControl: true });
+        const el = ref.current;
+        el.innerHTML = "";
+        delete (el as HTMLDivElement & { _leaflet_id?: number })._leaflet_id;
+        // zoomSnap 0.5: fitBounds darf auf halbe Stufen einrasten — das
+        // Stadtgebiet füllt die (jetzt viewport-skalierte) Fläche besser aus.
+        const map = L.map(el, { scrollWheelZoom: false, attributionControl: true, zoomSnap: 0.5 });
         mapRef.current = map;
         map.setView([53.1435, 8.2146], 11);
 
@@ -100,6 +104,17 @@ export function QuizMap({ picked, solution, disabled, onPick, className }: {
         layerRef.current = gj;
         if (gj.getBounds().isValid()) map.fitBounds(gj.getBounds(), { padding: [12, 12] });
         restyle();
+        // Die Kartenhöhe skaliert mit dem Viewport (dvh) — bei Größenänderung
+        // (Fenster, mobile Browserleiste) Leaflet nachziehen, sonst bleiben
+        // graue Ränder bzw. ein falscher Ausschnitt.
+        resize = new ResizeObserver(() => {
+          const m = mapRef.current;
+          const g = layerRef.current;
+          if (!m) return;
+          m.invalidateSize();
+          if (g?.getBounds().isValid()) m.fitBounds(g.getBounds(), { padding: [12, 12] });
+        });
+        resize.observe(el);
       } catch (err) {
         console.error("[QuizMap] Initialisierung fehlgeschlagen:", err);
       }
@@ -107,6 +122,7 @@ export function QuizMap({ picked, solution, disabled, onPick, className }: {
     return () => {
       cancelled = true;
       observer?.disconnect();
+      resize?.disconnect();
       const m = mapRef.current;
       mapRef.current = null;
       layerRef.current = null;

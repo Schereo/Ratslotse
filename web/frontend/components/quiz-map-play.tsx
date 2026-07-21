@@ -12,7 +12,7 @@ import { api } from "@/lib/api";
 // Leaflet ist client-only + schwer → erst beim Spielen laden.
 const QuizMap = dynamic(() => import("@/components/quiz-map").then((m) => m.QuizMap), {
   ssr: false,
-  loading: () => <div className="h-[360px] w-full animate-pulse rounded-xl bg-muted sm:h-[440px]" />,
+  loading: () => <div className="h-[clamp(340px,55dvh,720px)] w-full animate-pulse rounded-xl bg-muted" />,
 });
 
 type MapResult = { correct: boolean; points: number };
@@ -77,7 +77,9 @@ export function QuizMapPlay({ targets, onExit }: { targets: string[]; onExit: ()
   }
 
   return (
-    <div className="mx-auto max-w-xl">
+    // Breiter als die Fragen-Karten (max-w-xl): Die Karte lebt von Fläche —
+    // auf großen Bildschirmen bis 56rem, die Höhe wächst mit dem Viewport.
+    <div className="mx-auto max-w-4xl">
       <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-primary">
         <MapPin className="h-4 w-4" /> Karten-Quiz
       </p>
@@ -99,7 +101,7 @@ export function QuizMapPlay({ targets, onExit }: { targets: string[]; onExit: ()
         </p>
 
         <QuizMap
-          className="mt-3 h-[360px] w-full sm:h-[440px]"
+          className="mt-3 h-[clamp(340px,55dvh,720px)] w-full"
           picked={picked}
           solution={result ? target : null}
           disabled={result !== null}
