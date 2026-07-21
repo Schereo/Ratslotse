@@ -88,23 +88,35 @@ def _esc(text: str) -> str:
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
+def _agenda_hash(agenda_items) -> str:
+    """Stabiler Fingerabdruck der Tagesordnung — ändert sich, sobald ein TOP
+    hinzukommt, wegfällt oder umformuliert wird."""
+    import hashlib
+
+    payload = "\n".join(
+        f"{i.item_number}\t{i.title}\t{i.vorlage_nr or ''}\t{int(i.is_public)}"
+        for i in agenda_items
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
 def run_watcher(
     db_path: str | Path,
-    topics: list[dict],
+    owners: list[dict],
     months_ahead: int = 3,
-    owner: dict | None = None,
+    nwz_store=None,
 ) -> list[str]:
     """
-    Scrape upcoming sessions, classify new ones against topics, send alerts.
-    Returns list of alert messages sent.
-    topics: [{"id": int, "name": str, "description": str}]
-    owner: delivery target dict {delivery_channel, email, ...}. When omitted
-           (eval/tests), a no-op owner is used and no message is delivered.
+    Scrape upcoming sessions once, classify their agendas per owner, persist
+    the matches (RL-902) and send alerts. Returns the alert messages sent.
+
+    owners: get_all_owner_digests()-Zeilen — je {owner_id, topics: [TopicRow],
+            delivery_channel, email, push_tokens}.
+    nwz_store: offener nwz.store.Store für die Treffer-Persistenz; ohne ihn
+            (Tests) wird klassifiziert und alarmiert, aber nichts gemerkt —
+            dann läuft die Klassifikation beim nächsten Mal erneut.
     """
     from nwz.delivery import deliver_message
-
-    if owner is None:
-        owner = {"delivery_channel": "email", "email": None}
 
     scraper = CouncilScraper()
     store = CouncilStore(db_path)
@@ -119,35 +131,52 @@ def run_watcher(
     alerts_sent: list[str] = []
 
     for ksinr in session_ids:
-        already_has_agenda = store.has_session_with_agenda(ksinr)
-
         session = scraper.fetch_session(ksinr)
         if not session:
             continue
 
         store.save_session(session)
 
-        # Only classify future sessions with newly discovered agendas
-        if already_has_agenda:
-            continue
-        if not session.is_future:
-            continue
-        if not session.agenda_items:
-            print(f"  {session.session_date} {session.committee}: no agenda yet, skipping")
+        # Nur kommende Sitzungen mit Tagesordnung sind für Themen relevant.
+        if not session.is_future or not session.agenda_items:
             continue
 
-        print(f"  {session.session_date} {session.committee}: {len(session.agenda_items)} items → classifying…")
-        matches = _classify_agenda(session, topics)
+        agenda_hash = _agenda_hash(session.agenda_items)
 
-        for topic_idx, item_numbers in matches.items():
-            topic_id = topics[topic_idx]["id"]
-            if store.alert_already_sent(ksinr, topic_id):
+        for owner in owners:
+            # Je Nutzer:in klassifizieren — aber nur, wenn sich die
+            # Tagesordnung seit ihrer letzten Klassifikation geändert hat.
+            if nwz_store is not None:
+                known = nwz_store.agenda_classified_hash(owner["owner_id"], ksinr)
+                if known == agenda_hash:
+                    continue
+
+            topics = [
+                {"id": t.id, "name": t.name, "description": t.description}
+                for t in owner["topics"]
+            ]
+            if not topics:
                 continue
-            msg = _format_alert(session, {topic_idx: item_numbers}, topics)
-            print(f"    Match: topic={topics[topic_idx]['name']!r} items={item_numbers}")
-            deliver_message(owner, msg, email_subject="Ratslotse – Ihr Thema im Stadtrat")
-            alerts_sent.append(msg)
-            store.mark_alert_sent(ksinr, topic_id)
+
+            print(f"  {session.session_date} {session.committee}: "
+                  f"{len(session.agenda_items)} items → classifying for owner {owner['owner_id']}…")
+            matches = _classify_agenda(session, topics)
+
+            if nwz_store is not None:
+                nwz_store.replace_agenda_matches(
+                    owner["owner_id"], ksinr, agenda_hash,
+                    {topics[idx]["id"]: nums for idx, nums in matches.items()},
+                )
+
+            for topic_idx, item_numbers in matches.items():
+                topic_id = topics[topic_idx]["id"]
+                if store.alert_already_sent(ksinr, topic_id):
+                    continue
+                msg = _format_alert(session, {topic_idx: item_numbers}, topics)
+                print(f"    Match: topic={topics[topic_idx]['name']!r} items={item_numbers}")
+                deliver_message(owner, msg, email_subject="Ratslotse – Ihr Thema im Stadtrat")
+                alerts_sent.append(msg)
+                store.mark_alert_sent(ksinr, topic_id)
 
     store.close()
     return alerts_sent

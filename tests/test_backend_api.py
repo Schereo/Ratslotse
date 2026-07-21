@@ -237,6 +237,34 @@ def test_council_session_404(client):
     assert client.get("/api/council/session/999").status_code == 404
 
 
+def test_sessions_carry_my_topic_items(client):
+    """RL-902: Tagesordnungs-Treffer der eigenen Themen hängen an der Sitzung —
+    und nur an der eigenen (fremde Owner-Treffer bleiben unsichtbar)."""
+    from datetime import date, timedelta
+
+    _register(client)  # admin, owner_id 1
+    future = (date.today() + timedelta(days=3)).isoformat()
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(800, "Verkehrsausschuss", future, "17:00", "Fleiwa",
+                                   agenda_items=[AgendaItem("Ö 2", "Radweg Hauptstraße")]))
+    cs.save_session(CouncilSession(801, "Kulturausschuss", future, "17:00", "PFL",
+                                   agenda_items=[AgendaItem("Ö 1", "Museumskonzept")]))
+    cs.close()
+
+    store = Store(NWZ_DB)
+    topic = store.add_topic(1, "Radwege", "Ausbau von Radwegen")
+    store.replace_agenda_matches(1, 800, "h", {topic.id: ["Ö 2"]})
+    # Treffer eines anderen Owners auf derselben Sitzung: darf nicht auftauchen.
+    other = store.add_topic(2, "Museen", "Kultur")
+    store.replace_agenda_matches(2, 801, "h", {other.id: ["Ö 1"]})
+    store.close()
+
+    rows = client.get("/api/council/sessions?scope=upcoming").json()["sessions"]
+    by_id = {r["ksinr"]: r for r in rows}
+    assert by_id[800]["my_topic_items"] == [{"item_number": "Ö 2", "topic_name": "Radwege"}]
+    assert "my_topic_items" not in by_id[801]
+
+
 def test_decision_detail_includes_vorlage(client):
     """Der Beschluss liefert den eingelesenen Vorlagen-Auszug mit — und die
     vorlage_url wird über unsere Tabelle aufgelöst (Protokolle kennen kein kvonr)."""

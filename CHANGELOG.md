@@ -7,6 +7,14 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt
+- **„n TOPs zu deinen Themen" (M3):** Ratslotse zeigt dir jetzt direkt an,
+  wenn eine kommende Sitzung Tagesordnungspunkte zu deinen Themen enthält —
+  als oranger Hinweis auf der Sitzungs-Karte und im Heute-Briefing; im
+  Aufklapp sind die passenden TOPs markiert („dein Thema · …"). Die
+  Zuordnung merkt sich der Themen-Wächter jetzt dauerhaft und prüft je
+  Konto nur noch geänderte Tagesordnungen. (#228)
+
 ### Behoben
 - **Terminplan sichtbar, sobald das RIS ihn veröffentlicht:** Das
   Ratsinformationssystem verlinkt Sitzungen erst, wenn ihre Tagesordnung

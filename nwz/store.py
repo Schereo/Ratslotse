@@ -176,6 +176,30 @@ CREATE TABLE IF NOT EXISTS topic_hits_seen (
 );
 CREATE INDEX IF NOT EXISTS idx_topic_hits_seen_owner ON topic_hits_seen(owner_id, topic_id);
 
+-- Treffer der Tagesordnungs-Klassifikation (kommende Sitzungen ↔ eigene
+-- Themen) — Grundlage der „n TOPs zu deinen Themen"-Chips (RL-902). Die
+-- Sitzungen liegen in council.sqlite (kein DB-übergreifender Join), daher
+-- referenziert ksinr nur numerisch.
+CREATE TABLE IF NOT EXISTS council_agenda_matches (
+  owner_id    INTEGER NOT NULL,
+  ksinr       INTEGER NOT NULL,
+  topic_id    INTEGER NOT NULL,
+  item_number TEXT NOT NULL,
+  matched_at  TEXT NOT NULL,
+  PRIMARY KEY (owner_id, ksinr, topic_id, item_number)
+);
+CREATE INDEX IF NOT EXISTS idx_cam_owner ON council_agenda_matches(owner_id, ksinr);
+
+-- Merkt je Nutzer:in + Sitzung, welcher Tagesordnungs-Stand (Hash) schon
+-- klassifiziert wurde — die LLM-Klassifikation läuft nur bei Änderungen.
+CREATE TABLE IF NOT EXISTS council_agenda_classified (
+  owner_id      INTEGER NOT NULL,
+  ksinr         INTEGER NOT NULL,
+  agenda_hash   TEXT NOT NULL,
+  classified_at TEXT NOT NULL,
+  PRIMARY KEY (owner_id, ksinr)
+);
+
 CREATE TABLE IF NOT EXISTS quiz_answers (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     owner_id    INTEGER NOT NULL,
@@ -1041,6 +1065,66 @@ class Store:
                 (owner_id, now, topic_id, owner_id),
             )
         return cur.rowcount
+
+    def agenda_classified_hash(self, owner_id: int, ksinr: int) -> str | None:
+        """Hash des zuletzt für diese Nutzer:in klassifizierten
+        Tagesordnungs-Stands — None, wenn noch nie klassifiziert (RL-902)."""
+        row = self._conn.execute(
+            "SELECT agenda_hash FROM council_agenda_classified WHERE owner_id = ? AND ksinr = ?",
+            (owner_id, ksinr),
+        ).fetchone()
+        return row["agenda_hash"] if row else None
+
+    def replace_agenda_matches(
+        self, owner_id: int, ksinr: int, agenda_hash: str, matches: dict[int, list[str]]
+    ) -> None:
+        """Treffer einer Sitzung für eine Nutzer:in komplett ersetzen und den
+        klassifizierten Stand festhalten. matches: {topic_id: [item_numbers]}.
+        Voller Austausch, damit bei geänderter Tagesordnung keine veralteten
+        Treffer stehen bleiben (RL-902)."""
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "DELETE FROM council_agenda_matches WHERE owner_id = ? AND ksinr = ?",
+                (owner_id, ksinr),
+            )
+            self._conn.executemany(
+                """INSERT OR IGNORE INTO council_agenda_matches
+                   (owner_id, ksinr, topic_id, item_number, matched_at)
+                   VALUES (?, ?, ?, ?, ?)""",
+                [
+                    (owner_id, ksinr, topic_id, item_number, now)
+                    for topic_id, item_numbers in matches.items()
+                    for item_number in item_numbers
+                ],
+            )
+            self._conn.execute(
+                """INSERT OR REPLACE INTO council_agenda_classified
+                   (owner_id, ksinr, agenda_hash, classified_at) VALUES (?, ?, ?, ?)""",
+                (owner_id, ksinr, agenda_hash, now),
+            )
+
+    def agenda_matches_for_owner(self, owner_id: int, ksinrs: list[int]) -> dict[int, list[dict]]:
+        """{ksinr: [{item_number, topic_name}]} für die „n TOPs zu deinen
+        Themen"-Chips — nur eigene Themen, sortiert nach TOP-Nummer."""
+        if not ksinrs:
+            return {}
+        placeholders = ",".join("?" for _ in ksinrs)
+        rows = self._conn.execute(
+            f"""SELECT m.ksinr, m.item_number, t.name AS topic_name
+                FROM council_agenda_matches m
+                JOIN topics t ON t.id = m.topic_id AND t.owner_id = m.owner_id
+                WHERE m.owner_id = ? AND m.ksinr IN ({placeholders})
+                ORDER BY m.ksinr, m.item_number""",
+            (owner_id, *ksinrs),
+        ).fetchall()
+        out: dict[int, list[dict]] = {}
+        for r in rows:
+            out.setdefault(r["ksinr"], []).append(
+                {"item_number": r["item_number"], "topic_name": r["topic_name"]}
+            )
+        return out
 
     def topic_decision_counts(self, owner_id: int) -> dict[int, int]:
         """{topic_id: number of matched council decisions} for an owner's topics."""
