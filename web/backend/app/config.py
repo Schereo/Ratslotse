@@ -25,6 +25,12 @@ class Settings(BaseSettings):
     # secure). Keep True for production; tests/non-localhost HTTP set it False.
     cookie_secure: bool = True
 
+    # Sign in with Apple (RL-1002): erlaubte aud-Werte des Identity-Tokens.
+    # Bundle-ID deckt die native App ab; die Service-ID käme für einen späteren
+    # Web-Flow dazu (leer = nicht konfiguriert).
+    apple_bundle_id: str = "de.ratslotse.app"
+    apple_service_id: str = ""
+
     # Databases (shared with the bot)
     nwz_db: str = str(ROOT / "data" / "nwz.sqlite")
     council_db: str = str(ROOT / "data" / "council.sqlite")

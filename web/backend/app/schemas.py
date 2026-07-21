@@ -35,6 +35,10 @@ class UserOut(BaseModel):
     status: str = "pending"
     delivery_channel: str = "email"
     email_verified: bool = False
+    # Sign in with Apple (RL-1002): verknüpft? Und hat das Konto (noch) ein
+    # selbst gesetztes Passwort? Steuert Konto-Chip + Passwort-Karte.
+    apple_linked: bool = False
+    has_password: bool = True
     # Populated only for native-app clients (which send `X-Client: app`) on
     # login/register/verify-email. Web clients authenticate via the httpOnly
     # cookie and leave this null.
@@ -102,9 +106,12 @@ class ChangePasswordRequest(BaseModel):
 
 
 class DeleteAccountRequest(BaseModel):
-    """Konto-Löschung verlangt das aktuelle Passwort — eine (evtl. offen
-    liegende) Session allein darf das Konto nicht zerstören können."""
-    current_password: str = Field(min_length=1)
+    """Konto-Löschung verlangt eine frische Bestätigung — eine (evtl. offen
+    liegende) Session allein darf das Konto nicht zerstören können. Konten mit
+    Passwort bestätigen mit dem Passwort; Apple-only-Konten mit einem frischen
+    Apple-Identity-Token (Re-Auth in der App, RL-1002)."""
+    current_password: str = Field(default="", max_length=128)
+    apple_identity_token: str = Field(default="", max_length=4096)
 
 
 # ---- delivery channel ----

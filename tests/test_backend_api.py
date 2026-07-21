@@ -931,6 +931,101 @@ def test_cors_preflight_allows_app_webview_origin():
     assert r.headers.get("access-control-allow-credentials") == "true"
 
 
+# ---- Sign in with Apple (RL-1002) ----
+# Fester 2048-Bit-Testschlüssel (einmalig generiert): Tests signieren offline
+# mit d (rohes RSA + EMSA-PKCS1-v1_5) und verifizieren den echten Server-Pfad.
+_APPLE_N = 23292286828442764542923602884886102634630497020832090681415031917426634371549872951421751307795427778020033652931020993785405435375266637207273733185696842723723840048137832838787830710633262144703248819350993993779228227453743549376464448895752816351732669088600171771119929681241653844721217855925336951865225156196245188319224141205571780669141197871229169819690144412769760049364020327712810906003818442349824989657315952737445834675548869097844110780042087383813509900808819964181099303049532117389667796862500006668640019356333002353762096910159235120646666152212943426307862094829091638720316652902437398576279
+_APPLE_D = 8396304838160826570399906256831892391959170802274253113555539947407502993891694364112839522270062461538280437518789469577235923341364216712746056573317287348011258666359952880051621322662854594161189888654615829318360273730579130601710245707580640094931236414294745838332892545500914769589947834617210473767990321986882809738325610990822923049798951381050642443016109010102515956779964727875353799774535343954005978135626311423156307033222819749230405134914161061433073643877196888646681175713907414015748006720763829431077994615230357666001882914881594149582209038126726745498176910258773099475330879258754175280753
+_APPLE_E = 65537
+
+
+def _apple_token(sub="apple-sub-1", email="anna@example.com", aud="de.ratslotse.app",
+                 exp_offset=3600, kid="testkid"):
+    import hashlib
+    import json
+    import time as _time
+    from app.security import _SHA256_DIGEST_INFO, _b64url_encode
+
+    header = _b64url_encode(json.dumps({"alg": "RS256", "kid": kid}).encode())
+    claims = {"iss": "https://appleid.apple.com", "aud": aud, "sub": sub,
+              "exp": int(_time.time()) + exp_offset}
+    if email:
+        claims["email"] = email
+    payload = _b64url_encode(json.dumps(claims).encode())
+    msg = f"{header}.{payload}".encode()
+    k = (_APPLE_N.bit_length() + 7) // 8
+    em = (b"\x00\x01" + b"\xff" * (k - 3 - len(_SHA256_DIGEST_INFO) - 32) + b"\x00"
+          + _SHA256_DIGEST_INFO + hashlib.sha256(msg).digest())
+    sig = pow(int.from_bytes(em, "big"), _APPLE_D, _APPLE_N).to_bytes(k, "big")
+    return f"{header}.{payload}." + _b64url_encode(sig)
+
+
+@pytest.fixture
+def apple_jwks(monkeypatch):
+    from app.routers import auth_apple
+    from app.security import _b64url_encode
+
+    n_bytes = _APPLE_N.to_bytes((_APPLE_N.bit_length() + 7) // 8, "big")
+    jwk = {"kty": "RSA", "kid": "testkid", "alg": "RS256",
+           "n": _b64url_encode(n_bytes), "e": _b64url_encode(_APPLE_E.to_bytes(3, "big"))}
+    monkeypatch.setattr(auth_apple, "_fetch_jwks", lambda: [jwk])
+    auth_apple._JWKS_CACHE.update(at=0.0, keys=[])
+    yield
+
+
+def test_apple_login_creates_active_account(client, apple_jwks):
+    _register(client)  # Admin existiert → Apple-Konto wird normale:r Nutzer:in
+    anna = TestClient(app)
+    r = anna.post("/api/auth/apple", json={"identity_token": _apple_token()})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["email"] == "anna@example.com"
+    assert body["status"] == "active" and body["email_verified"] is True
+    assert body["apple_linked"] is True and body["has_password"] is False
+    # Wiederholte Anmeldung (gleiche sub, diesmal ohne email-Claim) → gleiches Konto.
+    r2 = anna.post("/api/auth/apple", json={"identity_token": _apple_token(email=None)})
+    assert r2.status_code == 200 and r2.json()["id"] == body["id"]
+
+
+def test_apple_login_links_existing_account_by_email(client, apple_jwks):
+    _register(client)  # admin@test.de
+    r = client.post("/api/auth/apple",
+                    json={"identity_token": _apple_token(sub="sub-admin", email="admin@test.de")})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["email"] == "admin@test.de"
+    assert body["apple_linked"] is True and body["has_password"] is True
+
+
+def test_apple_login_rejects_foreign_audience_and_bad_signature(client, apple_jwks):
+    bad_aud = _apple_token(aud="com.evil.app")
+    assert client.post("/api/auth/apple", json={"identity_token": bad_aud}).status_code == 401
+    tampered = _apple_token() + "x"
+    assert client.post("/api/auth/apple", json={"identity_token": tampered}).status_code == 401
+    expired = _apple_token(exp_offset=-60)
+    assert client.post("/api/auth/apple", json={"identity_token": expired}).status_code == 401
+
+
+def test_apple_only_account_deletes_via_apple_reauth(client, apple_jwks):
+    _register(client)
+    anna = TestClient(app)
+    anna.post("/api/auth/apple", json={"identity_token": _apple_token(sub="sub-del", email="del@example.com")})
+    # Ohne Passwort und ohne Apple-Token: klare Fehlermeldung.
+    r = anna.request("DELETE", "/api/account", json={"current_password": ""})
+    assert r.status_code == 400 and "Apple" in r.json()["detail"]
+    # Fremde sub im Re-Auth-Token wird abgelehnt.
+    r = anna.request("DELETE", "/api/account",
+                     json={"apple_identity_token": _apple_token(sub="other-sub", email=None)})
+    assert r.status_code == 400
+    # Frisches Token derselben sub löscht das Konto.
+    r = anna.request("DELETE", "/api/account",
+                     json={"apple_identity_token": _apple_token(sub="sub-del", email=None)})
+    assert r.status_code == 204
+    store = Store(NWZ_DB)
+    assert store.get_web_user_by_email("del@example.com") is None
+    store.close()
+
+
 def test_push_unregister_is_scoped_to_owner(client):
     """One account can't drop another's device token."""
     _register(client)  # admin (active), cookie on `client`

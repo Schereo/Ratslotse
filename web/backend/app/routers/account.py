@@ -115,10 +115,20 @@ def delete_account(
     store: Store = Depends(get_store),
 ) -> None:
     """Permanently delete the account and all data keyed to it (DSGVO right to
-    erasure). Verlangt das aktuelle Passwort — eine Session allein (offener
-    Laptop, gestohlenes Cookie) darf das Konto nicht zerstören können."""
-    if not verify_password(body.current_password, user["password_hash"]):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Aktuelles Passwort ist falsch.")
+    erasure). Verlangt eine frische Bestätigung — eine Session allein (offener
+    Laptop, gestohlenes Cookie) darf das Konto nicht zerstören können:
+    Passwort-Konten bestätigen mit dem Passwort, Apple-only-Konten mit einem
+    frischen Apple-Identity-Token (Re-Auth in der App, RL-1002)."""
+    if body.apple_identity_token and user.get("apple_sub"):
+        from .auth_apple import verify_apple_identity_token
+        claims = verify_apple_identity_token(body.apple_identity_token)
+        if str(claims.get("sub")) != str(user["apple_sub"]):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Apple-Bestätigung gehört zu einem anderen Konto.")
+    elif not verify_password(body.current_password, user["password_hash"]):
+        msg = ("Aktuelles Passwort ist falsch." if user.get("password_set", 1)
+               else "Dieses Konto nutzt Apple — bitte in der App per Apple bestätigen "
+                    "oder zuerst über „Passwort vergessen“ ein Passwort setzen.")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, msg)
     email = str(user.get("email", ""))
     store.delete_web_user(user["id"])
     background.add_task(_send_goodbye_email, email)

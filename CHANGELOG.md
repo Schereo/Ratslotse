@@ -8,6 +8,13 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Neue Anmelde-Seiten + Sign in with Apple (M3):** Login und Registrierung
+  bekommen ein **zweispaltiges Marken-Layout** (Claim + Lotti-Familie links,
+  Formular rechts, mobil unverändert kompakt) mit größeren Eingabefeldern.
+  In der iOS-App kannst du dich künftig **mit Apple anmelden** — bestehende
+  Konten werden über die gleiche E-Mail-Adresse verknüpft, neue sind sofort
+  aktiv; Apple-Konten ohne Passwort löschen ihr Konto per frischer
+  Apple-Bestätigung oder rüsten ein Passwort per E-Mail-Link nach. (#230)
 - **„Lotti erklärt's einfach" (M3):** Beschluss-Seiten bekommen unter dem
   amtlichen Beschlusstext eine **2–3-Satz-Erklärung in einfacher Sprache** —
   ohne Verwaltungsdeutsch, mit klarem KI-Hinweis. Erzeugt automatisch für

@@ -125,6 +125,8 @@ def _to_out(user: dict, access_token: str | None = None) -> UserOut:
         status=user.get("status", "active"),
         delivery_channel=user.get("delivery_channel", "email"),
         email_verified=bool(user.get("email_verified")),
+        apple_linked=bool(user.get("apple_sub")),
+        has_password=bool(user.get("password_set", 1)),
         access_token=access_token,
     )
 
