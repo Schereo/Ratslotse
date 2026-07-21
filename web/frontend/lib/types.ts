@@ -12,7 +12,9 @@ export interface User {
 }
 
 export interface CouncilSession {
-  ksinr: number;
+  // null = terminierte Sitzung aus dem RIS-Kalender, Tagesordnung noch
+  // nicht veröffentlicht (dann gibt es weder Detailseite noch TOPs).
+  ksinr: number | null;
   committee: string;
   session_date: string;
   session_time: string;
