@@ -189,6 +189,28 @@ export function OutcomeBadge({ outcome }: { outcome: DecisionOutcome | null }) {
   );
 }
 
+// RL-103: Ergebnis in LISTEN als Punkt + Wort (Token-Spec 6a: „immer Punkt +
+// Wort, nie Balken/Border") — das gefüllte Badge bleibt dem Detail-Kopf
+// vorbehalten. Farben exakt aus der Spec.
+const OUTCOME_DOT_CLS: Record<DecisionOutcome, string> = {
+  angenommen: "bg-[#22c55e]",
+  abgelehnt: "bg-[#ef4444]",
+  vertagt: "bg-[#f59e0b]",
+  zur_kenntnis: "bg-blue-500",
+  kein_beschluss: "bg-muted-foreground/50",
+};
+
+export function OutcomeDot({ outcome }: { outcome: DecisionOutcome | null }) {
+  if (!outcome) return null;
+  const m = OUTCOME_META[outcome] ?? OUTCOME_META.kein_beschluss;
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs font-medium text-foreground">
+      <span className={cn("h-[7px] w-[7px] rounded-full", OUTCOME_DOT_CLS[outcome] ?? OUTCOME_DOT_CLS.kein_beschluss)} aria-hidden />
+      {m.label}
+    </span>
+  );
+}
+
 // Official party brand colours (bg + readable text) — a brand-accurate, logo-like
 // chip for each faction. Not the trademarked logo artwork: just the party colour +
 // its own short name, which keeps it legally clean and covers every faction. Local

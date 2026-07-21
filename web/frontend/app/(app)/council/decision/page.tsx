@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, ExternalLink, FileText, FileDown, Users, Newspaper, Tag } from "lucide-react";
 import { DecisionDetail, CouncilDecision } from "@/lib/types";
 import { Card, DetailSkeleton, EmptyState, formatDate } from "@/components/ui";
-import { OutcomeBadge, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard, ImportanceMeter, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
+import { OutcomeBadge, OutcomeDot, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard, ImportanceMeter, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
 import { decisionHref, themaHref } from "@/lib/routes";
 import { ShareButton } from "@/components/share-button";
 import { nwzSearchUrl } from "@/components/nwz-link";
@@ -110,7 +110,12 @@ function DecisionDetailInner() {
       </div>
 
       {d.beschluss && (
-        <div className="mt-4 rounded-lg bg-muted/60 p-4 text-sm leading-relaxed text-foreground">{d.beschluss}</div>
+        // RL-102: Beschlusstext als ruhige Fläche mit Versalien-Label in Primär
+        // (Token-Spec 6a) — kein Akzent-Border.
+        <div className="mt-4 rounded-xl bg-[hsl(206_45%_96%)] p-4 dark:bg-muted/50">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">Beschlusstext</p>
+          <p className="mt-1.5 text-sm leading-relaxed text-foreground">{d.beschluss}</p>
+        </div>
       )}
 
       {d.amount_eur != null && (
@@ -167,7 +172,7 @@ function DecisionDetailInner() {
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   {s.gegenstimmen ? <span className="text-xs text-muted-foreground">{s.gegenstimmen} Gegen</span> : null}
-                  <OutcomeBadge outcome={s.outcome} />
+                  <OutcomeDot outcome={s.outcome} />
                 </div>
               </div>
             ))}
