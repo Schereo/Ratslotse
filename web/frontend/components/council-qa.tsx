@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useSearchParams } from "next/navigation";
 import { Sparkles, Send, Loader2 } from "lucide-react";
 import { Mascot } from "@/components/mascot";
 import { QaSource } from "@/lib/types";
@@ -37,6 +38,14 @@ const MODE_LABEL: Record<string, string> = {
 
 export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   const [q, setQ] = useState("");
+  // Suchtext aus der URL übernehmen (Leerzustand der Suche reicht ihn als
+  // ?q= weiter) — einmalig nach dem Mount, kein Hydration-Mismatch.
+  const sp = useSearchParams();
+  useEffect(() => {
+    const urlQ = sp.get("q");
+    if (urlQ) setQ((prev) => prev || urlQ);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<Step | null>(null);
   const [answer, setAnswer] = useState("");
