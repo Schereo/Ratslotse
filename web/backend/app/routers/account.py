@@ -83,6 +83,29 @@ def change_password(
     return _to_out(updated)
 
 
+@router.post("/test-notification")
+def test_notification(
+    user: dict = Depends(require_active),
+    store: Store = Depends(get_store),
+) -> dict:
+    """RL-702: Test-Benachrichtigung über die aktiven Kanäle — damit man prüfen
+    kann, ob E-Mail/Push wirklich ankommen. Nutzt exakt den Cron-Versandpfad
+    (deliver_message); ohne RESEND_API_KEY wird E-Mail still übersprungen."""
+    from nwz.delivery import deliver_message
+    owner = {
+        "email": user["email"],
+        "delivery_channel": user.get("delivery_channel") or "email",
+        "push_tokens": store.get_push_tokens_for_owner(user["id"]),
+    }
+    sent = deliver_message(
+        owner,
+        "<p>Moin! Das ist eine <b>Test-Benachrichtigung</b> von Ratslotse — "
+        "genau so sehen Hinweise zu deinen Themen und Tagesordnungen aus.</p>",
+        email_subject="Ratslotse – Test-Benachrichtigung",
+    )
+    return {"sent": sent}
+
+
 @router.delete("", status_code=status.HTTP_204_NO_CONTENT)
 def delete_account(
     body: DeleteAccountRequest,
