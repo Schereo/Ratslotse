@@ -8,6 +8,14 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Behoben
+- **Sitzungs-Benachrichtigungen überleben LLM-Aussetzer:** Lieferte das
+  Sprachmodell für eine Tagesordnungs-Zusammenfassung kein gültiges JSON,
+  brach bislang der komplette tägliche Ausschuss-Check ab — betroffene
+  Benachrichtigungen gingen gar nicht raus (im Juli 11× passiert). Jetzt wird
+  einmal neu versucht; klappt auch das nicht, kommt die Benachrichtigung
+  ohne Zusammenfassung (mit Link zur Tagesordnung), und der nächste Lauf
+  versucht die Zusammenfassung erneut statt ein falsches „nur Routine-TOPs"
+  festzuschreiben. (#213)
 - **Personen zeigen ihre letzte Fraktion:** Ratsmitglieder, die die Fraktion
   gewechselt haben (z. B. FDP → Volt oder Die Linke → BSW), wurden in der
   Personen-Liste und auf der Personen-Seite unter ihrer **häufigsten** statt
