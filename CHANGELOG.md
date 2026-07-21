@@ -7,6 +7,13 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert
+- **Karten-Quiz nutzt den Bildschirm:** Die „Wo liegt …?"-Karte wächst jetzt
+  mit dem Fenster (bis ca. 900 × 720 Pixel auf großen Bildschirmen statt fix
+  ~530 × 440) und zoomt das Stadtgebiet passgenauer ein. Bei Größenänderungen
+  (Fenster, einklappende Mobil-Browserleiste) passt sich die Karte live an.
+  (#214)
+
 ### Behoben
 - **Personen zeigen ihre letzte Fraktion:** Ratsmitglieder, die die Fraktion
   gewechselt haben (z. B. FDP → Volt oder Die Linke → BSW), wurden in der
