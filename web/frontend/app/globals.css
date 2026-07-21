@@ -29,8 +29,9 @@
     --input: 208 30% 85%;
     --ring: 205 92% 34%;
     --radius: 0.75rem;
-    /* Signal-Orange (Lotsenboot): Maskottchen, Highlights, sparsame Akzente. */
-    --signal: 19 92% 55%;
+    /* Signal-Orange (Lotsenboot): Maskottchen, Highlights, sparsame Akzente.
+       Token-Spec 6a: hell 19 92% 50 (Button-Fill), dunkel 19 95% 60. */
+    --signal: 19 92% 50%;
     --signal-foreground: 0 0% 100%;
     /* Starke Easing-Kurven (animations.dev): die CSS-Standardkurven sind zu
        schwach. out = Eintritte/Feedback, in-out = Bewegung auf dem Screen,
