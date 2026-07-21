@@ -467,14 +467,23 @@ function DateTile({ iso }: { iso: string }) {
   );
 }
 
-function AgendaRow({ it, query, outcome }: { it: AgendaItem; query: string; outcome?: DecisionOutcome | null }) {
+function AgendaRow({ it, query, outcome, myTopic }: { it: AgendaItem; query: string; outcome?: DecisionOutcome | null; myTopic?: string }) {
   const hit = itemMatches(it, query);
   return (
-    <li className={cn("flex flex-wrap items-start gap-x-3 gap-y-1 rounded-md px-2 py-2", hit && "bg-amber-50 dark:bg-amber-950/40")}>
+    <li className={cn(
+      "flex flex-wrap items-start gap-x-3 gap-y-1 rounded-md px-2 py-2",
+      hit ? "bg-amber-50 dark:bg-amber-950/40" : myTopic && "bg-signal/5",
+    )}>
       <span className="w-7 shrink-0 text-xs font-medium text-muted-foreground">{it.item_number}</span>
       <div className="min-w-0 flex-1">
         <p className="text-sm text-foreground"><Highlight text={it.title} query={query} /></p>
         {it.vorlage_nr && <p className="text-xs text-muted-foreground">Vorlage <Highlight text={it.vorlage_nr} query={query} /></p>}
+        {myTopic && (
+          /* RL-902: TOP passt zu einem eigenen Thema. */
+          <span className="mt-1 inline-flex rounded-full bg-signal/10 px-2 py-0.5 text-[11px] font-semibold text-signal">
+            dein Thema · {myTopic}
+          </span>
+        )}
       </div>
       {outcome ? <OutcomeDot outcome={outcome} /> : !it.is_public ? <Badge color="amber">nichtöffentlich</Badge> : null}
     </li>
@@ -625,6 +634,10 @@ function SessionsTab({ committees }: { committees: string[] }) {
               for (const dec of d?.decisions ?? []) {
                 if (dec.kind === "decision" && dec.item_number) outcomeByItem[dec.item_number] = dec.outcome;
               }
+              // RL-902: TOPs, die zu eigenen Themen passen (TOP → Themenname).
+              const myByItem: Record<string, string> = {};
+              for (const m of s.my_topic_items ?? []) myByItem[m.item_number] ??= m.topic_name;
+              const myCount = Object.keys(myByItem).length;
               return (
                 <Card key={s.ksinr} className="overflow-hidden p-0">
                   <button type="button" onClick={() => toggle(s)} className="group flex w-full items-center justify-between gap-3 p-4 text-left transition-colors hover:bg-muted/40">
@@ -636,6 +649,11 @@ function SessionsTab({ committees }: { committees: string[] }) {
                       </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
+                      {myCount > 0 && (
+                        <span className="hidden rounded-full bg-signal/10 px-2 py-0.5 text-[11px] font-semibold text-signal sm:inline-flex">
+                          {myCount} zu deinen Themen
+                        </span>
+                      )}
                       <Badge color="blue">{s.n_items} {s.n_items === 1 ? "TOP" : "TOPs"}</Badge>
                       <ChevronDown className={cn("h-5 w-5 text-muted-foreground/50 transition-transform", isExpanded && "rotate-180 text-primary")} />
                     </div>
@@ -650,7 +668,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
                           <>
                             <ul className="space-y-0.5">
                               {(d?.agenda_items ?? []).map((it, i) => (
-                                <AgendaRow key={i} it={it} query={query} outcome={outcomeByItem[it.item_number]} />
+                                <AgendaRow key={i} it={it} query={query} outcome={outcomeByItem[it.item_number]} myTopic={myByItem[it.item_number]} />
                               ))}
                             </ul>
                             {d && <AttendanceSection detail={d} />}
@@ -660,7 +678,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
                         matched.length > 0 ? (
                           <>
                             <p className="mb-1 px-2 text-xs font-medium text-muted-foreground">{matched.length} Treffer in der Tagesordnung</p>
-                            <ul className="space-y-0.5">{matched.map((it, i) => <AgendaRow key={i} it={it} query={query} />)}</ul>
+                            <ul className="space-y-0.5">{matched.map((it, i) => <AgendaRow key={i} it={it} query={query} myTopic={myByItem[it.item_number]} />)}</ul>
                           </>
                         ) : (
                           <p className="px-2 text-sm text-muted-foreground">Kein Tagesordnungspunkt enthält „{query}" — Treffer im Ausschussnamen.</p>

@@ -22,6 +22,8 @@ export interface CouncilSession {
   n_items: number;
   // Present on text search: the agenda items that matched the query.
   matched_items?: AgendaItem[];
+  // RL-902: TOPs dieser Sitzung, die zu eigenen Themen passen.
+  my_topic_items?: { item_number: string; topic_name: string }[];
 }
 
 export interface AgendaItem {
