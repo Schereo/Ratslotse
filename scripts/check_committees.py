@@ -101,14 +101,27 @@ def main() -> None:
                 agenda_items=session.agenda_items,
                 session_url=session.url,
             )
-            council_store.save_summary(ksinr, agenda_hash, summary)
+            # None = LLM-Antwort unbrauchbar → NICHT cachen (sonst stünde für
+            # diese Tagesordnung dauerhaft eine falsche Aussage fest); die
+            # Benachrichtigung geht trotzdem raus, nur ohne Zusammenfassung.
+            if summary is not None:
+                council_store.save_summary(ksinr, agenda_hash, summary)
 
-        base_message = summary or (
-            f"<b>{session.committee}</b>\n"
-            f"📅 {session.session_date}  {session.session_time} Uhr\n\n"
-            f"Tagesordnung enthält nur Routine-TOPs.\n"
-            f'<a href="{session.url}">Tagesordnung →</a>'
-        )
+        if summary:
+            base_message = summary
+        elif summary == "":
+            base_message = (
+                f"<b>{session.committee}</b>\n"
+                f"📅 {session.session_date}  {session.session_time} Uhr\n\n"
+                f"Tagesordnung enthält nur Routine-TOPs.\n"
+                f'<a href="{session.url}">Tagesordnung →</a>'
+            )
+        else:  # Zusammenfassung fehlgeschlagen — nichts behaupten, nur verlinken.
+            base_message = (
+                f"<b>{session.committee}</b>\n"
+                f"📅 {session.session_date}  {session.session_time} Uhr\n\n"
+                f'<a href="{session.url}">Tagesordnung →</a>'
+            )
 
         subject = f"Ratslotse – {session.committee}"
         for owner_id in pending_new:
