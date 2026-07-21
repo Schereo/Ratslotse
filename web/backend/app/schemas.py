@@ -56,6 +56,7 @@ class TopicOut(BaseModel):
     last_hit_id: int | None = None
     last_hit_title: str | None = None
     last_hit_date: str | None = None
+    unread_count: int = 0
 
 
 # ---- subscriptions ----

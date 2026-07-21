@@ -167,6 +167,15 @@ CREATE INDEX IF NOT EXISTS idx_push_tokens_owner ON push_tokens(owner_id);
 -- Quiz-Antworten (Punkte je Konto). Gebiet + Kategorie sind DENORMALISIERT,
 -- weil die Fragen in council.sqlite liegen (kein DB-übergreifender Join) — so
 -- aggregiert die Statistik ohne Zugriff auf die Fragen-DB.
+CREATE TABLE IF NOT EXISTS topic_hits_seen (
+  owner_id INTEGER NOT NULL,
+  topic_id INTEGER NOT NULL,
+  decision_id INTEGER NOT NULL,
+  seen_at TEXT NOT NULL,
+  PRIMARY KEY (owner_id, topic_id, decision_id)
+);
+CREATE INDEX IF NOT EXISTS idx_topic_hits_seen_owner ON topic_hits_seen(owner_id, topic_id);
+
 CREATE TABLE IF NOT EXISTS quiz_answers (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     owner_id    INTEGER NOT NULL,
@@ -1002,6 +1011,36 @@ class Store:
         return [dict(r) for r in self._conn.execute(
             "SELECT decision_id, score FROM council_topic_matches WHERE topic_id = ? ORDER BY score DESC",
             (topic_id,))]
+
+    def unseen_hit_counts(self, owner_id: int) -> dict[int, int]:
+        """RL-903: {topic_id: Anzahl noch nicht gesehener Beschluss-Treffer}
+        für alle Themen des Kontos — speist Sidebar-Zähler und „n neu"-Badges."""
+        rows = self._conn.execute(
+            """SELECT m.topic_id, COUNT(*) AS n
+               FROM council_topic_matches m
+               LEFT JOIN topic_hits_seen s
+                 ON s.owner_id = m.owner_id AND s.topic_id = m.topic_id
+                    AND s.decision_id = m.decision_id
+               WHERE m.owner_id = ? AND s.decision_id IS NULL
+               GROUP BY m.topic_id""",
+            (owner_id,),
+        ).fetchall()
+        return {r["topic_id"]: r["n"] for r in rows}
+
+    def mark_topic_hits_seen(self, owner_id: int, topic_id: int) -> int:
+        """Alle aktuellen Treffer eines Themas als gesehen markieren (RL-903).
+        Idempotent (INSERT OR IGNORE); Rückgabe = neu markierte Zeilen."""
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        with self._conn:
+            cur = self._conn.execute(
+                """INSERT OR IGNORE INTO topic_hits_seen (owner_id, topic_id, decision_id, seen_at)
+                   SELECT ?, m.topic_id, m.decision_id, ?
+                   FROM council_topic_matches m
+                   WHERE m.topic_id = ? AND m.owner_id = ?""",
+                (owner_id, now, topic_id, owner_id),
+            )
+        return cur.rowcount
 
     def topic_decision_counts(self, owner_id: int) -> dict[int, int]:
         """{topic_id: number of matched council decisions} for an owner's topics."""
