@@ -33,9 +33,6 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          # Fehlerausgabe sichtbar machen (Läufe scheiterten ab 21.07. sofort
-          # mit verstecktem Fehler); Diff+Doku passen locker in den Kontext.
-          show_full_output: true
           # Pass the default token so the action skips the GitHub-App/OIDC token
           # exchange (we don't install the Claude GitHub App). pull-requests:write
           # above lets it post the review comment.
