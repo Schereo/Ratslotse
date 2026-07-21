@@ -8,6 +8,15 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geändert
+- **„Heute"-Briefing statt Übersicht (Design 2a, M2):** Die Startseite nach dem
+  Login ist jetzt ein tägliches Briefing: Begrüßung mit Lotti und Datum,
+  daneben die zentrale Aktion **„Frag den Rat"**, darunter drei Karten —
+  **Nächste Sitzungen** (mit TOP-Zahl), **Neu zu deinen Themen** (die jüngsten
+  Beschluss-Treffer deiner Themen) und die **Zahl der Woche** (größter
+  beschlossener Betrag der letzten Tage, mit Link zum Beschluss). Die „Ersten
+  Schritte" schrumpfen auf eine schlanke Leiste mit „Weitermachen"-Knopf. Das
+  **Sitzungspause-Banner** bekommt die schönere Hülle: Wellen-Fläche,
+  schlafende Lotti im Saison-Outfit und eine „Wieder ab …"-Kachel. (#218)
 - **Design „Feinschliff 2a" — Fundament & Navigation (M1):** Erster Schritt des
   neuen Designs. Die **Seitenleiste** führt jetzt direkt zu *Heute, Suchen &
   Fragen, Sitzungen, Stadtkarte* (vorher „Themen"-Tab) *und Analyse*, darunter
