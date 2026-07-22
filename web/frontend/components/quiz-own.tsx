@@ -27,9 +27,21 @@ function practiceLabel(q: UserQuizQuestion): string {
   return `${q.practiced}× geübt, ${quote} %`;
 }
 
+const YEAR_SPAN = 50;  // ± Jahre um eine Jahreszahl (muss zu quiz.py passen)
+
+/** Jahreszahl: Einheit Jahr/Jahre UND >= 100 (kleine Werte = Dauer). */
+function isYear(unit: string, value: number): boolean {
+  return ["jahr", "jahre"].includes(unit.trim().toLowerCase()) && Math.abs(value) >= 100;
+}
+
 /** Slider-Grenzen aus der Antwort ableiten (Spiegel von `_auto_range` im
- *  Backend): 0 bis ~2× der Zahl, auf zwei signifikante Stellen gerundet. */
-function autoRange(value: number): [number, number] {
+ *  Backend): 0 bis ~2× der Zahl, auf zwei signifikante Stellen gerundet — bei
+ *  Jahreszahlen stattdessen ein enges Fenster (±50 Jahre) um die Zahl. */
+function autoRange(value: number, unit: string): [number, number] {
+  if (isYear(unit, value)) {
+    const v = Math.round(value);
+    return [Math.max(0, v - YEAR_SPAN), v + YEAR_SPAN];
+  }
   const raw = Math.max(Math.abs(value) * 2, 1);
   const step = Math.pow(10, Math.max(0, Math.floor(Math.log10(raw)) - 1));
   const hi = Math.round(raw / step) * step;
@@ -96,7 +108,8 @@ function QuestionEditor({ open, initial, editId, onClose, onSaved }: {
   const isEstimate = draft.category === "schaetzen";
   const av = Number(draft.answerValue.replace(",", "."));
   const hasAv = draft.answerValue.trim() !== "" && Number.isFinite(av);
-  const [autoLo, autoHi] = hasAv ? autoRange(av) : [0, 0];
+  const yearRange = hasAv && isYear(draft.unit, av);
+  const [autoLo, autoHi] = hasAv ? autoRange(av, draft.unit) : [0, 0];
   const lo = draft.rangeManual ? Number(draft.rangeMin.replace(",", ".")) : autoLo;
   const hi = draft.rangeManual ? Number(draft.rangeMax.replace(",", ".")) : autoHi;
 
@@ -211,7 +224,10 @@ function QuestionEditor({ open, initial, editId, onClose, onSaved }: {
                 {draft.rangeManual ? (
                   <>Eigene Grenzen. <button type="button" onClick={() => setDraft({ ...draft, rangeManual: false })} className="font-medium text-primary hover:underline">Automatisch berechnen</button></>
                 ) : (
-                  <>Wird aus der Zahl erzeugt (0 bis ~2×, glatt gerundet) — die richtige Zahl liegt so nie am Rand. <button type="button" onClick={() => setDraft({ ...draft, rangeManual: true, rangeMin: String(lo), rangeMax: hasAv ? String(hi) : "" })} className="font-medium text-primary hover:underline">Bereich manuell anpassen</button></>
+                  <>{yearRange
+                    ? "Fenster um die Jahreszahl (±50 Jahre) — die richtige Zahl liegt mittig. "
+                    : "Wird aus der Zahl erzeugt (0 bis ~2×, glatt gerundet) — die richtige Zahl liegt so nie am Rand. "}
+                  <button type="button" onClick={() => setDraft({ ...draft, rangeManual: true, rangeMin: String(lo), rangeMax: hasAv ? String(hi) : "" })} className="font-medium text-primary hover:underline">Bereich manuell anpassen</button></>
                 )}
               </p>
             </div>

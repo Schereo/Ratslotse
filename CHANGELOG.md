@@ -19,7 +19,10 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   **„Schätzfrage"**, tritt an die Stelle der Antwortoptionen eine **Zahl mit
   Einheit** — beim Üben rät man sie dann auf einem Slider, je näher desto
   besser. Der Rate-Bereich entsteht automatisch aus der Zahl (0 bis ~2×,
-  glatt gerundet), lässt sich aber von Hand anpassen. (#264)
+  glatt gerundet), lässt sich aber von Hand anpassen. Bei der Einheit
+  **„Jahr" / „Jahre"** wird der Bereich stattdessen ein **enges Fenster von
+  ±50 Jahren** um die Zahl — sonst spannte der Slider bei einer Jahreszahl
+  unbrauchbar von 0 bis ~4000. (#264, #265)
 - **Der Gesprächswert arbeitet jetzt überall mit:** Die Beschluss-Suche kann
   nach **„Spannendste zuerst"** sortieren (kuriose, alltagsnahe Funde nach
   oben), die Übersicht zeigt Konten ohne aktuelle Themen-Treffer den

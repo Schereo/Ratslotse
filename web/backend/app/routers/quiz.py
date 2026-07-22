@@ -238,10 +238,26 @@ def map_answer(payload: QuizMapIn,
 MAX_OWN_QUESTIONS = 200  # Schutz gegen Massen-Anlage; großzügig für echte Nutzung
 
 
-def _auto_range(value: float) -> tuple[float, float]:
-    """Slider-Grenzen aus der Antwort ableiten: 0 bis ~2× der Zahl, auf zwei
-    signifikante Stellen gerundet — die richtige Zahl liegt so nie am Rand."""
+YEAR_UNITS = {"jahr", "jahre"}
+YEAR_SPAN = 50  # ± Jahre um eine Jahreszahl (zentriertes Fenster)
+
+
+def _is_year(unit: str | None, value: float) -> bool:
+    """Jahreszahl (Kalenderjahr): Einheit Jahr/Jahre UND >= 100 — kleine Werte
+    („5 Jahre" = Dauer) bleiben beim Standard-Bereich."""
+    return (unit or "").strip().lower() in YEAR_UNITS and abs(value) >= 100
+
+
+def _auto_range(value: float, unit: str | None = None) -> tuple[float, float]:
+    """Slider-Grenzen aus der Antwort ableiten. Standard: 0 bis ~2× der Zahl,
+    auf zwei signifikante Stellen gerundet — die richtige Zahl liegt so nie am
+    Rand. Bei Jahreszahlen stattdessen ein enges, zentriertes Fenster (±50
+    Jahre), damit der Slider Jahre sinnvoll auflöst statt von 0 bis ~4000 zu
+    spannen."""
     import math
+    if _is_year(unit, value):
+        v = round(value)
+        return float(max(0, v - YEAR_SPAN)), float(v + YEAR_SPAN)
     hi = max(abs(value) * 2, 1.0)
     step = 10 ** max(0, int(math.floor(math.log10(hi))) - 1)
     hi = round(hi / step) * step
@@ -262,7 +278,7 @@ def _validate_own(payload: UserQuizQuestionIn) -> dict:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "Bitte die richtige Zahl angeben.")
         lo, hi = payload.range_min, payload.range_max
         if lo is None or hi is None:
-            lo, hi = _auto_range(payload.answer_value)
+            lo, hi = _auto_range(payload.answer_value, payload.unit)
         if hi <= lo or not (lo <= payload.answer_value <= hi):
             raise HTTPException(status.HTTP_400_BAD_REQUEST,
                                 "Der Slider-Bereich muss die richtige Zahl umschließen.")
