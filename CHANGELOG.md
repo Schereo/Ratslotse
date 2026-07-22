@@ -40,6 +40,11 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   mit dem Protokoll. (#247)
 
 ### Geändert
+- Die Themen-Vorschläge zeigen **keine Fast-Duplikate** mehr: „Stadion
+  Maastrichter Straße", „Stadionneubau Maastrichter Straße" und
+  „Maastrichter Straße" gelten als ein Interesse — nur der aktivste
+  Kandidat erscheint, und wer so ein Thema schon angelegt hat, bekommt
+  auch keine Variante davon vorgeschlagen. (#253)
 - **Themen-Vorschläge, die wirklich interessieren:** Die „Gerade aktuell im
   Rat"-Chips auf „Meine Themen" schlagen jetzt **konkrete Orte und Projekte**
   mit jüngster Ratsaktivität vor (Veloroute, Fliegerhorst, deine Straße …)

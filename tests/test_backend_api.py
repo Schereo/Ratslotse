@@ -1110,3 +1110,41 @@ def test_display_name_register_change_and_greeting(client):
     from nwz.digest_email import render_html_email
     assert "Moin Timo," in render_html_email("Betreff", "Inhalt", greeting_name="Timo")
     assert "Moin" not in render_html_email("Betreff", "Inhalt").split("Ratslotse")[1][:40]
+
+
+def test_topic_suggestions_dedupe_similar(client):
+    """Vorschläge: „Stadion …", „Stadionneubau …" und „Maastrichter Straße"
+    sind EIN Interesse — nur der aktivste erscheint; ein angelegtes Thema
+    blockt alle Varianten."""
+    from datetime import date, timedelta
+    _register(client)
+    council = CouncilStore(Path(COUNCIL_DB))
+    recent = (date.today() - timedelta(days=20)).isoformat()
+    council.save_session(CouncilSession(1, "Rat", recent, "17:00", "Ratssaal"))
+    with council._conn:
+        for i in range(3):
+            council._insert_decision(1, i, "decision", None, f"Ö {i}", f"D{i}", "B",
+                                     "angenommen", None, None, None, [], None, None, None)
+        ids = [r[0] for r in council._conn.execute(
+            "SELECT id FROM council_decisions ORDER BY id").fetchall()]
+        ents = [(1, "stadion-maastrichter", "Stadion Maastrichter Straße", "ort"),
+                (2, "stadionneubau", "Stadionneubau Maastrichter Straße", "projekt"),
+                (3, "maastrichter-strasse", "Maastrichter Straße", "ort"),
+                (4, "stadtmuseum", "Stadtmuseum", "ort")]
+        for eid, slug, name, kind in ents:
+            council._conn.execute(
+                "INSERT INTO council_entities (id, slug, name, kind, n) VALUES (?,?,?,?,3)",
+                (eid, slug, name, kind))
+        for eid, dids in [(1, ids[:3]), (2, ids[:2]), (3, ids[:2]), (4, ids[:2])]:
+            for did in dids:
+                council._conn.execute("INSERT INTO council_entity_links VALUES (?, ?)", (eid, did))
+    council.close()
+
+    names = [s["name"] for s in client.get("/api/topics/suggestions").json()["suggestions"]]
+    assert names == ["Stadion Maastrichter Straße", "Stadtmuseum"]
+
+    # Angelegtes Thema blockt auch alle ähnlichen Varianten.
+    client.post("/api/topics", json={"name": "Stadionneubau Maastrichter Straße",
+                                     "description": "Bau des Fußballstadions in Eversten."})
+    names = [s["name"] for s in client.get("/api/topics/suggestions").json()["suggestions"]]
+    assert names == ["Stadtmuseum"]
