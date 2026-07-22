@@ -76,6 +76,15 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   mit dem Protokoll. (#247)
 
 ### Geändert
+- **Änderungsanträge als Kontext statt loser Treffer (Design 23a).** Änderungs-
+  anträge (Teilabstimmungen) tauchen in der Beschluss-Suche **nicht mehr als
+  eigene Treffer** auf, sondern hängen als **Unterzeile am Ursprungsbeschluss**
+  („1 Änderungsantrag · CDU · angenommen") — man sieht auf einen Blick, dass es
+  einen gab, ohne dass die Liste zerfasert. Auf der **Beschluss-Seite** wird aus
+  der flachen Antragsliste eine **Zeitachse**: der Änderungsantrag (mit „Was
+  beantragt wurde") führt zum **endgültigen Beschluss**. Wer gezielt recherchiert,
+  blendet die Anträge über den Filter **„Änderungsanträge einzeln zeigen"**
+  wieder als eigene Treffer ein. (#PR)
 - **Beschluss-Karten in klaren Zonen (Design 22a).** Jede Karte in der Suche
   folgt jetzt einer festen Reihenfolge: **Statuszeile** (Ergebnis-Punkt +
   „Wichtig" zusammen, Pfeil rechts), darunter ruhig **Gremium · Datum · TOP**,

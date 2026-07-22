@@ -968,7 +968,7 @@ class CouncilStore:
         return ids
 
     def _decision_where(self, query, committee, outcome, faction, date_from, date_to,
-                        kind, category, field="", party_ids=None):
+                        kind, category, field="", party_ids=None, include_subvotes=False):
         """Build the WHERE clause + params shared by search and count."""
         filters: list[str] = []
         params: list = []
@@ -1001,6 +1001,12 @@ class CouncilStore:
         if kind:
             filters.append("d.kind = ?")
             params.append(kind)
+        elif not include_subvotes:
+            # Design 23a: Änderungsanträge (kind='subvote') tauchen standardmäßig
+            # NICHT als eigene Treffer auf — sie hängen als Kontext am Ursprungs-
+            # beschluss. include_subvotes=True (Filter „einzeln zeigen") bringt sie
+            # zurück; ein expliziter kind-Filter behält Vorrang.
+            filters.append("d.kind = 'decision'")
         if faction:
             filters.append("d.factions LIKE ?")
             params.append(f"%{faction}%")
@@ -1028,6 +1034,7 @@ class CouncilStore:
         party: str = "",
         limit: int = 50,
         offset: int = 0,
+        include_subvotes: bool = False,
     ) -> list[dict]:
         """Search extracted decisions, joined with their session (committee + date).
         ``category`` is "vote" (decided) or "report" (zur Kenntnis / no decision).
@@ -1044,7 +1051,8 @@ class CouncilStore:
         }.get(sort, "cs.session_date DESC, d.position")
         party_ids = self.decision_ids_for_party(party) if party else None
         where, params = self._decision_where(query, committee, outcome, faction,
-                                              date_from, date_to, kind, category, field, party_ids)
+                                              date_from, date_to, kind, category, field, party_ids,
+                                              include_subvotes=include_subvotes)
         rows = self._conn.execute(
             f"""SELECT d.*, cs.committee, cs.session_date, p.document_url AS protocol_url
                 FROM council_decisions d
@@ -1090,11 +1098,12 @@ class CouncilStore:
 
     def count_decisions(
         self, query="", committee="", outcome="", faction="", date_from="", date_to="",
-        kind="", category="", field="", party="",
+        kind="", category="", field="", party="", include_subvotes=False,
     ) -> int:
         party_ids = self.decision_ids_for_party(party) if party else None
         where, params = self._decision_where(query, committee, outcome, faction,
-                                             date_from, date_to, kind, category, field, party_ids)
+                                             date_from, date_to, kind, category, field, party_ids,
+                                             include_subvotes=include_subvotes)
         row = self._conn.execute(
             f"""SELECT COUNT(*) FROM council_decisions d
                 JOIN council_sessions cs ON cs.ksinr = d.ksinr {where}""",
@@ -1253,6 +1262,39 @@ class CouncilStore:
             (ksinr, parent_item),
         ).fetchall()
         return [self._decision_row(r) for r in rows]
+
+    def subvote_summaries(self, pairs: list[tuple[int, str]]) -> dict[tuple[int, str], dict]:
+        """Design 23a: je Ursprungsbeschluss (ksinr, item_number) eine kompakte
+        Änderungsantrags-Zusammenfassung für die Trefferliste — Anzahl,
+        beteiligte Fraktionen, Ergebnisse. So kann die Karte „n Änderungsantrag ·
+        Fraktion · angenommen" als Unterzeile zeigen, ohne die subvotes selbst
+        als eigene Treffer zu listen."""
+        wanted = {(int(k), str(i)) for k, i in pairs if i}
+        if not wanted:
+            return {}
+        ksinrs = sorted({k for k, _ in wanted})
+        ph = ",".join("?" * len(ksinrs))
+        rows = self._conn.execute(
+            f"SELECT ksinr, parent_item, factions, outcome FROM council_decisions "
+            f"WHERE kind = 'subvote' AND ksinr IN ({ph}) ORDER BY position",
+            ksinrs,
+        ).fetchall()
+        out: dict[tuple[int, str], dict] = {}
+        for r in rows:
+            key = (r["ksinr"], r["parent_item"])
+            if key not in wanted:
+                continue
+            e = out.setdefault(key, {"count": 0, "factions": [], "outcomes": []})
+            e["count"] += 1
+            try:
+                for f in json.loads(r["factions"] or "[]"):
+                    if f and f not in e["factions"]:
+                        e["factions"].append(f)
+            except (ValueError, TypeError):
+                pass
+            if r["outcome"] and r["outcome"] not in e["outcomes"]:
+                e["outcomes"].append(r["outcome"])
+        return out
 
     def vorlage_journey(self, vorlage_nr: str) -> list[dict]:
         """All sessions where a Vorlage appears on the agenda — its path through

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, ExternalLink, FileText, FileDown, Users, Newspaper, Tag } from "lucide-react";
 import { DecisionDetail, CouncilDecision } from "@/lib/types";
 import { Card, DetailSkeleton, EmptyState, formatDate } from "@/components/ui";
-import { OutcomeDot, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard, ImportanceMeter, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
+import { OutcomeDot, OUTCOME_META, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard, ImportanceMeter, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
 import { decisionHref, themaHref } from "@/lib/routes";
 import { shortCommittee } from "@/lib/committees";
 import { ShareButton } from "@/components/share-button";
@@ -52,6 +52,59 @@ function SimpleSummaryCard({ text }: { text: string }) {
         </p>
       </div>
     </div>
+  );
+}
+
+/** Kurze Ergebnis-Zeile aus vote/gegenstimmen/enthaltungen (z. B.
+ *  „mehrheitlich · 18 dagegen · 2 Enth."). */
+function voteSummary(d: CouncilDecision): string {
+  const parts: string[] = [];
+  if (d.vote) parts.push(d.vote);
+  if (d.gegenstimmen) parts.push(`${d.gegenstimmen} dagegen`);
+  if (d.enthaltungen) parts.push(`${d.enthaltungen} Enth.`);
+  return parts.join(" · ");
+}
+
+/** Design 23a: „Anträge & Teilabstimmungen" als Zeitachse Änderung → Ergebnis.
+ *  Jeder Änderungsantrag ist ein Knoten (Fraktion, Ergebnis, was beantragt
+ *  wurde); den Abschluss bildet der endgültige Beschluss. Bewusst kein
+ *  erfundener alt/neu-Diff — gezeigt wird nur, was in den Daten steht. */
+function SubvoteTimeline({ d, subVotes }: { d: CouncilDecision; subVotes: CouncilDecision[] }) {
+  return (
+    <ol className="relative space-y-5 border-l-2 border-border pl-5">
+      {subVotes.map((s) => {
+        const factions = Array.isArray(s.factions) ? s.factions : [];
+        return (
+          <li key={s.id} className="relative">
+            <span className="absolute -left-[26px] top-1 h-3.5 w-3.5 rounded-full border-2 border-card bg-signal" aria-hidden />
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-signal">
+              Änderungsantrag{factions.length > 0 ? ` · ${factions.join(", ")}` : ""}
+            </p>
+            <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+              <OutcomeDot outcome={s.outcome} />
+              {voteSummary(s) && <span>· {voteSummary(s)}</span>}
+            </p>
+            {s.beschluss && (
+              <div className="mt-2 rounded-lg border border-border bg-muted/40 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Was beantragt wurde</p>
+                <p className="mt-1 text-sm leading-relaxed text-foreground">{s.beschluss}</p>
+              </div>
+            )}
+          </li>
+        );
+      })}
+      {/* Abschluss: der endgültige Beschluss (Volltext steht oben im
+          Beschlusstext-Block — hier nur Ergebnis + optionale Kurzfassung). */}
+      <li className="relative">
+        <span className="absolute -left-[26px] top-1 h-3.5 w-3.5 rounded-full border-2 border-card bg-[#22c55e]" aria-hidden />
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-green-700 dark:text-green-400">Endgültiger Beschluss</p>
+        <p className="mt-1 text-sm leading-relaxed text-foreground">
+          {(OUTCOME_META[d.outcome ?? "kein_beschluss"]?.label ?? "Beschlossen")}
+          {voteSummary(d) ? ` — ${voteSummary(d)}` : ""}
+        </p>
+        {d.summary && <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{d.summary}</p>}
+      </li>
+    </ol>
   );
 }
 
@@ -166,23 +219,7 @@ function DecisionDetailInner() {
 
           {data.sub_votes.length > 0 && (
             <Section title="Anträge & Teilabstimmungen">
-              <div className="flex flex-col gap-2">
-                {data.sub_votes.map((s: CouncilDecision) => (
-                  <div key={s.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2.5">
-                    <div className="min-w-0 text-sm">
-                      {s.title}
-                      {/* Defensiv wie in VoteLine: factions kann bei kaputten Daten ein String sein. */}
-                      {Array.isArray(s.factions) && s.factions.length > 0 && (
-                        <span className="ml-2 text-xs text-muted-foreground">({s.factions.join(", ")})</span>
-                      )}
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      {s.gegenstimmen ? <span className="text-xs text-muted-foreground">{s.gegenstimmen} Gegen</span> : null}
-                      <OutcomeDot outcome={s.outcome} />
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <SubvoteTimeline d={d} subVotes={data.sub_votes} />
             </Section>
           )}
 

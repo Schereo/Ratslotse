@@ -392,3 +392,37 @@ def test_qa_resolve_citations():
     assert cited == [2030, 3269, 3346]   # multi-id bracket is parsed
     assert "[3269, 3346]" in cleaned
     assert "9999" not in cleaned          # invalid citation stripped from the text
+
+
+def test_subvotes_hidden_by_default_and_summarised(tmp_path):
+    """Design 23a: Änderungsanträge (kind='subvote') fliegen aus der Standard-
+    Trefferliste und werden am Ursprungsbeschluss zusammengefasst."""
+    from council.scraper import CouncilSession
+    store = CouncilStore(tmp_path / "c.sqlite")
+    store.save_session(CouncilSession(9001, "Rat", "2026-06-01", "18:00", "Rathaus"))
+    with store._conn:
+        store._insert_decision(9001, 0, "decision", None, "Ö 6.1", "Stadionneubau",
+                               "Zuschuss 57,3 Mio.", "angenommen", "mehrheitlich", 18, 2,
+                               ["CDU"], None, None, None)
+        store._insert_decision(9001, 1, "subvote", "Ö 6.1", None, "Änderungsantrag CDU",
+                               "Erhöhung auf 57,3 Mio.", "angenommen", "mehrheitlich", 2, 0,
+                               ["CDU"], None, None, None)
+
+    # Standard: nur der Hauptbeschluss, der Subvote ist ausgeblendet.
+    default = store.search_decisions()
+    assert [d["kind"] for d in default] == ["decision"]
+    assert store.count_decisions() == 1
+
+    # include_subvotes: der Subvote taucht wieder als eigener Treffer auf.
+    withsub = store.search_decisions(include_subvotes=True)
+    assert sorted(d["kind"] for d in withsub) == ["decision", "subvote"]
+    assert store.count_decisions(include_subvotes=True) == 2
+
+    # Zusammenfassung je (ksinr, item_number).
+    summ = store.subvote_summaries([(9001, "Ö 6.1"), (9001, "Ö 9")])
+    assert summ[(9001, "Ö 6.1")] == {"count": 1, "factions": ["CDU"], "outcomes": ["angenommen"]}
+    assert (9001, "Ö 9") not in summ            # kein Subvote → kein Eintrag
+    assert store.subvote_summaries([]) == {}    # leer bleibt leer
+
+    # Ein expliziter kind-Filter behält Vorrang (Rückwärtskompatibilität).
+    assert [d["kind"] for d in store.search_decisions(kind="subvote")] == ["subvote"]
