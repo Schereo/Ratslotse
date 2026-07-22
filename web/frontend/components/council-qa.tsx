@@ -227,15 +227,17 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             {mode ? ` · ${MODE_LABEL[mode] ?? mode}` : ""}
           </p>
           <div className="space-y-2">
-            {sources.map((s) => (
+            {sources.map((s, i) => (
               <div
                 key={s.id}
                 id={`qa-source-${s.id}`}
                 className={cn(
-                  "relative rounded-lg transition-shadow",
+                  "animate-fade-up relative rounded-lg transition-shadow",
                   citedSet.has(s.id) && "ring-1 ring-primary/40",
                   flashId === s.id && "ring-2 ring-primary",
                 )}
+                /* RL-1104: Quellen staffeln sich nacheinander ein (max. 8 gestuft). */
+                style={{ animationDelay: `${Math.min(i, 8) * 55}ms` }}
               >
                 {/* Fußnoten-Nummer der Quelle — korrespondiert mit den Chips im Antworttext. */}
                 {idToNum.has(s.id) && (

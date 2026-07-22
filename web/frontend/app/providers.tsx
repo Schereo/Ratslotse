@@ -8,6 +8,7 @@ import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persist
 import { AuthProvider } from "@/lib/auth";
 import { AppIntro } from "@/components/app-intro";
 import { OfflinePill } from "@/components/offline-pill";
+import { PullToRefresh } from "@/components/pull-to-refresh";
 import { Toaster } from "@/components/ui";
 import { initTheme } from "@/lib/theme";
 import { initAppUrlOpen } from "@/lib/app-links";
@@ -47,9 +48,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const inner = (
     <>
       <AuthProvider>{children}</AuthProvider>
-      {/* RL-1103: Offline-Hinweis (web + app) und First-Run-Intro (nur App). */}
+      {/* RL-1103/1104: Offline-Hinweis (web + app), First-Run-Intro und
+          Pull-to-Refresh (beide nur App). */}
       <OfflinePill />
       <AppIntro />
+      <PullToRefresh />
       <Toaster />
     </>
   );

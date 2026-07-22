@@ -8,6 +8,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Feinschliff in Bewegung (M4, letztes Design-Paket):** Die orange
+  Fragen-Taste **pulsiert** dezent, Seitenwechsel **gleiten sanft** herein,
+  die Zahl der Woche **zählt hoch**, KI-Quellen erscheinen **nacheinander** —
+  und in der App lädt **Ziehen-zum-Aktualisieren** mit einem kleinen Küken
+  die Daten neu. Alles nur Transform/Deckkraft und komplett still, wenn das
+  System „Bewegung reduzieren" wünscht. (#236)
 - **Mit Apple anmelden — jetzt auch im Browser:** Auf ratslotse.de steht der
   Apple-Login nun auch auf Login und Registrierung im Web bereit (Popup,
   keine Passwort-Eingabe). Konten sind dieselben wie in der App — verknüpft
