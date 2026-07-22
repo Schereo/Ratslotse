@@ -8,6 +8,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geändert
+- **KI-Frage bleibt beim Hin- und Herschalten erhalten:** Wer zwischen
+  „Suchen" und „KI-Frage" wechselt, findet Antwort, Quellen und Eingabe
+  unverändert wieder — auch die Scroll-Position je Modus bleibt. Nach einer
+  Antwort schlagen jetzt **Anschlussfragen-Chips** die nächste Frage vor
+  (plus „Neue Frage stellen"), und auf dem Handy lugt eine **Mini-Lotti**
+  über die Antwort-Sprechblase, damit klar ist, wer da spricht. (#242)
 - **Feinschliff aus dem UX-Review (Runde 2):** Suchfelder haben jetzt eine
   **Löschen-Taste** (✕) und die iPhone-Tastatur zeigt „Suchen" statt „Return";
   ein Seitenwechsel in der Beschlussliste springt **zurück zum Listenanfang**;

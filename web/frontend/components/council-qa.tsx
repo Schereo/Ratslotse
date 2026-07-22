@@ -40,13 +40,14 @@ const MODE_LABEL: Record<string, string> = {
 export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   const [q, setQ] = useState("");
   // Suchtext aus der URL übernehmen (Leerzustand der Suche reicht ihn als
-  // ?q= weiter) — einmalig nach dem Mount, kein Hydration-Mismatch.
+  // ?q= weiter). Reagiert auf URL-Änderungen: seit RL-U01 bleibt der Tab
+  // dauerhaft gemountet, ein reiner Mount-Effect käme also zu früh. Eigene
+  // Eingaben gewinnen (prev || urlQ).
   const sp = useSearchParams();
   useEffect(() => {
     const urlQ = sp.get("q");
     if (urlQ) setQ((prev) => prev || urlQ);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [sp]);
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<Step | null>(null);
   const [answer, setAnswer] = useState("");
@@ -57,6 +58,9 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   // Kurzes Aufblitzen der Quelle, zu der eine Fußnote gerade gesprungen ist.
   const [flashId, setFlashId] = useState<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  // Eigenes Ref statt querySelector("[data-search]"): seit RL-U01 ist auch der
+  // versteckte Such-Modus gemountet — dessen Feld wäre der erste Treffer.
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // [id]-Zitate im Antworttext → Fußnoten-Nummern in Reihenfolge des ersten
   // Auftauchens. Nur IDs, die wirklich in den Quellen vorkommen.
@@ -165,7 +169,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         <form onSubmit={(e) => { e.preventDefault(); ask(q); }} className="flex gap-2">
           <div className="relative flex-1">
             <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input data-search className="pl-9" placeholder="Frag den Stadtrat — z. B. „Was wurde zum Radverkehr beschlossen?“"
+            <Input ref={inputRef} data-search enterKeyHint="send" className="pl-9" placeholder="Frag den Stadtrat — z. B. „Was wurde zum Radverkehr beschlossen?“"
               value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
           <Button type="submit" disabled={loading || q.trim().length < 4}>
@@ -209,7 +213,10 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
           {/* aria-busy: Screenreader warten, bis der Stream fertig ist; die
               Fertig-Meldung unten (role=status) sagt dann aktiv Bescheid.
               Bubble-Radien nach 6a: 18 px, oben links 6 px (Sprechblase). */}
-          <Card aria-busy={loading} className="flex-1 rounded-[18px] rounded-tl-[6px] p-4">
+          <Card aria-busy={loading} className="relative flex-1 rounded-[18px] rounded-tl-[6px] p-4">
+            {/* RL-U07: mobil verlor die Sprechblase ihre Absenderin (Lotti ist
+                sm:block) — Mini-Lotti lugt über die obere Kante. */}
+            <Mascot pose={loading ? "search" : "point"} decorative className="absolute -top-5 left-3 h-9 w-9 sm:hidden" />
             <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
               <AnswerWithCitations text={answer} idToNum={idToNum} onJump={jumpToSource} />
               {loading && step === "answer" && <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-primary align-text-bottom" />}
@@ -272,7 +279,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
               </Link>
               <button
                 type="button"
-                onClick={() => document.querySelector<HTMLInputElement>("input[data-search]")?.focus()}
+                onClick={() => inputRef.current?.focus()}
                 className="rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
                 Frage umformulieren
@@ -288,6 +295,27 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
           <p className="text-xs text-muted-foreground/70">
             Antwort von einer KI aus den gefundenen Beschlüssen erzeugt — kann unvollständig sein. Immer die Quellen prüfen.
           </p>
+          {/* RL-U06: Die Beispiel-Chips verschwanden nach der ersten Antwort
+              dauerhaft — Anschlussfragen halten die Session im Fluss. */}
+          <div className="flex flex-wrap gap-2">
+            {EXAMPLES.filter((ex) => ex !== q).slice(0, 3).map((ex) => (
+              <button
+                key={ex}
+                type="button"
+                onClick={() => ask(ex)}
+                className="rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                {ex}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => { setQ(""); inputRef.current?.focus(); }}
+              className="rounded-full border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+            >
+              Neue Frage stellen
+            </button>
+          </div>
         </>
       )}
     </div>
