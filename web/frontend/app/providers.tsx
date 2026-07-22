@@ -40,6 +40,20 @@ export function Providers({ children }: { children: React.ReactNode }) {
     initTheme();
   }, []);
 
+  // In der nativen App ist Pinch-/Auto-Zoom aus — App-UIs zoomen nicht, und
+  // ein versehentlicher Zoom blieb sonst dauerhaft hängen. Nur die WKWebView
+  // respektiert maximum-scale; der iOS-System-Zoom (Bedienungshilfen)
+  // funktioniert weiterhin. Im Web bleibt Pinch-Zoom unangetastet.
+  useEffect(() => {
+    if (!native) return;
+    document
+      .querySelector('meta[name="viewport"]')
+      ?.setAttribute(
+        "content",
+        "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover",
+      );
+  }, [native]);
+
   // Route incoming Universal/App Links (email verify/reset) into the app.
   useEffect(() => {
     void initAppUrlOpen((path) => router.push(path));

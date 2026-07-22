@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { Search, ExternalLink, ChevronDown, ChevronRight, Scale, SlidersHorizontal, Users, Sparkles, X } from "lucide-react";
 import { api, qs, ApiError } from "@/lib/api";
 import { decisionHref } from "@/lib/routes";
@@ -109,10 +110,20 @@ function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
             </p>
           )}
           <VoteLine d={d} />
+          {/* RL-U05: Auf schmalen Screens quetscht die Betrags-Spalte lange
+              Titel — unter sm wandert der Betrag als Chip in die Metazeile. */}
+          {!isSub && d.amount_eur != null && (
+            <span
+              className="mt-2 inline-flex rounded-md bg-muted px-2 py-0.5 text-xs font-bold tabular-nums text-foreground sm:hidden"
+              title="Im Beschlusstext genannter Betrag"
+            >
+              {formatEuro(d.amount_eur)}
+            </span>
+          )}
         </div>
         {!isSub && d.amount_eur != null && (
           <span
-            className="shrink-0 self-center text-right text-base font-bold tabular-nums text-foreground"
+            className="hidden shrink-0 self-center text-right text-base font-bold tabular-nums text-foreground sm:block"
             title="Im Beschlusstext genannter Betrag"
           >
             {formatEuro(d.amount_eur)}
@@ -145,6 +156,49 @@ function FilterField({ label, className, children }: { label: string; className?
     <div className={className}>
       <p className="mb-1.5 text-xs font-medium text-muted-foreground">{label}</p>
       {children}
+    </div>
+  );
+}
+
+/** Suchfeld mit Lupe, Löschen-Taste (RL-U03) und „Suchen"-Enter auf der
+ *  iOS-Tastatur. Das ✕ erscheint ab dem ersten Zeichen, leert und fokussiert
+ *  neu — volle Feldhöhe als Touch-Ziel. */
+function SearchBox({
+  value, onChange, placeholder, large = false, tour,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  large?: boolean;
+  tour?: string;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  return (
+    <div className="relative">
+      <Search className={cn(
+        "pointer-events-none absolute top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground",
+        large ? "left-4" : "left-3",
+      )} />
+      <Input
+        ref={ref}
+        data-search
+        data-tour={tour}
+        enterKeyHint="search"
+        className={cn(large ? "h-12 rounded-[14px] pl-11 pr-12 text-base" : "pl-9 pr-11")}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      {value && (
+        <button
+          type="button"
+          onClick={() => { onChange(""); ref.current?.focus(); }}
+          aria-label="Suche leeren"
+          className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      )}
     </div>
   );
 }
@@ -241,6 +295,19 @@ function DecisionsTab({ committees }: { committees: string[] }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedQ, committee, mode, outcome, sort, field, party, dateFrom, dateTo, page]);
 
+  // RL-U02: Seitenwechsel führt zurück zum Listenanfang und setzt den Fokus
+  // auf den Listen-Container (bleibt über den Ladewechsel gemountet), damit
+  // Screenreader den Kontextwechsel mitbekommen.
+  const listRef = useRef<HTMLDivElement>(null);
+  const changePage = (p: number) => {
+    setPage(p);
+    requestAnimationFrame(() => {
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      listRef.current?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+      listRef.current?.focus({ preventScroll: true });
+    });
+  };
+
   const query = q.trim();
   const totalPages = Math.ceil(total / PAGE_SIZE);
   const isReport = mode === "report";
@@ -298,15 +365,13 @@ function DecisionsTab({ committees }: { committees: string[] }) {
     <div>
       {/* RL-501: großes Suchfeld über der Liste, Filter als Chip-Zeile
           (Desktop: Popover-Chips; mobil bleibt das Bottom-Sheet). */}
-      <div className="relative mt-3">
-        <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          data-search
-          data-tour="beschluss-suche"
-          className="h-12 rounded-[14px] pl-11 text-base"
+      <div className="mt-3">
+        <SearchBox
+          large
+          tour="beschluss-suche"
           placeholder={isReport ? "Berichte durchsuchen…" : "Suchen (z. B. Haushalt, Radwege)…"}
           value={q}
-          onChange={(e) => { setQ(e.target.value); setPage(1); }}
+          onChange={(v) => { setQ(v); setPage(1); }}
         />
       </div>
 
@@ -415,7 +480,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
         </div>
       )}
 
-      <div className="mt-6">
+      <div ref={listRef} tabIndex={-1} className="mt-6 outline-none">
         {loading ? (
           <CardListSkeleton rows={5} />
         ) : decisions.length === 0 ? (
@@ -447,7 +512,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
               {query && <> zu <strong className="font-semibold text-foreground">{query}</strong></>}
             </p>
             {decisions.map((d) => <DecisionCard key={d.id} d={d} query={query} />)}
-            <Pagination page={page} totalPages={totalPages} onChange={setPage} className="pt-2" />
+            <Pagination page={page} totalPages={totalPages} onChange={changePage} className="pt-2" />
           </div>
         )}
       </div>
@@ -531,6 +596,13 @@ function SessionsTab({ committees }: { committees: string[] }) {
   const [detail, setDetail] = useState<Record<number, SessionDetail>>({});
   const [detailLoading, setDetailLoading] = useState<Record<number, boolean>>({});
   const debouncedQ = useDebounce(q, 350);
+  // RL-U04: Leerzustand und Pause-Banner sollen miteinander reden — dieselbe
+  // Query wie im Banner (React Query dedupliziert, staleTime 1 h).
+  const { data: pause } = useQuery({
+    queryKey: ["sitzungspause"],
+    queryFn: () => api.get<{ active: boolean }>("/council/sitzungspause"),
+    staleTime: 60 * 60 * 1000,
+  });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -596,10 +668,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
       <SitzungspauseBanner compact className="mt-4" />
       <Card className="mt-4 p-4">
         <div className="space-y-3">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input data-search className="pl-9" placeholder="In Tagesordnungen suchen (z. B. Bebauungsplan)…" value={q} onChange={(e) => setQ(e.target.value)} />
-          </div>
+          <SearchBox placeholder="In Tagesordnungen suchen (z. B. Bebauungsplan)…" value={q} onChange={setQ} />
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Select value={committee} onChange={(e) => setCommittee(e.target.value)}>
               <option value="">Alle Ausschüsse</option>
@@ -623,7 +692,23 @@ function SessionsTab({ committees }: { committees: string[] }) {
         {loading ? (
           <CardListSkeleton rows={5} />
         ) : sessions.length === 0 ? (
-          <EmptyState mascot="search" title={hasSearched ? "Keine Sitzungen gefunden" : "Noch keine Sitzungen vorhanden"} hint={hasSearched ? "Versuche andere Suchbegriffe oder Filter." : undefined} />
+          // RL-U04: In der Sitzungspause ist „Kommend" leer, das Banner darüber
+          // nennt den Grund — der Leerzustand greift ihn auf, statt generisch
+          // „keine Sitzungen" zu behaupten.
+          pause?.active && scope === "upcoming" && !q && !committee ? (
+            <EmptyState
+              mascot="sleep"
+              title="Sitzungspause — der Rat tagt gerade nicht"
+              hint="Sobald das Ratsinformationssystem neue Termine veröffentlicht, erscheinen sie hier."
+              action={
+                <Button variant="secondary" size="sm" onClick={() => setScope("recent")}>
+                  Vergangene Sitzungen ansehen
+                </Button>
+              }
+            />
+          ) : (
+            <EmptyState mascot="search" title={hasSearched ? "Keine Sitzungen gefunden" : "Noch keine Sitzungen vorhanden"} hint={hasSearched ? "Versuche andere Suchbegriffe oder Filter." : undefined} />
+          )
         ) : (
           <div className="space-y-3">
             <p className="text-sm font-medium text-muted-foreground">{sessions.length} {sessions.length === 1 ? "Sitzung" : "Sitzungen"}</p>
