@@ -38,7 +38,14 @@ export const SheetContent = React.forwardRef<
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="absolute right-3 top-[calc(0.75rem+env(safe-area-inset-top))] rounded-md p-1 text-muted-foreground opacity-70 transition-opacity hover:opacity-100 focus:outline-none">
+      <DialogPrimitive.Close
+        className={cn(
+          "absolute right-3 rounded-md p-1 text-muted-foreground opacity-70 transition-opacity hover:opacity-100 focus:outline-none",
+          // Nur der links oben liegende Drawer braucht die Notch-Safe-Area; beim
+          // Bottom-Sheet würde sie den X-Knopf über den ersten Filter schieben.
+          side === "left" ? "top-[calc(0.75rem+env(safe-area-inset-top))]" : "top-3",
+        )}
+      >
         <X className="h-5 w-5" />
         <span className="sr-only">Schließen</span>
       </DialogPrimitive.Close>

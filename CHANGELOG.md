@@ -204,6 +204,15 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   (der iOS-Bedienungshilfen-Zoom funktioniert weiterhin). (#241)
 
 ### Behoben
+- **Mobiler Feinschliff (iPhone):** Im **Filter-Sheet** der Beschluss-Suche saß
+  der Schließen-**„×"** über dem ersten Filter statt oben in der Kopfzeile (die
+  Notch-Safe-Area galt fälschlich auch fürs Bottom-Sheet), und der
+  **Datums-Kalender** lief unten aus dem Bild — er klappt jetzt nach oben (bzw.
+  zur Seite), wenn kein Platz ist. In der **Parteien-Analyse** waren die
+  Themenfeld-Namen abgeschnitten („Klima & U…"); die Beschriftung bekommt mehr
+  Platz, die Balken sind entsprechend kürzer. Auf der **Übersicht** ist der
+  „Frag den Rat"-Knopf mobil jetzt **volle Breite** (vorher links gequetscht mit
+  viel Leerraum rechts). (#278)
 - **Lotti-Tour: Sprechblase läuft auf schmalen iPhones nicht mehr über den Rand.**
   Im letzten Tour-Schritt („Leinen los!") ragte die Karte — samt „Erste Frage
   stellen"-Knopf — rechts aus dem Bildschirm, weil die breitere Button-Zeile die

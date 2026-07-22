@@ -38,6 +38,9 @@ export function DateField({
   const ref = useRef<HTMLDivElement>(null);
   const selected = parseISO(value);
   const [view, setView] = useState<Date>(() => selected ?? new Date());
+  // Klapp-Richtung: nach oben, wenn unten kein Platz ist (z. B. im Filter-
+  // Bottom-Sheet), nach links ausgerichtet, außer der Kalender liefe rechts raus.
+  const [placement, setPlacement] = useState<{ up: boolean; right: boolean }>({ up: false, right: false });
 
   // Jump the visible month to the value when it changes from the outside.
   useEffect(() => {
@@ -58,6 +61,17 @@ export function DateField({
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
     };
+  }, [open]);
+
+  // Beim Öffnen die Klapp-Richtung anhand des verfügbaren Platzes bestimmen.
+  useEffect(() => {
+    if (!open || !ref.current) return;
+    const r = ref.current.getBoundingClientRect();
+    const CAL_H = 320, CAL_W = 256, GAP = 12;
+    setPlacement({
+      up: window.innerHeight - r.bottom < CAL_H + GAP && r.top > CAL_H + GAP,
+      right: r.left + CAL_W > window.innerWidth - 8,
+    });
   }, [open]);
 
   const year = view.getFullYear();
@@ -96,7 +110,11 @@ export function DateField({
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 w-64 rounded-lg border border-border bg-popover p-3 text-popover-foreground shadow-lg">
+        <div className={cn(
+          "absolute z-50 w-64 rounded-lg border border-border bg-popover p-3 text-popover-foreground shadow-lg",
+          placement.up ? "bottom-full mb-1" : "top-full mt-1",
+          placement.right ? "right-0" : "left-0",
+        )}>
           <div className="flex items-center justify-between">
             <button
               type="button"

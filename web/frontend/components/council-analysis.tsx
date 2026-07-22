@@ -95,7 +95,7 @@ function HeatmapMobileRow({ party, fields, row }: { party: string; fields: strin
       <div className="mt-2 flex flex-col gap-1.5">
         {shown.map(({ f, n }) => (
           <div key={f} className="flex items-center gap-2">
-            <span className="w-[74px] shrink-0 truncate text-xs text-foreground">{POLICY_FIELD_LABELS[f] ?? f}</span>
+            <span className="w-[116px] shrink-0 truncate text-xs text-foreground" title={POLICY_FIELD_LABELS[f] ?? f}>{POLICY_FIELD_LABELS[f] ?? f}</span>
             <span className="h-[7px] flex-1 overflow-hidden rounded-full bg-muted">
               <span className="block h-full rounded-full bg-primary" style={{ width: `${(n / localMax) * 100}%` }} />
             </span>
