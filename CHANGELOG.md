@@ -23,6 +23,13 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   und der Seitenkopf lag unter der Kamera-Insel des iPhones. Jetzt gibt es
   oben einen **Zurück-Knopf**, und der Kopf respektiert den sicheren
   Bereich. (#PR)
+- **Datumsauswahl: schneller ins Jahr, ruhigere Darstellung.** Im Datumsfilter
+  führt ein Tipp auf die Kopfzeile („Juni 2025") jetzt direkt in die **Monats-
+  und ein weiterer in die Jahresauswahl** — so springt man mit wenigen Tippern
+  Jahre weit, statt sich Monat für Monat durchzuklicken. Außerdem behält der
+  Kalender **immer dieselbe Höhe** (feste sechs Wochenzeilen): Bei Monaten mit
+  weniger Zeilen verrutschte zuvor die Position der Navigationspfeile, wenn sich
+  der Kalender nach oben öffnete (z. B. im mobilen Filter). (#283)
 
 ### Hinzugefügt
 - **Eigene Quizfragen:** Auf der Quiz-Seite kannst du jetzt **eigene Fragen
