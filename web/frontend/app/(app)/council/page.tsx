@@ -827,8 +827,32 @@ function SessionsTab({ committees }: { committees: string[] }) {
 function SearchTab({ committees }: { committees: string[] }) {
   const sp = useSearchParams();
   const mode: "suchen" | "fragen" = sp.get("mode") === "fragen" ? "fragen" : "suchen";
+  // RL-U01: Beide Modi bleiben gemountet und werden per `hidden` getauscht —
+  // eine gestreamte KI-Antwort überlebt so den Wechsel zu „Suchen" und zurück
+  // (Nutzer vergleichen genau so). Abbruch des Streams erst beim Unmount der
+  // Seite. Scroll-Position je Modus merken: der Scroll-Container ist #main.
+  const prevMode = useRef(mode);
+  const scrollPos = useRef<Record<"suchen" | "fragen", number>>({ suchen: 0, fragen: 0 });
+  useEffect(() => {
+    if (prevMode.current === mode) return;
+    const scroller = document.getElementById("main");
+    scrollPos.current[prevMode.current] = scroller?.scrollTop ?? 0;
+    prevMode.current = mode;
+    requestAnimationFrame(() => {
+      if (scroller) scroller.scrollTop = scrollPos.current[mode] ?? 0;
+    });
+  }, [mode]);
   // Umschalter lebt jetzt im Seitenkopf (RL-501, 6a) — die Tabs rendern ohne.
-  return mode === "suchen" ? <DecisionsTab committees={committees} /> : <QaTab />;
+  return (
+    <>
+      <div hidden={mode !== "suchen"}>
+        <DecisionsTab committees={committees} />
+      </div>
+      <div hidden={mode !== "fragen"}>
+        <QaTab />
+      </div>
+    </>
+  );
 }
 
 /** „Suchen | KI-Frage"-Umschalter im Seitenkopf (RL-501); qa-glint-Lockruf
