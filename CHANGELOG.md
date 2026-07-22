@@ -16,12 +16,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 - **Neuer Hell/Dunkel-Schalter mit Lotti:** Statt des Dreistufen-Icons gibt es
   jetzt einen kleinen **Himmel-Schalter** — tagsüber Sonne, nachts Mond und
   Sterne, und Lotti selbst ist der Schaltknauf (nachts schläft sie, mit „z").
-  Er sitzt im Seitenleisten-Fuß und in der mobilen Kopfzeile; die
-  **⌘K-Palette** wechselt passend dazu nur noch Hell ↔ Dunkel. In der
-  **iPhone-App** wandert die Wahl auf die Konto-Seite: eine neue Karte
-  **„Erscheinungsbild"** mit Vorschau-Kacheln Hell / Dunkel / Automatisch
-  (folgt der iOS-Einstellung). Wer bisher „System" nutzte, bleibt dabei —
-  bis zum ersten Klick auf den neuen Schalter. (#243)
+  Er sitzt im Fuß der Desktop-Seitenleiste; die **⌘K-Palette** wechselt
+  passend dazu nur noch Hell ↔ Dunkel. **Auf dem Handy** (Web wie App)
+  wählst du das Design auf der Konto-Seite über die neue Karte
+  **„Erscheinungsbild"** mit Vorschau-Kacheln — in der App zusätzlich mit
+  „Automatisch" (folgt der iOS-Einstellung). Wer bisher „System" nutzte,
+  bleibt dabei — bis zur ersten eigenen Wahl. (#243, #245)
 - **KI-Frage bleibt beim Hin- und Herschalten erhalten:** Wer zwischen
   „Suchen" und „KI-Frage" wechselt, findet Antwort, Quellen und Eingabe
   unverändert wieder — auch die Scroll-Position je Modus bleibt. Nach einer

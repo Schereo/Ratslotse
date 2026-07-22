@@ -68,8 +68,9 @@ const PRIMARY_RIGHT: Item[] = [
 const FRAGEN_HREF = "/council?tab=decisions&mode=fragen";
 
 /** RL-U09: Der Lotti-Himmel-Schalter ersetzt den Dreistufen-Icon-Toggle — im
- *  Web binär (Erststart folgt dem OS, danach entscheidet der Schalter). In der
- *  App wohnt das Erscheinungsbild auf der Konto-Seite; hier rendert nichts.
+ *  Web binär (Erststart folgt dem OS, danach entscheidet der Schalter).
+ *  Nur Desktop-Sidebar: Auf Mobilgeräten (Web wie App) läuft die Wahl über
+ *  Konto → „Erscheinungsbild" — die Topbar bleibt schlank (Tim, 22.07.).
  *  Mount-Gate: SSR kennt die Plattform nicht. */
 function WebThemeSwitch({ className }: { className?: string }) {
   const [show, setShow] = useState(false);
@@ -146,7 +147,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-function UserFooter({ onNavigate }: { onNavigate?: () => void }) {
+function UserFooter({ onNavigate, showTheme = false }: { onNavigate?: () => void; showTheme?: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
@@ -170,7 +171,7 @@ function UserFooter({ onNavigate }: { onNavigate?: () => void }) {
           <UserCircle className="h-4 w-4 shrink-0" />
           <span className="truncate">{user?.email}</span>
         </Link>
-        <WebThemeSwitch />
+        {showTheme && <WebThemeSwitch />}
       </div>
       <FeedbackButton onNavigate={onNavigate} />
       <button
@@ -203,7 +204,7 @@ export function DesktopSidebar() {
         </button>
       </div>
       <NavLinks />
-      <UserFooter />
+      <UserFooter showTheme />
     </aside>
   );
 }
@@ -239,7 +240,6 @@ export function MobileTopbar() {
       >
         <Search className="h-4 w-4" />
       </button>
-      <WebThemeSwitch />
     </header>
   );
 }
