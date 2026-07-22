@@ -267,3 +267,43 @@ def test_decision_row_zaehlt_gruppe_fuer_beide_parteien(store):
     # decision_ids_for_party findet den Beschluss über BEIDE Parteien
     assert store.decision_ids_for_party("FDP") == [d["id"]]
     assert store.decision_ids_for_party("Volt") == [d["id"]]
+
+
+def test_suggested_entity_topics_prefers_concrete_active(store):
+    """Themen-Vorschläge: konkrete Orte/Projekte mit jüngster Aktivität —
+    Organisationen, Einzeltreffer und Altbestand fliegen raus."""
+    from datetime import date, timedelta
+    recent = (date.today() - timedelta(days=30)).isoformat()
+    store.save_session(CouncilSession(1, "Rat der Stadt", recent, "17:00", "Rathaus"))
+    store.save_session(CouncilSession(2, "Rat der Stadt", "2019-05-01", "17:00", "Rathaus"))
+    with store._conn:
+        for i in range(4):
+            store._insert_decision(1, i, "decision", None, f"Ö {i}", f"D{i}", "B",
+                                   "angenommen", None, None, None, [], None, None, None)
+        store._insert_decision(2, 0, "decision", None, "Ö 9", "Alt", "B",
+                               "angenommen", None, None, None, [], None, None, None)
+        ids = [r[0] for r in store._conn.execute(
+            "SELECT id FROM council_decisions ORDER BY id").fetchall()]
+        ents = [(1, "veloroute-4", "Veloroute 4", "projekt", 3),
+                (2, "haarenufer", "Haarenufer", "ort", 2),
+                (3, "spd-fraktion", "SPD-Fraktion", "organisation", 4),
+                (4, "einmal-ort", "Einmal-Ort", "ort", 1),
+                (5, "alt-projekt", "Alt-Projekt", "projekt", 5)]
+        for eid, slug, name, kind, n in ents:
+            store._conn.execute(
+                "INSERT INTO council_entities (id, slug, name, kind, n) VALUES (?,?,?,?,?)",
+                (eid, slug, name, kind, n))
+        store._conn.execute(
+            "INSERT INTO council_entity_meta (slug, description) VALUES ('veloroute-4', "
+            "'Geplanter Radschnellweg quer durch Oldenburg.')")
+        links = [(1, ids[0]), (1, ids[1]), (1, ids[2]),   # Veloroute: 3 aktuelle
+                 (2, ids[1]), (2, ids[3]),                # Haarenufer: 2 aktuelle
+                 (3, ids[0]), (3, ids[1]), (3, ids[2]),   # Organisation: gefiltert
+                 (4, ids[0]),                             # nur 1 Treffer → raus
+                 (5, ids[4])]                             # nur Altbestand → raus
+        store._conn.execute("UPDATE council_decisions SET interest = 80 WHERE id = ?", (ids[0],))
+        for eid, did in links:
+            store._conn.execute("INSERT INTO council_entity_links VALUES (?, ?)", (eid, did))
+    got = store.suggested_entity_topics(days_back=180)
+    assert [(g["name"], g["n_recent"]) for g in got] == [("Veloroute 4", 3), ("Haarenufer", 2)]
+    assert got[0]["description"].startswith("Geplanter Radschnellweg")
