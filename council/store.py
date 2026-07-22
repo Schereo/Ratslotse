@@ -551,11 +551,18 @@ class CouncilStore:
             row = c.execute(sql, p).fetchone()
             return row[0] if row else 0
 
+        last_fetch = one("SELECT MAX(fetched_at) FROM council_sessions") or None
         return {
             "sessions": one("SELECT COUNT(*) FROM council_sessions"),
             "upcoming": one("SELECT COUNT(*) FROM council_sessions WHERE session_date >= date('now')"),
             "agenda_items": one("SELECT COUNT(*) FROM council_agenda_items"),
             "committees": one("SELECT COUNT(*) FROM committees"),
+            # Design 20a — Ratsinfo-Import-Karte:
+            "decisions": one("SELECT COUNT(*) FROM council_decisions"),
+            "decisions_with_ki": one("SELECT COUNT(*) FROM council_decisions WHERE policy_field IS NOT NULL"),
+            "last_fetch": last_fetch,
+            "fetched_today": one(
+                "SELECT COUNT(*) FROM council_sessions WHERE substr(fetched_at,1,10) = date('now')"),
         }
 
     def public_stats(self) -> dict:

@@ -63,6 +63,23 @@ def stats(
     return data
 
 
+_RANGE_DAYS = {"30d": 30, "90d": 90, "12m": 365, "all": None}
+
+
+@router.get("/stats/growth")
+def stats_growth(
+    range: str = "90d",
+    _admin: dict = Depends(require_admin),
+    store: Store = Depends(get_store),
+    council: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Wachstums-Verläufe + WAU + Ratsinfo-Import für den Statistik-Tab (20a)."""
+    days = _RANGE_DAYS.get(range, 90)
+    data = store.admin_growth(days)
+    data["council"] = council.admin_stats()
+    return data
+
+
 @router.get("/quiz/stats")
 def quiz_stats(
     _admin: dict = Depends(require_admin),

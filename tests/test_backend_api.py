@@ -118,6 +118,20 @@ def test_admin_quiz_stats(client):
     assert body["fragen_aktiv"] == 0 and body["gebiete_niedrig"] == []
 
 
+def test_admin_stats_growth(client):
+    """Design 20a: Wachstums-Verläufe + WAU (record_activity via Login) + Import."""
+    _register(client)  # Admin-Registrierung + folgende Requests schreiben Aktivität
+    client.get("/api/auth/me")
+    r = client.get("/api/admin/stats/growth?range=90d")
+    assert r.status_code == 200
+    b = r.json()
+    assert b["users"]["total"] >= 1
+    assert isinstance(b["users"]["series"], list) and b["users"]["series"][-1] >= 1
+    # Admin war in dieser Woche aktiv → letzter WAU-Balken ≥ 1.
+    assert b["wau"][-1] >= 1
+    assert "decisions_with_ki" in b["council"] and "last_fetch" in b["council"]
+
+
 def test_admin_endpoints_forbidden_for_regular_user(client):
     _register(client)  # admin
     bob = TestClient(app)

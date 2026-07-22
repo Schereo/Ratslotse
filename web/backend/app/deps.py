@@ -50,6 +50,9 @@ def get_current_user(request: Request, store: Store = Depends(get_store)) -> dic
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Konto nicht gefunden.")
     if token_version != user.get("token_version", 0):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Sitzung wurde beendet. Bitte neu anmelden.")
+    # Aktivität fürs Admin-Dashboard (20a): einmal je Request, tages-throttled
+    # über den PK. Best-effort — darf den Request nie brechen.
+    store.record_activity(user["id"], "session")
     return user
 
 
