@@ -357,6 +357,19 @@ export interface QuizAreas {
   themen: QuizAreaEntry[];
   categories: string[];
 }
+/** Eigene Quizfrage (RL-U14) — privat je Konto, mit Übungs-Zählern. */
+export interface UserQuizQuestion {
+  id: number;
+  question: string;
+  options: string[];
+  correct_index: number;
+  stadtteil: string | null;
+  category: string;
+  explanation: string | null;
+  practiced: number;
+  correct_count: number;
+  created_at: string;
+}
 export interface QuizQuestion {
   id: number;
   area_type: string;

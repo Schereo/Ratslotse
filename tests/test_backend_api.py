@@ -627,6 +627,59 @@ def test_quiz_areas_lists_seeded(client):
         assert wb[b]["questions"] == 3 and "Osternburg" in wb[b]["stadtteile"]
 
 
+def test_own_quiz_crud_round_and_practice(client):
+    """RL-U14: Eigene Fragen — CRUD, Übungsrunde ohne Lösung, Antwort schreibt
+    Zähler fort, aber KEINE Punkte/Statistik (Selbstbedienung ausgeschlossen)."""
+    _register(client)
+    body = {"question": "Wie viele Wahlbereiche hat Oldenburg?",
+            "options": ["Vier", "Sechs", "Acht"], "correct_index": 1,
+            "stadtteil": None, "category": "ratspolitik", "explanation": "Es sind sechs."}
+    qid = client.post("/api/quiz/own", json=body).json()["id"]
+    # Runde: geformt wie normale Fragen, ohne Lösung
+    r = client.get("/api/quiz/own/round?n=5").json()["questions"]
+    assert len(r) == 1 and r[0]["id"] == qid and "correct_index" not in r[0]
+    assert r[0]["area_type"] == "eigene" and r[0]["area_key"] == "Stadtweit"
+    # Richtig antworten: 0 Punkte, Zähler steigen, Statistik bleibt leer
+    res = client.post("/api/quiz/own/answer", json={"question_id": qid, "selected_index": 1}).json()
+    assert res["correct"] is True and res["points"] == 0 and res["correct_index"] == 1
+    assert res["explanation"] == "Es sind sechs."
+    mine = client.get("/api/quiz/own").json()["questions"][0]
+    assert mine["practiced"] == 1 and mine["correct_count"] == 1
+    assert client.get("/api/quiz/stats").json()["total"]["answered"] == 0
+    # Bearbeiten setzt die Übungs-Zähler zurück
+    client.put(f"/api/quiz/own/{qid}", json={**body, "question": "Wie viele Wahlbereiche hat die Stadt?"})
+    mine = client.get("/api/quiz/own").json()["questions"][0]
+    assert mine["practiced"] == 0 and mine["question"].endswith("die Stadt?")
+    # Löschen
+    assert client.delete(f"/api/quiz/own/{qid}").json()["ok"] is True
+    assert client.get("/api/quiz/own").json()["questions"] == []
+
+
+def test_own_quiz_is_per_account_and_validated(client):
+    """Fremde Fragen sind unsichtbar/unantastbar; kaputte Eingaben werden abgelehnt."""
+    _register(client)
+    qid = client.post("/api/quiz/own", json={
+        "question": "Nur meine Frage?", "options": ["Ja", "Nein"], "correct_index": 0,
+        "category": "geschichte"}).json()["id"]
+    other = TestClient(app)
+    _register(other, email="other@test.de")
+    assert other.get("/api/quiz/own").json()["questions"] == []
+    assert other.put(f"/api/quiz/own/{qid}", json={
+        "question": "Gekapert?", "options": ["A", "B"], "correct_index": 0,
+        "category": "geschichte"}).status_code == 404
+    assert other.delete(f"/api/quiz/own/{qid}").status_code == 404
+    assert other.post("/api/quiz/own/answer",
+                      json={"question_id": qid, "selected_index": 0}).status_code == 404
+    # Validierung: richtige Antwort muss existieren, Kategorie/Stadtteil bekannt sein
+    bad = {"question": "Kaputt genug?", "options": ["A", "B"], "correct_index": 3,
+           "category": "geschichte"}
+    assert client.post("/api/quiz/own", json=bad).status_code == 400
+    assert client.post("/api/quiz/own", json={**bad, "correct_index": 0,
+                                              "category": "quatsch"}).status_code == 400
+    assert client.post("/api/quiz/own", json={**bad, "correct_index": 0,
+                                              "stadtteil": "Atlantis"}).status_code == 400
+
+
 def test_quiz_theme_stadtteil_binding(client):
     """RL-U13: Themen mit Entity-Geo tragen ihren Stadtteil im Katalog
     (Punkt-in-Polygon); Themen ohne Geo gelten als stadtweit (null)."""

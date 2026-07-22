@@ -235,6 +235,24 @@ CREATE TABLE IF NOT EXISTS quiz_daily (
     completed_at TEXT NOT NULL,
     PRIMARY KEY (owner_id, day)
 );
+
+-- Eigene Quizfragen (RL-U14): privat je Konto, zum Üben — geben bewusst
+-- KEINE Punkte und fließen nicht in Statistik/Abzeichen ein. Der Übungs-
+-- Fortschritt lebt als Zähler direkt an der Frage („3× geübt, 100 %").
+CREATE TABLE IF NOT EXISTS user_quiz_questions (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner_id      INTEGER NOT NULL,
+    question      TEXT NOT NULL,
+    options       TEXT NOT NULL,         -- JSON-Array, 2–4 Einträge
+    correct_index INTEGER NOT NULL,
+    stadtteil     TEXT,                  -- NULL = stadtweit
+    category      TEXT NOT NULL,
+    explanation   TEXT,
+    practiced     INTEGER NOT NULL DEFAULT 0,
+    correct_count INTEGER NOT NULL DEFAULT 0,
+    created_at    TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_user_quiz_owner ON user_quiz_questions(owner_id);
 """
 
 
@@ -701,6 +719,81 @@ class Store:
             "HAVING bad >= ? ORDER BY bad DESC, good ASC", (min_bad,)).fetchall()
         return [{"question_id": r["question_id"], "bad": r["bad"], "good": r["good"],
                  "comments": r["comments"]} for r in rows]
+
+    # ---- Quiz: eigene Fragen (RL-U14, privat je Konto) ----
+
+    @staticmethod
+    def _user_quiz_row(r) -> dict:
+        return {"id": r["id"], "question": r["question"],
+                "options": json.loads(r["options"]), "correct_index": r["correct_index"],
+                "stadtteil": r["stadtteil"], "category": r["category"],
+                "explanation": r["explanation"], "practiced": r["practiced"],
+                "correct_count": r["correct_count"], "created_at": r["created_at"]}
+
+    def list_user_quiz_questions(self, owner_id: int) -> list[dict]:
+        """Alle eigenen Fragen eines Kontos, neueste zuerst — samt Übungs-
+        Zählern („3× geübt, 100 %")."""
+        rows = self._conn.execute(
+            "SELECT * FROM user_quiz_questions WHERE owner_id = ? ORDER BY id DESC",
+            (owner_id,)).fetchall()
+        return [self._user_quiz_row(r) for r in rows]
+
+    def get_user_quiz_question(self, owner_id: int, question_id: int) -> dict | None:
+        r = self._conn.execute(
+            "SELECT * FROM user_quiz_questions WHERE owner_id = ? AND id = ?",
+            (owner_id, question_id)).fetchone()
+        return self._user_quiz_row(r) if r else None
+
+    def save_user_quiz_question(self, owner_id: int, data: dict,
+                                question_id: int | None = None) -> int | None:
+        """Eigene Frage anlegen (``question_id=None``) oder aktualisieren.
+        Beim Bearbeiten werden die Übungs-Zähler zurückgesetzt — die Frage ist
+        dann inhaltlich eine andere. Gibt die id zurück (None, wenn die zu
+        bearbeitende Frage nicht dem Konto gehört)."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        opts = json.dumps(data["options"], ensure_ascii=False)
+        with self._conn:
+            if question_id is None:
+                cur = self._conn.execute(
+                    "INSERT INTO user_quiz_questions (owner_id, question, options, "
+                    "correct_index, stadtteil, category, explanation, created_at) "
+                    "VALUES (?,?,?,?,?,?,?,?)",
+                    (owner_id, data["question"], opts, data["correct_index"],
+                     data.get("stadtteil"), data["category"], data.get("explanation"), now))
+                return int(cur.lastrowid)
+            cur = self._conn.execute(
+                "UPDATE user_quiz_questions SET question=?, options=?, correct_index=?, "
+                "stadtteil=?, category=?, explanation=?, practiced=0, correct_count=0 "
+                "WHERE owner_id = ? AND id = ?",
+                (data["question"], opts, data["correct_index"], data.get("stadtteil"),
+                 data["category"], data.get("explanation"), owner_id, question_id))
+            return question_id if cur.rowcount else None
+
+    def delete_user_quiz_question(self, owner_id: int, question_id: int) -> bool:
+        with self._conn:
+            cur = self._conn.execute(
+                "DELETE FROM user_quiz_questions WHERE owner_id = ? AND id = ?",
+                (owner_id, question_id))
+        return cur.rowcount > 0
+
+    def user_quiz_round(self, owner_id: int, n: int) -> list[dict]:
+        """Übungsrunde: nie geübte zuerst, dann die mit der schwächsten
+        Trefferquote — innerhalb der Gruppen zufällig gemischt."""
+        rows = self._conn.execute(
+            "SELECT * FROM user_quiz_questions WHERE owner_id = ? "
+            "ORDER BY (practiced = 0) DESC, "
+            "  CAST(correct_count AS REAL) / MAX(practiced, 1) ASC, RANDOM() LIMIT ?",
+            (owner_id, n)).fetchall()
+        return [self._user_quiz_row(r) for r in rows]
+
+    def record_user_quiz_practice(self, owner_id: int, question_id: int, correct: bool) -> None:
+        """Übungs-Zähler fortschreiben — bewusst OHNE quiz_answers-Eintrag
+        (eigene Fragen geben keine Punkte und zählen nicht für Abzeichen)."""
+        with self._conn:
+            self._conn.execute(
+                "UPDATE user_quiz_questions SET practiced = practiced + 1, "
+                "correct_count = correct_count + ? WHERE owner_id = ? AND id = ?",
+                (1 if correct else 0, owner_id, question_id))
 
     # ---- native-app push device tokens ----
 

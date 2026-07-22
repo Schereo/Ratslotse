@@ -16,7 +16,8 @@ from council.store import CouncilStore
 from nwz.store import Store
 
 from ..deps import get_council_store, get_store, require_active, require_admin
-from ..schemas import QuizAnswerIn, QuizDailyIn, QuizMapIn, QuizRateIn
+from ..schemas import (QuizAnswerIn, QuizDailyIn, QuizMapIn, QuizRateIn,
+                       UserQuizAnswerIn, UserQuizQuestionIn)
 
 router = APIRouter(prefix="/api/quiz", tags=["quiz"])
 
@@ -230,6 +231,94 @@ def map_answer(payload: QuizMapIn,
     # Fehler"-Stapel (quiz_wrong_question_ids filtert question_id > 0).
     store.record_quiz_answer(user["id"], 0, "stadtteil", payload.target, "orte", correct, pts)
     return {"correct": correct, "target": payload.target, "points": pts}
+
+
+# ---- Eigene Fragen (RL-U14): privat je Konto, üben ohne Punkte ----
+
+MAX_OWN_QUESTIONS = 200  # Schutz gegen Massen-Anlage; großzügig für echte Nutzung
+
+
+def _validate_own(payload: UserQuizQuestionIn) -> dict:
+    opts = [o.strip() for o in payload.options if o.strip()]
+    if len(opts) < 2:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Mindestens zwei Antworten angeben.")
+    if payload.correct_index >= len(opts):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Die richtige Antwort fehlt.")
+    if payload.category not in CATEGORIES:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unbekannte Kategorie.")
+    st = (payload.stadtteil or "").strip() or None
+    if st is not None and st not in geo.WAHLBEREICH:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unbekannter Stadtteil.")
+    return {"question": payload.question.strip(), "options": opts,
+            "correct_index": payload.correct_index, "stadtteil": st,
+            "category": payload.category,
+            "explanation": (payload.explanation or "").strip() or None}
+
+
+@router.get("/own")
+def own_list(user: dict = Depends(require_active),
+             store: Store = Depends(get_store)) -> dict:
+    return {"questions": store.list_user_quiz_questions(user["id"])}
+
+
+@router.post("/own")
+def own_create(payload: UserQuizQuestionIn,
+               user: dict = Depends(require_active),
+               store: Store = Depends(get_store)) -> dict:
+    if len(store.list_user_quiz_questions(user["id"])) >= MAX_OWN_QUESTIONS:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            f"Maximal {MAX_OWN_QUESTIONS} eigene Fragen möglich.")
+    qid = store.save_user_quiz_question(user["id"], _validate_own(payload))
+    return {"ok": True, "id": qid}
+
+
+@router.put("/own/{question_id}")
+def own_update(question_id: int, payload: UserQuizQuestionIn,
+               user: dict = Depends(require_active),
+               store: Store = Depends(get_store)) -> dict:
+    if store.save_user_quiz_question(user["id"], _validate_own(payload), question_id) is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Frage nicht gefunden.")
+    return {"ok": True, "id": question_id}
+
+
+@router.delete("/own/{question_id}")
+def own_delete(question_id: int,
+               user: dict = Depends(require_active),
+               store: Store = Depends(get_store)) -> dict:
+    if not store.delete_user_quiz_question(user["id"], question_id):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Frage nicht gefunden.")
+    return {"ok": True}
+
+
+@router.get("/own/round")
+def own_round(n: int = Query(10, ge=1, le=30),
+              user: dict = Depends(require_active),
+              store: Store = Depends(get_store)) -> dict:
+    """Übungsrunde aus den eigenen Fragen — OHNE Lösung im Payload, geformt wie
+    normale Quizfragen, damit die Spiel-Ansicht sie unverändert rendert."""
+    out = []
+    for q in store.user_quiz_round(user["id"], n):
+        out.append({"id": q["id"], "area_type": "eigene",
+                    "area_key": q["stadtteil"] or "Stadtweit",
+                    "category": q["category"], "difficulty": "mittel",
+                    "question": q["question"], "options": q["options"], "qtype": "mc"})
+    return {"questions": out}
+
+
+@router.post("/own/answer")
+def own_answer(payload: UserQuizAnswerIn,
+               user: dict = Depends(require_active),
+               store: Store = Depends(get_store)) -> dict:
+    """Übungs-Antwort auswerten: Lösung + Erklärung zurück, Übungs-Zähler
+    fortschreiben — bewusst KEINE Punkte, keine Statistik, keine Abzeichen
+    (sonst könnte man sich Punkte selbst schreiben)."""
+    q = store.get_user_quiz_question(user["id"], payload.question_id)
+    if not q:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Frage nicht gefunden.")
+    correct = payload.selected_index == q["correct_index"]
+    store.record_user_quiz_practice(user["id"], payload.question_id, correct)
+    return {"correct": correct, "correct_index": q["correct_index"], "points": 0,
+            "explanation": q.get("explanation"), "source_type": None, "source_ref": None}
 
 
 @router.get("/stats")

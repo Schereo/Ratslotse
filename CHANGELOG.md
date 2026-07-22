@@ -8,6 +8,13 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Eigene Quizfragen:** Auf der Quiz-Seite kannst du jetzt **eigene Fragen
+  anlegen und üben** — mit 2–4 Antworten, optionalem Ort (Stadtteil),
+  Kategorie und Erklärung. Eine Übungsrunde mischt 10 deiner Fragen durch
+  die normale Spiel-Ansicht, nie geübte und schwache zuerst; die Liste
+  zeigt je Frage den Stand („3× geübt, 100 %"). Eigene Fragen sind privat
+  und geben bewusst **keine Punkte** — sonst könnte man sich Punkte selbst
+  schreiben. (#262)
 - **Der Gesprächswert arbeitet jetzt überall mit:** Die Beschluss-Suche kann
   nach **„Spannendste zuerst"** sortieren (kuriose, alltagsnahe Funde nach
   oben), die Übersicht zeigt Konten ohne aktuelle Themen-Treffer den
