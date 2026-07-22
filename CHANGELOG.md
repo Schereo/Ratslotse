@@ -69,6 +69,15 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   mit dem Protokoll. (#247)
 
 ### Geändert
+- **Personen-Profil zeigt die Ämter als Zeitleiste:** Die Seite eines
+  Ratsmitglieds beginnt jetzt mit einem **Kopf aus Kürzel-Avatar (in
+  Fraktionsfarbe), Name und Kennzahlen** (besuchte Sitzungen, aktiv seit,
+  Vorsitze). Die **aktuellen Ämter** stehen als kleine **Gantt-Leiste** —
+  Balkenlänge = Amtsdauer, **orange = (stellv.) Vorsitz** (mit Hammer-Symbol,
+  nach oben sortiert), blau = Mitglied, mit Jahresachse bis „heute". **Frühere
+  Ämter** klappen darunter zusammengefasst auf. Gleiche Daten wie zuvor
+  (Anwesenheit + offizielle Gremien-Zeiträume), nur endlich auf einen Blick
+  lesbar. (#268)
 - **Analyse aufgeräumt:** Der vierzeilige Methodik-Kasten über den Analysen
   (Parteien, Personen, Ziele) ist jetzt **ein Satz mit der wichtigsten Zahl**;
   die Erläuterung, wie gezählt wird, wandert in ein **„Wie wird gezählt?"-
