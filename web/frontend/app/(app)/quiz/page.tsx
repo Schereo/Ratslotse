@@ -2,9 +2,10 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Search, Play, MapPin, Landmark, Sparkles, History, ChevronLeft, ChevronRight } from "lucide-react";
-import { QuizAreas, QuizQuestion, QuizStats, QuizDaily } from "@/lib/types";
+import { Search, Play, MapPin, Sparkles, History, Check, X, ChevronDown, ChevronUp } from "lucide-react";
+import { QuizAreas, QuizAreaEntry, QuizQuestion, QuizStats, QuizDaily } from "@/lib/types";
 import { PageHeader, Card, Button, Input, Spinner, EmptyState, toast } from "@/components/ui";
+import { Mascot } from "@/components/mascot";
 import { useFetch } from "@/lib/use-fetch";
 import { api, qs } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -27,7 +28,8 @@ function saveLast(s: LastSettings) {
   try { localStorage.setItem(LS_KEY, JSON.stringify(s)); } catch { /* privater Modus o. ä. */ }
 }
 
-/** Menschliche Kurzbeschreibung der Auswahl fürs „Weiterspielen"-Kärtchen. */
+/** Menschliche Kurzbeschreibung der Auswahl fürs „Weiterspielen"-Kärtchen.
+ *  Kennt auch „wahlbereich:"-Einträge aus alten gespeicherten Ständen. */
 function describeSelection(s: LastSettings, catalog: QuizAreas): string {
   const wb = new Map(catalog.wahlbereiche.map((w) => [`wahlbereich:${w.key}`, w.label ?? `Wahlbereich ${w.key}`] as [string, string]));
   const th = new Map(catalog.themen.map((t) => [`thema:${t.key}`, t.label ?? t.key] as [string, string]));
@@ -38,8 +40,6 @@ function describeSelection(s: LastSettings, catalog: QuizAreas): string {
   const catStr = s.cats.length ? s.cats.map((c) => CATEGORY_LABEL[c] ?? c).join(", ") : "Alle Kategorien";
   return `${areas.join(" · ")} · ${catStr}`;
 }
-
-const WIZARD_STEPS = ["Wahlbereich", "Themen", "Stadtteile", "Kategorien"] as const;
 
 function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
@@ -54,6 +54,16 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
 function Points({ n }: { n: number }) {
   if (!n) return null;
   return <span className="ml-1 rounded bg-primary/10 px-1 text-[10px] font-semibold tabular-nums text-primary">{n} P</span>;
+}
+
+/** Abschnitts-Label im Setup (12a): Mono-Optik wie die Kicker der Karten. */
+function SetupLabel({ children, hint }: { children: React.ReactNode; hint?: string }) {
+  return (
+    <p className="mt-5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+      {children}
+      {hint && <span className="ml-1.5 font-medium normal-case tracking-normal text-muted-foreground/80">{hint}</span>}
+    </p>
+  );
 }
 
 /** Startkachel (Weiterspielen / Neues Spiel). */
@@ -77,6 +87,238 @@ function ActionCard({ icon, title, sub, action, accent }: {
   );
 }
 
+/** Setup in EINEM Schritt (RL-U13, Design 12a): Wahlbereich-Kacheln als
+ *  Schnellwahl, die die Stadtteil-Chips setzen; Themen nach Ort gruppiert;
+ *  Kategorien optional; Live-Zusammenfassung mit Startknopf. */
+function QuizSetup({ catalog, starting, onStart, onCancel }: {
+  catalog: QuizAreas;
+  starting: boolean;
+  onStart: (areas: string[], cats: string[]) => void;
+  onCancel: () => void;
+}) {
+  const [wbSel, setWbSel] = useState<Set<string>>(new Set());
+  const [stSel, setStSel] = useState<Set<string>>(new Set());
+  const [thSel, setThSel] = useState<Set<string>>(new Set());
+  const [cats, setCats] = useState<Set<string>>(new Set());
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const [showOutside, setShowOutside] = useState(false);
+
+  const stByName = useMemo(
+    () => new Map(catalog.stadtteile.map((s) => [s.key, s] as [string, QuizAreaEntry])),
+    [catalog],
+  );
+
+  // Schnellwahl: Kachel an = Stadtteile des Bereichs dazu; Kachel aus = nur die
+  // Stadtteile entfernen, die kein anderer noch aktiver Bereich hält.
+  const toggleWb = (w: QuizAreaEntry) => {
+    const key = w.key;
+    const members = (w.stadtteile ?? []).filter((n) => stByName.has(n));
+    if (wbSel.has(key)) {
+      const nextWb = new Set(wbSel); nextWb.delete(key);
+      const held = new Set(
+        catalog.wahlbereiche.filter((o) => nextWb.has(o.key)).flatMap((o) => o.stadtteile ?? []));
+      const nextSt = new Set(stSel);
+      for (const n of members) if (!held.has(n)) nextSt.delete(n);
+      setWbSel(nextWb); setStSel(nextSt);
+    } else {
+      setWbSel(new Set(wbSel).add(key));
+      const nextSt = new Set(stSel);
+      for (const n of members) nextSt.add(n);
+      setStSel(nextSt);
+    }
+  };
+
+  const toggleIn = (set: Set<string>, key: string, upd: (s: Set<string>) => void) => {
+    const next = new Set(set);
+    next.has(key) ? next.delete(key) : next.add(key);
+    upd(next);
+  };
+
+  // Stadtteil-Chips: gewählte zuerst (gefüllt, ✕), dann die stärksten übrigen;
+  // der Rest steckt hinter dem Such-Chip.
+  const selectedSt = catalog.stadtteile.filter((s) => stSel.has(s.key));
+  const unselectedSt = catalog.stadtteile
+    .filter((s) => !stSel.has(s.key))
+    .sort((a, b) => b.questions - a.questions);
+  const needle = q.trim().toLowerCase();
+  const visibleUnselected = searchOpen && needle
+    ? unselectedSt.filter((s) => s.key.toLowerCase().includes(needle))
+    : unselectedSt.slice(0, searchOpen ? unselectedSt.length : 8);
+  const hiddenCount = unselectedSt.length - (searchOpen ? 0 : Math.min(8, unselectedSt.length));
+
+  // Themen nach Ortsbezug gruppieren (RL-U13): in der Auswahl / stadtweit /
+  // außerhalb. Gewählte Themen bleiben immer sichtbar — fällt ihr Ort aus der
+  // Auswahl, wandern sie mit Orts-Hinweis in die obere Zeile.
+  const themen = catalog.themen;
+  const inSelection = themen.filter((t) => t.stadtteil && stSel.has(t.stadtteil));
+  const cityWide = themen.filter((t) => !t.stadtteil);
+  const outside = themen.filter((t) => t.stadtteil && !stSel.has(t.stadtteil));
+  const outsideUnselected = outside.filter((t) => !thSel.has(`thema:${t.key}`));
+  const selectedOutside = outside.filter((t) => thSel.has(`thema:${t.key}`));
+
+  const themeChip = (t: QuizAreaEntry, ortHint = false) => {
+    const key = `thema:${t.key}`;
+    const active = thSel.has(key);
+    return (
+      <button key={key} type="button" onClick={() => toggleIn(thSel, key, setThSel)}
+        className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+          active ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground")}>
+        {t.stadtteil && <MapPin className="h-3 w-3 shrink-0" />}
+        {t.label ?? t.key} · {t.questions}
+        {ortHint && t.stadtteil && <span className="text-[10px] opacity-70">({t.stadtteil})</span>}
+        <Points n={t.points} />
+      </button>
+    );
+  };
+
+  const totalQuestions =
+    selectedSt.reduce((sum, s) => sum + s.questions, 0) +
+    themen.filter((t) => thSel.has(`thema:${t.key}`)).reduce((sum, t) => sum + t.questions, 0);
+  const areaCount = stSel.size + thSel.size;
+  const catStr = cats.size ? [...cats].map((c) => CATEGORY_LABEL[c] ?? c).join(", ") : null;
+  const summary = areaCount
+    ? `in ${stSel.size ? `${stSel.size} Stadtteil${stSel.size === 1 ? "" : "en"}` : ""}${stSel.size && thSel.size ? " + " : ""}${thSel.size ? `${thSel.size} Thema${thSel.size === 1 ? "" : "en"}` : ""}${catStr ? ` · ${catStr}` : ""}`
+    : "Noch kein Gebiet gewählt — Schnellwahl oder Stadtteile antippen.";
+
+  const start = () => onStart(
+    [...stSel].map((s) => `stadtteil:${s}`).concat([...thSel]),
+    [...cats],
+  );
+
+  return (
+    <div className="pb-32 md:pb-0">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="font-display text-xl font-bold text-foreground">Neues Quiz</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Wähle, worüber Lotti dich fragen soll — alles optional außer mindestens einem Gebiet.
+          </p>
+        </div>
+        <Button variant="ghost" size="sm" onClick={onCancel}>Abbrechen</Button>
+      </div>
+
+      {catalog.wahlbereiche.length > 0 && (
+        <>
+          <SetupLabel hint="— wählt seine Stadtteile vor">Schnellwahl · Wahlbereich</SetupLabel>
+          <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-6">
+            {catalog.wahlbereiche.map((w) => {
+              const active = wbSel.has(w.key);
+              return (
+                <button key={w.key} type="button" onClick={() => toggleWb(w)}
+                  aria-pressed={active} title={w.label}
+                  className={cn("card-interactive relative rounded-xl border p-2.5 text-center transition-colors",
+                    active ? "border-2 border-primary bg-primary/5" : "border-border bg-card")}>
+                  {active && (
+                    <span className="absolute -right-1.5 -top-1.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-primary text-primary-foreground">
+                      <Check className="h-2.5 w-2.5" strokeWidth={3.5} />
+                    </span>
+                  )}
+                  <span className={cn("block font-display text-[15px] font-bold", active && "text-primary")}>WB {w.key}</span>
+                  <span className={cn("block text-[10.5px]", active ? "text-primary/80" : "text-muted-foreground")}>
+                    {w.questions} Fragen{w.points ? ` · ${w.points} P` : ""}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      <SetupLabel hint={stSel.size ? `${stSel.size} ausgewählt${wbSel.size ? " — aus der Schnellwahl, frei anpassbar" : ""}` : undefined}>
+        Stadtteile
+      </SetupLabel>
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        {selectedSt.map((s) => (
+          <button key={s.key} type="button" onClick={() => toggleIn(stSel, s.key, setStSel)}
+            aria-label={`${s.key} abwählen`}
+            className="inline-flex items-center gap-1.5 rounded-full border border-primary bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90">
+            {s.key} <X className="h-3 w-3" />
+          </button>
+        ))}
+        {visibleUnselected.map((s) => (
+          <Chip key={s.key} active={false} onClick={() => toggleIn(stSel, s.key, setStSel)}>
+            {s.key} · {s.questions}<Points n={s.points} />
+          </Chip>
+        ))}
+        {searchOpen ? (
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input autoFocus className="h-8 w-44 rounded-full pl-8 text-xs" placeholder="Stadtteil suchen…"
+              value={q} onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Escape") { setSearchOpen(false); setQ(""); } }} />
+          </div>
+        ) : hiddenCount > 0 && (
+          <button type="button" onClick={() => setSearchOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground">
+            <Search className="h-3 w-3" /> Stadtteil suchen — {hiddenCount} weitere
+          </button>
+        )}
+      </div>
+
+      {themen.length > 0 && (
+        <>
+          {(inSelection.length > 0 || selectedOutside.length > 0) && (
+            <>
+              <SetupLabel hint="— liegen in den gewählten Stadtteilen">Themen in deiner Auswahl</SetupLabel>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {inSelection.map((t) => themeChip(t))}
+                {selectedOutside.map((t) => themeChip(t, true))}
+              </div>
+            </>
+          )}
+          {cityWide.length > 0 && (
+            <>
+              <SetupLabel>Stadtweite Themen</SetupLabel>
+              <div className="mt-2 flex flex-wrap gap-1.5">{cityWide.map((t) => themeChip(t))}</div>
+            </>
+          )}
+          {outsideUnselected.length > 0 && (
+            <div className="mt-3">
+              <button type="button" onClick={() => setShowOutside((v) => !v)}
+                className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                {outsideUnselected.length} {outsideUnselected.length === 1 ? "Thema" : "Themen"} außerhalb deiner Auswahl {showOutside ? "ausblenden" : "anzeigen"}
+                {showOutside ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+              </button>
+              {showOutside && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {outsideUnselected.map((t) => themeChip(t, true))}
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
+
+      {catalog.categories.length > 0 && (
+        <>
+          <SetupLabel hint="(optional — sonst kommt alles dran)">Kategorien</SetupLabel>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {catalog.categories.map((c) => (
+              <Chip key={c} active={cats.has(c)} onClick={() => toggleIn(cats, c, setCats)}>{CATEGORY_LABEL[c] ?? c}</Chip>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Live-Zusammenfassung + Start — mobil als schwebende Leiste. */}
+      <div className="fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom)+4.75rem)] z-30 rounded-xl border border-border bg-background/95 p-3 shadow-lg backdrop-blur md:sticky md:inset-x-auto md:bottom-4 md:mt-6 md:border-t md:bg-background/90 md:shadow-none">
+        <div className="flex items-center gap-3">
+          <Mascot decorative pose="point" className="hidden h-11 w-11 shrink-0 sm:block" />
+          <p className="min-w-0 flex-1 text-sm text-muted-foreground">
+            {areaCount ? (
+              <><strong className="font-semibold text-foreground">{totalQuestions} Fragen</strong> {summary}</>
+            ) : summary}
+          </p>
+          <Button onClick={start} disabled={!areaCount || starting} className="shrink-0">
+            {starting ? "Lädt…" : <><Play className="!size-4" /> Quiz starten</>}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function QuizInner() {
   // reloadKey bumpt nach jeder Runde die Datenpfade → Punkte/Fortschritt aktuell.
   const [reloadKey, setReloadKey] = useState(0);
@@ -85,30 +327,15 @@ function QuizInner() {
   const { data: stats } = useFetch<QuizStats>(`/quiz/stats?v=${reloadKey}`);
   const { data: daily } = useFetch<QuizDaily>(`/quiz/daily?v=${reloadKey}`);
 
-  const [sel, setSel] = useState<Set<string>>(new Set());
-  const [cats, setCats] = useState<Set<string>>(new Set());
-  const [q, setQ] = useState("");
   const [starting, setStarting] = useState(false);
   const [round, setRound] = useState<QuizQuestion[] | null>(null);
   const [kind, setKind] = useState<RoundKind>("normal");
   const [mapTargets, setMapTargets] = useState<string[] | null>(null);
-  const [view, setView] = useState<"home" | "wizard">("home");
-  const [step, setStep] = useState(0);
+  const [view, setView] = useState<"home" | "setup">("home");
   const [last, setLast] = useState<LastSettings | null>(null);
   const [autoStarted, setAutoStarted] = useState(false);
 
   useEffect(() => { setLast(loadLast()); }, [reloadKey]);
-
-  const themeLabels = useMemo(
-    () => Object.fromEntries((data?.themen ?? []).map((t) => [t.key, t.label ?? t.key])),
-    [data],
-  );
-
-  const toggle = (set: Set<string>, key: string, upd: (s: Set<string>) => void) => {
-    const next = new Set(set);
-    next.has(key) ? next.delete(key) : next.add(key);
-    upd(next);
-  };
 
   const startRound = useCallback(async (areaList: string[], catList: string[], roundKind: RoundKind = "normal") => {
     if (!areaList.length) return;
@@ -190,106 +417,14 @@ function QuizInner() {
 
   const catalog = data ?? { wahlbereiche: [], stadtteile: [], themen: [], categories: [] };
   const empty = !catalog.wahlbereiche.length && !catalog.stadtteile.length && !catalog.themen.length;
-  const start = () => startRound([...sel], [...cats]);
   const startDaily = () => { if (daily && !daily.done && daily.questions.length) { setKind("daily"); setRound(daily.questions); } };
 
-  const filteredStadtteile = (() => {
-    const needle = q.trim().toLowerCase();
-    return (catalog.stadtteile ?? []).filter((s) => !needle || s.key.toLowerCase().includes(needle));
-  })();
-
-  // ---- Wizard: Gebiete & Kategorien Schritt für Schritt ---------------------
-  if (view === "wizard") {
-    const openWizardStep = (i: number) => (
-      i === 0 ? (
-        catalog.wahlbereiche.length ? (
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {catalog.wahlbereiche.map((w) => {
-              const key = `wahlbereich:${w.key}`;
-              const active = sel.has(key);
-              return (
-                <button key={key} type="button" onClick={() => toggle(sel, key, setSel)}
-                  className={cn("card-interactive rounded-xl border p-3 text-left", active ? "border-primary bg-primary/5" : "border-border")}>
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-foreground">{w.label}</span>
-                    {active && <Sparkles className="h-4 w-4 text-primary" />}
-                  </div>
-                  <p className="mt-0.5 truncate text-xs text-muted-foreground">{w.stadtteile?.join(", ")}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{w.questions} Fragen<Points n={w.points} /></p>
-                </button>
-              );
-            })}
-          </div>
-        ) : <p className="text-sm text-muted-foreground">Keine Wahlbereiche verfügbar — einfach weiter.</p>
-      ) : i === 1 ? (
-        catalog.themen.length ? (
-          <div className="flex flex-wrap gap-1.5">
-            {catalog.themen.map((t) => {
-              const key = `thema:${t.key}`;
-              return <Chip key={key} active={sel.has(key)} onClick={() => toggle(sel, key, setSel)}>{t.label} · {t.questions}<Points n={t.points} /></Chip>;
-            })}
-          </div>
-        ) : <p className="text-sm text-muted-foreground">Keine großen Themen verfügbar — einfach weiter.</p>
-      ) : i === 2 ? (
-        <>
-          <div className="relative mb-3 max-w-sm">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input className="pl-9" placeholder="Stadtteil suchen…" value={q} onChange={(e) => setQ(e.target.value)} />
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {filteredStadtteile.map((s) => {
-              const key = `stadtteil:${s.key}`;
-              return <Chip key={key} active={sel.has(key)} onClick={() => toggle(sel, key, setSel)}>{s.key} · {s.questions}<Points n={s.points} /></Chip>;
-            })}
-          </div>
-        </>
-      ) : (
-        <div className="flex flex-wrap gap-1.5">
-          {catalog.categories.map((c) => (
-            <Chip key={c} active={cats.has(c)} onClick={() => toggle(cats, c, setCats)}>{CATEGORY_LABEL[c] ?? c}</Chip>
-          ))}
-        </div>
-      )
-    );
-
+  // ---- Setup: alles auf einer Seite (RL-U13) --------------------------------
+  if (view === "setup") {
     return (
-      <div className="pb-28 md:pb-0">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Schritt {step + 1} von {WIZARD_STEPS.length}</p>
-            <h1 className="mt-0.5 text-xl font-bold text-foreground">
-              {WIZARD_STEPS[step]}{step < 3 ? " wählen" : ""} <span className="text-sm font-normal text-muted-foreground">(optional)</span>
-            </h1>
-          </div>
-          <Button variant="ghost" size="sm" onClick={() => setView("home")}>Abbrechen</Button>
-        </div>
-        <div className="mt-3 flex gap-1.5">
-          {WIZARD_STEPS.map((s, i) => <div key={s} className={cn("h-1 flex-1 rounded-full transition-colors", i <= step ? "bg-primary" : "bg-muted")} />)}
-        </div>
-
-        <p className="mt-4 text-sm text-muted-foreground">
-          {step === 3 ? "Optional auf bestimmte Kategorien einschränken — sonst kommt alles dran." : "Mehrfachauswahl möglich. Leer lassen und weiter ist ok — du brauchst am Ende mindestens ein Gebiet."}
-        </p>
-        <div className="mt-3 min-h-[14rem]">{openWizardStep(step)}</div>
-
-        <div className="fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom)+4.75rem)] z-30 rounded-xl border border-border bg-background/95 p-3 shadow-lg backdrop-blur md:sticky md:inset-x-auto md:bottom-4 md:mt-4 md:bg-background/90 md:shadow-none">
-          <div className="flex items-center justify-between gap-3">
-            <Button variant="secondary" onClick={() => (step === 0 ? setView("home") : setStep(step - 1))}>
-              <ChevronLeft className="!size-4" /> {step === 0 ? "Abbrechen" : WIZARD_STEPS[step - 1]}
-            </Button>
-            <span className="hidden text-xs text-muted-foreground sm:block">
-              {sel.size ? `${sel.size} Gebiet${sel.size === 1 ? "" : "e"}` : "Noch kein Gebiet"}
-            </span>
-            {step < WIZARD_STEPS.length - 1 ? (
-              <Button onClick={() => setStep(step + 1)}>{WIZARD_STEPS[step + 1]} <ChevronRight className="!size-4" /></Button>
-            ) : (
-              <Button onClick={start} disabled={!sel.size || starting}>
-                {starting ? "Lädt…" : <><Play className="!size-4" /> Quiz starten</>}
-              </Button>
-            )}
-          </div>
-        </div>
-      </div>
+      <QuizSetup catalog={catalog} starting={starting}
+        onStart={(areas, cats) => void startRound(areas, cats)}
+        onCancel={() => setView("home")} />
     );
   }
 
@@ -314,8 +449,8 @@ function QuizInner() {
           )}
 
           <ActionCard icon={<Sparkles className="h-5 w-5" />} title="Neues Spiel"
-            sub="Wahlbereich, Themen, Stadtteile und Kategorien Schritt für Schritt wählen."
-            action={<Button variant={last ? "secondary" : "primary"} onClick={() => { setSel(new Set()); setCats(new Set()); setQ(""); setStep(0); setView("wizard"); }}>
+            sub="Wahlbereich als Schnellwahl, Stadtteile, Themen und Kategorien — alles auf einer Seite."
+            action={<Button variant={last ? "secondary" : "primary"} onClick={() => setView("setup")}>
               <Play className="!size-4" /> Neues Spiel
             </Button>} />
 
