@@ -12,7 +12,7 @@ import { useAuth } from "@/lib/auth";
 import { useDebounce } from "@/lib/use-debounce";
 import { decisionHref } from "@/lib/routes";
 import { getRecentDecisions } from "@/lib/recent";
-import { cycleTheme } from "@/lib/theme";
+import { applyTheme, isDarkNow } from "@/lib/theme";
 import { formatDate, toast } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
 import { startGuidedTour } from "@/components/tour";
@@ -39,7 +39,6 @@ type Item = {
   run: () => void;
 };
 
-const THEME_LABEL: Record<string, string> = { light: "Hell", dark: "Dunkel", system: "System" };
 
 export function CommandPalette() {
   const router = useRouter();
@@ -138,8 +137,13 @@ export function CommandPalette() {
         icon: Sparkles, run: () => go("/council?tab=decisions&mode=fragen"),
       },
       {
-        key: "act-theme", section: "Aktionen", label: "Design wechseln", sub: "Hell → Dunkel → System",
-        icon: SunMoon, run: () => { const t = cycleTheme(); toast.success(`Design: ${THEME_LABEL[t] ?? t}`); },
+        // RL-U09: binär wie der Lotti-Schalter — der System-Zustand entfällt.
+        key: "act-theme", section: "Aktionen", label: "Design wechseln", sub: "Hell ↔ Dunkel",
+        icon: SunMoon, run: () => {
+          const dark = !isDarkNow();
+          applyTheme(dark ? "dark" : "light");
+          toast.success(`Design: ${dark ? "Dunkel" : "Hell"}`);
+        },
       },
       {
         key: "act-tour", section: "Aktionen", label: "Lotti-Tour starten", sub: "Einmal durch alles, was Ratslotse kann",
