@@ -57,12 +57,13 @@ const BASE_HEADERS = [
 function csp({ wasm = false } = {}) {
   return [
     "default-src 'self'",
-    `script-src 'self' 'unsafe-inline'${wasm ? " 'wasm-unsafe-eval'" : ""}${isDev ? " 'unsafe-eval'" : ""}`,
+    // appleid.cdn-apple.com: „Sign in with Apple JS" für den Web-Login-Popup.
+    `script-src 'self' 'unsafe-inline' https://appleid.cdn-apple.com${wasm ? " 'wasm-unsafe-eval'" : ""}${isDev ? " 'unsafe-eval'" : ""}`,
     "worker-src 'self' blob:",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https://*.basemaps.cartocdn.com https://*.openfreemap.org https://upload.wikimedia.org",
     "font-src 'self'",
-    "connect-src 'self' https://*.openfreemap.org",
+    "connect-src 'self' https://*.openfreemap.org https://appleid.apple.com",
     "frame-ancestors 'none'",
   ].join("; ");
 }
