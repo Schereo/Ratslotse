@@ -8,6 +8,13 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **„Wichtig" versteht jetzt Tragweite:** Neben der bisherigen Rechen-Logik
+  (Geldbetrag, Umstrittenheit …) bewertet eine KI jeden Beschluss nach
+  fester Rubrik — wie viele Menschen betroffen sind, wie bindend und
+  wegweisend er ist. Beides fließt zu gleichen Teilen in den Wichtig-Wert;
+  auf der Beschluss-Seite erklärt eine neue Zeile **„Warum wichtig: …"**
+  den Messbalken in einem Satz. Kuriosität zählt hier ausdrücklich nicht —
+  dafür gibt es das Fundstück. (#254)
 - **Persönliche Ansprache:** Bei der Registrierung fragt Ratslotse jetzt nach
   einem **Anzeigenamen** — die Übersicht begrüßt dich damit („Moin, Tim!")
   und Benachrichtigungs-E-Mails sprechen dich persönlich an. Bestehende und

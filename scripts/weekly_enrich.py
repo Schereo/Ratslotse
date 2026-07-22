@@ -47,6 +47,9 @@ STEPS: list[tuple[str, str]] = [
     # Wichtigkeits-Score der Beschlüsse neu berechnen (kein LLM) — hebt wichtige
     # Beschlüsse in Listen und im Quiz hervor. Vor dem Quiz, damit dessen
     # „ratspolitik"-Fragen die frischen Scores nutzen.
+    # Tragweite (RL-U16, LLM): 500er-Tranche VOR dem Wichtigkeits-Score,
+    # damit die 50/50-Mischung frische Werte sieht.
+    ("Tragweite", "rate_impact.py --limit 500"),
     ("Wichtigkeits-Score", "score_importance.py"),
     # Quizfragen auffüllen (LLM) — nur Gebiete unter Ziel-Fragenzahl, ersetzt
     # ausgemusterte Fragen und deckt neue Beschluss-Themen ab.

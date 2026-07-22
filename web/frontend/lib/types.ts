@@ -244,6 +244,8 @@ export interface ImportanceBreakdown {
   score: number;
   /** 0–1 je Signal, null wenn das Signal für diesen Beschluss fehlt. */
   signals: { geld: number | null; umstritten: number | null; verbindlich: number | null; aufwand: number | null };
+  /** RL-U16: 1-Satz-Begründung des Tragweite-Scores (fehlt vor dem Backfill). */
+  impact_reason?: string | null;
 }
 
 export interface DecisionDetail {

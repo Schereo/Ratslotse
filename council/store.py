@@ -292,6 +292,11 @@ class CouncilStore:
                 if "interest" not in dec_cols:
                     self._conn.execute("ALTER TABLE council_decisions ADD COLUMN interest INTEGER")
                     self._conn.execute("ALTER TABLE council_decisions ADD COLUMN interest_reason TEXT")
+                # Tragweite (RL-U16, council.impact) — LLM-Score für die Priorität;
+                # fließt 50/50 in den Wichtig-Wert ein, sobald befüllt.
+                if "impact" not in dec_cols:
+                    self._conn.execute("ALTER TABLE council_decisions ADD COLUMN impact INTEGER")
+                    self._conn.execute("ALTER TABLE council_decisions ADD COLUMN impact_reason TEXT")
                 self._conn.execute(
                     "CREATE INDEX IF NOT EXISTS idx_decisions_field ON council_decisions(policy_field)"
                 )
@@ -1069,6 +1074,11 @@ class CouncilStore:
             for r in rows:
                 d = dict(r)
                 score = _imp.importance_score(d, n_beratungen=(d.get("n_beratungen") or None))
+                # RL-U16: Tragweite (LLM) mischt 50/50 in den Wichtig-Wert,
+                # sobald sie befüllt ist — die Heuristik bleibt der Boden.
+                # Vor dem ersten rate_impact-Lauf ändert sich damit nichts.
+                if d.get("impact") is not None:
+                    score = round((score + int(d["impact"])) / 2)
                 self._conn.execute(
                     "UPDATE council_decisions SET importance = ? WHERE id = ?", (score, d["id"]))
                 n += 1
@@ -1134,6 +1144,29 @@ class CouncilStore:
         with self._conn:
             self._conn.execute(
                 "UPDATE council_decisions SET interest = ?, interest_reason = ? WHERE id = ?",
+                (max(0, min(100, int(score))), reason, decision_id),
+            )
+
+    def decisions_needing_impact(self, limit: int | None = None) -> list[dict]:
+        """Beschlüsse ohne Tragweite-Score (RL-U16), neueste zuerst — mit den
+        Struktur-Signalen, die der Prompt neben dem Text sehen soll."""
+        sql = """SELECT d.id, d.title, d.beschluss, d.summary, d.outcome, d.kind,
+                        d.amount_eur, d.vote, d.gegenstimmen, cs.committee, cs.session_date
+                 FROM council_decisions d
+                 JOIN council_sessions cs ON cs.ksinr = d.ksinr
+                 WHERE d.kind IN ('decision', 'subvote') AND d.impact IS NULL
+                   AND d.title IS NOT NULL AND length(d.title) >= 8
+                 ORDER BY cs.session_date DESC, d.id"""
+        args: tuple = ()
+        if limit is not None:
+            sql += " LIMIT ?"
+            args = (limit,)
+        return [dict(r) for r in self._conn.execute(sql, args).fetchall()]
+
+    def save_impact(self, decision_id: int, score: int, reason: str | None) -> None:
+        with self._conn:
+            self._conn.execute(
+                "UPDATE council_decisions SET impact = ?, impact_reason = ? WHERE id = ?",
                 (max(0, min(100, int(score))), reason, decision_id),
             )
 
