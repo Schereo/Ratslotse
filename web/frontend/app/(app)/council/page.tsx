@@ -54,34 +54,45 @@ function Highlight({ text, query }: { text: string; query: string }) {
   );
 }
 
-function VoteLine({ d }: { d: CouncilDecision }) {
-  // Defensiv: Ein einzelner kaputter Datensatz (factions kein Array — der Store
-  // json.dumps't unbesehen) darf nie die ganze Seite in die Error-Boundary reißen.
+/** Fußzeile der Beschlusskarte (Design 22a, Zone 3): Abstimmung + Antrag links,
+ *  Betrag als betonter rechter Anker mit „im Beschluss"-Mini-Label. Jeder Teil
+ *  fällt bei fehlendem Wert weg; ist alles leer, rendert die Fußzeile nicht —
+ *  so bleibt die Zonenstruktur stabil, statt dass Elemente nachrutschen. */
+function CardFooter({ d }: { d: CouncilDecision }) {
+  // Defensiv: factions kann bei kaputten Daten ein String sein (Store json.dumps't
+  // unbesehen) — nie die ganze Seite in die Error-Boundary reißen.
   const factions = Array.isArray(d.factions) ? d.factions : [];
   const parts: string[] = [];
   if (d.vote) parts.push(d.vote);
-  if (d.gegenstimmen) parts.push(`${d.gegenstimmen} ${d.gegenstimmen === 1 ? "Gegenstimme" : "Gegenstimmen"}`);
-  if (d.enthaltungen) parts.push(`${d.enthaltungen} ${d.enthaltungen === 1 ? "Enthaltung" : "Enthaltungen"}`);
-  if (parts.length === 0 && factions.length === 0) return null;
+  if (d.gegenstimmen) parts.push(`${d.gegenstimmen} dagegen`);
+  if (d.enthaltungen) parts.push(`${d.enthaltungen} Enth.`);
+  const hasAmount = d.kind !== "subvote" && d.amount_eur != null;
+  if (parts.length === 0 && factions.length === 0 && !hasAmount) return null;
   return (
-    <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-      {parts.length > 0 && (
-        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-          <Scale className="h-3.5 w-3.5" /> {parts.join(" · ")}
-        </span>
-      )}
-      {factions.length > 0 && (
-        <span
-          className="inline-flex flex-wrap items-center gap-1.5"
-          title="Fraktion(en), die zu diesem Punkt einen Antrag oder eine Änderungsliste eingebracht haben"
-        >
-          <span className="text-xs text-muted-foreground">
-            {d.kind === "subvote" ? "Antrag von:" : "Anträge von:"}
+    <div className="mt-3 flex items-end justify-between gap-3">
+      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+        {parts.length > 0 && (
+          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+            <Scale className="h-3.5 w-3.5 shrink-0" /> {parts.join(" · ")}
           </span>
-          {factions.map((f) => (
-            <span key={f} className="rounded-md bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">{f}</span>
-          ))}
-        </span>
+        )}
+        {factions.length > 0 && (
+          <span
+            className="inline-flex flex-wrap items-center gap-1.5"
+            title="Fraktion(en), die zu diesem Punkt einen Antrag oder eine Änderungsliste eingebracht haben"
+          >
+            <span className="text-xs text-muted-foreground">Antrag:</span>
+            {factions.map((f) => (
+              <span key={f} className="rounded-md bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">{f}</span>
+            ))}
+          </span>
+        )}
+      </div>
+      {hasAmount && (
+        <div className="shrink-0 text-right" title="Im Beschlusstext genannter Betrag">
+          <div className="text-base font-bold leading-none tabular-nums text-foreground">{formatEuro(d.amount_eur!)}</div>
+          <div className="mt-0.5 text-[10px] font-medium text-muted-foreground">im Beschluss</div>
+        </div>
       )}
     </div>
   );
@@ -91,49 +102,38 @@ function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
   const isSub = d.kind === "subvote";
   return (
     <Link href={decisionHref(d.id)} className="block">
-      {/* RL-103: links max. 3 Metaelemente (Punkt+Wort · Gremium·Datum·TOP ·
-          Wichtig), Betrag als rechtsbündige Spalte; Subvote ohne Akzent-Border
-          (RL-102), stattdessen nur die „Teilabstimmung"-Metazeile + Tönung. */}
-      <Card className={cn("card-interactive group flex items-center gap-3 p-4", isSub && "bg-muted/30")}>
-        <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
+      {/* Design 22a: drei feste Zonen statt verstreuter Elemente — Statuszeile
+          (Ergebnis-Punkt + „Wichtig" zusammen, Chevron rechts; Gremium·Datum·TOP
+          als ruhige zweite Zeile) → Titel + 2-Zeilen-Auszug → Fußzeile
+          (Abstimmung + Antrag links, Betrag als betonter rechter Anker). Subvote
+          bleibt ohne Akzent-Border (RL-102), nur „Teilabstimmung"-Zeile + Tönung. */}
+      <Card className={cn("card-interactive group p-4", isSub && "bg-muted/30")}>
+        {/* Zone 1 — Statuszeile */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
             <OutcomeDot outcome={d.outcome} />
-            <span>
-              {isSub
-                ? `Teilabstimmung · TOP ${d.parent_item}`
-                : `${shortCommittee(d.committee)} · ${formatDate(d.session_date)}${d.item_number ? ` · TOP ${d.item_number}` : ""}`}
-            </span>
             {!isSub && <ImportanceBadge score={d.importance} />}
           </div>
-          <div className="mt-1.5 hyphens-auto font-medium text-foreground">
-            <Highlight text={d.title ?? ""} query={query} />
-          </div>
-          {d.beschluss && (
-            <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-              <Highlight text={d.beschluss} query={query} />
-            </p>
-          )}
-          <VoteLine d={d} />
-          {/* RL-U05: Auf schmalen Screens quetscht die Betrags-Spalte lange
-              Titel — unter sm wandert der Betrag als Chip in die Metazeile. */}
-          {!isSub && d.amount_eur != null && (
-            <span
-              className="mt-2 inline-flex rounded-md bg-muted px-2 py-0.5 text-xs font-bold tabular-nums text-foreground sm:hidden"
-              title="Im Beschlusstext genannter Betrag"
-            >
-              {formatEuro(d.amount_eur)}
-            </span>
-          )}
+          <ChevronRight className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
         </div>
-        {!isSub && d.amount_eur != null && (
-          <span
-            className="hidden shrink-0 self-center text-right text-base font-bold tabular-nums text-foreground sm:block"
-            title="Im Beschlusstext genannter Betrag"
-          >
-            {formatEuro(d.amount_eur)}
-          </span>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {isSub
+            ? `Teilabstimmung · TOP ${d.parent_item}`
+            : `${shortCommittee(d.committee)} · ${formatDate(d.session_date)}${d.item_number ? ` · TOP ${d.item_number}` : ""}`}
+        </p>
+
+        {/* Zone 2 — Titel + Auszug */}
+        <h3 className="mt-2 hyphens-auto font-medium text-foreground">
+          <Highlight text={d.title ?? ""} query={query} />
+        </h3>
+        {d.beschluss && (
+          <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+            <Highlight text={d.beschluss} query={query} />
+          </p>
         )}
-        <ChevronRight className="h-5 w-5 shrink-0 self-center text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+
+        {/* Zone 3 — Fußzeile */}
+        <CardFooter d={d} />
       </Card>
     </Link>
   );
