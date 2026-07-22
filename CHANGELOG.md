@@ -69,6 +69,13 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   mit dem Protokoll. (#247)
 
 ### Geändert
+- **Analyse aufgeräumt:** Der vierzeilige Methodik-Kasten über den Analysen
+  (Parteien, Personen, Ziele) ist jetzt **ein Satz mit der wichtigsten Zahl**;
+  die Erläuterung, wie gezählt wird, wandert in ein **„Wie wird gezählt?"-
+  Info-Popover**. Und die **Parteien-Heatmap** hat auf dem Handy endlich eine
+  eigene Fassung: statt einer 12-Spalten-Tabelle im Seitwärts-Scroll zeigt
+  jede Fraktion ihre **stärksten Themenfelder als Balken** („alle Felder"
+  klappt den Rest auf). (#267)
 - **Analyse → Trends: „Rückblick je Themenfeld" wird scanbar.** Die Karten
   zeigen jetzt standardmäßig nur die **Kernaussage + Zahl**; die vier
   Stichpunkte klappen per **„4 Kernpunkte anzeigen"** auf (Zustand je Feld
