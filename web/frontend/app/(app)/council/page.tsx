@@ -611,18 +611,20 @@ function SessionsTab({ committees }: { committees: string[] }) {
               if (s.ksinr == null) {
                 return (
                   <Card key={`${s.committee}|${s.session_date}|${s.session_time}`} className="p-4">
-                    <div className="flex items-center justify-between gap-3">
+                    {/* Mobil wandert die Badge unter den Text — sonst quetscht
+                        sie den Gremiumsnamen auf „Ausschuss …" zusammen. */}
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                       <div className="flex min-w-0 items-center gap-3">
                         <DateTile iso={s.session_date} />
                         <div className="min-w-0">
                           <h3 className="truncate font-display text-base font-bold text-foreground">{s.committee}</h3>
-                          <p className="mt-0.5 text-sm text-muted-foreground">
+                          <p className="mt-0.5 truncate text-sm text-muted-foreground">
                             {s.session_time ? `${s.session_time} Uhr` : "Uhrzeit folgt"}
                             {s.location && ` · ${s.location}`}
                           </p>
                         </div>
                       </div>
-                      <Badge className="shrink-0">Tagesordnung folgt</Badge>
+                      <Badge className="ml-[62px] shrink-0 self-start sm:ml-0 sm:self-auto">Tagesordnung folgt</Badge>
                     </div>
                   </Card>
                 );
@@ -645,7 +647,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
                       <DateTile iso={s.session_date} />
                       <div className="min-w-0">
                         <h3 className="truncate font-display text-base font-bold text-foreground">{s.committee}</h3>
-                        <p className="mt-0.5 text-sm text-muted-foreground">{s.session_time} Uhr · {s.location}</p>
+                        <p className="mt-0.5 truncate text-sm text-muted-foreground">{s.session_time} Uhr · {s.location}</p>
                       </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
