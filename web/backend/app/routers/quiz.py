@@ -238,21 +238,44 @@ def map_answer(payload: QuizMapIn,
 MAX_OWN_QUESTIONS = 200  # Schutz gegen Massen-Anlage; großzügig für echte Nutzung
 
 
+def _auto_range(value: float) -> tuple[float, float]:
+    """Slider-Grenzen aus der Antwort ableiten: 0 bis ~2× der Zahl, auf zwei
+    signifikante Stellen gerundet — die richtige Zahl liegt so nie am Rand."""
+    import math
+    hi = max(abs(value) * 2, 1.0)
+    step = 10 ** max(0, int(math.floor(math.log10(hi))) - 1)
+    hi = round(hi / step) * step
+    return 0.0, float(max(hi, abs(value) + step))
+
+
 def _validate_own(payload: UserQuizQuestionIn) -> dict:
-    opts = [o.strip() for o in payload.options if o.strip()]
-    if len(opts) < 2:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Mindestens zwei Antworten angeben.")
-    if payload.correct_index >= len(opts):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Die richtige Antwort fehlt.")
     if payload.category not in CATEGORIES:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unbekannte Kategorie.")
     st = (payload.stadtteil or "").strip() or None
     if st is not None and st not in geo.WAHLBEREICH:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unbekannter Stadtteil.")
-    return {"question": payload.question.strip(), "options": opts,
-            "correct_index": payload.correct_index, "stadtteil": st,
+    base = {"question": payload.question.strip(), "stadtteil": st,
             "category": payload.category,
             "explanation": (payload.explanation or "").strip() or None}
+    if payload.category == "schaetzen":
+        if payload.answer_value is None:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Bitte die richtige Zahl angeben.")
+        lo, hi = payload.range_min, payload.range_max
+        if lo is None or hi is None:
+            lo, hi = _auto_range(payload.answer_value)
+        if hi <= lo or not (lo <= payload.answer_value <= hi):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                                "Der Slider-Bereich muss die richtige Zahl umschließen.")
+        return {**base, "qtype": "estimate", "options": [], "correct_index": 0,
+                "answer_value": payload.answer_value,
+                "unit": (payload.unit or "").strip() or None,
+                "range_min": lo, "range_max": hi}
+    opts = [o.strip() for o in payload.options if o.strip()]
+    if len(opts) < 2:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Mindestens zwei Antworten angeben.")
+    if payload.correct_index >= len(opts):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Die richtige Antwort fehlt.")
+    return {**base, "qtype": "mc", "options": opts, "correct_index": payload.correct_index}
 
 
 @router.get("/own")
@@ -298,10 +321,15 @@ def own_round(n: int = Query(10, ge=1, le=30),
     normale Quizfragen, damit die Spiel-Ansicht sie unverändert rendert."""
     out = []
     for q in store.user_quiz_round(user["id"], n):
-        out.append({"id": q["id"], "area_type": "eigene",
-                    "area_key": q["stadtteil"] or "Stadtweit",
-                    "category": q["category"], "difficulty": "mittel",
-                    "question": q["question"], "options": q["options"], "qtype": "mc"})
+        item = {"id": q["id"], "area_type": "eigene",
+                "area_key": q["stadtteil"] or "Stadtweit",
+                "category": q["category"], "difficulty": "mittel",
+                "question": q["question"], "options": q["options"], "qtype": q["qtype"]}
+        if q["qtype"] == "estimate":  # ohne answer_value — die Lösung kommt erst beim Auswerten
+            item["unit"] = q["unit"]
+            item["range_min"] = q["range_min"]
+            item["range_max"] = q["range_max"]
+        out.append(item)
     return {"questions": out}
 
 
@@ -315,10 +343,21 @@ def own_answer(payload: UserQuizAnswerIn,
     q = store.get_user_quiz_question(user["id"], payload.question_id)
     if not q:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Frage nicht gefunden.")
-    correct = payload.selected_index == q["correct_index"]
+    resp = {"points": 0, "explanation": q.get("explanation"),
+            "source_type": None, "source_ref": None}
+    if q["qtype"] == "estimate":
+        if payload.value is None:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Schätzwert fehlt.")
+        correct, _ = _estimate_score(payload.value, q["answer_value"], 1)
+        resp.update({"correct": correct, "correct_index": -1,
+                     "answer_value": q["answer_value"], "unit": q["unit"]})
+    else:
+        if payload.selected_index is None:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Antwort fehlt.")
+        correct = payload.selected_index == q["correct_index"]
+        resp.update({"correct": correct, "correct_index": q["correct_index"]})
     store.record_user_quiz_practice(user["id"], payload.question_id, correct)
-    return {"correct": correct, "correct_index": q["correct_index"], "points": 0,
-            "explanation": q.get("explanation"), "source_type": None, "source_ref": None}
+    return resp
 
 
 @router.get("/stats")

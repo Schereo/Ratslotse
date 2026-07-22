@@ -680,6 +680,35 @@ def test_own_quiz_is_per_account_and_validated(client):
                                               "stadtteil": "Atlantis"}).status_code == 400
 
 
+def test_own_quiz_estimate(client):
+    """RL-U14-Erweiterung: eigene Schätzfrage (category schaetzen) — Zahl statt
+    Optionen, Auto-Slider-Bereich, Nähe-Wertung ohne Punkte."""
+    _register(client)
+    r = client.post("/api/quiz/own", json={
+        "question": "Wie viele Einwohner hat Oldenburg?", "category": "schaetzen",
+        "answer_value": 172000, "unit": "Einwohner"})
+    assert r.status_code == 200
+    qid = r.json()["id"]
+    mine = client.get("/api/quiz/own").json()["questions"][0]
+    assert mine["qtype"] == "estimate" and mine["answer_value"] == 172000
+    assert mine["unit"] == "Einwohner"
+    assert mine["range_min"] == 0 and mine["range_max"] == 340000  # 0 bis ~2×, gerundet
+    # Runde: estimate-Felder da, aber die Lösung fehlt
+    q = client.get("/api/quiz/own/round?n=5").json()["questions"][0]
+    assert q["qtype"] == "estimate" and q["range_max"] == 340000 and "answer_value" not in q
+    # nahe Schätzung (≤15 %) = richtig, 0 Punkte; die Lösung kommt jetzt zurück
+    res = client.post("/api/quiz/own/answer", json={"question_id": qid, "value": 180000}).json()
+    assert res["correct"] is True and res["points"] == 0 and res["answer_value"] == 172000
+    assert client.post("/api/quiz/own/answer",
+                       json={"question_id": qid, "value": 50000}).json()["correct"] is False
+    # Zahl fehlt → 400; manueller Bereich, der die Zahl nicht umschließt → 400
+    assert client.post("/api/quiz/own", json={
+        "question": "Ohne Zahl?", "category": "schaetzen"}).status_code == 400
+    assert client.post("/api/quiz/own", json={
+        "question": "Bereich zu klein?", "category": "schaetzen", "answer_value": 100,
+        "range_min": 0, "range_max": 50}).status_code == 400
+
+
 def test_quiz_theme_stadtteil_binding(client):
     """RL-U13: Themen mit Entity-Geo tragen ihren Stadtteil im Katalog
     (Punkt-in-Polygon); Themen ohne Geo gelten als stadtweit (null)."""

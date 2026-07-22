@@ -243,11 +243,16 @@ CREATE TABLE IF NOT EXISTS user_quiz_questions (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     owner_id      INTEGER NOT NULL,
     question      TEXT NOT NULL,
-    options       TEXT NOT NULL,         -- JSON-Array, 2–4 Einträge
+    options       TEXT NOT NULL,         -- JSON-Array, 2–4 Einträge (leer bei estimate)
     correct_index INTEGER NOT NULL,
     stadtteil     TEXT,                  -- NULL = stadtweit
     category      TEXT NOT NULL,
     explanation   TEXT,
+    qtype         TEXT NOT NULL DEFAULT 'mc',  -- mc | estimate (Schätzfrage-Slider)
+    answer_value  REAL,                  -- estimate: richtige Zahl
+    answer_unit   TEXT,                  -- estimate: Einheit (optional)
+    range_min     REAL,                  -- estimate: Slider-Untergrenze
+    range_max     REAL,                  -- estimate: Slider-Obergrenze
     practiced     INTEGER NOT NULL DEFAULT 0,
     correct_count INTEGER NOT NULL DEFAULT 0,
     created_at    TEXT NOT NULL
@@ -366,6 +371,15 @@ class Store:
                     self._conn.execute(
                         "ALTER TABLE web_users ADD COLUMN password_set INTEGER NOT NULL DEFAULT 1"
                     )
+        # Schätzfrage-Slider für eigene Fragen (RL-U14-Erweiterung): Zahl-Felder
+        # zur seit RL-U14 bestehenden Tabelle nachziehen.
+        uq_cols = self._table_cols("user_quiz_questions")
+        if uq_cols:
+            with self._conn:
+                for col, ddl in (("qtype", "TEXT NOT NULL DEFAULT 'mc'"), ("answer_value", "REAL"),
+                                 ("answer_unit", "TEXT"), ("range_min", "REAL"), ("range_max", "REAL")):
+                    if col not in uq_cols:
+                        self._conn.execute(f"ALTER TABLE user_quiz_questions ADD COLUMN {col} {ddl}")
         self._conn.execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_web_users_apple_sub "
             "ON web_users(apple_sub) WHERE apple_sub IS NOT NULL"
@@ -724,11 +738,17 @@ class Store:
 
     @staticmethod
     def _user_quiz_row(r) -> dict:
+        keys = r.keys()
         return {"id": r["id"], "question": r["question"],
                 "options": json.loads(r["options"]), "correct_index": r["correct_index"],
                 "stadtteil": r["stadtteil"], "category": r["category"],
                 "explanation": r["explanation"], "practiced": r["practiced"],
-                "correct_count": r["correct_count"], "created_at": r["created_at"]}
+                "correct_count": r["correct_count"], "created_at": r["created_at"],
+                "qtype": (r["qtype"] if "qtype" in keys else None) or "mc",
+                "answer_value": r["answer_value"] if "answer_value" in keys else None,
+                "unit": r["answer_unit"] if "answer_unit" in keys else None,
+                "range_min": r["range_min"] if "range_min" in keys else None,
+                "range_max": r["range_max"] if "range_max" in keys else None}
 
     def list_user_quiz_questions(self, owner_id: int) -> list[dict]:
         """Alle eigenen Fragen eines Kontos, neueste zuerst — samt Übungs-
@@ -752,21 +772,26 @@ class Store:
         bearbeitende Frage nicht dem Konto gehört)."""
         now = datetime.utcnow().isoformat(timespec="seconds")
         opts = json.dumps(data["options"], ensure_ascii=False)
+        est = (data.get("qtype", "mc"), data.get("answer_value"), data.get("unit"),
+               data.get("range_min"), data.get("range_max"))
         with self._conn:
             if question_id is None:
                 cur = self._conn.execute(
                     "INSERT INTO user_quiz_questions (owner_id, question, options, "
-                    "correct_index, stadtteil, category, explanation, created_at) "
-                    "VALUES (?,?,?,?,?,?,?,?)",
+                    "correct_index, stadtteil, category, explanation, qtype, answer_value, "
+                    "answer_unit, range_min, range_max, created_at) "
+                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     (owner_id, data["question"], opts, data["correct_index"],
-                     data.get("stadtteil"), data["category"], data.get("explanation"), now))
+                     data.get("stadtteil"), data["category"], data.get("explanation"),
+                     *est, now))
                 return int(cur.lastrowid)
             cur = self._conn.execute(
                 "UPDATE user_quiz_questions SET question=?, options=?, correct_index=?, "
-                "stadtteil=?, category=?, explanation=?, practiced=0, correct_count=0 "
+                "stadtteil=?, category=?, explanation=?, qtype=?, answer_value=?, "
+                "answer_unit=?, range_min=?, range_max=?, practiced=0, correct_count=0 "
                 "WHERE owner_id = ? AND id = ?",
                 (data["question"], opts, data["correct_index"], data.get("stadtteil"),
-                 data["category"], data.get("explanation"), owner_id, question_id))
+                 data["category"], data.get("explanation"), *est, owner_id, question_id))
             return question_id if cur.rowcount else None
 
     def delete_user_quiz_question(self, owner_id: int, question_id: int) -> bool:
