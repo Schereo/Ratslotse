@@ -734,6 +734,19 @@ class Store:
         return [{"question_id": r["question_id"], "bad": r["bad"], "good": r["good"],
                  "comments": r["comments"]} for r in rows]
 
+    def quiz_admin_kennzahlen(self) -> dict:
+        """Admin-Quiz-Kennzahlen (Design 21a): ⌀ Trefferquote über alle
+        gespielten Antworten (%) und Anzahl aktuell gemeldeter Fragen (≥ 1×
+        „schlecht“)."""
+        row = self._conn.execute(
+            "SELECT COUNT(*) n, COALESCE(AVG(correct), 0) acc FROM quiz_answers"
+        ).fetchone()
+        gemeldet = self._conn.execute(
+            "SELECT COUNT(*) FROM (SELECT question_id FROM quiz_ratings "
+            "GROUP BY question_id HAVING SUM(verdict='schlecht') >= 1)"
+        ).fetchone()[0]
+        return {"antworten": row["n"], "avg_accuracy": round(row["acc"] * 100), "gemeldet": gemeldet}
+
     # ---- Quiz: eigene Fragen (RL-U14, privat je Konto) ----
 
     @staticmethod

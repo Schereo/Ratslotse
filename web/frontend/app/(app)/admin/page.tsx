@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { Prompt, WebUser, AdminStats, QuizFlagged } from "@/lib/types";
+import { Prompt, WebUser, AdminStats, QuizFlagged, AdminQuizStats } from "@/lib/types";
 import { Badge, Button, Card, ConfirmDialog, PageHeader, Spinner, Textarea, formatDate, toast } from "@/components/ui";
 import { AreaSparkline, StatKicker } from "@/components/admin-charts";
 import { cn } from "@/lib/utils";
@@ -254,7 +254,34 @@ function LlmUsageTab() {
   );
 }
 
+/** Prompt-key → Feature-Gruppe (Design 21a: nach Feature gruppiert). Reihenfolge
+ *  = Anzeigereihenfolge; unbekannte Präfixe landen unter „Weitere“. */
+const PROMPT_GROUPS: { label: string; match: (k: string) => boolean }[] = [
+  { label: "Frag den Rat", match: (k) => k.startsWith("qa_") },
+  { label: "Stadtrat", match: (k) => k.startsWith("council_") || k.startsWith("protokoll") || k.startsWith("committee_summary") || k.startsWith("ziel") },
+  { label: "Anreicherung", match: (k) => k.startsWith("interest") || k.startsWith("impact") || k.startsWith("entitaeten") || k.startsWith("recap") || k.startsWith("simple_summary") },
+  { label: "Quiz", match: (k) => k.startsWith("quiz") },
+  { label: "Themen", match: (k) => k.startsWith("vagueness") || k.startsWith("topic") },
+];
+function promptGroup(key: string): string {
+  return PROMPT_GROUPS.find((g) => g.match(key))?.label ?? "Weitere";
+}
+
+/** Einfacher Zeilen-Diff content↔default (Design 21a Diff-Vorschau): gleiche
+ *  Zeilen als Kontext, Rest als −/+ (grobe, aber ausreichende Vorschau). */
+function lineDiff(oldText: string, newText: string): { type: "ctx" | "del" | "add"; text: string }[] {
+  const a = oldText.split("\n");
+  const b = newText.split("\n");
+  const bSet = new Set(b);
+  const aSet = new Set(a);
+  const out: { type: "ctx" | "del" | "add"; text: string }[] = [];
+  for (const line of a) if (!bSet.has(line)) out.push({ type: "del", text: line });
+  for (const line of b) out.push({ type: aSet.has(line) ? "ctx" : "add", text: line });
+  return out;
+}
+
 function PromptsTab() {
+  const [q, setQ] = useState("");
   const { data: prompts = [], isPending, isError } = useQuery({
     queryKey: ["admin", "prompts"],
     queryFn: () => api.get<Prompt[]>("/admin/prompts"),
@@ -263,19 +290,56 @@ function PromptsTab() {
   if (isPending) return <Spinner />;
   if (isError) return <p className="text-sm text-destructive">Fehler beim Laden der Prompts.</p>;
 
+  const needle = q.trim().toLowerCase();
+  const filtered = needle
+    ? prompts.filter((p) => (p.title + p.key + p.description).toLowerCase().includes(needle))
+    : prompts;
+  const groups = PROMPT_GROUPS.map((g) => g.label).concat("Weitere");
+
   return (
-    <div className="space-y-4">
-      {prompts.map((p) => (
-        <PromptEditor key={p.key} prompt={p} />
-      ))}
+    <div className="space-y-5">
+      <div className="relative max-w-md">
+        <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Prompt suchen…"
+          className="h-9 w-full rounded-[10px] border border-input bg-card pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        />
+      </div>
+      {groups.map((label) => {
+        const items = filtered.filter((p) => promptGroup(p.key) === label);
+        if (!items.length) return null;
+        return (
+          <div key={label} className="space-y-3">
+            <StatKicker>{label}</StatKicker>
+            {items.map((p) => <PromptEditor key={p.key} prompt={p} />)}
+          </div>
+        );
+      })}
+      {filtered.length === 0 && <p className="text-sm text-muted-foreground">Kein Prompt passt zu „{q}".</p>}
     </div>
   );
+}
+
+function metaLine(prompt: Prompt): string | null {
+  if (!prompt.is_overridden) return null;
+  const who = prompt.updated_by ? `von ${prompt.updated_by.split("@")[0]}@` : null;
+  let when: string | null = null;
+  if (prompt.updated_at) {
+    const days = Math.round((Date.now() - new Date(prompt.updated_at + "Z").getTime()) / 86400000);
+    when = days <= 0 ? "heute" : days === 1 ? "gestern" : `vor ${days} Tagen`;
+  }
+  return ["geändert", who, when].filter(Boolean).join(" · ");
 }
 
 function PromptEditor({ prompt }: { prompt: Prompt }) {
   const qc = useQueryClient();
   const [content, setContent] = useState(prompt.content);
+  const [showDiff, setShowDiff] = useState(false);
   const dirty = content !== prompt.content;
+  const diff = lineDiff(prompt.default, content);
+  const changed = content !== prompt.default;
 
   const saveMutation = useMutation({
     mutationFn: (c: string) => api.put(`/admin/prompts/${prompt.key}`, { content: c }),
@@ -306,15 +370,21 @@ function PromptEditor({ prompt }: { prompt: Prompt }) {
             {prompt.is_overridden ? <Badge color="amber">angepasst</Badge> : <Badge color="green">Standard</Badge>}
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground">{prompt.description}</p>
+          {metaLine(prompt) && <p className="mt-0.5 text-xs text-muted-foreground/80">{metaLine(prompt)}</p>}
         </div>
         <code className="text-xs text-muted-foreground">{prompt.key}</code>
       </div>
       {/* Prompt-Templates sind „Code" — hier ist Mono gewollt (Platzhalter, Einrückung). */}
       <Textarea className="mt-3 font-mono" rows={Math.min(16, content.split("\n").length + 1)} value={content} onChange={(e) => setContent(e.target.value)} />
-      <div className="mt-3 flex items-center gap-2">
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         <Button size="sm" onClick={() => saveMutation.mutate(content)} disabled={busy || !dirty}>
           {saveMutation.isPending ? "Speichern…" : "Speichern"}
         </Button>
+        {changed && (
+          <Button variant="secondary" size="sm" onClick={() => setShowDiff((s) => !s)}>
+            {showDiff ? "Diff ausblenden" : "Diff zu Standard"}
+          </Button>
+        )}
         {prompt.is_overridden && (
           <Button variant="secondary" size="sm" onClick={() => resetMutation.mutate()} disabled={busy}>
             Auf Standard zurücksetzen
@@ -322,6 +392,26 @@ function PromptEditor({ prompt }: { prompt: Prompt }) {
         )}
         {dirty && <span className="text-xs text-amber-600">Ungespeicherte Änderungen</span>}
       </div>
+      {showDiff && changed && (
+        <div className="mt-3 overflow-hidden rounded-xl border border-border">
+          <p className="border-b border-border px-3 py-2 text-xs font-medium text-muted-foreground">Diff-Vorschau · {prompt.key}</p>
+          <div className="max-h-72 overflow-auto font-mono text-[11px] leading-relaxed">
+            {diff.map((d, i) => (
+              <div
+                key={i}
+                className={cn(
+                  "whitespace-pre-wrap px-3 py-0.5",
+                  d.type === "del" && "bg-destructive/10 text-destructive",
+                  d.type === "add" && "bg-green-500/10 text-green-700 dark:text-green-400",
+                  d.type === "ctx" && "text-muted-foreground",
+                )}
+              >
+                {d.type === "del" ? "− " : d.type === "add" ? "+ " : "  "}{d.text || " "}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </Card>
   );
 }
@@ -397,8 +487,14 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
 /** Schlecht bewertete Quizfragen (👎) sichten und ausmustern. Ausgemusterte
  *  Fragen fliegen aus künftigen Runden; der nächste Generierungslauf füllt das
  *  Gebiet wieder auf. Datenquelle: GET /admin/quiz/flagged. */
+const AREA_TYPE_LABEL: Record<string, string> = { stadtteil: "", wahlbereich: "Wahlbereich ", thema: "" };
+
 function QuizModerationTab() {
   const qc = useQueryClient();
+  const statsQuery = useQuery({
+    queryKey: ["admin", "quiz", "stats"],
+    queryFn: () => api.get<AdminQuizStats>("/admin/quiz/stats"),
+  });
   const { data, isPending, isError } = useQuery({
     queryKey: ["admin", "quiz", "flagged"],
     queryFn: () => api.get<{ flagged: QuizFlagged[] }>("/admin/quiz/flagged"),
@@ -409,6 +505,7 @@ function QuizModerationTab() {
     onSuccess: () => {
       toast.success("Frage ausgemustert. Der nächste Generierungslauf erzeugt Ersatz.");
       qc.invalidateQueries({ queryKey: ["admin", "quiz", "flagged"] });
+      qc.invalidateQueries({ queryKey: ["admin", "quiz", "stats"] });
     },
     onError: () => toast.error("Frage konnte nicht ausgemustert werden."),
   });
@@ -416,15 +513,37 @@ function QuizModerationTab() {
   if (isPending) return <Spinner />;
   if (isError) return <p className="text-sm text-destructive">Fehler beim Laden der Bewertungen.</p>;
   const flagged = data?.flagged ?? [];
-  if (!flagged.length)
-    return (
-      <Card className="p-8 text-center text-sm text-muted-foreground">
-        Keine schlecht bewerteten Fragen. 🎉
-      </Card>
-    );
+  const stats = statsQuery.data;
+  const low = stats?.gebiete_niedrig ?? [];
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-5">
+      {/* Kennzahlen (21a). */}
+      {stats && (
+        <div className="grid grid-cols-3 gap-3">
+          <Card className="p-3.5"><p className="font-display text-xl font-extrabold leading-none tabular-nums">{stats.fragen_aktiv.toLocaleString("de-DE")}</p><p className="mt-1 text-[11px] text-muted-foreground">Fragen aktiv</p></Card>
+          <Card className="p-3.5"><p className="font-display text-xl font-extrabold leading-none tabular-nums">{stats.avg_accuracy} %</p><p className="mt-1 text-[11px] text-muted-foreground">⌀ Trefferquote</p></Card>
+          <Card className="p-3.5"><p className="font-display text-xl font-extrabold leading-none tabular-nums">{stats.gemeldet}</p><p className="mt-1 text-[11px] text-muted-foreground">gemeldet 👎</p></Card>
+        </div>
+      )}
+
+      {/* Gebiets-Warnung (21a). */}
+      {low.length > 0 && (
+        <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/[0.06] p-3">
+          <svg className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" /><path d="M12 9v4" /><path d="M12 17h.01" /></svg>
+          <div className="min-w-0">
+            <p className="text-[12.5px] font-semibold text-amber-700 dark:text-amber-500">{low.length} {low.length === 1 ? "Gebiet" : "Gebiete"} bald leer</p>
+            <p className="mt-0.5 text-[11.5px] leading-relaxed text-muted-foreground">
+              {low.slice(0, 6).map((g) => `${AREA_TYPE_LABEL[g.area_type] ?? ""}${g.area_key} (${g.n})`).join(", ")}
+              {low.length > 6 && ` … +${low.length - 6}`} offene Fragen. Der nächste Generierungslauf füllt sie auf.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {flagged.length === 0 ? (
+        <Card className="p-8 text-center text-sm text-muted-foreground">Keine schlecht bewerteten Fragen. 🎉</Card>
+      ) : (<>
       <p className="text-sm text-muted-foreground">
         Von Nutzer:innen als „schlecht" markierte Fragen, meist-gemeldete zuerst.
         Ausmustern nimmt die Frage aus künftigen Runden.
@@ -454,6 +573,7 @@ function QuizModerationTab() {
           </div>
         ))}
       </Card>
+      </>)}
     </div>
   );
 }

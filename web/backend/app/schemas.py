@@ -80,6 +80,9 @@ class PromptOut(BaseModel):
     content: str
     default: str
     is_overridden: bool
+    # Design 21a: „geändert von … · wann“.
+    updated_at: str | None = None
+    updated_by: str | None = None
 
 
 class PromptUpdate(BaseModel):

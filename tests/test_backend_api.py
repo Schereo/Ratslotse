@@ -102,8 +102,20 @@ def test_admin_prompts_crud(client):
     key = "council_watcher_system"
     upd = client.put(f"/api/admin/prompts/{key}", json={"content": "Angepasster Watcher-Systemprompt."})
     assert upd.status_code == 200 and upd.json()["is_overridden"] is True
+    # Design 21a: „geändert von … · wann“ wird mitgeführt.
+    assert upd.json()["updated_by"] == "admin@test.de" and upd.json()["updated_at"]
     rst = client.post(f"/api/admin/prompts/{key}/reset")
     assert rst.json()["is_overridden"] is False
+
+
+def test_admin_quiz_stats(client):
+    """Design 21a: Quiz-Kennzahlen + Gebiets-Warnung (leere DB → Nullen)."""
+    _register(client)
+    r = client.get("/api/admin/quiz/stats")
+    assert r.status_code == 200
+    body = r.json()
+    assert set(body) >= {"fragen_aktiv", "avg_accuracy", "gemeldet", "gebiete_niedrig"}
+    assert body["fragen_aktiv"] == 0 and body["gebiete_niedrig"] == []
 
 
 def test_admin_endpoints_forbidden_for_regular_user(client):

@@ -63,6 +63,30 @@ def stats(
     return data
 
 
+@router.get("/quiz/stats")
+def quiz_stats(
+    _admin: dict = Depends(require_admin),
+    store: Store = Depends(get_store),
+    council: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Quiz-Kennzahlen für den Admin-Tab (Design 21a): aktive Fragen, ⌀
+    Trefferquote, Meldungen + Gebiete mit wenigen offenen Fragen („bald leer“,
+    aufsteigend — Generierung anstoßen)."""
+    total = council.quiz_stats_total()
+    k = store.quiz_admin_kennzahlen()
+    low = council.quiz_counts_below(5)  # < 5 aktive Fragen = bald leer
+    gebiete = sorted(
+        ({"area_type": at, "area_key": ak, "n": n} for (at, ak), n in low.items()),
+        key=lambda g: g["n"],
+    )
+    return {
+        "fragen_aktiv": total["fragen"],
+        "avg_accuracy": k["avg_accuracy"],
+        "gemeldet": k["gemeldet"],
+        "gebiete_niedrig": gebiete,
+    }
+
+
 @router.get("/llm-usage")
 def llm_usage(_admin: dict = Depends(require_admin)) -> dict:
     """LLM-Kosten-Dashboard (Design 21a): per-Feature-Aggregat + 30-Tage-Verlauf,
@@ -78,13 +102,13 @@ def list_prompts(_admin: dict = Depends(require_admin)) -> list[PromptOut]:
 
 
 @router.put("/prompts/{key}", response_model=PromptOut)
-def update_prompt(key: str, body: PromptUpdate, _admin: dict = Depends(require_admin)) -> PromptOut:
+def update_prompt(key: str, body: PromptUpdate, admin: dict = Depends(require_admin)) -> PromptOut:
     if key not in prompts.DEFAULTS:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Unbekannter Prompt.")
     error = prompts.validate_template(key, body.content)
     if error:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Ungültiges Template: {error}")
-    prompts.set_content(key, body.content)
+    prompts.set_content(key, body.content, by=admin.get("email"))
     return PromptOut(**next(p for p in prompts.list_all() if p["key"] == key))
 
 

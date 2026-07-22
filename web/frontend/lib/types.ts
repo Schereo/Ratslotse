@@ -332,6 +332,15 @@ export interface Prompt {
   content: string;
   default: string;
   is_overridden: boolean;
+  updated_at?: string | null;
+  updated_by?: string | null;
+}
+
+export interface AdminQuizStats {
+  fragen_aktiv: number;
+  avg_accuracy: number;
+  gemeldet: number;
+  gebiete_niedrig: { area_type: string; area_key: string; n: number }[];
 }
 
 export interface WebUser {
