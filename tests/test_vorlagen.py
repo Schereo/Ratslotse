@@ -219,6 +219,22 @@ def test_qa_context_includes_vorlage_excerpt():
     assert "Aus der Vorlage" not in _build_context([{"id": 6, "title": "X", "summary": "S"}])
 
 
+def test_qa_context_marks_impact_extremes_only():
+    """Tragweite fließt als Hinweis in den QA-Kontext — aber nur an den Skalen-Enden
+    (hoch mit Begründung, gering als Formalie); das Mittelfeld bleibt still."""
+    from council.qa import _build_context
+
+    hoch = _build_context([{"id": 1, "title": "Haushalt", "summary": "S",
+                            "impact": 85, "impact_reason": "Bindet Millionen."}])
+    assert "— Tragweite: hoch (Bindet Millionen.)" in hoch
+    gering = _build_context([{"id": 2, "title": "Berufung", "summary": "S", "impact": 5}])
+    assert "— Tragweite: gering (Formalie)" in gering
+    mitte = _build_context([{"id": 3, "title": "B-Plan", "summary": "S", "impact": 50}])
+    assert "Tragweite" not in mitte
+    ohne = _build_context([{"id": 4, "title": "Neu", "summary": "S"}])
+    assert "Tragweite" not in ohne
+
+
 def test_list_entities_recency_and_trending_tags(store):
     """Aktualitäts-Felder je Entity + Trend-Tags der letzten Monate."""
     from datetime import date, timedelta
