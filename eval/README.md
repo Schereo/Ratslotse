@@ -12,6 +12,13 @@ sollen messbar besser/schlechter werden, statt „gefühlt".
 | `digest` | NWZ-Matching gesamt (Pass 1 + Verify) | `nwz.classify.build_digest` | Label-Sets | `cases_digest.json` |
 | `watcher` | Tagesordnung → Thema | `council.watcher._classify_agenda` | Label-Sets | `cases_watcher.json` |
 | `committee` | Routine-Filter (Inhalt ja/nein) | `council.committee_summary.summarize_agenda` | binär | `cases_committee.json` |
+| `qa` | KI-Frage: Retrieval + Antwort-Zitate (A/B mit/ohne Tragweite) | `council.qa` + `council.embeddings` | Trefferquote/MRR + Zitat-Metriken | `cases_qa.json` |
+
+Die `qa`-Suite (`run_qa.py`) braucht die **echte** `council.sqlite` (Embeddings,
+FTS, Reranker-Modell) und läuft deshalb praktisch nur auf dem Server:
+`python eval/run_qa.py --rate-missing --save`. Sie ist bewusst nicht Teil von
+`run_all.py`. Daneben gibt es `scripts/eval_ai.py` als groben Smoke-Test
+(Keyword-Erwartungen, `tests/eval/*.jsonl`) über Themenfeld/Stance/QA.
 
 **Binär**: eine Ja/Nein-Entscheidung pro Fall → TP/FP/TN/FN + Precision/Recall/F1.
 **Label-Sets**: pro Fall wird eine *Menge* von Treffern vorhergesagt (z. B. die

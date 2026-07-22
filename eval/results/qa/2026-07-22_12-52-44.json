@@ -1,0 +1,302 @@
+{
+  "suite": "qa",
+  "timestamp": "2026-07-22T12:52:44",
+  "cases": 14,
+  "retrieval": {
+    "hit_rate": 0.9286,
+    "mrr": 0.6996
+  },
+  "arms": {
+    "mit_tragweite": {
+      "cite_expected_rate": 0.7143,
+      "citations": 44,
+      "formality_citations": 9,
+      "lead_formality_cases": 1
+    },
+    "ohne_tragweite": {
+      "cite_expected_rate": 0.3571,
+      "citations": 23,
+      "formality_citations": 7,
+      "lead_formality_cases": 0
+    }
+  },
+  "details": [
+    {
+      "id": "stadion",
+      "expected": [
+        5621,
+        5402,
+        5459,
+        5656,
+        5442,
+        5690,
+        5797
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 1,
+      "cited_mit": [],
+      "cited_ohne": []
+    },
+    {
+      "id": "fahrradstrassen",
+      "expected": [
+        7171,
+        7533,
+        5597,
+        3907,
+        373,
+        1532
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 4,
+      "cited_mit": [
+        5056,
+        5172,
+        7171,
+        7533,
+        7070
+      ],
+      "cited_ohne": [
+        5172,
+        5056,
+        7533,
+        7171,
+        7070,
+        8525,
+        7704
+      ]
+    },
+    {
+      "id": "fliegerhorst-abfall",
+      "expected": [
+        7739,
+        7837,
+        7531,
+        7532
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 1,
+      "cited_mit": [
+        7837,
+        7739
+      ],
+      "cited_ohne": []
+    },
+    {
+      "id": "wechloy-neubau",
+      "expected": [
+        7282,
+        6842,
+        6876,
+        6696,
+        6598,
+        6998,
+        6753,
+        6816
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 1,
+      "cited_mit": [
+        6696,
+        6876,
+        6842,
+        6753,
+        6598,
+        6998,
+        7282
+      ],
+      "cited_ohne": [
+        6998,
+        7282,
+        6696,
+        6876,
+        6842,
+        6753,
+        6598
+      ]
+    },
+    {
+      "id": "vergnuegungssteuer",
+      "expected": [
+        8056,
+        7864,
+        8002,
+        7972,
+        7089,
+        7270
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 1,
+      "cited_mit": [
+        8056,
+        8002,
+        7972
+      ],
+      "cited_ohne": [
+        8056,
+        8002,
+        7864
+      ]
+    },
+    {
+      "id": "huntebruecke",
+      "expected": [
+        8355,
+        8105
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 1,
+      "cited_mit": [
+        8355,
+        8105
+      ],
+      "cited_ohne": [
+        8355,
+        8105
+      ]
+    },
+    {
+      "id": "lachgas",
+      "expected": [
+        7452,
+        7662,
+        7839,
+        7400
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 1,
+      "cited_mit": [
+        7452,
+        7662,
+        7400
+      ],
+      "cited_ohne": [
+        7452,
+        7662,
+        7400
+      ]
+    },
+    {
+      "id": "machatschkala",
+      "expected": [
+        6169,
+        6571,
+        6652,
+        6301
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 1,
+      "cited_mit": [
+        6652,
+        6571,
+        6169,
+        6301
+      ],
+      "cited_ohne": []
+    },
+    {
+      "id": "maerchen-strassen",
+      "expected": [
+        7477,
+        7478,
+        7476,
+        7648,
+        7649,
+        7651
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 9,
+      "cited_mit": [
+        7650,
+        7651
+      ],
+      "cited_ohne": []
+    },
+    {
+      "id": "summer-street",
+      "expected": [
+        5207,
+        5367,
+        4480,
+        4635,
+        5069
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 1,
+      "cited_mit": [],
+      "cited_ohne": []
+    },
+    {
+      "id": "baeder-finanzen",
+      "expected": [
+        8197,
+        7061,
+        6840,
+        5911
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 3,
+      "cited_mit": [
+        8197,
+        7061,
+        5911,
+        7971
+      ],
+      "cited_ohne": []
+    },
+    {
+      "id": "klimaneutral",
+      "expected": [
+        7617,
+        4183
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 1,
+      "cited_mit": [
+        3588,
+        5564,
+        8230,
+        7617,
+        3104,
+        3387
+      ],
+      "cited_ohne": []
+    },
+    {
+      "id": "grundschulen-aktuell",
+      "expected": [
+        8425,
+        8312,
+        7282,
+        6842
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": null,
+      "cited_mit": [
+        8313,
+        7279
+      ],
+      "cited_ohne": [
+        8313
+      ]
+    },
+    {
+      "id": "wohnraum",
+      "expected": [
+        5291,
+        5630,
+        2163,
+        2725
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 10,
+      "cited_mit": [
+        1498,
+        2275,
+        7582,
+        5470
+      ],
+      "cited_ohne": []
+    }
+  ]
+}

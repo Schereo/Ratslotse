@@ -1,0 +1,86 @@
+[
+  {
+    "id": "stadion",
+    "note": "Stadionneubau Maastrichter Str. — Grundsatz + Bewilligungen 2023",
+    "question": "Was wurde zum Stadionneubau an der Maastrichter Straße beschlossen?",
+    "expected_ids": [5621, 5402, 5459, 5656, 5442, 5690, 5797]
+  },
+  {
+    "id": "fahrradstrassen",
+    "note": "Fahrradstraßen quer durch die Jahre (Haareneschstr., Quellenweg, Achterdiek …)",
+    "question": "Welche Fahrradstraßen wurden in Oldenburg beschlossen?",
+    "expected_ids": [7171, 7533, 5597, 3907, 373, 1532]
+  },
+  {
+    "id": "fliegerhorst-abfall",
+    "note": "Illegale Abfallentsorgung/Korruptionsverdacht Schießstand — Kette 2024/2025; 7739 ist der folgenreiche Kernbeschluss",
+    "question": "Was unternimmt die Stadt gegen die illegale Abfallentsorgung auf dem Fliegerhorst?",
+    "expected_ids": [7739, 7837, 7531, 7532]
+  },
+  {
+    "id": "wechloy-neubau",
+    "note": "Neubau Grundschule Wechloy — Beratungskette 2024, Ablehnung am 25.11.2024 (7282)",
+    "question": "Was wurde zum Neubau der Grundschule Wechloy entschieden?",
+    "expected_ids": [7282, 6842, 6876, 6696, 6598, 6998, 6753, 6816]
+  },
+  {
+    "id": "vergnuegungssteuer",
+    "note": "Verzicht auf Vergnügungssteuer bei Tanzveranstaltungen + Satzungsänderung 2024/2025",
+    "question": "Wurde die Vergnügungssteuer auf Tanzveranstaltungen abgeschafft?",
+    "expected_ids": [8056, 7864, 8002, 7972, 7089, 7270]
+  },
+  {
+    "id": "huntebruecke",
+    "note": "Resolution zum Neubau der Huntebrücke (Dringlichkeitsantrag + Ratsbeschluss 2025)",
+    "question": "Gibt es eine Resolution des Rats zur Huntebrücke?",
+    "expected_ids": [8355, 8105]
+  },
+  {
+    "id": "lachgas",
+    "note": "Lachgas-Verkaufsverbot an Minderjährige — Verordnungskette 2025",
+    "question": "Was hat die Stadt zum Verkauf von Lachgas an Minderjährige beschlossen?",
+    "expected_ids": [7452, 7662, 7839, 7400]
+  },
+  {
+    "id": "machatschkala",
+    "note": "Städtepartnerschaft Machatschkala — CDU-Antrag, mehrfach beraten/vertagt",
+    "question": "Was wurde zur Städtepartnerschaft mit Machatschkala entschieden?",
+    "expected_ids": [6169, 6571, 6652, 6301]
+  },
+  {
+    "id": "maerchen-strassen",
+    "note": "Märchen-Straßennamen (Rotkäppchen-/Schneewittchen-/Rapunzelweg) 2025",
+    "question": "Welche Straßen wurden nach Märchenfiguren benannt?",
+    "expected_ids": [7477, 7478, 7476, 7648, 7649, 7651]
+  },
+  {
+    "id": "summer-street",
+    "note": "Summer Street Schloßplatz — Antrag 2022, Beschluss 11/2022, Absage/Umplanung",
+    "question": "Was wurde zur Summer Street am Schloßplatz beschlossen?",
+    "expected_ids": [5207, 5367, 4480, 4635, 5069]
+  },
+  {
+    "id": "baeder-finanzen",
+    "note": "BBGO-Jahresabschlüsse (Fehlbeträge) — neueste zuerst erwartet",
+    "question": "Wie steht es finanziell um die Bäderbetriebsgesellschaft?",
+    "expected_ids": [8197, 7061, 6840, 5911]
+  },
+  {
+    "id": "klimaneutral",
+    "note": "Klimaneutralität — Maßnahmenplan 2035, klimaneutrale Gebäude",
+    "question": "Was wurde zur Klimaneutralität der Stadt beschlossen?",
+    "expected_ids": [7617, 4183]
+  },
+  {
+    "id": "grundschulen-aktuell",
+    "note": "Formalien-Konkurrenz-Fall: generische Schul-Frage, Berufungen in den Schulausschuss ranken mit — Antwort soll Substanz (Zügigkeit/Neubau) zitieren",
+    "question": "Was wurde zuletzt zu Grundschulen beschlossen?",
+    "expected_ids": [8425, 8312, 7282, 6842]
+  },
+  {
+    "id": "wohnraum",
+    "note": "Bezahlbarer Wohnraum — Konzepte, Grundsatzbeschluss Wohnbaugrundstücke, Wohnungsbaugesellschaft",
+    "question": "Was tut die Stadt für bezahlbaren Wohnraum?",
+    "expected_ids": [5291, 5630, 2163, 2725]
+  }
+]
