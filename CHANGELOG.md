@@ -197,6 +197,11 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   (der iOS-Bedienungshilfen-Zoom funktioniert weiterhin). (#241)
 
 ### Behoben
+- **Lotti-Tour: Sprechblase läuft auf schmalen iPhones nicht mehr über den Rand.**
+  Im letzten Tour-Schritt („Leinen los!") ragte die Karte — samt „Erste Frage
+  stellen"-Knopf — rechts aus dem Bildschirm, weil die breitere Button-Zeile die
+  Karte nicht schrumpfen ließ. Die Karte darf jetzt bis in den verfügbaren Platz
+  schrumpfen, und die Knopf-Zeile bricht bei Bedarf um. (#275)
 - **Ausschuss-Filter (Beschluss-Suche) zeigt jetzt Kurznamen.** Im „Ausschuss"-
   Dropdown standen die langen amtlichen Namen und wurden mit „…" abgeschnitten;
   jetzt greift auch dort die Kurzname-Logik — Kurzname als Zeile, der volle Name

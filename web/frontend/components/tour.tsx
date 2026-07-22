@@ -249,7 +249,7 @@ export function GuidedTour() {
       >
         <div className={rect ? "flex items-end gap-2" : "flex w-[min(92vw,360px)] items-end gap-2"}>
           <Mascot pose={step.pose} className="h-16 w-16 shrink-0 drop-shadow-lg" />
-          <div className="relative flex-1 rounded-2xl rounded-bl-sm border border-border bg-card p-4 shadow-lifted">
+          <div className="relative min-w-0 flex-1 rounded-2xl rounded-bl-sm border border-border bg-card p-4 shadow-lifted">
             <button
               type="button"
               onClick={end}
@@ -260,8 +260,8 @@ export function GuidedTour() {
             </button>
             <p className="pr-6 font-display text-base font-bold text-foreground">{step.title}</p>
             <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{step.text}</p>
-            <div className="mt-3.5 flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1" aria-label={`Schritt ${stepIndex + 1} von ${STEPS.length}`}>
+            <div className="mt-3.5 flex flex-wrap items-center justify-end gap-x-2 gap-y-2">
+              <div className="mr-auto flex items-center gap-1" aria-label={`Schritt ${stepIndex + 1} von ${STEPS.length}`}>
                 {STEPS.map((s, i) => (
                   <span
                     key={s.id}
