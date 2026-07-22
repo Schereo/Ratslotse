@@ -21,14 +21,15 @@ export const metadata: Metadata = {
 
 // Bento-Anordnung statt drei gleicher Spalten: `wide`-Karten spannen auf
 // Desktop zwei Spalten (Zick-Zack 2-1 / 1-2 / 1-2), `hero` hebt das
-// Killerfeature farblich heraus.
+// Killerfeature farblich heraus. RL-U08: jede Karte verlinkt auf ihr Ziel —
+// der Login-Gate der App übernimmt, wenn noch kein Konto da ist.
 const FEATURES = [
-  { icon: Sparkles, title: "Frag den Rat", desc: "Stell eine Frage in normaler Sprache; die KI findet die passenden Beschlüsse und antwortet mit Quellen und Fußnoten.", wide: true, hero: true },
-  { icon: Search, title: "Beschlüsse durchsuchen", desc: "Volltextsuche mit Filtern nach Fraktion, Themenfeld und Geldbeträgen — statt PDF-Wälzen." },
-  { icon: MapPin, title: "Themen & Karte", desc: "Orte, Straßen und Projekte mit KI-Beschreibung — und auf einer Stadtkarte, wo der Rat aktiv ist." },
-  { icon: BarChart3, title: "Analyse", desc: "Wer ist im Rat präsent, wo fließt das Geld, welche Themen bewegen — Parteien, Personen, Finanzen, Trends.", wide: true },
-  { icon: Landmark, title: "Amtliche Quelle", desc: "Direkt aus dem Ratsinformationssystem der Stadt Oldenburg, verlinkt zu den Originaldokumenten." },
-  { icon: Bell, title: "Benachrichtigungen", desc: "Lege Themen an und werde bei neuen Beschlüssen informiert — per Push oder E-Mail, sobald der Rat entscheidet.", wide: true },
+  { icon: Sparkles, title: "Frag den Rat", desc: "Stell eine Frage in normaler Sprache; die KI findet die passenden Beschlüsse und antwortet mit Quellen und Fußnoten.", href: "/council?tab=decisions&mode=fragen", wide: true, hero: true },
+  { icon: Search, title: "Beschlüsse durchsuchen", desc: "Volltextsuche mit Filtern nach Fraktion, Themenfeld und Geldbeträgen — statt PDF-Wälzen.", href: "/council" },
+  { icon: MapPin, title: "Themen & Karte", desc: "Orte, Straßen und Projekte mit KI-Beschreibung — und auf einer Stadtkarte, wo der Rat aktiv ist.", href: "/council?tab=themen" },
+  { icon: BarChart3, title: "Analyse", desc: "Wer ist im Rat präsent, wo fließt das Geld, welche Themen bewegen — Parteien, Personen, Finanzen, Trends.", href: "/council?tab=analysis", wide: true },
+  { icon: Landmark, title: "Amtliche Quelle", desc: "Direkt aus dem Ratsinformationssystem der Stadt Oldenburg, verlinkt zu den Originaldokumenten.", href: "/docs" },
+  { icon: Bell, title: "Benachrichtigungen", desc: "Lege Themen an und werde bei neuen Beschlüssen informiert — per Push oder E-Mail, sobald der Rat entscheidet.", href: "/topics", wide: true },
 ];
 
 export default function LandingPage() {
@@ -112,28 +113,35 @@ export default function LandingPage() {
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {FEATURES.map((f, i) => {
                 const Icon = f.icon;
-                return (
-                  <Reveal key={f.title} delay={i * 80} className={f.wide ? "lg:col-span-2" : undefined}>
-                    <div
+                const card = (
+                  <div
+                    className={cn(
+                      "h-full rounded-xl border p-5 transition-[box-shadow,border-color] duration-200",
+                      "[@media(hover:hover)_and_(pointer:fine)]:hover:border-primary/30 [@media(hover:hover)_and_(pointer:fine)]:hover:shadow-lifted",
+                      f.hero
+                        ? "border-primary/25 bg-gradient-to-br from-primary/[0.07] to-transparent"
+                        : "border-border bg-background",
+                    )}
+                  >
+                    <span
                       className={cn(
-                        "h-full rounded-xl border p-5 transition-[box-shadow,border-color] duration-200",
-                        "[@media(hover:hover)_and_(pointer:fine)]:hover:border-primary/30 [@media(hover:hover)_and_(pointer:fine)]:hover:shadow-lifted",
-                        f.hero
-                          ? "border-primary/25 bg-gradient-to-br from-primary/[0.07] to-transparent"
-                          : "border-border bg-background",
+                        "flex h-10 w-10 items-center justify-center rounded-lg",
+                        f.hero ? "bg-primary text-primary-foreground shadow-sm shadow-primary/30" : "bg-primary/10 text-primary",
                       )}
                     >
-                      <span
-                        className={cn(
-                          "flex h-10 w-10 items-center justify-center rounded-lg",
-                          f.hero ? "bg-primary text-primary-foreground shadow-sm shadow-primary/30" : "bg-primary/10 text-primary",
-                        )}
-                      >
-                        <Icon className="h-5 w-5" />
-                      </span>
-                      <h3 className="mt-3 font-semibold text-foreground">{f.title}</h3>
-                      <p className="mt-1 max-w-prose text-sm leading-relaxed text-muted-foreground">{f.desc}</p>
-                    </div>
+                      <Icon className="h-5 w-5" />
+                    </span>
+                    <h3 className="mt-3 font-semibold text-foreground">{f.title}</h3>
+                    <p className="mt-1 max-w-prose text-sm leading-relaxed text-muted-foreground">{f.desc}</p>
+                  </div>
+                );
+                const linkClass = "block h-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
+                return (
+                  <Reveal key={f.title} delay={i * 80} className={f.wide ? "lg:col-span-2" : undefined}>
+                    {/* /docs liegt außerhalb des App-Routers — plain <a>. */}
+                    {f.href === "/docs"
+                      ? <a href={f.href} className={linkClass}>{card}</a>
+                      : <Link href={f.href} className={linkClass}>{card}</Link>}
                   </Reveal>
                 );
               })}
