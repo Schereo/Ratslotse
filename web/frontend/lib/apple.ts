@@ -32,7 +32,9 @@ async function loadAppleJs(): Promise<AppleIdSdk | null> {
   if (w.AppleID) return w.AppleID;
   await new Promise<void>((resolve, reject) => {
     const s = document.createElement("script");
-    s.src = "https://appleid.cdn-apple.com/appleauth/static/jwt/appleid.auth.js";
+    // Achtung: Apples SDK-Pfad ist versioniert + lokalisiert — der ältere
+    // „…/static/jwt/…"-Pfad liefert inzwischen 403.
+    s.src = "https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/de_DE/appleid.auth.js";
     s.async = true;
     s.onload = () => resolve();
     s.onerror = () => reject(new Error("Apple-Script nicht ladbar"));
