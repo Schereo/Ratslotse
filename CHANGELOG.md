@@ -7,6 +7,18 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert
+- **Feinschliff aus dem UX-Review (Runde 2):** Suchfelder haben jetzt eine
+  **Löschen-Taste** (✕) und die iPhone-Tastatur zeigt „Suchen" statt „Return";
+  ein Seitenwechsel in der Beschlussliste springt **zurück zum Listenanfang**;
+  ist Sitzungspause, erklärt der leere „Kommend"-Tab das jetzt selbst (mit
+  schlafender Lotti und Absprung zu vergangenen Sitzungen); auf schmalen
+  Handys wandert der **Geldbetrag** einer Beschluss-Karte unter den Titel
+  statt ihn zusammenzuquetschen; die **Feature-Karten der Startseite sind
+  klickbar**; das Logo auf Login/Registrieren führt **zurück zur Startseite**;
+  und in der iPhone-App ist versehentliches **Rein-Zoomen jetzt ganz aus**
+  (der iOS-Bedienungshilfen-Zoom funktioniert weiterhin). (#241)
+
 ### Behoben
 - Die Suche (Lupe bzw. ⌘K) **zoomt in der iPhone-App nicht mehr ungewollt
   hinein**: Das Eingabefeld der Befehls-Palette nutzt auf Mobilgeräten jetzt
