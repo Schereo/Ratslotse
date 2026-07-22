@@ -69,6 +69,13 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   mit dem Protokoll. (#247)
 
 ### Geändert
+- **Analyse → Trends: „Rückblick je Themenfeld" wird scanbar.** Die Karten
+  zeigen jetzt standardmäßig nur die **Kernaussage + Zahl**; die vier
+  Stichpunkte klappen per **„4 Kernpunkte anzeigen"** auf (Zustand je Feld
+  gemerkt). Der Kern jedes Stichpunkts ist **gefettet**, eine **Filter-Chip-
+  Zeile** setzt den Fokus auf ein Themenfeld, und **„Alle ausklappen"** öffnet
+  alles auf einmal. Gleiche Infos, weniger Textwand — auf einen Blick
+  erfassbar. (#266)
 - **Quiz-Startseite mit klarer Hierarchie:** Statt fünf gleich aussehender
   Zeilen wandern die Kernzahlen (Punkte, Trefferquote, Serie) jetzt in den
   Seitenkopf, „Weiterspielen" wird zur **Hero-Karte** mit Lotti und der
