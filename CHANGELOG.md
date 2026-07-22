@@ -107,6 +107,11 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   (der iOS-Bedienungshilfen-Zoom funktioniert weiterhin). (#241)
 
 ### Behoben
+- Die **Filter-Pillen der Beschluss-Suche zeigen jetzt ihre Auswahl**: Wer
+  auf „Berichte" oder „Alle Vorgänge" umschaltet, sieht das direkt in der
+  Pille (farblich gefüllt statt weiter „Beschlüsse"), und der
+  Sortierung-Knopf trägt die gewählte Reihenfolge („Spannendste zuerst" …)
+  statt stumm „Sortierung". (#257)
 - Die Suche (Lupe bzw. ⌘K) **zoomt in der iPhone-App nicht mehr ungewollt
   hinein**: Das Eingabefeld der Befehls-Palette nutzt auf Mobilgeräten jetzt
   16 px Schriftgröße — darunter vergrößert iOS beim Antippen automatisch die
