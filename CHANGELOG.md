@@ -76,6 +76,14 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   mit dem Protokoll. (#247)
 
 ### Geändert
+- **Beschluss-Karten in klaren Zonen (Design 22a).** Jede Karte in der Suche
+  folgt jetzt einer festen Reihenfolge: **Statuszeile** (Ergebnis-Punkt +
+  „Wichtig" zusammen, Pfeil rechts), darunter ruhig **Gremium · Datum · TOP**,
+  dann **Titel + zweizeiliger Auszug**, und unten eine **Fußzeile** mit
+  Abstimmung und Antragsteller links sowie dem **Betrag als betontem rechten
+  Anker** („57,3 Mio. € · im Beschluss"). Fehlt ein Teil (kein Betrag, kein
+  Auszug), fällt seine Zone einfach weg — nichts rutscht mehr durcheinander.
+  Besonders auf dem Handy sind die Karten dadurch deutlich ruhiger. (#PR)
 - **Lange Ausschussnamen werden lesbar — überall.** Sperrige amtliche Namen wie
   „Ausschuss für Wirtschaftsförderung, Digitalisierung und internationale
   Zusammenarbeit" wurden in Karten, Chips und Dropdowns hart abgeschnitten
