@@ -3,6 +3,7 @@ import path from "node:path";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BrandMark } from "@/components/brand";
+import { BackLink } from "@/components/back-link";
 
 export const metadata: Metadata = {
   title: "Changelog – Ratslotse",
@@ -70,9 +71,12 @@ export default function ChangelogPage() {
   const versions = parse(readChangelog());
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-5 py-4">
-          <Link href="/" className="flex items-center gap-2"><BrandMark /><span className="font-semibold text-foreground">Ratslotse</span></Link>
+      <header className="border-b border-border pt-[env(safe-area-inset-top)]">
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-5 py-4">
+          <div className="flex items-center gap-3">
+            <BackLink />
+            <Link href="/" className="flex items-center gap-2"><BrandMark /><span className="hidden font-semibold text-foreground sm:inline">Ratslotse</span></Link>
+          </div>
           <Link href="/login" className="text-sm text-muted-foreground hover:text-foreground">Anmelden →</Link>
         </div>
       </header>

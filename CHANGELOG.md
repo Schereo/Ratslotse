@@ -12,7 +12,17 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   führte das Antippen des Themen-Tabs zu „Etwas ist schiefgelaufen". Ursache
   war ein doppelt vergebener Daten-Schlüssel im App-Cache, unter dem die
   Ausschuss-Abos mal als Liste, mal als Objekt lagen. Beide Stellen nutzen
-  jetzt dieselbe Form; ältere Zwischenspeicher werden beim Update verworfen. (#PR)
+  jetzt dieselbe Form; ältere Zwischenspeicher werden beim Update verworfen. (#277)
+- **App: „Frag den Rat" funktioniert wieder.** In der iOS-App scheiterte die
+  KI-Frage mit „Load failed". Dem Streaming-Endpoint fehlten die Freigabe-
+  Header für die App und die App-Anmeldung wurde nicht durchgereicht; beides
+  ist ergänzt. Rein serverseitig — nach dem Update funktioniert es in der
+  bestehenden App ohne Neuinstallation. (#PR)
+- **App: Impressum, Datenschutz und Changelog wieder verlassbar + Kopf unter
+  der Dynamic Island.** Auf diesen Seiten fehlte in der App ein Zurück-Weg,
+  und der Seitenkopf lag unter der Kamera-Insel des iPhones. Jetzt gibt es
+  oben einen **Zurück-Knopf**, und der Kopf respektiert den sicheren
+  Bereich. (#PR)
 
 ### Hinzugefügt
 - **Eigene Quizfragen:** Auf der Quiz-Seite kannst du jetzt **eigene Fragen
