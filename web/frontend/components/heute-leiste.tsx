@@ -64,12 +64,14 @@ export function HeuteLeiste() {
             </>
           )}
         </span>
-        {data?.state === "heute" && (
+        {/* RL-F05: jeder Zustand verlinkt — heute prominent zur Tagesordnung,
+            sonst dezent in den Sitzungskalender (Login-Gate übernimmt (app)/). */}
+        {data && (
           <Link
             href="/council?tab=sessions"
             className="hidden shrink-0 items-center gap-1 font-medium text-primary hover:underline sm:inline-flex"
           >
-            Zur Tagesordnung <ArrowRight className="h-3.5 w-3.5" />
+            {data.state === "heute" ? "Zur Tagesordnung" : "Kalender"} <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         )}
       </div>

@@ -116,9 +116,11 @@ NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflic
   Off-Site-Mirror per `BACKUP_RSYNC_TARGET`), `check_committees.py`,
   `check_council.py`, `check_protocols.py` (Protokolle → Beschluss-Klassifikation;
   lädt außerdem Vorlagen-Volltexte nach — Sachverhalt/Begründung für
-  Beschluss-Seiten, KI-Frage und FTS, `council/vorlagen.py`),
+  Beschluss-Seiten, KI-Frage und FTS, `council/vorlagen.py` — und erzeugt
+  „Lotti erklärt's einfach"-Kurzfassungen für neue Beschlüsse, max. 60/Lauf),
   `weekly_enrich.py` (wöchentliche LLM-/Embedding-Backfills: Entitäten, Geocoding,
-  Embeddings, Themen↔Beschlüsse, Themenfeld-Rückblicke). Alle laufen in
+  Embeddings, Themen↔Beschlüsse, Themenfeld-Rückblicke, „Einfach erklärt"-
+  Bestand in 500er-Tranchen neueste zuerst). Alle laufen in
   `run_guarded` (`nwz/alerts.py`): Ein Crash wird geloggt **und** per E-Mail an
   `ALERT_EMAIL`/`WEB_ADMIN_EMAIL` gemeldet.
 - **„Ähnliche Beschlüsse"** (`scripts/embed_decisions.py`): berechnet semantische

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -10,7 +10,7 @@ import { enablePush } from "@/lib/push";
 import { Button, Card, toast } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
 import { useMascotTheme } from "@/components/seasonal-mascot";
-import type { User } from "@/lib/types";
+import type { Topic, User } from "@/lib/types";
 
 const SNOOZE_KEY = "ratslotse.push-primer.snoozed-until";
 const SNOOZE_DAYS = 7;
@@ -18,20 +18,39 @@ const SNOOZE_DAYS = 7;
 /** Push-Primer (RL-1102): freundliche Vorab-Karte in der App, BEVOR der
  *  System-Dialog erscheint — wer hier zustimmt, sagt auch im iOS-Dialog fast
  *  immer ja; wer „Später" tippt, wird 7 Tage nicht wieder gefragt (und der
- *  System-Dialog bleibt unverbraucht: iOS zeigt ihn nur einmal). */
+ *  System-Dialog bleibt unverbraucht: iOS zeigt ihn nur einmal).
+ *  RL-F02: erst beim ersten RELEVANTEN Moment — es gibt ≥ 1 Thema oder
+ *  ≥ 1 Ausschuss-Abo. Eine frische Installation ohne beides sieht nichts. */
 export function PushPrimer() {
   const { user, refresh } = useAuth();
   const theme = useMascotTheme();
   const [visible, setVisible] = useState(false);
+  const native = isNativeApp();
+
+  const topicsQuery = useQuery({
+    queryKey: ["topics"],
+    queryFn: () => api.get<Topic[]>("/topics"),
+    enabled: native && !!user,
+  });
+  const subsQuery = useQuery({
+    queryKey: ["subscriptions"],
+    queryFn: () => api.get<{ subscriptions: string[] }>("/subscriptions"),
+    enabled: native && !!user,
+  });
+  const relevant =
+    (topicsQuery.data?.length ?? 0) > 0 || (subsQuery.data?.subscriptions.length ?? 0) > 0;
 
   useEffect(() => {
-    if (!isNativeApp() || !user) return;
+    if (!native || !user || !relevant) {
+      setVisible(false);
+      return;
+    }
     const pushOn = user.delivery_channel === "push" || user.delivery_channel === "both";
     if (pushOn) return;
     const until = Number(localStorage.getItem(SNOOZE_KEY) ?? 0);
     if (Date.now() < until) return;
     setVisible(true);
-  }, [user]);
+  }, [user, native, relevant]);
 
   const enable = useMutation({
     mutationFn: async () => {

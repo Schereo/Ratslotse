@@ -62,11 +62,7 @@ export default function LoginPage() {
             Registrieren
           </Link>
         </p>
-        <p className="mt-2 text-center text-sm text-muted-foreground">
-          <a href="/docs" className="hover:text-foreground hover:underline">
-            Wie funktioniert Ratslotse? →
-          </a>
-        </p>
+        {/* RL-F08: Docs-Link gestrichen — bleibt über Landing + Footer erreichbar. */}
         <p className="mt-4 border-t border-border pt-4 text-center text-xs text-muted-foreground">
           <Link href="/impressum" className="hover:text-foreground hover:underline">Impressum</Link>
           {" · "}

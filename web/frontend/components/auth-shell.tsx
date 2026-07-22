@@ -1,10 +1,18 @@
 "use client";
 
 import * as React from "react";
+import { Check } from "lucide-react";
 import { Card } from "@/components/ui";
 import { Mascot, type MascotPose } from "@/components/mascot";
 import { SeasonalFamily, useMascotTheme } from "@/components/seasonal-mascot";
 import { BrandMark } from "@/components/brand";
+
+// RL-F04 (Design 6a): drei Belege unter dem Claim der Marken-Hälfte.
+const CLAIM_POINTS = [
+  "Frag den Rat — Antworten mit Quellen",
+  "Benachrichtigungen zu deinen Themen",
+  "Direkt aus dem amtlichen Ratsinformationssystem",
+];
 
 /**
  * Gemeinsamer Rahmen der Auth-Seiten (RL-1001, Design 2a): Split-Layout —
@@ -35,6 +43,16 @@ export function AuthShell({
             Beschlüsse durchsuchen, Themen folgen, Fragen stellen — Lotti lotst
             dich durch die Oldenburger Ratspolitik.
           </p>
+          <ul className="mt-5 space-y-2.5">
+            {CLAIM_POINTS.map((point) => (
+              <li key={point} className="flex items-center gap-2.5 text-sm text-foreground">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                  <Check className="h-3.5 w-3.5 text-primary" />
+                </span>
+                {point}
+              </li>
+            ))}
+          </ul>
         </div>
         <SeasonalFamily className="h-24 self-start" />
       </div>

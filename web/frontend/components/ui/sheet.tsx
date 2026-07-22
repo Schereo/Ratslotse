@@ -10,7 +10,10 @@ export const SheetTrigger = DialogPrimitive.Trigger;
 export const SheetClose = DialogPrimitive.Close;
 
 const SIDE_CLASSES = {
-  left: "inset-y-0 left-0 h-full w-64 border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left",
+  // RL-F10: Der Drawer liegt VOR der Topbar — er braucht die Safe-Area selbst,
+  // sonst beginnt sein Inhalt hinter Uhr/Dynamic Island. Auf Geräten ohne
+  // Notch ist env() schlicht 0. Scrollbar für kleine Höhen (SE, Landscape).
+  left: "inset-y-0 left-0 h-full w-64 overflow-y-auto border-r pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left",
   // Bottom-Sheet (mobile Filter): rundet oben ab, respektiert die Home-Indicator-Zone.
   bottom:
     "inset-x-0 bottom-0 max-h-[85dvh] w-full overflow-y-auto rounded-t-2xl border-t pb-[env(safe-area-inset-bottom)] data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
@@ -35,7 +38,7 @@ export const SheetContent = React.forwardRef<
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="absolute right-3 top-3 rounded-md p-1 text-muted-foreground opacity-70 transition-opacity hover:opacity-100 focus:outline-none">
+      <DialogPrimitive.Close className="absolute right-3 top-[calc(0.75rem+env(safe-area-inset-top))] rounded-md p-1 text-muted-foreground opacity-70 transition-opacity hover:opacity-100 focus:outline-none">
         <X className="h-5 w-5" />
         <span className="sr-only">Schließen</span>
       </DialogPrimitive.Close>

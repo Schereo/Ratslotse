@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, Suspense } from "react";
+import { useEffect, useRef, useState, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Search, ExternalLink, ChevronDown, ChevronRight, Scale, SlidersHorizontal, Users, Sparkles, X } from "lucide-react";
@@ -441,7 +441,8 @@ function DecisionsTab({ committees }: { committees: string[] }) {
           />
         ) : (
           <div className="space-y-2.5">
-            <p className="text-sm font-medium text-muted-foreground">
+            {/* RL-F07: Trefferzeile gleitet bei Filterwechsel neu ein (key-Remount). */}
+            <p key={`${total}|${query}|${outcome}|${field}|${committee}`} className="animate-fade-up text-sm font-medium text-muted-foreground">
               {total} {noun}
               {query && <> zu <strong className="font-semibold text-foreground">{query}</strong></>}
             </p>
@@ -516,6 +517,12 @@ function AttendanceSection({ detail }: { detail: SessionDetail }) {
 function SessionsTab({ committees }: { committees: string[] }) {
   const [q, setQ] = useState("");
   const [committee, setCommittee] = useState("");
+  // RL-F06: ?ksinr=… (Deep-Link von „Heute") — Sitzung aufklappen, sanft
+  // hinscrollen und kurz aufblitzen lassen (wie der Fußnoten-Flash der KI).
+  const deepSp = useSearchParams();
+  const targetKsinr = Number(deepSp.get("ksinr") || 0);
+  const deepLinkDone = useRef(false);
+  const [flashKsinr, setFlashKsinr] = useState<number | null>(null);
   const [scope, setScope] = useState<Scope>("upcoming");
   const [sessions, setSessions] = useState<CouncilSession[]>([]);
   const [loading, setLoading] = useState(true);
@@ -546,6 +553,21 @@ function SessionsTab({ committees }: { committees: string[] }) {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedQ, committee, scope]);
+
+  useEffect(() => {
+    if (!targetKsinr || deepLinkDone.current || loading) return;
+    const s = sessions.find((x) => x.ksinr === targetKsinr);
+    if (!s) return;
+    deepLinkDone.current = true;
+    void toggle(s);
+    requestAnimationFrame(() => {
+      document.getElementById(`session-${targetKsinr}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    setFlashKsinr(targetKsinr);
+    const t = setTimeout(() => setFlashKsinr(null), 1600);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetKsinr, loading, sessions]);
 
   const toggle = async (s: CouncilSession) => {
     const ksinr = s.ksinr;
@@ -641,7 +663,14 @@ function SessionsTab({ committees }: { committees: string[] }) {
               for (const m of s.my_topic_items ?? []) myByItem[m.item_number] ??= m.topic_name;
               const myCount = Object.keys(myByItem).length;
               return (
-                <Card key={s.ksinr} className="overflow-hidden p-0">
+                <Card
+                  key={s.ksinr}
+                  id={`session-${s.ksinr}`}
+                  className={cn(
+                    "overflow-hidden p-0 transition-shadow",
+                    flashKsinr === s.ksinr && "ring-2 ring-primary",
+                  )}
+                >
                   <button type="button" onClick={() => toggle(s)} className="group flex w-full items-center justify-between gap-3 p-4 text-left transition-colors hover:bg-muted/40">
                     <div className="flex min-w-0 items-center gap-3">
                       <DateTile iso={s.session_date} />
