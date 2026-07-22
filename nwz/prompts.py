@@ -286,9 +286,14 @@ def _connect() -> sqlite3.Connection:
         """CREATE TABLE IF NOT EXISTS prompts (
                key        TEXT PRIMARY KEY,
                content    TEXT NOT NULL,
-               updated_at TEXT NOT NULL
+               updated_at TEXT NOT NULL,
+               updated_by TEXT
            )"""
     )
+    # Bestandsdaten: updated_by (Admin-E-Mail) nachrüsten (Design 21a).
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(prompts)").fetchall()}
+    if "updated_by" not in cols:
+        conn.execute("ALTER TABLE prompts ADD COLUMN updated_by TEXT")
     conn.commit()
     return conn
 
@@ -327,34 +332,36 @@ def list_all() -> list[dict]:
     """Return every known prompt with its current and default content for the admin UI."""
     conn = _connect()
     overrides = {
-        r["key"]: r["content"]
-        for r in conn.execute("SELECT key, content FROM prompts").fetchall()
+        r["key"]: r for r in conn.execute("SELECT key, content, updated_at, updated_by FROM prompts").fetchall()
     }
     conn.close()
     result = []
     for key, meta in DEFAULTS.items():
+        ov = overrides.get(key)
         result.append(
             {
                 "key": key,
                 "title": meta["title"],
                 "description": meta["description"],
                 "default": meta["template"],
-                "content": overrides.get(key, meta["template"]),
-                "is_overridden": key in overrides,
+                "content": ov["content"] if ov else meta["template"],
+                "is_overridden": ov is not None,
+                "updated_at": ov["updated_at"] if ov else None,
+                "updated_by": (ov["updated_by"] if ov else None),
             }
         )
     return result
 
 
-def set_content(key: str, content: str) -> None:
+def set_content(key: str, content: str, by: str | None = None) -> None:
     if key not in DEFAULTS:
         raise KeyError(f"Unknown prompt key: {key}")
     now = datetime.utcnow().isoformat(timespec="seconds")
     conn = _connect()
     with conn:
         conn.execute(
-            "INSERT OR REPLACE INTO prompts (key, content, updated_at) VALUES (?, ?, ?)",
-            (key, content, now),
+            "INSERT OR REPLACE INTO prompts (key, content, updated_at, updated_by) VALUES (?, ?, ?, ?)",
+            (key, content, now, by),
         )
     conn.close()
 
