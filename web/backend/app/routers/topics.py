@@ -7,6 +7,7 @@ article matching was removed with the NWZ scraper.
 """
 from __future__ import annotations
 
+import re
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -66,6 +67,19 @@ def list_topics(
     return out
 
 
+def _name_tokens(name: str) -> frozenset[str]:
+    """Wort-Stämme eines Themen-/Entitätsnamens: Kleinbuchstaben, Wörter auf
+    6 Zeichen gekürzt (fängt „Stadion"/„Stadionneubau"), Ziffern bleiben ganz
+    (unterscheidet „Veloroute 4" von „Veloroute 2")."""
+    words = re.findall(r"\d+|[a-zäöüß]+", name.lower())
+    return frozenset(w if w.isdigit() else w[:6] for w in words if w.isdigit() or len(w) >= 3)
+
+
+def _similar_names(a: frozenset[str], b: frozenset[str]) -> bool:
+    """Gleiches Interesse, wenn die Wortmenge des einen im anderen aufgeht."""
+    return bool(a) and bool(b) and (a <= b or b <= a)
+
+
 @router.get("/suggestions")
 def topic_suggestions(
     user: dict = Depends(require_active),
@@ -78,12 +92,21 @@ def topic_suggestions(
     Die KI-Beschreibung der Entität wird zur Themen-Beschreibung und macht
     den Themen-Wächter treffsicherer als ein generischer Satz. Ohne Themen,
     die der Account schon angelegt hat; ein Klick legt direkt an."""
-    existing = {t.name.strip().lower() for t in store.get_topics(user["id"])}
+    existing_tokens = [_name_tokens(t.name) for t in store.get_topics(user["id"])]
+    chosen_tokens: list[frozenset[str]] = []
     out = []
     for e in council.suggested_entity_topics(days_back=365, limit=16):
         name = (e.get("name") or "").strip()
-        if not name or name.lower() in existing:
+        if not name:
             continue
+        # Ähnlichkeits-Dedupe statt exaktem Namensvergleich: „Stadion
+        # Maastrichter Straße", „Stadionneubau Maastrichter Straße" und
+        # „Maastrichter Straße" sind EIN Interesse — der aktivste Kandidat
+        # gewinnt, und wer so ein Thema schon hat, sieht keine Variante mehr.
+        tokens = _name_tokens(name)
+        if any(_similar_names(tokens, other) for other in existing_tokens + chosen_tokens):
+            continue
+        chosen_tokens.append(tokens)
         desc = (e.get("description") or "").strip()
         if desc:
             # Auf ~220 Zeichen kürzen (an Satzgrenze), damit die
