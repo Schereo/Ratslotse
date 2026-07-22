@@ -2003,6 +2003,33 @@ class CouncilStore:
         ).fetchall()
         return [{"tag": r["tag"], "n": r["n"]} for r in rows]
 
+    def suggested_entity_topics(self, days_back: int = 365, limit: int = 12) -> list[dict]:
+        """Konkrete Orte/Projekte mit jüngster Ratsaktivität — Futter für die
+        Themen-Vorschläge. Ersetzt die reine Schlagwort-Häufigkeit, die
+        Verwaltungsvokabeln belohnte („Bericht", „Annahme"): Menschen
+        interessieren sich für ein Bauprojekt oder ihre Straße, nicht für
+        Beschluss-Formalien. Sortiert nach jüngster Aktivität, bei Gleichstand
+        gewinnt der interessantere Stoff (Interest-Score, neutral 50)."""
+        from datetime import date, timedelta
+        cutoff = (date.today() - timedelta(days=days_back)).isoformat()
+        rows = self._conn.execute(
+            """SELECT e.name, e.kind, m.description,
+                      COUNT(DISTINCT el.decision_id) AS n_recent,
+                      AVG(COALESCE(d.interest, 50)) AS avg_interest
+               FROM council_entities e
+               JOIN council_entity_links el ON el.entity_id = e.id
+               JOIN council_decisions d ON d.id = el.decision_id
+               JOIN council_sessions cs ON cs.ksinr = d.ksinr
+               LEFT JOIN council_entity_meta m ON m.slug = e.slug
+               WHERE e.kind IN ('ort', 'projekt') AND cs.session_date >= ?
+               GROUP BY e.id
+               HAVING n_recent >= 2
+               ORDER BY n_recent DESC, avg_interest DESC, e.name
+               LIMIT ?""",
+            (cutoff, limit),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
     def list_entities_geo(self) -> list[dict]:
         """Geocoded entities (points) for the city-wide map — slug, name, kind, n, lat, lon."""
         return [dict(r) for r in self._conn.execute(
