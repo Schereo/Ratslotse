@@ -8,6 +8,10 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Behoben
+- Die Suche (Lupe bzw. ⌘K) **zoomt in der iPhone-App nicht mehr ungewollt
+  hinein**: Das Eingabefeld der Befehls-Palette nutzt auf Mobilgeräten jetzt
+  16 px Schriftgröße — darunter vergrößert iOS beim Antippen automatisch die
+  ganze Ansicht. (#240)
 - **Design-Audit umgesetzt:** Das Seiten-Menü und Hinweise respektieren jetzt
   die **iPhone-Aussparung** (nichts liegt mehr hinter Uhr/Dynamic Island),
   die Registrierung nennt die **Datenschutzerklärung** direkt am Knopf, und
