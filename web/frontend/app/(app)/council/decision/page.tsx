@@ -377,7 +377,7 @@ function DecisionDetailInner() {
           )}
 
           {d.kind !== "subvote" && data.importance_breakdown && (
-            <ImportanceMeter score={data.importance_breakdown.score} signals={data.importance_breakdown.signals} />
+            <ImportanceMeter score={data.importance_breakdown.score} signals={data.importance_breakdown.signals} impactReason={data.importance_breakdown.impact_reason} />
           )}
         </aside>
       </div>

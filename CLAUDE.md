@@ -121,7 +121,9 @@ NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflic
   `weekly_enrich.py` (wöchentliche LLM-/Embedding-Backfills: Entitäten, Geocoding,
   Embeddings, Themen↔Beschlüsse, Themenfeld-Rückblicke, „Einfach erklärt"-
   Bestand in 500er-Tranchen neueste zuerst, Interessantheits-Scores
-  (`rate_interest.py`, 500er-Tranchen) und „Fundstück des Tages"-Karten
+  (`rate_interest.py`, 500er-Tranchen), Tragweite-Scores (`rate_impact.py`,
+  500er-Tranchen — mischt 50/50 in den Wichtig-Wert; Golden-Set-Prüfung:
+  `eval_impact.py`) und „Fundstück des Tages"-Karten
   (`generate_fundstuecke.py`, 21 Tage Vorlauf)). Alle laufen in
   `run_guarded` (`nwz/alerts.py`): Ein Crash wird geloggt **und** per E-Mail an
   `ALERT_EMAIL`/`WEB_ADMIN_EMAIL` gemeldet.
