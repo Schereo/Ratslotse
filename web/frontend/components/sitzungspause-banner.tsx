@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Mascot } from "@/components/mascot";
@@ -18,12 +20,15 @@ const fmtShort = (iso: string) =>
   new Date(iso + "T12:00:00").toLocaleDateString("de-DE", { day: "numeric", month: "short" });
 
 /** Sitzungspause-Hinweis (RL-402, Design 2a): ruhige Verlaufs-Fläche mit
- *  Wellen-Textur, schlafender Lotti (Saison-Outfit automatisch) und rechts
- *  einer „WIEDER AB"-Kachel. `compact` = einzeilige Variante für die
- *  Sitzungen-Seite und mobile Ansichten. Erscheint nur bei aktiver Pause;
- *  API und Felder unverändert (/council/sitzungspause). */
+ *  Wellen-Textur, schlafender Lotti (Saison-Outfit automatisch) und einer
+ *  „WIEDER AB"-Kachel. `compact` = einzeilige Variante für die
+ *  Sitzungen-Seite. Die große Variante (Übersicht) startet eingeklappt —
+ *  eine Zeile; die lange Erklärung klappt erst auf Wunsch aus (der Hinweis
+ *  füllte sonst wochenlang jeden Morgen den halben Bildschirm). Erscheint
+ *  nur bei aktiver Pause; API und Felder unverändert (/council/sitzungspause). */
 export function SitzungspauseBanner({ className, compact = false }: { className?: string; compact?: boolean }) {
   const theme = useMascotTheme();
+  const [open, setOpen] = useState(false);
   const { data } = useQuery({
     queryKey: ["sitzungspause"],
     queryFn: () => api.get<Pause>("/council/sitzungspause"),
@@ -66,21 +71,39 @@ export function SitzungspauseBanner({ className, compact = false }: { className?
     <div
       role="status"
       className={cn(
-        "bg-waves flex flex-wrap items-center gap-4 rounded-2xl border border-border bg-gradient-to-r from-[#eaf5fd] to-background p-4 dark:from-muted/40 dark:to-card sm:p-5",
+        "bg-waves rounded-2xl border border-border bg-gradient-to-r from-[#eaf5fd] to-background dark:from-muted/40 dark:to-card",
         className,
       )}
     >
-      <Mascot pose="sleep" theme={theme} bob decorative className="h-16 w-16 shrink-0 sm:h-20 sm:w-20" />
-      <div className="min-w-0 flex-1 basis-56">
-        <p className="font-display text-lg font-bold text-foreground">{data.label}</p>
-        <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">{data.note}</p>
-      </div>
-      {kachel && (
-        <div className="shrink-0 rounded-xl border border-border bg-card px-4 py-2.5 text-center shadow-sm">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-            {kachel.kicker}
-          </p>
-          <p className="font-display text-lg font-bold text-foreground">{kachel.value}</p>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="flex w-full items-center gap-3 p-3 text-left sm:px-4"
+      >
+        <Mascot pose="sleep" theme={theme} decorative className="h-10 w-10 shrink-0 sm:h-12 sm:w-12" />
+        <p className="min-w-0 flex-1 text-sm text-foreground">
+          <span className="font-display text-base font-bold">{data.label}</span>
+          {kachel && (
+            <span className="whitespace-nowrap text-muted-foreground">
+              {" · "}{kachel.kicker === "Wieder ab" ? `wieder ab ${kachel.value}` : kachel.value}
+            </span>
+          )}
+        </p>
+        <span className="hidden shrink-0 text-xs font-medium text-muted-foreground/80 sm:inline">{open ? "Weniger" : "Mehr"}</span>
+        <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground/60 transition-transform", open && "rotate-180")} />
+      </button>
+      {open && (
+        <div className="flex flex-wrap items-center gap-4 border-t border-border/60 px-4 pb-4 pt-3">
+          <p className="min-w-0 flex-1 basis-56 text-sm leading-relaxed text-muted-foreground">{data.note}</p>
+          {kachel && (
+            <div className="shrink-0 rounded-xl border border-border bg-card px-4 py-2.5 text-center shadow-sm">
+              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                {kachel.kicker}
+              </p>
+              <p className="font-display text-lg font-bold text-foreground">{kachel.value}</p>
+            </div>
+          )}
         </div>
       )}
     </div>
