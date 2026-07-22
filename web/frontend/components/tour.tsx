@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui";
 import { Mascot, type MascotPose } from "@/components/mascot";
+import { reportBadgeEvent } from "@/components/badges";
 
 /**
  * Geführte Lotti-Tour: Spotlight auf echte UI-Elemente (per data-tour-Anker),
@@ -120,6 +121,7 @@ export function GuidedTour() {
   const prev = useCallback(() => setStepIndex((i) => (i <= 0 ? i : i - 1)), []);
 
   const finishToQa = useCallback(() => {
+    reportBadgeEvent("tour"); // RL-U12: Kompass — nur beim echten Durchlauf
     end();
     router.push("/council?tab=decisions&mode=fragen");
   }, [end, router]);

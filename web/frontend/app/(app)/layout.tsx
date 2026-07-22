@@ -13,6 +13,7 @@ import { GuidedTour } from "@/components/tour";
 import { CommandPalette } from "@/components/command-palette";
 import { FeedbackDialog } from "@/components/feedback";
 import { OnboardingTracker } from "@/components/onboarding";
+import { BadgeCelebrator } from "@/components/badges";
 import { BackToTop } from "@/components/back-to-top";
 import { PeekingChick } from "@/components/peeking-chick";
 import { Button, Card, Spinner, toast } from "@/components/ui";
@@ -64,6 +65,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <Suspense fallback={null}>
         <OnboardingTracker />
       </Suspense>
+      {/* RL-U12: feiert neu verdiente Lotsen-Abzeichen — auf jeder Seite. */}
+      <BadgeCelebrator />
       <BackToTop />
       <PeekingChick />
       <DesktopSidebar />
