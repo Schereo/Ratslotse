@@ -707,6 +707,18 @@ def test_own_quiz_estimate(client):
     assert client.post("/api/quiz/own", json={
         "question": "Bereich zu klein?", "category": "schaetzen", "answer_value": 100,
         "range_min": 0, "range_max": 50}).status_code == 400
+    # Jahreszahl (Einheit Jahr) → enges, zentriertes ±50-Fenster statt 0..2×
+    yid = client.post("/api/quiz/own", json={
+        "question": "Wann wurde die Cäcilienbrücke gebaut?", "category": "schaetzen",
+        "answer_value": 1927, "unit": "Jahr"}).json()["id"]
+    yq = next(q for q in client.get("/api/quiz/own").json()["questions"] if q["id"] == yid)
+    assert yq["range_min"] == 1877 and yq["range_max"] == 1977
+    # Kleine „Jahre"-Dauer bleibt beim Standard-Bereich (0..2×)
+    did = client.post("/api/quiz/own", json={
+        "question": "Seit wie vielen Jahren gesperrt?", "category": "schaetzen",
+        "answer_value": 6, "unit": "Jahre"}).json()["id"]
+    dq = next(q for q in client.get("/api/quiz/own").json()["questions"] if q["id"] == did)
+    assert dq["range_min"] == 0 and dq["range_max"] == 12
 
 
 def test_quiz_theme_stadtteil_binding(client):
