@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Search, ExternalLink, ChevronDown, ChevronRight, Scale, SlidersHorizontal, Users, Sparkles, X } from "lucide-react";
+import { Search, ExternalLink, ChevronDown, ChevronRight, Scale, SlidersHorizontal, Users, Sparkles, Split, X } from "lucide-react";
 import { api, qs, ApiError } from "@/lib/api";
 import { decisionHref } from "@/lib/routes";
 import { useDebounce } from "@/lib/use-debounce";
@@ -15,7 +15,7 @@ import {
   Badge, Button, Card, CardListSkeleton, DateField, EmptyState, Input, PageHeader, Pagination, Segmented, Select,
   Sheet, SheetContent, SheetTitle, SheetTrigger, Spinner, formatDate, toast,
 } from "@/components/ui";
-import { OutcomeBadge, OutcomeDot, ImportanceBadge, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
+import { OutcomeBadge, OutcomeDot, ImportanceBadge, OUTCOME_META, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
 import { CommitteeName } from "@/components/committee-name";
 import { shortCommittee, hasShortCommittee } from "@/lib/committees";
 import { isLiveNow } from "@/lib/live";
@@ -98,8 +98,18 @@ function CardFooter({ d }: { d: CouncilDecision }) {
   );
 }
 
+/** Text der Änderungsantrags-Unterzeile (Design 23a): „n Änderungsantrag ·
+ *  Fraktion · Ergebnis". Das Ergebnis nur, wenn alle Anträge gleich ausgingen. */
+function subvoteLabel(s: NonNullable<CouncilDecision["subvote_summary"]>): string {
+  const parts = [`${s.count} ${s.count === 1 ? "Änderungsantrag" : "Änderungsanträge"}`];
+  if (s.factions.length > 0) parts.push(s.factions.join(", "));
+  if (s.outcomes.length === 1) parts.push(OUTCOME_META[s.outcomes[0] as DecisionOutcome]?.label.toLowerCase() ?? s.outcomes[0]);
+  return parts.join(" · ");
+}
+
 function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
   const isSub = d.kind === "subvote";
+  const sub = d.subvote_summary;
   return (
     <Link href={decisionHref(d.id)} className="block">
       {/* Design 22a: drei feste Zonen statt verstreuter Elemente — Statuszeile
@@ -107,33 +117,45 @@ function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
           als ruhige zweite Zeile) → Titel + 2-Zeilen-Auszug → Fußzeile
           (Abstimmung + Antrag links, Betrag als betonter rechter Anker). Subvote
           bleibt ohne Akzent-Border (RL-102), nur „Teilabstimmung"-Zeile + Tönung. */}
-      <Card className={cn("card-interactive group p-4", isSub && "bg-muted/30")}>
-        {/* Zone 1 — Statuszeile */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
-            <OutcomeDot outcome={d.outcome} />
-            {!isSub && <ImportanceBadge score={d.importance} />}
+      <Card className={cn("card-interactive group overflow-hidden p-0", isSub && "bg-muted/30")}>
+        <div className="p-4">
+          {/* Zone 1 — Statuszeile */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
+              <OutcomeDot outcome={d.outcome} />
+              {!isSub && <ImportanceBadge score={d.importance} />}
+            </div>
+            <ChevronRight className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
           </div>
-          <ChevronRight className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
-        </div>
-        <p className="mt-1 text-xs text-muted-foreground">
-          {isSub
-            ? `Teilabstimmung · TOP ${d.parent_item}`
-            : `${shortCommittee(d.committee)} · ${formatDate(d.session_date)}${d.item_number ? ` · TOP ${d.item_number}` : ""}`}
-        </p>
-
-        {/* Zone 2 — Titel + Auszug */}
-        <h3 className="mt-2 hyphens-auto font-medium text-foreground">
-          <Highlight text={d.title ?? ""} query={query} />
-        </h3>
-        {d.beschluss && (
-          <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-            <Highlight text={d.beschluss} query={query} />
+          <p className="mt-1 text-xs text-muted-foreground">
+            {isSub
+              ? `Teilabstimmung · TOP ${d.parent_item}`
+              : `${shortCommittee(d.committee)} · ${formatDate(d.session_date)}${d.item_number ? ` · TOP ${d.item_number}` : ""}`}
           </p>
-        )}
 
-        {/* Zone 3 — Fußzeile */}
-        <CardFooter d={d} />
+          {/* Zone 2 — Titel + Auszug */}
+          <h3 className="mt-2 hyphens-auto font-medium text-foreground">
+            <Highlight text={d.title ?? ""} query={query} />
+          </h3>
+          {d.beschluss && (
+            <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+              <Highlight text={d.beschluss} query={query} />
+            </p>
+          )}
+
+          {/* Zone 3 — Fußzeile */}
+          <CardFooter d={d} />
+        </div>
+
+        {/* Design 23a: Änderungsanträge hängen als Kontext-Unterzeile am
+            Ursprungsbeschluss, statt als eigene Treffer zu erscheinen. */}
+        {sub && sub.count > 0 && (
+          <div className="flex items-center gap-2 border-t border-border bg-muted/30 px-4 py-2.5 text-sm text-muted-foreground">
+            <Split className="h-3.5 w-3.5 shrink-0 -scale-x-100" />
+            <span className="min-w-0 flex-1 truncate">{subvoteLabel(sub)}</span>
+            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/40" />
+          </div>
+        )}
       </Card>
     </Link>
   );
@@ -252,6 +274,10 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   }, []);
   const field = sp.get("field") ?? "";
   const party = sp.get("party") ?? "";
+  // Design 23a: Änderungsanträge (subvotes) sind standardmäßig aus der Liste
+  // ausgeblendet (Kontext am Ursprungsbeschluss). Rechercheure blenden sie
+  // optional wieder einzeln ein.
+  const showSubvotes = sp.get("subvotes") === "1";
   // Date range also lives in the URL so the Trends quarter bars can deep-link here.
   const dateFrom = sp.get("date_from") ?? "";
   const dateTo = sp.get("date_to") ?? "";
@@ -284,6 +310,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
           q, committee, category: mode === "all" ? "" : mode, sort, field, party,
           outcome: mode === "vote" ? outcome : "",
           date_from: dateFrom, date_to: dateTo,
+          include_subvotes: showSubvotes ? "1" : "",
           limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE,
         })}`,
       );
@@ -294,12 +321,12 @@ function DecisionsTab({ committees }: { committees: string[] }) {
     } finally {
       setLoading(false);
     }
-  }, [q, committee, mode, outcome, sort, field, party, dateFrom, dateTo, page]);
+  }, [q, committee, mode, outcome, sort, field, party, dateFrom, dateTo, showSubvotes, page]);
 
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedQ, committee, mode, outcome, sort, field, party, dateFrom, dateTo, page]);
+  }, [debouncedQ, committee, mode, outcome, sort, field, party, dateFrom, dateTo, showSubvotes, page]);
 
   // RL-U02: Seitenwechsel führt zurück zum Listenanfang und setzt den Fokus
   // auf den Listen-Container (bleibt über den Ladewechsel gemountet), damit
@@ -363,6 +390,21 @@ function DecisionsTab({ committees }: { committees: string[] }) {
           <DateField value={dateFrom} onChange={(v) => setUrlParam("date_from", v)} />
           <DateField value={dateTo} onChange={(v) => setUrlParam("date_to", v)} />
         </div>
+      </FilterField>
+      {/* Design 23a: Änderungsanträge hängen normal als Kontext am Ursprungs-
+          beschluss; Rechercheure können sie hier als eigene Treffer einblenden. */}
+      <FilterField label="Teilabstimmungen">
+        <button
+          type="button"
+          onClick={() => { setUrlParam("subvotes", showSubvotes ? "" : "1"); setPage(1); }}
+          aria-pressed={showSubvotes}
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors",
+            showSubvotes ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:bg-muted",
+          )}
+        >
+          <Split className="h-3.5 w-3.5 -scale-x-100" /> Änderungsanträge einzeln zeigen
+        </button>
       </FilterField>
     </div>
   );

@@ -250,14 +250,29 @@ def decisions(
     sort: str = Query("date_desc", pattern="^(date_desc|date_asc|faction|importance|interest)$"),
     field: str = "",
     party: str = "",
+    # Design 23a: Standard blendet Änderungsanträge (subvotes) aus der Trefferliste
+    # aus — sie hängen als Kontext am Ursprungsbeschluss. Rechercheure können sie
+    # per Filter „Änderungsanträge einzeln zeigen" wieder einblenden.
+    include_subvotes: bool = Query(False),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
 ) -> dict:
-    total = store.count_decisions(q, committee, outcome, faction, date_from, date_to, kind, category, field, party)
+    total = store.count_decisions(q, committee, outcome, faction, date_from, date_to, kind, category, field, party,
+                                  include_subvotes=include_subvotes)
     rows = store.search_decisions(q, committee, outcome, faction, date_from, date_to, kind, category,
-                                  sort=sort, field=field, party=party, limit=limit, offset=offset)
+                                  sort=sort, field=field, party=party, limit=limit, offset=offset,
+                                  include_subvotes=include_subvotes)
+    # Design 23a: je Beschluss die kompakte Änderungsantrags-Zusammenfassung
+    # anhängen (Anzahl · Fraktion · Ergebnis) für die Karten-Unterzeile.
+    pairs = [(r["ksinr"], r["item_number"]) for r in rows
+             if r.get("kind") == "decision" and r.get("item_number")]
+    summaries = store.subvote_summaries(pairs)
+    for r in rows:
+        s = summaries.get((r.get("ksinr"), r.get("item_number")))
+        if s:
+            r["subvote_summary"] = s
     return {"total": total, "decisions": rows}
 
 
