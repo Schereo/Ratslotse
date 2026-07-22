@@ -16,6 +16,7 @@ import {
   Sheet, SheetContent, SheetTitle, SheetTrigger, Spinner, formatDate, toast,
 } from "@/components/ui";
 import { OutcomeBadge, OutcomeDot, ImportanceBadge, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
+import { isLiveNow } from "@/lib/live";
 import { ChipPopover, DateRangeChip } from "@/components/filter-chips";
 import { SitzungspauseBanner } from "@/components/sitzungspause-banner";
 import { AnalysisTab } from "@/components/council-analysis";
@@ -520,6 +521,15 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   );
 }
 
+/** RL-U10: kleiner LIVE-Chip an der laufenden Sitzung (Startzeit + 4 h). */
+function LiveChip() {
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[11px] font-bold text-red-600 dark:text-red-400">
+      <span className="h-1.5 w-1.5 rounded-full bg-red-500" aria-hidden /> LIVE
+    </span>
+  );
+}
+
 /** Monats/Tages-Kachel 50 px (RL-801, Design 6a-Sitzungen). */
 function DateTile({ iso }: { iso: string }) {
   const d = new Date(iso + "T12:00:00");
@@ -731,7 +741,10 @@ function SessionsTab({ committees }: { committees: string[] }) {
                           </p>
                         </div>
                       </div>
-                      <Badge className="ml-[62px] shrink-0 self-start sm:ml-0 sm:self-auto">Tagesordnung folgt</Badge>
+                      <div className="ml-[62px] flex shrink-0 items-center gap-2 self-start sm:ml-0 sm:self-auto">
+                        {isLiveNow(s) && <LiveChip />}
+                        <Badge>Tagesordnung folgt</Badge>
+                      </div>
                     </div>
                   </Card>
                 );
@@ -765,6 +778,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
                       </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
+                      {isLiveNow(s) && <LiveChip />}
                       {myCount > 0 && (
                         <span className="hidden rounded-full bg-signal/10 px-2 py-0.5 text-[11px] font-semibold text-signal sm:inline-flex">
                           {myCount} zu deinen Themen

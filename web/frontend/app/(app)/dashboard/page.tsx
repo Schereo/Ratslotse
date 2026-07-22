@@ -10,6 +10,8 @@ import { Button, Card } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
 import { useMascotTheme } from "@/components/seasonal-mascot";
 import { SitzungspauseBanner } from "@/components/sitzungspause-banner";
+import { LiveBanner } from "@/components/live-banner";
+import { isLiveNow } from "@/lib/live";
 import { PushPrimer } from "@/components/push-primer";
 import { formatEuro } from "@/components/decision-ui";
 import { decisionHref } from "@/lib/routes";
@@ -99,7 +101,10 @@ export default function DashboardPage() {
         </Button>
       </div>
 
+      {/* RL-U10: Live und Pause teilen sich den Slot — sie schließen sich
+          zeitlich aus (in der Sitzungspause tagt niemand). */}
       <SitzungspauseBanner className="mt-6" />
+      <LiveBanner />
 
       {/* RL-1102: nur in der App, solange Push aus ist (7-Tage-Snooze). */}
       <PushPrimer />
@@ -123,7 +128,12 @@ export default function DashboardPage() {
                   {fmtDay(s.session_date)}
                 </span>
                 <span className="min-w-0 flex-1 truncate text-sm text-foreground">{s.committee}</span>
-                {(s.my_topic_items?.length ?? 0) > 0 ? (
+                {isLiveNow(s) ? (
+                  /* RL-U10: laufende Sitzung — LIVE schlägt alle anderen Chips. */
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[11px] font-bold text-red-600 dark:text-red-400">
+                    <span className="h-1.5 w-1.5 rounded-full bg-red-500" aria-hidden /> LIVE
+                  </span>
+                ) : (s.my_topic_items?.length ?? 0) > 0 ? (
                   /* RL-902: persönlicher Treffer schlägt den generischen TOPs-Chip. */
                   <span className="shrink-0 rounded-full bg-signal/10 px-2 py-0.5 text-[11px] font-semibold text-signal">
                     {new Set(s.my_topic_items!.map((m) => m.item_number)).size} zu deinen Themen
