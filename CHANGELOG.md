@@ -54,6 +54,11 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   mit dem Protokoll. (#247)
 
 ### Geändert
+- **Neue Beschlüsse bekommen ihre Scores jetzt tagesaktuell:** Der tägliche
+  Protokoll-Lauf bewertet frisch veröffentlichte Beschlüsse direkt mit
+  Gesprächswert und Tragweite und rechnet den Wichtig-Wert sofort neu —
+  „Warum wichtig", die Tragweite in der KI-Frage und „Spannendste zuerst"
+  greifen damit ab dem ersten Tag statt erst nach dem Wochenlauf. (#259)
 - Die **KI-Frage kennt jetzt die Tragweite**: Bei jedem als besonders
   folgenreich oder als Formalie eingestuften Beschluss bekommt die KI einen
   entsprechenden Hinweis (samt „Warum wichtig"-Begründung) mitgeliefert —

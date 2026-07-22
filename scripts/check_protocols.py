@@ -28,6 +28,8 @@ from scripts.backfill_vorlagen import process_missing as fetch_vorlagen  # noqa:
 from scripts.classify_decisions import process as classify_decisions  # noqa: E402
 from scripts.extract_amounts import process as extract_amounts  # noqa: E402
 from scripts.generate_simple_summaries import process as generate_simple  # noqa: E402
+from scripts.rate_impact import process as rate_impact  # noqa: E402
+from scripts.rate_interest import process as rate_interest  # noqa: E402
 from scripts.track_goals import process as track_goals  # noqa: E402
 
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
@@ -57,6 +59,14 @@ def main() -> None:
     # arbeitet weekly_enrich in Wochen-Tranchen ab.
     sstats = generate_simple(COUNCIL_DB, limit=60)
     print(f"Einfach erklärt: {sstats['written']} neu, {sstats['failed']} ohne Ergebnis.")
+    # Gesprächswert + Tragweite für frisch geparste Beschlüsse (RL-U11/U16):
+    # beide Queries liefern „neueste zuerst", das kleine Limit trifft also den
+    # Tageszuwachs; den Alt-Bestand arbeiten die weekly-Tranchen ab. An Tagen
+    # ohne neue Protokolle ist das ein No-op (0 LLM-Aufrufe).
+    itotal, irated = rate_interest(COUNCIL_DB, limit=200, workers=2)
+    print(f"Interessantheit: {irated}/{itotal} bewertet.")
+    ptotal, prated = rate_impact(COUNCIL_DB, limit=200, workers=2)
+    print(f"Tragweite: {prated}/{ptotal} bewertet.")
     # Ingest Vorlagen texts for new agenda items (network + pypdf only, no LLM).
     # Newest first + capped, so a normal day fetches a handful; the historic bulk
     # is scripts/backfill_vorlagen.py without limit. Runs before the FTS rebuild
@@ -81,6 +91,10 @@ def main() -> None:
     # Keep the full-text index in sync for hybrid retrieval (pure SQLite, instant).
     from council.store import CouncilStore
     _store = CouncilStore(COUNCIL_DB)
+    # Wichtig-Wert neu rechnen (reine Heuristik, kein LLM) — damit die
+    # 50/50-Mischung mit der frischen Tragweite sofort greift und neue
+    # Beschlüsse nicht bis zum Sonntags-Lauf ohne Score bleiben.
+    print(f"Wichtig-Score: {_store.backfill_importance()} Beschlüsse berechnet.")
     print(f"FTS rebuilt: {_store.rebuild_fts()} decisions indexed.")
     _store.close()
 
