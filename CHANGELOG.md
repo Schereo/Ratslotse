@@ -7,6 +7,13 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Behoben
+- **App: Absturz beim Öffnen von „Meine Themen" behoben.** In der iOS-App
+  führte das Antippen des Themen-Tabs zu „Etwas ist schiefgelaufen". Ursache
+  war ein doppelt vergebener Daten-Schlüssel im App-Cache, unter dem die
+  Ausschuss-Abos mal als Liste, mal als Objekt lagen. Beide Stellen nutzen
+  jetzt dieselbe Form; ältere Zwischenspeicher werden beim Update verworfen. (#PR)
+
 ### Hinzugefügt
 - **Eigene Quizfragen:** Auf der Quiz-Seite kannst du jetzt **eigene Fragen
   anlegen und üben** — mit 2–4 Antworten, optionalem Ort (Stadtteil),

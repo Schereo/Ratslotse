@@ -34,11 +34,15 @@ export function PushPrimer() {
   });
   const subsQuery = useQuery({
     queryKey: ["subscriptions"],
-    queryFn: () => api.get<{ subscriptions: string[] }>("/subscriptions"),
+    // WICHTIG: identische queryFn wie in topics/page.tsx — beide teilen den
+    // queryKey ["subscriptions"], also MUSS die Form gleich sein (das Array,
+    // nicht das rohe {subscriptions}-Objekt). Sonst liegt je nach Ladereihen-
+    // folge mal ein Array, mal ein Objekt im Cache und topics' .includes() crasht.
+    queryFn: () => api.get<{ subscriptions: string[] }>("/subscriptions").then((d) => d.subscriptions),
     enabled: native && !!user,
   });
   const relevant =
-    (topicsQuery.data?.length ?? 0) > 0 || (subsQuery.data?.subscriptions.length ?? 0) > 0;
+    (topicsQuery.data?.length ?? 0) > 0 || (subsQuery.data?.length ?? 0) > 0;
 
   useEffect(() => {
     if (!native || !user || !relevant) {

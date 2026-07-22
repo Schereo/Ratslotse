@@ -151,9 +151,12 @@ function TopicsInner() {
     );
   }
 
-  const topics = topicsQuery.data ?? [];
-  const subscriptions = subsQuery.data ?? [];
-  const committees = committeesQuery.data ?? [];
+  // Array.isArray statt ?? []: schützt vor einem alt-persistierten Cache, in dem
+  // die Query-Daten fälschlich ein Objekt sind (siehe push-primer.tsx) — ein
+  // .includes()/.map() darauf würde sonst die ganze Seite in die Boundary reißen.
+  const topics = Array.isArray(topicsQuery.data) ? topicsQuery.data : [];
+  const subscriptions = Array.isArray(subsQuery.data) ? subsQuery.data : [];
+  const committees = Array.isArray(committeesQuery.data) ? committeesQuery.data : [];
 
   return (
     <div>

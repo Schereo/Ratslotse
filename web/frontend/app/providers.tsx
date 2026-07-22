@@ -79,7 +79,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     return (
       <PersistQueryClientProvider
         client={queryClient}
-        persistOptions={{ persister, maxAge: PERSIST_MAX_AGE, buster: "v1" }}
+        // buster v2: verwirft bestehende Caches, in denen ["subscriptions"]
+        // fälschlich als rohes Objekt statt als Array lag (Crash auf /topics).
+        persistOptions={{ persister, maxAge: PERSIST_MAX_AGE, buster: "v2" }}
       >
         {inner}
       </PersistQueryClientProvider>
