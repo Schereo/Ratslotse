@@ -61,6 +61,14 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   mit dem Protokoll. (#247)
 
 ### Geändert
+- **Quiz-Startseite mit klarer Hierarchie:** Statt fünf gleich aussehender
+  Zeilen wandern die Kernzahlen (Punkte, Trefferquote, Serie) jetzt in den
+  Seitenkopf, „Weiterspielen" wird zur **Hero-Karte** mit Lotti und der
+  gemerkten Auswahl als Chips, und die vier Modi (Neues Spiel, Tägliche
+  Challenge, Karten-Quiz, Eigene Fragen) sind **farbcodierte, ganz klickbare
+  Kacheln** — die Challenge trägt ein „Heute offen"- bzw. „Erledigt"-Abzeichen.
+  Ohne gemerkte Runde übernimmt „Neues Spiel" die Hero-Karte. Mobil: Hero
+  volle Breite, Kacheln 2 × 2. (#263)
 - **Quiz-Setup auf einer Seite statt vier Schritten:** Beim neuen Spiel
   wählen **Wahlbereich-Kacheln** ihre Stadtteile als Schnellwahl vor (und
   räumen beim Abwählen nur die eigenen wieder weg), die Stadtteil-Chips

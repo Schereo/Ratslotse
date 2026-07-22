@@ -2,16 +2,16 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Search, Play, MapPin, Sparkles, History, Check, X, ChevronDown, ChevronUp, PencilLine } from "lucide-react";
+import Link from "next/link";
+import { Search, Play, MapPin, Sparkles, Check, X, ChevronDown, ChevronUp, PencilLine, Zap, Flame, RotateCcw } from "lucide-react";
 import { QuizAreas, QuizAreaEntry, QuizQuestion, QuizStats, QuizDaily, UserQuizQuestion } from "@/lib/types";
-import { PageHeader, Card, Button, Input, Spinner, EmptyState, toast } from "@/components/ui";
+import { Button, Input, Spinner, EmptyState, toast } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
 import { useFetch } from "@/lib/use-fetch";
 import { api, qs } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { QuizPlay, CATEGORY_LABEL } from "@/components/quiz-play";
-import { QuizStatsStrip, QuizDailyCard } from "@/components/quiz-progress";
-import { QuizMapPlay, QuizMapCard } from "@/components/quiz-map-play";
+import { QuizMapPlay } from "@/components/quiz-map-play";
 import { OwnQuestionsView } from "@/components/quiz-own";
 
 type RoundKind = "normal" | "review" | "daily" | "own";
@@ -29,17 +29,17 @@ function saveLast(s: LastSettings) {
   try { localStorage.setItem(LS_KEY, JSON.stringify(s)); } catch { /* privater Modus o. ä. */ }
 }
 
-/** Menschliche Kurzbeschreibung der Auswahl fürs „Weiterspielen"-Kärtchen.
- *  Kennt auch „wahlbereich:"-Einträge aus alten gespeicherten Ständen. */
-function describeSelection(s: LastSettings, catalog: QuizAreas): string {
+/** Auswahl eines gespeicherten Spiels in Gebiets-Chips + Kategorie-Label
+ *  zerlegen (Hero-Karte „Weiterspielen"). Kennt auch „wahlbereich:"-Einträge
+ *  aus alten gespeicherten Ständen. */
+function selectionParts(s: LastSettings, catalog: QuizAreas): { areas: string[]; cat: string } {
   const wb = new Map(catalog.wahlbereiche.map((w) => [`wahlbereich:${w.key}`, w.label ?? `Wahlbereich ${w.key}`] as [string, string]));
   const th = new Map(catalog.themen.map((t) => [`thema:${t.key}`, t.label ?? t.key] as [string, string]));
   const areas = s.areas.map((a) =>
     a.startsWith("wahlbereich:") ? (wb.get(a) ?? a)
       : a.startsWith("thema:") ? (th.get(a) ?? a.slice(6))
         : a.startsWith("stadtteil:") ? a.slice(10) : a);
-  const catStr = s.cats.length ? s.cats.map((c) => CATEGORY_LABEL[c] ?? c).join(", ") : "Alle Kategorien";
-  return `${areas.join(" · ")} · ${catStr}`;
+  return { areas, cat: s.cats.length ? s.cats.map((c) => CATEGORY_LABEL[c] ?? c).join(", ") : "Alle Kategorien" };
 }
 
 function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
@@ -67,24 +67,74 @@ function SetupLabel({ children, hint }: { children: React.ReactNode; hint?: stri
   );
 }
 
-/** Startkachel (Weiterspielen / Neues Spiel). */
-function ActionCard({ icon, title, sub, action, accent }: {
-  icon: React.ReactNode; title: string; sub: string; action: React.ReactNode; accent?: boolean;
+/** Hero-Karte (Design 14a): Primär-Tint, Lotti und der EINZIGE gefüllte Button.
+ *  „Weiterspielen" zeigt die gemerkte Auswahl als Chips; ohne gemerkte Runde
+ *  ist „Neues Spiel" die Hero-Karte (dann `sub` statt Chips). Auf dem Handy
+ *  stapelt der Button volle Breite unter Lotti + Chips. */
+function HeroCard({ title, parts, sub, buttonLabel, onStart, starting }: {
+  title: string;
+  parts?: { areas: string[]; cat: string };
+  sub?: string;
+  buttonLabel: string;
+  onStart: () => void;
+  starting: boolean;
 }) {
+  const shown = parts ? parts.areas.slice(0, 3) : [];
+  const rest = parts ? parts.areas.length - shown.length : 0;
   return (
-    <Card className={cn("flex flex-wrap items-center justify-between gap-3 p-4", accent && "border-primary/30 bg-primary/5")}>
-      <div className="flex min-w-0 items-center gap-3">
-        <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
-          accent ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground")}>
-          {icon}
+    <div className="rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/[0.07] to-transparent p-4 shadow-sm sm:p-5">
+      <div className="flex items-center gap-4">
+        <Mascot decorative pose="point" bob className="h-14 w-14 shrink-0 sm:h-16 sm:w-16" />
+        <div className="min-w-0 flex-1">
+          <p className="font-display text-lg font-bold text-foreground">{title}</p>
+          {parts ? (
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              {shown.map((a) => (
+                <span key={a} className="inline-flex rounded-full bg-primary/10 px-2.5 py-0.5 text-[11.5px] font-medium text-foreground">{a}</span>
+              ))}
+              {rest > 0 && (
+                <span className="inline-flex rounded-full bg-primary/10 px-2.5 py-0.5 text-[11.5px] font-medium text-foreground">+ {rest} weitere</span>
+              )}
+              <span className="inline-flex rounded-full border border-border px-2.5 py-0.5 text-[11.5px] text-muted-foreground">{parts.cat}</span>
+            </div>
+          ) : (
+            <p className="mt-1 text-sm text-muted-foreground">{sub}</p>
+          )}
         </div>
-        <div className="min-w-0">
-          <p className="font-semibold text-foreground">{title}</p>
-          <p className="truncate text-sm text-muted-foreground">{sub}</p>
-        </div>
+        <Button className="hidden shrink-0 sm:inline-flex" onClick={onStart} disabled={starting}>
+          <Play className="!size-4" /> {buttonLabel}
+        </Button>
       </div>
-      <div className="shrink-0">{action}</div>
-    </Card>
+      <Button className="mt-3 w-full sm:hidden" onClick={onStart} disabled={starting}>
+        <Play className="!size-4" /> {buttonLabel}
+      </Button>
+    </div>
+  );
+}
+
+type ModeTileData = {
+  key: string;
+  icon: React.ReactNode;
+  iconClass: string;
+  title: React.ReactNode;
+  sub: string;
+  badge?: React.ReactNode;
+  onClick: () => void;
+};
+
+/** Modus-Kachel (Design 14a): ganze Fläche klickbar, Icon-Farbe unterscheidet
+ *  den Modus, Sub-Text max. ein Satz. */
+function ModeTile({ icon, iconClass, title, sub, badge, onClick }: Omit<ModeTileData, "key">) {
+  return (
+    <button type="button" onClick={onClick}
+      className="card-interactive relative flex flex-col items-start gap-2.5 rounded-2xl border border-border bg-card p-4 text-left shadow-sm">
+      {badge}
+      <span className={cn("flex h-10 w-10 items-center justify-center rounded-xl", iconClass)}>{icon}</span>
+      <span>
+        <span className="block font-display text-[15px] font-bold text-foreground">{title}</span>
+        <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">{sub}</span>
+      </span>
+    </button>
   );
 }
 
@@ -458,49 +508,103 @@ function QuizInner() {
     );
   }
 
-  // ---- Startseite -----------------------------------------------------------
+  // ---- Startseite (Design 14a): Stats im Kopf, Hero + vier Modi-Kacheln ------
+  const answered = stats?.total.answered ?? 0;
+  const totalQuote = stats && stats.total.answered
+    ? Math.round((stats.total.correct / stats.total.answered) * 100) : 0;
+  const ownCount = own?.questions.length ?? 0;
+  const dailyOpen = Boolean(daily && !daily.done && daily.questions.length);
+
+  // Modi-Kacheln. „Neues Spiel" ist nur dann eine Kachel, wenn „Weiterspielen"
+  // bereits die Hero-Karte belegt — sonst wird es selbst zur Hero-Karte.
+  const tiles: ModeTileData[] = [];
+  if (last) {
+    tiles.push({
+      key: "neu", icon: <Sparkles className="h-[18px] w-[18px]" />, iconClass: "bg-primary/10 text-primary",
+      title: "Neues Spiel", sub: "Gebiete & Themen frei wählen", onClick: () => setView("setup"),
+    });
+  }
+  if (daily && (dailyOpen || daily.done)) {
+    tiles.push({
+      key: "daily", icon: <Zap className="h-[18px] w-[18px]" />,
+      iconClass: "bg-amber-500/15 text-amber-700 dark:text-amber-500",
+      title: "Tägliche Challenge", sub: "5 Fragen — jeden Tag neu",
+      badge: dailyOpen ? (
+        <span className="absolute right-3 top-3 rounded-full bg-signal px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-signal-foreground">Heute offen</span>
+      ) : (
+        <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
+          <Check className="h-2.5 w-2.5" strokeWidth={3} /> Erledigt
+        </span>
+      ),
+      onClick: dailyOpen ? startDaily : () => toast.info("Heute schon erledigt — morgen gibt's neue Fragen."),
+    });
+  }
+  tiles.push({
+    key: "map", icon: <MapPin className="h-[18px] w-[18px]" />,
+    iconClass: "bg-emerald-500/[0.12] text-emerald-700 dark:text-emerald-400",
+    title: "Karten-Quiz", sub: "Stadtteile auf der Karte finden", onClick: () => void startMap(),
+  });
+  tiles.push({
+    key: "own", icon: <PencilLine className="h-[18px] w-[18px]" />, iconClass: "bg-muted text-muted-foreground",
+    title: <>Eigene Fragen{ownCount > 0 && <span className="font-medium text-muted-foreground"> · {ownCount}</span>}</>,
+    sub: "Anlegen & üben — ohne Punkte",
+    onClick: () => { setOwnAutoNew(ownCount === 0); setView("own"); },
+  });
+  const lgCols = tiles.length >= 4 ? "lg:grid-cols-4" : tiles.length === 3 ? "lg:grid-cols-3" : "lg:grid-cols-2";
+
   return (
     <div>
-      <PageHeader title="Oldenburg-Quiz" description="Teste dein Wissen über deine Stadt — nach Wahlbereich, Stadtteil oder großem Thema." />
+      {/* Kopf: Titel + Kernzahlen inline, rechts „Fehler üben" + Statistik-Link. */}
+      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+        <div className="min-w-0">
+          <h1 className="font-display text-2xl font-bold tracking-tight text-foreground sm:text-[30px] sm:leading-9">Oldenburg-Quiz</h1>
+          {answered > 0 && stats ? (
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-3.5 gap-y-1 text-sm text-muted-foreground">
+              <span><strong className="font-bold tabular-nums text-foreground">{stats.total.points}</strong> {stats.total.points === 1 ? "Punkt" : "Punkte"}</span>
+              <span className="text-border" aria-hidden>·</span>
+              <span><strong className="font-bold tabular-nums text-foreground">{totalQuote}&nbsp;%</strong> Trefferquote</span>
+              {stats.streak > 0 && (
+                <>
+                  <span className="text-border" aria-hidden>·</span>
+                  <span className="inline-flex items-center gap-1">
+                    <Flame className="h-3.5 w-3.5 text-signal" />
+                    <strong className="font-bold tabular-nums text-foreground">{stats.streak}</strong> Tage-Serie
+                  </span>
+                </>
+              )}
+            </div>
+          ) : (
+            <p className="mt-1 text-sm text-muted-foreground">Teste dein Wissen über deine Stadt — nach Wahlbereich, Stadtteil oder großem Thema.</p>
+          )}
+        </div>
+        {answered > 0 && stats && (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            {stats.wrong > 0 && (
+              <Button variant="secondary" size="sm" onClick={startReview} disabled={starting}>
+                <RotateCcw className="!size-4" /> {stats.wrong} Fehler üben
+              </Button>
+            )}
+            <Link href="/quiz/stats" className="whitespace-nowrap text-sm font-medium text-primary hover:underline">Alle Statistiken →</Link>
+          </div>
+        )}
+      </div>
 
       {empty ? (
         <EmptyState mascot="sleep" title="Das Quiz wird gerade vorbereitet"
           hint="Die Fragen werden aus Wikipedia, der Stadt-Website und den Ratsdaten erzeugt. Schau bald wieder vorbei." />
       ) : (
-        <div className="mt-2 space-y-4">
-          {stats && stats.total.answered > 0 && (
-            <QuizStatsStrip stats={stats} onReview={startReview} />
-          )}
-
-          {last && (
-            <ActionCard accent icon={<History className="h-5 w-5" />} title="Weiterspielen"
-              sub={describeSelection(last, catalog)}
-              action={<Button onClick={() => startRound(last.areas, last.cats)} disabled={starting}><Play className="!size-4" /> Weiterspielen</Button>} />
-          )}
-
-          <ActionCard icon={<Sparkles className="h-5 w-5" />} title="Neues Spiel"
-            sub="Wahlbereich als Schnellwahl, Stadtteile, Themen und Kategorien — alles auf einer Seite."
-            action={<Button variant={last ? "secondary" : "primary"} onClick={() => setView("setup")}>
-              <Play className="!size-4" /> Neues Spiel
-            </Button>} />
-
-          {daily && <QuizDailyCard done={daily.done} count={daily.questions.length} onStart={startDaily} />}
-          <QuizMapCard onStart={startMap} />
-
-          {/* Eigene Fragen (RL-U14): mit Bestand prominent üben, sonst dezenter Einstieg. */}
-          {(own?.questions.length ?? 0) > 0 ? (
-            <ActionCard icon={<PencilLine className="h-5 w-5" />}
-              title={`Meine Fragen (${own!.questions.length})`}
-              sub="Nur für dich — eine Übungsrunde mischt 10 deiner Fragen."
-              action={<div className="flex gap-2">
-                <Button variant="secondary" onClick={() => { setOwnAutoNew(false); setView("own"); }}>Verwalten</Button>
-                <Button onClick={() => void startOwnPractice()} disabled={starting}><Play className="!size-4" /> Üben</Button>
-              </div>} />
+        <div className="mt-5 space-y-3">
+          {last ? (
+            <HeroCard title="Weiterspielen" parts={selectionParts(last, catalog)} buttonLabel="Weiterspielen"
+              starting={starting} onStart={() => startRound(last.areas, last.cats)} />
           ) : (
-            <ActionCard icon={<PencilLine className="h-5 w-5" />} title="Eigene Fragen"
-              sub="Leg eigene Fragen an und übe sie — privat, ohne Punkte."
-              action={<Button variant="secondary" onClick={() => { setOwnAutoNew(true); setView("own"); }}>Anlegen</Button>} />
+            <HeroCard title="Neues Spiel" sub="Gebiete, Themen und Kategorien frei wählen — alles auf einer Seite."
+              buttonLabel="Neues Spiel" starting={starting} onStart={() => setView("setup")} />
           )}
+
+          <div className={cn("grid grid-cols-2 gap-3", lgCols)}>
+            {tiles.map(({ key, ...rest }) => <ModeTile key={key} {...rest} />)}
+          </div>
         </div>
       )}
     </div>
