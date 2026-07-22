@@ -150,6 +150,21 @@ def test_admin_can_change_role(client):
     assert r.status_code == 200 and r.json()["role"] == "admin"
 
 
+def test_admin_user_rows_and_detail(client):
+    """Design 20a: Nutzer-Liste mit Signalen + Detail (Features, 30-T-Verlauf)."""
+    _register(client)  # admin; folgender /me-Request schreibt Aktivität
+    admin = client.get("/api/auth/me").json()
+    rows = client.get("/api/admin/users").json()
+    me = next(u for u in rows if u["id"] == admin["id"])
+    assert {"n_topics", "n_ki", "n_quiz", "last_seen"} <= set(me)
+    assert me["last_seen"] is not None  # via record_activity beim Login
+    detail = client.get(f"/api/admin/users/{admin['id']}").json()
+    assert detail["email"] == admin["email"]
+    assert set(detail["features"]) == {"ki_frage", "suche", "quiz", "analyse", "karte"}
+    assert isinstance(detail["verlauf"], list) and len(detail["verlauf"]) == 30
+    assert client.get("/api/admin/users/999999").status_code == 404
+
+
 def test_activation_emails_user_on_approve(client):
     """Entsperren (pending→active) durch den Admin verschickt die Freischalt-Mail —
     der letzte verbliebene manuelle Übergang, seit Konten sich per E-Mail-
