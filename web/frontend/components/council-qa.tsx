@@ -10,6 +10,7 @@ import { apiUrl, authHeaders } from "@/lib/api";
 import { Button, Card, Input, toast } from "@/components/ui";
 import { DecisionLinkCard } from "@/components/decision-ui";
 import { cn } from "@/lib/utils";
+import { reportBadgeEvent } from "@/components/badges";
 
 const EXAMPLES = [
   "Was wurde zum Radverkehr beschlossen?",
@@ -98,6 +99,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     // Erste Frage gestellt → der Glitzer-Lockruf auf dem KI-Frage-Umschalter
     // hat seinen Job getan (Segmented sparkle, siehe council/page.tsx).
     try { localStorage.setItem("ratslotse:qa-benutzt", "1"); } catch {}
+    reportBadgeEvent("frage"); // RL-U12: Erste Frage
     abortRef.current?.abort();
     const ctrl = new AbortController();
     abortRef.current = ctrl;

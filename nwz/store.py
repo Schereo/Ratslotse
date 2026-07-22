@@ -336,6 +336,11 @@ class Store:
                 # Kennzeichen, ob je ein eigenes Passwort gesetzt wurde.
                 if "apple_sub" not in wu_cols:
                     self._conn.execute("ALTER TABLE web_users ADD COLUMN apple_sub TEXT")
+                if "badges" not in wu_cols:
+                    # Lotsen-Abzeichen (RL-U12): JSON {"earned": [...],
+                    # "map_places": [...], "flags": [...]} — eigene Spalte
+                    # neben dem Onboarding, damit sich beide nicht überschreiben.
+                    self._conn.execute("ALTER TABLE web_users ADD COLUMN badges TEXT")
                 if "password_set" not in wu_cols:
                     self._conn.execute(
                         "ALTER TABLE web_users ADD COLUMN password_set INTEGER NOT NULL DEFAULT 1"
@@ -522,6 +527,32 @@ class Store:
             except (TypeError, ValueError):
                 pass
         return {"steps": [], "celebrated": False}
+
+    def get_badge_state(self, user_id: int) -> dict:
+        """Roh-Zustand der Lotsen-Abzeichen (RL-U12): {"earned": [ids],
+        "map_places": [slugs], "flags": ["sitzung", "tour", "frage", ...]}."""
+        row = self._conn.execute(
+            "SELECT badges FROM web_users WHERE id = ?", (user_id,)
+        ).fetchone()
+        raw = row[0] if row else None
+        if raw:
+            try:
+                data = json.loads(raw)
+                return {
+                    "earned": [s for s in data.get("earned", []) if isinstance(s, str)],
+                    "map_places": [s for s in data.get("map_places", []) if isinstance(s, str)],
+                    "flags": [s for s in data.get("flags", []) if isinstance(s, str)],
+                }
+            except (TypeError, ValueError):
+                pass
+        return {"earned": [], "map_places": [], "flags": []}
+
+    def save_badge_state(self, user_id: int, state: dict) -> None:
+        with self._conn:
+            self._conn.execute(
+                "UPDATE web_users SET badges = ? WHERE id = ?",
+                (json.dumps(state, ensure_ascii=False), user_id),
+            )
 
     def update_onboarding(
         self, user_id: int, steps: list[str] | None = None, celebrated: bool | None = None
