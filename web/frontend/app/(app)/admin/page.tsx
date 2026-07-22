@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { Prompt, WebUser, AdminStats, QuizFlagged, AdminQuizStats } from "@/lib/types";
+import { Prompt, WebUser, AdminGrowth, QuizFlagged, AdminQuizStats } from "@/lib/types";
 import { Badge, Button, Card, ConfirmDialog, PageHeader, Spinner, Textarea, formatDate, toast } from "@/components/ui";
-import { AreaSparkline, StatKicker } from "@/components/admin-charts";
+import { AreaSparkline, MiniBars, StatKicker } from "@/components/admin-charts";
 import { cn } from "@/lib/utils";
 
 type Tab = "stats" | "llm" | "prompts" | "users" | "quiz";
@@ -56,57 +56,100 @@ export default function AdminPage() {
   );
 }
 
+const GROWTH_RANGES: [string, string][] = [["30d", "30 T"], ["90d", "90 T"], ["12m", "12 M"], ["all", "Alles"]];
+
+function TrendChip({ delta }: { delta: number }) {
+  if (delta <= 0) return null;
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-green-500/[0.12] px-2 py-0.5 text-[11px] font-semibold text-green-700 dark:text-green-400">
+      <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17 17 7" /><path d="M7 7h10v10" /></svg>
+      +{delta}
+    </span>
+  );
+}
+
+function GrowthCard({ kicker, total, delta, series, color }: { kicker: string; total: number; delta: number; series: number[]; color: string }) {
+  return (
+    <Card className="p-4">
+      <div className="flex items-start justify-between">
+        <div>
+          <StatKicker>{kicker}</StatKicker>
+          <p className="mt-1.5 font-display text-[28px] font-extrabold leading-none tracking-tight tabular-nums text-foreground">{total.toLocaleString("de-DE")}</p>
+        </div>
+        <TrendChip delta={delta} />
+      </div>
+      <AreaSparkline values={series.length ? series : [0, 0]} color={color} height={64} className="mt-3" />
+    </Card>
+  );
+}
+
 function StatsTab() {
+  const [range, setRange] = useState("90d");
   const { data, isPending, isError } = useQuery({
-    queryKey: ["admin", "stats"],
-    queryFn: () => api.get<AdminStats>("/admin/stats"),
+    queryKey: ["admin", "growth", range],
+    queryFn: () => api.get<AdminGrowth>(`/admin/stats/growth?range=${range}`),
   });
 
   if (isPending) return <Spinner />;
   if (isError || !data) return <p className="text-sm text-destructive">Fehler beim Laden der Statistiken.</p>;
 
+  const c = data.council;
   return (
-    <div className="space-y-8">
-      <StatSection title="Web-Nutzer:innen">
-        <Stat label="Gesamt" value={data.web_users.total} />
-        <Stat label="Admins" value={data.web_users.admins} />
-        <Stat label="Aktiv" value={data.web_users.active} />
-        <Stat label="Nicht aktiv (unbestätigt/gesperrt)" value={data.web_users.pending} />
-      </StatSection>
+    <div className="space-y-4">
+      {/* Kopf: „Wachstum“ + Zeitraum-Umschalter (20a). */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h3 className="font-display text-[15px] font-bold text-foreground">Wachstum</h3>
+        <div role="group" className="inline-flex gap-0.5 rounded-[10px] bg-muted p-0.5">
+          {GROWTH_RANGES.map(([v, label]) => (
+            <button
+              key={v}
+              onClick={() => setRange(v)}
+              className={cn(
+                "rounded-lg px-3 py-1 text-[12.5px] transition-colors",
+                range === v ? "bg-card font-semibold text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
 
-      <StatSection title="Themen">
-        <Stat label="Themen" value={data.topics.total} />
-        <Stat label="Nutzer:innen mit Themen" value={data.topics.users_with_topics} />
-        <Stat label="Ausschuss-Abos" value={data.topics.subscriptions} />
-      </StatSection>
+      {/* Zwei Verlaufs-Karten. */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <GrowthCard kicker="Registrierte Nutzer:innen" total={data.users.total} delta={data.users.delta} series={data.users.series} color="hsl(var(--primary))" />
+        <GrowthCard kicker="Angelegte Themen" total={data.topics.total} delta={data.topics.delta} series={data.topics.series} color="hsl(var(--signal))" />
+      </div>
 
-      <StatSection title="Ratsinformationssystem">
-        <Stat label="Sitzungen" value={data.council.sessions} />
-        <Stat label="davon kommend" value={data.council.upcoming} />
-        <Stat label="Tagesordnungspunkte" value={data.council.agenda_items} />
-        <Stat label="Ausschüsse" value={data.council.committees} />
-      </StatSection>
+      {/* WAU + Ratsinfo-Import. */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.4fr_1fr]">
+        <Card className="p-4">
+          <div className="flex items-baseline justify-between">
+            <StatKicker>Aktive Nutzer:innen je Woche</StatKicker>
+            <span className="text-[11.5px] text-muted-foreground">WAU · 8 Wochen</span>
+          </div>
+          <MiniBars values={data.wau.length ? data.wau : [0]} height={70} className="mt-3.5" />
+        </Card>
+        <Card className="p-4">
+          <StatKicker>Ratsinfo-Import</StatKicker>
+          <div className="mt-3 flex flex-col gap-2.5">
+            {[["Sitzungen", c.sessions], ["Tagesordnungspunkte", c.agenda_items], ["Beschlüsse mit KI-Feldern", c.decisions_with_ki]].map(([label, val]) => (
+              <div key={label as string} className="flex items-baseline justify-between">
+                <span className="text-[13px] text-foreground">{label}</span>
+                <span className="font-display text-base font-bold tabular-nums text-foreground">{(val as number).toLocaleString("de-DE")}</span>
+              </div>
+            ))}
+            <div className="mt-1 flex items-center gap-2 border-t border-border pt-2.5">
+              <span className={cn("h-2 w-2 shrink-0 rounded-full", c.fetched_today > 0 ? "bg-green-500" : "bg-muted-foreground/40")} />
+              <span className="text-xs text-muted-foreground">
+                {c.last_fetch ? `Letzter Import: ${formatDate(c.last_fetch.slice(0, 10))}` : "Noch kein Import"}
+                {c.fetched_today > 0 && ` · ${c.fetched_today} heute`}
+              </span>
+            </div>
+          </div>
+        </Card>
+      </div>
     </div>
-  );
-}
-
-function StatSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <h3 className="mb-3 text-sm font-semibold text-muted-foreground">{title}</h3>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{children}</div>
-    </div>
-  );
-}
-
-function Stat({ label, value, wide }: { label: string; value: number | string; wide?: boolean }) {
-  return (
-    <Card className={cn("p-4", wide && "col-span-2")}>
-      <p className="text-2xl font-bold text-foreground">
-        {typeof value === "number" ? value.toLocaleString("de-DE") : value}
-      </p>
-      <p className="mt-0.5 text-xs text-muted-foreground">{label}</p>
-    </Card>
   );
 }
 
