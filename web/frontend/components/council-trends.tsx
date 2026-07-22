@@ -1,9 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  ArrowRight, Briefcase, Bus, Cog, Construction, Euro as EuroIcon, Globe,
+  ArrowRight, Briefcase, Bus, ChevronDown, Cog, Construction, Euro as EuroIcon, Globe,
   GraduationCap, HeartHandshake, Leaf, Shield, Tag, Trophy, type LucideIcon,
 } from "lucide-react";
 import { Trends, FieldRecap } from "@/lib/types";
@@ -11,6 +12,7 @@ import { Card, Spinner, EmptyState } from "@/components/ui";
 import { POLICY_FIELD_LABELS, formatEuro } from "@/components/decision-ui";
 import { decisionHref } from "@/lib/routes";
 import { useFetch } from "@/lib/use-fetch";
+import { cn } from "@/lib/utils";
 import { ChartExplainer } from "@/components/chart-explainer";
 
 // Distinct, dark-mode-safe series colours for the top policy fields —
@@ -158,6 +160,10 @@ const FIELD_ICON: Record<string, LucideIcon> = {
   sonstiges: Tag,
 };
 
+// Aufklapp-Zustand je Themenfeld (Design 15a) — geräteweit gemerkt.
+const RECAP_OPEN_KEY = "trends:recapOpen";
+const CHIP_LIMIT = 6;  // sichtbare Themenfeld-Chips vor „+N"
+
 /** Neues Recap-Format: Zeile 1 = Kernaussage, danach "- "-Stichpunkte.
  *  Ältere Rückblicke in der DB sind noch Fließtext → Prosa-Fallback. */
 function parseRecap(summary: string): { lead: string; bullets: string[] } | null {
@@ -168,12 +174,35 @@ function parseRecap(summary: string): { lead: string; bullets: string[] } | null
   return { lead, bullets };
 }
 
-function RecapCard({ r }: { r: FieldRecap }) {
+/** Ersten Teilsatz („Kern") eines Stichpunkts abtrennen — bis zum ersten
+ *  Trenner (Doppelpunkt, Gedankenstrich oder Komma). Der Kern wird gefettet
+ *  und führt beim Scannen das Auge (Design 15a). */
+function splitBullet(b: string): { head: string; rest: string } {
+  const m = b.match(/^(.{3,}?)(:\s|\s[–—-]\s|,\s)(.*)$/);
+  if (m) return { head: m[1], rest: m[2] + m[3] };
+  // Kein Trenner: kurze Punkte ganz fetten, lange gar nicht (statt eines
+  // hässlichen Fettbruchs mitten im Satz).
+  return b.length <= 55 ? { head: b, rest: "" } : { head: "", rest: b };
+}
+
+function RecapChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button type="button" onClick={onClick}
+      className={cn("shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors",
+        active ? "bg-primary text-primary-foreground" : "border border-input bg-card text-foreground hover:bg-accent")}>
+      {children}
+    </button>
+  );
+}
+
+/** Themenfeld-Karte (Design 15a): standardmäßig nur Kernaussage + Zahl; die
+ *  Stichpunkte klappen per Knopf auf, mit gefettetem Kern je Punkt. */
+function RecapCard({ r, open, onToggle }: { r: FieldRecap; open: boolean; onToggle: (open: boolean) => void }) {
   const Icon = FIELD_ICON[r.policy_field] ?? Tag;
   const parsed = parseRecap(r.summary);
   const href = `/council?tab=decisions&field=${r.policy_field}&cat=all${r.period_from ? `&date_from=${r.period_from}` : ""}${r.period_to ? `&date_to=${r.period_to}` : ""}`;
   return (
-    <div className="flex flex-col rounded-xl border border-border bg-card p-4">
+    <div className={cn("flex flex-col rounded-xl border bg-card p-4 transition-colors", open ? "border-primary/30 shadow-sm" : "border-border")}>
       <div className="flex items-center gap-2.5">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
           <Icon className="h-4 w-4" />
@@ -186,27 +215,48 @@ function RecapCard({ r }: { r: FieldRecap }) {
 
       {parsed ? (
         <>
-          <p className="mt-3 text-sm font-medium leading-snug text-foreground">{parsed.lead}</p>
-          <ul className="mt-2.5 flex-1 space-y-1.5">
-            {parsed.bullets.map((b, i) => (
-              <li key={i} className="flex gap-2 text-sm leading-relaxed text-muted-foreground">
-                <span className="mt-[0.62rem] h-px w-3 shrink-0 bg-primary/50" aria-hidden />
-                <span>{b}</span>
-              </li>
-            ))}
-          </ul>
+          <p className="mt-3 text-sm font-semibold leading-snug text-foreground">{parsed.lead}</p>
+          {open ? (
+            <>
+              <ul className="mt-2.5 space-y-2">
+                {parsed.bullets.map((b, i) => {
+                  const { head, rest } = splitBullet(b);
+                  return (
+                    <li key={i} className="flex gap-2 text-[13px] leading-relaxed text-muted-foreground">
+                      <span className="mt-[0.45rem] h-[5px] w-[5px] shrink-0 rounded-full bg-primary" aria-hidden />
+                      <span><strong className="font-semibold text-foreground">{head}</strong>{rest}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+              <div className="mt-3 flex items-center justify-between border-t border-border pt-2.5">
+                <button type="button" onClick={() => onToggle(false)}
+                  className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground">
+                  Einklappen
+                </button>
+                <Link href={href} className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                  {r.n_decisions} Beschlüsse <ArrowRight className="h-3 w-3" />
+                </Link>
+              </div>
+            </>
+          ) : (
+            <button type="button" onClick={() => onToggle(true)}
+              className="mt-3 flex w-full items-center justify-between border-t border-border pt-2.5 text-xs font-medium text-primary transition-opacity hover:opacity-80">
+              <span>{parsed.bullets.length} Kernpunkte anzeigen</span>
+              <ChevronDown className="h-4 w-4" />
+            </button>
+          )}
         </>
       ) : (
-        // Fallback für Bestands-Rückblicke im alten Fließtext-Format.
-        <p className="mt-3 flex-1 text-sm leading-relaxed text-muted-foreground">{r.summary}</p>
+        // Fallback für Bestands-Rückblicke im alten Fließtext-Format (keine Bullets → nichts aufzuklappen).
+        <>
+          <p className="mt-3 flex-1 text-sm leading-relaxed text-muted-foreground">{r.summary}</p>
+          <Link href={href}
+            className="mt-3 inline-flex w-fit items-center gap-1 border-t border-border pt-2.5 text-xs font-medium text-muted-foreground transition-colors hover:text-primary">
+            Die {r.n_decisions} Beschlüsse dahinter <ArrowRight className="h-3 w-3" />
+          </Link>
+        </>
       )}
-
-      <Link
-        href={href}
-        className="mt-3 inline-flex w-fit items-center gap-1 border-t border-border pt-2.5 text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
-      >
-        Die {r.n_decisions} Beschlüsse dahinter <ArrowRight className="h-3 w-3" />
-      </Link>
     </div>
   );
 }
@@ -214,13 +264,73 @@ function RecapCard({ r }: { r: FieldRecap }) {
 function FieldRecaps() {
   const { data } = useFetch<{ recaps: FieldRecap[] }>("/council/field-recaps");
   const recaps = data?.recaps ?? [];
+  const [filter, setFilter] = useState<string | null>(null);
+  const [showAllChips, setShowAllChips] = useState(false);
+  const [open, setOpen] = useState<Record<string, boolean>>({});
+
+  // Gemerkten Aufklapp-Zustand einmalig laden.
+  useEffect(() => {
+    try {
+      const s = JSON.parse(localStorage.getItem(RECAP_OPEN_KEY) || "{}");
+      if (s && typeof s === "object") setOpen(s);
+    } catch { /* privater Modus o. ä. */ }
+  }, []);
+  const persist = (next: Record<string, boolean>) => {
+    setOpen(next);
+    try { localStorage.setItem(RECAP_OPEN_KEY, JSON.stringify(next)); } catch { /* egal */ }
+  };
+
   if (recaps.length === 0) return null;
+
+  const shown = filter ? recaps.filter((r) => r.policy_field === filter) : recaps;
+  const allExpanded = shown.length > 0 && shown.every((r) => open[r.policy_field]);
+  const toggleAll = () => {
+    const next = { ...open };
+    shown.forEach((r) => { next[r.policy_field] = !allExpanded; });
+    persist(next);
+  };
+  const chipFields = showAllChips ? recaps : recaps.slice(0, CHIP_LIMIT);
+  const overflow = recaps.length - chipFields.length;
+
   return (
-    <Block title="Rückblick je Themenfeld" hint="KI-generierte Kurzfassung der jeweils neuesten Beschlüsse je Bereich — was den Rat zuletzt beschäftigt hat.">
-      <div className="grid items-start gap-3 sm:grid-cols-2">
-        {recaps.map((r) => <RecapCard key={r.policy_field} r={r} />)}
+    <Card className="p-4 sm:p-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold text-foreground">Rückblick je Themenfeld</h3>
+          <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+            KI-Kurzfassung der neuesten Beschlüsse — was den Rat zuletzt beschäftigt hat.
+          </p>
+        </div>
+        <button type="button" onClick={toggleAll}
+          className="shrink-0 rounded-full border border-input bg-card px-3 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent">
+          {allExpanded ? "Alle einklappen" : "Alle ausklappen"}
+        </button>
       </div>
-    </Block>
+
+      {/* Filter-Chips: mobil horizontal scrollbar, ab sm umbrechend. */}
+      <div className="mt-3.5 flex gap-1.5 overflow-x-auto pb-0.5 sm:flex-wrap sm:overflow-visible sm:pb-0">
+        <RecapChip active={filter === null} onClick={() => setFilter(null)}>Alle {recaps.length}</RecapChip>
+        {chipFields.map((r) => (
+          <RecapChip key={r.policy_field} active={filter === r.policy_field}
+            onClick={() => setFilter((f) => (f === r.policy_field ? null : r.policy_field))}>
+            {r.field_label}
+          </RecapChip>
+        ))}
+        {overflow > 0 && (
+          <button type="button" onClick={() => setShowAllChips(true)}
+            className="shrink-0 whitespace-nowrap rounded-full border border-input bg-card px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent">
+            +{overflow}
+          </button>
+        )}
+      </div>
+
+      <div className="mt-3.5 grid items-start gap-3 sm:grid-cols-2">
+        {shown.map((r) => (
+          <RecapCard key={r.policy_field} r={r} open={!!open[r.policy_field]}
+            onToggle={(o) => persist({ ...open, [r.policy_field]: o })} />
+        ))}
+      </div>
+    </Card>
   );
 }
 
