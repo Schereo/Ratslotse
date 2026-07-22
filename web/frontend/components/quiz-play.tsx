@@ -80,12 +80,16 @@ export function LottiReaction({ outcome, seed, children }: {
 /** Spielt eine Runde Fragen durch: eine Frage nach der anderen, sofortiges
  *  Feedback (Lösung, Erklärung, Quelle, Bewertung), am Ende eine Zusammenfassung.
  *  `onComplete` meldet das Endergebnis (z. B. um die Tages-Challenge zu buchen);
- *  `title` beschriftet den Runden-Kontext (Tages-Challenge / Meine Fehler). */
-export function QuizPlay({ questions, onExit, onComplete, title }: {
+ *  `title` beschriftet den Runden-Kontext (Tages-Challenge / Meine Fehler).
+ *  `practice` (RL-U14, eigene Fragen): Antworten laufen über `answerPath`,
+ *  ohne Punkte, ohne Qualitäts-Bewertung — nur Üben. */
+export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/quiz/answer", practice = false }: {
   questions: QuizQuestion[];
   onExit: () => void;
   onComplete?: (r: { correct: number; total: number; points: number }) => void;
   title?: string;
+  answerPath?: string;
+  practice?: boolean;
 }) {
   const [idx, setIdx] = useState(0);
   const [chosen, setChosen] = useState<number | null>(null);
@@ -116,7 +120,7 @@ export function QuizPlay({ questions, onExit, onComplete, title }: {
     if (chosen !== null) return;
     setChosen(i);
     try {
-      const r = await api.post<QuizAnswerResult>("/quiz/answer", { question_id: q.id, selected_index: i });
+      const r = await api.post<QuizAnswerResult>(answerPath, { question_id: q.id, selected_index: i });
       setResult(r);
       setPoints((p) => p + r.points);
       if (r.correct) setCorrect((c) => c + 1);
@@ -129,7 +133,7 @@ export function QuizPlay({ questions, onExit, onComplete, title }: {
     if (chosen !== null) return;
     setChosen(value);
     try {
-      const r = await api.post<QuizAnswerResult>("/quiz/answer", { question_id: q.id, value });
+      const r = await api.post<QuizAnswerResult>(answerPath, { question_id: q.id, value });
       setResult(r);
       setPoints((p) => p + r.points);
       if (r.correct) setCorrect((c) => c + 1);
@@ -181,7 +185,7 @@ export function QuizPlay({ questions, onExit, onComplete, title }: {
           {correct} von {questions.length} richtig
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          {points} {points === 1 ? "Punkt" : "Punkte"} · Trefferquote {quote} %
+          {practice ? `Trefferquote ${quote} % — Übung gibt keine Punkte` : `${points} ${points === 1 ? "Punkt" : "Punkte"} · Trefferquote ${quote} %`}
         </p>
         {/* Lottis Zuspruch — als Sprechblase unter ihr. */}
         <p className="mx-auto mt-4 max-w-sm rounded-2xl rounded-tl-sm border border-border bg-muted/40 px-4 py-2.5 text-sm text-foreground">
@@ -212,7 +216,9 @@ export function QuizPlay({ questions, onExit, onComplete, title }: {
           <span className="rounded-md bg-primary/10 px-2 py-0.5 font-medium text-primary">
             {CATEGORY_LABEL[q.category] ?? q.category}
           </span>
-          <span className="text-muted-foreground">{DIFF_LABEL[q.difficulty] ?? q.difficulty}</span>
+          <span className="text-muted-foreground">
+            {practice ? `Eigene Frage${q.area_key && q.area_key !== "Stadtweit" ? ` · ${q.area_key}` : ""}` : (DIFF_LABEL[q.difficulty] ?? q.difficulty)}
+          </span>
         </div>
         <h2 className="mt-3 text-lg font-semibold leading-snug text-foreground">{q.question}</h2>
 
@@ -289,9 +295,11 @@ export function QuizPlay({ questions, onExit, onComplete, title }: {
           <div className="mt-4 rounded-lg border border-border bg-muted/40 p-3">
             <LottiReaction seed={q.id}
               outcome={result.correct ? "right" : result.points > 0 ? "close" : "wrong"}>
-              {result.correct
-                ? `Richtig! +${result.points}`
-                : result.points > 0 ? `Nah dran! +${result.points}` : "Leider daneben."}
+              {practice
+                ? (result.correct ? "Richtig!" : "Leider daneben.")
+                : result.correct
+                  ? `Richtig! +${result.points}`
+                  : result.points > 0 ? `Nah dran! +${result.points}` : "Leider daneben."}
             </LottiReaction>
             {isEstimate && result.answer_value != null && (
               <p className="mt-1 text-sm text-foreground">
@@ -373,8 +381,9 @@ export function QuizPlay({ questions, onExit, onComplete, title }: {
                   </span>
                 )
               ) : <span />}
-              {/* Qualitäts-Bewertung — hilft schlechte Fragen auszutauschen */}
-              <span className="inline-flex items-center gap-1.5">
+              {/* Qualitäts-Bewertung — hilft schlechte Fragen auszutauschen.
+                  Eigene Fragen (practice) bewertet man nicht selbst. */}
+              <span className={cn("inline-flex items-center gap-1.5", practice && "hidden")}>
                 {rated ? (
                   <span className="text-xs text-muted-foreground">Danke fürs Feedback</span>
                 ) : (
