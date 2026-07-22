@@ -88,3 +88,67 @@ def summary() -> dict:
     out.sort(key=lambda x: -x["cost"])
     return {"features": out, "total_cost": round(sum(f["cost"] for f in out), 4),
             "total_calls": sum(f["calls"] for f in out)}
+
+
+def cost_timeseries(days: int = 30) -> list[dict]:
+    """Tägliche geschätzte Kosten + Aufrufe der letzten ``days`` Tage — lückenlos
+    (fehlende Tage = 0), ältester zuerst. Kosten werden aus Tokens × Modellpreis
+    je Zeile summiert (cost steht nicht in der DB)."""
+    from datetime import date, timedelta
+    since = (date.today() - timedelta(days=days - 1)).isoformat()
+    try:
+        conn = _connect()
+        rows = conn.execute(
+            "SELECT date(ts) d, model, COUNT(*) calls, "
+            "COALESCE(SUM(prompt_tokens),0) pin, COALESCE(SUM(completion_tokens),0) pout "
+            "FROM llm_usage WHERE date(ts) >= ? GROUP BY date(ts), model",
+            (since,)).fetchall()
+        conn.close()
+    except Exception:  # noqa: BLE001
+        return []
+    by_day: dict[str, dict] = {}
+    for r in rows:
+        e = by_day.setdefault(r["d"], {"cost": 0.0, "calls": 0})
+        e["cost"] += _cost(r["model"], r["pin"], r["pout"])
+        e["calls"] += r["calls"]
+    out = []
+    for i in range(days):
+        day = (date.today() - timedelta(days=days - 1 - i)).isoformat()
+        e = by_day.get(day, {"cost": 0.0, "calls": 0})
+        out.append({"date": day, "cost": round(e["cost"], 4), "calls": e["calls"]})
+    return out
+
+
+def dashboard(budget_monthly: float = 40.0) -> dict:
+    """Alles für den Admin-LLM-Kosten-Tab (Design 21a): per-Feature-Aggregat +
+    30-Tage-Kostenverlauf, Kosten diesen Monat mit linearer Hochrechnung auf den
+    Restmonat, Aufrufe/⌀ der letzten 30 Tage, Budget-Prozent + Ampel."""
+    import calendar
+    from datetime import date
+
+    base = summary()
+    series = cost_timeseries(30)
+    calls_30 = sum(d["calls"] for d in series)
+    cost_30 = round(sum(d["cost"] for d in series), 4)
+
+    today = date.today()
+    # „diesen Monat“ = 1. bis heute (die letzten today.day Tage decken das ab).
+    month_days = calendar.monthrange(today.year, today.month)[1]
+    month_series = cost_timeseries(today.day)
+    cost_month = round(sum(d["cost"] for d in month_series), 4)
+    projected = round(cost_month / today.day * month_days, 2) if today.day else cost_month
+
+    pct = round(100 * cost_month / budget_monthly) if budget_monthly > 0 else 0
+    level = "ok" if pct < 80 else "warn" if pct < 100 else "over"
+
+    return {
+        **base,
+        "series": series,
+        "cost_month": cost_month,
+        "projected_month": projected,
+        "calls_30d": calls_30,
+        "avg_cost_per_call": round(cost_30 / calls_30, 4) if calls_30 else 0.0,
+        "budget_monthly": budget_monthly,
+        "budget_pct": pct,
+        "budget_level": level,
+    }
