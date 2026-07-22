@@ -151,6 +151,31 @@ def heute(store: CouncilStore = Depends(get_council_store)) -> dict:
     return data
 
 
+@router.get("/fundstueck")
+def fundstueck(
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """RL-U11: Fundstück des Tages — kuratierter Archiv-Fund für die Übersicht
+    (Pipeline: scripts/rate_interest.py + scripts/generate_fundstuecke.py).
+    {"found": false} statt 404: ohne Karte des Tages lässt das Frontend die
+    Kachel schlicht weg."""
+    f = store.get_fundstueck(date.today().isoformat())
+    if not f:
+        return {"found": False}
+    return {
+        "found": True,
+        "kicker": f["kicker"],
+        "story": f["story"],
+        "decision_id": f["decision_id"],
+        "title": f["title"],
+        "outcome": f["outcome"],
+        "vote": f["vote"],
+        "committee": f["committee"],
+        "session_date": f["session_date"],
+    }
+
+
 @router.get("/zahl-der-woche")
 def zahl_der_woche(
     _user: dict = Depends(require_active),
