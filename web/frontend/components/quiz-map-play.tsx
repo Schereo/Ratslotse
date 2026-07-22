@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
-import { MapPin, Play, ArrowRight, RotateCcw } from "lucide-react";
+import { MapPin, ArrowRight, RotateCcw } from "lucide-react";
 import { Card, Button } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
 import { ConfettiBurst } from "@/components/confetti";
@@ -129,25 +129,5 @@ export function QuizMapPlay({ targets, onExit }: { targets: string[]; onExit: ()
         </Button>
       </div>
     </div>
-  );
-}
-
-/** Einstieg zum Karten-Quiz auf der Quiz-Startseite. */
-export function QuizMapCard({ onStart }: { onStart: () => void }) {
-  return (
-    <Card className="flex flex-wrap items-center justify-between gap-3 border-emerald-500/30 bg-emerald-500/5 p-4">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-          <MapPin className="h-5 w-5" />
-        </div>
-        <div>
-          <p className="font-semibold text-foreground">Karten-Quiz</p>
-          <p className="text-sm text-muted-foreground">Finde Stadtteile auf der Oldenburg-Karte.</p>
-        </div>
-      </div>
-      <Button className="shrink-0" onClick={onStart}>
-        <Play className="!size-4" /> Karten-Quiz starten
-      </Button>
-    </Card>
   );
 }
