@@ -492,14 +492,16 @@ def _qa_source(c: dict) -> dict:
 
 
 @router.post("/ask")
-def ask(body: AskBody, request: Request, _user: dict = Depends(require_active),
-        store: CouncilStore = Depends(get_council_store)) -> StreamingResponse:
+def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
+        store: CouncilStore = Depends(get_council_store),
+        nwz: Store = Depends(get_store)) -> StreamingResponse:
     """Answer a free-text question from the decisions, streamed as Server-Sent Events:
     progress steps → the ranked source decisions (the moment retrieval+rerank finish)
     → the answer token-by-token → a final event with the cited ids. Streaming makes
     the wait feel far shorter (sources show in ~2 s) and degrades gracefully if a
     proxy buffers it (the client then renders the same final state at once)."""
     qa_limiter.check(request)  # LLM-Kosten pro Aufruf — nicht unbegrenzt feuern lassen
+    nwz.record_activity(user["id"], "ki_frage")  # Admin-Statistik (20a)
     q = body.question.strip()
     if len(q) < 4:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Bitte eine etwas längere Frage stellen.")

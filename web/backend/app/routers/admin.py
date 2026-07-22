@@ -138,9 +138,20 @@ def reset_prompt(key: str, _admin: dict = Depends(require_admin)) -> PromptOut:
 
 
 # ---- web users ----
-@router.get("/users", response_model=list[WebUserOut])
-def list_users(_admin: dict = Depends(require_admin), store: Store = Depends(get_store)) -> list[WebUserOut]:
-    return [WebUserOut(**u) for u in store.list_web_users()]
+@router.get("/users")
+def list_users(_admin: dict = Depends(require_admin), store: Store = Depends(get_store)) -> list[dict]:
+    """Nutzer-Liste mit Aktivitätssignalen (Design 20a): Themen-/Abo-/Quiz-/
+    KI-Frage-Zahl + letzter Aktivitätstag je Konto."""
+    return store.admin_user_rows()
+
+
+@router.get("/users/{user_id}")
+def user_detail(user_id: int, _admin: dict = Depends(require_admin), store: Store = Depends(get_store)) -> dict:
+    """Nutzer-Detail (Design 20a): Feature-Nutzung, Angelegtes, 30-Tage-Verlauf."""
+    detail = store.admin_user_detail(user_id)
+    if not detail:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nutzer:in nicht gefunden.")
+    return detail
 
 
 @router.put("/users/{user_id}/role", response_model=WebUserOut)

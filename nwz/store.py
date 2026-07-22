@@ -1094,6 +1094,57 @@ class Store:
             "wau": self.wau_series(8),
         }
 
+    def admin_user_rows(self) -> list[dict]:
+        """Nutzer-Liste mit Aktivitätssignalen (Design 20a): je Konto Themen-,
+        Abo-, Quiz- und KI-Frage-Zahl + letzter Aktivitätstag. Alles in
+        nwz.sqlite, ein Query."""
+        rows = self._conn.execute(
+            """SELECT u.id, u.email, u.role, u.status, u.created_at, u.apple_sub,
+                      (SELECT COUNT(*) FROM topics t WHERE t.owner_id = u.id) n_topics,
+                      (SELECT COUNT(*) FROM committee_subscriptions s WHERE s.owner_id = u.id) n_abos,
+                      (SELECT COUNT(DISTINCT question_id) FROM quiz_answers q WHERE q.owner_id = u.id) n_quiz,
+                      (SELECT COALESCE(SUM(count), 0) FROM user_activity a
+                         WHERE a.owner_id = u.id AND a.feature = 'ki_frage') n_ki,
+                      (SELECT MAX(day) FROM user_activity a WHERE a.owner_id = u.id) last_seen
+               FROM web_users u ORDER BY u.created_at DESC"""
+        ).fetchall()
+        return [{"id": r["id"], "email": r["email"], "role": r["role"], "status": r["status"],
+                 "created_at": r["created_at"], "apple_linked": bool(r["apple_sub"]),
+                 "n_topics": r["n_topics"], "n_abos": r["n_abos"], "n_quiz": r["n_quiz"],
+                 "n_ki": r["n_ki"], "last_seen": r["last_seen"]} for r in rows]
+
+    def admin_user_detail(self, uid: int) -> dict | None:
+        """Nutzer-Detail (Design 20a): Feature-Nutzung, Angelegtes, 30-Tage-
+        Aktivitätsverlauf. Nur eigene App-Aktivität, kein Dritt-Tracking."""
+        from datetime import date, timedelta
+        u = self.get_web_user_by_id(uid)
+        if not u:
+            return None
+        feats = {r["feature"]: r["c"] for r in self._conn.execute(
+            "SELECT feature, SUM(count) c FROM user_activity WHERE owner_id = ? GROUP BY feature", (uid,))}
+        n_quiz = self._conn.execute(
+            "SELECT COUNT(DISTINCT question_id) FROM quiz_answers WHERE owner_id = ?", (uid,)).fetchone()[0]
+        topics = [r["name"] for r in self._conn.execute(
+            "SELECT name FROM topics WHERE owner_id = ? ORDER BY created_at DESC", (uid,)).fetchall()]
+        abos = [r["committee_name"] for r in self._conn.execute(
+            "SELECT committee_name FROM committee_subscriptions WHERE owner_id = ?", (uid,)).fetchall()]
+        since = (date.today() - timedelta(days=29)).isoformat()
+        by_day = {r["day"]: r["c"] for r in self._conn.execute(
+            "SELECT day, SUM(count) c FROM user_activity WHERE owner_id = ? AND day >= ? GROUP BY day",
+            (uid, since)).fetchall()}
+        verlauf = [by_day.get((date.today() - timedelta(days=29 - i)).isoformat(), 0) for i in range(30)]
+        return {
+            "id": u["id"], "email": u["email"], "role": u["role"], "status": u["status"],
+            "created_at": u["created_at"],
+            "last_seen": self._conn.execute(
+                "SELECT MAX(day) FROM user_activity WHERE owner_id = ?", (uid,)).fetchone()[0],
+            "apple_linked": bool(u.get("apple_sub")), "has_password": bool(u.get("password_set", 1)),
+            "delivery_channel": u.get("delivery_channel", "email"),
+            "features": {"ki_frage": feats.get("ki_frage", 0), "suche": feats.get("suche", 0),
+                         "quiz": n_quiz, "analyse": feats.get("analyse", 0), "karte": feats.get("karte", 0)},
+            "topics": topics, "abos": abos, "verlauf": verlauf,
+        }
+
     # ---- editions ----
 
     def has_edition(self, catalog: int, content_version: int) -> bool:
