@@ -58,12 +58,23 @@ export default function RegisterPage() {
           <Button type="submit" variant="signal" disabled={busy} className="h-11 w-full">
             {busy ? "Erstellen…" : "Konto erstellen"}
           </Button>
+          {/* RL-F01: DSGVO-Transparenz direkt an der Handlung (App-Review-relevant). */}
+          <p className="text-center text-xs leading-relaxed text-muted-foreground">
+            Mit der Registrierung akzeptierst du unsere{" "}
+            <Link href="/datenschutz" className="underline hover:text-foreground">Datenschutzerklärung</Link>.
+            Danach bestätigst du kurz deine E-Mail-Adresse.
+          </p>
         </form>
         <p className="mt-6 text-center text-sm text-muted-foreground">
           Schon registriert?{" "}
           <Link href="/login" className="font-medium text-primary hover:underline">
             Anmelden
           </Link>
+        </p>
+        <p className="mt-4 border-t border-border pt-4 text-center text-xs text-muted-foreground">
+          <Link href="/impressum" className="hover:text-foreground hover:underline">Impressum</Link>
+          {" · "}
+          <Link href="/datenschutz" className="hover:text-foreground hover:underline">Datenschutz</Link>
         </p>
     </AuthShell>
   );

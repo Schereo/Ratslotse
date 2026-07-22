@@ -13,8 +13,9 @@ import { cn } from "@/lib/utils";
  *  gefüllter Primär-Chip mit Wert + ✕ (✕ löscht, Chipfläche öffnet wieder).
  *  `ghost` (Sortierung) bleibt immer dezent — eine Einstellung, kein Filter. */
 
+// RL-F07 (Motion-Spec 7a): fühlbares Press-Feedback — nur transform, 150 ms.
 const chipBase =
-  "inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-xs font-medium transition-colors";
+  "inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-xs font-medium transition-[color,background-color,transform] duration-150 ease-out active:scale-[0.94]";
 
 export function ChipPopover({
   label,

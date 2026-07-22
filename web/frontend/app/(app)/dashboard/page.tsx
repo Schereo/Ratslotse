@@ -114,7 +114,9 @@ export default function DashboardPage() {
             {sessions.slice(0, 3).map((s) => (
               <Link
                 key={s.ksinr ?? `${s.committee}|${s.session_date}`}
-                href="/council?tab=sessions"
+                // RL-F06: direkt zur jeweiligen Sitzung (Terminplan-Zeilen ohne
+                // ksinr landen weiter auf der Liste).
+                href={s.ksinr ? `/council?tab=sessions&ksinr=${s.ksinr}` : "/council?tab=sessions"}
                 className="flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-accent"
               >
                 <span className="w-[104px] shrink-0 whitespace-nowrap text-sm font-medium tabular-nums text-foreground">
