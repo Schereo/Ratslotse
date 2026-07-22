@@ -1,0 +1,41 @@
+# Manuell auslösbarer Ops-Lauf: Tragweite-Score (RL-U16) auf Prod scharf
+# schalten. Schritt 1 ist das Golden-Set-Gate (scripts/eval_impact.py
+# --rate-missing, ~2 LLM-Batches): Nur bei BESTANDEN (Spearman >= 0.7 und
+# Band-Trefferquote >= 70 %) startet Schritt 2 den Voll-Backfill
+# (rate_impact.py, alle Beschlüsse ohne impact) und danach die Neuberechnung
+# des Wichtigkeits-Scores (50/50-Mischung). Der Voll-Lauf läuft per nohup
+# serverseitig weiter (Log: data/rate_impact_initial.log). Fällt das Gate
+# durch, bricht der Workflow ab — Prompt nachschärfen, nicht einhängen.
+# Nutzt denselben Deploy-Key/ProxyJump wie deploy.yml. Keine Inputs.
+name: "Ops: Tragweite-Rollout"
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ops-tragweite-rollout
+  cancel-in-progress: false
+
+jobs:
+  rollout:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Golden-Set-Gate, dann Voll-Backfill starten
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          proxy_host: ${{ secrets.VPS_PROXY_HOST }}
+          proxy_username: ${{ secrets.VPS_USER }}
+          proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          proxy_port: ${{ secrets.VPS_SSH_PORT }}
+          command_timeout: 30m
+          script: |
+            set -e
+            cd ~/app
+            .venv/bin/python scripts/eval_impact.py --rate-missing
+            nohup bash -c '.venv/bin/python scripts/rate_impact.py > data/rate_impact_initial.log 2>&1 && .venv/bin/python scripts/score_importance.py >> data/rate_impact_initial.log 2>&1' > /dev/null 2>&1 &
+            sleep 2
+            echo "Gate bestanden — Voll-Lauf gestartet (Log: data/rate_impact_initial.log, danach score_importance)."
