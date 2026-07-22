@@ -68,3 +68,47 @@ def test_rate_batch_filters_and_signals(monkeypatch):
     assert impact.rate_batch(decisions) == [(7, 92, "Haushalt")]
     # Struktur-Signale stehen im Prompt (Kalibrier-Anforderung aus RL-U16).
     assert "Gremium Rat" in seen["user"] and "1.000.000" in seen["user"]
+
+
+def test_notify_new_matches_leads_with_highest_impact(monkeypatch, tmp_path):
+    """13a-D: Der tragweitigste Titel führt den Push an, nicht der erste."""
+    import importlib.util, sys
+    spec = importlib.util.spec_from_file_location(
+        "match_topics_decisions",
+        pathlib_root() / "scripts" / "match_topics_decisions.py")
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules["match_topics_decisions"] = mod
+    spec.loader.exec_module(mod)
+
+    council = _store(tmp_path)
+    ids = {d["title"]: d["id"] for d in council.decisions_needing_impact()}
+    council.save_impact(ids["Haushaltssatzung 2026"], 95, "")
+    council.save_impact(ids["Berufung Mitglied"], 5, "")
+
+    sent = {}
+    def fake_deliver(owner, msg, email_subject, push_url="/dashboard"):
+        sent.update(owner=owner, msg=msg, subject=email_subject, url=push_url)
+        return ["push"]
+    import nwz.delivery as delivery
+    monkeypatch.setattr(delivery, "deliver_message", fake_deliver)
+
+    class FakeNwz:
+        def get_web_user_by_id(self, oid):
+            return {"id": oid, "email": "a@b.de", "delivery_channel": "push", "display_name": "Tim"}
+        def get_push_tokens_for_owner(self, oid):
+            return [{"token": "t", "platform": "ios"}]
+
+    # Reihenfolge der new_ids: Berufung zuerst — die Tragweite muss umsortieren.
+    n = mod._notify_new_matches(FakeNwz(), council,
+                                owner_id=1, topic_name="Finanzen",
+                                new_ids=[ids["Berufung Mitglied"], ids["Haushaltssatzung 2026"]])
+    assert n == 1
+    assert sent["subject"] == "Neu zu „Finanzen“ — 2 Beschlüsse"
+    assert sent["msg"].startswith("Haushaltssatzung 2026") and "und 1 weitere" in sent["msg"]
+    assert sent["url"] == "/topics"
+    council.close()
+
+
+def pathlib_root():
+    from pathlib import Path
+    return Path(__file__).resolve().parent.parent

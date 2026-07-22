@@ -78,7 +78,8 @@ def wants_push(owner: dict) -> bool:
     )
 
 
-def deliver_message(owner: dict, message_html: str, email_subject: str) -> list[str]:
+def deliver_message(owner: dict, message_html: str, email_subject: str,
+                    push_url: str = "/dashboard") -> list[str]:
     """Deliver a single formatted message (HTML) to the owner's channel(s).
     Used for the weekly digest and council notifications. The same text is
     wrapped in the email shell for email delivery and stripped to plain text for
@@ -95,6 +96,6 @@ def deliver_message(owner: dict, message_html: str, email_subject: str) -> list[
         except Exception:
             logger.exception("email message send failed for %s", owner.get("email"))
     if wants_push(owner):
-        _send_push_and_prune(owner["push_tokens"], email_subject, _plain(message_html), {"url": "/dashboard"})
+        _send_push_and_prune(owner["push_tokens"], email_subject, _plain(message_html), {"url": push_url})
         sent.append("push")
     return sent

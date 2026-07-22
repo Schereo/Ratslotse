@@ -8,6 +8,13 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Der Gesprächswert arbeitet jetzt überall mit:** Die Beschluss-Suche kann
+  nach **„Spannendste zuerst"** sortieren (kuriose, alltagsnahe Funde nach
+  oben), die Übersicht zeigt Konten ohne aktuelle Themen-Treffer den
+  **spannendsten Beschluss der Woche** samt Begründung, Themen-Mails führen
+  mit dem folgenreichsten neuen Beschluss statt einer nackten Zählung, und
+  „Ähnliche Beschlüsse" wie das Ratspolitik-Quiz bevorzugen bei Gleichstand
+  die interessanteren Kandidaten. (#255)
 - **„Wichtig" versteht jetzt Tragweite:** Neben der bisherigen Rechen-Logik
   (Geldbetrag, Umstrittenheit …) bewertet eine KI jeden Beschluss nach
   fester Rubrik — wie viele Menschen betroffen sind, wie bindend und
