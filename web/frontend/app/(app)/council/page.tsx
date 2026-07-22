@@ -17,6 +17,7 @@ import {
 } from "@/components/ui";
 import { OutcomeBadge, OutcomeDot, ImportanceBadge, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
 import { isLiveNow } from "@/lib/live";
+import { reportBadgeEvent } from "@/components/badges";
 import { ChipPopover, DateRangeChip } from "@/components/filter-chips";
 import { SitzungspauseBanner } from "@/components/sitzungspause-banner";
 import { AnalysisTab } from "@/components/council-analysis";
@@ -656,6 +657,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
     if (ksinr == null) return; // terminierte Sitzung ohne Tagesordnung
     const willExpand = !expanded[ksinr];
     setExpanded((prev) => ({ ...prev, [ksinr]: willExpand }));
+    if (willExpand) reportBadgeEvent("sitzung"); // RL-U12: Sitzungsgast
     if (willExpand && !detail[ksinr]) {
       setDetailLoading((prev) => ({ ...prev, [ksinr]: true }));
       try {

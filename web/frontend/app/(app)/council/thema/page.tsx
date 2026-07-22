@@ -1,11 +1,12 @@
 "use client";
 
-import { Suspense } from "react";
+import {Suspense, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { EntityDetail } from "@/lib/types";
 import { DetailSkeleton, EmptyState } from "@/components/ui";
+import { reportBadgeEvent } from "@/components/badges";
 import { DecisionLinkCard, PartyBadge, FieldBadge, formatEuro } from "@/components/decision-ui";
 import { ENTITY_KIND } from "@/components/council-entities";
 import { useFetch } from "@/lib/use-fetch";
@@ -21,6 +22,10 @@ const EntityMap = dynamic(() => import("@/components/entity-map").then((m) => m.
 function EntityInner() {
   const slug = useSearchParams().get("slug");
   const router = useRouter();
+  // RL-U12: Kartograf — 3 verschiedene Orte geöffnet (Server zählt distinct).
+  useEffect(() => {
+    if (slug) reportBadgeEvent("map_place", slug);
+  }, [slug]);
   const { data, loading } = useFetch<EntityDetail>(slug ? `/council/entity/${slug}` : null);
 
   if (loading) return <DetailSkeleton />;

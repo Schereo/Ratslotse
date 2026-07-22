@@ -1045,3 +1045,51 @@ def test_push_unregister_is_scoped_to_owner(client):
     admin_uid = store.get_web_user_by_email("admin@test.de")["id"]
     assert [t["token"] for t in store.get_push_tokens_for_owner(admin_uid)] == ["adm-dev"]
     store.close()
+
+
+# ---- Lotsen-Abzeichen (RL-U12) ----
+def test_badges_events_and_newly_earned_once(client):
+    _register(client)
+    data = client.get("/api/badges").json()
+    assert data["total"] == 8 and data["earned_count"] == 0 and data["newly_earned"] == []
+    assert data["next"]["id"] == "erste-frage"
+
+    client.post("/api/badges/event", json={"type": "sitzung"})
+    data = client.get("/api/badges").json()
+    assert {b["id"]: b["earned"] for b in data["badges"]}["sitzungsgast"] is True
+    assert [n["id"] for n in data["newly_earned"]] == ["sitzungsgast"]
+    # newly_earned kommt genau einmal — danach ist es persistiert.
+    assert client.get("/api/badges").json()["newly_earned"] == []
+    # Unbekannte Events werden still verworfen.
+    assert client.post("/api/badges/event", json={"type": "quatsch"}).status_code == 200
+
+
+def test_badges_kartograf_distinct_and_derived(client):
+    _register(client)
+    for key in ["fliegerhorst", "fliegerhorst", "bahnhof"]:
+        client.post("/api/badges/event", json={"type": "map_place", "key": key})
+    karto = next(b for b in client.get("/api/badges").json()["badges"] if b["id"] == "kartograf")
+    assert karto["earned"] is False and karto["progress"] == {"current": 2, "target": 3}
+
+    client.post("/api/badges/event", json={"type": "map_place", "key": "hafen"})
+    data = client.get("/api/badges").json()
+    karto = next(b for b in data["badges"] if b["id"] == "kartograf")
+    assert karto["earned"] is True
+
+    # Server-abgeleitet (Frühwarner): Push-Gerät registriert → verdient beim
+    # nächsten GET — und bleibt verdient, auch wenn das Gerät wieder geht.
+    store = Store(Path(NWZ_DB))
+    store.add_push_token(1, "tok-1", "ios")
+    assert {b["id"]: b["earned"] for b in client.get("/api/badges").json()["badges"]}["fruehwarner"] is True
+    store.remove_push_token("tok-1")
+    assert {b["id"]: b["earned"] for b in client.get("/api/badges").json()["badges"]}["fruehwarner"] is True
+
+
+def test_badges_are_per_account(client):
+    _register(client)
+    client.post("/api/badges/event", json={"type": "sitzung"})
+    client.get("/api/badges")
+    client.post("/api/auth/logout")
+    _register(client, email="zweite@test.de")
+    data = client.get("/api/badges").json()
+    assert data["earned_count"] == 0

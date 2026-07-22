@@ -8,6 +8,13 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Lotsen-Abzeichen:** Acht kleine Abzeichen belohnen das **Erkunden** —
+  erste KI-Frage, erstes Thema, 5-Tage-Quiz-Serie, drei Orte auf der
+  Stadtkarte, Analyse, Tagesordnung aufklappen, Push aktivieren und die
+  Lotti-Tour. Verleihung mit **Konfetti und Toast**, die Sammlung wohnt auf
+  der Konto-Seite („n von 8", mit Fortschritt und „Als Nächstes"-Tipp).
+  Bewusst ohne Ranglisten oder Verlust-Serien: Einmal verdient bleibt
+  verdient, nichts bestraft Abwesenheit. (#249)
 - **Fundstück des Tages:** Die Übersicht zeigt jetzt jeden Tag **einen
   kuratierten Fund aus dem Ratsarchiv** — bevorzugt Jahrestage („Heute vor
   6 Jahren …") mit einem erzählenswerten Satz, Ergebnis und Absprung zum

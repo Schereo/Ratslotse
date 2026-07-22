@@ -11,6 +11,7 @@ import { isNativeApp } from "@/lib/platform";
 import { applyTheme, getTheme, isDarkNow, THEME_EVENT, type Theme } from "@/lib/theme";
 import { Button, Card, ConfirmDialog, Label, PageHeader, PasswordInput, toast } from "@/components/ui";
 import { DeliverySettings } from "@/components/delivery-settings";
+import { BadgesCard } from "@/components/badges";
 import { cn } from "@/lib/utils";
 
 /**
@@ -164,6 +165,9 @@ export default function AccountPage() {
 
       <div className="mt-6 grid max-w-4xl items-start gap-6 lg:grid-cols-2">
         <DeliverySettings />
+
+        {/* RL-U12 (11a): zwischen Benachrichtigungen und Passwort. */}
+        <BadgesCard />
 
         <AppearanceCard />
 
