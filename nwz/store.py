@@ -258,6 +258,21 @@ CREATE TABLE IF NOT EXISTS user_quiz_questions (
     created_at    TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_user_quiz_owner ON user_quiz_questions(owner_id);
+
+-- Aktivitäts-Log für die Admin-Statistik (Design 20a): ein Eintrag je
+-- Konto/Tag/Feature mit Zähler — kompakt (max. 1 Zeile pro Nutzer/Tag/Feature),
+-- speist WAU (DISTINCT owner je Woche), „zuletzt aktiv“ (MAX day) und die
+-- Feature-Nutzung im Nutzer-Detail. Nur eigene App-Aktivität, kein Tracking
+-- darüber hinaus.
+CREATE TABLE IF NOT EXISTS user_activity (
+    owner_id INTEGER NOT NULL,
+    day      TEXT NOT NULL,           -- YYYY-MM-DD
+    feature  TEXT NOT NULL,           -- session | ki_frage | suche | quiz | thema | analyse | karte
+    count    INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (owner_id, day, feature)
+);
+CREATE INDEX IF NOT EXISTS idx_user_activity_day ON user_activity(day);
+CREATE INDEX IF NOT EXISTS idx_user_activity_owner ON user_activity(owner_id);
 """
 
 
@@ -1016,6 +1031,67 @@ class Store:
                 "users_with_topics": one("SELECT COUNT(DISTINCT owner_id) FROM topics"),
                 "subscriptions": one("SELECT COUNT(*) FROM committee_subscriptions"),
             },
+        }
+
+    # ---- Aktivitäts-Tracking + Wachstum (Admin 20a) ----
+    def record_activity(self, owner_id: int, feature: str = "session") -> None:
+        """Ein Feature-Nutzungsereignis je Konto/Tag zählen (best-effort, nie
+        load-bearing). ‚session‘ wird bei jedem eingeloggten Request gesetzt
+        (throttled durch den Tages-PK)."""
+        from datetime import date
+        try:
+            with self._conn:
+                self._conn.execute(
+                    "INSERT INTO user_activity (owner_id, day, feature, count) VALUES (?, ?, ?, 1) "
+                    "ON CONFLICT(owner_id, day, feature) DO UPDATE SET count = count + 1",
+                    (owner_id, date.today().isoformat(), feature),
+                )
+        except Exception:  # noqa: BLE001 — Aktivitäts-Log darf nie einen Request brechen
+            pass
+
+    def wau_series(self, weeks: int = 8) -> list[int]:
+        """Aktive Konten je Woche (DISTINCT owner_id), älteste zuerst — 20a-WAU."""
+        from datetime import date, timedelta
+        today = date.today()
+        out: list[int] = []
+        for w in range(weeks):
+            end = today - timedelta(days=(weeks - 1 - w) * 7)
+            start = end - timedelta(days=6)
+            out.append(self._conn.execute(
+                "SELECT COUNT(DISTINCT owner_id) FROM user_activity WHERE day BETWEEN ? AND ?",
+                (start.isoformat(), end.isoformat())).fetchone()[0])
+        return out
+
+    def admin_growth(self, days: int | None = 90) -> dict:
+        """Wachstums-Daten für den Statistik-Tab (20a): kumulierte Verläufe für
+        registrierte Konten und angelegte Themen + Δ im Zeitraum + WAU."""
+        from datetime import date, timedelta
+
+        def dates_of(table: str) -> list[str]:
+            return [r[0][:10] for r in self._conn.execute(
+                f"SELECT created_at FROM {table} WHERE created_at IS NOT NULL ORDER BY created_at").fetchall()]
+
+        def series(ds: list[str]) -> tuple[list[int], int]:
+            today = date.today()
+            span = days
+            if span is None:
+                first = date.fromisoformat(ds[0]) if ds else today
+                span = max((today - first).days + 1, 1)
+            span = max(1, min(span, 366))  # Sparkline-Punkte deckeln
+            window_start = (today - timedelta(days=span - 1)).isoformat()
+            out = [sum(1 for x in ds if x <= (today - timedelta(days=span - 1 - i)).isoformat())
+                   for i in range(span)]
+            delta = sum(1 for x in ds if x >= window_start)
+            return out, delta
+
+        u = dates_of("web_users")
+        t = dates_of("topics")
+        u_series, u_delta = series(u)
+        t_series, t_delta = series(t)
+        return {
+            "users": {"total": len(u), "series": u_series, "delta": u_delta},
+            "topics": {"total": len(t), "series": t_series, "delta": t_delta},
+            "wau": self.wau_series(8),
         }
 
     # ---- editions ----

@@ -358,6 +358,16 @@ export interface AdminStats {
   council: { sessions: number; upcoming: number; agenda_items: number; committees: number };
 }
 
+export interface AdminGrowth {
+  users: { total: number; series: number[]; delta: number };
+  topics: { total: number; series: number[]; delta: number };
+  wau: number[];
+  council: {
+    sessions: number; upcoming: number; agenda_items: number; committees: number;
+    decisions: number; decisions_with_ki: number; last_fetch: string | null; fetched_today: number;
+  };
+}
+
 // ---- Quiz ----
 export interface QuizAreaEntry {
   key: string;
