@@ -277,6 +277,18 @@ export default function AccountPage() {
         </Card>
       </div>
 
+      {/* Pflicht-Links für Handy-Web und App (der Seiten-Fuß ist mobil aus):
+          über den Konto-Tab jederzeit in zwei Tipps erreichbar. */}
+      <p className="mt-8 text-center text-xs text-muted-foreground md:hidden">
+        <a href="/impressum" className="hover:text-foreground">Impressum</a>
+        {" · "}
+        <a href="/datenschutz" className="hover:text-foreground">Datenschutz</a>
+        {" · "}
+        <a href="/changelog" className="hover:text-foreground">Changelog</a>
+        {" · "}
+        <a href="/docs" className="hover:text-foreground">Technik-Doku</a>
+      </p>
+
       <ConfirmDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
