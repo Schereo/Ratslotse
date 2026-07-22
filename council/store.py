@@ -8,7 +8,7 @@ from pathlib import Path
 import sqlite3
 
 from .scraper import CouncilSession, AgendaItem
-from .parties import normalize_party, order_key, parties_for_faction
+from .parties import order_key, parties_for_faction
 
 
 def _norm_title(t: str) -> str:
@@ -2222,7 +2222,7 @@ class CouncilStore:
         Linke→BSW würden sonst ewig unter der alten laufen), distinct sessions attended
         and committees served. The member directory."""
         from collections import Counter, defaultdict
-        from council.parties import normalize_party
+        from council.parties import classify_faction
         rows = self._conn.execute(
             """SELECT a.name, a.ksinr, a.party, cs.committee, cs.session_date
                FROM council_attendance a JOIN council_sessions cs ON cs.ksinr = a.ksinr
@@ -2241,8 +2241,11 @@ class CouncilStore:
             d = r["session_date"]
             e["first"] = d if e["first"] is None else min(e["first"], d)
             e["last"] = d if e["last"] is None else max(e["last"], d)
-            p = normalize_party(r["party"]) if r["party"] else None
-            # Fraktion der JÜNGSTEN Sitzung mit Fraktionsangabe merken.
+            # Nur Partei/Gruppe als „aktuelle" Zugehörigkeit merken (gruppen-bewusst:
+            # „FDP/Volt"→Gruppe, nicht →FDP); blanke Streusitzungen (parteilos)
+            # nicht, damit das Verzeichnis nicht auf einen Ausreißer umklappt.
+            c = classify_faction(r["party"])
+            p = c["label"] if c["kind"] in ("partei", "gruppe") else None
             if p and (e["party_at"] is None or d >= e["party_at"][0]):
                 e["party_at"] = (d, p)
         out = [{"slug": sl, "name": e["names"].most_common(1)[0][0],
@@ -2257,7 +2260,7 @@ class CouncilStore:
         """One member — all name variants merged by slug: party, sessions, active span,
         committees served (with counts and chair flag) and their most recent sessions."""
         from collections import Counter
-        from council.parties import normalize_party
+        from council.parties import classify_faction
         names = [r["name"] for r in self._conn.execute(
             "SELECT DISTINCT name FROM council_attendance WHERE role IN ('mitglied','vorsitz') "
             "AND name IS NOT NULL AND name != ''")]
@@ -2286,41 +2289,45 @@ class CouncilStore:
                 JOIN council_sessions cs ON cs.ksinr = a.ksinr
                 WHERE a.name IN ({ph}) AND a.role IN ('mitglied','vorsitz')
                 ORDER BY cs.session_date DESC LIMIT 12""", matched).fetchall()
-        # Fraktions-Verlauf aus der Anwesenheit: aufeinanderfolgende Sitzungen
-        # derselben Fraktion zu Phasen zusammengefasst — die einzige echte
-        # Zeitreihe, denn das Ratsinfo überschreibt Fraktionen rückwirkend.
+        # Fraktions-/Gruppen-Verlauf aus der Anwesenheit: aufeinanderfolgende
+        # Sitzungen derselben Zugehörigkeit zu Phasen zusammengefasst — die einzige
+        # echte Zeitreihe, denn das Ratsinfo überschreibt Fraktionen rückwirkend.
+        # Wichtig: `classify_faction` hält GRUPPEN als Gruppen fest (statt sie auf
+        # eine Partei zu kollabieren) und blanke Label als „parteilos" — sonst
+        # erschiene z. B. ein „FDP/Volt"-Gruppenmitglied fälschlich als FDP.
         runs: list[dict] = []
         for r in self._conn.execute(
             f"""SELECT cs.session_date d, a.party FROM council_attendance a
                 JOIN council_sessions cs ON cs.ksinr = a.ksinr
                 WHERE a.name IN ({ph}) AND a.role IN ('mitglied','vorsitz')
-                  AND a.party IS NOT NULL AND a.party != ''
                 ORDER BY cs.session_date""", matched):
-            p = normalize_party(r["party"])
-            if not p:
+            c = classify_faction(r["party"])
+            if c["kind"] == "unbekannt":
                 continue
-            if runs and runs[-1]["party"] == p:
+            label = c["label"]
+            if runs and runs[-1]["label"] == label:
                 runs[-1]["last"] = r["d"]
                 runs[-1]["n"] += 1
             else:
-                runs.append({"party": p, "first": r["d"], "last": r["d"], "n": 1})
-        # Einzelne Ausreißer-Sitzungen (Tippfehler im Protokoll) zwischen zwei
-        # Phasen derselben Fraktion glätten, dann angrenzende Phasen mergen.
+                runs.append({"label": label, "kind": c["kind"], "parties": c["parties"],
+                             "first": r["d"], "last": r["d"], "n": 1})
+        # Einzelne Ausreißer-Sitzungen (Tippfehler/fehlende Extraktion) zwischen
+        # zwei gleichen Phasen glätten, dann angrenzende Phasen mergen.
         cleaned = [run for i, run in enumerate(runs)
                    if not (run["n"] == 1 and 0 < i < len(runs) - 1
-                           and runs[i - 1]["party"] == runs[i + 1]["party"] != run["party"])]
+                           and runs[i - 1]["label"] == runs[i + 1]["label"] != run["label"])]
         timeline: list[dict] = []
         for run in cleaned:
-            if timeline and timeline[-1]["party"] == run["party"]:
+            if timeline and timeline[-1]["label"] == run["label"]:
                 timeline[-1]["last"] = run["last"]
                 timeline[-1]["n"] += run["n"]
             else:
                 timeline.append(dict(run))
         return {
             "name": name, "slug": slug,
-            # Letzte aktive Fraktion (Ende der geglätteten Zeitreihe) — nicht die
-            # häufigste: Wechsler (FDP→Volt, Linke→BSW) zeigen sonst die alte.
-            "party": timeline[-1]["party"] if timeline else None,
+            # Aktuelle Zugehörigkeit (Ende der geglätteten Zeitreihe) — nicht die
+            # häufigste: Wechsler (FDP/Volt→Volt, Linke→BSW) zeigen sonst die alte.
+            "party": timeline[-1]["label"] if timeline else None,
             "n_sessions": span["n"], "active_from": span["first"], "active_to": span["last"],
             "faction_timeline": timeline,
             "ris": self.person_stammdaten_for_names(matched),
