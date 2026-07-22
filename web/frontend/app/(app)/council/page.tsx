@@ -383,6 +383,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
         <ChipPopover
           label="Beschlüsse"
           clearable={false}
+          defaultValue="vote"
           value={mode}
           options={[
             { value: "vote", label: "Beschlüsse" },
