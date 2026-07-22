@@ -64,6 +64,54 @@ def order_key(party: str) -> tuple[int, str]:
     return (CANONICAL_ORDER.index(party) if party in CANONICAL_ORDER else len(CANONICAL_ORDER), party)
 
 
+# Bekannte Oldenburger Rats-GRUPPEN: ein Zusammenschluss mehrerer Parteien bzw.
+# Parteiloser, der zu klein für eine eigene Fraktion ist. Im Protokoll trägt ein
+# Gruppen-Mitglied den GRUPPENNAMEN als Anwesenheits-Label („FDP/Volt", „Für
+# Oldenburg") — NICHT seine Einzelpartei. `normalize_party` kollabiert das auf
+# eine Partei (→ „FDP/Volt" wird „FDP"), was Mitglieder falsch zuordnet. Ein „/"
+# allein taugt nicht als Signal („Bündnis 90/Die Grünen" ist eine Partei) — daher
+# kuratiert (es sind nur eine Handvoll Gruppen je Wahlperiode).
+# (needles: ALLE müssen im Label vorkommen) → (Anzeigename, Mitglieds-Parteien)
+_GROUPS: list[tuple[tuple[str, ...], str, tuple[str, ...]]] = [
+    (("fdp", "volt"), "FDP/Volt", ("FDP", "Volt")),                 # bis 2025, dann getrennt
+    (("linke", "piraten"), "Die Linke/Piraten", ("Die Linke", "Piraten")),
+    (("für oldenburg",), "Für Oldenburg", ("parteilos", "Piraten")),  # Finke (parteilos) + Sander (Piraten)
+    (("ibo", "live"), "IBO/LiVe", ("IBO", "LiVe")),
+]
+
+
+def classify_faction(raw: str | None) -> dict:
+    """Ordnet ein Anwesenheits-Label ein — Partei, (Rats-)Gruppe oder parteilos —
+    und hält Gruppen als Gruppen fest, statt sie auf eine Partei zu kollabieren.
+
+    Rückgabe:
+    - ``kind``: ``"partei"`` | ``"gruppe"`` | ``"parteilos"`` | ``"unbekannt"``
+    - ``label``: Anzeigename (``"SPD"``, ``"FDP/Volt"``, ``"Für Oldenburg"``, ``"parteilos"``)
+    - ``parties``: kanonische Mitglieds-Parteien (Partei → sich selbst; Gruppe →
+      ihre Parteien; sonst leer)
+    - ``group``: Gruppenname oder ``None``
+    """
+    if raw is None or not raw.strip():
+        return {"kind": "parteilos", "label": "parteilos", "parties": [], "group": None}
+    low = raw.strip().lower()
+    if any(x in low for x in _NON_PARTY):
+        return {"kind": "unbekannt", "label": raw.strip(), "parties": [], "group": None}
+    for needles, name, members in _GROUPS:
+        if all(n in low for n in needles):
+            return {"kind": "gruppe", "label": name, "parties": list(members), "group": name}
+    p = normalize_party(raw)
+    if p:
+        return {"kind": "partei", "label": p, "parties": [p], "group": None}
+    return {"kind": "unbekannt", "label": raw.strip(), "parties": [], "group": None}
+
+
+def faction_label(raw: str | None) -> str | None:
+    """Gruppen-bewusstes Anzeige-Label einer Person (Gruppenname statt kollabierter
+    Einzelpartei). ``None`` für Verwaltung/Unbekanntes."""
+    c = classify_faction(raw)
+    return c["label"] if c["kind"] in ("partei", "gruppe", "parteilos") else None
+
+
 def parties_for_faction(raw: str | None) -> list[str]:
     """Alle Parteien hinter einem Fraktions-/Gruppen-Label eines Antrags:
     „Gruppe FDP/Volt" → ["FDP", "Volt"] (der Antrag zählt für beide),

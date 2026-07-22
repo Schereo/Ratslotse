@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronRight, ChevronDown, ChevronUp, Flame } from "lucide-react";
+import { ChevronRight, ChevronDown, ChevronUp, Flame, Users } from "lucide-react";
 import { CouncilDecision, DecisionOutcome, ImportanceBreakdown } from "@/lib/types";
 import { Card, formatDate } from "@/components/ui";
 import { decisionHref } from "@/lib/routes";
@@ -273,6 +273,49 @@ export function PartyBadge({ party, className }: { party: string; className?: st
     >
       {party}
     </button>
+  );
+}
+
+/** Zugehörigkeit einer Person: Partei (PartyBadge), Rats-GRUPPE (gestrichelte
+ *  Pille „Gruppe … + Mitglieds-Parteien) oder parteilos. Hält Gruppen als
+ *  Gruppen fest, statt sie auf eine Partei zu kollabieren. */
+export function AffiliationBadge({
+  label, kind, parties = [], className,
+}: {
+  label: string;
+  kind: "partei" | "gruppe" | "parteilos";
+  parties?: string[];
+  className?: string;
+}) {
+  if (kind === "partei") return <PartyBadge party={label} className={className} />;
+  if (kind === "parteilos") {
+    return (
+      <span className={cn("inline-flex items-center rounded-md border border-border px-2 py-0.5 text-xs font-medium text-muted-foreground", className)}>
+        parteilos
+      </span>
+    );
+  }
+  // Gruppe: gestrichelte Umrandung + „Gruppe"-Präfix + Mitglieds-Partei-Punkte.
+  return (
+    <span
+      title={`Gruppe ${label}${parties.length ? ` — ${parties.join(", ")}` : ""}`}
+      className={cn("inline-flex items-center gap-1.5 rounded-md border border-dashed border-input px-2 py-0.5 text-xs font-medium text-foreground", className)}
+    >
+      <Users className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
+      <span>Gruppe {label}</span>
+      {parties.length > 0 && (
+        <span className="flex items-center gap-0.5">
+          {parties.map((p) => {
+            const b = partyBrand(p);
+            return (
+              <span key={p} title={p}
+                className={cn("h-2 w-2 rounded-full", !b && "bg-muted-foreground/40")}
+                style={b ? { backgroundColor: b.bg } : undefined} />
+            );
+          })}
+        </span>
+      )}
+    </span>
   );
 }
 

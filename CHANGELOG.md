@@ -197,6 +197,18 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   (der iOS-Bedienungshilfen-Zoom funktioniert weiterhin). (#241)
 
 ### Behoben
+- **Ratsgruppen werden nicht mehr als Partei verzerrt.** Wer in einer
+  **Gruppe** sitzt (Zusammenschluss mehrerer Parteien/Parteiloser, z. B.
+  „FDP/Volt" oder „Für Oldenburg"), erschien im Personen-Profil fälschlich
+  unter einer einzelnen Partei — Jens Lükermann etwa als „FDP", obwohl er nie
+  FDP-Mitglied war, sondern Volt in der Gruppe FDP/Volt. Der Verlauf heißt jetzt
+  **„Zugehörigkeit im Zeitverlauf"** und zeigt **Fraktion, Gruppe und parteilos
+  sauber getrennt**: eine Gruppe als eigene Kachel („Gruppe FDP/Volt" bzw. „Für
+  Oldenburg") mit ihren Mitglieds-Parteien als Farbpunkte, dazwischen echte
+  parteilose Phasen. Grundlage sind die Anwesenheits-Label der Protokolle (ein
+  Gruppen-Mitglied trägt dort den Gruppennamen); erkannt über eine kuratierte
+  Gruppenliste — ein „/" allein zählt nicht („Bündnis 90/Die Grünen" bleibt eine
+  Partei). (#273)
 - Die **Filter-Pillen der Beschluss-Suche zeigen jetzt ihre Auswahl**: Wer
   auf „Berichte" oder „Alle Vorgänge" umschaltet, sieht das direkt in der
   Pille (farblich gefüllt statt weiter „Beschlüsse"), und der
