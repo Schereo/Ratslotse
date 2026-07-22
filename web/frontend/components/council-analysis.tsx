@@ -290,7 +290,6 @@ function MoneyByField({ data }: { data: FinanceData }) {
   const rows = data.by_field;
   if (!rows.length) return null;
   const max = Math.max(1, ...rows.map((f) => f.total));
-  const total = rows.reduce((s, f) => s + f.total, 0);
   const label = (f: string) => data.field_labels[f] ?? POLICY_FIELD_LABELS[f] ?? f;
   return (
     <div className="space-y-1.5">
@@ -308,8 +307,21 @@ function MoneyByField({ data }: { data: FinanceData }) {
         </button>
       ))}
       <p className="pt-1.5 text-xs leading-relaxed text-muted-foreground/70">
-        Summe automatisch erkannter Beträge je Themenfeld (ohne Jahresabschlüsse/Haushaltspläne) — zusammen
-        rund {formatEuro(total)}. Zahl = Beschlüsse mit Betrag. Anklicken öffnet die Beschlüsse des Felds.
+        Summe automatisch erkannter Beträge je Themenfeld (ohne Jahresabschlüsse/Haushaltspläne).
+        Zahl = Beschlüsse mit Betrag. Anklicken öffnet die Beschlüsse des Felds.
+      </p>
+    </div>
+  );
+}
+
+function FinanceHeadline({ total, count }: { total: number; count: number }) {
+  return (
+    <div className="rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 to-transparent p-4">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Erkanntes Finanzvolumen</p>
+      <p className="mt-1 font-display text-[2rem] font-extrabold leading-none tracking-tight text-emerald-700 dark:text-emerald-400">≈ {formatEuro(total)}</p>
+      <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+        über <strong className="font-semibold text-foreground">{count} {count === 1 ? "Beschluss" : "Beschlüsse"}</strong> mit
+        Betrag · ohne Jahresabschlüsse/Haushaltspläne (grobe Größenordnung)
       </p>
     </div>
   );
@@ -321,6 +333,8 @@ function FinanceView() {
   if (!data || (data.decisions.length === 0 && data.by_field.length === 0)) {
     return <EmptyState mascot="sleep" title="Noch keine Finanzdaten" hint="Es wurden noch keine €-Beträge aus Beschlüssen erkannt." />;
   }
+  const total = data.by_field.reduce((s, f) => s + f.total, 0);
+  const count = data.by_field.reduce((s, f) => s + f.n, 0);
   return (
     <div className="space-y-4">
       <Block
@@ -335,7 +349,10 @@ function FinanceView() {
           </>
         }
       >
-        <MoneyByField data={data} />
+        <div className="space-y-4">
+          <FinanceHeadline total={total} count={count} />
+          <MoneyByField data={data} />
+        </div>
       </Block>
       {data.decisions.length > 0 && (
         <Block title="Größte Finanzbeschlüsse"
