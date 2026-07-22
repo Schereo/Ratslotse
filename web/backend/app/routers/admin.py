@@ -65,9 +65,10 @@ def stats(
 
 @router.get("/llm-usage")
 def llm_usage(_admin: dict = Depends(require_admin)) -> dict:
-    """Per-feature LLM token usage + estimated cost (from llm_usage in nwz.sqlite)."""
+    """LLM-Kosten-Dashboard (Design 21a): per-Feature-Aggregat + 30-Tage-Verlauf,
+    Monatskosten mit Hochrechnung und Budget-Ampel (aus llm_usage in nwz.sqlite)."""
     from nwz import usage
-    return usage.summary()
+    return usage.dashboard(budget_monthly=get_settings().llm_budget_monthly)
 
 
 # ---- prompts ----
