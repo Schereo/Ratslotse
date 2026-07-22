@@ -35,6 +35,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   mit dem Protokoll. (#247)
 
 ### Geändert
+- **Breiteres Layout wie im Design:** Der Inhaltsbereich wächst von 1024 auf
+  1280 Pixel — Karten und Listen füllen den Bildschirm statt schmal in viel
+  Leerraum zu stehen; Text-Detailseiten behalten ihre Lesebreite. Außerdem
+  klebt die **Impressum-Fußzeile mobil nicht mehr auf jeder Seite**: Auf
+  Handy und in der App wohnen die Links jetzt unten auf der Konto-Seite
+  (am Desktop bleibt die dezente Fußzeile). (#250)
 - Der **Sitzungspause-Hinweis auf der Übersicht ist jetzt kompakt**: eine
   Zeile mit schlafender Lotti und „wieder ab"-Datum statt einer halben
   Bildschirmseite — die ausführliche Erklärung (Ferien, Kommunalwahl)
