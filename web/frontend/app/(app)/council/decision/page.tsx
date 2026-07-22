@@ -8,6 +8,7 @@ import { DecisionDetail, CouncilDecision } from "@/lib/types";
 import { Card, DetailSkeleton, EmptyState, formatDate } from "@/components/ui";
 import { OutcomeDot, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard, ImportanceMeter, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
 import { decisionHref, themaHref } from "@/lib/routes";
+import { shortCommittee } from "@/lib/committees";
 import { ShareButton } from "@/components/share-button";
 import { nwzSearchUrl } from "@/components/nwz-link";
 import { trackRecentDecision } from "@/lib/recent";
@@ -116,8 +117,8 @@ function DecisionDetailInner() {
       <div className="mt-3">
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
           <OutcomeDot outcome={d.outcome} />
-          <span>
-            {d.committee} · {formatDate(d.session_date)}
+          <span title={d.committee}>
+            {shortCommittee(d.committee)} · {formatDate(d.session_date)}
             {d.item_number ? ` · TOP ${d.item_number}` : ""}
           </span>
           {d.vorlage_nr && <span className="font-mono text-[11px]">{d.vorlage_nr}</span>}
@@ -256,8 +257,8 @@ function DecisionDetailInner() {
                         "absolute -left-[21px] top-1.5 h-2 w-2 rounded-full",
                         current ? "bg-primary" : "bg-border",
                       )} />
-                      <span className={cn("text-sm", current && "font-medium text-foreground")}>
-                        {stop.committee}
+                      <span className={cn("text-sm", current && "font-medium text-foreground")} title={stop.committee}>
+                        {shortCommittee(stop.committee)}
                       </span>
                       <span className="text-xs text-muted-foreground"> · {formatDate(stop.session_date)}{current ? " (hier)" : ""}</span>
                     </div>

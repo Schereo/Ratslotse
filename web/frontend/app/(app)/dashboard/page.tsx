@@ -7,6 +7,7 @@ import { Sparkles, ArrowRight, Check, Play } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { DecisionOutcome, Topic } from "@/lib/types";
+import { shortCommittee } from "@/lib/committees";
 import { Button, Card } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
 import { useMascotTheme } from "@/components/seasonal-mascot";
@@ -144,7 +145,7 @@ export default function DashboardPage() {
                 <span className="w-[104px] shrink-0 whitespace-nowrap text-sm font-medium tabular-nums text-foreground">
                   {fmtDay(s.session_date)}
                 </span>
-                <span className="min-w-0 flex-1 truncate text-sm text-foreground">{s.committee}</span>
+                <span className="min-w-0 flex-1 truncate text-sm text-foreground" title={s.committee}>{shortCommittee(s.committee)}</span>
                 {isLiveNow(s) ? (
                   /* RL-U10: laufende Sitzung — LIVE schlägt alle anderen Chips. */
                   <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[11px] font-bold text-red-600 dark:text-red-400">
@@ -189,7 +190,7 @@ export default function DashboardPage() {
                 </span>
                 <p className="mt-1 line-clamp-2 text-sm font-medium text-foreground">{h.title}</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  {h.committee} · {relTime(h.session_date)}
+                  {shortCommittee(h.committee)} · {relTime(h.session_date)}
                 </p>
               </Link>
             ))}
@@ -200,7 +201,7 @@ export default function DashboardPage() {
                    interest_reason der Bewertungs-Pipeline. */
                 <Link href={decisionHref(woche.decision_id)} className="block rounded-lg px-2 py-2 transition-colors hover:bg-accent">
                   <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <OutcomeDot outcome={woche.outcome} /> {woche.committee}
+                    <OutcomeDot outcome={woche.outcome} /> {shortCommittee(woche.committee)}
                   </span>
                   <p className="mt-1 line-clamp-2 text-sm font-medium text-foreground">{woche.title}</p>
                   {woche.interest_reason && (
