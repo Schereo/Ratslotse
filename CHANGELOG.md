@@ -69,6 +69,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   mit dem Protokoll. (#247)
 
 ### Geändert
+- **Themenfeld-Rückblicke: ganze Karte klickbar.** In der Analyse unter
+  „Trends" klappt jetzt ein **Klick oder Tipp irgendwo auf die Karte** die
+  Kernpunkte auf und wieder zu (nicht mehr nur der kleine Knopf) — auf dem
+  Handy wie am Rechner. Der „Beschlüsse"-Link bleibt eigenständig, markierter
+  Text wird nicht weggeklickt, und ein Chevron zeigt den Zustand. Nebenbei
+  behoben: die Karten liefen auf schmalen Handys minimal über den Rand. (#269)
 - **Personen-Profil zeigt die Ämter als Zeitleiste:** Die Seite eines
   Ratsmitglieds beginnt jetzt mit einem **Kopf aus Kürzel-Avatar (in
   Fraktionsfarbe), Name und Kennzahlen** (besuchte Sitzungen, aktiv seit,

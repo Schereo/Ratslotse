@@ -196,13 +196,48 @@ function RecapChip({ active, onClick, children }: { active: boolean; onClick: ()
 }
 
 /** Themenfeld-Karte (Design 15a): standardmäßig nur Kernaussage + Zahl; die
- *  Stichpunkte klappen per Knopf auf, mit gefettetem Kern je Punkt. */
+ *  Stichpunkte klappen auf — ein Klick/Tipp irgendwo auf die Karte reicht
+ *  (Touch + Desktop), der Chevron ist die tastatur-/screenreader-Steuerung. */
 function RecapCard({ r, open, onToggle }: { r: FieldRecap; open: boolean; onToggle: (open: boolean) => void }) {
   const Icon = FIELD_ICON[r.policy_field] ?? Tag;
   const parsed = parseRecap(r.summary);
   const href = `/council?tab=decisions&field=${r.policy_field}&cat=all${r.period_from ? `&date_from=${r.period_from}` : ""}${r.period_to ? `&date_to=${r.period_to}` : ""}`;
+
+  // Alt-Fließtext ohne Stichpunkte: nichts aufzuklappen → statische Karte.
+  if (!parsed) {
+    return (
+      <div className="flex flex-col rounded-xl border border-border bg-card p-4">
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Icon className="h-4 w-4" />
+          </span>
+          <h4 className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">{r.field_label}</h4>
+          <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-xs tabular-nums text-muted-foreground" title="ausgewertete Beschlüsse">
+            {r.n_decisions}
+          </span>
+        </div>
+        <p className="mt-3 flex-1 text-sm leading-relaxed text-muted-foreground">{r.summary}</p>
+        <Link href={href}
+          className="mt-3 inline-flex w-fit items-center gap-1 border-t border-border pt-2.5 text-xs font-medium text-muted-foreground transition-colors hover:text-primary">
+          Die {r.n_decisions} Beschlüsse dahinter <ArrowRight className="h-3 w-3" />
+        </Link>
+      </div>
+    );
+  }
+
+  // Klick/Tipp auf die Karte klappt auf/zu — außer der Nutzer hat gerade Text
+  // markiert (Auswahl nicht wegklicken); der Beschlüsse-Link navigiert eigen
+  // (stopPropagation), der Chevron trägt die Tastatur-/SR-Semantik.
+  const toggle = () => {
+    if (typeof window !== "undefined" && window.getSelection()?.toString()) return;
+    onToggle(!open);
+  };
+
   return (
-    <div className={cn("flex flex-col rounded-xl border bg-card p-4 transition-colors", open ? "border-primary/30 shadow-sm" : "border-border")}>
+    <div onClick={toggle}
+      className={cn("flex cursor-pointer select-text flex-col rounded-xl border bg-card p-4 transition-colors",
+        // Hover-Optik nur auf Zeigegeräten — sonst „klebt" der Tint nach dem Tippen.
+        open ? "border-primary/30 shadow-sm" : "border-border [@media(hover:hover)]:hover:border-primary/40 [@media(hover:hover)]:hover:bg-accent/40")}>
       <div className="flex items-center gap-2.5">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
           <Icon className="h-4 w-4" />
@@ -211,51 +246,40 @@ function RecapCard({ r, open, onToggle }: { r: FieldRecap; open: boolean; onTogg
         <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-xs tabular-nums text-muted-foreground" title="ausgewertete Beschlüsse">
           {r.n_decisions}
         </span>
+        <button type="button" aria-expanded={open} aria-label={open ? "Kernpunkte einklappen" : "Kernpunkte aufklappen"}
+          onClick={(e) => { e.stopPropagation(); onToggle(!open); }}
+          className="-mr-1 shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+          <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} />
+        </button>
       </div>
 
-      {parsed ? (
+      <p className="mt-3 text-sm font-semibold leading-snug text-foreground">{parsed.lead}</p>
+
+      {open ? (
         <>
-          <p className="mt-3 text-sm font-semibold leading-snug text-foreground">{parsed.lead}</p>
-          {open ? (
-            <>
-              <ul className="mt-2.5 space-y-2">
-                {parsed.bullets.map((b, i) => {
-                  const { head, rest } = splitBullet(b);
-                  return (
-                    <li key={i} className="flex gap-2 text-[13px] leading-relaxed text-muted-foreground">
-                      <span className="mt-[0.45rem] h-[5px] w-[5px] shrink-0 rounded-full bg-primary" aria-hidden />
-                      <span><strong className="font-semibold text-foreground">{head}</strong>{rest}</span>
-                    </li>
-                  );
-                })}
-              </ul>
-              <div className="mt-3 flex items-center justify-between border-t border-border pt-2.5">
-                <button type="button" onClick={() => onToggle(false)}
-                  className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground">
-                  Einklappen
-                </button>
-                <Link href={href} className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-                  {r.n_decisions} Beschlüsse <ArrowRight className="h-3 w-3" />
-                </Link>
-              </div>
-            </>
-          ) : (
-            <button type="button" onClick={() => onToggle(true)}
-              className="mt-3 flex w-full items-center justify-between border-t border-border pt-2.5 text-xs font-medium text-primary transition-opacity hover:opacity-80">
-              <span>{parsed.bullets.length} Kernpunkte anzeigen</span>
-              <ChevronDown className="h-4 w-4" />
-            </button>
-          )}
+          <ul className="mt-2.5 space-y-2">
+            {parsed.bullets.map((b, i) => {
+              const { head, rest } = splitBullet(b);
+              return (
+                <li key={i} className="flex gap-2 text-[13px] leading-relaxed text-muted-foreground">
+                  <span className="mt-[0.45rem] h-[5px] w-[5px] shrink-0 rounded-full bg-primary" aria-hidden />
+                  <span><strong className="font-semibold text-foreground">{head}</strong>{rest}</span>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="mt-3 flex items-center justify-between border-t border-border pt-2.5">
+            <span className="text-xs font-medium text-muted-foreground">Einklappen</span>
+            <Link href={href} onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+              {r.n_decisions} Beschlüsse <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
         </>
       ) : (
-        // Fallback für Bestands-Rückblicke im alten Fließtext-Format (keine Bullets → nichts aufzuklappen).
-        <>
-          <p className="mt-3 flex-1 text-sm leading-relaxed text-muted-foreground">{r.summary}</p>
-          <Link href={href}
-            className="mt-3 inline-flex w-fit items-center gap-1 border-t border-border pt-2.5 text-xs font-medium text-muted-foreground transition-colors hover:text-primary">
-            Die {r.n_decisions} Beschlüsse dahinter <ArrowRight className="h-3 w-3" />
-          </Link>
-        </>
+        <p className="mt-3 border-t border-border pt-2.5 text-xs font-medium text-primary">
+          {parsed.bullets.length} Kernpunkte anzeigen
+        </p>
       )}
     </div>
   );
@@ -324,7 +348,7 @@ function FieldRecaps() {
         )}
       </div>
 
-      <div className="mt-3.5 grid items-start gap-3 sm:grid-cols-2">
+      <div className="mt-3.5 grid grid-cols-1 items-start gap-3 sm:grid-cols-2">
         {shown.map((r) => (
           <RecapCard key={r.policy_field} r={r} open={!!open[r.policy_field]}
             onToggle={(o) => persist({ ...open, [r.policy_field]: o })} />
