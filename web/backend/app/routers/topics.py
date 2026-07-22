@@ -72,24 +72,32 @@ def topic_suggestions(
     store: Store = Depends(get_store),
     council: CouncilStore = Depends(get_council_store),
 ) -> dict:
-    """Anklickbare Themen-Vorschläge aus den echten Daten: die häufigsten
-    Beschluss-Schlagworte der letzten sechs Monate — ohne Themen, die der
-    Account schon angelegt hat. Ein Klick im Frontend legt den Vorschlag
-    direkt als eigenes Thema an."""
+    """Anklickbare Themen-Vorschläge aus den echten Daten: konkrete Orte und
+    Projekte mit jüngster Ratsaktivität (Entitäten) statt der häufigsten
+    Schlagworte — die belohnten Verwaltungsvokabeln („Bericht", „Annahme").
+    Die KI-Beschreibung der Entität wird zur Themen-Beschreibung und macht
+    den Themen-Wächter treffsicherer als ein generischer Satz. Ohne Themen,
+    die der Account schon angelegt hat; ein Klick legt direkt an."""
     existing = {t.name.strip().lower() for t in store.get_topics(user["id"])}
     out = []
-    for t in council.trending_tags(days_back=180, limit=16):
-        name = t["tag"].strip()
+    for e in council.suggested_entity_topics(days_back=365, limit=16):
+        name = (e.get("name") or "").strip()
         if not name or name.lower() in existing:
             continue
-        out.append({
-            "name": name[:1].upper() + name[1:],
-            "description": (
+        desc = (e.get("description") or "").strip()
+        if desc:
+            # Auf ~220 Zeichen kürzen (an Satzgrenze), damit die
+            # Watcher-Beschreibung fokussiert bleibt.
+            if len(desc) > 220:
+                cut = desc[:220]
+                desc = (cut[: cut.rfind(".") + 1] or cut).strip()
+            description = f"{desc} Neue Beschlüsse, Planungen und Maßnahmen dazu."
+        else:
+            description = (
                 f"Neue Beschlüsse, Planungen und Maßnahmen des Oldenburger "
-                f"Stadtrats rund um das Thema {name}."
-            ),
-            "n": t["n"],
-        })
+                f"Stadtrats rund um {name}."
+            )
+        out.append({"name": name, "description": description, "n": e["n_recent"]})
         if len(out) >= 6:
             break
     return {"suggestions": out}

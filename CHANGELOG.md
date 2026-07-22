@@ -40,6 +40,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   mit dem Protokoll. (#247)
 
 ### Geändert
+- **Themen-Vorschläge, die wirklich interessieren:** Die „Gerade aktuell im
+  Rat"-Chips auf „Meine Themen" schlagen jetzt **konkrete Orte und Projekte**
+  mit jüngster Ratsaktivität vor (Veloroute, Fliegerhorst, deine Straße …)
+  statt Verwaltungsvokabeln wie „Bericht" oder „Annahme". Die KI-Beschreibung
+  des Ortes wird dabei zur Themen-Beschreibung — dadurch trifft auch die
+  Benachrichtigung genauer. (#252)
 - **Breiteres Layout wie im Design:** Der Inhaltsbereich wächst von 1024 auf
   1280 Pixel — Karten und Listen füllen den Bildschirm statt schmal in viel
   Leerraum zu stehen; Text-Detailseiten behalten ihre Lesebreite. Außerdem
