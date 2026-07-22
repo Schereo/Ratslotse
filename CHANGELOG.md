@@ -8,6 +8,11 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Offline & erster Start (M4):** Ohne Netz zeigt Ratslotse eine dezente
+  **„Offline"-Pille** und in der App die zuletzt geladenen Inhalte (der
+  Daten-Cache übersteht dort jetzt den Neustart, bis zu 24 h). Beim
+  allerersten App-Start begrüßt dich außerdem ein **kurzes 3-Seiten-Intro**
+  mit Lotti — einmal wischen, nie wieder. (#232)
 - **App: neue Icons + Mitteilungs-Hinweis (M4):** Das App-Icon kommt jetzt in
   drei iOS-Varianten (hell, dunkel, getönt — je nachdem, wie der Homescreen
   eingestellt ist). Neu in der App außerdem ein freundlicher **Lotti-Hinweis
