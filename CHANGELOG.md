@@ -34,7 +34,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ### Hinzugefügt
 - **App: Zurückwischen vom Bildschirmrand.** In der iOS-App kommst du jetzt wie
   gewohnt mit einer **Wischgeste vom linken Rand** eine Seite zurück (und vom
-  rechten wieder vor) — passend zur Vor-/Zurück-Navigation der App. (#PR)
+  rechten wieder vor) — passend zur Vor-/Zurück-Navigation der App. (#286)
 - **Eigene Quizfragen:** Auf der Quiz-Seite kannst du jetzt **eigene Fragen
   anlegen und üben** — mit 2–4 Antworten, optionalem Ort (Stadtteil),
   Kategorie und Erklärung. Eine Übungsrunde mischt 10 deiner Fragen durch
