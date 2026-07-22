@@ -69,6 +69,16 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   mit dem Protokoll. (#247)
 
 ### Geändert
+- **Lange Ausschussnamen werden lesbar — überall.** Sperrige amtliche Namen wie
+  „Ausschuss für Wirtschaftsförderung, Digitalisierung und internationale
+  Zusammenarbeit" wurden in Karten, Chips und Dropdowns hart abgeschnitten
+  („Ausschuss für Wirtschaf…") — nicht mehr zu unterscheiden. Jetzt zeigt eine
+  zentrale **Kurzname-Funktion** eine knappe, sinntragende Form („Wirtschaft &
+  Digitales"), und auf Karten/Zeilen steht der **volle Name als kleine Unterzeile**
+  darunter (max. 2 Zeilen) — nichts geht verloren. In engen Slots (Chips,
+  Dropdown-Trigger, Filter) reicht der Kurzname, der volle Name bleibt im Tooltip
+  und für Screenreader. Greift auf Sitzungen, Übersicht, Personen-Profil,
+  Beschluss-Karten/-Detail und allen Ausschuss-Filtern. (#272)
 - **Ziele & Finanzen lesbarer.** In der Analyse zeigt jedes **Stadtziel** jetzt
   einen **Richtungs-Balken** (bremst ← rot | Konsens | grün → voran) statt
   dreier gleich langer Segmente, dazu ein **Netto-Chip** („überwiegend

@@ -9,6 +9,7 @@ import { PartyBadge, partyBrand } from "@/components/decision-ui";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useFetch } from "@/lib/use-fetch";
 import { cn } from "@/lib/utils";
+import { shortCommittee } from "@/lib/committees";
 
 const sessionUrl = (ksinr: number) => `https://buergerinfo.oldenburg.de/si0057.php?__ksinr=${ksinr}`;
 
@@ -61,8 +62,8 @@ function OfficesGantt({ current }: { current: Membership[] }) {
                 {chair
                   ? <Gavel className="h-3.5 w-3.5 shrink-0 text-signal" />
                   : <span className="w-3.5 shrink-0" aria-hidden />}
-                <span className={cnEllipsis(chair)}>
-                  {m.gremium}
+                <span className={cnEllipsis(chair)} title={m.gremium}>
+                  {shortCommittee(m.gremium)}
                   {isDeputy(m.rolle) && <span className="ml-1 text-[11px] font-normal text-muted-foreground">· Stellv.</span>}
                 </span>
               </span>
@@ -189,8 +190,8 @@ function PersonInner() {
               <div className="space-y-1.5">
                 {past.map((m, i) => (
                   <div key={`${m.gremium}-${i}`} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                    <span className="min-w-0 text-[13px] text-foreground">
-                      {m.gremium}
+                    <span className="min-w-0 text-[13px] text-foreground" title={m.gremium}>
+                      {shortCommittee(m.gremium)}
                       {isChair(m.rolle) && <span className="ml-1.5 text-[11px] font-medium text-signal">{isDeputy(m.rolle) ? "stellv. Vorsitz" : "Vorsitz"}</span>}
                     </span>
                     <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
@@ -230,7 +231,7 @@ function PersonInner() {
             {data.committees.map((c) => (
               <div key={c.committee} className="grid grid-cols-[8.5rem_1fr_2.5rem] items-center gap-3 sm:grid-cols-[14rem_1fr_3rem]">
                 <span className="flex min-w-0 items-center gap-1.5">
-                  <span className="min-w-0 truncate text-[13px] text-foreground">{c.committee}</span>
+                  <span className="min-w-0 truncate text-[13px] text-foreground" title={c.committee}>{shortCommittee(c.committee)}</span>
                   {c.chair && (
                     <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-signal/10 px-1.5 py-0.5 text-[10px] font-semibold text-signal">
                       <Gavel className="h-2.5 w-2.5" /> Vorsitz
@@ -254,7 +255,7 @@ function PersonInner() {
             {data.recent.map((r, i) => (
               <a key={`${r.ksinr}-${r.session_date}`} href={sessionUrl(r.ksinr)} target="_blank" rel="noreferrer"
                 className={`group flex items-center justify-between gap-3 py-2.5 text-[13.5px] ${i > 0 ? "border-t border-border" : ""}`}>
-                <span className="min-w-0 truncate text-foreground">{r.committee}</span>
+                <span className="min-w-0 truncate text-foreground" title={r.committee}>{shortCommittee(r.committee)}</span>
                 <span className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
                   {formatDate(r.session_date)}
                   <ExternalLink className="h-3 w-3 text-muted-foreground/40 group-hover:text-primary" />

@@ -7,6 +7,7 @@ import { ChevronRight, ChevronDown, ChevronUp, Flame } from "lucide-react";
 import { CouncilDecision, DecisionOutcome, ImportanceBreakdown } from "@/lib/types";
 import { Card, formatDate } from "@/components/ui";
 import { decisionHref } from "@/lib/routes";
+import { shortCommittee } from "@/lib/committees";
 import { cn } from "@/lib/utils";
 
 /** Format a euro amount compactly: 563.000 € / 3,4 Mio. €. */
@@ -35,7 +36,7 @@ export function DecisionLinkCard({ id, title, committee, session_date, field, le
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             {field !== undefined && <FieldBadge field={field} />}
-            <span className="text-xs text-muted-foreground">{committee} · {formatDate(session_date)}</span>
+            <span className="text-xs text-muted-foreground" title={committee}>{shortCommittee(committee)} · {formatDate(session_date)}</span>
             {score !== undefined && (
               <span className="rounded bg-muted px-1.5 text-xs font-medium tabular-nums text-muted-foreground" title="Ähnlichkeit zur Frage">
                 {Math.round(score * 100)}%
