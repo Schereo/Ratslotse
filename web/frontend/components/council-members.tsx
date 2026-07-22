@@ -6,6 +6,7 @@ import { Search } from "lucide-react";
 import { Member } from "@/lib/types";
 import { Card, Input, Select, Spinner, EmptyState } from "@/components/ui";
 import { PartyBadge } from "@/components/decision-ui";
+import { AnalysisIntro } from "@/components/analysis-intro";
 import { personHref } from "@/lib/routes";
 import { useFetch } from "@/lib/use-fetch";
 
@@ -41,10 +42,12 @@ export function PersonenView() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border border-border bg-muted/40 p-3 text-xs leading-relaxed text-muted-foreground">
-        Aus den Anwesenheitslisten der Protokolle: wer im Rat und in den Ausschüssen sitzt, in welcher Fraktion und
-        wie präsent. Protokolle nennen selten namentliche Einzelstimmen — daher zählt hier die <span className="font-medium text-foreground">Präsenz</span>, nicht das Stimmverhalten. Erfasst sind Sitzungen <span className="font-medium text-foreground">ab 2018</span>.
-      </div>
+      <AnalysisIntro summary={<>Wer im Rat und in den Ausschüssen sitzt — und wie <strong className="font-semibold text-foreground">präsent</strong>.</>}>
+        Aus den Anwesenheitslisten der Protokolle: wer im Rat und in den Ausschüssen sitzt, in welcher Fraktion und wie
+        präsent. Protokolle nennen namentliche Einzelstimmen nur selten — daher zählt hier die{" "}
+        <strong className="font-semibold text-foreground">Präsenz</strong>, nicht das Stimmverhalten. Erfasst sind
+        Sitzungen <strong className="font-semibold text-foreground">ab 2018</strong>.
+      </AnalysisIntro>
       <div className="flex flex-col gap-2 sm:flex-row">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

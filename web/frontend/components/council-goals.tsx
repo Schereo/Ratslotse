@@ -7,6 +7,7 @@ import { Card, Spinner, EmptyState } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { useFetch } from "@/lib/use-fetch";
 import { DecisionLinkCard } from "@/components/decision-ui";
+import { AnalysisIntro } from "@/components/analysis-intro";
 
 const STANCE = {
   voran: { label: "bringt voran", bar: "bg-green-500/80", chip: "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-300" },
@@ -72,11 +73,13 @@ export function GoalsView() {
 
   return (
     <div className="space-y-3">
-      <div className="rounded-lg border border-border bg-muted/40 p-3 text-xs leading-relaxed text-muted-foreground">
-        Wie viele Ratsbeschlüsse jedes übergeordnete Ziel <span className="font-medium text-foreground">voranbringen</span>,
-        ihm <span className="font-medium text-foreground">entgegenwirken</span> oder es neutral berühren. Das misst die
-        <span className="font-medium text-foreground"> Aktivität und Richtung</span> des Rats zum Ziel — nicht die reale Kennzahl.
-      </div>
+      <AnalysisIntro summary={<>Wie stark der Rat jedes übergeordnete Stadtziel <strong className="font-semibold text-foreground">voranbringt</strong>.</>}>
+        Wie viele Ratsbeschlüsse jedes übergeordnete Ziel{" "}
+        <strong className="font-semibold text-foreground">voranbringen</strong>, ihm{" "}
+        <strong className="font-semibold text-foreground">entgegenwirken</strong> oder es neutral berühren. Das misst
+        die <strong className="font-semibold text-foreground">Aktivität und Richtung</strong> des Rats zum Ziel — nicht
+        die reale Kennzahl.
+      </AnalysisIntro>
       {goals.map((g) => (
         <Card key={g.key} className="p-4">
           <button type="button" onClick={() => setOpen(open === g.key ? null : g.key)} className="w-full text-left">
