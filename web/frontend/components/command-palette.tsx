@@ -212,7 +212,7 @@ export function CommandPalette() {
               onChange={(e) => { setQuery(e.target.value); setActive(0); }}
               onKeyDown={onKeyDown}
               placeholder="Suchen oder Befehl eingeben…"
-              className="h-12 w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+              className="h-12 w-full bg-transparent text-base sm:text-sm text-foreground outline-none placeholder:text-muted-foreground"
               role="combobox"
               aria-expanded="true"
               aria-controls="cmdk-list"
