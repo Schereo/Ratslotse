@@ -44,6 +44,7 @@ export default function DatenschutzPage() {
           <Section title="Welche Daten wir verarbeiten">
             <ul className="list-disc space-y-1 pl-5">
               <li><strong>Konto:</strong> E-Mail-Adresse und ein Passwort-Hash (das Passwort selbst wird nicht im Klartext gespeichert).</li>
+              <li><strong>Anmeldung mit Apple (optional):</strong> Meldest du dich mit Apple an, erhalten wir von Apple eine pseudonyme Nutzerkennung und deine E-Mail-Adresse (bei „E-Mail-Adresse verbergen" eine Apple-Weiterleitungsadresse). Beides dient ausschließlich der Anmeldung und Konto-Verknüpfung.</li>
               <li><strong>Push (optional):</strong> ein Geräte-Token, wenn du App-Push-Benachrichtigungen aktivierst.</li>
               <li><strong>Themen &amp; Watchlists:</strong> die von dir angelegten Suchthemen und Benachrichtigungseinstellungen.</li>
               <li><strong>„Frag den Rat"-Anfragen:</strong> die von dir eingegebenen Fragen, um eine KI-Antwort zu erzeugen.</li>
@@ -67,6 +68,7 @@ export default function DatenschutzPage() {
               <li><strong>Resend:</strong> Versand von Benachrichtigungs-E-Mails (nur, wenn du E-Mail als Kanal wählst).</li>
               <li><strong>CARTO:</strong> Die Kartendarstellung lädt Kartenkacheln von CARTO; dabei wird deine IP-Adresse an CARTO übermittelt.</li>
               <li><strong>Apple / Google (Push):</strong> App-Benachrichtigungen werden über den Push-Dienst des Betriebssystems (APNs bzw. FCM) zugestellt — nur, wenn du Push als Kanal aktivierst.</li>
+              <li><strong>Apple (Sign in with Apple):</strong> Nutzt du die Anmeldung mit Apple, wickelt Apple den Anmeldevorgang ab (Apple Distribution International Ltd., Irland); wir erhalten dabei nur die oben genannte Kennung und E-Mail-Adresse. Rechtsgrundlage ist die Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO).</li>
             </ul>
           </Section>
 
@@ -78,11 +80,14 @@ export default function DatenschutzPage() {
             </p>
           </Section>
 
-          <Section title="Cookies">
+          <Section title="Cookies und lokale Speicherung">
             <p>
-              Ratslotse setzt nur ein technisch notwendiges Cookie zur Anmeldung (Session). Es findet kein Tracking
-              und keine Analyse-Software statt; daher ist keine Einwilligung (Cookie-Banner) erforderlich
-              (§ 25 Abs. 2 TDDDG).
+              Ratslotse setzt nur ein technisch notwendiges Cookie zur Anmeldung (Session). Im Browser und in der
+              App werden außerdem einige technisch notwendige Daten lokal auf deinem Gerät gespeichert (localStorage):
+              deine Design-Einstellung (hell/dunkel), in der App das Anmelde-Token sowie ein Zwischenspeicher der
+              zuletzt geladenen Inhalte (bis zu 24 Stunden), damit die App auch offline etwas anzeigen kann. Es
+              findet kein Tracking und keine Analyse-Software statt; daher ist keine Einwilligung (Cookie-Banner)
+              erforderlich (§ 25 Abs. 2 TDDDG).
             </p>
           </Section>
 

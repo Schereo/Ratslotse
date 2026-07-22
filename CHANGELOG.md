@@ -8,6 +8,11 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geändert
+- **Datenschutzerklärung aktualisiert:** Sie beschreibt jetzt die
+  **Anmeldung mit Apple** (welche Daten Apple übermittelt, inklusive
+  „E-Mail-Adresse verbergen") und die **lokale Speicherung** auf dem Gerät
+  (Design-Einstellung, App-Anmeldung, 24-h-Offline-Zwischenspeicher).
+  Weiterhin ohne Tracking und ohne Cookie-Banner. (#244)
 - **Neuer Hell/Dunkel-Schalter mit Lotti:** Statt des Dreistufen-Icons gibt es
   jetzt einen kleinen **Himmel-Schalter** — tagsüber Sonne, nachts Mond und
   Sterne, und Lotti selbst ist der Schaltknauf (nachts schläft sie, mit „z").
