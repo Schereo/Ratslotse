@@ -8,6 +8,10 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geändert
+- Der **Sitzungspause-Hinweis auf der Übersicht ist jetzt kompakt**: eine
+  Zeile mit schlafender Lotti und „wieder ab"-Datum statt einer halben
+  Bildschirmseite — die ausführliche Erklärung (Ferien, Kommunalwahl)
+  klappt per Tipp auf „Mehr" aus. (#246)
 - **Datenschutzerklärung aktualisiert:** Sie beschreibt jetzt die
   **Anmeldung mit Apple** (welche Daten Apple übermittelt, inklusive
   „E-Mail-Adresse verbergen") und die **lokale Speicherung** auf dem Gerät
