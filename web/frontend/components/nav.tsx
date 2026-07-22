@@ -4,17 +4,18 @@ import { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
-  Home, Landmark, Tags, Search, Settings, LogOut, Menu, Monitor, Moon, Sun, UserCircle,
+  Home, Landmark, Tags, Search, Settings, LogOut, Menu, UserCircle,
   CalendarDays, BarChart3, Trophy, Sparkles, Map as MapIcon,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { isNativeApp } from "@/lib/platform";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, Button } from "@/components/ui";
 import { Brand, BrandMark } from "@/components/brand";
 import { FeedbackButton } from "@/components/feedback";
+import { LottiThemeSwitch } from "@/components/theme-switch";
 import { cn } from "@/lib/utils";
-import { cycleTheme, getTheme, type Theme } from "@/lib/theme";
 import { openCommandPalette } from "@/components/command-palette";
 
 // `tour` markiert Elemente als Anker für die Lotti-Tour (components/tour.tsx);
@@ -66,33 +67,15 @@ const PRIMARY_RIGHT: Item[] = [
 ];
 const FRAGEN_HREF = "/council?tab=decisions&mode=fragen";
 
-const THEME_META: Record<Theme, { icon: typeof Sun; label: string }> = {
-  light: { icon: Sun, label: "Hell" },
-  dark: { icon: Moon, label: "Dunkel" },
-  system: { icon: Monitor, label: "System" },
-};
-
-/** Dreistufig hell → dunkel → System (folgt dem OS), statt der alten Zweier-Sackgasse. */
-function ThemeToggle({ className }: { className?: string }) {
-  // Erst nach dem Mount aus localStorage lesen (SSR-Hydration).
-  const [theme, setTheme] = useState<Theme>("system");
-  useEffect(() => {
-    setTheme(getTheme());
-  }, []);
-  const { icon: Icon, label } = THEME_META[theme];
-  return (
-    <button
-      onClick={() => setTheme(cycleTheme())}
-      title={`Design: ${label} — klicken zum Wechseln`}
-      aria-label={`Design wechseln (aktuell: ${label})`}
-      className={cn(
-        "flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
-        className,
-      )}
-    >
-      <Icon className="h-4 w-4" />
-    </button>
-  );
+/** RL-U09: Der Lotti-Himmel-Schalter ersetzt den Dreistufen-Icon-Toggle — im
+ *  Web binär (Erststart folgt dem OS, danach entscheidet der Schalter). In der
+ *  App wohnt das Erscheinungsbild auf der Konto-Seite; hier rendert nichts.
+ *  Mount-Gate: SSR kennt die Plattform nicht. */
+function WebThemeSwitch({ className }: { className?: string }) {
+  const [show, setShow] = useState(false);
+  useEffect(() => setShow(!isNativeApp()), []);
+  if (!show) return null;
+  return <LottiThemeSwitch className={className} />;
 }
 
 function SectionHeader({ children }: { children: React.ReactNode }) {
@@ -187,7 +170,7 @@ function UserFooter({ onNavigate }: { onNavigate?: () => void }) {
           <UserCircle className="h-4 w-4 shrink-0" />
           <span className="truncate">{user?.email}</span>
         </Link>
-        <ThemeToggle />
+        <WebThemeSwitch />
       </div>
       <FeedbackButton onNavigate={onNavigate} />
       <button
@@ -256,7 +239,7 @@ export function MobileTopbar() {
       >
         <Search className="h-4 w-4" />
       </button>
-      <ThemeToggle />
+      <WebThemeSwitch />
     </header>
   );
 }

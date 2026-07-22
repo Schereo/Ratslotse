@@ -8,6 +8,10 @@ export function getTheme(): Theme {
   return (localStorage.getItem("theme") as Theme) ?? "system";
 }
 
+/** Theme kann von mehreren Stellen wechseln (Lotti-Schalter, Konto-Karte,
+ *  ⌘K-Palette) — dieses Event hält alle sichtbaren Regler synchron. */
+export const THEME_EVENT = "ratslotse:theme";
+
 export function applyTheme(theme: Theme) {
   const root = document.documentElement;
   const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -18,18 +22,14 @@ export function applyTheme(theme: Theme) {
   } else {
     localStorage.setItem("theme", theme);
   }
+  window.dispatchEvent(new Event(THEME_EVENT));
 }
 
-/**
- * Zyklus hell → dunkel → System. Der alte Zweipunkt-Toggle war eine Sackgasse:
- * Einmal umgeschaltet, kam man nie zurück in den System-Modus.
- * Gibt den neuen Modus zurück, damit die UI Icon/Label aktualisieren kann.
- */
-export function cycleTheme(): Theme {
-  const order: Theme[] = ["light", "dark", "system"];
-  const next = order[(order.indexOf(getTheme()) + 1) % order.length];
-  applyTheme(next);
-  return next;
+/** Ist das Dokument gerade dunkel? Deckt auch den System-Modus ab —
+ *  der Lotti-Schalter (RL-U09) zeigt und toggelt den Ist-Zustand. */
+export function isDarkNow(): boolean {
+  if (typeof document === "undefined") return false;
+  return document.documentElement.classList.contains("dark");
 }
 
 export function initTheme() {
