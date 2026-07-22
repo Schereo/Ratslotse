@@ -7,6 +7,17 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt
+- **Live-Hinweis an Sitzungstagen:** Tagt gerade ein Gremium (Startzeit
+  erreicht, bis 4 h danach), zeigt die Übersicht eine **rote Live-Karte**
+  („tagt gerade · seit n Minuten", Ort, TOPs, deine Themen-Treffer) mit
+  Absprung zur Tagesordnung — beim **Stadtrat zusätzlich der Link zum
+  O1-Livestream** (oldenburg eins überträgt nur Ratssitzungen). Auch die
+  Startseiten-Leiste kennt jetzt den Live-Zustand, und laufende Sitzungen
+  tragen in den Listen einen **LIVE-Punkt**. Welcher Tagesordnungspunkt
+  gerade dran ist, weiß das Ratsinfo nicht — Ergebnisse folgen wie gehabt
+  mit dem Protokoll. (#247)
+
 ### Geändert
 - Der **Sitzungspause-Hinweis auf der Übersicht ist jetzt kompakt**: eine
   Zeile mit schlafender Lotti und „wieder ab"-Datum statt einer halben
