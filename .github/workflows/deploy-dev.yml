@@ -1,0 +1,53 @@
+# Dev-Deploy: Jeder Push auf den Branch `dev` deployt auf die Dev-VM
+# (dev.ratslotse.de). `dev` ist bewusst KEIN Integrations-Branch, sondern ein
+# beweglicher Zeiger — beliebigen Stand testen mit:
+#
+#     git push origin HEAD:dev --force
+#
+# Deshalb holt die VM den Stand per fetch + reset --hard (übersteht
+# Force-Pushes); .env/data/.venv/node_modules sind untracked und bleiben
+# unberührt. Kein Test-Gate: Dev ist zum Ausprobieren da, die Tests laufen
+# auf jedem PR nach main. Prod deployt weiterhin NUR deploy.yml (PR-Merge).
+name: Deploy to Dev
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+# Schnell aufeinanderfolgende Pushes: der neueste gewinnt, ältere Läufe
+# werden abgebrochen (auf Dev ist nur der letzte Stand interessant).
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy auf die Dev-VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_DEV_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          proxy_host: ${{ secrets.VPS_PROXY_HOST }}
+          proxy_username: ${{ secrets.VPS_USER }}
+          proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          proxy_port: ${{ secrets.VPS_SSH_PORT }}
+          # npm ci + next build auf 2 Kernen kann dauern.
+          command_timeout: 30m
+          script: |
+            set -e
+            cd ~/app
+            git fetch origin dev
+            git reset --hard ${{ github.sha }}
+            .venv/bin/pip install -q -r requirements.txt -r web/backend/requirements.txt
+            cd web/frontend
+            npm ci --no-audit --no-fund
+            npm run build
+            sudo systemctl restart nwz-web-api nwz-web-frontend
+            sleep 3
+            curl -sf -o /dev/null http://127.0.0.1:3000 && echo "Frontend OK"
+            curl -sf http://127.0.0.1:8000/api/health && echo " API OK"

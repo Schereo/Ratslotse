@@ -58,8 +58,23 @@ deployt **nicht**. Die Action baut die Doku, rsync't den Code auf den Server (vi
 SSH-ProxyJump, Ziel-Hosts als GitHub-Secrets) und startet die systemd-Services neu.
 Nicht überschrieben werden `.env`, `data/`, `.venv/`.
 
-**GitHub-Secrets:** `SSH_PRIVATE_KEY` (Deploy-Key), `VPS_HOST`, `VPS_PROXY_HOST`,
-`VPS_USER`, `VPS_SSH_PORT`, `ANTHROPIC_API_KEY` (für `docs-review.yml`).
+**GitHub-Secrets:** `SSH_PRIVATE_KEY` (Deploy-Key), `VPS_HOST`, `VPS_DEV_HOST`,
+`VPS_PROXY_HOST`, `VPS_USER`, `VPS_SSH_PORT`, `ANTHROPIC_API_KEY` (für `docs-review.yml`).
+
+### Dev-Umgebung (dev.ratslotse.de)
+
+Eigene VM neben Prod, mit eigenen Datenbanken/Secrets (Basic-Auth vorm vhost,
+kein Mail-Versand, keine Crons). **Jeder Push auf den Branch `dev`** deployt
+dorthin (`.github/workflows/deploy-dev.yml`). `dev` ist kein Integrations-
+Branch, sondern ein beweglicher Zeiger — beliebigen Stand ausprobieren:
+
+```bash
+git push origin HEAD:dev --force
+```
+
+Die Dev-VM zieht per `git fetch` + `reset --hard` (übersteht Force-Pushes),
+baut Frontend + Backend-Deps und startet ihre Services neu. Prod bleibt davon
+komplett unberührt; nach `main` geht es weiterhin nur per PR.
 
 ## `.env` (nur auf dem Server, nicht im Repo)
 
