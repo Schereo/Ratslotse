@@ -1,5 +1,6 @@
 import UIKit
 import Capacitor
+import WebKit
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -57,4 +58,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)
     }
 
+}
+
+/// Bridge-ViewController mit aktivierter iOS-Zurück-Wisch-Geste. Wischen vom
+/// linken Bildschirmrand geht zurück (und vom rechten vor) — weil der
+/// Next.js-Router über die History-API navigiert, entspricht das genau der
+/// Zurück-Navigation der App. In Main.storyboard als customClass gesetzt
+/// (Modul „App"), damit Capacitor diesen Controller statt des Standard-
+/// CAPBridgeViewController lädt. Hier als zusätzliche Klasse in der bereits
+/// im Xcode-Projekt referenzierten AppDelegate.swift — spart einen neuen
+/// pbxproj-Dateieintrag.
+class MainViewController: CAPBridgeViewController {
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        webView?.allowsBackForwardNavigationGestures = true
+    }
 }
