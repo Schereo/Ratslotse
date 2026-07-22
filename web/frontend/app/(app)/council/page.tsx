@@ -139,10 +139,12 @@ function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
 
 const PAGE_SIZE = 50;
 
-const SORTS: { value: string; label: string }[] = [
+const SORTS: { value: string; label: string; sub?: string; icon?: typeof Sparkles }[] = [
   { value: "date_desc", label: "Neueste zuerst" },
   { value: "date_asc", label: "Älteste zuerst" },
   { value: "importance", label: "Wichtigste zuerst" },
+  // RL-U15 (13a-C): Unterhaltungs-Sortierung — klar getrennt von „Wichtigste".
+  { value: "interest", label: "Spannendste zuerst", sub: "Gesprächswert — kurios & alltagsnah", icon: Sparkles },
   { value: "faction", label: "Nach Fraktion" },
 ];
 

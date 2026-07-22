@@ -291,11 +291,13 @@ class CouncilStore:
                 # Interessantheit (RL-U11, council.interest) — LLM-Score fürs Fundstück.
                 if "interest" not in dec_cols:
                     self._conn.execute("ALTER TABLE council_decisions ADD COLUMN interest INTEGER")
+                if "interest_reason" not in dec_cols:
                     self._conn.execute("ALTER TABLE council_decisions ADD COLUMN interest_reason TEXT")
                 # Tragweite (RL-U16, council.impact) — LLM-Score für die Priorität;
                 # fließt 50/50 in den Wichtig-Wert ein, sobald befüllt.
                 if "impact" not in dec_cols:
                     self._conn.execute("ALTER TABLE council_decisions ADD COLUMN impact INTEGER")
+                if "impact_reason" not in dec_cols:
                     self._conn.execute("ALTER TABLE council_decisions ADD COLUMN impact_reason TEXT")
                 self._conn.execute(
                     "CREATE INDEX IF NOT EXISTS idx_decisions_field ON council_decisions(policy_field)"
@@ -1037,6 +1039,8 @@ class CouncilStore:
             "faction": "d.factions ASC, cs.session_date DESC",
             # Wichtigste zuerst; NULL-Scores (noch nicht berechnet) landen hinten.
             "importance": "d.importance IS NULL, d.importance DESC, cs.session_date DESC",
+            # RL-U15: Unterhaltungs-Sortierung — Gesprächswert statt Priorität.
+            "interest": "d.interest IS NULL, d.interest DESC, cs.session_date DESC",
         }.get(sort, "cs.session_date DESC, d.position")
         party_ids = self.decision_ids_for_party(party) if party else None
         where, params = self._decision_where(query, committee, outcome, faction,
@@ -2035,6 +2039,20 @@ class CouncilStore:
             (cutoff, limit),
         ).fetchall()
         return [{"tag": r["tag"], "n": r["n"]} for r in rows]
+
+    def most_interesting_recent(self, days_back: int = 7) -> dict | None:
+        """RL-U15 (13a-A): der interessanteste Beschluss der letzten Tage —
+        füllt auf „Heute" den Treffer-Leerzustand („Diese Woche im Rat")."""
+        row = self._conn.execute(
+            """SELECT d.id, d.title, d.outcome, d.interest_reason, cs.committee, cs.session_date
+               FROM council_decisions d
+               JOIN council_sessions cs ON cs.ksinr = d.ksinr
+               WHERE d.kind = 'decision' AND d.interest IS NOT NULL
+                 AND cs.session_date >= date('now', ?)
+               ORDER BY d.interest DESC, cs.session_date DESC LIMIT 1""",
+            (f"-{int(days_back)} days",),
+        ).fetchone()
+        return dict(row) if row else None
 
     def suggested_entity_topics(self, days_back: int = 365, limit: int = 12) -> list[dict]:
         """Konkrete Orte/Projekte mit jüngster Ratsaktivität — Futter für die
