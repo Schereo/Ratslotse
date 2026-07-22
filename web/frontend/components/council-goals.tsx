@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight } from "lucide-react";
+import { Bus, ChevronDown, Cpu, GraduationCap, Home, Leaf, Store, Target, type LucideIcon } from "lucide-react";
 import { GoalSummary, GoalDetail } from "@/lib/types";
 import { Card, Spinner, EmptyState } from "@/components/ui";
 import { cn } from "@/lib/utils";
@@ -17,13 +17,51 @@ const STANCE = {
 
 type Stance = keyof typeof STANCE;
 
-function StanceBar({ s }: { s: { voran: number; bremst: number; neutral: number; total: number } }) {
-  const t = s.total || 1;
+// Ein Icon je Stadtziel (Design 18a) — visueller Anker in der Liste.
+const GOAL_ICON: Record<string, LucideIcon> = {
+  klima_2035: Leaf,
+  verkehrswende: Bus,
+  wohnungsbau: Home,
+  bildung_betreuung: GraduationCap,
+  innenstadt: Store,
+  digitalisierung: Cpu,
+};
+
+// Netto-Verdikt eines Ziels + zugehörige Farbtöne (Chip + Icon-Kachel).
+const TONE = {
+  voran: { chip: "bg-green-500/15 text-green-700 dark:bg-green-500/20 dark:text-green-300", tile: "bg-green-500/10 text-green-600 dark:text-green-400" },
+  bremst: { chip: "bg-red-500/15 text-red-700 dark:bg-red-500/20 dark:text-red-300", tile: "bg-red-500/10 text-red-600 dark:text-red-400" },
+  umkaempft: { chip: "bg-amber-500/15 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300", tile: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
+  neutral: { chip: "bg-muted text-muted-foreground", tile: "bg-muted text-muted-foreground" },
+} as const;
+type Tone = keyof typeof TONE;
+
+/** Richtung eines Ziels aus voran/bremst ableiten: „umkämpft“, wenn beide
+ *  Seiten stark sind, sonst überwiegend/leicht voran bzw. gebremst (Design 18a). */
+function verdict(g: GoalSummary): { tone: Tone; label: string } {
+  const d = g.voran + g.bremst;
+  if (d === 0) return { tone: "neutral", label: "kaum Bewegung" };
+  if (Math.min(g.voran, g.bremst) / d >= 0.35) return { tone: "umkaempft", label: "umkämpft" };
+  const strong = Math.abs(g.voran - g.bremst) / d >= 0.5;
+  return g.voran >= g.bremst
+    ? { tone: "voran", label: strong ? "überwiegend vorangebracht" : "leicht vorangebracht" }
+    : { tone: "bremst", label: strong ? "überwiegend gebremst" : "leicht gebremst" };
+}
+
+/** Diverging-Balken (Design 18a): bremst wächst rot nach links, voran grün
+ *  nach rechts, dazwischen der neutrale Mittelstrich. Breite = Anteil an total,
+ *  das Unbesetzte in der Mitte ist der neutrale Rest. */
+function DivergingBar({ g }: { g: GoalSummary }) {
+  const t = g.total || 1;
   return (
-    <div className="flex h-2 overflow-hidden rounded-full bg-muted">
-      <div className={STANCE.voran.bar} style={{ width: `${(s.voran / t) * 100}%` }} />
-      <div className={STANCE.bremst.bar} style={{ width: `${(s.bremst / t) * 100}%` }} />
-      <div className={STANCE.neutral.bar} style={{ width: `${(s.neutral / t) * 100}%` }} />
+    <div className="grid h-3.5 items-center" style={{ gridTemplateColumns: "1fr 2px 1fr" }}>
+      <span className="flex justify-end">
+        <span className="block h-3.5 rounded-l-full bg-red-500/80" style={{ width: `${(g.bremst / t) * 100}%` }} />
+      </span>
+      <span className="h-3.5 bg-muted-foreground/25" />
+      <span className="flex justify-start">
+        <span className="block h-3.5 rounded-r-full bg-green-500/80" style={{ width: `${(g.voran / t) * 100}%` }} />
+      </span>
     </div>
   );
 }
@@ -80,28 +118,39 @@ export function GoalsView() {
         die <strong className="font-semibold text-foreground">Aktivität und Richtung</strong> des Rats zum Ziel — nicht
         die reale Kennzahl.
       </AnalysisIntro>
-      {goals.map((g) => (
-        <Card key={g.key} className="p-4">
-          <button type="button" onClick={() => setOpen(open === g.key ? null : g.key)} className="w-full text-left">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="font-medium text-foreground">{g.label}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">{g.description}</p>
+      {goals.map((g) => {
+        const v = verdict(g);
+        const Icon = GOAL_ICON[g.key] ?? Target;
+        const isOpen = open === g.key;
+        return (
+          <Card key={g.key} className="p-4">
+            <button type="button" onClick={() => setOpen(isOpen ? null : g.key)} className="w-full text-left">
+              <div className="flex items-start gap-3">
+                <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", TONE[v.tone].tile)}>
+                  <Icon className="h-[18px] w-[18px]" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-2.5">
+                    <p className="min-w-0 break-words font-medium text-foreground">{g.label}</p>
+                    <span className={cn("w-fit shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold", TONE[v.tone].chip)}>{v.label}</span>
+                  </div>
+                  <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{g.description}</p>
+                </div>
+                <ChevronDown className={cn("mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/50 transition-transform", isOpen && "rotate-180")} />
               </div>
-              <ArrowRight className={cn("mt-1 h-4 w-4 shrink-0 text-muted-foreground/50 transition-transform", open === g.key && "rotate-90")} />
-            </div>
-            <div className="mt-3 flex items-center gap-3">
-              <StanceBar s={g} />
-              <span className="shrink-0 text-xs text-muted-foreground">
-                <span className="text-green-600 dark:text-green-400">{g.voran} ↑</span>{" · "}
-                <span className="text-red-600 dark:text-red-400">{g.bremst} ↓</span>{" · "}
-                {g.total} ges.
-              </span>
-            </div>
-          </button>
-          {open === g.key && <GoalDetailView goalKey={g.key} />}
-        </Card>
-      ))}
+              <div className="mt-3">
+                <DivergingBar g={g} />
+                <div className="mt-1.5 flex items-center justify-between text-[11.5px]">
+                  <span className="font-medium text-red-600 dark:text-red-400">{g.bremst} bremsen</span>
+                  <span className="text-muted-foreground">{g.neutral} neutral · {g.total} gesamt</span>
+                  <span className="font-medium text-green-600 dark:text-green-400">{g.voran} bringen voran</span>
+                </div>
+              </div>
+            </button>
+            {isOpen && <GoalDetailView goalKey={g.key} />}
+          </Card>
+        );
+      })}
     </div>
   );
 }

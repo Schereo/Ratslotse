@@ -69,6 +69,14 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   mit dem Protokoll. (#247)
 
 ### Geändert
+- **Ziele & Finanzen lesbarer.** In der Analyse zeigt jedes **Stadtziel** jetzt
+  einen **Richtungs-Balken** (bremst ← rot | Konsens | grün → voran) statt
+  dreier gleich langer Segmente, dazu ein **Netto-Chip** („überwiegend
+  vorangebracht", „leicht …" oder „umkämpft", wenn beide Seiten stark sind) und
+  ein Icon je Ziel — die Richtung ist auf einen Blick da. Die **Finanzen**-Seite
+  bekommt über der Themenfeld-Liste eine **Summen-Headline** („≈ X Mio. € über
+  N Beschlüsse"), die der Balkenliste einen Anker gibt. Gleiche Daten, nur
+  klarer aufbereitet. (#270)
 - **Themenfeld-Rückblicke: ganze Karte klickbar.** In der Analyse unter
   „Trends" klappt jetzt ein **Klick oder Tipp irgendwo auf die Karte** die
   Kernpunkte auf und wieder zu (nicht mehr nur der kleine Knopf) — auf dem
