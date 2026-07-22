@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Prompt, WebUser, AdminStats, QuizFlagged } from "@/lib/types";
 import { Badge, Button, Card, ConfirmDialog, PageHeader, Spinner, Textarea, formatDate, toast } from "@/components/ui";
+import { AreaSparkline, StatKicker } from "@/components/admin-charts";
 import { cn } from "@/lib/utils";
 
 type Tab = "stats" | "llm" | "prompts" | "users" | "quiz";
@@ -113,7 +114,14 @@ type LlmFeature = {
   feature: string; calls: number; prompt_tokens: number; completion_tokens: number;
   cost: number; models: string[]; first: string; last: string;
 };
-type LlmUsage = { features: LlmFeature[]; total_cost: number; total_calls: number };
+type LlmUsage = {
+  features: LlmFeature[]; total_cost: number; total_calls: number;
+  // Design 21a: Verlauf, Monat + Hochrechnung, Budget-Ampel.
+  series: { date: string; cost: number; calls: number }[];
+  cost_month: number; projected_month: number;
+  calls_30d: number; avg_cost_per_call: number;
+  budget_monthly: number; budget_pct: number; budget_level: "ok" | "warn" | "over";
+};
 
 const FEATURE_LABELS: Record<string, string> = {
   protokoll_extraktion: "Protokoll-Extraktion",
@@ -124,6 +132,23 @@ const FEATURE_LABELS: Record<string, string> = {
   qa_query_expansion: "Frag den Rat — Suchbegriffe",
   qa_antwort: "Frag den Rat — Antwort",
 };
+
+const BUDGET_TONE: Record<LlmUsage["budget_level"], { dot: string; text: string; bar: string; ring: string }> = {
+  ok:   { dot: "bg-green-500",  text: "text-green-700 dark:text-green-400",   bar: "bg-green-500",  ring: "border-green-500/30 bg-green-500/5" },
+  warn: { dot: "bg-amber-500",  text: "text-amber-700 dark:text-amber-400",   bar: "bg-amber-500",  ring: "border-amber-500/35 bg-gradient-to-br from-amber-500/[0.08] to-transparent" },
+  over: { dot: "bg-destructive", text: "text-destructive",                    bar: "bg-destructive", ring: "border-destructive/40 bg-destructive/5" },
+};
+
+/** Kennzahl-Karte im 20a/21a-Stil: Kicker + große Bricolage-Zahl + Unterzeile. */
+function KpiCard({ kicker, value, sub }: { kicker: string; value: string; sub?: React.ReactNode }) {
+  return (
+    <Card className="p-4">
+      <StatKicker>{kicker}</StatKicker>
+      <p className="mt-1.5 font-display text-[28px] font-extrabold leading-none tracking-tight tabular-nums text-foreground">{value}</p>
+      {sub && <p className="mt-1 text-xs text-muted-foreground">{sub}</p>}
+    </Card>
+  );
+}
 
 function LlmUsageTab() {
   const { data, isPending, isError } = useQuery({
@@ -137,13 +162,62 @@ function LlmUsageTab() {
     return <p className="text-sm text-muted-foreground">Noch keine LLM-Nutzung erfasst — die Erfassung beginnt mit dem nächsten Lauf (Klassifikation, Entitäten, Frag den Rat …).</p>;
   }
 
+  const tone = BUDGET_TONE[data.budget_level];
+  const maxFeatureCost = Math.max(...data.features.map((f) => f.cost), 0.0001);
+
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <Stat label="Geschätzte Kosten gesamt" value={`$${data.total_cost.toFixed(2)}`} />
-        <Stat label="LLM-Aufrufe gesamt" value={data.total_calls} />
-        <Stat label="Features" value={data.features.length} />
+      {/* Drei KPI-Karten: Monat + Hochrechnung · Aufrufe · Budget-Ampel (21a). */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <KpiCard
+          kicker="Kosten diesen Monat"
+          value={`$${data.cost_month.toFixed(2)}`}
+          sub={<>Hochrechnung Monat: <strong className="font-semibold text-foreground">${data.projected_month.toFixed(2)}</strong></>}
+        />
+        <KpiCard
+          kicker="Aufrufe (30 T)"
+          value={data.calls_30d.toLocaleString("de-DE")}
+          sub={`⌀ $${data.avg_cost_per_call.toFixed(3)} je Aufruf`}
+        />
+        <Card className={cn("border p-4", tone.ring)}>
+          <div className="flex items-center justify-between gap-2">
+            <StatKicker>Budget ${data.budget_monthly.toFixed(0)}/Mon</StatKicker>
+            <span className={cn("inline-flex items-center gap-1.5 text-xs font-semibold", tone.text)}>
+              <span className={cn("h-2 w-2 rounded-full", tone.dot)} /> {data.budget_pct} %
+            </span>
+          </div>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+            <span className={cn("block h-full rounded-full", tone.bar)} style={{ width: `${Math.min(100, data.budget_pct)}%` }} />
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">Warnung ab 80 %{data.budget_level === "over" && " · Budget überschritten"}</p>
+        </Card>
       </div>
+
+      {/* Verlauf + Kostentreiber (21a). */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.5fr_1fr]">
+        <Card className="p-4">
+          <StatKicker>Täglicher Kostenverlauf (30 T)</StatKicker>
+          <AreaSparkline values={data.series.map((d) => d.cost)} color="hsl(var(--primary))" height={110} className="mt-3" />
+          <p className="mt-1.5 text-[11px] text-muted-foreground/80">Spitzen = wöchentlicher Enrichment-Lauf (Klassifikation, Interest, Fundstück).</p>
+        </Card>
+        <Card className="p-4">
+          <StatKicker>Kostentreiber — Feature</StatKicker>
+          <div className="mt-3 flex flex-col gap-2.5">
+            {data.features.slice(0, 5).map((f) => (
+              <div key={f.feature}>
+                <div className="flex items-baseline justify-between gap-2 text-sm">
+                  <span className="truncate text-foreground">{FEATURE_LABELS[f.feature] ?? f.feature}</span>
+                  <span className="shrink-0 text-xs tabular-nums text-muted-foreground">${f.cost.toFixed(2)}</span>
+                </div>
+                <div className="mt-1 h-[7px] overflow-hidden rounded-full bg-muted">
+                  <span className="block h-full rounded-full bg-primary" style={{ width: `${Math.max(3, (f.cost / maxFeatureCost) * 100)}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
       <Card className="overflow-x-auto p-0">
         <table className="w-full text-sm">
           <thead>

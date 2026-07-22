@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     apple_bundle_id: str = "de.ratslotse.app"
     apple_service_id: str = ""
 
+    # Admin-LLM-Kosten (Design 21a): Monatsbudget für die Budget-Ampel
+    # (Warnung ab 80 %). Reine Anzeige-Schwelle, drosselt nichts.
+    llm_budget_monthly: float = 40.0
+
     # Databases (shared with the bot)
     nwz_db: str = str(ROOT / "data" / "nwz.sqlite")
     council_db: str = str(ROOT / "data" / "council.sqlite")
