@@ -8,6 +8,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **App: neue Icons + Mitteilungs-Hinweis (M4):** Das App-Icon kommt jetzt in
+  drei iOS-Varianten (hell, dunkel, getönt — je nachdem, wie der Homescreen
+  eingestellt ist). Neu in der App außerdem ein freundlicher **Lotti-Hinweis
+  zu Mitteilungen**: erst erklären, dann fragt iOS — wer „Später" wählt, wird
+  eine Woche nicht wieder gefragt. Technisch vorbereitet: die App-Hülle kennt
+  jetzt „Sign in with Apple". (#231)
 - **Neue Anmelde-Seiten + Sign in with Apple (M3):** Login und Registrierung
   bekommen ein **zweispaltiges Marken-Layout** (Claim + Lotti-Familie links,
   Formular rechts, mobil unverändert kompakt) mit größeren Eingabefeldern.

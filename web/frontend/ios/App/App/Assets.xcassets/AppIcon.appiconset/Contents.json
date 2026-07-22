@@ -3,7 +3,31 @@
     {
       "idiom": "universal",
       "size": "1024x1024",
-      "filename": "AppIcon-512@2x.png",
+      "filename": "AppIcon-1024.png",
+      "platform": "ios"
+    },
+    {
+      "appearances": [
+        {
+          "appearance": "luminosity",
+          "value": "dark"
+        }
+      ],
+      "idiom": "universal",
+      "size": "1024x1024",
+      "filename": "AppIcon-1024-dark.png",
+      "platform": "ios"
+    },
+    {
+      "appearances": [
+        {
+          "appearance": "luminosity",
+          "value": "tinted"
+        }
+      ],
+      "idiom": "universal",
+      "size": "1024x1024",
+      "filename": "AppIcon-1024-tinted.png",
       "platform": "ios"
     }
   ],

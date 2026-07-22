@@ -10,6 +10,7 @@ import { Button, Card } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
 import { useMascotTheme } from "@/components/seasonal-mascot";
 import { SitzungspauseBanner } from "@/components/sitzungspause-banner";
+import { PushPrimer } from "@/components/push-primer";
 import { formatEuro } from "@/components/decision-ui";
 import { decisionHref } from "@/lib/routes";
 import { startGuidedTour } from "@/components/tour";
@@ -98,6 +99,9 @@ export default function DashboardPage() {
       </div>
 
       <SitzungspauseBanner className="mt-6" />
+
+      {/* RL-1102: nur in der App, solange Push aus ist (7-Tage-Snooze). */}
+      <PushPrimer />
 
       <FirstStepsBar hasTopic={topicCount > 0} />
 
