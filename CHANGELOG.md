@@ -7,6 +7,16 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Behoben
+- **Design-Audit umgesetzt:** Das Seiten-Menü und Hinweise respektieren jetzt
+  die **iPhone-Aussparung** (nichts liegt mehr hinter Uhr/Dynamic Island),
+  die Registrierung nennt die **Datenschutzerklärung** direkt am Knopf, und
+  der Mitteilungs-Hinweis in der App erscheint erst, **wenn es etwas zu
+  melden gäbe** (erstes Thema oder Abo). Dazu Feinschliff: Häkchen-Argumente
+  auf der Anmelde-Seite, die „Heute im Rat"-Leiste verlinkt in jedem Zustand,
+  Sitzungszeilen auf „Heute" springen **direkt zur aufgeklappten Sitzung**,
+  Filter-Chips mit Druck-Feedback, aufgeräumte Login-Seite. (#238)
+
 ### Hinzugefügt
 - **Feinschliff in Bewegung (M4, letztes Design-Paket):** Die orange
   Fragen-Taste **pulsiert** dezent, Seitenwechsel **gleiten sanft** herein,
