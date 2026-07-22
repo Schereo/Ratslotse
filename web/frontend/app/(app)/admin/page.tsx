@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { Prompt, WebUser, AdminGrowth, QuizFlagged, AdminQuizStats } from "@/lib/types";
+import { Prompt, AdminUserRow, AdminUserDetail, AdminGrowth, QuizFlagged, AdminQuizStats } from "@/lib/types";
 import { Badge, Button, Card, ConfirmDialog, PageHeader, Spinner, Textarea, formatDate, toast } from "@/components/ui";
 import { AreaSparkline, MiniBars, StatKicker } from "@/components/admin-charts";
 import { cn } from "@/lib/utils";
@@ -459,71 +459,175 @@ function PromptEditor({ prompt }: { prompt: Prompt }) {
   );
 }
 
+/** Aktivitäts-Ampel aus dem letzten Aktivitätstag (Design 20a). */
+function activitySignal(lastSeen: string | null): { dot: string; label: string } {
+  if (!lastSeen) return { dot: "bg-muted-foreground/40", label: "nie aktiv" };
+  const days = Math.round((Date.now() - new Date(lastSeen + "T12:00:00").getTime()) / 86400000);
+  if (days <= 0) return { dot: "bg-green-500", label: "heute aktiv" };
+  if (days < 7) return { dot: "bg-amber-500", label: `vor ${days} ${days === 1 ? "Tag" : "Tagen"}` };
+  const w = Math.round(days / 7);
+  return { dot: "bg-muted-foreground/50", label: w <= 1 ? "vor 1 Woche" : `vor ${w} Wochen` };
+}
+
+const USER_FEATURE_LABEL: [keyof AdminUserDetail["features"], string][] = [
+  ["ki_frage", "KI-Frage"], ["suche", "Beschluss-Suche"], ["quiz", "Quiz"], ["analyse", "Analyse"], ["karte", "Stadtkarte"],
+];
+
 function UsersTab({ currentUserId }: { currentUserId: number }) {
-  const qc = useQueryClient();
+  const [q, setQ] = useState("");
+  const [selected, setSelected] = useState<number | null>(null);
   const { data: users = [], isPending, isError } = useQuery({
     queryKey: ["admin", "users"],
-    queryFn: () => api.get<WebUser[]>("/admin/users"),
-  });
-
-  const roleMutation = useMutation({
-    mutationFn: ({ id, role }: { id: number; role: "user" | "admin" }) =>
-      api.put(`/admin/users/${id}/role`, { role }),
-    onSuccess: () => {
-      toast.success("Rolle aktualisiert.");
-      qc.invalidateQueries({ queryKey: ["admin", "users"] });
-    },
-    onError: () => toast.error("Rolle konnte nicht geändert werden."),
-  });
-
-  const statusMutation = useMutation({
-    mutationFn: ({ id, status }: { id: number; status: "active" | "pending" }) =>
-      api.put(`/admin/users/${id}/status`, { status }),
-    onSuccess: (_, vars) => {
-      toast.success(vars.status === "active" ? "Nutzer:in freigeschaltet." : "Nutzer:in gesperrt.");
-      qc.invalidateQueries({ queryKey: ["admin", "users"] });
-    },
-    onError: () => toast.error("Status konnte nicht geändert werden."),
+    queryFn: () => api.get<AdminUserRow[]>("/admin/users"),
   });
 
   if (isPending) return <Spinner />;
   if (isError) return <p className="text-sm text-destructive">Fehler beim Laden der Nutzer:innen.</p>;
 
+  const needle = q.trim().toLowerCase();
+  const filtered = needle ? users.filter((u) => u.email.toLowerCase().includes(needle)) : users;
+
   return (
-    <Card className="divide-y divide-border">
-      {users.map((u) => (
-        <div key={u.id} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-medium text-foreground">{u.email}</span>
-              <Badge color={u.role === "admin" ? "blue" : "slate"}>{u.role}</Badge>
-              {u.status === "active" ? <Badge color="green">aktiv</Badge> : <Badge color="amber">wartet</Badge>}
-            </div>
-            <p className="text-xs text-muted-foreground">seit {formatDate(u.created_at.slice(0, 10))}</p>
+    <div className="grid items-start gap-5 lg:grid-cols-[1fr_minmax(0,420px)]">
+      <Card className="overflow-hidden p-0">
+        <div className="flex items-center gap-3 border-b border-border bg-muted/30 px-4 py-3">
+          <div className="relative flex-1">
+            <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="E-Mail suchen…"
+              className="h-9 w-full rounded-[9px] border border-input bg-card pl-9 pr-3 text-[12.5px] text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
           </div>
-          {u.id !== currentUserId && (
-            <div className="flex shrink-0 gap-2">
-              {u.status === "active" ? (
-                <Button variant="secondary" size="sm" onClick={() => statusMutation.mutate({ id: u.id, status: "pending" })}>
-                  Sperren
-                </Button>
-              ) : (
-                <Button variant="primary" size="sm" onClick={() => statusMutation.mutate({ id: u.id, status: "active" })}>
-                  Freischalten
-                </Button>
-              )}
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => roleMutation.mutate({ id: u.id, role: u.role === "admin" ? "user" : "admin" })}
-              >
-                {u.role === "admin" ? "Zu Nutzer:in" : "Zu Admin"}
-              </Button>
-            </div>
-          )}
+          <span className="shrink-0 text-xs text-muted-foreground">{users.length} Nutzer:innen</span>
         </div>
-      ))}
+        <div className="divide-y divide-border">
+          {filtered.map((u) => {
+            const sig = activitySignal(u.last_seen);
+            const chips = [
+              u.n_topics > 0 && `${u.n_topics} Themen`,
+              u.n_ki > 0 && `${u.n_ki} KI-Fragen`,
+              u.n_abos > 0 && `${u.n_abos} Abos`,
+              u.n_quiz > 0 && "Quiz",
+            ].filter(Boolean) as string[];
+            return (
+              <button key={u.id} onClick={() => setSelected(u.id)}
+                className={cn("grid w-full grid-cols-[1fr_auto_auto] items-center gap-2.5 px-4 py-2.5 text-left transition-colors hover:bg-accent",
+                  selected === u.id && "bg-accent")}>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="truncate text-[13.5px] font-semibold text-foreground">{u.email}</span>
+                    {u.role === "admin" && <span className="shrink-0 rounded bg-primary/10 px-1.5 text-[10px] font-semibold text-primary">admin</span>}
+                    {u.status !== "active" && <span className="shrink-0 rounded bg-amber-500/15 px-1.5 text-[10px] font-semibold text-amber-700 dark:text-amber-500">wartet</span>}
+                  </div>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {chips.length ? chips.map((c) => (
+                      <span key={c} className="rounded bg-muted px-1.5 py-px text-[10px] text-muted-foreground">{c}</span>
+                    )) : <span className="rounded bg-muted px-1.5 py-px text-[10px] text-muted-foreground">noch nichts angelegt</span>}
+                  </div>
+                </div>
+                <span className="inline-flex items-center gap-1.5 text-[11.5px] text-muted-foreground"><span className={cn("h-[7px] w-[7px] rounded-full", sig.dot)} />{sig.label}</span>
+                <svg className="h-4 w-4 text-muted-foreground/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+              </button>
+            );
+          })}
+          {!filtered.length && <p className="px-4 py-6 text-center text-sm text-muted-foreground">Keine Nutzer:in passt zu „{q}".</p>}
+        </div>
+      </Card>
+
+      {selected != null
+        ? <UserDetailPanel userId={selected} isSelf={selected === currentUserId} onClose={() => setSelected(null)} />
+        : <Card className="hidden p-8 text-center text-sm text-muted-foreground lg:block">Nutzer:in wählen, um Details zu sehen.</Card>}
+    </div>
+  );
+}
+
+function UserDetailPanel({ userId, isSelf, onClose }: { userId: number; isSelf: boolean; onClose: () => void }) {
+  const qc = useQueryClient();
+  const { data, isPending } = useQuery({
+    queryKey: ["admin", "user", userId],
+    queryFn: () => api.get<AdminUserDetail>(`/admin/users/${userId}`),
+  });
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["admin", "user", userId] });
+    qc.invalidateQueries({ queryKey: ["admin", "users"] });
+  };
+  const roleMutation = useMutation({
+    mutationFn: (role: "user" | "admin") => api.put(`/admin/users/${userId}/role`, { role }),
+    onSuccess: () => { toast.success("Rolle aktualisiert."); invalidate(); },
+    onError: () => toast.error("Rolle konnte nicht geändert werden."),
+  });
+  const statusMutation = useMutation({
+    mutationFn: (status: "active" | "pending") => api.put(`/admin/users/${userId}/status`, { status }),
+    onSuccess: (_, status) => { toast.success(status === "active" ? "Freigeschaltet." : "Gesperrt."); invalidate(); },
+    onError: () => toast.error("Status konnte nicht geändert werden."),
+  });
+
+  if (isPending || !data) return <Card className="p-6"><Spinner /></Card>;
+
+  const sig = activitySignal(data.last_seen);
+  const login = data.apple_linked ? "Apple-Login" : data.has_password ? "Passwort" : "Apple-Login";
+  return (
+    <Card className="bg-muted/20 p-5">
+      <div className="flex items-center gap-3">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 font-display text-base font-bold text-primary">{data.email[0].toUpperCase()}</span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[15px] font-bold text-foreground">{data.email}</p>
+          <p className="text-xs text-muted-foreground">seit {formatDate(data.created_at.slice(0, 10))} · {sig.label} · {login}</p>
+        </div>
+        <button onClick={onClose} className="text-muted-foreground hover:text-foreground lg:hidden" aria-label="Schließen">
+          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+        </button>
+      </div>
+
+      <StatKickerSpaced>Genutzte Features</StatKickerSpaced>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {USER_FEATURE_LABEL.map(([key, label]) => {
+          const n = data.features[key];
+          const suffix = key === "quiz" ? (n === 1 ? "1 Runde" : `${n} Runden`) : `${n}×`;
+          return n > 0
+            ? <span key={key} className="rounded-full bg-primary/[0.08] px-2.5 py-1 text-xs font-medium text-primary">{label} · {suffix}</span>
+            : <span key={key} className="rounded-full border border-dashed border-border px-2.5 py-1 text-xs text-muted-foreground">{label} · nie</span>;
+        })}
+      </div>
+
+      <StatKickerSpaced>Angelegt</StatKickerSpaced>
+      <div className="mt-2 flex flex-col gap-1.5">
+        <DetailRow label={`${data.topics.length} ${data.topics.length === 1 ? "Thema" : "Themen"}`} value={data.topics.slice(0, 4).join(", ") || "—"} />
+        <DetailRow label={`${data.abos.length} Ausschuss-${data.abos.length === 1 ? "Abo" : "Abos"}`} value={data.abos.slice(0, 4).join(", ") || "—"} />
+        <DetailRow label="Zustellung" value={data.delivery_channel === "both" ? "Push + E-Mail" : data.delivery_channel === "push" ? "Push" : "E-Mail"} />
+      </div>
+
+      <StatKickerSpaced>Aktivität (30 Tage)</StatKickerSpaced>
+      <MiniBars values={data.verlauf.some((v) => v > 0) ? data.verlauf : [0]} height={38} highlightLast={false} className="mt-2" />
+
+      {!isSelf && (
+        <div className="mt-4 flex gap-2 border-t border-border pt-4">
+          <Button variant="secondary" size="sm"
+            onClick={() => statusMutation.mutate(data.status === "active" ? "pending" : "active")}>
+            {data.status === "active" ? "Sperren" : "Freischalten"}
+          </Button>
+          <Button variant="secondary" size="sm"
+            onClick={() => roleMutation.mutate(data.role === "admin" ? "user" : "admin")}>
+            {data.role === "admin" ? "Zu Nutzer:in" : "Zu Admin"}
+          </Button>
+        </div>
+      )}
+      <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground/70">
+        Alles server-aggregiert & nur für Admins; nur eigene App-Aktivität, keine Dritt-Analytics.
+      </p>
     </Card>
+  );
+}
+
+function StatKickerSpaced({ children }: { children: React.ReactNode }) {
+  return <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground">{children}</p>;
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2">
+      <span className="shrink-0 text-[12.5px] text-foreground">{label}</span>
+      <span className="truncate text-[11.5px] text-muted-foreground">{value}</span>
+    </div>
   );
 }
 

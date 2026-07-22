@@ -358,6 +358,36 @@ export interface AdminStats {
   council: { sessions: number; upcoming: number; agenda_items: number; committees: number };
 }
 
+export interface AdminUserRow {
+  id: number;
+  email: string;
+  role: "user" | "admin";
+  status: "active" | "pending";
+  created_at: string;
+  apple_linked: boolean;
+  n_topics: number;
+  n_abos: number;
+  n_quiz: number;
+  n_ki: number;
+  last_seen: string | null;
+}
+
+export interface AdminUserDetail {
+  id: number;
+  email: string;
+  role: "user" | "admin";
+  status: "active" | "pending";
+  created_at: string;
+  last_seen: string | null;
+  apple_linked: boolean;
+  has_password: boolean;
+  delivery_channel: string;
+  features: { ki_frage: number; suche: number; quiz: number; analyse: number; karte: number };
+  topics: string[];
+  abos: string[];
+  verlauf: number[];
+}
+
 export interface AdminGrowth {
   users: { total: number; series: number[]; delta: number };
   topics: { total: number; series: number[]; delta: number };
