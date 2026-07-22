@@ -8,6 +8,10 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Mit Apple anmelden — jetzt auch im Browser:** Auf ratslotse.de steht der
+  Apple-Login nun auch auf Login und Registrierung im Web bereit (Popup,
+  keine Passwort-Eingabe). Konten sind dieselben wie in der App — verknüpft
+  über die bestätigte E-Mail-Adresse. (#233)
 - **Offline & erster Start (M4):** Ohne Netz zeigt Ratslotse eine dezente
   **„Offline"-Pille** und in der App die zuletzt geladenen Inhalte (der
   Daten-Cache übersteht dort jetzt den Neustart, bis zu 24 h). Beim
