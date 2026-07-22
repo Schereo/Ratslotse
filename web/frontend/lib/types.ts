@@ -68,6 +68,9 @@ export interface CouncilDecision {
   importance?: number | null;
   /** „Lotti erklärt's einfach" (RL-904): 2–3 bürgernahe Sätze, per Backfill. */
   simple_summary?: string | null;
+  /** Design 23a: kompakte Zusammenfassung der Änderungsanträge (subvotes),
+   *  die zu diesem Beschluss gehören — für die Unterzeile in der Trefferliste. */
+  subvote_summary?: { count: number; factions: string[]; outcomes: string[] } | null;
 }
 
 export interface PolicyField {
