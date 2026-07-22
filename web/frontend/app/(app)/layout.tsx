@@ -74,10 +74,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Mobile-QA C: ≥ 5,5rem Freiraum, damit Seitenenden nie unter dem
           angehobenen FAB der Bottom-Nav liegen. */}
       <main id="main" tabIndex={-1} className="flex flex-1 flex-col overflow-y-auto outline-none pb-[calc(env(safe-area-inset-bottom)+5.5rem)] md:pb-0">
-        <div className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
+        {/* Design 11a: Inhalt läuft breiter (~1280 px statt 1024) — die Karten
+            atmen wie im Mock; Text-Detailseiten begrenzen sich weiter selbst. */}
+        <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
           {needsVerify ? <VerifyNotice email={user.email} /> : pending ? <PendingNotice email={user.email} /> : children}
         </div>
-        <footer className="border-t border-border bg-background/85 py-3 text-center text-xs text-muted-foreground backdrop-blur md:sticky md:bottom-0">
+        {/* Nur Desktop-Web: mobil (Web wie App) wohnen die Pflicht-Links auf
+            der Konto-Seite — der Fuß klebte sonst auf jeder Seite überm FAB. */}
+        <footer className="hidden border-t border-border bg-background/85 py-3 text-center text-xs text-muted-foreground backdrop-blur md:sticky md:bottom-0 md:block">
           <a href="/impressum" className="hover:text-foreground">Impressum</a>
           {" · "}
           <a href="/datenschutz" className="hover:text-foreground">Datenschutz</a>
