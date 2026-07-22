@@ -16,6 +16,8 @@ import {
   Sheet, SheetContent, SheetTitle, SheetTrigger, Spinner, formatDate, toast,
 } from "@/components/ui";
 import { OutcomeBadge, OutcomeDot, ImportanceBadge, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
+import { CommitteeName } from "@/components/committee-name";
+import { shortCommittee } from "@/lib/committees";
 import { isLiveNow } from "@/lib/live";
 import { reportBadgeEvent } from "@/components/badges";
 import { ChipPopover, DateRangeChip } from "@/components/filter-chips";
@@ -99,7 +101,7 @@ function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
             <span>
               {isSub
                 ? `Teilabstimmung · TOP ${d.parent_item}`
-                : `${d.committee} · ${formatDate(d.session_date)}${d.item_number ? ` · TOP ${d.item_number}` : ""}`}
+                : `${shortCommittee(d.committee)} · ${formatDate(d.session_date)}${d.item_number ? ` · TOP ${d.item_number}` : ""}`}
             </span>
             {!isSub && <ImportanceBadge score={d.importance} />}
           </div>
@@ -347,7 +349,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
         <FilterField label="Ausschuss">
           <Select value={committee} onChange={(e) => { setCommittee(e.target.value); setPage(1); }}>
             <option value="">Alle Ausschüsse</option>
-            {committees.map((c) => <option key={c} value={c}>{c}</option>)}
+            {committees.map((c) => <option key={c} value={c} title={c}>{shortCommittee(c)}</option>)}
           </Select>
         </FilterField>
         <FilterField label="Sortierung">
@@ -461,7 +463,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
                 onClear={() => setUrlParam("field", "")}
               />
             )}
-            {committee && <FilterChip label={committee} onClear={() => { setCommittee(""); setPage(1); }} />}
+            {committee && <FilterChip label={shortCommittee(committee)} onClear={() => { setCommittee(""); setPage(1); }} />}
             {(dateFrom || dateTo) && (
               <FilterChip
                 label={`${dateFrom ? formatDate(dateFrom) : "…"} – ${dateTo ? formatDate(dateTo) : "heute"}`}
@@ -687,7 +689,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Select value={committee} onChange={(e) => setCommittee(e.target.value)}>
               <option value="">Alle Ausschüsse</option>
-              {committees.map((c) => <option key={c} value={c}>{c}</option>)}
+              {committees.map((c) => <option key={c} value={c} title={c}>{shortCommittee(c)}</option>)}
             </Select>
             <Segmented
               tone="primary"
@@ -739,7 +741,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
                       <div className="flex min-w-0 items-center gap-3">
                         <DateTile iso={s.session_date} />
                         <div className="min-w-0">
-                          <h3 className="truncate font-display text-base font-bold text-foreground">{s.committee}</h3>
+                          <CommitteeName name={s.committee} className="font-display text-base font-bold text-foreground" />
                           <p className="mt-0.5 truncate text-sm text-muted-foreground">
                             {s.session_time ? `${s.session_time} Uhr` : "Uhrzeit folgt"}
                             {s.location && ` · ${s.location}`}
@@ -778,7 +780,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
                     <div className="flex min-w-0 items-center gap-3">
                       <DateTile iso={s.session_date} />
                       <div className="min-w-0">
-                        <h3 className="truncate font-display text-base font-bold text-foreground">{s.committee}</h3>
+                        <CommitteeName name={s.committee} className="font-display text-base font-bold text-foreground" />
                         <p className="mt-0.5 truncate text-sm text-muted-foreground">{s.session_time} Uhr · {s.location}</p>
                       </div>
                     </div>

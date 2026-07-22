@@ -5,6 +5,7 @@ import Link from "next/link";
 import { History, ChevronRight } from "lucide-react";
 import { Card, formatDate } from "@/components/ui";
 import { decisionHref } from "@/lib/routes";
+import { shortCommittee } from "@/lib/committees";
 import { getRecentDecisions, type RecentDecision } from "@/lib/recent";
 
 /**
@@ -33,7 +34,7 @@ export function RecentDecisions({ className }: { className?: string }) {
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-foreground">{d.title}</p>
               <p className="text-xs text-muted-foreground">
-                {d.committee} · {formatDate(d.session_date)}
+                {shortCommittee(d.committee)} · {formatDate(d.session_date)}
               </p>
             </div>
             <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
