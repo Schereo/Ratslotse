@@ -160,14 +160,14 @@ def test_member_detail_faction_timeline(tmp_path):
     tl = detail["faction_timeline"]
     # Ausreißer (eine einzelne SPD-Sitzung) liegt zwischen zwei VERSCHIEDENEN
     # Fraktionen → bleibt stehen; Phasenfolge Linke → SPD → BSW
-    assert [t["party"] for t in tl] == ["Die Linke", "SPD", "BSW"]
+    assert [t["label"] for t in tl] == ["Die Linke", "SPD", "BSW"]
     # Glättung: einzelner Falschschrieb ZWISCHEN zwei gleichen Phasen fliegt raus
     with store._conn:
         store._conn.execute("UPDATE council_attendance SET party='Die Linke' WHERE ksinr=4")
         store._conn.execute("UPDATE council_attendance SET party='Die Linke' WHERE ksinr=5")
     detail = store.member_detail(store._person_slug("Hans-Henning Adler"))
     tl = detail["faction_timeline"]
-    assert [t["party"] for t in tl] == ["Die Linke"]
+    assert [t["label"] for t in tl] == ["Die Linke"]
     assert tl[0]["first"] == "2023-01-01" and tl[0]["last"] == "2024-09-01"
     store.close()
 
@@ -203,3 +203,59 @@ def test_member_party_is_latest_not_most_frequent(tmp_path):
             "VALUES (7, 'Jens Lükermann', NULL, 'mitglied', NULL)")
     [m] = store.list_members()
     assert m["party"] == "Volt"
+
+
+def test_classify_faction_groups_vs_parties():
+    """Ratsgruppen (Zusammenschluss) bleiben Gruppen, nicht auf eine Partei
+    kollabiert; „/" allein ist kein Gruppen-Signal (Grüne)."""
+    from council.parties import classify_faction
+    assert classify_faction("FDP/Volt") == {
+        "kind": "gruppe", "label": "FDP/Volt", "parties": ["FDP", "Volt"], "group": "FDP/Volt"}
+    assert classify_faction("Die LINKE./Piratenpartei")["kind"] == "gruppe"
+    assert classify_faction("Für Oldenburg")["parties"] == ["parteilos", "Piraten"]
+    assert classify_faction("Bündnis 90/Die Grünen") == {
+        "kind": "partei", "label": "Grüne", "parties": ["Grüne"], "group": None}
+    assert classify_faction("SPD")["kind"] == "partei"
+    assert classify_faction("")["kind"] == "parteilos"
+    assert classify_faction(None)["kind"] == "parteilos"
+    assert classify_faction("Verwaltung")["kind"] == "unbekannt"
+
+
+def test_member_detail_groups_and_parteilos(tmp_path):
+    """Der Lükermann/Für-Oldenburg-Fall: eine Person in einer Ratsgruppe erscheint
+    als GRUPPE (nicht als eine ihrer Parteien), blanke Label als parteilos."""
+    store = CouncilStore(tmp_path / "c.sqlite")
+    with store._conn:
+        sessions = [(1, "2022-05-30"), (2, "2023-12-18"), (3, "2024-09-30"),
+                    (4, "2025-03-17"), (5, "2026-06-01")]
+        for ksinr, d in sessions:
+            store._conn.execute(
+                "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, location, fetched_at) "
+                "VALUES (?, 'Rat', ?, '18:00', '', '')", (ksinr, d))
+        # Lükermann: Gruppe FDP/Volt (2022–2024) → Volt (2025+) — war nie FDP.
+        for ksinr, p in zip((1, 2, 3, 4, 5), ("FDP/Volt", "FDP/Volt", "FDP/Volt", "Volt", "Volt")):
+            store._conn.execute(
+                "INSERT INTO council_attendance (ksinr, name, party, role, note) "
+                "VALUES (?, 'Jens Lükermann', ?, 'mitglied', NULL)", (ksinr, p))
+        # Finke: SPD → parteilos (leeres Label) → Gruppe Für Oldenburg.
+        for ksinr, p in zip((1, 2, 3, 4, 5), ("SPD", "", "", "Für Oldenburg", "Für Oldenburg")):
+            store._conn.execute(
+                "INSERT INTO council_attendance (ksinr, name, party, role, note) "
+                "VALUES (?, 'Vally Finke', ?, 'mitglied', NULL)", (ksinr, p))
+
+    luek = store.member_detail(store._person_slug("Jens Lükermann"))
+    assert luek["party"] == "Volt"  # aktuelle Zugehörigkeit — NICHT FDP
+    assert [(t["kind"], t["label"]) for t in luek["faction_timeline"]] == [
+        ("gruppe", "FDP/Volt"), ("partei", "Volt")]
+    assert luek["faction_timeline"][0]["parties"] == ["FDP", "Volt"]
+    assert "FDP" not in [t["label"] for t in luek["faction_timeline"]]
+
+    finke = store.member_detail(store._person_slug("Vally Finke"))
+    assert finke["party"] == "Für Oldenburg"
+    assert [(t["kind"], t["label"]) for t in finke["faction_timeline"]] == [
+        ("partei", "SPD"), ("parteilos", "parteilos"), ("gruppe", "Für Oldenburg")]
+
+    members = {m["name"]: m["party"] for m in store.list_members()}
+    assert members["Jens Lükermann"] == "Volt"
+    assert members["Vally Finke"] == "Für Oldenburg"
+    store.close()

@@ -216,8 +216,17 @@ export interface Member {
 export interface MemberDetail {
   name: string; slug: string; party: string | null;
   n_sessions: number; active_from: string | null; active_to: string | null;
-  /** Fraktions-Verlauf aus der Anwesenheit: Phasen je Fraktion, älteste zuerst. */
-  faction_timeline: { party: string; first: string; last: string; n: number }[];
+  /** Fraktions-/Gruppen-Verlauf aus der Anwesenheit: Phasen je Zugehörigkeit,
+   *  älteste zuerst. `kind` unterscheidet Partei / (Rats-)Gruppe / parteilos;
+   *  `parties` sind bei einer Gruppe ihre Mitglieds-Parteien. */
+  faction_timeline: {
+    label: string;
+    kind: "partei" | "gruppe" | "parteilos";
+    parties: string[];
+    first: string;
+    last: string;
+    n: number;
+  }[];
   /** Offizielle Stammdaten aus dem Ratsinfo (falls die Person dort verlinkt ist). */
   ris: {
     kpenr: number;

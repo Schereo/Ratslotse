@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { ArrowLeft, Gavel, Info, ExternalLink, ChevronDown } from "lucide-react";
 import { MemberDetail } from "@/lib/types";
 import { Card, DetailSkeleton, EmptyState, formatDate } from "@/components/ui";
-import { PartyBadge, partyBrand } from "@/components/decision-ui";
+import { PartyBadge, partyBrand, AffiliationBadge } from "@/components/decision-ui";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useFetch } from "@/lib/use-fetch";
 import { cn } from "@/lib/utils";
@@ -109,6 +109,8 @@ function PersonInner() {
   if (!data) return <EmptyState mascot="confused" title="Ratsmitglied nicht gefunden" hint="Zu diesem Namen gibt es keine Anwesenheitsdaten." />;
 
   const brand = data.party ? partyBrand(data.party) : null;
+  // Aktuelle Zugehörigkeit = letzte Phase der Zeitreihe (gruppen-bewusst).
+  const currentAffiliation = data.faction_timeline.length ? data.faction_timeline[data.faction_timeline.length - 1] : null;
   const memberships = data.ris?.memberships ?? [];
   const current = memberships.filter((m) => !m.bis);
   const past = memberships.filter((m) => m.bis);
@@ -134,7 +136,9 @@ function PersonInner() {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
             <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">{data.name}</h1>
-            {data.party && <PartyBadge party={data.party} />}
+            {currentAffiliation
+              ? <AffiliationBadge label={currentAffiliation.label} kind={currentAffiliation.kind} parties={currentAffiliation.parties} />
+              : data.party && <PartyBadge party={data.party} />}
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-x-3.5 gap-y-1 text-[13px] text-muted-foreground">
             <span><strong className="font-bold tabular-nums text-foreground">{data.n_sessions}</strong> Sitzungen besucht</span>
@@ -205,15 +209,15 @@ function PersonInner() {
         </div>
       )}
 
-      {/* Fraktions-Verlauf */}
+      {/* Fraktions- & Gruppen-Verlauf */}
       {data.faction_timeline.length > 0 && (
-        <Section title="Fraktions-Verlauf">
+        <Section title="Zugehörigkeit im Zeitverlauf" aside="Fraktion · Gruppe · parteilos">
           <div className="flex flex-wrap items-center gap-2">
             {data.faction_timeline.map((f, i) => (
-              <div key={`${f.party}-${f.first}`} className="flex items-center gap-2">
+              <div key={`${f.label}-${f.first}`} className="flex items-center gap-2">
                 {i > 0 && <span className="text-muted-foreground/50">→</span>}
                 <span className="inline-flex items-center gap-2 rounded-lg border border-border px-2.5 py-1.5">
-                  <PartyBadge party={f.party} />
+                  <AffiliationBadge label={f.label} kind={f.kind} parties={f.parties} />
                   <span className="text-[11.5px] tabular-nums text-muted-foreground">
                     {formatDate(f.first)} – {formatDate(f.last)}
                   </span>
