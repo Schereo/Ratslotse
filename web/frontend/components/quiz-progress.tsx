@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { TrendingUp, Play, MapPin, Sparkles, Flame, RotateCcw, ChevronRight } from "lucide-react";
+import { TrendingUp, Play, MapPin, Sparkles, Flame, RotateCcw } from "lucide-react";
 import { QuizStats, QuizBadge } from "@/lib/types";
 import { Card, Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
@@ -27,36 +26,6 @@ function Stat({ value, label }: { value: string | number; label: string }) {
       <div className="text-2xl font-bold tabular-nums text-foreground">{value}</div>
       <div className="text-xs text-muted-foreground">{label}</div>
     </div>
-  );
-}
-
-/** Kompakte Statistik-Zeile für die Quiz-Startseite: nur die Kernzahlen +
- *  Direktlink „Meine Fehler üben" und zur ausführlichen Statistik-Seite. Die
- *  Details (je-Gebiet-Balken, Abzeichen) liegen unter /quiz/stats, damit die
- *  Startseite übersichtlich bleibt. */
-export function QuizStatsStrip({ stats, onReview }: { stats: QuizStats; onReview: () => void }) {
-  const total = quote(stats.total.correct, stats.total.answered);
-  return (
-    <Card className="flex flex-wrap items-center gap-x-6 gap-y-3 p-4">
-      <Stat value={stats.total.points} label={stats.total.points === 1 ? "Punkt" : "Punkte"} />
-      <Stat value={`${total} %`} label="Trefferquote" />
-      {stats.streak > 0 && (
-        <div className="flex items-center gap-1.5">
-          <Flame className="h-6 w-6 text-orange-500" />
-          <Stat value={stats.streak} label="Tage-Serie" />
-        </div>
-      )}
-      <div className="ml-auto flex flex-wrap items-center gap-x-4 gap-y-2">
-        {stats.wrong > 0 && (
-          <Button variant="secondary" size="sm" onClick={onReview}>
-            <RotateCcw className="!size-4" /> {stats.wrong} {stats.wrong === 1 ? "Fehler" : "Fehler"} üben
-          </Button>
-        )}
-        <Link href="/quiz/stats" className="inline-flex items-center gap-0.5 text-sm font-medium text-primary hover:underline">
-          Alle Statistiken <ChevronRight className="h-4 w-4" />
-        </Link>
-      </div>
-    </Card>
   );
 }
 
@@ -160,38 +129,3 @@ export function QuizProgress({
   );
 }
 
-/** Tages-Challenge-Karte: 5 feste Fragen pro Tag. Vor dem Spielen ein
- *  Start-Aufruf, danach das Ergebnis des Tages. */
-export function QuizDailyCard({
-  done,
-  count,
-  onStart,
-}: {
-  done: { correct: number; total: number } | null;
-  count: number;
-  onStart: () => void;
-}) {
-  if (!done && count === 0) return null; // kein Fragenpool → keine Challenge
-  return (
-    <Card className="flex flex-wrap items-center justify-between gap-3 border-primary/30 bg-primary/5 p-4">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
-          <Sparkles className="h-5 w-5" />
-        </div>
-        <div>
-          <p className="font-semibold text-foreground">Tägliche Challenge</p>
-          <p className="text-sm text-muted-foreground">
-            {done
-              ? `Heute erledigt — ${done.correct}/${done.total} richtig. Morgen gibt's neue Fragen.`
-              : `${count} Fragen quer durch Oldenburg — jeden Tag neu.`}
-          </p>
-        </div>
-      </div>
-      {!done && (
-        <Button className="shrink-0" onClick={onStart}>
-          <Play className="!size-4" /> Challenge starten
-        </Button>
-      )}
-    </Card>
-  );
-}
