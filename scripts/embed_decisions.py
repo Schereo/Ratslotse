@@ -40,6 +40,12 @@ def process(db: Path, top_k: int = 6, threshold: float = 0.45, batch: int = 256)
         store.close()
         return {"decisions": 0, "links": 0}
 
+    interest_by_id = {
+        r[0]: r[1]
+        for r in store._conn.execute(
+            "SELECT id, interest FROM council_decisions WHERE interest IS NOT NULL"
+        ).fetchall()
+    }
     print(f"Embedding {n} decisions…", flush=True)
     vecs = embeddings.embed(texts)  # (n, dim), L2-normalised → dot = cosine
 
@@ -51,6 +57,10 @@ def process(db: Path, top_k: int = 6, threshold: float = 0.45, batch: int = 256)
             row[i] = -1.0  # exclude self
             idx = np.argpartition(-row, top_k)[:top_k]
             idx = idx[np.argsort(-row[idx])]
+            # RL-U15: bei praktisch gleicher Ähnlichkeit (±0.01) gewinnt der
+            # interessantere Nachbar — reine Zweitsortierung, Cosine bleibt Chef.
+            idx = sorted(idx, key=lambda j: (-round(float(row[j]), 2),
+                                             -(interest_by_id.get(int(ids[j])) or 0)))
             rank = 0
             for j in idx:
                 s = float(row[j])

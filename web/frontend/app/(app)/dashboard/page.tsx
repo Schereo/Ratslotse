@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Sparkles, ArrowRight, Check, Play } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { Topic } from "@/lib/types";
+import { DecisionOutcome, Topic } from "@/lib/types";
 import { Button, Card } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
 import { useMascotTheme } from "@/components/seasonal-mascot";
@@ -15,7 +15,7 @@ import { LiveBanner } from "@/components/live-banner";
 import { FundstueckCard } from "@/components/fundstueck-card";
 import { isLiveNow } from "@/lib/live";
 import { PushPrimer } from "@/components/push-primer";
-import { formatEuro } from "@/components/decision-ui";
+import { formatEuro, OutcomeDot } from "@/components/decision-ui";
 import { decisionHref } from "@/lib/routes";
 import { startGuidedTour } from "@/components/tour";
 import { ConfettiBurst } from "@/components/confetti";
@@ -31,6 +31,10 @@ type UpcomingSession = {
   my_topic_items?: { item_number: string; topic_name: string }[];
 };
 type TopicHit = { topic_name: string; id: number; title: string; committee: string; session_date: string };
+type DieseWoche =
+  | { found: false }
+  | { found: true; decision_id: number; title: string; outcome: DecisionOutcome;
+      committee: string; session_date: string; interest_reason: string };
 type ZahlDerWoche =
   | { kind: "betrag"; amount_eur: number; decision_id: number; title: string; session_date: string; window_days: number }
   | { kind: "anzahl"; count: number; window_days: number };
@@ -78,9 +82,18 @@ export default function DashboardPage() {
     queryKey: ["zahl-der-woche"],
     queryFn: () => api.get<ZahlDerWoche>("/council/zahl-der-woche"),
   });
+  // RL-U15 (13a-A): Ersatz für den Treffer-Leerzustand — nur laden, wenn er
+  // gebraucht würde (Themen vorhanden, aber keine Treffer).
+  const hits = hitsQuery.data?.hits ?? [];
+  const wocheQuery = useQuery({
+    queryKey: ["diese-woche"],
+    queryFn: () => api.get<DieseWoche>("/council/diese-woche"),
+    enabled: !hitsQuery.isLoading && hits.length === 0 && topicCount > 0,
+    staleTime: 60 * 60 * 1000,
+  });
+  const woche = wocheQuery.data?.found ? wocheQuery.data : null;
 
   const sessions = sessionsQuery.data?.sessions ?? [];
-  const hits = hitsQuery.data?.hits ?? [];
   const zahl = zahlQuery.data;
 
   return (
@@ -165,7 +178,9 @@ export default function DashboardPage() {
 
         {/* Neu zu deinen Themen */}
         <Card className="flex flex-col p-5">
-          <h2 className="font-display text-base font-bold text-foreground">Neu zu deinen Themen</h2>
+          <h2 className="font-display text-base font-bold text-foreground">
+            {woche && hits.length === 0 ? "Diese Woche im Rat" : "Neu zu deinen Themen"}
+          </h2>
           <div className="mt-3 flex-1 space-y-2">
             {hits.map((h) => (
               <Link key={h.id} href={decisionHref(h.id)} className="block rounded-lg px-2 py-2 transition-colors hover:bg-accent">
@@ -179,9 +194,29 @@ export default function DashboardPage() {
               </Link>
             ))}
             {!hitsQuery.isLoading && hits.length === 0 && topicCount > 0 && (
-              <p className="px-2 py-2 text-sm leading-relaxed text-muted-foreground">
-                Noch keine Treffer — sobald der Rat zu deinen Themen entscheidet, steht es hier.
-              </p>
+              woche ? (
+                /* RL-U15 (13a-A): der interessanteste Beschluss der Woche statt
+                   des leeren Texts — „Warum spannend" ist wörtlich der
+                   interest_reason der Bewertungs-Pipeline. */
+                <Link href={decisionHref(woche.decision_id)} className="block rounded-lg px-2 py-2 transition-colors hover:bg-accent">
+                  <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <OutcomeDot outcome={woche.outcome} /> {woche.committee}
+                  </span>
+                  <p className="mt-1 line-clamp-2 text-sm font-medium text-foreground">{woche.title}</p>
+                  {woche.interest_reason && (
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                      <span className="font-semibold text-signal">Warum spannend:</span> {woche.interest_reason}
+                    </p>
+                  )}
+                  <span className="mt-1.5 inline-flex items-center gap-1 text-sm font-medium text-primary">
+                    Zum Beschluss <ArrowRight className="h-3.5 w-3.5" />
+                  </span>
+                </Link>
+              ) : (
+                <p className="px-2 py-2 text-sm leading-relaxed text-muted-foreground">
+                  Noch keine Treffer — sobald der Rat zu deinen Themen entscheidet, steht es hier.
+                </p>
+              )
             )}
             {!topicsQuery.isLoading && topicCount === 0 && (
               /* Leerzustand 4a: gestrichelte Lotti-Karte „Erstes Thema anlegen". */

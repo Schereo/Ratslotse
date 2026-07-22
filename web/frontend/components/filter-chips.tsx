@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, ChevronDown, X } from "lucide-react";
+import {Check, ChevronDown, X, type LucideIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DateField } from "@/components/ui";
 import { Button } from "@/components/ui";
@@ -30,7 +30,7 @@ export function ChipPopover({
   value: string;
   /** Anzeige des aktiven Werts (Fallback: Options-Label). */
   display?: string;
-  options: { value: string; label: string }[];
+  options: { value: string; label: string; sub?: string; icon?: LucideIcon }[];
   onChange: (v: string) => void;
   ghost?: boolean;
   clearable?: boolean;
@@ -82,7 +82,15 @@ export function ChipPopover({
               o.value === value ? "font-medium text-primary" : "text-foreground",
             )}
           >
-            <span className="min-w-0 truncate">{o.label}</span>
+            <span className="min-w-0">
+              <span className="flex items-center gap-1.5 truncate">
+                {o.icon && <o.icon className="h-3.5 w-3.5 shrink-0 text-signal" />}
+                {o.label}
+              </span>
+              {/* RL-U15 (13a-C): Untertitel labelt z. B. „Spannendste zuerst"
+                  klar als Unterhaltungs-Sortierung. */}
+              {o.sub && <span className="block text-[11px] font-normal text-muted-foreground">{o.sub}</span>}
+            </span>
             {o.value === value && <Check className="h-4 w-4 shrink-0" />}
           </button>
         ))}

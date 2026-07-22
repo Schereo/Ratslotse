@@ -165,10 +165,12 @@ def council_facts(store, *, stadtteil: str | None = None, slug: str | None = Non
         ent = det.get("entity") or {}
         if det.get("description"):
             lines.append(f"{ent.get('name', s)}: {det['description']}")
-        # Wichtigste Beschlüsse zuerst (council.importance) — so drehen sich die
-        # „ratspolitik"-Fragen um bedeutsame statt beliebige Beschlüsse.
+        # RL-U15: erst erzählenswerte Beschlüsse (interest >= 60), dann nach
+        # Wichtigkeit — so drehen sich die „ratspolitik"-Fragen um bedeutsame
+        # UND interessante Beschlüsse statt um Formalien.
         decs = sorted(det.get("decisions") or [],
-                      key=lambda d: (d.get("importance") or 0), reverse=True)
+                      key=lambda d: ((d.get("interest") or 0) >= 60,
+                                     d.get("importance") or 0), reverse=True)
         for d in decs[:6]:
             bits = [d.get("session_date", "")[:10], d.get("title", "").strip()]
             if d.get("outcome"):

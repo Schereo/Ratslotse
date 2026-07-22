@@ -151,6 +151,28 @@ def heute(store: CouncilStore = Depends(get_council_store)) -> dict:
     return data
 
 
+@router.get("/diese-woche")
+def diese_woche(
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """RL-U15 (13a-A): interessantester Beschluss der letzten 7 Tage — die
+    „Diese Woche im Rat"-Karte, wenn es keine persönlichen Treffer gibt.
+    Der interest_reason-Satz ist die „Warum spannend"-Zeile."""
+    d = store.most_interesting_recent(days_back=7)
+    if not d:
+        return {"found": False}
+    return {
+        "found": True,
+        "decision_id": d["id"],
+        "title": d["title"],
+        "outcome": d["outcome"],
+        "committee": d["committee"],
+        "session_date": d["session_date"],
+        "interest_reason": d.get("interest_reason") or "",
+    }
+
+
 @router.get("/fundstueck")
 def fundstueck(
     _user: dict = Depends(require_active),
@@ -225,7 +247,7 @@ def decisions(
     date_to: str = "",
     kind: str = Query("", pattern="^(|decision|subvote)$"),
     category: str = Query("", pattern="^(|vote|report)$"),
-    sort: str = Query("date_desc", pattern="^(date_desc|date_asc|faction|importance)$"),
+    sort: str = Query("date_desc", pattern="^(date_desc|date_asc|faction|importance|interest)$"),
     field: str = "",
     party: str = "",
     limit: int = Query(50, ge=1, le=200),
