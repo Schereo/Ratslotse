@@ -11,6 +11,7 @@ import { Mascot } from "@/components/mascot";
 import { useMascotTheme } from "@/components/seasonal-mascot";
 import { SitzungspauseBanner } from "@/components/sitzungspause-banner";
 import { LiveBanner } from "@/components/live-banner";
+import { FundstueckCard } from "@/components/fundstueck-card";
 import { isLiveNow } from "@/lib/live";
 import { PushPrimer } from "@/components/push-primer";
 import { formatEuro } from "@/components/decision-ui";
@@ -231,6 +232,10 @@ export default function DashboardPage() {
           {!zahl && <div className="mt-3 h-10 animate-pulse rounded-lg bg-signal/10" />}
         </Card>
       </div>
+
+      {/* RL-U11: Fundstück des Tages — nach dem Grid; ohne kuratierten Fund
+          entfällt die Karte ersatzlos. */}
+      <FundstueckCard />
     </div>
   );
 }

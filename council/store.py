@@ -156,12 +156,24 @@ CREATE TABLE IF NOT EXISTS council_decisions (
     summary      TEXT,                          -- one-line neutral summary
     amount_eur   REAL,                          -- largest € amount in the text (council.money)
     importance   INTEGER,                       -- Wichtigkeits-Score 0–100 (council.importance), per Backfill
-    simple_summary TEXT                         -- „Lotti erklärt's einfach": 2–3 bürgernahe Sätze (RL-904)
+    simple_summary TEXT,                        -- „Lotti erklärt's einfach": 2–3 bürgernahe Sätze (RL-904)
+    interest     INTEGER,                       -- Interessantheit 0–100 (council.interest, LLM), per Backfill
+    interest_reason TEXT                        -- 1-Satz-Begründung des Interest-Scores
 );
 CREATE INDEX IF NOT EXISTS idx_decisions_ksinr ON council_decisions(ksinr);
 -- NB: the policy_field index is created in _migrate(), not here — on an existing
 -- DB this whole SCHEMA runs (via executescript) BEFORE the migration adds the
 -- column, so indexing policy_field here would fail with "no such column".
+
+-- Fundstück des Tages (RL-U11): je Ausspiel-Tag EIN kuratierter Archiv-Fund
+-- mit 1-Satz-Story — vorab generiert von scripts/generate_fundstuecke.py.
+CREATE TABLE IF NOT EXISTS council_fundstuecke (
+    day         TEXT PRIMARY KEY,               -- Ausspiel-Datum (ISO)
+    decision_id INTEGER NOT NULL,
+    kicker      TEXT NOT NULL,                  -- „Heute vor N Jahren" | „Aus dem Archiv"
+    story       TEXT NOT NULL,                  -- der eine Satz
+    created_at  TEXT NOT NULL
+);
 
 -- One row per attendee per session.
 CREATE TABLE IF NOT EXISTS council_attendance (
@@ -276,6 +288,10 @@ class CouncilStore:
                 # „Lotti erklärt's einfach" (RL-904) — additiv, per Backfill befüllt.
                 if "simple_summary" not in dec_cols:
                     self._conn.execute("ALTER TABLE council_decisions ADD COLUMN simple_summary TEXT")
+                # Interessantheit (RL-U11, council.interest) — LLM-Score fürs Fundstück.
+                if "interest" not in dec_cols:
+                    self._conn.execute("ALTER TABLE council_decisions ADD COLUMN interest INTEGER")
+                    self._conn.execute("ALTER TABLE council_decisions ADD COLUMN interest_reason TEXT")
                 self._conn.execute(
                     "CREATE INDEX IF NOT EXISTS idx_decisions_field ON council_decisions(policy_field)"
                 )
@@ -1094,6 +1110,94 @@ class CouncilStore:
                 "UPDATE council_decisions SET simple_summary = ? WHERE id = ?",
                 (text, decision_id),
             )
+
+    # ---- Interessantheit + Fundstück (RL-U11) --------------------------------
+
+    def decisions_needing_interest(self, limit: int | None = None) -> list[dict]:
+        """Beschlüsse ohne Interessantheits-Score: nur echte Beschlüsse mit
+        Titel, neueste zuerst (ein limitierter Backfill holt die relevantesten
+        zuerst nach — wie bei „einfach erklärt")."""
+        sql = """SELECT d.id, d.title, d.beschluss, d.summary, d.outcome, d.amount_eur,
+                        cs.committee, cs.session_date
+                 FROM council_decisions d
+                 JOIN council_sessions cs ON cs.ksinr = d.ksinr
+                 WHERE d.kind = 'decision' AND d.interest IS NULL
+                   AND d.title IS NOT NULL AND length(d.title) >= 8
+                 ORDER BY cs.session_date DESC, d.id"""
+        args: tuple = ()
+        if limit is not None:
+            sql += " LIMIT ?"
+            args = (limit,)
+        return [dict(r) for r in self._conn.execute(sql, args).fetchall()]
+
+    def save_interest(self, decision_id: int, score: int, reason: str | None) -> None:
+        with self._conn:
+            self._conn.execute(
+                "UPDATE council_decisions SET interest = ?, interest_reason = ? WHERE id = ?",
+                (max(0, min(100, int(score))), reason, decision_id),
+            )
+
+    def fundstueck_candidates(
+        self, *, mmdd: str | None = None, exclude_ids: set[int] | None = None, limit: int = 10
+    ) -> list[dict]:
+        """Kandidaten fürs Fundstück, bestes Interest zuerst. ``mmdd`` („07-22")
+        filtert auf Jahrestage (gleicher Kalendertag, früheres Jahr)."""
+        exclude = exclude_ids or set()
+        sql = """SELECT d.id, d.title, d.beschluss, d.summary, d.outcome, d.vote,
+                        d.amount_eur, d.interest, cs.committee, cs.session_date
+                 FROM council_decisions d
+                 JOIN council_sessions cs ON cs.ksinr = d.ksinr
+                 WHERE d.kind = 'decision' AND d.interest IS NOT NULL
+                   AND cs.session_date < date('now')"""
+        args: list = []
+        if mmdd:
+            sql += " AND strftime('%m-%d', cs.session_date) = ?"
+            args.append(mmdd)
+        sql += " ORDER BY d.interest DESC, cs.session_date DESC LIMIT ?"
+        args.append(limit + len(exclude))
+        rows = [dict(r) for r in self._conn.execute(sql, args).fetchall()]
+        return [r for r in rows if r["id"] not in exclude][:limit]
+
+    def get_fundstueck(self, day: str) -> dict | None:
+        """Fundstück eines Tages inklusive Beschluss-Metadaten."""
+        row = self._conn.execute(
+            """SELECT f.day, f.kicker, f.story, f.decision_id,
+                      d.title, d.outcome, d.vote, cs.committee, cs.session_date
+               FROM council_fundstuecke f
+               JOIN council_decisions d ON d.id = f.decision_id
+               JOIN council_sessions cs ON cs.ksinr = d.ksinr
+               WHERE f.day = ?""",
+            (day,),
+        ).fetchone()
+        return dict(row) if row else None
+
+    def save_fundstueck(self, day: str, decision_id: int, kicker: str, story: str) -> None:
+        with self._conn:
+            self._conn.execute(
+                """INSERT INTO council_fundstuecke (day, decision_id, kicker, story, created_at)
+                   VALUES (?, ?, ?, ?, ?)
+                   ON CONFLICT(day) DO UPDATE SET
+                     decision_id = excluded.decision_id, kicker = excluded.kicker,
+                     story = excluded.story, created_at = excluded.created_at""",
+                (day, decision_id, kicker, story, datetime.now().isoformat(timespec="seconds")),
+            )
+
+    def fundstueck_days_present(self, days: list[str]) -> set[str]:
+        if not days:
+            return set()
+        marks = ",".join("?" for _ in days)
+        rows = self._conn.execute(
+            f"SELECT day FROM council_fundstuecke WHERE day IN ({marks})", days
+        ).fetchall()
+        return {r["day"] for r in rows}
+
+    def recent_fundstueck_decision_ids(self, within_days: int = 180) -> set[int]:
+        """Zuletzt verwendete Beschlüsse — nicht zweimal kurz nacheinander zeigen."""
+        rows = self._conn.execute(
+            "SELECT decision_id FROM council_fundstuecke WHERE day >= date('now', ?)",
+            (f"-{int(within_days)} days",),
+        ).fetchall()
+        return {r["decision_id"] for r in rows}
 
     def get_decision(self, decision_id: int) -> dict | None:
         row = self._conn.execute(

@@ -8,6 +8,15 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Fundstück des Tages:** Die Übersicht zeigt jetzt jeden Tag **einen
+  kuratierten Fund aus dem Ratsarchiv** — bevorzugt Jahrestage („Heute vor
+  6 Jahren …") mit einem erzählenswerten Satz, Ergebnis und Absprung zum
+  Beschluss, teilbar per Knopf. Dahinter steckt eine neue KI-Pipeline: Ein
+  **Interessantheits-Score** bewertet den ganzen Beschluss-Bestand nach
+  Gesprächswert (Kuriosität, Alltagsnähe — bewusst getrennt vom
+  Wichtigkeits-Score), und ein wöchentlicher Lauf kuratiert daraus die
+  Karten drei Wochen im Voraus. Ohne guten Fund bleibt der Tag einfach
+  ohne Karte. (#248)
 - **Live-Hinweis an Sitzungstagen:** Tagt gerade ein Gremium (Startzeit
   erreicht, bis 4 h danach), zeigt die Übersicht eine **rote Live-Karte**
   („tagt gerade · seit n Minuten", Ort, TOPs, deine Themen-Treffer) mit

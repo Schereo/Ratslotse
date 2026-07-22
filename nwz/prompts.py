@@ -191,6 +191,56 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Beschlusstext:\n{beschluss}"
         ),
     },
+    "interest_bewertung_system": {
+        "title": "Interessantheit – System (RL-U11)",
+        "description": "Bewertet Beschlüsse nach Gesprächswert fürs „Fundstück des Tages“ (0–100).",
+        "template": (
+            "Du bewertest Beschlüsse des Oldenburger Stadtrats danach, wie INTERESSANT sie für "
+            "normale Stadtbewohner:innen sind — als tägliches „Fundstück“ in einer Bürger-App.\n"
+            "Interessant heißt hier ausdrücklich NICHT wichtig (Budget, Tragweite), sondern:\n"
+            "- Gesprächswert: Würde man es beim Abendessen erzählen? („Wusstest du, dass der Rat …“)\n"
+            "- Alltagsnähe: Merkt man es beim Radfahren, Einkaufen, im Park, am Badesee?\n"
+            "- Kuriosität/Überraschung: ungewöhnlicher Gegenstand, überraschende Wendung, "
+            "sehr knappe oder einstimmige Entscheidung zu einem emotionalen Thema.\n"
+            "- Konkretheit: ein Ort, ein Ding, ein Datum — keine abstrakten Verwaltungsvorgänge.\n"
+            "Niedrig (0–25): Geschäftsordnung, Gremienbesetzung, Satzungs-Formalien, reine "
+            "Kenntnisnahmen. Mittel (30–55): solide Sachbeschlüsse ohne Erzählwert. Hoch (60–85): "
+            "konkret, alltagsnah, erzählbar. Sehr hoch (90–100): kurios oder stadtbekannt.\n"
+            "Antworte als JSON: {\"ratings\": [{\"id\": <id>, \"score\": <0-100>, "
+            "\"grund\": \"<max. 1 kurzer Satz>\"}]} — genau ein Eintrag je vorgelegtem Beschluss."
+        ),
+    },
+    "interest_bewertung_user": {
+        "title": "Interessantheit – Auftrag (RL-U11)",
+        "description": "Batch zu bewertender Beschlüsse (id, Titel, Auszug).",
+        "template": "Bewerte diese Beschlüsse:\n\n{batch}",
+    },
+    "fundstueck_story_system": {
+        "title": "Fundstück-Story – System (RL-U11)",
+        "description": "Schreibt den einen Satz der Fundstück-Karte („Heute vor N Jahren …“).",
+        "template": (
+            "Du schreibst die Mini-Story für das „Fundstück des Tages“ einer Oldenburger "
+            "Bürger-App: EIN Satz über einen echten Ratsbeschluss.\n"
+            "Regeln:\n"
+            "- Genau ein Satz, höchstens 200 Zeichen, aktiv, konkret, kein Ausrufezeichen.\n"
+            "- Beginne mit „Der Rat beschloss {jahr}, …“ oder einer ähnlich konkreten Formulierung "
+            "(beim zuständigen Ausschuss entsprechend).\n"
+            "- Nur Fakten aus den vorgelegten Daten — nichts dazuerfinden, keine Folgen behaupten, "
+            "die nicht im Text stehen.\n"
+            "- Ton: neugierig machend, aber nüchtern — kein Marketing, keine Wertung.\n"
+            "Antworte als JSON: {\"story\": \"...\"}"
+        ),
+    },
+    "fundstueck_story_user": {
+        "title": "Fundstück-Story – Auftrag (RL-U11)",
+        "description": "Der Beschluss, zu dem die Story entsteht.",
+        "template": (
+            "Beschluss vom {session_date} ({committee}), Ergebnis: {outcome}.\n"
+            "Titel: {title}\n"
+            "Warum interessant: {interest_reason}\n\n"
+            "Beschlusstext (Auszug):\n{beschluss}"
+        ),
+    },
 }
 
 

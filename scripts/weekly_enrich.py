@@ -51,6 +51,11 @@ STEPS: list[tuple[str, str]] = [
     # Quizfragen auffüllen (LLM) — nur Gebiete unter Ziel-Fragenzahl, ersetzt
     # ausgemusterte Fragen und deckt neue Beschluss-Themen ab.
     ("Quizfragen", "generate_quiz.py"),
+    # Interessantheit (RL-U11, LLM): 500er-Wochentranche, neueste zuerst —
+    # speist das Fundstück des Tages; der Alt-Bestand füllt sich über Wochen.
+    ("Interessantheit", "rate_interest.py --limit 500"),
+    # Fundstücke 21 Tage im Voraus (nur fehlende Tage, idempotent).
+    ("Fundstücke", "generate_fundstuecke.py --days 21"),
 ]
 
 
@@ -59,7 +64,11 @@ def main() -> int:
     for name, script in STEPS:
         print(f"\n=== {name} ({script}) ===", flush=True)
         try:
-            r = subprocess.run([sys.executable, str(ROOT / "scripts" / script)], cwd=str(ROOT))
+            # Der Step-String darf Argumente tragen ("rate_interest.py --limit 500").
+            parts = script.split()
+            r = subprocess.run(
+                [sys.executable, str(ROOT / "scripts" / parts[0]), *parts[1:]], cwd=str(ROOT)
+            )
             if r.returncode != 0:
                 failed.append(name)
                 print(f"!! {name} fehlgeschlagen (exit {r.returncode}) — weiter mit dem Rest.", flush=True)
