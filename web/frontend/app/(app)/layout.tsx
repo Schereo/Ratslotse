@@ -68,7 +68,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <PeekingChick />
       <DesktopSidebar />
       <MobileTopbar />
-      <main id="main" tabIndex={-1} className="flex flex-1 flex-col overflow-y-auto outline-none pb-[calc(env(safe-area-inset-bottom)+5rem)] md:pb-0">
+      {/* Mobile-QA C: ≥ 5,5rem Freiraum, damit Seitenenden nie unter dem
+          angehobenen FAB der Bottom-Nav liegen. */}
+      <main id="main" tabIndex={-1} className="flex flex-1 flex-col overflow-y-auto outline-none pb-[calc(env(safe-area-inset-bottom)+5.5rem)] md:pb-0">
         <div className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
           {needsVerify ? <VerifyNotice email={user.email} /> : pending ? <PendingNotice email={user.email} /> : children}
         </div>
