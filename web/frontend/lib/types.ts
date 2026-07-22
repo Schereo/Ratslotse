@@ -12,6 +12,7 @@ export interface User {
   has_password?: boolean;
   // Present only on native-app auth responses; the web relies on the cookie.
   access_token?: string | null;
+  display_name?: string | null;
 }
 
 export interface CouncilSession {

@@ -11,6 +11,7 @@ import { AppleSignInButton } from "@/components/apple-sign-in-button";
 export default function RegisterPage() {
   const { register } = useAuth();
   const router = useRouter();
+  const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -25,7 +26,7 @@ export default function RegisterPage() {
     }
     setBusy(true);
     try {
-      await register(email, password);
+      await register(email, password, displayName.trim());
       router.replace("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registrierung fehlgeschlagen.");
@@ -45,8 +46,12 @@ export default function RegisterPage() {
         </div>
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
+            <label htmlFor="display-name" className="mb-1 block text-sm font-medium text-foreground">Anzeigename</label>
+            <Input id="display-name" className="h-11" value={displayName} onChange={(e) => setDisplayName(e.target.value)} required maxLength={60} autoFocus autoComplete="name" placeholder="Wie dürfen wir dich ansprechen?" />
+          </div>
+          <div>
             <label htmlFor="email" className="mb-1 block text-sm font-medium text-foreground">E-Mail</label>
-            <Input id="email" type="email" className="h-11" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus autoComplete="email" />
+            <Input id="email" type="email" className="h-11" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
           </div>
           <div>
             <label htmlFor="password" className="mb-1 block text-sm font-medium text-foreground">Passwort</label>

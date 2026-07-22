@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Sparkles, ArrowRight, Check, Play } from "lucide-react";
 import { api } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { Topic } from "@/lib/types";
 import { Button, Card } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
@@ -54,6 +55,7 @@ function relTime(iso: string): string {
  *  Zahl der Woche. Jeder Bereich hat einen definierten Leerzustand. */
 export default function DashboardPage() {
   const theme = useMascotTheme();
+  const { user } = useAuth();
 
   // Datumszeile erst nach dem Mount (vermeidet SSR/Client-Hydration-Drift).
   const [today, setToday] = useState("");
@@ -88,8 +90,9 @@ export default function DashboardPage() {
         <div className="flex min-w-0 items-center gap-4">
           <Mascot pose="wave" theme={theme} bob className="h-[72px] w-[72px] shrink-0 sm:h-[88px] sm:w-[88px]" />
           <div className="min-w-0">
-            <h1 className="font-display text-2xl font-bold tracking-tight text-foreground sm:text-[30px] sm:leading-9">
-              Moin!
+            <h1 className="truncate font-display text-2xl font-bold tracking-tight text-foreground sm:text-[30px] sm:leading-9">
+              {/* Persönliche Ansprache, sobald ein Anzeigename da ist. */}
+              Moin{user?.display_name ? `, ${user.display_name}` : ""}!
             </h1>
             {/* min-h hält die Zeile, bis das Datum clientseitig da ist. */}
             <p className="min-h-5 text-sm text-muted-foreground">{today}</p>

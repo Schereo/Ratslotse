@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 
+from pydantic import BaseModel, Field
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, status
 
 from nwz.email import send_email
@@ -49,6 +50,22 @@ def _send_goodbye_email(email: str) -> None:
         )
     except Exception:  # noqa: BLE001 — die Löschung ist durch, die Mail ist Kür
         logger.exception("goodbye email failed for %s", email)
+
+
+class DisplayNameIn(BaseModel):
+    display_name: str | None = Field(default=None, max_length=60)
+
+
+@router.post("/display-name")
+def set_display_name(
+    body: DisplayNameIn,
+    user: dict = Depends(require_active),
+    store: Store = Depends(get_store),
+) -> dict:
+    """Anzeigename setzen/ändern — auch für Apple-Konten und Alt-Bestand,
+    die bei der Registrierung keinen angeben konnten."""
+    store.set_display_name(user["id"], body.display_name)
+    return {"ok": True}
 
 
 @router.put("/delivery", response_model=UserOut)

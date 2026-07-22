@@ -127,6 +127,7 @@ def _to_out(user: dict, access_token: str | None = None) -> UserOut:
         email_verified=bool(user.get("email_verified")),
         apple_linked=bool(user.get("apple_sub")),
         has_password=bool(user.get("password_set", 1)),
+        display_name=user.get("display_name"),
         access_token=access_token,
     )
 
@@ -154,7 +155,8 @@ def register(
     verified = is_admin or not can_send_email
     user_status = "active" if verified else "pending"
     user_id = store.create_web_user(
-        email, hash_password(body.password), role, user_status, email_verified=verified
+        email, hash_password(body.password), role, user_status, email_verified=verified,
+        display_name=body.display_name,
     )
     # Default to email delivery so new accounts actually receive notifications.
     # They can switch channels later in /account.

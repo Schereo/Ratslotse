@@ -10,7 +10,7 @@ interface AuthContextValue {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, displayName?: string) => Promise<void>;
   loginWithApple: (identityToken: string) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
@@ -51,8 +51,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(u);
   };
 
-  const register = async (email: string, password: string) => {
-    const u = await api.post<User>("/auth/register", { email, password });
+  const register = async (email: string, password: string, displayName?: string) => {
+    const u = await api.post<User>("/auth/register", { email, password, display_name: displayName || null });
     await setToken(u.access_token ?? null);
     setUser(u);
   };

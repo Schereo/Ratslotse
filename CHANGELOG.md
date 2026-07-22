@@ -8,6 +8,11 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Persönliche Ansprache:** Bei der Registrierung fragt Ratslotse jetzt nach
+  einem **Anzeigenamen** — die Übersicht begrüßt dich damit („Moin, Tim!")
+  und Benachrichtigungs-E-Mails sprechen dich persönlich an. Bestehende und
+  Apple-Konten tragen den Namen jederzeit auf der Konto-Seite nach (oder
+  lassen es — dann bleibt es beim neutralen „Moin!"). (#251)
 - **Lotsen-Abzeichen:** Acht kleine Abzeichen belohnen das **Erkunden** —
   erste KI-Frage, erstes Thema, 5-Tage-Quiz-Serie, drei Orte auf der
   Stadtkarte, Analyse, Tagesordnung aufklappen, Push aktivieren und die
