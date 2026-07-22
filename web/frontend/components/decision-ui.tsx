@@ -120,9 +120,12 @@ const IMPORTANCE_SIGNAL_LABEL: Record<keyof ImportanceBreakdown["signals"], stri
 
 /** Ausführliche Wichtigkeits-Anzeige auf der Beschluss-Seite: Score + welche
  *  Signale ihn treiben — beantwortet transparent „woran macht man das fest?". */
-export function ImportanceMeter({ score, signals, className }: {
+export function ImportanceMeter({ score, signals, impactReason, className }: {
   score: number;
   signals?: ImportanceBreakdown["signals"];
+  /** RL-U16 (13a-B): 1-Satz-Begründung des Tragweite-Scores — fehlt sie
+   *  (noch kein Backfill), sieht die Karte exakt aus wie zuvor. */
+  impactReason?: string | null;
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -146,6 +149,11 @@ export function ImportanceMeter({ score, signals, className }: {
       <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
         <div className="h-full rounded-full bg-amber-500 transition-[width] duration-500" style={{ width: `${score}%` }} />
       </div>
+      {impactReason && (
+        <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+          <span className="font-semibold text-foreground">Warum wichtig:</span> {impactReason}
+        </p>
+      )}
       {open && (
         <>
           {signals && (

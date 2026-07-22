@@ -191,6 +191,37 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Beschlusstext:\n{beschluss}"
         ),
     },
+    "impact_bewertung_system": {
+        "title": "Tragweite – System (RL-U16)",
+        "description": "Bewertet Beschlüsse nach Tragweite/Folgenschwere (0–100) — speist den Wichtig-Wert.",
+        "template": (
+            "Du bewertest Beschlüsse des Oldenburger Stadtrats nach ihrer TRAGWEITE — wie "
+            "folgenreich sind sie für die Stadt? Vergib je Rubrik 0–25 Punkte und addiere:\n"
+            "① BETROFFENE: Wie viele Menschen, wie direkt? (ganze Stadt > Quartier > Einzelfall)\n"
+            "② GELD: absolut und relativ zum städtischen Haushalt (Millionen > Zehntausende).\n"
+            "③ BINDUNGSWIRKUNG: Satzung/Grundsatzbeschluss/Vertrag mit langer Laufzeit > "
+            "einmalige Maßnahme > bloße Kenntnisnahme.\n"
+            "④ PRÄZEDENZ/STRATEGIE: Stellt der Beschluss Weichen für viele Folgeentscheidungen?\n"
+            "AUSDRÜCKLICH NICHT bewerten: Kuriosität, lustige Namen, Unterhaltungswert, "
+            "Medienecho — dafür gibt es einen anderen Score.\n"
+            "Kalibrier-Anker (Gesamtwert):\n"
+            "- Gremienbesetzung, Protokollgenehmigung, Formalie ≈ 5\n"
+            "- Kenntnisnahme eines Berichts ohne Beschlusswirkung ≈ 20\n"
+            "- Maßnahme an einer einzelnen Straße/Einrichtung ≈ 35\n"
+            "- Bebauungsplan für ein Quartier, mehrjährige Förderprogramme ≈ 70\n"
+            "- Haushaltssatzung, stadtweite Grundsatzentscheidung ≈ 95\n"
+            "Nutze die mitgelieferten Signale (Art, Ergebnis, Gremium, Betrag, Textlänge) — "
+            "abgelehnte oder vertagte Anträge binden nichts (Bindung nahe 0, Präzedenz ggf. > 0).\n"
+            "Antworte als JSON: {\"ratings\": [{\"id\": <id>, \"score\": <0-100>, "
+            "\"grund\": \"<max. 1 kurzer Satz, benennt die stärkste Rubrik>\"}]} — "
+            "genau ein Eintrag je vorgelegtem Beschluss."
+        ),
+    },
+    "impact_bewertung_user": {
+        "title": "Tragweite – Auftrag (RL-U16)",
+        "description": "Batch zu bewertender Beschlüsse (id, Titel, Signale, Auszug).",
+        "template": "Bewerte die Tragweite dieser Beschlüsse:\n\n{batch}",
+    },
     "interest_bewertung_system": {
         "title": "Interessantheit – System (RL-U11)",
         "description": "Bewertet Beschlüsse nach Gesprächswert fürs „Fundstück des Tages“ (0–100).",
