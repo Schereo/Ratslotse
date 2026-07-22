@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Users, Euro, TrendingUp, Target, User } from "lucide-react";
 import { PartyAnalysis, FinanceData } from "@/lib/types";
@@ -7,6 +8,7 @@ import { Card, Segmented, Spinner, EmptyState } from "@/components/ui";
 import { POLICY_FIELD_LABELS, PartyBadge, DecisionLinkCard, formatEuro } from "@/components/decision-ui";
 import { useFetch } from "@/lib/use-fetch";
 import { ChartExplainer } from "@/components/chart-explainer";
+import { AnalysisIntro } from "@/components/analysis-intro";
 import { TrendsView } from "@/components/council-trends";
 import { GoalsView } from "@/components/council-goals";
 import { PersonenView } from "@/components/council-members";
@@ -34,43 +36,80 @@ function Heatmap({ a }: { a: PartyAnalysis }) {
   const { parties, fields, matrix } = a.topic_matrix;
   const max = Math.max(1, ...parties.flatMap((p) => fields.map((f) => matrix[p]?.[f] ?? 0)));
   return (
-    <div className="overflow-x-auto">
-      <table className="border-collapse text-xs">
-        <thead>
-          <tr>
-            <th className="sticky left-0 z-10 bg-card p-2" />
-            {fields.map((f) => (
-              <th key={f} className="whitespace-nowrap px-2 py-1.5 text-center font-medium text-muted-foreground">
-                {POLICY_FIELD_LABELS[f] ?? f}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {parties.map((p) => (
-            <tr key={p}>
-              <td className="sticky left-0 z-10 whitespace-nowrap bg-card py-1 pr-3"><PartyBadge party={p} /></td>
-              {fields.map((f) => {
-                const c = matrix[p]?.[f] ?? 0;
-                const op = c ? 0.1 + 0.9 * (c / max) : 0;
-                return (
-                  <td key={f} className="p-0.5">
-                    <div
-                      className="min-w-[34px] rounded py-1.5 text-center tabular-nums"
-                      style={{
-                        backgroundColor: c ? `hsl(var(--primary) / ${op})` : "transparent",
-                        color: op > 0.55 ? "hsl(var(--primary-foreground))" : undefined,
-                      }}
-                    >
-                      {c || ""}
-                    </div>
-                  </td>
-                );
-              })}
+    <>
+      {/* Desktop: die volle Heatmap-Tabelle. */}
+      <div className="hidden overflow-x-auto sm:block">
+        <table className="border-collapse text-xs">
+          <thead>
+            <tr>
+              <th className="sticky left-0 z-10 bg-card p-2" />
+              {fields.map((f) => (
+                <th key={f} className="whitespace-nowrap px-2 py-1.5 text-center font-medium text-muted-foreground">
+                  {POLICY_FIELD_LABELS[f] ?? f}
+                </th>
+              ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {parties.map((p) => (
+              <tr key={p}>
+                <td className="sticky left-0 z-10 whitespace-nowrap bg-card py-1 pr-3"><PartyBadge party={p} /></td>
+                {fields.map((f) => {
+                  const c = matrix[p]?.[f] ?? 0;
+                  const op = c ? 0.1 + 0.9 * (c / max) : 0;
+                  return (
+                    <td key={f} className="p-0.5">
+                      <div
+                        className="min-w-[34px] rounded py-1.5 text-center tabular-nums"
+                        style={{
+                          backgroundColor: c ? `hsl(var(--primary) / ${op})` : "transparent",
+                          color: op > 0.55 ? "hsl(var(--primary-foreground))" : undefined,
+                        }}
+                      >
+                        {c || ""}
+                      </div>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {/* Mobil (Design 16a②): Top-3-Felder je Fraktion als Balken statt 12-Spalten-Scroll. */}
+      <div className="space-y-2.5 sm:hidden">
+        {parties.map((p) => <HeatmapMobileRow key={p} party={p} fields={fields} row={matrix[p] ?? {}} />)}
+      </div>
+    </>
+  );
+}
+
+function HeatmapMobileRow({ party, fields, row }: { party: string; fields: string[]; row: Record<string, number> }) {
+  const [expanded, setExpanded] = useState(false);
+  const ranked = fields.map((f) => ({ f, n: row[f] ?? 0 })).filter((x) => x.n > 0).sort((x, y) => y.n - x.n);
+  const localMax = Math.max(1, ranked[0]?.n ?? 1);
+  const shown = expanded ? ranked : ranked.slice(0, 3);
+  return (
+    <div className="rounded-xl border border-border bg-card p-3">
+      <PartyBadge party={party} />
+      <div className="mt-2 flex flex-col gap-1.5">
+        {shown.map(({ f, n }) => (
+          <div key={f} className="flex items-center gap-2">
+            <span className="w-[74px] shrink-0 truncate text-xs text-foreground">{POLICY_FIELD_LABELS[f] ?? f}</span>
+            <span className="h-[7px] flex-1 overflow-hidden rounded-full bg-muted">
+              <span className="block h-full rounded-full bg-primary" style={{ width: `${(n / localMax) * 100}%` }} />
+            </span>
+            <span className="w-5 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">{n}</span>
+          </div>
+        ))}
+        {ranked.length === 0 && <p className="text-xs text-muted-foreground">Keine Anträge erfasst.</p>}
+      </div>
+      {ranked.length > 3 && (
+        <button type="button" onClick={() => setExpanded((v) => !v)}
+          className="mt-2 text-[11.5px] font-medium text-primary hover:underline">
+          {expanded ? "weniger anzeigen" : `alle ${ranked.length} Felder →`}
+        </button>
+      )}
     </div>
   );
 }
@@ -175,12 +214,12 @@ function PartiesView() {
   }
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border border-border bg-muted/40 p-3 text-xs leading-relaxed text-muted-foreground">
-        Auswertung der <span className="font-medium text-foreground">{data.coverage.with_factions}</span> Beschlüsse
-        mit benannter antragstellender Person (von {data.coverage.total}). Protokolle nennen selten namentliche Einzelstimmen —
-        diese Analyse zeigt daher, <span className="font-medium text-foreground">wer welche Anträge einbringt</span> und
-        wie sie ausgehen, nicht das Stimmverhalten jeder Fraktion bei jeder Abstimmung.
-      </div>
+      <AnalysisIntro summary={<>Wer bringt welche Anträge ein — aus <strong className="font-semibold text-foreground">{data.coverage.with_factions}</strong> Beschlüssen mit benannter Person.</>}>
+        Protokolle nennen namentliche Einzelstimmen nur selten. Diese Analyse zeigt daher,{" "}
+        <strong className="font-semibold text-foreground">wer welche Anträge einbringt</strong> und wie sie ausgehen —
+        nicht das Stimmverhalten jeder Fraktion bei jeder Abstimmung. Grundlage: {data.coverage.with_factions} von{" "}
+        {data.coverage.total} Beschlüssen (ab 2018).
+      </AnalysisIntro>
       <Block
         title="Wer bringt welche Themen ein?"
         hint="Anträge je Partei und Themenfeld — dunkler = mehr."
