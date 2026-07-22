@@ -112,7 +112,7 @@ export default function DashboardPage() {
             <p className="min-h-5 text-sm text-muted-foreground">{today}</p>
           </div>
         </div>
-        <Button variant="signal" asChild className="shrink-0" data-tour="frag-den-rat">
+        <Button variant="signal" asChild className="w-full shrink-0 sm:w-auto" data-tour="frag-den-rat">
           <Link href={FRAGEN_HREF}>
             <Sparkles /> Frag den Rat
           </Link>
