@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
  *
  *  Zustände: ohne Auswahl = Umriss-Chip mit Label + Chevron; mit Auswahl =
  *  gefüllter Primär-Chip mit Wert + ✕ (✕ löscht, Chipfläche öffnet wieder).
+ *  Nicht-löschbare Chips (`clearable={false}`) tragen immer ihre aktuelle
+ *  Auswahl als Text und füllen sich, sobald sie vom `defaultValue` abweichen.
  *  `ghost` (Sortierung) bleibt immer dezent — eine Einstellung, kein Filter. */
 
 // RL-F07 (Motion-Spec 7a): fühlbares Press-Feedback — nur transform, 150 ms.
@@ -25,6 +27,7 @@ export function ChipPopover({
   onChange,
   ghost = false,
   clearable = true,
+  defaultValue,
 }: {
   label: string;
   value: string;
@@ -34,16 +37,22 @@ export function ChipPopover({
   onChange: (v: string) => void;
   ghost?: boolean;
   clearable?: boolean;
+  /** Standardwert nicht-löschbarer Chips — Abweichung füllt den Chip. */
+  defaultValue?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const active = clearable && value !== "";
   const current = display ?? options.find((o) => o.value === value)?.label ?? label;
+  const active = clearable
+    ? value !== ""
+    : !ghost && defaultValue !== undefined && value !== defaultValue;
+  const text = clearable && !active ? label : current;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           type="button"
+          aria-label={current !== label ? `${label}: ${current}` : label}
           className={cn(
             chipBase,
             active
@@ -53,8 +62,8 @@ export function ChipPopover({
                 : "border border-input bg-card text-foreground hover:bg-accent",
           )}
         >
-          {active ? current : label}
-          {active ? (
+          {text}
+          {active && clearable ? (
             <X
               className="h-3.5 w-3.5 opacity-80 transition-opacity hover:opacity-100"
               onClick={(e) => {
