@@ -9,7 +9,7 @@ import { useAuth } from "@/lib/auth";
 import { appleIdentityToken, appleSignInAvailable } from "@/lib/apple";
 import { isNativeApp } from "@/lib/platform";
 import { applyTheme, getTheme, isDarkNow, THEME_EVENT, type Theme } from "@/lib/theme";
-import { Button, Card, ConfirmDialog, Label, PageHeader, PasswordInput, toast } from "@/components/ui";
+import { Button, Card, ConfirmDialog, Input, Label, PageHeader, PasswordInput, toast } from "@/components/ui";
 import { DeliverySettings } from "@/components/delivery-settings";
 import { BadgesCard } from "@/components/badges";
 import { cn } from "@/lib/utils";
@@ -169,6 +169,8 @@ export default function AccountPage() {
         {/* RL-U12 (11a): zwischen Benachrichtigungen und Passwort. */}
         <BadgesCard />
 
+        <DisplayNameCard />
+
         <AppearanceCard />
 
         {hasPassword ? (
@@ -299,5 +301,56 @@ export default function AccountPage() {
         onConfirm={() => deleteMutation.mutate()}
       />
     </div>
+  );
+}
+
+/** Anzeigename setzen/ändern — auch für Apple-Konten und Alt-Bestand, die
+ *  bei der Registrierung keinen angeben konnten. Speist die persönliche
+ *  Ansprache auf der Übersicht und in Benachrichtigungs-Mails. */
+function DisplayNameCard() {
+  const { user, refresh } = useAuth();
+  const [name, setName] = useState("");
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    if (user && !ready) {
+      setName(user.display_name ?? "");
+      setReady(true);
+    }
+  }, [user, ready]);
+  const save = useMutation({
+    mutationFn: () => api.post("/account/display-name", { display_name: name.trim() || null }),
+    onSuccess: async () => {
+      await refresh();
+      toast.success("Anzeigename gespeichert.");
+    },
+    onError: (err) =>
+      toast.error(err instanceof ApiError ? err.message : "Speichern fehlgeschlagen."),
+  });
+  return (
+    <Card className="p-6">
+      <h2 className="font-semibold text-foreground">Anzeigename</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        So sprechen wir dich auf der Übersicht und in E-Mails an.
+      </p>
+      <form
+        onSubmit={(e: React.FormEvent) => {
+          e.preventDefault();
+          save.mutate();
+        }}
+        className="mt-4 flex gap-2"
+      >
+        <Input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={60}
+          autoComplete="name"
+          placeholder="z. B. Tim"
+          aria-label="Anzeigename"
+        />
+        <Button type="submit" variant="secondary" disabled={save.isPending}>
+          {save.isPending ? "Speichern…" : "Speichern"}
+        </Button>
+      </form>
+    </Card>
   );
 }

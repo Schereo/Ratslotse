@@ -90,14 +90,21 @@ def render_digest_email(
     return subject, body_html, "\n".join(text_lines)
 
 
-def render_html_email(subject: str, body_html_or_text: str) -> str:
+def render_html_email(subject: str, body_html_or_text: str, greeting_name: str | None = None) -> str:
     """Wrap an already-formatted message (Telegram-style HTML with \\n line
     breaks) in the Ratslotse email shell. Used for the weekly digest and council
-    notifications, which produce a single formatted block rather than matches."""
+    notifications, which produce a single formatted block rather than matches.
+    ``greeting_name`` ergänzt eine persönliche Anrede („Moin Tim,")."""
+    greeting = (
+        f"<div style='margin-top:16px;font-size:14px'>Moin {greeting_name},</div>"
+        if greeting_name
+        else ""
+    )
     return (
         "<div style='max-width:600px;margin:0 auto;padding:24px 16px;"
         "font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a'>"
         "<div style='font-size:20px;font-weight:700;color:#2563eb'>Ratslotse</div>"
+        f"{greeting}"
         f"<div style='margin-top:16px;white-space:pre-wrap;font-size:14px;line-height:1.5'>{body_html_or_text}</div>"
         "<hr style='margin:28px 0 16px;border:none;border-top:1px solid #e2e8f0'>"
         f"<a href='{APP_BASE_URL}' style='color:#2563eb;text-decoration:none;font-size:14px'>"

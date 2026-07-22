@@ -8,6 +8,9 @@ from pydantic import BaseModel, EmailStr, Field
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
+    # Anzeigename für die persönliche Ansprache — serverseitig optional
+    # (Apple-Konten und Alt-Bestand haben keinen).
+    display_name: str | None = Field(default=None, max_length=60)
 
 
 class LoginRequest(BaseModel):
@@ -43,6 +46,7 @@ class UserOut(BaseModel):
     # login/register/verify-email. Web clients authenticate via the httpOnly
     # cookie and leave this null.
     access_token: str | None = None
+    display_name: str | None = None
 
 
 class TopicIn(BaseModel):

@@ -88,7 +88,7 @@ def deliver_message(owner: dict, message_html: str, email_subject: str) -> list[
         try:
             send_email(
                 owner["email"], email_subject,
-                render_html_email(email_subject, message_html),
+                render_html_email(email_subject, message_html, greeting_name=owner.get("display_name")),
                 text=None,
             )
             sent.append("email")
