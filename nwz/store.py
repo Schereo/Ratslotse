@@ -336,6 +336,9 @@ class Store:
                 # Kennzeichen, ob je ein eigenes Passwort gesetzt wurde.
                 if "apple_sub" not in wu_cols:
                     self._conn.execute("ALTER TABLE web_users ADD COLUMN apple_sub TEXT")
+                if "display_name" not in wu_cols:
+                    # Anzeigename für die persönliche Ansprache (Dashboard, Mails).
+                    self._conn.execute("ALTER TABLE web_users ADD COLUMN display_name TEXT")
                 if "badges" not in wu_cols:
                     # Lotsen-Abzeichen (RL-U12): JSON {"earned": [...],
                     # "map_places": [...], "flags": [...]} — eigene Spalte
@@ -473,15 +476,24 @@ class Store:
     # ---- web accounts ----
 
     def create_web_user(self, email: str, password_hash: str, role: str = "user",
-                        status: str = "pending", email_verified: bool = False) -> int:
+                        status: str = "pending", email_verified: bool = False,
+                        display_name: str | None = None) -> int:
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
             cur = self._conn.execute(
-                "INSERT INTO web_users (email, password_hash, role, status, email_verified, created_at) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
-                (email.lower().strip(), password_hash, role, status, 1 if email_verified else 0, now),
+                "INSERT INTO web_users (email, password_hash, role, status, email_verified, created_at, display_name) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (email.lower().strip(), password_hash, role, status, 1 if email_verified else 0, now,
+                 (display_name or "").strip()[:60] or None),
             )
         return cur.lastrowid
+
+    def set_display_name(self, user_id: int, display_name: str | None) -> None:
+        with self._conn:
+            self._conn.execute(
+                "UPDATE web_users SET display_name = ? WHERE id = ?",
+                ((display_name or "").strip()[:60] or None, user_id),
+            )
 
     def get_web_user_by_apple_sub(self, apple_sub: str) -> dict | None:
         row = self._conn.execute(

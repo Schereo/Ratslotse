@@ -1093,3 +1093,20 @@ def test_badges_are_per_account(client):
     _register(client, email="zweite@test.de")
     data = client.get("/api/badges").json()
     assert data["earned_count"] == 0
+
+
+# ---- Anzeigename ----
+def test_display_name_register_change_and_greeting(client):
+    r = client.post("/api/auth/register",
+                    json={"email": "tim@test.de", "password": "password123", "display_name": "  Tim  "})
+    assert r.status_code == 201 and r.json()["display_name"] == "Tim"
+
+    client.post("/api/account/display-name", json={"display_name": "Timo"})
+    assert client.get("/api/auth/me").json()["display_name"] == "Timo"
+    # Leeren = Ansprache wieder neutral.
+    client.post("/api/account/display-name", json={"display_name": "  "})
+    assert client.get("/api/auth/me").json()["display_name"] is None
+
+    from nwz.digest_email import render_html_email
+    assert "Moin Timo," in render_html_email("Betreff", "Inhalt", greeting_name="Timo")
+    assert "Moin" not in render_html_email("Betreff", "Inhalt").split("Ratslotse")[1][:40]
