@@ -2,8 +2,8 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Search, Play, MapPin, Sparkles, History, Check, X, ChevronDown, ChevronUp } from "lucide-react";
-import { QuizAreas, QuizAreaEntry, QuizQuestion, QuizStats, QuizDaily } from "@/lib/types";
+import { Search, Play, MapPin, Sparkles, History, Check, X, ChevronDown, ChevronUp, PencilLine } from "lucide-react";
+import { QuizAreas, QuizAreaEntry, QuizQuestion, QuizStats, QuizDaily, UserQuizQuestion } from "@/lib/types";
 import { PageHeader, Card, Button, Input, Spinner, EmptyState, toast } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
 import { useFetch } from "@/lib/use-fetch";
@@ -12,8 +12,9 @@ import { cn } from "@/lib/utils";
 import { QuizPlay, CATEGORY_LABEL } from "@/components/quiz-play";
 import { QuizStatsStrip, QuizDailyCard } from "@/components/quiz-progress";
 import { QuizMapPlay, QuizMapCard } from "@/components/quiz-map-play";
+import { OwnQuestionsView } from "@/components/quiz-own";
 
-type RoundKind = "normal" | "review" | "daily";
+type RoundKind = "normal" | "review" | "daily" | "own";
 
 // Zuletzt gespielte Einstellungen (localStorage) → „Weiterspielen".
 const LS_KEY = "quiz:lastSettings";
@@ -326,12 +327,14 @@ function QuizInner() {
   const { data, loading } = useFetch<QuizAreas>(`/quiz/areas?v=${reloadKey}`);
   const { data: stats } = useFetch<QuizStats>(`/quiz/stats?v=${reloadKey}`);
   const { data: daily } = useFetch<QuizDaily>(`/quiz/daily?v=${reloadKey}`);
+  const { data: own } = useFetch<{ questions: UserQuizQuestion[] }>(`/quiz/own?v=${reloadKey}`);
 
   const [starting, setStarting] = useState(false);
   const [round, setRound] = useState<QuizQuestion[] | null>(null);
   const [kind, setKind] = useState<RoundKind>("normal");
   const [mapTargets, setMapTargets] = useState<string[] | null>(null);
-  const [view, setView] = useState<"home" | "setup">("home");
+  const [view, setView] = useState<"home" | "setup" | "own">("home");
+  const [ownAutoNew, setOwnAutoNew] = useState(false);
   const [last, setLast] = useState<LastSettings | null>(null);
   const [autoStarted, setAutoStarted] = useState(false);
 
@@ -374,6 +377,20 @@ function QuizInner() {
     }
   }, []);
 
+  const startOwnPractice = useCallback(async () => {
+    setStarting(true);
+    try {
+      const res = await api.get<{ questions: QuizQuestion[] }>("/quiz/own/round?n=10");
+      if (!res.questions.length) { toast.info("Noch keine eigenen Fragen zum Üben."); return; }
+      setKind("own");
+      setRound(res.questions);
+    } catch {
+      toast.error("Runde konnte nicht geladen werden.");
+    } finally {
+      setStarting(false);
+    }
+  }, []);
+
   const startMap = useCallback(async () => {
     setStarting(true);
     try {
@@ -405,13 +422,16 @@ function QuizInner() {
   }
 
   if (round) {
-    const title = kind === "daily" ? "Tägliche Challenge" : kind === "review" ? "Meine Fehler" : undefined;
+    const title = kind === "daily" ? "Tägliche Challenge"
+      : kind === "review" ? "Meine Fehler"
+        : kind === "own" ? "Meine Fragen üben" : undefined;
     const onComplete = kind === "daily"
       ? (r: { correct: number; total: number; points: number }) => { void api.post("/quiz/daily/complete", r).catch(() => {}); }
       : undefined;
     return (
       <QuizPlay questions={round} title={title} onComplete={onComplete}
-        onExit={() => { setRound(null); setView("home"); setReloadKey((k) => k + 1); }} />
+        practice={kind === "own"} answerPath={kind === "own" ? "/quiz/own/answer" : "/quiz/answer"}
+        onExit={() => { setRound(null); setView(kind === "own" ? "own" : "home"); setReloadKey((k) => k + 1); }} />
     );
   }
 
@@ -425,6 +445,16 @@ function QuizInner() {
       <QuizSetup catalog={catalog} starting={starting}
         onStart={(areas, cats) => void startRound(areas, cats)}
         onCancel={() => setView("home")} />
+    );
+  }
+
+  // ---- Eigene Fragen: verwalten + üben (RL-U14) -----------------------------
+  if (view === "own") {
+    return (
+      <OwnQuestionsView questions={own?.questions ?? []} autoNew={ownAutoNew}
+        starting={starting} onPractice={() => void startOwnPractice()}
+        onBack={() => { setOwnAutoNew(false); setView("home"); }}
+        reload={() => setReloadKey((k) => k + 1)} />
     );
   }
 
@@ -456,6 +486,21 @@ function QuizInner() {
 
           {daily && <QuizDailyCard done={daily.done} count={daily.questions.length} onStart={startDaily} />}
           <QuizMapCard onStart={startMap} />
+
+          {/* Eigene Fragen (RL-U14): mit Bestand prominent üben, sonst dezenter Einstieg. */}
+          {(own?.questions.length ?? 0) > 0 ? (
+            <ActionCard icon={<PencilLine className="h-5 w-5" />}
+              title={`Meine Fragen (${own!.questions.length})`}
+              sub="Nur für dich — eine Übungsrunde mischt 10 deiner Fragen."
+              action={<div className="flex gap-2">
+                <Button variant="secondary" onClick={() => { setOwnAutoNew(false); setView("own"); }}>Verwalten</Button>
+                <Button onClick={() => void startOwnPractice()} disabled={starting}><Play className="!size-4" /> Üben</Button>
+              </div>} />
+          ) : (
+            <ActionCard icon={<PencilLine className="h-5 w-5" />} title="Eigene Fragen"
+              sub="Leg eigene Fragen an und übe sie — privat, ohne Punkte."
+              action={<Button variant="secondary" onClick={() => { setOwnAutoNew(true); setView("own"); }}>Anlegen</Button>} />
+          )}
         </div>
       )}
     </div>

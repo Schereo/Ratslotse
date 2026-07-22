@@ -157,6 +157,21 @@ class QuizDailyIn(BaseModel):
     points: int = Field(ge=0, le=500)
 
 
+# Eigene Quizfragen (RL-U14): privat je Konto, 2–4 Antworten.
+class UserQuizQuestionIn(BaseModel):
+    question: str = Field(min_length=5, max_length=300)
+    options: list[str] = Field(min_length=2, max_length=4)
+    correct_index: int = Field(ge=0, le=3)
+    stadtteil: str | None = Field(default=None, max_length=60)
+    category: str = Field(max_length=30)
+    explanation: str | None = Field(default=None, max_length=500)
+
+
+class UserQuizAnswerIn(BaseModel):
+    question_id: int
+    selected_index: int = Field(ge=0, le=3)
+
+
 class QuizMapIn(BaseModel):
     target: str = Field(min_length=1, max_length=60)   # gefragter Stadtteil
     clicked: str = Field(min_length=1, max_length=60)   # angeklickter Stadtteil
