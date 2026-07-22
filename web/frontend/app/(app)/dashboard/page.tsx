@@ -16,6 +16,7 @@ import { decisionHref } from "@/lib/routes";
 import { startGuidedTour } from "@/components/tour";
 import { ConfettiBurst } from "@/components/confetti";
 import { useOnboarding, type StepId } from "@/components/onboarding";
+import { useCountUp } from "@/lib/use-countup";
 
 const FRAGEN_HREF = "/council?tab=decisions&mode=fragen";
 
@@ -192,8 +193,7 @@ export default function DashboardPage() {
           {zahl?.kind === "betrag" && (
             <>
               <p className="mt-3 font-display text-[40px] font-extrabold leading-none tracking-tight text-signal">
-                {formatEuro(zahl.amount_eur)}
-              </p>
+                <CountUpEuro amount={zahl.amount_eur} /></p>
               <p className="mt-2 line-clamp-3 flex-1 text-sm leading-relaxed text-muted-foreground">
                 beschlossen für: {zahl.title}
               </p>
@@ -208,7 +208,7 @@ export default function DashboardPage() {
           {zahl?.kind === "anzahl" && (
             <>
               <p className="mt-3 font-display text-[40px] font-extrabold leading-none tracking-tight text-signal">
-                {zahl.count}
+                <CountUpNumber value={zahl.count} />
               </p>
               <p className="mt-2 flex-1 text-sm leading-relaxed text-muted-foreground">
                 {zahl.count === 1 ? "Beschluss" : "Beschlüsse"} in den letzten 7 Tagen — in der Sitzungspause
@@ -221,6 +221,18 @@ export default function DashboardPage() {
       </div>
     </div>
   );
+}
+
+/** RL-1104: Zahl der Woche zählt hoch — Betrag über den Roh-Euro-Wert
+ *  (formatEuro formatiert jeden Zwischenstand), Anzahl direkt. */
+function CountUpEuro({ amount }: { amount: number }) {
+  const n = useCountUp(Math.round(amount), true, 1100);
+  return <>{formatEuro(n)}</>;
+}
+
+function CountUpNumber({ value }: { value: number }) {
+  const n = useCountUp(value, true, 900);
+  return <>{n}</>;
 }
 
 /** „Erste Schritte" als EINZEILIGE Leiste (RL-401): Lotti 40 px, Fortschritt,
