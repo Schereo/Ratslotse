@@ -627,6 +627,21 @@ def test_quiz_areas_lists_seeded(client):
         assert wb[b]["questions"] == 3 and "Osternburg" in wb[b]["stadtteile"]
 
 
+def test_quiz_theme_stadtteil_binding(client):
+    """RL-U13: Themen mit Entity-Geo tragen ihren Stadtteil im Katalog
+    (Punkt-in-Polygon); Themen ohne Geo gelten als stadtweit (null)."""
+    _register(client)
+    _seed_quiz("fliegerhorst", area_type="thema", n=1)
+    _seed_quiz("haushalt", area_type="thema", n=1, category="ratspolitik")
+    store = CouncilStore(COUNCIL_DB)
+    store.save_entities([("fliegerhorst", "Fliegerhorst", "projekt", 5)], [])
+    store.set_entity_geo("fliegerhorst", 53.1720, 8.1850, None)  # liegt im Stadtteil Fliegerhorst
+    store.close()
+    themen = {t["key"]: t for t in client.get("/api/quiz/areas").json()["themen"]}
+    assert themen["fliegerhorst"]["stadtteil"] == "Fliegerhorst"
+    assert themen["haushalt"]["stadtteil"] is None
+
+
 def test_quiz_round_hides_answer(client):
     _register(client)
     _seed_quiz("Osternburg", n=3)

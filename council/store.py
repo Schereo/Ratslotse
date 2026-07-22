@@ -1719,15 +1719,20 @@ class CouncilStore:
     _THEMA_LABELS = {"haushalt": "Stadt-Haushalt"}
 
     def quiz_themes(self) -> list[dict]:
-        """Themen-Gebiete mit aktiven Fragen: {area_key(slug), label(name)}.
-        Der Anzeigename kommt aus council_entities (Fallback: kuratierte
-        Labels, dann slug)."""
+        """Themen-Gebiete mit aktiven Fragen: {area_key(slug), label(name),
+        lat, lon}. Der Anzeigename kommt aus council_entities (Fallback:
+        kuratierte Labels, dann slug); lat/lon aus der Entity-Geo (RL-U13:
+        der Router ordnet darüber den Stadtteil zu — Themen ohne Geo gelten
+        als stadtweit)."""
         rows = self._conn.execute(
-            "SELECT DISTINCT q.area_key, e.name FROM council_quiz_questions q "
+            "SELECT DISTINCT q.area_key, e.name, m.lat, m.lon "
+            "FROM council_quiz_questions q "
             "LEFT JOIN council_entities e ON e.slug = q.area_key "
+            "LEFT JOIN council_entity_meta m ON m.slug = q.area_key "
             "WHERE q.area_type = 'thema' AND q.status = 'active'").fetchall()
         return [{"area_key": r["area_key"],
-                 "label": r["name"] or self._THEMA_LABELS.get(r["area_key"], r["area_key"])}
+                 "label": r["name"] or self._THEMA_LABELS.get(r["area_key"], r["area_key"]),
+                 "lat": r["lat"], "lon": r["lon"]}
                 for r in rows]
 
     # --- Stadt-Haushalt (council.haushalt) -----------------------------------
