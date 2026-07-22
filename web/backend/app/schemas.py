@@ -157,19 +157,26 @@ class QuizDailyIn(BaseModel):
     points: int = Field(ge=0, le=500)
 
 
-# Eigene Quizfragen (RL-U14): privat je Konto, 2–4 Antworten.
+# Eigene Quizfragen (RL-U14): privat je Konto. Multiple-Choice (2–4 Antworten)
+# ODER Schätzfrage (category "schaetzen": Zahl + Slider-Bereich statt Optionen).
 class UserQuizQuestionIn(BaseModel):
     question: str = Field(min_length=5, max_length=300)
-    options: list[str] = Field(min_length=2, max_length=4)
-    correct_index: int = Field(ge=0, le=3)
+    options: list[str] = Field(default_factory=list, max_length=4)
+    correct_index: int = Field(default=0, ge=0, le=3)
     stadtteil: str | None = Field(default=None, max_length=60)
     category: str = Field(max_length=30)
     explanation: str | None = Field(default=None, max_length=500)
+    # Schätzfrage: richtige Zahl, Einheit und (optionale) Slider-Grenzen.
+    answer_value: float | None = None
+    unit: str | None = Field(default=None, max_length=40)
+    range_min: float | None = None
+    range_max: float | None = None
 
 
 class UserQuizAnswerIn(BaseModel):
     question_id: int
-    selected_index: int = Field(ge=0, le=3)
+    selected_index: int | None = Field(default=None, ge=0, le=3)  # Multiple Choice
+    value: float | None = None                                    # Schätzfrage (Slider)
 
 
 class QuizMapIn(BaseModel):

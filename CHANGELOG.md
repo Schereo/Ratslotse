@@ -15,6 +15,11 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   zeigt je Frage den Stand („3× geübt, 100 %"). Eigene Fragen sind privat
   und geben bewusst **keine Punkte** — sonst könnte man sich Punkte selbst
   schreiben. (#262)
+- **Eigene Schätzfragen:** Wählt man beim Anlegen die Kategorie
+  **„Schätzfrage"**, tritt an die Stelle der Antwortoptionen eine **Zahl mit
+  Einheit** — beim Üben rät man sie dann auf einem Slider, je näher desto
+  besser. Der Rate-Bereich entsteht automatisch aus der Zahl (0 bis ~2×,
+  glatt gerundet), lässt sich aber von Hand anpassen. (#264)
 - **Der Gesprächswert arbeitet jetzt überall mit:** Die Beschluss-Suche kann
   nach **„Spannendste zuerst"** sortieren (kuriose, alltagsnahe Funde nach
   oben), die Übersicht zeigt Konten ohne aktuelle Themen-Treffer den

@@ -357,7 +357,9 @@ export interface QuizAreas {
   themen: QuizAreaEntry[];
   categories: string[];
 }
-/** Eigene Quizfrage (RL-U14) — privat je Konto, mit Übungs-Zählern. */
+/** Eigene Quizfrage (RL-U14) — privat je Konto, mit Übungs-Zählern.
+ *  qtype "estimate" (Kategorie „Schätzfrage") nutzt answer_value + Slider-Bereich
+ *  statt Optionen. */
 export interface UserQuizQuestion {
   id: number;
   question: string;
@@ -366,6 +368,11 @@ export interface UserQuizQuestion {
   stadtteil: string | null;
   category: string;
   explanation: string | null;
+  qtype?: "mc" | "estimate";
+  answer_value?: number | null;
+  unit?: string | null;
+  range_min?: number | null;
+  range_max?: number | null;
   practiced: number;
   correct_count: number;
   created_at: string;
