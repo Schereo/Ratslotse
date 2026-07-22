@@ -17,7 +17,7 @@ import {
 } from "@/components/ui";
 import { OutcomeBadge, OutcomeDot, ImportanceBadge, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
 import { CommitteeName } from "@/components/committee-name";
-import { shortCommittee } from "@/lib/committees";
+import { shortCommittee, hasShortCommittee } from "@/lib/committees";
 import { isLiveNow } from "@/lib/live";
 import { reportBadgeEvent } from "@/components/badges";
 import { ChipPopover, DateRangeChip } from "@/components/filter-chips";
@@ -406,7 +406,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
         <ChipPopover
           label="Ausschuss"
           value={committee}
-          options={committees.map((c) => ({ value: c, label: c }))}
+          options={committees.map((c) => ({ value: c, label: shortCommittee(c), sub: hasShortCommittee(c) ? c : undefined }))}
           onChange={(v) => { setCommittee(v); setPage(1); }}
         />
         {mode === "vote" && (

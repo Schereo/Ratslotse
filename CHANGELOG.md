@@ -197,6 +197,10 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   (der iOS-Bedienungshilfen-Zoom funktioniert weiterhin). (#241)
 
 ### Behoben
+- **Ausschuss-Filter (Beschluss-Suche) zeigt jetzt Kurznamen.** Im „Ausschuss"-
+  Dropdown standen die langen amtlichen Namen und wurden mit „…" abgeschnitten;
+  jetzt greift auch dort die Kurzname-Logik — Kurzname als Zeile, der volle Name
+  als umbrechender Untertitel darunter. (#274)
 - **Ratsgruppen werden nicht mehr als Partei verzerrt.** Wer in einer
   **Gruppe** sitzt (Zusammenschluss mehrerer Parteien/Parteiloser, z. B.
   „FDP/Volt" oder „Für Oldenburg"), erschien im Personen-Profil fälschlich
