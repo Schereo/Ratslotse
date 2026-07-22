@@ -92,7 +92,12 @@ def areas(user: dict = Depends(require_active),
                                  "points": sum(points.get(("stadtteil", m), 0) for m in members)})
     themen = []
     for t in council.quiz_themes():
-        themen.append({"key": t["area_key"], "label": t["label"],
+        # RL-U13: Themen mit Entity-Geo ihrem Stadtteil zuordnen (Punkt-in-
+        # Polygon) — das Setup gruppiert danach in „In deiner Auswahl" /
+        # „Stadtweit" / „Außerhalb". Ohne Geo (oder außerhalb) = stadtweit.
+        st = (geo.stadtteil_for(t["lat"], t["lon"])
+              if t.get("lat") is not None and t.get("lon") is not None else None)
+        themen.append({"key": t["area_key"], "label": t["label"], "stadtteil": st,
                        "questions": counts.get(("thema", t["area_key"]), 0),
                        "points": points.get(("thema", t["area_key"]), 0)})
     return {"wahlbereiche": wahlbereiche, "stadtteile": stadtteile, "themen": themen,

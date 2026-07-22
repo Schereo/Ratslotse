@@ -54,6 +54,15 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   mit dem Protokoll. (#247)
 
 ### Geändert
+- **Quiz-Setup auf einer Seite statt vier Schritten:** Beim neuen Spiel
+  wählen **Wahlbereich-Kacheln** ihre Stadtteile als Schnellwahl vor (und
+  räumen beim Abwählen nur die eigenen wieder weg), die Stadtteil-Chips
+  zeigen ihre Fragenzahl samt Suche, und die **Themen kennen jetzt ihren
+  Ort**: gruppiert in „in deiner Auswahl", „stadtweit" und einklappbar
+  „außerhalb" — gewählte Themen bleiben mit Orts-Hinweis sichtbar. Eine
+  Live-Zeile fasst unten zusammen („13 Fragen in 3 Stadtteilen + 1 Thema"),
+  bevor es losgeht. „Weiterspielen" und gemerkte Auswahlen funktionieren
+  unverändert. (#261)
 - **Neue Beschlüsse bekommen ihre Scores jetzt tagesaktuell:** Der tägliche
   Protokoll-Lauf bewertet frisch veröffentlichte Beschlüsse direkt mit
   Gesprächswert und Tragweite und rechnet den Wichtig-Wert sofort neu —

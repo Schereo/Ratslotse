@@ -346,6 +346,8 @@ export interface QuizAreaEntry {
   label?: string;
   wahlbereiche?: number[];
   stadtteile?: string[];
+  /** Themen: Stadtteil des Themen-Orts (RL-U13); null/fehlend = stadtweit. */
+  stadtteil?: string | null;
   questions: number;
   points: number;
 }
