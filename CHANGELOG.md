@@ -54,6 +54,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   mit dem Protokoll. (#247)
 
 ### Geändert
+- Die **KI-Frage kennt jetzt die Tragweite**: Bei jedem als besonders
+  folgenreich oder als Formalie eingestuften Beschluss bekommt die KI einen
+  entsprechenden Hinweis (samt „Warum wichtig"-Begründung) mitgeliefert —
+  Antworten führen dadurch mit den Beschlüssen, die wirklich etwas bewegen,
+  und zählen Berufungen oder Kenntnisnahmen nicht mehr gleichwertig auf.
+  Die Quellen-Auswahl selbst bleibt rein relevanz-basiert. (#258)
 - Die Themen-Vorschläge zeigen **keine Fast-Duplikate** mehr: „Stadion
   Maastrichter Straße", „Stadionneubau Maastrichter Straße" und
   „Maastrichter Straße" gelten als ein Interesse — nur der aktivste

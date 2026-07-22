@@ -2769,7 +2769,8 @@ class CouncilStore:
         ph = ",".join("?" * len(ids))
         rows = self._conn.execute(
             f"""SELECT d.id, d.title, d.summary, d.beschluss, d.vorlage_nr,
-                       d.policy_field, d.outcome, cs.session_date, cs.committee
+                       d.policy_field, d.outcome, d.impact, d.impact_reason,
+                       cs.session_date, cs.committee
                 FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr
                 WHERE d.id IN ({ph})""",
             ids,

@@ -62,13 +62,23 @@ def _build_context(candidates: list[dict]) -> str:
     Beschlusstexts. 450 Zeichen statt 200 und die Metadaten machen die Antworten
     spürbar konkreter — bei ~20 Kandidaten immer noch nur wenige Cent. Wenn der
     Aufrufer einen Vorlagen-Auszug (Sachverhalt/Begründung) beigelegt hat, kommt
-    der mit — das ist das *Warum* hinter dem Beschluss."""
+    der mit — das ist das *Warum* hinter dem Beschluss. Der Tragweite-Score
+    (RL-U16) wird als Hinweis angehängt, aber NUR an den Enden der Skala: „hoch"
+    samt Begründung lässt die Antwort mit dem Folgenreichen führen, „gering"
+    lässt sie Formalien (Berufungen, Kenntnisnahmen) überspringen — das
+    Relevanz-Ranking selbst bleibt davon unberührt."""
     lines = []
     for c in candidates:
         meta = " · ".join(p for p in (c.get("committee"), c.get("session_date"), c.get("outcome")) if p)
         body = (c.get("summary") or c.get("beschluss") or "").strip()[:450]
         vorlage = (c.get("vorlage_excerpt") or "").strip()
         suffix = f" — Aus der Vorlage: {vorlage}" if vorlage else ""
+        impact = c.get("impact")
+        if impact is not None and impact >= 70:
+            reason = (c.get("impact_reason") or "").strip()
+            suffix += f" — Tragweite: hoch{f' ({reason})' if reason else ''}"
+        elif impact is not None and impact <= 15:
+            suffix += " — Tragweite: gering (Formalie)"
         lines.append(f"[{c['id']}] {(c.get('title') or '').strip()} ({meta}): {body}{suffix}")
     return "\n".join(lines) or "(keine passenden Beschlüsse gefunden)"
 
