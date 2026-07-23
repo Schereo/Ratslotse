@@ -91,6 +91,7 @@ const config: Config = {
         "out-strong": "var(--ease-out-strong)",
         "in-out-strong": "var(--ease-in-out-strong)",
         drawer: "var(--ease-drawer)",
+        "back-out": "var(--ease-back-out)",
       },
     },
   },

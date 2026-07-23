@@ -139,6 +139,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   mit dem Protokoll. (#247)
 
 ### Geändert
+- **Die Zeitachse baut sich auf.** Öffnet man einen Beschluss, zeichnet sich
+  „Anträge & Teilabstimmungen" in unter einer Sekunde auf: die Linie wächst nach
+  unten, die Stationen erscheinen nacheinander und rasten mit einem kleinen
+  Punkt ein — so liest man die **Reihenfolge** mit, erst die Anträge, dann der
+  endgültige Beschluss. Wer im System weniger Bewegung eingestellt hat
+  (`prefers-reduced-motion`), sieht die Zeitachse sofort fertig. (#294)
 - **Änderungsanträge als Kontext statt loser Treffer (Design 23a).** Änderungs-
   anträge (Teilabstimmungen) tauchen in der Beschluss-Suche **nicht mehr als
   eigene Treffer** auf, sondern hängen als **Unterzeile am Ursprungsbeschluss**
@@ -147,7 +153,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   der flachen Antragsliste eine **Zeitachse**: der Änderungsantrag (mit „Was
   beantragt wurde") führt zum **endgültigen Beschluss**. Wer gezielt recherchiert,
   blendet die Anträge über den Filter **„Änderungsanträge einzeln zeigen"**
-  wieder als eigene Treffer ein. (#PR)
+  wieder als eigene Treffer ein. (#285)
 - **Beschluss-Karten in klaren Zonen (Design 22a).** Jede Karte in der Suche
   folgt jetzt einer festen Reihenfolge: **Statuszeile** (Ergebnis-Punkt +
   „Wichtig" zusammen, Pfeil rechts), darunter ruhig **Gremium · Datum · TOP**,
@@ -155,7 +161,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Abstimmung und Antragsteller links sowie dem **Betrag als betontem rechten
   Anker** („57,3 Mio. € · im Beschluss"). Fehlt ein Teil (kein Betrag, kein
   Auszug), fällt seine Zone einfach weg — nichts rutscht mehr durcheinander.
-  Besonders auf dem Handy sind die Karten dadurch deutlich ruhiger. (#PR)
+  Besonders auf dem Handy sind die Karten dadurch deutlich ruhiger. (#280)
 - **Lange Ausschussnamen werden lesbar — überall.** Sperrige amtliche Namen wie
   „Ausschuss für Wirtschaftsförderung, Digitalisierung und internationale
   Zusammenarbeit" wurden in Karten, Chips und Dropdowns hart abgeschnitten
