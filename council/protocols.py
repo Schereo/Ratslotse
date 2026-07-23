@@ -84,7 +84,8 @@ Ausschusssitzung in Oldenburg. Antworte mit NUR JSON in genau dieser Form:
       "raw_result": "der Original-Abstimmungssatz des Endergebnisses",
       "sub_votes": [
         {{
-          "description": "worüber abgestimmt wurde, z.B. 'Änderungsliste der BSW-Fraktion'",
+          "description": "WAS beantragt wurde — Antragsart, Fraktion UND inhaltliches Anliegen, \
+z.B. 'Änderungsantrag der BSW-Fraktion: Streichung des Punktes 8 (Umweltzone)'",
           "outcome": "angenommen|abgelehnt|vertagt",
           "vote": "einstimmig|mehrheitlich oder null",
           "gegenstimmen": Zahl oder null,
@@ -103,6 +104,10 @@ Genehmigung von Protokollen) WEGLASSEN.
 - "outcome" = "zur_kenntnis", wenn nur ein Bericht zur Kenntnis genommen wurde.
 - "sub_votes": JEDE einzelne Teilabstimmung (z.B. über Änderungslisten/Anträge \
 einzelner Fraktionen) als eigenen Eintrag. Wenn es keine Teilabstimmungen gab: leere Liste.
+- "description" der sub_votes: Nenne das inhaltliche Anliegen, nicht nur die Antragsart. \
+Steht im Protokoll, WAS der Antrag ändern/erreichen sollte, gehört das hinein (sinngemäß \
+gekürzt). Nur wenn das Protokoll den Inhalt wirklich nicht nennt, reicht \
+'Änderungsantrag der X-Fraktion'.
 - Das Haupt-"outcome"/"vote"/"beschluss" beschreibt das ENDergebnis des TOP, die \
 sub_votes die einzelnen Abstimmungen davor.
 - Zahlen als Zahl ausschreiben (z.B. "fünf" -> 5).

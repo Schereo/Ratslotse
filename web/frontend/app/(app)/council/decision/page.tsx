@@ -65,29 +65,71 @@ function voteSummary(d: CouncilDecision): string {
   return parts.join(" · ");
 }
 
+/** Antragsart für den Kicker — rein am Titel erkannt, ohne den Text
+ *  umzuschreiben. Fallback „Teilabstimmung", wenn nichts davon passt. */
+const SUBVOTE_KINDS = [
+  "Änderungsantrag", "Vertagungsantrag", "Verweisungsantrag", "Geschäftsordnungsantrag",
+  "Dringlichkeitsantrag", "Ergänzungsantrag", "Zusatzantrag",
+  "Antrag", // zuletzt: die zusammengesetzten Arten sollen zuerst greifen
+] as const;
+
+function subvoteKind(title: string | null | undefined): string {
+  const t = (title ?? "").toLowerCase();
+  return SUBVOTE_KINDS.find((k) => t.includes(k.toLowerCase())) ?? "Teilabstimmung";
+}
+
+/** Trägt der Titel eigenen Inhalt — oder sagt er nur, was der Kicker ohnehin
+ *  schon zeigt („Änderungsantrag der SPD-Fraktion")? Entscheidet nur über
+ *  anzeigen/verbergen; der Titel selbst wird nie beschnitten. In den echten
+ *  Daten haben rund drei Viertel der Teilabstimmungen inhaltliche Titel.
+ *  Ziffern zählen bewusst nicht als Inhalt, sonst genügte schon ein
+ *  angehängtes Antragsdatum („… vom 22.06.2018") für den Kasten. */
+function hasOwnContent(title: string | null | undefined, kind: string, factions: string[]): boolean {
+  if (!title) return false;
+  // Fraktionsnamen kommen im Titel oft leicht abweichend vor („Gruppe
+  // Linke./Piraten" vs. „Gruppe Die Linke./Piratenpartei") — daher zusätzlich
+  // jedes hinreichend lange Wort aus dem Fraktionsnamen einzeln entfernen.
+  const factionWords = factions.flatMap((f) => f.split(/[^\p{L}]+/u).filter((w) => w.length >= 4));
+  let rest = title.toLowerCase();
+  for (const term of [kind, ...factions, ...factionWords, "fraktion", "gruppe", "geänderter", "antrag"]) {
+    rest = rest.split(term.toLowerCase()).join(" ");
+  }
+  rest = rest
+    .replace(/\b(der|des|die|von|vom|dem|den|und|am|ratsherr|ratsfrau|ratsherrn)\b/g, " ")
+    .replace(/[^\p{L}]+/gu, ""); // Ziffern und Satzzeichen raus
+  // Schwelle 6 (an den echten Daten geprüft): lässt knappe, aber echte Hinweise
+  // durch („zu Pkten. 1.10 und 1.11", „(Absatz 3)", „zum Änderungsantrag der
+  // CDU") und hält reine Antragsteller-Nennungen samt Datum draußen.
+  return rest.length >= 6;
+}
+
 /** Design 23a: „Anträge & Teilabstimmungen" als Zeitachse Änderung → Ergebnis.
  *  Jeder Änderungsantrag ist ein Knoten (Fraktion, Ergebnis, was beantragt
  *  wurde); den Abschluss bildet der endgültige Beschluss. Bewusst kein
- *  erfundener alt/neu-Diff — gezeigt wird nur, was in den Daten steht. */
+ *  erfundener alt/neu-Diff — gezeigt wird nur, was in den Daten steht.
+ *  Der Antragsinhalt steckt bei Teilabstimmungen in `title` (die Extraktion
+ *  legt ihn dort ab, `beschluss` bleibt für sie leer). */
 function SubvoteTimeline({ d, subVotes }: { d: CouncilDecision; subVotes: CouncilDecision[] }) {
   return (
     <ol className="relative space-y-5 border-l-2 border-border pl-5">
       {subVotes.map((s) => {
         const factions = Array.isArray(s.factions) ? s.factions : [];
+        const kind = subvoteKind(s.title);
+        const body = s.beschluss || (hasOwnContent(s.title, kind, factions) ? s.title : null);
         return (
           <li key={s.id} className="relative">
             <span className="absolute -left-[26px] top-1 h-3.5 w-3.5 rounded-full border-2 border-card bg-signal" aria-hidden />
             <p className="text-[11px] font-semibold uppercase tracking-wider text-signal">
-              Änderungsantrag{factions.length > 0 ? ` · ${factions.join(", ")}` : ""}
+              {kind}{factions.length > 0 ? ` · ${factions.join(", ")}` : ""}
             </p>
             <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
               <OutcomeDot outcome={s.outcome} />
               {voteSummary(s) && <span>· {voteSummary(s)}</span>}
             </p>
-            {s.beschluss && (
+            {body && (
               <div className="mt-2 rounded-lg border border-border bg-muted/40 p-3">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Was beantragt wurde</p>
-                <p className="mt-1 text-sm leading-relaxed text-foreground">{s.beschluss}</p>
+                <p className="mt-1 text-sm leading-relaxed text-foreground">{body}</p>
               </div>
             )}
           </li>

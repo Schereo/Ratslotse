@@ -8,6 +8,16 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Behoben
+- **Teilabstimmungen zeigen wieder, was beantragt wurde.** Auf der Beschluss-Seite
+  stand unter „Anträge & Teilabstimmungen" nur, *wer* einen Änderungsantrag
+  gestellt hat — nicht, *was* er ändern sollte. Der Antragstext wurde aus dem
+  falschen Feld gelesen und blieb deshalb immer leer. Jetzt erscheint bei rund
+  drei Vierteln der Teilabstimmungen der tatsächliche Inhalt (z. B. „Streichung
+  des Punktes 8 ‚Einrichtung einer Umweltzone'"); nennt das Protokoll nur die
+  antragstellende Fraktion, bleibt es wie bisher bei Antragsart und Ergebnis.
+  Außerdem benennt die Zeile die **Antragsart** korrekt — Vertagungs-,
+  Verweisungs- oder Geschäftsordnungsantrag hießen zuvor pauschal
+  „Änderungsantrag". (#PR)
 - **App: Absturz beim Öffnen von „Meine Themen" behoben.** In der iOS-App
   führte das Antippen des Themen-Tabs zu „Etwas ist schiefgelaufen". Ursache
   war ein doppelt vergebener Daten-Schlüssel im App-Cache, unter dem die
