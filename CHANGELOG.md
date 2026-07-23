@@ -19,7 +19,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   gefundenen Beschlüssen ab, sodass jeder Vorschlag garantiert zu etwas führt.
   Die Liste der gefundenen Beschlüsse steht dafür jetzt **unter** den
   Weiterfragen — bei Dutzenden Treffern hätte man sie sonst komplett
-  durchscrollen müssen, um die Vorschläge überhaupt zu sehen. (#292, #295)
+  durchscrollen müssen, um die Vorschläge überhaupt zu sehen. (#292, #298)
 - **App: Zurückwischen vom Bildschirmrand.** In der iOS-App kommst du jetzt wie
   gewohnt mit einer **Wischgeste vom linken Rand** eine Seite zurück (und vom
   rechten wieder vor) — passend zur Vor-/Zurück-Navigation der App. (#286)
