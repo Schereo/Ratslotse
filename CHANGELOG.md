@@ -27,7 +27,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Verwaltung". Die amtlichen Begriffe bleiben also sichtbar, sind aber nicht mehr
   der einzige Anhaltspunkt. Nebenbei entfällt in der Vorlagenart die
   RIS-Katalog-Klammer („Berichtsvorlage (bis 31.12.2022)" → „Berichtsvorlage").
-  (#PR)
+  (#304)
 - **KI-Frage: kürzere Trefferliste.** Unter der Antwort standen bisher **alle**
   gefundenen Beschlüsse — bis zu 40 Karten, obwohl davon meist nur eine Handvoll
   in der Antwort zitiert wird. Jetzt zeigt Ratslotse standardmäßig die **acht
