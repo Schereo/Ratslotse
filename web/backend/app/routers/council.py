@@ -415,6 +415,9 @@ def entity(slug: str, _user: dict = Depends(require_active),
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Thema nicht gefunden.")
     data["field_labels"] = {f["field"]: POLICY_FIELDS[f["field"]][0]
                             for f in data["fields"] if f["field"] in POLICY_FIELDS}
+    # Verwandte Themen (council.related, vorberechnet). Nach dem kanonischen Slug
+    # nachschlagen — bei einem zusammengeführten Alias hängen die Nachbarn am Kanon.
+    data["related"] = store.related_entities(data["entity"]["slug"])
     return data
 
 
