@@ -143,6 +143,51 @@ def test_admin_stats_growth(client):
     assert b["wau_days"][-1] == heute
 
 
+def test_admin_jobs_listet_registry_auch_ohne_laeufe(client):
+    """Die Cron-Übersicht zeigt jeden Job der Registry — ein Job, der noch nie
+    lief (oder gar nicht mehr startet), muss sichtbar sein und nicht fehlen."""
+    _register(client)
+    b = client.get("/api/admin/jobs").json()
+    assert {j["key"] for j in b} == {
+        "check_council", "check_committees", "check_protocols", "weekly_enrich", "backup_db",
+    }
+    job = next(j for j in b if j["key"] == "check_council")
+    assert job["state"] == "unknown" and job["last"] is None and job["history"] == []
+    assert job["schedule"] and job["label"]
+
+
+def test_admin_jobs_zeigt_letzten_lauf(client):
+    """Kennzahlen und Alter des letzten Laufs landen in der Übersicht; ein
+    frischer Lauf steht auf „ok“, ein zu alter auf „stale“ (Backup: 30 h)."""
+    from datetime import datetime, timedelta
+
+    _register(client)
+    store = Store(NWZ_DB)
+    frisch = datetime.utcnow() - timedelta(hours=2)
+    store.record_job_run(
+        "backup_db", frisch.isoformat(timespec="seconds"),
+        (frisch + timedelta(seconds=12)).isoformat(timespec="seconds"),
+        "ok", 12.0, {"Datenbanken gesichert": 2}, None)
+    alt = datetime.utcnow() - timedelta(days=5)
+    store.record_job_run(
+        "weekly_enrich", alt.isoformat(timespec="seconds"),
+        alt.isoformat(timespec="seconds"), "error", 3.0, None, "RuntimeError: Schritt fehlgeschlagen")
+    store.close()
+
+    b = client.get("/api/admin/jobs").json()
+    backup = next(j for j in b if j["key"] == "backup_db")
+    assert backup["state"] == "ok"
+    assert backup["last"]["stats"] == {"Datenbanken gesichert": 2}
+    assert backup["last"]["duration_s"] == 12.0
+    assert 1.5 < backup["age_h"] < 2.5
+    assert len(backup["history"]) == 1
+
+    # Fehlerlauf schlägt auf den Zustand durch, auch wenn er im Takt liegt.
+    weekly = next(j for j in b if j["key"] == "weekly_enrich")
+    assert weekly["state"] == "error"
+    assert "Schritt fehlgeschlagen" in weekly["last"]["error"]
+
+
 def test_admin_endpoints_forbidden_for_regular_user(client):
     _register(client)  # admin
     bob = TestClient(app)

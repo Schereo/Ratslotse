@@ -71,18 +71,25 @@ def offsite_sync() -> None:
     print(f"✓  Off-Site-Mirror → {target}")
 
 
-def main() -> None:
-    missing_all = True
+def main() -> dict:
+    """Gibt die Kennzahlen des Laufs für die Cron-Übersicht zurück."""
+    gesichert, bytes_total = 0, 0
     for db_name in ["nwz.sqlite", "council.sqlite"]:
         db_path = DATA / db_name
         if db_path.exists():
             backup_db(db_path)
-            missing_all = False
+            gesichert += 1
+            bytes_total += db_path.stat().st_size
         else:
             print(f"Skipping {db_name} (not found)", file=sys.stderr)
-    if missing_all:
+    if not gesichert:
         raise RuntimeError("keine Datenbank gefunden — es wurde nichts gesichert")
     offsite_sync()
+    return {
+        "Datenbanken gesichert": gesichert,
+        "Größe (MB)": round(bytes_total / 1_000_000, 1),
+        "Off-Site-Mirror": "ja" if os.environ.get("BACKUP_RSYNC_TARGET") else "nein",
+    }
 
 
 if __name__ == "__main__":

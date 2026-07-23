@@ -20,14 +20,16 @@ DB = ROOT / "data" / "nwz.sqlite"
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
 
 
-def main() -> None:
+def main() -> dict:
+    """Gibt die Kennzahlen des Laufs zurück — run_guarded legt sie für die
+    Cron-Übersicht im Admin-Panel ab."""
     store = Store(DB)
     owner_digests = store.get_all_owner_digests()
 
     if not owner_digests:
         print("No topics saved for any owner — nothing to do.")
         store.close()
-        return
+        return {"Konten mit Themen": 0}
 
     for owner in owner_digests:
         print(f"Owner {owner['owner_id']} ({owner['delivery_channel']}): "
@@ -35,10 +37,12 @@ def main() -> None:
 
     # Ein Kalender-Durchlauf für alle Nutzer:innen; Klassifikation läuft je
     # Nutzer:in nur bei geänderter Tagesordnung (council_agenda_classified).
-    alerts = run_watcher(COUNCIL_DB, owner_digests, months_ahead=3, nwz_store=store)
+    stats: dict = {"Konten mit Themen": len(owner_digests)}
+    alerts = run_watcher(COUNCIL_DB, owner_digests, months_ahead=3, nwz_store=store, stats=stats)
     store.close()
 
     print(f"Done — {len(alerts)} alert(s) sent across all owners.")
+    return {**stats, "Benachrichtigungen": len(alerts)}
 
 
 if __name__ == "__main__":

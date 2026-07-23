@@ -104,6 +104,53 @@ def quiz_stats(
     }
 
 
+@router.get("/jobs")
+def jobs(_admin: dict = Depends(require_admin), store: Store = Depends(get_store)) -> list[dict]:
+    """Cron-Übersicht: je Job der letzte Lauf (Status, Dauer, Kennzahlen) plus
+    kurze Historie. Der Zustand vergleicht das Alter des letzten Laufs mit dem
+    erwarteten Takt aus der Registry (nwz/jobs.py) — so fällt ein stiller
+    Ausfall auf, auch wenn keine Fehler-Mail kam (Job lief ja gar nicht)."""
+    from datetime import datetime
+
+    from nwz.jobs import JOBS
+
+    runs = store.job_runs(limit=500)
+    by_job: dict[str, list[dict]] = {}
+    for r in runs:
+        by_job.setdefault(r["job"], []).append(r)
+
+    now = datetime.utcnow()
+    out = []
+    for job in JOBS:
+        history = by_job.get(job["key"], [])  # neueste zuerst
+        last = history[0] if history else None
+        state = "unknown"
+        age_h = None
+        if last:
+            try:
+                age_h = round((now - datetime.fromisoformat(last["started_at"])).total_seconds() / 3600, 1)
+            except (ValueError, TypeError):
+                age_h = None
+            if last["status"] == "error":
+                state = "error"
+            elif age_h is not None and age_h > job["max_age_h"]:
+                state = "stale"
+            else:
+                state = "ok"
+        out.append({
+            **{k: job[k] for k in ("key", "label", "description", "schedule")},
+            "state": state,
+            "age_h": age_h,
+            "last": last,
+            # Älteste zuerst, damit der Verlauf links→rechts in der Zeit läuft.
+            "history": [
+                {"started_at": h["started_at"], "status": h["status"], "duration_s": h["duration_s"]}
+                for h in reversed(history[:12])
+            ],
+        })
+    return out
+
+
 @router.get("/llm-usage")
 def llm_usage(_admin: dict = Depends(require_admin)) -> dict:
     """LLM-Kosten-Dashboard (Design 21a): per-Feature-Aggregat + 30-Tage-Verlauf,

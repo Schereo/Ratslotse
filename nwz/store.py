@@ -273,6 +273,23 @@ CREATE TABLE IF NOT EXISTS user_activity (
 );
 CREATE INDEX IF NOT EXISTS idx_user_activity_day ON user_activity(day);
 CREATE INDEX IF NOT EXISTS idx_user_activity_owner ON user_activity(owner_id);
+
+-- Ein Eintrag je Cron-Lauf, geschrieben von run_guarded (nwz/alerts.py).
+-- Bis hierhin war der einzige Ops-Blick ins System die Fehler-Mail und die
+-- Logdateien auf dem Server; damit sieht das Admin-Panel, ob ein Job läuft,
+-- wie lange er braucht und was er verarbeitet hat. `stats` ist ein JSON-Objekt,
+-- das der Job selbst zurückgibt (sprechende Schlüssel → direkt anzeigbar).
+CREATE TABLE IF NOT EXISTS job_runs (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    job         TEXT NOT NULL,
+    started_at  TEXT NOT NULL,           -- ISO, UTC
+    finished_at TEXT,
+    status      TEXT NOT NULL,           -- ok | error
+    duration_s  REAL,
+    stats       TEXT,                    -- JSON-Objekt oder NULL
+    error       TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_job_runs_job ON job_runs(job, started_at DESC);
 """
 
 
@@ -1032,6 +1049,47 @@ class Store:
                 "subscriptions": one("SELECT COUNT(*) FROM committee_subscriptions"),
             },
         }
+
+    # ---- Cron-Läufe ----
+    def record_job_run(
+        self, job: str, started_at: str, finished_at: str, status: str,
+        duration_s: float, stats: dict | None = None, error: str | None = None,
+    ) -> None:
+        """Einen Cron-Lauf protokollieren (aus run_guarded). Best-effort: ein
+        Schreibfehler darf den Job selbst nie zum Scheitern bringen."""
+        import json
+        try:
+            with self._conn:
+                self._conn.execute(
+                    "INSERT INTO job_runs (job, started_at, finished_at, status, duration_s, stats, error)"
+                    " VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (job, started_at, finished_at, status, duration_s,
+                     json.dumps(stats, ensure_ascii=False) if stats else None, error),
+                )
+        except Exception:  # noqa: BLE001 — Protokollierung ist Beiwerk
+            pass
+
+    def job_runs(self, job: str | None = None, limit: int = 200) -> list[dict]:
+        """Cron-Läufe, neueste zuerst; `stats` bereits als dict."""
+        import json
+        sql = "SELECT * FROM job_runs"
+        params: tuple = ()
+        if job:
+            sql += " WHERE job = ?"
+            params = (job,)
+        # id als zweites Kriterium: started_at hat Sekunden-Auflösung, zwei
+        # Läufe in derselben Sekunde sortierten sonst beliebig.
+        sql += " ORDER BY started_at DESC, id DESC LIMIT ?"
+        rows = self._conn.execute(sql, (*params, limit)).fetchall()
+        out = []
+        for r in rows:
+            d = dict(r)
+            try:
+                d["stats"] = json.loads(d["stats"]) if d["stats"] else None
+            except (ValueError, TypeError):
+                d["stats"] = None
+            out.append(d)
+        return out
 
     # ---- Aktivitäts-Tracking + Wachstum (Admin 20a) ----
     def record_activity(self, owner_id: int, feature: str = "session") -> None:
