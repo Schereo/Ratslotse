@@ -14,7 +14,7 @@ strikt daneben.
 |-------|------------------------------|----------|-------|--------|
 | **Wichtigkeit** | `importance` | Heuristik, kein LLM (`council/importance.py`) | 0–100 | „Wichtig"-Chip, „Wichtigste zuerst", Wichtigkeits-Karte |
 | **Tragweite** | `impact`, `impact_reason` | LLM nach fester Rubrik (`council/impact.py`) | 0–100 | mischt 50/50 in die Wichtigkeit, Kontext der KI-Frage |
-| **Gesprächswert** | `interest`, `interest_reason` | LLM (`council/interest.py`) | 0–100 | „Fundstück des Tages", „Spannendste zuerst" |
+| **Gesprächswert** | `interest`, `interest_reason` | LLM (`council/interest.py`) | 0–100 | „Fundstück des Tages", „Diese Woche im Rat", Tie-Breaks |
 
 Alle drei sind **optional**: Ein Beschluss ohne LLM-Bewertung (`NULL`) verliert
 nichts, er sortiert nur hinter den bewerteten. Datenmodell und Herkunft der
@@ -318,9 +318,16 @@ nachschärfen statt einhängen. Das restliche Eval-Harness beschreibt
   Rechnung „Aus den Ratsdaten / Tragweite (KI-Einschätzung) / Wichtigkeit ·
   Mittel aus beiden". Die Kopfzeile trägt zusätzlich einen
   „Wichtig · N/100"-Chip ab 55.
-- **Sortierungen** auf `/council`: „Wichtigste zuerst" (`sort=importance`) und
-  „Spannendste zuerst" (`sort=interest`, Untertitel „Gesprächswert — kurios &
-  alltagsnah"). Beide sortieren noch nicht bewertete Beschlüsse ans Ende.
+- **Sortierung** „Wichtigste zuerst" (`sort=importance`) auf `/council`. Sie
+  gewichtet den Wert mit der **Aktualität**: `importance / (1 + Alter/2 Jahre)`.
+  Ohne diese Dämpfung bestand die Liste praktisch nur aus Haushaltsbeschlüssen —
+  die tragen strukturell die höchste Tragweite und verdrängten alles Aktuelle.
+  Bewusst hyperbolisch statt exponentiell, damit historische Großbeschlüsse nach
+  hinten rutschen, aber auffindbar bleiben. Noch nicht bewertete Beschlüsse
+  landen am Ende. Der Gesprächswert hat **keine** eigene Sortierung mehr — als
+  Suchkriterium war er wenig sinnvoll; er wirkt weiter über das Fundstück, die
+  Wochenkarte und Tie-Breaks. Der API-Wert `sort=interest` bleibt bestehen,
+  damit ältere geteilte Links nicht brechen.
 - **Fundstück des Tages** auf der Übersicht (`GET /council/fundstueck`) sowie
   die Karte „Diese Woche im Rat" (`GET /council/diese-woche`), die den
   interessantesten Beschluss der letzten 7 Tage samt `interest_reason`-Satz

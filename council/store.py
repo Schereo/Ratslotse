@@ -1071,8 +1071,18 @@ class CouncilStore:
             "date_asc": "cs.session_date ASC, d.position",
             # Non-empty factions first ('["…' < '[]'), grouped, newest within.
             "faction": "d.factions ASC, cs.session_date DESC",
-            # Wichtigste zuerst; NULL-Scores (noch nicht berechnet) landen hinten.
-            "importance": "d.importance IS NULL, d.importance DESC, cs.session_date DESC",
+            # Wichtigste zuerst — mit Alters-Dämpfung. Ohne sie dominieren die
+            # Haushaltsbeschlüsse: Sie haben strukturell die höchste Tragweite
+            # und verdrängen alles Aktuelle, egal wie alt sie sind. Der Wert
+            # halbiert sich nach 2 Jahren (1 / (1 + Alter/2 Jahre)) — bewusst
+            # hyperbolisch statt exponentiell, damit historische Großbeschlüsse
+            # nach hinten rutschen, aber nicht völlig verschwinden.
+            # MAX(0, …) fängt künftig datierte Sitzungen ab (kein Auftrieb).
+            "importance": (
+                "d.importance IS NULL, "
+                "d.importance / (1.0 + MAX(0.0, julianday('now') - julianday(cs.session_date)) / 730.0) DESC, "
+                "cs.session_date DESC"
+            ),
             # RL-U15: Unterhaltungs-Sortierung — Gesprächswert statt Priorität.
             "interest": "d.interest IS NULL, d.interest DESC, cs.session_date DESC",
         }.get(sort, "cs.session_date DESC, d.position")

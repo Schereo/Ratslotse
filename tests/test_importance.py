@@ -1,4 +1,6 @@
 """Wichtigkeits-Score: transparente, erklärbare Heuristik (0–100)."""
+from datetime import date, timedelta
+
 from council import importance
 from council.store import CouncilStore
 
@@ -150,4 +152,39 @@ def test_backfill_importance_store(tmp_path):
     assert [d["title"] for d in store.search_decisions(sort="importance", limit=10)][0] == big["title"]
     # only_missing überspringt bereits bewertete Zeilen
     assert store.backfill_importance(only_missing=True) == 0
+    store.close()
+
+
+def test_importance_sort_damps_old_decisions(tmp_path):
+    """„Wichtigste zuerst" gewichtet mit Aktualität.
+
+    Ohne Dämpfung stünden dort fast nur Haushaltsbeschlüsse: Sie tragen
+    strukturell die höchste Tragweite und verdrängen alles Aktuelle. Ein alter
+    100er darf einen frischen 70er deshalb nicht überholen.
+    """
+    store = CouncilStore(tmp_path / "c.sqlite")
+    c = store._conn
+    alt = (date.today() - timedelta(days=5 * 365)).isoformat()
+    neu = (date.today() - timedelta(days=20)).isoformat()
+    with c:
+        for ksinr, datum in ((1, alt), (2, neu)):
+            c.execute("INSERT INTO council_sessions(ksinr,committee,session_date,session_time,location,fetched_at)"
+                      " VALUES (?,'Rat',?,'18:00','Rathaus','x')", (ksinr, datum))
+        c.execute("INSERT INTO council_decisions(ksinr,position,kind,title,outcome)"
+                  " VALUES (1,0,'decision','Haushaltssatzung 2021','angenommen')")
+        c.execute("INSERT INTO council_decisions(ksinr,position,kind,title,outcome)"
+                  " VALUES (2,0,'decision','Radweg Musterstraße','angenommen')")
+        # Scores direkt setzen — hier zählt die Sortierung, nicht die Heuristik.
+        c.execute("UPDATE council_decisions SET importance = 100 WHERE ksinr = 1")
+        c.execute("UPDATE council_decisions SET importance = 70 WHERE ksinr = 2")
+
+    titles = [d["title"] for d in store.search_decisions(sort="importance", limit=10)]
+    assert titles[0] == "Radweg Musterstraße", titles
+    # Gegenprobe: Die Dämpfung darf die Sortierung nicht zu „Neueste zuerst"
+    # entarten lassen. Bei 5 Jahren bleibt vom 100er noch 100/(1+5/2) ≈ 29 —
+    # ein frischer 20er (≈ 20) muss dahinter bleiben.
+    with c:
+        c.execute("UPDATE council_decisions SET importance = 20 WHERE ksinr = 2")
+    titles = [d["title"] for d in store.search_decisions(sort="importance", limit=10)]
+    assert titles[0] == "Haushaltssatzung 2021", titles
     store.close()

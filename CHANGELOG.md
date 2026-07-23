@@ -8,6 +8,19 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geändert
+- **„Wichtigste zuerst" zeigt jetzt Wichtiges aus der letzten Zeit.** Bisher
+  sortierte die Beschluss-Suche stur nach dem Wichtigkeits-Wert — und der ist
+  bei Haushaltsbeschlüssen strukturell am höchsten. Ergebnis: eine Liste voller
+  Haushaltssatzungen, teils Jahre alt, während aktuelle Entscheidungen
+  untergingen. Der Wert wird nun mit der **Aktualität** gewichtet (nach zwei
+  Jahren zählt er halb, nach vier ein Drittel). Ein aktueller Haushalt steht
+  weiterhin oben, ein fünf Jahre alter rutscht hinter das aktuelle Geschehen —
+  ohne ganz zu verschwinden. Der Eintrag trägt jetzt ein Flammen-Zeichen und
+  die Unterzeile „Wichtigkeit & Aktualität".
+- **Sortierung „Spannendste zuerst" entfernt.** Nach dem Gesprächswert zu
+  *suchen* ergab wenig Sinn — er lohnt sich zum Stöbern, nicht zum Finden. Er
+  wirkt weiterhin im Hintergrund: beim „Fundstück des Tages", der Karte „Diese
+  Woche im Rat" und als Stichentscheid bei gleichwertigen Treffern. (#295)
 - **Technik-Doku auf den aktuellen Stand gebracht.** Die Doku unter
   [ratslotse.de/docs](https://ratslotse.de/docs) hing rund 80 Pull Requests
   hinterher. Neu dazugekommen sind drei Seiten: **Bewertungs-Scores** (wie
