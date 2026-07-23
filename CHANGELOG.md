@@ -7,89 +7,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Behoben
-- **Konto löschen entfernt jetzt wirklich alle Daten.** Beim Löschen eines
-  Kontos blieben Daten zurück, die daran hingen: **Gerätetokens** für Push, alle
-  Quiz-Daten (Antworten, Bewertungen, Tagesserie, eigene Fragen), die Merker für
-  gesehene Themen-Treffer, die Treffer selbst sowie das Aktivitätsprotokoll.
-  Gelöscht wurden nur sechs von sechzehn betroffenen Tabellen — der Rest war
-  über die Zeit dazugekommen, ohne beim Löschen berücksichtigt zu werden. Jetzt
-  wird alles abgeräumt. Damit das so bleibt, prüft ein Test die Liste gegen die
-  Datenbank: Kommt künftig eine neue nutzerbezogene Tabelle dazu, schlägt er
-  fehl, bis sie eingetragen ist. (#296)
-
-### Geändert
-- **„Wichtigste zuerst" zeigt jetzt Wichtiges aus der letzten Zeit.** Bisher
-  sortierte die Beschluss-Suche stur nach dem Wichtigkeits-Wert — und der ist
-  bei Haushaltsbeschlüssen strukturell am höchsten. Ergebnis: eine Liste voller
-  Haushaltssatzungen, teils Jahre alt, während aktuelle Entscheidungen
-  untergingen. Der Wert wird nun mit der **Aktualität** gewichtet (nach zwei
-  Jahren zählt er halb, nach vier ein Drittel). Ein aktueller Haushalt steht
-  weiterhin oben, ein fünf Jahre alter rutscht hinter das aktuelle Geschehen —
-  ohne ganz zu verschwinden. Der Eintrag trägt jetzt ein Flammen-Zeichen und
-  die Unterzeile „Wichtigkeit & Aktualität".
-- **Sortierung „Spannendste zuerst" entfernt.** Nach dem Gesprächswert zu
-  *suchen* ergab wenig Sinn — er lohnt sich zum Stöbern, nicht zum Finden. Er
-  wirkt weiterhin im Hintergrund: beim „Fundstück des Tages", der Karte „Diese
-  Woche im Rat" und als Stichentscheid bei gleichwertigen Treffern. (#295)
-- **Technik-Doku auf den aktuellen Stand gebracht.** Die Doku unter
-  [ratslotse.de/docs](https://ratslotse.de/docs) hing rund 80 Pull Requests
-  hinterher. Neu dazugekommen sind drei Seiten: **Bewertungs-Scores** (wie
-  Wichtigkeit, Tragweite und Gesprächswert entstehen und zusammenfließen —
-  inklusive Rechenbeispiel), **App & Konten** (native iOS-App, Anmeldung samt
-  Sign in with Apple, was am Konto hängt) und **Betrieb** (Deploy-Wege,
-  Dev-Umgebung, Cronjobs, Backups, LLM-Kosten, komplette Env-Referenz).
-  Korrigiert wurden außerdem sachlich falsche Stellen: Der Wichtigkeits-Score
-  war noch als reine Heuristik „kein ML" beschrieben, obwohl die KI-Tragweite
-  seit Längerem zur Hälfte einfließt; die Tabellenlisten beider Datenbanken
-  waren unvollständig; eine dokumentierte Tabelle gab es gar nicht. (#293)
-
-### Behoben
-- **Die Wichtigkeits-Karte rechnet jetzt vor, wie sie auf ihren Wert kommt.**
-  Aufgeklappt erklärten die vier Balken (Geldbetrag, Umstrittenheit,
-  Verbindlichkeit, Beratungsaufwand) nur die **halbe** Miete: Seit die KI die
-  **Tragweite** bewertet, ist der angezeigte Wert das Mittel aus beidem — die
-  Tragweite selbst war aber unsichtbar und im Erklärtext nicht mal erwähnt. Bei
-  einem Beschluss mit „60/100" und zwei Balken auf „keine Daten" ging die
-  Rechnung für Leser:innen schlicht nicht auf. Jetzt trägt jeder Balken seinen
-  **Punkte-Beitrag** (z. B. „+52"), darunter stehen **„Aus den Ratsdaten"**,
-  **„Tragweite (KI-Einschätzung)"** und das **Mittel aus beiden** — die Spalte
-  addiert sich sichtbar zum Endwert. Ergänzt um den Hinweis, dass fehlende
-  Angaben **nicht als null** zählen, sondern aus der Gewichtung fallen (deshalb
-  kann ein Beschluss mit zwei fehlenden Signalen trotzdem hoch liegen).
-  (#290)
-- **Teilabstimmungen zeigen wieder, was beantragt wurde.** Auf der Beschluss-Seite
-  stand unter „Anträge & Teilabstimmungen" nur, *wer* einen Änderungsantrag
-  gestellt hat — nicht, *was* er ändern sollte. Der Antragstext wurde aus dem
-  falschen Feld gelesen und blieb deshalb immer leer. Jetzt erscheint bei rund
-  drei Vierteln der Teilabstimmungen der tatsächliche Inhalt (z. B. „Streichung
-  des Punktes 8 ‚Einrichtung einer Umweltzone'"); nennt das Protokoll nur die
-  antragstellende Fraktion, bleibt es wie bisher bei Antragsart und Ergebnis.
-  Außerdem benennt die Zeile die **Antragsart** korrekt — Vertagungs-,
-  Verweisungs- oder Geschäftsordnungsantrag hießen zuvor pauschal
-  „Änderungsantrag". (#288)
-- **App: Absturz beim Öffnen von „Meine Themen" behoben.** In der iOS-App
-  führte das Antippen des Themen-Tabs zu „Etwas ist schiefgelaufen". Ursache
-  war ein doppelt vergebener Daten-Schlüssel im App-Cache, unter dem die
-  Ausschuss-Abos mal als Liste, mal als Objekt lagen. Beide Stellen nutzen
-  jetzt dieselbe Form; ältere Zwischenspeicher werden beim Update verworfen. (#277)
-- **App: „Frag den Rat" funktioniert wieder.** In der iOS-App scheiterte die
-  KI-Frage mit „Load failed". Dem Streaming-Endpoint fehlten die Freigabe-
-  Header für die App und die App-Anmeldung wurde nicht durchgereicht; beides
-  ist ergänzt. Rein serverseitig — nach dem Update funktioniert es in der
-  bestehenden App ohne Neuinstallation. (#281)
-- **App: Impressum, Datenschutz und Changelog wieder verlassbar + Kopf unter
-  der Dynamic Island.** Auf diesen Seiten fehlte in der App ein Zurück-Weg,
-  und der Seitenkopf lag unter der Kamera-Insel des iPhones. Jetzt gibt es
-  oben einen **Zurück-Knopf**, und der Kopf respektiert den sicheren
-  Bereich. (#281)
-- **Datumsauswahl: schneller ins Jahr, ruhigere Darstellung.** Im Datumsfilter
-  führt ein Tipp auf die Kopfzeile („Juni 2025") jetzt direkt in die **Monats-
-  und ein weiterer in die Jahresauswahl** — so springt man mit wenigen Tippern
-  Jahre weit, statt sich Monat für Monat durchzuklicken. Außerdem behält der
-  Kalender **immer dieselbe Höhe** (feste sechs Wochenzeilen): Bei Monaten mit
-  weniger Zeilen verrutschte zuvor die Position der Navigationspfeile, wenn sich
-  der Kalender nach oben öffnete (z. B. im mobilen Filter). (#283)
+## [1.3.0] – 2026-07-23
 
 ### Hinzugefügt
 - **KI-Frage: Weiterfragen statt Sackgasse.** Unter jeder Antwort stehen jetzt
@@ -161,8 +79,187 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   tragen in den Listen einen **LIVE-Punkt**. Welcher Tagesordnungspunkt
   gerade dran ist, weiß das Ratsinfo nicht — Ergebnisse folgen wie gehabt
   mit dem Protokoll. (#247)
+- **Feinschliff in Bewegung (M4, letztes Design-Paket):** Die orange
+  Fragen-Taste **pulsiert** dezent, Seitenwechsel **gleiten sanft** herein,
+  die Zahl der Woche **zählt hoch**, KI-Quellen erscheinen **nacheinander** —
+  und in der App lädt **Ziehen-zum-Aktualisieren** mit einem kleinen Küken
+  die Daten neu. Alles nur Transform/Deckkraft und komplett still, wenn das
+  System „Bewegung reduzieren" wünscht. (#236)
+- **Mit Apple anmelden — jetzt auch im Browser:** Auf ratslotse.de steht der
+  Apple-Login nun auch auf Login und Registrierung im Web bereit (Popup,
+  keine Passwort-Eingabe). Konten sind dieselben wie in der App — verknüpft
+  über die bestätigte E-Mail-Adresse. (#234)
+- **Offline & erster Start (M4):** Ohne Netz zeigt Ratslotse eine dezente
+  **„Offline"-Pille** und in der App die zuletzt geladenen Inhalte (der
+  Daten-Cache übersteht dort jetzt den Neustart, bis zu 24 h). Beim
+  allerersten App-Start begrüßt dich außerdem ein **kurzes 3-Seiten-Intro**
+  mit Lotti — einmal wischen, nie wieder. (#232)
+- **App: neue Icons + Mitteilungs-Hinweis (M4):** Das App-Icon kommt jetzt in
+  drei iOS-Varianten (hell, dunkel, getönt — je nachdem, wie der Homescreen
+  eingestellt ist). Neu in der App außerdem ein freundlicher **Lotti-Hinweis
+  zu Mitteilungen**: erst erklären, dann fragt iOS — wer „Später" wählt, wird
+  eine Woche nicht wieder gefragt. Technisch vorbereitet: die App-Hülle kennt
+  jetzt „Sign in with Apple". (#231)
+- **Neue Anmelde-Seiten + Sign in with Apple (M3):** Login und Registrierung
+  bekommen ein **zweispaltiges Marken-Layout** (Claim + Lotti-Familie links,
+  Formular rechts, mobil unverändert kompakt) mit größeren Eingabefeldern.
+  In der iOS-App kannst du dich künftig **mit Apple anmelden** — bestehende
+  Konten werden über die gleiche E-Mail-Adresse verknüpft, neue sind sofort
+  aktiv; Apple-Konten ohne Passwort löschen ihr Konto per frischer
+  Apple-Bestätigung oder rüsten ein Passwort per E-Mail-Link nach. (#230)
+- **„Lotti erklärt's einfach" (M3):** Beschluss-Seiten bekommen unter dem
+  amtlichen Beschlusstext eine **2–3-Satz-Erklärung in einfacher Sprache** —
+  ohne Verwaltungsdeutsch, mit klarem KI-Hinweis. Erzeugt automatisch für
+  echte Beschlüsse mit substanziellem Beschlusstext; der Bestand seit 2018
+  füllt sich wochenweise auf (neueste zuerst). Prompt im Admin-UI anpassbar. (#229)
+- **„n TOPs zu deinen Themen" (M3):** Ratslotse zeigt dir jetzt direkt an,
+  wenn eine kommende Sitzung Tagesordnungspunkte zu deinen Themen enthält —
+  als oranger Hinweis auf der Sitzungs-Karte und im Heute-Briefing; im
+  Aufklapp sind die passenden TOPs markiert („dein Thema · …"). Die
+  Zuordnung merkt sich der Themen-Wächter jetzt dauerhaft und prüft je
+  Konto nur noch geänderte Tagesordnungen. (#228)
+- **„Neu"-Zähler für deine Themen (M3):** Ratslotse merkt sich jetzt, welche
+  Beschluss-Treffer du schon gesehen hast. Ungesehene zählen als **oranger
+  Zähler an „Meine Themen"** in der Seitenleiste (mobil als Punkt am
+  Themen-Tab) und als **„n neu"-Abzeichen** auf der Themen-Karte. Öffnest du
+  die Beschlussliste eines Themas, gilt alles als gesehen. (#226)
+- **Sitzungspause-Hinweis auf der Übersicht:** Der Rat und seine Ausschüsse
+  pausieren in den Schulferien (so hält es die Stadt grundsätzlich — und
+  unsere Sitzungshistorie seit 2018 bestätigt es). Während einer Pause zeigt
+  die Übersicht jetzt ein Banner mit dem Grund („Sommerpause · bis
+  12. August"), wann es voraussichtlich weitergeht bzw. dem nächsten schon
+  veröffentlichten Termin — damit sich niemand wundert, warum keine neuen
+  Sitzungen erscheinen. 2026 erklärt es zusätzlich die Besonderheit
+  **Kommunalwahl** (Wahltag 13. September, Ende der Wahlperiode 31. Oktober,
+  Konstituierung des neuen Rats im November). Ferientermine: amtliche
+  Niedersachsen-Daten bis Sommer 2027. (#215)
+- **Haushalts-Quiz mit Diagrammen:** Neues Quiz-Thema **„Stadt-Haushalt"** mit
+  zwölf Fragen direkt aus den **beschlossenen Haushaltsplänen** der Stadt
+  (2020–2026, offizielle PDFs als Quelle verlinkt): Gesamtausgaben, Defizit,
+  die großen Ausgabenblöcke, Erträge, Anteils- und Ranking-Fragen sowie
+  **Zeitreihen** („Um wie viel sind die Ausgaben seit 2020 gewachsen?"). Die
+  Auflösung zeigt je nach Frage ein animiertes **Balkendiagramm**, einen
+  **Donut** (Anteil an den Gesamtausgaben) oder eine **Trendlinie** über die
+  Haushaltsjahre — und erklärt die Zusammensetzung inklusive gesetzlich
+  gebundener **Pflichtaufgaben** vs. frei gestaltbarer **freiwilliger
+  Leistungen**. Dazu acht neue Glossar-Begriffe (Ergebnishaushalt,
+  Teilhaushalt, Gewerbesteuer, Schlüsselzuweisung …). Komplett ohne KI
+  erzeugt — jede Zahl 1:1 aus dem Plan. (#211)
+- **Lotti spielt mit:** Im Quiz reagiert die Lotsenmöwe jetzt auf jede Antwort —
+  sie jubelt bei richtig, winkt bei „nah dran" und schaut ratlos bei daneben,
+  immer mit einem kurzen aufmunternden Spruch. Auch auf dem Ergebnis-Bildschirm
+  (Fragen- und Karten-Quiz) feiert sie mit bzw. macht Mut für die nächste
+  Runde. (#209)
+- **Wichtige Beschlüsse erkennen:** Jeder Beschluss bekommt einen
+  **Wichtigkeits-Score** (0–100) — geschätzt aus Geldbetrag, Umstrittenheit
+  (Gegenstimmen / knappe Abstimmung), Verbindlichkeit & Gremien-Ebene (Satzung
+  im Rat vs. Routine im Fachausschuss) und Länge des Beratungswegs. Bedeutende
+  Beschlüsse tragen in den Listen ein **„Wichtig"**-Zeichen, lassen sich per
+  **„Wichtigste zuerst"** sortieren, und die Beschluss-Seite schlüsselt
+  transparent auf, welche Signale den Score treiben. Auch das Quiz zieht so
+  bevorzugt wichtige statt beliebiger Beschlüsse heran. (#204)
+- **Oldenburg-Quiz:** Ein neues Quiz zum spielerischen Kennenlernen der Stadt.
+  Wähle einen **Wahlbereich**, **Stadtteil** oder ein großes stadtweites
+  **Thema** und beantworte Multiple-Choice-Fragen aus fünf Kategorien
+  (Geschichte, Orte & Wahrzeichen, Menschen, Ratspolitik, Schätzfragen). Die
+  Fragen sind aus **Wikipedia**, der **Stadt-Website** und den **Ratsdaten**
+  erzeugt und je mit Quelle belegt — nach jeder Antwort siehst du Lösung,
+  Erklärung und Quellenlink und kannst die Frage bewerten (👍/👎), damit
+  schwache Fragen später ersetzt werden. Deine **Punkte und Trefferquoten
+  werden je Gebiet gespeichert**: Das Fortschritts-Dashboard zeigt deine
+  schwächsten Gebiete zuerst und bietet gezieltes „Üben". (#198)
+- **Quiz-Lernmodus & Motivation:** Dazu kommen eine **tägliche Challenge**
+  (5 Fragen, jeden Tag neu und für alle gleich), ein **„Meine Fehler"-Stapel**
+  zum gezielten Wiederholen zuletzt falsch beantworteter Fragen (spaced
+  repetition, wie beim Führerschein-Lernen), **Serien** (🔥 Tage in Folge) und
+  **Abzeichen** (Punkte-Meilensteine, Gebiets-„Kenner"). (#198)
+- **Schätzfragen mit Slider:** Schätzfragen (Einwohner, Fläche, Beträge …) lassen
+  sich per Schieberegler beantworten — je näher an der richtigen Zahl, desto mehr
+  Punkte (statt vier fester Bereiche). (#198)
+- **Karten-Quiz:** „Wo liegt Stadtteil X?" — die Oldenburg-Karte mit allen
+  Stadtteilen; man tippt den gesuchten direkt auf der Karte an, die Auflösung
+  färbt den richtigen Stadtteil grün. Rein geografisch erzeugt (ohne KI). (#199)
+- **Grund beim Melden einer Quizfrage:** Wer eine Frage mit 👎 bewertet, kann
+  jetzt optional (keine Pflicht) angeben, was daran schlecht ist — Admins sehen
+  die Begründung in der Bewertungs-Liste. (#200)
+- **Reichere Quiz-Antworten („Mehr dazu"):** Die Auflösung einer Frage kann jetzt
+  optional eine **ausführlichere Erklärung**, eine kleine **Karte** (bei Orten,
+  Straßen, Gebäuden) und ein **Foto** zeigen. Fotos kommen aus **Wikimedia
+  Commons** — ausschließlich frei lizenziert und stets **mit Bildnachweis**
+  (Autor, Lizenz, Quelle). (#201)
+- **Fachbegriffe zum Nachschlagen:** In der Quiz-Auflösung sind Begriffe wie
+  „Vergnügungsstätte", „Bebauungsplan" oder „Satzung" dezent unterstrichen — beim
+  Überfahren (bzw. Antippen) erscheint eine kurze, allgemeinverständliche
+  Erklärung. (#202)
+- **Straßen als Linie auf der Antwort-Karte:** Geht es um eine konkrete Straße,
+  zeichnet die kleine Karte in der Auflösung deren echten Verlauf ein (statt nur
+  eines Punkts). Bewusst zurückhaltend: Bei mehrdeutigen oder weit verstreuten
+  Straßennamen bleibt die Karte lieber leer, statt eine falsche Stelle zu zeigen.
+  (#202)
+- **Tipp bei kniffligen Fragen:** Schwerere Quizfragen können jetzt einen
+  optionalen **Tipp** anbieten — ein Klick auf „Tipp anzeigen" gibt vor dem
+  Auflösen einen Denkanstoß, ohne die Lösung zu verraten. (#203)
+- **Ganze Gebiete auf der Antwort-Karte:** Geht eine Frage um einen Stadtteil
+  (oder eine Person/Sache von dort), zeichnet die Auflösungs-Karte jetzt das
+  **ganze Gebiet** als Fläche ein — zusätzlich zu den bisherigen Punkt- und
+  Straßen-Markierungen (die Stadtteil-Grenzen kennen wir selbst, also immer
+  verlässlich). (#203)
+- **„Beschlüsse dazu" bei Quizfragen:** Geht es um ein Ratsthema (z. B. ein
+  Bauprojekt), führt die Auflösung mit einem Klick zu den passenden **echten
+  Ratsbeschlüssen** in der Beschluss-Suche — so kann man tiefer einsteigen,
+  statt bei der Quizfrage stehenzubleiben. (#208)
+- **Zoombare Antwort-Karten:** Die kleinen Karten in der Quiz-Auflösung lassen
+  sich jetzt zoomen und verschieben (Zoom-Buttons, Doppelklick, Pinch); nur das
+  Mausrad-Zoom bleibt aus, damit die Seite normal weiterscrollt. (#207)
+- **Wahlbereiche auf der Themen-Karte:** Der Stadtteil-Filter kennt jetzt die
+  6 Kommunalwahl-Wahlbereiche der Stadt Oldenburg — ein Klick wählt alle
+  Stadtteile eines Wahlbereichs (Zuordnung geometrisch aus den offiziellen
+  Wahlbereich-Polygonen, openGEOdata Stadt Oldenburg). (#194)
+- **Kontrastreichere Stadtkarte:** Hell nutzt jetzt CARTO Voyager (Straßen,
+  Grünflächen und Wasser klar erkennbar statt fast konturlos), Dunkel bekommt
+  einen dezenten Helligkeits-/Sättigungs-Boost — Orientierung ohne Bruch im
+  Design. (#194)
+- **Themen-Karte rundum verbessert:** Nahe herangezoomt (oder gefiltert)
+  stehen die Themen-Namen direkt an den Punkten — kein Antippen mehr nötig,
+  um zu sehen, worum es geht. Die Karte merkt sich ihren Ausschnitt (Zurück
+  vom Thema landet nicht mehr in der Gesamtansicht), lässt sich per Knopf im
+  **Vollbild** anzeigen und nach **Stadtteilen filtern** — ausgewählte
+  Stadtteile werden mit Grenze eingezeichnet und die Karte zoomt darauf
+  (Grenzen: © OpenStreetMap-Mitwirkende). (#193)
+- **Weg der Vorlage, offiziell:** Beschluss-Seiten zeigen die Beratungsfolge
+  aus dem Ratsinfo — jede Station mit Gremium, Datum und Ergebnis, inklusive
+  erst **geplanter künftiger** Beratungen. (#192)
+- **Personen-Profile mit Geschichte:** Fraktions-Verlauf (wer wann in welcher
+  Fraktion war, abgeleitet aus den Sitzungs-Anwesenheiten — das Ratsinfo
+  selbst überschreibt Fraktionen rückwirkend) und die offiziellen
+  Gremien-Mitgliedschaften mit Zeiträumen **zurück bis 2001**. Kontaktdaten
+  der Ratsinfo-Personenseiten werden bewusst nicht übernommen. (#192)
 
 ### Geändert
+- **„Wichtigste zuerst" zeigt jetzt Wichtiges aus der letzten Zeit.** Bisher
+  sortierte die Beschluss-Suche stur nach dem Wichtigkeits-Wert — und der ist
+  bei Haushaltsbeschlüssen strukturell am höchsten. Ergebnis: eine Liste voller
+  Haushaltssatzungen, teils Jahre alt, während aktuelle Entscheidungen
+  untergingen. Der Wert wird nun mit der **Aktualität** gewichtet (nach zwei
+  Jahren zählt er halb, nach vier ein Drittel). Ein aktueller Haushalt steht
+  weiterhin oben, ein fünf Jahre alter rutscht hinter das aktuelle Geschehen —
+  ohne ganz zu verschwinden. Der Eintrag trägt jetzt ein Flammen-Zeichen und
+  die Unterzeile „Wichtigkeit & Aktualität".
+- **Sortierung „Spannendste zuerst" entfernt.** Nach dem Gesprächswert zu
+  *suchen* ergab wenig Sinn — er lohnt sich zum Stöbern, nicht zum Finden. Er
+  wirkt weiterhin im Hintergrund: beim „Fundstück des Tages", der Karte „Diese
+  Woche im Rat" und als Stichentscheid bei gleichwertigen Treffern. (#295)
+- **Technik-Doku auf den aktuellen Stand gebracht.** Die Doku unter
+  [ratslotse.de/docs](https://ratslotse.de/docs) hing rund 80 Pull Requests
+  hinterher. Neu dazugekommen sind drei Seiten: **Bewertungs-Scores** (wie
+  Wichtigkeit, Tragweite und Gesprächswert entstehen und zusammenfließen —
+  inklusive Rechenbeispiel), **App & Konten** (native iOS-App, Anmeldung samt
+  Sign in with Apple, was am Konto hängt) und **Betrieb** (Deploy-Wege,
+  Dev-Umgebung, Cronjobs, Backups, LLM-Kosten, komplette Env-Referenz).
+  Korrigiert wurden außerdem sachlich falsche Stellen: Der Wichtigkeits-Score
+  war noch als reine Heuristik „kein ML" beschrieben, obwohl die KI-Tragweite
+  seit Längerem zur Hälfte einfließt; die Tabellenlisten beider Datenbanken
+  waren unvollständig; eine dokumentierte Tabelle gab es gar nicht. (#293)
 - **Die Zeitachse baut sich auf.** Öffnet man einen Beschluss, zeichnet sich
   „Anträge & Teilabstimmungen" in unter einer Sekunde auf: die Linie wächst nach
   unten, die Stationen erscheinen nacheinander und rasten mit einem kleinen
@@ -312,115 +409,6 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   klickbar**; das Logo auf Login/Registrieren führt **zurück zur Startseite**;
   und in der iPhone-App ist versehentliches **Rein-Zoomen jetzt ganz aus**
   (der iOS-Bedienungshilfen-Zoom funktioniert weiterhin). (#241)
-
-### Behoben
-- **Mobiler Feinschliff (iPhone):** Im **Filter-Sheet** der Beschluss-Suche saß
-  der Schließen-**„×"** über dem ersten Filter statt oben in der Kopfzeile (die
-  Notch-Safe-Area galt fälschlich auch fürs Bottom-Sheet), und der
-  **Datums-Kalender** lief unten aus dem Bild — er klappt jetzt nach oben (bzw.
-  zur Seite), wenn kein Platz ist. In der **Parteien-Analyse** waren die
-  Themenfeld-Namen abgeschnitten („Klima & U…"); die Beschriftung bekommt mehr
-  Platz, die Balken sind entsprechend kürzer. Auf der **Übersicht** ist der
-  „Frag den Rat"-Knopf mobil jetzt **volle Breite** (vorher links gequetscht mit
-  viel Leerraum rechts). (#278)
-- **Lotti-Tour: Sprechblase läuft auf schmalen iPhones nicht mehr über den Rand.**
-  Im letzten Tour-Schritt („Leinen los!") ragte die Karte — samt „Erste Frage
-  stellen"-Knopf — rechts aus dem Bildschirm, weil die breitere Button-Zeile die
-  Karte nicht schrumpfen ließ. Die Karte darf jetzt bis in den verfügbaren Platz
-  schrumpfen, und die Knopf-Zeile bricht bei Bedarf um. (#275)
-- **Ausschuss-Filter (Beschluss-Suche) zeigt jetzt Kurznamen.** Im „Ausschuss"-
-  Dropdown standen die langen amtlichen Namen und wurden mit „…" abgeschnitten;
-  jetzt greift auch dort die Kurzname-Logik — Kurzname als Zeile, der volle Name
-  als umbrechender Untertitel darunter. (#274)
-- **Ratsgruppen werden nicht mehr als Partei verzerrt.** Wer in einer
-  **Gruppe** sitzt (Zusammenschluss mehrerer Parteien/Parteiloser, z. B.
-  „FDP/Volt" oder „Für Oldenburg"), erschien im Personen-Profil fälschlich
-  unter einer einzelnen Partei — Jens Lükermann etwa als „FDP", obwohl er nie
-  FDP-Mitglied war, sondern Volt in der Gruppe FDP/Volt. Der Verlauf heißt jetzt
-  **„Zugehörigkeit im Zeitverlauf"** und zeigt **Fraktion, Gruppe und parteilos
-  sauber getrennt**: eine Gruppe als eigene Kachel („Gruppe FDP/Volt" bzw. „Für
-  Oldenburg") mit ihren Mitglieds-Parteien als Farbpunkte, dazwischen echte
-  parteilose Phasen. Grundlage sind die Anwesenheits-Label der Protokolle (ein
-  Gruppen-Mitglied trägt dort den Gruppennamen); erkannt über eine kuratierte
-  Gruppenliste — ein „/" allein zählt nicht („Bündnis 90/Die Grünen" bleibt eine
-  Partei). (#273)
-- Die **Filter-Pillen der Beschluss-Suche zeigen jetzt ihre Auswahl**: Wer
-  auf „Berichte" oder „Alle Vorgänge" umschaltet, sieht das direkt in der
-  Pille (farblich gefüllt statt weiter „Beschlüsse"), und der
-  Sortierung-Knopf trägt die gewählte Reihenfolge („Spannendste zuerst" …)
-  statt stumm „Sortierung". (#257)
-- Die Suche (Lupe bzw. ⌘K) **zoomt in der iPhone-App nicht mehr ungewollt
-  hinein**: Das Eingabefeld der Befehls-Palette nutzt auf Mobilgeräten jetzt
-  16 px Schriftgröße — darunter vergrößert iOS beim Antippen automatisch die
-  ganze Ansicht. (#240)
-- **Design-Audit umgesetzt:** Das Seiten-Menü und Hinweise respektieren jetzt
-  die **iPhone-Aussparung** (nichts liegt mehr hinter Uhr/Dynamic Island),
-  die Registrierung nennt die **Datenschutzerklärung** direkt am Knopf, und
-  der Mitteilungs-Hinweis in der App erscheint erst, **wenn es etwas zu
-  melden gäbe** (erstes Thema oder Abo). Dazu Feinschliff: Häkchen-Argumente
-  auf der Anmelde-Seite, die „Heute im Rat"-Leiste verlinkt in jedem Zustand,
-  Sitzungszeilen auf „Heute" springen **direkt zur aufgeklappten Sitzung**,
-  Filter-Chips mit Druck-Feedback, aufgeräumte Login-Seite. (#238)
-
-### Hinzugefügt
-- **Feinschliff in Bewegung (M4, letztes Design-Paket):** Die orange
-  Fragen-Taste **pulsiert** dezent, Seitenwechsel **gleiten sanft** herein,
-  die Zahl der Woche **zählt hoch**, KI-Quellen erscheinen **nacheinander** —
-  und in der App lädt **Ziehen-zum-Aktualisieren** mit einem kleinen Küken
-  die Daten neu. Alles nur Transform/Deckkraft und komplett still, wenn das
-  System „Bewegung reduzieren" wünscht. (#236)
-- **Mit Apple anmelden — jetzt auch im Browser:** Auf ratslotse.de steht der
-  Apple-Login nun auch auf Login und Registrierung im Web bereit (Popup,
-  keine Passwort-Eingabe). Konten sind dieselben wie in der App — verknüpft
-  über die bestätigte E-Mail-Adresse. (#234)
-- **Offline & erster Start (M4):** Ohne Netz zeigt Ratslotse eine dezente
-  **„Offline"-Pille** und in der App die zuletzt geladenen Inhalte (der
-  Daten-Cache übersteht dort jetzt den Neustart, bis zu 24 h). Beim
-  allerersten App-Start begrüßt dich außerdem ein **kurzes 3-Seiten-Intro**
-  mit Lotti — einmal wischen, nie wieder. (#232)
-- **App: neue Icons + Mitteilungs-Hinweis (M4):** Das App-Icon kommt jetzt in
-  drei iOS-Varianten (hell, dunkel, getönt — je nachdem, wie der Homescreen
-  eingestellt ist). Neu in der App außerdem ein freundlicher **Lotti-Hinweis
-  zu Mitteilungen**: erst erklären, dann fragt iOS — wer „Später" wählt, wird
-  eine Woche nicht wieder gefragt. Technisch vorbereitet: die App-Hülle kennt
-  jetzt „Sign in with Apple". (#231)
-- **Neue Anmelde-Seiten + Sign in with Apple (M3):** Login und Registrierung
-  bekommen ein **zweispaltiges Marken-Layout** (Claim + Lotti-Familie links,
-  Formular rechts, mobil unverändert kompakt) mit größeren Eingabefeldern.
-  In der iOS-App kannst du dich künftig **mit Apple anmelden** — bestehende
-  Konten werden über die gleiche E-Mail-Adresse verknüpft, neue sind sofort
-  aktiv; Apple-Konten ohne Passwort löschen ihr Konto per frischer
-  Apple-Bestätigung oder rüsten ein Passwort per E-Mail-Link nach. (#230)
-- **„Lotti erklärt's einfach" (M3):** Beschluss-Seiten bekommen unter dem
-  amtlichen Beschlusstext eine **2–3-Satz-Erklärung in einfacher Sprache** —
-  ohne Verwaltungsdeutsch, mit klarem KI-Hinweis. Erzeugt automatisch für
-  echte Beschlüsse mit substanziellem Beschlusstext; der Bestand seit 2018
-  füllt sich wochenweise auf (neueste zuerst). Prompt im Admin-UI anpassbar. (#229)
-- **„n TOPs zu deinen Themen" (M3):** Ratslotse zeigt dir jetzt direkt an,
-  wenn eine kommende Sitzung Tagesordnungspunkte zu deinen Themen enthält —
-  als oranger Hinweis auf der Sitzungs-Karte und im Heute-Briefing; im
-  Aufklapp sind die passenden TOPs markiert („dein Thema · …"). Die
-  Zuordnung merkt sich der Themen-Wächter jetzt dauerhaft und prüft je
-  Konto nur noch geänderte Tagesordnungen. (#228)
-
-### Behoben
-- **Terminplan sichtbar, sobald das RIS ihn veröffentlicht:** Das
-  Ratsinformationssystem verlinkt Sitzungen erst, wenn ihre Tagesordnung
-  online steht — frisch veröffentlichte Sitzungstermine (wie der Terminplan
-  ab August) waren für Ratslotse deshalb wochenlang unsichtbar. Jetzt liest
-  der Scraper zusätzlich die **Kalenderansicht und den RSS-Feed** des RIS und
-  zeigt terminierte Sitzungen mit dem Hinweis **„Tagesordnung folgt"** auf
-  der Sitzungen-Seite, im Heute-Briefing und in der Landing-Leiste; auch der
-  Sitzungspause-Hinweis kennt damit das „wieder ab"-Datum. (#227)
-
-### Hinzugefügt
-- **„Neu"-Zähler für deine Themen (M3):** Ratslotse merkt sich jetzt, welche
-  Beschluss-Treffer du schon gesehen hast. Ungesehene zählen als **oranger
-  Zähler an „Meine Themen"** in der Seitenleiste (mobil als Punkt am
-  Themen-Tab) und als **„n neu"-Abzeichen** auf der Themen-Karte. Öffnest du
-  die Beschlussliste eines Themas, gilt alles als gesehen. (#226)
-
-### Geändert
 - **Sitzungen als Kalender-Karten (Design 6a, M2):** Jede Sitzung trägt links
   eine **Datums-Kachel** (Monat + Tag), der Gremiumsname steht in der
   Markenschrift, und aufgeklappte Tagesordnungen bekommen eine saubere
@@ -496,32 +484,6 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   ~530 × 440) und zoomt das Stadtgebiet passgenauer ein. Bei Größenänderungen
   (Fenster, einklappende Mobil-Browserleiste) passt sich die Karte live an.
   (#214)
-
-### Behoben
-- **Sitzungs-Benachrichtigungen überleben LLM-Aussetzer:** Lieferte das
-  Sprachmodell für eine Tagesordnungs-Zusammenfassung kein gültiges JSON,
-  brach bislang der komplette tägliche Ausschuss-Check ab — betroffene
-  Benachrichtigungen gingen gar nicht raus (im Juli 11× passiert). Jetzt wird
-  einmal neu versucht; klappt auch das nicht, kommt die Benachrichtigung
-  ohne Zusammenfassung (mit Link zur Tagesordnung), und der nächste Lauf
-  versucht die Zusammenfassung erneut statt ein falsches „nur Routine-TOPs"
-  festzuschreiben. (#213)
-- **Personen zeigen ihre letzte Fraktion:** Ratsmitglieder, die die Fraktion
-  gewechselt haben (z. B. FDP → Volt oder Die Linke → BSW), wurden in der
-  Personen-Liste und auf der Personen-Seite unter ihrer **häufigsten** statt
-  ihrer **aktuellen** Fraktion geführt. Jetzt zählt die letzte aktive Fraktion
-  (aus der jüngsten Sitzungs-Anwesenheit bzw. dem Ende des
-  Fraktions-Verlaufs). (#212)
-- **Quiz-Feinschliff aus dem Spielen:** Karten-Pins, die nur „Oldenburg" als
-  Ganzes markierten (z. B. bei Fragen zu Bewegungen), entfallen — auch bei schon
-  vorhandenen Fragen. Der **Fortschrittsbalken** zeigt jetzt die aktuelle Frage
-  (bei „3/5" ist er 60 % voll). **Schätzfragen** starten den Slider bewusst
-  außerhalb der Mitte (und die Spannen werden asymmetrisch erzeugt) — „gar nicht
-  bewegen" ist keine Gewinnstrategie mehr. Neu im Glossar: die
-  Krankenhaus-**Versorgungsstufen** (Maximal-/Schwerpunkt-/Grundversorgung,
-  Fachkrankenhaus). (#210)
-
-### Geändert
 - **Quiz-Startseite aufgeräumt:** Statt einer einzigen überladenen Auswahlseite
   gibt es jetzt **„Weiterspielen"** (spielt die letzten Einstellungen weiter, mit
   einer kurzen Beschreibung, was das war) und **„Neues Spiel"** als
@@ -555,121 +517,6 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Beschlusszahl) zuerst, was nicht frei steht, erscheint beim Heranzoomen.
   Labels sind klickbar wie ihre Punkte und heben sich beim Überfahren mit
   der Maus in den Vordergrund. (#195)
-
-### Hinzugefügt
-- **Sitzungspause-Hinweis auf der Übersicht:** Der Rat und seine Ausschüsse
-  pausieren in den Schulferien (so hält es die Stadt grundsätzlich — und
-  unsere Sitzungshistorie seit 2018 bestätigt es). Während einer Pause zeigt
-  die Übersicht jetzt ein Banner mit dem Grund („Sommerpause · bis
-  12. August"), wann es voraussichtlich weitergeht bzw. dem nächsten schon
-  veröffentlichten Termin — damit sich niemand wundert, warum keine neuen
-  Sitzungen erscheinen. 2026 erklärt es zusätzlich die Besonderheit
-  **Kommunalwahl** (Wahltag 13. September, Ende der Wahlperiode 31. Oktober,
-  Konstituierung des neuen Rats im November). Ferientermine: amtliche
-  Niedersachsen-Daten bis Sommer 2027. (#215)
-- **Haushalts-Quiz mit Diagrammen:** Neues Quiz-Thema **„Stadt-Haushalt"** mit
-  zwölf Fragen direkt aus den **beschlossenen Haushaltsplänen** der Stadt
-  (2020–2026, offizielle PDFs als Quelle verlinkt): Gesamtausgaben, Defizit,
-  die großen Ausgabenblöcke, Erträge, Anteils- und Ranking-Fragen sowie
-  **Zeitreihen** („Um wie viel sind die Ausgaben seit 2020 gewachsen?"). Die
-  Auflösung zeigt je nach Frage ein animiertes **Balkendiagramm**, einen
-  **Donut** (Anteil an den Gesamtausgaben) oder eine **Trendlinie** über die
-  Haushaltsjahre — und erklärt die Zusammensetzung inklusive gesetzlich
-  gebundener **Pflichtaufgaben** vs. frei gestaltbarer **freiwilliger
-  Leistungen**. Dazu acht neue Glossar-Begriffe (Ergebnishaushalt,
-  Teilhaushalt, Gewerbesteuer, Schlüsselzuweisung …). Komplett ohne KI
-  erzeugt — jede Zahl 1:1 aus dem Plan. (#211)
-- **Lotti spielt mit:** Im Quiz reagiert die Lotsenmöwe jetzt auf jede Antwort —
-  sie jubelt bei richtig, winkt bei „nah dran" und schaut ratlos bei daneben,
-  immer mit einem kurzen aufmunternden Spruch. Auch auf dem Ergebnis-Bildschirm
-  (Fragen- und Karten-Quiz) feiert sie mit bzw. macht Mut für die nächste
-  Runde. (#209)
-- **Wichtige Beschlüsse erkennen:** Jeder Beschluss bekommt einen
-  **Wichtigkeits-Score** (0–100) — geschätzt aus Geldbetrag, Umstrittenheit
-  (Gegenstimmen / knappe Abstimmung), Verbindlichkeit & Gremien-Ebene (Satzung
-  im Rat vs. Routine im Fachausschuss) und Länge des Beratungswegs. Bedeutende
-  Beschlüsse tragen in den Listen ein **„Wichtig"**-Zeichen, lassen sich per
-  **„Wichtigste zuerst"** sortieren, und die Beschluss-Seite schlüsselt
-  transparent auf, welche Signale den Score treiben. Auch das Quiz zieht so
-  bevorzugt wichtige statt beliebiger Beschlüsse heran. (#204)
-- **Oldenburg-Quiz:** Ein neues Quiz zum spielerischen Kennenlernen der Stadt.
-  Wähle einen **Wahlbereich**, **Stadtteil** oder ein großes stadtweites
-  **Thema** und beantworte Multiple-Choice-Fragen aus fünf Kategorien
-  (Geschichte, Orte & Wahrzeichen, Menschen, Ratspolitik, Schätzfragen). Die
-  Fragen sind aus **Wikipedia**, der **Stadt-Website** und den **Ratsdaten**
-  erzeugt und je mit Quelle belegt — nach jeder Antwort siehst du Lösung,
-  Erklärung und Quellenlink und kannst die Frage bewerten (👍/👎), damit
-  schwache Fragen später ersetzt werden. Deine **Punkte und Trefferquoten
-  werden je Gebiet gespeichert**: Das Fortschritts-Dashboard zeigt deine
-  schwächsten Gebiete zuerst und bietet gezieltes „Üben". (#198)
-- **Quiz-Lernmodus & Motivation:** Dazu kommen eine **tägliche Challenge**
-  (5 Fragen, jeden Tag neu und für alle gleich), ein **„Meine Fehler"-Stapel**
-  zum gezielten Wiederholen zuletzt falsch beantworteter Fragen (spaced
-  repetition, wie beim Führerschein-Lernen), **Serien** (🔥 Tage in Folge) und
-  **Abzeichen** (Punkte-Meilensteine, Gebiets-„Kenner"). (#198)
-- **Schätzfragen mit Slider:** Schätzfragen (Einwohner, Fläche, Beträge …) lassen
-  sich per Schieberegler beantworten — je näher an der richtigen Zahl, desto mehr
-  Punkte (statt vier fester Bereiche). (#198)
-- **Karten-Quiz:** „Wo liegt Stadtteil X?" — die Oldenburg-Karte mit allen
-  Stadtteilen; man tippt den gesuchten direkt auf der Karte an, die Auflösung
-  färbt den richtigen Stadtteil grün. Rein geografisch erzeugt (ohne KI). (#199)
-- **Grund beim Melden einer Quizfrage:** Wer eine Frage mit 👎 bewertet, kann
-  jetzt optional (keine Pflicht) angeben, was daran schlecht ist — Admins sehen
-  die Begründung in der Bewertungs-Liste. (#200)
-- **Reichere Quiz-Antworten („Mehr dazu"):** Die Auflösung einer Frage kann jetzt
-  optional eine **ausführlichere Erklärung**, eine kleine **Karte** (bei Orten,
-  Straßen, Gebäuden) und ein **Foto** zeigen. Fotos kommen aus **Wikimedia
-  Commons** — ausschließlich frei lizenziert und stets **mit Bildnachweis**
-  (Autor, Lizenz, Quelle). (#201)
-- **Fachbegriffe zum Nachschlagen:** In der Quiz-Auflösung sind Begriffe wie
-  „Vergnügungsstätte", „Bebauungsplan" oder „Satzung" dezent unterstrichen — beim
-  Überfahren (bzw. Antippen) erscheint eine kurze, allgemeinverständliche
-  Erklärung. (#202)
-- **Straßen als Linie auf der Antwort-Karte:** Geht es um eine konkrete Straße,
-  zeichnet die kleine Karte in der Auflösung deren echten Verlauf ein (statt nur
-  eines Punkts). Bewusst zurückhaltend: Bei mehrdeutigen oder weit verstreuten
-  Straßennamen bleibt die Karte lieber leer, statt eine falsche Stelle zu zeigen.
-  (#202)
-- **Tipp bei kniffligen Fragen:** Schwerere Quizfragen können jetzt einen
-  optionalen **Tipp** anbieten — ein Klick auf „Tipp anzeigen" gibt vor dem
-  Auflösen einen Denkanstoß, ohne die Lösung zu verraten. (#203)
-- **Ganze Gebiete auf der Antwort-Karte:** Geht eine Frage um einen Stadtteil
-  (oder eine Person/Sache von dort), zeichnet die Auflösungs-Karte jetzt das
-  **ganze Gebiet** als Fläche ein — zusätzlich zu den bisherigen Punkt- und
-  Straßen-Markierungen (die Stadtteil-Grenzen kennen wir selbst, also immer
-  verlässlich). (#203)
-- **„Beschlüsse dazu" bei Quizfragen:** Geht es um ein Ratsthema (z. B. ein
-  Bauprojekt), führt die Auflösung mit einem Klick zu den passenden **echten
-  Ratsbeschlüssen** in der Beschluss-Suche — so kann man tiefer einsteigen,
-  statt bei der Quizfrage stehenzubleiben. (#208)
-- **Zoombare Antwort-Karten:** Die kleinen Karten in der Quiz-Auflösung lassen
-  sich jetzt zoomen und verschieben (Zoom-Buttons, Doppelklick, Pinch); nur das
-  Mausrad-Zoom bleibt aus, damit die Seite normal weiterscrollt. (#207)
-- **Wahlbereiche auf der Themen-Karte:** Der Stadtteil-Filter kennt jetzt die
-  6 Kommunalwahl-Wahlbereiche der Stadt Oldenburg — ein Klick wählt alle
-  Stadtteile eines Wahlbereichs (Zuordnung geometrisch aus den offiziellen
-  Wahlbereich-Polygonen, openGEOdata Stadt Oldenburg). (#194)
-- **Kontrastreichere Stadtkarte:** Hell nutzt jetzt CARTO Voyager (Straßen,
-  Grünflächen und Wasser klar erkennbar statt fast konturlos), Dunkel bekommt
-  einen dezenten Helligkeits-/Sättigungs-Boost — Orientierung ohne Bruch im
-  Design. (#194)
-- **Themen-Karte rundum verbessert:** Nahe herangezoomt (oder gefiltert)
-  stehen die Themen-Namen direkt an den Punkten — kein Antippen mehr nötig,
-  um zu sehen, worum es geht. Die Karte merkt sich ihren Ausschnitt (Zurück
-  vom Thema landet nicht mehr in der Gesamtansicht), lässt sich per Knopf im
-  **Vollbild** anzeigen und nach **Stadtteilen filtern** — ausgewählte
-  Stadtteile werden mit Grenze eingezeichnet und die Karte zoomt darauf
-  (Grenzen: © OpenStreetMap-Mitwirkende). (#193)
-- **Weg der Vorlage, offiziell:** Beschluss-Seiten zeigen die Beratungsfolge
-  aus dem Ratsinfo — jede Station mit Gremium, Datum und Ergebnis, inklusive
-  erst **geplanter künftiger** Beratungen. (#192)
-- **Personen-Profile mit Geschichte:** Fraktions-Verlauf (wer wann in welcher
-  Fraktion war, abgeleitet aus den Sitzungs-Anwesenheiten — das Ratsinfo
-  selbst überschreibt Fraktionen rückwirkend) und die offiziellen
-  Gremien-Mitgliedschaften mit Zeiträumen **zurück bis 2001**. Kontaktdaten
-  der Ratsinfo-Personenseiten werden bewusst nicht übernommen. (#192)
-
-### Geändert
 - **Ruhigere Sidebar:** Die Suche ist kein gedrungenes Eingabefeld mehr,
   sondern fügt sich als schlanke Zeile in die Navigation ein (⌘K wie gehabt).
   (#191)
@@ -685,6 +532,137 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   aufs GitHub-Repo. (#189)
 
 ### Behoben
+- **Konto löschen entfernt jetzt wirklich alle Daten.** Beim Löschen eines
+  Kontos blieben Daten zurück, die daran hingen: **Gerätetokens** für Push, alle
+  Quiz-Daten (Antworten, Bewertungen, Tagesserie, eigene Fragen), die Merker für
+  gesehene Themen-Treffer, die Treffer selbst sowie das Aktivitätsprotokoll.
+  Gelöscht wurden nur sechs von sechzehn betroffenen Tabellen — der Rest war
+  über die Zeit dazugekommen, ohne beim Löschen berücksichtigt zu werden. Jetzt
+  wird alles abgeräumt. Damit das so bleibt, prüft ein Test die Liste gegen die
+  Datenbank: Kommt künftig eine neue nutzerbezogene Tabelle dazu, schlägt er
+  fehl, bis sie eingetragen ist. (#296)
+- **Die Wichtigkeits-Karte rechnet jetzt vor, wie sie auf ihren Wert kommt.**
+  Aufgeklappt erklärten die vier Balken (Geldbetrag, Umstrittenheit,
+  Verbindlichkeit, Beratungsaufwand) nur die **halbe** Miete: Seit die KI die
+  **Tragweite** bewertet, ist der angezeigte Wert das Mittel aus beidem — die
+  Tragweite selbst war aber unsichtbar und im Erklärtext nicht mal erwähnt. Bei
+  einem Beschluss mit „60/100" und zwei Balken auf „keine Daten" ging die
+  Rechnung für Leser:innen schlicht nicht auf. Jetzt trägt jeder Balken seinen
+  **Punkte-Beitrag** (z. B. „+52"), darunter stehen **„Aus den Ratsdaten"**,
+  **„Tragweite (KI-Einschätzung)"** und das **Mittel aus beiden** — die Spalte
+  addiert sich sichtbar zum Endwert. Ergänzt um den Hinweis, dass fehlende
+  Angaben **nicht als null** zählen, sondern aus der Gewichtung fallen (deshalb
+  kann ein Beschluss mit zwei fehlenden Signalen trotzdem hoch liegen).
+  (#290)
+- **Teilabstimmungen zeigen wieder, was beantragt wurde.** Auf der Beschluss-Seite
+  stand unter „Anträge & Teilabstimmungen" nur, *wer* einen Änderungsantrag
+  gestellt hat — nicht, *was* er ändern sollte. Der Antragstext wurde aus dem
+  falschen Feld gelesen und blieb deshalb immer leer. Jetzt erscheint bei rund
+  drei Vierteln der Teilabstimmungen der tatsächliche Inhalt (z. B. „Streichung
+  des Punktes 8 ‚Einrichtung einer Umweltzone'"); nennt das Protokoll nur die
+  antragstellende Fraktion, bleibt es wie bisher bei Antragsart und Ergebnis.
+  Außerdem benennt die Zeile die **Antragsart** korrekt — Vertagungs-,
+  Verweisungs- oder Geschäftsordnungsantrag hießen zuvor pauschal
+  „Änderungsantrag". (#288)
+- **App: Absturz beim Öffnen von „Meine Themen" behoben.** In der iOS-App
+  führte das Antippen des Themen-Tabs zu „Etwas ist schiefgelaufen". Ursache
+  war ein doppelt vergebener Daten-Schlüssel im App-Cache, unter dem die
+  Ausschuss-Abos mal als Liste, mal als Objekt lagen. Beide Stellen nutzen
+  jetzt dieselbe Form; ältere Zwischenspeicher werden beim Update verworfen. (#277)
+- **App: „Frag den Rat" funktioniert wieder.** In der iOS-App scheiterte die
+  KI-Frage mit „Load failed". Dem Streaming-Endpoint fehlten die Freigabe-
+  Header für die App und die App-Anmeldung wurde nicht durchgereicht; beides
+  ist ergänzt. Rein serverseitig — nach dem Update funktioniert es in der
+  bestehenden App ohne Neuinstallation. (#281)
+- **App: Impressum, Datenschutz und Changelog wieder verlassbar + Kopf unter
+  der Dynamic Island.** Auf diesen Seiten fehlte in der App ein Zurück-Weg,
+  und der Seitenkopf lag unter der Kamera-Insel des iPhones. Jetzt gibt es
+  oben einen **Zurück-Knopf**, und der Kopf respektiert den sicheren
+  Bereich. (#281)
+- **Datumsauswahl: schneller ins Jahr, ruhigere Darstellung.** Im Datumsfilter
+  führt ein Tipp auf die Kopfzeile („Juni 2025") jetzt direkt in die **Monats-
+  und ein weiterer in die Jahresauswahl** — so springt man mit wenigen Tippern
+  Jahre weit, statt sich Monat für Monat durchzuklicken. Außerdem behält der
+  Kalender **immer dieselbe Höhe** (feste sechs Wochenzeilen): Bei Monaten mit
+  weniger Zeilen verrutschte zuvor die Position der Navigationspfeile, wenn sich
+  der Kalender nach oben öffnete (z. B. im mobilen Filter). (#283)
+- **Mobiler Feinschliff (iPhone):** Im **Filter-Sheet** der Beschluss-Suche saß
+  der Schließen-**„×"** über dem ersten Filter statt oben in der Kopfzeile (die
+  Notch-Safe-Area galt fälschlich auch fürs Bottom-Sheet), und der
+  **Datums-Kalender** lief unten aus dem Bild — er klappt jetzt nach oben (bzw.
+  zur Seite), wenn kein Platz ist. In der **Parteien-Analyse** waren die
+  Themenfeld-Namen abgeschnitten („Klima & U…"); die Beschriftung bekommt mehr
+  Platz, die Balken sind entsprechend kürzer. Auf der **Übersicht** ist der
+  „Frag den Rat"-Knopf mobil jetzt **volle Breite** (vorher links gequetscht mit
+  viel Leerraum rechts). (#278)
+- **Lotti-Tour: Sprechblase läuft auf schmalen iPhones nicht mehr über den Rand.**
+  Im letzten Tour-Schritt („Leinen los!") ragte die Karte — samt „Erste Frage
+  stellen"-Knopf — rechts aus dem Bildschirm, weil die breitere Button-Zeile die
+  Karte nicht schrumpfen ließ. Die Karte darf jetzt bis in den verfügbaren Platz
+  schrumpfen, und die Knopf-Zeile bricht bei Bedarf um. (#275)
+- **Ausschuss-Filter (Beschluss-Suche) zeigt jetzt Kurznamen.** Im „Ausschuss"-
+  Dropdown standen die langen amtlichen Namen und wurden mit „…" abgeschnitten;
+  jetzt greift auch dort die Kurzname-Logik — Kurzname als Zeile, der volle Name
+  als umbrechender Untertitel darunter. (#274)
+- **Ratsgruppen werden nicht mehr als Partei verzerrt.** Wer in einer
+  **Gruppe** sitzt (Zusammenschluss mehrerer Parteien/Parteiloser, z. B.
+  „FDP/Volt" oder „Für Oldenburg"), erschien im Personen-Profil fälschlich
+  unter einer einzelnen Partei — Jens Lükermann etwa als „FDP", obwohl er nie
+  FDP-Mitglied war, sondern Volt in der Gruppe FDP/Volt. Der Verlauf heißt jetzt
+  **„Zugehörigkeit im Zeitverlauf"** und zeigt **Fraktion, Gruppe und parteilos
+  sauber getrennt**: eine Gruppe als eigene Kachel („Gruppe FDP/Volt" bzw. „Für
+  Oldenburg") mit ihren Mitglieds-Parteien als Farbpunkte, dazwischen echte
+  parteilose Phasen. Grundlage sind die Anwesenheits-Label der Protokolle (ein
+  Gruppen-Mitglied trägt dort den Gruppennamen); erkannt über eine kuratierte
+  Gruppenliste — ein „/" allein zählt nicht („Bündnis 90/Die Grünen" bleibt eine
+  Partei). (#273)
+- Die **Filter-Pillen der Beschluss-Suche zeigen jetzt ihre Auswahl**: Wer
+  auf „Berichte" oder „Alle Vorgänge" umschaltet, sieht das direkt in der
+  Pille (farblich gefüllt statt weiter „Beschlüsse"), und der
+  Sortierung-Knopf trägt die gewählte Reihenfolge („Spannendste zuerst" …)
+  statt stumm „Sortierung". (#257)
+- Die Suche (Lupe bzw. ⌘K) **zoomt in der iPhone-App nicht mehr ungewollt
+  hinein**: Das Eingabefeld der Befehls-Palette nutzt auf Mobilgeräten jetzt
+  16 px Schriftgröße — darunter vergrößert iOS beim Antippen automatisch die
+  ganze Ansicht. (#240)
+- **Design-Audit umgesetzt:** Das Seiten-Menü und Hinweise respektieren jetzt
+  die **iPhone-Aussparung** (nichts liegt mehr hinter Uhr/Dynamic Island),
+  die Registrierung nennt die **Datenschutzerklärung** direkt am Knopf, und
+  der Mitteilungs-Hinweis in der App erscheint erst, **wenn es etwas zu
+  melden gäbe** (erstes Thema oder Abo). Dazu Feinschliff: Häkchen-Argumente
+  auf der Anmelde-Seite, die „Heute im Rat"-Leiste verlinkt in jedem Zustand,
+  Sitzungszeilen auf „Heute" springen **direkt zur aufgeklappten Sitzung**,
+  Filter-Chips mit Druck-Feedback, aufgeräumte Login-Seite. (#238)
+- **Terminplan sichtbar, sobald das RIS ihn veröffentlicht:** Das
+  Ratsinformationssystem verlinkt Sitzungen erst, wenn ihre Tagesordnung
+  online steht — frisch veröffentlichte Sitzungstermine (wie der Terminplan
+  ab August) waren für Ratslotse deshalb wochenlang unsichtbar. Jetzt liest
+  der Scraper zusätzlich die **Kalenderansicht und den RSS-Feed** des RIS und
+  zeigt terminierte Sitzungen mit dem Hinweis **„Tagesordnung folgt"** auf
+  der Sitzungen-Seite, im Heute-Briefing und in der Landing-Leiste; auch der
+  Sitzungspause-Hinweis kennt damit das „wieder ab"-Datum. (#227)
+- **Sitzungs-Benachrichtigungen überleben LLM-Aussetzer:** Lieferte das
+  Sprachmodell für eine Tagesordnungs-Zusammenfassung kein gültiges JSON,
+  brach bislang der komplette tägliche Ausschuss-Check ab — betroffene
+  Benachrichtigungen gingen gar nicht raus (im Juli 11× passiert). Jetzt wird
+  einmal neu versucht; klappt auch das nicht, kommt die Benachrichtigung
+  ohne Zusammenfassung (mit Link zur Tagesordnung), und der nächste Lauf
+  versucht die Zusammenfassung erneut statt ein falsches „nur Routine-TOPs"
+  festzuschreiben. (#213)
+- **Personen zeigen ihre letzte Fraktion:** Ratsmitglieder, die die Fraktion
+  gewechselt haben (z. B. FDP → Volt oder Die Linke → BSW), wurden in der
+  Personen-Liste und auf der Personen-Seite unter ihrer **häufigsten** statt
+  ihrer **aktuellen** Fraktion geführt. Jetzt zählt die letzte aktive Fraktion
+  (aus der jüngsten Sitzungs-Anwesenheit bzw. dem Ende des
+  Fraktions-Verlaufs). (#212)
+- **Quiz-Feinschliff aus dem Spielen:** Karten-Pins, die nur „Oldenburg" als
+  Ganzes markierten (z. B. bei Fragen zu Bewegungen), entfallen — auch bei schon
+  vorhandenen Fragen. Der **Fortschrittsbalken** zeigt jetzt die aktuelle Frage
+  (bei „3/5" ist er 60 % voll). **Schätzfragen** starten den Slider bewusst
+  außerhalb der Mitte (und die Spannen werden asymmetrisch erzeugt) — „gar nicht
+  bewegen" ist keine Gewinnstrategie mehr. Neu im Glossar: die
+  Krankenhaus-**Versorgungsstufen** (Maximal-/Schwerpunkt-/Grundversorgung,
+  Fachkrankenhaus). (#210)
 - **NWZonline-Link lädt nicht mehr endlos:** Bei sehr langen Beschlusstiteln
   (mit Klammer-Zusätzen, Datum, „- Bericht"-Anhang) hängte sich die NWZ-Suche
   in einer Dauer-Ladeschleife auf. Der Link „Bei NWZonline nach Berichten suchen"
@@ -817,7 +795,8 @@ Open-Source-Go-Live von Ratslotse.
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v1.2.0...main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v1.3.0...main
+[1.3.0]: https://github.com/Schereo/Ratslotse/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/Schereo/Ratslotse/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/Schereo/Ratslotse/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/Schereo/Ratslotse/releases/tag/v1.0.0
