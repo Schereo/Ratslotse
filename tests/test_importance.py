@@ -86,7 +86,40 @@ def test_subvote_is_discounted():
 def test_breakdown_shape():
     b = importance.importance_breakdown(_dec(amount_eur=1_000_000, gegenstimmen=5), n_beratungen=3)
     assert set(b["signals"]) == {"geld", "umstritten", "verbindlich", "aufwand"}
+    assert set(b["contributions"]) == set(b["signals"])
     assert isinstance(b["score"], int)
+
+
+def test_contributions_sum_to_score():
+    """Die Beschluss-Seite addiert die Beiträge sichtbar — sie müssen den
+    Heuristik-Score exakt ergeben, sonst geht die angezeigte Rechnung nicht auf."""
+    cases = [
+        (_dec(), None),
+        (_dec(amount_eur=1_000_000, gegenstimmen=5), 3),
+        (_dec(title="Kenntnisnahme der Niederschrift", outcome="zur_kenntnis"), None),
+        (_dec(amount_eur=12_000_000, title="Satzung", committee="Rat der Stadt Oldenburg",
+              gegenstimmen=8, enthaltungen=3), 6),
+        (_dec(vote="einstimmig", amount_eur=4_321), 2),
+        (_dec(amount_eur=999_999_999, vote="mehrheitlich"), 12),
+    ]
+    for d, n in cases:
+        b = importance.importance_breakdown(d, n_beratungen=n)
+        assert sum(v for v in b["contributions"].values() if v is not None) == b["score"], (d, n, b)
+        # Fehlendes Signal → kein Beitrag (None, nicht 0).
+        for k, sig in b["signals"].items():
+            assert (b["contributions"][k] is None) == (sig is None)
+
+
+def test_contributions_show_renormalised_weight():
+    """Realfall (Fahrradstraßen Haareneschstr., Prod-id 7070): Geld und Aufwand
+    fehlen, also tragen die übrigen zwei das volle Gewicht — ein voll
+    ausgeschlagenes Signal liefert dann mehr als sein Rohgewicht von 24."""
+    b = importance.importance_breakdown(
+        _dec(title="Zukunft der Fahrradstraßen Haareneschstraße", committee="Rat",
+             vote="mehrheitlich", gegenstimmen=20))
+    assert b["signals"]["geld"] is None and b["signals"]["aufwand"] is None
+    assert b["score"] == 81
+    assert b["contributions"] == {"geld": None, "umstritten": 52, "verbindlich": 29, "aufwand": None}
 
 
 # ---- Store-Integration: Backfill + Sortierung -------------------------------

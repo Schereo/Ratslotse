@@ -90,7 +90,7 @@ export function FieldBadge({ field, className }: { field: string | null; classNa
 }
 
 export const IMPORTANCE_HINT =
-  "Geschätzte Wichtigkeit für die Stadt — aus Geldbetrag, Umstrittenheit (Gegenstimmen), Verbindlichkeit & Gremien-Ebene und Länge des Beratungswegs.";
+  "Geschätzte Wichtigkeit für die Stadt — aus Ratsdaten (Geldbetrag, Gegenstimmen, Verbindlichkeit & Gremien-Ebene, Länge des Beratungswegs) und, wo vorhanden, einer KI-Einschätzung der Tragweite.";
 
 /** Kompakter „Wichtig"-Chip für Listen — nur ab einer Schwelle sichtbar, damit
  *  nur wirklich bedeutende Beschlüsse hervorstechen (statt jede Karte zu füllen). */
@@ -121,9 +121,15 @@ const IMPORTANCE_SIGNAL_LABEL: Record<keyof ImportanceBreakdown["signals"], stri
 
 /** Ausführliche Wichtigkeits-Anzeige auf der Beschluss-Seite: Score + welche
  *  Signale ihn treiben — beantwortet transparent „woran macht man das fest?". */
-export function ImportanceMeter({ score, signals, impactReason, className }: {
+export function ImportanceMeter({ score, signals, contributions, baseScore, impact, impactReason, className }: {
   score: number;
   signals?: ImportanceBreakdown["signals"];
+  /** Gewichteter Punkte-Beitrag je Signal; Summe = `baseScore`. */
+  contributions?: ImportanceBreakdown["contributions"];
+  /** Heuristik allein — zusammen mit `impact` wird die Rechnung offengelegt. */
+  baseScore?: number;
+  /** RL-U16: KI-Tragweite 0–100. */
+  impact?: number | null;
   /** RL-U16 (13a-B): 1-Satz-Begründung des Tragweite-Scores — fehlt sie
    *  (noch kein Backfill), sieht die Karte exakt aus wie zuvor. */
   impactReason?: string | null;
@@ -131,6 +137,7 @@ export function ImportanceMeter({ score, signals, impactReason, className }: {
 }) {
   const [open, setOpen] = useState(false);
   const keys = Object.keys(IMPORTANCE_SIGNAL_LABEL) as (keyof ImportanceBreakdown["signals"])[];
+  const hasMissing = !!signals && keys.some((k) => signals[k] == null);
   return (
     <div className={cn("rounded-lg border border-border p-3", className)}>
       {/* Kopf ist der Auslöser: Score + Balken immer sichtbar, die Signal-
@@ -159,21 +166,61 @@ export function ImportanceMeter({ score, signals, impactReason, className }: {
         <>
           {signals && (
             <ul className="mt-3 space-y-1.5">
-              {keys.map((k) => (
-                <li key={k} className="flex items-center gap-2 text-xs">
-                  <span className="w-36 shrink-0 text-muted-foreground">{IMPORTANCE_SIGNAL_LABEL[k]}</span>
-                  {signals[k] == null ? (
-                    <span className="italic text-muted-foreground/60">keine Daten</span>
-                  ) : (
-                    <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-                      <span className="block h-full rounded-full bg-amber-500/70" style={{ width: `${Math.round((signals[k] as number) * 100)}%` }} />
-                    </span>
-                  )}
-                </li>
-              ))}
+              {keys.map((k) => {
+                const raw = signals[k];
+                const pts = contributions?.[k];
+                return (
+                  <li key={k} className="flex items-center gap-2 text-xs">
+                    <span className="min-w-0 flex-1 truncate text-muted-foreground">{IMPORTANCE_SIGNAL_LABEL[k]}</span>
+                    {raw == null ? (
+                      <span className="shrink-0 italic text-muted-foreground/60">keine Daten</span>
+                    ) : (
+                      <>
+                        <span className="h-1.5 w-14 shrink-0 overflow-hidden rounded-full bg-muted sm:w-20">
+                          <span className="block h-full rounded-full bg-amber-500/70" style={{ width: `${Math.round(raw * 100)}%` }} />
+                        </span>
+                        {/* Beitrag = Stärke × Gewicht; die Spalte summiert sich
+                            sichtbar zum Heuristik-Wert darunter. */}
+                        <span className="w-8 shrink-0 text-right tabular-nums text-foreground">
+                          {pts != null ? `+${pts}` : `${Math.round(raw * 100)} %`}
+                        </span>
+                      </>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
-          <p className="mt-2 text-[11px] leading-snug text-muted-foreground">{IMPORTANCE_HINT}</p>
+
+          {/* Die eigentliche Rechnung: Signale → Heuristik, plus Tragweite,
+              gemittelt zum angezeigten Wert. Ohne Tragweite entfällt sie. */}
+          {baseScore != null && (
+            <dl className="mt-2.5 space-y-1 border-t border-border pt-2 text-xs">
+              <div className="flex items-center justify-between gap-2">
+                <dt className="text-muted-foreground">Aus den Ratsdaten</dt>
+                <dd className="tabular-nums text-foreground">{baseScore}</dd>
+              </div>
+              {impact != null && (
+                <>
+                  <div className="flex items-center justify-between gap-2">
+                    <dt className="text-muted-foreground">Tragweite (KI-Einschätzung)</dt>
+                    <dd className="tabular-nums text-foreground">{impact}</dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 border-t border-border pt-1">
+                    <dt className="font-medium text-foreground">Wichtigkeit · Mittel aus beiden</dt>
+                    <dd className="font-semibold tabular-nums text-foreground">{score}</dd>
+                  </div>
+                </>
+              )}
+            </dl>
+          )}
+
+          <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
+            Balken = Stärke des Signals, Zahl = sein Beitrag zum Wert.
+            {hasMissing && " Fehlende Angaben zählen nicht als null — die übrigen Signale teilen sich das volle Gewicht."}
+            {impact != null && ' Der Satz „Warum wichtig“ begründet die Tragweite.'}
+          </p>
+          <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{IMPORTANCE_HINT}</p>
         </>
       )}
     </div>
