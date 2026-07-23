@@ -231,44 +231,6 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         </div>
       )}
 
-      {/* Sources appear the moment retrieval + rerank finish — before the answer. */}
-      {sources.length > 0 && (
-        <div>
-          <p className="mb-2 text-xs font-medium text-muted-foreground">
-            Gefundene Beschlüsse ({sources.length})
-            {cited.length > 0 ? ` · ${cited.length} zitiert` : ""}
-            {mode ? ` · ${MODE_LABEL[mode] ?? mode}` : ""}
-          </p>
-          <div className="space-y-2">
-            {sources.map((s, i) => (
-              <div
-                key={s.id}
-                id={`qa-source-${s.id}`}
-                className={cn(
-                  "animate-fade-up relative rounded-lg transition-shadow",
-                  citedSet.has(s.id) && "ring-1 ring-primary/40",
-                  flashId === s.id && "ring-2 ring-primary",
-                )}
-                /* RL-1104: Quellen staffeln sich nacheinander ein (max. 8 gestuft). */
-                style={{ animationDelay: `${Math.min(i, 8) * 55}ms` }}
-              >
-                {/* Fußnoten-Nummer der Quelle — korrespondiert mit den Chips im Antworttext. */}
-                {idToNum.has(s.id) && (
-                  <span
-                    aria-hidden
-                    className="absolute -left-2 -top-2 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground shadow-sm"
-                  >
-                    {idToNum.get(s.id)}
-                  </span>
-                )}
-                <DecisionLinkCard id={s.id} title={s.title} committee={s.committee}
-                  session_date={s.session_date} field={s.policy_field} sub={s.summary} score={s.score} />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {answer && !loading && sources.length === 0 && (
         <div className="flex items-start gap-3 rounded-xl border border-border bg-muted/30 p-4">
           <Mascot pose="confused" decorative className="h-12 w-12 shrink-0" />
@@ -331,6 +293,48 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             <p className="mt-2 text-[11px] text-muted-foreground/70">Jede Frage startet eine neue Suche.</p>
           </div>
         </>
+      )}
+
+      {/* Die Belege stehen bewusst ZULETZT: Sie können Dutzende sein, und die
+          Weiterfragen oben wären sonst erst nach langem Scrollen sichtbar.
+          Die Fußnoten im Antworttext springen weiterhin hierher (jumpToSource).
+          Zeitlich trifft das sources-Event weiter vor den ersten Tokens ein —
+          die Liste ist also schon da, während die Antwort noch entsteht. */}
+      {sources.length > 0 && (
+        <div>
+          <p className="mb-2 text-xs font-medium text-muted-foreground">
+            Gefundene Beschlüsse ({sources.length})
+            {cited.length > 0 ? ` · ${cited.length} zitiert` : ""}
+            {mode ? ` · ${MODE_LABEL[mode] ?? mode}` : ""}
+          </p>
+          <div className="space-y-2">
+            {sources.map((s, i) => (
+              <div
+                key={s.id}
+                id={`qa-source-${s.id}`}
+                className={cn(
+                  "animate-fade-up relative rounded-lg transition-shadow",
+                  citedSet.has(s.id) && "ring-1 ring-primary/40",
+                  flashId === s.id && "ring-2 ring-primary",
+                )}
+                /* RL-1104: Quellen staffeln sich nacheinander ein (max. 8 gestuft). */
+                style={{ animationDelay: `${Math.min(i, 8) * 55}ms` }}
+              >
+                {/* Fußnoten-Nummer der Quelle — korrespondiert mit den Chips im Antworttext. */}
+                {idToNum.has(s.id) && (
+                  <span
+                    aria-hidden
+                    className="absolute -left-2 -top-2 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground shadow-sm"
+                  >
+                    {idToNum.get(s.id)}
+                  </span>
+                )}
+                <DecisionLinkCard id={s.id} title={s.title} committee={s.committee}
+                  session_date={s.session_date} field={s.policy_field} sub={s.summary} score={s.score} />
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
