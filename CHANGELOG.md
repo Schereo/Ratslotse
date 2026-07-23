@@ -7,6 +7,15 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt
+- **Verwandte Themen (Datengrundlage).** Neue Berechnung `council/related.py` mit
+  Backfill `scripts/build_entity_relations.py` ermittelt je Thema die passenden
+  Nachbarn — getrennt nach *belegt* (kommt gemeinsam in Beschlüssen vor, etwa
+  Fliegerhorst ── Entlastungsstraße) und *ähnlich* (semantischer Nachbar aus den
+  Embeddings, nur zum Auffüllen). Läuft ohne LLM-Aufruf im wöchentlichen
+  `weekly_enrich` mit; Gremien und Namens-Dubletten werden herausgefiltert. Die
+  Oberfläche dazu folgt separat.
+
 ### Geändert
 - **KI-Frage: kürzere Trefferliste.** Unter der Antwort standen bisher **alle**
   gefundenen Beschlüsse — bis zu 40 Karten, obwohl davon meist nur eine Handvoll

@@ -9,6 +9,7 @@ press links and "Ähnliche Beschlüsse" are heavier and run here, once a week, i
     2. Beschreibungen          describe_entities.py  — fills missing descriptions (slug-keyed meta survives the rebuild)
     3. Geocoding               geocode_entities.py   — geocodes new place entities
     5. Embeddings/Ähnliche     embed_decisions.py    — re-embeds for "Ähnliche Beschlüsse"
+    5b. Verwandte Themen       build_entity_relations.py — "Hängt zusammen mit…" je Entität
     6. Themen ↔ Beschlüsse     match_topics_decisions.py — matcht Nutzer-Themen gegen Beschlüsse
     7. Themenfeld-Rückblicke   generate_field_recaps.py  — LLM-Kurzrückblick je Politikfeld (≈ monatlich)
 
@@ -35,6 +36,9 @@ STEPS: list[tuple[str, str]] = [
     ("Beschreibungen", "describe_entities.py"),
     ("Geocoding", "geocode_entities.py"),
     ("Embeddings / Ähnliche", "embed_decisions.py"),
+    # "Hängt zusammen mit…" je Thema (kein LLM, Sekunden) — muss NACH dem
+    # Entitäten-Rebuild und den Embeddings laufen, es liest beide.
+    ("Verwandte Themen", "build_entity_relations.py"),
     ("Themen ↔ Beschlüsse", "match_topics_decisions.py"),
     ("Themenfeld-Rückblicke", "generate_field_recaps.py"),
     # „Einfach erklärt"-Kurzfassungen (RL-904): 500er-Wochentranche, neueste
