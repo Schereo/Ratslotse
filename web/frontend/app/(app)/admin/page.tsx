@@ -68,7 +68,7 @@ function TrendChip({ delta }: { delta: number }) {
   );
 }
 
-function GrowthCard({ kicker, total, delta, series, color }: { kicker: string; total: number; delta: number; series: number[]; color: string }) {
+function GrowthCard({ kicker, total, delta, series, days, color }: { kicker: string; total: number; delta: number; series: number[]; days: string[]; color: string }) {
   return (
     <Card className="p-4">
       <div className="flex items-start justify-between">
@@ -78,7 +78,7 @@ function GrowthCard({ kicker, total, delta, series, color }: { kicker: string; t
         </div>
         <TrendChip delta={delta} />
       </div>
-      <AreaSparkline values={series.length ? series : [0, 0]} color={color} height={64} className="mt-3" />
+      <AreaSparkline values={series.length ? series : [0, 0]} days={days} color={color} height={64} className="mt-3" />
     </Card>
   );
 }
@@ -117,8 +117,8 @@ function StatsTab() {
 
       {/* Zwei Verlaufs-Karten. */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <GrowthCard kicker="Registrierte Nutzer:innen" total={data.users.total} delta={data.users.delta} series={data.users.series} color="hsl(var(--primary))" />
-        <GrowthCard kicker="Angelegte Themen" total={data.topics.total} delta={data.topics.delta} series={data.topics.series} color="hsl(var(--signal))" />
+        <GrowthCard kicker="Registrierte Nutzer:innen" total={data.users.total} delta={data.users.delta} series={data.users.series} days={data.users.days} color="hsl(var(--primary))" />
+        <GrowthCard kicker="Angelegte Themen" total={data.topics.total} delta={data.topics.delta} series={data.topics.series} days={data.topics.days} color="hsl(var(--signal))" />
       </div>
 
       {/* WAU + Ratsinfo-Import. */}
@@ -128,7 +128,7 @@ function StatsTab() {
             <StatKicker>Aktive Nutzer:innen je Woche</StatKicker>
             <span className="text-[11.5px] text-muted-foreground">WAU · 8 Wochen</span>
           </div>
-          <MiniBars values={data.wau.length ? data.wau : [0]} height={70} className="mt-3.5" />
+          <MiniBars values={data.wau.length ? data.wau : [0]} days={data.wau_days} height={70} className="mt-3.5" />
         </Card>
         <Card className="p-4">
           <StatKicker>Ratsinfo-Import</StatKicker>
@@ -240,7 +240,7 @@ function LlmUsageTab() {
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.5fr_1fr]">
         <Card className="p-4">
           <StatKicker>Täglicher Kostenverlauf (30 T)</StatKicker>
-          <AreaSparkline values={data.series.map((d) => d.cost)} color="hsl(var(--primary))" height={110} className="mt-3" />
+          <AreaSparkline values={data.series.map((d) => d.cost)} days={data.series.map((d) => d.date)} axisTicks={6} color="hsl(var(--primary))" height={110} className="mt-3" />
           <p className="mt-1.5 text-[11px] text-muted-foreground/80">Spitzen = wöchentlicher Enrichment-Lauf (Klassifikation, Interest, Fundstück).</p>
         </Card>
         <Card className="p-4">
@@ -597,7 +597,7 @@ function UserDetailPanel({ userId, isSelf, onClose }: { userId: number; isSelf: 
       </div>
 
       <StatKickerSpaced>Aktivität (30 Tage)</StatKickerSpaced>
-      <MiniBars values={data.verlauf.some((v) => v > 0) ? data.verlauf : [0]} height={38} highlightLast={false} className="mt-2" />
+      <MiniBars values={data.verlauf} days={data.verlauf_days} height={38} highlightLast={false} className="mt-2" />
 
       {!isSelf && (
         <div className="mt-4 flex gap-2 border-t border-border pt-4">
