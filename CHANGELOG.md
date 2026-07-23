@@ -8,13 +8,18 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **„Hängt zusammen mit …" auf jeder Themen-Seite.** Unter den Kennzahlen stehen
+  jetzt verwandte Themen zum Weiterklicken — oben die *belegten* (kommen
+  gemeinsam in Beschlüssen vor, mit der Zahl der gemeinsamen Beschlüsse), darunter
+  die *thematisch ähnlichen* aus den Embeddings. Beim Fliegerhorst führt das etwa
+  direkt zu Entlastungsstraße, Alexanderstraße und Hallensichel-Ost. Die
+  Nachbarschaften sind vorberechnet, die Seite wird dadurch nicht langsamer.
 - **Verwandte Themen (Datengrundlage).** Neue Berechnung `council/related.py` mit
   Backfill `scripts/build_entity_relations.py` ermittelt je Thema die passenden
   Nachbarn — getrennt nach *belegt* (kommt gemeinsam in Beschlüssen vor, etwa
   Fliegerhorst ── Entlastungsstraße) und *ähnlich* (semantischer Nachbar aus den
   Embeddings, nur zum Auffüllen). Läuft ohne LLM-Aufruf im wöchentlichen
-  `weekly_enrich` mit; Gremien und Namens-Dubletten werden herausgefiltert. Die
-  Oberfläche dazu folgt separat.
+  `weekly_enrich` mit; Gremien und Namens-Dubletten werden herausgefiltert.
 
 ### Geändert
 - **KI-Frage: kürzere Trefferliste.** Unter der Antwort standen bisher **alle**
