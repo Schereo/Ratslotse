@@ -48,7 +48,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   nächste Frage. Daneben führt **„Eigene Frage"** zurück ins Eingabefeld. Die
   Vorschläge entstehen ohne zusätzliche KI-Anfrage aus derselben Antwort; wenn
   das Modell keine liefert, leitet Ratslotse sie aus den gefundenen Beschlüssen
-  ab, sodass jeder Vorschlag garantiert zu etwas führt. (#PR)
+  ab, sodass jeder Vorschlag garantiert zu etwas führt. (#292)
 - **App: Zurückwischen vom Bildschirmrand.** In der iOS-App kommst du jetzt wie
   gewohnt mit einer **Wischgeste vom linken Rand** eine Seite zurück (und vom
   rechten wieder vor) — passend zur Vor-/Zurück-Navigation der App. (#286)
