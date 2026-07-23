@@ -1496,3 +1496,40 @@ def test_admin_entity_aliases_require_admin(client):
     _register(client, email="bob@test.de")
     client.post("/api/auth/login", json={"email": "bob@test.de", "password": "password123"})
     assert client.get("/api/admin/entity-aliases").status_code == 403
+
+
+# ---- Themen-Seite: verwandte Themen ----
+def test_entity_detail_liefert_verwandte_themen(client):
+    _register(client)
+    store = CouncilStore(COUNCIL_DB)
+    store._conn.executemany(
+        "INSERT INTO council_entities(id, slug, name, kind, n) VALUES (?,?,?,?,?)",
+        [(1, "fliegerhorst", "Fliegerhorst", "ort", 158),
+         (2, "entlastungsstrasse", "Entlastungsstraße", "ort", 40),
+         (3, "brookweg", "Brookweg", "ort", 5)])
+    store._conn.commit()
+    store.save_entity_relations([
+        ("fliegerhorst", "entlastungsstrasse", "belegt", 0, 0.13, 22),
+        ("fliegerhorst", "brookweg", "aehnlich", 1, 0.72, 0)])
+    store.close()
+
+    r = client.get("/api/council/entity/fliegerhorst")
+    assert r.status_code == 200
+    related = r.json()["related"]
+    assert [x["name"] for x in related] == ["Entlastungsstraße", "Brookweg"]
+    # Belegte zuerst, mit Belegzahl — die UI trennt danach die beiden Zeilen.
+    assert related[0]["rel_type"] == "belegt" and related[0]["evidence"] == 22
+    assert related[1]["rel_type"] == "aehnlich" and related[1]["evidence"] == 0
+
+
+def test_entity_ohne_verwandte_liefert_leere_liste(client):
+    """Vor dem ersten Backfill ist die Tabelle leer — die Seite darf trotzdem laden."""
+    _register(client)
+    store = CouncilStore(COUNCIL_DB)
+    store._conn.execute(
+        "INSERT INTO council_entities(id, slug, name, kind, n) VALUES (1,'solo','Solo','ort',3)")
+    store._conn.commit()
+    store.close()
+    r = client.get("/api/council/entity/solo")
+    assert r.status_code == 200 and r.json()["related"] == []
+

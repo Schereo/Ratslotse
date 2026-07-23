@@ -16,8 +16,43 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Sprachmodell bestätigten zusammen; alte Links landen weiterhin beim richtigen
   Thema. Im Admin-Panel unter „Themen-Dubletten“ lässt sich jede Zusammenführung
   einzeln nachvollziehen und wieder auflösen.
+- **„Hängt zusammen mit …" auf jeder Themen-Seite.** Unter den Kennzahlen stehen
+  jetzt verwandte Themen zum Weiterklicken — oben die *belegten* (kommen
+  gemeinsam in Beschlüssen vor, mit der Zahl der gemeinsamen Beschlüsse), darunter
+  die *thematisch ähnlichen* aus den Embeddings. Beim Fliegerhorst führt das etwa
+  direkt zu Entlastungsstraße, Alexanderstraße und Hallensichel-Ost. Die
+  Nachbarschaften sind vorberechnet, die Seite wird dadurch nicht langsamer.
+- **Verwandte Themen (Datengrundlage).** Neue Berechnung `council/related.py` mit
+  Backfill `scripts/build_entity_relations.py` ermittelt je Thema die passenden
+  Nachbarn — getrennt nach *belegt* (kommt gemeinsam in Beschlüssen vor, etwa
+  Fliegerhorst ── Entlastungsstraße) und *ähnlich* (semantischer Nachbar aus den
+  Embeddings, nur zum Auffüllen). Läuft ohne LLM-Aufruf im wöchentlichen
+  `weekly_enrich` mit; Gremien und Namens-Dubletten werden herausgefiltert.
+
 
 ### Geändert
+- **Beschluss-Seite aufgeräumt.** Die Seite führte mit einer Wand Amtssprache
+  und streute die Kennzahlen über sechs Karten in der Randspalte. Jetzt steht
+  **„Lotti erklärt's einfach" ganz oben** — der amtliche Wortlaut folgt darunter
+  und lässt sich zuklappen (verbindlich bleibt er, er ist nur nicht mehr das
+  Erste, was einen erschlägt). Rechts bündelt eine Karte **„Auf einen Blick"**
+  Betrag, Abstimmung, Antragsteller und Wichtigkeit; die Anlagen sind zu den
+  **Dokumenten** gewandert, wo die übrigen Datei-Links stehen — aus sechs Karten
+  werden drei. Anträge, Endergebnis und das Warum stehen unter einer gemeinsamen
+  Überschrift **„Verlauf & Begründung"**, und bei den ähnlichen Beschlüssen sind
+  zunächst die zwei relevantesten zu sehen. Reine Anordnung — es fehlt nichts,
+  alles ist nur dort, wo man es sucht. (#305)
+- **Beschluss-Seite: klarer, was aus dem Protokoll und was aus der Vorlage
+  stammt.** „Beschlusstext" und „Aus der Vorlage · Beschlussvorlage" standen
+  unkommentiert untereinander — die zweite Überschrift las sich, als stünde dort
+  der Beschlussvorschlag, dabei steht dort die **Vorgeschichte**. Jetzt sagt eine
+  Zeile unter jeder Überschrift, was man liest: **„Was beschlossen wurde —
+  Wortlaut aus dem Sitzungsprotokoll"** bzw. die Überschrift **„Warum es dazu
+  kam"** mit dem Zusatz „Sachverhalt und Begründung aus der Beschlussvorlage der
+  Verwaltung". Die amtlichen Begriffe bleiben also sichtbar, sind aber nicht mehr
+  der einzige Anhaltspunkt. Nebenbei entfällt in der Vorlagenart die
+  RIS-Katalog-Klammer („Berichtsvorlage (bis 31.12.2022)" → „Berichtsvorlage").
+  (#304)
 - **KI-Frage: kürzere Trefferliste.** Unter der Antwort standen bisher **alle**
   gefundenen Beschlüsse — bis zu 40 Karten, obwohl davon meist nur eine Handvoll
   in der Antwort zitiert wird. Jetzt zeigt Ratslotse standardmäßig die **acht

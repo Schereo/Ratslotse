@@ -4,7 +4,8 @@ import {Suspense, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { EntityDetail } from "@/lib/types";
+import Link from "next/link";
+import { EntityDetail, RelatedEntity } from "@/lib/types";
 import { DetailSkeleton, EmptyState } from "@/components/ui";
 import { reportBadgeEvent } from "@/components/badges";
 import { DecisionLinkCard, PartyBadge, FieldBadge, formatEuro } from "@/components/decision-ui";
@@ -18,6 +19,57 @@ const EntityMap = dynamic(() => import("@/components/entity-map").then((m) => m.
   ssr: false,
   loading: () => <div className="h-64 w-full animate-pulse rounded-lg border border-border bg-muted/40" />,
 });
+
+/** Verwandte Themen als zwei Chip-Zeilen.
+ *
+ *  Die Trennung ist keine Kosmetik: Belegte Nachbarn (gemeinsame Beschlüsse)
+ *  liegen messbar näher am Thema als die semantischen Auffüller — beides gleich
+ *  aussehen zu lassen, würde die schwächeren Treffer als gleichwertig ausgeben.
+ *  Deshalb eigene Überschrift, und die Belegzahl steht dabei. */
+function RelatedThemes({ related }: { related: RelatedEntity[] }) {
+  const proven = related.filter((r) => r.rel_type === "belegt");
+  const similar = related.filter((r) => r.rel_type !== "belegt");
+  if (proven.length === 0 && similar.length === 0) return null;
+
+  const row = (items: RelatedEntity[], heading: string, hint: string, showEvidence: boolean) =>
+    items.length === 0 ? null : (
+      <div className="mt-4">
+        <h2 className="text-sm font-semibold text-muted-foreground">
+          {heading} <span className="font-normal">· {hint}</span>
+        </h2>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {items.map((r) => {
+            const k = ENTITY_KIND[r.kind] ?? ENTITY_KIND.projekt;
+            return (
+              <Link
+                key={r.slug}
+                href={themaHref(r.slug)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-sm text-foreground transition-colors hover:border-primary/40 hover:bg-muted"
+              >
+                <k.Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                {r.name}
+                {showEvidence && (
+                  <span
+                    className="text-xs tabular-nums text-muted-foreground"
+                    title={`${r.evidence} gemeinsame ${r.evidence === 1 ? "Beschluss" : "Beschlüsse"}`}
+                  >
+                    {r.evidence}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+    );
+
+  return (
+    <div className="mt-6">
+      {row(proven, "Hängt zusammen mit", "gemeinsam behandelt", true)}
+      {row(similar, "Thematisch ähnlich", "inhaltlich verwandt", false)}
+    </div>
+  );
+}
 
 function EntityInner() {
   const slug = useSearchParams().get("slug");
@@ -80,6 +132,8 @@ function EntityInner() {
           {data.parties.map((p) => <PartyBadge key={p} party={p} />)}
         </div>
       )}
+
+      <RelatedThemes related={data.related ?? []} />
 
       <h2 className="mt-7 text-sm font-semibold text-muted-foreground">Beschlüsse zu diesem Thema</h2>
       <div className="mt-3 space-y-2">

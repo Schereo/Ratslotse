@@ -364,6 +364,20 @@ class CouncilStore:
             "CREATE INDEX IF NOT EXISTS idx_entalias_canon "
             "ON council_entity_aliases(canonical_slug)"
         )
+        # Related entities ("Hängt zusammen mit…") — precomputed by council.related
+        # via scripts/build_entity_relations.py. rel_type separates the two sources:
+        # 'belegt' = co-occurrence in shared decisions (evidence = how many),
+        # 'aehnlich' = embedding neighbour used only to fill up to top-K. Keyed by
+        # *slug* (like council_entity_meta) so it survives the entity rebuild.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_entity_related ("
+            "slug TEXT NOT NULL, neighbor_slug TEXT NOT NULL, rel_type TEXT NOT NULL, "
+            "rank INTEGER NOT NULL, score REAL NOT NULL, evidence INTEGER NOT NULL DEFAULT 0, "
+            "PRIMARY KEY (slug, neighbor_slug))"
+        )
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_entrelated_slug ON council_entity_related(slug, rank)"
+        )
         # Vorlagen full text (council.vorlagen): the Sachverhalt/Begründung behind a
         # decision. Keyed by kvonr (the SessionNet document id); vorlage_nr is the
         # human number ("26/0330") decisions/agenda items reference.
@@ -2322,14 +2336,14 @@ class CouncilStore:
                 "ON CONFLICT(slug) DO UPDATE SET description = excluded.description", rows)
         return len(rows)
 
-    # --- entity duplicates (council.aliases) ---------------------------------
+    # --- entity duplicates (council.aliases) + related entities (council.related) ---
     def entity_rows(self) -> list[dict]:
-        """All entities (id/slug/name/kind/n) — input for the backfills."""
+        """All entities (id/slug/name/kind/n) — input for both backfills."""
         return [dict(r) for r in self._conn.execute(
             "SELECT id, slug, name, kind, n FROM council_entities")]
 
     def entity_link_rows(self) -> list[tuple]:
-        """All (entity_id, decision_id) links — input for the backfills."""
+        """All (entity_id, decision_id) links — input for both backfills."""
         return [(r["entity_id"], r["decision_id"]) for r in self._conn.execute(
             "SELECT entity_id, decision_id FROM council_entity_links")]
 
@@ -2380,6 +2394,41 @@ class CouncilStore:
     def known_entity_slugs(self) -> set[str]:
         """Every slug ever observed — the alias targets must exist among these."""
         return {r[0] for r in self._conn.execute("SELECT DISTINCT slug FROM council_entity_obs")}
+
+    def decision_texts(self) -> list[dict]:
+        """(id, text) per decision for the text match — title + Beschluss + summary."""
+        rows = self._conn.execute(
+            "SELECT id, title, beschluss, summary FROM council_decisions").fetchall()
+        return [{"id": r["id"],
+                 "text": " ".join(x for x in (r["title"], r["beschluss"], r["summary"]) if x)}
+                for r in rows]
+
+    def committee_names(self) -> set[str]:
+        """Lower-cased committee names — used to keep bodies out of the topic graph."""
+        return {(r[0] or "").strip().lower()
+                for r in self._conn.execute("SELECT name FROM committees") if r[0]}
+
+    def save_entity_relations(self, rows: list[tuple]) -> int:
+        """Replace all related-entity rows.
+
+        ``rows`` = (slug, neighbor_slug, rel_type, rank, score, evidence).
+        """
+        with self._conn:
+            self._conn.execute("DELETE FROM council_entity_related")
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_entity_related "
+                "(slug, neighbor_slug, rel_type, rank, score, evidence) VALUES (?,?,?,?,?,?)", rows)
+        return len(rows)
+
+    def related_entities(self, slug: str, limit: int = 5) -> list[dict]:
+        """Neighbours of an entity, proven ones first (rank order from the backfill)."""
+        rows = self._conn.execute(
+            """SELECT r.neighbor_slug AS slug, e.name, e.kind, e.n,
+                      r.rel_type, r.score, r.evidence
+               FROM council_entity_related r
+               JOIN council_entities e ON e.slug = r.neighbor_slug
+               WHERE r.slug = ? ORDER BY r.rank LIMIT ?""", (slug, limit)).fetchall()
+        return [dict(r) for r in rows]
 
     def entities_to_geocode(self) -> list[dict]:
         """Place/street/area entities not yet geocoded — for the geocode backfill."""
