@@ -8,6 +8,19 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Behoben
+- **Die Wichtigkeits-Karte rechnet jetzt vor, wie sie auf ihren Wert kommt.**
+  Aufgeklappt erklärten die vier Balken (Geldbetrag, Umstrittenheit,
+  Verbindlichkeit, Beratungsaufwand) nur die **halbe** Miete: Seit die KI die
+  **Tragweite** bewertet, ist der angezeigte Wert das Mittel aus beidem — die
+  Tragweite selbst war aber unsichtbar und im Erklärtext nicht mal erwähnt. Bei
+  einem Beschluss mit „60/100" und zwei Balken auf „keine Daten" ging die
+  Rechnung für Leser:innen schlicht nicht auf. Jetzt trägt jeder Balken seinen
+  **Punkte-Beitrag** (z. B. „+52"), darunter stehen **„Aus den Ratsdaten"**,
+  **„Tragweite (KI-Einschätzung)"** und das **Mittel aus beiden** — die Spalte
+  addiert sich sichtbar zum Endwert. Ergänzt um den Hinweis, dass fehlende
+  Angaben **nicht als null** zählen, sondern aus der Gewichtung fallen (deshalb
+  kann ein Beschluss mit zwei fehlenden Signalen trotzdem hoch liegen).
+  (#290)
 - **Teilabstimmungen zeigen wieder, was beantragt wurde.** Auf der Beschluss-Seite
   stand unter „Anträge & Teilabstimmungen" nur, *wer* einen Änderungsantrag
   gestellt hat — nicht, *was* er ändern sollte. Der Antragstext wurde aus dem

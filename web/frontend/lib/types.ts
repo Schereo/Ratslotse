@@ -253,9 +253,16 @@ export interface Beratung {
 }
 
 export interface ImportanceBreakdown {
+  /** Endwert: Mittel aus `base_score` und `impact` (oder `base_score` allein). */
   score: number;
+  /** Heuristik allein (die vier Signale) — vor der Mischung mit der Tragweite. */
+  base_score?: number;
+  /** RL-U16: KI-Tragweite 0–100 (fehlt, solange der Backfill sie nicht hat). */
+  impact?: number | null;
   /** 0–1 je Signal, null wenn das Signal für diesen Beschluss fehlt. */
   signals: { geld: number | null; umstritten: number | null; verbindlich: number | null; aufwand: number | null };
+  /** Gewichteter Punkte-Beitrag je Signal; Summe = `base_score`. */
+  contributions?: { geld: number | null; umstritten: number | null; verbindlich: number | null; aufwand: number | null };
   /** RL-U16: 1-Satz-Begründung des Tragweite-Scores (fehlt vor dem Backfill). */
   impact_reason?: string | null;
 }

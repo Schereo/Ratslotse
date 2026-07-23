@@ -112,9 +112,30 @@ def _effort_signal(n_beratungen: int | None) -> float | None:
     return min(1.0, (n_beratungen - 1) / 5.0)  # 6+ Stationen → Vollausschlag
 
 
+def _contributions(parts: dict[str, tuple[float, float | None]], total_w: float,
+                   score: int) -> dict[str, int | None]:
+    """Punkte-Beitrag je vorhandenem Signal (0–100), **Summe = ``score``**.
+
+    Die UI addiert diese Zahlen sichtbar zum Heuristik-Score — deshalb wird der
+    Rundungsrest nach dem Größte-Reste-Verfahren verteilt statt jeden Beitrag
+    einzeln zu runden (sonst ergäbe die angezeigte Spalte mal 80, mal 82)."""
+    raw = {k: 100.0 * w * s / total_w for k, (w, s) in parts.items() if s is not None}
+    out = {k: int(v) for k, v in raw.items()}
+    rest = score - sum(out.values())
+    if rest > 0:
+        # Signale mit dem größten abgeschnittenen Rest bekommen den Punkt zuerst.
+        for k in sorted(raw, key=lambda k: raw[k] - out[k], reverse=True)[:rest]:
+            out[k] += 1
+    return {k: out.get(k) if s is not None else None for k, (_, s) in parts.items()}
+
+
 def importance_breakdown(decision: dict, n_beratungen: int | None = None) -> dict:
     """Einzelbeiträge (0–1 je vorhandenem Signal) + Gesamtscore (0–100).
-    Fehlende Signale sind ``None`` und fallen aus der Gewichtung."""
+    Fehlende Signale sind ``None`` und fallen aus der Gewichtung.
+
+    ``contributions`` gibt zusätzlich den **gewichteten Punkte-Beitrag** je
+    Signal (Summe = ``score``), damit die Beschluss-Seite die Rechnung zeigen
+    kann statt nur nackte Balken."""
     parts = {
         "geld": (_W_MONEY, _money_signal(decision.get("amount_eur"))),
         "umstritten": (_W_CONTENTION, _contention_signal(
@@ -126,10 +147,11 @@ def importance_breakdown(decision: dict, n_beratungen: int | None = None) -> dic
     }
     present = [(w, s) for w, s in parts.values() if s is not None]
     total_w = sum(w for w, _ in present) or 1.0
-    score = sum(w * s for w, s in present) / total_w
+    score = round(100 * sum(w * s for w, s in present) / total_w)
     return {
-        "score": round(100 * score),
+        "score": score,
         "signals": {k: (round(s, 3) if s is not None else None) for k, (_, s) in parts.items()},
+        "contributions": _contributions(parts, total_w, score),
     }
 
 
