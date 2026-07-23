@@ -7,7 +7,22 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert
+- **KI-Frage: kürzere Trefferliste.** Unter der Antwort standen bisher **alle**
+  gefundenen Beschlüsse — bis zu 40 Karten, obwohl davon meist nur eine Handvoll
+  in der Antwort zitiert wird. Jetzt zeigt Ratslotse standardmäßig die **acht
+  relevantesten plus alle zitierten** (die bleiben immer sichtbar, egal wie weit
+  hinten sie stehen); der Rest kommt per **„Alle N anzeigen"**. Die Reihenfolge
+  bleibt unverändert, und die Fußnoten in der Antwort springen weiterhin
+  zuverlässig zur richtigen Quelle — auch wenn sie eingeklappt wäre. (#PR)
+
 ### Behoben
+- **KI-Frage: Quellenangaben werden wieder zuverlässig erkannt.** Hängte die KI
+  Zusatzangaben in eine Quellenklammer („[8525, 20.04.2026, Tragweite: hoch]"),
+  erkannte Ratslotse das nicht als Quellenangabe: Die Fußnote fehlte, und die
+  rohe Klammer stand mitten im Antworttext. Jetzt zählt in solchen Fällen die
+  erste Zahl als Quelle, der Rest verschwindet aus der Anzeige — und die KI wird
+  ausdrücklich angewiesen, nur die Nummer in die Klammer zu setzen. (#PR)
 - **KI-Frage: Weiterfragen sind sofort sichtbar.** Die Anschlussfragen standen
   **hinter** der Liste der gefundenen Beschlüsse — bei einer breiten Frage sind
   das schnell Dutzende Karten, die man erst durchscrollen musste, bevor die

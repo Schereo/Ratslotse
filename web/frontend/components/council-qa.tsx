@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Sparkles, Send, Loader2 } from "lucide-react";
+import { Sparkles, Send, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { Mascot } from "@/components/mascot";
 import { QaSource } from "@/lib/types";
 import { apiUrl, authHeaders } from "@/lib/api";
@@ -11,6 +11,35 @@ import { Button, Card, Input, toast } from "@/components/ui";
 import { DecisionLinkCard } from "@/components/decision-ui";
 import { cn } from "@/lib/utils";
 import { reportBadgeEvent } from "@/components/badges";
+
+// Zitat-Klammern im Antworttext. Spiegelt council/qa.py (_CITE_RE /
+// citation_ids) — beide Seiten MÜSSEN dieselbe Regel anwenden, sonst laufen
+// Fußnoten-Nummerierung und die vom Server gemeldeten `cited` auseinander.
+// Muss mit einer Ziffer beginnen, damit normaler Klammertext („[siehe oben]")
+// unangetastet bleibt.
+// Bewusst OHNE Capture-Group: sonst schöbe String.split die inneren Gruppen als
+// eigene Teile ins Ergebnis, und der Klammerinhalt landete doppelt im Text.
+const CITE_SOURCE = String.raw`\[\d[^\]\n]{0,160}\]`;
+const CITE_RE = new RegExp(CITE_SOURCE, "g");
+/** Fürs Zerlegen des Fließtexts: dieselbe Klammer, als Ganzes gefangen. */
+const CITE_SPLIT_RE = new RegExp(`(${CITE_SOURCE})`, "g");
+const CITE_EXACT_RE = new RegExp(`^${CITE_SOURCE}$`);
+
+/** Beschluss-ids aus einer Zitat-Klammer (inklusive der eckigen Klammern).
+ *  Rein numerisch → alle ids ([12, 13]); sonst nur die führende Zahl — das
+ *  Modell hängt trotz Prompt-Regel gern Datum oder Tragweite an
+ *  ("[8525, 2026-04-20, Tragweite: hoch]"), und aus dem Datum würde sonst die
+ *  Geister-id 2026, die zufällig einen ganz anderen Beschluss trifft. */
+function citationIds(bracket: string): number[] {
+  const inner = bracket.slice(1, -1);
+  if (/^[\d,\s]+$/.test(inner)) return (inner.match(/\d+/g) ?? []).map(Number);
+  const m = /^\s*(\d+)/.exec(inner);
+  return m ? [Number(m[1])] : [];
+}
+
+/** So viele Treffer zeigt die Belegliste standardmäßig; zitierte kommen immer
+ *  dazu, der Rest wandert hinter „Alle N anzeigen". */
+const VISIBLE_SOURCES = 8;
 
 const EXAMPLES = [
   "Was wurde zum Radverkehr beschlossen?",
@@ -60,6 +89,10 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   const [word, setWord] = useState(PLAYFUL[0]);
   // Kurzes Aufblitzen der Quelle, zu der eine Fußnote gerade gesprungen ist.
   const [flashId, setFlashId] = useState<number | null>(null);
+  // Trefferliste gekürzt (Standard) vs. vollständig; pendingJump merkt sich eine
+  // Fußnote, deren Ziel erst durch das Aufklappen ins DOM kommt.
+  const [showAllSources, setShowAllSources] = useState(false);
+  const [pendingJump, setPendingJump] = useState<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   // Eigenes Ref statt querySelector("[data-search]"): seit RL-U01 ist auch der
   // versteckte Such-Modus gemountet — dessen Feld wäre der erste Treffer.
@@ -70,20 +103,51 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   const idToNum = useMemo(() => {
     const valid = new Set(sources.map((s) => s.id));
     const map = new Map<number, number>();
-    for (const g of answer.matchAll(/\[([\d,\s]+)\]/g)) {
-      for (const n of g[1].match(/\d+/g) ?? []) {
-        const id = Number(n);
+    for (const g of answer.matchAll(CITE_RE)) {
+      for (const id of citationIds(g[0])) {
         if (valid.has(id) && !map.has(id)) map.set(id, map.size + 1);
       }
     }
     return map;
   }, [answer, sources]);
 
+  // Die Trefferliste ist standardmäßig gekürzt: Die Suche reicht bis zu 40
+  // Beschlüsse durch, von denen nur die ersten QA_ANSWER_N ins Modell gehen und
+  // typischerweise eine Handvoll zitiert wird — der lange Rest ist Beiwerk, das
+  // die Seite aufbläht. Zitierte bleiben IMMER sichtbar, egal wie weit hinten
+  // sie in der Relevanz-Reihenfolge stehen; die Reihenfolge selbst bleibt
+  // unangetastet (kein Vorziehen), damit die Liste vertraut bleibt.
+  const citedSet = useMemo(() => new Set(cited), [cited]);
+  // „Zitiert" doppelt abgesichert: idToNum kommt live aus dem Antworttext (schon
+  // während des Streamens), cited erst mit dem done-Event. Die Vereinigung hält
+  // eine zitierte Quelle in beiden Phasen sichtbar.
+  const visibleSources = useMemo(
+    () =>
+      showAllSources
+        ? sources
+        : sources.filter((s, i) => i < VISIBLE_SOURCES || citedSet.has(s.id) || idToNum.has(s.id)),
+    [sources, showAllSources, citedSet, idToNum],
+  );
+  const hiddenCount = sources.length - visibleSources.length;
+
   const jumpToSource = (id: number) => {
-    document.getElementById(`qa-source-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (!showAllSources && !visibleSources.some((s) => s.id === id)) {
+      // Ziel steckt im eingeklappten Rest — erst aufklappen, dann springen
+      // (das Element existiert im DOM erst nach dem nächsten Render).
+      setShowAllSources(true);
+      setPendingJump(id);
+    } else {
+      document.getElementById(`qa-source-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
     setFlashId(id);
     window.setTimeout(() => setFlashId((f) => (f === id ? null : f)), 1600);
   };
+
+  useEffect(() => {
+    if (pendingJump == null) return;
+    document.getElementById(`qa-source-${pendingJump}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    setPendingJump(null);
+  }, [pendingJump]);
 
   // Rotate the playful word while loading.
   useEffect(() => {
@@ -113,6 +177,8 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     setMode(null);
     setCited([]);
     setFollowups([]);
+    setShowAllSources(false);
+    setPendingJump(null);
 
     try {
       // Absolute URL + bearer in the app (no Next proxy route there); same-origin
@@ -164,7 +230,6 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   };
 
   const showIntro = !loading && !answer && sources.length === 0;
-  const citedSet = new Set(cited);
 
   return (
     <div className="mt-3 space-y-4">
@@ -308,7 +373,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             {mode ? ` · ${MODE_LABEL[mode] ?? mode}` : ""}
           </p>
           <div className="space-y-2">
-            {sources.map((s, i) => (
+            {visibleSources.map((s, i) => (
               <div
                 key={s.id}
                 id={`qa-source-${s.id}`}
@@ -334,6 +399,32 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
               </div>
             ))}
           </div>
+          {(hiddenCount > 0 || showAllSources) && (
+            <button
+              type="button"
+              onClick={() => setShowAllSources((v) => !v)}
+              aria-expanded={showAllSources}
+              className="mt-3 flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-[color,background-color,transform] duration-150 ease-out-strong hover:bg-muted hover:text-foreground active:scale-[0.97]"
+            >
+              {showAllSources ? (
+                <>
+                  <ChevronUp className="h-3.5 w-3.5" />
+                  Weniger anzeigen
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="h-3.5 w-3.5" />
+                  Alle {sources.length} anzeigen
+                </>
+              )}
+            </button>
+          )}
+          {hiddenCount > 0 && !showAllSources && (
+            <p className="mt-2 text-[11px] text-muted-foreground/70">
+              {hiddenCount === 1 ? "Ein weiterer Treffer" : `${hiddenCount} weitere Treffer`} — gefunden, aber
+              in der Antwort nicht zitiert.
+            </p>
+          )}
         </div>
       )}
     </div>
@@ -356,13 +447,15 @@ function AnswerWithCitations({
   idToNum: Map<number, number>;
   onJump: (id: number) => void;
 }) {
-  const parts = text.split(/(\[[\d,\s]+\])/g);
+  const parts = text.split(CITE_SPLIT_RE);
   return (
     <>
       {parts.map((part, i) => {
-        const m = /^\[([\d,\s]+)\]$/.exec(part);
-        if (!m) return <span key={i}>{part}</span>;
-        const ids = (m[1].match(/\d+/g) ?? []).map(Number).filter((id) => idToNum.has(id));
+        if (!CITE_EXACT_RE.test(part)) return <span key={i}>{part}</span>;
+        // Nur die id wird zur Fußnote; alles, was das Modell sonst in die
+        // Klammer gepackt hat (Datum, Tragweite), fällt hier weg statt roh im
+        // Fließtext zu landen.
+        const ids = citationIds(part).filter((id) => idToNum.has(id));
         if (ids.length === 0) return null;
         return (
           <span key={i} className="whitespace-nowrap">
