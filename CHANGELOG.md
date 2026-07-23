@@ -17,6 +17,17 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Oberfläche dazu folgt separat.
 
 ### Geändert
+- **Beschluss-Seite: klarer, was aus dem Protokoll und was aus der Vorlage
+  stammt.** „Beschlusstext" und „Aus der Vorlage · Beschlussvorlage" standen
+  unkommentiert untereinander — die zweite Überschrift las sich, als stünde dort
+  der Beschlussvorschlag, dabei steht dort die **Vorgeschichte**. Jetzt sagt eine
+  Zeile unter jeder Überschrift, was man liest: **„Was beschlossen wurde —
+  Wortlaut aus dem Sitzungsprotokoll"** bzw. die Überschrift **„Warum es dazu
+  kam"** mit dem Zusatz „Sachverhalt und Begründung aus der Beschlussvorlage der
+  Verwaltung". Die amtlichen Begriffe bleiben also sichtbar, sind aber nicht mehr
+  der einzige Anhaltspunkt. Nebenbei entfällt in der Vorlagenart die
+  RIS-Katalog-Klammer („Berichtsvorlage (bis 31.12.2022)" → „Berichtsvorlage").
+  (#PR)
 - **KI-Frage: kürzere Trefferliste.** Unter der Antwort standen bisher **alle**
   gefundenen Beschlüsse — bis zu 40 Karten, obwohl davon meist nur eine Handvoll
   in der Antwort zitiert wird. Jetzt zeigt Ratslotse standardmäßig die **acht
