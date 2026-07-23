@@ -542,17 +542,38 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         c["vorlage_excerpt"] = vorlagen_mod.excerpt(t, 350)
             except Exception:  # noqa: BLE001
                 pass
-            parts: list[str] = []
+            # Der Antworttext wird live gestreamt, die angehängten Folgefragen
+            # (24a) dürfen dabei NICHT als Text erscheinen. Deshalb halten wir
+            # stets die letzten len(MARKER) Zeichen zurück: so kann ein über
+            # mehrere Deltas verteilter Marker nie durchrutschen.
+            marker = qa.FOLLOWUP_MARKER
+            buf, sent = "", 0
             try:
                 for delta in qa.answer_stream(q, ctx):
-                    parts.append(delta)
-                    yield _sse({"type": "token", "text": delta})
+                    buf += delta
+                    cut = buf.find(marker)
+                    # Vor dem Marker: senden. Ab dem Marker: nur noch sammeln
+                    # (die Vorschläge stehen dahinter — nicht abbrechen).
+                    limit = cut if cut != -1 else max(0, len(buf) - len(marker))
+                    if limit > sent:
+                        yield _sse({"type": "token", "text": buf[sent:limit]})
+                        sent = limit
+                # Ohne Marker bleibt der zurückgehaltene Rest übrig.
+                if marker not in buf and len(buf) > sent:
+                    yield _sse({"type": "token", "text": buf[sent:]})
+                    sent = len(buf)
             except Exception:  # noqa: BLE001 — streaming failed mid-way → one-shot fallback
-                if not parts:
+                if not buf:
                     ans, _ = qa.answer_question(q, ctx)
-                    parts.append(ans)
+                    buf = ans
                     yield _sse({"type": "token", "text": ans})
-            _, cited = qa.resolve_citations("".join(parts), {c["id"] for c in candidates})
+                    sent = len(ans)
+            answer_text, followups = qa.split_followups(buf)
+            if not followups:
+                followups = qa.fallback_followups(ctx)
+            if followups:
+                yield _sse({"type": "suggestions", "questions": followups})
+            _, cited = qa.resolve_citations(answer_text, {c["id"] for c in candidates})
             yield _sse({"type": "done", "cited": cited})
         except Exception:  # noqa: BLE001 — surface a terminal error to the client
             yield _sse({"type": "error", "message": "Frage fehlgeschlagen."})
