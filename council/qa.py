@@ -7,6 +7,7 @@ embedding retrieval is the planned upgrade (see council-ai-roadmap).
 """
 from __future__ import annotations
 
+import json
 import os
 import re
 
@@ -103,6 +104,94 @@ def answer_stream(question: str, candidates: list[dict], model: str = MODEL):
     job once the full text is assembled (see resolve_citations)."""
     messages, extra = _answer_messages(question, candidates)
     yield from llm.chat_stream(model=model, _feature="qa_antwort", temperature=0.2, max_tokens=600, messages=messages, **extra)
+
+
+# --- Folgefragen (Design 24a / RL-U06) --------------------------------------
+# Das Antwort-LLM hängt seine Vorschläge als letzte Zeile an (siehe Prompt
+# „qa_antwort"). Der Marker trennt sie vom Antworttext — der Router streamt
+# alles davor als Token und schneidet ab hier ab.
+FOLLOWUP_MARKER = "FOLGEFRAGEN:"
+_MAX_FOLLOWUPS = 3
+_MAX_FOLLOWUP_LEN = 90
+
+
+def split_followups(text: str) -> tuple[str, list[str]]:
+    """Antworttext und die vom Modell angehängten Folgefragen trennen.
+
+    Robust gegen ein Modell, das den Marker weglässt oder kaputtes JSON liefert:
+    dann kommt die Antwort unverändert zurück und die Fragenliste ist leer (der
+    Aufrufer nimmt dann den deterministischen Fallback).
+    """
+    idx = text.find(FOLLOWUP_MARKER)
+    if idx == -1:
+        return text.strip(), []
+    answer = text[:idx].strip()
+    tail = text[idx + len(FOLLOWUP_MARKER):].strip()
+    questions: list[str] = []
+    try:
+        start, end = tail.find("["), tail.rfind("]")
+        if start != -1 and end > start:
+            for item in json.loads(tail[start:end + 1]):
+                q = str(item).strip()
+                if q and len(q) <= _MAX_FOLLOWUP_LEN and q not in questions:
+                    questions.append(q)
+    except (ValueError, TypeError):
+        pass
+    if not questions:
+        # Kein (brauchbares) JSON — zeilenweise als Notnagel (»- Frage?«).
+        for line in tail.splitlines():
+            q = line.strip().lstrip("-•*\" ").rstrip("\",")
+            if q.endswith("?") and len(q) <= _MAX_FOLLOWUP_LEN and q not in questions:
+                questions.append(q)
+    return answer, questions[:_MAX_FOLLOWUPS]
+
+
+def fallback_followups(candidates: list[dict]) -> list[str]:
+    """Variante B: Folgefragen ohne LLM aus den gefundenen Beschlüssen ableiten.
+
+    Greift, wenn das Modell keine brauchbare Liste geliefert hat. Per
+    Konstruktion sackgassenfrei — jede Frage zielt auf etwas, das im gefundenen
+    Bestand nachweislich vorkommt.
+    """
+    from .topics import POLICY_FIELDS
+
+    out: list[str] = []
+
+    def add(q: str) -> None:
+        if q not in out and len(out) < _MAX_FOLLOWUPS:
+            out.append(q)
+
+    # 1) Umstritten? Dann ist die Abstimmung die naheliegendste Anschlussfrage.
+    for c in candidates:
+        if (c.get("gegenstimmen") or 0) > 0 and (c.get("title") or "").strip():
+            add(f"Wer stimmte gegen {_short_subject(c['title'])}?")
+            break
+    # 2) Themenfeld des Treffers — führt zu benachbarten Beschlüssen.
+    for c in candidates:
+        label = POLICY_FIELDS.get(c.get("policy_field") or "", ("",))[0]
+        if label:
+            add(f"Was wurde zuletzt zum Thema {label} beschlossen?")
+            break
+    # 3) Geld — nur wenn im Bestand tatsächlich ein Betrag steht.
+    for c in candidates:
+        if c.get("amount_eur"):
+            label = POLICY_FIELDS.get(c.get("policy_field") or "", ("",))[0]
+            add(f"Welche Beträge beschloss der Rat für {label or 'dieses Vorhaben'}?"
+                if label else "Welche größeren Beträge hat der Rat zuletzt beschlossen?")
+            break
+    # 4) Gremium als letzter Auffüller.
+    for c in candidates:
+        if (c.get("committee") or "").strip():
+            add(f"Was hat der {c['committee']} zuletzt entschieden?")
+            break
+    return out
+
+
+def _short_subject(title: str) -> str:
+    """Titel auf ein zitierfähiges Subjekt kürzen (vor dem ersten Gedankenstrich/
+    Doppelpunkt), damit die Frage nicht zur Bandwurmzeile wird."""
+    t = re.split(r"\s+[—–-]\s+|:\s+", title.strip())[0].strip()
+    return (t[:60].rstrip() + "…") if len(t) > 60 else t
 
 
 def resolve_citations(answer: str, valid: set[int]):
