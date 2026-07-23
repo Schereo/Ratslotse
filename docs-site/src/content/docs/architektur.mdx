@@ -79,23 +79,48 @@ eines Kanals, wird dieser Kanal still übersprungen.
 Zwei SQLite-Dateien: eine für Konten & Themen, eine für die Ratsdaten
 (siehe [ADR 0005](/docs/adr/0005-sqlite-fts5/)).
 
-**Konten & Themen**
+Die Trennlinie ist: **alles Nutzerbezogene** liegt in `nwz.sqlite`, **alle
+Ratsdaten** in `council.sqlite`. Deshalb liegen z. B. Themen-Treffer und
+Quiz-Antworten in der Konten-DB, obwohl sie auf Beschlüsse bzw. Fragen zeigen —
+ein Join über beide Dateien ist nicht möglich, solche Zeilen denormalisieren die
+nötigen Felder.
 
-- `web_users` — Web-Konten (E-Mail, Passwort-Hash, Rolle, Status)
-- `topics` — Themen-Watchlist pro Nutzer (`owner_id`, `name`, `description`)
-- `committee_subscriptions` — Ausschuss-Abos pro Nutzer
-- `push_tokens`, `email_verification_tokens` — App-Push & E-Mail-Verifikation
+**Konten & Nutzerdaten (`nwz.sqlite`)**
+
+- `web_users` — Konten (E-Mail, Passwort-Hash, Rolle, Status, `display_name`,
+  `delivery_channel`, `badges`, `onboarding`, `apple_sub`, `token_version`)
+- `topics`, `committee_subscriptions` — Themen-Watchlist und Ausschuss-Abos
+- `council_topic_matches`, `topic_hits_seen` — Beschluss-Treffer je Thema und
+  was davon schon gesehen wurde („Neu"-Zähler)
+- `council_agenda_matches`, `council_agenda_classified` — Tagesordnungs-Treffer
+  und bereits klassifizierte Agenden
+- `push_tokens`, `email_verification_tokens`, `password_reset_tokens` — Push und
+  E-Mail-/Passwort-Flows
+- `quiz_answers`, `quiz_ratings`, `quiz_daily`, `user_quiz_questions` — Quiz:
+  Antworten/Punkte, 👍/👎, tägliche Challenge, eigene Fragen
+- `user_activity`, `llm_usage` — Aktivitätssignale und LLM-Kostenerfassung
 - `prompts` — live editierbare Prompt-Overrides (Admin-UI)
 
 **Ratsdaten (`council.sqlite`)**
 
-- `council_sessions` — gescrapte Sitzungs-Metadaten
-- `council_agenda_items` — Tagesordnungspunkte je Sitzung
+- `council_sessions`, `council_agenda_items`, `council_scheduled_sessions` —
+  Sitzungen, Tagesordnungen und terminierte Sitzungen ohne Tagesordnung
 - `council_alerts_sent`, `committee_notifications` — Deduplizierung der Benachrichtigungen
 - `committee_summaries` — gecachte Agenda-Zusammenfassungen
 - `council_protocols`, `council_decisions`, `council_attendance`,
-  `council_vorlagen`, `council_anlagen` — Dokument-Auswertung
-  (siehe [Beschlüsse](/docs/beschluesse/))
+  `council_vorlagen`, `council_anlagen`, `council_beratungen` — Dokument-Auswertung
+  und Beratungsfolge (siehe [Beschlüsse](/docs/beschluesse/))
+- `council_persons`, `council_memberships` — Mandatsträger:innen und Gremien
+- `council_entities` (+ `_links`, `_meta`, `_obs`, `_scanned`) — erkannte Orte
+  und Projekte samt Geokoordinaten für die Stadtkarte
+- `council_embeddings`, `council_similar` — Vektoren und vorberechnete Nachbarn
+  („Ähnliche Beschlüsse", siehe [ADR 0003](/docs/adr/0003-fastembed-statt-torch/))
+- `council_field_recaps`, `council_goal_links` — Themenfeld-Rückblicke und
+  Ziele-Tracking
+- `council_fundstuecke` — kuratierte „Fundstück des Tages"-Karten
+  (siehe [Bewertungs-Scores](/docs/bewertungen/))
+- `council_quiz_questions`, `council_haushalt` — Quizfragen und Haushaltszahlen
+- `council_decisions_fts` — FTS5-Volltextindex über die Beschlüsse
 
 ---
 
@@ -109,8 +134,12 @@ idempotent und meldet Fehler per E-Mail an die Betreiber-Adresse:
 | täglich | Datenbank-Backup (rotierend, optional off-site gespiegelt) |
 | täglich | Ausschuss-Tagesordnungen zusammenfassen |
 | mehrmals täglich | Sitzungen auf Themen-Treffer prüfen (inkl. geänderter Tagesordnungen) |
-| täglich | neue Protokolle parsen, Beschlüsse klassifizieren, Vorlagen nachladen |
-| wöchentlich | LLM-/Embedding-Backfills: Entitäten, Geocoding, Ähnliche Beschlüsse, Rückblicke |
+| täglich | neue Protokolle parsen — und in einem Rutsch: Vorlagen & Anlagen nachladen, Beschlüsse klassifizieren, Beträge erkennen, „Lotti erklärt's einfach" schreiben, Tragweite und Gesprächswert bewerten, Wichtigkeit neu berechnen |
+| wöchentlich | Backfills als Auffangnetz: Entitäten & Beschreibungen, Geocoding, Embeddings/Ähnliche, Themen↔Beschlüsse, Rückblicke, Stammdaten, Scores in Tranchen, Quizfragen, Fundstücke |
+
+Der tägliche Protokoll-Lauf deckt neue Beschlüsse **tagesaktuell** ab (mit
+Obergrenzen je Lauf), der wöchentliche Lauf holt in Tranchen den Bestand nach.
+Details und Zeitpläne: [Betrieb](/docs/betrieb/).
 
 ---
 

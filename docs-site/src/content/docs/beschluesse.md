@@ -42,13 +42,19 @@ council_protocols          -- eine Zeile je verarbeitetem Protokoll
 
 council_decisions          -- eine Zeile je TOP/Beschluss
   id PK, ksinr, position, item_number, title,
+  kind, parent_item,                     -- decision | subvote (Änderungsantrag zu parent_item)
   beschluss, outcome,                    -- angenommen|abgelehnt|vertagt|zur_kenntnis|kein_beschluss
   vote,                                  -- einstimmig|mehrheitlich|null
   gegenstimmen, enthaltungen,            -- nullable INTEGER
   factions,                              -- JSON-Array (z.B. ["SPD","CDU","FDP"])
-  vorlage_nr, kvonr,                     -- Link zur Vorlage (für später)
+  vorlage_nr, kvonr,                     -- Link zur Vorlage
   raw_result,                            -- Roh-String der Abstimmung
-  importance                             -- Wichtigkeits-Score 0–100 (council/importance.py, per Backfill)
+  policy_field, policy_tags, summary,    -- Themenfeld-Klassifikation (council/topics.py)
+  amount_eur,                            -- erkannter €-Betrag (council/money.py)
+  simple_summary,                        -- „Lotti erklärt's einfach" (council/simple_summary.py)
+  importance,                            -- angezeigter Wichtigkeits-Wert 0–100 (Heuristik + Tragweite, 50/50)
+  impact, impact_reason,                 -- Tragweite 0–100 + 1-Satz-Begründung (council/impact.py)
+  interest, interest_reason              -- Gesprächswert 0–100 + Begründung (council/interest.py)
 
 council_attendance         -- eine Zeile je Person je Sitzung
   id PK, ksinr, name, party, role, note  -- role: vorsitz|mitglied|verwaltung|protokoll|gast
@@ -118,11 +124,14 @@ council_memberships        -- Gremien-Mitgliedschaften je Person
 - Kontaktdaten der Personenseiten (Adresse, Telefon, Beruf) werden bewusst
   **nicht** übernommen.
 
-### Forward-looking (vom Schema vorbereitet)
+### Anbindung an Nutzer-Themen
 
-- **`council_decision_matches`** (owner_id, topic_id, ksinr, decision_id) —
-  Beschlüsse gegen Nutzer-Themen klassifizieren (+ strenger Verify-Pass) →
-  „Beschlüsse zu deinen Themen" + Benachrichtigung.
+Beschlüsse werden gegen die Themen der Nutzer:innen klassifiziert (mit strengem
+Verify-Pass) und speisen „Beschlüsse zu deinen Themen" samt Benachrichtigung.
+Die Treffer liegen in **`council_topic_matches`** — und zwar in der **Konten-DB**
+(`nwz.sqlite`), nicht in `council.sqlite`: Sie hängen an einem Konto, die
+Ratsdaten selbst bleiben nutzerunabhängig. Welche Treffer schon gesehen wurden,
+steht in `topic_hits_seen` (Grundlage des „Neu"-Zählers).
 
 ## Pipeline
 
@@ -153,14 +162,17 @@ Die Beschluss-Detailseite zeigt Abstimmung, Anwesenheit, „Aus der Vorlage",
 das Anlagen-Dossier und Links zu den Original-PDFs; die Analyse rechnet daraus
 u. a. Erfolgsquoten je Fraktion.
 
-Der **Wichtigkeits-Score** (0–100, `council/importance.py`) ist eine bewusst
-einfache, transparente Heuristik — kein ML: Er verrechnet Geldbetrag,
-Umstrittenheit (Gegenstimmen / knappe Abstimmung), Verbindlichkeit & Gremien-
-Ebene (Satzung im Rat vs. Routine im Fachausschuss) und die Länge des
-Beratungswegs. Fehlt ein Signal (kein €-Betrag, keine Abstimmung), fällt es aus
-der Gewichtung, statt als 0 zu zählen. Die Beschluss-Seite schlüsselt auf,
-welche Signale den Score treiben. Berechnet per Backfill
-(`scripts/score_importance.py`, wöchentlich in `weekly_enrich`).
+Der angezeigte **Wichtigkeits-Wert** (0–100) entsteht aus **zwei Hälften**: einer
+regelbasierten Heuristik (`council/importance.py` — Geldbetrag, Umstrittenheit,
+Verbindlichkeit & Gremien-Ebene, Länge des Beratungswegs) und der per LLM
+bewerteten **Tragweite** (`council/impact.py`). Beide werden 50/50 gemischt,
+sobald die Tragweite vorliegt. Fehlt ein Heuristik-Signal (kein €-Betrag, keine
+Abstimmung), fällt es aus der Gewichtung, statt als 0 zu zählen — die übrigen
+Signale tragen dann entsprechend mehr. Die Beschluss-Seite schlüsselt beides
+auf: den Punkte-Beitrag je Signal, die Tragweite mit ihrer Ein-Satz-Begründung
+(„Warum wichtig: …") und den Mittelwert daraus.
+
+Details, Gewichte und Rechenbeispiele: [Bewertungs-Scores](/docs/bewertungen/).
 
 ## Ausbau-Stand
 

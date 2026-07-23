@@ -31,9 +31,10 @@ _W_CONTENTION = 0.24
 _W_BINDING = 0.22
 _W_EFFORT = 0.20
 
-# 50 Mio € → Vollausschlag des Geld-Signals (log-skaliert: 5.000 € ≈ 0.32,
-# 500.000 € ≈ 0.63, 5 Mio € ≈ 0.85). Große Hochbau-/Infrastruktur-Beschlüsse
-# liegen im zweistelligen Millionenbereich.
+# 50 Mio € → Vollausschlag des Geld-Signals (log-skaliert: 5.000 € ≈ 0.48,
+# 500.000 € ≈ 0.74, 5 Mio € ≈ 0.87). Große Hochbau-/Infrastruktur-Beschlüsse
+# liegen im zweistelligen Millionenbereich. Die Kurve ist bewusst flach: schon
+# fünfstellige Beträge zählen spürbar, sonst dominierten nur Großprojekte.
 _MONEY_CAP = 50_000_000.0
 
 # Schlagworte, die auf einen verbindlichen/gewichtigen Beschluss deuten

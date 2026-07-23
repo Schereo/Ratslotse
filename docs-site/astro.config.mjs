@@ -22,17 +22,27 @@ export default defineConfig({
 			pagination: true,
 			sidebar: [
 				{ label: '↩ Zurück zur App', link: 'https://ratslotse.de/dashboard' },
-				{ label: 'Architektur', items: [{ slug: 'architektur' }] },
+				{
+					label: 'Architektur',
+					items: [
+						{ slug: 'architektur' },
+						{ slug: 'betrieb' },
+					],
+				},
 				{
 					label: 'KI & Qualität',
 					items: [
 						{ slug: 'ki-pipeline' },
+						{ slug: 'bewertungen' },
 						{ slug: 'eval' },
 					],
 				},
 				{
 					label: 'Produkt',
-					items: [{ slug: 'beschluesse' }],
+					items: [
+						{ slug: 'beschluesse' },
+						{ slug: 'app-und-konten' },
+					],
 				},
 				{
 					label: 'Entscheidungen (ADRs)',
