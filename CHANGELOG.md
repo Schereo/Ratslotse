@@ -7,6 +7,17 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Behoben
+- **Konto löschen entfernt jetzt wirklich alle Daten.** Beim Löschen eines
+  Kontos blieben Daten zurück, die daran hingen: **Gerätetokens** für Push, alle
+  Quiz-Daten (Antworten, Bewertungen, Tagesserie, eigene Fragen), die Merker für
+  gesehene Themen-Treffer, die Treffer selbst sowie das Aktivitätsprotokoll.
+  Gelöscht wurden nur sechs von sechzehn betroffenen Tabellen — der Rest war
+  über die Zeit dazugekommen, ohne beim Löschen berücksichtigt zu werden. Jetzt
+  wird alles abgeräumt. Damit das so bleibt, prüft ein Test die Liste gegen die
+  Datenbank: Kommt künftig eine neue nutzerbezogene Tabelle dazu, schlägt er
+  fehl, bis sie eingetragen ist. (#296)
+
 ### Geändert
 - **„Wichtigste zuerst" zeigt jetzt Wichtiges aus der letzten Zeit.** Bisher
   sortierte die Beschluss-Suche stur nach dem Wichtigkeits-Wert — und der ist
