@@ -27,7 +27,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   werden drei. Anträge, Endergebnis und das Warum stehen unter einer gemeinsamen
   Überschrift **„Verlauf & Begründung"**, und bei den ähnlichen Beschlüssen sind
   zunächst die zwei relevantesten zu sehen. Reine Anordnung — es fehlt nichts,
-  alles ist nur dort, wo man es sucht. (#PR)
+  alles ist nur dort, wo man es sucht. (#305)
 - **Beschluss-Seite: klarer, was aus dem Protokoll und was aus der Vorlage
   stammt.** „Beschlusstext" und „Aus der Vorlage · Beschlussvorlage" standen
   unkommentiert untereinander — die zweite Überschrift las sich, als stünde dort
