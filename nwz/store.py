@@ -292,6 +292,31 @@ CREATE TABLE IF NOT EXISTS job_runs (
 CREATE INDEX IF NOT EXISTS idx_job_runs_job ON job_runs(job, started_at DESC);
 """
 
+# Alle Tabellen, die an einem Konto hängen — Grundlage von `delete_web_user`
+# (DSGVO Art. 17, Recht auf Löschung). Die Liste steht bewusst explizit hier
+# statt zur Laufzeit aus dem Schema geraten zu werden; damit sie vollständig
+# BLEIBT, prüft `test_delete_web_user_covers_every_user_table` sie gegen das
+# Schema. Wer eine neue nutzerbezogene Tabelle anlegt, trägt sie hier ein —
+# sonst schlägt der Test fehl und nennt die fehlende Tabelle.
+USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
+    ("topics", "owner_id"),
+    ("committee_subscriptions", "owner_id"),
+    ("topic_hits_seen", "owner_id"),
+    ("council_topic_matches", "owner_id"),
+    ("council_agenda_matches", "owner_id"),
+    ("council_agenda_classified", "owner_id"),
+    ("article_topic_matches", "owner_id"),
+    ("topic_classified_editions", "owner_id"),
+    ("push_tokens", "owner_id"),
+    ("quiz_answers", "owner_id"),
+    ("quiz_ratings", "owner_id"),
+    ("quiz_daily", "owner_id"),
+    ("user_quiz_questions", "owner_id"),
+    ("user_activity", "owner_id"),
+    ("password_reset_tokens", "user_id"),
+    ("email_verification_tokens", "user_id"),
+)
+
 
 @dataclass
 class SearchResult:
@@ -1010,14 +1035,15 @@ class Store:
         return int(row["user_id"])
 
     def delete_web_user(self, user_id: int) -> None:
-        """Hard-delete a web account and everything keyed to it (GDPR: right to erasure)."""
+        """Hard-delete a web account and everything keyed to it (GDPR: right to erasure).
+
+        Räumt jede Tabelle aus ``USER_OWNED_TABLES`` ab — die Liste wird von
+        einem Test gegen das Schema geprüft, damit hier nichts liegen bleibt,
+        wenn später eine nutzerbezogene Tabelle dazukommt.
+        """
         with self._conn:
-            self._conn.execute("DELETE FROM topics WHERE owner_id = ?", (user_id,))
-            self._conn.execute("DELETE FROM article_topic_matches WHERE owner_id = ?", (user_id,))
-            self._conn.execute("DELETE FROM topic_classified_editions WHERE owner_id = ?", (user_id,))
-            self._conn.execute("DELETE FROM committee_subscriptions WHERE owner_id = ?", (user_id,))
-            self._conn.execute("DELETE FROM password_reset_tokens WHERE user_id = ?", (user_id,))
-            self._conn.execute("DELETE FROM email_verification_tokens WHERE user_id = ?", (user_id,))
+            for table, column in USER_OWNED_TABLES:
+                self._conn.execute(f"DELETE FROM {table} WHERE {column} = ?", (user_id,))
             self._conn.execute("DELETE FROM web_users WHERE id = ?", (user_id,))
 
     def get_topic_for_owner(self, owner_id: int, topic_id: int) -> TopicRow | None:
