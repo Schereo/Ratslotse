@@ -130,6 +130,9 @@ def test_admin_stats_growth(client):
     # Admin war in dieser Woche aktiv → letzter WAU-Balken ≥ 1.
     assert b["wau"][-1] >= 1
     assert "decisions_with_ki" in b["council"] and "last_fetch" in b["council"]
+    # Scraper-Puls und neueste Tagesordnung sind getrennte Angaben: in der
+    # sitzungsfreien Zeit läuft der Scraper weiter, ohne Sitzungen zu schreiben.
+    assert {"last_session_import", "next_session"} <= set(b["council"])
     # x-Achse: ein Datum je Punkt, jüngster Punkt = heute (Serverdatum).
     from datetime import date
     heute = date.today().isoformat()

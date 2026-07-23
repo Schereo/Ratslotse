@@ -83,6 +83,20 @@ function GrowthCard({ kicker, total, delta, series, days, color }: { kicker: str
   );
 }
 
+/** Scraper-Ampel: Läufe um 8 und 14 Uhr, also sind bis zu ~18 h Abstand normal.
+ *  Grün bis 26 h, danach ist mindestens ein Lauf ausgefallen. */
+function fetchTone(hours: number | null): string {
+  if (hours == null) return "bg-muted-foreground/40";
+  if (hours < 26) return "bg-green-500";
+  return hours < 72 ? "bg-amber-500" : "bg-red-500";
+}
+
+function fetchAge(hours: number): string {
+  if (hours < 1) return "wenigen Minuten";
+  if (hours < 48) return `${Math.round(hours)} h`;
+  return `${Math.round(hours / 24)} Tagen`;
+}
+
 function StatsTab() {
   const [range, setRange] = useState("90d");
   const { data, isPending, isError } = useQuery({
@@ -139,12 +153,22 @@ function StatsTab() {
                 <span className="font-display text-base font-bold tabular-nums text-foreground">{(val as number).toLocaleString("de-DE")}</span>
               </div>
             ))}
-            <div className="mt-1 flex items-center gap-2 border-t border-border pt-2.5">
-              <span className={cn("h-2 w-2 shrink-0 rounded-full", c.fetched_today > 0 ? "bg-green-500" : "bg-muted-foreground/40")} />
-              <span className="text-xs text-muted-foreground">
-                {c.last_fetch ? `Letzter Import: ${formatDate(c.last_fetch.slice(0, 10))}` : "Noch kein Import"}
-                {c.fetched_today > 0 && ` · ${c.fetched_today} heute`}
-              </span>
+            <div className="mt-1 space-y-1.5 border-t border-border pt-2.5">
+              <div className="flex items-center gap-2">
+                <span className={cn("h-2 w-2 shrink-0 rounded-full", fetchTone(c.hours_since_fetch))} />
+                <span className="text-xs text-muted-foreground">
+                  {c.last_fetch ? `Letzter Scraper-Lauf: ${formatDate(c.last_fetch.slice(0, 10))}` : "Noch kein Lauf"}
+                  {c.hours_since_fetch != null && ` · vor ${fetchAge(c.hours_since_fetch)}`}
+                </span>
+              </div>
+              {/* Getrennt ausweisen: in der sitzungsfreien Zeit stockt die
+                  Tagesordnung, während der Scraper weiterläuft. */}
+              <p className="pl-4 text-xs text-muted-foreground">
+                {c.last_session_import
+                  ? `Neueste Tagesordnung: ${formatDate(c.last_session_import.slice(0, 10))}`
+                  : "Noch keine Tagesordnung"}
+                {c.next_session && ` · nächste Sitzung ${formatDate(c.next_session)}`}
+              </p>
             </div>
           </div>
         </Card>

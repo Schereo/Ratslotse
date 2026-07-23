@@ -409,7 +409,10 @@ export interface AdminGrowth {
   wau_days: string[];
   council: {
     sessions: number; upcoming: number; agenda_items: number; committees: number;
-    decisions: number; decisions_with_ki: number; last_fetch: string | null; fetched_today: number;
+    decisions: number; decisions_with_ki: number; fetched_today: number;
+    /** Puls des Scrapers (auch ohne neue Sitzung) vs. neueste Tagesordnung. */
+    last_fetch: string | null; hours_since_fetch: number | null;
+    last_session_import: string | null; next_session: string | null;
   };
 }
 
