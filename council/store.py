@@ -348,6 +348,22 @@ class CouncilStore:
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS council_entity_scanned (decision_id INTEGER PRIMARY KEY)"
         )
+        # Entity duplicates (council.aliases): the NER names the same thing differently
+        # from batch to batch ("Bäderbetrieb Oldenburg" / "Bäderbetrieb der Stadt
+        # Oldenburg"), producing several Themen pages for one subject. This maps the
+        # alias slug onto the canonical one; rebuild_entities_from_obs applies it when
+        # deriving council_entities. Keyed by *slug* (like council_entity_meta) so it
+        # survives the rebuild. Reversible: the raw council_entity_obs stay untouched,
+        # so deleting a row and re-deriving restores the previous state.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_entity_aliases ("
+            "slug TEXT PRIMARY KEY, canonical_slug TEXT NOT NULL, source TEXT NOT NULL, "
+            "reason TEXT, created_at TEXT NOT NULL)"
+        )
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_entalias_canon "
+            "ON council_entity_aliases(canonical_slug)"
+        )
         # Vorlagen full text (council.vorlagen): the Sachverhalt/Begründung behind a
         # decision. Keyed by kvonr (the SessionNet document id); vorlage_nr is the
         # human number ("26/0330") decisions/agenda items reference.
@@ -2055,17 +2071,40 @@ class CouncilStore:
     def rebuild_entities_from_obs(self, min_n: int = 2) -> tuple[int, int]:
         """Re-derive council_entities + links from the raw observations, keeping slugs
         seen in >= min_n distinct decisions (most frequent name/kind spelling wins).
-        Cheap — no LLM — so it runs after every incremental NER pass."""
+        Cheap — no LLM — so it runs after every incremental NER pass.
+
+        Confirmed duplicates (council_entity_aliases) are folded into their canonical
+        slug here, so one subject yields one Themen page with all its decisions and
+        money. Name/kind are taken from the canonical slug's own observations — an
+        alias must not outvote the canonical spelling. Since the observations stay
+        untouched, removing an alias row and re-deriving undoes the merge.
+        """
         from collections import Counter, defaultdict
+        alias_map = self.entity_aliases()
         names: dict = defaultdict(Counter)
         kinds: dict = defaultdict(Counter)
         dec_ids: dict = defaultdict(set)
         for did, slug, name, kind in self._conn.execute(
                 "SELECT decision_id, slug, name, kind FROM council_entity_obs"):
-            names[slug][name] += 1
+            canon = alias_map.get(slug, slug)
+            dec_ids[canon].add(did)
+            if canon != slug:
+                continue          # Anzeigename kommt vom Kanon, nicht vom Alias
+            names[canon][name] += 1
             if kind:
-                kinds[slug][kind] += 1
-            dec_ids[slug].add(did)
+                kinds[canon][kind] += 1
+        # Sonderfall: der Kanon selbst wurde nie beobachtet (nur seine Aliasse) —
+        # dann darf die Gruppe nicht namenlos verschwinden.
+        for canon in list(dec_ids):
+            if names[canon]:
+                continue
+            for slug, target in alias_map.items():
+                if target == canon:
+                    for name, kind in self._conn.execute(
+                            "SELECT name, kind FROM council_entity_obs WHERE slug = ?", (slug,)):
+                        names[canon][name] += 1
+                        if kind:
+                            kinds[canon][kind] += 1
         ent_rows, link_rows = [], []
         for slug, ids in dec_ids.items():
             if len(ids) < min_n:
@@ -2180,11 +2219,24 @@ class CouncilStore:
             (decision_id,))]
 
     def entity_detail(self, slug: str) -> dict | None:
-        """An entity with all its decisions (newest first) and aggregates."""
+        """An entity with all its decisions (newest first) and aggregates.
+
+        A slug merged away as a duplicate resolves to its canonical entity, so links
+        and bookmarks from before the merge keep working instead of 404-ing. The
+        result carries ``merged_from`` in that case, for a redirect in the UI.
+        """
         from collections import Counter
 
         ent = self._conn.execute(
             "SELECT id, slug, name, kind, n FROM council_entities WHERE slug = ?", (slug,)).fetchone()
+        merged_from = None
+        if not ent:
+            canonical = self.entity_aliases().get(slug)
+            if canonical:
+                ent = self._conn.execute(
+                    "SELECT id, slug, name, kind, n FROM council_entities WHERE slug = ?",
+                    (canonical,)).fetchone()
+                merged_from = slug
         if not ent:
             return None
         rows = self._conn.execute(
@@ -2224,7 +2276,20 @@ class CouncilStore:
             "money": round(money) if money else 0,
             "parties": parties,
             "fields": [{"field": f, "n": c} for f, c in fieldc.most_common()],
+            "merged_from": merged_from,
         }
+
+    def entity_titles(self, limit: int = 3) -> dict[int, list[str]]:
+        """A few decision titles per entity — grounding context for the duplicate check."""
+        from collections import defaultdict
+        out: dict[int, list[str]] = defaultdict(list)
+        for r in self._conn.execute(
+                """SELECT el.entity_id AS eid, d.title FROM council_entity_links el
+                   JOIN council_decisions d ON d.id = el.decision_id
+                   WHERE d.title IS NOT NULL AND d.title <> ''"""):
+            if len(out[r["eid"]]) < limit:
+                out[r["eid"]].append(r["title"])
+        return dict(out)
 
     def entities_without_description(self) -> list[dict]:
         """Entities still lacking an LLM description, most-decisions first — for the
@@ -2256,6 +2321,65 @@ class CouncilStore:
                 "INSERT INTO council_entity_meta(slug, description) VALUES (?, ?) "
                 "ON CONFLICT(slug) DO UPDATE SET description = excluded.description", rows)
         return len(rows)
+
+    # --- entity duplicates (council.aliases) ---------------------------------
+    def entity_rows(self) -> list[dict]:
+        """All entities (id/slug/name/kind/n) — input for the backfills."""
+        return [dict(r) for r in self._conn.execute(
+            "SELECT id, slug, name, kind, n FROM council_entities")]
+
+    def entity_link_rows(self) -> list[tuple]:
+        """All (entity_id, decision_id) links — input for the backfills."""
+        return [(r["entity_id"], r["decision_id"]) for r in self._conn.execute(
+            "SELECT entity_id, decision_id FROM council_entity_links")]
+
+    def entity_aliases(self) -> dict[str, str]:
+        """{alias slug -> canonical slug}, chains resolved and cycles dropped."""
+        from council.aliases import resolve_chains
+        raw = {r["slug"]: r["canonical_slug"] for r in self._conn.execute(
+            "SELECT slug, canonical_slug FROM council_entity_aliases")}
+        return resolve_chains(raw)
+
+    def list_entity_aliases(self) -> list[dict]:
+        """All merges with both display names — for the admin list.
+
+        The alias itself no longer exists in council_entities after the rebuild, so
+        its name comes from the raw observations.
+        """
+        rows = self._conn.execute(
+            """SELECT a.slug, a.canonical_slug, a.source, a.reason, a.created_at,
+                      (SELECT name FROM council_entity_obs o WHERE o.slug = a.slug LIMIT 1) AS alias_name,
+                      (SELECT name FROM council_entities e WHERE e.slug = a.canonical_slug) AS canonical_name,
+                      (SELECT n FROM council_entities e WHERE e.slug = a.canonical_slug) AS canonical_n
+               FROM council_entity_aliases a ORDER BY a.created_at DESC, a.slug""").fetchall()
+        return [dict(r) for r in rows]
+
+    def save_entity_aliases(self, rows: list[tuple], replace: bool = False) -> int:
+        """Upsert merges. ``rows`` = (slug, canonical_slug, source, reason, created_at).
+
+        Manual decisions win: an automatic run never overwrites source='manuell'.
+        """
+        with self._conn:
+            if replace:
+                self._conn.execute("DELETE FROM council_entity_aliases WHERE source <> 'manuell'")
+            self._conn.executemany(
+                "INSERT INTO council_entity_aliases "
+                "(slug, canonical_slug, source, reason, created_at) VALUES (?,?,?,?,?) "
+                "ON CONFLICT(slug) DO UPDATE SET "
+                "  canonical_slug = excluded.canonical_slug, source = excluded.source, "
+                "  reason = excluded.reason, created_at = excluded.created_at "
+                "WHERE council_entity_aliases.source <> 'manuell'", rows)
+        return len(rows)
+
+    def delete_entity_alias(self, slug: str) -> bool:
+        """Undo one merge. The entity reappears on the next rebuild from observations."""
+        with self._conn:
+            cur = self._conn.execute("DELETE FROM council_entity_aliases WHERE slug = ?", (slug,))
+        return cur.rowcount > 0
+
+    def known_entity_slugs(self) -> set[str]:
+        """Every slug ever observed — the alias targets must exist among these."""
+        return {r[0] for r in self._conn.execute("SELECT DISTINCT slug FROM council_entity_obs")}
 
     def entities_to_geocode(self) -> list[dict]:
         """Place/street/area entities not yet geocoded — for the geocode backfill."""

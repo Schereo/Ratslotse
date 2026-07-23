@@ -551,3 +551,16 @@ export interface QuizFlagged {
   options: string[];
   correct_index: number;
 }
+
+/** Eine zusammengeführte Themen-Dublette (Admin). `alias_name` stammt aus den
+ *  Roh-Beobachtungen — das Thema selbst gibt es nach dem Zusammenführen nicht mehr. */
+export interface EntityAlias {
+  slug: string;
+  canonical_slug: string;
+  source: "llm" | "manuell" | string;
+  reason: string | null;
+  created_at: string;
+  alias_name: string | null;
+  canonical_name: string | null;
+  canonical_n: number | null;
+}

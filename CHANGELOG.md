@@ -7,6 +7,16 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt
+- **Doppelte Themen werden zusammengeführt.** Die Themen-Erkennung benannte
+  dieselbe Sache je nach Beschluss unterschiedlich, sodass es den Bäderbetrieb
+  unter vier Namen gab und die Gebäudewirtschaft unter drei — mit auf mehrere
+  Seiten verteilten Beschlüssen und Beträgen. Ein neuer Lauf
+  (`scripts/merge_entity_aliases.py`) findet solche Dubletten und führt die vom
+  Sprachmodell bestätigten zusammen; alte Links landen weiterhin beim richtigen
+  Thema. Im Admin-Panel unter „Themen-Dubletten“ lässt sich jede Zusammenführung
+  einzeln nachvollziehen und wieder auflösen.
+
 ### Geändert
 - **KI-Frage: kürzere Trefferliste.** Unter der Antwort standen bisher **alle**
   gefundenen Beschlüsse — bis zu 40 Karten, obwohl davon meist nur eine Handvoll

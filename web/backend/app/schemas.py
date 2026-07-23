@@ -89,6 +89,26 @@ class PromptUpdate(BaseModel):
     content: str
 
 
+class EntityAliasIn(BaseModel):
+    """Zwei Themen von Hand zusammenführen (Admin)."""
+    slug: str
+    canonical_slug: str
+    reason: str | None = None
+
+
+class EntityAliasOut(BaseModel):
+    """Eine Zusammenführung. ``alias_name`` stammt aus den Roh-Beobachtungen —
+    das Thema selbst existiert nach dem Zusammenführen nicht mehr eigenständig."""
+    slug: str
+    canonical_slug: str
+    source: str
+    reason: str | None = None
+    created_at: str
+    alias_name: str | None = None
+    canonical_name: str | None = None
+    canonical_n: int | None = None
+
+
 # ---- admin: web users ----
 class WebUserOut(BaseModel):
     id: int

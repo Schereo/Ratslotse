@@ -23,6 +23,7 @@ os.environ["DISABLE_RATE_LIMIT"] = "1"  # avoid state bleeding across tests
 
 from fastapi.testclient import TestClient  # noqa: E402
 from app.main import app  # noqa: E402
+from nwz import prompts  # noqa: E402
 from nwz.store import Store  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 from council.scraper import CouncilSession, AgendaItem  # noqa: E402
@@ -99,7 +100,9 @@ def test_me_requires_auth(client):
 def test_admin_prompts_crud(client):
     _register(client)
     r = client.get("/api/admin/prompts")
-    assert r.status_code == 200 and len(r.json()) == 16
+    # Gegen DEFAULTS statt gegen eine feste Zahl — sonst bricht der Test bei jedem
+    # neuen Prompt, obwohl er "liefert alle Prompts" prüfen will, nicht "es sind 16".
+    assert r.status_code == 200 and len(r.json()) == len(prompts.DEFAULTS)
     key = "council_watcher_system"
     upd = client.put(f"/api/admin/prompts/{key}", json={"content": "Angepasster Watcher-Systemprompt."})
     assert upd.status_code == 200 and upd.json()["is_overridden"] is True
@@ -1415,3 +1418,81 @@ def test_ask_stream_faellt_auf_abgeleitete_fragen_zurueck(client, monkeypatch):
     assert answer.strip() == "Antwort ohne Vorschläge [9]."
     sugg = [e for e in events if e["type"] == "suggestions"]
     assert sugg and sugg[0]["questions"][0] == "Wer stimmte gegen Sanierung Cäcilienbrücke?"
+
+
+# ---- admin: Themen-Dubletten (council.aliases) ----
+def _seed_duplicate_entities() -> None:
+    """Zwei Namen für denselben Betrieb plus ein unbeteiligtes Thema."""
+    store = CouncilStore(COUNCIL_DB)
+    store.add_entity_observations(
+        [(1, "baeder-oldenburg", "Bäderbetrieb Oldenburg", "organisation"),
+         (2, "baeder-oldenburg", "Bäderbetrieb Oldenburg", "organisation"),
+         (3, "baeder-stadt", "Bäderbetrieb der Stadt Oldenburg", "organisation"),
+         (4, "baeder-stadt", "Bäderbetrieb der Stadt Oldenburg", "organisation"),
+         (5, "fliegerhorst", "Fliegerhorst", "ort"),
+         (6, "fliegerhorst", "Fliegerhorst", "ort")],
+        [1, 2, 3, 4, 5, 6])
+    store.rebuild_entities_from_obs()
+    store.close()
+
+
+def test_admin_entity_alias_merge_and_undo(client):
+    _register(client)
+    _seed_duplicate_entities()
+
+    assert client.get("/api/admin/entity-aliases").json()["aliases"] == []
+
+    r = client.post("/api/admin/entity-aliases",
+                    json={"slug": "baeder-oldenburg", "canonical_slug": "baeder-stadt",
+                          "reason": "nur Ortszusatz"})
+    assert r.status_code == 200
+    assert r.json()["source"] == "manuell"
+    assert r.json()["canonical_name"] == "Bäderbetrieb der Stadt Oldenburg"
+
+    # Wirkung: ein Thema mit allen vier Beschlüssen statt zweier mit je zwei.
+    store = CouncilStore(COUNCIL_DB)
+    slugs = {e["slug"]: e["n"] for e in store.entity_rows()}
+    assert "baeder-oldenburg" not in slugs
+    assert slugs["baeder-stadt"] == 4
+    assert "fliegerhorst" in slugs
+    store.close()
+
+    # Rücknahme stellt den vorherigen Stand her.
+    assert client.delete("/api/admin/entity-aliases/baeder-oldenburg").status_code == 200
+    store = CouncilStore(COUNCIL_DB)
+    slugs = {e["slug"]: e["n"] for e in store.entity_rows()}
+    assert slugs["baeder-oldenburg"] == 2 and slugs["baeder-stadt"] == 2
+    store.close()
+
+
+def test_admin_entity_alias_rejects_self_and_unknown(client):
+    _register(client)
+    _seed_duplicate_entities()
+    assert client.post("/api/admin/entity-aliases",
+                       json={"slug": "fliegerhorst", "canonical_slug": "fliegerhorst"}
+                       ).status_code == 400
+    assert client.post("/api/admin/entity-aliases",
+                       json={"slug": "gibt-es-nicht", "canonical_slug": "fliegerhorst"}
+                       ).status_code == 404
+    assert client.delete("/api/admin/entity-aliases/gibt-es-nicht").status_code == 404
+
+
+def test_admin_entity_alias_rejects_cycle(client):
+    """A→B und dann B→A würde beide Themen verschwinden lassen."""
+    _register(client)
+    _seed_duplicate_entities()
+    client.post("/api/admin/entity-aliases",
+                json={"slug": "baeder-oldenburg", "canonical_slug": "baeder-stadt"})
+    r = client.post("/api/admin/entity-aliases",
+                    json={"slug": "baeder-stadt", "canonical_slug": "baeder-oldenburg"})
+    assert r.status_code == 400
+    store = CouncilStore(COUNCIL_DB)
+    assert "baeder-stadt" in {e["slug"] for e in store.entity_rows()}
+    store.close()
+
+
+def test_admin_entity_aliases_require_admin(client):
+    _register(client)
+    _register(client, email="bob@test.de")
+    client.post("/api/auth/login", json={"email": "bob@test.de", "password": "password123"})
+    assert client.get("/api/admin/entity-aliases").status_code == 403
