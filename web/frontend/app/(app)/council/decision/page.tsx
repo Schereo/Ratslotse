@@ -26,11 +26,30 @@ function MetaCard({ title, children }: { title: string; children: React.ReactNod
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+/** Vorlagenart lesbar machen: Das RIS führt die alten Arten als
+ *  „Beschlussvorlage (bis 31.12.2022)" — die Gültigkeits-Klammer ist ein
+ *  Katalog-Detail und hat in einem erklärenden Satz nichts verloren. */
+function vorlageArt(art: string | null | undefined): string {
+  return (art || "").replace(/\s*\(bis[^)]*\)\s*$/, "").trim() || "Vorlage";
+}
+
+/** `subtitle` trägt den Fachbegriff, während die Überschrift in Alltagssprache
+ *  sagt, was man hier liest — Ratsmitglieder finden den amtlichen Namen also
+ *  weiterhin, ohne dass Erstbesucher:innen über ihn stolpern. */
+function Section({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="mt-6">
       <h2 className="text-sm font-semibold text-muted-foreground">{title}</h2>
-      <div className="mt-2.5">{children}</div>
+      {subtitle && <p className="text-xs text-muted-foreground/70">{subtitle}</p>}
+      <div className={subtitle ? "mt-2" : "mt-2.5"}>{children}</div>
     </div>
   );
 }
@@ -319,7 +338,12 @@ function DecisionDetailInner() {
         <div className="min-w-0">
           {d.beschluss && (
             <div className="rounded-xl bg-[hsl(206_45%_96%)] p-4 dark:bg-muted/50">
+              {/* Der Fachbegriff bleibt die Überschrift (Ratsmitglieder suchen
+                  danach), die Zeile darunter sagt Erstbesucher:innen, was sie
+                  da lesen — und grenzt es gegen „Warum es dazu kam" ab, das aus
+                  der Vorlage stammt und oft verwechselt wurde. */}
               <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">Beschlusstext</p>
+              <p className="text-xs text-muted-foreground">Was beschlossen wurde — Wortlaut aus dem Sitzungsprotokoll</p>
               <p className="mt-1.5 text-sm leading-relaxed text-foreground">{d.beschluss}</p>
             </div>
           )}
@@ -332,8 +356,16 @@ function DecisionDetailInner() {
             </Section>
           )}
 
-      {data.vorlage?.excerpt && (
-            <Section title={`Aus der Vorlage${data.vorlage.art ? ` · ${data.vorlage.art}` : ""}`}>
+          {/* Nicht der Beschlussvorschlag, sondern Sachverhalt/Begründung aus
+              der Verwaltungsvorlage (council/vorlagen.py excerpt) — also die
+              Vorgeschichte, die im Beschlusstext selbst nicht vorkommt. Die
+              Dokumentart stand früher im Titel („Aus der Vorlage ·
+              Beschlussvorlage") und las sich, als stünde dort der Vorschlag. */}
+          {data.vorlage?.excerpt && (
+            <Section
+              title="Warum es dazu kam"
+              subtitle={`Sachverhalt und Begründung aus der ${vorlageArt(data.vorlage.art)} der Verwaltung`}
+            >
               <VorlageExcerpt text={data.vorlage.excerpt} />
             </Section>
           )}
