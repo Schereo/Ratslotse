@@ -389,12 +389,17 @@ export interface AdminUserDetail {
   topics: string[];
   abos: string[];
   verlauf: number[];
+  /** ISO-Datum je Verlaufs-Balken (x-Achse, 30 Tage). */
+  verlauf_days: string[];
 }
 
 export interface AdminGrowth {
-  users: { total: number; series: number[]; delta: number };
-  topics: { total: number; series: number[]; delta: number };
+  /** `days` = ISO-Datum je Serienpunkt (x-Achse, Serverdatum). */
+  users: { total: number; series: number[]; delta: number; days: string[] };
+  topics: { total: number; series: number[]; delta: number; days: string[] };
   wau: number[];
+  /** Enddatum je WAU-Woche (x-Achse). */
+  wau_days: string[];
   council: {
     sessions: number; upcoming: number; agenda_items: number; committees: number;
     decisions: number; decisions_with_ki: number; last_fetch: string | null; fetched_today: number;

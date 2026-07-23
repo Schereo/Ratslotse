@@ -1049,49 +1049,56 @@ class Store:
         except Exception:  # noqa: BLE001 — Aktivitäts-Log darf nie einen Request brechen
             pass
 
-    def wau_series(self, weeks: int = 8) -> list[int]:
-        """Aktive Konten je Woche (DISTINCT owner_id), älteste zuerst — 20a-WAU."""
+    def wau_series(self, weeks: int = 8) -> list[dict]:
+        """Aktive Konten je Woche (DISTINCT owner_id), älteste zuerst — 20a-WAU.
+        Je Woche ``{"day": Enddatum, "n": Konten}``; das Datum beschriftet die
+        x-Achse im Frontend (Serverdatum, damit die Achse nicht clientseitig
+        geraten wird)."""
         from datetime import date, timedelta
         today = date.today()
-        out: list[int] = []
+        out: list[dict] = []
         for w in range(weeks):
             end = today - timedelta(days=(weeks - 1 - w) * 7)
             start = end - timedelta(days=6)
-            out.append(self._conn.execute(
+            n = self._conn.execute(
                 "SELECT COUNT(DISTINCT owner_id) FROM user_activity WHERE day BETWEEN ? AND ?",
-                (start.isoformat(), end.isoformat())).fetchone()[0])
+                (start.isoformat(), end.isoformat())).fetchone()[0]
+            out.append({"day": end.isoformat(), "n": n})
         return out
 
     def admin_growth(self, days: int | None = 90) -> dict:
         """Wachstums-Daten für den Statistik-Tab (20a): kumulierte Verläufe für
-        registrierte Konten und angelegte Themen + Δ im Zeitraum + WAU."""
+        registrierte Konten und angelegte Themen + Δ im Zeitraum + WAU. Jede
+        Serie führt ihre Datumsachse (``days``) mit — bei „Alles“ ist die Spanne
+        je Serie unterschiedlich lang."""
         from datetime import date, timedelta
 
         def dates_of(table: str) -> list[str]:
             return [r[0][:10] for r in self._conn.execute(
                 f"SELECT created_at FROM {table} WHERE created_at IS NOT NULL ORDER BY created_at").fetchall()]
 
-        def series(ds: list[str]) -> tuple[list[int], int]:
+        def series(ds: list[str]) -> tuple[list[int], int, list[str]]:
             today = date.today()
             span = days
             if span is None:
                 first = date.fromisoformat(ds[0]) if ds else today
                 span = max((today - first).days + 1, 1)
             span = max(1, min(span, 366))  # Sparkline-Punkte deckeln
-            window_start = (today - timedelta(days=span - 1)).isoformat()
-            out = [sum(1 for x in ds if x <= (today - timedelta(days=span - 1 - i)).isoformat())
-                   for i in range(span)]
-            delta = sum(1 for x in ds if x >= window_start)
-            return out, delta
+            axis = [(today - timedelta(days=span - 1 - i)).isoformat() for i in range(span)]
+            out = [sum(1 for x in ds if x <= day) for day in axis]
+            delta = sum(1 for x in ds if x >= axis[0])
+            return out, delta, axis
 
         u = dates_of("web_users")
         t = dates_of("topics")
-        u_series, u_delta = series(u)
-        t_series, t_delta = series(t)
+        u_series, u_delta, u_days = series(u)
+        t_series, t_delta, t_days = series(t)
+        wau = self.wau_series(8)
         return {
-            "users": {"total": len(u), "series": u_series, "delta": u_delta},
-            "topics": {"total": len(t), "series": t_series, "delta": t_delta},
-            "wau": self.wau_series(8),
+            "users": {"total": len(u), "series": u_series, "delta": u_delta, "days": u_days},
+            "topics": {"total": len(t), "series": t_series, "delta": t_delta, "days": t_days},
+            "wau": [w["n"] for w in wau],
+            "wau_days": [w["day"] for w in wau],
         }
 
     def admin_user_rows(self) -> list[dict]:
@@ -1132,7 +1139,8 @@ class Store:
         by_day = {r["day"]: r["c"] for r in self._conn.execute(
             "SELECT day, SUM(count) c FROM user_activity WHERE owner_id = ? AND day >= ? GROUP BY day",
             (uid, since)).fetchall()}
-        verlauf = [by_day.get((date.today() - timedelta(days=29 - i)).isoformat(), 0) for i in range(30)]
+        verlauf_days = [(date.today() - timedelta(days=29 - i)).isoformat() for i in range(30)]
+        verlauf = [by_day.get(d, 0) for d in verlauf_days]
         return {
             "id": u["id"], "email": u["email"], "role": u["role"], "status": u["status"],
             "created_at": u["created_at"],
@@ -1142,7 +1150,7 @@ class Store:
             "delivery_channel": u.get("delivery_channel", "email"),
             "features": {"ki_frage": feats.get("ki_frage", 0), "suche": feats.get("suche", 0),
                          "quiz": n_quiz, "analyse": feats.get("analyse", 0), "karte": feats.get("karte", 0)},
-            "topics": topics, "abos": abos, "verlauf": verlauf,
+            "topics": topics, "abos": abos, "verlauf": verlauf, "verlauf_days": verlauf_days,
         }
 
     # ---- editions ----

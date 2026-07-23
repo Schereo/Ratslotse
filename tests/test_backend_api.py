@@ -130,6 +130,14 @@ def test_admin_stats_growth(client):
     # Admin war in dieser Woche aktiv → letzter WAU-Balken ≥ 1.
     assert b["wau"][-1] >= 1
     assert "decisions_with_ki" in b["council"] and "last_fetch" in b["council"]
+    # x-Achse: ein Datum je Punkt, jüngster Punkt = heute (Serverdatum).
+    from datetime import date
+    heute = date.today().isoformat()
+    assert len(b["users"]["days"]) == len(b["users"]["series"]) == 90
+    assert b["users"]["days"][-1] == heute
+    assert len(b["topics"]["days"]) == len(b["topics"]["series"])
+    assert len(b["wau_days"]) == len(b["wau"]) == 8
+    assert b["wau_days"][-1] == heute
 
 
 def test_admin_endpoints_forbidden_for_regular_user(client):
@@ -162,6 +170,10 @@ def test_admin_user_rows_and_detail(client):
     assert detail["email"] == admin["email"]
     assert set(detail["features"]) == {"ki_frage", "suche", "quiz", "analyse", "karte"}
     assert isinstance(detail["verlauf"], list) and len(detail["verlauf"]) == 30
+    # 30-Tage-Achse passt zu den Balken und endet heute.
+    from datetime import date
+    assert len(detail["verlauf_days"]) == 30
+    assert detail["verlauf_days"][-1] == date.today().isoformat()
     assert client.get("/api/admin/users/999999").status_code == 404
 
 
