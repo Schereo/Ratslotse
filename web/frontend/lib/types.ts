@@ -200,6 +200,19 @@ export interface EntityGeo {
   geojson: { type: string; coordinates: unknown } | null;
 }
 
+/** Ein verwandtes Thema (vorberechnet, council.related).
+ *  `belegt` = kommt gemeinsam in Beschlüssen vor (`evidence` = in wie vielen),
+ *  `aehnlich` = semantischer Nachbar aus den Embeddings, füllt nur auf. */
+export interface RelatedEntity {
+  slug: string;
+  name: string;
+  kind: string;
+  n: number;
+  rel_type: "belegt" | "aehnlich" | string;
+  score: number;
+  evidence: number;
+}
+
 export interface EntityDetail {
   entity: Entity;
   description: string | null;
@@ -209,6 +222,7 @@ export interface EntityDetail {
   parties: string[];
   fields: { field: string; n: number }[];
   field_labels: Record<string, string>;
+  related?: RelatedEntity[];
 }
 
 export interface Member {
