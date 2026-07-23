@@ -36,7 +36,8 @@ COUNCIL_DB = ROOT / "data" / "council.sqlite"
 LOOKBACK_DAYS = 90
 
 
-def main() -> None:
+def main() -> dict:
+    """Gibt die Kennzahlen des Laufs für die Cron-Übersicht zurück."""
     since = (date.today() - timedelta(days=LOOKBACK_DAYS)).isoformat()
     print(f"Checking for new protocols since {since}…")
     stats = process_range(COUNCIL_DB, since=since)
@@ -94,9 +95,20 @@ def main() -> None:
     # Wichtig-Wert neu rechnen (reine Heuristik, kein LLM) — damit die
     # 50/50-Mischung mit der frischen Tragweite sofort greift und neue
     # Beschlüsse nicht bis zum Sonntags-Lauf ohne Score bleiben.
-    print(f"Wichtig-Score: {_store.backfill_importance()} Beschlüsse berechnet.")
+    wichtig = _store.backfill_importance()
+    print(f"Wichtig-Score: {wichtig} Beschlüsse berechnet.")
     print(f"FTS rebuilt: {_store.rebuild_fts()} decisions indexed.")
     _store.close()
+    return {
+        "Protokolle geparst": stats["parsed"],
+        "Beschlüsse klassifiziert": cstats["classified"],
+        "Einfach erklärt": sstats["written"],
+        "Interessantheit bewertet": irated,
+        "Tragweite bewertet": prated,
+        "Vorlagen geladen": vstats["fetched"],
+        "Wichtig-Score neu": wichtig,
+        "LLM-Kosten $": round(cstats["cost"] + gstats["cost"], 4),
+    }
 
 
 if __name__ == "__main__":

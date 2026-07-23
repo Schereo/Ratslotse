@@ -54,13 +54,52 @@ def notify_admin(text: str) -> None:
         logger.exception("admin alert email failed")
 
 
-def run_guarded(name: str, fn: Callable[[], None]) -> None:
-    """Run a cron entrypoint; on crash alert the admin, then re-raise so cron/
-    systemd still see a non-zero exit and log the traceback."""
+def _record_run(name: str, started: "datetime", status: str,
+                stats: dict | None, error: str | None) -> None:
+    """Den Lauf in ``job_runs`` schreiben — best effort, nie den Job stören.
+
+    Der Pfad entspricht dem der Cron-Skripte (``<repo>/data/nwz.sqlite``); ein
+    eigener Store wird nur kurz für die eine Zeile geöffnet, damit run_guarded
+    ohne Zutun der Skripte funktioniert.
+    """
     try:
-        fn()
+        from datetime import datetime
+        from pathlib import Path
+
+        from .store import Store
+
+        finished = datetime.utcnow()
+        db = Path(os.environ.get("NWZ_DB") or Path(__file__).resolve().parent.parent / "data" / "nwz.sqlite")
+        store = Store(db)
+        try:
+            store.record_job_run(
+                name, started.isoformat(timespec="seconds"), finished.isoformat(timespec="seconds"),
+                status, round((finished - started).total_seconds(), 1), stats, error,
+            )
+        finally:
+            store.close()
+    except Exception:  # noqa: BLE001 — Protokollierung ist Beiwerk
+        logger.exception("job_run für %s konnte nicht protokolliert werden", name)
+
+
+def run_guarded(name: str, fn: Callable[[], object]) -> None:
+    """Run a cron entrypoint; on crash alert the admin, then re-raise so cron/
+    systemd still see a non-zero exit and log the traceback.
+
+    Jeder Lauf landet zusätzlich in ``job_runs`` (Dauer, Status, Fehler). Gibt
+    ``fn`` ein dict zurück, wird es als Kennzahlen des Laufs gespeichert und im
+    Admin-Panel angezeigt — die Schlüssel sind bewusst sprechend, damit neue
+    Jobs keine Übersetzungstabelle brauchen.
+    """
+    from datetime import datetime
+
+    started = datetime.utcnow()
+    try:
+        result = fn()
     except Exception as exc:
         detail = html.escape(f"{type(exc).__name__}: {exc}")
+        _record_run(name, started, "error", None, f"{type(exc).__name__}: {exc}")
         notify_admin(f"⚠️ Cron <b>{html.escape(name)}</b> ist fehlgeschlagen:\n<code>{detail}</code>")
         traceback.print_exc(file=sys.stderr)
         raise
+    _record_run(name, started, "ok", result if isinstance(result, dict) else None, None)

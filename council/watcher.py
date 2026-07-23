@@ -105,6 +105,7 @@ def run_watcher(
     owners: list[dict],
     months_ahead: int = 3,
     nwz_store=None,
+    stats: dict | None = None,
 ) -> list[str]:
     """
     Scrape upcoming sessions once, classify their agendas per owner, persist
@@ -115,6 +116,8 @@ def run_watcher(
     nwz_store: offener nwz.store.Store für die Treffer-Persistenz; ohne ihn
             (Tests) wird klassifiziert und alarmiert, aber nichts gemerkt —
             dann läuft die Klassifikation beim nächsten Mal erneut.
+    stats: optionales dict, in das der Lauf seine Kennzahlen schreibt (für die
+            Cron-Übersicht im Admin-Panel).
     """
     from nwz.delivery import deliver_message
 
@@ -127,6 +130,9 @@ def run_watcher(
     # haben noch keinen ksinr, sollen aber in der App schon sichtbar sein.
     store.replace_scheduled_sessions(scheduled)
     print(f"  Found {len(session_ids)} sessions with agenda, {len(scheduled)} scheduled dates")
+    if stats is not None:
+        stats["Sitzungen mit Tagesordnung"] = len(session_ids)
+        stats["Termine im Kalender"] = len(scheduled)
 
     alerts_sent: list[str] = []
 

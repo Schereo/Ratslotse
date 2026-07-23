@@ -62,7 +62,9 @@ STEPS: list[tuple[str, str]] = [
 ]
 
 
-def main() -> int:
+def main() -> list[str]:
+    """Läuft alle Schritte durch und gibt die Namen der gescheiterten zurück
+    (leere Liste = alles ok, wirkt als Exit-Code weiterhin falsy)."""
     failed: list[str] = []
     for name, script in STEPS:
         print(f"\n=== {name} ({script}) ===", flush=True)
@@ -80,14 +82,18 @@ def main() -> int:
             print(f"!! {name} abgebrochen: {exc!r}", flush=True)
     print(f"\n=== weekly_enrich fertig — {len(STEPS) - len(failed)}/{len(STEPS)} ok"
           + (f", fehlgeschlagen: {', '.join(failed)}" if failed else "") + " ===", flush=True)
-    return 1 if failed else 0
+    return failed
 
 
-def _guarded_main() -> None:
-    """main() meldet Teil-Fehler über den Exit-Code, nicht per Exception —
-    für den Alert-Weg (run_guarded) in eine Exception übersetzen."""
-    if main():
-        raise RuntimeError("mindestens ein Teil-Schritt ist fehlgeschlagen (Details im Log)")
+def _guarded_main() -> dict:
+    """main() meldet Teil-Fehler über die Rückgabe, nicht per Exception — für
+    den Alert-Weg (run_guarded) in eine Exception übersetzen. Bei Erfolg sind
+    die Kennzahlen die Schritt-Bilanz für die Cron-Übersicht."""
+    failed = main()
+    if failed:
+        raise RuntimeError(
+            "mindestens ein Teil-Schritt ist fehlgeschlagen (Details im Log): " + ", ".join(failed))
+    return {"Schritte gesamt": len(STEPS), "davon fehlgeschlagen": 0}
 
 
 if __name__ == "__main__":

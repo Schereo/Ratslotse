@@ -400,6 +400,22 @@ export interface AdminUserDetail {
   verlauf_days: string[];
 }
 
+/** Ein Cron-Job in der Admin-Übersicht: Registry-Angaben + letzter Lauf. */
+export interface AdminJob {
+  key: string;
+  label: string;
+  description: string;
+  schedule: string;
+  /** ok = frisch gelaufen · stale = überfällig · error = zuletzt gescheitert · unknown = noch nie erfasst. */
+  state: "ok" | "stale" | "error" | "unknown";
+  age_h: number | null;
+  last: {
+    started_at: string; finished_at: string | null; status: string;
+    duration_s: number | null; stats: Record<string, number | string> | null; error: string | null;
+  } | null;
+  history: { started_at: string; status: string; duration_s: number | null }[];
+}
+
 export interface AdminGrowth {
   /** `days` = ISO-Datum je Serienpunkt (x-Achse, Serverdatum). */
   users: { total: number; series: number[]; delta: number; days: string[] };

@@ -33,7 +33,8 @@ def _agenda_hash(agenda_items) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-def main() -> None:
+def main() -> dict:
+    """Gibt die Kennzahlen des Laufs für die Cron-Übersicht zurück."""
     nwz_store = Store(NWZ_DB)
     all_subs = nwz_store.get_all_subscriptions()       # {owner_id: [committee_name]}
     targets = nwz_store.get_subscription_targets()     # {owner_id: {channel, chat, email}}
@@ -148,6 +149,12 @@ def main() -> None:
 
     council_store.close()
     print(f"Done — {notifications_sent} notification(s) sent.")
+    return {
+        "Gremien": len(committees),
+        "Sitzungen mit Tagesordnung": len(session_ids),
+        "Termine im Kalender": len(scheduled),
+        "Benachrichtigungen": notifications_sent,
+    }
 
 
 if __name__ == "__main__":
