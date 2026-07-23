@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Search, ExternalLink, ChevronDown, ChevronRight, Scale, SlidersHorizontal, Users, Sparkles, Split, X } from "lucide-react";
+import { Search, ExternalLink, ChevronDown, ChevronRight, Scale, SlidersHorizontal, Users, Sparkles, Split, X, Flame } from "lucide-react";
 import { api, qs, ApiError } from "@/lib/api";
 import { decisionHref } from "@/lib/routes";
 import { useDebounce } from "@/lib/use-debounce";
@@ -166,9 +166,9 @@ const PAGE_SIZE = 50;
 const SORTS: { value: string; label: string; sub?: string; icon?: typeof Sparkles }[] = [
   { value: "date_desc", label: "Neueste zuerst" },
   { value: "date_asc", label: "Älteste zuerst" },
-  { value: "importance", label: "Wichtigste zuerst" },
-  // RL-U15 (13a-C): Unterhaltungs-Sortierung — klar getrennt von „Wichtigste".
-  { value: "interest", label: "Spannendste zuerst", sub: "Gesprächswert — kurios & alltagsnah", icon: Sparkles },
+  // Wichtigkeit mit Alters-Dämpfung (siehe CouncilStore.search_decisions) —
+  // sonst stehen hier nur alte Haushaltsbeschlüsse.
+  { value: "importance", label: "Wichtigste zuerst", sub: "Wichtigkeit & Aktualität", icon: Flame },
   { value: "faction", label: "Nach Fraktion" },
 ];
 
