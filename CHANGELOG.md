@@ -17,7 +17,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   antragstellende Fraktion, bleibt es wie bisher bei Antragsart und Ergebnis.
   Außerdem benennt die Zeile die **Antragsart** korrekt — Vertagungs-,
   Verweisungs- oder Geschäftsordnungsantrag hießen zuvor pauschal
-  „Änderungsantrag". (#PR)
+  „Änderungsantrag". (#288)
 - **App: Absturz beim Öffnen von „Meine Themen" behoben.** In der iOS-App
   führte das Antippen des Themen-Tabs zu „Etwas ist schiefgelaufen". Ursache
   war ein doppelt vergebener Daten-Schlüssel im App-Cache, unter dem die
