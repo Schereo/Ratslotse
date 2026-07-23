@@ -165,7 +165,14 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "FRAGE: {question}\n\n"
             "BESCHLÜSSE:\n"
             "{context}\n\n"
-            "Antworte knapp (2–5 Sätze) auf Deutsch, mit id-Zitaten."
+            "Antworte knapp (2–5 Sätze) auf Deutsch, mit id-Zitaten.\n\n"
+            "Hänge danach GENAU EINE letzte Zeile an, die so beginnt:\n"
+            'FOLGEFRAGEN: ["…", "…", "…"]\n'
+            "Darin 3 kurze Anschlussfragen (je max. 70 Zeichen), die sich aus den oben "
+            "gefundenen Beschlüssen belegen lassen — nichts, wofür die Beschlüsse keine "
+            "Grundlage geben. Jede Frage muss FÜR SICH verständlich sein (sie startet eine "
+            "neue, eigenständige Suche ohne Kenntnis dieser Antwort): also keine Rückbezüge "
+            "wie „dazu“, „dabei“ oder „dieser Beschluss“, sondern die Sache beim Namen nennen."
         ),
     },
     "simple_summary_system": {

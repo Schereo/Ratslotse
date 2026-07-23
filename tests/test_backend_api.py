@@ -1,6 +1,7 @@
 """Integration tests for the FastAPI backend (web/backend)."""
 from __future__ import annotations
 
+import json
 import os
 import sys
 import tempfile
@@ -1358,3 +1359,59 @@ def test_topic_suggestions_dedupe_similar(client):
                                      "description": "Bau des Fußballstadions in Eversten."})
     names = [s["name"] for s in client.get("/api/topics/suggestions").json()["suggestions"]]
     assert names == ["Stadtmuseum"]
+
+
+# ---- KI-Frage: Folgefragen im Stream (Design 24a) ----
+def test_ask_stream_haelt_marker_zurueck_und_liefert_suggestions(client, monkeypatch):
+    """Der Marker der Folgefragen darf NIE im Antworttext auftauchen — auch dann
+    nicht, wenn er über mehrere Stream-Deltas verteilt ankommt. Stattdessen
+    kommen die Vorschläge als eigenes suggestions-Event."""
+    from app.routers import council as council_router
+    from council import qa as qa_mod
+
+    _register(client)
+    cand = [{"id": 5, "title": "Radverkehrsplan 2026", "summary": "Ausbau",
+             "policy_field": "verkehr", "outcome": "angenommen", "session_date": "2026-07-02",
+             "committee": "Verkehrsausschuss", "score": 1.0, "gegenstimmen": 2}]
+    monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (cand, "semantisch"))
+    monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
+    # Marker bewusst über Delta-Grenzen zerschnitten ("FOLGE" | "FRAGEN:").
+    deltas = ["Die Veloroute 4 ", "wird ausgebaut [5].\n", "FOLGE", "FRAGEN:",
+              ' ["Wer stimmte dagegen?", "Was kostet der Ausbau?"]']
+    monkeypatch.setattr(qa_mod, "answer_stream", lambda *a, **k: iter(deltas))
+
+    with client.stream("POST", "/api/council/ask", json={"question": "Was ist mit Radwegen?"}) as r:
+        assert r.status_code == 200
+        body = "".join(r.iter_text())
+
+    events = [json.loads(line[6:]) for line in body.splitlines() if line.startswith("data: ")]
+    answer = "".join(e["text"] for e in events if e["type"] == "token")
+    assert "FOLGEFRAGEN" not in answer and "FOLGE" not in answer
+    assert answer.strip() == "Die Veloroute 4 wird ausgebaut [5]."
+    sugg = [e for e in events if e["type"] == "suggestions"]
+    assert sugg and sugg[0]["questions"] == ["Wer stimmte dagegen?", "Was kostet der Ausbau?"]
+    assert [e for e in events if e["type"] == "done"]
+
+
+def test_ask_stream_faellt_auf_abgeleitete_fragen_zurueck(client, monkeypatch):
+    """Liefert das Modell keine Vorschläge, leitet der Server sie deterministisch
+    aus den gefundenen Beschlüssen ab (Variante B) — nie eine leere Leiste."""
+    from app.routers import council as council_router
+    from council import qa as qa_mod
+
+    _register(client)
+    cand = [{"id": 9, "title": "Sanierung Cäcilienbrücke — Kosten", "summary": "",
+             "policy_field": "verkehr", "outcome": "angenommen", "session_date": "2026-06-01",
+             "committee": "Verkehrsausschuss", "score": 1.0, "gegenstimmen": 4,
+             "amount_eur": 1_000_000}]
+    monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (cand, "semantisch"))
+    monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
+    monkeypatch.setattr(qa_mod, "answer_stream", lambda *a, **k: iter(["Antwort ohne Vorschläge [9]."]))
+
+    with client.stream("POST", "/api/council/ask", json={"question": "Was ist mit der Brücke?"}) as r:
+        body = "".join(r.iter_text())
+    events = [json.loads(line[6:]) for line in body.splitlines() if line.startswith("data: ")]
+    answer = "".join(e["text"] for e in events if e["type"] == "token")
+    assert answer.strip() == "Antwort ohne Vorschläge [9]."
+    sugg = [e for e in events if e["type"] == "suggestions"]
+    assert sugg and sugg[0]["questions"][0] == "Wer stimmte gegen Sanierung Cäcilienbrücke?"

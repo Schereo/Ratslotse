@@ -55,6 +55,8 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   const [sources, setSources] = useState<QaSource[]>([]);
   const [mode, setMode] = useState<string | null>(null);
   const [cited, setCited] = useState<number[]>([]);
+  // Design 24a: Weiterfragen zur aktuellen Antwort (Server-Event "suggestions").
+  const [followups, setFollowups] = useState<string[]>([]);
   const [word, setWord] = useState(PLAYFUL[0]);
   // Kurzes Aufblitzen der Quelle, zu der eine Fußnote gerade gesprungen ist.
   const [flashId, setFlashId] = useState<number | null>(null);
@@ -110,6 +112,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     setSources([]);
     setMode(null);
     setCited([]);
+    setFollowups([]);
 
     try {
       // Absolute URL + bearer in the app (no Next proxy route there); same-origin
@@ -143,6 +146,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
           if (msg.type === "step") setStep(msg.step as Step);
           else if (msg.type === "sources") { setSources(msg.sources as QaSource[]); setMode((msg.mode as string) ?? null); }
           else if (msg.type === "token") setAnswer((a) => a + (msg.text as string));
+          else if (msg.type === "suggestions") setFollowups((msg.questions as string[]) ?? []);
           else if (msg.type === "done") setCited((msg.cited as number[]) ?? []);
           else if (msg.type === "error") throw new Error((msg.message as string) ?? "Frage fehlgeschlagen.");
         }
@@ -297,26 +301,34 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
           <p className="text-xs text-muted-foreground/70">
             Antwort von einer KI aus den gefundenen Beschlüssen erzeugt — kann unvollständig sein. Immer die Quellen prüfen.
           </p>
-          {/* RL-U06: Die Beispiel-Chips verschwanden nach der ersten Antwort
-              dauerhaft — Anschlussfragen halten die Session im Fluss. */}
-          <div className="flex flex-wrap gap-2">
-            {EXAMPLES.filter((ex) => ex !== q).slice(0, 3).map((ex) => (
+          {/* Design 24a (RL-U06 konkretisiert): Weiterfragen — je Antwort neu
+              erzeugt (Server: LLM-Vorschläge, sonst aus den Beschlüssen
+              abgeleitet). Fällt beides aus, bleiben die Beispiele als Anker.
+              Jede Frage ist eine eigenständige Suche, kein Chat-Verlauf. */}
+          <div>
+            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+              Weiterfragen
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {(followups.length > 0 ? followups : EXAMPLES.filter((ex) => ex !== q).slice(0, 3)).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => { setQ(s); void ask(s); }}
+                  className="rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground transition-[color,background-color,transform] duration-150 ease-out-strong hover:bg-muted hover:text-foreground active:scale-[0.97]"
+                >
+                  {s}
+                </button>
+              ))}
               <button
-                key={ex}
                 type="button"
-                onClick={() => ask(ex)}
-                className="rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                onClick={() => { setQ(""); inputRef.current?.focus(); }}
+                className="rounded-full border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-[color,background-color,transform] duration-150 ease-out-strong hover:bg-primary/10 active:scale-[0.97]"
               >
-                {ex}
+                Eigene Frage
               </button>
-            ))}
-            <button
-              type="button"
-              onClick={() => { setQ(""); inputRef.current?.focus(); }}
-              className="rounded-full border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
-            >
-              Neue Frage stellen
-            </button>
+            </div>
+            <p className="mt-2 text-[11px] text-muted-foreground/70">Jede Frage startet eine neue Suche.</p>
           </div>
         </>
       )}
