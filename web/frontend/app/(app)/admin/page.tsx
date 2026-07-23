@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { Prompt, AdminUserRow, AdminUserDetail, AdminGrowth, AdminJob, QuizFlagged, AdminQuizStats } from "@/lib/types";
+import { Prompt, AdminUserRow, AdminUserDetail, AdminGrowth, AdminJob, QuizFlagged, AdminQuizStats, EntityAlias } from "@/lib/types";
 import { Badge, Button, Card, ConfirmDialog, PageHeader, Spinner, Textarea, formatDate, toast } from "@/components/ui";
 import { AreaSparkline, MiniBars, StatKicker } from "@/components/admin-charts";
 import { cn } from "@/lib/utils";
 
-type Tab = "stats" | "llm" | "prompts" | "users" | "quiz";
+type Tab = "stats" | "llm" | "prompts" | "users" | "quiz" | "themen";
 
 export default function AdminPage() {
   const { user, loading } = useAuth();
@@ -33,6 +33,7 @@ export default function AdminPage() {
           ["prompts", "Prompts"],
           ["users", "Web-Nutzer:innen"],
           ["quiz", "Quiz"],
+          ["themen", "Themen-Dubletten"],
         ] as [Tab, string][]).map(([t, label]) => (
           <button
             key={t}
@@ -51,6 +52,7 @@ export default function AdminPage() {
         {tab === "prompts" && <PromptsTab />}
         {tab === "users" && <UsersTab currentUserId={user.id} />}
         {tab === "quiz" && <QuizModerationTab />}
+        {tab === "themen" && <EntityAliasTab />}
       </div>
     </div>
   );
@@ -839,3 +841,130 @@ function QuizModerationTab() {
   );
 }
 
+
+/** Zusammengeführte Themen-Dubletten: durchsehen und bei Bedarf trennen.
+ *  Die Zusammenführung ist umkehrbar — die Roh-Beobachtungen bleiben erhalten,
+ *  die Themen werden daraus neu abgeleitet. */
+function EntityAliasTab() {
+  const qc = useQueryClient();
+  const [undoing, setUndoing] = useState<EntityAlias | null>(null);
+  const { data, isPending, isError } = useQuery({
+    queryKey: ["admin", "entity-aliases"],
+    queryFn: () => api.get<{ aliases: EntityAlias[] }>("/admin/entity-aliases"),
+  });
+
+  const undo = useMutation({
+    mutationFn: (slug: string) => api.del(`/admin/entity-aliases/${encodeURIComponent(slug)}`),
+    onSuccess: () => {
+      toast.success("Zusammenführung aufgehoben. Das Thema steht wieder für sich.");
+      qc.invalidateQueries({ queryKey: ["admin", "entity-aliases"] });
+    },
+    onError: () => toast.error("Zusammenführung konnte nicht aufgehoben werden."),
+  });
+
+  if (isPending) return <Spinner />;
+  if (isError) return <p className="text-sm text-destructive">Fehler beim Laden der Zusammenführungen.</p>;
+
+  const aliases = data?.aliases ?? [];
+  const byLlm = aliases.filter((a) => a.source === "llm").length;
+  const manual = aliases.filter((a) => a.source === "manuell").length;
+
+  // Nach Ziel-Thema gruppieren: „vier Namen für den Bäderbetrieb“ gehört zusammen.
+  const groups = new Map<string, EntityAlias[]>();
+  for (const a of aliases) {
+    const list = groups.get(a.canonical_slug) ?? [];
+    list.push(a);
+    groups.set(a.canonical_slug, list);
+  }
+  const sorted = [...groups.entries()].sort((a, b) => b[1].length - a[1].length);
+
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-3 gap-3">
+        <Card className="p-3.5">
+          <p className="font-display text-xl font-extrabold leading-none tabular-nums">{groups.size}</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">Themen zusammengeführt</p>
+        </Card>
+        <Card className="p-3.5">
+          <p className="font-display text-xl font-extrabold leading-none tabular-nums">{aliases.length}</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">eingesparte Seiten</p>
+        </Card>
+        <Card className="p-3.5">
+          <p className="font-display text-xl font-extrabold leading-none tabular-nums">{manual}</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">von Hand · {byLlm} per KI</p>
+        </Card>
+      </div>
+
+      {aliases.length === 0 ? (
+        <Card className="p-8 text-center text-sm text-muted-foreground">
+          Noch keine Zusammenführungen. Der Lauf <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
+          scripts/merge_entity_aliases.py</code> sucht Dubletten und legt sie hier ab.
+        </Card>
+      ) : (
+        <>
+          <p className="text-sm text-muted-foreground">
+            Diese Namen zeigen auf dasselbe Thema, damit Beschlüsse und Beträge an einer Stelle stehen.
+            Trennen macht das rückgängig — die Beschlüsse selbst gehen dabei nie verloren.
+          </p>
+          <div className="space-y-3">
+            {sorted.map(([canonicalSlug, list]) => (
+              <Card key={canonicalSlug} className="p-4">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <p className="font-semibold">
+                    {list[0].canonical_name ?? canonicalSlug}
+                    {list[0].canonical_n != null && (
+                      <span className="ml-2 text-xs font-normal text-muted-foreground tabular-nums">
+                        {list[0].canonical_n} Beschlüsse
+                      </span>
+                    )}
+                  </p>
+                  <Badge color="slate">{list.length} zusammengeführt</Badge>
+                </div>
+                <ul className="mt-3 divide-y divide-border/60">
+                  {list.map((a) => (
+                    <li key={a.slug} className="flex flex-wrap items-start justify-between gap-3 py-2">
+                      <div className="min-w-0">
+                        <p className="text-sm">
+                          <span className="text-muted-foreground line-through">{a.alias_name ?? a.slug}</span>
+                          <span className="mx-2 text-muted-foreground">→</span>
+                          <span>{a.canonical_name ?? a.canonical_slug}</span>
+                        </p>
+                        <p className="mt-0.5 text-[11.5px] text-muted-foreground">
+                          {a.source === "manuell" ? "von Hand" : "per KI"}
+                          {a.reason ? ` · ${a.reason}` : ""}
+                          {/* created_at ist ein voller Zeitstempel; formatDate erwartet YYYY-MM-DD. */}
+                          {a.created_at ? ` · ${formatDate(a.created_at.slice(0, 10))}` : ""}
+                        </p>
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={() => setUndoing(a)}>
+                        Trennen
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            ))}
+          </div>
+        </>
+      )}
+
+      <ConfirmDialog
+        open={undoing !== null}
+        onOpenChange={(open) => !open && setUndoing(null)}
+        title="Zusammenführung aufheben?"
+        description={
+          undoing
+            ? `„${undoing.alias_name ?? undoing.slug}“ bekommt wieder eine eigene Themen-Seite, ` +
+              `getrennt von „${undoing.canonical_name ?? undoing.canonical_slug}“. ` +
+              `Die Beschlüsse bleiben erhalten und verteilen sich wieder auf beide Seiten.`
+            : ""
+        }
+        confirmLabel="Trennen"
+        onConfirm={() => {
+          if (undoing) undo.mutate(undoing.slug);
+          setUndoing(null);
+        }}
+      />
+    </div>
+  );
+}

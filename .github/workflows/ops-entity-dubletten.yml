@@ -1,0 +1,55 @@
+# Manuell auslösbarer Ops-Lauf: sucht doppelte Themen (derselbe Gegenstand unter
+# mehreren Namen) und führt die vom LLM bestätigten zusammen. Bewusst NICHT im
+# wöchentlichen weekly_enrich — eine Zusammenführung sollte man sehen, bevor sie
+# wirkt. Die bereits bestätigten Zuordnungen wendet der wöchentliche
+# extract_entities.py ohnehin von selbst an (rebuild_entities_from_obs).
+#
+# Mit "nur_bericht" laufen lassen, um die Kandidaten zu sehen, ohne etwas zu
+# ändern. Jede Zusammenführung ist im Admin-Panel unter „Themen-Dubletten“
+# einzeln wieder auflösbar.
+name: "Ops: Themen-Dubletten zusammenführen"
+
+on:
+  workflow_dispatch:
+    inputs:
+      nur_bericht:
+        description: "Nur die Kandidaten anzeigen, nichts speichern"
+        type: boolean
+        default: true
+      trocken:
+        description: "Mit LLM-Prüfung, aber ohne zu speichern"
+        type: boolean
+        default: false
+
+concurrency:
+  group: ops-entity-dubletten
+  cancel-in-progress: false
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Merge duplicate entities on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          proxy_host: ${{ secrets.VPS_PROXY_HOST }}
+          proxy_username: ${{ secrets.VPS_USER }}
+          proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          proxy_port: ${{ secrets.VPS_SSH_PORT }}
+          # ~165 Kandidatenpaare in 20er-Batches; ein Batch braucht gut eine Minute.
+          command_timeout: 40m
+          envs: NUR_BERICHT,TROCKEN
+          script: |
+            set -e
+            cd ~/app
+            FLAGS=""
+            if [ "$NUR_BERICHT" = "true" ]; then FLAGS="--report"
+            elif [ "$TROCKEN" = "true" ]; then FLAGS="--dry-run"; fi
+            .venv/bin/python scripts/merge_entity_aliases.py $FLAGS
+        env:
+          NUR_BERICHT: ${{ inputs.nur_bericht }}
+          TROCKEN: ${{ inputs.trocken }}
