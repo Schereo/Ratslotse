@@ -551,7 +551,14 @@ class CouncilStore:
             row = c.execute(sql, p).fetchone()
             return row[0] if row else 0
 
-        last_fetch = one("SELECT MAX(fetched_at) FROM council_sessions") or None
+        # „Läuft der Scraper?“ ist eine andere Frage als „gab es neue Sitzungen?“:
+        # council_sessions wird nur beschrieben, wenn eine Sitzung mit
+        # veröffentlichter Tagesordnung im Kalender steht — in der sitzungsfreien
+        # Zeit also wochenlang gar nicht. Der Terminplan dagegen wird bei jedem
+        # Lauf neu geschrieben und ist damit der verlässliche Puls.
+        last_session_import = one("SELECT MAX(fetched_at) FROM council_sessions") or None
+        last_scheduled = one("SELECT MAX(fetched_at) FROM council_scheduled_sessions") or None
+        last_fetch = max([t for t in (last_session_import, last_scheduled) if t], default=None)
         return {
             "sessions": one("SELECT COUNT(*) FROM council_sessions"),
             "upcoming": one("SELECT COUNT(*) FROM council_sessions WHERE session_date >= date('now')"),
@@ -561,8 +568,21 @@ class CouncilStore:
             "decisions": one("SELECT COUNT(*) FROM council_decisions"),
             "decisions_with_ki": one("SELECT COUNT(*) FROM council_decisions WHERE policy_field IS NOT NULL"),
             "last_fetch": last_fetch,
+            # Stunden seit dem letzten Lauf — die Ampel darf nicht „heute schon
+            # gelaufen?“ fragen, sonst steht sie jeden Morgen vor dem 8-Uhr-Cron
+            # auf Rot, obwohl alles läuft (Läufe: 8 und 14 Uhr → max. ~18 h).
+            "hours_since_fetch": (
+                round((datetime.utcnow() - datetime.fromisoformat(last_fetch)).total_seconds() / 3600, 1)
+                if last_fetch else None),
+            "last_session_import": last_session_import,
+            "next_session": one(
+                "SELECT MIN(session_date) FROM ("
+                " SELECT session_date FROM council_sessions WHERE session_date >= date('now')"
+                " UNION ALL"
+                " SELECT session_date FROM council_scheduled_sessions WHERE session_date >= date('now'))") or None,
             "fetched_today": one(
-                "SELECT COUNT(*) FROM council_sessions WHERE substr(fetched_at,1,10) = date('now')"),
+                "SELECT (SELECT COUNT(*) FROM council_sessions WHERE substr(fetched_at,1,10) = date('now'))"
+                " + (SELECT COUNT(*) FROM council_scheduled_sessions WHERE substr(fetched_at,1,10) = date('now'))"),
         }
 
     def public_stats(self) -> dict:
