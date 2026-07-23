@@ -129,7 +129,11 @@ NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflic
   `eval_impact.py`) und „Fundstück des Tages"-Karten
   (`generate_fundstuecke.py`, 21 Tage Vorlauf)). Alle laufen in
   `run_guarded` (`nwz/alerts.py`): Ein Crash wird geloggt **und** per E-Mail an
-  `ALERT_EMAIL`/`WEB_ADMIN_EMAIL` gemeldet.
+  `ALERT_EMAIL`/`WEB_ADMIN_EMAIL` gemeldet. Außerdem protokolliert `run_guarded`
+  jeden Lauf in `job_runs` (Dauer, Status, Kennzahlen aus dem Rückgabe-dict der
+  `main()`); das Admin-Panel zeigt das unter *Statistik → Cron-Jobs*. Der
+  erwartete Takt je Job steht in **`nwz/jobs.py`** — wer die crontab ändert,
+  zieht ihn dort nach, sonst schlägt die Überfällig-Ampel falsch an.
 - **„Ähnliche Beschlüsse"** (`scripts/embed_decisions.py`): berechnet semantische
   Nachbarn per **fastembed** (ONNX, kein torch) — bewusst **nicht** in
   `requirements.txt`, damit Deploy + Web-Service unberührt bleiben.

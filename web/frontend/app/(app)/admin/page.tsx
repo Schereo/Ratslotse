@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { Prompt, AdminUserRow, AdminUserDetail, AdminGrowth, QuizFlagged, AdminQuizStats } from "@/lib/types";
+import { Prompt, AdminUserRow, AdminUserDetail, AdminGrowth, AdminJob, QuizFlagged, AdminQuizStats } from "@/lib/types";
 import { Badge, Button, Card, ConfirmDialog, PageHeader, Spinner, Textarea, formatDate, toast } from "@/components/ui";
 import { AreaSparkline, MiniBars, StatKicker } from "@/components/admin-charts";
 import { cn } from "@/lib/utils";
@@ -173,8 +173,98 @@ function StatsTab() {
           </div>
         </Card>
       </div>
+
+      <JobsSection />
     </div>
   );
+}
+
+const JOB_STATE: Record<AdminJob["state"], { dot: string; label: string }> = {
+  ok: { dot: "bg-green-500", label: "läuft" },
+  stale: { dot: "bg-amber-500", label: "überfällig" },
+  error: { dot: "bg-red-500", label: "fehlgeschlagen" },
+  unknown: { dot: "bg-muted-foreground/40", label: "noch kein Lauf erfasst" },
+};
+
+/** Cron-Übersicht: was läuft wann, wie lange, und was kam dabei heraus. */
+function JobsSection() {
+  const { data, isPending, isError } = useQuery({
+    queryKey: ["admin", "jobs"],
+    queryFn: () => api.get<AdminJob[]>("/admin/jobs"),
+  });
+
+  if (isPending || isError || !data) return null;
+
+  return (
+    <div className="space-y-3 pt-2">
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <h3 className="font-display text-[15px] font-bold text-foreground">Cron-Jobs</h3>
+        <span className="text-[11.5px] text-muted-foreground">Erfassung ab dem jeweils nächsten Lauf</span>
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {data.map((job) => {
+          const tone = JOB_STATE[job.state];
+          const stats = job.last?.stats ?? null;
+          return (
+            <Card key={job.key} className="p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className={cn("h-2 w-2 shrink-0 rounded-full", tone.dot)} />
+                    <p className="truncate text-[13.5px] font-semibold text-foreground">{job.label}</p>
+                  </div>
+                  <p className="mt-1 pl-4 text-xs text-muted-foreground">{job.schedule}</p>
+                </div>
+                <span className="shrink-0 whitespace-nowrap text-[11.5px] text-muted-foreground">
+                  {job.age_h != null ? `vor ${fetchAge(job.age_h)}` : tone.label}
+                  {job.last?.duration_s != null && ` · ${formatDuration(job.last.duration_s)}`}
+                </span>
+              </div>
+
+              {job.state === "error" && job.last?.error && (
+                <p className="mt-2.5 rounded-lg bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive">
+                  {job.last.error}
+                </p>
+              )}
+
+              {stats && Object.keys(stats).length > 0 ? (
+                <div className="mt-2.5 flex flex-wrap gap-1.5">
+                  {Object.entries(stats).map(([label, value]) => (
+                    <span key={label} className="inline-flex items-center gap-1.5 rounded-full border border-border px-2 py-0.5 text-[11.5px] text-muted-foreground">
+                      {label}
+                      <strong className="font-semibold tabular-nums text-foreground">
+                        {typeof value === "number" ? value.toLocaleString("de-DE") : value}
+                      </strong>
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-2.5 text-xs text-muted-foreground">{job.description}</p>
+              )}
+
+              {job.history.length > 1 && (
+                <div className="mt-3 flex items-end gap-1" aria-hidden>
+                  {job.history.map((h, i) => (
+                    <span
+                      key={i}
+                      title={`${formatDate(h.started_at.slice(0, 10))} · ${h.status}`}
+                      className={cn("h-1.5 flex-1 rounded-full", h.status === "ok" ? "bg-primary/45" : "bg-destructive/60")}
+                    />
+                  ))}
+                </div>
+              )}
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${Math.round(seconds)} s`;
+  if (seconds < 3600) return `${Math.round(seconds / 60)} min`;
+  return `${(seconds / 3600).toFixed(1)} h`;
 }
 
 type LlmFeature = {
