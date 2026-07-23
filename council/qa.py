@@ -194,20 +194,42 @@ def _short_subject(title: str) -> str:
     return (t[:60].rstrip() + "…") if len(t) > 60 else t
 
 
+# Zitat-Klammern. Muss mit einer Ziffer beginnen, damit normaler Klammertext
+# („[siehe oben]") unangetastet bleibt.
+_CITE_RE = re.compile(r"\[(\d[^\]\n]{0,160})\]")
+
+
+def citation_ids(inner: str) -> list[int]:
+    """Beschluss-ids aus einem Klammerinhalt.
+
+    Rein numerische Klammern listen mehrere Beschlüsse (``[12, 13]``). Steht
+    noch etwas anderes drin, zählt NUR die führende Zahl: Das Modell hängt trotz
+    Prompt-Regel gern Datum oder Tragweite an (``[8525, 2026-04-20, Tragweite:
+    hoch]``) — würde man dort alle Zahlen lesen, entstünde aus „2026-04-20" die
+    Geister-id 2026, die zufällig einen ganz anderen Beschluss treffen kann.
+
+    Die Frontend-Fußnoten (``council-qa.tsx``) wenden dieselbe Regel an; beide
+    müssen übereinstimmen, sonst laufen Nummerierung und ``cited`` auseinander.
+    """
+    if re.fullmatch(r"[\d,\s]+", inner):
+        return [int(n) for n in re.findall(r"\d+", inner)]
+    m = re.match(r"\s*(\d+)", inner)
+    return [int(m.group(1))] if m else []
+
+
 def resolve_citations(answer: str, valid: set[int]):
     """Parse `[id]` / `[id, id, …]` citations → ``(cleaned_answer, cited_ids)``.
     Keeps only ids we actually retrieved (``valid``), preserving order, and strips
     any invalid citation numbers from the text so no dangling [N] is shown."""
     cited: list[int] = []
-    for group in re.findall(r"\[([\d,\s]+)\]", answer):
-        for num in re.findall(r"\d+", group):
-            v = int(num)
+    for m in _CITE_RE.finditer(answer):
+        for v in citation_ids(m.group(1)):
             if v in valid and v not in cited:
                 cited.append(v)
 
     def _clean(m: "re.Match") -> str:
-        nums = [n for n in re.findall(r"\d+", m.group(1)) if int(n) in valid]
+        nums = [str(v) for v in citation_ids(m.group(1)) if v in valid]
         return f" [{', '.join(nums)}]" if nums else ""
 
-    cleaned = re.sub(r"\s*\[([\d,\s]+)\]", _clean, answer).strip()
+    cleaned = re.sub(r"\s*" + _CITE_RE.pattern, _clean, answer).strip()
     return cleaned, cited

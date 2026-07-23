@@ -394,6 +394,39 @@ def test_qa_resolve_citations():
     assert "9999" not in cleaned          # invalid citation stripped from the text
 
 
+def test_qa_zitat_mit_datum_und_tragweite():
+    """Das Modell hängt trotz Prompt-Regel gern Zusatzangaben in die Klammer
+    („[8525, 2026-04-20, Tragweite: hoch]"). Dann zählt NUR die führende Zahl —
+    sonst würde aus dem Datum die Geister-id 2026 — und der Rohtext darf nicht
+    im Antworttext stehen bleiben."""
+    from council.qa import resolve_citations
+
+    answer = "Der Leitfaden wurde fortgeschrieben [8525, 2026-04-20, Tragweite: hoch]."
+    cleaned, cited = resolve_citations(answer, {8525, 2026})
+    assert cited == [8525]                    # 2026 aus dem Datum zählt NICHT mit
+    assert cleaned == "Der Leitfaden wurde fortgeschrieben [8525]."
+
+
+def test_qa_klammern_ohne_id_bleiben_text():
+    """Nur Klammern, die mit einer Ziffer beginnen, sind Zitate — normaler
+    Klammertext bleibt unangetastet."""
+    from council.qa import resolve_citations
+
+    answer = "Wie oben beschrieben [siehe Abschnitt 2] gilt das weiterhin [77]."
+    cleaned, cited = resolve_citations(answer, {77})
+    assert cited == [77]
+    assert "[siehe Abschnitt 2]" in cleaned
+
+
+def test_qa_citation_ids_regeln():
+    from council.qa import citation_ids
+
+    assert citation_ids("12") == [12]
+    assert citation_ids("12, 13") == [12, 13]          # rein numerisch → alle
+    assert citation_ids("12, 2026-04-20") == [12]      # gemischt → nur die erste
+    assert citation_ids("kein Zitat") == []
+
+
 def test_subvotes_hidden_by_default_and_summarised(tmp_path):
     """Design 23a: Änderungsanträge (kind='subvote') fliegen aus der Standard-
     Trefferliste und werden am Ursprungsbeschluss zusammengefasst."""
