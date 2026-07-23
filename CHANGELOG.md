@@ -7,6 +7,19 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert
+- **Technik-Doku auf den aktuellen Stand gebracht.** Die Doku unter
+  [ratslotse.de/docs](https://ratslotse.de/docs) hing rund 80 Pull Requests
+  hinterher. Neu dazugekommen sind drei Seiten: **Bewertungs-Scores** (wie
+  Wichtigkeit, Tragweite und Gesprächswert entstehen und zusammenfließen —
+  inklusive Rechenbeispiel), **App & Konten** (native iOS-App, Anmeldung samt
+  Sign in with Apple, was am Konto hängt) und **Betrieb** (Deploy-Wege,
+  Dev-Umgebung, Cronjobs, Backups, LLM-Kosten, komplette Env-Referenz).
+  Korrigiert wurden außerdem sachlich falsche Stellen: Der Wichtigkeits-Score
+  war noch als reine Heuristik „kein ML" beschrieben, obwohl die KI-Tragweite
+  seit Längerem zur Hälfte einfließt; die Tabellenlisten beider Datenbanken
+  waren unvollständig; eine dokumentierte Tabelle gab es gar nicht. (#293)
+
 ### Behoben
 - **Die Wichtigkeits-Karte rechnet jetzt vor, wie sie auf ihren Wert kommt.**
   Aufgeklappt erklärten die vier Balken (Geldbetrag, Umstrittenheit,

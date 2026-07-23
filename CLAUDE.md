@@ -15,7 +15,7 @@ per LLM aufbereitet.
 |------|--------|
 | `council/` | Stadtrat-Scraper (SessionNet/Bürgerinfo), Protokoll-Parsing, LLM-Klassifikation, Watcher |
 | `nwz/` | Geteilte Infrastruktur: LLM-Client (`llm.py`), SQLite-Store (`store.py`), E-Mail, Push, Prompts. *(Der Paketname `nwz/` ist historisch.)* |
-| `scripts/` | Cron-Jobs & Ops-Tools (`check_*.py`, `daily_digest.py`, `weekly_enrich.py`, …) |
+| `scripts/` | Cron-Jobs & Ops-Tools (`check_*.py`, `weekly_enrich.py`, `backup_db.py`, …) |
 | `web/backend/` | FastAPI-Backend (uvicorn) |
 | `web/frontend/` | Next.js-Frontend (+ Capacitor für iOS/Android) |
 | `docs-site/` | Astro-Starlight-Technik-Doku |

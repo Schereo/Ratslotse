@@ -13,6 +13,9 @@ sollen messbar besser/schlechter werden, statt „gefühlt".
 |-------|-------|-----------|---------|-------|
 | `watcher` | Tagesordnung → Thema | `council/watcher.py` | Label-Sets | `cases_watcher.json` |
 | `committee` | Routine-Filter (Inhalt ja/nein) | `council/committee_summary.py` | binär | `cases_committee.json` |
+| `qa` | KI-Frage: findet sie die richtigen Beschlüsse? | `council/qa.py` | Label-Sets | `cases_qa.json` |
+
+Jede Suite hat ein `run_<suite>.py`; `eval/run_all.py` fährt alle nacheinander.
 
 **Binär**: eine Ja/Nein-Entscheidung pro Fall → TP/FP/TN/FN + Precision/Recall/F1.
 **Label-Sets**: pro Fall wird eine *Menge* von Treffern vorhergesagt (z. B. die
@@ -48,3 +51,17 @@ Verpassern (False Negatives) aus dem Produktivbetrieb.
 - **committee** (`cases_committee.json`): `{id, note, committee, session_date, session_time, location, agenda_items:[…], expected:bool}`
 
 Nur das Erzeugen einer echten Baseline braucht den `OPENROUTER_API_KEY`.
+
+## Golden-Sets außerhalb des Harness
+
+Zwei Prüfungen liegen bewusst neben dem Harness, weil sie nicht Treffer-Mengen
+messen, sondern die Qualität einer **Bewertung**:
+
+| Skript | Prüft | Reißleine |
+|--------|-------|-----------|
+| `scripts/eval_ai.py` | Klassifikations-Qualität gegen ein Gold-Set | Regressionsguard vor Prompt-Änderungen |
+| `scripts/eval_impact.py` | Tragweite-Score gegen `scripts/golden_impact.json` | Rangkorrelation + Band-Trefferquote; unterschritten → kein Rollout |
+
+`eval_impact.py` ist der erste Schritt des Ops-Workflows für die Tragweite: Nur
+wenn das Gate hält, startet der Voll-Backfill. Siehe
+[Bewertungs-Scores](/docs/bewertungen/) und [Betrieb](/docs/betrieb/).

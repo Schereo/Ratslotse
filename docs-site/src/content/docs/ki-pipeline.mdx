@@ -56,8 +56,15 @@ flowchart TD
 | **Ausschuss-Zusammenfassung** | Tagesordnungen | täglich |
 | **Watcher (Themen-Matching)** | Tagesordnungen | mehrmals täglich |
 | **Protokoll-Extraktion + Beschluss-Klassifikation** | Sitzungsprotokolle | täglich |
+| **„Lotti erklärt's einfach"** (bürgernahe Kurzfassung) | Beschlusstext | täglich (neue), wöchentlich (Bestand) |
+| **Bewertungs-Scores** (Tragweite, Gesprächswert) | Beschlusstext | täglich (neue), wöchentlich (Tranchen) |
+| **Fundstück des Tages** (kuratierte Archivfunde) | bewertete Beschlüsse | wöchentlich, 21 Tage Vorlauf |
 | **Anreicherung** (Entitäten, Embeddings, Rückblicke) | Beschlüsse | wöchentlich |
 | **Quiz-Fragen** (Generierung + Verify-Pass) | Wikipedia · Stadt-Website · Ratsdaten | Backfill (manuell + wöchentlich) |
+| **KI-Frage „Frag den Rat"** | Beschlüsse + Vorlagen | auf Zuruf (Streaming) |
+
+Tragweite, Gesprächswert und der daraus gemischte Wichtigkeits-Wert haben eine
+eigene Seite: [Bewertungs-Scores](/docs/bewertungen/).
 
 ## Ausschuss-Zusammenfassungen
 
@@ -87,6 +94,20 @@ Neu veröffentlichte Sitzungsprotokolle werden geparst, Beschlüsse extrahiert
 eingeordnet — die Grundlage für Filter, Analyse und die Themenfeld-Rückblicke.
 Details zu den Dokumenten und dem Datenmodell:
 [Ratsdokumente & Beschlüsse](/docs/beschluesse/).
+
+## „Lotti erklärt's einfach"
+
+Amtsdeutsch ist die größte Hürde vor den Ratsdaten. Deshalb schreibt
+`council/simple_summary.py` je Beschluss zwei bis drei bürgernahe Sätze in die
+Spalte `simple_summary` — was beschlossen wurde und was es praktisch bedeutet,
+ohne Fachbegriffe.
+
+Zwei Einschränkungen sind bewusst gesetzt: Nur echte Beschlüsse
+(`kind='decision'`) mit einem hinreichend langen Beschlusstext bekommen eine
+Kurzfassung — bei einer Zwei-Zeilen-Kenntnisnahme gäbe es nichts zu vereinfachen,
+und eine erfundene Erklärung wäre schlimmer als keine. Neue Beschlüsse werden im
+täglichen Protokoll-Lauf bedient, der Bestand wandert in wöchentlichen Tranchen
+nach.
 
 ## Wöchentliche Anreicherung
 
