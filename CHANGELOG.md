@@ -10,13 +10,16 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [1.3.0] – 2026-07-23
 
 ### Hinzugefügt
-- **KI-Frage: Weiterfragen statt Sackgasse.** Unter jeder Antwort stehen jetzt
-  **drei Anschlussfragen**, die zur gerade gelesenen Antwort passen (z. B. „Wer
-  stimmte gegen den Radverkehrsplan?") — ein Tipp darauf startet sofort die
-  nächste Frage. Daneben führt **„Eigene Frage"** zurück ins Eingabefeld. Die
-  Vorschläge entstehen ohne zusätzliche KI-Anfrage aus derselben Antwort; wenn
-  das Modell keine liefert, leitet Ratslotse sie aus den gefundenen Beschlüssen
-  ab, sodass jeder Vorschlag garantiert zu etwas führt. (#292)
+- **KI-Frage: Weiterfragen statt Sackgasse.** **Direkt unter jeder Antwort**
+  stehen jetzt **drei Anschlussfragen**, die zur gerade gelesenen Antwort passen
+  (z. B. „Wer stimmte gegen den Radverkehrsplan?") — ein Tipp darauf startet
+  sofort die nächste Frage. Daneben führt **„Eigene Frage"** zurück ins
+  Eingabefeld. Die Vorschläge entstehen ohne zusätzliche KI-Anfrage aus
+  derselben Antwort; wenn das Modell keine liefert, leitet Ratslotse sie aus den
+  gefundenen Beschlüssen ab, sodass jeder Vorschlag garantiert zu etwas führt.
+  Die Liste der gefundenen Beschlüsse steht dafür jetzt **unter** den
+  Weiterfragen — bei Dutzenden Treffern hätte man sie sonst komplett
+  durchscrollen müssen, um die Vorschläge überhaupt zu sehen. (#292, #295)
 - **App: Zurückwischen vom Bildschirmrand.** In der iOS-App kommst du jetzt wie
   gewohnt mit einer **Wischgeste vom linken Rand** eine Seite zurück (und vom
   rechten wieder vor) — passend zur Vor-/Zurück-Navigation der App. (#286)
