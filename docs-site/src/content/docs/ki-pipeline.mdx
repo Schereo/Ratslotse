@@ -116,6 +116,39 @@ und „Ähnliche Beschlüsse" frisch bleiben: Entitäten-Extraktion → Beschrei
 → Geocoding → Embeddings/Ähnliche → Themen↔Beschlüsse-Matching →
 Themenfeld-Rückblicke.
 
+Bestätigte Themen-Zusammenführungen (siehe unten) wendet der Entitäten-Schritt
+dabei automatisch mit an. Die *Suche* nach neuen Dubletten läuft bewusst nicht
+wöchentlich mit, sondern nur auf Anstoß („Ops: Themen-Dubletten zusammenführen") —
+eine Zusammenführung sollte man sehen, bevor sie wirkt.
+
+## Doppelte Themen
+
+Die Entitäten-Extraktion entscheidet **je Beschluss-Batch neu**, wie sie eine
+Sache benennt, und kennt den übrigen Bestand nicht. Über Jahre entstehen so
+mehrere Themen-Seiten für denselben Gegenstand — gemessen am Bestand vom
+23.07.2026: **23 Gruppen mit 50 Namen**, darunter vier für den Bäderbetrieb und
+drei für die Gebäudewirtschaft. Beschlüsse und aufsummierte Beträge verteilen
+sich dann auf mehrere Seiten.
+
+`scripts/merge_entity_aliases.py` räumt das auf. Erkennungsmerkmal ist
+kontraintuitiv, aber zuverlässig: **echte Dubletten haben null gemeinsame
+Beschlüsse bei sehr hoher inhaltlicher Nähe.** Das folgt direkt aus der Ursache —
+nennt die Extraktion in einem Beschluss „Bäderbetrieb Oldenburg", nennt sie dort
+nicht zusätzlich „Bäderbetrieb der Stadt Oldenburg".
+
+Der Lauf sammelt Kandidaten über Namensnormalisierung (Rechtsform, Ortszusatz,
+vorangestellte Gattung, Abkürzung, Teilstring) und legt **jedes Paar einzeln dem
+LLM vor** — mit Beschlusstiteln als Beleg. Nötig, weil Namensähnlichkeit allein
+nicht reicht: „IBIS"/„IBIS e.V." ist eine Sache, „Fliegerhorst"/„Grundschule
+Fliegerhorst" sind zwei. Bei Abkürzungen erzwingt der Code die Langform als
+Hauptnamen; wer „VWG" sucht, landet über die Zuordnung trotzdem richtig.
+
+Die Zusammenführung ist **umkehrbar**: Geschrieben wird nur die Zuordnungstabelle
+`council_entity_aliases`. Die Roh-Beobachtungen bleiben unangetastet, und die
+Themen werden bei jedem Lauf neu daraus abgeleitet — eine Zuordnung löschen
+(Admin-Panel → „Themen-Dubletten") stellt den vorherigen Stand her. Von Hand
+gesetzte Zuordnungen überschreibt ein automatischer Lauf nie.
+
 ## Quiz-Fragen
 
 Das **Oldenburg-Quiz** erzeugt seine Multiple-Choice-Fragen per LLM, aber

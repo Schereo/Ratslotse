@@ -284,6 +284,44 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Beschlusstext (Auszug):\n{beschluss}"
         ),
     },
+    "entity_dubletten_system": {
+        "title": "Themen-Dubletten – System",
+        "description": "Entscheidet, ob zwei Themen-Namen dieselbe Sache bezeichnen (Zusammenführung).",
+        "template": (
+            "Du prüfst Paare von Themen-Namen aus einem Ratsinformationssystem (Oldenburg) "
+            "darauf, ob sie DIESELBE Sache bezeichnen und deshalb zu einer Themen-Seite "
+            "zusammengeführt werden sollten.\n\n"
+            "ZUSAMMENFÜHREN (gleich=true), wenn sich die Namen nur unterscheiden durch:\n"
+            "- Rechtsform: „Deutsche Bahn“ / „Deutsche Bahn AG“, „IBIS“ / „IBIS e.V.“\n"
+            "- Ortszusatz: „Bäderbetrieb Oldenburg“ / „Bäderbetrieb der Stadt Oldenburg“\n"
+            "- Abkürzung und Langform: „VWG“ / „Verkehr und Wasser GmbH“\n"
+            "- Schreibweise, Bindestriche, Plural: „Abfall-Lern-Pfad“ / „Abfall-Lernpfad“\n\n"
+            "NICHT zusammenführen (gleich=false), wenn es sich um verschiedene Gegenstände "
+            "handelt — auch wenn die Namen ähnlich sind:\n"
+            "- Teilbereich vs. Ganzes: „Alexanderstraße“ / „Alexanderstraße Nord“, "
+            "„Hallensichel“ / „Hallensichel-Ost“\n"
+            "- Einrichtung an einem Ort vs. der Ort: „Fliegerhorst“ / „Grundschule Fliegerhorst“, "
+            "„Stadtmuseum“ / „Tiefgarage Am Stadtmuseum“\n"
+            "- Bestand vs. Neubauvorhaben: „Stadtmuseum“ / „Neues Stadtmuseum“\n"
+            "- Ort vs. förmliches Verfahren dort: „Kreyenbrück-Nord“ / "
+            "„Sanierungsgebiet Kreyenbrück Nord“\n"
+            "- Betreibergesellschaft vs. Anlage: „Eigenbetrieb Hafen“ / „Hafen“\n\n"
+            "Nutze die mitgelieferten Beschlusstitel — daran erkennst du, ob wirklich über "
+            "dieselbe Sache verhandelt wurde.\n\n"
+            "IM ZWEIFEL gleich=false. Eine falsche Zusammenführung wirft zwei verschiedene "
+            "Themen für immer zusammen; eine verpasste lässt nur den heutigen Zustand bestehen.\n\n"
+            "Wenn gleich=true, wähle als „kanonisch“ den gebräuchlichsten, kürzesten "
+            "vollständigen Namen — den, den Bürger:innen suchen würden.\n\n"
+            "Antworte mit NUR JSON: {{\"paare\": [{{\"id\": <id>, \"gleich\": true|false, "
+            "\"kanonisch\": \"<einer der beiden Namen, nur bei gleich=true>\", "
+            "\"grund\": \"<max. 1 kurzer Satz>\"}}]}} — genau ein Eintrag je vorgelegtem Paar."
+        ),
+    },
+    "entity_dubletten_user": {
+        "title": "Themen-Dubletten – Auftrag",
+        "description": "Die zu prüfenden Namenspaare mit Beschlusszahl und Beispieltiteln.",
+        "template": "Prüfe diese Paare:\n\n{paare}",
+    },
 }
 
 

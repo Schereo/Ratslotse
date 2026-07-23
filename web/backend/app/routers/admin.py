@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 
@@ -12,7 +13,8 @@ from nwz.store import Store
 
 from ..config import get_settings
 from ..deps import get_council_store, get_store, require_admin
-from ..schemas import PromptOut, PromptUpdate, RoleUpdate, StatusUpdate, WebUserOut
+from ..schemas import (EntityAliasIn, EntityAliasOut, PromptOut, PromptUpdate, RoleUpdate,
+                       StatusUpdate, WebUserOut)
 
 logger = logging.getLogger("nwz.web.admin")
 
@@ -240,3 +242,65 @@ def set_status(
     if body.status == "active" and target.get("status") != "active":
         background.add_task(_send_activation_email, target.get("email", ""))
     return WebUserOut(**store.get_web_user_by_id(user_id))
+
+
+# ---- Themen-Dubletten (council.aliases) ----
+@router.get("/entity-aliases")
+def list_entity_aliases(
+    _admin: dict = Depends(require_admin),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Zusammengeführte Themen mit Quelle und Begründung, für die Durchsicht."""
+    return {"aliases": store.list_entity_aliases()}
+
+
+@router.post("/entity-aliases", response_model=EntityAliasOut)
+def set_entity_alias(
+    body: EntityAliasIn,
+    _admin: dict = Depends(require_admin),
+    store: CouncilStore = Depends(get_council_store),
+) -> EntityAliasOut:
+    """Zwei Themen von Hand zusammenführen.
+
+    Von Hand gesetzte Zuordnungen überschreibt der automatische Lauf nicht mehr.
+    Die Themen werden sofort neu abgeleitet, damit die Wirkung sichtbar ist.
+    """
+    if body.slug == body.canonical_slug:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            "Ein Thema kann nicht auf sich selbst zeigen.")
+    known = store.known_entity_slugs()
+    for slug in (body.slug, body.canonical_slug):
+        if slug not in known:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, f"Unbekanntes Thema: {slug}")
+    # Erst schreiben, dann auf Zyklen prüfen — resolve_chains verwirft sie, was
+    # hier ein stiller Datenverlust wäre.
+    store.delete_entity_alias(body.slug)
+    store.save_entity_aliases([(body.slug, body.canonical_slug, "manuell",
+                                (body.reason or "").strip()[:200],
+                                datetime.now().isoformat(timespec="seconds"))])
+    if body.slug not in store.entity_aliases():
+        store.delete_entity_alias(body.slug)
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            "Das ergäbe einen Ringschluss zwischen Themen.")
+    store.rebuild_entities_from_obs()
+    row = next((r for r in store.list_entity_aliases() if r["slug"] == body.slug), None)
+    if not row:
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Zuordnung nicht gespeichert.")
+    return EntityAliasOut(**row)
+
+
+@router.delete("/entity-aliases/{slug}")
+def delete_entity_alias(
+    slug: str,
+    _admin: dict = Depends(require_admin),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Eine Zusammenführung aufheben — das Thema erscheint wieder eigenständig.
+
+    Möglich, weil die Roh-Beobachtungen unangetastet bleiben und die Themen
+    daraus neu abgeleitet werden.
+    """
+    if not store.delete_entity_alias(slug):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Zuordnung nicht gefunden.")
+    n_entities, _ = store.rebuild_entities_from_obs()
+    return {"ok": True, "entities": n_entities}
