@@ -27,12 +27,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   KI-Frage mit „Load failed". Dem Streaming-Endpoint fehlten die Freigabe-
   Header für die App und die App-Anmeldung wurde nicht durchgereicht; beides
   ist ergänzt. Rein serverseitig — nach dem Update funktioniert es in der
-  bestehenden App ohne Neuinstallation. (#PR)
+  bestehenden App ohne Neuinstallation. (#281)
 - **App: Impressum, Datenschutz und Changelog wieder verlassbar + Kopf unter
   der Dynamic Island.** Auf diesen Seiten fehlte in der App ein Zurück-Weg,
   und der Seitenkopf lag unter der Kamera-Insel des iPhones. Jetzt gibt es
   oben einen **Zurück-Knopf**, und der Kopf respektiert den sicheren
-  Bereich. (#PR)
+  Bereich. (#281)
 - **Datumsauswahl: schneller ins Jahr, ruhigere Darstellung.** Im Datumsfilter
   führt ein Tipp auf die Kopfzeile („Juni 2025") jetzt direkt in die **Monats-
   und ein weiterer in die Jahresauswahl** — so springt man mit wenigen Tippern
@@ -42,6 +42,13 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   der Kalender nach oben öffnete (z. B. im mobilen Filter). (#283)
 
 ### Hinzugefügt
+- **KI-Frage: Weiterfragen statt Sackgasse.** Unter jeder Antwort stehen jetzt
+  **drei Anschlussfragen**, die zur gerade gelesenen Antwort passen (z. B. „Wer
+  stimmte gegen den Radverkehrsplan?") — ein Tipp darauf startet sofort die
+  nächste Frage. Daneben führt **„Eigene Frage"** zurück ins Eingabefeld. Die
+  Vorschläge entstehen ohne zusätzliche KI-Anfrage aus derselben Antwort; wenn
+  das Modell keine liefert, leitet Ratslotse sie aus den gefundenen Beschlüssen
+  ab, sodass jeder Vorschlag garantiert zu etwas führt. (#PR)
 - **App: Zurückwischen vom Bildschirmrand.** In der iOS-App kommst du jetzt wie
   gewohnt mit einer **Wischgeste vom linken Rand** eine Seite zurück (und vom
   rechten wieder vor) — passend zur Vor-/Zurück-Navigation der App. (#286)
