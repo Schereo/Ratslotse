@@ -8,6 +8,9 @@ Versionen vor `0.5.1` wurden nachträglich aus der Git- und PR-Historie rekonstr
 
 ## [Unreleased]
 
+### Hinzugefügt
+- **Verwandte Themen (Datengrundlage):** Neue Berechnung `council/related.py` + Backfill `scripts/build_entity_relations.py` ermittelt je Thema die passenden Nachbarn — getrennt nach *belegt* (kommt gemeinsam in Beschlüssen vor, z. B. Fliegerhorst ── Entlastungsstraße) und *ähnlich* (semantischer Nachbar aus den Embeddings, nur zum Auffüllen). Läuft ohne LLM-Aufruf im wöchentlichen `weekly_enrich` mit. Gremien (Ausschüsse) und Namens-Dubletten werden herausgefiltert. Die Oberfläche dazu folgt separat.
+
 ## [0.42.1] – 2026-06-27
 
 ### Behoben

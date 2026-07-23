@@ -10,11 +10,13 @@ press links and "Ähnliche Beschlüsse" are heavier and run here, once a week, i
     3. Geocoding               geocode_entities.py   — geocodes new place entities
     4. Presse-Links            link_news.py          — re-matches decisions ↔ NWZ
     5. Embeddings/Ähnliche     embed_decisions.py    — re-embeds for "Ähnliche Beschlüsse"
-    6. Themen ↔ Beschlüsse     match_topics_decisions.py — matcht Nutzer-Themen gegen Beschlüsse
-    7. Themenfeld-Rückblicke   generate_field_recaps.py  — LLM-Kurzrückblick je Politikfeld (≈ monatlich)
+    6. Verwandte Themen        build_entity_relations.py — "Hängt zusammen mit…" je Entität
+    7. Themen ↔ Beschlüsse     match_topics_decisions.py — matcht Nutzer-Themen gegen Beschlüsse
+    8. Themenfeld-Rückblicke   generate_field_recaps.py  — LLM-Kurzrückblick je Politikfeld (≈ monatlich)
 
 Each step runs independently — a failure in one does NOT stop the others. Steps 2–3
-are idempotent (only-missing); 1, 4, 5 are full rebuilds (cheap enough weekly).
+are idempotent (only-missing); 1, 4, 5, 6 are full rebuilds (cheap enough weekly).
+Step 6 must follow 1 and 5 — it reads the rebuilt entities and their embeddings.
 
 Cron (Sundays 03:00):
     0 3 * * 0 cd ~/app && .venv/bin/python scripts/weekly_enrich.py >> ~/app/data/weekly_enrich.log 2>&1
@@ -33,6 +35,7 @@ STEPS: list[tuple[str, str]] = [
     ("Geocoding", "geocode_entities.py"),
     ("Presse-Links", "link_news.py"),
     ("Embeddings / Ähnliche", "embed_decisions.py"),
+    ("Verwandte Themen", "build_entity_relations.py"),
     ("Themen ↔ Beschlüsse", "match_topics_decisions.py"),
     ("Themenfeld-Rückblicke", "generate_field_recaps.py"),
 ]
