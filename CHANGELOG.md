@@ -111,7 +111,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   unten, die Stationen erscheinen nacheinander und rasten mit einem kleinen
   Punkt ein — so liest man die **Reihenfolge** mit, erst die Anträge, dann der
   endgültige Beschluss. Wer im System weniger Bewegung eingestellt hat
-  (`prefers-reduced-motion`), sieht die Zeitachse sofort fertig. (#PR)
+  (`prefers-reduced-motion`), sieht die Zeitachse sofort fertig. (#294)
 - **Änderungsanträge als Kontext statt loser Treffer (Design 23a).** Änderungs-
   anträge (Teilabstimmungen) tauchen in der Beschluss-Suche **nicht mehr als
   eigene Treffer** auf, sondern hängen als **Unterzeile am Ursprungsbeschluss**
