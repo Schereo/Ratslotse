@@ -306,13 +306,17 @@ def decision_detail(
     out["importance_breakdown"] = importance.importance_breakdown(d, n_beratungen=n_ber)
     # RL-U16: gleiche 50/50-Mischung wie beim persistierten Wichtig-Wert —
     # sonst zeigten Liste (DB) und Detail (Live-Heuristik) verschiedene Zahlen.
-    # impact_reason erklärt den Meter („Warum wichtig: …", Design 13a-B).
+    # `base_score` (Heuristik) und `impact` bleiben einzeln erhalten, damit die
+    # Beschluss-Seite die Rechnung offenlegen kann: die vier Signal-Balken
+    # erklären nur die Heuristik-Hälfte, nicht den gemischten Endwert.
+    # impact_reason erklärt die Tragweite („Warum wichtig: …", Design 13a-B).
+    bd = out["importance_breakdown"]
+    bd["base_score"] = bd["score"]
     if d.get("impact") is not None:
-        out["importance_breakdown"]["score"] = round(
-            (out["importance_breakdown"]["score"] + int(d["impact"])) / 2
-        )
+        bd["impact"] = int(d["impact"])
+        bd["score"] = round((bd["base_score"] + bd["impact"]) / 2)
         if d.get("impact_reason"):
-            out["importance_breakdown"]["impact_reason"] = d["impact_reason"]
+            bd["impact_reason"] = d["impact_reason"]
     if d.get("kind") == "decision" and d.get("item_number"):
         out["sub_votes"] = store.get_subvotes(d["ksinr"], d["item_number"])
     if d.get("vorlage_nr"):
