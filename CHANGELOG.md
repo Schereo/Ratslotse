@@ -22,6 +22,17 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   `weekly_enrich` mit; Gremien und Namens-Dubletten werden herausgefiltert.
 
 ### Geändert
+- **Beschluss-Seite aufgeräumt.** Die Seite führte mit einer Wand Amtssprache
+  und streute die Kennzahlen über sechs Karten in der Randspalte. Jetzt steht
+  **„Lotti erklärt's einfach" ganz oben** — der amtliche Wortlaut folgt darunter
+  und lässt sich zuklappen (verbindlich bleibt er, er ist nur nicht mehr das
+  Erste, was einen erschlägt). Rechts bündelt eine Karte **„Auf einen Blick"**
+  Betrag, Abstimmung, Antragsteller und Wichtigkeit; die Anlagen sind zu den
+  **Dokumenten** gewandert, wo die übrigen Datei-Links stehen — aus sechs Karten
+  werden drei. Anträge, Endergebnis und das Warum stehen unter einer gemeinsamen
+  Überschrift **„Verlauf & Begründung"**, und bei den ähnlichen Beschlüssen sind
+  zunächst die zwei relevantesten zu sehen. Reine Anordnung — es fehlt nichts,
+  alles ist nur dort, wo man es sucht. (#305)
 - **Beschluss-Seite: klarer, was aus dem Protokoll und was aus der Vorlage
   stammt.** „Beschlusstext" und „Aus der Vorlage · Beschlussvorlage" standen
   unkommentiert untereinander — die zweite Überschrift las sich, als stünde dort
