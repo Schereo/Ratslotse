@@ -103,6 +103,32 @@ function hasOwnContent(title: string | null | undefined, kind: string, factions:
   return rest.length >= 6;
 }
 
+/** Abstand zwischen zwei Knoten beim Aufbau — knapp genug, dass die ganze
+ *  Zeitachse in unter einer Sekunde steht. */
+const TIMELINE_STEP_MS = 130;
+
+/** Die Zeitachse baut sich beim Öffnen der Beschluss-Seite einmal auf: die
+ *  Linie wächst nach unten, die Knoten erscheinen der Reihe nach. So sieht man
+ *  die Reihenfolge — erst die Anträge, dann der endgültige Beschluss.
+ *
+ *  Bewusst am Mounten statt am Sichtbereich (IntersectionObserver) gekoppelt:
+ *  ein Observer meldet in einem nicht gerenderten Dokument gar nichts, und dann
+ *  bliebe echter Inhalt dauerhaft unsichtbar — auch im Ausdruck, den die
+ *  Beschluss-Seiten ausdrücklich unterstützen. Der kurze Timeout lässt den
+ *  Startzustand einmal malen (sonst fasst React beides zu einem Paint zusammen
+ *  und der Übergang entfällt) und läuft auch im Hintergrund-Tab ab. Bei
+ *  prefers-reduced-motion sofort im Endzustand — Idiom wie
+ *  components/reveal.tsx. */
+function useTimelineReveal() {
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { setShown(true); return; }
+    const id = setTimeout(() => setShown(true), 50);
+    return () => clearTimeout(id);
+  }, []);
+  return shown;
+}
+
 /** Design 23a: „Anträge & Teilabstimmungen" als Zeitachse Änderung → Ergebnis.
  *  Jeder Änderungsantrag ist ein Knoten (Fraktion, Ergebnis, was beantragt
  *  wurde); den Abschluss bildet der endgültige Beschluss. Bewusst kein
@@ -110,15 +136,42 @@ function hasOwnContent(title: string | null | undefined, kind: string, factions:
  *  Der Antragsinhalt steckt bei Teilabstimmungen in `title` (die Extraktion
  *  legt ihn dort ab, `beschluss` bleibt für sie leer). */
 function SubvoteTimeline({ d, subVotes }: { d: CouncilDecision; subVotes: CouncilDecision[] }) {
+  const shown = useTimelineReveal();
+  // Die Linie begleitet alle Knoten (inkl. Endknoten) und läuft kurz nach.
+  const lineMs = 240 + (subVotes.length + 1) * TIMELINE_STEP_MS;
   return (
-    <ol className="relative space-y-5 border-l-2 border-border pl-5">
-      {subVotes.map((s) => {
+    // border-transparent statt border-border: die sichtbare Linie ist das
+    // animierte <span> darunter — die Kastengeometrie bleibt unverändert.
+    <ol className="relative space-y-5 border-l-2 border-transparent pl-5">
+      <span
+        aria-hidden
+        style={{ transitionDuration: `${lineMs}ms` }}
+        className={cn(
+          "absolute -left-0.5 top-0 h-full w-0.5 origin-top bg-border transition-transform ease-out-strong",
+          shown ? "scale-y-100" : "scale-y-0",
+        )}
+      />
+      {subVotes.map((s, i) => {
         const factions = Array.isArray(s.factions) ? s.factions : [];
         const kind = subvoteKind(s.title);
         const body = s.beschluss || (hasOwnContent(s.title, kind, factions) ? s.title : null);
         return (
-          <li key={s.id} className="relative">
-            <span className="absolute -left-[26px] top-1 h-3.5 w-3.5 rounded-full border-2 border-card bg-signal" aria-hidden />
+          <li
+            key={s.id}
+            style={{ transitionDelay: `${i * TIMELINE_STEP_MS}ms` }}
+            className={cn(
+              "relative transition-[opacity,transform] duration-500 ease-out-strong",
+              shown ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0",
+            )}
+          >
+            <span
+              style={{ transitionDelay: `${i * TIMELINE_STEP_MS + 80}ms` }}
+              className={cn(
+                "absolute -left-[26px] top-1 h-3.5 w-3.5 rounded-full border-2 border-card bg-signal transition-transform duration-300 ease-back-out",
+                shown ? "scale-100" : "scale-0",
+              )}
+              aria-hidden
+            />
             <p className="text-[11px] font-semibold uppercase tracking-wider text-signal">
               {kind}{factions.length > 0 ? ` · ${factions.join(", ")}` : ""}
             </p>
@@ -136,9 +189,23 @@ function SubvoteTimeline({ d, subVotes }: { d: CouncilDecision; subVotes: Counci
         );
       })}
       {/* Abschluss: der endgültige Beschluss (Volltext steht oben im
-          Beschlusstext-Block — hier nur Ergebnis + optionale Kurzfassung). */}
-      <li className="relative">
-        <span className="absolute -left-[26px] top-1 h-3.5 w-3.5 rounded-full border-2 border-card bg-[#22c55e]" aria-hidden />
+          Beschlusstext-Block — hier nur Ergebnis + optionale Kurzfassung).
+          Rastet als Letzter ein — das Ziel der Zeitachse. */}
+      <li
+        style={{ transitionDelay: `${subVotes.length * TIMELINE_STEP_MS}ms` }}
+        className={cn(
+          "relative transition-[opacity,transform] duration-500 ease-out-strong",
+          shown ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0",
+        )}
+      >
+        <span
+          style={{ transitionDelay: `${subVotes.length * TIMELINE_STEP_MS + 80}ms` }}
+          className={cn(
+            "absolute -left-[26px] top-1 h-3.5 w-3.5 rounded-full border-2 border-card bg-[#22c55e] transition-transform duration-300 ease-back-out",
+            shown ? "scale-100" : "scale-0",
+          )}
+          aria-hidden
+        />
         <p className="text-[11px] font-semibold uppercase tracking-wider text-green-700 dark:text-green-400">Endgültiger Beschluss</p>
         <p className="mt-1 text-sm leading-relaxed text-foreground">
           {(OUTCOME_META[d.outcome ?? "kein_beschluss"]?.label ?? "Beschlossen")}
