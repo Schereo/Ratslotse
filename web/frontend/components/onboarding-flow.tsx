@@ -7,7 +7,7 @@ import { AlertTriangle, Bell, Check, Landmark, Loader2, Plus, Sparkles, X } from
 import { api } from "@/lib/api";
 import { isNativeApp } from "@/lib/platform";
 import { cn } from "@/lib/utils";
-import { Button, Input } from "@/components/ui";
+import { Button, Input, Skeleton } from "@/components/ui";
 import { Mascot, type MascotPose } from "@/components/mascot";
 import { useMascotTheme } from "@/components/seasonal-mascot";
 import { committeeExplains, committeeRank, shortCommittee } from "@/lib/committees";
@@ -592,19 +592,37 @@ function TopicSheet({ topic, onClose, onSaved }: {
     }
   };
 
+  // Solange das Sheet offen ist, darf die Seite darunter nicht mitscrollen —
+  // sonst wandert der Onboarding-Schritt hinter dem Sheet weg (Muster aus
+  // council-map.tsx). Das Sheet selbst scrollt weiter, `overscroll-contain`
+  // verhindert nur, dass sein Scroll-Ende auf die Seite durchschlägt.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
   return (
     <div className="fixed inset-0 z-[110] flex flex-col justify-end">
       <button type="button" aria-label="Schließen" onClick={onClose}
-        className="absolute inset-0 bg-[rgba(9,17,27,0.42)]" />
-      <div className="relative max-h-[88%] overflow-y-auto rounded-t-[22px] bg-card px-[18px] pb-[calc(1.125rem+env(safe-area-inset-bottom))] pt-2.5 shadow-[0_-12px_40px_-14px_rgba(2,32,71,0.4)]">
-        <span aria-hidden className="mx-auto mb-3.5 block h-1 w-9 rounded-full bg-border" />
-        <div className="flex items-center gap-2.5">
-          <h3 className="flex-1 font-display text-lg font-bold text-foreground">Thema anpassen</h3>
-          <button type="button" onClick={onClose} aria-label="Schließen"
-            className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-muted text-muted-foreground">
-            <X className="h-4 w-4" />
-          </button>
+        className="absolute inset-0 touch-none bg-[rgba(9,17,27,0.42)]" />
+      {/* Kopf und Fußzeile bleiben stehen, nur die Mitte scrollt: Vorher scrollte
+          der ganze Inhalt samt „Speichern" weg, sodass man für die Knöpfe erst
+          ans Ende wischen musste. Zusammen mit der höheren Textarea passt die
+          Beschreibung jetzt meist ohne Scrollen hinein. */}
+      <div className="relative flex max-h-[92%] flex-col rounded-t-[22px] bg-card pt-2.5 shadow-[0_-12px_40px_-14px_rgba(2,32,71,0.4)]">
+        <div className="shrink-0 px-[18px]">
+          <span aria-hidden className="mx-auto mb-3.5 block h-1 w-9 rounded-full bg-border" />
+          <div className="flex items-center gap-2.5">
+            <h3 className="flex-1 font-display text-lg font-bold text-foreground">Thema anpassen</h3>
+            <button type="button" onClick={onClose} aria-label="Schließen"
+              className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-muted text-muted-foreground">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-[18px]">
 
         <p className="mb-1.5 mt-4 text-xs font-semibold text-muted-foreground">Name</p>
         <div className="flex h-[46px] items-center rounded-xl border border-border bg-card px-3.5 text-[15px] font-medium text-foreground">
@@ -618,35 +636,42 @@ function TopicSheet({ topic, onClose, onSaved }: {
             <Sparkles className="h-3 w-3" /> Neu generieren
           </button>
         </div>
+        {/* Die generierten Beschreibungen sind regelmäßig 5–7 Zeilen lang; mit
+            rows={3} war der Text im eigenen Feld abgeschnitten. */}
         <textarea value={description} onChange={(e) => setDescription(e.target.value)}
-          rows={3} aria-label="Beschreibung"
+          rows={6} aria-label="Beschreibung"
           className="w-full rounded-xl border-[1.5px] border-primary bg-card px-3.5 py-3 text-[13px] leading-relaxed text-foreground outline-none" />
 
         <div className="mt-3.5 rounded-xl bg-muted/60 px-3.5 py-3">
-          <p className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">
             Passt gerade auf
-            {checking && (
-              <span className="inline-flex items-center gap-1 normal-case tracking-normal">
-                <Loader2 className="h-3 w-3 animate-spin" /> prüft…
-              </span>
-            )}
           </p>
-          <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">
-            {!check ? "—" : check.matches > 0 ? (
-              <>
-                <strong className="font-semibold text-foreground">
-                  {check.matches} {check.matches === 1 ? "Beschluss" : "Beschlüsse"}
-                </strong>
-                {check.examples.length > 0 && <> — u. a. „{check.examples.slice(0, 2).join("“, „")}“.</>}
-              </>
-            ) : (
-              /* Keine Zahl behaupten, wo keine Belege sind: Vorher stand hier
-                 „12 Beschlüsse — u. a. Grundschule Auf der Wunderburg“ unter
-                 einem Thema namens „Grundschule Krusenbusch“. */
-              <>Noch nichts — der Rat hat dazu bisher nicht entschieden. Sobald das
-              passiert, meldet sich Lotti.</>
-            )}
-          </p>
+          {/* Während der Prüfung Platzhalterzeilen statt Spinner + „prüft…":
+              Der Block behält seine Höhe (kein Springen, wenn das Ergebnis
+              eintrifft), und die Andeutung zeigt, dass hier gleich Text steht. */}
+          {checking ? (
+            <div className="mt-1.5 space-y-1.5" role="status" aria-label="Treffer werden geprüft">
+              <Skeleton className="h-[11px] w-4/5" />
+              <Skeleton className="h-[11px] w-3/5" />
+            </div>
+          ) : (
+            <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">
+              {!check ? "—" : check.matches > 0 ? (
+                <>
+                  <strong className="font-semibold text-foreground">
+                    {check.matches} {check.matches === 1 ? "Beschluss" : "Beschlüsse"}
+                  </strong>
+                  {check.examples.length > 0 && <> — u. a. „{check.examples.slice(0, 2).join("“, „")}“.</>}
+                </>
+              ) : (
+                /* Keine Zahl behaupten, wo keine Belege sind: Vorher stand hier
+                   „12 Beschlüsse — u. a. Grundschule Auf der Wunderburg“ unter
+                   einem Thema namens „Grundschule Krusenbusch“. */
+                <>Noch nichts — der Rat hat dazu bisher nicht entschieden. Sobald das
+                passiert, meldet sich Lotti.</>
+              )}
+            </p>
+          )}
         </div>
 
         {check?.vague && (
@@ -669,7 +694,9 @@ function TopicSheet({ topic, onClose, onSaved }: {
           </div>
         )}
 
-        <div className="mt-3.5 flex gap-2.5">
+        </div>
+
+        <div className="shrink-0 flex gap-2.5 border-t border-border/60 px-[18px] pb-[calc(1.125rem+env(safe-area-inset-bottom))] pt-3.5">
           <button type="button" onClick={onClose}
             className="h-[46px] flex-1 rounded-xl border border-border bg-card text-sm font-medium text-foreground">
             Abbrechen
