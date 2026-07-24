@@ -68,7 +68,17 @@ export function FeedbackDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent>
+      <DialogContent
+        // Radix fokussiert beim Öffnen das erste fokussierbare Element — hier
+        // die Art-Auswahl. Auf iOS reißt ein fokussiertes <select> sofort das
+        // Rad-Menü auf, noch bevor man den Dialog gelesen hat. Stattdessen den
+        // Dialog selbst fokussieren: Screenreader sagen ihn weiterhin an und
+        // die Fokusfalle greift, aber es klappt nichts von allein auf.
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          (event.currentTarget as HTMLElement | null)?.focus();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Feedback geben</DialogTitle>
         </DialogHeader>
