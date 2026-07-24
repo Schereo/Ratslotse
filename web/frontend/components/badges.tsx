@@ -93,7 +93,14 @@ export function BadgeCelebrator() {
       if (isOnboardingVisible()) return;
       setPending((p) => {
         if (!p.length) return p;
-        for (const b of p) toast.success(`Abzeichen verdient: ${b.title}!`);
+        // EINE Meldung, auch wenn mehrere Abzeichen zusammenkommen. Beim ersten
+        // Login stapelten sich sonst mehrere Toasts übereinander — direkt über
+        // dem Gruß, und man las keinen davon zu Ende.
+        toast.success(
+          p.length === 1
+            ? `Abzeichen verdient: ${p[0].title}!`
+            : `${p.length} Abzeichen verdient: ${p.map((b) => b.title).join(", ")}!`,
+        );
         setCelebrate(true);
         return [];
       });

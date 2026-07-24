@@ -181,6 +181,7 @@ def describe_topic(
         "description": result["description"],
         "matches": result["matches"],
         "examples": result["examples"],
+        "verdict": result["verdict"],
         "is_council_topic": result["is_council_topic"],
         "reason": result["reason"],
         **check,
@@ -189,6 +190,18 @@ def describe_topic(
 
 @router.post("", response_model=TopicOut, status_code=status.HTTP_201_CREATED)
 def add_topic(body: TopicIn, user: dict = Depends(require_active), store: Store = Depends(get_store)) -> TopicOut:
+    # Struktur-Prüfung auch hier, nicht nur im Formular: Die Themen-Beschreibung
+    # wandert später in den Wächter-Prompt, ein als „Thema" getarnter Befehl wäre
+    # also eine Prompt-Injection mit Umweg. Die Prüfung ist deterministisch und
+    # braucht kein LLM — sie greift daher auch bei einem direkten API-Aufruf.
+    from council import topic_intel
+
+    if topic_intel.looks_like_instruction(body.name):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Ein Thema ist eine Sache, kein ganzer Satz — etwa „Cäcilienbrücke“ "
+            "oder „Grundschule Krusenbusch“.",
+        )
     t = store.add_topic(user["id"], body.name, body.description)
     return TopicOut(id=t.id, name=t.name, description=t.description, created_at=t.created_at, decision_count=0)
 
