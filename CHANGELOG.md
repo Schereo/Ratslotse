@@ -7,6 +7,17 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Behoben
+- **App: „Frag den Rat" scheiterte weiterhin mit „Load failed".** Der erste
+  Anlauf hatte dem Streaming-Endpoint zwar Freigabe-Header für die App
+  spendiert, die Liste war aber unvollständig: Sie nannte nur `Content-Type`
+  und `Authorization`, während die App zusätzlich eine Client-Kennung
+  mitschickt. Der Browser bricht solche Anfragen ab, **bevor** sie den Server
+  erreichen — deshalb war im Log auch nichts zu sehen. Die Freigabe spiegelt
+  jetzt die tatsächlich angefragten Header, statt eine Liste zu pflegen, die
+  beim nächsten Zusatz wieder auseinanderläuft. Rein serverseitig — die
+  bestehende App funktioniert nach dem Update ohne Neuinstallation. (#308)
+
 ### Hinzugefügt
 - **Doppelte Themen werden zusammengeführt.** Die Themen-Erkennung benannte
   dieselbe Sache je nach Beschluss unterschiedlich, sodass es den Bäderbetrieb

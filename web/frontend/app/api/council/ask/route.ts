@@ -25,25 +25,36 @@ const BACKEND = process.env.BACKEND_URL || "http://localhost:8000";
 // https://localhost) — deckungsgleich mit app_cors_origins im Backend.
 const APP_ORIGINS = new Set(["capacitor://localhost", "https://localhost"]);
 
-function corsHeaders(origin: string | null): Record<string, string> {
+function corsHeaders(req: NextRequest): Record<string, string> {
+  const origin = req.headers.get("origin");
   if (!origin || !APP_ORIGINS.has(origin)) return {};
+  // Die angefragten Header SPIEGELN statt eine feste Liste zu pflegen — so wie
+  // es die CORS-Middleware des Backends (allow_headers=["*"]) ohnehin tut.
+  // Eine feste Liste ist hier schon einmal auseinandergelaufen: Sie nannte nur
+  // Content-Type und Authorization, während die App zusätzlich `X-Client`
+  // schickt (lib/api.ts). Der Preflight schlug damit fehl, und die App zeigte
+  // „Load failed" — ohne dass im Log etwas auffiel, weil der Browser den
+  // eigentlichen Request gar nicht erst absetzt. Der Origin ist über
+  // APP_ORIGINS ohnehin eng begrenzt.
+  const requested = req.headers.get("access-control-request-headers");
   return {
     "Access-Control-Allow-Origin": origin,
     "Access-Control-Allow-Credentials": "true",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-    "Vary": "Origin",
+    "Access-Control-Allow-Headers": requested || "Content-Type, Authorization, X-Client",
+    "Vary": "Origin, Access-Control-Request-Headers",
   };
 }
 
 export function OPTIONS(req: NextRequest) {
-  return new Response(null, { status: 204, headers: corsHeaders(req.headers.get("origin")) });
+  return new Response(null, { status: 204, headers: corsHeaders(req) });
 }
 
 export async function POST(req: NextRequest) {
-  const cors = corsHeaders(req.headers.get("origin"));
+  const cors = corsHeaders(req);
   const body = await req.text();
   const auth = req.headers.get("authorization");
+  const client = req.headers.get("x-client");
   const upstream = await fetch(`${BACKEND}/api/council/ask`, {
     method: "POST",
     headers: {
@@ -51,6 +62,9 @@ export async function POST(req: NextRequest) {
       // Web authentifiziert per Cookie, die App per Bearer — beide durchreichen.
       cookie: req.headers.get("cookie") ?? "",
       ...(auth ? { authorization: auth } : {}),
+      // `X-Client: app` wertet aktuell nur der Login aus; trotzdem
+      // weiterreichen, damit das Backend hier dieselbe Sicht hat wie sonst.
+      ...(client ? { "x-client": client } : {}),
     },
     body,
   });
