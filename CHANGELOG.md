@@ -8,6 +8,17 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Erst begrüßen, dann anmelden.** Der Willkommens-Auftakt läuft jetzt vor dem
+  Login: Man sieht zuerst, worum es geht, und legt erst nach „Los geht's" ein
+  Konto an. Der erreichte Schritt wird zusätzlich am Konto gespeichert, sodass
+  eine angefangene Einrichtung eine Neuinstallation übersteht und auf jedem
+  Gerät weitergeht.
+- **Eine Erinnerung an die Einrichtung.** Wer die Einrichtung anfängt und
+  liegen lässt, bekommt nach zwei Tagen **genau eine** freundliche Mail mit dem
+  Hinweis, was noch offen ist — kein Newsletter, keine Wiederholung.
+- **Name aus der Apple-Anmeldung.** „Mit Apple anmelden" fragt jetzt auch nach
+  dem Namen und übernimmt ihn für neue Konten, sodass Lotti von Anfang an
+  persönlich grüßt. Ein selbst gesetzter Name wird nie überschrieben.
 - **Geführter Start in der App.** Statt drei Karten, die nur erzählen, was
   Ratslotse kann, richtet die App jetzt beim ersten Start mit dir ein, wovon
   sie lebt: **Gremien abonnieren** (jedes mit einem Satz, was dort verhandelt
@@ -109,6 +120,8 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   die Trefferliste darunter. (#298)
 
 ### Geändert
+- Der Abzeichen-Toast hält sich während der Einrichtung zurück und meldet sich
+  erst danach — vorher gratulierte er schon über dem Willkommens-Gruß.
 - **Beschluss-Seite aufgeräumt.** Die Seite führte mit einer Wand Amtssprache
   und streute die Kennzahlen über sechs Karten in der Randspalte. Jetzt steht
   **„Lotti erklärt's einfach" ganz oben** — der amtliche Wortlaut folgt darunter
