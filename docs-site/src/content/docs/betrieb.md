@@ -297,7 +297,7 @@ Alle optional — greift keine Variable, gilt der Default aus dem Code.
 | Variable | Wofür | Pflicht | Default |
 |---|---|---|---|
 | `WEB_JWT_SECRET` | Signiergeheimnis der Session-Tokens | ja | `dev-insecure-change-me` — der Start **bricht ab**, solange der Default steht und `COOKIE_SECURE` an ist; bei ausgeschaltetem `COOKIE_SECURE` nur eine Warnung |
-| `WEB_ADMIN_EMAIL` | Diese Adresse wird bei Registrierung Admin; Fallback für Alarm- und Feedback-Mails | nein | leer |
+| `WEB_ADMIN_EMAIL` | Diese Adresse wird Admin, sobald sie registriert **und ihre E-Mail bestätigt** hat (nur solange es keinen Admin gibt; ohne Mail-Versand: `scripts/grant_admin.py <adresse>`); Fallback für Alarm- und Feedback-Mails | nein | leer |
 | `COOKIE_SECURE` | Session-Cookies nur über HTTPS | nein | `true` |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Laufzeit des Web-Cookie-Tokens | nein | `1440` (1 Tag) |
 | `APP_ACCESS_TOKEN_EXPIRE_MINUTES` | Laufzeit des Tokens nativer Apps | nein | `129600` (90 Tage) |

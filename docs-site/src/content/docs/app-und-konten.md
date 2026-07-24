@@ -182,10 +182,27 @@ erneut zu versuchen (Apple sendet die Adresse nur bei der Erstautorisierung).
 | `web_users.email_verified` | 0/1 | gesetzt durch Verifikationslink oder Apple-Login |
 | `web_users.password_set` | 0/1 | 0 = Apple-Konto ohne selbst gesetztes Passwort |
 
-**Admin wird**, wessen Registrierungs-Adresse `WEB_ADMIN_EMAIL` entspricht —
-außerdem der allererste Account einer leeren Datenbank
-(`store.count_web_users() == 0`). Beides gilt für die klassische Registrierung
-und für neu per Apple angelegte Konten.
+**Die Registrierung vergibt keine Rollen**: Jedes über `/api/auth/register`
+angelegte Konto ist `user` — auch die Adresse aus `WEB_ADMIN_EMAIL` und auch das
+erste Konto einer leeren Datenbank. Andernfalls bekäme Adminrechte, wer die
+konfigurierte Adresse als Erstes ins Formular tippt, ohne Zugriff auf dieses
+Postfach nachzuweisen.
+
+**Admin wird** die Adresse aus `WEB_ADMIN_EMAIL`, sobald sie ihre E-Mail
+**bestätigt** hat (`/api/auth/verify-email`, nach verbrauchtem Einmal-Token) —
+und nur, solange es im Deployment noch gar keinen Admin gibt. Damit holt sich ein
+bewusst degradiertes oder gesperrtes Konto die Rechte nicht über einen neuen
+Bestätigungslink zurück. Ohne `RESEND_API_KEY` gibt es keinen Link: dann vergibt
+`scripts/grant_admin.py <adresse>` die Rechte an ein **bestehendes** Konto (das
+Backend weist bei Registrierung und bei jedem Start im Log darauf hin).
+
+**Beim Apple-Login** gilt eine eigene Regel: Wird dabei ein Konto *neu* angelegt
+und entspricht die Adresse `WEB_ADMIN_EMAIL`, ist es sofort Admin — ohne
+Bestätigungslink und ohne die „noch kein Admin vorhanden"-Bedingung. Das ist
+vertretbar, weil Apple die Adresse im signierten Token bereits nachweist; der
+Nachweis, den die klassische Registrierung erst über den Link erbringt, liegt
+hier schon vor. Der „erstes Konto einer leeren Datenbank"-Notnagel entfällt aber
+auch hier.
 
 ## Was am Konto hängt
 

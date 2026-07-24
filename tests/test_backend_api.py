@@ -27,6 +27,7 @@ from nwz import prompts  # noqa: E402
 from nwz.store import Store  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 from council.scraper import CouncilSession, AgendaItem  # noqa: E402
+from scripts.grant_admin import grant_admin  # noqa: E402
 
 NWZ_DB = os.environ["NWZ_DB"]
 COUNCIL_DB = os.environ["COUNCIL_DB"]
@@ -46,7 +47,18 @@ def client():
 
 
 def _register(client, email="admin@test.de", password="password123"):
-    return client.post("/api/auth/register", json={"email": email, "password": password})
+    """Registrieren — und für die Testadresse ``admin@test.de`` gleich die
+    Adminrechte holen, die der Rest der Suite voraussetzt.
+
+    Die Registrierung vergibt bewusst keine Rolle mehr. In der Suite ist kein
+    ``RESEND_API_KEY`` gesetzt, es gibt also auch keinen Bestätigungslink, über
+    den sich das konfigurierte Admin-Konto selbst freischalten könnte — deshalb
+    hier derselbe Weg wie im Betrieb: ``scripts/grant_admin.py``.
+    """
+    r = client.post("/api/auth/register", json={"email": email, "password": password})
+    if r.status_code == 201 and email == "admin@test.de":
+        grant_admin(email, NWZ_DB)
+    return r
 
 
 # ---- auth ----
@@ -54,11 +66,110 @@ def test_health(client):
     assert client.get("/api/health").json() == {"status": "ok"}
 
 
-def test_register_first_user_is_admin(client):
-    r = _register(client)
+def test_register_never_grants_admin(client):
+    """Rechteausweitung (CWE-269): Die Registrierung darf keine Rolle vergeben.
+
+    Weder die konfigurierte WEB_ADMIN_EMAIL noch das erste Konto einer leeren
+    Tabelle bekommen Adminrechte — sonst gehört das Deployment dem, der die
+    Adresse zuerst ins Formular tippt, ganz ohne Zugriff auf ihr Postfach.
+    """
+    r = client.post("/api/auth/register",
+                    json={"email": "admin@test.de", "password": "password123"})
     assert r.status_code == 201
-    assert r.json()["role"] == "admin"
-    assert r.json()["status"] == "active"
+    assert r.json()["role"] == "user"
+    # Der Admin-Bereich bleibt zu (die Registrierung hat direkt eingeloggt).
+    assert client.get("/api/admin/users").status_code == 403
+    store = Store(NWZ_DB)
+    assert store.get_web_user_by_email("admin@test.de")["role"] == "user"
+    store.close()
+
+
+def test_first_registrant_on_empty_db_is_not_admin(client):
+    """Der frühere „erstes Konto = Admin"-Bootstrap ist weg: eine beliebige
+    fremde Adresse kann sich das leere Deployment nicht mehr aneignen."""
+    r = client.post("/api/auth/register",
+                    json={"email": "fremd@test.de", "password": "password123"})
+    assert r.status_code == 201
+    assert r.json()["role"] == "user"
+    assert client.get("/api/admin/users").status_code == 403
+
+
+def test_configured_admin_gets_role_only_after_email_confirmation(client):
+    """WEB_ADMIN_EMAIL wird erst mit der bestätigten Adresse zum Admin —
+    vorher ist das Konto ein ganz normales, gesperrtes ``pending``-Konto."""
+    import re
+    from types import SimpleNamespace
+
+    sent = {}
+    fake_settings = SimpleNamespace(
+        resend_api_key="x", app_base_url="https://ratslotse.de",
+        email_from="F <f@x.de>", feedback_email="", web_admin_email="admin@test.de",
+        cookie_secure=False, access_token_expire_minutes=60,
+        app_access_token_expire_minutes=60, nwz_db=str(NWZ_DB),
+    )
+
+    def fake_send(to, subject, html, **kw):
+        sent.update(to=to, text=kw.get("text", ""))
+        return "id"
+
+    with patch("app.routers.auth.send_email", side_effect=fake_send), \
+         patch("app.routers.auth.get_settings", return_value=fake_settings):
+        r = client.post("/api/auth/register",
+                        json={"email": "admin@test.de", "password": "password123"})
+    assert r.status_code == 201
+    assert r.json()["role"] == "user" and r.json()["status"] == "pending"
+    assert r.json()["email_verified"] is False
+    # Unbestätigt: kein Admin-Zugriff.
+    assert client.get("/api/admin/users").status_code == 403
+
+    token = re.search(r"token=([\w~.-]+)", sent["text"]).group(1)
+    with patch("app.routers.auth.send_email", side_effect=fake_send), \
+         patch("app.routers.auth.get_settings", return_value=fake_settings):
+        v = client.post("/api/auth/verify-email", json={"token": token})
+    assert v.status_code == 200
+    assert v.json()["role"] == "admin" and v.json()["status"] == "active"
+    assert client.get("/api/admin/users").status_code == 200
+
+
+def test_configured_admin_not_re_promoted_when_an_admin_exists(client):
+    """Hat ein Admin dem Konto die Rechte entzogen, holt eine weitere Bestätigung
+    sie nicht zurück — befördert wird nur ein Deployment ganz ohne Admin."""
+    _register(client)  # admin@test.de ist Admin (per CLI, wie im Betrieb)
+    _register(client, email="zweite@test.de")
+    store = Store(NWZ_DB)
+    zweite = store.get_web_user_by_email("zweite@test.de")
+    store.set_web_user_role(int(zweite["id"]), "admin")  # zweiter Admin übernimmt
+    admin_id = int(store.get_web_user_by_email("admin@test.de")["id"])
+    store.set_web_user_role(admin_id, "user")           # …und degradiert das Konto
+    store.set_email_verified(admin_id, False)
+    raw = "second-verify-token"
+    exp = (datetime.utcnow() + timedelta(hours=1)).isoformat(timespec="seconds")
+    store.create_email_verification(admin_id, hashlib.sha256(raw.encode()).hexdigest(), exp)
+    store.close()
+
+    r = TestClient(app).post("/api/auth/verify-email", json={"token": raw})
+    assert r.status_code == 200
+    assert r.json()["role"] == "user"
+
+
+def test_grant_admin_cli_promotes_only_existing_accounts(client):
+    """Der Ops-Weg für Deployments ohne E-Mail-Versand: befördert ein
+    vorhandenes Konto, legt keines an, und ein zweiter Lauf ändert nichts."""
+    client.post("/api/auth/register", json={"email": "ops@test.de", "password": "password123"})
+    assert client.get("/api/admin/users").status_code == 403
+
+    ok, _ = grant_admin("OPS@test.de", NWZ_DB)  # Adresse wird normalisiert
+    assert ok is True
+    assert client.get("/api/admin/users").status_code == 200
+
+    ok_again, msg = grant_admin("ops@test.de", NWZ_DB)
+    assert ok_again is True and "bereits Admin" in msg
+
+    fehlt, _ = grant_admin("gibtsnicht@test.de", NWZ_DB)
+    assert fehlt is False
+    store = Store(NWZ_DB)
+    assert store.get_web_user_by_email("gibtsnicht@test.de") is None  # kein Konto angelegt
+    store.close()
 
 
 def test_second_user_active_without_email_config(client):
@@ -84,6 +195,45 @@ def test_login_and_me(client):
     r = fresh.post("/api/auth/login", json={"email": "admin@test.de", "password": "password123"})
     assert r.status_code == 200
     assert fresh.get("/api/auth/me").json()["email"] == "admin@test.de"
+
+
+def test_login_unknown_email_still_runs_scrypt(client, monkeypatch):
+    """No user-enumeration timing oracle: an unknown email must burn the same
+    scrypt work as a wrong password instead of short-circuiting (CWE-208)."""
+    import app.routers.auth as auth_router
+
+    _register(client)
+    real_verify = auth_router.verify_password
+    checked_against = []
+
+    def spy(password, stored):
+        checked_against.append(stored)
+        return real_verify(password, stored)
+
+    monkeypatch.setattr(auth_router, "verify_password", spy)
+
+    fresh = TestClient(app)
+    miss = fresh.post("/api/auth/login", json={"email": "nobody@test.de", "password": "whatever"})
+    assert miss.status_code == 401
+    # The hash was actually computed, against the module-level dummy.
+    assert checked_against == [auth_router.DUMMY_PASSWORD_HASH]
+
+    # ...and the unknown-email answer is byte-for-byte the wrong-password answer.
+    hit = fresh.post("/api/auth/login", json={"email": "admin@test.de", "password": "wrong"})
+    assert hit.status_code == 401
+    assert hit.json() == miss.json()
+    assert len(checked_against) == 2
+
+
+def test_dummy_password_hash_tracks_real_scrypt_parameters():
+    """The dummy must stay as expensive as a real hash if the params ever change."""
+    from app.security import DUMMY_PASSWORD_HASH, hash_password
+
+    real = hash_password("password123").split("$")
+    dummy = DUMMY_PASSWORD_HASH.split("$")
+    assert dummy[:4] == real[:4]            # scheme, N, r, p
+    assert len(dummy[4]) == len(real[4])    # salt length
+    assert len(dummy[5]) == len(real[5])    # derived-key length
 
 
 def test_logout_clears_session(client):
@@ -886,7 +1036,7 @@ def test_quiz_stats_aggregate_per_area(client):
 
 
 def test_quiz_rating_and_admin_flag(client):
-    _register(client)  # erster Nutzer = admin
+    _register(client)  # Helper hebt admin@test.de per grant_admin auf Admin
     _seed_quiz("Osternburg", n=1)
     qid = client.get("/api/quiz/round?areas=stadtteil:Osternburg").json()["questions"][0]["id"]
     assert client.post("/api/quiz/rate", json={"question_id": qid, "verdict": "schlecht",

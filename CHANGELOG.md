@@ -28,6 +28,27 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   dem Hinweis in derselben Zeile. Das halbiert die Höhe des Blocks. Auf größeren
   Bildschirmen bleiben es drei Vorschläge mit vollem Text.
 
+### Sicherheit
+- **Admin-Rechte nur noch mit Adress-Nachweis.** Bisher wurde die Rolle direkt
+  bei der Registrierung aus der eingetippten E-Mail abgeleitet: Wer die in
+  `WEB_ADMIN_EMAIL` hinterlegte Adresse als Erster registrierte, bekam sofort ein
+  aktives Admin-Konto — ohne je nachzuweisen, dass ihm dieses Postfach gehört.
+  Zusätzlich wurde die erste Registrierung auf einer leeren Nutzertabelle
+  ungefragt zum Admin (auch über „Mit Apple anmelden"). Beides ist weg: Die
+  Registrierung vergibt keine Rolle mehr, Admin entsteht erst, wenn der
+  Bestätigungslink an die konfigurierte Adresse eingelöst wurde und noch kein
+  Admin existiert. **Für den Betrieb:** Auf einer frischen Installation muss die
+  Admin-Adresse einmal den Bestätigungslink klicken; ohne `RESEND_API_KEY` (kein
+  Mailversand) übernimmt das neue `scripts/grant_admin.py <adresse>` — worauf
+  Registrierung und API-Start per Warnung im Log hinweisen.
+- **Anmeldung verrät nicht mehr, welche Adressen ein Konto haben.** Der
+  Passwort-Check lief nur, wenn das Konto existierte, ein unbekannter Login kam
+  darum messbar schneller zurück (~6 ms gegenüber ~58 ms). Jetzt wird in beiden
+  Fällen gleich viel gerechnet; die Antwortzeit gibt nichts mehr preis.
+- **Fehlerhafte Suchausdrücke stürzen die Volltextsuche nicht mehr ab.** Eine
+  Anfrage wie `hafen -markt` ist für SQLite-FTS5 ungültig und schlug bisher als
+  unbehandelter Fehler durch; sie zählt jetzt als „nichts gefunden".
+
 ### Hinzugefügt
 - **Erst begrüßen, dann registrieren.** Nach „Los geht's" geht es direkt zum
   Konto-Erstellen statt zum Anmelden — wer die App zum ersten Mal öffnet, hat in

@@ -20,7 +20,10 @@ class Settings(BaseSettings):
     # can't rely on silent cookie refresh, so they get a much longer-lived token.
     # Revocation still works via token_version (bumped on password change/reset).
     app_access_token_expire_minutes: int = 60 * 24 * 90  # 90 days
-    web_admin_email: str = ""  # this email is granted admin on registration
+    # This address becomes admin once it registers AND confirms its email — and
+    # only while the deployment has no admin yet (see routers/auth.py). Without
+    # email delivery: scripts/grant_admin.py.
+    web_admin_email: str = ""
     # Secure cookies require HTTPS (or localhost, which browsers treat as
     # secure). Keep True for production; tests/non-localhost HTTP set it False.
     cookie_secure: bool = True

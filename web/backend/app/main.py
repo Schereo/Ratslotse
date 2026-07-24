@@ -1,6 +1,7 @@
 """FastAPI application entry point."""
 from __future__ import annotations
 
+import logging
 import warnings
 from contextlib import asynccontextmanager
 
@@ -12,6 +13,46 @@ from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from .config import get_settings
 from .routers import account, admin, auth, auth_apple, council, feedback, onboarding, push, quiz, topics, badges
+
+logger = logging.getLogger("nwz.web.main")
+
+
+def _warn_if_admin_bootstrap_pending() -> None:
+    """Best-effort-Hinweis: Das Konto zu ``WEB_ADMIN_EMAIL`` existiert, ist aber
+    kein Admin.
+
+    Adminrechte bekommt diese Adresse erst mit der E-Mail-Bestätigung. Ohne
+    ``RESEND_API_KEY`` gibt es keinen Bestätigungslink — dann bleibt nur
+    ``scripts/grant_admin.py``, und das darf niemand still übersehen.
+
+    Rein informativ: Fehler (fehlende, gesperrte oder unlesbare DB) werden
+    geschluckt, der Start darf daran nie scheitern.
+    """
+    try:
+        settings = get_settings()
+        configured = (settings.web_admin_email or "").strip().lower()
+        if not configured:
+            return
+        from nwz.store import Store
+
+        store = Store(settings.nwz_db)
+        try:
+            users = store.list_web_users()
+        finally:
+            store.close()
+        konto = next(
+            (u for u in users if str(u.get("email") or "").strip().lower() == configured), None
+        )
+        if konto is None or konto.get("role") == "admin":
+            return
+        logger.warning(
+            "WEB_ADMIN_EMAIL %s hat ein Konto, aber keine Adminrechte. Sie werden erst mit "
+            "der E-Mail-Bestätigung vergeben; ohne RESEND_API_KEY gibt es dafür keinen Link. "
+            "Dann von Hand: .venv/bin/python scripts/grant_admin.py %s",
+            configured, configured,
+        )
+    except Exception:  # noqa: BLE001 — reiner Hinweis, darf den Start nie blockieren
+        pass
 
 
 def _startup_checks() -> None:
@@ -57,6 +98,7 @@ def _warm_models() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # noqa: ANN001
     _startup_checks()
+    _warn_if_admin_bootstrap_pending()
     _warm_models()
     yield
 
