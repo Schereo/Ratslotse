@@ -1865,3 +1865,20 @@ def test_suggestions_filtern_gattungswoerter_ohne_llm(client, monkeypatch):
     names = [s["name"] for s in client.get("/api/topics/suggestions").json()["suggestions"]]
     assert "Klima" not in names and "Fliegerhorst" in names
     assert "Klima" not in seen        # gar nicht erst gefragt
+
+
+def test_apple_login_accepts_web_service_id(client, apple_jwks):
+    """Der Browser-Flow schickt die Services ID als `aud` (lib/apple.ts sendet
+    fest „de.ratslotse.web"). Ohne diesen Fall lief jede Web-Anmeldung in ein
+    401, solange APPLE_SERVICE_ID nicht von Hand gesetzt war — der Default war
+    leer, obwohl die Kennung fest zur App gehört."""
+    token = _apple_token(sub="apple-web-1", email="web@example.com", aud="de.ratslotse.web")
+    r = client.post("/api/auth/apple", json={"identity_token": token})
+    assert r.status_code == 200, r.text
+    assert r.json()["email"] == "web@example.com"
+
+
+def test_apple_login_accepts_native_bundle_id(client, apple_jwks):
+    """Gegenprobe: Die App (Bundle-ID) muss weiterhin durchkommen."""
+    token = _apple_token(sub="apple-app-1", email="app@example.com", aud="de.ratslotse.app")
+    assert client.post("/api/auth/apple", json={"identity_token": token}).status_code == 200
