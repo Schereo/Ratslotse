@@ -364,6 +364,15 @@ class CouncilStore:
             "CREATE INDEX IF NOT EXISTS idx_entalias_canon "
             "ON council_entity_aliases(canonical_slug)"
         )
+        # Vagheits-Urteil je Themen-Vorschlag (Design 26a). Die Prüfung ist ein
+        # LLM-Aufruf — ungecacht würde jeder Aufruf der Themen-Seite ein Dutzend
+        # davon auslösen. Ergebnis hält, bis der Name sich ändert; keyed by
+        # *slug*, überlebt also den Entitäten-Rebuild.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_topic_vagueness ("
+            "slug TEXT PRIMARY KEY, name TEXT NOT NULL, vague INTEGER NOT NULL, "
+            "hint TEXT, suggestion TEXT, checked_at TEXT NOT NULL)"
+        )
         # Related entities ("Hängt zusammen mit…") — precomputed by council.related
         # via scripts/build_entity_relations.py. rel_type separates the two sources:
         # 'belegt' = co-occurrence in shared decisions (evidence = how many),
@@ -2201,7 +2210,7 @@ class CouncilStore:
         from datetime import date, timedelta
         cutoff = (date.today() - timedelta(days=days_back)).isoformat()
         rows = self._conn.execute(
-            """SELECT e.name, e.kind, m.description,
+            """SELECT e.slug, e.name, e.kind, m.description,
                       COUNT(DISTINCT el.decision_id) AS n_recent,
                       AVG(COALESCE(d.interest, 50)) AS avg_interest
                FROM council_entities e
@@ -2382,6 +2391,32 @@ class CouncilStore:
             d["canonical_n"] = end["n"] if end else None
             out.append(d)
         return out
+
+    # --- Vagheits-Urteile für Themen-Vorschläge (26a) ------------------------
+    def topic_vagueness_verdicts(self, slugs: list[str]) -> dict[str, dict]:
+        """Gecachte Urteile zu diesen Slugs → ``{slug: {name, vague, hint, suggestion}}``."""
+        if not slugs:
+            return {}
+        q = ",".join("?" * len(slugs))
+        rows = self._conn.execute(
+            f"SELECT slug, name, vague, hint, suggestion FROM council_topic_vagueness "
+            f"WHERE slug IN ({q})", slugs).fetchall()
+        return {r["slug"]: dict(r) for r in rows}
+
+    def save_topic_vagueness(self, slug: str, name: str, verdict: dict) -> None:
+        """Urteil merken. ``name`` wird mitgespeichert, damit ein umbenanntes
+        Thema (Zusammenführung!) neu geprüft wird statt ein Urteil zu erben,
+        das zu einem anderen Namen gefällt wurde."""
+        from datetime import datetime
+
+        with self._conn:
+            self._conn.execute(
+                "INSERT INTO council_topic_vagueness (slug, name, vague, hint, suggestion, checked_at) "
+                "VALUES (?,?,?,?,?,?) ON CONFLICT(slug) DO UPDATE SET "
+                "name = excluded.name, vague = excluded.vague, hint = excluded.hint, "
+                "suggestion = excluded.suggestion, checked_at = excluded.checked_at",
+                (slug, name, 1 if verdict.get("vague") else 0, verdict.get("hint") or "",
+                 verdict.get("suggestion") or "", datetime.utcnow().isoformat(timespec="seconds")))
 
     def save_entity_aliases(self, rows: list[tuple], replace: bool = False) -> int:
         """Upsert merges. ``rows`` = (slug, canonical_slug, source, reason, created_at).

@@ -8,6 +8,19 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Themen beschreiben sich selbst.** Bisher musste man beim Anlegen eines
+  Themas zwei Felder ausfüllen — und die Beschreibung entschied unsichtbar
+  darüber, welche Beschlüsse einem später gemeldet werden. Jetzt reicht der
+  **Name**: Ratslotse sucht die Beschlüsse dazu und formuliert daraus einen
+  passenden Satz. Aus „Fahrradstraßen" wird so „Planung, Einrichtung und
+  Unterhaltung von Fahrradstraßen in Oldenburg, u. a. Haareneschstraße und
+  Katharinenstraße" — mit konkreten Orten statt Allgemeinplätzen, was die
+  Zuordnung künftiger Beschlüsse deutlich treffsicherer macht. Der Text bleibt
+  frei überschreibbar.
+- **Hinweis, wenn der Rat mit einem Thema gar nichts zu tun hat.** Wer etwas
+  einträgt, wozu es keine Ratsbeschlüsse gibt (Privates, Bundespolitik,
+  Vertipptes), bekommt das jetzt gesagt — samt Begründung aus dem Datenbestand.
+  Anlegen kann man es trotzdem. (#PR)
 - **Feedback landet jetzt auch im Admin-Bereich.** Rückmeldungen aus der App
   gingen bisher ausschließlich per E-Mail raus — wer sie übersah oder löschte,
   hatte sie verloren. Sie werden nun zusätzlich gespeichert und im Admin unter
@@ -16,8 +29,39 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   bei Bedarf wieder öffnen. Gibt es Offenes, trägt **„Admin" in der Navigation
   eine Zahl** — dasselbe Zeichen, das „Meine Themen" schon nutzt. Der
   Mailversand bleibt unverändert. (#311)
+- **Doppelte Themen werden zusammengeführt.** Die Themen-Erkennung benannte
+  dieselbe Sache je nach Beschluss unterschiedlich, sodass es den Bäderbetrieb
+  unter vier Namen gab und die Gebäudewirtschaft unter drei — mit auf mehrere
+  Seiten verteilten Beschlüssen und Beträgen. Ein neuer Lauf
+  (`scripts/merge_entity_aliases.py`) findet solche Dubletten und führt die vom
+  Sprachmodell bestätigten zusammen; alte Links landen weiterhin beim richtigen
+  Thema. Im Admin-Panel unter „Themen-Dubletten“ lässt sich jede Zusammenführung
+  einzeln nachvollziehen und wieder auflösen. Mehrstufige Zusammenführungen
+  (A→B, wobei B später zu C wurde) landen dabei am richtigen Endthema und werden
+  in der Admin-Liste auch dort einsortiert. (#302, #306)
+- **„Hängt zusammen mit …" auf jeder Themen-Seite.** Unter den Kennzahlen stehen
+  jetzt verwandte Themen zum Weiterklicken — oben die *belegten* (kommen
+  gemeinsam in Beschlüssen vor, mit der Zahl der gemeinsamen Beschlüsse), darunter
+  die *thematisch ähnlichen* aus den Embeddings. Beim Fliegerhorst führt das etwa
+  direkt zu Entlastungsstraße, Alexanderstraße und Hallensichel-Ost. Die
+  Nachbarschaften sind vorberechnet, die Seite wird dadurch nicht langsamer.
+- **Verwandte Themen (Datengrundlage).** Neue Berechnung `council/related.py` mit
+  Backfill `scripts/build_entity_relations.py` ermittelt je Thema die passenden
+  Nachbarn — getrennt nach *belegt* (kommt gemeinsam in Beschlüssen vor, etwa
+  Fliegerhorst ── Entlastungsstraße) und *ähnlich* (semantischer Nachbar aus den
+  Embeddings, nur zum Auffüllen). Läuft ohne LLM-Aufruf im wöchentlichen
+  `weekly_enrich` mit; Gremien und Namens-Dubletten werden herausgefiltert.
 
 ### Behoben
+- **Themen-Vorschläge sind nicht mehr zu breit.** Unter den vorgeschlagenen
+  Themen konnten Gattungsbegriffe wie „Klima" oder „Bericht" auftauchen — als
+  Abo hätten sie halb Oldenburg eingesammelt. Vorschläge durchlaufen jetzt
+  dieselbe Vagheits-Prüfung wie selbst angelegte Themen; was sie nicht besteht,
+  wird gar nicht erst angeboten. (#PR)
+- **Vagheits-Prüfung schlug Zeitungs-Formulierungen vor.** Ihre Verbesserungs-
+  Vorschläge begannen mit „Artikel über …" — ein Überbleibsel aus der Zeit, als
+  Ratslotse Zeitungsartikel filterte. Sie beschreiben jetzt die Sache selbst,
+  passend dazu, dass Themen gegen Ratsbeschlüsse geprüft werden. (#PR)
 - **Personen-Seite: Ämter sind auf dem Handy wieder lesbar.** Die Zeitleiste der
   Ämter stand zweispaltig — Name links, Balken rechts. Auf schmalen Bildschirmen
   fraß die Namensspalte den Platz: Gremien standen abgeschnitten da
@@ -57,30 +101,6 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   das schnell Dutzende Karten, die man erst durchscrollen musste, bevor die
   Vorschläge überhaupt auftauchten. Jetzt stehen sie direkt unter der Antwort,
   die Trefferliste darunter. (#298)
-
-### Hinzugefügt
-- **Doppelte Themen werden zusammengeführt.** Die Themen-Erkennung benannte
-  dieselbe Sache je nach Beschluss unterschiedlich, sodass es den Bäderbetrieb
-  unter vier Namen gab und die Gebäudewirtschaft unter drei — mit auf mehrere
-  Seiten verteilten Beschlüssen und Beträgen. Ein neuer Lauf
-  (`scripts/merge_entity_aliases.py`) findet solche Dubletten und führt die vom
-  Sprachmodell bestätigten zusammen; alte Links landen weiterhin beim richtigen
-  Thema. Im Admin-Panel unter „Themen-Dubletten“ lässt sich jede Zusammenführung
-  einzeln nachvollziehen und wieder auflösen. Mehrstufige Zusammenführungen
-  (A→B, wobei B später zu C wurde) landen dabei am richtigen Endthema und werden
-  in der Admin-Liste auch dort einsortiert. (#302, #306)
-- **„Hängt zusammen mit …" auf jeder Themen-Seite.** Unter den Kennzahlen stehen
-  jetzt verwandte Themen zum Weiterklicken — oben die *belegten* (kommen
-  gemeinsam in Beschlüssen vor, mit der Zahl der gemeinsamen Beschlüsse), darunter
-  die *thematisch ähnlichen* aus den Embeddings. Beim Fliegerhorst führt das etwa
-  direkt zu Entlastungsstraße, Alexanderstraße und Hallensichel-Ost. Die
-  Nachbarschaften sind vorberechnet, die Seite wird dadurch nicht langsamer.
-- **Verwandte Themen (Datengrundlage).** Neue Berechnung `council/related.py` mit
-  Backfill `scripts/build_entity_relations.py` ermittelt je Thema die passenden
-  Nachbarn — getrennt nach *belegt* (kommt gemeinsam in Beschlüssen vor, etwa
-  Fliegerhorst ── Entlastungsstraße) und *ähnlich* (semantischer Nachbar aus den
-  Embeddings, nur zum Auffüllen). Läuft ohne LLM-Aufruf im wöchentlichen
-  `weekly_enrich` mit; Gremien und Namens-Dubletten werden herausgefiltert.
 
 ### Geändert
 - **Beschluss-Seite aufgeräumt.** Die Seite führte mit einer Wand Amtssprache

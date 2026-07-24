@@ -50,6 +50,10 @@ class RateLimiter:
             self._calls[key] = calls
 
 
+# Themen-Beschreibung (RL-U17): jeder Aufruf ist eine LLM-Anfrage. Großzügig
+# genug fürs Ausprobieren beim Anlegen („neu generieren"), eng genug, dass
+# niemand damit Kosten treiben kann.
+topic_describe_limiter = RateLimiter(max_calls=20, window_seconds=300)
 login_limiter = RateLimiter(max_calls=10, window_seconds=60)
 register_limiter = RateLimiter(max_calls=5, window_seconds=300)
 nwz_creds_limiter = RateLimiter(max_calls=5, window_seconds=300)

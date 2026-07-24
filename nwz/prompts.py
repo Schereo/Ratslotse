@@ -26,25 +26,26 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "title": "Vagheits-Prüfung bei neuem Thema",
         "description": "Prüft, ob eine Themen-Beschreibung präzise genug ist, und schlägt eine bessere vor.",
         "template": (
-            "Du prüfst ob eine Themen-Beschreibung für einen Nachrichten-Bot präzise genug ist, "
-            "um zuverlässig NUR die wirklich gewünschten Artikel (aus einer Lokalzeitung für "
-            "Oldenburg) herauszufiltern. Sei streng: im Zweifel ist die Beschreibung zu vage.\n"
+            "Du prüfst, ob eine Themen-Beschreibung präzise genug ist, um daran zuverlässig "
+            "NUR die wirklich gewünschten Beschlüsse des Oldenburger Stadtrats zu erkennen. "
+            "Sei streng: im Zweifel ist die Beschreibung zu vage.\n"
             "Eine Beschreibung ist zu vage wenn sie:\n"
             "- allgemeine Absichten statt konkreter Inhalte beschreibt (z.B. 'interessante Themen', 'etwas Spannendes')\n"
             "- keine eingrenzbaren Kriterien enthält\n"
-            "- so breit ist, dass viele themenfremde Artikel matchen würden\n"
+            "- so breit ist, dass viele themenfremde Beschlüsse zugeordnet würden\n"
             "- eine Partei, Organisation, Person oder Institution nennt, OHNE den Bezug klar "
-            "einzugrenzen: Es muss ausdrücklich auf Oldenburg/lokal beschränkt sein UND klarstellen, "
-            "was NICHT gemeint ist (z.B. keine bundesweiten Partei-/Politiknews). 'Die Grünen – Partei "
-            "in Oldenburg' ist z.B. ZU VAGE, weil dadurch auch bundesweite Grünen-Nachrichten matchen.\n"
+            "einzugrenzen: Es muss ausdrücklich auf Oldenburg/kommunal beschränkt sein UND klarstellen, "
+            "was NICHT gemeint ist (z.B. keine bundesweite Parteipolitik). 'Die Grünen – Partei "
+            "in Oldenburg' ist z.B. ZU VAGE, weil damit jeder Antrag der Fraktion zu jedem Thema zählt.\n"
             "- ein breites Schlagwort ohne konkrete Akteure/Vorhaben/Orte nutzt "
-            "(z.B. 'Kommunalwahl in Oldenburg' ohne Eingrenzung auf Kandidaten, Listen, Termine, Ergebnisse)\n\n"
+            "(z.B. 'Verkehr in Oldenburg' ohne Eingrenzung auf Straßen, Projekte oder Maßnahmen)\n\n"
             "Antworte NUR mit einem JSON-Objekt: "
             '{"vague": true/false, "hint": "...", "suggestion": "..."}.\n'
             "- hint: kurze Erklärung auf Deutsch, warum die Beschreibung zu vage ist (max. 2 Sätze). Leer wenn nicht vage.\n"
             "- suggestion: eine konkrete, sofort verwendbare präzisere Beschreibung (1 Satz), die den erkennbaren "
-            "Wunsch des Nutzers aufgreift und sinnvoll eingrenzt (z.B. Ortsbezug Oldenburg, konkrete Akteure/Vorhaben, "
-            "Ausschluss themenfremder Treffer). Leer wenn nicht vage."
+            "Wunsch des Nutzers aufgreift und sinnvoll eingrenzt (Ortsbezug Oldenburg, konkrete Vorhaben/Orte). "
+            "Sie beschreibt den GEGENSTAND — nicht die Textsorte; schreibe also nicht 'Artikel über …' oder "
+            "'Beschlüsse über …', sondern direkt die Sache. Leer wenn nicht vage."
         ),
     },
     "committee_summary_system": {
@@ -131,6 +132,34 @@ DEFAULTS: dict[str, dict[str, str]] = {
             '"Was wurde", "beschlossen", "Stadtrat". Nur die Begriffe, durch Leerzeichen getrennt.\n\n'
             "FRAGE: {question}\n"
             "SUCHBEGRIFFE:"
+        ),
+    },
+    "topic_auto_beschreibung": {
+        "title": "Thema – Beschreibung automatisch",
+        "description": "Macht aus einem Themen-Namen + echten Beschlüssen eine Wächter-Beschreibung. Platzhalter: {name}, {context}.",
+        "template": (
+            "Ein Nutzer der Bürger-App „Ratslotse“ möchte über ein Thema des Oldenburger "
+            "Stadtrats benachrichtigt werden. Er hat nur einen Namen eingegeben. Unten stehen "
+            "die Beschlüsse, die eine Suche dazu gefunden hat.\n\n"
+            "Deine Aufgabe:\n"
+            "1. Entscheide, ob der NAME ein Thema der Oldenburger Kommunalpolitik ist, das zu "
+            "diesen Beschlüssen passt. NEIN bei Privatem, Bundes-/Landespolitik ohne Oldenburg-"
+            "Bezug, Unsinnseingaben — und auch dann, wenn die Beschlüsse offensichtlich etwas "
+            "anderes behandeln als der Name meint (die Suche findet immer irgendwas).\n"
+            "2. Wenn ja: Schreibe EINEN Satz, der beschreibt, worum es geht — so präzise, dass "
+            "man damit künftige Beschlüsse zuverlässig zuordnen kann.\n\n"
+            "Regeln für den Satz:\n"
+            "- Max. 200 Zeichen, sachlich, keine Werbung, keine Anrede.\n"
+            "- Nenne die konkreten Gegenstände aus den Beschlüssen (Orte, Vorhaben, Anlässe), "
+            "nicht bloß „alles rund um X“.\n"
+            "- Grenze ein, wenn der Name mehrdeutig ist (z. B. eine bestimmte Brücke statt aller Brücken).\n"
+            "- Erfinde nichts, was nicht in den Beschlüssen steht.\n\n"
+            "NAME: {name}\n\n"
+            "GEFUNDENE BESCHLÜSSE:\n{context}\n\n"
+            "Antworte NUR als JSON:\n"
+            '{{"ist_ratsthema": true/false, "beschreibung": "...", "begruendung": "..."}}\n'
+            "begruendung: nur bei ist_ratsthema=false — ein kurzer Satz, warum nicht (wird dem "
+            "Nutzer gezeigt). Sonst leer."
         ),
     },
     "recap_themenfeld": {
