@@ -272,9 +272,18 @@ gemeldet hat. Persistiert wird in der JSON-Spalte `web_users.badges`:
   (`components/badges.tsx`).
 - `newly_earned` enthält die Abzeichen, die **in genau diesem GET** neu dazukamen;
   sie werden dabei in `earned` geschrieben und tauchen danach nie wieder auf.
-  Das ist der Auslöser für Toast und Konfetti (`BadgeCelebrator`) — genau einmal.
+  Das ist der Auslöser für die Feier-Karte (`BadgeCelebrator`) — genau einmal.
 - Einmal verdient bleibt verdient: Wer ein Thema löscht oder die Quiz-Serie
   reißt, behält das Abzeichen.
+
+Die Feier selbst ist reines Frontend: eine Karte, die unten über den laufenden
+Screen fährt (bewusst **kein** Vollbild — sie blockiert nichts und geht nach 6 s
+von selbst), mit Konfetti *innerhalb* der Karte und einem Weg zur Sammlung.
+Mehrere gleichzeitig verdiente Abzeichen laufen nacheinander statt gestapelt.
+Welche gerade neu sind, merkt sich der Browser unter `ratslotse:badges-neu` und
+zeigt sie in der Konto-Karte als **„NEU"** — bis die Sammlung einmal offen war.
+Das ist bewusst gerätelokal: Es markiert „hier noch nicht angesehen", nicht
+einen Kontostand.
 
 ### Onboarding
 

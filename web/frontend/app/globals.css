@@ -152,6 +152,40 @@
   animation: confetti-fall 2.5s ease-in forwards;
 }
 
+/* Abzeichen-Feier (27a): Die Karte fährt von unten ein, das Konfetti fällt
+   *innerhalb* der Karte statt über den ganzen Schirm — die Feier soll auffallen,
+   aber nichts blockieren. Beides legt der globale reduced-motion-Block still;
+   das Konfetti wird dann zusätzlich gar nicht erst gerendert. */
+@keyframes badge-card-in {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+.animate-badge-card-in {
+  animation: badge-card-in 0.42s var(--ease-drawer) both;
+}
+@keyframes badge-spark {
+  0% {
+    transform: translateY(-10px) rotate(0deg);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(150px) rotate(420deg);
+    opacity: 0;
+  }
+}
+.animate-badge-spark {
+  animation: badge-spark 2s ease-in forwards;
+}
+
 /* ── Lotti-Animationen ──────────────────────────────────────────────────────
    SVG-Teil-Transforms brauchen `transform-box: fill-box`, damit der Ursprung
    relativ zum jeweiligen Element liegt. Alle Keyframes werden vom globalen
