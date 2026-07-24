@@ -9,6 +9,7 @@ import { isNativeApp } from "@/lib/platform";
 import { enablePush } from "@/lib/push";
 import { Button, Card, toast } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
+import { ONBOARDING_DONE_EVENT } from "@/components/onboarding-flow";
 import { useMascotTheme } from "@/components/seasonal-mascot";
 import type { Topic, User } from "@/lib/types";
 
@@ -45,15 +46,24 @@ export function PushPrimer() {
     (topicsQuery.data?.length ?? 0) > 0 || (subsQuery.data?.length ?? 0) > 0;
 
   useEffect(() => {
-    if (!native || !user || !relevant) {
-      setVisible(false);
-      return;
-    }
-    const pushOn = user.delivery_channel === "push" || user.delivery_channel === "both";
-    if (pushOn) return;
-    const until = Number(localStorage.getItem(SNOOZE_KEY) ?? 0);
-    if (Date.now() < until) return;
-    setVisible(true);
+    // Jeder Zweig entscheidet ausdrücklich sichtbar/unsichtbar. Vorher stiegen
+    // die beiden „schon erledigt"-Zweige mit einem nackten return aus — eine
+    // bereits eingeblendete Karte blieb damit stehen, selbst nachdem Push an war.
+    const decide = () => {
+      if (!native || !user || !relevant) return setVisible(false);
+      if (user.delivery_channel === "push" || user.delivery_channel === "both") {
+        return setVisible(false);
+      }
+      const until = Number(localStorage.getItem(SNOOZE_KEY) ?? 0);
+      setVisible(Date.now() >= until);
+    };
+    decide();
+    // Der Einrichtungs-Assistent liegt über dieser Seite und fragt in Schritt 3
+    // selbst nach Mitteilungen. Währenddessen entstehen hier Themen, `relevant`
+    // wird wahr — und die Karte stand schon bereit, bevor der Assistent seinen
+    // Vermerk setzen konnte. Nach dem Abschluss also noch einmal nachsehen.
+    window.addEventListener(ONBOARDING_DONE_EVENT, decide);
+    return () => window.removeEventListener(ONBOARDING_DONE_EVENT, decide);
   }, [user, native, relevant]);
 
   const enable = useMutation({
