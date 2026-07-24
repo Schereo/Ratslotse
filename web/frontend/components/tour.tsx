@@ -6,6 +6,7 @@ import { X } from "lucide-react";
 import { Button } from "@/components/ui";
 import { Mascot, type MascotPose } from "@/components/mascot";
 import { reportBadgeEvent } from "@/components/badges";
+import { useOnboarding, type StepId } from "@/components/onboarding";
 
 /**
  * Geführte Lotti-Tour: Spotlight auf echte UI-Elemente (per data-tour-Anker),
@@ -26,6 +27,11 @@ type TourStep = {
   pose: MascotPose;
   title: string;
   text: string;
+  /** Kurs-Schritte, die dieser Tour-Schritt abhakt („Erste Schritte"-Leiste).
+   *  Ausdrücklich hier hinterlegt statt dem Routen-Tracker überlassen: Der
+   *  greift nur, wenn eine Tour-Route zufällig exakt einer Kurs-Seite
+   *  entspricht — genau daran hakte die Tour vorher fast nichts ab. */
+  marks?: StepId[];
 };
 
 const STEPS: TourStep[] = [
@@ -41,6 +47,7 @@ const STEPS: TourStep[] = [
   },
   {
     id: "suche", route: "/council?tab=decisions&mode=suchen", anchor: "beschluss-suche", pose: "search",
+    marks: ["beschluesse"],
     title: "Beschlüsse durchsuchen",
     // Ohne Wegbeschreibung: Der frühere Tipp „die Taste / springt hierher" ist
     // auf dem Handy nicht ausführbar — die Tour läuft aber in der App wie im
@@ -50,8 +57,26 @@ const STEPS: TourStep[] = [
   },
   {
     id: "ki", route: "/council?tab=decisions", anchor: "ki-frage-tab", pose: "celebrate",
+    marks: ["frag"],
     title: "Oder frag einfach",
     text: "Stell deine Frage in normaler Sprache — ich suche die passenden Beschlüsse raus und antworte mit Quellen.",
+  },
+  // Analyse und Stadtkarte gehören zur „Erste Schritte"-Liste, kamen in der
+  // Tour aber gar nicht vor — wer sie durchlief, blieb trotzdem bei 1/5 stehen.
+  // Beide ohne Anker: Sie stehen nur in der Desktop-Sidebar, ein Anker darauf
+  // würde mobil ins Leere greifen und den Schritt überspringen. Stattdessen
+  // zeigt die Tour die Seite selbst, Lotti erklärt mittig davor.
+  {
+    id: "analyse", route: "/council?tab=analysis", pose: "point",
+    marks: ["analyse"],
+    title: "Zahlen zum Rat",
+    text: "Wer beantragt was, wie oft ist der Rat sich einig, wohin fließt das Geld — die Analyse rechnet es aus den Beschlüssen aus.",
+  },
+  {
+    id: "karte", route: "/council?tab=themen", pose: "search",
+    marks: ["karten"],
+    title: "Die Stadtkarte",
+    text: "Beschlüsse an ihrem Ort: Klick dich durch Quartiere und Straßen und sieh, was der Rat dort entschieden hat.",
   },
   {
     id: "themen", route: "/council?tab=decisions", anchor: "nav-themen", pose: "point",
@@ -104,6 +129,7 @@ function toRect(el: HTMLElement): Rect {
 
 export function GuidedTour() {
   const router = useRouter();
+  const { state: onboarding, markSteps } = useOnboarding();
   const [stepIndex, setStepIndex] = useState(-1);
   const [rect, setRect] = useState<Rect | null>(null);
   const [ready, setReady] = useState(false);
@@ -136,6 +162,22 @@ export function GuidedTour() {
     window.addEventListener(START_EVENT, onStart);
     return () => window.removeEventListener(START_EVENT, onStart);
   }, []);
+
+  // Vorgeführte Bereiche in der „Erste Schritte"-Leiste abhaken. Beim Anzeigen
+  // des Schritts, nicht erst am Ende: Wer die Tour vorzeitig verlässt, hat das
+  // Gesehene trotzdem gesehen. Nur wirklich neue Schritte melden, sonst
+  // schickt jeder Tour-Durchlauf dieselben Mutationen erneut los.
+  const marked = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!active || !step?.marks) return;
+    const fresh = step.marks.filter((id) => !onboarding.steps.includes(id) && !marked.current.has(id));
+    if (!fresh.length) return;
+    fresh.forEach((id) => marked.current.add(id));
+    markSteps(fresh);
+    // markSteps ist eine react-query-Mutation (stabil genug); der Ref verhindert
+    // Doppelmeldungen, solange die Server-Antwort noch unterwegs ist.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, stepIndex, onboarding.steps]);
 
   // Pro Schritt: ggf. navigieren, Anker abwarten, hinscrollen, vermessen.
   useEffect(() => {
