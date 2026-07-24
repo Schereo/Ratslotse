@@ -74,6 +74,30 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   `weekly_enrich` mit; Gremien und Namens-Dubletten werden herausgefiltert.
 
 ### Behoben
+- **Themen werden jetzt wirklich geprüft.** Bisher konnte man beliebige Sätze —
+  auch getarnte Anweisungen an die KI — als Thema anlegen: Der Hinweis erschien
+  erst, nachdem gespeichert war. Jetzt gibt es drei Fälle statt zwei. Ein Thema
+  mit Beschlüssen wird wie gehabt beschrieben. Eine Sache, die es in Oldenburg
+  gibt, über die der Rat aber noch nicht entschieden hat — etwa eine bestimmte
+  Grundschule —, lässt sich anlegen, mit dem ehrlichen Hinweis „darüber wurde
+  noch nicht entschieden, Lotti meldet sich, sobald es so weit ist". Und was gar
+  kein Ratsthema ist, wird mit Begründung abgelehnt statt still gespeichert.
+- **Keine erfundenen Treffer mehr.** Unter „Grundschule Krusenbusch" standen
+  „12 Beschlüsse passen dazu" — gemeint waren Beschlüsse über *andere* Schulen.
+  Es wird nur noch gezählt, was wirklich zum Thema gehört.
+- Beim ersten Start klappte auf dem iPhone die Tastatur über dem
+  Willkommens-Gruß auf.
+- Lotti ragte auf der Registrieren-Seite in die Dynamic Island.
+- Der „Bitte bestätige deine E-Mail"-Hinweis erschien mitsamt Navigation und
+  Suche, obwohl beides noch ins Leere führt — er steht jetzt für sich.
+- Nach dem Klick auf den Bestätigungslink blieb die Seite stehen; wer die App
+  wechselte, fand sie später ohne erkennbaren Grund wieder vor. Sie geht jetzt
+  von selbst weiter.
+- Mehrere Abzeichen-Meldungen stapelten sich beim ersten Login übereinander —
+  jetzt fasst eine Meldung sie zusammen.
+- Die „Erste Schritte"-Karte sagte gleich beim ersten Öffnen „Weitermachen" und
+  sprang stumm auf die nächste Seite. Sie sagt jetzt „Tour starten" und startet
+  die geführte Tour, in der Lotti erklärt.
 - Beim ersten Start klappte auf dem iPhone sofort die Tastatur über dem
   Willkommens-Gruß auf — das Eingabefeld der darunterliegenden Anmelde-Seite
   hatte sich den Fokus geholt.

@@ -62,7 +62,11 @@ export function AuthShell({
       </div>
 
       {/* Formular-Hälfte. */}
-      <div className="flex items-center justify-center bg-waves px-4 pb-12 pt-28 lg:bg-none lg:pt-12">
+      {/* items-start statt -center auf dem Handy: Bei einem langen Formular
+          (Registrieren) schob zentriertes Layout die Karte nach oben aus dem
+          Bild — Lotti landete dabei in der Dynamic Island. Der Abstand oben
+          rechnet die Safe Area mit, damit er über der Statusleiste bleibt. */}
+      <div className="flex items-start justify-center bg-waves px-4 pb-12 pt-[calc(7rem+env(safe-area-inset-top))] lg:items-center lg:bg-none lg:pt-12">
         <div className="relative w-full max-w-sm">
           <Mascot pose={pose} theme={theme} className="pointer-events-none absolute -top-[5.65rem] left-1/2 h-24 w-24 -translate-x-1/2" />
           <Card className="relative w-full p-8 shadow-lifted">

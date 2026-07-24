@@ -69,6 +69,35 @@ def find_matches(store, name: str, limit: int = _MAX_CONTEXT) -> list[dict]:
     return rows[:limit]
 
 
+# Wörter, die in einem Themen-*Namen* nichts verloren haben: Anrede und
+# Befehlsformen. Ein Thema ist eine Sache („Cäcilienbrücke"), kein Satz an mich.
+_INSTRUCTION_WORDS = {
+    "ignoriere", "ignorier", "vergiss", "vergesse", "vergessen", "beachte",
+    "antworte", "schreibe", "zeige", "zeig", "gib", "gebe", "liste", "nenne",
+    "erkläre", "sage", "sag", "mach", "mache", "tue", "musst", "sollst",
+    "darfst", "bist", "system", "prompt", "anweisung", "anweisungen",
+    "instruction", "instructions", "ignore", "forget", "you", "your",
+}
+_MAX_NAME_WORDS = 8
+
+
+def looks_like_instruction(name: str) -> bool:
+    """Sieht der „Name" nach einem Satz oder einer Anweisung aus?
+
+    Rein strukturell und ohne LLM — deshalb auch dann verlässlich, wenn das
+    Modell gerade hakt. Zwei Signale genügen: Länge (echte Themen sind kurze
+    Substantiv-Fügungen; „Ausbau der Grundschule Auf der Wunderburg" sind sechs
+    Wörter) und Anrede-/Befehlswörter.
+    """
+    text = (name or "").strip()
+    if not text:
+        return False
+    words = re.findall(r"[\wÄÖÜäöüß-]+", text.lower())
+    if len(words) > _MAX_NAME_WORDS:
+        return True
+    return bool(_INSTRUCTION_WORDS & set(words))
+
+
 def _context(matches: list[dict]) -> str:
     lines = []
     for m in matches:
@@ -110,62 +139,91 @@ def _parse(raw: str) -> dict | None:
     return obj if isinstance(obj, dict) else None
 
 
-def analyse(store, name: str) -> dict:
-    """Ein Themen-Name → Einschätzung + Beschreibung.
-
-    Rückgabe:
-      ``is_council_topic`` — hat der Rat damit nachweislich zu tun?
-      ``description``      — ein Satz, direkt als Themen-Beschreibung nutzbar
-      ``matches``          — Anzahl belegender Beschlüsse
-      ``examples``         — bis zu 3 Titel als sichtbarer Beleg
-      ``reason``           — kurze Begründung, wenn es KEIN Ratsthema ist
-
-    Ohne Belege wird das Modell gar nicht erst gefragt: Wenn zu „Geburtstag
-    meiner Schwester" nichts im Bestand ist, ist die Antwort schon klar — das
-    spart den Aufruf und ist obendrein die ehrlichere Aussage, weil sie sich auf
-    Daten stützt statt auf eine Modell-Meinung.
-    """
-    clean = (name or "").strip()
-    matches = find_matches(store, clean)
-    examples = [(m.get("title") or "").strip() for m in matches[:3] if m.get("title")]
-
-    if len(matches) < MIN_MATCHES:
-        return {
-            "is_council_topic": False,
-            "description": "",
-            "matches": len(matches),
-            "examples": examples,
-            "reason": ("Dazu findet sich nichts in den Beschlüssen des Oldenburger "
-                       "Stadtrats — vielleicht ist es Bundes- oder Landespolitik, "
-                       "oder es gehört gar nicht in den Rat."),
-        }
-
+def _call_model(name: str, matches: list[dict]) -> dict | None:
+    """Der eine LLM-Aufruf — als eigene Funktion, damit Tests ihn ersetzen können
+    (die Suite darf nie ein echtes Modell rufen). ``None`` bei jedem Fehler:
+    Ein hakendes Modell darf ein Thema weder anlegen noch verhindern."""
     try:
-        prompt = prompts.render("topic_auto_beschreibung", name=clean[:120], context=_context(matches))
+        prompt = prompts.render("topic_auto_beschreibung", name=name[:120], context=_context(matches))
         extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in MODEL else {}
         resp = llm.chat_complete(
             model=MODEL, _feature="topic_auto_beschreibung", temperature=0.2, max_tokens=300,
             messages=[{"role": "user", "content": prompt}], **extra,
         )
-        obj = _parse(resp.choices[0].message.content or "")
-    except Exception:  # noqa: BLE001 — LLM aus/Timeout: nie das Anlegen blockieren
-        obj = None
+        return _parse(resp.choices[0].message.content or "")
+    except Exception:  # noqa: BLE001 — LLM aus/Timeout
+        return None
+
+
+VERDICTS = ("belegt", "plausibel", "ungeeignet")
+
+
+def analyse(store, name: str) -> dict:
+    """Ein Themen-Name → Einordnung + Beschreibung.
+
+    Drei Zustände, weil zwei zu grob sind. „Grundschule Krusenbusch" ist eine
+    echte Oldenburger Schule — der Rat hat über sie nur noch nichts beschlossen.
+    Das ist etwas völlig anderes als „Vergiss deine Anweisungen": das eine darf
+    man anlegen (und wird benachrichtigt, sobald es so weit ist), das andere nicht.
+
+      ``verdict``          — "belegt" | "plausibel" | "ungeeignet"
+      ``is_council_topic`` — alles außer "ungeeignet" (Altlast, Frontend nutzt verdict)
+      ``description``      — ein Satz, direkt als Themen-Beschreibung nutzbar
+      ``matches``          — Anzahl BELEGENDER Beschlüsse (0, wenn nur plausibel)
+      ``examples``         — bis zu 3 Titel als sichtbarer Beleg
+      ``reason``           — kurze Begründung, wenn es kein Ratsthema ist
+
+    Gefragt wird immer — auch ohne Suchtreffer. Ohne die Frage könnten wir
+    „plausibel" gar nicht von „ungeeignet" unterscheiden, und genau diese
+    Unterscheidung ist der Punkt.
+    """
+    clean = (name or "").strip()
+    matches = find_matches(store, clean)
+    examples = [(m.get("title") or "").strip() for m in matches[:3] if m.get("title")]
+
+    # Freie Vorprüfung: Ein Themen-Name ist eine Sache, kein Satz. Was wie eine
+    # Anweisung aussieht, geht gar nicht erst ans Modell — das spart den Aufruf
+    # und nimmt Prompt-Injection den Weg über den Umweg „Themen-Beschreibung",
+    # die später in den Wächter-Prompt wandert.
+    if looks_like_instruction(clean):
+        return {
+            "verdict": "ungeeignet", "is_council_topic": False, "description": "",
+            "matches": 0, "examples": [],
+            "reason": ("Das liest sich wie ein ganzer Satz. Ein Thema ist eine Sache — "
+                       "etwa „Cäcilienbrücke\" oder „Grundschule Krusenbusch\"."),
+        }
+
+    obj = _call_model(clean, matches)
 
     if not obj:
-        return {"is_council_topic": True, "description": _fallback_description(clean, matches),
-                "matches": len(matches), "examples": examples, "reason": ""}
+        # Modell weg: Wir dürfen weder fälschlich anlegen noch grundlos ablehnen.
+        # Belege entscheiden — mit genug Treffern gilt es als belegt, sonst als
+        # plausibel. „Ungeeignet" behaupten wir ohne Urteil nie.
+        belegt = len(matches) >= MIN_MATCHES
+        return {"verdict": "belegt" if belegt else "plausibel", "is_council_topic": True,
+                "description": _fallback_description(clean, matches),
+                "matches": len(matches) if belegt else 0, "examples": examples if belegt else [],
+                "reason": ""}
 
     desc = str(obj.get("beschreibung") or "").strip()[:_MAX_DESC]
-    # Das Modell darf widersprechen — aber nur nach unten: Sagt es „kein
-    # Ratsthema", obwohl Belege da sind, gewinnen die Belege nicht automatisch;
-    # umgekehrt erfinden wir kein Ja, wo keine Beschlüsse sind (oben abgefangen).
-    ist = bool(obj.get("ist_ratsthema", True))
+    verdict = str(obj.get("einordnung") or "").strip().lower()
+    if verdict not in VERDICTS:
+        verdict = "belegt" if len(matches) >= MIN_MATCHES else "plausibel"
+    # Das Modell darf nur nach unten korrigieren: Es sieht die Beschlüsse und
+    # erkennt, dass „Grundschule Krusenbusch" von der Wunderburg-Schule handelt —
+    # eine Trefferzahl allein kann das nicht.
+    if verdict == "belegt" and len(matches) < MIN_MATCHES:
+        verdict = "plausibel"
+    belegt = verdict == "belegt"
     return {
-        "is_council_topic": ist,
-        "description": desc or _fallback_description(clean, matches),
-        "matches": len(matches),
-        "examples": examples,
-        "reason": str(obj.get("begruendung") or "").strip()[:200] if not ist else "",
+        "verdict": verdict,
+        "is_council_topic": verdict != "ungeeignet",
+        "description": "" if verdict == "ungeeignet" else (desc or _fallback_description(clean, matches)),
+        # Nur belegte Treffer zählen: Sonst stünde „12 Beschlüsse passen dazu"
+        # unter einem Thema, zu dem das Modell gerade das Gegenteil gesagt hat.
+        "matches": len(matches) if belegt else 0,
+        "examples": examples if belegt else [],
+        "reason": str(obj.get("begruendung") or "").strip()[:200] if verdict == "ungeeignet" else "",
     }
 
 
