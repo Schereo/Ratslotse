@@ -20,7 +20,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 - **Hinweis, wenn der Rat mit einem Thema gar nichts zu tun hat.** Wer etwas
   einträgt, wozu es keine Ratsbeschlüsse gibt (Privates, Bundespolitik,
   Vertipptes), bekommt das jetzt gesagt — samt Begründung aus dem Datenbestand.
-  Anlegen kann man es trotzdem. (#PR)
+  Anlegen kann man es trotzdem. (#313)
 - **Feedback landet jetzt auch im Admin-Bereich.** Rückmeldungen aus der App
   gingen bisher ausschließlich per E-Mail raus — wer sie übersah oder löschte,
   hatte sie verloren. Sie werden nun zusätzlich gespeichert und im Admin unter
@@ -57,11 +57,11 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Themen konnten Gattungsbegriffe wie „Klima" oder „Bericht" auftauchen — als
   Abo hätten sie halb Oldenburg eingesammelt. Vorschläge durchlaufen jetzt
   dieselbe Vagheits-Prüfung wie selbst angelegte Themen; was sie nicht besteht,
-  wird gar nicht erst angeboten. (#PR)
+  wird gar nicht erst angeboten. (#313)
 - **Vagheits-Prüfung schlug Zeitungs-Formulierungen vor.** Ihre Verbesserungs-
   Vorschläge begannen mit „Artikel über …" — ein Überbleibsel aus der Zeit, als
   Ratslotse Zeitungsartikel filterte. Sie beschreiben jetzt die Sache selbst,
-  passend dazu, dass Themen gegen Ratsbeschlüsse geprüft werden. (#PR)
+  passend dazu, dass Themen gegen Ratsbeschlüsse geprüft werden. (#313)
 - **Personen-Seite: Ämter sind auf dem Handy wieder lesbar.** Die Zeitleiste der
   Ämter stand zweispaltig — Name links, Balken rechts. Auf schmalen Bildschirmen
   fraß die Namensspalte den Platz: Gremien standen abgeschnitten da
