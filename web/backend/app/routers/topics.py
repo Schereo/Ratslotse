@@ -10,13 +10,14 @@ from __future__ import annotations
 import re
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
 from nwz.store import Store
 from council.store import CouncilStore
 
 from ..deps import get_council_store, get_store, require_active
-from ..schemas import SubscriptionIn, TopicIn, TopicOut
+from ..ratelimit import topic_describe_limiter
+from ..schemas import SubscriptionIn, TopicDescribeIn, TopicIn, TopicOut
 
 logger = logging.getLogger("nwz.web.topics")
 
@@ -92,12 +93,19 @@ def topic_suggestions(
     Die KI-Beschreibung der Entität wird zur Themen-Beschreibung und macht
     den Themen-Wächter treffsicherer als ein generischer Satz. Ohne Themen,
     die der Account schon angelegt hat; ein Klick legt direkt an."""
+    from council import topic_intel
+
     existing_tokens = [_name_tokens(t.name) for t in store.get_topics(user["id"])]
     chosen_tokens: list[frozenset[str]] = []
     out = []
-    for e in council.suggested_entity_topics(days_back=365, limit=16):
+    candidates = council.suggested_entity_topics(days_back=365, limit=16)
+    # 26a-Zusage: Was hier vorgeschlagen wird, hat die Vagheits-Prüfung bestanden.
+    # Zwei Stufen, damit das bezahlbar bleibt: erst der kostenlose Gattungswort-
+    # Filter, dann das gecachte LLM-Urteil (je Slug genau einmal).
+    verdicts = council.topic_vagueness_verdicts([c.get("slug") or "" for c in candidates])
+    for e in candidates:
         name = (e.get("name") or "").strip()
-        if not name:
+        if not name or topic_intel.looks_generic(name):
             continue
         # Ähnlichkeits-Dedupe statt exaktem Namensvergleich: „Stadion
         # Maastrichter Straße", „Stadionneubau Maastrichter Straße" und
@@ -106,7 +114,6 @@ def topic_suggestions(
         tokens = _name_tokens(name)
         if any(_similar_names(tokens, other) for other in existing_tokens + chosen_tokens):
             continue
-        chosen_tokens.append(tokens)
         desc = (e.get("description") or "").strip()
         if desc:
             # Auf ~220 Zeichen kürzen (an Satzgrenze), damit die
@@ -120,10 +127,64 @@ def topic_suggestions(
                 f"Neue Beschlüsse, Planungen und Maßnahmen des Oldenburger "
                 f"Stadtrats rund um {name}."
             )
+        slug = e.get("slug") or ""
+        verdict = verdicts.get(slug)
+        if verdict is None or verdict.get("name") != name:
+            # Noch nie (oder unter anderem Namen) geprüft — jetzt einmal, dann
+            # gemerkt. Fällt die Prüfung aus, gilt „nicht vage": lieber ein
+            # Vorschlag zu viel als eine leere Liste, weil das LLM hakt.
+            verdict = topic_intel.check_vagueness(name, description)
+            try:
+                council.save_topic_vagueness(slug, name, verdict)
+            except Exception:  # noqa: BLE001 — Cache ist Beiwerk, nie blockierend
+                logger.warning("Vagheits-Urteil für %s nicht speicherbar", slug, exc_info=True)
+        if verdict.get("vague"):
+            continue
+        chosen_tokens.append(tokens)
         out.append({"name": name, "description": description, "n": e["n_recent"]})
         if len(out) >= 6:
             break
     return {"suggestions": out}
+
+
+@router.post("/describe")
+def describe_topic(
+    body: TopicDescribeIn,
+    request: Request,
+    user: dict = Depends(require_active),
+    council: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Design 26a / RL-U17: aus einem Themen-*Namen* eine Beschreibung machen.
+
+    Der Nutzer tippt nur „Cäcilienbrücke". Wir suchen die Beschlüsse dazu und
+    lassen daraus einen präzisen Satz formulieren — das ist der Text, an dem der
+    Themen-Wächter später jeden neuen Beschluss misst, also lohnt die Mühe.
+
+    Nichts hier blockiert: Wer keinen Rats-Bezug hat oder zu vage schreibt,
+    bekommt einen Hinweis und darf trotzdem speichern. Der Endpunkt urteilt,
+    er verbietet nicht.
+
+    Mit ``description`` im Body wird zusätzlich die (bis 26a brachliegende)
+    Vagheits-Prüfung auf den selbst getippten Text angewandt.
+    """
+    topic_describe_limiter.check(request)
+    from council import topic_intel
+
+    name = body.name.strip()
+    own = (body.description or "").strip()
+    result = topic_intel.analyse(council, name)
+    # Vagheit nur für selbst geschriebene Texte: Was wir selbst erzeugt haben,
+    # ist per Konstruktion aus Beschlüssen abgeleitet und damit konkret.
+    check = topic_intel.check_vagueness(name, own) if own else {"vague": False, "hint": "", "suggestion": ""}
+    return {
+        "name": name,
+        "description": result["description"],
+        "matches": result["matches"],
+        "examples": result["examples"],
+        "is_council_topic": result["is_council_topic"],
+        "reason": result["reason"],
+        **check,
+    }
 
 
 @router.post("", response_model=TopicOut, status_code=status.HTTP_201_CREATED)

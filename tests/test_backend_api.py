@@ -1533,3 +1533,134 @@ def test_entity_ohne_verwandte_liefert_leere_liste(client):
     r = client.get("/api/council/entity/solo")
     assert r.status_code == 200 and r.json()["related"] == []
 
+
+
+# ---- Design 26a: Themen-Beschreibung + vagheitsgeprüfte Vorschläge ----
+def _seed_bruecke(council: CouncilStore) -> None:
+    """Drei Beschlüsse zu einer konkreten Sache — genug Belege für ein Thema."""
+    from datetime import date, timedelta
+    recent = (date.today() - timedelta(days=20)).isoformat()
+    council.save_session(CouncilSession(1, "Rat", recent, "17:00", "Ratssaal"))
+    with council._conn:
+        for i, title in enumerate([
+                "Sanierung Cäcilienbrücke: Kostenfortschreibung",
+                "Cäcilienbrücke — Ersatzverkehr Fähre",
+                "Cäcilienbrücke: Zeitplan der Wiedereröffnung"]):
+            council._conn.execute(
+                "INSERT INTO council_decisions(ksinr, position, title, policy_field, beschluss) "
+                "VALUES (1,?,?,'verkehr','Beschluss zur Brücke.')", (i, title))
+    council.rebuild_fts()
+
+
+def test_describe_liefert_beschreibung_aus_beschluessen(client):
+    """RL-U17: Nur der Name kommt rein — ohne LLM greift der deterministische
+    Satz, der das Themenfeld der Belege nennt. Das Anlegen darf nie hängen."""
+    _register(client)
+    council = CouncilStore(COUNCIL_DB)
+    _seed_bruecke(council)
+    council.close()
+
+    r = client.post("/api/topics/describe", json={"name": "Cäcilienbrücke"})
+    assert r.status_code == 200
+    d = r.json()
+    assert d["is_council_topic"] is True
+    assert d["matches"] >= 2
+    assert "Cäcilienbrücke" in d["description"]
+    assert d["examples"]                      # sichtbarer Beleg für den Nutzer
+    assert d["vague"] is False                # nichts selbst getippt → nichts zu bemängeln
+
+
+def test_describe_erkennt_belangloses(client):
+    """Tims Anforderung: Wer etwas eingibt, das der Rat nie behandelt hat,
+    bekommt das gesagt — begründet aus dem Datenbestand, nicht geraten."""
+    _register(client)
+    r = client.post("/api/topics/describe", json={"name": "Geburtstag meiner Schwester"})
+    assert r.status_code == 200
+    d = r.json()
+    assert d["is_council_topic"] is False
+    assert d["matches"] == 0
+    assert d["reason"]                        # eine Begründung wird mitgeliefert
+
+
+def test_describe_blockiert_nicht(client):
+    """Auch ohne Rats-Bezug bleibt das Anlegen möglich — der Endpunkt urteilt,
+    er verbietet nicht."""
+    _register(client)
+    client.post("/api/topics/describe", json={"name": "Irgendwas Privates"})
+    r = client.post("/api/topics", json={"name": "Irgendwas Privates",
+                                         "description": "Mein eigenes Ding."})
+    assert r.status_code == 201
+
+
+def test_suggestions_lassen_vages_nie_durch(client, monkeypatch):
+    """Kernzusage von 26a: Ein Kandidat, den die Vagheits-Prüfung bemängelt,
+    erscheint NICHT als Vorschlag — und das Urteil wird gemerkt."""
+    from datetime import date, timedelta
+    from council import topic_intel
+    _register(client)
+    council = CouncilStore(COUNCIL_DB)
+    recent = (date.today() - timedelta(days=20)).isoformat()
+    council.save_session(CouncilSession(1, "Rat", recent, "17:00", "Ratssaal"))
+    with council._conn:
+        for i in range(3):
+            council._insert_decision(1, i, "decision", None, f"Ö {i}", f"D{i}", "B",
+                                     "angenommen", None, None, None, [], None, None, None)
+        ids = [r[0] for r in council._conn.execute("SELECT id FROM council_decisions ORDER BY id")]
+        for eid, slug, name in [(1, "cae-bruecke", "Cäcilienbrücke"), (2, "buergerbeteiligung", "Bürgerbeteiligung")]:
+            council._conn.execute(
+                "INSERT INTO council_entities (id, slug, name, kind, n) VALUES (?,?,?,'ort',3)",
+                (eid, slug, name))
+            for did in ids[:2]:
+                council._conn.execute("INSERT INTO council_entity_links VALUES (?, ?)", (eid, did))
+    council.close()
+
+    # „Bürgerbeteiligung" ist kein Gattungswort aus der Liste — hier urteilt das
+    # (gemockte) Modell, dass es zu breit ist.
+    def fake_check(name, description):
+        if name == "Bürgerbeteiligung":
+            return {"vague": True, "hint": "Zu breit gefasst.", "suggestion": "Bürgerbeteiligung Fliegerhorst"}
+        return {"vague": False, "hint": "", "suggestion": ""}
+    monkeypatch.setattr(topic_intel, "check_vagueness", fake_check)
+
+    names = [s["name"] for s in client.get("/api/topics/suggestions").json()["suggestions"]]
+    assert "Cäcilienbrücke" in names
+    assert "Bürgerbeteiligung" not in names
+
+    # Urteil gecacht → beim zweiten Aufruf kein erneuter LLM-Gang.
+    calls = {"n": 0}
+    def counting(name, description):
+        calls["n"] += 1
+        return {"vague": False, "hint": "", "suggestion": ""}
+    monkeypatch.setattr(topic_intel, "check_vagueness", counting)
+    names2 = [s["name"] for s in client.get("/api/topics/suggestions").json()["suggestions"]]
+    assert "Bürgerbeteiligung" not in names2   # bleibt draußen, aus dem Cache
+    assert calls["n"] == 0                     # nichts erneut geprüft
+
+
+def test_suggestions_filtern_gattungswoerter_ohne_llm(client, monkeypatch):
+    """Der kostenlose Vorfilter greift vor jedem LLM-Aufruf."""
+    from datetime import date, timedelta
+    from council import topic_intel
+    _register(client)
+    council = CouncilStore(COUNCIL_DB)
+    recent = (date.today() - timedelta(days=20)).isoformat()
+    council.save_session(CouncilSession(1, "Rat", recent, "17:00", "Ratssaal"))
+    with council._conn:
+        for i in range(3):
+            council._insert_decision(1, i, "decision", None, f"Ö {i}", f"D{i}", "B",
+                                     "angenommen", None, None, None, [], None, None, None)
+        ids = [r[0] for r in council._conn.execute("SELECT id FROM council_decisions ORDER BY id")]
+        for eid, slug, name in [(1, "klima", "Klima"), (2, "fliegerhorst", "Fliegerhorst")]:
+            council._conn.execute(
+                "INSERT INTO council_entities (id, slug, name, kind, n) VALUES (?,?,?,'ort',3)",
+                (eid, slug, name))
+            for did in ids[:2]:
+                council._conn.execute("INSERT INTO council_entity_links VALUES (?, ?)", (eid, did))
+    council.close()
+
+    seen = []
+    monkeypatch.setattr(topic_intel, "check_vagueness",
+                        lambda name, description: seen.append(name) or {"vague": False, "hint": "", "suggestion": ""})
+    names = [s["name"] for s in client.get("/api/topics/suggestions").json()["suggestions"]]
+    assert "Klima" not in names and "Fliegerhorst" in names
+    assert "Klima" not in seen        # gar nicht erst gefragt

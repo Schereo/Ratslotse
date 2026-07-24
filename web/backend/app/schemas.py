@@ -54,6 +54,15 @@ class TopicIn(BaseModel):
     description: str = Field(min_length=1, max_length=2000)
 
 
+class TopicDescribeIn(BaseModel):
+    """RL-U17: Name reicht — die Beschreibung entsteht aus den Beschlüssen.
+    ``description`` ist optional und nur dafür da, einen selbst getippten Text
+    zusätzlich auf Vagheit prüfen zu lassen."""
+
+    name: str = Field(min_length=1, max_length=120)
+    description: str = Field(default="", max_length=2000)
+
+
 class TopicOut(BaseModel):
     id: int
     name: str
