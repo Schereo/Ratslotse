@@ -74,6 +74,9 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   `weekly_enrich` mit; Gremien und Namens-Dubletten werden herausgefiltert.
 
 ### Behoben
+- Beim ersten Start klappte auf dem iPhone sofort die Tastatur über dem
+  Willkommens-Gruß auf — das Eingabefeld der darunterliegenden Anmelde-Seite
+  hatte sich den Fokus geholt.
 - Ungültige Eingaben in Formularen zeigten die rohe Fehlermeldung des Servers
   („[{\"type\":\"value_error\",\"loc\":…"). Jetzt steht dort ein Satz, z. B.
   „Diese E-Mail-Adresse ist ungültig."

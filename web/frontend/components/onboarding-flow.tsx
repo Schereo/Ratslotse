@@ -79,6 +79,7 @@ export function OnboardingFlow() {
   const router = useRouter();
   const theme = useMascotTheme();
   const [step, setStep] = useState<Step | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Nur in der App und nur beim ersten Mal.
@@ -143,6 +144,21 @@ export function OnboardingFlow() {
     if (isUsable(user) && step !== null && step > 0) reportSetupStep(step);
   }, [user, step]);
 
+  // Der Flow liegt ÜBER der Login-/Registrieren-Seite — und deren autoFocus-Feld
+  // zieht den Fokus an sich, worauf iOS sofort die Tastatur aufklappt: Auf dem
+  // Gerät stand sie über dem Willkommens-Gruß, noch bevor man etwas getan hatte.
+  // Solange der Flow oben liegt, bekommt darum nur er den Fokus.
+  useEffect(() => {
+    if (step === null) return;
+    const blurOutside = (el: Element | null) => {
+      if (el instanceof HTMLElement && !rootRef.current?.contains(el)) el.blur();
+    };
+    blurOutside(document.activeElement);
+    const onFocusIn = (e: FocusEvent) => blurOutside(e.target as Element | null);
+    document.addEventListener("focusin", onFocusIn, true);
+    return () => document.removeEventListener("focusin", onFocusIn, true);
+  }, [step]);
+
   // Solange der Flow oben liegt, halten Abzeichen-Toasts still (s. flowVisible).
   useEffect(() => {
     flowVisible = step !== null;
@@ -152,7 +168,7 @@ export function OnboardingFlow() {
   if (step === null) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col bg-background pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-[calc(0.75rem+env(safe-area-inset-top))]">
+    <div ref={rootRef} className="fixed inset-0 z-[100] flex flex-col bg-background pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-[calc(0.75rem+env(safe-area-inset-top))]">
       {step > 0 && (
         <div className="px-[18px]">
           <div className="flex items-center gap-3">
