@@ -18,8 +18,22 @@ type AppleIdSdk = {
       redirectURI: string;
       usePopup: boolean;
     }) => void;
-    signIn: () => Promise<{ authorization?: { id_token?: string } }>;
+    signIn: () => Promise<{
+      authorization?: { id_token?: string };
+      // Apple liefert den Namen NUR bei der allerersten Autorisierung und
+      // NICHT im Identity-Token — er kommt hier separat und ist danach für
+      // immer weg (bis man Ratslotse in den Apple-ID-Einstellungen löst).
+      user?: { name?: { firstName?: string; lastName?: string } };
+    }>;
   };
+};
+
+/** Was eine Apple-Anmeldung liefert: das signierte Token — und beim ersten
+ *  Mal den Namen. Das Backend übernimmt ihn nur für frische Konten. */
+export type AppleCredential = {
+  identityToken: string;
+  givenName: string;
+  familyName: string;
 };
 
 export function appleSignInAvailable(): boolean {
@@ -43,7 +57,7 @@ async function loadAppleJs(): Promise<AppleIdSdk | null> {
   return w.AppleID ?? null;
 }
 
-export async function appleIdentityToken(): Promise<string | null> {
+export async function appleCredential(): Promise<AppleCredential | null> {
   if (isNativeApp()) {
     try {
       const { SignInWithApple } = await import("@capacitor-community/apple-sign-in");
@@ -52,9 +66,15 @@ export async function appleIdentityToken(): Promise<string | null> {
         // dort ohne Bedeutung, das Plugin verlangt sie aber im Options-Typ.
         clientId: "de.ratslotse.app",
         redirectURI: "https://ratslotse.de",
-        scopes: "email",
+        scopes: "email name",
       });
-      return result.response?.identityToken ?? null;
+      const token = result.response?.identityToken;
+      if (!token) return null;
+      return {
+        identityToken: token,
+        givenName: result.response?.givenName ?? "",
+        familyName: result.response?.familyName ?? "",
+      };
     } catch {
       // Abbruch durch die Nutzer:in oder fehlende Capability — kein Fehlerfall.
       return null;
@@ -66,15 +86,27 @@ export async function appleIdentityToken(): Promise<string | null> {
     if (!AppleID) return null;
     AppleID.auth.init({
       clientId: APPLE_WEB_CLIENT_ID,
-      scope: "email",
+      scope: "email name",
       // Muss exakt einer bei Apple registrierten Return-URL entsprechen.
       redirectURI: `${window.location.origin}/login`,
       usePopup: true,
     });
     const result = await AppleID.auth.signIn();
-    return result?.authorization?.id_token ?? null;
+    const token = result?.authorization?.id_token;
+    if (!token) return null;
+    return {
+      identityToken: token,
+      givenName: result.user?.name?.firstName ?? "",
+      familyName: result.user?.name?.lastName ?? "",
+    };
   } catch {
     // Popup geschlossen/abgebrochen — kein Fehlerfall.
     return null;
   }
+}
+
+/** Nur das Token — für die Re-Authentifizierung (Konto verknüpfen/löschen),
+ *  wo der Name keine Rolle spielt. */
+export async function appleIdentityToken(): Promise<string | null> {
+  return (await appleCredential())?.identityToken ?? null;
 }

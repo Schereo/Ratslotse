@@ -5,7 +5,7 @@ import os
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 
@@ -446,6 +446,18 @@ class Store:
                     self._conn.execute(
                         "ALTER TABLE web_users ADD COLUMN password_set INTEGER NOT NULL DEFAULT 1"
                     )
+                # Einrichtungs-Assistent (Design 26a): welcher Schritt zuletzt
+                # erreicht wurde. Eigene Spalten statt der onboarding-JSON —
+                # die gehört der „Erste Schritte"-Tour, und der Erinnerungs-Cron
+                # will ohnehin per SQL filtern statt JSON zu parsen.
+                if "setup_step" not in wu_cols:
+                    self._conn.execute("ALTER TABLE web_users ADD COLUMN setup_step INTEGER")
+                    self._conn.execute("ALTER TABLE web_users ADD COLUMN setup_started_at TEXT")
+                    self._conn.execute("ALTER TABLE web_users ADD COLUMN setup_updated_at TEXT")
+                    self._conn.execute("ALTER TABLE web_users ADD COLUMN setup_done_at TEXT")
+                    # Wann die eine Erinnerungsmail rausging — verhindert, dass
+                    # jemand sie zweimal bekommt.
+                    self._conn.execute("ALTER TABLE web_users ADD COLUMN setup_reminded_at TEXT")
         # Schätzfrage-Slider für eigene Fragen (RL-U14-Erweiterung): Zahl-Felder
         # zur seit RL-U14 bestehenden Tabelle nachziehen.
         uq_cols = self._table_cols("user_quiz_questions")
@@ -689,6 +701,64 @@ class Store:
                 (json.dumps(cur, ensure_ascii=False), user_id),
             )
         return cur
+
+    # ---- Einrichtungs-Assistent (Design 26a) -------------------------------
+    def set_setup_step(self, user_id: int, step: int, done: bool = False) -> None:
+        """Erreichten Schritt am Konto festhalten.
+
+        Am Konto statt nur im Gerät: So überlebt der Stand eine Neuinstallation,
+        gilt auf jedem Gerät — und der Erinnerungs-Cron kann überhaupt erst
+        erkennen, wer angefangen und nicht zu Ende gebracht hat.
+        """
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "UPDATE web_users SET setup_step = ?, "
+                "setup_started_at = COALESCE(setup_started_at, ?), "
+                "setup_updated_at = ?, "
+                "setup_done_at = CASE WHEN ? THEN ? ELSE setup_done_at END "
+                "WHERE id = ?",
+                (step, now, now, 1 if done else 0, now, user_id),
+            )
+
+    def get_setup(self, user_id: int) -> dict:
+        row = self._conn.execute(
+            "SELECT setup_step, setup_started_at, setup_done_at FROM web_users WHERE id = ?",
+            (user_id,),
+        ).fetchone()
+        if not row:
+            return {"step": 0, "started_at": None, "done_at": None}
+        return {"step": row["setup_step"] or 0, "started_at": row["setup_started_at"],
+                "done_at": row["setup_done_at"]}
+
+    def setups_to_remind(self, older_than_hours: int = 48, limit: int = 200) -> list[dict]:
+        """Konten, die die Einrichtung angefangen und liegen gelassen haben.
+
+        Bedingungen bewusst streng — die Mail geht genau einmal und nur an
+        Menschen, die sie einordnen können: mindestens Schritt 1 erreicht (wer
+        beim Gruß abbricht, hat nichts angefangen), nichts abgeschlossen, seit
+        ``older_than_hours`` keine Bewegung, noch nie erinnert, Konto aktiv und
+        E-Mail bestätigt.
+        """
+        cutoff = (datetime.utcnow() - timedelta(hours=older_than_hours)).isoformat(timespec="seconds")
+        rows = self._conn.execute(
+            "SELECT id, email, display_name, setup_step, setup_started_at FROM web_users "
+            "WHERE setup_started_at IS NOT NULL "
+            "  AND COALESCE(setup_updated_at, setup_started_at) <= ? "
+            "  AND setup_done_at IS NULL AND setup_reminded_at IS NULL "
+            "  AND COALESCE(setup_step, 0) >= 1 "
+            "  AND status = 'active' AND email_verified = 1 "
+            "ORDER BY setup_started_at LIMIT ?",
+            (cutoff, limit),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def mark_setup_reminded(self, user_id: int) -> None:
+        with self._conn:
+            self._conn.execute(
+                "UPDATE web_users SET setup_reminded_at = ? WHERE id = ?",
+                (datetime.utcnow().isoformat(timespec="seconds"), user_id),
+            )
 
     # ---- Quiz: Antworten (Punkte je Gebiet) + Bewertungen ----
 

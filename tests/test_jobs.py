@@ -84,7 +84,8 @@ def test_registry_deckt_die_cron_eintraege_ab():
     """Die Übersicht kann nur zeigen, was in der Registry steht — jeder Job aus
     der crontab braucht dort einen Eintrag mit Takt und Toleranz."""
     assert {j["key"] for j in JOBS} == {
-        "check_council", "check_committees", "check_protocols", "weekly_enrich", "backup_db",
+        "check_council", "check_committees", "check_protocols", "weekly_enrich",
+        "remind_setup", "backup_db",
     }
     for job in JOBS:
         assert BY_KEY[job["key"]] is job
