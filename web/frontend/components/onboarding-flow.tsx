@@ -51,23 +51,45 @@ export function isOnboardingVisible(): boolean {
  *  nachgeholt werden können. */
 export const ONBOARDING_DONE_EVENT = "ratslotse:onboarding-done";
 
+/** Den erreichten Schritt auch am Konto festhalten (fire-and-forget).
+ *  Der lokale Speicher merkt sich den Stand fürs Gerät; erst der Server-Stand
+ *  überlebt eine Neuinstallation — und nur er erlaubt es, nach zwei Tagen an
+ *  eine liegengebliebene Einrichtung zu erinnern (scripts/remind_setup.py). */
+function reportSetupStep(step: number, done = false) {
+  api.post("/onboarding/setup", { step, done }).catch(() => {});
+}
+
 export function OnboardingFlow() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const theme = useMascotTheme();
   const [step, setStep] = useState<Step | null>(null);
 
   useEffect(() => {
-    // Nur in der App und nur beim ersten Mal. Ohne Konto ergibt der Flow
-    // nichts — Abos und Themen hängen am Login.
-    if (!isNativeApp() || !user) return;
+    // Nur in der App und nur beim ersten Mal.
+    if (!isNativeApp()) return;
+    // Erst wenn feststeht, ob jemand angemeldet ist — sonst hielte der Flow
+    // einen angemeldeten Rückkehrer für abgemeldet und träte kurz beiseite.
+    if (loading) return;
     try {
-      if (localStorage.getItem(DONE_KEY) || localStorage.getItem(LEGACY_INTRO_KEY)) return;
-      const saved = Number(localStorage.getItem(STEP_KEY) ?? 0);
-      setStep((Number.isFinite(saved) && saved >= 0 && saved <= 3 ? saved : 0) as Step);
+      if (localStorage.getItem(DONE_KEY) || localStorage.getItem(LEGACY_INTRO_KEY)) {
+        setStep(null);
+        return;
+      }
+      const raw = Number(localStorage.getItem(STEP_KEY) ?? 0);
+      const saved = (Number.isFinite(raw) && raw >= 0 && raw <= 3 ? raw : 0) as Step;
+      // Der Auftakt begrüßt VOR dem Login — erst danach fragt die App nach einem
+      // Konto. Die Schritte 1–3 brauchen dagegen eins (Abos und Themen hängen
+      // daran): Ohne Konto tritt der Flow beiseite und gibt den Login frei;
+      // sobald angemeldet, macht er genau dort weiter.
+      if (!user && saved > 0) {
+        setStep(null);
+        return;
+      }
+      setStep(saved);
     } catch {
       setStep(0);
     }
-  }, [user]);
+  }, [user, loading]);
 
   const go = (next: Step | "done") => {
     if (next === "done") {
@@ -81,12 +103,21 @@ export function OnboardingFlow() {
           String(Date.now() + PUSH_SNOOZE_DAYS * 24 * 60 * 60 * 1000));
       } catch { /* Speicher voll/gesperrt — dann eben nochmal beim nächsten Start */ }
       setStep(null);
+      if (user) reportSetupStep(3, true);
       window.dispatchEvent(new Event(ONBOARDING_DONE_EVENT));
       return;
     }
     try { localStorage.setItem(STEP_KEY, String(next)); } catch { /* egal */ }
-    setStep(next);
+    // Nach dem Auftakt ohne Konto: beiseitetreten, damit der Login sichtbar
+    // wird. Der Schritt ist gemerkt — nach dem Anmelden geht es dort weiter.
+    setStep(!user && next > 0 ? null : next);
   };
+
+  // Den Stand melden, sobald ein Konto da ist — auch nachträglich: Wer den
+  // Auftakt vor dem Login sieht, meldet Schritt 1 erst nach dem Anmelden.
+  useEffect(() => {
+    if (user && step !== null && step > 0) reportSetupStep(step);
+  }, [user, step]);
 
   // Solange der Flow oben liegt, halten Abzeichen-Toasts still (s. flowVisible).
   useEffect(() => {

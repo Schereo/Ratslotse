@@ -45,6 +45,12 @@ _JWKS_TTL = 24 * 3600
 
 class AppleLoginRequest(BaseModel):
     identity_token: str = Field(min_length=20)
+    # Apple übermittelt den Namen NUR bei der ersten Autorisierung und NICHT im
+    # signierten Token — er kommt daher ungeprüft vom Client. Das ist vertretbar,
+    # weil ein Anzeigename keine Berechtigung trägt; er wird ausschließlich für
+    # ein frisch angelegtes bzw. noch namenloses Konto übernommen (siehe unten).
+    given_name: str = Field(default="", max_length=60)
+    family_name: str = Field(default="", max_length=60)
 
 
 def _fetch_jwks() -> list[dict]:
@@ -104,6 +110,7 @@ def apple_login(
     # Nur die E-Mail aus dem signierten Token zählt — eine Client-Angabe wäre
     # fälschbar und würde fremde Konten verknüpfbar machen.
     email = str(claims.get("email") or "").lower().strip()
+    apple_name = " ".join(p for p in (body.given_name.strip(), body.family_name.strip()) if p)[:60]
 
     user = store.get_web_user_by_apple_sub(sub)
     if user is None and email:
@@ -138,8 +145,17 @@ def apple_login(
         )
         store.set_delivery_channel(user_id, "email")
         store.link_apple_sub(user_id, sub, password_set=False)
+        if apple_name:
+            store.set_display_name(user_id, apple_name)
         user = store.get_web_user_by_id(user_id)
         logger.info("Neues Konto %s über Apple erstellt", user_id)
+
+    # Nachtrag für Konten, die vor „name" im Scope entstanden sind: Wer sich
+    # bei Apple neu autorisiert, liefert den Namen noch einmal — aber nur füllen,
+    # nie überschreiben, sonst ersetzte der Apple-Name einen selbst gewählten.
+    if apple_name and not (user.get("display_name") or "").strip():
+        store.set_display_name(user["id"], apple_name)
+        user = store.get_web_user_by_id(user["id"])
 
     _set_auth_cookie(response, user)
     return _to_out(user, _app_access_token(request, user))

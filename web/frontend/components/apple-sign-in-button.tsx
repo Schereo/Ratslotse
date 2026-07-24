@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/ui";
-import { appleIdentityToken, appleSignInAvailable } from "@/lib/apple";
+import { appleCredential, appleSignInAvailable } from "@/lib/apple";
 import { useAuth } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
 
@@ -32,9 +32,9 @@ export function AppleSignInButton({ label = "Mit Apple fortfahren" }: { label?: 
   const onClick = async () => {
     setBusy(true);
     try {
-      const token = await appleIdentityToken();
-      if (!token) return; // abgebrochen — kein Fehler-Toast
-      await loginWithApple(token);
+      const cred = await appleCredential();
+      if (!cred) return; // abgebrochen — kein Fehler-Toast
+      await loginWithApple(cred);
       router.replace("/dashboard");
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Apple-Anmeldung fehlgeschlagen.");

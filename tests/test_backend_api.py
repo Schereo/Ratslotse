@@ -153,7 +153,8 @@ def test_admin_jobs_listet_registry_auch_ohne_laeufe(client):
     _register(client)
     b = client.get("/api/admin/jobs").json()
     assert {j["key"] for j in b} == {
-        "check_council", "check_committees", "check_protocols", "weekly_enrich", "backup_db",
+        "check_council", "check_committees", "check_protocols", "weekly_enrich",
+        "remind_setup", "backup_db",
     }
     job = next(j for j in b if j["key"] == "check_council")
     assert job["state"] == "unknown" and job["last"] is None and job["history"] == []
@@ -1199,6 +1200,36 @@ def test_apple_login_creates_active_account(client, apple_jwks):
     # Wiederholte Anmeldung (gleiche sub, diesmal ohne email-Claim) → gleiches Konto.
     r2 = anna.post("/api/auth/apple", json={"identity_token": _apple_token(email=None)})
     assert r2.status_code == 200 and r2.json()["id"] == body["id"]
+
+
+def test_apple_login_takes_the_name_on_first_authorisation(client, apple_jwks):
+    """Apple liefert den Namen NUR beim ersten Mal und nicht im Token — er kommt
+    daher vom Client. Für ein frisches Konto übernehmen wir ihn; einen bereits
+    gesetzten Namen darf er nie überschreiben."""
+    _register(client)
+    anna = TestClient(app)
+    r = anna.post("/api/auth/apple", json={
+        "identity_token": _apple_token(), "given_name": "Anna", "family_name": "Meyer"})
+    assert r.status_code == 200 and r.json()["display_name"] == "Anna Meyer"
+
+    # Zweite Anmeldung: Apple schweigt jetzt zum Namen — der bleibt trotzdem.
+    r2 = anna.post("/api/auth/apple", json={"identity_token": _apple_token()})
+    assert r2.json()["display_name"] == "Anna Meyer"
+
+    # Und ein nachgereichter Name überschreibt den vorhandenen nicht.
+    r3 = anna.post("/api/auth/apple", json={
+        "identity_token": _apple_token(), "given_name": "Fremd", "family_name": "Name"})
+    assert r3.json()["display_name"] == "Anna Meyer"
+
+
+def test_apple_login_fills_a_missing_name_later(client, apple_jwks):
+    """Konten aus der Zeit vor „name" im Scope holen den Namen nach."""
+    _register(client)
+    anna = TestClient(app)
+    anna.post("/api/auth/apple", json={"identity_token": _apple_token()})
+    r = anna.post("/api/auth/apple", json={
+        "identity_token": _apple_token(), "given_name": "Anna", "family_name": ""})
+    assert r.json()["display_name"] == "Anna"
 
 
 def test_apple_login_links_existing_account_by_email(client, apple_jwks):

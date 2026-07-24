@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
+import type { AppleCredential } from "./apple";
 import { api, ApiError, setUnauthorizedHandler } from "./api";
 import { loadToken, setToken } from "./token";
 import { unregisterPush } from "./push";
@@ -11,7 +12,7 @@ interface AuthContextValue {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, displayName?: string) => Promise<void>;
-  loginWithApple: (identityToken: string) => Promise<void>;
+  loginWithApple: (cred: AppleCredential) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -57,10 +58,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(u);
   };
 
-  const loginWithApple = async (identityToken: string) => {
+  const loginWithApple = async (cred: AppleCredential) => {
     // RL-1002: Backend verifiziert das Token gegen Apples JWKS und meldet an
     // (bzw. verknüpft/erstellt das Konto).
-    const u = await api.post<User>("/auth/apple", { identity_token: identityToken });
+    const u = await api.post<User>("/auth/apple", {
+      identity_token: cred.identityToken,
+      given_name: cred.givenName,
+      family_name: cred.familyName,
+    });
     await setToken(u.access_token ?? null);
     setUser(u);
   };

@@ -224,3 +224,10 @@ class PushRegisterRequest(BaseModel):
 
 class PushUnregisterRequest(BaseModel):
     token: str = Field(min_length=1, max_length=512)
+
+
+class SetupUpdate(BaseModel):
+    """Design 26a: erreichter Schritt des Einrichtungs-Assistenten (0–3)."""
+
+    step: int = Field(ge=0, le=3)
+    done: bool = False

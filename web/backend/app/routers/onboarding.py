@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends
 from nwz.store import Store
 
 from ..deps import get_store, require_active
-from ..schemas import OnboardingUpdate
+from ..schemas import OnboardingUpdate, SetupUpdate
 
 router = APIRouter(prefix="/api/onboarding", tags=["onboarding"])
 
@@ -34,3 +34,25 @@ def update_onboarding(
 ) -> dict:
     steps = [s for s in payload.steps if s in KNOWN_STEPS]
     return store.update_onboarding(user["id"], steps=steps, celebrated=payload.celebrated)
+
+
+@router.get("/setup")
+def get_setup(user: dict = Depends(require_active), store: Store = Depends(get_store)) -> dict:
+    """Stand des Einrichtungs-Assistenten (Design 26a)."""
+    return store.get_setup(user["id"])
+
+
+@router.post("/setup")
+def set_setup(
+    payload: SetupUpdate,
+    user: dict = Depends(require_active),
+    store: Store = Depends(get_store),
+) -> dict:
+    """Erreichten Schritt festhalten.
+
+    Am Konto statt nur im Gerät: Der Stand überlebt eine Neuinstallation, gilt
+    auf jedem Gerät — und erst dadurch kann der Erinnerungs-Cron überhaupt
+    erkennen, wer angefangen und nicht zu Ende gebracht hat.
+    """
+    store.set_setup_step(user["id"], max(0, min(3, payload.step)), done=payload.done)
+    return store.get_setup(user["id"])

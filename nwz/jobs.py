@@ -38,6 +38,13 @@ JOBS: list[dict] = [
         "max_age_h": 8 * 24,
     },
     {
+        "key": "remind_setup",
+        "label": "Erinnerung an die Einrichtung",
+        "description": "Einmalige Service-Mail an Konten, die den Einrichtungs-Assistenten angefangen und nicht beendet haben.",
+        "schedule": "täglich 11 Uhr",
+        "max_age_h": 30,
+    },
+    {
         "key": "backup_db",
         "label": "Datenbank-Backup",
         "description": "Nächtliche Sicherung beider SQLite-Dateien, optional gespiegelt auf die Storage Box.",
