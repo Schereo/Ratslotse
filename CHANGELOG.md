@@ -8,6 +8,13 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Behoben
+- **Feedback-Dialog reißt kein Menü mehr auf.** Beim Öffnen von „Feedback geben"
+  klappte auf dem iPhone sofort die Auswahlliste für die Art auf — noch bevor
+  man den Dialog lesen konnte. Ursache war der automatische Fokus auf das erste
+  Eingabefeld, was iOS als Aufforderung versteht, das Rad-Menü zu zeigen. Der
+  Dialog fängt den Fokus jetzt selbst ab. (#310)
+
+### Behoben
 - **KI-Antworten nennen nicht mehr Datum und Tragweite mitten im Satz.** Die
   Antworten lasen sich stellenweise wie ein Aktenvermerk — „… beschlossen
   (2026-04-20, Tragweite: hoch)". Beides steht ohnehin bei den Quellen unter
