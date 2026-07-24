@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { Button, Input, PasswordInput } from "@/components/ui";
 import { AuthShell } from "@/components/auth-shell";
 import { AppleSignInButton } from "@/components/apple-sign-in-button";
+import { ONBOARDING_NEEDS_LOGIN_EVENT } from "@/components/onboarding-flow";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -15,6 +16,20 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  // Seit 26a führt der Willkommens-Auftakt hierher — wer von dort kommt, ist
+  // gerade zum ersten Mal da und wäre mit „Willkommen zurück" falsch begrüßt.
+  const [firstRun, setFirstRun] = useState(false);
+  useEffect(() => {
+    const check = () => {
+      try {
+        setFirstRun(!!localStorage.getItem("ratslotse.onboarding.step")
+          && !localStorage.getItem("ratslotse.onboarding.done"));
+      } catch { /* Speicher gesperrt — dann eben die neutrale Begrüßung */ }
+    };
+    check();
+    window.addEventListener(ONBOARDING_NEEDS_LOGIN_EVENT, check);
+    return () => window.removeEventListener(ONBOARDING_NEEDS_LOGIN_EVENT, check);
+  }, []);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,7 +47,11 @@ export default function LoginPage() {
 
   return (
     <AuthShell title="Moin!" pose="wave">
-        <p className="mt-3 text-sm text-muted-foreground">Willkommen zurück — melde dich an, um fortzufahren.</p>
+        <p className="mt-3 text-sm text-muted-foreground">
+          {firstRun
+            ? "Nur noch ein Konto — dann richten wir Ratslotse gemeinsam ein."
+            : "Willkommen zurück — melde dich an, um fortzufahren."}
+        </p>
         <div className="mt-6">
           {/* RL-1001: Apple steht immer an erster Stelle (nur in der App sichtbar). */}
           <AppleSignInButton label="Mit Apple anmelden" />
@@ -56,12 +75,23 @@ export default function LoginPage() {
             Passwort vergessen?
           </Link>
         </p>
-        <p className="mt-3 text-center text-sm text-muted-foreground">
-          Noch kein Konto?{" "}
-          <Link href="/register" className="font-medium text-primary hover:underline">
-            Registrieren
+        {/* Beim ersten Start ist „Registrieren" der wahrscheinliche Weg, nicht
+            die Fußnote — deshalb dort als eigener Knopf statt als Textlink. */}
+        {firstRun ? (
+          <Link
+            href="/register"
+            className="mt-4 flex h-11 w-full items-center justify-center rounded-xl border border-primary/30 bg-primary/[0.06] text-sm font-medium text-primary transition-colors hover:bg-primary/10"
+          >
+            Neu hier? Konto erstellen
           </Link>
-        </p>
+        ) : (
+          <p className="mt-3 text-center text-sm text-muted-foreground">
+            Noch kein Konto?{" "}
+            <Link href="/register" className="font-medium text-primary hover:underline">
+              Registrieren
+            </Link>
+          </p>
+        )}
         {/* RL-F08: Docs-Link gestrichen — bleibt über Landing + Footer erreichbar. */}
         <p className="mt-4 border-t border-border pt-4 text-center text-xs text-muted-foreground">
           <Link href="/impressum" className="hover:text-foreground hover:underline">Impressum</Link>
