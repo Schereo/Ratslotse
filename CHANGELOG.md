@@ -7,6 +7,21 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert
+- **Ein verdientes Abzeichen wird jetzt richtig gefeiert.** Bisher blitzte nur
+  eine graue Systemmeldung auf, während Konfetti über den ganzen Bildschirm
+  regnete — man erfuhr nicht, *warum* man das Abzeichen bekommen hat, und wo es
+  jetzt liegt schon gar nicht. An ihre Stelle tritt eine **Karte in den
+  Ratslotse-Farben**, die unten über den laufenden Bildschirm fährt: goldene
+  Medaille, der Name des Abzeichens, wofür es steht, wie viele von acht man
+  gesammelt hat — dazu **„Sammlung ansehen"**, das direkt zur Abzeichen-Karte
+  im Konto springt. Sie blockiert nichts, geht nach sechs Sekunden von selbst
+  und lässt sich jederzeit wegtippen; mehrere Abzeichen auf einmal kommen
+  nacheinander statt gestapelt. In der Sammlung trägt das frische Abzeichen
+  danach ein **„NEU"**, bis man es einmal angesehen hat. Wer im System
+  reduzierte Bewegung eingestellt hat, bekommt dieselbe Karte ohne Konfetti.
+  (#322)
+
 ### Hinzugefügt
 - **Erst begrüßen, dann registrieren.** Nach „Los geht's" geht es direkt zum
   Konto-Erstellen statt zum Anmelden — wer die App zum ersten Mal öffnet, hat in
