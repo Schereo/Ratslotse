@@ -382,6 +382,17 @@ export interface AdminStats {
   council: { sessions: number; upcoming: number; agenda_items: number; committees: number };
 }
 
+/** Eingegangenes Nutzer-Feedback im Admin-Panel. `read_at` null = offen. */
+export interface AdminFeedback {
+  id: number;
+  owner_id: number;
+  email: string | null;
+  kind: "feature" | "bug" | "other" | string;
+  message: string;
+  created_at: string;
+  read_at: string | null;
+}
+
 export interface AdminUserRow {
   id: number;
   email: string;
