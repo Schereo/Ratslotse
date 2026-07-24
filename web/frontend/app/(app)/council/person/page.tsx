@@ -57,21 +57,38 @@ function OfficesGantt({ current }: { current: Membership[] }) {
           const leftPct = Math.min(90, Math.max(0, ((vy - minYear) / span) * 100));
           const showLabel = 100 - leftPct >= 26 && m.von;
           return (
-            <div key={`${m.gremium}-${i}`} className="grid grid-cols-[8.5rem_1fr] items-center gap-3 sm:grid-cols-[14rem_1fr]">
-              <span className="flex min-w-0 items-center gap-1.5">
+            // Schmal (< sm) stapelt sich die Zeile: Name über dem Balken, Jahr
+            // rechts daneben. Zweispaltig fraß die Namensspalte auf dem Handy
+            // die halbe Breite — Ämter wurden abgeschnitten („Wirtschaft & Dig…")
+            // und junge Ämter schrumpften zum Punkt. Ab sm bleibt der Gantt.
+            <div key={`${m.gremium}-${i}`}
+              className="flex flex-wrap items-center gap-x-1.5 gap-y-1 sm:grid sm:grid-cols-[14rem_1fr] sm:gap-3">
+              <span className="flex w-full min-w-0 items-center gap-1.5 sm:w-auto">
                 {chair
                   ? <Gavel className="h-3.5 w-3.5 shrink-0 text-signal" />
                   : <span className="w-3.5 shrink-0" aria-hidden />}
                 <span className={cnEllipsis(chair)} title={m.gremium}>
                   {shortCommittee(m.gremium)}
-                  {isDeputy(m.rolle) && <span className="ml-1 text-[11px] font-normal text-muted-foreground">· Stellv.</span>}
+                  {/* nowrap nur schmal, wo der Name umbrechen darf: sonst landet
+                      der Trenner allein am Zeilenende und „Stellv." rutscht in
+                      die nächste. Ab sm wird ohnehin gekürzt statt umgebrochen. */}
+                  {isDeputy(m.rolle) && <span className="ml-1 text-[11px] font-normal text-muted-foreground max-sm:whitespace-nowrap">· Stellv.</span>}
                 </span>
+                {/* Das Jahr steht schmal IMMER in der Namenszeile — im Balken
+                    wäre es bei kurzer Amtszeit unlesbar oder ganz weg. */}
+                {m.von && (
+                  <span className={`ml-auto shrink-0 text-[11px] font-semibold tabular-nums sm:hidden ${chair ? "text-signal" : "text-primary"}`}>
+                    seit {vy}
+                  </span>
+                )}
               </span>
-              <span className="relative h-4">
-                <span className={`absolute inset-y-[2px] rounded-full ${chair ? "bg-signal" : "bg-primary"}`}
+              {/* Schmal mit Spur hinterlegt, damit die gemeinsame Skala sichtbar
+                  bleibt und man Startjahre vergleichen kann. */}
+              <span className="relative block h-2 w-full rounded-full bg-muted sm:h-4 sm:w-auto sm:rounded-none sm:bg-transparent">
+                <span className={`absolute inset-y-0 rounded-full sm:inset-y-[2px] ${chair ? "bg-signal" : "bg-primary"}`}
                   style={{ left: `${leftPct}%`, right: 0 }} />
                 {showLabel && (
-                  <span className="absolute top-1/2 -translate-y-1/2 text-[10.5px] font-semibold text-white"
+                  <span className="absolute top-1/2 hidden -translate-y-1/2 text-[10.5px] font-semibold text-white sm:inline"
                     style={{ left: `calc(${leftPct}% + 8px)` }}>
                     seit {vy}
                   </span>
@@ -81,22 +98,27 @@ function OfficesGantt({ current }: { current: Membership[] }) {
           );
         })}
       </div>
-      {/* Jahresachse */}
-      <div className="relative ml-[8.5rem] mt-3 h-4 border-t border-border sm:ml-[14rem]">
+      {/* Jahresachse — nur ab sm: schmal ist unter jedem Balken schon eine
+          Spur, die Spanne steht kompakt in der Legende. */}
+      <div className="relative mt-3 hidden h-4 border-t border-border sm:ml-[14rem] sm:block">
         <span className="absolute left-0 top-1 text-[10px] text-muted-foreground">{minYear}</span>
         {span > 6 && <span className="absolute left-1/2 top-1 -translate-x-1/2 text-[10px] text-muted-foreground">{midYear}</span>}
         <span className="absolute right-0 top-1 text-[10px] text-muted-foreground">heute</span>
       </div>
-      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11.5px] text-muted-foreground">
-        <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-signal" /> Vorsitz / stellv. Vorsitz</span>
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11.5px] text-muted-foreground">
+        <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-signal" /> Vorsitz<span className="hidden sm:inline"> / stellv. Vorsitz</span></span>
         <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-primary" /> Mitglied</span>
+        <span className="ml-auto tabular-nums sm:hidden">{minYear} → heute</span>
       </div>
     </div>
   );
 }
 
+/** Schmal darf der Gremienname umbrechen — er hat dort die volle Zeile für sich
+ *  und wird nicht mehr von einer Balkenspalte beschnitten. Erst ab sm, wo er in
+ *  einer festen 14rem-Spalte sitzt, wird wieder gekürzt. */
 function cnEllipsis(chair: boolean) {
-  return `min-w-0 truncate text-[13px] ${chair ? "font-semibold text-foreground" : "text-foreground"}`;
+  return `min-w-0 text-[13px] sm:truncate ${chair ? "font-semibold text-foreground" : "text-foreground"}`;
 }
 
 function PersonInner() {
@@ -233,19 +255,24 @@ function PersonInner() {
         <Section title="Präsenz je Gremium" aside="besuchte Sitzungen">
           <div className="space-y-2">
             {data.committees.map((c) => (
-              <div key={c.committee} className="grid grid-cols-[8.5rem_1fr_2.5rem] items-center gap-3 sm:grid-cols-[14rem_1fr_3rem]">
-                <span className="flex min-w-0 items-center gap-1.5">
-                  <span className="min-w-0 truncate text-[13px] text-foreground" title={c.committee}>{shortCommittee(c.committee)}</span>
+              // Gleiche Stapelung wie beim Ämter-Gantt: schmal ist für eine
+              // Namensspalte kein Platz („Betrieb Gebäudewirtschaft" bräuchte
+              // 164 px, bekam 70). Name samt Zahl oben, Balken darunter.
+              <div key={c.committee}
+                className="flex flex-wrap items-center gap-x-1.5 gap-y-1 sm:grid sm:grid-cols-[14rem_1fr_3rem] sm:gap-3">
+                <span className="flex w-full min-w-0 items-center gap-1.5 sm:w-auto">
+                  <span className="min-w-0 text-[13px] text-foreground sm:truncate" title={c.committee}>{shortCommittee(c.committee)}</span>
                   {c.chair && (
                     <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-signal/10 px-1.5 py-0.5 text-[10px] font-semibold text-signal">
                       <Gavel className="h-2.5 w-2.5" /> Vorsitz
                     </span>
                   )}
+                  <span className="ml-auto shrink-0 text-xs font-semibold tabular-nums text-muted-foreground sm:hidden">{c.n}</span>
                 </span>
-                <span className="h-2 overflow-hidden rounded-full bg-muted">
+                <span className="block h-2 w-full overflow-hidden rounded-full bg-muted sm:w-auto">
                   <span className="block h-full rounded-full bg-primary" style={{ width: `${(c.n / maxPresence) * 100}%` }} />
                 </span>
-                <span className="text-right text-xs tabular-nums text-muted-foreground">{c.n}</span>
+                <span className="hidden text-right text-xs tabular-nums text-muted-foreground sm:block">{c.n}</span>
               </div>
             ))}
           </div>
