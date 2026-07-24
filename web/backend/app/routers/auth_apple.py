@@ -138,7 +138,13 @@ def apple_login(
             )
         # Neues Konto: Apple bestätigt die Adresse → sofort aktiv; Platzhalter-
         # Passwort (nicht anmeldbar), bis über den Reset-Weg eines gesetzt wird.
-        is_admin = email == settings.web_admin_email.lower() or store.count_web_users() == 0
+        # Apple hat die Adresse bestätigt, deshalb darf die konfigurierte
+        # Admin-Adresse hier sofort Admin werden — anders als bei der
+        # Registrierung, wo die Adresse unbewiesen behauptet ist. Der
+        # „erste:r Nutzer:in wird Admin"-Notnagel entfällt: er verschenkte
+        # Admin an eine beliebige Person und hätte den Schutz in
+        # _promote_configured_admin ausgehebelt.
+        is_admin = bool(settings.web_admin_email) and email == settings.web_admin_email.lower()
         user_id = store.create_web_user(
             email, hash_password(secrets.token_urlsafe(32)),
             "admin" if is_admin else "user", "active", email_verified=True,

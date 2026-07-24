@@ -23,7 +23,7 @@ from ..schemas import (
     UserOut,
     VerifyEmailRequest,
 )
-from ..security import create_access_token, hash_password, verify_password
+from ..security import DUMMY_PASSWORD_HASH, create_access_token, hash_password, verify_password
 
 # Email-verification links stay valid for 24h (more forgiving than the 1h reset link).
 _VERIFY_TTL_HOURS = 24
@@ -33,6 +33,52 @@ logger = logging.getLogger("nwz.web.auth")
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 COOKIE_NAME = "access_token"
+
+# Ops-Hinweis für Deployments ohne E-Mail-Versand (dort gibt es keinen
+# Bestätigungslink, über den sich der erste Admin selbst freischalten könnte).
+_GRANT_ADMIN_CMD = ".venv/bin/python scripts/grant_admin.py %s"
+
+
+def _configured_admin_email(settings) -> str:  # noqa: ANN001 — Settings ODER Test-Fake
+    """``WEB_ADMIN_EMAIL`` so normalisiert, wie Adressen gespeichert werden."""
+    return str(getattr(settings, "web_admin_email", "") or "").strip().lower()
+
+
+def _has_admin(store: Store) -> bool:
+    """Gibt es in diesem Deployment überhaupt (noch) eine Adminrolle?"""
+    return any(u.get("role") == "admin" for u in store.list_web_users())
+
+
+def _promote_configured_admin(store: Store, user: dict) -> dict:
+    """Ersten Admin einrichten — aber erst gegen eine *nachgewiesene* Adresse.
+
+    Wird von ``verify_email`` aufgerufen, nachdem der einmalige Token verbraucht
+    und die Adresse als bestätigt markiert wurde. Die Registrierung selbst vergibt
+    keine Rolle mehr: sonst würde, wer ``WEB_ADMIN_EMAIL`` als Erstes ins
+    Registrierungsformular tippt, das Deployment übernehmen, ohne je bewiesen zu
+    haben, dass ihm dieses Postfach gehört.
+
+    Befördert nur, wenn alles davon gilt:
+      * ``WEB_ADMIN_EMAIL`` ist gesetzt und ist genau die Adresse dieses Kontos,
+      * das Konto ist noch exakt das, was Registrierung + Bestätigung hinterlassen
+        (Rolle ``user``, Status ``active``),
+      * im Deployment existiert überhaupt keine Adminrolle.
+
+    Die letzte Bedingung ist Absicht: sie verhindert, dass ein Konto, dem ein Admin
+    die Rechte bewusst entzogen (oder das er gesperrt) hat, sie sich über einen
+    weiteren Bestätigungslink still zurückholt.
+    """
+    configured = _configured_admin_email(get_settings())
+    if not configured or str(user.get("email") or "").strip().lower() != configured:
+        return user
+    if user.get("role") != "user" or user.get("status") != "active":
+        return user
+    if _has_admin(store):
+        return user
+    store.set_web_user_role(int(user["id"]), "admin")
+    logger.info("WEB_ADMIN_EMAIL %s bestätigt — Konto %s ist jetzt Admin (Erst-Einrichtung).",
+                configured, user["id"])
+    return store.get_web_user_by_id(int(user["id"])) or user
 
 
 def _notify_admins_registration(new_email: str) -> None:
@@ -145,14 +191,16 @@ def register(
     email = str(body.email).lower().strip()
     if store.get_web_user_by_email(email):
         raise HTTPException(status.HTTP_409_CONFLICT, "E-Mail ist bereits registriert.")
-    # First user, or the configured admin email, becomes an active admin.
-    is_admin = email == settings.web_admin_email.lower() or store.count_web_users() == 0
-    role = "admin" if is_admin else "user"
+    # Registration hands out no role at all: everything it could decide on comes
+    # from this unauthenticated request body. Even the configured WEB_ADMIN_EMAIL
+    # starts as a plain user and is only promoted once it has proven control of
+    # the mailbox (_promote_configured_admin, called from verify_email).
+    role = "user"
     # Confirming the email address activates the account — no manual admin
-    # approval anymore. Admins skip verification; so does the no-email case,
-    # since we can't send a link then (the account could never be confirmed).
+    # approval anymore. Only the no-email case skips verification, since we
+    # can't send a link then (the account could never be confirmed).
     can_send_email = bool(settings.resend_api_key)
-    verified = is_admin or not can_send_email
+    verified = not can_send_email
     user_status = "active" if verified else "pending"
     user_id = store.create_web_user(
         email, hash_password(body.password), role, user_status, email_verified=verified,
@@ -171,6 +219,16 @@ def register(
         expires = (datetime.utcnow() + timedelta(hours=_VERIFY_TTL_HOURS)).isoformat(timespec="seconds")
         store.create_email_verification(user_id, token_hash, expires)
         background.add_task(_send_verification_email, email, raw)
+    elif email == _configured_admin_email(settings) and not _has_admin(store):
+        # Ohne E-Mail-Versand gibt es keinen Link zum Bestätigen — der Weg über
+        # verify_email() kann dieses Konto also nicht zum Admin machen. Laut sagen,
+        # statt das Deployment stillschweigend ohne Admin zu lassen.
+        logger.warning(
+            "WEB_ADMIN_EMAIL %s hat sich registriert, aber ohne RESEND_API_KEY gibt es "
+            "keinen Bestätigungslink — das Konto bleibt normale:r Nutzer:in. "
+            "Adminrechte von Hand vergeben: " + _GRANT_ADMIN_CMD,
+            email, email,
+        )
     return _to_out(created_user, _app_access_token(request, created_user))
 
 
@@ -183,7 +241,12 @@ def login(
 ) -> UserOut:
     login_limiter.check(request)
     user = store.get_web_user_by_email(str(body.email))
-    if not user or not verify_password(body.password, user["password_hash"]):
+    # Verify unconditionally — against a dummy hash when the email has no account.
+    # Short-circuiting here would skip scrypt for unknown emails and turn the
+    # response time into an account-existence oracle (CWE-208).
+    stored = user["password_hash"] if user else DUMMY_PASSWORD_HASH
+    password_ok = verify_password(body.password, stored)
+    if not user or not password_ok:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "E-Mail oder Passwort falsch.")
     _set_auth_cookie(response, user)
     return _to_out(user, _app_access_token(request, user))
@@ -321,6 +384,10 @@ def verify_email(
         store.set_web_user_status(user_id, "active")
         user = store.get_web_user_by_id(user_id)
         background.add_task(_notify_admins_registration, user["email"])
+    if user:
+        # Erst hier — nach verbranntem Token und bestätigter Adresse — kann das
+        # konfigurierte Admin-Konto seine Rolle bekommen (Erst-Einrichtung).
+        user = _promote_configured_admin(store, user)
     # If the app opened this via a deep link (verification tapped on-device),
     # hand back a bearer token so it lands logged-in.
     return _to_out(user, _app_access_token(request, user))

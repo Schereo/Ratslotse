@@ -33,9 +33,17 @@ Zeitpläne stehen in den jeweiligen Docstrings; maßgeblich ist die laufende
 
 | Skript | Wann |
 |--------|------|
+| `grant_admin.py` | Adminrechte an ein **bestehendes** Konto geben (Erst-Einrichtung ohne Mail-Versand, ausgesperrter Admin) |
 | `reextract_protocols.py` | Beschlüsse neu extrahieren nach Prompt-Änderung |
 | `build_decisions_fts.py` | Volltext-Index der Beschlüsse neu bauen |
 | `purge_nwz_data.py` | Gescrapte NWZ-Artikeldaten aus den DBs entfernen (Dry-Run-Default) |
+
+> **Ersten Admin einrichten:** Die Registrierung vergibt keine Rollen. Die Adresse
+> aus `WEB_ADMIN_EMAIL` wird zum Admin, sobald sie ihre E-Mail bestätigt hat (und
+> nur, solange es noch keinen Admin gibt). Ohne `RESEND_API_KEY` gibt es keinen
+> Bestätigungslink — dann nach der Registrierung:
+> `.venv/bin/python scripts/grant_admin.py <adresse>`. Das Skript legt nie ein
+> Konto an; Exit-Code 1 heißt „Adresse nicht registriert".
 
 ## Entwicklung / QA
 
