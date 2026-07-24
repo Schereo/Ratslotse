@@ -188,8 +188,9 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   vor, und was sie zeigte, wurde nur zufällig abgehakt — nämlich dann, wenn eine
   Tour-Station zufällig genau der Kurs-Seite entsprach. Jetzt zeigt die Tour auch
   Analyse und Stadtkarte, und jede Station meldet den Bereich ausdrücklich als
-  entdeckt. Nach dem Durchlauf steht die Leiste auf **4/5**; offen bleibt allein
-  „Erstes Thema anlegen" — das gilt weiterhin erst, wenn wirklich eins da ist.
+  entdeckt. „Erstes Thema anlegen" ist als Punkt entfallen — er verlangte ein
+  echtes Thema und war damit der einzige, den die Tour nicht abhaken konnte.
+  Nach dem Durchlauf steht die Leiste damit auf **4/4** und feiert.
 
 ### Geändert
 - Der Ladekreis beim App-Start sitzt jetzt mittig auf dem Bildschirm statt ganz
