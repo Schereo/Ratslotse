@@ -48,6 +48,16 @@ def verify_password(password: str, stored: str) -> bool:
         return False
 
 
+# Throwaway hash for the "email has no account" login path: verifying a password
+# against it costs exactly the same scrypt work as checking a real account, so a
+# missing account can't be told apart from a wrong password by response time
+# (CWE-208 user enumeration). Built with hash_password() — never a hardcoded
+# digest — so it automatically tracks the real parameters above, and computed
+# once at import so no single request ever pays for deriving it. The password is
+# random and the result is always discarded; it can never authenticate anyone.
+DUMMY_PASSWORD_HASH = hash_password(os.urandom(32).hex())
+
+
 # --- JWT (HS256) -------------------------------------------------------------
 def _b64url_encode(data: bytes) -> str:
     return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import sqlite3
 from dataclasses import dataclass
@@ -8,6 +9,8 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Any
 
+
+logger = logging.getLogger("nwz.store")
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS editions (
@@ -1419,7 +1422,15 @@ class Store:
             ORDER BY rank, f.catalog, f.refid
             LIMIT ? OFFSET ?
         """
-        rows = self._conn.execute(sql, params).fetchall()
+        # Die Suchanfrage kommt direkt von Nutzer:innen (Web-Suchfeld) und FTS5
+        # weist fehlerhafte Ausdrücke ("hafen (", 'hafen"', "hafen -markt") mit
+        # einem OperationalError ab. Das zählt als "nichts gefunden" — sonst
+        # schlägt es als 500er bis in den API-Handler durch.
+        try:
+            rows = self._conn.execute(sql, params).fetchall()
+        except sqlite3.OperationalError as exc:
+            logger.warning("FTS5-Suche fehlgeschlagen für %r: %s", fts_query, exc)
+            return []
         return [SearchResult(**dict(r)) for r in rows]
 
     def _recent_articles(
@@ -1499,10 +1510,17 @@ class Store:
             params.append(date_from)
         if date_to:
             params.append(date_to)
-        return self._conn.execute(
-            f"SELECT COUNT(*) FROM articles_fts f WHERE articles_fts MATCH ? {cat_filter} {date_from_filter} {date_to_filter}",
-            params,
-        ).fetchone()[0]
+        # Derselbe nutzergesteuerte MATCH-Ausdruck wie in search() — ein
+        # fehlerhafter Ausdruck zählt als 0 Treffer, statt den Aufrufer zu
+        # sprengen (siehe search()).
+        try:
+            return self._conn.execute(
+                f"SELECT COUNT(*) FROM articles_fts f WHERE articles_fts MATCH ? {cat_filter} {date_from_filter} {date_to_filter}",
+                params,
+            ).fetchone()[0]
+        except sqlite3.OperationalError as exc:
+            logger.warning("FTS5-Trefferzahl fehlgeschlagen für %r: %s", fts_query, exc)
+            return 0
 
     def search_any_terms(
         self,

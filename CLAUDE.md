@@ -81,7 +81,7 @@ komplett unberührt; nach `main` geht es weiterhin nur per PR.
 ```
 OPENROUTER_API_KEY=...
 WEB_JWT_SECRET=...                   # Signiergeheimnis für Session-Tokens
-WEB_ADMIN_EMAIL=...                  # diese E-Mail wird bei Registrierung Admin
+WEB_ADMIN_EMAIL=...                  # wird Admin, sobald diese Adresse registriert *und bestätigt* ist
 CORS_ORIGINS=https://ratslotse.de
 RESEND_API_KEY=...                   # E-Mail-Versand (Resend), sending-only Key
 EMAIL_FROM=Ratslotse <noreply@ratslotse.de>
@@ -107,6 +107,15 @@ NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflic
 
 ## Wissenswertes
 
+- **Ersten Admin einrichten:** Die Registrierung vergibt **keine** Rollen (weder
+  an `WEB_ADMIN_EMAIL` noch ans erste Konto einer leeren Tabelle) — sonst gehörte
+  das Deployment dem, der die Adresse zuerst ins Formular tippt. Die Adresse aus
+  `WEB_ADMIN_EMAIL` wird zum Admin, **sobald sie ihre E-Mail bestätigt hat**, und
+  auch nur solange es noch gar keinen Admin gibt (ein bewusst degradiertes oder
+  gesperrtes Konto holt sich die Rechte so nicht zurück). Ohne `RESEND_API_KEY`
+  gibt es keinen Bestätigungslink — dann nach der Registrierung einmal auf dem
+  Server: `.venv/bin/python scripts/grant_admin.py <adresse>` (befördert nur ein
+  **vorhandenes** Konto). Beide Fälle stehen als WARNING im Log (`nwz-web-api`).
 - **Changelog-Pflicht:** Jeder nutzerrelevante PR ergänzt einen Eintrag unter
   `## [Unreleased]` in `CHANGELOG.md` (Keep-a-Changelog, deutsch, „(#PR)"
   anhängen). Beim Versionsschnitt: Unreleased → `## [x.y.z] – Datum`,
