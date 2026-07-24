@@ -10,6 +10,7 @@ import { api } from "@/lib/api";
 import { Card, toast } from "@/components/ui";
 import { ConfettiBurst } from "@/components/confetti";
 import { cn } from "@/lib/utils";
+import { ONBOARDING_DONE_EVENT, isOnboardingVisible } from "@/components/onboarding-flow";
 
 /**
  * RL-U12 (Design 10a/11a): Lotsen-Abzeichen — Sammeln fürs ERKUNDEN, nie
@@ -75,13 +76,32 @@ export function BadgeCelebrator() {
     return () => window.removeEventListener(DIRTY_EVENT, onDirty);
   }, [qc]);
 
+  // Während des Onboardings (26a) nicht dazwischenfunken: Das Anmelden
+  // registriert den Push-Token und verdient damit sofort „Frühwarner" — der
+  // Toast landete quer über dem Willkommens-Gruß, bevor man etwas getan hatte.
+  // Nur aufschieben, nicht verschlucken: Der Server liefert `newly_earned`
+  // genau EINMAL (danach gilt das Abzeichen als bekannt), also parken wir es
+  // und feiern, sobald der Flow durch ist.
+  const [pending, setPending] = useState<{ id: string; title: string }[]>([]);
+
   useEffect(() => {
-    if (!data?.newly_earned?.length) return;
-    for (const b of data.newly_earned) {
-      toast.success(`Abzeichen verdient: ${b.title}!`);
-    }
-    setCelebrate(true);
+    if (data?.newly_earned?.length) setPending((p) => [...p, ...data.newly_earned]);
   }, [data]);
+
+  useEffect(() => {
+    const flush = () => {
+      if (isOnboardingVisible()) return;
+      setPending((p) => {
+        if (!p.length) return p;
+        for (const b of p) toast.success(`Abzeichen verdient: ${b.title}!`);
+        setCelebrate(true);
+        return [];
+      });
+    };
+    flush();
+    window.addEventListener(ONBOARDING_DONE_EVENT, flush);
+    return () => window.removeEventListener(ONBOARDING_DONE_EVENT, flush);
+  }, [pending]);
 
   if (!celebrate) return null;
   return (

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Check, Loader2, Plus, Sparkles, X } from "lucide-react";
+import { AlertTriangle, Bell, Check, Landmark, Loader2, Plus, Sparkles, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { isNativeApp } from "@/lib/platform";
 import { cn } from "@/lib/utils";
@@ -38,6 +38,19 @@ const LEGACY_INTRO_KEY = "ratslotse.intro.done";
 
 type Step = 0 | 1 | 2 | 3;
 
+/** Läuft der Flow gerade? Der Abzeichen-Toast fragt das ab und schweigt so
+ *  lange: Beim Anmelden registriert die App den Push-Token, was sofort das
+ *  „Frühwarner"-Abzeichen auslöst — die Meldung knallte damit über den
+ *  Willkommens-Gruß, bevor man überhaupt etwas getan hatte. Modul-State statt
+ *  Context, damit der Celebrator nicht am Flow hängen muss. */
+let flowVisible = false;
+export function isOnboardingVisible(): boolean {
+  return flowVisible;
+}
+/** Wird beim Abschluss/Abbruch gefeuert, damit aufgeschobene Abzeichen-Meldungen
+ *  nachgeholt werden können. */
+export const ONBOARDING_DONE_EVENT = "ratslotse:onboarding-done";
+
 export function OnboardingFlow() {
   const { user } = useAuth();
   const theme = useMascotTheme();
@@ -68,11 +81,18 @@ export function OnboardingFlow() {
           String(Date.now() + PUSH_SNOOZE_DAYS * 24 * 60 * 60 * 1000));
       } catch { /* Speicher voll/gesperrt — dann eben nochmal beim nächsten Start */ }
       setStep(null);
+      window.dispatchEvent(new Event(ONBOARDING_DONE_EVENT));
       return;
     }
     try { localStorage.setItem(STEP_KEY, String(next)); } catch { /* egal */ }
     setStep(next);
   };
+
+  // Solange der Flow oben liegt, halten Abzeichen-Toasts still (s. flowVisible).
+  useEffect(() => {
+    flowVisible = step !== null;
+    return () => { flowVisible = false; };
+  }, [step]);
 
   if (step === null) return null;
 
@@ -109,41 +129,66 @@ export function OnboardingFlow() {
 
 /* -------------------------------------------------------------- Auftakt --- */
 
+/** Der Auftakt ist der erste Eindruck der App — deshalb bewusst ein eigener
+ *  Raum statt einer weiteren hellen Liste: nachtblauer Verlauf mit Wellen und
+ *  ein paar Sternen, Lotti winkt aus zwei auslaufenden Ringen heraus, dann
+ *  staffeln sich die drei Versprechen ein. Er bleibt dunkel, egal welches Theme
+ *  eingestellt ist — er ist ein Moment, keine Seite. */
 function Welcome({ theme, onNext }: { theme: ReturnType<typeof useMascotTheme>; onNext: () => void }) {
-  const points = [
-    ["Frag den Rat", "Antworten mit Quellen"],
-    ["Bleib informiert", "Mitteilung bei neuen Beschlüssen"],
-    ["Aus der amtlichen Quelle", "Rat Oldenburg"],
+  const points: { icon: typeof Sparkles; tint: string; title: string; sub: string }[] = [
+    { icon: Sparkles, tint: "bg-[hsla(19,92%,55%,0.2)] text-[hsl(19_92%_62%)]",
+      title: "Frag den Rat", sub: "Antworten mit Quellen" },
+    { icon: Bell, tint: "bg-[hsla(202,90%,60%,0.2)] text-[hsl(202_90%_68%)]",
+      title: "Bleib informiert", sub: "Mitteilung bei neuen Beschlüssen" },
+    { icon: Landmark, tint: "bg-white/10 text-white/80",
+      title: "Aus der amtlichen Quelle", sub: "Rat Oldenburg" },
   ];
+  const rows = ["wl-r1", "wl-r2", "wl-r3"];
   return (
     // Tippen überspringt sofort — die Animation ist ein Gruß, kein Tor. Bewusst
     // ein div mit onClick statt eines <button>: Der „Los geht's"-Knopf steckt
     // darin, und verschachtelte Buttons sind ungültiges HTML — React bricht
     // daran die Hydration ab (die Seite blieb leer).
     <div role="presentation" onClick={onNext}
-      className="flex flex-1 flex-col items-center justify-center gap-6 px-7 text-center">
-      <Mascot pose="wave" theme={theme} decorative className="animate-fade-up h-28 w-28" />
-      <div className="animate-fade-up" style={{ animationDelay: "120ms" }}>
-        <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-signal">Moin &amp; willkommen</p>
-        <h1 className="mt-1.5 font-display text-3xl font-extrabold leading-tight text-foreground">
-          Willkommen bei<br />Ratslotse
-        </h1>
+      className="relative -mx-[18px] -mb-[calc(1.25rem+env(safe-area-inset-bottom))] -mt-[calc(0.75rem+env(safe-area-inset-top))] flex flex-1 flex-col items-center justify-center overflow-hidden px-8 text-center"
+      style={{ background: "linear-gradient(170deg, hsl(213 62% 8%), hsl(210 55% 16%) 72%, hsl(205 58% 24%))" }}>
+      <span aria-hidden className="bg-waves-light pointer-events-none absolute inset-0 opacity-90" />
+      {/* Ein paar Sterne — sie machen aus dem Verlauf einen Nachthimmel. */}
+      <span aria-hidden className="absolute left-[13%] top-[14%] h-[3px] w-[3px] rounded-full bg-[#BFE3F7] opacity-60" />
+      <span aria-hidden className="absolute right-[16%] top-[20%] h-[2px] w-[2px] rounded-full bg-[#BFE3F7] opacity-50" />
+      <span aria-hidden className="absolute left-[23%] top-[25%] h-[2px] w-[2px] rounded-full bg-[#BFE3F7] opacity-50" />
+
+      <div className="wl-lotti relative flex items-center justify-center">
+        <span aria-hidden className="wl-ring absolute h-[150px] w-[150px] rounded-full border-2 border-[hsl(19_92%_55%)]" />
+        <span aria-hidden className="wl-ring wl-ring-2 absolute h-[150px] w-[150px] rounded-full border-2 border-[hsl(202_90%_60%)]" />
+        <Mascot pose="wave" theme={theme} bob decorative className="h-32 w-32" />
       </div>
-      <ul className="flex w-full max-w-xs flex-col gap-2.5 text-left">
-        {points.map(([t, sub], i) => (
-          <li key={t} className="animate-fade-up flex items-start gap-2.5"
-            style={{ animationDelay: `${240 + i * 90}ms` }}>
-            <Check className="mt-0.5 h-4 w-4 shrink-0 text-signal" />
-            <span className="text-sm text-foreground">
-              <strong className="font-semibold">{t}</strong>
-              <span className="text-muted-foreground"> — {sub}</span>
+
+      <p className="wl-title mt-6 font-mono text-[11px] uppercase tracking-[0.18em] text-[hsl(19_92%_58%)]">
+        Moin &amp; willkommen
+      </p>
+      <h1 className="wl-title mt-2 font-display text-[30px] font-extrabold leading-[1.08] tracking-tight text-white">
+        Willkommen bei<br />Ratslotse
+      </h1>
+
+      <div className="mt-6 flex w-full flex-col gap-2.5">
+        {points.map((p, i) => (
+          <div key={p.title}
+            className={cn(rows[i], "flex items-center gap-3 rounded-[13px] border border-white/[0.14] bg-white/[0.08] px-3.5 py-3 text-left")}>
+            <span className={cn("inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px]", p.tint)}>
+              <p.icon className="h-4 w-4" />
             </span>
-          </li>
+            <span className="text-[13.5px] text-white/[0.92]">
+              <strong className="font-semibold text-white">{p.title}</strong> — {p.sub}
+            </span>
+          </div>
         ))}
-      </ul>
-      <span className="animate-fade-up mt-2 w-full max-w-xs" style={{ animationDelay: "540ms" }}>
-        <Button className="w-full" onClick={onNext}>Los geht&rsquo;s</Button>
-      </span>
+      </div>
+
+      <button type="button" onClick={onNext}
+        className="wl-cta mt-7 flex h-12 w-full items-center justify-center rounded-[13px] bg-primary text-[15px] font-semibold text-primary-foreground shadow-[0_8px_22px_-10px_hsla(205,92%,34%,0.5)] transition-transform active:scale-[0.98]">
+        Los geht&rsquo;s
+      </button>
     </div>
   );
 }
@@ -239,13 +284,18 @@ function TopicStep({ theme, onNext }: { theme: ReturnType<typeof useMascotTheme>
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [editing, setEditing] = useState<TopicRow | null>(null);
+  // Wie viele Beschlüsse auf die Beschreibung passen. NICHT decision_count aus
+  // /topics — das zählt, was der Wächter bereits zugeordnet hat, und ist bei
+  // einem frisch angelegten Thema immer 0 („0 Beschlüsse passen dazu" beim
+  // Fliegerhorst mit 158 Beschlüssen). Hier zählt, was die Beschreibung trifft.
+  const [matchCount, setMatchCount] = useState<Record<string, number>>({});
   const topics = useQuery({
     queryKey: ["topics"],
     queryFn: () => api.get<TopicRow[]>("/topics"),
   });
   const suggestions = useQuery({
     queryKey: ["topic-suggestions"],
-    queryFn: () => api.get<{ suggestions: { name: string; description: string }[] }>("/topics/suggestions")
+    queryFn: () => api.get<{ suggestions: { name: string; description: string; n: number }[] }>("/topics/suggestions")
       .then((d) => d.suggestions),
   });
 
@@ -253,16 +303,18 @@ function TopicStep({ theme, onNext }: { theme: ReturnType<typeof useMascotTheme>
    *  Beschlüssen. Sie ist es, an der der Wächter später misst, deshalb wird sie
    *  nicht generisch gefüllt. Ohne Rats-Bezug gibt es einen Hinweis, aber kein
    *  Verbot: angelegt wird trotzdem, wenn man will. */
-  const add = async (topicName: string, presetDescription?: string) => {
+  const add = async (topicName: string, presetDescription?: string, presetMatches?: number) => {
     const clean = topicName.trim();
     if (clean.length < 2 || busy) return;
     setBusy(true);
     setWarn(null);
     try {
       let description = presetDescription ?? "";
+      if (typeof presetMatches === "number") setMatchCount((m) => ({ ...m, [clean]: presetMatches }));
       if (!description) {
         const d = await api.post<Described>("/topics/describe", { name: clean });
         description = d.description;
+        setMatchCount((m) => ({ ...m, [clean]: d.matches }));
         if (!d.is_council_topic) {
           setWarn(d.reason || "Dazu gibt es bisher keine Beschlüsse des Oldenburger Stadtrats.");
           description = description || `Beschlüsse des Oldenburger Stadtrats rund um ${clean}.`;
@@ -319,7 +371,7 @@ function TopicStep({ theme, onNext }: { theme: ReturnType<typeof useMascotTheme>
               const have = mine.some((t) => t.name === s.name);
               return (
                 <button key={s.name} type="button" disabled={busy || have}
-                  onClick={() => void add(s.name, s.description)}
+                  onClick={() => void add(s.name, s.description, s.n)}
                   className={cn(
                     "inline-flex items-center gap-1.5 rounded-full border px-3.5 py-[7px] text-[13px] transition-colors",
                     have ? "border-primary/30 bg-primary/5 text-primary"
@@ -341,8 +393,8 @@ function TopicStep({ theme, onNext }: { theme: ReturnType<typeof useMascotTheme>
           </p>
           <div className="mt-2.5 flex flex-col gap-2">
             {mine.map((t) => (
-              <TopicCard key={t.id} topic={t} onEdit={() => setEditing(t)}
-                onRemove={() => void remove(t.id)} />
+              <TopicCard key={t.id} topic={t} matches={matchCount[t.name]}
+                onEdit={() => setEditing(t)} onRemove={() => void remove(t.id)} />
             ))}
           </div>
         </div>
@@ -359,8 +411,11 @@ function TopicStep({ theme, onNext }: { theme: ReturnType<typeof useMascotTheme>
 /** Ein angelegtes Thema: Name, Herkunft der Beschreibung, wie viele Beschlüsse
  *  darauf passen — und der Weg, es anzupassen. Die Trefferzahl ist der Beleg
  *  dafür, dass die Beschreibung etwas taugt; ohne sie bliebe sie eine Behauptung. */
-function TopicCard({ topic, onEdit, onRemove }: {
+function TopicCard({ topic, matches, onEdit, onRemove }: {
   topic: TopicRow;
+  /** Treffer der Beschreibung — undefined, solange nicht ermittelt. Dann bleibt
+   *  die Zeile leer statt „0" zu behaupten. */
+  matches?: number;
   onEdit: () => void;
   onRemove: () => void;
 }) {
@@ -379,12 +434,12 @@ function TopicCard({ topic, onEdit, onRemove }: {
       </p>
       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{topic.description}</p>
       <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-        {typeof topic.decision_count === "number" && (
+        {typeof matches === "number" && matches > 0 && (
           <>
             <span className="rounded bg-primary/10 px-1.5 font-semibold tabular-nums text-primary">
-              {topic.decision_count} {topic.decision_count === 1 ? "Beschluss" : "Beschlüsse"}
+              {matches} {matches === 1 ? "Beschluss" : "Beschlüsse"}
             </span>
-            <span>passen dazu</span>
+            <span>{matches === 1 ? "passt dazu" : "passen dazu"}</span>
           </>
         )}
         <button type="button" onClick={onEdit}
