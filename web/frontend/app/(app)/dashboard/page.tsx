@@ -307,7 +307,6 @@ function FirstStepsBar({ hasTopic }: { hasTopic: boolean }) {
   ];
   const doneCount = steps.filter((s) => s.done || visited.includes(s.id)).length;
   const allDone = doneCount === steps.length;
-  const next = steps.find((s) => !(s.done || visited.includes(s.id)));
 
   const [celebrate, setCelebrate] = useState(false);
   const [justFinished, setJustFinished] = useState(false);
@@ -348,16 +347,17 @@ function FirstStepsBar({ hasTopic }: { hasTopic: boolean }) {
         </span>
       ) : (
         <div className="flex shrink-0 items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={startGuidedTour} className="h-8 px-2.5 text-xs">
-            <Play className="!size-3" /> Tour
+          {/* Ein Knopf statt zweier: „Tour" und „Weitermachen" führten an
+              verschiedene Orte — der auffälligere sprang nur stumm auf die
+              nächste Seite, ohne dass Lotti auftauchte. Jetzt startet er
+              immer die geführte Tour. Und beim allerersten Mal heißt er
+              „Starten": „Weitermachen" behauptet einen Fortschritt, den es
+              noch nicht gibt. */}
+          <Button variant="secondary" size="sm" onClick={startGuidedTour} className="h-8 text-xs">
+            <Play className="!size-3" />
+            {visited.length === 0 ? "Tour starten" : "Weitermachen"}
+            <ArrowRight className="!size-3.5" />
           </Button>
-          {next && (
-            <Button variant="secondary" size="sm" asChild className="h-8 text-xs">
-              <Link href={next.href}>
-                Weitermachen <ArrowRight className="!size-3.5" />
-              </Link>
-            </Button>
-          )}
         </div>
       )}
     </Card>

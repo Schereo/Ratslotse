@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { setToken } from "@/lib/token";
@@ -16,6 +16,7 @@ type State = "missing" | "verifying" | "ok" | "error";
 function VerifyInner() {
   const token = useSearchParams().get("token") ?? "";
   const { refresh } = useAuth();
+  const router = useRouter();
   const [state, setState] = useState<State>(token ? "verifying" : "missing");
   const [error, setError] = useState("");
   const ran = useRef(false);
@@ -37,6 +38,16 @@ function VerifyInner() {
       }
     })();
   }, [token, refresh]);
+
+  // Nach dem Bestätigen nicht stehenbleiben: In der App kommt man über einen
+  // Deep-Link aus dem Mail-Programm hierher. Wer danach die App wechselt und
+  // später zurückkommt, landete sonst wieder auf dieser Seite — mitten im
+  // Einrichten und ohne erkennbaren Grund. Kurz bestätigen, dann weiter.
+  useEffect(() => {
+    if (state !== "ok") return;
+    const t = setTimeout(() => router.replace("/dashboard"), 1400);
+    return () => clearTimeout(t);
+  }, [state, router]);
 
   if (state === "missing") {
     return (
@@ -60,7 +71,7 @@ function VerifyInner() {
           <CheckCircle2 className="h-5 w-5 text-emerald-600" /> E-Mail bestätigt.
         </div>
         <p className="text-sm text-muted-foreground">
-          Danke! Dein Konto ist jetzt aktiv — leg direkt los.
+          Danke! Dein Konto ist jetzt aktiv — es geht gleich weiter.
         </p>
         <Link href="/dashboard"><Button className="w-full">Weiter zum Dashboard</Button></Link>
       </div>

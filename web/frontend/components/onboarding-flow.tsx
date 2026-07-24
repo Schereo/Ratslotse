@@ -339,6 +339,7 @@ type TopicRow = { id: number; name: string; description: string; decision_count?
 type Described = {
   description: string;
   matches: number;
+  verdict: "belegt" | "plausibel" | "ungeeignet";
   examples: string[];
   is_council_topic: boolean;
   reason: string;
@@ -352,6 +353,9 @@ function TopicStep({ theme, onNext }: { theme: ReturnType<typeof useMascotTheme>
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [warn, setWarn] = useState<string | null>(null);
+  // Kein Fehler, sondern eine Auskunft: Das Thema IST angelegt, der Rat hat nur
+  // noch nichts dazu entschieden. Darum eigene, ruhige Farbe statt Warngelb.
+  const [note, setNote] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [editing, setEditing] = useState<TopicRow | null>(null);
@@ -372,23 +376,34 @@ function TopicStep({ theme, onNext }: { theme: ReturnType<typeof useMascotTheme>
 
   /** RL-U17: Der Nutzer tippt nur den Namen — die Beschreibung entsteht aus den
    *  Beschlüssen. Sie ist es, an der der Wächter später misst, deshalb wird sie
-   *  nicht generisch gefüllt. Ohne Rats-Bezug gibt es einen Hinweis, aber kein
-   *  Verbot: angelegt wird trotzdem, wenn man will. */
+   *  nicht generisch gefüllt.
+   *
+   *  Drei Ausgänge, weil zwei zu grob sind:
+   *  - **belegt**     — anlegen, Trefferzahl zeigen.
+   *  - **plausibel**  — anlegen, aber ehrlich sagen, dass der Rat dazu noch
+   *    nichts entschieden hat. „Grundschule Krusenbusch" gibt es wirklich; sie
+   *    kam nur noch nicht vor. Genau dafür ist ein Thema ja da.
+   *  - **ungeeignet** — NICHT anlegen. Vorher wurde auch das gespeichert und die
+   *    Warnung erschien danach; so landeten ganze Anweisungssätze als Thema. */
   const add = async (topicName: string, presetDescription?: string, presetMatches?: number) => {
     const clean = topicName.trim();
     if (clean.length < 2 || busy) return;
     setBusy(true);
     setWarn(null);
+    setNote(null);
     try {
       let description = presetDescription ?? "";
       if (typeof presetMatches === "number") setMatchCount((m) => ({ ...m, [clean]: presetMatches }));
       if (!description) {
         const d = await api.post<Described>("/topics/describe", { name: clean });
+        if (d.verdict === "ungeeignet") {
+          setWarn(d.reason || "Das sieht nicht nach einem Thema des Oldenburger Stadtrats aus.");
+          return;
+        }
         description = d.description;
         setMatchCount((m) => ({ ...m, [clean]: d.matches }));
-        if (!d.is_council_topic) {
-          setWarn(d.reason || "Dazu gibt es bisher keine Beschlüsse des Oldenburger Stadtrats.");
-          description = description || `Beschlüsse des Oldenburger Stadtrats rund um ${clean}.`;
+        if (d.verdict === "plausibel") {
+          setNote(`Über „${clean}" hat der Rat bisher nichts entschieden — Lotti meldet sich, sobald es so weit ist.`);
         }
       }
       await api.post("/topics", { name: clean, description });
@@ -431,6 +446,11 @@ function TopicStep({ theme, onNext }: { theme: ReturnType<typeof useMascotTheme>
       {warn && (
         <p role="status" className="mt-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
           {warn}
+        </p>
+      )}
+      {note && (
+        <p role="status" className="mt-2 rounded-lg border border-border bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+          {note}
         </p>
       )}
 
@@ -612,14 +632,20 @@ function TopicSheet({ topic, onClose, onSaved }: {
             )}
           </p>
           <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">
-            {check ? (
+            {!check ? "—" : check.matches > 0 ? (
               <>
                 <strong className="font-semibold text-foreground">
                   {check.matches} {check.matches === 1 ? "Beschluss" : "Beschlüsse"}
                 </strong>
                 {check.examples.length > 0 && <> — u. a. „{check.examples.slice(0, 2).join("“, „")}“.</>}
               </>
-            ) : "—"}
+            ) : (
+              /* Keine Zahl behaupten, wo keine Belege sind: Vorher stand hier
+                 „12 Beschlüsse — u. a. Grundschule Auf der Wunderburg“ unter
+                 einem Thema namens „Grundschule Krusenbusch“. */
+              <>Noch nichts — der Rat hat dazu bisher nicht entschieden. Sobald das
+              passiert, meldet sich Lotti.</>
+            )}
           </p>
         </div>
 

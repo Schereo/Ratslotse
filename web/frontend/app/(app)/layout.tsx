@@ -48,6 +48,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   // Ganzseitig laden: mittig statt oben. Ohne das klebte der Spinner am
   // oberen Rand — in der App halb hinter der Dynamic Island.
+  // Solange das Konto gesperrt ist, gibt es die App-Hülle noch nicht: Topbar,
+  // Suche und Bottom-Nav führen alle ins Leere, wenn man nichts darf. Der
+  // Hinweis steht deshalb für sich, wie die Auth-Seiten davor.
+  if (gated) {
+    return (
+      <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-waves px-4 py-10">
+        <div className="w-full max-w-sm">
+          {needsVerify ? <VerifyNotice email={user!.email} /> : <PendingNotice email={user!.email} />}
+        </div>
+      </div>
+    );
+  }
+
   if (loading || !user) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center">
@@ -85,7 +98,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Design 11a: Inhalt läuft breiter (~1280 px statt 1024) — die Karten
             atmen wie im Mock; Text-Detailseiten begrenzen sich weiter selbst. */}
         <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-          {needsVerify ? <VerifyNotice email={user.email} /> : pending ? <PendingNotice email={user.email} /> : children}
+          {children}
         </div>
         {/* Nur Desktop-Web: mobil (Web wie App) wohnen die Pflicht-Links auf
             der Konto-Seite — der Fuß klebte sonst auf jeder Seite überm FAB. */}
