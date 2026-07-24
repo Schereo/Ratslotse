@@ -203,6 +203,15 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   das schnell Dutzende Karten, die man erst durchscrollen musste, bevor die
   Vorschläge überhaupt auftauchten. Jetzt stehen sie direkt unter der Antwort,
   die Trefferliste darunter. (#298)
+- **Die Lotti-Tour hakt „Erste Schritte" jetzt wirklich ab.** Wer die Tour
+  komplett durchlief, stand danach trotzdem bei **1/5**, und der Knopf lud weiter
+  zum „Tour starten" ein. Grund: Die Tour führte Analyse und Stadtkarte gar nicht
+  vor, und was sie zeigte, wurde nur zufällig abgehakt — nämlich dann, wenn eine
+  Tour-Station zufällig genau der Kurs-Seite entsprach. Jetzt zeigt die Tour auch
+  Analyse und Stadtkarte, und jede Station meldet den Bereich ausdrücklich als
+  entdeckt. „Erstes Thema anlegen" ist als Punkt entfallen — er verlangte ein
+  echtes Thema und war damit der einzige, den die Tour nicht abhaken konnte.
+  Nach dem Durchlauf steht die Leiste damit auf **4/4** und feiert.
 
 ### Geändert
 - Der Ladekreis beim App-Start sitzt jetzt mittig auf dem Bildschirm statt ganz

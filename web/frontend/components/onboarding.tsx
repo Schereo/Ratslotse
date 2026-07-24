@@ -13,7 +13,11 @@ import { useAuth } from "@/lib/auth";
 
 export type OnboardingState = { steps: string[]; celebrated: boolean };
 
-export type StepId = "frag" | "beschluesse" | "analyse" | "karten" | "thema";
+// „thema" (Erstes Thema anlegen) war der einzige Schritt, den die Tour nicht
+// abhaken konnte — er verlangt ein echtes Thema, nicht bloß einen Besuch. Die
+// Leiste blieb deshalb nach jeder Tour unvollständig; der Schritt ist raus.
+// Bestandsdaten dürfen ihn weiterhin enthalten, er wird schlicht ignoriert.
+export type StepId = "frag" | "beschluesse" | "analyse" | "karten";
 
 // Vor der Server-Persistenz lebte der Fortschritt im localStorage — einmalig
 // hochsyncen, dann aufräumen (sonst fängt ein Zweitgerät wieder bei 0/5 an,
