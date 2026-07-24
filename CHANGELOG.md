@@ -116,6 +116,14 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   `weekly_enrich` mit; Gremien und Namens-Dubletten werden herausgefiltert.
 
 ### Behoben
+- **„Thema anpassen" (Einrichtung): mehr Platz, ruhigeres Laden.** Das
+  Blatt von unten war zu niedrig — für die vollständige Beschreibung musste man
+  fast immer scrollen, und beim Scrollen bewegte sich die Seite dahinter mit.
+  Jetzt reicht es weiter nach oben, das Beschreibungsfeld zeigt sechs statt drei
+  Zeilen, „Abbrechen"/„Speichern" bleiben immer sichtbar, und die Seite darunter
+  hält still. Statt Spinner und „prüft…" zeigt die Treffer-Zeile beim Nachschauen
+  angedeutete Platzhalterzeilen, sodass beim Eintreffen des Ergebnisses nichts
+  mehr springt.
 - **Mitteilungen wurden nach dem Einrichten nicht wirklich zugestellt.** Schritt 3
   holte zwar die Erlaubnis auf dem Gerät ein, stellte den Zustellweg des Kontos
   aber nicht um — es blieb auf „nur E-Mail". Zu erkennen war das nur daran, dass
