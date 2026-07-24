@@ -21,6 +21,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   danach ein **„NEU"**, bis man es einmal angesehen hat. Wer im System
   reduzierte Bewegung eingestellt hat, bekommt dieselbe Karte ohne Konfetti.
   (#322)
+- **Weiterfragen: kompakter auf dem Telefon (Design 24a).** Nach einer Antwort
+  standen die Vorschläge als umbrechende Chip-Reihe — auf schmalen Displays
+  verdrängten sie damit einen guten Teil der Antwort. Jetzt sind es dort **zwei**
+  Vorschläge in je einer Zeile (gekürzt, mit Pfeil), und „Eigene Frage" steht mit
+  dem Hinweis in derselben Zeile. Das halbiert die Höhe des Blocks. Auf größeren
+  Bildschirmen bleiben es drei Vorschläge mit vollem Text.
 
 ### Hinzugefügt
 - **Erst begrüßen, dann registrieren.** Nach „Los geht's" geht es direkt zum

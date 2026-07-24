@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Sparkles, Send, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { Sparkles, Send, Loader2, ChevronDown, ChevronUp, ArrowRight, Lightbulb, Plus } from "lucide-react";
 import { Mascot } from "@/components/mascot";
 import { QaSource } from "@/lib/types";
 import { apiUrl, authHeaders } from "@/lib/api";
@@ -331,31 +331,61 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
           {/* Design 24a (RL-U06 konkretisiert): Weiterfragen — je Antwort neu
               erzeugt (Server: LLM-Vorschläge, sonst aus den Beschlüssen
               abgeleitet). Fällt beides aus, bleiben die Beispiele als Anker.
-              Jede Frage ist eine eigenständige Suche, kein Chat-Verlauf. */}
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-              Weiterfragen
+              Jede Frage ist eine eigenständige Suche, kein Chat-Verlauf.
+
+              Volle Zeilen statt Chips: Eine Frage ist ein Satz, kein Schlagwort —
+              als Chip bricht sie unkontrolliert um. Mobil zusätzlich verdichtet
+              (24a „Weiterfragen Mobile"): 2 statt 3 Vorschläge, je EINE gekürzte
+              Zeile, Fußzeile einzeilig. Das halbiert die Höhe des Blocks, der
+              sonst auf 320 px die halbe Antwort verdrängt. */}
+          <div className="border-t border-border pt-4">
+            <p className="flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5 shrink-0 text-signal sm:hidden" aria-hidden />
+              <span className="hidden h-[22px] w-[22px] shrink-0 items-center justify-center rounded-[7px] bg-signal/[0.12] text-signal sm:inline-flex">
+                <Lightbulb className="h-3.5 w-3.5" aria-hidden />
+              </span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground sm:font-sans sm:text-[12.5px] sm:font-semibold sm:normal-case sm:tracking-normal sm:text-foreground">
+                Weiterfragen
+              </span>
             </p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {(followups.length > 0 ? followups : EXAMPLES.filter((ex) => ex !== q).slice(0, 3)).map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => { setQ(s); void ask(s); }}
-                  className="rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground transition-[color,background-color,transform] duration-150 ease-out-strong hover:bg-muted hover:text-foreground active:scale-[0.97]"
-                >
-                  {s}
-                </button>
-              ))}
+            <div className="mt-2.5 flex flex-col gap-1.5 sm:gap-[7px]">
+              {(followups.length > 0 ? followups : EXAMPLES.filter((ex) => ex !== q).slice(0, 3))
+                .slice(0, 3)
+                .map((s, i) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => { setQ(s); void ask(s); }}
+                    // Der dritte Vorschlag ist mobil nicht nur ausgeblendet, sondern
+                    // per `hidden` aus dem Fluss — sonst zählte er beim gap mit.
+                    className={cn(
+                      "flex w-full items-center gap-2.5 rounded-[11px] border border-primary/30 bg-primary/[0.04] px-3 py-2.5 text-left transition-[color,background-color,transform] duration-150 ease-out-strong hover:bg-primary/[0.08] active:scale-[0.99]",
+                      i === 2 && "hidden sm:flex",
+                    )}
+                  >
+                    <span className="min-w-0 flex-1 truncate text-[13px] text-foreground sm:whitespace-normal sm:text-[13.5px]">
+                      {s}
+                    </span>
+                    <ArrowRight className="h-3.5 w-3.5 shrink-0 text-primary sm:h-[15px] sm:w-[15px]" aria-hidden />
+                  </button>
+                ))}
+            </div>
+            {/* Mobil eine Zeile: Aktion links, Hinweis rechts. Ab sm der
+                gerahmte Knopf aus dem Desktop-Artboard. */}
+            <div className="mt-2.5 flex items-center justify-between gap-2 sm:mt-3 sm:justify-start sm:gap-2.5">
               <button
                 type="button"
                 onClick={() => { setQ(""); inputRef.current?.focus(); }}
-                className="rounded-full border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-[color,background-color,transform] duration-150 ease-out-strong hover:bg-primary/10 active:scale-[0.97]"
+                className="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-primary transition-[color,background-color,transform] duration-150 ease-out-strong active:scale-[0.97] sm:h-[34px] sm:rounded-[10px] sm:border sm:border-border sm:bg-card sm:px-3 sm:text-[12.5px] sm:hover:bg-muted"
               >
+                <Plus className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" aria-hidden />
                 Eigene Frage
               </button>
+              <span className="truncate text-[10.5px] text-muted-foreground/70 sm:text-[11.5px]">
+                <span className="sm:hidden">startet neue Suche</span>
+                <span className="hidden sm:inline">Jede Frage startet eine neue Suche.</span>
+              </span>
             </div>
-            <p className="mt-2 text-[11px] text-muted-foreground/70">Jede Frage startet eine neue Suche.</p>
           </div>
         </>
       )}
