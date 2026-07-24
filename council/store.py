@@ -2359,14 +2359,29 @@ class CouncilStore:
 
         The alias itself no longer exists in council_entities after the rebuild, so
         its name comes from the raw observations.
+
+        The stored ``canonical_slug`` can be a chain link (A→B where B was later
+        merged into C). We report the *resolved* end target so the admin sees the
+        real destination name — otherwise the row shows a blank target (the middle
+        link is gone from council_entities) and the UI, which groups by
+        canonical_slug, would split one subject across two groups.
         """
+        resolved = self.entity_aliases()  # {slug -> end canonical}, chains applied
         rows = self._conn.execute(
             """SELECT a.slug, a.canonical_slug, a.source, a.reason, a.created_at,
-                      (SELECT name FROM council_entity_obs o WHERE o.slug = a.slug LIMIT 1) AS alias_name,
-                      (SELECT name FROM council_entities e WHERE e.slug = a.canonical_slug) AS canonical_name,
-                      (SELECT n FROM council_entities e WHERE e.slug = a.canonical_slug) AS canonical_n
+                      (SELECT name FROM council_entity_obs o WHERE o.slug = a.slug LIMIT 1) AS alias_name
                FROM council_entity_aliases a ORDER BY a.created_at DESC, a.slug""").fetchall()
-        return [dict(r) for r in rows]
+        out: list[dict] = []
+        for r in rows:
+            d = dict(r)
+            canon = resolved.get(r["slug"], r["canonical_slug"])
+            end = self._conn.execute(
+                "SELECT name, n FROM council_entities WHERE slug = ?", (canon,)).fetchone()
+            d["canonical_slug"] = canon
+            d["canonical_name"] = end["name"] if end else None
+            d["canonical_n"] = end["n"] if end else None
+            out.append(d)
+        return out
 
     def save_entity_aliases(self, rows: list[tuple], replace: bool = False) -> int:
         """Upsert merges. ``rows`` = (slug, canonical_slug, source, reason, created_at).

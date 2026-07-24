@@ -170,6 +170,29 @@ def test_alter_slug_fuehrt_zum_kanon_statt_ins_leere(tmp_path):
     store.close()
 
 
+def test_admin_liste_zeigt_ketten_das_echte_endziel(tmp_path):
+    """Kette A→B, danach B→C: die Admin-Liste muss für A das ENDZIEL C nennen,
+    nicht das weggemergte Zwischenglied B (sonst leerer Ziel-Name + die nach
+    canonical_slug gruppierende UI spaltet ein Thema auf zwei Gruppen)."""
+    store = _store_with_obs(tmp_path)
+    # A = baederbetrieb-oldenburg → B = baederbetrieb-der-stadt-oldenburg → C = fliegerhorst
+    store.save_entity_aliases([
+        ("baederbetrieb-oldenburg", "baederbetrieb-der-stadt-oldenburg", "llm", "Ortszusatz", "2026-07-23T10:00:00"),
+        ("baederbetrieb-der-stadt-oldenburg", "fliegerhorst", "llm", "Kette", "2026-07-23T10:01:00"),
+    ])
+    store.rebuild_entities_from_obs()
+
+    rows = {r["slug"]: r for r in store.list_entity_aliases()}
+    # Beide Kettenglieder zeigen auf das reale Endziel — Name gefüllt, nicht None.
+    for slug in ("baederbetrieb-oldenburg", "baederbetrieb-der-stadt-oldenburg"):
+        assert rows[slug]["canonical_slug"] == "fliegerhorst"
+        assert rows[slug]["canonical_name"] == "Fliegerhorst"
+        assert rows[slug]["canonical_n"] is not None
+    # Rücknahme adressiert weiterhin den Alias selbst (per slug, nicht Ziel).
+    assert store.delete_entity_alias("baederbetrieb-oldenburg") is True
+    store.close()
+
+
 def test_manuelle_zuordnung_wird_nicht_ueberschrieben(tmp_path):
     """Ein automatischer Lauf darf eine Handkorrektur nicht rückgängig machen."""
     store = _store_with_obs(tmp_path)
