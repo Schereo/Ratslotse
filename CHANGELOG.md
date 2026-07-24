@@ -8,6 +8,14 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Behoben
+- **KI-Antworten nennen nicht mehr Datum und Tragweite mitten im Satz.** Die
+  Antworten lasen sich stellenweise wie ein Aktenvermerk — „… beschlossen
+  (2026-04-20, Tragweite: hoch)". Beides steht ohnehin bei den Quellen unter
+  der Antwort. Die Tragweite bekommt die KI weiterhin mitgeteilt, aber nur noch
+  zur Gewichtung, nicht zum Zitieren. Fragt jemand ausdrücklich nach dem
+  Zeitpunkt, steht das Datum selbstverständlich weiter in der Antwort. (#309)
+
+### Behoben
 - **App: „Frag den Rat" scheiterte weiterhin mit „Load failed".** Der erste
   Anlauf hatte dem Streaming-Endpoint zwar Freigabe-Header für die App
   spendiert, die Liste war aber unvollständig: Sie nannte nur `Content-Type`
