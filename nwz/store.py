@@ -290,6 +290,20 @@ CREATE TABLE IF NOT EXISTS job_runs (
     error       TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_job_runs_job ON job_runs(job, started_at DESC);
+
+-- Nutzer-Feedback. Ging bisher nur per Mail raus; die Kopie hier macht es im
+-- Admin-Panel sicht- und abarbeitbar. `read_at` ist absichtlich global (nicht
+-- je Admin): Es geht um „ist das erledigt?", nicht um „habe ich das gesehen?".
+CREATE TABLE IF NOT EXISTS feedback (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner_id   INTEGER NOT NULL,
+    email      TEXT,                  -- Adresse zum Zeitpunkt des Absendens
+    kind       TEXT NOT NULL,         -- feature | bug | other
+    message    TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    read_at    TEXT                   -- NULL = ungelesen
+);
+CREATE INDEX IF NOT EXISTS idx_feedback_created ON feedback(created_at DESC);
 """
 
 # Alle Tabellen, die an einem Konto hängen — Grundlage von `delete_web_user`
@@ -313,6 +327,10 @@ USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     ("quiz_daily", "owner_id"),
     ("user_quiz_questions", "owner_id"),
     ("user_activity", "owner_id"),
+    # Feedback wird mitgelöscht: Es ist eine Nachricht dieser Person. Die
+    # Betreiber-Kopie liegt ohnehin als E-Mail außerhalb der Datenbank, es
+    # geht also keine Erkenntnis verloren.
+    ("feedback", "owner_id"),
     ("password_reset_tokens", "user_id"),
     ("email_verification_tokens", "user_id"),
 )
@@ -1045,6 +1063,41 @@ class Store:
             for table, column in USER_OWNED_TABLES:
                 self._conn.execute(f"DELETE FROM {table} WHERE {column} = ?", (user_id,))
             self._conn.execute("DELETE FROM web_users WHERE id = ?", (user_id,))
+
+    # ---- Feedback ----------------------------------------------------------
+
+    def add_feedback(self, owner_id: int, email: str | None, kind: str, message: str) -> int:
+        """Nutzer-Feedback ablegen. Gibt die id zurück."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            cur = self._conn.execute(
+                "INSERT INTO feedback (owner_id, email, kind, message, created_at)"
+                " VALUES (?, ?, ?, ?, ?)",
+                (owner_id, email, kind, message, now),
+            )
+        return int(cur.lastrowid or 0)
+
+    def list_feedback(self, limit: int = 100, only_unread: bool = False) -> list[dict]:
+        """Neueste zuerst — so steht Unerledigtes oben."""
+        where = "WHERE read_at IS NULL" if only_unread else ""
+        rows = self._conn.execute(
+            f"SELECT id, owner_id, email, kind, message, created_at, read_at"
+            f" FROM feedback {where} ORDER BY created_at DESC, id DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def count_unread_feedback(self) -> int:
+        row = self._conn.execute("SELECT COUNT(*) FROM feedback WHERE read_at IS NULL").fetchone()
+        return int(row[0]) if row else 0
+
+    def set_feedback_read(self, feedback_id: int, read: bool) -> bool:
+        """Als erledigt markieren (oder zurücksetzen). False = es gab die id nicht."""
+        now = datetime.utcnow().isoformat(timespec="seconds") if read else None
+        with self._conn:
+            cur = self._conn.execute(
+                "UPDATE feedback SET read_at = ? WHERE id = ?", (now, feedback_id))
+        return cur.rowcount > 0
 
     def get_topic_for_owner(self, owner_id: int, topic_id: int) -> TopicRow | None:
         """Fetch a single topic belonging to owner_id — O(1) vs scanning all topics."""

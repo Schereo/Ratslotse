@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { Prompt, AdminUserRow, AdminUserDetail, AdminGrowth, AdminJob, QuizFlagged, AdminQuizStats, EntityAlias } from "@/lib/types";
-import { Badge, Button, Card, ConfirmDialog, PageHeader, Spinner, Textarea, formatDate, toast } from "@/components/ui";
+import { Prompt, AdminUserRow, AdminUserDetail, AdminGrowth, AdminJob, QuizFlagged, AdminQuizStats, EntityAlias, AdminFeedback } from "@/lib/types";
+import { Badge, Button, Card, ConfirmDialog, PageHeader, Spinner, Textarea, formatDate, formatDateTime, toast } from "@/components/ui";
 import { AreaSparkline, MiniBars, StatKicker } from "@/components/admin-charts";
 import { cn } from "@/lib/utils";
 
-type Tab = "stats" | "llm" | "prompts" | "users" | "quiz" | "themen";
+type Tab = "stats" | "feedback" | "llm" | "prompts" | "users" | "quiz" | "themen";
 
 export default function AdminPage() {
   const { user, loading } = useAuth();
@@ -29,6 +29,7 @@ export default function AdminPage() {
       <div className="mt-4 flex gap-1 border-b border-border">
         {([
           ["stats", "Statistik"],
+          ["feedback", "Feedback"],
           ["llm", "LLM-Kosten"],
           ["prompts", "Prompts"],
           ["users", "Web-Nutzer:innen"],
@@ -48,6 +49,7 @@ export default function AdminPage() {
       </div>
       <div className="mt-6">
         {tab === "stats" && <StatsTab />}
+        {tab === "feedback" && <FeedbackTab />}
         {tab === "llm" && <LlmUsageTab />}
         {tab === "prompts" && <PromptsTab />}
         {tab === "users" && <UsersTab currentUserId={user.id} />}
@@ -299,6 +301,94 @@ const BUDGET_TONE: Record<LlmUsage["budget_level"], { dot: string; text: string;
 };
 
 /** Kennzahl-Karte im 20a/21a-Stil: Kicker + große Bricolage-Zahl + Unterzeile. */
+const FEEDBACK_KIND: Record<string, { label: string; cls: string }> = {
+  feature: { label: "Feature-Vorschlag", cls: "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300" },
+  bug: { label: "Fehler", cls: "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300" },
+  other: { label: "Sonstiges", cls: "bg-muted text-muted-foreground" },
+};
+
+/** Eingegangenes Nutzer-Feedback. Offene Einträge stehen optisch vorn und
+ *  treiben das Zeichen an der Admin-Navigation; „erledigt" ist umkehrbar,
+ *  damit ein Fehlklick nichts kostet. */
+function FeedbackTab() {
+  const qc = useQueryClient();
+  const [onlyUnread, setOnlyUnread] = useState(false);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-feedback", onlyUnread],
+    queryFn: () => api.get<{ items: AdminFeedback[]; unread: number }>(
+      `/admin/feedback?only_unread=${onlyUnread}`),
+  });
+
+  const mark = useMutation({
+    mutationFn: ({ id, read }: { id: number; read: boolean }) =>
+      api.post(`/admin/feedback/${id}/read?read=${read}`, {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-feedback"] });
+      // Das Zeichen in der Navigation hängt an einer eigenen Abfrage.
+      qc.invalidateQueries({ queryKey: ["admin-feedback-unread"] });
+    },
+    onError: () => toast.error("Konnte nicht gespeichert werden."),
+  });
+
+  if (isLoading) return <Spinner />;
+  const items = data?.items ?? [];
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">
+          {data?.unread ? `${data.unread} offen` : "Alles abgearbeitet"}
+          {items.length > 0 && ` · ${items.length} angezeigt`}
+        </p>
+        <Button variant="secondary" onClick={() => setOnlyUnread((v) => !v)}>
+          {onlyUnread ? "Alle anzeigen" : "Nur offene"}
+        </Button>
+      </div>
+
+      {items.length === 0 ? (
+        <Card className="mt-4 p-6 text-center text-sm text-muted-foreground">
+          {onlyUnread ? "Kein offenes Feedback." : "Noch kein Feedback eingegangen."}
+        </Card>
+      ) : (
+        <ul className="mt-4 space-y-3">
+          {items.map((f) => {
+            const kind = FEEDBACK_KIND[f.kind] ?? { label: f.kind, cls: "bg-muted text-muted-foreground" };
+            const open = !f.read_at;
+            return (
+              <Card key={f.id} className={cn("p-4", open && "border-l-4 border-l-signal")}>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={cn("rounded-md px-1.5 py-0.5 text-xs font-semibold", kind.cls)}>
+                    {kind.label}
+                  </span>
+                  {open && <Badge>offen</Badge>}
+                  <span className="text-xs text-muted-foreground">{formatDateTime(f.created_at)}</span>
+                  {f.email && (
+                    <a href={`mailto:${f.email}`} className="text-xs text-primary hover:underline">
+                      {f.email}
+                    </a>
+                  )}
+                  <Button
+                    variant="secondary"
+                    className="ml-auto"
+                    disabled={mark.isPending}
+                    onClick={() => mark.mutate({ id: f.id, read: open })}
+                  >
+                    {open ? "Erledigt" : "Wieder öffnen"}
+                  </Button>
+                </div>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                  {f.message}
+                </p>
+              </Card>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function KpiCard({ kicker, value, sub }: { kicker: string; value: string; sub?: React.ReactNode }) {
   return (
     <Card className="p-4">

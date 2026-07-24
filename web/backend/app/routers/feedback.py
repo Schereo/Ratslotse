@@ -7,9 +7,10 @@ import logging
 from fastapi import APIRouter, Depends
 
 from nwz.email import send_email
+from nwz.store import Store
 
 from ..config import get_settings
-from ..deps import require_active
+from ..deps import get_store, require_active
 from ..schemas import FeedbackIn
 
 logger = logging.getLogger("nwz.web.feedback")
@@ -20,13 +21,25 @@ _KIND_LABELS = {"feature": "Feature-Vorschlag", "bug": "Fehler", "other": "Sonst
 
 
 @router.post("")
-def submit_feedback(body: FeedbackIn, user: dict = Depends(require_active)) -> dict:
+def submit_feedback(
+    body: FeedbackIn,
+    user: dict = Depends(require_active),
+    store: Store = Depends(get_store),
+) -> dict:
     """Email the operator a piece of user feedback. Reply-to is the user's address so
     the operator can answer directly. Best-effort: never surfaces email config to the user."""
     settings = get_settings()
     recipient = settings.feedback_email or settings.web_admin_email
     kind_label = _KIND_LABELS.get(body.kind, body.kind)
     user_email = (user.get("email") or "").strip()
+
+    # Zuerst ablegen, dann mailen: Der Mailversand ist der unzuverlässige Teil
+    # (fremder Dienst, fehlender Key). Andersherum ginge Feedback verloren,
+    # sobald Resend zickt — und genau dagegen ist die Kopie im Admin-Panel da.
+    try:
+        store.add_feedback(user["id"], user_email or None, body.kind, body.message)
+    except Exception:  # noqa: BLE001 — Speichern darf den Absender nie scheitern lassen
+        logger.exception("feedback konnte nicht gespeichert werden (from=%s)", user_email)
 
     if not settings.resend_api_key or not recipient:
         logger.warning("feedback received but email not configured (kind=%s, from=%s)", body.kind, user_email)

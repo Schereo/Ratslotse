@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 
 from council.store import CouncilStore
 from nwz import prompts
@@ -184,6 +184,45 @@ def reset_prompt(key: str, _admin: dict = Depends(require_admin)) -> PromptOut:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Unbekannter Prompt.")
     prompts.reset(key)
     return PromptOut(**next(p for p in prompts.list_all() if p["key"] == key))
+
+
+# ---- Feedback ----
+@router.get("/feedback")
+def list_feedback(
+    only_unread: bool = False,
+    limit: int = Query(100, ge=1, le=500),
+    _admin: dict = Depends(require_admin),
+    store: Store = Depends(get_store),
+) -> dict:
+    """Eingegangenes Nutzer-Feedback, neueste zuerst — plus die Zahl der
+    offenen Einträge für das Zeichen in der Navigation."""
+    return {
+        "items": store.list_feedback(limit=limit, only_unread=only_unread),
+        "unread": store.count_unread_feedback(),
+    }
+
+
+@router.get("/feedback/unread-count")
+def feedback_unread_count(
+    _admin: dict = Depends(require_admin),
+    store: Store = Depends(get_store),
+) -> dict:
+    """Schlanker Endpunkt allein für das Zeichen in der Navigation — die
+    Sidebar liegt auf jeder Seite an und soll dafür nicht die ganze Liste holen."""
+    return {"total": store.count_unread_feedback()}
+
+
+@router.post("/feedback/{feedback_id}/read")
+def mark_feedback_read(
+    feedback_id: int,
+    read: bool = True,
+    _admin: dict = Depends(require_admin),
+    store: Store = Depends(get_store),
+) -> dict:
+    """Als erledigt markieren — `?read=false` macht es wieder rückgängig."""
+    if not store.set_feedback_read(feedback_id, read):
+        raise HTTPException(status_code=404, detail="Feedback nicht gefunden.")
+    return {"ok": True, "unread": store.count_unread_feedback()}
 
 
 # ---- web users ----

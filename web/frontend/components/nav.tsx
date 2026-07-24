@@ -34,6 +34,20 @@ function useUnreadTopicHits(): number {
   return data?.total ?? 0;
 }
 
+/** Zahl offener Feedback-Einträge — dasselbe Zeichen wie bei „Meine Themen",
+ *  nur an „Admin". Läuft ausschließlich für Admins: Der Endpunkt verlangt die
+ *  Rolle, für alle anderen wäre die Abfrage ein garantierter 403. */
+function useUnreadFeedback(enabled: boolean): number {
+  const { data } = useQuery({
+    queryKey: ["admin-feedback-unread"],
+    queryFn: () => api.get<{ total: number }>("/admin/feedback/unread-count"),
+    enabled,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  });
+  return data?.total ?? 0;
+}
+
 function UnreadBadge({ n }: { n: number }) {
   if (n <= 0) return null;
   return (
@@ -110,6 +124,7 @@ function NavLinksInner({ activeTab, onNavigate }: { activeTab: string; onNavigat
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
   const onCouncil = pathname === "/council" || pathname.startsWith("/council/");
   const unread = useUnreadTopicHits();
+  const openFeedback = useUnreadFeedback(user?.role === "admin");
 
   return (
     <nav className="flex-1 space-y-1 px-3">
@@ -126,7 +141,12 @@ function NavLinksInner({ activeTab, onNavigate }: { activeTab: string; onNavigat
       <NavItem item={PERSONAL} active={isActive("/topics")} badge={unread} onNavigate={onNavigate} />
       <NavItem item={QUIZ} active={isActive("/quiz")} onNavigate={onNavigate} />
       {user?.role === "admin" && (
-        <NavItem item={{ href: "/admin", label: "Admin", icon: Settings }} active={isActive("/admin")} onNavigate={onNavigate} />
+        <NavItem
+          item={{ href: "/admin", label: "Admin", icon: Settings }}
+          active={isActive("/admin")}
+          badge={openFeedback}
+          onNavigate={onNavigate}
+        />
       )}
     </nav>
   );

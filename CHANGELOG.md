@@ -7,6 +7,16 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt
+- **Feedback landet jetzt auch im Admin-Bereich.** Rückmeldungen aus der App
+  gingen bisher ausschließlich per E-Mail raus — wer sie übersah oder löschte,
+  hatte sie verloren. Sie werden nun zusätzlich gespeichert und im Admin unter
+  **„Feedback"** aufgelistet: neueste zuerst, mit Art, Absenderin und Zeitpunkt,
+  filterbar auf Unerledigtes. Ein Eintrag lässt sich als erledigt abhaken und
+  bei Bedarf wieder öffnen. Gibt es Offenes, trägt **„Admin" in der Navigation
+  eine Zahl** — dasselbe Zeichen, das „Meine Themen" schon nutzt. Der
+  Mailversand bleibt unverändert. (#311)
+
 ### Behoben
 - **Feedback-Dialog reißt kein Menü mehr auf.** Beim Öffnen von „Feedback geben"
   klappte auf dem iPhone sofort die Auswahlliste für die Art auf — noch bevor

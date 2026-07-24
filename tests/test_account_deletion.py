@@ -93,3 +93,29 @@ def test_delete_web_user_really_empties_every_table(tmp_path):
     assert conn.execute("SELECT COUNT(*) FROM web_users WHERE id = 1").fetchone()[0] == 0
     assert conn.execute("SELECT COUNT(*) FROM web_users WHERE id = 2").fetchone()[0] == 1
     store.close()
+
+
+def test_feedback_roundtrip_and_unread(tmp_path):
+    """Feedback ablegen, zählen, abhaken — die Grundlage des Admin-Tabs und
+    des Zeichens in der Navigation."""
+    store = Store(tmp_path / "nwz.sqlite")
+    a = store.add_feedback(1, "a@test.de", "bug", "Knopf klemmt")
+    b = store.add_feedback(2, "b@test.de", "feature", "Bitte Dunkelmodus")
+    assert a and b and a != b
+    assert store.count_unread_feedback() == 2
+
+    # Neueste zuerst, damit Unerledigtes oben steht.
+    alle = store.list_feedback()
+    assert [f["id"] for f in alle] == [b, a]
+
+    assert store.set_feedback_read(a, True) is True
+    assert store.count_unread_feedback() == 1
+    assert [f["id"] for f in store.list_feedback(only_unread=True)] == [b]
+
+    # Umkehrbar — ein Fehlklick darf nichts kosten.
+    assert store.set_feedback_read(a, False) is True
+    assert store.count_unread_feedback() == 2
+
+    # Unbekannte id meldet sich sauber ab, statt still nichts zu tun.
+    assert store.set_feedback_read(9999, True) is False
+    store.close()
