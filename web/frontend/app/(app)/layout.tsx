@@ -46,7 +46,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (user) void initPush((path) => router.push(path));
   }, [user, router]);
 
-  if (loading || !user) return <Spinner />;
+  // Ganzseitig laden: mittig statt oben. Ohne das klebte der Spinner am
+  // oberen Rand — in der App halb hinter der Dynamic Island.
+  if (loading || !user) {
+    return (
+      <div className="flex min-h-[100dvh] items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
