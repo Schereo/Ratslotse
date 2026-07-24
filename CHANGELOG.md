@@ -18,21 +18,25 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Mailversand bleibt unverändert. (#311)
 
 ### Behoben
+- **Personen-Seite: Ämter sind auf dem Handy wieder lesbar.** Die Zeitleiste der
+  Ämter stand zweispaltig — Name links, Balken rechts. Auf schmalen Bildschirmen
+  fraß die Namensspalte den Platz: Gremien standen abgeschnitten da
+  („Wirtschaft & Dig…"), und junge Ämter schrumpften zu einem Punkt. Jetzt steht
+  der **Name in voller Breite über dem Balken**, das Jahr („seit 2011") rechts
+  daneben, und der Balken nutzt die ganze Zeile auf einer gemeinsamen Zeitskala —
+  so bleiben Amtsdauern vergleichbar. Dasselbe gilt für „Präsenz je Gremium".
+  Auf großen Bildschirmen bleibt die zweispaltige Zeitleiste. (#312)
 - **Feedback-Dialog reißt kein Menü mehr auf.** Beim Öffnen von „Feedback geben"
   klappte auf dem iPhone sofort die Auswahlliste für die Art auf — noch bevor
   man den Dialog lesen konnte. Ursache war der automatische Fokus auf das erste
   Eingabefeld, was iOS als Aufforderung versteht, das Rad-Menü zu zeigen. Der
   Dialog fängt den Fokus jetzt selbst ab. (#310)
-
-### Behoben
 - **KI-Antworten nennen nicht mehr Datum und Tragweite mitten im Satz.** Die
   Antworten lasen sich stellenweise wie ein Aktenvermerk — „… beschlossen
   (2026-04-20, Tragweite: hoch)". Beides steht ohnehin bei den Quellen unter
   der Antwort. Die Tragweite bekommt die KI weiterhin mitgeteilt, aber nur noch
   zur Gewichtung, nicht zum Zitieren. Fragt jemand ausdrücklich nach dem
   Zeitpunkt, steht das Datum selbstverständlich weiter in der Antwort. (#309)
-
-### Behoben
 - **App: „Frag den Rat" scheiterte weiterhin mit „Load failed".** Der erste
   Anlauf hatte dem Streaming-Endpoint zwar Freigabe-Header für die App
   spendiert, die Liste war aber unvollständig: Sie nannte nur `Content-Type`
@@ -42,6 +46,17 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   jetzt die tatsächlich angefragten Header, statt eine Liste zu pflegen, die
   beim nächsten Zusatz wieder auseinanderläuft. Rein serverseitig — die
   bestehende App funktioniert nach dem Update ohne Neuinstallation. (#308)
+- **KI-Frage: Quellenangaben werden wieder zuverlässig erkannt.** Hängte die KI
+  Zusatzangaben in eine Quellenklammer („[8525, 20.04.2026, Tragweite: hoch]"),
+  erkannte Ratslotse das nicht als Quellenangabe: Die Fußnote fehlte, und die
+  rohe Klammer stand mitten im Antworttext. Jetzt zählt in solchen Fällen die
+  erste Zahl als Quelle, der Rest verschwindet aus der Anzeige — und die KI wird
+  ausdrücklich angewiesen, nur die Nummer in die Klammer zu setzen. (#301)
+- **KI-Frage: Weiterfragen sind sofort sichtbar.** Die Anschlussfragen standen
+  **hinter** der Liste der gefundenen Beschlüsse — bei einer breiten Frage sind
+  das schnell Dutzende Karten, die man erst durchscrollen musste, bevor die
+  Vorschläge überhaupt auftauchten. Jetzt stehen sie direkt unter der Antwort,
+  die Trefferliste darunter. (#298)
 
 ### Hinzugefügt
 - **Doppelte Themen werden zusammengeführt.** Die Themen-Erkennung benannte
@@ -66,7 +81,6 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Fliegerhorst ── Entlastungsstraße) und *ähnlich* (semantischer Nachbar aus den
   Embeddings, nur zum Auffüllen). Läuft ohne LLM-Aufruf im wöchentlichen
   `weekly_enrich` mit; Gremien und Namens-Dubletten werden herausgefiltert.
-
 
 ### Geändert
 - **Beschluss-Seite aufgeräumt.** Die Seite führte mit einer Wand Amtssprache
@@ -98,19 +112,6 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   hinten sie stehen); der Rest kommt per **„Alle N anzeigen"**. Die Reihenfolge
   bleibt unverändert, und die Fußnoten in der Antwort springen weiterhin
   zuverlässig zur richtigen Quelle — auch wenn sie eingeklappt wäre. (#301)
-
-### Behoben
-- **KI-Frage: Quellenangaben werden wieder zuverlässig erkannt.** Hängte die KI
-  Zusatzangaben in eine Quellenklammer („[8525, 20.04.2026, Tragweite: hoch]"),
-  erkannte Ratslotse das nicht als Quellenangabe: Die Fußnote fehlte, und die
-  rohe Klammer stand mitten im Antworttext. Jetzt zählt in solchen Fällen die
-  erste Zahl als Quelle, der Rest verschwindet aus der Anzeige — und die KI wird
-  ausdrücklich angewiesen, nur die Nummer in die Klammer zu setzen. (#301)
-- **KI-Frage: Weiterfragen sind sofort sichtbar.** Die Anschlussfragen standen
-  **hinter** der Liste der gefundenen Beschlüsse — bei einer breiten Frage sind
-  das schnell Dutzende Karten, die man erst durchscrollen musste, bevor die
-  Vorschläge überhaupt auftauchten. Jetzt stehen sie direkt unter der Antwort,
-  die Trefferliste darunter. (#298)
 
 ## [1.3.0] – 2026-07-23
 
