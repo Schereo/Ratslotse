@@ -55,3 +55,34 @@ export function shortCommittee(name: string | null | undefined): string {
 export function hasShortCommittee(name: string | null | undefined): boolean {
   return !!name && shortCommittee(name) !== name.trim();
 }
+
+// Ein Satz „was hier behandelt wird" je Gremium (Design 26a, Schritt 1). Ohne
+// das ist die Abo-Auswahl eine Liste von Amtsbezeichnungen — „Ausschuss für
+// Allgemeine Angelegenheiten" sagt niemandem, was drin verhandelt wird.
+// Bewusst dieselbe Datei wie shortCommittee: eine Quelle je Gremium.
+const EXPLAINS: Record<string, string> = {
+  "Rat": "Entscheidet die großen Linien: Haushalt, Satzungen und Grundsatzbeschlüsse.",
+  "Verwaltungsausschuss": "Bereitet die Ratsbeschlüsse vor und entscheidet Eilfälle — tagt nichtöffentlich.",
+  "Allgemeine Angelegenheiten": "Verwaltung, Personal, Ordnung und alles, was in keinen Fachausschuss fällt.",
+  "Finanzen & Beteiligungen": "Haushalt, Zuwendungen und die städtischen Beteiligungen.",
+  "Integration & Migration": "Zuwanderung, Teilhabe und interkulturelle Arbeit in der Stadt.",
+  "Stadtgrün & Klima": "Grünflächen, Klimaschutz, Energie und Naturschutz in der Stadt.",
+  "Umwelt & Klima": "Grünflächen, Klimaschutz, Energie und Naturschutz in der Stadt.",
+  "Stadtplanung & Bauen": "Bebauungspläne, Bauprojekte und wie sich Viertel entwickeln.",
+  "Wirtschaft & Digitales": "Wirtschaftsförderung, Digitalisierung und internationale Zusammenarbeit.",
+  "Abfallwirtschaft": "Müllabfuhr, Recycling und der städtische Abfallbetrieb.",
+  "Betrieb Gebäudewirtschaft": "Bau und Unterhalt der städtischen Gebäude — Schulen, Kitas, Verwaltung.",
+  "Jugendhilfe": "Kitas, Jugendarbeit und Hilfen für Familien.",
+  "Kultur": "Museen, Theater, Bibliotheken und die Förderung der freien Szene.",
+  "Schule": "Schulen, Ganztagsbetreuung und neue Bildungsstandorte.",
+  "Soziales": "Wohnen, Pflege, Teilhabe und soziale Angebote der Stadt.",
+  "Sport": "Sportstätten, Vereinsförderung und Bäder.",
+  "Verkehr": "Radwege, Straßen, Bus & Bahn, Parken und Verkehrsberuhigung.",
+};
+
+/** Ein Satz, was in diesem Gremium behandelt wird — leer, wenn unbekannt (dann
+ *  zeigt die Oberfläche einfach nur den Namen, statt etwas zu erfinden). */
+export function committeeExplains(name: string | null | undefined): string {
+  if (!name) return "";
+  return EXPLAINS[shortCommittee(name)] ?? "";
+}
