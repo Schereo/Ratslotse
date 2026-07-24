@@ -686,12 +686,21 @@ function TopicSheet({ topic, onClose, onSaved }: {
 /* ------------------------------------------------------- Schritt 3: Push --- */
 
 function PushStep({ theme, onDone }: { theme: ReturnType<typeof useMascotTheme>; onDone: () => void }) {
+  const { user, refresh } = useAuth();
   const [busy, setBusy] = useState(false);
   const allow = async () => {
     setBusy(true);
     try {
       const { enablePush } = await import("@/lib/push");
-      await enablePush();
+      // Die iOS-Erlaubnis registriert nur das Gerät. Ohne das Umstellen des
+      // Zustellwegs bliebe das Konto auf „nur E-Mail" — man hätte zugestimmt
+      // und trotzdem nie eine Mitteilung bekommen. (Genau so beobachtet:
+      // „Heute" bat danach weiter um Erlaubnis, und zwar zu Recht.)
+      if (await enablePush()) {
+        const channel = user?.delivery_channel === "push" ? "push" : "both";
+        await api.put("/account/delivery", { delivery_channel: channel });
+        await refresh();
+      }
     } catch { /* Ablehnen ist eine gültige Antwort — nicht drängeln */ }
     setBusy(false);
     onDone();
