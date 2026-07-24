@@ -15,7 +15,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   der **Name in voller Breite über dem Balken**, das Jahr („seit 2011") rechts
   daneben, und der Balken nutzt die ganze Zeile auf einer gemeinsamen Zeitskala —
   so bleiben Amtsdauern vergleichbar. Dasselbe gilt für „Präsenz je Gremium".
-  Auf großen Bildschirmen bleibt die zweispaltige Zeitleiste. (#PR)
+  Auf großen Bildschirmen bleibt die zweispaltige Zeitleiste. (#312)
 - **Feedback-Dialog reißt kein Menü mehr auf.** Beim Öffnen von „Feedback geben"
   klappte auf dem iPhone sofort die Auswahlliste für die Art auf — noch bevor
   man den Dialog lesen konnte. Ursache war der automatische Fokus auf das erste
