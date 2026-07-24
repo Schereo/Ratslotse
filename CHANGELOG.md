@@ -15,7 +15,9 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   (`scripts/merge_entity_aliases.py`) findet solche Dubletten und führt die vom
   Sprachmodell bestätigten zusammen; alte Links landen weiterhin beim richtigen
   Thema. Im Admin-Panel unter „Themen-Dubletten“ lässt sich jede Zusammenführung
-  einzeln nachvollziehen und wieder auflösen.
+  einzeln nachvollziehen und wieder auflösen. Mehrstufige Zusammenführungen
+  (A→B, wobei B später zu C wurde) landen dabei am richtigen Endthema und werden
+  in der Admin-Liste auch dort einsortiert. (#302, #306)
 - **„Hängt zusammen mit …" auf jeder Themen-Seite.** Unter den Kennzahlen stehen
   jetzt verwandte Themen zum Weiterklicken — oben die *belegten* (kommen
   gemeinsam in Beschlüssen vor, mit der Zahl der gemeinsamen Beschlüsse), darunter
