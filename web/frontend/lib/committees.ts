@@ -86,3 +86,33 @@ export function committeeExplains(name: string | null | undefined): string {
   if (!name) return "";
   return EXPLAINS[shortCommittee(name)] ?? "";
 }
+
+// Reihenfolge für Auswahllisten (26a): Was die meisten Menschen betrifft, steht
+// oben. Der Rat entscheidet alles Grundsätzliche, danach die Fachausschüsse mit
+// dem größten Alltagsbezug; Betriebsausschüsse und Gremien ohne eigenes
+// Sachgebiet stehen unten — nicht unwichtig, aber selten der Einstieg.
+const RANK: Record<string, number> = {
+  "Rat": 0,
+  "Stadtplanung & Bauen": 1,
+  "Verkehr": 2,
+  "Stadtgrün & Klima": 3,
+  "Umwelt & Klima": 3,
+  "Schule": 4,
+  "Soziales": 5,
+  "Jugendhilfe": 6,
+  "Finanzen & Beteiligungen": 7,
+  "Kultur": 8,
+  "Sport": 9,
+  "Wirtschaft & Digitales": 10,
+  "Integration & Migration": 11,
+  "Verwaltungsausschuss": 12,
+  "Allgemeine Angelegenheiten": 13,
+  "Betrieb Gebäudewirtschaft": 14,
+  "Abfallwirtschaft": 15,
+};
+
+/** Sortierschlüssel: kleiner = weiter oben. Unbekannte Gremien landen hinter
+ *  den gepflegten, aber vor gar nichts — sie verschwinden nie aus der Liste. */
+export function committeeRank(name: string | null | undefined): number {
+  return RANK[shortCommittee(name)] ?? 50;
+}
