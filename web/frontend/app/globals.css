@@ -130,6 +130,11 @@
   .dark .bg-waves {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='24' viewBox='0 0 120 24'%3E%3Cpath d='M0 12c10-8 20-8 30 0s20 8 30 0 20-8 30 0 20 8 30 0' fill='none' stroke='%233db1f5' stroke-opacity='0.08' stroke-width='2'/%3E%3C/svg%3E");
   }
+  /* Helle Wellen für dunkle Flächen — unabhängig vom Theme (der
+     Onboarding-Auftakt ist immer nachtblau, auch im hellen Modus). */
+  .bg-waves-light {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='24' viewBox='0 0 120 24'%3E%3Cpath d='M0 12c10-8 20-8 30 0s20 8 30 0 20-8 30 0 20 8 30 0' fill='none' stroke='%23ffffff' stroke-opacity='0.06' stroke-width='2'/%3E%3C/svg%3E");
+  }
 }
 
 /* Konfetti (components/confetti.tsx): von oben einregnen und dabei drehen. */
@@ -277,6 +282,33 @@
   .animate-fade-up {
     animation: fade-up 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
+
+  /* Onboarding-Auftakt (26a): Lotti winkt herein, zwei Ringe laufen aus, Titel
+     steigt auf, die drei Zeilen staffeln sich, dann der Knopf. Einmalig ~4 s —
+     im Gegensatz zum Artboard, das für die Vorschau endlos loopt. Bei
+     reduzierter Bewegung (unten) steht alles sofort sichtbar da. */
+  .wl-lotti { animation: wl-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .wl-ring { animation: wl-ring 3.2s ease-out 0.2s 2 both; }
+  .wl-ring-2 { animation-delay: 0.7s; }
+  .wl-title { animation: wl-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.35s both; }
+  .wl-r1 { animation: wl-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.75s both; }
+  .wl-r2 { animation: wl-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.95s both; }
+  .wl-r3 { animation: wl-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) 1.15s both; }
+  .wl-cta { animation: wl-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) 1.45s both; }
+}
+
+@keyframes wl-in {
+  0% { opacity: 0; transform: translateY(16px) scale(0.9); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes wl-ring {
+  0% { transform: scale(0.6); opacity: 0; }
+  22% { transform: scale(1); opacity: 0.5; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+@keyframes wl-up {
+  0% { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: none; }
 }
 @keyframes fab-pulse {
   0% { transform: scale(1); opacity: 0.45; }
