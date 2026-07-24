@@ -82,6 +82,12 @@ def verify_apple_identity_token(identity_token: str) -> dict:
         # kid evtl. frisch rotiert → einmal mit erzwungenem JWKS-Refresh.
         payload = decode_rs256_token(identity_token, _apple_keys(force=True))
     if payload is None:
+        # Der Grund gehört ins Log, nicht in die Antwort: Nach außen bleibt jede
+        # Ablehnung ununterscheidbar (sonst verrät sie, welche aud gelten).
+        # Ohne diese Zeilen sah eine kaputte Konfiguration exakt aus wie ein
+        # gefälschtes Token — genau daran war zuletzt nicht zu erkennen, warum
+        # der Browser-Login scheiterte.
+        logger.warning("Apple-Login abgelehnt: Signatur/Format ungültig")
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Apple-Anmeldung ungültig oder abgelaufen.")
 
     audiences = {settings.apple_bundle_id}
@@ -89,9 +95,15 @@ def verify_apple_identity_token(identity_token: str) -> dict:
         audiences.add(settings.apple_service_id)
     aud = payload.get("aud")
     aud_ok = aud in audiences or (isinstance(aud, list) and any(a in audiences for a in aud))
-    if payload.get("iss") != APPLE_ISSUER or not aud_ok:
+    if payload.get("iss") != APPLE_ISSUER:
+        logger.warning("Apple-Login abgelehnt: unerwarteter Aussteller %r", payload.get("iss"))
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Apple-Anmeldung ungültig oder abgelaufen.")
+    if not aud_ok:
+        logger.warning("Apple-Login abgelehnt: aud=%r, erlaubt sind %s "
+                       "(Bundle-ID = App, Services ID = Browser)", aud, sorted(audiences))
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Apple-Anmeldung ungültig oder abgelaufen.")
     if not payload.get("sub"):
+        logger.warning("Apple-Login abgelehnt: Token ohne sub")
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Apple-Anmeldung ungültig oder abgelaufen.")
     return payload
 

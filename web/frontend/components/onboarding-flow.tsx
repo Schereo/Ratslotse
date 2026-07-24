@@ -637,10 +637,15 @@ function TopicSheet({ topic, onClose, onSaved }: {
           </button>
         </div>
         {/* Die generierten Beschreibungen sind regelmäßig 5–7 Zeilen lang; mit
-            rows={3} war der Text im eigenen Feld abgeschnitten. */}
+            rows={3} war der Text im eigenen Feld abgeschnitten.
+
+            text-base auf dem Telefon (16 px): Darunter zoomt iOS beim Antippen
+            in das Feld hinein und der Rest des Blattes rutscht aus dem Bild.
+            Ab sm wieder die kompakten 13 px — dasselbe Muster wie in
+            components/ui/input.tsx. */}
         <textarea value={description} onChange={(e) => setDescription(e.target.value)}
           rows={6} aria-label="Beschreibung"
-          className="w-full rounded-xl border-[1.5px] border-primary bg-card px-3.5 py-3 text-[13px] leading-relaxed text-foreground outline-none" />
+          className="w-full rounded-xl border-[1.5px] border-primary bg-card px-3.5 py-3 text-base leading-relaxed text-foreground outline-none sm:text-[13px]" />
 
         <div className="mt-3.5 rounded-xl bg-muted/60 px-3.5 py-3">
           <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">

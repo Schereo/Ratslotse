@@ -29,10 +29,15 @@ class Settings(BaseSettings):
     cookie_secure: bool = True
 
     # Sign in with Apple (RL-1002): erlaubte aud-Werte des Identity-Tokens.
-    # Bundle-ID deckt die native App ab; die Service-ID käme für einen späteren
-    # Web-Flow dazu (leer = nicht konfiguriert).
+    # Bundle-ID deckt die native App ab, die Services ID den Browser-Flow.
+    # Beide sind feste Kennungen unserer App, keine Geheimnisse — deshalb als
+    # Default hier und nicht nur als Umgebungsvariable. Vorher stand die
+    # Services ID leer: Der Browser schickte (fest verdrahtet in lib/apple.ts)
+    # `de.ratslotse.web`, der Server kannte den Wert aber nur, wenn jemand
+    # APPLE_SERVICE_ID gesetzt hatte — fehlte sie, lief jede Web-Anmeldung in
+    # ein 401. Überschreibbar bleibt beides.
     apple_bundle_id: str = "de.ratslotse.app"
-    apple_service_id: str = ""
+    apple_service_id: str = "de.ratslotse.web"
 
     # Admin-LLM-Kosten (Design 21a): Monatsbudget für die Budget-Ampel
     # (Warnung ab 80 %). Reine Anzeige-Schwelle, drosselt nichts.

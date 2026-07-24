@@ -5,6 +5,18 @@ on:
     types: [closed]
     branches: [main]
 
+# Deploys müssen sich strikt abwechseln. Zwei kurz hintereinander gemergte PRs
+# starteten sonst zwei Läufe, die gleichzeitig `npm ci` auf demselben Server
+# ausführen — und das leert node_modules zu Beginn. Der zweite Lauf zog dem
+# ersten so die Abhängigkeiten unter dem laufenden Build weg; zurück blieben
+# 25 von 602 Paketen ohne `next`, und ratslotse.de lieferte 502
+# (24.07.2026, zwei Merges im Abstand von 17 Sekunden).
+# cancel-in-progress bewusst FALSE: Ein halb durchgelaufener Deploy ist genau
+# der Zustand, den wir vermeiden wollen — lieber warten.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
 jobs:
   # Sicherheitsnetz vor dem Deploy: derselbe Testlauf wie in test.yml, hier als
   # harte Abhängigkeit. Ein roter Lauf blockiert den Deploy — ein direkt (ohne
@@ -110,3 +122,21 @@ jobs:
             .venv/bin/pip install -q -r requirements.txt -r web/backend/requirements.txt
             cd web/frontend && npm ci --no-audit --no-fund && npm run build
             sudo systemctl restart nwz-web-api nwz-web-frontend
+
+            # Erst wenn beide Dienste wirklich antworten, gilt der Deploy als
+            # geglückt. Ohne diese Prüfung meldete der Lauf „success", während
+            # ratslotse.de längst 502 lieferte (nwz-web-frontend hing in einer
+            # Neustart-Schleife, `next: not found`) — der Ausfall fiel erst
+            # dadurch auf, dass sich jemand nicht anmelden konnte.
+            for i in $(seq 1 30); do
+              sleep 2
+              if curl -sf -o /dev/null http://127.0.0.1:3000/ \
+                 && curl -sf -o /dev/null http://127.0.0.1:8000/api/health; then
+                echo "Dienste antworten nach $((i * 2))s."
+                exit 0
+              fi
+            done
+            echo "FEHLER: Dienste antworten 60s nach dem Neustart nicht."
+            systemctl is-active nwz-web-api nwz-web-frontend || true
+            journalctl -u nwz-web-frontend -n 30 --no-pager || true
+            exit 1

@@ -116,6 +116,21 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   `weekly_enrich` mit; Gremien und Namens-Dubletten werden herausgefiltert.
 
 ### Behoben
+- **Fehlgeschlagene Apple-Anmeldungen bleiben nicht mehr stumm.** Schlug die
+  Anmeldung fehl, passierte sichtbar gar nichts — der Code behandelte jeden
+  Fehler wie einen Abbruch durch die Nutzer:in. Jetzt wird nur ein echter
+  Abbruch stillschweigend hingenommen; alles andere sagt Bescheid und landet im
+  Fehlerprotokoll. (Der Auslöser diesmal: Die Seite war nicht erreichbar.)
+- **Ins Beschreibungsfeld tippen zoomt nicht mehr hinein.** Beim Anpassen eines
+  Themas sprang iOS beim Antippen in das Feld hinein, weil die Schrift kleiner
+  als 16 Pixel war.
+- **„Mit Apple anmelden" im Browser geht wieder.** Der Browser schickt eine
+  andere Kennung als die App (Services ID statt Bundle-ID). Der Server kannte
+  diese Kennung nur, wenn sie eigens als Umgebungsvariable hinterlegt war —
+  fehlte sie, wurde jede Anmeldung über den Browser abgewiesen, während sie in
+  der App weiter funktionierte. Beide Kennungen sind jetzt fest hinterlegt.
+  Abgewiesene Anmeldungen nennen im Server-Log außerdem den Grund, sodass eine
+  Fehlkonfiguration nicht mehr wie ein gefälschtes Token aussieht.
 - **„Thema anpassen" (Einrichtung): mehr Platz, ruhigeres Laden.** Das
   Blatt von unten war zu niedrig — für die vollständige Beschreibung musste man
   fast immer scrollen, und beim Scrollen bewegte sich die Seite dahinter mit.
