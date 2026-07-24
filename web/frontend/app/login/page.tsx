@@ -59,7 +59,10 @@ export default function LoginPage() {
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <label htmlFor="email" className="mb-1 block text-sm font-medium text-foreground">E-Mail</label>
-            <Input id="email" type="email" className="h-11" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus autoComplete="email" />
+            {/* Kein autoFocus: Das statische HTML trägt das Attribut, der Browser
+                setzt es schon beim Parsen — die Tastatur klappte damit noch vor
+                React auf, auf dem Gerät sogar über dem Willkommens-Auftakt. */}
+            <Input id="email" type="email" className="h-11" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
           </div>
           <div>
             <label htmlFor="password" className="mb-1 block text-sm font-medium text-foreground">Passwort</label>
