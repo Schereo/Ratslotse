@@ -127,7 +127,7 @@ export default function DashboardPage() {
       {/* RL-1102: nur in der App, solange Push aus ist (7-Tage-Snooze). */}
       <PushPrimer />
 
-      <FirstStepsBar hasTopic={topicCount > 0} />
+      <FirstStepsBar />
 
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_1.2fr_0.9fr]">
         {/* Nächste Sitzungen */}
@@ -294,7 +294,7 @@ function CountUpNumber({ value }: { value: number }) {
 /** „Erste Schritte" als EINZEILIGE Leiste (RL-401): Lotti 40 px, Fortschritt,
  *  „Weitermachen" zum nächsten offenen Schritt. Konfetti-Logik wie zuvor;
  *  nach Abschluss (auf irgendeinem Gerät) verschwindet die Leiste. */
-function FirstStepsBar({ hasTopic }: { hasTopic: boolean }) {
+function FirstStepsBar() {
   const { ready, state, setCelebrated } = useOnboarding();
   const visited = state.steps;
 
@@ -303,7 +303,10 @@ function FirstStepsBar({ hasTopic }: { hasTopic: boolean }) {
     { id: "beschluesse", title: "Beschlüsse durchstöbern", href: "/council" },
     { id: "analyse", title: "Die Analyse erkunden", href: "/council?tab=analysis" },
     { id: "karten", title: "Die Stadtkarte entdecken", href: "/council?tab=themen" },
-    { id: "thema", title: "Erstes Thema anlegen", href: "/topics", done: hasTopic },
+    // „Erstes Thema anlegen" stand hier früher als fünfter Punkt. Er war der
+    // einzige, den die Tour nicht abhaken konnte (er verlangt ein echtes
+    // Thema) — die Leiste blieb deshalb nach jeder Tour unvollständig stehen.
+    // Themen anzulegen bewirbt jetzt allein die Tour-Station „Deine Themen".
   ];
   const doneCount = steps.filter((s) => s.done || visited.includes(s.id)).length;
   const allDone = doneCount === steps.length;

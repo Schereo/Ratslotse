@@ -17,8 +17,11 @@ from ..schemas import OnboardingUpdate, SetupUpdate
 router = APIRouter(prefix="/api/onboarding", tags=["onboarding"])
 
 # Muss zu den Step-Ids im Dashboard passen (FirstSteps) — Unbekanntes wird
-# still verworfen, damit die Spalte nicht mit Müll wächst.
-KNOWN_STEPS = {"frag", "beschluesse", "analyse", "karten", "thema"}
+# still verworfen, damit die Spalte nicht mit Müll wächst. "thema" ist bewusst
+# nicht mehr dabei: Der Schritt verlangte ein echtes Thema und war deshalb der
+# einzige, den die Lotti-Tour nicht abhaken konnte. Schon gespeicherte "thema"-
+# Einträge bleiben unangetastet, sie werden bei der Anzeige einfach ignoriert.
+KNOWN_STEPS = {"frag", "beschluesse", "analyse", "karten"}
 
 
 @router.get("")
