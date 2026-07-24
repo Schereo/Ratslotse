@@ -8,6 +8,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Geführter Start in der App.** Statt drei Karten, die nur erzählen, was
+  Ratslotse kann, richtet die App jetzt beim ersten Start mit dir ein, wovon
+  sie lebt: **Gremien abonnieren** (jedes mit einem Satz, was dort verhandelt
+  wird), **Themen anlegen** (Name genügt — die Beschreibung entsteht
+  automatisch) und **Mitteilungen erlauben**. Jeder Schritt ist überspringbar,
+  und wer mittendrin abbricht, macht beim nächsten Start dort weiter. (#314)
 - **Themen beschreiben sich selbst.** Bisher musste man beim Anlegen eines
   Themas zwei Felder ausfüllen — und die Beschreibung entschied unsichtbar
   darüber, welche Beschlüsse einem später gemeldet werden. Jetzt reicht der

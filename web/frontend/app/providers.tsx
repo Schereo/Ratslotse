@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { AuthProvider } from "@/lib/auth";
-import { AppIntro } from "@/components/app-intro";
+import { OnboardingFlow } from "@/components/onboarding-flow";
 import { OfflinePill } from "@/components/offline-pill";
 import { PullToRefresh } from "@/components/pull-to-refresh";
 import { Toaster } from "@/components/ui";
@@ -61,11 +61,17 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   const inner = (
     <>
-      <AuthProvider>{children}</AuthProvider>
-      {/* RL-1103/1104: Offline-Hinweis (web + app), First-Run-Intro und
-          Pull-to-Refresh (beide nur App). */}
+      <AuthProvider>
+        {children}
+        {/* 26a: richtet ein statt nur vorzustellen — ersetzt die drei
+            Intro-Karten (RL-1103). Wer die schon gesehen hat, gilt als
+            Bestandsnutzer und wird nicht nachträglich durchgeschickt.
+            Muss INNERHALB des AuthProviders hängen: Der Flow richtet Abos und
+            Themen ein, die es ohne Konto nicht gibt. */}
+        <OnboardingFlow />
+      </AuthProvider>
+      {/* RL-1103/1104: Offline-Hinweis (web + app) und Pull-to-Refresh (nur App). */}
       <OfflinePill />
-      <AppIntro />
       <PullToRefresh />
       <Toaster />
     </>
