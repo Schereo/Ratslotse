@@ -42,7 +42,11 @@ const STEPS: TourStep[] = [
   {
     id: "suche", route: "/council?tab=decisions&mode=suchen", anchor: "beschluss-suche", pose: "search",
     title: "Beschlüsse durchsuchen",
-    text: "Volltextsuche über alle Beschlüsse — mit Filtern nach Ergebnis, Themenfeld, Ausschuss und Zeitraum. Tipp: Die Taste „/“ springt von überall hierher.",
+    // Ohne Wegbeschreibung: Der frühere Tipp „die Taste / springt hierher" ist
+    // auf dem Handy nicht ausführbar — die Tour läuft aber in der App wie im
+    // Browser. Ein Nav-Label ginge auch nicht: Es heißt am Rechner „Suchen &
+    // Fragen" und auf dem Handy „Ratsinfo". Also nur, was überall gilt.
+    text: "Volltextsuche über alle Beschlüsse — eingrenzen lässt sich nach Ergebnis, Themenfeld, Ausschuss und Zeitraum.",
   },
   {
     id: "ki", route: "/council?tab=decisions", anchor: "ki-frage-tab", pose: "celebrate",

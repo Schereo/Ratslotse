@@ -95,6 +95,14 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   `weekly_enrich` mit; Gremien und Namens-Dubletten werden herausgefiltert.
 
 ### Behoben
+- **Mitteilungen wurden nach dem Einrichten nicht wirklich zugestellt.** Schritt 3
+  holte zwar die Erlaubnis auf dem Gerät ein, stellte den Zustellweg des Kontos
+  aber nicht um — es blieb auf „nur E-Mail". Zu erkennen war das nur daran, dass
+  „Heute" danach weiter um Erlaubnis bat: zu Recht.
+- Die Karte „Mitteilungen aktivieren" verschwand nicht mehr, wenn sie einmal
+  sichtbar war — selbst nachdem Push längst an war.
+- Der Tour-Hinweis zur Beschluss-Suche empfahl die Taste „/", die es auf dem
+  Handy nicht gibt.
 - **Themen werden jetzt wirklich geprüft.** Bisher konnte man beliebige Sätze —
   auch getarnte Anweisungen an die KI — als Thema anlegen: Der Hinweis erschien
   erst, nachdem gespeichert war. Jetzt gibt es drei Fälle statt zwei. Ein Thema
