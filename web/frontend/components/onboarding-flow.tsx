@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Bell, Check, Landmark, Loader2, Plus, Sparkles, X } from "lucide-react";
 import { api } from "@/lib/api";
@@ -50,6 +51,10 @@ export function isOnboardingVisible(): boolean {
 /** Wird beim Abschluss/Abbruch gefeuert, damit aufgeschobene Abzeichen-Meldungen
  *  nachgeholt werden können. */
 export const ONBOARDING_DONE_EVENT = "ratslotse:onboarding-done";
+/** Der Auftakt tritt beiseite und gibt den Login frei. Die Login-Seite liegt
+ *  darunter längst gemountet — ohne dieses Signal begrüßte sie eine:n
+ *  Erstnutzer:in mit „Willkommen zurück". */
+export const ONBOARDING_NEEDS_LOGIN_EVENT = "ratslotse:onboarding-needs-login";
 
 /** Den erreichten Schritt auch am Konto festhalten (fire-and-forget).
  *  Der lokale Speicher merkt sich den Stand fürs Gerät; erst der Server-Stand
@@ -59,8 +64,19 @@ function reportSetupStep(step: number, done = false) {
   api.post("/onboarding/setup", { step, done }).catch(() => {});
 }
 
+/** Ein Konto allein reicht nicht — frisch registriert ist es „pending" und
+ *  unbestätigt, und die Schritte 1–3 (Abos, Themen) laufen dann in 403. Erst
+ *  wenn es freigeschaltet ist, geht es weiter; bis dahin liegt die
+ *  Bestätigungs-Aufforderung frei. Admins sind wie im App-Layout ausgenommen. */
+function isUsable(user: { status?: string; email_verified?: boolean; role?: string } | null): boolean {
+  if (!user) return false;
+  if (user.role === "admin") return true;
+  return user.status === "active" && !!user.email_verified;
+}
+
 export function OnboardingFlow() {
   const { user, loading } = useAuth();
+  const router = useRouter();
   const theme = useMascotTheme();
   const [step, setStep] = useState<Step | null>(null);
 
@@ -81,7 +97,7 @@ export function OnboardingFlow() {
       // Konto. Die Schritte 1–3 brauchen dagegen eins (Abos und Themen hängen
       // daran): Ohne Konto tritt der Flow beiseite und gibt den Login frei;
       // sobald angemeldet, macht er genau dort weiter.
-      if (!user && saved > 0) {
+      if (!isUsable(user) && saved > 0) {
         setStep(null);
         return;
       }
@@ -103,20 +119,28 @@ export function OnboardingFlow() {
           String(Date.now() + PUSH_SNOOZE_DAYS * 24 * 60 * 60 * 1000));
       } catch { /* Speicher voll/gesperrt — dann eben nochmal beim nächsten Start */ }
       setStep(null);
-      if (user) reportSetupStep(3, true);
+      if (isUsable(user)) reportSetupStep(3, true);
       window.dispatchEvent(new Event(ONBOARDING_DONE_EVENT));
       return;
     }
     try { localStorage.setItem(STEP_KEY, String(next)); } catch { /* egal */ }
     // Nach dem Auftakt ohne Konto: beiseitetreten, damit der Login sichtbar
     // wird. Der Schritt ist gemerkt — nach dem Anmelden geht es dort weiter.
-    setStep(!user && next > 0 ? null : next);
+    const asideForLogin = !isUsable(user) && next > 0;
+    setStep(asideForLogin ? null : next);
+    if (asideForLogin) {
+      // Registrieren statt Anmelden: Wer den Auftakt gerade zum ersten Mal
+      // sieht, hat in aller Regel noch kein Konto. Der Weg zurück steht auf
+      // dem Registrieren-Screen („Schon registriert? Anmelden").
+      if (!user) router.replace("/register");
+      window.dispatchEvent(new Event(ONBOARDING_NEEDS_LOGIN_EVENT));
+    }
   };
 
   // Den Stand melden, sobald ein Konto da ist — auch nachträglich: Wer den
   // Auftakt vor dem Login sieht, meldet Schritt 1 erst nach dem Anmelden.
   useEffect(() => {
-    if (user && step !== null && step > 0) reportSetupStep(step);
+    if (isUsable(user) && step !== null && step > 0) reportSetupStep(step);
   }, [user, step]);
 
   // Solange der Flow oben liegt, halten Abzeichen-Toasts still (s. flowVisible).

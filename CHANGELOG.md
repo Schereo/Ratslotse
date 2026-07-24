@@ -8,6 +8,10 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Erst begrüßen, dann registrieren.** Nach „Los geht's" geht es direkt zum
+  Konto-Erstellen statt zum Anmelden — wer die App zum ersten Mal öffnet, hat in
+  aller Regel noch kein Konto. Der Weg zurück steht als „Schon registriert?
+  Anmelden" darunter.
 - **Erst begrüßen, dann anmelden.** Der Willkommens-Auftakt läuft jetzt vor dem
   Login: Man sieht zuerst, worum es geht, und legt erst nach „Los geht's" ein
   Konto an. Der erreichte Schritt wird zusätzlich am Konto gespeichert, sodass
@@ -70,6 +74,10 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   `weekly_enrich` mit; Gremien und Namens-Dubletten werden herausgefiltert.
 
 ### Behoben
+- Ungültige Eingaben in Formularen zeigten die rohe Fehlermeldung des Servers
+  („[{\"type\":\"value_error\",\"loc\":…"). Jetzt steht dort ein Satz, z. B.
+  „Diese E-Mail-Adresse ist ungültig."
+
 - **Themen-Vorschläge sind nicht mehr zu breit.** Unter den vorgeschlagenen
   Themen konnten Gattungsbegriffe wie „Klima" oder „Bericht" auftauchen — als
   Abo hätten sie halb Oldenburg eingesammelt. Vorschläge durchlaufen jetzt
@@ -120,6 +128,8 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   die Trefferliste darunter. (#298)
 
 ### Geändert
+- Der Ladekreis beim App-Start sitzt jetzt mittig auf dem Bildschirm statt ganz
+  oben halb hinter der Dynamic Island.
 - Der Abzeichen-Toast hält sich während der Einrichtung zurück und meldet sich
   erst danach — vorher gratulierte er schon über dem Willkommens-Gruß.
 - **Beschluss-Seite aufgeräumt.** Die Seite führte mit einer Wand Amtssprache
