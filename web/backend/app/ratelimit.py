@@ -56,8 +56,6 @@ class RateLimiter:
 topic_describe_limiter = RateLimiter(max_calls=20, window_seconds=300)
 login_limiter = RateLimiter(max_calls=10, window_seconds=60)
 register_limiter = RateLimiter(max_calls=5, window_seconds=300)
-nwz_creds_limiter = RateLimiter(max_calls=5, window_seconds=300)
-link_limiter = RateLimiter(max_calls=5, window_seconds=300)
 forgot_password_limiter = RateLimiter(max_calls=5, window_seconds=900)
 verify_email_limiter = RateLimiter(max_calls=5, window_seconds=900)
 # „Frag den Rat" ist der einzige Endpoint, der pro Aufruf LLM-Kosten erzeugt —

@@ -297,7 +297,6 @@ def decision_detail(
         "sub_votes": [],
         "vorlage_journey": [],
         "similar": store.get_similar(decision_id, limit=5),
-        "news": store.get_news_for_decision(decision_id),
         "entities": store.entities_for_decision(decision_id),
     }
     # Wichtigkeits-Aufschlüsselung (welche Signale trieben den Score) — erklärt
@@ -589,11 +588,3 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
         gen(), media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
-
-
-@router.get("/decision-stats")
-def decision_stats(
-    _user: dict = Depends(require_active),
-    store: CouncilStore = Depends(get_council_store),
-) -> dict:
-    return store.protocol_stats()

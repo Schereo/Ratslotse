@@ -360,16 +360,6 @@
 }
 
 /* Sanft driftende Wolken in der Hero-Hafenszene. */
-.animate-cloud-drift {
-  animation: cloud-drift 26s ease-in-out infinite;
-}
-.animate-cloud-drift-slow {
-  animation: cloud-drift 40s ease-in-out infinite;
-}
-@keyframes cloud-drift {
-  0%, 100% { transform: translateX(-5%); }
-  50% { transform: translateX(6%); }
-}
 
 /* Druck: Navigation/Chrome raus, Inhalt volle Breite — Beschluss-Seiten
    lassen sich so sauber ausdrucken oder als PDF weitergeben. */
