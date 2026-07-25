@@ -17,20 +17,20 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   gewohnten Weg (E-Mail und/oder Mitteilung). Alles Verfolgte steht unter
   *Meine Themen* mit dem letzten und dem nächsten Halt, dort lässt es sich auch
   wieder abbestellen. Was beim Abonnieren schon dastand, gilt nicht als
-  Neuigkeit. (#329)
+  Neuigkeit. (#332)
 - **Sitzung in den eigenen Kalender.** Jede Sitzung hat einen
   **Kalender**-Knopf, der einen Termin (`.ics`) mit Uhrzeit, Ort, Tagesordnung
   und Ratsinfo-Link erzeugt — im Browser als Download, in der App über das
   Teilen-Blatt. Besonders bei erst terminierten Sitzungen, deren Tagesordnung
-  noch aussteht. (#329)
+  noch aussteht. (#332)
 - **KI-Antworten teilen und drucken.** Unter einer fertigen Antwort stehen
   *Teilen* und *Drucken*; der geteilte Link nimmt die Frage mit, die Antwort
   entsteht beim Empfänger aus dessen Datenstand neu. Die Beschluss-Seite hat
   denselben Druck-Knopf — das Druck-Layout gab es längst, es fehlte der
-  Auslöser. (#329)
+  Auslöser. (#332)
 - **Suchverlauf im großen Suchfeld.** Beim Antippen des leeren Feldes stehen
   die letzten fünf Suchen und Vorschläge aus dem, was gerade im Rat läuft —
-  bisher hatte das nur die Befehlspalette (⌘K). (#329)
+  bisher hatte das nur die Befehlspalette (⌘K). (#332)
 - **Erst begrüßen, dann registrieren.** Nach „Los geht's" geht es direkt zum
   Konto-Erstellen statt zum Anmelden — wer die App zum ersten Mal öffnet, hat in
   aller Regel noch kein Konto. Der Weg zurück steht als „Schon registriert?
@@ -101,15 +101,15 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Schritte und die Frage nach Mitteilungen konnten sich zu vier Kästen
   stapeln und den eigentlichen Inhalt unter die Falz schieben. Jetzt steht der
   dringlichste davon oben, der Rest hinter einer Pille, die sie auf Tippen
-  zeigt. (#329)
+  zeigt. (#332)
 - **Ausschuss-Abos lesen sich wie im Einrichtungs-Assistenten**: kurze Namen,
   ein Satz dazu, was das Gremium behandelt, und nach Alltagsbezug sortiert
-  statt in amtlicher Reihenfolge. (#329)
+  statt in amtlicher Reihenfolge. (#332)
 - **Nur noch eine Lupe in der Seitenleiste.** Die Befehlspalette sitzt als
-  ⌘-Knopf neben dem Logo; die Lupe gehört jetzt allein der Suche. (#329)
+  ⌘-Knopf neben dem Logo; die Lupe gehört jetzt allein der Suche. (#332)
 - **„Zahl der Woche" führt weiter** — die gezählten Beschlüsse lassen sich
-  direkt ansehen; darunter steht „Zuletzt angesehen". (#329)
-- Der Sitzungs-Umschalter heißt „Anstehend" statt „Kommend". (#329)
+  direkt ansehen; darunter steht „Zuletzt angesehen". (#332)
+- Der Sitzungs-Umschalter heißt „Anstehend" statt „Kommend". (#332)
 - **Ein verdientes Abzeichen wird jetzt richtig gefeiert.** Bisher blitzte nur
   eine graue Systemmeldung auf, während Konfetti über den ganzen Bildschirm
   regnete — man erfuhr nicht, *warum* man das Abzeichen bekommen hat, und wo es
@@ -167,24 +167,24 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 - **Tagesordnungspunkte führen jetzt zum Beschluss.** In einer aufgeklappten
   Sitzung war jeder Punkt toter Text; auch der Ergebnis-Punkt daneben blieb
   unsichtbar, weil die Tagesordnung ihre Nummern mit Präfix führt („Ö 6.1") und
-  das Protokoll ohne („6.1") — der Abgleich traf nie. Beide greifen jetzt. (#329)
+  das Protokoll ohne („6.1") — der Abgleich traf nie. Beide greifen jetzt. (#332)
 - **„Zurück" führt nicht mehr aus der App.** Wer einen Beschluss über eine
   Mitteilung oder einen geteilten Link öffnete, landete beim Zurück-Tippen im
   Nichts. Jetzt geht es zur zugehörigen Sitzung. Zusätzlich lässt sich mit
   *Vorheriger/Nächster TOP* direkt durch die Beschlüsse einer Sitzung
-  blättern. (#329)
+  blättern. (#332)
 - **„Alle ansehen" bei einem Thema öffnet die richtige Suche** — mit Filtern,
-  Sortierung und teilbarer Adresse, statt eines Dialogs ohne all das. (#329)
+  Sortierung und teilbarer Adresse, statt eines Dialogs ohne all das. (#332)
 - **Treffer werden vollständig hervorgehoben.** Bei mehreren Suchwörtern
   („radwege innenstadt") war vorher nichts markiert, weil nur die Eingabe als
   Ganzes gesucht wurde. Jetzt wird jedes Wort an jeder Fundstelle
-  hervorgehoben. (#329)
+  hervorgehoben. (#332)
 - **Laufende KI-Antwort abbrechen.** Ein **Stopp** hält den bereits
   geschriebenen Text mit dem Vermerk „abgebrochen" und gibt die Eingabe sofort
-  frei. (#329)
+  frei. (#332)
 - **Sitzungen, Stadtkarte und Analyse sind auf dem Telefon wieder direkt
   erreichbar** — über eine Ansichtsleiste über der Seite statt nur über das
-  Menü. (#329)
+  Menü. (#332)
 - **Die Erinnerung an eine offene Einrichtung ging nie raus.** Der zuständige
   tägliche Lauf stürzte bei jedem Start sofort ab (ein fehlender Datenbank-Pfad),
   noch bevor er überhaupt nach offenen Einrichtungen sah — und weil er zusätzlich
