@@ -116,6 +116,11 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   `weekly_enrich` mit; Gremien und Namens-Dubletten werden herausgefiltert.
 
 ### Behoben
+- **Die Erinnerung an eine offene Einrichtung ging nie raus.** Der zuständige
+  tägliche Lauf stürzte bei jedem Start sofort ab (ein fehlender Datenbank-Pfad),
+  noch bevor er überhaupt nach offenen Einrichtungen sah — und weil er zusätzlich
+  die Server-Konfiguration nicht einlas, konnte nicht einmal die Fehlermeldung
+  darüber verschickt werden. Beides behoben und mit Tests abgesichert.
 - **Fehlgeschlagene Apple-Anmeldungen bleiben nicht mehr stumm.** Schlug die
   Anmeldung fehl, passierte sichtbar gar nichts — der Code behandelte jeden
   Fehler wie einen Abbruch durch die Nutzer:in. Jetzt wird nur ein echter
