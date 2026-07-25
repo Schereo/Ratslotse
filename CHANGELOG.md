@@ -375,6 +375,17 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   reine NWZonline-Suche umgestellt — der ungenutzte Vorschlags-Kanal daneben
   ist jetzt auch im Code weg.
 
+### Hinzugefügt
+- **Geteilte Links erzählen jetzt selbst, worum es geht.** Wer einen Beschluss
+  weiterschickte, verschickte bisher fünfmal dieselbe Kachel: In WhatsApp,
+  Signal oder Mastodon stand unter jedem Link „Ratslotse — Oldenburger
+  Ratsinformationen verständlich". Jetzt steht dort, was drinsteht — **Titel und
+  Ergebnis** („Radwegeausbau Nadorster Straße — angenommen"), darunter
+  **Gremium, Datum und die Kurzfassung**. Das gilt für Beschlüsse, Themen,
+  Ratsmitglieder und Sitzungen; nebenbei bekommen auch Browser-Tabs und
+  Lesezeichen sprechende Namen statt viermal „Ratslotse", und Suchmaschinen
+  finden die Seiten überhaupt erst.
+
 ### Behoben
 - **Nicht gefunden heißt nicht mehr rausgeworfen.** Wer einem alten Link folgte
   — etwa auf einen inzwischen zusammengeführten Beschluss —, landete auf einer
