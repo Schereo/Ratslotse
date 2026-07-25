@@ -1377,9 +1377,15 @@ class Store:
     def unseen_hit_counts(self, owner_id: int) -> dict[int, int]:
         """RL-903: {topic_id: Anzahl noch nicht gesehener Beschluss-Treffer}
         für alle Themen des Kontos — speist Sidebar-Zähler und „n neu"-Badges."""
+        # JOIN topics ist Absicht, nicht Zierde: Ohne ihn zählen Treffer eines
+        # gelöschten Themas mit, und weil der Zähler in der Seitenleiste über
+        # ALLE Themen summiert, stünde dort eine Zahl, die durch nichts mehr
+        # kleiner wird — das Thema taucht ja in keiner Liste mehr auf.
+        # agenda_matches_for_owner macht es seit jeher richtig.
         rows = self._conn.execute(
             """SELECT m.topic_id, COUNT(*) AS n
                FROM council_topic_matches m
+               JOIN topics t ON t.id = m.topic_id AND t.owner_id = m.owner_id
                LEFT JOIN topic_hits_seen s
                  ON s.owner_id = m.owner_id AND s.topic_id = m.topic_id
                     AND s.decision_id = m.decision_id
@@ -1532,9 +1538,38 @@ class Store:
         return TopicRow(id=cur.lastrowid, owner_id=owner_id, chat_id=chat_id,
                         name=name, description=description, created_at=now)
 
+    # Alles, was an EINEM Thema hängt. Wird ein Thema gelöscht, muss das hier
+    # mit weg — sonst zählt der ungelesen-Zähler in der Seitenleiste Treffer
+    # eines Themas weiter, das in keiner Liste mehr steht: Es gibt dann keine
+    # Oberfläche mehr, über die man sie als gesehen markieren könnte, und die
+    # Zahl bleibt für immer stehen. (Die Konto-Löschung war nie betroffen, die
+    # geht über USER_OWNED_TABLES.)
+    TOPIC_OWNED_TABLES: tuple[str, ...] = (
+        "council_topic_matches",
+        "topic_hits_seen",
+        "council_agenda_matches",
+        "article_topic_matches",
+        "topic_classified_editions",
+    )
+
     def delete_topic(self, topic_id: int) -> None:
-        self._conn.execute("DELETE FROM topics WHERE id = ?", (topic_id,))
-        self._conn.commit()
+        with self._conn:
+            for table in self.TOPIC_OWNED_TABLES:
+                self._conn.execute(f"DELETE FROM {table} WHERE topic_id = ?", (topic_id,))
+            self._conn.execute("DELETE FROM topics WHERE id = ?", (topic_id,))
+
+    def purge_orphaned_topic_rows(self) -> dict[str, int]:
+        """Zeilen aufräumen, deren Thema es nicht mehr gibt — Altlast aus der
+        Zeit, als `delete_topic` nur die Themenzeile entfernte. Idempotent."""
+        weg: dict[str, int] = {}
+        with self._conn:
+            for table in self.TOPIC_OWNED_TABLES:
+                cur = self._conn.execute(
+                    f"DELETE FROM {table} WHERE topic_id NOT IN (SELECT id FROM topics)"
+                )
+                if cur.rowcount:
+                    weg[table] = cur.rowcount
+        return weg
 
     def update_topic(self, topic_id: int, name: str, description: str) -> None:
         self._conn.execute(

@@ -5,6 +5,17 @@ Alle nennenswerten Änderungen an diesem Projekt (Ratslotse) werden hier dokumen
 Das Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unreleased]
+
+### Behoben
+- **Der Zähler an „Meine Themen" wurde man nicht mehr los.** Wer ein Thema
+  löschte, behielt dessen Treffer als ungelesen — die orange Zahl in der
+  Navigation zählte sie weiter, obwohl das Thema in keiner Liste mehr stand.
+  Damit gab es keine Stelle mehr, an der man sie hätte ansehen können, und die
+  Zahl blieb für immer stehen. Beim Löschen eines Themas verschwinden jetzt auch
+  seine Treffer, und der Zähler ignoriert Reste gelöschter Themen grundsätzlich.
+  Bestehende Altlasten sind aufgeräumt. (#PR)
+
 ## [1.4.0] – 2026-07-25
 
 ### Hinzugefügt
