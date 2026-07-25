@@ -14,7 +14,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Damit gab es keine Stelle mehr, an der man sie hätte ansehen können, und die
   Zahl blieb für immer stehen. Beim Löschen eines Themas verschwinden jetzt auch
   seine Treffer, und der Zähler ignoriert Reste gelöschter Themen grundsätzlich.
-  Bestehende Altlasten sind aufgeräumt. (#PR)
+  Bestehende Altlasten sind aufgeräumt. (#340)
 
 ## [1.4.0] – 2026-07-25
 
