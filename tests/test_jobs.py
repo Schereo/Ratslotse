@@ -85,7 +85,7 @@ def test_registry_deckt_die_cron_eintraege_ab():
     der crontab braucht dort einen Eintrag mit Takt und Toleranz."""
     assert {j["key"] for j in JOBS} == {
         "check_council", "check_committees", "check_protocols", "weekly_enrich",
-        "remind_setup", "backup_db",
+        "check_vorlage_follows", "remind_setup", "backup_db",
     }
     for job in JOBS:
         assert BY_KEY[job["key"]] is job

@@ -84,6 +84,27 @@ CREATE TABLE IF NOT EXISTS committee_subscriptions (
     UNIQUE(owner_id, committee_name)
 );
 
+-- „Diesen Vorgang verfolgen" (Design 28a/W1). Themen und Ausschuss-Abos sind
+-- breite Netze; wer EINE konkrete Vorlage durch die Gremien begleiten will —
+-- die Schule im eigenen Viertel, das Stadion — hatte bisher keinen Weg dazu
+-- außer regelmäßig selbst nachzusehen. Ein Follow hängt an der kvonr (der
+-- stabilen Vorlagen-Id des Ratsinfo); vorlage_nr und title sind eine Kopie
+-- fürs Anzeigen, weil sie in der anderen Datenbank liegen (kein Join möglich).
+-- `stations` hält den zuletzt GEMELDETEN Stand der Beratungsfolge: Der Cron
+-- vergleicht dagegen und schickt nur, was wirklich dazugekommen ist.
+CREATE TABLE IF NOT EXISTS vorlage_follows (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner_id    INTEGER NOT NULL,
+    kvonr       INTEGER NOT NULL,
+    vorlage_nr  TEXT NOT NULL DEFAULT '',
+    title       TEXT NOT NULL DEFAULT '',
+    stations    TEXT NOT NULL DEFAULT '[]',
+    created_at  TEXT NOT NULL,
+    notified_at TEXT,
+    UNIQUE(owner_id, kvonr)
+);
+CREATE INDEX IF NOT EXISTS idx_vorlage_follows_kvonr ON vorlage_follows(kvonr);
+
 CREATE TABLE IF NOT EXISTS article_topic_matches (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
     owner_id         INTEGER NOT NULL,
@@ -318,6 +339,7 @@ CREATE INDEX IF NOT EXISTS idx_feedback_created ON feedback(created_at DESC);
 USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     ("topics", "owner_id"),
     ("committee_subscriptions", "owner_id"),
+    ("vorlage_follows", "owner_id"),
     ("topic_hits_seen", "owner_id"),
     ("council_topic_matches", "owner_id"),
     ("council_agenda_matches", "owner_id"),
@@ -1571,3 +1593,71 @@ class Store:
         targets = {r["owner_id"]: dict(r) for r in rows}
         self._attach_push_tokens(targets)
         return targets
+
+    # ---- verfolgte Vorgänge (Design 28a/W1) ----
+
+    def follow_vorlage(self, owner_id: int, kvonr: int, *, vorlage_nr: str = "",
+                       title: str = "", stations: str = "[]") -> bool:
+        """Vorgang abonnieren. True = neu angelegt, False = folgte schon.
+
+        `stations` ist der Stand BEIM ABONNIEREN: Was heute schon in der
+        Beratungsfolge steht, ist keine Neuigkeit — sonst käme direkt nach dem
+        Klick eine Meldung über Stationen, die man gerade selbst gelesen hat.
+        """
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            cur = self._conn.execute(
+                "INSERT OR IGNORE INTO vorlage_follows "
+                "(owner_id, kvonr, vorlage_nr, title, stations, created_at) VALUES (?,?,?,?,?,?)",
+                (owner_id, kvonr, vorlage_nr or "", title or "", stations, now),
+            )
+        return cur.rowcount > 0
+
+    def unfollow_vorlage(self, owner_id: int, kvonr: int) -> bool:
+        with self._conn:
+            cur = self._conn.execute(
+                "DELETE FROM vorlage_follows WHERE owner_id = ? AND kvonr = ?", (owner_id, kvonr)
+            )
+        return cur.rowcount > 0
+
+    def get_vorlage_follows(self, owner_id: int) -> list[dict]:
+        rows = self._conn.execute(
+            "SELECT id, kvonr, vorlage_nr, title, created_at, notified_at "
+            "FROM vorlage_follows WHERE owner_id = ? ORDER BY created_at DESC",
+            (owner_id,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def is_following_vorlage(self, owner_id: int, kvonr: int) -> bool:
+        return self._conn.execute(
+            "SELECT 1 FROM vorlage_follows WHERE owner_id = ? AND kvonr = ?", (owner_id, kvonr)
+        ).fetchone() is not None
+
+    def get_vorlage_follow_targets(self) -> list[dict]:
+        """Alle Follows samt Zustellinfo — Grundlage von check_vorlage_follows.py.
+
+        Eine Zeile je Follow (nicht je Konto): Der Cron holt die Beratungsfolge
+        einmal je kvonr und meldet dann jedem folgenden Konto einzeln. Gesperrte
+        Konten bleiben draußen — sie sollen keine Post bekommen.
+        """
+        rows = self._conn.execute(
+            """SELECT f.id, f.owner_id, f.kvonr, f.vorlage_nr, f.title, f.stations,
+                      wu.delivery_channel, wu.email, wu.display_name
+               FROM vorlage_follows f JOIN web_users wu ON wu.id = f.owner_id
+               WHERE wu.status = 'active'
+               ORDER BY f.kvonr"""
+        ).fetchall()
+        out = [dict(r) for r in rows]
+        owners: dict[int, dict] = {o["owner_id"]: {} for o in out}
+        self._attach_push_tokens(owners)
+        for o in out:
+            o["push_tokens"] = owners[o["owner_id"]].get("push_tokens", [])
+        return out
+
+    def mark_vorlage_follow_notified(self, follow_id: int, stations: str) -> None:
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "UPDATE vorlage_follows SET stations = ?, notified_at = ? WHERE id = ?",
+                (stations, now, follow_id),
+            )

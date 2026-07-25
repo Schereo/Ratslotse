@@ -5,6 +5,7 @@ import json
 import os
 import sys
 import tempfile
+from datetime import date, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
@@ -304,7 +305,7 @@ def test_admin_jobs_listet_registry_auch_ohne_laeufe(client):
     b = client.get("/api/admin/jobs").json()
     assert {j["key"] for j in b} == {
         "check_council", "check_committees", "check_protocols", "weekly_enrich",
-        "remind_setup", "backup_db",
+        "check_vorlage_follows", "remind_setup", "backup_db",
     }
     job = next(j for j in b if j["key"] == "check_council")
     assert job["state"] == "unknown" and job["last"] is None and job["history"] == []
@@ -1943,3 +1944,106 @@ def test_decisions_topic_ohne_treffer_liefert_leer(client):
     council.close()
     tid = client.post("/api/topics", json={"name": "Leer", "description": "ohne Treffer"}).json()["id"]
     assert client.get(f"/api/council/decisions?limit=50&topic={tid}").json()["total"] == 0
+
+
+# --- Vorgänge verfolgen (Design 28a/W1) ------------------------------------
+
+def _seed_vorlage(kvonr: int = 4711, vorlage_nr: str = "26/0396",
+                  stations: list[tuple[str, str, str | None]] | None = None) -> None:
+    """Eine Vorlage samt Beratungsfolge in die Council-DB legen."""
+    council = CouncilStore(COUNCIL_DB)
+    with council._conn:
+        council._conn.execute(
+            "INSERT OR REPLACE INTO council_vorlagen(kvonr, vorlage_nr, title, fetched_at) "
+            "VALUES (?,?,?,'2026-01-01')", (kvonr, vorlage_nr, "Stadionneubau Maastrichter Straße"))
+        for datum, gremium, ergebnis in (stations or []):
+            council._conn.execute(
+                "INSERT INTO council_beratungen(kvonr, datum, gremium, ergebnis, fetched_at) "
+                "VALUES (?,?,?,?,'2026-01-01')", (kvonr, datum, gremium, ergebnis))
+    council.close()
+
+
+def test_vorlage_follow_anlegen_und_wieder_loesen(client):
+    _register(client)
+    _seed_vorlage(stations=[("2026-01-15", "Verkehrsausschuss", "angenommen")])
+
+    assert client.get("/api/council/follows").json()["follows"] == []
+    assert client.post("/api/council/vorlage/4711/follow").status_code == 201
+
+    follows = client.get("/api/council/follows").json()["follows"]
+    assert len(follows) == 1
+    assert follows[0]["vorlage_nr"] == "26/0396"
+    assert follows[0]["n_stationen"] == 1
+    assert follows[0]["letzte"]["gremium"] == "Verkehrsausschuss"
+
+    # Zweimal folgen bleibt ein Follow (UNIQUE owner+kvonr).
+    client.post("/api/council/vorlage/4711/follow")
+    assert len(client.get("/api/council/follows").json()["follows"]) == 1
+
+    assert client.delete("/api/council/vorlage/4711/follow").status_code == 200
+    assert client.get("/api/council/follows").json()["follows"] == []
+
+
+def test_vorlage_follow_unbekannte_vorlage_404(client):
+    _register(client)
+    assert client.post("/api/council/vorlage/999999/follow").status_code == 404
+
+
+def test_vorlage_follow_ist_pro_konto(client):
+    """Follows dürfen nicht zwischen Konten durchschlagen."""
+    _register(client)
+    _seed_vorlage()
+    client.post("/api/council/vorlage/4711/follow")
+
+    _register(client, email="andere@test.de")
+    client.post("/api/auth/login", json={"email": "andere@test.de", "password": "password123"})
+    assert client.get("/api/council/follows").json()["follows"] == []
+
+
+def test_vorlage_follow_merkt_sich_den_stand_beim_abonnieren(client):
+    """Wer folgt, hat den heutigen Stand gesehen — er darf nicht als „neu"
+    gemeldet werden. Der Schnappschuss muss deshalb sofort gefüllt sein."""
+    _register(client)
+    _seed_vorlage(stations=[
+        ("2026-01-15", "Verkehrsausschuss", "angenommen"),
+        ("2026-02-01", "Rat", None),
+    ])
+    client.post("/api/council/vorlage/4711/follow")
+
+    store = Store(NWZ_DB)
+    row = store.get_vorlage_follow_targets()[0]
+    store.close()
+    stations = json.loads(row["stations"])
+    assert stations == ["2026-01-15|Verkehrsausschuss|angenommen", "2026-02-01|Rat|"]
+
+
+def test_vorlage_follow_naechste_station_ist_die_zukuenftige(client):
+    """„Als Nächstes" muss die geplante Station sein, nicht die letzte
+    vergangene — sonst zeigt Meine Themen zweimal dasselbe."""
+    _register(client)
+    heute = date.today()
+    _seed_vorlage(stations=[
+        ((heute - timedelta(days=30)).isoformat(), "Verkehrsausschuss", "angenommen"),
+        ((heute + timedelta(days=14)).isoformat(), "Rat", None),
+    ])
+    client.post("/api/council/vorlage/4711/follow")
+    f = client.get("/api/council/follows").json()["follows"][0]
+    assert f["naechste"]["gremium"] == "Rat"
+    assert f["letzte"]["gremium"] == "Verkehrsausschuss"
+
+
+def test_decision_detail_meldet_follow_zustand(client):
+    """Die Beschluss-Seite bekommt den Zustand mit — ohne zweite Abfrage."""
+    _register(client)
+    _seed_vorlage(stations=[("2026-01-15", "Rat", "angenommen")])
+    council = CouncilStore(COUNCIL_DB)
+    council.save_session(CouncilSession(1, "Rat", "2026-01-15", "17:00", "Ratssaal"))
+    with council._conn:
+        council._conn.execute(
+            "INSERT INTO council_decisions(id, ksinr, position, title, outcome, kind, vorlage_nr, kvonr) "
+            "VALUES (1,1,0,'Stadion','angenommen','decision','26/0396',4711)")
+    council.close()
+
+    assert client.get("/api/council/decision/1").json()["follow"] == {"kvonr": 4711, "following": False}
+    client.post("/api/council/vorlage/4711/follow")
+    assert client.get("/api/council/decision/1").json()["follow"] == {"kvonr": 4711, "following": True}

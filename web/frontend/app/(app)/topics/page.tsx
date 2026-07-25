@@ -15,6 +15,7 @@ import {
 import { decisionHref } from "@/lib/routes";
 import { TopicSheet } from "@/components/topic-sheet";
 import { committeeExplains, committeeRank, shortCommittee } from "@/lib/committees";
+import { FollowedVorgaenge } from "@/components/followed-vorgaenge";
 
 function TopicsInner() {
   const qc = useQueryClient();
@@ -293,6 +294,13 @@ function TopicsInner() {
           ))
         )}
       </div>
+
+      {/* Design 28a/W1: Verfolgte Vorgänge sind eine dritte Art von Abo neben
+          Themen (breit, semantisch) und Ausschüssen (institutionell) — die
+          engste: EINE Vorlage auf ihrem Weg durch die Gremien. Der Abschnitt
+          erscheint erst, wenn es etwas zu zeigen gibt; angelegt wird ein
+          Follow auf der Beschluss-Seite, nicht hier. */}
+      <FollowedVorgaenge />
 
       <h2 className="mt-10 text-lg font-bold text-foreground">Ausschuss-Abos</h2>
       <p className="mt-1 text-sm text-muted-foreground">

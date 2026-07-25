@@ -288,6 +288,10 @@ export interface DecisionDetail {
   /** Offizielle Beratungsfolge aus dem Ratsinfo — mit Ergebnis je Station und
    *  geplanten künftigen Beratungen. Fehlt, solange sie nicht gescrapt ist. */
   beratungsfolge?: Beratung[];
+  /** Design 28a/W1: Verfolgt dieses Konto den Vorgang? Fehlt, wenn der
+   *  Beschluss zu keiner eingelesenen Vorlage gehört — dann gibt es nichts,
+   *  woran ein Abo hängen könnte. */
+  follow?: { kvonr: number; following: boolean };
   similar: SimilarDecision[];
   entities: Entity[];
   ratsinfo_url: string;

@@ -7,49 +7,30 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Geändert
-- **Ein verdientes Abzeichen wird jetzt richtig gefeiert.** Bisher blitzte nur
-  eine graue Systemmeldung auf, während Konfetti über den ganzen Bildschirm
-  regnete — man erfuhr nicht, *warum* man das Abzeichen bekommen hat, und wo es
-  jetzt liegt schon gar nicht. An ihre Stelle tritt eine **Karte in den
-  Ratslotse-Farben**, die unten über den laufenden Bildschirm fährt: goldene
-  Medaille, der Name des Abzeichens, wofür es steht, wie viele von acht man
-  gesammelt hat — dazu **„Sammlung ansehen"**, das direkt zur Abzeichen-Karte
-  im Konto springt. Sie blockiert nichts, geht nach sechs Sekunden von selbst
-  und lässt sich jederzeit wegtippen; mehrere Abzeichen auf einmal kommen
-  nacheinander statt gestapelt. In der Sammlung trägt das frische Abzeichen
-  danach ein **„NEU"**, bis man es einmal angesehen hat. Wer im System
-  reduzierte Bewegung eingestellt hat, bekommt dieselbe Karte ohne Konfetti.
-  (#322)
-- **Weiterfragen: kompakter auf dem Telefon (Design 24a).** Nach einer Antwort
-  standen die Vorschläge als umbrechende Chip-Reihe — auf schmalen Displays
-  verdrängten sie damit einen guten Teil der Antwort. Jetzt sind es dort **zwei**
-  Vorschläge in je einer Zeile (gekürzt, mit Pfeil), und „Eigene Frage" steht mit
-  dem Hinweis in derselben Zeile. Das halbiert die Höhe des Blocks. Auf größeren
-  Bildschirmen bleiben es drei Vorschläge mit vollem Text.
-
-### Sicherheit
-- **Admin-Rechte nur noch mit Adress-Nachweis.** Bisher wurde die Rolle direkt
-  bei der Registrierung aus der eingetippten E-Mail abgeleitet: Wer die in
-  `WEB_ADMIN_EMAIL` hinterlegte Adresse als Erster registrierte, bekam sofort ein
-  aktives Admin-Konto — ohne je nachzuweisen, dass ihm dieses Postfach gehört.
-  Zusätzlich wurde die erste Registrierung auf einer leeren Nutzertabelle
-  ungefragt zum Admin (auch über „Mit Apple anmelden"). Beides ist weg: Die
-  Registrierung vergibt keine Rolle mehr, Admin entsteht erst, wenn der
-  Bestätigungslink an die konfigurierte Adresse eingelöst wurde und noch kein
-  Admin existiert. **Für den Betrieb:** Auf einer frischen Installation muss die
-  Admin-Adresse einmal den Bestätigungslink klicken; ohne `RESEND_API_KEY` (kein
-  Mailversand) übernimmt das neue `scripts/grant_admin.py <adresse>` — worauf
-  Registrierung und API-Start per Warnung im Log hinweisen.
-- **Anmeldung verrät nicht mehr, welche Adressen ein Konto haben.** Der
-  Passwort-Check lief nur, wenn das Konto existierte, ein unbekannter Login kam
-  darum messbar schneller zurück (~6 ms gegenüber ~58 ms). Jetzt wird in beiden
-  Fällen gleich viel gerechnet; die Antwortzeit gibt nichts mehr preis.
-- **Fehlerhafte Suchausdrücke stürzen die Volltextsuche nicht mehr ab.** Eine
-  Anfrage wie `hafen -markt` ist für SQLite-FTS5 ungültig und schlug bisher als
-  unbehandelter Fehler durch; sie zählt jetzt als „nichts gefunden".
-
 ### Hinzugefügt
+- **Einen Vorgang verfolgen.** Themen und Ausschuss-Abos sind breite Netze —
+  wer *eine* Vorlage auf ihrem Weg durch die Gremien begleiten will (die Schule
+  im eigenen Viertel, das Stadion), musste bisher selbst regelmäßig nachsehen.
+  Auf der Beschluss-Seite steht jetzt unter „Weg der Vorlage" ein
+  **„Diesen Vorgang verfolgen"**. Danach gibt es eine Meldung, sobald eine neue
+  Beratungsstation dazukommt oder ein Ergebnis nachgetragen wird — über den
+  gewohnten Weg (E-Mail und/oder Mitteilung). Alles Verfolgte steht unter
+  *Meine Themen* mit dem letzten und dem nächsten Halt, dort lässt es sich auch
+  wieder abbestellen. Was beim Abonnieren schon dastand, gilt nicht als
+  Neuigkeit. (#329)
+- **Sitzung in den eigenen Kalender.** Jede Sitzung hat einen
+  **Kalender**-Knopf, der einen Termin (`.ics`) mit Uhrzeit, Ort, Tagesordnung
+  und Ratsinfo-Link erzeugt — im Browser als Download, in der App über das
+  Teilen-Blatt. Besonders bei erst terminierten Sitzungen, deren Tagesordnung
+  noch aussteht. (#329)
+- **KI-Antworten teilen und drucken.** Unter einer fertigen Antwort stehen
+  *Teilen* und *Drucken*; der geteilte Link nimmt die Frage mit, die Antwort
+  entsteht beim Empfänger aus dessen Datenstand neu. Die Beschluss-Seite hat
+  denselben Druck-Knopf — das Druck-Layout gab es längst, es fehlte der
+  Auslöser. (#329)
+- **Suchverlauf im großen Suchfeld.** Beim Antippen des leeren Feldes stehen
+  die letzten fünf Suchen und Vorschläge aus dem, was gerade im Rat läuft —
+  bisher hatte das nur die Befehlspalette (⌘K). (#329)
 - **Erst begrüßen, dann registrieren.** Nach „Los geht's" geht es direkt zum
   Konto-Erstellen statt zum Anmelden — wer die App zum ersten Mal öffnet, hat in
   aller Regel noch kein Konto. Der Weg zurück steht als „Schon registriert?
@@ -115,7 +96,95 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Embeddings, nur zum Auffüllen). Läuft ohne LLM-Aufruf im wöchentlichen
   `weekly_enrich` mit; Gremien und Namens-Dubletten werden herausgefiltert.
 
+### Geändert
+- **Höchstens ein Hinweis auf „Heute".** Sitzungspause, Live-Sitzung, erste
+  Schritte und die Frage nach Mitteilungen konnten sich zu vier Kästen
+  stapeln und den eigentlichen Inhalt unter die Falz schieben. Jetzt steht der
+  dringlichste davon oben, der Rest hinter einer Pille, die sie auf Tippen
+  zeigt. (#329)
+- **Ausschuss-Abos lesen sich wie im Einrichtungs-Assistenten**: kurze Namen,
+  ein Satz dazu, was das Gremium behandelt, und nach Alltagsbezug sortiert
+  statt in amtlicher Reihenfolge. (#329)
+- **Nur noch eine Lupe in der Seitenleiste.** Die Befehlspalette sitzt als
+  ⌘-Knopf neben dem Logo; die Lupe gehört jetzt allein der Suche. (#329)
+- **„Zahl der Woche" führt weiter** — die gezählten Beschlüsse lassen sich
+  direkt ansehen; darunter steht „Zuletzt angesehen". (#329)
+- Der Sitzungs-Umschalter heißt „Anstehend" statt „Kommend". (#329)
+- **Ein verdientes Abzeichen wird jetzt richtig gefeiert.** Bisher blitzte nur
+  eine graue Systemmeldung auf, während Konfetti über den ganzen Bildschirm
+  regnete — man erfuhr nicht, *warum* man das Abzeichen bekommen hat, und wo es
+  jetzt liegt schon gar nicht. An ihre Stelle tritt eine **Karte in den
+  Ratslotse-Farben**, die unten über den laufenden Bildschirm fährt: goldene
+  Medaille, der Name des Abzeichens, wofür es steht, wie viele von acht man
+  gesammelt hat — dazu **„Sammlung ansehen"**, das direkt zur Abzeichen-Karte
+  im Konto springt. Sie blockiert nichts, geht nach sechs Sekunden von selbst
+  und lässt sich jederzeit wegtippen; mehrere Abzeichen auf einmal kommen
+  nacheinander statt gestapelt. In der Sammlung trägt das frische Abzeichen
+  danach ein **„NEU"**, bis man es einmal angesehen hat. Wer im System
+  reduzierte Bewegung eingestellt hat, bekommt dieselbe Karte ohne Konfetti.
+  (#322)
+- **Weiterfragen: kompakter auf dem Telefon (Design 24a).** Nach einer Antwort
+  standen die Vorschläge als umbrechende Chip-Reihe — auf schmalen Displays
+  verdrängten sie damit einen guten Teil der Antwort. Jetzt sind es dort **zwei**
+  Vorschläge in je einer Zeile (gekürzt, mit Pfeil), und „Eigene Frage" steht mit
+  dem Hinweis in derselben Zeile. Das halbiert die Höhe des Blocks. Auf größeren
+  Bildschirmen bleiben es drei Vorschläge mit vollem Text.
+- Der Ladekreis beim App-Start sitzt jetzt mittig auf dem Bildschirm statt ganz
+  oben halb hinter der Dynamic Island.
+- Der Abzeichen-Toast hält sich während der Einrichtung zurück und meldet sich
+  erst danach — vorher gratulierte er schon über dem Willkommens-Gruß.
+- **Beschluss-Seite aufgeräumt.** Die Seite führte mit einer Wand Amtssprache
+  und streute die Kennzahlen über sechs Karten in der Randspalte. Jetzt steht
+  **„Lotti erklärt's einfach" ganz oben** — der amtliche Wortlaut folgt darunter
+  und lässt sich zuklappen (verbindlich bleibt er, er ist nur nicht mehr das
+  Erste, was einen erschlägt). Rechts bündelt eine Karte **„Auf einen Blick"**
+  Betrag, Abstimmung, Antragsteller und Wichtigkeit; die Anlagen sind zu den
+  **Dokumenten** gewandert, wo die übrigen Datei-Links stehen — aus sechs Karten
+  werden drei. Anträge, Endergebnis und das Warum stehen unter einer gemeinsamen
+  Überschrift **„Verlauf & Begründung"**, und bei den ähnlichen Beschlüssen sind
+  zunächst die zwei relevantesten zu sehen. Reine Anordnung — es fehlt nichts,
+  alles ist nur dort, wo man es sucht. (#305)
+- **Beschluss-Seite: klarer, was aus dem Protokoll und was aus der Vorlage
+  stammt.** „Beschlusstext" und „Aus der Vorlage · Beschlussvorlage" standen
+  unkommentiert untereinander — die zweite Überschrift las sich, als stünde dort
+  der Beschlussvorschlag, dabei steht dort die **Vorgeschichte**. Jetzt sagt eine
+  Zeile unter jeder Überschrift, was man liest: **„Was beschlossen wurde —
+  Wortlaut aus dem Sitzungsprotokoll"** bzw. die Überschrift **„Warum es dazu
+  kam"** mit dem Zusatz „Sachverhalt und Begründung aus der Beschlussvorlage der
+  Verwaltung". Die amtlichen Begriffe bleiben also sichtbar, sind aber nicht mehr
+  der einzige Anhaltspunkt. Nebenbei entfällt in der Vorlagenart die
+  RIS-Katalog-Klammer („Berichtsvorlage (bis 31.12.2022)" → „Berichtsvorlage").
+  (#304)
+- **KI-Frage: kürzere Trefferliste.** Unter der Antwort standen bisher **alle**
+  gefundenen Beschlüsse — bis zu 40 Karten, obwohl davon meist nur eine Handvoll
+  in der Antwort zitiert wird. Jetzt zeigt Ratslotse standardmäßig die **acht
+  relevantesten plus alle zitierten** (die bleiben immer sichtbar, egal wie weit
+  hinten sie stehen); der Rest kommt per **„Alle N anzeigen"**. Die Reihenfolge
+  bleibt unverändert, und die Fußnoten in der Antwort springen weiterhin
+  zuverlässig zur richtigen Quelle — auch wenn sie eingeklappt wäre. (#301)
+
 ### Behoben
+- **Tagesordnungspunkte führen jetzt zum Beschluss.** In einer aufgeklappten
+  Sitzung war jeder Punkt toter Text; auch der Ergebnis-Punkt daneben blieb
+  unsichtbar, weil die Tagesordnung ihre Nummern mit Präfix führt („Ö 6.1") und
+  das Protokoll ohne („6.1") — der Abgleich traf nie. Beide greifen jetzt. (#329)
+- **„Zurück" führt nicht mehr aus der App.** Wer einen Beschluss über eine
+  Mitteilung oder einen geteilten Link öffnete, landete beim Zurück-Tippen im
+  Nichts. Jetzt geht es zur zugehörigen Sitzung. Zusätzlich lässt sich mit
+  *Vorheriger/Nächster TOP* direkt durch die Beschlüsse einer Sitzung
+  blättern. (#329)
+- **„Alle ansehen" bei einem Thema öffnet die richtige Suche** — mit Filtern,
+  Sortierung und teilbarer Adresse, statt eines Dialogs ohne all das. (#329)
+- **Treffer werden vollständig hervorgehoben.** Bei mehreren Suchwörtern
+  („radwege innenstadt") war vorher nichts markiert, weil nur die Eingabe als
+  Ganzes gesucht wurde. Jetzt wird jedes Wort an jeder Fundstelle
+  hervorgehoben. (#329)
+- **Laufende KI-Antwort abbrechen.** Ein **Stopp** hält den bereits
+  geschriebenen Text mit dem Vermerk „abgebrochen" und gibt die Eingabe sofort
+  frei. (#329)
+- **Sitzungen, Stadtkarte und Analyse sind auf dem Telefon wieder direkt
+  erreichbar** — über eine Ansichtsleiste über der Seite statt nur über das
+  Menü. (#329)
 - **Die Erinnerung an eine offene Einrichtung ging nie raus.** Der zuständige
   tägliche Lauf stürzte bei jedem Start sofort ab (ein fehlender Datenbank-Pfad),
   noch bevor er überhaupt nach offenen Einrichtungen sah — und weil er zusätzlich
@@ -241,40 +310,26 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   echtes Thema und war damit der einzige, den die Tour nicht abhaken konnte.
   Nach dem Durchlauf steht die Leiste damit auf **4/4** und feiert.
 
-### Geändert
-- Der Ladekreis beim App-Start sitzt jetzt mittig auf dem Bildschirm statt ganz
-  oben halb hinter der Dynamic Island.
-- Der Abzeichen-Toast hält sich während der Einrichtung zurück und meldet sich
-  erst danach — vorher gratulierte er schon über dem Willkommens-Gruß.
-- **Beschluss-Seite aufgeräumt.** Die Seite führte mit einer Wand Amtssprache
-  und streute die Kennzahlen über sechs Karten in der Randspalte. Jetzt steht
-  **„Lotti erklärt's einfach" ganz oben** — der amtliche Wortlaut folgt darunter
-  und lässt sich zuklappen (verbindlich bleibt er, er ist nur nicht mehr das
-  Erste, was einen erschlägt). Rechts bündelt eine Karte **„Auf einen Blick"**
-  Betrag, Abstimmung, Antragsteller und Wichtigkeit; die Anlagen sind zu den
-  **Dokumenten** gewandert, wo die übrigen Datei-Links stehen — aus sechs Karten
-  werden drei. Anträge, Endergebnis und das Warum stehen unter einer gemeinsamen
-  Überschrift **„Verlauf & Begründung"**, und bei den ähnlichen Beschlüssen sind
-  zunächst die zwei relevantesten zu sehen. Reine Anordnung — es fehlt nichts,
-  alles ist nur dort, wo man es sucht. (#305)
-- **Beschluss-Seite: klarer, was aus dem Protokoll und was aus der Vorlage
-  stammt.** „Beschlusstext" und „Aus der Vorlage · Beschlussvorlage" standen
-  unkommentiert untereinander — die zweite Überschrift las sich, als stünde dort
-  der Beschlussvorschlag, dabei steht dort die **Vorgeschichte**. Jetzt sagt eine
-  Zeile unter jeder Überschrift, was man liest: **„Was beschlossen wurde —
-  Wortlaut aus dem Sitzungsprotokoll"** bzw. die Überschrift **„Warum es dazu
-  kam"** mit dem Zusatz „Sachverhalt und Begründung aus der Beschlussvorlage der
-  Verwaltung". Die amtlichen Begriffe bleiben also sichtbar, sind aber nicht mehr
-  der einzige Anhaltspunkt. Nebenbei entfällt in der Vorlagenart die
-  RIS-Katalog-Klammer („Berichtsvorlage (bis 31.12.2022)" → „Berichtsvorlage").
-  (#304)
-- **KI-Frage: kürzere Trefferliste.** Unter der Antwort standen bisher **alle**
-  gefundenen Beschlüsse — bis zu 40 Karten, obwohl davon meist nur eine Handvoll
-  in der Antwort zitiert wird. Jetzt zeigt Ratslotse standardmäßig die **acht
-  relevantesten plus alle zitierten** (die bleiben immer sichtbar, egal wie weit
-  hinten sie stehen); der Rest kommt per **„Alle N anzeigen"**. Die Reihenfolge
-  bleibt unverändert, und die Fußnoten in der Antwort springen weiterhin
-  zuverlässig zur richtigen Quelle — auch wenn sie eingeklappt wäre. (#301)
+### Sicherheit
+- **Admin-Rechte nur noch mit Adress-Nachweis.** Bisher wurde die Rolle direkt
+  bei der Registrierung aus der eingetippten E-Mail abgeleitet: Wer die in
+  `WEB_ADMIN_EMAIL` hinterlegte Adresse als Erster registrierte, bekam sofort ein
+  aktives Admin-Konto — ohne je nachzuweisen, dass ihm dieses Postfach gehört.
+  Zusätzlich wurde die erste Registrierung auf einer leeren Nutzertabelle
+  ungefragt zum Admin (auch über „Mit Apple anmelden"). Beides ist weg: Die
+  Registrierung vergibt keine Rolle mehr, Admin entsteht erst, wenn der
+  Bestätigungslink an die konfigurierte Adresse eingelöst wurde und noch kein
+  Admin existiert. **Für den Betrieb:** Auf einer frischen Installation muss die
+  Admin-Adresse einmal den Bestätigungslink klicken; ohne `RESEND_API_KEY` (kein
+  Mailversand) übernimmt das neue `scripts/grant_admin.py <adresse>` — worauf
+  Registrierung und API-Start per Warnung im Log hinweisen.
+- **Anmeldung verrät nicht mehr, welche Adressen ein Konto haben.** Der
+  Passwort-Check lief nur, wenn das Konto existierte, ein unbekannter Login kam
+  darum messbar schneller zurück (~6 ms gegenüber ~58 ms). Jetzt wird in beiden
+  Fällen gleich viel gerechnet; die Antwortzeit gibt nichts mehr preis.
+- **Fehlerhafte Suchausdrücke stürzen die Volltextsuche nicht mehr ab.** Eine
+  Anfrage wie `hafen -markt` ist für SQLite-FTS5 ungültig und schlug bisher als
+  unbehandelter Fehler durch; sie zählt jetzt als „nichts gefunden".
 
 ### Behoben
 - **Themen bearbeiten: überall der gute Editor.** Für dieselbe Aufgabe gab es

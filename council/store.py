@@ -1453,6 +1453,14 @@ class CouncilStore:
         ).fetchone()
         return dict(row) if row else None
 
+    def get_vorlage(self, kvonr: int) -> dict | None:
+        """Die Vorlage zu ihrer Ratsinfo-Id. Gegenstück zu get_vorlage_by_nr —
+        für alles, was am Vorgang selbst hängt (Design 28a/W1: verfolgen)."""
+        row = self._conn.execute(
+            "SELECT * FROM council_vorlagen WHERE kvonr = ?", (kvonr,)
+        ).fetchone()
+        return dict(row) if row else None
+
     def vorlage_texts_for(self, vorlage_nrs: list[str]) -> dict[str, str]:
         """Batch raw texts for Q&A context enrichment: exact vorlage_nr → text
         (only rows that actually have text). Best-effort — no base-nr fallback."""

@@ -11,6 +11,7 @@ import { decisionHref, themaHref, sessionHref } from "@/lib/routes";
 import { shortCommittee } from "@/lib/committees";
 import { ShareButton } from "@/components/share-button";
 import { PrintButton } from "@/components/print-button";
+import { FollowButton } from "@/components/follow-button";
 import { nwzSearchUrl } from "@/components/nwz-link";
 import { trackRecentDecision } from "@/lib/recent";
 import { Mascot } from "@/components/mascot";
@@ -728,6 +729,11 @@ function DecisionDetailInner() {
                       );
                     })}
               </div>
+              {/* Design 28a/W1: Der Weg der Vorlage ist der Ort, an dem der
+                  Wunsch entsteht — man sieht, dass es weitergeht, und will
+                  Bescheid wissen. Der Knopf steht deshalb hier und nicht in
+                  einer Aktionsleiste. */}
+              {data.follow && <FollowButton kvonr={data.follow.kvonr} initial={data.follow.following} />}
             </MetaCard>
           ) : null}
 

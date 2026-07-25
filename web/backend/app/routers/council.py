@@ -291,8 +291,9 @@ def decisions(
 @router.get("/decision/{decision_id}")
 def decision_detail(
     decision_id: int,
-    _user: dict = Depends(require_active),
+    user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
+    nwz: Store = Depends(get_store),
 ) -> dict:
     d = store.get_decision(decision_id)
     if not d:
@@ -356,7 +357,80 @@ def decision_detail(
                 {**b, "future": bool(b["datum"] and b["datum"] > today)}
                 for b in store.get_beratungen(kv)
             ]
+            # Design 28a/W1: Folgt dieses Konto dem Vorgang schon? Die kvonr
+            # gehört zur Antwort, weil nur sie den Vorgang eindeutig benennt —
+            # die Vorlagen-Nummer wird im Ratsinfo wiederverwendet.
+            out["follow"] = {"kvonr": kv, "following": nwz.is_following_vorlage(user["id"], kv)}
     return out
+
+
+# ---- Vorgänge verfolgen (Design 28a/W1) ----
+
+def _stations_signature(rows: list[dict]) -> str:
+    """Vergleichbarer Fingerabdruck der Beratungsfolge.
+
+    Datum, Gremium und Ergebnis — mehr braucht der Vergleich nicht, und weniger
+    wäre zu grob: Eine Station gilt auch dann als neu, wenn nur das Ergebnis
+    nachgetragen wurde. Genau das ist die Nachricht, auf die man wartet.
+    """
+    return json.dumps(
+        [f"{r.get('datum') or ''}|{r.get('gremium') or ''}|{r.get('ergebnis') or ''}" for r in rows],
+        ensure_ascii=False,
+    )
+
+
+@router.get("/follows")
+def list_follows(
+    user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+    nwz: Store = Depends(get_store),
+) -> dict:
+    """Verfolgte Vorgänge mit ihrem aktuellen Stand — die Beratungsfolge liegt
+    in der anderen Datenbank, deshalb hier je Follow eine Abfrage (die Zahl
+    ist nutzergemacht und klein)."""
+    today = date.today().isoformat()
+    out = []
+    for f in nwz.get_vorlage_follows(user["id"]):
+        stations = store.get_beratungen(f["kvonr"])
+        naechste = next((b for b in stations if b.get("datum") and b["datum"] > today), None)
+        letzte = next((b for b in reversed(stations) if b.get("datum") and b["datum"] <= today), None)
+        out.append({
+            **f,
+            "url": _vorlage_url(f["kvonr"]),
+            "n_stationen": len(stations),
+            "naechste": naechste,
+            "letzte": letzte,
+        })
+    return {"follows": out}
+
+
+@router.post("/vorlage/{kvonr}/follow", status_code=status.HTTP_201_CREATED)
+def follow_vorlage(
+    kvonr: int,
+    user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+    nwz: Store = Depends(get_store),
+) -> dict:
+    v = store.get_vorlage(kvonr)
+    if not v:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Vorlage nicht gefunden.")
+    # Den heutigen Stand mitschreiben: Was schon dasteht, ist keine Neuigkeit.
+    nwz.follow_vorlage(
+        user["id"], kvonr,
+        vorlage_nr=v.get("vorlage_nr") or "", title=v.get("title") or "",
+        stations=_stations_signature(store.get_beratungen(kvonr)),
+    )
+    return {"kvonr": kvonr, "following": True}
+
+
+@router.delete("/vorlage/{kvonr}/follow")
+def unfollow_vorlage(
+    kvonr: int,
+    user: dict = Depends(require_active),
+    nwz: Store = Depends(get_store),
+) -> dict:
+    nwz.unfollow_vorlage(user["id"], kvonr)
+    return {"kvonr": kvonr, "following": False}
 
 
 @router.get("/analysis")
