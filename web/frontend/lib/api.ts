@@ -2,6 +2,7 @@
 // On the web this is same-origin and auth rides in the httpOnly cookie. In the
 // native app the base is the absolute backend origin and auth is a bearer token.
 import { toast } from "sonner";
+import { entwurfSichern, entwurfZiel } from "./draft";
 import { apiBase, isNativeApp } from "./platform";
 import { getCachedToken } from "./token";
 
@@ -69,7 +70,17 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   });
 
   if (res.status === 401 && !path.startsWith("/auth/")) {
-    toast.info("Sitzung abgelaufen – bitte melde dich erneut an.");
+    // Design 29a (P8): Erst den getippten Text retten, dann rauswerfen. Wer
+    // zwei Minuten an einer Frage geschrieben hat, fand danach ein leeres Feld.
+    const gerettet = (() => {
+      try {
+        entwurfSichern(window.location.pathname + window.location.search);
+        return !!entwurfZiel();
+      } catch { return false; }
+    })();
+    toast.info(gerettet
+      ? "Sitzung abgelaufen — dein Text ist gesichert."
+      : "Sitzung abgelaufen – bitte melde dich erneut an.");
     unauthorizedHandler?.();
   }
 

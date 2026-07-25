@@ -387,6 +387,33 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   finden die Seiten überhaupt erst.
 
 ### Behoben
+- **„Bitte Seite neu laden" ist weg.** Ging eine Abfrage schief, stand da ein
+  roter Satz — die Bitte an dich, unsere Arbeit zu machen. Ein Funkloch in der
+  Bahn reichte, und die Seite blieb kaputt. Jetzt steht dort eine Karte mit
+  ratlosem Lotti und einem **„Nochmal versuchen"**-Knopf; der Rest der Seite
+  bleibt stehen. Betrifft Themen und alle sechs Admin-Bereiche — die
+  Cron-Übersicht verschwand bei einem Fehler bisher sogar spurlos.
+- **Die Trefferzahl wird jetzt vorgelesen.** Beim Filtern oder Blättern wechselte
+  die Ergebnisliste für Vorleseprogramme lautlos: Sehende sahen „34 Beschlüsse",
+  alle anderen nichts. Jetzt wird die Änderung angesagt — samt Seitenzahl.
+- **Eine abgelaufene Sitzung frisst deinen Text nicht mehr.** Wer zwei Minuten an
+  einer KI-Frage oder einer Themen-Beschreibung geschrieben hatte und dabei
+  abgemeldet wurde, fand danach ein leeres Feld. Jetzt wird der Entwurf
+  gesichert, du landest nach dem Anmelden **wieder an derselben Stelle**, und
+  der Text steht wieder da.
+
+### Geändert
+- **Der App-Start zeigt die App, nicht ein Warterad.** Solange die Anmeldung
+  geprüft wurde, ersetzte ein Kreisel auf leerer Fläche die ganze Oberfläche —
+  jeder Start begann mit etwas, das nach hängender Seite aussah. Jetzt stehen
+  Logo und Navigation sofort, nur der Inhalt füllt sich nach.
+- **Analyse, Ziele, Mitglieder und Themen laden wie der Rest der App.** Statt
+  eines Kreisels auf leerer Fläche steht dort jetzt die **Form** des Inhalts
+  (Diagramm bzw. Tabelle) — man sieht sofort, was gleich kommt und wie viel,
+  und nichts springt beim Eintreffen. Beim Seitenwechsel gibt es dieselbe
+  Rückmeldung sofort. Für echte Momente — Karte, Speichern — bleibt der Kreisel.
+
+### Behoben
 - **Nicht gefunden heißt nicht mehr rausgeworfen.** Wer einem alten Link folgte
   — etwa auf einen inzwischen zusammengeführten Beschluss —, landete auf einer
   nackten 404-Seite ohne Navigation und ohne Suche; der Browser-Pfeil war der

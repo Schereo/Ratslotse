@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AlertTriangle, Check, Loader2, Sparkles, X } from "lucide-react";
 import { api } from "@/lib/api";
+import { entwurfMelden } from "@/lib/draft";
 import { Button, Skeleton } from "@/components/ui";
 
 /** Antwort von POST /topics/describe — Beschreibungs-Vorschlag plus die Belege,
@@ -40,6 +41,9 @@ export function TopicSheet({ topic, nameEditable = false, onClose, onSaved }: {
 }) {
   const [name, setName] = useState(topic.name);
   const [description, setDescription] = useState(topic.description ?? "");
+  // Design 29a (P8): Auch hier steckt getippte Arbeit drin — bei abgelaufener
+  // Sitzung wird sie gesichert statt kassiert.
+  useEffect(() => entwurfMelden(`thema-${topic.id}`, () => description), [topic.id, description]);
   const [check, setCheck] = useState<Described | null>(null);
   const [checking, setChecking] = useState(false);
   const [saving, setSaving] = useState(false);
