@@ -1031,10 +1031,22 @@ class CouncilStore:
         return ids
 
     def _decision_where(self, query, committee, outcome, faction, date_from, date_to,
-                        kind, category, field="", party_ids=None, include_subvotes=False):
+                        kind, category, field="", party_ids=None, include_subvotes=False,
+                        only_ids=None):
         """Build the WHERE clause + params shared by search and count."""
         filters: list[str] = []
         params: list = []
+        if only_ids is not None:
+            # Design 28a/S4: Vorgegebene Beschluss-Menge (die semantischen Treffer
+            # eines Nutzer-Themas). Die Zuordnung liegt in nwz.sqlite, also in
+            # einer anderen Datei — ein JOIN ist unmöglich, der Router reicht
+            # die ids herein. Bewusst getrennt von party_ids, damit sich beide
+            # Einschränkungen kombinieren lassen.
+            if only_ids:
+                filters.append(f"d.id IN ({','.join('?' * len(only_ids))})")
+                params += list(only_ids)
+            else:
+                filters.append("0")  # Thema ohne Treffer
         if party_ids is not None:
             # Restrict to a party's decisions (ids precomputed via normalisation).
             if party_ids:
@@ -1098,6 +1110,7 @@ class CouncilStore:
         limit: int = 50,
         offset: int = 0,
         include_subvotes: bool = False,
+        only_ids: list[int] | None = None,
     ) -> list[dict]:
         """Search extracted decisions, joined with their session (committee + date).
         ``category`` is "vote" (decided) or "report" (zur Kenntnis / no decision).
@@ -1125,7 +1138,7 @@ class CouncilStore:
         party_ids = self.decision_ids_for_party(party) if party else None
         where, params = self._decision_where(query, committee, outcome, faction,
                                               date_from, date_to, kind, category, field, party_ids,
-                                              include_subvotes=include_subvotes)
+                                              include_subvotes=include_subvotes, only_ids=only_ids)
         rows = self._conn.execute(
             f"""SELECT d.*, cs.committee, cs.session_date, p.document_url AS protocol_url
                 FROM council_decisions d
@@ -1172,11 +1185,12 @@ class CouncilStore:
     def count_decisions(
         self, query="", committee="", outcome="", faction="", date_from="", date_to="",
         kind="", category="", field="", party="", include_subvotes=False,
+        only_ids: list[int] | None = None,
     ) -> int:
         party_ids = self.decision_ids_for_party(party) if party else None
         where, params = self._decision_where(query, committee, outcome, faction,
                                              date_from, date_to, kind, category, field, party_ids,
-                                             include_subvotes=include_subvotes)
+                                             include_subvotes=include_subvotes, only_ids=only_ids)
         row = self._conn.execute(
             f"""SELECT COUNT(*) FROM council_decisions d
                 JOIN council_sessions cs ON cs.ksinr = d.ksinr {where}""",

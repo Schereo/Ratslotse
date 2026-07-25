@@ -31,7 +31,6 @@ function TopicsInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [description, setDescription] = useState("");
-  const [decisionsFor, setDecisionsFor] = useState<{ topic: Topic; decisions: TopicDecision[] } | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [editing, setEditing] = useState<Topic | null>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -98,20 +97,16 @@ function TopicsInner() {
     onError: () => toast.error("Abo konnte nicht geändert werden."),
   });
 
-  const viewDecisions = async (topic: Topic) => {
-    try {
-      const data = await api.get<{ decisions: TopicDecision[] }>(`/topics/${topic.id}/decisions`);
-      setDecisionsFor({ topic, decisions: data.decisions });
-      // RL-903: Öffnen der Liste = gesehen. Badge/Zähler frisch ziehen.
-      if ((topic.unread_count ?? 0) > 0) {
-        api.post(`/topics/${topic.id}/seen`, {}).then(() => {
-          qc.invalidateQueries({ queryKey: ["topics"] });
-          qc.invalidateQueries({ queryKey: ["topics-unread"] });
-        }).catch(() => {});
-      }
-    } catch {
-      toast.error("Beschlüsse konnten nicht geladen werden.");
-    }
+  /* RL-903: Die Trefferliste zu öffnen gilt als gesehen — bisher hing das am
+     Dialog, den 28a/S4 durch den Sprung in die Suche ersetzt. Deshalb hier
+     beim Klick, bevor navigiert wird (fire-and-forget: der Wechsel soll nicht
+     auf den Server warten). */
+  const markTopicSeen = (topic: Topic) => {
+    if ((topic.unread_count ?? 0) <= 0) return;
+    api.post(`/topics/${topic.id}/seen`, {}).then(() => {
+      qc.invalidateQueries({ queryKey: ["topics"] });
+      qc.invalidateQueries({ queryKey: ["topics-unread"] });
+    }).catch(() => {});
   };
 
   const loading = topicsQuery.isPending;
@@ -276,13 +271,16 @@ function TopicsInner() {
               )}
               <div className="mt-auto pt-3">
                 {t.decision_count > 0 ? (
-                  <button
-                    type="button"
-                    onClick={() => viewDecisions(t)}
+                  /* Design 28a/S4: führt in die echte Suche statt in einen Dialog.
+                     Der Dialog konnte weder filtern noch sortieren noch teilen und
+                     war mobil eine Scroll-Wand — die Suchseite kann das alles längst. */
+                  <Link
+                    href={`/council?tab=decisions&topic=${t.id}`}
+                    onClick={() => markTopicSeen(t)}
                     className="text-sm font-medium text-primary hover:underline"
                   >
                     {t.decision_count} {t.decision_count === 1 ? "Beschluss" : "Beschlüsse"} insgesamt · alle ansehen
-                  </button>
+                  </Link>
                 ) : (
                   <p className="text-xs text-muted-foreground">Noch keine Treffer — wir melden uns, sobald der Rat dazu entscheidet.</p>
                 )}
@@ -322,27 +320,6 @@ function TopicsInner() {
           }} />
       )}
 
-      <Dialog open={!!decisionsFor} onOpenChange={(o) => !o && setDecisionsFor(null)}>
-        <DialogContent>
-          {decisionsFor && (
-            <>
-              <DialogHeader>
-                <DialogTitle>Beschlüsse: {decisionsFor.topic.name}</DialogTitle>
-              </DialogHeader>
-              {decisionsFor.decisions.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Noch keine passenden Beschlüsse.</p>
-              ) : (
-                <div className="space-y-2">
-                  {decisionsFor.decisions.map((d) => (
-                    <DecisionLinkCard key={d.id} id={d.id} title={d.title} committee={d.committee}
-                      session_date={d.session_date} field={d.policy_field} score={d.score} />
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

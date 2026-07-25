@@ -1882,3 +1882,64 @@ def test_apple_login_accepts_native_bundle_id(client, apple_jwks):
     """Gegenprobe: Die App (Bundle-ID) muss weiterhin durchkommen."""
     token = _apple_token(sub="apple-app-1", email="app@example.com", aud="de.ratslotse.app")
     assert client.post("/api/auth/apple", json={"identity_token": token}).status_code == 200
+
+
+# ---- Design 28a/S4: Suche auf ein eigenes Thema einschränken ----
+def test_decisions_topic_filter_grenzt_ein_und_kombiniert(client):
+    """Der Trefferdialog wich der echten Suchseite. Dafür nimmt /council/decisions
+    ein ?topic= entgegen — und die übrigen Filter müssen weiter greifen, sonst
+    wäre der Umbau ein Rückschritt gegenüber dem Dialog."""
+    _register(client)
+    council = CouncilStore(COUNCIL_DB)
+    council.save_session(CouncilSession(1, "Rat", "2026-01-15", "17:00", "Ratssaal"))
+    with council._conn:
+        council._conn.execute(
+            "INSERT INTO council_decisions(id, ksinr, position, title, outcome, kind) "
+            "VALUES (1,1,0,'Radweg beschlossen','angenommen','decision')")
+        council._conn.execute(
+            "INSERT INTO council_decisions(id, ksinr, position, title, outcome, kind) "
+            "VALUES (2,1,1,'Radweg abgelehnt','abgelehnt','decision')")
+        council._conn.execute(
+            "INSERT INTO council_decisions(id, ksinr, position, title, outcome, kind) "
+            "VALUES (3,1,2,'Ganz anderes Thema','angenommen','decision')")
+    council.close()
+
+    tid = client.post("/api/topics", json={"name": "Radwege", "description": "Alles zu Radwegen"}).json()["id"]
+    store = Store(NWZ_DB)
+    store.save_topic_decision_matches(tid, 1, [(1, 0.9), (2, 0.8)])
+    store.close()
+
+    # Ohne Filter: alle drei.
+    assert client.get("/api/council/decisions?limit=50").json()["total"] == 3
+    # Auf das Thema eingegrenzt: nur die beiden zugeordneten.
+    r = client.get(f"/api/council/decisions?limit=50&topic={tid}")
+    assert r.status_code == 200
+    assert r.json()["total"] == 2
+    assert {d["id"] for d in r.json()["decisions"]} == {1, 2}
+    # Thema UND Ergebnis-Filter greifen zusammen.
+    assert client.get(f"/api/council/decisions?limit=50&topic={tid}&outcome=abgelehnt").json()["total"] == 1
+
+
+def test_decisions_topic_filter_nur_eigene_themen(client):
+    """Über eine fremde topic-id ließe sich sonst deren Trefferliste auslesen."""
+    _register(client)
+    tid = client.post("/api/topics", json={"name": "Meins", "description": "x"}).json()["id"]
+    _register(client, email="fremd@test.de")
+    client.post("/api/auth/login", json={"email": "fremd@test.de", "password": "password123"})
+    assert client.get(f"/api/council/decisions?topic={tid}").status_code == 404
+    assert client.get("/api/council/decisions?topic=99999").status_code == 404
+
+
+def test_decisions_topic_ohne_treffer_liefert_leer(client):
+    """Ein Thema ohne berechnete Treffer darf nicht plötzlich alles zeigen —
+    die leere ID-Liste muss zu 0 führen, nicht zu „kein Filter"."""
+    _register(client)
+    council = CouncilStore(COUNCIL_DB)
+    council.save_session(CouncilSession(1, "Rat", "2026-01-15", "17:00", "Ratssaal"))
+    with council._conn:
+        council._conn.execute(
+            "INSERT INTO council_decisions(id, ksinr, position, title, outcome, kind) "
+            "VALUES (1,1,0,'Irgendwas','angenommen','decision')")
+    council.close()
+    tid = client.post("/api/topics", json={"name": "Leer", "description": "ohne Treffer"}).json()["id"]
+    assert client.get(f"/api/council/decisions?limit=50&topic={tid}").json()["total"] == 0

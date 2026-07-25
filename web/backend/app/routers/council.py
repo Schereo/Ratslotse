@@ -254,16 +254,28 @@ def decisions(
     # aus — sie hängen als Kontext am Ursprungsbeschluss. Rechercheure können sie
     # per Filter „Änderungsanträge einzeln zeigen" wieder einblenden.
     include_subvotes: bool = Query(False),
+    # Design 28a/S4: Auf die Treffer EINES eigenen Themas einschränken. Damit
+    # ersetzt die richtige Suchseite (Filter, Sortierung, Seiten, teilbare URL)
+    # den früheren Trefferdialog, der nichts davon konnte.
+    topic: int | None = Query(None, ge=1),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
-    _user: dict = Depends(require_active),
+    user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
+    nwz: Store = Depends(get_store),
 ) -> dict:
+    only_ids: list[int] | None = None
+    if topic is not None:
+        # Nur eigene Themen — sonst ließe sich über eine fremde id deren
+        # Trefferliste abfragen.
+        if not nwz.get_topic_for_owner(user["id"], topic):
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Thema nicht gefunden.")
+        only_ids = [m["decision_id"] for m in nwz.get_topic_decision_matches(topic)]
     total = store.count_decisions(q, committee, outcome, faction, date_from, date_to, kind, category, field, party,
-                                  include_subvotes=include_subvotes)
+                                  include_subvotes=include_subvotes, only_ids=only_ids)
     rows = store.search_decisions(q, committee, outcome, faction, date_from, date_to, kind, category,
                                   sort=sort, field=field, party=party, limit=limit, offset=offset,
-                                  include_subvotes=include_subvotes)
+                                  include_subvotes=include_subvotes, only_ids=only_ids)
     # Design 23a: je Beschluss die kompakte Änderungsantrags-Zusammenfassung
     # anhängen (Anzahl · Fraktion · Ergebnis) für die Karten-Unterzeile.
     pairs = [(r["ksinr"], r["item_number"]) for r in rows

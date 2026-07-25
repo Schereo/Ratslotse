@@ -9,3 +9,7 @@ export const personHref = (slug: string) => `/council/person?slug=${encodeURICom
 export const themaHref = (slug: string) => `/council/thema?slug=${encodeURIComponent(slug)}`;
 /** Quiz-Start, optional mit vorgewähltem Gebiet (z. B. "wahlbereich:3"). */
 export const quizHref = (area?: string) => (area ? `/quiz?area=${encodeURIComponent(area)}` : "/quiz");
+/** Sitzungsliste, aufgeklappt bei einer bestimmten Sitzung (Design 28a/S2:
+ *  Ziel des Zurück-Knopfs, wenn es keine History gibt — etwa aus Push oder
+ *  geteiltem Link). Die Sitzungen-Ansicht wertet ?ksinr= bereits aus. */
+export const sessionHref = (ksinr: number) => `/council?tab=sessions&ksinr=${ksinr}`;

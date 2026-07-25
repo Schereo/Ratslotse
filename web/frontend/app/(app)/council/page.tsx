@@ -4,15 +4,15 @@ import { useEffect, useRef, useState, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Search, ExternalLink, ChevronDown, ChevronRight, Scale, SlidersHorizontal, Users, Sparkles, Split, X, Flame } from "lucide-react";
+import { Search, ExternalLink, ChevronDown, ChevronRight, Scale, SlidersHorizontal, Users, Sparkles, Split, X, Flame, CalendarDays, Map as MapIcon, BarChart3 } from "lucide-react";
 import { api, qs, ApiError } from "@/lib/api";
 import { decisionHref } from "@/lib/routes";
 import { useDebounce } from "@/lib/use-debounce";
 import {
-  CouncilSession, SessionDetail, AgendaItem, CouncilDecision, DecisionOutcome, PolicyField,
+  CouncilSession, SessionDetail, AgendaItem, CouncilDecision, DecisionOutcome, PolicyField, Topic,
 } from "@/lib/types";
 import {
-  Badge, Button, Card, CardListSkeleton, DateField, EmptyState, Input, PageHeader, Pagination, Segmented, Select,
+  Badge, Button, Card, CardListSkeleton, DateField, EmptyState, Input, PageHeader, Pagination, Segmented, type SegmentedOption, Select,
   Sheet, SheetContent, SheetTitle, SheetTrigger, Spinner, formatDate, toast,
 } from "@/components/ui";
 import { OutcomeBadge, OutcomeDot, ImportanceBadge, OUTCOME_META, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
@@ -38,18 +38,40 @@ function itemMatches(it: AgendaItem, query: string): boolean {
   return it.title.toLowerCase().includes(q) || (it.vorlage_nr?.toLowerCase().includes(q) ?? false);
 }
 
+/* Design 28a/R1: JEDES Wort der Eingabe, an JEDER Fundstelle markieren.
+   Vorher wurde nur das erste, wörtliche Vorkommen der GANZEN Eingabe getroffen —
+   bei „radwege innenstadt" also nie eines, weil die beiden Wörter nirgends
+   zusammenhängend stehen. Die Karte war der Treffer, sah aber aus wie keiner,
+   und genau daran entstand der Eindruck, die Suche funktioniere nicht.
+   Ein-Zeichen-Wörter bleiben außen vor: Die markierten sonst halbe Sätze. */
+function highlightRegex(query: string): RegExp | null {
+  const words = query
+    .trim()
+    .split(/\s+/)
+    .filter((w) => w.length >= 2)
+    .map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .sort((a, b) => b.length - a.length); // längere zuerst → keine Teiltreffer
+  if (words.length === 0) return null;
+  return new RegExp(`(${words.join("|")})`, "gi");
+}
+
 function Highlight({ text, query }: { text: string; query: string }) {
-  const q = query.trim();
-  if (!q || !text) return <>{text}</>;
-  const idx = text.toLowerCase().indexOf(q.toLowerCase());
-  if (idx === -1) return <>{text}</>;
+  const re = query.trim() && text ? highlightRegex(query) : null;
+  if (!re || !text) return <>{text}</>;
+  const parts = text.split(re);
+  if (parts.length === 1) return <>{text}</>;
   return (
     <>
-      {text.slice(0, idx)}
-      <mark className="rounded bg-amber-200 px-0.5 text-foreground dark:bg-amber-700/60">
-        {text.slice(idx, idx + q.length)}
-      </mark>
-      {text.slice(idx + q.length)}
+      {parts.map((part, i) =>
+        // split() mit Capture-Group liefert die Treffer an ungeraden Positionen.
+        i % 2 === 1 ? (
+          <mark key={i} className="rounded bg-amber-200 px-0.5 text-foreground dark:bg-amber-700/60">
+            {part}
+          </mark>
+        ) : (
+          part
+        ),
+      )}
     </>
   );
 }
@@ -264,6 +286,17 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   // Field + party live in the URL so the analysis and badges can deep-link to a filtered list.
   const sp = useSearchParams();
   const router = useRouter();
+  /* Design 28a/S4: ?topic= schränkt auf die Treffer eines eigenen Themas ein —
+     der Ersatz für den früheren Trefferdialog. Steht in der URL, ist also
+     teilbar und überlebt Zurück; den Namen holen wir für den Chip aus der
+     Themenliste, die ohnehin gecacht ist. */
+  const topicId = sp.get("topic") ?? "";
+  const { data: myTopics } = useQuery({
+    queryKey: ["topics"],
+    queryFn: () => api.get<Topic[]>("/topics"),
+    enabled: !!topicId,
+  });
+  const topicName = myTopics?.find((t) => String(t.id) === topicId)?.name ?? "";
 
   // ?q= aus der URL übernehmen (Deep-Link aus der Command-Palette) — einmalig
   // nach dem Mount, um keinen Hydration-Mismatch im Input zu erzeugen.
@@ -311,6 +344,8 @@ function DecisionsTab({ committees }: { committees: string[] }) {
           outcome: mode === "vote" ? outcome : "",
           date_from: dateFrom, date_to: dateTo,
           include_subvotes: showSubvotes ? "1" : "",
+          // Design 28a/S4: auf die Treffer eines eigenen Themas eingeschränkt.
+          topic: topicId,
           limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE,
         })}`,
       );
@@ -321,12 +356,12 @@ function DecisionsTab({ committees }: { committees: string[] }) {
     } finally {
       setLoading(false);
     }
-  }, [q, committee, mode, outcome, sort, field, party, dateFrom, dateTo, showSubvotes, page]);
+  }, [q, committee, mode, outcome, sort, field, party, dateFrom, dateTo, showSubvotes, page, topicId]);
 
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedQ, committee, mode, outcome, sort, field, party, dateFrom, dateTo, showSubvotes, page]);
+  }, [debouncedQ, committee, mode, outcome, sort, field, party, dateFrom, dateTo, showSubvotes, page, topicId]);
 
   // RL-U02: Seitenwechsel führt zurück zum Listenanfang und setzt den Fokus
   // auf den Listen-Container (bleibt über den Ladewechsel gemountet), damit
@@ -556,10 +591,25 @@ function DecisionsTab({ committees }: { committees: string[] }) {
         ) : (
           <div className="space-y-2.5">
             {/* RL-F07: Trefferzeile gleitet bei Filterwechsel neu ein (key-Remount). */}
-            <p key={`${total}|${query}|${outcome}|${field}|${committee}`} className="animate-fade-up text-sm font-medium text-muted-foreground">
-              {total} {noun}
-              {query && <> zu <strong className="font-semibold text-foreground">{query}</strong></>}
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p key={`${total}|${query}|${outcome}|${field}|${committee}`} className="animate-fade-up text-sm font-medium text-muted-foreground">
+                {total} {noun}
+                {query && <> zu <strong className="font-semibold text-foreground">{query}</strong></>}
+              </p>
+              {/* Design 28a/S4: sichtbar und abwählbar — sonst wüsste niemand,
+                  warum die Liste kürzer ist als sonst. */}
+              {topicId && (
+                <button
+                  type="button"
+                  onClick={() => setUrlParam("topic", "")}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
+                >
+                  Thema: {topicName || `#${topicId}`}
+                  <X className="h-3 w-3" aria-hidden />
+                  <span className="sr-only">Themenfilter entfernen</span>
+                </button>
+              )}
+            </div>
             {decisions.map((d) => <DecisionCard key={d.id} d={d} query={query} />)}
             <Pagination page={page} totalPages={totalPages} onChange={changePage} className="pt-2" />
           </div>
@@ -591,13 +641,18 @@ function DateTile({ iso }: { iso: string }) {
   );
 }
 
-function AgendaRow({ it, query, outcome, myTopic }: { it: AgendaItem; query: string; outcome?: DecisionOutcome | null; myTopic?: string }) {
+/* Design 28a/S1: Ein TOP, zu dem es einen Beschluss gibt, führt auf dessen Seite.
+   Vorher zeigte die Zeile das Ergebnis an (grüner/roter Punkt) und war trotzdem
+   toter Text — man musste zurück in die Suche, um den Beschluss zu finden, der
+   direkt dahinter liegt. TOPs ohne Beschluss (Berichte, künftige Sitzungen)
+   bleiben bewusst ruhiger Text, damit der Zeiger nichts verspricht, was fehlt. */
+function AgendaRow({ it, query, outcome, decisionId, myTopic }: {
+  it: AgendaItem; query: string; outcome?: DecisionOutcome | null;
+  decisionId?: number; myTopic?: string;
+}) {
   const hit = itemMatches(it, query);
-  return (
-    <li className={cn(
-      "flex flex-wrap items-start gap-x-3 gap-y-1 rounded-md px-2 py-2",
-      hit ? "bg-amber-50 dark:bg-amber-950/40" : myTopic && "bg-signal/5",
-    )}>
+  const body = (
+    <>
       <span className="w-7 shrink-0 text-xs font-medium text-muted-foreground">{it.item_number}</span>
       <div className="min-w-0 flex-1">
         <p className="text-sm text-foreground"><Highlight text={it.title} query={query} /></p>
@@ -610,8 +665,25 @@ function AgendaRow({ it, query, outcome, myTopic }: { it: AgendaItem; query: str
         )}
       </div>
       {outcome ? <OutcomeDot outcome={outcome} /> : !it.is_public ? <Badge color="amber">nichtöffentlich</Badge> : null}
-    </li>
+      {decisionId != null && <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/50" aria-hidden />}
+    </>
   );
+  const tone = hit ? "bg-amber-50 dark:bg-amber-950/40" : myTopic ? "bg-signal/5" : "";
+  const layout = "flex flex-wrap items-start gap-x-3 gap-y-1 rounded-md px-2 py-2";
+
+  if (decisionId != null) {
+    return (
+      <li>
+        <Link
+          href={decisionHref(decisionId)}
+          className={cn(layout, tone, "transition-colors hover:bg-muted/60 active:scale-[0.995]")}
+        >
+          {body}
+        </Link>
+      </li>
+    );
+  }
+  return <li className={cn(layout, tone)}>{body}</li>;
 }
 
 function AttendanceSection({ detail }: { detail: SessionDetail }) {
@@ -802,8 +874,14 @@ function SessionsTab({ committees }: { committees: string[] }) {
               const matched = s.matched_items ?? [];
               const d = detail[s.ksinr];
               const outcomeByItem: Record<string, DecisionOutcome | null> = {};
+              // Design 28a/S1: dieselbe Schleife liefert die Beschluss-id, mit der
+              // die TOP-Zeile zum Link wird — kein zusätzlicher Endpunkt nötig.
+              const decisionByItem: Record<string, number> = {};
               for (const dec of d?.decisions ?? []) {
-                if (dec.kind === "decision" && dec.item_number) outcomeByItem[dec.item_number] = dec.outcome;
+                if (dec.kind === "decision" && dec.item_number) {
+                  outcomeByItem[dec.item_number] = dec.outcome;
+                  decisionByItem[dec.item_number] ??= dec.id;
+                }
               }
               // RL-902: TOPs, die zu eigenen Themen passen (TOP → Themenname).
               const myByItem: Record<string, string> = {};
@@ -847,7 +925,8 @@ function SessionsTab({ committees }: { committees: string[] }) {
                           <>
                             <ul className="space-y-0.5">
                               {(d?.agenda_items ?? []).map((it, i) => (
-                                <AgendaRow key={i} it={it} query={query} outcome={outcomeByItem[it.item_number]} myTopic={myByItem[it.item_number]} />
+                                <AgendaRow key={i} it={it} query={query} outcome={outcomeByItem[it.item_number]}
+                                  decisionId={decisionByItem[it.item_number]} myTopic={myByItem[it.item_number]} />
                               ))}
                             </ul>
                             {d && <AttendanceSection detail={d} />}
@@ -956,6 +1035,16 @@ const TAB_META: Record<Tab, { title: string; description: string }> = {
   analysis: { title: "Analyse", description: "Parteien, Personen, Finanzen, Trends und Ziele im Überblick." },
 };
 
+/* Design 28a/S3: Kurzlabels für die mobile Ansichtsleiste — „Karte" statt
+   „Themen", weil daneben die Bottom-Nav schon „Themen" (= Meine Themen) führt
+   und beides sonst dasselbe zu meinen scheint. */
+const VIEW_TABS: SegmentedOption<Tab>[] = [
+  { value: "decisions", label: "Suchen", icon: Search },
+  { value: "sessions", label: "Sitzungen", icon: CalendarDays },
+  { value: "themen", label: "Karte", icon: MapIcon },
+  { value: "analysis", label: "Analyse", icon: BarChart3 },
+];
+
 function CouncilInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -983,14 +1072,31 @@ function CouncilInner() {
   const meta = TAB_META[tab];
   return (
     <div>
+      {/* Design 28a/S3: Nur MOBIL eine Ansichtsleiste. Am Rechner trägt die
+          Sidebar alle vier Ziele; auf dem Telefon lagen Sitzungen, Stadtkarte
+          und Analyse ausschließlich hinter dem Burger-Menü — wer „Ratsinfo"
+          antippte, landete in der Suche und sah nie, dass drei weitere
+          Ansichten dazugehören. Deshalb ist die früher gestrichene Leiste
+          zurück, aber unter md beschränkt: keine dritte Navigation am Desktop.
+
+          Sie steht ÜBER dem Seitentitel, nicht darunter: Sonst stünde sie
+          direkt auf dem „Suchen | KI-Frage"-Umschalter, beide begännen mit
+          „Suchen" — dieselbe Verwechslung, die 28a/R5 in der Sidebar rügt.
+          Oben gelesen ergibt sich die Rangfolge: Wo bin ich → was ist das →
+          welcher Modus. */}
+      <div className="-mx-4 mb-3 overflow-x-auto px-4 md:hidden">
+        <Segmented
+          value={tab}
+          onChange={(v) => router.push(`/council?tab=${v}`, { scroll: false })}
+          options={VIEW_TABS}
+          className="w-max min-w-full"
+        />
+      </div>
       <PageHeader
         title={meta.title}
         description={meta.description}
         action={tab === "decisions" ? <SearchModeToggle /> : undefined}
       />
-      {/* Bewusst KEINE eigene Tab-Leiste hier: Sitzungen/Themen/Analyse sind mobil
-          übers Burger-Menü erreichbar — eine dritte Navigation (neben Burger und
-          Bottom-Nav) verwirrte mehr, als sie half. */}
       {tab === "decisions" ? <SearchTab committees={committees} />
         : tab === "sessions" ? <SessionsTab committees={committees} />
         : tab === "themen" ? <EntitiesTab />
