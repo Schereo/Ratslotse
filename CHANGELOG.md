@@ -276,6 +276,18 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   bleibt unverändert, und die Fußnoten in der Antwort springen weiterhin
   zuverlässig zur richtigen Quelle — auch wenn sie eingeklappt wäre. (#301)
 
+### Entfernt
+- **Rund 700 Zeilen toter Code raus** — nach Wochen Umbau hatte sich einiges
+  angesammelt, das nichts mehr aufruft: die letzten Überreste des
+  ausgegliederten Zeitungs-Scrapers (Artikel-Themen-Zuordnung, Ausgaben,
+  Volltextsuche, Presse-Verknüpfungen zu Beschlüssen), drei nicht mehr
+  eingebundene Oberflächen-Bausteine, zwei Rate-Limits ohne Endpunkt und drei
+  API-Routen, die kein Client abruft. Für Nutzer:innen ändert sich dadurch
+  nichts; die Tabellen zum Löschen alter Konten-Daten bleiben absichtlich
+  erhalten. „In der Presse" auf der Beschluss-Seite war schon vorher auf die
+  reine NWZonline-Suche umgestellt — der ungenutzte Vorschlags-Kanal daneben
+  ist jetzt auch im Code weg.
+
 ## [1.3.0] – 2026-07-23
 
 ### Hinzugefügt

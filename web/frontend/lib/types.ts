@@ -178,10 +178,6 @@ export interface SimilarDecision {
   session_date: string; committee: string; score: number;
 }
 
-export interface NewsLink {
-  catalog: number; refid: string; title: string | null; pub_date: string | null; score: number;
-}
-
 export interface Entity {
   slug: string; name: string; kind: string; n: number;
   /** Datum der letzten Sitzung mit Beschluss zu diesem Thema. */
@@ -293,7 +289,6 @@ export interface DecisionDetail {
    *  geplanten künftigen Beratungen. Fehlt, solange sie nicht gescrapt ist. */
   beratungsfolge?: Beratung[];
   similar: SimilarDecision[];
-  news: NewsLink[];
   entities: Entity[];
   ratsinfo_url: string;
   vorlage_url?: string | null;

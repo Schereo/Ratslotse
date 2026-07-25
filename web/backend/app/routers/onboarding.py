@@ -39,12 +39,6 @@ def update_onboarding(
     return store.update_onboarding(user["id"], steps=steps, celebrated=payload.celebrated)
 
 
-@router.get("/setup")
-def get_setup(user: dict = Depends(require_active), store: Store = Depends(get_store)) -> dict:
-    """Stand des Einrichtungs-Assistenten (Design 26a)."""
-    return store.get_setup(user["id"])
-
-
 @router.post("/setup")
 def set_setup(
     payload: SetupUpdate,

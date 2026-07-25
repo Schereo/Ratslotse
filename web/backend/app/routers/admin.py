@@ -54,17 +54,6 @@ def _send_activation_email(email: str) -> None:
 
 
 # ---- stats ----
-@router.get("/stats")
-def stats(
-    _admin: dict = Depends(require_admin),
-    store: Store = Depends(get_store),
-    council: CouncilStore = Depends(get_council_store),
-) -> dict:
-    data = store.admin_stats()
-    data["council"] = council.admin_stats()
-    return data
-
-
 _RANGE_DAYS = {"30d": 30, "90d": 90, "12m": 365, "all": None}
 
 
