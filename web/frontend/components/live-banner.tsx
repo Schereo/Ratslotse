@@ -47,7 +47,7 @@ export function LiveBanner() {
   return (
     <div
       role="status"
-      className="mt-6 rounded-2xl border border-red-500/25 bg-gradient-to-br from-red-500/5 to-transparent p-4"
+      className="rounded-2xl border border-red-500/25 bg-gradient-to-br from-red-500/5 to-transparent p-4"
     >
       <div className="flex items-center gap-2.5">
         <span className="relative flex h-2.5 w-2.5 shrink-0" aria-hidden>

@@ -10,6 +10,7 @@ import { OutcomeDot, OUTCOME_META, VoteBar, FieldBadge, PartyBadge, DecisionLink
 import { decisionHref, themaHref, sessionHref } from "@/lib/routes";
 import { shortCommittee } from "@/lib/committees";
 import { ShareButton } from "@/components/share-button";
+import { PrintButton } from "@/components/print-button";
 import { nwzSearchUrl } from "@/components/nwz-link";
 import { trackRecentDecision } from "@/lib/recent";
 import { Mascot } from "@/components/mascot";
@@ -488,7 +489,15 @@ function DecisionDetailInner() {
             <span className="hidden sm:inline"> zu {shortCommittee(d.committee)} · {formatDate(d.session_date)}</span>
           </span>
         </button>
-        <ShareButton path={decisionHref(d.id)} title={d.title ?? "Beschluss des Oldenburger Stadtrats"} />
+        <div className="flex shrink-0 items-center gap-2">
+          {/* Design 28a/W3: Das Druck-Stylesheet (globals.css) blendet Navigation
+              und Beiwerk längst aus — es gab nur keinen Weg, den Druck aus der
+              App heraus zu starten. Für Bürgerinitiativen und Ortsräte ist das
+              Papier die Arbeitsgrundlage. In der nativen App fehlt window.print(),
+              dort bleibt der Knopf weg. */}
+          <PrintButton />
+          <ShareButton path={decisionHref(d.id)} title={d.title ?? "Beschluss des Oldenburger Stadtrats"} />
+        </div>
       </div>
 
       {/* Nachbar-TOPs: Wer eine Sitzung durchgeht, musste bisher für jeden TOP
@@ -502,8 +511,11 @@ function DecisionDetailInner() {
               <span className="truncate">TOP {prev.item_number}</span>
             </Link>
           ) : <span />}
+          {/* Position unter den Beschlüssen, NICHT die TOP-Nummer: Eine
+              Tagesordnung hat mehr Punkte als Beschlüsse — „TOP 8 von 6" wäre
+              das Ergebnis. Die TOP-Nummer selbst steht in der Statuszeile. */}
           <span className="shrink-0 text-[11px] font-medium tabular-nums text-muted-foreground">
-            TOP {d.item_number} von {siblings.length}
+            {pos + 1} von {siblings.length} Beschlüssen
           </span>
           {next ? (
             <Link href={decisionHref(next.id)} title={next.title ?? ""}

@@ -91,7 +91,7 @@ export function PushPrimer() {
   if (!visible) return null;
 
   return (
-    <Card className="mt-6 flex items-start gap-3 p-4">
+    <Card className="flex items-start gap-3 p-4">
       <Mascot pose="point" theme={theme} decorative className="h-12 w-12 shrink-0" />
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold text-foreground">Nichts mehr verpassen?</p>

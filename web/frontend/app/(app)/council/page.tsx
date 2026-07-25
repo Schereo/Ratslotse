@@ -4,10 +4,12 @@ import { useEffect, useRef, useState, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Search, ExternalLink, ChevronDown, ChevronRight, Scale, SlidersHorizontal, Users, Sparkles, Split, X, Flame, CalendarDays, Map as MapIcon, BarChart3 } from "lucide-react";
+import { Search, ExternalLink, ChevronDown, ChevronRight, Scale, SlidersHorizontal, Users, Sparkles, Split, X, Flame, CalendarDays, Map as MapIcon, BarChart3, History, CalendarPlus } from "lucide-react";
 import { api, qs, ApiError } from "@/lib/api";
 import { decisionHref } from "@/lib/routes";
 import { useDebounce } from "@/lib/use-debounce";
+import { clearRecentSearches, getRecentSearches, pushRecentSearch } from "@/lib/recent-searches";
+import { offerIcs } from "@/lib/ics";
 import {
   CouncilSession, SessionDetail, AgendaItem, CouncilDecision, DecisionOutcome, PolicyField, Topic,
 } from "@/lib/types";
@@ -31,6 +33,15 @@ type Scope = "all" | "upcoming" | "recent";
 type Tab = "sessions" | "decisions" | "themen" | "analysis";
 
 const sessionUrl = (ksinr: number) => `https://buergerinfo.oldenburg.de/si0057.php?__ksinr=${ksinr}`;
+
+/* TOP-Nummern zusammenführen. Die Tagesordnung führt sie mit Sichtbarkeits-
+   Präfix („Ö 6.1", „N 12"), das Protokoll ohne („6.1") — ein direkter Vergleich
+   trifft deshalb NIE. Der Ergebnis-Punkt an der TOP-Zeile war damit von Anfang
+   an tot, und der Beschluss-Link aus 28a/S1 hätte dasselbe Schicksal geteilt.
+   Nichtöffentliche Punkte bleiben außen vor: „N 5" und „Ö 5" fielen sonst auf
+   denselben Schlüssel, und der öffentliche Beschluss landete an der falschen
+   Zeile. */
+const topKey = (n: string | null | undefined) => (n ?? "").replace(/^\p{L}+\s+/u, "").trim();
 
 function itemMatches(it: AgendaItem, query: string): boolean {
   const q = query.trim().toLowerCase();
@@ -214,17 +225,61 @@ function FilterField({ label, className, children }: { label: string; className?
  *  iOS-Tastatur. Das ✕ erscheint ab dem ersten Zeichen, leert und fokussiert
  *  neu — volle Feldhöhe als Touch-Ziel. */
 function SearchBox({
-  value, onChange, placeholder, large = false, tour,
+  value, onChange, placeholder, large = false, tour, withHistory = false,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder: string;
   large?: boolean;
   tour?: string;
+  /** Design 28a/R6: Verlauf + Vorschläge beim Fokus auf leerem Feld. */
+  withHistory?: boolean;
 }) {
   const ref = useRef<HTMLInputElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const [history, setHistory] = useState<string[]>([]);
+
+  // Der Verlauf liegt in localStorage — erst beim Öffnen lesen, damit ein
+  // Eintrag aus derselben Sitzung sofort auftaucht (und der Server-Render
+  // nichts vom Gerät weiß).
+  const openPanel = () => {
+    if (!withHistory) return;
+    setHistory(getRecentSearches());
+    setOpen(true);
+  };
+
+  const suggestions = useQuery({
+    queryKey: ["topic-suggestions"],
+    queryFn: () =>
+      api.get<{ suggestions: { name: string }[] }>("/topics/suggestions").then((d) => d.suggestions),
+    // Nur laden, wenn das Panel wirklich offen ist: Der Endpoint prüft
+    // Vorschläge notfalls per LLM — er gehört nicht in jeden Seitenaufruf.
+    enabled: withHistory && open && !value.trim(),
+    staleTime: 30 * 60 * 1000,
+  });
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  const pick = (v: string) => {
+    onChange(v);
+    pushRecentSearch(v);
+    setOpen(false);
+    ref.current?.focus();
+  };
+
+  const vorschlaege = (suggestions.data ?? []).map((s) => s.name).slice(0, 5);
+  const showPanel = open && !value.trim() && (history.length > 0 || vorschlaege.length > 0);
+
   return (
-    <div className="relative">
+    <div className="relative" ref={wrapRef}>
       <Search className={cn(
         "pointer-events-none absolute top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground",
         large ? "left-4" : "left-3",
@@ -234,10 +289,18 @@ function SearchBox({
         data-search
         data-tour={tour}
         enterKeyHint="search"
+        // Der eigene Verlauf (28a/R6) und die Browser-Autovervollständigung
+        // legten sich sonst übereinander — zwei Listen, eine davon mit fremden
+        // Einträgen. Rechtschreibprüfung im Suchfeld unterkringelt außerdem
+        // jeden Straßennamen.
+        autoComplete="off"
+        spellCheck={false}
         className={cn(large ? "h-12 rounded-[14px] pl-11 pr-12 text-base" : "pl-9 pr-11")}
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onFocus={openPanel}
+        onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }}
       />
       {value && (
         <button
@@ -249,7 +312,95 @@ function SearchBox({
           <X className="h-4 w-4" />
         </button>
       )}
+
+      {showPanel && (
+        // onMouseDown verhindern: sonst verliert das Feld den Fokus, bevor der
+        // Klick auf einen Vorschlag ankommt.
+        <div
+          onMouseDown={(e) => e.preventDefault()}
+          className="absolute inset-x-0 top-full z-30 mt-1.5 overflow-hidden rounded-xl border border-border bg-card p-1 shadow-lifted"
+        >
+          {history.length > 0 && (
+            <>
+              <p className="flex items-center justify-between gap-2 px-2 pb-1 pt-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/70">
+                Zuletzt gesucht
+                <button
+                  type="button"
+                  onClick={() => { clearRecentSearches(); setHistory([]); }}
+                  className="rounded px-1 py-0.5 text-[11px] normal-case tracking-normal transition-colors hover:text-foreground"
+                >
+                  Löschen
+                </button>
+              </p>
+              {history.map((h) => (
+                <button
+                  key={h} type="button" onClick={() => pick(h)}
+                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent"
+                >
+                  <History className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
+                  <span className="truncate">{h}</span>
+                </button>
+              ))}
+            </>
+          )}
+          {vorschlaege.length > 0 && (
+            <>
+              <p className="px-2 pb-1 pt-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/70">
+                Gerade im Rat
+              </p>
+              {vorschlaege.map((s) => (
+                <button
+                  key={s} type="button" onClick={() => pick(s)}
+                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent"
+                >
+                  <Sparkles className="h-3.5 w-3.5 shrink-0 text-signal" />
+                  <span className="truncate">{s}</span>
+                </button>
+              ))}
+            </>
+          )}
+        </div>
+      )}
     </div>
+  );
+}
+
+/** Design 28a/W2: Sitzung in den eigenen Kalender. Das Ratsinformationssystem
+ *  bietet keinen Export — wer den Termin nicht verpassen will, tippt ihn bisher
+ *  ab. Die Tagesordnung wandert mit ins Beschreibungsfeld, samt Ratsinfo-Link,
+ *  damit der Eintrag auch in vier Wochen noch etwas sagt. */
+function CalendarButton({ session, agenda }: { session: CouncilSession; agenda?: string[] }) {
+  // Umlaute umschreiben statt wegwerfen — sonst hieße die Datei
+  // „ratslotse-stadtgr-n-klima-….ics".
+  const slug = shortCommittee(session.committee)
+    .toLowerCase()
+    .replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        offerIcs(
+          {
+            uid: session.ksinr ? `sitzung-${session.ksinr}` : `termin-${session.session_date}-${slug}`,
+            committee: session.committee,
+            session_date: session.session_date,
+            session_time: session.session_time,
+            location: session.location,
+            url: session.ksinr ? sessionUrl(session.ksinr) : null,
+            // Nur die ersten TOPs: Eine 60-Punkte-Tagesordnung sprengt jede
+            // Kalender-Vorschau, der Link führt ohnehin zur vollen Liste.
+            agenda: agenda?.slice(0, 12),
+          },
+          `ratslotse-${slug}-${session.session_date.slice(0, 10)}.ics`,
+        ).catch(() => toast.error("Kalendereintrag konnte nicht erzeugt werden."));
+      }}
+      className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-primary"
+    >
+      <CalendarPlus className="h-3.5 w-3.5" /> Kalender
+    </button>
   );
 }
 
@@ -282,6 +433,11 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const debouncedQ = useDebounce(q, 350);
+
+  // Design 28a/R6: erst die beruhigte Eingabe merken, nicht jeden Tastendruck.
+  // Zwischenstände wie „rad" auf dem Weg zu „radwege" räumt pushRecentSearch
+  // selbst wieder ab (Präfixe des neuen Begriffs fliegen raus).
+  useEffect(() => { pushRecentSearch(debouncedQ); }, [debouncedQ]);
 
   // Field + party live in the URL so the analysis and badges can deep-link to a filtered list.
   const sp = useSearchParams();
@@ -451,6 +607,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
       <div className="mt-3">
         <SearchBox
           large
+          withHistory
           tour="beschluss-suche"
           placeholder={isReport ? "Berichte durchsuchen…" : "Suchen (z. B. Haushalt, Radwege)…"}
           value={q}
@@ -653,7 +810,9 @@ function AgendaRow({ it, query, outcome, decisionId, myTopic }: {
   const hit = itemMatches(it, query);
   const body = (
     <>
-      <span className="w-7 shrink-0 text-xs font-medium text-muted-foreground">{it.item_number}</span>
+      {/* w-10 statt w-7: „Ö 6.2" brach sonst auf zwei Zeilen um und zog die
+          ganze Zeile auseinander. */}
+      <span className="w-10 shrink-0 whitespace-nowrap text-xs font-medium text-muted-foreground">{it.item_number}</span>
       <div className="min-w-0 flex-1">
         <p className="text-sm text-foreground"><Highlight text={it.title} query={query} /></p>
         {it.vorlage_nr && <p className="text-xs text-muted-foreground">Vorlage <Highlight text={it.vorlage_nr} query={query} /></p>}
@@ -810,7 +969,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
               value={q || committee ? undefined : scope}
               onChange={(s) => { setScope(s); setQ(""); setCommittee(""); }}
               options={[
-                { value: "upcoming", label: "Kommend" },
+                { value: "upcoming", label: "Anstehend" },
                 { value: "recent", label: "Vergangen" },
                 { value: "all", label: "Alle" },
               ]}
@@ -823,7 +982,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
         {loading ? (
           <CardListSkeleton rows={5} />
         ) : sessions.length === 0 ? (
-          // RL-U04: In der Sitzungspause ist „Kommend" leer, das Banner darüber
+          // RL-U04: In der Sitzungspause ist „Anstehend" leer, das Banner darüber
           // nennt den Grund — der Leerzustand greift ihn auf, statt generisch
           // „keine Sitzungen" zu behaupten.
           pause?.active && scope === "upcoming" && !q && !committee ? (
@@ -867,6 +1026,11 @@ function SessionsTab({ committees }: { committees: string[] }) {
                         <Badge>Tagesordnung folgt</Badge>
                       </div>
                     </div>
+                    {/* Gerade hier lohnt der Kalender am meisten: Der Termin
+                        steht, die Tagesordnung kommt erst noch. */}
+                    <div className="ml-[62px] mt-2 sm:ml-0">
+                      <CalendarButton session={s} />
+                    </div>
                   </Card>
                 );
               }
@@ -879,8 +1043,9 @@ function SessionsTab({ committees }: { committees: string[] }) {
               const decisionByItem: Record<string, number> = {};
               for (const dec of d?.decisions ?? []) {
                 if (dec.kind === "decision" && dec.item_number) {
-                  outcomeByItem[dec.item_number] = dec.outcome;
-                  decisionByItem[dec.item_number] ??= dec.id;
+                  const key = topKey(dec.item_number);
+                  outcomeByItem[key] = dec.outcome;
+                  decisionByItem[key] ??= dec.id;
                 }
               }
               // RL-902: TOPs, die zu eigenen Themen passen (TOP → Themenname).
@@ -925,8 +1090,10 @@ function SessionsTab({ committees }: { committees: string[] }) {
                           <>
                             <ul className="space-y-0.5">
                               {(d?.agenda_items ?? []).map((it, i) => (
-                                <AgendaRow key={i} it={it} query={query} outcome={outcomeByItem[it.item_number]}
-                                  decisionId={decisionByItem[it.item_number]} myTopic={myByItem[it.item_number]} />
+                                <AgendaRow key={i} it={it} query={query}
+                                  outcome={it.is_public ? outcomeByItem[topKey(it.item_number)] : undefined}
+                                  decisionId={it.is_public ? decisionByItem[topKey(it.item_number)] : undefined}
+                                  myTopic={myByItem[it.item_number]} />
                               ))}
                             </ul>
                             {d && <AttendanceSection detail={d} />}
@@ -947,6 +1114,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
                         <button type="button" onClick={() => toggle(s)} className="text-sm font-medium text-primary hover:underline">
                           {isExpanded ? "Weniger anzeigen" : `Alle ${s.n_items} TOPs anzeigen`}
                         </button>
+                        <CalendarButton session={s} agenda={(d?.agenda_items ?? []).map((it) => `${it.item_number} ${it.title}`)} />
                         <a href={sessionUrl(s.ksinr)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary">
                           Ratsinfo <ExternalLink className="h-3.5 w-3.5" />
                         </a>

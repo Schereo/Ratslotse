@@ -14,6 +14,7 @@ import {
 } from "@/components/ui";
 import { decisionHref } from "@/lib/routes";
 import { TopicSheet } from "@/components/topic-sheet";
+import { committeeExplains, committeeRank, shortCommittee } from "@/lib/committees";
 
 function TopicsInner() {
   const qc = useQueryClient();
@@ -139,6 +140,9 @@ function TopicsInner() {
   const topics = Array.isArray(topicsQuery.data) ? topicsQuery.data : [];
   const subscriptions = Array.isArray(subsQuery.data) ? subsQuery.data : [];
   const committees = Array.isArray(committeesQuery.data) ? committeesQuery.data : [];
+  // Alltagsbezug zuerst, wie im Einrichtungs-Assistenten (Design 28a/R3).
+  const sortedCommittees = committees.slice()
+    .sort((a, b) => committeeRank(a) - committeeRank(b) || shortCommittee(a).localeCompare(shortCommittee(b), "de"));
 
   return (
     <div>
@@ -295,11 +299,21 @@ function TopicsInner() {
         Benachrichtigungen, sobald eine Tagesordnung veröffentlicht wird — und noch einmal, wenn sie sich danach ändert.
       </p>
       <Card className="mt-3 divide-y divide-border">
-        {committees.map((c) => {
+        {/* Design 28a/R3: Dieselbe Liste steht im Einrichtungs-Assistenten mit
+            Kurznamen, Alltags-Reihenfolge und einem erklärenden Satz — hier
+            standen bis zuletzt die amtlichen Langnamen in Ratsinfo-Reihenfolge.
+            Wer den Assistenten gerade durchlaufen hatte, fand seine Auswahl
+            nicht wieder. Die Helfer lagen fertig in lib/committees.ts. */}
+        {sortedCommittees.map((c) => {
           const subscribed = subscriptions.includes(c);
+          const explain = committeeExplains(c);
           return (
             <div key={c} className="flex items-center justify-between gap-3 px-4 py-2.5">
-              <span className="min-w-0 text-sm text-foreground">{c}</span>
+              <div className="min-w-0">
+                {/* Der amtliche Name bleibt im title erreichbar. */}
+                <p className="truncate text-sm font-medium text-foreground" title={c}>{shortCommittee(c)}</p>
+                {explain && <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{explain}</p>}
+              </div>
               <Switch
                 checked={subscribed}
                 aria-label={`${c} ${subscribed ? "abbestellen" : "abonnieren"}`}
