@@ -93,8 +93,11 @@ zeigt die App den letzten Stand statt Skeletons oder Fehlern.
   `ios/App/App/Assets.xcassets/AppIcon.appiconset/` (dazu `Splash.imageset`).
   Erzeugt mit `@capacitor/assets` aus `web/frontend/assets/logo.png`
   (Hintergrund `#0764a6` hell, `#09111b` dunkel).
-- **First-Run-Intro** (`components/app-intro.tsx`): drei Karten mit dem
-  Maskottchen beim allerersten App-Start, „Überspringen" jederzeit möglich.
+- **Willkommens-Auftakt und Einrichtung** (`components/onboarding-flow.tsx`):
+  begrüßt beim allerersten Start vor dem Login und führt danach durch Gremien,
+  Themen und Mitteilungen. „Überspringen" ist jederzeit möglich, der erreichte
+  Schritt wird gemerkt. (Die früher hier beschriebene `components/app-intro.tsx`
+  existiert nicht mehr.)
   Nur nativ, danach nie wieder (`localStorage`-Schlüssel
   `ratslotse.intro.done`).
 
@@ -312,7 +315,7 @@ denselben Stand hat und nach Abschluss überall verschwindet.
 - `GET /api/onboarding` liefert den Stand, `POST /api/onboarding` merged
   erledigte Schritte dazu und/oder setzt `celebrated`.
 - Erlaubt sind nur die bekannten Schritte `frag`, `beschluesse`, `analyse`,
-  `karten`, `thema` — alles andere wird verworfen, damit die Spalte nicht
+  `karten` — alles andere wird verworfen, damit die Spalte nicht
   zuwuchert. Schritte gelten schon beim **Besuch** der jeweiligen Seite als
   erledigt (`components/onboarding.tsx`).
 
@@ -332,11 +335,14 @@ allein darf ein Konto nicht zerstören können:
 - Apple-only-Konten (`password_set = 0`) mit einem frischen Apple-Identity-Token,
   dessen `sub` zum Konto passt (Re-Auth in der App).
 
-`Store.delete_web_user` entfernt dabei die Zeilen aus `topics`,
-`article_topic_matches`, `topic_classified_editions`,
-`committee_subscriptions`, `password_reset_tokens`,
-`email_verification_tokens` und `web_users`; anschließend geht eine
-Bestätigungs-Mail raus (Best-Effort). Die Löschmöglichkeit **in der App** ist
+`Store.delete_web_user` räumt jede Tabelle aus `USER_OWNED_TABLES`
+(`nwz/store.py`) ab und löscht zuletzt die Zeile in `web_users` — derzeit
+**18 Tabellen**. Diese Seite zählt sie bewusst *nicht* mehr einzeln auf: Die
+frühere Aufzählung nannte sechs und war damit lange falsch. Maßgeblich ist die
+Konstante, und dass sie vollständig bleibt, prüft
+`test_delete_web_user_covers_every_user_table` gegen das Schema — wer eine neue
+nutzerbezogene Tabelle anlegt, muss sie dort eintragen, sonst schlägt der Test
+fehl. Anschließend geht eine Bestätigungs-Mail raus (Best-Effort). Die Löschmöglichkeit **in der App** ist
 zugleich eine App-Store-Anforderung für Apps mit Registrierung.
 
 ## Datenschutz-relevante Punkte

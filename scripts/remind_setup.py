@@ -19,8 +19,20 @@ from __future__ import annotations
 
 import os
 import sys
+from pathlib import Path
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
+# Ohne diese Zeile lief der Job jahrelang ins Leere: Unter Cron gibt es keine
+# Shell-Umgebung, RESEND_API_KEY war also nie gesetzt, `email_ready()` immer
+# False — und der Lauf meldete brav „kein_mailversand" und endete mit Erfolg.
+# In job_runs sah der Job dadurch dauerhaft grün aus, während nie eine
+# Erinnerung rausging. Alle anderen Cron-Einstiegspunkte laden .env; nur dieser
+# hier nicht.
+from dotenv import load_dotenv  # noqa: E402
+
+load_dotenv(ROOT / ".env")
 
 from nwz.digest_email import render_html_email  # noqa: E402
 from nwz.email import email_ready, send_email  # noqa: E402
@@ -51,7 +63,11 @@ def _body(name: str | None, step: int) -> str:
 
 
 def main() -> dict:
-    store = Store()
+    # Store verlangt einen Pfad — `Store()` warf hier bei JEDEM Lauf sofort einen
+    # TypeError, noch vor der Mail-Prüfung. Der Job hat also nie eine Erinnerung
+    # verschickt, sondern ist immer abgestürzt. Pfad wie in den übrigen
+    # Cron-Skripten: NWZ_DB, sonst data/nwz.sqlite im Repo.
+    store = Store(os.environ.get("NWZ_DB") or ROOT / "data" / "nwz.sqlite")
     pending = store.setups_to_remind(older_than_hours=REMIND_AFTER_HOURS)
     if not pending:
         return {"kandidaten": 0, "gesendet": 0}

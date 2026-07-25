@@ -98,7 +98,8 @@ Die Zeitpläne stehen als Docstring im jeweiligen Skript und in
 | `check_committees.py` | täglich `0 7 * * *` | Gremienliste und Kalender (3 Monate voraus) auffrischen, Terminplan-Sitzungen ohne Tagesordnung mitschreiben, Tagesordnungen zusammenfassen und Ausschuss-Abonnent:innen benachrichtigen (auch bei *geänderter* Tagesordnung, erkannt über einen Agenda-Hash). |
 | `check_council.py` | zweimal täglich `0 8,14 * * *` | Kommende Sitzungen gegen die Themen aller Nutzer:innen klassifizieren und Treffer per E-Mail/Push ausliefern. |
 | `check_protocols.py` | täglich `0 9 * * *` | Neue Protokolle parsen — und alles Nachgelagerte gleich mit (siehe unten). |
-| `weekly_enrich.py` | sonntags `0 3 * * 0` | LLM- und Embedding-Backfills in 13 Schritten (siehe unten). |
+| `weekly_enrich.py` | sonntags `0 3 * * 0` | LLM- und Embedding-Backfills in 14 Schritten (siehe unten). |
+| `remind_setup.py` | täglich `0 11 * * *` | Genau eine Service-Mail an Konten, die den Einrichtungs-Assistenten angefangen und seit 48 h nicht beendet haben. |
 
 ### Was der Protokoll-Lauf inline nachzieht
 
@@ -131,25 +132,26 @@ der frischen Tragweite gerechnet, damit die 50/50-Mischung sofort greift
 ### Schrittfolge des Wochenlaufs
 
 `weekly_enrich.py` startet seine Schritte als Subprozesse. Maßgeblich ist die
-`STEPS`-Liste im Skript — sie hat inzwischen 13 Einträge, in dieser Reihenfolge:
+`STEPS`-Liste im Skript — sie hat inzwischen 14 Einträge, in dieser Reihenfolge:
 
 1. **Entitäten (NER)** — `extract_entities.py`, baut `council_entities` neu auf.
 2. **Beschreibungen** — `describe_entities.py`, füllt fehlende Entitäts-Texte (slug-basiert, überlebt den Rebuild).
 3. **Geocoding** — `geocode_entities.py`, verortet neue Orts-Entitäten über Nominatim.
 4. **Embeddings / Ähnliche** — `embed_decisions.py`, berechnet „Ähnliche Beschlüsse" neu ([ADR 0003](/docs/adr/0003-fastembed-statt-torch/)).
-5. **Themen ↔ Beschlüsse** — `match_topics_decisions.py`, matcht Nutzer-Themen semantisch gegen Beschlüsse.
-6. **Themenfeld-Rückblicke** — `generate_field_recaps.py`, erneuert nur veraltete Felder (faktisch ≈ monatlich je Feld).
-7. **Einfach erklärt** — `generate_simple_summaries.py`, 500er-Tranche, neueste zuerst.
-8. **Personen-Stammdaten** — `backfill_stammdaten.py`, Mandatsträger und Mitgliedschaften aus dem Ratsinfo (kein LLM).
-9. **Tragweite** — `rate_impact.py --limit 500`, bewusst *vor* dem Wichtigkeits-Score.
-10. **Wichtigkeits-Score** — `score_importance.py`, Heuristik über den Gesamtbestand.
-11. **Quizfragen** — `generate_quiz.py`, füllt nur Gebiete unter der Ziel-Fragenzahl auf.
-12. **Interessantheit** — `rate_interest.py --limit 500`, neueste zuerst.
-13. **Fundstücke** — `generate_fundstuecke.py --days 21`, legt fehlende Kalendertage 21 Tage im Voraus an.
+5. **Verwandte Themen** — `build_entity_relations.py`, berechnet „Hängt zusammen mit …" je Thema (kein LLM). Braucht Schritt 1 und 4.
+6. **Themen ↔ Beschlüsse** — `match_topics_decisions.py`, matcht Nutzer-Themen semantisch gegen Beschlüsse.
+7. **Themenfeld-Rückblicke** — `generate_field_recaps.py`, erneuert nur veraltete Felder (faktisch ≈ monatlich je Feld).
+8. **Einfach erklärt** — `generate_simple_summaries.py`, 500er-Tranche, neueste zuerst.
+9. **Personen-Stammdaten** — `backfill_stammdaten.py`, Mandatsträger und Mitgliedschaften aus dem Ratsinfo (kein LLM).
+10. **Tragweite** — `rate_impact.py --limit 500`, bewusst *vor* dem Wichtigkeits-Score.
+11. **Wichtigkeits-Score** — `score_importance.py`, Heuristik über den Gesamtbestand.
+12. **Quizfragen** — `generate_quiz.py`, füllt nur Gebiete unter der Ziel-Fragenzahl auf.
+13. **Interessantheit** — `rate_interest.py --limit 500`, neueste zuerst.
+14. **Fundstücke** — `generate_fundstuecke.py --days 21`, legt fehlende Kalendertage 21 Tage im Voraus an.
 
 Jeder Schritt läuft **fehlertolerant**: Ein Fehlschlag wird protokolliert und
 gemerkt, stoppt aber die übrigen Schritte nicht. Am Ende gibt der Lauf eine
-Bilanz („n/13 ok") aus und setzt einen Exit-Code ungleich null, sobald
+Bilanz („n/14 ok") aus und setzt einen Exit-Code ungleich null, sobald
 mindestens ein Schritt gescheitert ist — daraus wird für den Alarmweg eine
 Exception erzeugt.
 
@@ -167,8 +169,8 @@ Alarmpfad selbst wirft nie.
 
 ## Ops-Workflows (manuell auslösbar)
 
-Fünf `ops-*`-Workflows, alle per `workflow_dispatch`, ohne Inputs und mit festen
-Befehlen.
+Sechs `ops-*`-Workflows, alle per `workflow_dispatch`. Fünf laufen ohne Inputs mit
+festen Befehlen; `ops-entity-dubletten.yml` hat zwei Schalter (siehe Tabelle).
 Sie nutzen denselben Deploy-Key und ProxyJump wie `deploy.yml` und führen die
 Skripte direkt auf der App-VM aus — praktisch, wenn kein SSH-Zugang zur Hand
 ist. Nur Collaborator können sie starten.
@@ -180,6 +182,7 @@ ist. Nur Collaborator können sie starten.
 | `ops-recaps-regenerieren.yml` | Erzeugt alle Themenfeld-Rückblicke neu (`--force`), sinnvoll nach Änderungen am admin-editierbaren Recap-Prompt statt bis Sonntag zu warten. Kostet ein paar Cent LLM. | Nein im engeren Sinn — `--force` überschreibt bewusst alle Rückblicke. |
 | `ops-quiz-backfill.yml` | Generiert Quizfragen für alle Gebiete (Stadtteile + große Themen) bis zur Ziel-Fragenzahl (`--target 10`), inkl. Verify-Pass. Timeout 60 min. | Ja — nur Gebiete unter Ziel werden aufgefüllt. |
 | `ops-tragweite-rollout.yml` | Schaltet den Tragweite-Score erstmals scharf: Voll-Backfill über alle Beschlüsse ohne `impact`, danach Neuberechnung des Wichtigkeits-Scores. | Ja — bewertet nur Beschlüsse ohne Score. |
+| `ops-entity-dubletten.yml` | Sucht doppelte Themen (dieselbe Sache unter mehreren Namen) und führt die vom LLM bestätigten zusammen. **Zwei Inputs:** `nur_bericht` (Default `true` → zeigt nur an, schreibt nichts) und `trocken` (mit LLM-Prüfung, ohne zu speichern). Timeout 40 min. | Ja — jede Zusammenführung ist im Admin-Panel einzeln wieder auflösbar. |
 
 **Das Golden-Set-Gate im Tragweite-Rollout:** Schritt 1 ist
 `scripts/eval_impact.py --rate-missing`. Bestanden ist der Lauf nur bei
@@ -291,6 +294,8 @@ Alle optional — greift keine Variable, gilt der Default aus dem Code.
 | `COUNCIL_QUIZ_VERIFY_MODEL` | Verify-Pass über erzeugte Quizfragen | `openai/gpt-4o-mini` |
 | `COUNCIL_EMBED_MODEL` | Embeddings (fastembed, lokal) | `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` |
 | `COUNCIL_RERANK_MODEL` | Reranker für die hybride Suche | `jinaai/jina-reranker-v2-base-multilingual` |
+| `COUNCIL_ALIAS_MODEL` | Prüft Themen-Dubletten (`council/aliases.py`) | `deepseek/deepseek-v4-pro` |
+| `TOPIC_INTEL_MODEL` | Themen-Beschreibung und Relevanzprüfung (`council/topic_intel.py`) — bricht die `COUNCIL_`-Namenskonvention | `deepseek/deepseek-v4-pro` |
 
 ### Web-Backend
 
@@ -304,7 +309,7 @@ Alle optional — greift keine Variable, gilt der Default aus dem Code.
 | `CORS_ORIGINS` | Kommaliste erlaubter Web-Origins (in Prod läuft das Frontend same-origin) | nein | `http://localhost:3000` |
 | `APP_CORS_ORIGINS` | Feste Origins der Capacitor-Apps, immer zusätzlich erlaubt | nein | `capacitor://localhost,https://localhost` |
 | `APPLE_BUNDLE_ID` | Erlaubter `aud`-Wert von „Sign in with Apple" in der nativen App | nein | `de.ratslotse.app` |
-| `APPLE_SERVICE_ID` | Services-ID für den Apple-Web-Flow; leer = Web-Flow aus | nein | leer |
+| `APPLE_SERVICE_ID` | Services-ID für den Apple-Web-Flow (`aud` des Browser-Tokens). **Leeren schaltet den Web-Login ab** — genau das war der Fehler, den #328 behoben hat. | nein | `de.ratslotse.web` |
 | `LLM_BUDGET_MONTHLY` | Monatsbudget für die Budget-Ampel (reine Anzeige) | nein | `40.0` |
 | `DISABLE_RATE_LIMIT` | `1` schaltet das Rate-Limiting ab (nur für Tests) | nein | nicht gesetzt |
 
@@ -314,7 +319,8 @@ Alle optional — greift keine Variable, gilt der Default aus dem Code.
 |---|---|---|---|
 | `NWZ_DB` | Pfad zur Konten-/Themen-Datenbank | nein | `data/nwz.sqlite` |
 | `COUNCIL_DB` | Pfad zur Ratsdaten-Datenbank | nein | `data/council.sqlite` |
-| `NWZ_SQLITE` | Abweichender Pfad für das Usage-Tracking (`nwz/usage.py`) | nein | `data/nwz.sqlite` |
+| `NWZ_SQLITE` | Abweichender Pfad für das Usage-Tracking (`nwz/usage.py`). **Achtung:** `nwz/usage.py` liest ausschließlich diese Variable, der ganze Rest des Projekts `NWZ_DB`. Wer die Datenbank per `NWZ_DB` verschiebt, nimmt das Kosten-Tracking **nicht** mit — es schreibt still am alten Ort weiter. Beide zusammen setzen. | nein | `data/nwz.sqlite` |
+| `SETUP_REMIND_AFTER_HOURS` | Wartezeit, bevor `remind_setup.py` an eine offene Einrichtung erinnert | nein | `48` |
 
 ### E-Mail & Benachrichtigung
 

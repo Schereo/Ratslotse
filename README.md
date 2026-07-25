@@ -43,6 +43,7 @@ der Rat dazu etwas beschließt — per Web-Push oder E-Mail.
 | 07:00 täglich | `check_committees.py` | Ausschuss-Tagesordnungen prüfen, Abonnenten benachrichtigen |
 | 08:00 + 14:00 täglich | `check_council.py` | Stadtratssitzungen auf Themen-Matches prüfen |
 | 09:00 täglich | `check_protocols.py` | Neue Sitzungsprotokolle parsen + Beschlüsse klassifizieren |
+| 11:00 täglich | `remind_setup.py` | Eine Service-Mail an Konten mit angefangener, seit 48 h offener Einrichtung |
 | 03:00 sonntags | `weekly_enrich.py` | Schwerere LLM-/Embedding-Backfills nachziehen (Themen, Karten) |
 
 > Vollständige Cron-/systemd-Einrichtung: siehe [CLAUDE.md](CLAUDE.md). Beim
