@@ -2047,3 +2047,58 @@ def test_decision_detail_meldet_follow_zustand(client):
     assert client.get("/api/council/decision/1").json()["follow"] == {"kvonr": 4711, "following": False}
     client.post("/api/council/vorlage/4711/follow")
     assert client.get("/api/council/decision/1").json()["follow"] == {"kvonr": 4711, "following": True}
+
+
+# --- Sitzungsliste: Blättern und Gesamtzahl ---------------------------------
+
+def _seed_sessions(n: int, *, jahr: int = 2025) -> None:
+    """n vergangene Sitzungen, absteigend datiert (Tag 1..n im Januar/Februar)."""
+    council = CouncilStore(COUNCIL_DB)
+    for i in range(n):
+        tag = i + 1
+        monat, tag = (1, tag) if tag <= 28 else (2, tag - 28)
+        council.save_session(CouncilSession(
+            1000 + i, "Rat" if i % 2 else "Sozialausschuss",
+            f"{jahr}-{monat:02d}-{tag:02d}", "17:00", "Ratssaal"))
+    council.close()
+
+
+def test_sessions_meldet_gesamtzahl_und_blaettert(client):
+    """Die Liste endete still bei der Obergrenze — ohne `total` stand nirgends,
+    dass es weitergeht. Beide Seiten zusammen müssen den Bestand ergeben."""
+    _register(client)
+    _seed_sessions(30)
+
+    s1 = client.get("/api/council/sessions?scope=recent&limit=20&offset=0").json()
+    assert s1["total"] == 30
+    assert s1["count"] == 20
+
+    s2 = client.get("/api/council/sessions?scope=recent&limit=20&offset=20").json()
+    assert s2["total"] == 30
+    assert s2["count"] == 10
+
+    # Keine Sitzung doppelt, keine verloren.
+    ids = [x["ksinr"] for x in s1["sessions"]] + [x["ksinr"] for x in s2["sessions"]]
+    assert len(ids) == len(set(ids)) == 30
+
+
+def test_sessions_total_zaehlt_dieselbe_menge_wie_die_liste(client):
+    """Zählung und Liste teilen sich den Filter — sonst zeigt die Blätterleiste
+    eine Seitenzahl an, die es gar nicht gibt."""
+    _register(client)
+    _seed_sessions(30)
+
+    alle = client.get("/api/council/sessions?scope=all&limit=200").json()
+    assert alle["total"] == alle["count"] == 30
+
+    gefiltert = client.get("/api/council/sessions?scope=all&committee=Rat&limit=200").json()
+    assert gefiltert["total"] == gefiltert["count"] == 15
+    assert {x["committee"] for x in gefiltert["sessions"]} == {"Rat"}
+
+
+def test_sessions_offset_hinter_dem_ende_liefert_leer_statt_fehler(client):
+    _register(client)
+    _seed_sessions(5)
+    r = client.get("/api/council/sessions?scope=recent&limit=20&offset=100")
+    assert r.status_code == 200
+    assert r.json()["sessions"] == [] and r.json()["total"] == 5

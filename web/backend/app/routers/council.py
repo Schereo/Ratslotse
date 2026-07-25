@@ -61,16 +61,24 @@ def sessions(
     date_to: str = "",
     scope: str = Query("all", pattern="^(all|upcoming|recent)$"),
     limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
     user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
     nwz: Store = Depends(get_store),
 ) -> dict:
+    # `total` ist die GESAMTZAHL der passenden Sitzungen, `count` nur die dieser
+    # Seite. Vorher gab es nur count — die Liste endete deshalb still bei der
+    # Obergrenze, ohne dass irgendwo stand, dass es weitergeht (der Bestand
+    # reicht bis 2018 zurück).
     if scope == "upcoming":
-        rows = store.upcoming_sessions(limit=limit)
+        rows = store.upcoming_sessions(limit=limit, offset=offset)
+        total = store.count_upcoming_sessions()
     elif scope == "recent":
-        rows = store.recent_sessions(limit=limit)
+        rows = store.recent_sessions(limit=limit, offset=offset)
+        total = store.count_recent_sessions()
     else:
-        rows = store.search_sessions(q, committee, date_from, date_to, limit=limit)
+        rows = store.search_sessions(q, committee, date_from, date_to, limit=limit, offset=offset)
+        total = store.count_sessions(q, committee, date_from, date_to)
 
     # RL-902: „n TOPs zu deinen Themen" — Treffer der Tagesordnungs-
     # Klassifikation für die eingeloggte Nutzer:in (eine Batch-Abfrage).
@@ -81,7 +89,7 @@ def sessions(
         if matches:
             r["my_topic_items"] = matches
 
-    return {"count": len(rows), "sessions": rows}
+    return {"count": len(rows), "total": total, "sessions": rows}
 
 
 @router.get("/sitzungspause")

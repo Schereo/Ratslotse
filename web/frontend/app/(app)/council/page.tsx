@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback, Suspense } from "react";
+import { Fragment, useEffect, useRef, useState, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -789,12 +789,32 @@ function LiveChip() {
 function DateTile({ iso }: { iso: string }) {
   const d = new Date(iso + "T12:00:00");
   return (
-    <span className="w-[50px] shrink-0 rounded-lg border border-border bg-muted/40 py-1 text-center">
+    <span
+      // Das Jahr steht am Trenner über der Gruppe, nicht in jeder Kachel —
+      // hier bleibt es als Titel erreichbar, ohne die Kachel dreizeilig zu machen.
+      title={d.toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+      className="w-[50px] shrink-0 rounded-lg border border-border bg-muted/40 py-1 text-center"
+    >
       <span className="block font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
         {d.toLocaleDateString("de-DE", { month: "short" }).replace(".", "")}
       </span>
       <span className="block font-display text-lg font-bold leading-tight text-foreground">{d.getDate()}</span>
     </span>
+  );
+}
+
+/** Jahres-Trenner in der Sitzungsliste.
+ *
+ *  Die Liste reicht bis 2018 zurück, die Kachel zeigt aber nur „JUN 29". Wer
+ *  weit scrollte, sah irgendwann wieder Juni und konnte nicht sagen, ob das
+ *  dieses Jahr ist oder 2021. Der Trenner steht am Kopf jeder Gruppe — auch
+ *  ganz oben, damit die Antwort nie erst nach dem ersten Wechsel kommt. */
+function YearDivider({ jahr }: { jahr: string }) {
+  return (
+    <div className="flex items-center gap-3 pt-2 first:pt-0">
+      <span className="font-mono text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">{jahr}</span>
+      <span className="h-px flex-1 bg-border" aria-hidden />
+    </div>
   );
 }
 
@@ -878,7 +898,10 @@ function SessionsTab({ committees }: { committees: string[] }) {
   const deepLinkDone = useRef(false);
   const [flashKsinr, setFlashKsinr] = useState<number | null>(null);
   const [scope, setScope] = useState<Scope>("upcoming");
+  const listRef = useRef<HTMLDivElement>(null);
   const [sessions, setSessions] = useState<CouncilSession[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [hasSearched, setHasSearched] = useState(false);
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
@@ -899,20 +922,30 @@ function SessionsTab({ committees }: { committees: string[] }) {
     setExpanded({});
     try {
       const effectiveScope = q || committee ? "all" : scope;
-      const data = await api.get<{ sessions: CouncilSession[] }>(
-        `/council/sessions${qs({ q, committee, scope: effectiveScope, limit: 100 })}`,
+      const data = await api.get<{ sessions: CouncilSession[]; total: number }>(
+        `/council/sessions${qs({
+          q, committee, scope: effectiveScope,
+          limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE,
+        })}`,
       );
       setSessions(data.sessions);
+      setTotal(data.total);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Laden fehlgeschlagen.");
     } finally {
       setLoading(false);
     }
-  }, [q, committee, scope]);
+  }, [q, committee, scope, page]);
 
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedQ, committee, scope, page]);
+
+  // Jede Änderung an Suche, Ausschuss oder Zeitraum beginnt wieder auf Seite 1 —
+  // sonst landet man im Nichts, wenn die neue Menge kürzer ist als die alte.
+  useEffect(() => {
+    setPage(1);
   }, [debouncedQ, committee, scope]);
 
   useEffect(() => {
@@ -951,6 +984,19 @@ function SessionsTab({ committees }: { committees: string[] }) {
   };
 
   const query = q.trim();
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+
+  // Wie in der Beschluss-Suche (RL-U02): Seitenwechsel führt zurück an den
+  // Listenanfang und setzt den Fokus dorthin — sonst steht man nach dem Klick
+  // auf „2" mitten in der neuen Liste, weil der Knopf ganz unten liegt.
+  const changePage = (p: number) => {
+    setPage(p);
+    requestAnimationFrame(() => {
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      listRef.current?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+      listRef.current?.focus({ preventScroll: true });
+    });
+  };
 
   return (
     <div>
@@ -978,7 +1024,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
         </div>
       </Card>
 
-      <div className="mt-6">
+      <div ref={listRef} tabIndex={-1} className="mt-6 outline-none">
         {loading ? (
           <CardListSkeleton rows={5} />
         ) : sessions.length === 0 ? (
@@ -1001,13 +1047,28 @@ function SessionsTab({ committees }: { committees: string[] }) {
           )
         ) : (
           <div className="space-y-3">
-            <p className="text-sm font-medium text-muted-foreground">{sessions.length} {sessions.length === 1 ? "Sitzung" : "Sitzungen"}</p>
-            {sessions.map((s) => {
+            {/* Die Gesamtzahl, nicht die der Seite: Der Bestand reicht bis 2018
+                zurück; „100 Sitzungen" las sich vorher wie das Ende der Welt. */}
+            <p className="text-sm font-medium text-muted-foreground">
+              {total} {total === 1 ? "Sitzung" : "Sitzungen"}
+              {totalPages > 1 && <span className="text-muted-foreground/70"> · Seite {page} von {totalPages}</span>}
+            </p>
+            {sessions.map((s, i) => {
+              // Jahres-Trenner, sobald sich das Jahr ändert — und immer über
+              // dem ersten Eintrag, damit die Einordnung nicht erst nach dem
+              // ersten Wechsel kommt (eine Seite kann komplett in einem Jahr
+              // liegen).
+              const jahr = s.session_date.slice(0, 4);
+              const jahrWechsel = i === 0 || jahr !== sessions[i - 1].session_date.slice(0, 4);
+              const trenner = jahrWechsel ? <YearDivider jahr={jahr} /> : null;
+
               // Terminierte Sitzung aus dem RIS-Kalender: noch keine
               // Tagesordnung veröffentlicht → nichts zum Aufklappen/Verlinken.
               if (s.ksinr == null) {
                 return (
-                  <Card key={`${s.committee}|${s.session_date}|${s.session_time}`} className="p-4">
+                  <Fragment key={`${s.committee}|${s.session_date}|${s.session_time}`}>
+                  {trenner}
+                  <Card className="p-4">
                     {/* Mobil wandert die Badge unter den Text — sonst quetscht
                         sie den Gremiumsnamen auf „Ausschuss …" zusammen. */}
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
@@ -1032,6 +1093,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
                       <CalendarButton session={s} />
                     </div>
                   </Card>
+                  </Fragment>
                 );
               }
               const isExpanded = !!expanded[s.ksinr];
@@ -1053,8 +1115,9 @@ function SessionsTab({ committees }: { committees: string[] }) {
               for (const m of s.my_topic_items ?? []) myByItem[m.item_number] ??= m.topic_name;
               const myCount = Object.keys(myByItem).length;
               return (
+                <Fragment key={s.ksinr}>
+                {trenner}
                 <Card
-                  key={s.ksinr}
                   id={`session-${s.ksinr}`}
                   className={cn(
                     "overflow-hidden p-0 transition-shadow",
@@ -1122,8 +1185,10 @@ function SessionsTab({ committees }: { committees: string[] }) {
                     </div>
                   )}
                 </Card>
+                </Fragment>
               );
             })}
+            <Pagination page={page} totalPages={totalPages} onChange={changePage} />
           </div>
         )}
       </div>
