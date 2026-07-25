@@ -367,6 +367,25 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   reine NWZonline-Suche umgestellt — der ungenutzte Vorschlags-Kanal daneben
   ist jetzt auch im Code weg.
 
+### Behoben
+- **Nicht gefunden heißt nicht mehr rausgeworfen.** Wer einem alten Link folgte
+  — etwa auf einen inzwischen zusammengeführten Beschluss —, landete auf einer
+  nackten 404-Seite ohne Navigation und ohne Suche; der Browser-Pfeil war der
+  einzige Weg zurück. Jetzt bleibt die App drumherum stehen, die Meldung nennt
+  konkret, was fehlt („Diesen Beschluss finde ich nicht"), und darunter steht
+  ein **Suchfeld**, das direkt weiterhilft.
+- **Tastatur-Fokus im Menü und in den Filtern wieder sichtbar.** Das
+  Seiten-Menü und die Filter-Auswahl hatten den Fokusrahmen abgeschaltet, ohne
+  einen eigenen zu setzen — wer mit Tabulator arbeitet, stand auf dem
+  Schließen-Knopf und sah nichts. Jetzt derselbe Ring wie in den Dialogen.
+
+### Geändert
+- **Der Installieren-Dialog zeigt jetzt, worum es geht.** Beim Hinzufügen zum
+  Startbildschirm gab es bislang nur Adresse und Symbol; jetzt liegen drei
+  echte Bildschirmfotos bei (Telefon und Desktop). Außerdem passt die Farbe der
+  Statusleiste jetzt exakt zur Kopfleiste — vorher lag darüber ein leicht
+  hellerer Streifen.
+
 ## [1.3.0] – 2026-07-23
 
 ### Hinzugefügt

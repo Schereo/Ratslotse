@@ -33,9 +33,12 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   // Statusleiste folgt dem System-Farbschema und passt so zur Topbar der App.
+  // Bewusst die KARTEN-Farbe (--card), nicht der Seitenhintergrund: Die
+  // MobileTopbar steht auf `bg-card/95` und reicht bis unter die Statusleiste —
+  // mit dem Hintergrundton lag darüber ein sichtbar hellerer Streifen (29a P9).
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f6f9fb" },
-    { media: "(prefers-color-scheme: dark)", color: "#09111b" },
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#101b28" },
   ],
   width: "device-width",
   initialScale: 1,
