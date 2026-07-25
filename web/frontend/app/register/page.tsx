@@ -46,8 +46,14 @@ export default function RegisterPage() {
         </div>
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
-            <label htmlFor="display-name" className="mb-1 block text-sm font-medium text-foreground">Anzeigename</label>
-            <Input id="display-name" className="h-11" value={displayName} onChange={(e) => setDisplayName(e.target.value)} required maxLength={60} autoFocus autoComplete="name" placeholder="Wie dürfen wir dich ansprechen?" />
+            {/* Freiwillig — und zwar überall sonst auch schon: der Server nimmt
+                null, „Mit Apple registrieren" liefert gar keinen Namen, und
+                jede Anzeige kommt ohne aus („Moin!“ statt „Moin, X!“). Nur
+                dieses Feld verlangte ihn und ließ sonst niemanden vorbei. */}
+            <label htmlFor="display-name" className="mb-1 block text-sm font-medium text-foreground">
+              Anzeigename <span className="font-normal text-muted-foreground">(optional)</span>
+            </label>
+            <Input id="display-name" className="h-11" value={displayName} onChange={(e) => setDisplayName(e.target.value)} maxLength={60} autoFocus autoComplete="name" placeholder="Wie dürfen wir dich ansprechen?" />
           </div>
           <div>
             <label htmlFor="email" className="mb-1 block text-sm font-medium text-foreground">E-Mail</label>

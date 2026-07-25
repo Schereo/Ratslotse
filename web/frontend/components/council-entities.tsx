@@ -272,13 +272,19 @@ export function EntitiesTab() {
           <Spinner />
         </div>
       ) : (geo?.entities.length ?? 0) > 0 ? (
-        // isolate: Karte + Hinweis-Overlay (z-500) bleiben unter Topbar/Bottom-Nav (z-40).
+        // isolate: die Karte (z-500 intern) bleibt unter Topbar/Bottom-Nav (z-40).
         <div className="relative isolate z-0">
           <CouncilMap points={points} outlines={outlines} className="h-[38vh] min-h-[17rem] max-h-[26rem] rounded-xl" />
-          <p className="pointer-events-none absolute bottom-2.5 left-2.5 z-[500] rounded-md bg-background/85 px-2 py-1 text-[11px] text-muted-foreground backdrop-blur">
+          {/* Die Legende steht UNTER der Karte, nicht darin: Als Overlay unten
+              links lag sie auf schmalen Displays über Leaflets Quellenangabe
+              („OpenStreetMap, CARTO") — zwei Zeilen Text auf einer Zeile
+              Nachweis, beides unlesbar. Darunter kann sie umbrechen, ohne
+              etwas zu verdecken. „Punkt öffnet" statt „klicken öffnet":
+              auf dem Telefon klickt niemand. */}
+          <p className="mt-1.5 px-1 text-[11px] leading-relaxed text-muted-foreground">
             {selectedST.size > 0
               ? `${points.length} von ${geo!.entities.length} Punkten · ${selectedST.size} ${selectedST.size === 1 ? "Stadtteil" : "Stadtteile"} ausgewählt`
-              : `${points.length} verortete Themen · Punktgröße = Beschlüsse · klicken öffnet das Thema`}
+              : `${points.length} verortete Themen · Punktgröße = Beschlüsse · Punkt öffnet das Thema`}
           </p>
         </div>
       ) : null}
@@ -287,7 +293,7 @@ export function EntitiesTab() {
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-[14rem] flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input data-search className="pl-9" placeholder="Thema suchen — z. B. Fliegerhorst, Klinikum, Nadorster Straße"
+          <Input data-search className="pl-9" placeholder="Thema suchen — z. B. Fliegerhorst"
             value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
         {/* w-full auf Mobile: eigene, umbrechende Zeile. shrink-0 (früher hier)

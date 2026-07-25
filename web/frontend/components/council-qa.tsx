@@ -240,7 +240,10 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         <form onSubmit={(e) => { e.preventDefault(); ask(q); }} className="flex gap-2">
           <div className="relative flex-1">
             <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input ref={inputRef} data-search enterKeyHint="send" className="pl-9" placeholder="Frag den Stadtrat — z. B. „Was wurde zum Radverkehr beschlossen?“"
+            {/* Kurzer Platzhalter: Der lange brach auf dem Telefon mitten im Wort
+                ab („Frag den Stadtrat — z.“). Sein Beispiel steht ohnehin
+                gleich darunter als antippbarer Vorschlag (EXAMPLES[0]). */}
+            <Input ref={inputRef} data-search enterKeyHint="send" className="pl-9" placeholder="Frag den Stadtrat …"
               value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
           <Button type="submit" disabled={loading || q.trim().length < 4}>

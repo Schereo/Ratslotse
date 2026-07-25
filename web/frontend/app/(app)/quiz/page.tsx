@@ -238,7 +238,12 @@ function QuizSetup({ catalog, starting, onStart, onCancel }: {
   );
 
   return (
-    <div className="pb-32 md:pb-0">
+    // Platz für die schwebende Start-Leiste unten: Sie sitzt 4,75 rem über dem
+    // unteren Rand (Bottom-Nav) und ist selbst gut 4 rem hoch — mit den alten
+    // pb-32 (8 rem) blieben die Kategorie-Chips am Ende der Seite dauerhaft
+    // dahinter, auch ganz nach unten gescrollt. Auf ≥ md steht die Leiste im
+    // Fluss (sticky), dort braucht es das Polster nicht.
+    <div className="pb-[calc(env(safe-area-inset-bottom)+10.5rem)] md:pb-0">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="font-display text-xl font-bold text-foreground">Neues Quiz</h1>

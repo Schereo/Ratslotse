@@ -444,5 +444,37 @@ def test_subvotes_hidden_by_default_and_summarised(tmp_path):
     assert (9001, "Ö 9") not in summ            # kein Subvote → kein Eintrag
     assert store.subvote_summaries([]) == {}    # leer bleibt leer
 
+
+def test_decision_rows_always_carry_session_columns(tmp_path):
+    """Jeder Weg zu einem Beschluss liefert committee/session_date/protocol_url.
+
+    get_decisions() und get_subvotes() lasen vorher schlicht `SELECT *` aus
+    council_decisions — die drei Spalten stehen aber in council_sessions bzw.
+    council_protocols und fehlten dort deshalb ganz. Der Frontend-Typ
+    CouncilDecision sichert sie als Pflichtfelder zu; wer sie rendert, bekam an
+    genau diesen beiden Stellen `undefined`, ohne dass der Compiler warnt.
+    """
+    from council.scraper import CouncilSession
+    store = CouncilStore(tmp_path / "c.sqlite")
+    store.save_session(CouncilSession(9002, "Rat", "2026-06-02", "18:00", "Rathaus"))
+    with store._conn:
+        store._insert_decision(9002, 0, "decision", None, "Ö 3", "Radweg",
+                               "Beschlossen", "angenommen", "einstimmig", 0, 0,
+                               ["SPD"], None, None, None)
+        store._insert_decision(9002, 1, "subvote", "Ö 3", None, "Änderungsantrag",
+                               "Mehr Bäume", "abgelehnt", "mehrheitlich", 10, 1,
+                               ["Grüne"], None, None, None)
+
+    pflicht = ("committee", "session_date", "protocol_url")
+    for d in store.get_decisions(9002):
+        assert all(k in d for k in pflicht), f"fehlt in get_decisions: {d}"
+        assert d["committee"] == "Rat" and d["session_date"] == "2026-06-02"
+    sub = store.get_subvotes(9002, "Ö 3")
+    assert len(sub) == 1
+    assert all(k in sub[0] for k in pflicht)
+    assert sub[0]["committee"] == "Rat" and sub[0]["session_date"] == "2026-06-02"
+    # Ohne Protokoll bleibt protocol_url None (LEFT JOIN) — aber der Key ist da.
+    assert sub[0]["protocol_url"] is None
+
     # Ein expliziter kind-Filter behält Vorrang (Rückwärtskompatibilität).
     assert [d["kind"] for d in store.search_decisions(kind="subvote")] == ["subvote"]
