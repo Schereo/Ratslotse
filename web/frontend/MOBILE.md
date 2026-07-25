@@ -93,6 +93,74 @@ project (`DEVELOPMENT_TEAM`), `AppDelegate.swift` forwards the APNs token to the
 Capacitor plugin (a required manual step per the plugin README), and the device
 registers a *sandbox* token — delivered via the sender's gateway fallback.
 
+### Release: TestFlight-Upload und Installation aufs eigene Gerät (CLI)
+
+Beides ohne Xcode-GUI. Vorbedingung ist ein **App-Store-Connect-API-Key** unter
+`~/.appstoreconnect/private_keys/AuthKey_<KEY_ID>.p8`; `xcodebuild` benutzt ihn
+für Signier-Assets, `altool` für den Upload. Die **Issuer-ID** gehört zum Key
+(App Store Connect → Benutzer & Zugriff → Integrationen) — sie steht auch in der
+`Packaging.log` eines früheren Exports, falls sie verloren ging.
+
+**Vorher die Build-Nummer erhöhen.** App Store Connect weist einen Upload ab,
+dessen `CURRENT_PROJECT_VERSION` schon existiert; `MARKETING_VERSION` folgt dem
+Changelog-Versionsschnitt.
+
+```bash
+cd web/frontend
+npm run build:mobile && npm run cap:sync     # ACHTUNG: teilt .next mit dem
+                                            # Dev-Server → den danach neu starten
+
+cd ios/App
+AUTH="-allowProvisioningUpdates \
+  -authenticationKeyPath $HOME/.appstoreconnect/private_keys/AuthKey_<KEY_ID>.p8 \
+  -authenticationKeyID <KEY_ID> -authenticationKeyIssuerID <ISSUER_ID>"
+
+xcodebuild -project App.xcodeproj -scheme App -configuration Release \
+  -destination 'generic/platform=iOS' \
+  -archivePath /tmp/rl-archive/App.xcarchive $AUTH archive
+
+xcodebuild -exportArchive -archivePath /tmp/rl-archive/App.xcarchive \
+  -exportPath /tmp/rl-archive/ipa \
+  -exportOptionsPlist ExportOptions.plist $AUTH      # method: app-store-connect
+```
+
+`ExportOptions.plist` (nicht im Repo, einmal anlegen): `method`
+`app-store-connect`, `destination` `export`, `signingStyle` `automatic`,
+`teamID` `YM87689GUY`, `manageAppVersionAndBuildNumber` `false` — sonst zählt
+Xcode die Build-Nummer eigenmächtig hoch und das Projekt läuft auseinander.
+
+```bash
+# Erst prüfen, dann hochladen — die Prüfung findet dieselben Fehler in 30 s
+# statt nach dem Upload.
+xcrun altool --validate-app -f /tmp/rl-archive/ipa/App.ipa -t ios \
+  --apiKey <KEY_ID> --apiIssuer <ISSUER_ID>
+xcrun altool --upload-app   -f /tmp/rl-archive/ipa/App.ipa -t ios \
+  --apiKey <KEY_ID> --apiIssuer <ISSUER_ID>
+```
+
+Verarbeitung dauert ein paar Minuten. `altool` kann den Stand NICHT abfragen
+(kein `--list-builds`); die ASC-API beantwortet
+`GET /v1/builds?limit=5&sort=-uploadedDate` mit `processingState`
+(`PROCESSING` → `VALID`). Dafür braucht es ein ES256-JWT aus demselben `.p8` —
+`cryptography` genügt, PyJWT ist nicht nötig.
+
+**Aufs eigene iPhone** braucht es keinen TestFlight-Umweg: Das **Archiv** trägt
+noch die Entwickler-Signatur (erst der Export ersetzt sie durch die
+Distributions-Signatur), also lässt sich sein App-Bundle direkt installieren.
+Das Gerät darf dabei per WLAN gepaart sein — `xcrun xctrace list devices` führt
+es dann irrelevanterweise unter „Offline", `devicectl` sieht es trotzdem:
+
+```bash
+xcrun devicectl list devices                      # Identifier ablesen
+xcrun devicectl device install app --device <ID> \
+  /tmp/rl-archive/App.xcarchive/Products/Applications/App.app
+xcrun devicectl device info apps --device <ID> | grep ratslotse   # Version prüfen
+```
+
+Push funktioniert in beiden Varianten: Das Archiv registriert einen
+*Sandbox*-Token, der TestFlight-Build einen *Produktions*-Token — der Sender
+probiert beide Gateways.
+
 ## Push credentials (backend `.env`)
 
 ```
