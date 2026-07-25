@@ -157,7 +157,7 @@ function QuestionEditor({ open, initial, editId, onClose, onSaved }: {
         <label className="block text-sm font-medium text-foreground">
           Frage
           <Input className="mt-1.5" value={draft.question} maxLength={300}
-            placeholder="Wie hieß der Oldenburger Hafenkran, der …?"
+            placeholder="Wie hieß der Hafenkran …?"
             onChange={(e) => setDraft({ ...draft, question: e.target.value })} />
         </label>
 
@@ -165,7 +165,7 @@ function QuestionEditor({ open, initial, editId, onClose, onSaved }: {
         <label className="block text-sm font-medium text-foreground">
           Kategorie
           <select value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })}
-            className="mt-1.5 h-10 w-full rounded-lg border border-input bg-card px-3 text-sm text-foreground">
+            className="mt-1.5 h-10 w-full rounded-lg border border-input bg-card px-3 text-base text-foreground sm:text-sm">
             {CATEGORIES.map((c) => <option key={c} value={c}>{CATEGORY_LABEL[c] ?? c}</option>)}
           </select>
         </label>
@@ -267,7 +267,7 @@ function QuestionEditor({ open, initial, editId, onClose, onSaved }: {
         <label className="block text-sm font-medium text-foreground">
           Ort <span className="font-normal text-muted-foreground">(optional)</span>
           <select value={draft.stadtteil} onChange={(e) => setDraft({ ...draft, stadtteil: e.target.value })}
-            className="mt-1.5 h-10 w-full rounded-lg border border-input bg-card px-3 text-sm text-foreground">
+            className="mt-1.5 h-10 w-full rounded-lg border border-input bg-card px-3 text-base text-foreground sm:text-sm">
             <option value="">Stadtweit</option>
             {ALL_STADTTEILE.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
@@ -276,7 +276,7 @@ function QuestionEditor({ open, initial, editId, onClose, onSaved }: {
         <label className="block text-sm font-medium text-foreground">
           Erklärung <span className="font-normal text-muted-foreground">(optional — erscheint nach der Antwort)</span>
           <Input className="mt-1.5" value={draft.explanation} maxLength={500}
-            placeholder="Warum ist die richtige Antwort richtig?"
+            placeholder="Warum ist das richtig?"
             onChange={(e) => setDraft({ ...draft, explanation: e.target.value })} />
         </label>
 

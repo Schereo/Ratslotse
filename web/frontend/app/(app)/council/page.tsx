@@ -727,7 +727,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
       <SitzungspauseBanner compact className="mt-4" />
       <Card className="mt-4 p-4">
         <div className="space-y-3">
-          <SearchBox placeholder="In Tagesordnungen suchen (z. B. Bebauungsplan)…" value={q} onChange={setQ} />
+          <SearchBox placeholder="In Tagesordnungen suchen …" value={q} onChange={setQ} />
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Select value={committee} onChange={(e) => setCommittee(e.target.value)}>
               <option value="">Alle Ausschüsse</option>

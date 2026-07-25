@@ -13,6 +13,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, Switch, formatDate, toast,
 } from "@/components/ui";
 import { decisionHref } from "@/lib/routes";
+import { TopicSheet } from "@/components/topic-sheet";
 
 function TopicsInner() {
   const qc = useQueryClient();
@@ -33,8 +34,6 @@ function TopicsInner() {
   const [decisionsFor, setDecisionsFor] = useState<{ topic: Topic; decisions: TopicDecision[] } | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [editing, setEditing] = useState<Topic | null>(null);
-  const [editName, setEditName] = useState("");
-  const [editDescription, setEditDescription] = useState("");
   const nameInputRef = useRef<HTMLInputElement>(null);
 
   const topicsQuery = useQuery({
@@ -85,22 +84,10 @@ function TopicsInner() {
     onError: () => toast.error("Löschen fehlgeschlagen."),
   });
 
-  const editMutation = useMutation({
-    mutationFn: (vars: { id: number; name: string; description: string }) =>
-      api.put(`/topics/${vars.id}`, { name: vars.name, description: vars.description }),
-    onSuccess: () => {
-      toast.success("Thema aktualisiert.");
-      setEditing(null);
-      qc.invalidateQueries({ queryKey: ["topics"] });
-    },
-    onError: (err: Error) => toast.error(err instanceof ApiError ? err.message : "Konnte Thema nicht ändern."),
-  });
-
-  const startEdit = (t: Topic) => {
-    setEditing(t);
-    setEditName(t.name);
-    setEditDescription(t.description);
-  };
+  // Bearbeitet wird im geteilten „Thema anpassen"-Blatt (components/topic-sheet.tsx)
+  // — dasselbe, das auch das Onboarding zeigt. Es speichert selbst; hier bleibt
+  // nur das Aufräumen danach.
+  const startEdit = (t: Topic) => setEditing(t);
 
   const subMutation = useMutation({
     mutationFn: ({ committee, subscribed }: { committee: string; subscribed: boolean }) =>
@@ -326,24 +313,14 @@ function TopicsInner() {
         })}
       </Card>
 
-      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Thema bearbeiten</DialogTitle>
-          </DialogHeader>
-          <form
-            onSubmit={(e) => { e.preventDefault(); if (editing) editMutation.mutate({ id: editing.id, name: editName, description: editDescription }); }}
-            className="space-y-3"
-          >
-            <Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Name" required />
-            <Textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} rows={3} placeholder="Beschreibung" required />
-            <div className="flex items-center justify-end gap-2">
-              <Button type="button" variant="secondary" onClick={() => setEditing(null)}>Abbrechen</Button>
-              <Button type="submit" disabled={editMutation.isPending}>{editMutation.isPending ? "Speichern…" : "Speichern"}</Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {editing && (
+        <TopicSheet topic={editing} nameEditable onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null);
+            toast.success("Thema aktualisiert.");
+            qc.invalidateQueries({ queryKey: ["topics"] });
+          }} />
+      )}
 
       <Dialog open={!!decisionsFor} onOpenChange={(o) => !o && setDecisionsFor(null)}>
         <DialogContent>
