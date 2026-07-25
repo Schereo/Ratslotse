@@ -276,6 +276,30 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   bleibt unverändert, und die Fußnoten in der Antwort springen weiterhin
   zuverlässig zur richtigen Quelle — auch wenn sie eingeklappt wäre. (#301)
 
+### Behoben
+- **Themen bearbeiten: überall der gute Editor.** Für dieselbe Aufgabe gab es
+  zwei verschiedene Masken — im Einrichtungs-Assistenten ein Blatt mit
+  Beschriftungen, Live-Treffervorschau („Passt gerade auf") und
+  „Neu generieren", auf der Themen-Seite ein karger Dialog mit zwei
+  unbeschrifteten Feldern. Jetzt zeigen **beide Wege dasselbe Blatt**; auf der
+  Themen-Seite lässt sich darin zusätzlich der Name ändern. Auf großen
+  Bildschirmen erscheint es als mittiger Dialog statt in voller Breite.
+- **Stadtkarte: Quellenangabe wieder lesbar.** Die Legende lag als Kästchen
+  unten links auf der Karte — auf dem Telefon brach sie auf zwei Zeilen um und
+  legte sich damit über den OpenStreetMap-Nachweis; beides war unleserlich.
+  Sie steht jetzt unter der Karte.
+- **Quiz: Kategorien nicht mehr hinter der Start-Leiste.** Ganz nach unten
+  gescrollt verdeckte die schwebende „Quiz starten"-Leiste die
+  Kategorie-Auswahl dauerhaft — man konnte sie nicht antippen.
+- **Kein Hineinzoomen mehr in der Admin-Suche und im Quiz-Editor.** Die Felder
+  standen unter 16 px, worauf iOS beim Antippen in die Seite zoomt.
+- **Abgeschnittene Platzhalter.** „Frag den Stadtrat — z." (KI-Frage), „In
+  Tagesordnungen suchen (z. B." (Sitzungen) und drei weitere brachen auf dem
+  Telefon mitten im Wort ab. Jetzt passen sie.
+- **Anzeigename ist jetzt auch im Formular freiwillig.** Der Server nimmt ihn
+  seit jeher optional, „Mit Apple registrieren" liefert gar keinen — nur das
+  Registrieren-Formular verlangte ihn und ließ sonst niemanden vorbei.
+
 ### Entfernt
 - **Rund 700 Zeilen toter Code raus** — nach Wochen Umbau hatte sich einiges
   angesammelt, das nichts mehr aufruft: die letzten Überreste des

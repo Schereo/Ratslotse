@@ -981,8 +981,16 @@ class CouncilStore:
             )
 
     def get_decisions(self, ksinr: int) -> list[dict]:
+        # Sitzungs-Spalten mitziehen wie in get_decision(): sonst fehlten
+        # committee/session_date/protocol_url ausgerechnet hier, obwohl der
+        # Frontend-Typ CouncilDecision sie überall zusichert.
         rows = self._conn.execute(
-            "SELECT * FROM council_decisions WHERE ksinr = ? ORDER BY position", (ksinr,)
+            """SELECT d.*, cs.committee, cs.session_date, p.document_url AS protocol_url
+               FROM council_decisions d
+               JOIN council_sessions cs ON cs.ksinr = d.ksinr
+               LEFT JOIN council_protocols p ON p.ksinr = d.ksinr
+               WHERE d.ksinr = ? ORDER BY d.position""",
+            (ksinr,),
         ).fetchall()
         return [self._decision_row(r) for r in rows]
 
@@ -1323,7 +1331,12 @@ class CouncilStore:
 
     def get_subvotes(self, ksinr: int, parent_item: str) -> list[dict]:
         rows = self._conn.execute(
-            "SELECT * FROM council_decisions WHERE ksinr = ? AND kind = 'subvote' AND parent_item = ? ORDER BY position",
+            """SELECT d.*, cs.committee, cs.session_date, p.document_url AS protocol_url
+               FROM council_decisions d
+               JOIN council_sessions cs ON cs.ksinr = d.ksinr
+               LEFT JOIN council_protocols p ON p.ksinr = d.ksinr
+               WHERE d.ksinr = ? AND d.kind = 'subvote' AND d.parent_item = ?
+               ORDER BY d.position""",
             (ksinr, parent_item),
         ).fetchall()
         return [self._decision_row(r) for r in rows]

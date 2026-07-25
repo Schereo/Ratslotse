@@ -410,7 +410,7 @@ export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/
                   onChange={(e) => setComment(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") sendComment(); }}
                   maxLength={500}
-                  placeholder="Optional: Was ist an der Frage schlecht?"
+                  placeholder="Was ist daran schlecht?"
                   className="h-8 text-sm"
                 />
                 <Button variant="secondary" size="sm" className="shrink-0" onClick={sendComment}>
