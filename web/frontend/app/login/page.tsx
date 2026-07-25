@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { entwurfZiel } from "@/lib/draft";
 import { useAuth } from "@/lib/auth";
 import { Button, Input, PasswordInput } from "@/components/ui";
 import { AuthShell } from "@/components/auth-shell";
@@ -37,7 +38,9 @@ export default function LoginPage() {
     setBusy(true);
     try {
       await login(email, password);
-      router.replace("/dashboard");
+      // Design 29a (P8): Wer mitten in einer Frage rausgeflogen ist, kommt
+      // genau dorthin zurück — das Feld holt seinen Text dann selbst ab.
+      router.replace(entwurfZiel() ?? "/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Anmeldung fehlgeschlagen.");
     } finally {

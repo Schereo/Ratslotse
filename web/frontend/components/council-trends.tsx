@@ -8,7 +8,7 @@ import {
   GraduationCap, HeartHandshake, Leaf, Shield, Tag, Trophy, type LucideIcon,
 } from "lucide-react";
 import { Trends, FieldRecap } from "@/lib/types";
-import { Card, Spinner, EmptyState } from "@/components/ui";
+import { Card, ChartSkeleton, EmptyState } from "@/components/ui";
 import { POLICY_FIELD_LABELS, formatEuro } from "@/components/decision-ui";
 import { decisionHref } from "@/lib/routes";
 import { useFetch } from "@/lib/use-fetch";
@@ -362,7 +362,7 @@ export function TrendsView() {
   const { data, loading } = useFetch<Trends>("/council/trends");
   const router = useRouter();
 
-  if (loading) return <div className="py-10"><Spinner /></div>;
+  if (loading) return <div className="py-4"><ChartSkeleton bars={10} /></div>;
   if (!data || data.quarters.length === 0) {
     return <EmptyState mascot="sleep" title="Noch keine Trends" hint="Es sind noch nicht genug datierte, klassifizierte Beschlüsse vorhanden." />;
   }

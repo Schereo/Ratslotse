@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Bus, ChevronDown, Cpu, GraduationCap, Home, Leaf, Store, Target, type LucideIcon } from "lucide-react";
 import { GoalSummary, GoalDetail } from "@/lib/types";
-import { Card, Spinner, EmptyState } from "@/components/ui";
+import { Card, ChartSkeleton, TableSkeleton, EmptyState } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { useFetch } from "@/lib/use-fetch";
 import { DecisionLinkCard } from "@/components/decision-ui";
@@ -70,7 +70,7 @@ function GoalDetailView({ goalKey }: { goalKey: string }) {
   const { data, loading } = useFetch<GoalDetail>(`/council/goal/${goalKey}`);
   const [filter, setFilter] = useState<Stance | "">("");
 
-  if (loading) return <div className="py-6"><Spinner /></div>;
+  if (loading) return <div className="py-4"><TableSkeleton rows={4} cols={3} /></div>;
   if (!data) return null;
   const shown = data.decisions.filter((d) => !filter || d.stance === filter);
 
@@ -104,7 +104,7 @@ export function GoalsView() {
   const { data, loading } = useFetch<{ goals: GoalSummary[] }>("/council/goals");
   const [open, setOpen] = useState<string | null>(null);
 
-  if (loading) return <div className="py-10"><Spinner /></div>;
+  if (loading) return <div className="py-4"><ChartSkeleton bars={6} /></div>;
   const goals = data?.goals ?? [];
   const tracked = goals.some((g) => g.total > 0);
   if (!tracked) return <EmptyState mascot="sleep" title="Ziel-Tracking wird vorbereitet" hint="Die Beschlüsse werden gerade den Stadtzielen zugeordnet." />;

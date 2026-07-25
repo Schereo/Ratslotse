@@ -1,6 +1,8 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { RefreshCw } from "lucide-react";
 import { Mascot, type MascotPose } from "@/components/mascot";
+import { Button } from "./button";
 
 export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return <div className={cn("rounded-xl border border-border bg-card text-card-foreground shadow-sm", className)} {...props} />;
@@ -61,6 +63,46 @@ export function EmptyState({
       <p className="font-medium text-foreground">{title}</p>
       {hint && <p className="mt-1 max-w-sm text-sm text-muted-foreground">{hint}</p>}
       {action && <div className="mt-4">{action}</div>}
+    </div>
+  );
+}
+
+/** Fehlgeschlagene Abfrage — mit Knopf statt Bitte (Design 29a, P4).
+ *
+ *  Vorher endeten Ladefehler als roter Satz „… Bitte Seite neu laden." — die
+ *  Bitte an die Nutzer:in, unsere Arbeit zu machen. Ein Funkloch in der Bahn
+ *  reichte, und die Seite blieb kaputt, bis jemand den Browser bemühte. Dabei
+ *  liegt `refetch()` in jeder dieser Abfragen bereit: Ein Tipp genügt, der Rest
+ *  der Seite bleibt stehen.
+ *
+ *  Gleiche Bauform wie {@link EmptyState}, nur Lotti ratlos statt schlafend.
+ */
+export function ErrorState({
+  title = "Das hat nicht geklappt",
+  hint = "Sieht nach einem Verbindungsproblem aus.",
+  onRetry,
+  busy,
+}: {
+  title?: string;
+  hint?: string;
+  onRetry?: () => void;
+  /** Läuft der neue Versuch gerade? Beschriftet den Knopf um. */
+  busy?: boolean;
+}) {
+  return (
+    <div
+      role="alert"
+      className="flex flex-col items-center rounded-xl border border-dashed border-border bg-card px-6 py-12 text-center"
+    >
+      <Mascot pose="confused" bob className="mb-3 h-24 w-24" />
+      <p className="font-medium text-foreground">{title}</p>
+      <p className="mt-1 max-w-sm text-sm text-muted-foreground">{hint}</p>
+      {onRetry && (
+        <Button variant="secondary" onClick={onRetry} disabled={busy} className="mt-4">
+          <RefreshCw className={cn("h-4 w-4", busy && "animate-spin")} />
+          {busy ? "Wird geladen…" : "Nochmal versuchen"}
+        </Button>
+      )}
     </div>
   );
 }
