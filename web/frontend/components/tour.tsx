@@ -91,7 +91,10 @@ const STEPS: TourStep[] = [
 ];
 
 const SEEN_KEY = "ratslotse:tour-seen";
-const START_EVENT = "ratslotse:start-tour";
+/** Signal „Tour startet" — auch der Hinweis-Slot hört mit und klappt auf,
+ *  damit die Tour ihre Anker (z. B. „Erste Schritte") sichtbar vorfindet. */
+export const TOUR_START_EVENT = "ratslotse:start-tour";
+const START_EVENT = TOUR_START_EVENT;
 
 /** Tour von außen starten (Button in „Erste Schritte“). */
 export function startGuidedTour() {

@@ -31,6 +31,13 @@ JOBS: list[dict] = [
         "max_age_h": 30,
     },
     {
+        "key": "check_vorlage_follows",
+        "label": "Verfolgte Vorgänge",
+        "description": "Neue Beratungsstationen zu Vorlagen, denen jemand folgt.",
+        "schedule": "täglich 9:30 Uhr",
+        "max_age_h": 30,
+    },
+    {
         "key": "weekly_enrich",
         "label": "Wöchentliche Anreicherung",
         "description": "Entitäten, Geocoding, Embeddings, Rückblicke, Interessantheit und Tragweite in Tranchen.",
