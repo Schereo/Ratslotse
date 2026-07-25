@@ -1,11 +1,12 @@
 {
   "name": "Ratslotse",
   "short_name": "Ratslotse",
-  "description": "Lokale Nachrichten und Ratsinformationen für Oldenburg",
+  "description": "Beschlüsse des Oldenburger Stadtrats durchsuchbar, vergleichbar und verständlich.",
   "start_url": "/",
   "display": "standalone",
+  "lang": "de",
   "background_color": "#f6f9fb",
-  "theme_color": "#f6f9fb",
+  "theme_color": "#ffffff",
   "icons": [
     {
       "src": "/icon-192.png",
@@ -18,6 +19,29 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/mobile-heute.png",
+      "sizes": "780x1688",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Heute: nächste Sitzungen und Treffer zu deinen Themen"
+    },
+    {
+      "src": "/screenshots/mobile-beschluesse.png",
+      "sizes": "780x1688",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Beschlüsse durchsuchen — mit Ergebnis, Gremium und Betrag"
+    },
+    {
+      "src": "/screenshots/desktop-beschluesse.png",
+      "sizes": "2560x1600",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Suchen und Fragen am großen Bildschirm"
     }
   ]
 }

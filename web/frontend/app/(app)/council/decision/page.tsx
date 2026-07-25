@@ -1,11 +1,11 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams, useRouter, notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, ExternalLink, FileText, FileDown, Newspaper, Tag } from "lucide-react";
 import { DecisionDetail, CouncilDecision, SessionDetail } from "@/lib/types";
-import { Card, DetailSkeleton, EmptyState, formatDate } from "@/components/ui";
+import { Card, DetailSkeleton, formatDate } from "@/components/ui";
 import { OutcomeDot, OUTCOME_META, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard, ImportanceMeter, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
 import { decisionHref, themaHref, sessionHref } from "@/lib/routes";
 import { shortCommittee } from "@/lib/committees";
@@ -450,7 +450,7 @@ function DecisionDetailInner() {
   }, [data]);
 
   if (loading) return <DetailSkeleton />;
-  if (!data) return <EmptyState mascot="confused" title="Beschluss nicht gefunden" />;
+  if (!data) notFound();
 
   const d = data.decision;
   const unanimous = d.outcome === "angenommen"

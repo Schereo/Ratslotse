@@ -40,7 +40,11 @@ export const SheetContent = React.forwardRef<
       {children}
       <DialogPrimitive.Close
         className={cn(
-          "absolute right-3 rounded-md p-1 text-muted-foreground opacity-70 transition-opacity hover:opacity-100 focus:outline-none",
+          // Sichtbarer Fokus wie im Dialog: `focus:outline-none` allein nahm den
+          // Rahmen weg, ohne Ersatz — wer mit Tabulator arbeitet, stand blind
+          // genau auf dem Knopf, der wieder hinausführt (BITV).
+          "absolute right-3 rounded-md p-1 text-muted-foreground opacity-70 transition-opacity hover:opacity-100",
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           // Nur der links oben liegende Drawer braucht die Notch-Safe-Area; beim
           // Bottom-Sheet würde sie den X-Knopf über den ersten Filter schieben.
           side === "left" ? "top-[calc(0.75rem+env(safe-area-inset-top))]" : "top-3",

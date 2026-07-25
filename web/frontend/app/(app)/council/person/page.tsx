@@ -1,10 +1,11 @@
 "use client";
 
+
 import { Suspense, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams, useRouter, notFound } from "next/navigation";
 import { ArrowLeft, Gavel, Info, ExternalLink, ChevronDown } from "lucide-react";
 import { MemberDetail } from "@/lib/types";
-import { Card, DetailSkeleton, EmptyState, formatDate } from "@/components/ui";
+import { Card, DetailSkeleton, formatDate } from "@/components/ui";
 import { PartyBadge, partyBrand, AffiliationBadge } from "@/components/decision-ui";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useFetch } from "@/lib/use-fetch";
@@ -128,7 +129,7 @@ function PersonInner() {
   const [pastOpen, setPastOpen] = useState(false);
 
   if (loading) return <DetailSkeleton />;
-  if (!data) return <EmptyState mascot="confused" title="Ratsmitglied nicht gefunden" hint="Zu diesem Namen gibt es keine Anwesenheitsdaten." />;
+  if (!data) notFound();
 
   const brand = data.party ? partyBrand(data.party) : null;
   // Aktuelle Zugehörigkeit = letzte Phase der Zeitreihe (gruppen-bewusst).
