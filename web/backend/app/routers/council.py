@@ -499,6 +499,97 @@ def public_stats(store: CouncilStore = Depends(get_council_store)) -> dict:
     return store.public_stats()
 
 
+# ---- Link-Vorschau (Design 29a, P1) ----
+# Wortlaut der Ergebnisse für die eine Zeile, die WhatsApp & Co. anzeigen.
+_PREVIEW_OUTCOME = {
+    "angenommen": "angenommen",
+    "abgelehnt": "abgelehnt",
+    "vertagt": "vertagt",
+    "zur_kenntnis": "zur Kenntnis genommen",
+    "kein_beschluss": "ohne Beschluss",
+}
+
+
+def _preview_datum(iso: str | None) -> str:
+    """„2026-06-01" → „01.06.2026"; leer bleibt leer."""
+    teile = str(iso or "")[:10].split("-")
+    return f"{teile[2]}.{teile[1]}.{teile[0]}" if len(teile) == 3 else ""
+
+
+@router.get("/preview/{kind}/{key:path}")
+def preview(kind: str, key: str, store: CouncilStore = Depends(get_council_store)) -> dict:
+    """Titel + Kurzfassung für die Link-Vorschau — **ohne Anmeldung**.
+
+    Teilen ist die Kernhandlung der App, aber bislang zeigte jeder geteilte Link
+    denselben Werbetext: In einer Elterngruppe landeten fünf Beschlüsse als fünf
+    identische Kacheln. Die Vorschau baut `generateMetadata` im Frontend aus
+    diesen zwei Feldern.
+
+    Bewusst öffentlich und bewusst schmal: Zurückgegeben wird genau die Zeile,
+    die Messenger und Suchmaschinen ohnehin anzeigen — Titel, Ergebnis, Gremium,
+    Datum. Alles davon steht so im amtlichen Ratsinformationssystem; es entsteht
+    keine neue Öffentlichkeit, nur eine lesbare. Persönliche Daten (Themen,
+    Fortschritt, Konten) sind hier prinzipiell nicht erreichbar.
+    """
+    if kind == "decision":
+        d = store.get_decision(int(key)) if key.isdigit() else None
+        if not d:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Beschluss nicht gefunden.")
+        titel = (d.get("title") or "Beschluss des Oldenburger Stadtrats").strip()
+        ergebnis = _PREVIEW_OUTCOME.get(d.get("outcome") or "")
+        kopf = " · ".join(x for x in (d.get("committee"), _preview_datum(d.get("session_date"))) if x)
+        satz = (d.get("simple_summary") or d.get("summary") or d.get("beschluss") or "").strip()
+        return {
+            "title": f"{titel} — {ergebnis}" if ergebnis else titel,
+            "description": " ".join(x for x in (f"{kopf}." if kopf else "", satz) if x)[:300],
+        }
+
+    if kind == "person":
+        p = store.member_detail(key)
+        if not p:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Ratsmitglied nicht gefunden.")
+        partei = p.get("party")
+        gremien = len(p.get("committees") or [])
+        return {
+            "title": f"{p['name']} ({partei})" if partei else p["name"],
+            "description": (
+                f"Ratsmitglied in Oldenburg · {p.get('sessions', 0)} Sitzungen"
+                + (f" · {gremien} Gremien" if gremien else "")
+                + ". Anwesenheit und Beschlüsse im Ratslotse."
+            ),
+        }
+
+    if kind == "thema":
+        e = store.entity_detail(key)
+        if not e:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Thema nicht gefunden.")
+        ent = e["entity"]
+        n = ent.get("n") or 0
+        return {
+            "title": f"{ent['name']} — {n} {'Beschluss' if n == 1 else 'Beschlüsse'}",
+            "description": (
+                f"Was der Oldenburger Stadtrat zu „{ent['name']}“ entschieden hat — "
+                "alle Beschlüsse auf einer Seite, verständlich zusammengefasst."
+            ),
+        }
+
+    if kind == "sitzung":
+        s = store.get_session(int(key)) if key.isdigit() else None
+        if not s:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Sitzung nicht gefunden.")
+        datum = _preview_datum(s.get("session_date"))
+        return {
+            "title": f"{s['committee']} am {datum}" if datum else s["committee"],
+            "description": (
+                f"Tagesordnung und Beschlüsse der Sitzung"
+                + (f" am {datum}" if datum else "")
+                + f" ({s['committee']}) — im Ratslotse verständlich aufbereitet."
+            ),
+        }
+
+    raise HTTPException(status.HTTP_404_NOT_FOUND, "Unbekannte Vorschau-Art.")
+
+
 @router.get("/entity/{slug}")
 def entity(slug: str, _user: dict = Depends(require_active),
            store: CouncilStore = Depends(get_council_store)) -> dict:

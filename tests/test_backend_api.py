@@ -2102,3 +2102,43 @@ def test_sessions_offset_hinter_dem_ende_liefert_leer_statt_fehler(client):
     r = client.get("/api/council/sessions?scope=recent&limit=20&offset=100")
     assert r.status_code == 200
     assert r.json()["sessions"] == [] and r.json()["total"] == 5
+
+
+def test_link_vorschau_ist_oeffentlich_und_beschreibt_den_beschluss(client):
+    """Design 29a (P1): Titel + Kurzfassung für die Link-Vorschau — OHNE Anmeldung.
+
+    Vorher trug jeder geteilte Beschluss denselben Werbetext; fünf Links in einer
+    Elterngruppe waren fünf identische Kacheln. Der Endpunkt liefert genau die
+    Zeile, die Messenger anzeigen — und zwar auch ohne Konto, sonst sähe ein
+    Crawler nie mehr als die Anmeldeseite.
+    """
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(4242, "Verkehrsausschuss", "2026-03-05", "17:00", "Fleiwa"))
+    cs._insert_decision(4242, 0, "decision", None, "Ö 5", "Radwegeausbau Nadorster Straße",
+                        "Der Ausbau wird beschlossen.", "angenommen", "mehrheitlich", 3, 1,
+                        ["SPD"], None, None, None)
+    cs._conn.commit()
+    did = cs._conn.execute(
+        "SELECT id FROM council_decisions WHERE ksinr = 4242").fetchone()[0]
+    cs.close()
+
+    # Kein _register: der Aufruf läuft bewusst ohne Sitzung.
+    res = client.get(f"/api/council/preview/decision/{did}")
+    assert res.status_code == 200, "Vorschau muss ohne Anmeldung erreichbar sein"
+    data = res.json()
+    assert data["title"] == "Radwegeausbau Nadorster Straße — angenommen"
+    assert "Verkehrsausschuss" in data["description"]
+    assert "05.03.2026" in data["description"]
+
+    # Sitzung: Gremium + Datum statt „Ratslotse".
+    s = client.get("/api/council/preview/sitzung/4242").json()
+    assert s["title"] == "Verkehrsausschuss am 05.03.2026"
+
+
+def test_link_vorschau_kennt_keine_personenbezogenen_daten(client):
+    """Der öffentliche Endpunkt gibt es nur für Ratsdaten — nichts am Konto."""
+    assert client.get("/api/council/preview/decision/99999999").status_code == 404
+    assert client.get("/api/council/preview/person/gibtsnicht").status_code == 404
+    assert client.get("/api/council/preview/thema/gibtsnicht").status_code == 404
+    assert client.get("/api/council/preview/konto/1").status_code == 404
+    assert client.get("/api/council/preview/decision/keine-zahl").status_code == 404
