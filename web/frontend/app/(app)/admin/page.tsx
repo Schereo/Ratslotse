@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Prompt, AdminUserRow, AdminUserDetail, AdminGrowth, AdminJob, QuizFlagged, AdminQuizStats, EntityAlias, AdminFeedback } from "@/lib/types";
-import { Badge, Button, Card, ConfirmDialog, PageHeader, Spinner, Textarea, formatDate, formatDateTime, toast } from "@/components/ui";
+import { Badge, Button, Card, ChartSkeleton, ConfirmDialog, ErrorState, PageHeader, Spinner, TableSkeleton, Textarea, formatDate, formatDateTime, toast } from "@/components/ui";
 import { AreaSparkline, MiniBars, StatKicker } from "@/components/admin-charts";
 import { cn } from "@/lib/utils";
 
@@ -103,13 +103,13 @@ function fetchAge(hours: number): string {
 
 function StatsTab() {
   const [range, setRange] = useState("90d");
-  const { data, isPending, isError } = useQuery({
+  const { data, isPending, isError, refetch, isFetching } = useQuery({
     queryKey: ["admin", "growth", range],
     queryFn: () => api.get<AdminGrowth>(`/admin/stats/growth?range=${range}`),
   });
 
   if (isPending) return <Spinner />;
-  if (isError || !data) return <p className="text-sm text-destructive">Fehler beim Laden der Statistiken.</p>;
+  if (isError || !data) return <ErrorState title="Die Statistiken kamen nicht durch" onRetry={() => void refetch()} busy={isFetching} />;
 
   const c = data.council;
   return (
@@ -192,12 +192,22 @@ const JOB_STATE: Record<AdminJob["state"], { dot: string; label: string }> = {
 
 /** Cron-Übersicht: was läuft wann, wie lange, und was kam dabei heraus. */
 function JobsSection() {
-  const { data, isPending, isError } = useQuery({
+  const { data, isPending, isError, refetch, isFetching } = useQuery({
     queryKey: ["admin", "jobs"],
     queryFn: () => api.get<AdminJob[]>("/admin/jobs"),
   });
 
-  if (isPending || isError || !data) return null;
+  // Vorher: `return null` — die Cron-Übersicht verschwand bei einem Ladefehler
+  // spurlos, ausgerechnet die Ansicht, die stille Ausfälle sichtbar machen soll.
+  if (isPending) return <div className="pt-2"><TableSkeleton rows={5} cols={4} /></div>;
+  if (isError || !data) {
+    return (
+      <div className="pt-2">
+        <ErrorState title="Die Cron-Übersicht kam nicht durch"
+          onRetry={() => void refetch()} busy={isFetching} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3 pt-2">
@@ -400,13 +410,13 @@ function KpiCard({ kicker, value, sub }: { kicker: string; value: string; sub?: 
 }
 
 function LlmUsageTab() {
-  const { data, isPending, isError } = useQuery({
+  const { data, isPending, isError, refetch, isFetching } = useQuery({
     queryKey: ["admin", "llm-usage"],
     queryFn: () => api.get<LlmUsage>("/admin/llm-usage"),
   });
 
   if (isPending) return <Spinner />;
-  if (isError || !data) return <p className="text-sm text-destructive">Fehler beim Laden der LLM-Nutzung.</p>;
+  if (isError || !data) return <ErrorState title="Die LLM-Nutzung kam nicht durch" onRetry={() => void refetch()} busy={isFetching} />;
   if (data.features.length === 0) {
     return <p className="text-sm text-muted-foreground">Noch keine LLM-Nutzung erfasst — die Erfassung beginnt mit dem nächsten Lauf (Klassifikation, Entitäten, Frag den Rat …).</p>;
   }
@@ -531,13 +541,13 @@ function lineDiff(oldText: string, newText: string): { type: "ctx" | "del" | "ad
 
 function PromptsTab() {
   const [q, setQ] = useState("");
-  const { data: prompts = [], isPending, isError } = useQuery({
+  const { data: prompts = [], isPending, isError, refetch, isFetching } = useQuery({
     queryKey: ["admin", "prompts"],
     queryFn: () => api.get<Prompt[]>("/admin/prompts"),
   });
 
   if (isPending) return <Spinner />;
-  if (isError) return <p className="text-sm text-destructive">Fehler beim Laden der Prompts.</p>;
+  if (isError) return <ErrorState title="Die Prompts kamen nicht durch" onRetry={() => void refetch()} busy={isFetching} />;
 
   const needle = q.trim().toLowerCase();
   const filtered = needle
@@ -682,13 +692,13 @@ const USER_FEATURE_LABEL: [keyof AdminUserDetail["features"], string][] = [
 function UsersTab({ currentUserId }: { currentUserId: number }) {
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<number | null>(null);
-  const { data: users = [], isPending, isError } = useQuery({
+  const { data: users = [], isPending, isError, refetch, isFetching } = useQuery({
     queryKey: ["admin", "users"],
     queryFn: () => api.get<AdminUserRow[]>("/admin/users"),
   });
 
   if (isPending) return <Spinner />;
-  if (isError) return <p className="text-sm text-destructive">Fehler beim Laden der Nutzer:innen.</p>;
+  if (isError) return <ErrorState title="Die Nutzer:innen kamen nicht durch" onRetry={() => void refetch()} busy={isFetching} />;
 
   const needle = q.trim().toLowerCase();
   const filtered = needle ? users.filter((u) => u.email.toLowerCase().includes(needle)) : users;
@@ -848,7 +858,7 @@ function QuizModerationTab() {
     queryKey: ["admin", "quiz", "stats"],
     queryFn: () => api.get<AdminQuizStats>("/admin/quiz/stats"),
   });
-  const { data, isPending, isError } = useQuery({
+  const { data, isPending, isError, refetch, isFetching } = useQuery({
     queryKey: ["admin", "quiz", "flagged"],
     queryFn: () => api.get<{ flagged: QuizFlagged[] }>("/admin/quiz/flagged"),
   });
@@ -864,7 +874,7 @@ function QuizModerationTab() {
   });
 
   if (isPending) return <Spinner />;
-  if (isError) return <p className="text-sm text-destructive">Fehler beim Laden der Bewertungen.</p>;
+  if (isError) return <ErrorState title="Die Bewertungen kamen nicht durch" onRetry={() => void refetch()} busy={isFetching} />;
   const flagged = data?.flagged ?? [];
   const stats = statsQuery.data;
   const low = stats?.gebiete_niedrig ?? [];
@@ -938,7 +948,7 @@ function QuizModerationTab() {
 function EntityAliasTab() {
   const qc = useQueryClient();
   const [undoing, setUndoing] = useState<EntityAlias | null>(null);
-  const { data, isPending, isError } = useQuery({
+  const { data, isPending, isError, refetch, isFetching } = useQuery({
     queryKey: ["admin", "entity-aliases"],
     queryFn: () => api.get<{ aliases: EntityAlias[] }>("/admin/entity-aliases"),
   });
@@ -953,7 +963,7 @@ function EntityAliasTab() {
   });
 
   if (isPending) return <Spinner />;
-  if (isError) return <p className="text-sm text-destructive">Fehler beim Laden der Zusammenführungen.</p>;
+  if (isError) return <ErrorState title="Die Zusammenführungen kamen nicht durch" onRetry={() => void refetch()} busy={isFetching} />;
 
   const aliases = data?.aliases ?? [];
   const byLlm = aliases.filter((a) => a.source === "llm").length;

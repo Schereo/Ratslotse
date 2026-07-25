@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Clock, MailWarning } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -16,7 +17,7 @@ import { OnboardingTracker } from "@/components/onboarding";
 import { BadgeCelebrator } from "@/components/badges";
 import { BackToTop } from "@/components/back-to-top";
 import { PeekingChick } from "@/components/peeking-chick";
-import { Button, Card, Spinner, toast } from "@/components/ui";
+import { Button, Card, CardListSkeleton, Skeleton, toast } from "@/components/ui";
 import type { User } from "@/lib/types";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -61,13 +62,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (loading || !user) {
-    return (
-      <div className="flex min-h-[100dvh] items-center justify-center">
-        <Spinner />
-      </div>
-    );
-  }
+  // Design 29a (P3): Der erste Eindruck war ein Spinner auf weißem Grund — die
+  // Marke verschwand ausgerechnet in der Sekunde, die zählt, und jeder App-Start
+  // begann mit etwas, das aussah wie eine hängende Seite. Jetzt steht die Hülle
+  // sofort (Logo, Navigations-Silhouette), nur der Inhalt füllt sich nach.
+  if (loading || !user) return <ShellSkeleton />;
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
@@ -113,6 +112,64 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </footer>
       </main>
       <MobileBottomNav />
+    </div>
+  );
+}
+
+/** Die App-Hülle, solange die Anmeldung geprüft wird (Design 29a, P3).
+ *
+ *  Bewusst kein Nachbau der echten Navigation: Die Ziele stehen erst fest, wenn
+ *  klar ist, wer da ist (Admin-Punkt, Zähler). Was hier steht, ist die *Form* —
+ *  Logo, Seitenspalte, Kopf- und Fußleiste in ihren Maßen — damit nichts
+ *  springt, wenn der Inhalt eintrifft, und die Marke im ersten Moment da ist.
+ */
+function ShellSkeleton() {
+  return (
+    <div className="flex min-h-screen flex-col md:flex-row" aria-busy="true" aria-live="polite">
+      <span className="sr-only">Ratslotse wird geladen …</span>
+
+      {/* Seitenspalte (Desktop) */}
+      <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-card md:flex md:sticky md:top-0 md:h-screen">
+        <div className="flex items-center gap-2.5 px-4 py-4">
+          <Image src="/icon-192.png" alt="" width={32} height={32} className="h-8 w-8 rounded-lg" priority />
+          <span className="font-display text-lg font-bold text-foreground">Ratslotse</span>
+        </div>
+        <div className="space-y-1.5 px-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-9 w-full rounded-md" />
+          ))}
+          <Skeleton className="!mt-6 h-2.5 w-20" />
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-9 w-full rounded-md" />
+          ))}
+        </div>
+      </aside>
+
+      {/* Kopfleiste (Mobil) — dieselben Maße wie die echte, damit nichts springt. */}
+      <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-border bg-card/95 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] backdrop-blur md:hidden">
+        <Skeleton className="h-11 w-11 rounded-lg" />
+        <Image src="/icon-192.png" alt="" width={28} height={28} className="h-7 w-7 rounded-lg" priority />
+        <span className="font-display text-base font-bold text-foreground">Ratslotse</span>
+      </header>
+
+      <main className="flex flex-1 flex-col pb-[calc(env(safe-area-inset-bottom)+5.5rem)] md:pb-0">
+        <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+          <Skeleton className="h-7 w-52" />
+          <Skeleton className="mt-2 h-3.5 w-72" />
+          <div className="mt-6">
+            <CardListSkeleton rows={3} />
+          </div>
+        </div>
+      </main>
+
+      {/* Fußleiste (Mobil) */}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/90 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
+        <div className="flex h-[4.25rem] items-center justify-around px-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-9 w-12 rounded-lg" />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

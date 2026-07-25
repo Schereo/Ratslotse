@@ -8,6 +8,7 @@ import { Sparkles, Send, Loader2, ChevronDown, ChevronUp, ArrowRight, Lightbulb,
 import { Mascot } from "@/components/mascot";
 import { QaSource } from "@/lib/types";
 import { apiUrl, authHeaders } from "@/lib/api";
+import { entwurfAbholen, entwurfMelden } from "@/lib/draft";
 import { Button, Card, Input, toast } from "@/components/ui";
 import { DecisionLinkCard } from "@/components/decision-ui";
 import { ShareButton } from "@/components/share-button";
@@ -81,6 +82,14 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     const urlQ = sp.get("q");
     if (urlQ) setQ((prev) => prev || urlQ);
   }, [sp]);
+  // Design 29a (P8): Solange etwas im Feld steht, kennt lib/api.ts den Text —
+  // fliegt die Sitzung raus, wird er gesichert. Nach dem Anmelden landet man
+  // wieder hier und holt ihn ab.
+  useEffect(() => entwurfMelden("ki-frage", () => q), [q]);
+  useEffect(() => {
+    const gerettet = entwurfAbholen("ki-frage");
+    if (gerettet) setQ((prev) => prev || gerettet);
+  }, []);
   const [loading, setLoading] = useState(false);
   // Design 28a/R2: abgebrochen? Der bereits gestreamte Text bleibt stehen —
   // eine halbe Antwort ist mehr wert als gar keine, sie braucht nur den Vermerk.

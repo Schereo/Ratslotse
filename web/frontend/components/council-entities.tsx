@@ -5,7 +5,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { MapPin, Building2, Boxes, Search, ChevronDown, X } from "lucide-react";
 import { Entity, EntityMapPoint } from "@/lib/types";
-import { Card, Input, Spinner, EmptyState } from "@/components/ui";
+import { Card, Input, Spinner, TableSkeleton, EmptyState } from "@/components/ui";
 import { useFetch } from "@/lib/use-fetch";
 import { cn } from "@/lib/utils";
 import { themaHref } from "@/lib/routes";
@@ -237,7 +237,7 @@ export function EntitiesTab() {
     [stadtteile, selectedST],
   );
 
-  if (loading) return <div className="py-10"><Spinner /></div>;
+  if (loading) return <div className="py-4"><TableSkeleton rows={8} cols={3} /></div>;
   if (all.length === 0) {
     return <EmptyState mascot="sleep" title="Noch keine Themen" hint="Es wurden noch keine wiederkehrenden Eigennamen aus den Beschlüssen extrahiert." />;
   }

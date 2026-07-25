@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Search } from "lucide-react";
 import { Member } from "@/lib/types";
-import { Card, Input, Select, Spinner, EmptyState } from "@/components/ui";
+import { Card, Input, Select, TableSkeleton, EmptyState } from "@/components/ui";
 import { PartyBadge } from "@/components/decision-ui";
 import { AnalysisIntro } from "@/components/analysis-intro";
 import { personHref } from "@/lib/routes";
@@ -31,7 +31,7 @@ export function PersonenView() {
   const [q, setQ] = useState("");
   const [party, setParty] = useState("");
 
-  if (loading) return <div className="py-10"><Spinner /></div>;
+  if (loading) return <div className="py-4"><TableSkeleton rows={8} cols={4} /></div>;
   const all = data?.members ?? [];
   if (all.length === 0) {
     return <EmptyState mascot="sleep" title="Keine Ratsmitglieder" hint="Es wurden noch keine Anwesenheiten aus den Protokollen erfasst." />;

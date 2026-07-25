@@ -9,7 +9,7 @@ import { api, ApiError } from "@/lib/api";
 import { Topic, TopicDecision } from "@/lib/types";
 import { DecisionLinkCard } from "@/components/decision-ui";
 import {
-  Button, Card, CardListSkeleton, ConfirmDialog, EmptyState, Input, PageHeader, Textarea,
+  Button, Card, CardListSkeleton, ConfirmDialog, EmptyState, ErrorState, Input, PageHeader, Textarea,
   Dialog, DialogContent, DialogHeader, DialogTitle, Switch, formatDate, toast,
 } from "@/components/ui";
 import { decisionHref } from "@/lib/routes";
@@ -129,8 +129,14 @@ function TopicsInner() {
   if (isError) {
     return (
       <div>
-        <PageHeader title="Meine Themen" />
-        <p className="mt-6 text-sm text-destructive">Fehler beim Laden der Themen. Bitte Seite neu laden.</p>
+        <PageHeader title="Meine Themen" description={HEADER_DESC} />
+        <div className="mt-6">
+          <ErrorState
+            title="Die Themen kamen nicht durch"
+            onRetry={() => void topicsQuery.refetch()}
+            busy={topicsQuery.isFetching}
+          />
+        </div>
       </div>
     );
   }

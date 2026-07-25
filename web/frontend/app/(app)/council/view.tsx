@@ -747,6 +747,16 @@ function DecisionsTab({ committees }: { committees: string[] }) {
           />
         ) : (
           <div className="space-y-2.5">
+            {/* Design 29a (P7): Sehende sehen die Zahl — beim Filtern oder
+                Blättern wechselte die Liste für Vorleseprogramme lautlos.
+                Dieselbe Bauform wie die KI-Antwort (council-qa.tsx): eine
+                unsichtbare Zeile, die die Änderung ansagt. */}
+            <p className="sr-only" role="status" aria-live="polite">
+              {loading
+                ? "Beschlüsse werden geladen"
+                : `${total} ${noun} gefunden${query ? ` zu ${query}` : ""}`
+                  + (totalPages > 1 ? `, Seite ${page} von ${totalPages}` : "")}
+            </p>
             {/* RL-F07: Trefferzeile gleitet bei Filterwechsel neu ein (key-Remount). */}
             <div className="flex flex-wrap items-center gap-2">
               <p key={`${total}|${query}|${outcome}|${field}|${committee}`} className="animate-fade-up text-sm font-medium text-muted-foreground">
@@ -1049,7 +1059,11 @@ function SessionsTab({ committees }: { committees: string[] }) {
           <div className="space-y-3">
             {/* Die Gesamtzahl, nicht die der Seite: Der Bestand reicht bis 2018
                 zurück; „100 Sitzungen" las sich vorher wie das Ende der Welt. */}
-            <p className="text-sm font-medium text-muted-foreground">
+            <p className="sr-only" role="status" aria-live="polite">
+              {`${total} ${total === 1 ? "Sitzung" : "Sitzungen"} gefunden`
+                + (totalPages > 1 ? `, Seite ${page} von ${totalPages}` : "")}
+            </p>
+            <p aria-hidden className="text-sm font-medium text-muted-foreground">
               {total} {total === 1 ? "Sitzung" : "Sitzungen"}
               {totalPages > 1 && <span className="text-muted-foreground/70"> · Seite {page} von {totalPages}</span>}
             </p>
