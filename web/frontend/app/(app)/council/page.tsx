@@ -14,12 +14,14 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     return vorschauMetadata("sitzung", ksinr, `/council?tab=sessions&ksinr=${ksinr}`);
   }
   const q = searchParams?.q?.trim();
-  return {
-    title: q ? `„${q}“ — Suchen & Fragen` : "Suchen & Fragen",
-    description:
-      "Beschlüsse des Oldenburger Stadtrats durchsuchen oder dem Rat eine Frage stellen — "
-      + "mit Ergebnis, Gremium, Datum und Quellenangabe.",
-  };
+  const titel = q ? `„${q}“ — Suchen & Fragen` : "Suchen & Fragen";
+  const text =
+    "Beschlüsse des Oldenburger Stadtrats durchsuchen oder dem Rat eine Frage stellen — "
+    + "mit Ergebnis, Gremium, Datum und Quellenangabe.";
+  // openGraph mitgeben, nicht nur title/description: Messenger lesen die
+  // og:-Felder zuerst — ohne sie zeigte eine geteilte Suche wieder die
+  // allgemeine Kachel, genau das, was 29a abstellen sollte.
+  return { title: titel, description: text, openGraph: { title: titel, description: text } };
 }
 
 export default function Page() {
