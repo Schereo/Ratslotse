@@ -54,12 +54,12 @@ jobs:
             Relevante Doku:
             - Markdown im Repo-Root: README.md, CLAUDE.md, scripts/README.md
             - Die Starlight-Doku unter docs-site/src/content/docs/ — insbesondere
-              architektur.md, ki-pipeline.md, modellvergleich.md, bot.md,
-              beschluesse.md, eval.md und die ADRs unter adr/
+              architektur.mdx, ki-pipeline.mdx, betrieb.md, beschluesse.md,
+              app-und-konten.md, bewertungen.md, eval.md und die ADRs unter adr/
 
             Achte auf konkrete Drift, z. B.: geänderte/entfernte Skripte oder
-            Cron-Zeiten, geänderte Bot-Befehle (nwz/bot_commands.py), geänderte
-            Env-Variablen, neue/entfernte Services, geänderte LLM-Modelle/Provider,
+            Cron-Zeiten, geänderte Schritt-ANZAHLEN in weekly_enrich.py/check_protocols.py,
+            geänderte Env-Variablen samt Defaults, neue/entfernte Services, LLM-Modelle/Provider,
             geänderte Deploy-Schritte. Eine NEUE folgenreiche Technik-Entscheidung
             sollte ggf. einen neuen ADR bekommen.
 

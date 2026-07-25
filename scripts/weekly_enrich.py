@@ -5,16 +5,29 @@ The daily protocol cron classifies, extracts € amounts, assesses goals and reb
 the FTS index. But the *LLM/embedding* enrichments behind the Themen pages, maps,
 press links and "Ähnliche Beschlüsse" are heavier and run here, once a week, in order:
 
-    1. Entitäten (NER)        extract_entities.py   — rebuilds council_entities
-    2. Beschreibungen          describe_entities.py  — fills missing descriptions (slug-keyed meta survives the rebuild)
-    3. Geocoding               geocode_entities.py   — geocodes new place entities
-    5. Embeddings/Ähnliche     embed_decisions.py    — re-embeds for "Ähnliche Beschlüsse"
-    5b. Verwandte Themen       build_entity_relations.py — "Hängt zusammen mit…" je Entität
-    6. Themen ↔ Beschlüsse     match_topics_decisions.py — matcht Nutzer-Themen gegen Beschlüsse
-    7. Themenfeld-Rückblicke   generate_field_recaps.py  — LLM-Kurzrückblick je Politikfeld (≈ monatlich)
+     1. Entitäten (NER)        extract_entities.py         — rebuilds council_entities
+     2. Beschreibungen         describe_entities.py        — fills missing descriptions (slug-keyed meta survives the rebuild)
+     3. Geocoding              geocode_entities.py         — geocodes new place entities
+     4. Embeddings/Ähnliche    embed_decisions.py          — re-embeds for "Ähnliche Beschlüsse"
+     5. Verwandte Themen       build_entity_relations.py   — "Hängt zusammen mit…" je Entität
+     6. Themen ↔ Beschlüsse    match_topics_decisions.py   — matcht Nutzer-Themen gegen Beschlüsse
+     7. Themenfeld-Rückblicke  generate_field_recaps.py    — LLM-Kurzrückblick je Politikfeld (≈ monatlich)
+     8. Einfach erklärt        generate_simple_summaries.py — 500er-Wochentranche, neueste zuerst
+     9. Personen-Stammdaten    backfill_stammdaten.py      — Mandate/Ausschuss-Besetzungen aus dem Ratsinfo
+    10. Tragweite              rate_impact.py              — 500er-Tranche, VOR dem Wichtigkeits-Score
+    11. Wichtigkeits-Score     score_importance.py         — mischt Tragweite + Gesprächswert (kein LLM)
+    12. Quizfragen             generate_quiz.py            — füllt Gebiete unter Ziel-Fragenzahl auf
+    13. Interessantheit        rate_interest.py            — 500er-Tranche, speist das Fundstück
+    14. Fundstücke             generate_fundstuecke.py     — 21 Tage Vorlauf, idempotent
+
+Diese Liste MUSS zu STEPS unten passen. Sie stand zuletzt auf sieben Einträgen mit
+einer Lücke in der Nummerierung (1,2,3,5,5b,6,7), während STEPS längst vierzehn hatte —
+wer danach die Laufzeit oder die LLM-Kosten abschätzte, lag um die Hälfte daneben.
 
 Each step runs independently — a failure in one does NOT stop the others. Steps 2–3
 are idempotent (only-missing); 1, 4, 5 are full rebuilds (cheap enough weekly).
+Schritt 5 braucht 1 und 4 (liest die neu abgeleiteten Entitäten samt Embeddings),
+Schritt 10 muss vor 11 laufen, damit die 50/50-Mischung frische Werte sieht.
 
 Cron (Sundays 03:00):
     0 3 * * 0 cd ~/app && .venv/bin/python scripts/weekly_enrich.py >> ~/app/data/weekly_enrich.log 2>&1
