@@ -714,35 +714,52 @@ class CouncilStore:
                 [(r.committee, r.session_date, r.session_time, r.location, now) for r in rows],
             )
 
-    def upcoming_sessions(self, limit: int = 20) -> list[dict]:
+    # Kommende Sitzungen kommen aus ZWEI Quellen: echten Sitzungen mit
+    # Tagesordnung und bloß terminierten aus dem Kalender. Liste und Zählung
+    # müssen dieselbe Menge meinen — deshalb steht die Bedingung genau einmal
+    # hier und wird von beiden benutzt.
+    _UPCOMING_FROM = """
+        FROM (
+            SELECT cs.ksinr, cs.committee, cs.session_date, cs.session_time, cs.location,
+                   COUNT(ci.id) AS n_items
+            FROM council_sessions cs
+            LEFT JOIN council_agenda_items ci ON ci.ksinr = cs.ksinr
+            WHERE cs.session_date >= ?
+            GROUP BY cs.ksinr
+            UNION ALL
+            SELECT NULL AS ksinr, ss.committee, ss.session_date, ss.session_time, ss.location,
+                   0 AS n_items
+            FROM council_scheduled_sessions ss
+            WHERE ss.session_date >= ?
+              AND NOT EXISTS (
+                  SELECT 1 FROM council_sessions cs2
+                  WHERE cs2.committee = ss.committee AND cs2.session_date = ss.session_date
+              )
+        )
+    """
+
+    def upcoming_sessions(self, limit: int = 20, offset: int = 0) -> list[dict]:
         """Kommende Sitzungen: echte (mit ksinr/Tagesordnung) plus terminierte
         aus dem Kalender (ksinr NULL), solange keine echte Sitzung desselben
         Gremiums am selben Tag existiert."""
         from datetime import date
         today = date.today().isoformat()
         rows = self._conn.execute(
-            """SELECT cs.ksinr, cs.committee, cs.session_date, cs.session_time, cs.location,
-                      COUNT(ci.id) AS n_items
-               FROM council_sessions cs
-               LEFT JOIN council_agenda_items ci ON ci.ksinr = cs.ksinr
-               WHERE cs.session_date >= ?
-               GROUP BY cs.ksinr
-               UNION ALL
-               SELECT NULL AS ksinr, ss.committee, ss.session_date, ss.session_time, ss.location,
-                      0 AS n_items
-               FROM council_scheduled_sessions ss
-               WHERE ss.session_date >= ?
-                 AND NOT EXISTS (
-                     SELECT 1 FROM council_sessions cs2
-                     WHERE cs2.committee = ss.committee AND cs2.session_date = ss.session_date
-                 )
-               ORDER BY session_date ASC, session_time ASC
-               LIMIT ?""",
-            (today, today, limit),
+            f"""SELECT * {self._UPCOMING_FROM}
+                ORDER BY session_date ASC, session_time ASC
+                LIMIT ? OFFSET ?""",
+            (today, today, limit, offset),
         ).fetchall()
         return [dict(r) for r in rows]
 
-    def recent_sessions(self, limit: int = 10) -> list[dict]:
+    def count_upcoming_sessions(self) -> int:
+        from datetime import date
+        today = date.today().isoformat()
+        return self._conn.execute(
+            f"SELECT COUNT(*) {self._UPCOMING_FROM}", (today, today)
+        ).fetchone()[0]
+
+    def recent_sessions(self, limit: int = 10, offset: int = 0) -> list[dict]:
         from datetime import date
         today = date.today().isoformat()
         rows = self._conn.execute(
@@ -753,10 +770,17 @@ class CouncilStore:
                WHERE cs.session_date < ?
                GROUP BY cs.ksinr
                ORDER BY cs.session_date DESC
-               LIMIT ?""",
-            (today, limit),
+               LIMIT ? OFFSET ?""",
+            (today, limit, offset),
         ).fetchall()
         return [dict(r) for r in rows]
+
+    def count_recent_sessions(self) -> int:
+        from datetime import date
+        today = date.today().isoformat()
+        return self._conn.execute(
+            "SELECT COUNT(*) FROM council_sessions WHERE session_date < ?", (today,)
+        ).fetchone()[0]
 
     def mark_notified(self, ksinr: int, owner_id: int, agenda_hash: str = "") -> None:
         now = datetime.utcnow().isoformat(timespec="seconds")
@@ -839,15 +863,11 @@ class CouncilStore:
         ).fetchone()
         return dict(row) if row else None
 
-    def search_sessions(
-        self,
-        query: str = "",
-        committee: str = "",
-        date_from: str = "",
-        date_to: str = "",
-        limit: int = 50,
-    ) -> list[dict]:
-        """Search sessions by committee name or agenda item text. Empty query lists by date."""
+    @staticmethod
+    def _session_where(query: str, committee: str, date_from: str, date_to: str) -> tuple[str, list]:
+        """Filter der Sitzungssuche — eine Quelle für Liste UND Zählung. Liefen
+        die auseinander, zeigte die Blätterleiste eine andere Menge an, als die
+        Seiten hergeben (Muster wie _decision_where)."""
         filters: list[str] = []
         params: list = []
         if query:
@@ -867,8 +887,29 @@ class CouncilStore:
         if date_to:
             filters.append("cs.session_date <= ?")
             params.append(date_to)
-        where = ("WHERE " + " AND ".join(filters)) if filters else ""
-        params.append(limit)
+        return ("WHERE " + " AND ".join(filters)) if filters else "", params
+
+    def count_sessions(self, query: str = "", committee: str = "",
+                       date_from: str = "", date_to: str = "") -> int:
+        where, params = self._session_where(query, committee, date_from, date_to)
+        # Ohne den Agenda-Join: der GROUP BY der Liste faltet ihn ohnehin wieder
+        # auf eine Zeile je Sitzung zusammen.
+        return self._conn.execute(
+            f"SELECT COUNT(*) FROM council_sessions cs {where}", params
+        ).fetchone()[0]
+
+    def search_sessions(
+        self,
+        query: str = "",
+        committee: str = "",
+        date_from: str = "",
+        date_to: str = "",
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[dict]:
+        """Search sessions by committee name or agenda item text. Empty query lists by date."""
+        where, params = self._session_where(query, committee, date_from, date_to)
+        params = [*params, limit, offset]
         rows = self._conn.execute(
             f"""SELECT cs.ksinr, cs.committee, cs.session_date, cs.session_time, cs.location,
                        COUNT(ci.id) AS n_items
@@ -877,7 +918,7 @@ class CouncilStore:
                 {where}
                 GROUP BY cs.ksinr
                 ORDER BY cs.session_date DESC
-                LIMIT ?""",
+                LIMIT ? OFFSET ?""",
             params,
         ).fetchall()
         sessions = [dict(r) for r in rows]
