@@ -3,12 +3,15 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Sparkles, Send, Loader2, ChevronDown, ChevronUp, ArrowRight, Lightbulb, Plus } from "lucide-react";
+import { Sparkles, Send, Loader2, ChevronDown, ChevronUp, ArrowRight, Lightbulb, Plus,
+  Square, CircleSlash } from "lucide-react";
 import { Mascot } from "@/components/mascot";
 import { QaSource } from "@/lib/types";
 import { apiUrl, authHeaders } from "@/lib/api";
 import { Button, Card, Input, toast } from "@/components/ui";
 import { DecisionLinkCard } from "@/components/decision-ui";
+import { ShareButton } from "@/components/share-button";
+import { PrintButton } from "@/components/print-button";
 import { cn } from "@/lib/utils";
 import { reportBadgeEvent } from "@/components/badges";
 
@@ -79,6 +82,9 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     if (urlQ) setQ((prev) => prev || urlQ);
   }, [sp]);
   const [loading, setLoading] = useState(false);
+  // Design 28a/R2: abgebrochen? Der bereits gestreamte Text bleibt stehen —
+  // eine halbe Antwort ist mehr wert als gar keine, sie braucht nur den Vermerk.
+  const [aborted, setAborted] = useState(false);
   const [step, setStep] = useState<Step | null>(null);
   const [answer, setAnswer] = useState("");
   const [sources, setSources] = useState<QaSource[]>([]);
@@ -171,6 +177,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     abortRef.current = ctrl;
     setQ(text);
     setLoading(true);
+    setAborted(false);
     setStep("expand");
     setAnswer("");
     setSources([]);
@@ -229,6 +236,19 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     }
   };
 
+  /** Design 28a/R2: Der AbortController lag längst hier — es fehlte der Knopf.
+   *  abortRef wird VOR dem abort() geleert, damit der finally-Block der
+   *  laufenden Anfrage den Zustand nicht ein zweites Mal anfasst. */
+  const stopAsking = () => {
+    const ctrl = abortRef.current;
+    if (!ctrl) return;
+    abortRef.current = null;
+    ctrl.abort();
+    setLoading(false);
+    setStep(null);
+    setAborted(true);
+  };
+
   const showIntro = !loading && !answer && sources.length === 0;
 
   return (
@@ -246,9 +266,17 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             <Input ref={inputRef} data-search enterKeyHint="send" className="pl-9" placeholder="Frag den Stadtrat …"
               value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
-          <Button type="submit" disabled={loading || q.trim().length < 4}>
-            <Send /> Fragen
-          </Button>
+          {/* Während der Antwort steht hier der Abbruch — der Knopf war sonst
+              nur ausgegraut, und die Eingabe blieb bis zum Ende blockiert. */}
+          {loading ? (
+            <Button type="button" variant="secondary" onClick={stopAsking} aria-label="Antwort abbrechen">
+              <Square className="fill-current" /> Stopp
+            </Button>
+          ) : (
+            <Button type="submit" disabled={q.trim().length < 4}>
+              <Send /> Fragen
+            </Button>
+          )}
         </form>
         <p className="mt-2 text-xs text-muted-foreground/70">
           Bitte keine personenbezogenen oder sensiblen Daten eingeben — Anfragen werden zur Beantwortung an einen externen KI-Dienst übermittelt.
@@ -299,6 +327,16 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         </div>
       )}
 
+      {aborted && (
+        <p role="status" className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <CircleSlash className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          {answer
+            ? "Abgebrochen — die Antwort blieb unvollständig."
+            : "Abgebrochen — es war noch nichts angekommen."}{" "}
+          Du kannst direkt neu fragen.
+        </p>
+      )}
+
       {answer && !loading && sources.length === 0 && (
         <div className="flex items-start gap-3 rounded-xl border border-border bg-muted/30 p-4">
           <Mascot pose="confused" decorative className="h-12 w-12 shrink-0" />
@@ -328,6 +366,17 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
       {answer && !loading && (
         <>
           <p role="status" className="sr-only">Antwort vollständig.</p>
+          {/* Design 28a/W3: Eine gute Antwort war bisher nicht weiterzugeben —
+              man konnte sie nur markieren und kopieren. Der Link nimmt die
+              Frage mit (?mode=fragen&q=…); die Antwort entsteht beim Empfänger
+              neu aus dessen Datenstand, statt einen alten Text einzufrieren. */}
+          <div className="flex flex-wrap items-center gap-2 print:hidden">
+            <ShareButton
+              path={`/council?tab=decisions&mode=fragen&q=${encodeURIComponent(q.trim())}`}
+              title={`Ratslotse: ${q.trim()}`}
+            />
+            <PrintButton />
+          </div>
           <p className="text-xs text-muted-foreground/70">
             Antwort von einer KI aus den gefundenen Beschlüssen erzeugt — kann unvollständig sein. Immer die Quellen prüfen.
           </p>

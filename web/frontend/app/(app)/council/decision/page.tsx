@@ -3,13 +3,15 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ChevronDown, ChevronUp, ExternalLink, FileText, FileDown, Newspaper, Tag } from "lucide-react";
-import { DecisionDetail, CouncilDecision } from "@/lib/types";
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, ExternalLink, FileText, FileDown, Newspaper, Tag } from "lucide-react";
+import { DecisionDetail, CouncilDecision, SessionDetail } from "@/lib/types";
 import { Card, DetailSkeleton, EmptyState, formatDate } from "@/components/ui";
 import { OutcomeDot, OUTCOME_META, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard, ImportanceMeter, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
-import { decisionHref, themaHref } from "@/lib/routes";
+import { decisionHref, themaHref, sessionHref } from "@/lib/routes";
 import { shortCommittee } from "@/lib/committees";
 import { ShareButton } from "@/components/share-button";
+import { PrintButton } from "@/components/print-button";
+import { FollowButton } from "@/components/follow-button";
 import { nwzSearchUrl } from "@/components/nwz-link";
 import { trackRecentDecision } from "@/lib/recent";
 import { Mascot } from "@/components/mascot";
@@ -435,6 +437,11 @@ function DecisionDetailInner() {
   const id = useSearchParams().get("id");
   const router = useRouter();
   const { data, loading } = useFetch<DecisionDetail>(id ? `/council/decision/${id}` : null);
+  // Design 28a/S2: Die Sitzung dazu — sie liefert die Nachbar-TOPs und das Ziel
+  // für „Zurück". Zweitrangig, deshalb erst nach dem Beschluss und ohne eigenen
+  // Ladezustand: fehlt sie, verhält sich die Seite wie bisher.
+  const ksinr = data?.decision.ksinr;
+  const { data: session } = useFetch<SessionDetail>(ksinr ? `/council/session/${ksinr}` : null);
 
   // Für „Zuletzt angesehen" (Dashboard) und die Command-Palette merken.
   useEffect(() => {
@@ -456,14 +463,70 @@ function DecisionDetailInner() {
     byParty[p] = (byParty[p] ?? 0) + 1;
   }
 
+  /* Design 28a/S2: Nachbar-TOPs derselben Sitzung. Sortiert nach der Position
+     im Protokoll (nicht nach item_number — „4.10" käme sonst vor „4.2"). */
+  const siblings = (session?.decisions ?? [])
+    .filter((x) => x.kind === "decision")
+    .sort((a, b) => (a.item_number ?? "").localeCompare(b.item_number ?? "", "de", { numeric: true }));
+  const pos = siblings.findIndex((x) => x.id === d.id);
+  const prev = pos > 0 ? siblings[pos - 1] : null;
+  const next = pos >= 0 && pos < siblings.length - 1 ? siblings[pos + 1] : null;
+  /* „Zurück" führte per router.back() aus der App heraus, wenn die Seite aus
+     Push, geteiltem Link oder Kaltstart geöffnet wurde (leere History). Jetzt
+     zeigt der Knopf sein Ziel und fällt auf die Sitzung zurück. */
+  const backToSession = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) router.back();
+    else if (d.ksinr) router.push(sessionHref(d.ksinr));
+    else router.push("/council");
+  };
+
   return (
     <div className="mx-auto max-w-5xl">
       <div className="print-hidden flex items-center justify-between gap-3">
-        <button onClick={() => router.back()} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" /> Zurück
+        <button onClick={backToSession} className="inline-flex min-w-0 items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-4 w-4 shrink-0" />
+          <span className="truncate">
+            Zurück
+            <span className="hidden sm:inline"> zu {shortCommittee(d.committee)} · {formatDate(d.session_date)}</span>
+          </span>
         </button>
-        <ShareButton path={decisionHref(d.id)} title={d.title ?? "Beschluss des Oldenburger Stadtrats"} />
+        <div className="flex shrink-0 items-center gap-2">
+          {/* Design 28a/W3: Das Druck-Stylesheet (globals.css) blendet Navigation
+              und Beiwerk längst aus — es gab nur keinen Weg, den Druck aus der
+              App heraus zu starten. Für Bürgerinitiativen und Ortsräte ist das
+              Papier die Arbeitsgrundlage. In der nativen App fehlt window.print(),
+              dort bleibt der Knopf weg. */}
+          <PrintButton />
+          <ShareButton path={decisionHref(d.id)} title={d.title ?? "Beschluss des Oldenburger Stadtrats"} />
+        </div>
       </div>
+
+      {/* Nachbar-TOPs: Wer eine Sitzung durchgeht, musste bisher für jeden TOP
+          zurück und neu suchen. */}
+      {pos >= 0 && siblings.length > 1 && (
+        <nav className="print-hidden mt-2 flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-2 py-1.5">
+          {prev ? (
+            <Link href={decisionHref(prev.id)} title={prev.title ?? ""}
+              className="inline-flex min-w-0 items-center gap-1 rounded-lg px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+              <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">TOP {prev.item_number}</span>
+            </Link>
+          ) : <span />}
+          {/* Position unter den Beschlüssen, NICHT die TOP-Nummer: Eine
+              Tagesordnung hat mehr Punkte als Beschlüsse — „TOP 8 von 6" wäre
+              das Ergebnis. Die TOP-Nummer selbst steht in der Statuszeile. */}
+          <span className="shrink-0 text-[11px] font-medium tabular-nums text-muted-foreground">
+            {pos + 1} von {siblings.length} Beschlüssen
+          </span>
+          {next ? (
+            <Link href={decisionHref(next.id)} title={next.title ?? ""}
+              className="inline-flex min-w-0 items-center gap-1 rounded-lg px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+              <span className="truncate">TOP {next.item_number}</span>
+              <ArrowRight className="h-3.5 w-3.5 shrink-0" />
+            </Link>
+          ) : <span />}
+        </nav>
+      )}
 
       {/* RL-601: Statuszeile (Punkt+Wort · Gremium·Datum·TOP · Mono-Aktenzeichen
           · Wichtig-Chip), H1 32/700, darunter Dokument-Grid 1fr/300px. */}
@@ -666,6 +729,11 @@ function DecisionDetailInner() {
                       );
                     })}
               </div>
+              {/* Design 28a/W1: Der Weg der Vorlage ist der Ort, an dem der
+                  Wunsch entsteht — man sieht, dass es weitergeht, und will
+                  Bescheid wissen. Der Knopf steht deshalb hier und nicht in
+                  einer Aktionsleiste. */}
+              {data.follow && <FollowButton kvonr={data.follow.kvonr} initial={data.follow.following} />}
             </MetaCard>
           ) : null}
 

@@ -4,15 +4,17 @@ import { useEffect, useRef, useState, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Search, ExternalLink, ChevronDown, ChevronRight, Scale, SlidersHorizontal, Users, Sparkles, Split, X, Flame } from "lucide-react";
+import { Search, ExternalLink, ChevronDown, ChevronRight, Scale, SlidersHorizontal, Users, Sparkles, Split, X, Flame, CalendarDays, Map as MapIcon, BarChart3, History, CalendarPlus } from "lucide-react";
 import { api, qs, ApiError } from "@/lib/api";
 import { decisionHref } from "@/lib/routes";
 import { useDebounce } from "@/lib/use-debounce";
+import { clearRecentSearches, getRecentSearches, pushRecentSearch } from "@/lib/recent-searches";
+import { offerIcs } from "@/lib/ics";
 import {
-  CouncilSession, SessionDetail, AgendaItem, CouncilDecision, DecisionOutcome, PolicyField,
+  CouncilSession, SessionDetail, AgendaItem, CouncilDecision, DecisionOutcome, PolicyField, Topic,
 } from "@/lib/types";
 import {
-  Badge, Button, Card, CardListSkeleton, DateField, EmptyState, Input, PageHeader, Pagination, Segmented, Select,
+  Badge, Button, Card, CardListSkeleton, DateField, EmptyState, Input, PageHeader, Pagination, Segmented, type SegmentedOption, Select,
   Sheet, SheetContent, SheetTitle, SheetTrigger, Spinner, formatDate, toast,
 } from "@/components/ui";
 import { OutcomeBadge, OutcomeDot, ImportanceBadge, OUTCOME_META, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
@@ -32,24 +34,55 @@ type Tab = "sessions" | "decisions" | "themen" | "analysis";
 
 const sessionUrl = (ksinr: number) => `https://buergerinfo.oldenburg.de/si0057.php?__ksinr=${ksinr}`;
 
+/* TOP-Nummern zusammenführen. Die Tagesordnung führt sie mit Sichtbarkeits-
+   Präfix („Ö 6.1", „N 12"), das Protokoll ohne („6.1") — ein direkter Vergleich
+   trifft deshalb NIE. Der Ergebnis-Punkt an der TOP-Zeile war damit von Anfang
+   an tot, und der Beschluss-Link aus 28a/S1 hätte dasselbe Schicksal geteilt.
+   Nichtöffentliche Punkte bleiben außen vor: „N 5" und „Ö 5" fielen sonst auf
+   denselben Schlüssel, und der öffentliche Beschluss landete an der falschen
+   Zeile. */
+const topKey = (n: string | null | undefined) => (n ?? "").replace(/^\p{L}+\s+/u, "").trim();
+
 function itemMatches(it: AgendaItem, query: string): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return false;
   return it.title.toLowerCase().includes(q) || (it.vorlage_nr?.toLowerCase().includes(q) ?? false);
 }
 
+/* Design 28a/R1: JEDES Wort der Eingabe, an JEDER Fundstelle markieren.
+   Vorher wurde nur das erste, wörtliche Vorkommen der GANZEN Eingabe getroffen —
+   bei „radwege innenstadt" also nie eines, weil die beiden Wörter nirgends
+   zusammenhängend stehen. Die Karte war der Treffer, sah aber aus wie keiner,
+   und genau daran entstand der Eindruck, die Suche funktioniere nicht.
+   Ein-Zeichen-Wörter bleiben außen vor: Die markierten sonst halbe Sätze. */
+function highlightRegex(query: string): RegExp | null {
+  const words = query
+    .trim()
+    .split(/\s+/)
+    .filter((w) => w.length >= 2)
+    .map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .sort((a, b) => b.length - a.length); // längere zuerst → keine Teiltreffer
+  if (words.length === 0) return null;
+  return new RegExp(`(${words.join("|")})`, "gi");
+}
+
 function Highlight({ text, query }: { text: string; query: string }) {
-  const q = query.trim();
-  if (!q || !text) return <>{text}</>;
-  const idx = text.toLowerCase().indexOf(q.toLowerCase());
-  if (idx === -1) return <>{text}</>;
+  const re = query.trim() && text ? highlightRegex(query) : null;
+  if (!re || !text) return <>{text}</>;
+  const parts = text.split(re);
+  if (parts.length === 1) return <>{text}</>;
   return (
     <>
-      {text.slice(0, idx)}
-      <mark className="rounded bg-amber-200 px-0.5 text-foreground dark:bg-amber-700/60">
-        {text.slice(idx, idx + q.length)}
-      </mark>
-      {text.slice(idx + q.length)}
+      {parts.map((part, i) =>
+        // split() mit Capture-Group liefert die Treffer an ungeraden Positionen.
+        i % 2 === 1 ? (
+          <mark key={i} className="rounded bg-amber-200 px-0.5 text-foreground dark:bg-amber-700/60">
+            {part}
+          </mark>
+        ) : (
+          part
+        ),
+      )}
     </>
   );
 }
@@ -192,17 +225,61 @@ function FilterField({ label, className, children }: { label: string; className?
  *  iOS-Tastatur. Das ✕ erscheint ab dem ersten Zeichen, leert und fokussiert
  *  neu — volle Feldhöhe als Touch-Ziel. */
 function SearchBox({
-  value, onChange, placeholder, large = false, tour,
+  value, onChange, placeholder, large = false, tour, withHistory = false,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder: string;
   large?: boolean;
   tour?: string;
+  /** Design 28a/R6: Verlauf + Vorschläge beim Fokus auf leerem Feld. */
+  withHistory?: boolean;
 }) {
   const ref = useRef<HTMLInputElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const [history, setHistory] = useState<string[]>([]);
+
+  // Der Verlauf liegt in localStorage — erst beim Öffnen lesen, damit ein
+  // Eintrag aus derselben Sitzung sofort auftaucht (und der Server-Render
+  // nichts vom Gerät weiß).
+  const openPanel = () => {
+    if (!withHistory) return;
+    setHistory(getRecentSearches());
+    setOpen(true);
+  };
+
+  const suggestions = useQuery({
+    queryKey: ["topic-suggestions"],
+    queryFn: () =>
+      api.get<{ suggestions: { name: string }[] }>("/topics/suggestions").then((d) => d.suggestions),
+    // Nur laden, wenn das Panel wirklich offen ist: Der Endpoint prüft
+    // Vorschläge notfalls per LLM — er gehört nicht in jeden Seitenaufruf.
+    enabled: withHistory && open && !value.trim(),
+    staleTime: 30 * 60 * 1000,
+  });
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  const pick = (v: string) => {
+    onChange(v);
+    pushRecentSearch(v);
+    setOpen(false);
+    ref.current?.focus();
+  };
+
+  const vorschlaege = (suggestions.data ?? []).map((s) => s.name).slice(0, 5);
+  const showPanel = open && !value.trim() && (history.length > 0 || vorschlaege.length > 0);
+
   return (
-    <div className="relative">
+    <div className="relative" ref={wrapRef}>
       <Search className={cn(
         "pointer-events-none absolute top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground",
         large ? "left-4" : "left-3",
@@ -212,10 +289,18 @@ function SearchBox({
         data-search
         data-tour={tour}
         enterKeyHint="search"
+        // Der eigene Verlauf (28a/R6) und die Browser-Autovervollständigung
+        // legten sich sonst übereinander — zwei Listen, eine davon mit fremden
+        // Einträgen. Rechtschreibprüfung im Suchfeld unterkringelt außerdem
+        // jeden Straßennamen.
+        autoComplete="off"
+        spellCheck={false}
         className={cn(large ? "h-12 rounded-[14px] pl-11 pr-12 text-base" : "pl-9 pr-11")}
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onFocus={openPanel}
+        onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }}
       />
       {value && (
         <button
@@ -227,7 +312,95 @@ function SearchBox({
           <X className="h-4 w-4" />
         </button>
       )}
+
+      {showPanel && (
+        // onMouseDown verhindern: sonst verliert das Feld den Fokus, bevor der
+        // Klick auf einen Vorschlag ankommt.
+        <div
+          onMouseDown={(e) => e.preventDefault()}
+          className="absolute inset-x-0 top-full z-30 mt-1.5 overflow-hidden rounded-xl border border-border bg-card p-1 shadow-lifted"
+        >
+          {history.length > 0 && (
+            <>
+              <p className="flex items-center justify-between gap-2 px-2 pb-1 pt-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/70">
+                Zuletzt gesucht
+                <button
+                  type="button"
+                  onClick={() => { clearRecentSearches(); setHistory([]); }}
+                  className="rounded px-1 py-0.5 text-[11px] normal-case tracking-normal transition-colors hover:text-foreground"
+                >
+                  Löschen
+                </button>
+              </p>
+              {history.map((h) => (
+                <button
+                  key={h} type="button" onClick={() => pick(h)}
+                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent"
+                >
+                  <History className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
+                  <span className="truncate">{h}</span>
+                </button>
+              ))}
+            </>
+          )}
+          {vorschlaege.length > 0 && (
+            <>
+              <p className="px-2 pb-1 pt-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/70">
+                Gerade im Rat
+              </p>
+              {vorschlaege.map((s) => (
+                <button
+                  key={s} type="button" onClick={() => pick(s)}
+                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent"
+                >
+                  <Sparkles className="h-3.5 w-3.5 shrink-0 text-signal" />
+                  <span className="truncate">{s}</span>
+                </button>
+              ))}
+            </>
+          )}
+        </div>
+      )}
     </div>
+  );
+}
+
+/** Design 28a/W2: Sitzung in den eigenen Kalender. Das Ratsinformationssystem
+ *  bietet keinen Export — wer den Termin nicht verpassen will, tippt ihn bisher
+ *  ab. Die Tagesordnung wandert mit ins Beschreibungsfeld, samt Ratsinfo-Link,
+ *  damit der Eintrag auch in vier Wochen noch etwas sagt. */
+function CalendarButton({ session, agenda }: { session: CouncilSession; agenda?: string[] }) {
+  // Umlaute umschreiben statt wegwerfen — sonst hieße die Datei
+  // „ratslotse-stadtgr-n-klima-….ics".
+  const slug = shortCommittee(session.committee)
+    .toLowerCase()
+    .replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        offerIcs(
+          {
+            uid: session.ksinr ? `sitzung-${session.ksinr}` : `termin-${session.session_date}-${slug}`,
+            committee: session.committee,
+            session_date: session.session_date,
+            session_time: session.session_time,
+            location: session.location,
+            url: session.ksinr ? sessionUrl(session.ksinr) : null,
+            // Nur die ersten TOPs: Eine 60-Punkte-Tagesordnung sprengt jede
+            // Kalender-Vorschau, der Link führt ohnehin zur vollen Liste.
+            agenda: agenda?.slice(0, 12),
+          },
+          `ratslotse-${slug}-${session.session_date.slice(0, 10)}.ics`,
+        ).catch(() => toast.error("Kalendereintrag konnte nicht erzeugt werden."));
+      }}
+      className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-primary"
+    >
+      <CalendarPlus className="h-3.5 w-3.5" /> Kalender
+    </button>
   );
 }
 
@@ -261,9 +434,25 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   const [loading, setLoading] = useState(true);
   const debouncedQ = useDebounce(q, 350);
 
+  // Design 28a/R6: erst die beruhigte Eingabe merken, nicht jeden Tastendruck.
+  // Zwischenstände wie „rad" auf dem Weg zu „radwege" räumt pushRecentSearch
+  // selbst wieder ab (Präfixe des neuen Begriffs fliegen raus).
+  useEffect(() => { pushRecentSearch(debouncedQ); }, [debouncedQ]);
+
   // Field + party live in the URL so the analysis and badges can deep-link to a filtered list.
   const sp = useSearchParams();
   const router = useRouter();
+  /* Design 28a/S4: ?topic= schränkt auf die Treffer eines eigenen Themas ein —
+     der Ersatz für den früheren Trefferdialog. Steht in der URL, ist also
+     teilbar und überlebt Zurück; den Namen holen wir für den Chip aus der
+     Themenliste, die ohnehin gecacht ist. */
+  const topicId = sp.get("topic") ?? "";
+  const { data: myTopics } = useQuery({
+    queryKey: ["topics"],
+    queryFn: () => api.get<Topic[]>("/topics"),
+    enabled: !!topicId,
+  });
+  const topicName = myTopics?.find((t) => String(t.id) === topicId)?.name ?? "";
 
   // ?q= aus der URL übernehmen (Deep-Link aus der Command-Palette) — einmalig
   // nach dem Mount, um keinen Hydration-Mismatch im Input zu erzeugen.
@@ -311,6 +500,8 @@ function DecisionsTab({ committees }: { committees: string[] }) {
           outcome: mode === "vote" ? outcome : "",
           date_from: dateFrom, date_to: dateTo,
           include_subvotes: showSubvotes ? "1" : "",
+          // Design 28a/S4: auf die Treffer eines eigenen Themas eingeschränkt.
+          topic: topicId,
           limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE,
         })}`,
       );
@@ -321,12 +512,12 @@ function DecisionsTab({ committees }: { committees: string[] }) {
     } finally {
       setLoading(false);
     }
-  }, [q, committee, mode, outcome, sort, field, party, dateFrom, dateTo, showSubvotes, page]);
+  }, [q, committee, mode, outcome, sort, field, party, dateFrom, dateTo, showSubvotes, page, topicId]);
 
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedQ, committee, mode, outcome, sort, field, party, dateFrom, dateTo, showSubvotes, page]);
+  }, [debouncedQ, committee, mode, outcome, sort, field, party, dateFrom, dateTo, showSubvotes, page, topicId]);
 
   // RL-U02: Seitenwechsel führt zurück zum Listenanfang und setzt den Fokus
   // auf den Listen-Container (bleibt über den Ladewechsel gemountet), damit
@@ -416,6 +607,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
       <div className="mt-3">
         <SearchBox
           large
+          withHistory
           tour="beschluss-suche"
           placeholder={isReport ? "Berichte durchsuchen…" : "Suchen (z. B. Haushalt, Radwege)…"}
           value={q}
@@ -556,10 +748,25 @@ function DecisionsTab({ committees }: { committees: string[] }) {
         ) : (
           <div className="space-y-2.5">
             {/* RL-F07: Trefferzeile gleitet bei Filterwechsel neu ein (key-Remount). */}
-            <p key={`${total}|${query}|${outcome}|${field}|${committee}`} className="animate-fade-up text-sm font-medium text-muted-foreground">
-              {total} {noun}
-              {query && <> zu <strong className="font-semibold text-foreground">{query}</strong></>}
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p key={`${total}|${query}|${outcome}|${field}|${committee}`} className="animate-fade-up text-sm font-medium text-muted-foreground">
+                {total} {noun}
+                {query && <> zu <strong className="font-semibold text-foreground">{query}</strong></>}
+              </p>
+              {/* Design 28a/S4: sichtbar und abwählbar — sonst wüsste niemand,
+                  warum die Liste kürzer ist als sonst. */}
+              {topicId && (
+                <button
+                  type="button"
+                  onClick={() => setUrlParam("topic", "")}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
+                >
+                  Thema: {topicName || `#${topicId}`}
+                  <X className="h-3 w-3" aria-hidden />
+                  <span className="sr-only">Themenfilter entfernen</span>
+                </button>
+              )}
+            </div>
             {decisions.map((d) => <DecisionCard key={d.id} d={d} query={query} />)}
             <Pagination page={page} totalPages={totalPages} onChange={changePage} className="pt-2" />
           </div>
@@ -591,14 +798,21 @@ function DateTile({ iso }: { iso: string }) {
   );
 }
 
-function AgendaRow({ it, query, outcome, myTopic }: { it: AgendaItem; query: string; outcome?: DecisionOutcome | null; myTopic?: string }) {
+/* Design 28a/S1: Ein TOP, zu dem es einen Beschluss gibt, führt auf dessen Seite.
+   Vorher zeigte die Zeile das Ergebnis an (grüner/roter Punkt) und war trotzdem
+   toter Text — man musste zurück in die Suche, um den Beschluss zu finden, der
+   direkt dahinter liegt. TOPs ohne Beschluss (Berichte, künftige Sitzungen)
+   bleiben bewusst ruhiger Text, damit der Zeiger nichts verspricht, was fehlt. */
+function AgendaRow({ it, query, outcome, decisionId, myTopic }: {
+  it: AgendaItem; query: string; outcome?: DecisionOutcome | null;
+  decisionId?: number; myTopic?: string;
+}) {
   const hit = itemMatches(it, query);
-  return (
-    <li className={cn(
-      "flex flex-wrap items-start gap-x-3 gap-y-1 rounded-md px-2 py-2",
-      hit ? "bg-amber-50 dark:bg-amber-950/40" : myTopic && "bg-signal/5",
-    )}>
-      <span className="w-7 shrink-0 text-xs font-medium text-muted-foreground">{it.item_number}</span>
+  const body = (
+    <>
+      {/* w-10 statt w-7: „Ö 6.2" brach sonst auf zwei Zeilen um und zog die
+          ganze Zeile auseinander. */}
+      <span className="w-10 shrink-0 whitespace-nowrap text-xs font-medium text-muted-foreground">{it.item_number}</span>
       <div className="min-w-0 flex-1">
         <p className="text-sm text-foreground"><Highlight text={it.title} query={query} /></p>
         {it.vorlage_nr && <p className="text-xs text-muted-foreground">Vorlage <Highlight text={it.vorlage_nr} query={query} /></p>}
@@ -610,8 +824,25 @@ function AgendaRow({ it, query, outcome, myTopic }: { it: AgendaItem; query: str
         )}
       </div>
       {outcome ? <OutcomeDot outcome={outcome} /> : !it.is_public ? <Badge color="amber">nichtöffentlich</Badge> : null}
-    </li>
+      {decisionId != null && <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/50" aria-hidden />}
+    </>
   );
+  const tone = hit ? "bg-amber-50 dark:bg-amber-950/40" : myTopic ? "bg-signal/5" : "";
+  const layout = "flex flex-wrap items-start gap-x-3 gap-y-1 rounded-md px-2 py-2";
+
+  if (decisionId != null) {
+    return (
+      <li>
+        <Link
+          href={decisionHref(decisionId)}
+          className={cn(layout, tone, "transition-colors hover:bg-muted/60 active:scale-[0.995]")}
+        >
+          {body}
+        </Link>
+      </li>
+    );
+  }
+  return <li className={cn(layout, tone)}>{body}</li>;
 }
 
 function AttendanceSection({ detail }: { detail: SessionDetail }) {
@@ -738,7 +969,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
               value={q || committee ? undefined : scope}
               onChange={(s) => { setScope(s); setQ(""); setCommittee(""); }}
               options={[
-                { value: "upcoming", label: "Kommend" },
+                { value: "upcoming", label: "Anstehend" },
                 { value: "recent", label: "Vergangen" },
                 { value: "all", label: "Alle" },
               ]}
@@ -751,7 +982,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
         {loading ? (
           <CardListSkeleton rows={5} />
         ) : sessions.length === 0 ? (
-          // RL-U04: In der Sitzungspause ist „Kommend" leer, das Banner darüber
+          // RL-U04: In der Sitzungspause ist „Anstehend" leer, das Banner darüber
           // nennt den Grund — der Leerzustand greift ihn auf, statt generisch
           // „keine Sitzungen" zu behaupten.
           pause?.active && scope === "upcoming" && !q && !committee ? (
@@ -795,6 +1026,11 @@ function SessionsTab({ committees }: { committees: string[] }) {
                         <Badge>Tagesordnung folgt</Badge>
                       </div>
                     </div>
+                    {/* Gerade hier lohnt der Kalender am meisten: Der Termin
+                        steht, die Tagesordnung kommt erst noch. */}
+                    <div className="ml-[62px] mt-2 sm:ml-0">
+                      <CalendarButton session={s} />
+                    </div>
                   </Card>
                 );
               }
@@ -802,8 +1038,15 @@ function SessionsTab({ committees }: { committees: string[] }) {
               const matched = s.matched_items ?? [];
               const d = detail[s.ksinr];
               const outcomeByItem: Record<string, DecisionOutcome | null> = {};
+              // Design 28a/S1: dieselbe Schleife liefert die Beschluss-id, mit der
+              // die TOP-Zeile zum Link wird — kein zusätzlicher Endpunkt nötig.
+              const decisionByItem: Record<string, number> = {};
               for (const dec of d?.decisions ?? []) {
-                if (dec.kind === "decision" && dec.item_number) outcomeByItem[dec.item_number] = dec.outcome;
+                if (dec.kind === "decision" && dec.item_number) {
+                  const key = topKey(dec.item_number);
+                  outcomeByItem[key] = dec.outcome;
+                  decisionByItem[key] ??= dec.id;
+                }
               }
               // RL-902: TOPs, die zu eigenen Themen passen (TOP → Themenname).
               const myByItem: Record<string, string> = {};
@@ -847,7 +1090,10 @@ function SessionsTab({ committees }: { committees: string[] }) {
                           <>
                             <ul className="space-y-0.5">
                               {(d?.agenda_items ?? []).map((it, i) => (
-                                <AgendaRow key={i} it={it} query={query} outcome={outcomeByItem[it.item_number]} myTopic={myByItem[it.item_number]} />
+                                <AgendaRow key={i} it={it} query={query}
+                                  outcome={it.is_public ? outcomeByItem[topKey(it.item_number)] : undefined}
+                                  decisionId={it.is_public ? decisionByItem[topKey(it.item_number)] : undefined}
+                                  myTopic={myByItem[it.item_number]} />
                               ))}
                             </ul>
                             {d && <AttendanceSection detail={d} />}
@@ -868,6 +1114,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
                         <button type="button" onClick={() => toggle(s)} className="text-sm font-medium text-primary hover:underline">
                           {isExpanded ? "Weniger anzeigen" : `Alle ${s.n_items} TOPs anzeigen`}
                         </button>
+                        <CalendarButton session={s} agenda={(d?.agenda_items ?? []).map((it) => `${it.item_number} ${it.title}`)} />
                         <a href={sessionUrl(s.ksinr)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary">
                           Ratsinfo <ExternalLink className="h-3.5 w-3.5" />
                         </a>
@@ -956,6 +1203,16 @@ const TAB_META: Record<Tab, { title: string; description: string }> = {
   analysis: { title: "Analyse", description: "Parteien, Personen, Finanzen, Trends und Ziele im Überblick." },
 };
 
+/* Design 28a/S3: Kurzlabels für die mobile Ansichtsleiste — „Karte" statt
+   „Themen", weil daneben die Bottom-Nav schon „Themen" (= Meine Themen) führt
+   und beides sonst dasselbe zu meinen scheint. */
+const VIEW_TABS: SegmentedOption<Tab>[] = [
+  { value: "decisions", label: "Suchen", icon: Search },
+  { value: "sessions", label: "Sitzungen", icon: CalendarDays },
+  { value: "themen", label: "Karte", icon: MapIcon },
+  { value: "analysis", label: "Analyse", icon: BarChart3 },
+];
+
 function CouncilInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -983,14 +1240,31 @@ function CouncilInner() {
   const meta = TAB_META[tab];
   return (
     <div>
+      {/* Design 28a/S3: Nur MOBIL eine Ansichtsleiste. Am Rechner trägt die
+          Sidebar alle vier Ziele; auf dem Telefon lagen Sitzungen, Stadtkarte
+          und Analyse ausschließlich hinter dem Burger-Menü — wer „Ratsinfo"
+          antippte, landete in der Suche und sah nie, dass drei weitere
+          Ansichten dazugehören. Deshalb ist die früher gestrichene Leiste
+          zurück, aber unter md beschränkt: keine dritte Navigation am Desktop.
+
+          Sie steht ÜBER dem Seitentitel, nicht darunter: Sonst stünde sie
+          direkt auf dem „Suchen | KI-Frage"-Umschalter, beide begännen mit
+          „Suchen" — dieselbe Verwechslung, die 28a/R5 in der Sidebar rügt.
+          Oben gelesen ergibt sich die Rangfolge: Wo bin ich → was ist das →
+          welcher Modus. */}
+      <div className="-mx-4 mb-3 overflow-x-auto px-4 md:hidden">
+        <Segmented
+          value={tab}
+          onChange={(v) => router.push(`/council?tab=${v}`, { scroll: false })}
+          options={VIEW_TABS}
+          className="w-max min-w-full"
+        />
+      </div>
       <PageHeader
         title={meta.title}
         description={meta.description}
         action={tab === "decisions" ? <SearchModeToggle /> : undefined}
       />
-      {/* Bewusst KEINE eigene Tab-Leiste hier: Sitzungen/Themen/Analyse sind mobil
-          übers Burger-Menü erreichbar — eine dritte Navigation (neben Burger und
-          Bottom-Nav) verwirrte mehr, als sie half. */}
       {tab === "decisions" ? <SearchTab committees={committees} />
         : tab === "sessions" ? <SessionsTab committees={committees} />
         : tab === "themen" ? <EntitiesTab />

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Home, Landmark, Tags, Search, Settings, LogOut, Menu, UserCircle,
-  CalendarDays, BarChart3, Trophy, Sparkles, Map as MapIcon,
+  CalendarDays, BarChart3, Trophy, Sparkles, Map as MapIcon, Command,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -207,20 +207,22 @@ function UserFooter({ onNavigate, showTheme = false }: { onNavigate?: () => void
 export function DesktopSidebar() {
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-card md:flex md:sticky md:top-0 md:h-screen md:self-start md:overflow-y-auto">
-      <div className="px-5 pb-2 pt-5">
+      {/* Design 28a/R5: Hier standen zwei „Suchen" mit derselben Lupe 40 px
+          übereinander — die Ghost-Zeile (Befehlspalette) und der Navigations-
+          punkt „Suchen & Fragen". Wer die Lupe nahm, landete oft im falschen
+          der beiden. Die Palette ist keine Rubrik, sondern ein Werkzeug: sie
+          sitzt jetzt als ⌘-Knopf neben dem Logo, die Lupe gehört allein der
+          Suche. */}
+      <div className="flex items-center gap-2 px-5 pb-2 pt-5">
         <Brand />
-      </div>
-      {/* Suche als Ghost-Zeile im Nav-Stil statt Input-Kasten — wirkt sonst
-          gedrungen zwischen Logo und Navigation. */}
-      <div className="px-3 pb-2">
         <button
           type="button"
           onClick={openCommandPalette}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          aria-label="Befehle und Sprünge öffnen (Tastenkürzel ⌘K)"
+          title="Befehle & Sprünge — ⌘K"
+          className="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border/70 bg-muted/50 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
-          <Search className="h-4 w-4" />
-          <span className="flex-1 text-left">Suchen</span>
-          <kbd className="rounded border border-border/70 bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground/80">⌘K</kbd>
+          <Command className="h-4 w-4" />
         </button>
       </div>
       <NavLinks />

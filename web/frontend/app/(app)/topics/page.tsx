@@ -14,6 +14,8 @@ import {
 } from "@/components/ui";
 import { decisionHref } from "@/lib/routes";
 import { TopicSheet } from "@/components/topic-sheet";
+import { committeeExplains, committeeRank, shortCommittee } from "@/lib/committees";
+import { FollowedVorgaenge } from "@/components/followed-vorgaenge";
 
 function TopicsInner() {
   const qc = useQueryClient();
@@ -31,7 +33,6 @@ function TopicsInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [description, setDescription] = useState("");
-  const [decisionsFor, setDecisionsFor] = useState<{ topic: Topic; decisions: TopicDecision[] } | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [editing, setEditing] = useState<Topic | null>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -98,20 +99,16 @@ function TopicsInner() {
     onError: () => toast.error("Abo konnte nicht geändert werden."),
   });
 
-  const viewDecisions = async (topic: Topic) => {
-    try {
-      const data = await api.get<{ decisions: TopicDecision[] }>(`/topics/${topic.id}/decisions`);
-      setDecisionsFor({ topic, decisions: data.decisions });
-      // RL-903: Öffnen der Liste = gesehen. Badge/Zähler frisch ziehen.
-      if ((topic.unread_count ?? 0) > 0) {
-        api.post(`/topics/${topic.id}/seen`, {}).then(() => {
-          qc.invalidateQueries({ queryKey: ["topics"] });
-          qc.invalidateQueries({ queryKey: ["topics-unread"] });
-        }).catch(() => {});
-      }
-    } catch {
-      toast.error("Beschlüsse konnten nicht geladen werden.");
-    }
+  /* RL-903: Die Trefferliste zu öffnen gilt als gesehen — bisher hing das am
+     Dialog, den 28a/S4 durch den Sprung in die Suche ersetzt. Deshalb hier
+     beim Klick, bevor navigiert wird (fire-and-forget: der Wechsel soll nicht
+     auf den Server warten). */
+  const markTopicSeen = (topic: Topic) => {
+    if ((topic.unread_count ?? 0) <= 0) return;
+    api.post(`/topics/${topic.id}/seen`, {}).then(() => {
+      qc.invalidateQueries({ queryKey: ["topics"] });
+      qc.invalidateQueries({ queryKey: ["topics-unread"] });
+    }).catch(() => {});
   };
 
   const loading = topicsQuery.isPending;
@@ -144,6 +141,9 @@ function TopicsInner() {
   const topics = Array.isArray(topicsQuery.data) ? topicsQuery.data : [];
   const subscriptions = Array.isArray(subsQuery.data) ? subsQuery.data : [];
   const committees = Array.isArray(committeesQuery.data) ? committeesQuery.data : [];
+  // Alltagsbezug zuerst, wie im Einrichtungs-Assistenten (Design 28a/R3).
+  const sortedCommittees = committees.slice()
+    .sort((a, b) => committeeRank(a) - committeeRank(b) || shortCommittee(a).localeCompare(shortCommittee(b), "de"));
 
   return (
     <div>
@@ -276,13 +276,16 @@ function TopicsInner() {
               )}
               <div className="mt-auto pt-3">
                 {t.decision_count > 0 ? (
-                  <button
-                    type="button"
-                    onClick={() => viewDecisions(t)}
+                  /* Design 28a/S4: führt in die echte Suche statt in einen Dialog.
+                     Der Dialog konnte weder filtern noch sortieren noch teilen und
+                     war mobil eine Scroll-Wand — die Suchseite kann das alles längst. */
+                  <Link
+                    href={`/council?tab=decisions&topic=${t.id}`}
+                    onClick={() => markTopicSeen(t)}
                     className="text-sm font-medium text-primary hover:underline"
                   >
                     {t.decision_count} {t.decision_count === 1 ? "Beschluss" : "Beschlüsse"} insgesamt · alle ansehen
-                  </button>
+                  </Link>
                 ) : (
                   <p className="text-xs text-muted-foreground">Noch keine Treffer — wir melden uns, sobald der Rat dazu entscheidet.</p>
                 )}
@@ -292,16 +295,33 @@ function TopicsInner() {
         )}
       </div>
 
+      {/* Design 28a/W1: Verfolgte Vorgänge sind eine dritte Art von Abo neben
+          Themen (breit, semantisch) und Ausschüssen (institutionell) — die
+          engste: EINE Vorlage auf ihrem Weg durch die Gremien. Der Abschnitt
+          erscheint erst, wenn es etwas zu zeigen gibt; angelegt wird ein
+          Follow auf der Beschluss-Seite, nicht hier. */}
+      <FollowedVorgaenge />
+
       <h2 className="mt-10 text-lg font-bold text-foreground">Ausschuss-Abos</h2>
       <p className="mt-1 text-sm text-muted-foreground">
         Benachrichtigungen, sobald eine Tagesordnung veröffentlicht wird — und noch einmal, wenn sie sich danach ändert.
       </p>
       <Card className="mt-3 divide-y divide-border">
-        {committees.map((c) => {
+        {/* Design 28a/R3: Dieselbe Liste steht im Einrichtungs-Assistenten mit
+            Kurznamen, Alltags-Reihenfolge und einem erklärenden Satz — hier
+            standen bis zuletzt die amtlichen Langnamen in Ratsinfo-Reihenfolge.
+            Wer den Assistenten gerade durchlaufen hatte, fand seine Auswahl
+            nicht wieder. Die Helfer lagen fertig in lib/committees.ts. */}
+        {sortedCommittees.map((c) => {
           const subscribed = subscriptions.includes(c);
+          const explain = committeeExplains(c);
           return (
             <div key={c} className="flex items-center justify-between gap-3 px-4 py-2.5">
-              <span className="min-w-0 text-sm text-foreground">{c}</span>
+              <div className="min-w-0">
+                {/* Der amtliche Name bleibt im title erreichbar. */}
+                <p className="truncate text-sm font-medium text-foreground" title={c}>{shortCommittee(c)}</p>
+                {explain && <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{explain}</p>}
+              </div>
               <Switch
                 checked={subscribed}
                 aria-label={`${c} ${subscribed ? "abbestellen" : "abonnieren"}`}
@@ -322,27 +342,6 @@ function TopicsInner() {
           }} />
       )}
 
-      <Dialog open={!!decisionsFor} onOpenChange={(o) => !o && setDecisionsFor(null)}>
-        <DialogContent>
-          {decisionsFor && (
-            <>
-              <DialogHeader>
-                <DialogTitle>Beschlüsse: {decisionsFor.topic.name}</DialogTitle>
-              </DialogHeader>
-              {decisionsFor.decisions.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Noch keine passenden Beschlüsse.</p>
-              ) : (
-                <div className="space-y-2">
-                  {decisionsFor.decisions.map((d) => (
-                    <DecisionLinkCard key={d.id} id={d.id} title={d.title} committee={d.committee}
-                      session_date={d.session_date} field={d.policy_field} score={d.score} />
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

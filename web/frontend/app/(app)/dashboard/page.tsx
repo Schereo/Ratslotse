@@ -14,6 +14,8 @@ import { useMascotTheme } from "@/components/seasonal-mascot";
 import { SitzungspauseBanner } from "@/components/sitzungspause-banner";
 import { LiveBanner } from "@/components/live-banner";
 import { FundstueckCard } from "@/components/fundstueck-card";
+import { RecentDecisions } from "@/components/recent-decisions";
+import { HinweisSlot } from "@/components/hinweis-slot";
 import { isLiveNow } from "@/lib/live";
 import { PushPrimer } from "@/components/push-primer";
 import { formatEuro, OutcomeDot } from "@/components/decision-ui";
@@ -39,6 +41,12 @@ type DieseWoche =
 type ZahlDerWoche =
   | { kind: "betrag"; amount_eur: number; decision_id: number; title: string; session_date: string; window_days: number }
   | { kind: "anzahl"; count: number; window_days: number };
+
+/** ISO-Datum von vor n Tagen — Ziel des „Diese N ansehen"-Links (Design 28a/S5).
+ *  Dasselbe Fenster, das der Endpoint gezählt hat, damit die Suche wirklich
+ *  dieselben Beschlüsse zeigt wie die Zahl auf der Karte. */
+const lastWeekIso = (days: number) =>
+  new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
 
 const fmtDay = (iso: string) =>
   new Date(iso + "T12:00:00").toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" });
@@ -119,15 +127,21 @@ export default function DashboardPage() {
         </Button>
       </div>
 
-      {/* RL-U10: Live und Pause teilen sich den Slot — sie schließen sich
-          zeitlich aus (in der Sitzungspause tagt niemand). */}
-      <SitzungspauseBanner className="mt-6" />
-      <LiveBanner />
-
-      {/* RL-1102: nur in der App, solange Push aus ist (7-Tage-Snooze). */}
-      <PushPrimer />
-
-      <FirstStepsBar />
+      {/* Design 28a/R4: ein Platz für Hinweise statt bis zu vier gestapelter
+          Banner. Die Reihenfolge ist die Priorität — Live schlägt Pause (die
+          beiden schließen sich ohnehin aus), erst danach kommt Kür.
+          RL-1102: der Push-Primer erscheint nur in der App, solange Push aus
+          ist (7-Tage-Snooze) — er steht hier zuletzt, weil er sich am ehesten
+          vertagen lässt. */}
+      <HinweisSlot
+        className="mt-6"
+        hinweise={[
+          { key: "live", label: "Sitzung läuft", node: <LiveBanner /> },
+          { key: "pause", label: "Sitzungspause", node: <SitzungspauseBanner /> },
+          { key: "erste-schritte", label: "Erste Schritte", node: <FirstStepsBar /> },
+          { key: "push", label: "Mitteilungen", node: <PushPrimer /> },
+        ]}
+      />
 
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_1.2fr_0.9fr]">
         {/* Nächste Sitzungen */}
@@ -266,11 +280,28 @@ export default function DashboardPage() {
                 {zahl.count === 1 ? "Beschluss" : "Beschlüsse"} in den letzten 7 Tagen — in der Sitzungspause
                 sammelt sich hier wenig an.
               </p>
+              {/* Design 28a/S5: Die auffälligste Zahl des Screens war in dieser
+                  Variante der einzige Inhalt ohne Ziel. Die Suche kennt
+                  date_from längst — es fehlte nur der Link dorthin. */}
+              {zahl.count > 0 && (
+                <Link
+                  href={`/council?tab=decisions&date_from=${lastWeekIso(zahl.window_days)}`}
+                  className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+                >
+                  Diese {zahl.count} ansehen <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              )}
             </>
           )}
           {!zahl && <div className="mt-3 h-10 animate-pulse rounded-lg bg-signal/10" />}
         </Card>
       </div>
+
+      {/* Design 28a/S5: „Zuletzt angesehen" lag fertig im Repo, wurde aber von
+          keiner Seite gerendert. Bei leerer Historie rendert die Komponente
+          ohnehin nichts — sie kostet also keinen Platz, bis es etwas zu zeigen
+          gibt, und schließt den zweiten Sackgassen-Punkt des Dashboards. */}
+      <RecentDecisions className="mt-6" />
 
       {/* RL-U11: Fundstück des Tages — nach dem Grid; ohne kuratierten Fund
           entfällt die Karte ersatzlos. */}
@@ -325,7 +356,7 @@ function FirstStepsBar() {
   if (state.celebrated && !justFinished) return null;
 
   return (
-    <Card className="relative mt-6 flex flex-wrap items-center gap-3 overflow-hidden px-4 py-3" data-tour="erste-schritte">
+    <Card className="relative flex flex-wrap items-center gap-3 overflow-hidden px-4 py-3" data-tour="erste-schritte">
       {celebrate && <ConfettiBurst onDone={() => setCelebrate(false)} />}
       <Mascot pose={allDone ? "celebrate" : "wave"} decorative className="h-10 w-10 shrink-0" />
       <div className="min-w-0 flex-1 basis-48">

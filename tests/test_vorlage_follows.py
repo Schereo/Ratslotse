@@ -1,0 +1,150 @@
+"""Verfolgte Vorgänge: der Vergleich, der entscheidet, ob eine Mail rausgeht.
+
+Design 28a/W1. Der heikle Teil ist nicht das Abonnieren, sondern der Diff:
+Wer beim Abonnieren den Ist-Stand mitbekommt, darf ihn nicht als Neuigkeit
+gemeldet bekommen — und eine einmal gemeldete Station darf nicht beim nächsten
+Lauf noch einmal kommen. Beides prüft diese Datei am echten Skript, mit
+gestopftem Netzzugriff.
+"""
+from __future__ import annotations
+
+import json
+import sys
+import tempfile
+from pathlib import Path
+from unittest.mock import patch
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from council.store import CouncilStore  # noqa: E402
+from nwz.store import Store  # noqa: E402
+
+
+@pytest.fixture
+def dbs(monkeypatch):
+    """Beide Datenbanken in einem Temp-Verzeichnis, das Skript darauf gezeigt."""
+    tmp = Path(tempfile.mkdtemp())
+    nwz_db, council_db = tmp / "nwz.sqlite", tmp / "council.sqlite"
+    monkeypatch.setenv("NWZ_DB", str(nwz_db))
+    import scripts.check_vorlage_follows as mod
+    monkeypatch.setattr(mod, "NWZ_DB", nwz_db)
+    monkeypatch.setattr(mod, "COUNCIL_DB", council_db)
+    return mod, nwz_db, council_db
+
+
+def _seed(nwz_db: Path, council_db: Path, stations: list[tuple], *, snapshot: list[str]) -> int:
+    council = CouncilStore(council_db)
+    with council._conn:  # noqa: SLF001 — Testfixture darf ans Innenleben
+        council._conn.execute(  # noqa: SLF001
+            "INSERT OR REPLACE INTO council_vorlagen(kvonr, vorlage_nr, title, fetched_at) "
+            "VALUES (700, '26/0001', 'Radweg Haarenufer', '2026-01-01')")
+    council.close()
+
+    store = Store(nwz_db)
+    uid = store.create_web_user("a@test.de", "hash", "user", "active", email_verified=True)
+    store.follow_vorlage(uid, 700, vorlage_nr="26/0001", title="Radweg Haarenufer",
+                         stations=json.dumps(snapshot))
+    store.close()
+    return uid
+
+
+def _rows(stations: list[tuple]) -> list[dict]:
+    return [{"datum": d, "gremium": g, "ergebnis": e, "top": None, "is_public": 1, "ksinr": None}
+            for d, g, e in stations]
+
+
+def test_bekannter_stand_loest_nichts_aus(dbs):
+    """Wer gerade abonniert hat, kennt die bisherigen Stationen — keine Mail."""
+    mod, nwz_db, council_db = dbs
+    stationen = [("2026-01-15", "Verkehrsausschuss", "angenommen")]
+    _seed(nwz_db, council_db, stationen, snapshot=mod.signature(_rows(stationen)))
+
+    with patch.object(mod.stammdaten, "fetch_beratungsfolge", return_value=_rows(stationen)), \
+         patch.object(mod, "deliver_message") as deliver:
+        stats = mod.main()
+
+    deliver.assert_not_called()
+    assert stats["Benachrichtigungen"] == 0
+
+
+def test_neue_station_wird_gemeldet_und_dann_nicht_mehr(dbs):
+    """Die neue Station geht genau einmal raus — der zweite Lauf ist still."""
+    mod, nwz_db, council_db = dbs
+    alt = [("2026-01-15", "Verkehrsausschuss", "angenommen")]
+    neu = alt + [("2026-02-20", "Rat", "beschlossen")]
+    _seed(nwz_db, council_db, alt, snapshot=mod.signature(_rows(alt)))
+
+    with patch.object(mod.stammdaten, "fetch_beratungsfolge", return_value=_rows(neu)), \
+         patch.object(mod, "deliver_message") as deliver:
+        stats = mod.main()
+    assert stats["Benachrichtigungen"] == 1
+    html = deliver.call_args[0][1]
+    assert "Rat am 20.02.2026 — beschlossen" in html
+    # Die schon bekannte Station taucht in der Meldung NICHT auf.
+    assert "Verkehrsausschuss" not in html
+
+    with patch.object(mod.stammdaten, "fetch_beratungsfolge", return_value=_rows(neu)), \
+         patch.object(mod, "deliver_message") as deliver2:
+        assert mod.main()["Benachrichtigungen"] == 0
+    deliver2.assert_not_called()
+
+
+def test_nachgetragenes_ergebnis_gilt_als_neu(dbs):
+    """Genau darauf wartet man: Der Termin stand längst, das Ergebnis fehlte."""
+    mod, nwz_db, council_db = dbs
+    offen = [("2026-02-20", "Rat", None)]
+    entschieden = [("2026-02-20", "Rat", "beschlossen")]
+    _seed(nwz_db, council_db, offen, snapshot=mod.signature(_rows(offen)))
+
+    with patch.object(mod.stammdaten, "fetch_beratungsfolge", return_value=_rows(entschieden)), \
+         patch.object(mod, "deliver_message") as deliver:
+        assert mod.main()["Benachrichtigungen"] == 1
+    assert "beschlossen" in deliver.call_args[0][1]
+
+
+def test_abruf_fehler_meldet_nichts_und_friert_den_stand_nicht_ein(dbs):
+    """Ein kaputter Abruf darf keine Meldung erzeugen — und beim nächsten Lauf
+    muss die echte Neuigkeit noch ankommen."""
+    mod, nwz_db, council_db = dbs
+    alt = [("2026-01-15", "Verkehrsausschuss", "angenommen")]
+    neu = alt + [("2026-02-20", "Rat", "beschlossen")]
+    _seed(nwz_db, council_db, alt, snapshot=mod.signature(_rows(alt)))
+    # Der gespeicherte Stand in der Council-DB entspricht dem alten.
+    council = CouncilStore(council_db)
+    council.save_beratungen(700, _rows(alt))
+    council.close()
+
+    with patch.object(mod.stammdaten, "fetch_beratungsfolge", side_effect=RuntimeError("502")), \
+         patch.object(mod, "deliver_message") as deliver:
+        stats = mod.main()
+    deliver.assert_not_called()
+    assert stats["Abruf-Fehler"] == 1
+
+    with patch.object(mod.stammdaten, "fetch_beratungsfolge", return_value=_rows(neu)), \
+         patch.object(mod, "deliver_message") as deliver2:
+        assert mod.main()["Benachrichtigungen"] == 1
+    assert "Rat am 20.02.2026" in deliver2.call_args[0][1]
+
+
+def test_gesperrtes_konto_bekommt_keine_post(dbs):
+    mod, nwz_db, council_db = dbs
+    alt = [("2026-01-15", "Verkehrsausschuss", "angenommen")]
+    uid = _seed(nwz_db, council_db, alt, snapshot=mod.signature(_rows(alt)))
+    store = Store(nwz_db)
+    store.set_web_user_status(uid, "blocked")
+    store.close()
+
+    with patch.object(mod.stammdaten, "fetch_beratungsfolge",
+                      return_value=_rows(alt + [("2026-02-20", "Rat", "beschlossen")])), \
+         patch.object(mod, "deliver_message") as deliver:
+        stats = mod.main()
+    deliver.assert_not_called()
+    assert stats["Benachrichtigungen"] == 0
+
+
+def test_label_ohne_ergebnis_sagt_dass_es_noch_aussteht(dbs):
+    mod, _, _ = dbs
+    assert mod._label("2026-02-20|Rat|") == "Rat am 20.02.2026 (Termin steht, Ergebnis folgt)"
+    assert mod._label("|Rat|angenommen") == "Rat — angenommen"

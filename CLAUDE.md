@@ -136,7 +136,10 @@ NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflic
   (`rate_interest.py`, 500er-Tranchen), Tragweite-Scores (`rate_impact.py`,
   500er-Tranchen — mischt 50/50 in den Wichtig-Wert; Golden-Set-Prüfung:
   `eval_impact.py`) und „Fundstück des Tages"-Karten
-  (`generate_fundstuecke.py`, 21 Tage Vorlauf)), `remind_setup.py`
+  (`generate_fundstuecke.py`, 21 Tage Vorlauf)), `check_vorlage_follows.py`
+  (täglich; holt die Beratungsfolge jeder Vorlage, der jemand folgt, und meldet
+  neue Stationen bzw. nachgetragene Ergebnisse — Tabelle `vorlage_follows` in
+  `nwz.sqlite`), `remind_setup.py`
   (täglich; genau eine Service-Mail an Konten, die den Einrichtungs-
   Assistenten angefangen und seit 48 h nicht beendet haben). Alle laufen in
   `run_guarded` (`nwz/alerts.py`): Ein Crash wird geloggt **und** per E-Mail an
