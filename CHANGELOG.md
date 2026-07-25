@@ -15,7 +15,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   man durch bis 2018. Weil die Datumskachel nur „JUN 29" zeigt, trennt ab sofort
   eine **Jahreszahl** die Gruppen — beim Scrollen ist damit klar, ob der Juni
   von diesem Jahr ist oder von 2021. Ein Seitenwechsel führt zurück an den
-  Listenanfang, statt einen mitten in der neuen Seite stehen zu lassen. (#PR)
+  Listenanfang, statt einen mitten in der neuen Seite stehen zu lassen. (#333)
 - **Einen Vorgang verfolgen.** Themen und Ausschuss-Abos sind breite Netze —
   wer *eine* Vorlage auf ihrem Weg durch die Gremien begleiten will (die Schule
   im eigenen Viertel, das Stadion), musste bisher selbst regelmäßig nachsehen.
