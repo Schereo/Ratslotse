@@ -5,7 +5,7 @@ Alle nennenswerten Änderungen an diesem Projekt (Ratslotse) werden hier dokumen
 Das Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
-## [Unreleased]
+## [1.4.0] – 2026-07-25
 
 ### Hinzugefügt
 - **Der ganze Sitzungsbestand ist erreichbar — mit Seiten und Jahreszahlen.**
@@ -103,6 +103,15 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Fliegerhorst ── Entlastungsstraße) und *ähnlich* (semantischer Nachbar aus den
   Embeddings, nur zum Auffüllen). Läuft ohne LLM-Aufruf im wöchentlichen
   `weekly_enrich` mit; Gremien und Namens-Dubletten werden herausgefiltert.
+- **Geteilte Links erzählen jetzt selbst, worum es geht.** Wer einen Beschluss
+  weiterschickte, verschickte bisher fünfmal dieselbe Kachel: In WhatsApp,
+  Signal oder Mastodon stand unter jedem Link „Ratslotse — Oldenburger
+  Ratsinformationen verständlich". Jetzt steht dort, was drinsteht — **Titel und
+  Ergebnis** („Radwegeausbau Nadorster Straße — angenommen"), darunter
+  **Gremium, Datum und die Kurzfassung**. Das gilt für Beschlüsse, Themen,
+  Ratsmitglieder und Sitzungen; nebenbei bekommen auch Browser-Tabs und
+  Lesezeichen sprechende Namen statt viermal „Ratslotse", und Suchmaschinen
+  finden die Seiten überhaupt erst.
 
 ### Geändert
 - **Höchstens ein Hinweis auf „Heute".** Sitzungspause, Live-Sitzung, erste
@@ -170,6 +179,32 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   hinten sie stehen); der Rest kommt per **„Alle N anzeigen"**. Die Reihenfolge
   bleibt unverändert, und die Fußnoten in der Antwort springen weiterhin
   zuverlässig zur richtigen Quelle — auch wenn sie eingeklappt wäre. (#301)
+- **Der App-Start zeigt die App, nicht ein Warterad.** Solange die Anmeldung
+  geprüft wurde, ersetzte ein Kreisel auf leerer Fläche die ganze Oberfläche —
+  jeder Start begann mit etwas, das nach hängender Seite aussah. Jetzt stehen
+  Logo und Navigation sofort, nur der Inhalt füllt sich nach.
+- **Analyse, Ziele, Mitglieder und Themen laden wie der Rest der App.** Statt
+  eines Kreisels auf leerer Fläche steht dort jetzt die **Form** des Inhalts
+  (Diagramm bzw. Tabelle) — man sieht sofort, was gleich kommt und wie viel,
+  und nichts springt beim Eintreffen. Beim Seitenwechsel gibt es dieselbe
+  Rückmeldung sofort. Für echte Momente — Karte, Speichern — bleibt der Kreisel.
+- **Der Installieren-Dialog zeigt jetzt, worum es geht.** Beim Hinzufügen zum
+  Startbildschirm gab es bislang nur Adresse und Symbol; jetzt liegen drei
+  echte Bildschirmfotos bei (Telefon und Desktop). Außerdem passt die Farbe der
+  Statusleiste jetzt exakt zur Kopfleiste — vorher lag darüber ein leicht
+  hellerer Streifen.
+
+### Entfernt
+- **Rund 700 Zeilen toter Code raus** — nach Wochen Umbau hatte sich einiges
+  angesammelt, das nichts mehr aufruft: die letzten Überreste des
+  ausgegliederten Zeitungs-Scrapers (Artikel-Themen-Zuordnung, Ausgaben,
+  Volltextsuche, Presse-Verknüpfungen zu Beschlüssen), drei nicht mehr
+  eingebundene Oberflächen-Bausteine, zwei Rate-Limits ohne Endpunkt und drei
+  API-Routen, die kein Client abruft. Für Nutzer:innen ändert sich dadurch
+  nichts; die Tabellen zum Löschen alter Konten-Daten bleiben absichtlich
+  erhalten. „In der Presse" auf der Beschluss-Seite war schon vorher auf die
+  reine NWZonline-Suche umgestellt — der ungenutzte Vorschlags-Kanal daneben
+  ist jetzt auch im Code weg.
 
 ### Behoben
 - **Tagesordnungspunkte führen jetzt zum Beschluss.** In einer aufgeklappten
@@ -317,29 +352,6 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   entdeckt. „Erstes Thema anlegen" ist als Punkt entfallen — er verlangte ein
   echtes Thema und war damit der einzige, den die Tour nicht abhaken konnte.
   Nach dem Durchlauf steht die Leiste damit auf **4/4** und feiert.
-
-### Sicherheit
-- **Admin-Rechte nur noch mit Adress-Nachweis.** Bisher wurde die Rolle direkt
-  bei der Registrierung aus der eingetippten E-Mail abgeleitet: Wer die in
-  `WEB_ADMIN_EMAIL` hinterlegte Adresse als Erster registrierte, bekam sofort ein
-  aktives Admin-Konto — ohne je nachzuweisen, dass ihm dieses Postfach gehört.
-  Zusätzlich wurde die erste Registrierung auf einer leeren Nutzertabelle
-  ungefragt zum Admin (auch über „Mit Apple anmelden"). Beides ist weg: Die
-  Registrierung vergibt keine Rolle mehr, Admin entsteht erst, wenn der
-  Bestätigungslink an die konfigurierte Adresse eingelöst wurde und noch kein
-  Admin existiert. **Für den Betrieb:** Auf einer frischen Installation muss die
-  Admin-Adresse einmal den Bestätigungslink klicken; ohne `RESEND_API_KEY` (kein
-  Mailversand) übernimmt das neue `scripts/grant_admin.py <adresse>` — worauf
-  Registrierung und API-Start per Warnung im Log hinweisen.
-- **Anmeldung verrät nicht mehr, welche Adressen ein Konto haben.** Der
-  Passwort-Check lief nur, wenn das Konto existierte, ein unbekannter Login kam
-  darum messbar schneller zurück (~6 ms gegenüber ~58 ms). Jetzt wird in beiden
-  Fällen gleich viel gerechnet; die Antwortzeit gibt nichts mehr preis.
-- **Fehlerhafte Suchausdrücke stürzen die Volltextsuche nicht mehr ab.** Eine
-  Anfrage wie `hafen -markt` ist für SQLite-FTS5 ungültig und schlug bisher als
-  unbehandelter Fehler durch; sie zählt jetzt als „nichts gefunden".
-
-### Behoben
 - **Themen bearbeiten: überall der gute Editor.** Für dieselbe Aufgabe gab es
   zwei verschiedene Masken — im Einrichtungs-Assistenten ein Blatt mit
   Beschriftungen, Live-Treffervorschau („Passt gerade auf") und
@@ -362,31 +374,6 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 - **Anzeigename ist jetzt auch im Formular freiwillig.** Der Server nimmt ihn
   seit jeher optional, „Mit Apple registrieren" liefert gar keinen — nur das
   Registrieren-Formular verlangte ihn und ließ sonst niemanden vorbei.
-
-### Entfernt
-- **Rund 700 Zeilen toter Code raus** — nach Wochen Umbau hatte sich einiges
-  angesammelt, das nichts mehr aufruft: die letzten Überreste des
-  ausgegliederten Zeitungs-Scrapers (Artikel-Themen-Zuordnung, Ausgaben,
-  Volltextsuche, Presse-Verknüpfungen zu Beschlüssen), drei nicht mehr
-  eingebundene Oberflächen-Bausteine, zwei Rate-Limits ohne Endpunkt und drei
-  API-Routen, die kein Client abruft. Für Nutzer:innen ändert sich dadurch
-  nichts; die Tabellen zum Löschen alter Konten-Daten bleiben absichtlich
-  erhalten. „In der Presse" auf der Beschluss-Seite war schon vorher auf die
-  reine NWZonline-Suche umgestellt — der ungenutzte Vorschlags-Kanal daneben
-  ist jetzt auch im Code weg.
-
-### Hinzugefügt
-- **Geteilte Links erzählen jetzt selbst, worum es geht.** Wer einen Beschluss
-  weiterschickte, verschickte bisher fünfmal dieselbe Kachel: In WhatsApp,
-  Signal oder Mastodon stand unter jedem Link „Ratslotse — Oldenburger
-  Ratsinformationen verständlich". Jetzt steht dort, was drinsteht — **Titel und
-  Ergebnis** („Radwegeausbau Nadorster Straße — angenommen"), darunter
-  **Gremium, Datum und die Kurzfassung**. Das gilt für Beschlüsse, Themen,
-  Ratsmitglieder und Sitzungen; nebenbei bekommen auch Browser-Tabs und
-  Lesezeichen sprechende Namen statt viermal „Ratslotse", und Suchmaschinen
-  finden die Seiten überhaupt erst.
-
-### Behoben
 - **„Bitte Seite neu laden" ist weg.** Ging eine Abfrage schief, stand da ein
   roter Satz — die Bitte an dich, unsere Arbeit zu machen. Ein Funkloch in der
   Bahn reichte, und die Seite blieb kaputt. Jetzt steht dort eine Karte mit
@@ -401,19 +388,6 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   abgemeldet wurde, fand danach ein leeres Feld. Jetzt wird der Entwurf
   gesichert, du landest nach dem Anmelden **wieder an derselben Stelle**, und
   der Text steht wieder da.
-
-### Geändert
-- **Der App-Start zeigt die App, nicht ein Warterad.** Solange die Anmeldung
-  geprüft wurde, ersetzte ein Kreisel auf leerer Fläche die ganze Oberfläche —
-  jeder Start begann mit etwas, das nach hängender Seite aussah. Jetzt stehen
-  Logo und Navigation sofort, nur der Inhalt füllt sich nach.
-- **Analyse, Ziele, Mitglieder und Themen laden wie der Rest der App.** Statt
-  eines Kreisels auf leerer Fläche steht dort jetzt die **Form** des Inhalts
-  (Diagramm bzw. Tabelle) — man sieht sofort, was gleich kommt und wie viel,
-  und nichts springt beim Eintreffen. Beim Seitenwechsel gibt es dieselbe
-  Rückmeldung sofort. Für echte Momente — Karte, Speichern — bleibt der Kreisel.
-
-### Behoben
 - **Nicht gefunden heißt nicht mehr rausgeworfen.** Wer einem alten Link folgte
   — etwa auf einen inzwischen zusammengeführten Beschluss —, landete auf einer
   nackten 404-Seite ohne Navigation und ohne Suche; der Browser-Pfeil war der
@@ -425,12 +399,26 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   einen eigenen zu setzen — wer mit Tabulator arbeitet, stand auf dem
   Schließen-Knopf und sah nichts. Jetzt derselbe Ring wie in den Dialogen.
 
-### Geändert
-- **Der Installieren-Dialog zeigt jetzt, worum es geht.** Beim Hinzufügen zum
-  Startbildschirm gab es bislang nur Adresse und Symbol; jetzt liegen drei
-  echte Bildschirmfotos bei (Telefon und Desktop). Außerdem passt die Farbe der
-  Statusleiste jetzt exakt zur Kopfleiste — vorher lag darüber ein leicht
-  hellerer Streifen.
+### Sicherheit
+- **Admin-Rechte nur noch mit Adress-Nachweis.** Bisher wurde die Rolle direkt
+  bei der Registrierung aus der eingetippten E-Mail abgeleitet: Wer die in
+  `WEB_ADMIN_EMAIL` hinterlegte Adresse als Erster registrierte, bekam sofort ein
+  aktives Admin-Konto — ohne je nachzuweisen, dass ihm dieses Postfach gehört.
+  Zusätzlich wurde die erste Registrierung auf einer leeren Nutzertabelle
+  ungefragt zum Admin (auch über „Mit Apple anmelden"). Beides ist weg: Die
+  Registrierung vergibt keine Rolle mehr, Admin entsteht erst, wenn der
+  Bestätigungslink an die konfigurierte Adresse eingelöst wurde und noch kein
+  Admin existiert. **Für den Betrieb:** Auf einer frischen Installation muss die
+  Admin-Adresse einmal den Bestätigungslink klicken; ohne `RESEND_API_KEY` (kein
+  Mailversand) übernimmt das neue `scripts/grant_admin.py <adresse>` — worauf
+  Registrierung und API-Start per Warnung im Log hinweisen.
+- **Anmeldung verrät nicht mehr, welche Adressen ein Konto haben.** Der
+  Passwort-Check lief nur, wenn das Konto existierte, ein unbekannter Login kam
+  darum messbar schneller zurück (~6 ms gegenüber ~58 ms). Jetzt wird in beiden
+  Fällen gleich viel gerechnet; die Antwortzeit gibt nichts mehr preis.
+- **Fehlerhafte Suchausdrücke stürzen die Volltextsuche nicht mehr ab.** Eine
+  Anfrage wie `hafen -markt` ist für SQLite-FTS5 ungültig und schlug bisher als
+  unbehandelter Fehler durch; sie zählt jetzt als „nichts gefunden".
 
 ## [1.3.0] – 2026-07-23
 
@@ -1220,7 +1208,8 @@ Open-Source-Go-Live von Ratslotse.
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v1.3.0...main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v1.4.0...main
+[1.4.0]: https://github.com/Schereo/Ratslotse/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/Schereo/Ratslotse/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/Schereo/Ratslotse/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/Schereo/Ratslotse/compare/v1.0.0...v1.1.0
