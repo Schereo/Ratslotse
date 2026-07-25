@@ -58,9 +58,6 @@ class Settings(BaseSettings):
     # apps work without extra .env setup.
     app_cors_origins: str = "capacitor://localhost,https://localhost"
 
-    # The NWZ folder used for the digest (Oldenburger Nachrichten)
-    nwz_folder: int = 8389
-
     # Email (Resend) — used to notify admins about pending registrations.
     # Read from .env directly (the cron jobs use os.environ via load_dotenv;
     # the backend passes these explicitly so it doesn't depend on the process env).
