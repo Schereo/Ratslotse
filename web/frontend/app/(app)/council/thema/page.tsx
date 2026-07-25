@@ -2,11 +2,11 @@
 
 import {Suspense, useEffect } from "react";
 import dynamic from "next/dynamic";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams, useRouter, notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { EntityDetail, RelatedEntity } from "@/lib/types";
-import { DetailSkeleton, EmptyState } from "@/components/ui";
+import { DetailSkeleton } from "@/components/ui";
 import { reportBadgeEvent } from "@/components/badges";
 import { DecisionLinkCard, PartyBadge, FieldBadge, formatEuro } from "@/components/decision-ui";
 import { ENTITY_KIND } from "@/components/council-entities";
@@ -81,9 +81,7 @@ function EntityInner() {
   const { data, loading } = useFetch<EntityDetail>(slug ? `/council/entity/${slug}` : null);
 
   if (loading) return <DetailSkeleton />;
-  if (!data) {
-    return <EmptyState mascot="confused" title="Thema nicht gefunden" hint="Zu diesem Begriff gibt es (noch) keine Sammelseite." />;
-  }
+  if (!data) notFound();
   const k = ENTITY_KIND[data.entity.kind] ?? ENTITY_KIND.projekt;
   return (
     <div className="mx-auto max-w-3xl">
