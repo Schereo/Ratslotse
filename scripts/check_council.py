@@ -13,6 +13,7 @@ sys.path.insert(0, str(ROOT))
 from dotenv import load_dotenv
 load_dotenv(ROOT / ".env")
 
+from nwz import notify
 from nwz.store import Store
 from council.watcher import run_watcher
 
@@ -39,9 +40,15 @@ def main() -> dict:
     # Nutzer:in nur bei geänderter Tagesordnung (council_agenda_classified).
     stats: dict = {"Konten mit Themen": len(owner_digests)}
     alerts = run_watcher(COUNCIL_DB, owner_digests, months_ahead=3, nwz_store=store, stats=stats)
+
+    # Design 30a: Der Lauf REIHT nur ein — zugestellt wird hier, unter den
+    # Grenzen aus nwz/notify.py (zwei am Tag, Nachtruhe 21–7). Deshalb braucht
+    # es keinen eigenen Cron-Eintrag; was nachts anfällt, holt der 7-Uhr-Lauf
+    # von check_committees ab.
+    zugestellt = notify.zustellen(store, stats=stats)
     store.close()
 
-    print(f"Done — {len(alerts)} alert(s) sent across all owners.")
+    print(f"Done — {len(alerts)} Meldung(en) eingereiht, {zugestellt} zugestellt.")
     return {**stats, "Benachrichtigungen": len(alerts)}
 
 

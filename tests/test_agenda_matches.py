@@ -70,7 +70,13 @@ def test_run_watcher_persists_matches_and_skips_unchanged(tmp_path, monkeypatch)
                         lambda owner, msg, email_subject=None: delivered.append(msg))
 
     alerts = watcher.run_watcher(tmp_path / "council.sqlite", [owner], nwz_store=nwz)
-    assert len(alerts) == 1 and len(classify_calls) == 1 and len(delivered) == 1
+    assert len(alerts) == 1 and len(classify_calls) == 1
+    # Design 30a: Der Watcher SENDET nicht mehr selbst, er reiht ein — sonst
+    # gälten weder Nachtruhe noch Tagesgrenze. Zugestellt wird in nwz.notify.
+    assert delivered == []
+    offen = nwz.due_notifications(1, "2999-01-01")
+    assert len(offen) == 1 and offen[0]["kind"] == "n2_thema"
+    assert "Ö 6" in offen[0]["body_html"] and offen[0]["url"].startswith("https://")
     assert nwz.agenda_matches_for_owner(1, [42]) == {
         42: [{"item_number": "Ö 6", "topic_name": "Radwege"}]
     }
@@ -84,5 +90,6 @@ def test_run_watcher_persists_matches_and_skips_unchanged(tmp_path, monkeypatch)
     # weil council_alerts_sent je ksinr+topic nur einmal sendet).
     session.agenda_items.append(AgendaItem(item_number="Ö 7", title="Fahrradstraße"))
     watcher.run_watcher(tmp_path / "council.sqlite", [owner], nwz_store=nwz)
-    assert len(classify_calls) == 2 and len(delivered) == 1
+    assert len(classify_calls) == 2
+    assert len(nwz.due_notifications(1, "2999-01-01")) == 1  # kein zweiter Eintrag
     nwz.close()

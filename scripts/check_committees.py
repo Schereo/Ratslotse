@@ -14,8 +14,8 @@ sys.path.insert(0, str(ROOT))
 from dotenv import load_dotenv
 load_dotenv(ROOT / ".env")
 
+from nwz import notify
 from nwz.store import Store
-from nwz.delivery import deliver_message
 from council.store import CouncilStore
 from council.scraper import CouncilScraper
 from council.committee_summary import summarize_agenda
@@ -33,12 +33,33 @@ def _agenda_hash(agenda_items) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
+def _stunden_bis(session_date: str, session_time: str) -> float:
+    """Stunden von jetzt bis zum Sitzungsbeginn — negativ, wenn sie vorbei ist.
+
+    Für das 48-Stunden-Fenster der Änderungsmeldung (Design 30a). Ohne
+    brauchbare Zeitangabe zählt 18 Uhr; Ratssitzungen beginnen abends, und die
+    Entscheidung „noch melden oder nicht" verträgt die Unschärfe.
+    """
+    from datetime import datetime
+
+    try:
+        tag = datetime.strptime(str(session_date)[:10], "%Y-%m-%d")
+    except (ValueError, TypeError):
+        return 0.0  # unbekanntes Datum → wie „steht kurz bevor" behandeln
+    stunde, minute = 18, 0
+    try:
+        stunde, minute = (int(x) for x in str(session_time or "")[:5].split(":"))
+    except ValueError:
+        pass
+    beginn = tag.replace(hour=stunde, minute=minute)
+    return (beginn - datetime.now()).total_seconds() / 3600
+
+
 def main() -> dict:
     """Gibt die Kennzahlen des Laufs für die Cron-Übersicht zurück."""
     nwz_store = Store(NWZ_DB)
     all_subs = nwz_store.get_all_subscriptions()       # {owner_id: [committee_name]}
     targets = nwz_store.get_subscription_targets()     # {owner_id: {channel, chat, email}}
-    nwz_store.close()
 
     # Daten werden auch OHNE Abonnements aktualisiert — die Web-App zeigt
     # Sitzungen und Terminplan für alle Nutzer:innen, nicht nur Abonnenten.
@@ -81,13 +102,22 @@ def main() -> dict:
         # "already notified, skip" to avoid a one-off spurious update blast.
         pending_new: list[int] = []
         pending_update: list[int] = []
+        # Design 30a: Eine Änderungsmeldung lohnt nur kurz vor der Sitzung.
+        # Ändert sich eine Tagesordnung drei Wochen vorher, ist das Verwaltung,
+        # keine Nachricht — und für die Betroffenen nur eine Störung mehr.
+        nah_dran = _stunden_bis(session.session_date, session.session_time) <= 48
         for owner_id, names in all_subs.items():
             if session.committee not in names:
+                continue
+            # „Themen-Treffer gewinnt": Wer für diese Sitzung schon weiß, welcher
+            # TOP ihn betrifft (aus check_council), braucht die Gremien-Meldung
+            # nicht zusätzlich.
+            if nwz_store.has_agenda_match(owner_id, ksinr):
                 continue
             last_hash = council_store.get_last_notified_hash(ksinr, owner_id)
             if last_hash is None:
                 pending_new.append(owner_id)
-            elif last_hash and last_hash != agenda_hash:
+            elif last_hash and last_hash != agenda_hash and nah_dran:
                 pending_update.append(owner_id)
 
         if not pending_new and not pending_update:
@@ -127,33 +157,42 @@ def main() -> dict:
                 f'<a href="{session.url}">Tagesordnung →</a>'
             )
 
-        subject = f"Ratslotse – {session.committee}"
+        subject = f"{session.committee}: Tagesordnung ist da"
         for owner_id in pending_new:
-            target = targets.get(owner_id)
-            if not target:
+            if owner_id not in targets:
                 continue
             print(f"  {session.session_date} {session.committee} → owner {owner_id} (neu)")
-            deliver_message(target, base_message, email_subject=subject)
+            notify.einreihen(nwz_store, owner_id, notify.N1_TAGESORDNUNG,
+                             subject, base_message, session.url)
             council_store.mark_notified(ksinr, owner_id, agenda_hash)
             notifications_sent += 1
 
-        update_prefix = "🔄 <b>Tagesordnung wurde aktualisiert</b>\n\n"
+        update_prefix = "<p><b>Die Tagesordnung hat sich geändert.</b></p>\n"
+        update_subject = f"{session.committee}: Tagesordnung geändert"
         for owner_id in pending_update:
-            target = targets.get(owner_id)
-            if not target:
+            if owner_id not in targets:
                 continue
             print(f"  {session.session_date} {session.committee} → owner {owner_id} (Änderung)")
-            deliver_message(target, update_prefix + base_message, email_subject=subject)
+            notify.einreihen(nwz_store, owner_id, notify.N1_TAGESORDNUNG,
+                             update_subject, update_prefix + base_message, session.url)
             council_store.mark_notified(ksinr, owner_id, agenda_hash)
             notifications_sent += 1
 
     council_store.close()
-    print(f"Done — {notifications_sent} notification(s) sent.")
+
+    # Der 7-Uhr-Lauf ist zugleich der Wecker der Warteschlange: Was über Nacht
+    # anfiel (Nachtruhe 21–7), geht jetzt raus.
+    stats: dict = {}
+    zugestellt = notify.zustellen(nwz_store, stats=stats)
+    nwz_store.close()
+
+    print(f"Done — {notifications_sent} Meldung(en) eingereiht, {zugestellt} zugestellt.")
     return {
         "Gremien": len(committees),
         "Sitzungen mit Tagesordnung": len(session_ids),
         "Termine im Kalender": len(scheduled),
         "Benachrichtigungen": notifications_sent,
+        **stats,
     }
 
 
