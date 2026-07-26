@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useWeiterSuffix, zielNachAnmeldung } from "@/lib/public-routes";
 import { useAuth } from "@/lib/auth";
 import { Button, Input, PasswordInput } from "@/components/ui";
 import { AuthShell } from "@/components/auth-shell";
@@ -11,6 +12,7 @@ import { AppleSignInButton } from "@/components/apple-sign-in-button";
 export default function RegisterPage() {
   const { register } = useAuth();
   const router = useRouter();
+  const weiter = useWeiterSuffix();
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -27,7 +29,8 @@ export default function RegisterPage() {
     setBusy(true);
     try {
       await register(email, password, displayName.trim());
-      router.replace("/dashboard");
+      // Von einem geteilten Beschluss aus registriert? Dann dorthin zurück.
+      router.replace(zielNachAnmeldung());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registrierung fehlgeschlagen.");
     } finally {
@@ -78,7 +81,7 @@ export default function RegisterPage() {
         </form>
         <p className="mt-6 text-center text-sm text-muted-foreground">
           Schon registriert?{" "}
-          <Link href="/login" className="font-medium text-primary hover:underline">
+          <Link href={`/login${weiter}`} className="font-medium text-primary hover:underline">
             Anmelden
           </Link>
         </p>

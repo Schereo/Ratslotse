@@ -2142,3 +2142,95 @@ def test_link_vorschau_kennt_keine_personenbezogenen_daten(client):
     assert client.get("/api/council/preview/thema/gibtsnicht").status_code == 404
     assert client.get("/api/council/preview/konto/1").status_code == 404
     assert client.get("/api/council/preview/decision/keine-zahl").status_code == 404
+
+
+# ---- Geteilte Links ohne Konto lesen ----
+
+def _seed_geteilter_beschluss(ksinr=5150, mit_vorgang=True) -> int:
+    """Eine Sitzung samt Beschluss, Anwesenheit und Vorgang — wie ein geteilter Link
+    sie vorfindet. Gibt die Beschluss-ID zurück."""
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(ksinr, "Verkehrsausschuss", "2026-06-08", "17:00", "Fleiwa",
+                                   agenda_items=[AgendaItem("Ö 4", "Radweg Nadorster Straße")]))
+    cs._insert_decision(ksinr, 0, "decision", None, "Ö 4", "Radweg Nadorster Straße",
+                        "Der Ausbau wird beschlossen.", "angenommen", "einstimmig", 0, 0,
+                        ["SPD", "Grüne"],
+                        "25/0123" if mit_vorgang else None,
+                        4711 if mit_vorgang else None, None)
+    cs._conn.execute(
+        "INSERT INTO council_attendance (ksinr, name, party, role, note) VALUES (?, ?, ?, ?, ?)",
+        (ksinr, "Anke Lüdtke", "SPD", "mitglied", None))
+    cs._conn.commit()
+    did = cs._conn.execute(
+        "SELECT id FROM council_decisions WHERE ksinr = ?", (ksinr,)).fetchone()[0]
+    cs.close()
+    return did
+
+
+def test_geteilter_beschluss_ist_ohne_anmeldung_lesbar(client):
+    """Wer einen weitergereichten Beschluss-Link öffnet, liest ihn — ohne Konto.
+
+    Vorher stand da das Registrierungsformular, bevor man überhaupt gesehen
+    hatte, worum es geht.
+    """
+    did = _seed_geteilter_beschluss()
+
+    # Bewusst kein _register: der Aufruf läuft ohne jede Sitzung.
+    r = client.get(f"/api/council/decision/{did}")
+    assert r.status_code == 200, "Beschluss muss ohne Anmeldung erreichbar sein"
+    data = r.json()
+    assert data["decision"]["title"] == "Radweg Nadorster Straße"
+    assert data["decision"]["outcome"] == "angenommen"
+    # Der Kontext, der die Seite lesbar macht, ist mit dabei:
+    assert data["present_parties"] and data["importance_breakdown"]
+    assert "ratsinfo_url" in data
+    # …aber nichts Persönliches.
+    assert "follow" not in data, "ohne Konto darf kein Verfolgen-Zustand mitkommen"
+
+    # Die Sitzung dahinter (Gremium/Datum) ebenfalls.
+    s = client.get(f"/api/council/session/5150")
+    assert s.status_code == 200 and s.json()["committee"] == "Verkehrsausschuss"
+
+
+def test_angemeldete_bekommen_auf_derselben_seite_ihren_folge_zustand(client):
+    """Dieselbe Seite, mit Konto: der Verfolgen-Knopf kommt dazu."""
+    _register(client)
+    did = _seed_geteilter_beschluss(ksinr=5151)
+    data = client.get(f"/api/council/decision/{did}").json()
+    assert data["follow"] == {"kvonr": 4711, "following": False}
+
+
+def test_thema_und_person_sind_ohne_anmeldung_lesbar(client):
+    """Die beiden anderen geteilten Detailseiten — gleiche Begründung."""
+    _seed_geteilter_beschluss(ksinr=5152)
+    # Person entsteht aus der Anwesenheitsliste; der Slug wird aus dem Namen gebildet.
+    assert client.get("/api/council/person/anke-luedtke").status_code == 200
+    # Unbekanntes bleibt 404 (und wird nicht etwa zu 401).
+    assert client.get("/api/council/person/gibtsnicht").status_code == 404
+    assert client.get("/api/council/entity/gibtsnicht").status_code == 404
+
+
+def test_stoebern_und_persoenliches_bleiben_hinter_der_anmeldung(client):
+    """Regressionsschutz zur Öffnung oben: Geöffnet wurden GENAU die geteilten
+    Detailseiten — Suche, Übersichten und alles Persönliche nicht.
+
+    Ohne diesen Test wäre beim nächsten `require_active`-Aufräumen nicht zu
+    sehen, dass hier eine Grenze verläuft.
+    """
+    geschuetzt = [
+        "/api/council/sessions?scope=all",
+        "/api/council/decisions",
+        "/api/council/committees",
+        "/api/council/fields",
+        "/api/council/members",
+        "/api/council/analysis",
+        "/api/council/finance",
+        "/api/council/trends",
+        "/api/council/follows",
+        "/api/council/diese-woche",
+        "/api/council/fundstueck",
+        "/api/topics",
+        "/api/auth/me",
+    ]
+    for pfad in geschuetzt:
+        assert client.get(pfad).status_code == 401, f"{pfad} darf ohne Konto nicht antworten"

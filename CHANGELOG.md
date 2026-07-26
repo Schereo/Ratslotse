@@ -7,6 +7,18 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert
+- **Geteilte Links lassen sich jetzt lesen, ohne sich anzumelden.** Wer einen
+  Beschluss weiterreichte, schickte die Empfängerin bisher zuerst ins
+  Registrierungsformular — bevor sie überhaupt gesehen hatte, worum es geht.
+  Das schreckt genau die Leute ab, die man gewinnen will. **Beschluss, Thema
+  und Person** — die drei Seiten mit Teilen-Knopf — öffnen sich jetzt für alle,
+  mit einer freundlichen Einladung am Ende der Seite statt einer Hürde davor.
+  Wer sich von dort aus anmeldet oder registriert, landet **wieder bei dem
+  Beschluss**, wegen dem er gekommen ist. Alles Persönliche bleibt, wo es war:
+  Stöbern, Suche, eigene Themen, Benachrichtigungen und der Verfolgen-Knopf
+  verlangen weiterhin ein Konto.
+
 ## [1.5.0] – 2026-07-26
 
 ### Hinzugefügt

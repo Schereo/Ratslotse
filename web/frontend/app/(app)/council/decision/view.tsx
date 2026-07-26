@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { useSearchParams, useRouter, notFound } from "next/navigation";
+import { useSearchParams, notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, ExternalLink, FileText, FileDown, Newspaper, Tag } from "lucide-react";
 import { DecisionDetail, CouncilDecision, SessionDetail } from "@/lib/types";
@@ -14,6 +14,7 @@ import { PrintButton } from "@/components/print-button";
 import { FollowButton } from "@/components/follow-button";
 import { nwzSearchUrl } from "@/components/nwz-link";
 import { trackRecentDecision } from "@/lib/recent";
+import { useZurueck } from "@/lib/zurueck";
 import { Mascot } from "@/components/mascot";
 import { useMascotTheme } from "@/components/seasonal-mascot";
 import { cn } from "@/lib/utils";
@@ -435,7 +436,7 @@ function VorlageExcerpt({ text }: { text: string }) {
 
 function DecisionDetailInner() {
   const id = useSearchParams().get("id");
-  const router = useRouter();
+  const { zeigen: zeigeZurueck, zurueck } = useZurueck();
   const { data, loading } = useFetch<DecisionDetail>(id ? `/council/decision/${id}` : null);
   // Design 28a/S2: Die Sitzung dazu — sie liefert die Nachbar-TOPs und das Ziel
   // für „Zurück". Zweitrangig, deshalb erst nach dem Beschluss und ohne eigenen
@@ -473,23 +474,25 @@ function DecisionDetailInner() {
   const next = pos >= 0 && pos < siblings.length - 1 ? siblings[pos + 1] : null;
   /* „Zurück" führte per router.back() aus der App heraus, wenn die Seite aus
      Push, geteiltem Link oder Kaltstart geöffnet wurde (leere History). Jetzt
-     zeigt der Knopf sein Ziel und fällt auf die Sitzung zurück. */
-  const backToSession = () => {
-    if (typeof window !== "undefined" && window.history.length > 1) router.back();
-    else if (d.ksinr) router.push(sessionHref(d.ksinr));
-    else router.push("/council");
-  };
+     zeigt der Knopf sein Ziel und fällt auf die Sitzung zurück. Gäste sehen ihn
+     gar nicht — für sie führt jedes Ziel entweder aus der Seite heraus oder an
+     die Anmeldewand (s. lib/zurueck.ts). */
+  const backToSession = () => zurueck(d.ksinr ? sessionHref(d.ksinr) : "/council");
 
   return (
     <div className="mx-auto max-w-5xl">
       <div className="print-hidden flex items-center justify-between gap-3">
-        <button onClick={backToSession} className="inline-flex min-w-0 items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4 shrink-0" />
-          <span className="truncate">
-            Zurück
-            <span className="hidden sm:inline"> zu {shortCommittee(d.committee)} · {formatDate(d.session_date)}</span>
-          </span>
-        </button>
+        {zeigeZurueck ? (
+          <button onClick={backToSession} className="inline-flex min-w-0 items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-4 w-4 shrink-0" />
+            <span className="truncate">
+              Zurück
+              <span className="hidden sm:inline"> zu {shortCommittee(d.committee)} · {formatDate(d.session_date)}</span>
+            </span>
+          </button>
+        ) : (
+          <span />
+        )}
         <div className="flex shrink-0 items-center gap-2">
           {/* Design 28a/W3: Das Druck-Stylesheet (globals.css) blendet Navigation
               und Beiwerk längst aus — es gab nur keinen Weg, den Druck aus der

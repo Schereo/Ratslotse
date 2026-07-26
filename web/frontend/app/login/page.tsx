@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { entwurfZiel } from "@/lib/draft";
+import { useWeiterSuffix, zielNachAnmeldung } from "@/lib/public-routes";
 import { useAuth } from "@/lib/auth";
 import { Button, Input, PasswordInput } from "@/components/ui";
 import { AuthShell } from "@/components/auth-shell";
@@ -19,6 +20,7 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   // Seit 26a führt der Willkommens-Auftakt hierher — wer von dort kommt, ist
   // gerade zum ersten Mal da und wäre mit „Willkommen zurück" falsch begrüßt.
+  const weiter = useWeiterSuffix();
   const [firstRun, setFirstRun] = useState(false);
   useEffect(() => {
     const check = () => {
@@ -39,8 +41,10 @@ export default function LoginPage() {
     try {
       await login(email, password);
       // Design 29a (P8): Wer mitten in einer Frage rausgeflogen ist, kommt
-      // genau dorthin zurück — das Feld holt seinen Text dann selbst ab.
-      router.replace(entwurfZiel() ?? "/dashboard");
+      // genau dorthin zurück — das Feld holt seinen Text dann selbst ab. Der
+      // geretteten Arbeit gebührt der Vorrang vor `?weiter=`; letzteres bringt
+      // die zurück, die von einem geteilten Beschluss aus hergefunden haben.
+      router.replace(entwurfZiel() ?? zielNachAnmeldung());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Anmeldung fehlgeschlagen.");
     } finally {
@@ -85,7 +89,7 @@ export default function LoginPage() {
             die Fußnote — deshalb dort als eigener Knopf statt als Textlink. */}
         {firstRun ? (
           <Link
-            href="/register"
+            href={`/register${weiter}`}
             className="mt-4 flex h-11 w-full items-center justify-center rounded-xl border border-primary/30 bg-primary/[0.06] text-sm font-medium text-primary transition-colors hover:bg-primary/10"
           >
             Neu hier? Konto erstellen
@@ -93,7 +97,7 @@ export default function LoginPage() {
         ) : (
           <p className="mt-3 text-center text-sm text-muted-foreground">
             Noch kein Konto?{" "}
-            <Link href="/register" className="font-medium text-primary hover:underline">
+            <Link href={`/register${weiter}`} className="font-medium text-primary hover:underline">
               Registrieren
             </Link>
           </p>
