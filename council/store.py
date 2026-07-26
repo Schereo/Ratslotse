@@ -738,6 +738,14 @@ class CouncilStore:
         )
     """
 
+    def sessions_on(self, tag: str) -> list[dict]:
+        """Alle Sitzungen an einem Kalendertag — für die Vorabend-Erinnerung
+        (Design 30a, N5). Terminierte ohne Tagesordnung kommen mit; der Aufrufer
+        entscheidet, ob er sie braucht."""
+        return [dict(r) for r in self._conn.execute(
+            "SELECT * FROM council_sessions WHERE session_date = ? ORDER BY session_time",
+            (tag,))]
+
     def upcoming_sessions(self, limit: int = 20, offset: int = 0) -> list[dict]:
         """Kommende Sitzungen: echte (mit ksinr/Tagesordnung) plus terminierte
         aus dem Kalender (ksinr NULL), solange keine echte Sitzung desselben
