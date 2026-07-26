@@ -143,6 +143,53 @@ sonst ließe sich das Konto nie bestätigen. Solange ein Konto nicht aktiv ist,
 zeigt die Oberfläche einen Hinweis statt der Inhalte und pollt `/auth/me`
 (`app/(app)/layout.tsx`); serverseitig blockt `require_active`.
 
+### Was ohne Konto sichtbar ist
+
+Vier Endpunkte antworten **ohne Anmeldung**. Nicht aus Versehen, sondern weil
+Teilen die Kernhandlung der App ist: Wer einen Beschluss weiterreichte,
+schickte die Empfängerin vorher ins Registrierungsformular — bevor sie
+überhaupt gesehen hatte, worum es geht.
+
+| Endpunkt | Seite |
+|---|---|
+| `GET /api/council/decision/{id}` | Beschluss |
+| `GET /api/council/entity/{slug}` | Thema |
+| `GET /api/council/person/{slug}` | Person |
+| `GET /api/council/session/{ksinr}` | Sitzung (die Beschluss-Seite zieht Gremium + Datum daraus) |
+| `GET /api/council/preview/{art}/{key}` | nur Titel + Kurzfassung für die Link-Vorschau |
+
+Genau die Seiten mit Teilen-Knopf und Link-Vorschau. Alles davon bereitet das
+amtliche Ratsinformationssystem auf und ist dort ohnehin für alle einsehbar —
+es entsteht keine neue Öffentlichkeit, nur eine lesbare.
+
+:::caution[Die Grenze steht im Backend, nicht im Frontend]
+`optional_user` (`web/backend/app/deps.py`) liefert `None` statt eines 401 und
+legt **dieselbe Schwelle an wie `require_active`**: Ein unbestätigtes oder
+gesperrtes Konto gilt hier als Gast und sieht die öffentliche Fassung. Ohne
+das wäre der Weg ein stiller Seiteneingang an der Sperre vorbei.
+
+Persönliches hängt an dieser Prüfung: `follow` (verfolge ich diesen Vorgang?)
+kommt nur in die Antwort, wenn wirklich jemand angemeldet ist. Stöbern, Suche,
+Analyse, eigene Themen und Benachrichtigungen bleiben zu —
+`test_stoebern_und_persoenliches_bleiben_hinter_der_anmeldung` hält diese
+Liste fest, damit die Grenze beim nächsten Aufräumen sichtbar ist.
+
+Die Pfadliste im Frontend (`web/frontend/lib/public-routes.ts`) entscheidet nur,
+wo statt der Weiterleitung zur Anmeldung die Gast-Hülle erscheint. Sie macht für
+sich genommen nichts sichtbar.
+:::
+
+Gäste sehen `components/public-shell.tsx` statt der App-Navigation — deren
+Ziele verlangen ausnahmslos ein Konto. Die Einladung zum Registrieren steht am
+**Ende** der Seite: Erst wer gelesen hat, weiß, wofür sich ein Konto lohnt.
+`?weiter=<pfad>` bringt nach Anmeldung, Registrierung oder Apple-Login zurück
+zum Ausgangspunkt (nur seiteneigene Pfade, siehe `sicheresZiel`).
+
+Der „Zurück"-Knopf fehlt Gästen bewusst: Bei einem frisch aus einem Messenger
+geöffneten Tab führt `router.back()` aus der Seite heraus, und der Rückfall auf
+die Sitzungs-Übersicht landet an der Anmeldewand. `history.length > 1`
+unterscheidet die Fälle nicht — es zählt auch fremde Einträge.
+
 ### Sign in with Apple
 
 `web/backend/app/routers/auth_apple.py`. Die App holt über das Apple-SDK
