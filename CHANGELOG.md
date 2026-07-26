@@ -64,6 +64,14 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   innerhalb der letzten 48 Stunden — davor ist es Verwaltung, keine Nachricht.
 - **Gesperrte und unbestätigte Konten bekommen keine Post mehr.**
 
+### Behoben
+- **Rats-Gruppen werden nicht mehr als falsche Partei ausgewiesen.** Auf der
+  Beschluss-Seite stand bei einstimmigen Beschlüssen, welche Fraktionen
+  anwesend waren — dort wurde „FDP/Volt" zu **FDP** und
+  „Gruppe DIE LINKE./Piratenpartei" zu **Die Linke**. Volt und die Piraten
+  fielen jeweils weg, und Mitglieder standen unter einer Partei, der sie nie
+  angehörten. Jetzt steht dort der Gruppenname.
+
 ## [1.4.0] – 2026-07-25
 
 ### Hinzugefügt
