@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from nwz import llm, prompts
+from nwz import llm, notify, prompts
 from .scraper import CouncilScraper, CouncilSession
 from .store import CouncilStore
 
@@ -59,33 +59,61 @@ def _classify_agenda(session: CouncilSession, topics: list[dict]) -> dict[int, l
     return result
 
 
-def _format_alert(session: CouncilSession, topic_matches: dict[int, list[str]], topics: list[dict]) -> str:
-    item_map = {i.item_number: i for i in session.agenda_items}
-    parts = [
-        "🏛️ <b>Stadtratssitzung – Ihr Thema wird diskutiert</b>\n",
-        f"<b>{_esc(session.committee)}</b>",
-        f"📅 {session.session_date.replace('-', '.')} · {session.session_time} Uhr",
-    ]
-    if session.location:
-        parts.append(f"📍 {_esc(session.location)}")
-    parts.append("")
+def _datum(iso: str) -> str:
+    """„2026-08-18" → „18. August"."""
+    MONATE = ("Januar", "Februar", "März", "April", "Mai", "Juni", "Juli",
+              "August", "September", "Oktober", "November", "Dezember")
+    teile = str(iso or "")[:10].split("-")
+    if len(teile) != 3:
+        return str(iso or "")
+    try:
+        return f"{int(teile[2])}. {MONATE[int(teile[1]) - 1]}"
+    except (ValueError, IndexError):
+        return iso
 
+
+def _titel_thema(session: CouncilSession, topic_name: str) -> str:
+    return f"„{topic_name}“ kommt auf den Tisch"
+
+
+def _format_alert(session: CouncilSession, topic_matches: dict[int, list[str]], topics: list[dict]) -> str:
+    """N2 — dein Thema steht auf einer Tagesordnung.
+
+    Design 30a: ein Satz statt vier Emoji-Zeilen. Die Meldung soll das Ereignis
+    berichten, nicht die App vorführen; alles Weitere steht auf der Seite, die
+    sie öffnet.
+    """
+    item_map = {i.item_number: i for i in session.agenda_items}
+    zeilen = []
     for topic_idx, item_numbers in topic_matches.items():
-        topic = topics[topic_idx]
-        parts.append(f"📌 <b>{_esc(topic['name'])}</b>")
         for num in item_numbers:
             item = item_map.get(num)
-            title = item.title if item else num
-            vorlage = f" [{_esc(item.vorlage_nr)}]" if item and item.vorlage_nr else ""
-            parts.append(f"• {_esc(num)}: {_esc(title)}{vorlage}")
-        parts.append("")
+            titel = _esc(item.title) if item else _esc(num)
+            zeilen.append(f"TOP {_esc(num)}: {titel}")
+    kopf = (f"{'; '.join(zeilen)} — {_esc(session.committee)} am {_datum(session.session_date)}"
+            f"{f', {_esc(session.session_time)} Uhr' if session.session_time else ''}.")
+    return f'<p>{kopf}</p>\n<p><a href="{session.url}">Zur Tagesordnung →</a></p>'
 
-    parts.append(f'<a href="{session.url}">Zur Tagesordnung →</a>')
-    return "\n".join(parts)
+
 
 
 def _esc(text: str) -> str:
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _melden(nwz_store, owner: dict, art: str, titel: str, html: str, url: str,
+            deliver_message) -> None:
+    """Eine Meldung abgeben — über die Warteschlange, wenn es sie gibt.
+
+    Design 30a: Alle Anlässe laufen durch ``nwz.notify``, sonst greifen die
+    Grenzen (zwei am Tag, Nachtruhe) nicht. Ohne ``nwz_store`` — in Tests und
+    bei Direktaufrufen — bleibt der bisherige Sofortversand, damit dieser Pfad
+    weiter ohne Datenbank prüfbar ist.
+    """
+    if nwz_store is None:
+        deliver_message(owner, html, email_subject=titel, push_url=url)
+        return
+    notify.einreihen(nwz_store, owner["owner_id"], art, titel, html, url)
 
 
 def _agenda_hash(agenda_items) -> str:
@@ -161,18 +189,18 @@ def run_watcher(
                 {"id": t.id, "name": t.name, "description": t.description}
                 for t in owner["topics"]
             ]
-            if not topics:
-                continue
 
-            print(f"  {session.session_date} {session.committee}: "
-                  f"{len(session.agenda_items)} items → classifying for owner {owner['owner_id']}…")
-            matches = _classify_agenda(session, topics)
+            matches: dict[int, list[str]] = {}
+            if topics:
+                print(f"  {session.session_date} {session.committee}: "
+                      f"{len(session.agenda_items)} items → classifying for owner {owner['owner_id']}…")
+                matches = _classify_agenda(session, topics)
 
-            if nwz_store is not None:
-                nwz_store.replace_agenda_matches(
-                    owner["owner_id"], ksinr, agenda_hash,
-                    {topics[idx]["id"]: nums for idx, nums in matches.items()},
-                )
+                if nwz_store is not None:
+                    nwz_store.replace_agenda_matches(
+                        owner["owner_id"], ksinr, agenda_hash,
+                        {topics[idx]["id"]: nums for idx, nums in matches.items()},
+                    )
 
             for topic_idx, item_numbers in matches.items():
                 topic_id = topics[topic_idx]["id"]
@@ -180,9 +208,17 @@ def run_watcher(
                     continue
                 msg = _format_alert(session, {topic_idx: item_numbers}, topics)
                 print(f"    Match: topic={topics[topic_idx]['name']!r} items={item_numbers}")
-                deliver_message(owner, msg, email_subject="Ratslotse – Ihr Thema im Stadtrat")
+                _melden(nwz_store, owner, notify.N2_THEMA,
+                        _titel_thema(session, topics[topic_idx]["name"]), msg, session.url,
+                        deliver_message)
                 alerts_sent.append(msg)
                 store.mark_alert_sent(ksinr, topic_id)
+
+            # N1 (Design 30a): Tagesordnung in einem abonnierten Gremium.
+            # Reiner Stringabgleich VOR jedem Sprachmodell — kein Token, keine
+            # Kosten. Der Themen-Treffer gewinnt: Wer oben schon gehört hat,
+            # welcher TOP ihn betrifft, braucht nicht zusätzlich die Meldung,
+            # dass das Haus überhaupt tagt.
 
     store.close()
     return alerts_sent

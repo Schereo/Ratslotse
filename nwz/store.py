@@ -105,6 +105,26 @@ CREATE TABLE IF NOT EXISTS vorlage_follows (
 );
 CREATE INDEX IF NOT EXISTS idx_vorlage_follows_kvonr ON vorlage_follows(kvonr);
 
+-- Warteschlange für Benachrichtigungen (Design 30a). Alle Anlässe reihen hier
+-- ein statt direkt zu senden; nwz/notify.py stellt zu und hält dabei die zwei
+-- harten Grenzen ein: höchstens zwei am Tag (gebündelt statt gestapelt) und
+-- Nachtruhe von 21 bis 7 Uhr. `deliver_after` trägt das Ergebnis der
+-- Nachtruhe-Rechnung, `bundled` merkt, dass ein Posten nur als Teil einer
+-- Sammelmeldung rausging (für die Statistik, nicht für die Logik).
+CREATE TABLE IF NOT EXISTS notification_queue (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner_id      INTEGER NOT NULL,
+    kind          TEXT NOT NULL,
+    title         TEXT NOT NULL,
+    body_html     TEXT NOT NULL,
+    url           TEXT NOT NULL,
+    created_at    TEXT NOT NULL,
+    deliver_after TEXT NOT NULL,
+    sent_at       TEXT,
+    bundled       INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_notify_offen ON notification_queue(owner_id, sent_at, deliver_after);
+
 CREATE TABLE IF NOT EXISTS article_topic_matches (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
     owner_id         INTEGER NOT NULL,
@@ -340,6 +360,7 @@ USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     ("topics", "owner_id"),
     ("committee_subscriptions", "owner_id"),
     ("vorlage_follows", "owner_id"),
+    ("notification_queue", "owner_id"),
     ("topic_hits_seen", "owner_id"),
     ("council_topic_matches", "owner_id"),
     ("council_agenda_matches", "owner_id"),
@@ -1035,6 +1056,71 @@ class Store:
             if o is not None:
                 o["push_tokens"].append({"token": pr["token"], "platform": pr["platform"]})
 
+    # ---- Benachrichtigungs-Warteschlange (Design 30a) ----
+
+    def enqueue_notification(self, owner_id: int, kind: str, title: str, body_html: str,
+                             url: str, created_at: str, deliver_after: str) -> int:
+        with self._conn:
+            cur = self._conn.execute(
+                "INSERT INTO notification_queue "
+                "(owner_id, kind, title, body_html, url, created_at, deliver_after) "
+                "VALUES (?,?,?,?,?,?,?)",
+                (owner_id, kind, title, body_html, url, created_at, deliver_after),
+            )
+        return cur.lastrowid
+
+    def owners_with_due_notifications(self, jetzt_iso: str) -> list[int]:
+        return [r[0] for r in self._conn.execute(
+            "SELECT DISTINCT owner_id FROM notification_queue "
+            "WHERE sent_at IS NULL AND deliver_after <= ? ORDER BY owner_id", (jetzt_iso,))]
+
+    def due_notifications(self, owner_id: int, jetzt_iso: str) -> list[dict]:
+        """Offene, fällige Posten — älteste zuerst, damit das Bündel am Ende die
+        jüngsten trägt und die wichtigste Einzelmeldung vorne bleibt."""
+        return [dict(r) for r in self._conn.execute(
+            "SELECT id, kind, title, body_html, url, created_at FROM notification_queue "
+            "WHERE owner_id = ? AND sent_at IS NULL AND deliver_after <= ? ORDER BY id",
+            (owner_id, jetzt_iso))]
+
+    def notifications_sent_on(self, owner_id: int, tag: str) -> int:
+        """Wie viele Zustellungen dieses Konto an diesem Kalendertag schon hatte.
+
+        Ein Bündel zählt als EINE Zustellung, nicht als seine Einzelposten —
+        sonst wäre die Grenze nach dem ersten Bündel sofort erschöpft.
+        """
+        einzeln = self._conn.execute(
+            "SELECT COUNT(*) FROM notification_queue "
+            "WHERE owner_id = ? AND bundled = 0 AND sent_at LIKE ?", (owner_id, f"{tag}%")
+        ).fetchone()[0]
+        buendel = self._conn.execute(
+            "SELECT COUNT(DISTINCT sent_at) FROM notification_queue "
+            "WHERE owner_id = ? AND bundled = 1 AND sent_at LIKE ?", (owner_id, f"{tag}%")
+        ).fetchone()[0]
+        return einzeln + buendel
+
+    def mark_notification_sent(self, ids: list[int], jetzt_iso: str, bundled: bool = False) -> None:
+        if not ids:
+            return
+        ph = ",".join("?" * len(ids))
+        with self._conn:
+            self._conn.execute(
+                f"UPDATE notification_queue SET sent_at = ?, bundled = ? WHERE id IN ({ph})",
+                (jetzt_iso, 1 if bundled else 0, *ids),
+            )
+
+    def get_owner_delivery(self, owner_id: int) -> dict | None:
+        """Zustell-Ziele eines Kontos: Kanal, Adresse, Geräte — das, was
+        nwz.delivery braucht, ohne Themen oder Abos drumherum."""
+        r = self._conn.execute(
+            "SELECT id AS owner_id, delivery_channel, email, display_name "
+            "FROM web_users WHERE id = ? AND status = 'active'", (owner_id,)).fetchone()
+        if not r:
+            return None
+        owner = dict(r)
+        by = {owner_id: owner}
+        self._attach_push_tokens(by)
+        return owner
+
     def get_web_user_by_email(self, email: str) -> dict | None:
         row = self._conn.execute(
             "SELECT * FROM web_users WHERE email = ?", (email.lower().strip(),)
@@ -1449,6 +1535,18 @@ class Store:
                 (owner_id, ksinr, agenda_hash, now),
             )
 
+    def has_agenda_match(self, owner_id: int, ksinr: int) -> bool:
+        """Hat diese Nutzer:in für diese Sitzung schon einen Themen-Treffer?
+
+        Design 30a: „Themen-Treffer gewinnt" — wer bereits gehört hat, WELCHER
+        Tagesordnungspunkt ihn betrifft, braucht daneben nicht die Meldung, dass
+        das Gremium überhaupt tagt.
+        """
+        return self._conn.execute(
+            "SELECT 1 FROM council_agenda_matches WHERE owner_id = ? AND ksinr = ? LIMIT 1",
+            (owner_id, ksinr),
+        ).fetchone() is not None
+
     def agenda_matches_for_owner(self, owner_id: int, ksinrs: list[int]) -> dict[int, list[dict]]:
         """{ksinr: [{item_number, topic_name}]} für die „n TOPs zu deinen
         Themen"-Chips — nur eigene Themen, sortiert nach TOP-Nummer."""
@@ -1489,17 +1587,26 @@ class Store:
         return result
 
     def get_all_owner_digests(self) -> list[dict]:
-        """Return per-owner digest targets for the cron: one dict per owner that
-        has ≥1 topic, with delivery channel + reachable addresses.
+        """Zustell-Ziele für den Sitzungs-Cron: je Konto ein dict mit Kanal,
+        Adressen und Themen.
 
-        [{owner_id, delivery_channel, telegram_chat_id, email,
+        [{owner_id, delivery_channel, telegram_chat_id, email, display_name,
           push_tokens: [{token, platform}], topics: [TopicRow]}]
+
+        Gremien-Abos stehen bewusst NICHT hier: Die bedient
+        ``scripts/check_committees.py`` mit eigener Entprellung. Zwei Leser für
+        dieselbe Sache hießen zwei Meldungen zur selben Sitzung.
+
+        ``status = 'active'``: Ein gesperrtes oder noch unbestätigtes Konto
+        bekommt keine Post — vorher lief die Zustellung auch dorthin.
         """
         rows = self._conn.execute(
-            """SELECT wu.id AS owner_id, wu.delivery_channel, wu.telegram_chat_id, wu.email,
+            """SELECT wu.id AS owner_id, wu.delivery_channel, wu.telegram_chat_id,
+                      wu.email, wu.display_name,
                       t.id, t.owner_id AS t_owner, t.chat_id, t.name, t.description, t.created_at
                FROM web_users wu
                JOIN topics t ON t.owner_id = wu.id
+               WHERE wu.status = 'active'
                ORDER BY wu.id, t.id"""
         ).fetchall()
         owners: dict[int, dict] = {}
@@ -1511,6 +1618,7 @@ class Store:
                     "delivery_channel": r["delivery_channel"],
                     "telegram_chat_id": r["telegram_chat_id"],
                     "email": r["email"],
+                    "display_name": r["display_name"],
                     "push_tokens": [],
                     "topics": [],
                 }
