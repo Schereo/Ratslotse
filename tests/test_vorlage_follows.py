@@ -55,6 +55,27 @@ def _rows(stations: list[tuple]) -> list[dict]:
             for d, g, e in stations]
 
 
+def _offene_meldungen(nwz_db) -> int:
+    """Wie viele Meldungen liegen (noch) in der Warteschlange?"""
+    s = Store(nwz_db)
+    try:
+        return len(s.due_notifications(1, "2999-01-01"))
+    finally:
+        s.close()
+
+
+def _letzte_meldung(nwz_db) -> str:
+    """Der HTML-Text der zuletzt eingereihten Meldung — auch wenn sie im selben
+    Lauf schon zugestellt (und damit als gesendet markiert) wurde."""
+    s = Store(nwz_db)
+    try:
+        row = s._conn.execute(
+            "SELECT body_html FROM notification_queue ORDER BY id DESC LIMIT 1").fetchone()
+        return row[0] if row else ""
+    finally:
+        s.close()
+
+
 def test_bekannter_stand_loest_nichts_aus(dbs):
     """Wer gerade abonniert hat, kennt die bisherigen Stationen — keine Mail."""
     mod, nwz_db, council_db = dbs
@@ -62,7 +83,7 @@ def test_bekannter_stand_loest_nichts_aus(dbs):
     _seed(nwz_db, council_db, stationen, snapshot=mod.signature(_rows(stationen)))
 
     with patch.object(mod.stammdaten, "fetch_beratungsfolge", return_value=_rows(stationen)), \
-         patch.object(mod, "deliver_message") as deliver:
+         patch("nwz.delivery.deliver_message") as deliver:
         stats = mod.main()
 
     deliver.assert_not_called()
@@ -77,16 +98,16 @@ def test_neue_station_wird_gemeldet_und_dann_nicht_mehr(dbs):
     _seed(nwz_db, council_db, alt, snapshot=mod.signature(_rows(alt)))
 
     with patch.object(mod.stammdaten, "fetch_beratungsfolge", return_value=_rows(neu)), \
-         patch.object(mod, "deliver_message") as deliver:
+         patch("nwz.delivery.deliver_message") as deliver:
         stats = mod.main()
     assert stats["Benachrichtigungen"] == 1
-    html = deliver.call_args[0][1]
+    html = _letzte_meldung(nwz_db)
     assert "Rat am 20.02.2026 — beschlossen" in html
     # Die schon bekannte Station taucht in der Meldung NICHT auf.
     assert "Verkehrsausschuss" not in html
 
     with patch.object(mod.stammdaten, "fetch_beratungsfolge", return_value=_rows(neu)), \
-         patch.object(mod, "deliver_message") as deliver2:
+         patch("nwz.delivery.deliver_message") as deliver2:
         assert mod.main()["Benachrichtigungen"] == 0
     deliver2.assert_not_called()
 
@@ -99,9 +120,9 @@ def test_nachgetragenes_ergebnis_gilt_als_neu(dbs):
     _seed(nwz_db, council_db, offen, snapshot=mod.signature(_rows(offen)))
 
     with patch.object(mod.stammdaten, "fetch_beratungsfolge", return_value=_rows(entschieden)), \
-         patch.object(mod, "deliver_message") as deliver:
+         patch("nwz.delivery.deliver_message") as deliver:
         assert mod.main()["Benachrichtigungen"] == 1
-    assert "beschlossen" in deliver.call_args[0][1]
+    assert "beschlossen" in _letzte_meldung(nwz_db)
 
 
 def test_abruf_fehler_meldet_nichts_und_friert_den_stand_nicht_ein(dbs):
@@ -117,15 +138,15 @@ def test_abruf_fehler_meldet_nichts_und_friert_den_stand_nicht_ein(dbs):
     council.close()
 
     with patch.object(mod.stammdaten, "fetch_beratungsfolge", side_effect=RuntimeError("502")), \
-         patch.object(mod, "deliver_message") as deliver:
+         patch("nwz.delivery.deliver_message") as deliver:
         stats = mod.main()
     deliver.assert_not_called()
     assert stats["Abruf-Fehler"] == 1
 
     with patch.object(mod.stammdaten, "fetch_beratungsfolge", return_value=_rows(neu)), \
-         patch.object(mod, "deliver_message") as deliver2:
+         patch("nwz.delivery.deliver_message") as deliver2:
         assert mod.main()["Benachrichtigungen"] == 1
-    assert "Rat am 20.02.2026" in deliver2.call_args[0][1]
+    assert "Rat am 20.02.2026" in _letzte_meldung(nwz_db)
 
 
 def test_gesperrtes_konto_bekommt_keine_post(dbs):
@@ -138,10 +159,11 @@ def test_gesperrtes_konto_bekommt_keine_post(dbs):
 
     with patch.object(mod.stammdaten, "fetch_beratungsfolge",
                       return_value=_rows(alt + [("2026-02-20", "Rat", "beschlossen")])), \
-         patch.object(mod, "deliver_message") as deliver:
+         patch("nwz.delivery.deliver_message") as deliver:
         stats = mod.main()
     deliver.assert_not_called()
     assert stats["Benachrichtigungen"] == 0
+    assert _offene_meldungen(nwz_db) == 0
 
 
 def test_label_ohne_ergebnis_sagt_dass_es_noch_aussteht(dbs):

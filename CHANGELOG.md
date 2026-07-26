@@ -17,6 +17,19 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Bestehende Altlasten sind aufgeräumt. (#340)
 
 ### Hinzugefügt
+- **Zwei neue Anlässe, beide freiwillig.** **Erinnerung am Vorabend** meldet
+  sich um 18 Uhr, wenn morgen eine Sitzung ansteht, die dich betrifft — für
+  alle, die zuhören gehen oder vorher noch etwas an ihre Fraktion schreiben
+  wollen. Der **Wochenüberblick** fasst sonntags um 18 Uhr die Beschlüsse der
+  Woche zu deinen Themen in einer Nachricht zusammen; wer ihn einschaltet, kann
+  die einzelnen Meldungen guten Gewissens abschalten. Beide sind **ab Werk
+  aus**, und in einer Woche ohne Ratsbeschlüsse — Sommerpause zum Beispiel —
+  bleibt es still.
+- **Auch verfolgte Vorgänge halten sich an die Grenzen.** Die Meldung „neue
+  Station" lief bisher an der Tagesgrenze und der Nachtruhe vorbei und ließ
+  sich nicht abschalten. Jetzt beides.
+
+### Hinzugefügt
 - **Du erfährst jetzt auch, wie es ausgegangen ist.** Bisher meldete sich die App
   *vor* der Debatte und schwieg beim Beschluss — der Moment, auf den alles
   zulief, kam nie an. Neu: **„Es ist entschieden"** für die Tagesordnungspunkte,

@@ -299,3 +299,91 @@ def test_ohne_vorherige_meldung_kein_ergebnis(store, tmp_path):
                                  "angenommen", None, None, None, [], None, None, None)
     assert melde_ergebnisse(council, store, [4652]) == 0
     council.close()
+
+
+# ---- N5 Vorabend + N6 Wochenüberblick (30a, Stufe 3) -----------------------
+
+def _council(tmp_path):
+    from council.store import CouncilStore
+    return CouncilStore(tmp_path / "council.sqlite")
+
+
+def test_vorabend_erinnert_an_die_sitzung_von_morgen(store, tmp_path):
+    from datetime import date, timedelta
+    from council.abendmeldungen import vorabend
+    from council.scraper import AgendaItem, CouncilSession
+
+    owner = _konto(store)
+    thema = store.add_topic(owner, "Radwege", "Ausbau von Radwegen")
+    store.set_notify_prefs(owner, {notify.N5_VORABEND: True})   # Vorgabe ist AUS
+    store.replace_agenda_matches(owner, 4652, "h1", {thema.id: ["Ö 6"]})
+
+    heute = date(2026, 8, 17)
+    council = _council(tmp_path)
+    council.save_session(CouncilSession(4652, "Verkehrsausschuss", "2026-08-18", "17:00", "Fleiwa",
+                                        agenda_items=[AgendaItem("Ö 6", "Radweg")]))
+
+    assert vorabend(council, store, heute) == 1
+    p = store.due_notifications(owner, "2999-01-01")[0]
+    assert p["kind"] == "n5_vorabend"
+    assert "Morgen, 17:00 Uhr" in p["title"] and "Radwege" in p["title"]
+    assert "Ö 6" in p["body_html"] and "Fleiwa" in p["body_html"]
+    assert p["url"] == "/council?tab=sessions&ksinr=4652"
+
+    # Übermorgen ist nicht morgen.
+    assert vorabend(council, store, heute - timedelta(days=1)) == 0
+    council.close()
+
+
+def test_vorabend_ist_ab_werk_aus(store, tmp_path):
+    from datetime import date
+    from council.abendmeldungen import vorabend
+    from council.scraper import CouncilSession
+
+    owner = _konto(store)
+    thema = store.add_topic(owner, "Radwege", "Ausbau")
+    store.replace_agenda_matches(owner, 4652, "h1", {thema.id: ["Ö 6"]})
+    council = _council(tmp_path)
+    council.save_session(CouncilSession(4652, "Verkehrsausschuss", "2026-08-18", "17:00", "Fleiwa"))
+    assert vorabend(council, store, date(2026, 8, 17)) == 0     # N5 steht auf aus
+    council.close()
+
+
+def test_wochenueberblick_fasst_die_woche_zusammen(store, tmp_path):
+    from datetime import date
+    from council.abendmeldungen import wochenueberblick
+    from council.scraper import CouncilSession
+
+    owner = _konto(store)
+    thema = store.add_topic(owner, "Radwege", "Ausbau")
+    store.set_notify_prefs(owner, {notify.N6_WOCHE: True})
+
+    council = _council(tmp_path)
+    council.save_session(CouncilSession(88, "Rat", "2026-08-14", "18:00", "Rathaus"))
+    with council._conn:
+        council._insert_decision(88, 0, "decision", None, "Ö 1", "Radweg A", "x",
+                                 "angenommen", None, None, None, [], None, None, None)
+        council._insert_decision(88, 1, "decision", None, "Ö 2", "Radweg B", "x",
+                                 "abgelehnt", None, None, None, [], None, None, None)
+    ids = [r[0] for r in council._conn.execute("SELECT id FROM council_decisions ORDER BY id")]
+    store.save_topic_decision_matches(thema.id, owner, [(i, 0.9) for i in ids])
+
+    assert wochenueberblick(council, store, date.today()) == 1
+    p = store.due_notifications(owner, "2999-01-01")[0]
+    assert p["kind"] == "n6_woche"
+    assert p["title"] == "Diese Woche: 2 Beschlüsse zu deinen Themen"
+    assert "angenommen" in p["body_html"] and "abgelehnt" in p["body_html"]
+    council.close()
+
+
+def test_ohne_beschluesse_schweigt_der_wochenueberblick(store, tmp_path):
+    """30a, Grenze 3: nie ohne Ereignis — Sommerpause inklusive."""
+    from datetime import date
+    from council.abendmeldungen import wochenueberblick
+
+    owner = _konto(store)
+    store.add_topic(owner, "Radwege", "Ausbau")
+    store.set_notify_prefs(owner, {notify.N6_WOCHE: True})
+    council = _council(tmp_path)
+    assert wochenueberblick(council, store, date.today()) == 0
+    council.close()

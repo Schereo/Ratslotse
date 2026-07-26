@@ -16,6 +16,7 @@ Zeitpläne stehen in den jeweiligen Docstrings; maßgeblich ist die laufende
 | `check_council.py` | `0 8,14 * * *` | Stadtratssitzungen auf Themen-Matches prüfen |
 | `check_protocols.py` | `0 9 * * *` | Protokolle parsen → ruft die Sub-Steps (s.u.) |
 | `remind_setup.py` | `0 11 * * *` | Eine Erinnerungsmail je Konto mit offener Einrichtung (≥ 48 h) |
+| `abendmeldungen.py` | `0 18 * * *` | Vorabend-Erinnerung (täglich) + Wochenüberblick (sonntags), Design 30a |
 | `weekly_enrich.py` | `0 3 * * 0` | LLM-/Embedding-Backfills → ruft die Sub-Steps (s.u.) |
 
 ## Sub-Steps (von einem Cron-Skript aufgerufen, nicht selbst geplant)
