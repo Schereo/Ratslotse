@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { BellRing } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { BellRing, Moon } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { isNativeApp } from "@/lib/platform";
@@ -10,10 +10,22 @@ import { enablePush } from "@/lib/push";
 import { Button, Card, Switch, toast } from "@/components/ui";
 import type { DeliveryChannel, User } from "@/lib/types";
 
-/** Benachrichtigungen-Karte (RL-702, Design 6a): E-Mail und Push als
- *  unabhängige Schalter (intern weiter der eine delivery_channel:
- *  email | push | both) + „Test-Benachrichtigung senden". Mindestens ein
- *  Kanal bleibt an — sonst käme ja nie etwas an. */
+/** Ein Anlass aus 30a/B — was das Backend über sich selbst erzählt. */
+type NotifyKind = { key: string; label: string; hint: string; default: boolean; enabled: boolean };
+type NotifyPrefs = {
+  kinds: NotifyKind[];
+  limits: { per_day: number; quiet_from: number; quiet_to: number };
+};
+
+/** Benachrichtigungen-Karte (RL-702, Design 6a; erweitert nach 30a/E):
+ *  **erst wo, dann wofür.** Oben E-Mail und Push als unabhängige Schalter
+ *  (intern weiter der eine delivery_channel: email | push | both), darunter die
+ *  sechs Anlässe einzeln abschaltbar, dann die Nachtruhe als Hinweis und der
+ *  Test.
+ *
+ *  Die Anlass-Liste kommt vom Server (`GET /account/notifications`) statt hier
+ *  hartkodiert zu stehen: Sonst fiele ein neu dazugekommener Anlass erst auf,
+ *  wenn sich jemand über eine unabschaltbare Meldung ärgert. */
 export function DeliverySettings() {
   const { user, refresh } = useAuth();
   // Detected after mount to avoid a hydration mismatch between the static export
@@ -41,6 +53,26 @@ export function DeliverySettings() {
     onError: (err) =>
       toast.error(err instanceof ApiError ? err.message : "Test konnte nicht gesendet werden."),
   });
+
+  const qc = useQueryClient();
+  const prefsQuery = useQuery({
+    queryKey: ["notify-prefs"],
+    queryFn: () => api.get<NotifyPrefs>("/account/notifications"),
+  });
+  const kindMutation = useMutation({
+    mutationFn: (prefs: Record<string, boolean>) =>
+      api.put<NotifyPrefs>("/account/notifications", { prefs }),
+    onSuccess: (d) => qc.setQueryData(["notify-prefs"], d),
+    onError: (err) =>
+      toast.error(err instanceof ApiError ? err.message : "Konnte nicht gespeichert werden."),
+  });
+
+  const toggleKind = (key: string, next: boolean) => {
+    const alle = Object.fromEntries(
+      (prefsQuery.data?.kinds ?? []).map((k) => [k.key, k.key === key ? next : k.enabled]),
+    );
+    kindMutation.mutate(alle);
+  };
 
   const current = user?.delivery_channel ?? "email";
   const emailOn = current === "email" || current === "both";
@@ -72,7 +104,9 @@ export function DeliverySettings() {
     <Card className="p-6">
       <h2 className="font-semibold text-foreground">Benachrichtigungen</h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        Für neue Beschlüsse zu deinen Themen und abonnierte Tagesordnungen.
+        {prefsQuery.data
+          ? `Höchstens ${prefsQuery.data.limits.per_day} am Tag. Nachts nie.`
+          : "Für neue Beschlüsse zu deinen Themen und abonnierte Tagesordnungen."}
       </p>
       <div className="mt-4 space-y-3">
         <div className="flex items-center justify-between gap-3">
@@ -102,6 +136,40 @@ export function DeliverySettings() {
           />
         </div>
       </div>
+      {/* „Wofür" — die sechs Anlässe aus 30a/B, jeder einzeln abschaltbar. */}
+      {prefsQuery.data && (
+        <div className="mt-6 border-t border-border pt-5">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            Wofür
+          </p>
+          <div className="mt-3 space-y-3">
+            {prefsQuery.data.kinds.map((k) => (
+              <div key={k.key} className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground">{k.label}</p>
+                  <p className="text-xs leading-relaxed text-muted-foreground">{k.hint}</p>
+                </div>
+                <Switch
+                  checked={k.enabled}
+                  aria-label={k.label}
+                  disabled={kindMutation.isPending}
+                  onCheckedChange={(v) => toggleKind(k.key, v)}
+                />
+              </div>
+            ))}
+          </div>
+          {/* Nachtruhe: eine Zusicherung, kein Schalter — sie gilt immer. */}
+          <div className="mt-4 flex items-start gap-2.5 rounded-xl bg-muted/60 px-3.5 py-3">
+            <Moon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              <span className="font-medium text-foreground">Nachtruhe</span> — nichts zwischen{" "}
+              {prefsQuery.data.limits.quiet_from}:00 und {prefsQuery.data.limits.quiet_to}:00 Uhr.
+              Was abends entschieden wird, kommt am Morgen an.
+            </p>
+          </div>
+        </div>
+      )}
+
       <Button
         variant="secondary"
         size="sm"
