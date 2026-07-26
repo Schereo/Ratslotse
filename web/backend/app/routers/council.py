@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from council.store import CouncilStore
 from council.topics import POLICY_FIELDS
 from council.goals import GOALS
-from council.parties import normalize_party, order_key
+from council.parties import faction_label, normalize_party, order_key
 from council import qa
 from council import importance
 from council import sitzungspause as pause_mod
@@ -307,9 +307,14 @@ def decision_detail(
     if not d:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Beschluss nicht gefunden.")
     attendance = store.get_attendance(d["ksinr"])
-    # Voting members present (for the "unanimous → these factions approved" hint).
-    present = {normalize_party(a["party"]) for a in attendance
+    # Anwesende Stimmberechtigte — für den Hinweis „einstimmig → diese
+    # Fraktionen waren da". `faction_label` statt `normalize_party`: Letzteres
+    # kollabiert Rats-GRUPPEN auf eine ihrer Parteien und behauptet damit etwas
+    # Falsches über reale Personen — „FDP/Volt" wurde zu „FDP" (Volt fiel weg),
+    # „Gruppe DIE LINKE./Piratenpartei" zu „Die Linke" (Piraten fielen weg).
+    present = {faction_label(a["party"]) for a in attendance
                if (a.get("role") or "mitglied") in ("vorsitz", "mitglied")}
+    present.discard("parteilos")   # keine Fraktion, gehört nicht in die Reihe
     out: dict = {
         "decision": d,
         "attendance": attendance,
