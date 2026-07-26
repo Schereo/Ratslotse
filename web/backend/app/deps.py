@@ -56,6 +56,29 @@ def get_current_user(request: Request, store: Store = Depends(get_store)) -> dic
     return user
 
 
+def optional_user(request: Request, store: Store = Depends(get_store)) -> dict | None:
+    """Der angemeldete Nutzer — oder ``None`` statt 401.
+
+    Für die Seiten, die geteilt werden. Ein weitergereichter Beschluss-Link soll
+    sich lesen lassen, ohne dass die Empfängerin erst ein Konto anlegt; wer
+    angemeldet ist, bekommt auf derselben Seite trotzdem die persönlichen
+    Zusätze (folge ich diesem Vorgang schon?).
+
+    Bewusst dieselbe Schwelle wie ``require_active``: Ein unbestätigtes oder
+    gesperrtes Konto gilt hier als *nicht angemeldet* und sieht die öffentliche
+    Fassung. Sonst wäre das hier ein stiller Seiteneingang an der Sperre vorbei.
+    """
+    if not _token_from_request(request):
+        return None
+    try:
+        user = get_current_user(request, store)
+    except HTTPException:
+        return None
+    if user.get("role") != "admin" and user.get("status") != "active":
+        return None
+    return user
+
+
 def require_active(user: dict = Depends(get_current_user)) -> dict:
     """Account must be active: email confirmed and not suspended by an admin
     (admins are always active)."""

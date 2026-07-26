@@ -2,7 +2,7 @@
 
 
 import { Suspense, useState } from "react";
-import { useSearchParams, useRouter, notFound } from "next/navigation";
+import { useSearchParams, notFound } from "next/navigation";
 import { ArrowLeft, Gavel, Info, ExternalLink, ChevronDown } from "lucide-react";
 import { MemberDetail } from "@/lib/types";
 import { Card, DetailSkeleton, formatDate } from "@/components/ui";
@@ -11,6 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useFetch } from "@/lib/use-fetch";
 import { cn } from "@/lib/utils";
 import { shortCommittee } from "@/lib/committees";
+import { useZurueck } from "@/lib/zurueck";
 
 const sessionUrl = (ksinr: number) => `https://buergerinfo.oldenburg.de/si0057.php?__ksinr=${ksinr}`;
 
@@ -124,7 +125,7 @@ function cnEllipsis(chair: boolean) {
 
 function PersonInner() {
   const slug = useSearchParams().get("slug");
-  const router = useRouter();
+  const { zeigen: zeigeZurueck, zurueck } = useZurueck();
   const { data, loading } = useFetch<MemberDetail>(slug ? `/council/person/${slug}` : null);
   const [pastOpen, setPastOpen] = useState(false);
 
@@ -146,9 +147,11 @@ function PersonInner() {
 
   return (
     <Card className="mx-auto max-w-3xl p-5 sm:p-6">
-      <button onClick={() => router.back()} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-4 w-4" /> Zurück
-      </button>
+      {zeigeZurueck && (
+        <button onClick={() => zurueck("/council")} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-4 w-4" /> Zurück
+        </button>
+      )}
 
       {/* Kopf: Avatar + Name + Kennzahlen */}
       <div className="mt-3.5 flex items-center gap-4">

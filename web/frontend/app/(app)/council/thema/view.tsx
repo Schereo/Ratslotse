@@ -2,7 +2,7 @@
 
 import {Suspense, useEffect } from "react";
 import dynamic from "next/dynamic";
-import { useSearchParams, useRouter, notFound } from "next/navigation";
+import { useSearchParams, notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { EntityDetail, RelatedEntity } from "@/lib/types";
@@ -13,6 +13,7 @@ import { ENTITY_KIND } from "@/components/council-entities";
 import { useFetch } from "@/lib/use-fetch";
 import { themaHref } from "@/lib/routes";
 import { ShareButton } from "@/components/share-button";
+import { useZurueck } from "@/lib/zurueck";
 
 // Leaflet needs `window` → load the map client-only.
 const EntityMap = dynamic(() => import("@/components/entity-map").then((m) => m.EntityMap), {
@@ -73,7 +74,7 @@ function RelatedThemes({ related }: { related: RelatedEntity[] }) {
 
 function EntityInner() {
   const slug = useSearchParams().get("slug");
-  const router = useRouter();
+  const { zeigen: zeigeZurueck, zurueck } = useZurueck();
   // RL-U12: Kartograf — 3 verschiedene Orte geöffnet (Server zählt distinct).
   useEffect(() => {
     if (slug) reportBadgeEvent("map_place", slug);
@@ -86,9 +87,13 @@ function EntityInner() {
   return (
     <div className="mx-auto max-w-3xl">
       <div className="print-hidden flex items-center justify-between gap-3">
-        <button onClick={() => router.back()} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" /> Zurück
-        </button>
+        {zeigeZurueck ? (
+          <button onClick={() => zurueck("/council?tab=themen")} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-4 w-4" /> Zurück
+          </button>
+        ) : (
+          <span />
+        )}
         <ShareButton path={themaHref(data.entity.slug)} title={`${data.entity.name} — Ratslotse`} />
       </div>
 
