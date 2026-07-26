@@ -66,11 +66,16 @@ Details: siehe [KI-Pipeline](/docs/ki-pipeline/).
 
 ### Benachrichtigungen
 
-Jeder Nutzer wählt pro Konto einen Zustellkanal (`email` / `push` / `both`).
-Die geplanten Jobs iterieren über alle Nutzer mit Themen und liefern
-personalisierte Ratsinfo-Benachrichtigungen: **E-Mail** via Resend und
-**Web-Push** auf die registrierten App-Geräte via APNs/FCM. Fehlt das Secret
-eines Kanals, wird dieser Kanal still übersprungen.
+Jeder Nutzer wählt pro Konto einen Zustellkanal (`email` / `push` / `both`) und
+zusätzlich, **wofür** er Post bekommt — sechs Anlässe, einzeln abschaltbar.
+Zustellung: **E-Mail** via Resend, **Web-Push** auf die registrierten
+App-Geräte via APNs/FCM. Fehlt das Secret eines Kanals, wird dieser still
+übersprungen.
+
+Kein Anlass sendet selbst: Alle reihen in `notification_queue` ein, und
+`nwz.notify.zustellen()` liefert zentral aus — unter zwei harten Grenzen
+(höchstens zwei Zustellungen pro Person und Tag, nichts zwischen 21 und 7 Uhr).
+Details in [App & Konten](/docs/app-und-konten/#benachrichtigungen-sechs-anlässe-vier-grenzen).
 
 ---
 

@@ -103,6 +103,11 @@ CREATE TABLE IF NOT EXISTS committees (
     UNIQUE(name)
 );
 
+-- Verwaist seit dem NWZ-Rückbau: Der Sitzungs-Nachbericht
+-- (scripts/session_followup.py) ist weg, die Leser dieser Tabelle sind es
+-- inzwischen auch. Sie bleibt trotzdem stehen — `_migrate_owner_id` prüft sie
+-- zusammen mit committee_notifications (die weiter benutzt wird), und ohne die
+-- Tabelle liefe diese Migration auf bestehenden Datenbanken ins Leere.
 CREATE TABLE IF NOT EXISTS session_followups_sent (
     ksinr    INTEGER NOT NULL,
     owner_id INTEGER NOT NULL,
@@ -626,13 +631,6 @@ class CouncilStore:
             "sessions": one("SELECT COUNT(*) FROM council_sessions"),
             "entities": one("SELECT COUNT(*) FROM council_entities"),
         }
-
-    def has_session_with_agenda(self, ksinr: int) -> bool:
-        row = self._conn.execute(
-            "SELECT COUNT(*) FROM council_agenda_items WHERE ksinr = ?", (ksinr,)
-        ).fetchone()
-        return row and row[0] > 0
-
     def save_session(self, session: CouncilSession) -> None:
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
@@ -671,33 +669,6 @@ class CouncilStore:
                 "INSERT OR IGNORE INTO council_alerts_sent (ksinr, topic_id, sent_at) VALUES (?,?,?)",
                 (ksinr, topic_id, now),
             )
-
-    def followup_already_sent(self, ksinr: int, owner_id: int) -> bool:
-        row = self._conn.execute(
-            "SELECT 1 FROM session_followups_sent WHERE ksinr = ? AND owner_id = ?",
-            (ksinr, owner_id),
-        ).fetchone()
-        return row is not None
-
-    def mark_followup_sent(self, ksinr: int, owner_id: int) -> None:
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self._conn:
-            self._conn.execute(
-                "INSERT OR IGNORE INTO session_followups_sent (ksinr, owner_id, sent_at) VALUES (?, ?, ?)",
-                (ksinr, owner_id, now),
-            )
-
-    def past_sessions_in_window(self, date_from: str, date_to: str) -> list[dict]:
-        """Sessions that took place between date_from and date_to (inclusive)."""
-        rows = self._conn.execute(
-            """SELECT cs.ksinr, cs.committee, cs.session_date, cs.session_time, cs.location
-               FROM council_sessions cs
-               WHERE cs.session_date BETWEEN ? AND ?
-               ORDER BY cs.session_date DESC""",
-            (date_from, date_to),
-        ).fetchall()
-        return [dict(r) for r in rows]
-
     def replace_scheduled_sessions(self, rows: list) -> None:
         """Terminplan komplett ersetzen (rows: ScheduledSession-Objekte).
 
@@ -797,14 +768,6 @@ class CouncilStore:
                 "INSERT OR REPLACE INTO committee_notifications (ksinr, owner_id, agenda_hash, sent_at) VALUES (?, ?, ?, ?)",
                 (ksinr, owner_id, agenda_hash, now),
             )
-
-    def was_notified(self, ksinr: int, owner_id: int) -> bool:
-        row = self._conn.execute(
-            "SELECT 1 FROM committee_notifications WHERE ksinr = ? AND owner_id = ?",
-            (ksinr, owner_id),
-        ).fetchone()
-        return row is not None
-
     def get_last_notified_hash(self, ksinr: int, owner_id: int) -> str | None:
         """Return the agenda_hash that was last used when notifying this owner, or None if never notified.
         An empty string means the row predates hash tracking and should not trigger a re-notification."""
@@ -1679,11 +1642,6 @@ class CouncilStore:
                      r.get("von"), r.get("bis"), now),
                 )
         return len(rows)
-
-    def list_person_kpenrs(self) -> list[int]:
-        return [r[0] for r in self._conn.execute(
-            "SELECT kpenr FROM council_persons ORDER BY kpenr").fetchall()]
-
     def person_stammdaten_for_names(self, names: list[str]) -> dict | None:
         """RIS-Stammdaten für eine Person, gematcht über die Namens-Slugs der
         Anwesenheitsdaten: aktuelle Fraktion (RIS-Stand) + offizielle
