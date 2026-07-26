@@ -7,14 +7,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Behoben
-- **Der Zähler an „Meine Themen" wurde man nicht mehr los.** Wer ein Thema
-  löschte, behielt dessen Treffer als ungelesen — die orange Zahl in der
-  Navigation zählte sie weiter, obwohl das Thema in keiner Liste mehr stand.
-  Damit gab es keine Stelle mehr, an der man sie hätte ansehen können, und die
-  Zahl blieb für immer stehen. Beim Löschen eines Themas verschwinden jetzt auch
-  seine Treffer, und der Zähler ignoriert Reste gelöschter Themen grundsätzlich.
-  Bestehende Altlasten sind aufgeräumt. (#340)
+## [1.5.0] – 2026-07-26
 
 ### Hinzugefügt
 - **Zwei neue Anlässe, beide freiwillig.** **Erinnerung am Vorabend** meldet
@@ -28,8 +21,6 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 - **Auch verfolgte Vorgänge halten sich an die Grenzen.** Die Meldung „neue
   Station" lief bisher an der Tagesgrenze und der Nachtruhe vorbei und ließ
   sich nicht abschalten. Jetzt beides.
-
-### Hinzugefügt
 - **Du erfährst jetzt auch, wie es ausgegangen ist.** Bisher meldete sich die App
   *vor* der Debatte und schwieg beim Beschluss — der Moment, auf den alles
   zulief, kam nie an. Neu: **„Es ist entschieden"** für die Tagesordnungspunkte,
@@ -65,6 +56,13 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 - **Gesperrte und unbestätigte Konten bekommen keine Post mehr.**
 
 ### Behoben
+- **Der Zähler an „Meine Themen" wurde man nicht mehr los.** Wer ein Thema
+  löschte, behielt dessen Treffer als ungelesen — die orange Zahl in der
+  Navigation zählte sie weiter, obwohl das Thema in keiner Liste mehr stand.
+  Damit gab es keine Stelle mehr, an der man sie hätte ansehen können, und die
+  Zahl blieb für immer stehen. Beim Löschen eines Themas verschwinden jetzt auch
+  seine Treffer, und der Zähler ignoriert Reste gelöschter Themen grundsätzlich.
+  Bestehende Altlasten sind aufgeräumt. (#340)
 - **Rats-Gruppen werden nicht mehr als falsche Partei ausgewiesen.** Auf der
   Beschluss-Seite stand bei einstimmigen Beschlüssen, welche Fraktionen
   anwesend waren — dort wurde „FDP/Volt" zu **FDP** und
@@ -1275,7 +1273,8 @@ Open-Source-Go-Live von Ratslotse.
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v1.4.0...main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v1.5.0...main
+[1.5.0]: https://github.com/Schereo/Ratslotse/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/Schereo/Ratslotse/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/Schereo/Ratslotse/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/Schereo/Ratslotse/compare/v1.1.0...v1.2.0

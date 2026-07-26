@@ -20,6 +20,10 @@ ios/App/build-device/
 ios/App/App/public/
 ios/App/App/capacitor.config.json
 ios/App/App/config.xml
+# Export-Optionen fürs Release-Archiv — lokal einmal anlegen (Vorlage in MOBILE.md).
+# Bewusst außerhalb des Repos, damit niemand versehentlich mit fremder teamID
+# oder mit manageAppVersionAndBuildNumber=true exportiert.
+ios/App/ExportOptions.plist
 android/.gradle/
 android/build/
 android/app/build/
