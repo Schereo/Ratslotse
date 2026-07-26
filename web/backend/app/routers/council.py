@@ -20,7 +20,7 @@ from council import vorlagen as vorlagen_mod
 
 from nwz.store import Store
 
-from ..deps import get_council_store, get_store, require_active
+from ..deps import get_council_store, get_store, optional_user, require_active
 from ..ratelimit import qa_limiter
 
 router = APIRouter(prefix="/api/council", tags=["council"])
@@ -227,10 +227,11 @@ def zahl_der_woche(
             "window_days": 7}
 
 
+# Ohne Anmeldung lesbar (s. `decision_detail`) — die Beschluss-Seite zieht die
+# Sitzung nach, um Gremium und Datum zu benennen.
 @router.get("/session/{ksinr}")
 def session_detail(
     ksinr: int,
-    _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
 ) -> dict:
     session = store.get_session(ksinr)
@@ -299,10 +300,23 @@ def decisions(
 @router.get("/decision/{decision_id}")
 def decision_detail(
     decision_id: int,
-    user: dict = Depends(require_active),
+    user: dict | None = Depends(optional_user),
     store: CouncilStore = Depends(get_council_store),
     nwz: Store = Depends(get_store),
 ) -> dict:
+    """Ein Beschluss mit allem Drum und Dran — **ohne Anmeldung lesbar**.
+
+    Teilen ist die Kernhandlung der App, aber wer einen weitergereichten Link
+    öffnete, sah zuerst das Registrierungsformular. Das schreckt genau die
+    Leute ab, die man gewinnen will: Sie haben noch gar nicht gesehen, wofür
+    sich ein Konto lohnen würde.
+
+    Was hier steht, stammt vollständig aus dem amtlichen
+    Ratsinformationssystem und ist dort ohnehin für alle einsehbar — es
+    entsteht keine neue Öffentlichkeit, nur eine lesbare (dieselbe Abwägung
+    wie bei `preview`). Persönliches bleibt draußen: ``follow`` kommt nur
+    dazu, wenn wirklich jemand angemeldet ist.
+    """
     d = store.get_decision(decision_id)
     if not d:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Beschluss nicht gefunden.")
@@ -373,7 +387,10 @@ def decision_detail(
             # Design 28a/W1: Folgt dieses Konto dem Vorgang schon? Die kvonr
             # gehört zur Antwort, weil nur sie den Vorgang eindeutig benennt —
             # die Vorlagen-Nummer wird im Ratsinfo wiederverwendet.
-            out["follow"] = {"kvonr": kv, "following": nwz.is_following_vorlage(user["id"], kv)}
+            # Ohne Anmeldung fehlt der Schlüssel ganz: Das Frontend blendet den
+            # Verfolgen-Knopf über `data.follow &&` aus, ohne etwas zu wissen.
+            if user:
+                out["follow"] = {"kvonr": kv, "following": nwz.is_following_vorlage(user["id"], kv)}
     return out
 
 
@@ -596,9 +613,12 @@ def preview(kind: str, key: str, store: CouncilStore = Depends(get_council_store
 
 
 @router.get("/entity/{slug}")
-def entity(slug: str, _user: dict = Depends(require_active),
-           store: CouncilStore = Depends(get_council_store)) -> dict:
-    """An entity ('Themen-') page: all its decisions plus money/parties/field aggregates."""
+def entity(slug: str, store: CouncilStore = Depends(get_council_store)) -> dict:
+    """An entity ('Themen-') page: all its decisions plus money/parties/field aggregates.
+
+    Ohne Anmeldung lesbar — es ist eine der geteilten Detailseiten, und alles
+    hier ist eine Aggregation öffentlicher Ratsdaten (s. `decision_detail`).
+    """
     data = store.entity_detail(slug)
     if not data:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Thema nicht gefunden.")
@@ -618,9 +638,14 @@ def members(_user: dict = Depends(require_active),
 
 
 @router.get("/person/{slug}")
-def person(slug: str, _user: dict = Depends(require_active),
-           store: CouncilStore = Depends(get_council_store)) -> dict:
-    """A council member's profile: party, sessions, active span, committees, recent sessions."""
+def person(slug: str, store: CouncilStore = Depends(get_council_store)) -> dict:
+    """A council member's profile: party, sessions, active span, committees, recent sessions.
+
+    Ohne Anmeldung lesbar (s. `decision_detail`). Es geht ausschließlich um
+    Mandatsträger:innen in ihrer öffentlichen Funktion, und die Angaben stammen
+    aus den Anwesenheitslisten der amtlichen Protokolle — keine Privatperson
+    wird hier auffindbar, die es nicht ohnehin schon ist.
+    """
     data = store.member_detail(slug)
     if not data:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Ratsmitglied nicht gefunden.")

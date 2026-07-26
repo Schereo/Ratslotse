@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Clock, MailWarning } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
@@ -17,12 +17,17 @@ import { OnboardingTracker } from "@/components/onboarding";
 import { BadgeCelebrator } from "@/components/badges";
 import { BackToTop } from "@/components/back-to-top";
 import { PeekingChick } from "@/components/peeking-chick";
+import { PublicShell } from "@/components/public-shell";
 import { Button, Card, CardListSkeleton, Skeleton, toast } from "@/components/ui";
+import { istOeffentlich } from "@/lib/public-routes";
 import type { User } from "@/lib/types";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading, refresh } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+  // Geteilte Detailseiten lassen sich ohne Konto lesen (s. lib/public-routes.ts).
+  const oeffentlich = istOeffentlich(pathname);
 
   const needsVerify = !!user && !user.email_verified && user.role !== "admin";
   const pending = !!user && user.status === "pending" && user.role !== "admin";
@@ -38,8 +43,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   });
 
   useEffect(() => {
-    if (!loading && !user) router.replace("/login");
-  }, [user, loading, router]);
+    if (!loading && !user && !oeffentlich) router.replace("/login");
+  }, [user, loading, router, oeffentlich]);
 
   // Wire native push once a user is present: device token → backend, tap → route.
   // No-op on the web and when notifications aren't permitted.
@@ -61,6 +66,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
+
+  // Ohne Konto auf einer geteilten Detailseite: lesen lassen, statt zur
+  // Anmeldung zu schicken. Die App-Hülle passt hier nicht — ihre Navigation
+  // führt ausschließlich zu Seiten, die ein Konto verlangen.
+  if (!loading && !user && oeffentlich) return <PublicShell>{children}</PublicShell>;
 
   // Design 29a (P3): Der erste Eindruck war ein Spinner auf weißem Grund — die
   // Marke verschwand ausgerechnet in der Sekunde, die zählt, und jeder App-Start
