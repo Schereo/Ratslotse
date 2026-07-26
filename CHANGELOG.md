@@ -16,6 +16,27 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   seine Treffer, und der Zähler ignoriert Reste gelöschter Themen grundsätzlich.
   Bestehende Altlasten sind aufgeräumt. (#340)
 
+### Geändert
+- **Höchstens zwei Mitteilungen am Tag — und nachts keine.** Bisher schickte
+  jeder Anlass sofort los: Wer mehrere Ausschüsse abonniert und Themen pflegt,
+  konnte an einem Morgen beliebig viele Mails bekommen, und ein Beschluss um
+  22:40 Uhr klingelte um 22:40 Uhr. Jetzt gilt für **alle** Anlässe zusammen:
+  höchstens zwei Zustellungen pro Tag — was darüber hinausgeht, kommt gebündelt
+  in einer Nachricht statt einzeln — und **zwischen 21 und 7 Uhr nichts**.
+  Ratssitzungen enden regelmäßig nach 22 Uhr; das Ergebnis wartet bis zum
+  Morgen. Verloren geht dabei nichts.
+- **Die Meldung zu einem eigenen Thema ist jetzt ein Satz.** Statt vier
+  Emoji-Zeilen („🏛️ Stadtratssitzung – Ihr Thema wird diskutiert", „📅", „📍")
+  steht dort, worum es geht: „TOP 4.1: Radweg Nadorster Straße —
+  Verkehrsausschuss am 18. August, 17:00 Uhr."
+- **Keine zwei Nachrichten zur selben Sitzung mehr.** Wer für eine Sitzung schon
+  erfahren hat, *welcher* Tagesordnungspunkt sein Thema betrifft, bekommt nicht
+  zusätzlich die allgemeine Meldung, dass das Gremium tagt.
+- **Änderungen an einer Tagesordnung melden sich nur noch kurz vorher.** Bisher
+  ging jede Änderung raus, auch drei Wochen vor der Sitzung. Jetzt nur noch
+  innerhalb der letzten 48 Stunden — davor ist es Verwaltung, keine Nachricht.
+- **Gesperrte und unbestätigte Konten bekommen keine Post mehr.**
+
 ## [1.4.0] – 2026-07-25
 
 ### Hinzugefügt
