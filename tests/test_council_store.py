@@ -478,3 +478,26 @@ def test_decision_rows_always_carry_session_columns(tmp_path):
 
     # Ein expliziter kind-Filter behält Vorrang (Rückwärtskompatibilität).
     assert [d["kind"] for d in store.search_decisions(kind="subvote")] == ["subvote"]
+
+
+def test_anwesende_fraktionen_kollabieren_keine_gruppen():
+    """Rats-GRUPPEN dürfen nicht als eine ihrer Parteien erscheinen.
+
+    Die Zeile „einstimmig — diese Fraktionen waren anwesend" auf der
+    Beschluss-Seite benutzte `normalize_party`. Das macht aus „FDP/Volt" ein
+    „FDP" und aus „Gruppe DIE LINKE./Piratenpartei" ein „Die Linke" — eine
+    Behauptung über reale Personen, die so nicht stimmt. `faction_label` hält
+    Gruppen als Gruppen fest.
+    """
+    from council.parties import faction_label, normalize_party
+
+    assert normalize_party("FDP/Volt") == "FDP"                       # das alte Verhalten
+    assert faction_label("FDP/Volt") == "FDP/Volt"                    # das richtige
+    assert normalize_party("Gruppe DIE LINKE./Piratenpartei") == "Die Linke"
+    assert faction_label("Gruppe DIE LINKE./Piratenpartei") == "Die Linke/Piraten"
+    # Echte Parteien bleiben unverändert — auch die mit Schrägstrich im Namen.
+    for p in ("SPD", "CDU"):
+        assert faction_label(p) == normalize_party(p) == p
+    assert faction_label("Bündnis 90/Die Grünen") == "Grüne"
+    # Verwaltung und Gäste tauchen gar nicht auf.
+    assert faction_label("Stadtverwaltung") is None
