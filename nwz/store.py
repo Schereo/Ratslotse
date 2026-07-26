@@ -1088,6 +1088,26 @@ class Store:
             "SELECT DISTINCT owner_id FROM council_agenda_matches WHERE ksinr = ? ORDER BY owner_id",
             (ksinr,))]
 
+    def owners_subscribed_to(self, committee: str) -> list[int]:
+        """Konten mit Abo auf dieses Gremium (Design 30a, N5)."""
+        return [r[0] for r in self._conn.execute(
+            "SELECT owner_id FROM committee_subscriptions WHERE committee_name = ? ORDER BY owner_id",
+            (committee,))]
+
+    def owners_with_topic_matches_since(self, seit: str) -> list[int]:
+        """Konten mit neuen Beschluss-Treffern seit ``seit`` (Design 30a, N6).
+        JOIN topics wie überall: Treffer eines gelöschten Themas zählen nicht."""
+        return [r[0] for r in self._conn.execute(
+            """SELECT DISTINCT m.owner_id FROM council_topic_matches m
+               JOIN topics t ON t.id = m.topic_id AND t.owner_id = m.owner_id
+               WHERE m.matched_at >= ? ORDER BY m.owner_id""", (seit,))]
+
+    def topic_match_decision_ids_since(self, owner_id: int, seit: str) -> list[int]:
+        return [r[0] for r in self._conn.execute(
+            """SELECT DISTINCT m.decision_id FROM council_topic_matches m
+               JOIN topics t ON t.id = m.topic_id AND t.owner_id = m.owner_id
+               WHERE m.owner_id = ? AND m.matched_at >= ?""", (owner_id, seit))]
+
     def result_already_sent(self, ksinr: int, owner_id: int) -> bool:
         return self._conn.execute(
             "SELECT 1 FROM council_results_sent WHERE ksinr = ? AND owner_id = ?",

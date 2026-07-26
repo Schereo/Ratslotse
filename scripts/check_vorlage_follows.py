@@ -31,7 +31,7 @@ load_dotenv(ROOT / ".env")
 from council import stammdaten
 from council.scraper import CouncilScraper
 from council.store import CouncilStore
-from nwz.delivery import deliver_message
+from nwz import notify
 from nwz.store import Store
 
 NWZ_DB = ROOT / "data" / "nwz.sqlite"
@@ -111,11 +111,16 @@ def main() -> dict:
         if not neu:
             continue
         try:
-            deliver_message(
-                f, _message(f, neu, f"{APP_URL}/topics"),
-                email_subject="Ratslotse – Neues zu deinem verfolgten Vorgang",
-                push_url="/topics",
-            )
+            # Design 30a (N4): einreihen statt senden — sonst gälten weder
+            # Nachtruhe noch Tagesgrenze, und der Schalter „Verfolgte Vorgänge"
+            # in „Mein Konto" hätte keine Wirkung.
+            titel = f"{f.get('vorlage_nr') or 'Dein Vorgang'}: neue Station"
+            if not notify.einreihen(nwz, f["owner_id"], notify.N4_VORGANG, titel,
+                                    _message(f, neu, f"{APP_URL}/topics"), "/topics"):
+                # Anlass abgeschaltet — Stand trotzdem fortschreiben, sonst
+                # käme beim Einschalten die ganze Historie auf einmal.
+                nwz.mark_vorlage_follow_notified(f["id"], json.dumps(jetzt, ensure_ascii=False))
+                continue
             gemeldet += 1
             print(f"  owner {f['owner_id']} ← kvonr={f['kvonr']}: {len(neu)} neue Station(en)")
         except Exception:  # noqa: BLE001 — Zustellfehler darf den Stand nicht einfrieren
@@ -124,8 +129,9 @@ def main() -> dict:
         nwz.mark_vorlage_follow_notified(f["id"], json.dumps(jetzt, ensure_ascii=False))
 
     council.close()
+    zugestellt = notify.zustellen(nwz)
     nwz.close()
-    print(f"Fertig — {gemeldet} Benachrichtigung(en).")
+    print(f"Fertig — {gemeldet} eingereiht, {zugestellt} zugestellt.")
     return {
         "Verfolgte Vorgänge": len(kvonrs),
         "Follows": len(follows),

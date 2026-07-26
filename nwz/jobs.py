@@ -31,6 +31,13 @@ JOBS: list[dict] = [
         "max_age_h": 30,
     },
     {
+        "key": "abendmeldungen",
+        "label": "Abend-Anlässe (30a)",
+        "description": "N5 Vorabend-Erinnerung (täglich) und N6 Wochenüberblick (sonntags).",
+        "schedule": "täglich 18 Uhr",
+        "max_age_h": 30,
+    },
+    {
         "key": "check_vorlage_follows",
         "label": "Verfolgte Vorgänge",
         "description": "Neue Beratungsstationen zu Vorlagen, denen jemand folgt.",

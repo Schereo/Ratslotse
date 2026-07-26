@@ -86,6 +86,7 @@ def test_registry_deckt_die_cron_eintraege_ab():
     assert {j["key"] for j in JOBS} == {
         "check_council", "check_committees", "check_protocols", "weekly_enrich",
         "check_vorlage_follows", "remind_setup", "backup_db",
+        "abendmeldungen",   # Design 30a: N5 täglich 18 Uhr, N6 sonntags
     }
     for job in JOBS:
         assert BY_KEY[job["key"]] is job
