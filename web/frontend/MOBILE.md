@@ -107,27 +107,55 @@ Changelog-Versionsschnitt.
 
 ```bash
 cd web/frontend
-npm run build:mobile && npm run cap:sync     # ACHTUNG: teilt .next mit dem
-                                            # Dev-Server → den danach neu starten
+# Dev-Server VORHER stoppen — er teilt sich .next mit dem Build, und ein
+# paralleler Lauf hinterlässt ein kaputtes .next ("TypeError: e[o] is not a
+# function"), das nur ein `rm -rf .next` wieder heilt.
+npm run build:mobile && npm run cap:sync
 
 cd ios/App
-AUTH="-allowProvisioningUpdates \
-  -authenticationKeyPath $HOME/.appstoreconnect/private_keys/AuthKey_<KEY_ID>.p8 \
-  -authenticationKeyID <KEY_ID> -authenticationKeyIssuerID <ISSUER_ID>"
+# ACHTUNG zsh: Die Flags NICHT in eine Variable packen und unquotiert einsetzen
+# ($AUTH). zsh trennt unquotierte Expansionen — anders als bash — nicht in Wörter
+# auf, xcodebuild bekommt dann alles als ein einziges Argument und bricht ab:
+#   xcodebuild: error: invalid option '-allowProvisioningUpdates   -authent…'
+# Entweder ein Array (AUTH=(-allowProvisioningUpdates …) und "${AUTH[@]}") oder,
+# wie hier, die Flags ausschreiben.
+AUTHKEY="$HOME/.appstoreconnect/private_keys/AuthKey_<KEY_ID>.p8"
 
 xcodebuild -project App.xcodeproj -scheme App -configuration Release \
   -destination 'generic/platform=iOS' \
-  -archivePath /tmp/rl-archive/App.xcarchive $AUTH archive
+  -archivePath /tmp/rl-archive/App.xcarchive \
+  -allowProvisioningUpdates \
+  -authenticationKeyPath "$AUTHKEY" \
+  -authenticationKeyID <KEY_ID> -authenticationKeyIssuerID <ISSUER_ID> \
+  archive
 
 xcodebuild -exportArchive -archivePath /tmp/rl-archive/App.xcarchive \
   -exportPath /tmp/rl-archive/ipa \
-  -exportOptionsPlist ExportOptions.plist $AUTH      # method: app-store-connect
+  -exportOptionsPlist ExportOptions.plist \
+  -allowProvisioningUpdates \
+  -authenticationKeyPath "$AUTHKEY" \
+  -authenticationKeyID <KEY_ID> -authenticationKeyIssuerID <ISSUER_ID>
 ```
 
-`ExportOptions.plist` (nicht im Repo, einmal anlegen): `method`
-`app-store-connect`, `destination` `export`, `signingStyle` `automatic`,
-`teamID` `YM87689GUY`, `manageAppVersionAndBuildNumber` `false` — sonst zählt
-Xcode die Build-Nummer eigenmächtig hoch und das Projekt läuft auseinander.
+`ExportOptions.plist` liegt bewusst **nicht** im Repo (`.gitignore`) und wird
+einmal lokal angelegt — `manageAppVersionAndBuildNumber` muss `false` bleiben,
+sonst zählt Xcode die Build-Nummer eigenmächtig hoch und Projekt und App Store
+Connect laufen auseinander:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>method</key><string>app-store-connect</string>
+	<key>destination</key><string>export</string>
+	<key>signingStyle</key><string>automatic</string>
+	<key>teamID</key><string>YM87689GUY</string>
+	<key>manageAppVersionAndBuildNumber</key><false/>
+	<key>uploadSymbols</key><true/>
+</dict>
+</plist>
+```
 
 ```bash
 # Erst prüfen, dann hochladen — die Prüfung findet dieselben Fehler in 30 s
@@ -140,9 +168,15 @@ xcrun altool --upload-app   -f /tmp/rl-archive/ipa/App.ipa -t ios \
 
 Verarbeitung dauert ein paar Minuten. `altool` kann den Stand NICHT abfragen
 (kein `--list-builds`); die ASC-API beantwortet
-`GET /v1/builds?limit=5&sort=-uploadedDate` mit `processingState`
-(`PROCESSING` → `VALID`). Dafür braucht es ein ES256-JWT aus demselben `.p8` —
-`cryptography` genügt, PyJWT ist nicht nötig.
+`GET /v1/builds?filter[app]=<APP_ID>&limit=5&sort=-uploadedDate` mit
+`processingState` (`PROCESSING` → `VALID`). Dafür braucht es ein ES256-JWT aus
+demselben `.p8` — `cryptography` genügt, PyJWT ist nicht nötig. Achtung: Das
+Projekt-venv hat `cryptography` **nicht** (nichts in `requirements*.txt` zieht
+es), also entweder ein Wegwerf-venv anlegen oder gezielt nachinstallieren —
+nicht wundern, wenn der Import im `.venv` scheitert.
+
+Ein frisch hochgeladener Build taucht in der Liste erst nach einigen Minuten
+überhaupt auf; „nicht sichtbar" heißt also nicht „abgelehnt".
 
 **Aufs eigene iPhone** braucht es keinen TestFlight-Umweg: Das **Archiv** trägt
 noch die Entwickler-Signatur (erst der Export ersetzt sie durch die
