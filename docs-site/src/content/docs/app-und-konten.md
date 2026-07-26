@@ -270,6 +270,69 @@ Wie Themen gegen Tagesordnungen und Beschlüsse gematcht werden, steht in
 [KI-Pipeline](/docs/ki-pipeline/) und
 [Ratsdokumente & Beschlüsse](/docs/beschluesse/).
 
+### Benachrichtigungen: sechs Anlässe, vier Grenzen
+
+Der Zustellkanal sagt **wo**, die Anlässe sagen **wofür**. Beides steht in
+„Mein Konto"; die Anlass-Schalter liegen als JSON in `web_users.notify_prefs`
+(leer = Vorgaben aus `nwz/notify.py`).
+
+| Anlass | wann | Vorgabe | Auslöser |
+|---|---|---|---|
+| `n1_tagesordnung` | Tagesordnung eines abonnierten Gremiums erscheint | an | `scripts/check_committees.py` (7 Uhr) |
+| `n2_thema` | ein eigenes Thema steht auf einer Tagesordnung | an | `council/watcher.py` über `check_council.py` (8/14 Uhr) |
+| `n3_ergebnis` | zu einem gemeldeten TOP liegt das Ergebnis vor | an | `council/ergebnisse.py` am Protokoll-Import (`check_protocols.py`, 9 Uhr) |
+| `n4_vorgang` | eine verfolgte Vorlage bewegt sich | an | `scripts/check_vorlage_follows.py` |
+| `n5_vorabend` | morgen tagt ein Gremium, das dich betrifft | **aus** | `scripts/abendmeldungen.py` (18 Uhr) |
+| `n6_woche` | Wochenüberblick | **aus** | dasselbe Skript, nur sonntags |
+
+:::caution[N3 kommt spät — und das ist keine Panne]
+Beschlüsse entstehen ausschließlich aus dem **Protokoll-PDF**, und das
+erscheint Wochen nach der Sitzung. Gemessen am 26.07.2026: Von 15
+Juni-Sitzungen hatte **eine** ein Protokoll; der Verkehrsausschuss vom 08.06.
+nach 48 Tagen noch keines, während 20.04. längst vorlag. Der Rat ist schneller
+(rund 3,5 Wochen) als die Ausschüsse.
+
+Schnellere Quellen gibt es nicht: Die Sitzungsseite enthält „angenommen",
+„abgelehnt", „einstimmig" **kein einziges Mal**, und `council_beratungen.ergebnis`
+trägt nur die Beratungs*art* (`Kenntnisnahme` · `Entscheidung` · `Vorberatung`).
+Die Meldung nennt deshalb immer das **Sitzungsdatum**, statt Frische zu
+behaupten.
+:::
+
+#### Die Warteschlange
+
+Kein Anlass sendet selbst. Alle reihen über `nwz.notify.einreihen()` in
+`notification_queue` ein; zugestellt wird zentral in `notify.zustellen()`, das
+die Cron-Jobs am Ende ihres Laufs aufrufen. Ein eigener Cron dafür ist nicht
+nötig — `check_committees` läuft um 7 Uhr und leert damit, was über Nacht liegen
+blieb.
+
+| Grenze | Regel |
+|---|---|
+| **Zwei am Tag** | pro Person, nicht pro Anlass. Was darüber hinausgeht, nimmt die letzte freie Zustellung als **ein Bündel** mit; ein Bündel zählt als eine Zustellung. Nichts geht verloren — der Rest kommt morgen. |
+| **Nachtruhe 21–7 Uhr** | Ortszeit (`zoneinfo`, Europe/Berlin). Was abends anfällt, bekommt `deliver_after` auf 7 Uhr. |
+| **Nie ohne Ereignis** | Es gibt keine Funktion, die ohne Ratsvorgang einreiht. Abzeichen und Quiz-Serien bleiben in der App. |
+| **Immer ein Ziel** | `url` ist Pflichtfeld; `einreihen()` wirft ohne. Antippen öffnet den Beschluss oder die Tagesordnung, nie die Startseite. |
+
+```
+notification_queue
+  id PK, owner_id, kind, title, body_html, url,
+  created_at, deliver_after, sent_at, bundled
+```
+
+Zwei Regeln verhindern Dubletten: `check_committees` überspringt ein Konto, das
+für dieselbe Sitzung schon einen Themen-Treffer hat (**Themen-Treffer gewinnt**),
+und eine Änderungsmeldung geht nur noch **≤ 48 h vor der Sitzung** raus.
+
+| Endpunkt | Zweck |
+|---|---|
+| `GET /api/account/notifications` | Anlässe mit Beschriftung, Vorgabe und Zustand + die geltenden Grenzen |
+| `PUT /api/account/notifications` | Schalter setzen; unbekannte Schlüssel werden verworfen |
+
+Die Oberfläche pflegt **keine** eigene Anlass-Liste — sie rendert, was der
+Endpunkt liefert. Sonst fiele ein neu dazugekommener Anlass erst auf, wenn sich
+jemand über eine unabschaltbare Meldung ärgert.
+
 ### Abzeichen
 
 `web/backend/app/routers/badges.py` — **acht** Lotsen-Abzeichen, kein Ranking,
