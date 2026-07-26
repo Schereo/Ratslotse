@@ -125,6 +125,16 @@ CREATE TABLE IF NOT EXISTS notification_queue (
 );
 CREATE INDEX IF NOT EXISTS idx_notify_offen ON notification_queue(owner_id, sent_at, deliver_after);
 
+-- N3 „Es ist entschieden" (Design 30a): je Sitzung und Konto einmal. Eigene
+-- Tabelle statt council_alerts_sent, weil die in der anderen Datenbank liegt
+-- und keine owner-Spalte hat.
+CREATE TABLE IF NOT EXISTS council_results_sent (
+    ksinr    INTEGER NOT NULL,
+    owner_id INTEGER NOT NULL,
+    sent_at  TEXT NOT NULL,
+    PRIMARY KEY (ksinr, owner_id)
+);
+
 CREATE TABLE IF NOT EXISTS article_topic_matches (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
     owner_id         INTEGER NOT NULL,
@@ -179,6 +189,11 @@ CREATE TABLE IF NOT EXISTS web_users (
     email_verified   INTEGER NOT NULL DEFAULT 0,
     apple_sub        TEXT,                       -- Sign in with Apple: stabile Apple-User-ID (RL-1002)
     password_set     INTEGER NOT NULL DEFAULT 1, -- 0 = Apple-only-Konto ohne selbst gewähltes Passwort
+    -- Design 30a: welche der sechs Anlässe gewünscht sind, als JSON
+    -- {"n1_tagesordnung": true, …}. NULL = alles auf Vorgabe (NOTIFY_DEFAULTS).
+    -- Eigene Spalte statt der onboarding-/badges-JSON, damit sich die drei
+    -- nicht gegenseitig überschreiben.
+    notify_prefs     TEXT,
     created_at       TEXT NOT NULL
 );
 
@@ -361,6 +376,7 @@ USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     ("committee_subscriptions", "owner_id"),
     ("vorlage_follows", "owner_id"),
     ("notification_queue", "owner_id"),
+    ("council_results_sent", "owner_id"),
     ("topic_hits_seen", "owner_id"),
     ("council_topic_matches", "owner_id"),
     ("council_agenda_matches", "owner_id"),
@@ -479,6 +495,9 @@ class Store:
                     self._conn.execute(
                         "ALTER TABLE web_users ADD COLUMN password_set INTEGER NOT NULL DEFAULT 1"
                     )
+                if "notify_prefs" not in wu_cols:
+                    # Design 30a: die sechs Anlass-Schalter als JSON.
+                    self._conn.execute("ALTER TABLE web_users ADD COLUMN notify_prefs TEXT")
                 # Einrichtungs-Assistent (Design 26a): welcher Schritt zuletzt
                 # erreicht wurde. Eigene Spalten statt der onboarding-JSON —
                 # die gehört der „Erste Schritte"-Tour, und der Erinnerungs-Cron
@@ -1055,6 +1074,61 @@ class Store:
             o = by_owner.get(pr["owner_id"])
             if o is not None:
                 o["push_tokens"].append({"token": pr["token"], "platform": pr["platform"]})
+
+    # ---- Ergebnis-Meldung N3 (Design 30a) ----
+
+    def owners_with_agenda_match(self, ksinr: int) -> list[int]:
+        """Konten, denen zu dieser Sitzung schon ein TOP gemeldet wurde.
+
+        Genau die bekommen später das Ergebnis: Der Vorgang, den sie kennen,
+        bekommt seinen Abschluss — wer nie etwas dazu gehört hat, wird nicht
+        nachträglich behelligt.
+        """
+        return [r[0] for r in self._conn.execute(
+            "SELECT DISTINCT owner_id FROM council_agenda_matches WHERE ksinr = ? ORDER BY owner_id",
+            (ksinr,))]
+
+    def result_already_sent(self, ksinr: int, owner_id: int) -> bool:
+        return self._conn.execute(
+            "SELECT 1 FROM council_results_sent WHERE ksinr = ? AND owner_id = ?",
+            (ksinr, owner_id)).fetchone() is not None
+
+    def mark_result_sent(self, ksinr: int, owner_id: int) -> None:
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT OR IGNORE INTO council_results_sent (ksinr, owner_id, sent_at) VALUES (?,?,?)",
+                (ksinr, owner_id, now))
+
+    # ---- Anlass-Schalter (Design 30a/E) ----
+
+    def get_notify_prefs(self, owner_id: int) -> dict:
+        """Die gespeicherten Schalter eines Kontos. Leeres dict = alles auf
+        Vorgabe; nwz.notify.gewuenscht() legt die Vorgabewerte darüber."""
+        import json as _json
+
+        row = self._conn.execute(
+            "SELECT notify_prefs FROM web_users WHERE id = ?", (owner_id,)).fetchone()
+        if not row or not row[0]:
+            return {}
+        try:
+            wert = _json.loads(row[0])
+            return wert if isinstance(wert, dict) else {}
+        except (ValueError, TypeError):
+            return {}
+
+    def set_notify_prefs(self, owner_id: int, prefs: dict) -> dict:
+        """Schalter setzen. Gespeichert wird nur, was bekannt ist — so wächst
+        die Spalte nicht mit Müll, wenn jemand am Client herumreicht."""
+        import json as _json
+
+        from nwz.notify import NOTIFY_DEFAULTS
+
+        sauber = {k: bool(v) for k, v in prefs.items() if k in NOTIFY_DEFAULTS}
+        with self._conn:
+            self._conn.execute("UPDATE web_users SET notify_prefs = ? WHERE id = ?",
+                               (_json.dumps(sauber), owner_id))
+        return sauber
 
     # ---- Benachrichtigungs-Warteschlange (Design 30a) ----
 

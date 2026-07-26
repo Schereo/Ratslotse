@@ -155,6 +155,13 @@ class DeliveryUpdate(BaseModel):
     delivery_channel: str = Field(pattern="^(email|both|push)$")
 
 
+class NotifyPrefsIn(BaseModel):
+    """Die sechs Anlass-Schalter aus Design 30a/E. Unbekannte Schlüssel wirft
+    der Store weg — hier bleibt es bewusst offen, damit ein neu dazugekommener
+    Anlass keinen 422 auslöst."""
+    prefs: dict[str, bool]
+
+
 # ---- feedback ----
 class FeedbackIn(BaseModel):
     kind: str = Field(pattern="^(feature|bug|other)$")

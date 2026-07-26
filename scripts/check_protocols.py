@@ -31,8 +31,10 @@ from scripts.generate_simple_summaries import process as generate_simple  # noqa
 from scripts.rate_impact import process as rate_impact  # noqa: E402
 from scripts.rate_interest import process as rate_interest  # noqa: E402
 from scripts.track_goals import process as track_goals  # noqa: E402
+from nwz import notify  # noqa: E402
 
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
+NWZ_DB = ROOT / "data" / "nwz.sqlite"
 LOOKBACK_DAYS = 90
 
 
@@ -98,6 +100,20 @@ def main() -> dict:
     wichtig = _store.backfill_importance()
     print(f"Wichtig-Score: {wichtig} Beschlüsse berechnet.")
     print(f"FTS rebuilt: {_store.rebuild_fts()} decisions indexed.")
+
+    # N3 „Es ist entschieden" (Design 30a): Erst hier — beim Protokoll-Import —
+    # steht das Ergebnis überhaupt fest. Die Sitzung selbst liegt dann meist
+    # Wochen zurück (gemessen: Ausschüsse 6+ Wochen), deshalb nennt die Meldung
+    # das Sitzungsdatum. Zugestellt wird direkt danach, unter den Grenzen aus
+    # nwz/notify.py.
+    from nwz.store import Store as NwzStore
+    from council.ergebnisse import melde_ergebnisse
+
+    nwz = NwzStore(NWZ_DB)
+    ergebnisse = melde_ergebnisse(_store, nwz, stats.get("ksinrs") or [])
+    zugestellt = notify.zustellen(nwz)
+    nwz.close()
+    print(f"Ergebnis-Meldungen: {ergebnisse} eingereiht, {zugestellt} zugestellt.")
     _store.close()
     return {
         "Protokolle geparst": stats["parsed"],
@@ -107,6 +123,7 @@ def main() -> dict:
         "Tragweite bewertet": prated,
         "Vorlagen geladen": vstats["fetched"],
         "Wichtig-Score neu": wichtig,
+        "Ergebnis-Meldungen": ergebnisse,
         "LLM-Kosten $": round(cstats["cost"] + gstats["cost"], 4),
     }
 

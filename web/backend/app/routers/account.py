@@ -11,7 +11,8 @@ from nwz.store import Store
 
 from ..config import get_settings
 from ..deps import get_store, require_active
-from ..schemas import ChangePasswordRequest, DeleteAccountRequest, DeliveryUpdate, UserOut
+from ..schemas import (ChangePasswordRequest, DeleteAccountRequest, DeliveryUpdate,
+                       NotifyPrefsIn, UserOut)
 from ..security import hash_password, verify_password
 from .auth import _set_auth_cookie, _to_out
 
@@ -82,6 +83,40 @@ def set_delivery(
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "Keine E-Mail-Adresse hinterlegt.")
     store.set_delivery_channel(user["id"], channel)
     return _to_out(store.get_web_user_by_id(user["id"]))
+
+
+@router.get("/notifications")
+def get_notifications(
+    user: dict = Depends(require_active),
+    store: Store = Depends(get_store),
+) -> dict:
+    """Was diese Person wovon hören will (Design 30a/E).
+
+    Liefert die Anlässe mitsamt Beschriftung und Vorgabe, damit die Oberfläche
+    keine zweite Liste pflegen muss — eine vergessene Art fällt sonst erst auf,
+    wenn sich jemand über eine unabschaltbare Meldung ärgert.
+    """
+    from nwz.notify import NACHTRUHE_AB, NACHTRUHE_BIS, NOTIFY_DEFAULTS, NOTIFY_LABELS, TAGESGRENZE
+
+    gesetzt = store.get_notify_prefs(user["id"])
+    return {
+        "kinds": [
+            {"key": k, "label": NOTIFY_LABELS[k][0], "hint": NOTIFY_LABELS[k][1],
+             "default": NOTIFY_DEFAULTS[k], "enabled": bool(gesetzt.get(k, NOTIFY_DEFAULTS[k]))}
+            for k in NOTIFY_DEFAULTS
+        ],
+        "limits": {"per_day": TAGESGRENZE, "quiet_from": NACHTRUHE_AB, "quiet_to": NACHTRUHE_BIS},
+    }
+
+
+@router.put("/notifications")
+def set_notifications(
+    body: NotifyPrefsIn,
+    user: dict = Depends(require_active),
+    store: Store = Depends(get_store),
+) -> dict:
+    store.set_notify_prefs(user["id"], body.prefs)
+    return get_notifications(user=user, store=store)
 
 
 @router.post("/change-password", response_model=UserOut)
