@@ -16,6 +16,20 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   seine Treffer, und der Zähler ignoriert Reste gelöschter Themen grundsätzlich.
   Bestehende Altlasten sind aufgeräumt. (#340)
 
+### Hinzugefügt
+- **Du erfährst jetzt auch, wie es ausgegangen ist.** Bisher meldete sich die App
+  *vor* der Debatte und schwieg beim Beschluss — der Moment, auf den alles
+  zulief, kam nie an. Neu: **„Es ist entschieden"** für die Tagesordnungspunkte,
+  zu denen du vorher schon etwas gehört hast, mit Ergebnis und
+  Abstimmungsverhältnis. Weil Beschlüsse erst mit dem Sitzungsprotokoll
+  feststehen und das oft Wochen dauert, **nennt die Meldung das Sitzungsdatum**
+  („Im Verkehrsausschuss am 8. Juni angenommen") statt Frische zu behaupten.
+- **Du bestimmst, wovon du hörst.** „Mein Konto" zeigt jetzt erst **wo**
+  (E-Mail, Push) und darunter **wofür** — sechs Anlässe, jeder einzeln
+  abschaltbar: Tagesordnung in deinen Gremien, deine Themen auf einer
+  Tagesordnung, Ergebnisse, verfolgte Vorgänge, Erinnerung am Vorabend und
+  Wochenüberblick. Die letzten beiden sind ab Werk aus.
+
 ### Geändert
 - **Höchstens zwei Mitteilungen am Tag — und nachts keine.** Bisher schickte
   jeder Anlass sofort los: Wer mehrere Ausschüsse abonniert und Themen pflegt,

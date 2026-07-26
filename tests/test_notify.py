@@ -216,3 +216,86 @@ def test_aenderungsmeldung_nur_kurz_vor_der_sitzung():
     # Unbrauchbare Angaben blockieren nicht: lieber melden als schweigen.
     assert modul._stunden_bis("", "") == 0.0
     assert modul._stunden_bis(in_drei_wochen, "kaputt") > 48   # 18-Uhr-Annahme
+
+
+# ---- Die Schalter (30a/E) ---------------------------------------------------
+
+def test_abgeschalteter_anlass_wird_gar_nicht_erst_eingereiht(store, monkeypatch):
+    """Sonst zählte er gegen die Tagesgrenze, ohne je zugestellt zu werden."""
+    owner = _konto(store)
+    store.set_notify_prefs(owner, {notify.N1_TAGESORDNUNG: False})
+    monkeypatch.setattr("nwz.delivery.deliver_message", lambda *a, **k: None)
+
+    assert notify.einreihen(store, owner, notify.N1_TAGESORDNUNG, "x", "<p>x</p>",
+                            "/council", jetzt=_zeit("2026-08-18", 9)) == 0
+    # Ein anderer Anlass bleibt unberührt.
+    assert notify.einreihen(store, owner, notify.N3_ERGEBNIS, "y", "<p>y</p>",
+                            "/council/decision?id=1", jetzt=_zeit("2026-08-18", 9)) > 0
+    assert [p["kind"] for p in store.due_notifications(owner, "2999-01-01")] == ["n3_ergebnis"]
+
+
+def test_vorgaben_aus_dem_artboard():
+    """Drei an, drei aus — N5/N6 bewusst aus."""
+    an = {k for k, v in notify.NOTIFY_DEFAULTS.items() if v}
+    aus = {k for k, v in notify.NOTIFY_DEFAULTS.items() if not v}
+    assert an == {notify.N1_TAGESORDNUNG, notify.N2_THEMA, notify.N3_ERGEBNIS, notify.N4_VORGANG}
+    assert aus == {notify.N5_VORABEND, notify.N6_WOCHE}
+    # Jede Art hat eine Beschriftung — sonst fehlte sie stumm in den Einstellungen.
+    assert set(notify.NOTIFY_LABELS) == set(notify.NOTIFY_DEFAULTS)
+
+
+def test_unbekannte_schalter_landen_nicht_in_der_datenbank(store):
+    owner = _konto(store)
+    store.set_notify_prefs(owner, {notify.N5_VORABEND: True, "beliebig": True})
+    assert store.get_notify_prefs(owner) == {notify.N5_VORABEND: True}
+
+
+# ---- N3: die Ergebnis-Meldung ----------------------------------------------
+
+def test_ergebnis_meldung_nennt_das_sitzungsdatum(store, monkeypatch, tmp_path):
+    """Sie kommt Wochen nach der Sitzung — der Text darf keine Frische behaupten."""
+    from council.ergebnisse import melde_ergebnisse
+    from council.scraper import AgendaItem, CouncilSession
+    from council.store import CouncilStore
+
+    owner = _konto(store)
+    thema = store.add_topic(owner, "Radwege", "Ausbau von Radwegen")
+    store.replace_agenda_matches(owner, 4652, "h1", {thema.id: ["Ö 6"]})
+
+    council = CouncilStore(tmp_path / "council.sqlite")
+    council.save_session(CouncilSession(4652, "Verkehrsausschuss", "2026-06-08", "17:00", "Fleiwa",
+                                        agenda_items=[AgendaItem("Ö 6", "Radweg Nadorster Straße")]))
+    with council._conn:
+        council._insert_decision(4652, 0, "decision", None, "Ö 6", "Radweg Nadorster Straße",
+                                 "Wird ausgebaut.", "angenommen", "mehrheitlich", 11, 0,
+                                 ["SPD"], None, None, None)
+
+    assert melde_ergebnisse(council, store, [4652]) == 1
+    posten = store.due_notifications(owner, "2999-01-01")
+    assert len(posten) == 1
+    p = posten[0]
+    assert p["kind"] == "n3_ergebnis"
+    assert p["title"] == "Radweg Nadorster Straße: angenommen"
+    assert "Verkehrsausschuss am 8. Juni" in p["body_html"]      # Datum steht drin
+    assert "mehrheitlich" in p["body_html"] and "11 dagegen" in p["body_html"]
+    assert p["url"].startswith("/council/decision?id=")           # Grenze 4
+
+    # Zweiter Lauf meldet nichts nach.
+    assert melde_ergebnisse(council, store, [4652]) == 0
+    council.close()
+
+
+def test_ohne_vorherige_meldung_kein_ergebnis(store, tmp_path):
+    """Wer nie etwas zu dieser Sitzung gehört hat, wird nicht nachträglich behelligt."""
+    from council.ergebnisse import melde_ergebnisse
+    from council.scraper import CouncilSession
+    from council.store import CouncilStore
+
+    _konto(store)
+    council = CouncilStore(tmp_path / "council.sqlite")
+    council.save_session(CouncilSession(4652, "Verkehrsausschuss", "2026-06-08", "17:00", "Fleiwa"))
+    with council._conn:
+        council._insert_decision(4652, 0, "decision", None, "Ö 6", "Radweg", "x",
+                                 "angenommen", None, None, None, [], None, None, None)
+    assert melde_ergebnisse(council, store, [4652]) == 0
+    council.close()

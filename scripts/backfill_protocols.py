@@ -93,6 +93,7 @@ def process_range(
     print(f"{len(candidates)} session(s) to check with up to {workers} workers.", flush=True)
 
     parsed = no_protocol = failed = 0
+    frisch: list[int] = []   # geparste ksinr — Auslöser für N3 (Design 30a)
     tok_in = tok_out = 0
     with ThreadPoolExecutor(max_workers=workers) as ex:
         futures = {ex.submit(_process_one, scraper, k, since, until, today): k for k in candidates}
@@ -121,6 +122,7 @@ def process_range(
             tok_in += r["usage"].prompt_tokens
             tok_out += r["usage"].completion_tokens
             parsed += 1
+            frisch.append(r["ksinr"])
             n_sub = sum(len(d.get("sub_votes") or []) for d in data.get("decisions", []))
             print(f"  [{i}/{len(candidates)}] {r['session'].session_date} "
                   f"{r['session'].committee[:36]} → {len(data.get('decisions', []))} Beschl. "
@@ -129,7 +131,8 @@ def process_range(
     store.close()
     cost = tok_in / 1e6 * PRICE_IN + tok_out / 1e6 * PRICE_OUT
     return {"parsed": parsed, "no_protocol": no_protocol, "failed": failed,
-            "tokens_in": tok_in, "tokens_out": tok_out, "cost": cost}
+            "tokens_in": tok_in, "tokens_out": tok_out, "cost": cost,
+            "ksinrs": frisch}
 
 
 def main() -> int:

@@ -39,14 +39,50 @@ NACHTRUHE_AB = 21   # ab 21:00 Ortszeit geht nichts mehr raus
 NACHTRUHE_BIS = 7   # … bis 7:00 Ortszeit
 TAGESGRENZE = 2     # höchstens zwei Zustellungen pro Person und Tag
 
-#: Anlässe aus 30a/B. Der Schlüssel steht so in der Warteschlange und später in
-#: den Schaltern der Einstellungs-Seite.
+#: Anlässe aus 30a/B. Der Schlüssel steht so in der Warteschlange und in den
+#: Schaltern der Einstellungs-Seite.
 N1_TAGESORDNUNG = "n1_tagesordnung"
 N2_THEMA = "n2_thema"
 N3_ERGEBNIS = "n3_ergebnis"
 N4_VORGANG = "n4_vorgang"
 N5_VORABEND = "n5_vorabend"
 N6_WOCHE = "n6_woche"
+
+#: Vorgaben aus 30a/B: drei an, drei aus. N5 und N6 sind bewusst aus — die
+#: meisten brauchen keinen Kalender, sondern das Ergebnis; und wer den
+#: Wochenüberblick will, schaltet dafür N1–N3 ab.
+NOTIFY_DEFAULTS: dict[str, bool] = {
+    N1_TAGESORDNUNG: True,
+    N2_THEMA: True,
+    N3_ERGEBNIS: True,
+    N4_VORGANG: True,
+    N5_VORABEND: False,
+    N6_WOCHE: False,
+}
+
+#: Beschriftungen für die Einstellungs-Seite (30a/E) — hier, damit Backend und
+#: Oberfläche dieselbe Liste benutzen und keine Art vergessen wird.
+NOTIFY_LABELS: dict[str, tuple[str, str]] = {
+    N1_TAGESORDNUNG: ("Tagesordnung in meinen Gremien",
+                      "Sobald ein abonniertes Gremium seine Tagesordnung veröffentlicht"),
+    N2_THEMA: ("Meine Themen auf einer Tagesordnung",
+               "Wenn ein Thema von dir auf den Tisch kommt — auch in Gremien ohne Abo"),
+    N3_ERGEBNIS: ("Ergebnisse zu meinen Themen",
+                  "Wenn der Rat entschieden hat. Kommt mit dem Protokoll, oft erst Wochen später"),
+    N4_VORGANG: ("Verfolgte Vorgänge",
+                 "Neue Stationen einer Vorlage, der du folgst — endet automatisch"),
+    N5_VORABEND: ("Erinnerung am Vorabend",
+                  "18 Uhr, wenn morgen etwas ansteht"),
+    N6_WOCHE: ("Wochenüberblick",
+               "Sonntag 18 Uhr, alles in einer Nachricht"),
+}
+
+
+def gewuenscht(store, owner_id: int, art: str) -> bool:
+    """Will dieses Konto diesen Anlass? Unbekannte Arten gelten als gewünscht —
+    ein neuer Anlass soll nicht versehentlich still sein."""
+    prefs = store.get_notify_prefs(owner_id)
+    return bool(prefs.get(art, NOTIFY_DEFAULTS.get(art, True)))
 
 
 def _jetzt(jetzt: datetime | None = None) -> datetime:
@@ -89,6 +125,10 @@ def einreihen(store, owner_id: int, kind: str, titel: str, html: str, url: str,
     """
     if not url:
         raise ValueError("Jede Benachrichtigung braucht ein Ziel (30a, Grenze 4).")
+    # Abgeschaltete Anlässe gar nicht erst einreihen — sonst zählten sie
+    # gegen die Tagesgrenze, ohne je zugestellt zu werden.
+    if not gewuenscht(store, owner_id, kind):
+        return 0
     n = _jetzt(jetzt)
     return store.enqueue_notification(
         owner_id=owner_id, kind=kind, title=titel, body_html=html, url=url,
