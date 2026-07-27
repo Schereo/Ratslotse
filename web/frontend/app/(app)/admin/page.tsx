@@ -718,7 +718,7 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
           {filtered.map((u) => {
             const sig = activitySignal(u.last_seen);
             const chips = [
-              u.n_topics > 0 && `${u.n_topics} Themen`,
+              u.n_topics > 0 && `${u.n_topics} ${u.n_topics === 1 ? "Thema" : "Themen"}`,
               u.n_ki > 0 && `${u.n_ki} KI-Fragen`,
               u.n_abos > 0 && `${u.n_abos} Abos`,
               u.n_quiz > 0 && "Quiz",

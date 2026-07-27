@@ -538,6 +538,21 @@ def _preview_datum(iso: str | None) -> str:
     return f"{teile[2]}.{teile[1]}.{teile[0]}" if len(teile) == 3 else ""
 
 
+def _kuerzen(text: str, grenze: int) -> str:
+    """Auf Wortgrenze kürzen, mit Auslassungszeichen.
+
+    Beschlusstitel aus dem Ratsinformationssystem werden sehr lang — der volle
+    Amtstitel eines Bebauungsplans kommt auf über 250 Zeichen. Messenger und
+    Suchmaschinen zeigen aber nur die ersten rund 60–90; ungekürzt sieht die
+    Vorschaukarte aus wie ein Fehler.
+    """
+    text = text.strip()
+    if len(text) <= grenze:
+        return text
+    schnitt = text[:grenze].rsplit(" ", 1)[0].rstrip(" ,;:–-")
+    return f"{schnitt or text[:grenze].rstrip()}…"
+
+
 @router.get("/preview/{kind}/{key:path}")
 def preview(kind: str, key: str, store: CouncilStore = Depends(get_council_store)) -> dict:
     """Titel + Kurzfassung für die Link-Vorschau — **ohne Anmeldung**.
@@ -561,6 +576,13 @@ def preview(kind: str, key: str, store: CouncilStore = Depends(get_council_store
         ergebnis = _PREVIEW_OUTCOME.get(d.get("outcome") or "")
         kopf = " · ".join(x for x in (d.get("committee"), _preview_datum(d.get("session_date"))) if x)
         satz = (d.get("simple_summary") or d.get("summary") or d.get("beschluss") or "").strip()
+        # Erst kürzen, dann das Ergebnis anhängen: Es ist die wertvollste
+        # Information der Karte und darf nie dem Rotstift zum Opfer fallen.
+        titel = _kuerzen(titel, 90)
+        # Ohne Beschlusstext blieb hier „Gremium · Datum." stehen — ein Satz,
+        # der mitten im Nichts endet. Dann lieber sagen, was die Seite bietet.
+        if not satz:
+            satz = "Tagesordnungspunkt, Ergebnis und Zusammenhang im Ratslotse."
         return {
             "title": f"{titel} — {ergebnis}" if ergebnis else titel,
             "description": " ".join(x for x in (f"{kopf}." if kopf else "", satz) if x)[:300],

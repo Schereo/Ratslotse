@@ -272,7 +272,7 @@ function QuizSetup({ catalog, starting, onStart, onCancel }: {
                   )}
                   <span className={cn("block font-display text-[15px] font-bold", active && "text-primary")}>WB {w.key}</span>
                   <span className={cn("block text-[10.5px]", active ? "text-primary/80" : "text-muted-foreground")}>
-                    {w.questions} Fragen{w.points ? ` · ${w.points} P` : ""}
+                    {w.questions} {w.questions === 1 ? "Frage" : "Fragen"}{w.points ? ` · ${w.points} P` : ""}
                   </span>
                 </button>
               );
@@ -363,7 +363,7 @@ function QuizSetup({ catalog, starting, onStart, onCancel }: {
           <Mascot decorative pose="point" className="hidden h-11 w-11 shrink-0 sm:block" />
           <p className="min-w-0 flex-1 text-sm text-muted-foreground">
             {areaCount ? (
-              <><strong className="font-semibold text-foreground">{totalQuestions} Fragen</strong> {summary}</>
+              <><strong className="font-semibold text-foreground">{totalQuestions} {totalQuestions === 1 ? "Frage" : "Fragen"}</strong> {summary}</>
             ) : summary}
           </p>
           <Button onClick={start} disabled={!areaCount || starting} className="shrink-0">

@@ -219,7 +219,8 @@ function RecapCard({ r, open, onToggle }: { r: FieldRecap; open: boolean; onTogg
         <p className="mt-3 flex-1 text-sm leading-relaxed text-muted-foreground">{r.summary}</p>
         <Link href={href}
           className="mt-3 inline-flex w-fit items-center gap-1 border-t border-border pt-2.5 text-xs font-medium text-muted-foreground transition-colors hover:text-primary">
-          Die {r.n_decisions} Beschlüsse dahinter <ArrowRight className="h-3 w-3" />
+          {r.n_decisions === 1 ? "Der Beschluss dahinter" : `Die ${r.n_decisions} Beschlüsse dahinter`}{" "}
+          <ArrowRight className="h-3 w-3" />
         </Link>
       </div>
     );
@@ -272,7 +273,7 @@ function RecapCard({ r, open, onToggle }: { r: FieldRecap; open: boolean; onTogg
             <span className="text-xs font-medium text-muted-foreground">Einklappen</span>
             <Link href={href} onClick={(e) => e.stopPropagation()}
               className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-              {r.n_decisions} Beschlüsse <ArrowRight className="h-3 w-3" />
+              {r.n_decisions} {r.n_decisions === 1 ? "Beschluss" : "Beschlüsse"} <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
         </>

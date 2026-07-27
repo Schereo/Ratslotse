@@ -7,6 +7,30 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Behoben
+- **Benachrichtigungen gehen nicht mehr verloren, wenn der Versand klemmt.**
+  Fiel der Mailversand aus, galt die Meldung trotzdem als zugestellt — sie war
+  damit für immer weg, und zwar genau die, wegen der man die App hat („dein
+  Thema steht auf der Tagesordnung"). Jetzt bleibt sie liegen und wird beim
+  nächsten Lauf erneut versucht. Außerdem konnte ein Fehler bei einem Konto
+  allen dahinter die Post des Tages kosten; jedes Konto steht jetzt für sich.
+- **Beim Löschen eines Kontos bleibt nichts mehr zurück.** In der zweiten
+  Datenbank stand weiterhin, welche Sitzungen diesem Konto gemeldet worden
+  waren.
+- **Die Vorschaukarte geteilter Links bleibt lesbar.** Amtliche Beschlusstitel
+  werden über 250 Zeichen lang und sprengten die Karte in Messengern; sie
+  werden jetzt gekürzt — das Ergebnis („angenommen") bleibt dabei immer
+  stehen. Fehlt der Beschlusstext, endete die Beschreibung mitten im Nichts.
+- **„1 TOPs", „1 Fragen", „1 Beschlüsse"** — Einzahl wird jetzt als Einzahl
+  geschrieben, auf dem Dashboard, in der Sitzungsleiste, bei Themen und Quiz.
+- **Auf der „nicht gefunden"-Seite passte der Text nicht zum Gesuchten.** Bei
+  einem Thema stand dort „Vielleicht wurde **er** zusammengeführt"; Gästen bot
+  sie außerdem eine Suche an, die hinter der Anmeldung endete.
+- **Nach dem Anmelden geht es dorthin zurück, wo man hinwollte** — nicht mehr
+  stumpf aufs Dashboard.
+- **Unsinnig große Zahlen in der Adresse** (`…/decision/99999999999999999999`)
+  beantwortet der Server jetzt mit „nicht gefunden" statt mit einem Fehler.
+
 ### Geändert
 - **Geteilte Links lassen sich jetzt lesen, ohne sich anzumelden.** Wer einen
   Beschluss weiterreichte, schickte die Empfängerin bisher zuerst ins
