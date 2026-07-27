@@ -158,47 +158,78 @@ def zustellen(store, jetzt: datetime | None = None, stats: dict | None = None) -
 
     Gibt die Zahl der tatsächlich verschickten Nachrichten zurück (ein Bündel
     zählt als eine). Alles, was heute nicht mehr durchpasst, bleibt in der
-    Warteschlange und kommt morgen im Bündel mit.
+    Warteschlange und kommt morgen im Bündel mit. Was gar nicht rausging (etwa
+    weil der Mailversand streikt), bleibt liegen und wird erneut versucht —
+    siehe ``_zustellen_fuer``.
     """
-    from nwz.delivery import deliver_message
-
     n = _jetzt(jetzt)
     if ist_nachtruhe(n):
         return 0
 
     heute = _tag(n)
+    jetzt_iso = n.isoformat(timespec="seconds")
     verschickt = 0
-    for owner_id in store.owners_with_due_notifications(n.isoformat(timespec="seconds")):
-        owner = store.get_owner_delivery(owner_id)
-        if not owner:
-            continue
-        offen = store.due_notifications(owner_id, n.isoformat(timespec="seconds"))
-        if not offen:
-            continue
-
-        frei = TAGESGRENZE - store.notifications_sent_on(owner_id, heute)
-        if frei <= 0:
-            logger.info("owner %s: Tagesgrenze erreicht, %d warten auf morgen",
-                        owner_id, len(offen))
-            continue
-
-        # Passt alles einzeln? Sonst nimmt die letzte freie Zustellung den Rest
-        # als ein Bündel mit — „ab der dritten wird gebündelt statt gestapelt".
-        einzeln = offen if len(offen) <= frei else offen[: frei - 1]
-        rest = offen[len(einzeln):]
-
-        for p in einzeln:
-            deliver_message(owner, p["body_html"], email_subject=p["title"], push_url=p["url"])
-            store.mark_notification_sent([p["id"]], n.isoformat(timespec="seconds"))
-            verschickt += 1
-
-        if rest:
-            titel, html, url = _buendel(rest)
-            deliver_message(owner, html, email_subject=titel, push_url=url)
-            store.mark_notification_sent([p["id"] for p in rest], n.isoformat(timespec="seconds"),
-                                         bundled=True)
-            verschickt += 1
+    for owner_id in store.owners_with_due_notifications(jetzt_iso):
+        # Ein Konto darf den Lauf nicht abbrechen. Vorher riss ein einzelner
+        # Fehler (kaputter Datensatz, Ausfall beim Versand) alle nachfolgenden
+        # Konten mit — die bekamen an diesem Tag gar nichts mehr.
+        try:
+            verschickt += _zustellen_fuer(store, owner_id, heute, jetzt_iso)
+        except Exception:   # noqa: BLE001 — bewusst breit, s. o.
+            logger.exception("Zustellung für Konto %s fehlgeschlagen", owner_id)
 
     if stats is not None:
         stats["Zugestellte Benachrichtigungen"] = verschickt
+    return verschickt
+
+
+def _zustellen_fuer(store, owner_id: int, heute: str, jetzt_iso: str) -> int:
+    """Die fälligen Meldungen *eines* Kontos. Gibt die Zahl der Zustellungen zurück."""
+    from nwz.delivery import deliver_message
+
+    owner = store.get_owner_delivery(owner_id)
+    if not owner:
+        return 0
+    offen = store.due_notifications(owner_id, jetzt_iso)
+    if not offen:
+        return 0
+
+    frei = TAGESGRENZE - store.notifications_sent_on(owner_id, heute)
+    if frei <= 0:
+        logger.info("owner %s: Tagesgrenze erreicht, %d warten auf morgen",
+                    owner_id, len(offen))
+        return 0
+
+    # Passt alles einzeln? Sonst nimmt die letzte freie Zustellung den Rest
+    # als ein Bündel mit — „ab der dritten wird gebündelt statt gestapelt".
+    einzeln = offen if len(offen) <= frei else offen[: frei - 1]
+    rest = offen[len(einzeln):]
+    verschickt = 0
+
+    def _abschicken(posten_ids: list[int], html: str, titel: str, url: str, gebuendelt: bool) -> bool:
+        """Einmal zustellen und das Ergebnis verbuchen.
+
+        ``deliver_message`` schluckt Fehler und meldet über den Rückgabewert,
+        welche Kanäle tatsächlich bedient wurden. Eine leere Liste heißt: Es ist
+        **nichts** rausgegangen. Früher wurde trotzdem ``sent_at`` gesetzt — ein
+        Resend-Ausfall ließ Meldungen also lautlos für immer verschwinden.
+        """
+        kanaele = deliver_message(owner, html, email_subject=titel, push_url=url)
+        if not kanaele:
+            store.bump_notification_attempts(posten_ids)
+            logger.warning("owner %s: Zustellung erfolglos, %d Meldung(en) bleiben in der "
+                           "Warteschlange", owner_id, len(posten_ids))
+            return False
+        store.mark_notification_sent(posten_ids, jetzt_iso, bundled=gebuendelt)
+        return True
+
+    for p in einzeln:
+        if _abschicken([p["id"]], p["body_html"], p["title"], p["url"], False):
+            verschickt += 1
+
+    if rest:
+        titel, html, url = _buendel(rest)
+        if _abschicken([p["id"] for p in rest], html, titel, url, True):
+            verschickt += 1
+
     return verschickt
