@@ -9,7 +9,7 @@ import { HeaderCTA } from "@/components/landing-cta";
 import { NativeRedirect } from "@/components/native-redirect";
 import { LiveStats } from "@/components/live-stats";
 import { HeuteLeiste } from "@/components/heute-leiste";
-import { SeasonalFamily } from "@/components/seasonal-mascot";
+import { LottiHero } from "@/components/lotti-hero";
 import { Reveal } from "@/components/reveal";
 import { cn } from "@/lib/utils";
 
@@ -96,14 +96,18 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Familien-Fries: die Hafenszene weicht der Demo im Hero und wird zum
-            ruhigen Band — Claim links, Lotti-Familie rechts (RL-302). */}
+        {/* Familien-Fries: Claim links, Lotti-Familie rechts (RL-302). Seit dem
+            Design „Lotti Hero Familie" ist die Familie hier keine Zeichnung
+            mehr, sondern gerechnet: Sie folgt dem Mauszeiger, blinzelt, atmet
+            und hüpft. Die Zeichnung bleibt der Rückfall — auf schmalen Fenstern
+            und bei reduzierter Bewegung steht genau das hier, was vorher hier
+            stand (s. lotti-hero.tsx). */}
         <section className="border-y border-border bg-muted/20">
-          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-6 px-5 py-8">
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-6 px-5 py-8 lg:py-4">
             <p className="max-w-md text-balance font-display text-lg font-bold text-foreground">
               Die ganze Lotsen-Familie an Bord — damit Stadtpolitik kein Fachchinesisch bleibt.
             </p>
-            <SeasonalFamily className="h-20 sm:h-24" />
+            <LottiHero className="h-20 w-full max-w-[420px] sm:h-24 lg:h-[260px]" />
           </div>
         </section>
 
