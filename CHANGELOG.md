@@ -7,6 +7,21 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt
+- **Die Lotsen-Familie lebt.** Auf der Startseite ist aus der gezeichneten
+  Familie eine gerechnete Szene geworden: Lotti und die drei Küken folgen dem
+  Mauszeiger, blinzeln, atmen, hüpfen und winken, während Ratsdokumente durchs
+  Bild treiben. Jede Bewegung bleibt klein — der Körper dreht sich höchstens
+  25 Grad, das Hüpfen misst zwei Zentimeter. Das Maskottchen soll wärmen, nicht
+  die Bühne übernehmen.
+  Die Szene hält sich zurück, wo sie stört: Sie rechnet nicht, sobald sie
+  weggescrollt oder der Tab im Hintergrund ist, respektiert „Bewegung
+  reduzieren", deckelt sich auf 36 Bilder pro Sekunde und wird auf schmalen
+  Fenstern gar nicht erst geladen. Wo sie ausbleibt, steht genau das, was vorher
+  dort stand — dieselbe Familie als Zeichnung. Die Startseite wird dadurch nicht
+  langsamer: Sie lädt weiter in derselben Größe, die 3D-Technik kommt erst
+  danach und nur, wenn sie gebraucht wird.
+
 ### Geändert
 - **Geteilte Links lassen sich jetzt lesen, ohne sich anzumelden.** Wer einen
   Beschluss weiterreichte, schickte die Empfängerin bisher zuerst ins
