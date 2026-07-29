@@ -7,6 +7,33 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt
+- **Die Lotsen-Familie lebt.** Auf der Startseite ist aus der gezeichneten
+  Familie eine gerechnete Szene geworden: Lotti und die drei Küken folgen dem
+  Mauszeiger, blinzeln, atmen, hüpfen und winken, während Ratsdokumente durchs
+  Bild treiben. Jede Bewegung bleibt klein — der Körper dreht sich höchstens
+  25 Grad, das Hüpfen misst zwei Zentimeter. Das Maskottchen soll wärmen, nicht
+  die Bühne übernehmen.
+  Die Szene hält sich zurück, wo sie stört: Sie rechnet nicht, sobald sie
+  weggescrollt oder der Tab im Hintergrund ist, respektiert „Bewegung
+  reduzieren", deckelt sich auf 36 Bilder pro Sekunde und wird auf schmalen
+  Fenstern gar nicht erst geladen. Wo sie ausbleibt, steht genau das, was vorher
+  dort stand — dieselbe Familie als Zeichnung. Die Startseite wird dadurch nicht
+  langsamer: Sie lädt weiter in derselben Größe, die 3D-Technik kommt erst
+  danach und nur, wenn sie gebraucht wird.
+
+### Geändert
+- **Geteilte Links lassen sich jetzt lesen, ohne sich anzumelden.** Wer einen
+  Beschluss weiterreichte, schickte die Empfängerin bisher zuerst ins
+  Registrierungsformular — bevor sie überhaupt gesehen hatte, worum es geht.
+  Das schreckt genau die Leute ab, die man gewinnen will. **Beschluss, Thema
+  und Person** — die drei Seiten mit Teilen-Knopf — öffnen sich jetzt für alle,
+  mit einer freundlichen Einladung am Ende der Seite statt einer Hürde davor.
+  Wer sich von dort aus anmeldet oder registriert, landet **wieder bei dem
+  Beschluss**, wegen dem er gekommen ist. Alles Persönliche bleibt, wo es war:
+  Stöbern, Suche, eigene Themen, Benachrichtigungen und der Verfolgen-Knopf
+  verlangen weiterhin ein Konto.
+
 ### Behoben
 - **Benachrichtigungen gehen nicht mehr verloren, wenn der Versand klemmt.**
   Fiel der Mailversand aus, galt die Meldung trotzdem als zugestellt — sie war
@@ -30,19 +57,6 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   stumpf aufs Dashboard.
 - **Unsinnig große Zahlen in der Adresse** (`…/decision/99999999999999999999`)
   beantwortet der Server jetzt mit „nicht gefunden" statt mit einem Fehler.
-
-### Geändert
-- **Geteilte Links lassen sich jetzt lesen, ohne sich anzumelden.** Wer einen
-  Beschluss weiterreichte, schickte die Empfängerin bisher zuerst ins
-  Registrierungsformular — bevor sie überhaupt gesehen hatte, worum es geht.
-  Das schreckt genau die Leute ab, die man gewinnen will. **Beschluss, Thema
-  und Person** — die drei Seiten mit Teilen-Knopf — öffnen sich jetzt für alle,
-  mit einer freundlichen Einladung am Ende der Seite statt einer Hürde davor.
-  Wer sich von dort aus anmeldet oder registriert, landet **wieder bei dem
-  Beschluss**, wegen dem er gekommen ist. Alles Persönliche bleibt, wo es war:
-  Stöbern, Suche, eigene Themen, Benachrichtigungen und der Verfolgen-Knopf
-  verlangen weiterhin ein Konto.
-
 ## [1.5.0] – 2026-07-26
 
 ### Hinzugefügt
