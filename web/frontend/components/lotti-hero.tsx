@@ -27,8 +27,14 @@ const LottiSzene = dynamic(() => import("@/components/lotti-szene"), {
 
 function StilleFamilie() {
   return (
-    <div className="flex h-full items-center justify-center">
-      <SeasonalFamily className="h-20 sm:h-24" />
+    // `MascotFamily` setzt seinen Figuren feste Größen (h-32/h-40) — eine Höhe
+    // von außen bewirkt daher nichts, die Gruppe ist immer rund 430 px breit.
+    // In einer Grid-Spalte diktiert das die Spaltenbreite: Auf dem Handy wurde
+    // der Hero-Text dadurch rechts abgeschnitten. Deshalb hier herunterskalieren
+    // (verändert die Darstellung, nicht das Layout) und die Spalte über
+    // `min-w-0` schrumpfen lassen.
+    <div className="flex h-full min-w-0 items-center justify-center overflow-hidden">
+      <SeasonalFamily className="shrink-0 scale-[0.62] sm:scale-90 lg:scale-100" />
     </div>
   );
 }
@@ -54,7 +60,9 @@ export function LottiHero({ className }: { className?: string }) {
   }, []);
 
   return (
-    <div className={className}>
+    // `min-w-0`: Ohne das trägt der Inhalt seine Mindestbreite in die
+    // Grid-Spalte und drückt den Hero-Text aus dem Bild.
+    <div className={`min-w-0 ${className ?? ""}`}>
       {zeigen ? <LottiSzene className="h-full w-full" /> : <StilleFamilie />}
     </div>
   );
