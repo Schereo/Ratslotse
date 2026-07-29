@@ -9,7 +9,7 @@ import { HeaderCTA } from "@/components/landing-cta";
 import { NativeRedirect } from "@/components/native-redirect";
 import { LiveStats } from "@/components/live-stats";
 import { HeuteLeiste } from "@/components/heute-leiste";
-import { SeasonalFamily } from "@/components/seasonal-mascot";
+import { LottiHero } from "@/components/lotti-hero";
 import { Reveal } from "@/components/reveal";
 import { cn } from "@/lib/utils";
 
@@ -84,26 +84,38 @@ export default function LandingPage() {
               </div>
               <LiveStats inline />
             </div>
-            {/* Live-Demo als Hero-Beweis (RL-302): Lotti schwebt über der Karte,
-                Badge „LIVE AUSPROBIEREN"; Autoplay + Sizer aus landing-qa-demo. */}
-            <div className="relative mt-8 lg:mt-0">
-              <SeasonalMascot pose="point" bob className="pointer-events-none absolute -top-14 right-16 z-10 h-[104px] w-[104px] sm:-top-16 sm:h-[116px] sm:w-[116px]" />
+            {/* Die Lotsen-Familie als Hero-Bild (Design „Lotti Hero Familie"):
+                gerechnet statt gezeichnet — sie folgt dem Mauszeiger, blinzelt,
+                atmet und hüpft. Wo die Szene ausbleibt (schmales Fenster,
+                reduzierte Bewegung), steht die Zeichnung, die vorher im
+                Familien-Fries stand — s. lotti-hero.tsx. */}
+            {/* min-w-0: Ohne das trägt die gezeichnete Familie (feste Figurengrößen,
+                rund 430 px breit) ihre Mindestbreite in die Grid-Spalte — auf dem
+                Handy wurde der Hero-Text dadurch rechts abgeschnitten. */}
+            <div className="mt-8 min-w-0 lg:mt-0">
+              <LottiHero className="h-48 w-full sm:h-60 lg:h-[380px]" />
+              <p className="mt-2 text-balance text-center text-sm text-muted-foreground lg:mt-0">
+                Lotti und ihre Familie lotsen dich durch den Rat
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Live-Demo als Beweis (RL-302): Was der Hero verspricht, steht hier
+            zum Anfassen. Lotti zeigt darauf, Badge „LIVE AUSPROBIEREN";
+            Autoplay + Sizer aus landing-qa-demo. */}
+        <section className="border-y border-border bg-muted/20">
+          <div className="mx-auto max-w-3xl px-5 pb-12 pt-14 sm:pt-16">
+            <div className="relative">
+              {/* Höher gesetzt als im Hero: Die Demo-Karte ist hier breiter, und
+                  auf ihrer Höhe lägen sonst „Fragen"-Knopf und DEMO-Marke unter
+                  der Möwe. Sie schaut jetzt über die Kante statt auf die Knöpfe. */}
+              <SeasonalMascot pose="point" bob className="pointer-events-none absolute -top-[74px] right-2 z-10 h-[104px] w-[104px] sm:-top-[86px] sm:right-6 sm:h-[116px] sm:w-[116px]" />
               <span className="absolute -top-3 left-5 z-10 rounded-full bg-signal px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-signal-foreground shadow-sm">
                 Live ausprobieren
               </span>
               <LandingQaDemo />
             </div>
-          </div>
-        </section>
-
-        {/* Familien-Fries: die Hafenszene weicht der Demo im Hero und wird zum
-            ruhigen Band — Claim links, Lotti-Familie rechts (RL-302). */}
-        <section className="border-y border-border bg-muted/20">
-          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-6 px-5 py-8">
-            <p className="max-w-md text-balance font-display text-lg font-bold text-foreground">
-              Die ganze Lotsen-Familie an Bord — damit Stadtpolitik kein Fachchinesisch bleibt.
-            </p>
-            <SeasonalFamily className="h-20 sm:h-24" />
           </div>
         </section>
 
