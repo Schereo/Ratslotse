@@ -146,6 +146,28 @@ app.include_router(push.router)
 app.include_router(badges.router)
 
 
+@app.exception_handler(OverflowError)
+async def overflow_exception_handler(request: Request, exc: OverflowError) -> JSONResponse:
+    """Absurd große Zahlen in der URL sind ein 404, kein Serverfehler.
+
+    Python rechnet beliebig groß, SQLite nur 64 Bit: ``/api/council/decision/
+    99999999999999999999`` kam bis in die Abfrage und starb dort mit
+    ``OverflowError: Python int too large to convert to SQLite INTEGER`` — also
+    mit einem 500 samt Traceback im Log. Das betraf **jeden** Zahl-Parameter
+    (decision, session, topic, quiz …), und seit die Beschluss-Seiten öffentlich
+    sind, löst das jeder Crawler aus, der an einer URL herumprobiert.
+
+    Semantisch ist es ein 404: Die id ist syntaktisch in Ordnung, ein Datensatz
+    mit ihr kann aber nicht existieren — dieselbe Antwort wie bei ``id=-1``.
+    Zentral statt an jedem Endpunkt, damit es auch für künftige gilt.
+    """
+    logger.info("Zahl außerhalb des speicherbaren Bereichs: %s", request.url.path)
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={"detail": "Nicht gefunden."},
+    )
+
+
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     """Strip password values from 422 error details before returning to the client."""

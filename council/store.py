@@ -233,6 +233,19 @@ CREATE TABLE IF NOT EXISTS council_field_recaps (
 """
 
 
+#: Tabellen dieser Datenbank, die an einem Konto hängen.
+#:
+#: Die Konto-Löschung wohnt in ``nwz.store`` und räumte lange nur die dortigen
+#: Tabellen ab — der Wächter-Test (``test_account_deletion``) prüfte ebenfalls
+#: nur jenes Schema und konnte diese Lücke also gar nicht sehen. Hier liegen
+#: aber Verhaltensspuren: *welche* Sitzungen jemandem gemeldet wurden. Das ist
+#: personenbezogen und muss beim Löschen mit weg (DSGVO, Recht auf Löschung).
+COUNCIL_USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
+    ("committee_notifications", "owner_id"),
+    ("session_followups_sent", "owner_id"),
+)
+
+
 class CouncilStore:
     def __init__(self, path: str | Path, nwz_db_path: str | Path | None = None):
         self._path = path
@@ -572,6 +585,20 @@ class CouncilStore:
                             "INSERT OR IGNORE INTO session_followups_sent (ksinr, owner_id, sent_at) "
                             "VALUES (?, ?, ?)", (r[0], owner, r[2])
                         )
+
+    def delete_owner_data(self, owner_id: int) -> int:
+        """Alles aus dieser Datenbank löschen, was an einem Konto hängt.
+
+        Gegenstück zu ``Store.delete_web_user``: Die Konto-Löschung muss beide
+        Datenbanken abräumen, es gibt zwischen ihnen keine Fremdschlüssel, die
+        das von allein täten. Gibt die Zahl gelöschter Zeilen zurück.
+        """
+        n = 0
+        with self._conn:
+            for tabelle, spalte in COUNCIL_USER_OWNED_TABLES:
+                cur = self._conn.execute(f"DELETE FROM {tabelle} WHERE {spalte} = ?", (owner_id,))
+                n += cur.rowcount or 0
+        return n
 
     def close(self) -> None:
         self._conn.close()

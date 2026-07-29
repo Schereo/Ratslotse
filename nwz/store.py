@@ -121,7 +121,12 @@ CREATE TABLE IF NOT EXISTS notification_queue (
     created_at    TEXT NOT NULL,
     deliver_after TEXT NOT NULL,
     sent_at       TEXT,
-    bundled       INTEGER NOT NULL DEFAULT 0
+    bundled       INTEGER NOT NULL DEFAULT 0,
+    -- Fehlgeschlagene Zustellversuche. Solange der Versandweg klemmt (Resend
+    -- down, Adresse abgelehnt), bleibt die Meldung mit sent_at IS NULL liegen
+    -- und wird erneut versucht — bis MAX_VERSUCHE, damit eine dauerhaft
+    -- unzustellbare Adresse die Warteschlange nicht ewig blockiert.
+    attempts      INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_notify_offen ON notification_queue(owner_id, sent_at, deliver_after);
 
@@ -519,6 +524,14 @@ class Store:
                                  ("answer_unit", "TEXT"), ("range_min", "REAL"), ("range_max", "REAL")):
                     if col not in uq_cols:
                         self._conn.execute(f"ALTER TABLE user_quiz_questions ADD COLUMN {col} {ddl}")
+        # Zustellversuche der Warteschlange (30a-Nachtrag): bestehende
+        # Installationen haben die Spalte noch nicht.
+        nq_cols = self._table_cols("notification_queue")
+        if nq_cols and "attempts" not in nq_cols:
+            with self._conn:
+                self._conn.execute(
+                    "ALTER TABLE notification_queue ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0"
+                )
         self._conn.execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_web_users_apple_sub "
             "ON web_users(apple_sub) WHERE apple_sub IS NOT NULL"
@@ -1163,18 +1176,49 @@ class Store:
             )
         return cur.lastrowid
 
+    #: Nach so vielen erfolglosen Anläufen gilt eine Meldung als unzustellbar.
+    #: Sie bleibt als Beleg in der Tabelle stehen (``sent_at`` bleibt NULL),
+    #: wird aber nicht mehr ausgewählt — sonst würde eine tote Adresse jeden
+    #: Lauf aufs Neue beschäftigen.
+    MAX_ZUSTELLVERSUCHE = 3
+
     def owners_with_due_notifications(self, jetzt_iso: str) -> list[int]:
         return [r[0] for r in self._conn.execute(
             "SELECT DISTINCT owner_id FROM notification_queue "
-            "WHERE sent_at IS NULL AND deliver_after <= ? ORDER BY owner_id", (jetzt_iso,))]
+            "WHERE sent_at IS NULL AND attempts < ? AND deliver_after <= ? ORDER BY owner_id",
+            (self.MAX_ZUSTELLVERSUCHE, jetzt_iso))]
 
     def due_notifications(self, owner_id: int, jetzt_iso: str) -> list[dict]:
         """Offene, fällige Posten — älteste zuerst, damit das Bündel am Ende die
         jüngsten trägt und die wichtigste Einzelmeldung vorne bleibt."""
         return [dict(r) for r in self._conn.execute(
             "SELECT id, kind, title, body_html, url, created_at FROM notification_queue "
-            "WHERE owner_id = ? AND sent_at IS NULL AND deliver_after <= ? ORDER BY id",
-            (owner_id, jetzt_iso))]
+            "WHERE owner_id = ? AND sent_at IS NULL AND attempts < ? AND deliver_after <= ? "
+            "ORDER BY id",
+            (owner_id, self.MAX_ZUSTELLVERSUCHE, jetzt_iso))]
+
+    def bump_notification_attempts(self, ids: list[int]) -> None:
+        """Einen erfolglosen Zustellversuch vermerken.
+
+        ``sent_at`` bleibt bewusst NULL: Die Meldung ist nicht zugestellt, also
+        soll sie beim nächsten Lauf wieder drankommen. Erst
+        ``MAX_ZUSTELLVERSUCHE`` beendet die Wiederholung.
+        """
+        if not ids:
+            return
+        ph = ",".join("?" * len(ids))
+        with self._conn:
+            self._conn.execute(
+                f"UPDATE notification_queue SET attempts = attempts + 1 WHERE id IN ({ph})",
+                tuple(ids),
+            )
+
+    def undeliverable_notifications(self, limit: int = 50) -> list[dict]:
+        """Aufgegebene Meldungen — fürs Admin-Panel und die Fehlersuche."""
+        return [dict(r) for r in self._conn.execute(
+            "SELECT id, owner_id, kind, title, created_at, attempts FROM notification_queue "
+            "WHERE sent_at IS NULL AND attempts >= ? ORDER BY id DESC LIMIT ?",
+            (self.MAX_ZUSTELLVERSUCHE, limit))]
 
     def notifications_sent_on(self, owner_id: int, tag: str) -> int:
         """Wie viele Zustellungen dieses Konto an diesem Kalendertag schon hatte.

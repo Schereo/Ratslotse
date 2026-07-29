@@ -8,9 +8,10 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 
 from nwz.email import send_email
 from nwz.store import Store
+from council.store import CouncilStore
 
 from ..config import get_settings
-from ..deps import get_store, require_active
+from ..deps import get_council_store, get_store, require_active
 from ..schemas import (ChangePasswordRequest, DeleteAccountRequest, DeliveryUpdate,
                        NotifyPrefsIn, UserOut)
 from ..security import hash_password, verify_password
@@ -165,12 +166,18 @@ def delete_account(
     background: BackgroundTasks,
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
+    council: CouncilStore = Depends(get_council_store),
 ) -> None:
     """Permanently delete the account and all data keyed to it (DSGVO right to
     erasure). Verlangt eine frische Bestätigung — eine Session allein (offener
     Laptop, gestohlenes Cookie) darf das Konto nicht zerstören können:
     Passwort-Konten bestätigen mit dem Passwort, Apple-only-Konten mit einem
-    frischen Apple-Identity-Token (Re-Auth in der App, RL-1002)."""
+    frischen Apple-Identity-Token (Re-Auth in der App, RL-1002).
+
+    Geräumt werden **beide** Datenbanken. Zwischen ihnen gibt es keine
+    Fremdschlüssel, und in ``council.sqlite`` steht mit
+    ``committee_notifications``/``session_followups_sent``, welche Sitzungen
+    diesem Konto gemeldet wurden — eine Verhaltensspur, die mit weg muss."""
     if body.apple_identity_token and user.get("apple_sub"):
         from .auth_apple import verify_apple_identity_token
         claims = verify_apple_identity_token(body.apple_identity_token)
@@ -182,6 +189,7 @@ def delete_account(
                     "oder zuerst über „Passwort vergessen“ ein Passwort setzen.")
         raise HTTPException(status.HTTP_400_BAD_REQUEST, msg)
     email = str(user.get("email", ""))
+    council.delete_owner_data(user["id"])
     store.delete_web_user(user["id"])
     background.add_task(_send_goodbye_email, email)
     settings = get_settings()
