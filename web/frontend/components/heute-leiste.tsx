@@ -70,7 +70,7 @@ export function HeuteLeiste() {
             <>
               {stadtrat ? "Der Stadtrat tagt" : `${data.committee} tagt`} — seit{" "}
               {minutesSinceTime(data.session_time, now)} Minuten
-              {nTops > 0 && <span className="text-muted-foreground">, {nTops} TOPs</span>}
+              {nTops > 0 && <span className="text-muted-foreground">, {nTops} {nTops === 1 ? "TOP" : "TOPs"}</span>}
             </>
           )}
           {heute && data?.state === "heute" && (

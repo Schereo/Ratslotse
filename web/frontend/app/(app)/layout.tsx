@@ -19,7 +19,7 @@ import { BackToTop } from "@/components/back-to-top";
 import { PeekingChick } from "@/components/peeking-chick";
 import { PublicShell } from "@/components/public-shell";
 import { Button, Card, CardListSkeleton, Skeleton, toast } from "@/components/ui";
-import { istOeffentlich } from "@/lib/public-routes";
+import { istOeffentlich, mitRuecksprung } from "@/lib/public-routes";
 import type { User } from "@/lib/types";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -43,7 +43,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   });
 
   useEffect(() => {
-    if (!loading && !user && !oeffentlich) router.replace("/login");
+    if (loading || user || oeffentlich) return;
+    // Das Ziel mitnehmen, statt es zu verlieren: Wer aus einem Lesezeichen oder
+    // einer angetippten Mitteilung auf „Meine Themen" kommt und sich anmelden
+    // muss, landete danach stumpf auf dem Dashboard.
+    const ziel = window.location.pathname + window.location.search;
+    router.replace(ziel === "/dashboard" ? "/login" : mitRuecksprung("/login", ziel));
   }, [user, loading, router, oeffentlich]);
 
   // Wire native push once a user is present: device token → backend, tap → route.

@@ -119,3 +119,56 @@ def test_feedback_roundtrip_and_unread(tmp_path):
     # Unbekannte id meldet sich sauber ab, statt still nichts zu tun.
     assert store.set_feedback_read(9999, True) is False
     store.close()
+
+
+# ---- Die zweite Datenbank ----
+
+def test_council_db_kennt_ihre_nutzerbezogenen_tabellen(tmp_path):
+    """Derselbe Wächter, aber für council.sqlite.
+
+    Der Test oben scannt nur `nwz.sqlite` und konnte deshalb nicht sehen, dass
+    in der zweiten Datenbank zwei Tabellen mit `owner_id` liegen. Zwischen den
+    Datenbanken gibt es keine Fremdschlüssel — was hier nicht gelistet ist,
+    überlebt die Konto-Löschung.
+    """
+    from council.store import COUNCIL_USER_OWNED_TABLES, CouncilStore
+
+    cs = CouncilStore(tmp_path / "council.sqlite")
+    im_schema = set()
+    for (name,) in cs._conn.execute("SELECT name FROM sqlite_master WHERE type='table'"):
+        cols = {r[1] for r in cs._conn.execute(f"PRAGMA table_info({name})")}
+        for spalte in ("owner_id", "user_id"):
+            if spalte in cols:
+                im_schema.add((name, spalte))
+    cs.close()
+
+    fehlend = im_schema - set(COUNCIL_USER_OWNED_TABLES)
+    assert not fehlend, (
+        "Diese Tabellen in council.sqlite hängen an einem Konto, werden aber bei "
+        f"der Löschung nicht geräumt. In COUNCIL_USER_OWNED_TABLES ergänzen: {sorted(fehlend)}"
+    )
+    veraltet = set(COUNCIL_USER_OWNED_TABLES) - im_schema
+    assert not veraltet, f"Gelistet, aber nicht im Schema: {sorted(veraltet)}"
+
+
+def test_konto_loeschen_raeumt_auch_die_council_db(tmp_path):
+    """Die Verhaltensspur „wem wurde welche Sitzung gemeldet" muss mit weg."""
+    from council.store import CouncilStore
+
+    cs = CouncilStore(tmp_path / "council.sqlite")
+    for owner in (1, 2):
+        cs._conn.execute(
+            "INSERT INTO committee_notifications (ksinr, owner_id, agenda_hash, sent_at) "
+            "VALUES (?, ?, 'h', '2026-07-01T10:00:00')", (100 + owner, owner))
+        cs._conn.execute(
+            "INSERT INTO session_followups_sent (ksinr, owner_id, sent_at) "
+            "VALUES (?, ?, '2026-07-01T10:00:00')", (200 + owner, owner))
+    cs._conn.commit()
+
+    assert cs.delete_owner_data(1) == 2
+    rest = [
+        cs._conn.execute("SELECT owner_id FROM committee_notifications").fetchall(),
+        cs._conn.execute("SELECT owner_id FROM session_followups_sent").fetchall(),
+    ]
+    cs.close()
+    assert [r[0][0] for r in rest] == [2, 2], "nur die Zeilen von Konto 1 dürfen weg sein"

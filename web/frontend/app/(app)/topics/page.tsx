@@ -187,7 +187,7 @@ function TopicsInner() {
                 className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-[color,background-color,transform] duration-150 ease-out-strong hover:bg-primary/10 active:scale-[0.97] disabled:opacity-50"
               >
                 <Plus className="h-3 w-3" /> {s.name}
-                <span className="text-primary/60">· {s.n} Beschlüsse</span>
+                <span className="text-primary/60">· {s.n} {s.n === 1 ? "Beschluss" : "Beschlüsse"}</span>
               </button>
             ))}
           </div>

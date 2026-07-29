@@ -69,7 +69,7 @@ export function LiveBanner() {
           Begonnen um {live.session_time} Uhr
           {live.n_items > 0 && (
             <>
-              {" "}· {live.n_items} TOPs
+              {" "}· {live.n_items} {live.n_items === 1 ? "TOP" : "TOPs"}
               {myCount > 0 && (
                 <>
                   {" "}— darunter{" "}

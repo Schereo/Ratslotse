@@ -2234,3 +2234,64 @@ def test_stoebern_und_persoenliches_bleiben_hinter_der_anmeldung(client):
     ]
     for pfad in geschuetzt:
         assert client.get(pfad).status_code == 401, f"{pfad} darf ohne Konto nicht antworten"
+
+
+def test_absurd_grosse_ids_sind_404_und_kein_serverfehler(client):
+    """Python rechnet beliebig groß, SQLite nur 64 Bit.
+
+    `/api/council/decision/99999999999999999999` kam bis in die Abfrage und
+    starb dort mit `OverflowError` — also 500 samt Traceback im Log, auf JEDEM
+    Zahl-Parameter. Seit die Beschluss-Seiten ohne Anmeldung erreichbar sind,
+    löst das jeder Crawler aus, der an einer URL herumprobiert.
+    """
+    riesig = 99999999999999999999
+    for pfad in (f"/api/council/decision/{riesig}",
+                 f"/api/council/session/{riesig}",
+                 f"/api/council/preview/decision/{riesig}"):
+        r = client.get(pfad)
+        assert r.status_code == 404, f"{pfad} gab {r.status_code} statt 404"
+
+    # Die gewohnten Fälle bleiben, wie sie waren.
+    assert client.get("/api/council/decision/-1").status_code == 404
+    assert client.get("/api/council/decision/abc").status_code == 422
+
+
+def test_vorschau_karte_bleibt_lesbar_auch_bei_amtstiteln(client):
+    """Beschlusstitel aus dem Ratsinfo werden sehr lang — die Karte nicht.
+
+    Der volle Amtstitel eines Bebauungsplans kommt auf über 250 Zeichen;
+    Messenger zeigen davon rund 60–90. Ungekürzt sah die Vorschaukarte aus wie
+    ein Fehler. Gekürzt wird der Titel, NICHT das Ergebnis — das ist die
+    wertvollste Information der Karte.
+    """
+    lang = ("Vorhabenbezogener Bebauungsplan Nr. 1043 „Nachverdichtung im Bereich der "
+            "ehemaligen Gärtnerei Ohmstede-Nord“ — Aufstellungsbeschluss, Billigung des "
+            "Entwurfs sowie Durchführung der frühzeitigen Beteiligung der Öffentlichkeit "
+            "gemäß §§ 3 Abs. 1 und 4 Abs. 1 BauGB")
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(6001, "Rat der Stadt", "2026-05-04", "17:00", "Rathaus"))
+    # Ohne Beschlusstext — dann drohte die Beschreibung bei „Gremium · Datum." zu enden.
+    cs._insert_decision(6001, 0, "decision", None, "Ö 2", lang, None, "vertagt",
+                        None, None, None, [], None, None, None)
+    cs._conn.commit()
+    did = cs._conn.execute("SELECT id FROM council_decisions WHERE ksinr = 6001").fetchone()[0]
+    cs.close()
+
+    v = client.get(f"/api/council/preview/decision/{did}").json()
+    assert len(v["title"]) <= 110, f"Titel zu lang für eine Vorschaukarte: {len(v['title'])}"
+    assert v["title"].endswith("— vertagt"), "das Ergebnis darf nie weggekürzt werden"
+    assert "…" in v["title"], "gekürzt wird sichtbar, nicht heimlich"
+    # Die Beschreibung endet nicht mehr im Nichts.
+    assert not v["description"].rstrip().endswith("2026."), v["description"]
+    assert len(v["description"]) > 50
+
+    # Kurze Titel bleiben unangetastet.
+    cs = CouncilStore(COUNCIL_DB)
+    cs._insert_decision(6001, 1, "decision", None, "Ö 3", "Radweg beschlossen",
+                        "Wird gebaut.", "angenommen", None, None, None, [], None, None, None)
+    cs._conn.commit()
+    kurz_id = cs._conn.execute(
+        "SELECT id FROM council_decisions WHERE item_number = 'Ö 3'").fetchone()[0]
+    cs.close()
+    k = client.get(f"/api/council/preview/decision/{kurz_id}").json()
+    assert k["title"] == "Radweg beschlossen — angenommen"
