@@ -18,3 +18,18 @@ import os
 
 os.environ["RESEND_API_KEY"] = ""
 os.environ["OPENROUTER_API_KEY"] = ""
+
+# Und dann liest die .env doch jemand ein. Fast jedes Skript ruft beim Import
+# `load_dotenv(ROOT / ".env")`; das überschreibt zwar nichts, was oben schon
+# leer gesetzt wurde — aber ein Test, der einen Schlüssel per
+# `monkeypatch.delenv` ENTFERNT, macht den Platz wieder frei, und der nächste
+# Modul-Import füllt ihn aus der Entwickler-.env mit einem ECHTEN Wert. Genau
+# so verschickte `tests/test_remind_setup.py` lokal echte Mail an eine
+# erfundene Adresse (in CI fiel es nie auf: dort gibt es keine .env).
+# Deshalb liest die Suite die .env grundsätzlich nicht.
+try:
+    import dotenv
+
+    dotenv.load_dotenv = lambda *a, **k: False
+except ImportError:  # dotenv ist nur eine Laufzeit-Abhängigkeit der Skripte
+    pass

@@ -7,6 +7,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+<<<<<<< HEAD
 ### Behoben
 - **Das Antippen einer Benachrichtigung führt jetzt wirklich zur Tagesordnung.**
   Wer „Dein Thema kommt auf den Tisch" oder „Tagesordnung ist da" antippte,
@@ -18,6 +19,26 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 - **Sammel-Nachrichten hatten tote Links.** Kommen an einem Tag mehr als zwei
   Meldungen zusammen, werden sie gebündelt — in dieser E-Mail führte kein
   Eintrag irgendwohin.
+=======
+### Geändert
+- **Die Benachrichtigungs-Mails sehen aus wie Ratslotse.** Bisher stand oben nur
+  „Ratslotse" als blauer Schriftzug — jetzt trägt die Mail die Bildmarke, klarere
+  Abstände und einen richtigen Knopf. Die betroffenen **Tagesordnungspunkte
+  stehen als Liste** statt als eine mit Semikolons verkettete Textwand, in der
+  man den eigenen Punkt nicht wiederfand. (#352)
+- **Der Hauptlink führt jetzt nach Ratslotse**, direkt auf die Sitzung mit
+  aufgeklappter Tagesordnung. Das Ratsinformationssystem bleibt als kleiner
+  Nebenlink erreichbar — es ist die Quelle, aber nicht der Ort zum Weiterlesen. (#352)
+
+### Behoben
+- **Die Meldung über neue Beschlüsse zu einem Thema enthielt keinen Link** —
+  nur den Hinweis, man finde die Treffer unter „Meine Themen". Jetzt ist der
+  führende Beschluss direkt anklickbar. (#352)
+- Ein Thema mit Zeilenumbruch im Namen konnte die Betreffzeile zerlegen; lange
+  Namen werden sauber gekürzt statt hart abgeschnitten. (#352)
+
+## [Unreleased]
+>>>>>>> 441093b (feat(mail): Bildmarke, TOP-Liste und Links, die in die App führen)
 
 ### Hinzugefügt
 - **Die Lotsen-Familie lebt.** Auf der Startseite ist aus der gezeichneten

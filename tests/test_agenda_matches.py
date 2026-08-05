@@ -84,6 +84,9 @@ def test_run_watcher_persists_matches_and_skips_unchanged(tmp_path, monkeypatch)
     assert "Ö 6" in offen[0]["body_html"]
     assert offen[0]["url"] == "/council?tab=sessions&ksinr=42"
     assert "buergerinfo.oldenburg.de" in offen[0]["body_html"]
+    # Und der Hauptweg der MAIL führt ebenfalls in die App — als volle Adresse,
+    # denn ein Pfad allein ist in einer E-Mail wertlos.
+    assert "https://ratslotse.de/council?tab=sessions&ksinr=42" in offen[0]["body_html"]
     assert nwz.agenda_matches_for_owner(1, [42]) == {
         42: [{"item_number": "Ö 6", "topic_name": "Radwege"}]
     }

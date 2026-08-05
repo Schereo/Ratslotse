@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from nwz import llm, notify, prompts
+from nwz import digest_email, llm, notify, prompts
 from .ergebnisse import sitzung_href
 from .scraper import CouncilScraper, CouncilSession
 from .store import CouncilStore
@@ -73,16 +73,35 @@ def _datum(iso: str) -> str:
         return iso
 
 
+def _einzeilig(text: str, grenze: int = 90) -> str:
+    """Für Betreff und Push-Titel: eine Zeile, kein Zeilenumbruch, gekappt.
+
+    Themennamen kommen von Nutzer:innen. Ein Zeilenumbruch darin hat in einer
+    Betreffzeile nichts zu suchen (Mail-Header sind zeilenbasiert), und ein
+    Roman auch nicht — Mail-Programme und die Mitteilungszentrale schneiden
+    sowieso ab, dann lieber kontrolliert und mit Auslassungszeichen.
+    """
+    sauber = " ".join(str(text or "").split())
+    return sauber if len(sauber) <= grenze else sauber[: grenze - 1].rstrip() + "…"
+
+
 def _titel_thema(session: CouncilSession, topic_name: str) -> str:
-    return f"„{topic_name}“ kommt auf den Tisch"
+    return f"„{_einzeilig(topic_name)}“ kommt auf den Tisch"
 
 
 def _format_alert(session: CouncilSession, topic_matches: dict[int, list[str]], topics: list[dict]) -> str:
     """N2 — dein Thema steht auf einer Tagesordnung.
 
-    Design 30a: ein Satz statt vier Emoji-Zeilen. Die Meldung soll das Ereignis
-    berichten, nicht die App vorführen; alles Weitere steht auf der Seite, die
-    sie öffnet.
+    Design 30a: das Ereignis berichten, nicht die App vorführen.
+
+    Die Tagesordnungspunkte stehen als Liste, nicht als semikolon-verkettete
+    Zeile: Bei einem Thema, das ein halbes Dutzend TOPs trifft, wurde daraus
+    ein Absatz, in dem der eigene Punkt nicht mehr auffindbar war.
+
+    Der Knopf führt in die App auf genau diese Sitzung (der ksinr-Deep-Link
+    klappt ihre Tagesordnung auf); das Ratsinformationssystem bleibt als
+    leiser Nebenlink erreichbar — es ist die Quelle, aber nicht der Ort, an dem
+    man weiterliest.
     """
     item_map = {i.item_number: i for i in session.agenda_items}
     zeilen = []
@@ -90,10 +109,19 @@ def _format_alert(session: CouncilSession, topic_matches: dict[int, list[str]], 
         for num in item_numbers:
             item = item_map.get(num)
             titel = _esc(item.title) if item else _esc(num)
-            zeilen.append(f"TOP {_esc(num)}: {titel}")
-    kopf = (f"{'; '.join(zeilen)} — {_esc(session.committee)} am {_datum(session.session_date)}"
-            f"{f', {_esc(session.session_time)} Uhr' if session.session_time else ''}.")
-    return f'<p>{kopf}</p>\n<p><a href="{session.url}">Zur Tagesordnung →</a></p>'
+            zeilen.append(f"<b>TOP {_esc(num)}</b> — {titel}")
+
+    wann = _datum(session.session_date)
+    if session.session_time:
+        wann += f", {_esc(session.session_time)} Uhr"
+    kopf = (f"<p style='margin:0'>Auf der Tagesordnung von <b>{_esc(session.committee)}</b> "
+            f"am {wann} steht etwas zu deinem Thema:</p>")
+    return (
+        kopf
+        + digest_email.liste(zeilen)
+        + digest_email.knopf(sitzung_href(session.ksinr), "Tagesordnung ansehen")
+        + digest_email.nebenlink(session.url, "Im Ratsinformationssystem öffnen")
+    )
 
 
 
@@ -209,6 +237,9 @@ def run_watcher(
                     continue
                 msg = _format_alert(session, {topic_idx: item_numbers}, topics)
                 print(f"    Match: topic={topics[topic_idx]['name']!r} items={item_numbers}")
+                # Pfad, nicht session.url: Die App springt beim Antippen nur
+                # bei einem /-Pfad (lib/push.ts) — mit der Ratsinfo-Adresse
+                # passierte schlicht nichts.
                 _melden(nwz_store, owner, notify.N2_THEMA,
                         _titel_thema(session, topics[topic_idx]["name"]), msg,
                         sitzung_href(ksinr), deliver_message)
