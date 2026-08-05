@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState, useCallback, Suspense } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -42,6 +42,14 @@ const sessionUrl = (ksinr: number) => `https://buergerinfo.oldenburg.de/si0057.p
    denselben Schlüssel, und der öffentliche Beschluss landete an der falschen
    Zeile. */
 const topKey = (n: string | null | undefined) => (n ?? "").replace(/^\p{L}+\s+/u, "").trim();
+
+/* DOM-Kennung einer Tagesordnungszeile — Ziel des `?top=…`-Sprungs aus einer
+   Benachrichtigung. Bewusst die VOLLE Nummer, nicht `topKey`: Der wirft das
+   Präfix weg, und „Ö 6" (öffentlich) und „N 6" (nichtöffentlich) fielen dann
+   auf dieselbe Zeile. Nicht-alphanumerisches wird ersetzt, damit Leerzeichen
+   und Umlaute keine ungültige id ergeben. */
+const topDomId = (ksinr: number, itemNumber: string) =>
+  `top-${ksinr}-${(itemNumber || "").trim().replace(/[^\p{L}\p{N}]+/gu, "_")}`;
 
 function itemMatches(it: AgendaItem, query: string): boolean {
   const q = query.trim().toLowerCase();
@@ -833,9 +841,11 @@ function YearDivider({ jahr }: { jahr: string }) {
    toter Text — man musste zurück in die Suche, um den Beschluss zu finden, der
    direkt dahinter liegt. TOPs ohne Beschluss (Berichte, künftige Sitzungen)
    bleiben bewusst ruhiger Text, damit der Zeiger nichts verspricht, was fehlt. */
-function AgendaRow({ it, query, outcome, decisionId, myTopic }: {
+function AgendaRow({ it, query, outcome, decisionId, myTopic, domId }: {
   it: AgendaItem; query: string; outcome?: DecisionOutcome | null;
   decisionId?: number; myTopic?: string;
+  /* Ziel des `?top=…`-Sprungs aus einer Benachrichtigung (s. topDomId). */
+  domId?: string;
 }) {
   const hit = itemMatches(it, query);
   const body = (
@@ -862,7 +872,7 @@ function AgendaRow({ it, query, outcome, decisionId, myTopic }: {
 
   if (decisionId != null) {
     return (
-      <li>
+      <li id={domId}>
         <Link
           href={decisionHref(decisionId)}
           className={cn(layout, tone, "transition-colors hover:bg-muted/60 active:scale-[0.995]")}
@@ -872,7 +882,7 @@ function AgendaRow({ it, query, outcome, decisionId, myTopic }: {
       </li>
     );
   }
-  return <li className={cn(layout, tone)}>{body}</li>;
+  return <li id={domId} className={cn(layout, tone)}>{body}</li>;
 }
 
 function AttendanceSection({ detail }: { detail: SessionDetail }) {
@@ -964,14 +974,91 @@ function SessionsTab({ committees }: { committees: string[] }) {
     if (!s) return;
     deepLinkDone.current = true;
     void toggle(s);
-    requestAnimationFrame(() => {
+    // Bewusst setTimeout und nicht requestAnimationFrame: Beim Antippen einer
+    // Benachrichtigung wacht die App gerade erst auf. Ein Fenster, das noch
+    // nicht zeichnet, ruft keine Animationsbilder ab — der Sprung wäre still
+    // ausgefallen. Zeitgeber laufen auch dann.
+    const sprung = setTimeout(() => {
       document.getElementById(`session-${targetKsinr}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
+    }, 50);
     setFlashKsinr(targetKsinr);
     const t = setTimeout(() => setFlashKsinr(null), 1600);
-    return () => clearTimeout(t);
+    return () => { clearTimeout(sprung); clearTimeout(t); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetKsinr, loading, sessions]);
+
+  /* ?top=… — der Tagesordnungspunkt aus einer Benachrichtigung.
+   *
+   *  Der Sprung oben landet am Sitzungs*kopf*; die Tagesordnung steht weiter
+   *  unten in der aufgeklappten Karte, und man musste sie selbst suchen. Sobald
+   *  die Punkte geladen sind, geht es deshalb noch einen Schritt weiter zur
+   *  gemeldeten Zeile.
+   *
+   *  Eigener Effekt, weil die Zeilen erst existieren, wenn `toggle` seine
+   *  Detaildaten geholt hat — im requestAnimationFrame oben gibt es sie noch
+   *  nicht. */
+  const topsAusLink = useMemo(
+    () => (deepSp.get("top") || "").split(",").map((t) => t.trim()).filter(Boolean),
+    [deepSp],
+  );
+  const topSprungDone = useRef(false);
+  useEffect(() => {
+    if (!targetKsinr || !topsAusLink.length || topSprungDone.current) return;
+    if (!detail[targetKsinr]) return;          // Tagesordnung noch nicht geladen
+
+    /* Warten, bis die Zeile im DOM steht: Zwischen „Detaildaten da" und
+       „Zeilen gerendert" liegen mehrere Durchgänge (so lange läuft der
+       Ladezustand). Ein einmaliger Versuch traf ins Leere.
+
+       Drei Fallen stecken in diesen paar Zeilen — jede davon führte hier schon
+       dazu, dass die Seite oben stehen blieb:
+
+       1. Nachgefasst wird mit `setTimeout`, nicht mit requestAnimationFrame.
+          Genau im gemeldeten Fall — Antippen einer Benachrichtigung — wacht die
+          App gerade erst auf; ein Fenster, das noch nicht zeichnet, ruft keine
+          Animationsbilder ab, und die Suche liefe nie an.
+       2. Das sanfte Scrollen wird **einmal** angestoßen und dann in Ruhe
+          gelassen. Es läuft über mehrere hundert Millisekunden; wer es in jedem
+          Durchgang neu anstößt, setzt es immer wieder an den Anfang zurück —
+          die Seite bewegt sich dann keinen Pixel.
+       3. Auf das sanfte Scrollen ist kein Verlass. In einem Fenster, das gerade
+          nicht zeichnet, fällt die Animation ersatzlos aus: Der Aufruf kehrt
+          zurück, als sei alles gut, und die Seite steht weiter oben. Deshalb
+          wird kurz darauf nachgesehen — hat sich nichts bewegt, springt es
+          hart. Lieber ein harter Sprung als eine Meldung, die ins Leere führt. */
+    const id = topDomId(targetKsinr, topsAusLink[0]);
+    const sanft = !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    let versuche = 0;
+    let handle = 0 as unknown as ReturnType<typeof setTimeout>;
+    let nachschau = 0 as unknown as ReturnType<typeof setTimeout>;
+    const suchen = () => {
+      const el = document.getElementById(id);
+      // Die Zeile muss da sein UND die Seite überhaupt scrollbar: Ein Aufruf,
+      // während das Dokument noch so hoch ist wie das Fenster, verpufft.
+      if (el && document.documentElement.scrollHeight > window.innerHeight + 4) {
+        topSprungDone.current = true;
+        const vorher = window.scrollY;
+        // `center` statt `start`: Die Zeile steht mitten im Bild, mit dem
+        // Zusammenhang darüber und darunter — nicht am oberen Rand geklebt.
+        el.scrollIntoView({ behavior: sanft ? "smooth" : "auto", block: "center" });
+        if (sanft) {
+          nachschau = setTimeout(() => {
+            const r = el.getBoundingClientRect();
+            const imBild = r.top >= 0 && r.bottom <= window.innerHeight;
+            // Nur eingreifen, wenn wirklich nichts passiert ist: Eine noch
+            // laufende Animation hat sich längst ein Stück bewegt.
+            if (!imBild && Math.abs(window.scrollY - vorher) < 4) {
+              el.scrollIntoView({ behavior: "auto", block: "center" });
+            }
+          }, 500);
+        }
+        return;
+      }
+      if (++versuche < 40) handle = setTimeout(suchen, 100);
+    };
+    handle = setTimeout(suchen, 60);
+    return () => { clearTimeout(handle); clearTimeout(nachschau); };
+  }, [targetKsinr, topsAusLink, detail]);
 
   const toggle = async (s: CouncilSession) => {
     const ksinr = s.ksinr;
@@ -1170,7 +1257,8 @@ function SessionsTab({ committees }: { committees: string[] }) {
                                 <AgendaRow key={i} it={it} query={query}
                                   outcome={it.is_public ? outcomeByItem[topKey(it.item_number)] : undefined}
                                   decisionId={it.is_public ? decisionByItem[topKey(it.item_number)] : undefined}
-                                  myTopic={myByItem[it.item_number]} />
+                                  myTopic={myByItem[it.item_number]}
+                                  domId={s.ksinr != null ? topDomId(s.ksinr, it.item_number) : undefined} />
                               ))}
                             </ul>
                             {d && <AttendanceSection detail={d} />}

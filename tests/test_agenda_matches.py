@@ -82,7 +82,9 @@ def test_run_watcher_persists_matches_and_skips_unchanged(tmp_path, monkeypatch)
     # beginnen, also tat ein Antippen wortlos nichts und die App blieb auf der
     # Startseite. Der Ratsinfo-Link steht weiterhin im Meldungstext.
     assert "Ö 6" in offen[0]["body_html"]
-    assert offen[0]["url"] == "/council?tab=sessions&ksinr=42"
+    # Das Ziel nennt auch den TOP — die App springt dann zur gemeldeten Zeile
+    # statt nur zum Sitzungskopf, unter dem die Tagesordnung liegt.
+    assert offen[0]["url"] == "/council?tab=sessions&ksinr=42&top=%C3%96%206"
     assert "buergerinfo.oldenburg.de" in offen[0]["body_html"]
     # Und der Hauptweg der MAIL führt ebenfalls in die App — als volle Adresse,
     # denn ein Pfad allein ist in einer E-Mail wertlos.

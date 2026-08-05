@@ -496,3 +496,26 @@ def test_buendel_verlinkt_absolut(store, monkeypatch):
     buendel = raus[-1]
     assert 'href="https://' in buendel, "Bündel-Links müssen absolut sein"
     assert 'href="/council' not in buendel
+
+
+def test_tagesordnungs_meldung_nennt_den_punkt(store):
+    """Die Meldung soll nicht nur zur Sitzung führen, sondern zur Zeile.
+
+    Der Sprung landete am Sitzungskopf; die Tagesordnung steht weiter unten in
+    der aufgeklappten Karte und musste selbst gesucht werden.
+    """
+    from council.ergebnisse import sitzung_href
+
+    assert sitzung_href(4666) == "/council?tab=sessions&ksinr=4666"
+    # Die VOLLE Nummer geht mit: „Ö 6" und „N 6" sind verschiedene Punkte.
+    assert sitzung_href(4666, ["Ö 6"]) == "/council?tab=sessions&ksinr=4666&top=%C3%96%206"
+    assert sitzung_href(4666, ["Ö 4", "Ö 6"]).endswith("&top=%C3%96%204%2C%C3%96%206")
+    # Leeres und Leerraum fallen raus, statt einen sinnlosen Parameter zu bauen.
+    assert sitzung_href(4666, []) == sitzung_href(4666)
+    assert sitzung_href(4666, ["", "  "]) == sitzung_href(4666)
+
+    # Und das Ergebnis bleibt ein App-Pfad — sonst griffe die Schranke aus
+    # `einreihen` und die Meldung käme gar nicht erst in die Warteschlange.
+    owner = _konto(store)
+    assert notify.einreihen(store, owner, notify.N2_THEMA, "x", "<p>x</p>",
+                            sitzung_href(4666, ["Ö 6"])) > 0

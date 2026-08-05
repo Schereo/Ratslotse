@@ -25,6 +25,7 @@ Protokoll-Import (``scripts/check_protocols.py``), nicht von der Sitzung.
 """
 from __future__ import annotations
 
+from urllib.parse import quote
 import logging
 
 from nwz import notify
@@ -99,16 +100,26 @@ def decision_href(decision_id: int) -> str:
     return f"/council/decision?id={decision_id}"
 
 
-def sitzung_href(ksinr: int) -> str:
+def sitzung_href(ksinr: int, tops: list[str] | None = None) -> str:
     """Ziel einer Tagesordnungs-Meldung — die Sitzung in der App (30a, Grenze 4).
 
     Bewusst ein App-Pfad und NICHT die Ratsinfo-Adresse: Der Tap-Handler der App
     (``lib/push.ts``) navigiert nur zu Zielen, die mit ``/`` beginnen. Mit der
     externen URL tat ein Antippen wortlos nichts und die App blieb auf der
     Startseite stehen. Der Ratsinfo-Link gehört in den Meldungstext.
+
+    ``tops`` nennt die Tagesordnungspunkte, um die es in der Meldung geht — die
+    App springt dann nicht nur zur Sitzung, sondern zu genau diesen Zeilen. Die
+    Nummern gehen **vollständig** mit (``"Ö 6"``, nicht ``"6"``): ``Ö 6`` und
+    ``N 6`` sind verschiedene Punkte, ein öffentlicher und ein nichtöffentlicher.
+
     Spiegelt ``sessionHref`` aus web/frontend/lib/routes.ts.
     """
-    return f"/council?tab=sessions&ksinr={ksinr}"
+    ziel = f"/council?tab=sessions&ksinr={ksinr}"
+    sauber = [t.strip() for t in (tops or []) if t and t.strip()]
+    if sauber:
+        ziel += "&top=" + quote(",".join(sauber))
+    return ziel
 
 
 def melde_ergebnisse(council_store, nwz_store, ksinrs: list[int]) -> int:
