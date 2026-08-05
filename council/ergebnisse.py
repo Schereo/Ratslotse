@@ -99,6 +99,18 @@ def decision_href(decision_id: int) -> str:
     return f"/council/decision?id={decision_id}"
 
 
+def sitzung_href(ksinr: int) -> str:
+    """Ziel einer Tagesordnungs-Meldung — die Sitzung in der App (30a, Grenze 4).
+
+    Bewusst ein App-Pfad und NICHT die Ratsinfo-Adresse: Der Tap-Handler der App
+    (``lib/push.ts``) navigiert nur zu Zielen, die mit ``/`` beginnen. Mit der
+    externen URL tat ein Antippen wortlos nichts und die App blieb auf der
+    Startseite stehen. Der Ratsinfo-Link gehört in den Meldungstext.
+    Spiegelt ``sessionHref`` aus web/frontend/lib/routes.ts.
+    """
+    return f"/council?tab=sessions&ksinr={ksinr}"
+
+
 def melde_ergebnisse(council_store, nwz_store, ksinrs: list[int]) -> int:
     """Für frisch geparste Sitzungen die Ergebnis-Meldungen einreihen.
 

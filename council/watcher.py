@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from nwz import llm, notify, prompts
+from .ergebnisse import sitzung_href
 from .scraper import CouncilScraper, CouncilSession
 from .store import CouncilStore
 
@@ -209,8 +210,8 @@ def run_watcher(
                 msg = _format_alert(session, {topic_idx: item_numbers}, topics)
                 print(f"    Match: topic={topics[topic_idx]['name']!r} items={item_numbers}")
                 _melden(nwz_store, owner, notify.N2_THEMA,
-                        _titel_thema(session, topics[topic_idx]["name"]), msg, session.url,
-                        deliver_message)
+                        _titel_thema(session, topics[topic_idx]["name"]), msg,
+                        sitzung_href(ksinr), deliver_message)
                 alerts_sent.append(msg)
                 store.mark_alert_sent(ksinr, topic_id)
 
