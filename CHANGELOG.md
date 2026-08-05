@@ -7,6 +7,18 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Behoben
+- **Das Antippen einer Benachrichtigung führt jetzt wirklich zur Tagesordnung.**
+  Wer „Dein Thema kommt auf den Tisch" oder „Tagesordnung ist da" antippte,
+  landete auf der Startseite statt beim Vorgang. Die Meldung trug die Adresse
+  des amtlichen Ratsinformationssystems als Ziel — und damit eine, die aus der
+  App herausführt statt in sie hinein; die App tat daraufhin schlicht nichts.
+  Beide Meldungen zeigen jetzt auf die Sitzung in der App. Der Link zum
+  Ratsinfo steht weiterhin im Text der Nachricht.
+- **Sammel-Nachrichten hatten tote Links.** Kommen an einem Tag mehr als zwei
+  Meldungen zusammen, werden sie gebündelt — in dieser E-Mail führte kein
+  Eintrag irgendwohin.
+
 ### Hinzugefügt
 - **Die Lotsen-Familie lebt.** Auf der Startseite ist aus der gezeichneten
   Familie eine gerechnete Szene geworden: Lotti und die drei Küken folgen dem

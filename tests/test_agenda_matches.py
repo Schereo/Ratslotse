@@ -76,7 +76,14 @@ def test_run_watcher_persists_matches_and_skips_unchanged(tmp_path, monkeypatch)
     assert delivered == []
     offen = nwz.due_notifications(1, "2999-01-01")
     assert len(offen) == 1 and offen[0]["kind"] == "n2_thema"
-    assert "Ö 6" in offen[0]["body_html"] and offen[0]["url"].startswith("https://")
+    # Das Tap-Ziel ist ein APP-Pfad, nicht die Ratsinfo-Adresse. Diese Zeile
+    # verlangte früher `https://` — und schrieb damit den Fehler fest, den ein
+    # Nutzer gemeldet hat: `lib/push.ts` navigiert nur zu Zielen, die mit `/`
+    # beginnen, also tat ein Antippen wortlos nichts und die App blieb auf der
+    # Startseite. Der Ratsinfo-Link steht weiterhin im Meldungstext.
+    assert "Ö 6" in offen[0]["body_html"]
+    assert offen[0]["url"] == "/council?tab=sessions&ksinr=42"
+    assert "buergerinfo.oldenburg.de" in offen[0]["body_html"]
     assert nwz.agenda_matches_for_owner(1, [42]) == {
         42: [{"item_number": "Ö 6", "topic_name": "Radwege"}]
     }
