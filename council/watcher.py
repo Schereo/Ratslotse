@@ -239,10 +239,13 @@ def run_watcher(
                 print(f"    Match: topic={topics[topic_idx]['name']!r} items={item_numbers}")
                 # Pfad, nicht session.url: Die App springt beim Antippen nur
                 # bei einem /-Pfad (lib/push.ts) — mit der Ratsinfo-Adresse
-                # passierte schlicht nichts.
+                # passierte schlicht nichts. Die getroffenen TOPs gehen mit ins
+                # Ziel: Die App klappt die Sitzung nicht nur auf, sondern
+                # springt zu genau diesen Zeilen. Ohne das landete man am
+                # Sitzungskopf und musste die Tagesordnung selbst suchen.
                 _melden(nwz_store, owner, notify.N2_THEMA,
                         _titel_thema(session, topics[topic_idx]["name"]), msg,
-                        sitzung_href(ksinr), deliver_message)
+                        sitzung_href(ksinr, item_numbers), deliver_message)
                 alerts_sent.append(msg)
                 store.mark_alert_sent(ksinr, topic_id)
 

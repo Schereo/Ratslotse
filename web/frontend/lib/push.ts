@@ -21,18 +21,33 @@ async function postToken(value: string): Promise<void> {
   }
 }
 
-/** Wire push listeners once: registration → backend, tap → navigate. Safe on web. */
+/** Wire push listeners (once) und dieses Gerät anmelden (bei JEDER Anmeldung).
+ *
+ *  Die Trennung ist der Punkt: Die Zuhörer dürfen nur einmal gesetzt werden —
+ *  zweimal, und jeder Tap würde doppelt navigieren. Das `register()` muss
+ *  dagegen bei jeder Anmeldung laufen.
+ *
+ *  Vorher stand ein `initialized`-Riegel vor der ganzen Funktion. Er gilt für
+ *  die gesamte App-Sitzung, und `logout()` löscht das Token serverseitig
+ *  (`unregisterPush`). Wer sich also ab- und wieder anmeldete, ohne die App
+ *  zwischendurch ganz zu beenden, stand danach **ohne Token** da: Push war
+ *  still tot, bis zum nächsten vollständigen App-Start. Der Kommentar
+ *  versprach „the next login re-registers" — genau das tat es nicht.
+ */
 export async function initPush(navigate: (path: string) => void): Promise<void> {
-  if (!isNativeApp() || initialized) return;
-  initialized = true;
+  if (!isNativeApp()) return;
   const { PushNotifications } = await import("@capacitor/push-notifications");
-  await PushNotifications.addListener("registration", (t) => { void postToken(t.value); });
-  await PushNotifications.addListener("registrationError", () => { /* ignore; retry next launch */ });
-  await PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
-    const url = action.notification?.data?.url;
-    if (typeof url === "string" && url.startsWith("/")) navigate(url);
-  });
-  // Already granted on a previous launch? Refresh the token silently.
+  if (!initialized) {
+    initialized = true;
+    await PushNotifications.addListener("registration", (t) => { void postToken(t.value); });
+    await PushNotifications.addListener("registrationError", () => { /* ignore; retry next launch */ });
+    await PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
+      const url = action.notification?.data?.url;
+      if (typeof url === "string" && url.startsWith("/")) navigate(url);
+    });
+  }
+  // Erlaubnis liegt schon vor? Dann das Token (neu) holen — iOS liefert es
+  // erneut an den `registration`-Zuhörer, der es beim Backend anmeldet.
   const perm = await PushNotifications.checkPermissions();
   if (perm.receive === "granted") await PushNotifications.register();
 }
@@ -46,6 +61,11 @@ export async function unregisterPush(): Promise<void> {
     await api.post("/push/unregister", { token: deviceToken });
   } catch {
     /* offline is fine — a later login re-homes the token to its account */
+  } finally {
+    // Serverseitig ist das Token weg; es hier stehen zu lassen hieße, beim
+    // nächsten Abmelden ein fremdes oder totes Token abzumelden. Die nächste
+    // Anmeldung holt es über `initPush` ohnehin frisch.
+    deviceToken = null;
   }
 }
 

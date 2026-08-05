@@ -16,6 +16,18 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   App herausführt statt in sie hinein; die App tat daraufhin schlicht nichts.
   Beide Meldungen zeigen jetzt auf die Sitzung in der App. Der Link zum
   Ratsinfo steht weiterhin im Text der Nachricht.
+- **Und sie führt bis zur gemeldeten Zeile.** Bisher öffnete sich die Sitzung
+  am Kopf; der Punkt, um den es ging, stand weit darunter und musste selbst
+  gesucht werden. Die Meldung nennt jetzt ihre Tagesordnungspunkte mit, und die
+  App scrollt zu genau dieser Zeile. Auch das Aufklappen der Sitzung selbst
+  sprang bisher nicht immer mit — beim Antippen einer Benachrichtigung wacht
+  die App gerade erst auf, und der Sprung hing an einer Animation, die in
+  diesem Moment ersatzlos ausfällt. Er wird jetzt nachgeprüft und notfalls
+  hart nachgeholt.
+- **Push blieb nach einem Abmelden und erneuten Anmelden stumm.** Wer sich
+  abmeldete und ohne Neustart der App wieder anmeldete, hatte danach kein
+  angemeldetes Gerät mehr — Benachrichtigungen kamen bis zum nächsten
+  vollständigen App-Start nicht an.
 - **Sammel-Nachrichten hatten tote Links.** Kommen an einem Tag mehr als zwei
   Meldungen zusammen, werden sie gebündelt — in dieser E-Mail führte kein
   Eintrag irgendwohin.
