@@ -45,7 +45,7 @@ def build_predict():
         ]
         summary = summarize_agenda(
             case["committee"], case["session_date"], case.get("session_time", ""),
-            case.get("location", ""), items, session_url="https://example.invalid",
+            case.get("location", ""), items,
         )
         return bool(summary)
 

@@ -104,7 +104,11 @@ def test_notify_new_matches_leads_with_highest_impact(monkeypatch, tmp_path):
                                 new_ids=[ids["Berufung Mitglied"], ids["Haushaltssatzung 2026"]])
     assert n == 1
     assert sent["subject"] == "Neu zu „Finanzen“ — 2 Beschlüsse"
-    assert sent["msg"].startswith("Haushaltssatzung 2026") and "und 1 weitere" in sent["msg"]
+    # Der folgenreichste Beschluss führt und ist direkt anklickbar; der Rest
+    # steht als Zähler dahinter.
+    fuehrend = sent["msg"].index("Haushaltssatzung 2026")
+    assert fuehrend < sent["msg"].index("und 1 weitere")
+    assert f"/council/decision?id={ids['Haushaltssatzung 2026']}" in sent["msg"]
     assert sent["url"] == "/topics"
     council.close()
 

@@ -35,7 +35,7 @@ def _llm_returning(*contents: str | None):
 def _summarize():
     return committee_summary.summarize_agenda(
         committee="Bauausschuss", session_date="2026-09-10", session_time="17:00",
-        location="Rathaus", agenda_items=[_item()], session_url="http://x/si0057",
+        location="Rathaus", agenda_items=[_item()],
     )
 
 

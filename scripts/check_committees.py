@@ -5,6 +5,7 @@ Run daily via cron: 0 7 * * *
 from __future__ import annotations
 
 import hashlib
+import re
 import sys
 from pathlib import Path
 
@@ -16,6 +17,7 @@ load_dotenv(ROOT / ".env")
 
 from nwz import notify
 from nwz.store import Store
+from nwz import digest_email
 from council.store import CouncilStore
 from council.scraper import CouncilScraper
 from council.committee_summary import summarize_agenda
@@ -54,6 +56,18 @@ def _stunden_bis(session_date: str, session_time: str) -> float:
         pass
     beginn = tag.replace(hour=stunde, minute=minute)
     return (beginn - datetime.now()).total_seconds() / 3600
+
+
+_ALT_LINK = re.compile(r"\s*<a href=\"[^\"]*si0057[^\"]*\">[^<]*</a>\s*$")
+
+
+def _ohne_altlink(summary: str | None) -> str | None:
+    """Gecachte Zusammenfassungen aus der Zeit, als `summarize_agenda` den
+    Ratsinfo-Link selbst anhängte. Ohne diesen Schnitt stünden in der Mail zwei
+    Wege zur Tagesordnung — der alte im Text, der neue als Knopf darunter.
+    Neu erzeugte Zusammenfassungen enthalten den Link nicht mehr, der Ausdruck
+    trifft dann einfach nichts."""
+    return summary if summary is None else _ALT_LINK.sub("", summary)
 
 
 def main() -> dict:
@@ -126,7 +140,7 @@ def main() -> dict:
 
         # The summary depends only on the session — compute once and cache.
         # A cached '' means "only routine TOPs" (still a valid cache hit).
-        summary = council_store.get_cached_summary(ksinr, agenda_hash)
+        summary = _ohne_altlink(council_store.get_cached_summary(ksinr, agenda_hash))
         if summary is None:
             summary = summarize_agenda(
                 committee=session.committee,
@@ -134,7 +148,6 @@ def main() -> dict:
                 session_time=session.session_time,
                 location=session.location,
                 agenda_items=session.agenda_items,
-                session_url=session.url,
             )
             # None = LLM-Antwort unbrauchbar → NICHT cachen (sonst stünde für
             # diese Tagesordnung dauerhaft eine falsche Aussage fest); die
@@ -142,21 +155,20 @@ def main() -> dict:
             if summary is not None:
                 council_store.save_summary(ksinr, agenda_hash, summary)
 
+        # Der Weg zurück in die App ist derselbe, egal ob die Zusammenfassung
+        # geklappt hat: Knopf auf die Sitzung, Ratsinfo als leiser Nebenlink.
+        wege = (digest_email.knopf(sitzung_href(ksinr), "Tagesordnung ansehen")
+                + digest_email.nebenlink(session.url, "Im Ratsinformationssystem öffnen"))
+        kopf = (f"<p style='margin:0'><b>{session.committee}</b><br>"
+                f"{session.session_date}"
+                f"{f', {session.session_time} Uhr' if session.session_time else ''}</p>")
+
         if summary:
-            base_message = summary
+            base_message = summary + wege
         elif summary == "":
-            base_message = (
-                f"<b>{session.committee}</b>\n"
-                f"📅 {session.session_date}  {session.session_time} Uhr\n\n"
-                f"Tagesordnung enthält nur Routine-TOPs.\n"
-                f'<a href="{session.url}">Tagesordnung →</a>'
-            )
+            base_message = kopf + "<p>Die Tagesordnung enthält nur Routine-Punkte.</p>" + wege
         else:  # Zusammenfassung fehlgeschlagen — nichts behaupten, nur verlinken.
-            base_message = (
-                f"<b>{session.committee}</b>\n"
-                f"📅 {session.session_date}  {session.session_time} Uhr\n\n"
-                f'<a href="{session.url}">Tagesordnung →</a>'
-            )
+            base_message = kopf + wege
 
         subject = f"{session.committee}: Tagesordnung ist da"
         for owner_id in pending_new:
