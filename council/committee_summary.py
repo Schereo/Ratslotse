@@ -18,7 +18,6 @@ def summarize_agenda(
     session_time: str,
     location: str,
     agenda_items: list[AgendaItem],
-    session_url: str,
 ) -> str | None:
     """Return HTML summary of a committee session, or '' if only routine items.
 
@@ -95,6 +94,8 @@ def summarize_agenda(
         summary = _esc(str(item.get("summary", "")))
         lines.append(f"• <b>{number}</b>: {summary}")
 
-    lines.append("")
-    lines.append(f'<a href="{session_url}">Vollständige Tagesordnung →</a>')
+    # Bewusst OHNE Link: Wohin die Meldung führt, entscheidet der Aufrufer —
+    # er kennt den Kanal (Mail-Knopf vs. Push-Pfad) und hängt Haupt- und
+    # Nebenlink einheitlich an. Früher stand hier ein Ratsinfo-Link fest
+    # verdrahtet, und die Zusammenfassung bestimmte damit die Navigation mit.
     return "\n".join(lines)

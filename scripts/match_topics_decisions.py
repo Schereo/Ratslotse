@@ -13,6 +13,7 @@ enrich cron does both). fastembed is needed (not a web dependency)::
 from __future__ import annotations
 
 import argparse
+import html
 import sys
 from pathlib import Path
 
@@ -25,6 +26,8 @@ load_dotenv(ROOT / ".env")
 from council import embeddings  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 from nwz.store import Store  # noqa: E402
+from nwz import digest_email  # noqa: E402
+from council.ergebnisse import decision_href  # noqa: E402
 
 NWZ_DB = ROOT / "data" / "nwz.sqlite"
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
@@ -50,13 +53,21 @@ def _notify_new_matches(nwz, council, owner_id: int, topic_name: str, new_ids: l
                                   else (d.get("importance") or 0)), reverse=True)
     lead = decisions[0]
     n = len(decisions)
-    subject = f"Neu zu \u201e{topic_name}\u201c" + (f" \u2014 {n} Beschl\u00fcsse" if n > 1 else "")
-    lead_line = (lead.get("title") or "").strip()
+    kurz = " ".join(str(topic_name or "").split())[:80]
+    subject = f"Neu zu \u201e{kurz}\u201c" + (f" \u2014 {n} Beschl\u00fcsse" if n > 1 else "")
+    lead_line = html.escape((lead.get("title") or "").strip())
     if lead.get("amount_eur"):
         lead_line += f" ({int(lead['amount_eur']):,} \u20ac)".replace(",", ".")
-    if n > 1:
-        lead_line += f" \u2014 und {n - 1} weitere"
-    msg = f"{lead_line}\n\nAlle Treffer findest du unter \u201eMeine Themen\u201c."
+    # Der Text nannte „Meine Themen“ nur — jetzt führt ein Knopf auch dorthin,
+    # und der führende Beschluss ist direkt anklickbar.
+    msg = (
+        f"<p style='margin:0'>Neu zu deinem Thema <b>{html.escape(kurz)}</b>:</p>"
+        + digest_email.liste(
+            [f"<a href=\"{digest_email.absolut(decision_href(lead["id"]))}\">{lead_line}</a>"]
+            + ([f"und {n - 1} weitere"] if n > 1 else [])
+        )
+        + digest_email.knopf("/topics", "Alle Treffer ansehen" if n > 1 else "Beschluss ansehen")
+    )
     sent = deliver_message(owner, msg, email_subject=subject, push_url="/topics")
     return 1 if sent else 0
 
