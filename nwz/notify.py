@@ -26,10 +26,14 @@ was die Nacht über liegen geblieben ist.
 from __future__ import annotations
 
 import logging
+import os
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 logger = logging.getLogger("nwz.notify")
+
+#: Für Links in E-Mails — dort ist ein App-Pfad allein wertlos.
+APP_BASE_URL = os.environ.get("APP_BASE_URL", "https://ratslotse.de").rstrip("/")
 
 # Ortszeit ist maßgeblich: „nichts zwischen 21 und 7 Uhr" meint 21 Uhr in
 # Oldenburg, nicht in UTC. Gespeichert wird trotzdem UTC (wie überall sonst).
@@ -116,15 +120,34 @@ def _tag(zeitpunkt: datetime) -> str:
     return zeitpunkt.astimezone(ZONE).date().isoformat()
 
 
+def ist_app_pfad(url: str) -> bool:
+    """Zeigt diese Adresse auf eine Seite *dieser* App?
+
+    ``//fremde.example`` und ``https://…`` sind für den Browser Ziele außerhalb;
+    der Tap-Handler der App (``lib/push.ts``) navigiert ausschließlich zu
+    Pfaden, die mit einem einzelnen Schrägstrich beginnen.
+    """
+    return bool(url) and url.startswith("/") and not url.startswith("//")
+
+
 def einreihen(store, owner_id: int, kind: str, titel: str, html: str, url: str,
               jetzt: datetime | None = None) -> int:
     """Eine Benachrichtigung in die Warteschlange legen. Gibt ihre id zurück.
 
     ``url`` ist Pflicht (Grenze 4): Antippen muss den Beschluss oder die
-    Tagesordnung öffnen, nie nur die Startseite.
+    Tagesordnung öffnen, nie nur die Startseite. Und es muss ein **App-Pfad**
+    sein: Der Tap-Handler in ``lib/push.ts`` navigiert nur zu Adressen, die mit
+    ``/`` beginnen — eine externe Ratsinfo-URL lässt ihn wortlos nichts tun,
+    die App bleibt auf der Startseite stehen. Genau so ist es N1 und N2
+    passiert; die Prüfung hier ist die Lehre daraus.
     """
     if not url:
         raise ValueError("Jede Benachrichtigung braucht ein Ziel (30a, Grenze 4).")
+    if not ist_app_pfad(url):
+        raise ValueError(
+            f"Ziel muss ein App-Pfad sein (mit / beginnend), war: {url!r}. "
+            "Externe Links gehören in den Meldungstext, nicht ins Tap-Ziel."
+        )
     # Abgeschaltete Anlässe gar nicht erst einreihen — sonst zählten sie
     # gegen die Tagesgrenze, ohne je zugestellt zu werden.
     if not gewuenscht(store, owner_id, kind):
@@ -144,10 +167,14 @@ def _buendel(posten: list[dict]) -> tuple[str, str, str]:
     kann es nicht auf eine einzelne Seite zeigen — „Heute" listet sie alle.
     """
     titel = f"{len(posten)} Neuigkeiten aus dem Rat"
+    # In der Warteschlange stehen App-Pfade (das braucht der Push-Tap). In einer
+    # E-Mail ist ein relativer Link aber tot — es gibt dort keine Basis, gegen
+    # die er aufgelöst werden könnte. Fürs Bündel deshalb absolut machen.
     zeilen = ["<ul style='margin:0;padding-left:18px'>"]
     for p in posten:
+        ziel = f"{APP_BASE_URL}{p['url']}" if ist_app_pfad(p["url"]) else p["url"]
         zeilen.append(
-            f"<li style='margin-bottom:6px'><a href=\"{p['url']}\">{p['title']}</a></li>"
+            f"<li style='margin-bottom:6px'><a href=\"{ziel}\">{p['title']}</a></li>"
         )
     zeilen.append("</ul>")
     return titel, "\n".join(zeilen), "/dashboard"

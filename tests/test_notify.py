@@ -448,3 +448,51 @@ def test_ein_kaputtes_konto_reisst_die_anderen_nicht_mit(store, monkeypatch):
     assert notify.zustellen(store, jetzt=_zeit("2026-08-18", 9)) == 1, "B muss trotzdem Post bekommen"
     assert len(store.due_notifications(a, _zeit("2026-08-18", 10).isoformat(timespec="seconds"))) == 1
     assert store.due_notifications(b, _zeit("2026-08-18", 10).isoformat(timespec="seconds")) == []
+
+
+# ---- Wohin ein Antippen führt ----
+
+def test_ziel_muss_ein_app_pfad_sein(store):
+    """Aus einem echten Fehlerbericht: „Fliegerhorst kommt auf den Tisch"
+    angetippt — und die App stand auf der Startseite.
+
+    Ursache: N1 und N2 übergaben die Ratsinfo-Adresse
+    (`https://buergerinfo.oldenburg.de/...`) als Tap-Ziel. Der Handler in
+    `lib/push.ts` navigiert aber nur zu Zielen, die mit `/` beginnen — bei
+    allem anderen tut er wortlos nichts. Die Meldung kam an, führte aber
+    nirgendwohin.
+
+    Deshalb weist die Warteschlange externe Adressen jetzt beim Einreihen ab,
+    statt sie bis aufs Gerät durchzureichen.
+    """
+    owner = _konto(store)
+    for schlecht in ("https://buergerinfo.oldenburg.de/si0057.php?__ksinr=42",
+                     "//fremde.example/pfad",
+                     "council/decision?id=1"):
+        with pytest.raises(ValueError, match="App-Pfad"):
+            notify.einreihen(store, owner, notify.N2_THEMA, "x", "<p>x</p>", schlecht)
+
+    # Der leere Fall bleibt, wie er war (Grenze 4).
+    with pytest.raises(ValueError, match="Ziel"):
+        notify.einreihen(store, owner, notify.N2_THEMA, "x", "<p>x</p>", "")
+
+    # Und App-Pfade gehen durch.
+    assert notify.einreihen(store, owner, notify.N2_THEMA, "x", "<p>x</p>",
+                            "/council?tab=sessions&ksinr=42") > 0
+
+
+def test_buendel_verlinkt_absolut(store, monkeypatch):
+    """In der Warteschlange stehen App-Pfade — in einer E-Mail ist ein
+    relativer Link tot, es gibt dort keine Basis dafür."""
+    owner = _konto(store)
+    raus: list[str] = []
+    monkeypatch.setattr("nwz.delivery.deliver_message",
+                        lambda o, html, email_subject, push_url="/": (raus.append(html), ["email"])[1])
+    for i in range(3):
+        notify.einreihen(store, owner, notify.N2_THEMA, f"Meldung {i}", "<p>x</p>",
+                         f"/council/decision?id={i}", jetzt=_zeit("2026-08-18", 9))
+    notify.zustellen(store, jetzt=_zeit("2026-08-18", 9))
+
+    buendel = raus[-1]
+    assert 'href="https://' in buendel, "Bündel-Links müssen absolut sein"
+    assert 'href="/council' not in buendel

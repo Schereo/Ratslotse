@@ -19,6 +19,7 @@ from nwz.store import Store
 from council.store import CouncilStore
 from council.scraper import CouncilScraper
 from council.committee_summary import summarize_agenda
+from council.ergebnisse import sitzung_href
 
 NWZ_DB = ROOT / "data" / "nwz.sqlite"
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
@@ -163,7 +164,7 @@ def main() -> dict:
                 continue
             print(f"  {session.session_date} {session.committee} → owner {owner_id} (neu)")
             notify.einreihen(nwz_store, owner_id, notify.N1_TAGESORDNUNG,
-                             subject, base_message, session.url)
+                             subject, base_message, sitzung_href(ksinr))
             council_store.mark_notified(ksinr, owner_id, agenda_hash)
             notifications_sent += 1
 
@@ -174,7 +175,7 @@ def main() -> dict:
                 continue
             print(f"  {session.session_date} {session.committee} → owner {owner_id} (Änderung)")
             notify.einreihen(nwz_store, owner_id, notify.N1_TAGESORDNUNG,
-                             update_subject, update_prefix + base_message, session.url)
+                             update_subject, update_prefix + base_message, sitzung_href(ksinr))
             council_store.mark_notified(ksinr, owner_id, agenda_hash)
             notifications_sent += 1
 
