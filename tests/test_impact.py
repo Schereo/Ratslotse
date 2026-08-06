@@ -70,8 +70,7 @@ def test_rate_batch_filters_and_signals(monkeypatch):
     assert "Gremium Rat" in seen["user"] and "1.000.000" in seen["user"]
 
 
-def test_notify_new_matches_leads_with_highest_impact(monkeypatch, tmp_path):
-    """13a-D: Der tragweitigste Titel führt den Push an, nicht der erste."""
+def _match_modul():
     import importlib.util, sys
     spec = importlib.util.spec_from_file_location(
         "match_topics_decisions",
@@ -79,37 +78,70 @@ def test_notify_new_matches_leads_with_highest_impact(monkeypatch, tmp_path):
     mod = importlib.util.module_from_spec(spec)
     sys.modules["match_topics_decisions"] = mod
     spec.loader.exec_module(mod)
+    return mod
+
+
+def test_notify_new_matches_leads_with_highest_impact(tmp_path):
+    """13a-D: Der tragweitigste Titel führt die Meldung an, nicht der erste.
+
+    Geprüft wird gegen einen **echten** Store, nicht gegen ein Double: Die
+    Meldung geht seit 30a durch die Warteschlange, und genau daran hing der
+    Unterschied — vorher schickte dieser Job direkt los und stand damit
+    außerhalb aller Grenzen (Anlass-Schalter, Aus-Schalter, Nachtruhe,
+    zwei am Tag).
+    """
+    from nwz import notify
+    from nwz.store import Store
 
     council = _store(tmp_path)
     ids = {d["title"]: d["id"] for d in council.decisions_needing_impact()}
     council.save_impact(ids["Haushaltssatzung 2026"], 95, "")
     council.save_impact(ids["Berufung Mitglied"], 5, "")
 
-    sent = {}
-    def fake_deliver(owner, msg, email_subject, push_url="/dashboard"):
-        sent.update(owner=owner, msg=msg, subject=email_subject, url=push_url)
-        return ["push"]
-    import nwz.delivery as delivery
-    monkeypatch.setattr(delivery, "deliver_message", fake_deliver)
+    nwz = Store(tmp_path / "nwz.sqlite")
+    owner = nwz.create_web_user(email="a@b.de", password_hash="x", role="user",
+                                status="active", display_name="Tim")
 
-    class FakeNwz:
-        def get_web_user_by_id(self, oid):
-            return {"id": oid, "email": "a@b.de", "delivery_channel": "push", "display_name": "Tim"}
-        def get_push_tokens_for_owner(self, oid):
-            return [{"token": "t", "platform": "ios"}]
-
+    mod = _match_modul()
     # Reihenfolge der new_ids: Berufung zuerst — die Tragweite muss umsortieren.
-    n = mod._notify_new_matches(FakeNwz(), council,
-                                owner_id=1, topic_name="Finanzen",
+    n = mod._notify_new_matches(nwz, council, owner_id=owner, topic_name="Finanzen",
                                 new_ids=[ids["Berufung Mitglied"], ids["Haushaltssatzung 2026"]])
     assert n == 1
-    assert sent["subject"] == "Neu zu „Finanzen“ — 2 Beschlüsse"
+
+    offen = nwz.due_notifications(owner, "2999-01-01")
+    assert len(offen) == 1
+    meldung = offen[0]
+    assert meldung["title"] == "Neu zu „Finanzen“ — 2 Beschlüsse"
+    assert meldung["url"] == "/topics"
+    # Unter dem Schalter „Ergebnisse zu meinen Themen": Für die Person ist das
+    # dieselbe Nachricht wie aus dem Protokoll — nur die Herkunft unterscheidet
+    # sich, und danach sortiert niemand seine Einstellungen.
+    assert meldung["kind"] == notify.N3_ERGEBNIS
     # Der folgenreichste Beschluss führt und ist direkt anklickbar; der Rest
     # steht als Zähler dahinter.
-    fuehrend = sent["msg"].index("Haushaltssatzung 2026")
-    assert fuehrend < sent["msg"].index("und 1 weitere")
-    assert f"/council/decision?id={ids['Haushaltssatzung 2026']}" in sent["msg"]
-    assert sent["url"] == "/topics"
+    body = meldung["body_html"]
+    assert body.index("Haushaltssatzung 2026") < body.index("und 1 weitere")
+    assert f"/council/decision?id={ids['Haushaltssatzung 2026']}" in body
+    nwz.close()
+    council.close()
+
+
+def test_notify_new_matches_schweigt_wenn_abgeschaltet(tmp_path):
+    """Der Weg, der die Grenzen umging: Er kam auch bei „aus" noch an."""
+    from nwz.store import Store
+
+    council = _store(tmp_path)
+    ids = {d["title"]: d["id"] for d in council.decisions_needing_impact()}
+    nwz = Store(tmp_path / "nwz.sqlite")
+    owner = nwz.create_web_user(email="a@b.de", password_hash="x", role="user",
+                                status="active", display_name=None)
+    nwz.set_delivery_channel(owner, "off")
+
+    mod = _match_modul()
+    assert mod._notify_new_matches(nwz, council, owner_id=owner, topic_name="Finanzen",
+                                   new_ids=[ids["Haushaltssatzung 2026"]]) == 0
+    assert nwz.due_notifications(owner, "2999-01-01") == []
+    nwz.close()
     council.close()
 
 

@@ -7,7 +7,51 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-<<<<<<< HEAD
+### Hinzugefügt
+- **Benachrichtigungen lassen sich ganz abschalten.** Bisher musste einer der
+  beiden Wege — E-Mail oder Push — an bleiben; die Einstellung verweigerte
+  „beides aus" ausdrücklich. Wer nichts mehr hören wollte, hätte die sechs
+  Anlass-Schalter einzeln umlegen müssen, und niemand fand sie. Jetzt darf man
+  beide Schalter ausmachen: Ratslotse schweigt dann vollständig — auch die
+  Erinnerung an eine unfertige Einrichtung. Was noch in der Warteschlange lag,
+  wird dabei verworfen statt später nachgeliefert, und die Einstellungen sagen
+  sichtbar, dass sie gerade nichts bewirken. Anschalten geht jederzeit; wer
+  aus dem Aus-Zustand heraus Push erlaubt, bekommt Push — nicht zusätzlich
+  wieder E-Mails.
+- **Die Lotsen-Familie lebt.** Auf der Startseite ist aus der gezeichneten
+  Familie eine gerechnete Szene geworden: Lotti und die drei Küken folgen dem
+  Mauszeiger, blinzeln, atmen, hüpfen und winken, während Ratsdokumente durchs
+  Bild treiben. Jede Bewegung bleibt klein — der Körper dreht sich höchstens
+  25 Grad, das Hüpfen misst zwei Zentimeter. Das Maskottchen soll wärmen, nicht
+  die Bühne übernehmen.
+  Die Szene hält sich zurück, wo sie stört: Sie rechnet nicht, sobald sie
+  weggescrollt oder der Tab im Hintergrund ist, respektiert „Bewegung
+  reduzieren", deckelt sich auf 36 Bilder pro Sekunde und wird auf schmalen
+  Fenstern gar nicht erst geladen. Wo sie ausbleibt, steht genau das, was vorher
+  dort stand — dieselbe Familie als Zeichnung. Die Startseite wird dadurch nicht
+  langsamer: Sie lädt weiter in derselben Größe, die 3D-Technik kommt erst
+  danach und nur, wenn sie gebraucht wird.
+
+### Geändert
+- **Die Benachrichtigungs-Mails sehen aus wie Ratslotse.** Bisher stand oben nur
+  „Ratslotse" als blauer Schriftzug — jetzt trägt die Mail die Bildmarke, klarere
+  Abstände und einen richtigen Knopf. Die betroffenen **Tagesordnungspunkte
+  stehen als Liste** statt als eine mit Semikolons verkettete Textwand, in der
+  man den eigenen Punkt nicht wiederfand. (#352)
+- **Der Hauptlink führt jetzt nach Ratslotse**, direkt auf die Sitzung mit
+  aufgeklappter Tagesordnung. Das Ratsinformationssystem bleibt als kleiner
+  Nebenlink erreichbar — es ist die Quelle, aber nicht der Ort zum Weiterlesen. (#352)
+- **Geteilte Links lassen sich jetzt lesen, ohne sich anzumelden.** Wer einen
+  Beschluss weiterreichte, schickte die Empfängerin bisher zuerst ins
+  Registrierungsformular — bevor sie überhaupt gesehen hatte, worum es geht.
+  Das schreckt genau die Leute ab, die man gewinnen will. **Beschluss, Thema
+  und Person** — die drei Seiten mit Teilen-Knopf — öffnen sich jetzt für alle,
+  mit einer freundlichen Einladung am Ende der Seite statt einer Hürde davor.
+  Wer sich von dort aus anmeldet oder registriert, landet **wieder bei dem
+  Beschluss**, wegen dem er gekommen ist. Alles Persönliche bleibt, wo es war:
+  Stöbern, Suche, eigene Themen, Benachrichtigungen und der Verfolgen-Knopf
+  verlangen weiterhin ein Konto.
+
 ### Behoben
 - **Das Antippen einer Benachrichtigung führt jetzt wirklich zur Tagesordnung.**
   Wer „Dein Thema kommt auf den Tisch" oder „Tagesordnung ist da" antippte,
@@ -31,55 +75,15 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 - **Sammel-Nachrichten hatten tote Links.** Kommen an einem Tag mehr als zwei
   Meldungen zusammen, werden sie gebündelt — in dieser E-Mail führte kein
   Eintrag irgendwohin.
-=======
-### Geändert
-- **Die Benachrichtigungs-Mails sehen aus wie Ratslotse.** Bisher stand oben nur
-  „Ratslotse" als blauer Schriftzug — jetzt trägt die Mail die Bildmarke, klarere
-  Abstände und einen richtigen Knopf. Die betroffenen **Tagesordnungspunkte
-  stehen als Liste** statt als eine mit Semikolons verkettete Textwand, in der
-  man den eigenen Punkt nicht wiederfand. (#352)
-- **Der Hauptlink führt jetzt nach Ratslotse**, direkt auf die Sitzung mit
-  aufgeklappter Tagesordnung. Das Ratsinformationssystem bleibt als kleiner
-  Nebenlink erreichbar — es ist die Quelle, aber nicht der Ort zum Weiterlesen. (#352)
-
-### Behoben
+- **Die Meldung über neue Beschlüsse zu einem Thema stand außerhalb aller
+  Regeln.** Sie ging als einzige direkt raus statt über die Warteschlange und
+  kam deshalb auch dann an, wenn „Ergebnisse zu meinen Themen" abgeschaltet
+  war; die zwei-am-Tag-Grenze und die Nachtruhe galten für sie ebenfalls nicht.
 - **Die Meldung über neue Beschlüsse zu einem Thema enthielt keinen Link** —
   nur den Hinweis, man finde die Treffer unter „Meine Themen". Jetzt ist der
   führende Beschluss direkt anklickbar. (#352)
 - Ein Thema mit Zeilenumbruch im Namen konnte die Betreffzeile zerlegen; lange
   Namen werden sauber gekürzt statt hart abgeschnitten. (#352)
-
-## [Unreleased]
->>>>>>> 441093b (feat(mail): Bildmarke, TOP-Liste und Links, die in die App führen)
-
-### Hinzugefügt
-- **Die Lotsen-Familie lebt.** Auf der Startseite ist aus der gezeichneten
-  Familie eine gerechnete Szene geworden: Lotti und die drei Küken folgen dem
-  Mauszeiger, blinzeln, atmen, hüpfen und winken, während Ratsdokumente durchs
-  Bild treiben. Jede Bewegung bleibt klein — der Körper dreht sich höchstens
-  25 Grad, das Hüpfen misst zwei Zentimeter. Das Maskottchen soll wärmen, nicht
-  die Bühne übernehmen.
-  Die Szene hält sich zurück, wo sie stört: Sie rechnet nicht, sobald sie
-  weggescrollt oder der Tab im Hintergrund ist, respektiert „Bewegung
-  reduzieren", deckelt sich auf 36 Bilder pro Sekunde und wird auf schmalen
-  Fenstern gar nicht erst geladen. Wo sie ausbleibt, steht genau das, was vorher
-  dort stand — dieselbe Familie als Zeichnung. Die Startseite wird dadurch nicht
-  langsamer: Sie lädt weiter in derselben Größe, die 3D-Technik kommt erst
-  danach und nur, wenn sie gebraucht wird.
-
-### Geändert
-- **Geteilte Links lassen sich jetzt lesen, ohne sich anzumelden.** Wer einen
-  Beschluss weiterreichte, schickte die Empfängerin bisher zuerst ins
-  Registrierungsformular — bevor sie überhaupt gesehen hatte, worum es geht.
-  Das schreckt genau die Leute ab, die man gewinnen will. **Beschluss, Thema
-  und Person** — die drei Seiten mit Teilen-Knopf — öffnen sich jetzt für alle,
-  mit einer freundlichen Einladung am Ende der Seite statt einer Hürde davor.
-  Wer sich von dort aus anmeldet oder registriert, landet **wieder bei dem
-  Beschluss**, wegen dem er gekommen ist. Alles Persönliche bleibt, wo es war:
-  Stöbern, Suche, eigene Themen, Benachrichtigungen und der Verfolgen-Knopf
-  verlangen weiterhin ein Konto.
-
-### Behoben
 - **Benachrichtigungen gehen nicht mehr verloren, wenn der Versand klemmt.**
   Fiel der Mailversand aus, galt die Meldung trotzdem als zugestellt — sie war
   damit für immer weg, und zwar genau die, wegen der man die App hat („dein
@@ -102,6 +106,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   stumpf aufs Dashboard.
 - **Unsinnig große Zahlen in der Adresse** (`…/decision/99999999999999999999`)
   beantwortet der Server jetzt mit „nicht gefunden" statt mit einem Fehler.
+
 ## [1.5.0] – 2026-07-26
 
 ### Hinzugefügt

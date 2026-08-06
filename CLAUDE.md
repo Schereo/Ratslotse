@@ -151,9 +151,12 @@ NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflic
 - **„Ähnliche Beschlüsse"** (`scripts/embed_decisions.py`): berechnet semantische
   Nachbarn per **fastembed** (ONNX, kein torch) — bewusst **nicht** in
   `requirements.txt`, damit Deploy + Web-Service unberührt bleiben.
-- **Zustellung**: Nutzer wählen pro Konto `email` / `push` / `both`
+- **Zustellung**: Nutzer wählen pro Konto `email` / `push` / `both` / `off`
   (`web_users.delivery_channel`). E-Mail über Resend (`nwz/email.py`), Push über
   APNs/FCM (`nwz/push.py`); ohne `RESEND_API_KEY` wird E-Mail still übersprungen.
+  `off` greift in `nwz.notify.gewuenscht()`, also **vor** der Warteschlange —
+  wer einen neuen Meldeanlass baut, muss ihn über `notify.einreihen` schicken,
+  sonst umgeht er Aus-Schalter, Nachtruhe und Tagesgrenze zugleich.
 - **Prompts** liegen in `nwz/prompts.py` (DB-Tabelle `prompts`) und sind über das
   Admin-UI live editierbar — Defaults greifen, solange kein Override existiert.
 - **Sicherheit**: Der Reverse-Proxy setzt `X-Forwarded-For` selbst

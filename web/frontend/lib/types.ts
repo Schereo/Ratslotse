@@ -1,4 +1,5 @@
-export type DeliveryChannel = "email" | "both" | "push";
+/** Wohin Benachrichtigungen gehen — „off" heißt: gar nicht. */
+export type DeliveryChannel = "email" | "both" | "push" | "off";
 
 export interface User {
   id: number;

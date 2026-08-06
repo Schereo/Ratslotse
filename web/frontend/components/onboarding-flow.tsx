@@ -551,7 +551,10 @@ function PushStep({ theme, onDone }: { theme: ReturnType<typeof useMascotTheme>;
       // und trotzdem nie eine Mitteilung bekommen. (Genau so beobachtet:
       // „Heute" bat danach weiter um Erlaubnis, und zwar zu Recht.)
       if (await enablePush()) {
-        const channel = user?.delivery_channel === "push" ? "push" : "both";
+        // Wer vorher ganz abgeschaltet hatte, bekommt nur Push zurück — nicht
+        // zusätzlich wieder E-Mails, die er ausdrücklich abbestellt hatte.
+        const vorher = user?.delivery_channel;
+        const channel = vorher === "push" || vorher === "off" ? "push" : "both";
         await api.put("/account/delivery", { delivery_channel: channel });
         await refresh();
       }

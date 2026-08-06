@@ -76,13 +76,21 @@ def set_delivery(
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
 ) -> UserOut:
-    """Choose where notifications are delivered: email, push, or both."""
+    """Wohin Benachrichtigungen gehen: ``email``, ``push``, ``both`` — oder
+    ``off`` für gar nicht.
+
+    ``off`` räumt zusätzlich die Warteschlange leer. Was dort liegt, war für
+    ein Einverständnis gedacht, das gerade widerrufen wurde; es später
+    nachzuliefern wäre genau das, was man mit dem Abschalten verhindern wollte.
+    """
     channel = body.delivery_channel
     if channel in ("email", "both"):
         email = str(user.get("email", ""))
         if email.startswith("tg-") and email.endswith("@local"):
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "Keine E-Mail-Adresse hinterlegt.")
     store.set_delivery_channel(user["id"], channel)
+    if channel == "off":
+        store.drop_pending_notifications(user["id"])
     return _to_out(store.get_web_user_by_id(user["id"]))
 
 

@@ -262,12 +262,21 @@ Alle Konto-Daten liegen in `nwz.sqlite` (siehe
 
 ### Zustellkanal
 
-`web_users.delivery_channel` ∈ `email` | `push` | `both` (neue Konten starten
-auf `email`).
+`web_users.delivery_channel` ∈ `email` | `push` | `both` | `off` (neue Konten
+starten auf `email`).
+
+`off` heißt: gar keine Benachrichtigungen. Kein eigenes Feld, weil es dieselbe
+Frage beantwortet wie die anderen drei — wohin? — nur mit „nirgendwohin". Die
+Prüfung sitzt in `nwz.notify.gewuenscht()`, also **vor** der Warteschlange:
+Bei `off` wird nichts eingereiht, sonst zählten unzustellbare Meldungen gegen
+die Tagesgrenze und kämen beim Wiedereinschalten als Nachlieferung an.
+Zusätzlich verwirft `PUT /api/account/delivery` beim Umschalten auf `off`, was
+noch offen in der Warteschlange liegt, und `setups_to_remind()` überspringt
+diese Konten — auch die freundlich gemeinte Einrichtungs-Erinnerung schweigt.
 
 | Endpunkt | Zweck |
 |---|---|
-| `PUT /api/account/delivery` | Kanal setzen; `email`/`both` scheitern, wenn keine echte Adresse hinterlegt ist |
+| `PUT /api/account/delivery` | Kanal setzen; `email`/`both` scheitern, wenn keine echte Adresse hinterlegt ist; `off` räumt zusätzlich die Warteschlange |
 | `POST /api/account/test-notification` | Test über alle aktiven Kanäle, exakt über den Cron-Versandpfad `nwz.delivery.deliver_message`; gibt die tatsächlich bedienten Kanäle zurück |
 
 - **E-Mail** über **Resend** (`nwz/email.py`). Ohne `RESEND_API_KEY` wird der
