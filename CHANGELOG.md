@@ -7,6 +7,8 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [1.6.0] – 2026-08-06
+
 ### Hinzugefügt
 - **Benachrichtigungen lassen sich ganz abschalten.** Bisher musste einer der
   beiden Wege — E-Mail oder Push — an bleiben; die Einstellung verweigerte
@@ -1373,7 +1375,8 @@ Open-Source-Go-Live von Ratslotse.
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v1.5.0...main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v1.6.0...main
+[1.6.0]: https://github.com/Schereo/Ratslotse/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/Schereo/Ratslotse/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/Schereo/Ratslotse/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/Schereo/Ratslotse/compare/v1.2.0...v1.3.0
