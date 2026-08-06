@@ -82,9 +82,34 @@ NOTIFY_LABELS: dict[str, tuple[str, str]] = {
 }
 
 
+#: Zustellweg „gar nicht". Wer das wählt, hört von Ratslotse nichts mehr —
+#: keine Meldung, kein Bündel, keine Erinnerung.
+KANAL_AUS = "off"
+
+
+def zustellung_aus(store, owner_id: int) -> bool:
+    """Hat dieses Konto Benachrichtigungen ganz abgeschaltet?"""
+    try:
+        return store.get_delivery_channel(owner_id) == KANAL_AUS
+    except AttributeError:
+        # Ältere/abgespeckte Store-Doubles in Tests kennen die Abfrage nicht.
+        # Im Zweifel weiterschicken: Ein Fehler hier darf niemanden versehentlich
+        # stumm stellen — die Umkehrung wäre der teurere Irrtum.
+        return False
+
+
 def gewuenscht(store, owner_id: int, art: str) -> bool:
     """Will dieses Konto diesen Anlass? Unbekannte Arten gelten als gewünscht —
-    ein neuer Anlass soll nicht versehentlich still sein."""
+    ein neuer Anlass soll nicht versehentlich still sein.
+
+    Der Zustellweg zählt mit: Bei ``off`` ist die Antwort für jeden Anlass nein.
+    Die Prüfung gehört hierher und nicht erst in die Zustellung — sonst füllte
+    sich die Warteschlange mit Meldungen, die nie jemand bekommt, und sie
+    zählten gegen die Tagesgrenze. Wer sie später wieder anschaltet, bekäme
+    dann eine Nachlieferung aus der Zeit, in der er ausdrücklich nichts wollte.
+    """
+    if zustellung_aus(store, owner_id):
+        return False
     prefs = store.get_notify_prefs(owner_id)
     return bool(prefs.get(art, NOTIFY_DEFAULTS.get(art, True)))
 
@@ -216,6 +241,16 @@ def _zustellen_fuer(store, owner_id: int, heute: str, jetzt_iso: str) -> int:
 
     owner = store.get_owner_delivery(owner_id)
     if not owner:
+        return 0
+    # Abgeschaltet? Dann ist das hier nicht bloß ein leerer Versand, sondern
+    # Altbestand: Meldungen, die vor dem Abschalten eingereiht wurden. Sie
+    # werden verworfen statt dreimal vergeblich verschickt — sonst lägen sie
+    # noch da, wenn jemand kurz darauf wieder einschaltet.
+    if owner.get("delivery_channel") == KANAL_AUS:
+        weg = store.drop_pending_notifications(owner_id)
+        if weg:
+            logger.info("owner %s hat abgeschaltet — %d wartende Meldung(en) verworfen",
+                        owner_id, weg)
         return 0
     offen = store.due_notifications(owner_id, jetzt_iso)
     if not offen:

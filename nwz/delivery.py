@@ -4,8 +4,14 @@ Centralises the per-owner delivery decision so the cron jobs don't each
 re-implement it. An owner is a dict with at least ``delivery_channel``,
 ``email`` and ``push_tokens`` (as returned by the store's owner queries).
 
-Channels: ``email``, ``push``, or ``both`` (= email + push). A former Telegram
-channel was removed; push notifications replace it.
+Channels: ``email``, ``push``, ``both`` (= email + push) — oder ``off``: gar
+nicht. A former Telegram channel was removed; push notifications replace it.
+
+``off`` fällt hier durch beide Prüfungen, weil es in keiner der beiden Listen
+steht. Das ist die letzte Bastion, nicht die erste: Wer abgeschaltet hat, kommt
+über ``nwz.notify.gewuenscht()`` gar nicht erst bis in die Warteschlange. Diese
+Schicht greift für die wenigen Wege, die direkt zustellen — der Test-Knopf in
+den Einstellungen etwa.
 """
 from __future__ import annotations
 

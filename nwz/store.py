@@ -175,7 +175,11 @@ CREATE TABLE IF NOT EXISTS topic_classified_editions (
     PRIMARY KEY(owner_id, topic_id, pub_date)
 );
 
--- Web frontend accounts. delivery_channel ∈ {email, push, both}.
+-- Web frontend accounts. delivery_channel ∈ {email, push, both, off}.
+-- 'off' heißt: gar keine Benachrichtigungen. Kein eigenes Feld, weil es
+-- dieselbe Frage beantwortet wie die anderen drei — wohin? — nur eben mit
+-- „nirgendwohin". nwz.notify.gewuenscht() liest den Wert mit, damit bei 'off'
+-- nichts erst in der Warteschlange landet.
 -- `telegram_chat_id` is a legacy column retained for backward-compatible data
 -- (older rows that were once migrated from the removed Telegram bot); it is no
 -- longer written to and can be dropped in a future schema migration.
@@ -708,6 +712,18 @@ class Store:
                 "UPDATE web_users SET delivery_channel = ? WHERE id = ?", (channel, owner_id)
             )
 
+    def get_delivery_channel(self, owner_id: int) -> str:
+        """Der Zustellweg eines Kontos — ``email`` | ``push`` | ``both`` | ``off``.
+
+        Schlanker als ``get_web_user_by_id``, weil ``nwz.notify.gewuenscht()``
+        das bei jedem einzelnen Einreihen wissen muss. Ein unbekanntes Konto
+        gilt als ``email`` (die Vorgabe der Spalte) — nie als ``off``: Ein
+        Lesefehler darf niemanden stillschweigend abmelden.
+        """
+        row = self._conn.execute(
+            "SELECT delivery_channel FROM web_users WHERE id = ?", (owner_id,)).fetchone()
+        return (row[0] if row and row[0] else "email")
+
     def get_onboarding(self, user_id: int) -> dict:
         """Onboarding-Fortschritt des Kontos: {"steps": [...], "celebrated": bool}.
         Am Konto statt im localStorage, damit er auf jedem Gerät derselbe ist."""
@@ -802,8 +818,10 @@ class Store:
         Bedingungen bewusst streng — die Mail geht genau einmal und nur an
         Menschen, die sie einordnen können: mindestens Schritt 1 erreicht (wer
         beim Gruß abbricht, hat nichts angefangen), nichts abgeschlossen, seit
-        ``older_than_hours`` keine Bewegung, noch nie erinnert, Konto aktiv und
-        E-Mail bestätigt.
+        ``older_than_hours`` keine Bewegung, noch nie erinnert, Konto aktiv,
+        E-Mail bestätigt — und Benachrichtigungen nicht abgeschaltet. Letzteres
+        ist die Probe aufs Exempel: Ein Aus-Schalter, den die freundlich
+        gemeinte Erinnerung übergeht, ist keiner.
         """
         cutoff = (datetime.utcnow() - timedelta(hours=older_than_hours)).isoformat(timespec="seconds")
         rows = self._conn.execute(
@@ -813,6 +831,7 @@ class Store:
             "  AND setup_done_at IS NULL AND setup_reminded_at IS NULL "
             "  AND COALESCE(setup_step, 0) >= 1 "
             "  AND status = 'active' AND email_verified = 1 "
+            "  AND COALESCE(delivery_channel, 'email') <> 'off' "
             "ORDER BY setup_started_at LIMIT ?",
             (cutoff, limit),
         ).fetchall()
@@ -1212,6 +1231,23 @@ class Store:
                 f"UPDATE notification_queue SET attempts = attempts + 1 WHERE id IN ({ph})",
                 tuple(ids),
             )
+
+    def drop_pending_notifications(self, owner_id: int) -> int:
+        """Alles Unzugestellte dieses Kontos verwerfen. Gibt die Anzahl zurück.
+
+        Gedacht für den Moment, in dem jemand Benachrichtigungen abschaltet:
+        Was noch wartet, war für ein Einverständnis gedacht, das gerade
+        widerrufen wurde. Bliebe es liegen, käme es beim Wiedereinschalten als
+        Nachlieferung aus der Zeit, in der ausdrücklich nichts gewollt war.
+
+        Bereits Zugestelltes (``sent_at`` gesetzt) bleibt unangetastet — das ist
+        die Historie, keine offene Post.
+        """
+        with self._conn:
+            cur = self._conn.execute(
+                "DELETE FROM notification_queue WHERE owner_id = ? AND sent_at IS NULL",
+                (owner_id,))
+        return cur.rowcount or 0
 
     def undeliverable_notifications(self, limit: int = 50) -> list[dict]:
         """Aufgegebene Meldungen — fürs Admin-Panel und die Fehlersuche."""

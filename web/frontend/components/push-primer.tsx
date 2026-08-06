@@ -54,6 +54,10 @@ export function PushPrimer() {
       if (user.delivery_channel === "push" || user.delivery_channel === "both") {
         return setVisible(false);
       }
+      // Wer Benachrichtigungen ausdrücklich abgeschaltet hat, wird nicht
+      // gefragt, ob er sie nicht doch möchte. Ein Nein muss halten, sonst ist
+      // der Aus-Schalter nur eine Bitte.
+      if (user.delivery_channel === "off") return setVisible(false);
       const until = Number(localStorage.getItem(SNOOZE_KEY) ?? 0);
       setVisible(Date.now() >= until);
     };
@@ -70,8 +74,11 @@ export function PushPrimer() {
     mutationFn: async () => {
       const ok = await enablePush();
       if (!ok) throw new ApiError(400, "Bitte Mitteilungen in den iOS-Einstellungen für Ratslotse erlauben.");
-      // E-Mail bleibt an — Push kommt dazu (delivery_channel: both).
-      const channel = user?.delivery_channel === "push" ? "push" : "both";
+      // E-Mail bleibt an — Push kommt dazu (delivery_channel: both). Wer
+      // Benachrichtigungen ganz abgeschaltet hatte, bekommt hier nur Push:
+      // „ja" zu einer Mitteilung ist kein „ja" zu wieder E-Mails.
+      const vorher = user?.delivery_channel;
+      const channel = vorher === "push" || vorher === "off" ? "push" : "both";
       await api.put<User>("/account/delivery", { delivery_channel: channel });
     },
     onSuccess: () => {
