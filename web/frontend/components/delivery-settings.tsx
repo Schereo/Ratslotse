@@ -36,9 +36,13 @@ export function DeliverySettings() {
   const mutation = useMutation({
     mutationFn: (channel: DeliveryChannel) =>
       api.put<User>("/account/delivery", { delivery_channel: channel }),
-    onSuccess: () => {
+    onSuccess: (_d, channel) => {
       refresh();
-      toast.success("Zustellung aktualisiert.");
+      toast.success(
+        channel === "off"
+          ? "Benachrichtigungen sind aus. Du kannst sie jederzeit wieder anschalten."
+          : "Zustellung aktualisiert.",
+      );
     },
     onError: (err) =>
       toast.error(err instanceof ApiError ? err.message : "Konnte nicht gespeichert werden."),
@@ -77,16 +81,20 @@ export function DeliverySettings() {
   const current = user?.delivery_channel ?? "email";
   const emailOn = current === "email" || current === "both";
   const pushOn = current === "push" || current === "both";
+  const alleAus = !emailOn && !pushOn;
   // Push nur in der App aktivierbar; ist er (auf einem anderen Gerät) schon an,
   // bleibt der Schalter auch im Web sichtbar/bedienbar.
   const pushAvailable = native || pushOn;
 
+  /** Beide Schalter aus heißt aus — und wird auch so gespeichert.
+   *
+   *  Hier stand eine Sperre („Mindestens ein Kanal muss an bleiben"), und das
+   *  Backend kannte gar keinen anderen Wert. Wer nichts mehr hören wollte,
+   *  musste stattdessen die sechs Anlass-Schalter einzeln umlegen — sechs
+   *  Handgriffe für etwas, das eine Person als einen denkt, und niemand fand
+   *  sie. Eine App, die man nicht abstellen kann, verliert man ganz. */
   const apply = (email: boolean, push: boolean) => {
-    if (!email && !push) {
-      toast.error("Mindestens ein Kanal muss an bleiben.");
-      return;
-    }
-    mutation.mutate(email && push ? "both" : email ? "email" : "push");
+    mutation.mutate(email && push ? "both" : email ? "email" : push ? "push" : "off");
   };
 
   const togglePush = async (next: boolean) => {
@@ -104,9 +112,11 @@ export function DeliverySettings() {
     <Card className="p-6">
       <h2 className="font-semibold text-foreground">Benachrichtigungen</h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        {prefsQuery.data
-          ? `Höchstens ${prefsQuery.data.limits.per_day} am Tag. Nachts nie.`
-          : "Für neue Beschlüsse zu deinen Themen und abonnierte Tagesordnungen."}
+        {alleAus
+          ? "Aus — Ratslotse meldet sich nicht. Alles Weitere findest du in der App."
+          : prefsQuery.data
+            ? `Höchstens ${prefsQuery.data.limits.per_day} am Tag. Nachts nie.`
+            : "Für neue Beschlüsse zu deinen Themen und abonnierte Tagesordnungen."}
       </p>
       <div className="mt-4 space-y-3">
         <div className="flex items-center justify-between gap-3">
@@ -136,11 +146,18 @@ export function DeliverySettings() {
           />
         </div>
       </div>
-      {/* „Wofür" — die sechs Anlässe aus 30a/B, jeder einzeln abschaltbar. */}
+      {/* „Wofür" — die sechs Anlässe aus 30a/B, jeder einzeln abschaltbar.
+          Ist gar kein Kanal an, hätten sie keine Wirkung: Sie bleiben sichtbar
+          (die Einstellung geht ja nicht verloren), aber sichtbar wirkungslos —
+          ein bedienbarer Schalter, der nichts tut, wäre die schlechtere Lüge.
+
+          Bewusst KEIN aria-hidden dabei: Die Ausgrauung ist die sichtbare
+          Hälfte dieser Auskunft, der Zusatz an der Überschrift die hörbare.
+          Wer den Block ausblendet, nimmt Screenreader-Nutzenden beides. */}
       {prefsQuery.data && (
-        <div className="mt-6 border-t border-border pt-5">
+        <div className={`mt-6 border-t border-border pt-5 ${alleAus ? "opacity-45" : ""}`}>
           <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-            Wofür
+            Wofür {alleAus && <span className="font-medium normal-case tracking-normal">— erst wieder, wenn ein Kanal an ist</span>}
           </p>
           <div className="mt-3 space-y-3">
             {prefsQuery.data.kinds.map((k) => (
@@ -152,7 +169,7 @@ export function DeliverySettings() {
                 <Switch
                   checked={k.enabled}
                   aria-label={k.label}
-                  disabled={kindMutation.isPending}
+                  disabled={alleAus || kindMutation.isPending}
                   onCheckedChange={(v) => toggleKind(k.key, v)}
                 />
               </div>
@@ -170,15 +187,19 @@ export function DeliverySettings() {
         </div>
       )}
 
-      <Button
-        variant="secondary"
-        size="sm"
-        className="mt-5"
-        onClick={() => testMutation.mutate()}
-        disabled={testMutation.isPending}
-      >
-        <BellRing /> {testMutation.isPending ? "Sende…" : "Test-Benachrichtigung senden"}
-      </Button>
+      {/* Ohne Kanal gibt es nichts zu testen — der Knopf würde zuverlässig
+          „Kein Kanal konnte zustellen" melden und wie ein Fehler aussehen. */}
+      {!alleAus && (
+        <Button
+          variant="secondary"
+          size="sm"
+          className="mt-5"
+          onClick={() => testMutation.mutate()}
+          disabled={testMutation.isPending}
+        >
+          <BellRing /> {testMutation.isPending ? "Sende…" : "Test-Benachrichtigung senden"}
+        </Button>
+      )}
     </Card>
   );
 }

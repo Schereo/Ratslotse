@@ -152,7 +152,10 @@ class DeleteAccountRequest(BaseModel):
 
 # ---- delivery channel ----
 class DeliveryUpdate(BaseModel):
-    delivery_channel: str = Field(pattern="^(email|both|push)$")
+    #: ``off`` ist ein vollwertiger Zustellweg: gar nicht. Ohne ihn ließen sich
+    #: Benachrichtigungen nur einzeln über die sechs Anlass-Schalter stumm
+    #: stellen — sechs Handgriffe für etwas, das eine Person als einen denkt.
+    delivery_channel: str = Field(pattern="^(email|both|push|off)$")
 
 
 class NotifyPrefsIn(BaseModel):

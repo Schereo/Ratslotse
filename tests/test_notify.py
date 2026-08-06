@@ -519,3 +519,107 @@ def test_tagesordnungs_meldung_nennt_den_punkt(store):
     owner = _konto(store)
     assert notify.einreihen(store, owner, notify.N2_THEMA, "x", "<p>x</p>",
                             sitzung_href(4666, ["Ö 6"])) > 0
+
+
+# ---- Ganz abschalten (Zustellweg „off") --------------------------------------
+#
+# Bis hierher musste immer ein Kanal an bleiben: Die Oberfläche verweigerte
+# beides-aus, und das Backend kannte keinen anderen Wert. Wer nichts mehr hören
+# wollte, hätte die sechs Anlass-Schalter einzeln umlegen müssen. Diese Tests
+# halten fest, dass „aus" jetzt an genau einer Stelle greift — beim Einreihen —
+# und dass die Warteschlange dabei nicht zum Zwischenlager wird.
+
+def test_abgeschaltet_reiht_gar_nichts_ein(store):
+    """Nicht erst die Zustellung schweigt, sondern schon die Warteschlange.
+
+    Sonst zählten unzustellbare Meldungen gegen die Tagesgrenze — und beim
+    Wiedereinschalten käme eine Nachlieferung aus genau der Zeit, in der
+    jemand ausdrücklich nichts wollte.
+    """
+    owner = _konto(store)
+    store.set_delivery_channel(owner, "off")
+    for art in (notify.N1_TAGESORDNUNG, notify.N2_THEMA, notify.N3_ERGEBNIS,
+                notify.N4_VORGANG):
+        assert notify.einreihen(store, owner, art, "x", "<p>x</p>", "/council") == 0
+    assert store.due_notifications(owner, "2999-01-01") == []
+
+
+def test_abgeschaltet_gilt_auch_gegen_die_vorgaben(store):
+    """N1–N4 sind ab Werk AN. „off" schlägt die Vorgabe, nicht umgekehrt."""
+    owner = _konto(store)
+    store.set_delivery_channel(owner, "off")
+    assert notify.gewuenscht(store, owner, notify.N1_TAGESORDNUNG) is False
+    store.set_delivery_channel(owner, "email")
+    assert notify.gewuenscht(store, owner, notify.N1_TAGESORDNUNG) is True
+
+
+def test_abschalten_verwirft_was_noch_wartet(store, monkeypatch):
+    """Vor dem Abschalten Eingereihtes wird nicht später doch noch zugestellt."""
+    owner = _konto(store)
+    notify.einreihen(store, owner, notify.N2_THEMA, "Radweg", "<p>x</p>", "/council",
+                     jetzt=_zeit("2026-08-18", 9))
+    assert len(store.due_notifications(owner, "2999-01-01")) == 1
+
+    store.set_delivery_channel(owner, "off")
+    monkeypatch.setattr("nwz.delivery.deliver_message",
+                        lambda *a, **k: pytest.fail("abgeschaltet — nichts darf rausgehen"))
+    assert notify.zustellen(store, jetzt=_zeit("2026-08-18", 10)) == 0
+    # Und zwar verworfen, nicht bloß übersprungen: Sonst läge es noch da, wenn
+    # kurz darauf wieder eingeschaltet wird.
+    assert store.due_notifications(owner, "2999-01-01") == []
+
+
+def test_abschalten_laesst_die_anderen_konten_in_ruhe(store, monkeypatch):
+    a, b = _konto(store, "a@b.de"), _konto(store, "b@b.de")
+    store.set_delivery_channel(a, "off")
+    for owner_id in (a, b):
+        notify.einreihen(store, owner_id, notify.N2_THEMA, "x", "<p>x</p>", "/council",
+                         jetzt=_zeit("2026-08-18", 9))
+    empfaenger: list[int] = []
+    monkeypatch.setattr(
+        "nwz.delivery.deliver_message",
+        lambda o, *a, **k: (empfaenger.append(o["owner_id"]), ["email"])[1])
+    assert notify.zustellen(store, jetzt=_zeit("2026-08-18", 10)) == 1
+    assert empfaenger == [b]
+
+
+def test_wieder_einschalten_faengt_bei_null_an(store, monkeypatch):
+    """Nach dem Wiedereinschalten kommt Neues an — aber nichts Nachgeholtes."""
+    owner = _konto(store)
+    notify.einreihen(store, owner, notify.N2_THEMA, "vor dem Abschalten", "<p>alt</p>",
+                     "/council", jetzt=_zeit("2026-08-18", 9))
+    store.set_delivery_channel(owner, "off")
+    notify.zustellen(store, jetzt=_zeit("2026-08-18", 10))   # räumt die Warteschlange
+
+    store.set_delivery_channel(owner, "email")
+    notify.einreihen(store, owner, notify.N2_THEMA, "danach", "<p>neu</p>", "/council",
+                     jetzt=_zeit("2026-08-19", 9))
+    titel: list[str] = []
+    monkeypatch.setattr(
+        "nwz.delivery.deliver_message",
+        lambda o, html, email_subject, push_url="/": (titel.append(email_subject), ["email"])[1])
+    assert notify.zustellen(store, jetzt=_zeit("2026-08-19", 10)) == 1
+    assert titel == ["danach"]
+
+
+def test_abgeschaltet_bekommt_keine_einrichtungs_erinnerung(store):
+    """Auch die freundlich gemeinte Erinnerung schweigt — sonst wäre der
+    Aus-Schalter nur eine Bitte."""
+    from datetime import timedelta
+
+    def _halb_eingerichtet(email: str) -> int:
+        uid = _konto(store, email)
+        alt = (datetime.now(timezone.utc) - timedelta(days=5)).isoformat(timespec="seconds")
+        with store._conn:
+            store._conn.execute(
+                "UPDATE web_users SET setup_started_at = ?, setup_updated_at = ?, "
+                "setup_step = 2, email_verified = 1 WHERE id = ?", (alt, alt, uid))
+        return uid
+
+    still = _halb_eingerichtet("still@b.de")
+    laut = _halb_eingerichtet("laut@b.de")
+    store.set_delivery_channel(still, "off")
+
+    kandidaten = [u["id"] for u in store.setups_to_remind(older_than_hours=48)]
+    assert laut in kandidaten
+    assert still not in kandidaten

@@ -36,14 +36,25 @@ COUNCIL_DB = ROOT / "data" / "council.sqlite"
 def _notify_new_matches(nwz, council, owner_id: int, topic_name: str, new_ids: list[int]) -> int:
     """13a-D: EIN Push/Mail je Thema — der Titel mit der größten Tragweite
     führt (COALESCE impact, importance — nicht der erste oder kurioseste),
-    Rest als „— und n weitere". Tap öffnet die Themen-Trefferliste."""
-    from nwz.delivery import deliver_message
+    Rest als „— und n weitere". Tap öffnet die Themen-Trefferliste.
 
-    owner = nwz.get_web_user_by_id(owner_id)
-    if not owner:
-        return 0
-    owner = dict(owner)
-    owner["push_tokens"] = nwz.get_push_tokens_for_owner(owner_id)
+    Geht über die Warteschlange (``notify.einreihen``), nicht direkt über
+    ``deliver_message``. Vorher tat es das — und stand damit als einziger Anlass
+    außerhalb aller Grenzen aus Design 30a: Es kam auch dann an, wenn jemand
+    „Ergebnisse zu meinen Themen" abgeschaltet oder Benachrichtigungen ganz
+    ausgestellt hatte, es zählte nicht gegen die zwei am Tag, und es hätte
+    mitten in der Nachtruhe klingeln können.
+
+    Der Anlass ist **N3**: „Der Rat hat zu deinem Thema entschieden." Dass der
+    Treffer hier aus dem Ähnlichkeitsabgleich stammt statt aus dem Protokoll
+    einer abonnierten Sitzung, ist eine Frage der Herkunft, nicht der Bedeutung
+    — für die Person ist es dieselbe Nachricht und gehört unter denselben
+    Schalter.
+    """
+    from nwz import notify
+
+    if not nwz.get_web_user_by_id(owner_id):
+        return 0                      # Konto zwischenzeitlich gelöscht
     # get_decision liefert d.* (impact/importance/amount_eur) — die schlanke
     # Batch-Query der QA-Zitate kennt diese Spalten nicht.
     decisions = [d for d in (council.get_decision(i) for i in new_ids) if d]
@@ -68,8 +79,7 @@ def _notify_new_matches(nwz, council, owner_id: int, topic_name: str, new_ids: l
         )
         + digest_email.knopf("/topics", "Alle Treffer ansehen" if n > 1 else "Beschluss ansehen")
     )
-    sent = deliver_message(owner, msg, email_subject=subject, push_url="/topics")
-    return 1 if sent else 0
+    return 1 if notify.einreihen(nwz, owner_id, notify.N3_ERGEBNIS, subject, msg, "/topics") else 0
 
 
 def process(top_k: int = 8, threshold: float = 0.45) -> dict:
@@ -93,7 +103,14 @@ def process(top_k: int = 8, threshold: float = 0.45) -> dict:
                 new_ids = [int(did) for did, _ in hits if int(did) not in old_ids]
                 if new_ids and old_ids:
                     notified += _notify_new_matches(nwz, council, owner_id, t.name, new_ids)
-        return {"topics": n_topics, "matches": total, "notified": notified}
+        # Eingereiht ist nicht zugestellt: Ohne diesen Aufruf läge alles bis zum
+        # nächsten Cron-Job (7 Uhr) still. Die Nachtruhe verschiebt ohnehin, was
+        # jetzt nicht raus darf — dieser Lauf startet sonntags um 3 Uhr.
+        from nwz import notify
+
+        zugestellt = notify.zustellen(nwz)
+        return {"topics": n_topics, "matches": total, "notified": notified,
+                "zugestellt": zugestellt}
     finally:
         nwz.close()
         council.close()

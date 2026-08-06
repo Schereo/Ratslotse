@@ -809,7 +809,7 @@ function UserDetailPanel({ userId, isSelf, onClose }: { userId: number; isSelf: 
       <div className="mt-2 flex flex-col gap-1.5">
         <DetailRow label={`${data.topics.length} ${data.topics.length === 1 ? "Thema" : "Themen"}`} value={data.topics.slice(0, 4).join(", ") || "—"} />
         <DetailRow label={`${data.abos.length} Ausschuss-${data.abos.length === 1 ? "Abo" : "Abos"}`} value={data.abos.slice(0, 4).join(", ") || "—"} />
-        <DetailRow label="Zustellung" value={data.delivery_channel === "both" ? "Push + E-Mail" : data.delivery_channel === "push" ? "Push" : "E-Mail"} />
+        <DetailRow label="Zustellung" value={data.delivery_channel === "both" ? "Push + E-Mail" : data.delivery_channel === "push" ? "Push" : data.delivery_channel === "off" ? "Aus" : "E-Mail"} />
       </div>
 
       <StatKickerSpaced>Aktivität (30 Tage)</StatKickerSpaced>

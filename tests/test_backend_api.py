@@ -2295,3 +2295,42 @@ def test_vorschau_karte_bleibt_lesbar_auch_bei_amtstiteln(client):
     cs.close()
     k = client.get(f"/api/council/preview/decision/{kurz_id}").json()
     assert k["title"] == "Radweg beschlossen — angenommen"
+
+
+def test_zustellweg_off_ist_erlaubt_und_raeumt_die_warteschlange(client):
+    """Benachrichtigungen ganz abstellen — der Fall, den es nicht gab.
+
+    Das Muster im Schema ließ nur ``email|push|both`` zu, und die Oberfläche
+    verweigerte beides-aus. Wer nichts mehr hören wollte, hätte die sechs
+    Anlass-Schalter einzeln umlegen müssen.
+    """
+    from nwz import notify
+
+    owner = _register(client).json()["id"]
+
+    # Etwas liegt schon in der Warteschlange, als abgeschaltet wird.
+    store = Store(NWZ_DB)
+    notify.einreihen(store, owner, notify.N2_THEMA, "Radweg", "<p>x</p>", "/council")
+    assert len(store.due_notifications(owner, "2999-01-01")) == 1
+    store.close()
+
+    r = client.put("/api/account/delivery", json={"delivery_channel": "off"})
+    assert r.status_code == 200, r.text
+    assert r.json()["delivery_channel"] == "off"
+
+    store = Store(NWZ_DB)
+    # Nicht bloß stummgeschaltet: Was wartete, ist weg. Sonst käme es beim
+    # Wiedereinschalten als Nachlieferung aus der Zeit, in der ausdrücklich
+    # nichts gewollt war.
+    assert store.due_notifications(owner, "2999-01-01") == []
+    # Und Neues kommt gar nicht erst hinein.
+    assert notify.einreihen(store, owner, notify.N3_ERGEBNIS, "y", "<p>y</p>", "/topics") == 0
+    store.close()
+
+    # Zurückschalten geht jederzeit.
+    r = client.put("/api/account/delivery", json={"delivery_channel": "email"})
+    assert r.json()["delivery_channel"] == "email"
+
+    # Unsinn bleibt Unsinn.
+    assert client.put("/api/account/delivery",
+                      json={"delivery_channel": "aus"}).status_code == 422
