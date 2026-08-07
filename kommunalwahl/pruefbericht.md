@@ -316,3 +316,31 @@ aber die Zahlen gehen für Leser:innen sonst nicht auf: **„53 ungültig" mit a
 
 **Als Test einfrieren:** `pruef_struktur.py` und `pruef_zitate.py` gehören nach `tests/` — sie
 haben diesen Durchgang getragen und würden jede spätere Datenauffrischung genauso absichern.
+
+
+---
+
+## 8 Schwarm-Prüfung vom 08.08.2026
+
+Auf Tims Wunsch lief nach dem Frontend-Bau eine zweite, unabhängige Prüfrunde:
+**28 Sonnet-Finder** (9 Listen × Positionen / Programm-Porträt / Forderungs-Bullets, plus
+Klartext-Einzeiler), jeder Fund anschließend von einem **Skeptiker-Agenten** adversarial
+gegengeprüft. 52 Agenten, 1 574 Werkzeug-Aufrufe, **1 227 geprüfte Aussagen**.
+
+Ergebnis: **12 bestätigte Befunde** (kein kritischer), 12 verworfen. Die Korrekturen stehen
+in `pruefungen/korrekturen_2026_08_08.py` (idempotent, angewendet):
+
+| Befund | Korrektur |
+|---|---|
+| AfD P1 `+1` trotz „Bürgerbefragung statt Bürgerentscheid" (Volt bekam für dieselbe Abstufung `0`) | `+1 → 0`, Beleg präzisiert |
+| AfD V1: Seite 12 deckte nur den „Genehmigungsturbo", Bau-Turbo + Genehmigungsfiktion stehen auf S. 36 | Hauptseite 36, beide Fundstellen im Beleg |
+| AfD C3: „soziokulturelle" statt der im Text stehenden „queeren Aktivismus-Workshops" | wortgetreu korrigiert |
+| BB-OL Kultursommer (3 Stellen): „drei bis vier Wochen" war die *frühere* Dauer — gefordert sind drei Wochen | Zieldauer in Position, `besonderes` und Themen-Bullet korrigiert |
+| Grüne S3: Streetworker-Fundstelle (S. 19) unter Seitenangabe 31 | beide Seiten im Beleg ausgewiesen |
+| Grüne „größte Arbeitgeberin" — Text sagt „eine der größten" | Superlativ zurückgenommen |
+| FDP-Bullet nannte die GSG „städtische Gesellschaft" — Text: „an der die Stadt beteiligt ist" | Formulierung korrigiert |
+| 7 Themenfeld-Seitenlisten deckten einzelne Bullet-Fundstellen nicht ab | Seiten ergänzt (gruene, linke ×4, volt, spd) |
+
+Durch die AfD-P1-Korrektur ändern sich Paarwerte leicht (Spitze jetzt FDP–AfD 92 %);
+Streit-Top-5, Einigkeit und Alleinstellungen bleiben unverändert. Alle Prüfskripte laufen
+danach grün.

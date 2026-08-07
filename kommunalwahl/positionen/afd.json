@@ -68,8 +68,8 @@
   },
   "V1": {
    "pos": 1,
-   "beleg": "Das Programm fordert einen 'Genehmigungsturbo', einen 'Bau-Turbo' und eine Genehmigungsfiktion für schnellere, unbürokratische Verfahren.",
-   "seite": 12
+   "beleg": "Das Programm fordert den 'Bau-Turbo' mit digitalen Bauanträgen und einer Genehmigungsfiktion (automatische Genehmigung nach Fristablauf), dazu einen 'Genehmigungsturbo' für Bau- und Wirtschaftsanträge (S. 12).",
+   "seite": 36
   },
   "V2": {
    "pos": -1,
@@ -128,7 +128,7 @@
   },
   "C3": {
    "pos": 0,
-   "beleg": "Die Finanzierung von Staatstheater, Museen und Denkmalpflege soll nur gesichert bleiben (keine Erhöhung), während die Förderung 'ideologischer Nischenthemen' wie soziokultureller Aktivismus-Workshops explizit abgelehnt wird.",
+   "beleg": "Die Finanzierung von Staatstheater, Museen und Denkmalpflege soll nur gesichert bleiben (keine Erhöhung); steuerfinanzierte Formate zu 'ideologischen Nischenthemen (wie etwa queere Aktivismus-Workshops)' werden explizit abgelehnt.",
    "seite": 24
   },
   "C4": {
@@ -187,8 +187,8 @@
    "seite": 11
   },
   "P1": {
-   "pos": 1,
-   "beleg": "Das Programm fordert 'verbindliche Bürgerbefragungen' bei kostspieligen Großprojekten wie Stadtmuseum oder Flötenteichbad.",
+   "pos": 0,
+   "beleg": "Das Programm fordert 'verbindliche Bürgerbefragungen' bei weitreichenden Entscheidungen wie kostspieligen Großprojekten — ausdrücklich als freiwilliger Weg, weil die formalen Hürden für Bürgerbegehren als zu hoch gelten; ein förmlicher Bürgerentscheid wird nicht gefordert.",
    "seite": 41
   },
   "P2": {
