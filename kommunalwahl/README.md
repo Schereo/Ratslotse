@@ -20,7 +20,7 @@ Alle Skripte lösen ihre Pfade relativ zum eigenen Ort auf und laufen von übera
 | Pfad | Inhalt |
 |---|---|
 | `quellen/` | Amtliche Bekanntmachung der zugelassenen Wahlvorschläge (23.07.2026) + `manifest.json` mit SHA256 aller Quelldateien |
-| `programme/<slug>.pdf/.txt` | Originalprogramm und extrahierter Volltext mit `[Seite N]`-Markern |
+| `programme/<slug>.txt` | Extrahierter Volltext mit `[Seite N]`-Markern (die PDFs selbst liegen **nicht** im Repo — Entscheidung vom 07.08.2026, s. u.) |
 | `digests/<slug>.json` | Auswertung je Liste: Charakter, Kernpunkte, Positionen je Themenfeld, Prägnanz |
 | `positionen/<slug>.json` | Position zu jeder der 44 Thesen mit Belegzitat und Seitenzahl |
 | `thesen.json` | Thesenkatalog mit Themenzuordnung und lokalem Kontext |
@@ -57,11 +57,14 @@ zwei Listen zu wenigem beide geäußert haben.
 ## Nachvollziehbarkeit
 
 Jede Position trägt ein Belegzitat und, bei PDF-Programmen, die Seitenzahl. Die Seite verlinkt
-von dort per `#page=N` direkt in das Original-PDF. `quellen/manifest.json` hält URL, SHA256 und
-Größe jeder ausgewerteten Datei fest:
+von dort per `#page=N` direkt in das **Original bei der Partei** — Kopien der PDFs liegen
+bewusst nicht im Repo (42 MB fremdes Material; die Belegkette hängt an den Prüfsummen, nicht
+an den Dateien). `quellen/manifest.json` hält URL, SHA256 und Größe jeder ausgewerteten Datei
+fest; der Backend-Endpunkt `/api/kommunalwahl/quelle/{slug}` lädt das gehostete PDF und
+meldet, ob es noch die ausgewertete Datei ist:
 
 ```bash
-shasum -a 256 programme/spd.pdf   # mit manifest.json vergleichen
+curl -L <partei-url> | shasum -a 256   # mit manifest.json vergleichen
 ```
 
 ## Einschränkungen

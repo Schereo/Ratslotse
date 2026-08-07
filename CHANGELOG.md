@@ -7,6 +7,21 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt
+- **Wahlprogramm-Vergleich zur Ratswahl am 13. September.** Unter
+  `/kommunalwahl` — öffentlich, ohne Konto — hat Ratslotse alle Programme
+  gelesen: die acht Listen mit eigenem Kommunalwahlprogramm plus BSW (dessen
+  Landesprogramm Oldenburg nirgends erwähnt und deshalb überall markiert ist),
+  entlang von 44 Thesen. Zwölf Themenseiten stellen die Positionen nebeneinander,
+  neun Profilseiten zeigen je ein Programm mit Kernpunkten und Auffälligkeiten,
+  eine Nähe-Matrix rechnet aus, wer wem wie oft zustimmt — und jede einzelne
+  Aussage trägt ein Belegzitat mit Seitenzahl, das direkt ins Original der
+  Partei springt. Die sieben Listen ohne vergleichbares Programm fehlen nicht,
+  sondern stehen mit Rechercheprotokoll dabei. Ausgewertet hat eine KI, keine
+  Redaktion — das sagt die Seite an drei Stellen selbst und lädt zum Nachprüfen
+  ein: Ratslotse hostet die Programme nicht, sondern prüft live, ob hinter dem
+  Partei-Link noch genau die Datei steht, die ausgewertet wurde. (#356)
+
 ## [1.6.0] – 2026-08-06
 
 ### Hinzugefügt
