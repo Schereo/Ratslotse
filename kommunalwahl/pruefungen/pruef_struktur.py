@@ -92,16 +92,36 @@ if len(D["paare"]) != anzahl_erwartet:
     f(f"paare: {len(D['paare'])} Einträge statt {anzahl_erwartet}")
 
 # ---- E: thesen_stat nachrechnen -------------------------------------------
+# Bezugsmenge sind die Vergleichslisten, nicht alle 16 — sonst zaehlen Listen
+# ohne Programm in einer Verteilung mit, die neben einer 9-spaltigen Matrix
+# steht (pruefbericht.md §4.1).
+VERGLEICH = D.get("vergleich")
+if not VERGLEICH:
+    f("data.json: Feld `vergleich` fehlt — analyse.py ist aelter als die Korrektur")
+    VERGLEICH = [s for s in SLUGS if D["quellenart"][s]["art"] in ("voll", "landes")]
+if any(D["quellenart"][s]["art"] not in ("voll", "landes") for s in VERGLEICH):
+    f("vergleich: enthaelt eine Liste ohne ausformuliertes Programm")
+
 for st in D["thesen_stat"]:
     tid = st["id"]
-    werte = [D["positionen"][s]["positionen"][tid]["pos"] for s in SLUGS]
+    werte = [D["positionen"][s]["positionen"][tid]["pos"] for s in VERGLEICH]
     werte = [x for x in werte if x is not None]
     n, dafuer, teils, dagegen = len(werte), werte.count(1), werte.count(0), werte.count(-1)
     if (st["n"], st["dafuer"], st["teils"], st["dagegen"]) != (n, dafuer, teils, dagegen):
         f(f"thesen_stat/{tid}: {st['n']}/{st['dafuer']}/{st['teils']}/{st['dagegen']} "
           f"statt {n}/{dafuer}/{teils}/{dagegen}")
+    if st.get("belastbar") != (n >= D["min_n"]):
+        f(f"thesen_stat/{tid}: belastbar={st.get('belastbar')} bei n={n}")
     if st["thema"] != THEMA[tid]:
         f(f"thesen_stat/{tid}: thema {st['thema']} statt {THEMA[tid]}")
+
+# ---- E2: themen_rang ebenfalls ueber die Vergleichsmenge ------------------
+for r in D["themen_rang"]:
+    k = r["key"]
+    if r["erwaehnt"] != sum(1 for s in VERGLEICH if D["abdeckung"][s][k]["praegnanz"] >= 1):
+        f(f"themen_rang/{k}: erwaehnt={r['erwaehnt']} nicht ueber die Vergleichsmenge gerechnet")
+    if r["positionen_gesamt"] != sum(D["abdeckung"][s][k]["anzahl"] for s in VERGLEICH):
+        f(f"themen_rang/{k}: positionen_gesamt nicht ueber die Vergleichsmenge gerechnet")
 
 # ---- F: abdeckung gegen digests -------------------------------------------
 for slug in SLUGS:

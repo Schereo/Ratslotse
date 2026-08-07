@@ -91,6 +91,18 @@ def main():
     with open(os.path.join(BASE, "parteien-meta.json"), encoding="utf-8") as f:
         meta = json.load(f)
 
+    # Klartext-Ebene (Bauplan §7.3): alltagssprachliche Texte, die die Programme
+    # einordnen statt sie zu zitieren. Bewusst getrennt gehalten — sie sind das
+    # Einzige in data.json, das nicht direkt aus einer Quelle stammt, und
+    # brauchen deshalb ein eigenes „geprueft"-Flag.
+    klartext = {"einzeiler": {}, "geprueft": False}
+    kp = os.path.join(BASE, "klartext.json")
+    if os.path.exists(kp):
+        with open(kp, encoding="utf-8") as f:
+            klartext = json.load(f)
+    if not klartext.get("geprueft"):
+        print("  ! klartext.json ist noch nicht redaktionell geprueft (geprueft: false)")
+
     thesen = []
     tp = os.path.join(BASE, "thesen.json")
     if os.path.exists(tp):
@@ -125,23 +137,37 @@ def main():
         for s, d in digests.items()
     }
 
+    # Die Vergleichsmenge: nur Listen mit ausformuliertem Programm plus BSW
+    # (Landesrahmen, deshalb ueberall markiert). Alles, was auf der Seite als
+    # Verteilung, Rang oder Streitgrad erscheint, wird ueber DIESE Menge
+    # gerechnet — nicht ueber alle 16. Sonst zaehlen Listen mit, die gar kein
+    # Programm haben, und die Zahlen neben einer 9-spaltigen Matrix stimmen
+    # nicht mit dem ueberein, was danebensteht.
+    vergleich = [s for s in reihenfolge
+                 if QUELLENART.get(s, ("", ""))[0] in ("voll", "landes")]
+
     themen_rang = []
     for k, m in THEMEN.items():
+        in_v = [s for s in vergleich if s in abdeckung]
         themen_rang.append({
             "key": k, "label": m["label"], "kurz": m["kurz"],
-            "erwaehnt": sum(1 for s in abdeckung if abdeckung[s][k]["praegnanz"] >= 1),
-            "mit_abschnitt": sum(1 for s in abdeckung if abdeckung[s][k]["praegnanz"] >= 2),
-            "schwerpunkt": sum(1 for s in abdeckung if abdeckung[s][k]["praegnanz"] == 3),
-            "positionen_gesamt": sum(abdeckung[s][k]["anzahl"] for s in abdeckung),
+            "erwaehnt": sum(1 for s in in_v if abdeckung[s][k]["praegnanz"] >= 1),
+            "mit_abschnitt": sum(1 for s in in_v if abdeckung[s][k]["praegnanz"] >= 2),
+            "schwerpunkt": sum(1 for s in in_v if abdeckung[s][k]["praegnanz"] == 3),
+            "positionen_gesamt": sum(abdeckung[s][k]["anzahl"] for s in in_v),
             "thesen": len(ids_thema[k]),
         })
     themen_rang.sort(key=lambda x: (-x["erwaehnt"], -x["positionen_gesamt"]))
 
     # Streitgrad je These: mittlerer paarweiser Abstand unter allen Listen, die sich
     # ueberhaupt aeussern. 0 = voellige Einigkeit, 1 = maximale Spaltung.
+    #
+    # `belastbar` haelt die MIN_N-Schranke einmal zentral fest, statt sie in jeder
+    # Ansicht zu wiederholen: Ohne sie fuehrt eine These mit n=2 die Streitliste an,
+    # weil zwei Listen sich zufaellig gegenueberstehen.
     thesen_stat = []
     for t in thesen:
-        werte = [flat[s][t["id"]] for s in reihenfolge
+        werte = [flat[s][t["id"]] for s in vergleich
                  if s in flat and flat[s].get(t["id"]) is not None]
         paar_abstaende = [abs(a - b) / 2 for i, a in enumerate(werte) for b in werte[i + 1:]]
         thesen_stat.append({
@@ -151,6 +177,7 @@ def main():
             "teils": sum(1 for w in werte if w == 0),
             "dagegen": sum(1 for w in werte if w == -1),
             "streit": round(sum(paar_abstaende) / len(paar_abstaende), 3) if paar_abstaende else None,
+            "belastbar": len(werte) >= MIN_N,
         })
 
     # Belegkette je Liste: Original-URL, archivierte Kopie, Seitenlink-Muster.
@@ -186,6 +213,7 @@ def main():
         "thesen": thesen, "digests": digests, "positionen": positionen,
         "paare": paare, "abdeckung": abdeckung,
         "min_n": MIN_N, "min_n_thema": MIN_N_THEMA, "reihenfolge": reihenfolge,
+        "vergleich": vergleich, "klartext": klartext,
     }
     ziel = os.path.join(BASE, "data.json")
     with open(ziel, "w", encoding="utf-8") as f:
