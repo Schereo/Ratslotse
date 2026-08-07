@@ -24,7 +24,10 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Auswertungen, die es sonst nirgends gibt: eine Karte der Nähe (alle 36
   Paarabstände als Bild), „Steht allein da" (Positionen einer Liste gegen alle
   anderen), ein Themen-Fingerabdruck je Programm und „Wie dieses Programm
-  redet" (Umfang, Satzlänge, typische Begriffe). (#356)
+  redet" (Umfang, Satzlänge, typische Begriffe) — und der **Thesen-Check**:
+  dieselben 44 Thesen selbst beantworten (Überspringen erlaubt, Wichtiges
+  zählt mit ★ doppelt) und sehen, wie oft jede Liste übereinstimmt, Satz für
+  Satz belegt. Kein Wahltipp, und die Antworten bleiben auf dem Gerät. (#356)
 
 ## [1.6.0] – 2026-08-06
 

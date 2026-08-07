@@ -12,6 +12,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const kommunalwahl: MetadataRoute.Sitemap = [
     { url: `${BASE}/kommunalwahl`, changeFrequency: "weekly", priority: 0.9 },
     { url: `${BASE}/kommunalwahl/naehe`, changeFrequency: "weekly", priority: 0.7 },
+    { url: `${BASE}/kommunalwahl/check`, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/kommunalwahl/methodik`, changeFrequency: "monthly", priority: 0.5 },
     ...themaKeys().map((t) => ({
       url: `${BASE}/kommunalwahl/thema/${t}`,
