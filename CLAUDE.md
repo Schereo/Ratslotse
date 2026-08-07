@@ -20,6 +20,7 @@ per LLM aufbereitet.
 | `web/frontend/` | Next.js-Frontend (+ Capacitor für iOS/Android) |
 | `docs-site/` | Astro-Starlight-Technik-Doku |
 | `eval/` | Eval-Harness für die LLM-Qualität |
+| `kommunalwahl/` | Wahlprogramm-Vergleich zur Ratswahl 13.09.2026: Programme, Auswertungen, Thesen-Positionen, fertige Vergleichsseite. Eigenständiger Datenbestand, **noch nicht** ins Backend/Frontend integriert — Einstieg: `kommunalwahl/README.md`, Schnittstelle: `kommunalwahl/data.json` |
 
 ## Zum Paketnamen `nwz/`
 

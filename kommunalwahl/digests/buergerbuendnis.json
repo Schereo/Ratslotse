@@ -1,0 +1,214 @@
+{
+ "slug": "buergerbuendnis",
+ "partei": {
+  "kurz": "Bürger Bündnis",
+  "name": "Bürger Bündnis Oldenburg (BB-OL)",
+  "typ": "waehlergruppe",
+  "kandidaten": 17
+ },
+ "programm": {
+  "gefunden": true,
+  "titel": "Programm zur Kommunalwahl 13. September 2026 – Bürger Bündnis Oldenburg (BB-OL): „Oldenburg kann mehr.“",
+  "url": "https://www.bb-ol.org/assets/documents/bb-ol-wahlprogramm-2026.pdf",
+  "format": "pdf",
+  "seiten": 11,
+  "stand": "Juni 2026",
+  "hinweis": "Hauptquelle ist das vollständige PDF-Wahlprogramm (Stand Juni 2026, 11 Seiten). Ergänzend wurden von bb-ol.org herangezogen: die Positionsübersicht (/Positionen/) sowie die Positionspapiere „Verkehr, Mobilität & ÖPNV“ und „Umwelt, Klima & Nachhaltigkeit“ (beide Stand Juni 2026) sowie „Stadion-Neubau“ (Stand 4. August 2026, damit aktueller als das Hauptprogramm). Diese vier Webquellen wurden per curl geladen und mit --append an programme/buergerbuendnis.txt angehängt (markiert mit „===== [Quelle: ...] =====“); sie vertiefen vor allem Verkehr, Umwelt/Klima und Stadion, enthalten aber keine Seitenzahlen."
+ },
+ "charakter": "Das BB-OL präsentiert sich als 2025 gegründete, unabhängige Wählervereinigung ohne Parteibuch, die bei ihrer ersten Kommunalwahlteilnahme betont sachlich-nüchtern, zahlenorientiert und ausdrücklich „ohne Ideologie“ auftritt. Inhaltlicher Schwerpunkt ist scharfe Kritik an der Haushaltslage und an Großprojekten (Stadion-Neubau, Pferdemarkt-Umgestaltung, Flötenteich-Bad, Klinikum), verbunden mit Forderungen nach verpflichtenden Bürgerentscheiden, Kostenobergrenzen und Transparenz. Verkehrspolitisch positioniert sich das Bündnis dezidiert erreichbarkeits- und autofreundlich (keine weiteren Parkgebührenerhöhungen, P+R-Ausbau, ÖPNV-Ausbau vor Restriktionen) und grenzt sich damit von restriktiveren Verkehrskonzepten ab.",
+ "kernpunkte": [
+  "Ablehnung einer 100-prozentigen Steuerfinanzierung des Stadion-Neubaus an der Maastrichter Straße (mind. 60 Mio. Euro); vollständige Neubewertung, sobald EU-Beihilfezertifikat, offene Gutachten und Klageausgang vorliegen – stattdessen Ertüchtigung des Marschwegstadions.",
+  "Verpflichtende Bürgerentscheide für kostenträchtige Großprojekte ab einer noch festzulegenden Summe, bevor der Stadtrat endgültig entscheidet.",
+  "Keine weiteren Parkgebührenerhöhungen und Absenkung der Anwohnerparkgebühren, solange der ÖPNV keine flächendeckende Alternative bietet; Aufbau eines P+R-Rings mit Shuttle-Verbindungen.",
+  "Kritische Prüfung der rund 34 Mio. Euro teuren Pferdemarkt-Umgestaltung; Ablehnung einer „ideologisch motivierten“ Umplanung ohne Abstimmung mit dem Neubau der Bahnbrücke.",
+  "Unabhängige Kostenkontrolle und bindende Obergrenzen (Exit-Klauseln) für alle Großprojekte angesichts des strukturellen Haushaltsdefizits von knapp 90 Mio. Euro (2026).",
+  "Ehrliche, öffentliche Evaluierung des Klimaschutzplans 2035 (über 90 Projekte, viele seit 2019 kaum umgesetzt) zu einem schlankeren, realistisch finanzierten Plan.",
+  "Kein Fraktionszwang und ausdrücklich erlaubte Doppelmitgliedschaften der eigenen Ratsmitglieder in anderen Parteien oder Wählergruppen."
+ ],
+ "themen": {
+  "wohnen": {
+   "positionen": [
+    "Städtische Wohngesellschaft (2025 vom Stadtrat beschlossen) wird begrüßt; sie soll schnell handlungsfähig werden.",
+    "Sozialquoten bei Neubauprojekten sollen konsequent eingehalten werden.",
+    "Im Dialog mit Investoren und Genossenschaften soll mehr erschwinglicher Mietraum geschaffen werden.",
+    "Schnellere, digitale Baugenehmigungsverfahren mit messbaren Bearbeitungszeiten und klarer Verantwortlichkeit in der Verwaltung.",
+    "Grundsatz „Altbausanierung vor Neubau“ soll systematisch bei jeder Projektentscheidung angewendet werden.",
+    "Bürgerinnen und Bürger sollen nur in begründeten Ausnahmefällen an Straßenausbaukosten beteiligt werden.",
+    "Wachsende Einwohnerzahl (Ende 2025 über 177.055) soll durch Stadtentwicklung bewältigt werden, ohne die bestehende Bevölkerung zu überfordern."
+   ],
+   "seiten": [
+    5,
+    6
+   ],
+   "praegnanz": 2
+  },
+  "mobilitaet": {
+   "positionen": [
+    "Keine weiteren Erhöhungen der Parkgebühren, solange der ÖPNV keine flächendeckende, verlässliche Alternative bietet; Anwohnerparkgebühren auf ein sozial verträgliches Niveau senken.",
+    "Kein ideologisch motivierter Abbau von Stellplätzen in der Innenstadt und an zentralen Versorgungsbereichen.",
+    "Aufbau eines modernen P+R-Rings an den zentralen Einfahrtskorridoren mit Echtzeitinformationen, kombinierten Tickets und häufig getakteten Shuttle-Verbindungen in die Innenstadt.",
+    "ÖPNV-Prinzip „erst ausbauen, dann einschränken“: bessere Taktfrequenzen (auch Randzeiten/Wochenende) und kostenloses Fahren am Samstag als erster Schritt, bevor über Pkw-Einschränkungen gesprochen wird.",
+    "Intelligente, datenbasierte Ampelsteuerung und konsequentes Baustellenmanagement mit verbindlichen Meilensteinen; keine gleichzeitige Sperrung von Hauptachse und Ausweichroute.",
+    "Der Baustellen-Stau auf A29, Hindenburgstraße und Nadorster Straße soll durch bessere Koordination entlastet werden; die Probleme bei Verkehrsführung, Radwegen und Parkraum an der Nadorster Straße sollen gezielt angegangen werden.",
+    "Umgestaltung von Pferdemarkt (~34 Mio. Euro) und Wallring nur mit realistischer Kostendarstellung, Abstimmung mit dem Bahnbrücken-Neubau und echter Bürgerbeteiligung; keine teure Großumgestaltung des Wallrings, dafür schrittweise mehr Stadtbäume, Grünstreifen und eine „Brötchentaste“ für Kurzzeitparken.",
+    "Priorisierte, langfristige Erhaltungsplanung für Brücken und Straßen (u. a. Cäcilienbrücke, A29-Huntebrücke) statt kurzfristiger Flickschusterei.",
+    "Radinfrastruktur dort ausbauen, wo sinnvoll (Lückenschlüsse, Beleuchtung, sichere Abstellmöglichkeiten); Elektromobilität und Ladesäuleninfrastruktur unterstützen."
+   ],
+   "seiten": [
+    6,
+    7
+   ],
+   "praegnanz": 3
+  },
+  "klima": {
+   "positionen": [
+    "Konsequenter Schutz bestehender Seenlandschaften (u. a. Bornhorster See, Flötenteich, Tweelbäker See) und Grünflächen vor Bebauung und Übernutzung.",
+    "Erhalt und Ausbau des städtischen Baumbestands; Schutz vor weiterer Versiegelung, nur mit vollwertiger Kompensation neuer Eingriffe.",
+    "Klimaanpassung als Gegenwartsaufgabe: Dachbegrünung, Flächenentsiegelung, Versickerungsmulden und dezentrale Rückhaltesysteme sowie mehr Trinkwasserbrunnen und Schattenplätze gegen Hitzeinseln und Starkregen.",
+    "Ehrliche, öffentlich nachvollziehbare Evaluierung des Klimaschutzplans 2035 (über 90 Projekte, viele seit 2019 kaum umgesetzt) hin zu einem schlankeren, realistisch finanzierten und terminierten Plan.",
+    "Sanierung von Stadtautobahn und Brücken als Chance für klimagerechte Neugestaltung nutzen (Grünauflagen, Wasserablaufsysteme, Radspuren).",
+    "Konsequenter Abruf von Fördermitteln von Land, Bund und EU für Klimaschutz und -anpassung.",
+    "Städtische E-Mobilität pragmatisch voranbringen; Radwegeausbau ohne „ideologischen Furor“, aber mit gezielten Lückenschlüssen."
+   ],
+   "seiten": [
+    10
+   ],
+   "praegnanz": 3
+  },
+  "wirtschaft": {
+   "positionen": [
+    "Vereinfachte Genehmigungsverfahren für Gastronomie und Läden sowie sinnvolle Umnutzung von Leerstand (Leerstandsquote Innenstadt rund 10 Prozent, rund ein Fünftel des früheren Umsatzes an den Onlinehandel abgewandert).",
+    "Zentraler „Wirtschaftslotse“ als fester Ansprechpartner in der Verwaltung, der Unternehmen durch Genehmigungsprozesse begleitet und Zuständigkeiten bündelt.",
+    "Vereinfachte, beschleunigte Genehmigungsverfahren für Erweiterungen und Nutzungsänderungen von Betriebsflächen.",
+    "Gezielte Weiterentwicklung bestehender Gewerbegebiete mit ausreichendem Flächenangebot, guter Verkehrsanbindung und digitaler Infrastruktur.",
+    "Engere Verzahnung von Wissenschaft und Wirtschaft: erleichterter Technologietransfer zwischen Universität Oldenburg (über 14.000 Studierende), Innovationsviertel IQON (ehem. Fleiwa-Gelände), Helmholtz-Institut für Funktionelle Marine Biodiversität und neuem Fraunhofer-Institut für Hörforschung einerseits und dem Mittelstand andererseits.",
+    "Bürokratieabbau wird als wirtschaftliche Notwendigkeit statt als parteipolitisches Programm gerahmt."
+   ],
+   "seiten": [
+    9,
+    10
+   ],
+   "praegnanz": 2
+  },
+  "bildung": {
+   "positionen": [
+    "Rund 578 fehlende Kita-Plätze in Oldenburg; 91 Prozent der Eltern und Beschäftigten berichten von Personalmangel in Kitas und Kindergärten.",
+    "Konsequenter, schneller Kita-Ausbau: die geplanten 22 neuen Gruppen als erster Schritt, verbunden mit verstärkter Fachkräftegewinnung (Quereinstiegsprogramme, attraktivere Ausbildungsvergütungen, bessere Arbeitsbedingungen).",
+    "Ab August 2026 greift der Rechtsanspruch auf Ganztagsbetreuung an Grundschulen – Raum und Personal sind vielerorts noch nicht gesichert, das BB-OL fordert Absicherung.",
+    "Systematischer Abbau des Sanierungsrückstands an Schulen; die 13,5 Mio. Euro Schulbauinvestitionen im Haushalt 2024/25 sollen gezielt und ohne Verzögerung eingesetzt werden."
+   ],
+   "seiten": [
+    7
+   ],
+   "praegnanz": 2
+  },
+  "soziales": {
+   "positionen": [
+    "Klinikum Oldenburg: laufendes Defizit von rund 21 Mio. Euro pro Jahr (Stand 2026, an anderer Stelle im Programm mit rund 25 Mio. Euro beziffert); Unterstützung der für Sommer 2026 vorgesehenen Anerkennung als Universitätsklinikum, verbunden mit klaren Zwischenzielen für den Defizitabbau und einer transparenten Bilanz im Vergleich zu den freigemeinnützigen Krankenhäusern der Stadt.",
+    "Inklusion als gesetzlicher Auftrag braucht ausreichend Personal, klare Zuständigkeiten und realistische Ressourcen.",
+    "Stärkung der Mitwirkungsrechte des Seniorenbeirats und verbindlichere Einbeziehung seiner Empfehlungen in städtische Entscheidungen.",
+    "Ausbau von Senioren- und Pflegestützpunkt am Lambertihof sowie der Beratungsstelle „Neues Wohnen im Alter“.",
+    "Mehr altersgerechter und barrierefreier Wohnraum, verlässliche ambulante Pflege- und Unterstützungsangebote sowie Begegnungsorte gegen Einsamkeit im Alter.",
+    "Digitale Teilhabe für Seniorinnen und Senioren mit niedrigschwelliger Unterstützung; analoge Wege bleiben für alle, die sie brauchen, erhalten."
+   ],
+   "seiten": [
+    5,
+    7,
+    8
+   ],
+   "praegnanz": 2
+  },
+  "kultur": {
+   "positionen": [
+    "Klares Bekenntnis zum Oldenburgischen Staatstheater (vier Spielstätten, über 30 Premieren und mehr als 25 Konzerte pro Spielzeit) als kulturellem Leuchtturm.",
+    "Verlässliche, planbare Förderung der freien Kulturszene – u. a. Theater Laboratorium (seit 1979, Spielstätte in der ehemaligen Limonadenfabrik „Krystalla“) und Kulturetage an der Bahnhofstraße (über 50.000 Besucher jährlich) – sowie unkomplizierte Nutzung städtischer Räume.",
+    "Ausweitung des Oldenburger Kultursommers von derzeit rund zehn Tagen zurück auf drei bis vier Wochen.",
+    "Abbau des Investitionsstaus bei Sportstätten, Spielplätzen und Sporthallen, bevor neue Großprojekte angegangen werden; verlässliche und faire Förderung der Sportvereine.",
+    "Marschwegstadion für die 3. Fußball-Bundesliga sowie für Schul- und Breitensport, Leichtathletik, Football und weitere Sportevents ertüchtigen – als Alternative zum Stadion-Neubau."
+   ],
+   "seiten": [
+    5,
+    8,
+    9
+   ],
+   "praegnanz": 2
+  },
+  "sicherheit": {
+   "positionen": [
+    "Videoüberwachung an neuralgischen Punkten.",
+    "Bessere Ausleuchtung von Wegen und Plätzen, die als unsicher wahrgenommen werden.",
+    "Pragmatische Maßnahmen für mehr Ordnung und Sicherheit im Stadtbild."
+   ],
+   "seiten": [
+    10
+   ],
+   "praegnanz": 2
+  },
+  "digitales": {
+   "positionen": [
+    "Unterstützung und Beschleunigung des Kurses des neuen Amtes für digitale Transformation (seit Januar 2026): mehr der 181 bereits online verfügbaren Verwaltungsleistungen vollständig online und medienbruchfrei anbieten.",
+    "Verbindliche Bearbeitungsfristen auch für digitale Anträge.",
+    "Digitale Verwaltung soll sich an den Bedürfnissen der Bürgerinnen und Bürger ausrichten, nicht an denen der Verwaltung selbst.",
+    "Messbare Bearbeitungszeiten und digitale Verfahren bei Baugenehmigungen mit klarer Verantwortlichkeit in der Verwaltung."
+   ],
+   "seiten": [
+    7
+   ],
+   "praegnanz": 2
+  },
+  "finanzen": {
+   "positionen": [
+    "Strukturelles Haushaltsdefizit von rund 25 Mio. Euro (2024) auf knapp 90 Mio. Euro (Haushalt 2026) gestiegen; für 2027–2029 werden Fehlbeträge im dreistelligen Millionenbereich prognostiziert.",
+    "Die Überschussrücklage von rund 195 Mio. Euro droht im aktuellen Tempo binnen wenigen Jahren aufgebraucht zu sein – mit dem Risiko einer Haushaltssicherung.",
+    "Unmittelbar nach der Wahl: umfassende Bestandsaufnahme der Haushaltslage und Neubewertung aller laufenden und geplanten Projekte; Daseinsvorsorge (Schulen, Kitas, Straßen, Spielplätze) vor Prestige- und Leuchtturmprojekten.",
+    "Für jedes Großprojekt: unabhängige Kostenkontrolle, bindende Obergrenzen (Exit-Klauseln) und transparente Offenlegung aller Folge- und Betriebskosten vor Ratsbeschluss.",
+    "Ablehnung einer vollständigen Steuerfinanzierung des Stadion-Neubaus (mindestens 60 Mio. Euro Steuergeld); Deckelung des städtischen Finanzierungsanteils mit Exit-Option sowie Beteiligung von Nutzern und privaten Investoren.",
+    "Kritische Prüfung der mit rund 34 Mio. Euro veranschlagten Pferdemarkt-Umgestaltung.",
+    "Flötenteich-Bad als Beispiel für Kostenexplosion genannt: von ursprünglich 20 Mio. Euro auf über 90 Mio. Euro gestiegen, Fertigstellung weiterhin offen.",
+    "Klinikum Oldenburg als weitere jährliche Haushaltsbelastung genannt (rund 21 bis 25 Mio. Euro, je nach Programmabschnitt)."
+   ],
+   "seiten": [
+    3,
+    4,
+    5
+   ],
+   "praegnanz": 3
+  },
+  "beteiligung": {
+   "positionen": [
+    "Verpflichtende Bürgerentscheide für kostenträchtige Großprojekte ab einer noch festzulegenden Summe, bevor der Stadtrat endgültige Beschlüsse fasst.",
+    "Proaktive, verständliche Kommunikation von Kostenplänen, Folgekosten und Risiken durch die Verwaltung – nicht nur in Beschlussvorlagen für Fachausschüsse.",
+    "Kein Fraktionszwang: Ratsmitglieder des BB-OL stimmen nach Überzeugung statt nach Parteilinie ab.",
+    "Doppelmitgliedschaften in anderen Parteien oder Wählergruppen sind ausdrücklich erlaubt.",
+    "Anstoß eines Jugendparlaments für Oldenburg.",
+    "Bürgerbeteiligung als strukturelles Prinzip statt „Alibiveranstaltung“, verankert bereits in den Grundsätzen der Wählervereinigung."
+   ],
+   "seiten": [
+    3,
+    4,
+    7
+   ],
+   "praegnanz": 3
+  },
+  "integration": {
+   "positionen": [
+    "Unterstützung des neuen Amtes für Zuwanderung und Integration als zentrale Anlaufstelle; dieses soll mit ausreichenden Ressourcen ausgestattet werden.",
+    "Enge Zusammenarbeit mit Migrantenorganisationen, Ehrenamt und Wirtschaft, damit Integration aktiv gestaltet und nicht nur verwaltet wird.",
+    "Leitprinzip „Fördern und Fordern“: aktive Begleitung, klare Anlaufpunkte und konsequente Einbindung in das gesellschaftliche Leben der Stadt."
+   ],
+   "seiten": [
+    8
+   ],
+   "praegnanz": 2
+  }
+ },
+ "besonderes": [
+  "OB-Kandidat Holger Martin Wilkens mit ungewöhnlichem Lebenslauf: Chief Media Operations bei der NATO, Bundespresseamt, Militärattaché an der Deutschen Botschaft in Teheran, zuletzt Leiter des Pressezentrums der Luftwaffe in Berlin; 2024 Rückumzug nach Oldenburg.",
+  "Forderung, dass der Stadtrat vor jeder bindenden Stadion-Entscheidung das EU-Beihilfekonformitätszertifikat, alle ausstehenden Gutachten (u. a. Bodenbeschaffenheit, Schallschutz) und den Ausgang einer laufenden Klage abwarten muss.",
+  "Explizite Zulässigkeit von Doppelmitgliedschaften in anderen Parteien oder Wählergruppen und Verzicht auf Fraktionszwang für eigene Ratsmitglieder.",
+  "Konkrete Forderung, den Oldenburger Kultursommer von rund zehn Tagen zurück auf drei bis vier Wochen auszuweiten.",
+  "Kostenloses ÖPNV-Fahren am Samstag als „erster Schritt“ beim ÖPNV-Ausbau.",
+  "Kurzzeitparken über eine bürgerfreundliche „Brötchentaste“ am Wallring statt einer kostspieligen Großumgestaltung.",
+  "Mitgliedsbeitrag nach Selbsteinschätzung (mind. 2,50 Euro monatlich, Schüler/Studenten 1,50 Euro); das BB-OL ist ein nicht eingetragener Verein."
+ ]
+}

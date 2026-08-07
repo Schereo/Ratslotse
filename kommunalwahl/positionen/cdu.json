@@ -1,0 +1,225 @@
+{
+ "slug": "cdu",
+ "positionen": {
+  "W1": {
+   "pos": -1,
+   "beleg": "Programm lehnt eine zusätzliche städtische Wohnungsbaugesellschaft neben der GSG ausdrücklich ab: „Die Gründung einer zusätzlichen städtischen Wohnungsbaugesellschaft lehnen wir weiterhin ab.“",
+   "seite": null
+  },
+  "W2": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "W3": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "W4": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "M1": {
+   "pos": 1,
+   "beleg": "Fordert den schnellstmöglichen Bau der „Entlastungsstraße Fliegerhorst“, um Verkehr und Anwohner zu entlasten.",
+   "seite": null
+  },
+  "M2": {
+   "pos": -1,
+   "beleg": "Lehnt eine flächendeckende Tempo-30-Regelung auf Hauptstraßen ausdrücklich ab und setzt stattdessen auf dynamische Ampelsteuerung und Blitzer.",
+   "seite": null
+  },
+  "M3": {
+   "pos": 1,
+   "beleg": "Will Parkgebühren moderat halten (max. 2 €/Std. in Zone 1) und „teilweise Erhöhungen rückgängig machen“.",
+   "seite": null
+  },
+  "M4": {
+   "pos": 0,
+   "beleg": "Nur ein Jahr kostenloser ÖPNV für Senioren bei freiwilliger Führerscheinabgabe; sonst sollen Ticketpreise stabil bleiben – deutlich enger als eine schrittweise Fahrscheinfreiheit im ganzen Busverkehr.",
+   "seite": null
+  },
+  "M5": {
+   "pos": -1,
+   "beleg": "Fordert „Gleichberechtigung aller Verkehrsteilnehmer“ statt Vorrang für den Radverkehr; das Auto bleibe „Rückgrat der Mobilität“.",
+   "seite": null
+  },
+  "K1": {
+   "pos": -1,
+   "beleg": "Lehnt „eine illusorische 100-prozentige Klimaneutralität der gesamten Stadt bis 2035“ als utopisch ab und will das Ziel an die nationale (spätere) Zielmarke anpassen.",
+   "seite": null
+  },
+  "K2": {
+   "pos": -1,
+   "beleg": "Nennt die 2025 in Kraft getretene Baumschutzsatzung „das falsche Instrument“ und will „keinen weiteren bürokratischen Aufwand“ im Rahmen dieser Satzung.",
+   "seite": null
+  },
+  "K3": {
+   "pos": 1,
+   "beleg": "Will das Windeignungsgebiet Bornhorster Seen „voll ausschöpfen – weit über die bisherigen 13 Hektar“ auf die vollen 107 Hektar.",
+   "seite": null
+  },
+  "K4": {
+   "pos": 1,
+   "beleg": "Setzt auf „realistische, wirtschaftlich machbare“ Klimaschutzziele „ohne ideologische Übertreibungen“ und will das städtische Klimaneutralitätsziel 2035 an schwächere nationale Vorgaben anpassen.",
+   "seite": null
+  },
+  "V1": {
+   "pos": 1,
+   "beleg": "Fordert den Abbau bürokratischer Hürden bei Bauvorhaben und eine deutlich beschleunigte Unternehmensansiedlung, u. a. über einen kommunalen Mittelstands-TÜV.",
+   "seite": null
+  },
+  "V2": {
+   "pos": 0,
+   "beleg": "Erkennt an, dass langfristig „der PKW-Verkehr im Innenstadtbereich“ reduziert werden muss, hält aber zugleich an Autofreundlichkeit, moderaten Parkgebühren und Ablehnung von Tempo 30 fest – Pro und Contra ohne klare Festlegung.",
+   "seite": null
+  },
+  "V3": {
+   "pos": 0,
+   "beleg": "Unterstützt die Ausweisung neuer Industrie-/Gewerbegebiete, betont dabei aber auch „eine spätere innovative Nachnutzung bestehender Standorte“ statt klar neuer Freiflächen.",
+   "seite": null
+  },
+  "B1": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "B2": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "B3": {
+   "pos": 1,
+   "beleg": "Fordert die „Wiedereinführung von Sprachlernklassen an Grundschulen und weiterführenden Schulen“, die 2018 zugunsten inklusiven Unterrichts zurückgedrängt wurden.",
+   "seite": null
+  },
+  "B4": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "S1": {
+   "pos": 0,
+   "beleg": "Setzt bei Wohnungslosen auf Winterhilfe (Johanniter), „Prüfung zusätzlicher Kapazitäten“ und aufsuchende Sozialarbeit statt auf das Housing-First-Prinzip – deutlich schwächer/anders als die These.",
+   "seite": null
+  },
+  "S2": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "S3": {
+   "pos": 1,
+   "beleg": "Fordert „eine verlässliche und ausreichende Finanzierung des Frauenhauses“ samt zusätzlicher Kapazitäten, ein Heimwegtelefon und den Ausbau von Streetwork/aufsuchender Sozialarbeit.",
+   "seite": null
+  },
+  "C1": {
+   "pos": -1,
+   "beleg": "Bekennt sich klar zum Stadion-Neubau mit vom Rat beschlossener Kostenobergrenze „um die finanzielle Belastung für die Stadt zu kontrollieren“; private Partner sind nur für den Betrieb vorgesehen, nicht für den Bau.",
+   "seite": null
+  },
+  "C2": {
+   "pos": 1,
+   "beleg": "Will neue Sporthallen (Dreifeld-/Sechsfeldhalle), zusätzliche Kunstrasenplätze und neue Sportflächen schaffen und die Sportförderrichtlinie verstetigen.",
+   "seite": null
+  },
+  "C3": {
+   "pos": 0,
+   "beleg": "Unterstützt einzelne neue Kulturprojekte (VR-Zeitreise, Lichtershows, Plattdeutsch-Theater), lehnt aber „zusätzliche städtische Koordinierungsstellen für die Nachtkultur“ ausdrücklich ab – kein klares Bekenntnis zu generell mehr Geld.",
+   "seite": null
+  },
+  "C4": {
+   "pos": 1,
+   "beleg": "Will die Stadtteilbäder Eversten und Kreyenbrück erhalten und steht „weiter für die Modernisierung des Bades am Flötenteich“ trotz bisheriger Kostensteigerungen ein.",
+   "seite": null
+  },
+  "O1": {
+   "pos": 1,
+   "beleg": "Fordert eine „gezielte Ausweitung der Videoüberwachung“ an kriminalitätsbelasteten Orten.",
+   "seite": null
+  },
+  "O2": {
+   "pos": 1,
+   "beleg": "Fordert, Waffenverbotszonen an kriminalitätsbelasteten und sensiblen Orten „konsequent auszuweiten“.",
+   "seite": null
+  },
+  "O3": {
+   "pos": 1,
+   "beleg": "Will die kommunalen Ordnungsdienste „personell und technisch besser ausstatten“.",
+   "seite": null
+  },
+  "O4": {
+   "pos": 0,
+   "beleg": "Verbindet Prävention (Aktionsplan, Jugendarbeit, Streetwork) gleichrangig mit dem Ausbau von Kontrolle/Ordnungsrecht (Video, Waffenverbotszonen, Ordnungsdienst), ohne der Prävention klar den Vorrang zu geben.",
+   "seite": null
+  },
+  "D1": {
+   "pos": 0,
+   "beleg": "Will neue Stellen „nur geschaffen werden, wenn Digitalisierung oder organisatorische Optimierung keine Alternative darstellen“ – restriktiv, aber keine klare Zusage einer spürbaren Reduzierung.",
+   "seite": null
+  },
+  "D2": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "D3": {
+   "pos": 1,
+   "beleg": "Will Verwaltungsabläufe „konsequent digitalisiert, automatisiert und stärker miteinander vernetzt“ sehen (Digitalpakt für Oldenburg).",
+   "seite": null
+  },
+  "F1": {
+   "pos": -1,
+   "beleg": "Spricht sich „klar gegen eine Erhöhung von Gewerbe- oder Grundsteuern“ aus.",
+   "seite": null
+  },
+  "F2": {
+   "pos": 1,
+   "beleg": "Fordert „eine verbindliche Deckelung von Investitionen und Folgekosten“ bei Großprojekten; eine „Anpassung von Planungen zur Einhaltung des Kostenrahmens“ dürfe „kein Tabu“ sein.",
+   "seite": null
+  },
+  "F3": {
+   "pos": 1,
+   "beleg": "„Oldenburg hat kein Einnahmeproblem, sondern ein Ausgabenproblem“: Konsolidierung soll über „konsequente Begrenzung der Ausgaben“ statt Steuererhöhungen erfolgen.",
+   "seite": null
+  },
+  "P1": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "P2": {
+   "pos": 0,
+   "beleg": "Unterstützt ein Jugendparlament, „um die Interessen der Jugendlichen in die Politik und den Stadtrat einzubringen“, ohne explizite eigene Rechte wie Rede- oder Antragsrecht zu nennen.",
+   "seite": null
+  },
+  "P3": {
+   "pos": 0,
+   "beleg": "Fordert transparente Kommunikation und „eine öffentliche Meilensteindarstellung zum Baufortschritt“ bei Großprojekten – aber keine generelle Transparenzreform für Ratsarbeit/Verwaltung (Livestreams, Transparenzregister).",
+   "seite": null
+  },
+  "I1": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "I2": {
+   "pos": 1,
+   "beleg": "Setzt auf „Fördern und Fordern“ und erwartet „die Bereitschaft zur Integration und zur Einhaltung unserer gesellschaftlichen Regeln“.",
+   "seite": null
+  },
+  "I3": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "I4": {
+   "pos": -1,
+   "beleg": "Fordert, dass Bund und Land die Kosten der Unterbringung und Integration von Geflüchteten „vollständig und verlässlich“ übernehmen, statt dass sich die Stadt über gesetzliche Pflichten hinaus engagiert.",
+   "seite": null
+  }
+ }
+}
