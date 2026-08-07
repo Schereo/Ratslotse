@@ -217,7 +217,7 @@ export default function KommunalwahlSeite() {
             <div className="mt-3.5">
               <PositionsMatrix zeilen={[...streit, ...einig]} mitLage />
             </div>
-            <div className="mt-4.5 pt-4">
+            <div className="mt-[18px] pt-4">
               <KiKasten />
             </div>
           </section>
@@ -420,13 +420,13 @@ export default function KommunalwahlSeite() {
               <div className="flex flex-none flex-col gap-2.5 sm:ml-auto sm:flex-row">
                 <a
                   href={REGISTER_HREF}
-                  className="inline-flex justify-center rounded-xl bg-primary px-4.5 py-2.5 text-sm font-semibold text-primary-foreground"
+                  className="inline-flex justify-center rounded-xl bg-primary px-[18px] py-2.5 text-sm font-semibold text-primary-foreground"
                 >
                   Kostenlos registrieren
                 </a>
                 <a
                   href={ENTDECKEN_HREF}
-                  className="inline-flex justify-center rounded-xl border border-border bg-card px-4.5 py-2.5 text-sm font-semibold"
+                  className="inline-flex justify-center rounded-xl border border-border bg-card px-[18px] py-2.5 text-sm font-semibold"
                 >
                   Ratslotse entdecken
                 </a>
