@@ -1,0 +1,275 @@
+{
+ "slug": "bsw",
+ "partei": {
+  "kurz": "BSW",
+  "name": "Bündnis Sahra Wagenknecht - Vernunft und Gerechtigkeit - Landesverband Niedersachsen (BSW Niedersachsen)",
+  "typ": "partei",
+  "kandidaten": 8
+ },
+ "programm": {
+  "gefunden": true,
+  "titel": "Kommunalwahl-Rahmenprogramm Niedersachsen",
+  "url": "https://ni.bsw-vg.de/wp-content/uploads/2026/07/Wahlprogramm_Niedersachsen.pdf",
+  "format": "pdf",
+  "seiten": 43,
+  "stand": "20. Juni 2026 (Beschluss Landesparteitag BSW Niedersachsen, veröffentlicht 13. Juli 2026)",
+  "hinweis": "Kein eigenes Kommunalwahlprogramm der Oldenburger BSW-Gliederung auffindbar; auch die Website der bestehenden Ratsfraktion (bsw-fraktion-ol.de) zeigt nur Anträge und Pressemitteilungen, aber kein Wahlprogramm 2026. Presseberichte (z.B. NWZ, Oldenburger Onlinezeitung) bestätigen, dass das BSW mit 10 Kandidatinnen/Kandidaten antritt und Verkehr sowie Bürgerbeteiligung als Schwerpunkte nennt, ohne ein eigenständiges Ortsprogramm zu verlinken. Ausgewertet wurde daher gemäß Fallstufe 2 das am 20.6.2026 vom Landesparteitag beschlossene 'Kommunalwahlrahmenprogramm Niedersachsen' (Eckpunktepapier für alle kommunalpolitischen Themenfelder, gültig landesweit für alle BSW-Kommunalwahlkämpfe 2026 inkl. Oldenburg). Das Dokument nennt Oldenburg an keiner Stelle namentlich; alle Positionen sind landesweit-generisch formuliert, nicht Oldenburg-spezifisch."
+ },
+ "charakter": "Das Programm präsentiert sich als systematisches, in 14 Kapitel gegliedertes 'Eckpunktepapier' für praktisch alle klassischen kommunalpolitischen Themenfelder, mit jeweils eigenen Forderungslisten - ungewöhnlich umfassend für ein Kommunalprogramm, aber ohne jeden Ortsbezug zu Oldenburg. Tonalität ist grundsätzlich kritisch gegenüber 'den alten Parteien', Privatisierung und Marktlogik, betont Gemeinwohlorientierung, kommunale Selbstverwaltung und soziale Gerechtigkeit, verbindet dies aber mit ausdrücklicher Technologieoffenheit (Verkehr, Energie) und Ablehnung als 'ideologisch' bezeichneter Verbote. Auffällig ist die durchgängige Verknüpfung kommunaler Themen mit außen- und sicherheitspolitischen Positionen (Ablehnung von Aufrüstung, Waffenexporten, Bundeswehr-Werbung) sowie mit expliziten gesellschaftspolitischen Positionierungen etwa zu Geschlechtsidentität und Migration.",
+ "kernpunkte": [
+  "29-Euro-Ticket für den gesamten öffentlichen Nahverkehr in Niedersachsen, finanziert durch Bund und Land",
+  "Gesetzlicher Mietendeckel und eine Bodenwertzuwachssteuer zur Abschöpfung von Baulandgewinnen für den sozialen Wohnungsbau",
+  "Moratorium gegen Krankenhausschließungen und strikte Ablehnung der Privatisierung kommunaler Kliniken",
+  "Absenkung des Unterschriftenquorums für Bürgerbegehren einheitlich auf 5 Prozent der Wahlberechtigten",
+  "Abschaffung des Bürgergeldes und Rückkehr zu einem am Lebensstandard orientierten System von Arbeitslosengeld und -hilfe",
+  "Ablehnung des Selbstbestimmungsgesetzes; Zugang zu Frauenhäusern, Schutzräumen und Frauensport soll biologischen Frauen vorbehalten bleiben",
+  "Anteilige Altschuldenentlastung der Kommunen durch das Land nach NRW-Vorbild sowie ein landeseigener Investitionsfonds für kommunale Infrastruktur"
+ ],
+ "themen": {
+  "wohnen": {
+   "positionen": [
+    "Umfassende Neuauflage des sozialen Wohnungsbaus, Barrierefreiheit von Anfang an mitgedacht.",
+    "Gesetzlicher Mietendeckel gefordert, da die Mietpreisbremse als zu schwach gilt und nur in wenigen niedersächsischen Städten angewendet wird.",
+    "Einführung einer Bodenwertzuwachssteuer: Ein Teil des Wertzuwachses bei Baulandausweisung soll abgeschöpft und dem sozialen Wohnungsbau zugeführt werden.",
+    "Bebauungsverpflichtung für unbebaute, baureife Grundstücke gegen Bodenspekulation.",
+    "Gründung kommunaler, kostendeckend statt gewinnorientiert arbeitender Wohnungsbaugesellschaften in größeren kreisfreien Städten, ggf. als Zweckverbände.",
+    "Vergabe von Bauland im Erbbaurecht mit niedrigen Zinsen an junge Familien, mit Vorkaufsrecht bei Ablauf der Erbpacht.",
+    "Reform der Grunderwerbsteuer mit einem Freibetrag für den Ersterwerb einer selbstgenutzten Immobilie.",
+    "Sozialquote von mindestens einem Drittel bei privaten Neubauprojekten, nach dem Vorbild der Stadt Münster.",
+    "Bekämpfung von Wohnungslosigkeit nach dem Prinzip 'Housing First' mit festen, dauerhaften Unterkünften; kommunale Zweckentfremdungssatzungen gegen Leerstand und Ferienvermietung."
+   ],
+   "seiten": [
+    25,
+    26,
+    27,
+    28
+   ],
+   "praegnanz": 3
+  },
+  "mobilitaet": {
+   "positionen": [
+    "29-Euro-Ticket für den öffentlichen Nahverkehr in ganz Niedersachsen, finanziert durch Bundes- und Landesmittel.",
+    "Reaktivierung stillgelegter Bahnstrecken und Bahnhöfe, engerer Takt auf Hauptverbindungen, Ausbau von Rufbus-Systemen im ländlichen Raum.",
+    "Jede Ortschaft soll mindestens im 30- bis 60-Minuten-Takt per Bus erreichbar sein.",
+    "Rekommunalisierung ausgelagerter Verkehrsunternehmen, keine Privatisierung des ÖPNV.",
+    "Keine flächendeckenden Tempo-30-Zonen, aber gezielte Verkehrsberuhigung an Kitas, Schulen und Altenheimen; Grundsatz 'Sanierung vor Neubau' bei Straßen.",
+    "Durchfahrtsverbote für schweren Lkw-Durchgangsverkehr in Ortskernen, mit Ausnahmen für Anlieferverkehr.",
+    "Abschaffung der Straßenausbaubeiträge; sozial verträgliche Parkgebühren in Innenstädten.",
+    "Ablehnung von City-Maut, Dieselfahrverboten und künstlicher Parkraumverknappung.",
+    "Barrierefreie Haltestellen und Bahnhöfe mit Niedrigflurbussen und Aufzügen, kommunale ÖPNV-App, Erhalt der Barzahlungsmöglichkeit.",
+    "Förderung kommunaler 'Dörpsmobile' als günstige, von der Kommune beschaffte Fahrzeug-Alternative zum privaten Pkw."
+   ],
+   "seiten": [
+    22,
+    23,
+    24,
+    25
+   ],
+   "praegnanz": 3
+  },
+  "klima": {
+   "positionen": [
+    "Ausgleichs- und Kompensationsmaßnahmen wie Aufforstung sowie Wiedervernässung und Rekultivierung von Mooren statt verteuernder Klimaauflagen.",
+    "Erhalt offener Grünflächen und Streuobstwiesen als Lebensraum und CO2-Senken.",
+    "Kritische Haltung zur Landesvorgabe, mindestens 2,2 Prozent der Fläche für Windkraft auszuweisen; weiterer Ausbau nur parallel zu Netz- und Speicherausbau, keine Waldrodung für Windräder, Vorrang für Flächen entlang von Autobahnen.",
+    "Solaranlagen vorrangig auf Gebäuden, Parkplätzen, Ställen und Gewerbeflächen; auf Ackerflächen nur nachrangig.",
+    "Freie Wahl der Heiztechnik für Hausbesitzer statt Zwang zu bestimmten Systemen; Ausbau von Fern- und Nahwärme, wo verfügbar.",
+    "Hitzeschutzkonzepte: Entsiegelung von Flächen, mehr Grün- und Wasserflächen, Erhalt von Baumbestand, Begrünung von Dächern und Fassaden.",
+    "Forderung nach einer 'Klimabilanz der Bundeswehr' durch systematische Erfassung des CO2-Ausstoßes militärischer Aktivitäten.",
+    "Grundwasser und Wasserrechte sollen unveräußerlich bleiben, keine Privatisierung; vollständiges Fracking-Verbot und Ablehnung der Erdgasförderung in der Nordsee.",
+    "Jagd als Instrument gegen überhandnehmende Arten wie Wolf, Kormoran, Nutria und Biber bei Schäden; Herdenschutz (Zäune, Herdenschutzhunde) als vorrangiges Mittel bei Wolfskonflikten."
+   ],
+   "seiten": [
+    39,
+    40,
+    41,
+    42
+   ],
+   "praegnanz": 3
+  },
+  "wirtschaft": {
+   "positionen": [
+    "Ausbau von Förderstrukturen für Forschung, Entwicklung und Ausbildung; stärkere Kooperation zwischen Hochschulen und Unternehmen.",
+    "Förderung regionaler Kreislaufwirtschaft, u.a. Einsatz von Recycling-Baustoffen bei öffentlichen Ausschreibungen zur Stärkung des lokalen Handwerks.",
+    "Unterstützung von Start-ups und jungen Unternehmen durch einen Industriefonds und 'geduldiges Kapital'; keine kommunale Förderung von Rüstungsunternehmen.",
+    "Vergabekriterien jenseits des reinen Preises: Tarifbindung, Sicherheit am Arbeitsplatz, soziale Verantwortung, regionale Wertschöpfung.",
+    "Konsequenter Abbau von Bürokratie und Berichtspflichten; jährliche Überprüfung entbehrlicher Regelungen in den Verwaltungen.",
+    "Ausweisung ausreichender Gewerbeflächen auch für kleine und mittlere Unternehmen sowie Nachnutzungskonzepte für leerstehende Gewerbeimmobilien.",
+    "Flächendeckendes, kostenloses Geldautomatennetz insbesondere über die Sparkassen.",
+    "Nutzung kommunaler Satzungsrechte für Transparenzportale gegen Lobbyismus und Korruption, da Niedersachsen kein Transparenzgesetz hat."
+   ],
+   "seiten": [
+    29,
+    30,
+    31
+   ],
+   "praegnanz": 3
+  },
+  "bildung": {
+   "positionen": [
+    "Keine weiteren Schulschließungen; wohnortnahe Grundschulen mit kurzen Schulwegen als Priorität.",
+    "Massive Investitionen in Sanierung, Modernisierung und bedarfsgerechten Ausbau von Schulen und Kitas, inklusive Hitzeschutz und Entsiegelung bei Neubauten.",
+    "Kostenloses, gesundes Mittagessen in Kitas und Schulen für jedes Kind.",
+    "Ausreichend Kita-, Krippen- und Hortplätze, Vergabe nach sozialen Kriterien solange der Bedarf nicht gedeckt ist; kostenfreie Krippenplätze.",
+    "Verlässliche Ganztagsangebote für Grundschulkinder, u.a. mit Musik- und Sportangeboten.",
+    "Initiative gegen Mobbing an Schulen mit Schulsozialarbeit, Präventionsprogrammen und einem anonymen Meldesystem.",
+    "Keine Werbeveranstaltungen der Bundeswehr und keine Wehrerziehung an Schulen.",
+    "Ausreichend Plätze in Integrierten Gesamtschulen neben klassischen Gymnasien; Stärkung des Elternwahlrechts bei der Schulwahl.",
+    "Barrierefreiheit in allen Schulen, Erhalt der Schulbegleitung, Aufbau von Schulverbünden und Kooperationsklassen im Rahmen der Inklusion.",
+    "Finanzielle Stärkung der Kreisvolkshochschulen zur Sicherung eines breiten Weiterbildungsangebots."
+   ],
+   "seiten": [
+    15,
+    16,
+    17,
+    18,
+    19
+   ],
+   "praegnanz": 3
+  },
+  "soziales": {
+   "positionen": [
+    "Moratorium gegen Schließungen kommunaler Krankenhäuser; ortsnahe Notfallversorgung mit verbindlich organisierten Rettungsnetzen.",
+    "Ablehnung der Privatisierung kommunaler Krankenhäuser; medizinische Behandlung soll unabhängig vom Versicherungsstatus erfolgen.",
+    "Kommunale 'Personaloffensive' im Gesundheitswesen sowie beschleunigte, standardisierte Anerkennung ausländischer Ärztequalifikationen.",
+    "Stärkung ambulanter Pflege durch Gemeindeschwestern-Modelle, tarifliche Bezahlung von Pflegekräften und Entlastung pflegender Angehöriger.",
+    "Abschaffung des Bürgergeldes, Rückkehr zu einem am Lebensstandard orientierten System von Arbeitslosengeld/-hilfe; sanktionsfreie Ablehnung unzumutbarer Arbeitsangebote.",
+    "Sozialpässe für Menschen mit geringem Einkommen für Kultur, Schwimmbäder, Sportvereine und ÖPNV.",
+    "Auskömmliche Förderung von Bürgerzentren, Jugendzentren, Verbraucherzentralen, Sucht- und Aidshilfeeinrichtungen sowie Erwerbslosenzentren.",
+    "Ausbau von Frauenhäusern und One-Stop-Centern (Polizei, Sozialamt, Gesundheitsdienste, Beratung unter einem Dach); Niedersachsen hat laut Programm aktuell 46 Frauenhäuser mit 437 Plätzen, was als unzureichend bewertet wird.",
+    "Kostenlose, dauerhaft gesicherte psychologische Hilfe für Gewaltopfer ohne wiederholte Nachweispflicht.",
+    "Verbindliches Kinderschutzkonzept in allen Kitas und Schulen; verstärkte Präventionsarbeit von Polizei und Kinderschutzorganisationen."
+   ],
+   "seiten": [
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    21,
+    22,
+    42,
+    43
+   ],
+   "praegnanz": 3
+  },
+  "kultur": {
+   "positionen": [
+    "Sanierung maroder Sportstätten hat hohe Priorität; Erhalt und Modernisierung von Schwimmbädern, Turnhallen und Fußballplätzen.",
+    "Kostenloser Schwimmkurs für jedes Kind; bezahlbare Vereinsmitgliedschaften für Kinder und Familien mit geringem Einkommen.",
+    "Förderung des Breitensports statt nur elitärer Leistungszentren; Unterstützung ehrenamtlicher Trainerinnen und Trainer.",
+    "Kostenfreie Nutzung kommunaler Räume für Theatergruppen, Vereine und künstlerische Aktivitäten.",
+    "Sicherung und Stärkung von Theatern, Musikschulen, Bibliotheken, Museen und soziokulturellen Zentren mit Vergünstigungen für Kinder, Jugendliche, Senioren und Geringverdiener.",
+    "Förderung regionaler Kultur und Traditionen, z.B. Plattdeutsch sowie regionale Musik- und Tanzformen.",
+    "Erhalt von Dorf- und Stadtteilkulturhäusern sowie Jugendzentren als niedrigschwellige Begegnungsorte; kommunale Sammelhaftpflichtversicherung für Ehrenamtliche.",
+    "Würdiges, nicht militarisiertes Gedenken (z.B. Volkstrauertag, Stolperstein-Initiativen), das alle Bürger unabhängig von Herkunft einbindet."
+   ],
+   "seiten": [
+    36,
+    37,
+    38,
+    39
+   ],
+   "praegnanz": 3
+  },
+  "sicherheit": {
+   "positionen": [
+    "Freiwillige Feuerwehren sollen durchgehend mit zeitgemäßer, sicherer Technik ausgestattet werden; Ehrenamtliche im Katastrophenschutz sollen eine kommunale Aufwandsentschädigung erhalten.",
+    "Öffentliche Räume, Haltestellen und Parkhäuser sollen durch bessere Beleuchtung, Notrufsysteme und mehr Frauenparkplätze sicherer gestaltet werden.",
+    "Verstärkte Präventionsarbeit von Polizei und Kinderschutzorganisationen bereits in Kitas, Schulen und Jugendeinrichtungen."
+   ],
+   "seiten": [
+    21,
+    22,
+    38,
+    39,
+    43
+   ],
+   "praegnanz": 1
+  },
+  "digitales": {
+   "positionen": [
+    "Zentrales Online-Portal ('One-Stop-Shop') für Bürger und Unternehmen mit einmaliger Dateneingabe; Nutzung soll freiwillig bleiben, da insbesondere ältere Menschen weiter auf persönlichen Service angewiesen sind.",
+    "Kommunales 'Demokratie-Dashboard' sowie offene, maschinenlesbare Datenplattformen zu Haushalt, Bauprojekten und Fördermitteln.",
+    "Livestream-Übertragung von Rats- und Ausschusssitzungen, dauerhaft abrufbar; barrierefreie Verwaltungswebsites und Formulare, auch in Leichter Sprache.",
+    "Barrierefreie kommunale App zur ÖPNV-Nutzung sowie digitale Fahrgastinformation an Mobilitätsdrehscheiben.",
+    "Verbindliche, öffentlich einsehbare Feedback-Kultur in Kommunalbehörden für Bürger- und Unternehmenskritik."
+   ],
+   "seiten": [
+    5,
+    6,
+    7,
+    14,
+    24,
+    30
+   ],
+   "praegnanz": 2
+  },
+  "finanzen": {
+   "positionen": [
+    "Anteilige Entschuldung der Kommunen durch das Land nach Vorbild des nordrhein-westfälischen Altschuldenentlastungsgesetzes.",
+    "Landeseigener Investitionsfonds zur Finanzierung kommunaler Infrastruktur wie Kitas, Schulen, Straßen und Brücken.",
+    "Umwandlung der Gewerbesteuer in eine kommunale Wirtschaftssteuer unter Einbeziehung von Freiberuflern; Anhebung des Freibetrags von 24.500 auf mindestens 38.000 Euro.",
+    "Senkung der Grundsteuer B, da sie über die Nebenkosten Mieter und selbstnutzende Eigentümer belastet; Gegenfinanzierung über den kommunalen Finanzausgleich.",
+    "Konsequentere Nutzung der Grundsteuer C zur Bekämpfung von Baulandspekulation.",
+    "Abschaffung sämtlicher Straßenausbaubeiträge; Ablehnung neuer Verpackungssteuern und weiterer Gebührenerhöhungen, etwa bei Abfall oder Parken.",
+    "Prinzip 'Wer bestellt, bezahlt': keine neuen Aufgabenübertragungen von Bund oder Land ohne vollständigen finanziellen Ausgleich.",
+    "Ausweitung der laut Programm stark eingeschränkten wirtschaftlichen Betätigungsmöglichkeiten der Kommunen (Kritik an § 136 NKomVG)."
+   ],
+   "seiten": [
+    32,
+    33,
+    34,
+    35
+   ],
+   "praegnanz": 3
+  },
+  "beteiligung": {
+   "positionen": [
+    "Absenkung des Unterschriftenquorums für Bürgerbegehren einheitlich auf 5 Prozent der Wahlberechtigten (bislang teils 7,5 bis 10 Prozent); Zustimmungsquorum bei Bürgerentscheiden soll bei 20 Prozent bleiben.",
+    "Öffentliche Bürgerversammlungen zu positiv entschiedenen Bürgerbegehren, mit Rede- und Fragerecht der Initiatoren zur Umsetzung.",
+    "Grundsatz des 'gläsernen Rathauses': Rats- und Ausschusssitzungen sollen, soweit rechtlich zulässig, öffentlich tagen.",
+    "Jugendparlamente und Schülerräte mit eigenem Budget in allen Kommunen; verbindliche Beteiligung ab 14 Jahren über alle Schulformen hinweg.",
+    "Zwei Bürgerversammlungen pro Jahr auf Stadtteil- oder Bezirksebene mit Rederecht für alle; Bürgerräte per Losverfahren als Pilotformat.",
+    "Unabhängige kommunale Ombudsstellen und Whistleblower-Schutz; kommunale Informationsfreiheitssatzungen, solange Niedersachsen kein Landesgesetz hat.",
+    "Transparenzregister für Auftragsvergabe und Einführung kommunaler Korruptionsbeauftragter.",
+    "Ausweitung der kommunalen Genossenschaftsförderung (Energie, Wohnen, Kultur) sowie Unterstützung solidarischer Wirtschaftsformen wie Repair-Cafés und Gemeinschaftsgärten.",
+    "Transparente Förderpraxis für NGOs unter verpflichtender Bindung an den Beutelsbacher Konsens."
+   ],
+   "seiten": [
+    5,
+    6,
+    7,
+    8
+   ],
+   "praegnanz": 3
+  },
+  "integration": {
+   "positionen": [
+    "Ablehnung des Selbstbestimmungsgesetzes in seiner aktuellen Form; Zugang zu Frauenhäusern, Schutzräumen und Frauensport soll biologischen Frauen vorbehalten bleiben.",
+    "Ablehnung reiner Unisex-Toiletten in Schulen, Rathäusern und Sportstätten; Erhalt getrennter Frauentoiletten.",
+    "Frauenpolitik wird explizit gegen 'Identitätspolitik' und Quotenregelungen positioniert; Fokus stattdessen auf Vereinbarkeit von Familie und Beruf, u.a. für Alleinerziehende.",
+    "Zuwanderung soll 'gesellschaftlich sinnvoll und sozial verträglich' begrenzt werden, da unregulierte Migration laut Programm zusätzlichen Konkurrenzdruck auf Wohnungs- und Teile des Arbeitsmarktes erzeuge; Bund und Land sollen die Kosten der Geflüchtetenaufnahme stärker tragen.",
+    "Menschenwürdige Standards für Betreiber von Geflüchteten- und Obdachlosenunterkünften als Ausschreibungsbedingung."
+   ],
+   "seiten": [
+    10,
+    11,
+    20,
+    21
+   ],
+   "praegnanz": 2
+  }
+ },
+ "besonderes": [
+  "Forderung einer 'Klimabilanz der Bundeswehr' zur systematischen Erfassung des CO2-Ausstoßes militärischer Aktivitäten.",
+  "Explizite Liste zu verbietender Bundeswehr-Werbeformate auf kommunalen Plätzen (u.a. Militärmessen, Rekrutengelöbnisse, 'Tag der Bundeswehr', Veteranentage, 'Traditionsmärsche', 'Tag der Reservisten').",
+  "Kommunales Bekenntnis der Städte und Gemeinden gegen Waffenexporte und Aufrüstung als eigene Forderung.",
+  "Übernahme des 'Münsteraner Modells': private Bauherren erhalten Baurecht nur, wenn sie zuvor einen Grundstücksanteil günstig an die Stadt verkaufen.",
+  "Förderung kommunaler 'Dörpsmobile' und 'Volksleasing'-Projekte als genossenschaftliche Mobilitätsalternativen im ländlichen Raum.",
+  "Zulassung schwimmender Wohngebäude (Hausboote) in der Landesbauordnung.",
+  "Ausdrückliche Forderung nach Herdenschutz statt Bestandsreduktion beim Wolf, kombiniert mit Jagdforderungen zu Kormoran, Nutria und Biber."
+ ]
+}

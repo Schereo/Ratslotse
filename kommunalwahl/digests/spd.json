@@ -1,0 +1,271 @@
+{
+ "slug": "spd",
+ "partei": {
+  "kurz": "SPD",
+  "name": "Sozialdemokratische Partei Deutschlands (SPD)",
+  "typ": "partei",
+  "kandidaten": 72
+ },
+ "programm": {
+  "gefunden": true,
+  "titel": "Weil Oldenburg zählt! Programm für die Kommunalwahl 2026",
+  "url": "https://www.spd-oldenburg.de/wp-content/uploads/sites/742/2026/06/Kommunalwahlprogramm_2026_SPD-Oldenburg.pdf",
+  "format": "pdf",
+  "seiten": 54,
+  "stand": null,
+  "hinweis": null
+ },
+ "charakter": "Das mit 54 Seiten sehr umfangreiche Programm der amtierenden Rathauspartei verbindet einen breiten, technisch-detaillierten Forderungskatalog mit häufigen Verweisen auf eigene Erfolge der laufenden Ratsperiode (u. a. kostenfreies Samstags-Busfahren, Housing-First-Wohnungen, kommunaler Wärmeplan) und konkrete Fortführungs- beziehungsweise Weiterentwicklungsversprechen. Der Ton ist pragmatisch-lösungsorientiert und grenzt sich ausdrücklich von 'Schwarzmalerei' und 'wolkigen Visionen' ab; auch eigene Problemfelder wie illegale Müllkippen oder Kostenexplosionen bei Bauprojekten werden offen benannt. Inhaltliche Schwerpunkte sind bezahlbarer Wohnraum, soziale Gerechtigkeit und Inklusion, Klimaneutralität bis 2035, Verkehrssicherheit sowie eine solide, aber nicht sparpolitisch verengte Haushaltsführung, durchgängig verbunden mit dem Anspruch, Vielfalt sowie Frauen und Minderheiten vor Diskriminierung und Extremismus zu schützen.",
+ "kernpunkte": [
+  "Neue städtische Wohnungsbaugesellschaft neben der GSG sowie gesicherte Sozialquoten (50 Prozent auf städtischen, 30 Prozent auf privaten Flächen) für bezahlbaren Wohnraum.",
+  "Klimaneutralität von Stadtverwaltung und städtischen Einrichtungen ab 2035, u. a. durch Wärmepumpen in allen städtischen Gebäuden und das Schwammstadt-Prinzip.",
+  "Ersatzneubau der Rollklappbrücke über die Hunte als höhergelegte feste Querung statt bloßer Sanierung, samt drittem Gleis an Hunte- und Pferdemarktbrücke.",
+  "Ausbau der Frauenhaus-Kapazitäten und mindestens zwei zusätzliche Streetworker-Stellen angesichts 618 Fällen häuslicher Gewalt 2025 (plus 18 Prozent).",
+  "Kostenfreies Samstags-Busfahren bleibt erhalten und wird auf verkaufsoffene Sonntage ausgeweitet, ergänzt um einen 15-Minuten-Takt am Wochenende.",
+  "Stabile Hebesätze bei Grundsteuer und Gewerbesteuer, keine Hundesteuer-Erhöhung und keine Einwegverpackungssteuer, dafür striktes Kostencontrolling mit Totalunternehmer-Vergabe bei Großprojekten.",
+  "Ausbau von Housing-First-Wohnungen und Einrichtung eines 'Duschbusses' für obdachlose Menschen."
+ ],
+ "themen": {
+  "wohnen": {
+   "positionen": [
+    "Sicherung und bedarfsgerechte Erhöhung der Sozialquoten bei Neubauprojekten (50 Prozent auf städtischen, 30 Prozent auf privaten Flächen), mit besonderem Fokus auf große, bezahlbare Familienwohnungen.",
+    "Gründung einer zusätzlichen städtischen Wohnungsbaugesellschaft neben der GSG, die in enger Zusammenarbeit mit dieser bezahlbaren Wohnraum mit hohen sozialen und ökologischen Standards schafft.",
+    "Gebäudebezogene soziale Wohnraumförderung mit Mietdeckel für sanierungsbedürftige Wohnblocks, um Verdrängung zu verhindern und sozial gemischte Nachbarschaften zu stärken.",
+    "Förderung von Nachverdichtung, Aufstockungen, seriellem Bauen und Wohnungsbau über Supermärkten, Parkhäusern und ähnlichen Flächen zur kostengünstigen Schaffung neuen Wohnraums.",
+    "Aktive städtische Bodenpolitik mit strategischem Grundstücksankauf, verstärktem Einsatz von Erbbaurecht statt Verkauf und Förderung von Genossenschaften sowie gemeinschaftlichen Wohnprojekten.",
+    "Einführung einer Zweckentfremdungssatzung gegen Leerstand und Umnutzung gewerblicher Leerstände, etwa in der Innenstadt, zu neuem Wohnraum.",
+    "Ausbau von Housing-First-Wohnungen für obdachlose Menschen ohne Vorbedingungen, Einrichtung eines 'Duschbusses' sowie eigener, rund um die Uhr geöffneter Schutzräume für obdachlose Frauen und Kinder.",
+    "Weiterentwicklung verkehrsarmer Quartiere mit Quartiersgaragen sowie sicheren Schul- und Kindergartenwegen in Wohngebieten."
+   ],
+   "seiten": [
+    5,
+    6,
+    7,
+    8
+   ],
+   "praegnanz": 3
+  },
+  "mobilitaet": {
+   "positionen": [
+    "Beschleunigter Umbau des Wallrings, Prüfung der künftigen Leistungsfähigkeit des Straßennetzes an Nadorster Straße und Pferdemarkt durch eigene Studien sowie Erhalt der bisherigen Markt- und Parkflächengröße am Pferdemarkt.",
+    "Bau der Fliegerhorststraße zur Entlastung der Alexanderstraße und der nördlichen Innenstadt; kein weiteres Parkhochhaus am Pferdemarkt, dafür Erhalt der Parkplätze unter der Pferdemarktbrücke und Reaktivierung der Tiefgarage am Stadtmuseum inklusive neuer Fahrradstellplätze.",
+    "Umsetzung des geplanten Fahrradstraßensterns, rot asphaltierte Radwege, Fahrradgaragen nach dem Vorbild Groningens sowie kostenfreies, überdachtes Fahrradparken unter Fußgängerzone und Hauptbahnhof.",
+    "Beibehaltung des kostenfreien Samstags-Busfahrens mit Ausweitung auf verkaufsoffene Sonntage, Ausbau von Park-&-Ride in Wechloy, Etzhorn und Osternburg sowie ein 15-Minuten-Takt der VWG auch am Wochenende.",
+    "Ersatzneubau der Rollklappbrücke über die Hunte als höhergelegte feste Querung statt bloßer Sanierung, ein drittes Gleis an Hunte- und Pferdemarktbrücke sowie eine Tunnellösung für den Bahnübergang 'Am Stadtrand' in Ofenerdiek.",
+    "Neue Regio-S-Bahn-Haltepunkte in Ofenerdiek und Drielake, ein Halt des Regionalexpresses Oldenburg–Osnabrück im Stadtsüden sowie eine umsteigefreie Zugverbindung nach Groningen.",
+    "Ausbau von Regionalbuslinien ins Umland, etwa nach Friesoythe, Elsfleth und über Wardenburg bis Garrel, Verlängerung der Linie S 35 bis Aurich sowie Aufteilung des Wesersprinters in je eine Linie nach Bremerhaven und nach Nordenham.",
+    "Wirkungsbasierte Überprüfung der seit Ende 2025 geltenden Tempo-30-Zonen mit Option auf Rückbau bei fehlendem Nutzen, sowie ein neues Verkehrsleitkonzept für Großveranstaltungen wie den Kramermarkt."
+   ],
+   "seiten": [
+    11,
+    12,
+    13,
+    14,
+    15,
+    16
+   ],
+   "praegnanz": 3
+  },
+  "klima": {
+   "positionen": [
+    "Ziel der Klimaneutralität von Stadtverwaltung und städtischen Einrichtungen ab 2035, mit Bekenntnis zum 1,5-Grad-Ziel des Pariser Klimaabkommens.",
+    "Umstellung aller städtischen Gebäude auf Wärmepumpen oder andere klimaneutrale Heizsysteme, Ausstattung mit Photovoltaik und Stromspeichern sowie Fortführung des Förderprogramms 'Klimaschutzmaßnahmen im Altbau'.",
+    "Weiterentwicklung und Umsetzung des Ende 2025 veröffentlichten kommunalen Wärmeplans.",
+    "Abgestimmte Wiedervernässung von Trockenmoorflächen mit Nachbargemeinden sowie Ausweisung weiterer Landschaftsschutzgebiete unter Ablehnung großflächiger Baumrodungen.",
+    "Anstreben einer 'Netto-Null'-Versiegelung über den seit Dezember 2025 laufenden Entsiegelungswettbewerb sowie Reduzierung von Lichtverschmutzung durch insektenfreundliche Straßenbeleuchtung.",
+    "Erschließung von Tiefengeothermie, unter anderem zur Wärmeversorgung von Flötenteichbad und Gesamtschule Flötenteich sowie für neue Wohngebiete und Nahwärmenetze.",
+    "Ausweisung der gesetzlich vorgeschriebenen 89 Hektar Windenergiefläche bis 2032, u. a. bei Bornhorster Seen/Moorplacken und in der Klostermark, als lokal verankerte Bürgerwindparks mit Beteiligungsmöglichkeit für Anwohner*innen.",
+    "Konsequente Umsetzung des Schwammstadt-Prinzips gegen Starkregenfolgen, eine neue Beratungsstelle für naturnahe Privatgärten sowie Hitzeschutzpläne wie den 'Coolen Stadtplan'."
+   ],
+   "seiten": [
+    19,
+    20,
+    21,
+    22,
+    23
+   ],
+   "praegnanz": 3
+  },
+  "wirtschaft": {
+   "positionen": [
+    "Entbürokratisierung durch vereinfachte Antrags- und Genehmigungsverfahren, digitalisierte Prozesse und gebündelte 'One-Stop-Shops' für Unternehmen und Gründer*innen.",
+    "Strategisches Flächenmanagement mit Leerstandskataster und Grundstücksbevorratung für Gewerbeflächen sowie mehrstöckiges Bauen in Gewerbegebieten.",
+    "Unterstützung der Exzellenzstrategie der Universität Oldenburg, Ausbau des IT-Quartiers 'iCON' an der Alten Fleiwa und der Universitätsmedizin Oldenburg sowie Flächensicherung für Uni und Jade Hochschule.",
+    "Gezielte Förderung von KMU durch Beratung, Unterstützung bei Unternehmensnachfolgen und eine höhere kommunale Beschaffungsquote.",
+    "Förderung klimaneutraler Gewerbegebiete, GreenTech-Start-ups, Kreislaufwirtschaft und Repaircafés als Teil der Wirtschaftsförderung.",
+    "Ausbau des Tourismus durch mehr Übernachtungsmöglichkeiten, Modernisierung des Campingplatzes am Flötenteichbad und einen ausgebauten Wohnmobilstellplatz; planmäßiger, kostenstabiler Neubau der Weser-Ems-Hallen.",
+    "Förderprogramme gegen Leerstand in der Innenstadt (rund 10 Prozent im Jahr 2025) und Unterstützung des 'Campus Oldenburg'-Konzepts der Universität in der Innenstadt."
+   ],
+   "seiten": [
+    45,
+    46,
+    47,
+    48,
+    49,
+    50
+   ],
+   "praegnanz": 3
+  },
+  "bildung": {
+   "positionen": [
+    "Erreichen der Kita-Ausbaustufe vier mit wohnortnahen Plätzen, Vergütung für die Ausbildung von Sozialassistent*innen und Erzieher*innen sowie flächendeckende Sprachförderung in Kitas.",
+    "Flexibilisierung der Kitaplatz-Vergabe durch ganzjährige Aufnahmen statt eines zentralen August-Termins sowie datenbasierte Bedarfsplanung über den Datenaustausch von Standesamt, Bürgerbüro und Kinderbetreuung.",
+    "Prüfung einer Kapazitätserweiterung der Integrierten Gesamtschulen, nachdem 2025 über 200 Schüler*innen abgelehnt werden mussten, sowie Fortführung des Ausbaus der Ganztagsgrundschulen.",
+    "Einheitliches Digitalkonzept für alle Schulen inklusive Classroom-Management-Systemen, städtisch geförderte Tablets für einkommensschwache Familien mit Ausweitung auf die Oberstufe sowie Glasfaser- und WLAN-Ausbau an allen Schulen.",
+    "Bauliche Modernisierung der Schulen: Gruppenräume, begrünte und verschönerte Fassaden, Klimaanlagen beziehungsweise Lüftungssysteme sowie sanierte Toiletten mit elektrischen Händetrocknern.",
+    "Keine Preiserhöhungen beim Mensaessen, Prüfung von Preissenkungen, mindestens eine vegetarische Alternative sowie Maßnahmen zur Lärmreduktion in den Mensen.",
+    "Flächendeckend sichere Schulwege nach dem Prinzip 'Kurze Beine – kurze Wege', Maßnahmen gegen gefährliche Elterntaxi-Situationen besonders an Grundschulen und Fahrradstationen an allen Schulen."
+   ],
+   "seiten": [
+    26,
+    27,
+    28,
+    29,
+    30,
+    31
+   ],
+   "praegnanz": 3
+  },
+  "soziales": {
+   "positionen": [
+    "Fortführung der kommunalen Armutsforschung auf Basis des Armutsberichts 2024 sowie gezielte Förderung benachteiligter Quartiere und Weiterentwicklung des Oldenburg-Passes.",
+    "Ausbau von Housing-First-Wohnungen für obdachlose Menschen, Einrichtung eines 'Duschbusses' und strengere Sicherheitsstandards in Notunterkünften.",
+    "Weiterer Ausbau des Klinikums Oldenburg als Maximalversorger auf dem Weg zum dritten Universitätsklinikum Niedersachsens, inklusive erweitertem Kita-Angebot für das Klinikpersonal.",
+    "Ausbau von Tages-, Kurzzeit- und Nachtpflege in allen Stadtteilen sowie Unterstützung pflegender Angehöriger über das 'Bündnis Pflege'.",
+    "Seniorenpolitik mit barrierefreier Infrastruktur, seniorengerechten Mobilitätsangeboten und neuen Wohnkonzepten gegen Einsamkeit im Alter.",
+    "Stärkung der Suchthilfe durch mehr Sozialarbeiter*innen und mobile Prüfstellen, Forderung nach einem Drogenkonsumraum ('Druckraum') und Prüfung einer Sucht- beziehungsweise Entzugsklinik mit Schwerpunkt junge Menschen.",
+    "Verankerung des Behindertenbeirats als festes Gremium im Stadtrat sowie eine Vorreiterrolle der Stadt bei Arbeitsplätzen für Menschen mit Beeinträchtigung, unterstützt durch eine barrierefreie Praktikums-Suchmaschine."
+   ],
+   "seiten": [
+    8,
+    9,
+    10,
+    26,
+    27
+   ],
+   "praegnanz": 3
+  },
+  "kultur": {
+   "positionen": [
+    "Erhalt des kostenfreien Museumseintritts für alle unter 18 Jahren mit Ausweitung auf Vermittlungsangebote für Schulklassen sowie Absicherung von Stadt- und Stadtteilbibliotheken.",
+    "Finanzielle Unterstützung von Stadtteilkultur-Initiativen wie dem Globe Kino Donnerschwee, dem Kulturzentrum Rennplatz Ohmstede, dem Farbenfroh Festival Kreyenbrück, Bloherfel.de und dem ViertelRaum Eversten.",
+    "Fortführung des Projekts 'Raum auf Zeit' zur Vermittlung von Leerständen an Kulturschaffende sowie langfristige Absicherung soziokultureller Zentren wie Kulturetage, Werkschule Oldenburg und Blauschimmel Atelier.",
+    "Bekenntnis zum Erhalt des Oldenburgischen Staatstheaters (Kostenteilung 75 Prozent Land, 25 Prozent Stadt) sowie Unterstützung freier Theater wie Theater Laboratorium, Theater k, theater hof/19 und Theater Wrede.",
+    "Fortführung des Förderinstruments 'MachIWerk' für Kulturprojekte, Abschaffung der Vergnügungssteuer für Clubs und Einsetzung einer Beauftragten oder eines Beauftragten für Nachtkultur.",
+    "Förderung des Neubauprojekts Sport- und Gesundheitsbad Flötenteich sowie Erhalt von OLantis Huntebad und allen Stadtteilbädern; striktes Kostencontrolling beim Bau des neuen Fußballstadions.",
+    "Unterstützung des nicht-organisierten Sports durch Sportboxen, Calisthenics-Anlagen und die Skatehalle Backyard e.V. sowie Öffnung von Sportplätzen für die Öffentlichkeit an Abendstunden."
+   ],
+   "seiten": [
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37
+   ],
+   "praegnanz": 3
+  },
+  "sicherheit": {
+   "positionen": [
+    "Forderung nach durchgängiger Besetzung aller städtischen Polizeistationen an allen Wochentagen, mehr Landespolizeipersonal und einer neuen Fahrradstaffel.",
+    "Mehr Videoüberwachung und bessere Beleuchtung an Angsträumen wie Lappan und Schlossplatz sowie mehr Präsenz von Polizei am ZOB und Bundespolizei am Bahnhof.",
+    "Ausbau der Frauenhaus-Kapazitäten angesichts 618 Fällen häuslicher Gewalt im Jahr 2025 (plus 18 Prozent) sowie eine mehrsprachige, anonyme und digitale zentrale Beratungsstelle.",
+    "Einrichtung eines Männercafés beziehungsweise Männerraums als niedrigschwelliger Präventionsort, mit Verweis auf erhöhte Suizid- und Suchtrisiken bei Männern.",
+    "Verstärkter Schutz der Synagoge und jüdischer Gemeinden nach dem Brandanschlag vom April 2024, konsequente Bekämpfung von Extremismus jeder Richtung und mindestens zwei zusätzliche Streetworker-Stellen für Lappan, Schlossplatz und Bahnhofsvorplatz.",
+    "Zivilschutzmaßnahmen: Prüfung der Reaktivierung des Hilfskrankenhauses unter der IGS Flötenteich, ein gesamtstädtisches Schutzraumkonzept und die Wiederaufstellung von Sirenen mit Probealarmen.",
+    "Bedarfsgerechte Ausstattung von Berufs- und Freiwilligen Feuerwehren sowie versenkbare, kontrastreich gestaltete Poller an neuralgischen Orten wie der Fußgängerzone.",
+    "Konsequentes Vorgehen gegen illegale Müllkippen, Fortführung der KehrForce Oldenburg, mehr Mülleimer und häufigere Straßenreinigung sowie mehr Präsenz des Ordnungsamts im Alltag."
+   ],
+   "seiten": [
+    16,
+    17,
+    18,
+    19
+   ],
+   "praegnanz": 3
+  },
+  "digitales": {
+   "positionen": [
+    "Zügige Umsetzung des Onlinezugangsgesetzes 2.0 bei gleichzeitigem Erhalt analoger Zugänge und wieder offenen, terminfreien Sprechstunden im Bürgerbüro.",
+    "Geprüfter, datenschutzkonformer Einsatz generativer KI zur Entlastung von Routineaufgaben in der Stadtverwaltung.",
+    "Barrierearme digitale Angebote mit einfacher Sprache, Vorlesefunktion und Screenreader-Kompatibilität sowie kostenfreie Schulungsangebote für Ältere und Menschen mit Beeinträchtigung.",
+    "Weiterverfolgung der Idee einer 'Oldenburg-App' als Alltagshelfer, Informationsplattform und Tourismus-Tool sowie Ausbau des kostenfreien WLAN auf die gesamte Innenstadt.",
+    "Zügiger, flächendeckender Glasfaserausbau vor allem in Neubau- und Gewerbegebieten mit einer öffentlich einsehbaren Ausbaukarte.",
+    "Öffentlich einsehbares Dashboard mit Fortschrittsberichten zur Digitalisierung sowie eine zentrale Beteiligungsplattform mit 'Ideenkarte' und 'Stadtverbesserer'-Meldetool.",
+    "Mehr Echtzeitinformationen zu Bus-Ankünften, Baustellen und freien Parkplätzen über Apps und digitale Anzeigetafeln."
+   ],
+   "seiten": [
+    42,
+    43,
+    44
+   ],
+   "praegnanz": 3
+  },
+  "finanzen": {
+   "positionen": [
+    "Fortführung solider Haushaltspolitik trotz eines für 2026 erwarteten Defizits von rund 69 Millionen Euro (nach 18 Millionen Euro 2025) bei einer Rücklage von rund 195 Millionen Euro, ohne einschneidende Kürzungen bei Sozialem, Kultur oder Umwelt.",
+    "Verantwortungsvoller, zielgerichteter Einsatz der Mittel aus dem Sondervermögen Infrastruktur für Wirtschaft, Klimaschutz und Lebensqualität.",
+    "Effektiveres Kostencontrolling nach den Kostenexplosionen beim Stadtmuseum (von 17 auf rund 26,4 Millionen Euro) und beim Sport- und Gesundheitsbad Flötenteich (auf mindestens 82 Millionen Euro), künftig unter anderem durch Vergabe an Totalunternehmer mit Festpreisen.",
+    "Stabilhaltung der Hebesätze für Grundsteuer A und B sowie die Gewerbesteuer; Oldenburg hat mit 539 Prozent bereits den niedrigsten Grundsteuer-B-Satz der acht niedersächsischen Großstädte.",
+    "Ablehnung einer Erhöhung der Hundesteuer und Ablehnung einer Einwegverpackungssteuer für Oldenburg.",
+    "Mögliche Erhöhung der Vergnügungssteuer als Lenkungsinstrument bei verstärkter Ansiedlung von Spielcasinos.",
+    "Einrichtung einer zentralen Koordinierungsstelle für Fördermittel von EU, Bund und Land zur Entlastung des städtischen Haushalts."
+   ],
+   "seiten": [
+    51,
+    52,
+    53
+   ],
+   "praegnanz": 3
+  },
+  "beteiligung": {
+   "positionen": [
+    "Einführung eines dauerhaften, demokratisch legitimierten Kinder- und Jugendparlaments mit verbindlicher Mitbestimmung.",
+    "Institutionelle Absicherung neuer Formen der Jugendbeteiligung, Unterstützung der Jugendverbände im Haus der Jugend und Jugendeinrichtungen in allen Stadtteilen.",
+    "Stärkere Förderung und Sichtbarmachung von Ehrenamt bei Feuerwehr, Kommunalpolitik, Verbänden und Sportvereinen.",
+    "Ausbau von Bürgerhäusern und Stadtteilzentren, etwa in Ofenerdiek, als Orte für Austausch und Mitbestimmung.",
+    "Zentrale, übersichtliche digitale Beteiligungsplattform mit leichter zugänglichen Ratsunterlagen, einer 'Ideenkarte' für Stadtteile und einem 'Stadtverbesserer'-Meldetool sowie spielerischen Formaten wie 'Umwelt-Challenges'.",
+    "Frühzeitige, transparente Bürgerbeteiligung bei neuen Windparks, unter anderem über genossenschaftliche Bürgerwindpark-Modelle."
+   ],
+   "seiten": [
+    22,
+    25,
+    38,
+    44
+   ],
+   "praegnanz": 2
+  },
+  "integration": {
+   "positionen": [
+    "Ziel fairer Chancen auf Bildung, Arbeit, Wohnen und Teilhabe für die über 24.000 ausländischen Mitbürger*innen (2024: rund 28 Prozent mit Migrationshintergrund, 13,7 Prozent Ausländeranteil); systematischer Ausbau wohnortnaher Sprachförderung von der Kita bis zu Erwachsenenangeboten.",
+    "Bündelung von Beratungsangeboten zur Anerkennung von Abschlüssen und zum Arbeitsmarktzugang sowie Förderung sozialer Durchmischung bei der Wohnraumvergabe gegen Segregation.",
+    "Strategische Weiterentwicklung der kommunalen Integrationsarbeit (Integrationsbeauftragte, Integrationskonzept) mit stärkerer Einbindung von Migrantenorganisationen und regelmäßiger Evaluation.",
+    "Entschiedene Bekämpfung von Rassismus und Antisemitismus (Bezug: Brandanschlag auf die Synagoge im April 2024) sowie Muslimfeindlichkeit; Unterstützung der Koordinierungsstelle gegen Rechtsextremismus.",
+    "Bekenntnis zur Vielfalt: Mitgliedschaft im 'Rainbow City Network', Unterstützung des Christopher Street Day, kommunaler Aktionsplan gegen Homo-, Bi- und Transfeindlichkeit.",
+    "Konsequente Umsetzung des städtischen Gleichstellungsplans für mehr Frauen in Führungspositionen der Stadtverwaltung; Einführung von Gender Budgeting.",
+    "Ausbau von Schutzräumen für Frauen und FINTA*: mehr Mittel für Frauenhäuser, Fortführung von 'Sichere Orte schaffen' (Wildwasser e.V.) und 'StoP', Safe Spaces und Notrufpunkte per Codewort 'Ist Luisa hier?' in der Innenstadt.",
+    "Ausbau des 'Frauenmobils' (nächtlicher Fahrservice für Frauen) inklusive mehr verkaufter Gutscheine."
+   ],
+   "seiten": [
+    37,
+    38,
+    39,
+    40,
+    41,
+    42
+   ],
+   "praegnanz": 3
+  }
+ },
+ "besonderes": [
+  "Prüfung der Reaktivierung des historischen Hilfskrankenhauses unter der Integrierten Gesamtschule Flötenteich als Schutzraum für Verteidigungs-, Pandemie- oder Hochwasserfälle.",
+  "Wiederaufstellung von Warnsirenen mit regelmäßigen Probealarmen – erstmals seit über 30 Jahren.",
+  "Einrichtung eines 'Männercafés' beziehungsweise Männerraums als niedrigschwelliger Präventionsort gegen erhöhte Suizid- und Suchtrisiken bei Männern.",
+  "Schutzangebote für Frauen wie das Codewort 'Ist Luisa hier?' in Geschäften und das städtisch geförderte nächtliche 'Frauenmobil'.",
+  "Tiefengeothermie-Wärmepumpe zur Deckung des Wärmebedarfs von Flötenteichbad und Gesamtschule Flötenteich.",
+  "Testweise Einrichtung einer Buslinie über die Stadtautobahn zwischen Stadtnorden und Stadtsüden statt durch die Innenstadt.",
+  "Ausweisung legaler Graffiti-Flächen sowie eine neue Beauftragte oder ein neuer Beauftragter für Nachtkultur nach Abschaffung der Vergnügungssteuer für Clubs.",
+  "Neuer Regio-S-Bahn-Haltepunkt in Drielake, der bei Störungen der Hunteklappbrücke auch als provisorischer Endpunkt dienen soll."
+ ]
+}

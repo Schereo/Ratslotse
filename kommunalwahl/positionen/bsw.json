@@ -1,0 +1,225 @@
+{
+ "slug": "bsw",
+ "positionen": {
+  "W1": {
+   "pos": 0,
+   "beleg": "Für „größere kreisfreie Städte“ fordert das Programm die Gründung kommunaler Wohnungsbaugesellschaften – wo aber bereits eine besteht (wie Oldenburgs GSG), soll sie laut Text stattdessen mit mehr Kapital ausgestattet werden statt eine zusätzliche zu gründen.",
+   "seite": 26
+  },
+  "W2": {
+   "pos": 0,
+   "beleg": "Nur für private Investoren wird eine Sozialquote von „mindestens einem Drittel“ gefordert; zur separaten 50%-Quote auf städtischen Flächen äußert sich das Programm nicht.",
+   "seite": 27
+  },
+  "W3": {
+   "pos": 1,
+   "beleg": "„Durch die Einführung kommunaler Zweckentfremdungssatzungen können Städte und Gemeinden wirksam gegen Leerstand“ und Wohnraumspekulation vorgehen.",
+   "seite": 27
+  },
+  "W4": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "M1": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "M2": {
+   "pos": -1,
+   "beleg": "„Keine flächendeckenden Tempo-30-Zonen, aber gezielte Verkehrsberuhigung... an Kitas, Schulen, Altenheimen und in Wohngebieten.“",
+   "seite": 23
+  },
+  "M3": {
+   "pos": 1,
+   "beleg": "„Insbesondere höhere Parkgebühren benachteiligen Menschen, die auf ein Auto angewiesen sind“; bezahlbarer Parkraum muss erhalten bleiben.",
+   "seite": 33
+  },
+  "M4": {
+   "pos": 0,
+   "beleg": "Statt Fahrscheinfreiheit fordert das Programm ein bezahlpflichtiges „29-Euro-Ticket für den öffentlichen Nahverkehr“ und betont den Erhalt von Ticketkauf/Barzahlung im ÖPNV.",
+   "seite": 22
+  },
+  "M5": {
+   "pos": -1,
+   "beleg": "„Keine einseitige Verdrängung des Autoverkehrs durch Fahrradpolitik“ – das Programm steht für ein „Miteinander auf Augenhöhe“ statt Radverkehrs-Vorrang.",
+   "seite": 24
+  },
+  "K1": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "K2": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "K3": {
+   "pos": -1,
+   "beleg": "Die Landesvorgabe von mind. 2,2% Windkraftfläche „sehen wir kritisch“; weiterer Ausbau nur unter Bedingungen, Landschafts- und Waldschutz sollen Vorrang haben.",
+   "seite": 39
+  },
+  "K4": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "V1": {
+   "pos": 1,
+   "beleg": "Durchgängige Forderung nach Bürokratieabbau und „deutliche[r] Beschleunigung von Genehmigungsverfahren“, u.a. jährliche Pflicht-Überprüfung entbehrlicher Regelungen.",
+   "seite": 30
+  },
+  "V2": {
+   "pos": -1,
+   "beleg": "„Der Individualverkehr wird auch künftig eine wichtige Rolle spielen. Wir lehnen eine ideologische Gängelung des Autoverkehrs ab“; City-Maut und Parkraumverknappung werden abgelehnt.",
+   "seite": 23
+  },
+  "V3": {
+   "pos": 0,
+   "beleg": "„Ausweisung ausreichender Gewerbeflächen auch für kleine und mittlere Unternehmen“ gefordert, ohne Aussage zur Freiflächen-Frage; zugleich Betonung von Nachnutzungskonzepten für Leerstände.",
+   "seite": 31
+  },
+  "B1": {
+   "pos": 0,
+   "beleg": "Allgemein sollen „alle Kommunen... ausreichend Plätze in Integrierten Gesamtschulen bereitstellen“; eine vierte IGS für Oldenburg wird nicht konkret gefordert.",
+   "seite": 16
+  },
+  "B2": {
+   "pos": 0,
+   "beleg": "„Auch Krippenplätze sollten kostenfrei sein“ – nur für U3-Betreuung, keine Aussage zu Kita-Gebühren insgesamt.",
+   "seite": 17
+  },
+  "B3": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "B4": {
+   "pos": 0,
+   "beleg": "„Massive Investitionen in die Sanierung, Modernisierung und den bedarfsgerechten Ausbau von Schulen und Kitas“ gefordert, aber ohne Vorrang vor anderen städtischen Investitionen zu formulieren.",
+   "seite": 16
+  },
+  "S1": {
+   "pos": 1,
+   "beleg": "„Mit dem Konzept 'Housing First' sind feste, dauerhafte Unterkünfte bereitzustellen“; „Konsequente Maßnahmen gegen Wohnungslosigkeit nach dem Prinzip 'Housing First'“.",
+   "seite": 27
+  },
+  "S2": {
+   "pos": 1,
+   "beleg": "„In den Kommunen sind sogenannte Sozialpässe für Menschen mit geringem Einkommen einzuführen, durch die... die Nutzung des ÖPNV finanziell erleichtert werden“.",
+   "seite": 10
+  },
+  "S3": {
+   "pos": 1,
+   "beleg": "„Der Zugang zu Schutzräumen darf nicht vom Geldbeutel abhängen. Wir fordern deshalb eine verlässliche, dauerhaft gesicherte kommunale Finanzierung“ der Frauenhausplätze.",
+   "seite": 22
+  },
+  "C1": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "C2": {
+   "pos": 1,
+   "beleg": "„Die Sanierung maroder Sportstätten hat für uns eine hohe Priorität“; verlässliche, auskömmliche Förderung des Vereinslebens durch die Kommunen gefordert.",
+   "seite": 37
+  },
+  "C3": {
+   "pos": 1,
+   "beleg": "„Wir wollen Theater, Musikschulen, Bibliotheken, Museen und soziokulturelle Zentren sichern und stärken“.",
+   "seite": 38
+  },
+  "C4": {
+   "pos": 1,
+   "beleg": "„Kommunale Sportstätten wie Schwimmbäder, Turnhallen und Fußballplätze wollen wir erhalten und modernisieren“.",
+   "seite": 38
+  },
+  "O1": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "O2": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "O3": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "O4": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "D1": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "D2": {
+   "pos": 1,
+   "beleg": "„Wichtige Daten sollen offen, maschinenlesbar und leicht zugänglich veröffentlicht werden“; offene Datenplattformen zu Haushalt, Bauprojekten und Fördermitteln gefordert.",
+   "seite": 6
+  },
+  "D3": {
+   "pos": 0,
+   "beleg": "Beim geforderten Online-„One-Stop-Shop“ gilt ausdrücklich: „Die Nutzung dieses Angebots darf jedoch nicht verpflichtend sein, da insbesondere ältere Menschen weiterhin auf persönlichen Service angewiesen sind“.",
+   "seite": 30
+  },
+  "F1": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "F2": {
+   "pos": 0,
+   "beleg": "Gefordert wird „Vermeidung von Kostenexplosionen durch vollständige Offenlegung aller Kosten vor der Genehmigung neuer Projekte“ – schwächer als bindende Obergrenzen mit Abbruchklauseln.",
+   "seite": 34
+  },
+  "F3": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "P1": {
+   "pos": 0,
+   "beleg": "Das Programm senkt nur die Quoren für bürgerinitiierte Begehren (5% statt 7,5-10%), fordert aber keine Pflicht zu Bürgerentscheiden speziell bei teuren Großprojekten.",
+   "seite": 5
+  },
+  "P2": {
+   "pos": 1,
+   "beleg": "„Jugendparlamente und Schülerräte sollen in allen Kommunen eingeführt werden. Sie erhalten eigene Budgets und Mitsprache bei Projekten, die junge Menschen betreffen“.",
+   "seite": 7
+  },
+  "P3": {
+   "pos": 1,
+   "beleg": "„Ratssitzungen und Ausschusssitzungen sollen per Livestream übertragen und dauerhaft abrufbar sein“; „gläsernes Rathaus“ und Transparenzregister gefordert.",
+   "seite": 5
+  },
+  "I1": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "I2": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "I3": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "I4": {
+   "pos": -1,
+   "beleg": "„Die Aufnahme und Unterbringung von Geflüchteten ist eine gesamtstaatliche Aufgabe“; Zuwanderung müsse „in einem Umfang stattfinden, der gesellschaftlich sinnvoll und sozial verträglich ist“.",
+   "seite": 11
+  }
+ }
+}
