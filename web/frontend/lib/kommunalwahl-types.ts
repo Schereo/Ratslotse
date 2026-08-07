@@ -117,6 +117,33 @@ export type Rohdaten = {
    *  Auswertung dieselbe Menge meinen. */
   vergleich: Slug[];
   klartext: { einzeiler: Record<Slug, string>; geprueft: boolean };
+  /** MDS-Koordinaten der Nähe-Landkarte (Ausbau 08.08.). */
+  landkarte: { slug: Slug; x: number; y: number }[];
+  /** Positionen, mit denen eine Liste allein steht. */
+  alleinstellungen: {
+    art: "allein_gegen_alle" | "einzige_aussage";
+    id: string;
+    thema: ThemaKey;
+    these: string;
+    slug: Slug;
+    pos: 1 | -1;
+    beleg: string | null;
+    seite: number | null;
+    n: number;
+    dagegen: Slug[];
+    teils: Slug[];
+  }[];
+  /** Sprachstatistik je Vergleichsliste. */
+  sprache: Record<
+    Slug,
+    {
+      woerter: number;
+      satzlaenge: number;
+      lix: number;
+      lix_label: string;
+      begriffe: { wort: string; haeufigkeit: number; gewicht: number }[];
+    }
+  >;
 };
 
 /* ── Aufbereitete Formen, die die Ansichten bekommen ───────────────────────── */
@@ -193,6 +220,37 @@ export type OhneProgramm = {
 };
 
 export type Kennzahl = { wert: string; label: string };
+
+/** Ein Punkt der Nähe-Landkarte (MDS über die 36 Paarabstände, [-1..1]). */
+export type KartenPunkt = ListenMarke & { x: number; y: number };
+
+/** Eine Kante der Landkarte: Paare, die sich besonders nah sind. */
+export type KartenKante = { a: Slug; b: Slug; wert: number };
+
+/** Eine Position, mit der eine Liste allein steht (Überraschungs-Karte). */
+export type Alleinstellung = {
+  art: "allein_gegen_alle" | "einzige_aussage";
+  id: string;
+  these: string;
+  themaLabel: string;
+  marke: ListenMarke;
+  pos: 1 | -1;
+  beleg: string | null;
+  href: string | null;
+  seitenLabel: string;
+  n: number;
+  dagegen: ListenMarke[];
+  teils: ListenMarke[];
+};
+
+/** Sprachstatistik eines Programms (Fakten, keine Wertung). */
+export type SprachProfil = {
+  woerter: number;
+  satzlaenge: number;
+  lix: number;
+  lixLabel: string;
+  begriffe: { wort: string; haeufigkeit: number; gewicht: number }[];
+};
 
 /** Kompakter Schnitt für die interaktive Nähe-Ansicht (`naeheDaten()` in
  *  lib/kommunalwahl.ts). Thesen/Belege als Lookup, Paare nur als ID-Listen —

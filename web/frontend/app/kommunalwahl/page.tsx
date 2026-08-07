@@ -4,6 +4,8 @@
 import Link from "next/link";
 import { Mascot } from "@/components/mascot";
 import { CountdownBadge, CountdownKarte } from "@/components/kommunalwahl/countdown";
+import { Fingerabdruck } from "@/components/kommunalwahl/fingerabdruck";
+import { Landkarte } from "@/components/kommunalwahl/landkarte";
 import { PositionsMatrix } from "@/components/kommunalwahl/matrix";
 import {
   Abschnitt,
@@ -18,8 +20,11 @@ import {
   REGISTER_HREF,
 } from "@/components/kommunalwahl/ui";
 import {
+  alleinstellungen,
   datenlageBalken,
+  fingerabdruck,
   kennzahlen,
+  landkarte,
   listenKacheln,
   nahFern,
   ohneProgramm,
@@ -27,13 +32,16 @@ import {
   streitEinigkeit,
   themenKacheln,
 } from "@/lib/kommunalwahl";
+import { Glyph } from "@/components/kommunalwahl/ui";
 
 const RAIL = [
   ["#stimmen", "Drei Stimmen"],
   ["#datenlage", "Datenlage"],
   ["#streit", "Streit & Einigkeit"],
+  ["#allein", "Steht allein da"],
   ["#themen", "Themenfelder"],
   ["#programme", "Die 9 Programme"],
+  ["#karte", "Die Karte der Nähe"],
   ["#naehe", "Wer steht wem nahe?"],
   ["#ohne", "Ohne Programm"],
   ["#methodik", "Methodik & KI"],
@@ -55,6 +63,8 @@ export default function KommunalwahlSeite() {
   const listen = listenKacheln();
   const paare = nahFern();
   const ohne = ohneProgramm();
+  const allein = alleinstellungen(6);
+  const karte = landkarte();
 
   return (
     <>
@@ -212,6 +222,65 @@ export default function KommunalwahlSeite() {
             </div>
           </section>
 
+          {/* Steht allein da — Positionen gegen alle anderen (Ausbau 08.08.) */}
+          <section id="allein" className="mt-8 scroll-mt-24">
+            <Abschnitt
+              titel="Steht allein da"
+              neben="Positionen, mit denen eine Liste gegen alle anderen steht — belegt"
+            />
+            <div className="mt-3.5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {allein.map((a) => (
+                <div key={`${a.id}-${a.marke.slug}`} className="flex flex-col rounded-[15px] border border-border bg-card px-4 py-3.5">
+                  <span className="flex flex-wrap items-center gap-2">
+                    <FarbPunkt farbe={a.marke.farbe} farbeDunkel={a.marke.farbeDunkel} size={10} />
+                    <span className="text-[13.5px] font-bold">{a.marke.kurz}</span>
+                    {a.marke.landesprogramm && <BswPill kompakt />}
+                    <span
+                      className={`ml-auto rounded-full px-2 py-0.5 text-[10.5px] font-semibold ${
+                        a.art === "einzige_aussage"
+                          ? "bg-secondary text-secondary-foreground"
+                          : a.pos === 1
+                            ? "bg-emerald-700/10 text-emerald-900 dark:bg-emerald-400/15 dark:text-emerald-300"
+                            : "bg-red-700/10 text-red-900 dark:bg-red-400/15 dark:text-red-300"
+                      }`}
+                    >
+                      {a.art === "einzige_aussage"
+                        ? "als einzige mit Position"
+                        : a.pos === 1
+                          ? "als einzige dafür"
+                          : "als einzige dagegen"}
+                    </span>
+                  </span>
+                  <p className="mt-2 flex-1 text-[13px] font-semibold leading-snug [text-wrap:pretty]">
+                    {a.these}
+                  </p>
+                  {a.dagegen.length > 0 && (
+                    <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                      <Glyph pos={a.pos === 1 ? -1 : 1} size={13} />
+                      {a.dagegen.map((g) => g.kurz).join(", ")}
+                      {a.teils.length > 0 && ` · teils: ${a.teils.map((g) => g.kurz).join(", ")}`}
+                    </p>
+                  )}
+                  {a.beleg && (
+                    <p className="mt-2 border-t border-border/60 pt-2 text-[11.5px] leading-relaxed text-muted-foreground">
+                      »{a.beleg}«{" "}
+                      {a.href && (
+                        <a
+                          href={a.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="whitespace-nowrap text-primary"
+                        >
+                          {a.seitenLabel} ↗
+                        </a>
+                      )}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+
           {/* Themenfelder */}
           <section id="themen" className="mt-8 scroll-mt-24">
             <Abschnitt titel="Zwölf Themenfelder" neben="ein Thema wählen → alle Positionen nebeneinander, mit Beleg" />
@@ -257,6 +326,10 @@ export default function KommunalwahlSeite() {
                       <BswPill />
                     </span>
                   )}
+                  {/* Themen-Fingerabdruck: wo dieses Programm sein Gewicht legt */}
+                  <span className="mt-2.5">
+                    <Fingerabdruck felder={fingerabdruck(l.slug)} mini />
+                  </span>
                   <span className="mt-2.5 flex gap-2.5 border-t border-border/70 pt-2 text-[11px] tabular-nums text-muted-foreground">
                     <span>{l.kandidaten} Kand.</span>
                     <span>{l.quelleKurz}</span>
@@ -265,6 +338,17 @@ export default function KommunalwahlSeite() {
                   </span>
                 </Link>
               ))}
+            </div>
+          </section>
+
+          {/* Die Karte der Nähe (Ausbau 08.08.) */}
+          <section id="karte" className="mt-8 scroll-mt-24">
+            <Abschnitt
+              titel="Die Karte der Nähe"
+              neben="alle 36 Paarabstände auf einmal — gerechnet aus den Positionen"
+            />
+            <div className="mt-3.5">
+              <Landkarte punkte={karte.punkte} kanten={karte.kanten} />
             </div>
           </section>
 
