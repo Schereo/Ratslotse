@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from .config import get_settings
-from .routers import account, admin, auth, auth_apple, council, feedback, kommunalwahl, onboarding, push, quiz, topics, badges
+from .routers import account, admin, auth, auth_apple, council, feedback, onboarding, push, quiz, topics, badges
 
 logger = logging.getLogger("nwz.web.main")
 
@@ -144,7 +144,6 @@ app.include_router(quiz.router)
 app.include_router(quiz.admin_router)
 app.include_router(push.router)
 app.include_router(badges.router)
-app.include_router(kommunalwahl.router)
 
 
 @app.exception_handler(OverflowError)
