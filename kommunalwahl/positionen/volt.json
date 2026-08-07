@@ -1,0 +1,225 @@
+{
+ "slug": "volt",
+ "positionen": {
+  "W1": {
+   "pos": 0,
+   "beleg": "„Kommunale Wohnungsbaugesellschaften und -genossenschaften werden gestärkt“ – allgemeine Stärkung, keine explizite Forderung nach einer zusätzlichen neuen Gesellschaft neben der GSG.",
+   "seite": 32
+  },
+  "W2": {
+   "pos": 1,
+   "beleg": "Bei städtischen Grundstücken Quote von mindestens 50% preiswertem Wohnraum, bei privaten Grundstücken mit neuem Baurecht mindestens 30% Sozialquote.",
+   "seite": 32
+  },
+  "W3": {
+   "pos": 1,
+   "beleg": "Konsequentes Leerstandsmanagement mit verbindlichen Meldepflichten und Sanktionen; Airbnb & Co. werden durch konsequente Zweckentfremdungssatzungen eingeschränkt.",
+   "seite": 32
+  },
+  "W4": {
+   "pos": -1,
+   "beleg": "„Nachverdichtung bevorzugen: Vor allem wird dieser Vorrang vor Neubau haben, da dadurch keine neuen, unbebauten Flächen versiegelt werden“ – explizit gegen Bauen auf der grünen Wiese.",
+   "seite": 25
+  },
+  "M1": {
+   "pos": -1,
+   "beleg": "„Wir sprechen uns gegen den Bau der Fliegerhorststraße aus, da es bereits genügend Anbindung für die Anwohner*innen gibt.“",
+   "seite": 23
+  },
+  "M2": {
+   "pos": 1,
+   "beleg": "„Tempo 30 als Regelgeschwindigkeit im gesamten Stadtgebiet (außer auf einigen Zufahrtsstraßen)“ einführen.",
+   "seite": 11
+  },
+  "M3": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "M4": {
+   "pos": 0,
+   "beleg": "„Kostenfreier Samstag: Die kostenlose Beförderung in Bussen an Samstagen und an verkaufsoffenen Sonntagen werden wir beibehalten und erweitern“ – nur punktuelle Ausweitung, kein genereller Umstieg auf Nulltarif.",
+   "seite": 14
+  },
+  "M5": {
+   "pos": 1,
+   "beleg": "Radverkehr erhält „Vorrang an Ampeln“, zudem werden freistehende Parkplätze in sichere Radwege umgewandelt.",
+   "seite": 10
+  },
+  "K1": {
+   "pos": 1,
+   "beleg": "„Oldenburg hat sich das Ziel gesetzt, bis 2035 klimaneutral zu werden. Dieses Ziel werden wir konsequent und ambitioniert umsetzen“, inkl. Klimacheck für jede Ratsentscheidung.",
+   "seite": 18
+  },
+  "K2": {
+   "pos": 1,
+   "beleg": "„Wir unterstützen die in Oldenburg beschlossene Baumschutzsatzung und fördern ihre konsequente Einhaltung und eine ambitionierte Weiterentwicklung.“",
+   "seite": 23
+  },
+  "K3": {
+   "pos": 0,
+   "beleg": "Fordert Windkraft nur auf „bereits versiegelten Flächen, wie bspw. Dächer öffentlicher Liegenschaften“ (dachfreundliche Anlagen) – keine Forderung nach mehr Windflächen auf freiem Land.",
+   "seite": 24
+  },
+  "K4": {
+   "pos": -1,
+   "beleg": "Verbindlicher Klimacheck für jede Ratsentscheidung und konsequente, ambitionierte Umsetzung der Klimaneutralität – Gegenteil einer Unterordnung des Klimaschutzes unter wirtschaftliche Machbarkeit.",
+   "seite": 18
+  },
+  "V1": {
+   "pos": 0,
+   "beleg": "Nur punktuell werden „Genehmigungsverfahren... beschleunigt und flexibel und unkompliziert gestaltet“ (bei Umwandlung leerstehender Gewerbeimmobilien) – kein genereller Vorrang von Bürokratieabbau vor zusätzlichen Auflagen.",
+   "seite": 25
+  },
+  "V2": {
+   "pos": 1,
+   "beleg": "„Verkehrsberuhigte Innenstadt: Wir sind der Meinung, dass weniger Autoverkehr im Zentrum die Mobilität innerhalb der Stadt angenehmer macht.“",
+   "seite": 10
+  },
+  "V3": {
+   "pos": 0,
+   "beleg": "„Wir entwickeln neue Gewerbegebiete, beleben Brachflächen wieder und wandeln Bestandsgebäude um“ – zugleich gilt eine Netto-Null-Versiegelung mit Ausgleichspflicht für jede unvermeidbare Versiegelung.",
+   "seite": 35
+  },
+  "B1": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "B2": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "B3": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "B4": {
+   "pos": 0,
+   "beleg": "„Wir investieren in die Sanierung von Schulen und Kitas“ / „sanieren konsequent die Kita- und Schulgebäude“ – klare Förderung, aber keine ausdrückliche Priorisierung vor anderen städtischen Investitionen.",
+   "seite": 47
+  },
+  "S1": {
+   "pos": 1,
+   "beleg": "„Housing-First-Strategie umsetzen: Um Obdachlosigkeit zu bekämpfen, werden Bedürftige zuerst zurück in eine eigene Wohnung gebracht.“",
+   "seite": 33
+  },
+  "S2": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "S3": {
+   "pos": 1,
+   "beleg": "„Schutzwohnungen und Notunterkünfte für Opfer von Gewalt werden ausgebaut“, Vereine mit sicheren Räumen gefördert, zudem neue Ombudsstelle für Gewaltschutz.",
+   "seite": 64
+  },
+  "C1": {
+   "pos": 1,
+   "beleg": "„Wir lehnen einen aus Steuermitteln finanzierten Stadionneubau ab.“",
+   "seite": 42
+  },
+  "C2": {
+   "pos": 1,
+   "beleg": "„Vereinssport stärken: Sportvereine, insbesondere im Kinder-, Jugend- und Integrationsbereich, werden finanziell und organisatorisch unterstützt“, zudem Sanierung/Ausbau von Sportanlagen.",
+   "seite": 45
+  },
+  "C3": {
+   "pos": 0,
+   "beleg": "„Transparente, faire und dauerhaft gesicherte Förderprogramme“ sowie verstärkte EU-Fördermittelnutzung – Sicherung/Transparenz bestehender Mittel statt klar zugesagter Aufstockung städtischer Ausgaben.",
+   "seite": 43
+  },
+  "C4": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "O1": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "O2": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "O3": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "O4": {
+   "pos": 0,
+   "beleg": "Maßnahmenmix aus Kontrolle (mehr sichtbare Polizeipräsenz, Sicherheitspersonal im ÖPNV, Alkoholverbote) und Prävention (Lichtkonzepte, Notrufsäulen) ohne klare Priorisierung von Prävention vor Kontrolle.",
+   "seite": 64
+  },
+  "D1": {
+   "pos": -1,
+   "beleg": "„Die Verwaltung soll durch effizientere Prozesse, mehr Personalunterstützung und ein gestärktes Amt für Digitalisierung und Transformation handlungsfähiger werden“ – Gegenteil von Personalabbau.",
+   "seite": 37
+  },
+  "D2": {
+   "pos": 1,
+   "beleg": "„Volt setzt sich für die Unterzeichnung der 'Open Data Charta' ein“, mehr Daten und Informationen der Stadtverwaltung sollen öffentlich zugänglich gemacht werden.",
+   "seite": 39
+  },
+  "D3": {
+   "pos": 1,
+   "beleg": "„Volt setzt sich dafür ein, alle digitalen Behördengänge vollständig zu digitalisieren“ (bei Erhalt analoger Zugänge).",
+   "seite": 39
+  },
+  "F1": {
+   "pos": -1,
+   "beleg": "„Die wichtigsten Quellen, insbesondere Gewerbe- und Grundsteuer, können nicht beliebig erhöht werden, ohne die lokale Wirtschaft und die Bürger*innen übermäßig zu belasten.“",
+   "seite": 66
+  },
+  "F2": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "F3": {
+   "pos": 0,
+   "beleg": "Dreigleisiger Ansatz aus Haushalts-Taskforce zur Ausgabenprüfung UND Erschließung neuer Einnahmequellen UND Priorisierung – keine klare Vorrangsetzung von Kürzungen vor höheren Einnahmen.",
+   "seite": 66
+  },
+  "P1": {
+   "pos": 0,
+   "beleg": "„Generell spricht sich Volt Oldenburg bei Großprojekten für eine Befragung der Bürger*innen aus“ – Befragung statt ausdrücklich verpflichtender Bürgerentscheide.",
+   "seite": 46
+  },
+  "P2": {
+   "pos": 0,
+   "beleg": "„Wir setzen uns für Kinder- und Jugendparlamente als gewählte kommunale Gremien ein“ – ohne explizit zugesichertes Rede-/Antragsrecht im Stadtrat oder eigenes Budget.",
+   "seite": 6
+  },
+  "P3": {
+   "pos": 1,
+   "beleg": "„Wir setzen uns für die digitale Aufzeichnung, zuverlässige Live-Übertragung und Speicherung der Rats- und Ausschusssitzungen ein“, dazu Open Data und durchsuchbares Ratsinformationssystem.",
+   "seite": 8
+  },
+  "I1": {
+   "pos": 1,
+   "beleg": "Zentrale Anlaufstelle für LGBTQI+, kommunaler Aktionsplan für Gleichstellung und Antidiskriminierungstrainings für Verwaltung, Polizei und Justiz.",
+   "seite": 59
+  },
+  "I2": {
+   "pos": -1,
+   "beleg": "„Wir bezuschussen die Teilnahme an Angeboten von Sprach- und Integrationskursen... auch für Menschen ohne gesicherten Aufenthaltsstatus“ – freiwillige Förderung statt Pflicht mit Sanktionen.",
+   "seite": 58
+  },
+  "I3": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "I4": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  }
+ }
+}
