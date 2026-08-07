@@ -1,0 +1,120 @@
+{
+ "slug": "echt-oldenburg",
+ "partei": {
+  "kurz": "Echt Oldenburg",
+  "name": "Echt Oldenburg",
+  "typ": "waehlergruppe",
+  "kandidaten": 6
+ },
+ "programm": {
+  "gefunden": true,
+  "titel": "echt-oldenburg.de – Kampagnenwebsite zur OB-Kandidatur von Ralph Butzin mit Kurzporträts der Ratskandidat:innen",
+  "url": "https://www.echt-oldenburg.de/",
+  "format": "web",
+  "seiten": null,
+  "stand": null,
+  "hinweis": "Die einzige auffindbare offizielle Quelle ist die Website echt-oldenburg.de, ein Einseiter (laut Sitemap nur Startseite plus Impressum/Datenschutz). Inhaltlich und optisch ist die Seite auf die Oberbürgermeister-Einzelkandidatur von Ralph Butzin zugeschnitten (Seitentitel 'Ralph Butzin', FAQ-Block dreht sich um ihn). Ein eigenständiges Ratswahlprogramm der Wählergruppe 'Echt Oldenburg' existiert nicht auffindbar; ausgewertet wurden ersatzweise die auf derselben Seite enthaltenen Kurzporträts von fünf der sechs Ratskandidat:innen (mit je 2-3 persönlichen thematischen Schwerpunkten, ohne Wahlbereichsangabe bei dreien) sowie die allgemeinen Grundsatzabsätze der Kampagne. Damit Fallstufe 2 gemäß Auftrag. Die Seite kündigt zudem ausdrücklich ein 'variables Wahlprogramm' an, das erst über eine laufende Bürger-Online-Umfrage entwickelt werden soll – ein klassisches Langprogramm ist also auch konzeptionell (noch) nicht vorgesehen."
+ },
+ "charakter": "Die Website ist primär als Kampagnenauftritt des Oberbürgermeister-Einzelkandidaten Ralph Butzin gestaltet; im Vordergrund stehen Werte wie Pragmatismus, Bürgernähe und Unabhängigkeit von Parteipolitik statt ein ausformuliertes Maßnahmenprogramm. Konkrete kommunalpolitische Forderungen sind rar und meist an einzelne Ratskandidat:innen mit ihren persönlichen Motiven und Berufen gekoppelt statt an ein Gesamtprogramm der Liste. Tonalität ist emotional-verbindend und appellativ ('zuhören, anpacken, verbinden'), mit deutlichem Schwerpunkt auf Lebensläufen und Motivation statt auf Zahlen oder Projektlisten.",
+ "kernpunkte": [
+  "Kostenlose Deutschförderung an Schulen über die vom Gründer initiierte, vom Kultusministerium anerkannte und mit dem Niedersächsischen Migrationspreis 2025 ausgezeichnete Initiative 'School in Motion'.",
+  "Bezahlbarer Wohnraum wird von vier der fünf namentlich vorgestellten Ratskandidat:innen als persönlicher Schwerpunkt genannt.",
+  "Sichere Schulwege, mehr Radwege und Erhalt des Everstenmoors im Nordwesten der Stadt (Wahlbereich 3: Eversten/Bloherfelde).",
+  "Stärkung von Feuerwehr und Katastrophenschutz als Schwerpunkt eines Ratskandidaten (Notfallsanitäter/Rettungswachenleiter).",
+  "Verbesserung der Gesundheits- und Pflegeversorgung, eingebracht von einer Ratskandidatin aus der Pflegedienst-Geschäftsführung.",
+  "Familienfreundliche Strukturen bei Schulen, Kitas und Sportvereinen.",
+  "Ankündigung eines 'variablen', erst per Bürger-Online-Umfrage zu entwickelnden Wahlprogramms statt eines festen Langprogramms."
+ ],
+ "themen": {
+  "wohnen": {
+   "positionen": [
+    "Mehrere Ratskandidat:innen (Klaus Ludwig, Stephan Seibel, Liane Neumann, Sonja Seibel) nennen bezahlbaren Wohnraum als persönlichen Schwerpunkt, ohne konkrete Instrumente oder Zahlen zu benennen."
+   ],
+   "seiten": [],
+   "praegnanz": 2
+  },
+  "mobilitaet": {
+   "positionen": [
+    "Ratskandidat Thomas Nespethal (Wahlbereich 3, Eversten/Bloherfelde) setzt sich für sichere Schulwege und mehr Radwege im Nordwesten der Stadt ein."
+   ],
+   "seiten": [],
+   "praegnanz": 1
+  },
+  "klima": {
+   "positionen": [
+    "Thomas Nespethal will den Nordwesten (Eversten/Bloherfelde) 'grüner' gestalten und tritt für den Erhalt von Grünzügen und des Everstenmoors ein."
+   ],
+   "seiten": [],
+   "praegnanz": 1
+  },
+  "wirtschaft": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  },
+  "bildung": {
+   "positionen": [
+    "Gründer Ralph Butzin initiierte mit 'School in Motion' eine vom Kultusministerium anerkannte Initiative für kostenlose Deutschförderung an Schulen, ausgezeichnet mit dem Niedersächsischen Migrationspreis 2025.",
+    "Ratskandidatin Sonja Seibel nennt ein starkes Bildungssystem als Schwerpunkt, Ratskandidat Klaus Ludwig fordert familienfreundliche Strukturen bei Schulen und Kitas.",
+    "'Bildung und Chancen' wird als eigener programmatischer Themenblock geführt, mit dem Anspruch auf 'echte Perspektiven' für Kinder, Jugendliche und Familien."
+   ],
+   "seiten": [],
+   "praegnanz": 3
+  },
+  "soziales": {
+   "positionen": [
+    "Ratskandidatin Liane Neumann (Geschäftsführerin eines Pflegedienstes) will die Gesundheits- und Pflegeversorgung in Oldenburg verbessern.",
+    "Sonja Seibel und Stephan Seibel nennen soziale Projekte bzw. soziales Miteinander als persönlichen Schwerpunkt.",
+    "Gründer Ralph Butzin ist geschäftsführender Vorstand der Bremer Wohnungshilfe und Gründer/Vorstand des Vereins 'Up to help e.V.' für Menschen in unverschuldeter Notlage; 'Soziale Verantwortung' wird als eigener Themenblock der Kampagne geführt."
+   ],
+   "seiten": [],
+   "praegnanz": 3
+  },
+  "kultur": {
+   "positionen": [
+    "Liane Neumann will die Vereinsarbeit stärken, Klaus Ludwig nennt Sportvereine als Teil familienfreundlicher Strukturen."
+   ],
+   "seiten": [],
+   "praegnanz": 1
+  },
+  "sicherheit": {
+   "positionen": [
+    "Ratskandidat Stephan Seibel (Notfallsanitäter/Rettungswachenleiter) fordert eine starke Feuerwehr und einen starken Katastrophenschutz."
+   ],
+   "seiten": [],
+   "praegnanz": 1
+  },
+  "digitales": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  },
+  "finanzen": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  },
+  "beteiligung": {
+   "positionen": [
+    "Die Kampagne bezeichnet ihr Programm ausdrücklich als 'variabel' und will Bürger:innen über eine laufende Online-Umfrage aktiv in die Programmentwicklung einbeziehen, statt ein festes Langprogramm vorzulegen.",
+    "Als Grundsatz wird formuliert, Politik müsse 'wieder näher an die Menschen heranrücken'; eine bürgernahe, verbindende Stadtführung wird als eigener Themenblock benannt."
+   ],
+   "seiten": [],
+   "praegnanz": 2
+  },
+  "integration": {
+   "positionen": [
+    "Über die Initiative 'School in Motion' setzt sich Gründer Ralph Butzin für kostenlose Deutschförderung an Schulen ein, ausgezeichnet mit dem Niedersächsischen Migrationspreis 2025.",
+    "Im Grundsatztext 'Gesellschaftliches Miteinander' wird betont, Unterschiede sollten nicht trennen, sondern durch respektvollen Austausch überbrückt werden."
+   ],
+   "seiten": [],
+   "praegnanz": 2
+  }
+ },
+ "besonderes": [
+  "Programmatik erfolgt fast ausschließlich über Kurzporträts der Kandidierenden statt über einen klassischen Forderungskatalog – ungewöhnlich für ein Kommunalwahlprogramm.",
+  "Ausdrückliche Ansage eines 'variablen Wahlprogramms', das erst durch eine laufende Bürger-Online-Umfrage inhaltlich gefüllt werden soll.",
+  "Ortsspezifischer Bezug auf den Erhalt des Everstenmoors sowie explizite Zuordnung einzelner Ratskandidat:innen zu Wahlbereichen (z. B. Wahlbereich 3: Eversten/Bloherfelde).",
+  "Die Gründerinitiative 'School in Motion' ist das einzige konkret benannte, bereits bestehende (nicht erst als Wahlversprechen formulierte) Bildungsprojekt und wurde mit dem Niedersächsischen Migrationspreis 2025 ausgezeichnet."
+ ]
+}

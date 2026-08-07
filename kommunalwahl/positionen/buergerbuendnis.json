@@ -1,0 +1,225 @@
+{
+ "slug": "buergerbuendnis",
+ "positionen": {
+  "W1": {
+   "pos": 1,
+   "beleg": "Begrüßt die vom Stadtrat 2025 beschlossene Gründung einer städtischen Wohngesellschaft ausdrücklich und will, dass sie schnell handlungsfähig wird.",
+   "seite": 6
+  },
+  "W2": {
+   "pos": 1,
+   "beleg": "Sozialquoten bei Neubauprojekten sollen konsequent eingehalten werden.",
+   "seite": 6
+  },
+  "W3": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "W4": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "M1": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "M2": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "M3": {
+   "pos": 1,
+   "beleg": "Lehnt weitere Parkgebührenerhöhungen ab und will die gestiegenen Anwohnerparkgebühren auf ein sozial verträgliches Niveau senken.",
+   "seite": 6
+  },
+  "M4": {
+   "pos": 0,
+   "beleg": "Nennt nur kostenloses Fahren am Samstag als „ersten Schritt“ des ÖPNV-Ausbaus, keine generelle Abschaffung der Fahrscheinpflicht.",
+   "seite": 11
+  },
+  "M5": {
+   "pos": -1,
+   "beleg": "Steht für eine pragmatische Verkehrspolitik, die „nicht ein Verkehrsmittel gegen das andere ausspielt“, statt dem Rad Vorrang vor dem Auto zu geben.",
+   "seite": 6
+  },
+  "K1": {
+   "pos": 0,
+   "beleg": "Nimmt den bestehenden Klimaschutzplan 2035 ernst, fordert aber nur eine ehrliche Evaluierung zu einem schlankeren, realistisch finanzierten Plan statt eine verbindliche Festschreibung.",
+   "seite": 10
+  },
+  "K2": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "K3": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "K4": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "V1": {
+   "pos": 1,
+   "beleg": "„Bürokratieabbau ist kein parteipolitisches Programm – sondern wirtschaftliche Vernunft“, u. a. durch vereinfachte Genehmigungsverfahren.",
+   "seite": 9
+  },
+  "V2": {
+   "pos": -1,
+   "beleg": "Beim ÖPNV gilt das Prinzip „erst Alternativen schaffen, dann über Einschränkungen des Pkw-Verkehrs reden – nicht umgekehrt“, da die Erreichbarkeit der Stadt gewährleistet bleiben muss.",
+   "seite": 6
+  },
+  "V3": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "B1": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "B2": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "B3": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "B4": {
+   "pos": 1,
+   "beleg": "Schulen, Kitas, Straßen, Spielplätze und soziale Infrastruktur haben Vorrang vor Prestige- und Leuchtturmprojekten; der Sanierungsrückstand an Schulen soll systematisch abgebaut werden.",
+   "seite": 4
+  },
+  "S1": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "S2": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "S3": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "C1": {
+   "pos": 1,
+   "beleg": "Lehnt eine vollständige Steuerfinanzierung des Stadion-Neubaus ab, stattdessen Beteiligung von Nutzern und privaten Investoren sowie eine Kostenobergrenze mit Exit-Klausel.",
+   "seite": 5
+  },
+  "C2": {
+   "pos": 1,
+   "beleg": "Will den Investitionsstau bei Sportstätten, Spielplätzen und Sporthallen abbauen; Sportvereine sollen verlässliche und faire Förderung erhalten.",
+   "seite": 8
+  },
+  "C3": {
+   "pos": 1,
+   "beleg": "Setzt sich dafür ein, den auf rund zehn Tage verkürzten Kultursommer wieder auf drei Wochen auszuweiten (früher dauerte er drei bis vier Wochen).",
+   "seite": 9
+  },
+  "C4": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "O1": {
+   "pos": 1,
+   "beleg": "Spricht sich für Videoüberwachung an neuralgischen Punkten aus sowie für eine bessere Ausleuchtung unsicher wahrgenommener Wege und Plätze.",
+   "seite": 10
+  },
+  "O2": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "O3": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "O4": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "D1": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "D2": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "D3": {
+   "pos": 1,
+   "beleg": "Will mehr der bereits online verfügbaren Verwaltungsleistungen vollständig online und medienbruchfrei anbieten, mit verbindlichen Bearbeitungsfristen.",
+   "seite": 7
+  },
+  "F1": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "F2": {
+   "pos": 1,
+   "beleg": "Fordert für jedes Großprojekt eine unabhängige Kostenkontrolle, bindende Obergrenzen (Exit-Klauseln) und transparente Darstellung der Folgekosten vor Ratsbeschluss.",
+   "seite": 4
+  },
+  "F3": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "P1": {
+   "pos": 1,
+   "beleg": "Fordert für kostenträchtige Großprojekte ab einer festzulegenden Summe verpflichtende Bürgerentscheide, bevor der Stadtrat endgültige Beschlüsse fasst.",
+   "seite": 7
+  },
+  "P2": {
+   "pos": 0,
+   "beleg": "Will lediglich ein Jugendparlament für Oldenburg „anstoßen“, ohne konkrete Rechte oder ein eigenes Budget zu nennen.",
+   "seite": 11
+  },
+  "P3": {
+   "pos": 1,
+   "beleg": "Kostenpläne, Folgekosten und Risiken sollen in die öffentliche Debatte gehören, nicht nur in die Beschlussvorlage für den Fachausschuss.",
+   "seite": 7
+  },
+  "I1": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "I2": {
+   "pos": 0,
+   "beleg": "Integration soll durch „Fördern und Fordern“ gelingen, ohne konkrete Pflichten wie verpflichtende Sprachkurse oder Sanktionen zu benennen.",
+   "seite": 8
+  },
+  "I3": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "I4": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  }
+ }
+}

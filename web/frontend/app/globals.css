@@ -444,3 +444,39 @@
 .leaflet-container {
   isolation: isolate;
 }
+
+/* ── Kommunalwahl-Bereich ─────────────────────────────────────────────────
+   Parteifarben aus parteien-meta.json sind reine Datenmarken (Bauplan E5):
+   Punkte, Balken, Blockmarken — nie Flächen oder Buttons. Jede Marke trägt
+   beide Werte als Custom Properties; der Dark-Mode-Wert ist auf dunklem
+   Grund kontrastgeprüft (CDU-Schwarz wäre sonst unsichtbar). */
+.kw-farbe {
+  background: var(--kw-f);
+}
+.dark .kw-farbe {
+  background: var(--kw-fd, var(--kw-f));
+}
+
+/* Aufklapper: der Chevron dreht mit dem <details>-Zustand — native Semantik,
+   kein Client-JS. Das Standard-Dreieck der Summary wird ersetzt. */
+.kw-details > summary {
+  list-style: none;
+  cursor: pointer;
+}
+.kw-details > summary::-webkit-details-marker {
+  display: none;
+}
+.kw-details > summary .kw-chevron {
+  transition: transform 180ms var(--ease-out-strong);
+}
+.kw-details[open] > summary .kw-chevron {
+  transform: rotate(180deg);
+}
+
+/* Parteifarbe als SVG-Füllung (Landkarte) — gleiche Hell/Dunkel-Logik wie .kw-farbe. */
+.kw-fill {
+  fill: var(--kw-f);
+}
+.dark .kw-fill {
+  fill: var(--kw-fd, var(--kw-f));
+}

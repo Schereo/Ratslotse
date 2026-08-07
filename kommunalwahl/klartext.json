@@ -1,0 +1,16 @@
+{
+ "_hinweis": "Klartext-Ebene: kurze, alltagssprachliche Texte, die nicht aus den Programmen stammen, sondern sie einordnen. ENTWÜRFE aus der Design-Session (Bauplan §7.3) — vor Veröffentlichung redaktionell gegenlesen. analyse.py mischt sie in data.json.",
+ "stand": "2026-08-07",
+ "geprueft": false,
+ "einzeiler": {
+  "spd": "Breites Programm der Rathauspartei: bezahlbarer Wohnraum, soziale Gerechtigkeit, Klimaneutralität 2035 — mit Verweis auf eigene Erfolge.",
+  "cdu": "Bürgerlich-pragmatisch: Haushalt ohne Steuererhöhungen, Bürokratieabbau, Sicherheit — in klarer Abgrenzung zur rot-grünen Ratsmehrheit.",
+  "gruene": "Konsequent ökologisch: Klimaneutralität 2035, Verkehrswende, Vielfalt — sehr konkret mit Straßen, Projekten und Kennzahlen.",
+  "linke": "Kapitalismuskritisch und kämpferisch: bezahlbares Wohnen, kostenloser Nahverkehr, solidarische Versorgung, Erinnerungskultur.",
+  "fdp": "Wirtschaftsliberal: individuelle Freiheit vor neuen Vorschriften, Straßen erhalten, Bürokratie abbauen, Eigentümerrechte stärken.",
+  "buergerbuendnis": "Neu angetretene Wählervereinigung: scharfe Haushaltskritik, Kostenobergrenzen, verpflichtende Bürgerentscheide, autofreundlich.",
+  "afd": "»Vernunft statt Ideologie«: auto- und wirtschaftsfreundlich, sicherheitsbetont, restriktive Migrationspolitik, ausgabenkritisch.",
+  "volt": "Akademisch strukturiert, proeuropäisch: Klimaschutz, Verkehrswende, digitale Verwaltung, Beteiligung — mit Best-Practice-Kästen.",
+  "bsw": "Landesweites Eckpunktepapier: gemeinwohlorientiert, privatisierungskritisch, technologieoffen — ohne Oldenburg-Bezug."
+ }
+}

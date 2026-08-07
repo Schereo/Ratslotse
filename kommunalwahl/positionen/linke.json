@@ -1,0 +1,225 @@
+{
+ "slug": "linke",
+ "positionen": {
+  "W1": {
+   "pos": 0,
+   "beleg": "Fordert Rückkauf privatisierter Wohnungsbestände über kommunale Wohnungsunternehmen und einen Re-Kommunalisierungsfonds, aber keine ausdrückliche Gründung einer zusätzlichen eigenständigen Gesellschaft neben der GSG.",
+   "seite": 5
+  },
+  "W2": {
+   "pos": 1,
+   "beleg": "Kritisiert die Absenkung der Sozialquote beim Schützenweg als „beschämendes Beispiel“ und fordert dauerhafte Sozialbindung für alle neu gebauten und geförderten Wohnungen.",
+   "seite": 5
+  },
+  "W3": {
+   "pos": 1,
+   "beleg": "Fordert Leerstandsabgabe von 10 €/m², Leerstandsregister, Zweckentfremdungssatzung, Airbnb-Verbot und Beschlagnahmung leerstehender Immobilien für gemeinwohlorientierte Nutzung.",
+   "seite": 6
+  },
+  "W4": {
+   "pos": -1,
+   "beleg": "Fordert „Vorrang von Neubauten im Innenstadtbereich statt Versiegelung von Naturflächen“ und Revitalisierung der Innenstädte statt neuer Flächen am Stadtrand.",
+   "seite": 7
+  },
+  "M1": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "M2": {
+   "pos": 0,
+   "beleg": "Fordert nur den „Ausbau von autofreien und Tempo-30-Zonen“, nicht Tempo 30 als generelle Regelgeschwindigkeit im gesamten Stadtgebiet.",
+   "seite": 24
+  },
+  "M3": {
+   "pos": -1,
+   "beleg": "Will „Straßenrand-Parken nur noch mit Stadt-Ticket“ zulassen und mehr Platz für Fuß-/Radverkehr statt für parkende Autos schaffen – Richtung Einschränkung statt Senkung der Parkgebühren.",
+   "seite": 24
+  },
+  "M4": {
+   "pos": 1,
+   "beleg": "Fordert „sofortigen kostenlosen Busverkehr an Freitagen und Samstagen, mit Perspektive auf vollständig kostenfreien Nahverkehr“.",
+   "seite": 23
+  },
+  "M5": {
+   "pos": 1,
+   "beleg": "Fordert „Vorrang für Fuß- und Radverkehr an Kreuzungen“ und „mehr Platz für Fuß- und Radverkehr statt für parkende Autos“.",
+   "seite": 24
+  },
+  "K1": {
+   "pos": 1,
+   "beleg": "Bekräftigt das 2021 beschlossene Ziel „Oldenburg muss bis 2035 klimaneutral werden“ und will es sozial gerecht umsetzen.",
+   "seite": 19
+  },
+  "K2": {
+   "pos": 1,
+   "beleg": "Fordert unter „Artenschutz, Stadtgrün und Biodiversität fördern“ die Baumschutzsatzung zu modernisieren, nicht zu lockern oder abzuschaffen.",
+   "seite": 21
+  },
+  "K3": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "K4": {
+   "pos": -1,
+   "beleg": "Besteht auf dem Ziel Klimaneutralität 2035 und fordert ausdrücklich, dass dabei „nicht die arbeitenden Menschen die Zeche zahlen müssen“ – keine Unterordnung unter wirtschaftliche Machbarkeit oder ein Zurückfahren der Ziele.",
+   "seite": 19
+  },
+  "V1": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "V2": {
+   "pos": 0,
+   "beleg": "Will die Innenstadt als konsumzwangfreien, lebendigen Treffpunkt erhalten und allgemein mehr autofreie Zonen schaffen, ohne explizit zu fordern, die Innenstadt insgesamt deutlich autoärmer zu machen.",
+   "seite": 19
+  },
+  "V3": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "B1": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "B2": {
+   "pos": 1,
+   "beleg": "Fordert „eine qualitativ hochwertige, wohnortnahe, gebührenfreie Kinderbetreuung“ – echte Beitragsfreiheit statt nur Gebührensenkung.",
+   "seite": 9
+  },
+  "B3": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "B4": {
+   "pos": 0,
+   "beleg": "Fordert „kommunale Sanierungsprogramme für sichere, moderne, bedarfsgerechte und klimafreundliche Schulen“, aber ohne ausdrückliche Priorisierung vor anderen städtischen Investitionen.",
+   "seite": 10
+  },
+  "S1": {
+   "pos": 1,
+   "beleg": "Fordert, „Housing-First-Projekte konsequent weiterzuentwickeln“.",
+   "seite": 6
+  },
+  "S2": {
+   "pos": 1,
+   "beleg": "Fordert „Einführung eines Sozialtickets für Rentner*innen, Schüler*innen, Einkommensschwache und Arbeitssuchende sowie für geflüchtete Personen“.",
+   "seite": 23
+  },
+  "S3": {
+   "pos": 1,
+   "beleg": "Fordert „konsequente Maßnahmen gegen patriarchale Gewalt und Femizide sowie den Ausbau von Schutzräumen“ und dauerhafte Finanzierung des Mädchenhauses und weiterer Beratungsstellen.",
+   "seite": 29
+  },
+  "C1": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "C2": {
+   "pos": 0,
+   "beleg": "Fordert nur „bedarfsgerechte und bezahlbare Wasserzeiten“ für ausbildende (Rettungsschwimm-)Vereine in Schwimmbädern, keine allgemeine Erhöhung der Förderung von Sportvereinen/Vereinssportanlagen.",
+   "seite": 16
+  },
+  "C3": {
+   "pos": 1,
+   "beleg": "Fordert Ausbau soziokultureller Zentren/Freizeitheime, sozial gestaffelte VHS-/Musikschulbeiträge und kostenfreie Kulturangebote/Kulturpässe.",
+   "seite": 13
+  },
+  "C4": {
+   "pos": 1,
+   "beleg": "Fordert „Erhalt und ausreichende Wartung aller kommunalen Schwimmbäder zugunsten der Schwimmausbildung … anstatt Fokus auf Spaßbäder“.",
+   "seite": 16
+  },
+  "O1": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "O2": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "O3": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "O4": {
+   "pos": 1,
+   "beleg": "Fordert akzeptanzorientierte Drogenpolitik, da „die Kriminalisierung von Drogenkonsum wirksame Prävention verhindert“, und nach dem Polizeieinsatz „Lorenz“ präventives statt kontrollierendes Handeln der Stadt.",
+   "seite": 16
+  },
+  "D1": {
+   "pos": -1,
+   "beleg": "Kritisiert scharf, dass Personalkosten in der Kinder- und Jugendhilfe gekürzt werden sollen, und fordert stattdessen mehr Personal, u. a. „zusätzliches Verwaltungspersonal“ in Kitas.",
+   "seite": 11
+  },
+  "D2": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "D3": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "F1": {
+   "pos": 1,
+   "beleg": "Fordert, den „Gewerbesteuerhebesatz von 439% auf 460% anheben“.",
+   "seite": 18
+  },
+  "F2": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "F3": {
+   "pos": -1,
+   "beleg": "Sieht die Ursache der Kommunalfinanzprobleme darin, „dass ihnen Einnahmen fehlen“, und setzt konsequent auf zusätzliche Einnahmen (Gewerbesteuer, Spielgerätesteuer, Nutzungsgebühren) statt auf Ausgabenkürzungen.",
+   "seite": 18
+  },
+  "P1": {
+   "pos": 0,
+   "beleg": "Fordert „verbindliche Bürger*innenbeteiligung bei Großprojekten“ und „wirkliche Mitsprache“, aber nicht ausdrücklich das Instrument bindender Bürgerentscheide.",
+   "seite": 22
+  },
+  "P2": {
+   "pos": 1,
+   "beleg": "Fordert „Einrichtung von Jugendparlamenten mit echten Entscheidungsrechten“ sowie verlässliche Beteiligungsrechte und Budgets für Schüler*innen.",
+   "seite": 12
+  },
+  "P3": {
+   "pos": 0,
+   "beleg": "Fordert „Auskunftsrechte für Bürger*innen über Einnahmen und Ausgaben“ und öffentliche Beratung aller finanzwirksamen Entscheidungen – allgemeine Transparenz ohne die konkreten Instrumente Livestream/Transparenzregister.",
+   "seite": 18
+  },
+  "I1": {
+   "pos": 1,
+   "beleg": "Fordert „dauerhafte finanzielle Absicherung des Queeren Zentrums Oldenburg“ und weiterer Beratungsstellen sowie eine unabhängige Antidiskriminierungsstelle.",
+   "seite": 29
+  },
+  "I2": {
+   "pos": -1,
+   "beleg": "Lehnt die Bezahlkarte für Asylsuchende als „diskriminierend und rechte Symbolpolitik“ ab und setzt auf „kostenlose und wohnortnahe Deutschkurse für alle“ ohne Sanktionslogik.",
+   "seite": 29
+  },
+  "I3": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "I4": {
+   "pos": 1,
+   "beleg": "Fordert „Oldenburg als ‚Sicherer Hafen‘ – Aufnahme von mehr Geflüchteten“, „keine Abschiebehaft“ und Schutz von Kirchenasyl.",
+   "seite": 29
+  }
+ }
+}

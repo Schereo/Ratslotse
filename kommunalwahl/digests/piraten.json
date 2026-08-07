@@ -1,0 +1,83 @@
+{
+ "slug": "piraten",
+ "partei": {
+  "kurz": "Piraten",
+  "name": "Piratenpartei Niedersachsen (PIRATEN)",
+  "typ": "partei",
+  "kandidaten": 13
+ },
+ "programm": {
+  "gefunden": false,
+  "titel": null,
+  "url": null,
+  "format": null,
+  "seiten": null,
+  "stand": null,
+  "hinweis": "Trotz gründlicher Suche kein kommunales Wahlprogramm und auch keine öffentlich dokumentierten kommunalen Kernforderungen/Thesen der Piratenpartei zur Stadtratswahl Oldenburg 2026 auffindbar. Geprüft: Landesverband piratenpartei-nds.de (Startseite behandelt nur Landes-/Bundesthemen, nichts zu Oldenburg oder der Kommunalwahl 2026); Piratenwiki-Seiten NDS:Oldenburg und NDS:Oldenburg/Ratsarbeit (live per Bot-Schutz gesperrt, laut Wayback-Snapshot zuletzt am 6. Februar 2024 bearbeitet und nur mit Inhalten zur Kommunalwahl 2021, keine 2026-Seite vorhanden); Themenarchiv 'Piratenpartei' der Oldenburger Onlinezeitung (Artikel enden im Juli 2022 mit der Auflösung der gemeinsamen Ratsgruppe mit Die Linke); die Ratsgruppen-Website fraktion-dielinke-ol.de war technisch nicht erreichbar (TLS-Fehler) und wäre inhaltlich ohnehin dem separaten Wahlvorschlag Die Linke zuzuordnen, nicht den eigenständig antretenden Piraten; offizielle Wahlseite der Stadt Oldenburg (keine Programmlinks der Wahlvorschläge). Die Kandidatur mit 13 Personen ist belegt, inhaltliche Positionen für 2026 sind es nicht. Kein Ausweichen auf Bundes-/Landesprogramme, nichts erfunden."
+ },
+ "charakter": "Für die Stadtratswahl Oldenburg 2026 konnte kein eigenständiges Kommunalwahlprogramm und keine öffentlich dokumentierten kommunalen Kernforderungen der Piratenpartei ermittelt werden. Die Partei tritt mit 13 Kandidatinnen und Kandidaten an; die frühere gemeinsame Ratsgruppe mit Die Linke im Stadtrat wurde bereits 2022 aufgelöst. Eine inhaltliche Einschätzung von Tonalität oder Schwerpunkten ist auf dieser Grundlage nicht seriös möglich.",
+ "kernpunkte": [],
+ "themen": {
+  "wohnen": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  },
+  "mobilitaet": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  },
+  "klima": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  },
+  "wirtschaft": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  },
+  "bildung": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  },
+  "soziales": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  },
+  "kultur": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  },
+  "sicherheit": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  },
+  "digitales": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  },
+  "finanzen": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  },
+  "beteiligung": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  },
+  "integration": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  }
+ },
+ "besonderes": []
+}
