@@ -243,6 +243,19 @@ export type Alleinstellung = {
   teils: ListenMarke[];
 };
 
+/** Datensatz für den Thesen-Check (Design 4a–4c): alle Thesen, alle
+ *  Positionen der 9 Listen und alle Belege als Lookup — der Check rechnet
+ *  vollständig im Client, Antworten verlassen das Gerät nie. */
+export type CheckDaten = {
+  listen: ListenMarke[];
+  minN: number;
+  thesen: { id: string; these: string; hinweis: string | null; thema: ThemaKey; themaKurz: string }[];
+  /** slug → thesenId → Position (null = keine Aussage). */
+  positionen: Record<Slug, Record<string, Pos>>;
+  /** `${slug}:${thesenId}` → Beleg (nur für vergebene Positionen). */
+  belege: Record<string, Beleg>;
+};
+
 /** Sprachstatistik eines Programms (Fakten, keine Wertung). */
 export type SprachProfil = {
   woerter: number;

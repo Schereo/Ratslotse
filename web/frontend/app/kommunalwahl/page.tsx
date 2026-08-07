@@ -36,6 +36,7 @@ import { Glyph } from "@/components/kommunalwahl/ui";
 
 const RAIL = [
   ["#stimmen", "Drei Stimmen"],
+  ["/kommunalwahl/check", "Thesen-Check"],
   ["#datenlage", "Datenlage"],
   ["#streit", "Streit & Einigkeit"],
   ["#allein", "Steht allein da"],
@@ -93,7 +94,26 @@ export default function KommunalwahlSeite() {
             <strong className="font-semibold text-foreground">jede Aussage mit Beleg</strong> · Mehr dazu ↓
           </span>
         </a>
-        <div className="mt-5 flex flex-wrap justify-center gap-2 sm:gap-2.5">
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5">
+          <Link
+            href="/kommunalwahl/check"
+            className="inline-flex items-center gap-2 rounded-[11px] bg-primary px-4 py-2 text-[13px] font-semibold text-primary-foreground"
+          >
+            Thesen-Check starten
+            <span className="inline-flex gap-0.5" aria-hidden>
+              <Glyph pos={1} size={13} />
+              <Glyph pos={0} size={13} />
+              <Glyph pos={-1} size={13} />
+            </span>
+          </Link>
+          <a
+            href="#streit"
+            className="inline-flex rounded-[11px] border border-border bg-card px-4 py-2 text-[13px] font-semibold"
+          >
+            Zum Vergleich ↓
+          </a>
+        </div>
+        <div className="mt-4 flex flex-wrap justify-center gap-2 sm:gap-2.5">
           {zahlen.map((k) => (
             <span
               key={k.label}
@@ -118,6 +138,11 @@ export default function KommunalwahlSeite() {
                 className="rounded-lg px-3 py-2 text-[13.5px] font-medium text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
               >
                 {label}
+                {href === "/kommunalwahl/check" && (
+                  <span className="ml-1.5 rounded-full bg-signal px-1.5 py-px text-[9px] font-bold text-signal-foreground">
+                    NEU
+                  </span>
+                )}
               </a>
             ))}
             <div className="mt-3.5 rounded-[14px] border border-border bg-card p-4">

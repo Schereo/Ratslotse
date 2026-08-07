@@ -502,6 +502,40 @@ export function fingerabdruck(
   return felder.map((f) => ({ ...f, anteil: f.anzahl / max }));
 }
 
+/** Datensatz für den Thesen-Check (Design 4): alle 44 Thesen, alle Positionen
+ *  und Belege der Vergleichslisten. Der Check rechnet im Client mit derselben
+ *  Formel wie die Paar-Ähnlichkeit — Antworten bleiben auf dem Gerät. */
+export function checkDaten(): import("./kommunalwahl-types").CheckDaten {
+  const d = daten();
+  const V = d.vergleich;
+  const positionen: Record<Slug, Record<string, import("./kommunalwahl-types").Pos>> = {};
+  const belege: Record<string, Beleg> = {};
+  for (const slug of V) {
+    positionen[slug] = {};
+    for (const t of d.thesen) {
+      const pos = d.positionen[slug].positionen[t.id].pos;
+      positionen[slug][t.id] = pos;
+      if (pos !== null) {
+        const b = alsBeleg(slug, t.id);
+        if (b) belege[`${slug}:${t.id}`] = b;
+      }
+    }
+  }
+  return {
+    listen: V.map((s) => marke(s)),
+    minN: d.min_n,
+    thesen: d.thesen.map((t) => ({
+      id: t.id,
+      these: t.these,
+      hinweis: t.hinweis,
+      thema: t.thema,
+      themaKurz: d.themen[t.thema].kurz,
+    })),
+    positionen,
+    belege,
+  };
+}
+
 /* ── Methodik (3d) ───────────────────────────────────────────────────────── */
 
 export function methodik() {
