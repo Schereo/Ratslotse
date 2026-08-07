@@ -8,12 +8,14 @@ import { PositionsMatrix } from "@/components/kommunalwahl/matrix";
 import {
   Abschnitt,
   BswPill,
+  ENTDECKEN_HREF,
   FarbPunkt,
   KiKasten,
   KiPlakette,
   KwCrumb,
   KwFuss,
   KwKopf,
+  REGISTER_HREF,
 } from "@/components/kommunalwahl/ui";
 import {
   datenlageBalken,
@@ -113,12 +115,12 @@ export default function KommunalwahlSeite() {
                 <strong className="text-foreground">Neu hier?</strong> Ratslotse kann mehr als Wahlkampf:
                 alle Beschlüsse des Rats, durchsuchbar und erklärt.
               </p>
-              <Link
-                href="/register"
+              <a
+                href={REGISTER_HREF}
                 className="mt-2.5 inline-flex rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground"
               >
                 Kostenlos registrieren
-              </Link>
+              </a>
             </div>
           </div>
         </aside>
@@ -332,18 +334,18 @@ export default function KommunalwahlSeite() {
                 </p>
               </div>
               <div className="flex flex-none flex-col gap-2.5 sm:ml-auto sm:flex-row">
-                <Link
-                  href="/register"
+                <a
+                  href={REGISTER_HREF}
                   className="inline-flex justify-center rounded-xl bg-primary px-4.5 py-2.5 text-sm font-semibold text-primary-foreground"
                 >
                   Kostenlos registrieren
-                </Link>
-                <Link
-                  href="/"
+                </a>
+                <a
+                  href={ENTDECKEN_HREF}
                   className="inline-flex justify-center rounded-xl border border-border bg-card px-4.5 py-2.5 text-sm font-semibold"
                 >
                   Ratslotse entdecken
-                </Link>
+                </a>
               </div>
             </div>
           </section>
