@@ -9,6 +9,18 @@ import { BrandMark } from "@/components/brand";
 import { cn } from "@/lib/utils";
 import type { Pos } from "@/lib/kommunalwahl-types";
 
+/** Wohin „Registrieren" und „Ratslotse entdecken" führen.
+ *
+ *  Absolut auf die Prod-Seite, nicht relativ: Der Vergleich wird auch von
+ *  dev.ratslotse.de aus geteilt, und wer sich dort registriert, legt sein
+ *  Konto in der Wegwerf-Datenbank der Dev-VM an. Auf Prod ist die absolute
+ *  URL identisch mit der relativen — es gibt also keinen Preis dafür.
+ *  Einzige Ausnahme ist der App-Build (MOBILE=1, statischer Export): Dort
+ *  soll die native Registrierung übernehmen, nicht der System-Browser. */
+const PROD = process.env.MOBILE === "1" ? "" : "https://ratslotse.de";
+export const REGISTER_HREF = `${PROD}/register`;
+export const ENTDECKEN_HREF = PROD || "/";
+
 /* ── Ampel (Bauplan E6): eigene semantische Skala, Glyphe IMMER zur Farbe ── */
 
 export const AMPEL: Record<
@@ -182,15 +194,15 @@ export function KwKopf({ crumb }: { crumb: React.ReactNode }) {
           <span className="truncate border-l border-border pl-2.5 text-[13px] text-muted-foreground">{crumb}</span>
         </div>
         <div className="flex flex-none items-center gap-4">
-          <Link href="/" className="hidden text-[13px] font-medium text-primary sm:inline">
+          <a href={ENTDECKEN_HREF} className="hidden text-[13px] font-medium text-primary sm:inline">
             ← Zurück zu Ratslotse
-          </Link>
-          <Link
-            href="/register"
+          </a>
+          <a
+            href={REGISTER_HREF}
             className="inline-flex rounded-[11px] bg-primary px-3.5 py-1.5 text-[13px] font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
             Kostenlos registrieren
-          </Link>
+          </a>
         </div>
       </div>
     </header>
