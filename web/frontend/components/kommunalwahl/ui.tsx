@@ -6,6 +6,7 @@
 
 import Link from "next/link";
 import { BrandMark } from "@/components/brand";
+import { WebThemeSwitch } from "@/components/web-theme-switch";
 import { cn } from "@/lib/utils";
 import type { Pos } from "@/lib/kommunalwahl-types";
 
@@ -193,7 +194,10 @@ export function KwKopf({ crumb }: { crumb: React.ReactNode }) {
           </Link>
           <span className="truncate border-l border-border pl-2.5 text-[13px] text-muted-foreground">{crumb}</span>
         </div>
-        <div className="flex flex-none items-center gap-4">
+        <div className="flex flex-none items-center gap-3 sm:gap-4">
+          {/* Ohne Konto gibt es kein „Erscheinungsbild" — der Schalter ist hier
+              der einzige Weg zum Farbschema (auch mobil). */}
+          <WebThemeSwitch />
           <a href={ENTDECKEN_HREF} className="hidden text-[13px] font-medium text-primary sm:inline">
             ← Zurück zu Ratslotse
           </a>
