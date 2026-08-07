@@ -472,3 +472,11 @@
 .kw-details[open] > summary .kw-chevron {
   transform: rotate(180deg);
 }
+
+/* Parteifarbe als SVG-Füllung (Landkarte) — gleiche Hell/Dunkel-Logik wie .kw-farbe. */
+.kw-fill {
+  fill: var(--kw-f);
+}
+.dark .kw-fill {
+  fill: var(--kw-fd, var(--kw-f));
+}

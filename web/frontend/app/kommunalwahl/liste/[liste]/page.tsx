@@ -5,6 +5,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Fingerabdruck } from "@/components/kommunalwahl/fingerabdruck";
 import { QuellenCheck } from "@/components/kommunalwahl/quellen-check";
 import { ThesenListe } from "@/components/kommunalwahl/these-liste";
 import {
@@ -16,7 +17,7 @@ import {
   KwKopf,
   PraegnanzDots,
 } from "@/components/kommunalwahl/ui";
-import { listeProfil, stand, vergleichsSlugs } from "@/lib/kommunalwahl";
+import { fingerabdruck, listeProfil, sprachProfil, stand, vergleichsSlugs } from "@/lib/kommunalwahl";
 
 export function generateStaticParams() {
   return vergleichsSlugs().map((liste) => ({ liste }));
@@ -36,6 +37,8 @@ export function generateMetadata({ params }: { params: { liste: string } }): Met
 export default function ListeSeite({ params }: { params: { liste: string } }) {
   const p = listeProfil(params.liste);
   if (!p) notFound();
+  const abdruck = fingerabdruck(params.liste);
+  const sprache = sprachProfil(params.liste);
 
   return (
     <>
@@ -62,6 +65,18 @@ export default function ListeSeite({ params }: { params: { liste: string } }) {
               </p>
             )}
           </div>
+          <div className="ml-auto hidden flex-none flex-col items-end gap-1.5 lg:flex">
+            <span className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Wo dieses Programm sein Gewicht legt
+            </span>
+            <Fingerabdruck felder={abdruck} />
+          </div>
+        </div>
+        <div className="mt-4 flex flex-col gap-1.5 lg:hidden">
+          <span className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Wo dieses Programm sein Gewicht legt
+          </span>
+          <Fingerabdruck felder={abdruck} />
         </div>
 
         {/* Quelle prominent */}
@@ -151,6 +166,48 @@ export default function ListeSeite({ params }: { params: { liste: string } }) {
                   <p className="text-[13px] leading-relaxed text-muted-foreground">{b}</p>
                 </div>
               ))}
+            </div>
+          </section>
+        )}
+
+        {/* Wie dieses Programm redet (Ausbau 08.08.) — Fakten über die Sprache */}
+        {sprache && (
+          <section className="mt-8">
+            <Abschnitt
+              titel="Wie dieses Programm redet"
+              neben="Zahlen aus dem Volltext — keine Wertung"
+            />
+            <div className="mt-3 rounded-2xl border border-border bg-card p-5">
+              <div className="flex flex-wrap gap-2">
+                {[
+                  [`${sprache.woerter.toLocaleString("de-DE")}`, "Wörter"],
+                  [`Ø ${String(sprache.satzlaenge).replace(".", ",")}`, "Wörter pro Satz"],
+                  [sprache.lixLabel, `Lesbarkeit (LIX ${sprache.lix})`],
+                ].map(([wert, label]) => (
+                  <span
+                    key={label}
+                    className="inline-flex items-baseline gap-1.5 rounded-full border border-border bg-background/60 px-3 py-1.5"
+                  >
+                    <span className="text-[13px] font-bold tabular-nums">{wert}</span>
+                    <span className="text-[11px] text-muted-foreground">{label}</span>
+                  </span>
+                ))}
+              </div>
+              <p className="mt-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Typische Begriffe — stehen hier deutlich häufiger als in den anderen Programmen
+              </p>
+              <div className="mt-2 flex flex-wrap items-baseline gap-x-2.5 gap-y-2">
+                {sprache.begriffe.map((b) => (
+                  <span
+                    key={b.wort}
+                    title={`${b.haeufigkeit}× im Programm`}
+                    className="rounded-lg bg-primary/[0.07] px-2.5 py-1 font-medium text-foreground"
+                    style={{ fontSize: `${12 + b.gewicht * 7}px` }}
+                  >
+                    {b.wort}
+                  </span>
+                ))}
+              </div>
             </div>
           </section>
         )}

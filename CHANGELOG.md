@@ -20,7 +20,11 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   sondern stehen mit Rechercheprotokoll dabei. Ausgewertet hat eine KI, keine
   Redaktion — das sagt die Seite an drei Stellen selbst und lädt zum Nachprüfen
   ein: Ratslotse hostet die Programme nicht, sondern prüft live, ob hinter dem
-  Partei-Link noch genau die Datei steht, die ausgewertet wurde. (#356)
+  Partei-Link noch genau die Datei steht, die ausgewertet wurde. Dazu vier
+  Auswertungen, die es sonst nirgends gibt: eine Karte der Nähe (alle 36
+  Paarabstände als Bild), „Steht allein da" (Positionen einer Liste gegen alle
+  anderen), ein Themen-Fingerabdruck je Programm und „Wie dieses Programm
+  redet" (Umfang, Satzlänge, typische Begriffe). (#356)
 
 ## [1.6.0] – 2026-08-06
 

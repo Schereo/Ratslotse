@@ -3,9 +3,10 @@
 // anderen Seite (Bauplan §4.4).
 
 import type { Metadata } from "next";
+import { Landkarte } from "@/components/kommunalwahl/landkarte";
 import { NaeheAnsicht } from "@/components/kommunalwahl/naehe";
 import { KwCrumb, KwFuss, KwKopf } from "@/components/kommunalwahl/ui";
-import { naeheDaten, stand } from "@/lib/kommunalwahl";
+import { landkarte, naeheDaten, stand } from "@/lib/kommunalwahl";
 
 export const metadata: Metadata = {
   title: "Wer steht wem nahe?",
@@ -34,6 +35,7 @@ const GRENZEN = [
 
 export default function NaeheSeite() {
   const daten = naeheDaten();
+  const karte = landkarte();
   return (
     <>
       <KwKopf crumb={<KwCrumb teil="Wer steht wem nahe?" />} />
@@ -48,6 +50,10 @@ export default function NaeheSeite() {
           sie oft überein — <strong className="font-semibold text-foreground">nicht</strong>, dass die
           Programme gleich sind. Unter n&thinsp;=&thinsp;{daten.minN} gilt ein Wert als nicht belastbar.
         </p>
+
+        <div className="mt-7">
+          <Landkarte punkte={karte.punkte} kanten={karte.kanten} />
+        </div>
 
         <NaeheAnsicht daten={daten} />
 

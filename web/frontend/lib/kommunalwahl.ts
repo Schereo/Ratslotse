@@ -13,7 +13,10 @@ import "server-only";
 import fs from "node:fs";
 import path from "node:path";
 import type {
+  Alleinstellung,
   Beleg,
+  KartenKante,
+  KartenPunkt,
   Kennzahl,
   ListenKachel,
   ListenMarke,
@@ -23,6 +26,7 @@ import type {
   Quellenart,
   Rohdaten,
   Slug,
+  SprachProfil,
   ThemaKey,
   ThemenKachel,
   ThesenStat,
@@ -428,6 +432,67 @@ export function naeheDaten() {
   }
 
   return { listen: V.map((s) => marke(s)), minN: d.min_n, thesen, belege, paare };
+}
+
+/* ── Ausbau: Landkarte, Alleinstellungen, Sprachprofil, Fingerabdruck ────── */
+
+/** Die Nähe-Landkarte: MDS-Punkte plus die Kanten der nächsten Paare (≥ 70 %). */
+export function landkarte(): { punkte: KartenPunkt[]; kanten: KartenKante[] } {
+  const d = daten();
+  const punkte = d.landkarte.map((p) => ({ ...marke(p.slug), x: p.x, y: p.y }));
+  const V = new Set(d.vergleich);
+  const kanten = Object.entries(d.paare)
+    .filter(([k, v]) => v.wert !== null && v.wert >= 70 && k.split("|").every((s) => V.has(s)))
+    .map(([k, v]) => {
+      const [a, b] = k.split("|");
+      return { a, b, wert: v.wert! };
+    });
+  return { punkte, kanten };
+}
+
+/** Die Überraschungs-Karten: Positionen, mit denen eine Liste allein steht. */
+export function alleinstellungen(max = 6): Alleinstellung[] {
+  const d = daten();
+  return d.alleinstellungen.slice(0, max).map((a) => {
+    const q = d.quellen[a.slug];
+    return {
+      art: a.art,
+      id: a.id,
+      these: a.these,
+      themaLabel: d.themen[a.thema].kurz,
+      marke: marke(a.slug),
+      pos: a.pos,
+      beleg: a.beleg,
+      href: a.pos !== null ? belegHref(a.slug, a.seite) : null,
+      seitenLabel: a.seite ? `S. ${a.seite}` : q.format === "web" ? "Website" : "Quelle",
+      n: a.n,
+      dagegen: a.dagegen.map((s) => marke(s)),
+      teils: a.teils.map((s) => marke(s)),
+    };
+  });
+}
+
+export function sprachProfil(slug: Slug): SprachProfil | null {
+  const sp = daten().sprache[slug];
+  if (!sp) return null;
+  return {
+    woerter: sp.woerter,
+    satzlaenge: sp.satzlaenge,
+    lix: sp.lix,
+    lixLabel: sp.lix_label,
+    begriffe: sp.begriffe,
+  };
+}
+
+/** Themen-Fingerabdruck: Prägnanz (0–3) je Feld, in der Reihenfolge von
+ *  `themen_rang` — misst Aufmerksamkeit, nie Richtung (Bauplan E7 bleibt gewahrt). */
+export function fingerabdruck(slug: Slug): { key: ThemaKey; kurz: string; praegnanz: number }[] {
+  const d = daten();
+  return d.themen_rang.map((t) => ({
+    key: t.key,
+    kurz: t.kurz,
+    praegnanz: d.abdeckung[slug]?.[t.key]?.praegnanz ?? 0,
+  }));
 }
 
 /* ── Methodik (3d) ───────────────────────────────────────────────────────── */
