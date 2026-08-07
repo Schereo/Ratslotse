@@ -49,22 +49,67 @@ export default function MethodikSeite() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3.5 rounded-[14px] border-2 border-dashed border-border px-5 py-4">
-            <KiPlakette className="!h-6 !w-[34px] text-[11px]" />
-            <div>
-              <p className="text-sm font-bold text-muted-foreground">Wie die KI liest, zuordnet und zitiert — folgt</p>
-              <p className="mt-1 text-[12.5px] text-muted-foreground">
-                Die Extraktion wird gerade überarbeitet und verschärft; dieser Abschnitt wird danach
-                geschrieben, nicht vorher.
+          <div className="rounded-[14px] border border-border bg-card px-5 py-4">
+            <p className="flex items-center gap-2.5 text-sm font-bold">
+              <KiPlakette className="!h-6 !w-[34px] text-[11px]" />
+              Wie die KI liest, zuordnet und zitiert
+            </p>
+            <div className="mt-2.5 flex flex-col gap-2.5 text-[12.5px] leading-relaxed text-muted-foreground">
+              <p>
+                <strong className="font-semibold text-foreground">Lesen.</strong> Jedes Programm wurde im
+                Original erfasst — die PDFs seitengenau, die CDU-Website als Volltext — und mit
+                Seitenmarkern aufbereitet. Je Liste hat eine KI das vollständige Programm gelesen:
+                keine Zusammenfassungen von Dritten, keine Presse, keine Wahlwerbung.
+              </p>
+              <p>
+                <strong className="font-semibold text-foreground">Zuordnen.</strong> Die Position zu jeder
+                der 44 Thesen folgt festen Regeln: Es zählt nur, was im Oldenburger Text steht — nichts
+                wird aus Bundes- oder Landesprogrammen oder dem allgemeinen Ruf einer Partei abgeleitet.
+                Schweigt ein Programm, ist „keine Aussage" die einzige richtige Antwort, und eine
+                allgemeine Absichtserklärung gilt nicht als Zustimmung zu einer konkreten Forderung.
+                Jede vergebene Position braucht ein Belegzitat mit Fundstelle — sonst wird sie nicht
+                vergeben.
+              </p>
+              <p>
+                <strong className="font-semibold text-foreground">Prüfen.</strong> Danach liefen zwei
+                unabhängige Prüfrunden: zuerst eine vollständige Nachprüfung aller Belege, Seitenzahlen
+                und Rechenwege samt Konsistenzabgleich zwischen den Listen, dann ein Schwarm aus 28
+                Prüf-KIs mit anschließenden Gegenprüfern, der über 1&thinsp;200 Einzelaussagen erneut
+                gegen die Volltexte gehalten hat. Gefundene Fehler wurden korrigiert; das Protokoll
+                liegt offen im Ratslotse-Repository. Trotzdem gilt: KI macht Fehler, auch hier —
+                deshalb führt jede Aussage ins Original, und Hinweise auf Fehler nehmen wir dankbar
+                über die Kontaktadresse im Impressum an.
               </p>
             </div>
           </div>
 
-          <div className="rounded-[14px] border-2 border-dashed border-border px-5 py-4">
-            <p className="text-sm font-bold text-muted-foreground">Die vier Einschränkungen — folgt</p>
-            <p className="mt-1 text-[12.5px] text-muted-foreground">
-              Aus dem README des Datenbestands, in Ratslotse-Ton übersetzt.
-            </p>
+          <div className="rounded-[14px] border border-border bg-card px-5 py-4">
+            <p className="text-sm font-bold">Die vier Einschränkungen</p>
+            <div className="mt-2.5 grid gap-x-6 gap-y-2.5 text-[12.5px] leading-relaxed text-muted-foreground sm:grid-cols-2">
+              <p>
+                <strong className="font-semibold text-foreground">Nur 8 von 16 Listen</strong> haben ein
+                ausformuliertes Kommunalwahlprogramm vorgelegt. BSW tritt mit einem Landesprogramm ohne
+                Oldenburg-Bezug an und ist deshalb überall markiert; die sieben übrigen stehen mit dem,
+                was es gibt, auf der Übersichtsseite — samt Protokoll, wo überall gesucht wurde.
+              </p>
+              <p>
+                <strong className="font-semibold text-foreground">Programme, nicht Politik.</strong>{" "}
+                Verglichen wird, was die Listen ankündigen — nicht, wie sie im Rat abgestimmt haben oder
+                nach der Wahl abstimmen werden. Papier ist geduldig; das gilt für alle neun gleich.
+              </p>
+              <p>
+                <strong className="font-semibold text-foreground">Programmumfang verzerrt.</strong> Wer 71
+                Seiten schreibt, äußert sich zu mehr Thesen als wer elf schreibt — die Zahl der
+                Positionen reicht von 19 bis 34 von 44. Deshalb steht neben jedem Prozentwert das n, und
+                Werte auf zu dünner Basis werden als nicht belastbar ausgewiesen.
+              </p>
+              <p>
+                <strong className="font-semibold text-foreground">Die Thesenauswahl ist eine
+                Entscheidung.</strong> Die 44 Thesen sind aus den tatsächlich strittigen Punkten der
+                Programme abgeleitet — ein anderer Katalog ergäbe andere Prozentwerte. Deshalb steht er
+                hier vollständig zum Nachlesen.
+              </p>
+            </div>
           </div>
 
           <div id="thesen" className="scroll-mt-24 rounded-[14px] border border-border bg-card px-5 py-4">
