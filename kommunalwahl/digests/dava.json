@@ -1,0 +1,118 @@
+{
+ "slug": "dava",
+ "partei": {
+  "kurz": "DAVA",
+  "name": "DAVA-Niedersachsen",
+  "typ": "partei",
+  "kandidaten": 4
+ },
+ "programm": {
+  "gefunden": true,
+  "titel": "Oberbürgermeister-Wahl in Oldenburg: Yakup Castur will mit DAVA für Werte eintreten (NWZ-Kandidatenporträt)",
+  "url": "https://www.nwzonline.de/oldenburg/oberbuergermeister-wahl-in-oldenburg-yakup-castur-will-mit-dava-fuer-werte-eintreten_a_4,3,1199753000.html",
+  "format": "web",
+  "seiten": null,
+  "stand": "17.07.2026",
+  "hinweis": "Kein ausformuliertes Kommunalwahlprogramm auffindbar — weder auf Bundes-, Landes- noch Ortsverbandsebene. Ausgewertet wurden ersatzweise zwei sehr unterschiedliche, dünne Quellen: (1) ein NWZ-Kandidatenporträt vom 17.07.2026 mit persönlichen, oldenburgbezogenen inhaltlichen Aussagen von Yakup Castur, OB-Bewerber und Vorsitzender des Ortsverbands Oldenburg, der zugleich mit drei weiteren Personen für den Rat kandidiert; (2) die allgemeine, landesweite „Über uns“/„Vision“/„Werte“-Seite des erst im Januar 2026 gegründeten Landesverbands Niedersachsen (https://niedersachsen.dava-eu.org/), die keinen Oldenburg- oder Kommunalwahlbezug hat und rein programmatisch-generisch bleibt. Die Themen Integration/Vielfalt, Sicherheit und Soziales stützen sich überwiegend auf Casturs persönliche, oldenburgbezogene Aussagen. Die niedrigschwelligeren Einordnungen (praegnanz 1) bei Bildung, Wirtschaft, Wohnen und Beteiligung beruhen dagegen ausschließlich auf einzelnen, unkonkreten Stichworten aus der generischen Landesverbands-Vision (z. B. „bezahlbares Wohnen“, „eine starke Wirtschaft“, „gute Bildung“, „demokratische Beteiligung“) ohne jede kommunale Ausgestaltung und ohne Oldenburg-Bezug — sie sind daher nicht mit kommunalpolitischen Forderungen zu verwechseln. Zu Klima, Mobilität, Kultur und Finanzen findet sich in keiner der beiden Quellen eine Position; Castur benennt Finanzen im Interview explizit als Bereich, in dem ihm noch Einblicke fehlen, und will sich nach der Wahl zunächst einen Überblick verschaffen."
+ },
+ "charakter": "Die Auswertung stützt sich mangels Kommunalwahlprogramm auf ein Zeitungsporträt und eine generische Landesverbands-Visionsseite und wirkt entsprechend unfertig und kaum kommunalpolitisch ausgearbeitet. Im Zentrum steht die Selbstbeschreibung als „Sprachrohr der Minderheiten“ und Partei „für alle“ gegen Diskriminierung, verbunden mit einer konservativ anmutenden Rückbesinnung auf „Werte“ und Familie; daneben fordert Castur mehr sichtbare Ordnungspräsenz und Präventionsangebote für Jugendliche. Laut NWZ gilt DAVA als erdogan-nah bzw. als Ableger der AKP, was Castur zurückweist, indem er DAVA als „deutsche Partei für alle“ und „keine Ausländerpartei“ beschreibt.",
+ "kernpunkte": [
+  "Mehr sichtbare Präsenz von Ordnungskräften (Polizei und Ordnungsamt) in Oldenburg; Castur will dafür neue Stellen schaffen.",
+  "Präventions- und Beschäftigungsangebote für Jugendliche, um Perspektivlosigkeit als Ursache von Sicherheitsproblemen zu begegnen.",
+  "Castur will „Sprachrohr der Minderheiten“ sein — für Migranten ebenso wie für Rentner, die aus Armut Flaschen sammeln müssen, und alle „an den Rand Geschobenen“.",
+  "DAVA versteht sich als „deutsche Partei für alle“, nicht nur für Menschen mit türkischem Hintergrund — explizit „keine Ausländerpartei“.",
+  "Nach der Wahl will Castur zunächst die Situation analysieren und dann Schulen, Krankenhäuser und andere Bereiche der Daseinsvorsorge priorisieren; bei Finanzen räumt er noch fehlende Einblicke ein.",
+  "Rückbesinnung auf „alte Werte“ und die eigene Kultur als politisches Leitmotiv, verbunden mit dem Bild eines gleichberechtigten „Multikulti-Deutschlands“.",
+  "Castur kandidiert zugleich mit drei weiteren Personen für den Rat Oldenburg; Landesverband Niedersachsen erst im Januar 2026 gegründet, Ortsverband Oldenburg mit Castur als Vorsitzendem folgte danach."
+ ],
+ "themen": {
+  "wohnen": {
+   "positionen": [
+    "Landesverband nennt „bezahlbares Wohnen“ bzw. „bezahlbares Leben und Wohnen“ als allgemeinen Grundsatz, ohne Oldenburg-Bezug oder konkrete Maßnahmen."
+   ],
+   "seiten": [],
+   "praegnanz": 1
+  },
+  "mobilitaet": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  },
+  "klima": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  },
+  "wirtschaft": {
+   "positionen": [
+    "Landesverband nennt „eine starke Wirtschaft“ als eines von mehreren allgemeinen Vision-Stichworten, ohne kommunale Konkretisierung."
+   ],
+   "seiten": [],
+   "praegnanz": 1
+  },
+  "bildung": {
+   "positionen": [
+    "Castur benennt Schulen als einen der Bereiche der Daseinsvorsorge, die er nach der Wahl vorrangig analysieren und priorisieren will, ohne konkrete Maßnahmen zu nennen.",
+    "Landesverband nennt „gute Bildung“ für Kinder und „funktionierende Schulen“ als allgemeine Vision-Grundsätze, ebenfalls ohne kommunalen Bezug."
+   ],
+   "seiten": [],
+   "praegnanz": 1
+  },
+  "soziales": {
+   "positionen": [
+    "Castur will „Sprachrohr“ auch für Rentner sein, die aus Armut Flaschen sammeln müssen, und allgemein für „an den Rand Geschobene“.",
+    "Castur nennt Krankenhäuser als einen der Bereiche der Daseinsvorsorge, die er nach der Wahl vorrangig priorisieren will.",
+    "Landesverbands-Vision nennt Unterstützung für Familien und ein würdevolles Leben im Alter als Ziele sowie „soziale Gerechtigkeit und faire Chancen“ als Grundsatz."
+   ],
+   "seiten": [],
+   "praegnanz": 2
+  },
+  "kultur": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  },
+  "sicherheit": {
+   "positionen": [
+    "Castur fordert mehr Präsenz von Ordnungskräften in Oldenburg — sowohl Polizei als auch Ordnungsamt — und will dafür neue Stellen schaffen.",
+    "Öffentliche Sicherheit ist für Castur eine von drei zentralen Säulen seiner Kandidatur (neben Familie und Werten); er will das Thema nicht der AfD überlassen.",
+    "Präventions- und Beschäftigungsangebote für Jugendliche sollen der Perspektivlosigkeit als Ursache von Sicherheitsproblemen entgegenwirken."
+   ],
+   "seiten": [],
+   "praegnanz": 2
+  },
+  "digitales": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  },
+  "finanzen": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  },
+  "beteiligung": {
+   "positionen": [
+    "Landesverband nennt „demokratische Beteiligung“ sowie „bürgernahe und transparente Behörden“ als allgemeine Grundsätze, ohne kommunale Ausgestaltung."
+   ],
+   "seiten": [],
+   "praegnanz": 1
+  },
+  "integration": {
+   "positionen": [
+    "Castur will „Sprachrohr der Minderheiten“ werden — für Migranten ebenso wie für andere Benachteiligte.",
+    "DAVA versteht sich laut Castur als „deutsche Partei für alle“, nicht nur für Menschen mit türkischem Hintergrund, und explizit „keine Ausländerpartei“.",
+    "Castur wirbt für ein gleichberechtigtes „Multikulti-Deutschland“ mit freier Meinungsäußerung, ohne Menschen nach Herkunft gleich zu klassifizieren.",
+    "Landesverband beschreibt Vielfalt als Stärke Niedersachsens und positioniert sich gegen jede Form von Rassismus, Ausgrenzung, Diskriminierung und Menschenfeindlichkeit.",
+    "Landesverband nennt „Respekt und Gleichbehandlung“ sowie „Schutz vor Diskriminierung“ als zentrale Grundsätze."
+   ],
+   "seiten": [],
+   "praegnanz": 3
+  }
+ },
+ "besonderes": [
+  "Castur, in den späten 1970er-Jahren als Vierjähriger mit seinen Eltern aus der Türkei nach Oldenburg gekommen, sieht die „zweite Generation“ der Zugewanderten in der Verantwortung, die Gesellschaft von der kommunalen Ebene aus wiederaufzubauen.",
+  "DAVA Niedersachsen wurde erst im Januar 2026 gegründet, der Ortsverband Oldenburg — mit Castur als Vorsitzendem — folgte danach; die Bundespartei besteht erst seit Januar 2024 und trat erstmals bei der Europawahl 2024 an.",
+  "Castur kandidiert zugleich für das Oberbürgermeisteramt (als neunter Bewerber) und — gemeinsam mit drei weiteren Personen — für den Rat; er schätzt seine OB-Chancen selbst als gering ein und erhofft sich vor allem Aufmerksamkeit sowie ggf. einzelne Ratssitze."
+ ]
+}
