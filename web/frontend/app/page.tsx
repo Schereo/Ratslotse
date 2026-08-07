@@ -11,6 +11,7 @@ import { LiveStats } from "@/components/live-stats";
 import { HeuteLeiste } from "@/components/heute-leiste";
 import { LottiHero } from "@/components/lotti-hero";
 import { KommunalwahlBanner } from "@/components/kommunalwahl-banner";
+import { WebThemeSwitch } from "@/components/web-theme-switch";
 import { Reveal } from "@/components/reveal";
 import { cn } from "@/lib/utils";
 
@@ -50,7 +51,12 @@ export default function LandingPage() {
           <Link href="/">
             <Brand />
           </Link>
-          <HeaderCTA />
+          <div className="flex items-center gap-3 sm:gap-4">
+            {/* Gäste haben kein Konto → „Erscheinungsbild" — der Schalter ist
+                hier der einzige Weg, das Farbschema zu wählen. */}
+            <WebThemeSwitch />
+            <HeaderCTA />
+          </div>
         </div>
       </header>
 

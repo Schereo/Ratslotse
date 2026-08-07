@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -10,11 +10,10 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { isNativeApp } from "@/lib/platform";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, Button } from "@/components/ui";
 import { Brand, BrandMark } from "@/components/brand";
 import { FeedbackButton } from "@/components/feedback";
-import { LottiThemeSwitch } from "@/components/theme-switch";
+import { WebThemeSwitch } from "@/components/web-theme-switch";
 import { cn } from "@/lib/utils";
 import { openCommandPalette } from "@/components/command-palette";
 
@@ -81,17 +80,9 @@ const PRIMARY_RIGHT: Item[] = [
 ];
 const FRAGEN_HREF = "/council?tab=decisions&mode=fragen";
 
-/** RL-U09: Der Lotti-Himmel-Schalter ersetzt den Dreistufen-Icon-Toggle — im
- *  Web binär (Erststart folgt dem OS, danach entscheidet der Schalter).
- *  Nur Desktop-Sidebar: Auf Mobilgeräten (Web wie App) läuft die Wahl über
- *  Konto → „Erscheinungsbild" — die Topbar bleibt schlank (Tim, 22.07.).
- *  Mount-Gate: SSR kennt die Plattform nicht. */
-function WebThemeSwitch({ className }: { className?: string }) {
-  const [show, setShow] = useState(false);
-  useEffect(() => setShow(!isNativeApp()), []);
-  if (!show) return null;
-  return <LottiThemeSwitch className={className} />;
-}
+// RL-U09: In der App-Hülle sitzt der Lotti-Himmel-Schalter (WebThemeSwitch)
+// nur in der Desktop-Sidebar — mobil läuft die Wahl über Konto →
+// „Erscheinungsbild", die Topbar bleibt schlank (Tim, 22.07.).
 
 function SectionHeader({ children }: { children: React.ReactNode }) {
   return <p className="px-3 pb-1 pt-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">{children}</p>;
