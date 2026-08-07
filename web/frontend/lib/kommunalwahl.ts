@@ -484,15 +484,22 @@ export function sprachProfil(slug: Slug): SprachProfil | null {
   };
 }
 
-/** Themen-Fingerabdruck: Prägnanz (0–3) je Feld, in der Reihenfolge von
- *  `themen_rang` — misst Aufmerksamkeit, nie Richtung (Bauplan E7 bleibt gewahrt). */
-export function fingerabdruck(slug: Slug): { key: ThemaKey; kurz: string; praegnanz: number }[] {
+/** Themen-Fingerabdruck: Forderungen je Feld als Anteil am stärksten Feld der
+ *  Liste — ergibt eine je Liste unterscheidbare Silhouette. Die Prägnanz (0–3)
+ *  taugt dafür nicht: Bei den großen Programmen steht sie fast überall auf 3,
+ *  und ein durchgehend volles Muster sagt nichts. Misst weiterhin nur
+ *  Aufmerksamkeit, nie Richtung (Bauplan E7 bleibt gewahrt). */
+export function fingerabdruck(
+  slug: Slug,
+): { key: ThemaKey; kurz: string; anzahl: number; anteil: number }[] {
   const d = daten();
-  return d.themen_rang.map((t) => ({
+  const felder = d.themen_rang.map((t) => ({
     key: t.key,
     kurz: t.kurz,
-    praegnanz: d.abdeckung[slug]?.[t.key]?.praegnanz ?? 0,
+    anzahl: d.abdeckung[slug]?.[t.key]?.anzahl ?? 0,
   }));
+  const max = Math.max(1, ...felder.map((f) => f.anzahl));
+  return felder.map((f) => ({ ...f, anteil: f.anzahl / max }));
 }
 
 /* ── Methodik (3d) ───────────────────────────────────────────────────────── */
