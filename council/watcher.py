@@ -223,7 +223,31 @@ def run_watcher(
             if topics:
                 print(f"  {session.session_date} {session.committee}: "
                       f"{len(session.agenda_items)} items → classifying for owner {owner['owner_id']}…")
-                matches = _classify_agenda(session, topics)
+                try:
+                    matches = _classify_agenda(session, topics)
+                except llm.BadRequestError as exc:
+                    # Ein 400 hängt am Inhalt DIESER Anfrage, nicht am System:
+                    # Die Themen-Namen/Beschreibungen der Nutzer:in landen im
+                    # Prompt, und ein einzelner vergifteter Text (z. B. ein als
+                    # Prompt-Injection getarnter Themenname) lässt den Provider-
+                    # Content-Filter anschlagen. Ohne dieses Fangnetz reißt eine
+                    # solche Nutzer:in den GANZEN Cron-Lauf für alle ab — ein
+                    # DoS, den jedes Konto auslösen könnte. Also nur diese
+                    # Nutzer:in bei dieser Sitzung überspringen und weitermachen.
+                    if llm.is_content_filter(exc):
+                        print(f"    ⚠️ Content-Filter für owner {owner['owner_id']} "
+                              f"(möglicher Prompt-Injection-Versuch in einem Themennamen) "
+                              f"— übersprungen.")
+                        if stats is not None:
+                            stats["Content-Filter übersprungen"] = \
+                                stats.get("Content-Filter übersprungen", 0) + 1
+                    else:
+                        print(f"    ⚠️ Ungültige Klassifikations-Anfrage für owner "
+                              f"{owner['owner_id']}: {exc} — übersprungen.")
+                    # agenda_hash NICHT als klassifiziert merken: Sobald das
+                    # Thema korrigiert oder gelöscht ist, versucht der nächste
+                    # Lauf es neu, statt die Nutzer:in dauerhaft leer auszugehen.
+                    continue
 
                 if nwz_store is not None:
                     nwz_store.replace_agenda_matches(

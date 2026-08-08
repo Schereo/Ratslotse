@@ -142,13 +142,23 @@ def main() -> dict:
         # A cached '' means "only routine TOPs" (still a valid cache hit).
         summary = _ohne_altlink(council_store.get_cached_summary(ksinr, agenda_hash))
         if summary is None:
-            summary = summarize_agenda(
-                committee=session.committee,
-                session_date=session.session_date,
-                session_time=session.session_time,
-                location=session.location,
-                agenda_items=session.agenda_items,
-            )
+            try:
+                summary = summarize_agenda(
+                    committee=session.committee,
+                    session_date=session.session_date,
+                    session_time=session.session_time,
+                    location=session.location,
+                    agenda_items=session.agenda_items,
+                )
+            except Exception as exc:  # noqa: BLE001
+                # Ein LLM-Fehler bei EINER Sitzung (Provider-Content-Filter, ein
+                # unretrybarer API-Fehler, kaputte Antwort) darf nicht den ganzen
+                # Lauf für alle Konten abbrechen. summary=None ist ein gültiger
+                # Zustand: Die Benachrichtigung geht dann ohne Zusammenfassung
+                # raus (nur mit Link), und die nächste Runde versucht es erneut.
+                print(f"  ⚠️ summarize_agenda fehlgeschlagen für {session.committee} "
+                      f"am {session.session_date}: {exc!r} — Meldung geht ohne Zusammenfassung raus")
+                summary = None
             # None = LLM-Antwort unbrauchbar → NICHT cachen (sonst stünde für
             # diese Tagesordnung dauerhaft eine falsche Aussage fest); die
             # Benachrichtigung geht trotzdem raus, nur ohne Zusammenfassung.
