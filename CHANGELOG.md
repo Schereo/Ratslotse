@@ -15,7 +15,10 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   …") ließ den Sicherheitsfilter des KI-Anbieters die Anfrage ablehnen — und
   brach damit den gesamten nächtlichen Lauf ab, auch für alle anderen. Jetzt
   wird ein solches Konto übersprungen und der Rest normal weiterverarbeitet;
-  Themen-Texte sind gegenüber der KI ausdrücklich als Daten markiert. (#359)
+  Themen-Texte sind gegenüber der KI ausdrücklich als Daten markiert. Beim
+  Ausschuss-Watcher (Tagesordnungs-Zusammenfassungen) war dieselbe Lücke offen:
+  Scheitert die Zusammenfassung einer einzelnen Sitzung, geht die Meldung jetzt
+  ohne Zusammenfassung raus, statt den ganzen Lauf abzubrechen. (#359)
 
 ## [1.6.0] – 2026-08-06
 
