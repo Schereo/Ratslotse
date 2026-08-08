@@ -344,3 +344,62 @@ in `pruefungen/korrekturen_2026_08_08.py` (idempotent, angewendet):
 Durch die AfD-P1-Korrektur ändern sich Paarwerte leicht (Spitze jetzt FDP–AfD 92 %);
 Streit-Top-5, Einigkeit und Alleinstellungen bleiben unverändert. Alle Prüfskripte laufen
 danach grün.
+
+## 9 These C1 (Stadion) trennscharf gemacht
+
+**Anlass:** Tim meldete, die Stadion-These sei nicht scharf genug — „aus Steuermitteln
+finanziert" lasse sich für mehrere Listen nicht eindeutig beantworten.
+
+**Der Befund bestätigte das, und zwar schärfer als gemeldet.** Der alte Wortlaut („Ein
+Stadion-Neubau soll nicht aus Steuermitteln finanziert werden.") packt zwei Fragen in
+einen Satz — *ob überhaupt* Steuergeld fließt und *wie viel*. Über die erste streitet in
+Oldenburg niemand. Die Programme bilden drei Lager:
+
+1. **Die Stadt zahlt den Bau** (mit Deckel bzw. Controlling): CDU, SPD
+2. **Gedeckelter städtischer Anteil, Private müssen verbindlich mittragen**: Grüne, BB-OL
+3. **Gar kein Steuergeld**: Volt, Stille
+
+Lager 2 musste gegen den alten Wortlaut auf `0` fallen — war aber **uneinheitlich
+eingestuft**: Grüne `0`, BB-OL `+1`, obwohl beide dasselbe fordern (gedeckelter Anteil,
+verbindliche Beteiligung Dritter). Das war ein Gleichbehandlungsfehler, kein Grenzfall.
+
+**Neuer Wortlaut** — fragt nach dem Anteil statt nach dem Ob:
+
+> Die Stadt soll den Stadion-Neubau nahezu vollständig selbst bezahlen.
+
+Der Hinweis benennt jetzt die eigentliche Streitfrage, damit die Kostenobergrenze nicht
+mit Widerspruch verwechselt wird: Fast alle wollen einen Deckel — strittig ist, ob Private
+einen nennenswerten Teil der **Bau**kosten tragen müssen.
+
+| Liste | vorher | jetzt | tragende Belegstelle |
+|---|---|---|---|
+| CDU | −1 | **+1** | „bekennt sich klar zum Bau"; private Partner nur für die „wirtschaftliche Betreibung" |
+| SPD | −1 | **+1** | „Wir stehen zu dieser Entscheidung"; nur Kostencontrolling, keine private Baubeteiligung (S. 36) |
+| Grüne | 0 | **−1** | „anteilige, gedeckelte Finanzierung", „verbindliche Beteiligung des VfB Oldenburg und von Sponsoren" (S. 15) |
+| BB-OL | +1 | **−1** | „lehnt eine vollständige Steuerfinanzierung des Projekts ab", Deckelung des städtischen Anteils, Investoren „mit üblichem Eigenanteil" (S. 5) |
+| Volt | +1 | **−1** | „Wir lehnen einen aus Steuermitteln finanzierten Stadionneubau ab." (S. 42) |
+| Stille | +1 | **−1** | „Beim Stadion hätte er sich für eine private Finanzierung eingesetzt." |
+
+**Ergebnis: keine einzige `0` mehr** — jede der sechs Einstufungen ist am Wortlaut
+nachweisbar. Die zehn Listen ohne Position bleiben ohne: Ihre Programme enthalten weder
+„Stadion" noch „VfB", „Maastrichter" oder „Marschweg" (skriptgeprüft, das Korrekturskript
+bricht ab, falls sich das ändert). C1 bleibt mit 5 von 9 Vergleichslisten `belastbar`.
+
+Dass sich die Polarität dreht (Zustimmung hieß vorher „kein Steuergeld"), ist unkritisch:
+Es gibt bewusst keine aggregierte Ampel-Bilanz je Partei, und mehrere Thesen sind ohnehin
+invers formuliert (§ 3.4).
+
+**Zwei Fallen, die dabei auffielen:**
+
+* Die Belegstellen des BB-OL-Positionspapiers (Webquelle, hinter dem PDF im selben
+  Volltext) haben **keine** Seitenzahl. Die letzte Seitenmarke davor (11) gehört noch zum
+  PDF — wer sie übernimmt, erfindet eine Fundstelle. Zitiert wird deshalb Seite 5 aus dem
+  Hauptprogramm.
+* Der PDF-Text enthält Trennartefakte, die wörtliche Zitate stillschweigend unbelegbar
+  machen: „reines Steuergeld projekt", „Exit -Klausel", „Das BB -OL". `pruef_zitate.py`
+  entsilbt nur echte Trennstriche (`\w- \w`), nicht diese. Solche Stellen wurden nicht
+  wörtlich zitiert.
+
+Korrektur in `pruefungen/korrektur_c1_stadion.py` (idempotent, angewendet). Wörtliche
+Zitate im Volltext belegt: 114 → **124**, unbelegte Zitate unverändert 23 (alle
+vorbestehend, keines aus C1). Alle Prüfskripte laufen danach unverändert grün.
