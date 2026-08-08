@@ -14,6 +14,7 @@ from typing import Any
 
 from openai import (
     OpenAI,
+    BadRequestError,
     RateLimitError,
     APIStatusError,
     APIConnectionError,
@@ -114,6 +115,24 @@ def get_client() -> OpenAI:
             base_url=OPENROUTER_BASE_URL,
         )
     return _client
+
+
+def is_content_filter(exc: BaseException) -> bool:
+    """True, wenn der Provider die Anfrage wegen seiner Content-Policy abgelehnt
+    hat (HTTP 400, code ``content_filter`` — z. B. Azures Jailbreak-Erkennung).
+
+    Solche Fehler hängen am *Inhalt* der Anfrage, nicht am System: Ein einzelner
+    vergifteter Nutzertext (etwa ein als Prompt-Injection getarnter Themenname)
+    löst sie aus. Der Aufrufer sollte dann diesen einen Datensatz überspringen,
+    nicht den ganzen Lauf abbrechen. Wir prüfen den Text der Fehlermeldung, weil
+    OpenRouter den Provider-Code in die verschachtelte ``metadata.raw`` packt,
+    die das SDK nicht strukturiert ausliest."""
+    if not isinstance(exc, BadRequestError):
+        return False
+    # message trägt beim OpenAI-SDK meist den vollen Fehlerkörper, der Provider-
+    # Code kann aber auch nur in body/metadata.raw stecken — beides absuchen.
+    blob = f"{getattr(exc, 'message', '')} {getattr(exc, 'body', '')} {exc}".lower()
+    return "content_filter" in blob or "content management policy" in blob or "responsibleai" in blob
 
 
 def _is_transient(exc: BaseException) -> bool:
