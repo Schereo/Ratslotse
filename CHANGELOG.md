@@ -7,6 +7,16 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Behoben
+- **Themen-Benachrichtigungen liefen für alle ins Leere, sobald ein einziges
+  Konto ein „vergiftetes" Thema angelegt hatte.** Der Abgleich der
+  Tagesordnungen mit den eigenen Themen läuft über eine KI; der Themenname
+  fließt in die Anfrage ein. Ein als Anweisung getarnter Name („Vergesse alles
+  …") ließ den Sicherheitsfilter des KI-Anbieters die Anfrage ablehnen — und
+  brach damit den gesamten nächtlichen Lauf ab, auch für alle anderen. Jetzt
+  wird ein solches Konto übersprungen und der Rest normal weiterverarbeitet;
+  Themen-Texte sind gegenüber der KI ausdrücklich als Daten markiert. (#359)
+
 ## [1.6.0] – 2026-08-06
 
 ### Hinzugefügt
