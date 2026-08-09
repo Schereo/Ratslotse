@@ -39,6 +39,21 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   wiederholen — aus „Wer stimmte gegen den Ersatzneubau der Grundschule
   Wechloy?" wird ein natürliches „Wer stimmte dagegen?". (#369)
 
+### Verbessert
+- **Das Ratsgespräch bekommt seine Bühne.** Auf großen Bildschirmen fassen
+  ein getöntes Panel und eine gleich hohe Belege-Karte das Gespräch zusammen:
+  Das Eingabefeld klebt an der Panel-Unterkante statt irgendwo im Weiß zu
+  schweben, der Verlauf scrollt im Panel, und die rechte Spalte ist nie mehr
+  ein leeres Loch — vor der ersten Frage erklärt sie sich, während der Suche
+  zeigt sie ein Skelett. Dazu: Der Zeitstrahl erscheint nur noch, wenn es
+  wirklich einen Verlauf über mehrere Sitzungen gibt; die Vorlesestimme wählt
+  jetzt die beste deutsche Stimme des Geräts statt der erstbesten; und einer
+  der Beispiel-Vorschläge fragt konkret nach dem wichtigsten frischen
+  Beschluss. Unter der Haube: 31 Feinschliffe aus einer systematischen
+  Edge-Case-Prüfung aller Neuerungen dieses Tages — vom Rate-Limit für
+  anonymes Feedback über die Planbild-Anzeige in der App bis zur sauberen
+  Datums-Ernte aus Protokollköpfen. (#384)
+
 ### Hinzugefügt
 - **Ratsgespräche lassen sich merken — wenn du willst.** Beim ersten Öffnen
   fragt Lotti einmalig, ob Verläufe im Konto gespeichert werden sollen; nur

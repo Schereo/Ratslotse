@@ -10,8 +10,14 @@ from __future__ import annotations
 import difflib
 import re
 
-# Abschnitts-Überschriften, an denen ein Block sicher endet.
-_ENDE = r"(?:[a-c]\)\s|Beschlussvorschlag|Sachverhalt|Begründung|Beratungsfolge|Finanzielle Auswirkungen|Anlagen?\b|Seite:\s*\d)"
+# Abschnitts-Überschriften, an denen ein Block sicher endet. Die Wort-
+# Alternativen verlangen Doppelpunkt oder Zeilenende dahinter: Ein echter
+# Header steht allein auf seiner Zeile („Sachverhalt:", „Anlagen") — ohne den
+# Lookahead schnitt schon „…Photovoltaik-\nAnlagen spart CO2…" den Block ab
+# (Review-Befund E3: PDF-Umbruch vor großgeschriebenem Substantiv).
+_ENDE = (r"(?:[a-c]\)\s|Seite:\s*\d|"
+         r"(?:Beschlussvorschlag|Sachverhalt|Begründung|Beratungsfolge|"
+         r"Finanzielle Auswirkungen|Auswirkungen|Anlagen?)(?=\s*:|[^\S\n]*\n|[^\S\n]*$))")
 
 _FLOSKELN = {"keine", "keine.", "-", "–", "./.", "entfällt", "entfällt.", "nein",
              "keine unmittelbaren"}
@@ -106,7 +112,11 @@ def federfuehrendes_amt(vorlagen_text: str) -> str | None:
 
 # --- Protokolle: Sitzungsort -------------------------------------------------
 
-_ORT_RE = re.compile(r"Sitzungsort:\s*(.+)")
+# [^\S\n] statt \s: Ein leeres „Sitzungsort:"-Feld darf NICHT über den
+# Zeilenumbruch hinweg die Folgezeile („Sitzungsdauer: …") als Ort ernten —
+# der location=''-Guard im save_protocol-Hook würde den falschen Wert sonst
+# dauerhaft zementieren (Review-Befund E1).
+_ORT_RE = re.compile(r"Sitzungsort:[^\S\n]*(.+)")
 
 
 def sitzungsort(protokoll_text: str) -> str | None:
@@ -119,9 +129,11 @@ def sitzungsort(protokoll_text: str) -> str | None:
 
 # --- Vorlagen: Beschlussvorschlag + Abweichung zum Beschluss -----------------
 
+# Dieselbe Blockende-Logik wie bei den Auswirkungen — die alte eigene Liste
+# schnitt „…gemäß\nAnlage 1…" mitten im Satz ab (Review-Befund E3).
 _VORSCHLAG_RE = re.compile(
     r"Beschluss(?:vorschlag|entwurf)[^\n]{0,60}?:?\s*\n(?P<v>.*?)"
-    r"(?=\n\s*(?:Sachverhalt|Begründung|Finanzielle|Auswirkungen|Anlagen?\b|Beratungsfolge)|\Z)",
+    r"(?=\n\s*" + _ENDE + r"|\Z)",
     re.DOTALL)
 
 

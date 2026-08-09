@@ -1114,9 +1114,15 @@ class CouncilStore:
                     "UPDATE council_sessions SET location = ? WHERE ksinr = ? AND location = ''",
                     (ort, ksinr),
                 )
+            # Auch Revisions-Zitate („22/0348/1") an die Basis-Vorlage
+            # („22/0348") hängen — exakter Treffer gewinnt vor dem Präfix
+            # (Review-Befund E2: sonst blieben kvonr und abweichung NULL,
+            # obwohl get_vorlage_by_nr die Vorlage längst auflöst).
             self._conn.execute(
-                "UPDATE council_decisions SET kvonr = "
-                "(SELECT MAX(v.kvonr) FROM council_vorlagen v WHERE v.vorlage_nr = council_decisions.vorlage_nr) "
+                "UPDATE council_decisions SET kvonr = COALESCE("
+                "(SELECT MAX(v.kvonr) FROM council_vorlagen v WHERE v.vorlage_nr = council_decisions.vorlage_nr), "
+                "(SELECT MAX(v.kvonr) FROM council_vorlagen v "
+                " WHERE instr(council_decisions.vorlage_nr, v.vorlage_nr || '/') = 1)) "
                 "WHERE ksinr = ? AND kvonr IS NULL AND vorlage_nr IS NOT NULL",
                 (ksinr,),
             )
@@ -1138,9 +1144,12 @@ class CouncilStore:
             sql += " AND ksinr = ?"
             args = (ksinr,)
         elif vorlage_nr is not None:
+            # Auch Beschlüsse, die eine REVISION dieser Nummer zitieren
+            # („22/0348/1" bei gespeicherter Basis „22/0348") — der
+            # get_vorlage_by_nr-Fallback löst sie ohnehin auf (Befund E2).
             base = "/".join(vorlage_nr.split("/")[:2])
-            sql += " AND vorlage_nr IN (?, ?)"
-            args = (vorlage_nr, base)
+            sql += " AND (vorlage_nr IN (?, ?) OR vorlage_nr LIKE ? || '/%')"
+            args = (vorlage_nr, base, vorlage_nr)
         vorschlaege: dict[str, str | None] = {}
         updates = []
         for did, nr, beschluss in self._conn.execute(sql, args).fetchall():
@@ -3618,9 +3627,15 @@ class CouncilStore:
 
     def juengste_sitzungen_mit_beschluessen(self, limit: int = 2) -> list[dict]:
         """Die jüngsten vergangenen Sitzungen, zu denen Beschlüsse extrahiert
-        sind — Futter für frische KI-Beispielfragen (5a/I-07)."""
+        sind — Futter für frische KI-Beispielfragen (5a/I-07). ``top_titel``
+        nennt den wichtigsten Beschluss der Sitzung, damit ein Vorschlag
+        konkret nach dem Inhalt fragen kann statt nur nach dem Datum."""
         rows = self._conn.execute(
-            """SELECT cs.committee, cs.session_date, COUNT(*) AS n
+            """SELECT cs.committee, cs.session_date, COUNT(*) AS n,
+                      (SELECT d2.title FROM council_decisions d2
+                       WHERE d2.ksinr = cs.ksinr AND d2.kind = 'decision'
+                         AND d2.title IS NOT NULL
+                       ORDER BY COALESCE(d2.importance, 0) DESC, d2.id LIMIT 1) AS top_titel
                FROM council_decisions d
                JOIN council_sessions cs ON cs.ksinr = d.ksinr
                WHERE d.kind = 'decision'

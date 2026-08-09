@@ -1549,6 +1549,56 @@ def test_topic_suggestions_dedupe_similar(client):
 
 
 # ---- KI-Frage: Folgefragen im Stream (Design 24a) ----
+def test_ask_speichert_nur_mit_einwilligung(client, monkeypatch):
+    """Die Einwilligungs-Schranke der Gesprächs-Speicherung (Review-Befund B6):
+    ohne qa_speichern=1 schreibt /ask NICHTS, mit Einwilligung trägt das
+    done-Event die Gesprächs-id und der Turn liegt in der Datenbank. Clients
+    ohne gespraech_id-Feld (alte App) lösen nie eine Speicherung aus."""
+    from app.routers import council as council_router
+    from council import qa as qa_mod
+    from nwz.store import Store
+
+    _register(client)
+    cand = [{"id": 5, "title": "Radverkehrsplan 2026", "summary": "Ausbau",
+             "policy_field": "verkehr", "outcome": "angenommen", "session_date": "2026-07-02",
+             "committee": "Verkehrsausschuss", "score": 1.0}]
+    monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (cand, "semantisch"))
+    monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
+    monkeypatch.setattr(qa_mod, "answer_stream", lambda *a, **k: iter(["Wird ausgebaut [5]."]))
+
+    def frag(body):
+        with client.stream("POST", "/api/council/ask", json=body) as r:
+            events = [json.loads(line[6:]) for line in "".join(r.iter_text()).splitlines()
+                      if line.startswith("data: ")]
+        return next(e for e in events if e["type"] == "done")
+
+    store = Store(NWZ_DB)
+    try:
+        # Nie gefragt (NULL) → kein Save, obwohl der Client das Feld kennt.
+        done = frag({"question": "Was ist mit Radwegen?", "gespraech_id": None})
+        assert done["gespraech_id"] is None
+        assert store._conn.execute("SELECT COUNT(*) FROM qa_gespraeche").fetchone()[0] == 0
+
+        uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
+        store.set_qa_speichern(uid, True)
+        # Alte App: Feld fehlt im Body → weiterhin kein Save (Befund B5).
+        done = frag({"question": "Was ist mit Radwegen?"})
+        assert done.get("gespraech_id") is None
+        assert store._conn.execute("SELECT COUNT(*) FROM qa_gespraeche").fetchone()[0] == 0
+
+        # Einwilligung + Feld → Gespräch samt Turn, id im done-Event.
+        done = frag({"question": "Was ist mit Radwegen?", "gespraech_id": None})
+        gid = done["gespraech_id"]
+        assert gid is not None
+        turns = store.qa_gespraech(gid, uid)["turns"]
+        assert len(turns) == 1 and turns[0]["antwort"].startswith("Wird ausgebaut")
+        # Fremde/erfundene id → still kein Save, tote id wird nicht bestätigt.
+        done = frag({"question": "Und weiter?", "gespraech_id": 999999})
+        assert done["gespraech_id"] is None
+    finally:
+        store.close()
+
+
 def test_ask_stream_haelt_marker_zurueck_und_liefert_suggestions(client, monkeypatch):
     """Der Marker der Folgefragen darf NIE im Antworttext auftauchen — auch dann
     nicht, wenn er über mehrere Stream-Deltas verteilt ankommt. Stattdessen

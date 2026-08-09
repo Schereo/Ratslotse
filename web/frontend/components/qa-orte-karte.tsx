@@ -23,8 +23,9 @@ export default function QaOrteKarte({ pins, onPin }: {
     if (!el || pins.length === 0) return;
     let map: import("leaflet").Map | null = null;
     let beendet = false;
-    void import("leaflet").then((L) => {
-      if (beendet || !el) return;
+    let ro: ResizeObserver | null = null;
+    const starten = (L: typeof import("leaflet")) => {
+      if (beendet || map) return;
       map = L.map(el, {
         zoomControl: false, attributionControl: true, scrollWheelZoom: false,
         dragging: pins.length > 1,
@@ -46,8 +47,26 @@ export default function QaOrteKarte({ pins, onPin }: {
           }),
         }).addTo(map!).on("click", () => onPinRef.current(p.id));
       }
+    };
+    void import("leaflet").then((L) => {
+      if (beendet) return;
+      // Im versteckten Tab (display:none beim Suchen/KI-Umschalter) hat der
+      // Container 0×0 — Leaflet rechnete den Zoom auf NaN und blieb nach dem
+      // Zurückwechseln grau (Befund F6). Erst initialisieren, wenn wirklich
+      // Breite da ist; der ResizeObserver meldet das Sichtbarwerden.
+      if (el.clientWidth > 0) {
+        starten(L);
+      } else if (typeof ResizeObserver !== "undefined") {
+        ro = new ResizeObserver(() => {
+          if (el.clientWidth > 0) {
+            ro?.disconnect();
+            starten(L);
+          }
+        });
+        ro.observe(el);
+      }
     });
-    return () => { beendet = true; map?.remove(); };
+    return () => { beendet = true; ro?.disconnect(); map?.remove(); };
     // Pins ändern sich nur mit einem neuen Turn — dann remountet der Baustein.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pins.map((p) => p.id).join(",")]);

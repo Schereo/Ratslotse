@@ -24,7 +24,7 @@ from council import vorlagen as vorlagen_mod
 from nwz.store import Store
 
 from ..deps import get_council_store, get_store, optional_user, require_active
-from ..ratelimit import qa_limiter
+from ..ratelimit import qa_feedback_limiter, qa_limiter
 
 router = APIRouter(prefix="/api/council", tags=["council"])
 
@@ -396,9 +396,16 @@ def decision_detail(
                 out["vorlage_url"] = _vorlage_url(v["kvonr"])
         out["anlagen"] = store.anlagen_for_vorlage_nr(d["vorlage_nr"])
         # P1: gerenderte Planzeichnung (scripts/render_plaene.py) — B-Plan-
-        # Beschlüsse leben vom Bild, nicht vom Anlagen-Download.
-        out["plan_bild"] = next(
-            (a["document_id"] for a in out["anlagen"] if a.get("bild") == 1), None)
+        # Beschlüsse leben vom Bild, nicht vom Anlagen-Download. Echte
+        # Planzeichnungen vor Mischdokumenten: „Begründung mit Leitplan" hat
+        # auch bild=1, zeigt auf Seite 1 aber Begründungstext — alphabetisch
+        # gewann „B…" vor „P…" (Review-Befund P3, kvonr 16438/17168).
+        def _plan_rang(a: dict) -> int:
+            label = (a.get("label") or "").lower()
+            return 0 if ("planzeichnung" in label or "plandarstellung" in label) else 1
+
+        bilder = sorted((a for a in out["anlagen"] if a.get("bild") == 1), key=_plan_rang)
+        out["plan_bild"] = bilder[0]["document_id"] if bilder else None
         # Offizielle Beratungsfolge aus dem Ratsinfo — reicher als die aus
         # unseren Tagesordnungen abgeleitete Journey (Ergebnis je Station,
         # geplante künftige Beratungen). Die Journey bleibt der Fallback.
@@ -483,12 +490,15 @@ class QaFeedbackBody(BaseModel):
 @router.post("/qa-feedback", status_code=status.HTTP_201_CREATED)
 def qa_feedback(
     body: QaFeedbackBody,
+    request: Request,
     user: dict | None = Depends(optional_user),
     store: CouncilStore = Depends(get_council_store),
 ) -> dict:
     """Daumen hoch/runter zu einer KI-Antwort (5a/I-03) — der einzige
     Qualitätsmesser außerhalb der Eval-Gold-Fälle. Anonym erlaubt (die
-    KI-Frage selbst ist es auch); die Feldlängen begrenzt das Schema."""
+    KI-Frage selbst ist es auch); die Feldlängen begrenzt das Schema, das
+    Rate-Limit hält Skript-Flutung von Tabelle und Backups fern."""
+    qa_feedback_limiter.check(request)
     store.save_qa_feedback(body.frage, body.antwort_auszug, body.bewertung,
                            body.grund, user_id=(user or {}).get("id"))
     return {"ok": True}
@@ -895,6 +905,43 @@ def _qa_source(c: dict) -> dict:
     }
 
 
+def _turn_speichern(nwz: Store, user: dict, body: AskBody, q_suche: str,
+                    answer_text: str, candidates: list[dict],
+                    cited: list[int]) -> int | None:
+    """„Meine Gespräche" (6a): Turn ins laufende Gespräch hängen (oder eines
+    eröffnen) — nur mit ausdrücklicher Einwilligung, nie als Blocker.
+
+    Nur wenn der Client das Feld ``gespraech_id`` überhaupt kennt: Alte
+    App-Versionen senden es nie und können die zurückgegebene id nicht
+    weiterreichen — jede Frage würde sonst ein 1-Turn-Fragment eröffnen und
+    die Gespräche-Liste fluten (Review-Befund B5). Ein frisch eröffnetes
+    Gespräch wird wieder gelöscht, wenn der Turn-Insert scheitert — sonst
+    bliebe ein leerer Eintrag in der Liste zurück (Befund B2)."""
+    try:
+        if "gespraech_id" not in body.model_fields_set:
+            return None
+        if not answer_text.strip() or nwz.get_qa_speichern(user["id"]) != 1:
+            return None
+        gespraech_id = body.gespraech_id
+        neu = gespraech_id is None
+        if neu:
+            gespraech_id = nwz.qa_gespraech_start(user["id"], q_suche or body.question)
+            if gespraech_id is None:
+                return None
+        zitiert = set(cited)
+        quellen_json = json.dumps(
+            {"sources": [_qa_source(c) for c in candidates if c["id"] in zitiert],
+             "cited": cited}, ensure_ascii=False)
+        if not nwz.qa_turn_speichern(gespraech_id, user["id"],
+                                     body.question, answer_text, quellen_json):
+            if neu:
+                nwz.qa_gespraech_loeschen(gespraech_id, user["id"])
+            return None
+        return gespraech_id
+    except Exception:  # noqa: BLE001 — Speichern ist Zusatz, nie Blocker
+        return None
+
+
 @router.post("/ask")
 def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
         store: CouncilStore = Depends(get_council_store),
@@ -967,8 +1014,12 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                     "datum": p.get("datum")} for p in presse_rows]})
             yield _sse({"type": "step", "step": "answer"})
             if not candidates:
-                yield _sse({"type": "token", "text": "Dazu habe ich keine passenden Beschlüsse gefunden."})
-                yield _sse({"type": "done", "cited": []})
+                leer_text = "Dazu habe ich keine passenden Beschlüsse gefunden."
+                yield _sse({"type": "token", "text": leer_text})
+                # Auch der Kein-Treffer-Turn gehört ins gespeicherte Gespräch —
+                # sonst klafft im Transkript eine Lücke (Review-Befund B4).
+                gespraech_id = _turn_speichern(nwz, user, body, q_suche, leer_text, [], [])
+                yield _sse({"type": "done", "cited": [], "gespraech_id": gespraech_id})
                 return
             ctx = candidates[:QA_ANSWER_N]
             if partei_ids:
@@ -1044,23 +1095,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                   + zeiten.get("antwort_ms", 0))
             _log.info("qa_timings mode=%s typ=%s %s", mode, typ,
                       " ".join(f"{k}={v}" for k, v in sorted(zeiten.items())))
-            # „Meine Gespräche" (6a): nur mit ausdrücklicher Einwilligung — der
-            # Turn wandert ins laufende Gespräch (oder eröffnet eines), die id
-            # geht im done-Event zurück, damit Anschlussfragen anknüpfen.
-            gespraech_id = None
-            try:
-                if answer_text.strip() and nwz.get_qa_speichern(user["id"]) == 1:
-                    gespraech_id = body.gespraech_id or nwz.qa_gespraech_start(
-                        user["id"], q_suche or body.question)
-                    zitiert = set(cited)
-                    quellen_json = json.dumps(
-                        {"sources": [_qa_source(c) for c in candidates if c["id"] in zitiert],
-                         "cited": cited}, ensure_ascii=False)
-                    if not nwz.qa_turn_speichern(gespraech_id, user["id"],
-                                                 body.question, answer_text, quellen_json):
-                        gespraech_id = None
-            except Exception:  # noqa: BLE001 — Speichern ist Zusatz, nie Blocker
-                gespraech_id = None
+            gespraech_id = _turn_speichern(nwz, user, body, q_suche, answer_text,
+                                           candidates, cited)
             yield _sse({"type": "done", "cited": cited, "timings": zeiten,
                         "gespraech_id": gespraech_id})
         except Exception:  # noqa: BLE001 — surface a terminal error to the client
