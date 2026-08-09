@@ -8,6 +8,19 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Verbessert
+- **Die Beschluss-Seite bleibt lesbar, auch mit den neuen Angaben.** „Vom
+  Vorschlag abgewichen" und der Klima-Check stehen nicht mehr als Kästen in der
+  Erzählspalte, sondern als ruhige Symbolzeilen unter „Auf einen Blick" — ein
+  Klick öffnet die Erklärung, der Klima-Check trägt vorab ein „relevant"/„nicht
+  relevant". Außerdem liest sich „Warum es dazu kam" endlich wie Fließtext: Die
+  harten Zeilenumbrüche aus dem PDF werden zusammengezogen (Silbentrennungen
+  inklusive), Überschriften und Aufzählungen bleiben stehen. Lange Klima-Texte
+  brechen nicht mehr mitten im Wort ab. (#374)
+- **Im Ratsgespräch stört weniger.** Der Hinweis auf den externen KI-Dienst
+  steht nur noch vor der ersten Frage statt dauerhaft unter dem Eingabefeld,
+  und Impressum, Datenschutz, Changelog und Technik-Doku sind vom mitlaufenden
+  Seitenfuß in den Menü-Fuß gewandert — auf großen Bildschirmen in die
+  Seitenleiste, mobil ins Burger-Menü. (#374)
 - **Das Ratsgespräch ist aufgeräumter.** Das Eingabefeld klebt jetzt immer
   unten — auch vor der ersten Frage — und die vorgeschlagenen Weiterfragen
   liegen als Chips direkt darüber, sodass sie beim Lesen langer Antworten

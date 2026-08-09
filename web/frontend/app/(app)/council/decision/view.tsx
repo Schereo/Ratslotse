@@ -198,6 +198,29 @@ function GlanceCard({
         </GlanceRow>
       )}
 
+      {/* Regex-Ernte, minimiert (Feedback-Runde 3): beide nur als Zeile mit
+          Symbol — die Erklärung öffnet sich erst auf Klick, die Erzählspalte
+          links bleibt clean. */}
+      {d.abweichung === "stark" && d.beschluss && (
+        <GlanceDisclosure
+          icon={<GitCompareArrows className="h-3.5 w-3.5 text-signal" />}
+          label="Vom Vorschlag abgewichen"
+        >
+          Der Rat hat hier nicht den Beschlussvorschlag der Verwaltung übernommen,
+          sondern deutlich anders entschieden — das kommt nur bei rund 8 % der
+          angenommenen Beschlüsse vor.
+        </GlanceDisclosure>
+      )}
+      {data.vorlage?.klima_check && (
+        <GlanceDisclosure
+          icon={<Leaf className={cn("h-3.5 w-3.5", data.vorlage.klima_relevant ? "text-primary" : "text-muted-foreground")} />}
+          label="Klima-Check"
+          badge={data.vorlage.klima_relevant == null ? undefined : data.vorlage.klima_relevant ? "relevant" : "nicht relevant"}
+        >
+          {data.vorlage.klima_check}
+        </GlanceDisclosure>
+      )}
+
       {d.kind !== "subvote" && data.importance_breakdown && (
         <GlanceRow>
           {/* ImportanceMeter bringt Kopfzeile, Balken und die aufklappbare
@@ -415,6 +438,32 @@ function SimilarList({ items }: { items: DecisionDetail["similar"] }) {
   );
 }
 
+/** Kompakte Seitenleisten-Zeile mit Symbol; die Erklärung klappt erst auf
+ *  Klick auf (Feedback-Runde 3 — „links clean, Details auf Wunsch"). */
+function GlanceDisclosure({ icon, label, badge, children }: {
+  icon: React.ReactNode; label: string; badge?: string; children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-3 border-t border-border pt-3">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="flex w-full items-center gap-1.5 text-left text-xs font-medium text-foreground"
+      >
+        {icon}
+        <span className="min-w-0 flex-1 truncate">{label}</span>
+        {badge && (
+          <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{badge}</span>
+        )}
+        <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
+      </button>
+      {open && <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{children}</p>}
+    </div>
+  );
+}
+
 /** Sachverhalt/Begründung aus der eingelesenen Vorlage — eingeklappt auf wenige
  *  Zeilen, weil die Auszüge lang sein können. */
 function VorlageExcerpt({ text }: { text: string }) {
@@ -597,20 +646,6 @@ function DecisionDetailInner() {
 
           {d.beschluss && <OfficialTextCard text={d.beschluss} />}
 
-          {/* Regex-Ernte: Beschlusstext ≠ Beschlussvorschlag der Vorlage — der
-              seltene Fall (~8 %), in dem der Rat die Verwaltung korrigiert hat.
-              Nur „stark" wird angezeigt: „leicht" ist meist Umformulierung. */}
-          {d.abweichung === "stark" && d.beschluss && (
-            <p className="flex items-start gap-2 rounded-lg border border-signal/30 bg-signal/5 px-3 py-2 text-xs text-muted-foreground">
-              <GitCompareArrows className="mt-0.5 h-3.5 w-3.5 shrink-0 text-signal" />
-              <span>
-                <span className="font-medium text-foreground">Vom Vorschlag abgewichen: </span>
-                Der Rat hat hier nicht den Beschlussvorschlag der Verwaltung übernommen,
-                sondern deutlich anders entschieden.
-              </span>
-            </p>
-          )}
-
           {/* Auf Mobil klappt das Grid zu einer Spalte — die Kennzahlen kämen
               dann erst hinter der ganzen Erzählung. Deshalb hier ein zweiter
               Platz, der nur unterhalb von lg sichtbar ist (display:none blendet
@@ -620,7 +655,7 @@ function DecisionDetailInner() {
           {/* 25a ③: Teilabstimmungen, Endergebnis und das Warum standen als drei
               getrennte Blöcke untereinander — zusammen erzählen sie den Hergang
               des Vorgangs und stehen deshalb unter einer Überschrift. */}
-          {(data.sub_votes.length > 0 || data.vorlage?.excerpt || data.vorlage?.klima_check) && (
+          {(data.sub_votes.length > 0 || data.vorlage?.excerpt) && (
             <Section title="Verlauf & Begründung">
               <div className="space-y-4">
                 {data.sub_votes.length > 0 && <SubvoteTimeline d={d} subVotes={data.sub_votes} />}
@@ -635,17 +670,6 @@ function DecisionDetailInner() {
                       {data.vorlage.amt ? ` — federführend: ${data.vorlage.amt}` : ""}
                     </p>
                     <VorlageExcerpt text={data.vorlage.excerpt} />
-                  </div>
-                )}
-                {/* Regex-Ernte: der Klima-Vermerk der Verwaltung („Auswirkungen:
-                    b) Klima") — seit 2022 Standard in Oldenburger Vorlagen. */}
-                {data.vorlage?.klima_check && (
-                  <div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5">
-                    <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                      <Leaf className={`h-3.5 w-3.5 ${data.vorlage.klima_relevant ? "text-primary" : "text-muted-foreground"}`} />
-                      Klima-Check der Verwaltung
-                    </p>
-                    <p className="mt-1 text-sm text-muted-foreground">{data.vorlage.klima_check}</p>
                   </div>
                 )}
               </div>

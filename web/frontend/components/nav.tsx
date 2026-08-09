@@ -200,7 +200,25 @@ function UserFooter({ onNavigate, showTheme = false }: { onNavigate?: () => void
       >
         <LogOut className="h-4 w-4" /> Abmelden
       </button>
+      <RechtsLinks />
     </div>
+  );
+}
+
+/** Design 6a③: Die Pflicht-Links wohnen im Sidebar-Fuß (Desktop) bzw. im
+ *  Burger-Menü (mobil) — der sticky Seiten-Footer, der auf jeder Seite
+ *  mitscrollte, entfällt dafür. */
+function RechtsLinks() {
+  return (
+    <p className="px-3 pb-1 pt-2 text-[11px] leading-relaxed text-muted-foreground/80">
+      <a href="/impressum" className="hover:text-foreground">Impressum</a>
+      {" · "}
+      <a href="/datenschutz" className="hover:text-foreground">Datenschutz</a>
+      {" · "}
+      <a href="/changelog" className="hover:text-foreground">Changelog</a>
+      {" · "}
+      <a href="/docs" className="hover:text-foreground">Technik-Doku</a>
+    </p>
   );
 }
 
