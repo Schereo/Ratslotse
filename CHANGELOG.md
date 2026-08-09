@@ -8,6 +8,17 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Läuft zu einem Bebauungsplan gerade die Bürgerbeteiligung, steht das
+  jetzt am Beschluss.** Ratslotse gleicht täglich die laufenden Planverfahren
+  auf oldenburg.planungsbeteiligung.de ab und verbindet sie über die
+  Plan-Nummer mit den passenden Beschlüssen: Auf der Beschluss-Seite
+  erscheint ein Hinweis mit Verfahrensschritt und Stellungnahme-Frist samt
+  Link zu den Planungsunterlagen — und auch die KI-Antwort weist darauf hin,
+  wenn sie einen betroffenen Bebauungsplan zitiert. Beschlüsse sagen, was
+  geplant ist; jetzt sieht man auch, wann man selbst dazu Stellung nehmen
+  kann. (#367)
+
+### Hinzugefügt
 - **Die KI-Frage versteht jetzt Anschlussfragen.** Wer nachhakt („Und was
   kostet das?", „Wer ist dafür zuständig?"), bekommt eine Antwort im
   Gesprächskontext: Die Frage-Analyse löst Rückbezüge mit Hilfe der letzten

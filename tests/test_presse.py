@@ -108,3 +108,63 @@ def test_presse_chunks_fenster():
     assert 2 <= len(chunks) <= embeddings.PRESSE_MAX_CHUNKS
     assert all(len(c) <= embeddings.PRESSE_CHUNK_SIZE for c in chunks)
     assert embeddings.presse_chunks("") == []
+
+
+# ---- Stufe 3b: Planungsbeteiligung ------------------------------------------
+
+_PLANFAELLE = """<main><section class='articles'>
+<article><section><h3>Bebauungsplan 831 &amp; Änd. 82 Flächennutzungsplan</h3>
+<p>Stadion Maastrichter Straße</p><p><strong>Abwägungsergebnis der eingegangenen Stellungnahmen</strong></p>
+<nav class='level'><a href='../PLANUNGSUNTERLAGEN/list.asp?PTID=1&amp;PFID=580'>Planungsunterlagen</a></nav>
+</section></article>
+<article><section><h3>Vorhabenbezogener Bebauungsplan 81</h3><p>Sandkruger Straße</p>
+<p><strong>Beteiligung der Öffentlichkeit gemäß § 3 (2) BauGB</strong></p>
+<nav class='level'><a href='../PLANUNGSUNTERLAGEN/list.asp?PTID=1&amp;PFID=573'>Planungsunterlagen</a></nav>
+</section><section class='periods'><div>Zeitraum der Beteiligung der Öffentlichkeit</div>
+<div>06.07.2026&#160;bis&#160;17.08.2026</div></section></article>
+</section></main>"""
+
+
+def test_planfaelle_parser(monkeypatch):
+    from council import beteiligung
+    class R:
+        text = _PLANFAELLE
+        def raise_for_status(self): pass
+    monkeypatch.setattr(beteiligung._session, "get", lambda *a, **k: R())
+    faelle = beteiligung.fetch_planfaelle()
+    assert len(faelle) == 2
+    assert faelle[0]["plan_nrs"] == ["bp-831", "fnp-82"]
+    assert faelle[0]["bis"] is None  # Abwägungsschritt ohne Zeitraum
+    assert faelle[1]["plan_nrs"] == ["bp-81"]
+    assert faelle[1]["von"] == "2026-07-06" and faelle[1]["bis"] == "2026-08-17"
+    assert faelle[1]["url"].startswith("https://oldenburg.planungsbeteiligung.de/FRONTEND/")
+
+
+def test_plan_nummern_matching_ohne_fehlgriffe():
+    from council.beteiligung import passt_zu_titel, plan_nummern
+    assert plan_nummern("82. Änderung des Flächennutzungsplans") == ["fnp-82"]
+    # 81 matcht NICHT 831 und keine Geldbeträge:
+    assert passt_zu_titel(["bp-81"], "Bebauungsplan 831 Stadion — Satzungsbeschluss") is False
+    assert passt_zu_titel(["bp-81"], "Zuschuss von 81.000 € für den Sportverein") is False
+    assert passt_zu_titel(["bp-81"], "Vorhabenbezogener Bebauungsplan 81 (Sandkruger Straße) — Entwurf") is True
+    assert passt_zu_titel(["bp-831", "fnp-82"], "Bebauungsplan 831 — Abwägung") is True
+
+
+def test_beteiligung_store_roundtrip(tmp_path):
+    store = CouncilStore(tmp_path / "c.sqlite")
+    n = store.save_beteiligungen([{"titel": "Bebauungsplan 831", "ort": "Stadion",
+                                   "schritt": "Abwägung", "von": None, "bis": None,
+                                   "url": "https://x", "plan_nrs": ["bp-831"]}])
+    assert n == 1
+    rows = store.list_beteiligungen()
+    assert rows[0]["plan_nrs"] == ["bp-831"]
+    # Zweiter Lauf ersetzt komplett.
+    store.save_beteiligungen([])
+    assert store.list_beteiligungen() == []
+    store.close()
+
+
+def test_kontext_zeigt_beteiligung():
+    ctx = qa._build_context([{"id": 1, "title": "Bebauungsplan 81",
+                              "beteiligung": "Öffentliche Auslegung bis 2026-08-17"}])
+    assert "BÜRGERBETEILIGUNG LÄUFT" in ctx

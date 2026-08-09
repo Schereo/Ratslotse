@@ -504,6 +504,22 @@ function DecisionDetailInner() {
         </div>
       </div>
 
+      {/* Stufe 3b: Läuft zu diesem Bauleitplan GERADE eine Beteiligung, ist die
+          Stellungnahme-Frist die eine Sache, die Bürger:innen JETZT tun können —
+          deshalb prominent über allem anderen. */}
+      {data.beteiligung && (
+        <a href={data.beteiligung.url} target="_blank" rel="noreferrer"
+          className="mt-2 flex items-start gap-2.5 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5 text-sm transition-colors hover:bg-primary/10">
+          <ExternalLink className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+          <span className="min-w-0">
+            <span className="font-medium text-foreground">Bürgerbeteiligung läuft: </span>
+            {data.beteiligung.schritt}
+            {data.beteiligung.bis ? ` — Stellungnahme bis ${formatDate(data.beteiligung.bis)}` : ""}
+            <span className="text-muted-foreground"> (oldenburg.planungsbeteiligung.de)</span>
+          </span>
+        </a>
+      )}
+
       {/* Nachbar-TOPs: Wer eine Sitzung durchgeht, musste bisher für jeden TOP
           zurück und neu suchen. */}
       {pos >= 0 && siblings.length > 1 && (

@@ -46,8 +46,8 @@ JOBS: list[dict] = [
     },
     {
         "key": "check_presse",
-        "label": "Stadt-Pressemitteilungen",
-        "description": "RSS-Abgleich der städtischen Pressemitteilungen für den „Aktuelles“-Block der KI-Frage.",
+        "label": "Stadt-Quellen (Presse + Beteiligung)",
+        "description": "RSS-Abgleich der städtischen Pressemitteilungen und der laufenden Bauleitplan-Beteiligungen.",
         "schedule": "täglich 5:15 Uhr",
         "max_age_h": 30,
     },
