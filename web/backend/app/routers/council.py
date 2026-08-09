@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import json
+import logging
 import math
+import time
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -24,6 +26,8 @@ from ..deps import get_council_store, get_store, optional_user, require_active
 from ..ratelimit import qa_limiter
 
 router = APIRouter(prefix="/api/council", tags=["council"])
+
+_log = logging.getLogger(__name__)
 
 BASE_URL = "https://buergerinfo.oldenburg.de"
 
@@ -715,14 +719,15 @@ QA_MIN_SCORE = 0.2
 QA_RERANK_BIAS = 1.5
 
 
-def _qa_retrieve(store: CouncilStore, q: str, expanded: str) -> tuple[list[dict], str]:
+def _qa_retrieve(store: CouncilStore, q: str, expanded: str,
+                 timings: dict | None = None) -> tuple[list[dict], str]:
     """Hybrid retrieval + cross-encoder rerank → candidates in relevance order, each
     with an *absolute* relevance score: the sigmoid of the reranker logit, NOT a
     min-max normalisation (which forced the weakest hit to a misleading 0 %). Falls
     back to keyword retrieval when embeddings/the reranker are unavailable."""
     try:
         from council import embeddings as emb
-        hits = emb.hybrid_search(store, q, expanded, top_k=QA_TOP_K, pool=55)
+        hits = emb.hybrid_search(store, q, expanded, top_k=QA_TOP_K, pool=55, timings=timings)
         if hits:
             candidates = store.get_decisions_by_ids([h[0] for h in hits])  # preserves order
             score = {h[0]: h[1] for h in hits}
@@ -766,10 +771,17 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
 
     def gen():
         try:
+            # Latenz je Schritt (ms) — geloggt und im done-Event mitgeschickt,
+            # damit Prod-Fragen dieselben Kennzahlen liefern wie eval/run_qa.py.
+            zeiten: dict = {}
             yield _sse({"type": "step", "step": "expand"})
+            t0 = time.perf_counter()
             expanded = qa.expand_query(q)
+            zeiten["expand_ms"] = round((time.perf_counter() - t0) * 1000)
             yield _sse({"type": "step", "step": "search"})
-            candidates, mode = _qa_retrieve(store, q, expanded)
+            t0 = time.perf_counter()
+            candidates, mode = _qa_retrieve(store, q, expanded, timings=zeiten)
+            zeiten["retrieve_ms"] = round((time.perf_counter() - t0) * 1000)
             yield _sse({"type": "sources", "mode": mode, "sources": [_qa_source(c) for c in candidates]})
             yield _sse({"type": "step", "step": "answer"})
             if not candidates:
@@ -791,8 +803,11 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # mehrere Deltas verteilter Marker nie durchrutschen.
             marker = qa.FOLLOWUP_MARKER
             buf, sent = "", 0
+            t0 = time.perf_counter()
             try:
                 for delta in qa.answer_stream(q, ctx):
+                    if not buf and delta:
+                        zeiten["ttft_ms"] = round((time.perf_counter() - t0) * 1000)
                     buf += delta
                     cut = buf.find(marker)
                     # Vor dem Marker: senden. Ab dem Marker: nur noch sammeln
@@ -817,8 +832,14 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             if followups:
                 yield _sse({"type": "suggestions", "questions": followups})
             _, cited = qa.resolve_citations(answer_text, {c["id"] for c in candidates})
-            yield _sse({"type": "done", "cited": cited})
+            zeiten["antwort_ms"] = round((time.perf_counter() - t0) * 1000)
+            zeiten["total_ms"] = (zeiten.get("expand_ms", 0) + zeiten.get("retrieve_ms", 0)
+                                  + zeiten.get("antwort_ms", 0))
+            _log.info("qa_timings mode=%s %s", mode,
+                      " ".join(f"{k}={v}" for k, v in sorted(zeiten.items())))
+            yield _sse({"type": "done", "cited": cited, "timings": zeiten})
         except Exception:  # noqa: BLE001 — surface a terminal error to the client
+            _log.exception("KI-Frage fehlgeschlagen")
             yield _sse({"type": "error", "message": "Frage fehlgeschlagen."})
 
     return StreamingResponse(

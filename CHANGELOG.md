@@ -7,6 +7,25 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Verbessert
+- **Die KI-Suche „Frag den Rat" findet mehr und antwortet schneller.** Die
+  Suche liest jetzt auch die Vorlagen selbst (Sachverhalt und Begründung als
+  eigener semantischer Index) und die Änderungsanträge der Fraktionen — bisher
+  sah sie im Kern nur Titel und Einzeiler der Beschlüsse, und die
+  Relevanz-Sortierung bewertete Volltext-Treffer blind. Fragen wie „Plant die
+  Stadt einen Pumptrack?", deren Antwort nur im Sachverhalt einer Vorlage
+  steht, gehen jetzt auf. Bei strittigen Abstimmungen kennt die Antwort den
+  Original-Abstimmungssatz aus dem Protokoll („Wer stimmte dagegen?"). Der
+  größte Zeitfresser war die Übersetzung der Frage in Suchbegriffe — sie
+  läuft auf einem schnelleren Modell und hängende Anbieter brechen nach 8
+  Sekunden ab statt die Suche zu blockieren; wiederholte Fragen (z. B. die
+  vorgeschlagenen Folgefragen) überspringen den Schritt ganz. Sehr lange
+  Rats-Niederschriften wurden zudem bisher bei der Auswertung stillschweigend
+  abgeschnitten — sie werden jetzt vollständig in Abschnitten ausgelesen. Für
+  die Qualitätssicherung misst der Eval-Harness jetzt auch die Antwortzeit
+  jedes Suchschritts, die Gold-Fälle sind datenbank-unabhängig formuliert und
+  ein Ops-Workflow vergleicht alten und neuen Suchweg direkt auf dem Server. (#360)
+
 ### Behoben
 - **Themen-Benachrichtigungen liefen für alle ins Leere, sobald ein einziges
   Konto ein „vergiftetes" Thema angelegt hatte.** Der Abgleich der

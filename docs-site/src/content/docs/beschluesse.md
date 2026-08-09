@@ -178,6 +178,11 @@ Details, Gewichte und Rechenbeispiele: [Bewertungs-Scores](/docs/bewertungen/).
 
 Daten, Web-UI, Themen-Anbindung (Beschlüsse ↔ Nutzer-Themen mit Verify-Pass
 und Benachrichtigung), Vorlagen & Anlagen sowie Beratungsfolge und
-Personen-/Gremien-Stammdaten sind produktiv. **Offen:** Redebeiträge (stehen
-nicht im Ratsinfo), namentliche Abstimmungen (existieren dort nicht — die
-Protokolle bleiben die einzige Abstimmungsquelle).
+Personen-/Gremien-Stammdaten sind produktiv. Aus dem Abstimmungssatz der
+Protokolle werden außerdem **Teilvoten je Fraktion** geparst
+(`council_decision_votes`): wo die Niederschrift Gegenstimmen oder
+Enthaltungen ausdrücklich einer Fraktion/Gruppe zuschreibt („bei Gegenstimmen
+der Fraktion X"), steht das strukturiert in der Datenbank — konservativ, ohne
+Zustimmung abzuleiten, Gruppen bleiben Gruppen. **Offen:** Redebeiträge
+(stehen nicht im Ratsinfo), namentliche Abstimmungen je Person (existieren
+dort nicht — mehr als der Abstimmungssatz gibt die Quelle nicht her).
