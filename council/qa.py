@@ -15,6 +15,11 @@ from nwz import llm, prompts
 from council.topics import _strip_fences  # noqa: F401  (kept for symmetry / future use)
 
 MODEL = os.environ.get("COUNCIL_QA_MODEL", "deepseek/deepseek-v4-pro")
+# Die Query-Expansion ist ein Mini-Prompt (60 Tokens Output) auf dem kritischen
+# Pfad JEDER Frage. Default ist ein schnelles Modell: gemini-2.5-flash-lite
+# expandiert in ~0,5 s, wo deepseek übers DSGVO-Provider-Routing 2–12 s brauchte
+# — bei identischer Retrieval-Trefferquote im Eval (eval/results/qa/, 09.08.2026).
+EXPAND_MODEL = os.environ.get("COUNCIL_QA_EXPAND_MODEL", "google/gemini-2.5-flash-lite")
 
 _STOP = {
     "wurde", "wurden", "wird", "werden", "beschlossen", "beschluss", "stadt", "stadtrat",
@@ -40,19 +45,38 @@ def extract_keywords(question: str) -> list[str]:
 # und sind — wie alle anderen — über das Admin-UI live editierbar.
 
 
-def expand_query(question: str, model: str = MODEL) -> str:
+# Erfolgreiche Expansionen je Prozess merken: Folgefragen-Chips und die
+# Beispielfragen stellen wortgleiche Fragen immer wieder — der Cache spart dann
+# den LLM-Roundtrip (typisch 0,5–1,5 s) auf dem kritischen Pfad. Fehlschläge
+# werden nie gecacht (ein LLM-Aussetzer soll keine schlechte Expansion festnageln).
+_EXPAND_CACHE: dict[str, str] = {}
+_EXPAND_CACHE_MAX = 256
+
+
+def expand_query(question: str, model: str = EXPAND_MODEL) -> str:
     """Turn a question into focused topical search terms. The raw question's
     boilerplate ("Was wurde zum … beschlossen?") dilutes the topic and retrieves
     generic decisions; expanded terms (e.g. "Radverkehr Fahrrad Radweg Fahrradstraße")
     retrieve far better. Falls back to the question on any error."""
+    key = f"{model}|{' '.join(question.split()).lower()[:300]}"
+    hit = _EXPAND_CACHE.get(key)
+    if hit is not None:
+        return hit
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
     try:
         prompt = prompts.render("qa_suchbegriffe", question=question.strip()[:300])
+        # timeout: Die Expansion steht auf dem kritischen Pfad VOR den Quellen —
+        # ein hängender Provider darf nicht den SDK-Default (600 s!) ausreizen;
+        # nach 8 s je Versuch ist die rohe Frage als Query der bessere Deal.
         resp = llm.chat_complete(
             model=model, _feature="qa_query_expansion", temperature=0, max_tokens=60,
-            messages=[{"role": "user", "content": prompt}], **extra,
+            timeout=8.0, messages=[{"role": "user", "content": prompt}], **extra,
         )
         terms = " ".join((resp.choices[0].message.content or "").split())
+        if terms:
+            if len(_EXPAND_CACHE) >= _EXPAND_CACHE_MAX:
+                _EXPAND_CACHE.pop(next(iter(_EXPAND_CACHE)))
+            _EXPAND_CACHE[key] = terms
         return terms or question
     except Exception:  # noqa: BLE001
         return question
@@ -63,17 +87,25 @@ def _build_context(candidates: list[dict]) -> str:
     Beschlusstexts. 450 Zeichen statt 200 und die Metadaten machen die Antworten
     spürbar konkreter — bei ~20 Kandidaten immer noch nur wenige Cent. Wenn der
     Aufrufer einen Vorlagen-Auszug (Sachverhalt/Begründung) beigelegt hat, kommt
-    der mit — das ist das *Warum* hinter dem Beschluss. Der Tragweite-Score
-    (RL-U16) wird als Hinweis angehängt, aber NUR an den Enden der Skala: „hoch"
-    samt Begründung lässt die Antwort mit dem Folgenreichen führen, „gering"
-    lässt sie Formalien (Berufungen, Kenntnisnahmen) überspringen — das
-    Relevanz-Ranking selbst bleibt davon unberührt."""
+    der mit — das ist das *Warum* hinter dem Beschluss. Bei strittigen
+    Abstimmungen kommt der Original-Abstimmungssatz (raw_result) dazu — dort
+    stehen oft die Fraktionen der Gegenstimmen, womit „Wer stimmte dagegen?"
+    beantwortbar wird. Der Tragweite-Score (RL-U16) wird als Hinweis angehängt,
+    aber NUR an den Enden der Skala: „hoch" samt Begründung lässt die Antwort
+    mit dem Folgenreichen führen, „gering" lässt sie Formalien (Berufungen,
+    Kenntnisnahmen) überspringen — das Relevanz-Ranking selbst bleibt davon
+    unberührt."""
     lines = []
     for c in candidates:
         meta = " · ".join(p for p in (c.get("committee"), c.get("session_date"), c.get("outcome")) if p)
         body = (c.get("summary") or c.get("beschluss") or "").strip()[:450]
         vorlage = (c.get("vorlage_excerpt") or "").strip()
         suffix = f" — Aus der Vorlage: {vorlage}" if vorlage else ""
+        strittig = (c.get("gegenstimmen") or 0) > 0 or (c.get("enthaltungen") or 0) > 0 \
+            or c.get("vote") == "mehrheitlich" or c.get("outcome") == "abgelehnt"
+        raw_result = (c.get("raw_result") or "").strip()
+        if strittig and raw_result:
+            suffix += f" — Abstimmung: {raw_result[:180]}"
         impact = c.get("impact")
         if impact is not None and impact >= 70:
             reason = (c.get("impact_reason") or "").strip()

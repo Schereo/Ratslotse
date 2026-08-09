@@ -60,7 +60,7 @@ def find_matches(store, name: str, limit: int = _MAX_CONTEXT) -> list[dict]:
         ids = []
     if not ids:
         try:
-            ids = [i for i, _ in store.search_decisions_fts(query, limit=limit)]
+            ids = [i for i, *_ in store.search_decisions_fts(query, limit=limit)]
         except Exception:  # noqa: BLE001
             return []
     if not ids:

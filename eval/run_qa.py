@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """Eval-Suite fuer die KI-Frage ("Frag den Stadtrat").
 
-Misst zwei Dinge gegen handgelabelte Fragen (``cases_qa.json``, Ground Truth
-aus der echten Prod-Datenbank):
+Misst drei Dinge gegen handgelabelte Fragen (``cases_qa.json``):
 
 1. **Retrieval** — findet die Hybrid-Suche (Vektor + BM25 + Reranker) die
    erwarteten Beschluesse? Metriken: Trefferquote (>= 1 expected id in den
@@ -12,21 +11,43 @@ aus der echten Prod-Datenbank):
    Prompt entfernt = Stand vor #258). Je Arm: zitiert die Antwort >= 1
    erwarteten Beschluss, wie oft zitiert sie Formalien (impact <= 15), und
    fuehrt sie mit einer Formalie an?
+3. **Latenz** — Millisekunden je Pipeline-Schritt (Expansion, Vektor, BM25,
+   Rerank, Kontext, Antwort), als Mittel/p50/p95 ueber alle Faelle. Der
+   Kaltstart (erstes Laden von Embedding- und Reranker-Modell) wird getrennt
+   ausgewiesen, weil der laufende Dienst ihn nur einmal zahlt.
+
+Gold-Cases gibt es in zwei Formen: ``expected_ids`` sind an die ids der
+Prod-Datenbank gebunden; ``expected_keys`` beschreiben die Beschluesse ueber
+natuerliche Schluessel (vorlage_nr, session_date, title_like, committee) und
+laufen damit gegen jede DB-Kopie — Prod, dev oder eine lokal gescrapte
+Teil-DB. Faelle, die sich in der aktuellen DB nicht aufloesen lassen (Teil-DB
+ohne den Zeitraum), werden sichtbar uebersprungen statt falsch gemessen.
 
 Braucht die echte ``council.sqlite`` (Embeddings + FTS + Reranker-Modell) und
 ``OPENROUTER_API_KEY`` — praktisch: auf dem Server laufen lassen::
 
     python eval/run_qa.py --rate-missing --save
 
+Schnelle Iteration ohne Antwort-LLM (misst nur Retrieval + Latenz)::
+
+    python eval/run_qa.py --nur-retrieval
+
+Einmalige Migration alter id-gebundener Faelle (auf der Prod-DB)::
+
+    python eval/run_qa.py --emit-keys
+
 ``--rate-missing`` bewertet vorab die Tragweite der Antwort-Kandidaten ohne
 Score (solange der grosse Backfill laeuft), damit der MIT-Arm echte Hinweise
 sieht. Die Metrik-Logik ist offline testbar (``evaluate`` bekommt injizierte
-Funktionen, siehe tests/test_eval_harness.py).
+Funktionen, siehe tests/test_qa_eval.py).
 """
 from __future__ import annotations
 
 import argparse
+import json
+import statistics
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Callable
@@ -43,6 +64,65 @@ from eval import harness  # noqa: E402
 TOP_K = 40
 ANSWER_N = 20
 FORMALITY_MAX = 15  # deckungsgleich mit dem "Tragweite: gering"-Marker in council/qa.py
+
+# Schluessel, die ein expected_keys-Eintrag tragen darf (= Filter von
+# CouncilStore.find_decision_ids). Alles andere ist ein Tippfehler im Case und
+# soll laut scheitern statt still nichts zu finden.
+KEY_FIELDS = ("vorlage_nr", "committee", "session_date", "title_like")
+
+
+# --------------------------------------------------------------------------- #
+# Gold-Case-Aufloesung — portable Schluessel vor prod-ids
+# --------------------------------------------------------------------------- #
+
+def resolve_expected(find_ids: Callable[..., list[int]], case: dict) -> list[int]:
+    """Erwartete Beschluss-ids eines Falls in der GERADE geoeffneten DB.
+
+    ``expected_keys`` (portabel) schlaegt ``expected_ids`` (prod-gebunden).
+    Liefert [], wenn der Fall in dieser DB-Kopie nicht aufloesbar ist — der
+    Runner ueberspringt ihn dann sichtbar, statt gegen fremde ids zu messen.
+    ``find_ids`` ist injiziert (CouncilStore.find_decision_ids), damit die
+    Logik offline testbar bleibt."""
+    keys = case.get("expected_keys")
+    if not keys:
+        return list(case.get("expected_ids") or [])
+    out: list[int] = []
+    for spec in keys:
+        unknown = set(spec) - set(KEY_FIELDS)
+        if unknown:
+            raise ValueError(f"Fall {case.get('id')}: unbekannte Schluessel {sorted(unknown)}")
+        for did in find_ids(**spec):
+            if did not in out:
+                out.append(did)
+    return out
+
+
+def emit_keys(store, cases: list[dict]) -> None:
+    """Alte id-gebundene Faelle in die portable Schluesselform uebersetzen.
+
+    Auf der Datenbank laufen lassen, zu der die ids gehoeren (Prod). Druckt je
+    Fall einen ``expected_keys``-Vorschlag zum Einpflegen in cases_qa.json —
+    bevorzugt (vorlage_nr, committee), sonst (session_date, title_like)."""
+    for case in cases:
+        if case.get("expected_keys"):
+            continue
+        rows = store.get_decisions_by_ids(list(case.get("expected_ids") or []))
+        missing = set(case.get("expected_ids") or []) - {r["id"] for r in rows}
+        specs = []
+        for r in rows:
+            if r.get("vorlage_nr"):
+                spec: dict = {"vorlage_nr": r["vorlage_nr"]}
+                if r.get("committee"):
+                    spec["committee"] = r["committee"]
+            else:
+                title_frag = " ".join((r.get("title") or "").split()[:6])
+                spec = {"session_date": r.get("session_date"), "title_like": title_frag}
+            if spec not in specs:
+                specs.append(spec)
+        print(f'  "{case["id"]}":')
+        print('    "expected_keys": ' + json.dumps(specs, ensure_ascii=False))
+        if missing:
+            print(f"    // NICHT in dieser DB: {sorted(missing)}")
 
 
 # --------------------------------------------------------------------------- #
@@ -79,26 +159,47 @@ def _arm_stats(per_case: list[dict], arm: str) -> dict:
     }
 
 
+def aggregate_latency(per_case_ms: list[dict]) -> dict:
+    """Mittel/p50/p95 je Zeitschluessel ueber alle Faelle (fehlende Werte werden
+    ignoriert — z. B. antwort_ms bei --nur-retrieval)."""
+    out: dict = {}
+    keys = {k for t in per_case_ms for k in t}
+    for key in sorted(keys):
+        vals = [t[key] for t in per_case_ms if isinstance(t.get(key), (int, float))]
+        if not vals:
+            continue
+        vals.sort()
+        out[key] = {
+            "mean": round(statistics.fmean(vals)),
+            "p50": round(vals[len(vals) // 2]),
+            "p95": round(vals[min(len(vals) - 1, int(len(vals) * 0.95))]),
+        }
+    return out
+
+
 def evaluate(
     cases: list[dict],
     retrieve: Callable[[dict], list[int]],
     answer: Callable[[dict, bool], list[int]],
     impact_of: Callable[[dict], dict[int, int | None]],
+    expected_of: Callable[[dict], list[int]] | None = None,
 ) -> dict:
     """Kern-Auswertung mit injizierten Funktionen.
 
     ``retrieve(case)``   -> Kandidaten-ids in Relevanz-Reihenfolge.
     ``answer(case, with_impact)`` -> zitierte ids in Zitier-Reihenfolge.
     ``impact_of(case)``  -> {id: impact | None} fuer die Kandidaten des Falls.
+    ``expected_of(case)`` -> erwartete ids (Default: case["expected_ids"]).
     """
+    expected_of = expected_of or (lambda c: c["expected_ids"])
     per_case: list[dict] = []
     for case in cases:
-        expected = set(case["expected_ids"])
+        expected = list(expected_of(case))
         retrieved = retrieve(case)
-        rank = _first_rank(retrieved, expected)
+        rank = _first_rank(retrieved, set(expected))
         per_case.append({
             "id": case["id"],
-            "expected": case["expected_ids"],
+            "expected": expected,
             "retrieved_n": len(retrieved),
             "first_expected_rank": rank,
             "cited_mit": answer(case, True),
@@ -131,18 +232,41 @@ def print_qa_report(result: dict) -> None:
     line = "-" * 60
     r = result["retrieval"]
     print(f"\n{line}")
-    print(f"  Suite     : qa  ({result['cases']} Fragen)")
+    print(f"  Suite     : qa  ({result['cases']} Fragen"
+          + (f", {result['skipped']} uebersprungen" if result.get("skipped") else "") + ")")
     print(f"  Retrieval : Trefferquote {r['hit_rate']:.0%} · MRR {r['mrr']:.2f}")
-    print(f"  {'Antwort-Arm':18} {'zitiert erwartet':>17} {'Zitate':>7} {'Formalie zitiert':>17} {'fuehrt m. Formalie':>19}")
-    for name, a in result["arms"].items():
-        print(f"  {name:18} {a['cite_expected_rate']:>16.0%} {a['citations']:>7} "
-              f"{a['formality_citations']:>17} {a['lead_formality_cases']:>19}")
+    if result.get("arms"):
+        print(f"  {'Antwort-Arm':18} {'zitiert erwartet':>17} {'Zitate':>7} {'Formalie zitiert':>17} {'fuehrt m. Formalie':>19}")
+        for name, a in result["arms"].items():
+            print(f"  {name:18} {a['cite_expected_rate']:>16.0%} {a['citations']:>7} "
+                  f"{a['formality_citations']:>17} {a['lead_formality_cases']:>19}")
+    if result.get("latency"):
+        print(f"  {'Latenz (ms)':18} {'mean':>7} {'p50':>7} {'p95':>7}")
+        for key, v in result["latency"].items():
+            print(f"  {key:18} {v['mean']:>7} {v['p50']:>7} {v['p95']:>7}")
+        if result.get("cold_start_ms") is not None:
+            print(f"  Kaltstart (Modelle laden, einmal je Prozess): {result['cold_start_ms']} ms")
     print(line)
     for d in result["details"]:
         rank = d["first_expected_rank"]
         mark = "ok " if rank else "MISS"
         print(f"  [{mark}] {d['id']:22} rank={rank if rank else '-':>3}  "
               f"mit={d['cited_mit']}  ohne={d['cited_ohne']}")
+    for name in result.get("skipped_ids", []):
+        print(f"  [skip] {name:22} (in dieser DB nicht aufloesbar)")
+
+
+def print_latency_compare(result: dict, prev: dict, prev_name: str) -> None:
+    """Latenz-Deltas gegen den letzten gespeicherten Lauf — macht sichtbar, was
+    ein neues Feature die Antwortzeit kostet."""
+    if not (result.get("latency") and prev.get("latency")):
+        return
+    print(f"\n  Latenz-Delta vs. {prev_name} (mean ms):")
+    for key in result["latency"]:
+        if key in prev["latency"]:
+            a, b = prev["latency"][key]["mean"], result["latency"][key]["mean"]
+            arrow = "↑" if b > a else ("↓" if b < a else "→")
+            print(f"    {key:14}: {a:>6} {arrow} {b:>6}  ({'+' if b >= a else ''}{b - a})")
 
 
 # --------------------------------------------------------------------------- #
@@ -154,6 +278,12 @@ def main() -> int:
     ap.add_argument("--save", action="store_true", help="Ergebnis nach eval/results/qa/ schreiben")
     ap.add_argument("--rate-missing", action="store_true",
                     help="Tragweite der unbewerteten Antwort-Kandidaten vorab per LLM bewerten")
+    ap.add_argument("--nur-retrieval", action="store_true",
+                    help="Antwort-Arme ueberspringen: misst Retrieval + Latenz ohne Antwort-LLM")
+    ap.add_argument("--nur-portable", action="store_true",
+                    help="Nur Faelle mit expected_keys (fuer lokale/dev-DB-Kopien mit fremden ids)")
+    ap.add_argument("--emit-keys", action="store_true",
+                    help="expected_keys-Vorschlaege fuer id-gebundene Faelle drucken (auf Prod laufen lassen)")
     ap.add_argument("--db", default=None, help="Pfad zur council.sqlite (Default: data/council.sqlite)")
     args = ap.parse_args()
 
@@ -168,25 +298,59 @@ def main() -> int:
     store = CouncilStore(Path(args.db or os.environ.get("COUNCIL_DB") or root / "data" / "council.sqlite"))
     cases = harness.load_cases("cases_qa.json")
 
+    if args.emit_keys:
+        emit_keys(store, cases)
+        store.close()
+        return 0
+
+    if args.nur_portable:
+        cases = [c for c in cases if c.get("expected_keys")]
+
+    # Erwartete ids je Fall in DIESER DB aufloesen; Unaufloesbares faellt raus.
+    resolved: dict[str, list[int]] = {c["id"]: resolve_expected(store.find_decision_ids, c) for c in cases}
+    skipped = [cid for cid, ids in resolved.items() if not ids]
+    cases = [c for c in cases if resolved[c["id"]]]
+    if skipped:
+        print(f"{len(skipped)} Fall/Faelle in dieser DB nicht aufloesbar: {', '.join(skipped)}", flush=True)
+
+    # Kaltstart einmal vorab zahlen (Embedding- + Reranker-Modell laden), damit
+    # die Latenzwerte je Fall den laufenden Dienst abbilden, nicht den Start.
+    t0 = time.perf_counter()
+    try:
+        emb.hybrid_search(store, "Radverkehr", "Radverkehr Fahrrad", top_k=1, pool=5)
+        cold_start_ms: int | None = round((time.perf_counter() - t0) * 1000)
+    except Exception:  # noqa: BLE001 — ohne fastembed misst der Lauf nichts Sinnvolles
+        print("fastembed/Reranker nicht verfuegbar — Hybrid-Retrieval ist Pflicht fuer die Eval.", file=sys.stderr)
+        store.close()
+        return 1
+
     # Ein Retrieval je Fall, von beiden Armen geteilt (identische Kandidaten,
     # nur der Kontext unterscheidet sich) — sonst misst man Retrieval-Rauschen.
     cache: dict[str, list[dict]] = {}
+    latenz: dict[str, dict] = {}
 
     def candidates_of(case: dict) -> list[dict]:
         if case["id"] not in cache:
             q = case["question"]
+            t = latenz.setdefault(case["id"], {})
+            t_exp = time.perf_counter()
             expanded = qa.expand_query(q)
-            hits = emb.hybrid_search(store, q, expanded, top_k=TOP_K, pool=55)
+            t["expand_ms"] = round((time.perf_counter() - t_exp) * 1000)
+            t_ret = time.perf_counter()
+            hits = emb.hybrid_search(store, q, expanded, top_k=TOP_K, pool=55, timings=t)
             cands = store.get_decisions_by_ids([h[0] for h in hits])
+            t["retrieve_ms"] = round((time.perf_counter() - t_ret) * 1000)
+            t_ctx = time.perf_counter()
             ctx = cands[:ANSWER_N]
             try:  # Vorlagen-Auszuege wie im /ask-Endpoint
                 texts = store.vorlage_texts_for([c.get("vorlage_nr") or "" for c in ctx])
                 for c in ctx:
-                    t = texts.get((c.get("vorlage_nr") or "").strip())
-                    if t:
-                        c["vorlage_excerpt"] = vorlagen_mod.excerpt(t, 350)
+                    txt = texts.get((c.get("vorlage_nr") or "").strip())
+                    if txt:
+                        c["vorlage_excerpt"] = vorlagen_mod.excerpt(txt, 350)
             except Exception:  # noqa: BLE001
                 pass
+            t["kontext_ms"] = round((time.perf_counter() - t_ctx) * 1000)
             cache[case["id"]] = cands
             print(f"  · {case['id']}: {len(cands)} Kandidaten", flush=True)
         return cache[case["id"]]
@@ -197,7 +361,7 @@ def main() -> int:
         for case in cases:
             todo.update(c["id"] for c in candidates_of(case)[:ANSWER_N] if c.get("impact") is None)
         # Volle Zeilen laden — get_decisions_by_ids ist die schlanke QA-Query
-        # ohne kind/amount_eur, das würde die Struktur-Signale der Rubrik schwächen.
+        # ohne kind, das würde die Struktur-Signale der Rubrik schwächen.
         missing = [d for d in (store.get_decision(i) for i in sorted(todo)) if d]
         print(f"Tragweite vorab: {len(missing)} unbewertete Kandidaten", flush=True)
         for i in range(0, len(missing), 20):
@@ -213,23 +377,45 @@ def main() -> int:
         return [c["id"] for c in candidates_of(case)]
 
     def answer(case: dict, with_impact: bool) -> list[int]:
+        if args.nur_retrieval:
+            return []
         ctx = [dict(c) for c in candidates_of(case)[:ANSWER_N]]
         if not with_impact:
             for c in ctx:
                 c.pop("impact", None)
                 c.pop("impact_reason", None)
+        t_ans = time.perf_counter()
         _, cited = qa.answer_question(case["question"], ctx)
+        t = latenz.setdefault(case["id"], {})
+        # Beide Arme laufen nacheinander — das Mittel ist die realistische Zeit EINER Antwort.
+        ms = round((time.perf_counter() - t_ans) * 1000)
+        t["antwort_ms"] = round((t["antwort_ms"] + ms) / 2) if "antwort_ms" in t else ms
         return cited
 
     def impact_of(case: dict) -> dict[int, int | None]:
         return {c["id"]: c.get("impact") for c in candidates_of(case)}
 
     try:
-        result = evaluate(cases, retrieve, answer, impact_of)
+        result = evaluate(cases, retrieve, answer, impact_of,
+                          expected_of=lambda c: resolved[c["id"]])
     finally:
         store.close()
 
+    if args.nur_retrieval:
+        result.pop("arms", None)
+    per_case_t = [latenz[c["id"]] for c in cases if c["id"] in latenz]
+    for t in per_case_t:
+        # vektor/bm25/rerank stecken bereits in retrieve_ms — nicht doppelt zaehlen.
+        t["total_ms"] = sum(t.get(k, 0) for k in ("expand_ms", "retrieve_ms", "kontext_ms", "antwort_ms"))
+    result["latency"] = aggregate_latency(per_case_t)
+    result["cold_start_ms"] = cold_start_ms
+    result["skipped"] = len(skipped)
+    result["skipped_ids"] = skipped
+
+    prev, prev_path = harness.load_last("qa")
     print_qa_report(result)
+    if prev:
+        print_latency_compare(result, prev, prev_path.name)
     if args.save:
         out = harness.save_result(result)
         print(f"\n  gespeichert -> {out}")

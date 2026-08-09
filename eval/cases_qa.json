@@ -3,84 +3,122 @@
     "id": "stadion",
     "note": "Stadionneubau Maastrichter Str. — Grundsatz + Bewilligungen 2023",
     "question": "Was wurde zum Stadionneubau an der Maastrichter Straße beschlossen?",
-    "expected_ids": [5621, 5402, 5459, 5656, 5442, 5690, 5797]
+    "expected_ids": [5621, 5402, 5459, 5656, 5442, 5690, 5797],
+    "expected_keys": [{"vorlage_nr": "22/1006/1", "committee": "Rat"}, {"vorlage_nr": "22/1006", "committee": "Ausschuss für Stadtplanung und Bauen"}, {"vorlage_nr": "22/1006", "committee": "Ausschuss für Finanzen und Beteiligungen"}, {"vorlage_nr": "23/0258", "committee": "Ausschuss für Finanzen und Beteiligungen"}, {"vorlage_nr": "23/0147", "committee": "Ausschuss für Finanzen und Beteiligungen"}, {"vorlage_nr": "23/0147", "committee": "Rat"}, {"vorlage_nr": "23/0258", "committee": "Rat"}]
   },
   {
     "id": "fahrradstrassen",
     "note": "Fahrradstraßen quer durch die Jahre (Haareneschstr., Quellenweg, Achterdiek …)",
     "question": "Welche Fahrradstraßen wurden in Oldenburg beschlossen?",
-    "expected_ids": [7171, 7533, 5597, 3907, 373, 1532]
+    "expected_ids": [7171, 7533, 5597, 3907, 373, 1532],
+    "expected_keys": [{"vorlage_nr": "24/0824", "committee": "Verkehrsausschuss"}, {"vorlage_nr": "24/0824", "committee": "Rat"}, {"vorlage_nr": "23/0261", "committee": "Verkehrsausschuss"}, {"vorlage_nr": "21/0439", "committee": "Verkehrsausschuss"}, {"vorlage_nr": "18/0092/1", "committee": "Verkehrsausschuss"}, {"vorlage_nr": "19/0104", "committee": "Verkehrsausschuss"}]
   },
   {
     "id": "fliegerhorst-abfall",
-    "note": "Illegale Abfallentsorgung/Korruptionsverdacht Schießstand — Kette 2024/2025; 7739 ist der folgenreiche Kernbeschluss",
+    "note": "Illegale Abfallentsorgung/Korruptionsverdacht Schießstand — Kette 2024/2025",
     "question": "Was unternimmt die Stadt gegen die illegale Abfallentsorgung auf dem Fliegerhorst?",
-    "expected_ids": [7739, 7837, 7531, 7532]
+    "expected_ids": [7739, 7837, 7531, 7532],
+    "expected_keys": [{"session_date": "2025-05-26", "title_like": "Illegale Abfallentsorgung und Korruptionsverdacht"}, {"vorlage_nr": "25/0520", "committee": "Rat"}, {"vorlage_nr": "25/0199", "committee": "Rat"}, {"session_date": "2025-03-17", "title_like": "Akteneinsicht zur Bodenbeprobung"}]
   },
   {
     "id": "wechloy-neubau",
-    "note": "Neubau Grundschule Wechloy — Beratungskette 2024, Ablehnung am 25.11.2024 (7282)",
+    "note": "Neubau Grundschule Wechloy — Beratungskette 2024, Ablehnung am 25.11.2024",
     "question": "Was wurde zum Neubau der Grundschule Wechloy entschieden?",
-    "expected_ids": [7282, 6842, 6876, 6696, 6598, 6998, 6753, 6816]
+    "expected_ids": [7282, 6842, 6876, 6696, 6598, 6998, 6753, 6816],
+    "expected_keys": [{"vorlage_nr": "24/0264/3", "committee": "Rat"}, {"vorlage_nr": "24/0264/2", "committee": "Schulausschuss"}, {"vorlage_nr": "24/0264/2", "committee": "Sportausschuss"}, {"vorlage_nr": "24/0264/1", "committee": "Schulausschuss"}, {"vorlage_nr": "24/0264", "committee": "Schulausschuss"}, {"vorlage_nr": "24/0264/3", "committee": "Schulausschuss"}, {"vorlage_nr": "24/0264/2", "committee": "Verkehrsausschuss"}]
   },
   {
     "id": "vergnuegungssteuer",
     "note": "Verzicht auf Vergnügungssteuer bei Tanzveranstaltungen + Satzungsänderung 2024/2025",
     "question": "Wurde die Vergnügungssteuer auf Tanzveranstaltungen abgeschafft?",
-    "expected_ids": [8056, 7864, 8002, 7972, 7089, 7270]
+    "expected_ids": [8056, 7864, 8002, 7972, 7089, 7270],
+    "expected_keys": [{"session_date": "2025-09-29", "title_like": "Verzicht auf Erhebung von Vergnügungssteuer"}, {"session_date": "2025-09-03", "title_like": "Verzicht auf Erhebung von Vergnügungssteuer"}, {"vorlage_nr": "25/0489", "committee": "Rat"}, {"vorlage_nr": "25/0489", "committee": "Ausschuss für Finanzen und Beteiligungen"}, {"session_date": "2024-11-19", "title_like": "Verzicht auf die Erhebung der Vergnügungssteuer"}, {"vorlage_nr": "24/0797", "committee": "Ausschuss für Finanzen und Beteiligungen"}]
   },
   {
     "id": "huntebruecke",
     "note": "Resolution zum Neubau der Huntebrücke (Dringlichkeitsantrag + Ratsbeschluss 2025)",
     "question": "Gibt es eine Resolution des Rats zur Huntebrücke?",
-    "expected_ids": [8355, 8105]
+    "expected_ids": [8355, 8105],
+    "expected_keys": [{"session_date": "2025-12-01", "title_like": "Resolution zum schnellstmöglichen Neubau"}, {"session_date": "2025-11-17", "title_like": "Resolution zum schnellstmöglichen Neubau"}]
   },
   {
     "id": "lachgas",
     "note": "Lachgas-Verkaufsverbot an Minderjährige — Verordnungskette 2025",
     "question": "Was hat die Stadt zum Verkauf von Lachgas an Minderjährige beschlossen?",
-    "expected_ids": [7452, 7662, 7839, 7400]
+    "expected_ids": [7452, 7662, 7839, 7400],
+    "expected_keys": [{"session_date": "2025-03-26", "title_like": "Erlass einer Verordnung zum Verbot"}, {"session_date": "2025-04-28", "title_like": "Erlass einer Verordnung zum Verbot"}, {"vorlage_nr": "25/0567", "committee": "Jugendhilfeausschuss"}, {"vorlage_nr": "25/0090", "committee": "Jugendhilfeausschuss"}]
   },
   {
     "id": "machatschkala",
     "note": "Städtepartnerschaft Machatschkala — CDU-Antrag, mehrfach beraten/vertagt",
     "question": "Was wurde zur Städtepartnerschaft mit Machatschkala entschieden?",
-    "expected_ids": [6169, 6571, 6652, 6301]
+    "expected_ids": [6169, 6571, 6652, 6301],
+    "expected_keys": [{"vorlage_nr": "23/0929", "committee": "Ausschuss für Wirtschaftsförderung, Digitalisierung und internationale Zusammenarbeit"}, {"vorlage_nr": "23/0929", "committee": "Rat"}, {"vorlage_nr": "23/0929/1", "committee": "Rat"}, {"vorlage_nr": "23/0929/1", "committee": "Ausschuss für Wirtschaftsförderung, Digitalisierung und internationale Zusammenarbeit"}]
   },
   {
     "id": "maerchen-strassen",
     "note": "Märchen-Straßennamen (Rotkäppchen-/Schneewittchen-/Rapunzelweg) 2025",
     "question": "Welche Straßen wurden nach Märchenfiguren benannt?",
-    "expected_ids": [7477, 7478, 7476, 7648, 7649, 7651]
+    "expected_ids": [7477, 7478, 7476, 7648, 7649, 7651],
+    "expected_keys": [{"vorlage_nr": "25/0070", "committee": "Verkehrsausschuss"}, {"vorlage_nr": "25/0069", "committee": "Verkehrsausschuss"}, {"vorlage_nr": "25/0072", "committee": "Verkehrsausschuss"}, {"vorlage_nr": "25/0069", "committee": "Rat"}, {"vorlage_nr": "25/0070", "committee": "Rat"}, {"vorlage_nr": "25/0072", "committee": "Rat"}]
   },
   {
     "id": "summer-street",
     "note": "Summer Street Schloßplatz — Antrag 2022, Beschluss 11/2022, Absage/Umplanung",
     "question": "Was wurde zur Summer Street am Schloßplatz beschlossen?",
-    "expected_ids": [5207, 5367, 4480, 4635, 5069]
+    "expected_ids": [5207, 5367, 4480, 4635, 5069],
+    "expected_keys": [{"vorlage_nr": "22/0854", "committee": "Verkehrsausschuss"}, {"vorlage_nr": "22/0854", "committee": "Rat"}, {"session_date": "2022-04-25", "title_like": "Temporäre autofreie Zone in den Sommermonaten"}, {"vorlage_nr": "22/0225", "committee": "Verkehrsausschuss"}, {"vorlage_nr": "22/0609", "committee": "Verkehrsausschuss"}]
   },
   {
     "id": "baeder-finanzen",
     "note": "BBGO-Jahresabschlüsse (Fehlbeträge) — neueste zuerst erwartet",
     "question": "Wie steht es finanziell um die Bäderbetriebsgesellschaft?",
-    "expected_ids": [8197, 7061, 6840, 5911]
+    "expected_ids": [8197, 7061, 6840, 5911],
+    "expected_keys": [{"vorlage_nr": "25/0821", "committee": "Ausschuss für Finanzen und Beteiligungen"}, {"vorlage_nr": "24/0455", "committee": "Rat"}, {"vorlage_nr": "24/0455", "committee": "Ausschuss für Finanzen und Beteiligungen"}, {"vorlage_nr": "23/0486", "committee": "Rat"}]
   },
   {
     "id": "klimaneutral",
     "note": "Klimaneutralität — Maßnahmenplan 2035, klimaneutrale Gebäude",
     "question": "Was wurde zur Klimaneutralität der Stadt beschlossen?",
-    "expected_ids": [7617, 4183]
+    "expected_ids": [7617, 4183],
+    "expected_keys": [{"vorlage_nr": "25/0329", "committee": "Betriebsausschuss Eigenbetrieb Gebäudewirtschaft und Hochbau"}, {"vorlage_nr": "21/0896", "committee": "Ausschuss für Stadtgrün, Umwelt und Klima"}]
   },
   {
     "id": "grundschulen-aktuell",
-    "note": "Formalien-Konkurrenz-Fall: generische Schul-Frage, Berufungen in den Schulausschuss ranken mit — Antwort soll Substanz (Zügigkeit/Neubau) zitieren",
+    "note": "Formalien-Konkurrenz-Fall: generische Schul-Frage, Berufungen ranken mit — Antwort soll Substanz zitieren",
     "question": "Was wurde zuletzt zu Grundschulen beschlossen?",
-    "expected_ids": [8425, 8312, 7282, 6842]
+    "expected_ids": [8425, 8312, 7282, 6842],
+    "expected_keys": [{"vorlage_nr": "26/0178", "committee": "Rat"}, {"vorlage_nr": "26/0178", "committee": "Schulausschuss"}, {"vorlage_nr": "24/0264/3", "committee": "Rat"}, {"vorlage_nr": "24/0264/2", "committee": "Schulausschuss"}]
   },
   {
     "id": "wohnraum",
     "note": "Bezahlbarer Wohnraum — Konzepte, Grundsatzbeschluss Wohnbaugrundstücke, Wohnungsbaugesellschaft",
     "question": "Was tut die Stadt für bezahlbaren Wohnraum?",
-    "expected_ids": [5291, 5630, 2163, 2725]
+    "expected_ids": [5291, 5630, 2163, 2725],
+    "expected_keys": [{"vorlage_nr": "22/0755", "committee": "Ausschuss für Stadtplanung und Bauen"}, {"vorlage_nr": "22/0730/1", "committee": "Rat"}, {"vorlage_nr": "19/0843", "committee": "Ausschuss für Finanzen und Beteiligungen"}, {"vorlage_nr": "20/0215", "committee": "Sozialausschuss"}]
+  },
+  {
+    "id": "caecilienbruecke-verlauf",
+    "note": "NEU (Fragetyp Verlauf/Partei): mehrjährige Kette über CDU-Anfrage (24/0252), Fraktions-Antrag Ersatzbau 11/2024, Resolution 08/2025 — chronologisches Dossier-Material",
+    "question": "Wie ist der Stand beim Neubau der Cäcilienbrücke?",
+    "expected_keys": [{"session_date": "2025-08-25", "title_like": "Cäcilienbrücke"}, {"session_date": "2024-11-18", "title_like": "Ersatzbau für die Cäcilienbrücke"}, {"vorlage_nr": "24/0252"}]
+  },
+  {
+    "id": "pumptrack-vorlagentiefe",
+    "note": "NEU (Fragetyp Vorlagen-Tiefe): „Pumptrack\" steht NUR im Sachverhalt (26/0355 Schlieffenstraße, Zeichen ~4000), nicht in Titel/Summary/Beschluss — testet Vorlagen-Chunks + Reranker-Sicht auf Vorlagentext",
+    "question": "Plant die Stadt einen Pumptrack?",
+    "expected_keys": [{"vorlage_nr": "26/0355"}, {"vorlage_nr": "23/0662"}, {"vorlage_nr": "21/0916"}]
+  },
+  {
+    "id": "weser-ems-buergschaft",
+    "note": "NEU (Fragetyp Zahlen): Ausfallbürgschaft 79 Mio. € für die Weser-Ems-Hallen (25/0321) — Antwort soll den Betrag nennen",
+    "question": "Wie hoch ist die Bürgschaft der Stadt für die Weser-Ems-Hallen?",
+    "expected_keys": [{"vorlage_nr": "25/0321"}]
+  },
+  {
+    "id": "seb-bus-samstag",
+    "note": "NEU (Fragetyp Subvote/Partei): kostenloser SEB-Samstag steckt im Änderungsantrag Grüne+SPD zur VBN-Tarifanpassung (25/0496, Rat 09/2025) — testet Subvote-Faltung (neue Extraktion) bzw. Vorlagen-Text (alte)",
+    "question": "Was wurde aus dem kostenlosen Bus-Samstag in Oldenburg?",
+    "expected_keys": [{"vorlage_nr": "25/0496", "committee": "Rat"}]
   }
 ]

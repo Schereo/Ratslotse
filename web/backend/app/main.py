@@ -81,11 +81,13 @@ def _warm_models() -> None:
             from council import embeddings as emb
             from council.store import CouncilStore
 
-            # search() lädt Embedder UND die Vektor-Matrix (die vorher erst bei
-            # der ersten Frage aus SQLite kam); rerank() den Cross-Encoder.
+            # Ein hybrid_search wärmt ALLES auf dem Frage-Pfad: Embedder,
+            # Beschluss- und Vorlagen-Chunk-Matrix (kamen vorher erst bei der
+            # ersten Frage aus SQLite) sowie den FTS-Zugriff; rerank() den
+            # Cross-Encoder.
             store = CouncilStore(get_settings().council_db)
             try:
-                emb.search(store, "warmup", top_k=1)
+                emb.hybrid_search(store, "warmup", "warmup", top_k=1, pool=2)
             finally:
                 store.close()
             emb.rerank("warmup", [(0, "warmup")])
