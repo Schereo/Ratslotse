@@ -211,11 +211,27 @@ def _factions_of(c: dict) -> list[str]:
     return [str(f).strip() for f in raw or [] if str(f).strip()]
 
 
+def _presse_block(presse: list[dict] | None) -> str:
+    """Kontext-Absatz „Aktuelles von der Stadt" — Pressemitteilungen sind KEINE
+    Beschlüsse und werden nicht mit [id] zitiert; die Antwort nennt sie als
+    „Laut Pressemitteilung vom …". Leer, wenn nichts Einschlägiges da ist."""
+    if not presse:
+        return ""
+    zeilen = "\n".join(
+        f"- {p.get('titel', '')} (Pressemitteilung der Stadt vom {p.get('datum') or 'unbekannt'}): "
+        f"{(p.get('auszug') or '').strip()[:280]}"
+        for p in presse)
+    return ("\nAKTUELLES VON DER STADT (Pressemitteilungen — nur nutzen, wenn sie die Frage\n"
+            "wirklich betreffen; im Text als „Laut Pressemitteilung vom …“ nennen, NIE mit [id]):\n"
+            f"{zeilen}\n")
+
+
 def _answer_messages(question: str, candidates: list[dict], typ: str = "thema",
-                     model: str = MODEL) -> tuple[list[dict], dict]:
+                     model: str = MODEL, presse: list[dict] | None = None) -> tuple[list[dict], dict]:
     prompt = prompts.render("qa_antwort", question=question.strip()[:300],
                             context=_build_context(candidates),
-                            extra_regeln=EXTRA_REGELN.get(typ, ""))
+                            extra_regeln=EXTRA_REGELN.get(typ, ""),
+                            presse=_presse_block(presse))
     # reasoning-Schalter am TATSÄCHLICH genutzten Modell festmachen — vorher
     # hing er an der Modul-Konstante und lief bei model=-Overrides ins Leere.
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
@@ -227,20 +243,22 @@ def _answer_tokens(typ: str) -> int:
     return 900 if typ == "verlauf" else 600
 
 
-def answer_question(question: str, candidates: list[dict], model: str = MODEL, typ: str = "thema"):
+def answer_question(question: str, candidates: list[dict], model: str = MODEL, typ: str = "thema",
+                    presse: list[dict] | None = None):
     """Synthesise an answer from retrieved candidates. Returns ``(answer, cited_ids)``."""
-    messages, extra = _answer_messages(question, candidates, typ, model)
+    messages, extra = _answer_messages(question, candidates, typ, model, presse)
     resp = llm.chat_complete(model=model, _feature="qa_antwort", temperature=0.2,
                              max_tokens=_answer_tokens(typ), messages=messages, **extra)
     answer = (resp.choices[0].message.content or "").strip()
     return resolve_citations(answer, {c["id"] for c in candidates})
 
 
-def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ: str = "thema"):
+def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ: str = "thema",
+                  presse: list[dict] | None = None):
     """Stream the answer text deltas (same prompt/context as answer_question) so the
     UI can render the answer as it is written. Citation resolution is the caller's
     job once the full text is assembled (see resolve_citations)."""
-    messages, extra = _answer_messages(question, candidates, typ, model)
+    messages, extra = _answer_messages(question, candidates, typ, model, presse)
     yield from llm.chat_stream(model=model, _feature="qa_antwort", temperature=0.2,
                                max_tokens=_answer_tokens(typ), messages=messages, **extra)
 

@@ -240,7 +240,8 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "{extra_regeln}\n\n"
             "FRAGE: {question}\n\n"
             "BESCHLÜSSE:\n"
-            "{context}\n\n"
+            "{context}\n"
+            "{presse}\n"
             "Antworte knapp (2–5 Sätze) auf Deutsch, mit id-Zitaten.\n\n"
             "Hänge danach GENAU EINE letzte Zeile an, die so beginnt:\n"
             'FOLGEFRAGEN: ["…", "…", "…"]\n'

@@ -98,8 +98,13 @@ def process(db: Path, top_k: int = 6, threshold: float = 0.45, batch: int = 256)
                 n_chunks += len(chunks)
             print(f"  {min(start + batch, len(todo))}/{len(todo)}", flush=True)
 
+    # Presse-Chunks als Wochen-Backstop (der tägliche check_presse embeddet
+    # Neues sofort; hier wird nachgeholt, was dort ohne fastembed liegen blieb).
+    n_presse = embeddings.embed_presse_missing(store)
+
     store.close()
-    return {"decisions": n, "links": len(out), "vorlagen_chunks": n_chunks}
+    return {"decisions": n, "links": len(out), "vorlagen_chunks": n_chunks,
+            "presse_chunks": n_presse}
 
 
 def main() -> int:

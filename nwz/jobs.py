@@ -45,6 +45,13 @@ JOBS: list[dict] = [
         "max_age_h": 30,
     },
     {
+        "key": "check_presse",
+        "label": "Stadt-Pressemitteilungen",
+        "description": "RSS-Abgleich der städtischen Pressemitteilungen für den „Aktuelles“-Block der KI-Frage.",
+        "schedule": "täglich 5:15 Uhr",
+        "max_age_h": 30,
+    },
+    {
         "key": "weekly_enrich",
         "label": "Wöchentliche Anreicherung",
         "description": "Entitäten, Geocoding, Embeddings, Rückblicke, Interessantheit und Tragweite in Tranchen.",

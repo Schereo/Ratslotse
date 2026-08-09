@@ -275,6 +275,91 @@ def _vorlage_matrix(store):
     return _vorlage_matrix_cache[1], _vorlage_matrix_cache[2], _vorlage_matrix_cache[3]
 
 
+# --- Pressemitteilungs-Index (eigener Kanal neben den Beschlüssen) -----------
+
+PRESSE_CHUNK_SIZE = 1100
+PRESSE_MAX_CHUNKS = 3
+
+
+def presse_chunks(text: str) -> list[str]:
+    """PM-Text in Fenster — PMs sind kurz und sauber, kein excerpt() nötig."""
+    text = (text or "").strip()
+    if not text:
+        return []
+    out, step = [], PRESSE_CHUNK_SIZE - CHUNK_OVERLAP
+    for start in range(0, len(text), step):
+        piece = text[start:start + PRESSE_CHUNK_SIZE].strip()
+        if piece and (len(piece) >= 200 or start == 0):
+            out.append(piece)
+        if len(out) >= PRESSE_MAX_CHUNKS:
+            break
+    return out
+
+
+_presse_matrix_cache: tuple | None = None  # (version, ids, texts, mat)
+
+
+def _presse_matrix(store):
+    global _presse_matrix_cache
+    version = store.presse_embeddings_version()
+    if _presse_matrix_cache is None or _presse_matrix_cache[0] != version:
+        import numpy as np
+
+        rows = store.get_presse_embeddings()
+        ids = [r["presse_id"] for r in rows]
+        texts = [r["chunk_text"] for r in rows]
+        if rows:
+            buf = b"".join(bytes(r["vector"]) for r in rows)
+            mat = np.frombuffer(buf, dtype="float32").reshape(len(ids), -1)
+        else:
+            mat = np.zeros((0, 0), dtype="float32")
+        _presse_matrix_cache = (version, ids, texts, mat)
+    return _presse_matrix_cache[1], _presse_matrix_cache[2], _presse_matrix_cache[3]
+
+
+def search_presse(store, query: str, expanded: str, top_k: int = 3,
+                  min_score: float = 0.45) -> list[tuple]:
+    """Beste Pressemitteilungen zur Frage → ``[(presse_id, score)]``.
+    Vektor-Kanal (bester Chunk je PM) ∪ BM25 — bewusst mit strenger Schwelle:
+    der Block „Aktuelles von der Stadt" soll nur auftauchen, wenn es wirklich
+    Einschlägiges gibt. Leer, solange kein PM-Index aufgebaut ist."""
+    best: dict[int, float] = {}
+    try:
+        ids, _texts, mat = _presse_matrix(store)
+        if ids:
+            qv = embed([expanded])[0]
+            scores = mat @ qv
+            for pid, s in zip(ids, scores):
+                if s >= min_score and s > best.get(pid, -1.0):
+                    best[pid] = float(s)
+    except Exception:  # noqa: BLE001 — ohne fastembed bleibt BM25
+        pass
+    for pid, score, _snip in store.search_presse_fts(f"{query} {expanded}", limit=top_k * 3):
+        # BM25-Scores sind nicht cosine-vergleichbar — nur als Auffüller hinter
+        # den Vektor-Treffern (kleiner Sockel-Score).
+        best.setdefault(pid, 0.01 + min(score, 50) / 1000)
+    return sorted(best.items(), key=lambda x: -x[1])[:top_k]
+
+
+def embed_presse_missing(store) -> int:
+    """Chunk-Vektoren für neue/geänderte PMs schreiben (hash-idempotent).
+    Wird vom täglichen check_presse best-effort gerufen (fastembed nötig) und
+    von embed_decisions.py im Wochenlauf als Backstop."""
+    todo = store.presse_missing_embeddings()
+    n = 0
+    for p in todo:
+        chunks = presse_chunks(p["text"])
+        if not chunks:
+            store.replace_presse_embeddings(p["id"], p["text_hash"], [])
+            continue
+        vecs = embed(chunks)
+        store.replace_presse_embeddings(
+            p["id"], p["text_hash"],
+            [(chunks[i], vecs[i].tobytes()) for i in range(len(chunks))])
+        n += len(chunks)
+    return n
+
+
 def search_vorlagen(store, qv, top_k: int = 12, min_score: float = 0.35) -> list[tuple]:
     """Beste Vorlagen zu einem Query-Vektor → ``[(vorlage_nr, score, chunk_text)]``,
     je Vorlage zählt ihr bester Chunk (dessen Text wandert in das Rerank-Paar).
