@@ -21,6 +21,14 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   sie steckt im selben Aufruf, der die Frage in Suchbegriffe übersetzt. (#361)
 
 ### Verbessert
+- **Die KI-Antwort kommt jetzt in 1–2 Sekunden statt in 20.** Nach der
+  Suchbegriffs-Übersetzung war die Antwort-Formulierung der letzte große
+  Zeitfresser: Das bisherige Modell brauchte dafür über die
+  datenschutzkonformen Anbieter-Routen 3–32 Sekunden. Der Modellvergleich
+  gegen das Gold-Set zeigt ein schnelleres Modell mit gleicher oder besserer
+  Zitier-Qualität — Antworten kommen jetzt typisch nach gut einer Sekunde.
+  Die vorgeschlagenen Folgefragen bleiben dabei auf Dinge beschränkt, die in
+  den gefundenen Beschlüssen wirklich vorkommen. (#363)
 - **Die KI-Suche „Frag den Rat" findet mehr und antwortet schneller.** Die
   Suche liest jetzt auch die Vorlagen selbst (Sachverhalt und Begründung als
   eigener semantischer Index) und die Änderungsanträge der Fraktionen — bisher
