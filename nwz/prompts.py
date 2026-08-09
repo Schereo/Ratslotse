@@ -22,6 +22,35 @@ _DB_PATH = Path(__file__).resolve().parent.parent / "data" / "nwz.sqlite"
 # in the admin UI. The template is what the model receives after .format().
 
 DEFAULTS: dict[str, dict[str, str]] = {
+    "wortbeitraege_extract": {
+        "title": "Wortbeiträge aus Protokollen",
+        "description": "Extrahiert Redebeiträge, Anfragen & Anregungen, Einwohnerfragen und Verwaltungszusagen aus einem Sitzungsprotokoll (Task 16).",
+        "template": (
+            "Du liest einen Ausschnitt aus einem amtlichen Sitzungsprotokoll des Oldenburger "
+            "Stadtrats bzw. seiner Ausschüsse. Extrahiere daraus ALLE inhaltlichen Wortbeiträge "
+            "als JSON-Array. Ein Eintrag je Beitrag:\n"
+            '{{"art": "rede"|"anfrage"|"einwohnerfrage"|"zusage", "top": "Tagesordnungspunkt-Nummer '
+            'oder -Titel, falls erkennbar", "sprecher": "Name ohne Anrede, falls genannt", '
+            '"partei": "Fraktion/Gruppe falls genannt, sonst null", '
+            '"text": "Kernaussage in 1-3 Sätzen, dicht am Wortlaut", '
+            '"antwort": "Antwort der Verwaltung, falls vorhanden, sonst null"}}\n\n'
+            "Regeln:\n"
+            "- \"rede\": inhaltliche Debattenbeiträge zu Tagesordnungspunkten (Positionen, Kritik, "
+            "Begründungen). KEINE Formalien (Begrüßung, Feststellung der Beschlussfähigkeit, "
+            "Abstimmungsergebnisse, Genehmigung der Niederschrift).\n"
+            "- \"anfrage\": Punkte aus „Anfragen und Anregungen\" — die Frage/Anregung als text, "
+            "die Verwaltungsantwort (auch nachgereichte) als antwort.\n"
+            "- \"einwohnerfrage\": Beiträge aus der Einwohnerfragestunde — Fragesteller nur nennen, "
+            "wenn im Protokoll ausgeschrieben; sonst sprecher null.\n"
+            "- \"zusage\": ausdrückliche Zusagen der Verwaltung (etwas zu prüfen, nachzureichen, "
+            "umzusetzen) — auch wenn sie innerhalb einer Antwort fallen.\n"
+            "- Namen und Parteien exakt wie im Protokoll; nichts erraten, nichts erfinden.\n"
+            "- Fasse zusammen statt zu zitieren, aber bewahre konkrete Zahlen, Orte und Forderungen.\n"
+            "- Leerer Ausschnitt ohne Wortbeiträge → [].\n"
+            "Antworte NUR mit dem JSON-Array.\n\n"
+            "PROTOKOLL-AUSSCHNITT:\n{text}"
+        ),
+    },
     "vagueness_check_system": {
         "title": "Vagheits-Prüfung bei neuem Thema",
         "description": "Prüft, ob eine Themen-Beschreibung präzise genug ist, und schlägt eine bessere vor.",
