@@ -3281,6 +3281,34 @@ class CouncilStore:
             out.append(d)
         return out
 
+    # ---- Haushalt als Geldfragen-Quelle (Tim, 09.08.) ----
+
+    def haushalt_fuer_begriffe(self, begriffe: list[str], limit: int = 3) -> list[dict]:
+        """Teilhaushalts-Zeilen des neuesten Jahres, deren Bereich einen der
+        Suchbegriffe trägt („Verkehr" → „Verkehr und Straßenbau"); fragt jemand
+        nach dem Haushalt insgesamt, kommt die Summenzeile. Für den
+        Geld-Kontext der KI-Frage — Plan-Zahlen, klar getrennt von Beschlüssen."""
+        try:
+            jahr = self._conn.execute("SELECT MAX(year) FROM council_haushalt").fetchone()[0]
+        except sqlite3.OperationalError:
+            return []
+        if not jahr:
+            return []
+        woerter = [w.lower() for w in begriffe if len(w) >= 4][:10]
+        rows = self._conn.execute(
+            "SELECT year, bereich, ertraege, aufwendungen, ergebnis, is_summe "
+            "FROM council_haushalt WHERE year = ?", (jahr,)).fetchall()
+        out = []
+        for r in rows:
+            b = (r["bereich"] or "").lower()
+            if r["is_summe"]:
+                if any(w in ("haushalt", "gesamthaushalt", "haushaltsplan") for w in woerter):
+                    out.append(dict(r))
+                continue
+            if any(w in b for w in woerter):
+                out.append(dict(r))
+        return out[:limit]
+
     # ---- Teilvoten aus raw_result (welche Fraktion stimmte wie) ----
 
     def save_decision_votes(self, decision_id: int, votes: list[tuple[str, str]]) -> None:

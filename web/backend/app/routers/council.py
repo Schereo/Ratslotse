@@ -853,6 +853,12 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     ctx = ctx[:QA_ANSWER_N - len(fehlend)] + fehlend
             if typ == "verlauf":
                 ctx = qa.sort_verlauf(ctx)
+            haushalt_zeilen: list[dict] = []
+            if typ == "geld":
+                try:  # Plan-Zahlen aus dem Stadthaushalt als Zusatzkontext
+                    haushalt_zeilen = store.haushalt_fuer_begriffe(expanded.split())
+                except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+                    pass
             try:  # Vorlagen-Auszüge (Sachverhalt) beilegen — best-effort
                 texts = store.vorlage_texts_for([c.get("vorlage_nr") or "" for c in ctx])
                 for c in ctx:
@@ -880,7 +886,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             buf, sent = "", 0
             t0 = time.perf_counter()
             try:
-                for delta in qa.answer_stream(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf):
+                for delta in qa.answer_stream(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf, haushalt=haushalt_zeilen):
                     if not buf and delta:
                         zeiten["ttft_ms"] = round((time.perf_counter() - t0) * 1000)
                     buf += delta
@@ -897,7 +903,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     sent = len(buf)
             except Exception:  # noqa: BLE001 — streaming failed mid-way → one-shot fallback
                 if not buf:
-                    ans, _ = qa.answer_question(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf)
+                    ans, _ = qa.answer_question(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf, haushalt=haushalt_zeilen)
                     buf = ans
                     yield _sse({"type": "token", "text": ans})
                     sent = len(ans)
