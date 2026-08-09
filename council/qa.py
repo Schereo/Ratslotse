@@ -14,7 +14,10 @@ import re
 from nwz import llm, prompts
 from council.topics import _strip_fences  # noqa: F401  (kept for symmetry / future use)
 
-MODEL = os.environ.get("COUNCIL_QA_MODEL", "deepseek/deepseek-v4-pro")
+# Antwort-Modell: gemini-2.5-flash antwortet in ~1,2–1,8 s, wo deepseek übers
+# DSGVO-Provider-Routing 3–32 s brauchte — bei gleicher oder besserer
+# Zitier-Qualität im Eval (eval/results/qa/, Modellvergleich 09.08.2026).
+MODEL = os.environ.get("COUNCIL_QA_MODEL", "google/gemini-2.5-flash")
 # Die Query-Expansion ist ein Mini-Prompt (60 Tokens Output) auf dem kritischen
 # Pfad JEDER Frage. Default ist ein schnelles Modell: gemini-2.5-flash-lite
 # expandiert in ~0,5 s, wo deepseek übers DSGVO-Provider-Routing 2–12 s brauchte
@@ -208,11 +211,14 @@ def _factions_of(c: dict) -> list[str]:
     return [str(f).strip() for f in raw or [] if str(f).strip()]
 
 
-def _answer_messages(question: str, candidates: list[dict], typ: str = "thema") -> tuple[list[dict], dict]:
+def _answer_messages(question: str, candidates: list[dict], typ: str = "thema",
+                     model: str = MODEL) -> tuple[list[dict], dict]:
     prompt = prompts.render("qa_antwort", question=question.strip()[:300],
                             context=_build_context(candidates),
                             extra_regeln=EXTRA_REGELN.get(typ, ""))
-    extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in MODEL else {}
+    # reasoning-Schalter am TATSÄCHLICH genutzten Modell festmachen — vorher
+    # hing er an der Modul-Konstante und lief bei model=-Overrides ins Leere.
+    extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
     return [{"role": "user", "content": prompt}], extra
 
 
@@ -223,7 +229,7 @@ def _answer_tokens(typ: str) -> int:
 
 def answer_question(question: str, candidates: list[dict], model: str = MODEL, typ: str = "thema"):
     """Synthesise an answer from retrieved candidates. Returns ``(answer, cited_ids)``."""
-    messages, extra = _answer_messages(question, candidates, typ)
+    messages, extra = _answer_messages(question, candidates, typ, model)
     resp = llm.chat_complete(model=model, _feature="qa_antwort", temperature=0.2,
                              max_tokens=_answer_tokens(typ), messages=messages, **extra)
     answer = (resp.choices[0].message.content or "").strip()
@@ -234,7 +240,7 @@ def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ
     """Stream the answer text deltas (same prompt/context as answer_question) so the
     UI can render the answer as it is written. Citation resolution is the caller's
     job once the full text is assembled (see resolve_citations)."""
-    messages, extra = _answer_messages(question, candidates, typ)
+    messages, extra = _answer_messages(question, candidates, typ, model)
     yield from llm.chat_stream(model=model, _feature="qa_antwort", temperature=0.2,
                                max_tokens=_answer_tokens(typ), messages=messages, **extra)
 
