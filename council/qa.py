@@ -291,8 +291,9 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "thema",
 
 
 def _answer_tokens(typ: str) -> int:
-    # Verlaufsantworten erzählen eine Chronik — die braucht mehr Platz als 2–5 Sätze.
-    return 900 if typ == "verlauf" else 600
+    # Seit dem Ratsgespräch dürfen breite Fragen strukturiert länger antworten
+    # (Prompt regelt die Länge nach Frage; das Budget kappt nur den Ausreißer).
+    return 1100 if typ == "verlauf" else 1000
 
 
 def answer_question(question: str, candidates: list[dict], model: str = MODEL, typ: str = "thema",

@@ -469,10 +469,11 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, onFollowup, 
       {/* Antwort-Stack: Text → Baustein → Quellen → Presse → Fußzeile (RG-01). */}
       {(hatAntwort || (!loading && !turn.fehler)) && hatAntwort && (
         <div aria-busy={loading} className="flex flex-col gap-3.5">
-          <p className="whitespace-pre-wrap text-[14.5px] leading-[1.7] text-foreground sm:leading-[1.75]">
+          {/* div statt p: die Antwort darf jetzt Listen (ul) enthalten. */}
+          <div className="whitespace-pre-wrap text-[14.5px] leading-[1.7] text-foreground sm:leading-[1.75]">
             <AnswerWithCitations text={turn.antwort} idToNum={idToNum} onJump={jump} />
             {loading && step === "answer" && <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-primary align-text-bottom" />}
-          </p>
+          </div>
 
           {turn.abgebrochen && (
             <p role="status" className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -788,22 +789,24 @@ function FussnotenChip({ id, idToNum, onJump }: {
 }
 
 /**
- * Antworttext mit klickbaren Fußnoten: "[id]" → nummerierte Chips (1, 2, …),
- * die zum zitierten Quellen-Chip springen. IDs außerhalb der Quellen werden
- * nicht angezeigt (Absicherung zusätzlich zum Backend-Zitat-Resolver).
+ * Antworttext mit klickbaren Fußnoten und SPARSAMEM Markdown: "[id]" →
+ * nummerierte Chips; "**fett**" → <strong>; "- "-Zeilen → echte Liste;
+ * Leerzeilen → Absätze. Bewusst kein voller Markdown-Renderer — das Prompt
+ * erlaubt genau diese drei Formen, alles andere bleibt Text. Streaming-fest:
+ * ein noch offenes "**" am Ende wird als Text gezeigt, nicht verschluckt.
  */
 function AnswerWithCitations({ text, idToNum, onJump }: {
   text: string; idToNum: Map<number, number>; onJump: (id: number) => void;
 }) {
-  const parts = text.split(CITE_SPLIT_RE);
-  return (
-    <>
-      {parts.map((part, i) => {
-        if (!CITE_EXACT_RE.test(part)) return <span key={i}>{part}</span>;
+  // Inline-Ebene: Zitat-Chips + **fett** in einem Textstück.
+  const inline = (chunk: string, keyBase: string) => {
+    const parts = chunk.split(CITE_SPLIT_RE);
+    return parts.map((part, i) => {
+      if (CITE_EXACT_RE.test(part)) {
         const ids = citationIds(part).filter((id) => idToNum.has(id));
         if (ids.length === 0) return null;
         return (
-          <span key={i} className="whitespace-nowrap">
+          <span key={`${keyBase}-${i}`} className="whitespace-nowrap">
             {ids.map((id) => (
               <button key={id} type="button" onClick={() => onJump(id)}
                 title="Zur zitierten Quelle springen" aria-label={`Quelle ${idToNum.get(id)} anzeigen`}
@@ -811,6 +814,47 @@ function AnswerWithCitations({ text, idToNum, onJump }: {
                 {idToNum.get(id)}
               </button>
             ))}
+          </span>
+        );
+      }
+      // **fett** — nur geschlossene Paare; ein offenes ** (Streaming) bleibt Text.
+      const seg = part.split(/(\*\*[^*]+\*\*)/g);
+      return seg.map((s, j) =>
+        /^\*\*[^*]+\*\*$/.test(s)
+          ? <strong key={`${keyBase}-${i}-${j}`} className="font-semibold">{s.slice(2, -2)}</strong>
+          : <span key={`${keyBase}-${i}-${j}`}>{s}</span>);
+    });
+  };
+
+  // Block-Ebene: Absätze (Leerzeile); INNERHALB eines Blocks werden
+  // aufeinanderfolgende "- "-Zeilen zur echten Liste gruppiert — auch nach
+  // einer Kopfzeile („Weitere Maßnahmen umfassen: - … - …").
+  const bloecke = text.split(/\n{2,}/);
+  return (
+    <>
+      {bloecke.map((block, bi) => {
+        const gruppen: { liste: boolean; zeilen: string[] }[] = [];
+        for (const z of block.split("\n")) {
+          const liste = z.trim().startsWith("- ");
+          const g = gruppen[gruppen.length - 1];
+          if (g && g.liste === liste) g.zeilen.push(z);
+          else gruppen.push({ liste, zeilen: [z] });
+        }
+        return (
+          <span key={bi} className="block [&:not(:first-child)]:mt-2.5">
+            {gruppen.map((g, gi) =>
+              g.liste ? (
+                <ul key={gi} className="my-1.5 space-y-1 pl-1">
+                  {g.zeilen.filter((z) => z.trim()).map((z, zi) => (
+                    <li key={zi} className="flex gap-2">
+                      <span aria-hidden className="mt-[9px] h-1 w-1 shrink-0 rounded-full bg-primary/60" />
+                      <span className="min-w-0 whitespace-normal">{inline(z.trim().replace(/^-\s+/, ""), `${bi}-${gi}-${zi}`)}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <span key={gi}>{inline(g.zeilen.join("\n"), `${bi}-${gi}`)}</span>
+              ))}
           </span>
         );
       })}
