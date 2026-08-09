@@ -306,6 +306,10 @@ class CouncilStore:
                     self._conn.execute("ALTER TABLE council_decisions ADD COLUMN impact INTEGER")
                 if "impact_reason" not in dec_cols:
                     self._conn.execute("ALTER TABLE council_decisions ADD COLUMN impact_reason TEXT")
+                # Abweichung des Beschlusses vom Beschlussvorschlag der Verwaltung
+                # (Regex-Ernte, council.ernte): unveraendert | leicht | stark.
+                if "abweichung" not in dec_cols:
+                    self._conn.execute("ALTER TABLE council_decisions ADD COLUMN abweichung TEXT")
                 self._conn.execute(
                     "CREATE INDEX IF NOT EXISTS idx_decisions_field ON council_decisions(policy_field)"
                 )
@@ -412,6 +416,11 @@ class CouncilStore:
             self._conn.execute(
                 "ALTER TABLE council_vorlagen ADD COLUMN anlagen_scanned INTEGER NOT NULL DEFAULT 0"
             )
+        # Regex-Ernte aus dem Volltext (council.ernte): federführendes Amt,
+        # Auswirkungen-Abschnitte, Beschlussvorschlag der Verwaltung.
+        for col in ("amt", "klima_check", "finanz_check", "beschlussvorschlag"):
+            if col not in vcols:
+                self._conn.execute(f"ALTER TABLE council_vorlagen ADD COLUMN {col} TEXT")
         # Anlagen zu Vorlagen: alle als Label+Link, Fraktions-Anträge zusätzlich mit
         # PDF-Text und erkannten Antragstellern (council.vorlagen/_build_anlage_rows).
         self._conn.execute(
@@ -1076,6 +1085,56 @@ class CouncilStore:
                     "INSERT INTO council_attendance (ksinr, name, party, role, note) VALUES (?, ?, ?, ?, ?)",
                     (ksinr, a.get("name"), a.get("party"), a.get("role"), a.get("note")),
                 )
+            # Regex-Ernte (council.ernte): Sitzungsort aus dem Protokollkopf in die
+            # Session übernehmen (der Terminplan liefert ihn leer) und Beschlüsse
+            # über die Vorlagen-Nummer an ihre kvonr hängen.
+            from council import ernte
+
+            ort = ernte.sitzungsort(raw_text)
+            if ort:
+                self._conn.execute(
+                    "UPDATE council_sessions SET location = ? WHERE ksinr = ? AND location = ''",
+                    (ort, ksinr),
+                )
+            self._conn.execute(
+                "UPDATE council_decisions SET kvonr = "
+                "(SELECT MAX(v.kvonr) FROM council_vorlagen v WHERE v.vorlage_nr = council_decisions.vorlage_nr) "
+                "WHERE ksinr = ? AND kvonr IS NULL AND vorlage_nr IS NOT NULL",
+                (ksinr,),
+            )
+        self.refresh_abweichung(ksinr=ksinr)
+
+    def refresh_abweichung(self, ksinr: int | None = None, vorlage_nr: str | None = None) -> int:
+        """Beschluss ↔ Beschlussvorschlag vergleichen (council.ernte.abweichung)
+        und das Ergebnis an den Beschlüssen ablegen. Zwei Auslöser, weil Vorlage
+        und Protokoll in beliebiger Reihenfolge eintreffen: nach save_protocol
+        (per ksinr) und nach save_vorlage (per vorlage_nr). Nur angenommene
+        Beschlüsse — eine Vertagung oder Ablehnung ist keine Textänderung."""
+        from council import ernte
+
+        sql = ("SELECT id, vorlage_nr, beschluss FROM council_decisions "
+               "WHERE kind = 'decision' AND outcome = 'angenommen' "
+               "AND beschluss IS NOT NULL AND vorlage_nr IS NOT NULL")
+        args: tuple = ()
+        if ksinr is not None:
+            sql += " AND ksinr = ?"
+            args = (ksinr,)
+        elif vorlage_nr is not None:
+            base = "/".join(vorlage_nr.split("/")[:2])
+            sql += " AND vorlage_nr IN (?, ?)"
+            args = (vorlage_nr, base)
+        vorschlaege: dict[str, str | None] = {}
+        updates = []
+        for did, nr, beschluss in self._conn.execute(sql, args).fetchall():
+            if nr not in vorschlaege:
+                v = self.get_vorlage_by_nr(nr)
+                vorschlaege[nr] = (v or {}).get("beschlussvorschlag")
+            updates.append((ernte.abweichung(vorschlaege[nr], beschluss), did))
+        if updates:
+            with self._conn:
+                self._conn.executemany(
+                    "UPDATE council_decisions SET abweichung = ? WHERE id = ?", updates)
+        return len(updates)
 
     def mark_protocol_failed(self, ksinr: int, document: dict) -> None:
         now = datetime.utcnow().isoformat(timespec="seconds")
@@ -1525,16 +1584,27 @@ class CouncilStore:
         return [r[0] for r in self._conn.execute(sql).fetchall()]
 
     def save_vorlage(self, row: dict) -> None:
+        from council import ernte
+
         now = datetime.utcnow().isoformat(timespec="seconds")
+        # Regex-Ernte direkt beim Speichern — so tragen neue Vorlagen die
+        # Felder automatisch, das Backfill-Skript ist nur für den Bestand.
+        text = row.get("raw_text") or ""
+        aus = ernte.auswirkungen(text)
         with self._conn:
             self._conn.execute(
                 "INSERT OR REPLACE INTO council_vorlagen "
                 "(kvonr, vorlage_nr, title, art, document_id, document_url, "
-                " raw_text, n_pages, fetched_at, status) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                " raw_text, n_pages, fetched_at, status, amt, klima_check, "
+                " finanz_check, beschlussvorschlag) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (row["kvonr"], row.get("vorlage_nr"), row.get("title"), row.get("art"),
                  row.get("document_id"), row.get("document_url"), row.get("raw_text"),
-                 row.get("n_pages"), now, row.get("status", "ok")),
+                 row.get("n_pages"), now, row.get("status", "ok"),
+                 ernte.federfuehrendes_amt(text), aus["klima"], aus["finanzen"],
+                 ernte.beschlussvorschlag(text)),
             )
+        if row.get("vorlage_nr"):
+            self.refresh_abweichung(vorlage_nr=row["vorlage_nr"])
 
     def mark_vorlage_failed(self, kvonr: int) -> None:
         now = datetime.utcnow().isoformat(timespec="seconds")
@@ -3505,9 +3575,11 @@ class CouncilStore:
             f"""SELECT d.id, d.title, d.summary, d.beschluss, d.vorlage_nr,
                        d.policy_field, d.outcome, d.impact, d.impact_reason,
                        d.vote, d.gegenstimmen, d.enthaltungen, d.raw_result,
-                       d.amount_eur, d.factions,
+                       d.amount_eur, d.factions, d.abweichung,
+                       v.amt, v.klima_check,
                        cs.session_date, cs.committee
                 FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr
+                LEFT JOIN council_vorlagen v ON v.kvonr = d.kvonr
                 WHERE d.id IN ({ph})""",
             ids,
         ).fetchall()

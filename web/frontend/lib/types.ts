@@ -72,6 +72,8 @@ export interface CouncilDecision {
   /** Design 23a: kompakte Zusammenfassung der Änderungsanträge (subvotes),
    *  die zu diesem Beschluss gehören — für die Unterzeile in der Trefferliste. */
   subvote_summary?: { count: number; factions: string[]; outcomes: string[] } | null;
+  /** Regex-Ernte: Wie stark weicht der Beschluss vom Verwaltungsvorschlag ab? */
+  abweichung?: "unveraendert" | "leicht" | "stark" | null;
 }
 
 export interface PolicyField {
@@ -313,6 +315,11 @@ export interface DecisionDetail {
     document_url: string | null;
     n_pages: number | null;
     excerpt: string | null;
+    /** Regex-Ernte: federführendes Amt aus dem Vorlagen-Kopf. */
+    amt?: string | null;
+    /** Regex-Ernte: Klima-Check der Verwaltung („Auswirkungen: b) Klima"). */
+    klima_check?: string | null;
+    klima_relevant?: boolean | null;
   } | null;
   /** Anlagen der Vorlage (Anträge zuerst, mit erkannten Antragstellern). */
   anlagen?: {
