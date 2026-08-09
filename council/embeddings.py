@@ -76,12 +76,19 @@ def _get_reranker():
     return _reranker
 
 
+# Zeichen-Deckel je Rerank-Paar: Die Cross-Encoder-Zeit skaliert mit der
+# Tokenlänge — ungekürzt gingen bis zu ~700 Zeichen je Paar hinein. 260
+# Zeichen tragen Titel + Kern der Fundstelle und halten die Trefferquote
+# (Eval-geprüft); Env-Schalter für Vergleichsläufe.
+PAIR_MAX_CHARS = int(os.environ.get("COUNCIL_PAIR_MAX_CHARS", "260"))
+
+
 def rerank(query: str, docs: list[tuple]) -> list[tuple]:
     """Reorder ``(id, text)`` candidates by cross-encoder relevance to ``query``.
     Returns ``[(id, score)]`` best first. Raises ImportError if fastembed is missing."""
     if not docs:
         return []
-    scores = list(_get_reranker().rerank(query, [d[1] for d in docs]))
+    scores = list(_get_reranker().rerank(query, [d[1][:PAIR_MAX_CHARS] for d in docs]))
     ranked = sorted(zip((d[0] for d in docs), scores), key=lambda x: -x[1])
     return [(i, float(s)) for i, s in ranked]
 
@@ -89,6 +96,12 @@ def rerank(query: str, docs: list[tuple]) -> list[tuple]:
 # Wie viele Vorlagen-Treffer der Chunk-Suche in den Kandidaten-Pool einfließen
 # und wie viele (jüngste) Beratungsstationen je getroffener Vorlage.
 VORLAGE_POOL = 12
+# Not-Deckel für die Cross-Encoder-Paare (0 = aus, der Default): Der Eval hat
+# gezeigt, dass JEDER Kandidaten-Schnitt Trefferquote kostet (32 → −14, 48 →
+# −10 Punkte) — der Reranker lebt davon, tief-rangige BM25-/Vorlagen-Treffer
+# nach oben zu holen. Der schnellere Hebel ohne Qualitätsverlust ist der
+# Zeichen-Deckel PAIR_MAX_CHARS. Dieser Schalter bleibt nur für Notfälle.
+RERANK_MAX = int(os.environ.get("COUNCIL_RERANK_MAX", "0"))
 VORLAGE_STATIONS = 4
 
 
@@ -133,6 +146,24 @@ def hybrid_search(store, query: str, expanded: str, top_k: int = 25, pool: int =
     t2 = time.perf_counter()
     bm_snippet = {i: s for i, _, s in bm if s}
     cand_ids = list(dict.fromkeys([i for i, _ in vec] + vor_ids + [i for i, _, _ in bm]))
+    if RERANK_MAX and len(cand_ids) > RERANK_MAX:
+        # Reihum aus den drei Quellen (je score-sortiert) ziehen — so behalten
+        # alle Kanäle ihre besten Kandidaten, statt dass der Zufall der
+        # Union-Reihenfolge entscheidet, wer den Cross-Encoder sieht.
+        quellen = [[i for i, _ in vec], list(vor_ids), [i for i, _, _ in bm]]
+        gedeckelt: list[int] = []
+        gesehen: set[int] = set()
+        while len(gedeckelt) < RERANK_MAX and any(quellen):
+            for q in quellen:
+                while q:
+                    i = q.pop(0)
+                    if i not in gesehen:
+                        gesehen.add(i)
+                        gedeckelt.append(i)
+                        break
+                if len(gedeckelt) >= RERANK_MAX:
+                    break
+        cand_ids = gedeckelt
     if timings is not None:
         timings["vektor_ms"] = round((t1 - t0) * 1000)
         timings["bm25_ms"] = round((t2 - t1) * 1000)
