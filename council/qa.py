@@ -215,6 +215,10 @@ def _build_context(candidates: list[dict]) -> str:
             suffix += f" — Abstimmung: {raw_result[:180]}"
         if c.get("amount_eur"):
             suffix += f" — Volumen: {c['amount_eur']:,.0f} €".replace(",", ".")
+        if c.get("beteiligung"):
+            suffix += (f" — BÜRGERBETEILIGUNG LÄUFT: {c['beteiligung']} "
+                       f"(Stellungnahme auf oldenburg.planungsbeteiligung.de möglich — "
+                       f"erwähne das in der Antwort, wenn es zur Frage passt)")
         impact = c.get("impact")
         if impact is not None and impact >= 70:
             reason = (c.get("impact_reason") or "").strip()

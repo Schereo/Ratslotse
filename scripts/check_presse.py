@@ -53,8 +53,17 @@ def main() -> dict:
             chunks = embeddings.embed_presse_missing(store)
         except Exception:  # noqa: BLE001 — fastembed fehlt → Wochenlauf holt nach
             pass
+    # Laufende Bauleitplan-Beteiligungen im selben Tageslauf aktualisieren —
+    # eigener try: ein Ausfall des Portals darf den Presse-Teil nicht kosten.
+    beteiligungen = -1
+    try:
+        from council import beteiligung
+        beteiligungen = store.save_beteiligungen(beteiligung.fetch_planfaelle())
+    except Exception:  # noqa: BLE001
+        pass
     store.close()
-    return {"feed": len(feed), "neu": neu, "fehlgeschlagen": fehlgeschlagen, "chunks": chunks}
+    return {"feed": len(feed), "neu": neu, "fehlgeschlagen": fehlgeschlagen,
+            "chunks": chunks, "beteiligungen": beteiligungen}
 
 
 if __name__ == "__main__":

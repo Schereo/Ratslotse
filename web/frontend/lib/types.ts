@@ -293,6 +293,10 @@ export interface DecisionDetail {
    *  Beschluss zu keiner eingelesenen Vorlage gehört — dann gibt es nichts,
    *  woran ein Abo hängen könnte. */
   follow?: { kvonr: number; following: boolean };
+  /** Stufe 3b: Läuft zu diesem Bauleitplan gerade eine Bürgerbeteiligung?
+   *  Kommt von oldenburg.planungsbeteiligung.de, gematcht über die Plan-Nummer. */
+  beteiligung?: { titel: string; schritt: string; von: string | null;
+                  bis: string | null; url: string } | null;
   similar: SimilarDecision[];
   entities: Entity[];
   ratsinfo_url: string;
