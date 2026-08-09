@@ -1,20 +1,24 @@
 "use client";
 
 /**
- * Ratsgespräch — der KI-Frage-Tab als Gespräch (Design „Ratsgespräch", RG-01…08).
+ * Ratsgespräch — der KI-Frage-Tab als Gespräch (Design „Ratsgespräch", RG-01…08
+ * plus Feedback-Runde 2 „Beruhigt & gebündelt"):
  *
- * Nutzerfragen rechts als stille Bubble, Antworten als ruhige Textblöcke in
- * voller Breite — keine Blasen-Optik für Inhalte, die aus Beschlüssen kommen.
- * Stack je Antwort-Turn (fix): Text → Fragetyp-Baustein → Quellen → Presse →
- * Fußzeile. Zitierte Quellen als kompakte Chips (Fußnoten [n] springen dorthin),
- * der Rest hinter „Alle N Quellen". Anschlussfragen laufen mit Gesprächskontext
- * (Paket A: /ask bekommt die letzten Runden als `verlauf`).
+ * - Composer klebt IMMER unten (auch im Empty State); der Verlauf wächst darüber.
+ * - Weiterfragen-Chips liegen im Composer (nur für den jüngsten Turn) und
+ *   bleiben damit beim Hochscrollen sichtbar.
+ * - Teilen/Drucken sind stille Icons in der Meta-Zeile, keine gerahmten Buttons.
+ * - Zitierte Quellen sind einzeilige Pills (Titel + Jahr); Gremium & Datum
+ *   stehen im Ausklapper und im Beschluss-Detail.
+ * - Desktop: Chat-Spalte + 320-px-Belege-Spalte rechts (Quellen, Presse,
+ *   Aktionen des jüngsten Turns); ältere Turns zeigen inline die Kompaktzeile
+ *   „Quellen (N) · Presse (M)", aufklappbar.
  */
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Sparkles, Send, Loader2, ChevronDown, ChevronUp, ArrowRight, Lightbulb, Plus,
+import { Sparkles, Send, Loader2, ChevronDown, ChevronUp, ArrowRight, Plus,
   Square, CircleSlash, ExternalLink, ArrowDown, RotateCcw, MessageSquarePlus } from "lucide-react";
 import { Mascot } from "@/components/mascot";
 import { QaSource } from "@/lib/types";
@@ -96,10 +100,40 @@ type Turn = {
 
 const fmtDatum = (d?: string | null) =>
   d ? new Date(d).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }) : "";
+const fmtDatumKurz = (d?: string | null) =>
+  d ? new Date(d).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "2-digit" }) : "";
+const jahr = (d?: string | null) => (d ? d.slice(0, 4) : "");
 
 const fmtEur = (n: number) =>
   n >= 1_000_000 ? `${(n / 1_000_000).toLocaleString("de-DE", { maximumFractionDigits: 1 })} Mio. €`
     : `${Math.round(n).toLocaleString("de-DE")} €`;
+
+/** Fußnoten-Nummern eines Turns: [id]-Zitate in Reihenfolge des Auftauchens. */
+function useIdToNum(turn: Turn) {
+  return useMemo(() => {
+    const valid = new Set(turn.sources.map((s) => s.id));
+    const map = new Map<number, number>();
+    for (const g of turn.antwort.matchAll(CITE_RE)) {
+      for (const id of citationIds(g[0])) {
+        if (valid.has(id) && !map.has(id)) map.set(id, map.size + 1);
+      }
+    }
+    return map;
+  }, [turn.antwort, turn.sources]);
+}
+
+function zitierteVon(turn: Turn, idToNum: Map<number, number>): QaSource[] {
+  const byId = new Map(turn.sources.map((s) => [s.id, s]));
+  return [...idToNum.keys()].map((id) => byId.get(id)).filter(Boolean) as QaSource[];
+}
+
+/** Sprung zur Quelle: mobil zum Inline-Block, ab lg in die Belege-Spalte. */
+function jumpZuQuelle(turnIdx: number, id: number, spalte: boolean) {
+  const ziel = spalte && window.matchMedia("(min-width: 1024px)").matches
+    ? document.getElementById(`qa-col-${id}`) ?? document.getElementById(`qa-source-${turnIdx}-${id}`)
+    : document.getElementById(`qa-source-${turnIdx}-${id}`) ?? document.getElementById(`qa-col-${id}`);
+  ziel?.scrollIntoView({ behavior: "smooth", block: "center" });
+}
 
 export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   const [q, setQ] = useState("");
@@ -120,6 +154,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   const [step, setStep] = useState<Step | null>(null);
   const [word, setWord] = useState(PLAYFUL[0]);
   const [showAnchor, setShowAnchor] = useState(false);
+  const [flashId, setFlashId] = useState<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -153,6 +188,11 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     check();
     return () => window.removeEventListener("scroll", check);
   }, [turns.length]);
+
+  const flash = (id: number) => {
+    setFlashId(id);
+    window.setTimeout(() => setFlashId((f) => (f === id ? null : f)), 1600);
+  };
 
   const ask = async (question: string) => {
     const text = question.trim();
@@ -222,7 +262,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
       }
     } catch (e) {
       if ((e as Error)?.name === "AbortError") return;
-      // Fehler-Turn (RG ⑧): Die Frage ist nicht verloren — zurück ins Eingabefeld.
+      // Fehler-Turn: Die Frage ist nicht verloren — zurück ins Eingabefeld.
       patchLast({ fehler: "netz" });
       setQ(text);
       toast.error(e instanceof Error ? e.message : "Frage fehlgeschlagen.");
@@ -256,168 +296,167 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     inputRef.current?.focus();
   };
 
-  const letzterFehler = turns.length > 0 ? turns[turns.length - 1].fehler : null;
+  const letzter = turns.length > 0 ? turns[turns.length - 1] : null;
+  const letzterFehler = letzter?.fehler;
   const showIntro = turns.length === 0;
+  // Weiterfragen leben im Composer (Design 2②) — nur vom jüngsten Turn.
+  const composerFollowups = !loading && letzter && !letzter.fehler ? letzter.followups.slice(0, 3) : [];
 
   return (
-    <div className="mx-auto mt-3 flex max-w-3xl flex-col">
-      {(modeToggle || turns.length > 0) && (
-        <div className="mb-1 flex items-center justify-between gap-2">
-          {modeToggle ? <div>{modeToggle}</div> : <span />}
-          {turns.length > 0 && (
-            <button
-              type="button"
-              onClick={neuesGespraech}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-[10px] border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground print:hidden"
-            >
-              <MessageSquarePlus className="h-3.5 w-3.5" aria-hidden />
-              <span className="hidden sm:inline">Neues Gespräch</span>
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Empty State — erste Nutzung (RG ①). */}
-      {showIntro && (
-        <div className="mt-4 flex flex-col items-center text-center">
-          <Mascot pose="wave" bob className="h-20 w-20" />
-          <h2 className="mt-3 text-xl font-bold tracking-tight">Frag den Stadtrat</h2>
-          <p className="mt-1.5 max-w-md text-sm text-muted-foreground">
-            Stell deine Frage in normalen Worten. Die Antwort entsteht aus den echten
-            Ratsbeschlüssen — mit Fußnote zu jeder Quelle.
-          </p>
-          <p className="mt-5 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">
-            Zum Beispiel
-          </p>
-          <div className="mt-2 flex w-full max-w-md flex-col gap-1.5">
-            {EXAMPLES.map((ex) => (
-              <button key={ex} type="button" onClick={() => void ask(ex)}
-                className="flex items-center gap-2.5 rounded-[11px] border border-border bg-card px-3 py-2.5 text-left text-[13.5px] transition-[background-color,transform] duration-150 ease-out-strong hover:bg-muted active:scale-[0.99]">
-                <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
-                <span className="min-w-0 flex-1">{ex}</span>
+    <div className="mx-auto mt-3 lg:grid lg:max-w-[1220px] lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-7">
+      {/* Chat-Spalte: min-height, damit der Composer auch im Empty State unten
+          klebt (Design 2①) — der Verlauf wächst darüber. */}
+      <div className="flex min-h-[calc(100dvh-230px)] flex-col">
+        {(modeToggle || turns.length > 0) && (
+          <div className="mb-1 flex items-center justify-between gap-2">
+            {modeToggle ? <div>{modeToggle}</div> : <span />}
+            {turns.length > 0 && (
+              <button
+                type="button"
+                onClick={neuesGespraech}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-[10px] border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground print:hidden"
+              >
+                <MessageSquarePlus className="h-3.5 w-3.5" aria-hidden />
+                <span className="hidden sm:inline">Neues Gespräch</span>
               </button>
+            )}
+          </div>
+        )}
+
+        {/* Empty State — bodenständig: Beispiele direkt über dem Composer. */}
+        {showIntro && (
+          <div className="flex flex-1 flex-col items-center justify-end pb-5 text-center">
+            <Mascot pose="wave" bob className="h-20 w-20" />
+            <h2 className="mt-3 text-xl font-bold tracking-tight">Frag den Stadtrat</h2>
+            <p className="mt-1.5 max-w-md text-sm text-muted-foreground">
+              Die Antwort entsteht aus den echten Ratsbeschlüssen — mit Fußnote zu jeder Quelle.
+            </p>
+            <p className="mt-5 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">
+              Zum Beispiel
+            </p>
+            <div className="mt-2 flex w-full max-w-md flex-col gap-1.5">
+              {EXAMPLES.map((ex) => (
+                <button key={ex} type="button" onClick={() => void ask(ex)}
+                  className="flex items-center gap-2.5 rounded-[11px] border border-border bg-card px-3 py-2.5 text-left text-[13.5px] transition-[background-color,transform] duration-150 ease-out-strong hover:bg-muted active:scale-[0.99]">
+                  <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+                  <span className="min-w-0 flex-1">{ex}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Gesprächsverlauf. */}
+        {!showIntro && (
+          <div className="flex flex-1 flex-col gap-6 sm:gap-7">
+            {turns.map((t, ti) => (
+              <TurnView
+                key={ti}
+                turn={t}
+                turnIdx={ti}
+                istLetzter={ti === turns.length - 1}
+                loading={loading && ti === turns.length - 1}
+                step={loading && ti === turns.length - 1 ? step : null}
+                word={word}
+                flashId={flashId}
+                onJump={(id) => { jumpZuQuelle(ti, id, ti === turns.length - 1); flash(id); }}
+                onRetry={() => { setTurns((ts) => ts.slice(0, -1)); void ask(t.frage); }}
+                onEigeneFrage={() => inputRef.current?.focus()}
+              />
             ))}
           </div>
-        </div>
-      )}
-
-      {/* Gesprächsverlauf. */}
-      <div className="flex flex-col gap-6 sm:gap-7">
-        {turns.map((t, ti) => (
-          <TurnView
-            key={ti}
-            turn={t}
-            turnIdx={ti}
-            istLetzter={ti === turns.length - 1}
-            loading={loading && ti === turns.length - 1}
-            step={loading && ti === turns.length - 1 ? step : null}
-            word={word}
-            onFollowup={(f) => void ask(f)}
-            onRetry={() => { setTurns((ts) => ts.slice(0, -1)); void ask(t.frage); }}
-            onEigeneFrage={() => inputRef.current?.focus()}
-          />
-        ))}
-      </div>
-      <div ref={endRef} />
-
-      {/* „Nach unten"-Anker (RG-07). */}
-      {showAnchor && (
-        <button
-          type="button"
-          aria-label="Zum Gesprächsende springen"
-          onClick={() => endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" })}
-          className="fixed bottom-36 right-4 z-20 flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card shadow-md transition-transform hover:scale-105 print:hidden sm:right-8"
-        >
-          <ArrowDown className="h-4 w-4 text-muted-foreground" aria-hidden />
-        </button>
-      )}
-
-      {/* Eingabe-Dock: sticky, Verlaufs-Gradient darüber, Safe-Area (RG-07). */}
-      <div className="sticky bottom-0 z-10 -mx-1 mt-4 bg-gradient-to-t from-background via-background to-transparent px-1 pb-[max(env(safe-area-inset-bottom),8px)] pt-5 print:hidden">
-        {letzterFehler === "limit" ? (
-          <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
-            <p className="font-medium text-foreground">Kurze Verschnaufpause</p>
-            <p className="mt-0.5 text-[12.5px] text-muted-foreground">
-              Mehr als 10 Fragen in 10 Minuten — in ein paar Minuten geht es weiter.
-              Deine bisherigen Antworten bleiben stehen.
-            </p>
-          </div>
-        ) : (
-          <form onSubmit={(e) => { e.preventDefault(); void ask(q); }} className="flex gap-2">
-            <div className="relative flex-1">
-              <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input ref={inputRef} data-search enterKeyHint="send"
-                className="h-12 rounded-2xl pl-9"
-                placeholder={turns.length > 0 ? "Anschlussfrage stellen …" : "Frag den Stadtrat …"}
-                value={q} onChange={(e) => setQ(e.target.value)} />
-            </div>
-            {loading ? (
-              <Button type="button" variant="secondary" className="h-12 rounded-2xl" onClick={stopAsking} aria-label="Antwort abbrechen">
-                <Square className="fill-current" /> Stopp
-              </Button>
-            ) : (
-              <Button type="submit" className="h-12 w-12 rounded-2xl p-0" disabled={q.trim().length < 4} aria-label="Fragen">
-                <Send />
-              </Button>
-            )}
-          </form>
         )}
-        <p className="mt-1.5 text-center text-[10px] text-muted-foreground/70">
-          Keine personenbezogenen Daten eingeben — Fragen gehen an einen externen KI-Dienst.
-        </p>
+        <div ref={endRef} />
+
+        {/* „Nach unten"-Anker (RG-07). */}
+        {showAnchor && (
+          <button
+            type="button"
+            aria-label="Zum Gesprächsende springen"
+            onClick={() => endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" })}
+            className="fixed bottom-40 right-4 z-20 flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card shadow-md transition-transform hover:scale-105 print:hidden sm:right-8"
+          >
+            <ArrowDown className="h-4 w-4 text-muted-foreground" aria-hidden />
+          </button>
+        )}
+
+        {/* Composer: fix unten, Weiterfragen-Chips direkt darüber (Design 2①②). */}
+        <div className="sticky bottom-0 z-10 -mx-1 mt-4 bg-gradient-to-t from-background via-background to-transparent px-1 pb-[max(env(safe-area-inset-bottom),8px)] pt-4 print:hidden">
+          {composerFollowups.length > 0 && (
+            <div className="mb-2 flex gap-1.5 overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch]">
+              {composerFollowups.map((s) => (
+                <button key={s} type="button" onClick={() => void ask(s)}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-primary/30 bg-primary/[0.05] px-3 py-1.5 text-[12.5px] text-foreground transition-[background-color,transform] duration-150 ease-out-strong hover:bg-primary/[0.1] active:scale-[0.98]">
+                  <span className="max-w-[260px] truncate">{s}</span>
+                  <ArrowRight className="h-3 w-3 shrink-0 text-primary" aria-hidden />
+                </button>
+              ))}
+            </div>
+          )}
+          {letzterFehler === "limit" ? (
+            <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
+              <p className="font-medium text-foreground">Kurze Verschnaufpause</p>
+              <p className="mt-0.5 text-[12.5px] text-muted-foreground">
+                Mehr als 10 Fragen in 10 Minuten — in ein paar Minuten geht es weiter.
+                Deine bisherigen Antworten bleiben stehen.
+              </p>
+            </div>
+          ) : (
+            <form onSubmit={(e) => { e.preventDefault(); void ask(q); }} className="flex gap-2">
+              <div className="relative flex-1">
+                <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input ref={inputRef} data-search enterKeyHint="send"
+                  className="h-12 rounded-2xl pl-9"
+                  placeholder={turns.length > 0 ? "Anschlussfrage stellen …" : "Frag den Stadtrat …"}
+                  value={q} onChange={(e) => setQ(e.target.value)} />
+              </div>
+              {loading ? (
+                <Button type="button" variant="secondary" className="h-12 rounded-2xl" onClick={stopAsking} aria-label="Antwort abbrechen">
+                  <Square className="fill-current" /> Stopp
+                </Button>
+              ) : (
+                <Button type="submit" className="h-12 w-12 rounded-2xl p-0" disabled={q.trim().length < 4} aria-label="Fragen">
+                  <Send />
+                </Button>
+              )}
+            </form>
+          )}
+          <p className="mt-1.5 text-center text-[10px] text-muted-foreground/70">
+            Keine personenbezogenen Daten eingeben — Fragen gehen an einen externen KI-Dienst.
+          </p>
+        </div>
       </div>
+
+      {/* Belege-Spalte (Desktop, Design 2⑤): Quellen, Presse und Aktionen des
+          jüngsten Turns — die Antwortspalte bleibt purer Text. */}
+      <aside className="hidden lg:sticky lg:top-4 lg:block lg:pt-9 print:hidden">
+        {letzter && letzter.antwort && !letzter.fehler && (
+          <BelegeSpalte turn={letzter} flashId={flashId}
+            onFlash={flash} loading={loading} />
+        )}
+      </aside>
     </div>
   );
 }
 
 /* ------------------------------------------------------------------------- */
 
-function TurnView({ turn, turnIdx, istLetzter, loading, step, word, onFollowup, onRetry, onEigeneFrage }: {
+function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJump, onRetry, onEigeneFrage }: {
   turn: Turn; turnIdx: number; istLetzter: boolean; loading: boolean;
-  step: Step | null; word: string;
-  onFollowup: (f: string) => void; onRetry: () => void; onEigeneFrage: () => void;
+  step: Step | null; word: string; flashId: number | null;
+  onJump: (id: number) => void; onRetry: () => void; onEigeneFrage: () => void;
 }) {
   const [showAll, setShowAll] = useState(false);
-  const [flashId, setFlashId] = useState<number | null>(null);
-  const [pendingJump, setPendingJump] = useState<number | null>(null);
-
-  // [id]-Zitate → Fußnoten-Nummern in Reihenfolge des ersten Auftauchens.
-  const idToNum = useMemo(() => {
-    const valid = new Set(turn.sources.map((s) => s.id));
-    const map = new Map<number, number>();
-    for (const g of turn.antwort.matchAll(CITE_RE)) {
-      for (const id of citationIds(g[0])) {
-        if (valid.has(id) && !map.has(id)) map.set(id, map.size + 1);
-      }
-    }
-    return map;
-  }, [turn.antwort, turn.sources]);
-
-  // Zitierte Chips in Fußnoten-Reihenfolge (RG-02); Rest im Ausklapper.
-  const zitierte = useMemo(() => {
-    const byId = new Map(turn.sources.map((s) => [s.id, s]));
-    return [...idToNum.keys()].map((id) => byId.get(id)).filter(Boolean) as QaSource[];
-  }, [turn.sources, idToNum]);
-
-  const jump = (id: number) => {
-    const anker = `qa-source-${turnIdx}-${id}`;
-    if (!zitierte.some((s) => s.id === id) && !showAll) {
-      setShowAll(true);
-      setPendingJump(id);
-    } else {
-      document.getElementById(anker)?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-    setFlashId(id);
-    window.setTimeout(() => setFlashId((f) => (f === id ? null : f)), 1600);
-  };
-  useEffect(() => {
-    if (pendingJump == null) return;
-    document.getElementById(`qa-source-${turnIdx}-${pendingJump}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-    setPendingJump(null);
-  }, [pendingJump, turnIdx]);
+  // Ältere Turns beruhigen (Design 2⑤): Belege hinter der Kompaktzeile.
+  const [aufgeklappt, setAufgeklappt] = useState(false);
+  const idToNum = useIdToNum(turn);
+  const zitierte = useMemo(() => zitierteVon(turn, idToNum), [turn, idToNum]);
 
   const hatAntwort = turn.antwort.length > 0;
   const nichtsGefunden = !loading && hatAntwort && turn.sources.length === 0 && !turn.fehler;
+  // Mobil zeigt der jüngste Turn seine Belege inline (die Desktop-Spalte
+  // übernimmt ab lg); ältere Turns nur nach Klick auf die Kompaktzeile.
+  const belegeInline = istLetzter ? "lg:hidden" : aufgeklappt ? "" : "hidden";
 
   return (
     <div className="flex flex-col gap-3">
@@ -466,12 +505,11 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, onFollowup, 
         </div>
       )}
 
-      {/* Antwort-Stack: Text → Baustein → Quellen → Presse → Fußzeile (RG-01). */}
-      {(hatAntwort || (!loading && !turn.fehler)) && hatAntwort && (
+      {hatAntwort && (
         <div aria-busy={loading} className="flex flex-col gap-3.5">
-          {/* div statt p: die Antwort darf jetzt Listen (ul) enthalten. */}
+          {/* div statt p: die Antwort darf Listen (ul) enthalten. */}
           <div className="whitespace-pre-wrap text-[14.5px] leading-[1.7] text-foreground sm:leading-[1.75]">
-            <AnswerWithCitations text={turn.antwort} idToNum={idToNum} onJump={jump} />
+            <AnswerWithCitations text={turn.antwort} idToNum={idToNum} onJump={onJump} />
             {loading && step === "answer" && <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-primary align-text-bottom" />}
           </div>
 
@@ -482,33 +520,24 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, onFollowup, 
             </p>
           )}
 
-          {!loading && <Baustein turn={turn} idToNum={idToNum} onJump={jump} />}
+          {!loading && <Baustein turn={turn} idToNum={idToNum} onJump={onJump} />}
 
-          {turn.sources.length > 0 && (
-            <QuellenBlock turn={turn} turnIdx={turnIdx} idToNum={idToNum} zitierte={zitierte}
-              showAll={showAll} setShowAll={setShowAll} flashId={flashId} />
+          {/* Kompaktzeile älterer Turns (Design 2⑤). */}
+          {!istLetzter && !aufgeklappt && (turn.sources.length > 0 || turn.presse.length > 0) && (
+            <button type="button" onClick={() => setAufgeklappt(true)}
+              className="flex w-fit items-center gap-1.5 rounded-full border border-border px-3 py-1 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+              <ChevronDown className="h-3 w-3" aria-hidden />
+              Quellen ({turn.sources.length}){turn.presse.length > 0 ? ` · Presse (${turn.presse.length})` : ""}
+            </button>
           )}
 
-          {turn.presse.length > 0 && (
-            <div className="rounded-xl border border-dashed border-border p-3">
-              <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-                Aktuelles von der Stadt
-                <span className="ml-1.5 normal-case tracking-normal text-muted-foreground/70">· oldenburg.de — extern, keine Beschlüsse</span>
-              </p>
-              <ul className="mt-1.5 space-y-1">
-                {turn.presse.map((p) => (
-                  <li key={p.url}>
-                    <a href={p.url} target="_blank" rel="noopener noreferrer"
-                      className="group flex items-baseline gap-2 rounded-lg px-1.5 py-1 text-sm transition-colors hover:bg-muted">
-                      <span className="min-w-0 flex-1 truncate text-[12.5px] group-hover:underline">{p.titel}</span>
-                      <span className="shrink-0 text-[10.5px] text-muted-foreground">{fmtDatum(p.datum)}</span>
-                      <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          <div className={cn("flex flex-col gap-3.5", belegeInline)}>
+            {turn.sources.length > 0 && (
+              <QuellenBlock turn={turn} turnIdx={turnIdx} idToNum={idToNum} zitierte={zitierte}
+                showAll={showAll} setShowAll={setShowAll} flashId={flashId} ankerPrefix={`qa-source-${turnIdx}`} />
+            )}
+            {turn.presse.length > 0 && <PresseBlock presse={turn.presse} />}
+          </div>
 
           {nichtsGefunden && (
             <div className="flex flex-wrap gap-2">
@@ -523,45 +552,18 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, onFollowup, 
             </div>
           )}
 
-          {/* Fußzeile je Turn: Teilen/Drucken + Disclaimer (RG-01). */}
+          {/* Meta-Zeile: stille Icons + Disclaimer (Design 2③); auf Desktop
+              übernimmt beim jüngsten Turn die Belege-Spalte die Aktionen. */}
           {!loading && (
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-border/60 pt-2 print:hidden">
-              <ShareButton
+            <div className={cn("flex items-center gap-1 border-t border-border/60 pt-1.5 print:hidden", istLetzter && "lg:hidden")}>
+              <ShareButton iconOnly
                 path={`/council?tab=decisions&mode=fragen&q=${encodeURIComponent(turn.frage)}`}
                 title={`Ratslotse: ${turn.frage}`}
               />
-              <PrintButton />
+              <PrintButton iconOnly />
               <span role="status" className="min-w-0 flex-1 text-right text-[10.5px] leading-snug text-muted-foreground/70">
                 KI-Antwort aus den gefundenen Beschlüssen — kann unvollständig sein. Quellen prüfen.
               </span>
-            </div>
-          )}
-
-          {/* Weiterfragen nur am jüngsten Turn (RG-07). */}
-          {istLetzter && !loading && turn.followups.length > 0 && (
-            <div>
-              <p className="flex items-center gap-1.5">
-                <span className="flex h-[20px] w-[20px] items-center justify-center rounded-[6px] bg-signal/[0.12] text-signal">
-                  <Lightbulb className="h-3 w-3" aria-hidden />
-                </span>
-                <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Weiterfragen</span>
-              </p>
-              <div className="mt-2 flex flex-col gap-1.5">
-                {turn.followups.slice(0, 3).map((s) => (
-                  <button key={s} type="button" onClick={() => onFollowup(s)}
-                    className="flex w-full items-center gap-2.5 rounded-[11px] border border-primary/30 bg-primary/[0.04] px-3 py-2.5 text-left transition-[color,background-color,transform] duration-150 ease-out-strong hover:bg-primary/[0.08] active:scale-[0.99]">
-                    <span className="min-w-0 flex-1 text-[13px] text-foreground sm:text-[13.5px]">{s}</span>
-                    <ArrowRight className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
-                  </button>
-                ))}
-              </div>
-              <div className="mt-2 flex items-center justify-between gap-2">
-                <button type="button" onClick={onEigeneFrage}
-                  className="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-primary">
-                  <Plus className="h-3 w-3 shrink-0" aria-hidden /> Eigene Frage
-                </button>
-                <span className="truncate text-[10.5px] text-muted-foreground/70">Anschlussfragen kennen den Gesprächsverlauf.</span>
-              </div>
             </div>
           )}
         </div>
@@ -570,11 +572,44 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, onFollowup, 
   );
 }
 
-/* --------------------------- Quellen (RG-02) ------------------------------ */
+/* ------------------- Belege-Spalte (Desktop, Design 2⑤) ------------------- */
 
-function QuellenBlock({ turn, turnIdx, idToNum, zitierte, showAll, setShowAll, flashId }: {
+function BelegeSpalte({ turn, flashId, onFlash, loading }: {
+  turn: Turn; flashId: number | null; onFlash: (id: number) => void; loading: boolean;
+}) {
+  const [showAll, setShowAll] = useState(false);
+  const idToNum = useIdToNum(turn);
+  const zitierte = useMemo(() => zitierteVon(turn, idToNum), [turn, idToNum]);
+  if (turn.sources.length === 0 && turn.presse.length === 0) return null;
+  return (
+    <div className="flex max-h-[calc(100dvh-40px)] flex-col gap-3.5 overflow-y-auto pb-4 pr-0.5">
+      {turn.sources.length > 0 && (
+        <QuellenBlock turn={turn} turnIdx={-1} idToNum={idToNum} zitierte={zitierte}
+          showAll={showAll} setShowAll={setShowAll} flashId={flashId} ankerPrefix="qa-col" />
+      )}
+      {turn.presse.length > 0 && <PresseBlock presse={turn.presse} />}
+      {!loading && (
+        <div className="flex items-center gap-1 border-t border-border/60 pt-1.5">
+          <ShareButton iconOnly
+            path={`/council?tab=decisions&mode=fragen&q=${encodeURIComponent(turn.frage)}`}
+            title={`Ratslotse: ${turn.frage}`}
+          />
+          <PrintButton iconOnly />
+          <span className="min-w-0 flex-1 text-right text-[10.5px] leading-snug text-muted-foreground/70">
+            KI-Antwort — kann unvollständig sein. Quellen prüfen.
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* --------------------------- Quellen (RG-02, v2) --------------------------- */
+
+function QuellenBlock({ turn, turnIdx, idToNum, zitierte, showAll, setShowAll, flashId, ankerPrefix }: {
   turn: Turn; turnIdx: number; idToNum: Map<number, number>; zitierte: QaSource[];
   showAll: boolean; setShowAll: (fn: (v: boolean) => boolean) => void; flashId: number | null;
+  ankerPrefix: string;
 }) {
   const router = useRouter();
   const nichtZitiert = turn.sources.length - zitierte.length;
@@ -587,30 +622,28 @@ function QuellenBlock({ turn, turnIdx, idToNum, zitierte, showAll, setShowAll, f
           {turn.mode ? ` · ${MODE_LABEL[turn.mode] ?? turn.mode}` : ""}
         </span>
       </p>
-      {/* Zitierte als kompakte Chips in Fußnoten-Reihenfolge. */}
+      {/* Zitierte als EINZEILIGE Pills: Titel + Jahr (Design 2④) — Gremium &
+          Datum stehen im Ausklapper und im Beschluss-Detail. */}
       {zitierte.length > 0 && (
         <div className="mt-1.5 flex flex-wrap gap-1.5">
           {zitierte.map((s) => (
-            <button key={s.id} type="button" id={`qa-source-${turnIdx}-${s.id}`}
+            <button key={s.id} type="button" id={`${ankerPrefix}-${s.id}`}
               onClick={() => router.push(decisionHref(s.id))}
+              title={`${s.title ?? ""} — ${s.committee} · ${fmtDatum(s.session_date)}`}
               className={cn(
-                "flex max-w-full items-center gap-2 rounded-[10px] border border-border bg-card px-2.5 py-[7px] text-left transition-[background-color,box-shadow] hover:bg-muted",
+                "inline-flex max-w-full items-center gap-1.5 rounded-full border border-border bg-card py-1 pl-1 pr-2.5 text-left transition-[background-color,box-shadow] hover:bg-muted",
                 flashId === s.id && "ring-2 ring-primary",
               )}>
               <span aria-hidden className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
                 {idToNum.get(s.id)}
               </span>
-              <span className="min-w-0">
-                <span className="block max-w-[180px] truncate text-[12.5px] font-medium leading-tight sm:max-w-[260px]">{s.title}</span>
-                <span className="block font-mono text-[9.5px] uppercase tracking-wide text-muted-foreground">
-                  {turn.qtype === "partei" && s.factions && s.factions.length > 0 && (
-                    <span className="mr-1 rounded-[4px] bg-signal/10 px-1 py-px text-[9px] font-bold normal-case tracking-normal text-signal">
-                      {s.factions.join(" · ")}
-                    </span>
-                  )}
-                  {s.committee} · {fmtDatum(s.session_date)}
+              <span className="max-w-[210px] truncate text-[12px] font-medium leading-none sm:max-w-[240px]">{s.title}</span>
+              {turn.qtype === "partei" && s.factions && s.factions.length > 0 && (
+                <span className="rounded-[4px] bg-signal/10 px-1 py-px text-[9px] font-bold leading-none text-signal">
+                  {s.factions[0]}
                 </span>
-              </span>
+              )}
+              <span className="shrink-0 font-mono text-[9.5px] leading-none text-muted-foreground">{jahr(s.session_date)}</span>
             </button>
           ))}
         </div>
@@ -622,18 +655,18 @@ function QuellenBlock({ turn, turnIdx, idToNum, zitierte, showAll, setShowAll, f
           deshalb zeigt Ratslotse hier bewusst keine Stimm-Grafik.
         </p>
       )}
-      {/* Ausklapper: alle Treffer in Relevanz-Reihenfolge, Score hier (RG-02). */}
+      {/* Ausklapper: alle Treffer in Relevanz-Reihenfolge, mit Gremium · Datum + Score. */}
       {(nichtZitiert > 0 || showAll) && (
         <button type="button" onClick={() => setShowAll((v) => !v)} aria-expanded={showAll}
-          className="mt-2 flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-          {showAll ? (<><ChevronUp className="h-3.5 w-3.5" /> Weniger anzeigen</>)
-            : (<><ChevronDown className="h-3.5 w-3.5" /> Alle {turn.sources.length} Quellen</>)}
+          className="mt-2 flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+          {showAll ? (<><ChevronUp className="h-3.5 w-3.5" /> Weniger</>)
+            : (<><ChevronDown className="h-3.5 w-3.5" /> Alle {turn.sources.length}</>)}
         </button>
       )}
       {showAll && (
         <div className="mt-2 space-y-1">
           {turn.sources.map((s) => (
-            <button key={s.id} type="button" id={`qa-source-${turnIdx}-${s.id}`}
+            <button key={s.id} type="button" id={`${ankerPrefix}-alle-${s.id}`}
               onClick={() => router.push(decisionHref(s.id))}
               className={cn(
                 "flex w-full items-baseline gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-muted",
@@ -667,15 +700,34 @@ function QuellenBlock({ turn, turnIdx, idToNum, zitierte, showAll, setShowAll, f
   );
 }
 
+function PresseBlock({ presse }: { presse: PresseHinweis[] }) {
+  return (
+    <div className="rounded-xl border border-dashed border-border p-3">
+      <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+        Aktuelles von der Stadt <span className="text-muted-foreground/60">· extern</span>
+      </p>
+      <ul className="mt-1.5 space-y-1">
+        {presse.map((p) => (
+          <li key={p.url}>
+            <a href={p.url} target="_blank" rel="noopener noreferrer"
+              className="group flex items-baseline gap-2 rounded-lg px-1.5 py-1 text-sm transition-colors hover:bg-muted">
+              <span className="min-w-0 flex-1 truncate text-[12.5px] group-hover:underline">{p.titel}</span>
+              <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{fmtDatumKurz(p.datum)}</span>
+              <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 /* ---------------------- Fragetyp-Bausteine (RG-03/04) --------------------- */
 
 function Baustein({ turn, idToNum, onJump }: {
   turn: Turn; idToNum: Map<number, number>; onJump: (id: number) => void;
 }) {
-  const zitierteQuellen = useMemo(() => {
-    const byId = new Map(turn.sources.map((s) => [s.id, s]));
-    return [...idToNum.keys()].map((id) => byId.get(id)).filter(Boolean) as QaSource[];
-  }, [turn.sources, idToNum]);
+  const zitierteQuellen = useMemo(() => zitierteVon(turn, idToNum), [turn, idToNum]);
 
   if (turn.qtype === "verlauf" && zitierteQuellen.length >= 2) {
     const stationen = [...zitierteQuellen].sort((a, b) => (a.session_date ?? "").localeCompare(b.session_date ?? ""));
@@ -686,7 +738,6 @@ function Baustein({ turn, idToNum, onJump }: {
             const letzte = i === stationen.length - 1;
             return (
               <div key={s.id} className="relative flex gap-3 pb-3.5 last:pb-0">
-                {/* Rail: Punkt + Linie. */}
                 <div className="flex w-4 shrink-0 flex-col items-center">
                   <span className={cn(
                     "mt-1 h-2.5 w-2.5 shrink-0 rounded-full border-2",
@@ -756,7 +807,6 @@ function Baustein({ turn, idToNum, onJump }: {
   }
 
   if (turn.qtype === "partei") {
-    // Kopfzeile (RG-05): dominante Fraktion unter den zitierten Antragstellern.
     const zaehler = new Map<string, number>();
     for (const s of turn.sources) for (const f of s.factions ?? []) zaehler.set(f, (zaehler.get(f) ?? 0) + 1);
     const dominant = [...zaehler.entries()].sort((a, b) => b[1] - a[1])[0];
@@ -791,14 +841,11 @@ function FussnotenChip({ id, idToNum, onJump }: {
 /**
  * Antworttext mit klickbaren Fußnoten und SPARSAMEM Markdown: "[id]" →
  * nummerierte Chips; "**fett**" → <strong>; "- "-Zeilen → echte Liste;
- * Leerzeilen → Absätze. Bewusst kein voller Markdown-Renderer — das Prompt
- * erlaubt genau diese drei Formen, alles andere bleibt Text. Streaming-fest:
- * ein noch offenes "**" am Ende wird als Text gezeigt, nicht verschluckt.
+ * Leerzeilen → Absätze. Streaming-fest: ein offenes "**" bleibt Text.
  */
 function AnswerWithCitations({ text, idToNum, onJump }: {
   text: string; idToNum: Map<number, number>; onJump: (id: number) => void;
 }) {
-  // Inline-Ebene: Zitat-Chips + **fett** in einem Textstück.
   const inline = (chunk: string, keyBase: string) => {
     const parts = chunk.split(CITE_SPLIT_RE);
     return parts.map((part, i) => {
@@ -817,7 +864,6 @@ function AnswerWithCitations({ text, idToNum, onJump }: {
           </span>
         );
       }
-      // **fett** — nur geschlossene Paare; ein offenes ** (Streaming) bleibt Text.
       const seg = part.split(/(\*\*[^*]+\*\*)/g);
       return seg.map((s, j) =>
         /^\*\*[^*]+\*\*$/.test(s)
@@ -826,9 +872,6 @@ function AnswerWithCitations({ text, idToNum, onJump }: {
     });
   };
 
-  // Block-Ebene: Absätze (Leerzeile); INNERHALB eines Blocks werden
-  // aufeinanderfolgende "- "-Zeilen zur echten Liste gruppiert — auch nach
-  // einer Kopfzeile („Weitere Maßnahmen umfassen: - … - …").
   const bloecke = text.split(/\n{2,}/);
   return (
     <>
