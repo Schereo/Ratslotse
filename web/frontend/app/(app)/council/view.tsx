@@ -151,6 +151,19 @@ function subvoteLabel(s: NonNullable<CouncilDecision["subvote_summary"]>): strin
 function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
   const isSub = d.kind === "subvote";
   const sub = d.subvote_summary;
+  const router = useRouter();
+  const sp = useSearchParams();
+  // 5a/I-08: aus der Trefferkarte direkt ins Ratsgespräch — die Frage steht
+  // vorbefüllt im Composer, gesendet wird bewusst erst per Hand.
+  const dazuFragen = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const params = new URLSearchParams(sp.toString());
+    params.set("tab", "decisions");
+    params.set("mode", "fragen");
+    params.set("q", `Erzähl mir mehr zu „${d.title ?? ""}".`);
+    router.replace(`/council?${params.toString()}`, { scroll: false });
+  };
   return (
     <Link href={decisionHref(d.id)} className="block">
       {/* Design 22a: drei feste Zonen statt verstreuter Elemente — Statuszeile
@@ -166,7 +179,14 @@ function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
               <OutcomeDot outcome={d.outcome} />
               {!isSub && <ImportanceBadge score={d.importance} />}
             </div>
-            <ChevronRight className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+            <span className="flex shrink-0 items-center gap-1">
+              <button type="button" onClick={dazuFragen} title="Im Ratsgespräch dazu fragen"
+                aria-label={`Im Ratsgespräch zu „${d.title ?? ""}" fragen`}
+                className="rounded-md p-1 text-muted-foreground opacity-60 transition-opacity hover:bg-muted hover:text-primary focus:opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
+                <Sparkles className="h-4 w-4" aria-hidden />
+              </button>
+              <ChevronRight className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+            </span>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
             {isSub

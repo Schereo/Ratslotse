@@ -3566,6 +3566,19 @@ class CouncilStore:
                 break
         return out
 
+    def juengste_sitzungen_mit_beschluessen(self, limit: int = 2) -> list[dict]:
+        """Die jüngsten vergangenen Sitzungen, zu denen Beschlüsse extrahiert
+        sind — Futter für frische KI-Beispielfragen (5a/I-07)."""
+        rows = self._conn.execute(
+            """SELECT cs.committee, cs.session_date, COUNT(*) AS n
+               FROM council_decisions d
+               JOIN council_sessions cs ON cs.ksinr = d.ksinr
+               WHERE d.kind = 'decision'
+               GROUP BY d.ksinr ORDER BY cs.session_date DESC LIMIT ?""",
+            (int(limit),),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
     def get_decisions_by_ids(self, ids: list[int]) -> list[dict]:
         """Fetch decisions by id, preserving the given order (for Q&A citations).
 
