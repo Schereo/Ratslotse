@@ -3239,6 +3239,48 @@ class CouncilStore:
             out.setdefault(r["vorlage_nr"], []).append(r["id"])
         return out
 
+    # ---- Laufende Bauleitplan-Beteiligungen (council/beteiligung.py) ----
+
+    def save_beteiligungen(self, rows: list[dict]) -> int:
+        """Aktuellen Stand komplett ersetzen (die Quelle listet nur Laufendes)."""
+        from datetime import datetime as _dt
+        now = _dt.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "CREATE TABLE IF NOT EXISTS council_beteiligungen ("
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, titel TEXT NOT NULL, "
+                "ort TEXT, schritt TEXT, von TEXT, bis TEXT, url TEXT NOT NULL, "
+                "plan_nrs TEXT NOT NULL, fetched_at TEXT NOT NULL)"
+            )
+            self._conn.execute("DELETE FROM council_beteiligungen")
+            self._conn.executemany(
+                "INSERT INTO council_beteiligungen (titel, ort, schritt, von, bis, url, plan_nrs, fetched_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                [(r["titel"], r.get("ort"), r.get("schritt"), r.get("von"), r.get("bis"),
+                  r["url"], json.dumps(r.get("plan_nrs") or [], ensure_ascii=False), now)
+                 for r in rows],
+            )
+        return len(rows)
+
+    def list_beteiligungen(self) -> list[dict]:
+        """Alle laufenden Beteiligungen (plan_nrs als Liste) — die Handvoll
+        Zeilen matcht der Aufrufer in Python gegen Beschluss-Titel."""
+        try:
+            rows = self._conn.execute(
+                "SELECT titel, ort, schritt, von, bis, url, plan_nrs "
+                "FROM council_beteiligungen").fetchall()
+        except sqlite3.OperationalError:  # Tabelle entsteht erst mit dem ersten Lauf
+            return []
+        out = []
+        for r in rows:
+            d = dict(r)
+            try:
+                d["plan_nrs"] = json.loads(d.get("plan_nrs") or "[]")
+            except ValueError:
+                d["plan_nrs"] = []
+            out.append(d)
+        return out
+
     # ---- Teilvoten aus raw_result (welche Fraktion stimmte wie) ----
 
     def save_decision_votes(self, decision_id: int, votes: list[tuple[str, str]]) -> None:

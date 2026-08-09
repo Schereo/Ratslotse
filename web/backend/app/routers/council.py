@@ -343,6 +343,18 @@ def decision_detail(
         "similar": store.get_similar(decision_id, limit=5),
         "entities": store.entities_for_decision(decision_id),
     }
+    # Läuft zu diesem Bauleitplan GERADE eine Beteiligung? Dann gehört der
+    # Hinweis samt Frist an den Beschluss — Stellungnahme ist eine der wenigen
+    # Handlungen, die Bürger:innen JETZT offenstehen (Stufe 3b).
+    try:
+        from council import beteiligung as bet_mod
+        out["beteiligung"] = next(
+            ({"titel": b["titel"], "schritt": b["schritt"], "von": b["von"],
+              "bis": b["bis"], "url": b["url"]}
+             for b in store.list_beteiligungen()
+             if bet_mod.passt_zu_titel(b["plan_nrs"], d.get("title") or "")), None)
+    except Exception:  # noqa: BLE001 — Zusatzinfo, nie Blocker
+        out["beteiligung"] = None
     # Wichtigkeits-Aufschlüsselung (welche Signale trieben den Score) — erklärt
     # transparent, warum ein Beschluss als wichtig gilt.
     n_ber = len(store.get_beratungen(d["kvonr"])) if d.get("kvonr") else None
@@ -844,6 +856,17 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     if t:
                         c["vorlage_excerpt"] = vorlagen_mod.excerpt(t, 350)
             except Exception:  # noqa: BLE001
+                pass
+            try:  # Läuft zu einem Kandidaten gerade eine Bauleitplan-Beteiligung?
+                from council import beteiligung as bet_mod
+                bets = store.list_beteiligungen()
+                for c in ctx if bets else []:
+                    b = next((b for b in bets
+                              if bet_mod.passt_zu_titel(b["plan_nrs"], c.get("title") or "")), None)
+                    if b:
+                        frist = f" bis {b['bis']}" if b.get("bis") else ""
+                        c["beteiligung"] = f"{b['schritt']}{frist}"
+            except Exception:  # noqa: BLE001 — Zusatzsignal, nie Blocker
                 pass
             # Der Antworttext wird live gestreamt, die angehängten Folgefragen
             # (24a) dürfen dabei NICHT als Text erscheinen. Deshalb halten wir
