@@ -9,7 +9,7 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from council.store import CouncilStore
 from council.topics import POLICY_FIELDS
@@ -703,8 +703,18 @@ def goal_detail(key: str, _user: dict = Depends(require_active),
     }
 
 
+class AskRunde(BaseModel):
+    """Eine frühere Gesprächsrunde (Chat): Frage + gekürzte Antwort."""
+    frage: str = Field(max_length=300)
+    antwort: str = Field(default="", max_length=600)
+
+
 class AskBody(BaseModel):
     question: str
+    # Chat-Modus (Paket A): die letzten Runden erlauben Anschlussfragen wie
+    # „Und was kostet das?" — die Analyse kondensiert daraus eine eigenständige
+    # Suchfrage. Ohne Verlauf verhält sich /ask exakt wie bisher.
+    verlauf: list[AskRunde] = Field(default_factory=list, max_length=4)
 
 
 # Q&A sizing: show up to QA_TOP_K reranked decisions as sources, feed the most
@@ -776,14 +786,18 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # (expand_ms misst seit dem Fragetyp-Routing den EINEN Analyse-Call
             # — Begriffe + Typ —, der Schlüssel bleibt für Vergleichbarkeit.)
             zeiten: dict = {}
+            verlauf = [r.model_dump() for r in body.verlauf]
             yield _sse({"type": "step", "step": "expand"})
             t0 = time.perf_counter()
-            analyse = qa.analyse_query(q)
+            analyse = qa.analyse_query(q, verlauf=verlauf)
             expanded, typ = analyse["begriffe"], analyse["typ"]
+            # Retrieval + Reranker arbeiten mit der EIGENSTÄNDIGEN Fassung der
+            # Frage — „Und was kostet das?" sucht sonst nach nichts.
+            q_suche = analyse["frage"]
             zeiten["expand_ms"] = round((time.perf_counter() - t0) * 1000)
             yield _sse({"type": "step", "step": "search"})
             t0 = time.perf_counter()
-            candidates, mode = _qa_retrieve(store, q, expanded, timings=zeiten)
+            candidates, mode = _qa_retrieve(store, q_suche, expanded, timings=zeiten)
             partei_ids: set[int] = set()
             if typ == "partei" and analyse.get("partei"):
                 # Anträge der gefragten Fraktion zum Thema in den Pool — die
@@ -800,7 +814,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 # Eigener Kanal neben den Beschlüssen: „Aktuelles von der Stadt"
                 # (Pressemitteilungen) — strenge Schwelle, oft leer.
                 from council import embeddings as emb
-                hits_p = emb.search_presse(store, q, expanded)
+                hits_p = emb.search_presse(store, q_suche, expanded)
                 presse_rows = store.presse_by_ids([pid for pid, _ in hits_p])
             except Exception:  # noqa: BLE001 — Presse ist Zusatz, nie Blocker
                 pass
@@ -839,7 +853,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             buf, sent = "", 0
             t0 = time.perf_counter()
             try:
-                for delta in qa.answer_stream(q, ctx, typ=typ, presse=presse_rows):
+                for delta in qa.answer_stream(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf):
                     if not buf and delta:
                         zeiten["ttft_ms"] = round((time.perf_counter() - t0) * 1000)
                     buf += delta
@@ -856,7 +870,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     sent = len(buf)
             except Exception:  # noqa: BLE001 — streaming failed mid-way → one-shot fallback
                 if not buf:
-                    ans, _ = qa.answer_question(q, ctx, typ=typ, presse=presse_rows)
+                    ans, _ = qa.answer_question(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf)
                     buf = ans
                     yield _sse({"type": "token", "text": ans})
                     sent = len(ans)

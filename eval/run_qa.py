@@ -357,13 +357,15 @@ def main() -> int:
             q = case["question"]
             t = latenz.setdefault(case["id"], {})
             t_exp, c_exp = time.perf_counter(), llm.session_cost()["usd"]
-            analyse = qa.analyse_query(q)
+            # Ketten-Faelle (Chat): case["verlauf"] traegt die Vorrunden — die
+            # Analyse muss daraus eine eigenstaendige Suchfrage kondensieren.
+            analyse = qa.analyse_query(q, verlauf=case.get("verlauf"))
             expanded, typ = analyse["begriffe"], analyse["typ"]
             typen[case["id"]] = typ
             t["expand_ms"] = round((time.perf_counter() - t_exp) * 1000)
             t["analyse_ct"] = kosten_ct_seit(c_exp)
             t_ret = time.perf_counter()
-            hits = emb.hybrid_search(store, q, expanded, top_k=TOP_K, pool=55, timings=t)
+            hits = emb.hybrid_search(store, analyse["frage"], expanded, top_k=TOP_K, pool=55, timings=t)
             cands = store.get_decisions_by_ids([h[0] for h in hits])
             if typ == "partei" and analyse.get("partei"):
                 try:

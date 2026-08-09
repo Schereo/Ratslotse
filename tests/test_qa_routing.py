@@ -34,7 +34,8 @@ def test_analyse_parst_sauberes_json(monkeypatch):
     calls = _llm_antwort(monkeypatch, json.dumps(
         {"begriffe": "Radverkehr Fahrrad Radweg", "typ": "verlauf", "partei": None}))
     a = qa.analyse_query("Wie lief das mit dem Radweg?")
-    assert a == {"begriffe": "Radverkehr Fahrrad Radweg", "typ": "verlauf", "partei": None}
+    assert a == {"frage": "Wie lief das mit dem Radweg?",
+                 "begriffe": "Radverkehr Fahrrad Radweg", "typ": "verlauf", "partei": None}
     # Zweiter Aufruf kommt aus dem Cache — kein weiterer LLM-Call.
     qa.analyse_query("Wie lief das mit dem Radweg?")
     assert calls["n"] == 1
@@ -58,12 +59,48 @@ def test_analyse_faellt_bei_muell_auf_thema(monkeypatch):
     assert qa.analyse_query("Hafenfrage?")["typ"] == "thema"
 
 
+def test_analyse_kondensiert_mit_verlauf(monkeypatch):
+    calls = _llm_antwort(monkeypatch, json.dumps(
+        {"frage": "Was kostet der Neubau der Cäcilienbrücke?",
+         "begriffe": "Kosten Neubau Cäcilienbrücke", "typ": "geld", "partei": None}))
+    verlauf = [{"frage": "Wie ist der Stand bei der Cäcilienbrücke?",
+                "antwort": "Der Rat forderte das WSA zur Beschleunigung auf. " * 20}]
+    a = qa.analyse_query("Und was kostet das?", verlauf=verlauf)
+    assert a["frage"] == "Was kostet der Neubau der Cäcilienbrücke?"
+    # Cache-Schlüssel enthält den Verlauf: gleiche Frage OHNE Verlauf ist ein
+    # eigener Eintrag und trifft nicht denselben Cache.
+    _llm_antwort(monkeypatch, json.dumps({"frage": "Und was kostet das?",
+                                          "begriffe": "Kosten", "typ": "geld"}))
+    b = qa.analyse_query("Und was kostet das?")
+    assert b["frage"] == "Und was kostet das?"
+
+
+def test_verlauf_zeilen_kuerzt_und_begrenzt():
+    runden = [{"frage": f"Frage {i}?", "antwort": "A" * 1000} for i in range(6)]
+    text = qa._verlauf_zeilen(runden)
+    # Nur die letzten VERLAUF_MAX_RUNDEN, Antworten gekürzt.
+    assert text.count("- Frage:") == qa.VERLAUF_MAX_RUNDEN
+    assert "Frage 5?" in text and "Frage 0?" not in text
+    assert "A" * (qa._VERLAUF_ANTWORT_MAX + 1) not in text
+    assert qa._verlauf_zeilen(None) == ""
+
+
+def test_antwortprompt_traegt_gespraechskontext():
+    messages, _ = qa._answer_messages(
+        "Und wer ist zuständig?", [],
+        verlauf=[{"frage": "Stand Cäcilienbrücke?", "antwort": "Resolution ans WSA."}])
+    assert "Dies ist eine Anschlussfrage in einem Gespräch" in messages[0]["content"]
+    assert "Resolution ans WSA." in messages[0]["content"]
+    messages, _ = qa._answer_messages("Frage?", [])
+    assert "Dies ist eine Anschlussfrage" not in messages[0]["content"]
+
+
 def test_analyse_fehler_liefert_fallback(monkeypatch):
     def boom(**kwargs):
         raise RuntimeError("Provider weg")
     monkeypatch.setattr(qa.llm, "chat_complete", boom)
     a = qa.analyse_query("Frage?")
-    assert a == {"begriffe": "Frage?", "typ": "thema", "partei": None}
+    assert a == {"frage": "Frage?", "begriffe": "Frage?", "typ": "thema", "partei": None}
 
 
 def test_sort_verlauf_aelteste_zuerst():
