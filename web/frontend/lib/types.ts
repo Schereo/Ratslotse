@@ -84,6 +84,10 @@ export interface QaSource {
   id: number; title: string | null; summary: string | null;
   policy_field: string | null; outcome: DecisionOutcome | null;
   session_date: string; committee: string; score?: number;
+  /** Ratsgespräch-Bausteine (RG-04/05): Betrag und Antragsteller-Fraktionen,
+   *  deterministisch aus den Beschluss-Metadaten. */
+  amount_eur?: number | null;
+  factions?: string[];
 }
 
 export interface QaAnswer {
