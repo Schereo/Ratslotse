@@ -24,7 +24,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   abgeschnitten — sie werden jetzt vollständig in Abschnitten ausgelesen. Für
   die Qualitätssicherung misst der Eval-Harness jetzt auch die Antwortzeit
   jedes Suchschritts, die Gold-Fälle sind datenbank-unabhängig formuliert und
-  ein Ops-Workflow vergleicht alten und neuen Suchweg direkt auf dem Server. (#XXX)
+  ein Ops-Workflow vergleicht alten und neuen Suchweg direkt auf dem Server. (#360)
 
 ### Behoben
 - **Themen-Benachrichtigungen liefen für alle ins Leere, sobald ein einziges
