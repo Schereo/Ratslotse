@@ -8,6 +8,20 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **„Frag den Rat" ist jetzt ein Gespräch.** Der KI-Frage-Tab wird zum Chat:
+  Fragen und Antworten bleiben untereinander stehen, Anschlussfragen („Und
+  was kostet das?") verstehen den Zusammenhang, und die vorgeschlagenen
+  Weiterfragen führen das Gespräch direkt fort. Die Quellen sind kompakter
+  geworden — zitierte Beschlüsse stehen als antippbare Chips mit
+  Fußnoten-Nummer direkt unter der Antwort, der Rest wartet hinter „Alle N
+  Quellen". Je nach Frage baut die Antwort eigene Elemente ein: eine
+  Zeitleiste der Beratungsstationen bei Verlaufsfragen, Beträge bei
+  Geldfragen, Antragsteller-Kennzeichnung bei Fraktionsfragen — alles direkt
+  aus den Beschlussdaten, nichts davon erfindet die KI. Pressemitteilungen
+  erscheinen klar als externe Links, und wer nichts findet, kann die Frage
+  mit einem Tipp als beobachtetes Thema anlegen. (#368)
+
+### Hinzugefügt
 - **Läuft zu einem Bebauungsplan gerade die Bürgerbeteiligung, steht das
   jetzt am Beschluss.** Ratslotse gleicht täglich die laufenden Planverfahren
   auf oldenburg.planungsbeteiligung.de ab und verbindet sie über die
