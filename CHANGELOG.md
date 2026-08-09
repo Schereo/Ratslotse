@@ -7,7 +7,11 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Verbessert
+- **Breite Fragen bekommen ausführlichere, strukturierte Antworten.** Die
+  starre 2–5-Sätze-Regel ist Geschichte: Eine enge Frage bleibt knapp, aber
+  „Was macht die Stadt alles für den Radverkehr?" darf jetzt die wichtigsten
+  Vorhaben nacheinander nennen — mit dezentem Fettdruck auf den zentralen
+  Projekten und echten Aufzählungen, damit das Auge Halt findet. (#371)
 - **Die Weiterfragen-Chips klingen jetzt wie im Gespräch.** Da Anschlussfragen
   den Zusammenhang kennen, müssen die Vorschläge nicht mehr jedes Detail
   wiederholen — aus „Wer stimmte gegen den Ersatzneubau der Grundschule
