@@ -7,6 +7,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Verbessert
+- **Die Weiterfragen-Chips klingen jetzt wie im Gespräch.** Da Anschlussfragen
+  den Zusammenhang kennen, müssen die Vorschläge nicht mehr jedes Detail
+  wiederholen — aus „Wer stimmte gegen den Ersatzneubau der Grundschule
+  Wechloy?" wird ein natürliches „Wer stimmte dagegen?". (#369)
+
 ### Hinzugefügt
 - **„Frag den Rat" ist jetzt ein Gespräch.** Der KI-Frage-Tab wird zum Chat:
   Fragen und Antworten bleiben untereinander stehen, Anschlussfragen („Und
