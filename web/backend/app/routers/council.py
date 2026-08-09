@@ -795,9 +795,20 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     candidates += store.get_decisions_by_ids([i for i in extra_ids if i not in have])
                 except Exception:  # noqa: BLE001 — Anreicherung ist best-effort
                     pass
+            presse_rows: list[dict] = []
+            try:
+                # Eigener Kanal neben den Beschlüssen: „Aktuelles von der Stadt"
+                # (Pressemitteilungen) — strenge Schwelle, oft leer.
+                from council import embeddings as emb
+                hits_p = emb.search_presse(store, q, expanded)
+                presse_rows = store.presse_by_ids([pid for pid, _ in hits_p])
+            except Exception:  # noqa: BLE001 — Presse ist Zusatz, nie Blocker
+                pass
             zeiten["retrieve_ms"] = round((time.perf_counter() - t0) * 1000)
             yield _sse({"type": "sources", "mode": mode, "qtype": typ,
-                        "sources": [_qa_source(c) for c in candidates]})
+                        "sources": [_qa_source(c) for c in candidates],
+                        "presse": [{"titel": p.get("titel"), "url": p.get("url"),
+                                    "datum": p.get("datum")} for p in presse_rows]})
             yield _sse({"type": "step", "step": "answer"})
             if not candidates:
                 yield _sse({"type": "token", "text": "Dazu habe ich keine passenden Beschlüsse gefunden."})
@@ -828,7 +839,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             buf, sent = "", 0
             t0 = time.perf_counter()
             try:
-                for delta in qa.answer_stream(q, ctx, typ=typ):
+                for delta in qa.answer_stream(q, ctx, typ=typ, presse=presse_rows):
                     if not buf and delta:
                         zeiten["ttft_ms"] = round((time.perf_counter() - t0) * 1000)
                     buf += delta
@@ -845,7 +856,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     sent = len(buf)
             except Exception:  # noqa: BLE001 — streaming failed mid-way → one-shot fallback
                 if not buf:
-                    ans, _ = qa.answer_question(q, ctx, typ=typ)
+                    ans, _ = qa.answer_question(q, ctx, typ=typ, presse=presse_rows)
                     buf = ans
                     yield _sse({"type": "token", "text": ans})
                     sent = len(ans)

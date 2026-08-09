@@ -499,6 +499,32 @@ class CouncilStore:
             "vector BLOB NOT NULL, "
             "PRIMARY KEY (vorlage_nr, chunk_idx))"
         )
+        # Pressemitteilungen der Stadt (council/presse.py): Volltext intern für
+        # Suche/Embedding, angezeigt werden Titel/Datum/Auszug/Link. Dazu ein
+        # eigener FTS-Index und Chunk-Vektoren analog den Vorlagen.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_presse ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "url TEXT NOT NULL UNIQUE, "
+            "news_id INTEGER, "
+            "titel TEXT NOT NULL, "
+            "datum TEXT, "
+            "text TEXT NOT NULL, "
+            "fetched_at TEXT NOT NULL)"
+        )
+        self._conn.execute(
+            "CREATE VIRTUAL TABLE IF NOT EXISTS council_presse_fts "
+            "USING fts5(content, tokenize=\"unicode61 remove_diacritics 2\")"
+        )
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_presse_embeddings ("
+            "presse_id INTEGER NOT NULL, "
+            "chunk_idx INTEGER NOT NULL, "
+            "text_hash TEXT NOT NULL, "
+            "chunk_text TEXT NOT NULL, "
+            "vector BLOB NOT NULL, "
+            "PRIMARY KEY (presse_id, chunk_idx))"
+        )
         # Aus raw_result geparste Teilvoten: welche Fraktion stimmte laut
         # Protokoll dagegen / enthielt sich. faction steht wie protokolliert
         # (Gruppen nicht aufgelöst — Fraktion≠Partei, siehe council/parties.py).
@@ -3247,6 +3273,98 @@ class CouncilStore:
             "SELECT id, raw_result FROM council_decisions "
             "WHERE raw_result IS NOT NULL AND raw_result != ''"
         ).fetchall()]
+
+    # ---- Pressemitteilungen der Stadt (council/presse.py) ----
+
+    def save_presse(self, url: str, news_id: int | None, titel: str,
+                    datum: str | None, text: str) -> int:
+        """Upsert einer Pressemitteilung (Schlüssel: url) inkl. FTS-Zeile.
+        Liefert die Zeilen-id."""
+        from datetime import datetime as _dt
+        now = _dt.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT INTO council_presse (url, news_id, titel, datum, text, fetched_at) "
+                "VALUES (?, ?, ?, ?, ?, ?) "
+                "ON CONFLICT(url) DO UPDATE SET news_id=excluded.news_id, "
+                "titel=excluded.titel, datum=excluded.datum, text=excluded.text, "
+                "fetched_at=excluded.fetched_at",
+                (url, news_id, titel, datum, text, now),
+            )
+            pid = self._conn.execute(
+                "SELECT id FROM council_presse WHERE url = ?", (url,)).fetchone()[0]
+            self._conn.execute("DELETE FROM council_presse_fts WHERE rowid = ?", (pid,))
+            self._conn.execute(
+                "INSERT INTO council_presse_fts(rowid, content) VALUES (?, REPLACE(?, 'ß', 'ss'))",
+                (pid, f"{titel} {text[:8000]}"),
+            )
+        return pid
+
+    def presse_urls(self) -> set[str]:
+        """Alle bekannten PM-URLs — der Backfill überspringt Vorhandenes."""
+        return {r[0] for r in self._conn.execute("SELECT url FROM council_presse").fetchall()}
+
+    def presse_by_ids(self, ids: list[int]) -> list[dict]:
+        """PM-Zeilen (ohne Volltext-Riesen: Text auf 600 Zeichen gekürzt) in id-Reihenfolge."""
+        if not ids:
+            return []
+        ph = ",".join("?" * len(ids))
+        rows = self._conn.execute(
+            f"SELECT id, url, titel, datum, substr(text, 1, 600) AS auszug "
+            f"FROM council_presse WHERE id IN ({ph})", ids).fetchall()
+        by_id = {r["id"]: dict(r) for r in rows}
+        return [by_id[i] for i in ids if i in by_id]
+
+    def search_presse_fts(self, query: str, limit: int = 20) -> list[tuple]:
+        """BM25 über Pressemitteilungen → [(presse_id, score, snippet)] wie bei
+        den Beschlüssen (search_decisions_fts)."""
+        terms = [t for t in re.findall(r"[0-9a-zäöü]+", query.lower().replace("ß", "ss")) if len(t) >= 3][:12]
+        if not terms:
+            return []
+        try:
+            rows = self._conn.execute(
+                "SELECT rowid, rank, snippet(council_presse_fts, 0, '', '', ' … ', 16) "
+                "FROM council_presse_fts WHERE council_presse_fts MATCH ? ORDER BY rank LIMIT ?",
+                (" OR ".join(terms), limit)).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [(r[0], -float(r[1]), r[2] or "") for r in rows]
+
+    def presse_missing_embeddings(self) -> list[dict]:
+        """PMs, deren Chunk-Vektoren fehlen oder deren Text sich geändert hat
+        (SHA-256-Abgleich, analog vorlagen_missing_embeddings)."""
+        import hashlib
+        stored = dict(self._conn.execute(
+            "SELECT presse_id, MIN(text_hash) FROM council_presse_embeddings GROUP BY presse_id"
+        ).fetchall())
+        out = []
+        for r in self._conn.execute("SELECT id, titel, text FROM council_presse").fetchall():
+            blob = f"{r['titel']}\n{r['text']}"
+            h = hashlib.sha256(blob.encode("utf-8", "replace")).hexdigest()
+            if stored.get(r["id"]) != h:
+                out.append({"id": r["id"], "text": blob, "text_hash": h})
+        return out
+
+    def replace_presse_embeddings(self, presse_id: int, text_hash: str,
+                                  chunks: list[tuple[str, bytes]]) -> None:
+        with self._conn:
+            self._conn.execute(
+                "DELETE FROM council_presse_embeddings WHERE presse_id = ?", (presse_id,))
+            self._conn.executemany(
+                "INSERT INTO council_presse_embeddings "
+                "(presse_id, chunk_idx, text_hash, chunk_text, vector) VALUES (?, ?, ?, ?, ?)",
+                [(presse_id, i, text_hash, t, v) for i, (t, v) in enumerate(chunks)],
+            )
+
+    def get_presse_embeddings(self) -> list:
+        return self._conn.execute(
+            "SELECT presse_id, chunk_text, vector FROM council_presse_embeddings "
+            "ORDER BY presse_id, chunk_idx").fetchall()
+
+    def presse_embeddings_version(self) -> tuple:
+        count = self._conn.execute("SELECT COUNT(*) FROM council_presse_embeddings").fetchone()[0]
+        data_version = self._conn.execute("PRAGMA data_version").fetchone()[0]
+        return (count, data_version)
 
     # ---- field recaps (auto-generated LLM summaries per policy field) ----
 

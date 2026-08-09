@@ -8,6 +8,14 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **„Aktuelles von der Stadt": Die KI-Frage kennt jetzt die Pressemitteilungen
+  der Stadt Oldenburg.** Beschlüsse sagen, was entschieden wurde — die
+  Pressemitteilungen sagen, was daraus geworden ist (Spatenstich, Eröffnung,
+  Termine). Passt eine aktuelle Mitteilung zur Frage, erscheint sie als
+  eigener Block unter den Quellen mit Link auf oldenburg.de, und die Antwort
+  darf sie als „Laut Pressemitteilung vom …" einordnen — sauber getrennt von
+  den zitierten Beschlüssen. Ein täglicher Abgleich holt neue Mitteilungen
+  über den RSS-Feed der Stadt. (#365)
 - **Die KI-Suche erkennt, was für eine Frage man stellt — und antwortet
   passend.** Verlaufsfragen („Wie ist der Stand bei …?", „Was wurde aus …?")
   bekommen eine chronologische Antwort mit Datumsangaben von der ersten
