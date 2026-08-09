@@ -419,6 +419,14 @@ def decision_detail(
     return out
 
 
+@router.get("/qa-beispiele")
+def qa_beispiele(store: CouncilStore = Depends(get_council_store)) -> dict:
+    """Frische Beispiel-Anlässe für den Empty State der KI-Frage (5a/I-07):
+    die jüngsten Sitzungen mit Beschlüssen — das Frontend formuliert daraus
+    „Was hat der <Ausschuss> am <Datum> beschlossen?"."""
+    return {"sitzungen": store.juengste_sitzungen_mit_beschluessen(limit=2)}
+
+
 @router.get("/plan-bild/{document_id}")
 def plan_bild(document_id: int, thumb: bool = False) -> FileResponse:
     """Gerenderte Planzeichnung einer Anlage (P1) — öffentlich wie die
@@ -862,7 +870,10 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             except Exception:  # noqa: BLE001 — Presse ist Zusatz, nie Blocker
                 pass
             zeiten["retrieve_ms"] = round((time.perf_counter() - t0) * 1000)
+            # 5a/I-06: die kondensierte Frage mitschicken — der Kontext-Chip im
+            # Frontend zeigt, worauf sich Anschlussfragen beziehen.
             yield _sse({"type": "sources", "mode": mode, "qtype": typ,
+                        "frage": q_suche,
                         "sources": [_qa_source(c) for c in candidates],
                         "presse": [{"titel": p.get("titel"), "url": p.get("url"),
                                     "datum": p.get("datum")} for p in presse_rows]})

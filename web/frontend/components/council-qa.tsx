@@ -19,7 +19,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Sparkles, Send, Loader2, ChevronDown, ChevronUp, ArrowRight, Plus,
-  Square, CircleSlash, ExternalLink, ArrowDown, RotateCcw, MessageSquarePlus } from "lucide-react";
+  Square, CircleSlash, ExternalLink, ArrowDown, RotateCcw, MessageSquarePlus, X } from "lucide-react";
 import { Mascot } from "@/components/mascot";
 import { QaSource } from "@/lib/types";
 import { apiUrl, authHeaders } from "@/lib/api";
@@ -97,7 +97,29 @@ type Turn = {
   followups: string[];
   fehler?: "netz" | "limit" | null;
   abgebrochen?: boolean;
+  /** 5a/I-06: die vom Backend kondensierte Frage — der Kontext-Chip zeigt,
+   *  worauf sich Anschlussfragen beziehen. */
+  kontext?: string | null;
 };
+
+/** Gremium mit Artikel für die frische Beispielfrage (5a/I-07). */
+function derAusschuss(committee: string): string {
+  if (committee === "Rat") return "der Rat";
+  if (/ausschuss|beirat/i.test(committee)) return `der ${committee}`;
+  return `„${committee}"`;
+}
+
+/** 5a/I-02: „stützt sich auf N Beschlüsse von X bis Y" — Zeitraum-Ehrlichkeit
+ *  in der Meta-Zeile; leer, wenn nichts zitiert wurde. */
+function stuetztAuf(zitierte: QaSource[]): string {
+  if (zitierte.length === 0) return "";
+  const jahre = zitierte.map((s) => jahr(s.session_date)).filter(Boolean).sort();
+  const n = zitierte.length;
+  if (jahre.length === 0) return `stützt sich auf ${n} ${n === 1 ? "Beschluss" : "Beschlüsse"}`;
+  const von = jahre[0], bis = jahre[jahre.length - 1];
+  const zeitraum = von === bis ? `aus ${von}` : `von ${von} bis ${bis}`;
+  return `stützt sich auf ${n} ${n === 1 ? "Beschluss" : "Beschlüsse"} ${zeitraum}`;
+}
 
 const fmtDatum = (d?: string | null) =>
   d ? new Date(d).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }) : "";
@@ -254,6 +276,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             mode: (msg.mode as string) ?? null,
             qtype: (msg.qtype as string) ?? null,
             presse: (msg.presse as PresseHinweis[]) ?? [],
+            kontext: (msg.frage as string) ?? null,
           });
           else if (msg.type === "token") patchLast((t) => ({ antwort: t.antwort + (msg.text as string) }));
           else if (msg.type === "suggestions") patchLast({ followups: (msg.questions as string[]) ?? [] });
@@ -302,6 +325,24 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   const showIntro = turns.length === 0;
   const [nativeApp, setNativeApp] = useState(false);
   useEffect(() => { setNativeApp(isNativeApp()); }, []);
+
+  // 5a/I-07: frische Beispiel-Anlässe aus den jüngsten Sitzungen — die
+  // Klassiker bleiben, aber ein bis zwei Vorschläge zeigen, dass hier
+  // aktuelles Material liegt. Fehlt der Endpoint, bleiben die Klassiker.
+  const [frische, setFrische] = useState<string[]>([]);
+  useEffect(() => {
+    if (!showIntro) return;
+    fetch(apiUrl("/council/qa-beispiele"), { credentials: "include", headers: authHeaders() })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((b) => {
+        const rows = (b?.sitzungen ?? []) as { committee: string; session_date: string }[];
+        setFrische(rows.slice(0, 2).map((s) =>
+          `Was hat ${derAusschuss(s.committee)} am ${fmtDatum(s.session_date)} beschlossen?`));
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showIntro]);
+  const beispiele = [...frische, ...EXAMPLES].slice(0, 4);
   // Weiterfragen leben im Composer (Design 2②) — nur vom jüngsten Turn.
   const composerFollowups = !loading && letzter && !letzter.fehler ? letzter.followups.slice(0, 3) : [];
 
@@ -341,11 +382,14 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
               Zum Beispiel
             </p>
             <div className="mt-2 flex w-full max-w-md flex-col gap-1.5">
-              {EXAMPLES.map((ex) => (
+              {beispiele.map((ex, i) => (
                 <button key={ex} type="button" onClick={() => void ask(ex)}
                   className="flex items-center gap-2.5 rounded-[11px] border border-border bg-card px-3 py-2.5 text-left text-[13.5px] transition-[background-color,transform] duration-150 ease-out-strong hover:bg-muted active:scale-[0.99]">
                   <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
                   <span className="min-w-0 flex-1">{ex}</span>
+                  {i < frische.length && (
+                    <span className="shrink-0 rounded-full bg-signal/10 px-1.5 py-0.5 text-[10px] font-medium text-signal">Neu</span>
+                  )}
                 </button>
               ))}
             </div>
@@ -368,6 +412,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                 onJump={(id) => { jumpZuQuelle(ti, id, ti === turns.length - 1); flash(id); }}
                 onRetry={() => { setTurns((ts) => ts.slice(0, -1)); void ask(t.frage); }}
                 onEigeneFrage={() => inputRef.current?.focus()}
+                onDazuFragen={(titel) => void ask(`Erzähl mir mehr zu „${titel}".`)}
               />
             ))}
           </div>
@@ -388,8 +433,26 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
 
         {/* Composer: fix unten, Weiterfragen-Chips direkt darüber (Design 2①②). */}
         <div className="sticky bottom-0 z-10 -mx-1 mt-4 bg-gradient-to-t from-background via-background to-transparent px-1 pb-[max(env(safe-area-inset-bottom),8px)] pt-4 print:hidden">
-          {composerFollowups.length > 0 && (
-            <div className="mb-2 flex gap-1.5 overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch]">
+          {/* 5a/I-06: Der Kontext-Chip macht sichtbar, worauf sich Anschluss-
+              fragen beziehen — ✕ beginnt ein frisches Gespräch. */}
+          {letzter?.kontext && !letzter.fehler && (
+            <div className="mb-1.5 flex">
+              <span className="inline-flex min-w-0 items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-[11px] text-muted-foreground">
+                <span className="shrink-0 font-medium">Kontext:</span>
+                <span className="min-w-0 truncate">{letzter.kontext}</span>
+                <button type="button" onClick={neuesGespraech} aria-label="Kontext zurücksetzen — neues Gespräch"
+                  title="Kontext zurücksetzen" className="shrink-0 rounded-full p-0.5 transition-colors hover:bg-background hover:text-foreground">
+                  <X className="h-3 w-3" aria-hidden />
+                </button>
+              </span>
+            </div>
+          )}
+          {(composerFollowups.length > 0 || (!loading && letzter && !letzter.fehler && letzter.antwort)) && (
+            <div className="relative mb-2">
+              {/* Fade rechts statt Scrollbar (Design 4a) — die Kante zeigt,
+                  dass da mehr ist; gescrollt wird per Touch/Trackpad. */}
+              <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-background to-transparent" />
+              <div className="scrollbar-none flex gap-1.5 overflow-x-auto pb-0.5 pr-8 [-webkit-overflow-scrolling:touch]">
               {composerFollowups.map((s) => (
                 <button key={s} type="button" onClick={() => void ask(s)}
                   className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-primary/30 bg-primary/[0.05] px-3 py-1.5 text-[12.5px] text-foreground transition-[background-color,transform] duration-150 ease-out-strong hover:bg-primary/[0.1] active:scale-[0.98]">
@@ -397,6 +460,20 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                   <ArrowRight className="h-3 w-3 shrink-0 text-primary" aria-hidden />
                 </button>
               ))}
+              {/* 5a/I-09: feste Register — dieselbe Antwort, andere Flughöhe. */}
+              {!loading && letzter && !letzter.fehler && letzter.antwort && (
+                <>
+                  <button type="button" onClick={() => void ask("Erkläre das bitte einfacher, ohne Fachbegriffe.")}
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[12.5px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+                    Einfacher erklären
+                  </button>
+                  <button type="button" onClick={() => void ask("Bitte ausführlicher — was gehört noch zum Bild?")}
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[12.5px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+                    Ausführlicher
+                  </button>
+                </>
+              )}
+              </div>
             </div>
           )}
           {letzterFehler === "limit" ? (
@@ -451,10 +528,11 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
 
 /* ------------------------------------------------------------------------- */
 
-function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJump, onRetry, onEigeneFrage }: {
+function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJump, onRetry, onEigeneFrage, onDazuFragen }: {
   turn: Turn; turnIdx: number; istLetzter: boolean; loading: boolean;
   step: Step | null; word: string; flashId: number | null;
   onJump: (id: number) => void; onRetry: () => void; onEigeneFrage: () => void;
+  onDazuFragen?: (titel: string) => void;
 }) {
   const [showAll, setShowAll] = useState(false);
   // Ältere Turns beruhigen (Design 2⑤): Belege hinter der Kompaktzeile.
@@ -544,7 +622,8 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
           <div className={cn("flex flex-col gap-3.5", belegeInline)}>
             {turn.sources.length > 0 && (
               <QuellenBlock turn={turn} turnIdx={turnIdx} idToNum={idToNum} zitierte={zitierte}
-                showAll={showAll} setShowAll={setShowAll} flashId={flashId} ankerPrefix={`qa-source-${turnIdx}`} />
+                showAll={showAll} setShowAll={setShowAll} flashId={flashId} ankerPrefix={`qa-source-${turnIdx}`}
+                onDazuFragen={onDazuFragen} />
             )}
             {turn.presse.length > 0 && <PresseBlock presse={turn.presse} />}
           </div>
@@ -572,7 +651,8 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
               />
               <PrintButton iconOnly />
               <span role="status" className="min-w-0 flex-1 text-right text-[10.5px] leading-snug text-muted-foreground/70">
-                KI-Antwort aus den gefundenen Beschlüssen — kann unvollständig sein. Quellen prüfen.
+                {/* 5a/I-02: ehrlich sagen, worauf die Antwort fußt. */}
+                KI-Antwort{zitierte.length > 0 ? `, ${stuetztAuf(zitierte)}` : " aus den gefundenen Beschlüssen"} — kann unvollständig sein. Quellen prüfen.
               </span>
             </div>
           )}
@@ -584,8 +664,9 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
 
 /* ------------------- Belege-Spalte (Desktop, Design 2⑤) ------------------- */
 
-function BelegeSpalte({ turn, flashId, onFlash, loading }: {
+function BelegeSpalte({ turn, flashId, onFlash, loading, onDazuFragen }: {
   turn: Turn; flashId: number | null; onFlash: (id: number) => void; loading: boolean;
+  onDazuFragen?: (titel: string) => void;
 }) {
   const [showAll, setShowAll] = useState(false);
   const idToNum = useIdToNum(turn);
@@ -595,7 +676,8 @@ function BelegeSpalte({ turn, flashId, onFlash, loading }: {
     <div className="flex max-h-[calc(100dvh-40px)] flex-col gap-3.5 overflow-y-auto pb-4 pr-0.5">
       {turn.sources.length > 0 && (
         <QuellenBlock turn={turn} turnIdx={-1} idToNum={idToNum} zitierte={zitierte}
-          showAll={showAll} setShowAll={setShowAll} flashId={flashId} ankerPrefix="qa-col" />
+          showAll={showAll} setShowAll={setShowAll} flashId={flashId} ankerPrefix="qa-col"
+          onDazuFragen={onDazuFragen} />
       )}
       {turn.presse.length > 0 && <PresseBlock presse={turn.presse} />}
       {!loading && (
@@ -606,7 +688,7 @@ function BelegeSpalte({ turn, flashId, onFlash, loading }: {
           />
           <PrintButton iconOnly />
           <span className="min-w-0 flex-1 text-right text-[10.5px] leading-snug text-muted-foreground/70">
-            KI-Antwort — kann unvollständig sein. Quellen prüfen.
+            KI-Antwort{zitierte.length > 0 ? `, ${stuetztAuf(zitierte)}` : ""} — kann unvollständig sein. Quellen prüfen.
           </span>
         </div>
       )}
@@ -616,10 +698,10 @@ function BelegeSpalte({ turn, flashId, onFlash, loading }: {
 
 /* --------------------------- Quellen (RG-02, v2) --------------------------- */
 
-function QuellenBlock({ turn, turnIdx, idToNum, zitierte, showAll, setShowAll, flashId, ankerPrefix }: {
+function QuellenBlock({ turn, turnIdx, idToNum, zitierte, showAll, setShowAll, flashId, ankerPrefix, onDazuFragen }: {
   turn: Turn; turnIdx: number; idToNum: Map<number, number>; zitierte: QaSource[];
   showAll: boolean; setShowAll: (fn: (v: boolean) => boolean) => void; flashId: number | null;
-  ankerPrefix: string;
+  ankerPrefix: string; onDazuFragen?: (titel: string) => void;
 }) {
   const router = useRouter();
   const nichtZitiert = turn.sources.length - zitierte.length;
@@ -676,27 +758,37 @@ function QuellenBlock({ turn, turnIdx, idToNum, zitierte, showAll, setShowAll, f
       {showAll && (
         <div className="mt-2 space-y-1">
           {turn.sources.map((s) => (
-            <button key={s.id} type="button" id={`${ankerPrefix}-alle-${s.id}`}
-              onClick={() => router.push(decisionHref(s.id))}
+            <div key={s.id} id={`${ankerPrefix}-alle-${s.id}`}
               className={cn(
-                "flex w-full items-baseline gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-muted",
+                "group flex w-full items-baseline gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted",
                 flashId === s.id && "ring-2 ring-primary",
               )}>
-              {idToNum.has(s.id) ? (
-                <span aria-hidden className="flex h-4 w-4 shrink-0 translate-y-0.5 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
-                  {idToNum.get(s.id)}
+              <button type="button" onClick={() => router.push(decisionHref(s.id))}
+                className="flex min-w-0 flex-1 items-baseline gap-2 text-left">
+                {idToNum.has(s.id) ? (
+                  <span aria-hidden className="flex h-4 w-4 shrink-0 translate-y-0.5 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+                    {idToNum.get(s.id)}
+                  </span>
+                ) : <span className="w-4 shrink-0" />}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[12.5px]">{s.title}</span>
+                  <span className="block font-mono text-[9.5px] uppercase tracking-wide text-muted-foreground">
+                    {s.committee} · {fmtDatum(s.session_date)}
+                  </span>
                 </span>
-              ) : <span className="w-4 shrink-0" />}
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[12.5px]">{s.title}</span>
-                <span className="block font-mono text-[9.5px] uppercase tracking-wide text-muted-foreground">
-                  {s.committee} · {fmtDatum(s.session_date)}
-                </span>
-              </span>
+              </button>
               {typeof s.score === "number" && (
                 <span className="shrink-0 font-mono text-[9.5px] text-muted-foreground/70">Score {Math.round(s.score * 100)}</span>
               )}
-            </button>
+              {/* 5a/I-08: das Gespräch direkt an einer Quelle weiterführen. */}
+              {onDazuFragen && (
+                <button type="button" onClick={() => onDazuFragen(s.title ?? "")}
+                  title="Dazu fragen" aria-label={`Zu „${s.title}" weiterfragen`}
+                  className="shrink-0 self-center rounded-md p-1 text-muted-foreground opacity-60 transition-opacity hover:bg-background hover:text-primary focus:opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
+                  <Sparkles className="h-3.5 w-3.5" aria-hidden />
+                </button>
+              )}
+            </div>
           ))}
           {nichtZitiert > 0 && (
             <p className="px-2 pt-1 text-[11px] text-muted-foreground/70">

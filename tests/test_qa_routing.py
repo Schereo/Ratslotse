@@ -152,6 +152,25 @@ def test_antrag_decision_ids_findet_fraktion(tmp_path):
     store.close()
 
 
+def test_juengste_sitzungen_mit_beschluessen(tmp_path):
+    # 5a/I-07: Futter für frische Beispielfragen — nur Sitzungen MIT
+    # extrahierten Beschlüssen, neueste zuerst.
+    store = CouncilStore(tmp_path / "c.sqlite")
+    with store._conn:
+        for ksinr, datum in ((1, "2026-06-01"), (2, "2026-07-01"), (3, "2026-07-15")):
+            store._conn.execute(
+                "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, location, fetched_at) "
+                "VALUES (?, ?, ?, '18:00', '', '')", (ksinr, f"Gremium {ksinr}", datum))
+        for ksinr in (1, 2):  # Sitzung 3 bleibt ohne Beschlüsse (kein Protokoll)
+            store._conn.execute(
+                "INSERT INTO council_decisions (ksinr, position, kind, title) "
+                "VALUES (?, 0, 'decision', 'X')", (ksinr,))
+    rows = store.juengste_sitzungen_mit_beschluessen(limit=2)
+    assert [r["session_date"] for r in rows] == ["2026-07-01", "2026-06-01"]
+    assert rows[0]["committee"] == "Gremium 2" and rows[0]["n"] == 1
+    store.close()
+
+
 def test_haushalt_block_und_matching(tmp_path):
     ctx = qa._haushalt_block([{"year": 2026, "bereich": "Verkehr und Straßenbau",
                                "aufwendungen": 46194645.0, "ertraege": 17510637.0}])
