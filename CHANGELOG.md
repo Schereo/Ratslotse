@@ -40,6 +40,10 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Wechloy?" wird ein natürliches „Wer stimmte dagegen?". (#369)
 
 ### Hinzugefügt
+- **Fußnoten zeigen erst eine Vorschau.** Ein Klick auf eine Zitat-Nummer in
+  der KI-Antwort springt nicht mehr sofort weg, sondern öffnet eine kleine
+  Karte: Titel, Gremium, Datum, Ergebnis und die Kurzfassung des Beschlusses —
+  von dort geht es in den Beschluss oder zur Quellenliste. (#379)
 - **KI-Antworten kann man jetzt bewerten.** Daumen hoch oder runter direkt an
   der Antwort — beim Daumen runter fragt Ratslotse optional, was gefehlt hat.
   Das ist der ehrlichste Qualitätsmesser, den es geben kann: echte Fragen
