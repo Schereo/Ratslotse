@@ -265,6 +265,36 @@ def _presse_block(presse: list[dict] | None) -> str:
             f"{zeilen}\n")
 
 
+def _debatten_block(debatten: list[dict] | None) -> str:
+    """Kontext-Absatz „Aus den Ratsdebatten" — Wortbeiträge aus Protokollen
+    (Reden, Anfragen, Einwohnerfragen, Zusagen). Das sind BERICHTE, keine
+    Beschlüsse: nie mit [id] zitieren, sondern „Laut Protokoll sagte/fragte …"."""
+    if not debatten:
+        return ""
+    art_label = {"anfrage": "Anfrage", "einwohnerfrage": "Einwohnerfrage",
+                 "zusage": "Zusage der Verwaltung", "rede": "Redebeitrag"}
+    zeilen = []
+    for d in debatten:
+        wer = d.get("sprecher") or "?"
+        if d.get("partei"):
+            wer += f" ({d['partei']})"
+        kopf = f"{art_label.get(d.get('art') or 'rede', 'Redebeitrag')} von {wer}"
+        if d.get("session_date"):
+            kopf += f" am {d['session_date']}"
+        if d.get("committee"):
+            kopf += f" im Gremium „{d['committee']}“"
+        if d.get("top"):
+            kopf += f" zu „{d['top']}“"
+        zeile = f"- {kopf}: {(d.get('text') or '').strip()[:400]}"
+        if d.get("antwort"):
+            zeile += f" — Antwort der Verwaltung: {(d['antwort'] or '').strip()[:300]}"
+        zeilen.append(zeile)
+    return ("\nAUS DEN RATSDEBATTEN (Wortbeiträge aus Sitzungsprotokollen — Berichte,\n"
+            "KEINE Beschlüsse: nur nutzen, wenn einschlägig; im Text als „Laut Protokoll\n"
+            "sagte/fragte …“ nennen, NIE mit [id] zitieren):\n"
+            + "\n".join(zeilen) + "\n")
+
+
 def _haushalt_block(zeilen: list[dict] | None) -> str:
     """Kontext-Absatz mit Plan-Zahlen aus dem Stadthaushalt (Geldfragen).
     KEINE Beschlüsse: nie mit [id] zitieren, sondern als „Laut Haushaltsplan
@@ -284,14 +314,16 @@ def _haushalt_block(zeilen: list[dict] | None) -> str:
 def _answer_messages(question: str, candidates: list[dict], typ: str = "thema",
                      model: str = MODEL, presse: list[dict] | None = None,
                      verlauf: list[dict] | None = None,
-                     haushalt: list[dict] | None = None) -> tuple[list[dict], dict]:
+                     haushalt: list[dict] | None = None,
+                     debatten: list[dict] | None = None) -> tuple[list[dict], dict]:
     vtext = _verlauf_zeilen(verlauf)
     gespraech = (f"Dies ist eine Anschlussfrage in einem Gespräch. Bisher:\n{vtext}\n\n"
                  if vtext else "")
     prompt = prompts.render("qa_antwort", question=question.strip()[:300],
                             context=_build_context(candidates),
                             extra_regeln=EXTRA_REGELN.get(typ, ""),
-                            presse=_presse_block(presse) + _haushalt_block(haushalt),
+                            presse=_presse_block(presse) + _haushalt_block(haushalt)
+                            + _debatten_block(debatten),
                             gespraech=gespraech)
     # reasoning-Schalter am TATSÄCHLICH genutzten Modell festmachen — vorher
     # hing er an der Modul-Konstante und lief bei model=-Overrides ins Leere.
@@ -307,9 +339,10 @@ def _answer_tokens(typ: str) -> int:
 
 def answer_question(question: str, candidates: list[dict], model: str = MODEL, typ: str = "thema",
                     presse: list[dict] | None = None, verlauf: list[dict] | None = None,
-                    haushalt: list[dict] | None = None):
+                    haushalt: list[dict] | None = None, debatten: list[dict] | None = None):
     """Synthesise an answer from retrieved candidates. Returns ``(answer, cited_ids)``."""
-    messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf, haushalt)
+    messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
+                                       haushalt, debatten)
     resp = llm.chat_complete(model=model, _feature="qa_antwort", temperature=0.2,
                              max_tokens=_answer_tokens(typ), messages=messages, **extra)
     answer = (resp.choices[0].message.content or "").strip()
@@ -318,11 +351,12 @@ def answer_question(question: str, candidates: list[dict], model: str = MODEL, t
 
 def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ: str = "thema",
                   presse: list[dict] | None = None, verlauf: list[dict] | None = None,
-                  haushalt: list[dict] | None = None):
+                  haushalt: list[dict] | None = None, debatten: list[dict] | None = None):
     """Stream the answer text deltas (same prompt/context as answer_question) so the
     UI can render the answer as it is written. Citation resolution is the caller's
     job once the full text is assembled (see resolve_citations)."""
-    messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf, haushalt)
+    messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
+                                       haushalt, debatten)
     yield from llm.chat_stream(model=model, _feature="qa_antwort", temperature=0.2,
                                max_tokens=_answer_tokens(typ), messages=messages, **extra)
 

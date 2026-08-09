@@ -391,6 +391,67 @@ def embed_presse_missing(store) -> int:
     return n
 
 
+_wb_matrix_cache: tuple | None = None  # (version, ids, mat)
+
+
+def _wb_matrix(store):
+    global _wb_matrix_cache
+    version = store.wortbeitraege_embeddings_version()
+    if _wb_matrix_cache is None or _wb_matrix_cache[0] != version:
+        import numpy as np
+
+        rows = store.wortbeitraege_embedding_rows()
+        ids = [r[0] for r in rows]
+        if rows:
+            buf = b"".join(bytes(r[1]) for r in rows)
+            mat = np.frombuffer(buf, dtype="float32").reshape(len(ids), -1)
+        else:
+            mat = np.zeros((0, 0), dtype="float32")
+        _wb_matrix_cache = (version, ids, mat)
+    return _wb_matrix_cache[1], _wb_matrix_cache[2]
+
+
+def search_wortbeitraege(store, query: str, expanded: str, top_k: int = 4,
+                         min_score: float = 0.5) -> list[tuple]:
+    """Beste Wortbeiträge (Debatten, Anfragen, Einwohnerfragen) zur Frage →
+    ``[(wb_id, score)]``. Vektor ∪ BM25 wie bei search_presse — strenge
+    Schwelle, der Debatten-Block soll nur bei echter Einschlägigkeit kommen.
+    Leer, solange kein Wortbeitrags-Index existiert (extract_wortbeitraege.py)."""
+    best: dict[int, float] = {}
+    try:
+        ids, mat = _wb_matrix(store)
+        if ids:
+            qv = embed([expanded])[0]
+            scores = mat @ qv
+            for wid, s in zip(ids, scores):
+                if s >= min_score and s > best.get(wid, -1.0):
+                    best[wid] = float(s)
+    except Exception:  # noqa: BLE001 — ohne fastembed bleibt BM25
+        pass
+    for wid, score in store.search_wortbeitraege_fts(f"{query} {expanded}", limit=top_k * 3):
+        best.setdefault(wid, 0.01 + min(score, 50) / 1000)
+    return sorted(best.items(), key=lambda x: -x[1])[:top_k]
+
+
+def embed_wortbeitraege_missing(store) -> int:
+    """Ein Vektor je neuem Wortbeitrag (Texte sind auf 2000 Zeichen gekappt,
+    Chunking unnötig). Gerufen vom Extraktions-Skript und als Backstop von
+    embed_decisions.py."""
+    import hashlib
+
+    todo = store.wortbeitraege_missing_embeddings()
+    n = 0
+    for batch_start in range(0, len(todo), 64):
+        batch = todo[batch_start:batch_start + 64]
+        texts = [" — ".join(t for t in (w["top"], w["text"]) if t)[:2000] for w in batch]
+        vecs = embed(texts)
+        for w, text, vec in zip(batch, texts, vecs):
+            h = hashlib.sha1(text.encode("utf-8")).hexdigest()[:16]
+            store.replace_wortbeitrag_embedding(w["id"], h, vec.tobytes())
+            n += 1
+    return n
+
+
 def search_vorlagen(store, qv, top_k: int = 12, min_score: float = 0.35) -> list[tuple]:
     """Beste Vorlagen zu einem Query-Vektor → ``[(vorlage_nr, score, chunk_text)]``,
     je Vorlage zählt ihr bester Chunk (dessen Text wandert in das Rerank-Paar).

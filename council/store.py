@@ -552,6 +552,35 @@ class CouncilStore:
             "vector BLOB NOT NULL, "
             "PRIMARY KEY (presse_id, chunk_idx))"
         )
+        # Wortbeiträge aus den Protokollen (Task 16): Redebeiträge, „Anfragen
+        # und Anregungen", Einwohnerfragestunde und Zusagen der Verwaltung —
+        # die Debatten-Substanz, die in den Beschluss-Floskeln fehlt
+        # (Fliegerhorst-Befund). Jeder Beitrag ist sein eigener Such-Chunk.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_wortbeitraege ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "ksinr INTEGER NOT NULL, "
+            "position INTEGER NOT NULL, "
+            "art TEXT NOT NULL, "            # rede | anfrage | einwohnerfrage | zusage
+            "top TEXT, "
+            "sprecher TEXT, "
+            "partei TEXT, "
+            "text TEXT NOT NULL, "
+            "antwort TEXT, "                 # Verwaltungsantwort bei Anfragen
+            "extracted_at TEXT NOT NULL)"
+        )
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_wb_ksinr ON council_wortbeitraege(ksinr)")
+        self._conn.execute(
+            "CREATE VIRTUAL TABLE IF NOT EXISTS council_wortbeitraege_fts "
+            "USING fts5(content, tokenize=\"unicode61 remove_diacritics 2\")"
+        )
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_wortbeitraege_embeddings ("
+            "wb_id INTEGER PRIMARY KEY, "
+            "text_hash TEXT NOT NULL, "
+            "vector BLOB NOT NULL)"
+        )
         # Aus raw_result geparste Teilvoten: welche Fraktion stimmte laut
         # Protokoll dagegen / enthielt sich. faction steht wie protokolliert
         # (Gruppen nicht aufgelöst — Fraktion≠Partei, siehe council/parties.py).
@@ -3609,6 +3638,108 @@ class CouncilStore:
             out.setdefault(r["decision_id"], {"ort_name": r["name"],
                                               "lat": r["lat"], "lon": r["lon"]})
         return out
+
+    # ---- Wortbeiträge aus Protokollen (Task 16) ----------------------------
+
+    def save_wortbeitraege(self, ksinr: int, rows: list[dict]) -> int:
+        """Beiträge einer Sitzung ersetzen (ein Protokoll = eine Wahrheit) —
+        FTS und Embeddings der alten Zeilen werden mit abgeräumt."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            alte = [r[0] for r in self._conn.execute(
+                "SELECT id FROM council_wortbeitraege WHERE ksinr = ?", (ksinr,)).fetchall()]
+            if alte:
+                ph = ",".join("?" * len(alte))
+                self._conn.execute(f"DELETE FROM council_wortbeitraege_fts WHERE rowid IN ({ph})", alte)
+                self._conn.execute(f"DELETE FROM council_wortbeitraege_embeddings WHERE wb_id IN ({ph})", alte)
+                self._conn.execute("DELETE FROM council_wortbeitraege WHERE ksinr = ?", (ksinr,))
+            n = 0
+            for pos, r in enumerate(rows):
+                text = (r.get("text") or "").strip()
+                if not text:
+                    continue
+                cur = self._conn.execute(
+                    "INSERT INTO council_wortbeitraege "
+                    "(ksinr, position, art, top, sprecher, partei, text, antwort, extracted_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (ksinr, pos, r.get("art") or "rede", r.get("top"),
+                     r.get("sprecher"), r.get("partei"), text[:2000],
+                     (r.get("antwort") or "").strip()[:2000] or None, now))
+                inhalt = " ".join(x for x in (r.get("sprecher"), r.get("partei"), r.get("top"),
+                                              text, r.get("antwort")) if x)
+                self._conn.execute(
+                    "INSERT INTO council_wortbeitraege_fts(rowid, content) VALUES (?, REPLACE(?, 'ß', 'ss'))",
+                    (cur.lastrowid, inhalt))
+                n += 1
+            return n
+
+    def protocol_raw_text(self, ksinr: int) -> str | None:
+        row = self._conn.execute(
+            "SELECT raw_text FROM council_protocols WHERE ksinr = ?", (ksinr,)).fetchone()
+        return row[0] if row else None
+
+    def ksinr_ohne_wortbeitraege(self, limit: int = 0) -> list[int]:
+        """Protokolle mit Text, zu denen noch keine Beiträge extrahiert sind."""
+        sql = ("SELECT p.ksinr FROM council_protocols p "
+               "WHERE p.raw_text IS NOT NULL AND p.status = 'ok' AND NOT EXISTS "
+               "(SELECT 1 FROM council_wortbeitraege w WHERE w.ksinr = p.ksinr) "
+               "ORDER BY p.ksinr DESC")
+        if limit:
+            sql += f" LIMIT {int(limit)}"
+        return [r[0] for r in self._conn.execute(sql).fetchall()]
+
+    def wortbeitraege_by_ids(self, ids: list[int]) -> list[dict]:
+        if not ids:
+            return []
+        ph = ",".join("?" * len(ids))
+        rows = self._conn.execute(
+            f"""SELECT w.id, w.ksinr, w.art, w.top, w.sprecher, w.partei,
+                       w.text, w.antwort, cs.committee, cs.session_date
+                FROM council_wortbeitraege w
+                LEFT JOIN council_sessions cs ON cs.ksinr = w.ksinr
+                WHERE w.id IN ({ph})""", ids).fetchall()
+        by_id = {r["id"]: dict(r) for r in rows}
+        return [by_id[i] for i in ids if i in by_id]
+
+    def search_wortbeitraege_fts(self, query: str, limit: int = 20) -> list[tuple]:
+        """BM25 über die Beiträge → ``[(wb_id, score)]``; Fehler → leer.
+        Term-Aufbereitung wie bei search_presse_fts (OR-Verknüpfung)."""
+        terms = [t for t in re.findall(r"[0-9a-zäöü]+", query.lower().replace("ß", "ss"))
+                 if len(t) >= 3][:12]
+        if not terms:
+            return []
+        try:
+            rows = self._conn.execute(
+                "SELECT rowid, rank FROM council_wortbeitraege_fts "
+                "WHERE council_wortbeitraege_fts MATCH ? ORDER BY rank LIMIT ?",
+                (" OR ".join(terms), limit)).fetchall()
+            return [(r[0], -float(r[1])) for r in rows]
+        except sqlite3.OperationalError:
+            return []
+
+    def wortbeitraege_missing_embeddings(self) -> list[dict]:
+        rows = self._conn.execute(
+            """SELECT w.id, w.text, w.sprecher, w.top FROM council_wortbeitraege w
+               LEFT JOIN council_wortbeitraege_embeddings e ON e.wb_id = w.id
+               WHERE e.wb_id IS NULL""").fetchall()
+        return [dict(r) for r in rows]
+
+    def replace_wortbeitrag_embedding(self, wb_id: int, text_hash: str, vector: bytes) -> None:
+        with self._conn:
+            self._conn.execute(
+                "INSERT OR REPLACE INTO council_wortbeitraege_embeddings (wb_id, text_hash, vector) "
+                "VALUES (?, ?, ?)", (wb_id, text_hash, vector))
+
+    def wortbeitraege_embedding_rows(self) -> list[tuple]:
+        return self._conn.execute(
+            "SELECT wb_id, vector FROM council_wortbeitraege_embeddings").fetchall()
+
+    def wortbeitraege_embeddings_version(self) -> str:
+        """Billiger Cache-Schlüssel für die In-Memory-Matrix."""
+        row = self._conn.execute(
+            "SELECT COUNT(*), COALESCE(MAX(wb_id), 0) "
+            "FROM council_wortbeitraege_embeddings").fetchone()
+        return f"{row[0]}-{row[1]}"
 
     def save_qa_feedback(self, frage: str, antwort_auszug: str | None,
                          bewertung: str, grund: str | None,

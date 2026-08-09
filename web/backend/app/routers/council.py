@@ -996,6 +996,16 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 presse_rows = store.presse_by_ids([pid for pid, _ in hits_p])
             except Exception:  # noqa: BLE001 — Presse ist Zusatz, nie Blocker
                 pass
+            debatten_rows: list[dict] = []
+            try:
+                # Task 16: Wortbeiträge aus den Protokollen (Reden, Anfragen,
+                # Einwohnerfragen, Zusagen) — die Substanz, die nicht in den
+                # Beschlusstexten steht. Strenge Schwelle, oft leer.
+                from council import embeddings as emb
+                hits_w = emb.search_wortbeitraege(store, q_suche, expanded)
+                debatten_rows = store.wortbeitraege_by_ids([wid for wid, _ in hits_w])
+            except Exception:  # noqa: BLE001 — Debatten sind Zusatz, nie Blocker
+                pass
             # 5a/I-10: Orts-Pins für die Mini-Karte — deterministisch aus den
             # geocodierten Entitäten, nie vom Sprachmodell.
             try:
@@ -1011,7 +1021,14 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         "frage": q_suche,
                         "sources": [_qa_source(c) for c in candidates],
                         "presse": [{"titel": p.get("titel"), "url": p.get("url"),
-                                    "datum": p.get("datum")} for p in presse_rows]})
+                                    "datum": p.get("datum")} for p in presse_rows],
+                        "debatten": [{"sprecher": d.get("sprecher"),
+                                      "partei": d.get("partei"),
+                                      "art": d.get("art"), "top": d.get("top"),
+                                      "auszug": (d.get("text") or "")[:220],
+                                      "committee": d.get("committee"),
+                                      "datum": d.get("session_date")}
+                                     for d in debatten_rows]})
             yield _sse({"type": "step", "step": "answer"})
             if not candidates:
                 leer_text = "Dazu habe ich keine passenden Beschlüsse gefunden."
@@ -1063,7 +1080,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             buf, sent = "", 0
             t0 = time.perf_counter()
             try:
-                for delta in qa.answer_stream(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf, haushalt=haushalt_zeilen):
+                for delta in qa.answer_stream(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
+                                              haushalt=haushalt_zeilen, debatten=debatten_rows):
                     if not buf and delta:
                         zeiten["ttft_ms"] = round((time.perf_counter() - t0) * 1000)
                     buf += delta
@@ -1080,7 +1098,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     sent = len(buf)
             except Exception:  # noqa: BLE001 — streaming failed mid-way → one-shot fallback
                 if not buf:
-                    ans, _ = qa.answer_question(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf, haushalt=haushalt_zeilen)
+                    ans, _ = qa.answer_question(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
+                                                haushalt=haushalt_zeilen, debatten=debatten_rows)
                     buf = ans
                     yield _sse({"type": "token", "text": ans})
                     sent = len(ans)

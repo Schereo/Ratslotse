@@ -93,6 +93,13 @@ const OUTCOME_LABEL: Record<string, string> = {
 
 type PresseHinweis = { titel: string; url: string; datum: string | null };
 
+/** Task 16: Wortbeitrag aus einem Sitzungsprotokoll (Rede, Anfrage,
+ *  Einwohnerfrage oder Verwaltungs-Zusage) im Belege-Bereich. */
+type DebattenHinweis = {
+  sprecher: string | null; partei: string | null; art: string;
+  top: string | null; auszug: string; committee: string | null; datum: string | null;
+};
+
 /** Gesprächs-Zeile der „Meine Gespräche"-Liste (5a/I-04). */
 type GespraechEintrag = { id: number; titel: string; updated: string; n_turns: number };
 
@@ -105,6 +112,7 @@ type Turn = {
   mode: string | null;
   sources: QaSource[];
   presse: PresseHinweis[];
+  debatten: DebattenHinweis[];
   cited: number[];
   followups: string[];
   fehler?: "netz" | "limit" | null;
@@ -498,7 +506,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     })), {
       key: naechsterKey(),
       frage: text, antwort: "", qtype: null, mode: null,
-      sources: [], presse: [], cited: [], followups: [],
+      sources: [], presse: [], debatten: [], cited: [], followups: [],
     }]);
     requestAnimationFrame(() => endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }));
 
@@ -542,6 +550,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             mode: (msg.mode as string) ?? null,
             qtype: (msg.qtype as string) ?? null,
             presse: (msg.presse as PresseHinweis[]) ?? [],
+            debatten: (msg.debatten as DebattenHinweis[]) ?? [],
             kontext: (msg.frage as string) ?? null,
           });
           else if (msg.type === "token") patchLast((t) => ({ antwort: t.antwort + (msg.text as string) }));
@@ -648,7 +657,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
       setTurns((g.turns as DbTurn[]).map((t) => ({
         key: naechsterKey(),
         frage: t.frage, antwort: t.antwort, qtype: null, mode: null,
-        sources: t.quellen?.sources ?? [], presse: [], cited: t.quellen?.cited ?? [],
+        sources: t.quellen?.sources ?? [], presse: [], debatten: [], cited: t.quellen?.cited ?? [],
         followups: [], kontext: null,
       })));
       setGespraechId(id);
@@ -1114,11 +1123,12 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
           )}
 
           {/* Kompaktzeile älterer Turns (Design 2⑤). */}
-          {!istLetzter && !aufgeklappt && (turn.sources.length > 0 || turn.presse.length > 0) && (
+          {/* turn.debatten defensiv (?.) — Fast-Refresh/alte States kennen das Feld nicht. */}
+          {!istLetzter && !aufgeklappt && (turn.sources.length > 0 || turn.presse.length > 0 || (turn.debatten?.length ?? 0) > 0) && (
             <button type="button" onClick={() => setAufgeklappt(true)}
               className="flex w-fit items-center gap-1.5 rounded-full border border-border px-3 py-1 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
               <ChevronDown className="h-3 w-3" aria-hidden />
-              Quellen ({turn.sources.length}){turn.presse.length > 0 ? ` · Presse (${turn.presse.length})` : ""}
+              Quellen ({turn.sources.length}){turn.presse.length > 0 ? ` · Presse (${turn.presse.length})` : ""}{(turn.debatten?.length ?? 0) > 0 ? ` · Debatten (${turn.debatten.length})` : ""}
             </button>
           )}
 
@@ -1128,6 +1138,7 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
                 showAll={showAll} setShowAll={setShowAll} flashId={flashId} ankerPrefix={`qa-source-${turnIdx}`}
                 onDazuFragen={onDazuFragen} />
             )}
+            {(turn.debatten?.length ?? 0) > 0 && <DebattenBlock debatten={turn.debatten} />}
             {turn.presse.length > 0 && <PresseBlock presse={turn.presse} />}
           </div>
 
@@ -1176,7 +1187,7 @@ function BelegeSpalte({ turn, flashId, onFlash, loading, onDazuFragen }: {
   const [showAll, setShowAll] = useState(false);
   const idToNum = useIdToNum(turn);
   const zitierte = useMemo(() => zitierteVon(turn, idToNum), [turn, idToNum]);
-  if (turn.sources.length === 0 && turn.presse.length === 0) return null;
+  if (turn.sources.length === 0 && turn.presse.length === 0 && (turn.debatten?.length ?? 0) === 0) return null;
   // Scroll und Höhe übernimmt seit Design 4a die Karten-Hülle im QaTab.
   return (
     <div className="flex flex-col gap-3.5">
@@ -1185,6 +1196,7 @@ function BelegeSpalte({ turn, flashId, onFlash, loading, onDazuFragen }: {
           showAll={showAll} setShowAll={setShowAll} flashId={flashId} ankerPrefix="qa-col"
           onDazuFragen={onDazuFragen} />
       )}
+      {(turn.debatten?.length ?? 0) > 0 && <DebattenBlock debatten={turn.debatten} />}
       {turn.presse.length > 0 && <PresseBlock presse={turn.presse} />}
       {!loading && (
         // sticky am Kartenboden: Die Zeile stand am Scroller-Ende hinter
@@ -1328,6 +1340,36 @@ function PresseBlock({ presse }: { presse: PresseHinweis[] }) {
               <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{fmtDatumKurz(p.datum)}</span>
               <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
             </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** Task 16: Wortbeiträge aus den Sitzungsprotokollen — was im Rat GESAGT
+ *  wurde (Reden, Anfragen mit Verwaltungsantwort, Einwohnerfragen, Zusagen),
+ *  im Unterschied zu dem, was beschlossen wurde. */
+function DebattenBlock({ debatten }: { debatten: DebattenHinweis[] }) {
+  const artLabel: Record<string, string> = {
+    rede: "Rede", anfrage: "Anfrage", einwohnerfrage: "Einwohnerfrage", zusage: "Zusage",
+  };
+  return (
+    <div className="rounded-xl border border-dashed border-border p-3">
+      <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+        Aus den Ratsdebatten <span className="text-muted-foreground/60">· Protokolle</span>
+      </p>
+      <ul className="mt-1.5 space-y-2">
+        {debatten.map((d, i) => (
+          <li key={i} className="text-[12.5px] leading-snug">
+            <p className="flex items-baseline gap-2">
+              <span className="min-w-0 flex-1 truncate font-medium">
+                {d.sprecher ?? "Ohne Namen"}{d.partei ? ` (${d.partei})` : ""}
+                <span className="ml-1.5 font-normal text-muted-foreground">· {artLabel[d.art] ?? d.art}</span>
+              </span>
+              {d.datum && <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{fmtDatumKurz(d.datum)}</span>}
+            </p>
+            <p className="mt-0.5 text-muted-foreground">{d.auszug}{d.auszug.length >= 220 ? "…" : ""}</p>
           </li>
         ))}
       </ul>
