@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, ExternalLink, FileText, FileDown, Newspaper, Tag } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, ExternalLink, FileText, FileDown, GitCompareArrows, Leaf, Newspaper, Tag } from "lucide-react";
 import { DecisionDetail, CouncilDecision, SessionDetail } from "@/lib/types";
 import { Card, DetailSkeleton, formatDate } from "@/components/ui";
 import { OutcomeDot, OUTCOME_META, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard, ImportanceMeter, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
@@ -597,6 +597,20 @@ function DecisionDetailInner() {
 
           {d.beschluss && <OfficialTextCard text={d.beschluss} />}
 
+          {/* Regex-Ernte: Beschlusstext ≠ Beschlussvorschlag der Vorlage — der
+              seltene Fall (~8 %), in dem der Rat die Verwaltung korrigiert hat.
+              Nur „stark" wird angezeigt: „leicht" ist meist Umformulierung. */}
+          {d.abweichung === "stark" && d.beschluss && (
+            <p className="flex items-start gap-2 rounded-lg border border-signal/30 bg-signal/5 px-3 py-2 text-xs text-muted-foreground">
+              <GitCompareArrows className="mt-0.5 h-3.5 w-3.5 shrink-0 text-signal" />
+              <span>
+                <span className="font-medium text-foreground">Vom Vorschlag abgewichen: </span>
+                Der Rat hat hier nicht den Beschlussvorschlag der Verwaltung übernommen,
+                sondern deutlich anders entschieden.
+              </span>
+            </p>
+          )}
+
           {/* Auf Mobil klappt das Grid zu einer Spalte — die Kennzahlen kämen
               dann erst hinter der ganzen Erzählung. Deshalb hier ein zweiter
               Platz, der nur unterhalb von lg sichtbar ist (display:none blendet
@@ -606,7 +620,7 @@ function DecisionDetailInner() {
           {/* 25a ③: Teilabstimmungen, Endergebnis und das Warum standen als drei
               getrennte Blöcke untereinander — zusammen erzählen sie den Hergang
               des Vorgangs und stehen deshalb unter einer Überschrift. */}
-          {(data.sub_votes.length > 0 || data.vorlage?.excerpt) && (
+          {(data.sub_votes.length > 0 || data.vorlage?.excerpt || data.vorlage?.klima_check) && (
             <Section title="Verlauf & Begründung">
               <div className="space-y-4">
                 {data.sub_votes.length > 0 && <SubvoteTimeline d={d} subVotes={data.sub_votes} />}
@@ -618,8 +632,20 @@ function DecisionDetailInner() {
                     <p className="text-sm font-semibold text-foreground">Warum es dazu kam</p>
                     <p className="mb-2 text-xs text-muted-foreground/70">
                       Sachverhalt und Begründung aus der {vorlageArt(data.vorlage.art)} der Verwaltung
+                      {data.vorlage.amt ? ` — federführend: ${data.vorlage.amt}` : ""}
                     </p>
                     <VorlageExcerpt text={data.vorlage.excerpt} />
+                  </div>
+                )}
+                {/* Regex-Ernte: der Klima-Vermerk der Verwaltung („Auswirkungen:
+                    b) Klima") — seit 2022 Standard in Oldenburger Vorlagen. */}
+                {data.vorlage?.klima_check && (
+                  <div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+                    <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                      <Leaf className={`h-3.5 w-3.5 ${data.vorlage.klima_relevant ? "text-primary" : "text-muted-foreground"}`} />
+                      Klima-Check der Verwaltung
+                    </p>
+                    <p className="mt-1 text-sm text-muted-foreground">{data.vorlage.klima_check}</p>
                   </div>
                 )}
               </div>

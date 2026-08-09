@@ -16,6 +16,7 @@ from council.topics import POLICY_FIELDS
 from council.goals import GOALS
 from council.parties import faction_label, normalize_party, order_key
 from council import qa
+from council import ernte
 from council import importance
 from council import sitzungspause as pause_mod
 from council import vorlagen as vorlagen_mod
@@ -386,6 +387,10 @@ def decision_detail(
                 "art": v.get("art"), "document_url": v.get("document_url"),
                 "n_pages": v.get("n_pages"),
                 "excerpt": vorlagen_mod.excerpt(v.get("raw_text") or "", 2600) or None,
+                # Regex-Ernte: federführendes Amt + Klima-Check der Verwaltung.
+                "amt": v.get("amt"),
+                "klima_check": v.get("klima_check"),
+                "klima_relevant": ernte.klima_relevant(v.get("klima_check")),
             }
             if not out["vorlage_url"] and v.get("kvonr"):
                 out["vorlage_url"] = _vorlage_url(v["kvonr"])

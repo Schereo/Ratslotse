@@ -27,6 +27,17 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Wechloy?" wird ein natürliches „Wer stimmte dagegen?". (#369)
 
 ### Hinzugefügt
+- **Beschluss-Seiten zeigen mehr aus den amtlichen Dokumenten — ganz ohne KI.**
+  Vier Informationen steckten schon immer in den Vorlagen und Protokollen und
+  werden jetzt einfach herausgelesen: der **Klima-Check der Verwaltung**
+  (Pflichtvermerk seit 2022, als eigener Kasten unter „Verlauf & Begründung"),
+  das **federführende Amt** (in der Quellenzeile der Begründung), der
+  **Sitzungsort** vergangener Sitzungen (bisher immer leer) — und ein Hinweis,
+  wenn der Rat **deutlich vom Beschlussvorschlag der Verwaltung abgewichen**
+  ist, also die Politik die Verwaltung korrigiert hat (rund 8 % aller
+  angenommenen Beschlüsse). Auch „Frag den Rat" kennt diese Angaben jetzt.
+  Nebenbei erkennt die Antragsteller-Erkennung Fraktionen auch dann, wenn sie
+  in Antrags-PDFs erst nach einem langen Briefkopf genannt werden. (#373)
 - **„Frag den Rat" ist jetzt ein Gespräch.** Der KI-Frage-Tab wird zum Chat:
   Fragen und Antworten bleiben untereinander stehen, Anschlussfragen („Und
   was kostet das?") verstehen den Zusammenhang, und die vorgeschlagenen
