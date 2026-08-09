@@ -52,6 +52,81 @@ def extract_keywords(question: str) -> list[str]:
 _EXPAND_CACHE: dict[str, str] = {}
 _EXPAND_CACHE_MAX = 256
 
+# --- Frage-Analyse (Stufe 2: Fragetyp-Routing) ------------------------------
+# EIN LLM-Call vor der Suche liefert Suchbegriffe UND Fragetyp (+ ggf. die
+# gefragte Fraktion) — kein zweiter Roundtrip gegenüber der reinen Expansion.
+QUERY_TYPES = ("thema", "verlauf", "partei", "geld")
+_ANALYSE_CACHE: dict[str, dict] = {}
+
+
+def analyse_query(question: str, model: str = EXPAND_MODEL) -> dict:
+    """{"begriffe", "typ", "partei"} zur Frage — robust: bei kaputtem JSON,
+    unbekanntem typ oder LLM-Fehler kommt {"begriffe": <Frage>, "typ": "thema",
+    "partei": None} zurück, also exakt das Verhalten vor dem Routing."""
+    fallback = {"begriffe": question, "typ": "thema", "partei": None}
+    key = f"{model}|{' '.join(question.split()).lower()[:300]}"
+    hit = _ANALYSE_CACHE.get(key)
+    if hit is not None:
+        return dict(hit)
+    extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
+    try:
+        prompt = prompts.render("qa_analyse", question=question.strip()[:300])
+        resp = llm.chat_complete(
+            model=model, _feature="qa_analyse", temperature=0, max_tokens=140,
+            timeout=8.0, response_format={"type": "json_object"},
+            messages=[{"role": "user", "content": prompt}], **extra,
+        )
+        data = json.loads(_strip_fences(resp.choices[0].message.content or ""))
+        begriffe = " ".join(str(data.get("begriffe") or "").split())
+        typ = str(data.get("typ") or "").strip().lower()
+        partei = (str(data.get("partei")).strip() or None) if data.get("partei") else None
+        if typ not in QUERY_TYPES:
+            typ = "thema"
+        if typ != "partei":
+            partei = None
+        out = {"begriffe": begriffe or question, "typ": typ, "partei": partei}
+        if begriffe:  # nur brauchbare Analysen cachen
+            if len(_ANALYSE_CACHE) >= _EXPAND_CACHE_MAX:
+                _ANALYSE_CACHE.pop(next(iter(_ANALYSE_CACHE)))
+            _ANALYSE_CACHE[key] = dict(out)
+        return out
+    except Exception:  # noqa: BLE001
+        return fallback
+
+
+def sort_verlauf(candidates: list[dict]) -> list[dict]:
+    """Chronik-Reihenfolge für Verlaufsfragen: älteste zuerst, damit die
+    Antwort den Werdegang erzählen kann (das Relevanz-Ranking bleibt in der
+    Quellen-Leiste sichtbar, nur der LLM-Kontext wird umsortiert)."""
+    return sorted(candidates, key=lambda c: (c.get("session_date") or "", c.get("id") or 0))
+
+
+# Typ-spezifische Zusatzregeln für das Antwort-Prompt (qa_antwort hat dafür
+# den {extra_regeln}-Slot; alte Admin-Overrides ohne den Slot ignorieren den
+# Parameter einfach — format() stört sich nicht an überzähligen kwargs).
+EXTRA_REGELN = {
+    "thema": "",
+    "verlauf": (
+        "Diese Frage zielt auf den VERLAUF: Erzähle chronologisch (die Beschlüsse "
+        "stehen bereits älteste zuerst), nenne zu jeder Station das Datum — die "
+        "Datums-Regel oben gilt für diese Frage NICHT — und ende mit dem aktuellen "
+        "Stand. 4–8 Sätze sind hier angemessen."
+    ),
+    "partei": (
+        "Diese Frage zielt auf eine Fraktion/Gruppe: Stütze dich auf deren Anträge "
+        "und Änderungsanträge (im Kontext als „Antrag von: …“ markiert) und auf "
+        "ausdrücklich protokollierte Abstimmungssätze. WICHTIG: Das Ratsinfo kennt "
+        "kein Stimmverhalten einzelner Fraktionen — behaupte NIE, wie eine Fraktion "
+        "gestimmt hat, wenn es nicht wörtlich im Abstimmungssatz steht; sage dann, "
+        "dass die Protokolle das nicht hergeben."
+    ),
+    "geld": (
+        "Diese Frage zielt auf Beträge: Nenne die konkreten Summen aus den "
+        "Beschlüssen (im Kontext als „Volumen: …“ markiert), gerundet und mit "
+        "Einordnung, wofür das Geld ist."
+    ),
+}
+
 
 def expand_query(question: str, model: str = EXPAND_MODEL) -> str:
     """Turn a question into focused topical search terms. The raw question's
@@ -101,11 +176,16 @@ def _build_context(candidates: list[dict]) -> str:
         body = (c.get("summary") or c.get("beschluss") or "").strip()[:450]
         vorlage = (c.get("vorlage_excerpt") or "").strip()
         suffix = f" — Aus der Vorlage: {vorlage}" if vorlage else ""
+        antragsteller = _factions_of(c)
+        if antragsteller:
+            suffix += f" — Antrag von: {', '.join(antragsteller)}"
         strittig = (c.get("gegenstimmen") or 0) > 0 or (c.get("enthaltungen") or 0) > 0 \
             or c.get("vote") == "mehrheitlich" or c.get("outcome") == "abgelehnt"
         raw_result = (c.get("raw_result") or "").strip()
         if strittig and raw_result:
             suffix += f" — Abstimmung: {raw_result[:180]}"
+        if c.get("amount_eur"):
+            suffix += f" — Volumen: {c['amount_eur']:,.0f} €".replace(",", ".")
         impact = c.get("impact")
         if impact is not None and impact >= 70:
             reason = (c.get("impact_reason") or "").strip()
@@ -116,26 +196,47 @@ def _build_context(candidates: list[dict]) -> str:
     return "\n".join(lines) or "(keine passenden Beschlüsse gefunden)"
 
 
-def _answer_messages(question: str, candidates: list[dict]) -> tuple[list[dict], dict]:
-    prompt = prompts.render("qa_antwort", question=question.strip()[:300], context=_build_context(candidates))
+def _factions_of(c: dict) -> list[str]:
+    """Antragstellende Fraktionen eines Beschlusses (factions-Spalte, JSON-Array
+    oder schon geparst) — leer bei Verwaltungsvorlagen."""
+    raw = c.get("factions")
+    if isinstance(raw, str) and raw.strip():
+        try:
+            raw = json.loads(raw)
+        except ValueError:
+            return []
+    return [str(f).strip() for f in raw or [] if str(f).strip()]
+
+
+def _answer_messages(question: str, candidates: list[dict], typ: str = "thema") -> tuple[list[dict], dict]:
+    prompt = prompts.render("qa_antwort", question=question.strip()[:300],
+                            context=_build_context(candidates),
+                            extra_regeln=EXTRA_REGELN.get(typ, ""))
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in MODEL else {}
     return [{"role": "user", "content": prompt}], extra
 
 
-def answer_question(question: str, candidates: list[dict], model: str = MODEL):
+def _answer_tokens(typ: str) -> int:
+    # Verlaufsantworten erzählen eine Chronik — die braucht mehr Platz als 2–5 Sätze.
+    return 900 if typ == "verlauf" else 600
+
+
+def answer_question(question: str, candidates: list[dict], model: str = MODEL, typ: str = "thema"):
     """Synthesise an answer from retrieved candidates. Returns ``(answer, cited_ids)``."""
-    messages, extra = _answer_messages(question, candidates)
-    resp = llm.chat_complete(model=model, _feature="qa_antwort", temperature=0.2, max_tokens=600, messages=messages, **extra)
+    messages, extra = _answer_messages(question, candidates, typ)
+    resp = llm.chat_complete(model=model, _feature="qa_antwort", temperature=0.2,
+                             max_tokens=_answer_tokens(typ), messages=messages, **extra)
     answer = (resp.choices[0].message.content or "").strip()
     return resolve_citations(answer, {c["id"] for c in candidates})
 
 
-def answer_stream(question: str, candidates: list[dict], model: str = MODEL):
+def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ: str = "thema"):
     """Stream the answer text deltas (same prompt/context as answer_question) so the
     UI can render the answer as it is written. Citation resolution is the caller's
     job once the full text is assembled (see resolve_citations)."""
-    messages, extra = _answer_messages(question, candidates)
-    yield from llm.chat_stream(model=model, _feature="qa_antwort", temperature=0.2, max_tokens=600, messages=messages, **extra)
+    messages, extra = _answer_messages(question, candidates, typ)
+    yield from llm.chat_stream(model=model, _feature="qa_antwort", temperature=0.2,
+                               max_tokens=_answer_tokens(typ), messages=messages, **extra)
 
 
 # --- Folgefragen (Design 24a / RL-U06) --------------------------------------

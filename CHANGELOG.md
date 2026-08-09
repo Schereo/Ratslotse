@@ -7,6 +7,19 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt
+- **Die KI-Suche erkennt, was für eine Frage man stellt — und antwortet
+  passend.** Verlaufsfragen („Wie ist der Stand bei …?", „Was wurde aus …?")
+  bekommen eine chronologische Antwort mit Datumsangaben von der ersten
+  Beratung bis zum aktuellen Stand, mit mehr Platz als die üblichen 2–5
+  Sätze. Fragen nach einer Fraktion („Was hat die SPD zu … beantragt?")
+  holen gezielt deren Anträge und Änderungsanträge in die Quellen — und die
+  Antwort sagt ehrlich dazu, dass die Ratsprotokolle kein Stimmverhalten
+  einzelner Fraktionen festhalten, statt eines zu erfinden. Bei Geldfragen
+  („Wie teuer …?", „Wie hoch …?") stehen die Beträge aus den Beschlüssen in
+  der Antwort. Die Erkennung kostet keinen zusätzlichen Wartezeit-Schritt —
+  sie steckt im selben Aufruf, der die Frage in Suchbegriffe übersetzt. (#XXX)
+
 ### Verbessert
 - **Die KI-Suche „Frag den Rat" findet mehr und antwortet schneller.** Die
   Suche liest jetzt auch die Vorlagen selbst (Sachverhalt und Begründung als

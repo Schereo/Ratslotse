@@ -326,7 +326,10 @@ def main() -> int:
 
     # Ein Retrieval je Fall, von beiden Armen geteilt (identische Kandidaten,
     # nur der Kontext unterscheidet sich) — sonst misst man Retrieval-Rauschen.
+    # Der Pfad spiegelt den /ask-Endpoint inklusive Fragetyp-Routing (Analyse,
+    # Partei-Anreicherung, Verlaufs-Sortierung).
     cache: dict[str, list[dict]] = {}
+    typen: dict[str, str] = {}
     latenz: dict[str, dict] = {}
 
     def candidates_of(case: dict) -> list[dict]:
@@ -334,11 +337,20 @@ def main() -> int:
             q = case["question"]
             t = latenz.setdefault(case["id"], {})
             t_exp = time.perf_counter()
-            expanded = qa.expand_query(q)
+            analyse = qa.analyse_query(q)
+            expanded, typ = analyse["begriffe"], analyse["typ"]
+            typen[case["id"]] = typ
             t["expand_ms"] = round((time.perf_counter() - t_exp) * 1000)
             t_ret = time.perf_counter()
             hits = emb.hybrid_search(store, q, expanded, top_k=TOP_K, pool=55, timings=t)
             cands = store.get_decisions_by_ids([h[0] for h in hits])
+            if typ == "partei" and analyse.get("partei"):
+                try:
+                    extra_ids = store.antrag_decision_ids(analyse["partei"], expanded)
+                    have = {c["id"] for c in cands}
+                    cands += store.get_decisions_by_ids([i for i in extra_ids if i not in have])
+                except Exception:  # noqa: BLE001
+                    pass
             t["retrieve_ms"] = round((time.perf_counter() - t_ret) * 1000)
             t_ctx = time.perf_counter()
             ctx = cands[:ANSWER_N]
@@ -352,7 +364,7 @@ def main() -> int:
                 pass
             t["kontext_ms"] = round((time.perf_counter() - t_ctx) * 1000)
             cache[case["id"]] = cands
-            print(f"  · {case['id']}: {len(cands)} Kandidaten", flush=True)
+            print(f"  · {case['id']}: {len(cands)} Kandidaten (typ={typ})", flush=True)
         return cache[case["id"]]
 
     if args.rate_missing:
@@ -380,12 +392,15 @@ def main() -> int:
         if args.nur_retrieval:
             return []
         ctx = [dict(c) for c in candidates_of(case)[:ANSWER_N]]
+        typ = typen.get(case["id"], "thema")
+        if typ == "verlauf":
+            ctx = qa.sort_verlauf(ctx)
         if not with_impact:
             for c in ctx:
                 c.pop("impact", None)
                 c.pop("impact_reason", None)
         t_ans = time.perf_counter()
-        _, cited = qa.answer_question(case["question"], ctx)
+        _, cited = qa.answer_question(case["question"], ctx, typ=typ)
         t = latenz.setdefault(case["id"], {})
         # Beide Arme laufen nacheinander — das Mittel ist die realistische Zeit EINER Antwort.
         ms = round((time.perf_counter() - t_ans) * 1000)
