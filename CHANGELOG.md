@@ -18,7 +18,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   einzelner Fraktionen festhalten, statt eines zu erfinden. Bei Geldfragen
   („Wie teuer …?", „Wie hoch …?") stehen die Beträge aus den Beschlüssen in
   der Antwort. Die Erkennung kostet keinen zusätzlichen Wartezeit-Schritt —
-  sie steckt im selben Aufruf, der die Frage in Suchbegriffe übersetzt. (#XXX)
+  sie steckt im selben Aufruf, der die Frage in Suchbegriffe übersetzt. (#361)
 
 ### Verbessert
 - **Die KI-Suche „Frag den Rat" findet mehr und antwortet schneller.** Die
