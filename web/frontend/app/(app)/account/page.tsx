@@ -12,6 +12,7 @@ import { applyTheme, getTheme, isDarkNow, THEME_EVENT, type Theme } from "@/lib/
 import { Button, Card, ConfirmDialog, Input, Label, PageHeader, PasswordInput, toast } from "@/components/ui";
 import { DeliverySettings } from "@/components/delivery-settings";
 import { BadgesCard } from "@/components/badges";
+import { GespraecheCard } from "@/components/gespraeche-settings";
 import { cn } from "@/lib/utils";
 
 /**
@@ -168,6 +169,10 @@ export default function AccountPage() {
 
         {/* RL-U12 (11a): zwischen Benachrichtigungen und Passwort. */}
         <BadgesCard />
+
+        {/* Design 6a②: „Gespräche speichern" — beidseitig änderbar zur
+            Erstnutzungs-Frage im Ratsgespräch. */}
+        <GespraecheCard />
 
         <DisplayNameCard />
 

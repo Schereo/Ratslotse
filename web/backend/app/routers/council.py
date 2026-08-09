@@ -419,6 +419,60 @@ def decision_detail(
     return out
 
 
+# ---- „Meine Gespräche" (5a/I-04 + Design 6a) --------------------------------
+
+
+class GespraechEinstellungBody(BaseModel):
+    an: bool
+
+
+@router.get("/gespraeche")
+def gespraeche_liste(user: dict = Depends(require_active),
+                     nwz: Store = Depends(get_store)) -> dict:
+    """Einwilligungs-Stand + gespeicherte Gespräche des Kontos. `einstellung`
+    ist null, solange die Erstnutzungs-Frage (6a①) nie beantwortet wurde."""
+    return {"einstellung": nwz.get_qa_speichern(user["id"]),
+            "gespraeche": nwz.qa_gespraeche(user["id"])}
+
+
+@router.post("/gespraeche/einstellung")
+def gespraeche_einstellung(body: GespraechEinstellungBody,
+                           user: dict = Depends(require_active),
+                           nwz: Store = Depends(get_store)) -> dict:
+    """6a②: Schalter setzen. Löscht nichts — das entscheidet der Dialog
+    über DELETE /gespraeche getrennt."""
+    nwz.set_qa_speichern(user["id"], body.an)
+    return {"einstellung": 1 if body.an else 0}
+
+
+@router.get("/gespraeche/{gespraech_id}")
+def gespraech_detail(gespraech_id: int, user: dict = Depends(require_active),
+                     nwz: Store = Depends(get_store)) -> dict:
+    g = nwz.qa_gespraech(gespraech_id, user["id"])
+    if not g:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Gespräch nicht gefunden.")
+    for t in g["turns"]:
+        try:
+            t["quellen"] = json.loads(t["quellen"]) if t["quellen"] else None
+        except ValueError:
+            t["quellen"] = None
+    return g
+
+
+@router.delete("/gespraeche/{gespraech_id}")
+def gespraech_loeschen(gespraech_id: int, user: dict = Depends(require_active),
+                       nwz: Store = Depends(get_store)) -> dict:
+    if not nwz.qa_gespraech_loeschen(gespraech_id, user["id"]):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Gespräch nicht gefunden.")
+    return {"ok": True}
+
+
+@router.delete("/gespraeche")
+def gespraeche_alle_loeschen(user: dict = Depends(require_active),
+                             nwz: Store = Depends(get_store)) -> dict:
+    return {"geloescht": nwz.qa_gespraeche_loeschen(user["id"])}
+
+
 class QaFeedbackBody(BaseModel):
     frage: str = Field(min_length=1, max_length=300)
     antwort_auszug: str | None = Field(default=None, max_length=500)
@@ -783,6 +837,9 @@ class AskBody(BaseModel):
     # „Und was kostet das?" — die Analyse kondensiert daraus eine eigenständige
     # Suchfrage. Ohne Verlauf verhält sich /ask exakt wie bisher.
     verlauf: list[AskRunde] = Field(default_factory=list, max_length=4)
+    # „Meine Gespräche" (6a): laufendes Gespräch, an das der Turn gehängt wird —
+    # nur wirksam, wenn das Konto qa_speichern = 1 gesetzt hat.
+    gespraech_id: int | None = Field(default=None, ge=1)
 
 
 # Q&A sizing: show up to QA_TOP_K reranked decisions as sources, feed the most
@@ -987,7 +1044,25 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                   + zeiten.get("antwort_ms", 0))
             _log.info("qa_timings mode=%s typ=%s %s", mode, typ,
                       " ".join(f"{k}={v}" for k, v in sorted(zeiten.items())))
-            yield _sse({"type": "done", "cited": cited, "timings": zeiten})
+            # „Meine Gespräche" (6a): nur mit ausdrücklicher Einwilligung — der
+            # Turn wandert ins laufende Gespräch (oder eröffnet eines), die id
+            # geht im done-Event zurück, damit Anschlussfragen anknüpfen.
+            gespraech_id = None
+            try:
+                if answer_text.strip() and nwz.get_qa_speichern(user["id"]) == 1:
+                    gespraech_id = body.gespraech_id or nwz.qa_gespraech_start(
+                        user["id"], q_suche or body.question)
+                    zitiert = set(cited)
+                    quellen_json = json.dumps(
+                        {"sources": [_qa_source(c) for c in candidates if c["id"] in zitiert],
+                         "cited": cited}, ensure_ascii=False)
+                    if not nwz.qa_turn_speichern(gespraech_id, user["id"],
+                                                 body.question, answer_text, quellen_json):
+                        gespraech_id = None
+            except Exception:  # noqa: BLE001 — Speichern ist Zusatz, nie Blocker
+                gespraech_id = None
+            yield _sse({"type": "done", "cited": cited, "timings": zeiten,
+                        "gespraech_id": gespraech_id})
         except Exception:  # noqa: BLE001 — surface a terminal error to the client
             _log.exception("KI-Frage fehlgeschlagen")
             yield _sse({"type": "error", "message": "Frage fehlgeschlagen."})
