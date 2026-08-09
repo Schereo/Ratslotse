@@ -125,7 +125,9 @@ def _build_anlage_rows(anlagen: list[dict], skip_document_ids: frozenset = froze
                 row["status"] = "ok" if len(text.strip()) >= 50 else "empty"
             except Exception:  # noqa: BLE001 — ein kaputtes Anlagen-PDF kippt nicht den ganzen kvonr
                 row["status"] = "failed"
-            row["antragsteller"] = parties_in_text(a["label"]) or parties_in_text(row["raw_text"][:1500])
+            # 4000 statt 1500 Zeichen: bei Anträgen mit langem Briefkopf stehen
+            # die Fraktionen erst nach der Anrede — 1500 ließ 37 % leer.
+            row["antragsteller"] = parties_in_text(a["label"]) or parties_in_text(row["raw_text"][:4000])
         rows.append(row)
     return rows
 

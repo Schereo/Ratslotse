@@ -12,6 +12,7 @@ import os
 import re
 
 from nwz import llm, prompts
+from council import ernte
 from council.topics import _strip_fences  # noqa: F401  (kept for symmetry / future use)
 
 # Antwort-Modell: gemini-2.5-flash antwortet in ~1,2–1,8 s, wo deepseek übers
@@ -219,6 +220,14 @@ def _build_context(candidates: list[dict]) -> str:
             suffix += (f" — BÜRGERBETEILIGUNG LÄUFT: {c['beteiligung']} "
                        f"(Stellungnahme auf oldenburg.planungsbeteiligung.de möglich — "
                        f"erwähne das in der Antwort, wenn es zur Frage passt)")
+        if c.get("amt"):
+            suffix += f" — Federführung: {c['amt']}"
+        # Klima-Check nur bei „prüfungsrelevant: Ja" — die Nein-Floskeln würden
+        # den Kontext füllen, ohne einer Antwort je zu helfen (Regex-Ernte).
+        if ernte.klima_relevant(c.get("klima_check")):
+            suffix += f" — Klima-Check der Verwaltung: {c['klima_check'][:200]}"
+        if c.get("abweichung") == "stark":
+            suffix += " — Der Rat wich deutlich vom Beschlussvorschlag der Verwaltung ab"
         impact = c.get("impact")
         if impact is not None and impact >= 70:
             reason = (c.get("impact_reason") or "").strip()
