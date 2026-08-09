@@ -150,3 +150,24 @@ def test_antrag_decision_ids_findet_fraktion(tmp_path):
     rows = store.get_decisions_by_ids(ids)
     assert [r["title"] for r in rows] == ["Radweg-Antrag"]
     store.close()
+
+
+def test_haushalt_block_und_matching(tmp_path):
+    ctx = qa._haushalt_block([{"year": 2026, "bereich": "Verkehr und Straßenbau",
+                               "aufwendungen": 46194645.0, "ertraege": 17510637.0}])
+    assert "STADTHAUSHALT" in ctx and "46.194.645" in ctx
+    assert qa._haushalt_block([]) == ""
+
+    store = CouncilStore(tmp_path / "c.sqlite")
+    with store._conn:
+        store._conn.execute(
+            "INSERT INTO council_haushalt (year, bereich, ertraege, aufwendungen, ergebnis, is_summe, fetched_at) "
+            "VALUES (2026, 'Verkehr und Straßenbau', 1, 2, -1, 0, '')")
+        store._conn.execute(
+            "INSERT INTO council_haushalt (year, bereich, ertraege, aufwendungen, ergebnis, is_summe, fetched_at) "
+            "VALUES (2026, 'Summe', 10, 20, -10, 1, '')")
+    assert [r["bereich"] for r in store.haushalt_fuer_begriffe(["Verkehr", "Radweg"])] == ["Verkehr und Straßenbau"]
+    # Summenzeile nur bei ausdrücklicher Haushaltsfrage.
+    assert store.haushalt_fuer_begriffe(["Kita"]) == []
+    assert [r["bereich"] for r in store.haushalt_fuer_begriffe(["Haushalt"])] == ["Summe"]
+    store.close()
