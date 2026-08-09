@@ -116,6 +116,20 @@
     "expected_keys": [{"vorlage_nr": "25/0321"}]
   },
   {
+    "id": "kette-caecilienbruecke-kosten",
+    "note": "NEU (Chat-Kette): kontextabhängige Anschlussfrage — ohne Kondensation aus dem Verlauf ist „das\" nicht suchbar",
+    "question": "Und wer ist dafür eigentlich zuständig?",
+    "verlauf": [{"frage": "Wie ist der Stand beim Neubau der Cäcilienbrücke?", "antwort": "Der Rat forderte das Wasserstraßen- und Schifffahrtsamt zuletzt per Resolution auf, Planung und Neubau der Cäcilienbrücke zu beschleunigen."}],
+    "expected_keys": [{"session_date": "2025-08-25", "title_like": "Cäcilienbrücke"}, {"vorlage_nr": "24/0252"}, {"session_date": "2024-11-18", "title_like": "Ersatzbau für die Cäcilienbrücke"}]
+  },
+  {
+    "id": "kette-weser-ems-wofuer",
+    "note": "NEU (Chat-Kette): „die Bürgschaft\" referenziert die Vorrunde",
+    "question": "Wofür genau ist die denn vorgesehen?",
+    "verlauf": [{"frage": "Wie hoch ist die Bürgschaft der Stadt für die Weser-Ems-Hallen?", "antwort": "Aktuell 79 Millionen Euro für den Neubau der Kongresshalle sowie 16,9 Millionen Euro für die Sanierung der Park- und Kramermarktsfläche."}],
+    "expected_keys": [{"vorlage_nr": "25/0321"}]
+  },
+  {
     "id": "seb-bus-samstag",
     "note": "NEU (Fragetyp Subvote/Partei): kostenloser SEB-Samstag steckt im Änderungsantrag Grüne+SPD zur VBN-Tarifanpassung (25/0496, Rat 09/2025) — testet Subvote-Faltung (neue Extraktion) bzw. Vorlagen-Text (alte)",
     "question": "Was wurde aus dem kostenlosen Bus-Samstag in Oldenburg?",

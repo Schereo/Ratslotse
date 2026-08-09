@@ -2335,3 +2335,35 @@ def test_zustellweg_off_ist_erlaubt_und_raeumt_die_warteschlange(client):
     # Unsinn bleibt Unsinn.
     assert client.put("/api/account/delivery",
                       json={"delivery_channel": "aus"}).status_code == 422
+
+
+def test_ask_reicht_verlauf_an_die_analyse(client, monkeypatch):
+    """Chat-Modus (Paket A): der optionale verlauf[] aus dem Body erreicht die
+    Frage-Analyse — dort wird die Anschlussfrage eigenständig gemacht."""
+    from app.routers import council as council_router
+    from council import qa as qa_mod
+
+    _register(client)
+    gesehen = {}
+
+    def fake_analyse(q, model=None, verlauf=None):
+        gesehen["frage"] = q
+        gesehen["verlauf"] = verlauf
+        return {"frage": "Was kostet der Neubau der Cäcilienbrücke?",
+                "begriffe": "Kosten Cäcilienbrücke", "typ": "geld", "partei": None}
+
+    cand = [{"id": 5, "title": "Ersatzbau Cäcilienbrücke", "summary": "Kosten",
+             "outcome": "angenommen", "session_date": "2025-08-25", "committee": "Rat", "score": 1.0}]
+    monkeypatch.setattr(qa_mod, "analyse_query", fake_analyse)
+    monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (cand, "semantisch"))
+    monkeypatch.setattr(qa_mod, "answer_stream", lambda *a, **k: iter(["Antwort [5]."]))
+
+    with client.stream("POST", "/api/council/ask", json={
+        "question": "Und was kostet das?",
+        "verlauf": [{"frage": "Wie ist der Stand bei der Cäcilienbrücke?",
+                     "antwort": "Resolution ans WSA."}],
+    }) as r:
+        assert r.status_code == 200
+        "".join(r.iter_text())
+    assert gesehen["verlauf"] == [{"frage": "Wie ist der Stand bei der Cäcilienbrücke?",
+                                   "antwort": "Resolution ans WSA."}]

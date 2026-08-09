@@ -62,24 +62,49 @@ QUERY_TYPES = ("thema", "verlauf", "partei", "geld")
 _ANALYSE_CACHE: dict[str, dict] = {}
 
 
-def analyse_query(question: str, model: str = EXPAND_MODEL) -> dict:
-    """{"begriffe", "typ", "partei"} zur Frage — robust: bei kaputtem JSON,
-    unbekanntem typ oder LLM-Fehler kommt {"begriffe": <Frage>, "typ": "thema",
-    "partei": None} zurück, also exakt das Verhalten vor dem Routing."""
-    fallback = {"begriffe": question, "typ": "thema", "partei": None}
-    key = f"{model}|{' '.join(question.split()).lower()[:300]}"
+# Wie viel Gespräch die Analyse/Antwort sieht: die letzten Runden reichen —
+# ältere Bezüge löst niemand mehr per „dazu" auf.
+VERLAUF_MAX_RUNDEN = 3
+_VERLAUF_FRAGE_MAX = 250
+_VERLAUF_ANTWORT_MAX = 400
+
+
+def _verlauf_zeilen(verlauf: list[dict] | None) -> str:
+    """Gesprächsverlauf als kompakte Zeilen (leer ohne Verlauf)."""
+    zeilen = []
+    for runde in (verlauf or [])[-VERLAUF_MAX_RUNDEN:]:
+        frage = " ".join(str(runde.get("frage") or "").split())[:_VERLAUF_FRAGE_MAX]
+        antwort = " ".join(str(runde.get("antwort") or "").split())[:_VERLAUF_ANTWORT_MAX]
+        if frage:
+            zeilen.append(f"- Frage: {frage}" + (f" — Antwort (gekürzt): {antwort}" if antwort else ""))
+    return "\n".join(zeilen)
+
+
+def analyse_query(question: str, model: str = EXPAND_MODEL,
+                  verlauf: list[dict] | None = None) -> dict:
+    """{"frage", "begriffe", "typ", "partei"} zur Frage. ``frage`` ist die
+    EIGENSTÄNDIGE Fassung: Bei mitgegebenem Gesprächsverlauf (Chat) löst die
+    Analyse Rückbezüge auf („Und was kostet das?" → „Was kostet der Neubau der
+    Cäcilienbrücke?"), sonst bleibt sie die Original-Frage. Retrieval UND
+    Reranker arbeiten mit dieser Fassung. Robust: bei kaputtem JSON oder
+    LLM-Fehler kommt das Verhalten von vor dem Routing zurück."""
+    fallback = {"frage": question, "begriffe": question, "typ": "thema", "partei": None}
+    vtext = _verlauf_zeilen(verlauf)
+    key = f"{model}|{hash(vtext)}|{' '.join(question.split()).lower()[:300]}"
     hit = _ANALYSE_CACHE.get(key)
     if hit is not None:
         return dict(hit)
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
     try:
-        prompt = prompts.render("qa_analyse", question=question.strip()[:300])
+        block = f"\nBisheriges Gespräch (für Rückbezüge):\n{vtext}\n" if vtext else ""
+        prompt = prompts.render("qa_analyse", question=question.strip()[:300], verlauf=block)
         resp = llm.chat_complete(
-            model=model, _feature="qa_analyse", temperature=0, max_tokens=140,
+            model=model, _feature="qa_analyse", temperature=0, max_tokens=200,
             timeout=8.0, response_format={"type": "json_object"},
             messages=[{"role": "user", "content": prompt}], **extra,
         )
         data = json.loads(_strip_fences(resp.choices[0].message.content or ""))
+        frage = " ".join(str(data.get("frage") or "").split())[:300]
         begriffe = " ".join(str(data.get("begriffe") or "").split())
         typ = str(data.get("typ") or "").strip().lower()
         partei = (str(data.get("partei")).strip() or None) if data.get("partei") else None
@@ -87,7 +112,8 @@ def analyse_query(question: str, model: str = EXPAND_MODEL) -> dict:
             typ = "thema"
         if typ != "partei":
             partei = None
-        out = {"begriffe": begriffe or question, "typ": typ, "partei": partei}
+        out = {"frage": frage or question, "begriffe": begriffe or question,
+               "typ": typ, "partei": partei}
         if begriffe:  # nur brauchbare Analysen cachen
             if len(_ANALYSE_CACHE) >= _EXPAND_CACHE_MAX:
                 _ANALYSE_CACHE.pop(next(iter(_ANALYSE_CACHE)))
@@ -227,11 +253,15 @@ def _presse_block(presse: list[dict] | None) -> str:
 
 
 def _answer_messages(question: str, candidates: list[dict], typ: str = "thema",
-                     model: str = MODEL, presse: list[dict] | None = None) -> tuple[list[dict], dict]:
+                     model: str = MODEL, presse: list[dict] | None = None,
+                     verlauf: list[dict] | None = None) -> tuple[list[dict], dict]:
+    vtext = _verlauf_zeilen(verlauf)
+    gespraech = (f"Dies ist eine Anschlussfrage in einem Gespräch. Bisher:\n{vtext}\n\n"
+                 if vtext else "")
     prompt = prompts.render("qa_antwort", question=question.strip()[:300],
                             context=_build_context(candidates),
                             extra_regeln=EXTRA_REGELN.get(typ, ""),
-                            presse=_presse_block(presse))
+                            presse=_presse_block(presse), gespraech=gespraech)
     # reasoning-Schalter am TATSÄCHLICH genutzten Modell festmachen — vorher
     # hing er an der Modul-Konstante und lief bei model=-Overrides ins Leere.
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
@@ -244,9 +274,9 @@ def _answer_tokens(typ: str) -> int:
 
 
 def answer_question(question: str, candidates: list[dict], model: str = MODEL, typ: str = "thema",
-                    presse: list[dict] | None = None):
+                    presse: list[dict] | None = None, verlauf: list[dict] | None = None):
     """Synthesise an answer from retrieved candidates. Returns ``(answer, cited_ids)``."""
-    messages, extra = _answer_messages(question, candidates, typ, model, presse)
+    messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf)
     resp = llm.chat_complete(model=model, _feature="qa_antwort", temperature=0.2,
                              max_tokens=_answer_tokens(typ), messages=messages, **extra)
     answer = (resp.choices[0].message.content or "").strip()
@@ -254,11 +284,11 @@ def answer_question(question: str, candidates: list[dict], model: str = MODEL, t
 
 
 def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ: str = "thema",
-                  presse: list[dict] | None = None):
+                  presse: list[dict] | None = None, verlauf: list[dict] | None = None):
     """Stream the answer text deltas (same prompt/context as answer_question) so the
     UI can render the answer as it is written. Citation resolution is the caller's
     job once the full text is assembled (see resolve_citations)."""
-    messages, extra = _answer_messages(question, candidates, typ, model, presse)
+    messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf)
     yield from llm.chat_stream(model=model, _feature="qa_antwort", temperature=0.2,
                                max_tokens=_answer_tokens(typ), messages=messages, **extra)
 
