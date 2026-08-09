@@ -19,7 +19,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Sparkles, Send, Loader2, ChevronDown, ChevronRight, ChevronUp, ArrowRight, Plus,
-  Square, CircleSlash, ExternalLink, ArrowDown, RotateCcw, MessageSquarePlus, ThumbsDown, ThumbsUp, X } from "lucide-react";
+  Square, CircleSlash, ExternalLink, ArrowDown, RotateCcw, MessageSquarePlus, ThumbsDown, ThumbsUp, Volume2, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Mascot } from "@/components/mascot";
 import type { QaOrtPin } from "@/components/qa-orte-karte";
@@ -106,6 +106,45 @@ type Turn = {
    *  worauf sich Anschlussfragen beziehen. */
   kontext?: string | null;
 };
+
+/** Antwort vorlesen (5a/I-12, nur die TTS-Hälfte): SpeechSynthesis mit
+ *  deutscher Stimme, Zitat-Marker und Fettdruck werden nicht mitgelesen.
+ *  Bewusst KEIN Diktat-Mikro — Web-Speech-Erkennung fehlt im iOS-WebView,
+ *  ein totes Mikro wäre schlimmer als keins (dieselbe Logik wie beim
+ *  Druck-Knopf in der App). Knopf erscheint nur, wenn der Browser TTS kann. */
+function VorlesenKnopf({ text }: { text: string }) {
+  const [kann, setKann] = useState(false);
+  const [liest, setLiest] = useState(false);
+  useEffect(() => {
+    setKann(typeof window !== "undefined" && "speechSynthesis" in window);
+    return () => { try { window.speechSynthesis?.cancel(); } catch { /* egal */ } };
+  }, []);
+  if (!kann || !text) return null;
+  const toggle = () => {
+    const synth = window.speechSynthesis;
+    if (liest) { synth.cancel(); setLiest(false); return; }
+    const klartext = text.replace(CITE_RE, "").replace(/\*\*([^*]+)\*\*/g, "$1");
+    const u = new SpeechSynthesisUtterance(klartext);
+    u.lang = "de-DE";
+    const de = synth.getVoices().find((v) => v.lang.startsWith("de"));
+    if (de) u.voice = de;
+    u.onend = () => setLiest(false);
+    u.onerror = () => setLiest(false);
+    synth.cancel();
+    synth.speak(u);
+    setLiest(true);
+  };
+  return (
+    <button type="button" onClick={toggle}
+      aria-label={liest ? "Vorlesen stoppen" : "Antwort vorlesen"}
+      title={liest ? "Vorlesen stoppen" : "Vorlesen"}
+      className={cn("rounded-md p-1 transition-colors",
+        liest ? "text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
+      {liest ? <Square className="h-3.5 w-3.5 fill-current" aria-hidden />
+        : <Volume2 className="h-3.5 w-3.5" aria-hidden />}
+    </button>
+  );
+}
 
 /** Beleg-Peek (5a/I-01): Ein Zitat-Chip öffnet erst die Kurzinfo der Quelle —
  *  Titel, Gremium, Kernaussage — statt sofort wegzuspringen. Von dort geht es
@@ -846,6 +885,7 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
                 title={`Ratslotse: ${turn.frage}`}
               />
               <PrintButton iconOnly />
+              {turn.antwort && !turn.fehler && <VorlesenKnopf text={turn.antwort} />}
               {turn.antwort && !turn.fehler && <FeedbackDaumen turn={turn} />}
               <span role="status" className="min-w-0 flex-1 text-right text-[10.5px] leading-snug text-muted-foreground/70">
                 {/* 5a/I-02: ehrlich sagen, worauf die Antwort fußt. */}
@@ -884,6 +924,7 @@ function BelegeSpalte({ turn, flashId, onFlash, loading, onDazuFragen }: {
             title={`Ratslotse: ${turn.frage}`}
           />
           <PrintButton iconOnly />
+          {turn.antwort && !turn.fehler && <VorlesenKnopf text={turn.antwort} />}
           {turn.antwort && !turn.fehler && <FeedbackDaumen turn={turn} />}
           <span className="min-w-0 flex-1 text-right text-[10.5px] leading-snug text-muted-foreground/70">
             KI-Antwort{zitierte.length > 0 ? `, ${stuetztAuf(zitierte)}` : ""} — kann unvollständig sein. Quellen prüfen.
