@@ -97,6 +97,8 @@ type PresseHinweis = { titel: string; url: string; datum: string | null };
 type GespraechEintrag = { id: number; titel: string; updated: string; n_turns: number };
 
 type Turn = {
+  /** Eindeutiger React-Key (monotone Nummer) — nie der Array-Index. */
+  key: number;
   frage: string;
   antwort: string;
   qtype: string | null;
@@ -121,18 +123,35 @@ function VorlesenKnopf({ text }: { text: string }) {
   const [kann, setKann] = useState(false);
   const [liest, setLiest] = useState(false);
   useEffect(() => {
-    setKann(typeof window !== "undefined" && "speechSynthesis" in window);
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    setKann(true);
+    // Chrome liefert getVoices() beim ersten Aufruf oft LEER und füllt die
+    // Liste asynchron — ohne diesen Anstoß sprach der miese Browser-Default
+    // statt einer guten deutschen Stimme (Tims Befund).
+    window.speechSynthesis.getVoices();
     return () => { try { window.speechSynthesis?.cancel(); } catch { /* egal */ } };
   }, []);
   if (!kann || !text) return null;
+  const besteStimme = (): SpeechSynthesisVoice | null => {
+    const de = window.speechSynthesis.getVoices()
+      .filter((v) => v.lang.toLowerCase().startsWith("de"));
+    if (de.length === 0) return null;
+    // Netzwerk-/Premiumstimmen („Google Deutsch", macOS „Enhanced/Premium",
+    // Siri) klingen deutlich natürlicher als die kompakten Lokal-Defaults.
+    const guete = (v: SpeechSynthesisVoice) =>
+      (/premium|enhanced|siri|natural/i.test(v.name) ? 4 : 0) +
+      (!v.localService ? 2 : 0) +
+      (v.lang === "de-DE" ? 1 : 0);
+    return [...de].sort((a, b) => guete(b) - guete(a))[0];
+  };
   const toggle = () => {
     const synth = window.speechSynthesis;
     if (liest) { synth.cancel(); setLiest(false); return; }
     const klartext = text.replace(CITE_RE, "").replace(/\*\*([^*]+)\*\*/g, "$1");
     const u = new SpeechSynthesisUtterance(klartext);
     u.lang = "de-DE";
-    const de = synth.getVoices().find((v) => v.lang.startsWith("de"));
-    if (de) u.voice = de;
+    const stimme = besteStimme();
+    if (stimme) u.voice = stimme;
     u.onend = () => setLiest(false);
     u.onerror = () => setLiest(false);
     synth.cancel();
@@ -158,9 +177,13 @@ function BelegPeek({ quelle, nummer, onClose, onListe }: {
   quelle: QaSource; nummer: number | undefined; onClose: () => void; onListe: () => void;
 }) {
   const router = useRouter();
+  const karteRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const esc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", esc);
+    // Fokus in den Dialog holen — sonst tabbte die Tastatur hinter dem
+    // Backdrop weiter und Screenreader erreichten die Aktionen nie (F10).
+    karteRef.current?.focus();
     return () => window.removeEventListener("keydown", esc);
   }, [onClose]);
   // Portal an <body>: Im Chat sitzt ein transform-Vorfahre (Einblende-
@@ -173,7 +196,8 @@ function BelegPeek({ quelle, nummer, onClose, onListe }: {
       role="dialog" aria-modal="true" aria-label={`Quelle ${nummer ?? ""}`}>
       <button type="button" aria-label="Schließen" onClick={onClose}
         className="absolute inset-0 bg-foreground/25 backdrop-blur-[2px]" />
-      <div className="relative w-full max-w-md animate-fade-up rounded-2xl border border-border bg-card p-4 shadow-xl">
+      <div ref={karteRef} tabIndex={-1}
+        className="relative w-full max-w-md animate-fade-up rounded-2xl border border-border bg-card p-4 shadow-xl outline-none">
         <div className="flex items-start gap-2.5">
           <span aria-hidden className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
             {nummer}
@@ -335,6 +359,10 @@ const fmtDatum = (d?: string | null) =>
   d ? new Date(d).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }) : "";
 const fmtDatumKurz = (d?: string | null) =>
   d ? new Date(d).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "2-digit" }) : "";
+/** Naives UTC-ISO aus dem Backend (ohne „Z") als UTC deuten — sonst rutscht
+ *  ein 00:30-Uhr-Gespräch aufs Vortagsdatum (Befund F14). */
+const fmtUtcKurz = (d: string) =>
+  fmtDatumKurz(/Z$|[+-]\d\d:?\d\d$/.test(d) ? d : `${d}Z`);
 const jahr = (d?: string | null) => (d ? d.slice(0, 4) : "");
 
 const fmtEur = (n: number) =>
@@ -371,9 +399,19 @@ function jumpZuQuelle(turnIdx: number, id: number, spalte: boolean) {
 export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   const [q, setQ] = useState("");
   const sp = useSearchParams();
+  const router = useRouter();
   useEffect(() => {
+    // ?q= gehört dem QaTab nur im KI-Modus (im Such-Modus ist es die
+    // Stichwortsuche) — und wird nach Übernahme aus der URL entfernt, sonst
+    // füllte jeder spätere URL-Wechsel den längst geleerten Composer erneut
+    // und Reloads/geteilte Links feuerten die Frage als Suche (Befund F5).
     const urlQ = sp.get("q");
-    if (urlQ) setQ((prev) => prev || urlQ);
+    if (!urlQ || sp.get("mode") !== "fragen") return;
+    setQ((prev) => prev || urlQ);
+    const params = new URLSearchParams(sp.toString());
+    params.delete("q");
+    router.replace(`/council?${params.toString()}`, { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sp]);
   // Design 29a (P8): Entwurf überlebt den Sitzungs-Rauswurf.
   useEffect(() => entwurfMelden("ki-frage", () => q), [q]);
@@ -391,6 +429,11 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   const abortRef = useRef<AbortController | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  // Eindeutige Turn-Keys über Gesprächswechsel hinweg: Mit dem Array-Index
+  // als key erbte ein geladenes Gespräch den lokalen State (Daumen, Peek,
+  // TTS) der Turns des vorherigen (Befund F2).
+  const turnSeq = useRef(0);
+  const naechsterKey = () => ++turnSeq.current;
 
   const patchLast = (patch: Partial<Turn> | ((t: Turn) => Partial<Turn>)) =>
     setTurns((ts) => {
@@ -432,6 +475,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     if (text.length < 4) return;
     try { localStorage.setItem("ratslotse:qa-benutzt", "1"); } catch {}
     reportBadgeEvent("frage"); // RL-U12: Erste Frage
+    const unterbrochen = loading;
     abortRef.current?.abort();
     const ctrl = new AbortController();
     abortRef.current = ctrl;
@@ -443,7 +487,14 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     setQ("");
     setLoading(true);
     setStep("expand");
-    setTurns((ts) => [...ts.map((t) => ({ ...t, followups: [] })), {
+    // Wer mitten im Stream weiterfragt („Dazu fragen"-Icons sind bewusst
+    // klickbar), lässt den alten Turn ehrlich als abgebrochen zurück statt
+    // als kommentarlosen Texttorso (Befund F4).
+    setTurns((ts) => [...ts.map((t, i) => ({
+      ...t, followups: [],
+      abgebrochen: t.abgebrochen || (unterbrochen && i === ts.length - 1 && !t.fehler) || undefined,
+    })), {
+      key: naechsterKey(),
       frage: text, antwort: "", qtype: null, mode: null,
       sources: [], presse: [], cited: [], followups: [],
     }]);
@@ -459,7 +510,10 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
       });
       if (!res.ok || !res.body) {
         if (res.status === 429) {
+          // Wie im Netz-Fehlerpfad: Die Frage gehört zurück ins Eingabefeld,
+          // damit nach der Verschnaufpause ein Neuversuch möglich ist (F8).
           patchLast({ fehler: "limit" });
+          setQ(text);
           return;
         }
         let msg = "Frage fehlgeschlagen.";
@@ -492,7 +546,11 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
           else if (msg.type === "suggestions") patchLast({ followups: (msg.questions as string[]) ?? [] });
           else if (msg.type === "done") {
             patchLast({ cited: (msg.cited as number[]) ?? [] });
+            // null heißt: Server konnte/durfte nicht (mehr) in dieses Gespräch
+            // speichern (z. B. auf anderem Gerät gelöscht) — die tote id nicht
+            // weiter mitschicken, die nächste Frage eröffnet frisch (F3).
             if (msg.gespraech_id != null) setGespraechId(msg.gespraech_id as number);
+            else if ("gespraech_id" in msg) setGespraechId(null);
           }
           else if (msg.type === "error") throw new Error((msg.message as string) ?? "Frage fehlgeschlagen.");
         }
@@ -559,20 +617,34 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   const einwilligen = async (an: boolean) => {
     setEinstellung(an ? 1 : 0);
     try {
-      await fetch(apiUrl("/council/gespraeche/einstellung"), {
+      const r = await fetch(apiUrl("/council/gespraeche/einstellung"), {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ an }),
       });
-    } catch { /* Karte kommt beim nächsten Besuch wieder — kein Drama */ }
+      if (!r.ok) throw new Error();
+    } catch {
+      // Nicht so tun, als wäre die Wahl angekommen — der Server prüft beim
+      // Speichern autoritativ, die Sitzung liefe sonst still ungespeichert
+      // trotz sichtbarem „Ja" (Befund F12).
+      setEinstellung(null);
+      toast.error("Deine Wahl konnte nicht gespeichert werden — bitte nochmal.");
+    }
   };
   const gespraechLaden = async (id: number) => {
+    // Ein laufender Stream würde seine Tokens sonst an das GELADENE Gespräch
+    // hängen und dessen id beim done überschreiben (Befund F1).
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setLoading(false);
+    setStep(null);
     try {
       const r = await fetch(apiUrl(`/council/gespraeche/${id}`), { credentials: "include", headers: authHeaders() });
       if (!r.ok) throw new Error();
       const g = await r.json();
       type DbTurn = { frage: string; antwort: string; quellen: { sources?: QaSource[]; cited?: number[] } | null };
       setTurns((g.turns as DbTurn[]).map((t) => ({
+        key: naechsterKey(),
         frage: t.frage, antwort: t.antwort, qtype: null, mode: null,
         sources: t.quellen?.sources ?? [], presse: [], cited: t.quellen?.cited ?? [],
         followups: [], kontext: null,
@@ -601,9 +673,20 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     fetch(apiUrl("/council/qa-beispiele"), { credentials: "include", headers: authHeaders() })
       .then((r) => (r.ok ? r.json() : null))
       .then((b) => {
-        const rows = (b?.sitzungen ?? []) as { committee: string; session_date: string }[];
-        setFrische(rows.slice(0, 2).map((s) =>
-          `Was hat ${derAusschuss(s.committee)} am ${fmtDatum(s.session_date)} beschlossen?`));
+        const rows = (b?.sitzungen ?? []) as { committee: string; session_date: string; top_titel?: string | null }[];
+        if (rows.length === 0) return;
+        // Zwei frische Anlässe, aber nicht zweimal dieselbe Datums-Formel:
+        // erst die jüngste Sitzung, dann KONKRET ihr wichtigster Beschluss
+        // (Tims Wunsch nach dynamischeren Vorschlägen).
+        const vorschlaege = [
+          `Was hat ${derAusschuss(rows[0].committee)} am ${fmtDatum(rows[0].session_date)} beschlossen?`,
+        ];
+        const top = rows[0].top_titel;
+        if (top) {
+          const kurz = top.split(/ [-–(]/)[0].trim().slice(0, 60);
+          if (kurz.length >= 8) vorschlaege.push(`Was wurde zu „${kurz}" entschieden?`);
+        }
+        setFrische(vorschlaege.slice(0, 2));
       })
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -613,19 +696,24 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   const composerFollowups = !loading && letzter && !letzter.fehler ? letzter.followups.slice(0, 3) : [];
 
   return (
-    <div className="mx-auto mt-3 lg:grid lg:max-w-[1220px] lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-7">
-      {/* Chat-Spalte: min-height, damit der Composer auch im Empty State unten
-          klebt (Design 2①) — der Verlauf wächst darüber. In der nativen App
-          steht mehr Chrome im Weg (Topbar, Tab-Umschalter, Bottom-Nav): mit dem
-          Web-Wert rutschte der Composer unter die Falte (iOS-Test 09.08.).
-          Erst nach dem Mount entscheiden — der Server rendert immer „Web". */}
-      <div className={cn("flex flex-col", nativeApp ? "min-h-[calc(100dvh-380px)]" : "min-h-[calc(100dvh-230px)]")}>
+    <div className="mx-auto mt-3 lg:grid lg:max-w-[1220px] lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-6">
+      {/* Chat-Spalte. Mobil: min-height, damit der Composer auch im Empty
+          State unten klebt (Design 2①) — in der nativen App steht mehr Chrome
+          im Weg (iOS-Test 09.08.), erst nach dem Mount entscheiden.
+          Ab lg wird sie zur GESPRÄCHS-BÜHNE (Design 4a): ein getöntes Panel,
+          in der Höhe an den Viewport gebunden — der Verlauf scrollt IM Panel,
+          der Composer klebt an der Panel-Unterkante statt „irgendwo am
+          Seitenende" zu hängen (Tims Whitespace-Befund). */}
+      <div className={cn("flex flex-col",
+        nativeApp ? "min-h-[calc(100dvh-380px)]" : "min-h-[calc(100dvh-230px)]",
+        "lg:relative lg:h-[calc(100dvh-135px)] lg:min-h-0 lg:overflow-hidden lg:rounded-2xl lg:border lg:border-border lg:bg-primary/[0.04] dark:lg:bg-primary/[0.07]",
+      )}>
         {(modeToggle || turns.length > 0 || gespraeche.length > 0) && (
-          <div className="mb-1 flex items-center justify-between gap-2">
+          <div className="mb-1 flex items-center justify-between gap-2 lg:mb-0 lg:px-4 lg:pb-2 lg:pt-3">
             {modeToggle ? <div>{modeToggle}</div> : <span />}
             <div className="relative flex shrink-0 items-center gap-1.5 print:hidden">
               {/* 5a/I-04: gespeicherte Gespräche — Liste lädt beim Öffnen frisch. */}
-              {einstellung === 1 && gespraeche.length > 0 && (
+              {einstellung === 1 && (gespraeche.length > 0 || gespraechId != null) && (
                 <button
                   type="button"
                   onClick={() => { setZeigeListe((v) => !v); if (!zeigeListe) void ladeGespraeche(); }}
@@ -657,7 +745,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                         className="min-w-0 flex-1 text-left">
                         <span className="block truncate text-[12.5px] font-medium text-foreground">{g.titel}</span>
                         <span className="block text-[10.5px] text-muted-foreground">
-                          {fmtDatumKurz(g.updated)} · {g.n_turns} {g.n_turns === 1 ? "Frage" : "Fragen"}
+                          {fmtUtcKurz(g.updated)} · {g.n_turns} {g.n_turns === 1 ? "Frage" : "Fragen"}
                         </span>
                       </button>
                       <button type="button" onClick={() => void gespraechLoeschen(g.id)}
@@ -673,6 +761,9 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
           </div>
         )}
 
+        {/* Ab lg scrollt der Verlauf IM Panel (Design 4a) — mobil weiter am
+            Window, der Wrapper ist dort nur ein durchreichender flex-Teil. */}
+        <div className="flex flex-1 flex-col lg:min-h-0 lg:overflow-y-auto lg:px-4">
         {/* Empty State — bodenständig: Beispiele direkt über dem Composer. */}
         {showIntro && (
           <div className="flex flex-1 flex-col items-center justify-end pb-5 text-center">
@@ -733,7 +824,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
           <div className="flex flex-1 flex-col gap-6 sm:gap-7">
             {turns.map((t, ti) => (
               <TurnView
-                key={ti}
+                key={t.key}
                 turn={t}
                 turnIdx={ti}
                 istLetzter={ti === turns.length - 1}
@@ -750,21 +841,23 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
           </div>
         )}
         <div ref={endRef} />
+        </div>
 
-        {/* „Nach unten"-Anker (RG-07). */}
+        {/* „Nach unten"-Anker (RG-07); in der Bühne am Panel verankert. */}
         {showAnchor && (
           <button
             type="button"
             aria-label="Zum Gesprächsende springen"
             onClick={() => endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" })}
-            className="fixed bottom-40 right-4 z-20 flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card shadow-md transition-transform hover:scale-105 print:hidden sm:right-8"
+            className="fixed bottom-40 right-4 z-20 flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card shadow-md transition-transform hover:scale-105 print:hidden sm:right-8 lg:absolute lg:bottom-32 lg:right-5"
           >
             <ArrowDown className="h-4 w-4 text-muted-foreground" aria-hidden />
           </button>
         )}
 
-        {/* Composer: fix unten, Weiterfragen-Chips direkt darüber (Design 2①②). */}
-        <div className="sticky bottom-0 z-10 -mx-1 mt-4 bg-gradient-to-t from-background via-background to-transparent px-1 pb-[max(env(safe-area-inset-bottom),8px)] pt-4 print:hidden">
+        {/* Composer: mobil sticky am Viewport-Boden, in der Bühne (lg) fest an
+            der Panel-Unterkante — Weiterfragen-Chips direkt darüber (2①②/4a). */}
+        <div className="sticky bottom-0 z-10 -mx-1 mt-4 bg-gradient-to-t from-background via-background to-transparent px-1 pb-[max(env(safe-area-inset-bottom),8px)] pt-4 print:hidden lg:static lg:mx-0 lg:bg-none lg:px-4 lg:pb-4 lg:pt-2">
           {/* 5a/I-06: Der Kontext-Chip macht sichtbar, worauf sich Anschluss-
               fragen beziehen — ✕ beginnt ein frisches Gespräch. */}
           {letzter?.kontext && !letzter.fehler && (
@@ -808,8 +901,15 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
               <p className="font-medium text-foreground">Kurze Verschnaufpause</p>
               <p className="mt-0.5 text-[12.5px] text-muted-foreground">
                 Mehr als 10 Fragen in 10 Minuten — in ein paar Minuten geht es weiter.
-                Deine bisherigen Antworten bleiben stehen.
+                Deine bisherigen Antworten bleiben stehen, die Frage steht wieder im Eingabefeld.
               </p>
+              {/* Ausweg statt Sackgasse (Befund F8): Der Neuversuch ersetzt den
+                  Limit-Turn; schlägt er erneut an, erscheint das Banner wieder. */}
+              <button type="button"
+                onClick={() => { const t = letzter; setTurns((ts) => ts.slice(0, -1)); void ask(q || t?.frage || ""); }}
+                className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-amber-500/50 px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-amber-500/15">
+                <RotateCcw className="h-3.5 w-3.5" aria-hidden /> Nochmal versuchen
+              </button>
             </div>
           ) : (
             <form onSubmit={(e) => { e.preventDefault(); void ask(q); }} className="flex gap-2">
@@ -841,13 +941,35 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         </div>
       </div>
 
-      {/* Belege-Spalte (Desktop, Design 2⑤): Quellen, Presse und Aktionen des
-          jüngsten Turns — die Antwortspalte bleibt purer Text. */}
-      <aside className="hidden lg:sticky lg:top-4 lg:block lg:pt-9 print:hidden">
-        {letzter && letzter.antwort && !letzter.fehler && (
-          <BelegeSpalte turn={letzter} flashId={flashId}
-            onFlash={flash} loading={loading} />
-        )}
+      {/* Belege-Spalte (Desktop, Design 2⑤/4a): eigene Karte neben der Bühne,
+          gleiche Höhe, eigener Scroll — nie ein leeres Loch: Vor der ersten
+          Frage erklärt sie sich, während der Suche zeigt sie ein Skelett
+          (Tims Feedback), danach Quellen, Presse und Aktionen. */}
+      <aside className="hidden print:hidden lg:flex lg:h-[calc(100dvh-135px)] lg:flex-col lg:overflow-hidden lg:rounded-2xl lg:border lg:border-border lg:bg-card">
+        <div className="flex-1 overflow-y-auto p-4">
+          {letzter && letzter.antwort && !letzter.fehler ? (
+            <BelegeSpalte turn={letzter} flashId={flashId}
+              onDazuFragen={(titel) => void ask(`Erzähl mir mehr zu „${titel}".`)}
+              onFlash={flash} loading={loading} />
+          ) : loading ? (
+            <div aria-hidden className="space-y-3 pt-1">
+              <div className="h-3 w-24 animate-pulse rounded bg-muted" />
+              {[0, 1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-8 animate-pulse rounded-full bg-muted"
+                  style={{ animationDelay: `${i * 120}ms` }} />
+              ))}
+              <div className="h-3 w-32 animate-pulse rounded bg-muted" />
+            </div>
+          ) : (
+            <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
+              <Sparkles className="h-5 w-5 text-muted-foreground/50" aria-hidden />
+              <p className="max-w-[220px] text-xs leading-relaxed text-muted-foreground">
+                Quellen und Belege erscheinen hier, sobald du eine Frage stellst —
+                mit Fußnote zu jedem zitierten Beschluss.
+              </p>
+            </div>
+          )}
+        </div>
       </aside>
     </div>
   );
@@ -947,9 +1069,20 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
 
           {peekId != null && (() => {
             const q = turn.sources.find((s) => s.id === peekId);
+            const id = peekId;
             return q ? (
-              <BelegPeek quelle={q} nummer={idToNum.get(peekId)}
-                onClose={() => setPeekId(null)} onListe={() => onJump(peekId)} />
+              <BelegPeek quelle={q} nummer={idToNum.get(id)}
+                onClose={() => setPeekId(null)}
+                onListe={() => {
+                  // Bei älteren Turns liegt die Quellenliste hinter der
+                  // Kompaktzeile — erst aufklappen, dann springen (Befund F9).
+                  if (!istLetzter && !aufgeklappt) {
+                    setAufgeklappt(true);
+                    requestAnimationFrame(() => onJump(id));
+                  } else {
+                    onJump(id);
+                  }
+                }} />
             ) : null;
           })()}
 
@@ -1042,8 +1175,9 @@ function BelegeSpalte({ turn, flashId, onFlash, loading, onDazuFragen }: {
   const idToNum = useIdToNum(turn);
   const zitierte = useMemo(() => zitierteVon(turn, idToNum), [turn, idToNum]);
   if (turn.sources.length === 0 && turn.presse.length === 0) return null;
+  // Scroll und Höhe übernimmt seit Design 4a die Karten-Hülle im QaTab.
   return (
-    <div className="flex max-h-[calc(100dvh-40px)] flex-col gap-3.5 overflow-y-auto pb-4 pr-0.5">
+    <div className="flex flex-col gap-3.5">
       {turn.sources.length > 0 && (
         <QuellenBlock turn={turn} turnIdx={-1} idToNum={idToNum} zitierte={zitierte}
           showAll={showAll} setShowAll={setShowAll} flashId={flashId} ankerPrefix="qa-col"
@@ -1203,7 +1337,11 @@ function Baustein({ turn, idToNum, onJump }: {
 }) {
   const zitierteQuellen = useMemo(() => zitierteVon(turn, idToNum), [turn, idToNum]);
 
-  if (turn.qtype === "verlauf" && zitierteQuellen.length >= 2) {
+  // Ein Zeitstrahl braucht ZEIT: Mindestens zwei verschiedene Sitzungstermine —
+  // fünf Beschlüsse derselben Ratssitzung („Was wurde am 01.06. beschlossen?")
+  // sind eine Aufzählung, kein Verlauf (Tims Befund 09.08.).
+  const termine = new Set(zitierteQuellen.map((s) => s.session_date).filter(Boolean));
+  if (turn.qtype === "verlauf" && zitierteQuellen.length >= 2 && termine.size >= 2) {
     const stationen = [...zitierteQuellen].sort((a, b) => (a.session_date ?? "").localeCompare(b.session_date ?? ""));
     return (
       <div className="rounded-xl border border-border bg-card p-3.5">

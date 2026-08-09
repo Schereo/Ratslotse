@@ -14,7 +14,9 @@ fastembed, damit Deploy + Web-Service unberührt bleiben):
 
 Die PDFs tragen eine AES-Hülle (Owner-Passwort gegen Bearbeiten/Drucken) —
 kein Zugriffsschutz, pymupdf öffnet sie ohne Passwort. Idempotent über die
-Spalte ``council_anlagen.bild`` (0 = offen, 1 = gerendert, -1 = fehlgeschlagen).
+Spalte ``council_anlagen.bild`` (0 = offen, 1 = gerendert, -1 = fehlgeschlagen —
+NICHT endgültig: ``--retry-failed`` stellt alle -1 wieder auf 0 und versucht
+sie erneut; nötig z. B. nach einem SessionNet-Wartungsfenster).
 """
 from __future__ import annotations
 
@@ -39,6 +41,11 @@ PLAN_LABEL_RE = re.compile(
 VOLL_PX = 1600
 THUMB_PX = 480
 
+# Dieselbe Browser-Kennung wie die anderen RIS-Fetcher (council/scraper.py,
+# council/vorlagen.py) — ohne sie könnte ein Bot-Filter den kompletten Lauf
+# scheitern lassen und alle Kandidaten auf -1 stellen (Review-Befund P2).
+_HEADERS = {"User-Agent": "Mozilla/5.0"}
+
 
 def render_pdf(pdf_bytes: bytes, out_voll: Path, out_thumb: Path) -> None:
     import pymupdf
@@ -52,11 +59,15 @@ def render_pdf(pdf_bytes: bytes, out_voll: Path, out_thumb: Path) -> None:
 
 
 def main(db: str | None = None, out_dir: str = "data/plaene", limit: int = 0,
-         delay: float = 1.0) -> dict:
+         delay: float = 1.0, retry_failed: bool = False) -> dict:
     store = CouncilStore(db or "data/council.sqlite")
     conn = store._conn  # noqa: SLF001 — Ops-Skript
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
+
+    if retry_failed:
+        with conn:
+            conn.execute("UPDATE council_anlagen SET bild = 0 WHERE bild = -1")
 
     rows = [r for r in conn.execute(
         "SELECT document_id, label, url FROM council_anlagen "
@@ -69,7 +80,7 @@ def main(db: str | None = None, out_dir: str = "data/plaene", limit: int = 0,
     for r in rows:
         did = r["document_id"]
         try:
-            resp = requests.get(r["url"], timeout=60)
+            resp = requests.get(r["url"], timeout=60, headers=_HEADERS)
             resp.raise_for_status()
             render_pdf(resp.content, out / f"{did}.jpg", out / f"{did}.thumb.jpg")
             status = 1
@@ -93,7 +104,10 @@ if __name__ == "__main__":
     ap.add_argument("--out", default="data/plaene")
     ap.add_argument("--limit", type=int, default=0, help="0 = alle")
     ap.add_argument("--delay", type=float, default=1.0)
+    ap.add_argument("--retry-failed", action="store_true",
+                    help="fehlgeschlagene (bild = -1) zurücksetzen und erneut versuchen")
     args = ap.parse_args()
     raise SystemExit(run_guarded(
         "render_plaene",
-        lambda: main(db=args.db, out_dir=args.out, limit=args.limit, delay=args.delay)))
+        lambda: main(db=args.db, out_dir=args.out, limit=args.limit,
+                     delay=args.delay, retry_failed=args.retry_failed)))

@@ -22,7 +22,10 @@ const CSP = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://*.basemaps.cartocdn.com https://*.openfreemap.org",
+  // API_BASE auch für Bilder: Die Planzeichnungen (P1) sind das erste <img>
+  // mit Backend-URL — 'self' ist in der App capacitor://localhost, ohne die
+  // API-Origin blockte WKWebView den Bild-Load (Review-Befund P1).
+  `img-src 'self' data: blob: ${API_BASE} https://*.basemaps.cartocdn.com https://*.openfreemap.org`,
   "font-src 'self'",
   `connect-src 'self' ${API_BASE} https://*.openfreemap.org https://*.basemaps.cartocdn.com`,
   "worker-src 'self' blob:",

@@ -26,15 +26,21 @@ export function GespraecheCard() {
   }, []);
 
   const setzen = async (an: boolean) => {
+    const vorher = einstellung;
     setEinstellung(an ? 1 : 0);
     setFrageLoeschen(!an && anzahl > 0);
     try {
-      await fetch(apiUrl("/council/gespraeche/einstellung"), {
+      const r = await fetch(apiUrl("/council/gespraeche/einstellung"), {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ an }),
       });
+      if (!r.ok) throw new Error();
     } catch {
+      // Gerade bei diesem Datenschutz-Schalter darf die Anzeige nicht vom
+      // Server abweichen — Zustand zurückrollen (Befund F13).
+      setEinstellung(vorher);
+      setFrageLoeschen(false);
       toast.error("Einstellung konnte nicht gespeichert werden.");
     }
   };

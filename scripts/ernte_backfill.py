@@ -29,20 +29,25 @@ def main(db: str | None = None) -> dict:
 
     rows = conn.execute("SELECT kvonr, raw_text FROM council_vorlagen "
                         "WHERE status = 'ok' AND raw_text IS NOT NULL").fetchall()
+    # Erst extrahieren, dann EIN kurzes executemany: Die Regex-Arbeit über
+    # ~5000 Volltexte in einer offenen Schreibtransaktion hielt den Write-Lock
+    # sekundenlang — parallele Web-Schreiber liefen in „database is locked"
+    # (Review-Befund E6).
+    updates = []
+    for kvonr, text in rows:
+        aus = ernte.auswirkungen(text)
+        amt = ernte.federfuehrendes_amt(text)
+        vorschlag = ernte.beschlussvorschlag(text)
+        updates.append((amt, aus["klima"], aus["finanzen"], vorschlag, kvonr))
+        zaehler["vorlagen"] += 1
+        zaehler["amt"] += bool(amt)
+        zaehler["klima"] += bool(aus["klima"])
+        zaehler["finanzen"] += bool(aus["finanzen"])
+        zaehler["vorschlag"] += bool(vorschlag)
     with conn:
-        for kvonr, text in rows:
-            aus = ernte.auswirkungen(text)
-            amt = ernte.federfuehrendes_amt(text)
-            vorschlag = ernte.beschlussvorschlag(text)
-            conn.execute(
-                "UPDATE council_vorlagen SET amt = ?, klima_check = ?, "
-                "finanz_check = ?, beschlussvorschlag = ? WHERE kvonr = ?",
-                (amt, aus["klima"], aus["finanzen"], vorschlag, kvonr))
-            zaehler["vorlagen"] += 1
-            zaehler["amt"] += bool(amt)
-            zaehler["klima"] += bool(aus["klima"])
-            zaehler["finanzen"] += bool(aus["finanzen"])
-            zaehler["vorschlag"] += bool(vorschlag)
+        conn.executemany(
+            "UPDATE council_vorlagen SET amt = ?, klima_check = ?, "
+            "finanz_check = ?, beschlussvorschlag = ? WHERE kvonr = ?", updates)
 
     prot = conn.execute("SELECT ksinr, raw_text FROM council_protocols "
                         "WHERE raw_text IS NOT NULL").fetchall()
@@ -57,11 +62,14 @@ def main(db: str | None = None) -> dict:
 
     with conn:
         cur = conn.execute(
-            "UPDATE council_decisions SET kvonr = "
+            "UPDATE council_decisions SET kvonr = COALESCE("
             "(SELECT MAX(v.kvonr) FROM council_vorlagen v "
-            " WHERE v.vorlage_nr = council_decisions.vorlage_nr) "
+            " WHERE v.vorlage_nr = council_decisions.vorlage_nr), "
+            "(SELECT MAX(v.kvonr) FROM council_vorlagen v "
+            " WHERE instr(council_decisions.vorlage_nr, v.vorlage_nr || '/') = 1)) "
             "WHERE kvonr IS NULL AND vorlage_nr IS NOT NULL AND EXISTS "
-            "(SELECT 1 FROM council_vorlagen v WHERE v.vorlage_nr = council_decisions.vorlage_nr)")
+            "(SELECT 1 FROM council_vorlagen v WHERE v.vorlage_nr = council_decisions.vorlage_nr "
+            " OR instr(council_decisions.vorlage_nr, v.vorlage_nr || '/') = 1)")
         zaehler["kvonr"] = cur.rowcount
 
     zaehler["abweichung"] = store.refresh_abweichung()
