@@ -1448,9 +1448,14 @@ class Store:
             self._conn.execute("UPDATE web_users SET qa_speichern = ? WHERE id = ?",
                                (1 if an else 0, user_id))
 
-    def qa_gespraech_start(self, user_id: int, titel: str) -> int:
+    def qa_gespraech_start(self, user_id: int, titel: str) -> int | None:
+        """None, wenn es das Konto (nicht mehr) gibt — schließt das Fenster,
+        in dem eine Konto-Löschung zwischen Einwilligungs-Check und Insert
+        verwaiste Gesprächsdaten hinterließe (Review-Befund B3)."""
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
+            if not self._conn.execute("SELECT 1 FROM web_users WHERE id = ?", (user_id,)).fetchone():
+                return None
             cur = self._conn.execute(
                 "INSERT INTO qa_gespraeche (user_id, titel, created, updated) VALUES (?, ?, ?, ?)",
                 (user_id, (titel or "Gespräch").strip()[:120], now, now))

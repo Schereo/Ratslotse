@@ -80,6 +80,22 @@ def test_sitzungsort():
             "Sitzungsort: Alte Fleiwa, Industriestraße 1d, Sitzungssaal 1/2  \n\nTeilnahme:")
     assert ernte.sitzungsort(text) == "Alte Fleiwa, Industriestraße 1d, Sitzungssaal 1/2"
     assert ernte.sitzungsort("Protokoll ohne Ortsangabe") is None
+    # Review-Befund E1: Ein leeres Ort-Feld darf nicht die Folgezeile ernten —
+    # der location=''-Guard würde den falschen Wert sonst dauerhaft zementieren.
+    assert ernte.sitzungsort("Sitzungsort:\nSitzungsdauer: 17:00 - 19:35 Uhr") is None
+    assert ernte.sitzungsort("Sitzungsort:   \nTeilnahme:") is None
+
+
+def test_blockende_feuert_nicht_mitten_im_satz():
+    # Review-Befund E3: „Anlagen" nach PDF-Zeilenumbruch ist KEIN Abschnitts-
+    # Header — nur mit Doppelpunkt oder allein auf der Zeile endet der Block.
+    text = ("b) Klima\nPrüfungsrelevant: Ja, der Bau von Photovoltaik-\n"
+            "Anlagen spart CO2 im Betrieb.\nSachverhalt:\nEgal.")
+    assert ernte.auswirkungen(text)["klima"] == (
+        "Prüfungsrelevant: Ja, der Bau von Photovoltaik- Anlagen spart CO2 im Betrieb.")
+    text2 = ("Beschlussvorschlag:\nDie Prüfung erfolgt gemäß\nAnlage 1 und wird beauftragt.\n"
+             "Sachverhalt:\nEgal.")
+    assert ernte.beschlussvorschlag(text2) == "Die Prüfung erfolgt gemäß Anlage 1 und wird beauftragt."
 
 
 def test_beschlussvorschlag_endet_am_sachverhalt():

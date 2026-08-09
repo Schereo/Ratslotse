@@ -178,11 +178,23 @@ def _entzeilen(lines: list[str]) -> list[str]:
     out: list[str] = []
     for ln in lines:
         ist_label = ln.endswith(":") and len(ln) <= 40
-        ist_liste = bool(re.match(r"^(?:[-•–]\s|\d+[.)]\s|[a-z]\)\s)", ln))
+        # Aufzählungszeichen mit Text — und allein stehende Striche (PDF-
+        # Bullet-Artefakt): Ohne die Solo-Variante wurde „-" erst angejoint
+        # und dann vom Silbentrennungs-Zweig verschluckt (Review-Befund E5).
+        ist_liste = bool(re.match(r"^(?:[-•–]\s|[-•–]$|\d+[.)]\s|[a-z]\)\s)", ln))
         vor_label = bool(out) and out[-1].endswith(":") and len(out[-1]) <= 40
+        vor_liste = bool(out) and re.match(r"^[-•–]$", out[-1])
         if out and not ist_label and not ist_liste and not vor_label:
-            if out[-1].endswith("-") and ln[:1].islower():
-                out[-1] = out[-1][:-1] + ln          # Silbentrennung: „einge-" + „schränkt"
+            if vor_liste:
+                out[-1] = out[-1] + " " + ln         # Solo-Strich + Folgetext = Listenpunkt
+            elif out[-1].endswith("-") and len(out[-1]) > 1 and out[-1][-2].isalpha():
+                # Silbentrennung am Zeilenende: „einge-" + „schränkt" →
+                # „eingeschränkt"; bei großgeschriebener Fortsetzung bleibt der
+                # Bindestrich („Weser-" + „Ems" → „Weser-Ems", Befund E4).
+                if ln[:1].islower():
+                    out[-1] = out[-1][:-1] + ln
+                else:
+                    out[-1] = out[-1] + ln
             else:
                 out[-1] = out[-1] + " " + ln
         else:
