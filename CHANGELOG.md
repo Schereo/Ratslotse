@@ -7,6 +7,15 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Verbessert
+- **Das Ratsgespräch ist aufgeräumter.** Das Eingabefeld klebt jetzt immer
+  unten — auch vor der ersten Frage — und die vorgeschlagenen Weiterfragen
+  liegen als Chips direkt darüber, sodass sie beim Lesen langer Antworten
+  nicht mehr aus dem Blick geraten. Zitierte Quellen sind kompakte einzeilige
+  Pills (Titel + Jahr), Teilen und Drucken sind stille Symbole statt Knöpfe,
+  und am großen Bildschirm wandern Quellen, Pressemitteilungen und Aktionen
+  in eine eigene Spalte neben dem Gespräch; ältere Antworten zeigen nur noch
+  eine aufklappbare Kurzzeile. (#372)
 - **Breite Fragen bekommen ausführlichere, strukturierte Antworten.** Die
   starre 2–5-Sätze-Regel ist Geschichte: Eine enge Frage bleibt knapp, aber
   „Was macht die Stadt alles für den Radverkehr?" darf jetzt die wichtigsten
