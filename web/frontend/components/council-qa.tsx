@@ -29,6 +29,7 @@ import { decisionHref } from "@/lib/routes";
 import { ShareButton } from "@/components/share-button";
 import { PrintButton } from "@/components/print-button";
 import { cn } from "@/lib/utils";
+import { isNativeApp } from "@/lib/platform";
 import { reportBadgeEvent } from "@/components/badges";
 
 // Zitat-Klammern im Antworttext. Spiegelt council/qa.py (_CITE_RE /
@@ -299,14 +300,19 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   const letzter = turns.length > 0 ? turns[turns.length - 1] : null;
   const letzterFehler = letzter?.fehler;
   const showIntro = turns.length === 0;
+  const [nativeApp, setNativeApp] = useState(false);
+  useEffect(() => { setNativeApp(isNativeApp()); }, []);
   // Weiterfragen leben im Composer (Design 2②) — nur vom jüngsten Turn.
   const composerFollowups = !loading && letzter && !letzter.fehler ? letzter.followups.slice(0, 3) : [];
 
   return (
     <div className="mx-auto mt-3 lg:grid lg:max-w-[1220px] lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-7">
       {/* Chat-Spalte: min-height, damit der Composer auch im Empty State unten
-          klebt (Design 2①) — der Verlauf wächst darüber. */}
-      <div className="flex min-h-[calc(100dvh-230px)] flex-col">
+          klebt (Design 2①) — der Verlauf wächst darüber. In der nativen App
+          steht mehr Chrome im Weg (Topbar, Tab-Umschalter, Bottom-Nav): mit dem
+          Web-Wert rutschte der Composer unter die Falte (iOS-Test 09.08.).
+          Erst nach dem Mount entscheiden — der Server rendert immer „Web". */}
+      <div className={cn("flex flex-col", nativeApp ? "min-h-[calc(100dvh-380px)]" : "min-h-[calc(100dvh-230px)]")}>
         {(modeToggle || turns.length > 0) && (
           <div className="mb-1 flex items-center justify-between gap-2">
             {modeToggle ? <div>{modeToggle}</div> : <span />}
@@ -421,9 +427,13 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
               )}
             </form>
           )}
-          <p className="mt-1.5 text-center text-[10px] text-muted-foreground/70">
-            Keine personenbezogenen Daten eingeben — Fragen gehen an einen externen KI-Dienst.
-          </p>
+          {/* Feedback-Runde 3: Der Disclaimer ist toter Dauer-Text — er steht
+              nur noch im Empty State; wer schon im Gespräch ist, kennt ihn. */}
+          {showIntro && (
+            <p className="mt-1.5 text-center text-[10px] text-muted-foreground/60">
+              Keine personenbezogenen Daten eingeben — Fragen gehen an einen externen KI-Dienst.
+            </p>
+          )}
         </div>
       </div>
 

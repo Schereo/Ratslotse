@@ -54,6 +54,15 @@ def test_auswirkungen_floskeln_zaehlen_nicht():
     assert ernte.auswirkungen("Ganz ohne Abschnitt.") == {"finanzen": None, "klima": None}
 
 
+def test_klima_schneidet_an_der_satzgrenze():
+    # Lange Klima-Vermerke wurden mitten im Wort gekappt („Maastrichter Stra").
+    satz = "Die Stadionfläche wird aufgewertet und bleibt klimaneutral. "
+    text = "b) Klima\nPrüfungsrelevant: Ja. " + satz * 120 + "\nSachverhalt:\nEgal."
+    klima = ernte.auswirkungen(text)["klima"]
+    assert len(klima) <= 2500
+    assert klima.endswith(".") and not klima.endswith("…")
+
+
 def test_federfuehrendes_amt_einzeilig():
     assert ernte.federfuehrendes_amt(VORLAGE_TEXT) == "Stadtplanungsamt"
     # „Ausdruck vom:"-Zeilen und Datumszeilen sind keine Ämter.

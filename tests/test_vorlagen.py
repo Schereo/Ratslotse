@@ -51,6 +51,25 @@ def test_excerpt_prefers_sachverhalt_over_beschlussvorschlag():
     assert "Seite:" not in out  # Seiten-Boilerplate entfernt
 
 
+def test_excerpt_joint_pdf_zeilenumbrueche():
+    # Das PDF-Textlayer bricht nach Satzbreite um — als Fließtext gelesen
+    # ergaben sich sinnlose Umbrüche mitten im Satz (Feedback-Runde 3).
+    raw = (
+        "Sachverhalt:\n"
+        "Anlass:\n"
+        "In den vergangenen Jahren hat es einen intensiven Dialog über die\n"
+        "Notwendigkeit eines Stadions gegeben. Die Stellungnahmen zur einge-\n"
+        "schränkten Beteiligung wurden geprüft.\n"
+        "- Erster Punkt der Liste\n"
+        "- Zweiter Punkt der Liste\n"
+    )
+    out = vorlagen.excerpt(raw, 900)
+    assert "Dialog über die Notwendigkeit" in out      # Umbruch geschlossen
+    assert "eingeschränkten Beteiligung" in out        # Silbentrennung geheilt
+    assert "Anlass:\n" in out                          # Label bleibt eigene Zeile
+    assert out.count("- Erster Punkt") == 1 and "\n- Zweiter Punkt" in out
+
+
 def test_excerpt_fallback_and_word_boundary():
     # Ohne Sachverhalt/Begründung: Beschlussvorschlag als Fallback.
     out = vorlagen.excerpt("Kopfzeile\nBeschlussvorschlag: Es wird beschlossen.", 300)
