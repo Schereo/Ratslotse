@@ -145,10 +145,14 @@ DEFAULTS: dict[str, dict[str, str]] = {
     },
     "qa_analyse": {
         "title": "Frag den Rat – Frage-Analyse",
-        "description": "Ein Call vor der Suche: Suchbegriffe + Fragetyp (+ ggf. Fraktion) als JSON. Platzhalter: {question}.",
+        "description": "Ein Call vor der Suche: eigenständige Frage (bei Gesprächsverlauf), Suchbegriffe, Fragetyp (+ ggf. Fraktion) als JSON. Platzhalter: {question}, {verlauf}.",
         "template": (
-            "Analysiere die Nutzerfrage an ein Stadtrats-Archiv (Oldenburg). Antworte NUR als JSON:\n"
-            '{{"begriffe": "4-8 deutsche Suchbegriffe, Substantive und nahe Synonyme, durch Leerzeichen"'
+            "Analysiere die Nutzerfrage an ein Stadtrats-Archiv (Oldenburg).{verlauf} Antworte NUR als JSON:\n"
+            '{{"frage": "die Frage als EIGENSTÄNDIGE Suchfrage — löse Rückbezüge wie „dazu“, '
+            '„das“, „dort“ mit Hilfe des Gesprächsverlaufs auf (z. B. „Und was kostet das?“ nach '
+            'einer Brücken-Frage → „Was kostet der Neubau der Cäcilienbrücke?“); ohne Verlauf: die '
+            'Frage unverändert", '
+            '"begriffe": "4-8 deutsche Suchbegriffe, Substantive und nahe Synonyme, durch Leerzeichen"'
             ', "typ": "thema|verlauf|partei|geld", "partei": "Fraktionsname oder null"}}\n\n'
             "typ-Regeln:\n"
             '- "verlauf": Die Frage zielt auf Werdegang/Chronik/Stand eines Vorgangs '
@@ -225,6 +229,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "title": "Frag den Rat – Antwort",
         "description": "Formuliert die Antwort ausschließlich aus den gefundenen Beschlüssen, mit [id]-Zitaten.",
         "template": (
+            "{gespraech}"
             "Beantworte die Frage NUR anhand der folgenden Beschlüsse des Oldenburger Stadtrats.\n"
             "Wenn die Beschlüsse die Frage nicht beantworten, sage das ehrlich und rate nicht.\n"
             "Zitiere jeden genutzten Beschluss mit seiner id in eckigen Klammern, z. B. [123].\n"

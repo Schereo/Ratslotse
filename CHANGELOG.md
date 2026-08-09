@@ -8,6 +8,16 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Die KI-Frage versteht jetzt Anschlussfragen.** Wer nachhakt („Und was
+  kostet das?", „Wer ist dafür zuständig?"), bekommt eine Antwort im
+  Gesprächskontext: Die Frage-Analyse löst Rückbezüge mit Hilfe der letzten
+  Runden auf und macht daraus eine vollwertige Suchfrage — die Suche selbst
+  bleibt dadurch genauso treffsicher wie bei einer ausformulierten Frage (im
+  Messlauf: 100 % Trefferquote inklusive der neuen Ketten-Testfälle). Das ist
+  der Unterbau für das kommende Chat-Interface; die heutige Oberfläche
+  verhält sich unverändert. (#366)
+
+### Hinzugefügt
 - **„Aktuelles von der Stadt": Die KI-Frage kennt jetzt die Pressemitteilungen
   der Stadt Oldenburg.** Beschlüsse sagen, was entschieden wurde — die
   Pressemitteilungen sagen, was daraus geworden ist (Spatenstich, Eröffnung,
