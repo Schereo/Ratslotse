@@ -95,6 +95,12 @@ def test_resolve_expected_rejects_unknown_key():
         resolve_expected(_find_ids, case)
 
 
+def test_aggregate_latency_kosten_behalten_nachkommastellen():
+    agg = aggregate_latency([{"antwort_ct": 0.14}, {"antwort_ct": 0.22}])
+    # Ganzzahl-Rundung würde hier 0 liefern — Kosten je Frage sind Cent-Bruchteile.
+    assert agg["antwort_ct"]["mean"] == 0.18
+
+
 def test_aggregate_latency_percentiles_and_missing_keys():
     agg = aggregate_latency([
         {"expand_ms": 100, "rerank_ms": 10},

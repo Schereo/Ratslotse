@@ -21,6 +21,13 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   sie steckt im selben Aufruf, der die Frage in Suchbegriffe übersetzt. (#361)
 
 ### Verbessert
+- **LLM-Kosten sind jetzt echte Zahlen statt Schätzungen.** Jeder KI-Aufruf
+  holt die tatsächlichen Kosten vom Anbieter zurück (inklusive der
+  datenschutzkonformen Anbieter-Wahl); die Admin-Statistik rechnet damit, und
+  der Qualitäts-Messlauf der KI-Suche weist neben Trefferquote und Antwortzeit
+  nun auch die Kosten pro Frage in Cent aus — Modellentscheidungen fallen
+  damit immer über alle drei Größen: Qualität, Tempo, Preis. Für alte
+  Einträge ohne Kostenwert bleibt die Preisliste als Schätz-Fallback. (#364)
 - **Die KI-Antwort kommt jetzt in 1–2 Sekunden statt in 20.** Nach der
   Suchbegriffs-Übersetzung war die Antwort-Formulierung der letzte große
   Zeitfresser: Das bisherige Modell brauchte dafür über die

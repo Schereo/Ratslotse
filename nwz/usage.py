@@ -13,12 +13,17 @@ from pathlib import Path
 
 _DEFAULT_DB = Path(__file__).resolve().parent.parent / "data" / "nwz.sqlite"
 
-# $ per 1M tokens (input, output). Extend when a new model is used.
+# $ per 1M tokens (input, output) — NUR noch der Schätz-Fallback für Zeilen
+# ohne echten Kostenwert (alte Einträge, Provider ohne usage.cost). Neue
+# Aufrufe tragen die ECHTEN OpenRouter-Kosten in cost_usd (nwz/llm.py).
 PRICES: dict[str, tuple[float, float]] = {
     "deepseek/deepseek-v4-pro": (0.435, 0.87),
     "deepseek/deepseek-v4-flash": (0.10, 0.20),
     "openai/gpt-4o": (2.5, 10.0),
     "openai/gpt-4o-mini": (0.15, 0.60),
+    "google/gemini-2.5-flash": (0.30, 2.50),
+    "google/gemini-2.5-flash-lite": (0.10, 0.40),
+    "meta-llama/llama-4-maverick": (0.15, 0.60),
 }
 
 
@@ -32,18 +37,25 @@ def _connect() -> sqlite3.Connection:
     conn.execute(
         "CREATE TABLE IF NOT EXISTS llm_usage ("
         "id INTEGER PRIMARY KEY, ts TEXT NOT NULL DEFAULT (datetime('now')), "
-        "feature TEXT NOT NULL, model TEXT, prompt_tokens INTEGER, completion_tokens INTEGER)")
+        "feature TEXT NOT NULL, model TEXT, prompt_tokens INTEGER, completion_tokens INTEGER, "
+        "cost_usd REAL)")
+    try:  # Bestands-DBs: Spalte nachrüsten (idempotent scheitern lassen)
+        conn.execute("ALTER TABLE llm_usage ADD COLUMN cost_usd REAL")
+    except sqlite3.OperationalError:
+        pass
     return conn
 
 
-def record(feature: str, model: str | None, prompt_tokens: int, completion_tokens: int) -> None:
+def record(feature: str, model: str | None, prompt_tokens: int, completion_tokens: int,
+           cost_usd: float | None = None) -> None:
     """Append one usage row. Swallows all errors — tracking is never load-bearing."""
     try:
         conn = _connect()
         with conn:
             conn.execute(
-                "INSERT INTO llm_usage(feature, model, prompt_tokens, completion_tokens) VALUES (?,?,?,?)",
-                (feature, model, int(prompt_tokens or 0), int(completion_tokens or 0)))
+                "INSERT INTO llm_usage(feature, model, prompt_tokens, completion_tokens, cost_usd) "
+                "VALUES (?,?,?,?,?)",
+                (feature, model, int(prompt_tokens or 0), int(completion_tokens or 0), cost_usd))
         conn.close()
     except Exception:  # noqa: BLE001 — usage tracking must never break an LLM call
         pass
@@ -61,7 +73,13 @@ def summary() -> dict:
         conn = _connect()
         rows = conn.execute(
             "SELECT feature, model, COUNT(*) calls, COALESCE(SUM(prompt_tokens),0) pin, "
-            "COALESCE(SUM(completion_tokens),0) pout, MIN(ts) first, MAX(ts) last "
+            "COALESCE(SUM(completion_tokens),0) pout, MIN(ts) first, MAX(ts) last, "
+            # Echte Kosten wo vorhanden; für Zeilen ohne cost_usd (Altbestand,
+            # Provider ohne Kostenfeld) die Token-Summen separat — die laufen
+            # unten durch die PRICES-Schätzung.
+            "COALESCE(SUM(cost_usd),0) creal, "
+            "COALESCE(SUM(CASE WHEN cost_usd IS NULL THEN prompt_tokens END),0) pin_est, "
+            "COALESCE(SUM(CASE WHEN cost_usd IS NULL THEN completion_tokens END),0) pout_est "
             "FROM llm_usage GROUP BY feature, model").fetchall()
         conn.close()
     except Exception:  # noqa: BLE001
@@ -75,7 +93,7 @@ def summary() -> dict:
         f["calls"] += r["calls"]
         f["prompt_tokens"] += r["pin"]
         f["completion_tokens"] += r["pout"]
-        f["cost"] += _cost(r["model"], r["pin"], r["pout"])
+        f["cost"] += r["creal"] + _cost(r["model"], r["pin_est"], r["pout_est"])
         if r["model"]:
             f["models"].add(r["model"])
         f["first"] = min(f["first"], r["first"])
@@ -91,16 +109,18 @@ def summary() -> dict:
 
 
 def cost_timeseries(days: int = 30) -> list[dict]:
-    """Tägliche geschätzte Kosten + Aufrufe der letzten ``days`` Tage — lückenlos
-    (fehlende Tage = 0), ältester zuerst. Kosten werden aus Tokens × Modellpreis
-    je Zeile summiert (cost steht nicht in der DB)."""
+    """Tägliche Kosten + Aufrufe der letzten ``days`` Tage — lückenlos
+    (fehlende Tage = 0), ältester zuerst. Echte OpenRouter-Kosten (cost_usd) wo
+    vorhanden; nur Zeilen ohne Kostenwert laufen durch die PRICES-Schätzung."""
     from datetime import date, timedelta
     since = (date.today() - timedelta(days=days - 1)).isoformat()
     try:
         conn = _connect()
         rows = conn.execute(
             "SELECT date(ts) d, model, COUNT(*) calls, "
-            "COALESCE(SUM(prompt_tokens),0) pin, COALESCE(SUM(completion_tokens),0) pout "
+            "COALESCE(SUM(cost_usd),0) creal, "
+            "COALESCE(SUM(CASE WHEN cost_usd IS NULL THEN prompt_tokens END),0) pin, "
+            "COALESCE(SUM(CASE WHEN cost_usd IS NULL THEN completion_tokens END),0) pout "
             "FROM llm_usage WHERE date(ts) >= ? GROUP BY date(ts), model",
             (since,)).fetchall()
         conn.close()
@@ -109,7 +129,7 @@ def cost_timeseries(days: int = 30) -> list[dict]:
     by_day: dict[str, dict] = {}
     for r in rows:
         e = by_day.setdefault(r["d"], {"cost": 0.0, "calls": 0})
-        e["cost"] += _cost(r["model"], r["pin"], r["pout"])
+        e["cost"] += r["creal"] + _cost(r["model"], r["pin"], r["pout"])
         e["calls"] += r["calls"]
     out = []
     for i in range(days):

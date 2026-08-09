@@ -66,3 +66,40 @@ def test_budget_ampel_thresholds(usage_db):
     assert usage.dashboard(budget_monthly=100.0)["budget_level"] == "ok"    # 10 %
     assert usage.dashboard(budget_monthly=12.0)["budget_level"] == "warn"   # 83 %
     assert usage.dashboard(budget_monthly=8.0)["budget_level"] == "over"    # 125 %
+
+
+# ---- Echte OpenRouter-Kosten (cost_usd) vs. PRICES-Schätzung ----------------
+
+def test_summary_bevorzugt_echte_kosten(usage_db):
+    # Eine Zeile MIT echtem Kostenwert (weit unter der Schätzung) und eine
+    # Alt-Zeile ohne — die Summe muss echt + geschätzt mischen.
+    usage.record("qa_antwort", "openai/gpt-4o", 1_000_000, 0, cost_usd=0.5)
+    usage.record("qa_antwort", "openai/gpt-4o", 1_000_000, 0)  # ohne → Schätzung 2.5
+    s = usage.summary()
+    f = next(x for x in s["features"] if x["feature"] == "qa_antwort")
+    assert f["cost"] == pytest.approx(3.0)
+
+
+def test_timeseries_bevorzugt_echte_kosten(usage_db):
+    from datetime import date
+    usage.record("qa_antwort", "openai/gpt-4o", 1_000_000, 0, cost_usd=0.25)
+    heute = next(d for d in usage.cost_timeseries(days=1) if d["date"] == date.today().isoformat())
+    assert heute["cost"] == pytest.approx(0.25)
+
+
+def test_record_ohne_cost_bleibt_kompatibel(usage_db):
+    usage.record("qa_antwort", "unbekanntes/modell", 100, 100)  # kein Preis, kein cost
+    s = usage.summary()
+    assert s["total_calls"] == 1 and s["total_cost"] == 0.0
+
+
+def test_llm_session_cost_zaehler(monkeypatch):
+    from types import SimpleNamespace
+    from nwz import llm
+    monkeypatch.setattr(llm, "_session_cost", {"usd": 0.0, "calls_mit": 0, "calls_ohne": 0})
+    monkeypatch.setattr("nwz.usage.record", lambda *a, **k: None)
+    llm._record_usage("qa_antwort", "m", SimpleNamespace(prompt_tokens=1, completion_tokens=1, cost=0.0012))
+    llm._record_usage("qa_antwort", "m", SimpleNamespace(prompt_tokens=1, completion_tokens=1))
+    sc = llm.session_cost()
+    assert sc["usd"] == pytest.approx(0.0012)
+    assert sc["calls_mit"] == 1 and sc["calls_ohne"] == 1

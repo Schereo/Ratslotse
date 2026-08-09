@@ -157,19 +157,50 @@ def _is_transient(exc: BaseException) -> bool:
     reraise=True,
 )
 def _create(**kwargs: Any):
-    return get_client().chat.completions.create(**_with_model_params(_with_routing(kwargs)))
+    merged = _with_model_params(_with_routing(kwargs))
+    # OpenRouter soll die ECHTEN Kosten des Aufrufs mitliefern (usage.cost, in
+    # USD, inkl. Provider-Routing) — Modellpreise von Hand pflegen entfällt
+    # damit dort, wo der Wert ankommt (Admin-Statistik, Eval-Kostenzeile).
+    merged.setdefault("extra_body", {}).setdefault("usage", {"include": True})
+    return get_client().chat.completions.create(**merged)
+
+
+# Kosten-Zähler je Prozess: die Eval-Suite bildet daraus Deltas je Frage.
+# (calls_ohne zählt Antworten, deren Provider keinen usage.cost lieferte —
+# dann ist die Summe eine Untergrenze und der Bericht sagt das dazu.)
+_session_cost = {"usd": 0.0, "calls_mit": 0, "calls_ohne": 0}
+
+
+def session_cost() -> dict:
+    """Aufsummierte echte LLM-Kosten dieses Prozesses (Kopie)."""
+    return dict(_session_cost)
 
 
 def _record_usage(feature: str | None, model: str | None, usage_obj: Any) -> None:
-    """Best-effort: log this call's token usage under ``feature`` (for the admin LLM
-    page). Never raises — usage tracking must not affect the LLM call itself."""
-    if not feature or usage_obj is None:
+    """Best-effort: log this call's token usage + echte Kosten under ``feature``
+    (for the admin LLM page). Never raises — usage tracking must not affect the
+    LLM call itself."""
+    if usage_obj is None:
+        return
+    cost = None
+    try:
+        raw = getattr(usage_obj, "cost", None)  # OpenRouter-Extra-Feld
+        cost = float(raw) if raw is not None else None
+    except (TypeError, ValueError):
+        cost = None
+    if cost is not None:
+        _session_cost["usd"] += cost
+        _session_cost["calls_mit"] += 1
+    else:
+        _session_cost["calls_ohne"] += 1
+    if not feature:
         return
     try:
         from nwz import usage
         usage.record(feature, model,
                      getattr(usage_obj, "prompt_tokens", 0) or 0,
-                     getattr(usage_obj, "completion_tokens", 0) or 0)
+                     getattr(usage_obj, "completion_tokens", 0) or 0,
+                     cost_usd=cost)
     except Exception:  # noqa: BLE001
         pass
 
