@@ -431,6 +431,12 @@ class CouncilStore:
             "status TEXT NOT NULL DEFAULT 'listed')"  # listed | ok | empty | failed
         )
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_anlagen_kvonr ON council_anlagen(kvonr)")
+        # Gerenderte Planzeichnung (scripts/render_plaene.py): 0 = offen,
+        # 1 = Bild liegt unter data/plaene/<document_id>.jpg, -1 = fehlgeschlagen.
+        acols = {r[1] for r in self._conn.execute("PRAGMA table_info(council_anlagen)").fetchall()}
+        if "bild" not in acols:
+            self._conn.execute(
+                "ALTER TABLE council_anlagen ADD COLUMN bild INTEGER NOT NULL DEFAULT 0")
         # Beratungsfolge je Vorlage (council.stammdaten): die offiziellen
         # Stationen einer Vorlage durch die Gremien — inkl. geplanter künftiger
         # Beratungen (ergebnis dann NULL). Je kvonr komplett ersetzt, weil
@@ -1709,7 +1715,7 @@ class CouncilStore:
         if not v:
             return []
         rows = self._conn.execute(
-            "SELECT document_id, label, url, is_antrag, antragsteller, status "
+            "SELECT document_id, label, url, is_antrag, antragsteller, status, bild "
             "FROM council_anlagen WHERE kvonr = ? ORDER BY is_antrag DESC, label",
             (v["kvonr"],),
         ).fetchall()

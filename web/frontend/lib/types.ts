@@ -321,6 +321,9 @@ export interface DecisionDetail {
     klima_check?: string | null;
     klima_relevant?: boolean | null;
   } | null;
+  /** P1: document_id der gerenderten Planzeichnung — B-Plan-Beschlüsse
+   *  zeigen sie als Bild statt nur als Anlagen-Download. */
+  plan_bild?: number | null;
   /** Anlagen der Vorlage (Anträge zuerst, mit erkannten Antragstellern). */
   anlagen?: {
     document_id: number;
@@ -329,6 +332,8 @@ export interface DecisionDetail {
     is_antrag: number;
     antragsteller: string[];
     status: string;
+    /** 1 = Planzeichnung gerendert (scripts/render_plaene.py). */
+    bild?: number;
   }[];
 }
 
