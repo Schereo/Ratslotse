@@ -548,7 +548,6 @@
   },
   {
     "id": "fliegerhorst-altlasten",
-    "frage": "Was ist der aktuelle Stand zu den potentiellen Altlasten/Giftmüll auf dem Fliegerhorstgelände?",
     "typ": "verlauf",
     "expected_keys": [
       {
@@ -564,6 +563,7 @@
         "title_like": "Sachstand ehemalige Schießanlage Fliegerhorst"
       }
     ],
-    "kommentar": "Tims Live-Befund 09.08.2026: 14 einschlägige Beschlüsse in der DB, Antwort zitierte 3 — die drei wichtigsten (Grundwassermonitoring 2/26, Korruptions-/Sondermüll-Debatten Rat) fehlen KOMPLETT in den Top-40. Ursache: 39-Zeichen-Floskelbeschlüsse ohne vorlage_nr, Substanz steht in nicht indexierten Protokoll-Debatten (→ Task #16)."
+    "kommentar": "Tims Live-Befund 09.08.2026: 14 einschlägige Beschlüsse in der DB, Antwort zitierte 3 — die drei wichtigsten (Grundwassermonitoring 2/26, Korruptions-/Sondermüll-Debatten Rat) fehlen KOMPLETT in den Top-40. Ursache: 39-Zeichen-Floskelbeschlüsse ohne vorlage_nr, Substanz steht in nicht indexierten Protokoll-Debatten (→ Task #16).",
+    "question": "Was ist der aktuelle Stand zu den potentiellen Altlasten/Giftmüll auf dem Fliegerhorstgelände?"
   }
 ]

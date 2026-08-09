@@ -8,6 +8,16 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Verbessert
+- **Die KI-Suche antwortet deutlich schneller.** Zwei Stellschrauben: Die
+  Server-VM nutzt jetzt die modernen Vektorbefehle ihres Prozessors (die der
+  Relevanz-Sortierung bisher vorenthalten waren), und die Textpaare für die
+  Sortierung sind auf das Wesentliche gekürzt — bei unveränderter
+  Trefferquote im Eval sinkt die Zeit bis zu den Quellen von gut zwanzig auf
+  wenige Sekunden. Außerdem bleibt die Aktionszeile mit Teilen, Vorlesen und
+  Bewertung in der Belege-Spalte jetzt immer sichtbar, statt hinter langen
+  Quellenlisten zu verschwinden. (#386)
+
+### Verbessert
 - **Die Beschluss-Seite bleibt lesbar, auch mit den neuen Angaben.** „Vom
   Vorschlag abgewichen" und der Klima-Check stehen nicht mehr als Kästen in der
   Erzählspalte, sondern als ruhige Symbolzeilen unter „Auf einen Blick" — ein
