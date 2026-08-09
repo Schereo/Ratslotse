@@ -40,6 +40,10 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Wechloy?" wird ein natürliches „Wer stimmte dagegen?". (#369)
 
 ### Hinzugefügt
+- **Antworten lassen sich vorlesen.** Ein Lautsprecher-Symbol an jeder
+  KI-Antwort liest den Text mit deutscher Stimme vor — Fußnoten und
+  Formatierung bleiben stumm, ein zweiter Tipp stoppt. Der Knopf erscheint
+  nur, wenn das Gerät Sprachausgabe kann. (#381)
 - **KI-Antworten zeigen ihre Orte auf einer Mini-Karte.** Zitiert die Antwort
   Beschlüsse zu konkreten Orten — einer Brücke, einem Baugebiet, einer
   Straße —, erscheint darunter eine kleine Karte mit nummerierten Pins;
