@@ -16,6 +16,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Sparkles, Send, Loader2, ChevronDown, ChevronRight, ChevronUp, ArrowRight, Plus,
@@ -162,8 +163,13 @@ function BelegPeek({ quelle, nummer, onClose, onListe }: {
     window.addEventListener("keydown", esc);
     return () => window.removeEventListener("keydown", esc);
   }, [onClose]);
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center p-3 sm:items-center print:hidden"
+  // Portal an <body>: Im Chat sitzt ein transform-Vorfahre (Einblende-
+  // Animationen), der position:fixed einfängt — die Karte klebte dadurch in
+  // der App HINTER der Bottom-Nav (iOS-Test 09.08.). Am Body gilt der
+  // Viewport wieder; z-[70] schlägt die Nav (z-40), das Bottom-Padding hebt
+  // die Karte mobil über sie.
+  return createPortal(
+    <div className="fixed inset-0 z-[70] flex items-end justify-center p-3 pb-[calc(env(safe-area-inset-bottom)+6.5rem)] sm:items-center sm:pb-3 print:hidden"
       role="dialog" aria-modal="true" aria-label={`Quelle ${nummer ?? ""}`}>
       <button type="button" aria-label="Schließen" onClick={onClose}
         className="absolute inset-0 bg-foreground/25 backdrop-blur-[2px]" />
@@ -198,7 +204,8 @@ function BelegPeek({ quelle, nummer, onClose, onListe }: {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
