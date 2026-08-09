@@ -160,8 +160,10 @@ def _arm_stats(per_case: list[dict], arm: str) -> dict:
 
 
 def aggregate_latency(per_case_ms: list[dict]) -> dict:
-    """Mittel/p50/p95 je Zeitschluessel ueber alle Faelle (fehlende Werte werden
-    ignoriert — z. B. antwort_ms bei --nur-retrieval)."""
+    """Mittel/p50/p95 je Zeit-/Kostenschluessel ueber alle Faelle (fehlende
+    Werte werden ignoriert — z. B. antwort_ms bei --nur-retrieval).
+    Millisekunden ganzzahlig; ``*_ct``-Schluessel (Kosten in Cent) behalten
+    zwei Nachkommastellen — eine Frage kostet Bruchteile eines Cents."""
     out: dict = {}
     keys = {k for t in per_case_ms for k in t}
     for key in sorted(keys):
@@ -169,10 +171,11 @@ def aggregate_latency(per_case_ms: list[dict]) -> dict:
         if not vals:
             continue
         vals.sort()
+        nd = 2 if key.endswith("_ct") else None
         out[key] = {
-            "mean": round(statistics.fmean(vals)),
-            "p50": round(vals[len(vals) // 2]),
-            "p95": round(vals[min(len(vals) - 1, int(len(vals) * 0.95))]),
+            "mean": round(statistics.fmean(vals), nd),
+            "p50": round(vals[len(vals) // 2], nd),
+            "p95": round(vals[min(len(vals) - 1, int(len(vals) * 0.95))], nd),
         }
     return out
 
@@ -243,9 +246,20 @@ def print_qa_report(result: dict) -> None:
     if result.get("latency"):
         print(f"  {'Latenz (ms)':18} {'mean':>7} {'p50':>7} {'p95':>7}")
         for key, v in result["latency"].items():
+            if key.endswith("_ct"):
+                continue  # Kosten stehen unten in Cent, nicht in der ms-Tabelle
             print(f"  {key:18} {v['mean']:>7} {v['p50']:>7} {v['p95']:>7}")
         if result.get("cold_start_ms") is not None:
             print(f"  Kaltstart (Modelle laden, einmal je Prozess): {result['cold_start_ms']} ms")
+    if result.get("kosten") is not None:
+        lat = result.get("latency") or {}
+        teile = " + ".join(
+            f"{name} {lat[key]['mean']:.2f}"
+            for key, name in (("analyse_ct", "Analyse"), ("antwort_ct", "Antwort")) if key in lat)
+        je_frage = f" (Ø ¢/Frage: {teile})" if teile else ""
+        k = result["kosten"]
+        ohne = f" · {k['calls_ohne_cost']} Aufrufe ohne Kostenwert (Summe = Untergrenze)" if k["calls_ohne_cost"] else ""
+        print(f"  Kosten     : Lauf gesamt {k['lauf_usd']:.4f} ${je_frage}{ohne}")
     print(line)
     for d in result["details"]:
         rank = d["first_expected_rank"]
@@ -261,12 +275,13 @@ def print_latency_compare(result: dict, prev: dict, prev_name: str) -> None:
     ein neues Feature die Antwortzeit kostet."""
     if not (result.get("latency") and prev.get("latency")):
         return
-    print(f"\n  Latenz-Delta vs. {prev_name} (mean ms):")
+    print(f"\n  Latenz-/Kosten-Delta vs. {prev_name} (mean; ms bzw. ¢):")
     for key in result["latency"]:
         if key in prev["latency"]:
             a, b = prev["latency"][key]["mean"], result["latency"][key]["mean"]
             arrow = "↑" if b > a else ("↓" if b < a else "→")
-            print(f"    {key:14}: {a:>6} {arrow} {b:>6}  ({'+' if b >= a else ''}{b - a})")
+            delta = round(b - a, 2 if key.endswith("_ct") else None)
+            print(f"    {key:14}: {a:>7} {arrow} {b:>7}  ({'+' if delta >= 0 else ''}{delta})")
 
 
 # --------------------------------------------------------------------------- #
@@ -293,6 +308,11 @@ def main() -> int:
     from council import vorlagen as vorlagen_mod
     from council import embeddings as emb
     from council.store import CouncilStore
+    from nwz import llm
+
+    def kosten_ct_seit(usd_start: float) -> float:
+        """Echte LLM-Kosten (OpenRouter usage.cost) seit ``usd_start``, in Cent."""
+        return round((llm.session_cost()["usd"] - usd_start) * 100, 3)
 
     root = Path(__file__).parent.parent
     store = CouncilStore(Path(args.db or os.environ.get("COUNCIL_DB") or root / "data" / "council.sqlite"))
@@ -336,11 +356,12 @@ def main() -> int:
         if case["id"] not in cache:
             q = case["question"]
             t = latenz.setdefault(case["id"], {})
-            t_exp = time.perf_counter()
+            t_exp, c_exp = time.perf_counter(), llm.session_cost()["usd"]
             analyse = qa.analyse_query(q)
             expanded, typ = analyse["begriffe"], analyse["typ"]
             typen[case["id"]] = typ
             t["expand_ms"] = round((time.perf_counter() - t_exp) * 1000)
+            t["analyse_ct"] = kosten_ct_seit(c_exp)
             t_ret = time.perf_counter()
             hits = emb.hybrid_search(store, q, expanded, top_k=TOP_K, pool=55, timings=t)
             cands = store.get_decisions_by_ids([h[0] for h in hits])
@@ -399,12 +420,15 @@ def main() -> int:
             for c in ctx:
                 c.pop("impact", None)
                 c.pop("impact_reason", None)
-        t_ans = time.perf_counter()
+        t_ans, c_ans = time.perf_counter(), llm.session_cost()["usd"]
         _, cited = qa.answer_question(case["question"], ctx, typ=typ)
         t = latenz.setdefault(case["id"], {})
-        # Beide Arme laufen nacheinander — das Mittel ist die realistische Zeit EINER Antwort.
+        # Beide Arme laufen nacheinander — das Mittel ist die realistische
+        # Zeit (und der realistische Preis) EINER Antwort.
         ms = round((time.perf_counter() - t_ans) * 1000)
         t["antwort_ms"] = round((t["antwort_ms"] + ms) / 2) if "antwort_ms" in t else ms
+        ct = kosten_ct_seit(c_ans)
+        t["antwort_ct"] = round((t["antwort_ct"] + ct) / 2, 3) if "antwort_ct" in t else ct
         return cited
 
     def impact_of(case: dict) -> dict[int, int | None]:
@@ -422,8 +446,12 @@ def main() -> int:
     for t in per_case_t:
         # vektor/bm25/rerank stecken bereits in retrieve_ms — nicht doppelt zaehlen.
         t["total_ms"] = sum(t.get(k, 0) for k in ("expand_ms", "retrieve_ms", "kontext_ms", "antwort_ms"))
+        # Preis EINER echten Frage: Analyse + eine Antwort (antwort_ct ist das Arm-Mittel).
+        t["kosten_ct"] = round(t.get("analyse_ct", 0) + t.get("antwort_ct", 0), 3)
     result["latency"] = aggregate_latency(per_case_t)
     result["cold_start_ms"] = cold_start_ms
+    sc = llm.session_cost()
+    result["kosten"] = {"lauf_usd": round(sc["usd"], 4), "calls_ohne_cost": sc["calls_ohne"]}
     result["skipped"] = len(skipped)
     result["skipped_ids"] = skipped
 
