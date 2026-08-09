@@ -1187,7 +1187,10 @@ function BelegeSpalte({ turn, flashId, onFlash, loading, onDazuFragen }: {
       )}
       {turn.presse.length > 0 && <PresseBlock presse={turn.presse} />}
       {!loading && (
-        <div className="flex items-center gap-1 border-t border-border/60 pt-1.5">
+        // sticky am Kartenboden: Die Zeile stand am Scroller-Ende hinter
+        // Quellen + Presse — Daumen & Co. waren je nach Inhalt unsichtbar
+        // (Tims „Bewertung fehlt"-Befund). So bleibt sie immer im Blick.
+        <div className="sticky -bottom-4 -mx-1 flex items-center gap-1 border-t border-border/60 bg-card px-1 pb-1 pt-1.5">
           <ShareButton iconOnly
             path={`/council?tab=decisions&mode=fragen&q=${encodeURIComponent(turn.frage)}`}
             title={`Ratslotse: ${turn.frage}`}
