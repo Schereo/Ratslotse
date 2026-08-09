@@ -143,6 +143,27 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "SUCHBEGRIFFE:"
         ),
     },
+    "qa_analyse": {
+        "title": "Frag den Rat – Frage-Analyse",
+        "description": "Ein Call vor der Suche: Suchbegriffe + Fragetyp (+ ggf. Fraktion) als JSON. Platzhalter: {question}.",
+        "template": (
+            "Analysiere die Nutzerfrage an ein Stadtrats-Archiv (Oldenburg). Antworte NUR als JSON:\n"
+            '{{"begriffe": "4-8 deutsche Suchbegriffe, Substantive und nahe Synonyme, durch Leerzeichen"'
+            ', "typ": "thema|verlauf|partei|geld", "partei": "Fraktionsname oder null"}}\n\n'
+            "typ-Regeln:\n"
+            '- "verlauf": Die Frage zielt auf Werdegang/Chronik/Stand eines Vorgangs '
+            '("Wie lief …", "Wie ist der Stand …", "Was wurde aus …", "Chronologie").\n'
+            '- "partei": Die Frage fragt nach Position/Anträgen/Verhalten einer bestimmten '
+            "Fraktion oder Gruppe (SPD, CDU, Grüne, FDP, Linke, AfD, Volt, BSW, Piraten, "
+            '"Für Oldenburg" …). Dann "partei" auf den Namen setzen.\n'
+            '- "geld": Es geht um Kosten, Beträge, Förderhöhen, Haushalt ("Wie teuer", "Wie hoch").\n'
+            '- sonst "thema".\n'
+            "Für die begriffe: KEINE Floskeln wie \"Was wurde\", \"beschlossen\", \"Stadtrat\"; "
+            "bei Partei-Fragen den Fraktionsnamen NICHT in die begriffe aufnehmen (der wird "
+            "separat gefiltert), sondern nur das Sachthema.\n\n"
+            "FRAGE: {question}"
+        ),
+    },
     "topic_auto_beschreibung": {
         "title": "Thema – Beschreibung automatisch",
         "description": "Macht aus einem Themen-Namen + echten Beschlüssen eine Wächter-Beschreibung. Platzhalter: {name}, {context}.",
@@ -215,7 +236,8 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Passen mehrere Beschlüsse, nenne die neuesten zuerst.\n"
             "Die Tragweite ist NUR für deine Gewichtung gedacht, nie zum Zitieren: Führe mit\n"
             "den folgenreichen Beschlüssen und behandle sie ausführlicher; Formalien erwähne\n"
-            "nur, wenn die Frage direkt danach fragt.\n\n"
+            "nur, wenn die Frage direkt danach fragt.\n"
+            "{extra_regeln}\n\n"
             "FRAGE: {question}\n\n"
             "BESCHLÜSSE:\n"
             "{context}\n\n"
