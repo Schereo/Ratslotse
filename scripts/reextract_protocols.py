@@ -36,10 +36,16 @@ def main() -> int:
     ap.add_argument("--db", type=Path, default=COUNCIL_DB)
     ap.add_argument("--limit", type=int, default=0, help="0 = all")
     ap.add_argument("--delay", type=float, default=0.3)
+    ap.add_argument("--min-chars", type=int, default=0,
+                    help="nur Protokolle ab dieser Textlänge — z. B. 60000, um gezielt "
+                         "die früher an MAX_INPUT_CHARS gekappten Niederschriften "
+                         "mit dem TOP-Chunking nachzuziehen")
     args = ap.parse_args()
 
     store = CouncilStore(args.db)
     rows = store.get_protocols_raw()
+    if args.min_chars:
+        rows = [p for p in rows if len(p["raw_text"] or "") >= args.min_chars]
     if args.limit:
         rows = rows[:args.limit]
     print(f"Re-extracting {len(rows)} protocol(s)…")

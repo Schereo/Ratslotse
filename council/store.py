@@ -486,6 +486,29 @@ class CouncilStore:
             "source_url TEXT, fetched_at TEXT NOT NULL, "
             "UNIQUE(year, bereich))"
         )
+        # Vorlagen-Volltexte semantisch auffindbar machen: je Vorlage mehrere
+        # Chunk-Vektoren (Sachverhalt/Begründung), die die Hybrid-Suche auf die
+        # zugehörigen Beschlüsse abbildet. text_hash = SHA-256 des Volltexts —
+        # macht das Embedding-Skript idempotent (nur Geändertes wird neu embedded).
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_vorlage_embeddings ("
+            "vorlage_nr TEXT NOT NULL, "
+            "chunk_idx INTEGER NOT NULL, "
+            "text_hash TEXT NOT NULL, "
+            "chunk_text TEXT NOT NULL, "   # der Reranker bekommt die FUNDSTELLE zu sehen
+            "vector BLOB NOT NULL, "
+            "PRIMARY KEY (vorlage_nr, chunk_idx))"
+        )
+        # Aus raw_result geparste Teilvoten: welche Fraktion stimmte laut
+        # Protokoll dagegen / enthielt sich. faction steht wie protokolliert
+        # (Gruppen nicht aufgelöst — Fraktion≠Partei, siehe council/parties.py).
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_decision_votes ("
+            "decision_id INTEGER NOT NULL, "
+            "faction TEXT NOT NULL, "
+            "stance TEXT NOT NULL, "                    # dagegen | enthaltung
+            "PRIMARY KEY (decision_id, faction, stance))"
+        )
         self._migrate_quiz_estimate()
         self._migrate_quiz_media()
         self._migrate_quiz_hint()
@@ -952,7 +975,7 @@ class CouncilStore:
     def _insert_decision(self, ksinr, position, kind, parent_item, item_number, title,
                          beschluss, outcome, vote, gegenstimmen, enthaltungen, factions,
                          vorlage_nr, kvonr, raw_result) -> None:
-        self._conn.execute(
+        cur = self._conn.execute(
             "INSERT INTO council_decisions "
             "(ksinr, position, kind, parent_item, item_number, title, beschluss, outcome, "
             " vote, gegenstimmen, enthaltungen, factions, vorlage_nr, kvonr, raw_result) "
@@ -962,6 +985,18 @@ class CouncilStore:
              json.dumps(factions or [], ensure_ascii=False),
              vorlage_nr, _int_or_none(kvonr), raw_result),
         )
+        # Nennt der Abstimmungssatz Fraktionen ausdrücklich (Gegenstimmen/
+        # Enthaltungen), landen sie strukturiert in council_decision_votes —
+        # neue Protokolle tragen ihre Teilvoten damit ab Import.
+        if raw_result:
+            from council.votes import parse_raw_result
+            parsed = parse_raw_result(raw_result)
+            if parsed:
+                self._conn.executemany(
+                    "INSERT OR IGNORE INTO council_decision_votes (decision_id, faction, stance) "
+                    "VALUES (?, ?, ?)",
+                    [(cur.lastrowid, f, s) for f, s in parsed],
+                )
 
     def save_protocol(
         self,
@@ -987,6 +1022,12 @@ class CouncilStore:
                 (ksinr, document.get("document_id"), document.get("url"), meta.get("protocol_nr"),
                  meta.get("session_start"), meta.get("session_end"), raw_text, n_pages, model, now, status),
             )
+            # Teilvoten hängen an den decision-ids — vor dem Ersetzen der
+            # Beschlüsse mitlöschen, sonst bleiben Waisen zurück (dieselbe
+            # Falle wie bei den Themen-Treffern, #340).
+            self._conn.execute(
+                "DELETE FROM council_decision_votes WHERE decision_id IN "
+                "(SELECT id FROM council_decisions WHERE ksinr = ?)", (ksinr,))
             self._conn.execute("DELETE FROM council_decisions WHERE ksinr = ?", (ksinr,))
             self._conn.execute("DELETE FROM council_attendance WHERE ksinr = ?", (ksinr,))
             pos = 0
@@ -2082,7 +2123,8 @@ class CouncilStore:
             self._conn.execute(
                 "INSERT INTO council_decisions_fts(rowid, content) "
                 "SELECT d.id, REPLACE(COALESCE(d.title,'') || ' ' || COALESCE(d.beschluss,'') || ' ' "
-                "|| COALESCE(d.summary,'') || ' ' || COALESCE(v.vtext,'') || ' ' || COALESCE(an.atext,''), "
+                "|| COALESCE(d.summary,'') || ' ' || COALESCE(sv.stext,'') || ' ' "
+                "|| COALESCE(v.vtext,'') || ' ' || COALESCE(an.atext,''), "
                 "'ß', 'ss') "  # unicode61 folds ä/ö/ü but not ß
                 "FROM council_decisions d "
                 "LEFT JOIN (SELECT vorlage_nr, substr(MAX(raw_text), 1, 8000) AS vtext "
@@ -2092,27 +2134,40 @@ class CouncilStore:
                 "           FROM council_anlagen a JOIN council_vorlagen cv ON cv.kvonr = a.kvonr "
                 "           WHERE a.is_antrag = 1 AND a.status = 'ok' GROUP BY cv.vorlage_nr) an "
                 "  ON an.vorlage_nr = d.vorlage_nr "
+                # Teilabstimmungen (Änderungsanträge) haben keine eigene FTS-Zeile —
+                # ihre Titel zählen zum Haupt-TOP, damit „Änderungsantrag der X zu Y"
+                # den zitierfähigen Hauptbeschluss findet (Design 23a: subvote-Inhalt
+                # steht im title, beschluss ist immer NULL).
+                "LEFT JOIN (SELECT ksinr, parent_item, substr(GROUP_CONCAT(title, ' '), 1, 2000) AS stext "
+                "           FROM council_decisions WHERE kind = 'subvote' AND parent_item IS NOT NULL "
+                "           GROUP BY ksinr, parent_item) sv "
+                "  ON sv.ksinr = d.ksinr AND sv.parent_item = d.item_number "
                 "WHERE d.kind = 'decision'"
             )
         return self._conn.execute("SELECT COUNT(*) FROM council_decisions_fts").fetchone()[0]
 
     def search_decisions_fts(self, query: str, limit: int = 40) -> list[tuple]:
-        """BM25 keyword search → ``[(decision_id, score)]`` (larger = better). Terms are
-        OR-combined for recall; returns ``[]`` on an empty or invalid query."""
+        """BM25 keyword search → ``[(decision_id, score, snippet)]`` (larger = better).
+        Terms are OR-combined for recall; returns ``[]`` on an empty or invalid query.
+
+        Das FTS5-``snippet()`` liefert die FUNDSTELLE im indexierten Text — bei
+        Treffern tief im Vorlagen-Volltext ist das der Kontext, den der Reranker
+        sehen muss (der Textanfang verrät dort nichts über den Match)."""
         terms = [t for t in re.findall(r"[0-9a-zäöü]+", query.lower().replace("ß", "ss")) if len(t) >= 3][:12]
         if not terms:
             return []
         match = " OR ".join(terms)
         try:
             rows = self._conn.execute(
-                "SELECT rowid, rank FROM council_decisions_fts WHERE council_decisions_fts MATCH ? "
+                "SELECT rowid, rank, snippet(council_decisions_fts, 0, '', '', ' … ', 16) "
+                "FROM council_decisions_fts WHERE council_decisions_fts MATCH ? "
                 "ORDER BY rank LIMIT ?",
                 (match, limit),
             ).fetchall()
         except sqlite3.OperationalError:
             return []
         # FTS5 rank is negative (more negative = better); flip so larger = better.
-        return [(r[0], -float(r[1])) for r in rows]
+        return [(r[0], -float(r[1]), r[2] or "") for r in rows]
 
     def decisions_for_entities(self) -> list[dict]:
         """Main decisions (id, title, beschluss) for the entity-extraction backfill."""
@@ -3024,14 +3079,25 @@ class CouncilStore:
 
     # --- Semantic similarity (precomputed offline) --------------------------
     def decisions_for_embedding(self) -> list[dict]:
-        """All main decisions with a short text for embedding (id + text)."""
+        """All main decisions with a short text for embedding (id + text).
+
+        Teilabstimmungs-Titel (Änderungsanträge, Design 23a) zählen zum Text des
+        Haupt-TOPs — sie tragen oft die konkreten Begriffe („Änderungsantrag der
+        Fraktion X: Tempo 30 auf …"), die im knappen Hauptbeschluss fehlen."""
         rows = self._conn.execute(
-            "SELECT id, title, summary, beschluss FROM council_decisions WHERE kind = 'decision'"
+            "SELECT d.id, d.title, d.summary, d.beschluss, sv.stext FROM council_decisions d "
+            "LEFT JOIN (SELECT ksinr, parent_item, substr(GROUP_CONCAT(title, ' · '), 1, 400) AS stext "
+            "           FROM council_decisions WHERE kind = 'subvote' AND parent_item IS NOT NULL "
+            "           GROUP BY ksinr, parent_item) sv "
+            "  ON sv.ksinr = d.ksinr AND sv.parent_item = d.item_number "
+            "WHERE d.kind = 'decision'"
         ).fetchall()
         out = []
         for r in rows:
-            text = f"{r['title'] or ''}. {r['summary'] or r['beschluss'] or ''}".strip()
-            out.append({"id": r["id"], "text": text[:500]})
+            text = f"{r['title'] or ''}. {r['summary'] or r['beschluss'] or ''}".strip()[:500]
+            if r["stext"]:
+                text = f"{text} · {r['stext']}"[:800]
+            out.append({"id": r["id"], "text": text})
         return out
 
     def set_similar(self, rows: list[tuple]) -> int:
@@ -3058,6 +3124,129 @@ class CouncilStore:
         return self._conn.execute(
             "SELECT decision_id, vector FROM council_embeddings ORDER BY decision_id"
         ).fetchall()
+
+    def embeddings_version(self) -> tuple:
+        """Billiger Versionsschlüssel des Embedding-Bestands. Der Matrix-Cache in
+        council/embeddings.py lädt neu, sobald sich der Wert ändert — ohne den
+        früher nötigen Service-Neustart nach embed_decisions.py. ``data_version``
+        deckt dabei auch ein Re-Embedding ab, das Anzahl und ids unverändert
+        lässt (Modellwechsel): Es zählt hoch, sobald ein *anderer* Prozess die
+        DB-Datei geschrieben hat."""
+        count, max_id = self._conn.execute(
+            "SELECT COUNT(*), COALESCE(MAX(decision_id), 0) FROM council_embeddings"
+        ).fetchone()
+        data_version = self._conn.execute("PRAGMA data_version").fetchone()[0]
+        return (count, max_id, data_version)
+
+    # ---- Vorlagen-Chunk-Embeddings (semantische Suche im Sachverhalt) ----
+
+    def vorlagen_missing_embeddings(self) -> list[dict]:
+        """Vorlagen (mit Text, an ≥1 Beschluss hängend), deren Chunk-Vektoren
+        fehlen oder deren Text sich seit dem letzten Embedding geändert hat.
+        Der Abgleich läuft über den SHA-256 des Volltexts (text_hash)."""
+        import hashlib
+
+        stored = dict(self._conn.execute(
+            "SELECT vorlage_nr, MIN(text_hash) FROM council_vorlage_embeddings GROUP BY vorlage_nr"
+        ).fetchall())
+        rows = self._conn.execute(
+            "SELECT v.vorlage_nr, MAX(v.raw_text) AS raw_text FROM council_vorlagen v "
+            "WHERE v.status = 'ok' AND v.vorlage_nr IN "
+            "  (SELECT DISTINCT vorlage_nr FROM council_decisions "
+            "   WHERE kind = 'decision' AND vorlage_nr IS NOT NULL AND vorlage_nr != '') "
+            "GROUP BY v.vorlage_nr"
+        ).fetchall()
+        out = []
+        for r in rows:
+            text = r["raw_text"] or ""
+            if not text.strip():
+                continue
+            h = hashlib.sha256(text.encode("utf-8", "replace")).hexdigest()
+            if stored.get(r["vorlage_nr"]) != h:
+                out.append({"vorlage_nr": r["vorlage_nr"], "raw_text": text, "text_hash": h})
+        return out
+
+    def replace_vorlage_embeddings(self, vorlage_nr: str, text_hash: str,
+                                   chunks: list[tuple[str, bytes]]) -> None:
+        """Chunk-Text+Vektor einer Vorlage komplett ersetzen (alte Chunk-Anzahl
+        kann abweichen, deshalb erst löschen)."""
+        with self._conn:
+            self._conn.execute(
+                "DELETE FROM council_vorlage_embeddings WHERE vorlage_nr = ?", (vorlage_nr,))
+            self._conn.executemany(
+                "INSERT INTO council_vorlage_embeddings "
+                "(vorlage_nr, chunk_idx, text_hash, chunk_text, vector) VALUES (?, ?, ?, ?, ?)",
+                [(vorlage_nr, i, text_hash, text, vec) for i, (text, vec) in enumerate(chunks)],
+            )
+
+    def get_vorlage_embeddings(self) -> list:
+        """Alle (vorlage_nr, chunk_text, vector)-Zeilen — der Aufrufer baut die Matrix."""
+        return self._conn.execute(
+            "SELECT vorlage_nr, chunk_text, vector FROM council_vorlage_embeddings "
+            "ORDER BY vorlage_nr, chunk_idx"
+        ).fetchall()
+
+    def vorlage_embeddings_version(self) -> tuple:
+        """Versionsschlüssel analog embeddings_version(), für den Chunk-Matrix-Cache."""
+        count = self._conn.execute(
+            "SELECT COUNT(*) FROM council_vorlage_embeddings").fetchone()[0]
+        data_version = self._conn.execute("PRAGMA data_version").fetchone()[0]
+        return (count, data_version)
+
+    def decision_ids_for_vorlagen(self, vorlage_nrs: list[str]) -> dict[str, list[int]]:
+        """vorlage_nr → Beschluss-ids (alle Beratungsstationen), neueste zuerst.
+        Bildet Vorlagen-Chunk-Treffer der semantischen Suche auf zitierbare
+        Beschlüsse ab."""
+        nrs = sorted({(n or "").strip() for n in vorlage_nrs if n and str(n).strip()})
+        if not nrs:
+            return {}
+        ph = ",".join("?" * len(nrs))
+        rows = self._conn.execute(
+            f"""SELECT d.vorlage_nr, d.id FROM council_decisions d
+                JOIN council_sessions cs ON cs.ksinr = d.ksinr
+                WHERE d.kind = 'decision' AND d.vorlage_nr IN ({ph})
+                ORDER BY cs.session_date DESC, d.id DESC""",
+            nrs,
+        ).fetchall()
+        out: dict[str, list[int]] = {}
+        for r in rows:
+            out.setdefault(r["vorlage_nr"], []).append(r["id"])
+        return out
+
+    # ---- Teilvoten aus raw_result (welche Fraktion stimmte wie) ----
+
+    def save_decision_votes(self, decision_id: int, votes: list[tuple[str, str]]) -> None:
+        """Geparste (faction, stance)-Zeilen eines Beschlusses ersetzen."""
+        with self._conn:
+            self._conn.execute(
+                "DELETE FROM council_decision_votes WHERE decision_id = ?", (decision_id,))
+            self._conn.executemany(
+                "INSERT OR IGNORE INTO council_decision_votes (decision_id, faction, stance) "
+                "VALUES (?, ?, ?)",
+                [(decision_id, f, s) for f, s in votes],
+            )
+
+    def decision_votes_for(self, decision_ids: list[int]) -> dict[int, list[dict]]:
+        """decision_id → [{faction, stance}] für Anzeige/Auswertung."""
+        if not decision_ids:
+            return {}
+        ph = ",".join("?" * len(decision_ids))
+        rows = self._conn.execute(
+            f"SELECT decision_id, faction, stance FROM council_decision_votes "
+            f"WHERE decision_id IN ({ph}) ORDER BY faction", decision_ids,
+        ).fetchall()
+        out: dict[int, list[dict]] = {}
+        for r in rows:
+            out.setdefault(r["decision_id"], []).append(
+                {"faction": r["faction"], "stance": r["stance"]})
+        return out
+
+    def decisions_with_raw_result(self) -> list[dict]:
+        """Alle Beschlüsse mit Abstimmungssatz — Eingabe für den Teilvoten-Backfill."""
+        return [dict(r) for r in self._conn.execute(
+            "SELECT id, raw_result FROM council_decisions "
+            "WHERE raw_result IS NOT NULL AND raw_result != ''"
+        ).fetchall()]
 
     # ---- field recaps (auto-generated LLM summaries per policy field) ----
 
@@ -3114,13 +3303,21 @@ class CouncilStore:
         return out
 
     def get_decisions_by_ids(self, ids: list[int]) -> list[dict]:
-        """Fetch decisions by id, preserving the given order (for Q&A citations)."""
+        """Fetch decisions by id, preserving the given order (for Q&A citations).
+
+        Liefert auch Abstimmung (vote/gegenstimmen/enthaltungen/raw_result) und
+        amount_eur mit: raw_result geht bei strittigen Beschlüssen in den
+        QA-Kontext (dort stehen oft die Fraktionen der Gegenstimmen), und die
+        Fallback-Folgefragen in council/qa.py prüfen gegenstimmen/amount_eur —
+        ohne diese Felder liefen die Zweige ins Leere."""
         if not ids:
             return []
         ph = ",".join("?" * len(ids))
         rows = self._conn.execute(
             f"""SELECT d.id, d.title, d.summary, d.beschluss, d.vorlage_nr,
                        d.policy_field, d.outcome, d.impact, d.impact_reason,
+                       d.vote, d.gegenstimmen, d.enthaltungen, d.raw_result,
+                       d.amount_eur,
                        cs.session_date, cs.committee
                 FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr
                 WHERE d.id IN ({ph})""",
@@ -3128,6 +3325,34 @@ class CouncilStore:
         ).fetchall()
         by_id = {r["id"]: dict(r) for r in rows}
         return [by_id[i] for i in ids if i in by_id]
+
+    def find_decision_ids(self, *, vorlage_nr: str | None = None, committee: str | None = None,
+                          session_date: str | None = None, title_like: str | None = None) -> list[int]:
+        """Beschluss-ids über natürliche Schlüssel statt AUTOINCREMENT-ids.
+
+        Für DB-portable Eval-Gold-Cases (eval/cases_qa.json): Vorlagen-Nummer,
+        Sitzungsdatum und Titel sind auf jeder Kopie der Datenbank gleich, die
+        ids nicht. Filter sind UND-verknüpft, mindestens einer ist Pflicht;
+        Teilabstimmungen bleiben außen vor (nicht eigenständig zitierbar)."""
+        conds, params = ["d.kind = 'decision'"], []
+        if vorlage_nr:
+            conds.append("d.vorlage_nr = ?"); params.append(str(vorlage_nr).strip())
+        if committee:
+            conds.append("cs.committee LIKE ?"); params.append(f"%{committee.strip()}%")
+        if session_date:
+            conds.append("cs.session_date = ?"); params.append(str(session_date).strip())
+        if title_like:
+            conds.append("d.title LIKE ?"); params.append(f"%{title_like.strip()}%")
+        if len(conds) == 1:
+            raise ValueError("find_decision_ids braucht mindestens einen Filter")
+        rows = self._conn.execute(
+            f"""SELECT d.id FROM council_decisions d
+                JOIN council_sessions cs ON cs.ksinr = d.ksinr
+                WHERE {' AND '.join(conds)}
+                ORDER BY cs.session_date DESC, d.id DESC""",
+            params,
+        ).fetchall()
+        return [r["id"] for r in rows]
 
     def get_protocols_raw(self) -> list[dict]:
         """All stored protocols with their raw text — for re-extraction without

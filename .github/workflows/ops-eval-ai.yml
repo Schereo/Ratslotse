@@ -1,0 +1,56 @@
+# Manuell auslösbarer Ops-Lauf: misst die KI-Frage gegen das QA-Golden-Set auf
+# der Prod-Datenbank (eval/run_qa.py) — Retrieval-Trefferquote/MRR, Antwort-A/B
+# und Latenz je Pipeline-Schritt. Läuft in ZWEI Armen direkt untereinander:
+# erst das klassische Retrieval (COUNCIL_RETRIEVAL_KLASSISCH=1, Stand vor dem
+# Ausbau), dann das aktuelle — Deltas stehen damit im selben Log. Nach jeder
+# Retrieval-/Prompt-/Modell-Änderung einmal auslösen; Ergebnis-JSONs sammeln
+# sich unter eval/results/qa/ auf dem Server. Kostet je Lauf wenige Cent LLM
+# (Query-Expansion + Antwort-Arme). Gleiche SSH-Mechanik wie deploy.yml.
+name: "Ops: KI-Eval (Frag den Rat)"
+
+on:
+  workflow_dispatch:
+    inputs:
+      nur_retrieval:
+        description: "Nur Retrieval + Latenz messen (ohne Antwort-LLM, schneller/billiger)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: ops-eval-ai
+  cancel-in-progress: false
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run QA eval on server (beide Retrieval-Arme)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          proxy_host: ${{ secrets.VPS_PROXY_HOST }}
+          proxy_username: ${{ secrets.VPS_USER }}
+          proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          proxy_port: ${{ secrets.VPS_SSH_PORT }}
+          command_timeout: 40m
+          envs: NUR_RETRIEVAL
+          script: |
+            set -e
+            cd ~/app
+            echo "=== Schluessel-Migration (Vorschlaege fuer id-gebundene Faelle) ==="
+            .venv/bin/python eval/run_qa.py --emit-keys || true
+            echo ""
+            echo "=== Arm 1: klassisches Retrieval (Baseline) ==="
+            COUNCIL_RETRIEVAL_KLASSISCH=1 .venv/bin/python eval/run_qa.py --nur-retrieval
+            echo ""
+            echo "=== Arm 2: aktuelles Retrieval ==="
+            if [ "$NUR_RETRIEVAL" = "true" ]; then
+              .venv/bin/python eval/run_qa.py --nur-retrieval --save
+            else
+              .venv/bin/python eval/run_qa.py --rate-missing --save
+            fi
+        env:
+          NUR_RETRIEVAL: ${{ inputs.nur_retrieval }}
