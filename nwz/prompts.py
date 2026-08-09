@@ -254,10 +254,9 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "gefundenen Beschlüssen belegen lassen — nichts, wofür die Beschlüsse keine "
             "Grundlage geben. Jeder gefragte Gegenstand (Ort, Bauwerk, Vorhaben, Betrag) "
             "muss WÖRTLICH in den obigen Beschlüssen vorkommen — keine bloß thematisch "
-            "verwandten Dinge, die dort nie erwähnt werden. Jede Frage muss FÜR SICH "
-            "verständlich sein (sie startet eine neue, eigenständige Suche ohne Kenntnis "
-            "dieser Antwort): also keine Rückbezüge wie „dazu“, „dabei“ oder „dieser "
-            "Beschluss“, sondern die Sache beim Namen nennen."
+            "verwandten Dinge, die dort nie erwähnt werden. Die Fragen laufen im selben "
+            "Gespräch weiter — sie dürfen natürlich klingen und sich auf das Thema "
+            "beziehen („Wer stimmte dagegen?“), müssen aber je EIN klares Ziel haben."
         ),
     },
     "simple_summary_system": {
