@@ -652,8 +652,11 @@ function DecisionDetailInner() {
           {data.plan_bild && (
             <a href={apiUrl(`/council/plan-bild/${data.plan_bild}`)} target="_blank" rel="noreferrer"
               className="block overflow-hidden rounded-xl border border-border bg-card transition-shadow hover:shadow-md">
+              {/* Volle Auflösung, nicht das Thumb: Das 480er-Bild wurde auf
+                  Spaltenbreite hochskaliert und war matschig (Tims Feedback).
+                  loading=lazy hält den Seitenaufbau schlank. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={apiUrl(`/council/plan-bild/${data.plan_bild}?thumb=1`)}
+              <img src={apiUrl(`/council/plan-bild/${data.plan_bild}`)}
                 alt="Planzeichnung aus der Vorlage" loading="lazy"
                 className="w-full object-cover" />
               <p className="px-3 py-2 text-[11px] text-muted-foreground">
