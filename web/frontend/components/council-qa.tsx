@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Sparkles, Send, Loader2, ChevronDown, ChevronUp, ArrowRight, Lightbulb, Plus,
-  Square, CircleSlash } from "lucide-react";
+  Square, CircleSlash, ExternalLink } from "lucide-react";
 import { Mascot } from "@/components/mascot";
 import { QaSource } from "@/lib/types";
 import { apiUrl, authHeaders } from "@/lib/api";
@@ -97,6 +97,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   const [step, setStep] = useState<Step | null>(null);
   const [answer, setAnswer] = useState("");
   const [sources, setSources] = useState<QaSource[]>([]);
+  const [presse, setPresse] = useState<PresseHinweis[]>([]);
   const [mode, setMode] = useState<string | null>(null);
   const [cited, setCited] = useState<number[]>([]);
   // Design 24a: Weiterfragen zur aktuellen Antwort (Server-Event "suggestions").
@@ -190,6 +191,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     setStep("expand");
     setAnswer("");
     setSources([]);
+    setPresse([]);
     setMode(null);
     setCited([]);
     setFollowups([]);
@@ -226,7 +228,11 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
           let msg: { type: string; [k: string]: unknown };
           try { msg = JSON.parse(line); } catch { continue; }
           if (msg.type === "step") setStep(msg.step as Step);
-          else if (msg.type === "sources") { setSources(msg.sources as QaSource[]); setMode((msg.mode as string) ?? null); }
+          else if (msg.type === "sources") {
+            setSources(msg.sources as QaSource[]);
+            setMode((msg.mode as string) ?? null);
+            setPresse((msg.presse as PresseHinweis[]) ?? []);
+          }
           else if (msg.type === "token") setAnswer((a) => a + (msg.text as string));
           else if (msg.type === "suggestions") setFollowups((msg.questions as string[]) ?? []);
           else if (msg.type === "done") setCited((msg.cited as number[]) ?? []);
@@ -518,9 +524,38 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
           )}
         </div>
       )}
+
+      {/* Pressemitteilungen der Stadt: eigener Kanal unter den Beschlüssen —
+          keine [n]-Fußnoten, sondern externe Links auf oldenburg.de. Taucht
+          nur auf, wenn das Retrieval wirklich Einschlägiges fand. */}
+      {presse.length > 0 && (
+        <div>
+          <p className="mb-2 text-xs font-medium text-muted-foreground">Aktuelles von der Stadt</p>
+          <ul className="space-y-1.5">
+            {presse.map((p) => (
+              <li key={p.url}>
+                <a
+                  href={p.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex items-baseline gap-2 rounded-lg border border-border px-3 py-2 text-sm transition-colors hover:bg-muted"
+                >
+                  <span className="min-w-0 flex-1 truncate group-hover:underline">{p.titel}</span>
+                  <span className="shrink-0 text-[11px] text-muted-foreground">
+                    {p.datum ? new Date(p.datum).toLocaleDateString("de-DE") : "Pressemitteilung"}
+                  </span>
+                  <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
+
+type PresseHinweis = { titel: string; url: string; datum: string | null };
 
 /**
  * Antworttext mit klickbaren Fußnoten: Das LLM zitiert Beschlüsse als "[id]" —
