@@ -243,6 +243,9 @@ CREATE TABLE IF NOT EXISTS council_field_recaps (
 COUNCIL_USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     ("committee_notifications", "owner_id"),
     ("session_followups_sent", "owner_id"),
+    # KI-Feedback (5a/I-03): Frage und Grund sind Freitext und können
+    # Persönliches tragen — beim Konto-Löschen mit weg, kein Sonderfall.
+    ("council_qa_feedback", "user_id"),
 )
 
 
@@ -421,6 +424,15 @@ class CouncilStore:
         for col in ("amt", "klima_check", "finanz_check", "beschlussvorschlag"):
             if col not in vcols:
                 self._conn.execute(f"ALTER TABLE council_vorlagen ADD COLUMN {col} TEXT")
+        # Nutzer-Feedback zu KI-Antworten (5a/I-03) — der einzige Qualitäts-
+        # messer außerhalb der Eval-Gold-Fälle. Bewusst schlank: Frage,
+        # Antwort-Anfang, Daumen, optionaler Freitext-Grund.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_qa_feedback ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, frage TEXT NOT NULL, "
+            "antwort_auszug TEXT, bewertung TEXT NOT NULL, grund TEXT, "
+            "user_id INTEGER, created TEXT NOT NULL)"
+        )
         # Anlagen zu Vorlagen: alle als Label+Link, Fraktions-Anträge zusätzlich mit
         # PDF-Text und erkannten Antragstellern (council.vorlagen/_build_anlage_rows).
         self._conn.execute(
@@ -3565,6 +3577,21 @@ class CouncilStore:
             if len(out) >= limit:
                 break
         return out
+
+    def save_qa_feedback(self, frage: str, antwort_auszug: str | None,
+                         bewertung: str, grund: str | None,
+                         user_id: int | None = None) -> None:
+        """Daumen hoch/runter zu einer KI-Antwort (5a/I-03)."""
+        if bewertung not in ("up", "down"):
+            raise ValueError(f"bewertung muss up/down sein, nicht {bewertung!r}")
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT INTO council_qa_feedback (frage, antwort_auszug, bewertung, grund, user_id, created) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (frage[:300], (antwort_auszug or "")[:500] or None, bewertung,
+                 (grund or "").strip()[:500] or None, user_id, now),
+            )
 
     def juengste_sitzungen_mit_beschluessen(self, limit: int = 2) -> list[dict]:
         """Die jüngsten vergangenen Sitzungen, zu denen Beschlüsse extrahiert

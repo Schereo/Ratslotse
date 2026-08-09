@@ -419,6 +419,27 @@ def decision_detail(
     return out
 
 
+class QaFeedbackBody(BaseModel):
+    frage: str = Field(min_length=1, max_length=300)
+    antwort_auszug: str | None = Field(default=None, max_length=500)
+    bewertung: str = Field(pattern="^(up|down)$")
+    grund: str | None = Field(default=None, max_length=500)
+
+
+@router.post("/qa-feedback", status_code=status.HTTP_201_CREATED)
+def qa_feedback(
+    body: QaFeedbackBody,
+    user: dict | None = Depends(optional_user),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Daumen hoch/runter zu einer KI-Antwort (5a/I-03) — der einzige
+    Qualitätsmesser außerhalb der Eval-Gold-Fälle. Anonym erlaubt (die
+    KI-Frage selbst ist es auch); die Feldlängen begrenzt das Schema."""
+    store.save_qa_feedback(body.frage, body.antwort_auszug, body.bewertung,
+                           body.grund, user_id=(user or {}).get("id"))
+    return {"ok": True}
+
+
 @router.get("/qa-beispiele")
 def qa_beispiele(store: CouncilStore = Depends(get_council_store)) -> dict:
     """Frische Beispiel-Anlässe für den Empty State der KI-Frage (5a/I-07):
