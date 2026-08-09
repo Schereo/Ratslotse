@@ -40,6 +40,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Wechloy?" wird ein natürliches „Wer stimmte dagegen?". (#369)
 
 ### Hinzugefügt
+- **Bebauungsplan-Beschlüsse zeigen jetzt den Plan.** Die Planzeichnung aus
+  der Vorlage — bisher nur ein PDF-Download unter „Anlagen" — steht als Bild
+  direkt auf der Beschluss-Seite: antippen öffnet das volle Blatt mit
+  Geltungsbereich, Festsetzungen und Planzeichenerklärung. Ein Beschluss zum
+  B-Plan lebt vom Visuellen; rund 190 Beschlüsse bekommen so ihr Bild, neue
+  Pläne werden wöchentlich nachgerendert. (#375)
 - **Beschluss-Seiten zeigen mehr aus den amtlichen Dokumenten — ganz ohne KI.**
   Vier Informationen steckten schon immer in den Vorlagen und Protokollen und
   werden jetzt einfach herausgelesen: der **Klima-Check der Verwaltung**
