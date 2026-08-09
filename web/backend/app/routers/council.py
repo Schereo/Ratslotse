@@ -773,22 +773,45 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
         try:
             # Latenz je Schritt (ms) — geloggt und im done-Event mitgeschickt,
             # damit Prod-Fragen dieselben Kennzahlen liefern wie eval/run_qa.py.
+            # (expand_ms misst seit dem Fragetyp-Routing den EINEN Analyse-Call
+            # — Begriffe + Typ —, der Schlüssel bleibt für Vergleichbarkeit.)
             zeiten: dict = {}
             yield _sse({"type": "step", "step": "expand"})
             t0 = time.perf_counter()
-            expanded = qa.expand_query(q)
+            analyse = qa.analyse_query(q)
+            expanded, typ = analyse["begriffe"], analyse["typ"]
             zeiten["expand_ms"] = round((time.perf_counter() - t0) * 1000)
             yield _sse({"type": "step", "step": "search"})
             t0 = time.perf_counter()
             candidates, mode = _qa_retrieve(store, q, expanded, timings=zeiten)
+            partei_ids: set[int] = set()
+            if typ == "partei" and analyse.get("partei"):
+                # Anträge der gefragten Fraktion zum Thema in den Pool — die
+                # semantische Suche kennt den Antragsteller-Filter nicht.
+                try:
+                    extra_ids = store.antrag_decision_ids(analyse["partei"], expanded)
+                    partei_ids = set(extra_ids)
+                    have = {c["id"] for c in candidates}
+                    candidates += store.get_decisions_by_ids([i for i in extra_ids if i not in have])
+                except Exception:  # noqa: BLE001 — Anreicherung ist best-effort
+                    pass
             zeiten["retrieve_ms"] = round((time.perf_counter() - t0) * 1000)
-            yield _sse({"type": "sources", "mode": mode, "sources": [_qa_source(c) for c in candidates]})
+            yield _sse({"type": "sources", "mode": mode, "qtype": typ,
+                        "sources": [_qa_source(c) for c in candidates]})
             yield _sse({"type": "step", "step": "answer"})
             if not candidates:
                 yield _sse({"type": "token", "text": "Dazu habe ich keine passenden Beschlüsse gefunden."})
                 yield _sse({"type": "done", "cited": []})
                 return
             ctx = candidates[:QA_ANSWER_N]
+            if partei_ids:
+                # Mindestens die besten Partei-Anträge in den Antwort-Kontext,
+                # auch wenn sie im Relevanz-Ranking hinter Platz 20 liegen.
+                fehlend = [c for c in candidates[QA_ANSWER_N:] if c["id"] in partei_ids][:6]
+                if fehlend:
+                    ctx = ctx[:QA_ANSWER_N - len(fehlend)] + fehlend
+            if typ == "verlauf":
+                ctx = qa.sort_verlauf(ctx)
             try:  # Vorlagen-Auszüge (Sachverhalt) beilegen — best-effort
                 texts = store.vorlage_texts_for([c.get("vorlage_nr") or "" for c in ctx])
                 for c in ctx:
@@ -805,7 +828,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             buf, sent = "", 0
             t0 = time.perf_counter()
             try:
-                for delta in qa.answer_stream(q, ctx):
+                for delta in qa.answer_stream(q, ctx, typ=typ):
                     if not buf and delta:
                         zeiten["ttft_ms"] = round((time.perf_counter() - t0) * 1000)
                     buf += delta
@@ -822,7 +845,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     sent = len(buf)
             except Exception:  # noqa: BLE001 — streaming failed mid-way → one-shot fallback
                 if not buf:
-                    ans, _ = qa.answer_question(q, ctx)
+                    ans, _ = qa.answer_question(q, ctx, typ=typ)
                     buf = ans
                     yield _sse({"type": "token", "text": ans})
                     sent = len(ans)
@@ -835,7 +858,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             zeiten["antwort_ms"] = round((time.perf_counter() - t0) * 1000)
             zeiten["total_ms"] = (zeiten.get("expand_ms", 0) + zeiten.get("retrieve_ms", 0)
                                   + zeiten.get("antwort_ms", 0))
-            _log.info("qa_timings mode=%s %s", mode,
+            _log.info("qa_timings mode=%s typ=%s %s", mode, typ,
                       " ".join(f"{k}={v}" for k, v in sorted(zeiten.items())))
             yield _sse({"type": "done", "cited": cited, "timings": zeiten})
         except Exception:  # noqa: BLE001 — surface a terminal error to the client
