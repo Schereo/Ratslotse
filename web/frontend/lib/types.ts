@@ -90,6 +90,10 @@ export interface QaSource {
    *  deterministisch aus den Beschluss-Metadaten. */
   amount_eur?: number | null;
   factions?: string[];
+  /** 5a/I-10: verortete Entität für die Mini-Karte unter der Antwort. */
+  ort_name?: string | null;
+  lat?: number | null;
+  lon?: number | null;
 }
 
 export interface QaAnswer {

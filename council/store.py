@@ -3578,6 +3578,29 @@ class CouncilStore:
                 break
         return out
 
+    def orte_fuer_decisions(self, ids: list[int]) -> dict[int, dict]:
+        """Erste verortete Orts-Entität je Beschluss (5a/I-10) — Futter für die
+        Mini-Karte unter KI-Antworten. Nur kind='ort': der Sitz einer
+        Organisation wäre als Pin irreführend. Größte Entität (n) zuerst."""
+        if not ids:
+            return {}
+        ph = ",".join("?" * len(ids))
+        rows = self._conn.execute(
+            f"""SELECT l.decision_id, e.name, m.lat, m.lon
+                FROM council_entity_links l
+                JOIN council_entities e ON e.id = l.entity_id
+                JOIN council_entity_meta m ON m.slug = e.slug
+                WHERE l.decision_id IN ({ph}) AND m.lat IS NOT NULL
+                  AND e.kind = 'ort'
+                ORDER BY e.n DESC""",
+            ids,
+        ).fetchall()
+        out: dict[int, dict] = {}
+        for r in rows:
+            out.setdefault(r["decision_id"], {"ort_name": r["name"],
+                                              "lat": r["lat"], "lon": r["lon"]})
+        return out
+
     def save_qa_feedback(self, frage: str, antwort_auszug: str | None,
                          bewertung: str, grund: str | None,
                          user_id: int | None = None) -> None:

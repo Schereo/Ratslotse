@@ -152,6 +152,30 @@ def test_antrag_decision_ids_findet_fraktion(tmp_path):
     store.close()
 
 
+def test_orte_fuer_decisions(tmp_path):
+    # 5a/I-10: erste verortete ORTS-Entität je Beschluss; Organisationen und
+    # ungeocodete Entitäten liefern keinen Pin.
+    store = CouncilStore(tmp_path / "c.sqlite")
+    with store._conn:
+        store._conn.executemany(
+            "INSERT INTO council_entities (id, slug, name, kind, n) VALUES (?,?,?,?,?)",
+            [(1, "caeci", "Cäcilienbrücke", "ort", 30),
+             (2, "huntebad", "Huntebad", "ort", 5),
+             (3, "vhs", "VHS Oldenburg", "organisation", 9)])
+        store._conn.executemany(
+            "INSERT INTO council_entity_meta (slug, lat, lon) VALUES (?,?,?)",
+            [("caeci", 53.135, 8.215), ("vhs", 53.14, 8.21)])  # huntebad ohne Geo
+        store._conn.executemany(
+            "INSERT INTO council_entity_links (entity_id, decision_id) VALUES (?,?)",
+            [(1, 100), (2, 100), (3, 100), (2, 200), (3, 300)])
+    orte = store.orte_fuer_decisions([100, 200, 300])
+    assert orte[100]["ort_name"] == "Cäcilienbrücke" and orte[100]["lat"] == 53.135
+    assert 200 not in orte  # Huntebad hat keine Koordinaten
+    assert 300 not in orte  # Organisation zählt nicht als Pin
+    assert store.orte_fuer_decisions([]) == {}
+    store.close()
+
+
 def test_qa_feedback_speichern(tmp_path):
     # 5a/I-03: Daumen landen mit gekappten Feldern in council_qa_feedback.
     store = CouncilStore(tmp_path / "c.sqlite")
