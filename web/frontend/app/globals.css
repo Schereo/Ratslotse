@@ -444,3 +444,15 @@
 .leaflet-container {
   isolation: isolate;
 }
+
+/* Chip-Zeilen im Ratsgespräch (Design 4a): Die native horizontale Scrollbar
+   unter den Weiterfragen-Chips war ein grauer Fremdkörper — die Zeile läuft
+   stattdessen in einem Fade aus (Scroll-Hinweis), gescrollt wird weiter per
+   Touch/Trackpad/Mausrad. */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}

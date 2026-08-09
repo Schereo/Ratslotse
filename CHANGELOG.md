@@ -40,6 +40,15 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Wechloy?" wird ein natürliches „Wer stimmte dagegen?". (#369)
 
 ### Hinzugefügt
+- **Das Ratsgespräch denkt mit.** Fünf Ideen aus der Design-Werkstatt: Die
+  Antwort sagt ehrlich, worauf sie fußt („stützt sich auf 12 Beschlüsse von
+  2019 bis 2026"); ein Kontext-Chip über dem Eingabefeld zeigt, worauf sich
+  Anschlussfragen beziehen (✕ beginnt ein frisches Gespräch); unter jeder
+  Antwort laden „Einfacher erklären" und „Ausführlicher" zum Nachjustieren
+  ein; die Beispielfragen beginnen mit frischen Anlässen aus den jüngsten
+  Sitzungen („Neu"); und „Dazu fragen" führt das Gespräch direkt an einer
+  Quelle oder einer Beschlusskarte der Suche weiter. Die Weiterfragen-Zeile
+  läuft jetzt weich aus statt eine graue Scrollbar zu zeigen. (#377)
 - **Bebauungsplan-Beschlüsse zeigen jetzt den Plan.** Die Planzeichnung aus
   der Vorlage — bisher nur ein PDF-Download unter „Anlagen" — steht als Bild
   direkt auf der Beschluss-Seite: antippen öffnet das volle Blatt mit
