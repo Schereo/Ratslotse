@@ -40,6 +40,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Wechloy?" wird ein natürliches „Wer stimmte dagegen?". (#369)
 
 ### Hinzugefügt
+- **KI-Antworten kann man jetzt bewerten.** Daumen hoch oder runter direkt an
+  der Antwort — beim Daumen runter fragt Ratslotse optional, was gefehlt hat.
+  Das ist der ehrlichste Qualitätsmesser, den es geben kann: echte Fragen
+  echter Nutzer:innen statt Testfälle. Die Weiterfragen-Zeile bekommt außerdem
+  einen kleinen Weiter-Pfeil — horizontales Wischen mit der Maus ist mühsam,
+  ein Klick nicht. (#378)
 - **Das Ratsgespräch denkt mit.** Fünf Ideen aus der Design-Werkstatt: Die
   Antwort sagt ehrlich, worauf sie fußt („stützt sich auf 12 Beschlüsse von
   2019 bis 2026"); ein Kontext-Chip über dem Eingabefeld zeigt, worauf sich

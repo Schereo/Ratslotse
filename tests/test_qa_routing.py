@@ -152,6 +152,23 @@ def test_antrag_decision_ids_findet_fraktion(tmp_path):
     store.close()
 
 
+def test_qa_feedback_speichern(tmp_path):
+    # 5a/I-03: Daumen landen mit gekappten Feldern in council_qa_feedback.
+    store = CouncilStore(tmp_path / "c.sqlite")
+    store.save_qa_feedback("Wie lief es?", "Antwort " * 200, "down", "  zu vage  ", user_id=7)
+    store.save_qa_feedback("Und sonst?", None, "up", None)
+    rows = store._conn.execute(
+        "SELECT frage, bewertung, grund, user_id, length(antwort_auszug) AS al "
+        "FROM council_qa_feedback ORDER BY id").fetchall()
+    assert rows[0]["bewertung"] == "down" and rows[0]["grund"] == "zu vage"
+    assert rows[0]["user_id"] == 7 and rows[0]["al"] <= 500
+    assert rows[1]["bewertung"] == "up" and rows[1]["grund"] is None
+    import pytest as _pytest
+    with _pytest.raises(ValueError):
+        store.save_qa_feedback("x", None, "meh", None)
+    store.close()
+
+
 def test_juengste_sitzungen_mit_beschluessen(tmp_path):
     # 5a/I-07: Futter für frische Beispielfragen — nur Sitzungen MIT
     # extrahierten Beschlüssen, neueste zuerst.
