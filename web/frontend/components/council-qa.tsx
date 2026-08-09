@@ -287,9 +287,11 @@ function FeedbackDaumen({ turn }: { turn: Turn }) {
       {frageGrund && (
         <form className="ml-1 flex min-w-0 items-center gap-1"
           onSubmit={(e) => { e.preventDefault(); grundNachreichen(); }}>
+          {/* 16px auf Touch: Unter 16px zoomt iOS-Safari beim Fokus in das
+              Feld hinein (Tims Befund beim Daumen runter). */}
           <input value={grund} onChange={(e) => setGrund(e.target.value)} autoFocus
             placeholder="Was war falsch? (optional)" maxLength={500}
-            className="h-6 w-40 min-w-0 rounded-md border border-border bg-card px-2 text-[11px] outline-none placeholder:text-muted-foreground/60 focus:border-primary" />
+            className="h-7 w-44 min-w-0 rounded-md border border-border bg-card px-2 text-[16px] outline-none placeholder:text-muted-foreground/60 focus:border-primary sm:h-6 sm:w-40 sm:text-[11px]" />
           <button type="submit" className="text-[11px] font-medium text-primary hover:underline">Senden</button>
         </form>
       )}
