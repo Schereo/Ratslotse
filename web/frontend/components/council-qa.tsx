@@ -102,6 +102,58 @@ type Turn = {
   kontext?: string | null;
 };
 
+/** Beleg-Peek (5a/I-01): Ein Zitat-Chip öffnet erst die Kurzinfo der Quelle —
+ *  Titel, Gremium, Kernaussage — statt sofort wegzuspringen. Von dort geht es
+ *  in den Beschluss oder zur Quellenliste. Escape/Backdrop schließen. */
+function BelegPeek({ quelle, nummer, onClose, onListe }: {
+  quelle: QaSource; nummer: number | undefined; onClose: () => void; onListe: () => void;
+}) {
+  const router = useRouter();
+  useEffect(() => {
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", esc);
+    return () => window.removeEventListener("keydown", esc);
+  }, [onClose]);
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-3 sm:items-center print:hidden"
+      role="dialog" aria-modal="true" aria-label={`Quelle ${nummer ?? ""}`}>
+      <button type="button" aria-label="Schließen" onClick={onClose}
+        className="absolute inset-0 bg-foreground/25 backdrop-blur-[2px]" />
+      <div className="relative w-full max-w-md animate-fade-up rounded-2xl border border-border bg-card p-4 shadow-xl">
+        <div className="flex items-start gap-2.5">
+          <span aria-hidden className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+            {nummer}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold leading-snug text-foreground">{quelle.title}</p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              {quelle.committee} · {fmtDatum(quelle.session_date)}
+              {quelle.outcome && OUTCOME_LABEL[quelle.outcome] ? ` · ${OUTCOME_LABEL[quelle.outcome]}` : ""}
+            </p>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Schließen"
+            className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+            <X className="h-4 w-4" aria-hidden />
+          </button>
+        </div>
+        {quelle.summary && (
+          <p className="mt-2.5 text-[13px] leading-relaxed text-muted-foreground">{quelle.summary}</p>
+        )}
+        <div className="mt-3 flex items-center gap-2">
+          <button type="button" onClick={() => router.push(decisionHref(quelle.id))}
+            className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
+            Beschluss öffnen <ArrowRight className="h-3 w-3" aria-hidden />
+          </button>
+          <button type="button" onClick={() => { onClose(); onListe(); }}
+            className="rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+            In Quellenliste zeigen
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** Daumen hoch/runter zur KI-Antwort (5a/I-03) — der einzige Qualitätsmesser
  *  außerhalb der Eval-Gold-Fälle. 👎 fragt optional nach dem Grund; gesendet
  *  wird fire-and-forget, der Dank kommt sofort. */
@@ -635,6 +687,8 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
   const [showAll, setShowAll] = useState(false);
   // Ältere Turns beruhigen (Design 2⑤): Belege hinter der Kompaktzeile.
   const [aufgeklappt, setAufgeklappt] = useState(false);
+  // 5a/I-01: welcher Zitat-Chip gerade sein Peek zeigt.
+  const [peekId, setPeekId] = useState<number | null>(null);
   const idToNum = useIdToNum(turn);
   const zitierte = useMemo(() => zitierteVon(turn, idToNum), [turn, idToNum]);
 
@@ -695,9 +749,18 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
         <div aria-busy={loading} className="flex flex-col gap-3.5">
           {/* div statt p: die Antwort darf Listen (ul) enthalten. */}
           <div className="whitespace-pre-wrap text-[14.5px] leading-[1.7] text-foreground sm:leading-[1.75]">
-            <AnswerWithCitations text={turn.antwort} idToNum={idToNum} onJump={onJump} />
+            {/* 5a/I-01: Der Chip öffnet erst das Peek — nicht sofort wegspringen. */}
+            <AnswerWithCitations text={turn.antwort} idToNum={idToNum} onJump={(id) => setPeekId(id)} />
             {loading && step === "answer" && <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-primary align-text-bottom" />}
           </div>
+
+          {peekId != null && (() => {
+            const q = turn.sources.find((s) => s.id === peekId);
+            return q ? (
+              <BelegPeek quelle={q} nummer={idToNum.get(peekId)}
+                onClose={() => setPeekId(null)} onListe={() => onJump(peekId)} />
+            ) : null;
+          })()}
 
           {turn.abgebrochen && (
             <p role="status" className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -706,7 +769,7 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
             </p>
           )}
 
-          {!loading && <Baustein turn={turn} idToNum={idToNum} onJump={onJump} />}
+          {!loading && <Baustein turn={turn} idToNum={idToNum} onJump={(id) => setPeekId(id)} />}
 
           {/* Kompaktzeile älterer Turns (Design 2⑤). */}
           {!istLetzter && !aufgeklappt && (turn.sources.length > 0 || turn.presse.length > 0) && (
