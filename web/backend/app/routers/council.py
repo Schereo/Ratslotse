@@ -768,11 +768,15 @@ def _sse(obj: dict) -> str:
 
 
 def _qa_source(c: dict) -> dict:
+    # amount_eur + factions tragen die Fragetyp-Bausteine des Ratsgesprächs
+    # (Geld-Betrag, Antragsteller-Tag) — deterministisch aus den Quellen,
+    # nie vom Sprachmodell (Design RG-04/RG-05).
     return {
         "id": c["id"], "title": c.get("title"), "summary": c.get("summary"),
         "policy_field": c.get("policy_field"), "outcome": c.get("outcome"),
         "session_date": c.get("session_date"), "committee": c.get("committee"),
-        "score": c.get("score"),
+        "score": c.get("score"), "amount_eur": c.get("amount_eur"),
+        "factions": qa._factions_of(c),
     }
 
 
