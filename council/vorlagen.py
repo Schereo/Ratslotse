@@ -170,6 +170,26 @@ def fetch_anlagen(kvonr: int, skip_document_ids: frozenset = frozenset()) -> lis
     return _build_anlage_rows(meta["anlagen"], skip_document_ids)
 
 
+def _entzeilen(lines: list[str]) -> list[str]:
+    """PDF-Zeilenumbrüche zu Fließtext joinen: Das Text-Layer bricht Zeilen hart
+    nach Satzbreite um, was auf der Beschluss-Seite als wilde Umbrüche mitten im
+    Satz landete. Kurze Label-Zeilen („Anlass:") und Aufzählungspunkte bleiben
+    eigene Zeilen, Silbentrennungen am Zeilenende werden zusammengezogen."""
+    out: list[str] = []
+    for ln in lines:
+        ist_label = ln.endswith(":") and len(ln) <= 40
+        ist_liste = bool(re.match(r"^(?:[-•–]\s|\d+[.)]\s|[a-z]\)\s)", ln))
+        vor_label = bool(out) and out[-1].endswith(":") and len(out[-1]) <= 40
+        if out and not ist_label and not ist_liste and not vor_label:
+            if out[-1].endswith("-") and ln[:1].islower():
+                out[-1] = out[-1][:-1] + ln          # Silbentrennung: „einge-" + „schränkt"
+            else:
+                out[-1] = out[-1] + " " + ln
+        else:
+            out.append(ln)
+    return out
+
+
 def excerpt(raw_text: str, chars: int = 400) -> str:
     """A readable excerpt of a Vorlage text: starts at the first substantive
     section (Sachverhalt/Begründung/…) when one is found, drops per-page
@@ -181,7 +201,7 @@ def excerpt(raw_text: str, chars: int = 400) -> str:
     start = next((i for i, ln in enumerate(kept) if _SECTION_RE.match(ln)), None)
     if start is None:
         start = next((i for i, ln in enumerate(kept) if _FALLBACK_SECTION_RE.match(ln)), 0)
-    text = "\n".join(kept[start:])
+    text = "\n".join(_entzeilen(kept[start:]))
     text = re.sub(r"[ \t]+", " ", text).strip()
     if len(text) > chars:
         # Cut at a word boundary so the ellipsis doesn't split a word.

@@ -24,7 +24,15 @@ def _saeubern(text: str, max_len: int = 800) -> str | None:
     inhalt = re.sub(r"\s+", " ", inhalt).strip()
     if not inhalt or inhalt.lower() in _FLOSKELN:
         return None
-    return inhalt[:max_len]
+    if len(inhalt) > max_len:
+        # An der Satzgrenze schneiden statt mitten im Wort („Maastrichter Stra").
+        geschnitten = inhalt[:max_len]
+        punkt = geschnitten.rfind(". ")
+        if punkt >= max_len // 2:
+            inhalt = geschnitten[: punkt + 1]
+        else:
+            inhalt = geschnitten.rsplit(" ", 1)[0] + " …"
+    return inhalt
 
 
 # --- Vorlagen: Auswirkungen a) Finanzen / b) Klima ---------------------------
@@ -48,7 +56,7 @@ def auswirkungen(vorlagen_text: str) -> dict:
     fin = _FINANZ_RE.search(text)
     kli = _KLIMA_RE.search(text)
     return {"finanzen": _saeubern(fin.group("t")) if fin else None,
-            "klima": _saeubern(kli.group("t"), max_len=1000) if kli else None}
+            "klima": _saeubern(kli.group("t"), max_len=2500) if kli else None}
 
 
 def klima_relevant(klima_text: str | None) -> bool | None:

@@ -114,17 +114,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
           {children}
         </div>
-        {/* Nur Desktop-Web: mobil (Web wie App) wohnen die Pflicht-Links auf
-            der Konto-Seite — der Fuß klebte sonst auf jeder Seite überm FAB. */}
-        <footer className="hidden border-t border-border bg-background/85 py-3 text-center text-xs text-muted-foreground backdrop-blur md:sticky md:bottom-0 md:block">
-          <a href="/impressum" className="hover:text-foreground">Impressum</a>
-          {" · "}
-          <a href="/datenschutz" className="hover:text-foreground">Datenschutz</a>
-          {" · "}
-          <a href="/changelog" className="hover:text-foreground">Changelog</a>
-          {" · "}
-          <a href="/docs" className="hover:text-foreground">Technik-Doku</a>
-        </footer>
+        {/* Design 6a③: Der sticky Seiten-Footer entfällt — die Pflicht-Links
+            sitzen jetzt im Sidebar-Fuß (Desktop) bzw. Burger-Menü (mobil),
+            beides über den UserFooter in components/nav.tsx. */}
       </main>
       <MobileBottomNav />
     </div>
