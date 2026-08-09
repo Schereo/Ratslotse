@@ -18,8 +18,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Sparkles, Send, Loader2, ChevronDown, ChevronUp, ArrowRight, Plus,
-  Square, CircleSlash, ExternalLink, ArrowDown, RotateCcw, MessageSquarePlus, X } from "lucide-react";
+import { Sparkles, Send, Loader2, ChevronDown, ChevronRight, ChevronUp, ArrowRight, Plus,
+  Square, CircleSlash, ExternalLink, ArrowDown, RotateCcw, MessageSquarePlus, ThumbsDown, ThumbsUp, X } from "lucide-react";
 import { Mascot } from "@/components/mascot";
 import { QaSource } from "@/lib/types";
 import { apiUrl, authHeaders } from "@/lib/api";
@@ -101,6 +101,109 @@ type Turn = {
    *  worauf sich Anschlussfragen beziehen. */
   kontext?: string | null;
 };
+
+/** Daumen hoch/runter zur KI-Antwort (5a/I-03) — der einzige Qualitätsmesser
+ *  außerhalb der Eval-Gold-Fälle. 👎 fragt optional nach dem Grund; gesendet
+ *  wird fire-and-forget, der Dank kommt sofort. */
+function FeedbackDaumen({ turn }: { turn: Turn }) {
+  const [abgegeben, setAbgegeben] = useState<"up" | "down" | null>(null);
+  const [frageGrund, setFrageGrund] = useState(false);
+  const [grund, setGrund] = useState("");
+  const post = (bewertung: "up" | "down", grundText?: string) =>
+    void fetch(apiUrl("/council/qa-feedback"), {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({
+        frage: turn.frage.slice(0, 300),
+        antwort_auszug: turn.antwort.slice(0, 500) || null,
+        bewertung,
+        grund: grundText?.trim() || null,
+      }),
+    }).catch(() => {});
+  const senden = (bewertung: "up" | "down") => {
+    setAbgegeben(bewertung);
+    setFrageGrund(bewertung === "down");
+    // Der Daumen zählt sofort — auch wenn der Grund nie kommt.
+    post(bewertung);
+    if (bewertung === "up") toast.success("Danke für die Rückmeldung!");
+  };
+  const grundNachreichen = () => {
+    setFrageGrund(false);
+    // Nur mit echtem Text nachsenden — die Grund-Zeile ersetzt beim Auswerten
+    // den nackten Daumen (gleiche Frage, jüngerer Zeitstempel).
+    if (grund.trim()) post("down", grund);
+    toast.success("Danke für die Rückmeldung!");
+  };
+  return (
+    <span className="flex items-center gap-0.5">
+      <button type="button" aria-label="Antwort war hilfreich" title="Hilfreich"
+        disabled={abgegeben !== null}
+        onClick={() => senden("up")}
+        className={cn("rounded-md p-1 transition-colors",
+          abgegeben === "up" ? "text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+          abgegeben === "down" && "opacity-40")}>
+        <ThumbsUp className="h-3.5 w-3.5" aria-hidden />
+      </button>
+      <button type="button" aria-label="Antwort war nicht hilfreich" title="Nicht hilfreich"
+        disabled={abgegeben !== null}
+        onClick={() => senden("down")}
+        className={cn("rounded-md p-1 transition-colors",
+          abgegeben === "down" ? "text-signal" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+          abgegeben === "up" && "opacity-40")}>
+        <ThumbsDown className="h-3.5 w-3.5" aria-hidden />
+      </button>
+      {frageGrund && (
+        <form className="ml-1 flex min-w-0 items-center gap-1"
+          onSubmit={(e) => { e.preventDefault(); grundNachreichen(); }}>
+          <input value={grund} onChange={(e) => setGrund(e.target.value)} autoFocus
+            placeholder="Was war falsch? (optional)" maxLength={500}
+            className="h-6 w-40 min-w-0 rounded-md border border-border bg-card px-2 text-[11px] outline-none placeholder:text-muted-foreground/60 focus:border-primary" />
+          <button type="submit" className="text-[11px] font-medium text-primary hover:underline">Senden</button>
+        </form>
+      )}
+    </span>
+  );
+}
+
+/** Chip-Zeile mit verstecktem Scrollbalken (Design 4a): rechts ein Fade als
+ *  Scroll-Hinweis plus ein Weiter-Pfeil — horizontales Scrollen per Maus ist
+ *  schlecht unterstützt (Tims Feedback), der Pfeil schafft den Zugang. Beides
+ *  erscheint nur, solange rechts wirklich noch Chips liegen. */
+function ChipZeile({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [mehr, setMehr] = useState(false);
+  const pruefen = () => {
+    const el = ref.current;
+    setMehr(!!el && el.scrollWidth - el.clientWidth - el.scrollLeft > 8);
+  };
+  useEffect(() => {
+    pruefen();
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(pruefen);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [children]);
+  return (
+    <div className="relative mb-2">
+      {mehr && (
+        <>
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-12 bg-gradient-to-l from-background to-transparent" />
+          <button type="button" aria-label="Weitere Vorschläge zeigen"
+            onClick={() => ref.current?.scrollBy({ left: 260, behavior: "smooth" })}
+            className="absolute right-0 top-1/2 z-20 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-card shadow-sm transition-colors hover:bg-muted">
+            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+          </button>
+        </>
+      )}
+      <div ref={ref} onScroll={pruefen}
+        className="scrollbar-none flex gap-1.5 overflow-x-auto pb-0.5 pr-8 [-webkit-overflow-scrolling:touch]">
+        {children}
+      </div>
+    </div>
+  );
+}
 
 /** Gremium mit Artikel für die frische Beispielfrage (5a/I-07). */
 function derAusschuss(committee: string): string {
@@ -448,11 +551,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             </div>
           )}
           {(composerFollowups.length > 0 || (!loading && letzter && !letzter.fehler && letzter.antwort)) && (
-            <div className="relative mb-2">
-              {/* Fade rechts statt Scrollbar (Design 4a) — die Kante zeigt,
-                  dass da mehr ist; gescrollt wird per Touch/Trackpad. */}
-              <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-background to-transparent" />
-              <div className="scrollbar-none flex gap-1.5 overflow-x-auto pb-0.5 pr-8 [-webkit-overflow-scrolling:touch]">
+            <ChipZeile>
               {composerFollowups.map((s) => (
                 <button key={s} type="button" onClick={() => void ask(s)}
                   className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-primary/30 bg-primary/[0.05] px-3 py-1.5 text-[12.5px] text-foreground transition-[background-color,transform] duration-150 ease-out-strong hover:bg-primary/[0.1] active:scale-[0.98]">
@@ -473,8 +572,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                   </button>
                 </>
               )}
-              </div>
-            </div>
+            </ChipZeile>
           )}
           {letzterFehler === "limit" ? (
             <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
@@ -650,6 +748,7 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
                 title={`Ratslotse: ${turn.frage}`}
               />
               <PrintButton iconOnly />
+              {turn.antwort && !turn.fehler && <FeedbackDaumen turn={turn} />}
               <span role="status" className="min-w-0 flex-1 text-right text-[10.5px] leading-snug text-muted-foreground/70">
                 {/* 5a/I-02: ehrlich sagen, worauf die Antwort fußt. */}
                 KI-Antwort{zitierte.length > 0 ? `, ${stuetztAuf(zitierte)}` : " aus den gefundenen Beschlüssen"} — kann unvollständig sein. Quellen prüfen.
@@ -687,6 +786,7 @@ function BelegeSpalte({ turn, flashId, onFlash, loading, onDazuFragen }: {
             title={`Ratslotse: ${turn.frage}`}
           />
           <PrintButton iconOnly />
+          {turn.antwort && !turn.fehler && <FeedbackDaumen turn={turn} />}
           <span className="min-w-0 flex-1 text-right text-[10.5px] leading-snug text-muted-foreground/70">
             KI-Antwort{zitierte.length > 0 ? `, ${stuetztAuf(zitierte)}` : ""} — kann unvollständig sein. Quellen prüfen.
           </span>
