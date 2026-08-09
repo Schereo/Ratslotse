@@ -52,6 +52,13 @@ JOBS: list[dict] = [
         "max_age_h": 30,
     },
     {
+        "key": "render_plaene",
+        "label": "Planzeichnungen rendern",
+        "description": "Neue Bauleitplan-Anlagen (Planzeichnung, Lageplan, …) als Bilder für die Beschluss-Seite.",
+        "schedule": "sonntags 4:30 Uhr",
+        "max_age_h": 8 * 24,
+    },
+    {
         "key": "weekly_enrich",
         "label": "Wöchentliche Anreicherung",
         "description": "Entitäten, Geocoding, Embeddings, Rückblicke, Interessantheit und Tragweite in Tranchen.",

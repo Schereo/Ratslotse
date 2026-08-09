@@ -8,7 +8,7 @@ import time
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from council.store import CouncilStore
@@ -395,6 +395,10 @@ def decision_detail(
             if not out["vorlage_url"] and v.get("kvonr"):
                 out["vorlage_url"] = _vorlage_url(v["kvonr"])
         out["anlagen"] = store.anlagen_for_vorlage_nr(d["vorlage_nr"])
+        # P1: gerenderte Planzeichnung (scripts/render_plaene.py) — B-Plan-
+        # Beschlüsse leben vom Bild, nicht vom Anlagen-Download.
+        out["plan_bild"] = next(
+            (a["document_id"] for a in out["anlagen"] if a.get("bild") == 1), None)
         # Offizielle Beratungsfolge aus dem Ratsinfo — reicher als die aus
         # unseren Tagesordnungen abgeleitete Journey (Ergebnis je Station,
         # geplante künftige Beratungen). Die Journey bleibt der Fallback.
@@ -413,6 +417,24 @@ def decision_detail(
             if user:
                 out["follow"] = {"kvonr": kv, "following": nwz.is_following_vorlage(user["id"], kv)}
     return out
+
+
+@router.get("/plan-bild/{document_id}")
+def plan_bild(document_id: int, thumb: bool = False) -> FileResponse:
+    """Gerenderte Planzeichnung einer Anlage (P1) — öffentlich wie die
+    Beschluss-Seite selbst; das PDF dahinter ist ohnehin frei abrufbar.
+    Dateien schreibt scripts/render_plaene.py nach ``data/plaene/``."""
+    from pathlib import Path
+
+    from ..config import get_settings
+
+    name = f"{int(document_id)}{'.thumb' if thumb else ''}.jpg"
+    pfad = Path(get_settings().council_db).parent / "plaene" / name
+    if not pfad.is_file():
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Kein Bild zu dieser Anlage.")
+    # Ein gerendertes Blatt ändert sich nie — aggressiv cachen.
+    return FileResponse(pfad, media_type="image/jpeg",
+                        headers={"Cache-Control": "public, max-age=2592000, immutable"})
 
 
 # ---- Vorgänge verfolgen (Design 28a/W1) ----

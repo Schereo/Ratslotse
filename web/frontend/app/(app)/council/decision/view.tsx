@@ -8,6 +8,7 @@ import { DecisionDetail, CouncilDecision, SessionDetail } from "@/lib/types";
 import { Card, DetailSkeleton, formatDate } from "@/components/ui";
 import { OutcomeDot, OUTCOME_META, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard, ImportanceMeter, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
 import { decisionHref, themaHref, sessionHref } from "@/lib/routes";
+import { apiUrl } from "@/lib/api";
 import { shortCommittee } from "@/lib/committees";
 import { ShareButton } from "@/components/share-button";
 import { PrintButton } from "@/components/print-button";
@@ -645,6 +646,22 @@ function DecisionDetailInner() {
           {d.simple_summary && <SimpleSummaryHero text={d.simple_summary} />}
 
           {d.beschluss && <OfficialTextCard text={d.beschluss} />}
+
+          {/* P1: Die Planzeichnung aus der Vorlage — ein B-Plan-Beschluss lebt
+              vom Bild. Thumb inline, Klick öffnet das volle Blatt. */}
+          {data.plan_bild && (
+            <a href={apiUrl(`/council/plan-bild/${data.plan_bild}`)} target="_blank" rel="noreferrer"
+              className="block overflow-hidden rounded-xl border border-border bg-card transition-shadow hover:shadow-md">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={apiUrl(`/council/plan-bild/${data.plan_bild}?thumb=1`)}
+                alt="Planzeichnung aus der Vorlage" loading="lazy"
+                className="w-full object-cover" />
+              <p className="px-3 py-2 text-[11px] text-muted-foreground">
+                Planzeichnung aus der Vorlage — antippen für das volle Blatt.
+                Kartengrundlage: LGLN (Vermerk auf dem Plan).
+              </p>
+            </a>
+          )}
 
           {/* Auf Mobil klappt das Grid zu einer Spalte — die Kennzahlen kämen
               dann erst hinter der ganzen Erzählung. Deshalb hier ein zweiter
