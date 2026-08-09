@@ -142,7 +142,11 @@ NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflic
   (`generate_fundstuecke.py`, 21 Tage Vorlauf)), `check_vorlage_follows.py`
   (täglich; holt die Beratungsfolge jeder Vorlage, der jemand folgt, und meldet
   neue Stationen bzw. nachgetragene Ergebnisse — Tabelle `vorlage_follows` in
-  `nwz.sqlite`), `remind_setup.py`
+  `nwz.sqlite`), `check_presse.py` (täglich 5:15; Stadt-Quellen: RSS-Abgleich
+  der Pressemitteilungen für den „Aktuelles von der Stadt"-Block der KI-Frage
+  samt Sofort-Embedding, plus laufende Bauleitplan-Beteiligungen von
+  oldenburg.planungsbeteiligung.de für Frist-Banner und KI-Kontext),
+  `remind_setup.py`
   (täglich; genau eine Service-Mail an Konten, die den Einrichtungs-
   Assistenten angefangen und seit 48 h nicht beendet haben). Alle laufen in
   `run_guarded` (`nwz/alerts.py`): Ein Crash wird geloggt **und** per E-Mail an
