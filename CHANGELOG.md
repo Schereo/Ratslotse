@@ -40,6 +40,11 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Wechloy?" wird ein natürliches „Wer stimmte dagegen?". (#369)
 
 ### Hinzugefügt
+- **KI-Antworten zeigen ihre Orte auf einer Mini-Karte.** Zitiert die Antwort
+  Beschlüsse zu konkreten Orten — einer Brücke, einem Baugebiet, einer
+  Straße —, erscheint darunter eine kleine Karte mit nummerierten Pins;
+  ein Tipp auf den Pin öffnet die Quellen-Vorschau, ein Link führt zur
+  großen Stadtkarte. (#380)
 - **Fußnoten zeigen erst eine Vorschau.** Ein Klick auf eine Zitat-Nummer in
   der KI-Antwort springt nicht mehr sofort weg, sondern öffnet eine kleine
   Karte: Titel, Gremium, Datum, Ergebnis und die Kurzfassung des Beschlusses —

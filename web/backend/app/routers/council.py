@@ -833,6 +833,8 @@ def _qa_source(c: dict) -> dict:
         "session_date": c.get("session_date"), "committee": c.get("committee"),
         "score": c.get("score"), "amount_eur": c.get("amount_eur"),
         "factions": qa._factions_of(c),
+        # 5a/I-10: verortete Entität für die Mini-Karte unter der Antwort.
+        "ort_name": c.get("ort_name"), "lat": c.get("lat"), "lon": c.get("lon"),
     }
 
 
@@ -889,6 +891,14 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 hits_p = emb.search_presse(store, q_suche, expanded)
                 presse_rows = store.presse_by_ids([pid for pid, _ in hits_p])
             except Exception:  # noqa: BLE001 — Presse ist Zusatz, nie Blocker
+                pass
+            # 5a/I-10: Orts-Pins für die Mini-Karte — deterministisch aus den
+            # geocodierten Entitäten, nie vom Sprachmodell.
+            try:
+                orte = store.orte_fuer_decisions([c["id"] for c in candidates])
+                for c in candidates:
+                    c.update(orte.get(c["id"], {}))
+            except Exception:  # noqa: BLE001 — Karte ist Zusatz, nie Blocker
                 pass
             zeiten["retrieve_ms"] = round((time.perf_counter() - t0) * 1000)
             # 5a/I-06: die kondensierte Frage mitschicken — der Kontext-Chip im

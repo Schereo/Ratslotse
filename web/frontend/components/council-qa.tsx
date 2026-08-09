@@ -20,7 +20,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Sparkles, Send, Loader2, ChevronDown, ChevronRight, ChevronUp, ArrowRight, Plus,
   Square, CircleSlash, ExternalLink, ArrowDown, RotateCcw, MessageSquarePlus, ThumbsDown, ThumbsUp, X } from "lucide-react";
+import dynamic from "next/dynamic";
 import { Mascot } from "@/components/mascot";
+import type { QaOrtPin } from "@/components/qa-orte-karte";
+
+// 5a/I-10: Leaflet kennt kein SSR — die Mini-Karte kommt nur im Browser.
+const QaOrteKarte = dynamic(() => import("@/components/qa-orte-karte"), { ssr: false });
 import { QaSource } from "@/lib/types";
 import { apiUrl, authHeaders } from "@/lib/api";
 import { entwurfAbholen, entwurfMelden } from "@/lib/draft";
@@ -690,6 +695,20 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
   // 5a/I-01: welcher Zitat-Chip gerade sein Peek zeigt.
   const [peekId, setPeekId] = useState<number | null>(null);
   const idToNum = useIdToNum(turn);
+  // 5a/I-10: Pins der zitierten Quellen — gleiche Koordinate nur einmal.
+  const ortsPins = useMemo<QaOrtPin[]>(() => {
+    const gesehen = new Set<string>();
+    const pins: QaOrtPin[] = [];
+    for (const [id, nummer] of idToNum) {
+      const s = turn.sources.find((x) => x.id === id);
+      if (!s || s.lat == null || s.lon == null) continue;
+      const key = `${s.lat.toFixed(4)},${s.lon.toFixed(4)}`;
+      if (gesehen.has(key)) continue;
+      gesehen.add(key);
+      pins.push({ id, nummer, name: s.ort_name ?? s.title ?? "", lat: s.lat, lon: s.lon });
+    }
+    return pins;
+  }, [turn.sources, idToNum]);
   const zitierte = useMemo(() => zitierteVon(turn, idToNum), [turn, idToNum]);
 
   const hatAntwort = turn.antwort.length > 0;
@@ -770,6 +789,22 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
           )}
 
           {!loading && <Baustein turn={turn} idToNum={idToNum} onJump={(id) => setPeekId(id)} />}
+
+          {/* 5a/I-10: Mini-Karte der zitierten Orte — deterministisch aus den
+              geocodierten Entitäten der Quellen; Pin-Klick öffnet das Peek. */}
+          {!loading && ortsPins.length > 0 && (
+            <div className="overflow-hidden rounded-xl border border-border print:hidden">
+              <QaOrteKarte pins={ortsPins} onPin={(id) => setPeekId(id)} />
+              <div className="flex items-center justify-between gap-2 border-t border-border bg-muted/30 px-3 py-1.5">
+                <p className="text-[11px] text-muted-foreground">
+                  {ortsPins.length === 1 ? "1 Ort" : `${ortsPins.length} Orte`} aus den zitierten Beschlüssen
+                </p>
+                <Link href="/council?tab=themen" className="shrink-0 text-[11px] font-medium text-primary hover:underline">
+                  Zur Stadtkarte →
+                </Link>
+              </div>
+            </div>
+          )}
 
           {/* Kompaktzeile älterer Turns (Design 2⑤). */}
           {!istLetzter && !aufgeklappt && (turn.sources.length > 0 || turn.presse.length > 0) && (
