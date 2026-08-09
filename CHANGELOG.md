@@ -7,6 +7,16 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Neu
+- **Die KI-Suche kennt jetzt auch die Debatten.** Aus den Sitzungsprotokollen
+  werden Redebeiträge, „Anfragen und Anregungen" samt Verwaltungsantwort,
+  Einwohnerfragen und Zusagen der Verwaltung herausgelesen und durchsuchbar
+  gemacht. Wer nach einem Thema fragt, bekommt neben den Beschlüssen einen
+  Block „Aus den Ratsdebatten" — also auch das, was im Rat nur besprochen
+  wurde und in keinem Beschlusstext steht (etwa der Streit um die
+  Fliegerhorst-Altlasten). Die Antwort nennt solche Stellen ehrlich als
+  „Laut Protokoll …", nie als Beschluss. (#387)
+
 ### Verbessert
 - **Die KI-Suche antwortet deutlich schneller.** Zwei Stellschrauben: Die
   Server-VM nutzt jetzt die modernen Vektorbefehle ihres Prozessors (die der

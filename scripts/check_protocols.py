@@ -70,6 +70,17 @@ def main() -> dict:
     print(f"Interessantheit: {irated}/{itotal} bewertet.")
     ptotal, prated = rate_impact(COUNCIL_DB, limit=200, workers=2)
     print(f"Tragweite: {prated}/{ptotal} bewertet.")
+    # Wortbeiträge (Task 16): Reden, Anfragen, Einwohnerfragen aus den frisch
+    # geparsten Protokollen für den Debatten-Kanal der KI-Frage. Klein
+    # limitiert (Tageszuwachs); den Bestand füllt extract_wortbeitraege.py.
+    try:
+        from scripts.extract_wortbeitraege import process as extract_wb
+        wstats = extract_wb(COUNCIL_DB, limit=20, workers=2)
+        print(f"Wortbeiträge: {wstats['beitraege']} aus {wstats['protokolle']} "
+              f"Protokollen, {wstats['fehler']} Fehler.")
+    except Exception as exc:  # noqa: BLE001 — Zusatzkanal, nie Blocker des Nachtlaufs
+        wstats = {"beitraege": 0, "protokolle": 0, "kosten_usd": 0}
+        print(f"Wortbeiträge übersprungen: {exc}")
     # Ingest Vorlagen texts for new agenda items (network + pypdf only, no LLM).
     # Newest first + capped, so a normal day fetches a handful; the historic bulk
     # is scripts/backfill_vorlagen.py without limit. Runs before the FTS rebuild
@@ -121,6 +132,7 @@ def main() -> dict:
         "Einfach erklärt": sstats["written"],
         "Interessantheit bewertet": irated,
         "Tragweite bewertet": prated,
+        "Wortbeiträge": wstats["beitraege"],
         "Vorlagen geladen": vstats["fetched"],
         "Wichtig-Score neu": wichtig,
         "Ergebnis-Meldungen": ergebnisse,

@@ -101,10 +101,11 @@ def process(db: Path, top_k: int = 6, threshold: float = 0.45, batch: int = 256)
     # Presse-Chunks als Wochen-Backstop (der tägliche check_presse embeddet
     # Neues sofort; hier wird nachgeholt, was dort ohne fastembed liegen blieb).
     n_presse = embeddings.embed_presse_missing(store)
+    n_wb = embeddings.embed_wortbeitraege_missing(store)
 
     store.close()
     return {"decisions": n, "links": len(out), "vorlagen_chunks": n_chunks,
-            "presse_chunks": n_presse}
+            "presse_chunks": n_presse, "wortbeitraege": n_wb}
 
 
 def main() -> int:
