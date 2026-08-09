@@ -270,6 +270,30 @@ CREATE TABLE IF NOT EXISTS council_agenda_classified (
   PRIMARY KEY (owner_id, ksinr)
 );
 
+-- „Meine Gespräche" (5a/I-04 + Design 6a): KI-Verläufe am Konto, nur mit
+-- ausdrücklicher Einwilligung (web_users.qa_speichern = 1). user_id steht
+-- denormalisiert auch an den Turns, damit die Konto-Löschung über
+-- USER_OWNED_TABLES beide Tabellen ohne Waisen abräumt.
+CREATE TABLE IF NOT EXISTS qa_gespraeche (
+    id       INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id  INTEGER NOT NULL,
+    titel    TEXT NOT NULL,
+    created  TEXT NOT NULL,
+    updated  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_qa_gespraeche_user ON qa_gespraeche(user_id, updated DESC);
+
+CREATE TABLE IF NOT EXISTS qa_gespraech_turns (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    gespraech_id INTEGER NOT NULL,
+    user_id      INTEGER NOT NULL,
+    frage        TEXT NOT NULL,
+    antwort      TEXT NOT NULL,
+    quellen      TEXT,                  -- JSON {sources, cited}
+    created      TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_qa_turns_gespraech ON qa_gespraech_turns(gespraech_id);
+
 CREATE TABLE IF NOT EXISTS quiz_answers (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     owner_id    INTEGER NOT NULL,
@@ -393,6 +417,8 @@ USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     ("article_topic_matches", "owner_id"),
     ("topic_classified_editions", "owner_id"),
     ("push_tokens", "owner_id"),
+    ("qa_gespraeche", "user_id"),
+    ("qa_gespraech_turns", "user_id"),
     ("quiz_answers", "owner_id"),
     ("quiz_ratings", "owner_id"),
     ("quiz_daily", "owner_id"),
@@ -507,6 +533,10 @@ class Store:
                 if "notify_prefs" not in wu_cols:
                     # Design 30a: die sechs Anlass-Schalter als JSON.
                     self._conn.execute("ALTER TABLE web_users ADD COLUMN notify_prefs TEXT")
+                if "qa_speichern" not in wu_cols:
+                    # 6a①②: NULL = noch nie gefragt (Erstnutzungs-Karte),
+                    # 1 = Gespräche speichern, 0 = bewusst aus.
+                    self._conn.execute("ALTER TABLE web_users ADD COLUMN qa_speichern INTEGER")
                 # Einrichtungs-Assistent (Design 26a): welcher Schritt zuletzt
                 # erreicht wurde. Eigene Spalten statt der onboarding-JSON —
                 # die gehört der „Erste Schritte"-Tour, und der Erinnerungs-Cron
@@ -1402,6 +1432,83 @@ class Store:
             for table, column in USER_OWNED_TABLES:
                 self._conn.execute(f"DELETE FROM {table} WHERE {column} = ?", (user_id,))
             self._conn.execute("DELETE FROM web_users WHERE id = ?", (user_id,))
+
+    # ---- „Meine Gespräche" (5a/I-04 + Design 6a) ---------------------------
+
+    def get_qa_speichern(self, user_id: int) -> int | None:
+        """Einwilligung: None = nie gefragt, 1 = speichern, 0 = bewusst aus."""
+        row = self._conn.execute(
+            "SELECT qa_speichern FROM web_users WHERE id = ?", (user_id,)).fetchone()
+        return None if row is None or row[0] is None else int(row[0])
+
+    def set_qa_speichern(self, user_id: int, an: bool) -> None:
+        """Schalter umlegen. Löscht bewusst NICHTS — was mit bestehenden
+        Gesprächen passiert, entscheidet der Ausschalt-Dialog getrennt."""
+        with self._conn:
+            self._conn.execute("UPDATE web_users SET qa_speichern = ? WHERE id = ?",
+                               (1 if an else 0, user_id))
+
+    def qa_gespraech_start(self, user_id: int, titel: str) -> int:
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            cur = self._conn.execute(
+                "INSERT INTO qa_gespraeche (user_id, titel, created, updated) VALUES (?, ?, ?, ?)",
+                (user_id, (titel or "Gespräch").strip()[:120], now, now))
+            return int(cur.lastrowid)
+
+    def qa_turn_speichern(self, gespraech_id: int, user_id: int, frage: str,
+                          antwort: str, quellen_json: str | None) -> bool:
+        """Turn anhängen — nur ins eigene Gespräch (user_id doppelt geprüft)."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            ok = self._conn.execute(
+                "SELECT 1 FROM qa_gespraeche WHERE id = ? AND user_id = ?",
+                (gespraech_id, user_id)).fetchone()
+            if not ok:
+                return False
+            self._conn.execute(
+                "INSERT INTO qa_gespraech_turns (gespraech_id, user_id, frage, antwort, quellen, created) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (gespraech_id, user_id, frage[:600], antwort[:8000], quellen_json, now))
+            self._conn.execute("UPDATE qa_gespraeche SET updated = ? WHERE id = ?",
+                               (now, gespraech_id))
+            return True
+
+    def qa_gespraeche(self, user_id: int) -> list[dict]:
+        rows = self._conn.execute(
+            """SELECT g.id, g.titel, g.updated,
+                      (SELECT COUNT(*) FROM qa_gespraech_turns t WHERE t.gespraech_id = g.id) AS n_turns
+               FROM qa_gespraeche g WHERE g.user_id = ?
+               ORDER BY g.updated DESC LIMIT 50""", (user_id,)).fetchall()
+        return [dict(r) for r in rows]
+
+    def qa_gespraech(self, gespraech_id: int, user_id: int) -> dict | None:
+        g = self._conn.execute(
+            "SELECT id, titel, updated FROM qa_gespraeche WHERE id = ? AND user_id = ?",
+            (gespraech_id, user_id)).fetchone()
+        if not g:
+            return None
+        turns = self._conn.execute(
+            "SELECT frage, antwort, quellen FROM qa_gespraech_turns "
+            "WHERE gespraech_id = ? ORDER BY id", (gespraech_id,)).fetchall()
+        return {**dict(g), "turns": [dict(t) for t in turns]}
+
+    def qa_gespraech_loeschen(self, gespraech_id: int, user_id: int) -> bool:
+        with self._conn:
+            self._conn.execute(
+                "DELETE FROM qa_gespraech_turns WHERE gespraech_id = ? AND user_id = ?",
+                (gespraech_id, user_id))
+            cur = self._conn.execute(
+                "DELETE FROM qa_gespraeche WHERE id = ? AND user_id = ?",
+                (gespraech_id, user_id))
+            return (cur.rowcount or 0) > 0
+
+    def qa_gespraeche_loeschen(self, user_id: int) -> int:
+        """Alle Gespräche eines Kontos löschen (Ausschalt-Dialog „Alle löschen")."""
+        with self._conn:
+            self._conn.execute("DELETE FROM qa_gespraech_turns WHERE user_id = ?", (user_id,))
+            cur = self._conn.execute("DELETE FROM qa_gespraeche WHERE user_id = ?", (user_id,))
+            return cur.rowcount or 0
 
     # ---- Feedback ----------------------------------------------------------
 

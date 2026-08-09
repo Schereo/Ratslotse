@@ -19,7 +19,8 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Sparkles, Send, Loader2, ChevronDown, ChevronRight, ChevronUp, ArrowRight, Plus,
-  Square, CircleSlash, ExternalLink, ArrowDown, RotateCcw, MessageSquarePlus, ThumbsDown, ThumbsUp, Volume2, X } from "lucide-react";
+  Square, CircleSlash, ExternalLink, ArrowDown, History, RotateCcw, MessageSquarePlus,
+  ThumbsDown, ThumbsUp, Trash2, Volume2, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Mascot } from "@/components/mascot";
 import type { QaOrtPin } from "@/components/qa-orte-karte";
@@ -90,6 +91,9 @@ const OUTCOME_LABEL: Record<string, string> = {
 };
 
 type PresseHinweis = { titel: string; url: string; datum: string | null };
+
+/** Gesprächs-Zeile der „Meine Gespräche"-Liste (5a/I-04). */
+type GespraechEintrag = { id: number; titel: string; updated: string; n_turns: number };
 
 type Turn = {
   frage: string;
@@ -443,7 +447,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json", ...authHeaders() },
-        body: JSON.stringify({ question: text, verlauf }),
+        body: JSON.stringify({ question: text, verlauf, gespraech_id: gespraechId }),
         signal: ctrl.signal,
       });
       if (!res.ok || !res.body) {
@@ -479,7 +483,10 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
           });
           else if (msg.type === "token") patchLast((t) => ({ antwort: t.antwort + (msg.text as string) }));
           else if (msg.type === "suggestions") patchLast({ followups: (msg.questions as string[]) ?? [] });
-          else if (msg.type === "done") patchLast({ cited: (msg.cited as number[]) ?? [] });
+          else if (msg.type === "done") {
+            patchLast({ cited: (msg.cited as number[]) ?? [] });
+            if (msg.gespraech_id != null) setGespraechId(msg.gespraech_id as number);
+          }
           else if (msg.type === "error") throw new Error((msg.message as string) ?? "Frage fehlgeschlagen.");
         }
       }
@@ -516,6 +523,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     setStep(null);
     setTurns([]);
     setQ("");
+    setGespraechId(null);
     inputRef.current?.focus();
   };
 
@@ -524,6 +532,58 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   const showIntro = turns.length === 0;
   const [nativeApp, setNativeApp] = useState(false);
   useEffect(() => { setNativeApp(isNativeApp()); }, []);
+
+  // „Meine Gespräche" (5a/I-04 + 6a): Einwilligung (null = nie gefragt),
+  // laufendes Gespräch und die gespeicherte Liste.
+  const [einstellung, setEinstellung] = useState<number | null | undefined>(undefined);
+  const [gespraechId, setGespraechId] = useState<number | null>(null);
+  const [gespraeche, setGespraeche] = useState<GespraechEintrag[]>([]);
+  const [zeigeListe, setZeigeListe] = useState(false);
+  const ladeGespraeche = () =>
+    fetch(apiUrl("/council/gespraeche"), { credentials: "include", headers: authHeaders() })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((b) => {
+        if (!b) return;
+        setEinstellung(b.einstellung);
+        setGespraeche(b.gespraeche ?? []);
+      })
+      .catch(() => {});
+  useEffect(() => { void ladeGespraeche(); }, []);
+  const einwilligen = async (an: boolean) => {
+    setEinstellung(an ? 1 : 0);
+    try {
+      await fetch(apiUrl("/council/gespraeche/einstellung"), {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ an }),
+      });
+    } catch { /* Karte kommt beim nächsten Besuch wieder — kein Drama */ }
+  };
+  const gespraechLaden = async (id: number) => {
+    try {
+      const r = await fetch(apiUrl(`/council/gespraeche/${id}`), { credentials: "include", headers: authHeaders() });
+      if (!r.ok) throw new Error();
+      const g = await r.json();
+      type DbTurn = { frage: string; antwort: string; quellen: { sources?: QaSource[]; cited?: number[] } | null };
+      setTurns((g.turns as DbTurn[]).map((t) => ({
+        frage: t.frage, antwort: t.antwort, qtype: null, mode: null,
+        sources: t.quellen?.sources ?? [], presse: [], cited: t.quellen?.cited ?? [],
+        followups: [], kontext: null,
+      })));
+      setGespraechId(id);
+      setZeigeListe(false);
+      requestAnimationFrame(() => endRef.current?.scrollIntoView({ block: "end" }));
+    } catch {
+      toast.error("Gespräch konnte nicht geladen werden.");
+    }
+  };
+  const gespraechLoeschen = async (id: number) => {
+    setGespraeche((gs) => gs.filter((g) => g.id !== id));
+    if (gespraechId === id) setGespraechId(null);
+    try {
+      await fetch(apiUrl(`/council/gespraeche/${id}`), { method: "DELETE", credentials: "include", headers: authHeaders() });
+    } catch { /* Liste wird beim nächsten Öffnen neu geladen */ }
+  };
 
   // 5a/I-07: frische Beispiel-Anlässe aus den jüngsten Sitzungen — die
   // Klassiker bleiben, aber ein bis zwei Vorschläge zeigen, dass hier
@@ -553,25 +613,91 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
           Web-Wert rutschte der Composer unter die Falte (iOS-Test 09.08.).
           Erst nach dem Mount entscheiden — der Server rendert immer „Web". */}
       <div className={cn("flex flex-col", nativeApp ? "min-h-[calc(100dvh-380px)]" : "min-h-[calc(100dvh-230px)]")}>
-        {(modeToggle || turns.length > 0) && (
+        {(modeToggle || turns.length > 0 || gespraeche.length > 0) && (
           <div className="mb-1 flex items-center justify-between gap-2">
             {modeToggle ? <div>{modeToggle}</div> : <span />}
-            {turns.length > 0 && (
-              <button
-                type="button"
-                onClick={neuesGespraech}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-[10px] border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground print:hidden"
-              >
-                <MessageSquarePlus className="h-3.5 w-3.5" aria-hidden />
-                <span className="hidden sm:inline">Neues Gespräch</span>
-              </button>
-            )}
+            <div className="relative flex shrink-0 items-center gap-1.5 print:hidden">
+              {/* 5a/I-04: gespeicherte Gespräche — Liste lädt beim Öffnen frisch. */}
+              {einstellung === 1 && gespraeche.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => { setZeigeListe((v) => !v); if (!zeigeListe) void ladeGespraeche(); }}
+                  aria-expanded={zeigeListe}
+                  className="inline-flex items-center gap-1.5 rounded-[10px] border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  <History className="h-3.5 w-3.5" aria-hidden />
+                  <span className="hidden sm:inline">Gespräche</span>
+                </button>
+              )}
+              {turns.length > 0 && (
+                <button
+                  type="button"
+                  onClick={neuesGespraech}
+                  className="inline-flex items-center gap-1.5 rounded-[10px] border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  <MessageSquarePlus className="h-3.5 w-3.5" aria-hidden />
+                  <span className="hidden sm:inline">Neues Gespräch</span>
+                </button>
+              )}
+              {zeigeListe && (
+                <div className="absolute right-0 top-full z-30 mt-1.5 w-72 rounded-xl border border-border bg-card p-1.5 shadow-lg">
+                  <p className="px-2 pb-1 pt-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                    Meine Gespräche · in deinem Konto
+                  </p>
+                  {gespraeche.map((g) => (
+                    <div key={g.id} className="group flex items-center gap-1 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted">
+                      <button type="button" onClick={() => void gespraechLaden(g.id)}
+                        className="min-w-0 flex-1 text-left">
+                        <span className="block truncate text-[12.5px] font-medium text-foreground">{g.titel}</span>
+                        <span className="block text-[10.5px] text-muted-foreground">
+                          {fmtDatumKurz(g.updated)} · {g.n_turns} {g.n_turns === 1 ? "Frage" : "Fragen"}
+                        </span>
+                      </button>
+                      <button type="button" onClick={() => void gespraechLoeschen(g.id)}
+                        aria-label={`Gespräch „${g.titel}" löschen`} title="Löschen"
+                        className="shrink-0 rounded-md p-1 text-muted-foreground opacity-60 transition-opacity hover:text-signal sm:opacity-0 sm:group-hover:opacity-100">
+                        <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
         {/* Empty State — bodenständig: Beispiele direkt über dem Composer. */}
         {showIntro && (
           <div className="flex flex-1 flex-col items-center justify-end pb-5 text-center">
+            {/* 6a①: Erstnutzungs-Frage — einmalig, solange nie beantwortet. */}
+            {einstellung === null && (
+              <div className="mb-5 w-full max-w-md rounded-2xl border border-primary/25 bg-primary/[0.04] p-4 text-left">
+                <div className="flex items-start gap-3">
+                  <Mascot pose="wave" className="h-10 w-10 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground">Soll ich mir deine Gespräche merken?</p>
+                    <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">
+                      Wenn du magst, speichere ich deine Verläufe in deinem Konto — du findest
+                      sie dann auf allen Geräten oben unter „Gespräche". Wenn nicht, lebt ein
+                      Gespräch nur, bis du es schließt.
+                    </p>
+                    <div className="mt-2.5 flex gap-2">
+                      <button type="button" onClick={() => void einwilligen(true)}
+                        className="rounded-full bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
+                        Ja, merken
+                      </button>
+                      <button type="button" onClick={() => void einwilligen(false)}
+                        className="rounded-full border border-border px-3.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+                        Nein, nicht merken
+                      </button>
+                    </div>
+                    <p className="mt-2 text-[10.5px] text-muted-foreground/70">
+                      Deine Wahl gilt für dein Konto und lässt sich jederzeit in den Einstellungen ändern.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
             <Mascot pose="wave" bob className="h-20 w-20" />
             <h2 className="mt-3 text-xl font-bold tracking-tight">Frag den Stadtrat</h2>
             <p className="mt-1.5 max-w-md text-sm text-muted-foreground">

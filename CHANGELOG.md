@@ -40,6 +40,13 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Wechloy?" wird ein natürliches „Wer stimmte dagegen?". (#369)
 
 ### Hinzugefügt
+- **Ratsgespräche lassen sich merken — wenn du willst.** Beim ersten Öffnen
+  fragt Lotti einmalig, ob Verläufe im Konto gespeichert werden sollen; nur
+  bei „Ja" landet jedes Gespräch unter dem neuen „Gespräche"-Knopf und lässt
+  sich auf jedem Gerät weiterführen oder löschen. In den Konto-Einstellungen
+  gibt es den Schalter samt der Frage, was beim Ausschalten mit den
+  bestehenden Gesprächen passieren soll — und beim Löschen des Kontos
+  verschwinden sie mit. (#382)
 - **Antworten lassen sich vorlesen.** Ein Lautsprecher-Symbol an jeder
   KI-Antwort liest den Text mit deutscher Stimme vor — Fußnoten und
   Formatierung bleiben stumm, ein zweiter Tipp stoppt. Der Knopf erscheint
