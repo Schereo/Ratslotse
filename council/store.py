@@ -3317,7 +3317,7 @@ class CouncilStore:
             f"""SELECT d.id, d.title, d.summary, d.beschluss, d.vorlage_nr,
                        d.policy_field, d.outcome, d.impact, d.impact_reason,
                        d.vote, d.gegenstimmen, d.enthaltungen, d.raw_result,
-                       d.amount_eur,
+                       d.amount_eur, d.factions,
                        cs.session_date, cs.committee
                 FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr
                 WHERE d.id IN ({ph})""",
@@ -3325,6 +3325,32 @@ class CouncilStore:
         ).fetchall()
         by_id = {r["id"]: dict(r) for r in rows}
         return [by_id[i] for i in ids if i in by_id]
+
+    def antrag_decision_ids(self, party: str, terms: str = "", limit: int = 12) -> list[int]:
+        """Beschluss-ids, bei denen die Fraktion/Gruppe ``party`` als Antragsteller
+        auftritt — aus dem factions-Feld des Protokolls ODER über eine als Antrag
+        erkannte Anlage der Vorlage. Mit ``terms`` wird thematisch eingegrenzt
+        (Schnitt mit der FTS-Trefferliste), sonst kommen die neuesten zuerst.
+        Für das Fragetyp-Routing der KI-Frage (typ=partei)."""
+        like = f'%{party.strip()}%'
+        rows = self._conn.execute(
+            """SELECT DISTINCT d.id FROM council_decisions d
+               JOIN council_sessions cs ON cs.ksinr = d.ksinr
+               LEFT JOIN council_vorlagen v ON v.vorlage_nr = d.vorlage_nr
+               LEFT JOIN council_anlagen a ON a.kvonr = v.kvonr AND a.is_antrag = 1
+               WHERE d.kind = 'decision'
+                 AND (d.factions LIKE ? OR a.antragsteller LIKE ?)
+               ORDER BY cs.session_date DESC, d.id DESC LIMIT 400""",
+            (like, like),
+        ).fetchall()
+        ids = [r["id"] for r in rows]
+        if terms:
+            fts = {i for i, *_ in self.search_decisions_fts(terms, limit=250)}
+            thematisch = [i for i in ids if i in fts]
+            # Thematischer Schnitt zuerst; ohne Schnitt-Treffer die neuesten Anträge
+            # der Fraktion — besser als gar kein Partei-Signal im Kandidaten-Pool.
+            ids = thematisch or ids
+        return ids[:limit]
 
     def find_decision_ids(self, *, vorlage_nr: str | None = None, committee: str | None = None,
                           session_date: str | None = None, title_like: str | None = None) -> list[int]:
