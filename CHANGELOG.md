@@ -18,6 +18,13 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   „Laut Protokoll …", nie als Beschluss. (#387)
 
 ### Verbessert
+- **Geteilte Links zeigen eine echte Vorschau.** Wer einen „Frag den
+  Rat"-Link in WhatsApp, Signal oder Slack teilt, sieht dort jetzt die
+  Frage als Titel und den Anfang der Antwort als Beschreibung — statt
+  einer generischen Ratslotse-Karte. Geteilte Antworten bleiben von
+  Suchmaschinen ausgenommen. (#401)
+
+### Verbessert
 - **Teilen teilt jetzt die Antwort, nicht nur die Frage.** Der Teilen-Knopf
   unter einer Antwort erzeugt einen Link, der genau diese Antwort zeigt —
   mit Frage, Fußnoten und den zitierten Beschlüssen, öffentlich lesbar auch
