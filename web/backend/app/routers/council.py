@@ -23,6 +23,8 @@ from council import vorlagen as vorlagen_mod
 
 from nwz.store import Store
 
+from .. import deepresearch
+from ..config import get_settings
 from ..deps import get_council_store, get_store, optional_user, require_active
 from ..ratelimit import partei_meinungen_limiter, qa_feedback_limiter, qa_limiter, qa_share_limiter
 
@@ -595,6 +597,151 @@ def qa_share_lesen(token: str, nwz: Store = Depends(get_store)) -> dict:
     if not share:
         raise HTTPException(status_code=404, detail="Nicht gefunden.")
     return share
+
+
+# ---- „Gründliche Recherche" (RG-10, Task 34) -------------------------------
+# Kein Request-gebundener Stream wie /ask: der Job läuft in einem Backend-
+# Thread weiter, wenn der Client wegnavigiert (Tims Kernanforderung). POST
+# startet, GET …/events klemmt sich an (Replay + live), GET …/{id} liefert
+# den persistierten Endzustand — auch nach App- oder Server-Neustart.
+
+
+class DeepResearchBody(BaseModel):
+    frage: str = Field(min_length=4, max_length=300)
+    # „Meine Gespräche": läuft ein Gespräch, wird der fertige Bericht dort
+    # angehängt — auch wenn die App längst zu ist.
+    gespraech_id: int | None = Field(default=None, ge=1)
+
+
+def _deep_frei(nwz: Store, user_id: int) -> int:
+    return max(0, deepresearch.TAGES_KONTINGENT - nwz.deep_jobs_heute(user_id))
+
+
+@router.post("/deep-research", status_code=status.HTTP_201_CREATED)
+def deep_research_start(body: DeepResearchBody, user: dict = Depends(require_active),
+                        nwz: Store = Depends(get_store)) -> dict:
+    """Recherche-Job starten. Kontingent: 5/Tag je KONTO aus der DB (nicht
+    IP — übersteht Neustarts, und Abbruch/Fehler kosten laut Design nichts,
+    was ein Fenster-Zähler nicht abbilden kann)."""
+    if nwz.deep_jobs_heute(user["id"]) >= deepresearch.TAGES_KONTINGENT:
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS,
+                            "Deine Recherchen für heute sind aufgebraucht — ab morgen geht es weiter.")
+    if deepresearch.laufende_jobs(user["id"]) >= 1:
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            "Es läuft bereits eine Recherche — warte kurz, bis sie fertig ist.")
+    if deepresearch.laufende_jobs() >= deepresearch.MAX_PARALLEL:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE,
+                            "Gerade laufen viele Recherchen — bitte versuche es gleich nochmal.")
+    nwz.record_activity(user["id"], "recherche")
+    frage = body.frage.strip()
+    job_id = nwz.deep_job_anlegen(user["id"], frage)
+    settings = get_settings()
+    job = deepresearch.DeepJob(id=job_id, user_id=user["id"], frage=frage,
+                               gespraech_id=body.gespraech_id)
+    deepresearch.start_job(job, settings.nwz_db, settings.council_db)
+    return {"job_id": job_id, "frei": _deep_frei(nwz, user["id"])}
+
+
+@router.get("/deep-research/aktuell")
+def deep_research_aktuell(user: dict = Depends(require_active),
+                          nwz: Store = Depends(get_store)) -> dict:
+    """Der jüngste Job des Kontos + Rest-Kontingent — damit der Client nach
+    Navigation/App-Neustart einen laufenden Job oder ungesehenen Bericht
+    wiederfindet, ohne sich die ID gemerkt zu haben."""
+    return {"job": nwz.deep_job_aktuell(user["id"]),
+            "frei": _deep_frei(nwz, user["id"])}
+
+
+@router.get("/deep-research/{job_id}")
+def deep_research_snapshot(job_id: str, user: dict = Depends(require_active),
+                           nwz: Store = Depends(get_store)) -> dict:
+    """Persistierter Stand des Jobs (Bericht + Quellen bei fertig/teilbericht)."""
+    if len(job_id) > 64:
+        raise HTTPException(status_code=404, detail="Nicht gefunden.")
+    row = nwz.deep_job_get(job_id, user["id"])
+    if not row:
+        raise HTTPException(status_code=404, detail="Nicht gefunden.")
+    # Läuft laut DB, aber kein Thread mehr da (Server-Neustart, Deploy):
+    # ehrlich als Fehler ausweisen, sonst wartete der Client ewig.
+    if row["status"] == "laeuft" and deepresearch.get_job(job_id) is None:
+        nwz.deep_job_update(job_id, "fehler")
+        row["status"] = "fehler"
+    try:
+        row["quellen"] = json.loads(row["quellen"]) if row.get("quellen") else None
+    except (ValueError, TypeError):
+        row["quellen"] = None
+    return row
+
+
+@router.get("/deep-research/{job_id}/events")
+def deep_research_events(job_id: str, ab: int = Query(default=0, ge=0),
+                         user: dict = Depends(require_active),
+                         nwz: Store = Depends(get_store)) -> StreamingResponse:
+    """SSE-Anschluss an einen laufenden Job: Replay aller Events ab ``ab``,
+    dann live weiter. Ein Verbindungsabriss ist folgenlos — der Job läuft
+    im Backend weiter, der Client verbindet sich einfach neu."""
+    row = nwz.deep_job_get(job_id, user["id"])
+    if not row:
+        raise HTTPException(status_code=404, detail="Nicht gefunden.")
+    job = deepresearch.get_job(job_id)
+    if job is None:
+        # Kein lebender Job (fertig + aus dem Speicher geräumt, oder Neustart)
+        # → der Client holt den Endzustand über den Snapshot-Endpoint.
+        raise HTTPException(status.HTTP_410_GONE, "Recherche nicht mehr aktiv — Snapshot laden.")
+    return StreamingResponse(
+        deepresearch.sse_events(job, ab=ab), media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@router.post("/deep-research/{job_id}/stop")
+def deep_research_stop(job_id: str, user: dict = Depends(require_active),
+                       nwz: Store = Depends(get_store)) -> dict:
+    """Abbrechen (Design 8c⑥): stoppt vor dem nächsten Such-/LLM-Schritt.
+    Fertige Facetten bleiben als Material — die Antwort sagt, ob sich ein
+    Teilbericht lohnt. Kostet kein Kontingent."""
+    if not nwz.deep_job_get(job_id, user["id"]):
+        raise HTTPException(status_code=404, detail="Nicht gefunden.")
+    job = deepresearch.get_job(job_id)
+    if job is None or job.done:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Recherche läuft nicht mehr.")
+    job.stop.set()
+    with job.cond:
+        job.cond.notify_all()
+    return {"facetten_fertig": job.facetten_fertig,
+            "facetten_gesamt": job.facetten_gesamt,
+            "teilbericht_moeglich": bool(job.material and job.material.get("candidates"))}
+
+
+@router.post("/deep-research/{job_id}/teilbericht")
+def deep_research_teilbericht(job_id: str, user: dict = Depends(require_active),
+                              nwz: Store = Depends(get_store)) -> dict:
+    """Nach einem Stopp: aus den fertigen Facetten doch noch einen Bericht
+    schreiben („Teilbericht zeigen"). Zählt nicht gegen das Kontingent."""
+    row = nwz.deep_job_get(job_id, user["id"])
+    if not row:
+        raise HTTPException(status_code=404, detail="Nicht gefunden.")
+    job = deepresearch.get_job(job_id)
+    if job is None or row["status"] != "gestoppt":
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            "Kein Teilbericht möglich — die Recherche ist nicht gestoppt.")
+    if not (job.material and job.material.get("candidates")):
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            "Kein Material gesichert — bitte neu recherchieren.")
+    # Status VOR dem Thread-Start zurück auf laeuft — andersherum könnte der
+    # (schnelle) Thread sein „teilbericht" schreiben und würde überschrieben.
+    nwz.deep_job_update(job_id, "laeuft")
+    settings = get_settings()
+    deepresearch.teilbericht_starten(job, settings.nwz_db, settings.council_db)
+    return {"ok": True}
+
+
+@router.post("/deep-research/{job_id}/gesehen")
+def deep_research_gesehen(job_id: str, user: dict = Depends(require_active),
+                          nwz: Store = Depends(get_store)) -> dict:
+    """Client hat den fertigen Bericht gerendert — nicht erneut einblenden."""
+    nwz.deep_job_gesehen(job_id, user["id"])
+    return {"ok": True}
 
 
 @router.get("/qa-beispiele")

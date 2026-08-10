@@ -20,8 +20,8 @@ import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Sparkles, Send, Loader2, ChevronDown, ChevronRight, ChevronUp, ArrowRight, Plus,
-  Square, CircleSlash, ExternalLink, ArrowDown, History, RotateCcw, MessageSquarePlus,
-  Share2, ThumbsDown, ThumbsUp, Trash2, Volume2, X } from "lucide-react";
+  Square, CircleSlash, ExternalLink, ArrowDown, FlaskConical, History, RotateCcw,
+  MessageSquarePlus, Share2, ThumbsDown, ThumbsUp, Trash2, Volume2, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Mascot } from "@/components/mascot";
 import type { QaOrtPin } from "@/components/qa-orte-karte";
@@ -37,6 +37,11 @@ import { PrintButton } from "@/components/print-button";
 import { cn } from "@/lib/utils";
 import { isNativeApp } from "@/lib/platform";
 import { reportBadgeEvent } from "@/components/badges";
+import {
+  berichtAbschnitte, RechercheFehlerKarte, RechercheFortschritt, RechercheGestoppt,
+  RechercheHinweisKarte, RechercheLimitKarte, RechercheToggle, Sprungmarken, WieEsWeitergeht,
+  type DeepFacette, type DeepPhase, type Planung,
+} from "@/components/deep-recherche";
 
 // Zitat-Klammern im Antworttext. Spiegelt council/qa.py (_CITE_RE /
 // citation_ids) — beide Seiten MÜSSEN dieselbe Regel anwenden, sonst laufen
@@ -77,6 +82,7 @@ const PLAYFUL = [
 const MODE_LABEL: Record<string, string> = {
   semantisch: "semantische Suche",
   keyword: "Stichwortsuche",
+  recherche: "gründliche Recherche",
 };
 
 const OUTCOME_BADGE: Record<string, string> = {
@@ -119,6 +125,20 @@ type Turn = {
   /** 5a/I-06: die vom Backend kondensierte Frage — der Kontext-Chip zeigt,
    *  worauf sich Anschlussfragen beziehen. */
   kontext?: string | null;
+  /** RG-10 „Gründliche Recherche": dieser Turn ist ein Recherche-Bericht.
+   *  Der Job läuft SERVER-seitig — Tab-Wechsel und App-Navigation sind ihm
+   *  egal; deepStatus spiegelt nur den zuletzt bekannten Stand. */
+  recherche?: boolean;
+  deepJobId?: string;
+  deepStatus?: "laeuft" | "gestoppt" | "fehler" | "fertig";
+  deepPhase?: DeepPhase;
+  deepDokumente?: number | null;
+  deepFacetten?: DeepFacette[];
+  deepFacettenFertig?: number;
+  deepTeilberichtMoeglich?: boolean;
+  gelesen?: number;
+  zeitraum?: string;
+  planungen?: Planung[];
 };
 
 /** Antwort vorlesen (5a/I-12, nur die TTS-Hälfte): SpeechSynthesis mit
@@ -480,6 +500,12 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
       const p = typeof patch === "function" ? patch(last) : patch;
       return [...ts.slice(0, -1), { ...last, ...p }];
     });
+  // RG-10: Recherche-Events patchen ihren Turn über den KEY — während der
+  // Server recherchiert, darf im selben Gespräch eine schnelle Frage laufen
+  // (patchLast träfe dann den falschen Turn).
+  const patchTurn = (key: number, patch: Partial<Turn> | ((t: Turn) => Partial<Turn>)) =>
+    setTurns((ts) => ts.map((t) => t.key === key
+      ? { ...t, ...(typeof patch === "function" ? patch(t) : patch) } : t));
 
   useEffect(() => {
     if (!loading) return;
@@ -624,6 +650,322 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     patchLast({ abgebrochen: true });
   };
 
+  // ---- „Gründliche Recherche" (RG-10) ------------------------------------
+  // Der Job läuft SERVER-seitig; hier lebt nur die Anzeige-Verbindung. Ein
+  // Verbindungsriss (Tab-Wechsel, App im Hintergrund) ist folgenlos: der
+  // Loop verbindet sich neu und holt verpasste Events per ?ab=-Replay nach.
+  const [rechercheModus, setRechercheModus] = useState(false);
+  const [deepFrei, setDeepFrei] = useState<number | null>(null);
+  const [deepLimit, setDeepLimit] = useState(false);
+  const [deepHinweis, setDeepHinweis] = useState(false);
+  const deepStreams = useRef(new Map<string, AbortController>());
+  const deepAb = useRef(new Map<string, number>());
+  useEffect(() => {
+    const streams = deepStreams.current;
+    return () => streams.forEach((c) => c.abort());
+  }, []);
+
+  const toggleRecherche = () => {
+    setRechercheModus((an) => {
+      if (!an) {
+        // Erwartung ehrlich (8a①): einmal täglich die ausführliche Karte,
+        // danach reicht die Kurzform neben der Pill.
+        const heute = new Date().toISOString().slice(0, 10);
+        let gesehen: string | null = null;
+        try {
+          gesehen = localStorage.getItem("ratslotse:recherche-hinweis");
+          localStorage.setItem("ratslotse:recherche-hinweis", heute);
+        } catch { /* egal */ }
+        setDeepHinweis(gesehen !== heute);
+      } else {
+        setDeepHinweis(false);
+      }
+      return !an;
+    });
+  };
+
+  /** Fertigen/gescheiterten Job aus der DB in einen Turn übersetzen —
+   *  deckungsgleich mit dem Live-Pfad, damit App-Neustarts nichts verlieren. */
+  const deepSnapshotTurn = (job: {
+    id: string; frage: string; status: string; bericht?: string | null;
+    quellen?: { sources?: QaSource[]; presse?: PresseHinweis[]; debatten?: DebattenHinweis[];
+      planungen?: Planung[]; cited?: number[]; gelesen?: number; zeitraum?: string;
+      facetten?: string[]; facetten_fertig?: number } | null;
+  }): Turn => ({
+    key: naechsterKey(),
+    frage: job.frage, antwort: job.bericht ?? "", qtype: "deep", mode: "recherche",
+    sources: job.quellen?.sources ?? [], presse: job.quellen?.presse ?? [],
+    debatten: job.quellen?.debatten ?? [], cited: job.quellen?.cited ?? [],
+    followups: [], kontext: job.frage,
+    recherche: true, deepJobId: job.id,
+    deepStatus: job.status === "fehler" ? "fehler"
+      : job.status === "gestoppt" ? "gestoppt" : "fertig",
+    deepFacetten: (job.quellen?.facetten ?? []).map((name) => ({ name })),
+    deepFacettenFertig: job.quellen?.facetten_fertig ?? 0,
+    deepTeilberichtMoeglich: false,
+    gelesen: job.quellen?.gelesen, zeitraum: job.quellen?.zeitraum,
+    planungen: job.quellen?.planungen ?? [],
+  });
+
+  const deepGesehenMelden = (jobId: string) => {
+    // Nur melden, wenn der Tab gerade SICHTBAR ist: wird der Bericht fertig,
+    // während die App im Hintergrund liegt, bliebe er sonst als „gesehen"
+    // markiert und der nächste Besuch fände ein leeres Gespräch vor.
+    if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+    void fetch(apiUrl(`/council/deep-research/${jobId}/gesehen`), {
+      method: "POST", credentials: "include", headers: authHeaders(),
+    }).catch(() => {});
+  };
+
+  /** Endzustand aus der DB holen (Job nicht mehr im Speicher, Neustart …). */
+  const ladeDeepSnapshot = async (jobId: string, turnKey: number) => {
+    try {
+      const r = await fetch(apiUrl(`/council/deep-research/${jobId}`), {
+        credentials: "include", headers: authHeaders() });
+      if (!r.ok) throw new Error();
+      const job = await r.json();
+      const t = deepSnapshotTurn(job);
+      patchTurn(turnKey, { ...t, key: turnKey });
+      if (t.deepStatus === "fertig") deepGesehenMelden(jobId);
+    } catch {
+      patchTurn(turnKey, { deepStatus: "fehler" });
+    }
+  };
+
+  /** SSE-Anschluss mit Wiederverbinden: Events zählen, bei Riss ab dem
+   *  letzten Stand weiter — Token-Replays hängen so nie doppelt an. */
+  const verbindeDeep = (jobId: string, turnKey: number, abStart?: number) => {
+    deepStreams.current.get(jobId)?.abort();
+    const ctrl = new AbortController();
+    deepStreams.current.set(jobId, ctrl);
+    if (abStart !== undefined) deepAb.current.set(jobId, abStart);
+    if ((deepAb.current.get(jobId) ?? 0) === 0) {
+      // Frischer Aufbau ab Event 0: eventuell schon gezeigten Text
+      // verwerfen, der Replay liefert gleich alles erneut.
+      patchTurn(turnKey, { antwort: "" });
+    }
+
+    const verarbeite = (msg: { type: string; [k: string]: unknown }): boolean => {
+      if (msg.type === "phase") {
+        patchTurn(turnKey, { deepPhase: msg.phase as DeepPhase,
+          deepDokumente: (msg.dokumente as number) ?? null });
+      } else if (msg.type === "facetten") {
+        patchTurn(turnKey, {
+          deepFacetten: ((msg.facetten as string[]) ?? []).map((name) => ({ name })),
+          deepFacettenFertig: 0, deepPhase: "suchen",
+        });
+      } else if (msg.type === "facette") {
+        patchTurn(turnKey, (t) => ({
+          deepFacetten: (t.deepFacetten ?? []).map((f, i) =>
+            i === ((msg.fertig as number) ?? 1) - 1
+              ? { ...f, treffer: (msg.treffer as number) ?? 0, neu: (msg.neu as number) ?? 0 } : f),
+          deepFacettenFertig: (msg.fertig as number) ?? 0,
+        }));
+      } else if (msg.type === "sources") {
+        patchTurn(turnKey, {
+          sources: (msg.sources as QaSource[]) ?? [],
+          mode: (msg.mode as string) ?? null, qtype: (msg.qtype as string) ?? null,
+          presse: (msg.presse as PresseHinweis[]) ?? [],
+          debatten: (msg.debatten as DebattenHinweis[]) ?? [],
+          planungen: (msg.planungen as Planung[]) ?? [],
+          gelesen: (msg.gelesen as number) ?? undefined,
+          zeitraum: (msg.zeitraum as string) ?? undefined,
+          kontext: (msg.frage as string) ?? null,
+        });
+      } else if (msg.type === "token") {
+        patchTurn(turnKey, (t) => ({ antwort: t.antwort + (msg.text as string) }));
+      } else if (msg.type === "replace") {
+        // Server hat den Berichts-Stream neu angesetzt (Provider-Riss) —
+        // der bisherige Torso wird ersetzt, es kommt ein frischer Aufbau.
+        patchTurn(turnKey, { antwort: (msg.text as string) ?? "" });
+      } else if (msg.type === "done") {
+        patchTurn(turnKey, { deepStatus: "fertig", cited: (msg.cited as number[]) ?? [],
+          gelesen: (msg.gelesen as number) ?? undefined,
+          zeitraum: (msg.zeitraum as string) ?? undefined });
+        if (msg.gespraech_id != null) setGespraechId(msg.gespraech_id as number);
+        deepGesehenMelden(jobId);
+        return true;
+      } else if (msg.type === "gestoppt") {
+        patchTurn(turnKey, { deepStatus: "gestoppt",
+          deepFacettenFertig: (msg.facetten_fertig as number) ?? 0,
+          deepTeilberichtMoeglich: Boolean(msg.teilbericht_moeglich) });
+        return true;
+      } else if (msg.type === "fehler") {
+        patchTurn(turnKey, { deepStatus: "fehler" });
+        deepGesehenMelden(jobId);
+        return true;
+      }
+      return false;
+    };
+
+    const lauf = async () => {
+      let beendet = false;
+      while (!beendet && !ctrl.signal.aborted) {
+        try {
+          const ab = deepAb.current.get(jobId) ?? 0;
+          const res = await fetch(apiUrl(`/council/deep-research/${jobId}/events?ab=${ab}`), {
+            credentials: "include", headers: authHeaders(), signal: ctrl.signal });
+          if (res.status === 410) {
+            // Job lebt nicht mehr im Speicher → Endzustand aus der DB.
+            await ladeDeepSnapshot(jobId, turnKey);
+            return;
+          }
+          if (!res.ok || !res.body) throw new Error(String(res.status));
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let buf = "";
+          for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buf += decoder.decode(value, { stream: true });
+            const chunks = buf.split("\n\n");
+            buf = chunks.pop() ?? "";
+            for (const chunk of chunks) {
+              if (chunk.startsWith(":")) continue; // Keepalive
+              const line = chunk.replace(/^data: ?/, "").trim();
+              if (!line) continue;
+              let msg: { type: string; [k: string]: unknown };
+              try { msg = JSON.parse(line); } catch { continue; }
+              deepAb.current.set(jobId, (deepAb.current.get(jobId) ?? 0) + 1);
+              if (verarbeite(msg)) beendet = true;
+            }
+          }
+        } catch (e) {
+          if ((e as Error)?.name === "AbortError") return;
+        }
+        // Riss ohne Terminal-Event: kurz durchatmen, dann ab letztem Stand
+        // neu verbinden — der Server recherchiert währenddessen weiter.
+        if (!beendet && !ctrl.signal.aborted) await new Promise((r) => setTimeout(r, 2000));
+      }
+    };
+    void lauf();
+  };
+
+  const askDeep = async (question: string) => {
+    const text = question.trim();
+    if (text.length < 4) return;
+    try { localStorage.setItem("ratslotse:qa-benutzt", "1"); } catch { /* egal */ }
+    setQ("");
+    setRechercheModus(false); // gilt je Frage, rastet nicht ein (8d)
+    setDeepHinweis(false);
+    setDeepLimit(false);
+    const key = naechsterKey();
+    setTurns((ts) => [...ts.map((t) => ({ ...t, followups: [] })), {
+      key, frage: text, antwort: "", qtype: "deep", mode: "recherche",
+      sources: [], presse: [], debatten: [], cited: [], followups: [],
+      recherche: true, deepStatus: "laeuft" as const, deepPhase: "zerlegen" as const,
+      deepFacetten: [], deepFacettenFertig: 0,
+    }]);
+    requestAnimationFrame(() => endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }));
+    try {
+      const res = await fetch(apiUrl("/council/deep-research"), {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ frage: text, gespraech_id: gespraechId }),
+      });
+      if (res.status === 429) {
+        setTurns((ts) => ts.filter((t) => t.key !== key));
+        setDeepFrei(0);
+        setDeepLimit(true);
+        setQ(text);
+        return;
+      }
+      if (!res.ok) {
+        let msg = "Recherche konnte nicht gestartet werden.";
+        try { const b = await res.json(); if (typeof b?.detail === "string") msg = b.detail; } catch { /* egal */ }
+        throw new Error(msg);
+      }
+      const b = await res.json();
+      setDeepFrei(typeof b.frei === "number" ? b.frei : null);
+      patchTurn(key, { deepJobId: b.job_id });
+      verbindeDeep(b.job_id, key, 0);
+    } catch (e) {
+      setTurns((ts) => ts.filter((t) => t.key !== key));
+      setQ(text);
+      toast.error(e instanceof Error ? e.message : "Recherche konnte nicht gestartet werden.");
+    }
+  };
+
+  const deepStop = async (t: Turn) => {
+    if (!t.deepJobId) return;
+    try {
+      const r = await fetch(apiUrl(`/council/deep-research/${t.deepJobId}/stop`), {
+        method: "POST", credentials: "include", headers: authHeaders() });
+      if (!r.ok) throw new Error();
+      const b = await r.json();
+      patchTurn(t.key, { deepStatus: "gestoppt",
+        deepFacettenFertig: b.facetten_fertig ?? 0,
+        deepTeilberichtMoeglich: Boolean(b.teilbericht_moeglich) });
+    } catch {
+      toast.error("Abbrechen hat nicht geklappt — die Recherche läuft weiter.");
+    }
+  };
+
+  const deepTeilbericht = async (t: Turn) => {
+    if (!t.deepJobId) return;
+    patchTurn(t.key, { deepStatus: "laeuft", deepPhase: "schreiben" });
+    try {
+      const r = await fetch(apiUrl(`/council/deep-research/${t.deepJobId}/teilbericht`), {
+        method: "POST", credentials: "include", headers: authHeaders() });
+      if (!r.ok) throw new Error();
+      // Weiter am bestehenden Event-Zähler — der Teilbericht hängt seine
+      // Events an dieselbe Liste an.
+      verbindeDeep(t.deepJobId, t.key);
+    } catch {
+      patchTurn(t.key, { deepStatus: "gestoppt" });
+      toast.error("Teilbericht konnte nicht gestartet werden.");
+    }
+  };
+
+  const deepVerwerfen = (t: Turn) => {
+    if (t.deepJobId) {
+      deepStreams.current.get(t.deepJobId)?.abort();
+      deepGesehenMelden(t.deepJobId);
+    }
+    setTurns((ts) => ts.filter((x) => x.key !== t.key));
+  };
+
+  // Nach Navigation oder App-Neustart: läuft noch eine Recherche (oder wartet
+  // ein ungesehener Bericht), holt der leere Tab sie zurück ins Gespräch —
+  // „der Bericht erscheint hier im Gespräch" gilt damit wirklich (8d).
+  useEffect(() => {
+    fetch(apiUrl("/council/deep-research/aktuell"), { credentials: "include", headers: authHeaders() })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((b) => {
+        if (!b) return;
+        if (typeof b.frei === "number") setDeepFrei(b.frei);
+        const job = b.job as { id: string; frage: string; status: string; gesehen: number } | null;
+        if (!job) return;
+        if (job.status === "laeuft") {
+          setTurns((ts) => {
+            if (ts.length > 0) return ts;
+            const key = naechsterKey();
+            verbindeDeep(job.id, key, 0);
+            return [{
+              key, frage: job.frage, antwort: "", qtype: "deep", mode: "recherche",
+              sources: [], presse: [], debatten: [], cited: [], followups: [],
+              recherche: true, deepJobId: job.id, deepStatus: "laeuft",
+              deepPhase: "zerlegen", deepFacetten: [], deepFacettenFertig: 0,
+            }];
+          });
+        } else if (!job.gesehen && (job.status === "fertig" || job.status === "teilbericht" || job.status === "fehler")) {
+          setTurns((ts) => {
+            if (ts.length > 0) return ts;
+            fetch(apiUrl(`/council/deep-research/${job.id}`), { credentials: "include", headers: authHeaders() })
+              .then((r) => (r.ok ? r.json() : Promise.reject(new Error())))
+              .then((voll) => {
+                setTurns((alt) => (alt.length > 0 ? alt : [deepSnapshotTurn(voll)]));
+                deepGesehenMelden(job.id);
+              })
+              .catch(() => {});
+            return ts;
+          });
+        }
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const neuesGespraech = () => {
     abortRef.current?.abort();
     abortRef.current = null;
@@ -637,6 +979,9 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
 
   const letzter = turns.length > 0 ? turns[turns.length - 1] : null;
   const letzterFehler = letzter?.fehler;
+  // RG-10: solange die Recherche des jüngsten Turns läuft, bleiben die
+  // Register-Chips und die Belege-Spalte im Warte-Zustand.
+  const deepAktiv = Boolean(letzter?.recherche && letzter.deepStatus === "laeuft");
   const showIntro = turns.length === 0;
   const [nativeApp, setNativeApp] = useState(false);
   useEffect(() => { setNativeApp(isNativeApp()); }, []);
@@ -880,6 +1225,11 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                 onEigeneFrage={() => inputRef.current?.focus()}
                 onDazuFragen={(titel) => void ask(`Erzähl mir mehr zu „${titel}".`)}
                 onFrageStellen={(text) => void ask(text)}
+                onDeepStop={() => void deepStop(t)}
+                onDeepTeilbericht={() => void deepTeilbericht(t)}
+                onDeepVerwerfen={() => deepVerwerfen(t)}
+                onDeepFortsetzen={() => { deepVerwerfen(t); void askDeep(t.frage); }}
+                onDeepSchnell={() => { deepVerwerfen(t); void ask(t.frage); }}
               />
             ))}
           </div>
@@ -916,7 +1266,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
               </span>
             </div>
           )}
-          {(composerFollowups.length > 0 || (!loading && letzter && !letzter.fehler && letzter.antwort)) && (
+          {!deepAktiv && (composerFollowups.length > 0 || (!loading && letzter && !letzter.fehler && letzter.antwort)) && (
             <ChipZeile>
               {composerFollowups.map((s) => (
                 <button key={s} type="button" onClick={() => void ask(s)}
@@ -940,6 +1290,11 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
               )}
             </ChipZeile>
           )}
+          {/* RG-10: Kontingent-Karte (8c⑤) und Tages-Erstinfo (8a①). */}
+          {deepLimit && (
+            <RechercheLimitKarte onSchnelleFrage={() => { setDeepLimit(false); void ask(q); }} />
+          )}
+          {rechercheModus && deepHinweis && !deepLimit && <RechercheHinweisKarte frei={deepFrei} />}
           {letzterFehler === "limit" ? (
             <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
               <p className="font-medium text-foreground">Kurze Verschnaufpause</p>
@@ -956,23 +1311,35 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
               </button>
             </div>
           ) : (
-            <form onSubmit={(e) => { e.preventDefault(); void ask(q); }} className="flex gap-2">
-              <div className="relative flex-1">
-                <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input ref={inputRef} data-search enterKeyHint="send"
-                  className="h-12 rounded-2xl pl-9"
-                  placeholder={turns.length > 0 ? "Anschlussfrage stellen …" : "Frag den Rat …"}
-                  value={q} onChange={(e) => setQ(e.target.value)} />
+            <form onSubmit={(e) => { e.preventDefault(); void (rechercheModus ? askDeep(q) : ask(q)); }} className="flex flex-col gap-1.5">
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input ref={inputRef} data-search enterKeyHint="send"
+                    className="h-12 rounded-2xl pl-9"
+                    placeholder={rechercheModus ? "Gründlich recherchieren …"
+                      : turns.length > 0 ? "Anschlussfrage stellen …" : "Frag den Rat …"}
+                    value={q} onChange={(e) => setQ(e.target.value)} />
+                </div>
+                {loading ? (
+                  <Button type="button" variant="secondary" className="h-12 rounded-2xl" onClick={stopAsking} aria-label="Antwort abbrechen">
+                    <Square className="fill-current" /> Stopp
+                  </Button>
+                ) : (
+                  <Button type="submit" className="h-12 w-12 rounded-2xl p-0" disabled={q.trim().length < 4} aria-label="Fragen">
+                    <Send />
+                  </Button>
+                )}
               </div>
-              {loading ? (
-                <Button type="button" variant="secondary" className="h-12 rounded-2xl" onClick={stopAsking} aria-label="Antwort abbrechen">
-                  <Square className="fill-current" /> Stopp
-                </Button>
-              ) : (
-                <Button type="submit" className="h-12 w-12 rounded-2xl p-0" disabled={q.trim().length < 4} aria-label="Fragen">
-                  <Send />
-                </Button>
-              )}
+              {/* RG-10: Umschalter-Pill — der Modus gilt je Frage. */}
+              <div className="flex items-center gap-2">
+                <RechercheToggle aktiv={rechercheModus} frei={deepFrei} onToggle={toggleRecherche} />
+                {rechercheModus && !deepHinweis && (
+                  <span className="text-[10.5px] text-muted-foreground/70">
+                    1–2 Min{deepFrei !== null ? ` · noch ${deepFrei} heute` : ""}
+                  </span>
+                )}
+              </div>
             </form>
           )}
           {/* Feedback-Runde 3: Der Disclaimer ist toter Dauer-Text — er steht
@@ -995,7 +1362,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             <BelegeSpalte turn={letzter} flashId={flashId}
               onDazuFragen={(titel) => void ask(`Erzähl mir mehr zu „${titel}".`)}
               onFlash={flash} />
-          ) : loading ? (
+          ) : loading || deepAktiv ? (
             <div aria-hidden className="space-y-3 pt-1">
               <div className="h-3 w-24 animate-pulse rounded bg-muted" />
               {[0, 1, 2, 3, 4].map((i) => (
@@ -1021,12 +1388,14 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
 
 /* ------------------------------------------------------------------------- */
 
-function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJump, onRetry, onEigeneFrage, onDazuFragen, onFrageStellen }: {
+function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJump, onRetry, onEigeneFrage, onDazuFragen, onFrageStellen, onDeepStop, onDeepTeilbericht, onDeepVerwerfen, onDeepFortsetzen, onDeepSchnell }: {
   turn: Turn; turnIdx: number; istLetzter: boolean; loading: boolean;
   step: Step | null; word: string; flashId: number | null;
   onJump: (id: number) => void; onRetry: () => void; onEigeneFrage: () => void;
   onDazuFragen?: (titel: string) => void;
   onFrageStellen?: (text: string) => void;
+  onDeepStop?: () => void; onDeepTeilbericht?: () => void; onDeepVerwerfen?: () => void;
+  onDeepFortsetzen?: () => void; onDeepSchnell?: () => void;
 }) {
   const [showAll, setShowAll] = useState(false);
   // Ältere Turns beruhigen (Design 2⑤): Belege hinter der Kompaktzeile.
@@ -1051,7 +1420,18 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
   const zitierte = useMemo(() => zitierteVon(turn, idToNum), [turn, idToNum]);
 
   const hatAntwort = turn.antwort.length > 0;
-  const nichtsGefunden = !loading && hatAntwort && turn.sources.length === 0 && !turn.fehler;
+  // RG-10: Recherche-Turns haben einen eigenen Lebenszyklus neben `loading`
+  // (das nur den /ask-Stream spiegelt) — der Job läuft server-seitig weiter.
+  const deepLaeuft = Boolean(turn.recherche && turn.deepStatus === "laeuft");
+  const deepFertig = Boolean(turn.recherche && turn.deepStatus === "fertig");
+  const deepGescheitert = Boolean(turn.recherche && turn.deepStatus === "fehler");
+  // Auch der Fehler-Torso zählt als „nicht abgeschlossen": Meta-Zeile und
+  // Bausteine würden ihn sonst wie einen fertigen Bericht aussehen lassen.
+  const beschaeftigt = loading || deepLaeuft || deepGescheitert;
+  const abschnitte = useMemo(
+    () => (turn.recherche ? berichtAbschnitte(turn.antwort) : []),
+    [turn.recherche, turn.antwort]);
+  const nichtsGefunden = !beschaeftigt && hatAntwort && turn.sources.length === 0 && !turn.fehler;
   // Mobil zeigt der jüngste Turn seine Belege inline (die Desktop-Spalte
   // übernimmt ab lg); ältere Turns nur nach Klick auf die Kompaktzeile.
   const belegeInline = istLetzter ? "lg:hidden" : aufgeklappt ? "" : "hidden";
@@ -1059,11 +1439,47 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
   return (
     <div className="flex flex-col gap-3">
       {/* Nutzer-Turn: rechtsbündig, stille Bubble (RG-01). */}
-      <div className="flex justify-end">
+      <div className="flex flex-col items-end gap-1">
         <div className="max-w-[78%] rounded-[18px] rounded-br-[6px] border border-primary/[0.18] bg-primary/[0.07] px-3.5 py-2.5 text-[14.5px] leading-[1.55] sm:max-w-[60%]">
           {turn.frage}
         </div>
+        {/* RG-10: Modus-Zeile unter der Bubble — nach Abschluss mit Umfang. */}
+        {turn.recherche && (
+          <span className="inline-flex items-center gap-1.5 text-[10.5px] text-muted-foreground/80">
+            <FlaskConical className="h-3 w-3" aria-hidden />
+            Gründliche Recherche{deepFertig && turn.gelesen ? ` · ${turn.gelesen} Dokumente gelesen` : ""}
+          </span>
+        )}
       </div>
+
+      {/* RG-10 (8a②): Fortschritts-Karte, solange der Job läuft. */}
+      {deepLaeuft && !hatAntwort && (
+        <RechercheFortschritt
+          phase={turn.deepPhase ?? "zerlegen"}
+          facetten={turn.deepFacetten ?? []}
+          facettenFertig={turn.deepFacettenFertig ?? 0}
+          dokumente={turn.deepDokumente ?? null}
+          onStop={() => onDeepStop?.()}
+        />
+      )}
+      {/* RG-10 (8c⑥/⑦): Abbruch mit Teilbericht-Angebot bzw. Fehler. */}
+      {turn.recherche && turn.deepStatus === "gestoppt" && !hatAntwort && (
+        <RechercheGestoppt
+          fertig={turn.deepFacettenFertig ?? 0}
+          gesamt={turn.deepFacetten?.length ?? 0}
+          teilberichtMoeglich={Boolean(turn.deepTeilberichtMoeglich)}
+          onTeilbericht={() => onDeepTeilbericht?.()}
+          onVerwerfen={() => onDeepVerwerfen?.()}
+        />
+      )}
+      {/* Auch MIT Text-Torso zeigen: ein gerissener Berichts-Stream darf
+          nicht wie ein fertiger Bericht aussehen (Tims Ur-Befund bei /ask). */}
+      {turn.recherche && turn.deepStatus === "fehler" && (
+        <RechercheFehlerKarte
+          onFortsetzen={() => onDeepFortsetzen?.()}
+          onSchnelleFrage={() => onDeepSchnell?.()}
+        />
+      )}
 
       {/* Fehler-Turn (RG ⑧). */}
       {turn.fehler === "netz" && (
@@ -1104,12 +1520,18 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
       )}
 
       {hatAntwort && (
-        <div aria-busy={loading} className="flex flex-col gap-3.5">
+        <div aria-busy={beschaeftigt} className="flex flex-col gap-3.5">
+          {/* RG-10 (8b): Sprungmarken — Pflicht ab 4 Abschnitten. */}
+          {turn.recherche && abschnitte.length >= 4 && (
+            <Sprungmarken abschnitte={abschnitte} ankerPrefix={`qa-abschnitt-${turnIdx}`} />
+          )}
           {/* div statt p: die Antwort darf Listen (ul) enthalten. */}
           <div className="whitespace-pre-wrap text-[14.5px] leading-[1.7] text-foreground sm:leading-[1.75]">
             {/* 5a/I-01: Der Chip öffnet erst das Peek — nicht sofort wegspringen. */}
-            <AnswerWithCitations text={turn.antwort} idToNum={idToNum} onJump={(id) => setPeekId(id)} />
-            {loading && step === "answer" && <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-primary align-text-bottom" />}
+            <AnswerWithCitations text={turn.antwort} idToNum={idToNum} onJump={(id) => setPeekId(id)}
+              ankerPrefix={turn.recherche ? `qa-abschnitt-${turnIdx}` : undefined}
+              berichtKoepfe={turn.recherche} />
+            {((loading && step === "answer") || deepLaeuft) && <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-primary align-text-bottom" />}
           </div>
 
           {peekId != null && (() => {
@@ -1144,16 +1566,22 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
               Sachstands-Fragen ließen oft nur einen Debatten-Beleg durch,
               obwohl der Baustein mit seiner eigenen Fraktions-Suche liefert
               (Tims Befund 10.08.) — ob es reicht, entscheidet der Endpoint. */}
-          {!loading && turn.antwort && !turn.fehler && !turn.abgebrochen
+          {!beschaeftigt && turn.antwort && !turn.fehler && !turn.abgebrochen
             && (turn.debatten?.length ?? 0) >= 1 && (
             <ParteienBaustein frage={turn.kontext || turn.frage} onFrageStellen={onFrageStellen} />
           )}
 
-          {!loading && <Baustein turn={turn} idToNum={idToNum} onJump={(id) => setPeekId(id)} />}
+          {!beschaeftigt && <Baustein turn={turn} idToNum={idToNum} onJump={(id) => setPeekId(id)} />}
+
+          {/* RG-10 (8b): „Wie es weitergeht" — künftige Beratungsstationen
+              aus dem Sitzungskalender, deterministisch, nie vom Modell. */}
+          {deepFertig && (turn.planungen?.length ?? 0) > 0 && (
+            <WieEsWeitergeht planungen={turn.planungen ?? []} />
+          )}
 
           {/* 5a/I-10: Mini-Karte der zitierten Orte — deterministisch aus den
               geocodierten Entitäten der Quellen; Pin-Klick öffnet das Peek. */}
-          {!loading && ortsPins.length > 0 && (
+          {!beschaeftigt && ortsPins.length > 0 && (
             <div className="overflow-hidden rounded-xl border border-border print:hidden">
               <QaOrteKarte pins={ortsPins} onPin={(id) => setPeekId(id)} />
               <div className="flex items-center justify-between gap-2 border-t border-border bg-muted/30 px-3 py-1.5">
@@ -1204,7 +1632,7 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
               Turn direkt unter der Antwort, auch dem jüngsten auf Desktop:
               die Bewertung nur unten rechts in der Belege-Spalte wurde nicht
               als zugehörig erkannt (Tims Befund 10.08.). */}
-          {!loading && (
+          {!beschaeftigt && (
             <div className="flex items-center gap-1 border-t border-border/60 pt-1.5 print:hidden">
               {/* Task 31: teilt einen Snapshot GENAU dieser Antwort — der alte
                   ?q=-Link ließ Empfänger eine andere Antwort würfeln. */}
@@ -1215,8 +1643,10 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
               {turn.antwort && !turn.fehler && <VorlesenKnopf text={turn.antwort} />}
               {turn.antwort && !turn.fehler && <FeedbackDaumen turn={turn} />}
               <span role="status" className="min-w-0 flex-1 text-right text-[10.5px] leading-snug text-muted-foreground/70">
-                {/* 5a/I-02: ehrlich sagen, worauf die Antwort fußt. */}
-                Automatische Antwort{zitierte.length > 0 ? `, ${stuetztAuf(zitierte)}` : " aus den gefundenen Beschlüssen"} — kann unvollständig sein. Quellen prüfen.
+                {/* 5a/I-02 bzw. RG-10: ehrlich sagen, worauf die Antwort fußt. */}
+                {turn.recherche && turn.gelesen
+                  ? <>Bericht aus {turn.gelesen} gelesenen Dokumenten{turn.zeitraum ? ` (${turn.zeitraum})` : ""}{zitierte.length > 0 ? `, ${zitierte.length} zitiert` : ""} — kann unvollständig sein. Quellen prüfen.</>
+                  : <>Automatische Antwort{zitierte.length > 0 ? `, ${stuetztAuf(zitierte)}` : " aus den gefundenen Beschlüssen"} — kann unvollständig sein. Quellen prüfen.</>}
               </span>
             </div>
           )}
@@ -1790,9 +2220,16 @@ function FussnotenChip({ id, idToNum, onJump }: {
  * nummerierte Chips; "**fett**" → <strong>; "- "-Zeilen → echte Liste;
  * Leerzeilen → Absätze. Streaming-fest: ein offenes "**" bleibt Text.
  */
-function AnswerWithCitations({ text, idToNum, onJump }: {
+function AnswerWithCitations({ text, idToNum, onJump, ankerPrefix, berichtKoepfe }: {
   text: string; idToNum: Map<number, number>; onJump: (id: number) => void;
+  /** RG-10: „## "-Köpfe bekommen ids `${ankerPrefix}-${i}` für Sprungmarken. */
+  ankerPrefix?: string;
+  /** RG-10: Bericht-Köpfe größer (Display-Font) statt der kompakten Task-32-Optik. */
+  berichtKoepfe?: boolean;
 }) {
+  // Laufender Kopf-Index über ALLE Blöcke — muss mit berichtAbschnitte()
+  // deckungsgleich zählen, sonst springen die Chips daneben.
+  let kopfIndex = -1;
   const inline = (chunk: string, keyBase: string) => {
     const parts = chunk.split(CITE_SPLIT_RE);
     return parts.map((part, i) => {
@@ -1827,8 +2264,10 @@ function AnswerWithCitations({ text, idToNum, onJump }: {
         // Antworten zu großen Themen), „- "-Listenzeile, Fließtext.
         const gruppen: { art: "kopf" | "liste" | "text"; zeilen: string[] }[] = [];
         for (const z of block.split("\n")) {
+          // Listen: „- " laut Prompt, „* " (auch verschachtelt) liefern die
+          // Modelle im langen Recherche-Bericht trotzdem gelegentlich.
           const art = z.trim().startsWith("## ") ? "kopf" as const
-            : z.trim().startsWith("- ") ? "liste" as const : "text" as const;
+            : /^[-*]\s+/.test(z.trim()) ? "liste" as const : "text" as const;
           const g = gruppen[gruppen.length - 1];
           if (g && g.art === art && art !== "kopf") g.zeilen.push(z);
           else gruppen.push({ art, zeilen: [z] });
@@ -1837,7 +2276,12 @@ function AnswerWithCitations({ text, idToNum, onJump }: {
           <span key={bi} className="block [&:not(:first-child)]:mt-2.5">
             {gruppen.map((g, gi) =>
               g.art === "kopf" ? (
-                <span key={gi} className="mt-3 block text-[13.5px] font-bold tracking-tight first:mt-0">
+                <span key={gi}
+                  id={ankerPrefix ? `${ankerPrefix}-${++kopfIndex}` : undefined}
+                  className={cn("block scroll-mt-16 first:mt-0",
+                    berichtKoepfe
+                      ? "mt-4 font-display text-[15.5px] font-bold tracking-tight"
+                      : "mt-3 text-[13.5px] font-bold tracking-tight")}>
                   {inline(g.zeilen[0].trim().replace(/^##\s+/, ""), `${bi}-${gi}`)}
                 </span>
               ) : g.art === "liste" ? (
@@ -1845,7 +2289,7 @@ function AnswerWithCitations({ text, idToNum, onJump }: {
                   {g.zeilen.filter((z) => z.trim()).map((z, zi) => (
                     <li key={zi} className="flex gap-2">
                       <span aria-hidden className="mt-[9px] h-1 w-1 shrink-0 rounded-full bg-primary/60" />
-                      <span className="min-w-0 whitespace-normal">{inline(z.trim().replace(/^-\s+/, ""), `${bi}-${gi}-${zi}`)}</span>
+                      <span className="min-w-0 whitespace-normal">{inline(z.trim().replace(/^[-*]\s+/, ""), `${bi}-${gi}-${zi}`)}</span>
                     </li>
                   ))}
                 </ul>

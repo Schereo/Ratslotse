@@ -2532,3 +2532,200 @@ def test_ask_reicht_verlauf_an_die_analyse(client, monkeypatch):
         "".join(r.iter_text())
     assert gesehen["verlauf"] == [{"frage": "Wie ist der Stand bei der Cäcilienbrücke?",
                                    "antwort": "Resolution ans WSA."}]
+
+
+# ---- „Gründliche Recherche" (RG-10, Task 34) ----
+
+def _deep_mocks(monkeypatch):
+    """Recherche-Engine ohne LLM/Embeddings: Zerlegung, Suche und Bericht
+    gemockt, Store-Kandidaten als Klassen-Patch (der Job-Thread öffnet
+    eigene Verbindungen — Instanz-Patches griffen dort nie)."""
+    from council import embeddings as emb_mod
+    from council import qa as qa_mod
+
+    monkeypatch.setattr(qa_mod, "deep_zerlege", lambda frage, **k: [
+        {"name": "Beschlusslage", "frage": "Stand Stadion", "begriffe": "stadion neubau"},
+        {"name": "Kosten", "frage": "Kosten Stadion", "begriffe": "kosten finanzierung"},
+    ])
+    monkeypatch.setattr(emb_mod, "hybrid_search",
+                        lambda store, q, e, **k: [(5, 1.2)] if "stadion" in e else [(5, 0.8), (7, 0.4)])
+    monkeypatch.setattr(emb_mod, "search_presse", lambda *a, **k: [])
+    monkeypatch.setattr(emb_mod, "search_wortbeitraege", lambda *a, **k: [])
+    cand = [
+        {"id": 5, "title": "Grundsatzbeschluss Stadionneubau", "summary": "Neubau am Marschweg",
+         "vorlage_nr": "26/0100", "kvonr": 111, "policy_field": "sport", "outcome": "angenommen",
+         "session_date": "2026-06-01", "committee": "Rat", "factions": None, "amount_eur": None},
+        {"id": 7, "title": "Projektgesellschaft Stadion", "summary": "Gründung",
+         "vorlage_nr": "26/0200", "kvonr": 222, "policy_field": "sport", "outcome": "angenommen",
+         "session_date": "2024-03-11", "committee": "Finanzausschuss", "factions": None,
+         "amount_eur": None},
+    ]
+    monkeypatch.setattr(CouncilStore, "get_decisions_by_ids",
+                        lambda self, ids: [dict(c) for c in cand if c["id"] in ids])
+    monkeypatch.setattr(CouncilStore, "orte_fuer_decisions", lambda self, ids: {})
+    monkeypatch.setattr(CouncilStore, "geplante_beratungen_fuer", lambda self, kv: [
+        {"kvonr": 111, "datum": "2099-09-14", "gremium": "Ausschuss für Finanzen",
+         "vorlage_nr": "26/0815", "vorlage_titel": "Finanzierungsbeschluss Projektgesellschaft"}])
+    monkeypatch.setattr(CouncilStore, "haushalt_fuer_begriffe", lambda self, w: [])
+    monkeypatch.setattr(CouncilStore, "vorlage_texts_for", lambda self, nrs: {})
+    monkeypatch.setattr(qa_mod, "deep_bericht_stream",
+                        lambda frage, cands, **k: iter(["## Beschlusslage\nDer Rat hat den Neubau",
+                                                        " beschlossen [5]."]))
+
+
+def _deep_events(client, job_id, ab=0):
+    with client.stream("GET", f"/api/council/deep-research/{job_id}/events?ab={ab}") as s:
+        return [json.loads(line[6:]) for line in "".join(s.iter_text()).splitlines()
+                if line.startswith("data: ")]
+
+
+def test_deep_research_roundtrip_und_replay(client, monkeypatch):
+    """Der komplette Job-Lauf: Phasen → Facetten → sources (mit Planungen und
+    gelesen-Zahl) → Token → done. Der Events-Endpoint liefert beim ZWEITEN
+    Abruf exakt dieselben Events (Replay) — die Grundlage dafür, dass
+    Tab-Wechsel und App-Navigation die Recherche nicht abbrechen. Der
+    Endzustand steht persistent im Snapshot, „aktuell" findet ihn wieder."""
+    _register(client)
+    _deep_mocks(monkeypatch)
+
+    r = client.post("/api/council/deep-research", json={"frage": "Wie ist der Stand beim Stadionneubau?"})
+    assert r.status_code == 201
+    job_id = r.json()["job_id"]
+    assert r.json()["frei"] == 4  # 1 von 5 läuft
+
+    events = _deep_events(client, job_id)  # blockiert bis der Job fertig ist
+    typen = [e["type"] for e in events]
+    assert typen[0] == "phase" and events[0]["phase"] == "zerlegen"
+    assert next(e for e in events if e["type"] == "facetten")["facetten"] == ["Beschlusslage", "Kosten"]
+    assert sum(1 for t in typen if t == "facette") == 2
+    src = next(e for e in events if e["type"] == "sources")
+    assert [s["id"] for s in src["sources"]] == [5, 7]  # Union beider Facetten, bester Score zuerst
+    assert src["planungen"][0]["gremium"] == "Ausschuss für Finanzen"
+    assert src["gelesen"] == 2 and src["zeitraum"] == "2024–2026"
+    assert "lesen" in [e.get("phase") for e in events if e["type"] == "phase"]
+    done = next(e for e in events if e["type"] == "done")
+    assert done["cited"] == [5] and done["teilbericht"] is False
+
+    # Replay-Garantie: gleicher Abruf → exakt dieselben Events; ab=N liefert den Rest.
+    assert _deep_events(client, job_id) == events
+    assert _deep_events(client, job_id, ab=len(events) - 1) == events[-1:]
+
+    # Persistierter Endzustand + Wiederfinden über /aktuell.
+    snap = client.get(f"/api/council/deep-research/{job_id}").json()
+    assert snap["status"] == "fertig" and "[5]" in snap["bericht"]
+    assert snap["quellen"]["cited"] == [5]
+    assert snap["quellen"]["planungen"][0]["vorlage_titel"].startswith("Finanzierungsbeschluss")
+    akt = client.get("/api/council/deep-research/aktuell").json()
+    assert akt["job"]["id"] == job_id and akt["job"]["gesehen"] == 0
+    assert akt["frei"] == 4  # fertig zählt weiter gegen das Tageskontingent
+    client.post(f"/api/council/deep-research/{job_id}/gesehen")
+    assert client.get("/api/council/deep-research/aktuell").json()["job"]["gesehen"] == 1
+
+    # Fremder Nutzer sieht NICHTS von diesem Job.
+    client.cookies.clear()
+    _register(client, email="zweite@test.de")
+    assert client.get(f"/api/council/deep-research/{job_id}").status_code == 404
+    assert client.get("/api/council/deep-research/aktuell").json()["job"] is None
+
+
+def test_deep_research_kontingent_und_ein_job_regel(client, monkeypatch):
+    """Kontingent 5/Tag je KONTO aus der DB: laufende und fertige Jobs zählen,
+    gestoppte/fehlgeschlagene nicht (Design 8c: Abbruch kostet nichts). Und:
+    nur EINE laufende Recherche je Konto (409)."""
+    from app import deepresearch
+
+    _register(client)
+    # Engine stilllegen: Job nur registrieren, kein Thread.
+    monkeypatch.setattr(deepresearch, "start_job",
+                        lambda job, a, b: deepresearch._registry.__setitem__(job.id, job))
+    deepresearch._registry.clear()
+
+    r = client.post("/api/council/deep-research", json={"frage": "Stand beim Stadionneubau?"})
+    assert r.status_code == 201
+    # Zweiter Start, während einer läuft → 409.
+    assert client.post("/api/council/deep-research",
+                       json={"frage": "Noch eine Frage dazu"}).status_code == 409
+
+    store = Store(NWZ_DB)
+    try:
+        uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
+        job_id = r.json()["job_id"]
+        # Der laufende Job wird gestoppt → zählt nicht mehr; 4 fertige dazu → 4/5.
+        store.deep_job_update(job_id, "gestoppt")
+        deepresearch._registry.clear()
+        for i in range(4):
+            store.deep_job_update(store.deep_job_anlegen(uid, f"Frage {i}"), "fertig")
+        assert store.deep_jobs_heute(uid) == 4
+        assert client.post("/api/council/deep-research",
+                           json={"frage": "Die fünfte heute"}).status_code == 201
+        # Jetzt 5/5 → 429; ein Fehler-Job ändert daran nichts (zählt nicht).
+        store.deep_job_update(store.deep_job_anlegen(uid, "kaputt"), "fehler")
+        deepresearch._registry.clear()
+        assert client.post("/api/council/deep-research",
+                           json={"frage": "Die sechste heute"}).status_code == 429
+    finally:
+        store.close()
+        deepresearch._registry.clear()
+
+
+def test_deep_research_stop_teilbericht_und_verwaiste(client, monkeypatch):
+    """Stopp sichert das Material und kostet kein Kontingent; der Teilbericht
+    entsteht daraus mit Vermerk und Status ``teilbericht`` (zählt ebenfalls
+    nicht). Nach einem Server-Neustart markiert der Snapshot-Endpoint einen
+    thread-losen „laeuft"-Job ehrlich als Fehler."""
+    from app import deepresearch
+    from council import qa as qa_mod
+
+    _register(client)
+    store = Store(NWZ_DB)
+    try:
+        uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
+
+        # Gestoppter Job mit gesichertem Material (wie nach „Abbrechen").
+        job_id = store.deep_job_anlegen(uid, "Stand beim Stadionneubau?")
+        job = deepresearch.DeepJob(id=job_id, user_id=uid, frage="Stand beim Stadionneubau?")
+        job.facetten_fertig, job.facetten_gesamt = 2, 5
+        job.material = {
+            "candidates": [{"id": 5, "title": "Grundsatzbeschluss", "summary": "Neubau",
+                            "session_date": "2026-06-01", "committee": "Rat",
+                            "vorlage_nr": None, "outcome": "angenommen"}],
+            "presse": [], "debatten": [], "haushalt": [], "planungen": [],
+            "facetten_namen": ["Beschlusslage", "Kosten", "B-Plan", "Debatte", "Weiter"],
+            "facetten_fertig": 2, "gelesen": 1, "zeitraum": "2026",
+            "sources": [{"id": 5, "title": "Grundsatzbeschluss"}],
+            "presse_kompakt": [], "debatten_kompakt": [],
+        }
+        deepresearch._registry[job_id] = job
+        job.stop.set()
+        deepresearch._finish(job)
+        store.deep_job_update(job_id, "gestoppt")
+
+        r = client.post(f"/api/council/deep-research/{job_id}/stop")
+        assert r.status_code == 409  # schon beendet — kein Doppel-Stopp
+
+        monkeypatch.setattr(qa_mod, "deep_bericht_stream",
+                            lambda frage, cands, **k: iter(["Bisheriger Stand [5]."]))
+        assert client.post(f"/api/council/deep-research/{job_id}/teilbericht").status_code == 200
+        events = _deep_events(client, job_id)  # wartet auf den Teilbericht-Thread
+        done = next(e for e in events if e["type"] == "done")
+        assert done["teilbericht"] is True
+        snap = client.get(f"/api/council/deep-research/{job_id}").json()
+        assert snap["status"] == "teilbericht"
+        assert snap["bericht"].startswith("**Teilbericht — 2 von 5 Facetten.**")
+        assert "B-Plan" in snap["bericht"]  # fehlende Facetten werden benannt
+        assert store.deep_jobs_heute(uid) == 0  # weder gestoppt noch teilbericht zählen
+
+        # Verwaister „laeuft"-Job (Neustart): Snapshot meldet ehrlich Fehler …
+        waise = store.deep_job_anlegen(uid, "Radwege?")
+        snap = client.get(f"/api/council/deep-research/{waise}").json()
+        assert snap["status"] == "fehler"
+        # … und der Events-Anschluss verweist mit 410 auf den Snapshot.
+        assert client.get(f"/api/council/deep-research/{waise}/events").status_code == 410
+
+        # Startup-Aufräumer erledigt dasselbe in einem Rutsch.
+        waise2 = store.deep_job_anlegen(uid, "Kitas?")
+        assert store.deep_jobs_verwaiste_beenden() == 1
+        assert store.deep_job_get(waise2, uid)["status"] == "fehler"
+    finally:
+        deepresearch._registry.clear()
+        store.close()
