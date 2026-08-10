@@ -61,6 +61,8 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "genannt, NIE mit [id].\n"
             "- Wo die Unterlagen zu einem naheliegenden Aspekt NICHTS hergeben, sage "
             "das ausdrücklich in einem Satz.\n"
+            "- Beschlüsse mit dem Vermerk „ÄLTERE STATION“ sind überholte Zwischenstände: "
+            "die neuere Station ist der geltende Stand, Älteres gehört nur in den Verlauf.\n"
             "{planungen}"
             "\nBESCHLÜSSE:\n{context}\n{zusatz}\nFRAGE: {frage}"
         ),
@@ -343,6 +345,9 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "machen die Antwort unlesbar. Ausnahme: Fragt jemand ausdrücklich nach dem\n"
             "Zeitpunkt („wann“, „seit wann“), gehört das Datum natürlich in den Satz.\n"
             "Passen mehrere Beschlüsse, nenne die neuesten zuerst.\n"
+            "Trägt ein Beschluss den Vermerk „ÄLTERE STATION“, ist er ein überholter\n"
+            "Zwischenstand: Stelle die NEUERE Station als geltenden Stand dar und nutze die\n"
+            "ältere höchstens für den Verlauf — nie als aktuelle Beschlusslage.\n"
             "Die Tragweite ist NUR für deine Gewichtung gedacht, nie zum Zitieren: Führe mit\n"
             "den folgenreichen Beschlüssen und behandle sie ausführlicher; Formalien erwähne\n"
             "nur, wenn die Frage direkt danach fragt.\n"
