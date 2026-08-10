@@ -55,6 +55,26 @@ def test_extract_validierung(monkeypatch):
     assert out[1]["art"] == "rede"  # Fallback bei unbekannter Art
 
 
+def test_choices_null_wird_retried(monkeypatch):
+    """Provider liefert choices=null (Content-Filter/Fehler): das darf nicht
+    aus der Retry-Schleife ausbrechen (Massenlauf-Befund ksinr 4299/4301)."""
+    eintrag = {"art": "rede", "sprecher": "Herr Baak",
+               "text": "Die Investitionen zum Stadion stießen auf geteilte Meinungen."}
+    antworten = [SimpleNamespace(choices=None, usage=None),
+                 SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(
+                     content=json.dumps([eintrag])))], usage=None)]
+    calls = {"n": 0}
+
+    def fake(**kwargs):
+        resp = antworten[min(calls["n"], 1)]
+        calls["n"] += 1
+        return resp
+
+    monkeypatch.setattr(wb.llm, "chat_complete", fake)
+    out = wb.extract_wortbeitraege("Protokoll")
+    assert len(out) == 1 and calls["n"] == 2
+
+
 def test_leeres_array_auf_grosses_fenster_wird_retried(monkeypatch):
     """Provider-Aussetzer: valides [] auf ein volles Fenster → ein Neuversuch
     (ksinr 4417 lieferte beim ersten Lauf 0, beim zweiten 80 Beiträge)."""
