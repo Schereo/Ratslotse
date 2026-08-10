@@ -18,6 +18,15 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   „Laut Protokoll …", nie als Beschluss. (#387)
 
 ### Verbessert
+- **Debatten-Nachschliff aus dem Review.** Findet die KI-Frage zwar keine
+  Beschlüsse, aber Wortbeiträge aus den Ratsdebatten, sagt die Antwort das
+  jetzt ehrlich, statt „nichts gefunden" neben sichtbaren Belegen zu
+  behaupten. Intern: Protokolle ohne einen einzigen Wortbeitrag werden als
+  erledigt markiert (statt jede Nacht erneut geprüft), und parallele
+  Extraktionsläufe können sich keine verwaisten Suchindex-Einträge mehr
+  hinterlassen. (#388)
+
+### Verbessert
 - **Die KI-Suche antwortet deutlich schneller.** Zwei Stellschrauben: Die
   Server-VM nutzt jetzt die modernen Vektorbefehle ihres Prozessors (die der
   Relevanz-Sortierung bisher vorenthalten waren), und die Textpaare für die

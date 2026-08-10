@@ -581,6 +581,13 @@ class CouncilStore:
             "text_hash TEXT NOT NULL, "
             "vector BLOB NOT NULL)"
         )
+        # Erledigt-Marker der Wortbeitrags-Extraktion am Protokoll: auch ein
+        # leeres Ergebnis (Formalien-Niederschrift) zählt als erledigt — ohne
+        # den Marker fräße jedes davon dauerhaft einen nächtlichen LLM-Call.
+        wcols = {r[1] for r in self._conn.execute("PRAGMA table_info(council_protocols)").fetchall()}
+        if "wortbeitraege_extracted_at" not in wcols:
+            self._conn.execute(
+                "ALTER TABLE council_protocols ADD COLUMN wortbeitraege_extracted_at TEXT")
         # Aus raw_result geparste Teilvoten: welche Fraktion stimmte laut
         # Protokoll dagegen / enthielt sich. faction steht wie protokolliert
         # (Gruppen nicht aufgelöst — Fraktion≠Partei, siehe council/parties.py).
@@ -3643,16 +3650,26 @@ class CouncilStore:
 
     def save_wortbeitraege(self, ksinr: int, rows: list[dict]) -> int:
         """Beiträge einer Sitzung ersetzen (ein Protokoll = eine Wahrheit) —
-        FTS und Embeddings der alten Zeilen werden mit abgeräumt."""
+        FTS und Embeddings der alten Zeilen werden mit abgeräumt. Auch ein
+        LEERES Ergebnis markiert das Protokoll als erledigt (Formalien-
+        Niederschriften), sonst kostete es jede Nacht erneut einen LLM-Call."""
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
-            alte = [r[0] for r in self._conn.execute(
-                "SELECT id FROM council_wortbeitraege WHERE ksinr = ?", (ksinr,)).fetchall()]
-            if alte:
-                ph = ",".join("?" * len(alte))
-                self._conn.execute(f"DELETE FROM council_wortbeitraege_fts WHERE rowid IN ({ph})", alte)
-                self._conn.execute(f"DELETE FROM council_wortbeitraege_embeddings WHERE wb_id IN ({ph})", alte)
-                self._conn.execute("DELETE FROM council_wortbeitraege WHERE ksinr = ?", (ksinr,))
+            # DELETEs per Subquery über ksinr, NICHT über eine vorab gelesene
+            # ID-Liste: Läuft ein zweiter Save desselben Protokolls parallel,
+            # wäre die Liste beim eigenen BEGIN schon veraltet und FTS-/
+            # Embedding-Zeilen des anderen blieben als Waisen zurück
+            # (Review-Befund zu #387).
+            self._conn.execute(
+                "DELETE FROM council_wortbeitraege_fts WHERE rowid IN "
+                "(SELECT id FROM council_wortbeitraege WHERE ksinr = ?)", (ksinr,))
+            self._conn.execute(
+                "DELETE FROM council_wortbeitraege_embeddings WHERE wb_id IN "
+                "(SELECT id FROM council_wortbeitraege WHERE ksinr = ?)", (ksinr,))
+            self._conn.execute("DELETE FROM council_wortbeitraege WHERE ksinr = ?", (ksinr,))
+            self._conn.execute(
+                "UPDATE council_protocols SET wortbeitraege_extracted_at = ? WHERE ksinr = ?",
+                (now, ksinr))
             n = 0
             for pos, r in enumerate(rows):
                 text = (r.get("text") or "").strip()
@@ -3679,10 +3696,12 @@ class CouncilStore:
         return row[0] if row else None
 
     def ksinr_ohne_wortbeitraege(self, limit: int = 0) -> list[int]:
-        """Protokolle mit Text, zu denen noch keine Beiträge extrahiert sind."""
+        """Protokolle mit Text, deren Wortbeitrags-Extraktion noch aussteht.
+        Marker-Spalte statt NOT EXISTS: auch ein leeres Ergebnis gilt als
+        erledigt; nur echte Fehlschläge (kein Save) kommen wieder dran."""
         sql = ("SELECT p.ksinr FROM council_protocols p "
-               "WHERE p.raw_text IS NOT NULL AND p.status = 'ok' AND NOT EXISTS "
-               "(SELECT 1 FROM council_wortbeitraege w WHERE w.ksinr = p.ksinr) "
+               "WHERE p.raw_text IS NOT NULL AND p.status = 'ok' "
+               "AND p.wortbeitraege_extracted_at IS NULL "
                "ORDER BY p.ksinr DESC")
         if limit:
             sql += f" LIMIT {int(limit)}"
