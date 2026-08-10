@@ -29,8 +29,8 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Du bekommst Wortbeiträge aus Sitzungsprotokollen des Oldenburger Stadtrats "
             "zu einer Frage, gruppiert nach Fraktion. Verdichte je Fraktion die Position "
             "als JSON-Array:\n"
-            '[{{"partei": "Label wie angegeben", "position": "1-2 Sätze Haltung zur Sache '
-            '(dafür/dagegen/differenziert) mit Kernargument", "einig": true, '
+            '[{{"partei": "Label wie angegeben", "haltung": "dafür"|"dagegen"|"offen"|"gewandelt", '
+            '"position": "1-2 Sätze Haltung zur Sache mit Kernargument", "einig": true, '
             '"hinweis": null, "kernaussage": {{"text": "prägnanteste Aussage, dicht an der '
             'Vorlage", "sprecher": "Name", "datum": "TT.MM.JJJJ"}}}}]\n\n'
             "Regeln:\n"
@@ -40,6 +40,9 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "— nicht die Nacherzählung des stärksten Einzelbeitrags. Hat sich die "
             "Haltung über die Zeit entwickelt oder gibt es mehrere Facetten, benenne "
             "das (die Beiträge stehen chronologisch).\n"
+            "- haltung: „dafür\"/„dagegen\" nur bei klar belegter Linie zur gefragten "
+            "Sache; „gewandelt\" NUR, wenn sich die Haltung über die Zeit erkennbar "
+            "geändert hat (dann steht die Wende auch in position); sonst „offen\".\n"
             "- einig=false NUR bei echtem inhaltlichem Widerspruch INNERHALB der "
             "Fraktion — dann trägt hinweis einen Halbsatz, woran es liegt.\n"
             "- Fraktionen ohne verwertbare inhaltliche Substanz weglassen.\n"
