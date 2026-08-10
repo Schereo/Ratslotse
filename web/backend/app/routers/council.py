@@ -24,7 +24,7 @@ from council import vorlagen as vorlagen_mod
 from nwz.store import Store
 
 from ..deps import get_council_store, get_store, optional_user, require_active
-from ..ratelimit import qa_feedback_limiter, qa_limiter
+from ..ratelimit import partei_meinungen_limiter, qa_feedback_limiter, qa_limiter
 
 router = APIRouter(prefix="/api/council", tags=["council"])
 
@@ -502,6 +502,34 @@ def qa_feedback(
     store.save_qa_feedback(body.frage, body.antwort_auszug, body.bewertung,
                            body.grund, user_id=(user or {}).get("id"))
     return {"ok": True}
+
+
+class ParteiMeinungenBody(BaseModel):
+    frage: str = Field(min_length=3, max_length=300)
+
+
+@router.post("/partei-meinungen")
+def partei_meinungen_endpoint(
+    body: ParteiMeinungenBody,
+    request: Request,
+    user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Baustein „Das sagen die Parteien" (Task 30): Wird vom Frontend NACH der
+    gestreamten Antwort geladen (kostet die Hauptantwort keine Latenz). Zieht
+    deutlich mehr Debatten-Treffer als die Belege (top_k=24, Cross-Encoder-
+    geprüft) und verdichtet sie per LLM je Fraktion. Leer ({parteien: []}),
+    wenn die Datenlage zu dünn ist — der Baustein erscheint dann nicht."""
+    partei_meinungen_limiter.check(request)
+    try:
+        from council import embeddings as emb
+        hits = emb.search_wortbeitraege(store, body.frage, body.frage, top_k=24)
+        rows = store.wortbeitraege_by_ids([wid for wid, _ in hits])
+        meinungen = qa.partei_meinungen(body.frage, rows)
+    except Exception:  # noqa: BLE001 — Zusatzbaustein, nie 500 im Gespräch
+        _log.exception("partei_meinungen fehlgeschlagen")
+        meinungen = None
+    return {"parteien": meinungen or []}
 
 
 @router.get("/qa-beispiele")
