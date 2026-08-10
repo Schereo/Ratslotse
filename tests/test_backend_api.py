@@ -2813,3 +2813,48 @@ def test_limits_frei_ueberspringt_rate_limiter(client, monkeypatch):
         store.close()
     frag()
     assert len(aufrufe) == 1  # befreit: kein weiterer check-Aufruf
+
+
+def test_gespraech_snapshot_traegt_presse_und_debatten(client, monkeypatch):
+    """Tims Befund 10.08.: Ein geladenes Gespräch verlor Presse-Block und
+    (übers Debatten-Gate) den Parteien-Baustein — Presse + Debatten gehören
+    mit in den Turn-Snapshot und kommen beim Lesen wieder heraus."""
+    from app.routers import council as council_router
+    from council import embeddings as emb_mod
+    from council import qa as qa_mod
+
+    _register(client)
+    cand = [{"id": 5, "title": "Stadionneubau", "summary": "Grundsatz", "policy_field": "sport",
+             "outcome": "angenommen", "session_date": "2026-06-01",
+             "committee": "Rat", "score": 1.0}]
+    monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (cand, "semantisch"))
+    monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
+    monkeypatch.setattr(qa_mod, "answer_stream", lambda *a, **k: iter(["Beschlossen [5]."]))
+    monkeypatch.setattr(emb_mod, "search_presse", lambda *a, **k: [(9, 0.5)])
+    monkeypatch.setattr(emb_mod, "search_wortbeitraege", lambda *a, **k: [(7, 0.4)])
+    monkeypatch.setattr(CouncilStore, "presse_by_ids", lambda self, ids: [
+        {"id": 9, "titel": "Stadt informiert zum Stadion", "url": "https://x/pm", "datum": "2026-07-27"}])
+    monkeypatch.setattr(CouncilStore, "wortbeitraege_by_ids", lambda self, ids: [
+        {"id": 7, "sprecher": "Höpken", "partei": "BSW", "art": "rede", "top": "Ö 10",
+         "text": "Endlich kommt das Stadion.", "committee": "Rat", "session_date": "2026-06-01"}])
+
+    store = Store(NWZ_DB)
+    try:
+        uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
+        store.set_qa_speichern(uid, True)
+        with client.stream("POST", "/api/council/ask",
+                           json={"question": "Was ist mit dem Stadion?", "gespraech_id": None}) as r:
+            events = [json.loads(line[6:]) for line in "".join(r.iter_text()).splitlines()
+                      if line.startswith("data: ")]
+        gid = next(e for e in events if e["type"] == "done")["gespraech_id"]
+        turns = store.qa_gespraech(gid, uid)["turns"]
+        quellen = json.loads(turns[0]["quellen"]) if isinstance(turns[0]["quellen"], str) else turns[0]["quellen"]
+        assert quellen["presse"][0]["titel"] == "Stadt informiert zum Stadion"
+        assert quellen["debatten"][0]["sprecher"] == "Höpken"
+        assert quellen["debatten"][0]["auszug"].startswith("Endlich")
+        # Der Lese-Endpoint reicht den Snapshot durch (Frontend stellt daraus her).
+        g = client.get(f"/api/council/gespraeche/{gid}").json()
+        q0 = g["turns"][0]["quellen"]
+        assert q0["presse"] and q0["debatten"]
+    finally:
+        store.close()

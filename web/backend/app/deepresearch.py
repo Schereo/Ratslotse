@@ -427,9 +427,19 @@ def _gespraech_anhaengen(nwz: Store, job: DeepJob, bericht: str,
             if gespraech_id is None:
                 return None
         zitiert = set(cited)
+        # Der volle Anzeige-Stoff gehört in den Gesprächs-Snapshot — ein
+        # später geladener Recherche-Turn soll aussehen wie frisch erzeugt
+        # (Presse, Debatten, Anlagen, Planungen, Meta-Zahlen; Tims Befund
+        # 10.08. zu verschwindenden Blöcken in geladenen Gesprächen).
         quellen_json = json.dumps(
             {"sources": [s for s in m.get("sources", []) if s.get("id") in zitiert],
-             "cited": cited, "recherche": True}, ensure_ascii=False)
+             "cited": cited, "recherche": True,
+             "presse": m.get("presse_kompakt", []),
+             "debatten": m.get("debatten_kompakt", []),
+             "anlagen": m.get("anlagen_kompakt", []),
+             "planungen": m.get("planungen", []),
+             "gelesen": m.get("gelesen"), "zeitraum": m.get("zeitraum")},
+            ensure_ascii=False)
         if not nwz.qa_turn_speichern(gespraech_id, job.user_id, job.frage,
                                      bericht, quellen_json):
             if neu:

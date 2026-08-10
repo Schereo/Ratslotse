@@ -1129,12 +1129,29 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
       const r = await fetch(apiUrl(`/council/gespraeche/${id}`), { credentials: "include", headers: authHeaders() });
       if (!r.ok) throw new Error();
       const g = await r.json();
-      type DbTurn = { frage: string; antwort: string; quellen: { sources?: QaSource[]; cited?: number[] } | null };
+      // Presse/Debatten/Anlagen/Planungen stecken seit dem 10.08. mit im
+      // Snapshot — ohne sie verlor ein geladenes Gespräch den Stadt-Block
+      // und (übers Debatten-Gate) den Parteien-Baustein (Tims Befund).
+      // Ältere Turns ohne diese Felder bleiben schlicht ohne.
+      type DbTurn = { frage: string; antwort: string; quellen: {
+        sources?: QaSource[]; cited?: number[]; presse?: PresseHinweis[];
+        debatten?: DebattenHinweis[]; anlagen?: AnlagenHinweis[];
+        planungen?: Planung[]; recherche?: boolean;
+        gelesen?: number; zeitraum?: string } | null };
       setTurns((g.turns as DbTurn[]).map((t) => ({
         key: naechsterKey(),
         frage: t.frage, antwort: t.antwort, qtype: null, mode: null,
-        sources: t.quellen?.sources ?? [], presse: [], debatten: [], cited: t.quellen?.cited ?? [],
-        followups: [], kontext: null,
+        sources: t.quellen?.sources ?? [],
+        presse: t.quellen?.presse ?? [],
+        debatten: t.quellen?.debatten ?? [],
+        anlagen: t.quellen?.anlagen ?? [],
+        planungen: t.quellen?.planungen ?? [],
+        cited: t.quellen?.cited ?? [],
+        followups: [], kontext: t.frage,
+        ...(t.quellen?.recherche ? {
+          recherche: true, deepStatus: "fertig" as const,
+          gelesen: t.quellen?.gelesen, zeitraum: t.quellen?.zeitraum,
+        } : {}),
       })));
       setGespraechId(id);
       setZeigeListe(false);

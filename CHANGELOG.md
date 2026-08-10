@@ -7,6 +7,14 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Behoben
+- **Gespeicherte Gespräche verlieren keine Bausteine mehr.** Beim Öffnen
+  eines Gesprächs aus dem Verlauf fehlten bisher die Ratsdebatten, der
+  Parteien-Baustein und „Aktuelles von der Stadt" — sie wurden schlicht
+  nicht mitgespeichert. Jetzt wandern Debatten, Presse und bei Recherchen
+  auch Anlagen, Termine und die Meta-Zahlen mit in den Gesprächs-Snapshot;
+  ältere Gespräche bleiben ohne (dort wurden die Daten nie gesichert). (#410)
+
 ### Verbessert
 - **„Frag den Rat" schlägt wechselnde Beispielfragen vor.** Statt immer
   derselben zwei Klassiker rotieren die Vorschläge über einen kuratierten Pool
