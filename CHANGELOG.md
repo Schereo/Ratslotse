@@ -8,6 +8,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Neu
+- **Die Gründliche Recherche liest jetzt auch die Anlagen.** Gutachten,
+  Konzepte und Stellungnahmen zu den Vorlagen (z. B. Schallgutachten und
+  Verkehrskonzept zum Stadionneubau) sind als eigener Recherche-Kanal
+  durchsuchbar; einschlägige Fundstellen fließen in den Bericht ein und
+  erscheinen als Block „Aus den Anlagen" mit Link aufs Original-PDF.
+  Die schnelle Frage bleibt davon unberührt (und genauso schnell). (#407)
 - **„Gründliche Recherche" — der zweite Frage-Modus.** Ein Umschalter am
   Eingabefeld lässt den Rat gründlich recherchieren: Die Frage wird in
   Facetten zerlegt, deutlich mehr Beschlüsse samt Vorlagen-Volltexten werden

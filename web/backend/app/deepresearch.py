@@ -145,6 +145,7 @@ def _quellen_payload(m: dict, cited: list[int]) -> dict:
     damit der Client einen fertigen Job identisch rendern kann."""
     return {"sources": m["sources"], "presse": m["presse_kompakt"],
             "debatten": m["debatten_kompakt"], "planungen": m["planungen"],
+            "anlagen": m.get("anlagen_kompakt", []),
             "facetten": m["facetten_namen"], "facetten_fertig": m["facetten_fertig"],
             "gelesen": m["gelesen"], "zeitraum": m["zeitraum"], "cited": cited}
 
@@ -210,6 +211,7 @@ def _run(job: DeepJob, nwz_db: str, council_db: str) -> None:
             " ".join(f["begriffe"] for f in facetten).split()))[:300]
         presse_rows: list[dict] = []
         debatten_rows: list[dict] = []
+        anlagen_rows: list[dict] = []
         if emb is not None:
             try:
                 hits_p = emb.search_presse(store, job.frage, begriffe_alle)
@@ -219,6 +221,16 @@ def _run(job: DeepJob, nwz_db: str, council_db: str) -> None:
             try:
                 hits_w = emb.search_wortbeitraege(store, job.frage, begriffe_alle, top_k=12)
                 debatten_rows = store.wortbeitraege_by_ids([wid for wid, _ in hits_w])
+            except Exception:  # noqa: BLE001
+                pass
+            try:
+                # Task 33: Anlagen (Gutachten, Konzepte) — dieser Kanal existiert
+                # NUR hier; die schnelle Frage lädt die Anlagen-Matrix nie.
+                hits_a = emb.search_anlagen(store, job.frage, begriffe_alle, top_k=6)
+                anlagen_rows = store.anlagen_by_ids([did for did, _, _ in hits_a])
+                fundstellen = {did: fs for did, _, fs in hits_a}
+                for a in anlagen_rows:
+                    a["fundstelle"] = fundstellen.get(a["document_id"], "")
             except Exception:  # noqa: BLE001
                 pass
         try:
@@ -241,11 +253,12 @@ def _run(job: DeepJob, nwz_db: str, council_db: str) -> None:
         jahre = sorted({str(c.get("session_date") or "")[:4]
                         for c in candidates if c.get("session_date")})
         zeitraum = f"{jahre[0]}–{jahre[-1]}" if len(jahre) > 1 else (jahre[0] if jahre else "")
-        gelesen = len(candidates) + len(debatten_rows) + len(presse_rows)
+        gelesen = (len(candidates) + len(debatten_rows) + len(presse_rows)
+                   + len(anlagen_rows))
 
         job.material = {
             "candidates": candidates, "presse": presse_rows, "debatten": debatten_rows,
-            "haushalt": haushalt_zeilen, "planungen": planungen,
+            "haushalt": haushalt_zeilen, "planungen": planungen, "anlagen": anlagen_rows,
             "facetten_namen": [f["name"] for f in facetten],
             "facetten_fertig": job.facetten_fertig, "gelesen": gelesen,
             "zeitraum": zeitraum,
@@ -257,11 +270,17 @@ def _run(job: DeepJob, nwz_db: str, council_db: str) -> None:
                                   "auszug": (d.get("text") or "")[:220],
                                   "committee": d.get("committee"),
                                   "datum": d.get("session_date")} for d in debatten_rows],
+            "anlagen_kompakt": [{"label": a.get("label"), "url": a.get("url"),
+                                 "vorlage_nr": a.get("vorlage_nr"),
+                                 "vorlage_titel": a.get("vorlage_titel"),
+                                 "auszug": (a.get("fundstelle") or "")[:220]}
+                                for a in anlagen_rows],
         }
         m = job.material
         _emit(job, {"type": "sources", "mode": "recherche", "qtype": "deep",
                     "frage": job.frage, "sources": m["sources"],
                     "presse": m["presse_kompakt"], "debatten": m["debatten_kompakt"],
+                    "anlagen": m["anlagen_kompakt"],
                     "planungen": m["planungen"], "gelesen": gelesen,
                     "zeitraum": zeitraum})
 
@@ -339,7 +358,8 @@ def _schreiben_und_abschliessen(job: DeepJob, nwz_db: str, council_db: str,
                                                     presse=m.get("presse"),
                                                     debatten=m.get("debatten"),
                                                     haushalt=m.get("haushalt"),
-                                                    planungen=m.get("planungen")):
+                                                    planungen=m.get("planungen"),
+                                                    anlagen=m.get("anlagen")):
                     if job.stop.is_set():
                         break
                     buf += delta

@@ -453,6 +453,97 @@ def embed_presse_missing(store) -> int:
     return n
 
 
+# ---- Anlagen (Task 33): Gutachten, Konzepte, Stellungnahmen ----------------
+# Kanal NUR der Gründlichen Recherche (RG-10): dort zählt Tiefe, nicht Latenz —
+# die schnelle Frage lädt diese Matrix nie. Chunks größer gedeckelt als bei
+# Vorlagen (Gutachten tragen ihre Substanz über viele Seiten).
+ANLAGE_CHUNK_SIZE = 1100
+ANLAGE_MAX_CHUNKS = 8
+
+_anlage_matrix_cache: tuple | None = None  # (version, ids, texts, mat)
+
+
+def anlage_chunks(raw_text: str) -> list[str]:
+    """Anlagen-Text → überlappende Chunks (Muster vorlage_chunks, eigener Deckel)."""
+    from council.vorlagen import excerpt  # lazy: kein Modul-Import im Web-Pfad
+
+    cleaned = excerpt(raw_text, ANLAGE_MAX_CHUNKS * ANLAGE_CHUNK_SIZE + CHUNK_OVERLAP)
+    if not cleaned:
+        return []
+    out = []
+    step = ANLAGE_CHUNK_SIZE - CHUNK_OVERLAP
+    for start in range(0, len(cleaned), step):
+        piece = cleaned[start:start + ANLAGE_CHUNK_SIZE].strip()
+        if len(piece) >= 80:
+            out.append(piece)
+        if len(out) >= ANLAGE_MAX_CHUNKS:
+            break
+    return out
+
+
+def embed_anlagen_missing(store, limit: int | None = None) -> int:
+    """Chunk-Vektoren für neue/geänderte Anlagen (hash-idempotent). Gerufen von
+    scripts/embed_anlagen.py (Einmal-Batch) und weekly_enrich als Backstop."""
+    todo = store.anlagen_missing_embeddings(limit=limit)
+    n = 0
+    for a in todo:
+        # Label voranstellen: „Lärmgutachten — <Text>" macht den ersten Chunk
+        # als Fundstelle und Rerank-Paar deutlich stärker.
+        text = " — ".join(t for t in (a.get("label"), a.get("raw_text")) if t)
+        chunks = anlage_chunks(text)
+        if not chunks:
+            store.replace_anlage_embeddings(a["document_id"], a["text_hash"], [])
+            continue
+        vecs = embed(chunks)
+        store.replace_anlage_embeddings(
+            a["document_id"], a["text_hash"],
+            [(chunks[i], vecs[i].tobytes()) for i in range(len(chunks))])
+        n += len(chunks)
+    return n
+
+
+def _anlage_matrix(store):
+    global _anlage_matrix_cache
+    version = store.anlage_embeddings_version()
+    if _anlage_matrix_cache is None or _anlage_matrix_cache[0] != version:
+        import numpy as np
+
+        rows = store.get_anlage_embeddings()
+        ids = [r["document_id"] for r in rows]
+        texts = [r["chunk_text"] for r in rows]
+        if rows:
+            buf = b"".join(bytes(r["vector"]) for r in rows)
+            mat = np.frombuffer(buf, dtype="float32").reshape(len(ids), -1)
+        else:
+            mat = np.zeros((0, 0), dtype="float32")
+        _anlage_matrix_cache = (version, ids, texts, mat)
+    return _anlage_matrix_cache[1], _anlage_matrix_cache[2], _anlage_matrix_cache[3]
+
+
+def search_anlagen(store, query: str, expanded: str, top_k: int = 6,
+                   min_score: float = 0.45) -> list[tuple]:
+    """Beste Anlagen (Gutachten, Konzepte) zur Frage →
+    ``[(document_id, score, fundstelle)]``. Vektor liefert Kandidaten (bester
+    Chunk je Anlage), der Cross-Encoder bestätigt — kein BM25-Fallback: der
+    Kanal existiert nur in der Gründlichen Recherche und darf leer sein."""
+    try:
+        ids, texts, mat = _anlage_matrix(store)
+    except Exception:  # noqa: BLE001 — ohne fastembed keine Anlagen
+        return []
+    if not ids:
+        return []
+    qv = embed([expanded])[0]
+    scores = mat @ qv
+    best: dict[int, tuple[float, str]] = {}
+    for did, text, s in zip(ids, texts, scores):
+        if s >= min_score and s > best.get(did, (-1.0, ""))[0]:
+            best[did] = (float(s), text)
+    kandidaten = sorted(best.items(), key=lambda x: -x[1][0])[:max(top_k * 3, 12)]
+    fundstellen = {did: t for did, (_s, t) in kandidaten}
+    bestaetigt = _rerank_kontext(query, [(did, t) for did, (_s, t) in kandidaten], top_k)
+    return [(did, s, fundstellen.get(did, "")) for did, s in bestaetigt]
+
+
 _wb_matrix_cache: tuple | None = None  # (version, ids, mat)
 
 

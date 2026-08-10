@@ -526,6 +526,19 @@ class CouncilStore:
             "vector BLOB NOT NULL, "
             "PRIMARY KEY (vorlage_nr, chunk_idx))"
         )
+        # Anlagen-Chunks (Task 33): Gutachten, Konzepte, Stellungnahmen — die
+        # Volltexte lädt scripts/backfill_anlagen_texte.py, die Vektoren baut
+        # scripts/embed_anlagen.py. Kanal NUR der Gründlichen Recherche (RG-10);
+        # die schnelle Frage bleibt von der zusätzlichen Matrix unberührt.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_anlage_embeddings ("
+            "document_id INTEGER NOT NULL, "
+            "chunk_idx INTEGER NOT NULL, "
+            "text_hash TEXT NOT NULL, "
+            "chunk_text TEXT NOT NULL, "
+            "vector BLOB NOT NULL, "
+            "PRIMARY KEY (document_id, chunk_idx))"
+        )
         # Pressemitteilungen der Stadt (council/presse.py): Volltext intern für
         # Suche/Embedding, angezeigt werden Titel/Datum/Auszug/Link. Dazu ein
         # eigener FTS-Index und Chunk-Vektoren analog den Vorlagen.
@@ -3375,6 +3388,70 @@ class CouncilStore:
             "SELECT COUNT(*) FROM council_vorlage_embeddings").fetchone()[0]
         data_version = self._conn.execute("PRAGMA data_version").fetchone()[0]
         return (count, data_version)
+
+    # ---- Anlagen-Embeddings (Task 33, Kanal der Gründlichen Recherche) -----
+
+    def anlagen_missing_embeddings(self, limit: int | None = None) -> list[dict]:
+        """Anlagen mit Text, deren Chunk-Vektoren fehlen oder deren Text sich
+        geändert hat (SHA-256-Abgleich wie bei den Vorlagen). Neueste zuerst —
+        frisches Material zuerst durchsuchbar."""
+        import hashlib
+
+        stored = dict(self._conn.execute(
+            "SELECT document_id, MIN(text_hash) FROM council_anlage_embeddings "
+            "GROUP BY document_id").fetchall())
+        rows = self._conn.execute(
+            "SELECT document_id, label, raw_text FROM council_anlagen "
+            "WHERE status = 'ok' AND raw_text IS NOT NULL AND raw_text != '' "
+            "ORDER BY document_id DESC").fetchall()
+        out = []
+        for r in rows:
+            h = hashlib.sha256(r["raw_text"].encode("utf-8")).hexdigest()[:16]
+            if stored.get(r["document_id"]) != h:
+                out.append({"document_id": r["document_id"], "label": r["label"],
+                            "raw_text": r["raw_text"], "text_hash": h})
+                if limit and len(out) >= limit:
+                    break
+        return out
+
+    def replace_anlage_embeddings(self, document_id: int, text_hash: str,
+                                  chunks: list[tuple[str, bytes]]) -> None:
+        """Chunk-Text+Vektor einer Anlage komplett ersetzen."""
+        with self._conn:
+            self._conn.execute(
+                "DELETE FROM council_anlage_embeddings WHERE document_id = ?", (document_id,))
+            self._conn.executemany(
+                "INSERT INTO council_anlage_embeddings "
+                "(document_id, chunk_idx, text_hash, chunk_text, vector) VALUES (?, ?, ?, ?, ?)",
+                [(document_id, i, text_hash, text, vec) for i, (text, vec) in enumerate(chunks)],
+            )
+
+    def get_anlage_embeddings(self) -> list:
+        """Alle (document_id, chunk_text, vector)-Zeilen für die Matrix."""
+        return self._conn.execute(
+            "SELECT document_id, chunk_text, vector FROM council_anlage_embeddings "
+            "ORDER BY document_id, chunk_idx"
+        ).fetchall()
+
+    def anlage_embeddings_version(self) -> tuple:
+        count = self._conn.execute(
+            "SELECT COUNT(*) FROM council_anlage_embeddings").fetchone()[0]
+        data_version = self._conn.execute("PRAGMA data_version").fetchone()[0]
+        return (count, data_version)
+
+    def anlagen_by_ids(self, document_ids: list[int]) -> list[dict]:
+        """Anzeige-Zeilen der Anlagen-Treffer, Reihenfolge der ids bleibt:
+        Label, PDF-Link und die Vorlage (Nummer + Titel), zu der sie gehören."""
+        if not document_ids:
+            return []
+        ph = ",".join("?" * len(document_ids))
+        rows = self._conn.execute(
+            f"SELECT a.document_id, a.label, a.url, a.kvonr, "
+            f"       v.vorlage_nr, v.title AS vorlage_titel "
+            f"FROM council_anlagen a LEFT JOIN council_vorlagen v ON v.kvonr = a.kvonr "
+            f"WHERE a.document_id IN ({ph})", document_ids).fetchall()
+        by_id = {r["document_id"]: dict(r) for r in rows}
+        return [by_id[i] for i in document_ids if i in by_id]
 
     def decision_ids_for_vorlagen(self, vorlage_nrs: list[str]) -> dict[str, list[int]]:
         """vorlage_nr → Beschluss-ids (alle Beratungsstationen), neueste zuerst.

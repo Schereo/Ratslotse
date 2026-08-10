@@ -98,6 +98,13 @@ const OUTCOME_LABEL: Record<string, string> = {
 
 type PresseHinweis = { titel: string; url: string; datum: string | null };
 
+/** Task 33: Anlagen-Fundstelle (Gutachten, Konzept, Stellungnahme) — nur die
+ *  Gründliche Recherche liefert diesen Kanal. */
+type AnlagenHinweis = {
+  label: string | null; url: string | null;
+  vorlage_nr: string | null; vorlage_titel: string | null; auszug: string;
+};
+
 /** Task 16: Wortbeitrag aus einem Sitzungsprotokoll (Rede, Anfrage,
  *  Einwohnerfrage oder Verwaltungs-Zusage) im Belege-Bereich. */
 type DebattenHinweis = {
@@ -139,6 +146,7 @@ type Turn = {
   gelesen?: number;
   zeitraum?: string;
   planungen?: Planung[];
+  anlagen?: AnlagenHinweis[];
 };
 
 /** Antwort vorlesen (5a/I-12, nur die TTS-Hälfte): SpeechSynthesis mit
@@ -689,13 +697,15 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   const deepSnapshotTurn = (job: {
     id: string; frage: string; status: string; bericht?: string | null;
     quellen?: { sources?: QaSource[]; presse?: PresseHinweis[]; debatten?: DebattenHinweis[];
-      planungen?: Planung[]; cited?: number[]; gelesen?: number; zeitraum?: string;
+      planungen?: Planung[]; anlagen?: AnlagenHinweis[]; cited?: number[];
+      gelesen?: number; zeitraum?: string;
       facetten?: string[]; facetten_fertig?: number } | null;
   }): Turn => ({
     key: naechsterKey(),
     frage: job.frage, antwort: job.bericht ?? "", qtype: "deep", mode: "recherche",
     sources: job.quellen?.sources ?? [], presse: job.quellen?.presse ?? [],
-    debatten: job.quellen?.debatten ?? [], cited: job.quellen?.cited ?? [],
+    debatten: job.quellen?.debatten ?? [], anlagen: job.quellen?.anlagen ?? [],
+    cited: job.quellen?.cited ?? [],
     followups: [], kontext: job.frage,
     recherche: true, deepJobId: job.id,
     deepStatus: job.status === "fehler" ? "fehler"
@@ -768,6 +778,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
           presse: (msg.presse as PresseHinweis[]) ?? [],
           debatten: (msg.debatten as DebattenHinweis[]) ?? [],
           planungen: (msg.planungen as Planung[]) ?? [],
+          anlagen: (msg.anlagen as AnlagenHinweis[]) ?? [],
           gelesen: (msg.gelesen as number) ?? undefined,
           zeitraum: (msg.zeitraum as string) ?? undefined,
           kontext: (msg.frage as string) ?? null,
@@ -1612,6 +1623,7 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
                 onDazuFragen={onDazuFragen} />
             )}
             {(turn.debatten?.length ?? 0) > 0 && <DebattenBlock debatten={turn.debatten} />}
+            {(turn.anlagen?.length ?? 0) > 0 && <AnlagenBlock anlagen={turn.anlagen ?? []} />}
             {turn.presse.length > 0 && <PresseBlock presse={turn.presse} />}
           </div>
 
@@ -1675,6 +1687,7 @@ function BelegeSpalte({ turn, flashId, onFlash, onDazuFragen }: {
           onDazuFragen={onDazuFragen} />
       )}
       {(turn.debatten?.length ?? 0) > 0 && <DebattenBlock debatten={turn.debatten} />}
+      {(turn.anlagen?.length ?? 0) > 0 && <AnlagenBlock anlagen={turn.anlagen ?? []} />}
       {turn.presse.length > 0 && <PresseBlock presse={turn.presse} />}
       {/* Keine eigene Aktionszeile mehr: Seit die Meta-Zeile (Teilen, Vorlesen,
           Bewertung) bei JEDEM Turn direkt unter der Antwort steht, wäre sie
@@ -1785,6 +1798,40 @@ function QuellenBlock({ turn, turnIdx, idToNum, zitierte, showAll, setShowAll, f
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+/** Task 33: Anlagen-Treffer der Gründlichen Recherche — Gutachten und
+ *  Konzepte, verlinkt aufs öffentliche PDF im Ratsinformationssystem. */
+function AnlagenBlock({ anlagen }: { anlagen: AnlagenHinweis[] }) {
+  return (
+    <div className="rounded-xl border border-dashed border-border p-3">
+      <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+        Aus den Anlagen <span className="text-muted-foreground/60">· Gutachten &amp; Konzepte</span>
+      </p>
+      <ul className="mt-1.5 space-y-2">
+        {anlagen.map((a, i) => (
+          <li key={i} className="text-[12.5px] leading-snug">
+            <a href={a.url ?? undefined} target="_blank" rel="noopener noreferrer"
+              className="group flex items-baseline gap-2">
+              <span className="min-w-0 flex-1 truncate font-medium group-hover:underline">
+                {a.label || "Anlage"}
+              </span>
+              {a.vorlage_nr && (
+                <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{a.vorlage_nr}</span>
+              )}
+              <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
+            </a>
+            {a.vorlage_titel && (
+              <p className="mt-0.5 truncate text-[11px] text-muted-foreground/80">zu: {a.vorlage_titel}</p>
+            )}
+            {a.auszug && (
+              <p className="mt-0.5 text-muted-foreground">{a.auszug}{a.auszug.length >= 220 ? "…" : ""}</p>
+            )}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

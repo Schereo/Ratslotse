@@ -2551,6 +2551,13 @@ def _deep_mocks(monkeypatch):
                         lambda store, q, e, **k: [(5, 1.2)] if "stadion" in e else [(5, 0.8), (7, 0.4)])
     monkeypatch.setattr(emb_mod, "search_presse", lambda *a, **k: [])
     monkeypatch.setattr(emb_mod, "search_wortbeitraege", lambda *a, **k: [])
+    # Task 33: Anlagen-Kanal — nur die Gründliche Recherche fragt ihn ab.
+    monkeypatch.setattr(emb_mod, "search_anlagen",
+                        lambda *a, **k: [(901, 0.5, "Lärmpegel unter Grenzwert …")])
+    monkeypatch.setattr(CouncilStore, "anlagen_by_ids", lambda self, ids: [
+        {"document_id": 901, "label": "Schalltechnisches Gutachten", "kvonr": 111,
+         "url": "https://buergerinfo.oldenburg.de/getfile.asp?id=901",
+         "vorlage_nr": "26/0100", "vorlage_titel": "Grundsatzbeschluss Stadionneubau"}])
     cand = [
         {"id": 5, "title": "Grundsatzbeschluss Stadionneubau", "summary": "Neubau am Marschweg",
          "vorlage_nr": "26/0100", "kvonr": 111, "policy_field": "sport", "outcome": "angenommen",
@@ -2601,7 +2608,10 @@ def test_deep_research_roundtrip_und_replay(client, monkeypatch):
     src = next(e for e in events if e["type"] == "sources")
     assert [s["id"] for s in src["sources"]] == [5, 7]  # Union beider Facetten, bester Score zuerst
     assert src["planungen"][0]["gremium"] == "Ausschuss für Finanzen"
-    assert src["gelesen"] == 2 and src["zeitraum"] == "2024–2026"
+    # Task 33: Anlagen-Treffer mit Fundstelle im sources-Event, gelesen zählt sie mit.
+    assert src["anlagen"][0]["label"] == "Schalltechnisches Gutachten"
+    assert src["anlagen"][0]["auszug"].startswith("Lärmpegel")
+    assert src["gelesen"] == 3 and src["zeitraum"] == "2024–2026"
     assert "lesen" in [e.get("phase") for e in events if e["type"] == "phase"]
     done = next(e for e in events if e["type"] == "done")
     assert done["cited"] == [5] and done["teilbericht"] is False
@@ -2615,6 +2625,7 @@ def test_deep_research_roundtrip_und_replay(client, monkeypatch):
     assert snap["status"] == "fertig" and "[5]" in snap["bericht"]
     assert snap["quellen"]["cited"] == [5]
     assert snap["quellen"]["planungen"][0]["vorlage_titel"].startswith("Finanzierungsbeschluss")
+    assert snap["quellen"]["anlagen"][0]["vorlage_nr"] == "26/0100"
     akt = client.get("/api/council/deep-research/aktuell").json()
     assert akt["job"]["id"] == job_id and akt["job"]["gesehen"] == 0
     assert akt["frei"] == 4  # fertig zählt weiter gegen das Tageskontingent
