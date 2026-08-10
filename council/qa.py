@@ -257,6 +257,9 @@ def _fraktions_label(raw: str | None) -> str | None:
     if not raw:
         return None
     label = " ".join(raw.strip().rstrip(".").split())
+    # „Bündnis 90/ Die Grünen" vs „Bündnis 90/Die Grünen": Protokolle setzen
+    # das Leerzeichen um den Slash uneinheitlich — sonst zwei „Fraktionen".
+    label = re.sub(r"\s*/\s*", "/", label)
     if label.lower().startswith("fraktion "):
         label = label[9:]
     return label or None
@@ -277,11 +280,15 @@ def partei_meinungen(question: str, rows: list[dict], model: str = MODEL) -> lis
         return None
     teile = []
     for label, beitraege in gruppen.items():
+        # Chronologisch (älteste zuerst): so kann die Verdichtung eine
+        # Entwicklung benennen („anfangs skeptisch, zuletzt dafür") statt den
+        # relevantesten Einzelbeitrag nachzuerzählen (Tims Befund 10.08.).
+        beitraege = sorted(beitraege, key=lambda b: b.get("session_date") or "")
         zeilen = "\n".join(
             f"  - {b.get('sprecher') or '?'} am {_datum_de(b.get('session_date'))}: "
             f"{(b.get('text') or '').strip()[:300]}"
             for b in beitraege[:8])
-        teile.append(f"{label}:\n{zeilen}")
+        teile.append(f"{label} ({len(beitraege)} Beiträge):\n{zeilen}")
     prompt = prompts.render("partei_meinungen", frage=question.strip()[:300],
                             beitraege="\n".join(teile))
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
