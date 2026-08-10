@@ -18,6 +18,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   „Laut Protokoll …", nie als Beschluss. (#387)
 
 ### Verbessert
+- **Der Parteien-Baustein benennt fehlende Fraktionen.** Findet die Suche
+  zu einer aktiven Ratsfraktion keine passenden Wortbeiträge, steht das
+  jetzt ausdrücklich in der Fußzeile („Keine passenden Wortbeiträge
+  gefunden von: …") — statt die Fraktion stillschweigend wegzulassen. (#405)
+
+### Verbessert
 - **Fraktions-Zeilen im Parteien-Baustein sind aufklappbar.** Ein Klick auf
   eine Fraktion zeigt die Original-Wortbeiträge, aus denen ihre Position
   verdichtet wurde — mit Sprecher, Datum und Gremium. (#404)
