@@ -406,7 +406,10 @@ def _build_context(candidates: list[dict]) -> str:
     unberührt."""
     lines = []
     for c in candidates:
-        meta = " · ".join(p for p in (c.get("committee"), c.get("session_date"), c.get("outcome")) if p)
+        # Datum deutsch: das Modell übernimmt Formate aus dem Kontext wörtlich,
+        # ein ISO-Datum landet sonst als „am 2026-06-01" in der Antwort.
+        datum = _datum_de(c["session_date"]) if c.get("session_date") else None
+        meta = " · ".join(p for p in (c.get("committee"), datum, c.get("outcome")) if p)
         body = (c.get("summary") or c.get("beschluss") or "").strip()[:450]
         vorlage = (c.get("vorlage_excerpt") or "").strip()
         suffix = f" — Aus der Vorlage: {vorlage}" if vorlage else ""
@@ -675,7 +678,7 @@ def _debatten_block(debatten: list[dict] | None) -> str:
             wer += f" ({d['partei']})"
         kopf = f"{art_label.get(d.get('art') or 'rede', 'Redebeitrag')} von {wer}"
         if d.get("session_date"):
-            kopf += f" am {d['session_date']}"
+            kopf += f" am {_datum_de(d['session_date'])}"
         if d.get("committee"):
             kopf += f" im Gremium „{d['committee']}“"
         if d.get("top"):

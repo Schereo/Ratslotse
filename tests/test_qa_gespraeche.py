@@ -86,3 +86,44 @@ def test_umbenennen_nur_am_eigenen_gespraech(tmp_path):
     assert not store.qa_gespraech_umbenennen(gid, a, "   ")        # leer nach Trim
     assert store.qa_gespraech(gid, a)["titel"] == "Fliegerhorst Quartier"
     store.close()
+
+
+def test_share_extras_und_alte_zeilen(tmp_path):
+    """Geteilte Antworten tragen die Bausteine neben den Beschlüssen. Vor dem
+    Nachtrag angelegte Zeilen haben keine extras-Spalte — die Migration ergänzt
+    sie, und ihre Snapshots liefern dann leere Listen statt zu krachen."""
+    pfad = tmp_path / "nwz.sqlite"
+    store = Store(pfad)
+    uid = _user(store)
+    token = store.qa_share_anlegen(
+        uid, "Frage?", "Antwort [5].", [{"id": 5, "title": "T"}],
+        {"debatten": [{"sprecher": "Wenzel", "auszug": "Warnte."}],
+         "presse": [], "anlagen": [], "parteien": [{"partei": "SPD"}]})
+    share = store.qa_share_get(token)
+    assert share["debatten"][0]["sprecher"] == "Wenzel"
+    assert share["parteien"][0]["partei"] == "SPD"
+    assert share["presse"] == [] and share["anlagen"] == []
+
+    # Zeile aus der Zeit vor dem Nachtrag: extras ist NULL.
+    with store._conn:
+        store._conn.execute("UPDATE qa_shares SET extras = NULL WHERE token = ?", (token,))
+    alt = store.qa_share_get(token)
+    assert alt["antwort"] == "Antwort [5]." and alt["debatten"] == []
+    store.close()
+
+    # Alte Datei ohne die Spalte: Öffnen migriert, Lesen bleibt möglich.
+    import sqlite3
+    conn = sqlite3.connect(pfad)
+    conn.executescript(
+        "ALTER TABLE qa_shares RENAME TO qa_shares_alt;"
+        "CREATE TABLE qa_shares (token TEXT PRIMARY KEY, user_id INTEGER NOT NULL,"
+        " frage TEXT NOT NULL, antwort TEXT NOT NULL, quellen TEXT, created TEXT NOT NULL);"
+        "INSERT INTO qa_shares SELECT token, user_id, frage, antwort, quellen, created"
+        " FROM qa_shares_alt;"
+        "DROP TABLE qa_shares_alt;")
+    conn.commit()
+    conn.close()
+    store = Store(pfad)
+    assert "extras" in {r[1] for r in store._conn.execute("PRAGMA table_info(qa_shares)")}
+    assert store.qa_share_get(token)["debatten"] == []
+    store.close()
