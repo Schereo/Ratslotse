@@ -8,6 +8,11 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Verbessert
+- **Admins steuern die Frage-Limits je Konto.** Im Nutzer-Detail des
+  Admin-Panels lässt sich das Tageskontingent der Gründlichen Recherche
+  erhöhen oder ganz ausschalten (0 = unbegrenzt, leer = Standard 5) und ein
+  Konto von den Rate-Limits der Frage-Endpoints befreien — etwa für
+  Power-Nutzer oder Tests. (#409)
 - **Die Suche wird akkurater — drei deterministische Signale neben der KI.**
   Erkennt die Frage ein benanntes Objekt (Cäcilienbrücke, Fliegerhorst — auch
   umgangssprachlich als „Cäci"), kommen dessen verknüpfte Beschlüsse gesetzt

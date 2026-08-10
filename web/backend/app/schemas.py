@@ -136,6 +136,13 @@ class StatusUpdate(BaseModel):
     status: str  # 'active' | 'pending'
 
 
+class LimitsUpdate(BaseModel):
+    """Admin-steuerbare Frage-Limits je Konto: Recherchen/Tag (None = Standard,
+    0 = unbegrenzt, sonst eigenes Tageslimit) + Rate-Limit-Befreiung."""
+    deep_limit: int | None = Field(default=None, ge=0, le=999)
+    limits_frei: bool = False
+
+
 class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str = Field(min_length=8, max_length=128)

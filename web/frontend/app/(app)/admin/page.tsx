@@ -776,6 +776,12 @@ function UserDetailPanel({ userId, isSelf, onClose }: { userId: number; isSelf: 
     onSuccess: (_, status) => { toast.success(status === "active" ? "Freigeschaltet." : "Gesperrt."); invalidate(); },
     onError: () => toast.error("Status konnte nicht geändert werden."),
   });
+  const limitsMutation = useMutation({
+    mutationFn: (limits: { deep_limit: number | null; limits_frei: boolean }) =>
+      api.put(`/admin/users/${userId}/limits`, limits),
+    onSuccess: () => { toast.success("Limits aktualisiert."); invalidate(); },
+    onError: () => toast.error("Limits konnten nicht gespeichert werden."),
+  });
 
   if (isPending || !data) return <Card className="p-6"><Spinner /></Card>;
 
@@ -827,6 +833,43 @@ function UserDetailPanel({ userId, isSelf, onClose }: { userId: number; isSelf: 
           </Button>
         </div>
       )}
+
+      {/* Frage-Limits je Konto: Recherche-Tageskontingent (leer = Standard 5,
+          0 = unbegrenzt) + Befreiung von den Rate-Limitern der Frage-Endpoints. */}
+      <StatKickerSpaced>Frage-Limits</StatKickerSpaced>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <label className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-[12.5px]">
+          Recherchen/Tag
+          <input
+            type="number" min={0} max={999}
+            defaultValue={data.deep_limit ?? ""}
+            placeholder="Standard (5)"
+            key={`dl-${data.id}-${data.deep_limit ?? "std"}`}
+            id={`deep-limit-${data.id}`}
+            className="w-24 rounded-md border border-border bg-background px-2 py-1 text-[12.5px]"
+          />
+        </label>
+        <Button variant="secondary" size="sm"
+          onClick={() => {
+            const el = document.getElementById(`deep-limit-${data.id}`) as HTMLInputElement | null;
+            const roh = (el?.value ?? "").trim();
+            const wert = roh === "" ? null : Math.max(0, Math.min(999, Number(roh)));
+            if (wert !== null && Number.isNaN(wert)) return;
+            limitsMutation.mutate({ deep_limit: wert, limits_frei: data.limits_frei });
+          }}>
+          Speichern
+        </Button>
+        <Button variant="secondary" size="sm"
+          onClick={() => limitsMutation.mutate({ deep_limit: data.deep_limit, limits_frei: !data.limits_frei })}>
+          {data.limits_frei ? "Rate-Limits wieder an" : "Rate-Limits aus"}
+        </Button>
+      </div>
+      <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground/70">
+        {data.deep_limit === 0 ? "Recherche: unbegrenzt." : data.deep_limit != null
+          ? `Recherche: ${data.deep_limit}/Tag.` : "Recherche: Standard (5/Tag)."}
+        {" "}0 = unbegrenzt, leer = Standard.
+        {data.limits_frei && " · Rate-Limits (schnelle Frage, Parteien, Teilen) sind für dieses Konto AUS."}
+      </p>
       <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground/70">
         Alles server-aggregiert & nur für Admins; nur eigene App-Aktivität, keine Dritt-Analytics.
       </p>
