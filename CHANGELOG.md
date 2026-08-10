@@ -12,6 +12,13 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Freymuth" und „Jens Freymuth" waren zwei Einträge — Anreden (Herr/Frau/
   Ratsherr/Ratsfrau) werden jetzt beim Zusammenführen und in der Anzeige
   entfernt; Titel wie „Dr." bleiben Teil des Namens. (#419)
+- **Alle Wortbeiträge einer Person — mit Gremien-Filter.** „Aus den
+  Protokollen" zeigte nur die zehn jüngsten Beiträge; wer viel redet, kommt
+  aber auf weit über tausend. Jetzt lädt die Liste seitenweise nach, nennt die
+  Gesamtzahl und lässt sich auf ein Gremium eingrenzen (mit Anzahl je
+  Ausschuss). Dabei behoben: Namensvettern wurden zusammengeworfen — trägt ein
+  Protokolleintrag einen anderen Vornamen zum selben Nachnamen, gehört er
+  nicht mehr auf die Seite. (#420)
 - **Ehrlicher Hinweis auf den Ratsmitglieder-Seiten.** Unter den
   Wortbeiträgen steht jetzt, dass die Protokolle sinngemäß zusammenfassen
   und nicht jede Wortmeldung erfassen — die Liste ist ein Ausschnitt, kein

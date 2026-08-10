@@ -103,3 +103,86 @@ def test_person_slug_und_anzeige_normalisieren_anreden():
     assert anzeige("Frau Dr. Niewerth-Baumann") == "Dr. Niewerth-Baumann"
     assert anzeige("Jens Lükermann") == "Jens Lükermann"
     assert anzeige("Frau Blohm") == "Blohm"
+
+
+def _wb_store(tmp_path):
+    """Zwei Sitzungen in zwei Gremien, zwei Namensvettern („Harms")."""
+    store = CouncilStore(tmp_path / "wb.sqlite")
+    with store._conn:
+        store._conn.executemany(
+            "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, "
+            "location, fetched_at) VALUES (?, ?, ?, '', '', datetime('now'))",
+            [(1, "Rat", "2026-06-01"), (2, "Verkehrsausschuss", "2026-05-01")])
+        store._conn.executemany(
+            "INSERT INTO council_attendance (ksinr, name, party, role) VALUES (?, ?, ?, ?)",
+            [(1, "Tim Harms", "SPD", "mitglied"), (1, "Dr. Ingo Harms", "CDU", "mitglied"),
+             (2, "Tim Harms", "SPD", "mitglied")])
+        store._conn.executemany(
+            "INSERT INTO council_wortbeitraege (ksinr, position, sprecher, partei, art, top, "
+            "text, extracted_at) VALUES (?, ?, ?, 'SPD', 'rede', 'Ö 1', ?, datetime('now'))",
+            [(1, 1, "Tim Harms", "Voller Name im Rat"),
+             (1, 2, "Harms", "Nur Nachname"),
+             (1, 3, "Ratsherr Harms", "Mit Anrede"),
+             (1, 4, "Dr. Ingo Harms", "Der Namensvetter"),
+             (2, 5, "Tim Harms", "Im Verkehrsausschuss"),
+             (2, 6, "Pfeiffer", "Ganz andere Person")])
+    return store
+
+
+def test_wortbeitraege_person_trennt_namensvettern(tmp_path):
+    """Der Nachname reicht — solange der Eintrag keinen FREMDEN Vornamen trägt.
+    Sonst erbte „Tim Harms" die Beiträge von „Dr. Ingo Harms" (auf Prod real:
+    8 von 279 Treffern)."""
+    store = _wb_store(tmp_path)
+    try:
+        d = store.wortbeitraege_person("Tim Harms", limit=20)
+        texte = {w["text"] for w in d["items"]}
+        assert texte == {"Voller Name im Rat", "Nur Nachname", "Mit Anrede",
+                         "Im Verkehrsausschuss"}
+        assert "Der Namensvetter" not in texte
+        assert d["gesamt"] == 4
+        # Der Namensvetter behält seine eigenen Beiträge …
+        ingo = store.wortbeitraege_person("Dr. Ingo Harms", limit=20)
+        assert "Der Namensvetter" in {w["text"] for w in ingo["items"]}
+        # … und erbt die mehrdeutigen (reiner Nachname) ebenfalls — mehr gibt
+        # das Protokoll dort nicht her.
+        assert "Nur Nachname" in {w["text"] for w in ingo["items"]}
+    finally:
+        store.close()
+
+
+def test_wortbeitraege_person_seiten_und_gremienfilter(tmp_path):
+    store = _wb_store(tmp_path)
+    try:
+        d = store.wortbeitraege_person("Tim Harms", limit=20)
+        assert {g["committee"]: g["n"] for g in d["gremien"]} == {"Rat": 3, "Verkehrsausschuss": 1}
+
+        nur_verkehr = store.wortbeitraege_person("Tim Harms", gremium="Verkehrsausschuss")
+        assert nur_verkehr["total"] == 1 and nur_verkehr["gesamt"] == 4
+        assert nur_verkehr["items"][0]["text"] == "Im Verkehrsausschuss"
+
+        # Seiten überlappen nicht und decken zusammen alles ab.
+        s1 = store.wortbeitraege_person("Tim Harms", limit=2, offset=0)
+        s2 = store.wortbeitraege_person("Tim Harms", limit=2, offset=2)
+        assert len(s1["items"]) == 2 and len(s2["items"]) == 2
+        assert {w["text"] for w in s1["items"]}.isdisjoint({w["text"] for w in s2["items"]})
+        assert s1["total"] == 4
+
+        # Unbekanntes Gremium → leere Seite, aber ehrliche Gesamtzahl.
+        leer = store.wortbeitraege_person("Tim Harms", gremium="Sportausschuss")
+        assert leer["items"] == [] and leer["total"] == 0 and leer["gesamt"] == 4
+    finally:
+        store.close()
+
+
+def test_member_name_und_erste_seite(tmp_path):
+    store = _wb_store(tmp_path)
+    try:
+        assert store.member_name("tim-harms") == "Tim Harms"
+        assert store.member_name("gibt-es-nicht") is None
+        d = store.member_detail("tim-harms")
+        assert d["wortbeitraege_gesamt"] == 4
+        assert len(d["wortbeitraege"]) == 4          # weniger als eine volle Seite
+        assert {g["committee"] for g in d["wortbeitraege_gremien"]} == {"Rat", "Verkehrsausschuss"}
+    finally:
+        store.close()

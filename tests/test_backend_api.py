@@ -2414,6 +2414,17 @@ def test_thema_und_person_sind_ohne_anmeldung_lesbar(client):
     assert client.get("/api/council/person/gibtsnicht").status_code == 404
     assert client.get("/api/council/entity/gibtsnicht").status_code == 404
 
+    # Die Wortbeiträge-Seiten derselben Person: gleicher Bestand, nur
+    # vollständig — und ebenfalls ohne Anmeldung lesbar.
+    wb = client.get("/api/council/person/anke-luedtke/wortbeitraege?limit=5")
+    assert wb.status_code == 200
+    b = wb.json()
+    assert set(b) >= {"items", "total", "gesamt", "gremien"}
+    assert client.get("/api/council/person/gibtsnicht/wortbeitraege").status_code == 404
+    # Grenzen greifen: limit über 100 und negatives offset werden abgewiesen.
+    assert client.get("/api/council/person/anke-luedtke/wortbeitraege?limit=500").status_code == 422
+    assert client.get("/api/council/person/anke-luedtke/wortbeitraege?offset=-1").status_code == 422
+
 
 def test_stoebern_und_persoenliches_bleiben_hinter_der_anmeldung(client):
     """Regressionsschutz zur Öffnung oben: Geöffnet wurden GENAU die geteilten
