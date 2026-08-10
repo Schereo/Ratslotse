@@ -84,6 +84,31 @@ def wants_push(owner: dict) -> bool:
     )
 
 
+def push_quittung(owner: dict, titel: str, text: str, url: str) -> bool:
+    """Push OHNE Warteschlange — für die **Quittung einer Handlung** des Nutzers
+    („deine Recherche ist fertig"), nicht für einen Ratsvorgang.
+
+    Die Grenzen aus 30a gelten hier bewusst nicht, und zwar aus demselben Grund,
+    aus dem es sie gibt: Sie zähmen Meldungen, die *wir* anfangen. Diese hier hat
+    der Nutzer selbst vor ein paar Minuten ausgelöst. Bis 7 Uhr früh liegen zu
+    bleiben wäre sinnlos, und von zwei Sitzungsmeldungen verdrängt zu werden erst
+    recht. Auch der Zustellweg entscheidet nicht mit: Wer „nur E-Mail" gewählt
+    hat, meinte Neuigkeiten aus dem Rat — nicht die Antwort auf seinen eigenen
+    Auftrag. Eine E-Mail gibt es dafür nicht; ein Zwei-Minuten-Job ist kein
+    Briefanlass.
+
+    Einzige Ausnahme ist das ausdrückliche ``off``: Wer alles abgeschaltet hat,
+    hört auch hier nichts. Rückgabe: wurde ein Push abgeschickt?
+    """
+    if owner.get("delivery_channel") == "off":
+        return False
+    devices = owner.get("push_tokens") or []
+    if not devices or not push_ready():
+        return False
+    _send_push_and_prune(devices, titel, text, {"url": url})
+    return True
+
+
 def deliver_message(owner: dict, message_html: str, email_subject: str,
                     push_url: str = "/dashboard") -> list[str]:
     """Deliver a single formatted message (HTML) to the owner's channel(s).

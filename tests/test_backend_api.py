@@ -2641,6 +2641,28 @@ def test_deep_research_roundtrip_und_replay(client, monkeypatch):
     assert client.get("/api/council/deep-research/aktuell").json()["job"] is None
 
 
+def test_deep_research_meldet_sich_am_ende(client, monkeypatch):
+    """Am Ende eines echten Job-Laufs steht die Fertig-Meldung — und der Stopp
+    löst keine aus (die war eine bewusste Handlung, kein Ergebnis)."""
+    from app import deepresearch
+
+    _register(client)
+    _deep_mocks(monkeypatch)
+    gemeldet: list[str] = []
+    monkeypatch.setattr(deepresearch, "melden",
+                        lambda job, nwz_db, status: gemeldet.append(status))
+
+    job_id = client.post("/api/council/deep-research",
+                         json={"frage": "Wie ist der Stand beim Stadionneubau?"}).json()["job_id"]
+    _deep_events(client, job_id)  # blockiert bis der Job fertig ist
+    assert gemeldet == ["fertig"]
+
+    gemeldet.clear()
+    job = deepresearch.DeepJob(id="x", user_id=1, frage="egal")
+    deepresearch._gestoppt(job, NWZ_DB)
+    assert gemeldet == []
+
+
 def test_deep_research_kontingent_und_ein_job_regel(client, monkeypatch):
     """Kontingent 5/Tag je KONTO aus der DB: laufende und fertige Jobs zählen,
     gestoppte/fehlgeschlagene nicht (Design 8c: Abbruch kostet nichts). Und:

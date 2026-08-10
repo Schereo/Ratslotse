@@ -13,11 +13,22 @@ const MOBILE = process.env.MOBILE === "1";
 // same-origin /api (no CORS, cookies work). In production Caddy may handle /api
 // directly; this rewrite is the fallback / dev convenience.
 async function rewrites() {
-  return [
+  // Der API-Proxy steht in `fallback`, nicht in der Array-Kurzform. Die
+  // Kurzform entspricht `afterFiles` — und afterFiles-Rewrites greifen VOR
+  // dynamischen Routen. Ein Route-Handler mit Parameter, etwa
+  // app/api/council/deep-research/[jobId]/events, käme damit nie zum Zug: Der
+  // Proxy fängt die Anfrage vorher ab. Genau das ist passiert und hat den
+  // Event-Stream der Gründlichen Recherche gepuffert (die Fortschrittskarte
+  // blieb beim ersten Schritt stehen). `fallback` läuft nach den dynamischen
+  // Routen: Wer einen eigenen Handler hat, bekommt ihn; alles andere geht wie
+  // bisher direkt ans Backend.
+  const api = [
     {
       source: "/api/:path*",
       destination: `${BACKEND_URL}/api/:path*`,
     },
+  ];
+  const dateien = [
     // Apple fetches the AASA (Universal Links) at the extensionless URL but
     // requires Content-Type application/json. The file keeps a .json extension
     // on disk so Next's static serving sets the right type; this maps the
@@ -34,6 +45,7 @@ async function rewrites() {
     { source: "/docs", destination: "/docs/index.html" },
     { source: "/docs/:path*", destination: "/docs/:path*/index.html" },
   ];
+  return { afterFiles: dateien, fallback: api };
 }
 
 // Die alte /technik-Seite ist durch die Technik-Doku unter /docs ersetzt —

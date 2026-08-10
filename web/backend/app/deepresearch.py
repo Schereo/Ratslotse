@@ -38,6 +38,16 @@ TOKEN_BUENDEL = 150        # Token-Deltas zu Events bündeln (Replay bleibt schl
 MAX_PARALLEL = 4           # globaler Deckel gleichzeitiger Recherchen
 TAGES_KONTINGENT = 5       # je Konto (RG-10: „noch n von 5 heute")
 
+#: Wartezeit vor der Fertig-Meldung. Zwei Dinge sollen in dieser Spanne noch
+#: passieren dürfen: Ein Client, der gerade am Job hängt, verarbeitet das
+#: ``done``-Event und meldet „gesehen"; und wer die App in genau dieser Sekunde
+#: öffnet, sieht den Bericht, bevor das Banner kommt.
+MELDE_VERZUG = 12
+#: Ziel des Antippens: Auf der Frage-Seite holt sich der Client einen fertigen,
+#: noch ungesehenen Bericht von selbst zurück (8d) — es braucht keine eigene
+#: Job-Route.
+MELDE_ZIEL = "/council?tab=decisions&mode=fragen"
+
 # Wie in council.py: Reranker-Logits → ehrliche absolute Relevanz.
 RERANK_BIAS = 1.5
 
@@ -58,6 +68,12 @@ class DeepJob:
     material: dict | None = None
     facetten_fertig: int = 0
     facetten_gesamt: int = 0
+    #: Wie viele Clients gerade per SSE am Job hängen — entscheidet, ob es zum
+    #: Schluss eine Push-Meldung gibt (wer zusieht, braucht kein Banner).
+    zuschauer: int = 0
+    #: Einmal melden, nicht je Anlauf (Teilbericht nach Stopp, Fehler nach
+    #: Teilbericht …).
+    gemeldet: bool = False
 
 
 _registry: dict[str, DeepJob] = {}
@@ -101,21 +117,30 @@ def sse_events(job: DeepJob, ab: int = 0):
     Niemals unter gehaltenem Lock yielden (der Consumer kann beliebig
     langsam sein); Keepalive-Kommentare halten Proxies bei Laune."""
     i = max(0, ab)
-    while True:
+    with job.cond:
+        job.zuschauer += 1
+    try:
+        while True:
+            with job.cond:
+                while i >= len(job.events) and not job.done:
+                    if not job.cond.wait(timeout=15):
+                        break  # Timeout → Keepalive senden
+                batch = job.events[i:]
+                i += len(batch)
+                fertig = job.done and i >= len(job.events)
+            if batch:
+                for e in batch:
+                    yield "data: " + json.dumps(e, ensure_ascii=False) + "\n\n"
+            elif not fertig:
+                yield ": ping\n\n"
+            if fertig:
+                return
+    finally:
+        # Auch bei Verbindungsabbruch (GeneratorExit) — sonst zählte ein
+        # weggeklappter Laptop für immer als Zuschauer und die Meldung bliebe
+        # aus, genau wenn sie gebraucht wird.
         with job.cond:
-            while i >= len(job.events) and not job.done:
-                if not job.cond.wait(timeout=15):
-                    break  # Timeout → Keepalive senden
-            batch = job.events[i:]
-            i += len(batch)
-            fertig = job.done and i >= len(job.events)
-        if batch:
-            for e in batch:
-                yield "data: " + json.dumps(e, ensure_ascii=False) + "\n\n"
-        elif not fertig:
-            yield ": ping\n\n"
-        if fertig:
-            return
+            job.zuschauer = max(0, job.zuschauer - 1)
 
 
 def start_job(job: DeepJob, nwz_db: str, council_db: str) -> None:
@@ -138,6 +163,72 @@ def teilbericht_starten(job: DeepJob, nwz_db: str, council_db: str) -> bool:
                      args=(job, nwz_db, council_db, True),
                      daemon=True, name=f"deep-teil-{job.id}").start()
     return True
+
+
+def _melde_text(status: str, frage: str) -> tuple[str, str]:
+    """Titel und Text der Fertig-Meldung. Die Frage steht im Text, nicht im
+    Titel: Auf dem Sperrbildschirm ist der Titel fett und kurz, die Frage darf
+    umbrechen — und ohne sie wüsste bei zwei Recherchen am Tag niemand, welche
+    gemeint ist."""
+    kurz = frage.strip()
+    if len(kurz) > 120:
+        kurz = kurz[:119].rsplit(" ", 1)[0] + " …"
+    zitat = "„" + kurz + "“"
+    if status == "fehler":
+        return ("Recherche fehlgeschlagen",
+                f"{zitat} — der Versuch zählt nicht gegen dein Tageskontingent.")
+    if status == "teilbericht":
+        return ("Teilbericht ist fertig", zitat)
+    return ("Deine Recherche ist fertig", zitat)
+
+
+def melden(job: DeepJob, nwz_db: str, status: str) -> None:
+    """Fertig-Meldung anstoßen — verzögert und nur, wenn niemand zusieht.
+
+    Wer den Bericht gerade vor sich hat, bekommt kein Banner über den eigenen
+    Text (Tims Vorgabe). „Niemand sieht zu" heißt hier zweierlei, und beides
+    muss zutreffen: kein SSE-Client mehr am Job **und** der Bericht ist nicht
+    als gesehen gemeldet. Die zweite Bedingung ist die belastbarere — eine
+    schlafende App kann ihre Verbindung noch offen halten, ohne dass jemand
+    hinschaut, aber „gesehen" meldet der Client nur bei sichtbarem Tab.
+    """
+    if job.gemeldet:
+        return
+    job.gemeldet = True
+    t = threading.Timer(MELDE_VERZUG, _melden_jetzt, args=(job, nwz_db, status))
+    t.daemon = True   # ein Neustart soll nicht auf die Meldung warten
+    t.name = f"deep-melden-{job.id}"
+    t.start()
+
+
+def _melden_jetzt(job: DeepJob, nwz_db: str, status: str) -> None:
+    from nwz import delivery
+
+    try:
+        if job.zuschauer > 0:
+            return
+        # Ohne APNs/FCM (Web-only-Deployment, Tests) gibt es nichts zu melden —
+        # dann auch keine DB anfassen.
+        if not delivery.push_ready():
+            return
+        store = Store(nwz_db)
+        try:
+            zeile = store.deep_job_get(job.id, job.user_id)
+            if not zeile or zeile.get("gesehen"):
+                return
+            owner = store.get_owner_delivery(job.user_id)
+        finally:
+            # Vor dem Versand schließen: send_push räumt abgelaufene Tokens über
+            # eine eigene Verbindung ab, und zwei offene Handles auf dieselbe
+            # Datei sind unnötig.
+            store.close()
+        if not owner:
+            return
+        titel, text = _melde_text(status, job.frage)
+        if delivery.push_quittung(owner, titel, text, MELDE_ZIEL):
+            _log.info("deep %s: Fertig-Meldung an Konto %s (%s)", job.id, job.user_id, status)
+    except Exception:  # noqa: BLE001 — eine Meldung darf nichts umbringen
+        _log.exception("deep %s: Fertig-Meldung fehlgeschlagen", job.id)
 
 
 def _quellen_payload(m: dict, cited: list[int]) -> dict:
@@ -308,6 +399,7 @@ def _run(job: DeepJob, nwz_db: str, council_db: str) -> None:
             _db_update(nwz_db, job.id, "fertig", bericht=text,
                        quellen_json=json.dumps(_quellen_payload(m, []), ensure_ascii=False))
             _finish(job)
+            melden(job, nwz_db, "fertig")
             return
 
         # ---- Phase 3: lesen (volle Vorlagen-Auszüge) ---------------------
@@ -413,6 +505,7 @@ def _schreiben_und_abschliessen(job: DeepJob, nwz_db: str, council_db: str,
                     "zeitraum": m.get("zeitraum", ""), "gespraech_id": gespraech_id,
                     "teilbericht": teilbericht})
         _finish(job)
+        melden(job, nwz_db, status)
         registry_aufraeumen()
     except Exception:  # noqa: BLE001
         _log.exception("deep %s: Bericht scheiterte", job.id)
@@ -486,3 +579,7 @@ def _fehler(job: DeepJob, nwz_db: str) -> None:
     except Exception:  # noqa: BLE001
         pass
     _finish(job)
+    # Auch der Fehlschlag wird gemeldet: Wer die App weggelegt hat, wartet sonst
+    # auf einen Bericht, der nie kommt. Ein Stopp dagegen (``_gestoppt``) war
+    # eine bewusste Handlung — der meldet sich nicht selbst zurück.
+    melden(job, nwz_db, "fehler")
