@@ -304,7 +304,8 @@ CREATE TABLE IF NOT EXISTS qa_shares (
     frage    TEXT NOT NULL,
     antwort  TEXT NOT NULL,
     quellen  TEXT,                  -- JSON [{id, title, session_date, committee, outcome}]
-    created  TEXT NOT NULL
+    created  TEXT NOT NULL,
+    extras   TEXT                   -- JSON {debatten, presse, anlagen, parteien}
 );
 
 -- „Gründliche Recherche" (RG-10): server-seitige Recherche-Jobs. Der Job
@@ -600,6 +601,12 @@ class Store:
                                  ("answer_unit", "TEXT"), ("range_min", "REAL"), ("range_max", "REAL")):
                     if col not in uq_cols:
                         self._conn.execute(f"ALTER TABLE user_quiz_questions ADD COLUMN {col} {ddl}")
+        # Geteilte Antworten tragen seit dem Bausteine-Nachtrag auch Debatten,
+        # Presse, Anlagen und Parteien-Positionen — alte Zeilen bleiben ohne.
+        qs_cols = self._table_cols("qa_shares")
+        if qs_cols and "extras" not in qs_cols:
+            with self._conn:
+                self._conn.execute("ALTER TABLE qa_shares ADD COLUMN extras TEXT")
         # Zustellversuche der Warteschlange (30a-Nachtrag): bestehende
         # Installationen haben die Spalte noch nicht.
         nq_cols = self._table_cols("notification_queue")
@@ -1500,25 +1507,30 @@ class Store:
                                (1 if an else 0, user_id))
 
     def qa_share_anlegen(self, user_id: int, frage: str, antwort: str,
-                         quellen: list[dict] | None) -> str:
+                         quellen: list[dict] | None,
+                         extras: dict | None = None) -> str:
         """Snapshot einer geteilten Antwort (Task 31) → öffentliches Token.
-        Bewusste Einzel-Veröffentlichung — unabhängig vom Gespräche-Opt-in."""
+        Bewusste Einzel-Veröffentlichung — unabhängig vom Gespräche-Opt-in.
+        `extras` hält die Bausteine neben den Beschlüssen (Debatten, Presse,
+        Anlagen, Parteien-Positionen), damit die geteilte Seite dieselbe
+        Antwort zeigt wie das Gespräch — und nicht nur deren Textkern."""
         import secrets
 
         token = secrets.token_urlsafe(16)
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
             self._conn.execute(
-                "INSERT INTO qa_shares (token, user_id, frage, antwort, quellen, created) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO qa_shares (token, user_id, frage, antwort, quellen, created, extras) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (token, user_id, frage[:300], antwort[:8000],
-                 json.dumps(quellen or [], ensure_ascii=False), now))
+                 json.dumps(quellen or [], ensure_ascii=False), now,
+                 json.dumps(extras, ensure_ascii=False) if extras else None))
         return token
 
     def qa_share_get(self, token: str) -> dict | None:
         """Öffentliche Sicht eines Snapshots — OHNE user_id."""
         row = self._conn.execute(
-            "SELECT frage, antwort, quellen, created FROM qa_shares WHERE token = ?",
+            "SELECT frage, antwort, quellen, created, extras FROM qa_shares WHERE token = ?",
             (token,)).fetchone()
         if not row:
             return None
@@ -1526,8 +1538,18 @@ class Store:
             quellen = json.loads(row["quellen"] or "[]")
         except (ValueError, TypeError):
             quellen = []
+        # Vor dem Bausteine-Nachtrag geteilte Antworten haben keine extras —
+        # die Seite zeigt sie dann wie bisher nur mit den Beschlüssen.
+        try:
+            extras = json.loads(row["extras"] or "{}")
+        except (ValueError, TypeError):
+            extras = {}
         return {"frage": row["frage"], "antwort": row["antwort"],
-                "quellen": quellen, "created": row["created"]}
+                "quellen": quellen, "created": row["created"],
+                "debatten": extras.get("debatten") or [],
+                "presse": extras.get("presse") or [],
+                "anlagen": extras.get("anlagen") or [],
+                "parteien": extras.get("parteien") or []}
 
     # ---- „Gründliche Recherche" (RG-10, Task 34) ---------------------------
 

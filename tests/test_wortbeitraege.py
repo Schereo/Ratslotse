@@ -365,6 +365,10 @@ def test_debatten_block_format():
     assert "Anfrage von Ratsfrau Meyer (SPD)" in block
     assert "Antwort der Verwaltung: Prüfung bis Q3." in block
     assert "Verkehrsausschuss" in block
+    # Datum deutsch: das Modell übernimmt das Format aus dem Kontext wörtlich,
+    # ISO landete sonst als „am 2026-04-12" in der Antwort (Tims Befund 10.08.).
+    assert "am 12.04.2026" in block
+    assert "2026-04-12" not in block
     assert qa._debatten_block([]) == ""
     assert qa._debatten_block(None) == ""
 
