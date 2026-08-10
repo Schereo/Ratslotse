@@ -571,6 +571,14 @@ class Store:
                     # 6a①②: NULL = noch nie gefragt (Erstnutzungs-Karte),
                     # 1 = Gespräche speichern, 0 = bewusst aus.
                     self._conn.execute("ALTER TABLE web_users ADD COLUMN qa_speichern INTEGER")
+                if "deep_limit" not in wu_cols:
+                    # Admin-steuerbare Frage-Limits je Konto (10.08.26):
+                    # deep_limit = Recherchen/Tag (NULL = Standard,
+                    # 0 = unbegrenzt, N = eigenes Limit); limits_frei = 1
+                    # überspringt die Rate-Limiter der Frage-Endpoints.
+                    self._conn.execute("ALTER TABLE web_users ADD COLUMN deep_limit INTEGER")
+                    self._conn.execute(
+                        "ALTER TABLE web_users ADD COLUMN limits_frei INTEGER NOT NULL DEFAULT 0")
                 # Einrichtungs-Assistent (Design 26a): welcher Schritt zuletzt
                 # erreicht wurde. Eigene Spalten statt der onboarding-JSON —
                 # die gehört der „Erste Schritte"-Tour, und der Erinnerungs-Cron
@@ -1371,6 +1379,15 @@ class Store:
         ).fetchone()
         return dict(row) if row else None
 
+    def set_web_user_limits(self, user_id: int, deep_limit: int | None,
+                            limits_frei: bool) -> None:
+        """Admin-steuerbare Frage-Limits je Konto: Recherche-Tageslimit
+        (None = Standard, 0 = unbegrenzt) + Rate-Limit-Befreiung."""
+        with self._conn:
+            self._conn.execute(
+                "UPDATE web_users SET deep_limit = ?, limits_frei = ? WHERE id = ?",
+                (deep_limit, 1 if limits_frei else 0, user_id))
+
     def list_web_users(self) -> list[dict]:
         rows = self._conn.execute(
             "SELECT id, email, role, status, email_verified, created_at "
@@ -1847,6 +1864,8 @@ class Store:
                 "SELECT MAX(day) FROM user_activity WHERE owner_id = ?", (uid,)).fetchone()[0],
             "apple_linked": bool(u.get("apple_sub")), "has_password": bool(u.get("password_set", 1)),
             "delivery_channel": u.get("delivery_channel", "email"),
+            # Admin-steuerbare Frage-Limits (10.08.26) — fürs Formular im Detail.
+            "deep_limit": u.get("deep_limit"), "limits_frei": bool(u.get("limits_frei")),
             "features": {"ki_frage": feats.get("ki_frage", 0), "suche": feats.get("suche", 0),
                          "quiz": n_quiz, "analyse": feats.get("analyse", 0), "karte": feats.get("karte", 0)},
             "topics": topics, "abos": abos, "verlauf": verlauf, "verlauf_days": verlauf_days,

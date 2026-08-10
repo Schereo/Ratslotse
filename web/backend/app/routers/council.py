@@ -522,7 +522,8 @@ def partei_meinungen_endpoint(
     deutlich mehr Debatten-Treffer als die Belege (top_k=24, Cross-Encoder-
     geprüft) und verdichtet sie per LLM je Fraktion. Leer ({parteien: []}),
     wenn die Datenlage zu dünn ist — der Baustein erscheint dann nicht."""
-    partei_meinungen_limiter.check(request)
+    if not user.get("limits_frei"):
+        partei_meinungen_limiter.check(request)
     try:
         import hashlib
 
@@ -581,7 +582,8 @@ def qa_share_anlegen(
     """Teilen mit Substanz (Task 31): speichert die KONKRETE Antwort als
     Snapshot — der alte ?q=-Link ließ Empfänger die Frage neu würfeln und
     eine andere Antwort sehen. Bewusste Einzel-Veröffentlichung per Klick."""
-    qa_share_limiter.check(request)
+    if not user.get("limits_frei"):
+        qa_share_limiter.check(request)
     token = nwz.qa_share_anlegen(user["id"], body.frage, body.antwort,
                                  [q.model_dump() for q in body.quellen])
     return {"token": token}
@@ -613,8 +615,20 @@ class DeepResearchBody(BaseModel):
     gespraech_id: int | None = Field(default=None, ge=1)
 
 
-def _deep_frei(nwz: Store, user_id: int) -> int:
-    return max(0, deepresearch.TAGES_KONTINGENT - nwz.deep_jobs_heute(user_id))
+def _deep_limit(user: dict) -> int | None:
+    """Tageslimit des Kontos: Admin-Override aus web_users.deep_limit —
+    None = unbegrenzt (Wert 0), sonst eigener Wert bzw. Standard."""
+    override = user.get("deep_limit")
+    if override == 0:
+        return None
+    return override if override is not None else deepresearch.TAGES_KONTINGENT
+
+
+def _deep_frei(nwz: Store, user: dict) -> int | None:
+    limit = _deep_limit(user)
+    if limit is None:
+        return None  # unbegrenzt — der Client zeigt dann keinen Zähler
+    return max(0, limit - nwz.deep_jobs_heute(user["id"]))
 
 
 @router.post("/deep-research", status_code=status.HTTP_201_CREATED)
@@ -622,8 +636,10 @@ def deep_research_start(body: DeepResearchBody, user: dict = Depends(require_act
                         nwz: Store = Depends(get_store)) -> dict:
     """Recherche-Job starten. Kontingent: 5/Tag je KONTO aus der DB (nicht
     IP — übersteht Neustarts, und Abbruch/Fehler kosten laut Design nichts,
-    was ein Fenster-Zähler nicht abbilden kann)."""
-    if nwz.deep_jobs_heute(user["id"]) >= deepresearch.TAGES_KONTINGENT:
+    was ein Fenster-Zähler nicht abbilden kann). Admins können das Limit je
+    Konto erhöhen oder ausschalten (web_users.deep_limit)."""
+    limit = _deep_limit(user)
+    if limit is not None and nwz.deep_jobs_heute(user["id"]) >= limit:
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS,
                             "Deine Recherchen für heute sind aufgebraucht — ab morgen geht es weiter.")
     if deepresearch.laufende_jobs(user["id"]) >= 1:
@@ -639,7 +655,7 @@ def deep_research_start(body: DeepResearchBody, user: dict = Depends(require_act
     job = deepresearch.DeepJob(id=job_id, user_id=user["id"], frage=frage,
                                gespraech_id=body.gespraech_id)
     deepresearch.start_job(job, settings.nwz_db, settings.council_db)
-    return {"job_id": job_id, "frei": _deep_frei(nwz, user["id"])}
+    return {"job_id": job_id, "frei": _deep_frei(nwz, user)}
 
 
 @router.get("/deep-research/aktuell")
@@ -649,7 +665,7 @@ def deep_research_aktuell(user: dict = Depends(require_active),
     Navigation/App-Neustart einen laufenden Job oder ungesehenen Bericht
     wiederfindet, ohne sich die ID gemerkt zu haben."""
     return {"job": nwz.deep_job_aktuell(user["id"]),
-            "frei": _deep_frei(nwz, user["id"])}
+            "frei": _deep_frei(nwz, user)}
 
 
 @router.get("/deep-research/{job_id}")
@@ -1201,7 +1217,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
     → the answer token-by-token → a final event with the cited ids. Streaming makes
     the wait feel far shorter (sources show in ~2 s) and degrades gracefully if a
     proxy buffers it (the client then renders the same final state at once)."""
-    qa_limiter.check(request)  # LLM-Kosten pro Aufruf — nicht unbegrenzt feuern lassen
+    if not user.get("limits_frei"):  # Admin kann Konten befreien (web_users.limits_frei)
+        qa_limiter.check(request)  # LLM-Kosten pro Aufruf — nicht unbegrenzt feuern lassen
     nwz.record_activity(user["id"], "ki_frage")  # Admin-Statistik (20a)
     q = body.question.strip()
     if len(q) < 4:

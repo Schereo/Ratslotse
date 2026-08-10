@@ -2740,3 +2740,76 @@ def test_deep_research_stop_teilbericht_und_verwaiste(client, monkeypatch):
     finally:
         deepresearch._registry.clear()
         store.close()
+
+
+# ---- Admin-steuerbare Frage-Limits (10.08.26) ----
+
+def test_admin_limits_steuern_recherche_kontingent(client, monkeypatch):
+    """Admins erhöhen das Recherche-Tageslimit je Konto oder schalten es ab
+    (deep_limit: NULL=Standard, 0=unbegrenzt, N=eigen) — der Start-Endpoint
+    und die frei-Anzeige folgen dem Override."""
+    from app import deepresearch
+
+    _register(client)  # admin@test.de mit Adminrechten
+    monkeypatch.setattr(deepresearch, "start_job",
+                        lambda job, a, b: deepresearch._registry.__setitem__(job.id, job))
+    deepresearch._registry.clear()
+    store = Store(NWZ_DB)
+    try:
+        uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
+        # Eigenes Limit 2: nach zwei zählenden Jobs ist Schluss.
+        r = client.put(f"/api/admin/users/{uid}/limits",
+                       json={"deep_limit": 2, "limits_frei": False})
+        assert r.status_code == 200 and r.json()["deep_limit"] == 2
+        for i in range(2):
+            store.deep_job_update(store.deep_job_anlegen(uid, f"F{i}"), "fertig")
+        assert client.post("/api/council/deep-research",
+                           json={"frage": "Noch eine Recherche?"}).status_code == 429
+        # Unbegrenzt (0): derselbe Stand startet wieder, frei wird null.
+        client.put(f"/api/admin/users/{uid}/limits",
+                   json={"deep_limit": 0, "limits_frei": False})
+        r = client.post("/api/council/deep-research", json={"frage": "Und jetzt unbegrenzt?"})
+        assert r.status_code == 201 and r.json()["frei"] is None
+        deepresearch._registry.clear()
+        akt = client.get("/api/council/deep-research/aktuell").json()
+        assert akt["frei"] is None
+        # Detail fürs Admin-Formular trägt beide Felder.
+        detail = client.get(f"/api/admin/users/{uid}").json()
+        assert detail["deep_limit"] == 0 and detail["limits_frei"] is False
+    finally:
+        deepresearch._registry.clear()
+        store.close()
+
+
+def test_limits_frei_ueberspringt_rate_limiter(client, monkeypatch):
+    """limits_frei=1 lässt die Frage-Endpoints am Rate-Limiter VORBEI —
+    gemessen am check()-Aufruf selbst (DISABLE_RATE_LIMIT macht check nur
+    wirkungslos, aufgerufen würde er trotzdem)."""
+    from app.routers import council as council_router
+    from council import qa as qa_mod
+
+    _register(client)
+    aufrufe = []
+    monkeypatch.setattr(council_router.qa_limiter, "check",
+                        lambda request: aufrufe.append(1))
+    cand = [{"id": 5, "title": "Radweg", "summary": "Ausbau", "policy_field": "verkehr",
+             "outcome": "angenommen", "session_date": "2026-07-02",
+             "committee": "Verkehrsausschuss", "score": 1.0}]
+    monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (cand, "semantisch"))
+    monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
+    monkeypatch.setattr(qa_mod, "answer_stream", lambda *a, **k: iter(["Wird ausgebaut [5]."]))
+
+    def frag():
+        with client.stream("POST", "/api/council/ask", json={"question": "Was ist mit Radwegen?"}):
+            pass
+
+    frag()
+    assert len(aufrufe) == 1  # normal: Limiter wird gefragt
+    store = Store(NWZ_DB)
+    try:
+        uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
+        client.put(f"/api/admin/users/{uid}/limits", json={"deep_limit": None, "limits_frei": True})
+    finally:
+        store.close()
+    frag()
+    assert len(aufrufe) == 1  # befreit: kein weiterer check-Aufruf
