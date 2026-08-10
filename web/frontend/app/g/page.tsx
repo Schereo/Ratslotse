@@ -12,6 +12,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { BrandMark } from "@/components/brand";
+import { ShareAktionen } from "@/components/share-aktionen";
 
 export const dynamic = "force-dynamic";
 
@@ -143,6 +144,7 @@ export default async function GeteiltPage({ searchParams }: PageProps) {
               </ol>
             </div>
           )}
+          <ShareAktionen token={t ?? ""} />
           <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground/80">
             Automatische Antwort von „Frag den Rat" auf ratslotse.de, geteilt am {fmtDatum(share.created)} —
             Stand des Ratsinformationssystems zu diesem Zeitpunkt. Kann unvollständig sein; Quellen prüfen.

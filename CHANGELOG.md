@@ -18,6 +18,14 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   „Laut Protokoll …", nie als Beschluss. (#387)
 
 ### Verbessert
+- **Von geteilten Antworten direkt weiterfragen.** Wer angemeldet ist,
+  springt von einer geteilten Antwort mit einem Klick ins Ratsgespräch —
+  die geteilte Frage samt Antwort steht dort als Gesprächsbeginn, und
+  Anschlussfragen knüpfen automatisch daran an. Ohne Konto zeigt die Seite
+  „Kostenlos registrieren" und „Anmelden"; nach beidem geht es direkt im
+  Gespräch weiter, nicht auf dem Dashboard. (#402)
+
+### Verbessert
 - **Geteilte Links zeigen eine echte Vorschau.** Wer einen „Frag den
   Rat"-Link in WhatsApp, Signal oder Slack teilt, sieht dort jetzt die
   Frage als Titel und den Anfang der Antwort als Beschreibung — statt
