@@ -1516,6 +1516,7 @@ function ParteienBaustein({ frage, onFrageStellen }: {
 }) {
   const [parteien, setParteien] = useState<ParteiMeinung[] | null>(
     () => parteiMeinungenCache.get(frage) ?? null);
+  const [ohneBeitraege, setOhneBeitraege] = useState<string[]>([]);
   // Klick auf die Zeile klappt die verdichteten Original-Beiträge auf
   // (Tims Wunsch: „auf die Partei klicken, um alle Beiträge zu sehen").
   const [offen, setOffen] = useState<string | null>(null);
@@ -1533,7 +1534,10 @@ function ParteienBaustein({ frage, onFrageStellen }: {
         const sortiert = ((b.parteien as ParteiMeinung[]) ?? [])
           .slice().sort((a, z) => z.beitraege - a.beitraege);
         parteiMeinungenCache.set(frage, sortiert);
-        if (aktiv) setParteien(sortiert);
+        if (aktiv) {
+          setParteien(sortiert);
+          setOhneBeitraege((b.ohne_beitraege as string[]) ?? []);
+        }
       })
       // Fehler NICHT cachen: ein transienter 4xx/5xx soll den Baustein nur
       // für diesen Moment verstecken, nicht bis zum nächsten Voll-Reload.
@@ -1648,6 +1652,11 @@ function ParteienBaustein({ frage, onFrageStellen }: {
             })}
           </div>
           <p className="mt-1.5 border-t border-dashed border-border pt-2 text-[10px] leading-normal text-muted-foreground/70">
+            {/* Vollständigkeits-Ehrlichkeit (Tims Direktive): fehlende Fraktionen
+                benennen statt still weglassen. */}
+            {ohneBeitraege.length > 0 && (
+              <>Keine passenden Wortbeiträge gefunden von: {ohneBeitraege.join(", ")}.{" "}</>
+            )}
             Verdichtet aus den Wortbeiträgen der Sitzungsprotokolle — Paraphrasen, keine wörtlichen Zitate.
           </p>
         </>
