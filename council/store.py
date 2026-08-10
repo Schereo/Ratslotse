@@ -2919,6 +2919,95 @@ class CouncilStore:
             [f"%{v}%" for v in varianten] + [limit]).fetchall()
         return [dict(r) for r in rows]
 
+    #: Anreden, die vor einem Namen stehen dürfen, ohne ihn zu einem anderen zu
+    #: machen. Ohne die Liste hielte „Ratsfrau Hufeland" einen Vornamen für
+    #: vorhanden und fiele aus der Zuordnung.
+    #: Rollen zählen mit: „Ratsvorsitzender Harms" ist eine Funktion plus
+    #: Nachname, kein zweiter Name — genau wie „Ratsherr Harms".
+    _ANREDEN = {"ratsfrau", "ratsherr", "frau", "herr", "ratsmitglied",
+                "oberbuergermeister", "oberbürgermeister", "buergermeister",
+                "bürgermeister", "stadtrat", "staedtrat",
+                "ratsvorsitzender", "ratsvorsitzende", "vorsitzender", "vorsitzende",
+                "ausschussvorsitzender", "ausschussvorsitzende"}
+
+    @classmethod
+    def _spricht_diese_person(cls, sprecher: str, vorname: str, nachname: str) -> bool:
+        """Gehört dieser Sprecher-Eintrag zu genau dieser Person?
+
+        Die Protokolle schreiben denselben Menschen mal „Andrea Hufeland", mal
+        „Hufeland", mal „Ratsfrau Hufeland" — der Nachname allein muss also
+        reichen. Er reicht aber NICHT, wenn der Eintrag einen anderen Vornamen
+        trägt: „Dr. Ingo Harms" ist nicht „Tim Harms". Gemessen am Bestand ist
+        das selten (5 von 279 Treffern bei Harms), aber auf einer Seite, die
+        *alle* Beiträge zeigt, fällt jeder Fremdbeitrag auf.
+
+        Mehrere Sprecher in einem Eintrag („Christoph Baak, Dr. Esther
+        Niewerth-Baumann") gelten für beide — da haben tatsächlich beide geredet.
+        """
+        if not nachname:
+            return False
+        roh = cls._falte_namen(sprecher)
+        if cls._falte_namen(nachname) not in roh:
+            return False
+        if not vorname:
+            return True
+        v = cls._falte_namen(vorname)
+        if v in roh:
+            return True
+        # Kein passender Vorname: nur durchlassen, wenn der Eintrag überhaupt
+        # keinen führt (reiner Nachname, ggf. mit Anrede oder Titel).
+        rest = [t for t in re.split(r"[^\wäöüß]+", sprecher.lower()) if len(t) > 1]
+        nach_teile = set(re.split(r"[^\wäöüß]+", nachname.lower()))
+        for t in rest:
+            if t in nach_teile or t.rstrip(".") in cls._HONORIFICS or t in cls._ANREDEN:
+                continue
+            return False   # ein fremder Namensbestandteil → andere Person
+        return True
+
+    @staticmethod
+    def _falte_namen(s: str) -> str:
+        s = s.lower()
+        for a, b in (("ä", "ae"), ("ö", "oe"), ("ü", "ue"), ("ß", "ss")):
+            s = s.replace(a, b)
+        return s
+
+    def wortbeitraege_person(self, name: str, gremium: str | None = None,
+                             offset: int = 0, limit: int = 20) -> dict:
+        """Wortbeiträge einer Person — seitenweise und nach Gremium filterbar.
+
+        Gefiltert wird in Python statt in SQL: Die Zuordnung Sprecher→Person
+        kennt Schreibvarianten (s. ``_spricht_diese_person``), die keine
+        LIKE-Bedingung abbildet. Der Rohbestand je Person ist klein genug
+        (Vielredner kommen auf ~800 Beiträge), um ihn einmal zu holen.
+
+        Rückgabe: ``items`` (die angeforderte Seite), ``total`` (nach
+        Gremien-Filter), ``gesamt`` (ohne Filter) und ``gremien`` als Facetten
+        mit Anzahl — damit die Oberfläche gleich sagen kann, wo etwas zu holen
+        ist.
+        """
+        teile = [t for t in name.replace(".", " ").replace(",", " ").split()
+                 if t.lower().rstrip(".") not in self._HONORIFICS
+                 and t.lower() not in self._ANREDEN]
+        if not teile:
+            return {"items": [], "total": 0, "gesamt": 0, "gremien": []}
+        nachname, vorname = teile[-1], (teile[0] if len(teile) > 1 else "")
+        roh = self.wortbeitraege_von_sprecher(nachname, limit=5000)
+        meine = [w for w in roh
+                 if self._spricht_diese_person(w.get("sprecher") or "", vorname, nachname)]
+
+        from collections import Counter
+        zaehler = Counter(w["committee"] for w in meine if w.get("committee"))
+        gefiltert = [w for w in meine if not gremium or w.get("committee") == gremium]
+        seite = gefiltert[max(0, offset): max(0, offset) + max(1, min(limit, 100))]
+        return {
+            "items": [{"art": w["art"], "top": w["top"], "text": w["text"],
+                       "committee": w["committee"], "session_date": w["session_date"]}
+                      for w in seite],
+            "total": len(gefiltert),
+            "gesamt": len(meine),
+            "gremien": [{"committee": k, "n": n} for k, n in zaehler.most_common()],
+        }
+
     # --- Council members (from attendance: who sits on the council) ------------------
     _MEMBER_ROLES = ("mitglied", "vorsitz")  # exclude verwaltung/protokoll/gast/beratend
     # Titel UND Anreden: „Herr Jens Freymuth" und „Jens Freymuth" sind dieselbe
@@ -2985,6 +3074,17 @@ class CouncilStore:
                for sl, e in g.items()]
         out.sort(key=lambda m: -m["n"])
         return out
+
+    def member_name(self, slug: str) -> str | None:
+        """Der kanonische (häufigste) Name zu einem Slug — die schlanke Auskunft
+        für Endpunkte, die nicht das ganze Profil brauchen. Ohne Anrede, wie in
+        ``member_detail`` und im Verzeichnis (#419)."""
+        from collections import Counter
+        namen = [r["name"] for r in self._conn.execute(
+            "SELECT name FROM council_attendance WHERE role IN ('mitglied','vorsitz') "
+            "AND name IS NOT NULL AND name != ''")]
+        passend = [n for n in namen if self._person_slug(n) == slug]
+        return self._person_anzeige(Counter(passend).most_common(1)[0][0]) if passend else None
 
     def member_detail(self, slug: str) -> dict | None:
         """One member — all name variants merged by slug: party, sessions, active span,
@@ -3056,9 +3156,10 @@ class CouncilStore:
         # Wortbeiträge der Person (Personen-Paket 10.08.26): die jüngsten
         # Beiträge in voller Länge — das Beleg-Versprechen gilt auch hier.
         # Nachname = letztes Namens-Token ohne Titel (Umlaute intakt fürs LIKE).
-        toks = [t for t in name.replace(".", " ").split()
-                if t.lower().rstrip(".") not in self._HONORIFICS]
-        wortbeitraege = self.wortbeitraege_von_sprecher(toks[-1], limit=10) if toks else []
+        # Erste Seite der Wortbeiträge gleich mitliefern (die Seite soll ohne
+        # zweiten Rundlauf etwas zeigen); weitere Seiten und der Gremien-Filter
+        # laufen über /person/{slug}/wortbeitraege.
+        wb = self.wortbeitraege_person(name, limit=10)
         return {
             "name": name, "slug": slug,
             # Aktuelle Zugehörigkeit (Ende der geglätteten Zeitreihe) — nicht die
@@ -3071,9 +3172,9 @@ class CouncilStore:
                            for r in committees],
             "recent": [{"ksinr": r["ksinr"], "committee": r["committee"], "session_date": r["session_date"]}
                        for r in recent],
-            "wortbeitraege": [{"art": w["art"], "top": w["top"], "text": w["text"],
-                               "committee": w["committee"], "session_date": w["session_date"]}
-                              for w in wortbeitraege],
+            "wortbeitraege": wb["items"],
+            "wortbeitraege_gesamt": wb["gesamt"],
+            "wortbeitraege_gremien": wb["gremien"],
         }
 
     def decisions_for_amount(self, only_missing: bool = False) -> list[dict]:
