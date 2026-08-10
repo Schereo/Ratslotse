@@ -1032,6 +1032,12 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             yield _sse({"type": "step", "step": "answer"})
             if not candidates:
                 leer_text = "Dazu habe ich keine passenden Beschlüsse gefunden."
+                if debatten_rows:
+                    # Die Debatten-Treffer stehen bereits sichtbar in den
+                    # Belegen — ein hartes „nichts gefunden" daneben wäre
+                    # gelogen (Review-Befund zu #387).
+                    leer_text = ("Dazu habe ich keine passenden Beschlüsse gefunden — "
+                                 "aber Wortbeiträge aus den Ratsdebatten, siehe Belege.")
                 yield _sse({"type": "token", "text": leer_text})
                 # Auch der Kein-Treffer-Turn gehört ins gespeicherte Gespräch —
                 # sonst klafft im Transkript eine Lücke (Review-Befund B4).

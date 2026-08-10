@@ -18,7 +18,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -40,20 +40,23 @@ def process(db_path: Path, limit: int | None, workers: int) -> dict:
         todo = store.ksinr_ohne_wortbeitraege(limit or 0)
         ok = fehler = beitraege = 0
 
-        def extrahieren(ksinr: int):
-            text = store.protocol_raw_text(ksinr)  # nur Lesen, threadsicher genug
-            if not text:
-                return ksinr, None
-            try:
-                return ksinr, extract_wortbeitraege(text)
-            except Exception as exc:  # noqa: BLE001 — ein kaputtes Protokoll stoppt nicht den Lauf
-                print(f"  ksinr {ksinr}: FEHLER {exc}", flush=True)
-                return ksinr, None
-
-        # LLM-Calls in Workern, DB-Schreiben im Main-Thread (SQLite-Konvention).
+        # Nur LLM-Calls in den Workern; DB-Zugriffe (Lesen wie Schreiben)
+        # bleiben im Main-Thread — die eine Store-Connection ist nicht für
+        # parallele Nutzung gebaut (Review-Befund zu #387).
         with ThreadPoolExecutor(max_workers=workers) as pool:
-            for ksinr, rows in pool.map(extrahieren, todo):
-                if rows is None:
+            futs = {}
+            for ksinr in todo:
+                text = store.protocol_raw_text(ksinr)
+                if text:
+                    futs[pool.submit(extract_wortbeitraege, text)] = ksinr
+                else:
+                    fehler += 1
+            for fut in as_completed(futs):
+                ksinr = futs[fut]
+                try:
+                    rows = fut.result()
+                except Exception as exc:  # noqa: BLE001 — ein kaputtes Protokoll stoppt nicht den Lauf
+                    print(f"  ksinr {ksinr}: FEHLER {exc}", flush=True)
                     fehler += 1
                     continue
                 n = store.save_wortbeitraege(ksinr, rows)

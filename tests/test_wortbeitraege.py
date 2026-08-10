@@ -147,9 +147,32 @@ def test_ksinr_ohne_wortbeitraege(store):
     assert store.ksinr_ohne_wortbeitraege() == [100]
     store.save_wortbeitraege(100, [BEITRAG])
     assert store.ksinr_ohne_wortbeitraege() == []
-    # Auch ein Protokoll, dessen Extraktion nichts fand, gilt als erledigt?
-    # Nein — save mit leerer Liste löscht nur; das Protokoll bliebe offen und
-    # würde täglich neu versucht. Deshalb prüft der Aufrufer rows selbst.
+
+
+def test_leeres_ergebnis_markiert_erledigt(store):
+    """Formalien-Protokoll ohne einen einzigen Beitrag: der Save markiert es
+    trotzdem als erledigt — sonst kostete es jede Nacht erneut einen LLM-Call
+    (Review-Befund zu #387)."""
+    assert store.save_wortbeitraege(100, []) == 0
+    assert store.ksinr_ohne_wortbeitraege() == []
+
+
+def test_paralleler_save_hinterlaesst_keine_fts_waisen(store):
+    """Die DELETEs laufen per Subquery über ksinr, nicht über eine vorab
+    gelesene ID-Liste — auch Zeilen, die ein nebenläufiger Save dazwischen
+    geschrieben hätte, werden mit abgeräumt (Review-Befund zu #387)."""
+    store.save_wortbeitraege(100, [BEITRAG])
+    # Fremde Zeile im selben ksinr simuliert den nebenläufigen Save.
+    cur = store._conn.execute(
+        "INSERT INTO council_wortbeitraege (ksinr, position, art, text, extracted_at) "
+        "VALUES (100, 99, 'rede', 'Nebenläufig eingefügter Beitrag über Wechloy.', 'x')")
+    store._conn.execute(
+        "INSERT INTO council_wortbeitraege_fts(rowid, content) VALUES (?, ?)",
+        (cur.lastrowid, "Nebenläufig eingefügter Beitrag über Wechloy."))
+    store.replace_wortbeitrag_embedding(cur.lastrowid, "h", b"\x00" * 4)
+    store.save_wortbeitraege(100, [dict(BEITRAG, text="Ganz neuer Stand nach dem zweiten Lauf.")])
+    assert store.search_wortbeitraege_fts("Wechloy") == []
+    assert store.wortbeitraege_embedding_rows() == []
 
 
 def test_by_ids_ohne_session(store):
