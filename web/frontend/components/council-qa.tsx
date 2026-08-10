@@ -1711,8 +1711,10 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
               Sachstands-Fragen ließen oft nur einen Debatten-Beleg durch,
               obwohl der Baustein mit seiner eigenen Fraktions-Suche liefert
               (Tims Befund 10.08.) — ob es reicht, entscheidet der Endpoint. */}
+          {/* Bei Personen-Fragen zielt alles auf EINE Person — die Meinung
+              aller Parteien daneben wäre Rauschen (Tims Befund 10.08.). */}
           {!beschaeftigt && turn.antwort && !turn.fehler && !turn.abgebrochen
-            && (turn.debatten?.length ?? 0) >= 1 && (
+            && turn.qtype !== "person" && (turn.debatten?.length ?? 0) >= 1 && (
             <ParteienBaustein frage={turn.kontext || turn.frage} onFrageStellen={onFrageStellen} />
           )}
 
@@ -2006,19 +2008,40 @@ function DebattenBlock({ debatten }: { debatten: DebattenHinweis[] }) {
       </p>
       <ul className="mt-1.5 space-y-2">
         {debatten.map((d, i) => (
-          <li key={i} className="text-[12.5px] leading-snug">
-            <p className="flex items-baseline gap-2">
-              <span className="min-w-0 flex-1 truncate font-medium">
-                {d.sprecher ?? "Ohne Namen"}{d.partei ? ` (${d.partei})` : ""}
-                <span className="ml-1.5 font-normal text-muted-foreground">· {artLabel[d.art] ?? d.art}</span>
-              </span>
-              {d.datum && <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{fmtDatumKurz(d.datum)}</span>}
-            </p>
-            <p className="mt-0.5 text-muted-foreground">{d.auszug}{d.auszug.length >= 220 ? "…" : ""}</p>
-          </li>
+          <DebattenZeile key={i} d={d} artLabel={artLabel} />
         ))}
       </ul>
     </div>
+  );
+}
+
+/** Eine Debatten-Zeile mit aufklappbarem VOLLTEXT: Der gekappte Auszug
+ *  untergrub das „alles ist belegt"-Versprechen (Tims Befund 10.08.) —
+ *  jetzt liefert das Backend die volle Paraphrase, die Anzeige klappt auf. */
+function DebattenZeile({ d, artLabel }: { d: DebattenHinweis; artLabel: Record<string, string> }) {
+  const [offen, setOffen] = useState(false);
+  // Ab dieser Länge lohnt der Toggle; kürzere Beiträge stehen einfach ganz da.
+  const lang = d.auszug.length > 260;
+  return (
+    <li className="text-[12.5px] leading-snug">
+      <p className="flex items-baseline gap-2">
+        <span className="min-w-0 flex-1 truncate font-medium">
+          {d.sprecher ?? "Ohne Namen"}{d.partei ? ` (${d.partei})` : ""}
+          <span className="ml-1.5 font-normal text-muted-foreground">· {artLabel[d.art] ?? d.art}</span>
+        </span>
+        {d.datum && <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{fmtDatumKurz(d.datum)}</span>}
+      </p>
+      <p className={cn("mt-0.5 whitespace-pre-wrap text-muted-foreground",
+        !offen && lang && "line-clamp-4")}>
+        {d.auszug}
+      </p>
+      {lang && (
+        <button type="button" onClick={() => setOffen((v) => !v)} aria-expanded={offen}
+          className="mt-0.5 text-[11px] font-medium text-primary hover:underline">
+          {offen ? "Weniger anzeigen" : "Ganzen Beitrag anzeigen"}
+        </button>
+      )}
+    </li>
   );
 }
 
@@ -2114,6 +2137,7 @@ function parteiDot(label: string): { bg: string; ring: boolean } {
   if (l.includes("cdu")) return { bg: "#1a1a1a", ring: false };
   if (l.includes("bsw")) return { bg: "#7d254f", ring: false };
   if (l.includes("afd")) return { bg: "#009ee0", ring: false };
+  if (l === "volt") return { bg: "#502379", ring: false }; // seit der Stammdaten-Auflösung eigenständig
   if (l === "fdp") return { bg: "#ffe000", ring: true }; // exakt — „FDP/Volt" ist eine Gruppe
   return { bg: "hsl(209 18% 65%)", ring: false };
 }

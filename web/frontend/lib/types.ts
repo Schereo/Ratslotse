@@ -260,6 +260,9 @@ export interface MemberDetail {
   } | null;
   committees: { committee: string; n: number; chair: boolean }[];
   recent: { ksinr: number; committee: string; session_date: string }[];
+  /** Jüngste Wortbeiträge der Person aus den Protokollen (volle Paraphrase). */
+  wortbeitraege?: { art: string; top: string | null; text: string;
+    committee: string | null; session_date: string }[];
 }
 
 /** Eine Station der offiziellen Beratungsfolge einer Vorlage. */

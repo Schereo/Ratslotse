@@ -2887,6 +2887,38 @@ class CouncilStore:
                 "WHERE geo_tried=1 OR lat IS NOT NULL")
         return cur.rowcount
 
+    # --- Personen-Paket (10.08.26): Stammdaten für Auflösung + Fragetyp -----
+
+    def personen_suchindex(self) -> list[tuple[str, str]]:
+        """(Name, Partei) aller Ratspersonen mit bekannter Fraktion — Grundlage
+        für die FDP/Volt-Auflösung und den Personen-Fragetyp. Die Stammdaten
+        führen die EINZEL-Partei (Lükermann=Volt, Pfeiffer=FDP), während die
+        Protokolle nur das Gruppen-Label kennen."""
+        return [(r["name"], r["fraktion_aktuell"]) for r in self._conn.execute(
+            "SELECT name, fraktion_aktuell FROM council_persons "
+            "WHERE fraktion_aktuell IS NOT NULL AND fraktion_aktuell != ''")]
+
+    def wortbeitraege_von_sprecher(self, nachname: str, limit: int = 120) -> list[dict]:
+        """Alle Wortbeiträge, deren Sprecher-Feld den Nachnamen trägt —
+        Kandidaten für den Personen-Fragetyp (der Cross-Encoder wählt daraus
+        die zur Frage passenden). Zwei LIKE-Varianten, weil Protokolle
+        Umlaute mal ausschreiben („Luekermann") und SQLite-lower() bei
+        Umlauten nichts tut."""
+        varianten = {nachname}
+        gefaltet = nachname
+        for a, b in (("ä", "ae"), ("ö", "oe"), ("ü", "ue"), ("ß", "ss"),
+                     ("Ä", "Ae"), ("Ö", "Oe"), ("Ü", "Ue")):
+            gefaltet = gefaltet.replace(a, b)
+        varianten.add(gefaltet)
+        teile = " OR ".join(["w.sprecher LIKE ?"] * len(varianten))
+        rows = self._conn.execute(
+            f"SELECT w.id, w.sprecher, w.partei, w.art, w.top, w.text, "
+            f"       cs.committee, cs.session_date "
+            f"FROM council_wortbeitraege w JOIN council_sessions cs ON cs.ksinr = w.ksinr "
+            f"WHERE {teile} ORDER BY cs.session_date DESC LIMIT ?",
+            [f"%{v}%" for v in varianten] + [limit]).fetchall()
+        return [dict(r) for r in rows]
+
     # --- Council members (from attendance: who sits on the council) ------------------
     _MEMBER_ROLES = ("mitglied", "vorsitz")  # exclude verwaltung/protokoll/gast/beratend
     _HONORIFICS = {"prof", "dr", "dipl", "ing", "med"}
@@ -3006,6 +3038,12 @@ class CouncilStore:
                 timeline[-1]["n"] += run["n"]
             else:
                 timeline.append(dict(run))
+        # Wortbeiträge der Person (Personen-Paket 10.08.26): die jüngsten
+        # Beiträge in voller Länge — das Beleg-Versprechen gilt auch hier.
+        # Nachname = letztes Namens-Token ohne Titel (Umlaute intakt fürs LIKE).
+        toks = [t for t in name.replace(".", " ").split()
+                if t.lower().rstrip(".") not in self._HONORIFICS]
+        wortbeitraege = self.wortbeitraege_von_sprecher(toks[-1], limit=10) if toks else []
         return {
             "name": name, "slug": slug,
             # Aktuelle Zugehörigkeit (Ende der geglätteten Zeitreihe) — nicht die
@@ -3018,6 +3056,9 @@ class CouncilStore:
                            for r in committees],
             "recent": [{"ksinr": r["ksinr"], "committee": r["committee"], "session_date": r["session_date"]}
                        for r in recent],
+            "wortbeitraege": [{"art": w["art"], "top": w["top"], "text": w["text"],
+                               "committee": w["committee"], "session_date": w["session_date"]}
+                              for w in wortbeitraege],
         }
 
     def decisions_for_amount(self, only_missing: bool = False) -> list[dict]:

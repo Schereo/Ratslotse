@@ -649,6 +649,26 @@ def search_wortbeitraege(store, query: str, expanded: str, top_k: int = 4,
                            top_k)
 
 
+def search_wortbeitraege_von_person(store, query: str, nachname: str,
+                                    top_k: int = 10) -> list[dict]:
+    """Personen-Fragetyp: die zur Frage passenden Wortbeiträge EINER Person.
+    Alle Beiträge des Sprechers sind die Kandidaten (per Nachname, ≤120),
+    der Cross-Encoder wählt die einschlägigen. Ist die Frage so allgemein,
+    dass nichts den Cutoff schafft („Was sagt X?"), kommen die neuesten
+    Beiträge — die Person wurde ausdrücklich gefragt, leer wäre falsch."""
+    roh = store.wortbeitraege_von_sprecher(nachname)
+    if not roh:
+        return []
+    paare = [(r["id"], " — ".join(t for t in (r.get("top"), r.get("text")) if t))
+             for r in roh]
+    bestaetigt = _rerank_kontext(query, paare, top_k)
+    by_id = {r["id"]: r for r in roh}
+    rows = [by_id[i] for i, _ in bestaetigt if i in by_id]
+    if not rows:
+        rows = roh[:min(6, top_k)]  # neueste zuerst (Store sortiert absteigend)
+    return rows
+
+
 def search_wortbeitraege_je_fraktion(store, query: str, expanded: str,
                                      je_partei: int = 5, min_score: float = 0.45) -> list[tuple]:
     """Kandidaten für den Parteien-Baustein: FRAKTIONS-BEWUSST gesammelt.
