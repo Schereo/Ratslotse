@@ -1112,9 +1112,12 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
 
           {/* RG-09: „Das sagen die Parteien" — direkt unter dem Antworttext,
               vor Zeitstrahl/Geld/Karte. Lädt nach der Antwort nach; bei dünner
-              Lage verschwindet er ganz (kein Leerzustand). */}
+              Lage verschwindet er ganz (kein Leerzustand). Gate ≥1 statt ≥2:
+              Sachstands-Fragen ließen oft nur einen Debatten-Beleg durch,
+              obwohl der Baustein mit seiner eigenen Fraktions-Suche liefert
+              (Tims Befund 10.08.) — ob es reicht, entscheidet der Endpoint. */}
           {!loading && turn.antwort && !turn.fehler && !turn.abgebrochen
-            && (turn.debatten?.length ?? 0) >= 2 && (
+            && (turn.debatten?.length ?? 0) >= 1 && (
             <ParteienBaustein frage={turn.kontext || turn.frage} onFrageStellen={onFrageStellen} />
           )}
 

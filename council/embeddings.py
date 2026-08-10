@@ -516,7 +516,12 @@ def search_wortbeitraege_je_fraktion(store, query: str, expanded: str,
             continue
         je_gruppe[label] = je_gruppe.get(label, 0) + 1
         auswahl.append((wid, s))
-    return _rerank_kontext(query, [(wid, text_von[wid]) for wid, _ in auswahl],
+    # Meinungs-Framing für den Torwächter: Auf eine Sachstands-Frage („Wie ist
+    # der Stand …?") bewertet der Cross-Encoder Meinungs-Reden als wenig
+    # relevant und ließ kaum Fraktions-Beiträge durch (Tims Befund 10.08.) —
+    # der Baustein fragt aber genau nach den Positionen.
+    return _rerank_kontext(f"Positionen und Meinungen der Fraktionen zu: {query}",
+                           [(wid, text_von[wid]) for wid, _ in auswahl],
                            top_k=len(auswahl))
 
 
