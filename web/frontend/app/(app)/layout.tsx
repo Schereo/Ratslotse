@@ -106,13 +106,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <PeekingChick />
       <DesktopSidebar />
       <MobileTopbar />
-      {/* Mobile-QA C: ≥ 5,5rem Freiraum, damit Seitenenden nie unter dem
-          angehobenen FAB der Bottom-Nav liegen.
+      {/* Design 9a: Freiraum = Tab-Bar-Höhe + Luft (der angehobene FAB ist
+          weg, 5,5rem hinterließen nur totes Ende unter jeder Seite).
           KEIN overflow-y-auto: Der Root ist min-h-screen, gescrollt wird immer
           am Window — ein overflow-Container, der nie selbst scrollt, macht
           nur jede sticky-Leiste in main wirkungslos (Composer 2①, RG-10-
           Sprungmarken, Analyse-/Quiz-Leisten klebten deshalb nie). */}
-      <main id="main" tabIndex={-1} className="flex flex-1 flex-col outline-none pb-[calc(env(safe-area-inset-bottom)+5.5rem)] md:pb-0">
+      <main id="main" tabIndex={-1} className="flex flex-1 flex-col outline-none pb-[calc(env(safe-area-inset-bottom)+4.75rem)] md:pb-0">
         {/* Design 11a: Inhalt läuft breiter (~1280 px statt 1024) — die Karten
             atmen wie im Mock; Text-Detailseiten begrenzen sich weiter selbst. */}
         <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
@@ -158,12 +158,12 @@ function ShellSkeleton() {
 
       {/* Kopfleiste (Mobil) — dieselben Maße wie die echte, damit nichts springt. */}
       <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-border bg-card/95 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] backdrop-blur md:hidden">
-        <Skeleton className="h-11 w-11 rounded-lg" />
         <Image src="/icon-192.png" alt="" width={28} height={28} className="h-7 w-7 rounded-lg" priority />
-        <span className="font-display text-base font-bold text-foreground">Ratslotse</span>
+        <span className="flex-1 font-display text-base font-bold text-foreground">Ratslotse</span>
+        <Skeleton className="h-9 w-9 rounded-md" />
       </header>
 
-      <main className="flex flex-1 flex-col pb-[calc(env(safe-area-inset-bottom)+5.5rem)] md:pb-0">
+      <main className="flex flex-1 flex-col pb-[calc(env(safe-area-inset-bottom)+4.75rem)] md:pb-0">
         <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
           <Skeleton className="h-7 w-52" />
           <Skeleton className="mt-2 h-3.5 w-72" />

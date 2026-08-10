@@ -20,7 +20,7 @@ import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Sparkles, Send, Loader2, ChevronDown, ChevronRight, ChevronUp, ArrowRight, Plus,
-  Square, CircleSlash, ExternalLink, ArrowDown, FlaskConical, History, RotateCcw,
+  Square, CircleSlash, ExternalLink, ArrowDown, FlaskConical, History, Pencil, RotateCcw,
   MessageSquarePlus, Share2, ThumbsDown, ThumbsUp, Trash2, Volume2, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Mascot } from "@/components/mascot";
@@ -529,6 +529,18 @@ const fmtUtcMitZeit = (d: string) => {
   });
 };
 const jahr = (d?: string | null) => (d ? d.slice(0, 4) : "");
+
+/** Relativer Tag fürs Gespräche-Sheet (9a②): „heute · 3 Fragen", „gestern",
+ *  sonst „05.08.". Gleiche UTC-Deutung wie fmtUtcMitZeit. */
+const relativTag = (d: string) => {
+  const iso = /Z$|[+-]\d\d:?\d\d$/.test(d) ? d : `${d}Z`;
+  const dann = new Date(iso);
+  const tag = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((tag(new Date()) - tag(dann)) / 86_400_000);
+  if (diff <= 0) return "heute";
+  if (diff === 1) return "gestern";
+  return dann.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
+};
 
 const fmtEur = (n: number) =>
   n >= 1_000_000 ? `${(n / 1_000_000).toLocaleString("de-DE", { maximumFractionDigits: 1 })} Mio. €`
@@ -1235,6 +1247,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
       })));
       setGespraechId(id);
       setZeigeListe(false);
+      setSheetOffen(false);
       requestAnimationFrame(() => endRef.current?.scrollIntoView({ block: "end" }));
     } catch {
       toast.error("Gespräch konnte nicht geladen werden.");
@@ -1247,6 +1260,24 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
       await fetch(apiUrl(`/council/gespraeche/${id}`), { method: "DELETE", credentials: "include", headers: authHeaders() });
     } catch { /* Liste wird beim nächsten Öffnen neu geladen */ }
   };
+  const gespraechUmbenennen = async (id: number, titel: string) => {
+    const sauber = titel.replace(/\s+/g, " ").trim().slice(0, 120);
+    if (!sauber) return;
+    setGespraeche((gs) => gs.map((g) => (g.id === id ? { ...g, titel: sauber } : g)));
+    try {
+      const r = await fetch(apiUrl(`/council/gespraeche/${id}`), {
+        method: "PATCH", credentials: "include",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ titel: sauber }),
+      });
+      if (!r.ok) throw new Error();
+    } catch {
+      toast.error("Umbenennen hat nicht geklappt.");
+      void ladeGespraeche();
+    }
+  };
+  // 9a①/②: das mobile Gespräche-Sheet (Desktop behält das Dropdown aus 5a).
+  const [sheetOffen, setSheetOffen] = useState(false);
 
   // 5a/I-07: frische Beispiel-Anlässe aus den jüngsten Sitzungen — die
   // Klassiker bleiben, aber ein bis zwei Vorschläge zeigen, dass hier
@@ -1298,8 +1329,10 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         nativeApp ? "min-h-[calc(100dvh-380px)]" : "min-h-[calc(100dvh-230px)]",
         "lg:relative lg:h-[calc(100dvh-135px)] lg:min-h-0 lg:overflow-hidden lg:rounded-2xl lg:border lg:border-border lg:bg-primary/[0.04] dark:lg:bg-primary/[0.07]",
       )}>
+        {/* Desktop (5a): „Gespräche"/„Neues Gespräch" im Bühnen-Kopf. Mobil
+            ersetzt die EINE Gesprächs-Zeile (9a①) die zwei Streu-Icons. */}
         {(modeToggle || turns.length > 0 || gespraeche.length > 0) && (
-          <div className="mb-1 flex items-center justify-between gap-2 lg:mb-0 lg:px-4 lg:pb-2 lg:pt-3">
+          <div className="mb-1 hidden items-center justify-between gap-2 md:flex lg:mb-0 lg:px-4 lg:pb-2 lg:pt-3">
             {modeToggle ? <div>{modeToggle}</div> : <span />}
             <div className="relative flex shrink-0 items-center gap-1.5 print:hidden">
               {/* 5a/I-04: gespeicherte Gespräche — Liste lädt beim Öffnen frisch. */}
@@ -1354,6 +1387,43 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
               )}
             </div>
           </div>
+        )}
+
+        {/* 9a①: Mobile Gesprächs-Zeile — sagt, wo du bist, und ist der einzige
+            Griff. Nur bei aktivem Speichern UND (Gespräch läuft ODER Verlauf
+            existiert); der Empty State bleibt sonst komplett leer. */}
+        {einstellung === 1 && (turns.length > 0 || gespraeche.length > 0) && (
+          <div className="mb-2 flex items-center gap-2 md:hidden print:hidden">
+            <button
+              type="button"
+              onClick={() => { setSheetOffen(true); void ladeGespraeche(); }}
+              aria-haspopup="dialog"
+              className="inline-flex h-[34px] max-w-[75%] items-center gap-1.5 rounded-full border border-border bg-card px-3 shadow-sm transition-colors active:bg-muted"
+            >
+              <History className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+              <span className="min-w-0 truncate text-[13px] font-semibold text-foreground">
+                {gespraeche.find((g) => g.id === gespraechId)?.titel
+                  ?? (turns.length > 0 ? turns[0].frage : "Gespräche")}
+              </span>
+              <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+            </button>
+            {gespraeche.length > 0 && (
+              <span className="text-[11px] text-muted-foreground/70">
+                {gespraeche.length === 1 ? "1 Gespräch" : `${gespraeche.length} Gespräche`}
+              </span>
+            )}
+          </div>
+        )}
+        {sheetOffen && (
+          <GespraecheSheet
+            gespraeche={gespraeche}
+            aktivId={gespraechId}
+            onNeu={() => { setSheetOffen(false); neuesGespraech(); }}
+            onLaden={(id) => void gespraechLaden(id)}
+            onLoeschen={(id) => void gespraechLoeschen(id)}
+            onUmbenennen={(id, titel) => void gespraechUmbenennen(id, titel)}
+            onClose={() => setSheetOffen(false)}
+          />
         )}
 
         {/* Ab lg scrollt der Verlauf IM Panel (Design 4a) — mobil weiter am
@@ -1459,6 +1529,16 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         {/* Composer: mobil sticky am Viewport-Boden, in der Bühne (lg) fest an
             der Panel-Unterkante — Weiterfragen-Chips direkt darüber (2①②/4a). */}
         <div className="sticky bottom-0 z-10 -mx-1 mt-4 bg-gradient-to-t from-background via-background to-transparent px-1 pb-[max(env(safe-area-inset-bottom),8px)] pt-4 print:hidden lg:static lg:mx-0 lg:bg-none lg:px-4 lg:pb-4 lg:pt-2">
+          {/* 9a-Regel: Ohne aktives Speichern gibt es keine Gesprächs-Zeile —
+              „Neues Gespräch" ist dann ein schlichter Text-Link überm Composer. */}
+          {turns.length > 0 && einstellung !== 1 && (
+            <div className="mb-1.5 flex justify-end md:hidden">
+              <button type="button" onClick={neuesGespraech}
+                className="inline-flex items-center gap-1 text-[12px] font-medium text-muted-foreground transition-colors active:text-foreground">
+                <MessageSquarePlus className="h-3.5 w-3.5" aria-hidden /> Neues Gespräch
+              </button>
+            </div>
+          )}
           {/* 5a/I-06: Der Kontext-Chip macht sichtbar, worauf sich Anschluss-
               fragen beziehen — ✕ beginnt ein frisches Gespräch. */}
           {letzter?.kontext && !letzter.fehler && (
@@ -1869,6 +1949,154 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
         </div>
       )}
     </div>
+  );
+}
+
+/* ---------------- Gespräche-Sheet (Design 9a②, mobil) ---------------- */
+
+/** Eine Sheet-Zeile mit Wisch-nach-links-Aktionen (Umbenennen · Löschen).
+ *  Der Wisch folgt dem Finger nur horizontal — vertikale Bewegung bleibt
+ *  Scroll. Umbenennen verwandelt die Zeile in ein Eingabefeld. */
+function SheetZeile({ g, aktiv, offen, aufklappen, onLaden, onLoeschen, onUmbenennen }: {
+  g: GespraechEintrag; aktiv: boolean; offen: boolean;
+  aufklappen: (id: number | null) => void;
+  onLaden: () => void; onLoeschen: () => void; onUmbenennen: (titel: string) => void;
+}) {
+  const AKTIONEN_BREITE = 148;
+  const start = useRef<{ x: number; y: number } | null>(null);
+  const [dx, setDx] = useState(0);            // Finger-Delta während des Wischens
+  const [zieht, setZieht] = useState(false);
+  const [umbenennen, setUmbenennen] = useState(false);
+  const [entwurf, setEntwurf] = useState(g.titel);
+  const basis = offen ? -AKTIONEN_BREITE : 0;
+  const verschiebung = zieht ? Math.max(-AKTIONEN_BREITE, Math.min(0, basis + dx)) : basis;
+
+  const speichern = () => {
+    setUmbenennen(false);
+    aufklappen(null);
+    if (entwurf.trim() && entwurf.trim() !== g.titel) onUmbenennen(entwurf);
+  };
+
+  if (umbenennen) {
+    return (
+      <form className="flex items-center gap-2 border-b border-border/60 px-2.5 py-2"
+        onSubmit={(e) => { e.preventDefault(); speichern(); }}>
+        <Input autoFocus value={entwurf} onChange={(e) => setEntwurf(e.target.value)}
+          onBlur={speichern} maxLength={120} aria-label="Neuer Gesprächstitel"
+          className="h-9 flex-1 text-[13.5px]" />
+        <button type="submit" className="shrink-0 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground">
+          Sichern
+        </button>
+      </form>
+    );
+  }
+
+  return (
+    <div className="relative overflow-hidden border-b border-border/60 last:border-b-0">
+      {/* Aktionsleiste hinter der Zeile — sichtbar nach dem Wisch. */}
+      <div className="absolute inset-y-0 right-0 flex" aria-hidden={!offen}>
+        <button type="button" tabIndex={offen ? 0 : -1}
+          onClick={() => { setEntwurf(g.titel); setUmbenennen(true); }}
+          className="flex w-[80px] flex-col items-center justify-center gap-0.5 bg-muted text-[10px] font-medium text-foreground">
+          <Pencil className="h-4 w-4" aria-hidden /> Umbenennen
+        </button>
+        <button type="button" tabIndex={offen ? 0 : -1} onClick={onLoeschen}
+          className="flex w-[68px] flex-col items-center justify-center gap-0.5 bg-signal text-[10px] font-medium text-signal-foreground">
+          <Trash2 className="h-4 w-4" aria-hidden /> Löschen
+        </button>
+      </div>
+      <div
+        className={cn("relative flex items-center gap-2.5 bg-card px-2.5 py-3",
+          aktiv && "bg-primary/[0.07]", !zieht && "transition-transform duration-200")}
+        style={{ transform: `translateX(${verschiebung}px)` }}
+        onTouchStart={(e) => {
+          start.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+          setDx(0);
+        }}
+        onTouchMove={(e) => {
+          if (!start.current) return;
+          const ddx = e.touches[0].clientX - start.current.x;
+          const ddy = e.touches[0].clientY - start.current.y;
+          if (!zieht && Math.abs(ddx) > 8 && Math.abs(ddx) > Math.abs(ddy)) setZieht(true);
+          if (zieht || Math.abs(ddx) > Math.abs(ddy)) setDx(ddx);
+        }}
+        onTouchEnd={() => {
+          if (zieht) aufklappen(basis + dx < -AKTIONEN_BREITE / 2 ? g.id : null);
+          setZieht(false);
+          setDx(0);
+          start.current = null;
+        }}
+      >
+        <button type="button" className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
+          onClick={() => { if (offen) aufklappen(null); else onLaden(); }}>
+          <span className="min-w-0 flex-1">
+            <span className={cn("block truncate text-[13.5px] text-foreground", aktiv && "font-semibold")}>{g.titel}</span>
+            <span className="mt-px block text-[11px] text-muted-foreground">
+              {relativTag(g.updated)} · {g.n_turns} {g.n_turns === 1 ? "Frage" : "Fragen"}
+            </span>
+          </span>
+          {aktiv ? (
+            <span className="shrink-0 rounded-full bg-primary/[0.12] px-2 py-0.5 text-[10.5px] font-semibold text-primary">aktiv</span>
+          ) : (
+            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" aria-hidden />
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Bottom Sheet „Gespräche" (9a②): Neues Gespräch als erste Aktion, darunter
+ *  die Liste — das mobile Gegenstück zum Desktop-Dropdown aus 5a/I-04. */
+function GespraecheSheet({ gespraeche, aktivId, onNeu, onLaden, onLoeschen, onUmbenennen, onClose }: {
+  gespraeche: GespraechEintrag[]; aktivId: number | null;
+  onNeu: () => void; onLaden: (id: number) => void; onLoeschen: (id: number) => void;
+  onUmbenennen: (id: number, titel: string) => void; onClose: () => void;
+}) {
+  const [offenId, setOffenId] = useState<number | null>(null);
+  const startY = useRef<number | null>(null);
+  useEffect(() => {
+    const alt = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = alt; };
+  }, []);
+  return createPortal(
+    <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label="Gespräche">
+      <button type="button" aria-label="Schließen" onClick={onClose}
+        className="absolute inset-0 bg-[hsl(212_50%_12%/0.4)]" />
+      <div
+        className="absolute inset-x-0 bottom-0 flex max-h-[80dvh] flex-col rounded-t-[20px] bg-card px-4 pb-[max(env(safe-area-inset-bottom),16px)] pt-2 shadow-[0_-18px_50px_-12px_rgba(2,32,71,0.45)]"
+        onTouchStart={(e) => { startY.current = e.touches[0]?.clientY ?? null; }}
+        onTouchMove={(e) => {
+          const y = e.touches[0]?.clientY;
+          if (startY.current != null && y != null && y - startY.current > 60) onClose();
+        }}
+      >
+        <span aria-hidden className="mx-auto block h-1 w-[38px] shrink-0 rounded-full bg-border" />
+        <div className="flex shrink-0 items-baseline justify-between gap-2 px-0.5 pb-2.5 pt-3">
+          <span className="font-display text-[17px] font-bold tracking-tight text-foreground">Gespräche</span>
+          <span className="font-mono text-[9px] font-medium uppercase tracking-[0.1em] text-muted-foreground">In deinem Konto</span>
+        </div>
+        <button type="button" onClick={onNeu}
+          className="flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground transition-colors active:bg-primary/90">
+          <Plus className="h-4 w-4" aria-hidden /> Neues Gespräch
+        </button>
+        <div className="mt-2 min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          {gespraeche.map((g) => (
+            <SheetZeile key={g.id} g={g} aktiv={g.id === aktivId} offen={offenId === g.id}
+              aufklappen={setOffenId}
+              onLaden={() => onLaden(g.id)}
+              onLoeschen={() => { setOffenId(null); onLoeschen(g.id); }}
+              onUmbenennen={(titel) => onUmbenennen(g.id, titel)} />
+          ))}
+        </div>
+        <p className="shrink-0 pt-2 text-[10.5px] leading-relaxed text-muted-foreground/70">
+          Zeile nach links wischen: Umbenennen · Löschen. Ob Gespräche gespeichert
+          werden, änderst du in den Einstellungen.
+        </p>
+      </div>
+    </div>,
+    document.body,
   );
 }
 

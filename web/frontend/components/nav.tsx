@@ -1,19 +1,19 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
-  Home, Landmark, Tags, Search, Settings, LogOut, Menu, UserCircle,
+  Home, Tags, Search, Settings, LogOut, UserCircle, ChevronRight,
   CalendarDays, BarChart3, Trophy, Sparkles, Map as MapIcon, Command,
+  MoreHorizontal, MessageCircle,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { isNativeApp } from "@/lib/platform";
-import { Sheet, SheetContent, SheetTrigger, SheetTitle, Button } from "@/components/ui";
 import { Brand, BrandMark } from "@/components/brand";
-import { FeedbackButton } from "@/components/feedback";
+import { FeedbackButton, openFeedback } from "@/components/feedback";
 import { LottiThemeSwitch } from "@/components/theme-switch";
 import { cn } from "@/lib/utils";
 import { openCommandPalette } from "@/components/command-palette";
@@ -69,17 +69,25 @@ const MAIN_ITEMS: (Item & { tab?: string })[] = [
 const PERSONAL: Item = { href: "/topics", label: "Meine Themen", icon: Tags, tour: "nav-themen" };
 const QUIZ: Item = { href: "/quiz", label: "Quiz", icon: Trophy };
 
-// Mobile Bottom-Nav (RL-201): 4 Ziele + zentrale „Fragen"-Taste in Signal-
-// Orange (angehoben, 54 px) — Route direkt in den KI-Frage-Modus.
-const PRIMARY_LEFT: Item[] = [
-  { href: "/dashboard", label: "Heute", icon: Home },
-  { href: "/council", label: "Ratsinfo", icon: Landmark, tour: "nav-ratsinfo" },
-];
-const PRIMARY_RIGHT: Item[] = [
-  { href: "/topics", label: "Themen", icon: Tags, tour: "nav-themen" },
-  { href: "/account", label: "Konto", icon: UserCircle },
-];
+// Mobile Tab-Bar (Design 9a③): fünf gleichwertige Ziele, kein FAB mehr —
+// „Fragen" führt direkt in den KI-Frage-Modus, alles Übrige wohnt in „Mehr".
 const FRAGEN_HREF = "/council?tab=decisions&mode=fragen";
+const TABS: (Item & { aktiv: (pathname: string, tab: string | null) => boolean })[] = [
+  { href: "/dashboard", label: "Start", icon: Home,
+    aktiv: (p) => p === "/dashboard" || p.startsWith("/dashboard/") },
+  { href: FRAGEN_HREF, label: "Fragen", icon: Sparkles, tour: "nav-ratsinfo",
+    // Auch Beschluss-/Personen-Detailseiten: sie sind das Innere der Suche.
+    aktiv: (p, t) => (p === "/council" || p.startsWith("/council/"))
+      && t !== "sessions" && t !== "themen" && t !== "analysis" },
+  { href: "/council?tab=sessions", label: "Sitzungen", icon: CalendarDays,
+    aktiv: (p, t) => p === "/council" && t === "sessions" },
+  { href: "/topics", label: "Themen", icon: Tags, tour: "nav-themen",
+    aktiv: (p) => p === "/topics" || p.startsWith("/topics/") },
+];
+// Ziele hinter „Mehr" (9a④) — der Tab gilt als aktiv, wenn eine davon offen ist.
+const MEHR_AKTIV = (pathname: string, tab: string | null) =>
+  (pathname === "/council" && (tab === "themen" || tab === "analysis"))
+  || ["/quiz", "/account", "/admin"].some((p) => pathname === p || pathname.startsWith(p + "/"));
 
 /** RL-U09: Der Lotti-Himmel-Schalter ersetzt den Dreistufen-Icon-Toggle — im
  *  Web binär (Erststart folgt dem OS, danach entscheidet der Schalter).
@@ -206,16 +214,19 @@ function UserFooter({ onNavigate, showTheme = false }: { onNavigate?: () => void
 }
 
 /** Design 6a③: Die Pflicht-Links wohnen im Sidebar-Fuß (Desktop) bzw. im
- *  Burger-Menü (mobil) — der sticky Seiten-Footer, der auf jeder Seite
+ *  „Mehr"-Sheet (mobil, 9a④) — der sticky Seiten-Footer, der auf jeder Seite
  *  mitscrollte, entfällt dafür. */
-function RechtsLinks() {
+function RechtsLinks({ zentriert = false }: { zentriert?: boolean }) {
   // Die Technik-Doku (/docs) liegt nur auf dem Server, nicht im App-Bundle —
   // in der nativen App wäre der Link tot (Review-Befund P4). Erst nach dem
   // Mount entscheiden, gleiches Hydration-Muster wie beim Druck-Knopf.
   const [mitDocs, setMitDocs] = useState(false);
   useEffect(() => { setMitDocs(!isNativeApp()); }, []);
   return (
-    <p className="px-3 pb-1 pt-2 text-[11px] leading-relaxed text-muted-foreground/80">
+    <p className={cn(
+      "text-[11px] leading-relaxed text-muted-foreground/80",
+      zentriert ? "border-t border-border/60 pt-2.5 text-center" : "px-3 pb-1 pt-2",
+    )}>
       <a href="/impressum" className="hover:text-foreground">Impressum</a>
       {" · "}
       <a href="/datenschutz" className="hover:text-foreground">Datenschutz</a>
@@ -259,24 +270,10 @@ export function DesktopSidebar() {
 }
 
 export function MobileTopbar() {
-  const [open, setOpen] = useState(false);
+  // Design 9a③: kein Burger mehr — die Hauptziele stehen in der Tab-Bar,
+  // Sekundäres im „Mehr"-Sheet. Der Kopf behält nur Logo + Suche.
   return (
     <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-border bg-card/95 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] backdrop-blur md:hidden">
-      <Sheet open={open} onOpenChange={setOpen}>
-        <SheetTrigger asChild>
-          <Button variant="ghost" size="icon" aria-label="Menü öffnen" className="h-11 w-11">
-            <Menu className="h-6 w-6" />
-          </Button>
-        </SheetTrigger>
-        <SheetContent>
-          <SheetTitle>Navigation</SheetTitle>
-          <div className="px-5 py-5">
-            <Brand />
-          </div>
-          <NavLinks onNavigate={() => setOpen(false)} />
-          <UserFooter onNavigate={() => setOpen(false)} />
-        </SheetContent>
-      </Sheet>
       <div className="flex flex-1 items-center gap-2">
         <BrandMark className="h-7 w-7" />
         <span className="font-display text-base font-bold tracking-tight text-foreground">Ratslotse</span>
@@ -285,45 +282,72 @@ export function MobileTopbar() {
         type="button"
         onClick={openCommandPalette}
         aria-label="Suchen und Befehle öffnen"
-        className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        className="flex h-9 w-9 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent"
       >
-        <Search className="h-4 w-4" />
+        <Search className="h-[19px] w-[19px]" />
       </button>
     </header>
   );
 }
 
 export function MobileBottomNav() {
-  const pathname = usePathname();
+  // useSearchParams (für den ?tab=-Abgleich) verlangt eine Suspense-Grenze;
+  // der Fallback rendert dieselbe Leiste ohne Tab-Wissen — kein Leer-Blitz.
   return (
-    <nav
-      // Echtes Glas statt nur Blur (iOS-Look): halbtransparente Fläche +
-      // backdrop-saturate, eine 1-px-Lichtkante innen (simuliert die
-      // Kanten-Brechung) und ein weicher Schatten nach oben für Tiefe.
-      className="fixed inset-x-0 bottom-0 z-40 flex border-t border-border/50 bg-card/70 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl backdrop-saturate-150 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.45),0_-10px_28px_-14px_rgba(2,32,71,0.22)] dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),0_-10px_28px_-14px_rgba(0,0,0,0.5)] md:hidden"
-      aria-label="Hauptnavigation"
-    >
-      {PRIMARY_LEFT.map((l) => (
-        <BottomNavItem key={l.href} item={l} active={pathname === l.href || pathname.startsWith(l.href + "/")} />
-      ))}
-      {/* Zentrale „Fragen"-Taste (RL-201): DIE Signal-Handlung der Bottom-Nav —
-          angehoben über der Leiste, führt direkt in den KI-Frage-Modus. */}
-      <Link
-        href={FRAGEN_HREF}
-        aria-label="Frag den Rat — Frage stellen"
-        className="flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium text-muted-foreground transition-[color,transform] duration-150 active:scale-95"
+    <Suspense fallback={<BottomNavInner tab={null} />}>
+      <BottomNavMitParams />
+    </Suspense>
+  );
+}
+
+function BottomNavMitParams() {
+  return <BottomNavInner tab={useSearchParams().get("tab")} />;
+}
+
+function BottomNavInner({ tab }: { tab: string | null }) {
+  const pathname = usePathname();
+  const [mehrOffen, setMehrOffen] = useState(false);
+  // Seitenwechsel (auch via Tab-Bar unterm Sheet) schließt das Sheet.
+  useEffect(() => { setMehrOffen(false); }, [pathname, tab]);
+  const mehrAktiv = mehrOffen || MEHR_AKTIV(pathname, tab);
+  return (
+    <>
+      {mehrOffen && <MehrSheet onClose={() => setMehrOffen(false)} />}
+      <nav
+        // Echtes Glas statt nur Blur (iOS-Look): halbtransparente Fläche +
+        // backdrop-saturate, eine 1-px-Lichtkante innen (simuliert die
+        // Kanten-Brechung) und ein weicher Schatten nach oben für Tiefe.
+        // Beim offenen „Mehr"-Sheet wird die Fläche deckend (9a④): das Sheet
+        // dockt DARUNTER an, Glas würde seine Kante durchscheinen lassen.
+        className={cn(
+          "fixed inset-x-0 bottom-0 flex border-t border-border/50 pb-[env(safe-area-inset-bottom)] md:hidden",
+          mehrOffen
+            ? "z-50 bg-card shadow-[0_-10px_28px_-14px_rgba(2,32,71,0.22)]"
+            : "z-40 bg-card/70 backdrop-blur-xl backdrop-saturate-150 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.45),0_-10px_28px_-14px_rgba(2,32,71,0.22)] dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),0_-10px_28px_-14px_rgba(0,0,0,0.5)]",
+        )}
+        aria-label="Hauptnavigation"
       >
-        <span className="relative -mt-[22px] flex h-[54px] w-[54px] items-center justify-center rounded-full bg-signal text-signal-foreground shadow-[0_8px_22px_-10px_hsl(19_92%_45%/0.6)] ring-4 ring-background">
-          {/* RL-1104: dezenter Puls-Ring — ruht bei reduzierter Bewegung. */}
-          <span aria-hidden className="fab-pulse-ring absolute inset-0 rounded-full bg-signal/60" />
-          <Sparkles className="relative h-6 w-6" />
-        </span>
-        Fragen
-      </Link>
-      {PRIMARY_RIGHT.map((l) => (
-        <BottomNavItem key={l.href} item={l} active={pathname === l.href || pathname.startsWith(l.href + "/")} />
-      ))}
-    </nav>
+        {TABS.map((l) => (
+          <BottomNavItem key={l.label} item={l} active={!mehrOffen && l.aktiv(pathname, tab)} />
+        ))}
+        {/* „Mehr" ist ein Schalter, kein Link: öffnet/schließt das Sheet. */}
+        <button
+          type="button"
+          onClick={() => setMehrOffen((v) => !v)}
+          aria-expanded={mehrOffen}
+          aria-current={mehrAktiv && !mehrOffen ? "page" : undefined}
+          className={cn(
+            "flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition-[color,transform] duration-150 active:scale-95",
+            mehrAktiv ? "text-primary" : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <span className={cn("relative rounded-full px-3.5 py-1 transition-colors", mehrAktiv && "bg-primary/10")}>
+            <MoreHorizontal className={cn("h-5 w-5 transition-transform", mehrAktiv && "scale-110")} />
+          </span>
+          Mehr
+        </button>
+      </nav>
+    </>
   );
 }
 
@@ -349,5 +373,96 @@ function BottomNavItem({ item, active }: { item: Item; active: boolean }) {
       </span>
       {item.label}
     </Link>
+  );
+}
+
+/* --------------------- „Mehr"-Sheet (Design 9a④, mobil) --------------------- */
+
+function MehrZeile({ href, icon: Icon, label, badge = 0, primaerFarbe = true, onClose }: {
+  href: string; icon: typeof Home; label: string; badge?: number;
+  primaerFarbe?: boolean; onClose: () => void;
+}) {
+  return (
+    <Link href={href} onClick={onClose}
+      className="flex min-h-11 items-center gap-3 border-b border-border/60 px-1 py-2.5 text-sm font-medium text-foreground transition-colors active:bg-muted">
+      <Icon className={cn("h-[17px] w-[17px] shrink-0", primaerFarbe ? "text-primary" : "text-muted-foreground")} aria-hidden />
+      <span className="min-w-0 flex-1">{label}</span>
+      <UnreadBadge n={badge} />
+      <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" aria-hidden />
+    </Link>
+  );
+}
+
+/** Bottom Sheet über der Tab-Bar: Konto-Zeile, Ziele ohne Tab-Platz, dann
+ *  Einstellungen/Feedback/Abmelden und die Pflicht-Links als Fußzeile — es
+ *  ersetzt Burger-Menü UND Seiten-Footer auf Mobil (9a④, 6a③). */
+function MehrSheet({ onClose }: { onClose: () => void }) {
+  const router = useRouter();
+  const { user, logout } = useAuth();
+  const openFeedbackUnread = useUnreadFeedback(user?.role === "admin");
+  // Hintergrund einfrieren, solange das Sheet offen ist.
+  useEffect(() => {
+    const alt = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = alt; };
+  }, []);
+  // Wisch nach unten schließt (9a④) — simple Geste, kein Mitzieh-Effekt.
+  const startY = useRef<number | null>(null);
+  const onLogout = async () => {
+    onClose();
+    await logout();
+    router.replace("/login");
+  };
+  const initialen = (user?.email ?? "?").slice(0, 2).toUpperCase();
+  return (
+    <div className="fixed inset-0 z-40 md:hidden" role="dialog" aria-modal="true" aria-label="Mehr">
+      <button type="button" aria-label="Menü schließen" onClick={onClose}
+        className="absolute inset-0 bg-[hsl(212_50%_12%/0.4)]" />
+      <div
+        className="absolute inset-x-0 bottom-0 rounded-t-[20px] bg-card px-4 pb-[calc(env(safe-area-inset-bottom)+4.75rem)] pt-2 shadow-[0_-18px_50px_-12px_rgba(2,32,71,0.45)]"
+        onTouchStart={(e) => { startY.current = e.touches[0]?.clientY ?? null; }}
+        onTouchMove={(e) => {
+          const y = e.touches[0]?.clientY;
+          if (startY.current != null && y != null && y - startY.current > 60) onClose();
+        }}
+      >
+        <span aria-hidden className="mx-auto block h-1 w-[38px] rounded-full bg-border" />
+        <Link href="/account" onClick={onClose}
+          className="mt-3 flex items-center gap-2.5 border-b border-border/60 px-0.5 pb-2.5 transition-colors active:bg-muted">
+          <span aria-hidden className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+            {initialen}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[13.5px] font-semibold text-foreground">{user?.display_name || "Mein Konto"}</span>
+            <span className="block truncate text-[11px] text-muted-foreground">{user?.email}</span>
+          </span>
+          <span className="shrink-0 rounded-full border border-border px-2.5 py-1 text-xs font-medium text-muted-foreground">
+            Konto
+          </span>
+        </Link>
+        <div className="flex flex-col pt-1">
+          <MehrZeile href="/council?tab=themen" icon={MapIcon} label="Stadtkarte" onClose={onClose} />
+          <MehrZeile href="/council?tab=analysis" icon={BarChart3} label="Analyse" onClose={onClose} />
+          <MehrZeile href="/quiz" icon={Trophy} label="Quiz" onClose={onClose} />
+          {user?.role === "admin" && (
+            <MehrZeile href="/admin" icon={Settings} label="Admin" badge={openFeedbackUnread} primaerFarbe={false} onClose={onClose} />
+          )}
+          <button type="button" onClick={() => { onClose(); openFeedback(); }}
+            className="flex min-h-11 items-center gap-3 border-b border-border/60 px-1 py-2.5 text-left text-sm font-medium text-foreground transition-colors active:bg-muted">
+            <MessageCircle className="h-[17px] w-[17px] shrink-0 text-muted-foreground" aria-hidden />
+            <span className="min-w-0 flex-1">Feedback geben</span>
+            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" aria-hidden />
+          </button>
+          <button type="button" onClick={() => void onLogout()}
+            className="flex min-h-11 items-center gap-3 px-1 py-2.5 text-left text-sm font-medium text-foreground transition-colors active:bg-muted">
+            <LogOut className="h-[17px] w-[17px] shrink-0 text-muted-foreground" aria-hidden />
+            <span className="min-w-0 flex-1">Abmelden</span>
+          </button>
+        </div>
+        {/* 6a③/9a④: ersetzt mobil den Seiten-Footer — Pflicht-Links bleiben
+            damit von jeder Seite aus zwei Tipper entfernt. */}
+        <RechtsLinks zentriert />
+      </div>
+    </div>
   );
 }

@@ -71,3 +71,18 @@ def test_konto_loeschung_nimmt_gespraeche_mit(tmp_path):
     assert store._conn.execute("SELECT COUNT(*) FROM qa_gespraeche").fetchone()[0] == 0
     assert store._conn.execute("SELECT COUNT(*) FROM qa_gespraech_turns").fetchone()[0] == 0
     store.close()
+
+
+def test_umbenennen_nur_am_eigenen_gespraech(tmp_path):
+    store = Store(tmp_path / "nwz.sqlite")
+    a, b = _user(store, "a@t.de"), _user(store, "b@t.de")
+    gid = store.qa_gespraech_start(a, "Was ist beim Fliegerhorst geplant?")
+    vorher = store.qa_gespraech(gid, a)["updated"]
+    assert store.qa_gespraech_umbenennen(gid, a, "  Fliegerhorst\n Quartier ")
+    g = store.qa_gespraech(gid, a)
+    assert g["titel"] == "Fliegerhorst Quartier"     # Whitespace kollabiert
+    assert g["updated"] == vorher                    # Pflege sortiert die Liste nicht um
+    assert not store.qa_gespraech_umbenennen(gid, b, "Gekapert")   # fremdes Konto
+    assert not store.qa_gespraech_umbenennen(gid, a, "   ")        # leer nach Trim
+    assert store.qa_gespraech(gid, a)["titel"] == "Fliegerhorst Quartier"
+    store.close()

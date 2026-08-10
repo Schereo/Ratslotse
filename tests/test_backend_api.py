@@ -2880,5 +2880,11 @@ def test_gespraech_snapshot_traegt_presse_und_debatten(client, monkeypatch):
         g = client.get(f"/api/council/gespraeche/{gid}").json()
         q0 = g["turns"][0]["quellen"]
         assert q0["presse"] and q0["debatten"]
+        # Design 9a②: Umbenennen über die API — fremde ids bleiben 404.
+        r = client.patch(f"/api/council/gespraeche/{gid}", json={"titel": "Stadion"})
+        assert r.status_code == 200
+        assert store.qa_gespraech(gid, uid)["titel"] == "Stadion"
+        assert client.patch("/api/council/gespraeche/999999",
+                            json={"titel": "x"}).status_code == 404
     finally:
         store.close()
