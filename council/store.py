@@ -3973,16 +3973,33 @@ class CouncilStore:
     def save_qa_feedback(self, frage: str, antwort_auszug: str | None,
                          bewertung: str, grund: str | None,
                          user_id: int | None = None) -> None:
-        """Daumen hoch/runter zu einer KI-Antwort (5a/I-03)."""
+        """Daumen hoch/runter zu einer KI-Antwort (5a/I-03).
+
+        Ein Konto hat je Frage **eine** Stimme: Der nachgereichte Grund und die
+        korrigierte Bewertung (Daumen runter → hoch) überschreiben die frühere
+        Zeile, statt sich als widersprüchliches Paar in der Tabelle zu stapeln —
+        sonst zählte jede Meinungsänderung doppelt. Anonyme Rückmeldungen haben
+        keinen Schlüssel und werden weiterhin angehängt.
+        """
         if bewertung not in ("up", "down"):
             raise ValueError(f"bewertung muss up/down sein, nicht {bewertung!r}")
         now = datetime.utcnow().isoformat(timespec="seconds")
+        werte = (frage[:300], (antwort_auszug or "")[:500] or None, bewertung,
+                 (grund or "").strip()[:500] or None, user_id, now)
         with self._conn:
+            if user_id is not None:
+                vorher = self._conn.execute(
+                    "SELECT id FROM council_qa_feedback WHERE user_id = ? AND frage = ? "
+                    "ORDER BY id DESC LIMIT 1", (user_id, werte[0])).fetchone()
+                if vorher:
+                    self._conn.execute(
+                        "UPDATE council_qa_feedback SET antwort_auszug = ?, bewertung = ?, "
+                        "grund = ?, created = ? WHERE id = ?",
+                        (werte[1], bewertung, werte[3], now, vorher[0]))
+                    return
             self._conn.execute(
                 "INSERT INTO council_qa_feedback (frage, antwort_auszug, bewertung, grund, user_id, created) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
-                (frage[:300], (antwort_auszug or "")[:500] or None, bewertung,
-                 (grund or "").strip()[:500] or None, user_id, now),
+                "VALUES (?, ?, ?, ?, ?, ?)", werte,
             )
 
     def juengste_sitzungen_mit_beschluessen(self, limit: int = 2) -> list[dict]:

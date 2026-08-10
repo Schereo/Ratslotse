@@ -348,11 +348,17 @@ function FeedbackDaumen({ turn }: { turn: Turn }) {
       }),
     }).catch(() => {});
   const senden = (bewertung: "up" | "down") => {
+    // Nochmal auf denselben Daumen: nichts zu melden, nichts zu senden — das
+    // spart eine Zeile in der Tabelle und einen Schlag aufs Rate-Limit.
+    if (bewertung === abgegeben) return;
+    const korrektur = abgegeben !== null;
     setAbgegeben(bewertung);
     setFrageGrund(bewertung === "down");
+    // Beim Umschwenken auf „hilfreich" ist der alte Grund hinfällig.
+    if (bewertung === "up") setGrund("");
     // Der Daumen zählt sofort — auch wenn der Grund nie kommt.
     post(bewertung);
-    if (bewertung === "up") toast.success("Danke für die Rückmeldung!");
+    if (bewertung === "up") toast.success(korrektur ? "Danke — Bewertung geändert." : "Danke für die Rückmeldung!");
   };
   const grundNachreichen = () => {
     setFrageGrund(false);
@@ -363,20 +369,23 @@ function FeedbackDaumen({ turn }: { turn: Turn }) {
   };
   return (
     <span className="flex items-center gap-0.5">
+      {/* Beide Daumen bleiben anklickbar: Wer sich vertippt oder es sich
+          anders überlegt, muss die Bewertung ändern können (Tims Befund).
+          Der nicht gewählte Daumen tritt nur zurück, statt zu erstarren. */}
       <button type="button" aria-label="Antwort war hilfreich" title="Hilfreich"
-        disabled={abgegeben !== null}
+        aria-pressed={abgegeben === "up"}
         onClick={() => senden("up")}
         className={cn("rounded-md p-1 transition-colors",
           abgegeben === "up" ? "text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground",
-          abgegeben === "down" && "opacity-40")}>
+          abgegeben === "down" && "opacity-40 hover:opacity-100")}>
         <ThumbsUp className="h-3.5 w-3.5" aria-hidden />
       </button>
       <button type="button" aria-label="Antwort war nicht hilfreich" title="Nicht hilfreich"
-        disabled={abgegeben !== null}
+        aria-pressed={abgegeben === "down"}
         onClick={() => senden("down")}
         className={cn("rounded-md p-1 transition-colors",
           abgegeben === "down" ? "text-signal" : "text-muted-foreground hover:bg-muted hover:text-foreground",
-          abgegeben === "up" && "opacity-40")}>
+          abgegeben === "up" && "opacity-40 hover:opacity-100")}>
         <ThumbsDown className="h-3.5 w-3.5" aria-hidden />
       </button>
       {frageGrund && (
@@ -488,6 +497,15 @@ const fmtDatumKurz = (d?: string | null) =>
  *  ein 00:30-Uhr-Gespräch aufs Vortagsdatum (Befund F14). */
 const fmtUtcKurz = (d: string) =>
   fmtDatumKurz(/Z$|[+-]\d\d:?\d\d$/.test(d) ? d : `${d}Z`);
+/** Datum + Uhrzeit (lokal) für die Gespräche-Liste — „10.08.26, 20:59".
+ *  Server-Zeitstempel sind UTC ohne Suffix, daher das Z-Anfügen. */
+const fmtUtcMitZeit = (d: string) => {
+  const iso = /Z$|[+-]\d\d:?\d\d$/.test(d) ? d : `${d}Z`;
+  return new Date(iso).toLocaleString("de-DE", {
+    day: "2-digit", month: "2-digit", year: "2-digit",
+    hour: "2-digit", minute: "2-digit",
+  });
+};
 const jahr = (d?: string | null) => (d ? d.slice(0, 4) : "");
 
 const fmtEur = (n: number) =>
@@ -1245,17 +1263,21 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                 </button>
               )}
               {zeigeListe && (
-                <div className="absolute right-0 top-full z-30 mt-1.5 w-72 rounded-xl border border-border bg-card p-1.5 shadow-lg">
-                  <p className="px-2 pb-1 pt-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                <div className="absolute right-0 top-full z-30 mt-1.5 flex max-h-[min(60vh,26rem)] w-72 flex-col rounded-xl border border-border bg-card p-1.5 shadow-lg">
+                  <p className="shrink-0 px-2 pb-1 pt-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
                     Meine Gespräche · in deinem Konto
                   </p>
+                  {/* Bei vielen Gesprächen wuchs die Liste über den
+                      Bildschirmrand, ohne scrollbar zu sein (Tims Befund) —
+                      jetzt scrollt sie im gedeckelten Panel. */}
+                  <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
                   {gespraeche.map((g) => (
                     <div key={g.id} className="group flex items-center gap-1 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted">
                       <button type="button" onClick={() => void gespraechLaden(g.id)}
                         className="min-w-0 flex-1 text-left">
                         <span className="block truncate text-[12.5px] font-medium text-foreground">{g.titel}</span>
                         <span className="block text-[10.5px] text-muted-foreground">
-                          {fmtUtcKurz(g.updated)} · {g.n_turns} {g.n_turns === 1 ? "Frage" : "Fragen"}
+                          {fmtUtcMitZeit(g.updated)} · {g.n_turns} {g.n_turns === 1 ? "Frage" : "Fragen"}
                         </span>
                       </button>
                       <button type="button" onClick={() => void gespraechLoeschen(g.id)}
@@ -1265,6 +1287,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                       </button>
                     </div>
                   ))}
+                  </div>
                 </div>
               )}
             </div>

@@ -13,7 +13,15 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Parteien-Baustein und „Aktuelles von der Stadt" — sie wurden schlicht
   nicht mitgespeichert. Jetzt wandern Debatten, Presse und bei Recherchen
   auch Anlagen, Termine und die Meta-Zahlen mit in den Gesprächs-Snapshot;
-  ältere Gespräche bleiben ohne (dort wurden die Daten nie gesichert). (#412)
+  ältere Gespräche bleiben ohne (dort wurden die Daten nie gesichert).
+  Außerdem scrollt die Gespräche-Liste jetzt, statt bei vielen Einträgen
+  über den Bildschirmrand zu wachsen, und jeder Eintrag zeigt neben dem
+  Datum auch die Uhrzeit. (#412)
+- **Die Bewertung einer Antwort lässt sich ändern.** Wer einmal „Daumen
+  runter" gedrückt hatte, konnte das nicht mehr korrigieren — beide Daumen
+  waren danach dauerhaft gesperrt. Jetzt bleiben sie anklickbar: ein Wechsel
+  ersetzt die frühere Bewertung (samt hinfällig gewordener Begründung), ein
+  erneuter Klick auf denselben Daumen ändert nichts. (#411)
 
 ### Verbessert
 - **„Frag den Rat" schlägt wechselnde Beispielfragen vor.** Statt immer
