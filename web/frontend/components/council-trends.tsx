@@ -323,7 +323,7 @@ function FieldRecaps() {
         <div className="min-w-0">
           <h3 className="text-sm font-semibold text-foreground">Rückblick je Themenfeld</h3>
           <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-            KI-Kurzfassung der neuesten Beschlüsse — was den Rat zuletzt beschäftigt hat.
+            Automatische Kurzfassung der neuesten Beschlüsse — was den Rat zuletzt beschäftigt hat.
           </p>
         </div>
         <button type="button" onClick={toggleAll}

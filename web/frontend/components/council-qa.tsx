@@ -812,7 +812,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
               </div>
             )}
             <Mascot pose="wave" bob className="h-20 w-20" />
-            <h2 className="mt-3 text-xl font-bold tracking-tight">Frag den Stadtrat</h2>
+            <h2 className="mt-3 text-xl font-bold tracking-tight">Frag den Rat</h2>
             <p className="mt-1.5 max-w-md text-sm text-muted-foreground">
               Die Antwort entsteht aus den echten Ratsbeschlüssen — mit Fußnote zu jeder Quelle.
             </p>
@@ -932,7 +932,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                 <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input ref={inputRef} data-search enterKeyHint="send"
                   className="h-12 rounded-2xl pl-9"
-                  placeholder={turns.length > 0 ? "Anschlussfrage stellen …" : "Frag den Stadtrat …"}
+                  placeholder={turns.length > 0 ? "Anschlussfrage stellen …" : "Frag den Rat …"}
                   value={q} onChange={(e) => setQ(e.target.value)} />
               </div>
               {loading ? (
@@ -1042,7 +1042,7 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
           <div className="min-w-0">
             <p className="text-sm font-medium text-foreground">Das hat nicht geklappt.</p>
             <p className="mt-0.5 text-[12.5px] text-muted-foreground">
-              Die Verbindung zum KI-Dienst ist abgebrochen. Deine Frage ist nicht verloren —
+              Die Verbindung ist abgebrochen. Deine Frage ist nicht verloren —
               sie steht wieder im Eingabefeld.
             </p>
             <div className="mt-2.5 flex flex-wrap gap-2">
@@ -1174,7 +1174,7 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
               {turn.antwort && !turn.fehler && <FeedbackDaumen turn={turn} />}
               <span role="status" className="min-w-0 flex-1 text-right text-[10.5px] leading-snug text-muted-foreground/70">
                 {/* 5a/I-02: ehrlich sagen, worauf die Antwort fußt. */}
-                KI-Antwort{zitierte.length > 0 ? `, ${stuetztAuf(zitierte)}` : " aus den gefundenen Beschlüssen"} — kann unvollständig sein. Quellen prüfen.
+                Automatische Antwort{zitierte.length > 0 ? `, ${stuetztAuf(zitierte)}` : " aus den gefundenen Beschlüssen"} — kann unvollständig sein. Quellen prüfen.
               </span>
             </div>
           )}

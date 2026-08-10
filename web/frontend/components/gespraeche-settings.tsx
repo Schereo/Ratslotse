@@ -66,7 +66,7 @@ export function GespraecheCard() {
         Gespräche
       </h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        Verläufe der KI-Frage liegen in deinem Konto und stehen auf allen
+        Deine „Frag den Rat"-Verläufe liegen in deinem Konto und stehen auf allen
         Geräten unter „Gespräche".
       </p>
 
