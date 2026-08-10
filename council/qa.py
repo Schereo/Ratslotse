@@ -286,6 +286,23 @@ def deep_zerlege(frage: str, model: str = EXPAND_MODEL) -> list[dict]:
         return fallback
 
 
+def _anlagen_block(anlagen: list[dict] | None) -> str:
+    """Fundstellen aus Anlagen (Gutachten, Konzepte, Stellungnahmen) — nur im
+    Deep-Research-Kontext. Keine [id]-Zitate: Anlagen sind keine Beschlüsse,
+    die Antwort nennt sie als „Laut <Label> zur Vorlage …"."""
+    if not anlagen:
+        return ""
+    zeilen = "\n".join(
+        f"- {a.get('label') or 'Anlage'} (zur Vorlage {a.get('vorlage_nr') or '?'}"
+        f"{' — ' + a['vorlage_titel'][:80] if a.get('vorlage_titel') else ''}): "
+        f"{(a.get('fundstelle') or '').strip()[:500]}"
+        for a in anlagen)
+    return ("\nAUS DEN ANLAGEN (Gutachten, Konzepte, Stellungnahmen zu den Vorlagen —\n"
+            "oft die fachliche Substanz hinter einem Beschluss). Nutze sie für Details\n"
+            "und Zahlen, als „Laut <Anlagenname> zur Vorlage <Nr> …“, NIE mit [id]:\n"
+            f"{zeilen}\n")
+
+
 def _planungen_block(planungen: list[dict] | None) -> str:
     """Geplante Beratungsstationen der zitierten Vorlagen — der „Wie es
     weitergeht"-Stoff des Berichts (Beratungsfolgen werden täglich gepflegt,
@@ -304,10 +321,11 @@ def deep_bericht_stream(frage: str, candidates: list[dict],
                         debatten: list[dict] | None = None,
                         haushalt: list[dict] | None = None,
                         planungen: list[dict] | None = None,
+                        anlagen: list[dict] | None = None,
                         model: str = MODEL):
     """Der lange Deep-Research-Bericht als Token-Stream (Task 34)."""
     zusatz = (_debatten_block(debatten) + _presse_block(presse)
-              + _haushalt_block(haushalt))
+              + _haushalt_block(haushalt) + _anlagen_block(anlagen))
     prompt = prompts.render("deep_bericht", frage=frage.strip()[:300],
                             context=_build_context(candidates),
                             zusatz=zusatz,
