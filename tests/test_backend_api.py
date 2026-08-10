@@ -1549,6 +1549,34 @@ def test_topic_suggestions_dedupe_similar(client):
 
 
 # ---- KI-Frage: Folgefragen im Stream (Design 24a) ----
+def test_qa_share_roundtrip(client):
+    """Teilen mit Substanz (Task 31): POST speichert den Antwort-Snapshot,
+    GET liefert ihn ÖFFENTLICH (ohne Login) und ohne Konto-Daten."""
+    _register(client)
+    r = client.post("/api/council/qa-share", json={
+        "frage": "Was wurde zum Stadion entschieden?",
+        "antwort": "Der Rat stimmte zu [5].",
+        "quellen": [{"id": 5, "title": "Stadionneubau", "session_date": "2026-06-01",
+                     "committee": "Rat", "outcome": "angenommen"}],
+    })
+    assert r.status_code == 201
+    token = r.json()["token"]
+    assert len(token) >= 16
+
+    client.cookies.clear()  # public: auch ohne Login lesbar
+    r = client.get(f"/api/council/qa-share/{token}")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["antwort"] == "Der Rat stimmte zu [5]."
+    assert body["quellen"][0]["title"] == "Stadionneubau"
+    assert "user_id" not in body
+
+    assert client.get("/api/council/qa-share/gibtsnicht").status_code == 404
+    # Ohne Login kein Anlegen.
+    assert client.post("/api/council/qa-share", json={
+        "frage": "x", "antwort": "y", "quellen": []}).status_code in (401, 403)
+
+
 def test_partei_meinungen_endpoint(client, monkeypatch):
     """Baustein-Endpoint (Task 30): liefert die LLM-Verdichtung; bei dünner
     Lage oder Fehlern IMMER {parteien: []} statt 500 (Zusatzbaustein)."""

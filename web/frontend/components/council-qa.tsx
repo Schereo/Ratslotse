@@ -21,7 +21,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Sparkles, Send, Loader2, ChevronDown, ChevronRight, ChevronUp, ArrowRight, Plus,
   Square, CircleSlash, ExternalLink, ArrowDown, History, RotateCcw, MessageSquarePlus,
-  ThumbsDown, ThumbsUp, Trash2, Volume2, X } from "lucide-react";
+  Share2, ThumbsDown, ThumbsUp, Trash2, Volume2, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Mascot } from "@/components/mascot";
 import type { QaOrtPin } from "@/components/qa-orte-karte";
@@ -33,7 +33,6 @@ import { apiUrl, authHeaders } from "@/lib/api";
 import { entwurfAbholen, entwurfMelden } from "@/lib/draft";
 import { Button, Input, toast } from "@/components/ui";
 import { decisionHref } from "@/lib/routes";
-import { ShareButton } from "@/components/share-button";
 import { PrintButton } from "@/components/print-button";
 import { cn } from "@/lib/utils";
 import { isNativeApp } from "@/lib/platform";
@@ -1178,10 +1177,11 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
               als zugehörig erkannt (Tims Befund 10.08.). */}
           {!loading && (
             <div className="flex items-center gap-1 border-t border-border/60 pt-1.5 print:hidden">
-              <ShareButton iconOnly
-                path={`/council?tab=decisions&mode=fragen&q=${encodeURIComponent(turn.frage)}`}
-                title={`Ratslotse: ${turn.frage}`}
-              />
+              {/* Task 31: teilt einen Snapshot GENAU dieser Antwort — der alte
+                  ?q=-Link ließ Empfänger eine andere Antwort würfeln. */}
+              {turn.antwort && !turn.fehler && !turn.abgebrochen && (
+                <TeilenKnopf turn={turn} zitierte={zitierte} />
+              )}
               <PrintButton iconOnly />
               {turn.antwort && !turn.fehler && <VorlesenKnopf text={turn.antwort} />}
               {turn.antwort && !turn.fehler && <FeedbackDaumen turn={turn} />}
@@ -1379,6 +1379,68 @@ function DebattenBlock({ debatten }: { debatten: DebattenHinweis[] }) {
         ))}
       </ul>
     </div>
+  );
+}
+
+/** Teilen mit Substanz (Task 31): erstellt beim Klick einen Server-Snapshot
+ *  von Frage + EXAKTER Antwort + zitierten Quellen und teilt dessen URL —
+ *  der alte ?q=-Link ließ Empfänger die Frage neu ausführen und eine ANDERE
+ *  Antwort sehen (Tims Befund). Das Token wird je Turn nur einmal erzeugt. */
+function TeilenKnopf({ turn, zitierte }: { turn: Turn; zitierte: QaSource[] }) {
+  const tokenRef = useRef<string | null>(null);
+  const [laedt, setLaedt] = useState(false);
+  const teilen = async () => {
+    if (laedt) return;
+    let token = tokenRef.current;
+    if (!token) {
+      setLaedt(true);
+      try {
+        const r = await fetch(apiUrl("/council/qa-share"), {
+          method: "POST", credentials: "include",
+          headers: { "Content-Type": "application/json", ...authHeaders() },
+          body: JSON.stringify({
+            frage: turn.frage.slice(0, 300),
+            antwort: turn.antwort.slice(0, 8000),
+            quellen: zitierte.slice(0, 40).map((q) => ({
+              id: q.id, title: (q.title ?? "").slice(0, 300),
+              session_date: q.session_date ?? null,
+              committee: q.committee ?? null, outcome: q.outcome ?? null,
+            })),
+          }),
+        });
+        if (!r.ok) throw new Error(String(r.status));
+        token = (await r.json()).token as string;
+        tokenRef.current = token;
+      } catch {
+        toast.error("Teilen gerade nicht möglich — bitte nochmal versuchen.");
+        return;
+      } finally {
+        setLaedt(false);
+      }
+    }
+    const base = isNativeApp() ? "https://ratslotse.de" : window.location.origin;
+    const url = `${base}/g?t=${token}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `Ratslotse: ${turn.frage}`, url });
+        return;
+      } catch (e) {
+        if ((e as Error).name === "AbortError") return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Link zur Antwort kopiert.");
+    } catch {
+      toast.error("Link konnte nicht kopiert werden.");
+    }
+  };
+  return (
+    <button type="button" onClick={() => void teilen()} aria-label="Antwort teilen"
+      title="Antwort teilen (Link zeigt genau diese Antwort)"
+      className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+      {laedt ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Share2 className="h-3.5 w-3.5" />}
+    </button>
   );
 }
 

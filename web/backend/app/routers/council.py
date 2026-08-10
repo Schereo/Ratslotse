@@ -24,7 +24,7 @@ from council import vorlagen as vorlagen_mod
 from nwz.store import Store
 
 from ..deps import get_council_store, get_store, optional_user, require_active
-from ..ratelimit import partei_meinungen_limiter, qa_feedback_limiter, qa_limiter
+from ..ratelimit import partei_meinungen_limiter, qa_feedback_limiter, qa_limiter, qa_share_limiter
 
 router = APIRouter(prefix="/api/council", tags=["council"])
 
@@ -544,6 +544,48 @@ def partei_meinungen_endpoint(
         _log.exception("partei_meinungen fehlgeschlagen")
         meinungen = None
     return {"parteien": meinungen or []}
+
+
+class QaShareQuelle(BaseModel):
+    id: int
+    title: str = Field(max_length=300)
+    session_date: str | None = Field(default=None, max_length=10)
+    committee: str | None = Field(default=None, max_length=120)
+    outcome: str | None = Field(default=None, max_length=40)
+
+
+class QaShareBody(BaseModel):
+    frage: str = Field(min_length=1, max_length=300)
+    antwort: str = Field(min_length=1, max_length=8000)
+    quellen: list[QaShareQuelle] = Field(default_factory=list, max_length=40)
+
+
+@router.post("/qa-share", status_code=status.HTTP_201_CREATED)
+def qa_share_anlegen(
+    body: QaShareBody,
+    request: Request,
+    user: dict = Depends(require_active),
+    nwz: Store = Depends(get_store),
+) -> dict:
+    """Teilen mit Substanz (Task 31): speichert die KONKRETE Antwort als
+    Snapshot — der alte ?q=-Link ließ Empfänger die Frage neu würfeln und
+    eine andere Antwort sehen. Bewusste Einzel-Veröffentlichung per Klick."""
+    qa_share_limiter.check(request)
+    token = nwz.qa_share_anlegen(user["id"], body.frage, body.antwort,
+                                 [q.model_dump() for q in body.quellen])
+    return {"token": token}
+
+
+@router.get("/qa-share/{token}")
+def qa_share_lesen(token: str, nwz: Store = Depends(get_store)) -> dict:
+    """Öffentliche Snapshot-Ansicht — bewusst OHNE Login (der Link soll auch
+    Menschen ohne Konto erreichen); enthält nie Konto-Daten."""
+    if len(token) > 64:
+        raise HTTPException(status_code=404, detail="Nicht gefunden.")
+    share = nwz.qa_share_get(token)
+    if not share:
+        raise HTTPException(status_code=404, detail="Nicht gefunden.")
+    return share
 
 
 @router.get("/qa-beispiele")
