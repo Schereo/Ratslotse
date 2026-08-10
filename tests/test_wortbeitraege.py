@@ -264,6 +264,41 @@ def test_cross_encoder_ist_torwaechter(store, monkeypatch):
 
 # ------------------------------ QA-Kontextblock -----------------------------
 
+def test_fraktions_label_normalisierung():
+    """Slash-Whitespace vereinheitlicht — „Bündnis 90/ Die Grünen" und
+    „Bündnis 90/Die Grünen" wurden sonst als ZWEI Fraktionen gruppiert
+    (Prod-Befund 10.08.)."""
+    assert qa._fraktions_label("Bündnis 90/ Die Grünen") == "Bündnis 90/Die Grünen"
+    assert qa._fraktions_label("Bündnis 90/Die Grünen") == "Bündnis 90/Die Grünen"
+    assert qa._fraktions_label("Fraktion DIE LINKE.") == "DIE LINKE"
+    assert qa._fraktions_label("FDP / Volt") == "FDP/Volt"
+    assert qa._fraktions_label(None) is None
+
+
+def test_search_je_fraktion_filtert_und_deckelt(store, monkeypatch):
+    """Fraktions-bewusstes Sammeln: Beiträge ohne Fraktion (Verwaltung)
+    verstopfen keine Slots, je Fraktion greift der Deckel."""
+    np = pytest.importorskip("numpy")
+    from council import embeddings as emb
+    rows = ([dict(BEITRAG, partei=None, text=f"Verwaltungsantwort Nummer {i} zur Sache.")
+             for i in range(6)]
+            + [dict(BEITRAG, partei="SPD", sprecher=f"S{i}", text=f"SPD-Beitrag {i} zur Sache im Rat.")
+               for i in range(7)]
+            + [dict(BEITRAG, partei="CDU", sprecher="C1", text="CDU-Beitrag zur Sache im Rat.")])
+    store.save_wortbeitraege(100, rows)
+    alle = [r[0] for r in store._conn.execute("SELECT id FROM council_wortbeitraege ORDER BY id")]
+    mat = np.ones((len(alle), 2), dtype="float32") / np.sqrt(2)  # alle gleich relevant
+    monkeypatch.setattr(emb, "_wb_matrix", lambda s: (alle, mat))
+    monkeypatch.setattr(emb, "embed", lambda texts: np.array([[1.0, 1.0]], dtype="float32") / np.sqrt(2))
+    monkeypatch.setattr(emb, "rerank", lambda q, docs: [(i, 0.0) for i, _ in docs])
+    hits = emb.search_wortbeitraege_je_fraktion(store, "Frage", "Frage", je_partei=5)
+    gewaehlt = store.wortbeitraege_by_ids([w for w, _ in hits])
+    parteien = [r.get("partei") for r in gewaehlt]
+    assert None not in parteien
+    assert parteien.count("SPD") == 5  # Deckel greift (7 vorhanden)
+    assert parteien.count("CDU") == 1
+
+
 def test_partei_meinungen_schwellen(monkeypatch):
     """Unter 2 Fraktionen oder 4 Beiträgen: kein Baustein, KEIN LLM-Call."""
     def nie(**kwargs):

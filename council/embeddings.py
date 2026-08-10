@@ -485,6 +485,41 @@ def search_wortbeitraege(store, query: str, expanded: str, top_k: int = 4,
                            top_k)
 
 
+def search_wortbeitraege_je_fraktion(store, query: str, expanded: str,
+                                     je_partei: int = 5, min_score: float = 0.45) -> list[tuple]:
+    """Kandidaten für den Parteien-Baustein: FRAKTIONS-BEWUSST gesammelt.
+    Das globale Top-24 der normalen Suche bestand zur Hälfte aus Beiträgen
+    ohne Fraktion (Verwaltungsantworten, Referenten) — übrig blieben 1–3
+    Beiträge je Partei, die „Parteimeinung" war real eine Einzel-Paraphrase
+    (Tims Befund 10.08.). Hier: Vektor-Scan → Beiträge ohne Fraktion raus →
+    je Fraktion die besten ``je_partei`` → EIN Torwächter-Rerank über alle."""
+    from council.qa import _fraktions_label
+
+    ids, mat = _wb_matrix(store)
+    if not ids:
+        return []
+    qv = embed([expanded])[0]
+    scores = mat @ qv
+    kandidaten = sorted(
+        ((wid, float(s)) for wid, s in zip(ids, scores) if s >= min_score),
+        key=lambda x: -x[1])[:120]
+    rows = store.wortbeitraege_by_ids([wid for wid, _ in kandidaten])
+    text_von = {r["id"]: " — ".join(t for t in (r.get("top"), r.get("text")) if t) for r in rows}
+    partei_von = {r["id"]: _fraktions_label(r.get("partei")) for r in rows}
+    je_gruppe: dict[str, int] = {}
+    auswahl: list[tuple] = []
+    for wid, s in kandidaten:
+        label = partei_von.get(wid)
+        if not label:
+            continue  # Verwaltung/Einwohner verstopfen keine Fraktions-Slots
+        if je_gruppe.get(label, 0) >= je_partei:
+            continue
+        je_gruppe[label] = je_gruppe.get(label, 0) + 1
+        auswahl.append((wid, s))
+    return _rerank_kontext(query, [(wid, text_von[wid]) for wid, _ in auswahl],
+                           top_k=len(auswahl))
+
+
 def embed_wortbeitraege_missing(store) -> int:
     """Ein Vektor je neuem Wortbeitrag (Texte sind auf 2000 Zeichen gekappt,
     Chunking unnötig). Gerufen vom Extraktions-Skript und als Backstop von
