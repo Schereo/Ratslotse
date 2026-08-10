@@ -2921,7 +2921,22 @@ class CouncilStore:
 
     # --- Council members (from attendance: who sits on the council) ------------------
     _MEMBER_ROLES = ("mitglied", "vorsitz")  # exclude verwaltung/protokoll/gast/beratend
-    _HONORIFICS = {"prof", "dr", "dipl", "ing", "med"}
+    # Titel UND Anreden: „Herr Jens Freymuth" und „Jens Freymuth" sind dieselbe
+    # Person — ohne die Anreden entstanden Dubletten im Mitglieder-Verzeichnis
+    # (Tims Befund 10.08.). Adelspartikel („zu", „von") bleiben absichtlich
+    # stehen — sie gehören zum Nachnamen.
+    _HONORIFICS = {"prof", "dr", "dipl", "ing", "med",
+                   "herr", "frau", "ratsherr", "ratsfrau"}
+    _ANREDEN = {"herr", "frau", "ratsherr", "ratsfrau"}
+
+    @staticmethod
+    def _person_anzeige(name: str) -> str:
+        """Anzeige-Name ohne führende Anrede („Herr Jens Freymuth" → „Jens
+        Freymuth") — Titel wie „Dr." bleiben, die gehören zum Namen."""
+        toks = name.split()
+        while toks and toks[0].lower().rstrip(".") in CouncilStore._ANREDEN:
+            toks.pop(0)
+        return " ".join(toks) or name
 
     @staticmethod
     def _person_slug(name: str) -> str:
@@ -2963,7 +2978,7 @@ class CouncilStore:
             p = c["label"] if c["kind"] in ("partei", "gruppe") else None
             if p and (e["party_at"] is None or d >= e["party_at"][0]):
                 e["party_at"] = (d, p)
-        out = [{"slug": sl, "name": e["names"].most_common(1)[0][0],
+        out = [{"slug": sl, "name": self._person_anzeige(e["names"].most_common(1)[0][0]),
                 "party": e["party_at"][1] if e["party_at"] else None,
                 "n": len(e["ksinrs"]), "committees": len(e["committees"]),
                 "first": e["first"], "last": e["last"]}
@@ -2983,10 +2998,10 @@ class CouncilStore:
         if not matched:
             return None
         ph = ",".join("?" * len(matched))
-        name = Counter(  # canonical = most-frequent spelling
+        name = self._person_anzeige(Counter(  # canonical = most-frequent spelling
             r["name"] for r in self._conn.execute(
                 f"SELECT name FROM council_attendance WHERE name IN ({ph}) AND role IN ('mitglied','vorsitz')",
-                matched)).most_common(1)[0][0]
+                matched)).most_common(1)[0][0])
         chairs = {r["committee"] for r in self._conn.execute(
             f"SELECT DISTINCT cs.committee FROM council_attendance a JOIN council_sessions cs ON cs.ksinr=a.ksinr "
             f"WHERE a.name IN ({ph}) AND a.role='vorsitz'", matched)}

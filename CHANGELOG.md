@@ -8,6 +8,10 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Verbessert
+- **Keine Anreden-Dubletten mehr im Ratsmitglieder-Verzeichnis.** „Herr Jens
+  Freymuth" und „Jens Freymuth" waren zwei Einträge — Anreden (Herr/Frau/
+  Ratsherr/Ratsfrau) werden jetzt beim Zusammenführen und in der Anzeige
+  entfernt; Titel wie „Dr." bleiben Teil des Namens. (#419)
 - **Ehrlicher Hinweis auf den Ratsmitglieder-Seiten.** Unter den
   Wortbeiträgen steht jetzt, dass die Protokolle sinngemäß zusammenfassen
   und nicht jede Wortmeldung erfassen — die Liste ist ein Ausschnitt, kein

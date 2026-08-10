@@ -85,3 +85,21 @@ def test_search_wortbeitraege_von_person_fallback(monkeypatch):
                         lambda q, k, top_k: [(2, 0.5)])
     rows = emb.search_wortbeitraege_von_person(_S(), "Was sagt Lükermann zum Stadion?", "luekermann")
     assert [r["id"] for r in rows] == [2]
+
+
+def test_person_slug_und_anzeige_normalisieren_anreden():
+    """Tims Befund 10.08.: „Herr Jens Freymuth" und „Jens Freymuth" erschienen
+    als zwei Personen im Verzeichnis — Anreden gehören weder in den Slug noch
+    in den Anzeige-Namen; Titel (Dr.) bleiben Teil des Namens."""
+    slug = CouncilStore._person_slug
+    assert slug("Herr Jens Freymuth") == slug("Jens Freymuth") == "jens-freymuth"
+    assert slug("Frau Dr. Niewerth-Baumann") == slug("Dr. Niewerth-Baumann")
+    assert slug("Ratsfrau Finke") == slug("Finke")
+    # Adelspartikel bleiben — „zu Jeddeloh" ist der Nachname.
+    assert slug("Herr zu Jeddeloh") == "zu-jeddeloh"
+
+    anzeige = CouncilStore._person_anzeige
+    assert anzeige("Herr Jens Freymuth") == "Jens Freymuth"
+    assert anzeige("Frau Dr. Niewerth-Baumann") == "Dr. Niewerth-Baumann"
+    assert anzeige("Jens Lükermann") == "Jens Lükermann"
+    assert anzeige("Frau Blohm") == "Blohm"
