@@ -18,6 +18,14 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   „Laut Protokoll …", nie als Beschluss. (#387)
 
 ### Verbessert
+- **Antworten geben jetzt auch die Debatte wieder.** Bei Themen mit
+  Wortbeiträgen und Pressemitteilungen fasst „Frag den Rat" nicht mehr nur
+  die Beschlüsse zusammen, sondern webt das Meinungsbild aus dem Ratssaal
+  („Laut Protokoll betonte …") und den Stand der Verwaltung („Laut
+  Pressemitteilung vom …") in die Antwort ein — klar getrennt von den
+  zitierten Beschlüssen. (#392)
+
+### Verbessert
 - **„Frag den Rat" statt „KI-Frage".** Das Frage-Feature tritt jetzt unter
   seinem eigenen Namen auf: Der Umschalter heißt „Suchen | Fragen", Knöpfe
   und Menüs sagen „Frag den Rat", und Kurzfassungen oder Einschätzungen
