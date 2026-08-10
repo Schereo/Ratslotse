@@ -73,7 +73,11 @@ def _ein_fenster(text: str, model: str) -> list[dict]:
             model=model, _feature="wortbeitraege", temperature=0,
             max_tokens=16000, messages=messages, **extra,
         )
-        content = _strip_fences(resp.choices[0].message.content or "")
+        # choices kann bei Provider-Fehlern/Content-Filter null sein — der
+        # nackte [0]-Zugriff riss im Massenlauf aus der Retry-Schleife aus
+        # (ksinr 4299/4301, 10.08.). Leer → normaler Retry-Pfad.
+        choices = getattr(resp, "choices", None) or []
+        content = _strip_fences(choices[0].message.content or "") if choices else ""
         if content:
             try:
                 data = json.loads(content)
