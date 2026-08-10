@@ -18,7 +18,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Titel-Anhängsel des Ratsinformationssystems fallen weg, und abgeschnitten
   wird nur noch an der Wortgrenze — statt „Stadion Oldenburg GmbH & Co. KG:
   Stadionneubau Maastrichter " steht dort jetzt „Stadionneubau Maastrichter
-  Straße".
+  Straße". (#410)
 - **Admins steuern die Frage-Limits je Konto.** Im Nutzer-Detail des
   Admin-Panels lässt sich das Tageskontingent der Gründlichen Recherche
   erhöhen oder ganz ausschalten (0 = unbegrenzt, leer = Standard 5) und ein
