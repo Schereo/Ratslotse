@@ -205,6 +205,43 @@ def test_search_wortbeitraege_bm25_fallback(store, monkeypatch):
     assert hits and 0 < hits[0][1] < 0.2  # Sockel-Score, kein Cosine
 
 
+def test_kein_bm25_rauschen_bei_vorhandenem_index(store, monkeypatch):
+    """Existiert der Vektor-Index, füllt BM25 NICHT mehr auf: Ein bloßer
+    Wort-Match („Straße") hob sonst thematisch fremde Treffer in die UI
+    (Tims Ampel-Wartungs-Befund 10.08. bei den Pressemitteilungen)."""
+    np = pytest.importorskip("numpy")
+    from council import embeddings as emb
+    store.save_wortbeitraege(100, [BEITRAG])  # FTS allein WÜRDE „Fliegerhorst" matchen
+    monkeypatch.setattr(emb, "_wb_matrix",
+                        lambda s: ([1], np.array([[0.0, 1.0]], dtype="float32")))
+    monkeypatch.setattr(emb, "embed",
+                        lambda texts: np.array([[1.0, 0.0]], dtype="float32"))
+    assert emb.search_wortbeitraege(store, "Fliegerhorst", "Fliegerhorst Altlasten") == []
+
+
+def test_cross_encoder_ist_torwaechter(store, monkeypatch):
+    """Cosine-Kandidaten überleben nur, wenn der Cross-Encoder sie bestätigt —
+    Bi-Encoder-Scores trennen amtliche Kurztexte nicht (Stadion-PM 0.466 <
+    Ampelwartung 0.471, Messung 10.08.)."""
+    np = pytest.importorskip("numpy")
+    from council import embeddings as emb
+    store.save_wortbeitraege(100, [BEITRAG])
+    wb_id = store.search_wortbeitraege_fts("Fliegerhorst")[0][0]
+    monkeypatch.setattr(emb, "_wb_matrix",
+                        lambda s: ([wb_id], np.array([[1.0, 0.0]], dtype="float32")))
+    monkeypatch.setattr(emb, "embed",
+                        lambda texts: np.array([[1.0, 0.0]], dtype="float32"))
+    monkeypatch.setattr(emb, "rerank", lambda q, docs: [(i, -0.2) for i, _ in docs])
+    assert emb.search_wortbeitraege(store, "Frage", "Frage")[0][0] == wb_id
+    monkeypatch.setattr(emb, "rerank", lambda q, docs: [(i, -2.9) for i, _ in docs])
+    assert emb.search_wortbeitraege(store, "Frage", "Frage") == []
+    # Reranker nicht verfügbar → lieber leer als Rauschen (Zusatzkanal).
+    def kaputt(q, docs):
+        raise ImportError("kein fastembed")
+    monkeypatch.setattr(emb, "rerank", kaputt)
+    assert emb.search_wortbeitraege(store, "Frage", "Frage") == []
+
+
 # ------------------------------ QA-Kontextblock -----------------------------
 
 def test_debatten_block_format():

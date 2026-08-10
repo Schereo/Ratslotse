@@ -1102,13 +1102,26 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 if marker not in buf and len(buf) > sent:
                     yield _sse({"type": "token", "text": buf[sent:]})
                     sent = len(buf)
-            except Exception:  # noqa: BLE001 — streaming failed mid-way → one-shot fallback
-                if not buf:
+            except Exception:  # noqa: BLE001 — Stream riss mitten in der Antwort
+                # Vorher wurde der Fehler nur bei LEEREM Puffer repariert — ein
+                # Abriss nach den ersten Sätzen ließ still einen Antwort-Torso
+                # stehen (Tims „mitten im Wort zu Ende"-Befund 10.08.). Jetzt:
+                # immer einmal komplett neu generieren; der Client ersetzt den
+                # Torso per replace-Event. Scheitert auch das, wird der Turn
+                # ehrlich als abgebrochen markiert.
+                _log.warning("answer_stream brach nach %d Zeichen ab — one-shot Ersatz",
+                             len(buf), exc_info=True)
+                try:
                     ans, _ = qa.answer_question(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
                                                 haushalt=haushalt_zeilen, debatten=debatten_rows)
                     buf = ans
-                    yield _sse({"type": "token", "text": ans})
+                    yield _sse({"type": "replace", "text": qa.split_followups(ans)[0]})
                     sent = len(ans)
+                except Exception:  # noqa: BLE001
+                    _log.exception("one-shot Ersatz scheiterte ebenfalls")
+                    if not buf:
+                        raise  # nichts gesendet → Netz-Fehlerpfad des Clients
+                    yield _sse({"type": "abbruch"})
             answer_text, followups = qa.split_followups(buf)
             if not followups:
                 followups = qa.fallback_followups(ctx)

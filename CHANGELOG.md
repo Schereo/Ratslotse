@@ -18,6 +18,16 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   „Laut Protokoll …", nie als Beschluss. (#387)
 
 ### Verbessert
+- **Drei Live-Befunde vom Morgen behoben.** Reißt die Verbindung zum
+  KI-Dienst mitten in der Antwort ab, wird sie automatisch einmal neu
+  erzeugt statt mitten im Wort stehenzubleiben. Die Bewertung (Daumen
+  hoch/runter) steht jetzt unter jeder Antwort, nicht mehr nur unten in der
+  Belege-Spalte. Und die Blöcke „Aktuelles von der Stadt" und „Aus den
+  Ratsdebatten" zeigen nur noch wirklich einschlägige Treffer: Ein
+  Präzisions-Prüfschritt sortiert Beifang wie Ampel-Wartungsmeldungen zur
+  Straßenbau-Frage aus — im Zweifel bleibt der Block leer. (#389)
+
+### Verbessert
 - **Debatten-Nachschliff aus dem Review.** Findet die KI-Frage zwar keine
   Beschlüsse, aber Wortbeiträge aus den Ratsdebatten, sagt die Antwort das
   jetzt ehrlich, statt „nichts gefunden" neben sichtbaren Belegen zu

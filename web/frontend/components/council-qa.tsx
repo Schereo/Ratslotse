@@ -554,6 +554,10 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             kontext: (msg.frage as string) ?? null,
           });
           else if (msg.type === "token") patchLast((t) => ({ antwort: t.antwort + (msg.text as string) }));
+          // Riss der LLM-Stream mitten in der Antwort, generiert das Backend
+          // einmal komplett neu und ersetzt den Torso (Befund 10.08.).
+          else if (msg.type === "replace") patchLast({ antwort: (msg.text as string) ?? "" });
+          else if (msg.type === "abbruch") patchLast({ abgebrochen: true });
           else if (msg.type === "suggestions") patchLast({ followups: (msg.questions as string[]) ?? [] });
           else if (msg.type === "done") {
             patchLast({ cited: (msg.cited as number[]) ?? [] });
@@ -961,7 +965,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
           {letzter && letzter.antwort && !letzter.fehler ? (
             <BelegeSpalte turn={letzter} flashId={flashId}
               onDazuFragen={(titel) => void ask(`Erzähl mir mehr zu „${titel}".`)}
-              onFlash={flash} loading={loading} />
+              onFlash={flash} />
           ) : loading ? (
             <div aria-hidden className="space-y-3 pt-1">
               <div className="h-3 w-24 animate-pulse rounded bg-muted" />
@@ -1155,10 +1159,12 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
             </div>
           )}
 
-          {/* Meta-Zeile: stille Icons + Disclaimer (Design 2③); auf Desktop
-              übernimmt beim jüngsten Turn die Belege-Spalte die Aktionen. */}
+          {/* Meta-Zeile: stille Icons + Disclaimer (Design 2③) — bei JEDEM
+              Turn direkt unter der Antwort, auch dem jüngsten auf Desktop:
+              die Bewertung nur unten rechts in der Belege-Spalte wurde nicht
+              als zugehörig erkannt (Tims Befund 10.08.). */}
           {!loading && (
-            <div className={cn("flex items-center gap-1 border-t border-border/60 pt-1.5 print:hidden", istLetzter && "lg:hidden")}>
+            <div className="flex items-center gap-1 border-t border-border/60 pt-1.5 print:hidden">
               <ShareButton iconOnly
                 path={`/council?tab=decisions&mode=fragen&q=${encodeURIComponent(turn.frage)}`}
                 title={`Ratslotse: ${turn.frage}`}
@@ -1180,8 +1186,8 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
 
 /* ------------------- Belege-Spalte (Desktop, Design 2⑤) ------------------- */
 
-function BelegeSpalte({ turn, flashId, onFlash, loading, onDazuFragen }: {
-  turn: Turn; flashId: number | null; onFlash: (id: number) => void; loading: boolean;
+function BelegeSpalte({ turn, flashId, onFlash, onDazuFragen }: {
+  turn: Turn; flashId: number | null; onFlash: (id: number) => void;
   onDazuFragen?: (titel: string) => void;
 }) {
   const [showAll, setShowAll] = useState(false);
@@ -1198,23 +1204,9 @@ function BelegeSpalte({ turn, flashId, onFlash, loading, onDazuFragen }: {
       )}
       {(turn.debatten?.length ?? 0) > 0 && <DebattenBlock debatten={turn.debatten} />}
       {turn.presse.length > 0 && <PresseBlock presse={turn.presse} />}
-      {!loading && (
-        // sticky am Kartenboden: Die Zeile stand am Scroller-Ende hinter
-        // Quellen + Presse — Daumen & Co. waren je nach Inhalt unsichtbar
-        // (Tims „Bewertung fehlt"-Befund). So bleibt sie immer im Blick.
-        <div className="sticky -bottom-4 -mx-1 flex items-center gap-1 border-t border-border/60 bg-card px-1 pb-1 pt-1.5">
-          <ShareButton iconOnly
-            path={`/council?tab=decisions&mode=fragen&q=${encodeURIComponent(turn.frage)}`}
-            title={`Ratslotse: ${turn.frage}`}
-          />
-          <PrintButton iconOnly />
-          {turn.antwort && !turn.fehler && <VorlesenKnopf text={turn.antwort} />}
-          {turn.antwort && !turn.fehler && <FeedbackDaumen turn={turn} />}
-          <span className="min-w-0 flex-1 text-right text-[10.5px] leading-snug text-muted-foreground/70">
-            KI-Antwort{zitierte.length > 0 ? `, ${stuetztAuf(zitierte)}` : ""} — kann unvollständig sein. Quellen prüfen.
-          </span>
-        </div>
-      )}
+      {/* Keine eigene Aktionszeile mehr: Seit die Meta-Zeile (Teilen, Vorlesen,
+          Bewertung) bei JEDEM Turn direkt unter der Antwort steht, wäre sie
+          hier nur ein Duplikat mit eigenem Daumen-State (Befund 10.08.). */}
     </div>
   );
 }
