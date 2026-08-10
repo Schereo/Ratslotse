@@ -307,8 +307,10 @@ def partei_meinungen(question: str, rows: list[dict], model: str = MODEL) -> lis
         if not isinstance(e, dict) or e.get("partei") not in gruppen:
             continue  # Halluzinations-Guard: nur Fraktionen aus dem Input
         kern = e.get("kernaussage") if isinstance(e.get("kernaussage"), dict) else None
+        haltung = str(e.get("haltung") or "").strip().lower()
         out.append({
             "partei": e["partei"],
+            "haltung": haltung if haltung in ("dafür", "dagegen", "offen", "gewandelt") else "offen",
             "position": str(e.get("position") or "").strip()[:400],
             "einig": bool(e.get("einig", True)),
             "hinweis": (str(e.get("hinweis")) or "").strip()[:200] or None if e.get("hinweis") else None,

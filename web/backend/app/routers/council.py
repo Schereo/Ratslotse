@@ -522,13 +522,24 @@ def partei_meinungen_endpoint(
     wenn die Datenlage zu dünn ist — der Baustein erscheint dann nicht."""
     partei_meinungen_limiter.check(request)
     try:
+        import hashlib
+
         from council import embeddings as emb
         # Fraktions-bewusst sammeln (je Fraktion bis 5 Beiträge) — das globale
         # Top-24 bestand zur Hälfte aus Verwaltungs-Beiträgen ohne Fraktion,
         # die „Parteimeinung" war real eine Einzel-Paraphrase (Befund 10.08.).
         hits = emb.search_wortbeitraege_je_fraktion(store, body.frage, body.frage)
-        rows = store.wortbeitraege_by_ids([wid for wid, _ in hits])
-        meinungen = qa.partei_meinungen(body.frage, rows)
+        # Cache über den Hash der Beitrags-IDs: verschieden formulierte Fragen
+        # zum selben Thema (Stadion!) sammeln dieselben Beiträge ein → Treffer
+        # ohne LLM-Call; ein neuer Beitrag ändert den Hash → Nachverdichtung.
+        schluessel = hashlib.sha1(
+            ",".join(str(wid) for wid, _ in sorted(hits)).encode()).hexdigest()
+        meinungen = store.partei_meinungen_cache_get(schluessel) if hits else None
+        if meinungen is None and hits:
+            rows = store.wortbeitraege_by_ids([wid for wid, _ in hits])
+            meinungen = qa.partei_meinungen(body.frage, rows)
+            if meinungen:
+                store.partei_meinungen_cache_set(schluessel, body.frage, meinungen)
     except Exception:  # noqa: BLE001 — Zusatzbaustein, nie 500 im Gespräch
         _log.exception("partei_meinungen fehlgeschlagen")
         meinungen = None

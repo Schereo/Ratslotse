@@ -581,6 +581,15 @@ class CouncilStore:
             "text_hash TEXT NOT NULL, "
             "vector BLOB NOT NULL)"
         )
+        # Server-Cache des Parteien-Bausteins (Task 30): Schlüssel ist der Hash
+        # der verdichteten Beitrags-IDs — verschieden formulierte Fragen zum
+        # selben Thema treffen denselben Eintrag, ein NEUER Beitrag zum Thema
+        # ändert den Hash und erzwingt die Nachverdichtung von selbst.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_partei_meinungen_cache ("
+            "schluessel TEXT PRIMARY KEY, frage TEXT, ergebnis TEXT NOT NULL, "
+            "created_at TEXT NOT NULL)"
+        )
         # Erledigt-Marker der Wortbeitrags-Extraktion am Protokoll: auch ein
         # leeres Ergebnis (Formalien-Niederschrift) zählt als erledigt — ohne
         # den Marker fräße jedes davon dauerhaft einen nächtlichen LLM-Call.
@@ -3752,6 +3761,29 @@ class CouncilStore:
     def wortbeitraege_embedding_rows(self) -> list[tuple]:
         return self._conn.execute(
             "SELECT wb_id, vector FROM council_wortbeitraege_embeddings").fetchall()
+
+    def partei_meinungen_cache_get(self, schluessel: str, max_age_days: int = 14):
+        row = self._conn.execute(
+            "SELECT ergebnis FROM council_partei_meinungen_cache "
+            "WHERE schluessel = ? AND created_at >= datetime('now', ?)",
+            (schluessel, f"-{int(max_age_days)} days")).fetchone()
+        if not row:
+            return None
+        try:
+            return json.loads(row[0])
+        except (ValueError, TypeError):
+            return None
+
+    def partei_meinungen_cache_set(self, schluessel: str, frage: str, ergebnis) -> None:
+        with self._conn:
+            self._conn.execute(
+                "INSERT OR REPLACE INTO council_partei_meinungen_cache "
+                "(schluessel, frage, ergebnis, created_at) VALUES (?, ?, ?, datetime('now'))",
+                (schluessel, frage[:300], json.dumps(ergebnis, ensure_ascii=False)))
+            # Alt-Einträge räumen sich beim Schreiben mit weg (klein halten).
+            self._conn.execute(
+                "DELETE FROM council_partei_meinungen_cache "
+                "WHERE created_at < datetime('now', '-30 days')")
 
     def wortbeitraege_embeddings_version(self) -> str:
         """Billiger Cache-Schlüssel für die In-Memory-Matrix."""
