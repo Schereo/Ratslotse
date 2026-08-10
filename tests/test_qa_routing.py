@@ -220,6 +220,26 @@ def test_qa_feedback_speichern(tmp_path):
     store.close()
 
 
+def test_qa_feedback_korrektur_ueberschreibt(tmp_path):
+    # Ein Konto hat je Frage EINE Stimme: Grund-Nachtrag und Meinungsänderung
+    # überschreiben die frühere Zeile, statt sich zu widersprechen.
+    store = CouncilStore(tmp_path / "c.sqlite")
+    store.save_qa_feedback("Wie lief es?", "Antwort", "down", None, user_id=7)
+    store.save_qa_feedback("Wie lief es?", "Antwort", "down", "zu vage", user_id=7)
+    store.save_qa_feedback("Wie lief es?", "Antwort", "up", None, user_id=7)
+    rows = store._conn.execute(
+        "SELECT bewertung, grund FROM council_qa_feedback WHERE user_id = 7").fetchall()
+    assert len(rows) == 1, "Korrektur darf keine zweite Zeile anlegen"
+    assert rows[0]["bewertung"] == "up"
+    assert rows[0]["grund"] is None, "Grund des Daumen-runter ist nach der Korrektur hinfällig"
+    # Andere Frage und anonyme Rückmeldungen bleiben eigene Zeilen.
+    store.save_qa_feedback("Und sonst?", None, "down", None, user_id=7)
+    store.save_qa_feedback("Wie lief es?", None, "down", None)
+    store.save_qa_feedback("Wie lief es?", None, "up", None)
+    assert store._conn.execute("SELECT count(*) FROM council_qa_feedback").fetchone()[0] == 4
+    store.close()
+
+
 def test_juengste_sitzungen_mit_beschluessen(tmp_path):
     # 5a/I-07: Futter für frische Beispielfragen — nur Sitzungen MIT
     # extrahierten Beschlüssen, neueste zuerst.

@@ -348,11 +348,17 @@ function FeedbackDaumen({ turn }: { turn: Turn }) {
       }),
     }).catch(() => {});
   const senden = (bewertung: "up" | "down") => {
+    // Nochmal auf denselben Daumen: nichts zu melden, nichts zu senden — das
+    // spart eine Zeile in der Tabelle und einen Schlag aufs Rate-Limit.
+    if (bewertung === abgegeben) return;
+    const korrektur = abgegeben !== null;
     setAbgegeben(bewertung);
     setFrageGrund(bewertung === "down");
+    // Beim Umschwenken auf „hilfreich" ist der alte Grund hinfällig.
+    if (bewertung === "up") setGrund("");
     // Der Daumen zählt sofort — auch wenn der Grund nie kommt.
     post(bewertung);
-    if (bewertung === "up") toast.success("Danke für die Rückmeldung!");
+    if (bewertung === "up") toast.success(korrektur ? "Danke — Bewertung geändert." : "Danke für die Rückmeldung!");
   };
   const grundNachreichen = () => {
     setFrageGrund(false);
@@ -363,20 +369,23 @@ function FeedbackDaumen({ turn }: { turn: Turn }) {
   };
   return (
     <span className="flex items-center gap-0.5">
+      {/* Beide Daumen bleiben anklickbar: Wer sich vertippt oder es sich
+          anders überlegt, muss die Bewertung ändern können (Tims Befund).
+          Der nicht gewählte Daumen tritt nur zurück, statt zu erstarren. */}
       <button type="button" aria-label="Antwort war hilfreich" title="Hilfreich"
-        disabled={abgegeben !== null}
+        aria-pressed={abgegeben === "up"}
         onClick={() => senden("up")}
         className={cn("rounded-md p-1 transition-colors",
           abgegeben === "up" ? "text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground",
-          abgegeben === "down" && "opacity-40")}>
+          abgegeben === "down" && "opacity-40 hover:opacity-100")}>
         <ThumbsUp className="h-3.5 w-3.5" aria-hidden />
       </button>
       <button type="button" aria-label="Antwort war nicht hilfreich" title="Nicht hilfreich"
-        disabled={abgegeben !== null}
+        aria-pressed={abgegeben === "down"}
         onClick={() => senden("down")}
         className={cn("rounded-md p-1 transition-colors",
           abgegeben === "down" ? "text-signal" : "text-muted-foreground hover:bg-muted hover:text-foreground",
-          abgegeben === "up" && "opacity-40")}>
+          abgegeben === "up" && "opacity-40 hover:opacity-100")}>
         <ThumbsDown className="h-3.5 w-3.5" aria-hidden />
       </button>
       {frageGrund && (
