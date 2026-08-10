@@ -13,7 +13,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Parteien-Baustein und „Aktuelles von der Stadt" — sie wurden schlicht
   nicht mitgespeichert. Jetzt wandern Debatten, Presse und bei Recherchen
   auch Anlagen, Termine und die Meta-Zahlen mit in den Gesprächs-Snapshot;
-  ältere Gespräche bleiben ohne (dort wurden die Daten nie gesichert). (#410)
+  ältere Gespräche bleiben ohne (dort wurden die Daten nie gesichert). (#412)
 
 ### Verbessert
 - **„Frag den Rat" schlägt wechselnde Beispielfragen vor.** Statt immer
