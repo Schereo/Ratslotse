@@ -12,7 +12,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   ein Ratsmitglied, antwortet „Frag den Rat" aus dessen Wortbeiträgen
   („Laut Protokoll sagte …") statt nur aus Beschlüssen; der Belege-Block
   zeigt die Beiträge der Person. Auf den Ratsmitglieder-Seiten steht neu
-  die Sektion „Aus den Protokollen" mit den jüngsten Wortbeiträgen. (#413)
+  die Sektion „Aus den Protokollen" mit den jüngsten Wortbeiträgen. (#414)
 
 ### Verbessert
 - **FDP und Volt getrennt statt als Gruppen-Eimer.** Die Protokolle führen
@@ -21,12 +21,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Parteien-Baustein führt FDP und Volt als eigene Zeilen (Volt mit eigener
   Farbe), und die Fußzeile benennt ehrlich, wenn eine der beiden nichts
   Passendes gesagt hat. „Für Oldenburg" bleibt als Gruppe stehen — mehr
-  gibt das Ratsinformationssystem dort nicht her. (#413)
+  gibt das Ratsinformationssystem dort nicht her. (#414)
 - **Wortbeiträge in voller Länge lesbar.** Die Debatten-Belege unter den
   Antworten waren auf 220 Zeichen gekappt — mitten im Satz. Jetzt lässt
   sich jeder Beitrag komplett aufklappen („Ganzen Beitrag anzeigen"), im
   Ratsgespräch wie auf den Ratsmitglieder-Seiten. Bei Personen-Fragen
-  entfällt der Parteien-Baustein — die Frage zielt ja auf eine Person. (#413)
+  entfällt der Parteien-Baustein — die Frage zielt ja auf eine Person. (#414)
 
 ### Behoben
 - **Gespeicherte Gespräche verlieren keine Bausteine mehr.** Beim Öffnen
