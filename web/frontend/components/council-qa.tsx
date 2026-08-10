@@ -1132,6 +1132,19 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /** Eine NEUE Frage stellen — in dem Modus, der gerade eingeschaltet ist.
+   *
+   *  Vorschläge, Weiterfragen-Chips und „Dazu fragen" gingen bisher immer den
+   *  schnellen Weg, auch wenn „Gründlich recherchieren" aktiv war: Man tippt
+   *  den Kolben an, klickt einen Vorschlag — und bekommt wortlos die schnelle
+   *  Antwort (Tims Befund). Nur das Absenden im Composer las den Schalter.
+   *
+   *  Ausdrücklich NICHT hierüber laufen die Verfeinerungen der schon
+   *  vorliegenden Antwort („Einfacher erklären", „Ausführlicher"), der erneute
+   *  Versuch nach einem Fehler und „stattdessen schnell fragen" — die meinen
+   *  jeweils genau einen Weg. */
+  const frageStellen = (text: string) => void (rechercheModus ? askDeep(text) : ask(text));
+
   const neuesGespraech = () => {
     abortRef.current?.abort();
     abortRef.current = null;
@@ -1388,7 +1401,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             </p>
             <div className="mt-2 flex w-full max-w-md flex-col gap-1.5">
               {beispiele.map((ex, i) => (
-                <button key={ex} type="button" onClick={() => void ask(ex)}
+                <button key={ex} type="button" onClick={() => frageStellen(ex)}
                   className="flex items-center gap-2.5 rounded-[11px] border border-border bg-card px-3 py-2.5 text-left text-[13.5px] transition-[background-color,transform] duration-150 ease-out-strong hover:bg-muted active:scale-[0.99]">
                   <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
                   <span className="min-w-0 flex-1">{ex}</span>
@@ -1417,8 +1430,8 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                 onJump={(id) => { jumpZuQuelle(ti, id, ti === turns.length - 1); flash(id); }}
                 onRetry={() => { setTurns((ts) => ts.slice(0, -1)); void ask(t.frage); }}
                 onEigeneFrage={() => inputRef.current?.focus()}
-                onDazuFragen={(titel) => void ask(`Erzähl mir mehr zu „${titel}".`)}
-                onFrageStellen={(text) => void ask(text)}
+                onDazuFragen={(titel) => frageStellen(`Erzähl mir mehr zu „${titel}".`)}
+                onFrageStellen={(text) => frageStellen(text)}
                 onDeepStop={() => void deepStop(t)}
                 onDeepTeilbericht={() => void deepTeilbericht(t)}
                 onDeepVerwerfen={() => deepVerwerfen(t)}
@@ -1463,7 +1476,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
           {!deepAktiv && (composerFollowups.length > 0 || (!loading && letzter && !letzter.fehler && letzter.antwort)) && (
             <ChipZeile>
               {composerFollowups.map((s) => (
-                <button key={s} type="button" onClick={() => void ask(s)}
+                <button key={s} type="button" onClick={() => frageStellen(s)}
                   className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-primary/30 bg-primary/[0.05] px-3 py-1.5 text-[12.5px] text-foreground transition-[background-color,transform] duration-150 ease-out-strong hover:bg-primary/[0.1] active:scale-[0.98]">
                   <span className="max-w-[260px] truncate">{s}</span>
                   <ArrowRight className="h-3 w-3 shrink-0 text-primary" aria-hidden />
@@ -1554,7 +1567,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         <div className="flex-1 overflow-y-auto p-4">
           {letzter && letzter.antwort && !letzter.fehler ? (
             <BelegeSpalte turn={letzter} flashId={flashId}
-              onDazuFragen={(titel) => void ask(`Erzähl mir mehr zu „${titel}".`)}
+              onDazuFragen={(titel) => frageStellen(`Erzähl mir mehr zu „${titel}".`)}
               onFlash={flash} />
           ) : loading || deepAktiv ? (
             <div aria-hidden className="space-y-3 pt-1">

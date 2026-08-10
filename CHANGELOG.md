@@ -8,6 +8,14 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Neu
+- **Die Gründliche Recherche meldet sich, wenn sie fertig ist.** Wer sie in der
+  App startet und das Handy weglegt, bekommt eine Mitteilung, sobald der
+  Bericht steht — Antippen öffnet ihn. Auch ein Fehlschlag meldet sich, damit
+  niemand auf einen Bericht wartet, der nicht mehr kommt; ein selbst
+  abgebrochener Lauf bleibt still. Wer gerade zusieht, bekommt kein Banner über
+  den eigenen Text. Die Meldung beantwortet eine eigene Handlung und wartet
+  deshalb nicht auf das nächste Zustellfenster; nur wer Benachrichtigungen ganz
+  abgeschaltet hat, hört auch hier nichts. (#413)
 - **Kostenentwicklung bei Geld-Fragen.** Der Geld-Baustein zeigt die
   zitierten Beträge jetzt als „Beträge im Zeitverlauf" — chronologisch mit
   Datum, Balken und Fußnote. Ein „von X auf Y gestiegen"-Vergleich
@@ -37,15 +45,19 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   entfällt der Parteien-Baustein — die Frage zielt ja auf eine Person. (#414)
 
 ### Behoben
-- **Gespeicherte Gespräche verlieren keine Bausteine mehr.** Beim Öffnen
-  eines Gesprächs aus dem Verlauf fehlten bisher die Ratsdebatten, der
-  Parteien-Baustein und „Aktuelles von der Stadt" — sie wurden schlicht
-  nicht mitgespeichert. Jetzt wandern Debatten, Presse und bei Recherchen
-  auch Anlagen, Termine und die Meta-Zahlen mit in den Gesprächs-Snapshot;
-  ältere Gespräche bleiben ohne (dort wurden die Daten nie gesichert).
-  Außerdem scrollt die Gespräche-Liste jetzt, statt bei vielen Einträgen
-  über den Bildschirmrand zu wachsen, und jeder Eintrag zeigt neben dem
-  Datum auch die Uhrzeit. (#412)
+- **Der Fortschritt der Gründlichen Recherche läuft wieder mit.** Die Karte
+  blieb beim ersten Schritt stehen und sprang dann unvermittelt zum fertigen
+  Bericht: Der Browser fordert komprimierte Antworten an, und die Kompression
+  sammelte den Ereignis-Strom der Recherche, statt ihn durchzulassen. Jetzt
+  kommen Facetten, gelesene Dokumente und Phasen wieder in dem Takt an, in dem
+  sie entstehen. (#413)
+- **Vorschläge und Weiterfragen beachten den Recherche-Schalter.** Wer
+  „Gründlich recherchieren" eingeschaltet und dann einen Beispiel-Vorschlag,
+  einen Weiterfragen-Chip oder „Dazu fragen" angetippt hat, bekam wortlos die
+  schnelle Antwort — den Schalter las bisher nur das Absenden im Eingabefeld.
+  Jetzt starten auch diese Wege die gründliche Recherche. („Einfacher
+  erklären", „Ausführlicher" und „stattdessen schnell fragen" bleiben
+  bewusst schnell.) (#413)
 - **Die Bewertung einer Antwort lässt sich ändern.** Wer einmal „Daumen
   runter" gedrückt hatte, konnte das nicht mehr korrigieren — beide Daumen
   waren danach dauerhaft gesperrt. Jetzt bleiben sie anklickbar: ein Wechsel
