@@ -8,6 +8,17 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Verbessert
+- **„Frag den Rat" schlägt wechselnde Beispielfragen vor.** Statt immer
+  derselben zwei Klassiker rotieren die Vorschläge über einen kuratierten Pool
+  von 22 Fragen — jede vorab durch das echte Retrieval geschickt und nur
+  aufgenommen, wenn sie tatsächlich viele einschlägige Beschlüsse trifft
+  (Themen ohne Substanz im Ratsinformationssystem bleiben draußen). Deckt ein
+  frischer Vorschlag schon ein Thema ab, wird es nicht doppelt angeboten.
+  Außerdem sind die frischen Vorschläge lesbarer: Firmierungen und
+  Titel-Anhängsel des Ratsinformationssystems fallen weg, und abgeschnitten
+  wird nur noch an der Wortgrenze — statt „Stadion Oldenburg GmbH & Co. KG:
+  Stadionneubau Maastrichter " steht dort jetzt „Stadionneubau Maastrichter
+  Straße". (#410)
 - **Admins steuern die Frage-Limits je Konto.** Im Nutzer-Detail des
   Admin-Panels lässt sich das Tageskontingent der Gründlichen Recherche
   erhöhen oder ganz ausschalten (0 = unbegrenzt, leer = Standard 5) und ein

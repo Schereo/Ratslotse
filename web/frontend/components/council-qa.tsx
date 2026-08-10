@@ -58,12 +58,72 @@ function citationIds(bracket: string): number[] {
   return m ? [Number(m[1])] : [];
 }
 
+/** Bewährte Beispielfragen für den Empty State — kuratiert, nicht beliebig.
+ *
+ *  Jede Frage lief am 10.08.2026 durch das echte Retrieval des /ask-Endpoints
+ *  gegen den Prod-Bestand und musste liefern: mindestens vier Volltreffer
+ *  (Relevanz ≥ 0,7), zweistellig viele brauchbare Treffer und Material bis
+ *  mindestens 2025. Themen, die im Ratsinformationssystem kaum vorkommen
+ *  (Küstenautobahn A20, Straßenbahn, Ärztemangel, E-Ladesäulen), stehen
+ *  bewusst NICHT hier — ein Beispiel, das beim ersten Klick eine dünne
+ *  Antwort erzeugt, kostet mehr Vertrauen, als Abwechslung einbringt.
+ *  Wer die Liste erweitert, misst vorher nach.
+ */
 const EXAMPLES = [
   "Wie ist der Stand bei der Cäcilienbrücke?",
   "Was wurde zum Radverkehr beschlossen?",
   "Was kostet der Neubau des Stadions?",
   "Gab es Beschlüsse zu Kita-Plätzen?",
+  "Was ist beim Fliegerhorst geplant?",
+  "Was wurde zur Weser-Ems-Halle beschlossen?",
+  "Was wurde zum Thema Parken und Parkgebühren entschieden?",
+  "Welche Beschlüsse gibt es zum Klimaschutz?",
+  "Welche Beschlüsse gibt es zu Spielplätzen?",
+  "Was ist zum Pferdemarkt beschlossen worden?",
+  "Welche Sportstätten werden gefördert?",
+  "Wie unterstützt die Stadt Kultur und Museen?",
+  "Welche neuen Baugebiete hat der Rat beschlossen?",
+  "Was wurde zur Gebührenerhöhung bei Müll und Abwasser beschlossen?",
+  "Was wurde zur Digitalisierung der Verwaltung beschlossen?",
+  "Welche Beschlüsse gibt es zum Thema Jugend und Jugendzentren?",
+  "Was tut die Stadt für bezahlbaren Wohnraum?",
+  "Was wurde zu Windenergie und Photovoltaik beschlossen?",
+  "Welche Schulen werden saniert oder neu gebaut?",
+  "Welche Beschlüsse gibt es zu Tempo 30?",
+  "Was wurde zum Thema Obdachlosigkeit beschlossen?",
+  "Wie viele Bäume werden gefällt und nachgepflanzt?",
 ];
+
+/** Wörter, die in fast jeder Beispielfrage stehen und deshalb nichts über ihr
+ *  Thema aussagen — sie dürfen die Dubletten-Prüfung nicht auslösen. */
+const BEISPIEL_STOPP = new Set([
+  "beschl", "entsch", "welche", "wurden", "themas", "oldenb", "stadts",
+]);
+
+/** Themen-Stämme einer Frage: Wortanfänge (6 Zeichen) der langen Wörter.
+ *  Auf Stämmen statt ganzen Wörtern, weil deutsche Komposita sonst
+ *  aneinander vorbeilaufen („Stadions" vs. „Stadionneubau"). */
+function themenStaemme(frage: string): string[] {
+  const woerter = frage.toLowerCase().match(/[a-zäöüß]{6,}/g) ?? [];
+  return woerter.map((w) => w.slice(0, 6)).filter((s) => !BEISPIEL_STOPP.has(s));
+}
+
+/** Vorschläge aus dem bewährten Pool ziehen — bei jedem Besuch andere, aber
+ *  keine, die ein frischer Vorschlag schon abdeckt: sonst steht das Stadion
+ *  zweimal untereinander. Wird bewusst erst nach dem Mount aufgerufen; der
+ *  statische Export darf nicht gegen ein zufälliges Ergebnis hydrieren. */
+function waehleBeispiele(frisch: string[], anzahl: number): string[] {
+  if (anzahl <= 0) return [];
+  const belegt = new Set(frisch.flatMap(themenStaemme));
+  const pool = [...EXAMPLES];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  const frei = pool.filter((f) => !themenStaemme(f).some((s) => belegt.has(s)));
+  // Lieber eine thematische Dublette als eine leere Liste.
+  return [...frei, ...pool.filter((f) => !frei.includes(f))].slice(0, anzahl);
+}
 
 type Step = "expand" | "search" | "answer";
 const STEP_LABELS: Record<Step, string> = {
@@ -378,6 +438,34 @@ function derAusschuss(committee: string): string {
   if (committee === "Rat") return "der Rat";
   if (/ausschuss|beirat/i.test(committee)) return `der ${committee}`;
   return `„${committee}"`;
+}
+
+/** TOP-Titel auf den Gegenstand eindampfen, damit „Was wurde zu „…" entschieden?"
+ *  eine lesbare Frage ergibt. RIS-Titel schleppen Zusätze mit: Semikolon-Ketten
+ *  („…; außerplanmäßige Bewilligung von Mehrausgaben"), Antragsteller-Klammern,
+ *  „ - Beschluss", und vorneweg gern die Firmierung des Vorhabenträgers. Ohne
+ *  das entsteht der Stummel „Stadion Oldenburg GmbH & Co. KG: Stadionneubau
+ *  Maastrichter " — mitten im Wort abgeschnitten. Leerer String = unbrauchbar. */
+function kurzerGegenstand(roh: string): string {
+  // „(Oldb)" ist der amtliche Namenszusatz und steht mitten im Titel — als
+  // Klammer-Trenner behandelt würde er „Satzung der Stadt Oldenburg" übrig
+  // lassen und die eigentliche Sache abschneiden.
+  let t = roh.replace(/\s*\((?:Oldb|Oldenburg)\.?\)/gi, "").split(/;|\s[-–—(]/)[0].trim();
+  // Anführungszeichen raus: der Vorschlag setzt den Gegenstand selbst in „…".
+  t = t.replace(/["'‚“”„‘’«»]/g, "")
+    .replace(/\s+([:,])/g, "$1").replace(/\s{2,}/g, " ").trim();
+  // „Stadion Oldenburg GmbH & Co. KG: Stadionneubau …" — der Firmen-Präfix vor
+  // dem Doppelpunkt sagt nichts über die Sache, der Teil dahinter alles.
+  const teile = t.match(/^(.{3,70}?):\s+(.{8,})$/);
+  if (teile && /\b(GmbH|AG|KG|mbH|e\.\s?V\.|Stiftung|Verband|Betrieb)\b/.test(teile[1])) t = teile[2];
+  if (t.length > 58) {
+    const schnitt = t.slice(0, 58);
+    const luecke = schnitt.lastIndexOf(" ");
+    // Nur an einer Wortgrenze kürzen — sonst lieber gar keinen Vorschlag.
+    if (luecke < 20) return "";
+    t = `${schnitt.slice(0, luecke).replace(/[,;:.\-–—]+$/, "")} …`;
+  }
+  return t.length >= 8 ? t : "";
 }
 
 /** 5a/I-02: „stützt sich auf N Beschlüsse von X bis Y" — Zeitraum-Ehrlichkeit
@@ -1080,17 +1168,23 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         const vorschlaege = [
           `Was hat ${derAusschuss(rows[0].committee)} am ${fmtDatum(rows[0].session_date)} beschlossen?`,
         ];
-        const top = rows[0].top_titel;
-        if (top) {
-          const kurz = top.split(/ [-–(]/)[0].trim().slice(0, 60);
-          if (kurz.length >= 8) vorschlaege.push(`Was wurde zu „${kurz}" entschieden?`);
-        }
+        const kurz = kurzerGegenstand(rows[0].top_titel ?? "");
+        if (kurz) vorschlaege.push(`Was wurde zu „${kurz}" entschieden?`);
         setFrische(vorschlaege.slice(0, 2));
       })
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showIntro]);
-  const beispiele = [...frische, ...EXAMPLES].slice(0, 4);
+  // Die restlichen Plätze füllt der bewährte Pool — bei jedem Besuch mit
+  // anderen Fragen (Tims Wunsch), aber nur solchen, die messbar tragen.
+  // Erstes Rendern zeigt die Klassiker; gewürfelt wird erst nach dem Mount,
+  // sonst weicht das Markup des statischen Exports von der Hydration ab.
+  const [gewuerfelt, setGewuerfelt] = useState<string[]>(() => EXAMPLES.slice(0, 4));
+  useEffect(() => {
+    if (!showIntro) return;
+    setGewuerfelt(waehleBeispiele(frische, 4 - frische.length));
+  }, [showIntro, frische]);
+  const beispiele = [...frische, ...gewuerfelt].slice(0, 4);
   // Weiterfragen leben im Composer (Design 2②) — nur vom jüngsten Turn.
   const composerFollowups = !loading && letzter && !letzter.fehler ? letzter.followups.slice(0, 3) : [];
 
