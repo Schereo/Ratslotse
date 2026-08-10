@@ -307,6 +307,25 @@ CREATE TABLE IF NOT EXISTS qa_shares (
     created  TEXT NOT NULL
 );
 
+-- „Gründliche Recherche" (RG-10): server-seitige Recherche-Jobs. Der Job
+-- läuft im Backend-Thread weiter, wenn der Client die Verbindung verliert
+-- (Tab-Wechsel, App-Navigation); diese Zeile ist die persistente Wahrheit —
+-- der fertige Bericht ist so auch nach App- oder Server-Neustart abrufbar.
+-- Kontingent (5/Tag je Konto) zählt nur laeuft+fertig: Abbruch, Teilbericht
+-- und Fehler kosten laut Design nichts.
+CREATE TABLE IF NOT EXISTS deep_research_jobs (
+    id       TEXT PRIMARY KEY,      -- unerratbares Token
+    user_id  INTEGER NOT NULL,
+    frage    TEXT NOT NULL,
+    status   TEXT NOT NULL,         -- laeuft | fertig | teilbericht | gestoppt | abgebrochen | fehler
+    bericht  TEXT,                  -- fertiger Berichtstext (Markdown mit [id]-Fußnoten)
+    quellen  TEXT,                  -- JSON {sources, presse, debatten, planungen, cited, facetten, gelesen, zeitraum}
+    gesehen  INTEGER NOT NULL DEFAULT 0,  -- Client hat den fertigen Bericht gerendert
+    created  TEXT NOT NULL,
+    updated  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_deep_jobs_user ON deep_research_jobs(user_id, created DESC);
+
 CREATE TABLE IF NOT EXISTS quiz_answers (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     owner_id    INTEGER NOT NULL,
@@ -433,6 +452,7 @@ USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     ("qa_gespraeche", "user_id"),
     ("qa_gespraech_turns", "user_id"),
     ("qa_shares", "user_id"),
+    ("deep_research_jobs", "user_id"),
     ("quiz_answers", "owner_id"),
     ("quiz_ratings", "owner_id"),
     ("quiz_daily", "owner_id"),
@@ -1491,6 +1511,75 @@ class Store:
             quellen = []
         return {"frage": row["frage"], "antwort": row["antwort"],
                 "quellen": quellen, "created": row["created"]}
+
+    # ---- „Gründliche Recherche" (RG-10, Task 34) ---------------------------
+
+    def deep_job_anlegen(self, user_id: int, frage: str) -> str:
+        """Neuen Recherche-Job registrieren → unerratbare Job-ID."""
+        import secrets
+
+        job_id = secrets.token_urlsafe(12)
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT INTO deep_research_jobs (id, user_id, frage, status, created, updated) "
+                "VALUES (?, ?, ?, 'laeuft', ?, ?)", (job_id, user_id, frage[:300], now, now))
+        return job_id
+
+    def deep_job_update(self, job_id: str, status: str, bericht: str | None = None,
+                        quellen_json: str | None = None) -> None:
+        """Endzustand (oder Statuswechsel) des Jobs persistieren."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "UPDATE deep_research_jobs SET status = ?, "
+                "bericht = COALESCE(?, bericht), quellen = COALESCE(?, quellen), "
+                "updated = ? WHERE id = ?", (status, bericht, quellen_json, now, job_id))
+
+    def deep_job_get(self, job_id: str, user_id: int) -> dict | None:
+        """Job-Zeile — nur für den Eigentümer."""
+        row = self._conn.execute(
+            "SELECT id, frage, status, bericht, quellen, gesehen, created, updated "
+            "FROM deep_research_jobs WHERE id = ? AND user_id = ?",
+            (job_id, user_id)).fetchone()
+        return dict(row) if row else None
+
+    def deep_job_aktuell(self, user_id: int) -> dict | None:
+        """Der jüngste Job des Kontos — damit der Client nach Navigation oder
+        App-Neustart einen laufenden Job (oder frisch fertigen Bericht)
+        wiederfindet, ohne sich die ID gemerkt haben zu müssen."""
+        row = self._conn.execute(
+            "SELECT id, frage, status, gesehen, created, updated "
+            "FROM deep_research_jobs WHERE user_id = ? ORDER BY created DESC, id LIMIT 1",
+            (user_id,)).fetchone()
+        return dict(row) if row else None
+
+    def deep_jobs_heute(self, user_id: int) -> int:
+        """Kontingent-Zählung: heutige Jobs, die zählen (laeuft + fertig).
+        Gestoppte, abgebrochene und fehlgeschlagene kosten nichts (RG-10)."""
+        row = self._conn.execute(
+            "SELECT COUNT(*) FROM deep_research_jobs WHERE user_id = ? "
+            "AND status IN ('laeuft', 'fertig') AND date(created) = date('now')",
+            (user_id,)).fetchone()
+        return int(row[0])
+
+    def deep_job_gesehen(self, job_id: str, user_id: int) -> None:
+        """Bericht wurde gerendert — nicht erneut ungefragt einblenden."""
+        with self._conn:
+            self._conn.execute(
+                "UPDATE deep_research_jobs SET gesehen = 1 WHERE id = ? AND user_id = ?",
+                (job_id, user_id))
+
+    def deep_jobs_verwaiste_beenden(self) -> int:
+        """Beim Backend-Start: Jobs, die laut DB noch laufen, deren Thread aber
+        mit dem alten Prozess gestorben ist, ehrlich als Fehler markieren —
+        der Client bietet dann „Fortsetzen" an (kostet kein Kontingent)."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            cur = self._conn.execute(
+                "UPDATE deep_research_jobs SET status = 'fehler', updated = ? "
+                "WHERE status = 'laeuft'", (now,))
+            return cur.rowcount
 
     def qa_gespraech_start(self, user_id: int, titel: str) -> int | None:
         """None, wenn es das Konto (nicht mehr) gibt — schließt das Fenster,

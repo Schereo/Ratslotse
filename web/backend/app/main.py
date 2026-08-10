@@ -97,10 +97,29 @@ def _warm_models() -> None:
     threading.Thread(target=_load, daemon=True).start()
 
 
+def _deep_jobs_aufraeumen() -> None:
+    """„Gründliche Recherche"-Jobs, die laut DB noch laufen, sind nach einem
+    Neustart tot (ihr Thread starb mit dem alten Prozess) → als Fehler
+    markieren, damit der Client „Fortsetzen" anbietet statt ewig zu warten."""
+    try:
+        from nwz.store import Store
+
+        store = Store(get_settings().nwz_db)
+        try:
+            n = store.deep_jobs_verwaiste_beenden()
+            if n:
+                logger.warning("%d verwaiste Recherche-Jobs als Fehler markiert", n)
+        finally:
+            store.close()
+    except Exception:  # noqa: BLE001 — Aufräumen darf den Start nie verhindern
+        pass
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # noqa: ANN001
     _startup_checks()
     _warn_if_admin_bootstrap_pending()
+    _deep_jobs_aufraeumen()
     _warm_models()
     yield
 

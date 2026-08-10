@@ -22,6 +22,48 @@ _DB_PATH = Path(__file__).resolve().parent.parent / "data" / "nwz.sqlite"
 # in the admin UI. The template is what the model receives after .format().
 
 DEFAULTS: dict[str, dict[str, str]] = {
+    "deep_zerlegung": {
+        "title": "Gründliche Recherche – Facetten-Zerlegung",
+        "description": "Zerlegt eine Frage in 3–5 Recherche-Facetten für den Deep-Research-Modus (Task 34). Platzhalter: {frage}.",
+        "template": (
+            "Zerlege die Frage an das Ratsinformations-Archiv der Stadt Oldenburg in "
+            "3-5 RECHERCHE-FACETTEN als JSON:\n"
+            '{{"facetten": [{{"name": "Kurzlabel, 2-4 Wörter", "frage": "eigenständige '
+            'Suchfrage zu dieser Facette", "begriffe": "4-8 Suchbegriffe, Substantive, '
+            'durch Leerzeichen"}}]}}\n\n'
+            "Regeln:\n"
+            "- Die Facetten decken VERSCHIEDENE Aspekte ab, soweit sie zur Frage passen: "
+            "Beschlusslage/Entscheidungen, Kosten/Finanzierung, Planung/Recht (B-Pläne, "
+            "Gutachten), Debatte/Positionen, aktueller Stand/nächste Schritte.\n"
+            "- Bei einer engen Frage reichen 3 Facetten; keine Dubletten.\n"
+            "- KEINE Floskeln in den begriffen (kein „beschlossen“, „Stadtrat“).\n"
+            "Antworte NUR mit dem JSON.\n\nFRAGE: {frage}"
+        ),
+    },
+    "deep_bericht": {
+        "title": "Gründliche Recherche – Bericht",
+        "description": "Der lange, gegliederte Recherche-Bericht des Deep-Research-Modus (Task 34). Platzhalter: {frage}, {context}, {zusatz}, {planungen}.",
+        "template": (
+            "Du bist der Recherche-Assistent von ratslotse.de und schreibst einen "
+            "GRÜNDLICHEN BERICHT zu einer Frage über den Oldenburger Stadtrat — nur aus "
+            "den mitgelieferten Unterlagen, nichts erfinden.\n\n"
+            "FORM:\n"
+            "- Beginne mit 2-3 Sätzen Überblick (die Kernantwort zuerst).\n"
+            "- Gliedere danach mit „## “-Zwischenüberschriften nach Material (z. B. "
+            "## Beschlusslage · ## Kosten und Finanzierung · ## Aus der Debatte · "
+            "## Wie es weitergeht) — nur Abschnitte, für die es Substanz gibt.\n"
+            "- Nutze Spiegelstrich-Listen („- “) für Aufzählungen und Beträge.\n"
+            "- Länge 400-800 Wörter.\n"
+            "- Jede Tatsachen-Aussage aus einem Beschluss trägt die Fußnote [id] "
+            "(die id steht am jeweiligen Beschluss im Kontext). Debatten, Presse und "
+            "Haushalt werden als „Laut Protokoll …“/„Laut Pressemitteilung vom …“/"
+            "„Laut Haushaltsplan …“ genannt, NIE mit [id].\n"
+            "- Wo die Unterlagen zu einem naheliegenden Aspekt NICHTS hergeben, sage "
+            "das ausdrücklich in einem Satz.\n"
+            "{planungen}"
+            "\nBESCHLÜSSE:\n{context}\n{zusatz}\nFRAGE: {frage}"
+        ),
+    },
     "partei_meinungen": {
         "title": "Parteien-Baustein der KI-Frage",
         "description": "Verdichtet Wortbeiträge je Fraktion zu einer Position für den Baustein „Das sagen die Parteien“ (Task 30).",
