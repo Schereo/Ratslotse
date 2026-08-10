@@ -17,6 +17,16 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Fliegerhorst-Altlasten). Die Antwort nennt solche Stellen ehrlich als
   „Laut Protokoll …", nie als Beschluss. (#387)
 
+### Neu
+- **Baustein „Das sagen die Parteien".** Bei Themen mit echter Debatte zeigt
+  „Frag den Rat" unter der Antwort die Positionen der Fraktionen: Farb-Punkt,
+  Haltung in ein bis zwei Sätzen, dazu eine Kernaussage mit Sprecher und
+  Datum — als Paraphrase aus den Sitzungsprotokollen, bewusst ohne
+  Anführungszeichen. Widersprechen sich Beiträge derselben Fraktion, steht
+  „uneinheitlich" daneben. Über „Dazu fragen" an jeder Zeile lässt sich die
+  Position einer Fraktion direkt vertiefen. Der Baustein erscheint nur, wenn
+  mindestens zwei Fraktionen substanziell zu Wort kamen. (#395)
+
 ### Verbessert
 - **Antworten geben jetzt auch die Debatte wieder.** Bei Themen mit
   Wortbeiträgen und Pressemitteilungen fasst „Frag den Rat" nicht mehr nur
