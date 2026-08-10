@@ -422,6 +422,35 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     router.replace(`/council?${params.toString()}`, { scroll: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sp]);
+  useEffect(() => {
+    // ?share=<token> (Task 31c): Eingeloggte kommen von einer geteilten
+    // Antwort — der Snapshot wird als erster Turn übernommen, Anschluss-
+    // fragen tragen dann automatisch dessen Kontext. Nur ins leere Gespräch
+    // (nicht mitten in ein laufendes platzen); der Param wird wie ?q= nach
+    // Übernahme entfernt.
+    const token = sp.get("share");
+    if (!token || sp.get("mode") !== "fragen") return;
+    const params = new URLSearchParams(sp.toString());
+    params.delete("share");
+    router.replace(`/council?${params.toString()}`, { scroll: false });
+    setTurns((ts) => {
+      if (ts.length > 0) return ts;
+      fetch(apiUrl(`/council/qa-share/${encodeURIComponent(token)}`))
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+        .then((s: { frage: string; antwort: string; quellen: QaSource[] }) => {
+          setTurns((alt) => alt.length > 0 ? alt : [{
+            key: naechsterKey(),
+            frage: s.frage, antwort: s.antwort, qtype: null, mode: null,
+            sources: s.quellen ?? [], presse: [], debatten: [],
+            cited: (s.quellen ?? []).map((q) => q.id), followups: [],
+            kontext: s.frage,
+          }]);
+        })
+        .catch(() => toast.error("Die geteilte Antwort konnte nicht geladen werden."));
+      return ts;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sp]);
   // Design 29a (P8): Entwurf überlebt den Sitzungs-Rauswurf.
   useEffect(() => entwurfMelden("ki-frage", () => q), [q]);
   useEffect(() => {
