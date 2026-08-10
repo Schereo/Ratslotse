@@ -17,7 +17,7 @@ per LLM aufbereitet.
 | `nwz/` | Geteilte Infrastruktur: LLM-Client (`llm.py`), SQLite-Store (`store.py`), E-Mail, Push, Prompts. *(Der Paketname `nwz/` ist historisch.)* |
 | `scripts/` | Cron-Jobs & Ops-Tools (`check_*.py`, `weekly_enrich.py`, `backup_db.py`, …) |
 | `web/backend/` | FastAPI-Backend (uvicorn) |
-| `web/frontend/` | Next.js-Frontend (+ Capacitor für iOS/Android) |
+| `web/frontend/` | Next.js-Frontend (+ Capacitor für iOS/Android); **Designsprache: `web/frontend/DESIGNSPRACHE.md`** |
 | `docs-site/` | Astro-Starlight-Technik-Doku |
 | `eval/` | Eval-Harness für die LLM-Qualität |
 
@@ -110,6 +110,12 @@ NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflic
 
 ## Wissenswertes
 
+- **Designsprache (Pflichtlektüre vor UI-Arbeit):**
+  [`web/frontend/DESIGNSPRACHE.md`](web/frontend/DESIGNSPRACHE.md) — Farben,
+  Typo, Abstände, wiederkehrende Bausteine, Interaktions-Grammatik und
+  Anti-Patterns, destilliert aus den Design-Artboards. Wer einen neuen Screen
+  oder eine neue Komponente baut, baut gegen diese Datei; Abweichungen dort
+  nachziehen, nicht still danebenlegen.
 - **Ersten Admin einrichten:** Die Registrierung vergibt **keine** Rollen (weder
   an `WEB_ADMIN_EMAIL` noch ans erste Konto einer leeren Tabelle) — sonst gehörte
   das Deployment dem, der die Adresse zuerst ins Formular tippt. Die Adresse aus
