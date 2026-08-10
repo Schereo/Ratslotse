@@ -535,22 +535,42 @@ def partei_meinungen_endpoint(
         # Cache über den Hash der Beitrags-IDs: verschieden formulierte Fragen
         # zum selben Thema (Stadion!) sammeln dieselben Beiträge ein → Treffer
         # ohne LLM-Call; ein neuer Beitrag ändert den Hash → Nachverdichtung.
-        schluessel = hashlib.sha1(
+        # „v2": seit der FDP/Volt-Auflösung — alte Cache-Einträge tragen noch
+        # das Gruppen-Label und sollen nicht 14 Tage weiterleben.
+        schluessel = "v2:" + hashlib.sha1(
             ",".join(str(wid) for wid, _ in sorted(hits)).encode()).hexdigest()
         meinungen = store.partei_meinungen_cache_get(schluessel) if hits else None
         if meinungen is None and hits:
             rows = store.wortbeitraege_by_ids([wid for wid, _ in hits])
+            # FDP/Volt über die Personen-Stammdaten in Einzel-Parteien
+            # auflösen (Tims Standing-Punkt) — der Baustein führt die beiden
+            # danach getrennt, statt sie in einen Gruppen-Eimer zu werfen.
+            qa.parteien_aufloesen(store, rows)
             meinungen = qa.partei_meinungen(body.frage, rows)
             if meinungen:
                 store.partei_meinungen_cache_set(schluessel, body.frage, meinungen)
         # Vollständigkeits-Ehrlichkeit (Tims Direktive 10.08.): Fraktionen, die
         # im Rat aktiv sind, aber ohne passende Wortbeiträge zum Thema — der
-        # Baustein sagt das, statt sie stillschweigend wegzulassen.
+        # Baustein sagt das, statt sie stillschweigend wegzulassen. Die
+        # FDP/Volt-Gruppe zählt dabei als ihre beiden Einzel-Parteien.
         ohne: list[str] = []
         if meinungen:
             vertreten = {qa._fraktions_label(e["partei"]) for e in meinungen}
-            ohne = [f for f in (qa._fraktions_label(x) for x in store.aktive_fraktionen())
-                    if f and f not in vertreten]
+            aktive: list[str] = []
+            for x in store.aktive_fraktionen():
+                label = qa._fraktions_label(x)
+                # FDP und Volt sitzen diese Ratsperiode als EINE Gruppe: taucht
+                # eine der beiden (oder das Gruppen-Label) auf, sind beide
+                # aktiv — die Protokolle labeln uneinheitlich mal Gruppe, mal
+                # Einzelpartei, und Volt fiele sonst still aus der
+                # Ehrlichkeits-Zeile.
+                if label in ("FDP/Volt", "FDP", "Volt"):
+                    aktive += ["FDP", "Volt"]
+                elif label:
+                    aktive.append(label)
+            gesehen_aktiv: set[str] = set()
+            aktive = [f for f in aktive if not (f in gesehen_aktiv or gesehen_aktiv.add(f))]
+            ohne = [f for f in aktive if f not in vertreten]
     except Exception:  # noqa: BLE001 — Zusatzbaustein, nie 500 im Gespräch
         _log.exception("partei_meinungen fehlgeschlagen")
         meinungen = None
@@ -1181,7 +1201,7 @@ def _presse_kompakt(rows: list[dict]) -> list[dict]:
 def _debatten_kompakt(rows: list[dict]) -> list[dict]:
     return [{"sprecher": d.get("sprecher"), "partei": d.get("partei"),
              "art": d.get("art"), "top": d.get("top"),
-             "auszug": (d.get("text") or "")[:220],
+             "auszug": (d.get("text") or "")[:2000],
              "committee": d.get("committee"),
              "datum": d.get("session_date")} for d in rows]
 
@@ -1263,6 +1283,12 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # Frage — „Und was kostet das?" sucht sonst nach nichts.
             q_suche = analyse["frage"]
             zeiten["expand_ms"] = round((time.perf_counter() - t0) * 1000)
+            # Personen-Fragetyp (10.08.26): nennt die Frage eine Ratsperson,
+            # antworten wir aus DEREN Wortbeiträgen — deterministisch erkannt,
+            # schlägt thema/verlauf (nicht aber partei/geld).
+            person = qa.finde_person(store, q_suche)
+            if person and typ not in ("partei", "geld"):
+                typ = "person"
             yield _sse({"type": "step", "step": "search"})
             t0 = time.perf_counter()
             candidates, mode = _qa_retrieve(store, q_suche, expanded, timings=zeiten,
@@ -1291,10 +1317,17 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             try:
                 # Task 16: Wortbeiträge aus den Protokollen (Reden, Anfragen,
                 # Einwohnerfragen, Zusagen) — die Substanz, die nicht in den
-                # Beschlusstexten steht. Strenge Schwelle, oft leer.
+                # Beschlusstexten steht. Strenge Schwelle, oft leer. Beim
+                # Personen-Fragetyp stattdessen die Beiträge DIESER Person.
                 from council import embeddings as emb
-                hits_w = emb.search_wortbeitraege(store, q_suche, expanded)
-                debatten_rows = store.wortbeitraege_by_ids([wid for wid, _ in hits_w])
+                if person:
+                    debatten_rows = emb.search_wortbeitraege_von_person(
+                        store, q_suche, person["nachname"])
+                else:
+                    hits_w = emb.search_wortbeitraege(store, q_suche, expanded)
+                    debatten_rows = store.wortbeitraege_by_ids([wid for wid, _ in hits_w])
+                # FDP/Volt-Beiträge in die Einzel-Partei auflösen (Stammdaten).
+                qa.parteien_aufloesen(store, debatten_rows)
             except Exception:  # noqa: BLE001 — Debatten sind Zusatz, nie Blocker
                 pass
             # 5a/I-10: Orts-Pins für die Mini-Karte — deterministisch aus den

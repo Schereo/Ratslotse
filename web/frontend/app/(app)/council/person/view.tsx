@@ -283,6 +283,18 @@ function PersonInner() {
         </Section>
       )}
 
+      {/* Wortbeiträge (Personen-Paket 10.08.26): die jüngsten Beiträge in
+          voller Länge — dasselbe Beleg-Versprechen wie im Ratsgespräch. */}
+      {(data.wortbeitraege?.length ?? 0) > 0 && (
+        <Section title="Aus den Protokollen" aside="jüngste Wortbeiträge, Paraphrasen">
+          <div className="flex flex-col">
+            {(data.wortbeitraege ?? []).map((w, i) => (
+              <WortbeitragZeile key={i} w={w} erste={i === 0} />
+            ))}
+          </div>
+        </Section>
+      )}
+
       {/* Zuletzt anwesend */}
       {data.recent.length > 0 && (
         <Section title="Zuletzt anwesend">
@@ -301,6 +313,36 @@ function PersonInner() {
         </Section>
       )}
     </Card>
+  );
+}
+
+const WB_ART: Record<string, string> = {
+  rede: "Rede", anfrage: "Anfrage", einwohnerfrage: "Einwohnerfrage", zusage: "Zusage",
+};
+
+function WortbeitragZeile({ w, erste }: {
+  w: NonNullable<MemberDetail["wortbeitraege"]>[number]; erste: boolean;
+}) {
+  const [offen, setOffen] = useState(false);
+  const lang = w.text.length > 300;
+  return (
+    <div className={cn("py-2.5 text-[13px] leading-relaxed", !erste && "border-t border-border")}>
+      <p className="flex items-baseline justify-between gap-3 text-xs text-muted-foreground">
+        <span className="min-w-0 truncate">
+          {WB_ART[w.art] ?? w.art}{w.top ? ` · ${w.top}` : ""} · {shortCommittee(w.committee ?? "")}
+        </span>
+        <span className="shrink-0">{formatDate(w.session_date)}</span>
+      </p>
+      <p className={cn("mt-1 whitespace-pre-wrap text-foreground", !offen && lang && "line-clamp-3")}>
+        {w.text}
+      </p>
+      {lang && (
+        <button type="button" onClick={() => setOffen((v) => !v)} aria-expanded={offen}
+          className="mt-0.5 text-[11.5px] font-medium text-primary hover:underline">
+          {offen ? "Weniger anzeigen" : "Ganzen Beitrag anzeigen"}
+        </button>
+      )}
+    </div>
   );
 }
 

@@ -227,6 +227,7 @@ def _run(job: DeepJob, nwz_db: str, council_db: str) -> None:
             try:
                 hits_w = emb.search_wortbeitraege(store, job.frage, begriffe_alle, top_k=12)
                 debatten_rows = store.wortbeitraege_by_ids([wid for wid, _ in hits_w])
+                qa.parteien_aufloesen(store, debatten_rows)
             except Exception:  # noqa: BLE001
                 pass
             try:
@@ -273,7 +274,7 @@ def _run(job: DeepJob, nwz_db: str, council_db: str) -> None:
                                 "datum": p.get("datum")} for p in presse_rows],
             "debatten_kompakt": [{"sprecher": d.get("sprecher"), "partei": d.get("partei"),
                                   "art": d.get("art"), "top": d.get("top"),
-                                  "auszug": (d.get("text") or "")[:220],
+                                  "auszug": (d.get("text") or "")[:2000],
                                   "committee": d.get("committee"),
                                   "datum": d.get("session_date")} for d in debatten_rows],
             "anlagen_kompakt": [{"label": a.get("label"), "url": a.get("url"),
