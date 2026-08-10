@@ -262,9 +262,15 @@ export interface MemberDetail {
   } | null;
   committees: { committee: string; n: number; chair: boolean }[];
   recent: { ksinr: number; committee: string; session_date: string }[];
-  /** Jüngste Wortbeiträge der Person aus den Protokollen (volle Paraphrase). */
+  /** Erste Seite der Wortbeiträge (volle Paraphrase); weitere holt
+   *  /council/person/{slug}/wortbeitraege. */
   wortbeitraege?: { art: string; top: string | null; text: string;
     committee: string | null; session_date: string }[];
+  /** Wie viele Beiträge die Person insgesamt hat — die erste Seite ist ein
+   *  Ausschnitt davon. */
+  wortbeitraege_gesamt?: number;
+  /** Gremien mit Beitrags-Anzahl, Futter für den Filter. */
+  wortbeitraege_gremien?: { committee: string; n: number }[];
 }
 
 /** Eine Station der offiziellen Beratungsfolge einer Vorlage. */

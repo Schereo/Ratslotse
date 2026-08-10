@@ -1156,6 +1156,22 @@ def person(slug: str, store: CouncilStore = Depends(get_council_store)) -> dict:
     return data
 
 
+@router.get("/person/{slug}/wortbeitraege")
+def person_wortbeitraege(slug: str, gremium: str | None = None,
+                         offset: int = Query(default=0, ge=0),
+                         limit: int = Query(default=20, ge=1, le=100),
+                         store: CouncilStore = Depends(get_council_store)) -> dict:
+    """Wortbeiträge einer Person, seitenweise und nach Gremium filterbar.
+
+    Öffentlich wie die Personen-Seite selbst — es ist derselbe Bestand, nur
+    vollständig statt auf die jüngsten zehn gekürzt.
+    """
+    name = store.member_name(slug)
+    if not name:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Ratsmitglied nicht gefunden.")
+    return store.wortbeitraege_person(name, gremium=gremium, offset=offset, limit=limit)
+
+
 _EMPTY_GOAL = {"voran": 0, "bremst": 0, "neutral": 0, "total": 0}
 
 
