@@ -89,6 +89,8 @@ export interface QaSource {
   /** Ratsgespräch-Bausteine (RG-04/05): Betrag und Antragsteller-Fraktionen,
    *  deterministisch aus den Beschluss-Metadaten. */
   amount_eur?: number | null;
+  /** Kostenentwicklung: gleiche Vorlagen-Familie = belegbares Delta. */
+  vorlage_nr?: string | null;
   factions?: string[];
   /** 5a/I-10: verortete Entität für die Mini-Karte unter der Antwort. */
   ort_name?: string | null;
