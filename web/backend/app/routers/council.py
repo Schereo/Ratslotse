@@ -468,6 +468,20 @@ def gespraech_detail(gespraech_id: int, user: dict = Depends(require_active),
     return g
 
 
+class GespraechUmbenennenBody(BaseModel):
+    titel: str = Field(min_length=1, max_length=120)
+
+
+@router.patch("/gespraeche/{gespraech_id}")
+def gespraech_umbenennen(gespraech_id: int, body: GespraechUmbenennenBody,
+                         user: dict = Depends(require_active),
+                         nwz: Store = Depends(get_store)) -> dict:
+    """Design 9a②: Umbenennen aus dem Gespräche-Sheet (Wisch nach links)."""
+    if not nwz.qa_gespraech_umbenennen(gespraech_id, user["id"], body.titel):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Gespräch nicht gefunden.")
+    return {"ok": True}
+
+
 @router.delete("/gespraeche/{gespraech_id}")
 def gespraech_loeschen(gespraech_id: int, user: dict = Depends(require_active),
                        nwz: Store = Depends(get_store)) -> dict:

@@ -1648,6 +1648,19 @@ class Store:
             "WHERE gespraech_id = ? ORDER BY id", (gespraech_id,)).fetchall()
         return {**dict(g), "turns": [dict(t) for t in turns]}
 
+    def qa_gespraech_umbenennen(self, gespraech_id: int, user_id: int, titel: str) -> bool:
+        """Titel ändern — nur am eigenen Gespräch (Design 9a②: Wisch links →
+        Umbenennen). ``updated`` bleibt unberührt: Umbenennen ist Pflege, kein
+        Gesprächsfortschritt, und soll die Liste nicht umsortieren."""
+        titel = " ".join((titel or "").split())[:120]
+        if not titel:
+            return False
+        with self._conn:
+            cur = self._conn.execute(
+                "UPDATE qa_gespraeche SET titel = ? WHERE id = ? AND user_id = ?",
+                (titel, gespraech_id, user_id))
+            return (cur.rowcount or 0) > 0
+
     def qa_gespraech_loeschen(self, gespraech_id: int, user_id: int) -> bool:
         with self._conn:
             self._conn.execute(
