@@ -2099,6 +2099,12 @@ function DebattenBlock({ debatten }: { debatten: DebattenHinweis[] }) {
           <DebattenZeile key={i} d={d} artLabel={artLabel} />
         ))}
       </ul>
+      {/* Ehrlichkeit zur Quelle: Ratsprotokolle sind Verlaufsprotokolle —
+          der wesentliche Inhalt in indirekter Rede, kein Wortprotokoll. */}
+      <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground/60">
+        Die Protokolle fassen Wortbeiträge sinngemäß zusammen — keine wörtlichen
+        Zitate, ohne Anspruch auf Vollständigkeit.
+      </p>
     </div>
   );
 }
@@ -2450,6 +2456,25 @@ function Baustein({ turn, idToNum, onJump }: {
     if (mitBetrag.length === 0) return null;
     const max = Math.max(...mitBetrag.map((s) => s.amount_eur ?? 0));
     const gross = mitBetrag[0];
+    // Kostenentwicklung (10.08.26): Beträge mit Datum, chronologisch — als
+    // ehrliche ZEITREIHE ohne Steigerungs-Behauptung. Ein „von X auf Y"-Delta
+    // gibt es NUR innerhalb derselben Vorlagen-Familie (Revisions-Suffix
+    // gestrippt) — Beträge verschiedener Vorlagen können verschiedene Dinge
+    // messen (Planungskosten vs. Gesamtkosten), da wäre ein Pfeil gelogen.
+    const basis = (nr: string | null | undefined) => (nr ?? "").replace(/-\d+$/, "");
+    const zeitreihe = mitBetrag
+      .filter((s) => s.session_date)
+      .sort((a, b) => a.session_date.localeCompare(b.session_date));
+    const termineGeld = new Set(zeitreihe.map((s) => s.session_date));
+    const familien = new Map<string, typeof zeitreihe>();
+    for (const s of zeitreihe) {
+      const b = basis(s.vorlage_nr);
+      if (!b) continue;
+      familien.set(b, [...(familien.get(b) ?? []), s]);
+    }
+    const delta = [...familien.values()]
+      .filter((f) => f.length >= 2 && f[0].amount_eur !== f[f.length - 1].amount_eur)
+      .sort((a, b) => (b[b.length - 1].amount_eur ?? 0) - (a[a.length - 1].amount_eur ?? 0))[0];
     return (
       <div className="rounded-xl border border-border bg-card p-3.5">
         <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Aus den zitierten Beschlüssen</p>
@@ -2458,7 +2483,33 @@ function Baustein({ turn, idToNum, onJump }: {
           <FussnotenChip id={gross.id} idToNum={idToNum} onJump={onJump} />
         </p>
         <p className="max-w-full truncate text-[11.5px] text-muted-foreground">{gross.title}</p>
-        {mitBetrag.length > 1 && (
+        {delta && (
+          <p className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 rounded-lg bg-primary/[0.06] px-2.5 py-1.5 text-[12px]">
+            <span className="font-medium">Entwicklung derselben Vorlage:</span>
+            <span className="tabular-nums">{fmtEur(delta[0].amount_eur ?? 0)}</span>
+            <span className="text-muted-foreground">({fmtDatumKurz(delta[0].session_date)})</span>
+            <span aria-hidden>→</span>
+            <span className="font-semibold tabular-nums">{fmtEur(delta[delta.length - 1].amount_eur ?? 0)}</span>
+            <span className="text-muted-foreground">({fmtDatumKurz(delta[delta.length - 1].session_date)})</span>
+            <FussnotenChip id={delta[0].id} idToNum={idToNum} onJump={onJump} />
+            <FussnotenChip id={delta[delta.length - 1].id} idToNum={idToNum} onJump={onJump} />
+          </p>
+        )}
+        {zeitreihe.length >= 2 && termineGeld.size >= 2 ? (
+          <div className="mt-2.5 flex flex-col gap-1.5">
+            <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground/70">Beträge im Zeitverlauf</p>
+            {zeitreihe.slice(-5).map((s) => (
+              <div key={s.id} className="flex items-center gap-2">
+                <span className="w-[64px] shrink-0 font-mono text-[10px] text-muted-foreground">{fmtDatumKurz(s.session_date)}</span>
+                <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-primary/[0.12]">
+                  <span className="block h-full rounded-full bg-primary" style={{ width: `${Math.max(6, Math.round(((s.amount_eur ?? 0) / max) * 100))}%` }} />
+                </span>
+                <span className="shrink-0 text-[12px] font-semibold tabular-nums">{fmtEur(s.amount_eur ?? 0)}</span>
+                <FussnotenChip id={s.id} idToNum={idToNum} onJump={onJump} />
+              </div>
+            ))}
+          </div>
+        ) : mitBetrag.length > 1 && (
           <div className="mt-2.5 flex flex-col gap-1.5">
             {mitBetrag.slice(1, 4).map((s) => (
               <div key={s.id} className="flex items-center gap-2">

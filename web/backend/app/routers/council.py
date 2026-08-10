@@ -1185,6 +1185,10 @@ def _qa_source(c: dict) -> dict:
         "policy_field": c.get("policy_field"), "outcome": c.get("outcome"),
         "session_date": c.get("session_date"), "committee": c.get("committee"),
         "score": c.get("score"), "amount_eur": c.get("amount_eur"),
+        # Kostenentwicklung (10.08.26): Familien-Erkennung (gleiche Vorlage)
+        # für das ehrliche Delta im Geld-Baustein — nur dort ist „gestiegen
+        # von X auf Y" belegbar, alles andere wäre ein Äpfel/Birnen-Vergleich.
+        "vorlage_nr": c.get("vorlage_nr"),
         "factions": qa._factions_of(c),
         # 5a/I-10: verortete Entität für die Mini-Karte unter der Antwort.
         "ort_name": c.get("ort_name"), "lat": c.get("lat"), "lon": c.get("lon"),
