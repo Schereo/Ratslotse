@@ -34,6 +34,21 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   und Gesamtkosten wären sonst ein Äpfel-Birnen-Pfeil). Dazu sagt der
   Debatten-Block jetzt ehrlich, dass Protokolle Wortbeiträge sinngemäß
   zusammenfassen — ohne Anspruch auf Vollständigkeit. (#417)
+- **Aufgeräumte Navigation auf dem Handy.** Statt drei gestapelter
+  Nav-Ebenen (Burger-Menü, wischbare Ansichts-Pills, Modus-Schalter) gibt es
+  jetzt eine feste Tab-Leiste unten: Start · Fragen · Sitzungen · Themen ·
+  Mehr. Hinter „Mehr" liegen Stadtkarte, Analyse, Quiz, Konto, Feedback,
+  Abmelden und die Pflicht-Links — als Liste mit Beschriftung, nicht als
+  Icon-Gitter. Das Burger-Menü und die orangene Schwebe-Taste entfallen; der
+  Kopf der App behält nur Logo und Suche.
+- **Eine Gesprächs-Zeile statt zweier Schwebe-Icons.** Im Ratsgespräch zeigt
+  auf dem Handy eine Zeile über dem Chat, in welchem Gespräch du bist, und
+  öffnet die Gespräche-Liste als Bottom Sheet — „Neues Gespräch" ist dort
+  die erste Aktion. Zeilen lassen sich nach links wischen: Umbenennen oder
+  Löschen (Umbenennen ist neu, auch per API). Die Zeile erscheint nur, wenn
+  Gespräche gespeichert werden und es etwas zu zeigen gibt; ohne Speichern
+  steht stattdessen ein schlichter „Neues Gespräch"-Link über dem
+  Eingabefeld. Am Rechner bleibt alles wie gewohnt.
 - **„Was sagt Ratsfrau X dazu?" — Fragen zu Personen.** Nennt eine Frage
   ein Ratsmitglied, antwortet „Frag den Rat" aus dessen Wortbeiträgen
   („Laut Protokoll sagte …") statt nur aus Beschlüssen; der Belege-Block

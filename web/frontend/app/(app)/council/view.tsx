@@ -4,7 +4,7 @@ import { Fragment, useEffect, useMemo, useRef, useState, useCallback, Suspense }
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Search, ExternalLink, ChevronDown, ChevronRight, Scale, SlidersHorizontal, Users, Sparkles, Split, X, Flame, CalendarDays, Map as MapIcon, BarChart3, History, CalendarPlus } from "lucide-react";
+import { Search, ExternalLink, ChevronDown, ChevronRight, Scale, SlidersHorizontal, Users, Sparkles, Split, X, Flame, History, CalendarPlus } from "lucide-react";
 import { api, qs, ApiError } from "@/lib/api";
 import { decisionHref } from "@/lib/routes";
 import { useDebounce } from "@/lib/use-debounce";
@@ -14,7 +14,7 @@ import {
   CouncilSession, SessionDetail, AgendaItem, CouncilDecision, DecisionOutcome, PolicyField, Topic,
 } from "@/lib/types";
 import {
-  Badge, Button, Card, CardListSkeleton, DateField, EmptyState, Input, PageHeader, Pagination, Segmented, type SegmentedOption, Select,
+  Badge, Button, Card, CardListSkeleton, DateField, EmptyState, Input, PageHeader, Pagination, Segmented, Select,
   Sheet, SheetContent, SheetTitle, SheetTrigger, Spinner, formatDate, toast,
 } from "@/components/ui";
 import { OutcomeBadge, OutcomeDot, ImportanceBadge, OUTCOME_META, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
@@ -1390,16 +1390,6 @@ const TAB_META: Record<Tab, { title: string; description: string }> = {
   analysis: { title: "Analyse", description: "Parteien, Personen, Finanzen, Trends und Ziele im Überblick." },
 };
 
-/* Design 28a/S3: Kurzlabels für die mobile Ansichtsleiste — „Karte" statt
-   „Themen", weil daneben die Bottom-Nav schon „Themen" (= Meine Themen) führt
-   und beides sonst dasselbe zu meinen scheint. */
-const VIEW_TABS: SegmentedOption<Tab>[] = [
-  { value: "decisions", label: "Suchen", icon: Search },
-  { value: "sessions", label: "Sitzungen", icon: CalendarDays },
-  { value: "themen", label: "Karte", icon: MapIcon },
-  { value: "analysis", label: "Analyse", icon: BarChart3 },
-];
-
 function CouncilInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -1427,26 +1417,10 @@ function CouncilInner() {
   const meta = TAB_META[tab];
   return (
     <div>
-      {/* Design 28a/S3: Nur MOBIL eine Ansichtsleiste. Am Rechner trägt die
-          Sidebar alle vier Ziele; auf dem Telefon lagen Sitzungen, Stadtkarte
-          und Analyse ausschließlich hinter dem Burger-Menü — wer „Ratsinfo"
-          antippte, landete in der Suche und sah nie, dass drei weitere
-          Ansichten dazugehören. Deshalb ist die früher gestrichene Leiste
-          zurück, aber unter md beschränkt: keine dritte Navigation am Desktop.
-
-          Sie steht ÜBER dem Seitentitel, nicht darunter: Sonst stünde sie
-          direkt auf dem „Suchen | KI-Frage"-Umschalter, beide begännen mit
-          „Suchen" — dieselbe Verwechslung, die 28a/R5 in der Sidebar rügt.
-          Oben gelesen ergibt sich die Rangfolge: Wo bin ich → was ist das →
-          welcher Modus. */}
-      <div className="-mx-4 mb-3 overflow-x-auto px-4 md:hidden">
-        <Segmented
-          value={tab}
-          onChange={(v) => router.push(`/council?tab=${v}`, { scroll: false })}
-          options={VIEW_TABS}
-          className="w-max min-w-full"
-        />
-      </div>
+      {/* Design 9a: Die mobile Ansichtsleiste (28a/S3) ist wieder weg — ihre
+          Ziele stecken jetzt in der Tab-Bar (Sitzungen) bzw. im „Mehr"-Sheet
+          (Stadtkarte, Analyse). Drei Nav-Ebenen übereinander (Burger → Pills →
+          Suchen/Fragen) waren der Kern von Tims Mobil-Befund. */}
       <PageHeader
         title={meta.title}
         description={meta.description}
