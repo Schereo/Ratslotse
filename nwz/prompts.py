@@ -22,6 +22,28 @@ _DB_PATH = Path(__file__).resolve().parent.parent / "data" / "nwz.sqlite"
 # in the admin UI. The template is what the model receives after .format().
 
 DEFAULTS: dict[str, dict[str, str]] = {
+    "partei_meinungen": {
+        "title": "Parteien-Baustein der KI-Frage",
+        "description": "Verdichtet Wortbeiträge je Fraktion zu einer Position für den Baustein „Das sagen die Parteien“ (Task 30).",
+        "template": (
+            "Du bekommst Wortbeiträge aus Sitzungsprotokollen des Oldenburger Stadtrats "
+            "zu einer Frage, gruppiert nach Fraktion. Verdichte je Fraktion die Position "
+            "als JSON-Array:\n"
+            '[{{"partei": "Label wie angegeben", "position": "1-2 Sätze Haltung zur Sache '
+            '(dafür/dagegen/differenziert) mit Kernargument", "einig": true, '
+            '"hinweis": null, "kernaussage": {{"text": "prägnanteste Aussage, dicht an der '
+            'Vorlage", "sprecher": "Name", "datum": "TT.MM.JJJJ"}}}}]\n\n'
+            "Regeln:\n"
+            "- NUR aus den Beiträgen; nichts erfinden, keine Fraktion hinzufügen, "
+            "Labels exakt übernehmen.\n"
+            "- einig=false NUR bei echtem inhaltlichem Widerspruch INNERHALB der "
+            "Fraktion — dann trägt hinweis einen Halbsatz, woran es liegt.\n"
+            "- Fraktionen ohne verwertbare inhaltliche Substanz weglassen.\n"
+            "- Reihenfolge: stärkste Substanz zuerst.\n"
+            "Antworte NUR mit dem JSON-Array.\n\n"
+            "FRAGE: {frage}\n\nBEITRÄGE:\n{beitraege}"
+        ),
+    },
     "wortbeitraege_extract": {
         "title": "Wortbeiträge aus Protokollen",
         "description": "Extrahiert Redebeiträge, Anfragen & Anregungen, Einwohnerfragen und Verwaltungszusagen aus einem Sitzungsprotokoll (Task 16).",

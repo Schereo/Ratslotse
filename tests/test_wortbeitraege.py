@@ -264,6 +264,42 @@ def test_cross_encoder_ist_torwaechter(store, monkeypatch):
 
 # ------------------------------ QA-Kontextblock -----------------------------
 
+def test_partei_meinungen_schwellen(monkeypatch):
+    """Unter 2 Fraktionen oder 4 Beiträgen: kein Baustein, KEIN LLM-Call."""
+    def nie(**kwargs):
+        raise AssertionError("LLM darf hier nicht gerufen werden")
+    monkeypatch.setattr(qa.llm, "chat_complete", nie)
+    r = {"partei": "SPD", "sprecher": "A", "text": "x" * 30, "session_date": "2026-06-01"}
+    assert qa.partei_meinungen("Frage?", [r] * 5) is None          # nur 1 Fraktion
+    assert qa.partei_meinungen("Frage?", [r, dict(r, partei="CDU"), r]) is None  # nur 3 Beiträge
+    # Beiträge ohne Fraktion (Verwaltung/Einwohner) zählen nicht mit.
+    assert qa.partei_meinungen("Frage?", [r, dict(r, partei=None), dict(r, partei=None),
+                                          dict(r, partei="CDU")]) is None
+
+
+def test_partei_meinungen_aggregation(monkeypatch):
+    """Label-Bereinigung, Halluzinations-Guard, uneinig-Flag, Zähler."""
+    antwort = json.dumps([
+        {"partei": "DIE LINKE", "position": "Lehnt die Trasse ab.", "einig": True,
+         "kernaussage": {"text": "Kein Bedarf für die Straße.", "sprecher": "Höpken",
+                         "datum": "01.06.2026"}},
+        {"partei": "AfD", "position": "Uneinheitlich zwischen Investition und Haushalt.",
+         "einig": False, "hinweis": "Paul dafür, Beitrag vom Februar dagegen"},
+        {"partei": "Die Grauen", "position": "erfunden", "einig": True},
+    ])
+    monkeypatch.setattr(qa.llm, "chat_complete", lambda **k: SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(content=antwort))], usage=None))
+    rows = ([{"partei": "Fraktion DIE LINKE.", "sprecher": "Höpken",
+              "text": "Ablehnung " * 5, "session_date": "2026-06-01"}] * 3
+            + [{"partei": "AfD", "sprecher": "Paul", "text": "Zustimmung " * 5,
+                "session_date": "2026-06-01"}] * 2)
+    out = qa.partei_meinungen("Was ist mit der Trasse?", rows)
+    assert [e["partei"] for e in out] == ["DIE LINKE", "AfD"]  # „Die Grauen" gefiltert
+    assert out[0]["kernaussage"]["sprecher"] == "Höpken"
+    assert out[0]["beitraege"] == 3
+    assert out[1]["einig"] is False and "Paul" in out[1]["hinweis"]
+
+
 def test_debatten_block_format():
     block = qa._debatten_block([
         {"art": "anfrage", "sprecher": "Ratsfrau Meyer", "partei": "SPD",

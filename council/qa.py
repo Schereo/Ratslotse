@@ -250,6 +250,71 @@ def _factions_of(c: dict) -> list[str]:
     return [str(f).strip() for f in raw or [] if str(f).strip()]
 
 
+def _fraktions_label(raw: str | None) -> str | None:
+    """Anzeige-Label einer Fraktion/Gruppe aus dem Protokoll-Feld: „Fraktion
+    DIE LINKE." → „DIE LINKE". Gruppen („FDP/Volt", „Für Oldenburg") bleiben
+    ungeteilt — normalize_party würde sie auf eine Einzelpartei kollabieren."""
+    if not raw:
+        return None
+    label = " ".join(raw.strip().rstrip(".").split())
+    if label.lower().startswith("fraktion "):
+        label = label[9:]
+    return label or None
+
+
+def partei_meinungen(question: str, rows: list[dict], model: str = MODEL) -> list[dict] | None:
+    """Baustein „Das sagen die Parteien" (Task 30): verdichtet Wortbeiträge je
+    Fraktion zu Position + Kernaussage (+ „uneinheitlich"-Flag). None, wenn die
+    Datenlage zu dünn ist (< 2 Fraktionen oder < 4 Beiträge) — der Baustein
+    soll nur bei echten Debatten erscheinen."""
+    gruppen: dict[str, list[dict]] = {}
+    for r in rows:
+        label = _fraktions_label(r.get("partei"))
+        if not label:
+            continue  # Verwaltung, Einwohner, Referenten — keine Fraktionsmeinung
+        gruppen.setdefault(label, []).append(r)
+    if len(gruppen) < 2 or sum(len(v) for v in gruppen.values()) < 4:
+        return None
+    teile = []
+    for label, beitraege in gruppen.items():
+        zeilen = "\n".join(
+            f"  - {b.get('sprecher') or '?'} am {_datum_de(b.get('session_date'))}: "
+            f"{(b.get('text') or '').strip()[:300]}"
+            for b in beitraege[:8])
+        teile.append(f"{label}:\n{zeilen}")
+    prompt = prompts.render("partei_meinungen", frage=question.strip()[:300],
+                            beitraege="\n".join(teile))
+    extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
+    resp = llm.chat_complete(model=model, _feature="partei_meinungen", temperature=0,
+                             max_tokens=2000, messages=[{"role": "user", "content": prompt}],
+                             **extra)
+    content = _strip_fences(resp.choices[0].message.content or "") if resp.choices else ""
+    try:
+        data = json.loads(content)
+    except (json.JSONDecodeError, TypeError):
+        return None
+    if not isinstance(data, list):
+        return None
+    out = []
+    for e in data:
+        if not isinstance(e, dict) or e.get("partei") not in gruppen:
+            continue  # Halluzinations-Guard: nur Fraktionen aus dem Input
+        kern = e.get("kernaussage") if isinstance(e.get("kernaussage"), dict) else None
+        out.append({
+            "partei": e["partei"],
+            "position": str(e.get("position") or "").strip()[:400],
+            "einig": bool(e.get("einig", True)),
+            "hinweis": (str(e.get("hinweis")) or "").strip()[:200] or None if e.get("hinweis") else None,
+            "kernaussage": {
+                "text": str(kern.get("text") or "").strip()[:300],
+                "sprecher": str(kern.get("sprecher") or "").strip()[:80] or None,
+                "datum": str(kern.get("datum") or "").strip()[:10] or None,
+            } if kern and kern.get("text") else None,
+            "beitraege": len(gruppen[e["partei"]]),
+        })
+    return [e for e in out if e["position"]] or None
+
+
 def _datum_de(iso: str | None) -> str:
     """ISO-Datum → deutsches Format für den Antwort-Kontext — sonst schreibt
     das Modell „Laut Pressemitteilung vom 2026-07-27" (Befund 10.08.)."""
