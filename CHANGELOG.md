@@ -18,6 +18,11 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   „Laut Protokoll …", nie als Beschluss. (#387)
 
 ### Verbessert
+- **Fraktions-Zeilen im Parteien-Baustein sind aufklappbar.** Ein Klick auf
+  eine Fraktion zeigt die Original-Wortbeiträge, aus denen ihre Position
+  verdichtet wurde — mit Sprecher, Datum und Gremium. (#404)
+
+### Verbessert
 - **Die Suche versteht Fragen jetzt aus mehreren Blickwinkeln.** Jede Frage
   wird intern zusätzlich umformuliert (etwa eine Stand-Frage auch als
   Finanzierungs- und Planungs-Frage) — dadurch hängt die Qualität der

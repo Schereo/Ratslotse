@@ -285,16 +285,16 @@ def partei_meinungen(question: str, rows: list[dict], model: str = MODEL) -> lis
     if len(gruppen) < 2 or sum(len(v) for v in gruppen.values()) < 4:
         return None
     teile = []
-    for label, beitraege in gruppen.items():
+    for label in gruppen:
         # Chronologisch (älteste zuerst): so kann die Verdichtung eine
         # Entwicklung benennen („anfangs skeptisch, zuletzt dafür") statt den
         # relevantesten Einzelbeitrag nachzuerzählen (Tims Befund 10.08.).
-        beitraege = sorted(beitraege, key=lambda b: b.get("session_date") or "")
+        gruppen[label] = sorted(gruppen[label], key=lambda b: b.get("session_date") or "")
         zeilen = "\n".join(
             f"  - {b.get('sprecher') or '?'} am {_datum_de(b.get('session_date'))}: "
             f"{(b.get('text') or '').strip()[:300]}"
-            for b in beitraege[:8])
-        teile.append(f"{label} ({len(beitraege)} Beiträge):\n{zeilen}")
+            for b in gruppen[label][:8])
+        teile.append(f"{label} ({len(gruppen[label])} Beiträge):\n{zeilen}")
     prompt = prompts.render("partei_meinungen", frage=question.strip()[:300],
                             beitraege="\n".join(teile))
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
@@ -326,6 +326,15 @@ def partei_meinungen(question: str, rows: list[dict], model: str = MODEL) -> lis
                 "datum": str(kern.get("datum") or "").strip()[:10] or None,
             } if kern and kern.get("text") else None,
             "beitraege": len(gruppen[e["partei"]]),
+            # Aufklappbare Zeile (Tims Wunsch): die verdichteten Beiträge im
+            # Wortlaut — dieselben, die auch das LLM gesehen hat.
+            "beitraege_liste": [{
+                "sprecher": b.get("sprecher"),
+                "datum": _datum_de(b.get("session_date")),
+                "art": b.get("art"),
+                "gremium": b.get("committee"),
+                "text": (b.get("text") or "").strip()[:300],
+            } for b in gruppen[e["partei"]][:8]],
         })
     return [e for e in out if e["position"]] or None
 

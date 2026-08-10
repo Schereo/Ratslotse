@@ -1480,6 +1480,8 @@ type ParteiMeinung = {
   position: string; einig: boolean; hinweis: string | null;
   kernaussage: { text: string; sprecher: string | null; datum: string | null } | null;
   beitraege: number;
+  beitraege_liste?: { sprecher: string | null; datum: string; art: string | null;
+    gremium: string | null; text: string }[];
 };
 
 /** Haltungs-Badge: Wort statt Grafik (RG-05-Verbot von Stimm-Balken gilt
@@ -1514,6 +1516,9 @@ function ParteienBaustein({ frage, onFrageStellen }: {
 }) {
   const [parteien, setParteien] = useState<ParteiMeinung[] | null>(
     () => parteiMeinungenCache.get(frage) ?? null);
+  // Klick auf die Zeile klappt die verdichteten Original-Beiträge auf
+  // (Tims Wunsch: „auf die Partei klicken, um alle Beiträge zu sehen").
+  const [offen, setOffen] = useState<string | null>(null);
   useEffect(() => {
     if (parteiMeinungenCache.has(frage)) { setParteien(parteiMeinungenCache.get(frage)!); return; }
     let aktiv = true;
@@ -1568,9 +1573,15 @@ function ParteienBaustein({ frage, onFrageStellen }: {
           <div className="mt-2 flex flex-col divide-y divide-border/60">
             {parteien.map((p) => {
               const dot = parteiDot(p.partei);
+              const aufklappbar = (p.beitraege_liste?.length ?? 0) > 0;
+              const istOffen = offen === p.partei;
               return (
-                <div key={p.partei}
-                  className="group relative -mx-1.5 flex gap-2.5 rounded-lg px-1.5 py-2.5 transition-colors lg:hover:bg-primary/5">
+                <div key={p.partei} role={aufklappbar ? "button" : undefined}
+                  tabIndex={aufklappbar ? 0 : undefined} aria-expanded={aufklappbar ? istOffen : undefined}
+                  onClick={() => aufklappbar && setOffen(istOffen ? null : p.partei)}
+                  onKeyDown={(e) => { if (aufklappbar && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); setOffen(istOffen ? null : p.partei); } }}
+                  className={cn("group relative -mx-1.5 flex gap-2.5 rounded-lg px-1.5 py-2.5 transition-colors lg:hover:bg-primary/5",
+                    aufklappbar && "cursor-pointer")}>
                   <span aria-hidden className="mt-[5px] h-2 w-2 shrink-0 rounded-full"
                     style={{ background: dot.bg, boxShadow: dot.ring ? "inset 0 0 0 1px rgba(0,0,0,0.15)" : undefined }} />
                   <div className="min-w-0 flex-1">
@@ -1585,8 +1596,12 @@ function ParteienBaustein({ frage, onFrageStellen }: {
                       {/* Ehrlichkeit zur Datenbasis: aus wie vielen Wortbeiträgen
                           die Position verdichtet ist (Tims Befund 10.08.). */}
                       {p.beitraege > 0 && (
-                        <span className="font-mono text-[10px] text-muted-foreground/70">
+                        <span className="inline-flex items-center gap-0.5 font-mono text-[10px] text-muted-foreground/70">
                           {p.beitraege === 1 ? "1 Beitrag" : `${p.beitraege} Beiträge`}
+                          {aufklappbar && (
+                            <ChevronDown aria-hidden
+                              className={cn("h-3 w-3 transition-transform", istOffen && "rotate-180")} />
+                          )}
                         </span>
                       )}
                       {!p.einig && (
@@ -1596,7 +1611,7 @@ function ParteienBaustein({ frage, onFrageStellen }: {
                       )}
                       {onFrageStellen && (
                         <button type="button"
-                          onClick={() => onFrageStellen(`Was sagt ${p.partei} dazu im Detail?`)}
+                          onClick={(e) => { e.stopPropagation(); onFrageStellen(`Was sagt ${p.partei} dazu im Detail?`); }}
                           className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10.5px] text-muted-foreground transition-opacity hover:text-foreground lg:opacity-0 lg:group-hover:opacity-100 lg:focus:opacity-100"
                           title={`Was sagt ${p.partei} dazu im Detail?`}>
                           <MessageSquarePlus className="h-3 w-3" aria-hidden /> Dazu fragen
@@ -1613,6 +1628,19 @@ function ParteienBaustein({ frage, onFrageStellen }: {
                           {" "}— {p.kernaussage.sprecher ?? "ohne Namen"}{p.kernaussage.datum ? `, ${p.kernaussage.datum}` : ""}
                         </span>
                       </p>
+                    )}
+                    {istOffen && p.beitraege_liste && (
+                      <ul className="mt-2 space-y-2 border-l-2 border-border/70 pl-2.5">
+                        {p.beitraege_liste.map((b, bi) => (
+                          <li key={bi} className="text-[12px] leading-snug">
+                            <p className="font-mono text-[10px] text-muted-foreground">
+                              {b.sprecher ?? "Ohne Namen"} · {b.datum}
+                              {b.gremium ? ` · ${b.gremium}` : ""}
+                            </p>
+                            <p className="mt-0.5 text-muted-foreground">{b.text}{b.text.length >= 300 ? "…" : ""}</p>
+                          </li>
+                        ))}
+                      </ul>
                     )}
                   </div>
                 </div>
