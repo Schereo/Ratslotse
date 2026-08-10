@@ -851,6 +851,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                 onRetry={() => { setTurns((ts) => ts.slice(0, -1)); void ask(t.frage); }}
                 onEigeneFrage={() => inputRef.current?.focus()}
                 onDazuFragen={(titel) => void ask(`Erzähl mir mehr zu „${titel}".`)}
+                onFrageStellen={(text) => void ask(text)}
               />
             ))}
           </div>
@@ -992,11 +993,12 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
 
 /* ------------------------------------------------------------------------- */
 
-function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJump, onRetry, onEigeneFrage, onDazuFragen }: {
+function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJump, onRetry, onEigeneFrage, onDazuFragen, onFrageStellen }: {
   turn: Turn; turnIdx: number; istLetzter: boolean; loading: boolean;
   step: Step | null; word: string; flashId: number | null;
   onJump: (id: number) => void; onRetry: () => void; onEigeneFrage: () => void;
   onDazuFragen?: (titel: string) => void;
+  onFrageStellen?: (text: string) => void;
 }) {
   const [showAll, setShowAll] = useState(false);
   // Ältere Turns beruhigen (Design 2⑤): Belege hinter der Kompaktzeile.
@@ -1106,6 +1108,14 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
               <CircleSlash className="h-3.5 w-3.5 shrink-0" aria-hidden />
               Abgebrochen — die Antwort blieb unvollständig. Du kannst direkt weiterfragen.
             </p>
+          )}
+
+          {/* RG-09: „Das sagen die Parteien" — direkt unter dem Antworttext,
+              vor Zeitstrahl/Geld/Karte. Lädt nach der Antwort nach; bei dünner
+              Lage verschwindet er ganz (kein Leerzustand). */}
+          {!loading && turn.antwort && !turn.fehler && !turn.abgebrochen
+            && (turn.debatten?.length ?? 0) >= 2 && (
+            <ParteienBaustein frage={turn.kontext || turn.frage} onFrageStellen={onFrageStellen} />
           )}
 
           {!loading && <Baustein turn={turn} idToNum={idToNum} onJump={(id) => setPeekId(id)} />}
@@ -1365,6 +1375,139 @@ function DebattenBlock({ debatten }: { debatten: DebattenHinweis[] }) {
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+/* ------------------ Baustein „Das sagen die Parteien" (RG-09) ------------------ */
+
+type ParteiMeinung = {
+  partei: string; position: string; einig: boolean; hinweis: string | null;
+  kernaussage: { text: string; sprecher: string | null; datum: string | null } | null;
+  beitraege: number;
+};
+
+/** RG-09-Parteifarben (bewusst NICHT partyBrand aus decision-ui — das Artboard
+ *  definiert eigene Dot-Farben). Gruppen (FDP/Volt, Für Oldenburg, IBO/LiVe)
+ *  behalten ihr kombiniertes Label und bekommen den neutralen Dot. */
+function parteiDot(label: string): { bg: string; ring: boolean } {
+  const l = label.toLowerCase();
+  if (l.includes("grün")) return { bg: "#3d8f29", ring: false };
+  if (l.includes("linke")) return { bg: "#e6007e", ring: false };
+  if (l.includes("spd")) return { bg: "#e3000f", ring: false };
+  if (l.includes("cdu")) return { bg: "#1a1a1a", ring: false };
+  if (l.includes("bsw")) return { bg: "#7d254f", ring: false };
+  if (l.includes("afd")) return { bg: "#009ee0", ring: false };
+  if (l === "fdp") return { bg: "#ffe000", ring: true }; // exakt — „FDP/Volt" ist eine Gruppe
+  return { bg: "hsl(209 18% 65%)", ring: false };
+}
+
+/** Doppel-Fetches (Remount durch Kompaktzeile, Strict-Mode) kosten echte
+ *  LLM-Calls — das Ergebnis je kondensierter Frage einmal festhalten. */
+const parteiMeinungenCache = new Map<string, ParteiMeinung[]>();
+
+function ParteienBaustein({ frage, onFrageStellen }: {
+  frage: string; onFrageStellen?: (text: string) => void;
+}) {
+  const [parteien, setParteien] = useState<ParteiMeinung[] | null>(
+    () => parteiMeinungenCache.get(frage) ?? null);
+  useEffect(() => {
+    if (parteiMeinungenCache.has(frage)) { setParteien(parteiMeinungenCache.get(frage)!); return; }
+    let aktiv = true;
+    fetch(apiUrl("/council/partei-meinungen"), {
+      method: "POST", credentials: "include",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ frage }),
+    })
+      .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
+      .then((b) => {
+        // RG-09: Reihenfolge nach Redeanteil, nicht alphabetisch.
+        const sortiert = ((b.parteien as ParteiMeinung[]) ?? [])
+          .slice().sort((a, z) => z.beitraege - a.beitraege);
+        parteiMeinungenCache.set(frage, sortiert);
+        if (aktiv) setParteien(sortiert);
+      })
+      // Fehler NICHT cachen: ein transienter 4xx/5xx soll den Baustein nur
+      // für diesen Moment verstecken, nicht bis zum nächsten Voll-Reload.
+      .catch(() => { if (aktiv) setParteien([]); });
+    return () => { aktiv = false; };
+  }, [frage]);
+
+  if (parteien !== null && parteien.length < 2) return null; // dünne Lage: gar nicht
+
+  const daten = [...new Set((parteien ?? []).map((p) => p.kernaussage?.datum).filter(Boolean))];
+  return (
+    <div className="rounded-xl border border-border bg-card p-3.5 shadow-sm print:break-inside-avoid">
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+          Aus den Ratsdebatten
+        </p>
+        <p className="text-[10.5px] text-muted-foreground/70">
+          {parteien === null ? "Positionen werden verdichtet …"
+            : `${parteien.length} Fraktionen${daten.length === 1 ? ` · Sitzung ${daten[0]}` : ""}`}
+        </p>
+      </div>
+      {parteien === null ? (
+        <div aria-hidden className="mt-3 flex animate-pulse flex-col gap-3.5">
+          {[34, 28, 40].map((w, i) => (
+            <div key={i} className="flex gap-2.5">
+              <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-muted" />
+              <span className="flex flex-1 flex-col gap-1.5">
+                <span className="h-2.5 rounded bg-muted" style={{ width: `${w}%` }} />
+                <span className="h-2 w-[92%] rounded bg-muted/70" />
+                {i !== 1 && <span className="h-2 w-[60%] rounded bg-muted/70" />}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <>
+          <div className="mt-2 flex flex-col divide-y divide-border/60">
+            {parteien.map((p) => {
+              const dot = parteiDot(p.partei);
+              return (
+                <div key={p.partei}
+                  className="group relative -mx-1.5 flex gap-2.5 rounded-lg px-1.5 py-2.5 transition-colors lg:hover:bg-primary/5">
+                  <span aria-hidden className="mt-[5px] h-2 w-2 shrink-0 rounded-full"
+                    style={{ background: dot.bg, boxShadow: dot.ring ? "inset 0 0 0 1px rgba(0,0,0,0.15)" : undefined }} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-[12.5px] font-bold">{p.partei}</p>
+                      {!p.einig && (
+                        <span className="rounded-full bg-amber-100 px-2 py-px text-[10px] font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                          uneinheitlich
+                        </span>
+                      )}
+                      {onFrageStellen && (
+                        <button type="button"
+                          onClick={() => onFrageStellen(`Was sagt ${p.partei} dazu im Detail?`)}
+                          className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10.5px] text-muted-foreground transition-opacity hover:text-foreground lg:opacity-0 lg:group-hover:opacity-100 lg:focus:opacity-100"
+                          title={`Was sagt ${p.partei} dazu im Detail?`}>
+                          <MessageSquarePlus className="h-3 w-3" aria-hidden /> Dazu fragen
+                        </button>
+                      )}
+                    </div>
+                    <p className="mt-0.5 text-[12.5px] leading-relaxed text-foreground/90">
+                      {p.position}{!p.einig && p.hinweis ? ` — ${p.hinweis}` : ""}
+                    </p>
+                    {p.kernaussage && (
+                      <p className="mt-1 text-[12px] italic leading-snug text-muted-foreground">
+                        {p.kernaussage.text}
+                        <span className="font-mono text-[10px] not-italic text-muted-foreground/80">
+                          {" "}— {p.kernaussage.sprecher ?? "ohne Namen"}{p.kernaussage.datum ? `, ${p.kernaussage.datum}` : ""}
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="mt-1.5 border-t border-dashed border-border pt-2 text-[10px] leading-normal text-muted-foreground/70">
+            Verdichtet aus den Wortbeiträgen der Sitzungsprotokolle — Paraphrasen, keine wörtlichen Zitate.
+          </p>
+        </>
+      )}
     </div>
   );
 }
