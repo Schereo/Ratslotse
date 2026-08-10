@@ -12,7 +12,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   runter" gedrückt hatte, konnte das nicht mehr korrigieren — beide Daumen
   waren danach dauerhaft gesperrt. Jetzt bleiben sie anklickbar: ein Wechsel
   ersetzt die frühere Bewertung (samt hinfällig gewordener Begründung), ein
-  erneuter Klick auf denselben Daumen ändert nichts.
+  erneuter Klick auf denselben Daumen ändert nichts. (#411)
 
 ### Verbessert
 - **„Frag den Rat" schlägt wechselnde Beispielfragen vor.** Statt immer
