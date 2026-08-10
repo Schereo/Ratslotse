@@ -27,15 +27,29 @@ def _get_model():
     return _model
 
 
+# Mini-Cache für Einzeltext-Embeddings: Ein /ask embeddet die expandierte
+# Frage sonst DREIMAL (Beschlüsse, Presse, Wortbeiträge) — gleicher Text,
+# gleicher Vektor. Bewusst winzig (die letzten 8 Queries), Batches (Chunks)
+# laufen daran vorbei.
+_single_cache: "dict[str, object]" = {}
+
+
 def embed(texts: list[str]):
     """Return L2-normalised embeddings (N, dim) as a float32 numpy array, so that a
     dot product equals cosine similarity."""
     import numpy as np
 
+    if len(texts) == 1 and texts[0] in _single_cache:
+        return _single_cache[texts[0]]
     vecs = np.array(list(_get_model().embed(texts)), dtype="float32")
     norms = np.linalg.norm(vecs, axis=1, keepdims=True)
     norms[norms == 0] = 1.0
-    return vecs / norms
+    out = vecs / norms
+    if len(texts) == 1:
+        if len(_single_cache) >= 8:
+            _single_cache.pop(next(iter(_single_cache)))
+        _single_cache[texts[0]] = out
+    return out
 
 
 # Decision-vector matrix, cached per process and keyed an einer billigen
@@ -353,6 +367,10 @@ def _presse_matrix(store):
 # 0.471 auf die Stadion-Frage!), der Reranker trennt mit >2 Punkten Abstand
 # (gemessen 10.08.: echte Treffer −0.1…−0.5, Fremdthemen ≤ −2.5).
 KONTEXT_RERANK_MIN = float(os.environ.get("COUNCIL_KONTEXT_RERANK_MIN", "-1.5"))
+# Kürzerer Zeichen-Deckel NUR für die Zusatzkanal-Paare: 260 → 150 spart ~22 %
+# der Kontext-Rerank-Zeit (gemessen 10.08.: 799 → 623 ms) bei unveränderter
+# Trennschärfe (echte PM −0.12 vs. Ampelwartung −2.36 — weiter >2 Punkte).
+KONTEXT_PAIR_MAX = int(os.environ.get("COUNCIL_KONTEXT_PAIR_MAX", "150"))
 
 
 def _rerank_kontext(query: str, kandidaten: list[tuple], top_k: int) -> list[tuple]:
@@ -360,7 +378,7 @@ def _rerank_kontext(query: str, kandidaten: list[tuple], top_k: int) -> list[tup
     nur Paare über dem Cutoff überleben. Ohne Reranker (fastembed fehlt) lieber
     leer als Rauschen: die Zusatzblöcke sind optional."""
     try:
-        ranked = rerank(query, kandidaten)
+        ranked = rerank(query, [(i, (t or "")[:KONTEXT_PAIR_MAX]) for i, t in kandidaten])
     except Exception:  # noqa: BLE001
         return []
     return [(i, s) for i, s in ranked if s >= KONTEXT_RERANK_MIN][:top_k]
