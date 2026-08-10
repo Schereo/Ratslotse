@@ -497,6 +497,15 @@ const fmtDatumKurz = (d?: string | null) =>
  *  ein 00:30-Uhr-Gespräch aufs Vortagsdatum (Befund F14). */
 const fmtUtcKurz = (d: string) =>
   fmtDatumKurz(/Z$|[+-]\d\d:?\d\d$/.test(d) ? d : `${d}Z`);
+/** Datum + Uhrzeit (lokal) für die Gespräche-Liste — „10.08.26, 20:59".
+ *  Server-Zeitstempel sind UTC ohne Suffix, daher das Z-Anfügen. */
+const fmtUtcMitZeit = (d: string) => {
+  const iso = /Z$|[+-]\d\d:?\d\d$/.test(d) ? d : `${d}Z`;
+  return new Date(iso).toLocaleString("de-DE", {
+    day: "2-digit", month: "2-digit", year: "2-digit",
+    hour: "2-digit", minute: "2-digit",
+  });
+};
 const jahr = (d?: string | null) => (d ? d.slice(0, 4) : "");
 
 const fmtEur = (n: number) =>
@@ -1138,12 +1147,29 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
       const r = await fetch(apiUrl(`/council/gespraeche/${id}`), { credentials: "include", headers: authHeaders() });
       if (!r.ok) throw new Error();
       const g = await r.json();
-      type DbTurn = { frage: string; antwort: string; quellen: { sources?: QaSource[]; cited?: number[] } | null };
+      // Presse/Debatten/Anlagen/Planungen stecken seit dem 10.08. mit im
+      // Snapshot — ohne sie verlor ein geladenes Gespräch den Stadt-Block
+      // und (übers Debatten-Gate) den Parteien-Baustein (Tims Befund).
+      // Ältere Turns ohne diese Felder bleiben schlicht ohne.
+      type DbTurn = { frage: string; antwort: string; quellen: {
+        sources?: QaSource[]; cited?: number[]; presse?: PresseHinweis[];
+        debatten?: DebattenHinweis[]; anlagen?: AnlagenHinweis[];
+        planungen?: Planung[]; recherche?: boolean;
+        gelesen?: number; zeitraum?: string } | null };
       setTurns((g.turns as DbTurn[]).map((t) => ({
         key: naechsterKey(),
         frage: t.frage, antwort: t.antwort, qtype: null, mode: null,
-        sources: t.quellen?.sources ?? [], presse: [], debatten: [], cited: t.quellen?.cited ?? [],
-        followups: [], kontext: null,
+        sources: t.quellen?.sources ?? [],
+        presse: t.quellen?.presse ?? [],
+        debatten: t.quellen?.debatten ?? [],
+        anlagen: t.quellen?.anlagen ?? [],
+        planungen: t.quellen?.planungen ?? [],
+        cited: t.quellen?.cited ?? [],
+        followups: [], kontext: t.frage,
+        ...(t.quellen?.recherche ? {
+          recherche: true, deepStatus: "fertig" as const,
+          gelesen: t.quellen?.gelesen, zeitraum: t.quellen?.zeitraum,
+        } : {}),
       })));
       setGespraechId(id);
       setZeigeListe(false);
@@ -1237,17 +1263,21 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                 </button>
               )}
               {zeigeListe && (
-                <div className="absolute right-0 top-full z-30 mt-1.5 w-72 rounded-xl border border-border bg-card p-1.5 shadow-lg">
-                  <p className="px-2 pb-1 pt-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                <div className="absolute right-0 top-full z-30 mt-1.5 flex max-h-[min(60vh,26rem)] w-72 flex-col rounded-xl border border-border bg-card p-1.5 shadow-lg">
+                  <p className="shrink-0 px-2 pb-1 pt-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
                     Meine Gespräche · in deinem Konto
                   </p>
+                  {/* Bei vielen Gesprächen wuchs die Liste über den
+                      Bildschirmrand, ohne scrollbar zu sein (Tims Befund) —
+                      jetzt scrollt sie im gedeckelten Panel. */}
+                  <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
                   {gespraeche.map((g) => (
                     <div key={g.id} className="group flex items-center gap-1 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted">
                       <button type="button" onClick={() => void gespraechLaden(g.id)}
                         className="min-w-0 flex-1 text-left">
                         <span className="block truncate text-[12.5px] font-medium text-foreground">{g.titel}</span>
                         <span className="block text-[10.5px] text-muted-foreground">
-                          {fmtUtcKurz(g.updated)} · {g.n_turns} {g.n_turns === 1 ? "Frage" : "Fragen"}
+                          {fmtUtcMitZeit(g.updated)} · {g.n_turns} {g.n_turns === 1 ? "Frage" : "Fragen"}
                         </span>
                       </button>
                       <button type="button" onClick={() => void gespraechLoeschen(g.id)}
@@ -1257,6 +1287,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                       </button>
                     </div>
                   ))}
+                  </div>
                 </div>
               )}
             </div>

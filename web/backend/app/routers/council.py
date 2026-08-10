@@ -1171,9 +1171,26 @@ def _qa_source(c: dict) -> dict:
     }
 
 
+def _presse_kompakt(rows: list[dict]) -> list[dict]:
+    """Anzeige-Form der Presse-Treffer — identisch im sources-Event und im
+    Gesprächs-Snapshot, damit ein geladenes Gespräch nichts verliert."""
+    return [{"titel": p.get("titel"), "url": p.get("url"),
+             "datum": p.get("datum")} for p in rows]
+
+
+def _debatten_kompakt(rows: list[dict]) -> list[dict]:
+    return [{"sprecher": d.get("sprecher"), "partei": d.get("partei"),
+             "art": d.get("art"), "top": d.get("top"),
+             "auszug": (d.get("text") or "")[:220],
+             "committee": d.get("committee"),
+             "datum": d.get("session_date")} for d in rows]
+
+
 def _turn_speichern(nwz: Store, user: dict, body: AskBody, q_suche: str,
                     answer_text: str, candidates: list[dict],
-                    cited: list[int]) -> int | None:
+                    cited: list[int],
+                    presse_rows: list[dict] | None = None,
+                    debatten_rows: list[dict] | None = None) -> int | None:
     """„Meine Gespräche" (6a): Turn ins laufende Gespräch hängen (oder eines
     eröffnen) — nur mit ausdrücklicher Einwilligung, nie als Blocker.
 
@@ -1195,9 +1212,15 @@ def _turn_speichern(nwz: Store, user: dict, body: AskBody, q_suche: str,
             if gespraech_id is None:
                 return None
         zitiert = set(cited)
+        # Presse + Debatten gehören MIT in den Snapshot: Ohne sie öffnete ein
+        # gespeichertes Gespräch ohne den „Aktuelles von der Stadt"-Block und
+        # ohne Debatten — und damit auch ohne den Parteien-Baustein, der am
+        # Debatten-Gate hängt (Tims Befund 10.08.).
         quellen_json = json.dumps(
             {"sources": [_qa_source(c) for c in candidates if c["id"] in zitiert],
-             "cited": cited}, ensure_ascii=False)
+             "cited": cited,
+             "presse": _presse_kompakt(presse_rows or []),
+             "debatten": _debatten_kompakt(debatten_rows or [])}, ensure_ascii=False)
         if not nwz.qa_turn_speichern(gespraech_id, user["id"],
                                      body.question, answer_text, quellen_json):
             if neu:
@@ -1288,15 +1311,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             yield _sse({"type": "sources", "mode": mode, "qtype": typ,
                         "frage": q_suche,
                         "sources": [_qa_source(c) for c in candidates],
-                        "presse": [{"titel": p.get("titel"), "url": p.get("url"),
-                                    "datum": p.get("datum")} for p in presse_rows],
-                        "debatten": [{"sprecher": d.get("sprecher"),
-                                      "partei": d.get("partei"),
-                                      "art": d.get("art"), "top": d.get("top"),
-                                      "auszug": (d.get("text") or "")[:220],
-                                      "committee": d.get("committee"),
-                                      "datum": d.get("session_date")}
-                                     for d in debatten_rows]})
+                        "presse": _presse_kompakt(presse_rows),
+                        "debatten": _debatten_kompakt(debatten_rows)})
             yield _sse({"type": "step", "step": "answer"})
             if not candidates:
                 leer_text = "Dazu habe ich keine passenden Beschlüsse gefunden."
@@ -1309,7 +1325,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 yield _sse({"type": "token", "text": leer_text})
                 # Auch der Kein-Treffer-Turn gehört ins gespeicherte Gespräch —
                 # sonst klafft im Transkript eine Lücke (Review-Befund B4).
-                gespraech_id = _turn_speichern(nwz, user, body, q_suche, leer_text, [], [])
+                gespraech_id = _turn_speichern(nwz, user, body, q_suche, leer_text, [], [],
+                                               debatten_rows=debatten_rows)
                 yield _sse({"type": "done", "cited": [], "gespraech_id": gespraech_id})
                 return
             # Task 32: Themengröße deterministisch — viele Treffer über eine
@@ -1411,7 +1428,9 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             _log.info("qa_timings mode=%s typ=%s %s", mode, typ,
                       " ".join(f"{k}={v}" for k, v in sorted(zeiten.items())))
             gespraech_id = _turn_speichern(nwz, user, body, q_suche, answer_text,
-                                           candidates, cited)
+                                           candidates, cited,
+                                           presse_rows=presse_rows,
+                                           debatten_rows=debatten_rows)
             yield _sse({"type": "done", "cited": cited, "timings": zeiten,
                         "gespraech_id": gespraech_id})
         except Exception:  # noqa: BLE001 — surface a terminal error to the client
