@@ -365,7 +365,8 @@ def main() -> int:
             t["expand_ms"] = round((time.perf_counter() - t_exp) * 1000)
             t["analyse_ct"] = kosten_ct_seit(c_exp)
             t_ret = time.perf_counter()
-            hits = emb.hybrid_search(store, analyse["frage"], expanded, top_k=TOP_K, pool=55, timings=t)
+            hits = emb.hybrid_search(store, analyse["frage"], expanded, top_k=TOP_K, pool=55, timings=t,
+                                     varianten=analyse.get("varianten"))
             cands = store.get_decisions_by_ids([h[0] for h in hits])
             if typ == "partei" and analyse.get("partei"):
                 try:
