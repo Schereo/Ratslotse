@@ -120,7 +120,8 @@ VORLAGE_STATIONS = 4
 
 
 def hybrid_search(store, query: str, expanded: str, top_k: int = 25, pool: int = 45,
-                  timings: dict | None = None) -> list[tuple]:
+                  timings: dict | None = None,
+                  varianten: list[str] | None = None) -> list[tuple]:
     """Hybrid retrieval (RAG-SOTA): vector candidates (on the expanded query) ∪
     Vorlagen-Chunk-Treffer (Sachverhalt/Begründung, auf Beschlüsse abgebildet) ∪
     BM25 candidates (FTS), reranked by a cross-encoder against the *original*
@@ -160,6 +161,25 @@ def hybrid_search(store, query: str, expanded: str, top_k: int = 25, pool: int =
     t2 = time.perf_counter()
     bm_snippet = {i: s for i, _, s in bm if s}
     cand_ids = list(dict.fromkeys([i for i, _ in vec] + vor_ids + [i for i, _, _ in bm]))
+    # Multi-Query (Task 32): Perspektiv-Varianten der Analyse steuern bis zu
+    # 12 ZUSÄTZLICHE Kandidaten bei, die Haupt-Expansion und BM25 verfehlt
+    # haben — gezielte Lückenfüller statt Pool-Flutung, damit der Rerank
+    # nahezu konstant bleibt (~+0,5 s statt +1,5 s bei voller Union).
+    if varianten and not klassisch:
+        bereits = set(cand_ids)
+        neue: list[int] = []
+        for var in varianten[:2]:
+            try:
+                vv = embed([var])[0]
+                for did, _s in _search_vec(store, vv, top_k=pool // 2, min_score=0.25):
+                    if did not in bereits:
+                        bereits.add(did)
+                        neue.append(did)
+            except Exception:  # noqa: BLE001 — Varianten sind Zusatz, nie Blocker
+                pass
+        cand_ids += neue[:12]
+        if timings is not None:
+            timings["varianten_neu"] = min(len(neue), 12)
     if RERANK_MAX and len(cand_ids) > RERANK_MAX:
         # Reihum aus den drei Quellen (je score-sortiert) ziehen — so behalten
         # alle Kanäle ihre besten Kandidaten, statt dass der Zufall der

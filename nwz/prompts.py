@@ -211,7 +211,10 @@ DEFAULTS: dict[str, dict[str, str]] = {
             'einer Brücken-Frage → „Was kostet der Neubau der Cäcilienbrücke?“); ohne Verlauf: die '
             'Frage unverändert", '
             '"begriffe": "4-8 deutsche Suchbegriffe, Substantive und nahe Synonyme, durch Leerzeichen"'
-            ', "typ": "thema|verlauf|partei|geld", "partei": "Fraktionsname oder null"}}\n\n'
+            ', "typ": "thema|verlauf|partei|geld", "partei": "Fraktionsname oder null", '
+            '"varianten": ["bis zu 2 UMFORMULIERUNGEN der Frage aus anderem Blickwinkel — z. B. die '
+            "Sachstands-Frage zusätzlich als Finanzierungs- oder Planungs-Frage, die vage Frage "
+            'konkretisiert aufs wahrscheinlich gemeinte Vorhaben; jeweils ein kurzer Suchsatz"]}}\n\n'
             "typ-Regeln:\n"
             '- "verlauf": Die Frage zielt auf Werdegang/Chronik/Stand eines Vorgangs '
             '("Wie lief …", "Wie ist der Stand …", "Was wurde aus …", "Chronologie").\n'

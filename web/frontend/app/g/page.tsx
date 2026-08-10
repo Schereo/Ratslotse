@@ -73,7 +73,11 @@ function AntwortMitFussnoten({ text, quellen }: { text: string; quellen: ShareQu
   const absaetze = text.split(/\n{2,}/);
   return (
     <div className="space-y-3">
-      {absaetze.map((abs, ai) => (
+      {absaetze.map((abs, ai) => abs.trim().startsWith("## ") ? (
+        <p key={ai} className="mt-4 text-[15px] font-bold tracking-tight">
+          {abs.trim().replace(/^##\s+/, "")}
+        </p>
+      ) : (
         <p key={ai} className="text-[15px] leading-relaxed text-foreground/90">
           {abs.split(/(\[[^\]\n]{1,160}\])/).map((teil, ti) => {
             if (!/^\[[^\]\n]+\]$/.test(teil)) return <span key={ti}>{teil}</span>;

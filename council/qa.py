@@ -89,7 +89,8 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
     Cäcilienbrücke?"), sonst bleibt sie die Original-Frage. Retrieval UND
     Reranker arbeiten mit dieser Fassung. Robust: bei kaputtem JSON oder
     LLM-Fehler kommt das Verhalten von vor dem Routing zurück."""
-    fallback = {"frage": question, "begriffe": question, "typ": "thema", "partei": None}
+    fallback = {"frage": question, "begriffe": question, "typ": "thema", "partei": None,
+                "varianten": []}
     vtext = _verlauf_zeilen(verlauf)
     key = f"{model}|{hash(vtext)}|{' '.join(question.split()).lower()[:300]}"
     hit = _ANALYSE_CACHE.get(key)
@@ -100,7 +101,7 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
         block = f"\nBisheriges Gespräch (für Rückbezüge):\n{vtext}\n" if vtext else ""
         prompt = prompts.render("qa_analyse", question=question.strip()[:300], verlauf=block)
         resp = llm.chat_complete(
-            model=model, _feature="qa_analyse", temperature=0, max_tokens=200,
+            model=model, _feature="qa_analyse", temperature=0, max_tokens=320,
             timeout=8.0, response_format={"type": "json_object"},
             messages=[{"role": "user", "content": prompt}], **extra,
         )
@@ -109,12 +110,17 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
         begriffe = " ".join(str(data.get("begriffe") or "").split())
         typ = str(data.get("typ") or "").strip().lower()
         partei = (str(data.get("partei")).strip() or None) if data.get("partei") else None
+        # Multi-Query (Task 32): Perspektiv-Umformulierungen füllen Lücken,
+        # die die eine Expansion verfehlt („Wie ist der Stand?" findet keine
+        # Finanzierungs-Beschlüsse). Kandidaten-Union passiert in hybrid_search.
+        varianten = [" ".join(str(v).split())[:120]
+                     for v in (data.get("varianten") or []) if isinstance(v, str) and str(v).strip()][:2]
         if typ not in QUERY_TYPES:
             typ = "thema"
         if typ != "partei":
             partei = None
         out = {"frage": frage or question, "begriffe": begriffe or question,
-               "typ": typ, "partei": partei}
+               "typ": typ, "partei": partei, "varianten": varianten}
         if begriffe:  # nur brauchbare Analysen cachen
             if len(_ANALYSE_CACHE) >= _EXPAND_CACHE_MAX:
                 _ANALYSE_CACHE.pop(next(iter(_ANALYSE_CACHE)))
@@ -398,17 +404,29 @@ def _haushalt_block(zeilen: list[dict] | None) -> str:
             "„Laut Haushaltsplan JAHR …“ nennen, NIE mit [id]):\n" f"{z}\n")
 
 
+# Zusatzregel für Themen mit langer Historie (Task 32): Der 4-8-Sätze-Deckel
+# machte Antworten zu jahrelang diskutierten Vorhaben zwangsweise lückenhaft.
+GROSS_REGEL = (
+    "\nDies ist ein UMFANGREICHES Thema mit langer Beratungs-Historie. Antworte "
+    "ausführlich (bis ~500 Wörter) und strukturiere die Antwort: Beginne mit 1-2 "
+    "Sätzen Überblick, gliedere danach mit 2-4 Zwischenüberschriften (Zeile, die "
+    "mit „## “ beginnt, z. B. „## Finanzierung“) und nutze, wo es passt, kurze "
+    "Spiegelstrich-Listen („- “). Die Fußnoten-Regeln gelten unverändert."
+)
+
+
 def _answer_messages(question: str, candidates: list[dict], typ: str = "thema",
                      model: str = MODEL, presse: list[dict] | None = None,
                      verlauf: list[dict] | None = None,
                      haushalt: list[dict] | None = None,
-                     debatten: list[dict] | None = None) -> tuple[list[dict], dict]:
+                     debatten: list[dict] | None = None,
+                     gross: bool = False) -> tuple[list[dict], dict]:
     vtext = _verlauf_zeilen(verlauf)
     gespraech = (f"Dies ist eine Anschlussfrage in einem Gespräch. Bisher:\n{vtext}\n\n"
                  if vtext else "")
     prompt = prompts.render("qa_antwort", question=question.strip()[:300],
                             context=_build_context(candidates),
-                            extra_regeln=EXTRA_REGELN.get(typ, ""),
+                            extra_regeln=EXTRA_REGELN.get(typ, "") + (GROSS_REGEL if gross else ""),
                             presse=_presse_block(presse) + _haushalt_block(haushalt)
                             + _debatten_block(debatten),
                             gespraech=gespraech)
@@ -418,34 +436,39 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "thema",
     return [{"role": "user", "content": prompt}], extra
 
 
-def _answer_tokens(typ: str) -> int:
+def _answer_tokens(typ: str, gross: bool = False) -> int:
     # Seit dem Ratsgespräch dürfen breite Fragen strukturiert länger antworten
     # (Prompt regelt die Länge nach Frage; das Budget kappt nur den Ausreißer).
+    # Große Themen (Task 32) bekommen Platz für die gegliederte Langfassung.
+    if gross:
+        return 2200
     return 1100 if typ == "verlauf" else 1000
 
 
 def answer_question(question: str, candidates: list[dict], model: str = MODEL, typ: str = "thema",
                     presse: list[dict] | None = None, verlauf: list[dict] | None = None,
-                    haushalt: list[dict] | None = None, debatten: list[dict] | None = None):
+                    haushalt: list[dict] | None = None, debatten: list[dict] | None = None,
+                    gross: bool = False):
     """Synthesise an answer from retrieved candidates. Returns ``(answer, cited_ids)``."""
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
-                                       haushalt, debatten)
+                                       haushalt, debatten, gross)
     resp = llm.chat_complete(model=model, _feature="qa_antwort", temperature=0.2,
-                             max_tokens=_answer_tokens(typ), messages=messages, **extra)
+                             max_tokens=_answer_tokens(typ, gross), messages=messages, **extra)
     answer = (resp.choices[0].message.content or "").strip()
     return resolve_citations(answer, {c["id"] for c in candidates})
 
 
 def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ: str = "thema",
                   presse: list[dict] | None = None, verlauf: list[dict] | None = None,
-                  haushalt: list[dict] | None = None, debatten: list[dict] | None = None):
+                  haushalt: list[dict] | None = None, debatten: list[dict] | None = None,
+                  gross: bool = False):
     """Stream the answer text deltas (same prompt/context as answer_question) so the
     UI can render the answer as it is written. Citation resolution is the caller's
     job once the full text is assembled (see resolve_citations)."""
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
-                                       haushalt, debatten)
+                                       haushalt, debatten, gross)
     yield from llm.chat_stream(model=model, _feature="qa_antwort", temperature=0.2,
-                               max_tokens=_answer_tokens(typ), messages=messages, **extra)
+                               max_tokens=_answer_tokens(typ, gross), messages=messages, **extra)
 
 
 # --- Folgefragen (Design 24a / RL-U06) --------------------------------------

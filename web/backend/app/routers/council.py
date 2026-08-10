@@ -949,14 +949,16 @@ QA_RERANK_BIAS = 1.5
 
 
 def _qa_retrieve(store: CouncilStore, q: str, expanded: str,
-                 timings: dict | None = None) -> tuple[list[dict], str]:
+                 timings: dict | None = None,
+                 varianten: list[str] | None = None) -> tuple[list[dict], str]:
     """Hybrid retrieval + cross-encoder rerank → candidates in relevance order, each
     with an *absolute* relevance score: the sigmoid of the reranker logit, NOT a
     min-max normalisation (which forced the weakest hit to a misleading 0 %). Falls
     back to keyword retrieval when embeddings/the reranker are unavailable."""
     try:
         from council import embeddings as emb
-        hits = emb.hybrid_search(store, q, expanded, top_k=QA_TOP_K, pool=55, timings=timings)
+        hits = emb.hybrid_search(store, q, expanded, top_k=QA_TOP_K, pool=55, timings=timings,
+                                 varianten=varianten)
         if hits:
             candidates = store.get_decisions_by_ids([h[0] for h in hits])  # preserves order
             score = {h[0]: h[1] for h in hits}
@@ -1059,7 +1061,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             zeiten["expand_ms"] = round((time.perf_counter() - t0) * 1000)
             yield _sse({"type": "step", "step": "search"})
             t0 = time.perf_counter()
-            candidates, mode = _qa_retrieve(store, q_suche, expanded, timings=zeiten)
+            candidates, mode = _qa_retrieve(store, q_suche, expanded, timings=zeiten,
+                                            varianten=analyse.get("varianten"))
             partei_ids: set[int] = set()
             if typ == "partei" and analyse.get("partei"):
                 # Anträge der gefragten Fraktion zum Thema in den Pool — die
@@ -1128,6 +1131,13 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 gespraech_id = _turn_speichern(nwz, user, body, q_suche, leer_text, [], [])
                 yield _sse({"type": "done", "cited": [], "gespraech_id": gespraech_id})
                 return
+            # Task 32: Themengröße deterministisch — viele Treffer über eine
+            # lange Zeitspanne (Stadion: 8 Jahre) heißt lange Historie, die
+            # Antwort darf dann ausführlich gegliedert sein (GROSS_REGEL).
+            daten = sorted(str(c.get("session_date") or "")[:4]
+                           for c in candidates[:20] if c.get("session_date"))
+            spanne = (int(daten[-1]) - int(daten[0])) if len(daten) >= 2 and daten[0].isdigit() else 0
+            gross = len(candidates) >= 25 or spanne >= 3
             ctx = candidates[:QA_ANSWER_N]
             if partei_ids:
                 # Mindestens die besten Partei-Anträge in den Antwort-Kontext,
@@ -1171,7 +1181,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             t0 = time.perf_counter()
             try:
                 for delta in qa.answer_stream(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
-                                              haushalt=haushalt_zeilen, debatten=debatten_rows):
+                                              haushalt=haushalt_zeilen, debatten=debatten_rows,
+                                              gross=gross):
                     if not buf and delta:
                         zeiten["ttft_ms"] = round((time.perf_counter() - t0) * 1000)
                     buf += delta
@@ -1197,7 +1208,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                              len(buf), exc_info=True)
                 try:
                     ans, _ = qa.answer_question(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
-                                                haushalt=haushalt_zeilen, debatten=debatten_rows)
+                                                haushalt=haushalt_zeilen, debatten=debatten_rows,
+                                                gross=gross)
                     buf = ans
                     yield _sse({"type": "replace", "text": qa.split_followups(ans)[0]})
                     sent = len(ans)

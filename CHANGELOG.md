@@ -18,6 +18,16 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   „Laut Protokoll …", nie als Beschluss. (#387)
 
 ### Verbessert
+- **Die Suche versteht Fragen jetzt aus mehreren Blickwinkeln.** Jede Frage
+  wird intern zusätzlich umformuliert (etwa eine Stand-Frage auch als
+  Finanzierungs- und Planungs-Frage) — dadurch hängt die Qualität der
+  Treffer deutlich weniger davon ab, wie genau man das Thema benennt.
+  Und bei Themen mit langer Beratungs-Historie wie dem Stadionneubau
+  antwortet „Frag den Rat" jetzt ausführlich und gegliedert: mit
+  Zwischenüberschriften, Listen und einem Überblick am Anfang, statt
+  alles in vier Sätze zu pressen. (#403)
+
+### Verbessert
 - **Von geteilten Antworten direkt weiterfragen.** Wer angemeldet ist,
   springt von einer geteilten Antwort mit einem Klick ins Ratsgespräch —
   die geteilte Frage samt Antwort steht dort als Gesprächsbeginn, und
