@@ -2611,6 +2611,8 @@ def test_deep_research_roundtrip_und_replay(client, monkeypatch):
     # Task 33: Anlagen-Treffer mit Fundstelle im sources-Event, gelesen zählt sie mit.
     assert src["anlagen"][0]["label"] == "Schalltechnisches Gutachten"
     assert src["anlagen"][0]["auszug"].startswith("Lärmpegel")
+    # Beleg-Nummer: das Frontend macht daraus die Buchstaben-Fußnote zu „[A1]".
+    assert src["anlagen"][0]["nr"] == 1
     assert src["gelesen"] == 3 and src["zeitraum"] == "2024–2026"
     assert "lesen" in [e.get("phase") for e in events if e["type"] == "phase"]
     done = next(e for e in events if e["type"] == "done")

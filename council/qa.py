@@ -496,18 +496,27 @@ def deep_zerlege(frage: str, model: str = EXPAND_MODEL) -> list[dict]:
 
 def _anlagen_block(anlagen: list[dict] | None) -> str:
     """Fundstellen aus Anlagen (Gutachten, Konzepte, Stellungnahmen) — nur im
-    Deep-Research-Kontext. Keine [id]-Zitate: Anlagen sind keine Beschlüsse,
-    die Antwort nennt sie als „Laut <Label> zur Vorlage …"."""
+    Deep-Research-Kontext.
+
+    Anlagen sind keine Beschlüsse und tragen deshalb keine [id]. Sie bekommen
+    einen eigenen Marker ``[A<n>]``; ``n`` ist die Position in dieser Liste und
+    kommt aus ``nr`` (der Deep-Job vergibt sie, damit Prompt und Karten-Liste im
+    Frontend garantiert dieselbe Zählung benutzen). Das Frontend rendert daraus
+    die kleinen Buchstaben-Fußnoten a, b, c … — vorher stand die Anlage nur als
+    Prosa im Text und war von der Karte rechts nicht zu unterscheiden.
+    """
     if not anlagen:
         return ""
     zeilen = "\n".join(
-        f"- {a.get('label') or 'Anlage'} (zur Vorlage {a.get('vorlage_nr') or '?'}"
+        f"[A{a.get('nr') or i + 1}] {a.get('label') or 'Anlage'} "
+        f"(zur Vorlage {a.get('vorlage_nr') or '?'}"
         f"{' — ' + a['vorlage_titel'][:80] if a.get('vorlage_titel') else ''}): "
         f"{(a.get('fundstelle') or '').strip()[:500]}"
-        for a in anlagen)
+        for i, a in enumerate(anlagen))
     return ("\nAUS DEN ANLAGEN (Gutachten, Konzepte, Stellungnahmen zu den Vorlagen —\n"
             "oft die fachliche Substanz hinter einem Beschluss). Nutze sie für Details\n"
-            "und Zahlen, als „Laut <Anlagenname> zur Vorlage <Nr> …“, NIE mit [id]:\n"
+            "und Zahlen und belege JEDE daraus übernommene Aussage mit dem Marker,\n"
+            "der vor der Anlage steht ([A1], [A2] …) — NIE mit [id]:\n"
             f"{zeilen}\n")
 
 

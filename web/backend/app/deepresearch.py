@@ -236,8 +236,12 @@ def _run(job: DeepJob, nwz_db: str, council_db: str) -> None:
                 hits_a = emb.search_anlagen(store, job.frage, begriffe_alle, top_k=6)
                 anlagen_rows = store.anlagen_by_ids([did for did, _, _ in hits_a])
                 fundstellen = {did: fs for did, _, fs in hits_a}
-                for a in anlagen_rows:
+                # nr = Beleg-Nummer der Anlage. Prompt (`[A<nr>]`) und Karten-
+                # Liste im Frontend zählen darüber gemeinsam — ohne sie hinge
+                # die Zuordnung an der Listenreihenfolge zweier Datenwege.
+                for i, a in enumerate(anlagen_rows):
                     a["fundstelle"] = fundstellen.get(a["document_id"], "")
+                    a["nr"] = i + 1
             except Exception:  # noqa: BLE001
                 pass
         try:
@@ -277,7 +281,8 @@ def _run(job: DeepJob, nwz_db: str, council_db: str) -> None:
                                   "auszug": (d.get("text") or "")[:2000],
                                   "committee": d.get("committee"),
                                   "datum": d.get("session_date")} for d in debatten_rows],
-            "anlagen_kompakt": [{"label": a.get("label"), "url": a.get("url"),
+            "anlagen_kompakt": [{"nr": a.get("nr"), "label": a.get("label"),
+                                 "url": a.get("url"),
                                  "vorlage_nr": a.get("vorlage_nr"),
                                  "vorlage_titel": a.get("vorlage_titel"),
                                  "auszug": (a.get("fundstelle") or "")[:220]}
