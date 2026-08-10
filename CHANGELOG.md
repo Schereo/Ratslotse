@@ -83,6 +83,29 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Jetzt starten auch diese Wege die gründliche Recherche. („Einfacher
   erklären", „Ausführlicher" und „stattdessen schnell fragen" bleiben
   bewusst schnell.) (#413)
+- **Geteilte Antworten zeigen wieder alles.** Wer einen „Frag den Rat"-Link
+  verschickte, teilte bisher nur Text und Beschlussliste: Die Ratsdebatten,
+  der Parteien-Baustein, „Aus den Anlagen" und „Aktuelles von der Stadt"
+  fehlten auf der geteilten Seite komplett. Sie wandern jetzt mit in den
+  Link — auch für Eingeloggte, die ihn im Ratsgespräch öffnen. Außerdem
+  setzte die geteilte Seite ganze Absätze fett, sobald sie mit einer
+  Zwischenüberschrift begannen; sie benutzt jetzt dieselbe Darstellung wie
+  das Gespräch (Überschriften, Listen, Fettdruck, klickbare Fußnoten).
+  Bereits geteilte ältere Links behalten ihren bisherigen Umfang. (#421)
+- **Datumsangaben in den Antworten stehen deutsch da.** In Sätzen wie „Laut
+  Protokoll sagte Ratsherr Wenzel am 2026-06-01 …" rutschte das technische
+  Datumsformat aus den Quellenangaben in den Antworttext. Der Kontext für
+  die KI trägt die Daten jetzt durchgängig als „01.06.2026", und bereits
+  gespeicherte Antworten werden beim Anzeigen umgeschrieben. (#421)
+- **Gespeicherte Gespräche verlieren keine Bausteine mehr.** Beim Öffnen
+  eines Gesprächs aus dem Verlauf fehlten bisher die Ratsdebatten, der
+  Parteien-Baustein und „Aktuelles von der Stadt" — sie wurden schlicht
+  nicht mitgespeichert. Jetzt wandern Debatten, Presse und bei Recherchen
+  auch Anlagen, Termine und die Meta-Zahlen mit in den Gesprächs-Snapshot;
+  ältere Gespräche bleiben ohne (dort wurden die Daten nie gesichert).
+  Außerdem scrollt die Gespräche-Liste jetzt, statt bei vielen Einträgen
+  über den Bildschirmrand zu wachsen, und jeder Eintrag zeigt neben dem
+  Datum auch die Uhrzeit. (#412)
 - **Die Bewertung einer Antwort lässt sich ändern.** Wer einmal „Daumen
   runter" gedrückt hatte, konnte das nicht mehr korrigieren — beide Daumen
   waren danach dauerhaft gesperrt. Jetzt bleiben sie anklickbar: ein Wechsel

@@ -13,6 +13,11 @@ import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { BrandMark } from "@/components/brand";
 import { ShareAktionen } from "@/components/share-aktionen";
+import {
+  AnlagenBlock, DebattenBlock, GeteilterAntwortText, ParteienListe, PresseBlock,
+  type AnlagenHinweis, type DebattenHinweis, type ParteiMeinung, type PresseHinweis,
+} from "@/components/qa-bausteine";
+import { anlagenBuchstaben } from "@/lib/qa-belege";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +25,13 @@ type ShareQuelle = {
   id: number; title: string;
   session_date: string | null; committee: string | null; outcome: string | null;
 };
-type Share = { frage: string; antwort: string; quellen: ShareQuelle[]; created: string };
+type Share = {
+  frage: string; antwort: string; quellen: ShareQuelle[]; created: string;
+  /** Bausteine neben den Beschlüssen — vor dem Nachtrag geteilte Antworten
+   *  haben sie nicht, dann bleiben die Listen leer. */
+  debatten?: DebattenHinweis[]; presse?: PresseHinweis[];
+  anlagen?: AnlagenHinweis[]; parteien?: ParteiMeinung[];
+};
 
 // Server-seitig direkt ans Backend (gleiche env wie der /api-Rewrite).
 const BACKEND = process.env.BACKEND_URL || "http://localhost:8000";
@@ -65,39 +76,6 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
   };
 }
 
-/** [id]-Zitatmarker der gespeicherten Antwort → hochgestellte Fußnoten,
- *  nummeriert nach der Reihenfolge der gespeicherten Quellen. */
-function AntwortMitFussnoten({ text, quellen }: { text: string; quellen: ShareQuelle[] }) {
-  const idZuNum = new Map<number, number>();
-  quellen.forEach((q, i) => idZuNum.set(q.id, i + 1));
-  const absaetze = text.split(/\n{2,}/);
-  return (
-    <div className="space-y-3">
-      {absaetze.map((abs, ai) => abs.trim().startsWith("## ") ? (
-        <p key={ai} className="mt-4 text-[15px] font-bold tracking-tight">
-          {abs.trim().replace(/^##\s+/, "")}
-        </p>
-      ) : (
-        <p key={ai} className="text-[15px] leading-relaxed text-foreground/90">
-          {abs.split(/(\[[^\]\n]{1,160}\])/).map((teil, ti) => {
-            if (!/^\[[^\]\n]+\]$/.test(teil)) return <span key={ti}>{teil}</span>;
-            const nums = [...teil.matchAll(/\d+/g)]
-              .map((m) => idZuNum.get(Number(m[0])))
-              .filter((n): n is number => n != null);
-            if (nums.length === 0) return null; // unzitierte Marker still schlucken
-            return nums.map((n, ni) => (
-              <a key={`${ti}-${ni}`} href={`#quelle-${n}`}
-                className="mx-px inline-flex h-4 min-w-4 items-center justify-center rounded bg-primary/10 px-0.5 align-super text-[10px] font-bold text-primary no-underline">
-                {n}
-              </a>
-            ));
-          })}
-        </p>
-      ))}
-    </div>
-  );
-}
-
 export default async function GeteiltPage({ searchParams }: PageProps) {
   const { t } = await searchParams;
   const share = await ladeShare(t ?? "");
@@ -125,9 +103,17 @@ export default async function GeteiltPage({ searchParams }: PageProps) {
           <div className="mt-8 ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-md border border-primary/20 bg-primary/5 px-4 py-2.5 text-[15px]">
             {share.frage}
           </div>
-          <div className="mt-4">
-            <AntwortMitFussnoten text={share.antwort} quellen={share.quellen} />
+          <div className="mt-4 whitespace-pre-wrap text-[14.5px] leading-[1.7] text-foreground sm:leading-[1.75]">
+            <GeteilterAntwortText text={share.antwort} quellenIds={share.quellen.map((q) => q.id)}
+              anlagen={share.anlagen} />
           </div>
+          {/* RG-09: Die verdichteten Fraktions-Positionen gehören zur Antwort —
+              im Gespräch stehen sie direkt unter dem Text, hier genauso. */}
+          {(share.parteien?.length ?? 0) >= 2 && (
+            <div className="mt-4">
+              <ParteienListe parteien={share.parteien ?? []} />
+            </div>
+          )}
           {share.quellen.length > 0 && (
             <div className="mt-6 rounded-xl border border-border bg-card p-4">
               <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
@@ -146,6 +132,19 @@ export default async function GeteiltPage({ searchParams }: PageProps) {
                   </li>
                 ))}
               </ol>
+            </div>
+          )}
+          {/* Dieselben Belege-Bausteine wie im Gespräch (Reihenfolge dort:
+              Debatten, Anlagen, Presse) — Externes gestrichelt gerahmt. */}
+          {((share.debatten?.length ?? 0) > 0 || (share.anlagen?.length ?? 0) > 0
+            || (share.presse?.length ?? 0) > 0) && (
+            <div className="mt-3.5 flex flex-col gap-3.5">
+              {(share.debatten?.length ?? 0) > 0 && <DebattenBlock debatten={share.debatten ?? []} />}
+              {(share.anlagen?.length ?? 0) > 0 && (
+                <AnlagenBlock anlagen={share.anlagen ?? []} ankerPrefix="anlage"
+                  buchstaben={anlagenBuchstaben(share.antwort, share.anlagen)} />
+              )}
+              {(share.presse?.length ?? 0) > 0 && <PresseBlock presse={share.presse ?? []} />}
             </div>
           )}
           <ShareAktionen token={t ?? ""} />

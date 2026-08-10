@@ -600,10 +600,59 @@ class QaShareQuelle(BaseModel):
     outcome: str | None = Field(default=None, max_length=40)
 
 
+class QaShareDebatte(BaseModel):
+    sprecher: str | None = Field(default=None, max_length=120)
+    partei: str | None = Field(default=None, max_length=60)
+    art: str = Field(default="rede", max_length=30)
+    top: str | None = Field(default=None, max_length=300)
+    auszug: str = Field(default="", max_length=2000)
+    committee: str | None = Field(default=None, max_length=120)
+    datum: str | None = Field(default=None, max_length=10)
+
+
+class QaSharePresse(BaseModel):
+    titel: str = Field(max_length=300)
+    url: str = Field(max_length=500)
+    datum: str | None = Field(default=None, max_length=10)
+
+
+class QaShareAnlage(BaseModel):
+    # Beleg-Nummer des Recherche-Berichts („[A1]") — ohne sie findet der
+    # Marker im geteilten Text seine Anlage nicht.
+    nr: int | None = Field(default=None, ge=1, le=99)
+    label: str | None = Field(default=None, max_length=300)
+    url: str | None = Field(default=None, max_length=500)
+    vorlage_nr: str | None = Field(default=None, max_length=60)
+    vorlage_titel: str | None = Field(default=None, max_length=300)
+    auszug: str = Field(default="", max_length=600)
+
+
+class QaShareKernaussage(BaseModel):
+    text: str = Field(default="", max_length=600)
+    sprecher: str | None = Field(default=None, max_length=120)
+    datum: str | None = Field(default=None, max_length=10)
+
+
+class QaSharePartei(BaseModel):
+    partei: str = Field(max_length=60)
+    haltung: str | None = Field(default=None, max_length=20)
+    position: str = Field(default="", max_length=800)
+    einig: bool = True
+    hinweis: str | None = Field(default=None, max_length=300)
+    kernaussage: QaShareKernaussage | None = None
+    beitraege: int = Field(default=0, ge=0)
+
+
 class QaShareBody(BaseModel):
     frage: str = Field(min_length=1, max_length=300)
     antwort: str = Field(min_length=1, max_length=8000)
     quellen: list[QaShareQuelle] = Field(default_factory=list, max_length=40)
+    # Bausteine neben den Beschlüssen: ohne sie zeigte die geteilte Seite
+    # weniger als das Gespräch, aus dem sie stammt (Tims Befund 10.08.).
+    debatten: list[QaShareDebatte] = Field(default_factory=list, max_length=20)
+    presse: list[QaSharePresse] = Field(default_factory=list, max_length=10)
+    anlagen: list[QaShareAnlage] = Field(default_factory=list, max_length=10)
+    parteien: list[QaSharePartei] = Field(default_factory=list, max_length=12)
 
 
 @router.post("/qa-share", status_code=status.HTTP_201_CREATED)
@@ -618,8 +667,15 @@ def qa_share_anlegen(
     eine andere Antwort sehen. Bewusste Einzel-Veröffentlichung per Klick."""
     if not user.get("limits_frei"):
         qa_share_limiter.check(request)
+    extras = {
+        "debatten": [d.model_dump() for d in body.debatten],
+        "presse": [p.model_dump() for p in body.presse],
+        "anlagen": [a.model_dump() for a in body.anlagen],
+        "parteien": [p.model_dump() for p in body.parteien],
+    }
     token = nwz.qa_share_anlegen(user["id"], body.frage, body.antwort,
-                                 [q.model_dump() for q in body.quellen])
+                                 [q.model_dump() for q in body.quellen],
+                                 extras if any(extras.values()) else None)
     return {"token": token}
 
 

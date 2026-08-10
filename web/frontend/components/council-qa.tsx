@@ -42,38 +42,15 @@ import {
   RechercheHinweisKarte, RechercheLimitKarte, RechercheToggle, Sprungmarken, WieEsWeitergeht,
   type DeepFacette, type DeepPhase, type Planung,
 } from "@/components/deep-recherche";
-
-// Zitat-Klammern im Antworttext. Spiegelt council/qa.py (_CITE_RE /
-// citation_ids) — beide Seiten MÜSSEN dieselbe Regel anwenden, sonst laufen
-// Fußnoten-Nummerierung und die vom Server gemeldeten `cited` auseinander.
-const CITE_SOURCE = String.raw`\[\d[^\]\n]{0,160}\]`;
-const CITE_RE = new RegExp(CITE_SOURCE, "g");
-
-// Anlagen-Belege des Recherche-Berichts: „[A1]" verweist auf die Anlage mit
-// nr = 1 (council/qa.py `_anlagen_block`). Bewusst ein eigener Marker — die
-// Beschluss-Klammer MUSS mit einer Ziffer beginnen, sonst würde normaler
-// Klammertext zur Fußnote. Gerendert wird daraus a, b, c … (Buchstaben statt
-// Zahlen, damit man Gutachten und Beschluss im Text auseinanderhält).
-const ANL_SOURCE = String.raw`\[A\d{1,2}\]`;
-const ANL_RE = new RegExp(ANL_SOURCE, "g");
-const ANL_EXACT_RE = new RegExp(`^${ANL_SOURCE}$`);
-const BELEG_SPLIT_RE = new RegExp(`(${CITE_SOURCE}|${ANL_SOURCE})`, "g");
-const CITE_EXACT_RE = new RegExp(`^${CITE_SOURCE}$`);
-
-function citationIds(bracket: string): number[] {
-  const inner = bracket.slice(1, -1);
-  if (/^[\d,\s]+$/.test(inner)) return (inner.match(/\d+/g) ?? []).map(Number);
-  const m = /^\s*(\d+)/.exec(inner);
-  return m ? [Number(m[1])] : [];
-}
-
-/** Anlagen-Nummer aus „[A3]". */
-function anlagenNr(bracket: string): number {
-  return Number(bracket.slice(2, -1));
-}
-
-/** a, b, c … — mehr als 26 Anlagen liefert die Recherche nie (top_k = 6). */
-const anlagenBuchstabe = (i: number) => String.fromCharCode(97 + (i % 26));
+// Antworttext und Belege-Bausteine teilen sich Gespräch und Teilen-Seite
+// (app/g) — sonst driften die beiden Ansichten auseinander.
+import {
+  AnlagenBlock, AntwortText, DebattenBlock, ParteienListe, PresseBlock,
+  type AnlagenHinweis, type DebattenHinweis, type ParteiMeinung, type PresseHinweis,
+} from "@/components/qa-bausteine";
+import {
+  anlagenBuchstaben, ANL_RE, CITE_RE, citationIds, fmtDatumKurz,
+} from "@/lib/qa-belege";
 
 /** Bewährte Beispielfragen für den Empty State — kuratiert, nicht beliebig.
  *
@@ -171,26 +148,6 @@ const OUTCOME_BADGE: Record<string, string> = {
 const OUTCOME_LABEL: Record<string, string> = {
   angenommen: "Angenommen", abgelehnt: "Abgelehnt", vertagt: "Vertagt",
   zur_kenntnis: "Zur Kenntnis", kein_beschluss: "Kein Beschluss",
-};
-
-type PresseHinweis = { titel: string; url: string; datum: string | null };
-
-/** Task 33: Anlagen-Fundstelle (Gutachten, Konzept, Stellungnahme) — nur die
- *  Gründliche Recherche liefert diesen Kanal. */
-type AnlagenHinweis = {
-  /** Beleg-Nummer aus dem Deep-Job; im Text steht sie als „[A<nr>]".
-   *  Ältere gespeicherte Gespräche kennen das Feld nicht — dann bleibt die
-   *  Karte einfach ohne Buchstabe (in diesen Texten steht auch kein Marker). */
-  nr?: number | null;
-  label: string | null; url: string | null;
-  vorlage_nr: string | null; vorlage_titel: string | null; auszug: string;
-};
-
-/** Task 16: Wortbeitrag aus einem Sitzungsprotokoll (Rede, Anfrage,
- *  Einwohnerfrage oder Verwaltungs-Zusage) im Belege-Bereich. */
-type DebattenHinweis = {
-  sprecher: string | null; partei: string | null; art: string;
-  top: string | null; auszug: string; committee: string | null; datum: string | null;
 };
 
 /** Gesprächs-Zeile der „Meine Gespräche"-Liste (5a/I-04). */
@@ -513,8 +470,6 @@ function stuetztAuf(zitierte: QaSource[]): string {
 
 const fmtDatum = (d?: string | null) =>
   d ? new Date(d).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }) : "";
-const fmtDatumKurz = (d?: string | null) =>
-  d ? new Date(d).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "2-digit" }) : "";
 /** Naives UTC-ISO aus dem Backend (ohne „Z") als UTC deuten — sonst rutscht
  *  ein 00:30-Uhr-Gespräch aufs Vortagsdatum (Befund F14). */
 const fmtUtcKurz = (d: string) =>
@@ -570,16 +525,8 @@ function zitierteVon(turn: Turn, idToNum: Map<number, number>): QaSource[] {
  *  ein halluziniertes „[A9]" bekommt keinen Buchstaben und wird beim Rendern
  *  ersatzlos geschluckt (wie die ungültigen [id] serverseitig). */
 function useAnlagenBuchstaben(turn: Turn) {
-  return useMemo(() => {
-    const vorhanden = new Set(
-      (turn.anlagen ?? []).map((a, i) => a.nr ?? i + 1));
-    const map = new Map<number, string>();
-    for (const g of turn.antwort.matchAll(ANL_RE)) {
-      const nr = anlagenNr(g[0]);
-      if (vorhanden.has(nr) && !map.has(nr)) map.set(nr, anlagenBuchstabe(map.size));
-    }
-    return map;
-  }, [turn.antwort, turn.anlagen]);
+  return useMemo(() => anlagenBuchstaben(turn.antwort, turn.anlagen),
+    [turn.antwort, turn.anlagen]);
 }
 
 /** Sprung zur Quelle: mobil zum Inline-Block, ab lg in die Belege-Spalte. */
@@ -632,11 +579,17 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
       if (ts.length > 0) return ts;
       fetch(apiUrl(`/council/qa-share/${encodeURIComponent(token)}`))
         .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-        .then((s: { frage: string; antwort: string; quellen: QaSource[] }) => {
+        .then((s: {
+          frage: string; antwort: string; quellen: QaSource[];
+          presse?: PresseHinweis[]; debatten?: DebattenHinweis[]; anlagen?: AnlagenHinweis[];
+        }) => {
           setTurns((alt) => alt.length > 0 ? alt : [{
             key: naechsterKey(),
             frage: s.frage, antwort: s.antwort, qtype: null, mode: null,
-            sources: s.quellen ?? [], presse: [], debatten: [],
+            // Der Snapshot trägt die Bausteine mit — sonst sähe die Person,
+            // die dem Link folgt, weniger als auf der geteilten Seite.
+            sources: s.quellen ?? [], presse: s.presse ?? [], debatten: s.debatten ?? [],
+            anlagen: s.anlagen ?? [],
             cited: (s.quellen ?? []).map((q) => q.id), followups: [],
             kontext: s.frage,
           }]);
@@ -1816,7 +1769,7 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
           {/* div statt p: die Antwort darf Listen (ul) enthalten. */}
           <div className="whitespace-pre-wrap text-[14.5px] leading-[1.7] text-foreground sm:leading-[1.75]">
             {/* 5a/I-01: Der Chip öffnet erst das Peek — nicht sofort wegspringen. */}
-            <AnswerWithCitations text={turn.antwort} idToNum={idToNum} onJump={(id) => setPeekId(id)}
+            <AntwortText text={turn.antwort} idToNum={idToNum} onJump={(id) => setPeekId(id)}
               anlBuchstaben={anlBuchstaben}
               onAnlage={(nr) => jumpZuAnlage(turnIdx, nr, istLetzter)}
               ankerPrefix={turn.recherche ? `qa-abschnitt-${turnIdx}` : undefined}
@@ -2242,148 +2195,14 @@ function QuellenBlock({ turn, turnIdx, idToNum, zitierte, showAll, setShowAll, f
   );
 }
 
-/** Task 33: Anlagen-Treffer der Gründlichen Recherche — Gutachten und
- *  Konzepte, verlinkt aufs öffentliche PDF im Ratsinformationssystem. */
-function AnlagenBlock({ anlagen, ankerPrefix, buchstaben }: {
-  anlagen: AnlagenHinweis[]; ankerPrefix: string;
-  /** nr → a/b/c für die im Bericht belegten Anlagen. */
-  buchstaben: Map<number, string>;
-}) {
-  const belegt = [...buchstaben.keys()].length;
-  return (
-    <div className="rounded-xl border border-dashed border-border p-3">
-      <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-        Aus den Anlagen <span className="text-muted-foreground/60">· Gutachten &amp; Konzepte</span>
-      </p>
-      <ul className="mt-1.5 space-y-2">
-        {anlagen.map((a, i) => {
-          const nr = a.nr ?? i + 1;
-          const b = buchstaben.get(nr);
-          return (
-          <li key={i} id={`${ankerPrefix}-${nr}`}
-            className={cn("scroll-mt-16 text-[12.5px] leading-snug",
-              // Nicht belegte Anlagen treten zurück, sobald überhaupt eine im
-              // Text auftaucht — sonst sähen gelesene und benutzte Unterlagen
-              // gleich aus.
-              !b && belegt > 0 && "opacity-60")}>
-            <a href={a.url ?? undefined} target="_blank" rel="noopener noreferrer"
-              className="group flex items-baseline gap-2">
-              {b && (
-                <span aria-hidden
-                  className="inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded border border-primary/25 px-1 text-[10px] font-semibold leading-none text-primary/90">
-                  {b}
-                </span>
-              )}
-              <span className="min-w-0 flex-1 truncate font-medium group-hover:underline">
-                {a.label || "Anlage"}
-              </span>
-              {a.vorlage_nr && (
-                <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{a.vorlage_nr}</span>
-              )}
-              <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
-            </a>
-            {a.vorlage_titel && (
-              <p className="mt-0.5 truncate text-[11px] text-muted-foreground/80">zu: {a.vorlage_titel}</p>
-            )}
-            {a.auszug && (
-              <p className="mt-0.5 text-muted-foreground">{a.auszug}{a.auszug.length >= 220 ? "…" : ""}</p>
-            )}
-          </li>
-          );
-        })}
-      </ul>
-      {belegt > 0 && belegt < anlagen.length && (
-        <p className="mt-2 text-[10.5px] leading-relaxed text-muted-foreground/70">
-          Die übrigen wurden gelesen, aber im Bericht nicht belegt.
-        </p>
-      )}
-    </div>
-  );
-}
-
-function PresseBlock({ presse }: { presse: PresseHinweis[] }) {
-  return (
-    <div className="rounded-xl border border-dashed border-border p-3">
-      <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-        Aktuelles von der Stadt <span className="text-muted-foreground/60">· extern</span>
-      </p>
-      <ul className="mt-1.5 space-y-1">
-        {presse.map((p) => (
-          <li key={p.url}>
-            <a href={p.url} target="_blank" rel="noopener noreferrer"
-              className="group flex items-baseline gap-2 rounded-lg px-1.5 py-1 text-sm transition-colors hover:bg-muted">
-              <span className="min-w-0 flex-1 truncate text-[12.5px] group-hover:underline">{p.titel}</span>
-              <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{fmtDatumKurz(p.datum)}</span>
-              <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
-            </a>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-/** Task 16: Wortbeiträge aus den Sitzungsprotokollen — was im Rat GESAGT
- *  wurde (Reden, Anfragen mit Verwaltungsantwort, Einwohnerfragen, Zusagen),
- *  im Unterschied zu dem, was beschlossen wurde. */
-function DebattenBlock({ debatten }: { debatten: DebattenHinweis[] }) {
-  const artLabel: Record<string, string> = {
-    rede: "Rede", anfrage: "Anfrage", einwohnerfrage: "Einwohnerfrage", zusage: "Zusage",
-  };
-  return (
-    <div className="rounded-xl border border-dashed border-border p-3">
-      <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-        Aus den Ratsdebatten <span className="text-muted-foreground/60">· Protokolle</span>
-      </p>
-      <ul className="mt-1.5 space-y-2">
-        {debatten.map((d, i) => (
-          <DebattenZeile key={i} d={d} artLabel={artLabel} />
-        ))}
-      </ul>
-      {/* Ehrlichkeit zur Quelle: Ratsprotokolle sind Verlaufsprotokolle —
-          der wesentliche Inhalt in indirekter Rede, kein Wortprotokoll. */}
-      <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground/60">
-        Die Protokolle fassen Wortbeiträge sinngemäß zusammen — keine wörtlichen
-        Zitate, ohne Anspruch auf Vollständigkeit.
-      </p>
-    </div>
-  );
-}
-
-/** Eine Debatten-Zeile mit aufklappbarem VOLLTEXT: Der gekappte Auszug
- *  untergrub das „alles ist belegt"-Versprechen (Tims Befund 10.08.) —
- *  jetzt liefert das Backend die volle Paraphrase, die Anzeige klappt auf. */
-function DebattenZeile({ d, artLabel }: { d: DebattenHinweis; artLabel: Record<string, string> }) {
-  const [offen, setOffen] = useState(false);
-  // Ab dieser Länge lohnt der Toggle; kürzere Beiträge stehen einfach ganz da.
-  const lang = d.auszug.length > 260;
-  return (
-    <li className="text-[12.5px] leading-snug">
-      <p className="flex items-baseline gap-2">
-        <span className="min-w-0 flex-1 truncate font-medium">
-          {d.sprecher ?? "Ohne Namen"}{d.partei ? ` (${d.partei})` : ""}
-          <span className="ml-1.5 font-normal text-muted-foreground">· {artLabel[d.art] ?? d.art}</span>
-        </span>
-        {d.datum && <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{fmtDatumKurz(d.datum)}</span>}
-      </p>
-      <p className={cn("mt-0.5 whitespace-pre-wrap text-muted-foreground",
-        !offen && lang && "line-clamp-4")}>
-        {d.auszug}
-      </p>
-      {lang && (
-        <button type="button" onClick={() => setOffen((v) => !v)} aria-expanded={offen}
-          className="mt-0.5 text-[11px] font-medium text-primary hover:underline">
-          {offen ? "Weniger anzeigen" : "Ganzen Beitrag anzeigen"}
-        </button>
-      )}
-    </li>
-  );
-}
-
 /** Teilen mit Substanz (Task 31): erstellt beim Klick einen Server-Snapshot
  *  von Frage + EXAKTER Antwort + zitierten Quellen und teilt dessen URL —
  *  der alte ?q=-Link ließ Empfänger die Frage neu ausführen und eine ANDERE
- *  Antwort sehen (Tims Befund). Das Token wird je Turn nur einmal erzeugt. */
+ *  Antwort sehen (Tims Befund). Das Token wird je Turn nur einmal erzeugt.
+ *
+ *  Der Snapshot nimmt seit dem Bausteine-Nachtrag auch Debatten, Presse,
+ *  Anlagen und die verdichteten Fraktions-Positionen mit: Wer den Link
+ *  öffnete, sah vorher deutlich weniger als die Person, die ihn teilte. */
 function TeilenKnopf({ turn, zitierte }: { turn: Turn; zitierte: QaSource[] }) {
   const tokenRef = useRef<string | null>(null);
   const [laedt, setLaedt] = useState(false);
@@ -2393,6 +2212,10 @@ function TeilenKnopf({ turn, zitierte }: { turn: Turn; zitierte: QaSource[] }) {
     if (!token) {
       setLaedt(true);
       try {
+        // Parteien liegen nicht am Turn, sondern im Cache des Bausteins —
+        // derselbe Schlüssel wie beim Laden (kondensierte Frage).
+        const parteien = turn.qtype !== "person"
+          ? (parteiMeinungenCache.get(turn.kontext || turn.frage) ?? []) : [];
         const r = await fetch(apiUrl("/council/qa-share"), {
           method: "POST", credentials: "include",
           headers: { "Content-Type": "application/json", ...authHeaders() },
@@ -2403,6 +2226,29 @@ function TeilenKnopf({ turn, zitierte }: { turn: Turn; zitierte: QaSource[] }) {
               id: q.id, title: (q.title ?? "").slice(0, 300),
               session_date: q.session_date ?? null,
               committee: q.committee ?? null, outcome: q.outcome ?? null,
+            })),
+            debatten: (turn.debatten ?? []).slice(0, 20).map((d) => ({
+              sprecher: d.sprecher, partei: d.partei, art: d.art,
+              top: (d.top ?? "")?.slice(0, 300) || null,
+              auszug: (d.auszug ?? "").slice(0, 2000),
+              committee: d.committee, datum: d.datum,
+            })),
+            presse: (turn.presse ?? []).slice(0, 10).map((p) => ({
+              titel: p.titel.slice(0, 300), url: p.url.slice(0, 500), datum: p.datum,
+            })),
+            // nr muss mit: Ohne sie fänden die „[A1]"-Belege im geteilten
+            // Text ihre Anlage nicht und würden ersatzlos geschluckt.
+            anlagen: (turn.anlagen ?? []).slice(0, 10).map((a, i) => ({
+              nr: a.nr ?? i + 1,
+              label: a.label, url: a.url, vorlage_nr: a.vorlage_nr,
+              vorlage_titel: a.vorlage_titel, auszug: (a.auszug ?? "").slice(0, 600),
+            })),
+            // Ohne beitraege_liste: die Aufklapp-Beiträge blähen den Snapshot,
+            // die geteilte Seite zeigt Position und Kernaussage.
+            parteien: parteien.slice(0, 12).map((p) => ({
+              partei: p.partei, haltung: p.haltung ?? null,
+              position: (p.position ?? "").slice(0, 800), einig: p.einig,
+              hinweis: p.hinweis, kernaussage: p.kernaussage, beitraege: p.beitraege,
             })),
           }),
         });
@@ -2444,52 +2290,20 @@ function TeilenKnopf({ turn, zitierte }: { turn: Turn; zitierte: QaSource[] }) {
 
 /* ------------------ Baustein „Das sagen die Parteien" (RG-09) ------------------ */
 
-type ParteiMeinung = {
-  partei: string; haltung?: "dafür" | "dagegen" | "offen" | "gewandelt";
-  position: string; einig: boolean; hinweis: string | null;
-  kernaussage: { text: string; sprecher: string | null; datum: string | null } | null;
-  beitraege: number;
-  beitraege_liste?: { sprecher: string | null; datum: string; art: string | null;
-    gremium: string | null; text: string }[];
-};
-
-/** Haltungs-Badge: Wort statt Grafik (RG-05-Verbot von Stimm-Balken gilt
- *  weiter); „offen" bekommt kein Badge — Grau neben Grau wäre nur Rauschen. */
-const HALTUNG_BADGE: Record<string, { label: string; cls: string }> = {
-  "dafür": { label: "dafür", cls: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300" },
-  "dagegen": { label: "dagegen", cls: "bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300" },
-  "gewandelt": { label: "Haltung gewandelt", cls: "bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300" },
-};
-
-/** RG-09-Parteifarben (bewusst NICHT partyBrand aus decision-ui — das Artboard
- *  definiert eigene Dot-Farben). Gruppen (FDP/Volt, Für Oldenburg, IBO/LiVe)
- *  behalten ihr kombiniertes Label und bekommen den neutralen Dot. */
-function parteiDot(label: string): { bg: string; ring: boolean } {
-  const l = label.toLowerCase();
-  if (l.includes("grün")) return { bg: "#3d8f29", ring: false };
-  if (l.includes("linke")) return { bg: "#e6007e", ring: false };
-  if (l.includes("spd")) return { bg: "#e3000f", ring: false };
-  if (l.includes("cdu")) return { bg: "#1a1a1a", ring: false };
-  if (l.includes("bsw")) return { bg: "#7d254f", ring: false };
-  if (l.includes("afd")) return { bg: "#009ee0", ring: false };
-  if (l === "volt") return { bg: "#502379", ring: false }; // seit der Stammdaten-Auflösung eigenständig
-  if (l === "fdp") return { bg: "#ffe000", ring: true }; // exakt — „FDP/Volt" ist eine Gruppe
-  return { bg: "hsl(209 18% 65%)", ring: false };
-}
-
 /** Doppel-Fetches (Remount durch Kompaktzeile, Strict-Mode) kosten echte
- *  LLM-Calls — das Ergebnis je kondensierter Frage einmal festhalten. */
-const parteiMeinungenCache = new Map<string, ParteiMeinung[]>();
+ *  LLM-Calls — das Ergebnis je kondensierter Frage einmal festhalten. Der
+ *  Cache ist außerdem die Quelle für den Teilen-Snapshot: Was hier steht,
+ *  wandert beim Teilen mit in den Link (Tims Befund 10.08.). */
+export const parteiMeinungenCache = new Map<string, ParteiMeinung[]>();
 
+/** Lädt die verdichteten Fraktions-Positionen nach und übergibt sie an
+ *  `ParteienListe` — die Darstellung teilt sich diese Seite mit app/g. */
 function ParteienBaustein({ frage, onFrageStellen }: {
   frage: string; onFrageStellen?: (text: string) => void;
 }) {
   const [parteien, setParteien] = useState<ParteiMeinung[] | null>(
     () => parteiMeinungenCache.get(frage) ?? null);
   const [ohneBeitraege, setOhneBeitraege] = useState<string[]>([]);
-  // Klick auf die Zeile klappt die verdichteten Original-Beiträge auf
-  // (Tims Wunsch: „auf die Partei klicken, um alle Beiträge zu sehen").
-  const [offen, setOffen] = useState<string | null>(null);
   useEffect(() => {
     if (parteiMeinungenCache.has(frage)) { setParteien(parteiMeinungenCache.get(frage)!); return; }
     let aktiv = true;
@@ -2516,123 +2330,7 @@ function ParteienBaustein({ frage, onFrageStellen }: {
   }, [frage]);
 
   if (parteien !== null && parteien.length < 2) return null; // dünne Lage: gar nicht
-
-  const daten = [...new Set((parteien ?? []).map((p) => p.kernaussage?.datum).filter(Boolean))];
-  return (
-    <div className="rounded-xl border border-border bg-card p-3.5 shadow-sm print:break-inside-avoid">
-      <div className="flex items-baseline justify-between gap-2">
-        <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-          Aus den Ratsdebatten
-        </p>
-        <p className="text-[10.5px] text-muted-foreground/70">
-          {parteien === null ? "Positionen werden verdichtet …"
-            : `${parteien.length} Fraktionen${daten.length === 1 ? ` · Sitzung ${daten[0]}` : ""}`}
-        </p>
-      </div>
-      {parteien === null ? (
-        <div aria-hidden className="mt-3 flex animate-pulse flex-col gap-3.5">
-          {[34, 28, 40].map((w, i) => (
-            <div key={i} className="flex gap-2.5">
-              <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-muted" />
-              <span className="flex flex-1 flex-col gap-1.5">
-                <span className="h-2.5 rounded bg-muted" style={{ width: `${w}%` }} />
-                <span className="h-2 w-[92%] rounded bg-muted/70" />
-                {i !== 1 && <span className="h-2 w-[60%] rounded bg-muted/70" />}
-              </span>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <>
-          <div className="mt-2 flex flex-col divide-y divide-border/60">
-            {parteien.map((p) => {
-              const dot = parteiDot(p.partei);
-              const aufklappbar = (p.beitraege_liste?.length ?? 0) > 0;
-              const istOffen = offen === p.partei;
-              return (
-                <div key={p.partei} role={aufklappbar ? "button" : undefined}
-                  tabIndex={aufklappbar ? 0 : undefined} aria-expanded={aufklappbar ? istOffen : undefined}
-                  onClick={() => aufklappbar && setOffen(istOffen ? null : p.partei)}
-                  onKeyDown={(e) => { if (aufklappbar && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); setOffen(istOffen ? null : p.partei); } }}
-                  className={cn("group relative -mx-1.5 flex gap-2.5 rounded-lg px-1.5 py-2.5 transition-colors lg:hover:bg-primary/5",
-                    aufklappbar && "cursor-pointer")}>
-                  <span aria-hidden className="mt-[5px] h-2 w-2 shrink-0 rounded-full"
-                    style={{ background: dot.bg, boxShadow: dot.ring ? "inset 0 0 0 1px rgba(0,0,0,0.15)" : undefined }} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="text-[12.5px] font-bold">{p.partei}</p>
-                      {p.haltung && HALTUNG_BADGE[p.haltung] && (
-                        <span className={cn("rounded-full px-2 py-px text-[10px] font-semibold",
-                          HALTUNG_BADGE[p.haltung].cls)}>
-                          {HALTUNG_BADGE[p.haltung].label}
-                        </span>
-                      )}
-                      {/* Ehrlichkeit zur Datenbasis: aus wie vielen Wortbeiträgen
-                          die Position verdichtet ist (Tims Befund 10.08.). */}
-                      {p.beitraege > 0 && (
-                        <span className="inline-flex items-center gap-0.5 font-mono text-[10px] text-muted-foreground/70">
-                          {p.beitraege === 1 ? "1 Beitrag" : `${p.beitraege} Beiträge`}
-                          {aufklappbar && (
-                            <ChevronDown aria-hidden
-                              className={cn("h-3 w-3 transition-transform", istOffen && "rotate-180")} />
-                          )}
-                        </span>
-                      )}
-                      {!p.einig && (
-                        <span className="rounded-full bg-amber-100 px-2 py-px text-[10px] font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
-                          uneinheitlich
-                        </span>
-                      )}
-                      {onFrageStellen && (
-                        <button type="button"
-                          onClick={(e) => { e.stopPropagation(); onFrageStellen(`Was sagt ${p.partei} dazu im Detail?`); }}
-                          className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10.5px] text-muted-foreground transition-opacity hover:text-foreground lg:opacity-0 lg:group-hover:opacity-100 lg:focus:opacity-100"
-                          title={`Was sagt ${p.partei} dazu im Detail?`}>
-                          <MessageSquarePlus className="h-3 w-3" aria-hidden /> Dazu fragen
-                        </button>
-                      )}
-                    </div>
-                    <p className="mt-0.5 text-[12.5px] leading-relaxed text-foreground/90">
-                      {p.position}{!p.einig && p.hinweis ? ` — ${p.hinweis}` : ""}
-                    </p>
-                    {p.kernaussage && (
-                      <p className="mt-1 text-[12px] italic leading-snug text-muted-foreground">
-                        {p.kernaussage.text}
-                        <span className="font-mono text-[10px] not-italic text-muted-foreground/80">
-                          {" "}— {p.kernaussage.sprecher ?? "ohne Namen"}{p.kernaussage.datum ? `, ${p.kernaussage.datum}` : ""}
-                        </span>
-                      </p>
-                    )}
-                    {istOffen && p.beitraege_liste && (
-                      <ul className="mt-2 space-y-2 border-l-2 border-border/70 pl-2.5">
-                        {p.beitraege_liste.map((b, bi) => (
-                          <li key={bi} className="text-[12px] leading-snug">
-                            <p className="font-mono text-[10px] text-muted-foreground">
-                              {b.sprecher ?? "Ohne Namen"} · {b.datum}
-                              {b.gremium ? ` · ${b.gremium}` : ""}
-                            </p>
-                            <p className="mt-0.5 text-muted-foreground">{b.text}{b.text.length >= 300 ? "…" : ""}</p>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <p className="mt-1.5 border-t border-dashed border-border pt-2 text-[10px] leading-normal text-muted-foreground/70">
-            {/* Vollständigkeits-Ehrlichkeit (Tims Direktive): fehlende Fraktionen
-                benennen statt still weglassen. */}
-            {ohneBeitraege.length > 0 && (
-              <>Keine passenden Wortbeiträge gefunden von: {ohneBeitraege.join(", ")}.{" "}</>
-            )}
-            Verdichtet aus den Wortbeiträgen der Sitzungsprotokolle — Paraphrasen, keine wörtlichen Zitate.
-          </p>
-        </>
-      )}
-    </div>
-  );
+  return <ParteienListe parteien={parteien} ohneBeitraege={ohneBeitraege} onFrageStellen={onFrageStellen} />;
 }
 
 /* ---------------------- Fragetyp-Bausteine (RG-03/04) --------------------- */
@@ -2797,123 +2495,5 @@ function FussnotenChip({ id, idToNum, onJump }: {
       className="inline-flex h-4 min-w-4 items-center justify-center rounded bg-primary/10 px-1 text-[10px] font-semibold leading-none text-primary hover:bg-primary/20">
       {idToNum.get(id)}
     </button>
-  );
-}
-
-/**
- * Antworttext mit klickbaren Fußnoten und SPARSAMEM Markdown: "[id]" →
- * nummerierte Chips; "**fett**" → <strong>; "- "-Zeilen → echte Liste;
- * Leerzeilen → Absätze. Streaming-fest: ein offenes "**" bleibt Text.
- */
-function AnswerWithCitations({ text: rohtext, idToNum, onJump, anlBuchstaben, onAnlage,
-  ankerPrefix, berichtKoepfe }: {
-  text: string; idToNum: Map<number, number>; onJump: (id: number) => void;
-  /** Anlagen-Belege des Recherche-Berichts: nr → a/b/c. */
-  anlBuchstaben?: Map<number, string>;
-  onAnlage?: (nr: number) => void;
-  /** RG-10: „## "-Köpfe bekommen ids `${ankerPrefix}-${i}` für Sprungmarken. */
-  ankerPrefix?: string;
-  /** RG-10: Bericht-Köpfe größer (Display-Font) statt der kompakten Task-32-Optik. */
-  berichtKoepfe?: boolean;
-}) {
-  // Belege ohne Gegenstück fliegen SAMT führendem Leerzeichen raus (der Deep-
-  // Bericht wird roh gespeichert, nur die schnelle Antwort putzt serverseitig).
-  // Ohne das bliebe „… nichts her ." mit einer Lücke vor dem Punkt stehen.
-  const text = rohtext.replace(
-    new RegExp(String.raw`\s*(${CITE_SOURCE}|${ANL_SOURCE})`, "g"),
-    (treffer, klammer: string) =>
-      (ANL_EXACT_RE.test(klammer)
-        ? anlBuchstaben?.has(anlagenNr(klammer))
-        : citationIds(klammer).some((id) => idToNum.has(id)))
-        ? treffer : "");
-  // Laufender Kopf-Index über ALLE Blöcke — muss mit berichtAbschnitte()
-  // deckungsgleich zählen, sonst springen die Chips daneben.
-  let kopfIndex = -1;
-  const inline = (chunk: string, keyBase: string) => {
-    const parts = chunk.split(BELEG_SPLIT_RE);
-    return parts.map((part, i) => {
-      if (ANL_EXACT_RE.test(part)) {
-        // Anlagen-Beleg: kleiner Buchstabe statt Zahl. Ohne bekannte Anlage
-        // fällt der Marker weg — ein sichtbares „[A9]" wäre schlimmer als
-        // gar kein Beleg.
-        const nr = anlagenNr(part);
-        const b = anlBuchstaben?.get(nr);
-        if (!b) return null;
-        return (
-          <button key={`${keyBase}-${i}`} type="button" onClick={() => onAnlage?.(nr)}
-            title="Zur Anlage springen (Gutachten, Konzept, Stellungnahme)"
-            aria-label={`Anlage ${b} anzeigen`}
-            className="mx-0.5 inline-flex h-4 min-w-4 -translate-y-[3px] items-center justify-center rounded border border-primary/25 px-1 align-baseline text-[10px] font-semibold leading-none text-primary/90 transition-colors hover:bg-primary/10">
-            {b}
-          </button>
-        );
-      }
-      if (CITE_EXACT_RE.test(part)) {
-        const ids = citationIds(part).filter((id) => idToNum.has(id));
-        if (ids.length === 0) return null;
-        return (
-          <span key={`${keyBase}-${i}`} className="whitespace-nowrap">
-            {ids.map((id) => (
-              <button key={id} type="button" onClick={() => onJump(id)}
-                title="Zur zitierten Quelle springen" aria-label={`Quelle ${idToNum.get(id)} anzeigen`}
-                className="mx-0.5 inline-flex h-4 min-w-4 -translate-y-[3px] items-center justify-center rounded bg-primary/10 px-1 align-baseline text-[10px] font-semibold leading-none text-primary transition-colors hover:bg-primary/20">
-                {idToNum.get(id)}
-              </button>
-            ))}
-          </span>
-        );
-      }
-      const seg = part.split(/(\*\*[^*]+\*\*)/g);
-      return seg.map((s, j) =>
-        /^\*\*[^*]+\*\*$/.test(s)
-          ? <strong key={`${keyBase}-${i}-${j}`} className="font-semibold">{s.slice(2, -2)}</strong>
-          : <span key={`${keyBase}-${i}-${j}`}>{s}</span>);
-    });
-  };
-
-  const bloecke = text.split(/\n{2,}/);
-  return (
-    <>
-      {bloecke.map((block, bi) => {
-        // Drei Zeilenarten: „## "-Zwischenüberschrift (Task 32, lange
-        // Antworten zu großen Themen), „- "-Listenzeile, Fließtext.
-        const gruppen: { art: "kopf" | "liste" | "text"; zeilen: string[] }[] = [];
-        for (const z of block.split("\n")) {
-          // Listen: „- " laut Prompt, „* " (auch verschachtelt) liefern die
-          // Modelle im langen Recherche-Bericht trotzdem gelegentlich.
-          const art = z.trim().startsWith("## ") ? "kopf" as const
-            : /^[-*]\s+/.test(z.trim()) ? "liste" as const : "text" as const;
-          const g = gruppen[gruppen.length - 1];
-          if (g && g.art === art && art !== "kopf") g.zeilen.push(z);
-          else gruppen.push({ art, zeilen: [z] });
-        }
-        return (
-          <span key={bi} className="block [&:not(:first-child)]:mt-2.5">
-            {gruppen.map((g, gi) =>
-              g.art === "kopf" ? (
-                <span key={gi}
-                  id={ankerPrefix ? `${ankerPrefix}-${++kopfIndex}` : undefined}
-                  className={cn("block scroll-mt-16 first:mt-0",
-                    berichtKoepfe
-                      ? "mt-4 font-display text-[15.5px] font-bold tracking-tight"
-                      : "mt-3 text-[13.5px] font-bold tracking-tight")}>
-                  {inline(g.zeilen[0].trim().replace(/^##\s+/, ""), `${bi}-${gi}`)}
-                </span>
-              ) : g.art === "liste" ? (
-                <ul key={gi} className="my-1.5 space-y-1 pl-1">
-                  {g.zeilen.filter((z) => z.trim()).map((z, zi) => (
-                    <li key={zi} className="flex gap-2">
-                      <span aria-hidden className="mt-[9px] h-1 w-1 shrink-0 rounded-full bg-primary/60" />
-                      <span className="min-w-0 whitespace-normal">{inline(z.trim().replace(/^[-*]\s+/, ""), `${bi}-${gi}-${zi}`)}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <span key={gi}>{inline(g.zeilen.join("\n"), `${bi}-${gi}`)}</span>
-              ))}
-          </span>
-        );
-      })}
-    </>
   );
 }

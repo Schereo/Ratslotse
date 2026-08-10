@@ -278,3 +278,15 @@ def test_haushalt_block_und_matching(tmp_path):
     assert store.haushalt_fuer_begriffe(["Kita"]) == []
     assert [r["bereich"] for r in store.haushalt_fuer_begriffe(["Haushalt"])] == ["Summe"]
     store.close()
+
+
+def test_beschluss_kontext_traegt_deutsches_datum():
+    """Die Kandidatenzeile ist die Datums-Quelle der Antwort: stand dort ISO,
+    schrieb das Modell „am 2026-06-01" in den Fließtext (Tims Befund 10.08.)."""
+    messages, _ = qa._answer_messages(
+        "Was wurde zum Stadion entschieden?",
+        [{"id": 7, "title": "Stadionneubau", "beschluss": "Zugestimmt.",
+          "committee": "Rat", "session_date": "2026-06-01", "outcome": "angenommen"}])
+    prompt = messages[0]["content"]
+    assert "01.06.2026" in prompt
+    assert "2026-06-01" not in prompt

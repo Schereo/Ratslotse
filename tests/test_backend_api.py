@@ -1571,10 +1571,49 @@ def test_qa_share_roundtrip(client):
     assert body["quellen"][0]["title"] == "Stadionneubau"
     assert "user_id" not in body
 
+    # Alte Snapshots (ohne Bausteine) liefern leere Listen statt zu fehlen.
+    assert body["debatten"] == [] and body["presse"] == []
+    assert body["anlagen"] == [] and body["parteien"] == []
+
     assert client.get("/api/council/qa-share/gibtsnicht").status_code == 404
     # Ohne Login kein Anlegen.
     assert client.post("/api/council/qa-share", json={
         "frage": "x", "antwort": "y", "quellen": []}).status_code in (401, 403)
+
+
+def test_qa_share_traegt_bausteine(client):
+    """Die geteilte Seite zeigt dieselben Bausteine wie das Gespräch —
+    Debatten, Presse, Anlagen und Fraktions-Positionen wandern mit in den
+    Snapshot (vorher sah der Empfänger nur Text + Beschlüsse)."""
+    _register(client)
+    r = client.post("/api/council/qa-share", json={
+        "frage": "Was sagt der Rat zum Stadion?",
+        "antwort": "Der Rat stimmte zu [5].",
+        "quellen": [{"id": 5, "title": "Stadionneubau", "session_date": "2026-06-01",
+                     "committee": "Rat", "outcome": "angenommen"}],
+        "debatten": [{"sprecher": "Ratsherr Wenzel", "partei": "SPD", "art": "rede",
+                      "top": "6.1 Stadionneubau", "auszug": "Warnte vor einem Millionengrab.",
+                      "committee": "Rat", "datum": "2026-06-01"}],
+        "presse": [{"titel": "Stadion: Stadt informiert",
+                    "url": "https://www.oldenburg.de/x", "datum": "2026-06-02"}],
+        "anlagen": [{"label": "Machbarkeitsstudie", "url": "https://ris/anlage.pdf",
+                     "vorlage_nr": "26/0123", "vorlage_titel": "Stadionneubau",
+                     "auszug": "Kapazität 15.000."}],
+        "parteien": [{"partei": "SPD", "haltung": "dagegen", "position": "Skeptisch.",
+                      "einig": True, "hinweis": None, "beitraege": 3,
+                      "kernaussage": {"text": "Kein zweites Millionengrab.",
+                                      "sprecher": "Wenzel", "datum": "01.06.2026"}}],
+    })
+    assert r.status_code == 201
+    token = r.json()["token"]
+
+    client.cookies.clear()  # öffentlich lesbar
+    body = client.get(f"/api/council/qa-share/{token}").json()
+    assert body["debatten"][0]["sprecher"] == "Ratsherr Wenzel"
+    assert body["presse"][0]["url"] == "https://www.oldenburg.de/x"
+    assert body["anlagen"][0]["vorlage_nr"] == "26/0123"
+    assert body["parteien"][0]["haltung"] == "dagegen"
+    assert "user_id" not in body
 
 
 def test_partei_meinungen_endpoint(client, monkeypatch):
