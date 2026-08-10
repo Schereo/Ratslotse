@@ -250,6 +250,14 @@ def _factions_of(c: dict) -> list[str]:
     return [str(f).strip() for f in raw or [] if str(f).strip()]
 
 
+def _datum_de(iso: str | None) -> str:
+    """ISO-Datum → deutsches Format für den Antwort-Kontext — sonst schreibt
+    das Modell „Laut Pressemitteilung vom 2026-07-27" (Befund 10.08.)."""
+    if iso and len(iso) >= 10:
+        return f"{iso[8:10]}.{iso[5:7]}.{iso[0:4]}"
+    return iso or "unbekannt"
+
+
 def _presse_block(presse: list[dict] | None) -> str:
     """Kontext-Absatz „Aktuelles von der Stadt" — Pressemitteilungen sind KEINE
     Beschlüsse und werden nicht mit [id] zitiert; die Antwort nennt sie als
@@ -257,12 +265,12 @@ def _presse_block(presse: list[dict] | None) -> str:
     if not presse:
         return ""
     zeilen = "\n".join(
-        f"- {p.get('titel', '')} (Pressemitteilung der Stadt vom {p.get('datum') or 'unbekannt'}): "
+        f"- {p.get('titel', '')} (Pressemitteilung der Stadt vom {_datum_de(p.get('datum'))}): "
         f"{(p.get('auszug') or '').strip()[:280]}"
         for p in presse)
-    return ("\nAKTUELLES VON DER STADT (thematisch geprüfte Pressemitteilungen — nutze sie\n"
-            "aktiv für den aktuellen Stand der Verwaltung, als „Laut Pressemitteilung\n"
-            "vom …“; NIE mit [id] zitieren):\n"
+    return ("\nAKTUELLES VON DER STADT (thematisch geprüfte Pressemitteilungen). Ergänze\n"
+            "die Antwort um den aktuellen Stand der Verwaltung, wo die Mitteilungen\n"
+            "Neues zur Sache tragen — als „Laut Pressemitteilung vom …“, NIE mit [id]:\n"
             f"{zeilen}\n")
 
 
@@ -291,10 +299,12 @@ def _debatten_block(debatten: list[dict] | None) -> str:
             zeile += f" — Antwort der Verwaltung: {(d['antwort'] or '').strip()[:300]}"
         zeilen.append(zeile)
     return ("\nAUS DEN RATSDEBATTEN (thematisch geprüfte Wortbeiträge aus den\n"
-            "Sitzungsprotokollen — Berichte, KEINE Beschlüsse). Gib das Meinungsbild\n"
-            "der Debatte in 1–2 Sätzen wieder (wer trug was vor, wo gab es Streit oder\n"
-            "Zusagen), klar markiert als „Laut Protokoll sagte/fragte …“ oder „In der\n"
-            "Debatte betonte …“; NIE mit [id] zitieren:\n"
+            "Sitzungsprotokollen — Berichte, KEINE Beschlüsse). Ergänze die Antwort\n"
+            "IMMER um einen kurzen Absatz Meinungsbild der Debatte (wer trug was vor,\n"
+            "wo gab es Streit oder Zusagen) — auch wenn nur nach der Entscheidung\n"
+            "gefragt ist: Die Debatte gehört zur Einordnung dazu. Klar markiert als\n"
+            "„Laut Protokoll sagte/fragte …“ oder „In der Debatte betonte …“;\n"
+            "NIE mit [id] zitieren:\n"
             + "\n".join(zeilen) + "\n")
 
 
