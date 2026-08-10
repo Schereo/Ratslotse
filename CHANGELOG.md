@@ -15,7 +15,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   verschiedener Vorlagen bleiben eine neutrale Zeitreihe (Planungskosten
   und Gesamtkosten wären sonst ein Äpfel-Birnen-Pfeil). Dazu sagt der
   Debatten-Block jetzt ehrlich, dass Protokolle Wortbeiträge sinngemäß
-  zusammenfassen — ohne Anspruch auf Vollständigkeit. (#415)
+  zusammenfassen — ohne Anspruch auf Vollständigkeit. (#417)
 - **„Was sagt Ratsfrau X dazu?" — Fragen zu Personen.** Nennt eine Frage
   ein Ratsmitglied, antwortet „Frag den Rat" aus dessen Wortbeiträgen
   („Laut Protokoll sagte …") statt nur aus Beschlüssen; der Belege-Block
