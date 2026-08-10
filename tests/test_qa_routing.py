@@ -35,10 +35,36 @@ def test_analyse_parst_sauberes_json(monkeypatch):
         {"begriffe": "Radverkehr Fahrrad Radweg", "typ": "verlauf", "partei": None}))
     a = qa.analyse_query("Wie lief das mit dem Radweg?")
     assert a == {"frage": "Wie lief das mit dem Radweg?",
-                 "begriffe": "Radverkehr Fahrrad Radweg", "typ": "verlauf", "partei": None}
+                 "begriffe": "Radverkehr Fahrrad Radweg", "typ": "verlauf", "partei": None,
+                 "varianten": []}
     # Zweiter Aufruf kommt aus dem Cache — kein weiterer LLM-Call.
     qa.analyse_query("Wie lief das mit dem Radweg?")
     assert calls["n"] == 1
+
+
+def test_analyse_varianten_geparst_und_gekappt(monkeypatch):
+    """Multi-Query (Task 32): bis zu 2 saubere Varianten, Müll fliegt raus."""
+    _llm_antwort(monkeypatch, json.dumps({
+        "begriffe": "Stadion", "typ": "thema",
+        "varianten": ["Finanzierung des Stadionneubaus", "  B-Plan   Stadion  ",
+                      "dritte wird gekappt", 42, ""],
+    }))
+    a = qa.analyse_query("Wie läuft es mit dem Stadion?")
+    assert a["varianten"] == ["Finanzierung des Stadionneubaus", "B-Plan Stadion"]
+
+
+def test_gross_regel_und_tokenbudget():
+    """Task 32: große Themen bekommen Struktur-Erlaubnis und mehr Budget."""
+    assert qa._answer_tokens("thema") == 1000
+    assert qa._answer_tokens("thema", gross=True) == 2200
+    messages, _ = qa._answer_messages(
+        "Wie läuft es mit dem Stadion?", [{"id": 1, "title": "T", "beschluss": "B"}],
+        gross=True)
+    assert "UMFANGREICHES Thema" in messages[0]["content"]
+    assert "## " in messages[0]["content"]
+    messages, _ = qa._answer_messages(
+        "Kurze Frage?", [{"id": 1, "title": "T", "beschluss": "B"}])
+    assert "UMFANGREICHES Thema" not in messages[0]["content"]
 
 
 def test_analyse_partei_nur_bei_partei_typ(monkeypatch):
@@ -100,7 +126,8 @@ def test_analyse_fehler_liefert_fallback(monkeypatch):
         raise RuntimeError("Provider weg")
     monkeypatch.setattr(qa.llm, "chat_complete", boom)
     a = qa.analyse_query("Frage?")
-    assert a == {"frage": "Frage?", "begriffe": "Frage?", "typ": "thema", "partei": None}
+    assert a == {"frage": "Frage?", "begriffe": "Frage?", "typ": "thema", "partei": None,
+                 "varianten": []}
 
 
 def test_sort_verlauf_aelteste_zuerst():

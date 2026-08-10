@@ -1786,17 +1786,24 @@ function AnswerWithCitations({ text, idToNum, onJump }: {
   return (
     <>
       {bloecke.map((block, bi) => {
-        const gruppen: { liste: boolean; zeilen: string[] }[] = [];
+        // Drei Zeilenarten: „## "-Zwischenüberschrift (Task 32, lange
+        // Antworten zu großen Themen), „- "-Listenzeile, Fließtext.
+        const gruppen: { art: "kopf" | "liste" | "text"; zeilen: string[] }[] = [];
         for (const z of block.split("\n")) {
-          const liste = z.trim().startsWith("- ");
+          const art = z.trim().startsWith("## ") ? "kopf" as const
+            : z.trim().startsWith("- ") ? "liste" as const : "text" as const;
           const g = gruppen[gruppen.length - 1];
-          if (g && g.liste === liste) g.zeilen.push(z);
-          else gruppen.push({ liste, zeilen: [z] });
+          if (g && g.art === art && art !== "kopf") g.zeilen.push(z);
+          else gruppen.push({ art, zeilen: [z] });
         }
         return (
           <span key={bi} className="block [&:not(:first-child)]:mt-2.5">
             {gruppen.map((g, gi) =>
-              g.liste ? (
+              g.art === "kopf" ? (
+                <span key={gi} className="mt-3 block text-[13.5px] font-bold tracking-tight first:mt-0">
+                  {inline(g.zeilen[0].trim().replace(/^##\s+/, ""), `${bi}-${gi}`)}
+                </span>
+              ) : g.art === "liste" ? (
                 <ul key={gi} className="my-1.5 space-y-1 pl-1">
                   {g.zeilen.filter((z) => z.trim()).map((z, zi) => (
                     <li key={zi} className="flex gap-2">
