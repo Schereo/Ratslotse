@@ -107,8 +107,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <DesktopSidebar />
       <MobileTopbar />
       {/* Mobile-QA C: ≥ 5,5rem Freiraum, damit Seitenenden nie unter dem
-          angehobenen FAB der Bottom-Nav liegen. */}
-      <main id="main" tabIndex={-1} className="flex flex-1 flex-col overflow-y-auto outline-none pb-[calc(env(safe-area-inset-bottom)+5.5rem)] md:pb-0">
+          angehobenen FAB der Bottom-Nav liegen.
+          KEIN overflow-y-auto: Der Root ist min-h-screen, gescrollt wird immer
+          am Window — ein overflow-Container, der nie selbst scrollt, macht
+          nur jede sticky-Leiste in main wirkungslos (Composer 2①, RG-10-
+          Sprungmarken, Analyse-/Quiz-Leisten klebten deshalb nie). */}
+      <main id="main" tabIndex={-1} className="flex flex-1 flex-col outline-none pb-[calc(env(safe-area-inset-bottom)+5.5rem)] md:pb-0">
         {/* Design 11a: Inhalt läuft breiter (~1280 px statt 1024) — die Karten
             atmen wie im Mock; Text-Detailseiten begrenzen sich weiter selbst. */}
         <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">

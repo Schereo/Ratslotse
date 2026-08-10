@@ -8,6 +8,16 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Neu
+- **„Gründliche Recherche" — der zweite Frage-Modus.** Ein Umschalter am
+  Eingabefeld lässt den Rat gründlich recherchieren: Die Frage wird in
+  Facetten zerlegt, deutlich mehr Beschlüsse samt Vorlagen-Volltexten werden
+  gelesen, und heraus kommt ein gegliederter Bericht mit Sprungmarken,
+  Debatten-Stimmen und einem „Wie es weitergeht"-Block aus dem
+  Sitzungskalender. Die Recherche läuft auf dem Server weiter, auch wenn
+  man den Tab wechselt, in der App weiternavigiert oder sie ganz schließt —
+  der fertige Bericht wartet dann im Gespräch. Dauert 1–2 Minuten,
+  5 Recherchen pro Tag; Abbruch (mit Teilbericht aus den fertigen Facetten)
+  und Fehler kosten kein Kontingent. (#406)
 - **Die KI-Suche kennt jetzt auch die Debatten.** Aus den Sitzungsprotokollen
   werden Redebeiträge, „Anfragen und Anregungen" samt Verwaltungsantwort,
   Einwohnerfragen und Zusagen der Verwaltung herausgelesen und durchsuchbar

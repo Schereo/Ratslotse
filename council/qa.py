@@ -256,6 +256,68 @@ def _factions_of(c: dict) -> list[str]:
     return [str(f).strip() for f in raw or [] if str(f).strip()]
 
 
+def deep_zerlege(frage: str, model: str = EXPAND_MODEL) -> list[dict]:
+    """Deep Research (Task 34): Frage → 3-5 Recherche-Facetten
+    [{name, frage, begriffe}]. Fallback: eine Facette = die Frage selbst."""
+    fallback = [{"name": "Gesamtbild", "frage": frage, "begriffe": frage}]
+    extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
+    try:
+        resp = llm.chat_complete(
+            model=model, _feature="deep_zerlegung", temperature=0, max_tokens=500,
+            timeout=12.0, response_format={"type": "json_object"},
+            messages=[{"role": "user", "content": prompts.render("deep_zerlegung",
+                                                                 frage=frage.strip()[:300])}],
+            **extra)
+        data = json.loads(_strip_fences(resp.choices[0].message.content or ""))
+        facetten = []
+        for f in (data.get("facetten") or [])[:5]:
+            if not isinstance(f, dict):
+                continue
+            fr = " ".join(str(f.get("frage") or "").split())[:200]
+            if not fr:
+                continue
+            facetten.append({
+                "name": " ".join(str(f.get("name") or "Facette").split())[:40],
+                "frage": fr,
+                "begriffe": " ".join(str(f.get("begriffe") or fr).split())[:200],
+            })
+        return facetten or fallback
+    except Exception:  # noqa: BLE001
+        return fallback
+
+
+def _planungen_block(planungen: list[dict] | None) -> str:
+    """Geplante Beratungsstationen der zitierten Vorlagen — der „Wie es
+    weitergeht"-Stoff des Berichts (Beratungsfolgen werden täglich gepflegt,
+    tauchten in Antworten aber nie auf)."""
+    if not planungen:
+        return ""
+    zeilen = "\n".join(
+        f"- {p.get('vorlage_titel') or p.get('vorlage_nr')}: {p.get('gremium')} am "
+        f"{_datum_de(p.get('datum'))}" for p in planungen[:8])
+    return ("\nGEPLANTE NÄCHSTE STATIONEN (aus den Beratungsfolgen — für den Abschnitt "
+            "„Wie es weitergeht“; als Termin nennen, NIE mit [id]):\n" + zeilen + "\n")
+
+
+def deep_bericht_stream(frage: str, candidates: list[dict],
+                        presse: list[dict] | None = None,
+                        debatten: list[dict] | None = None,
+                        haushalt: list[dict] | None = None,
+                        planungen: list[dict] | None = None,
+                        model: str = MODEL):
+    """Der lange Deep-Research-Bericht als Token-Stream (Task 34)."""
+    zusatz = (_debatten_block(debatten) + _presse_block(presse)
+              + _haushalt_block(haushalt))
+    prompt = prompts.render("deep_bericht", frage=frage.strip()[:300],
+                            context=_build_context(candidates),
+                            zusatz=zusatz,
+                            planungen=_planungen_block(planungen))
+    extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
+    yield from llm.chat_stream(model=model, _feature="deep_bericht", temperature=0.2,
+                               max_tokens=4000,
+                               messages=[{"role": "user", "content": prompt}], **extra)
+
+
 def _fraktions_label(raw: str | None) -> str | None:
     """Anzeige-Label einer Fraktion/Gruppe aus dem Protokoll-Feld: „Fraktion
     DIE LINKE." → „DIE LINKE". Gruppen („FDP/Volt", „Für Oldenburg") bleiben

@@ -3868,6 +3868,7 @@ class CouncilStore:
         ph = ",".join("?" * len(ids))
         rows = self._conn.execute(
             f"""SELECT d.id, d.title, d.summary, d.beschluss, d.vorlage_nr,
+                       d.kvonr,
                        d.policy_field, d.outcome, d.impact, d.impact_reason,
                        d.vote, d.gegenstimmen, d.enthaltungen, d.raw_result,
                        d.amount_eur, d.factions, d.abweichung,
