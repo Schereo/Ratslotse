@@ -447,6 +447,10 @@ export interface AdminUserDetail {
   verlauf: number[];
   /** ISO-Datum je Verlaufs-Balken (x-Achse, 30 Tage). */
   verlauf_days: string[];
+  /** Recherchen/Tag: null = Standard (5), 0 = unbegrenzt, sonst eigenes Limit. */
+  deep_limit: number | null;
+  /** true = Rate-Limits der Frage-Endpoints für dieses Konto aus. */
+  limits_frei: boolean;
 }
 
 /** Ein Cron-Job in der Admin-Übersicht: Registry-Angaben + letzter Lauf. */

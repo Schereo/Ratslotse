@@ -13,8 +13,8 @@ from nwz.store import Store
 
 from ..config import get_settings
 from ..deps import get_council_store, get_store, require_admin
-from ..schemas import (EntityAliasIn, EntityAliasOut, PromptOut, PromptUpdate, RoleUpdate,
-                       StatusUpdate, WebUserOut)
+from ..schemas import (EntityAliasIn, EntityAliasOut, LimitsUpdate, PromptOut, PromptUpdate,
+                       RoleUpdate, StatusUpdate, WebUserOut)
 
 logger = logging.getLogger("nwz.web.admin")
 
@@ -270,6 +270,23 @@ def set_status(
     if body.status == "active" and target.get("status") != "active":
         background.add_task(_send_activation_email, target.get("email", ""))
     return WebUserOut(**store.get_web_user_by_id(user_id))
+
+
+@router.put("/users/{user_id}/limits")
+def set_limits(
+    user_id: int,
+    body: LimitsUpdate,
+    _admin: dict = Depends(require_admin),
+    store: Store = Depends(get_store),
+) -> dict:
+    """Frage-Limits je Konto (Tims Wunsch 10.08.): Recherche-Tageskontingent
+    (None = Standard, 0 = unbegrenzt, N = eigenes Limit) und Befreiung von den
+    Rate-Limitern der Frage-Endpoints — z. B. für Power-Nutzer oder Tests."""
+    if not store.get_web_user_by_id(user_id):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nutzer:in nicht gefunden.")
+    store.set_web_user_limits(user_id, body.deep_limit, body.limits_frei)
+    u = store.get_web_user_by_id(user_id)
+    return {"deep_limit": u.get("deep_limit"), "limits_frei": bool(u.get("limits_frei"))}
 
 
 # ---- Themen-Dubletten (council.aliases) ----
