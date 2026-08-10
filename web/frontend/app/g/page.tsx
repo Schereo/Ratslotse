@@ -14,10 +14,10 @@ import { Sparkles } from "lucide-react";
 import { BrandMark } from "@/components/brand";
 import { ShareAktionen } from "@/components/share-aktionen";
 import {
-  AnlagenBlock, anlagenBuchstaben, DebattenBlock, GeteilterAntwortText, ParteienListe,
-  PresseBlock,
+  AnlagenBlock, DebattenBlock, GeteilterAntwortText, ParteienListe, PresseBlock,
   type AnlagenHinweis, type DebattenHinweis, type ParteiMeinung, type PresseHinweis,
 } from "@/components/qa-bausteine";
+import { anlagenBuchstaben } from "@/lib/qa-belege";
 
 export const dynamic = "force-dynamic";
 

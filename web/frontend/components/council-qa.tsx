@@ -45,10 +45,12 @@ import {
 // Antworttext und Belege-Bausteine teilen sich Gespräch und Teilen-Seite
 // (app/g) — sonst driften die beiden Ansichten auseinander.
 import {
-  AnlagenBlock, anlagenBuchstaben, ANL_RE, AntwortText, CITE_RE, citationIds,
-  DebattenBlock, fmtDatumKurz, ParteienListe, PresseBlock,
+  AnlagenBlock, AntwortText, DebattenBlock, ParteienListe, PresseBlock,
   type AnlagenHinweis, type DebattenHinweis, type ParteiMeinung, type PresseHinweis,
 } from "@/components/qa-bausteine";
+import {
+  anlagenBuchstaben, ANL_RE, CITE_RE, citationIds, fmtDatumKurz,
+} from "@/lib/qa-belege";
 
 /** Bewährte Beispielfragen für den Empty State — kuratiert, nicht beliebig.
  *
