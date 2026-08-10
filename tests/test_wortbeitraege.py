@@ -315,10 +315,12 @@ def test_partei_meinungen_schwellen(monkeypatch):
 def test_partei_meinungen_aggregation(monkeypatch):
     """Label-Bereinigung, Halluzinations-Guard, uneinig-Flag, Zähler."""
     antwort = json.dumps([
-        {"partei": "DIE LINKE", "position": "Lehnt die Trasse ab.", "einig": True,
+        {"partei": "DIE LINKE", "haltung": "dagegen", "position": "Lehnt die Trasse ab.",
+         "einig": True,
          "kernaussage": {"text": "Kein Bedarf für die Straße.", "sprecher": "Höpken",
                          "datum": "01.06.2026"}},
-        {"partei": "AfD", "position": "Uneinheitlich zwischen Investition und Haushalt.",
+        {"partei": "AfD", "haltung": "quatsch",
+         "position": "Uneinheitlich zwischen Investition und Haushalt.",
          "einig": False, "hinweis": "Paul dafür, Beitrag vom Februar dagegen"},
         {"partei": "Die Grauen", "position": "erfunden", "einig": True},
     ])
@@ -332,7 +334,22 @@ def test_partei_meinungen_aggregation(monkeypatch):
     assert [e["partei"] for e in out] == ["DIE LINKE", "AfD"]  # „Die Grauen" gefiltert
     assert out[0]["kernaussage"]["sprecher"] == "Höpken"
     assert out[0]["beitraege"] == 3
+    assert out[0]["haltung"] == "dagegen"
+    assert out[1]["haltung"] == "offen"  # unbekannter Wert → offen
     assert out[1]["einig"] is False and "Paul" in out[1]["hinweis"]
+
+
+def test_partei_meinungen_cache(store):
+    """Server-Cache über den ID-Hash: Treffer innerhalb der TTL, Fremd-
+    Schlüssel leer, kaputtes JSON leer statt Crash."""
+    daten = [{"partei": "SPD", "haltung": "dafür", "position": "Dafür.", "einig": True,
+              "hinweis": None, "kernaussage": None, "beitraege": 4}]
+    store.partei_meinungen_cache_set("abc123", "Stadionfrage?", daten)
+    assert store.partei_meinungen_cache_get("abc123") == daten
+    assert store.partei_meinungen_cache_get("anderer") is None
+    store._conn.execute(
+        "UPDATE council_partei_meinungen_cache SET ergebnis = 'kaputt' WHERE schluessel = 'abc123'")
+    assert store.partei_meinungen_cache_get("abc123") is None
 
 
 def test_debatten_block_format():

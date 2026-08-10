@@ -1382,9 +1382,18 @@ function DebattenBlock({ debatten }: { debatten: DebattenHinweis[] }) {
 /* ------------------ Baustein „Das sagen die Parteien" (RG-09) ------------------ */
 
 type ParteiMeinung = {
-  partei: string; position: string; einig: boolean; hinweis: string | null;
+  partei: string; haltung?: "dafür" | "dagegen" | "offen" | "gewandelt";
+  position: string; einig: boolean; hinweis: string | null;
   kernaussage: { text: string; sprecher: string | null; datum: string | null } | null;
   beitraege: number;
+};
+
+/** Haltungs-Badge: Wort statt Grafik (RG-05-Verbot von Stimm-Balken gilt
+ *  weiter); „offen" bekommt kein Badge — Grau neben Grau wäre nur Rauschen. */
+const HALTUNG_BADGE: Record<string, { label: string; cls: string }> = {
+  "dafür": { label: "dafür", cls: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300" },
+  "dagegen": { label: "dagegen", cls: "bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300" },
+  "gewandelt": { label: "Haltung gewandelt", cls: "bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300" },
 };
 
 /** RG-09-Parteifarben (bewusst NICHT partyBrand aus decision-ui — das Artboard
@@ -1473,6 +1482,12 @@ function ParteienBaustein({ frage, onFrageStellen }: {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <p className="text-[12.5px] font-bold">{p.partei}</p>
+                      {p.haltung && HALTUNG_BADGE[p.haltung] && (
+                        <span className={cn("rounded-full px-2 py-px text-[10px] font-semibold",
+                          HALTUNG_BADGE[p.haltung].cls)}>
+                          {HALTUNG_BADGE[p.haltung].label}
+                        </span>
+                      )}
                       {/* Ehrlichkeit zur Datenbasis: aus wie vielen Wortbeiträgen
                           die Position verdichtet ist (Tims Befund 10.08.). */}
                       {p.beitraege > 0 && (

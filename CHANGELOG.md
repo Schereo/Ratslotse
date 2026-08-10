@@ -17,6 +17,16 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Fliegerhorst-Altlasten). Die Antwort nennt solche Stellen ehrlich als
   „Laut Protokoll …", nie als Beschluss. (#387)
 
+### Verbessert
+- **Der Parteien-Baustein zeigt Haltung und Datenbasis.** Jede Fraktion
+  trägt jetzt ein kleines Label — „dafür", „dagegen" oder „Haltung
+  gewandelt", wenn sich eine Position über die Jahre erkennbar geändert
+  hat — und daneben steht, aus wie vielen Wortbeiträgen die Einschätzung
+  verdichtet wurde. Die Positionen entstehen jetzt aus der Breite der
+  Beiträge je Fraktion statt aus einer einzelnen Aussage, und einmal
+  berechnete Einschätzungen werden wiederverwendet, bis neue Wortbeiträge
+  zum Thema dazukommen — dann wird automatisch nachverdichtet. (#398)
+
 ### Neu
 - **Baustein „Das sagen die Parteien".** Bei Themen mit echter Debatte zeigt
   „Frag den Rat" unter der Antwort die Positionen der Fraktionen: Farb-Punkt,

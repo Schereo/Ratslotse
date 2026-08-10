@@ -1557,8 +1557,16 @@ def test_partei_meinungen_endpoint(client, monkeypatch):
     from council import qa as qa_mod
 
     _register(client)
-    monkeypatch.setattr(emb, "search_wortbeitraege", lambda *a, **k: [(1, 0.5)])
-    meinung = [{"partei": "SPD", "position": "Dafür.", "einig": True,
+    # Je Aufruf andere Treffer-IDs: der ID-Hash-Cache des Endpoints würde
+    # sonst Fall 2 mit dem Ergebnis von Fall 1 beantworten.
+    zaehler = {"n": 0}
+
+    def hits(*a, **k):
+        zaehler["n"] += 1
+        return [(zaehler["n"], 0.5)]
+
+    monkeypatch.setattr(emb, "search_wortbeitraege_je_fraktion", hits)
+    meinung = [{"partei": "SPD", "haltung": "dafür", "position": "Dafür.", "einig": True,
                 "hinweis": None, "kernaussage": None, "beitraege": 3}]
     monkeypatch.setattr(qa_mod, "partei_meinungen", lambda *a, **k: meinung)
     r = client.post("/api/council/partei-meinungen", json={"frage": "Stadionneubau?"})
@@ -1573,6 +1581,12 @@ def test_partei_meinungen_endpoint(client, monkeypatch):
     monkeypatch.setattr(qa_mod, "partei_meinungen", kaputt)
     r = client.post("/api/council/partei-meinungen", json={"frage": "Stadionneubau?"})
     assert r.status_code == 200 and r.json() == {"parteien": []}
+
+    # Cache-Hit: gleiche Treffer-IDs wie Fall 1 → Ergebnis kommt ohne LLM
+    # (partei_meinungen ist noch der kaputt-Mock — er darf nicht laufen).
+    zaehler["n"] = 0
+    r = client.post("/api/council/partei-meinungen", json={"frage": "Anders formuliert?"})
+    assert r.status_code == 200 and r.json()["parteien"] == meinung
 
 
 def test_ask_ersetzt_abgerissenen_stream(client, monkeypatch):
