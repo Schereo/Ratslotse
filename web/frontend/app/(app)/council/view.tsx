@@ -769,7 +769,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
                   router.replace(`/council?${params.toString()}`, { scroll: false });
                 }}
               >
-                <Sparkles /> KI-Frage stellen
+                <Sparkles /> Frag den Rat
               </Button>
             }
           />
@@ -1375,7 +1375,7 @@ function SearchModeToggle() {
       onChange={setMode}
       options={[
         { value: "suchen", label: "Suchen", icon: Search },
-        { value: "fragen", label: "KI-Frage", icon: Sparkles, tour: "ki-frage-tab", sparkle: !qaUsed },
+        { value: "fragen", label: "Fragen", icon: Sparkles, tour: "ki-frage-tab", sparkle: !qaUsed },
       ]}
     />
   );
@@ -1384,7 +1384,7 @@ function SearchModeToggle() {
 // Navigation between these views now lives in the left sidebar (Ratsinfo section),
 // so the page only needs a per-view title/description instead of an in-page tab bar.
 const TAB_META: Record<Tab, { title: string; description: string }> = {
-  decisions: { title: "Suchen & Fragen", description: "Beschlüsse durchsuchen oder dem Rat eine KI-Frage stellen." },
+  decisions: { title: "Suchen & Fragen", description: "Beschlüsse durchsuchen oder dem Rat eine Frage stellen." },
   sessions: { title: "Sitzungen", description: "Sitzungen und Tagesordnungen von Rat und Ausschüssen." },
   themen: { title: "Themen", description: "Was den Rat wo beschäftigt — auf der Stadtkarte und als Liste." },
   analysis: { title: "Analyse", description: "Parteien, Personen, Finanzen, Trends und Ziele im Überblick." },

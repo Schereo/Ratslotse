@@ -133,7 +133,7 @@ export function CommandPalette() {
 
     const actions: Item[] = [
       {
-        key: "act-frage", section: "Aktionen", label: "KI-Frage stellen", sub: "Frag den Stadtrat in normaler Sprache",
+        key: "act-frage", section: "Aktionen", label: "Frag den Rat", sub: "Stell deine Frage in normaler Sprache",
         icon: Sparkles, run: () => go("/council?tab=decisions&mode=fragen"),
       },
       {
@@ -235,7 +235,7 @@ export function CommandPalette() {
               <div className="flex flex-col items-center py-8 text-center">
                 <Mascot pose="search" className="h-20 w-20" />
                 <p className="mt-2 text-sm font-medium text-foreground">Nichts gefunden</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">Versuch einen anderen Begriff — oder frag die KI direkt.</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Versuch einen anderen Begriff — oder frag den Rat direkt.</p>
               </div>
             )}
             {sections.map((section) => (

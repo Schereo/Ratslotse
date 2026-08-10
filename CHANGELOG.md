@@ -18,6 +18,15 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   „Laut Protokoll …", nie als Beschluss. (#387)
 
 ### Verbessert
+- **„Frag den Rat" statt „KI-Frage".** Das Frage-Feature tritt jetzt unter
+  seinem eigenen Namen auf: Der Umschalter heißt „Suchen | Fragen", Knöpfe
+  und Menüs sagen „Frag den Rat", und Kurzfassungen oder Einschätzungen
+  heißen schlicht „automatisch" statt „KI". Dass im Hintergrund ein
+  KI-Dienst arbeitet, steht weiterhin transparent im Datenschutzhinweis
+  unterm Eingabefeld, in der Datenschutzerklärung und in der
+  Technik-Doku — nur eben nicht mehr in jeder Überschrift. (#391)
+
+### Verbessert
 - **Drei Live-Befunde vom Morgen behoben.** Reißt die Verbindung zum
   KI-Dienst mitten in der Antwort ab, wird sie automatisch einmal neu
   erzeugt statt mitten im Wort stehenzubleiben. Die Bewertung (Daumen

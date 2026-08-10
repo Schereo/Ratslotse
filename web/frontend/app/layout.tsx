@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://ratslotse.de"),
   title: "Ratslotse — Oldenburger Ratsinformationen verständlich",
   description:
-    "Ratslotse macht die Beschlüsse des Oldenburger Stadtrats durchsuchbar, vergleichbar und verständlich — mit KI-Fragen, Themen-Seiten, Karten und Analysen.",
+    "Ratslotse macht die Beschlüsse des Oldenburger Stadtrats durchsuchbar, vergleichbar und verständlich — Fragen in normaler Sprache, Themen-Seiten, Karten und Analysen.",
   applicationName: "Ratslotse",
   manifest: "/manifest.json",
   openGraph: {
