@@ -1,0 +1,1530 @@
+{
+ "label": "vorher",
+ "db": "data/council-prod.sqlite",
+ "faelle": [
+  {
+   "id": "stadion-stand",
+   "fokus": "stadion+recency",
+   "frage": "Wie ist der Stand beim Stadionneubau?",
+   "typ": "verlauf",
+   "antwort": "Der Stand beim Stadionneubau in Oldenburg ist geprägt von einer fortlaufenden Planung und Berichterstattung, die sich seit dem Aufstieg des VfB Oldenburg in die 3. Fußballliga im Sommer 2022 intensiviert hat. Seitdem wird regelmäßig über den Planungsstand berichtet, wobei die Notwendigkeit eines drittligatauglichen Stadions im Vordergrund steht.\n\n## Chronologie der Berichterstattung\nAm 1. September 2022 wurde im Betriebsausschuss Eigenbetrieb Gebäudewirtschaft und Hochbau ein mündlicher Bericht zu kurzfristigen Maßnahmen im Marschwegstadion und zum Planungsstand für ein drittligataugliches Fußball-Stadion gegeben [4800]. In den folgenden Monaten, beginnend am 1. Februar 2023 [5459] und am 16. Februar 2023 [5402], wurden Tagesordnungspunkte zum Stadionneubau an der Maastrichter Straße in verschiedenen Ausschüssen als behandelt erklärt. Seit dem 3. Mai 2023 [5655] gibt es einen festen Tagesordnungspunkt im Ausschuss für Finanzen und Beteiligungen, zu dem regelmäßig Sachstandsberichte zur Stadionplanung zur Kenntnis genommen werden. Dies geschah unter anderem am 23. August 2023 [8648], am 1. November 2023 [6030], am 7. Februar 2024 [6400], am 5. Juni 2024 [6766], am 4. September 2024 [6948], am 2. Oktober 2024 [6988], am 6. November 2024 [7132], am 2. April 2025 [7453], am 7. Mai 2025 [7554], am 4. Juni 2025 [7750], am 3. September 2025 [7847] und zuletzt am 3. Dezember 2025 [8184].\n\n## Aktuelle Entwicklungen\nAm 2. April 2024 wurde ein Beschluss zum Stadionneubau Maastrichter Straße im Ausschuss für Finanzen und Beteiligungen vertagt [6586]. Am 3. April 2024 [6488] und am 8. April 2024 [6486] wurde der Tagesordnungspunkt in anderen Ausschüssen als behandelt erklärt. Ein wichtiger Punkt ist die Verpflichtung der Stadt Oldenburg, ein Notifizierungsverfahren zur Beihilfe bei der Wettbewerbsaufsicht der Europäischen Kommission zu starten, entsprechend eines Ratsbeschlusses vom 15. April 2024. Ein Tagesordnungspunkt hierzu wurde am 30. September 2024 im Rat vertagt [7219].\n\nLaut Protokoll sagte Oeljeschläger (SPD) am 1. Juni 2026, dass sie hoffe, der Prozess werde nach der Entscheidung sachlich und konstruktiv begleitet, und betonte die Vorteile des Standortes Maastrichter Straße sowie das Potenzial für Kooperationen. Prange (SPD) verkündete am selben Tag, dass die SPD-Fraktion dem Beschlussvorschlag der Verwaltung zustimmen werde und das Ergebnis eine vertretbare Entscheidung sei, die eine Spielstätte für Profifußball schaffe, die aber auch als dritter Ort dienen solle. Küpker, eine gewählte Bürgerin, zeigte sich enttäuscht vom Stil einiger Beteiligter und kritisierte, dass eine Maßnahme der Wirtschaftsförderung als breitensporttauglich angepriesen werde, da das Stadion eine Betriebsstätte für Profisportler sei, die in Oldenburg nicht existierten. Höpken (BSW) zeigte sich erfreut, dass das Stadion nun auf den Weg gebracht werden solle und betonte, dass es zur Teilhabe und Stärkung des sozialen Zusammenhalts beitragen werde, nicht nur für Fußball, sondern auch für andere Veranstaltungen.",
+   "cited": [
+    4800,
+    5459,
+    5402,
+    5655,
+    8648,
+    6030,
+    6400,
+    6766,
+    6948,
+    6988,
+    7132,
+    7453,
+    7554,
+    7750,
+    7847,
+    8184,
+    6586,
+    6488,
+    6486,
+    7219
+   ],
+   "quellen": [
+    {
+     "id": 4800,
+     "title": "Neubau eines drittligatauglichen Fußball-Stadions in Oldenburg (Fraktion Bündnis 90/Die Grünen vom 26.04.2022) - mündlicher Bericht",
+     "datum": "2022-09-01"
+    },
+    {
+     "id": 5459,
+     "title": "Stadionneubau Maastrichter Straße",
+     "datum": "2023-02-01"
+    },
+    {
+     "id": 5402,
+     "title": "Stadionneubau Maastrichter Straße",
+     "datum": "2023-02-16"
+    },
+    {
+     "id": 5655,
+     "title": "Sachstandsbericht Stadionplanung",
+     "datum": "2023-05-03"
+    },
+    {
+     "id": 8648,
+     "title": "Sachstandsbericht Stadionplanung",
+     "datum": "2023-08-23"
+    },
+    {
+     "id": 6030,
+     "title": "Sachstandsbericht Stadionplanung",
+     "datum": "2023-11-01"
+    },
+    {
+     "id": 6400,
+     "title": "Sachstandsbericht Stadionplanung",
+     "datum": "2024-02-07"
+    },
+    {
+     "id": 6586,
+     "title": "Stadionneubau Maastrichter Straße - Beschluss",
+     "datum": "2024-04-02"
+    },
+    {
+     "id": 6488,
+     "title": "Stadionneubau Maastrichter Straße - Beschluss",
+     "datum": "2024-04-03"
+    },
+    {
+     "id": 6486,
+     "title": "Stadionneubau Maastrichter Straße - Beschluss",
+     "datum": "2024-04-08"
+    },
+    {
+     "id": 6766,
+     "title": "Sachstandsbericht Stadionplanung",
+     "datum": "2024-06-05"
+    },
+    {
+     "id": 6948,
+     "title": "Sachstandsbericht Stadionplanung",
+     "datum": "2024-09-04"
+    },
+    {
+     "id": 7219,
+     "title": "Neubau Stadion Maastrichter Straße; Rechtsgutachten zum Notifizierungsverfahren – Weiteres Vorgehen - Beschluss",
+     "datum": "2024-09-30"
+    },
+    {
+     "id": 6988,
+     "title": "Sachstandsbericht Stadionplanung",
+     "datum": "2024-10-02"
+    },
+    {
+     "id": 7132,
+     "title": "Sachstandsbericht Stadionplanung",
+     "datum": "2024-11-06"
+    },
+    {
+     "id": 7453,
+     "title": "Sachstandsbericht Stadionplanung",
+     "datum": "2025-04-02"
+    },
+    {
+     "id": 7554,
+     "title": "Sachstandsbericht Stadionplanung",
+     "datum": "2025-05-07"
+    },
+    {
+     "id": 7750,
+     "title": "Sachstandsbericht Stadionplanung",
+     "datum": "2025-06-04"
+    },
+    {
+     "id": 7847,
+     "title": "Sachstandsbericht Stadionplanung",
+     "datum": "2025-09-03"
+    },
+    {
+     "id": 8184,
+     "title": "Sachstandsbericht Stadionplanung",
+     "datum": "2025-12-03"
+    }
+   ],
+   "debatten_n": 4,
+   "presse_n": 0,
+   "ms": 43202
+  },
+  {
+   "id": "stadion-kosten",
+   "fokus": "stadion+geld",
+   "frage": "Was kostet das neue Stadion und wer bezahlt es?",
+   "typ": "geld",
+   "antwort": "Das neue Stadion an der Maastrichter Straße wird voraussichtlich **57.339.000 Euro netto** kosten [8677]. Hinzu kommen weitere Kosten für Planung, Bauleitplanung und die Deckung von Fehlbeträgen der Betreibergesellschaft.\n\n## Kostenaufschlüsselung\n\nDie Gesamtkosten setzen sich aus verschiedenen Posten zusammen:\n- Der Pauschalpreis für den Neubau des Stadions beträgt 57.339.000 Euro netto [8677].\n- Für die Planung und Klimaneutralität des Stadionneubaus wurden außerplanmäßig 604.000 Euro bewilligt [5690, 5442].\n- Für das Bauleitplanverfahren des Bebauungsplans 831 an der Maastrichter Straße wurden zusätzlich 180.000 Euro außerplanmäßig bewilligt [5797, 5656].\n- Die Stadion Oldenburg GmbH & Co. KG, die für Bau und Betrieb des Stadions zuständig ist [6746], hat für die Jahre 2024, 2025 und 2026 Wirtschaftspläne mit maximalen Fehlbeträgen beschlossen:\n    - 2024: 190.000 Euro [6938, 7057, 6836, 7916]\n    - 2025: 240.000 Euro [7256]\n    - 2026: 651.500 Euro [8194, 8442]\n- Die Stadionplanungsgesellschaft mbH hatte für 2024 einen maximalen Fehlbetrag von 152.000 Euro [6398].\n\n## Finanzierung und Beteiligung\n\nDie Stadt Oldenburg ist maßgeblich an der Finanzierung und dem Betrieb des Stadions beteiligt:\n- Die Stadt hat der Gründung der Stadion Oldenburg GmbH & Co. KG zugestimmt und eine Hafteinlage von 5.000 Euro geleistet [6746].\n- Die für den Stadionneubau erforderlichen Grundstücke werden auf die Stadion GmbH übertragen [8680].\n- Die Stadt Oldenburg übernimmt 100%ige Ausfallbürgschaften für die Finanzierung des Stadionneubaus [8679].\n\n## Hintergrund und Notwendigkeit\n\nDer Neubau des Stadions wurde notwendig, da eine Ertüchtigung des Marschwegstadions für den Profifußball nicht mehr als Lösung in Frage kam [8677]. Die Gründung der Stadion Oldenburg GmbH & Co. KG war aus steuerlichen und wirtschaftlichen Gründen erforderlich, um den Bau und den anschließenden Betrieb des Stadions zu beauftragen [6746].\n\nLaut Protokoll sagte Sander (Für Oldenburg) am 2026-06-01, dass solche hohen Ausgaben vermieden werden müssten, insbesondere angesichts des Haushaltssicherungskonzepts und des Investitionsstaus bei Sporthallen. Er kritisierte, dass die Preisgrenze niedriger hätte angesetzt werden müssen. Beerheide (Bündnis 90/Die Grünen) fragte am selben Tag, wer wirklich vom neuen Stadion profitieren werde, und verwies auf Verluste der VfB Oldenburg GmbH. Ein unbekannter Redner (Bündnis 90/Die Grünen) kritisierte am 2026-02-09 eine Kostensteigerung von 70 Millionen Euro und jährliche Zinstilgung von 3,5 Millionen Euro sowie hohe Betriebskosten und 50 zusätzliche Stellen, die auf Planungs- und Steuerungsfehler zurückzuführen seien. Oberbürgermeister Krogmann erklärte, dass der VfB zukünftig Mieter der Anlage sei und eine marktübliche Miete zahlen werde. Die Gründung der GmbH sei wichtig für den Vertragsabschluss.",
+   "cited": [
+    8677,
+    5690,
+    5442,
+    5797,
+    5656,
+    6746,
+    6938,
+    7057,
+    6836,
+    7916,
+    7256,
+    8194,
+    8442,
+    6398,
+    8680,
+    8679
+   ],
+   "quellen": [
+    {
+     "id": 8677,
+     "title": "Stadion Oldenburg GmbH & Co. KG: Stadionneubau Maastrichter Straße",
+     "datum": "2026-06-01"
+    },
+    {
+     "id": 5690,
+     "title": "Stadionneubau Maastrichter Straße; außerplanmäßige Bewilligung von Mehraufwendungen in Höhe von 604.000 Euro",
+     "datum": "2023-03-20"
+    },
+    {
+     "id": 5442,
+     "title": "Stadionneubau Maastrichter Straße; außerplanmäßige Bewilligung von Mehraufwendungen in Höhe von 604.000 Euro",
+     "datum": "2023-03-01"
+    },
+    {
+     "id": 5797,
+     "title": "Stadionneubau Maastrichter Straße; außerplanmäßige Bewilligung von Mehraufwendungen für die Bauleitplanung",
+     "datum": "2023-05-22"
+    },
+    {
+     "id": 7256,
+     "title": "Stadion Oldenburg GmbH & Co. KG: Wirtschaftsplan 2025",
+     "datum": "2024-12-04"
+    },
+    {
+     "id": 5656,
+     "title": "Stadionneubau Maastrichter Straße; außerplanmäßige Bewilligung von Mehraufwendungen für die Bauleitplanung",
+     "datum": "2023-05-03"
+    },
+    {
+     "id": 8194,
+     "title": "Stadion Oldenburg GmbH & Co. KG: Wirtschaftsplan 2026",
+     "datum": "2025-12-03"
+    },
+    {
+     "id": 6938,
+     "title": "Stadion Oldenburg GmbH & Co. KG: Wirtschaftsplan 2024",
+     "datum": "2024-06-17"
+    },
+    {
+     "id": 6746,
+     "title": "Gründung der Stadion Oldenburg GmbH & Co. KG",
+     "datum": "2024-05-27"
+    },
+    {
+     "id": 8442,
+     "title": "Stadion Oldenburg GmbH & Co. KG: Wirtschaftsplan 2026",
+     "datum": "2025-12-15"
+    },
+    {
+     "id": 8680,
+     "title": "Stadion Oldenburg GmbH & Co. KG: Grundstücksübertragungen",
+     "datum": "2026-06-01"
+    },
+    {
+     "id": 6832,
+     "title": "Stadionplanungsgesellschaft mbH: Jahresabschluss 2023",
+     "datum": "2024-08-07"
+    },
+    {
+     "id": 7057,
+     "title": "Außerplanmäßige Bewilligung von Mehraufwendungen in Höhe von 190.000 Euro für den Teilhaushalt 04, Budget 20.1 - Beschluss",
+     "datum": "2024-08-26"
+    },
+    {
+     "id": 7051,
+     "title": "Stadionplanungsgesellschaft mbH: Jahresabschluss 2023 - Beschluss",
+     "datum": "2024-08-26"
+    },
+    {
+     "id": 5993,
+     "title": "Bau und Sanierung von Sporthallen und Schwimmbädern (Ratsherr Sander vom 22.08.2023)",
+     "datum": "2023-09-06"
+    },
+    {
+     "id": 6398,
+     "title": "Stadionplanungsgesellschaft mbH: Wirtschaftsplan 2024",
+     "datum": "2023-12-18"
+    },
+    {
+     "id": 6836,
+     "title": "Außerplanmäßige Bewilligung von Mehraufwendungen in Höhe von 190.000 Euro für den Teilhaushalt 04, Budget 20.1",
+     "datum": "2024-08-07"
+    },
+    {
+     "id": 7916,
+     "title": "Stadion Oldenburg GmbH & Co. KG: Jahresabschluss 2024",
+     "datum": "2025-06-30"
+    },
+    {
+     "id": 8679,
+     "title": "Ausfallbürgschaft der Stadt Oldenburg für die Stadion Oldenburg GmbH & Co. KG",
+     "datum": "2026-06-01"
+    },
+    {
+     "id": 5249,
+     "title": "Stadion Marschweg/Ausbau technische Infrastruktur - Außerplanmäßige Verpflichtungsermächtigung in Höhe von 3.853.000,00 €",
+     "datum": "2022-11-07"
+    }
+   ],
+   "debatten_n": 3,
+   "presse_n": 0,
+   "ms": 12046
+  },
+  {
+   "id": "stadion-parteien",
+   "fokus": "stadion+partei",
+   "frage": "Wie stehen die Parteien zum Stadionneubau?",
+   "typ": "partei",
+   "antwort": "Die Parteien im Oldenburger Stadtrat zeigen unterschiedliche Haltungen zum Stadionneubau, wobei die SPD und das Bündnis Sahra Wagenknecht (BSW) den Bau befürworten, während Bündnis 90/Die Grünen kritische Fragen stellen und Bedenken äußern.\n\n## Befürwortung und Finanzierung\nDie SPD-Fraktion hat den Prozess rund um das Stadion konstruktiv begleitet und sieht das Ergebnis als vertretbare Entscheidung an. Sie beabsichtigt, dem Beschlussvorschlag der Verwaltung zuzustimmen, um eine Spielstätte für Profifußball zu schaffen, die auch als dritter Ort für die Gemeinschaft dienen soll [Redebeitrag von Prange (SPD) am 2026-06-01]. Auch das BSW begrüßt den Stadionneubau, den es bereits in zwei Kommunalwahlkämpfen gefordert hatte, und betont dessen Beitrag zur Teilhabe und Stärkung des sozialen Zusammenhalts [Redebeitrag von Höpken (BSW) am 2026-06-01]. Die SPD sieht das Stadion zudem als Investition in die Wirtschaft und Stadtentwicklung [Einwohnerfrage von Piechotta (SPD) am 2026-06-01].\n\nDer Rat hat am 2026-06-01 mehrheitlich bei 18 Gegenstimmen und zwei Enthaltungen dem Neubau des Stadions an der Maastrichter Straße zu einem Pauschalpreis von 57.339.000 Euro netto zugestimmt [8677]. Ebenfalls mehrheitlich bei 18 Gegenstimmen und zwei Enthaltungen wurde die Übernahme von 100%igen Ausfallbürgschaften für die Finanzierung des Stadionneubaus beschlossen [8679]. Die Übertragung der für den Stadionneubau erforderlichen Grundstücke auf die Stadion Oldenburg GmbH & Co. KG wurde ebenfalls mehrheitlich bei 18 Gegenstimmen und drei Enthaltungen angenommen [8680].\n\n## Kritische Stimmen und Transparenzfragen\nBündnis 90/Die Grünen haben wiederholt Fragen zum Stadionneubau gestellt. Bereits 2022 fragten sie nach der Finanzierung und den Mietzahlungen des VfB Oldenburg für das Marschwegstadion [4641]. Im Januar 2026 beantragte die Fraktion Bündnis 90/Die Grünen die schriftliche Beantwortung von Fragen zur Stadion Oldenburg GmbH & Co. KG und Oldenburg Beteiligungs-GmbH, die zur Kenntnis genommen wurde [8416]. Laut Pressemitteilung vom 27.07.2026 weist die Stadt Oldenburg die öffentliche Kritik der Ratsfraktion Bündnis 90/Die Grünen am Umgang mit den Unterlagen des laufenden EU-Beihilfeverfahrens zurück. In der Debatte am 2026-06-01 äußerte Küpker (Bündnis 90/Die Grünen) Bedenken hinsichtlich der Prioritätensetzung, insbesondere im Hinblick auf sanierungsbedürftige Sporthallen und die Bedürfnisse anderer Sportler [Redebeitrag von Küpker (Bündnis 90/Die Grünen) am 2026-06-01].\n\n## Planungs- und Umweltaspekte\nDie Verwaltung wurde beauftragt, sich für die Erstellung einer Treibhausgas- und Ökobilanz für den geplanten Stadionneubau einzusetzen [5837]. Die Gruppe FDP/Volt beantragte im November 2022, dass die Verwaltung zwei Informationsveranstaltungen zum Sachstand und den Perspektiven eines Stadionbaus organisiert, was angenommen wurde [5374]. Im Oktober 2024 nahm der Rat das EU-beihilferechtliche Rechtsgutachten zum Stadionneubau zur Kenntnis und beschloss das weitere Vorgehen auf dieser Grundlage, wobei dieser Beschluss mehrheitlich bei 16 Gegenstimmen und einer Enthaltung angenommen wurde [8659].",
+   "cited": [
+    8677,
+    8679,
+    8680,
+    4641,
+    8416,
+    5837,
+    5374,
+    8659
+   ],
+   "quellen": [
+    {
+     "id": 4641,
+     "title": "Neubau eines drittligatauglichen Fußball-Stadions in Oldenburg (Fraktion Bündnis 90/Die Grünen vom 26.04.2022)",
+     "datum": "2022-05-11"
+    },
+    {
+     "id": 4800,
+     "title": "Neubau eines drittligatauglichen Fußball-Stadions in Oldenburg (Fraktion Bündnis 90/Die Grünen vom 26.04.2022) - mündlicher Bericht",
+     "datum": "2022-09-01"
+    },
+    {
+     "id": 5374,
+     "title": "Informationsveranstaltung zum Stadionbau in Oldenburg (Gruppe FDP/Volt vom 11.11.2022)",
+     "datum": "2022-11-28"
+    },
+    {
+     "id": 5837,
+     "title": "Klimaneutrale Maßnahmen für den geplanten Stadionneubau (beratendes Mitglied Herr Skiba vom 26.04.2023)",
+     "datum": "2023-06-08"
+    },
+    {
+     "id": 6586,
+     "title": "Stadionneubau Maastrichter Straße - Beschluss",
+     "datum": "2024-04-02"
+    },
+    {
+     "id": 8648,
+     "title": "Sachstandsbericht Stadionplanung",
+     "datum": "2023-08-23"
+    },
+    {
+     "id": 8416,
+     "title": "Fragen zu der Stadion Oldenburg GmbH & Co. KG und Oldenburg Beteiligungs-GmbH (Fraktion Bündnis 90/DIE GRÜNEN vom 13. Januar 2026)",
+     "datum": "2026-02-04"
+    },
+    {
+     "id": 8164,
+     "title": "Vorstellung des Verkehrskonzepts Stadionneubau Maastrichter Straße (beratendes Mitglied Herr Pieper vom 11.11.2025)",
+     "datum": "2025-12-08"
+    },
+    {
+     "id": 7219,
+     "title": "Neubau Stadion Maastrichter Straße; Rechtsgutachten zum Notifizierungsverfahren – Weiteres Vorgehen - Beschluss",
+     "datum": "2024-09-30"
+    },
+    {
+     "id": 8659,
+     "title": "Neubau Stadion Maastrichter Straße; Rechtsgutachten zum Notifizierungsverfahren – Weiteres Vorgehen",
+     "datum": "2024-10-28"
+    },
+    {
+     "id": 347,
+     "title": "Ende des Einsatzes öffentlicher Mittel für einen Stadionneubau in Oldenburg (Stadtsportbund vom 29.08.2017)",
+     "datum": "2018-02-14"
+    },
+    {
+     "id": 3585,
+     "title": "Sachstand Sanierung und Instandhaltung städtischer Sporthallen und weitere Planungen (Fraktion Bündnis 90/DIEGRÜNEN vom 31.03.2021)",
+     "datum": "2021-04-14"
+    },
+    {
+     "id": 8679,
+     "title": "Ausfallbürgschaft der Stadt Oldenburg für die Stadion Oldenburg GmbH & Co. KG",
+     "datum": "2026-06-01"
+    },
+    {
+     "id": 5299,
+     "title": "Stadionneubau Maastrichter Straße - Beschluss",
+     "datum": "2023-02-08"
+    },
+    {
+     "id": 8680,
+     "title": "Stadion Oldenburg GmbH & Co. KG: Grundstücksübertragungen",
+     "datum": "2026-06-01"
+    },
+    {
+     "id": 5689,
+     "title": "Stadionplanungsgesellschaft mbH - Mitglieder in der Gesellschafterversammlung",
+     "datum": "2023-03-20"
+    },
+    {
+     "id": 5459,
+     "title": "Stadionneubau Maastrichter Straße",
+     "datum": "2023-02-01"
+    },
+    {
+     "id": 5236,
+     "title": "Stadionneubau Maastrichter Straße - Bericht",
+     "datum": "2022-12-05"
+    },
+    {
+     "id": 8677,
+     "title": "Stadion Oldenburg GmbH & Co. KG: Stadionneubau Maastrichter Straße",
+     "datum": "2026-06-01"
+    },
+    {
+     "id": 5427,
+     "title": "Stadionneubau Maastrichter Straße",
+     "datum": "2022-12-07"
+    }
+   ],
+   "debatten_n": 4,
+   "presse_n": 1,
+   "ms": 14860
+  },
+  {
+   "id": "stadion-verlauf",
+   "fokus": "stadion+verlauf",
+   "frage": "Wie hat sich die Stadionplanung seit 2023 entwickelt?",
+   "typ": "verlauf",
+   "antwort": "Die Stadionplanung in Oldenburg hat seit 2023 eine kontinuierliche Entwicklung durchlaufen, die sich hauptsächlich auf die Finanzierung der Planungsphase und die regelmäßige Berichterstattung über den Sachstand konzentrierte.\n\n## Finanzierung der Planung\nAm 1. März 2023 wurden außerplanmäßige Mehraufwendungen in Höhe von 604.000 Euro für die Stadionplanung an der Maastrichter Straße bewilligt, da im Budget 20 keine ausreichenden Mittel vorhanden waren [5442]. Diese Mittel mussten aus der Deckungsreserve bereitgestellt werden. Wenig später, am 22. Mai 2023, wurde der Wirtschaftsplan 2023 der Stadionplanungsgesellschaft mbH mit einem maximalen Fehlbetrag von ebenfalls 604.000 Euro beschlossen [5801].\n\n## Regelmäßige Sachstandsberichte\nUm größtmögliche Transparenz zu gewährleisten, wurde vereinbart, dass es zukünftig einen festen Tagesordnungspunkt im Ausschuss für Finanzen und Beteiligungen (AFB) geben soll, zu dem über die aktuellen Entwicklungen der Stadionplanung berichtet wird. Entsprechend wurden im Jahr 2023 regelmäßig Sachstandsberichte zur Kenntnis genommen: am 3. Mai [5655], 7. Juni [5867], 23. August [8648], 6. September [5975], 4. Oktober [6000], 1. November [6030] und 6. Dezember [6310]. Diese Praxis setzte sich im Jahr 2024 fort, mit Berichten am 7. Februar [6400], 30. September [7220], 2. Oktober [6988], 6. November [7132] und 4. Dezember [7250]. Auch für das Jahr 2025 sind weitere Sachstandsberichte vorgesehen, die am 5. Februar [7207], 7. Mai [7554], 5. November [8058] und 3. Dezember [8184] zur Kenntnis genommen wurden.\n\n## Jahresabschluss der Planungsgesellschaft\nIm August 2024 wurde der Jahresabschluss 2023 der Stadionplanungsgesellschaft mbH festgestellt. Der Ausschuss für Finanzen und Beteiligungen nahm den Jahresabschluss am 7. August 2024 mit einem Überschuss von 138 Euro zur Kenntnis [6832]. Der Rat bestätigte diesen Jahresabschluss am 26. August 2024 [7051].\n\nLaut Pressemitteilung vom 27.07.2026 beabsichtigt die Stadt Oldenburg, den Auftrag für die Sportplatzbauarbeiten zur Umgestaltung und Erweiterung der Sportanlage am Schulzentrum Ofenerdiek an die Borchers GmbH aus Surwold zu vergeben, mit einer Auftragssumme von rund 2,8 Millionen Euro.",
+   "cited": [
+    5442,
+    5801,
+    5655,
+    5867,
+    8648,
+    5975,
+    6000,
+    6030,
+    6310,
+    6400,
+    7220,
+    6988,
+    7132,
+    7250,
+    7207,
+    7554,
+    8058,
+    8184,
+    6832,
+    7051
+   ],
+   "quellen": [
+    {
+     "id": 5442,
+     "title": "Stadionneubau Maastrichter Straße; außerplanmäßige Bewilligung von Mehraufwendungen in Höhe von 604.000 Euro",
+     "datum": "2023-03-01"
+    },
+    {
+     "id": 5655,
+     "title": "Sachstandsbericht Stadionplanung",
+     "datum": "2023-05-03"
+    },
+    {
+     "id": 5801,
+     "title": "Stadionplanungsgesellschaft mbH: Wirtschaftsplan 2023",
+     "datum": "2023-05-22"
+    },
+    {
+     "id": 5867,
+     "title": "Sachstandsbericht Stadionplanung",
+     "datum": "2023-06-07"
+    },
+    {
+     "id": 8648,
+     "title": "Sachstandsbericht Stadionplanung",
+     "datum": "2023-08-23"
+    },
+    {
+     "id": 5975,
+     "title": "Sachstandsbericht Stadionplanung",
+     "datum": "2023-09-06"
+    },
+    {
+     "id": 6000,
+     "title": "Sachstandsbericht Stadionplanung - Bericht",
+     "datum": "2023-10-04"
+    },
+    {
+     "id": 6030,
+     "title": "Sachstandsbericht Stadionplanung",
+     "datum": "2023-11-01"
+    },
+    {
+     "id": 6310,
+     "title": "Sachstandsbericht Stadionplanung",
+     "datum": "2023-12-06"
+    },
+    {
+     "id": 6400,
+     "title": "Sachstandsbericht Stadionplanung",
+     "datum": "2024-02-07"
+    },
+    {
+     "id": 6832,
+     "title": "Stadionplanungsgesellschaft mbH: Jahresabschluss 2023",
+     "datum": "2024-08-07"
+    },
+    {
+     "id": 7051,
+     "title": "Stadionplanungsgesellschaft mbH: Jahresabschluss 2023 - Beschluss",
+     "datum": "2024-08-26"
+    },
+    {
+     "id": 7220,
+     "title": "Sachstandsbericht Stadionplanung - Bericht",
+     "datum": "2024-09-30"
+    },
+    {
+     "id": 6988,
+     "title": "Sachstandsbericht Stadionplanung",
+     "datum": "2024-10-02"
+    },
+    {
+     "id": 7132,
+     "title": "Sachstandsbericht Stadionplanung",
+     "datum": "2024-11-06"
+    },
+    {
+     "id": 7250,
+     "title": "Sachstandsbericht Stadionplanung",
+     "datum": "2024-12-04"
+    },
+    {
+     "id": 7207,
+     "title": "Sachstandsbericht Stadionplanung",
+     "datum": "2025-02-05"
+    },
+    {
+     "id": 7554,
+     "title": "Sachstandsbericht Stadionplanung",
+     "datum": "2025-05-07"
+    },
+    {
+     "id": 8058,
+     "title": "Sachstandsbericht Stadionplanung",
+     "datum": "2025-11-05"
+    },
+    {
+     "id": 8184,
+     "title": "Sachstandsbericht Stadionplanung",
+     "datum": "2025-12-03"
+    }
+   ],
+   "debatten_n": 0,
+   "presse_n": 1,
+   "ms": 9569
+  },
+  {
+   "id": "caeci-was",
+   "fokus": "entitaet",
+   "frage": "Was passiert mit der Cäcilienbrücke?",
+   "typ": "thema",
+   "antwort": "Die Cäcilienbrücke in Oldenburg soll abgerissen und durch einen Neubau ersetzt werden. Der Stadtrat fordert das Wasserstraßen- und Schifffahrtsamt (WSA) Weser-Jade-Nordsee auf, die Planung und den Neubau zu beschleunigen [7822].\n\n## Sachstand und Berichte\nDer Verkehrsausschuss hat mehrfach Sachstandsberichte zum Abriss und Neubau der Cäcilienbrücke zur Kenntnis genommen [6692, 7193]. Auch ein Vortrag des WSA zur Cäcilienbrücke wurde zur Kenntnis genommen [3638]. Bereits im März 2018 gab es einen mündlichen Bericht zur Planung des Ersatzes der Cäcilienbrücke [518].\n\n## Verkehrsregelungen während des Neubaus\nFür die Zeit des Neubaus wurde auch über die Verkehrsregelung für den Rad- und Fußgängerverkehr auf einer Ersatzbrücke diskutiert. Ein Bericht dazu wurde zur Kenntnis genommen, der sich mit Vorschlägen für eine Verkehrsregelung befasste, die das Radfahren bei geringem Verkehrsaufkommen erlaubt und Mindestbreiten gemäß Verwaltungsvorschriften zur StVO und Empfehlungen für Radverkehrsanlagen (ERA) berücksichtigt [2795].\n\n## Beteiligte Akteure\nDas Wasserstraßen- und Schifffahrtsamt (WSA) Weser-Jade-Nordsee ist maßgeblich in den Prozess des Rückbaus und Neubaus involviert [6692, 7822]. Die Forderung zur Beschleunigung des Neubaus wurde von mehreren Fraktionen gemeinsam eingebracht: Bündnis 90/Die Grünen, SPD, CDU, FDP und Volt [7822].",
+   "cited": [
+    7822,
+    6692,
+    7193,
+    3638,
+    518,
+    2795
+   ],
+   "quellen": [
+    {
+     "id": 6692,
+     "title": "Sachstand Abriss und Neubau Cäcilienbrücke (CDU-Fraktion vom 15.03.2024) - Berichtsantrag",
+     "datum": "2024-04-22"
+    },
+    {
+     "id": 7822,
+     "title": "Resolution zur Beschleunigung des Neubaus der Cäcilienbrücke",
+     "datum": "2025-08-25"
+    },
+    {
+     "id": 3638,
+     "title": "Vortrag WSA Cäcilienbrücke (Herr Seufzer und Herr Oltmanns)",
+     "datum": "2021-04-19"
+    },
+    {
+     "id": 7193,
+     "title": "Ersatzbau für die Cäcilienbrücke (Fraktionen SPD, Bündnis 90/Die Grünen, CDU, BSW und Gruppe FDP/Volt vom 30.09.2024)",
+     "datum": "2024-11-18"
+    },
+    {
+     "id": 652,
+     "title": "Ausbau Hermann-Ehlers-Straße",
+     "datum": "2018-04-16"
+    },
+    {
+     "id": 2795,
+     "title": "Verkehrsregelung für den Rad- und Fußgängerverkehr auf der Ersatzbrücke der Cäcilienbrücke (Gruppe Die Linke./Piratenpartei vom 08.06.2020) - Bericht",
+     "datum": "2020-06-22"
+    },
+    {
+     "id": 794,
+     "title": "Bericht aus dem Gestaltungsbeirat",
+     "datum": "2018-06-21"
+    },
+    {
+     "id": 518,
+     "title": "Planung zum Ersatz der Cäcilienbrücke - mündlicher Bericht",
+     "datum": "2018-03-15"
+    },
+    {
+     "id": 4650,
+     "title": "Widmungsänderung der Straße Westfalendamm",
+     "datum": "2022-05-16"
+    },
+    {
+     "id": 6625,
+     "title": "Instandsetzung der Amalienbrücke (Fraktionen SPD und Bündnis 90/Die Grünen vom 05.03.2024)",
+     "datum": "2024-05-13"
+    },
+    {
+     "id": 3161,
+     "title": "Erneuerung Brücke Mühlenhunte (CDU Fraktion vom 30.11.2020)",
+     "datum": "2020-12-14"
+    },
+    {
+     "id": 7196,
+     "title": "Reaktivierung des zweiten Fuß- und Radwegs an der Eisenbahnklappbrücke (Fraktionen SPD und Bündnis 90/Die Grünen vom 29.10.2024)",
+     "datum": "2024-11-18"
+    },
+    {
+     "id": 3958,
+     "title": "Sachstand Huntebrücke (Vortrag Autobahn GmbH) - Bericht",
+     "datum": "2021-07-12"
+    },
+    {
+     "id": 1136,
+     "title": "Klärung der Auswirkungen der geplanten Erneuerung der Südumgehung und der großen BAB-Brücke über die Hunte auf den innerstädtischen Verkehr / insbesondere den ÖPNV (S-Bahn)",
+     "datum": "2018-11-28"
+    },
+    {
+     "id": 6783,
+     "title": "Sachstand Beschaffung eines Bootes für die Feuerwehr Oldenburg (Fraktion Bündnis 90/ Die Grünen vom 22.05.2024)",
+     "datum": "2024-06-05"
+    },
+    {
+     "id": 1334,
+     "title": "Sachstand neue Eisenbahnbrücke über die Hunte (Beratendes Mitglied Friedrich-Wilhelm Wehrmeyer, Institution IBO/LiVe vom 13.02.2019)",
+     "datum": "2019-02-27"
+    },
+    {
+     "id": 1814,
+     "title": "Rad- und Fußweg Huntebrücke (CDU-Fraktion vom 30.07.2019)",
+     "datum": "2019-08-19"
+    },
+    {
+     "id": 3021,
+     "title": "Zwischenstand Strukturbrücke Kultur - Bericht",
+     "datum": "2020-11-17"
+    },
+    {
+     "id": 1134,
+     "title": "Ausbau des Küstenkanals: Folgen für die alte Klappbrücke über die Hunte",
+     "datum": "2018-11-28"
+    },
+    {
+     "id": 952,
+     "title": "Sachstand neue Eisenbahnbrücke über die Hunte (Beratendes Mitglied Friedrich-Wilhelm Wehrmeyer, Institution IBO/LiVe vom 10.10.2018)",
+     "datum": "2018-10-24"
+    }
+   ],
+   "debatten_n": 0,
+   "presse_n": 0,
+   "ms": 7703
+  },
+  {
+   "id": "caeci-slang",
+   "fokus": "entitaet+glossar",
+   "frage": "Was ist eigentlich mit der Cäci los?",
+   "typ": "thema",
+   "antwort": "Die Cäcilienbrücke ist Gegenstand intensiver Beratungen und Planungen, die sich hauptsächlich um ihren **Abriss und Neubau** drehen. Der Stadtrat hat sich mehrfach mit dem Sachstand befasst und fordert eine Beschleunigung des Vorhabens.\n\n## Sachstand und Beschleunigung des Neubaus\nDer Sachstandsbericht zum Abriss und Neubau der Cäcilienbrücke wurde zuletzt im April 2024 zur Kenntnis genommen [6692]. Bereits im August 2025 hat der Rat eine Resolution verabschiedet, die das Wasserstraßen- und Schifffahrtsamt (WSA) auffordert, die Planung und den Neubau der Cäcilienbrücke zu beschleunigen [7822]. Diese Resolution wurde mehrheitlich von Bündnis 90/Die Grünen, SPD, CDU, FDP und Volt eingebracht und angenommen. Auch ein Bericht zum Ersatzbau für die Cäcilienbrücke wurde im November 2024 zur Kenntnis genommen [7193]. Das WSA hat bereits im April 2021 einen Vortrag zur Cäcilienbrücke gehalten, der ebenfalls zur Kenntnis genommen wurde [3638].\n\n## Planung und Verkehrsregelungen\nBereits im März 2018 wurde ein mündlicher Bericht zur Planung des Ersatzes der Cäcilienbrücke zur Kenntnis genommen [518]. Im Juni 2020 wurde ein Bericht zur Verkehrsregelung für den Rad- und Fußgängerverkehr auf der Ersatzbrücke der Cäcilienbrücke zur Kenntnis genommen [2795]. Hierbei ging es um Vorschläge für eine Verkehrsregelung auf der Behelfsbrücke, die das Radfahren bei geringem Verkehrsaufkommen erlaubt.\n\n## Abgrenzung zu anderen Brückenprojekten\nEs ist wichtig zu beachten, dass die Cäcilienbrücke ein eigenständiges Projekt ist und nicht mit anderen Brückenprojekten in Oldenburg verwechselt werden sollte. Die Beschlüsse erwähnen auch andere Brücken wie die Amalienbrücke [6625], die Brücke über die Mühlenhunte [3161, 4616, 3962] und die Eisenbahnbrücke über die Hunte [1334, 952, 7196, 1814], die ebenfalls Gegenstand von Berichten und Planungen sind, aber nicht direkt die Cäcilienbrücke betreffen.",
+   "cited": [
+    6692,
+    7822,
+    7193,
+    3638,
+    518,
+    2795,
+    6625,
+    3161,
+    4616,
+    3962,
+    1334,
+    952,
+    7196,
+    1814
+   ],
+   "quellen": [
+    {
+     "id": 6692,
+     "title": "Sachstand Abriss und Neubau Cäcilienbrücke (CDU-Fraktion vom 15.03.2024) - Berichtsantrag",
+     "datum": "2024-04-22"
+    },
+    {
+     "id": 7822,
+     "title": "Resolution zur Beschleunigung des Neubaus der Cäcilienbrücke",
+     "datum": "2025-08-25"
+    },
+    {
+     "id": 3638,
+     "title": "Vortrag WSA Cäcilienbrücke (Herr Seufzer und Herr Oltmanns)",
+     "datum": "2021-04-19"
+    },
+    {
+     "id": 7193,
+     "title": "Ersatzbau für die Cäcilienbrücke (Fraktionen SPD, Bündnis 90/Die Grünen, CDU, BSW und Gruppe FDP/Volt vom 30.09.2024)",
+     "datum": "2024-11-18"
+    },
+    {
+     "id": 794,
+     "title": "Bericht aus dem Gestaltungsbeirat",
+     "datum": "2018-06-21"
+    },
+    {
+     "id": 7229,
+     "title": "Fortschreibung des Lärmaktionsplans - Beschluss",
+     "datum": "2024-09-30"
+    },
+    {
+     "id": 518,
+     "title": "Planung zum Ersatz der Cäcilienbrücke - mündlicher Bericht",
+     "datum": "2018-03-15"
+    },
+    {
+     "id": 2795,
+     "title": "Verkehrsregelung für den Rad- und Fußgängerverkehr auf der Ersatzbrücke der Cäcilienbrücke (Gruppe Die Linke./Piratenpartei vom 08.06.2020) - Bericht",
+     "datum": "2020-06-22"
+    },
+    {
+     "id": 4650,
+     "title": "Widmungsänderung der Straße Westfalendamm",
+     "datum": "2022-05-16"
+    },
+    {
+     "id": 6625,
+     "title": "Instandsetzung der Amalienbrücke (Fraktionen SPD und Bündnis 90/Die Grünen vom 05.03.2024)",
+     "datum": "2024-05-13"
+    },
+    {
+     "id": 3161,
+     "title": "Erneuerung Brücke Mühlenhunte (CDU Fraktion vom 30.11.2020)",
+     "datum": "2020-12-14"
+    },
+    {
+     "id": 1334,
+     "title": "Sachstand neue Eisenbahnbrücke über die Hunte (Beratendes Mitglied Friedrich-Wilhelm Wehrmeyer, Institution IBO/LiVe vom 13.02.2019)",
+     "datum": "2019-02-27"
+    },
+    {
+     "id": 3958,
+     "title": "Sachstand Huntebrücke (Vortrag Autobahn GmbH) - Bericht",
+     "datum": "2021-07-12"
+    },
+    {
+     "id": 3962,
+     "title": "Sachstand Ersatzbrückenneubau Alte Mühlenhunte- Bericht",
+     "datum": "2021-07-12"
+    },
+    {
+     "id": 7196,
+     "title": "Reaktivierung des zweiten Fuß- und Radwegs an der Eisenbahnklappbrücke (Fraktionen SPD und Bündnis 90/Die Grünen vom 29.10.2024)",
+     "datum": "2024-11-18"
+    },
+    {
+     "id": 1814,
+     "title": "Rad- und Fußweg Huntebrücke (CDU-Fraktion vom 30.07.2019)",
+     "datum": "2019-08-19"
+    },
+    {
+     "id": 3021,
+     "title": "Zwischenstand Strukturbrücke Kultur - Bericht",
+     "datum": "2020-11-17"
+    },
+    {
+     "id": 866,
+     "title": "NOx-Belastung am Heiligengeistwall während der Bauarbeiten vom 28. bis 30. Juli 2018 (Bündnis 90/Grüne, 29.08.2018) - Bericht",
+     "datum": "2018-09-13"
+    },
+    {
+     "id": 4616,
+     "title": "Brücke über die Mühlenhunte - Bericht",
+     "datum": "2022-03-21"
+    },
+    {
+     "id": 952,
+     "title": "Sachstand neue Eisenbahnbrücke über die Hunte (Beratendes Mitglied Friedrich-Wilhelm Wehrmeyer, Institution IBO/LiVe vom 10.10.2018)",
+     "datum": "2018-10-24"
+    }
+   ],
+   "debatten_n": 0,
+   "presse_n": 0,
+   "ms": 9630
+  },
+  {
+   "id": "floetenteich",
+   "fokus": "entitaet",
+   "frage": "Was wurde zum Flötenteich beschlossen?",
+   "typ": "verlauf",
+   "antwort": "Die Beschlüsse zum Flötenteich konzentrieren sich hauptsächlich auf den Bau eines neuen Sport- und Gesundheitsbades sowie auf die Erweiterung der Sporthalle der IGS Flötenteich.\n\n## Erweiterung der Sporthalle\nBereits am 3. Mai 2018 stimmte der Betriebsausschuss einer Mehrausgabe von 563.000 Euro für die Erweiterung der Sporthalle an der IGS Flötenteich zu [535]. Im November 2019 wurde zudem ein Sachstandsbericht zur Abnahme alter Jalousien am ehemaligen Realschulgebäude der IGS Flötenteich zur Kenntnis genommen [1989]. Am 4. November 2025 nahm der Schulausschuss einen Sachstand zum neuen pädagogischen Konzept an der Integrierten Gesamtschule Flötenteich zur Kenntnis [7937].\n\n## Neubau des Sport- und Gesundheitsbades\nDie Planungen für ein Sport- und Gesundheitsbad am Flötenteich begannen im September 2018 mit einem mündlichen Sachstandsbericht im Sportausschuss [851]. Am 12. Dezember 2018 wurde die Bäderstrategie 2019-2030 beschlossen, die den Bau eines Sport- und Gesundheitsbades am Flötenteich als Ganzjahresangebot vorsieht [1212]. Dieser Beschluss wurde am 14. Januar 2019 vom Rat der Stadt Oldenburg bestätigt [1309, 1428]. Am 13. November 2019 wurde der Neubau eines Sport- und Gesundheitsbades mit wettkampftauglichem Sportbecken und Hubboden beschlossen [1991], was am 25. November 2019 vom Rat bestätigt wurde [2400].\n\n## Planungs- und Umsetzungsphasen\nAm 2. Juni 2021 stimmte der Ausschuss für Finanzen und Beteiligungen dem Verfahren zur Bindung eines Architekturbüros für den Neubau des Sport- und Gesundheitsbades zu [3852]. Der Vorentwurf für das Sport- und Gesundheitsbad, inklusive eines zusätzlichen Sommeraußenbeckens, wurde am 1. Juni 2022 vom Ausschuss für Finanzen und Beteiligungen [4819] und am 11. Juli 2022 vom Rat bestätigt, wobei ein Cabriodach ausgeschlossen wurde [4952]. Am 4. Oktober 2023 [6015] und am 9. Oktober 2023 [6263] wurde die Umsetzung des Energiekonzeptes für das Sport- und Gesundheitsbad beschlossen.\n\n## Aktueller Stand\nAm 24. Oktober 2024 wurde der Aufstellungsbeschluss für den Bebauungsplan 864 (Flötenteich) gefasst, um die Errichtung einer schwimmenden Floating-Photovoltaik-Anlage zur klimaneutralen Energieversorgung des Sport- und Gesundheitsbades zu ermöglichen [7035, 7036].",
+   "cited": [
+    535,
+    1989,
+    7937,
+    851,
+    1212,
+    1309,
+    1428,
+    1991,
+    2400,
+    3852,
+    4819,
+    4952,
+    6015,
+    6263,
+    7035,
+    7036
+   ],
+   "quellen": [
+    {
+     "id": 535,
+     "title": "Zustimmung zu einer Mehrausgabe für die Erweiterung der Sporthalle an der IGS Flötenteich",
+     "datum": "2018-05-03"
+    },
+    {
+     "id": 851,
+     "title": "Neubau eines Sport- und Gesundheitsbades am Flötenteich - mündlicher Sachstandsbericht aus der interfraktionellen Arbeitsgruppe -",
+     "datum": "2018-09-12"
+    },
+    {
+     "id": 1212,
+     "title": "Bäderbetrieb Oldenburg (BBO) Strategie für die Entwicklung der Bäderlandschaft in Oldenburg",
+     "datum": "2018-12-12"
+    },
+    {
+     "id": 1309,
+     "title": "Bäderbetrieb Oldenburg (BBO) Strategie für die Entwicklung der Bäderlandschaft in Oldenburg",
+     "datum": "2019-01-14"
+    },
+    {
+     "id": 1428,
+     "title": "Bäderbetrieb Oldenburg (BBO) Strategie für die Entwicklung der Bäderlandschaft in Oldenburg",
+     "datum": "2019-01-14"
+    },
+    {
+     "id": 1757,
+     "title": "Sachstand der Planungen für den Bäderneubau am Flötenteich (Fraktion Bündnis 90/Die Grünen vom 03.05.2019)",
+     "datum": "2019-06-05"
+    },
+    {
+     "id": 2151,
+     "title": "Bäderbetrieb Oldenburg (BBO) - Strategie für die Entwicklung der Bäderlandschaft in Oldenburg - Sport- und Gesundheitsbad am Flötenteich - Beschluss",
+     "datum": "2019-11-06"
+    },
+    {
+     "id": 1989,
+     "title": "Abnahme der alten Jalousien am ehemaligen Realschulgebäude der IGS Flötenteich - Sachstandsbericht (Fraktion Bündnis 90/Die Grünen vom 22.10.19)",
+     "datum": "2019-11-07"
+    },
+    {
+     "id": 1991,
+     "title": "Bäderbetrieb Oldenburg (BBO) Strategie für die Entwicklung der Bäderlandschaft in Oldenburg Sport- und Gesundheitsbad am Flötenteich",
+     "datum": "2019-11-13"
+    },
+    {
+     "id": 2400,
+     "title": "Bäderbetrieb Oldenburg (BBO) Strategie für die Entwicklung der Bäderlandschaft in Oldenburg Sport- und Gesundheitsbad am Flötenteich",
+     "datum": "2019-11-25"
+    },
+    {
+     "id": 2349,
+     "title": "\"Informationstafel für den Flötenteich\" (SPD-Fraktion vom 21.01.2020)",
+     "datum": "2020-02-18"
+    },
+    {
+     "id": 3852,
+     "title": "Bäderbetrieb der Stadt Oldenburg (BBO): Neubau des Sport- und Gesundheitsbades am Flötenteich in Oldenburg Verfahren zur Bindung eines Architekturbüros - Beschluss -",
+     "datum": "2021-06-02"
+    },
+    {
+     "id": 4819,
+     "title": "Bäderbetrieb der Stadt Oldenburg (BBO): Sport- und Gesundheitsbad am Flötenteich – Bestätigung des vorgestellten Vorentwurfes mit den Flächen, Funktionsbereichen und Investitionskosten",
+     "datum": "2022-06-01"
+    },
+    {
+     "id": 4952,
+     "title": "Bäderbetrieb der Stadt Oldenburg (BBO): Sport- und Gesundheitsbad am Flötenteich – Bestätigung des vorgestellten Vorentwurfes mit den Flächen, Funktionsbereichen und Investitionskosten",
+     "datum": "2022-07-11"
+    },
+    {
+     "id": 6015,
+     "title": "Bäderbetrieb der Stadt Oldenburg (BBO): Umsetzung des Energiekonzeptes des Sport- und Gesundheitsbades am Flötenteich - Beschluss",
+     "datum": "2023-10-04"
+    },
+    {
+     "id": 6263,
+     "title": "Bäderbetrieb der Stadt Oldenburg (BBO): Umsetzung des Energiekonzeptes des Sport- und Gesundheitsbades am Flötenteich",
+     "datum": "2023-10-09"
+    },
+    {
+     "id": 7035,
+     "title": "Bebauungsplan 864 (Flötenteich) - Aufstellungsbeschluss",
+     "datum": "2024-10-24"
+    },
+    {
+     "id": 7036,
+     "title": "Bebauungsplan 864 (Flötenteich) - Grundzüge der Planung",
+     "datum": "2024-10-24"
+    },
+    {
+     "id": 7773,
+     "title": "Sportboxen in Oldenburg - Bericht",
+     "datum": "2025-09-10"
+    },
+    {
+     "id": 7937,
+     "title": "Neues pädagogisches Konzept an der Integrierten Gesamtschule Flötenteich: Sachstand",
+     "datum": "2025-11-04"
+    }
+   ],
+   "debatten_n": 0,
+   "presse_n": 0,
+   "ms": 12353
+  },
+  {
+   "id": "fliegerhorst",
+   "fokus": "entitaet",
+   "frage": "Was ist auf dem Fliegerhorst geplant?",
+   "typ": "thema",
+   "antwort": "Auf dem ehemaligen Fliegerhorst-Gelände in Oldenburg sind umfangreiche Entwicklungen geplant, die den Aufbau eines neuen Stadtteils mit Fokus auf Wohnen, Arbeiten, Bildung und Sport umfassen.\n\n## Bildungseinrichtungen\nEin zentraler Bestandteil der Planungen ist der Bau einer **neuen Grundschule** auf dem Fliegerhorst-Gelände [6632, 6305]. Diese Entscheidung wurde bereits 2019 getroffen, um dem neuen Stadtteil eine eigene Grundschule zu ermöglichen [2382, 1966]. Die Planungen für die bauliche Umsetzung der Grundschule erfolgen gemäß einem vorgelegten Raumprogramm [6632, 6305]. Ergänzend dazu sollen an diesem Standort auch neue Krippen- und Kindergartengruppen geschaffen werden, um den Bedarf an Kindertagesbetreuung zu decken [2015, 1904]. Für die neue Schule werden zudem innovative pädagogische Konzepte in Betracht gezogen, wofür Vertreter entsprechender Konzepte in Ausschusssitzungen eingeladen werden sollen [4797].\n\n## Sportstätten\nIm Bereich der Sportinfrastruktur ist die Errichtung einer **Dreifeldhalle** auf dem Gelände der künftigen Grundschule Fliegerhorst vorgesehen [8497, 8181]. Ursprünglich war möglicherweise eine Einfeldhalle geplant, doch wurde die Entscheidung zugunsten einer Dreifeldhalle getroffen [8497, 8181]. Die Diskussionen und Anträge hierzu wurden über einen längeren Zeitraum geführt und mehrfach vertagt [6880, 6757].\n\n## Wohnen und Arbeiten\nDer Fliegerhorst wird als Experimentierfeld für Wohnen und Arbeiten unter dem Namen \"Smart City Lab/ENaQ\" entwickelt [1832, 1831]. Hierfür wurde der Bebauungsplan N-777 F als Satzung beschlossen, um die planungsrechtliche Grundlage für zukunftsweisende Formen des Zusammenlebens und Technologien zu schaffen [1832]. Auch die Änderung Nr. 77 des Flächennutzungsplans wurde für das Smart City Lab beschlossen [1831]. Im Rahmen des Projekts \"ModellFlieger\" wird zudem eine 1,2 Hektar große Fläche für Baugemeinschaften bereitgestellt, um ein familien- und klimafreundliches Modellquartier zu realisieren [4836]. Für die Baureifmachung des Fördergebietes Energetisches Nachbarschaftsquartier (ENaQ) im Bereich des Bebauungsplanes N 777 F waren auch Baumfällungen erforderlich [1289].\n\n## Infrastruktur\nHinsichtlich der Verkehrsanbindung gab es Berichte über eine geplante **Entlastungsstraße Fliegerhorst** zwischen der Alexanderstraße und der Ammerländer Heerstraße [867]. Ein \"Faktenupdate zur geplanten Fliegerhorst-Straße\" wurde ebenfalls thematisiert [5940].",
+   "cited": [
+    6632,
+    6305,
+    2382,
+    1966,
+    2015,
+    1904,
+    4797,
+    8497,
+    8181,
+    6880,
+    6757,
+    1832,
+    1831,
+    4836,
+    1289,
+    867,
+    5940
+   ],
+   "quellen": [
+    {
+     "id": 6305,
+     "title": "Neue Grundschule auf dem Gelände des ehemaligen Fliegerhorstes: Bauliche Umsetzung",
+     "datum": "2024-02-06"
+    },
+    {
+     "id": 6632,
+     "title": "Neue Grundschule auf dem Gelände des ehemaligen Fliegerhorstes: Bauliche Umsetzung",
+     "datum": "2024-02-26"
+    },
+    {
+     "id": 6533,
+     "title": "Sportstätten im Quartier Fliegerhorst (CDU-Fraktion vom 09.04.2024) - Bericht",
+     "datum": "2024-05-02"
+    },
+    {
+     "id": 6584,
+     "title": "Sportstätten im Quartier Fliegerhorst (CDU-Fraktion vom 09.04.2024)",
+     "datum": "2024-05-08"
+    },
+    {
+     "id": 1832,
+     "title": "Bebauungsplan N-777 F (Fliegerhorst/Experimentierfeld Wohnen und Arbeiten \"Smart City Lab/ENaQ\")",
+     "datum": "2019-05-27"
+    },
+    {
+     "id": 1966,
+     "title": "Umsetzung der Empfehlungen des Gutachtens zur Schulentwicklung: „Neue Grundschule auf dem Gelände des ehemaligen Fliegerhorstes“",
+     "datum": "2019-11-05"
+    },
+    {
+     "id": 8181,
+     "title": "Errichtung einer Dreifeldhalle auf dem Fliegerhorst (B-Plan 777 F)",
+     "datum": "2026-02-11"
+    },
+    {
+     "id": 8497,
+     "title": "Errichtung einer Dreifeldhalle auf dem Fliegerhorst (B-Plan 777F) (CDU-Fraktion vom 07.06.2024)",
+     "datum": "2026-02-23"
+    },
+    {
+     "id": 867,
+     "title": "Entlastungsstraße Fliegerhorst (CDU vom 30.08.2018) - Bericht",
+     "datum": "2018-09-13"
+    },
+    {
+     "id": 1831,
+     "title": "Änderung Nr. 77 des Flächennutzungsplanes 1996 (Fliegerhorst/Experimentierfeld Wohnen und Arbeiten \"Smart City Lab/ENaQ\")",
+     "datum": "2019-05-27"
+    },
+    {
+     "id": 4836,
+     "title": "ModellFlieger - Familien- und klimafreundliches Modellquartier auf dem Fliegerhorst",
+     "datum": "2022-06-16"
+    },
+    {
+     "id": 2015,
+     "title": "Maßnahmenplanung für den weiteren Ausbau der Kindertagesbetreuung",
+     "datum": "2019-09-30"
+    },
+    {
+     "id": 1289,
+     "title": "Erforderliche Baumfällungen auf dem Fliegerhorst zur Baureifmachung des Fördergebietes Energetisches Nachbarschaftsquartier (ENaQ) im Bereich des zukünftigen Bebauungsplanes N 777 F - Bericht",
+     "datum": "2018-12-13"
+    },
+    {
+     "id": 1904,
+     "title": "Maßnahmenplanung für den weiteren Ausbau der Kindertagesbetreuung - Beschluss",
+     "datum": "2019-09-18"
+    },
+    {
+     "id": 2382,
+     "title": "Umsetzung der Empfehlungen des Gutachtens zur Schulentwicklung: „Neue Grundschule auf dem Gelände des ehemaligen Fliegerhorstes“",
+     "datum": "2019-11-25"
+    },
+    {
+     "id": 1202,
+     "title": "Bebauungsplan N-777 F (Fliegerhorst/Experimentierfeld Wohnen und Arbeiten \"Smart City Lab/ENaQ\" - Auslegungsbeschluss",
+     "datum": "2018-12-06"
+    },
+    {
+     "id": 5940,
+     "title": "Faktenupdate zur geplanten Fliegerhorst-Straße (beratendes Mitglied Herr Skiba vom 24.08.2023)",
+     "datum": "2023-09-14"
+    },
+    {
+     "id": 4797,
+     "title": "Innovative pädagogische Konzepte für die neue Schule auf dem Fliegerhorst (Fraktion Bündnis 90/Die Grünen und SPD-Fraktion vom 20.06.2022) - Beschlussantrag mit Bericht der Verwaltung",
+     "datum": "2022-07-05"
+    },
+    {
+     "id": 6880,
+     "title": "Errichtung einer Dreifeldhalle auf dem Fliegerhorst (B-Plan 777 F) (CDU-Fraktion vom 07.06.2024) - Beschlussantrag mit Bericht der Verwaltung",
+     "datum": "2024-09-11"
+    },
+    {
+     "id": 6757,
+     "title": "Errichtung einer Dreifeldhalle auf dem Fliegerhorst (B-Plan 777 F) (CDU-Fraktion vom 07.06.2024)",
+     "datum": "2024-08-14"
+    }
+   ],
+   "debatten_n": 0,
+   "presse_n": 0,
+   "ms": 12703
+  },
+  {
+   "id": "entlastungsstrasse-stand",
+   "fokus": "recency",
+   "frage": "Wie ist der aktuelle Stand bei der Entlastungsstraße?",
+   "typ": "verlauf",
+   "antwort": "Der aktuelle Stand bezüglich der Entlastungsstraße ist, dass der Bebauungsplan N-777 G, der die Entlastungsstraße Fliegerhorst/Hallensichel Ost umfasst, nach einem Urteil des Oberverwaltungsgerichts Lüneburg aufgrund formeller Fehler unwirksam war und nun erneut bearbeitet und beschlossen wurde. Zuletzt wurde im März 2026 dem Bebauungsplan N-777 G zugestimmt und die Abwägungsvorschläge beschlossen [8581].\n\n## Chronologischer Verlauf\n\nIm August 2018 wurde ein Antrag zur Aufnahme der Entlastungsstraße zwischen der Alexanderstraße und der Ammerländer Heerstraße in das Mehrjahresprogramm für Landeshilfen gestellt [867]. Im Dezember 2018 wurde die Aufstellung der 78. FNP-Änderung für die Hallensichel-Ost und eine Entlastungsstraße auf dem Fliegerhorst beschlossen, um die planungsrechtliche Grundlage für Dienstleistungs- und Gewerbebetriebe sowie die notwendige Erschließungsstraße zu schaffen [1203]. Gleichzeitig wurde die Trassenvariante 5A mit einer kleinen Änderung westlich des Amphibienbiotops in die Betrachtung aufgenommen [1210].\n\nIm September 2020 beschloss der Rat die Änderung Nr. 78 des Flächennutzungsplanes für das Gebiet Fliegerhorst/Hallensichel-Ost/Entlastungsstraße [3143].\n\n## Baumoratorium und weitere Prüfungen\n\nIm November 2023 wurde ein Antrag zur Verlängerung des Baumoratoriums für den B-Plan N-777 G vertagt [6105], jedoch im Dezember 2023 angenommen. Das Baumoratorium wurde verlängert, bis eine Bedarfsanalyse und ein weiteres Gutachten zur Entlastungsstraße vorgelegt wurden [6283]. Im Februar 2024 wurde beschlossen, dass die Entlastungsstraße im derzeit zu realisierenden Abschnitt den Namen \"Am Fliegerhorst\" erhalten soll [6468]. Im Mai 2024 wurde ein Bericht zur Verlängerung des Baumoratoriums zur Kenntnis genommen [6752]. Im August 2024 wurde ein Beschlussantrag angenommen, der vorsieht, dass vor dem Satzungsbeschluss des B-Plans 777 G die Verkehrsprognose für den Fliegerhorst aktualisiert werden soll [7075].\n\n## Aktueller Stand des Bebauungsplans\n\nIm März 2025 wurde dem Entwurf des Bebauungsplans N-777 G für die Hallensichel Ost und die Entlastungsstraße zugestimmt und die erneute Veröffentlichung beschlossen. Dies war notwendig, da das Oberverwaltungsgericht Lüneburg den Bebauungsplan N-777 G im Mai 2024 aufgrund formeller Fehler für unwirksam erklärt hatte [7494]. Zuletzt, im März 2026, wurde dem Bebauungsplan N-777 G zugestimmt und die Abwägungsvorschläge beschlossen [8581].\n\nLaut Protokoll sagte Ratsherr Harms (Bündnis 90/Die Grünen) am 23. Juni 2025 im Verkehrsausschuss, dass die Qualität an den Knotenpunkten mit der Entlastungsstraße in Bezug auf den Fuß- und Radverkehr nicht ausreichend sei, aber ohne die Entlastungsstraße die Qualität des Knotenpunktes an der Alexanderstraße von einem C auf ein D zurückfallen würde, was laut Gutachten noch ausreichend sei. Stadtbaurätin Schacht ergänzte, dass die Ziele des Bebauungsplans 777 G neben der Verkehrsentlastung auch die Verknüpfung zweier Stadtteile durch eine Tangentialverbindung beinhalten. Herr Müller erklärte, dass die Gemeinde Bad Zwischenahn keine Anbindung des Verkehrs über die August-Hinrichs-Straße wünschte und die Anbindung der Straße Am Offizierskasino bis zum Nelson-Mandela-Ring zukünftig nur noch ein Rad- und Fußweg sei. Ratsherr Wenzel (Bündnis 90/Die Grünen) betonte, dass die Diskussion nicht die Verhinderung des Bau- oder Gewerbegebietes zum Ziel habe, sondern lediglich die Planstraße I (\"Entlastungsstraße\").",
+   "cited": [
+    8581,
+    867,
+    1203,
+    1210,
+    3143,
+    6105,
+    6283,
+    6468,
+    6752,
+    7075,
+    7494
+   ],
+   "quellen": [
+    {
+     "id": 867,
+     "title": "Entlastungsstraße Fliegerhorst (CDU vom 30.08.2018) - Bericht",
+     "datum": "2018-09-13"
+    },
+    {
+     "id": 1093,
+     "title": "Entlastungsstraße Fliegerhorst-Wechloy (Gruppe Die Linke./Piratenpartei vom 31.10.2018)",
+     "datum": "2018-11-15"
+    },
+    {
+     "id": 1203,
+     "title": "Änderung Nr. 78 des Flächennutzungsplanes (Fliegerhorst/Hallensichel-Ost/Entlastungsstraße) - Aufstellungsbeschluss",
+     "datum": "2018-12-06"
+    },
+    {
+     "id": 1210,
+     "title": "Entlastungsstraße Fliegerhorst-Wechloy (Gruppe Die Linke./Piratenpartei vom 22.11.2018)",
+     "datum": "2018-12-10"
+    },
+    {
+     "id": 1295,
+     "title": "Entlastungsstraße Fliegerhorst-Wechloy (Linke/Piraten, 22.11.2018)",
+     "datum": "2018-12-13"
+    },
+    {
+     "id": 1623,
+     "title": "Bebauungsplan N-777 G (Fliegerhorst/Hallensichel-Ost/Entlastungsstraße) (CDU-Fraktion vom 02.05.2019) - Bericht",
+     "datum": "2019-05-16"
+    },
+    {
+     "id": 1779,
+     "title": "Bebauungsplan N-777 G (Fliegerhorst/Hallensichel-Ost/Entlastungsstraße) (CDU-Fraktion vom 06.06.2019) - Bericht",
+     "datum": "2019-06-20"
+    },
+    {
+     "id": 2419,
+     "title": "Änderung Nr. 78 des Flächennutzungsplanes (Fliegerhorst/Hallensichel-Ost/Entlastungsstraße) - Auslegungsbeschluss",
+     "datum": "2020-02-20"
+    },
+    {
+     "id": 3143,
+     "title": "Änderung Nr. 78 des Flächennutzungsplanes (Fliegerhorst/Hallensichel-Ost/Entlastungsstraße) - Prüfung der Stellungnahmen - Feststellungsbeschluss",
+     "datum": "2020-09-28"
+    },
+    {
+     "id": 5706,
+     "title": "Sachstand Umplanung Straße Schloßplatz",
+     "datum": "2023-05-15"
+    },
+    {
+     "id": 5822,
+     "title": "Sachstand Baugebiet Am Bahndamm/Gerhard-Stalling-Straße (S-745 B) (CDU-Fraktion vom 01.06.2023) - Bericht",
+     "datum": "2023-06-15"
+    },
+    {
+     "id": 6105,
+     "title": "Verlängerung des Baumoratoriums zum Bebauungsplan N-777 G (Entlastungsstraße Fliegerhorst/Fliegerhorst-Straße) (beratendes Mitglied Herr Skiba vom 24.10.2023)",
+     "datum": "2023-11-09"
+    },
+    {
+     "id": 6283,
+     "title": "Verlängerung des Baumoratoriums zum Bebauungsplan N-777G (Entlastungsstraße Fliegerhorst/Fliegerhorst-Straße) (beratendes Mitglied Herr Skiba vom 24.10.2023)",
+     "datum": "2023-12-14"
+    },
+    {
+     "id": 6468,
+     "title": "Straßenbenennung \"Am Fliegerhorst\"",
+     "datum": "2024-02-19"
+    },
+    {
+     "id": 6752,
+     "title": "Verlängerung des Baumoratoriums zum Bebauungsplan N-777 G (Entlastungsstraße Fliegerhorst) zur Einholung eines Bodengutachtens und eines ergänzenden Verkehrsgutachtens zum Streckenvorschlag 5a (BSW-Fraktion vom 09.05.2024)",
+     "datum": "2024-05-27"
+    },
+    {
+     "id": 7075,
+     "title": "Weitere Prüfungen zum Bebauungsplan N-777 G (Entlastungsstraße Fliegerhorst) (Gruppe FDP/Volt und BSW-Fraktion vom 04.06.2024) - Beschlussantrag mit Bericht der Verwaltung",
+     "datum": "2024-08-26"
+    },
+    {
+     "id": 7339,
+     "title": "Verkehrssituation in der Lagerstraße - Bericht",
+     "datum": "2025-02-17"
+    },
+    {
+     "id": 7494,
+     "title": "Bebauungsplan N-777 G (Fliegerhorst / Hallensichel Ost / Entlastungsstraße) mit örtlichen Bauvorschriften",
+     "datum": "2025-03-20"
+    },
+    {
+     "id": 8234,
+     "title": "Unterschutzstellung des Heidbrooks - Sachstandsbericht",
+     "datum": "2026-02-12"
+    },
+    {
+     "id": 8581,
+     "title": "Bebauungsplan N-777 G (Fliegerhorst/Hallensichel Ost/Entlastungsstraße) mit örtlichen Bauvorschriften - Prüfung der Stellungnahmen - Satzungsbeschluss",
+     "datum": "2026-03-19"
+    }
+   ],
+   "debatten_n": 4,
+   "presse_n": 1,
+   "ms": 14678
+  },
+  {
+   "id": "bplan831",
+   "fokus": "recency+supersedes",
+   "frage": "Was gilt aktuell beim Bebauungsplan 831?",
+   "typ": "verlauf",
+   "antwort": "Der Bebauungsplan 831 (Stadion Maastrichter Straße) wurde am 13. April 2026 vom Rat der Stadt Oldenburg als Satzung beschlossen [8540]. Damit sind die planungsrechtlichen Voraussetzungen für den Neubau eines Stadions geschaffen, das den Anforderungen des Profisports, insbesondere des DFB für die 3. Liga und perspektivisch auch der 2. Bundesliga, entspricht [4851, 8540].\n\n## Chronologie der Beschlüsse\nAm 19. Mai 2022 beschloss der Ausschuss für Stadtplanung und Bauen die Aufstellung des Bebauungsplans 831 für eine Fläche südöstlich der Weser-Ems-Hallen [4712]. Dieser Beschluss wurde am 30. Mai 2022 vom Rat der Stadt Oldenburg bestätigt [4851]. Im Mai 2023 wurden außerplanmäßige Mehraufwendungen von 180.000 Euro für die Bauleitplanung des Bebauungsplans 831 bewilligt [5797].\n\n## Fortschritte und Entscheidungen\nAm 15. April 2024 beschloss der Rat den Neubau eines Fußballstadions an der Maastrichter Straße mit 10.000 Plätzen und die Gründung einer Betreibergesellschaft [6705]. Der Bericht zu den Grundzügen der Planung für den Bebauungsplan 831 wurde am 11. April 2024 vom Ausschuss für Stadtplanung und Bauen zur Kenntnis genommen [6605]. Am 18. September 2025 stimmte der Ausschuss für Stadtplanung und Bauen dem Entwurf des Bebauungsplans 831 zu und beschloss dessen Veröffentlichung [7869].\n\n## Abschluss des Verfahrens\nEin Bericht zum Verkehrsgutachten Stadion im Rahmen des Bebauungsplans 831 wurde am 9. März 2026 vom Verkehrsausschuss zur Kenntnis genommen [8419]. Schließlich wurde der Bebauungsplan 831 am 19. März 2026 vom Ausschuss für Stadtplanung und Bauen als Satzung beschlossen [8580], was der Rat am 13. April 2026 bestätigte [8540].\n\nLaut Protokoll sagte Klaukien (CDU) am 1. Juni 2026, dass das Thema Wald nicht als Totschlagargument genutzt werden dürfe, da fraglich sei, ob es sich überhaupt um einen Wald gehandelt habe. Die CDU-Fraktion stehe dem Projekt positiv gegenüber. Adler (BSW) bekräftigte die Zustimmung für zusätzlichen Wohnraum, forderte aber sensiblen Umgang mit Waldabholzung und kritisierte die Reduzierung der Sozialquote sowie eine fehlerhafte Verkehrsprognose. Sander (Für Oldenburg) erklärte, dass seine Gruppe gegen den Beschlussvorschlag stimme, da die ständigen Veränderungen nicht hinnehmbar seien, die Gutachten zur Verkehrsführung wichtige Punkte nicht berücksichtigten, der Investor das Maximale herausholte und die Reduzierung der Sozialquote dem sozialen Wohnungsbau entgegenstehe.",
+   "cited": [
+    8540,
+    4851,
+    4712,
+    5797,
+    6705,
+    6605,
+    7869,
+    8419,
+    8580
+   ],
+   "quellen": [
+    {
+     "id": 3565,
+     "title": "Vorhabenbezogener Bebauungsplan Nummer 69 (Moslestraße/Osterstraße) - Aufstellungsbeschluss",
+     "datum": "2021-03-18"
+    },
+    {
+     "id": 4712,
+     "title": "Bebauungsplan 831 (Stadion Maastrichter Straße) - Aufstellungsbeschluss",
+     "datum": "2022-05-19"
+    },
+    {
+     "id": 4851,
+     "title": "Bebauungsplan 831 (Stadion Maastrichter Straße)",
+     "datum": "2022-05-30"
+    },
+    {
+     "id": 4833,
+     "title": "Bebauungsplan 818 (östlich Scheideweg/südlich Eßkamp) - erneuter Aufstellungsbeschluss",
+     "datum": "2022-06-16"
+    },
+    {
+     "id": 5459,
+     "title": "Stadionneubau Maastrichter Straße",
+     "datum": "2023-02-01"
+    },
+    {
+     "id": 5299,
+     "title": "Stadionneubau Maastrichter Straße - Beschluss",
+     "datum": "2023-02-08"
+    },
+    {
+     "id": 5402,
+     "title": "Stadionneubau Maastrichter Straße",
+     "datum": "2023-02-16"
+    },
+    {
+     "id": 5655,
+     "title": "Sachstandsbericht Stadionplanung",
+     "datum": "2023-05-03"
+    },
+    {
+     "id": 5797,
+     "title": "Stadionneubau Maastrichter Straße; außerplanmäßige Bewilligung von Mehraufwendungen für die Bauleitplanung",
+     "datum": "2023-05-22"
+    },
+    {
+     "id": 6488,
+     "title": "Stadionneubau Maastrichter Straße - Beschluss",
+     "datum": "2024-04-03"
+    },
+    {
+     "id": 6486,
+     "title": "Stadionneubau Maastrichter Straße - Beschluss",
+     "datum": "2024-04-08"
+    },
+    {
+     "id": 6605,
+     "title": "Bauleitplanung Stadion Maastrichter Straße - Bebauungsplan 831 und Änderung 82 des Flächennutzungsplanes - Grundzüge der Planung - Information vor der Öffentlichkeitsbeteiligung - Bericht",
+     "datum": "2024-04-11"
+    },
+    {
+     "id": 6705,
+     "title": "Stadionneubau Maastrichter Straße",
+     "datum": "2024-04-15"
+    },
+    {
+     "id": 6912,
+     "title": "Bebauungsplan 851 (östlich Schützenweg/nördlich Hamelmannstraße) - Vorstellung der aktuellen Planung",
+     "datum": "2024-09-19"
+    },
+    {
+     "id": 7035,
+     "title": "Bebauungsplan 864 (Flötenteich) - Aufstellungsbeschluss",
+     "datum": "2024-10-24"
+    },
+    {
+     "id": 7036,
+     "title": "Bebauungsplan 864 (Flötenteich) - Grundzüge der Planung",
+     "datum": "2024-10-24"
+    },
+    {
+     "id": 7869,
+     "title": "Bebauungsplan 831 (Stadion Maastrichter Straße) - Beschluss zur Veröffentlichung des Entwurfs",
+     "datum": "2025-09-18"
+    },
+    {
+     "id": 8419,
+     "title": "Bebauungsplan 831 (Stadion Maastrichter Straße) - Verkehrsgutachten Stadion - Bericht",
+     "datum": "2026-03-09"
+    },
+    {
+     "id": 8580,
+     "title": "Bebauungsplan 831 (Stadion Maastrichter Straße) - Prüfung der Stellungnahmen - Satzungsbeschluss",
+     "datum": "2026-03-19"
+    },
+    {
+     "id": 8540,
+     "title": "Bebauungsplan 831 (Stadion Maastrichter Straße) - Prüfung der Stellungnahmen - Satzungsbeschluss",
+     "datum": "2026-04-13"
+    }
+   ],
+   "debatten_n": 3,
+   "presse_n": 0,
+   "ms": 11937
+  },
+  {
+   "id": "radverkehr-zuletzt",
+   "fokus": "recency",
+   "frage": "Was wurde zuletzt zum Radverkehr beschlossen?",
+   "typ": "verlauf",
+   "antwort": "Zuletzt wurden mehrere Beschlüsse zum Radverkehr gefasst, die sich auf die Infrastruktur und die strategische Planung konzentrieren.\n\n## Strategische Planung und Infrastruktur\nAm 26. Juni 2023 wurde der **Mobilitätsplan Oldenburg 2030** beschlossen [6085]. Dieser Plan führt den Strategieplan Mobilität und Verkehr Oldenburg 2025 fort und bildet eine vertiefende und umsetzungsbezogene Grundlage, insbesondere im Hinblick auf das Ziel der lokalen Klimaneutralität. Bereits am 26. Oktober 2020 wurde ein Leitantrag von Fridays for Future angenommen, der die Verwaltung beauftragt, mehr Raum für Rad- und Fußverkehr zu schaffen, beispielsweise durch die Umwandlung von MIV-Abbiegespuren in asphaltierte Radwege mit baulicher Abgrenzung [3217].\n\n## Konkrete Maßnahmen und Widmungen\nIm Jahr 2024 gab es mehrere Beschlüsse zur Widmung und Teileinziehung von Verkehrsflächen. Am 18. November 2024 wurde beschlossen, eine Teilfläche der Straße \"Ewigkeit\" ab 2025 für den Fuß- und Radverkehr zu beschränken [7180]. Am selben Tag wurde die Verkehrsfläche \"Am Rundtörn\" ab Dezember 2024 als Gemeindestraße für Fuß- und Radverkehr gewidmet [7185], und eine Teilfläche des Oldeweg wird ab 2025 ebenfalls für den Fuß- und Radverkehr beschränkt [7186]. Am 26. August 2024 wurde die Meinardusstraße aus dem städtischen Vorbehaltsnetz der Hauptverkehrsstraßen herausgenommen [7072].\n\n## Fahrradstraßen\nEin wiederkehrendes Thema ist die Gestaltung und Beibehaltung von Fahrradstraßen. Am 24. Februar 2025 wurde vom Rat beschlossen, die **Fahrradstraße Haareneschstraße** beizubehalten, das Parken neu zu ordnen und die Straße gemäß der neuen Gestaltungsrichtlinie umzusetzen [7533]. Dieser Beschluss wurde bereits am 9. Dezember 2024 im Verkehrsausschuss mehrheitlich angenommen [7171]. Zuvor, am 21. Oktober 2019, wurde der Vorschlag der Verwaltung angenommen, Stellplätze am Haarenufer nicht sofort zu entfernen, um den Radverkehr in der Fahrradstraße Haarenufer zu verbessern [1980].",
+   "cited": [
+    6085,
+    3217,
+    7180,
+    7185,
+    7186,
+    7072,
+    7533,
+    7171,
+    1980
+   ],
+   "quellen": [
+    {
+     "id": 906,
+     "title": "Zwischenbericht zum Rad- und Fußverkehrsprogramm 2018",
+     "datum": "2018-08-20"
+    },
+    {
+     "id": 2187,
+     "title": "Verbesserung der Verkehrssicherheit für Radfahrer am Quellenweg (SPD-Ratsfraktion vom 29.01.2019)",
+     "datum": "2019-03-18"
+    },
+    {
+     "id": 1736,
+     "title": "Positionspapier der Berater*innen der Bundesregierung zur City-Maut und zum Ausbau des Radverkehrs sowie des öffentlichen Nahverkehrs (Ratsfraktion Bündnis 90/DIE GRÜNEN vom 03.06.2019) - Bericht",
+     "datum": "2019-06-17"
+    },
+    {
+     "id": 1980,
+     "title": "Verbesserung des Radverkehrs in der Fahrradstraße Haarenufer (Beratendes Mitglied ADFC vom 06.10.2019) - Bericht",
+     "datum": "2019-10-21"
+    },
+    {
+     "id": 2324,
+     "title": "Prüfung sukzessive Schaffung eines Systems von Fahrradvorrangstraßen (Gruppe Die Linke./Piratenpartei vom 22.11.2019) - Bericht",
+     "datum": "2019-12-09"
+    },
+    {
+     "id": 2795,
+     "title": "Verkehrsregelung für den Rad- und Fußgängerverkehr auf der Ersatzbrücke der Cäcilienbrücke (Gruppe Die Linke./Piratenpartei vom 08.06.2020) - Bericht",
+     "datum": "2020-06-22"
+    },
+    {
+     "id": 3217,
+     "title": "Leitantrag Fridays for Future - Änderungsantrag vom 09.07.2020; Punkt 4.3: \"Mehr Raum für den Radverkehr und Fußgänger*innen\"",
+     "datum": "2020-10-26"
+    },
+    {
+     "id": 3907,
+     "title": "Fahrradstraße Achterdiek - Bericht",
+     "datum": "2021-06-21"
+    },
+    {
+     "id": 4192,
+     "title": "Umsetzung der neuen StVo Novelle – Verbesserungen für den Radverkehr (Fraktion Bündnis 90/Die Grünen vom 29.11.2021)",
+     "datum": "2021-12-13"
+    },
+    {
+     "id": 5476,
+     "title": "Mobilitätsplan Oldenburg 2030 - Beschluss",
+     "datum": "2023-03-13"
+    },
+    {
+     "id": 5733,
+     "title": "Mobilitätsplan Oldenburg 2030 - Beschluss",
+     "datum": "2023-05-25"
+    },
+    {
+     "id": 6085,
+     "title": "Mobilitätsplan Oldenburg 2030",
+     "datum": "2023-06-26"
+    },
+    {
+     "id": 6489,
+     "title": "Verbesserung der Situation für den Rad- und Fußverkehr in der Straße Stau (beratendes Mitglied Herr Lüdke vom 20.03.2024) - Beschlussantrag",
+     "datum": "2024-04-03"
+    },
+    {
+     "id": 6624,
+     "title": "Neue Fahrradstraßen",
+     "datum": "2024-05-13"
+    },
+    {
+     "id": 7072,
+     "title": "Herausnahme der Meinardusstraße aus dem Vorbehaltsnetz - Beschluss",
+     "datum": "2024-08-26"
+    },
+    {
+     "id": 7180,
+     "title": "Teileinziehung einer Teilfläche der Straße \"Ewigkeit\" - Beschluss",
+     "datum": "2024-11-18"
+    },
+    {
+     "id": 7185,
+     "title": "Widmung der Verkehrsfläche \"Am Rundtörn\" - Beschluss",
+     "datum": "2024-11-18"
+    },
+    {
+     "id": 7186,
+     "title": "Teileinziehung einer Teilfläche des Oldeweg - Beschluss",
+     "datum": "2024-11-18"
+    },
+    {
+     "id": 7171,
+     "title": "Fahrradstraße Haareneschstraße - Beschluss",
+     "datum": "2024-12-09"
+    },
+    {
+     "id": 7533,
+     "title": "Fahrradstraße Haareneschstraße",
+     "datum": "2025-02-24"
+    }
+   ],
+   "debatten_n": 0,
+   "presse_n": 0,
+   "ms": 8896
+  },
+  {
+   "id": "schulen-sanierung",
+   "fokus": "breit",
+   "frage": "Welche Schulen werden saniert?",
+   "typ": "thema",
+   "antwort": "Die Stadt Oldenburg plant und setzt Sanierungsmaßnahmen an verschiedenen Schulen um. Die Beschlüsse nennen konkrete Sanierungsvorhaben für die IGS Kreyenbrück, die Grundschule Röwekamp und die Cäcilienschule.\n\n## Konkrete Sanierungsprojekte\n\nDie **Grundschule Röwekamp** wird aufgrund des Rechtsanspruchs auf Ganztagsbetreuung saniert, umgebaut und erweitert. Dabei wird die denkmalgeschützte Schule ausgebaut und eine Aufstockung für eine Mensa ist geplant [8304].\n\nAn der **IGS Kreyenbrück** in der Brandenburger Straße 40 wurden und werden energetische Sanierungsmaßnahmen durchgeführt. Ein Bericht gab einen Überblick über abgeschlossene und anliegende Sanierungsmaßnahmen, insbesondere im Zusammenhang mit der Inbetriebnahme einer Großwärmepumpe im März 2024 [6885].\n\nDie **Cäcilienschule** wird im Rahmen der Bedarfsdeckung und Umsetzung eines Musterraumprogramms für Gymnasien erweitert. Gleichzeitig soll eine weitreichende Barrierefreiheit des gesamten Schulgebäudes nach Inklusionsstandards der Stadt Oldenburg erreicht werden [1291].\n\n## Berichte und Planungen zur Schulsanierung\n\nEs wurden Berichte zur Sanierung von Schulgebäuden zur Kenntnis genommen [5082, 5124]. Diese Berichte bezogen sich auf ausführliche Informationen zu vorgesehenen Maßnahmen, die bereits in früheren Sitzungen unter dem Titel „Erfolgsplan EGH - Instandhaltung/Instandsetzung der Schulgebäude und sonstiger Gebäude“ vorgestellt wurden [5082, 5124]. Die Verwaltung wurde beauftragt, halbjährlich in den Ausschüssen für Schule und Gebäudewirtschaft über Bau- und Sanierungsprojekte an städtischen Schulen zu berichten [7159].\n\n## Finanzielle Rahmenbedingungen\n\nIm Erfolgsplan des Eigenbetriebs Gebäudewirtschaft und Hochbau (EGH) standen in den Jahren 2018 und 2019 erhebliche Mittel für die Unterhaltung der Grundstücke und baulichen Anlagen zur Verfügung. Für 2019 waren es 11.150.000,00 € [1401, 1503] und für 2018 11.200.000,00 € [432, 504]. Diese Beträge entsprechen den mindestens notwendigen 1,2 % der aktuellen Neubauwerte für eine sachgerechte Bauunterhaltung und sollen auch in den Folgejahren bereitgestellt werden [1401, 432, 504, 1503].",
+   "cited": [
+    8304,
+    6885,
+    1291,
+    5082,
+    5124,
+    7159,
+    1401,
+    1503,
+    432,
+    504
+   ],
+   "quellen": [
+    {
+     "id": 6885,
+     "title": "Schulgebäude der IGS Kreyenbrück, Brandenburger Straße 40; Energetische Sanierung",
+     "datum": "2024-09-05"
+    },
+    {
+     "id": 5082,
+     "title": "Sanierung von Schulgebäuden (CDU-Fraktion vom 05.10.2022) - Bericht",
+     "datum": "2022-11-03"
+    },
+    {
+     "id": 8304,
+     "title": "GS Röwekamp, Umbau und Erweiterung - Umsetzung Baumaßnahme (Baubeschluss)",
+     "datum": "2026-03-05"
+    },
+    {
+     "id": 5124,
+     "title": "Sanierung von Schulgebäuden (CDU-Fraktion vom 05.10.2022) - Bericht",
+     "datum": "2022-11-08"
+    },
+    {
+     "id": 1401,
+     "title": "Erfolgsplan EGH - Instandhaltung/Instandsetzung der Schulgebäude und sonstigen Gebäude",
+     "datum": "2019-03-07"
+    },
+    {
+     "id": 1291,
+     "title": "Cäcilienschule, Umbau und Erweiterung - Fällung von Bäumen - Bericht",
+     "datum": "2018-12-13"
+    },
+    {
+     "id": 432,
+     "title": "Erfolgsplan EGH - Instandhaltung/Instandsetzung der Schulgebäude und sonstigen Gebäuden",
+     "datum": "2018-03-01"
+    },
+    {
+     "id": 504,
+     "title": "Erfolgsplan EGH - Instandhaltung/Instandsetzung der Schulgebäude und sonstigen Gebäuden",
+     "datum": "2018-03-06"
+    },
+    {
+     "id": 1503,
+     "title": "Erfolgsplan EGH - Instandhaltung/Instandsetzung der Schulgebäude und sonstigen Gebäude",
+     "datum": "2019-04-02"
+    },
+    {
+     "id": 7159,
+     "title": "Berichte über Bauprojekte an städtischen Schulen (Fraktion CDU vom 19.11.2024) - Beschlussantrag mit mündlichem Bericht der Verwaltung",
+     "datum": "2024-12-05"
+    },
+    {
+     "id": 8466,
+     "title": "Förderantrag Skatehalle Oldenburg",
+     "datum": "2025-12-15"
+    },
+    {
+     "id": 8136,
+     "title": "Förderantrag Skatehalle Oldenburg",
+     "datum": "2025-12-10"
+    },
+    {
+     "id": 5917,
+     "title": "Förderantrag Skatehalle Oldenburg",
+     "datum": "2023-09-04"
+    },
+    {
+     "id": 8426,
+     "title": "Anpassung der Schulbezirke der städtischen Grundschulen",
+     "datum": "2026-03-16"
+    },
+    {
+     "id": 5619,
+     "title": "Anpassung der Schulbezirke der städtischen Grundschulen",
+     "datum": "2023-02-27"
+    },
+    {
+     "id": 6303,
+     "title": "Anpassung der Schulbezirke der städtischen Grundschulen",
+     "datum": "2024-02-06"
+    },
+    {
+     "id": 6630,
+     "title": "Anpassung der Schulbezirke der städtischen Grundschulen",
+     "datum": "2024-02-26"
+    },
+    {
+     "id": 7542,
+     "title": "Anpassung der Schulbezirke der städtischen Grundschulen",
+     "datum": "2025-02-24"
+    },
+    {
+     "id": 8313,
+     "title": "Anpassung der Schulbezirke der städtischen Grundschulen - Beschluss",
+     "datum": "2026-03-10"
+    },
+    {
+     "id": 613,
+     "title": "Anpassung der Schulbezirke der städtischen Grundschulen",
+     "datum": "2018-02-19"
+    }
+   ],
+   "debatten_n": 0,
+   "presse_n": 0,
+   "ms": 7853
+  }
+ ]
+}

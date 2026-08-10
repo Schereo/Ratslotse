@@ -2672,6 +2672,78 @@ class CouncilStore:
             "SELECT slug, canonical_slug FROM council_entity_aliases")}
         return resolve_chains(raw)
 
+    # --- Entitäts-Anker der Suche (Akkuratheits-Paket, 10.08.26) -------------
+
+    def entity_suchindex(self) -> list[tuple[int, str, int]]:
+        """(entity_id, suchbarer Name, n Beschlüsse) für den deterministischen
+        Frage-Anker: alle Entitäts-Namen PLUS die Alias-Slugs aus
+        council_entity_aliases — dort leben auch die frei kuratierten
+        Glossar-Einträge („caeci" → caecilienbruecke, source='glossar'),
+        dieselbe Tabelle wie die Themen-Dubletten des Admin-Panels."""
+        rows = [(r["id"], r["name"], r["n"]) for r in self._conn.execute(
+            "SELECT id, name, n FROM council_entities")]
+        rows += [(r["id"], r["alias"], r["n"]) for r in self._conn.execute(
+            "SELECT e.id, a.slug AS alias, e.n FROM council_entity_aliases a "
+            "JOIN council_entities e ON e.slug = a.canonical_slug")]
+        return rows
+
+    def decision_ids_for_entities(self, entity_ids: list[int], je: int = 12) -> list[int]:
+        """Beschluss-ids der Entitäten, NEUESTE zuerst, dedupliziert — der
+        gesetzte Kandidaten-Sockel neben der semantischen Suche."""
+        if not entity_ids:
+            return []
+        ph = ",".join("?" * len(entity_ids))
+        rows = self._conn.execute(
+            f"SELECT l.entity_id, l.decision_id FROM council_entity_links l "
+            f"JOIN council_decisions d ON d.id = l.decision_id "
+            f"JOIN council_sessions cs ON cs.ksinr = d.ksinr "
+            f"WHERE l.entity_id IN ({ph}) ORDER BY cs.session_date DESC",
+            entity_ids).fetchall()
+        out, zaehler, gesehen = [], {}, set()
+        for r in rows:
+            if r["decision_id"] in gesehen:
+                continue
+            if zaehler.get(r["entity_id"], 0) >= je:
+                continue
+            zaehler[r["entity_id"]] = zaehler.get(r["entity_id"], 0) + 1
+            gesehen.add(r["decision_id"])
+            out.append(r["decision_id"])
+        return out
+
+    def neueste_stationen_fuer(self, kvonrs: list[int],
+                               vorlage_basen: list[str]) -> list[dict]:
+        """Alle Beschlüsse (id, kvonr, vorlage_nr, session_date, committee) der
+        genannten Vorlagen-Familien — Grundlage für den „ältere Station"-Marker:
+        derselbe Text durchläuft mehrere Gremien (gleiches kvonr), Revisionen
+        hängen ein Suffix an die Vorlagen-Nummer (26/0100 → 26/0100-1)."""
+        kvonrs = sorted({k for k in kvonrs if k})
+        basen = sorted({(b or "").strip() for b in vorlage_basen if b and str(b).strip()})
+        if not kvonrs and not basen:
+            return []
+        teile, params = [], []
+        if kvonrs:
+            teile.append(f"d.kvonr IN ({','.join('?' * len(kvonrs))})")
+            params += kvonrs
+        for b in basen[:60]:
+            teile.append("d.vorlage_nr = ? OR d.vorlage_nr LIKE ?")
+            params += [b, b + "-%"]
+        rows = self._conn.execute(
+            "SELECT d.id, d.kvonr, d.vorlage_nr, cs.session_date, cs.committee "
+            "FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr "
+            "WHERE " + " OR ".join(teile), params).fetchall()
+        return [dict(r) for r in rows]
+
+    def session_dates_fuer(self, decision_ids: list[int]) -> dict[int, str]:
+        """id → session_date (ISO) — für den Recency-Bonus im Ranking."""
+        if not decision_ids:
+            return {}
+        ph = ",".join("?" * len(decision_ids))
+        rows = self._conn.execute(
+            f"SELECT d.id, cs.session_date FROM council_decisions d "
+            f"JOIN council_sessions cs ON cs.ksinr = d.ksinr WHERE d.id IN ({ph})",
+            decision_ids).fetchall()
+        return {r["id"]: r["session_date"] for r in rows if r["session_date"]}
+
     def list_entity_aliases(self) -> list[dict]:
         """All merges with both display names — for the admin list.
 

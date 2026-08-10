@@ -172,6 +172,10 @@ def _run(job: DeepJob, nwz_db: str, council_db: str) -> None:
             from council import embeddings as emb
         except Exception:  # noqa: BLE001 — ohne fastembed keine Recherche
             emb = None
+        # Akkuratheits-Paket: Entitäts-Anker der HAUPTfrage in jede
+        # Facetten-Suche, Frische-Bonus bei Sachstands-Formulierung.
+        anker = qa.anker_ids_fuer(store, job.frage)
+        frisch = qa.recency_intent(job.frage)
         beste: dict[int, float] = {}
         for f in facetten:
             if job.stop.is_set():
@@ -181,7 +185,8 @@ def _run(job: DeepJob, nwz_db: str, council_db: str) -> None:
             if emb is not None:
                 try:
                     hits = emb.hybrid_search(store, f["frage"], f["begriffe"],
-                                             top_k=JE_FACETTE, pool=45)
+                                             top_k=JE_FACETTE, pool=45,
+                                             anker_ids=anker, recency=frisch)
                 except Exception:  # noqa: BLE001 — eine kaputte Facette killt nicht den Job
                     _log.warning("deep %s: Facette %r ohne Treffer (Suche scheiterte)",
                                  job.id, f["name"], exc_info=True)
@@ -199,6 +204,7 @@ def _run(job: DeepJob, nwz_db: str, council_db: str) -> None:
 
         geordnet = sorted(beste.items(), key=lambda kv: -kv[1])[:MAX_KANDIDATEN]
         candidates = store.get_decisions_by_ids([did for did, _ in geordnet])
+        qa.markiere_veraltete(store, candidates)
         score = dict(geordnet)
         for c in candidates:
             logit = score.get(c["id"])

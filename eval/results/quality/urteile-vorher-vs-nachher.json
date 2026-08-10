@@ -1,0 +1,134 @@
+[
+ {
+  "aktualitaet": "nachher",
+  "quellentreue": "gleich",
+  "vollstaendigkeit": "nachher",
+  "klarheit": "nachher",
+  "gesamt": "nachher",
+  "id": "stadion-stand",
+  "fokus": "stadion+recency",
+  "zuordnung": "A=nachher, B=vorher",
+  "begruendung": "Antwort A präsentiert den neuesten Sachstandsbericht vom 25. Februar 2026 als aktuellsten Stand, während Antwort B nur bis zum 3. Dezember 2025 reicht. Zudem ist die chronologische Darstellung in A prägnanter und fokussierter auf die wesentlichen Entwicklungen."
+ },
+ {
+  "aktualitaet": "vorher",
+  "quellentreue": "gleich",
+  "vollstaendigkeit": "vorher",
+  "klarheit": "vorher",
+  "gesamt": "vorher",
+  "id": "stadion-kosten",
+  "fokus": "stadion+geld",
+  "zuordnung": "A=vorher, B=nachher",
+  "begruendung": "Antwort A ist aktueller, da sie den Fehlbetrag der Stadionplanungsgesellschaft mbH für 2024 erwähnt, der in Antwort B fehlt. Antwort A bietet auch eine detailliertere Aufschlüsselung der Fehlbeträge und eine bessere Strukturierung der Informationen."
+ },
+ {
+  "aktualitaet": "gleich",
+  "quellentreue": "gleich",
+  "vollstaendigkeit": "gleich",
+  "klarheit": "vorher",
+  "gesamt": "vorher",
+  "id": "stadion-parteien",
+  "fokus": "stadion+partei",
+  "zuordnung": "A=vorher, B=nachher",
+  "begruendung": "Antwort A ist klarer strukturiert und präsentiert die Informationen thematisch geordnet, was die Lesbarkeit und das Verständnis verbessert. Antwort B mischt die Informationen stärker, was die Übersichtlichkeit beeinträchtigt."
+ },
+ {
+  "aktualitaet": "nachher",
+  "quellentreue": "gleich",
+  "vollstaendigkeit": "gleich",
+  "klarheit": "gleich",
+  "gesamt": "nachher",
+  "id": "stadion-verlauf",
+  "fokus": "stadion+verlauf",
+  "zuordnung": "A=nachher, B=vorher",
+  "begruendung": "Antwort A ist aktueller, da sie den Jahresabschluss 2023 der Stadionplanungsgesellschaft mbH mit dem Datum 26. August 2024 korrekt dem Rat zuordnet, während Antwort B diesen dem Ausschuss für Finanzen und Beteiligungen am 7. August 2024 zuschreibt und die Ratssitzung nur als Bestätigung nennt. Zudem listet Antwort A die Sachstandsberichte für 2024 und 2025 in chronologisch korrekter Reihenfolge auf, während Antwort B hier eine Vermischung der Daten aufweist."
+ },
+ {
+  "aktualitaet": "gleich",
+  "quellentreue": "gleich",
+  "vollstaendigkeit": "nachher",
+  "klarheit": "nachher",
+  "gesamt": "nachher",
+  "id": "caeci-was",
+  "fokus": "entitaet",
+  "zuordnung": "A=nachher, B=vorher",
+  "begruendung": "Antwort A ist vollständiger, da sie auch andere Brückenprojekte im Umfeld erwähnt, die im Kontext der Cäcilienbrücke relevant sein könnten. Beide Antworten nutzen die gleichen Quellen und stellen den Sachstand ähnlich dar."
+ },
+ {
+  "aktualitaet": "vorher",
+  "quellentreue": "gleich",
+  "vollstaendigkeit": "vorher",
+  "klarheit": "vorher",
+  "gesamt": "vorher",
+  "id": "caeci-slang",
+  "fokus": "entitaet+glossar",
+  "zuordnung": "A=vorher, B=nachher",
+  "begruendung": "Antwort A ist aktueller, da sie den Sachstandsbericht vom April 2024 als zuletzt zur Kenntnis genommen darstellt, während B dies nicht explizit hervorhebt. Zudem ist A vollständiger, da es die Abgrenzung zu anderen Brückenprojekten thematisiert, was für die Klarheit der Antwort relevant ist."
+ },
+ {
+  "aktualitaet": "nachher",
+  "quellentreue": "gleich",
+  "vollstaendigkeit": "nachher",
+  "klarheit": "gleich",
+  "gesamt": "nachher",
+  "id": "floetenteich",
+  "fokus": "entitaet",
+  "zuordnung": "A=vorher, B=nachher",
+  "begruendung": "Antwort B ist aktueller, da sie einen Sachstandsbericht zum Genehmigungsverfahren Tiefengeothermie vom September 2025 erwähnt, während Antwort A nur bis Oktober 2024 reicht. Zudem ist die Struktur von B etwas prägnanter und fokussierter auf die Hauptthemen."
+ },
+ {
+  "aktualitaet": "nachher",
+  "quellentreue": "nachher",
+  "vollstaendigkeit": "nachher",
+  "klarheit": "gleich",
+  "gesamt": "nachher",
+  "id": "fliegerhorst",
+  "fokus": "entitaet",
+  "zuordnung": "A=nachher, B=vorher",
+  "begruendung": "Antwort A ist aktueller, da sie die Entscheidung zur Dreifeldhalle im Februar 2026 korrekt datiert und die Diskussion um die Fliegerhorst-Straße mit einem 'Faktenupdate' im September 2023 erwähnt. Antwort B hingegen datiert die Dreifeldhalle ebenfalls auf 2026, aber erwähnt auch ältere, vertagte Diskussionen, ohne den neuesten Stand klar hervorzuheben."
+ },
+ {
+  "aktualitaet": "vorher",
+  "quellentreue": "vorher",
+  "vollstaendigkeit": "vorher",
+  "klarheit": "vorher",
+  "gesamt": "vorher",
+  "id": "entlastungsstrasse-stand",
+  "fokus": "recency",
+  "zuordnung": "A=vorher, B=nachher",
+  "begruendung": "Antwort A ist aktueller, da sie einen Beschluss vom März 2026 als den letzten Stand nennt, während Antwort B einen Beschluss vom April 2026 nennt, aber den letzten Stand als März 2026 angibt. Antwort A bietet zudem eine detailliertere chronologische Darstellung und mehr spezifische Informationen aus den Protokollen, was sie vollständiger und klarer macht."
+ },
+ {
+  "aktualitaet": "nachher",
+  "quellentreue": "nachher",
+  "vollstaendigkeit": "nachher",
+  "klarheit": "nachher",
+  "gesamt": "nachher",
+  "id": "bplan831",
+  "fokus": "recency+supersedes",
+  "zuordnung": "A=nachher, B=vorher",
+  "begruendung": "Antwort A ist aktueller, da sie den Beschluss des Bebauungsplans 831 als Satzung am 13. April 2026 korrekt als finalen Schritt darstellt, während Antwort B einen Zwischenschritt des Ausschusses als Satzungsbeschluss nennt und den Ratsbeschluss als Bestätigung. Antwort A ist auch quellentreuer, da sie die Zitate der Politiker präziser und mit korrekter Datumsangabe wiedergibt."
+ },
+ {
+  "aktualitaet": "vorher",
+  "quellentreue": "vorher",
+  "vollstaendigkeit": "vorher",
+  "klarheit": "vorher",
+  "gesamt": "vorher",
+  "id": "radverkehr-zuletzt",
+  "fokus": "recency",
+  "zuordnung": "A=vorher, B=nachher",
+  "begruendung": "Antwort A ist aktueller, da sie Beschlüsse aus dem Jahr 2025 erwähnt, die in Antwort B fehlen oder anders datiert sind. Antwort A präsentiert die Informationen auch in einer klareren und besser strukturierten Weise, die die neuesten Entwicklungen hervorhebt."
+ },
+ {
+  "aktualitaet": "gleich",
+  "quellentreue": "gleich",
+  "vollstaendigkeit": "gleich",
+  "klarheit": "gleich",
+  "gesamt": "gleich",
+  "id": "schulen-sanierung",
+  "fokus": "breit",
+  "zuordnung": "A=vorher, B=nachher",
+  "begruendung": "Beide Antworten sind in Bezug auf Aktualität, Quellentreue, Vollständigkeit und Klarheit sehr ähnlich. Es gibt keine signifikanten Unterschiede, die eine Antwort deutlich besser als die andere erscheinen lassen würden."
+ }
+]

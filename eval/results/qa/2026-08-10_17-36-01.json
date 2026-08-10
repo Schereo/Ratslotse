@@ -1,0 +1,640 @@
+{
+  "suite": "qa",
+  "timestamp": "2026-08-10T17:36:01",
+  "cases": 21,
+  "retrieval": {
+    "hit_rate": 0.9524,
+    "mrr": 0.7145
+  },
+  "arms": {
+    "mit_tragweite": {
+      "cite_expected_rate": 0.7619,
+      "citations": 121,
+      "formality_citations": 18,
+      "lead_formality_cases": 3
+    },
+    "ohne_tragweite": {
+      "cite_expected_rate": 0.7143,
+      "citations": 109,
+      "formality_citations": 16,
+      "lead_formality_cases": 3
+    }
+  },
+  "details": [
+    {
+      "id": "stadion",
+      "expected": [
+        5621,
+        5402,
+        5459,
+        5656,
+        5442,
+        5690,
+        5797
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 1,
+      "cited_mit": [
+        4712,
+        4715,
+        4851,
+        5621,
+        5439,
+        5688,
+        6705,
+        7868,
+        7869,
+        8540
+      ],
+      "cited_ohne": [
+        4712,
+        4715,
+        4851
+      ]
+    },
+    {
+      "id": "fahrradstrassen",
+      "expected": [
+        7171,
+        7533,
+        5597,
+        3907,
+        373,
+        1532
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 1,
+      "cited_mit": [
+        7533,
+        7171,
+        7070,
+        6085,
+        7704,
+        8525,
+        5597
+      ],
+      "cited_ohne": [
+        7533,
+        7171,
+        7070,
+        5597,
+        4768,
+        5209,
+        4767
+      ]
+    },
+    {
+      "id": "fliegerhorst-abfall",
+      "expected": [
+        7739,
+        7837,
+        7531,
+        7532
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 1,
+      "cited_mit": [
+        7739,
+        7837,
+        7835
+      ],
+      "cited_ohne": [
+        7739,
+        7837,
+        7835
+      ]
+    },
+    {
+      "id": "wechloy-neubau",
+      "expected": [
+        7282,
+        6842,
+        6876,
+        6753,
+        6696,
+        6598,
+        6998,
+        6816
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 1,
+      "cited_mit": [
+        5307,
+        8618,
+        5618,
+        6598,
+        6696,
+        6753,
+        6842,
+        6876,
+        6998,
+        7282,
+        7276,
+        7745,
+        8312,
+        8425
+      ],
+      "cited_ohne": [
+        5307,
+        8618,
+        5618,
+        6598,
+        6696,
+        6753,
+        6842,
+        6876,
+        6998,
+        7282,
+        8312,
+        8425
+      ]
+    },
+    {
+      "id": "vergnuegungssteuer",
+      "expected": [
+        8056,
+        7864,
+        8002,
+        7972,
+        7089,
+        7270
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 1,
+      "cited_mit": [],
+      "cited_ohne": []
+    },
+    {
+      "id": "huntebruecke",
+      "expected": [
+        8355,
+        8105
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 1,
+      "cited_mit": [
+        8355,
+        8105
+      ],
+      "cited_ohne": [
+        8355,
+        8105
+      ]
+    },
+    {
+      "id": "lachgas",
+      "expected": [
+        7452,
+        7662,
+        7839,
+        7400
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 1,
+      "cited_mit": [
+        7452,
+        7662,
+        7839
+      ],
+      "cited_ohne": [
+        7662,
+        7452,
+        7839
+      ]
+    },
+    {
+      "id": "machatschkala",
+      "expected": [
+        6169,
+        6571,
+        6652,
+        6301
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 1,
+      "cited_mit": [
+        6652,
+        6571,
+        6169,
+        6301
+      ],
+      "cited_ohne": [
+        6652
+      ]
+    },
+    {
+      "id": "maerchen-strassen",
+      "expected": [
+        7477,
+        7478,
+        7476,
+        7648,
+        7649,
+        7651
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 1,
+      "cited_mit": [
+        7650,
+        7648,
+        7651,
+        7649
+      ],
+      "cited_ohne": [
+        7648,
+        7650,
+        7651,
+        7649
+      ]
+    },
+    {
+      "id": "summer-street",
+      "expected": [
+        5207,
+        5367,
+        4480,
+        4635,
+        5069
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 1,
+      "cited_mit": [
+        5367,
+        5207,
+        5910,
+        8161,
+        5706,
+        4480
+      ],
+      "cited_ohne": []
+    },
+    {
+      "id": "baeder-finanzen",
+      "expected": [
+        8197,
+        7061,
+        6840,
+        5911
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 4,
+      "cited_mit": [
+        8445,
+        8197,
+        8001,
+        7971,
+        8443,
+        8195,
+        7061,
+        6840,
+        5911,
+        8653,
+        4955,
+        3984,
+        2909,
+        2227,
+        1748,
+        6397,
+        4433
+      ],
+      "cited_ohne": [
+        8445,
+        8197,
+        8001,
+        7971,
+        8443,
+        8195,
+        7061,
+        6840,
+        5911,
+        8653,
+        4955,
+        3984,
+        2909,
+        2227,
+        1748
+      ]
+    },
+    {
+      "id": "klimaneutral",
+      "expected": [
+        7617,
+        4183
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": null,
+      "cited_mit": [
+        3857,
+        5564,
+        5265,
+        4328,
+        8549,
+        3346,
+        3269,
+        4816
+      ],
+      "cited_ohne": [
+        3857,
+        5564,
+        3346,
+        4331,
+        4328
+      ]
+    },
+    {
+      "id": "grundschulen-aktuell",
+      "expected": [
+        8425,
+        8312,
+        7282,
+        6842
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 39,
+      "cited_mit": [
+        8512,
+        8313,
+        7523
+      ],
+      "cited_ohne": [
+        8512,
+        8313,
+        7523,
+        7430,
+        7127
+      ]
+    },
+    {
+      "id": "wohnraum",
+      "expected": [
+        5291,
+        5630,
+        2163,
+        2725
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 1,
+      "cited_mit": [
+        1498,
+        1276,
+        2275,
+        2375,
+        2754,
+        8336,
+        8117,
+        7729,
+        7582,
+        5291,
+        4207,
+        4065,
+        4206,
+        3071
+      ],
+      "cited_ohne": [
+        1498,
+        2275,
+        2375,
+        4065,
+        4207,
+        5291,
+        4206,
+        7582,
+        7729,
+        8117,
+        8336
+      ]
+    },
+    {
+      "id": "caecilienbruecke-verlauf",
+      "expected": [
+        7822,
+        7193,
+        6692
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 1,
+      "cited_mit": [
+        518,
+        2795,
+        3638,
+        6692,
+        7193,
+        7822
+      ],
+      "cited_ohne": [
+        518,
+        2795,
+        3638,
+        6692,
+        7193,
+        7822
+      ]
+    },
+    {
+      "id": "pumptrack-vorlagentiefe",
+      "expected": [
+        8515,
+        5859,
+        4271
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 34,
+      "cited_mit": [
+        3969,
+        8466,
+        8136,
+        5917
+      ],
+      "cited_ohne": [
+        3969,
+        8466,
+        8136,
+        5917
+      ]
+    },
+    {
+      "id": "weser-ems-buergschaft",
+      "expected": [
+        7912,
+        7758
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 2,
+      "cited_mit": [
+        7912,
+        6551,
+        8478,
+        7522
+      ],
+      "cited_ohne": [
+        7912,
+        7758,
+        8478,
+        8408,
+        7522,
+        7391,
+        6551,
+        6327
+      ]
+    },
+    {
+      "id": "kette-caecilienbruecke-kosten",
+      "expected": [
+        7822,
+        6692,
+        7193
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 2,
+      "cited_mit": [
+        1279,
+        3638,
+        6692,
+        7822
+      ],
+      "cited_ohne": [
+        518,
+        1279,
+        3638,
+        6692,
+        7822,
+        8105
+      ]
+    },
+    {
+      "id": "kette-weser-ems-wofuer",
+      "expected": [
+        7912,
+        7758
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 2,
+      "cited_mit": [
+        6551,
+        5014,
+        6259,
+        7912
+      ],
+      "cited_ohne": [
+        6259,
+        7755,
+        6010,
+        6551,
+        7912,
+        6011
+      ]
+    },
+    {
+      "id": "seb-bus-samstag",
+      "expected": [
+        8047
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 1,
+      "cited_mit": [
+        336,
+        2446,
+        8047,
+        8527
+      ],
+      "cited_ohne": [
+        336,
+        2446,
+        8047,
+        8527
+      ]
+    },
+    {
+      "id": "fliegerhorst-altlasten",
+      "expected": [
+        8235,
+        6728,
+        7739,
+        7641
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 5,
+      "cited_mit": [],
+      "cited_ohne": [
+        7641,
+        7020,
+        7099,
+        7301
+      ]
+    }
+  ],
+  "latency": {
+    "analyse_ct": {
+      "mean": 0.01,
+      "p50": 0.01,
+      "p95": 0.01
+    },
+    "antwort_ct": {
+      "mean": 0.16,
+      "p50": 0.17,
+      "p95": 0.23
+    },
+    "antwort_ms": {
+      "mean": 6123,
+      "p50": 4402,
+      "p95": 18353
+    },
+    "bm25_ms": {
+      "mean": 49,
+      "p50": 51,
+      "p95": 69
+    },
+    "expand_ms": {
+      "mean": 727,
+      "p50": 672,
+      "p95": 1194
+    },
+    "kontext_ms": {
+      "mean": 15,
+      "p50": 15,
+      "p95": 23
+    },
+    "kosten_ct": {
+      "mean": 0.17,
+      "p50": 0.18,
+      "p95": 0.24
+    },
+    "paare": {
+      "mean": 118,
+      "p50": 118,
+      "p95": 133
+    },
+    "rerank_ms": {
+      "mean": 6410,
+      "p50": 6577,
+      "p95": 8163
+    },
+    "retrieve_ms": {
+      "mean": 6492,
+      "p50": 6658,
+      "p95": 8264
+    },
+    "total_ms": {
+      "mean": 13356,
+      "p50": 11275,
+      "p95": 25354
+    },
+    "varianten_neu": {
+      "mean": 9,
+      "p50": 12,
+      "p95": 12
+    },
+    "vektor_ms": {
+      "mean": 32,
+      "p50": 31,
+      "p95": 43
+    }
+  },
+  "cold_start_ms": 6538,
+  "kosten": {
+    "lauf_usd": 0.0689,
+    "calls_ohne_cost": 0
+  },
+  "skipped": 0,
+  "skipped_ids": []
+}

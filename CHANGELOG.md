@@ -7,6 +7,16 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Verbessert
+- **Die Suche wird akkurater — drei deterministische Signale neben der KI.**
+  Erkennt die Frage ein benanntes Objekt (Cäcilienbrücke, Fliegerhorst — auch
+  umgangssprachlich als „Cäci"), kommen dessen verknüpfte Beschlüsse gesetzt
+  in die Auswahl; Sachstands-Fragen („Wie ist der Stand …?") bevorzugen im
+  Ranking frischere Beschlüsse; und durchläuft dieselbe Vorlage mehrere
+  Gremien, weist die Antwort ältere Stationen als überholt aus, statt sie als
+  aktuellen Stand zu verkaufen. Die Kurzform-Aliasse pflegen wir in derselben
+  Tabelle wie die Themen-Dubletten. (#408)
+
 ### Neu
 - **Die Gründliche Recherche liest jetzt auch die Anlagen.** Gutachten,
   Konzepte und Stellungnahmen zu den Vorlagen (z. B. Schallgutachten und
