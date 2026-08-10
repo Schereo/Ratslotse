@@ -260,8 +260,9 @@ def _presse_block(presse: list[dict] | None) -> str:
         f"- {p.get('titel', '')} (Pressemitteilung der Stadt vom {p.get('datum') or 'unbekannt'}): "
         f"{(p.get('auszug') or '').strip()[:280]}"
         for p in presse)
-    return ("\nAKTUELLES VON DER STADT (Pressemitteilungen — nur nutzen, wenn sie die Frage\n"
-            "wirklich betreffen; im Text als „Laut Pressemitteilung vom …“ nennen, NIE mit [id]):\n"
+    return ("\nAKTUELLES VON DER STADT (thematisch geprüfte Pressemitteilungen — nutze sie\n"
+            "aktiv für den aktuellen Stand der Verwaltung, als „Laut Pressemitteilung\n"
+            "vom …“; NIE mit [id] zitieren):\n"
             f"{zeilen}\n")
 
 
@@ -289,9 +290,11 @@ def _debatten_block(debatten: list[dict] | None) -> str:
         if d.get("antwort"):
             zeile += f" — Antwort der Verwaltung: {(d['antwort'] or '').strip()[:300]}"
         zeilen.append(zeile)
-    return ("\nAUS DEN RATSDEBATTEN (Wortbeiträge aus Sitzungsprotokollen — Berichte,\n"
-            "KEINE Beschlüsse: nur nutzen, wenn einschlägig; im Text als „Laut Protokoll\n"
-            "sagte/fragte …“ nennen, NIE mit [id] zitieren):\n"
+    return ("\nAUS DEN RATSDEBATTEN (thematisch geprüfte Wortbeiträge aus den\n"
+            "Sitzungsprotokollen — Berichte, KEINE Beschlüsse). Gib das Meinungsbild\n"
+            "der Debatte in 1–2 Sätzen wieder (wer trug was vor, wo gab es Streit oder\n"
+            "Zusagen), klar markiert als „Laut Protokoll sagte/fragte …“ oder „In der\n"
+            "Debatte betonte …“; NIE mit [id] zitieren:\n"
             + "\n".join(zeilen) + "\n")
 
 
