@@ -5,7 +5,7 @@ Alle nennenswerten Änderungen an diesem Projekt (Ratslotse) werden hier dokumen
 Das Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
-## [Unreleased]
+## [1.7.0] – 2026-08-10
 
 ### Verbessert
 - **Keine Anreden-Dubletten mehr im Ratsmitglieder-Verzeichnis.** „Herr Jens
@@ -1856,7 +1856,8 @@ Open-Source-Go-Live von Ratslotse.
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v1.6.0...main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v1.7.0...main
+[1.7.0]: https://github.com/Schereo/Ratslotse/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/Schereo/Ratslotse/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/Schereo/Ratslotse/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/Schereo/Ratslotse/compare/v1.3.0...v1.4.0
