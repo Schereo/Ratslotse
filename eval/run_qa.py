@@ -366,8 +366,11 @@ def main() -> int:
             t["analyse_ct"] = kosten_ct_seit(c_exp)
             t_ret = time.perf_counter()
             hits = emb.hybrid_search(store, analyse["frage"], expanded, top_k=TOP_K, pool=55, timings=t,
-                                     varianten=analyse.get("varianten"))
+                                     varianten=analyse.get("varianten"),
+                                     anker_ids=qa.anker_ids_fuer(store, analyse["frage"]),
+                                     recency=qa.recency_intent(analyse["frage"]))
             cands = store.get_decisions_by_ids([h[0] for h in hits])
+            qa.markiere_veraltete(store, cands)
             if typ == "partei" and analyse.get("partei"):
                 try:
                     extra_ids = store.antrag_decision_ids(analyse["partei"], expanded)

@@ -193,6 +193,113 @@ def expand_query(question: str, model: str = EXPAND_MODEL) -> str:
         return question
 
 
+# ---- Akkuratheits-Paket (10.08.26): deterministische Signale neben der ----
+# ---- Semantik — Entitäts-Anker, Recency-Intent, „ältere Station"-Marker ----
+
+_RECENCY_RE = re.compile(
+    r"\b(stand|aktuell\w*|derzeit\w*|momentan\w*|inzwischen|zurzeit|"
+    r"jetzt|heute|zuletzt|neuest\w*|j[üu]ngst\w*)\b", re.IGNORECASE)
+_HISTORISCH_RE = re.compile(r"\b(19|20)\d{2}\b")
+
+
+def recency_intent(frage: str) -> bool:
+    """Fragt jemand nach dem HEUTIGEN Stand? Wortliste statt LLM-Feld —
+    deterministisch, kostenlos, testbar. Eine konkrete Jahreszahl in der
+    Frage schaltet den Bonus ab (wer nach 2019 fragt, will 2019)."""
+    return bool(_RECENCY_RE.search(frage)) and not _HISTORISCH_RE.search(frage)
+
+
+def _falte(text: str) -> str:
+    """Suchnormalisierung: Kleinschreibung, Umlaute ausgeschrieben, alles
+    Nicht-Alphanumerische zu Leerzeichen — macht „Cäcilienbrücke",
+    „Caecilienbruecke" und den Alias-Slug „caeci" vergleichbar."""
+    text = text.lower()
+    for a, b in (("ä", "ae"), ("ö", "oe"), ("ü", "ue"), ("ß", "ss")):
+        text = text.replace(a, b)
+    return re.sub(r"[^a-z0-9]+", " ", text).strip()
+
+
+# Namen, die in fast jeder Frage stecken und als Anker nur Rauschen wären.
+_ANKER_STOPP = {"stadt", "oldenburg", "stadt oldenburg", "rat", "stadtrat"}
+
+
+def finde_entitaeten(store, frage: str, max_n: int = 2) -> list[dict]:
+    """Deterministischer Frage-Anker: welche bekannten Entitäten (Themen-
+    Seiten) nennt die Frage wörtlich? Matcht ganze Wörter auf gefalteten
+    Namen UND den kuratierten Glossar-Aliassen (council_entity_aliases,
+    source='glossar' — dieselbe Tabelle wie die Themen-Dubletten). Längere
+    (spezifischere) Treffer zuerst, dann nach Beschlusszahl."""
+    frage_f = f" {_falte(frage)} "
+    treffer: dict[int, tuple[int, int, str]] = {}
+    for eid, name, n in store.entity_suchindex():
+        name_f = _falte(name)
+        # Mindestlänge 3 lässt kuratierte Kürzel („uni", „hbf") zu; generische
+        # Kurzwörter fängt die Stoppliste.
+        if len(name_f) < 3 or name_f in _ANKER_STOPP:
+            continue
+        if f" {name_f} " in frage_f:
+            alt = treffer.get(eid)
+            if alt is None or len(name_f) > alt[0]:
+                treffer[eid] = (len(name_f), n, name)
+    geordnet = sorted(treffer.items(), key=lambda kv: (-kv[1][0], -kv[1][1]))
+    return [{"id": eid, "name": name} for eid, (_l, _n, name) in geordnet[:max_n]]
+
+
+def anker_ids_fuer(store, frage: str) -> list[int]:
+    """Bequemer Einzeiler für alle Aufrufer (Router, Deep-Research, Evals):
+    erkannte Entitäten → deren Beschluss-ids, neueste zuerst. Leer bei
+    Fehlern — der Anker ist Zusatz, nie Blocker."""
+    try:
+        ent = finde_entitaeten(store, frage)
+        return store.decision_ids_for_entities([e["id"] for e in ent]) if ent else []
+    except Exception:  # noqa: BLE001
+        return []
+
+
+def _vorlage_basis(nr: str | None) -> str | None:
+    """„26/0100-1" → „26/0100": Revisionen hängen ein Zähler-Suffix an."""
+    if not nr or not str(nr).strip():
+        return None
+    return re.sub(r"-\d+$", "", str(nr).strip())
+
+
+def markiere_veraltete(store, candidates: list[dict],
+                       kandidaten_ids: set[int] | None = None) -> None:
+    """„Ältere Station"-Marker: Läuft dieselbe Vorlage (gleiches kvonr oder
+    gleiche Revisions-Familie der Vorlagen-Nummer) später noch einmal durch
+    ein Gremium, bekommt der ältere Kandidat ``neuere_station`` — der Kontext
+    sagt dem Modell damit, was der geltende Stand ist, statt es raten zu
+    lassen. Die jüngste Station selbst bleibt unmarkiert; die id des neueren
+    Beschlusses steht nur dabei, wenn er selbst im Kandidatenset liegt (nur
+    dann ist er als [id] zitierbar)."""
+    if kandidaten_ids is None:
+        kandidaten_ids = {c["id"] for c in candidates}
+    kvonrs = [c.get("kvonr") for c in candidates if c.get("kvonr")]
+    basen = [b for b in (_vorlage_basis(c.get("vorlage_nr")) for c in candidates) if b]
+    if not kvonrs and not basen:
+        return
+    try:
+        rows = store.neueste_stationen_fuer(kvonrs, basen)
+    except Exception:  # noqa: BLE001 — Marker ist Zusatz, nie Blocker
+        return
+    for c in candidates:
+        eigenes_datum = str(c.get("session_date") or "")
+        if not eigenes_datum:
+            continue
+        gruppe = [r for r in rows if r["id"] != c["id"] and (
+            (c.get("kvonr") and r.get("kvonr") == c.get("kvonr"))
+            or (_vorlage_basis(c.get("vorlage_nr"))
+                and _vorlage_basis(r.get("vorlage_nr")) == _vorlage_basis(c.get("vorlage_nr"))))]
+        juengere = [r for r in gruppe if str(r.get("session_date") or "") > eigenes_datum]
+        if not juengere:
+            continue
+        top = max(juengere, key=lambda r: str(r.get("session_date") or ""))
+        c["neuere_station"] = {
+            "id": top["id"] if top["id"] in kandidaten_ids else None,
+            "datum": top.get("session_date"), "committee": top.get("committee"),
+        }
+
+
 def _build_context(candidates: list[dict]) -> str:
     """Eine Zeile pro Beschluss: id, Titel, Gremium, Datum, Ergebnis + Kern des
     Beschlusstexts. 450 Zeichen statt 200 und die Metadaten machen die Antworten
@@ -240,6 +347,16 @@ def _build_context(candidates: list[dict]) -> str:
             suffix += f" — Tragweite: hoch{f' ({reason})' if reason else ''}"
         elif impact is not None and impact <= 15:
             suffix += " — Tragweite: gering (Formalie)"
+        # Akkuratheits-Paket: dieselbe Vorlage lief SPÄTER noch einmal durch
+        # ein Gremium — das Modell soll den älteren Stand nie als aktuell
+        # verkaufen (markiere_veraltete setzt das Feld deterministisch).
+        ns = c.get("neuere_station")
+        if ns and ns.get("datum"):
+            verweis = f", siehe [{ns['id']}]" if ns.get("id") else ""
+            gremium = f" ({ns['committee']})" if ns.get("committee") else ""
+            suffix += (f" — ⚠ ÄLTERE STATION: Zu dieser Vorlage gibt es eine NEUERE Station "
+                       f"vom {_datum_de(ns['datum'])}{gremium}{verweis} — "
+                       f"die neuere gilt als aktueller Stand")
         lines.append(f"[{c['id']}] {(c.get('title') or '').strip()} ({meta}): {body}{suffix}")
     return "\n".join(lines) or "(keine passenden Beschlüsse gefunden)"
 

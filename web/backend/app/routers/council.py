@@ -1113,14 +1113,22 @@ def _qa_retrieve(store: CouncilStore, q: str, expanded: str,
     back to keyword retrieval when embeddings/the reranker are unavailable."""
     try:
         from council import embeddings as emb
+        # Akkuratheits-Paket: deterministische Signale neben der Semantik —
+        # Entitäts-Anker (benannte Objekte der Frage) in den Rerank-Pool,
+        # Frische-Bonus bei Sachstands-Formulierungen.
         hits = emb.hybrid_search(store, q, expanded, top_k=QA_TOP_K, pool=55, timings=timings,
-                                 varianten=varianten)
+                                 varianten=varianten,
+                                 anker_ids=qa.anker_ids_fuer(store, q),
+                                 recency=qa.recency_intent(q))
         if hits:
             candidates = store.get_decisions_by_ids([h[0] for h in hits])  # preserves order
             score = {h[0]: h[1] for h in hits}
             for c in candidates:
                 logit = score.get(c["id"])
                 c["score"] = round(1.0 / (1.0 + math.exp(-(logit + QA_RERANK_BIAS))), 3) if logit is not None else None
+            # „Ältere Station"-Marker: überholte Zwischenstände derselben
+            # Vorlage werden im Kontext als solche ausgewiesen.
+            qa.markiere_veraltete(store, candidates)
             return [c for c in candidates if (c.get("score") or 0) >= QA_MIN_SCORE] or candidates, "semantisch"
     except Exception:  # noqa: BLE001 — fastembed missing/any failure → keyword fallback
         pass

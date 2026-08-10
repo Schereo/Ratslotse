@@ -121,7 +121,9 @@ VORLAGE_STATIONS = 4
 
 def hybrid_search(store, query: str, expanded: str, top_k: int = 25, pool: int = 45,
                   timings: dict | None = None,
-                  varianten: list[str] | None = None) -> list[tuple]:
+                  varianten: list[str] | None = None,
+                  anker_ids: list[int] | None = None,
+                  recency: bool = False) -> list[tuple]:
     """Hybrid retrieval (RAG-SOTA): vector candidates (on the expanded query) ∪
     Vorlagen-Chunk-Treffer (Sachverhalt/Begründung, auf Beschlüsse abgebildet) ∪
     BM25 candidates (FTS), reranked by a cross-encoder against the *original*
@@ -180,6 +182,17 @@ def hybrid_search(store, query: str, expanded: str, top_k: int = 25, pool: int =
         cand_ids += neue[:12]
         if timings is not None:
             timings["varianten_neu"] = min(len(neue), 12)
+    # Entitäts-Anker (Akkuratheits-Paket): Beschlüsse, die DETERMINISTISCH an
+    # einer in der Frage erkannten Entität hängen (council_entity_links), in
+    # den Rerank-Pool — der Cross-Encoder entscheidet fair mit, ob sie es in
+    # die Antwort schaffen. Heilt Fälle, in denen die Semantik ein benanntes
+    # Objekt (Brücke, Schule, Gelände) verfehlt.
+    if anker_ids and not klassisch:
+        bereits = set(cand_ids)
+        anker_neu = [i for i in anker_ids if i not in bereits][:12]
+        cand_ids += anker_neu
+        if timings is not None:
+            timings["anker_neu"] = len(anker_neu)
     if RERANK_MAX and len(cand_ids) > RERANK_MAX:
         # Reihum aus den drei Quellen (je score-sortiert) ziehen — so behalten
         # alle Kanäle ihre besten Kandidaten, statt dass der Zufall der
@@ -212,7 +225,19 @@ def hybrid_search(store, query: str, expanded: str, top_k: int = 25, pool: int =
                                              for d in docs if d["id"] not in vor_chunk])
         pairs = [(d["id"], _pair_text(d, excerpts, vor_chunk, bm_snippet)) for d in docs]
     try:
-        ranked = rerank(query, pairs)[:top_k]
+        ranked = rerank(query, pairs)
+        if recency:
+            # Sachstands-Fragen („Stand", „aktuell", „zuletzt"): jüngere
+            # Beschlüsse bekommen einen kleinen Logit-Bonus — kippt nahe
+            # Duelle zugunsten des frischen Stands, überstimmt aber nie einen
+            # klar besseren Alt-Treffer. VOR dem top_k-Schnitt, damit frische
+            # Grenzfälle nicht schon ausgeschieden sind.
+            try:
+                ranked = recency_boost(
+                    ranked, store.session_dates_fuer([i for i, _ in ranked]))
+            except Exception:  # noqa: BLE001 — Bonus ist Zusatz, nie Blocker
+                pass
+        ranked = ranked[:top_k]
         if timings is not None:
             timings["rerank_ms"] = round((time.perf_counter() - t2) * 1000)
         return ranked
@@ -221,6 +246,34 @@ def hybrid_search(store, query: str, expanded: str, top_k: int = 25, pool: int =
         order = [i for i, _ in vec] + [i for i in cand_ids if i not in seen]
         sc = dict(vec)
         return [(i, sc.get(i, 0.0)) for i in order[:top_k]]
+
+
+def recency_boost(hits: list[tuple], dates: dict[int, str],
+                  heute=None) -> list[tuple]:
+    """Reranker-Logits um einen Frische-Bonus ergänzen und neu sortieren:
+    +0,6 bei „gerade beschlossen", exponentiell abklingend (Halbwert ~10
+    Monate). Die Skala ist bewusst klein gegen die Logit-Spanne des
+    Rerankers (>2 Punkte zwischen relevant und fremd) — Aktualität bricht
+    Nähe-Duelle, ersetzt aber keine Relevanz."""
+    if not dates:
+        return hits
+    import math as _math
+    from datetime import date as _date
+
+    heute = heute or _date.today()
+    out = []
+    for did, score in hits:
+        bonus = 0.0
+        d = dates.get(did)
+        if d:
+            try:
+                monate = max(0, (heute - _date.fromisoformat(str(d)[:10])).days) / 30.4
+                bonus = 0.6 * _math.exp(-monate / 15.0)
+            except ValueError:
+                pass
+        out.append((did, score + bonus))
+    out.sort(key=lambda x: -x[1])
+    return out
 
 
 _pair_excerpts: dict[str, str] = {}  # vorlage_nr → excerpt; Vorlagentexte sind stabil
