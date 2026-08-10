@@ -1823,6 +1823,21 @@ class CouncilStore:
         ).fetchall()
         return [dict(r) for r in rows]
 
+    def geplante_beratungen_fuer(self, kvonrs: list[int]) -> list[dict]:
+        """Künftige Stationen (Datum ab heute, noch ohne Ergebnis) der Vorlagen —
+        der „Wie es weitergeht"-Stoff des Deep-Research-Berichts (Task 34)."""
+        kvonrs = [k for k in kvonrs if k]
+        if not kvonrs:
+            return []
+        ph = ",".join("?" * len(kvonrs))
+        rows = self._conn.execute(
+            f"SELECT b.kvonr, b.datum, b.gremium, v.vorlage_nr, v.title AS vorlage_titel "
+            f"FROM council_beratungen b JOIN council_vorlagen v ON v.kvonr = b.kvonr "
+            f"WHERE b.kvonr IN ({ph}) AND b.datum >= date('now') "
+            f"AND (b.ergebnis IS NULL OR b.ergebnis = '') ORDER BY b.datum",
+            kvonrs).fetchall()
+        return [dict(r) for r in rows]
+
     def kvonrs_without_beratungen(self, limit: int | None = None) -> list[int]:
         """Ingested Vorlagen whose Beratungsfolge has never been fetched,
         newest first."""
@@ -3698,6 +3713,20 @@ class CouncilStore:
                     (cur.lastrowid, inhalt))
                 n += 1
             return n
+
+    def aktive_fraktionen(self, monate: int = 12, min_beitraege: int = 5) -> list[str]:
+        """Fraktions-Labels mit nennenswerten Wortbeiträgen im Zeitraum — die
+        deterministische „Wer sitzt gerade im Rat"-Liste für die Vollständig-
+        keits-Zeile des Parteien-Bausteins (Tims Direktive 10.08.), ohne
+        kuratierte Stammdaten."""
+        rows = self._conn.execute(
+            "SELECT w.partei, COUNT(*) n FROM council_wortbeitraege w "
+            "JOIN council_sessions s ON s.ksinr = w.ksinr "
+            "WHERE w.partei IS NOT NULL AND w.partei != '' "
+            "AND s.session_date >= date('now', ?) "
+            "GROUP BY w.partei HAVING n >= ? ORDER BY n DESC",
+            (f"-{int(monate)} months", int(min_beitraege))).fetchall()
+        return [r[0] for r in rows]
 
     def protocol_raw_text(self, ksinr: int) -> str | None:
         row = self._conn.execute(

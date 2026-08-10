@@ -1602,13 +1602,13 @@ def test_partei_meinungen_endpoint(client, monkeypatch):
 
     monkeypatch.setattr(qa_mod, "partei_meinungen", lambda *a, **k: None)
     assert client.post("/api/council/partei-meinungen",
-                       json={"frage": "Stadionneubau?"}).json() == {"parteien": []}
+                       json={"frage": "Stadionneubau?"}).json()["parteien"] == []
 
     def kaputt(*a, **k):
         raise RuntimeError("llm down")
     monkeypatch.setattr(qa_mod, "partei_meinungen", kaputt)
     r = client.post("/api/council/partei-meinungen", json={"frage": "Stadionneubau?"})
-    assert r.status_code == 200 and r.json() == {"parteien": []}
+    assert r.status_code == 200 and r.json()["parteien"] == []
 
     # Cache-Hit: gleiche Treffer-IDs wie Fall 1 → Ergebnis kommt ohne LLM
     # (partei_meinungen ist noch der kaputt-Mock — er darf nicht laufen).

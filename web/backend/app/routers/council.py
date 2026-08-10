@@ -540,10 +540,19 @@ def partei_meinungen_endpoint(
             meinungen = qa.partei_meinungen(body.frage, rows)
             if meinungen:
                 store.partei_meinungen_cache_set(schluessel, body.frage, meinungen)
+        # Vollständigkeits-Ehrlichkeit (Tims Direktive 10.08.): Fraktionen, die
+        # im Rat aktiv sind, aber ohne passende Wortbeiträge zum Thema — der
+        # Baustein sagt das, statt sie stillschweigend wegzulassen.
+        ohne: list[str] = []
+        if meinungen:
+            vertreten = {qa._fraktions_label(e["partei"]) for e in meinungen}
+            ohne = [f for f in (qa._fraktions_label(x) for x in store.aktive_fraktionen())
+                    if f and f not in vertreten]
     except Exception:  # noqa: BLE001 — Zusatzbaustein, nie 500 im Gespräch
         _log.exception("partei_meinungen fehlgeschlagen")
         meinungen = None
-    return {"parteien": meinungen or []}
+        ohne = []
+    return {"parteien": meinungen or [], "ohne_beitraege": ohne}
 
 
 class QaShareQuelle(BaseModel):
