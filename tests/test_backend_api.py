@@ -1549,6 +1549,52 @@ def test_topic_suggestions_dedupe_similar(client):
 
 
 # ---- KI-Frage: Folgefragen im Stream (Design 24a) ----
+def test_ask_ersetzt_abgerissenen_stream(client, monkeypatch):
+    """Riss der LLM-Stream mitten in der Antwort, generiert /ask einmal
+    komplett neu und ersetzt den Torso per replace-Event (Befund 10.08.) —
+    vorher blieb still ein Satz-Torso mit Fallback-Chips stehen."""
+    from app.routers import council as council_router
+    from council import qa as qa_mod
+
+    _register(client)
+    cand = [{"id": 5, "title": "Entlastungsstraße Fliegerhorst", "summary": "Planung",
+             "policy_field": "verkehr", "outcome": "angenommen", "session_date": "2026-04-13",
+             "committee": "Verkehrsausschuss", "score": 1.0}]
+    monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (cand, "semantisch"))
+    monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
+
+    def kaputter_stream(*a, **k):
+        yield "Die Planung begann am 15. März 2018 mit Aufstellungsbes"
+        raise RuntimeError("provider hung up")
+
+    monkeypatch.setattr(qa_mod, "answer_stream", kaputter_stream)
+    monkeypatch.setattr(qa_mod, "answer_question",
+                        lambda *a, **k: ("Die Planung begann 2018 und läuft [5].", [5]))
+
+    def frag():
+        with client.stream("POST", "/api/council/ask",
+                           json={"question": "Stand der Entlastungsstraße?"}) as r:
+            return [json.loads(line[6:]) for line in "".join(r.iter_text()).splitlines()
+                    if line.startswith("data: ")]
+
+    events = frag()
+    replace = next(e for e in events if e["type"] == "replace")
+    assert replace["text"] == "Die Planung begann 2018 und läuft [5]."
+    assert next(e for e in events if e["type"] == "done")["cited"] == [5]
+    assert not any(e["type"] == "abbruch" for e in events)
+
+    # Scheitert auch der Ersatz, wird der Turn ehrlich als abgebrochen markiert
+    # (der Torso bleibt, done kommt trotzdem — das Gespräch bleibt bedienbar).
+    def auch_kaputt(*a, **k):
+        raise RuntimeError("still down")
+
+    monkeypatch.setattr(qa_mod, "answer_question", auch_kaputt)
+    events = frag()
+    assert any(e["type"] == "abbruch" for e in events)
+    assert any(e["type"] == "done" for e in events)
+    assert not any(e["type"] == "replace" for e in events)
+
+
 def test_ask_speichert_nur_mit_einwilligung(client, monkeypatch):
     """Die Einwilligungs-Schranke der Gesprächs-Speicherung (Review-Befund B6):
     ohne qa_speichern=1 schreibt /ask NICHTS, mit Einwilligung trägt das
