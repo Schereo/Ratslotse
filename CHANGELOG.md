@@ -18,6 +18,14 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   „Laut Protokoll …", nie als Beschluss. (#387)
 
 ### Verbessert
+- **Teilen teilt jetzt die Antwort, nicht nur die Frage.** Der Teilen-Knopf
+  unter einer Antwort erzeugt einen Link, der genau diese Antwort zeigt —
+  mit Frage, Fußnoten und den zitierten Beschlüssen, öffentlich lesbar auch
+  ohne Konto. Vorher enthielt der Link nur die Frage, und wer ihn öffnete,
+  bekam eine neu berechnete, womöglich andere Antwort. Geteilte Antworten
+  werden beim Löschen des Kontos mit entfernt. (#400)
+
+### Verbessert
 - **Der Parteien-Baustein zeigt Haltung und Datenbasis.** Jede Fraktion
   trägt jetzt ein kleines Label — „dafür", „dagegen" oder „Haltung
   gewandelt", wenn sich eine Position über die Jahre erkennbar geändert
