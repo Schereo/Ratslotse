@@ -294,6 +294,19 @@ CREATE TABLE IF NOT EXISTS qa_gespraech_turns (
 );
 CREATE INDEX IF NOT EXISTS idx_qa_turns_gespraech ON qa_gespraech_turns(gespraech_id);
 
+-- Geteilte „Frag den Rat"-Antworten (Task 31): bewusste Einzel-
+-- Veröffentlichung per Klick — unabhängig vom „Gespräche speichern"-Opt-in.
+-- token ist der öffentliche Schlüssel (unerratbar); user_id nur intern für
+-- die Konto-Löschung (USER_OWNED_TABLES), nie in der öffentlichen Antwort.
+CREATE TABLE IF NOT EXISTS qa_shares (
+    token    TEXT PRIMARY KEY,
+    user_id  INTEGER NOT NULL,
+    frage    TEXT NOT NULL,
+    antwort  TEXT NOT NULL,
+    quellen  TEXT,                  -- JSON [{id, title, session_date, committee, outcome}]
+    created  TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS quiz_answers (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     owner_id    INTEGER NOT NULL,
@@ -419,6 +432,7 @@ USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     ("push_tokens", "owner_id"),
     ("qa_gespraeche", "user_id"),
     ("qa_gespraech_turns", "user_id"),
+    ("qa_shares", "user_id"),
     ("quiz_answers", "owner_id"),
     ("quiz_ratings", "owner_id"),
     ("quiz_daily", "owner_id"),
@@ -1447,6 +1461,36 @@ class Store:
         with self._conn:
             self._conn.execute("UPDATE web_users SET qa_speichern = ? WHERE id = ?",
                                (1 if an else 0, user_id))
+
+    def qa_share_anlegen(self, user_id: int, frage: str, antwort: str,
+                         quellen: list[dict] | None) -> str:
+        """Snapshot einer geteilten Antwort (Task 31) → öffentliches Token.
+        Bewusste Einzel-Veröffentlichung — unabhängig vom Gespräche-Opt-in."""
+        import secrets
+
+        token = secrets.token_urlsafe(16)
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT INTO qa_shares (token, user_id, frage, antwort, quellen, created) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (token, user_id, frage[:300], antwort[:8000],
+                 json.dumps(quellen or [], ensure_ascii=False), now))
+        return token
+
+    def qa_share_get(self, token: str) -> dict | None:
+        """Öffentliche Sicht eines Snapshots — OHNE user_id."""
+        row = self._conn.execute(
+            "SELECT frage, antwort, quellen, created FROM qa_shares WHERE token = ?",
+            (token,)).fetchone()
+        if not row:
+            return None
+        try:
+            quellen = json.loads(row["quellen"] or "[]")
+        except (ValueError, TypeError):
+            quellen = []
+        return {"frage": row["frage"], "antwort": row["antwort"],
+                "quellen": quellen, "created": row["created"]}
 
     def qa_gespraech_start(self, user_id: int, titel: str) -> int | None:
         """None, wenn es das Konto (nicht mehr) gibt — schließt das Fenster,
