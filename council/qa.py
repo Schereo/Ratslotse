@@ -59,7 +59,9 @@ _EXPAND_CACHE_MAX = 256
 # --- Frage-Analyse (Stufe 2: Fragetyp-Routing) ------------------------------
 # EIN LLM-Call vor der Suche liefert Suchbegriffe UND Fragetyp (+ ggf. die
 # gefragte Fraktion) — kein zweiter Roundtrip gegenüber der reinen Expansion.
-QUERY_TYPES = ("thema", "verlauf", "partei", "geld")
+# „person" liefert die LLM-Analyse nie — der Typ wird deterministisch gesetzt,
+# wenn finde_person eine Ratsperson in der Frage erkennt (Router).
+QUERY_TYPES = ("thema", "verlauf", "partei", "geld", "person")
 _ANALYSE_CACHE: dict[str, dict] = {}
 
 
@@ -115,7 +117,9 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
         # Finanzierungs-Beschlüsse). Kandidaten-Union passiert in hybrid_search.
         varianten = [" ".join(str(v).split())[:120]
                      for v in (data.get("varianten") or []) if isinstance(v, str) and str(v).strip()][:2]
-        if typ not in QUERY_TYPES:
+        if typ not in QUERY_TYPES or typ == "person":
+            # „person" setzt ausschließlich der Router (deterministische
+            # Erkennung) — behauptet das Modell den Typ, fehlt die Person.
             typ = "thema"
         if typ != "partei":
             partei = None
@@ -159,7 +163,19 @@ EXTRA_REGELN = {
     "geld": (
         "Diese Frage zielt auf Beträge: Nenne die konkreten Summen aus den "
         "Beschlüssen (im Kontext als „Volumen: …“ markiert), gerundet und mit "
-        "Einordnung, wofür das Geld ist."
+        "Einordnung, wofür das Geld ist. Tauchen zum selben Vorhaben mehrere "
+        "Summen aus verschiedenen Jahren auf, benenne die Entwicklung mit "
+        "Ausgangs- und Endwert samt Datum und zitiere beide Beschlüsse."
+    ),
+    # Personen-Fragetyp (10.08.26): deterministisch gesetzt, wenn die Frage
+    # eine Ratsperson nennt — die Debatten-Zeilen sind dann deren Beiträge.
+    "person": (
+        "Diese Frage zielt auf EINE RATSPERSON: Stütze die Antwort vorrangig "
+        "auf die Wortbeiträge dieser Person im Abschnitt AUS DEN RATSDEBATTEN "
+        "(als „Laut Protokoll sagte …“, mit Datum und Gremium; nie mit [id]). "
+        "Nenne beim ersten Mal die Fraktion, wie sie bei den Beiträgen steht. "
+        "Beschlüsse dienen nur als Rahmen. Gibt es keine passenden Beiträge "
+        "der Person, sage das ehrlich — erfinde keine Positionen."
     ),
 }
 
@@ -243,6 +259,81 @@ def finde_entitaeten(store, frage: str, max_n: int = 2) -> list[dict]:
                 treffer[eid] = (len(name_f), n, name)
     geordnet = sorted(treffer.items(), key=lambda kv: (-kv[1][0], -kv[1][1]))
     return [{"id": eid, "name": name} for eid, (_l, _n, name) in geordnet[:max_n]]
+
+
+# Gruppen-Labels, die sich über die Personen-Stammdaten in Einzel-Parteien
+# auflösen lassen. BEWUSST NUR FDP/Volt: „Für Oldenburg" führt das RIS selbst
+# nur als Gruppe (Finke/Sander stehen so in den Stammdaten), und
+# „Bündnis 90/Die Grünen" ist trotz Slash EINE Partei.
+_AUFLOESBARE_GRUPPEN = {"FDP/Volt"}
+
+
+def _nachname_gefaltet(name: str) -> str | None:
+    """Letztes Namens-Token ohne Titel/Anreden — der kollisionsfreie Schlüssel
+    (unter den 51 Ratspersonen gibt es keine doppelten Nachnamen)."""
+    toks = [t for t in _falte(name).split()
+            if t not in {"dr", "prof", "dipl", "ing", "med", "herr", "frau",
+                         "ratsherr", "ratsfrau"}]
+    return toks[-1] if toks else None
+
+
+def parteien_aufloesen(store, rows: list[dict]) -> None:
+    """FDP/Volt-Beiträge über den Sprecher in die EINZEL-Partei auflösen
+    (Tims Standing-Punkt): Das Protokoll labelt nur die Gruppe, die
+    Stammdaten kennen die Partei. Mutiert ``partei`` in-place; ohne
+    Stammdaten-Treffer bleibt das quellentreue Gruppen-Label stehen.
+    Zeitlich bleibt alles korrekt — die Protokoll-Labels selbst sind die
+    zeitrichtige Quelle (Höpken stand damals als Linke im Protokoll), hier
+    wird nur INNERHALB einer bestehenden Gruppe verfeinert."""
+    betroffen = [r for r in rows
+                 if _fraktions_label(r.get("partei")) in _AUFLOESBARE_GRUPPEN]
+    if not betroffen:
+        return
+    try:
+        mapping = {}
+        for name, partei in store.personen_suchindex():
+            nn = _nachname_gefaltet(name)
+            if nn:
+                mapping[nn] = partei
+    except Exception:  # noqa: BLE001 — Auflösung ist Zusatz, nie Blocker
+        return
+    for r in betroffen:
+        toks = _falte(r.get("sprecher") or "").split()
+        partei = next((mapping[t] for t in reversed(toks) if t in mapping), None)
+        if partei:
+            r["partei"] = partei
+
+
+def finde_person(store, frage: str) -> dict | None:
+    """Personen-Fragetyp: Nennt die Frage eine Ratsperson (Voll- oder
+    Nachname, umlaut-gefaltet, ganze Wörter)? Liefert
+    {name, partei, nachname} — deterministisch, kostenlos."""
+    try:
+        index = store.personen_suchindex()
+    except Exception:  # noqa: BLE001
+        return None
+    frage_f = f" {_falte(frage)} "
+    treffer: list[tuple[int, dict]] = []
+    for name, partei in index:
+        name_f = _falte(name)
+        nachname_f = _nachname_gefaltet(name)
+        if not nachname_f or len(nachname_f) < 4:
+            continue
+        if f" {name_f} " in frage_f:
+            laenge = len(name_f)
+        elif f" {nachname_f} " in frage_f:
+            laenge = len(nachname_f)
+        else:
+            continue
+        # nachname im ORIGINAL (mit Umlauten): die Wortbeitrags-Suche macht
+        # damit ihr LIKE — der gefaltete Schlüssel würde „Lükermann" im
+        # Sprecher-Feld nie treffen (Faltung kennt keinen Rückweg).
+        original = next((t for t in reversed(name.replace(".", " ").split())
+                         if _falte(t) == nachname_f), name.split()[-1])
+        treffer.append((laenge, {"name": name, "partei": partei, "nachname": original}))
+    if not treffer:
+        return None
+    return max(treffer, key=lambda t: t[0])[1]
 
 
 def anker_ids_fuer(store, frage: str) -> list[int]:
@@ -530,7 +621,7 @@ def partei_meinungen(question: str, rows: list[dict], model: str = MODEL) -> lis
                 "datum": _datum_de(b.get("session_date")),
                 "art": b.get("art"),
                 "gremium": b.get("committee"),
-                "text": (b.get("text") or "").strip()[:300],
+                "text": (b.get("text") or "").strip()[:2000],
             } for b in gruppen[e["partei"]][:8]],
         })
     return [e for e in out if e["position"]] or None
