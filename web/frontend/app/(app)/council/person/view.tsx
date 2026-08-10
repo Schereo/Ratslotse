@@ -292,6 +292,15 @@ function PersonInner() {
               <WortbeitragZeile key={i} w={w} erste={i === 0} />
             ))}
           </div>
+          {/* Ehrlichkeit zur Quelle (Tims Punkt 10.08.): Niederschriften sind
+              Verlaufsprotokolle — die Protokollführung fasst zusammen, nicht
+              jede Wortmeldung wird erfasst. Ohne den Hinweis läse sich eine
+              kurze Liste wie „mehr hat die Person nie gesagt". */}
+          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground/60">
+            Die Protokolle fassen Wortbeiträge sinngemäß zusammen — nicht jede
+            Wortmeldung wird erfasst. Diese Liste ist deshalb ein Ausschnitt,
+            kein vollständiges Redeprotokoll.
+          </p>
         </Section>
       )}
 

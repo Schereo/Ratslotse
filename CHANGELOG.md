@@ -7,6 +7,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Verbessert
+- **Ehrlicher Hinweis auf den Ratsmitglieder-Seiten.** Unter den
+  Wortbeiträgen steht jetzt, dass die Protokolle sinngemäß zusammenfassen
+  und nicht jede Wortmeldung erfassen — die Liste ist ein Ausschnitt, kein
+  vollständiges Redeprotokoll. (#418)
+
 ### Neu
 - **Kostenentwicklung bei Geld-Fragen.** Der Geld-Baustein zeigt die
   zitierten Beträge jetzt als „Beträge im Zeitverlauf" — chronologisch mit
