@@ -310,7 +310,7 @@ export function MobileBottomNav() {
           angehoben über der Leiste, führt direkt in den KI-Frage-Modus. */}
       <Link
         href={FRAGEN_HREF}
-        aria-label="Frag den Rat — KI-Frage stellen"
+        aria-label="Frag den Rat — Frage stellen"
         className="flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium text-muted-foreground transition-[color,transform] duration-150 active:scale-95"
       >
         <span className="relative -mt-[22px] flex h-[54px] w-[54px] items-center justify-center rounded-full bg-signal text-signal-foreground shadow-[0_8px_22px_-10px_hsl(19_92%_45%/0.6)] ring-4 ring-background">

@@ -77,7 +77,7 @@ function SimpleSummaryHero({ text }: { text: string }) {
       </div>
       <p className="mt-3 text-[15px] leading-relaxed text-foreground">{text}</p>
       <p className="mt-2.5 text-xs text-muted-foreground">
-        KI-Kurzfassung — verbindlich ist der amtliche Wortlaut.
+        Automatische Kurzfassung — verbindlich ist der amtliche Wortlaut.
       </p>
     </div>
   );
