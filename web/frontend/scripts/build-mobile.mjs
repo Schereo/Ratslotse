@@ -14,6 +14,11 @@ import { join } from "node:path";
 
 const API_DIR = "app/api";
 const API_STASH = "app/_api.disabled";
+// /g (geteilte Antworten, Task 31) rendert server-seitig (force-dynamic für
+// die Link-Vorschau-Metadata) und kann nicht statisch exportiert werden. Die
+// App braucht die Route nicht: geteilte Links öffnen immer im Browser.
+const SHARE_DIR = "app/g";
+const SHARE_STASH = "app/_g.disabled";
 
 // Must match the backend origin the app talks to (lib/platform.ts apiBase()).
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "https://ratslotse.de";
@@ -46,6 +51,8 @@ function injectCsp(dir) {
 
 const hasApi = existsSync(API_DIR);
 if (hasApi) await rename(API_DIR, API_STASH);
+const hasShare = existsSync(SHARE_DIR);
+if (hasShare) await rename(SHARE_DIR, SHARE_STASH);
 let status = 1;
 try {
   status = spawnSync("next", ["build"], {
@@ -54,6 +61,7 @@ try {
   }).status ?? 1;
 } finally {
   if (hasApi && existsSync(API_STASH)) await rename(API_STASH, API_DIR);
+  if (hasShare && existsSync(SHARE_STASH)) await rename(SHARE_STASH, SHARE_DIR);
 }
 
 if (status === 0 && existsSync("out")) {
