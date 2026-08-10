@@ -523,7 +523,10 @@ def partei_meinungen_endpoint(
     partei_meinungen_limiter.check(request)
     try:
         from council import embeddings as emb
-        hits = emb.search_wortbeitraege(store, body.frage, body.frage, top_k=24)
+        # Fraktions-bewusst sammeln (je Fraktion bis 5 Beiträge) — das globale
+        # Top-24 bestand zur Hälfte aus Verwaltungs-Beiträgen ohne Fraktion,
+        # die „Parteimeinung" war real eine Einzel-Paraphrase (Befund 10.08.).
+        hits = emb.search_wortbeitraege_je_fraktion(store, body.frage, body.frage)
         rows = store.wortbeitraege_by_ids([wid for wid, _ in hits])
         meinungen = qa.partei_meinungen(body.frage, rows)
     except Exception:  # noqa: BLE001 — Zusatzbaustein, nie 500 im Gespräch

@@ -1473,6 +1473,13 @@ function ParteienBaustein({ frage, onFrageStellen }: {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <p className="text-[12.5px] font-bold">{p.partei}</p>
+                      {/* Ehrlichkeit zur Datenbasis: aus wie vielen Wortbeiträgen
+                          die Position verdichtet ist (Tims Befund 10.08.). */}
+                      {p.beitraege > 0 && (
+                        <span className="font-mono text-[10px] text-muted-foreground/70">
+                          {p.beitraege === 1 ? "1 Beitrag" : `${p.beitraege} Beiträge`}
+                        </span>
+                      )}
                       {!p.einig && (
                         <span className="rounded-full bg-amber-100 px-2 py-px text-[10px] font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
                           uneinheitlich
