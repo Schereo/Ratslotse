@@ -348,28 +348,52 @@ def _presse_matrix(store):
     return _presse_matrix_cache[1], _presse_matrix_cache[2], _presse_matrix_cache[3]
 
 
+# Cross-Encoder-Cutoff für die Zusatzkanäle (Presse, Wortbeiträge): Bi-Encoder-
+# Cosines trennen amtliche Kurztexte NICHT (Stadion-PM 0.466 < Ampelwartung
+# 0.471 auf die Stadion-Frage!), der Reranker trennt mit >2 Punkten Abstand
+# (gemessen 10.08.: echte Treffer −0.1…−0.5, Fremdthemen ≤ −2.5).
+KONTEXT_RERANK_MIN = float(os.environ.get("COUNCIL_KONTEXT_RERANK_MIN", "-1.5"))
+
+
+def _rerank_kontext(query: str, kandidaten: list[tuple], top_k: int) -> list[tuple]:
+    """``[(id, text)]``-Kandidaten der Zusatzkanäle per Cross-Encoder bestätigen —
+    nur Paare über dem Cutoff überleben. Ohne Reranker (fastembed fehlt) lieber
+    leer als Rauschen: die Zusatzblöcke sind optional."""
+    try:
+        ranked = rerank(query, kandidaten)
+    except Exception:  # noqa: BLE001
+        return []
+    return [(i, s) for i, s in ranked if s >= KONTEXT_RERANK_MIN][:top_k]
+
+
 def search_presse(store, query: str, expanded: str, top_k: int = 3,
                   min_score: float = 0.45) -> list[tuple]:
     """Beste Pressemitteilungen zur Frage → ``[(presse_id, score)]``.
-    Vektor-Kanal (bester Chunk je PM) ∪ BM25 — bewusst mit strenger Schwelle:
-    der Block „Aktuelles von der Stadt" soll nur auftauchen, wenn es wirklich
-    Einschlägiges gibt. Leer, solange kein PM-Index aufgebaut ist."""
-    best: dict[int, float] = {}
+    Vektor-Kanal (bester Chunk je PM) als Kandidaten-Lieferant, Cross-Encoder
+    als Torwächter — der Block „Aktuelles von der Stadt" soll nur auftauchen,
+    wenn es wirklich Einschlägiges gibt. BM25 nur als Fallback, solange kein
+    PM-Index aufgebaut ist (als Auffüller daneben hob er thematisch fremde
+    PMs in die UI — Tims Ampel-Wartungs-Befund 10.08.)."""
+    best: dict[int, tuple[float, str]] = {}
+    vektor_ok = False
     try:
-        ids, _texts, mat = _presse_matrix(store)
+        ids, texts, mat = _presse_matrix(store)
         if ids:
+            vektor_ok = True
             qv = embed([expanded])[0]
             scores = mat @ qv
-            for pid, s in zip(ids, scores):
-                if s >= min_score and s > best.get(pid, -1.0):
-                    best[pid] = float(s)
+            for pid, text, s in zip(ids, texts, scores):
+                if s >= min_score and s > best.get(pid, (-1.0, ""))[0]:
+                    best[pid] = (float(s), text)
     except Exception:  # noqa: BLE001 — ohne fastembed bleibt BM25
         pass
-    for pid, score, _snip in store.search_presse_fts(f"{query} {expanded}", limit=top_k * 3):
-        # BM25-Scores sind nicht cosine-vergleichbar — nur als Auffüller hinter
-        # den Vektor-Treffern (kleiner Sockel-Score).
-        best.setdefault(pid, 0.01 + min(score, 50) / 1000)
-    return sorted(best.items(), key=lambda x: -x[1])[:top_k]
+    if not vektor_ok:
+        fallback: dict[int, float] = {}
+        for pid, score, _snip in store.search_presse_fts(f"{query} {expanded}", limit=top_k * 3):
+            fallback.setdefault(pid, 0.01 + min(score, 50) / 1000)
+        return sorted(fallback.items(), key=lambda x: -x[1])[:top_k]
+    kandidaten = sorted(best.items(), key=lambda x: -x[1][0])[:max(top_k * 3, 9)]
+    return _rerank_kontext(query, [(pid, t) for pid, (_s, t) in kandidaten], top_k)
 
 
 def embed_presse_missing(store) -> int:
@@ -412,15 +436,17 @@ def _wb_matrix(store):
 
 
 def search_wortbeitraege(store, query: str, expanded: str, top_k: int = 4,
-                         min_score: float = 0.5) -> list[tuple]:
+                         min_score: float = 0.45) -> list[tuple]:
     """Beste Wortbeiträge (Debatten, Anfragen, Einwohnerfragen) zur Frage →
-    ``[(wb_id, score)]``. Vektor ∪ BM25 wie bei search_presse — strenge
-    Schwelle, der Debatten-Block soll nur bei echter Einschlägigkeit kommen.
-    Leer, solange kein Wortbeitrags-Index existiert (extract_wortbeitraege.py)."""
+    ``[(wb_id, score)]``. Wie search_presse: Vektor liefert Kandidaten, der
+    Cross-Encoder bestätigt — der Debatten-Block soll nur bei echter
+    Einschlägigkeit kommen. BM25 nur als Fallback ohne Index."""
     best: dict[int, float] = {}
+    vektor_ok = False
     try:
         ids, mat = _wb_matrix(store)
         if ids:
+            vektor_ok = True
             qv = embed([expanded])[0]
             scores = mat @ qv
             for wid, s in zip(ids, scores):
@@ -428,9 +454,17 @@ def search_wortbeitraege(store, query: str, expanded: str, top_k: int = 4,
                     best[wid] = float(s)
     except Exception:  # noqa: BLE001 — ohne fastembed bleibt BM25
         pass
-    for wid, score in store.search_wortbeitraege_fts(f"{query} {expanded}", limit=top_k * 3):
-        best.setdefault(wid, 0.01 + min(score, 50) / 1000)
-    return sorted(best.items(), key=lambda x: -x[1])[:top_k]
+    if not vektor_ok:
+        fallback: dict[int, float] = {}
+        for wid, score in store.search_wortbeitraege_fts(f"{query} {expanded}", limit=top_k * 3):
+            fallback.setdefault(wid, 0.01 + min(score, 50) / 1000)
+        return sorted(fallback.items(), key=lambda x: -x[1])[:top_k]
+    kandidaten = sorted(best.items(), key=lambda x: -x[1])[:max(top_k * 3, 12)]
+    rows = store.wortbeitraege_by_ids([wid for wid, _ in kandidaten])
+    texte = {r["id"]: " — ".join(t for t in (r.get("top"), r.get("text")) if t)
+             for r in rows}
+    return _rerank_kontext(query, [(wid, texte[wid]) for wid, _ in kandidaten if wid in texte],
+                           top_k)
 
 
 def embed_wortbeitraege_missing(store) -> int:
