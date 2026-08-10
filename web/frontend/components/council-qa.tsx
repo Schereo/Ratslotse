@@ -1481,7 +1481,11 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
 
         {/* Composer: mobil sticky am Viewport-Boden, in der Bühne (lg) fest an
             der Panel-Unterkante — Weiterfragen-Chips direkt darüber (2①②/4a). */}
-        <div className="sticky bottom-0 z-10 -mx-1 mt-4 bg-gradient-to-t from-background via-background to-transparent px-1 pb-[max(env(safe-area-inset-bottom),8px)] pt-4 print:hidden lg:static lg:mx-0 lg:bg-none lg:px-4 lg:pb-4 lg:pt-2">
+        {/* Klebe-Linie = Oberkante der fixen Tab-Bar (9a③: ~4rem + Safe-Area).
+            bottom-0 hieße: hinter der Leiste kleben, sobald man im Verlauf
+            hochscrollt (Tims Befund direkt nach dem 9a-Deploy) — die Safe-Area
+            steckt deshalb im Offset, nicht mehr im eigenen Padding. */}
+        <div className="sticky bottom-[calc(env(safe-area-inset-bottom)+4rem)] z-10 -mx-1 mt-4 bg-gradient-to-t from-background via-background to-transparent px-1 pb-2 pt-4 print:hidden lg:static lg:mx-0 lg:bg-none lg:px-4 lg:pb-4 lg:pt-2">
           {/* 9a-Regel: Ohne aktives Speichern gibt es keine Gesprächs-Zeile —
               „Neues Gespräch" ist dann ein schlichter Text-Link überm Composer. */}
           {turns.length > 0 && einstellung !== 1 && (
