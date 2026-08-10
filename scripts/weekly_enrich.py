@@ -49,6 +49,11 @@ STEPS: list[tuple[str, str]] = [
     ("Beschreibungen", "describe_entities.py"),
     ("Geocoding", "geocode_entities.py"),
     ("Embeddings / Ähnliche", "embed_decisions.py"),
+    # Anlagen (Task 33): Volltexte NEUER Anlagen nachladen (Netz+pypdf, kein
+    # LLM; der Alt-Bestand kam per Einmal-Batch) und ihre Chunk-Vektoren für
+    # den Anlagen-Kanal der Gründlichen Recherche schreiben (hash-idempotent).
+    ("Anlagen-Texte", "backfill_anlagen_texte.py --limit 300"),
+    ("Anlagen-Embeddings", "embed_anlagen.py"),
     # "Hängt zusammen mit…" je Thema (kein LLM, Sekunden) — muss NACH dem
     # Entitäten-Rebuild und den Embeddings laufen, es liest beide.
     ("Verwandte Themen", "build_entity_relations.py"),
