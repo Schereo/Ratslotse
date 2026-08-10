@@ -45,6 +45,18 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   erneuter Klick auf denselben Daumen ändert nichts. (#411)
 
 ### Verbessert
+- **Gutachten und Konzepte sind im Recherche-Bericht belegt.** Die Anlagen
+  einer Vorlage flossen zwar schon in die Gründliche Recherche ein, standen im
+  Text aber nur als Nebensatz — ob der Bericht sie wirklich benutzt hat, war
+  nicht zu erkennen. Jetzt tragen Aussagen aus einer Anlage eine eigene kleine
+  Fußnote (a, b, c … statt der Zahlen der Beschlüsse); ein Klick springt zur
+  passenden Karte unter „Aus den Anlagen". Anlagen, die gelesen, aber nicht
+  belegt wurden, treten optisch zurück.
+- **Die Quellen-Liste zeigt beim Ausklappen nur noch die übrigen Treffer.**
+  „Alle 28" listete bisher auch die oben schon genannten Quellen ein zweites
+  Mal auf, dort in Relevanz- statt Fußnoten-Reihenfolge — die Nummern wirkten
+  durcheinandergewürfelt. Der Knopf heißt jetzt „N weitere" und öffnet
+  ausschließlich das, was in der Antwort nicht zitiert wurde.
 - **„Frag den Rat" schlägt wechselnde Beispielfragen vor.** Statt immer
   derselben zwei Klassiker rotieren die Vorschläge über einen kuratierten Pool
   von 22 Fragen — jede vorab durch das echte Retrieval geschickt und nur

@@ -48,7 +48,16 @@ import {
 // Fußnoten-Nummerierung und die vom Server gemeldeten `cited` auseinander.
 const CITE_SOURCE = String.raw`\[\d[^\]\n]{0,160}\]`;
 const CITE_RE = new RegExp(CITE_SOURCE, "g");
-const CITE_SPLIT_RE = new RegExp(`(${CITE_SOURCE})`, "g");
+
+// Anlagen-Belege des Recherche-Berichts: „[A1]" verweist auf die Anlage mit
+// nr = 1 (council/qa.py `_anlagen_block`). Bewusst ein eigener Marker — die
+// Beschluss-Klammer MUSS mit einer Ziffer beginnen, sonst würde normaler
+// Klammertext zur Fußnote. Gerendert wird daraus a, b, c … (Buchstaben statt
+// Zahlen, damit man Gutachten und Beschluss im Text auseinanderhält).
+const ANL_SOURCE = String.raw`\[A\d{1,2}\]`;
+const ANL_RE = new RegExp(ANL_SOURCE, "g");
+const ANL_EXACT_RE = new RegExp(`^${ANL_SOURCE}$`);
+const BELEG_SPLIT_RE = new RegExp(`(${CITE_SOURCE}|${ANL_SOURCE})`, "g");
 const CITE_EXACT_RE = new RegExp(`^${CITE_SOURCE}$`);
 
 function citationIds(bracket: string): number[] {
@@ -57,6 +66,14 @@ function citationIds(bracket: string): number[] {
   const m = /^\s*(\d+)/.exec(inner);
   return m ? [Number(m[1])] : [];
 }
+
+/** Anlagen-Nummer aus „[A3]". */
+function anlagenNr(bracket: string): number {
+  return Number(bracket.slice(2, -1));
+}
+
+/** a, b, c … — mehr als 26 Anlagen liefert die Recherche nie (top_k = 6). */
+const anlagenBuchstabe = (i: number) => String.fromCharCode(97 + (i % 26));
 
 /** Bewährte Beispielfragen für den Empty State — kuratiert, nicht beliebig.
  *
@@ -161,6 +178,10 @@ type PresseHinweis = { titel: string; url: string; datum: string | null };
 /** Task 33: Anlagen-Fundstelle (Gutachten, Konzept, Stellungnahme) — nur die
  *  Gründliche Recherche liefert diesen Kanal. */
 type AnlagenHinweis = {
+  /** Beleg-Nummer aus dem Deep-Job; im Text steht sie als „[A<nr>]".
+   *  Ältere gespeicherte Gespräche kennen das Feld nicht — dann bleibt die
+   *  Karte einfach ohne Buchstabe (in diesen Texten steht auch kein Marker). */
+  nr?: number | null;
   label: string | null; url: string | null;
   vorlage_nr: string | null; vorlage_titel: string | null; auszug: string;
 };
@@ -242,7 +263,8 @@ function VorlesenKnopf({ text }: { text: string }) {
   const toggle = () => {
     const synth = window.speechSynthesis;
     if (liest) { synth.cancel(); setLiest(false); return; }
-    const klartext = text.replace(CITE_RE, "").replace(/\*\*([^*]+)\*\*/g, "$1");
+    const klartext = text.replace(CITE_RE, "").replace(ANL_RE, "")
+      .replace(/\*\*([^*]+)\*\*/g, "$1");
     const u = new SpeechSynthesisUtterance(klartext);
     u.lang = "de-DE";
     const stimme = besteStimme();
@@ -531,11 +553,38 @@ function zitierteVon(turn: Turn, idToNum: Map<number, number>): QaSource[] {
   return [...idToNum.keys()].map((id) => byId.get(id)).filter(Boolean) as QaSource[];
 }
 
+/** Anlagen-Fußnoten eines Turns: nr → Buchstabe, in Reihenfolge des
+ *  Auftauchens im Text. Nur Marker, zu denen es wirklich eine Anlage gibt —
+ *  ein halluziniertes „[A9]" bekommt keinen Buchstaben und wird beim Rendern
+ *  ersatzlos geschluckt (wie die ungültigen [id] serverseitig). */
+function useAnlagenBuchstaben(turn: Turn) {
+  return useMemo(() => {
+    const vorhanden = new Set(
+      (turn.anlagen ?? []).map((a, i) => a.nr ?? i + 1));
+    const map = new Map<number, string>();
+    for (const g of turn.antwort.matchAll(ANL_RE)) {
+      const nr = anlagenNr(g[0]);
+      if (vorhanden.has(nr) && !map.has(nr)) map.set(nr, anlagenBuchstabe(map.size));
+    }
+    return map;
+  }, [turn.antwort, turn.anlagen]);
+}
+
 /** Sprung zur Quelle: mobil zum Inline-Block, ab lg in die Belege-Spalte. */
 function jumpZuQuelle(turnIdx: number, id: number, spalte: boolean) {
   const ziel = spalte && window.matchMedia("(min-width: 1024px)").matches
     ? document.getElementById(`qa-col-${id}`) ?? document.getElementById(`qa-source-${turnIdx}-${id}`)
     : document.getElementById(`qa-source-${turnIdx}-${id}`) ?? document.getElementById(`qa-col-${id}`);
+  ziel?.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+/** Dasselbe für die Anlagen-Karten (eigene Anker, sonst kollidieren Inline-
+ *  Block und Belege-Spalte über dieselbe id). */
+function jumpZuAnlage(turnIdx: number, nr: number, spalte: boolean) {
+  const inline = () => document.getElementById(`qa-anlage-${turnIdx}-${nr}`);
+  const col = () => document.getElementById(`qa-anlage-col-${nr}`);
+  const ziel = spalte && window.matchMedia("(min-width: 1024px)").matches
+    ? col() ?? inline() : inline() ?? col();
   ziel?.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
@@ -1548,6 +1597,7 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
   // 5a/I-01: welcher Zitat-Chip gerade sein Peek zeigt.
   const [peekId, setPeekId] = useState<number | null>(null);
   const idToNum = useIdToNum(turn);
+  const anlBuchstaben = useAnlagenBuchstaben(turn);
   // 5a/I-10: Pins der zitierten Quellen — gleiche Koordinate nur einmal.
   const ortsPins = useMemo<QaOrtPin[]>(() => {
     const gesehen = new Set<string>();
@@ -1674,6 +1724,8 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
           <div className="whitespace-pre-wrap text-[14.5px] leading-[1.7] text-foreground sm:leading-[1.75]">
             {/* 5a/I-01: Der Chip öffnet erst das Peek — nicht sofort wegspringen. */}
             <AnswerWithCitations text={turn.antwort} idToNum={idToNum} onJump={(id) => setPeekId(id)}
+              anlBuchstaben={anlBuchstaben}
+              onAnlage={(nr) => jumpZuAnlage(turnIdx, nr, istLetzter)}
               ankerPrefix={turn.recherche ? `qa-abschnitt-${turnIdx}` : undefined}
               berichtKoepfe={turn.recherche} />
             {((loading && step === "answer") || deepLaeuft) && <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-primary align-text-bottom" />}
@@ -1759,7 +1811,10 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
                 onDazuFragen={onDazuFragen} />
             )}
             {(turn.debatten?.length ?? 0) > 0 && <DebattenBlock debatten={turn.debatten} />}
-            {(turn.anlagen?.length ?? 0) > 0 && <AnlagenBlock anlagen={turn.anlagen ?? []} />}
+            {(turn.anlagen?.length ?? 0) > 0 && (
+              <AnlagenBlock anlagen={turn.anlagen ?? []} buchstaben={anlBuchstaben}
+                ankerPrefix={`qa-anlage-${turnIdx}`} />
+            )}
             {turn.presse.length > 0 && <PresseBlock presse={turn.presse} />}
           </div>
 
@@ -1812,6 +1867,7 @@ function BelegeSpalte({ turn, flashId, onFlash, onDazuFragen }: {
 }) {
   const [showAll, setShowAll] = useState(false);
   const idToNum = useIdToNum(turn);
+  const anlBuchstaben = useAnlagenBuchstaben(turn);
   const zitierte = useMemo(() => zitierteVon(turn, idToNum), [turn, idToNum]);
   if (turn.sources.length === 0 && turn.presse.length === 0 && (turn.debatten?.length ?? 0) === 0) return null;
   // Scroll und Höhe übernimmt seit Design 4a die Karten-Hülle im QaTab.
@@ -1823,7 +1879,10 @@ function BelegeSpalte({ turn, flashId, onFlash, onDazuFragen }: {
           onDazuFragen={onDazuFragen} />
       )}
       {(turn.debatten?.length ?? 0) > 0 && <DebattenBlock debatten={turn.debatten} />}
-      {(turn.anlagen?.length ?? 0) > 0 && <AnlagenBlock anlagen={turn.anlagen ?? []} />}
+      {(turn.anlagen?.length ?? 0) > 0 && (
+        <AnlagenBlock anlagen={turn.anlagen ?? []} buchstaben={anlBuchstaben}
+          ankerPrefix="qa-anlage-col" />
+      )}
       {turn.presse.length > 0 && <PresseBlock presse={turn.presse} />}
       {/* Keine eigene Aktionszeile mehr: Seit die Meta-Zeile (Teilen, Vorlesen,
           Bewertung) bei JEDEM Turn direkt unter der Antwort steht, wäre sie
@@ -1840,7 +1899,13 @@ function QuellenBlock({ turn, turnIdx, idToNum, zitierte, showAll, setShowAll, f
   ankerPrefix: string; onDazuFragen?: (titel: string) => void;
 }) {
   const router = useRouter();
-  const nichtZitiert = turn.sources.length - zitierte.length;
+  // Der Ausklapper zeigt NUR die noch nicht gelisteten Treffer. Vorher lief
+  // `turn.sources` komplett durch: die zitierten standen zweimal da — oben als
+  // Pills in Fußnoten-Reihenfolge, unten nochmal in Relevanz-Reihenfolge, also
+  // mit „durcheinandergewürfelten" Nummern (Tims Befund 10.08.).
+  const weitere = useMemo(
+    () => turn.sources.filter((s) => !idToNum.has(s.id)),
+    [turn.sources, idToNum]);
   return (
     <div>
       <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
@@ -1883,17 +1948,25 @@ function QuellenBlock({ turn, turnIdx, idToNum, zitierte, showAll, setShowAll, f
           deshalb zeigt Ratslotse hier bewusst keine Stimm-Grafik.
         </p>
       )}
-      {/* Ausklapper: alle Treffer in Relevanz-Reihenfolge, mit Gremium · Datum + Score. */}
-      {(nichtZitiert > 0 || showAll) && (
+      {/* Ausklapper: die übrigen Treffer in Relevanz-Reihenfolge, mit Gremium ·
+          Datum + Score. */}
+      {weitere.length > 0 && (
         <button type="button" onClick={() => setShowAll((v) => !v)} aria-expanded={showAll}
           className="mt-2 flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
           {showAll ? (<><ChevronUp className="h-3.5 w-3.5" /> Weniger</>)
-            : (<><ChevronDown className="h-3.5 w-3.5" /> Alle {turn.sources.length}</>)}
+            : zitierte.length > 0
+              ? (<><ChevronDown className="h-3.5 w-3.5" /> {weitere.length} weitere</>)
+              : (<><ChevronDown className="h-3.5 w-3.5" /> Alle {weitere.length}</>)}
         </button>
       )}
-      {showAll && (
+      {showAll && weitere.length > 0 && (
         <div className="mt-2 space-y-1">
-          {turn.sources.map((s) => (
+          {zitierte.length > 0 && (
+            <p className="px-2 pb-0.5 text-[11px] text-muted-foreground/70">
+              Gefunden und gelesen, in der Antwort aber nicht zitiert:
+            </p>
+          )}
+          {weitere.map((s) => (
             <div key={s.id} id={`${ankerPrefix}-alle-${s.id}`}
               className={cn(
                 "group flex w-full items-baseline gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted",
@@ -1901,11 +1974,7 @@ function QuellenBlock({ turn, turnIdx, idToNum, zitierte, showAll, setShowAll, f
               )}>
               <button type="button" onClick={() => router.push(decisionHref(s.id))}
                 className="flex min-w-0 flex-1 items-baseline gap-2 text-left">
-                {idToNum.has(s.id) ? (
-                  <span aria-hidden className="flex h-4 w-4 shrink-0 translate-y-0.5 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
-                    {idToNum.get(s.id)}
-                  </span>
-                ) : <span className="w-4 shrink-0" />}
+                <span aria-hidden className="mt-[7px] h-1 w-1 shrink-0 self-start rounded-full bg-border" />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[12.5px]">{s.title}</span>
                   <span className="block font-mono text-[9.5px] uppercase tracking-wide text-muted-foreground">
@@ -1926,12 +1995,6 @@ function QuellenBlock({ turn, turnIdx, idToNum, zitierte, showAll, setShowAll, f
               )}
             </div>
           ))}
-          {nichtZitiert > 0 && (
-            <p className="px-2 pt-1 text-[11px] text-muted-foreground/70">
-              {nichtZitiert === 1 ? "Ein weiterer Treffer" : `${nichtZitiert} weitere Treffer`} — gefunden,
-              aber in der Antwort nicht zitiert.
-            </p>
-          )}
         </div>
       )}
     </div>
@@ -1940,17 +2003,36 @@ function QuellenBlock({ turn, turnIdx, idToNum, zitierte, showAll, setShowAll, f
 
 /** Task 33: Anlagen-Treffer der Gründlichen Recherche — Gutachten und
  *  Konzepte, verlinkt aufs öffentliche PDF im Ratsinformationssystem. */
-function AnlagenBlock({ anlagen }: { anlagen: AnlagenHinweis[] }) {
+function AnlagenBlock({ anlagen, ankerPrefix, buchstaben }: {
+  anlagen: AnlagenHinweis[]; ankerPrefix: string;
+  /** nr → a/b/c für die im Bericht belegten Anlagen. */
+  buchstaben: Map<number, string>;
+}) {
+  const belegt = [...buchstaben.keys()].length;
   return (
     <div className="rounded-xl border border-dashed border-border p-3">
       <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
         Aus den Anlagen <span className="text-muted-foreground/60">· Gutachten &amp; Konzepte</span>
       </p>
       <ul className="mt-1.5 space-y-2">
-        {anlagen.map((a, i) => (
-          <li key={i} className="text-[12.5px] leading-snug">
+        {anlagen.map((a, i) => {
+          const nr = a.nr ?? i + 1;
+          const b = buchstaben.get(nr);
+          return (
+          <li key={i} id={`${ankerPrefix}-${nr}`}
+            className={cn("scroll-mt-16 text-[12.5px] leading-snug",
+              // Nicht belegte Anlagen treten zurück, sobald überhaupt eine im
+              // Text auftaucht — sonst sähen gelesene und benutzte Unterlagen
+              // gleich aus.
+              !b && belegt > 0 && "opacity-60")}>
             <a href={a.url ?? undefined} target="_blank" rel="noopener noreferrer"
               className="group flex items-baseline gap-2">
+              {b && (
+                <span aria-hidden
+                  className="inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded border border-primary/25 px-1 text-[10px] font-semibold leading-none text-primary/90">
+                  {b}
+                </span>
+              )}
               <span className="min-w-0 flex-1 truncate font-medium group-hover:underline">
                 {a.label || "Anlage"}
               </span>
@@ -1966,8 +2048,14 @@ function AnlagenBlock({ anlagen }: { anlagen: AnlagenHinweis[] }) {
               <p className="mt-0.5 text-muted-foreground">{a.auszug}{a.auszug.length >= 220 ? "…" : ""}</p>
             )}
           </li>
-        ))}
+          );
+        })}
       </ul>
+      {belegt > 0 && belegt < anlagen.length && (
+        <p className="mt-2 text-[10.5px] leading-relaxed text-muted-foreground/70">
+          Die übrigen wurden gelesen, aber im Bericht nicht belegt.
+        </p>
+      )}
     </div>
   );
 }
@@ -2425,19 +2513,49 @@ function FussnotenChip({ id, idToNum, onJump }: {
  * nummerierte Chips; "**fett**" → <strong>; "- "-Zeilen → echte Liste;
  * Leerzeilen → Absätze. Streaming-fest: ein offenes "**" bleibt Text.
  */
-function AnswerWithCitations({ text, idToNum, onJump, ankerPrefix, berichtKoepfe }: {
+function AnswerWithCitations({ text: rohtext, idToNum, onJump, anlBuchstaben, onAnlage,
+  ankerPrefix, berichtKoepfe }: {
   text: string; idToNum: Map<number, number>; onJump: (id: number) => void;
+  /** Anlagen-Belege des Recherche-Berichts: nr → a/b/c. */
+  anlBuchstaben?: Map<number, string>;
+  onAnlage?: (nr: number) => void;
   /** RG-10: „## "-Köpfe bekommen ids `${ankerPrefix}-${i}` für Sprungmarken. */
   ankerPrefix?: string;
   /** RG-10: Bericht-Köpfe größer (Display-Font) statt der kompakten Task-32-Optik. */
   berichtKoepfe?: boolean;
 }) {
+  // Belege ohne Gegenstück fliegen SAMT führendem Leerzeichen raus (der Deep-
+  // Bericht wird roh gespeichert, nur die schnelle Antwort putzt serverseitig).
+  // Ohne das bliebe „… nichts her ." mit einer Lücke vor dem Punkt stehen.
+  const text = rohtext.replace(
+    new RegExp(String.raw`\s*(${CITE_SOURCE}|${ANL_SOURCE})`, "g"),
+    (treffer, klammer: string) =>
+      (ANL_EXACT_RE.test(klammer)
+        ? anlBuchstaben?.has(anlagenNr(klammer))
+        : citationIds(klammer).some((id) => idToNum.has(id)))
+        ? treffer : "");
   // Laufender Kopf-Index über ALLE Blöcke — muss mit berichtAbschnitte()
   // deckungsgleich zählen, sonst springen die Chips daneben.
   let kopfIndex = -1;
   const inline = (chunk: string, keyBase: string) => {
-    const parts = chunk.split(CITE_SPLIT_RE);
+    const parts = chunk.split(BELEG_SPLIT_RE);
     return parts.map((part, i) => {
+      if (ANL_EXACT_RE.test(part)) {
+        // Anlagen-Beleg: kleiner Buchstabe statt Zahl. Ohne bekannte Anlage
+        // fällt der Marker weg — ein sichtbares „[A9]" wäre schlimmer als
+        // gar kein Beleg.
+        const nr = anlagenNr(part);
+        const b = anlBuchstaben?.get(nr);
+        if (!b) return null;
+        return (
+          <button key={`${keyBase}-${i}`} type="button" onClick={() => onAnlage?.(nr)}
+            title="Zur Anlage springen (Gutachten, Konzept, Stellungnahme)"
+            aria-label={`Anlage ${b} anzeigen`}
+            className="mx-0.5 inline-flex h-4 min-w-4 -translate-y-[3px] items-center justify-center rounded border border-primary/25 px-1 align-baseline text-[10px] font-semibold leading-none text-primary/90 transition-colors hover:bg-primary/10">
+            {b}
+          </button>
+        );
+      }
       if (CITE_EXACT_RE.test(part)) {
         const ids = citationIds(part).filter((id) => idToNum.has(id));
         if (ids.length === 0) return null;

@@ -342,3 +342,25 @@ def test_suggested_entity_topics_prefers_concrete_active(store):
     got = store.suggested_entity_topics(days_back=180)
     assert [(g["name"], g["n_recent"]) for g in got] == [("Veloroute 4", 3), ("Haarenufer", 2)]
     assert got[0]["description"].startswith("Geplanter Radschnellweg")
+
+
+def test_anlagen_block_traegt_belegmarker():
+    """Der Bericht-Prompt nummeriert die Anlagen als ``[A<n>]``. Ohne diesen
+    Marker verschwand die Anlage im Fließtext — die Karte rechts stand da,
+    ohne dass man sah, ob der Bericht sie überhaupt benutzt hat."""
+    from council import qa
+
+    block = qa._anlagen_block([
+        {"nr": 1, "label": "Schalltechnisches Gutachten", "vorlage_nr": "26/0100",
+         "vorlage_titel": "Grundsatzbeschluss Stadionneubau",
+         "fundstelle": "Lärmpegel unter Grenzwert."},
+        # Ohne nr zählt die Position — der Prompt bleibt auch dann belegbar.
+        {"label": "Wirtschaftsplan 2024", "vorlage_nr": None, "vorlage_titel": None,
+         "fundstelle": "Gesamtinvestitionen 1.050.000 Euro."},
+    ])
+    assert "[A1] Schalltechnisches Gutachten (zur Vorlage 26/0100" in block
+    assert "[A2] Wirtschaftsplan 2024 (zur Vorlage ?)" in block
+    assert "[A1], [A2]" in block          # die Anweisung nennt die Marker
+    assert "NIE mit [id]" in block
+    assert qa._anlagen_block([]) == ""
+    assert qa._anlagen_block(None) == ""
