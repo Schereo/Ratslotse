@@ -1837,19 +1837,72 @@ class CouncilStore:
         return [dict(r) for r in rows]
 
     def geplante_beratungen_fuer(self, kvonrs: list[int]) -> list[dict]:
-        """Künftige Stationen (Datum ab heute, noch ohne Ergebnis) der Vorlagen —
-        der „Wie es weitergeht"-Stoff des Deep-Research-Berichts (Task 34)."""
+        """Künftige Stationen (Datum ab heute) der Vorlagen — der „Wie es
+        weitergeht"-Stoff.
+
+        Das Datum entscheidet, NICHT das Ergebnis-Feld. Die erste Fassung
+        verlangte zusätzlich ein leeres ``ergebnis`` — und lieferte damit
+        dauerhaft nichts: Bei künftigen Stationen trägt das Feld die geplante
+        BEHANDLUNG („Vorberatung", „Kenntnisnahme"), kein Resultat. Am
+        11.08.2026 nachgemessen: 22 Termine ab heute, davon 0 mit leerem
+        ``ergebnis`` — der Block blieb also immer leer, auch im
+        Recherche-Bericht. Die Behandlungsart kommt als ``art`` mit; sie sagt
+        dem Leser, was dort passieren soll.
+        """
         kvonrs = [k for k in kvonrs if k]
         if not kvonrs:
             return []
         ph = ",".join("?" * len(kvonrs))
         rows = self._conn.execute(
-            f"SELECT b.kvonr, b.datum, b.gremium, v.vorlage_nr, v.title AS vorlage_titel "
+            f"SELECT b.kvonr, b.datum, b.gremium, b.ergebnis AS art, "
+            f"       v.vorlage_nr, v.title AS vorlage_titel "
             f"FROM council_beratungen b JOIN council_vorlagen v ON v.kvonr = b.kvonr "
-            f"WHERE b.kvonr IN ({ph}) AND b.datum >= date('now') "
-            f"AND (b.ergebnis IS NULL OR b.ergebnis = '') ORDER BY b.datum",
+            f"WHERE b.kvonr IN ({ph}) AND b.datum >= date('now') ORDER BY b.datum",
             kvonrs).fetchall()
         return [dict(r) for r in rows]
+
+    #: Wörter, die in fast jeder Frage stehen und jede Tagesordnung treffen
+    #: würden. „stand" ist der Klassiker: Als Teilwort-Suche traf es
+    #: „Sachstandsbericht" und „Baumstandort" und hängte einer Frage nach der
+    #: Cäcilienbrücke einen EU-Verordnungs-Termin an (gemessen 11.08.).
+    _AUSBLICK_STOPP = {
+        "stand", "sachstand", "aktuell", "beschluss", "beschlusse", "beschluesse",
+        "stadt", "oldenburg", "planung", "bericht", "vorlage", "thema", "themen",
+    }
+
+    def kommende_beratungen(self, begriffe: list[str], limit: int = 3) -> list[dict]:
+        """Kommende Beratungen, deren Vorlagen-Titel zur Frage passt.
+
+        Der Ausblick über die zitierten Vorlagen allein läuft ins Leere, und
+        zwar systematisch: Auf der Tagesordnung stehen die Vorlagen, über die
+        noch NICHT entschieden wurde — die Suche findet aber Beschlüsse. Am
+        11.08.2026 gemessen: 22 Termine ab heute, keiner davon zu einer
+        Vorlage mit vorhandenem Beschluss.
+
+        Deshalb hier der zweite Weg: Titel-Abgleich gegen die Suchbegriffe der
+        Frage. Deterministisch (kein Modell, kein Embedding), und die Menge ist
+        winzig — es geht nur um die nächsten Sitzungen.
+        """
+        worte = {self._falte_namen(w) for w in begriffe if len(w) >= 5}
+        worte -= self._AUSBLICK_STOPP
+        if not worte:
+            return []
+        rows = self._conn.execute(
+            "SELECT b.kvonr, b.datum, b.gremium, b.ergebnis AS art, "
+            "       v.vorlage_nr, v.title AS vorlage_titel "
+            "FROM council_beratungen b JOIN council_vorlagen v ON v.kvonr = b.kvonr "
+            "WHERE b.datum >= date('now') ORDER BY b.datum").fetchall()
+        bewertet: dict[int, tuple[int, dict]] = {}
+        for r in rows:
+            titel_worte = re.split(r"[^a-z0-9]+", self._falte_namen(r["vorlage_titel"] or ""))
+            n = sum(1 for w in worte if any(tw.startswith(w) for tw in titel_worte if tw))
+            if not n:
+                continue
+            # Je Vorlage nur die nächste Station (nach Datum sortiert gelesen).
+            if r["kvonr"] not in bewertet:
+                bewertet[r["kvonr"]] = (n, dict(r))
+        beste = sorted(bewertet.values(), key=lambda t: (-t[0], t[1]["datum"]))
+        return [d for _n, d in beste[:limit]]
 
     def kvonrs_without_beratungen(self, limit: int | None = None) -> list[int]:
         """Ingested Vorlagen whose Beratungsfolge has never been fetched,
@@ -2686,6 +2739,27 @@ class CouncilStore:
             "SELECT e.id, a.slug AS alias, e.n FROM council_entity_aliases a "
             "JOIN council_entities e ON e.slug = a.canonical_slug")]
         return rows
+
+    def entity_steckbriefe(self, entity_ids: list[int]) -> list[dict]:
+        """Kurzbeschreibungen der erkannten Entitäten — Hintergrund für die
+        Antwort.
+
+        Die Beschreibungen liegen längst in ``council_entity_meta`` (1.114
+        Stück, erzeugt aus den Beschlüssen der jeweiligen Entität), wurden von
+        der KI-Frage aber nie gelesen. Genau sie beantworten die „Was ist
+        eigentlich X?"-Fragen, an denen reine Beschluss-Zitate scheitern.
+        """
+        ids = [i for i in entity_ids if i]
+        if not ids:
+            return []
+        ph = ",".join("?" * len(ids))
+        rows = self._conn.execute(
+            f"SELECT e.id, e.name, e.slug, e.kind, m.description "
+            f"FROM council_entities e JOIN council_entity_meta m ON m.slug = e.slug "
+            f"WHERE e.id IN ({ph}) AND m.description IS NOT NULL AND m.description != ''",
+            ids).fetchall()
+        nach_id = {r["id"]: dict(r) for r in rows}
+        return [nach_id[i] for i in ids if i in nach_id]   # Reihenfolge der Anker
 
     def decision_ids_for_entities(self, entity_ids: list[int], je: int = 12) -> list[int]:
         """Beschluss-ids der Entitäten, NEUESTE zuerst, dedupliziert — der

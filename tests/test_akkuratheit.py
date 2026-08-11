@@ -141,3 +141,140 @@ def test_build_context_rendert_stations_hinweis():
     ctx = qa._build_context([c])
     assert "NEUERE Station" in ctx or "neuere Station" in ctx.lower()
     assert "01.06.2026" in ctx and "[102]" in ctx
+
+
+# ---- Paket 1 (11.08.26): Ausblick, Steckbrief, Beleglage, „Kurz gesagt" ----
+
+def test_beleglage_trennt_duenn_von_solide():
+    """Schwellen gemessen am Prod-Bestand (10.08.): tragfähige Themen kommen
+    auf mehrere Treffer ≥0,5 und einen Bestwert ≥0,6; die nachweislich dünnen
+    (Küstenautobahn A20: 2 Treffer, Ärztemangel: 1) liegen darunter."""
+    solide = [{"score": 0.85}, {"score": 0.7}, {"score": 0.55}, {"score": 0.3}]
+    assert qa.beleglage(solide) == "solide"
+    # Zu wenige starke Treffer (A20-Signatur: 2 Treffer, bester 0,54).
+    assert qa.beleglage([{"score": 0.54}, {"score": 0.51}, {"score": 0.2}]) == "duenn"
+    # Genug Treffer, aber KEIN Volltreffer — die Straßenbahn-Signatur (sechs
+    # mittelmäßige, bester 0,61). Am echten Bestand nachjustiert: Die erste
+    # Fassung ging über den Bestwert und stufte genau die als solide ein.
+    assert qa.beleglage([{"score": 0.61}, {"score": 0.58}, {"score": 0.55},
+                         {"score": 0.53}, {"score": 0.52}, {"score": 0.5}]) == "duenn"
+    # Ein einzelner Volltreffer trägt, wenn genug Brauchbares daneben steht.
+    assert qa.beleglage([{"score": 0.72}, {"score": 0.55}, {"score": 0.51}]) == "solide"
+    # Kein Volltreffer, aber einer klar nah dran → trägt ebenfalls.
+    assert qa.beleglage([{"score": 0.78}, {"score": 0.55}, {"score": 0.51}]) == "solide"
+    # Gar nichts gefunden ist der dünnste Fall.
+    assert qa.beleglage([]) == "duenn"
+    # Fehlende Scores (Keyword-Fallback) zählen als 0 — nie als stark.
+    assert qa.beleglage([{"title": "ohne score"}] * 5) == "duenn"
+
+
+def test_duenn_regel_nur_bei_duenner_lage():
+    messages, _ = qa._answer_messages("Frage?", [{"id": 1, "title": "T"}], duenn=True)
+    assert "DÜNNE BELEGLAGE" in messages[0]["content"]
+    messages, _ = qa._answer_messages("Frage?", [{"id": 1, "title": "T"}])
+    assert "DÜNNE BELEGLAGE" not in messages[0]["content"]
+
+
+def test_gross_regel_verlangt_kurz_gesagt():
+    """Der Blind-Judge kritisierte am neuen Stand die KLARHEIT („mischt
+    Informationen") — die Langfassung führt jetzt mit einem Fazit-Satz."""
+    messages, _ = qa._answer_messages("Wie läuft es mit dem Stadion?",
+                                      [{"id": 1, "title": "T"}], gross=True)
+    assert "**Kurz gesagt:**" in messages[0]["content"]
+
+
+def test_steckbrief_block_ist_kein_zitierbarer_beschluss():
+    block = qa._steckbrief_block([
+        {"name": "GSG", "slug": "gsg", "description": "Die GSG ist eine kommunale " * 40},
+        {"name": "Stadion", "slug": "stadion", "description": "Neubau an der Maastrichter Straße."},
+        {"name": "Drittes", "slug": "x", "description": "wird gekappt"},
+    ])
+    assert "HINTERGRUND" in block and "NIE mit [id]" in block
+    assert "GSG" in block and "Stadion" in block
+    assert "Drittes" not in block          # höchstens zwei
+    assert len(block) < 1200               # Beschreibungen gekappt
+    assert qa._steckbrief_block([]) == ""
+    assert qa._steckbrief_block(None) == ""
+
+
+def test_steckbriefe_fuer_findet_ueber_den_entitaets_anker(tmp_path):
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        with store._conn:
+            store._conn.execute(
+                "INSERT INTO council_entities (id, slug, name, kind, n) "
+                "VALUES (1, 'gsg', 'GSG', 'organisation', 12)")
+            store._conn.execute(
+                "INSERT INTO council_entity_meta (slug, description) "
+                "VALUES ('gsg', 'Die GSG ist die kommunale Wohnungsgesellschaft.')")
+        treffer = qa.steckbriefe_fuer(store, "Was ist die GSG und was macht sie?")
+        assert [t["name"] for t in treffer] == ["GSG"]
+        assert "Wohnungsgesellschaft" in treffer[0]["description"]
+        # Ohne genannte Entität bleibt es leer — kein Rauschen im Prompt.
+        assert qa.steckbriefe_fuer(store, "Was kostet der Radweg?") == []
+        # Entität ohne Beschreibung liefert keinen leeren Steckbrief.
+        with store._conn:
+            store._conn.execute(
+                "INSERT INTO council_entities (id, slug, name, kind, n) "
+                "VALUES (2, 'hafen', 'Hafen', 'ort', 5)")
+        assert qa.steckbriefe_fuer(store, "Was ist mit dem Hafen?") == []
+    finally:
+        store.close()
+
+
+def _ausblick_store(tmp_path):
+    """Zwei kommende Termine (mit geplanter Behandlung im ergebnis-Feld) und
+    einer in der Vergangenheit."""
+    store = CouncilStore(tmp_path / "a.sqlite")
+    with store._conn:
+        store._conn.executemany(
+            "INSERT INTO council_vorlagen (kvonr, vorlage_nr, title, fetched_at) "
+            "VALUES (?, ?, ?, datetime('now'))",
+            [(1, "26/1", "Kompensation bei städtischen Baumfällungen"),
+             (2, "26/2", "Bürgerbeteiligung an einem Windkraftwerk"),
+             (3, "26/3", "Sachstandsbericht EU-Wiederherstellungsverordnung")])
+        store._conn.executemany(
+            "INSERT INTO council_beratungen (kvonr, datum, gremium, ergebnis, fetched_at) "
+            "VALUES (?, ?, ?, ?, datetime('now'))",
+            [(1, "2099-01-05", "Umweltausschuss", "Vorberatung"),
+             (2, "2099-02-01", "Umweltausschuss", "Kenntnisnahme"),
+             (3, "2099-01-20", "Rat", "Kenntnisnahme"),
+             (1, "2000-01-01", "Rat", "beschlossen")])
+    return store
+
+
+def test_geplante_beratungen_ignoriert_das_ergebnis_feld(tmp_path):
+    """Bei KÜNFTIGEN Stationen trägt ``ergebnis`` die geplante Behandlung
+    („Vorberatung"), kein Resultat. Die erste Fassung verlangte ein leeres
+    Feld — und lieferte damit auf Prod dauerhaft nichts (0 von 22 Terminen)."""
+    store = _ausblick_store(tmp_path)
+    try:
+        plan = store.geplante_beratungen_fuer([1, 2])
+        assert [p["datum"] for p in plan] == ["2099-01-05", "2099-02-01"]  # nach Datum
+        assert plan[0]["art"] == "Vorberatung"        # Behandlungsart kommt mit
+        assert all(p["datum"] >= "2099" for p in plan)  # Vergangenes bleibt draußen
+        assert store.geplante_beratungen_fuer([]) == []
+    finally:
+        store.close()
+
+
+def test_kommende_beratungen_matcht_auf_wortgrenzen(tmp_path):
+    """Themen-Ausblick: Der Titel-Abgleich muss an Wortanfängen greifen —
+    als Teilwort-Suche traf „stand" das „Sach*stand*sbericht" und hängte einer
+    Brücken-Frage einen EU-Verordnungs-Termin an (gemessen 11.08.)."""
+    store = _ausblick_store(tmp_path)
+    try:
+        # Kompositum: „Baumfällungen" trifft, Wortanfang genügt.
+        treffer = store.kommende_beratungen(["baumfällungen"])
+        assert [t["vorlage_nr"] for t in treffer] == ["26/1"]
+        assert store.kommende_beratungen(["windkraft"])[0]["vorlage_nr"] == "26/2"
+        # Generisches „Stand" trifft NICHTS mehr (weder Stoppliste noch Wortmitte).
+        assert store.kommende_beratungen(["stand"]) == []
+        assert store.kommende_beratungen(["sachstand", "beschluss"]) == []
+        # Kurze Wörter zählen nicht, leere Eingabe liefert leer.
+        assert store.kommende_beratungen(["rat"]) == []
+        assert store.kommende_beratungen([]) == []
+        # Je Vorlage nur die NÄCHSTE Station, nicht jede.
+        assert len(store.kommende_beratungen(["kompensation"])) == 1
+    finally:
+        store.close()
