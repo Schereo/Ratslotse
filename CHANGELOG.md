@@ -14,7 +14,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Handy fest über der Tab-Leiste verankert, ein mitwachsender Platzhalter
   hält das Gesprächsende frei. Dabei eine tiefere Ursache behoben: Die
   Einstiegs-Animation jeder Seite hielt dauerhaft ein `transform` und
-  kaperte damit jedes fest positionierte Element der Seite. (#429)
+  kaperte damit jedes fest positionierte Element der Seite. (#431)
 
 ### Verbessert
 - **Die Aussprache zu einem Bericht steht jetzt auch in der Antwort.** Wenn
