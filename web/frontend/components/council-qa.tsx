@@ -1232,6 +1232,20 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   // 9a①/②: das mobile Gespräche-Sheet (Desktop behält das Dropdown aus 5a).
   const [sheetOffen, setSheetOffen] = useState(false);
 
+  // Fixed-Composer (Tims TestFlight-Feedback 11.08.): Der Spacer im Fluss
+  // trägt die live gemessene Composer-Höhe — sie ändert sich mit Chips,
+  // Kontext-Zeile und Karten, eine feste Zahl liefe sofort auseinander.
+  const composerRef = useRef<HTMLDivElement>(null);
+  const [composerHoehe, setComposerHoehe] = useState(110);
+  useEffect(() => {
+    const el = composerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setComposerHoehe(el.offsetHeight));
+    ro.observe(el);
+    setComposerHoehe(el.offsetHeight);
+    return () => ro.disconnect();
+  }, []);
+
   // Brücke zum History-Knopf im Seitenkopf (Tims TestFlight-Feedback 11.08.):
   // Status hoch (gibt es Gespräche zu zeigen?), Taps herunter. Fenster-Events
   // statt State-Hochzug, weil PageHeader und Gespräch in getrennten Ästen
@@ -1478,15 +1492,19 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
 
         {/* Composer: mobil sticky am Viewport-Boden, in der Bühne (lg) fest an
             der Panel-Unterkante — Weiterfragen-Chips direkt darüber (2①②/4a). */}
-        {/* IMMER an der Tab-Bar (Tims TestFlight-Feedback 11.08.): Der alte
-            bottom-Offset klebte zwar beim Scrollen im Verlauf, aber am
-            Seitenende stand der Composer an seiner Fluss-Position — und
-            darunter wurde das Tab-Bar-Padding des main als Lücke sichtbar.
-            Jetzt zieht der Wrapper dieses Padding per negativem Margin zurück
-            und trägt es selbst als Unterbau, der hinter der opaken Leiste
-            verschwindet: Das Feld sitzt in jeder Scroll-Lage direkt auf der
-            Tab-Bar, geklebt wie am Seitenende. */}
-        <div className="sticky bottom-0 z-10 -mx-1 -mb-[calc(env(safe-area-inset-bottom)+4.75rem)] mt-4 bg-gradient-to-t from-background via-background to-transparent px-1 pb-[calc(env(safe-area-inset-bottom)+5.25rem)] pt-4 print:hidden lg:static lg:mx-0 lg:mb-0 lg:bg-none lg:px-4 lg:pb-4 lg:pt-2">
+        {/* IMMER an der Tab-Bar (Tims TestFlight-Feedback 11.08., dritter
+            Anlauf): sticky kann ein Element nur nach OBEN pinnen — ist die
+            Seite kürzer als der Viewport (Empty State), bleibt es an seiner
+            Fluss-Position und über der Tab-Bar klafft die Lücke aus
+            Container-Padding und Flex-Rest. Deshalb der klassische
+            Chat-Aufbau: mobil FIXED direkt auf der Tab-Bar-Oberkante
+            (4rem + Safe-Area = Höhe der Leiste), und der Spacer darunter
+            hält im Fluss genau die gemessene Composer-Höhe frei, damit das
+            Gesprächsende nie darunter verschwindet. Ab lg wie gehabt statisch
+            in der Bühne. */}
+        <div aria-hidden style={{ height: composerHoehe }} className="md:hidden" />
+        <div ref={composerRef}
+          className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+4rem)] z-10 bg-gradient-to-t from-background via-background to-transparent px-4 pb-1.5 pt-4 print:hidden md:static md:inset-x-auto md:bottom-auto md:bg-none md:px-0 md:pb-0 md:pt-2 lg:px-4 lg:pb-4">
           {/* 9a-Regel: Ohne aktives Speichern gibt es keine Gesprächs-Zeile —
               „Neues Gespräch" ist dann ein schlichter Text-Link überm Composer. */}
           {turns.length > 0 && einstellung !== 1 && (
