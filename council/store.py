@@ -4064,6 +4064,90 @@ class CouncilStore:
         by_id = {r["id"]: dict(r) for r in rows}
         return [by_id[i] for i in ids if i in by_id]
 
+    # Sammel-TOPs: Hier landet alles, was sonst nirgends hingehört. Ein Treffer
+    # darauf koppelt keine Debatte ZUR SACHE, sondern eine Wundertüte.
+    _SAMMEL_TOPS = ("anfragen und anregungen", "einwohnerfragestunde",
+                    "genehmigung der tagesordnung", "mitteilungen",
+                    "verschiedenes", "niederschrift")
+
+    @staticmethod
+    def _top_schluessel(text: str | None) -> tuple[str | None, str]:
+        """TOP-Angabe → (Nummer, normalisierter Titel).
+
+        Die Extraktion schreibt mal „10 Fliegerhorst …“, mal nur den Titel, mal
+        „Ö 6.1“ — und die Tagesordnung führt denselben Punkt gern mit Zusatz
+        („- Bericht“, „- Beschluss“). Beides wird hier eingeebnet, damit
+        Beschluss und Wortbeitrag über dieselbe Station zusammenfinden.
+        """
+        t = " ".join((text or "").split())
+        m = re.match(r"^(?:ö|n|ö\.|n\.)?\s*(\d+(?:\.\d+)*)\b[\s.:-]*(.*)$", t, re.I)
+        nummer, rest = (m.group(1), m.group(2)) if m else (None, t)
+        rest = re.sub(r"\s*[-–]\s*(bericht|beschluss|sachstandsbericht|antrag|"
+                      r"vorlage|sachstand)\s*$", "", rest, flags=re.I)
+        rest = re.sub(r"[^0-9a-zäöüß]+", " ", rest.lower().replace("ß", "ss")).strip()
+        return nummer, rest
+
+    def wortbeitraege_zu_beschluessen(self, decisions: list[dict], max_gesamt: int = 6,
+                                      max_je_top: int = 4) -> list[dict]:
+        """Die Debatte, die zu diesen Beschlüssen GEHÖRT — über die Station,
+        nicht über Wortähnlichkeit.
+
+        Warum es das braucht: Die semantische Suche findet nur Beiträge, die im
+        Wortfeld der Frage liegen. Die Aussprache zu einem Bericht benutzt aber
+        die Sprache der Sache — auf die Frage „Sondermüll im Schießstand?“
+        antwortet das Protokoll mit Vinylchlorid, Zu- und Abstrom, Messpunkten.
+        Diese Beiträge fielen durch jedes Wortfeld-Raster, obwohl sie zum
+        zitierten Bericht gehören (Befund an der Fliegerhorst-Antwort vom
+        10.08.2026). Zugehörigkeit ist hier das bessere Signal als Ähnlichkeit.
+
+        Gekoppelt wird über Sitzung (ksinr) UND Tagesordnungspunkt; Sammel-TOPs
+        („Anfragen und Anregungen“) bleiben außen vor, und die Menge ist hart
+        gedeckelt — der Kanal soll ergänzen, nicht den Kontext fluten.
+        """
+        stationen: dict[int, list[tuple[str | None, str, int]]] = {}
+        for d in decisions:
+            ks = d.get("ksinr")
+            if not ks:
+                continue
+            nummer, titel = self._top_schluessel(d.get("title"))
+            # item_number ist die verlässlichere Nummer (title trägt sie selten).
+            nr = str(d.get("item_number") or "").strip() or nummer
+            if not titel or any(s in titel for s in self._SAMMEL_TOPS):
+                continue
+            stationen.setdefault(int(ks), []).append((nr, titel, d["id"]))
+        if not stationen:
+            return []
+        ph = ",".join("?" * len(stationen))
+        rows = self._conn.execute(
+            f"""SELECT w.id, w.ksinr, w.art, w.top, w.sprecher, w.partei,
+                       w.text, w.antwort, cs.committee, cs.session_date
+                FROM council_wortbeitraege w
+                LEFT JOIN council_sessions cs ON cs.ksinr = w.ksinr
+                WHERE w.ksinr IN ({ph}) AND w.top IS NOT NULL
+                ORDER BY cs.session_date DESC, w.id""", list(stationen)).fetchall()
+        treffer: list[dict] = []
+        je_top: dict[tuple[int, str], int] = {}
+        for r in rows:
+            w_nr, w_titel = self._top_schluessel(r["top"])
+            if not w_titel or any(s in w_titel for s in self._SAMMEL_TOPS):
+                continue
+            for d_nr, d_titel, did in stationen[r["ksinr"]]:
+                # Titel-Enthaltensein in beide Richtungen: Die Tagesordnung
+                # kürzt mal den Beschluss-, mal den Protokoll-Titel.
+                passt = (d_titel in w_titel or w_titel in d_titel) or (
+                    bool(w_nr) and bool(d_nr) and w_nr == d_nr)
+                if not passt:
+                    continue
+                key = (r["ksinr"], d_titel)
+                if je_top.get(key, 0) >= max_je_top:
+                    break
+                je_top[key] = je_top.get(key, 0) + 1
+                treffer.append({**dict(r), "zu_beschluss": did})
+                break
+            if len(treffer) >= max_gesamt:
+                break
+        return treffer
+
     def search_wortbeitraege_fts(self, query: str, limit: int = 20) -> list[tuple]:
         """BM25 über die Beiträge → ``[(wb_id, score)]``; Fehler → leer.
         Term-Aufbereitung wie bei search_presse_fts (OR-Verknüpfung)."""
@@ -4192,6 +4276,10 @@ class CouncilStore:
         rows = self._conn.execute(
             f"""SELECT d.id, d.title, d.summary, d.beschluss, d.vorlage_nr,
                        d.kvonr,
+                       -- ksinr + item_number: Adresse der Station in der
+                       -- Sitzung — darüber koppelt wortbeitraege_zu_beschluessen
+                       -- die Aussprache an den Beschluss.
+                       d.ksinr, d.item_number,
                        d.policy_field, d.outcome, d.impact, d.impact_reason,
                        d.vote, d.gegenstimmen, d.enthaltungen, d.raw_result,
                        d.amount_eur, d.factions, d.abweichung,

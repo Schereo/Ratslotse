@@ -113,3 +113,55 @@ def test_aggregate_latency_percentiles_and_missing_keys():
     assert agg["expand_ms"]["p95"] == 400
     assert agg["rerank_ms"]["mean"] == 23  # nur die drei vorhandenen Werte
     assert "total_ms" not in agg
+
+
+# ---- Debatten-Erwartung (Gold-Case „fliegerhorst-sondermuell-debatte") ----
+
+DEBATTEN = [
+    {"id": 1, "sprecher": "Jaekel", "session_date": "2026-02-12",
+     "text": "Vinylchlorid im Grundwasser stammt aus der militärischen Nutzung.", "antwort": None},
+    {"id": 2, "sprecher": "Müller", "session_date": "2025-06-12",
+     "text": "Durch die Verfüllung können keine Schadstoffe austreten.", "antwort": None},
+]
+
+
+def test_debatten_treffer_matcht_ueber_natuerliche_schluessel():
+    from eval.run_qa import debatten_treffer
+    assert debatten_treffer([{"sprecher": "jaekel"}], DEBATTEN) == [True]
+    assert debatten_treffer([{"text_like": "Vinylchlorid"}], DEBATTEN) == [True]
+    # Alle Felder eines Specs müssen zusammen passen — nicht irgendeins.
+    assert debatten_treffer([{"sprecher": "Müller", "text_like": "Vinylchlorid"}], DEBATTEN) == [False]
+    assert debatten_treffer([{"session_date": "2026-02-12"}, {"session_date": "1999-01-01"}],
+                            DEBATTEN) == [True, False]
+
+
+def test_debatten_treffer_prueft_auch_die_verwaltungsantwort():
+    from eval.run_qa import debatten_treffer
+    rows = [{"sprecher": "Finke", "text": "Frage zu Messpunkten",
+             "antwort": "Die Werte liegen unter dem Prüfwert."}]
+    assert debatten_treffer([{"text_like": "Prüfwert"}], rows) == [True]
+
+
+def test_debatten_treffer_meldet_tippfehler_im_case():
+    from eval.run_qa import debatten_treffer
+    with pytest.raises(ValueError):
+        debatten_treffer([{"sprecherin": "Jaekel"}], DEBATTEN)
+
+
+def test_evaluate_zaehlt_debatten_nur_bei_faellen_mit_erwartung():
+    cases = [
+        {"id": "a", "question": "?", "expected_ids": [10],
+         "expected_debatten": [{"text_like": "Vinylchlorid"}, {"text_like": "Fehlt"}]},
+        {"id": "b", "question": "?", "expected_ids": [20]},
+    ]
+    res = evaluate(
+        cases,
+        retrieve=lambda c: [10] if c["id"] == "a" else [20],
+        answer=lambda c, with_impact: [],
+        impact_of=lambda c: {},
+        debatten_of=lambda c: DEBATTEN,
+    )
+    assert res["debatten"] == {"cases": 1, "erwartet": 2, "gefunden": 1, "recall": 0.5}
+    a = next(d for d in res["details"] if d["id"] == "a")
+    assert a["debatten"]["fehlend"] == [{"text_like": "Fehlt"}]
+    assert "debatten" not in next(d for d in res["details"] if d["id"] == "b")

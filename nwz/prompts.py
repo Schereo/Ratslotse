@@ -65,6 +65,9 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "das ausdrücklich in einem Satz.\n"
             "- Beschlüsse mit dem Vermerk „ÄLTERE STATION“ sind überholte Zwischenstände: "
             "die neuere Station ist der geltende Stand, Älteres gehört nur in den Verlauf.\n"
+            "- Die Vermerke „Tragweite“ und „ÄLTERE STATION“ sind Einordnungen von "
+            "Ratslotse, keine Aussagen des Rates: Sie steuern deine Gewichtung, dürfen "
+            "aber NIE als Feststellung in den Bericht.\n"
             "{planungen}"
             "\nBESCHLÜSSE:\n{context}\n{zusatz}\nFRAGE: {frage}"
         ),
