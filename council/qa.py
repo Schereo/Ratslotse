@@ -437,8 +437,13 @@ def _build_context(candidates: list[dict]) -> str:
             suffix += " — Der Rat wich deutlich vom Beschlussvorschlag der Verwaltung ab"
         impact = c.get("impact")
         if impact is not None and impact >= 70:
-            reason = (c.get("impact_reason") or "").strip()
-            suffix += f" — Tragweite: hoch{f' ({reason})' if reason else ''}"
+            # NUR das Label, nie die Begründung: `impact_reason` ist ein von
+            # uns erzeugter Bewertungssatz. Im Kontext gelesen, sah er aus wie
+            # eine Feststellung aus dem Rathaus und landete als solche in einer
+            # Antwort („Dieser Beschluss wird als weitreichend … eingestuft" —
+            # Prüfung der Fliegerhorst-Antwort vom 10.08.26). Das Label lenkt
+            # die Gewichtung genauso, ist aber kein zitierfähiger Satz.
+            suffix += " — Tragweite: hoch"
         elif impact is not None and impact <= 15:
             suffix += " — Tragweite: gering (Formalie)"
         # Akkuratheits-Paket: dieselbe Vorlage lief SPÄTER noch einmal durch
@@ -710,6 +715,12 @@ def _debatten_block(debatten: list[dict] | None) -> str:
             kopf += f" im Gremium „{d['committee']}“"
         if d.get("top"):
             kopf += f" zu „{d['top']}“"
+        # Stations-Kopplung: Dieser Beitrag ist die Aussprache ZU einem der
+        # Beschlüsse im Kontext — der Hinweis erlaubt dem Modell den Bezug
+        # („In der Sitzung zu [20852] fragte …“), ohne den Beitrag selbst als
+        # Beschluss zu zitieren.
+        if d.get("zu_beschluss"):
+            kopf += f" — Aussprache zum Beschluss [{d['zu_beschluss']}]"
         zeile = f"- {kopf}: {(d.get('text') or '').strip()[:400]}"
         if d.get("antwort"):
             zeile += f" — Antwort der Verwaltung: {(d['antwort'] or '').strip()[:300]}"

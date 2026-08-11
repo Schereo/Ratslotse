@@ -8,6 +8,18 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Verbessert
+- **Die Aussprache zu einem Bericht steht jetzt auch in der Antwort.** Wenn
+  „Frag den Rat" einen Bericht zitiert, kommen die Wortbeiträge aus genau
+  diesem Tagesordnungspunkt mit dazu — bisher fand die Suche nur Beiträge,
+  die zufällig dieselben Wörter benutzten wie die Frage. Bei der Frage nach
+  dem Sondermüll auf dem Fliegerhorst fehlte deshalb die jüngste Debatte vom
+  Februar 2026 über erhöhte Vinylchlorid-Werte; die Antwort endete mit einer
+  beruhigenden Aussage von Juni 2025. Jetzt ist sie dabei.
+- **Keine maschinellen Einschätzungen mehr als Aussage des Rates.** Ratslotse
+  bewertet intern die Tragweite jedes Beschlusses. Diese Begründung konnte in
+  einer Antwort landen und klang dort wie eine Feststellung aus dem Rathaus
+  („Dieser Beschluss wird als weitreichend … eingestuft"). Sie steuert jetzt
+  nur noch die Gewichtung und taucht im Text nicht mehr auf.
 - **Aufgeräumter Fragen-Screen auf dem Handy.** Aus Tims TestFlight-Feedback:
   Die Gesprächs-Historie sitzt jetzt als Knopf oben rechts im Seitenkopf
   (statt als breite Zeile mitten im Screen), der KI-Datenschutz-Hinweis wohnt
