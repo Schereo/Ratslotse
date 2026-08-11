@@ -158,14 +158,20 @@ export function AntwortText({ text: rohtext, idToNum, onJump, quelleHref,
       {bloecke.map((block, bi) => {
         // Drei Zeilenarten: „## "-Zwischenüberschrift (Task 32, lange
         // Antworten zu großen Themen), „- "-Listenzeile, Fließtext.
-        const gruppen: { art: "kopf" | "liste" | "text"; zeilen: string[] }[] = [];
+        const gruppen: { art: "kopf" | "unterkopf" | "liste" | "text"; zeilen: string[] }[] = [];
         for (const z of block.split("\n")) {
           // Listen: „- " laut Prompt, „* " (auch verschachtelt) liefern die
           // Modelle im langen Recherche-Bericht trotzdem gelegentlich.
+          // „### " (und tiefer) ebenso — als Unterkopf eine Stufe kleiner,
+          // OHNE Anker: Die Sprungmarken zählen nur „## "-Köpfe, ein
+          // mitgezählter Unterkopf verschöbe alle Chips (Tims Befund: die
+          // Rauten standen als Rohtext in der Antwort).
           const art = z.trim().startsWith("## ") ? "kopf" as const
+            : /^#{1,6}\s+/.test(z.trim()) ? "unterkopf" as const
             : /^[-*]\s+/.test(z.trim()) ? "liste" as const : "text" as const;
           const g = gruppen[gruppen.length - 1];
-          if (g && g.art === art && art !== "kopf") g.zeilen.push(z);
+          if (g && g.art === art && art === "liste") g.zeilen.push(z);
+          else if (g && g.art === art && art === "text") g.zeilen.push(z);
           else gruppen.push({ art, zeilen: [z] });
         }
         return (
@@ -179,6 +185,14 @@ export function AntwortText({ text: rohtext, idToNum, onJump, quelleHref,
                       ? "mt-4 font-display text-[15.5px] font-bold tracking-tight"
                       : "mt-3 text-[13.5px] font-bold tracking-tight")}>
                   {inline(g.zeilen[0].trim().replace(/^##\s+/, ""), `${bi}-${gi}`)}
+                </span>
+              ) : g.art === "unterkopf" ? (
+                <span key={gi}
+                  className={cn("block first:mt-0",
+                    berichtKoepfe
+                      ? "mt-3 font-display text-[14px] font-bold tracking-tight"
+                      : "mt-2.5 text-[13px] font-bold tracking-tight")}>
+                  {inline(g.zeilen[0].trim().replace(/^#{1,6}\s+/, ""), `${bi}-${gi}`)}
                 </span>
               ) : g.art === "liste" ? (
                 <ul key={gi} className="my-1.5 space-y-1 pl-1">

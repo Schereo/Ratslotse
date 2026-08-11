@@ -28,8 +28,10 @@ export type DeepFacette = { name: string; treffer?: number; neu?: number };
 const fmtDatum = (d?: string | null) =>
   d ? new Date(`${d}T00:00:00`).toLocaleDateString("de-DE", { day: "numeric", month: "long", year: "numeric" }) : "";
 
-/** Umschalter-Pill im Composer (8a①): Kolben-Icon, aktiv = primär umrandet
- *  mit ✕; bei aufgebrauchtem Kontingent deaktiviert mit „morgen wieder". */
+/** Umschalter-Pill ÜBER dem Composer (8a① → Tims TestFlight-Feedback 11.08.,
+ *  zweite Runde): Als Kolben-Knopf IN der Composer-Zeile nahm der Schalter
+ *  der Textbox zu viel Breite — als Pill über dem Eingabefeld kostet er
+ *  weder Breite noch steht er unter dem Feld im Weg. */
 export function RechercheToggle({ aktiv, frei, onToggle }: {
   aktiv: boolean; frei: number | null; onToggle: () => void;
 }) {
@@ -293,15 +295,21 @@ export function Sprungmarken({ abschnitte, ankerPrefix }: {
         Im Bericht
       </span>
       {abschnitte.map((a, i) => (
-        <button key={i} type="button"
+        <button key={i} type="button" title={a}
           onClick={() => document.getElementById(`${ankerPrefix}-${i}`)
             ?.scrollIntoView({ behavior: "smooth", block: "start" })}
           className={cn(
-            "inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
+            // Kein shrink-0: Ein langer Abschnittstitel („Institutionelle
+            // Kulturförderung: MACHIWERK – Oldenburger Fonds für innovative
+            // Kulturprojekte") wurde sonst zu einem Chip breiter als das
+            // Telefon — und schob die ganze Seite seitlich aus dem Bild.
+            // truncate am inneren span: text-ellipsis greift nicht auf dem
+            // nackten Textknoten eines Flex-Buttons.
+            "inline-flex max-w-full items-center overflow-hidden rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
             i === aktiv
               ? "border-primary/30 bg-primary/[0.06] font-semibold text-primary"
               : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground")}>
-          {a}
+          <span className="truncate">{a}</span>
         </button>
       ))}
     </div>

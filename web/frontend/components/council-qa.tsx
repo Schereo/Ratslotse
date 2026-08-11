@@ -1232,6 +1232,22 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   // 9a①/②: das mobile Gespräche-Sheet (Desktop behält das Dropdown aus 5a).
   const [sheetOffen, setSheetOffen] = useState(false);
 
+  // Brücke zum History-Knopf im Seitenkopf (Tims TestFlight-Feedback 11.08.):
+  // Status hoch (gibt es Gespräche zu zeigen?), Taps herunter. Fenster-Events
+  // statt State-Hochzug, weil PageHeader und Gespräch in getrennten Ästen
+  // leben und der Knopf nur auf dem Fragen-Screen existiert.
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("rl:gespraeche-status", {
+      detail: { sichtbar: einstellung === 1 && (turns.length > 0 || gespraeche.length > 0) },
+    }));
+  }, [einstellung, turns.length, gespraeche.length]);
+  useEffect(() => {
+    const auf = () => { setSheetOffen(true); void ladeGespraeche(); };
+    window.addEventListener("rl:gespraeche-oeffnen", auf);
+    return () => window.removeEventListener("rl:gespraeche-oeffnen", auf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // 5a/I-07: frische Beispiel-Anlässe aus den jüngsten Sitzungen — die
   // Klassiker bleiben, aber ein bis zwei Vorschläge zeigen, dass hier
   // aktuelles Material liegt. Fehlt der Endpoint, bleiben die Klassiker.
@@ -1342,31 +1358,12 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
           </div>
         )}
 
-        {/* 9a①: Mobile Gesprächs-Zeile — sagt, wo du bist, und ist der einzige
-            Griff. Nur bei aktivem Speichern UND (Gespräch läuft ODER Verlauf
-            existiert); der Empty State bleibt sonst komplett leer. */}
-        {einstellung === 1 && (turns.length > 0 || gespraeche.length > 0) && (
-          <div className="mb-2 flex items-center gap-2 md:hidden print:hidden">
-            <button
-              type="button"
-              onClick={() => { setSheetOffen(true); void ladeGespraeche(); }}
-              aria-haspopup="dialog"
-              className="inline-flex h-[34px] max-w-[75%] items-center gap-1.5 rounded-full border border-border bg-card px-3 shadow-sm transition-colors active:bg-muted"
-            >
-              <History className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
-              <span className="min-w-0 truncate text-[13px] font-semibold text-foreground">
-                {gespraeche.find((g) => g.id === gespraechId)?.titel
-                  ?? (turns.length > 0 ? turns[0].frage : "Gespräche")}
-              </span>
-              <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
-            </button>
-            {gespraeche.length > 0 && (
-              <span className="text-[11px] text-muted-foreground/70">
-                {gespraeche.length === 1 ? "1 Gespräch" : `${gespraeche.length} Gespräche`}
-              </span>
-            )}
-          </div>
-        )}
+        {/* 9a① → oben rechts (Tims TestFlight-Feedback 11.08.): Die mobile
+            Gesprächs-Zeile stand als breiter Pill mitten im Screen und
+            kostete Platz. Der Griff sitzt jetzt als History-Knopf im
+            Seitenkopf (view.tsx) — verbunden über zwei Fenster-Events, weil
+            Kopf und Gesprächs-State in getrennten Ästen leben: Wir melden
+            hoch, OB es etwas zu zeigen gibt, der Kopf meldet Taps herunter. */}
         {sheetOffen && (
           <GespraecheSheet
             gespraeche={gespraeche}
@@ -1481,11 +1478,15 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
 
         {/* Composer: mobil sticky am Viewport-Boden, in der Bühne (lg) fest an
             der Panel-Unterkante — Weiterfragen-Chips direkt darüber (2①②/4a). */}
-        {/* Klebe-Linie = Oberkante der fixen Tab-Bar (9a③: ~4rem + Safe-Area).
-            bottom-0 hieße: hinter der Leiste kleben, sobald man im Verlauf
-            hochscrollt (Tims Befund direkt nach dem 9a-Deploy) — die Safe-Area
-            steckt deshalb im Offset, nicht mehr im eigenen Padding. */}
-        <div className="sticky bottom-[calc(env(safe-area-inset-bottom)+4rem)] z-10 -mx-1 mt-4 bg-gradient-to-t from-background via-background to-transparent px-1 pb-2 pt-4 print:hidden lg:static lg:mx-0 lg:bg-none lg:px-4 lg:pb-4 lg:pt-2">
+        {/* IMMER an der Tab-Bar (Tims TestFlight-Feedback 11.08.): Der alte
+            bottom-Offset klebte zwar beim Scrollen im Verlauf, aber am
+            Seitenende stand der Composer an seiner Fluss-Position — und
+            darunter wurde das Tab-Bar-Padding des main als Lücke sichtbar.
+            Jetzt zieht der Wrapper dieses Padding per negativem Margin zurück
+            und trägt es selbst als Unterbau, der hinter der opaken Leiste
+            verschwindet: Das Feld sitzt in jeder Scroll-Lage direkt auf der
+            Tab-Bar, geklebt wie am Seitenende. */}
+        <div className="sticky bottom-0 z-10 -mx-1 -mb-[calc(env(safe-area-inset-bottom)+4.75rem)] mt-4 bg-gradient-to-t from-background via-background to-transparent px-1 pb-[calc(env(safe-area-inset-bottom)+5.25rem)] pt-4 print:hidden lg:static lg:mx-0 lg:mb-0 lg:bg-none lg:px-4 lg:pb-4 lg:pt-2">
           {/* 9a-Regel: Ohne aktives Speichern gibt es keine Gesprächs-Zeile —
               „Neues Gespräch" ist dann ein schlichter Text-Link überm Composer. */}
           {turns.length > 0 && einstellung !== 1 && (
@@ -1556,6 +1557,17 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             </div>
           ) : (
             <form onSubmit={(e) => { e.preventDefault(); void (rechercheModus ? askDeep(q) : ask(q)); }} className="flex flex-col gap-1.5">
+              {/* RG-10-Pill ÜBER dem Eingabefeld (Tims TestFlight-Feedback
+                  11.08., zweite Runde): unter dem Feld stand sie im Weg, als
+                  Kolben-Knopf in der Zeile nahm sie der Textbox Breite. */}
+              <div className="flex items-center gap-2">
+                <RechercheToggle aktiv={rechercheModus} frei={deepFrei} onToggle={toggleRecherche} />
+                {rechercheModus && !deepHinweis && (
+                  <span className="text-[10.5px] text-muted-foreground/70">
+                    1–2 Min{deepFrei !== null ? ` · noch ${deepFrei} heute` : ""}
+                  </span>
+                )}
+              </div>
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -1575,24 +1587,10 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                   </Button>
                 )}
               </div>
-              {/* RG-10: Umschalter-Pill — der Modus gilt je Frage. */}
-              <div className="flex items-center gap-2">
-                <RechercheToggle aktiv={rechercheModus} frei={deepFrei} onToggle={toggleRecherche} />
-                {rechercheModus && !deepHinweis && (
-                  <span className="text-[10.5px] text-muted-foreground/70">
-                    1–2 Min{deepFrei !== null ? ` · noch ${deepFrei} heute` : ""}
-                  </span>
-                )}
-              </div>
             </form>
           )}
-          {/* Feedback-Runde 3: Der Disclaimer ist toter Dauer-Text — er steht
-              nur noch im Empty State; wer schon im Gespräch ist, kennt ihn. */}
-          {showIntro && (
-            <p className="mt-1.5 text-center text-[10px] text-muted-foreground/60">
-              Keine personenbezogenen Daten eingeben — Fragen gehen an einen externen KI-Dienst.
-            </p>
-          )}
+          {/* Der KI-Datenschutz-Hinweis wohnt jetzt in den Einstellungen
+              (Gespräche-Karte) — Tims TestFlight-Feedback 11.08. */}
         </div>
       </div>
 
