@@ -1,0 +1,56 @@
+# Manuell auslösbarer Ops-Lauf zum Sitzungsort-Fix (#426): trägt die Orte für
+# Bestandssitzungen nach (der Scraper riet sie bis dahin aus der Überschrift,
+# die keinen Ort nennt — alle Sitzungen standen ohne Ort da) und verwirft die
+# gecachten Tagesordnungs-Zusammenfassungen KÜNFTIGER Sitzungen, damit sie mit
+# dem neuen Prompt (Präsens/Futur statt Vergangenheitsform) neu entstehen.
+# Nutzt denselben Deploy-Key/ProxyJump wie deploy.yml — praktisch, wenn lokal
+# kein SSH-Zugang verfügbar ist. Nur Collaborator können triggern.
+name: "Ops: Sitzungsorte nachtragen"
+
+on:
+  workflow_dispatch:
+    inputs:
+      schreiben:
+        description: "Wirklich schreiben (aus = nur Vorschau)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: ops-sitzungsorte
+  cancel-in-progress: false
+
+jobs:
+  orte:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Backfill locations + drop stale future summaries on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          proxy_host: ${{ secrets.VPS_PROXY_HOST }}
+          proxy_username: ${{ secrets.VPS_USER }}
+          proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          proxy_port: ${{ secrets.VPS_SSH_PORT }}
+          # ~860 Sitzungsseiten mit 0,5 s Scraper-Delay ≈ 15–20 Minuten.
+          command_timeout: 60m
+          script: |
+            set -e
+            cd ~/app
+            .venv/bin/python scripts/backfill_session_locations.py ${{ inputs.schreiben && '--schreiben' || '' }}
+            if [ "${{ inputs.schreiben }}" = "true" ]; then
+              .venv/bin/python - <<'PY'
+            import sqlite3
+            c = sqlite3.connect("data/council.sqlite")
+            with c:
+                n = c.execute(
+                    "DELETE FROM committee_summaries WHERE ksinr IN ("
+                    "  SELECT ksinr FROM council_sessions WHERE session_date >= date('now'))"
+                ).rowcount
+            print(f"{n} gecachte Zusammenfassungen künftiger Sitzungen verworfen "
+                  "(entstehen im nächsten check_committees-Lauf mit dem Futur-Prompt neu; "
+                  "der agenda-Hash der Benachrichtigten bleibt — niemand wird doppelt benachrichtigt).")
+            PY
+            fi
