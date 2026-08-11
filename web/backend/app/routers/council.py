@@ -569,10 +569,17 @@ def partei_meinungen_endpoint(
         # FDP/Volt-Gruppe zählt dabei als ihre beiden Einzel-Parteien.
         ohne: list[str] = []
         if meinungen:
-            vertreten = {qa._fraktions_label(e["partei"]) for e in meinungen}
+            # Beide Seiten durch dieselbe Kanonisierung: Die Anwesenheits-
+            # Labels führen auch Verbände, Rollen und kaputte Einzel-Label als
+            # „Partei" („ADFC", „Elternvertreter", „BSW Für RH Dr. Onken") —
+            # in der Ehrlichkeits-Zeile stehen nur echte Ratsparteien (Tims
+            # TestFlight-Feedback 11.08.), und „CDU-Fraktion" dedupliziert
+            # gegen „CDU" statt daneben zu erscheinen.
+            vertreten = {qa.ratspartei_label(e["partei"]) or qa._fraktions_label(e["partei"])
+                         for e in meinungen}
             aktive: list[str] = []
             for x in store.aktive_fraktionen():
-                label = qa._fraktions_label(x)
+                label = qa.ratspartei_label(x)
                 # FDP und Volt sitzen diese Ratsperiode als EINE Gruppe: taucht
                 # eine der beiden (oder das Gruppen-Label) auf, sind beide
                 # aktiv — die Protokolle labeln uneinheitlich mal Gruppe, mal

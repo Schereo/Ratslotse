@@ -186,3 +186,28 @@ def test_member_name_und_erste_seite(tmp_path):
         assert {g["committee"] for g in d["wortbeitraege_gremien"]} == {"Rat", "Verkehrsausschuss"}
     finally:
         store.close()
+
+
+def test_ratspartei_label_filtert_verbaende_und_rollen():
+    """Tims TestFlight-Befund 11.08.: Die „Keine passenden Wortbeiträge von:"-
+    Zeile nannte ALLE Anwesenheits-Labels — Verbände, Rollen, kaputte
+    Einzel-Label. In die Ehrlichkeits-Zeile gehören nur Ratsparteien."""
+    echt = {
+        "SPD": "SPD", "CDU": "CDU", "CDU-Fraktion": "CDU",
+        "BSW-Fraktion": "BSW", "Fraktion DIE LINKE.": "DIE LINKE",
+        "Die Grünen": "Bündnis 90/Die Grünen",
+        "Bündnis 90/ Die Grünen": "Bündnis 90/Die Grünen",
+        "Für Oldenburg": "Für Oldenburg", "FDP/Volt": "FDP/Volt",
+        "Volt": "Volt", "AfD": "AfD",
+    }
+    for roh, kanon in echt.items():
+        assert qa.ratspartei_label(roh) == kanon, roh
+    for kein_treffer in (
+        "ADFC", "VCD Regionalverband Oldenburg e.V", "Fridays for Future Oldenburg",
+        "VWG", "Elternvertreter", "Fahrgastverband Pro Bahn",
+        "Bund für Umwelt und Naturschutz", "Beschäftigtenvertreterin",
+        "BSW Für RH Dr. Onken", "Gemeinsam für Oldenburg e.V. (GfO)",
+        "Diakonisches Werk Oldenburg-Stadt", "Beratendes Mitglied",
+        "Behindertenbeirat", "", None,
+    ):
+        assert qa.ratspartei_label(kein_treffer) is None, kein_treffer

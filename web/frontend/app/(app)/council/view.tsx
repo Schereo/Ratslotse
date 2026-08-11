@@ -1352,6 +1352,35 @@ function SearchTab({ committees }: { committees: string[] }) {
   );
 }
 
+/** History-Knopf oben rechts im Seitenkopf (Tims TestFlight-Feedback 11.08.):
+ *  öffnet das mobile Gespräche-Sheet. Sichtbarkeit und Tap laufen über
+ *  Fenster-Events, weil der Gesprächs-State im Ratsgespräch lebt — der Knopf
+ *  erscheint nur, wenn es dort etwas zu zeigen gibt. Nur mobil; Desktop hat
+ *  seine Knöpfe im Bühnen-Kopf. */
+function GespraecheHeaderButton() {
+  const sp = useSearchParams();
+  const [sichtbar, setSichtbar] = useState(false);
+  useEffect(() => {
+    const auf = (e: Event) => setSichtbar(!!(e as CustomEvent).detail?.sichtbar);
+    window.addEventListener("rl:gespraeche-status", auf);
+    return () => window.removeEventListener("rl:gespraeche-status", auf);
+  }, []);
+  if (sp.get("mode") !== "fragen" || !sichtbar) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => window.dispatchEvent(new CustomEvent("rl:gespraeche-oeffnen"))}
+      aria-label="Meine Gespräche öffnen"
+      title="Meine Gespräche"
+      className="inline-flex h-9 w-9 items-center justify-center rounded-[10px] border border-border bg-card text-muted-foreground shadow-sm transition-colors active:bg-muted sm:w-auto sm:gap-1.5 sm:px-2.5 md:hidden"
+    >
+      <History className="h-4 w-4" aria-hidden />
+      {/* Tims Nachschlag: Wo Platz ist, sagt der Knopf, was er ist. */}
+      <span className="hidden text-xs font-medium sm:inline">Gespräche</span>
+    </button>
+  );
+}
+
 /** „Suchen | KI-Frage"-Umschalter im Seitenkopf (RL-501); qa-glint-Lockruf
  *  bleibt, bis die erste Frage gestellt wurde (Flag setzt council-qa). */
 function SearchModeToggle() {
@@ -1424,7 +1453,12 @@ function CouncilInner() {
       <PageHeader
         title={meta.title}
         description={meta.description}
-        action={tab === "decisions" ? <SearchModeToggle /> : undefined}
+        action={tab === "decisions" ? (
+          <div className="flex items-center gap-2">
+            <SearchModeToggle />
+            <GespraecheHeaderButton />
+          </div>
+        ) : undefined}
       />
       {tab === "decisions" ? <SearchTab committees={committees} />
         : tab === "sessions" ? <SessionsTab committees={committees} />
