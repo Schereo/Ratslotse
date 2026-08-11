@@ -20,7 +20,7 @@ from nwz.store import Store
 from nwz import digest_email
 from council.store import CouncilStore
 from council.scraper import CouncilScraper
-from council.committee_summary import summarize_agenda
+from council.committee_summary import sitzungskopf, summarize_agenda
 from council.ergebnisse import sitzung_href
 
 NWZ_DB = ROOT / "data" / "nwz.sqlite"
@@ -59,6 +59,7 @@ def _stunden_bis(session_date: str, session_time: str) -> float:
 
 
 _ALT_LINK = re.compile(r"\s*<a href=\"[^\"]*si0057[^\"]*\">[^<]*</a>\s*$")
+_ALT_KOPF = re.compile(r"\A<b>[^<]*</b>\n📅[^\n]*\n(?:📍[^\n]*\n)?\n")
 
 
 def _ohne_altlink(summary: str | None) -> str | None:
@@ -68,6 +69,16 @@ def _ohne_altlink(summary: str | None) -> str | None:
     Neu erzeugte Zusammenfassungen enthalten den Link nicht mehr, der Ausdruck
     trifft dann einfach nichts."""
     return summary if summary is None else _ALT_LINK.sub("", summary)
+
+
+def _ohne_altkopf(summary: str | None) -> str | None:
+    """Dasselbe für den Kopf, den `summarize_agenda` früher mitcachte.
+
+    In diesen Altbeständen steckt eine Ortsmarke ohne Ort (der Ort fehlte in
+    den Sitzungsdaten). Der Kopf kommt jetzt frisch vom Aufrufer — der alte
+    muss also weg, sonst stünde er zweimal in der Mail, einmal davon falsch.
+    """
+    return summary if summary is None else _ALT_KOPF.sub("", summary)
 
 
 def main() -> dict:
@@ -140,14 +151,12 @@ def main() -> dict:
 
         # The summary depends only on the session — compute once and cache.
         # A cached '' means "only routine TOPs" (still a valid cache hit).
-        summary = _ohne_altlink(council_store.get_cached_summary(ksinr, agenda_hash))
+        summary = _ohne_altkopf(_ohne_altlink(council_store.get_cached_summary(ksinr, agenda_hash)))
         if summary is None:
             try:
                 summary = summarize_agenda(
                     committee=session.committee,
                     session_date=session.session_date,
-                    session_time=session.session_time,
-                    location=session.location,
                     agenda_items=session.agenda_items,
                 )
             except Exception as exc:  # noqa: BLE001
@@ -169,12 +178,14 @@ def main() -> dict:
         # geklappt hat: Knopf auf die Sitzung, Ratsinfo als leiser Nebenlink.
         wege = (digest_email.knopf(sitzung_href(ksinr), "Tagesordnung ansehen")
                 + digest_email.nebenlink(session.url, "Im Ratsinformationssystem öffnen"))
-        kopf = (f"<p style='margin:0'><b>{session.committee}</b><br>"
-                f"{session.session_date}"
-                f"{f', {session.session_time} Uhr' if session.session_time else ''}</p>")
+        # Ein Kopf für alle drei Fälle, aus frischen Sitzungsdaten — vorher gab
+        # es zwei: einen aus der Zusammenfassung (mit deutschem Datum) und
+        # einen hier (mit ISO-Datum), je nachdem, ob das LLM geliefert hatte.
+        kopf = sitzungskopf(session.committee, session.session_date,
+                            session.session_time, session.location)
 
         if summary:
-            base_message = summary + wege
+            base_message = kopf + "\n\n" + summary + wege
         elif summary == "":
             base_message = kopf + "<p>Die Tagesordnung enthält nur Routine-Punkte.</p>" + wege
         else:  # Zusammenfassung fehlgeschlagen — nichts behaupten, nur verlinken.

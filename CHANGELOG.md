@@ -5,6 +5,20 @@ Alle nennenswerten Änderungen an diesem Projekt (Ratslotse) werden hier dokumen
 Das Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unreleased]
+
+### Behoben
+- **Die Tagesordnungs-Mail spricht wieder über eine bevorstehende Sitzung.**
+  Die Punkte standen in der Vergangenheit („Der GLOBE-Bericht wurde
+  vorgestellt"), obwohl der Ausschuss erst noch tagt — das behauptete
+  Ergebnisse, die es noch gar nicht gibt. Jetzt heißt es „Vorgestellt wird …"
+  bzw. „Der Ausschuss berät über …". (#426)
+- **Der Sitzungsort steht wieder in der Mail.** Unter dem Termin blieb eine
+  Ortsmarke ohne Ort: Der Scraper suchte ihn in der Überschrift der
+  Sitzungsseite, wo er nicht steht — er kommt aus dem Feld „Raum". Damit
+  tragen auch die Sitzungslisten in der App wieder ihren Ort; fehlt er
+  ausnahmsweise, entfällt die Zeile ganz statt leer dazustehen. (#426)
+
 ## [1.7.1] – 2026-08-10
 
 ### Behoben

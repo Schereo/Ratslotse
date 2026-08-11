@@ -163,14 +163,23 @@ DEFAULTS: dict[str, dict[str, str]] = {
             Ignoriere außerdem Tagesordnungspunkte die 'Einwohnerfragestunde', 'Bürgerfragestunde'
             oder ähnliche Bürgerbeteiligungs-Formate betreffen — diese sind Routine und nicht zusammenfassungsrelevant.
             Fasse die verbleibenden inhaltlichen TOPs jeweils in 1-2 Sätzen zusammen.
+
+            WICHTIG — die Sitzung steht noch BEVOR, sie hat nicht stattgefunden:
+            Schreibe im Präsens oder Futur („Der Ausschuss berät über …", „Vorgestellt
+            wird …", „Zur Abstimmung steht …"). Niemals in der Vergangenheit
+            („wurde vorgestellt", „wurde diskutiert", „wurde beschlossen") — das
+            behauptet ein Ergebnis, das es noch gar nicht gibt. Du kennst nur den
+            Titel des Punktes: Sag, worum es geht, nicht wie es ausgeht.
+
             Antworte ausschließlich als JSON.
         """),
     },
     "committee_summary_user": {
         "title": "Ausschuss-Zusammenfassung – Aufgabe",
-        "description": "Tagesordnung + JSON-Format. Platzhalter: {committee}, {items_text}.",
+        "description": "Tagesordnung + JSON-Format. Platzhalter: {committee}, {datum}, {items_text}.",
         "template": textwrap.dedent("""\
             Ausschuss: {committee}
+            Sitzungstermin: {datum} (die Sitzung findet erst noch statt)
             Tagesordnungspunkte:
             {items_text}
 
@@ -178,7 +187,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             {{
               "has_content": true,
               "items": [
-                {{"number": "Ö 5", "summary": "Kurze Zusammenfassung in 1-2 Sätzen."}},
+                {{"number": "Ö 5", "summary": "Der Ausschuss berät über … / Vorgestellt wird … (1-2 Sätze, Präsens oder Futur)"}},
                 ...
               ]
             }}
