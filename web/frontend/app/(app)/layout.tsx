@@ -102,7 +102,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </Suspense>
       {/* RL-U12: feiert neu verdiente Lotsen-Abzeichen — auf jeder Seite. */}
       <BadgeCelebrator />
-      <BackToTop />
+      {/* BackToTop liest useSearchParams (im Ratsgespräch ausgeblendet). */}
+      <Suspense fallback={null}>
+        <BackToTop />
+      </Suspense>
       <PeekingChick />
       <DesktopSidebar />
       <MobileTopbar />

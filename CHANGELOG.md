@@ -7,7 +7,32 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Verbessert
+- **Aufgeräumter Fragen-Screen auf dem Handy.** Aus Tims TestFlight-Feedback:
+  Die Gesprächs-Historie sitzt jetzt als Knopf oben rechts im Seitenkopf
+  (statt als breite Zeile mitten im Screen), der KI-Datenschutz-Hinweis wohnt
+  in den Einstellungen bei der Gespräche-Karte, und der „Gründlich
+  recherchieren"-Schalter steht als Pill direkt über dem Eingabefeld. Der
+  Composer klebt außerdem in jeder Scroll-Lage an der Tab-Leiste, statt sich
+  beim Scrollen vom unteren Rand zu lösen, und der schwebende „Nach
+  oben"-Pfeil erscheint im Ratsgespräch nicht mehr (er lag genau über dem
+  Senden-Knopf). (#427)
+
 ### Behoben
+- **Lange Sprungmarken-Chips schieben die Seite nicht mehr seitlich weg.**
+  Ein langer Abschnittstitel im Recherche-Bericht machte seinen Chip breiter
+  als das Telefon — die ganze Seite hing dann angeschnitten in der Luft
+  (Tims TestFlight-Screenshot). Jetzt wird der Chip-Text mit „…" gekürzt.
+  (#427)
+- **„###"-Überschriften in KI-Antworten werden als Überschriften gezeigt.**
+  Bisher kannte die Antwort-Darstellung nur „##" — tiefere Ebenen standen
+  als rohe Rauten im Text. (#427)
+- **Die „Keine passenden Wortbeiträge von:"-Zeile nennt nur noch Parteien.**
+  Vorher listete sie alle Anwesenheits-Labels der Protokolle — Verbände,
+  Gremienrollen und kaputte Einzel-Label („ADFC", „Elternvertreter", „BSW
+  Für RH Dr. Onken"); außerdem erschien „CDU-Fraktion" neben „CDU". Jetzt
+  filtert eine kuratierte Ratsparteien-Liste, Schreibvarianten werden
+  zusammengeführt. (#427)
 - **Die Tagesordnungs-Mail spricht wieder über eine bevorstehende Sitzung.**
   Die Punkte standen in der Vergangenheit („Der GLOBE-Bericht wurde
   vorgestellt"), obwohl der Ausschuss erst noch tagt — das behauptete

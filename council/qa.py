@@ -571,6 +571,33 @@ def _fraktions_label(raw: str | None) -> str | None:
     return label or None
 
 
+# Die Ratsparteien und -gruppen in kanonischer Schreibweise, adressiert über
+# den gefalteten Kern des Protokoll-Labels. Bewusst kuratiert: Die Anwesen-
+# heitslisten führen auch Verbände (ADFC, BUND), Rollen („Elternvertreter",
+# „Beratendes Mitglied") und kaputte Einzel-Label („BSW Für RH Dr. Onken") als
+# „Partei" — in der Vollständigkeits-Zeile des Parteien-Bausteins haben die
+# nichts verloren (Tims TestFlight-Feedback 11.08.).
+_RATSPARTEIEN = {  # Schlüssel sind _falte()-Ergebnisse (Slash wird Leerzeichen)
+    "spd": "SPD", "cdu": "CDU", "fdp": "FDP", "volt": "Volt", "afd": "AfD",
+    "bsw": "BSW", "linke": "DIE LINKE", "die linke": "DIE LINKE",
+    "buendnis 90 die gruenen": "Bündnis 90/Die Grünen",
+    "gruene": "Bündnis 90/Die Grünen", "die gruenen": "Bündnis 90/Die Grünen",
+    "fdp volt": "FDP/Volt", "fuer oldenburg": "Für Oldenburg",
+    "piraten": "Piraten", "die partei": "Die PARTEI", "wfo": "WFO",
+}
+
+
+def ratspartei_label(raw: str | None) -> str | None:
+    """Kanonisches Parteien-Label, oder None für alles, was keine Ratspartei
+    ist. Faltet Schreibvarianten zusammen: „CDU-Fraktion" → CDU, „Die Grünen"
+    → Bündnis 90/Die Grünen, „BSW Für RH Dr. Onken" → None."""
+    label = _fraktions_label(raw)
+    if not label:
+        return None
+    kern = re.sub(r"[-\s]+fraktion$", "", label, flags=re.IGNORECASE)
+    return _RATSPARTEIEN.get(_falte(kern))
+
+
 def partei_meinungen(question: str, rows: list[dict], model: str = MODEL) -> list[dict] | None:
     """Baustein „Das sagen die Parteien" (Task 30): verdichtet Wortbeiträge je
     Fraktion zu Position + Kernaussage (+ „uneinheitlich"-Flag). None, wenn die
