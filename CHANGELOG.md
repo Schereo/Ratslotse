@@ -7,6 +7,15 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Behoben
+- **Das Eingabefeld der KI-Frage sitzt jetzt wirklich auf der Tab-Leiste.**
+  Der zweite Anlauf: `sticky` kann ein Element nur nach oben halten — auf
+  kurzen Seiten blieb darunter eine Lücke. Jetzt ist der Composer auf dem
+  Handy fest über der Tab-Leiste verankert, ein mitwachsender Platzhalter
+  hält das Gesprächsende frei. Dabei eine tiefere Ursache behoben: Die
+  Einstiegs-Animation jeder Seite hielt dauerhaft ein `transform` und
+  kaperte damit jedes fest positionierte Element der Seite. (#429)
+
 ### Verbessert
 - **Die Aussprache zu einem Bericht steht jetzt auch in der Antwort.** Wenn
   „Frag den Rat" einen Bericht zitiert, kommen die Wortbeiträge aus genau

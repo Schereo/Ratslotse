@@ -350,7 +350,12 @@
 }
 @keyframes fade-up {
   from { transform: translateY(8px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  /* Endet auf `none`, nicht `translateY(0)`: fill-mode `both` hält den
+     End-Frame für immer fest, und ein Element mit transform — auch der
+     Identität — wird zum Containing Block für position:fixed. Da
+     template.tsx JEDE Seite in diese Animation wickelt, hing sonst jedes
+     fixed-Element (Chat-Composer) an der Seite statt am Viewport. */
+  to { transform: none; opacity: 1; }
 }
 @keyframes qa-sparkle {
   0%, 68%, 100% { transform: scale(1) rotate(0deg); }
