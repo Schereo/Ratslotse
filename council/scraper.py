@@ -111,6 +111,21 @@ def _extract_session_ids(soup: BeautifulSoup) -> list[int]:
     return ids
 
 
+def _extract_location(soup: BeautifulSoup) -> str:
+    """Sitzungsort von der Detailseite.
+
+    Die Überschrift nennt ihn nicht (sie endet nach der Uhrzeit) — er steht im
+    Feld „Raum" der Kopftabelle, das SessionNet mit der Klasse ``siort``
+    auszeichnet. Vorher wurde er aus der Überschrift geraten, was für jede
+    Sitzung einen leeren Ort ergab und in der Tagesordnungs-Mail eine nackte
+    Ortsmarke ohne Ort hinterließ.
+    """
+    cell = soup.find("div", class_="siort") or soup.find("td", class_="siort")
+    if not cell:
+        return ""
+    return re.sub(r"\s+", " ", cell.get_text(" ", strip=True)).strip(" ,")
+
+
 def _extract_scheduled(soup: BeautifulSoup, year: int, month: int) -> list[ScheduledSession]:
     """Kalenderzeilen parsen: <td class="silink"> trägt Gremium/Zeit/Ort,
     der Tag steht in <td class="smc_fct_day"> derselben Zeile."""
@@ -221,10 +236,10 @@ class CouncilScraper:
         time_match = _TIME_RE.search(header)
         session_time = time_match.group(1) if time_match else ""
 
-        # Location: last non-date/time part
-        location = parts[-1] if len(parts) >= 4 else ""
-        # Strip stray "Uhr" suffix if location parsing grabbed time
-        location = re.sub(r"\d{2}:\d{2}\s*Uhr", "", location).strip()
+        location = _extract_location(soup)
+        if not location and len(parts) >= 4:
+            # Ältere Seiten trugen den Ort in der Überschrift.
+            location = re.sub(r"\d{2}:\d{2}\s*Uhr", "", parts[-1]).strip()
 
         agenda_items = self._parse_agenda(soup)
 

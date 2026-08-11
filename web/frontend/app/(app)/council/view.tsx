@@ -1250,7 +1250,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
                       <DateTile iso={s.session_date} />
                       <div className="min-w-0">
                         <CommitteeName name={s.committee} className="font-display text-base font-bold text-foreground" />
-                        <p className="mt-0.5 truncate text-sm text-muted-foreground">{s.session_time} Uhr · {s.location}</p>
+                        <p className="mt-0.5 truncate text-sm text-muted-foreground">{s.session_time} Uhr{s.location && ` · ${s.location}`}</p>
                       </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
