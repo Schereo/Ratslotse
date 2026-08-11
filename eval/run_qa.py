@@ -129,6 +129,37 @@ def emit_keys(store, cases: list[dict]) -> None:
 # Metrik-Kern — pure Funktionen, offline testbar
 # --------------------------------------------------------------------------- #
 
+DEBATTE_FIELDS = ("sprecher", "session_date", "text_like")
+
+
+def debatten_treffer(specs: list[dict], rows: list[dict]) -> list[bool]:
+    """Je erwartetem Wortbeitrag: liegt er in den gefundenen Debatten?
+
+    Ein Spec beschreibt den Beitrag über natürliche Merkmale (``sprecher``,
+    ``session_date``, ``text_like``) statt über eine id — dieselbe Portabilität
+    wie bei ``expected_keys``. Alle angegebenen Felder müssen passen;
+    ``text_like`` prüft Teilstring in Beitrag ODER Verwaltungsantwort."""
+    out: list[bool] = []
+    for spec in specs:
+        unknown = set(spec) - set(DEBATTE_FIELDS)
+        if unknown:
+            raise ValueError(f"unbekannte Debatten-Schluessel {sorted(unknown)}")
+        hit = False
+        for r in rows:
+            if spec.get("sprecher") and spec["sprecher"].lower() not in (r.get("sprecher") or "").lower():
+                continue
+            if spec.get("session_date") and spec["session_date"] != (r.get("session_date") or ""):
+                continue
+            if spec.get("text_like"):
+                heu = f"{r.get('text') or ''} {r.get('antwort') or ''}".lower()
+                if spec["text_like"].lower() not in heu:
+                    continue
+            hit = True
+            break
+        out.append(hit)
+    return out
+
+
 def _first_rank(retrieved: list[int], expected: set[int]) -> int | None:
     for i, rid in enumerate(retrieved, start=1):
         if rid in expected:
@@ -186,6 +217,7 @@ def evaluate(
     answer: Callable[[dict, bool], list[int]],
     impact_of: Callable[[dict], dict[int, int | None]],
     expected_of: Callable[[dict], list[int]] | None = None,
+    debatten_of: Callable[[dict], list[dict]] | None = None,
 ) -> dict:
     """Kern-Auswertung mit injizierten Funktionen.
 
@@ -193,6 +225,9 @@ def evaluate(
     ``answer(case, with_impact)`` -> zitierte ids in Zitier-Reihenfolge.
     ``impact_of(case)``  -> {id: impact | None} fuer die Kandidaten des Falls.
     ``expected_of(case)`` -> erwartete ids (Default: case["expected_ids"]).
+    ``debatten_of(case)`` -> gefundene Wortbeitraege; nur noetig fuer Faelle
+    mit ``expected_debatten`` (Beschluesse allein beantworten manche Frage
+    nicht — die Substanz steht im Protokoll).
     """
     expected_of = expected_of or (lambda c: c["expected_ids"])
     per_case: list[dict] = []
@@ -200,7 +235,7 @@ def evaluate(
         expected = list(expected_of(case))
         retrieved = retrieve(case)
         rank = _first_rank(retrieved, set(expected))
-        per_case.append({
+        eintrag = {
             "id": case["id"],
             "expected": expected,
             "retrieved_n": len(retrieved),
@@ -208,10 +243,19 @@ def evaluate(
             "cited_mit": answer(case, True),
             "cited_ohne": answer(case, False),
             "impact_of": impact_of(case),
-        })
+        }
+        specs = case.get("expected_debatten")
+        if specs and debatten_of:
+            treffer = debatten_treffer(specs, debatten_of(case))
+            eintrag["debatten"] = {
+                "erwartet": len(specs), "gefunden": sum(treffer),
+                "fehlend": [s for s, ok in zip(specs, treffer) if not ok],
+            }
+        per_case.append(eintrag)
 
     hits = [c for c in per_case if c["first_expected_rank"] is not None]
     mrr = sum(1.0 / c["first_expected_rank"] for c in hits) / len(per_case) if per_case else 0.0
+    mit_deb = [c for c in per_case if c.get("debatten")]
     result = {
         "suite": "qa",
         "timestamp": datetime.now().isoformat(timespec="seconds"),
@@ -228,6 +272,13 @@ def evaluate(
             {k: v for k, v in c.items() if k != "impact_of"} for c in per_case
         ],
     }
+    if mit_deb:
+        erwartet = sum(c["debatten"]["erwartet"] for c in mit_deb)
+        gefunden = sum(c["debatten"]["gefunden"] for c in mit_deb)
+        result["debatten"] = {
+            "cases": len(mit_deb), "erwartet": erwartet, "gefunden": gefunden,
+            "recall": round(gefunden / erwartet, 4) if erwartet else 0.0,
+        }
     return result
 
 
@@ -238,6 +289,10 @@ def print_qa_report(result: dict) -> None:
     print(f"  Suite     : qa  ({result['cases']} Fragen"
           + (f", {result['skipped']} uebersprungen" if result.get("skipped") else "") + ")")
     print(f"  Retrieval : Trefferquote {r['hit_rate']:.0%} · MRR {r['mrr']:.2f}")
+    if result.get("debatten"):
+        d = result["debatten"]
+        print(f"  Debatten  : {d['gefunden']}/{d['erwartet']} erwartete Wortbeiträge "
+              f"({d['recall']:.0%}) in {d['cases']} Fall/Fällen")
     if result.get("arms"):
         print(f"  {'Antwort-Arm':18} {'zitiert erwartet':>17} {'Zitate':>7} {'Formalie zitiert':>17} {'fuehrt m. Formalie':>19}")
         for name, a in result["arms"].items():
@@ -264,8 +319,14 @@ def print_qa_report(result: dict) -> None:
     for d in result["details"]:
         rank = d["first_expected_rank"]
         mark = "ok " if rank else "MISS"
+        deb = ""
+        if d.get("debatten"):
+            db = d["debatten"]
+            deb = f"  debatten={db['gefunden']}/{db['erwartet']}"
+            if db["fehlend"]:
+                deb += f" fehlt: {db['fehlend']}"
         print(f"  [{mark}] {d['id']:22} rank={rank if rank else '-':>3}  "
-              f"mit={d['cited_mit']}  ohne={d['cited_ohne']}")
+              f"mit={d['cited_mit']}  ohne={d['cited_ohne']}{deb}")
     for name in result.get("skipped_ids", []):
         print(f"  [skip] {name:22} (in dieser DB nicht aufloesbar)")
 
@@ -350,6 +411,7 @@ def main() -> int:
     # Partei-Anreicherung, Verlaufs-Sortierung).
     cache: dict[str, list[dict]] = {}
     typen: dict[str, str] = {}
+    analysen: dict[str, dict] = {}
     latenz: dict[str, dict] = {}
 
     def candidates_of(case: dict) -> list[dict]:
@@ -362,6 +424,7 @@ def main() -> int:
             analyse = qa.analyse_query(q, verlauf=case.get("verlauf"))
             expanded, typ = analyse["begriffe"], analyse["typ"]
             typen[case["id"]] = typ
+            analysen[case["id"]] = analyse
             t["expand_ms"] = round((time.perf_counter() - t_exp) * 1000)
             t["analyse_ct"] = kosten_ct_seit(c_exp)
             t_ret = time.perf_counter()
@@ -440,9 +503,30 @@ def main() -> int:
     def impact_of(case: dict) -> dict[int, int | None]:
         return {c["id"]: c.get("impact") for c in candidates_of(case)}
 
+    debatten_cache: dict[str, list[dict]] = {}
+
+    def debatten_of(case: dict) -> list[dict]:
+        """Wortbeiträge wie im /ask-Endpoint: Ähnlichkeitssuche PLUS die
+        Aussprache zu den Top-Kandidaten (Stations-Kopplung)."""
+        if case["id"] not in debatten_cache:
+            cands = candidates_of(case)          # füllt analysen[…] mit
+            analyse = analysen[case["id"]]       # kein zweiter Analyse-Call
+            rows: list[dict] = []
+            try:
+                hits = emb.search_wortbeitraege(store, analyse["frage"], analyse["begriffe"])
+                rows = store.wortbeitraege_by_ids([wid for wid, _ in hits])
+            except Exception:  # noqa: BLE001 — Debatten sind Zusatz, nie Blocker
+                pass
+            have = {r["id"] for r in rows}
+            rows += [w for w in store.wortbeitraege_zu_beschluessen(cands[:8])
+                     if w["id"] not in have]
+            debatten_cache[case["id"]] = rows
+        return debatten_cache[case["id"]]
+
     try:
         result = evaluate(cases, retrieve, answer, impact_of,
-                          expected_of=lambda c: resolved[c["id"]])
+                          expected_of=lambda c: resolved[c["id"]],
+                          debatten_of=debatten_of)
     finally:
         store.close()
 

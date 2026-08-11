@@ -318,6 +318,12 @@ def _run(job: DeepJob, nwz_db: str, council_db: str) -> None:
             try:
                 hits_w = emb.search_wortbeitraege(store, job.frage, begriffe_alle, top_k=12)
                 debatten_rows = store.wortbeitraege_by_ids([wid for wid, _ in hits_w])
+                # Aussprache zu den Top-Beschlüssen dazu (wie in /ask): Der
+                # Bericht zitiert die Station ohnehin — dann gehört ihre
+                # Debatte dazu, auch wenn sie Fachsprache spricht.
+                have = {d["id"] for d in debatten_rows}
+                debatten_rows += [w for w in store.wortbeitraege_zu_beschluessen(
+                    candidates[:10], max_gesamt=8) if w["id"] not in have]
                 qa.parteien_aufloesen(store, debatten_rows)
             except Exception:  # noqa: BLE001
                 pass

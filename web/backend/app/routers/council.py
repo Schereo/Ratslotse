@@ -1423,6 +1423,13 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 else:
                     hits_w = emb.search_wortbeitraege(store, q_suche, expanded)
                     debatten_rows = store.wortbeitraege_by_ids([wid for wid, _ in hits_w])
+                    # … plus die Aussprache ZU den gefundenen Beschlüssen:
+                    # Fachsprache (Vinylchlorid, Messpunkte) liegt außerhalb
+                    # des Frage-Wortfelds und fällt durch die Ähnlichkeits-
+                    # suche — Zugehörigkeit trägt hier weiter (Befund 10.08.).
+                    have = {d["id"] for d in debatten_rows}
+                    debatten_rows += [w for w in store.wortbeitraege_zu_beschluessen(
+                        candidates[:8]) if w["id"] not in have]
                 # FDP/Volt-Beiträge in die Einzel-Partei auflösen (Stammdaten).
                 qa.parteien_aufloesen(store, debatten_rows)
             except Exception:  # noqa: BLE001 — Debatten sind Zusatz, nie Blocker

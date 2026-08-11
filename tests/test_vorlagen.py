@@ -240,12 +240,20 @@ def test_qa_context_includes_vorlage_excerpt():
 
 def test_qa_context_marks_impact_extremes_only():
     """Tragweite fließt als Hinweis in den QA-Kontext — aber nur an den Skalen-Enden
-    (hoch mit Begründung, gering als Formalie); das Mittelfeld bleibt still."""
+    (hoch, gering als Formalie); das Mittelfeld bleibt still.
+
+    Die BEGRÜNDUNG bleibt draußen: Sie ist ein von uns erzeugter Bewertungssatz.
+    Im Kontext las das Modell sie als Feststellung und schrieb sie ab — „Dieser
+    Beschluss wird als weitreichend mit millionenschweren Folgeaufträgen
+    eingestuft" stand so in einer echten Antwort (Prüfung 10.08.2026), ohne dass
+    das je jemand im Rathaus gesagt hätte.
+    """
     from council.qa import _build_context
 
     hoch = _build_context([{"id": 1, "title": "Haushalt", "summary": "S",
                             "impact": 85, "impact_reason": "Bindet Millionen."}])
-    assert "— Tragweite: hoch (Bindet Millionen.)" in hoch
+    assert "— Tragweite: hoch" in hoch
+    assert "Bindet Millionen" not in hoch
     gering = _build_context([{"id": 2, "title": "Berufung", "summary": "S", "impact": 5}])
     assert "— Tragweite: gering (Formalie)" in gering
     mitte = _build_context([{"id": 3, "title": "B-Plan", "summary": "S", "impact": 50}])

@@ -380,3 +380,55 @@ def test_debatten_block_im_antwortprompt(monkeypatch):
                    "top": None, "text": "Die Verwaltung sagt die Prüfung zu.",
                    "antwort": None, "committee": None, "session_date": None}])
     assert "Zusage der Verwaltung von Stadtbaurat" in messages[0]["content"]
+
+
+# ---- Stations-Kopplung: die Aussprache ZUM Beschluss (Befund 10.08.2026) ----
+
+def test_top_schluessel_ebnet_nummer_und_zusatz_ein():
+    from council.store import CouncilStore as CS
+    # „Ö 6.1"-Präfix, Nummer im Titel, „- Bericht"-Zusatz: alles dieselbe Station.
+    assert CS._top_schluessel("10 Fliegerhorst - 2. Grundwassermonitoring - Bericht") == \
+           ("10", "fliegerhorst 2 grundwassermonitoring")
+    assert CS._top_schluessel("Ö 6.1 Radweg Haarenufer")[0] == "6.1"
+    a = CS._top_schluessel("Sachstand ehemalige Schießanlage - Bericht")[1]
+    b = CS._top_schluessel("Sachstand ehemalige Schießanlage")[1]
+    assert a == b == "sachstand ehemalige schiessanlage"
+
+
+def test_wortbeitraege_zu_beschluessen_koppelt_ueber_die_station(store):
+    """Der Fliegerhorst-Fall in klein: Ein Beitrag, der kein Wort der Frage
+    trägt, gehört trotzdem zur Aussprache über den zitierten Bericht."""
+    store._conn.execute(
+        "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, location, fetched_at) "
+        "VALUES (4663, 'Ausschuss für Stadtgrün', '2026-02-12', '17:00', 'Rathaus', '2026-02-13')")
+    store.save_wortbeitraege(4663, [
+        {"art": "rede", "top": "Fliegerhorst Oldenburg - 2. Grundwassermonitoring ehemalige Schießanlage",
+         "sprecher": "Jaekel", "partei": None,
+         "text": "Vinylchlorid stammt wahrscheinlich aus der militärischen Nutzung.", "antwort": None},
+        # Sammel-TOP derselben Sitzung: darf NIE mitkommen.
+        {"art": "anfrage", "top": "16 Anfragen und Anregungen", "sprecher": "Oltmanns",
+         "partei": None, "text": "Frage zu Baumfällungen.", "antwort": None},
+    ])
+    beschluss = {"id": 20852, "ksinr": 4663, "item_number": "10",
+                 "title": "Fliegerhorst Oldenburg - 2. Grundwassermonitoring ehemalige Schießanlage - Bericht"}
+    got = store.wortbeitraege_zu_beschluessen([beschluss])
+    assert [g["sprecher"] for g in got] == ["Jaekel"]
+    assert got[0]["zu_beschluss"] == 20852          # Bezug fürs Prompt
+    # Sammel-TOP als Beschluss koppelt gar nichts (Wundertüte, keine Sache).
+    assert store.wortbeitraege_zu_beschluessen(
+        [{"id": 1, "ksinr": 4663, "item_number": "16", "title": "Anfragen und Anregungen"}]) == []
+    # Ohne Sitzungsbezug kein Treffer.
+    assert store.wortbeitraege_zu_beschluessen([{"id": 9, "ksinr": None, "title": "Irgendwas"}]) == []
+
+
+def test_wortbeitraege_zu_beschluessen_deckelt_die_menge(store):
+    store._conn.execute(
+        "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, location, fetched_at) "
+        "VALUES (5000, 'Rat', '2026-03-01', '17:00', 'Rathaus', '2026-03-02')")
+    store.save_wortbeitraege(5000, [
+        {"art": "rede", "top": "Grosses Thema", "sprecher": f"Redner {i}",
+         "partei": None, "text": f"Beitrag {i}", "antwort": None} for i in range(10)
+    ])
+    b = [{"id": 7, "ksinr": 5000, "item_number": "3", "title": "Grosses Thema"}]
+    assert len(store.wortbeitraege_zu_beschluessen(b)) == 4          # max_je_top
+    assert len(store.wortbeitraege_zu_beschluessen(b, max_je_top=99)) == 6  # max_gesamt

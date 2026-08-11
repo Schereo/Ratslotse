@@ -565,5 +565,32 @@
     ],
     "kommentar": "Tims Live-Befund 09.08.2026: 14 einschlägige Beschlüsse in der DB, Antwort zitierte 3 — die drei wichtigsten (Grundwassermonitoring 2/26, Korruptions-/Sondermüll-Debatten Rat) fehlen KOMPLETT in den Top-40. Ursache: 39-Zeichen-Floskelbeschlüsse ohne vorlage_nr, Substanz steht in nicht indexierten Protokoll-Debatten (→ Task #16).",
     "question": "Was ist der aktuelle Stand zu den potentiellen Altlasten/Giftmüll auf dem Fliegerhorstgelände?"
+  },
+  {
+    "id": "fliegerhorst-sondermuell-debatte",
+    "note": "Testerin-Frage 10.08.2026 — Beschlusslage war komplett, der aktuelle Stand stand aber nur im Protokoll",
+    "question": "was ist dem Rat über den Sondermüll im ehemaligen Schießstand des Fliegerhorsts bekannt?",
+    "expected_keys": [
+      {
+        "title_like": "2. Grundwassermonitoring ehemalige Schie"
+      },
+      {
+        "title_like": "Illegale Abfallentsorgung und Korruptionsverdacht"
+      },
+      {
+        "title_like": "Sachstand ehemalige Schießanlage Fliegerhorst"
+      }
+    ],
+    "expected_debatten": [
+      {
+        "session_date": "2026-02-12",
+        "text_like": "Vinylchlorid"
+      },
+      {
+        "session_date": "2026-02-12",
+        "sprecher": "Jaekel"
+      }
+    ],
+    "kommentar": "Die Antwort vom 10.08.2026 zitierte alle acht gefundenen Beschlüsse korrekt, endete aber mit einer beruhigenden Aussage von Juni 2025 — dabei trägt die zitierte Sitzung vom 12.02.2026 die Nachfragen zu erhöhten Vinylchlorid-Werten und die Einordnung der Verwaltung (Jaekel). Die Ähnlichkeitssuche fand die Beiträge nicht: Sie sprechen Chemie und Messpunkte, die Frage spricht Sondermüll. Seither koppelt wortbeitraege_zu_beschluessen die Aussprache über die Station."
   }
 ]
