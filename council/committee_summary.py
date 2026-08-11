@@ -12,14 +12,41 @@ def _esc(text: str) -> str:
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
+def datum_deutsch(session_date: str) -> str:
+    """ISO-Datum als TT.MM.JJJJ; unbekannte Formate bleiben, wie sie sind."""
+    teile = str(session_date or "").split("-")
+    if len(teile) == 3:
+        return f"{teile[2]}.{teile[1]}.{teile[0]}"
+    return str(session_date or "")
+
+
+def sitzungskopf(committee: str, session_date: str, session_time: str, location: str) -> str:
+    """Gremium, Termin und Ort über der Zusammenfassung.
+
+    Gehört zum Aufrufer und nicht in die gecachte Zusammenfassung (siehe
+    ``summarize_agenda``). Die Ortszeile entfällt, solange kein Ort bekannt
+    ist — eine Ortsmarke ohne Ort sagt weniger als gar keine.
+    """
+    zeilen = [f"<b>{_esc(committee)}</b>",
+              f"📅 {datum_deutsch(session_date)}"
+              + (f"  {_esc(session_time)} Uhr" if session_time else "")]
+    if location:
+        zeilen.append(f"📍 {_esc(location)}")
+    return "\n".join(zeilen)
+
+
 def summarize_agenda(
     committee: str,
     session_date: str,
-    session_time: str,
-    location: str,
     agenda_items: list[AgendaItem],
 ) -> str | None:
-    """Return HTML summary of a committee session, or '' if only routine items.
+    """Die inhaltlichen Tagesordnungspunkte als Zeilen, oder '' bei nur Routine.
+
+    Bewusst OHNE Kopfzeile (Gremium, Termin, Ort): Die Zusammenfassung wird pro
+    Tagesordnung gecacht, der Kopf gehört aber zur Sitzung und ändert sich
+    unabhängig davon. Als er hier drinsteckte, konservierte der Cache einen
+    Kopf mit leerem Ort — die Mail zeigte eine Ortsmarke ohne Ort. Den Kopf
+    baut jetzt der Aufrufer aus frischen Sitzungsdaten, wie schon den Link.
 
     Returns ``None`` when the LLM response could not be parsed (auch nach
     Retry) — der Aufrufer schickt dann eine Benachrichtigung ohne
@@ -40,7 +67,8 @@ def summarize_agenda(
         return ""
 
     system = prompts.get("committee_summary_system")
-    prompt = prompts.render("committee_summary_user", committee=committee, items_text=items_text)
+    prompt = prompts.render("committee_summary_user", committee=committee,
+                            datum=datum_deutsch(session_date), items_text=items_text)
 
     # Trotz response_format=json_object liefern Modelle vereinzelt kein valides
     # JSON (leerer Content, Markdown-Zaun, Prosa) — das crashte den ganzen
@@ -76,19 +104,7 @@ def summarize_agenda(
     if not data.get("has_content") or not data.get("items"):
         return ""
 
-    # Format date as DD.MM.YYYY
-    date_parts = session_date.split("-")
-    if len(date_parts) == 3:
-        display_date = f"{date_parts[2]}.{date_parts[1]}.{date_parts[0]}"
-    else:
-        display_date = session_date
-
-    lines = [
-        f"<b>{_esc(committee)}</b>",
-        f"📅 {display_date}  {session_time} Uhr",
-        f"📍 {_esc(location)}",
-        "",
-    ]
+    lines = []
     for item in data["items"]:
         number = _esc(str(item.get("number", "")))
         summary = _esc(str(item.get("summary", "")))

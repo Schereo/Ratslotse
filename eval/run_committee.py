@@ -43,10 +43,7 @@ def build_predict():
             )
             for i in case["agenda_items"]
         ]
-        summary = summarize_agenda(
-            case["committee"], case["session_date"], case.get("session_time", ""),
-            case.get("location", ""), items,
-        )
+        summary = summarize_agenda(case["committee"], case["session_date"], items)
         return bool(summary)
 
     return predict
