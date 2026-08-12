@@ -15,7 +15,9 @@ import { mitRuecksprung } from "@/lib/public-routes";
 export function ShareAktionen({ token }: { token: string }) {
   const { user, loading } = useAuth();
   if (loading) return null;
-  const ziel = `/council?tab=decisions&mode=fragen&share=${encodeURIComponent(token)}`;
+  // Seit dem Split (12.08.) wohnen geteilte Antworten auf /fragen; alte
+  // /council-Links leitet die Council-Seite mitsamt share-Token dorthin um.
+  const ziel = `/fragen?share=${encodeURIComponent(token)}`;
   if (user) {
     return (
       <div className="mt-6">

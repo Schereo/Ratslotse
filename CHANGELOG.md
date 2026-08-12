@@ -7,6 +7,17 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert
+- **Fragen und Suche sind jetzt zwei Seiten.** Die KI-Frage — das Herzstück
+  von Ratslotse — hat mit /fragen eine eigene Adresse und einen eigenen
+  Platz in der Navigation, statt als Modus hinter einem Umschalter der
+  Suche zu wohnen. Die Suche konzentriert sich auf das Durchsuchen der
+  Beschlüsse und behält eine Brücke ins Ratsgespräch („Fragen"-Knopf im
+  Kopf, „Dazu fragen" an Treffern, Handoff bei null Treffern). Alte Links —
+  aus Mails, geteilten Antworten und Lesezeichen — leiten automatisch auf
+  die neue Seite weiter, samt vorbefüllter Frage bzw. geteiltem
+  Gesprächs-Snapshot. (#455)
+
 ### Verbessert
 - **Blättern ohne Ballast.** Die obere Seiten-Leiste in Suche und
   Sitzungsliste ist jetzt klein und sitzt rechts in der Trefferzeile statt

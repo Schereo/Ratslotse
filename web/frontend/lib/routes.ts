@@ -5,6 +5,17 @@
 // These pages sit behind login, so path-based SEO URLs would add nothing — see
 // the sitemap note and next.config.mjs (MOBILE export).
 export const decisionHref = (id: number | string) => `/council/decision?id=${id}`;
+/** Die KI-Frage als eigene Seite (Split 12.08.): Headliner mit eigener
+ *  Adresse. `q` befüllt den Composer vor, `share` öffnet einen geteilten
+ *  Antwort-Snapshot. Alt-Links auf /council?mode=fragen leitet die
+ *  Council-Seite hierher um. */
+export const fragenHref = (opts?: { q?: string; share?: string }) => {
+  const p = new URLSearchParams();
+  if (opts?.q) p.set("q", opts.q);
+  if (opts?.share) p.set("share", opts.share);
+  const qs = p.toString();
+  return qs ? `/fragen?${qs}` : "/fragen";
+};
 export const personHref = (slug: string) => `/council/person?slug=${encodeURIComponent(slug)}`;
 export const themaHref = (slug: string) => `/council/thema?slug=${encodeURIComponent(slug)}`;
 /** Quiz-Start, optional mit vorgewähltem Gebiet (z. B. "wahlbereich:3"). */

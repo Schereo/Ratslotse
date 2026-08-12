@@ -25,7 +25,7 @@ export const metadata: Metadata = {
 // Killerfeature farblich heraus. RL-U08: jede Karte verlinkt auf ihr Ziel —
 // der Login-Gate der App übernimmt, wenn noch kein Konto da ist.
 const FEATURES = [
-  { icon: Sparkles, title: "Frag den Rat", desc: "Stell eine Frage in normaler Sprache; Ratslotse findet die passenden Beschlüsse und antwortet mit Quellen und Fußnoten.", href: "/council?tab=decisions&mode=fragen", wide: true, hero: true },
+  { icon: Sparkles, title: "Frag den Rat", desc: "Stell eine Frage in normaler Sprache; Ratslotse findet die passenden Beschlüsse und antwortet mit Quellen und Fußnoten.", href: "/fragen", wide: true, hero: true },
   { icon: Search, title: "Beschlüsse durchsuchen", desc: "Volltextsuche mit Filtern nach Fraktion, Themenfeld und Geldbeträgen — statt PDF-Wälzen.", href: "/council" },
   { icon: MapPin, title: "Themen & Karte", desc: "Orte, Straßen und Projekte verständlich beschrieben — und auf einer Stadtkarte, wo der Rat aktiv ist.", href: "/council?tab=themen" },
   { icon: BarChart3, title: "Analyse", desc: "Wer ist im Rat präsent, wo fließt das Geld, welche Themen bewegen — Parteien, Personen, Finanzen, Trends.", href: "/council?tab=analysis", wide: true },

@@ -21,13 +21,13 @@ import { HinweisSlot } from "@/components/hinweis-slot";
 import { isLiveNow } from "@/lib/live";
 import { PushPrimer } from "@/components/push-primer";
 import { formatEuro, OutcomeDot } from "@/components/decision-ui";
-import { decisionHref } from "@/lib/routes";
+import { fragenHref, decisionHref } from "@/lib/routes";
 import { startGuidedTour } from "@/components/tour";
 import { ConfettiBurst } from "@/components/confetti";
 import { useOnboarding, type StepId } from "@/components/onboarding";
 import { useCountUp } from "@/lib/use-countup";
 
-const FRAGEN_HREF = "/council?tab=decisions&mode=fragen";
+const FRAGEN_HREF = fragenHref();
 
 // ksinr null = terminiert, Tagesordnung noch nicht veröffentlicht.
 type UpcomingSession = {

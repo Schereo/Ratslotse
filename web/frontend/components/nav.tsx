@@ -62,7 +62,10 @@ function UnreadBadge({ n }: { n: number }) {
 // „Stadtkarte" = der bisherige Themen-Tab (Unterscheidung von „Meine Themen").
 const MAIN_ITEMS: (Item & { tab?: string })[] = [
   { href: "/dashboard", label: "Heute", icon: Home },
-  { href: "/council", label: "Suchen & Fragen", icon: Search, tab: "decisions", tour: "nav-ratsinfo" },
+  // Split 12.08.: Fragen ist das Headliner-Feature und steht als eigene
+  // Seite VOR der Suche; „Suchen & Fragen" gibt es nicht mehr.
+  { href: "/fragen", label: "Fragen", icon: Sparkles, tour: "nav-ratsinfo" },
+  { href: "/council", label: "Suche", icon: Search, tab: "decisions" },
   { href: "/council?tab=sessions", label: "Sitzungen", icon: CalendarDays, tab: "sessions" },
   { href: "/council?tab=themen", label: "Stadtkarte", icon: MapIcon, tab: "themen" },
   { href: "/council?tab=analysis", label: "Analyse", icon: BarChart3, tab: "analysis" },
@@ -72,14 +75,12 @@ const QUIZ: Item = { href: "/quiz", label: "Quiz", icon: Trophy };
 
 // Mobile Tab-Bar (Design 9a③): fünf gleichwertige Ziele, kein FAB mehr —
 // „Fragen" führt direkt in den KI-Frage-Modus, alles Übrige wohnt in „Mehr".
-const FRAGEN_HREF = "/council?tab=decisions&mode=fragen";
+const FRAGEN_HREF = "/fragen";
 const TABS: (Item & { aktiv: (pathname: string, tab: string | null) => boolean })[] = [
   { href: "/dashboard", label: "Start", icon: Home,
     aktiv: (p) => p === "/dashboard" || p.startsWith("/dashboard/") },
   { href: FRAGEN_HREF, label: "Fragen", icon: Sparkles, tour: "nav-ratsinfo",
-    // Auch Beschluss-/Personen-Detailseiten: sie sind das Innere der Suche.
-    aktiv: (p, t) => (p === "/council" || p.startsWith("/council/"))
-      && t !== "sessions" && t !== "themen" && t !== "analysis" },
+    aktiv: (p) => p === "/fragen" || p.startsWith("/fragen/") },
   { href: "/council?tab=sessions", label: "Sitzungen", icon: CalendarDays,
     aktiv: (p, t) => p === "/council" && t === "sessions" },
   { href: "/topics", label: "Themen", icon: Tags, tour: "nav-themen",
