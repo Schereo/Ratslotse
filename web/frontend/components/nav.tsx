@@ -16,7 +16,7 @@ import { isNativeApp } from "@/lib/platform";
 import { Brand, BrandMark } from "@/components/brand";
 import { FeedbackButton, openFeedback } from "@/components/feedback";
 import { LottiThemeSwitch } from "@/components/theme-switch";
-import { cn } from "@/lib/utils";
+import { cn, pfad } from "@/lib/utils";
 import { openCommandPalette } from "@/components/command-palette";
 
 // `tour` markiert Elemente als Anker für die Lotti-Tour (components/tour.tsx);
@@ -88,7 +88,10 @@ const TABS: (Item & { aktiv: (pathname: string, tab: string | null) => boolean }
 ];
 // Ziele hinter „Mehr" (9a④) — der Tab gilt als aktiv, wenn eine davon offen ist.
 const MEHR_AKTIV = (pathname: string, tab: string | null) =>
-  (pathname === "/council" && (tab === "themen" || tab === "analysis"))
+  // Die Suche wohnt seit dem Split (#455) hier drin — samt ihrer Detailseiten
+  // (Beschluss, Person, Thema), die ihr Inneres sind.
+  (pathname === "/council" && tab !== "sessions")
+  || pathname.startsWith("/council/")
   || ["/quiz", "/account", "/admin"].some((p) => pathname === p || pathname.startsWith(p + "/"));
 
 /** RL-U09: Der Lotti-Himmel-Schalter ersetzt den Dreistufen-Icon-Toggle — im
@@ -129,7 +132,7 @@ function NavItem({ item, active, badge = 0, onNavigate }: { item: Item; active: 
 }
 
 function NavLinksInner({ activeTab, onNavigate }: { activeTab: string; onNavigate?: () => void }) {
-  const pathname = usePathname();
+  const pathname = pfad(usePathname());
   const { user } = useAuth();
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
   const onCouncil = pathname === "/council" || pathname.startsWith("/council/");
@@ -185,7 +188,7 @@ function UserFooter({ onNavigate, showTheme = false }: { onNavigate?: () => void
     await logout();
     router.replace("/login");
   };
-  const accountActive = pathname === "/account";
+  const accountActive = pfad(pathname) === "/account";
   return (
     <div className="border-t border-border p-3">
       <div className="flex items-center justify-between gap-2 pb-2">
@@ -315,7 +318,7 @@ function BottomNavMitParams() {
 }
 
 function BottomNavInner({ tab }: { tab: string | null }) {
-  const pathname = usePathname();
+  const pathname = pfad(usePathname());
   const [mehrOffen, setMehrOffen] = useState(false);
   // Seitenwechsel (auch via Tab-Bar unterm Sheet) schließt das Sheet.
   useEffect(() => { setMehrOffen(false); }, [pathname, tab]);
@@ -451,6 +454,11 @@ function MehrSheet({ onClose }: { onClose: () => void }) {
           </span>
         </Link>
         <div className="flex flex-col pt-1">
+          {/* Tims Befund 12.08.: Seit „Fragen" den Tab-Platz hat (Split #455),
+              führte mobil KEIN Weg mehr zur Beschluss-Suche — die Lupe oben
+              öffnet die Befehlspalette, nicht die Seite. Sie steht deshalb
+              zuoberst im Sheet, vor Stadtkarte und Analyse. */}
+          <MehrZeile href="/council" icon={Search} label="Suche" onClose={onClose} />
           <MehrZeile href="/council?tab=themen" icon={MapIcon} label="Stadtkarte" onClose={onClose} />
           <MehrZeile href="/council?tab=analysis" icon={BarChart3} label="Analyse" onClose={onClose} />
           <MehrZeile href="/quiz" icon={Trophy} label="Quiz" onClose={onClose} />

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { ArrowUp } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, pfad } from "@/lib/utils";
 
 /**
  * Schwebender „Nach oben"-Button — erscheint nach ~2 Bildschirmhöhen Scrollen.
@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
  */
 export function BackToTop() {
   const [show, setShow] = useState(false);
-  const imGespraech = usePathname() === "/fragen";
+  const imGespraech = pfad(usePathname()) === "/fragen";
 
   useEffect(() => {
     const onScroll = () => setShow(window.scrollY > window.innerHeight * 1.5);

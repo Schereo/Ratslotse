@@ -20,7 +20,7 @@ import { createPortal } from "react-dom";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Sparkles, Send, Loader2, ChevronDown, ChevronRight, ChevronUp, ArrowRight, Plus,
-  Square, CircleSlash, ExternalLink, ArrowDown, FlaskConical, History, Pencil, RotateCcw,
+  Square, CircleSlash, ExternalLink, FlaskConical, History, Pencil, RotateCcw,
   MessageSquarePlus, Share2, ThumbsDown, ThumbsUp, Trash2, Volume2, X,
   BookOpen, SearchX } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -35,7 +35,7 @@ import { entwurfAbholen, entwurfMelden } from "@/lib/draft";
 import { Button, Input, toast } from "@/components/ui";
 import { decisionHref } from "@/lib/routes";
 import { PrintButton } from "@/components/print-button";
-import { cn } from "@/lib/utils";
+import { pfad, cn } from "@/lib/utils";
 import { isNativeApp } from "@/lib/platform";
 import { reportBadgeEvent } from "@/components/badges";
 import {
@@ -556,7 +556,7 @@ function jumpZuAnlage(turnIdx: number, nr: number, spalte: boolean) {
 export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   const [q, setQ] = useState("");
   const sp = useSearchParams();
-  const pathname = usePathname();
+  const pathname = pfad(usePathname());
   const router = useRouter();
   useEffect(() => {
     // ?q= gehört dem QaTab nur im KI-Modus (im Such-Modus ist es die
@@ -625,7 +625,6 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<Step | null>(null);
   const [word, setWord] = useState(PLAYFUL[0]);
-  const [showAnchor, setShowAnchor] = useState(false);
   const [flashId, setFlashId] = useState<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -658,19 +657,6 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   }, [loading]);
 
   useEffect(() => () => abortRef.current?.abort(), []);
-
-  // „Nach unten"-Anker ab ~1,5 Bildschirmen Abstand zum Gesprächsende (RG-07).
-  useEffect(() => {
-    const check = () => {
-      const el = endRef.current;
-      if (!el) return setShowAnchor(false);
-      const abstand = el.getBoundingClientRect().top - window.innerHeight;
-      setShowAnchor(abstand > window.innerHeight * 0.5);
-    };
-    window.addEventListener("scroll", check, { passive: true });
-    check();
-    return () => window.removeEventListener("scroll", check);
-  }, [turns.length]);
 
   const flash = (id: number) => {
     setFlashId(id);
@@ -1435,7 +1421,11 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         <div className="flex flex-1 flex-col lg:min-h-0 lg:overflow-y-auto lg:px-4">
         {/* Empty State — bodenständig: Beispiele direkt über dem Composer. */}
         {showIntro && (
-          <div className="flex flex-1 flex-col items-center justify-end pb-5 text-center">
+          /* justify-end hielt die Beispiele am Composer — aller freie Raum
+             sammelte sich dadurch über Lottis Kopf (Tims Befund 12.08.).
+             justify-center verteilt ihn auf beide Seiten, pt-2 hält den
+             Abstand zum Seitenkopf knapp. */
+          <div className="flex flex-1 flex-col items-center justify-center pb-5 pt-2 text-center">
             {/* 6a①: Erstnutzungs-Frage — einmalig, solange nie beantwortet. */}
             {einstellung === null && (
               <div className="mb-5 w-full max-w-md rounded-2xl border border-primary/25 bg-primary/[0.04] p-4 text-left">
@@ -1469,8 +1459,8 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                 lesbar sein — kürzerer Untertitel (die Fußnoten sieht man an
                 der ersten Antwort selbst), weniger Luft vor „Zum Beispiel",
                 und mobil nur drei Beispiele (das vierte ab lg). */}
-            <Mascot pose="wave" bob className="h-20 w-20" />
-            <h2 className="mt-3 text-xl font-bold tracking-tight">Frag den Rat</h2>
+            <Mascot pose="wave" bob className="h-16 w-16 sm:h-20 sm:w-20" />
+            <h2 className="mt-2 text-xl font-bold tracking-tight">Frag den Rat</h2>
             <p className="mt-1 max-w-md text-sm text-muted-foreground">
               Die Antwort entsteht aus den echten Ratsbeschlüssen.
             </p>
@@ -1525,17 +1515,10 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         <div ref={endRef} />
         </div>
 
-        {/* „Nach unten"-Anker (RG-07); in der Bühne am Panel verankert. */}
-        {showAnchor && (
-          <button
-            type="button"
-            aria-label="Zum Gesprächsende springen"
-            onClick={() => endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" })}
-            className="fixed bottom-40 right-4 z-20 flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card shadow-md transition-transform hover:scale-105 print:hidden sm:right-8 lg:absolute lg:bottom-32 lg:right-5"
-          >
-            <ArrowDown className="h-4 w-4 text-muted-foreground" aria-hidden />
-          </button>
-        )}
+        {/* Kein Sprung-Pfeil mehr (Tims Befund 12.08.: „Die Hoch und Runter
+            Scroll Buttons sollen hier ganz raus"). Beide schwebten über dem
+            Senden-Knopf; im Gespräch scrollt man ohnehin mit dem Daumen, und
+            eine neue Antwort zieht die Ansicht selbst ans Ende. */}
 
         {/* Composer: mobil sticky am Viewport-Boden, in der Bühne (lg) fest an
             der Panel-Unterkante — Weiterfragen-Chips direkt darüber (2①②/4a). */}
@@ -1551,7 +1534,12 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             in der Bühne. */}
         <div aria-hidden style={{ height: composerHoehe }} className="md:hidden" />
         <div ref={composerRef}
-          className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+4rem)] z-10 bg-gradient-to-t from-background via-background to-transparent px-4 pb-1.5 pt-4 print:hidden md:static md:inset-x-auto md:bottom-auto md:bg-none md:px-0 md:pb-0 md:pt-2 lg:px-4 lg:pb-4">
+          /* Deckend statt Verlauf über die ganze Höhe (Tims Befund 12.08.:
+             „keine Überlappungen"): Der alte Verlauf war oben durchsichtig,
+             genau dort sitzen die Weiterfragen-Pillen — der Antworttext
+             schien mitten durch sie hindurch. Jetzt trägt nur ein 16-px-
+             Streifen ÜBER dem Block den weichen Übergang. */
+          className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+4rem)] z-10 bg-background px-4 pb-1.5 pt-2 before:pointer-events-none before:absolute before:inset-x-0 before:-top-4 before:h-4 before:bg-gradient-to-t before:from-background before:to-transparent before:content-[''] print:hidden md:static md:inset-x-auto md:bottom-auto md:bg-transparent md:px-0 md:pb-0 md:pt-2 md:before:hidden lg:px-4 lg:pb-4">
           {/* 9a-Regel: Ohne aktives Speichern gibt es keine Gesprächs-Zeile —
               „Neues Gespräch" ist dann ein schlichter Text-Link überm Composer. */}
           {turns.length > 0 && einstellung !== 1 && (
@@ -1562,20 +1550,12 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
               </button>
             </div>
           )}
-          {/* 5a/I-06: Der Kontext-Chip macht sichtbar, worauf sich Anschluss-
-              fragen beziehen — ✕ beginnt ein frisches Gespräch. */}
-          {letzter?.kontext && !letzter.fehler && (
-            <div className="mb-1.5 flex">
-              <span className="inline-flex min-w-0 items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-[11px] text-muted-foreground">
-                <span className="shrink-0 font-medium">Kontext:</span>
-                <span className="min-w-0 truncate">{letzter.kontext}</span>
-                <button type="button" onClick={neuesGespraech} aria-label="Kontext zurücksetzen — neues Gespräch"
-                  title="Kontext zurücksetzen" className="shrink-0 rounded-full p-0.5 transition-colors hover:bg-background hover:text-foreground">
-                  <X className="h-3 w-3" aria-hidden />
-                </button>
-              </span>
-            </div>
-          )}
+          {/* Der Kontext-Chip (5a/I-06) ist raus (Tims Wunsch 12.08.): Er stand
+              über dem Feld, verdeckte auf dem Handy die Antwort und sagte
+              wenig — das Backend entscheidet ohnehin je Frage selbst, ob die
+              vorherige dazugehört (Kondensation im Konversations-Backend).
+              „Neues Gespräch" bleibt der Weg zum sauberen Anfang: mobil als
+              Zeile darüber, am Desktop im Bühnenkopf. */}
           {!deepAktiv && (composerFollowups.length > 0 || (!loading && letzter && !letzter.fehler && letzter.antwort)) && (
             <ChipZeile>
               {composerFollowups.map((s) => (
