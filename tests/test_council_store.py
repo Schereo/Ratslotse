@@ -560,3 +560,33 @@ def test_anlage_chunks_deckel():
     chunks = emb.anlage_chunks("Wort " * 5000)
     assert 1 <= len(chunks) <= emb.ANLAGE_MAX_CHUNKS
     assert all(len(c) <= emb.ANLAGE_CHUNK_SIZE for c in chunks)
+
+
+def test_agenda_anlagen_roundtrip(tmp_path):
+    """Tims Befund 12.08.: TOP-Anhänge der Sitzungsseite (gerade Anträge OHNE
+    Vorlage) fehlten komplett — save_session speichert sie jetzt je TOP, und
+    agenda_items liefert sie mit; ein Re-Save ersetzt den Stand."""
+    from council.scraper import AgendaItem, CouncilSession
+    from council.store import CouncilStore
+
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        sess = CouncilSession(
+            ksinr=9, committee="ASUK", session_date="2026-08-13",
+            session_time="17:00", location="Alte Fleiwa",
+            agenda_items=[
+                AgendaItem(item_number="Ö 14.7", title="Umsetzung Fliegerhorst",
+                           anlagen=[{"label": "Antrag Umsetzung", "url": "https://x/getfile.php?id=312020"}]),
+                AgendaItem(item_number="Ö 5", title="Ohne Anhang"),
+            ])
+        store.save_session(sess)
+        items = {i["item_number"]: i for i in store.agenda_items(9)}
+        assert items["Ö 14.7"]["anlagen"] == [
+            {"label": "Antrag Umsetzung", "url": "https://x/getfile.php?id=312020"}]
+        assert items["Ö 5"]["anlagen"] == []
+
+        sess.agenda_items[0].anlagen = []  # Anhang verschwunden → Re-Save ersetzt
+        store.save_session(sess)
+        assert store.agenda_items(9)[0]["anlagen"] == []
+    finally:
+        store.close()

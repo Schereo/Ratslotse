@@ -37,6 +37,9 @@ export interface AgendaItem {
   vorlage_nr: string | null;
   kvonr: number | null;
   is_public: number;
+  /** Dokument-Anhänge des TOP (RIS-PDFs) — ältere API-Antworten kennen das
+   *  Feld nicht. */
+  anlagen?: { label: string; url: string }[];
 }
 
 export type DecisionOutcome =

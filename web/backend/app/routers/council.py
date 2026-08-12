@@ -7,7 +7,7 @@ import math
 import time
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -1010,6 +1010,25 @@ def public_stats(store: CouncilStore = Depends(get_council_store)) -> dict:
     return store.public_stats()
 
 
+# Personen-Lexikon für die Badges im Antwort-Text (Tims Wunsch 12.08.).
+# Public wie public-stats: Die geteilten Antwort-Seiten (app/g) brauchen es
+# ohne Konto, und der Inhalt sind amtliche RIS-Daten. Prozess-Cache mit
+# Tages-TTL — die Quelle ändert sich höchstens mit dem täglichen Import.
+_PERSONEN_LEXIKON_CACHE: dict = {"stand": 0.0, "daten": None}
+
+
+@router.get("/personen-lexikon")
+def personen_lexikon(response: Response,
+                     store: CouncilStore = Depends(get_council_store)) -> dict:
+    import time as _time
+    if _PERSONEN_LEXIKON_CACHE["daten"] is None or \
+            _time.time() - _PERSONEN_LEXIKON_CACHE["stand"] > 6 * 3600:
+        _PERSONEN_LEXIKON_CACHE["daten"] = store.personen_lexikon()
+        _PERSONEN_LEXIKON_CACHE["stand"] = _time.time()
+    response.headers["Cache-Control"] = "public, max-age=21600"
+    return {"personen": _PERSONEN_LEXIKON_CACHE["daten"]}
+
+
 # ---- Link-Vorschau (Design 29a, P1) ----
 # Wortlaut der Ergebnisse für die eine Zeile, die WhatsApp & Co. anzeigen.
 _PREVIEW_OUTCOME = {
@@ -1434,6 +1453,19 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     have = {d["id"] for d in debatten_rows}
                     debatten_rows += [w for w in store.wortbeitraege_zu_beschluessen(
                         candidates[:8]) if w["id"] not in have]
+                # Zusagen der Verwaltung als EIGENER Kanal: Im allgemeinen
+                # Debatten-Ranking gingen sie unter (1 von 19 Belegen; selbst
+                # auf „Was hat die Verwaltung zugesagt?" kam keine), weil sie
+                # kurz und nüchtern formuliert sind. Dabei sind sie der
+                # besondere Stoff — eine Selbstverpflichtung mit Datum.
+                if not person:
+                    try:
+                        hits_z = emb.search_zusagen(store, q_suche, expanded)
+                        schon = {r["id"] for r in debatten_rows}
+                        debatten_rows += [r for r in store.wortbeitraege_by_ids(
+                            [wid for wid, _ in hits_z]) if r["id"] not in schon]
+                    except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+                        pass
                 # FDP/Volt-Beiträge in die Einzel-Partei auflösen (Stammdaten).
                 qa.parteien_aufloesen(store, debatten_rows)
             except Exception:  # noqa: BLE001 — Debatten sind Zusatz, nie Blocker

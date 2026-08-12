@@ -11,6 +11,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { LANDING_HREF } from "@/components/native-redirect";
 import { isNativeApp } from "@/lib/platform";
 import { Brand, BrandMark } from "@/components/brand";
 import { FeedbackButton, openFeedback } from "@/components/feedback";
@@ -232,6 +233,14 @@ function RechtsLinks({ zentriert = false }: { zentriert?: boolean }) {
       <a href="/datenschutz" className="hover:text-foreground">Datenschutz</a>
       {" · "}
       <a href="/changelog" className="hover:text-foreground">Changelog</a>
+      {mitDocs && (
+        <>
+          {" · "}
+          {/* Angemeldete werden von „/" aufs Dashboard geschickt — dieser
+              Link ist die Fluchttür zur Startseite (Tims Wunsch 12.08.). */}
+          <a href={LANDING_HREF} className="hover:text-foreground">Startseite</a>
+        </>
+      )}
       {mitDocs && (
         <>
           {" · "}

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -54,10 +55,56 @@ def _classify_agenda(session: CouncilSession, topics: list[dict]) -> dict[int, l
     result: dict[int, list[str]] = {}
     for m in data.get("matches", []):
         idx = m.get("topic_index", 0) - 1
-        nums = m.get("item_numbers", [])
+        # Neues Format: [{"nummer", "titel"}]; Altformat (auch für Admin-
+        # Prompt-Overrides): ["Ö 6.1", …] ohne Titel-Anker.
+        roh = m.get("items")
+        if roh is None:
+            roh = [{"nummer": n} for n in m.get("item_numbers", [])]
+        nums = _verifiziere_items(session, roh)
         if 0 <= idx < len(topics) and nums:
             result[idx] = nums
     return result
+
+
+def _falte_titel(text: str) -> str:
+    t = str(text or "").lower()
+    for a, b in (("ä", "ae"), ("ö", "oe"), ("ü", "ue"), ("ß", "ss")):
+        t = t.replace(a, b)
+    return re.sub(r"[^a-z0-9]+", " ", t).strip()
+
+
+def _verifiziere_items(session: CouncilSession, roh: list) -> list[str]:
+    """LLM-Treffer gegen die echte Tagesordnung prüfen (Tims Befund 12.08.:
+    Ö 14.6 trug das Fliegerhorst-Label, gemeint war Ö 14.7 — das Modell
+    verrutscht bei Nummern-Listen gern um eins, und der Code glaubte ihm
+    blind). Regeln: Die Nummer muss existieren; widerspricht der mitgelieferte
+    Titel dem Item hinter der Nummer, gewinnt der EINDEUTIGE Titel-Treffer —
+    Titel verdreht das Modell viel seltener als Nummern. Ist ein Treffer
+    weder über Nummer noch Titel auflösbar, fällt er weg: lieber keine
+    Markierung als eine falsche. Zurück kommen kanonische Nummern."""
+    items = [i for i in session.agenda_items if i.is_public]
+    per_nummer = {" ".join(str(i.item_number).split()).upper(): i for i in items}
+    out: list[str] = []
+    for eintrag in roh:
+        if isinstance(eintrag, str):
+            eintrag = {"nummer": eintrag}
+        nummer = " ".join(str(eintrag.get("nummer") or "").split()).upper()
+        titel = _falte_titel(eintrag.get("titel") or "")
+        item = per_nummer.get(nummer)
+        if item is None and nummer:
+            # „14.7" ohne Ö/N-Präfix: nur übernehmen, wenn eindeutig.
+            kandidaten = [i for i in items
+                          if " ".join(str(i.item_number).split()).upper().split(" ", 1)[-1] == nummer]
+            item = kandidaten[0] if len(kandidaten) == 1 else None
+        if titel:
+            anker = titel[:32]
+            passt = item is not None and anker[:20] and anker[:20] in _falte_titel(item.title)
+            if not passt:
+                treffer = [i for i in items if anker and anker in _falte_titel(i.title)]
+                item = treffer[0] if len(treffer) == 1 else (item if item and not treffer else None)
+        if item is not None and item.item_number not in out:
+            out.append(item.item_number)
+    return out
 
 
 def _datum(iso: str) -> str:

@@ -211,3 +211,77 @@ def test_ratspartei_label_filtert_verbaende_und_rollen():
         "Behindertenbeirat", "", None,
     ):
         assert qa.ratspartei_label(kein_treffer) is None, kein_treffer
+
+
+def test_personen_lexikon_rat_verwaltung_und_zeitlichkeit(tmp_path):
+    """Tims Badge-Wunsch 12.08.: Ratsmitglieder mit Partei und Zeitraum,
+    Verwaltung mit geerntetem Amt aus den Protokoll-Notizen — und wer seit
+    über einem Jahr in keiner Anwesenheitsliste steht, gilt nicht mehr als
+    aktiv (nie „falsch als aktuell anzeigen")."""
+    from datetime import date, timedelta
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        frisch = (date.today() - timedelta(days=30)).isoformat()
+        alt = (date.today() - timedelta(days=900)).isoformat()
+        with store._conn:
+            store._conn.executemany(
+                "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, "
+                "location, fetched_at) VALUES (?, 'Rat', ?, '', '', datetime('now'))",
+                [(1, alt), (2, frisch)])
+            store._conn.executemany(
+                "INSERT INTO council_attendance (ksinr, name, party, role, note) "
+                "VALUES (?, ?, ?, ?, ?)",
+                [(2, "Jens Lükermann", "FDP/Volt", "mitglied", None),
+                 (1, "Hans-Henning Adler", "DIE LINKE.", "mitglied", None),
+                 (2, "Jürgen Krogmann", "Verwaltung", "verwaltung", "Oberbürgermeister"),
+                 (2, "Jürgen Krogmann", "Verwaltung", "verwaltung", "Oberbürgermeister, bis TOP 8.2"),
+                 (1, "Gabriele Nießen", "Verwaltung", "verwaltung", "Stadtbaurätin"),
+                 (2, "Dagmar Sachse", "Verwaltung", "verwaltung", "Für Oberbürgermeister Krogmann")])
+        lex = {p["slug"]: p for p in store.personen_lexikon()}
+
+        lk = lex["jens-luekermann"]
+        assert lk["art"] == "rat" and lk["aktiv"] is True
+        assert lk["nachname"] == "luekermann" and lk["vorname"] == "jens"
+
+        adler = lex["hans-henning-adler"]
+        assert adler["aktiv"] is False  # zuletzt vor ~2,5 Jahren gesehen
+
+        kro = lex["juergen-krogmann"]
+        assert kro["art"] == "stadt" and kro["rolle"] == "Oberbürgermeister"
+
+        # Zeit-Zusätze („bis TOP 8.2") und Vertretungs-Notizen sind kein Amt.
+        assert lex["dagmar-sachse"]["rolle"] is None
+        # Amt bleibt erhalten, aktiv aber nicht mehr (Nießen lange raus).
+        niessen = lex["gabriele-niessen"]
+        assert niessen["rolle"] == "Stadtbaurätin" and niessen["aktiv"] is False
+    finally:
+        store.close()
+
+
+def test_personen_lexikon_blocker_fuer_gaeste(tmp_path):
+    """Tims Oltmanns-Befund 12.08.: Ein Gast-Namensvetter (Wasserstraßen-Amt)
+    muss den kahlen Nachnamen mehrdeutig machen — als blocker-Eintrag ohne
+    Badge-Daten, damit das Frontend lieber gar kein Badge zeigt."""
+    from datetime import date, timedelta
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        frisch = (date.today() - timedelta(days=30)).isoformat()
+        with store._conn:
+            store._conn.execute(
+                "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, "
+                "location, fetched_at) VALUES (1, 'Rat', ?, '', '', datetime('now'))", (frisch,))
+            store._conn.executemany(
+                "INSERT INTO council_attendance (ksinr, name, party, role, note) "
+                "VALUES (1, ?, ?, ?, NULL)",
+                [("Mara-Marciel Oltmanns", "NABU", "mitglied"),
+                 ("Rüdiger Oltmanns", "Wasserstraßen- und Schifffahrtsamt", "gast"),
+                 ("Herr Oltmanns", None, "gast")])
+        lex = store.personen_lexikon()
+        oltmanns = [p for p in lex if p["nachname"] == "oltmanns"]
+        arten = sorted(p["art"] for p in oltmanns)
+        # Rats-Eintrag + mindestens ein Blocker → kahler Nachname ist mehrdeutig.
+        assert "rat" in arten and "blocker" in arten and len(oltmanns) >= 2
+        blocker = [p for p in oltmanns if p["art"] == "blocker"]
+        assert all(p["name"] is None for p in blocker)
+    finally:
+        store.close()

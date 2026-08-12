@@ -20,6 +20,7 @@ from nwz.store import Store
 from nwz import digest_email
 from council.store import CouncilStore
 from council.scraper import CouncilScraper
+from council.agenda_diff import diff_html, diff_tagesordnung, hat_aenderungen
 from council.committee_summary import sitzungskopf, summarize_agenda
 from council.ergebnisse import sitzung_href
 
@@ -120,6 +121,13 @@ def main() -> dict:
 
         # Compute agenda hash once; drives both caching and change detection.
         agenda_hash = _agenda_hash(session.agenda_items)
+        # Den öffentlichen Stand zu diesem Hash einfrieren: save_session hat
+        # die Items bereits ERSETZT — ohne Snapshot gäbe es für die
+        # Diff-Änderungsmeldung (Tims Wunsch 12.08.) keine Vergleichsbasis.
+        oeffentliche_items = [{"item_number": i.item_number, "title": i.title,
+                               "vorlage_nr": i.vorlage_nr or ""}
+                              for i in session.agenda_items if i.is_public]
+        council_store.save_agenda_snapshot(ksinr, agenda_hash, oeffentliche_items)
 
         # Categorise subscribers:
         # - pending_new:    never notified before
@@ -201,14 +209,35 @@ def main() -> dict:
             council_store.mark_notified(ksinr, owner_id, agenda_hash)
             notifications_sent += 1
 
+        # Änderungs-Meldung als DIFF (Tims Wunsch 12.08.): nur was sich
+        # geändert hat — Neues grün, Verschobenes/Umformuliertes gelb,
+        # Entferntes rot. Die Vergleichsbasis ist der Snapshot des Standes,
+        # über den der jeweilige Owner zuletzt informiert wurde; Owner können
+        # verschiedene Stände kennen, deshalb je last_hash ein eigenes Diff.
+        # Ohne Snapshot (Bestand von vor diesem Feature) kommt die
+        # bisherige Voll-Mail.
         update_prefix = "<p><b>Die Tagesordnung hat sich geändert.</b></p>\n"
         update_subject = f"{session.committee}: Tagesordnung geändert"
+        diff_je_hash: dict[str, str | None] = {}
         for owner_id in pending_update:
             if owner_id not in targets:
                 continue
-            print(f"  {session.session_date} {session.committee} → owner {owner_id} (Änderung)")
+            last_hash = council_store.get_last_notified_hash(ksinr, owner_id) or ""
+            if last_hash not in diff_je_hash:
+                alt = council_store.get_agenda_snapshot(ksinr, last_hash)
+                if alt is None:
+                    diff_je_hash[last_hash] = None
+                else:
+                    d = diff_tagesordnung(alt, oeffentliche_items)
+                    diff_je_hash[last_hash] = diff_html(d) if hat_aenderungen(d) else (
+                        "<p>Details einzelner Punkte wurden angepasst.</p>")
+            diff_teil = diff_je_hash[last_hash]
+            nachricht = (update_prefix + kopf + diff_teil + wege) if diff_teil is not None \
+                else (update_prefix + base_message)
+            print(f"  {session.session_date} {session.committee} → owner {owner_id} "
+                  f"(Änderung{', Diff' if diff_teil is not None else ''})")
             notify.einreihen(nwz_store, owner_id, notify.N1_TAGESORDNUNG,
-                             update_subject, update_prefix + base_message, sitzung_href(ksinr))
+                             update_subject, nachricht, sitzung_href(ksinr))
             council_store.mark_notified(ksinr, owner_id, agenda_hash)
             notifications_sent += 1
 

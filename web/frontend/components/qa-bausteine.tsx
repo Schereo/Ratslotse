@@ -14,9 +14,11 @@
  * gestrichelter Rahmen für Externes, Paraphrasen kursiv ohne Anführungszeichen.
  */
 
-import { useState } from "react";
-import { ChevronDown, ExternalLink, MessageSquarePlus } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { ArrowRight, ChevronDown, ExternalLink, MessageSquarePlus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { personHref } from "@/lib/routes";
 // Reine Beleg-/Datums-Logik liegt in lib/qa-belege.ts — ohne "use client",
 // damit auch die Server-Komponente app/g sie AUFRUFEN kann (aus einem
 // Client-Modul kämen dort nur Referenzen an, keine Funktionen).
@@ -24,6 +26,7 @@ import {
   ANL_EXACT_RE, ANL_SOURCE, anlagenBuchstaben, anlagenNr, BELEG_SPLIT_RE,
   CITE_EXACT_RE, CITE_SOURCE, citationIds, datenEindeutschen, fmtDatumKurz,
 } from "@/lib/qa-belege";
+import { apiUrl, authHeaders } from "@/lib/api";
 
 /* ------------------------------ Typen ------------------------------ */
 
@@ -47,6 +50,145 @@ export type DebattenHinweis = {
   top: string | null; auszug: string; committee: string | null; datum: string | null;
 };
 
+/** Personen-Badge-Eintrag aus /council/personen-lexikon (Tims Wunsch 12.08.):
+ *  Ratsmitglieder mit Partei, Verwaltung mit geerntetem Amt; `aktiv` heißt in
+ *  den letzten zwölf Monaten in einer Anwesenheitsliste gesehen. */
+export type PersonEintrag = {
+  slug: string; name: string | null; vorname: string; nachname: string;
+  /** "blocker": Gäste/Protokoll/beratende Mitglieder — nie ein Badge, aber
+   *  ihr Nachname macht einen kahlen Nachnamen im Text mehrdeutig (Tims
+   *  Oltmanns-Befund 12.08.). */
+  art: "rat" | "stadt" | "blocker"; partei: string | null; rolle: string | null;
+  aktiv: boolean; von: string | null; bis: string | null;
+};
+
+// Das Lexikon einmal je Seite laden — ein Modul-Promise statt Fetch je Turn;
+// der Endpunkt ist public (auch die geteilte Seite braucht ihn) und cacht
+// serverseitig sechs Stunden.
+let _lexikonPromise: Promise<PersonEintrag[]> | null = null;
+
+function usePersonenLexikon(): PersonEintrag[] {
+  const [lex, setLex] = useState<PersonEintrag[]>([]);
+  useEffect(() => {
+    _lexikonPromise ||= fetch(apiUrl("/council/personen-lexikon"),
+      { credentials: "include", headers: authHeaders() })
+      .then((r) => (r.ok ? r.json() : { personen: [] }))
+      .then((b) => (b?.personen ?? []) as PersonEintrag[])
+      .catch(() => [] as PersonEintrag[]);
+    let lebt = true;
+    void _lexikonPromise.then((p) => { if (lebt) setLex(p); });
+    return () => { lebt = false; };
+  }, []);
+  return lex;
+}
+
+const _PARTEI_KUERZEL: [RegExp, string][] = [
+  [/grün/i, "Grüne"], [/linke/i, "Linke"], [/spd/i, "SPD"], [/cdu/i, "CDU"],
+  [/bsw/i, "BSW"], [/afd/i, "AfD"], [/^volt$/i, "Volt"], [/^fdp$/i, "FDP"],
+  [/fdp\/volt/i, "FDP/Volt"], [/für oldenburg/i, "FO"], [/piraten/i, "Piraten"],
+];
+
+function parteiKuerzel(label: string | null): string {
+  for (const [re, k] of _PARTEI_KUERZEL) if (label && re.test(label)) return k;
+  return "Rat";
+}
+
+const falteName = (t: string) =>
+  t.toLowerCase().replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss");
+
+// Exakte Partei-Labels (gefaltet, ohne Satzzeichen) — NUR solche Klammern
+// werden nach einem Badge geschluckt. „(FDP-Fraktion vom 28.07.2026)" trägt
+// mehr als das Label und bleibt deshalb stehen.
+const _KLAMMER_LABELS = new Set([
+  "spd", "cdu", "fdp", "volt", "afd", "bsw", "linke", "die linke",
+  "gruene", "die gruenen", "buendnis 90 die gruenen", "buendnis90 die gruenen",
+  "fuer oldenburg", "fdp volt", "piraten", "die partei",
+]);
+
+function klammerIstParteiLabel(inhalt: string, badgePartei: string | null): boolean {
+  if (!badgePartei) return false;
+  const gefaltet = falteName(inhalt).replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+  if (!_KLAMMER_LABELS.has(gefaltet)) return false;
+  // Die Klammer muss DIESELBE Partei meinen wie das Badge daneben.
+  return parteiKuerzel(inhalt) === parteiKuerzel(badgePartei);
+}
+
+/** Kleines Zugehörigkeits-Badge hinter einem Personennamen: Punkt in
+ *  Parteifarbe (Verwaltung: Hafenblau „Stadt", Ehemalige: grau „ehem.") plus
+ *  Kürzel; Tipp öffnet den Peek mit Rolle, belegtem Zeitraum und — bei
+ *  Ratsmitgliedern — dem Link zur Personen-Seite. */
+export function PersonBadge({ p }: { p: PersonEintrag }) {
+  const [offen, setOffen] = useState(false);
+  // Peek-Ausrichtung beim Öffnen messen (Tims Befund 12.08.: das Popover lief
+  // rechts aus dem Text bzw. wurde vom overflow-hidden der lg-Bühne
+  // beschnitten): nahe dem rechten Rand rechtsbündig, nahe der Oberkante
+  // nach unten öffnen.
+  const [lage, setLage] = useState<{ rechts: boolean; unten: boolean }>({ rechts: false, unten: false });
+  const ref = useRef<HTMLSpanElement>(null);
+  const oeffnen = () => {
+    const r = ref.current?.getBoundingClientRect();
+    if (r) setLage({ rechts: r.left + 270 > window.innerWidth, unten: r.top < 170 });
+    setOffen((v) => !v);
+  };
+  useEffect(() => {
+    if (!offen) return;
+    const zu = (e: MouseEvent | TouchEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOffen(false);
+    };
+    document.addEventListener("mousedown", zu);
+    document.addEventListener("touchstart", zu);
+    return () => {
+      document.removeEventListener("mousedown", zu);
+      document.removeEventListener("touchstart", zu);
+    };
+  }, [offen]);
+
+  const dot = !p.aktiv ? { bg: "hsl(209 10% 62%)", ring: false }
+    : p.art === "stadt" ? { bg: "#0764a6", ring: false }
+    : parteiDot(p.partei || "");
+  const label = !p.aktiv ? "ehem." : p.art === "stadt" ? "Stadt" : parteiKuerzel(p.partei);
+  const rolle = p.rolle
+    || (p.art === "rat" ? `Ratsmitglied${p.partei ? ` · ${p.partei}` : ""}` : "Stadtverwaltung");
+  const zeitraum = p.aktiv
+    ? (p.von ? `In den Sitzungen seit ${p.von}` : null)
+    : (p.von && p.bis ? `In den Sitzungen ${p.von}–${p.bis}` : null);
+
+  return (
+    <span ref={ref} className="relative inline-block align-baseline">
+      <button type="button" onClick={oeffnen}
+        aria-expanded={offen} title={`${p.name} — ${rolle}`}
+        className="ml-1 inline-flex -translate-y-[1px] items-center gap-1 rounded-full border border-border bg-card px-1.5 py-px align-baseline text-[10px] font-medium leading-[14px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+        <span aria-hidden className={cn("h-[7px] w-[7px] shrink-0 rounded-full", dot.ring && "ring-1 ring-border")}
+          style={{ backgroundColor: dot.bg }} />
+        {label}
+      </button>
+      {offen && (
+        <span className={cn(
+          "absolute z-30 block w-64 rounded-xl border border-border bg-card p-3 text-left shadow-lg",
+          lage.rechts ? "right-0" : "left-0",
+          lage.unten ? "top-full mt-1.5" : "bottom-full mb-1.5")}>
+          <span className="block text-[13px] font-semibold text-foreground">{p.name}</span>
+          <span className="mt-0.5 block text-[11.5px] text-muted-foreground">
+            {p.aktiv ? rolle : `Ehemals: ${rolle}`}
+          </span>
+          {zeitraum && (
+            <span className="mt-1 block text-[10.5px] text-muted-foreground/70">{zeitraum}</span>
+          )}
+          {p.art === "rat" && (
+            /* Next-Link statt <a>: Der harte Reload warf beim Zurückkommen
+               den Gesprächs-State weg (Tims Befund 12.08.) — client-seitig
+               bleibt die History intakt und der Restore greift. */
+            <Link href={personHref(p.slug)}
+              className="mt-1.5 inline-flex items-center gap-1 text-[11.5px] font-medium text-primary hover:underline">
+              Zur Personen-Seite <ArrowRight className="h-3 w-3" aria-hidden />
+            </Link>
+          )}
+        </span>
+      )}
+    </span>
+  );
+}
+
 export type ParteiMeinung = {
   partei: string; haltung?: "dafür" | "dagegen" | "offen" | "gewandelt";
   position: string; einig: boolean; hinweis: string | null;
@@ -68,7 +210,7 @@ export type ParteiMeinung = {
  * Seite gibt es kein Peek — dort verlinkt `quelleHref` auf die Quellenliste.
  */
 export function AntwortText({ text: rohtext, idToNum, onJump, quelleHref,
-  anlBuchstaben, onAnlage, anlageHref, ankerPrefix, berichtKoepfe }: {
+  anlBuchstaben, onAnlage, anlageHref, ankerPrefix, berichtKoepfe, personen }: {
   text: string; idToNum: Map<number, number>;
   onJump?: (id: number) => void;
   quelleHref?: (nummer: number) => string;
@@ -80,7 +222,66 @@ export function AntwortText({ text: rohtext, idToNum, onJump, quelleHref,
   ankerPrefix?: string;
   /** RG-10: Bericht-Köpfe größer (Display-Font) statt der kompakten Task-32-Optik. */
   berichtKoepfe?: boolean;
+  /** Personen-Lexikon für Zugehörigkeits-Badges hinter Namen (Tims Wunsch
+   *  12.08.) — ohne Angabe lädt die Komponente es selbst (Modul-Cache). */
+  personen?: PersonEintrag[];
 }) {
+  const lexikon = usePersonenLexikon();
+  const personenEff = personen ?? lexikon;
+  // Nachname → Kandidaten (Blocker zählen mit). Deterministische Regeln
+  // statt LLM: Ganzwort, kapitalisiert, Badge nur bei der ERSTEN Nennung
+  // einer Person. Bei Namensvettern entscheidet AUSSCHLIESSLICH der Vorname
+  // davor — die frühere „einzige Aktive gewinnt"-Heuristik hängte einem
+  // Gast von 2019 das Badge einer 2026er-Person um (Tims Oltmanns-Befund):
+  // lieber KEIN Badge als ein geratenes.
+  const personenMap = useMemo(() => {
+    const m = new Map<string, PersonEintrag[]>();
+    for (const p of personenEff || []) {
+      if (!p.nachname || p.nachname.length < 3) continue;
+      const l = m.get(p.nachname) || [];
+      l.push(p);
+      m.set(p.nachname, l);
+    }
+    return m;
+  }, [personenEff]);
+  const badgesGesetzt = new Set<string>();
+
+  const mitPersonen = (s: string, keyBase: string): React.ReactNode => {
+    if (personenMap.size === 0) return s;
+    const re = /[A-ZÄÖÜ][A-Za-zÄÖÜäöüß-]{2,}/g;
+    const teile: React.ReactNode[] = [];
+    let last = 0;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(s))) {
+      const kandidaten = personenMap.get(falteName(m[0]));
+      if (!kandidaten) continue;
+      let p: PersonEintrag | null = null;
+      if (kandidaten.length === 1) p = kandidaten[0];
+      else {
+        const davor = falteName((s.slice(0, m.index).trimEnd().split(/\s+/).pop() || "")
+          .replace(/[^A-Za-zÄÖÜäöüß-]/g, ""));
+        const perVorname = kandidaten.filter((k) => k.vorname && k.vorname === davor);
+        if (perVorname.length === 1) p = perVorname[0];
+      }
+      if (!p || p.art === "blocker" || badgesGesetzt.has(p.slug)) continue;
+      badgesGesetzt.add(p.slug);
+      let ende = m.index + m[0].length;
+      teile.push(s.slice(last, ende));
+      teile.push(<PersonBadge key={`${keyBase}-p-${p.slug}`} p={p} />);
+      // „Ulf Prange ·SPD (SPD)" — nennt der Text die Partei direkt hinter dem
+      // Namen noch einmal in Klammern, ersetzt das Badge sie (Tims Befund
+      // 12.08.). Geschluckt wird NUR das nackte Partei-Label derselben Partei.
+      const klammer = s.slice(ende).match(/^\s*\(([^()]{2,40})\)/);
+      if (klammer && klammerIstParteiLabel(klammer[1], p.partei)) {
+        ende += klammer[0].length;
+        re.lastIndex = ende;
+      }
+      last = ende;
+    }
+    if (teile.length === 0) return s;
+    teile.push(s.slice(last));
+    return teile;
+  };
   // Belege ohne Gegenstück fliegen SAMT führendem Leerzeichen raus (der Deep-
   // Bericht wird roh gespeichert, nur die schnelle Antwort putzt serverseitig).
   // Ohne das bliebe „… nichts her ." mit einer Lücke vor dem Punkt stehen.
@@ -147,8 +348,8 @@ export function AntwortText({ text: rohtext, idToNum, onJump, quelleHref,
       const seg = part.split(/(\*\*[^*]+\*\*)/g);
       return seg.map((s, j) =>
         /^\*\*[^*]+\*\*$/.test(s)
-          ? <strong key={`${keyBase}-${i}-${j}`} className="font-semibold">{s.slice(2, -2)}</strong>
-          : <span key={`${keyBase}-${i}-${j}`}>{s}</span>);
+          ? <strong key={`${keyBase}-${i}-${j}`} className="font-semibold">{mitPersonen(s.slice(2, -2), `${keyBase}-${i}-${j}`)}</strong>
+          : <span key={`${keyBase}-${i}-${j}`}>{mitPersonen(s, `${keyBase}-${i}-${j}`)}</span>);
     });
   };
 
@@ -349,7 +550,16 @@ function DebattenZeile({ d, artLabel }: { d: DebattenHinweis; artLabel: Record<s
       <p className="flex items-baseline gap-2">
         <span className="min-w-0 flex-1 truncate font-medium">
           {d.sprecher ?? "Ohne Namen"}{d.partei ? ` (${d.partei})` : ""}
-          <span className="ml-1.5 font-normal text-muted-foreground">· {artLabel[d.art] ?? d.art}</span>
+          {/* Zusagen der Verwaltung sind Selbstverpflichtungen — kein
+              Meinungsbeitrag unter vielen. Sie bekommen deshalb ein eigenes
+              Abzeichen statt nur ein graues Wörtchen. */}
+          {d.art === "zusage" ? (
+            <span className="ml-1.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+              Zusage der Verwaltung
+            </span>
+          ) : (
+            <span className="ml-1.5 font-normal text-muted-foreground">· {artLabel[d.art] ?? d.art}</span>
+          )}
         </span>
         {d.datum && <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{fmtDatumKurz(d.datum)}</span>}
       </p>

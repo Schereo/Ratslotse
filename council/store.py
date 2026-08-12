@@ -69,6 +69,17 @@ CREATE TABLE IF NOT EXISTS council_agenda_items (
     FOREIGN KEY(ksinr) REFERENCES council_sessions(ksinr)
 );
 
+-- Dokument-Anhänge je TOP von der Sitzungsseite (Tims Befund 12.08.):
+-- Fraktions-Anträge ohne Vorlage hängen NUR hier.
+CREATE TABLE IF NOT EXISTS council_agenda_anlagen (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    ksinr        INTEGER NOT NULL,
+    item_number  TEXT NOT NULL,
+    label        TEXT NOT NULL,
+    url          TEXT NOT NULL,
+    UNIQUE(ksinr, item_number, url)
+);
+
 -- Terminierte Sitzungen aus dem Sitzungskalender, noch ohne veröffentlichte
 -- Tagesordnung (und damit ohne ksinr — SessionNet verlinkt erst bei
 -- Veröffentlichung). Wird bei jedem Scrape komplett ersetzt; abgesagte
@@ -119,6 +130,17 @@ CREATE TABLE IF NOT EXISTS committee_summaries (
     ksinr       INTEGER NOT NULL,
     agenda_hash TEXT NOT NULL,
     summary     TEXT NOT NULL,
+    created_at  TEXT NOT NULL,
+    PRIMARY KEY(ksinr, agenda_hash)
+);
+
+-- Tagesordnungs-Stand je (Sitzung, Hash) — die Vergleichsbasis der
+-- Änderungs-Meldung (Tims Wunsch 12.08.): save_session ERSETZT die Items,
+-- der alte Stand wäre sonst weg, sobald sich die Tagesordnung ändert.
+CREATE TABLE IF NOT EXISTS agenda_snapshots (
+    ksinr       INTEGER NOT NULL,
+    agenda_hash TEXT NOT NULL,
+    items_json  TEXT NOT NULL,
     created_at  TEXT NOT NULL,
     PRIMARY KEY(ksinr, agenda_hash)
 );
@@ -815,6 +837,19 @@ class CouncilStore:
                     for i in session.agenda_items
                 ],
             )
+            self._conn.execute(
+                "DELETE FROM council_agenda_anlagen WHERE ksinr = ?", (session.ksinr,)
+            )
+            self._conn.executemany(
+                """INSERT OR IGNORE INTO council_agenda_anlagen
+                   (ksinr, item_number, label, url) VALUES (?, ?, ?, ?)""",
+                [
+                    (session.ksinr, i.item_number, a.get("label") or "Anlage", a.get("url") or "")
+                    for i in session.agenda_items
+                    for a in (getattr(i, "anlagen", None) or [])
+                    if a.get("url")
+                ],
+            )
 
     def alert_already_sent(self, ksinr: int, topic_id: int) -> bool:
         row = self._conn.execute(
@@ -947,6 +982,30 @@ class CouncilStore:
         ).fetchone()
         return row[0] if row is not None else None
 
+    def save_agenda_snapshot(self, ksinr: int, agenda_hash: str, items: list[dict]) -> None:
+        """Öffentliche Tagesordnungspunkte zu diesem Hash einfrieren — die
+        Vergleichsbasis für die Diff-Änderungsmeldung. INSERT OR IGNORE:
+        Derselbe Stand wird nie überschrieben."""
+        import json as _json
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT OR IGNORE INTO agenda_snapshots (ksinr, agenda_hash, items_json, created_at) "
+                "VALUES (?, ?, ?, ?)",
+                (ksinr, agenda_hash, _json.dumps(items, ensure_ascii=False), now))
+
+    def get_agenda_snapshot(self, ksinr: int, agenda_hash: str) -> list[dict] | None:
+        import json as _json
+        row = self._conn.execute(
+            "SELECT items_json FROM agenda_snapshots WHERE ksinr = ? AND agenda_hash = ?",
+            (ksinr, agenda_hash)).fetchone()
+        if row is None:
+            return None
+        try:
+            return _json.loads(row[0])
+        except ValueError:
+            return None
+
     def save_summary(self, ksinr: int, agenda_hash: str, summary: str) -> None:
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
@@ -981,7 +1040,16 @@ class CouncilStore:
                ORDER BY id""",
             (ksinr,),
         ).fetchall()
-        return [dict(r) for r in rows]
+        out = [dict(r) for r in rows]
+        # Anhänge je TOP dazulegen (Tims Befund 12.08.) — ein Query, gruppiert.
+        anl: dict[str, list[dict]] = {}
+        for r in self._conn.execute(
+                "SELECT item_number, label, url FROM council_agenda_anlagen "
+                "WHERE ksinr = ? ORDER BY id", (ksinr,)):
+            anl.setdefault(r["item_number"], []).append({"label": r["label"], "url": r["url"]})
+        for item in out:
+            item["anlagen"] = anl.get(item["item_number"], [])
+        return out
 
     def get_session(self, ksinr: int) -> dict | None:
         row = self._conn.execute(
@@ -2963,6 +3031,113 @@ class CouncilStore:
 
     # --- Personen-Paket (10.08.26): Stammdaten für Auflösung + Fragetyp -----
 
+    # Vertretungs- und Zeit-Notizen sind keine Ämter („Für Oberbürgermeister
+    # Krogmann", „bis TOP 8.2") — nur echte Amtsbezeichnungen zählen.
+    _ROLLEN_RE = re.compile(
+        r"(?i)^(erste[rn]?\s+)?(oberbürgermeister(in)?|stadtkämmer(er|in)|"
+        r"stadtbaur(at|ätin)|stadtr(at|ätin))$")
+
+    def personen_lexikon(self) -> list[dict]:
+        """Das Personen-Lexikon für die Badges im Antwort-Text (Tims Wunsch
+        12.08.): Ratsmitglieder aus dem Verzeichnis (Partei, Zeitraum,
+        Personen-Seite) plus Verwaltungsleute aus den Anwesenheitslisten —
+        deren Amt kommt aus den Protokoll-Notizen selbst („Stadtkämmerin",
+        „Oberbürgermeister"), nicht aus Weltwissen. `aktiv` heißt: in den
+        letzten zwölf Monaten in einer Anwesenheitsliste — dieselbe
+        selbstheilende Regel wie bei der Parteien-Zeile; Ehemalige zeigen
+        ehrlich nur den belegten Zeitraum."""
+        from collections import Counter, defaultdict
+        from datetime import date, timedelta
+        stichtag = (date.today() - timedelta(days=365)).isoformat()
+
+        def falte(t: str) -> str:
+            t = t.lower()
+            for a, b in (("ä", "ae"), ("ö", "oe"), ("ü", "ue"), ("ß", "ss")):
+                t = t.replace(a, b)
+            return t
+
+        def namensteile(anzeige: str) -> tuple[str, str]:
+            """(vorname_gefaltet, nachname_gefaltet) — Nachname ist das letzte
+            Token (Bindestrich-Namen sind EIN Token), Titel zählen nicht als
+            Vorname."""
+            toks = [t for t in anzeige.replace(".", " ").split()
+                    if t.lower().rstrip(".") not in self._HONORIFICS]
+            if not toks:
+                return "", ""
+            return falte(toks[0]) if len(toks) > 1 else "", falte(toks[-1])
+
+        out: list[dict] = []
+        gesehen: set[str] = set()
+        for m in self.list_members():
+            vor, nach = namensteile(m["name"])
+            if not nach:
+                continue
+            gesehen.add(m["slug"])
+            out.append({
+                "slug": m["slug"], "name": m["name"], "vorname": vor,
+                "nachname": nach, "art": "rat", "partei": m["party"],
+                "rolle": None,
+                "aktiv": bool(m["last"] and m["last"] >= stichtag),
+                "von": (m["first"] or "")[:4] or None,
+                "bis": (m["last"] or "")[:4] or None,
+            })
+
+        rows = self._conn.execute(
+            """SELECT a.name, a.note, cs.session_date
+               FROM council_attendance a JOIN council_sessions cs ON cs.ksinr = a.ksinr
+               WHERE a.role = 'verwaltung' AND a.name IS NOT NULL AND a.name != ''"""
+        ).fetchall()
+        g: dict = defaultdict(lambda: {"names": Counter(), "rollen": Counter(),
+                                       "first": None, "last": None})
+        for r in rows:
+            sl = self._person_slug(r["name"])
+            if not sl:
+                continue
+            e = g[sl]
+            e["names"][r["name"]] += 1
+            note = " ".join((r["note"] or "").split())
+            if note and self._ROLLEN_RE.match(note):
+                e["rollen"][note] += 1
+            d = r["session_date"]
+            e["first"] = d if e["first"] is None else min(e["first"], d)
+            e["last"] = d if e["last"] is None else max(e["last"], d)
+        for sl, e in g.items():
+            if sl in gesehen:  # Ratsmandat gewinnt über Gast-Auftritte der Verwaltung
+                continue
+            gesehen.add(sl)
+            anzeige = self._person_anzeige(e["names"].most_common(1)[0][0])
+            vor, nach = namensteile(anzeige)
+            if not nach:
+                continue
+            out.append({
+                "slug": sl, "name": anzeige, "vorname": vor, "nachname": nach,
+                "art": "stadt", "partei": None,
+                "rolle": e["rollen"].most_common(1)[0][0] if e["rollen"] else None,
+                "aktiv": bool(e["last"] and e["last"] >= stichtag),
+                "von": (e["first"] or "")[:4] or None,
+                "bis": (e["last"] or "")[:4] or None,
+            })
+
+        # Blocker (Tims Oltmanns-Befund 12.08.): Gäste, Protokollführung und
+        # beratende Mitglieder bekommen NIE ein Badge — aber ihr Nachname macht
+        # einen kahlen Nachnamen im Text MEHRDEUTIG. „Herr Oltmanns" (Gast vom
+        # Wasserstraßen-Amt, 2019) trug sonst das Badge des einzigen
+        # Lexikon-Oltmanns — eines beratenden NABU-Mitglieds von 2026.
+        for (name,) in self._conn.execute(
+                "SELECT DISTINCT name FROM council_attendance "
+                "WHERE role NOT IN ('mitglied','vorsitz','verwaltung') "
+                "AND name IS NOT NULL AND name != ''"):
+            sl = self._person_slug(name)
+            if not sl or sl in gesehen:
+                continue
+            gesehen.add(sl)
+            _, nach = namensteile(self._person_anzeige(name))
+            if nach:
+                out.append({"slug": sl, "name": None, "vorname": "", "nachname": nach,
+                            "art": "blocker", "partei": None, "rolle": None,
+                            "aktiv": False, "von": None, "bis": None})
+        return out
+
     def personen_suchindex(self) -> list[tuple[str, str]]:
         """(Name, Partei) aller Ratspersonen mit bekannter Fraktion — Grundlage
         für die FDP/Volt-Auflösung und den Personen-Fragetyp. Die Stammdaten
@@ -4124,6 +4299,12 @@ class CouncilStore:
         if limit:
             sql += f" LIMIT {int(limit)}"
         return [r[0] for r in self._conn.execute(sql).fetchall()]
+
+    def wortbeitrag_ids_nach_art(self, art: str) -> list[int]:
+        """Alle Wortbeitrags-ids einer Art — Filter für den Zusagen-Kanal.
+        Klein genug (1.437 Zusagen), um sie je Frage zu holen."""
+        return [r[0] for r in self._conn.execute(
+            "SELECT id FROM council_wortbeitraege WHERE art = ?", (art,))]
 
     def wortbeitraege_by_ids(self, ids: list[int]) -> list[dict]:
         if not ids:

@@ -7,6 +7,15 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Neu
+- **Zusagen der Verwaltung werden sichtbar.** „Die Verwaltung sagt zu, den
+  Zeitplan vorzulegen" — solche Selbstverpflichtungen stehen in den
+  Protokollen, gingen in den Belegen aber unter: Sie sind kurz und nüchtern
+  formuliert und verloren jedes Duell gegen ausführliche Reden. Sie haben
+  jetzt einen eigenen Kanal, ein eigenes Abzeichen in den Belegen, und die
+  Antwort nennt sie ausdrücklich mit Datum. Reine Verfahrens-Floskeln
+  („sichert eine Antwort zu Protokoll zu") bleiben draußen.
+
 ### Verbessert
 - **Wiederholte Fragen antworten fast sofort.** Die Bewertung der gefundenen
   Beschlüsse ist mit Abstand der teuerste Schritt der Suche; sie wird jetzt je
@@ -20,8 +29,74 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 - **Erste Frage nach einem Neustart ist schneller.** Der Warmlauf lädt nun auch
   die Zusatzkanäle (Pressemitteilungen, Wortbeiträge) vor, statt sie die erste
   Frage bezahlen zu lassen.
+- **Angemeldete landen direkt im Dashboard.** Wer eingeloggt ratslotse.de
+  aufruft, sieht nicht mehr die Werbeseite, sondern seine Startseite mit
+  Themen und Sitzungen. Die Startseite bleibt erreichbar: über „Startseite"
+  im Menü-Fuß (bzw. ratslotse.de/?start=1) — dann bleibt sie für die ganze
+  Sitzung stehen, auch beim Klick aufs Logo. Nach dem Abmelden erscheint sie
+  ohnehin wieder. (#444)
+
+### Neu
+- **Tagesordnungen zeigen die Anhänge ihrer Punkte.** Jeder TOP verlinkt
+  jetzt seine Dokumente aus dem Ratsinformationssystem — gerade
+  Fraktions-Anträge ohne Vorlage hingen bisher nur dort und waren in der
+  App unsichtbar. Die Anhänge füllen sich mit dem täglichen Abgleich für
+  alle kommenden Sitzungen. (#443)
 
 ### Verbessert
+- **„Tagesordnung geändert"-Meldungen zeigen nur noch die Unterschiede.**
+  Statt der kompletten Liste steht in der Mail, was sich getan hat: neue
+  Punkte grün, verschobene und umformulierte gelb (mit dem alten Wortlaut),
+  gestrichene rot durchgestrichen. Ein eingeschobener Punkt färbt dabei
+  nicht die halbe Liste um, nur weil sich Nummern verschieben — verglichen
+  wird über den Titel. (#440)
+
+### Behoben
+- **Zurück von der Personen-Seite führt wieder in die Antwort.** Der Sprung
+  aus dem Personen-Peek lud die Seite bisher komplett neu — beim
+  Zurückkommen war das Gespräch weg und der leere Startbildschirm da. Der
+  Link navigiert jetzt in der App, und das aktive gespeicherte Gespräch
+  wird beim Zurückkommen automatisch wieder geladen. (#442)
+- **Keine doppelte Partei mehr hinter Personennamen.** Nennt der
+  Antworttext die Partei direkt hinter dem Namen in Klammern („Ulf Prange
+  (SPD)"), ersetzt das Badge die Klammer — geschluckt wird nur das nackte
+  Partei-Label derselben Partei, Zusätze wie „(FDP-Fraktion vom 28.07.)"
+  bleiben stehen. (#441)
+- **Der Personen-Peek bleibt im Bild.** Nahe dem rechten Rand oder der
+  Oberkante lief die Info-Karte aus dem Text bzw. wurde abgeschnitten —
+  sie richtet sich jetzt nach der verfügbaren Seite aus. (#439)
+- **„dein Thema"-Markierungen sitzen am richtigen Tagesordnungspunkt.** Das
+  Themen-Matching übernahm die TOP-Nummer ungeprüft vom Sprachmodell — das
+  verrutscht bei Nummern-Listen gern um eins (Ö 14.6 trug ein
+  Fliegerhorst-Label, gemeint war Ö 14.7). Jetzt liefert das Modell Nummer
+  UND Titel; existiert die Nummer nicht oder widerspricht der Titel, gewinnt
+  der eindeutige Titel-Treffer — und ist gar nichts auflösbar, gibt es keine
+  Markierung statt einer falschen. (#438)
+- **Personen-Badges verwechseln keine Namensvettern mehr.** Ein Gast im
+  Ausschuss (etwa vom Wasserstraßen-Amt) trug im Text das Badge eines
+  gleichnamigen Gremienmitglieds. Gäste, Protokollführung und beratende
+  Mitglieder machen den kahlen Nachnamen jetzt mehrdeutig — und bei
+  Mehrdeutigkeit entscheidet nur noch ein Vorname im Text, sonst gibt es
+  gar kein Badge. (#437)
+
+### Neu
+- **Kleine Zugehörigkeits-Badges hinter Personennamen in KI-Antworten.**
+  Erwähnt eine Antwort ein Ratsmitglied, steht bei der ersten Nennung ein
+  kompakter Punkt in Parteifarbe mit Kürzel dahinter („Lükermann ·Volt");
+  Verwaltungsleute tragen „Stadt", Ehemalige einen grauen „ehem."-Punkt —
+  nie eine veraltete Rolle als aktuell. Antippen öffnet eine Karte mit
+  vollem Namen, Amt bzw. Fraktion, belegtem Zeitraum aus den
+  Anwesenheitslisten und dem Link zur Personen-Seite. Die Ämter der
+  Verwaltungsspitze („Oberbürgermeister", „Stadtkämmerin") stammen aus den
+  Protokollen selbst; bei mehrdeutigen Nachnamen erscheint lieber kein
+  Badge als ein geratenes. Funktioniert im Gespräch, im Recherche-Bericht
+  und auf geteilten Antworten. (#435)
+
+### Verbessert
+- **Der Fragen-Startbildschirm passt auf einen Handy-Bildschirm.** Kürzerer
+  Untertitel, weniger Leerraum, mobil drei statt vier Beispielfragen (die
+  vierte gibt es weiter am großen Bildschirm) — nichts verschwindet mehr
+  hinter dem Eingabefeld. (#433)
 - **Kein doppelter Einstieg mehr bei „Was ist …?"-Fragen.** Der Steckbrief
   „Worum geht es?" und die Antwort sagten dort dasselbe — bei einer reinen
   Definitionsfrage *ist* die Antwort die Definition. Die Karte entfällt jetzt
