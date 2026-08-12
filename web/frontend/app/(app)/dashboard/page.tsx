@@ -203,7 +203,7 @@ export default function DashboardPage() {
           Ausgabe — mit einem Feld Leerraum darunter, das nichts sagt. */}
       <div className="mt-6 grid grid-cols-1 items-start gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1.35fr)_minmax(0,0.75fr)]">
         {/* Nächste Sitzungen */}
-        <Card className="flex flex-col p-5 md:order-2 xl:order-none">
+        <Card className="@container flex flex-col p-5 md:order-2 xl:order-none">
           <h2 className="font-display text-base font-bold text-foreground">Nächste Sitzungen</h2>
           <div className="mt-3 flex-1 space-y-1">
             {sessions.slice(0, 3).map((s) => (
@@ -212,13 +212,21 @@ export default function DashboardPage() {
                 // RL-F06: direkt zur jeweiligen Sitzung (Terminplan-Zeilen ohne
                 // ksinr landen weiter auf der Liste).
                 href={s.ksinr ? `/council?tab=sessions&ksinr=${s.ksinr}` : "/council?tab=sessions"}
-                className="flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-accent"
+                /* Gestapelt, sobald die Karte schmal ist; ab @xs (20rem
+                   INHALTS-Breite der Karte, nicht Fensterbreite — die
+                   Polsterung zählt nicht mit) wieder einzeilig mit
+                   Gremium links und Datum/Merkmal rechts. */
+                className="block rounded-lg px-2 py-2 transition-colors hover:bg-accent @xs:flex @xs:items-center @xs:gap-3"
               >
-                <span className="w-[104px] shrink-0 whitespace-nowrap text-sm font-medium tabular-nums text-foreground"
-                  title={fmtDay(s.session_date)}>
-                  {fmtTermin(s.session_date, heute)}
-                </span>
-                <span className="min-w-0 flex-1 truncate text-sm text-foreground" title={s.committee}>{shortCommittee(s.committee)}</span>
+                {/* Zwei Zeilen statt drei Spalten (Tims Befund 12.08.): In der
+                    schmalen Spalte blieb vom Gremium nur „K…" übrig, weil das
+                    Datum eine feste Breite hatte und das TOP-Merkmal daneben.
+                    Gestapelt trägt jede Angabe ihre eigene Zeile — nichts muss
+                    weggelassen werden, und es funktioniert in jeder Spalte. */}
+                <span className="flex items-center gap-2 text-xs text-muted-foreground @xs:order-2 @xs:ml-auto @xs:shrink-0">
+                  <span className="whitespace-nowrap tabular-nums" title={fmtDay(s.session_date)}>
+                    {fmtTermin(s.session_date, heute)}
+                  </span>
                 {isLiveNow(s) ? (
                   /* RL-U10: laufende Sitzung — LIVE schlägt alle anderen Chips. */
                   <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[11px] font-bold text-red-600 dark:text-red-400">
@@ -234,6 +242,11 @@ export default function DashboardPage() {
                     {s.n_items} {s.n_items === 1 ? "TOP" : "TOPs"}
                   </span>
                 )}
+                </span>
+                <span className="mt-0.5 block truncate text-sm font-medium text-foreground @xs:mt-0 @xs:min-w-0 @xs:flex-1"
+                  title={s.committee}>
+                  {shortCommittee(s.committee)}
+                </span>
               </Link>
             ))}
             {!sessionsQuery.isLoading && sessions.length === 0 && (

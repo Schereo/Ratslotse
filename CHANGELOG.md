@@ -14,7 +14,9 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   über die volle Zeile, damit sie lesbar bleibt), drei erst auf breiten
   Schirmen — und dort bekommt die textreichste Karte auch die meiste Breite.
   Außerdem behält jede Karte ihre eigene Höhe, statt auf die längste gestreckt
-  zu werden.
+  zu werden, und die Sitzungs-Zeilen richten sich nach der Breite ihrer eigenen
+  Karte: schmal untereinander, breit nebeneinander — vorher blieb vom
+  Gremiennamen in der schmalen Spalte nur „K…" übrig.
 - **Abgelaufene Bürgerbeteiligungen bleiben dokumentiert.** Das Portal der
   Stadt zeigt nur Verfahren, zu denen gerade eine Beteiligung möglich ist —
   abgeschlossene verschwinden dort spurlos. Ratslotse behält sie jetzt und
