@@ -57,6 +57,8 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <footer className="border-t border-border bg-background/85 py-4 text-center text-xs text-muted-foreground">
+          <Link href="/hilfe" className="hover:text-foreground">Hilfe</Link>
+          {" · "}
           <Link href="/impressum" className="hover:text-foreground">Impressum</Link>
           {" · "}
           <Link href="/datenschutz" className="hover:text-foreground">Datenschutz</Link>

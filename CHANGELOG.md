@@ -7,6 +7,14 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Neu
+- **Hilfe-Seite mit Kontaktformular.** Unter `/hilfe` steht jetzt ein
+  Kontaktformular, das ohne Anmeldung funktioniert — wichtig für alle, die
+  gerade nicht in ihr Konto kommen. Dazu Antworten auf die häufigsten Fragen
+  (Konto löschen, Passwort vergessen, Benachrichtigungen, falsche Angaben).
+  Verlinkt von Anmeldung, Registrierung, Startseite und beiden Seiten-Füßen;
+  zugleich die Support-Adresse, die Apple für den App Store verlangt. (#467)
+
 ### Verbessert
 - **Ratslotse sagt jetzt, wessen Angebot es ist.** Impressum, Anmeldung,
   Registrierung, Konto-Fuß und Seiten-Fuß stellen ausdrücklich klar: ein

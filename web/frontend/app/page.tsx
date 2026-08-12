@@ -184,6 +184,7 @@ export default function LandingPage() {
             © Ratslotse — Ratsinformationen für Oldenburg. Ein privates Bürgerprojekt, kein Angebot der Stadt.
           </span>
           <div className="flex flex-wrap gap-4">
+            <Link href="/hilfe" className="hover:text-foreground">Hilfe &amp; Kontakt</Link>
             <a href="/docs" className="hover:text-foreground">Technik-Doku</a>
             <Link href="/changelog" className="hover:text-foreground">Changelog</Link>
             <Link href="/impressum" className="hover:text-foreground">Impressum</Link>

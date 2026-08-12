@@ -67,3 +67,9 @@ qa_limiter = RateLimiter(max_calls=10, window_seconds=600)
 qa_feedback_limiter = RateLimiter(max_calls=20, window_seconds=600)
 partei_meinungen_limiter = RateLimiter(max_calls=15, window_seconds=600)
 qa_share_limiter = RateLimiter(max_calls=10, window_seconds=600)
+# Das Kontaktformular auf /hilfe ist der einzige Schreib-Endpoint ganz ohne
+# Konto — also der einzige, den ein Bot ohne Vorleistung findet. Eng wie
+# „Passwort vergessen": Wer ehrlich schreibt, braucht keinen zweiten Versuch
+# in derselben Viertelstunde; ein Skript kann so weder die Tabelle aufblähen
+# noch unser Resend-Kontingent leerlaufen lassen.
+support_limiter = RateLimiter(max_calls=5, window_seconds=900)
