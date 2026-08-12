@@ -347,6 +347,67 @@ def anker_ids_fuer(store, frage: str) -> list[int]:
         return []
 
 
+def steckbriefe_fuer(store, frage: str, max_n: int = 2) -> list[dict]:
+    """Kurzbeschreibungen der in der Frage genannten Entitäten.
+
+    „Was ist die GSG, was macht sie?" (echte Nutzerfrage 11.08.) lässt sich aus
+    Beschlüssen kaum beantworten — die dokumentieren Entscheidungen, nicht
+    Hintergrund. Die Beschreibung dazu liegt fertig in ``council_entity_meta``.
+    Leer bei Fehlern: Hintergrund ist Zusatz, nie Blocker.
+    """
+    try:
+        ent = finde_entitaeten(store, frage, max_n=max_n)
+        return store.entity_steckbriefe([e["id"] for e in ent]) if ent else []
+    except Exception:  # noqa: BLE001
+        return []
+
+
+#: Ab wann gilt die Beleglage als tragfähig? Am Prod-Bestand gemessen und
+#: nachjustiert: Entscheidend ist NICHT der Bestwert allein, sondern ob es
+#: überhaupt Volltreffer gibt. „Straßenbahn" kommt auf sechs mittelmäßige
+#: Treffer (bester 0,61) und ist trotzdem dünn; „Stadion" hat Volltreffer.
+#: Erste Fassung ging über den Bestwert — die stufte die Straßenbahn-Frage
+#: fälschlich als solide ein.
+BELEG_STARK = 0.5        # zählt als brauchbarer Treffer
+BELEG_VOLLTREFFER = 0.7  # zählt als klarer Treffer
+BELEG_MIN_TREFFER = 3
+BELEG_MIN_BESTWERT = 0.75  # ohne Volltreffer muss wenigstens einer nah dran sein
+
+
+def beleglage(candidates: list[dict]) -> str:
+    """„solide" oder „duenn" — wie tragfähig sind die gefundenen Beschlüsse?
+
+    Rein deterministisch aus den Rerank-Scores. Der Zweck ist Ehrlichkeit: Das
+    einzige Nutzer-👎 mit Begründung („Falschinfo", Giftmüll am Fliegerhorst)
+    traf eine Frage mit genau dieser Signatur — wenige, schwache Treffer, aber
+    eine Antwort im selben selbstbewussten Ton wie sonst.
+    """
+    werte = [c.get("score") or 0 for c in candidates]
+    if not werte:
+        return "duenn"
+    stark = sum(1 for w in werte if w >= BELEG_STARK)
+    volltreffer = sum(1 for w in werte if w >= BELEG_VOLLTREFFER)
+    if stark < BELEG_MIN_TREFFER:
+        return "duenn"
+    if volltreffer == 0 and max(werte) < BELEG_MIN_BESTWERT:
+        return "duenn"
+    return "solide"
+
+
+def _steckbrief_block(steckbriefe: list[dict] | None) -> str:
+    """Hintergrundwissen zu den genannten Objekten — beantwortet „Was ist X?",
+    ist aber KEIN Beschluss und darf deshalb nie eine [id] bekommen."""
+    if not steckbriefe:
+        return ""
+    zeilen = "\n".join(
+        f"- {s['name']}: {' '.join((s.get('description') or '').split())[:400]}"
+        for s in steckbriefe[:2])
+    return ("\nHINTERGRUND zu den genannten Objekten (aus den Ratsunterlagen "
+            "zusammengefasst — nutze es, um zu erklären, WORUM es geht, wenn die "
+            "Frage danach verlangt; NIE mit [id] zitieren, es ist kein "
+            "Beschluss):\n" + zeilen + "\n")
+
+
 def _vorlage_basis(nr: str | None) -> str | None:
     """„26/0100-1" → „26/0100": Revisionen hängen ein Zähler-Suffix an."""
     if not nr or not str(nr).strip():
@@ -755,10 +816,24 @@ def _haushalt_block(zeilen: list[dict] | None) -> str:
 # machte Antworten zu jahrelang diskutierten Vorhaben zwangsweise lückenhaft.
 GROSS_REGEL = (
     "\nDies ist ein UMFANGREICHES Thema mit langer Beratungs-Historie. Antworte "
-    "ausführlich (bis ~500 Wörter) und strukturiere die Antwort: Beginne mit 1-2 "
-    "Sätzen Überblick, gliedere danach mit 2-4 Zwischenüberschriften (Zeile, die "
-    "mit „## “ beginnt, z. B. „## Finanzierung“) und nutze, wo es passt, kurze "
-    "Spiegelstrich-Listen („- “). Die Fußnoten-Regeln gelten unverändert."
+    "ausführlich (bis ~500 Wörter) und strukturiere die Antwort: Beginne mit GENAU "
+    "EINER Zeile, die mit „**Kurz gesagt:** “ anfängt und in einem einzigen Satz "
+    "sagt, wo die Sache heute steht — die Antwort auf die Frage, nicht eine "
+    "Ankündigung dessen, was folgt. Gliedere danach mit 2-4 Zwischenüberschriften "
+    "(Zeile, die mit „## “ beginnt, z. B. „## Finanzierung“) und nutze, wo es "
+    "passt, kurze Spiegelstrich-Listen („- “). Die Fußnoten-Regeln gelten "
+    "unverändert."
+)
+
+#: Wenige und schwache Treffer → der Ton muss mitgehen. Ohne diese Regel klingt
+#: eine dünn belegte Antwort wie eine gut belegte; genau daran hing das einzige
+#: begründete 👎 („Falschinfo").
+DUENN_REGEL = (
+    "\nACHTUNG, DÜNNE BELEGLAGE: Zu dieser Frage gibt es nur wenige und nur "
+    "schwach passende Beschlüsse. Sage in EINEM ersten Satz ehrlich, dass die "
+    "Ratsunterlagen dazu wenig hergeben, und referiere danach nur, was wirklich "
+    "belegt ist. Erfinde keine Zusammenhänge und dehne Randtreffer nicht zu einer "
+    "Antwort — lieber kurz und ehrlich als lang und geraten."
 )
 
 
@@ -767,15 +842,17 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "thema",
                      verlauf: list[dict] | None = None,
                      haushalt: list[dict] | None = None,
                      debatten: list[dict] | None = None,
-                     gross: bool = False) -> tuple[list[dict], dict]:
+                     gross: bool = False, steckbriefe: list[dict] | None = None,
+                     duenn: bool = False) -> tuple[list[dict], dict]:
     vtext = _verlauf_zeilen(verlauf)
     gespraech = (f"Dies ist eine Anschlussfrage in einem Gespräch. Bisher:\n{vtext}\n\n"
                  if vtext else "")
     prompt = prompts.render("qa_antwort", question=question.strip()[:300],
                             context=_build_context(candidates),
-                            extra_regeln=EXTRA_REGELN.get(typ, "") + (GROSS_REGEL if gross else ""),
-                            presse=_presse_block(presse) + _haushalt_block(haushalt)
-                            + _debatten_block(debatten),
+                            extra_regeln=EXTRA_REGELN.get(typ, "")
+                            + (GROSS_REGEL if gross else "") + (DUENN_REGEL if duenn else ""),
+                            presse=_steckbrief_block(steckbriefe) + _presse_block(presse)
+                            + _haushalt_block(haushalt) + _debatten_block(debatten),
                             gespraech=gespraech)
     # reasoning-Schalter am TATSÄCHLICH genutzten Modell festmachen — vorher
     # hing er an der Modul-Konstante und lief bei model=-Overrides ins Leere.
@@ -795,10 +872,11 @@ def _answer_tokens(typ: str, gross: bool = False) -> int:
 def answer_question(question: str, candidates: list[dict], model: str = MODEL, typ: str = "thema",
                     presse: list[dict] | None = None, verlauf: list[dict] | None = None,
                     haushalt: list[dict] | None = None, debatten: list[dict] | None = None,
-                    gross: bool = False):
+                    gross: bool = False, steckbriefe: list[dict] | None = None,
+                    duenn: bool = False):
     """Synthesise an answer from retrieved candidates. Returns ``(answer, cited_ids)``."""
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
-                                       haushalt, debatten, gross)
+                                       haushalt, debatten, gross, steckbriefe, duenn)
     resp = llm.chat_complete(model=model, _feature="qa_antwort", temperature=0.2,
                              max_tokens=_answer_tokens(typ, gross), messages=messages, **extra)
     answer = (resp.choices[0].message.content or "").strip()
@@ -808,12 +886,13 @@ def answer_question(question: str, candidates: list[dict], model: str = MODEL, t
 def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ: str = "thema",
                   presse: list[dict] | None = None, verlauf: list[dict] | None = None,
                   haushalt: list[dict] | None = None, debatten: list[dict] | None = None,
-                  gross: bool = False):
+                  gross: bool = False, steckbriefe: list[dict] | None = None,
+                  duenn: bool = False):
     """Stream the answer text deltas (same prompt/context as answer_question) so the
     UI can render the answer as it is written. Citation resolution is the caller's
     job once the full text is assembled (see resolve_citations)."""
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
-                                       haushalt, debatten, gross)
+                                       haushalt, debatten, gross, steckbriefe, duenn)
     yield from llm.chat_stream(model=model, _feature="qa_antwort", temperature=0.2,
                                max_tokens=_answer_tokens(typ, gross), messages=messages, **extra)
 
