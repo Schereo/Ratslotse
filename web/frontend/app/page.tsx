@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { Search, Sparkles, MapPin, BarChart3, Bell, Landmark, ArrowRight } from "lucide-react";
 import { Brand } from "@/components/brand";
@@ -35,7 +36,10 @@ const FEATURES = [
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background">
-      <NativeRedirect />
+      {/* useSearchParams (Fluchttür ?start=1) braucht eine Suspense-Grenze. */}
+      <Suspense fallback={null}>
+        <NativeRedirect />
+      </Suspense>
       <PeekingChick />
       {/* Tastatur-Nutzer:innen springen direkt zum Inhalt (visuell versteckt bis fokussiert). */}
       <a
