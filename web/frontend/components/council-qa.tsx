@@ -1136,8 +1136,6 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   // Register-Chips und die Belege-Spalte im Warte-Zustand.
   const deepAktiv = Boolean(letzter?.recherche && letzter.deepStatus === "laeuft");
   const showIntro = turns.length === 0;
-  const [nativeApp, setNativeApp] = useState(false);
-  useEffect(() => { setNativeApp(isNativeApp()); }, []);
 
   // „Meine Gespräche" (5a/I-04 + 6a): Einwilligung (null = nie gefragt),
   // laufendes Gespräch und die gespeicherte Liste.
@@ -1310,15 +1308,16 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
 
   return (
     <div className="mx-auto mt-3 lg:grid lg:max-w-[1220px] lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-6">
-      {/* Chat-Spalte. Mobil: min-height, damit der Composer auch im Empty
-          State unten klebt (Design 2①) — in der nativen App steht mehr Chrome
-          im Weg (iOS-Test 09.08.), erst nach dem Mount entscheiden.
+      {/* Chat-Spalte. Die mobile min-height-Krücke (Design 2①: „Composer
+          klebt auch im Empty State unten") ist seit dem FIXED-Composer
+          obsolet — und machte die Seite höher als den Viewport, sodass das
+          letzte Beispiel hinter dem Composer verschwand (Tims UI-Befund
+          12.08.). Ohne sie ist der Empty State kompakt und komplett lesbar.
           Ab lg wird sie zur GESPRÄCHS-BÜHNE (Design 4a): ein getöntes Panel,
           in der Höhe an den Viewport gebunden — der Verlauf scrollt IM Panel,
           der Composer klebt an der Panel-Unterkante statt „irgendwo am
           Seitenende" zu hängen (Tims Whitespace-Befund). */}
       <div className={cn("flex flex-col",
-        nativeApp ? "min-h-[calc(100dvh-380px)]" : "min-h-[calc(100dvh-230px)]",
         "lg:relative lg:h-[calc(100dvh-135px)] lg:min-h-0 lg:overflow-hidden lg:rounded-2xl lg:border lg:border-border lg:bg-primary/[0.04] dark:lg:bg-primary/[0.07]",
       )}>
         {/* Desktop (5a): „Gespräche"/„Neues Gespräch" im Bühnen-Kopf. Mobil
@@ -1434,18 +1433,24 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                 </div>
               </div>
             )}
+            {/* Tims UI-Befund 12.08.: Der Empty State soll ohne Scrollen ganz
+                lesbar sein — kürzerer Untertitel (die Fußnoten sieht man an
+                der ersten Antwort selbst), weniger Luft vor „Zum Beispiel",
+                und mobil nur drei Beispiele (das vierte ab lg). */}
             <Mascot pose="wave" bob className="h-20 w-20" />
             <h2 className="mt-3 text-xl font-bold tracking-tight">Frag den Rat</h2>
-            <p className="mt-1.5 max-w-md text-sm text-muted-foreground">
-              Die Antwort entsteht aus den echten Ratsbeschlüssen — mit Fußnote zu jeder Quelle.
+            <p className="mt-1 max-w-md text-sm text-muted-foreground">
+              Die Antwort entsteht aus den echten Ratsbeschlüssen.
             </p>
-            <p className="mt-5 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">
+            <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">
               Zum Beispiel
             </p>
-            <div className="mt-2 flex w-full max-w-md flex-col gap-1.5">
+            <div className="mt-1.5 flex w-full max-w-md flex-col gap-1.5">
               {beispiele.map((ex, i) => (
                 <button key={ex} type="button" onClick={() => frageStellen(ex)}
-                  className="flex items-center gap-2.5 rounded-[11px] border border-border bg-card px-3 py-2.5 text-left text-[13.5px] transition-[background-color,transform] duration-150 ease-out-strong hover:bg-muted active:scale-[0.99]">
+                  className={cn(
+                    "items-center gap-2.5 rounded-[11px] border border-border bg-card px-3 py-2.5 text-left text-[13.5px] transition-[background-color,transform] duration-150 ease-out-strong hover:bg-muted active:scale-[0.99]",
+                    i >= 3 ? "hidden lg:flex" : "flex")}>
                   <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
                   <span className="min-w-0 flex-1">{ex}</span>
                   {i < frische.length && (
