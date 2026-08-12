@@ -14,10 +14,55 @@ BASE_URL = "https://buergerinfo.oldenburg.de"
 MODEL = "openai/gpt-4o-mini"
 
 
-def _classify_agenda(session: CouncilSession, topics: list[dict]) -> dict[int, list[str]]:
+# So viel Vorlagentext bekommt das Modell je TOP zu sehen. Der Anfang trägt
+# die Substanz (Betreff, Sachverhalt); 700 Zeichen halten 27 TOPs zusammen
+# unter ~20k Zeichen — komfortabel für gpt-4o-mini und billig.
+_VORLAGE_AUSZUG = 700
+
+
+# Der Kopf jeder Vorlage ist Formular („Ausdruck vom: … Seite: 1/4 … Amt für
+# … Vorlagen-Nr.: … Beratungsfolge: …") — 700 Zeichen davon sagen NICHTS über
+# den Inhalt. Die Substanz beginnt am ersten dieser Marker (gemessen an
+# Oldenburger Vorlagen: „Anlass" und „Beschlussvorschlag" decken den Großteil).
+_VORLAGE_START = re.compile(
+    r"(Anlass|Sachverhalt|Sachdarstellung|Beschlussvorschlag|Begründung)\s*:", re.IGNORECASE)
+
+
+def _vorlagen_auszuege(store, session: CouncilSession) -> dict[str, str]:
+    """vorlage_nr → aussagekräftiger Auszug aus dem Vorlagentext."""
+    nrs = [i.vorlage_nr for i in session.agenda_items if i.is_public and i.vorlage_nr]
+    if not nrs or store is None:
+        return {}
+    try:
+        texte = store.vorlage_texts_for(nrs)
+    except Exception:  # noqa: BLE001 — Anreicherung ist Kür, nie Blocker
+        return {}
+    out: dict[str, str] = {}
+    for nr, text in texte.items():
+        sauber = " ".join(str(text or "").split())
+        if len(sauber) <= 60:
+            continue
+        m = _VORLAGE_START.search(sauber[:3000])
+        out[nr] = sauber[m.start():m.start() + _VORLAGE_AUSZUG] if m else sauber[:_VORLAGE_AUSZUG]
+    return out
+
+
+def _classify_agenda(session: CouncilSession, topics: list[dict],
+                     store=None) -> dict[int, list[str]]:
     """
     Returns {topic_id: [item_numbers_matched]}.
     Only called for future sessions with agenda items.
+
+    ZWEI STUFEN (Tims Wunsch 12.08.): Erst die Zuordnung über die Titel wie
+    bisher, dann eine Gegenprüfung der Kandidaten am VORLAGENTEXT — „Sanierung
+    Grundschule X" und „Neubau Sporthalle an der Grundschule X" klingen im
+    Titel gleich nah, erst der Sachverhalt entscheidet.
+
+    Warum nicht alles in einem Aufruf: Die Vorlagen-Auszüge im Haupt-Prompt
+    haben das Modell messbar abgelenkt — es übersah dann sogar den
+    offensichtlichen Titel-Treffer („Ermittlungen Abfallentsorgung
+    Fliegerhorst" fiel bei Thema „Fliegerhorst" durch). Die Prüfung sieht
+    deshalb nur die wenigen Kandidaten, dafür mit Text.
     """
     if not session.agenda_items or not topics:
         return {}
@@ -44,15 +89,38 @@ def _classify_agenda(session: CouncilSession, topics: list[dict]) -> dict[int, l
     resp = llm.chat_complete(
         model=MODEL,
         response_format={"type": "json_object"},
+        # Zuordnung ist Klassifikation, keine Textproduktion: Ohne
+        # temperature=0 lieferte derselbe Prompt mal drei Treffer, mal keinen
+        # (hier an der 27-TOP-Sitzung gemessen) — und wer benachrichtigt wird,
+        # darf nicht vom Würfel abhängen.
+        temperature=0,
         messages=[
             {"role": "system", "content": system},
             {"role": "user", "content": prompt},
         ],
-        max_tokens=512,
+        # Seit die Treffer Nummer UND Titel tragen (#438), ist die Antwort
+        # deutlich länger — mit 512 Token riss sie bei großen Tagesordnungen
+        # mitten im JSON ab (hier beim Test an der 27-TOP-Sitzung gemessen).
+        max_tokens=1200,
     )
-    data = json.loads(resp.choices[0].message.content)
+    # Ein kaputtes/abgeschnittenes JSON darf NICHT den ganzen Cron-Lauf
+    # abbrechen — dieselbe Lehre wie beim Content-Filter-DoS (#359): lieber
+    # für diese Sitzung keine Treffer als für alle keine Meldungen.
+    roh = (resp.choices[0].message.content or "").strip()
+    if roh.startswith("```"):
+        roh = roh.strip("`")
+        roh = roh[roh.find("{"):]
+    try:
+        data = json.loads(roh)
+    except json.JSONDecodeError:
+        print(f"    ⚠️ Themen-Zuordnung: unbrauchbares JSON für {session.committee} "
+              f"am {session.session_date} — keine Treffer für diese Sitzung")
+        return {}
+    if not isinstance(data, dict):
+        return {}
 
     result: dict[int, list[str]] = {}
+    auszuege = _vorlagen_auszuege(store, session)
     for m in data.get("matches", []):
         idx = m.get("topic_index", 0) - 1
         # Neues Format: [{"nummer", "titel"}]; Altformat (auch für Admin-
@@ -62,8 +130,58 @@ def _classify_agenda(session: CouncilSession, topics: list[dict]) -> dict[int, l
             roh = [{"nummer": n} for n in m.get("item_numbers", [])]
         nums = _verifiziere_items(session, roh)
         if 0 <= idx < len(topics) and nums:
-            result[idx] = nums
+            if auszuege:
+                nums = _pruefe_am_vorlagentext(session, topics[idx], nums, auszuege)
+            if nums:
+                result[idx] = nums
     return result
+
+
+def _pruefe_am_vorlagentext(session: CouncilSession, topic: dict,
+                            nums: list[str], auszuege: dict[str, str]) -> list[str]:
+    """Zweite Stufe: Kandidaten am Vorlagentext gegenprüfen.
+
+    Nur Kandidaten MIT Text können scheitern — wo kein Text vorliegt, bleibt
+    es beim Titel-Urteil (und der Punkt bleibt drin). Fällt der Aufruf aus,
+    bleibt die Titel-Zuordnung stehen: Die Prüfung schärft, sie blockiert nie.
+    """
+    per_nr = {i.item_number: i for i in session.agenda_items}
+    mit_text = [n for n in nums if auszuege.get((per_nr.get(n) or _LEER).vorlage_nr or "")]
+    if not mit_text:
+        return nums
+    zeilen = []
+    for n in nums:
+        item = per_nr.get(n)
+        text = auszuege.get((item.vorlage_nr or "") if item else "") or "—"
+        zeilen.append(f"{n}: {item.title if item else n}\n    Vorlage: {text}")
+    try:
+        antwort = llm.chat_complete(
+            model=MODEL, response_format={"type": "json_object"}, temperature=0,
+            max_tokens=400,
+            messages=[{"role": "user", "content": prompts.render(
+                "council_watcher_pruefung", thema=topic.get("name", ""),
+                beschreibung=topic.get("description", ""), kandidaten="\n".join(zeilen))}],
+        )
+        roh = (antwort.choices[0].message.content or "").strip()
+        if roh.startswith("```"):
+            roh = roh.strip("`")
+            roh = roh[roh.find("{"):]
+        behalten = json.loads(roh).get("treffer", [])
+    except Exception:  # noqa: BLE001 — Prüfung ist Schärfung, kein Blocker
+        return nums
+    erlaubt = {" ".join(str(x).split()).upper() for x in behalten}
+    gefiltert = [n for n in nums
+                 if " ".join(n.split()).upper() in erlaubt
+                 or not auszuege.get((per_nr.get(n) or _LEER).vorlage_nr or "")]
+    return gefiltert
+
+
+class _Leer:
+    vorlage_nr = ""
+    title = ""
+
+
+_LEER = _Leer()
 
 
 def _falte_titel(text: str) -> str:
@@ -271,7 +389,7 @@ def run_watcher(
                 print(f"  {session.session_date} {session.committee}: "
                       f"{len(session.agenda_items)} items → classifying for owner {owner['owner_id']}…")
                 try:
-                    matches = _classify_agenda(session, topics)
+                    matches = _classify_agenda(session, topics, store=store)
                 except llm.BadRequestError as exc:
                     # Ein 400 hängt am Inhalt DIESER Anfrage, nicht am System:
                     # Die Themen-Namen/Beschreibungen der Nutzer:in landen im
