@@ -1399,6 +1399,10 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             t0 = time.perf_counter()
             analyse = qa.analyse_query(q, verlauf=verlauf)
             expanded, typ = analyse["begriffe"], analyse["typ"]
+            # Punktfrage (Datum/Zahl/Name)? Dann antwortet das Modell knapp —
+            # der Befund kam aus einer echten Nutzer-Frage, der nach dem
+            # gesuchten Datum noch fünf Redebeiträge folgten (12.08.).
+            eng = bool(analyse.get("eng"))
             # Retrieval + Reranker arbeiten mit der EIGENSTÄNDIGEN Fassung der
             # Frage — „Und was kostet das?" sucht sonst nach nichts.
             q_suche = analyse["frage"]
@@ -1585,7 +1589,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 for delta in qa.answer_stream(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
                                               haushalt=haushalt_zeilen, debatten=debatten_rows,
                                               gross=gross, steckbriefe=steckbriefe,
-                                              duenn=(lage == "duenn")):
+                                              duenn=(lage == "duenn"), eng=eng):
                     if not buf and delta:
                         zeiten["ttft_ms"] = round((time.perf_counter() - t0) * 1000)
                     buf += delta
@@ -1613,7 +1617,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     ans, _ = qa.answer_question(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
                                                 haushalt=haushalt_zeilen, debatten=debatten_rows,
                                                 gross=gross, steckbriefe=steckbriefe,
-                                                duenn=(lage == "duenn"))
+                                                duenn=(lage == "duenn"), eng=eng)
                     buf = ans
                     yield _sse({"type": "replace", "text": qa.split_followups(ans)[0]})
                     sent = len(ans)
