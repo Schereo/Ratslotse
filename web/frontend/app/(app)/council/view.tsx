@@ -963,7 +963,10 @@ function SessionsTab({ committees }: { committees: string[] }) {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [hasSearched, setHasSearched] = useState(false);
-  const [expanded, setExpanded] = useState<Record<number, boolean>>({});
+  // Aufgeklappte Sitzungen überleben den Tab-Wechsel (Tims Wunsch 12.08.):
+  // Wer eine Tagesordnung offen hat und kurz woanders nachsieht, findet sie
+  // beim Zurückkommen offen vor — die Details holt der Effekt unten nach.
+  const [expanded, setExpanded] = useMerker<Record<number, boolean>>("sitzungen:offen", {});
   const [detail, setDetail] = useState<Record<number, SessionDetail>>({});
   const [detailLoading, setDetailLoading] = useState<Record<number, boolean>>({});
   const debouncedQ = useDebounce(q, 350);
@@ -978,7 +981,11 @@ function SessionsTab({ committees }: { committees: string[] }) {
   const load = useCallback(async () => {
     setLoading(true);
     setHasSearched(true);
-    setExpanded({});
+    // Kein Zuklappen mehr beim bloßen Nachladen: Der Effekt läuft auch beim
+    // Betreten der Seite, und damit war die gemerkte offene Tagesordnung
+    // sofort wieder zu (Tims Wunsch 12.08.). Beim Ändern von Suche, Filter
+    // oder Seite räumt der Effekt darunter auf — dort ist es richtig, weil
+    // die Liste dann andere Sitzungen zeigt.
     try {
       const effectiveScope = q || committee ? "all" : scope;
       const data = await api.get<{ sessions: CouncilSession[]; total: number }>(
@@ -1003,8 +1010,18 @@ function SessionsTab({ committees }: { committees: string[] }) {
 
   // Jede Änderung an Suche, Ausschuss oder Zeitraum beginnt wieder auf Seite 1 —
   // sonst landet man im Nichts, wenn die neue Menge kürzer ist als die alte.
+  // Dabei klappt auch alles zu: Die Liste zeigt danach andere Sitzungen.
+  // Verglichen werden die WERTE, nicht „erster Lauf": React ruft Effekte im
+  // Entwicklungsmodus doppelt auf, ein verbrauchtes Erstlauf-Flag ließ den
+  // zweiten Durchgang alles zuklappen (gemessen).
+  const letzteFilter = useRef(`${debouncedQ}|${committee}|${scope}`);
   useEffect(() => {
+    const jetzt = `${debouncedQ}|${committee}|${scope}`;
+    if (jetzt === letzteFilter.current) return;
+    letzteFilter.current = jetzt;
     setPage(1);
+    setExpanded({});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedQ, committee, scope]);
 
   useEffect(() => {
@@ -1103,7 +1120,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
     const ksinr = s.ksinr;
     if (ksinr == null) return; // terminierte Sitzung ohne Tagesordnung
     const willExpand = !expanded[ksinr];
-    setExpanded((prev) => ({ ...prev, [ksinr]: willExpand }));
+    setExpanded({ ...expanded, [ksinr]: willExpand });
     if (willExpand) reportBadgeEvent("sitzung"); // RL-U12: Sitzungsgast
     if (willExpand && !detail[ksinr]) {
       setDetailLoading((prev) => ({ ...prev, [ksinr]: true }));
@@ -1112,12 +1129,28 @@ function SessionsTab({ committees }: { committees: string[] }) {
         setDetail((prev) => ({ ...prev, [ksinr]: d }));
       } catch {
         toast.error("Sitzung konnte nicht geladen werden.");
-        setExpanded((prev) => ({ ...prev, [ksinr]: false }));
+        setExpanded({ ...expanded, [ksinr]: false });
       } finally {
         setDetailLoading((prev) => ({ ...prev, [ksinr]: false }));
       }
     }
   };
+
+  // Wiederhergestellte offene Sitzungen brauchen ihre Tagesordnung nach —
+  // gemerkt ist nur, WAS offen war, nicht der Inhalt.
+  useEffect(() => {
+    for (const [k, offen] of Object.entries(expanded)) {
+      const ksinr = Number(k);
+      if (!offen || detail[ksinr] || detailLoading[ksinr]) continue;
+      setDetailLoading((prev) => ({ ...prev, [ksinr]: true }));
+      api.get<SessionDetail>(`/council/session/${ksinr}`)
+        .then((d) => setDetail((prev) => ({ ...prev, [ksinr]: d })))
+        .catch(() => { /* stumm: die Karte zeigt dann nur den Kopf */ })
+        .finally(() => setDetailLoading((prev) => ({ ...prev, [ksinr]: false })));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expanded]);
+
 
   const query = q.trim();
   const totalPages = Math.ceil(total / PAGE_SIZE);
