@@ -1,22 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { ArrowUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
  * Schwebender „Nach oben"-Button — erscheint nach ~2 Bildschirmhöhen Scrollen.
  * Auf Mobil über der Bottom-Nav, auf Desktop über dem Sticky-Footer.
- * NICHT im Ratsgespräch (mode=fragen): Dort klebt der Composer an der
+ * NICHT im Ratsgespräch (/fragen): Dort klebt der Composer an der
  * Tab-Bar, der Knopf schwebte genau über dem Senden-Pfeil — und gebraucht
  * wird er da nicht, das Gespräch hat seinen eigenen Sprung-Pfeil
  * (Tims TestFlight-Feedback 11.08.).
  */
 export function BackToTop() {
   const [show, setShow] = useState(false);
-  const sp = useSearchParams();
-  const imGespraech = sp.get("mode") === "fragen";
+  const imGespraech = usePathname() === "/fragen";
 
   useEffect(() => {
     const onScroll = () => setShow(window.scrollY > window.innerHeight * 1.5);

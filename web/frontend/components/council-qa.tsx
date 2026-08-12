@@ -17,7 +17,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Sparkles, Send, Loader2, ChevronDown, ChevronRight, ChevronUp, ArrowRight, Plus,
   Square, CircleSlash, ExternalLink, ArrowDown, FlaskConical, History, Pencil, RotateCcw,
@@ -556,6 +556,7 @@ function jumpZuAnlage(turnIdx: number, nr: number, spalte: boolean) {
 export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   const [q, setQ] = useState("");
   const sp = useSearchParams();
+  const pathname = usePathname();
   const router = useRouter();
   useEffect(() => {
     // ?q= gehört dem QaTab nur im KI-Modus (im Such-Modus ist es die
@@ -563,11 +564,18 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     // füllte jeder spätere URL-Wechsel den längst geleerten Composer erneut
     // und Reloads/geteilte Links feuerten die Frage als Suche (Befund F5).
     const urlQ = sp.get("q");
-    if (!urlQ || sp.get("mode") !== "fragen") return;
+    // Seit dem Split wohnt das Ratsgespräch auf /fragen — der frühere
+    // mode=fragen-Guard hängt jetzt am Pfad.
+    if (!urlQ || pathname !== "/fragen") return;
     setQ((prev) => prev || urlQ);
     const params = new URLSearchParams(sp.toString());
     params.delete("q");
-    router.replace(`/council?${params.toString()}`, { scroll: false });
+    // Auf dem EIGENEN Pfad bleiben: Das fest verdrahtete /council stammte aus
+    // der Zeit vor dem Split — es warf jeden /fragen-Besucher nach dem
+    // q-Verbrauch zurück in die Suche (im Browser gemessen: Alt-Link →
+    // /fragen → zack, wieder /council).
+    const rest = params.toString();
+    router.replace(rest ? `${pathname}?${rest}` : pathname, { scroll: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sp]);
   useEffect(() => {
@@ -577,10 +585,11 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     // (nicht mitten in ein laufendes platzen); der Param wird wie ?q= nach
     // Übernahme entfernt.
     const token = sp.get("share");
-    if (!token || sp.get("mode") !== "fragen") return;
+    if (!token || pathname !== "/fragen") return;
     const params = new URLSearchParams(sp.toString());
     params.delete("share");
-    router.replace(`/council?${params.toString()}`, { scroll: false });
+    const rest = params.toString();
+    router.replace(rest ? `${pathname}?${rest}` : pathname, { scroll: false });
     setTurns((ts) => {
       if (ts.length > 0) return ts;
       fetch(apiUrl(`/council/qa-share/${encodeURIComponent(token)}`))

@@ -86,7 +86,7 @@ export default async function GeteiltPage({ searchParams }: PageProps) {
           <BrandMark className="h-7 w-7" />
           <span className="font-display text-lg font-bold tracking-tight">Ratslotse</span>
         </Link>
-        <Link href="/council?tab=decisions&mode=fragen"
+        <Link href="/fragen"
           className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
           <Sparkles className="h-3.5 w-3.5" aria-hidden /> Selbst den Rat fragen
         </Link>

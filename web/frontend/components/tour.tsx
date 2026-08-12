@@ -56,7 +56,7 @@ const STEPS: TourStep[] = [
     text: "Volltextsuche über alle Beschlüsse — eingrenzen lässt sich nach Ergebnis, Themenfeld, Ausschuss und Zeitraum.",
   },
   {
-    id: "ki", route: "/council?tab=decisions", anchor: "ki-frage-tab", pose: "celebrate",
+    id: "ki", route: "/fragen", anchor: "ki-frage-tab", pose: "celebrate",
     marks: ["frag"],
     title: "Oder frag einfach",
     text: "Stell deine Frage in normaler Sprache — ich suche die passenden Beschlüsse raus und antworte mit Quellen.",
@@ -156,7 +156,7 @@ export function GuidedTour() {
   const finishToQa = useCallback(() => {
     reportBadgeEvent("tour"); // RL-U12: Kompass — nur beim echten Durchlauf
     end();
-    router.push("/council?tab=decisions&mode=fragen");
+    router.push("/fragen");
   }, [end, router]);
 
   // Start-Event von außen.
