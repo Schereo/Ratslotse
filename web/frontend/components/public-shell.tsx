@@ -62,6 +62,9 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
           <Link href="/datenschutz" className="hover:text-foreground">Datenschutz</Link>
           {" · "}
           <Link href="/changelog" className="hover:text-foreground">Changelog</Link>
+          <span className="mt-1.5 block px-4 text-balance">
+            Ratslotse ist ein privates Bürgerprojekt und kein Angebot der Stadt Oldenburg.
+          </span>
         </footer>
       </main>
     </div>

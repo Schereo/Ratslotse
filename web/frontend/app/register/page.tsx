@@ -85,7 +85,12 @@ export default function RegisterPage() {
             Anmelden
           </Link>
         </p>
-        <p className="mt-4 border-t border-border pt-4 text-center text-xs text-muted-foreground">
+        {/* Wie auf der Anmeldung: Wer hier ein Konto anlegt, soll vorher wissen,
+            bei wem — die Stadt ist es nicht (App-Store-Guideline 5.2). */}
+        <p className="mt-4 border-t border-border pt-4 text-balance text-center text-xs leading-relaxed text-muted-foreground">
+          Ratslotse ist ein privates Bürgerprojekt und kein Angebot der Stadt Oldenburg.
+        </p>
+        <p className="mt-2 text-center text-xs text-muted-foreground">
           <Link href="/impressum" className="hover:text-foreground hover:underline">Impressum</Link>
           {" · "}
           <Link href="/datenschutz" className="hover:text-foreground hover:underline">Datenschutz</Link>

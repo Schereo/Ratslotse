@@ -33,6 +33,27 @@ export default function ImpressumPage() {
       <main className="mx-auto max-w-3xl px-5 py-10">
         <h1 className="text-3xl font-bold tracking-tight text-foreground">Impressum</h1>
 
+        {/* Steht bewusst vor allen Formalien: Ratslotse arbeitet mit städtischen
+            Dokumenten und klingt nach Amtsstelle — wer hier landet, soll in der
+            ersten Zeile lesen, dass die Stadt damit nichts zu tun hat
+            (App-Store-Guideline 5.2 verlangt genau diese Klarstellung). */}
+        <p className="mt-5 rounded-xl border border-border bg-muted/40 p-4 leading-relaxed text-muted-foreground">
+          <span className="font-semibold text-foreground">Ratslotse ist ein privates Bürgerprojekt</span> und
+          kein amtliches Angebot der Stadt Oldenburg. Es besteht keine Verbindung zur Stadtverwaltung, zum
+          Stadtrat, zu einer Fraktion oder Partei; niemand von dort betreibt, beauftragt oder prüft dieses
+          Angebot. Ratslotse bereitet ausschließlich die öffentlich zugänglichen Dokumente des
+          Ratsinformationssystems auf — verbindlich sind allein die amtlichen Originale unter{" "}
+          <a
+            href="https://buergerinfo.oldenburg.de"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline"
+          >
+            buergerinfo.oldenburg.de
+          </a>
+          .
+        </p>
+
         <div className="mt-6 space-y-6">
           <Section title="Angaben gemäß § 5 DDG">
             <p>
