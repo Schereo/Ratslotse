@@ -8,6 +8,9 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Behoben
+- **Der Personen-Peek bleibt im Bild.** Nahe dem rechten Rand oder der
+  Oberkante lief die Info-Karte aus dem Text bzw. wurde abgeschnitten —
+  sie richtet sich jetzt nach der verfügbaren Seite aus. (#439)
 - **„dein Thema"-Markierungen sitzen am richtigen Tagesordnungspunkt.** Das
   Themen-Matching übernahm die TOP-Nummer ungeprüft vom Sprachmodell — das
   verrutscht bei Nummern-Listen gern um eins (Ö 14.6 trug ein
