@@ -8,6 +8,8 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { DecisionOutcome, Topic } from "@/lib/types";
 import { shortCommittee } from "@/lib/committees";
+import { relativerTag } from "@/lib/utils";
+import { useHeute } from "@/lib/use-heute";
 import { Button, Card } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
 import { useMascotTheme } from "@/components/seasonal-mascot";
@@ -51,6 +53,10 @@ const lastWeekIso = (days: number) =>
 const fmtDay = (iso: string) =>
   new Date(iso + "T12:00:00").toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" });
 
+/** Termin-Spalte: „heute“/„morgen“ schlagen das Datum (Tims Wunsch 12.08.) —
+ *  das genaue Datum bleibt als Titel am Element. */
+const fmtTermin = (iso: string, heute: Date | null) => relativerTag(iso, heute) ?? fmtDay(iso);
+
 function relTime(iso: string): string {
   const days = Math.round((Date.now() - new Date(iso + "T12:00:00").getTime()) / 86400000);
   if (days <= 0) return "heute";
@@ -69,6 +75,7 @@ function relTime(iso: string): string {
 export default function DashboardPage() {
   const theme = useMascotTheme();
   const { user } = useAuth();
+  const heute = useHeute();
 
   // Datumszeile erst nach dem Mount (vermeidet SSR/Client-Hydration-Drift).
   const [today, setToday] = useState("");
@@ -156,8 +163,9 @@ export default function DashboardPage() {
                 href={s.ksinr ? `/council?tab=sessions&ksinr=${s.ksinr}` : "/council?tab=sessions"}
                 className="flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-accent"
               >
-                <span className="w-[104px] shrink-0 whitespace-nowrap text-sm font-medium tabular-nums text-foreground">
-                  {fmtDay(s.session_date)}
+                <span className="w-[104px] shrink-0 whitespace-nowrap text-sm font-medium tabular-nums text-foreground"
+                  title={fmtDay(s.session_date)}>
+                  {fmtTermin(s.session_date, heute)}
                 </span>
                 <span className="min-w-0 flex-1 truncate text-sm text-foreground" title={s.committee}>{shortCommittee(s.committee)}</span>
                 {isLiveNow(s) ? (
