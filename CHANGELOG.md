@@ -7,6 +7,13 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Neu
+- **Tagesordnungen zeigen die Anhänge ihrer Punkte.** Jeder TOP verlinkt
+  jetzt seine Dokumente aus dem Ratsinformationssystem — gerade
+  Fraktions-Anträge ohne Vorlage hingen bisher nur dort und waren in der
+  App unsichtbar. Die Anhänge füllen sich mit dem täglichen Abgleich für
+  alle kommenden Sitzungen. (#443)
+
 ### Verbessert
 - **„Tagesordnung geändert"-Meldungen zeigen nur noch die Unterschiede.**
   Statt der kompletten Liste steht in der Mail, was sich getan hat: neue

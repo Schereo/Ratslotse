@@ -20,6 +20,10 @@ class AgendaItem:
     vorlage_nr: str = ""   # e.g. "26/0396"
     kvonr: int | None = None
     is_public: bool = True
+    # Anhänge des TOP von der Sitzungsseite (Tims Befund 12.08.: sie fehlten
+    # in der App komplett — gerade Fraktions-Anträge OHNE Vorlage hängen NUR
+    # hier). [{"label": …, "url": absolute getfile-URL}]
+    anlagen: list = field(default_factory=list)
 
 
 @dataclass
@@ -278,6 +282,30 @@ class CouncilScraper:
                     kvonr = int(m.group(1))
                     break
 
+            # Dokument-Anhänge der Zeile: getfile-Links, je id einmal —
+            # SessionNet setzt Icon- und Text-Link mit derselben id, das Label
+            # trägt der Text-Link. Nichtöffentliche TOPs haben keine.
+            anlagen: list[dict] = []
+            gesehen_ids: set[str] = set()
+            for a in row.find_all("a", href=True):
+                m = re.search(r"getfile\.php\?id=(\d+)", a["href"])
+                if not m:
+                    continue
+                label = a.get_text(" ", strip=True)
+                if m.group(1) in gesehen_ids:
+                    if label:  # Text-Link ersetzt das leere Icon-Label
+                        for e in anlagen:
+                            if e["_id"] == m.group(1) and not e["label"]:
+                                e["label"] = label
+                    continue
+                gesehen_ids.add(m.group(1))
+                anlagen.append({"_id": m.group(1), "label": label,
+                                "url": f"{BASE}/{a['href'].lstrip('/')}"})
+            for e in anlagen:
+                e.pop("_id", None)
+                if not e["label"]:
+                    e["label"] = "Anlage"
+
             is_public = num_text.upper().startswith("Ö")
             items.append(AgendaItem(
                 item_number=num_text,
@@ -285,6 +313,7 @@ class CouncilScraper:
                 vorlage_nr=vorlage_nr,
                 kvonr=kvonr,
                 is_public=is_public,
+                anlagen=anlagen if is_public else [],
             ))
         return items
 

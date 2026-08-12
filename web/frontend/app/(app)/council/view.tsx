@@ -4,7 +4,7 @@ import { Fragment, useEffect, useMemo, useRef, useState, useCallback, Suspense }
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Search, ExternalLink, ChevronDown, ChevronRight, Scale, SlidersHorizontal, Users, Sparkles, Split, X, Flame, History, CalendarPlus } from "lucide-react";
+import { Search, ExternalLink, ChevronDown, ChevronRight, Scale, SlidersHorizontal, Users, Sparkles, Split, X, Flame, History, CalendarPlus, Paperclip } from "lucide-react";
 import { api, qs, ApiError } from "@/lib/api";
 import { decisionHref } from "@/lib/routes";
 import { useDebounce } from "@/lib/use-debounce";
@@ -876,6 +876,20 @@ function AgendaRow({ it, query, outcome, decisionId, myTopic, domId }: {
       <div className="min-w-0 flex-1">
         <p className="text-sm text-foreground"><Highlight text={it.title} query={query} /></p>
         {it.vorlage_nr && <p className="text-xs text-muted-foreground">Vorlage <Highlight text={it.vorlage_nr} query={query} /></p>}
+        {/* Tims Befund 12.08.: Die TOP-Anhänge (RIS-PDFs) fehlten in der App
+            komplett — gerade Fraktions-Anträge ohne Vorlage hängen NUR hier. */}
+        {(it.anlagen?.length ?? 0) > 0 && (
+          <p className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5">
+            {it.anlagen!.map((a) => (
+              <a key={a.url} href={a.url} target="_blank" rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex max-w-full items-center gap-1 text-xs text-primary hover:underline">
+                <Paperclip className="h-3 w-3 shrink-0" aria-hidden />
+                <span className="truncate">{a.label}</span>
+              </a>
+            ))}
+          </p>
+        )}
         {myTopic && (
           /* RL-902: TOP passt zu einem eigenen Thema. */
           <span className="mt-1 inline-flex rounded-full bg-signal/10 px-2 py-0.5 text-[11px] font-semibold text-signal">
