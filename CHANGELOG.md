@@ -7,6 +7,15 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Neu
+- **Zusagen der Verwaltung werden sichtbar.** „Die Verwaltung sagt zu, den
+  Zeitplan vorzulegen" — solche Selbstverpflichtungen stehen in den
+  Protokollen, gingen in den Belegen aber unter: Sie sind kurz und nüchtern
+  formuliert und verloren jedes Duell gegen ausführliche Reden. Sie haben
+  jetzt einen eigenen Kanal, ein eigenes Abzeichen in den Belegen, und die
+  Antwort nennt sie ausdrücklich mit Datum. Reine Verfahrens-Floskeln
+  („sichert eine Antwort zu Protokoll zu") bleiben draußen.
+
 ### Verbessert
 - **Angemeldete landen direkt im Dashboard.** Wer eingeloggt ratslotse.de
   aufruft, sieht nicht mehr die Werbeseite, sondern seine Startseite mit

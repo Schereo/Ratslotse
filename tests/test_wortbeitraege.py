@@ -8,6 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from council import embeddings as emb
 from council import qa
 from council import wortbeitraege as wb
 from council.store import CouncilStore
@@ -432,3 +433,67 @@ def test_wortbeitraege_zu_beschluessen_deckelt_die_menge(store):
     b = [{"id": 7, "ksinr": 5000, "item_number": "3", "title": "Grosses Thema"}]
     assert len(store.wortbeitraege_zu_beschluessen(b)) == 4          # max_je_top
     assert len(store.wortbeitraege_zu_beschluessen(b, max_je_top=99)) == 6  # max_gesamt
+
+
+# ---- Zusagen-Kanal (Paket 2, 12.08.26) -------------------------------------
+
+def test_hohle_zusagen_fallen_raus():
+    """„Ich sichere eine Antwort zu Protokoll zu" ist Verfahren, keine
+    Selbstverpflichtung — als Beleg unter einer Antwort wäre es Füllmaterial.
+    Am Bestand gemessen: rund ein Viertel der 1.437 Zusagen."""
+    hohl = [
+        "Er sichert eine Antwort zu Protokoll zu.",
+        "Sie sichert eine schriftliche Beantwortung zu.",
+        "Die Frage wird mitgenommen.",
+        "Er sagt zu, die Unterlagen nachzureichen.",
+    ]
+    substanz = [
+        "Die Verwaltung sagt zu, die Formulierungen zur Gesellschafterversammlung zu prüfen.",
+        "Die Stadt leistet einen Eigenkapitalzuschuss in Höhe von bis zu 15 Millionen Euro.",
+        "Die Verwaltung wird nach der Sommerpause ausführlicher berichten.",
+    ]
+    assert all(emb._HOHLE_ZUSAGE.search(t) for t in hohl)
+    assert not any(emb._HOHLE_ZUSAGE.search(t) for t in substanz)
+
+
+def test_search_zusagen_filtert_und_haelt_die_strengere_grenze(monkeypatch):
+    """Der Kanal zeigt NUR Zusagen — dann darf er keine thematisch schiefen
+    liefern (beim Ärztemangel rutschte sonst eine Kita-Zusage durch). Deshalb
+    eigener, strengerer Rerank-Cutoff."""
+    import numpy as np
+
+    class _S:
+        def wortbeitrag_ids_nach_art(self, art):
+            assert art == "zusage"
+            return [1, 2, 3]
+
+        def wortbeitraege_by_ids(self, ids):
+            texte = {1: "Er sichert eine Antwort zu Protokoll zu.",
+                     2: "Die Verwaltung sagt zu, den Zeitplan vorzulegen.",
+                     3: "Die Stadt zahlt einen Zuschuss von 15 Millionen Euro."}
+            return [{"id": i, "top": None, "text": texte[i]} for i in ids]
+
+    monkeypatch.setattr(emb, "_wb_matrix",
+                        lambda store: ([1, 2, 3], np.eye(3, dtype="float32")))
+    monkeypatch.setattr(emb, "embed", lambda t: np.ones((1, 3), dtype="float32"))
+    gesehen = {}
+
+    def _fake_rerank(query, kandidaten, top_k, min_rerank=None):
+        gesehen["ids"] = [i for i, _ in kandidaten]
+        gesehen["min_rerank"] = min_rerank
+        return [(i, 1.0) for i, _ in kandidaten][:top_k]
+
+    monkeypatch.setattr(emb, "_rerank_kontext", _fake_rerank)
+    treffer = emb.search_zusagen(_S(), "Was wurde zugesagt?", "Zusage")
+    # Die Protokoll-Floskel (id 1) kommt gar nicht erst in den Rerank.
+    assert gesehen["ids"] == [2, 3]
+    # Strenger heißt HÖHER: -0,5 lässt weniger durch als die -1,5 der anderen Kanäle.
+    assert gesehen["min_rerank"] == emb.ZUSAGE_RERANK_MIN > emb.KONTEXT_RERANK_MIN
+    assert [i for i, _ in treffer] == [2, 3]
+
+    # Ohne Zusagen im Bestand bleibt der Kanal still.
+    class _Leer:
+        def wortbeitrag_ids_nach_art(self, art):
+            return []
+
+    assert emb.search_zusagen(_Leer(), "Frage?", "Frage") == []

@@ -4300,6 +4300,12 @@ class CouncilStore:
             sql += f" LIMIT {int(limit)}"
         return [r[0] for r in self._conn.execute(sql).fetchall()]
 
+    def wortbeitrag_ids_nach_art(self, art: str) -> list[int]:
+        """Alle Wortbeitrags-ids einer Art — Filter für den Zusagen-Kanal.
+        Klein genug (1.437 Zusagen), um sie je Frage zu holen."""
+        return [r[0] for r in self._conn.execute(
+            "SELECT id FROM council_wortbeitraege WHERE art = ?", (art,))]
+
     def wortbeitraege_by_ids(self, ids: list[int]) -> list[dict]:
         if not ids:
             return []
