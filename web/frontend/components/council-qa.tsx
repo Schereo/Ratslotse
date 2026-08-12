@@ -1592,7 +1592,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                 <RechercheToggle aktiv={rechercheModus} frei={deepFrei} onToggle={toggleRecherche} />
                 {rechercheModus && !deepHinweis && (
                   <span className="text-[10.5px] text-muted-foreground/70">
-                    1–2 Min{deepFrei !== null ? ` · noch ${deepFrei} heute` : ""}
+                    ~30 Sek{deepFrei !== null ? ` · noch ${deepFrei} heute` : ""}
                   </span>
                 )}
               </div>

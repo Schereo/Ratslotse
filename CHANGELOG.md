@@ -8,6 +8,20 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Verbessert
+- **Wiederholte Fragen antworten fast sofort.** Die Bewertung der gefundenen
+  Beschlüsse ist mit Abstand der teuerste Schritt der Suche; sie wird jetzt je
+  Frage gemerkt. Wer eine Beispielfrage anklickt, einen Weiterfragen-Chip
+  nutzt oder dieselbe Frage später erneut stellt, wartet dafür nicht noch
+  einmal — gemessen 3,6 Sekunden auf 0,07 Sekunden bei unveränderter
+  Reihenfolge der Treffer. Neue Fragen sind unberührt.
+- **Ehrliche Zeitangabe bei der Gründlichen Recherche.** Sie versprach „1–2
+  Minuten", brauchte real aber rund 30 Sekunden. Karte, Umschalter und Hinweis
+  nennen jetzt den gemessenen Wert.
+- **Erste Frage nach einem Neustart ist schneller.** Der Warmlauf lädt nun auch
+  die Zusatzkanäle (Pressemitteilungen, Wortbeiträge) vor, statt sie die erste
+  Frage bezahlen zu lassen.
+
+### Verbessert
 - **Kein doppelter Einstieg mehr bei „Was ist …?"-Fragen.** Der Steckbrief
   „Worum geht es?" und die Antwort sagten dort dasselbe — bei einer reinen
   Definitionsfrage *ist* die Antwort die Definition. Die Karte entfällt jetzt

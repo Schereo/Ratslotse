@@ -304,3 +304,42 @@ def test_steckbrief_karte_nur_wenn_die_antwort_sie_nicht_wiederholt():
                                       gross=True, steckbriefe=sb)
     assert "HINTERGRUND" in messages[0]["content"]
     assert "**Kurz gesagt:**" in messages[0]["content"]   # Fazit bleibt unberührt
+
+
+def test_rerank_cache_spart_den_teuren_schritt(monkeypatch):
+    """Der Cross-Encoder ist mit ~3,5 s für 119 Paare der teuerste Schritt der
+    Suche (86 % der Retrieval-Zeit, auf Prod gemessen). Wortgleiche Fragen —
+    Beispielfragen, Folgefragen-Chips, „nochmal versuchen" — dürfen ihn nicht
+    zweimal zahlen. Gemessen: 3,6 s → 0,07 s bei identischer Reihenfolge."""
+    aufrufe = {"n": 0}
+
+    class _Fake:
+        def rerank(self, query, texte):
+            aufrufe["n"] += 1
+            # Später gelistete Dokumente sollen schlechter ranken.
+            return [1.0 - i for i, _ in enumerate(texte)]
+
+    emb._RERANK_CACHE.clear()
+    monkeypatch.setattr(emb, "_get_reranker", lambda: _Fake())
+    docs = [(1, "Stadion Maastrichter Straße"), (2, "Radweg"), (3, "Hafen")]
+
+    erst = emb.rerank("Wie ist der Stand?", docs)
+    assert [i for i, _ in erst] == [1, 2, 3]
+    assert aufrufe["n"] == 1
+
+    # Zweiter Lauf: identisches Ergebnis, KEIN Modell-Aufruf.
+    nochmal = emb.rerank("Wie ist der Stand?", docs)
+    assert nochmal == erst
+    assert aufrufe["n"] == 1
+
+    # Andere Frage → der Cache darf nicht antworten.
+    emb.rerank("Was kostet das?", docs)
+    assert aufrufe["n"] == 2
+
+    # Geänderter Paartext (neuer Vorlagen-Auszug) → neu bewerten, nichts Altes.
+    emb.rerank("Wie ist der Stand?", [(1, "Stadion — jetzt mit Auszug"), (2, "Radweg")])
+    assert aufrufe["n"] == 3
+
+    # Doppelte ids fallen weg, statt das Ergebnis zu verdoppeln.
+    assert len(emb.rerank("Doppelt?", [(7, "a"), (7, "a"), (8, "b")])) == 2
+    emb._RERANK_CACHE.clear()

@@ -97,14 +97,54 @@ def _get_reranker():
 PAIR_MAX_CHARS = int(os.environ.get("COUNCIL_PAIR_MAX_CHARS", "260"))
 
 
+# Rerank-Cache: Der Cross-Encoder ist der mit Abstand teuerste Schritt der
+# Suche — auf der Prod-VM gemessen 3,5 s für 119 Paare, also 86 % der
+# Retrieval-Zeit (Vektor 21 ms, BM25 76 ms, Paar-Bau 2 ms). Mehr Threads
+# helfen nicht: Der onnxruntime-Default nutzt bereits alle 8 Kerne (2,0 s;
+# mit threads=4 wird es mit 3,1 s sogar langsamer), und Kandidaten zu
+# streichen kostet nachweislich Trefferquote.
+#
+# Was bleibt, ist Wiederverwendung — und Fragen wiederholen sich wortgleich:
+# Beispielfragen, Folgefragen-Chips, „nochmal versuchen", dieselbe Frage im
+# zweiten Gespräch. Der Schlüssel enthält den Fingerabdruck des Paartextes;
+# ändert sich der Vorlagen-Auszug eines Beschlusses, fällt sein Eintrag von
+# selbst heraus, statt einen veralteten Wert zu liefern.
+_RERANK_CACHE: dict[tuple, float] = {}
+_RERANK_CACHE_MAX = 4000
+
+
 def rerank(query: str, docs: list[tuple]) -> list[tuple]:
     """Reorder ``(id, text)`` candidates by cross-encoder relevance to ``query``.
     Returns ``[(id, score)]`` best first. Raises ImportError if fastembed is missing."""
     if not docs:
         return []
-    scores = list(_get_reranker().rerank(query, [d[1][:PAIR_MAX_CHARS] for d in docs]))
-    ranked = sorted(zip((d[0] for d in docs), scores), key=lambda x: -x[1])
-    return [(i, float(s)) for i, s in ranked]
+    # Doppelte ids wären im Ergebnis ohnehin bedeutungslos — und würden den
+    # Cache-Abgleich verfälschen.
+    gekappt: list[tuple] = []
+    gesehen: set = set()
+    for i, t in docs:
+        if i in gesehen:
+            continue
+        gesehen.add(i)
+        gekappt.append((i, (t or "")[:PAIR_MAX_CHARS]))
+
+    werte: dict = {}
+    offen: list[tuple] = []
+    for i, t in gekappt:
+        key = (query, i, hash(t))
+        treffer = _RERANK_CACHE.get(key)
+        if treffer is None:
+            offen.append((key, i, t))
+        else:
+            werte[i] = treffer
+    if offen:
+        scores = list(_get_reranker().rerank(query, [t for _k, _i, t in offen]))
+        for (key, i, _t), s in zip(offen, scores):
+            werte[i] = float(s)
+            if len(_RERANK_CACHE) >= _RERANK_CACHE_MAX:
+                _RERANK_CACHE.pop(next(iter(_RERANK_CACHE)))
+            _RERANK_CACHE[key] = float(s)
+    return sorted(((i, werte[i]) for i, _ in gekappt), key=lambda x: -x[1])
 
 
 # Wie viele Vorlagen-Treffer der Chunk-Suche in den Kandidaten-Pool einfließen
