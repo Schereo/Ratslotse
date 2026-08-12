@@ -13,7 +13,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   als breiter Block über der Liste; der doppelte „Seite X von Y"-Text
   entfällt. Und der Kalender-Link bei Sitzungen ohne Tagesordnung steht in
   der Zeile der „Tagesordnung folgt"-Marke statt in einer eigenen Reihe —
-  die Karten wirken wieder gleichmäßig. (#453)
+  die Karten wirken wieder gleichmäßig. (#454)
 
 ### Verbessert
 - **Kurzfassungen auch für Sitzungen ohne Benachrichtigung.** Die Sätze unter
