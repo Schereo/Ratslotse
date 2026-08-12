@@ -7,6 +7,35 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Neu
+- **Von der Antwort direkt auf die Stadtkarte.** Die Mini-Karte einer
+  KI-Antwort führt jetzt mit „Auf der Stadtkarte öffnen" in die große Karte —
+  vorgefiltert auf genau die Orte der zitierten Beschlüsse, sichtbar und
+  abwählbar als Chip. (#462)
+- **Personen-Badges auch in den Belegen.** Die Zugehörigkeit hinter einem
+  Namen (Partei bzw. Verwaltung, mit Peek zu Rolle und Zeitraum) gab es nur
+  im Antworttext; jetzt tragen auch die Sprecher der Ratsdebatten und die
+  Kernaussagen der Parteien dasselbe Abzeichen. Bei Namensvettern bleibt es
+  wie bisher aus, wenn der Vorname fehlt. (#462)
+- **Die Lupe führt zur Suche.** In der Befehlspalette steht bei leerem Feld
+  „Zur Beschluss-Suche" ganz oben, und wenn die Palette nichts findet, bietet
+  sie an, den Begriff im Volltext aller Beschlüsse zu suchen. (#462)
+
+### Verbessert
+- **Datenschutz-Hinweis dort, wo er ankommt.** Der Satz zum externen
+  KI-Dienst steht jetzt in der Frage-am-Anfang-Karte statt nur in den
+  Einstellungen — genau einmal, vor der ersten Frage. (#462)
+- **Der Gesprächs-Knopf sagt, wo du bist.** Statt „Gespräche" steht dort der
+  Titel des aktuellen Gesprächs. (#462)
+- **Geteilte Antworten sehen im Messenger nach etwas aus.** Vorschau mit der
+  Frage als Titel, dem ersten ganzen Satz der Antwort und einem Ratslotse-
+  Bild. (#462)
+
+### Behoben
+- **„Ab Mitternacht wieder" stimmt jetzt.** Das Tageskontingent der
+  gründlichen Recherche sprang nach UTC um — im Sommer also erst um 2 Uhr
+  nachts. Es zählt jetzt nach Oldenburger Zeit, passend zur Anzeige. (#462)
+
 ### Behoben
 - **Weiterfragen-Vorschläge: Pfeil in beide Richtungen, nichts verdeckt.**
   Wer die Vorschläge einmal weitergeschoben hatte, kam nicht mehr zurück —

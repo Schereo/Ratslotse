@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import { useRouter, useSearchParams } from "next/navigation";
 import { MapPin, Building2, Boxes, Search, ChevronDown, X } from "lucide-react";
 import { Entity, EntityMapPoint } from "@/lib/types";
 import { Card, Input, Spinner, TableSkeleton, EmptyState } from "@/components/ui";
@@ -193,6 +194,22 @@ function StadtteilFilter({ names, counts, selected, onChange }: {
 }
 
 export function EntitiesTab() {
+  // V-05: Aus der Mini-Karte einer KI-Antwort führt „Auf der Stadtkarte
+  // öffnen" hierher — mit genau den Orten der zitierten Beschlüsse in `orte`
+  // (Namen, komma-getrennt). Ohne den Parameter ändert sich nichts.
+  const sp = useSearchParams();
+  const router = useRouter();
+  const orteFilter = useMemo(() => {
+    const roh = sp.get("orte");
+    if (!roh) return null;
+    const namen = roh.split(",").map((n) => n.trim().toLowerCase()).filter(Boolean);
+    return namen.length ? new Set(namen) : null;
+  }, [sp]);
+  const orteWeg = () => {
+    const p = new URLSearchParams(sp.toString());
+    p.delete("orte");
+    router.replace(`/council?${p.toString()}`, { scroll: false });
+  };
   const { data, loading } = useFetch<{ entities: Entity[] }>("/council/entities");
   const { data: geo, loading: geoLoading } = useFetch<{ entities: EntityMapPoint[] }>("/council/entities-map");
   const [q, setQ] = useState("");
@@ -228,9 +245,10 @@ export function EntitiesTab() {
   // Tastendruck in der Suche (Array-Identität ist ihre Effect-Dependency).
   const points = useMemo(
     () => (geo?.entities ?? [])
+      .filter((p) => (orteFilter ? orteFilter.has(p.name.toLowerCase()) : true))
       .filter((p) => (kind ? p.kind === kind : true))
       .filter((p) => (selectedST.size ? selectedST.has(pointST.get(p.slug) ?? "") : true)),
-    [geo, kind, selectedST, pointST],
+    [geo, kind, selectedST, pointST, orteFilter],
   );
   const outlines = useMemo(
     () => (selectedST.size ? stadtteile.filter((f) => selectedST.has(f.properties.name)) : undefined),
@@ -244,6 +262,7 @@ export function EntitiesTab() {
 
   const needle = q.trim().toLowerCase();
   const filtered = all
+    .filter((e) => (orteFilter ? orteFilter.has(e.name.toLowerCase()) : true))
     .filter((e) => (kind ? e.kind === kind : true))
     .filter((e) => (needle ? e.name.toLowerCase().includes(needle) : true));
   const maxRecent = Math.max(1, ...all.map((e) => e.n_recent ?? 0));
@@ -264,6 +283,19 @@ export function EntitiesTab() {
 
   return (
     <div className="mt-4 space-y-4">
+      {/* Sichtbar und abwählbar wie der Themen-Filter der Beschluss-Suche —
+          sonst wüsste niemand, warum die Karte nur ein paar Pins zeigt. */}
+      {orteFilter && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+            Orte aus deiner Frage · {points.length === 1 ? "1 Ort" : `${points.length} Orte`}
+            <button type="button" onClick={orteWeg} aria-label="Ortsfilter entfernen"
+              className="rounded-full p-0.5 transition-colors hover:bg-primary/15">
+              <X className="h-3 w-3" aria-hidden />
+            </button>
+          </span>
+        </div>
+      )}
       {/* Die Karte zuerst — sie ist der Blickfang der Seite, kein verstecktes
           Toggle-Feature. Kind-Chips unten filtern Karte UND Liste. Während der
           Geo-Fetch läuft, hält ein Platzhalter dieselbe Höhe (kein Pop-in-Shift). */}

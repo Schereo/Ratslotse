@@ -61,18 +61,28 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
   if (!share) {
     return { title: "Geteilte Antwort – Ratslotse", robots: { index: false } };
   }
-  // Zitatmarker aus der Vorschau putzen — „[8677]" sagt Empfängern nichts.
-  const beschreibung = share.antwort.replace(/\[[^\]\n]{1,160}\]/g, "").replace(/\s+/g, " ")
-    .trim().slice(0, 160);
-  const titel = `Frag den Rat: ${share.frage}`;
+  // V-08: Der geteilte Link ist das Schaufenster für Leute, die Ratslotse
+  // noch nicht kennen — die Vorschau zeigt deshalb die FRAGE als Titel (nicht
+  // den App-Namen) und als Text den ersten ganzen Satz der Antwort statt
+  // eines Schnipsels, der mitten im Wort endet.
+  // Zitatmarker putzen — „[8677]" sagt Empfängern nichts.
+  const sauber = share.antwort.replace(/\[[^\]\n]{1,160}\]/g, "").replace(/\s+/g, " ").trim();
+  const ersterSatz = (sauber.match(/^.*?[.!?](?=\s|$)/)?.[0] ?? "").trim();
+  const beschreibung = (ersterSatz.length >= 40 && ersterSatz.length <= 200
+    ? ersterSatz
+    : sauber.slice(0, 160).replace(/\s+\S*$/, "") + (sauber.length > 160 ? " …" : ""));
+  const titel = share.frage.trim() || "Frag den Rat";
+  const bild = { url: "/og-teilen.png", width: 1200, height: 630, alt: "Ratslotse — Frag den Rat" };
   return {
     title: `${titel} – Ratslotse`,
     description: beschreibung,
     robots: { index: false }, // geteilte Inhalte nicht in Suchmaschinen sammeln
     openGraph: {
       title: titel, description: beschreibung, siteName: "Ratslotse", type: "article",
+      images: [bild],
     },
-    twitter: { card: "summary", title: titel, description: beschreibung },
+    twitter: { card: "summary_large_image", title: titel, description: beschreibung,
+      images: [bild.url] },
   };
 }
 

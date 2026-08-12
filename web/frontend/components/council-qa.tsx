@@ -1287,10 +1287,17 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   // statt State-Hochzug, weil PageHeader und Gespräch in getrennten Ästen
   // leben und der Knopf nur auf dem Fragen-Screen existiert.
   useEffect(() => {
+    // V-03: Der Kopf-Knopf sagt jetzt auch, WO man steckt — dafür reist der
+    // Titel des aktiven Gesprächs im Status mit. Ohne gespeichertes Gespräch
+    // (oder ohne Einwilligung) bleibt er leer und der Knopf beim alten Label.
+    const aktiv = gespraeche.find((g) => g.id === gespraechId);
     window.dispatchEvent(new CustomEvent("rl:gespraeche-status", {
-      detail: { sichtbar: einstellung === 1 && (turns.length > 0 || gespraeche.length > 0) },
+      detail: {
+        sichtbar: einstellung === 1 && (turns.length > 0 || gespraeche.length > 0),
+        titel: aktiv?.titel ?? null,
+      },
     }));
-  }, [einstellung, turns.length, gespraeche.length]);
+  }, [einstellung, turns.length, gespraeche, gespraechId]);
   useEffect(() => {
     const auf = () => { setSheetOffen(true); void ladeGespraeche(); };
     window.addEventListener("rl:gespraeche-oeffnen", auf);
@@ -1459,8 +1466,14 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                         Nein, nicht merken
                       </button>
                     </div>
-                    <p className="mt-2 text-[10.5px] text-muted-foreground/70">
-                      Deine Wahl gilt für dein Konto und lässt sich jederzeit in den Einstellungen ändern.
+                    {/* V-01: Der Datenschutz-Hinweis zog aus dem Composer in die
+                        Einstellungen (gegen den Dauer-Lärm) — ein Neuling sah ihn
+                        damit nie vor seiner ersten Frage. Diese Karte unterbricht
+                        ohnehin genau einmal; hier gehört der Satz hin. */}
+                    <p className="mt-2 text-[10.5px] leading-relaxed text-muted-foreground/70">
+                      Übrigens: Deine Fragen gehen an einen externen KI-Dienst — bitte keine
+                      personenbezogenen Daten eingeben. Deine Wahl hier änderst du jederzeit
+                      in den Einstellungen.
                     </p>
                   </div>
                 </div>
@@ -1906,8 +1919,14 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
                 <p className="text-[11px] text-muted-foreground">
                   {ortsPins.length === 1 ? "1 Ort" : `${ortsPins.length} Orte`} aus den zitierten Beschlüssen
                 </p>
-                <Link href="/council?tab=themen" className="shrink-0 text-[11px] font-medium text-primary hover:underline">
-                  Zur Stadtkarte →
+                {/* V-05: Nicht mehr nur „irgendwohin zur Karte" — der Link nimmt
+                    GENAU die gezeigten Orte mit, die große Karte filtert danach
+                    und sagt es mit einem abwählbaren Chip. */}
+                <Link
+                  href={`/council?tab=themen&orte=${encodeURIComponent(
+                    ortsPins.map((p) => p.name).filter(Boolean).join(","))}`}
+                  className="shrink-0 text-[11px] font-medium text-primary hover:underline">
+                  Auf der Stadtkarte öffnen →
                 </Link>
               </div>
             </div>
