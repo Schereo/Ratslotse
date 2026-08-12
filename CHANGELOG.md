@@ -7,6 +7,19 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Neu
+- **Kleine Zugehörigkeits-Badges hinter Personennamen in KI-Antworten.**
+  Erwähnt eine Antwort ein Ratsmitglied, steht bei der ersten Nennung ein
+  kompakter Punkt in Parteifarbe mit Kürzel dahinter („Lükermann ·Volt");
+  Verwaltungsleute tragen „Stadt", Ehemalige einen grauen „ehem."-Punkt —
+  nie eine veraltete Rolle als aktuell. Antippen öffnet eine Karte mit
+  vollem Namen, Amt bzw. Fraktion, belegtem Zeitraum aus den
+  Anwesenheitslisten und dem Link zur Personen-Seite. Die Ämter der
+  Verwaltungsspitze („Oberbürgermeister", „Stadtkämmerin") stammen aus den
+  Protokollen selbst; bei mehrdeutigen Nachnamen erscheint lieber kein
+  Badge als ein geratenes. Funktioniert im Gespräch, im Recherche-Bericht
+  und auf geteilten Antworten. (#434)
+
 ### Verbessert
 - **Der Fragen-Startbildschirm passt auf einen Handy-Bildschirm.** Kürzerer
   Untertitel, weniger Leerraum, mobil drei statt vier Beispielfragen (die

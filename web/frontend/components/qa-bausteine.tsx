@@ -14,9 +14,10 @@
  * gestrichelter Rahmen für Externes, Paraphrasen kursiv ohne Anführungszeichen.
  */
 
-import { useState } from "react";
-import { ChevronDown, ExternalLink, MessageSquarePlus } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowRight, ChevronDown, ExternalLink, MessageSquarePlus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { personHref } from "@/lib/routes";
 // Reine Beleg-/Datums-Logik liegt in lib/qa-belege.ts — ohne "use client",
 // damit auch die Server-Komponente app/g sie AUFRUFEN kann (aus einem
 // Client-Modul kämen dort nur Referenzen an, keine Funktionen).
@@ -24,6 +25,7 @@ import {
   ANL_EXACT_RE, ANL_SOURCE, anlagenBuchstaben, anlagenNr, BELEG_SPLIT_RE,
   CITE_EXACT_RE, CITE_SOURCE, citationIds, datenEindeutschen, fmtDatumKurz,
 } from "@/lib/qa-belege";
+import { apiUrl, authHeaders } from "@/lib/api";
 
 /* ------------------------------ Typen ------------------------------ */
 
@@ -47,6 +49,109 @@ export type DebattenHinweis = {
   top: string | null; auszug: string; committee: string | null; datum: string | null;
 };
 
+/** Personen-Badge-Eintrag aus /council/personen-lexikon (Tims Wunsch 12.08.):
+ *  Ratsmitglieder mit Partei, Verwaltung mit geerntetem Amt; `aktiv` heißt in
+ *  den letzten zwölf Monaten in einer Anwesenheitsliste gesehen. */
+export type PersonEintrag = {
+  slug: string; name: string; vorname: string; nachname: string;
+  art: "rat" | "stadt"; partei: string | null; rolle: string | null;
+  aktiv: boolean; von: string | null; bis: string | null;
+};
+
+// Das Lexikon einmal je Seite laden — ein Modul-Promise statt Fetch je Turn;
+// der Endpunkt ist public (auch die geteilte Seite braucht ihn) und cacht
+// serverseitig sechs Stunden.
+let _lexikonPromise: Promise<PersonEintrag[]> | null = null;
+
+function usePersonenLexikon(): PersonEintrag[] {
+  const [lex, setLex] = useState<PersonEintrag[]>([]);
+  useEffect(() => {
+    _lexikonPromise ||= fetch(apiUrl("/council/personen-lexikon"),
+      { credentials: "include", headers: authHeaders() })
+      .then((r) => (r.ok ? r.json() : { personen: [] }))
+      .then((b) => (b?.personen ?? []) as PersonEintrag[])
+      .catch(() => [] as PersonEintrag[]);
+    let lebt = true;
+    void _lexikonPromise.then((p) => { if (lebt) setLex(p); });
+    return () => { lebt = false; };
+  }, []);
+  return lex;
+}
+
+const _PARTEI_KUERZEL: [RegExp, string][] = [
+  [/grün/i, "Grüne"], [/linke/i, "Linke"], [/spd/i, "SPD"], [/cdu/i, "CDU"],
+  [/bsw/i, "BSW"], [/afd/i, "AfD"], [/^volt$/i, "Volt"], [/^fdp$/i, "FDP"],
+  [/fdp\/volt/i, "FDP/Volt"], [/für oldenburg/i, "FO"], [/piraten/i, "Piraten"],
+];
+
+function parteiKuerzel(label: string | null): string {
+  for (const [re, k] of _PARTEI_KUERZEL) if (label && re.test(label)) return k;
+  return "Rat";
+}
+
+const falteName = (t: string) =>
+  t.toLowerCase().replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss");
+
+/** Kleines Zugehörigkeits-Badge hinter einem Personennamen: Punkt in
+ *  Parteifarbe (Verwaltung: Hafenblau „Stadt", Ehemalige: grau „ehem.") plus
+ *  Kürzel; Tipp öffnet den Peek mit Rolle, belegtem Zeitraum und — bei
+ *  Ratsmitgliedern — dem Link zur Personen-Seite. */
+export function PersonBadge({ p }: { p: PersonEintrag }) {
+  const [offen, setOffen] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!offen) return;
+    const zu = (e: MouseEvent | TouchEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOffen(false);
+    };
+    document.addEventListener("mousedown", zu);
+    document.addEventListener("touchstart", zu);
+    return () => {
+      document.removeEventListener("mousedown", zu);
+      document.removeEventListener("touchstart", zu);
+    };
+  }, [offen]);
+
+  const dot = !p.aktiv ? { bg: "hsl(209 10% 62%)", ring: false }
+    : p.art === "stadt" ? { bg: "#0764a6", ring: false }
+    : parteiDot(p.partei || "");
+  const label = !p.aktiv ? "ehem." : p.art === "stadt" ? "Stadt" : parteiKuerzel(p.partei);
+  const rolle = p.rolle
+    || (p.art === "rat" ? `Ratsmitglied${p.partei ? ` · ${p.partei}` : ""}` : "Stadtverwaltung");
+  const zeitraum = p.aktiv
+    ? (p.von ? `In den Sitzungen seit ${p.von}` : null)
+    : (p.von && p.bis ? `In den Sitzungen ${p.von}–${p.bis}` : null);
+
+  return (
+    <span ref={ref} className="relative inline-block align-baseline">
+      <button type="button" onClick={() => setOffen((v) => !v)}
+        aria-expanded={offen} title={`${p.name} — ${rolle}`}
+        className="ml-1 inline-flex -translate-y-[1px] items-center gap-1 rounded-full border border-border bg-card px-1.5 py-px align-baseline text-[10px] font-medium leading-[14px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+        <span aria-hidden className={cn("h-[7px] w-[7px] shrink-0 rounded-full", dot.ring && "ring-1 ring-border")}
+          style={{ backgroundColor: dot.bg }} />
+        {label}
+      </button>
+      {offen && (
+        <span className="absolute bottom-full left-0 z-30 mb-1.5 block w-64 rounded-xl border border-border bg-card p-3 text-left shadow-lg">
+          <span className="block text-[13px] font-semibold text-foreground">{p.name}</span>
+          <span className="mt-0.5 block text-[11.5px] text-muted-foreground">
+            {p.aktiv ? rolle : `Ehemals: ${rolle}`}
+          </span>
+          {zeitraum && (
+            <span className="mt-1 block text-[10.5px] text-muted-foreground/70">{zeitraum}</span>
+          )}
+          {p.art === "rat" && (
+            <a href={personHref(p.slug)}
+              className="mt-1.5 inline-flex items-center gap-1 text-[11.5px] font-medium text-primary hover:underline">
+              Zur Personen-Seite <ArrowRight className="h-3 w-3" aria-hidden />
+            </a>
+          )}
+        </span>
+      )}
+    </span>
+  );
+}
+
 export type ParteiMeinung = {
   partei: string; haltung?: "dafür" | "dagegen" | "offen" | "gewandelt";
   position: string; einig: boolean; hinweis: string | null;
@@ -68,7 +173,7 @@ export type ParteiMeinung = {
  * Seite gibt es kein Peek — dort verlinkt `quelleHref` auf die Quellenliste.
  */
 export function AntwortText({ text: rohtext, idToNum, onJump, quelleHref,
-  anlBuchstaben, onAnlage, anlageHref, ankerPrefix, berichtKoepfe }: {
+  anlBuchstaben, onAnlage, anlageHref, ankerPrefix, berichtKoepfe, personen }: {
   text: string; idToNum: Map<number, number>;
   onJump?: (id: number) => void;
   quelleHref?: (nummer: number) => string;
@@ -80,7 +185,61 @@ export function AntwortText({ text: rohtext, idToNum, onJump, quelleHref,
   ankerPrefix?: string;
   /** RG-10: Bericht-Köpfe größer (Display-Font) statt der kompakten Task-32-Optik. */
   berichtKoepfe?: boolean;
+  /** Personen-Lexikon für Zugehörigkeits-Badges hinter Namen (Tims Wunsch
+   *  12.08.) — ohne Angabe lädt die Komponente es selbst (Modul-Cache). */
+  personen?: PersonEintrag[];
 }) {
+  const lexikon = usePersonenLexikon();
+  const personenEff = personen ?? lexikon;
+  // Nachname → Kandidaten. Deterministische Regeln statt LLM: Ganzwort,
+  // kapitalisiert, Badge nur bei der ERSTEN Nennung einer Person. Bei
+  // Namensvettern entscheidet der Vorname davor; fehlt er, gewinnt die
+  // einzige AKTIVE Person (Antworten handeln fast immer von der laufenden
+  // Debatte) — sind mehrere aktiv, lieber KEIN Badge als ein geratenes.
+  const personenMap = useMemo(() => {
+    const m = new Map<string, PersonEintrag[]>();
+    for (const p of personenEff || []) {
+      if (!p.nachname || p.nachname.length < 3) continue;
+      const l = m.get(p.nachname) || [];
+      l.push(p);
+      m.set(p.nachname, l);
+    }
+    return m;
+  }, [personenEff]);
+  const badgesGesetzt = new Set<string>();
+
+  const mitPersonen = (s: string, keyBase: string): React.ReactNode => {
+    if (personenMap.size === 0) return s;
+    const re = /[A-ZÄÖÜ][A-Za-zÄÖÜäöüß-]{2,}/g;
+    const teile: React.ReactNode[] = [];
+    let last = 0;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(s))) {
+      const kandidaten = personenMap.get(falteName(m[0]));
+      if (!kandidaten) continue;
+      let p: PersonEintrag | null = null;
+      if (kandidaten.length === 1) p = kandidaten[0];
+      else {
+        const davor = falteName((s.slice(0, m.index).trimEnd().split(/\s+/).pop() || "")
+          .replace(/[^A-Za-zÄÖÜäöüß-]/g, ""));
+        const perVorname = kandidaten.filter((k) => k.vorname && k.vorname === davor);
+        if (perVorname.length === 1) p = perVorname[0];
+        else {
+          const aktive = kandidaten.filter((k) => k.aktiv);
+          if (aktive.length === 1) p = aktive[0];
+        }
+      }
+      if (!p || badgesGesetzt.has(p.slug)) continue;
+      badgesGesetzt.add(p.slug);
+      const ende = m.index + m[0].length;
+      teile.push(s.slice(last, ende));
+      teile.push(<PersonBadge key={`${keyBase}-p-${p.slug}`} p={p} />);
+      last = ende;
+    }
+    if (teile.length === 0) return s;
+    teile.push(s.slice(last));
+    return teile;
+  };
   // Belege ohne Gegenstück fliegen SAMT führendem Leerzeichen raus (der Deep-
   // Bericht wird roh gespeichert, nur die schnelle Antwort putzt serverseitig).
   // Ohne das bliebe „… nichts her ." mit einer Lücke vor dem Punkt stehen.
@@ -147,8 +306,8 @@ export function AntwortText({ text: rohtext, idToNum, onJump, quelleHref,
       const seg = part.split(/(\*\*[^*]+\*\*)/g);
       return seg.map((s, j) =>
         /^\*\*[^*]+\*\*$/.test(s)
-          ? <strong key={`${keyBase}-${i}-${j}`} className="font-semibold">{s.slice(2, -2)}</strong>
-          : <span key={`${keyBase}-${i}-${j}`}>{s}</span>);
+          ? <strong key={`${keyBase}-${i}-${j}`} className="font-semibold">{mitPersonen(s.slice(2, -2), `${keyBase}-${i}-${j}`)}</strong>
+          : <span key={`${keyBase}-${i}-${j}`}>{mitPersonen(s, `${keyBase}-${i}-${j}`)}</span>);
     });
   };
 

@@ -211,3 +211,48 @@ def test_ratspartei_label_filtert_verbaende_und_rollen():
         "Behindertenbeirat", "", None,
     ):
         assert qa.ratspartei_label(kein_treffer) is None, kein_treffer
+
+
+def test_personen_lexikon_rat_verwaltung_und_zeitlichkeit(tmp_path):
+    """Tims Badge-Wunsch 12.08.: Ratsmitglieder mit Partei und Zeitraum,
+    Verwaltung mit geerntetem Amt aus den Protokoll-Notizen — und wer seit
+    über einem Jahr in keiner Anwesenheitsliste steht, gilt nicht mehr als
+    aktiv (nie „falsch als aktuell anzeigen")."""
+    from datetime import date, timedelta
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        frisch = (date.today() - timedelta(days=30)).isoformat()
+        alt = (date.today() - timedelta(days=900)).isoformat()
+        with store._conn:
+            store._conn.executemany(
+                "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, "
+                "location, fetched_at) VALUES (?, 'Rat', ?, '', '', datetime('now'))",
+                [(1, alt), (2, frisch)])
+            store._conn.executemany(
+                "INSERT INTO council_attendance (ksinr, name, party, role, note) "
+                "VALUES (?, ?, ?, ?, ?)",
+                [(2, "Jens Lükermann", "FDP/Volt", "mitglied", None),
+                 (1, "Hans-Henning Adler", "DIE LINKE.", "mitglied", None),
+                 (2, "Jürgen Krogmann", "Verwaltung", "verwaltung", "Oberbürgermeister"),
+                 (2, "Jürgen Krogmann", "Verwaltung", "verwaltung", "Oberbürgermeister, bis TOP 8.2"),
+                 (1, "Gabriele Nießen", "Verwaltung", "verwaltung", "Stadtbaurätin"),
+                 (2, "Dagmar Sachse", "Verwaltung", "verwaltung", "Für Oberbürgermeister Krogmann")])
+        lex = {p["slug"]: p for p in store.personen_lexikon()}
+
+        lk = lex["jens-luekermann"]
+        assert lk["art"] == "rat" and lk["aktiv"] is True
+        assert lk["nachname"] == "luekermann" and lk["vorname"] == "jens"
+
+        adler = lex["hans-henning-adler"]
+        assert adler["aktiv"] is False  # zuletzt vor ~2,5 Jahren gesehen
+
+        kro = lex["juergen-krogmann"]
+        assert kro["art"] == "stadt" and kro["rolle"] == "Oberbürgermeister"
+
+        # Zeit-Zusätze („bis TOP 8.2") und Vertretungs-Notizen sind kein Amt.
+        assert lex["dagmar-sachse"]["rolle"] is None
+        # Amt bleibt erhalten, aktiv aber nicht mehr (Nießen lange raus).
+        niessen = lex["gabriele-niessen"]
+        assert niessen["rolle"] == "Stadtbaurätin" and niessen["aktiv"] is False
+    finally:
+        store.close()

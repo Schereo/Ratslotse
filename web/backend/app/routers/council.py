@@ -7,7 +7,7 @@ import math
 import time
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -1008,6 +1008,25 @@ def entities_map(_user: dict = Depends(require_active),
 def public_stats(store: CouncilStore = Depends(get_council_store)) -> dict:
     """Aggregate headline counts for the public landing page — no auth, no content."""
     return store.public_stats()
+
+
+# Personen-Lexikon für die Badges im Antwort-Text (Tims Wunsch 12.08.).
+# Public wie public-stats: Die geteilten Antwort-Seiten (app/g) brauchen es
+# ohne Konto, und der Inhalt sind amtliche RIS-Daten. Prozess-Cache mit
+# Tages-TTL — die Quelle ändert sich höchstens mit dem täglichen Import.
+_PERSONEN_LEXIKON_CACHE: dict = {"stand": 0.0, "daten": None}
+
+
+@router.get("/personen-lexikon")
+def personen_lexikon(response: Response,
+                     store: CouncilStore = Depends(get_council_store)) -> dict:
+    import time as _time
+    if _PERSONEN_LEXIKON_CACHE["daten"] is None or \
+            _time.time() - _PERSONEN_LEXIKON_CACHE["stand"] > 6 * 3600:
+        _PERSONEN_LEXIKON_CACHE["daten"] = store.personen_lexikon()
+        _PERSONEN_LEXIKON_CACHE["stand"] = _time.time()
+    response.headers["Cache-Control"] = "public, max-age=21600"
+    return {"personen": _PERSONEN_LEXIKON_CACHE["daten"]}
 
 
 # ---- Link-Vorschau (Design 29a, P1) ----
