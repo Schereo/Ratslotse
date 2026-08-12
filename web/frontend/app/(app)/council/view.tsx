@@ -806,13 +806,11 @@ function DecisionsTab({ committees }: { committees: string[] }) {
                   <span className="sr-only">Themenfilter entfernen</span>
                 </button>
               )}
+              {/* Blättern klein am rechten Rand der Zählerzeile (Tims Wunsch
+                  12.08.) — die große, mittige Leiste oben wirkte wie ein
+                  eigener Inhaltsblock. Unten bleibt sie in voller Größe. */}
+              <Pagination compact page={page} totalPages={totalPages} onChange={changePage} className="ml-auto" />
             </div>
-            {/* Blättern auch OBEN (Tims Wunsch 12.08.): Der Sprung an den
-                Listenanfang bleibt richtig — eine neue Seite beginnt oben —,
-                aber dann müsste man für „3" wieder ganz nach unten scrollen. */}
-            {totalPages > 1 && (
-              <Pagination page={page} totalPages={totalPages} onChange={changePage} className="pb-1" />
-            )}
             {decisions.map((d) => <DecisionCard key={d.id} d={d} query={query} />)}
             <Pagination page={page} totalPages={totalPages} onChange={changePage} className="pt-2" />
           </div>
@@ -1239,14 +1237,15 @@ function SessionsTab({ committees }: { committees: string[] }) {
               {`${total} ${total === 1 ? "Sitzung" : "Sitzungen"} gefunden`
                 + (totalPages > 1 ? `, Seite ${page} von ${totalPages}` : "")}
             </p>
-            <p aria-hidden className="text-sm font-medium text-muted-foreground">
-              {total} {total === 1 ? "Sitzung" : "Sitzungen"}
-              {totalPages > 1 && <span className="text-muted-foreground/70"> · Seite {page} von {totalPages}</span>}
-            </p>
-            {totalPages > 1 && (
-              /* Blättern auch oben — siehe Beschluss-Suche. */
-              <Pagination page={page} totalPages={totalPages} onChange={changePage} className="pt-1" />
-            )}
+            <div aria-hidden className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-medium text-muted-foreground">
+                {total} {total === 1 ? "Sitzung" : "Sitzungen"}
+              </p>
+              {/* Blättern klein rechts in der Zählerzeile — siehe Beschluss-
+                  Suche. Der „Seite X von Y"-Text wäre damit doppelt; für
+                  Vorleseprogramme steht er weiter in der sr-only-Zeile. */}
+              <Pagination compact page={page} totalPages={totalPages} onChange={changePage} className="ml-auto" />
+            </div>
             {sessions.map((s, i) => {
               // Jahres-Trenner, sobald sich das Jahr ändert — und immer über
               // dem ersten Eintrag, damit die Einordnung nicht erst nach dem
@@ -1279,12 +1278,14 @@ function SessionsTab({ committees }: { committees: string[] }) {
                       <div className="ml-[62px] flex shrink-0 items-center gap-2 self-start sm:ml-0 sm:self-auto">
                         {isLiveNow(s) && <LiveChip />}
                         <Badge>Tagesordnung folgt</Badge>
+                        {/* In DERSELBEN Zeile wie die Badge (Tims Befund
+                            12.08.): Als eigene Reihe darunter brach der Link
+                            die Gleichmäßigkeit der Karten — rechts sitzt bei
+                            den Schwester-Karten schließlich auch die Aktion.
+                            Und gerade hier lohnt der Kalender am meisten: Der
+                            Termin steht, die Tagesordnung kommt erst noch. */}
+                        <CalendarButton session={s} />
                       </div>
-                    </div>
-                    {/* Gerade hier lohnt der Kalender am meisten: Der Termin
-                        steht, die Tagesordnung kommt erst noch. */}
-                    <div className="ml-[62px] mt-2 sm:ml-0">
-                      <CalendarButton session={s} />
                     </div>
                   </Card>
                   </Fragment>
