@@ -8,6 +8,11 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Behoben
+- **Der Personen-Peek bleibt im Bild.** Nahe dem rechten Rand oder der
+  Oberkante lief die Info-Karte aus dem Text bzw. wurde abgeschnitten —
+  sie richtet sich jetzt nach der verfügbaren Seite aus. (#439)
+
+### Behoben
 - **Personen-Badges verwechseln keine Namensvettern mehr.** Ein Gast im
   Ausschuss (etwa vom Wasserstraßen-Amt) trug im Text das Badge eines
   gleichnamigen Gremienmitglieds. Gäste, Protokollführung und beratende
