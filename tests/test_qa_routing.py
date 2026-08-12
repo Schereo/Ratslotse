@@ -34,9 +34,10 @@ def test_analyse_parst_sauberes_json(monkeypatch):
     calls = _llm_antwort(monkeypatch, json.dumps(
         {"begriffe": "Radverkehr Fahrrad Radweg", "typ": "verlauf", "partei": None}))
     a = qa.analyse_query("Wie lief das mit dem Radweg?")
+    # `eng` kam mit den Kurzantworten für Punktfragen dazu (12.08.).
     assert a == {"frage": "Wie lief das mit dem Radweg?",
                  "begriffe": "Radverkehr Fahrrad Radweg", "typ": "verlauf", "partei": None,
-                 "varianten": []}
+                 "varianten": [], "eng": False}
     # Zweiter Aufruf kommt aus dem Cache — kein weiterer LLM-Call.
     qa.analyse_query("Wie lief das mit dem Radweg?")
     assert calls["n"] == 1
@@ -127,7 +128,7 @@ def test_analyse_fehler_liefert_fallback(monkeypatch):
     monkeypatch.setattr(qa.llm, "chat_complete", boom)
     a = qa.analyse_query("Frage?")
     assert a == {"frage": "Frage?", "begriffe": "Frage?", "typ": "thema", "partei": None,
-                 "varianten": []}
+                 "varianten": [], "eng": False}
 
 
 def test_sort_verlauf_aelteste_zuerst():
