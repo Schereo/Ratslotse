@@ -550,7 +550,16 @@ function DebattenZeile({ d, artLabel }: { d: DebattenHinweis; artLabel: Record<s
       <p className="flex items-baseline gap-2">
         <span className="min-w-0 flex-1 truncate font-medium">
           {d.sprecher ?? "Ohne Namen"}{d.partei ? ` (${d.partei})` : ""}
-          <span className="ml-1.5 font-normal text-muted-foreground">· {artLabel[d.art] ?? d.art}</span>
+          {/* Zusagen der Verwaltung sind Selbstverpflichtungen — kein
+              Meinungsbeitrag unter vielen. Sie bekommen deshalb ein eigenes
+              Abzeichen statt nur ein graues Wörtchen. */}
+          {d.art === "zusage" ? (
+            <span className="ml-1.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+              Zusage der Verwaltung
+            </span>
+          ) : (
+            <span className="ml-1.5 font-normal text-muted-foreground">· {artLabel[d.art] ?? d.art}</span>
+          )}
         </span>
         {d.datum && <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{fmtDatumKurz(d.datum)}</span>}
       </p>
