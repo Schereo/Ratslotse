@@ -7,6 +7,13 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Verbessert
+- **Kurze Fragen bekommen kurze Antworten.** Wer nach einem Datum, einer Zahl
+  oder einem Namen fragt („Wann wurde der Bebauungsplan 831 beschlossen?"),
+  bekommt jetzt zwei Sätze statt einer Seite — inklusive Beleg, aber ohne
+  Vorgeschichte und ohne Debatten-Absatz, nach dem niemand gefragt hat.
+  Breite Fragen bleiben unverändert ausführlich. (#465)
+
 ### Behoben
 - **Abgeschnittene Verbands- und Fraktionsnamen in Wortbeiträgen.** Namen
   wurden bei 40 Zeichen hart gekappt — in einer KI-Antwort stand deshalb

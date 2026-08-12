@@ -92,7 +92,7 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
     Reranker arbeiten mit dieser Fassung. Robust: bei kaputtem JSON oder
     LLM-Fehler kommt das Verhalten von vor dem Routing zurück."""
     fallback = {"frage": question, "begriffe": question, "typ": "thema", "partei": None,
-                "varianten": []}
+                "varianten": [], "eng": False}
     vtext = _verlauf_zeilen(verlauf)
     key = f"{model}|{hash(vtext)}|{' '.join(question.split()).lower()[:300]}"
     hit = _ANALYSE_CACHE.get(key)
@@ -117,6 +117,10 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
         # Finanzierungs-Beschlüsse). Kandidaten-Union passiert in hybrid_search.
         varianten = [" ".join(str(v).split())[:120]
                      for v in (data.get("varianten") or []) if isinstance(v, str) and str(v).strip()][:2]
+        # Punktfrage? („Wann wurde X beschlossen?") — dann antwortet das Modell
+        # knapp statt mit Verlauf + Debatten-Absatz. Reist im ohnehin laufenden
+        # Analyse-Call mit, kostet also keine zusätzliche Latenz.
+        eng = bool(data.get("eng") is True)
         if typ not in QUERY_TYPES or typ == "person":
             # „person" setzt ausschließlich der Router (deterministische
             # Erkennung) — behauptet das Modell den Typ, fehlt die Person.
@@ -124,7 +128,7 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
         if typ != "partei":
             partei = None
         out = {"frage": frage or question, "begriffe": begriffe or question,
-               "typ": typ, "partei": partei, "varianten": varianten}
+               "typ": typ, "partei": partei, "varianten": varianten, "eng": eng}
         if begriffe:  # nur brauchbare Analysen cachen
             if len(_ANALYSE_CACHE) >= _EXPAND_CACHE_MAX:
                 _ANALYSE_CACHE.pop(next(iter(_ANALYSE_CACHE)))
@@ -144,6 +148,23 @@ def sort_verlauf(candidates: list[dict]) -> list[dict]:
 # Typ-spezifische Zusatzregeln für das Antwort-Prompt (qa_antwort hat dafür
 # den {extra_regeln}-Slot; alte Admin-Overrides ohne den Slot ignorieren den
 # Parameter einfach — format() stört sich nicht an überzähligen kwargs).
+# Punktfragen („Wann wurde X beschlossen?") bekommen eine knappe Antwort:
+# Tims Befund 12.08. an einer echten Nutzer-Frage — dort folgten dem gesuchten
+# Datum noch fünf Redebeiträge, nach denen niemand gefragt hatte. Die Regel
+# ersetzt die Debatten-Pflicht (die im Debatten-Block steht) ausdrücklich.
+ENG_REGEL = (
+    "\n\nDIESE FRAGE IST ENG GESTELLT: Sie verlangt EINE Tatsache (Datum, Zahl, "
+    "Name, Ja/Nein). Antworte in HÖCHSTENS 3 Sätzen, ohne Überschriften und ohne "
+    "Aufzählung. Der ERSTE Satz beantwortet die Frage direkt; gibt es mehrere "
+    "Stationen (Aufstellung, Entwurf, Satzung), nenne die MASSGEBLICHE zuerst — "
+    "das ist der endgültige Beschluss, nicht ein Zwischenschritt. "
+    "Nenne die Tatsache mit Beleg [id] und, wenn es zum Verständnis "
+    "nötig ist, den einen wichtigsten Bezug (etwa die Bestätigung im Rat). "
+    "KEIN Absatz zur Debatte, KEINE Vorgeschichte, KEINE Aufzählung weiterer "
+    "Beschlüsse — auch dann nicht, wenn der Kontext mehr hergibt. Fehlt die "
+    "Tatsache in den Quellen, sage das in einem Satz."
+)
+
 EXTRA_REGELN = {
     "thema": "",
     "verlauf": (
@@ -756,7 +777,7 @@ def _presse_block(presse: list[dict] | None) -> str:
             f"{zeilen}\n")
 
 
-def _debatten_block(debatten: list[dict] | None) -> str:
+def _debatten_block(debatten: list[dict] | None, eng: bool = False) -> str:
     """Kontext-Absatz „Aus den Ratsdebatten" — Wortbeiträge aus Protokollen
     (Reden, Anfragen, Einwohnerfragen, Zusagen). Das sind BERICHTE, keine
     Beschlüsse: nie mit [id] zitieren, sondern „Laut Protokoll sagte/fragte …"."""
@@ -786,6 +807,15 @@ def _debatten_block(debatten: list[dict] | None) -> str:
         if d.get("antwort"):
             zeile += f" — Antwort der Verwaltung: {(d['antwort'] or '').strip()[:300]}"
         zeilen.append(zeile)
+    if eng:
+        # Punktfrage: Die Wortbeiträge bleiben im Kontext (manchmal steckt die
+        # gesuchte Tatsache genau dort), aber der Meinungsbild-Zwang entfällt —
+        # sonst gewinnt er gegen die Kürze-Regel (im Test genau so passiert).
+        kopf = ("\nAUS DEN RATSDEBATTEN (Wortbeiträge aus den Protokollen — Berichte,\n"
+                "KEINE Beschlüsse). NUR verwenden, wenn die gesuchte Tatsache hier steht;\n"
+                "KEIN Absatz zum Meinungsbild, die Frage will das nicht wissen.\n"
+                "Wenn zitiert, dann als „Laut Protokoll sagte …“ und NIE mit [id]:\n")
+        return kopf + "\n".join(zeilen) + "\n"
     return ("\nAUS DEN RATSDEBATTEN (thematisch geprüfte Wortbeiträge aus den\n"
             "Sitzungsprotokollen — Berichte, KEINE Beschlüsse). Ergänze die Antwort\n"
             "IMMER um einen kurzen Absatz Meinungsbild der Debatte (wer trug was vor,\n"
@@ -879,16 +909,17 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "thema",
                      haushalt: list[dict] | None = None,
                      debatten: list[dict] | None = None,
                      gross: bool = False, steckbriefe: list[dict] | None = None,
-                     duenn: bool = False) -> tuple[list[dict], dict]:
+                     duenn: bool = False, eng: bool = False) -> tuple[list[dict], dict]:
     vtext = _verlauf_zeilen(verlauf)
     gespraech = (f"Dies ist eine Anschlussfrage in einem Gespräch. Bisher:\n{vtext}\n\n"
                  if vtext else "")
     prompt = prompts.render("qa_antwort", question=question.strip()[:300],
                             context=_build_context(candidates),
-                            extra_regeln=EXTRA_REGELN.get(typ, "")
-                            + (GROSS_REGEL if gross else "") + (DUENN_REGEL if duenn else ""),
+                            extra_regeln=(ENG_REGEL if eng else EXTRA_REGELN.get(typ, ""))
+                            + ("" if eng else (GROSS_REGEL if gross else ""))
+                            + (DUENN_REGEL if duenn else ""),
                             presse=_steckbrief_block(steckbriefe) + _presse_block(presse)
-                            + _haushalt_block(haushalt) + _debatten_block(debatten),
+                            + _haushalt_block(haushalt) + _debatten_block(debatten, eng),
                             gespraech=gespraech)
     # reasoning-Schalter am TATSÄCHLICH genutzten Modell festmachen — vorher
     # hing er an der Modul-Konstante und lief bei model=-Overrides ins Leere.
@@ -896,7 +927,10 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "thema",
     return [{"role": "user", "content": prompt}], extra
 
 
-def _answer_tokens(typ: str, gross: bool = False) -> int:
+def _answer_tokens(typ: str, gross: bool = False, eng: bool = False) -> int:
+    # Punktfrage: knappes Budget als zweite Bremse neben der Prompt-Regel.
+    if eng:
+        return 320
     # Seit dem Ratsgespräch dürfen breite Fragen strukturiert länger antworten
     # (Prompt regelt die Länge nach Frage; das Budget kappt nur den Ausreißer).
     # Große Themen (Task 32) bekommen Platz für die gegliederte Langfassung.
@@ -909,12 +943,12 @@ def answer_question(question: str, candidates: list[dict], model: str = MODEL, t
                     presse: list[dict] | None = None, verlauf: list[dict] | None = None,
                     haushalt: list[dict] | None = None, debatten: list[dict] | None = None,
                     gross: bool = False, steckbriefe: list[dict] | None = None,
-                    duenn: bool = False):
+                    duenn: bool = False, eng: bool = False):
     """Synthesise an answer from retrieved candidates. Returns ``(answer, cited_ids)``."""
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
-                                       haushalt, debatten, gross, steckbriefe, duenn)
+                                       haushalt, debatten, gross, steckbriefe, duenn, eng)
     resp = llm.chat_complete(model=model, _feature="qa_antwort", temperature=0.2,
-                             max_tokens=_answer_tokens(typ, gross), messages=messages, **extra)
+                             max_tokens=_answer_tokens(typ, gross, eng), messages=messages, **extra)
     answer = (resp.choices[0].message.content or "").strip()
     return resolve_citations(answer, {c["id"] for c in candidates})
 
@@ -923,14 +957,14 @@ def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ
                   presse: list[dict] | None = None, verlauf: list[dict] | None = None,
                   haushalt: list[dict] | None = None, debatten: list[dict] | None = None,
                   gross: bool = False, steckbriefe: list[dict] | None = None,
-                  duenn: bool = False):
+                  duenn: bool = False, eng: bool = False):
     """Stream the answer text deltas (same prompt/context as answer_question) so the
     UI can render the answer as it is written. Citation resolution is the caller's
     job once the full text is assembled (see resolve_citations)."""
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
-                                       haushalt, debatten, gross, steckbriefe, duenn)
+                                       haushalt, debatten, gross, steckbriefe, duenn, eng)
     yield from llm.chat_stream(model=model, _feature="qa_antwort", temperature=0.2,
-                               max_tokens=_answer_tokens(typ, gross), messages=messages, **extra)
+                               max_tokens=_answer_tokens(typ, gross, eng), messages=messages, **extra)
 
 
 # --- Folgefragen (Design 24a / RL-U06) --------------------------------------
