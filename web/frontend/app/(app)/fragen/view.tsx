@@ -44,7 +44,10 @@ function FragenInner() {
     <div data-tour="ki-frage-tab">
       <PageHeader
         title="Fragen"
-        description="Stell dem Rat eine Frage in normaler Sprache — beantwortet aus Beschlüssen, Wortbeiträgen und Vorlagen."
+        /* Kurz halten (Tims Befund 12.08.): Auf dem Handy lief der Satz über
+           drei Zeilen und schob den Empty State nach unten — worauf die
+           Antwort fußt, sagt der Empty State selbst. */
+        description="In normaler Sprache fragen — Antwort mit Quellen."
         action={<GespraecheHeaderButton />}
       />
       <QaTab />

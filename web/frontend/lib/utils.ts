@@ -44,3 +44,18 @@ export function relativerTag(iso: string, heute: Date | null): string | null {
   if (tag === plus(-1)) return "gestern";
   return null;
 }
+
+/** Pfad ohne Schluss-Schrägstrich — die EINE Stelle, an der die Eigenheit des
+ *  App-Exports aufgefangen wird.
+ *
+ *  `next.config.mjs` setzt für den statischen Export `trailingSlash: true`:
+ *  In der iOS/Android-App heißt der Pfad also `/council/`, im Web `/council`.
+ *  Jeder exakte Vergleich (`pathname === "/council"`) war damit in der App
+ *  blind — der Sitzungen-Tab leuchtete nie (Tims Befund 12.08.), und nach dem
+ *  Split hätten dieselben Vergleiche das Ratsgespräch daran gehindert, eine
+ *  vorbefüllte Frage oder einen geteilten Snapshot zu übernehmen.
+ */
+export function pfad(pathname: string | null | undefined): string {
+  const p = String(pathname ?? "");
+  return p.length > 1 ? p.replace(/\/+$/, "") || "/" : p || "/";
+}
