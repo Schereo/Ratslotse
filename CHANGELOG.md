@@ -13,7 +13,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   gleichnamigen Gremienmitglieds. Gäste, Protokollführung und beratende
   Mitglieder machen den kahlen Nachnamen jetzt mehrdeutig — und bei
   Mehrdeutigkeit entscheidet nur noch ein Vorname im Text, sonst gibt es
-  gar kein Badge. (#436)
+  gar kein Badge. (#437)
 
 ### Neu
 - **Kleine Zugehörigkeits-Badges hinter Personennamen in KI-Antworten.**
