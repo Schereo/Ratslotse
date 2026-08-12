@@ -24,7 +24,7 @@ from __future__ import annotations
 import logging
 from datetime import date, timedelta
 
-from nwz import notify
+from kern import notify
 
 logger = logging.getLogger("council.abendmeldungen")
 

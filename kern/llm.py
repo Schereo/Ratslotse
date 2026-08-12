@@ -196,7 +196,7 @@ def _record_usage(feature: str | None, model: str | None, usage_obj: Any) -> Non
     if not feature:
         return
     try:
-        from nwz import usage
+        from kern import usage
         usage.record(feature, model,
                      getattr(usage_obj, "prompt_tokens", 0) or 0,
                      getattr(usage_obj, "completion_tokens", 0) or 0,

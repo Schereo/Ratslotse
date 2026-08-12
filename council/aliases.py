@@ -39,7 +39,7 @@ import os
 import re
 from collections import Counter, defaultdict
 
-from nwz import llm, prompts
+from kern import llm, prompts
 
 MODEL = os.environ.get("COUNCIL_ALIAS_MODEL", "deepseek/deepseek-v4-pro")
 

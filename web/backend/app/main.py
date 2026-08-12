@@ -33,7 +33,7 @@ def _warn_if_admin_bootstrap_pending() -> None:
         configured = (settings.web_admin_email or "").strip().lower()
         if not configured:
             return
-        from nwz.store import Store
+        from kern.store import Store
 
         store = Store(settings.nwz_db)
         try:
@@ -110,7 +110,7 @@ def _deep_jobs_aufraeumen() -> None:
     Neustart tot (ihr Thread starb mit dem alten Prozess) → als Fehler
     markieren, damit der Client „Fortsetzen" anbietet statt ewig zu warten."""
     try:
-        from nwz.store import Store
+        from kern.store import Store
 
         store = Store(get_settings().nwz_db)
         try:
@@ -215,7 +215,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 @app.get("/api/health")
 def health():
-    from nwz.store import Store
+    from kern.store import Store
     from council.store import CouncilStore
 
     try:

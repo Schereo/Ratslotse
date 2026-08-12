@@ -20,7 +20,7 @@ import sys
 import traceback
 from typing import Callable
 
-logger = logging.getLogger("nwz.alerts")
+logger = logging.getLogger("kern.alerts")
 
 
 def notify_admin(text: str) -> None:

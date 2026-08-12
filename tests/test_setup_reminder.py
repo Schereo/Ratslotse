@@ -17,7 +17,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from nwz.store import Store  # noqa: E402
+from kern.store import Store  # noqa: E402
 
 
 @pytest.fixture

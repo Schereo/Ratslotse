@@ -25,8 +25,8 @@ load_dotenv(ROOT / ".env")
 
 from council import embeddings  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
-from nwz.store import Store  # noqa: E402
-from nwz import digest_email  # noqa: E402
+from kern.store import Store  # noqa: E402
+from kern import digest_email  # noqa: E402
 from council.ergebnisse import decision_href  # noqa: E402
 
 NWZ_DB = ROOT / "data" / "nwz.sqlite"
@@ -51,7 +51,7 @@ def _notify_new_matches(nwz, council, owner_id: int, topic_name: str, new_ids: l
     — für die Person ist es dieselbe Nachricht und gehört unter denselben
     Schalter.
     """
-    from nwz import notify
+    from kern import notify
 
     if not nwz.get_web_user_by_id(owner_id):
         return 0                      # Konto zwischenzeitlich gelöscht
@@ -106,7 +106,7 @@ def process(top_k: int = 8, threshold: float = 0.45) -> dict:
         # Eingereiht ist nicht zugestellt: Ohne diesen Aufruf läge alles bis zum
         # nächsten Cron-Job (7 Uhr) still. Die Nachtruhe verschiebt ohnehin, was
         # jetzt nicht raus darf — dieser Lauf startet sonntags um 3 Uhr.
-        from nwz import notify
+        from kern import notify
 
         zugestellt = notify.zustellen(nwz)
         return {"topics": n_topics, "matches": total, "notified": notified,

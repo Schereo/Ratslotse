@@ -6,7 +6,7 @@ from datetime import date, timedelta
 
 import pytest
 
-from nwz import usage
+from kern import usage
 
 
 @pytest.fixture
@@ -95,9 +95,9 @@ def test_record_ohne_cost_bleibt_kompatibel(usage_db):
 
 def test_llm_session_cost_zaehler(monkeypatch):
     from types import SimpleNamespace
-    from nwz import llm
+    from kern import llm
     monkeypatch.setattr(llm, "_session_cost", {"usd": 0.0, "calls_mit": 0, "calls_ohne": 0})
-    monkeypatch.setattr("nwz.usage.record", lambda *a, **k: None)
+    monkeypatch.setattr("kern.usage.record", lambda *a, **k: None)
     llm._record_usage("qa_antwort", "m", SimpleNamespace(prompt_tokens=1, completion_tokens=1, cost=0.0012))
     llm._record_usage("qa_antwort", "m", SimpleNamespace(prompt_tokens=1, completion_tokens=1))
     sc = llm.session_cost()

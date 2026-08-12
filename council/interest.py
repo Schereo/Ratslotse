@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 import os
 
-from nwz import llm, prompts
+from kern import llm, prompts
 
 MODEL = os.environ.get("COUNCIL_INTEREST_MODEL", "deepseek/deepseek-v4-pro")
 # Batch-Bewertung: mehrere Beschlüsse je Call — kompakt, deterministisch

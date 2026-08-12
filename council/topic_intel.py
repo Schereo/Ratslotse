@@ -26,7 +26,7 @@ import json
 import os
 import re
 
-from nwz import llm, prompts
+from kern import llm, prompts
 
 MODEL = os.environ.get("TOPIC_INTEL_MODEL", "deepseek/deepseek-v4-pro")
 

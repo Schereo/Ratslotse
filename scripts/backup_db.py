@@ -147,6 +147,6 @@ def main() -> dict:
 
 
 if __name__ == "__main__":
-    from nwz.alerts import run_guarded
+    from kern.alerts import run_guarded
 
     run_guarded("backup_db", main)

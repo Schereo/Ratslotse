@@ -21,7 +21,7 @@ import urllib.request
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
 
-from nwz.store import Store
+from kern.store import Store
 
 from ..config import get_settings
 from ..deps import get_store

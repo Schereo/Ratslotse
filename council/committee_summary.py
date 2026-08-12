@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from nwz import llm, prompts
+from kern import llm, prompts
 from .scraper import AgendaItem
 
 MODEL = "openai/gpt-4o-mini"

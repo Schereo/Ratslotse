@@ -21,7 +21,7 @@ channel alongside email.
   dynamic-route enumeration; in the app, `/` redirects straight to the dashboard.
 - **Push:** `lib/push.ts` (permission + token registration + tap-to-navigate);
   `POST /api/push/register` / `/unregister`; backend sends via APNs/FCM
-  (`nwz/push.py`) and prunes device tokens the gateways report as gone.
+  (`kern/push.py`) and prunes device tokens the gateways report as gone.
 - **Capacitor:** `capacitor.config.ts`, deps + scripts in `package.json`.
 
 ## One-time setup (on the Mac)

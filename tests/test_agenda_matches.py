@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-from nwz.store import Store
+from kern.store import Store
 
 
 def test_agenda_matches_roundtrip(tmp_path):
@@ -41,7 +41,7 @@ def test_agenda_matches_roundtrip(tmp_path):
 def test_run_watcher_persists_matches_and_skips_unchanged(tmp_path, monkeypatch):
     from council import watcher
     from council.scraper import AgendaItem, CouncilSession
-    import nwz.delivery as delivery_mod
+    import kern.delivery as delivery_mod
 
     nwz = Store(tmp_path / "nwz.sqlite")
     topic = nwz.add_topic(1, "Radwege", "Ausbau von Radwegen")
@@ -72,7 +72,7 @@ def test_run_watcher_persists_matches_and_skips_unchanged(tmp_path, monkeypatch)
     alerts = watcher.run_watcher(tmp_path / "council.sqlite", [owner], nwz_store=nwz)
     assert len(alerts) == 1 and len(classify_calls) == 1
     # Design 30a: Der Watcher SENDET nicht mehr selbst, er reiht ein — sonst
-    # gälten weder Nachtruhe noch Tagesgrenze. Zugestellt wird in nwz.notify.
+    # gälten weder Nachtruhe noch Tagesgrenze. Zugestellt wird in kern.notify.
     assert delivered == []
     offen = nwz.due_notifications(1, "2999-01-01")
     assert len(offen) == 1 and offen[0]["kind"] == "n2_thema"

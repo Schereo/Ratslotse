@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-from nwz.store import Store
+from kern.store import Store
 
 ROOT = Path(__file__).resolve().parent.parent
 

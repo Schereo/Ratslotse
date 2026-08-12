@@ -7,7 +7,7 @@ vollständig: einer prüft sie gegen das Schema, einer löscht wirklich.
 """
 import sqlite3
 
-from nwz.store import USER_OWNED_TABLES, Store
+from kern.store import USER_OWNED_TABLES, Store
 
 
 def _user_keyed_tables(conn) -> set[tuple[str, str]]:
@@ -180,7 +180,7 @@ def test_zeitungsreste_werden_nur_leer_entfernt(tmp_path):
     """Die Tabellen-Hüllen aus der Zeitungs-Zeit (articles, editions …) wurden
     bei jedem Start neu angelegt. Sie fliegen jetzt raus — aber nur LEER:
     Wären wider Erwarten Daten drin, wäre Löschen der teurere Irrtum."""
-    from nwz.store import Store
+    from kern.store import Store
 
     pfad = tmp_path / "alt.sqlite"
     # Bestands-Datenbank mit den alten Hüllen nachbauen.
@@ -221,7 +221,7 @@ def test_zeitungsreste_werden_nur_leer_entfernt(tmp_path):
 
 
 def test_neue_datenbank_legt_keine_zeitungstabellen_an(tmp_path):
-    from nwz.store import Store
+    from kern.store import Store
 
     store = Store(tmp_path / "neu.sqlite")
     try:

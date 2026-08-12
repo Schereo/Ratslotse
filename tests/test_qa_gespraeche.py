@@ -4,7 +4,7 @@ Store-Logik direkt; die API-Verdrahtung deckt test_backend_api-Infrastruktur —
 hier zählt: ohne Einwilligung wird nichts gespeichert, Gespräche sind strikt
 ans Konto gebunden, Löschen räumt die Turns mit ab.
 """
-from nwz.store import Store
+from kern.store import Store
 
 
 def _user(store, email="a@test.de"):

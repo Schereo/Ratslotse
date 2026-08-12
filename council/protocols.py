@@ -18,7 +18,7 @@ import requests
 import pypdf
 from bs4 import BeautifulSoup
 
-from nwz import llm
+from kern import llm
 
 BASE = "https://buergerinfo.oldenburg.de"
 MODEL = os.environ.get("COUNCIL_PROTOCOL_MODEL", "deepseek/deepseek-v4-pro")

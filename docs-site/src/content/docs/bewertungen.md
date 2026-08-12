@@ -124,7 +124,7 @@ die aufklappbare Wichtigkeits-Karte auf der Beschluss-Seite.
 ## 2. Tragweite — LLM nach fester Rubrik
 
 `council/impact.py` lässt ein LLM bewerten, **wie folgenreich** ein Beschluss
-für die Stadt ist. Der Prompt (`impact_bewertung_system` in `nwz/prompts.py`,
+für die Stadt ist. Der Prompt (`impact_bewertung_system` in `kern/prompts.py`,
 über das Admin-UI editierbar) gibt vier Rubriken zu je 0–25 Punkten vor, die
 addiert werden:
 
@@ -275,7 +275,7 @@ dazwischen. Genau dafür gibt es die zweite Meinung.
 - Die Wichtigkeits-Neuberechnung ist reine Heuristik (kein LLM, kein Netz) und
   läuft deshalb täglich über den **kompletten** Bestand — so tragen frische
   Beschlüsse ihre Scores tagesaktuell.
-- Alle Cron-Jobs laufen in `run_guarded` (`nwz/alerts.py`): Ein Crash wird
+- Alle Cron-Jobs laufen in `run_guarded` (`kern/alerts.py`): Ein Crash wird
   geloggt und per E-Mail gemeldet.
 
 ## Qualitätssicherung: das Golden-Set-Gate

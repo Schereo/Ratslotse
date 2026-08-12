@@ -13,8 +13,8 @@ sys.path.insert(0, str(ROOT))
 from dotenv import load_dotenv
 load_dotenv(ROOT / ".env")
 
-from nwz import notify
-from nwz.store import Store
+from kern import notify
+from kern.store import Store
 from council.watcher import run_watcher
 
 DB = ROOT / "data" / "nwz.sqlite"
@@ -53,5 +53,5 @@ def main() -> dict:
 
 
 if __name__ == "__main__":
-    from nwz.alerts import run_guarded
+    from kern.alerts import run_guarded
     run_guarded("check_council", main)

@@ -8,9 +8,9 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from nwz.alerts import run_guarded  # noqa: E402
-from nwz.jobs import BY_KEY, JOBS  # noqa: E402
-from nwz.store import Store  # noqa: E402
+from kern.alerts import run_guarded  # noqa: E402
+from kern.jobs import BY_KEY, JOBS  # noqa: E402
+from kern.store import Store  # noqa: E402
 
 
 @pytest.fixture()

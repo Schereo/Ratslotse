@@ -16,7 +16,7 @@ gehen oder bei Anbietern landen, die Eingaben zum Training speichern.
 
 ## Entscheidung
 
-`nwz/llm.py` setzt ein **Provider-Routing** durch (per Env steuerbar):
+`kern/llm.py` setzt ein **Provider-Routing** durch (per Env steuerbar):
 
 - `NWZ_OPENROUTER_IGNORE` schließt bestimmte Anbieter-Slugs aus
   (Default: `deepseek,baidu,streamlake,siliconflow,alibaba`).

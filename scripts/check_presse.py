@@ -20,7 +20,7 @@ load_dotenv(ROOT / ".env")
 
 from council import presse  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
-from nwz.alerts import run_guarded  # noqa: E402
+from kern.alerts import run_guarded  # noqa: E402
 
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
 

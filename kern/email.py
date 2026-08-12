@@ -13,7 +13,7 @@ import os
 
 import requests
 
-logger = logging.getLogger("nwz.email")
+logger = logging.getLogger("kern.email")
 
 RESEND_API = "https://api.resend.com/emails"
 

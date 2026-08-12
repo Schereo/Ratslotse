@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 
-logger = logging.getLogger("nwz.store")
+logger = logging.getLogger("kern.store")
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (
@@ -111,7 +111,7 @@ CREATE INDEX IF NOT EXISTS idx_ctm_topic ON council_topic_matches(topic_id);
 -- Web frontend accounts. delivery_channel ∈ {email, push, both, off}.
 -- 'off' heißt: gar keine Benachrichtigungen. Kein eigenes Feld, weil es
 -- dieselbe Frage beantwortet wie die anderen drei — wohin? — nur eben mit
--- „nirgendwohin". nwz.notify.gewuenscht() liest den Wert mit, damit bei 'off'
+-- „nirgendwohin". kern.notify.gewuenscht() liest den Wert mit, damit bei 'off'
 -- nichts erst in der Warteschlange landet.
 -- `telegram_chat_id` is a legacy column retained for backward-compatible data
 -- (older rows that were once migrated from the removed Telegram bot); it is no
@@ -722,7 +722,7 @@ class Store:
     def get_delivery_channel(self, owner_id: int) -> str:
         """Der Zustellweg eines Kontos — ``email`` | ``push`` | ``both`` | ``off``.
 
-        Schlanker als ``get_web_user_by_id``, weil ``nwz.notify.gewuenscht()``
+        Schlanker als ``get_web_user_by_id``, weil ``kern.notify.gewuenscht()``
         das bei jedem einzelnen Einreihen wissen muss. Ein unbekanntes Konto
         gilt als ``email`` (die Vorgabe der Spalte) — nie als ``off``: Ein
         Lesefehler darf niemanden stillschweigend abmelden.
@@ -1099,7 +1099,7 @@ class Store:
 
     def _attach_push_tokens(self, by_owner: dict[int, dict]) -> None:
         """Fill each owner dict's ``push_tokens`` list in a single query. Used by
-        the digest/subscription delivery-target helpers so ``nwz.delivery`` can
+        the digest/subscription delivery-target helpers so ``kern.delivery`` can
         reach registered devices without its own DB handle."""
         for o in by_owner.values():
             o.setdefault("push_tokens", [])
@@ -1163,7 +1163,7 @@ class Store:
 
     def get_notify_prefs(self, owner_id: int) -> dict:
         """Die gespeicherten Schalter eines Kontos. Leeres dict = alles auf
-        Vorgabe; nwz.notify.gewuenscht() legt die Vorgabewerte darüber."""
+        Vorgabe; kern.notify.gewuenscht() legt die Vorgabewerte darüber."""
         import json as _json
 
         row = self._conn.execute(
@@ -1181,7 +1181,7 @@ class Store:
         die Spalte nicht mit Müll, wenn jemand am Client herumreicht."""
         import json as _json
 
-        from nwz.notify import NOTIFY_DEFAULTS
+        from kern.notify import NOTIFY_DEFAULTS
 
         sauber = {k: bool(v) for k, v in prefs.items() if k in NOTIFY_DEFAULTS}
         with self._conn:
@@ -1291,7 +1291,7 @@ class Store:
 
     def get_owner_delivery(self, owner_id: int) -> dict | None:
         """Zustell-Ziele eines Kontos: Kanal, Adresse, Geräte — das, was
-        nwz.delivery braucht, ohne Themen oder Abos drumherum."""
+        kern.delivery braucht, ohne Themen oder Abos drumherum."""
         r = self._conn.execute(
             "SELECT id AS owner_id, delivery_channel, email, display_name "
             "FROM web_users WHERE id = ? AND status = 'active'", (owner_id,)).fetchone()

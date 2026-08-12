@@ -22,7 +22,7 @@ import threading
 from dataclasses import dataclass, field
 
 from council.store import CouncilStore
-from nwz.store import Store
+from kern.store import Store
 
 _log = logging.getLogger(__name__)
 
@@ -202,7 +202,7 @@ def melden(job: DeepJob, nwz_db: str, status: str) -> None:
 
 
 def _melden_jetzt(job: DeepJob, nwz_db: str, status: str) -> None:
-    from nwz import delivery
+    from kern import delivery
 
     try:
         if job.zuschauer > 0:

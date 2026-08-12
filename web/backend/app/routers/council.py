@@ -21,7 +21,7 @@ from council import importance
 from council import sitzungspause as pause_mod
 from council import vorlagen as vorlagen_mod
 
-from nwz.store import Store
+from kern.store import Store
 
 from .. import deepresearch
 from ..config import get_settings

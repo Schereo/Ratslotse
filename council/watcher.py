@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from nwz import digest_email, llm, notify, prompts
+from kern import digest_email, llm, notify, prompts
 from .ergebnisse import sitzung_href
 from .scraper import CouncilScraper, CouncilSession
 from .store import CouncilStore
@@ -299,7 +299,7 @@ def _melden(nwz_store, owner: dict, art: str, titel: str, html: str, url: str,
             deliver_message) -> None:
     """Eine Meldung abgeben — über die Warteschlange, wenn es sie gibt.
 
-    Design 30a: Alle Anlässe laufen durch ``nwz.notify``, sonst greifen die
+    Design 30a: Alle Anlässe laufen durch ``kern.notify``, sonst greifen die
     Grenzen (zwei am Tag, Nachtruhe) nicht. Ohne ``nwz_store`` — in Tests und
     bei Direktaufrufen — bleibt der bisherige Sofortversand, damit dieser Pfad
     weiter ohne Datenbank prüfbar ist.
@@ -335,13 +335,13 @@ def run_watcher(
 
     owners: get_all_owner_digests()-Zeilen — je {owner_id, topics: [TopicRow],
             delivery_channel, email, push_tokens}.
-    nwz_store: offener nwz.store.Store für die Treffer-Persistenz; ohne ihn
+    nwz_store: offener kern.store.Store für die Treffer-Persistenz; ohne ihn
             (Tests) wird klassifiziert und alarmiert, aber nichts gemerkt —
             dann läuft die Klassifikation beim nächsten Mal erneut.
     stats: optionales dict, in das der Lauf seine Kennzahlen schreibt (für die
             Cron-Übersicht im Admin-Panel).
     """
-    from nwz.delivery import deliver_message
+    from kern.delivery import deliver_message
 
     scraper = CouncilScraper()
     store = CouncilStore(db_path)

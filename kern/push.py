@@ -1,6 +1,6 @@
 """Native-app push delivery: APNs (iOS) direct + FCM v1 (Android).
 
-Mirrors ``nwz.email``: entirely optional and env-driven. If the platform
+Mirrors ``kern.email``: entirely optional and env-driven. If the platform
 credentials aren't configured — or the optional deps aren't installed —
 ``push_ready()`` is ``False`` and sends are graceful no-ops, so the digest cron
 keeps working without push. Heavy deps (httpx, cryptography, google-auth) are
@@ -30,7 +30,7 @@ import logging
 import os
 import time
 
-logger = logging.getLogger("nwz.push")
+logger = logging.getLogger("kern.push")
 
 APNS_PROD_HOST = "https://api.push.apple.com"
 APNS_SANDBOX_HOST = "https://api.sandbox.push.apple.com"
