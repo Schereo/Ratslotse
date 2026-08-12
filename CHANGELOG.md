@@ -7,6 +7,17 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Neu
+- **Kurzfassung unter jedem Tagesordnungspunkt.** Ein Satz, worum es geht —
+  dieselbe Zusammenfassung, die auch in der Tagesordnungs-Mail steht, jetzt
+  direkt in der aufgeklappten Tagesordnung. Routine-Punkte
+  (Beschlussfähigkeit, Protokollgenehmigung) bleiben bewusst ohne. (#449)
+
+### Verbessert
+- **Blättern geht jetzt auch oben.** Suche und Sitzungsliste haben ihre
+  Seiten-Knöpfe zusätzlich über der Liste — bisher musste man nach jedem
+  Seitenwechsel wieder ans Ende scrollen, um weiterzublättern. (#449)
+
 ### Behoben
 - **Scrollbalken passen sich dem Dunkelmodus an.** Der Kanal blieb weiß und
   schnitt eine helle Spur durch die dunkle Oberfläche — jetzt färbt der

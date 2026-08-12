@@ -157,3 +157,37 @@ def test_gecachter_altkopf_wird_abgeschnitten():
     neu = "• <b>Ö 5</b>: Der Ausschuss berät über den GLOBE-Bericht."
     assert modul._ohne_altkopf(neu) == neu
     assert modul._ohne_altkopf(None) is None
+
+
+def test_summarize_agenda_items_liefert_punkte_und_filtert_erfundene(monkeypatch):
+    """Tims Wunsch 12.08.: Dieselben Sätze stehen in der Mail UND unter den
+    TOPs in der App — deshalb strukturiert. Nummern, die es nicht gibt,
+    fliegen raus (das Modell erfindet gelegentlich eine)."""
+    payload = json.dumps({"has_content": True, "items": [
+        {"number": "Ö 5", "summary": "Neuer B-Plan."},
+        {"number": "Ö 99", "summary": "Gibt es nicht."},
+        {"number": "Ö 5", "summary": ""},
+    ]})
+    monkeypatch.setattr(committee_summary.llm, "chat_complete", _llm_returning(payload))
+    punkte = committee_summary.summarize_agenda_items(
+        committee="Bauausschuss", session_date="2026-09-10", agenda_items=[_item()])
+    assert punkte == [{"number": "Ö 5", "summary": "Neuer B-Plan."}]
+
+
+def test_item_summaries_roundtrip(tmp_path):
+    from council.store import CouncilStore
+    from council.scraper import AgendaItem, CouncilSession
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        store.save_session(CouncilSession(
+            ksinr=7, committee="ASUK", session_date="2026-08-13", session_time="17:00",
+            location="", agenda_items=[AgendaItem(item_number="Ö 9", title="Kompensation"),
+                                       AgendaItem(item_number="Ö 1", title="Beschlussfähigkeit")]))
+        store.save_item_summaries(7, "h1", [{"number": "Ö 9", "summary": "Zur Abstimmung steht …"}])
+        items = {i["item_number"]: i for i in store.agenda_items(7)}
+        assert items["Ö 9"]["summary"] == "Zur Abstimmung steht …"
+        assert items["Ö 1"]["summary"] is None      # Routine bleibt ohne
+        store.save_item_summaries(7, "h2", [])      # neue Tagesordnung, nichts inhaltliches
+        assert store.agenda_items(7)[0]["summary"] is None
+    finally:
+        store.close()

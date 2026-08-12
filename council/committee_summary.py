@@ -35,6 +35,21 @@ def sitzungskopf(committee: str, session_date: str, session_time: str, location:
     return "\n".join(zeilen)
 
 
+def summarize_agenda_items(
+    committee: str,
+    session_date: str,
+    agenda_items: list[AgendaItem],
+) -> list[dict] | None:
+    """Die inhaltlichen TOPs als [{"number", "summary"}] — die strukturierte
+    Fassung hinter {@link summarize_agenda}.
+
+    Die App zeigt dieselben Sätze unter den Tagesordnungspunkten (Tims Wunsch
+    12.08.), deshalb liegen sie jetzt als Daten vor und nicht mehr nur als
+    fertige Mail-Zeilen. Leere Liste = nur Routine (cachebar), None = LLM
+    unbrauchbar (nicht cachen)."""
+    return _analyse(committee, session_date, agenda_items)
+
+
 def summarize_agenda(
     committee: str,
     session_date: str,
@@ -53,8 +68,20 @@ def summarize_agenda(
     Zusammenfassung und darf das Ergebnis NICHT cachen, damit der nächste
     Lauf es erneut versucht ('' dagegen ist ein gültiger Cache-Treffer).
     """
-    if not agenda_items:
+    punkte = _analyse(committee, session_date, agenda_items)
+    if punkte is None:
+        return None
+    if not punkte:
         return ""
+    return "\n".join(
+        f"• <b>{_esc(str(p.get('number', '')))}</b>: {_esc(str(p.get('summary', '')))}"
+        for p in punkte)
+
+
+def _analyse(committee: str, session_date: str,
+             agenda_items: list[AgendaItem]) -> list[dict] | None:
+    if not agenda_items:
+        return []
 
     _fragestunde_keywords = ("einwohnerfragestunde", "bürgerfragestunde", "fragestunde")
 
@@ -64,7 +91,7 @@ def summarize_agenda(
         if i.is_public and not any(kw in i.title.lower() for kw in _fragestunde_keywords)
     )
     if not items_text.strip():
-        return ""
+        return []
 
     system = prompts.get("committee_summary_system")
     prompt = prompts.render("committee_summary_user", committee=committee,
@@ -102,16 +129,16 @@ def summarize_agenda(
         return None
 
     if not data.get("has_content") or not data.get("items"):
-        return ""
+        return []
 
-    lines = []
+    # Nur Punkte, die es wirklich gibt: Das Modell erfindet gelegentlich eine
+    # Nummer (siehe die Verifizierung im Watcher, #438) — hier reicht der
+    # Abgleich gegen die echten Nummern.
+    echte = {" ".join(str(i.item_number).split()).upper() for i in agenda_items}
+    punkte: list[dict] = []
     for item in data["items"]:
-        number = _esc(str(item.get("number", "")))
-        summary = _esc(str(item.get("summary", "")))
-        lines.append(f"• <b>{number}</b>: {summary}")
-
-    # Bewusst OHNE Link: Wohin die Meldung führt, entscheidet der Aufrufer —
-    # er kennt den Kanal (Mail-Knopf vs. Push-Pfad) und hängt Haupt- und
-    # Nebenlink einheitlich an. Früher stand hier ein Ratsinfo-Link fest
-    # verdrahtet, und die Zusammenfassung bestimmte damit die Navigation mit.
-    return "\n".join(lines)
+        nummer = " ".join(str(item.get("number", "")).split()).upper()
+        text = " ".join(str(item.get("summary", "")).split())
+        if nummer in echte and text:
+            punkte.append({"number": nummer, "summary": text})
+    return punkte
