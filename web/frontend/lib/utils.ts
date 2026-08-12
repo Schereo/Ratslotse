@@ -20,3 +20,27 @@ export function formatDateTime(iso: string): string {
   const hhmm = zeit.slice(0, 5);
   return hhmm ? `${formatDate(datum)}, ${hhmm}` : formatDate(datum);
 }
+
+/** „heute“ / „morgen“ / „gestern“ — oder null, wenn der Tag weiter weg ist.
+ *
+ *  Tims Wunsch 12.08.: Ein Termin am nächsten Tag soll das auch sagen, statt
+ *  „Do., 13.08.“ zu zeigen und die Rechnung dem Kopf zu überlassen.
+ *  `heute` kommt als Parameter, weil der statische Export sonst das
+ *  Build-Datum einbacken würde (siehe `useHeute`).
+ */
+export function relativerTag(iso: string, heute: Date | null): string | null {
+  if (!heute) return null;
+  const tag = (iso || "").split("T")[0];
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(tag)) return null;
+  const lokal = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const plus = (n: number) => {
+    const d = new Date(heute);
+    d.setDate(d.getDate() + n);
+    return lokal(d);
+  };
+  if (tag === lokal(heute)) return "heute";
+  if (tag === plus(1)) return "morgen";
+  if (tag === plus(-1)) return "gestern";
+  return null;
+}
