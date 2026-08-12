@@ -1042,7 +1042,11 @@ function SessionsTab({ committees }: { committees: string[] }) {
     const s = sessions.find((x) => x.ksinr === targetKsinr);
     if (!s) return;
     deepLinkDone.current = true;
-    void toggle(s);
+    // AUFKLAPPEN, nicht umschalten: Steht die Tagesordnung schon offen (etwa
+    // weil sie den Tab-Wechsel überlebt hat, #447), machte `toggle` sie zu —
+    // der Sprung landete dann auf einer geschlossenen Karte, und `?top=` fand
+    // seine Zeile nie (im Browser reproduziert 12.08.).
+    if (!expanded[targetKsinr]) void toggle(s);
     // Bewusst setTimeout und nicht requestAnimationFrame: Beim Antippen einer
     // Benachrichtigung wacht die App gerade erst auf. Ein Fenster, das noch
     // nicht zeichnet, ruft keine Animationsbilder ab — der Sprung wäre still
@@ -1054,7 +1058,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
     const t = setTimeout(() => setFlashKsinr(null), 1600);
     return () => { clearTimeout(sprung); clearTimeout(t); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [targetKsinr, loading, sessions]);
+  }, [targetKsinr, loading, sessions, expanded]);
 
   /* ?top=… — der Tagesordnungspunkt aus einer Benachrichtigung.
    *

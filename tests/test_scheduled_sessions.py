@@ -192,3 +192,25 @@ def test_wochenvorschau_ohne_sitzungen_ist_ehrlich_leer(tmp_path):
         assert d["found"] is False and d["punkte"] == [] and d["sitzungen"] == []
     finally:
         store.close()
+
+
+def test_bericht_der_verwaltung_ist_nur_allein_eine_formalie(tmp_path):
+    """„- Bericht der Verwaltung" ist ein ZUSATZ, kein Punkt: Er hängt an den
+    spannendsten Titeln der Woche. Ein aufs Zeilenende verankertes Muster warf
+    neun inhaltliche Punkte weg, darunter fast alle Fraktionsanträge
+    (gemessen 12.08., Tims Nachfrage nach weiteren Kandidaten)."""
+    store = CouncilStore(tmp_path / "f.sqlite")
+    try:
+        formalie = store._FORMALIE_RE
+        # Der alleinstehende Sammelpunkt bleibt Formalie …
+        assert formalie.search("Bericht der Verwaltung")
+        assert formalie.search("  Berichte der Verwaltung  ")
+        # … der Zusatz an einem echten Punkt nicht.
+        for titel in (
+            "Ermittlungen Abfallentsorgung Fliegerhorst (CDU-Fraktion vom 14.07.2026) - Bericht der Verwaltung",
+            "Bekämpfung des Rattenbefalls in der Stadt Oldenburg (FDP-Fraktion) - Bericht der Verwaltung",
+            "Vorhabenbezogener Bebauungsplan Nr. 81: Vorstellung - Bericht der Verwaltung",
+        ):
+            assert not formalie.search(titel), titel
+    finally:
+        store.close()

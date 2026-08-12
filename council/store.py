@@ -941,10 +941,17 @@ class CouncilStore:
 
     #: Tagesordnungspunkte, die in jeder Sitzung stehen und niemanden
     #: interessieren. Am Bestand gemessen: 20 von 53 kommenden TOPs.
+    #: „- Bericht der Verwaltung" ist ein ZUSATZ, kein Punkt: Er hängt an den
+    #: spannendsten Titeln der Woche („Ermittlungen Abfallentsorgung
+    #: Fliegerhorst (CDU-Fraktion) - Bericht der Verwaltung"). Ein auf das
+    #: Zeilenende verankertes Muster warf davon neun weg, darunter fast alle
+    #: Fraktionsanträge — deshalb greift die Formalie nur, wenn der Punkt
+    #: NICHTS ANDERES ist als diese Floskel.
     _FORMALIE_RE = re.compile(
         r"Beschlussf[äa]higkeit|Genehmigung der Tagesordnung|Genehmigung des Protokolls|"
         r"Einwohnerfragestunde|^Mitteilungen|Anfragen und Anregungen|Verschiedenes|"
-        r"Bericht der Verwaltung$|Wahl der Schriftf[üu]hrung", re.IGNORECASE)
+        r"^\s*Bericht(?:e)? der Verwaltung\s*$|Wahl der Schriftf[üu]hrung",
+        re.IGNORECASE)
 
     #: „(CDU-Fraktion vom 10.06.2026)", „(Fraktionen BSW und SPD)", „(FDP-Fraktion …)"
     _ANTRAG_RE = re.compile(r"\(\s*(?:die\s+)?(?:Fraktion(?:en)?|Gruppe|Ratsherr|Ratsfrau)\b|"
@@ -958,6 +965,33 @@ class CouncilStore:
     #: Unter diesem Rang kommt ein Punkt gar nicht auf die Karte. Lieber drei
     #: gute Zeilen als fünf, von denen zwei „Bericht zur Kenntnis" heißen.
     RANG_MINDEST = 1.5
+
+    #: „(CDU-Fraktion vom 14.07.2026)" → Antragsteller „CDU-Fraktion"; der
+    #: Zusatz frisst sonst die halbe Zeile auf der Karte (im Browser gesehen).
+    _ANTRAGSTELLER_RE = re.compile(
+        r"\s*\(\s*(?:die\s+)?(?P<wer>[^)]*?)\s*(?:vom\s+\d{1,2}\.\d{1,2}\.\d{2,4})?\s*\)")
+    #: Verfahrens-Anhängsel am Titelende, die auf der Karte nichts erklären.
+    _TITEL_ANHANG_RE = re.compile(
+        r"\s*[-–]\s*(?:\w*[Aa]ntrag mit Bericht der Verwaltung|Bericht(?:e)? der Verwaltung|"
+        r"Beschlussantrag|Berichtsantrag|Antrag|Bericht|Beschluss|Vorlage|Kenntnisnahme)\s*$",
+        re.IGNORECASE)
+
+    @classmethod
+    def _titel_zerlegen(cls, titel: str) -> tuple:
+        """Antragsteller heraustrennen und den Titel fürs Anzeigen kürzen.
+
+        „Bildende Kunst im Stadtmuseum (CDU-Fraktion vom 07.07.2026) - Bericht
+        der Verwaltung" → („CDU-Fraktion", „Bildende Kunst im Stadtmuseum").
+        Der Antragsteller gehört als eigenes Merkmal neben den Titel, nicht
+        mitten hinein — sonst bleibt vom Gegenstand nichts übrig.
+        """
+        wer = None
+        m = cls._ANTRAGSTELLER_RE.search(titel or "")
+        if m and cls._ANTRAG_RE.search(m.group(0)):
+            wer = " ".join((m.group("wer") or "").split()) or None
+            titel = (titel[:m.start()] + titel[m.end():]).strip()
+        kurz = cls._TITEL_ANHANG_RE.sub("", titel or "").strip(" -–;,")
+        return wer, kurz or (titel or "")
 
     def _punkte_bewerten(self, punkte: list[dict]) -> None:
         """Wichtigkeit je Tagesordnungspunkt — deterministisch, ohne Modell.
@@ -1088,6 +1122,7 @@ class CouncilStore:
             heutige = next((b for b in reihe if b["datum"] == k["session_date"]), None)
             k["behandlung"] = (heutige or {}).get("ergebnis")
             k["vorgeschichte"] = sum(1 for b in reihe if (b["datum"] or "9999") < k["session_date"])
+            k["antragsteller"], k["titel_kurz"] = self._titel_zerlegen(k["title"])
 
         self._punkte_bewerten(kandidaten)
         kandidaten.sort(key=lambda p: (-p["rang"], p["session_date"]))

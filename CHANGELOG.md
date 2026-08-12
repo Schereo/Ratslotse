@@ -8,6 +8,13 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Verbessert
+- **Die Karten auf „Heute" nutzen den Platz besser.** Drei Spalten gab es
+  schon ab 1024 Pixeln — dort brach die Überschrift mitten im Wort um. Jetzt
+  gilt: eine Spalte auf dem Telefon, zwei ab Tablet-Breite (die Wochen-Ausgabe
+  über die volle Zeile, damit sie lesbar bleibt), drei erst auf breiten
+  Schirmen — und dort bekommt die textreichste Karte auch die meiste Breite.
+  Außerdem behält jede Karte ihre eigene Höhe, statt auf die längste gestreckt
+  zu werden.
 - **Abgelaufene Bürgerbeteiligungen bleiben dokumentiert.** Das Portal der
   Stadt zeigt nur Verfahren, zu denen gerade eine Beteiligung möglich ist —
   abgeschlossene verschwinden dort spurlos. Ratslotse behält sie jetzt und
@@ -28,6 +35,10 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   zugleich die Support-Adresse, die Apple für den App Store verlangt. (#471)
 
 ### Behoben
+- **Ein Tagesordnungspunkt aus „Heute" öffnet die richtige Zeile.** Der Sprung
+  landete auf der Sitzung, die Tagesordnung musste man selbst durchsuchen —
+  und war sie bereits aufgeklappt, klappte der Link sie sogar zu. Das betraf
+  auch die Sprünge aus Benachrichtigungen.
 - **Die Lotti-Tour zeigt wieder dorthin, wo sie hinzeigt.** Seit der Trennung
   von Fragen und Suche stand die Station „Das Ratsinfo" auf dem Punkt
   „Fragen", und auf der Fragen-Seite lag der Scheinwerfer über der ganzen
@@ -56,16 +67,6 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   „Fraktion Bündnis Vernunft und Gerechtigk". Neue Beiträge werden nicht mehr
   mitten im Wort abgeschnitten, und der Bestand ist repariert: Die vollen
   Namen stehen in den Anwesenheitslisten derselben Protokolle. (#463)
-
-### Neu
-- **„Diese Woche im Rat" — die Vorschau auf die kommenden Sitzungen.** Auf
-  „Heute" steht jetzt, was in den nächsten Tagen in Rat und Ausschüssen
-  ansteht: bis zu fünf Punkte mit einem erklärenden Satz, dazu die Termine.
-  Ausgewählt wird nach Gewicht — was zur Entscheidung ansteht, zählt mehr als
-  ein Bericht zur Kenntnis; ein Fraktionsantrag mehr als eine
-  Verwaltungsvorlage; ein Dauerthema mehr als eine Einzelfrage.
-  Gremien-Personalien bleiben draußen. Gibt es nichts Nennenswertes, fällt die
-  Karte weg, statt eine leere Ausgabe zu behaupten.
 
 ### Neu
 - **Von der Antwort direkt auf die Stadtkarte.** Die Mini-Karte einer

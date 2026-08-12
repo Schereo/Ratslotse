@@ -48,7 +48,8 @@ type Wochenvorschau = {
   found: boolean; von: string; bis: string; inhaltlich_gesamt?: number;
   sitzungen: { ksinr: number | null; committee: string; session_date: string;
     session_time: string | null; n_items: number }[];
-  punkte: { ksinr: number; item_number: string; title: string; summary: string | null;
+  punkte: { ksinr: number; item_number: string; title: string; titel_kurz?: string;
+    antragsteller?: string | null; summary: string | null;
     vorlage_nr: string | null; kvonr: number | null;
     committee: string; session_date: string }[];
 };
@@ -179,9 +180,30 @@ export default function DashboardPage() {
         ]}
       />
 
-      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_1.2fr_0.9fr]">
+      {/* Karten-Raster (Tims Befund 12.08.: drei Spalten kamen zu früh).
+          Die Stufen richten sich danach, was die TEXTREICHSTE Karte zum Lesen
+          braucht — die Wochen-Ausgabe —, nicht danach, was gerade noch passt:
+
+            < 768 px   eine Spalte          (Telefon)
+            ≥ 768 px   zwei Spalten         (iPad hoch/quer, kleine Laptops)
+                       die Ausgabe nimmt die erste Zeile ganz ein, die beiden
+                       kurzen Karten teilen sich die zweite
+            ≥ 1280 px  drei Spalten         (Desktop), Ausgabe am breitesten
+
+          Vorher sprang es bei 1024 px direkt auf drei — dort brach schon die
+          Überschrift mitten im Wort um („Diese Wo-che im Rat").
+
+          minmax(0, …fr) statt nacktem fr: Sonst gewinnt die Mindestbreite des
+          Inhalts gegen die Gewichtung — die Sitzungs-Liste mit ihren langen
+          Gremiennamen drückte sich auf 420 px, während die Ausgabe mit 334 px
+          auskommen musste (im Browser nachgemessen).
+
+          items-start: Jede Karte trägt ihre eigene Höhe. Vorher streckte das
+          Raster „Nächste Sitzungen" und „Zahl der Woche" auf die Höhe der
+          Ausgabe — mit einem Feld Leerraum darunter, das nichts sagt. */}
+      <div className="mt-6 grid grid-cols-1 items-start gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1.35fr)_minmax(0,0.75fr)]">
         {/* Nächste Sitzungen */}
-        <Card className="flex flex-col p-5">
+        <Card className="flex flex-col p-5 md:order-2 xl:order-none">
           <h2 className="font-display text-base font-bold text-foreground">Nächste Sitzungen</h2>
           <div className="mt-3 flex-1 space-y-1">
             {sessions.slice(0, 3).map((s) => (
@@ -228,8 +250,10 @@ export default function DashboardPage() {
           </Link>
         </Card>
 
-        {/* Neu zu deinen Themen */}
-        <Card className="flex flex-col p-5">
+        {/* Neu zu deinen Themen / Diese Woche im Rat — die textreichste Karte:
+            auf mittleren Schirmen über die volle Breite, damit die Zeilen
+            lesbar bleiben. */}
+        <Card className="flex flex-col p-5 md:order-1 md:col-span-2 xl:order-none xl:col-span-1">
           <div className="flex items-baseline justify-between gap-3">
             <h2 className="font-display text-base font-bold text-foreground">
               {(vorschau || woche) && hits.length === 0 ? "Diese Woche im Rat" : "Neu zu deinen Themen"}
@@ -259,13 +283,27 @@ export default function DashboardPage() {
                 <div className="space-y-2">
                   {vorschau.punkte.map((p) => (
                     <Link key={`${p.ksinr}-${p.item_number}`}
-                      href={`/council?tab=sessions&ksinr=${p.ksinr}`}
+                      /* Direkt zum Punkt in der richtigen Sitzung: `?top=` ist
+                         die VOLLE Nummer inklusive Präfix („Ö 6.1"), sonst
+                         träfe der Sprung „N 6.1" gleich mit (Tims Wunsch,
+                         der Mechanismus existiert für Benachrichtigungen). */
+                      href={`/council?tab=sessions&ksinr=${p.ksinr}` +
+                        (p.item_number ? `&top=${encodeURIComponent(p.item_number)}` : "")}
                       className="block rounded-lg px-2 py-2 transition-colors hover:bg-accent">
                       <span className="flex items-center gap-2 text-xs text-muted-foreground">
                         <CalendarDays className="h-3 w-3 shrink-0" aria-hidden />
                         {shortCommittee(p.committee)} · {fmtTermin(p.session_date, heute)}
                       </span>
-                      <p className="mt-1 line-clamp-2 text-sm font-medium text-foreground">{p.title}</p>
+                      <p className="mt-1 line-clamp-2 text-sm font-medium text-foreground">
+                        {p.titel_kurz || p.title}
+                      </p>
+                      {p.antragsteller && (
+                        /* Wer den Punkt gesetzt hat, ist eigene Information —
+                           im Titel fraß die Klammer die halbe Zeile. */
+                        <span className="mt-1 inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-[10.5px] font-semibold text-primary">
+                          Antrag: {p.antragsteller}
+                        </span>
+                      )}
                       {p.summary && (
                         <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
                           {p.summary}
@@ -306,7 +344,7 @@ export default function DashboardPage() {
                 </p>
               )
             )}
-            {!topicsQuery.isLoading && topicCount === 0 && (
+            {!topicsQuery.isLoading && topicCount === 0 && !vorschau && (
               /* Leerzustand 4a: gestrichelte Lotti-Karte „Erstes Thema anlegen". */
               <div className="flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border px-4 py-5 text-center">
                 <Mascot pose="point" theme={theme} decorative className="h-12 w-12" />
@@ -330,8 +368,9 @@ export default function DashboardPage() {
           )}
         </Card>
 
-        {/* Zahl der Woche (RL-905) */}
-        <Card className="flex flex-col border-signal/30 bg-signal/5 p-5">
+        {/* Zahl der Woche (RL-905) — eine Zahl und ein Satz, braucht am
+            wenigsten Breite. */}
+        <Card className="flex flex-col border-signal/30 bg-signal/5 p-5 md:order-3 xl:order-none">
           <h2 className="font-display text-base font-bold text-foreground">Zahl der Woche</h2>
           {zahl?.kind === "betrag" && (
             <>
