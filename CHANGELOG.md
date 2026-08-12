@@ -7,6 +7,23 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Verbessert
+- **„Dein Thema" prüft jetzt die Vorlage, nicht nur den Titel.** Ob ein
+  Tagesordnungspunkt wirklich das eigene Thema betrifft, entscheidet nach der
+  Titel-Zuordnung ein zweiter Blick in den Vorlagentext — „Sanierung
+  Grundschule X" und „Neubau Sporthalle an der Grundschule X" klingen im Titel
+  gleich nah, erst der Sachverhalt trennt sie. Punkte ohne Vorlage (etwa
+  Fraktions-Anträge) bleiben beim Titel-Urteil, und fällt die Prüfung aus,
+  bleibt die Zuordnung stehen. (#450)
+
+### Behoben
+- **Themen-Zuordnung würfelt nicht mehr.** Derselbe Tagesordnungspunkt wurde
+  mal gemeldet, mal nicht — die Zuordnung lief mit zufälliger Streuung. Jetzt
+  entscheidet sie deterministisch. Außerdem riss eine zu lange Antwort das
+  Ergebnis mitten im Datensatz ab und hätte den ganzen nächtlichen Lauf
+  beenden können; sie hat jetzt mehr Platz, und ein unbrauchbares Ergebnis
+  überspringt nur diese eine Sitzung. (#450)
+
 ### Neu
 - **Kurzfassung unter jedem Tagesordnungspunkt.** Ein Satz, worum es geht —
   dieselbe Zusammenfassung, die auch in der Tagesordnungs-Mail steht, jetzt
