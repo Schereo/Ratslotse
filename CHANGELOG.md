@@ -8,6 +8,14 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Verbessert
+- **Blättern ohne Ballast.** Die obere Seiten-Leiste in Suche und
+  Sitzungsliste ist jetzt klein und sitzt rechts in der Trefferzeile statt
+  als breiter Block über der Liste; der doppelte „Seite X von Y"-Text
+  entfällt. Und der Kalender-Link bei Sitzungen ohne Tagesordnung steht in
+  der Zeile der „Tagesordnung folgt"-Marke statt in einer eigenen Reihe —
+  die Karten wirken wieder gleichmäßig. (#454)
+
+### Verbessert
 - **Kurzfassungen auch für Sitzungen ohne Benachrichtigung.** Die Sätze unter
   den Tagesordnungspunkten entstanden bisher nur dort, wo jemand eine Meldung
   bekam. Ein Ops-Lauf trägt sie jetzt für alle kommenden Sitzungen und die

@@ -20,19 +20,26 @@ export function Pagination({
   totalPages,
   onChange,
   className,
+  compact = false,
 }: {
   page: number;
   totalPages: number;
   onChange: (page: number) => void;
   className?: string;
+  /** Kleine Ausführung für die Zeile neben dem Treffer-Zähler (Tims Wunsch
+   *  12.08.): dieselben Bausteine, nur leiser — die große, mittige Leiste
+   *  über der Liste wirkte wie ein eigener Inhaltsblock. */
+  compact?: boolean;
 }) {
   if (totalPages <= 1) return null;
   const items = pageItems(page, totalPages);
-  const base = "flex h-9 min-w-9 items-center justify-center rounded-md px-2 text-sm font-medium transition-colors";
+  const base = compact
+    ? "flex h-7 min-w-7 items-center justify-center rounded-md px-1.5 text-xs font-medium transition-colors"
+    : "flex h-9 min-w-9 items-center justify-center rounded-md px-2 text-sm font-medium transition-colors";
   const ghost = "text-muted-foreground hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40";
 
   return (
-    <nav className={cn("flex flex-wrap items-center justify-center gap-1", className)} aria-label="Seitennavigation">
+    <nav className={cn("flex flex-wrap items-center gap-1", compact ? "justify-end gap-0.5" : "justify-center", className)} aria-label="Seitennavigation">
       <button type="button" className={cn(base, ghost)} onClick={() => onChange(page - 1)} disabled={page <= 1} aria-label="Vorherige Seite">
         ‹
       </button>
