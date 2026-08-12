@@ -7,6 +7,14 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Verbessert
+- **„Tagesordnung geändert"-Meldungen zeigen nur noch die Unterschiede.**
+  Statt der kompletten Liste steht in der Mail, was sich getan hat: neue
+  Punkte grün, verschobene und umformulierte gelb (mit dem alten Wortlaut),
+  gestrichene rot durchgestrichen. Ein eingeschobener Punkt färbt dabei
+  nicht die halbe Liste um, nur weil sich Nummern verschieben — verglichen
+  wird über den Titel. (#440)
+
 ### Behoben
 - **Der Personen-Peek bleibt im Bild.** Nahe dem rechten Rand oder der
   Oberkante lief die Info-Karte aus dem Text bzw. wurde abgeschnitten —

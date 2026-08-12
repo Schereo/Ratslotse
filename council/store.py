@@ -123,6 +123,17 @@ CREATE TABLE IF NOT EXISTS committee_summaries (
     PRIMARY KEY(ksinr, agenda_hash)
 );
 
+-- Tagesordnungs-Stand je (Sitzung, Hash) — die Vergleichsbasis der
+-- Änderungs-Meldung (Tims Wunsch 12.08.): save_session ERSETZT die Items,
+-- der alte Stand wäre sonst weg, sobald sich die Tagesordnung ändert.
+CREATE TABLE IF NOT EXISTS agenda_snapshots (
+    ksinr       INTEGER NOT NULL,
+    agenda_hash TEXT NOT NULL,
+    items_json  TEXT NOT NULL,
+    created_at  TEXT NOT NULL,
+    PRIMARY KEY(ksinr, agenda_hash)
+);
+
 -- Parsed public session protocols (Niederschriften). One row per session.
 CREATE TABLE IF NOT EXISTS council_protocols (
     ksinr         INTEGER PRIMARY KEY,
@@ -946,6 +957,30 @@ class CouncilStore:
             (ksinr, agenda_hash),
         ).fetchone()
         return row[0] if row is not None else None
+
+    def save_agenda_snapshot(self, ksinr: int, agenda_hash: str, items: list[dict]) -> None:
+        """Öffentliche Tagesordnungspunkte zu diesem Hash einfrieren — die
+        Vergleichsbasis für die Diff-Änderungsmeldung. INSERT OR IGNORE:
+        Derselbe Stand wird nie überschrieben."""
+        import json as _json
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT OR IGNORE INTO agenda_snapshots (ksinr, agenda_hash, items_json, created_at) "
+                "VALUES (?, ?, ?, ?)",
+                (ksinr, agenda_hash, _json.dumps(items, ensure_ascii=False), now))
+
+    def get_agenda_snapshot(self, ksinr: int, agenda_hash: str) -> list[dict] | None:
+        import json as _json
+        row = self._conn.execute(
+            "SELECT items_json FROM agenda_snapshots WHERE ksinr = ? AND agenda_hash = ?",
+            (ksinr, agenda_hash)).fetchone()
+        if row is None:
+            return None
+        try:
+            return _json.loads(row[0])
+        except ValueError:
+            return None
 
     def save_summary(self, ksinr: int, agenda_hash: str, summary: str) -> None:
         now = datetime.utcnow().isoformat(timespec="seconds")
