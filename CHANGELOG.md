@@ -11,7 +11,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 - **Der Fragen-Startbildschirm passt auf einen Handy-Bildschirm.** Kürzerer
   Untertitel, weniger Leerraum, mobil drei statt vier Beispielfragen (die
   vierte gibt es weiter am großen Bildschirm) — nichts verschwindet mehr
-  hinter dem Eingabefeld. (#432)
+  hinter dem Eingabefeld. (#433)
 
 ### Behoben
 - **Das Eingabefeld der KI-Frage sitzt jetzt wirklich auf der Tab-Leiste.**
