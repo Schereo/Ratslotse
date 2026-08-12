@@ -53,8 +53,11 @@ export type DebattenHinweis = {
  *  Ratsmitglieder mit Partei, Verwaltung mit geerntetem Amt; `aktiv` heißt in
  *  den letzten zwölf Monaten in einer Anwesenheitsliste gesehen. */
 export type PersonEintrag = {
-  slug: string; name: string; vorname: string; nachname: string;
-  art: "rat" | "stadt"; partei: string | null; rolle: string | null;
+  slug: string; name: string | null; vorname: string; nachname: string;
+  /** "blocker": Gäste/Protokoll/beratende Mitglieder — nie ein Badge, aber
+   *  ihr Nachname macht einen kahlen Nachnamen im Text mehrdeutig (Tims
+   *  Oltmanns-Befund 12.08.). */
+  art: "rat" | "stadt" | "blocker"; partei: string | null; rolle: string | null;
   aktiv: boolean; von: string | null; bis: string | null;
 };
 
@@ -191,11 +194,12 @@ export function AntwortText({ text: rohtext, idToNum, onJump, quelleHref,
 }) {
   const lexikon = usePersonenLexikon();
   const personenEff = personen ?? lexikon;
-  // Nachname → Kandidaten. Deterministische Regeln statt LLM: Ganzwort,
-  // kapitalisiert, Badge nur bei der ERSTEN Nennung einer Person. Bei
-  // Namensvettern entscheidet der Vorname davor; fehlt er, gewinnt die
-  // einzige AKTIVE Person (Antworten handeln fast immer von der laufenden
-  // Debatte) — sind mehrere aktiv, lieber KEIN Badge als ein geratenes.
+  // Nachname → Kandidaten (Blocker zählen mit). Deterministische Regeln
+  // statt LLM: Ganzwort, kapitalisiert, Badge nur bei der ERSTEN Nennung
+  // einer Person. Bei Namensvettern entscheidet AUSSCHLIESSLICH der Vorname
+  // davor — die frühere „einzige Aktive gewinnt"-Heuristik hängte einem
+  // Gast von 2019 das Badge einer 2026er-Person um (Tims Oltmanns-Befund):
+  // lieber KEIN Badge als ein geratenes.
   const personenMap = useMemo(() => {
     const m = new Map<string, PersonEintrag[]>();
     for (const p of personenEff || []) {
@@ -224,12 +228,8 @@ export function AntwortText({ text: rohtext, idToNum, onJump, quelleHref,
           .replace(/[^A-Za-zÄÖÜäöüß-]/g, ""));
         const perVorname = kandidaten.filter((k) => k.vorname && k.vorname === davor);
         if (perVorname.length === 1) p = perVorname[0];
-        else {
-          const aktive = kandidaten.filter((k) => k.aktiv);
-          if (aktive.length === 1) p = aktive[0];
-        }
       }
-      if (!p || badgesGesetzt.has(p.slug)) continue;
+      if (!p || p.art === "blocker" || badgesGesetzt.has(p.slug)) continue;
       badgesGesetzt.add(p.slug);
       const ende = m.index + m[0].length;
       teile.push(s.slice(last, ende));
