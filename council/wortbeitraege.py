@@ -125,15 +125,25 @@ def extract_wortbeitraege(raw_text: str, model: str = MODEL) -> list[dict]:
 
             def feld(name: str, max_len: int | None = None) -> str | None:
                 wert = str(r.get(name) or "").strip()
-                if max_len:
-                    wert = wert[:max_len]
+                if max_len and len(wert) > max_len:
+                    # NIE mitten im Wort abschneiden: Aus „Fraktion Bündnis
+                    # Vernunft und Gerechtigkeit Oldenburg" wurde bei hartem
+                    # Schnitt „…und Gerechtigk" — genau so stand es in einer
+                    # KI-Antwort (Befund 12.08.). Lieber am letzten Leerzeichen
+                    # kappen; die Grenzen sind ohnehin nur ein Schutz gegen
+                    # Ausreißer, keine inhaltliche Vorgabe.
+                    schnitt = wert[:max_len]
+                    leer = schnitt.rfind(" ")
+                    wert = (schnitt[:leer] if leer > max_len * 0.6 else schnitt).rstrip(" ,;-/")
                 return wert or None
 
             beitraege.append({
                 "art": art if art in ARTEN else "rede",
                 "top": feld("top", 120),
                 "sprecher": feld("sprecher", 80),
-                "partei": feld("partei", 40),
+                # 40 war zu knapp: „BUND für Umwelt und Naturschutz
+                # Deutschland, Kreisgruppe Stadt Oldenburg" hat 72 Zeichen.
+                "partei": feld("partei", 120),
                 "text": text,
                 "antwort": feld("antwort"),
             })
