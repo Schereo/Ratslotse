@@ -14,6 +14,13 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Vorgeschichte und ohne Debatten-Absatz, nach dem niemand gefragt hat.
   Breite Fragen bleiben unverändert ausführlich. (#465)
 
+### Behoben
+- **Abgeschnittene Verbands- und Fraktionsnamen in Wortbeiträgen.** Namen
+  wurden bei 40 Zeichen hart gekappt — in einer KI-Antwort stand deshalb
+  „Fraktion Bündnis Vernunft und Gerechtigk". Neue Beiträge werden nicht mehr
+  mitten im Wort abgeschnitten, und der Bestand ist repariert: Die vollen
+  Namen stehen in den Anwesenheitslisten derselben Protokolle. (#463)
+
 ### Neu
 - **Von der Antwort direkt auf die Stadtkarte.** Die Mini-Karte einer
   KI-Antwort führt jetzt mit „Auf der Stadtkarte öffnen" in die große Karte —
