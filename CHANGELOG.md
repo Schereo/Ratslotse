@@ -15,6 +15,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   UND Titel; existiert die Nummer nicht oder widerspricht der Titel, gewinnt
   der eindeutige Titel-Treffer — und ist gar nichts auflösbar, gibt es keine
   Markierung statt einer falschen. (#438)
+- **Personen-Badges verwechseln keine Namensvettern mehr.** Ein Gast im
+  Ausschuss (etwa vom Wasserstraßen-Amt) trug im Text das Badge eines
+  gleichnamigen Gremienmitglieds. Gäste, Protokollführung und beratende
+  Mitglieder machen den kahlen Nachnamen jetzt mehrdeutig — und bei
+  Mehrdeutigkeit entscheidet nur noch ein Vorname im Text, sonst gibt es
+  gar kein Badge. (#437)
 
 ### Neu
 - **Kleine Zugehörigkeits-Badges hinter Personennamen in KI-Antworten.**
