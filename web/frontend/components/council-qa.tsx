@@ -1127,6 +1127,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     setTurns([]);
     setQ("");
     setGespraechId(null);
+    try { sessionStorage.removeItem("ratslotse:qa-gespraech"); } catch { /* egal */ }
     inputRef.current?.focus();
   };
 
@@ -1213,9 +1214,31 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
       toast.error("Gespräch konnte nicht geladen werden.");
     }
   };
+  // Zurück-Fähigkeit (Tims Befund 12.08.): Wer aus der Antwort auf eine
+  // Personen-Seite springt und zurückkommt, landete im leeren Startbildschirm
+  // — der Screen wird beim Navigieren unmounted, der Gesprächs-State war weg.
+  // Das aktive (gespeicherte) Gespräch merkt sich eine sessionStorage-Marke;
+  // beim Mount mit leerem Verlauf wird es einmalig wieder geladen.
+  const restoreVersucht = useRef(false);
+  useEffect(() => {
+    try {
+      if (gespraechId != null) sessionStorage.setItem("ratslotse:qa-gespraech", String(gespraechId));
+    } catch { /* privater Modus o. ä. — dann eben ohne Restore */ }
+  }, [gespraechId]);
+  useEffect(() => {
+    if (restoreVersucht.current || einstellung !== 1 || turns.length > 0 || gespraechId != null) return;
+    restoreVersucht.current = true;
+    try {
+      const id = sessionStorage.getItem("ratslotse:qa-gespraech");
+      if (id) void gespraechLaden(Number(id));
+    } catch { /* siehe oben */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [einstellung, turns.length, gespraechId]);
+
   const gespraechLoeschen = async (id: number) => {
     setGespraeche((gs) => gs.filter((g) => g.id !== id));
     if (gespraechId === id) setGespraechId(null);
+    try { sessionStorage.removeItem("ratslotse:qa-gespraech"); } catch { /* egal */ }
     try {
       await fetch(apiUrl(`/council/gespraeche/${id}`), { method: "DELETE", credentials: "include", headers: authHeaders() });
     } catch { /* Liste wird beim nächsten Öffnen neu geladen */ }
