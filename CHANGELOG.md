@@ -8,6 +8,13 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Behoben
+- **Weiterfragen-Vorschläge: Pfeil in beide Richtungen, kein Überlappen.**
+  Wer die Vorschläge einmal weitergeschoben hatte, kam nicht mehr zurück —
+  ein Pfeil nach links fehlte. Außerdem lag der rechte Pfeil über dem
+  letzten Vorschlag; die Zeile hält jetzt an beiden Enden Platz für ihn
+  frei. (#460)
+
+### Behoben
 - **App-Navigation: Suche wieder erreichbar, aktiver Tab wieder sichtbar.**
   In der App fehlte der Suche seit der Trennung von Fragen und Suche jeder
   Einstieg — sie steht jetzt zuoberst im „Mehr"-Menü. Außerdem war der
