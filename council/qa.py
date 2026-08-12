@@ -825,6 +825,38 @@ GROSS_REGEL = (
     "unverändert."
 )
 
+
+#: Fragen, deren Antwort NICHTS anderes sein kann als die Definition.
+#: „Was ist die GSG?" — dort wiederholt jedes Fazit den Steckbrief. Fragen mit
+#: eigenem Prädikat („Was ist beim Fliegerhorst GEPLANT?") sind ausgenommen:
+#: Die zielen auf die Beschlusslage, nicht auf die Definition.
+_DEFINITIONSFRAGE = re.compile(
+    r"^\s*(was|wer)\s+(ist|sind|macht|machen|bedeutet|bedeuten)\b", re.IGNORECASE)
+_EIGENES_PRAEDIKAT = re.compile(
+    r"\b(geplant|beschlossen|entschieden|stand|kostet|kosten|passiert|gebaut|"
+    r"gefordert|vorgesehen|zuletzt|wann)\b", re.IGNORECASE)
+
+
+def steckbrief_karte_zeigen(frage: str) -> bool:
+    """Soll der Steckbrief als eigene Karte ÜBER der Antwort stehen?
+
+    Der Hintergrund geht immer in den Prompt — er macht die Antwort besser.
+    Sichtbar daneben gehört er aber nur, wenn die Antwort ihn nicht ohnehin
+    wiederholt, und das hängt an der Frage (Tims Befund 12.08.):
+
+    * „Wie ist der Stand bei der Cäcilienbrücke?" — der Steckbrief sagt, WAS
+      die Brücke ist, die Antwort, wo der Ersatzneubau steht. Beide tragen.
+    * „Was ist die GSG?" — hier IST die Antwort die Definition. Gemessen: die
+      erste Antwortzeile überlappt zu 79 % mit dem Steckbrief. Zwei Wege haben
+      dagegen nicht geholfen: das Modell bitten umzulenken (45 % → 44 %) und
+      das „Kurz gesagt" streichen (die Definition rutschte in den ersten Satz).
+      Also die Karte weglassen — die Antwort erklärt es selbst, und die hat
+      obendrein Quellen unter jedem Satz.
+    """
+    if not _DEFINITIONSFRAGE.match(frage or ""):
+        return True
+    return bool(_EIGENES_PRAEDIKAT.search(frage or ""))
+
 #: Wenige und schwache Treffer → der Ton muss mitgehen. Ohne diese Regel klingt
 #: eine dünn belegte Antwort wie eine gut belegte; genau daran hing das einzige
 #: begründete 👎 („Falschinfo").

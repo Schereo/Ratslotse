@@ -7,6 +7,15 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Verbessert
+- **Kein doppelter Einstieg mehr bei „Was ist …?"-Fragen.** Der Steckbrief
+  „Worum geht es?" und die Antwort sagten dort dasselbe — bei einer reinen
+  Definitionsfrage *ist* die Antwort die Definition. Die Karte entfällt jetzt
+  genau dort; der Hintergrund fließt weiterhin in die Antwort ein, die ihn mit
+  Quellen belegt. Bei Sachstands- und Themenfragen („Wie ist der Stand bei der
+  Cäcilienbrücke?") bleibt beides stehen — dort ergänzen sich Steckbrief (was
+  es ist) und Fazit (wo es steht).
+
 ### Behoben
 - **Das Eingabefeld der KI-Frage sitzt jetzt wirklich auf der Tab-Leiste.**
   Der zweite Anlauf: `sticky` kann ein Element nur nach oben halten — auf
