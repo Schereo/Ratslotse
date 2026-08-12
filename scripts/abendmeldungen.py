@@ -31,8 +31,8 @@ load_dotenv(ROOT / ".env")
 
 from council.abendmeldungen import vorabend, wochenueberblick  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
-from nwz import notify  # noqa: E402
-from nwz.store import Store  # noqa: E402
+from kern import notify  # noqa: E402
+from kern.store import Store  # noqa: E402
 
 import os  # noqa: E402
 
@@ -65,6 +65,6 @@ def main() -> dict:
 
 
 if __name__ == "__main__":
-    from nwz.alerts import run_guarded
+    from kern.alerts import run_guarded
 
     run_guarded("abendmeldungen", main)

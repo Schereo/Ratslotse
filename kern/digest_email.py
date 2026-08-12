@@ -14,7 +14,7 @@ from __future__ import annotations
 import html
 import os
 
-# Eigene Konstante statt Import aus nwz.notify: notify → delivery →
+# Eigene Konstante statt Import aus kern.notify: notify → delivery →
 # digest_email wäre ein Ring. Beide lesen dieselbe Umgebungsvariable.
 APP_BASE_URL = os.environ.get("APP_BASE_URL", "https://ratslotse.de").rstrip("/")
 

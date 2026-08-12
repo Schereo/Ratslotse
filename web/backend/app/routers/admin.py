@@ -7,9 +7,9 @@ from datetime import datetime
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 
 from council.store import CouncilStore
-from nwz import prompts
-from nwz.email import send_email
-from nwz.store import Store
+from kern import prompts
+from kern.email import send_email
+from kern.store import Store
 
 from ..config import get_settings
 from ..deps import get_council_store, get_store, require_admin
@@ -103,7 +103,7 @@ def jobs(_admin: dict = Depends(require_admin), store: Store = Depends(get_store
     Ausfall auf, auch wenn keine Fehler-Mail kam (Job lief ja gar nicht)."""
     from datetime import datetime
 
-    from nwz.jobs import JOBS
+    from kern.jobs import JOBS
 
     runs = store.job_runs(limit=500)
     by_job: dict[str, list[dict]] = {}
@@ -146,7 +146,7 @@ def jobs(_admin: dict = Depends(require_admin), store: Store = Depends(get_store
 def llm_usage(_admin: dict = Depends(require_admin)) -> dict:
     """LLM-Kosten-Dashboard (Design 21a): per-Feature-Aggregat + 30-Tage-Verlauf,
     Monatskosten mit Hochrechnung und Budget-Ampel (aus llm_usage in nwz.sqlite)."""
-    from nwz import usage
+    from kern import usage
     return usage.dashboard(budget_monthly=get_settings().llm_budget_monthly)
 
 

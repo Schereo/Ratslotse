@@ -90,8 +90,8 @@ def test_notify_new_matches_leads_with_highest_impact(tmp_path):
     außerhalb aller Grenzen (Anlass-Schalter, Aus-Schalter, Nachtruhe,
     zwei am Tag).
     """
-    from nwz import notify
-    from nwz.store import Store
+    from kern import notify
+    from kern.store import Store
 
     council = _store(tmp_path)
     ids = {d["title"]: d["id"] for d in council.decisions_needing_impact()}
@@ -128,7 +128,7 @@ def test_notify_new_matches_leads_with_highest_impact(tmp_path):
 
 def test_notify_new_matches_schweigt_wenn_abgeschaltet(tmp_path):
     """Der Weg, der die Grenzen umging: Er kam auch bei „aus" noch an."""
-    from nwz.store import Store
+    from kern.store import Store
 
     council = _store(tmp_path)
     ids = {d["title"]: d["id"] for d in council.decisions_needing_impact()}

@@ -9,8 +9,8 @@ from datetime import datetime, timedelta
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
 
-from nwz.store import Store
-from nwz.email import send_email
+from kern.store import Store
+from kern.email import send_email
 
 from ..config import get_settings
 from ..deps import get_current_user, get_store

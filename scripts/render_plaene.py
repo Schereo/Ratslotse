@@ -97,7 +97,7 @@ def main(db: str | None = None, out_dir: str = "data/plaene", limit: int = 0,
 
 
 if __name__ == "__main__":
-    from nwz.alerts import run_guarded
+    from kern.alerts import run_guarded
 
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--db", default=None)

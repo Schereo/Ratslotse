@@ -14,12 +14,23 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   entfällt. Und der Kalender-Link bei Sitzungen ohne Tagesordnung steht in
   der Zeile der „Tagesordnung folgt"-Marke statt in einer eigenen Reihe —
   die Karten wirken wieder gleichmäßig. (#454)
-
-### Verbessert
 - **Kurzfassungen auch für Sitzungen ohne Benachrichtigung.** Die Sätze unter
   den Tagesordnungspunkten entstanden bisher nur dort, wo jemand eine Meldung
   bekam. Ein Ops-Lauf trägt sie jetzt für alle kommenden Sitzungen und die
   letzten Wochen nach. (#451)
+- **Die Sicherung umfasst jetzt wirklich alles.** Gesichert wurden bisher zwei
+  fest eingetragene Datenbanken — eine dritte wäre still übersprungen worden.
+  Jetzt kommt jede Datenbank mit, dazu die gerenderten Planzeichnungen und die
+  Konfigurationsdatei mit den Zugangsdaten (abschaltbar). Ohne Letztere wäre
+  nach einem Serververlust jede Anmeldung ungültig gewesen.
+
+### Behoben
+- **Reste des früheren Zeitungs-Teils entfernt.** Fünf Tabellen aus der Zeit
+  vor dem Ratslotse wurden bei jedem Start neu angelegt, obwohl sie seit der
+  Ausgliederung leer sind und niemand sie liest; drei zugehörige
+  Daten-Umbauten liefen ebenfalls ins Leere. Alles raus — leere Tabellen
+  werden auf bestehenden Installationen mit aufgeräumt, gefüllte bleiben
+  vorsichtshalber stehen.
 
 ### Verbessert
 - **„Dein Thema" prüft jetzt die Vorlage, nicht nur den Titel.** Ob ein

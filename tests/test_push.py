@@ -1,4 +1,4 @@
-"""Unit tests for the APNs environment fallback in nwz.push.
+"""Unit tests for the APNs environment fallback in kern.push.
 
 Xcode debug builds register *sandbox* device tokens, TestFlight/App-Store builds
 *production* ones. The server can't tell them apart, so _send_apns retries a
@@ -13,7 +13,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from nwz import push  # noqa: E402
+from kern import push  # noqa: E402
 
 PROD, SBX = push.APNS_PROD_HOST, push.APNS_SANDBOX_HOST
 

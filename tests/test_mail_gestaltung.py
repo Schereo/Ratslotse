@@ -14,7 +14,7 @@ from dataclasses import dataclass
 
 from council import watcher
 from council.ergebnisse import sitzung_href
-from nwz import digest_email
+from kern import digest_email
 
 
 @dataclass

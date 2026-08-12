@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from nwz import prompts
+from kern import prompts
 
 
 @pytest.fixture

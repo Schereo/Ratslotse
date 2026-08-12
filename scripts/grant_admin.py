@@ -34,7 +34,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")  # NWZ_DB
 
-from nwz.store import Store  # noqa: E402
+from kern.store import Store  # noqa: E402
 
 
 def _default_db() -> str:

@@ -29,7 +29,7 @@ load_dotenv(ROOT / ".env")
 
 from council.store import CouncilStore  # noqa: E402
 from council.wortbeitraege import extract_wortbeitraege  # noqa: E402
-from nwz import llm  # noqa: E402
+from kern import llm  # noqa: E402
 
 COUNCIL_DB = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlite")
 
@@ -93,6 +93,6 @@ def main() -> dict:
 
 
 if __name__ == "__main__":
-    from nwz.alerts import run_guarded
+    from kern.alerts import run_guarded
 
     run_guarded("extract_wortbeitraege", main)

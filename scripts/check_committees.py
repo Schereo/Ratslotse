@@ -15,9 +15,9 @@ sys.path.insert(0, str(ROOT))
 from dotenv import load_dotenv
 load_dotenv(ROOT / ".env")
 
-from nwz import notify
-from nwz.store import Store
-from nwz import digest_email
+from kern import notify
+from kern.store import Store
+from kern import digest_email
 from council.store import CouncilStore
 from council.scraper import CouncilScraper
 from council.agenda_diff import diff_html, diff_tagesordnung, hat_aenderungen
@@ -268,5 +268,5 @@ def main() -> dict:
 
 
 if __name__ == "__main__":
-    from nwz.alerts import run_guarded
+    from kern.alerts import run_guarded
     run_guarded("check_committees", main)

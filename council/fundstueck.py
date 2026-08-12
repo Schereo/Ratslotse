@@ -15,7 +15,7 @@ import json
 import os
 from datetime import date
 
-from nwz import llm, prompts
+from kern import llm, prompts
 
 from .store import CouncilStore
 

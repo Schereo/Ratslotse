@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import os
 
-from nwz import llm, prompts
+from kern import llm, prompts
 
 MODEL = os.environ.get("COUNCIL_SIMPLE_MODEL", "deepseek/deepseek-v4-pro")
 # Beschlusstexte können sehr lang sein — fürs Erklären reicht der Anfang,

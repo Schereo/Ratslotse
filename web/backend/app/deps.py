@@ -8,7 +8,7 @@ from fastapi import Depends, HTTPException, Request, status
 from .config import get_settings
 from .security import decode_access_token
 
-from nwz.store import Store
+from kern.store import Store
 from council.store import CouncilStore
 
 

@@ -12,7 +12,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
-from nwz.store import Store
+from kern.store import Store
 
 from ..deps import get_store, require_active
 

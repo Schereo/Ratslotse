@@ -6,8 +6,8 @@ import logging
 
 from fastapi import APIRouter, Depends
 
-from nwz.email import send_email
-from nwz.store import Store
+from kern.email import send_email
+from kern.store import Store
 
 from ..config import get_settings
 from ..deps import get_store, require_active

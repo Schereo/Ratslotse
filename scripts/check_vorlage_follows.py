@@ -31,8 +31,8 @@ load_dotenv(ROOT / ".env")
 from council import stammdaten
 from council.scraper import CouncilScraper
 from council.store import CouncilStore
-from nwz import notify
-from nwz.store import Store
+from kern import notify
+from kern.store import Store
 
 NWZ_DB = ROOT / "data" / "nwz.sqlite"
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
@@ -141,5 +141,5 @@ def main() -> dict:
 
 
 if __name__ == "__main__":
-    from nwz.alerts import run_guarded
+    from kern.alerts import run_guarded
     run_guarded("check_vorlage_follows", main)

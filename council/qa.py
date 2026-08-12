@@ -11,7 +11,7 @@ import json
 import os
 import re
 
-from nwz import llm, prompts
+from kern import llm, prompts
 from council import ernte
 from council.topics import _strip_fences  # noqa: F401  (kept for symmetry / future use)
 

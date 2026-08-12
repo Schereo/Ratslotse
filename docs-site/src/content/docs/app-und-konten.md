@@ -267,7 +267,7 @@ starten auf `email`).
 
 `off` heißt: gar keine Benachrichtigungen. Kein eigenes Feld, weil es dieselbe
 Frage beantwortet wie die anderen drei — wohin? — nur mit „nirgendwohin". Die
-Prüfung sitzt in `nwz.notify.gewuenscht()`, also **vor** der Warteschlange:
+Prüfung sitzt in `kern.notify.gewuenscht()`, also **vor** der Warteschlange:
 Bei `off` wird nichts eingereiht, sonst zählten unzustellbare Meldungen gegen
 die Tagesgrenze und kämen beim Wiedereinschalten als Nachlieferung an.
 Zusätzlich verwirft `PUT /api/account/delivery` beim Umschalten auf `off`, was
@@ -277,12 +277,12 @@ diese Konten — auch die freundlich gemeinte Einrichtungs-Erinnerung schweigt.
 | Endpunkt | Zweck |
 |---|---|
 | `PUT /api/account/delivery` | Kanal setzen; `email`/`both` scheitern, wenn keine echte Adresse hinterlegt ist; `off` räumt zusätzlich die Warteschlange |
-| `POST /api/account/test-notification` | Test über alle aktiven Kanäle, exakt über den Cron-Versandpfad `nwz.delivery.deliver_message`; gibt die tatsächlich bedienten Kanäle zurück |
+| `POST /api/account/test-notification` | Test über alle aktiven Kanäle, exakt über den Cron-Versandpfad `kern.delivery.deliver_message`; gibt die tatsächlich bedienten Kanäle zurück |
 
-- **E-Mail** über **Resend** (`nwz/email.py`). Ohne `RESEND_API_KEY` wird der
+- **E-Mail** über **Resend** (`kern/email.py`). Ohne `RESEND_API_KEY` wird der
   Versand still übersprungen.
 - **Push** über **APNs** (iOS, token-basiert mit `.p8` — kein Firebase) und
-  **FCM v1** (Android) in `nwz/push.py`. Geräte-Token, die die Gateways als
+  **FCM v1** (Android) in `kern/push.py`. Geräte-Token, die die Gateways als
   ungültig melden, werden ausgesortiert.
 - In der App führt der **Push-Primer** (`components/push-primer.tsx`) vor den
   System-Dialog: Er erscheint erst, wenn es mindestens ein Thema oder ein
@@ -330,7 +330,7 @@ Wie Themen gegen Tagesordnungen und Beschlüsse gematcht werden, steht in
 
 Der Zustellkanal sagt **wo**, die Anlässe sagen **wofür**. Beides steht in
 „Mein Konto"; die Anlass-Schalter liegen als JSON in `web_users.notify_prefs`
-(leer = Vorgaben aus `nwz/notify.py`).
+(leer = Vorgaben aus `kern/notify.py`).
 
 | Anlass | wann | Vorgabe | Auslöser |
 |---|---|---|---|
@@ -357,7 +357,7 @@ behaupten.
 
 #### Die Warteschlange
 
-Kein Anlass sendet selbst. Alle reihen über `nwz.notify.einreihen()` in
+Kein Anlass sendet selbst. Alle reihen über `kern.notify.einreihen()` in
 `notification_queue` ein; zugestellt wird zentral in `notify.zustellen()`, das
 die Cron-Jobs am Ende ihres Laufs aufrufen. Ein eigener Cron dafür ist nicht
 nötig — `check_committees` läuft um 7 Uhr und leert damit, was über Nacht liegen
@@ -455,7 +455,7 @@ allein darf ein Konto nicht zerstören können:
   dessen `sub` zum Konto passt (Re-Auth in der App).
 
 `Store.delete_web_user` räumt jede Tabelle aus `USER_OWNED_TABLES`
-(`nwz/store.py`) ab und löscht zuletzt die Zeile in `web_users` — derzeit
+(`kern/store.py`) ab und löscht zuletzt die Zeile in `web_users` — derzeit
 **18 Tabellen**. Diese Seite zählt sie bewusst *nicht* mehr einzeln auf: Die
 frühere Aufzählung nannte sechs und war damit lange falsch. Maßgeblich ist die
 Konstante, und dass sie vollständig bleibt, prüft

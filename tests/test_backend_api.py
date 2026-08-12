@@ -24,8 +24,8 @@ os.environ["DISABLE_RATE_LIMIT"] = "1"  # avoid state bleeding across tests
 
 from fastapi.testclient import TestClient  # noqa: E402
 from app.main import app  # noqa: E402
-from nwz import prompts  # noqa: E402
-from nwz.store import Store  # noqa: E402
+from kern import prompts  # noqa: E402
+from kern.store import Store  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 from council.scraper import CouncilSession, AgendaItem  # noqa: E402
 from scripts.grant_admin import grant_admin  # noqa: E402
@@ -1505,7 +1505,7 @@ def test_display_name_register_change_and_greeting(client):
     client.post("/api/account/display-name", json={"display_name": "  "})
     assert client.get("/api/auth/me").json()["display_name"] is None
 
-    from nwz.digest_email import render_html_email
+    from kern.digest_email import render_html_email
     assert "Moin Timo," in render_html_email("Betreff", "Inhalt", greeting_name="Timo")
     assert "Moin" not in render_html_email("Betreff", "Inhalt").split("Ratslotse")[1][:40]
 
@@ -1709,7 +1709,7 @@ def test_ask_speichert_nur_mit_einwilligung(client, monkeypatch):
     ohne gespraech_id-Feld (alte App) lösen nie eine Speicherung aus."""
     from app.routers import council as council_router
     from council import qa as qa_mod
-    from nwz.store import Store
+    from kern.store import Store
 
     _register(client)
     cand = [{"id": 5, "title": "Radverkehrsplan 2026", "summary": "Ausbau",
@@ -2520,7 +2520,7 @@ def test_zustellweg_off_ist_erlaubt_und_raeumt_die_warteschlange(client):
     verweigerte beides-aus. Wer nichts mehr hören wollte, hätte die sechs
     Anlass-Schalter einzeln umlegen müssen.
     """
-    from nwz import notify
+    from kern import notify
 
     owner = _register(client).json()["id"]
 
