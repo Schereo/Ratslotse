@@ -11,6 +11,7 @@ Install for the backfill: ``pip install fastembed``.
 from __future__ import annotations
 
 import os
+import re
 import time
 
 # Multilingual (incl. German), 384-dim, ~220 MB — good German similarity, light.
@@ -446,7 +447,8 @@ KONTEXT_RERANK_MIN = float(os.environ.get("COUNCIL_KONTEXT_RERANK_MIN", "-1.5"))
 KONTEXT_PAIR_MAX = int(os.environ.get("COUNCIL_KONTEXT_PAIR_MAX", "150"))
 
 
-def _rerank_kontext(query: str, kandidaten: list[tuple], top_k: int) -> list[tuple]:
+def _rerank_kontext(query: str, kandidaten: list[tuple], top_k: int,
+                    min_rerank: float | None = None) -> list[tuple]:
     """``[(id, text)]``-Kandidaten der Zusatzkanäle per Cross-Encoder bestätigen —
     nur Paare über dem Cutoff überleben. Ohne Reranker (fastembed fehlt) lieber
     leer als Rauschen: die Zusatzblöcke sind optional."""
@@ -454,7 +456,8 @@ def _rerank_kontext(query: str, kandidaten: list[tuple], top_k: int) -> list[tup
         ranked = rerank(query, [(i, (t or "")[:KONTEXT_PAIR_MAX]) for i, t in kandidaten])
     except Exception:  # noqa: BLE001
         return []
-    return [(i, s) for i, s in ranked if s >= KONTEXT_RERANK_MIN][:top_k]
+    grenze = KONTEXT_RERANK_MIN if min_rerank is None else min_rerank
+    return [(i, s) for i, s in ranked if s >= grenze][:top_k]
 
 
 def search_presse(store, query: str, expanded: str, top_k: int = 3,
@@ -647,6 +650,61 @@ def search_wortbeitraege(store, query: str, expanded: str, top_k: int = 4,
              for r in rows}
     return _rerank_kontext(query, [(wid, texte[wid]) for wid, _ in kandidaten if wid in texte],
                            top_k)
+
+
+#: Zusagen ohne Inhalt: „Ich sichere eine Antwort zu Protokoll zu", „wird
+#: mitgenommen". Das ist Verfahren, keine Selbstverpflichtung — als Beleg
+#: unter einer Antwort wäre es Füllmaterial. Am Bestand gemessen betrifft das
+#: rund ein Viertel der 1.437 Zusagen.
+_HOHLE_ZUSAGE = re.compile(
+    r"(zu\s+protokoll|schriftlich\w*\s+(beantwortung|antwort)|"
+    r"beantwortung\s+(der|dieser)\s+frage|nach(zu)?reichen|nachgereicht|"
+    r"mitgenommen|mitnehmen|werde\s+sich\s+informieren|"
+    r"sich\s+\w*\s?informieren\s+werde|zur\s+kenntnis\s+geben)", re.IGNORECASE)
+
+#: Strenger als die anderen Zusatzkanäle: Ein Kanal, der NUR Zusagen zeigt,
+#: darf keine thematisch schiefen liefern — beim Ärztemangel rutschte sonst
+#: eine Kita-Fachkräfte-Zusage durch (gemessen 12.08.).
+ZUSAGE_RERANK_MIN = float(os.environ.get("COUNCIL_ZUSAGE_RERANK_MIN", "-0.5"))
+
+
+def search_zusagen(store, query: str, expanded: str, top_k: int = 2,
+                   min_score: float = 0.42) -> list[tuple]:
+    """Zusagen der Verwaltung zum Thema → ``[(wb_id, score)]``.
+
+    Eigener Kanal, weil sie im allgemeinen Debatten-Ranking untergehen: Über
+    sechs Testfragen war genau EINER von 19 Belegen eine Zusage — und selbst
+    auf „Was hat die Verwaltung zum Stadion zugesagt?" kam keine, obwohl
+    einschlägige existieren („Die Stadt leistet einen Eigenkapitalzuschuss in
+    Höhe von bis zu 15 Millionen Euro"). Grund: Zusagen sind kurz und nüchtern
+    formuliert und verlieren jedes Duell gegen ausführliche Reden.
+
+    Dabei sind sie der besondere Stoff: eine Selbstverpflichtung der
+    Verwaltung, nachlesbar mit Datum. 1.437 stecken im Bestand.
+
+    Gleiche Torwächter-Logik wie die anderen Kanäle — lieber leer als Rauschen.
+    """
+    ids_zusage = set(store.wortbeitrag_ids_nach_art("zusage"))
+    if not ids_zusage:
+        return []
+    best: dict[int, float] = {}
+    try:
+        ids, mat = _wb_matrix(store)
+        if not ids:
+            return []
+        qv = embed([expanded])[0]
+        scores = mat @ qv
+        for wid, s in zip(ids, scores):
+            if wid in ids_zusage and s >= min_score:
+                best[wid] = float(s)
+    except Exception:  # noqa: BLE001 — ohne fastembed kein Zusagen-Kanal
+        return []
+    kandidaten = sorted(best.items(), key=lambda x: -x[1])[:max(top_k * 6, 16)]
+    rows = store.wortbeitraege_by_ids([wid for wid, _ in kandidaten])
+    texte = {r["id"]: " — ".join(t for t in (r.get("top"), r.get("text")) if t)
+             for r in rows if not _HOHLE_ZUSAGE.search(r.get("text") or "")}
+    return _rerank_kontext(query, [(wid, texte[wid]) for wid, _ in kandidaten if wid in texte],
+                           top_k, min_rerank=ZUSAGE_RERANK_MIN)
 
 
 def search_wortbeitraege_von_person(store, query: str, nachname: str,
