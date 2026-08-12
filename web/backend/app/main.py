@@ -88,6 +88,14 @@ def _warm_models() -> None:
             store = CouncilStore(get_settings().council_db)
             try:
                 emb.hybrid_search(store, "warmup", "warmup", top_k=1, pool=2)
+                # Die Zusatzkanäle haben EIGENE Matrizen (Presse, 42k
+                # Wortbeiträge, Anlagen), die hybrid_search nicht anfasst —
+                # ungewärmt zahlt sie die erste Frage nach jedem Deploy.
+                for laden in (emb.search_presse, emb.search_wortbeitraege):
+                    try:
+                        laden(store, "warmup", "warmup")
+                    except Exception:  # noqa: BLE001 — Kanal fehlt/leer: egal
+                        pass
             finally:
                 store.close()
             emb.rerank("warmup", [(0, "warmup")])
