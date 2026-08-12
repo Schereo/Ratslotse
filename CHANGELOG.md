@@ -8,6 +8,11 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Verbessert
+- **Ratslotse sagt jetzt, wessen Angebot es ist.** Impressum, Anmeldung,
+  Registrierung, Konto-Fuß und Seiten-Fuß stellen ausdrücklich klar: ein
+  privates Bürgerprojekt, kein Angebot der Stadt Oldenburg, keine Verbindung zu
+  Verwaltung, Rat oder Parteien — verbindlich bleiben die amtlichen
+  Originale. (#466)
 - **Kurze Fragen bekommen kurze Antworten.** Wer nach einem Datum, einer Zahl
   oder einem Namen fragt („Wann wurde der Bebauungsplan 831 beschlossen?"),
   bekommt jetzt zwei Sätze statt einer Seite — inklusive Beleg, aber ohne
