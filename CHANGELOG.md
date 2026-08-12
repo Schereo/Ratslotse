@@ -7,6 +7,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Behoben
+- **Blättern verschiebt die Seite nicht mehr.** Beim Klick auf die obere
+  Seiten-Leiste rutschte die Ansicht bei jedem Wechsel ein Stück hoch und
+  runter — der Sprung an den Listenanfang war für die untere Leiste gedacht,
+  oben steht man ohnehin schon dort. (#457)
+
 ## [1.8.0] – 2026-08-12
 
 ### Geändert
