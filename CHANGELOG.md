@@ -8,6 +8,14 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Verbessert
+- **Seiten behalten ihren Stand — wie man es von einer App erwartet.** Wer
+  in der Sitzungsliste weit nach unten scrollt, kurz auf einen anderen Tab
+  wechselt und zurückkommt, steht wieder an derselben Stelle statt am
+  Listenanfang. Genauso überleben Suchtext, Ausschuss-Filter und Zeitraum
+  den Abstecher. Scrollt man beim Zurückkommen selbst, bleibt die Hand am
+  Steuer — dann springt nichts mehr. (#446)
+
+### Verbessert
 - **„Morgen" statt „Do., 13.08."** Sitzungen, die heute, morgen oder gestern
   sind, sagen das jetzt auch — im Dashboard und in der Sitzungsliste, das
   genaue Datum bleibt an der Kachel bzw. als Titel. Die Angabe kommt vom

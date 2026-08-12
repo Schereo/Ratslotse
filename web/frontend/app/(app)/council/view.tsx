@@ -29,6 +29,7 @@ import { EntitiesTab } from "@/components/council-entities";
 import { QaTab } from "@/components/council-qa";
 import { cn, relativerTag } from "@/lib/utils";
 import { useHeute } from "@/lib/use-heute";
+import { useMerker } from "@/lib/use-merker";
 
 type Scope = "all" | "upcoming" | "recent";
 type Tab = "sessions" | "decisions" | "themen" | "analysis";
@@ -451,9 +452,9 @@ function FilterChip({ label, onClear }: { label: string; onClear: () => void }) 
 }
 
 function DecisionsTab({ committees }: { committees: string[] }) {
-  const [q, setQ] = useState("");
-  const [committee, setCommittee] = useState("");
-  const [outcome, setOutcome] = useState("");
+  const [q, setQ] = useMerker("suche:q", "");
+  const [committee, setCommittee] = useMerker("suche:gremium", "");
+  const [outcome, setOutcome] = useMerker("suche:ergebnis", "");
   const [sort, setSort] = useState("date_desc");
   const [fields, setFields] = useState<PolicyField[]>([]);
   const [page, setPage] = useState(1);
@@ -945,15 +946,17 @@ function AttendanceSection({ detail }: { detail: SessionDetail }) {
 
 function SessionsTab({ committees }: { committees: string[] }) {
   const heute = useHeute();
-  const [q, setQ] = useState("");
-  const [committee, setCommittee] = useState("");
+  // Filter überleben den Tab-Wechsel (Tims iOS-Befund 12.08.): Wer sucht und
+  // kurz woanders nachsieht, will nicht neu tippen.
+  const [q, setQ] = useMerker("sitzungen:q", "");
+  const [committee, setCommittee] = useMerker("sitzungen:gremium", "");
   // RL-F06: ?ksinr=… (Deep-Link von „Heute") — Sitzung aufklappen, sanft
   // hinscrollen und kurz aufblitzen lassen (wie der Fußnoten-Flash der KI).
   const deepSp = useSearchParams();
   const targetKsinr = Number(deepSp.get("ksinr") || 0);
   const deepLinkDone = useRef(false);
   const [flashKsinr, setFlashKsinr] = useState<number | null>(null);
-  const [scope, setScope] = useState<Scope>("upcoming");
+  const [scope, setScope] = useMerker<Scope>("sitzungen:zeitraum", "upcoming");
   const listRef = useRef<HTMLDivElement>(null);
   const [sessions, setSessions] = useState<CouncilSession[]>([]);
   const [total, setTotal] = useState(0);
