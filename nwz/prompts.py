@@ -239,12 +239,12 @@ DEFAULTS: dict[str, dict[str, str]] = {
             <<<THEMEN
             {topics_text}
             THEMEN
-            Gib für jedes Thema an, welche TOP-Nummern passen (leer wenn keiner passt).
+            Gib für jedes Thema an, welche TOPs passen (leer wenn keiner passt).\n            Übernimm nummer und titel EXAKT aus der Liste oben — nummer und titel\n            müssen zum SELBEN Eintrag gehören.
             Format:
             {{
               "matches": [
-                {{"topic_index": 1, "item_numbers": ["Ö 6.1", "Ö 6.2"]}},
-                {{"topic_index": 2, "item_numbers": []}}
+                {{"topic_index": 1, "items": [{{"nummer": "Ö 6.1", "titel": "erste Worte des TOP-Titels"}}]}},
+                {{"topic_index": 2, "items": []}}
               ]
             }}
         """),
