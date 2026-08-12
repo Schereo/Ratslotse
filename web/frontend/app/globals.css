@@ -9,6 +9,7 @@
    * dazu Signal-Orange als Akzent: die traditionelle Farbe der Lotsenboote.
    */
   :root {
+    color-scheme: light;
     --background: 204 45% 97.5%;
     --foreground: 212 55% 11%;
     --card: 0 0% 100%;
@@ -44,6 +45,11 @@
   }
 
   .dark {
+    /* Sagt Browser UND Betriebssystem, dass hier dunkel gerendert wird —
+       sonst bleiben native Bedienelemente hell: Der Scrollbalken hatte im
+       Dunkelmodus einen weißen Kanal (Tims Befund 12.08.), ebenso Auswahl-
+       felder und die Rendering-Voreinstellung für Formulare. */
+    color-scheme: dark;
     --background: 213 50% 7%;
     --foreground: 204 40% 96%;
     --card: 212 42% 11%;
