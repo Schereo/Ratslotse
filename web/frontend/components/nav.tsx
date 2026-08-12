@@ -64,7 +64,11 @@ const MAIN_ITEMS: (Item & { tab?: string })[] = [
   { href: "/dashboard", label: "Heute", icon: Home },
   // Split 12.08.: Fragen ist das Headliner-Feature und steht als eigene
   // Seite VOR der Suche; „Suchen & Fragen" gibt es nicht mehr.
-  { href: "/fragen", label: "Fragen", icon: Sparkles, tour: "nav-ratsinfo" },
+  // Anker hieß bis 12.08. „nav-ratsinfo" — aus der Zeit, als hier „Suchen &
+  // Fragen" stand und die Tour das Ratsinfo als Ganzes erklärte. Nach dem
+  // Split zeigte die Station „Das Ratsinfo" auf „Fragen"; der Anker heißt
+  // jetzt, worauf er zeigt.
+  { href: "/fragen", label: "Fragen", icon: Sparkles, tour: "nav-fragen" },
   { href: "/council", label: "Suche", icon: Search, tab: "decisions" },
   { href: "/council?tab=sessions", label: "Sitzungen", icon: CalendarDays, tab: "sessions" },
   { href: "/council?tab=themen", label: "Stadtkarte", icon: MapIcon, tab: "themen" },
@@ -79,7 +83,7 @@ const FRAGEN_HREF = "/fragen";
 const TABS: (Item & { aktiv: (pathname: string, tab: string | null) => boolean })[] = [
   { href: "/dashboard", label: "Start", icon: Home,
     aktiv: (p) => p === "/dashboard" || p.startsWith("/dashboard/") },
-  { href: FRAGEN_HREF, label: "Fragen", icon: Sparkles, tour: "nav-ratsinfo",
+  { href: FRAGEN_HREF, label: "Fragen", icon: Sparkles, tour: "nav-fragen",
     aktiv: (p) => p === "/fragen" || p.startsWith("/fragen/") },
   { href: "/council?tab=sessions", label: "Sitzungen", icon: CalendarDays,
     aktiv: (p, t) => p === "/council" && t === "sessions" },

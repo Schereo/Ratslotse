@@ -47,10 +47,14 @@ function GespraecheHeaderButton() {
  *  landet direkt im Gespräch — kein Modus-Umschalter, der Platz kostet und
  *  Aufmerksamkeit stiehlt. `?q=` befüllt den Composer vor, `?share=` öffnet
  *  einen geteilten Antwort-Snapshot (beides wertet das Ratsgespräch aus).
- *  Das data-tour-Ziel „ki-frage-tab" wohnte vorher am Umschalter. */
+ *  Das data-tour-Ziel „ki-frage-tab" wohnte vorher am Umschalter und wanderte
+ *  beim Split auf diesen Wrapper — womit der Tour-Spotlight die ganze Seite
+ *  umfasste und nichts mehr hervorhob. Die Tour erklärt Fragen jetzt am
+ *  Navigationspunkt und mit einer eigenen Beispiel-Station (components/tour.tsx),
+ *  hier braucht es keinen Anker mehr. */
 function FragenInner() {
   return (
-    <div data-tour="ki-frage-tab">
+    <div>
       <PageHeader
         title="Fragen"
         /* Kurz halten (Tims Befund 12.08.): Auf dem Handy lief der Satz über
