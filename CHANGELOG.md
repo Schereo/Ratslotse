@@ -7,6 +7,14 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Verbessert
+- **Angemeldete landen direkt im Dashboard.** Wer eingeloggt ratslotse.de
+  aufruft, sieht nicht mehr die Werbeseite, sondern seine Startseite mit
+  Themen und Sitzungen. Die Startseite bleibt erreichbar: über „Startseite"
+  im Menü-Fuß (bzw. ratslotse.de/?start=1) — dann bleibt sie für die ganze
+  Sitzung stehen, auch beim Klick aufs Logo. Nach dem Abmelden erscheint sie
+  ohnehin wieder. (#444)
+
 ### Neu
 - **Tagesordnungen zeigen die Anhänge ihrer Punkte.** Jeder TOP verlinkt
   jetzt seine Dokumente aus dem Ratsinformationssystem — gerade
