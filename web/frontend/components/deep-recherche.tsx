@@ -42,7 +42,7 @@ export function RechercheToggle({ aktiv, frei, onToggle }: {
       onClick={onToggle}
       disabled={leer && !aktiv}
       aria-pressed={aktiv}
-      title={leer ? "Tageskontingent aufgebraucht — morgen wieder" : "Gründliche Recherche: dauert etwa 30 Sekunden, liest deutlich mehr Beschlüsse"}
+      title={leer ? "Tageskontingent aufgebraucht — ab Mitternacht wieder" : "Gründliche Recherche: dauert etwa 30 Sekunden, liest deutlich mehr Beschlüsse"}
       className={cn(
         "inline-flex h-[30px] shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[11.5px] font-semibold transition-colors",
         aktiv
@@ -53,7 +53,7 @@ export function RechercheToggle({ aktiv, frei, onToggle }: {
       )}
     >
       <FlaskConical className="h-3.5 w-3.5" aria-hidden />
-      <span>{leer && !aktiv ? "Recherche · morgen wieder" : "Gründlich recherchieren"}</span>
+      <span>{leer && !aktiv ? "Recherche · ab Mitternacht wieder" : "Gründlich recherchieren"}</span>
       {aktiv && <X className="h-3 w-3" aria-hidden />}
     </button>
   );
@@ -84,7 +84,7 @@ export function RechercheLimitKarte({ onSchnelleFrage }: { onSchnelleFrage: () =
       <div className="min-w-0">
         <p className="text-[13px] font-semibold text-foreground">Deine 5 Recherchen für heute sind aufgebraucht</p>
         <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
-          Ab morgen geht es weiter. Die schnelle Frage steht dir weiter unbegrenzt
+          Ab Mitternacht geht es weiter. Die schnelle Frage steht dir weiter unbegrenzt
           zur Verfügung — für den Überblick reicht sie oft.
         </p>
         <button type="button" onClick={onSchnelleFrage}

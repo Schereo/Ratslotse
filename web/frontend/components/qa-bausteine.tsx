@@ -117,6 +117,53 @@ function klammerIstParteiLabel(inhalt: string, badgePartei: string | null): bool
  *  Parteifarbe (Verwaltung: Hafenblau „Stadt", Ehemalige: grau „ehem.") plus
  *  Kürzel; Tipp öffnet den Peek mit Rolle, belegtem Zeitraum und — bei
  *  Ratsmitgliedern — dem Link zur Personen-Seite. */
+/** V-06: Sprecher-Zeilen in Debatten und Parteien-Kernaussagen sollen
+ *  dieselben Badges tragen wie Namen im Fließtext. Dort läuft ein
+ *  Prosa-Matcher; hier steht der Name schon isoliert da, also genügt die
+ *  Nachnamen-Suche — MIT derselben Vorsichtsregel: Bei Namensvettern
+ *  entscheidet ausschließlich der Vorname, sonst gibt es kein Badge
+ *  (lieber keins als ein geratenes, Tims Oltmanns-Befund). */
+function usePersonSuche(): (name: string) => PersonEintrag | null {
+  const lexikon = usePersonenLexikon();
+  const map = useMemo(() => {
+    const m = new Map<string, PersonEintrag[]>();
+    for (const p of lexikon || []) {
+      if (!p.nachname || p.nachname.length < 3) continue;
+      const l = m.get(p.nachname) || [];
+      l.push(p);
+      m.set(p.nachname, l);
+    }
+    return m;
+  }, [lexikon]);
+  return (name: string) => {
+    const woerter = (name || "").match(/[A-ZÄÖÜ][A-Za-zÄÖÜäöüß-]{2,}/g);
+    if (!woerter || map.size === 0) return null;
+    const nachname = falteName(woerter[woerter.length - 1]);
+    const kandidaten = map.get(nachname);
+    if (!kandidaten || kandidaten.length === 0) return null;
+    if (kandidaten.length === 1) {
+      const p = kandidaten[0];
+      return p.art === "blocker" || !p.name ? null : p;
+    }
+    const vornamen = woerter.slice(0, -1).map(falteName);
+    const treffer = kandidaten.filter(
+      (p) => p.name && vornamen.some((v) => falteName(p.name!.split(" ")[0] || "") === v));
+    return treffer.length === 1 && treffer[0].art !== "blocker" ? treffer[0] : null;
+  };
+}
+
+/** Sprechername mit Badge, wenn die Person eindeutig im Lexikon steht. */
+export function SprecherName({ name }: { name: string }) {
+  const suche = usePersonSuche();
+  const p = suche(name);
+  return (
+    <>
+      {name}
+      {p && <PersonBadge p={p} />}
+    </>
+  );
+}
+
 export function PersonBadge({ p }: { p: PersonEintrag }) {
   const [offen, setOffen] = useState(false);
   // Das Peek wird FEST am Bildschirm positioniert und in den sichtbaren
@@ -563,7 +610,7 @@ function DebattenZeile({ d, artLabel }: { d: DebattenHinweis; artLabel: Record<s
     <li className="text-[12.5px] leading-snug">
       <p className="flex items-baseline gap-2">
         <span className="min-w-0 flex-1 truncate font-medium">
-          {d.sprecher ?? "Ohne Namen"}{d.partei ? ` (${d.partei})` : ""}
+          {d.sprecher ? <SprecherName name={d.sprecher} /> : "Ohne Namen"}{d.partei ? ` (${d.partei})` : ""}
           {/* Zusagen der Verwaltung sind Selbstverpflichtungen — kein
               Meinungsbeitrag unter vielen. Sie bekommen deshalb ein eigenes
               Abzeichen statt nur ein graues Wörtchen. */}
@@ -712,7 +759,7 @@ export function ParteienListe({ parteien, ohneBeitraege = [], onFrageStellen }: 
                       <p className="mt-1 text-[12px] italic leading-snug text-muted-foreground">
                         {p.kernaussage.text}
                         <span className="font-mono text-[10px] not-italic text-muted-foreground/80">
-                          {" "}— {p.kernaussage.sprecher ?? "ohne Namen"}{p.kernaussage.datum ? `, ${p.kernaussage.datum}` : ""}
+                          {" "}— {p.kernaussage.sprecher ? <SprecherName name={p.kernaussage.sprecher} /> : "ohne Namen"}{p.kernaussage.datum ? `, ${p.kernaussage.datum}` : ""}
                         </span>
                       </p>
                     )}
@@ -721,7 +768,7 @@ export function ParteienListe({ parteien, ohneBeitraege = [], onFrageStellen }: 
                         {p.beitraege_liste.map((b, bi) => (
                           <li key={bi} className="text-[12px] leading-snug">
                             <p className="font-mono text-[10px] text-muted-foreground">
-                              {b.sprecher ?? "Ohne Namen"} · {b.datum}
+                              {b.sprecher ? <SprecherName name={b.sprecher} /> : "Ohne Namen"} · {b.datum}
                               {b.gremium ? ` · ${b.gremium}` : ""}
                             </p>
                             <p className="mt-0.5 text-muted-foreground">{b.text}{b.text.length >= 300 ? "…" : ""}</p>
