@@ -101,7 +101,17 @@ const falteName = (t: string) =>
  *  Ratsmitgliedern — dem Link zur Personen-Seite. */
 export function PersonBadge({ p }: { p: PersonEintrag }) {
   const [offen, setOffen] = useState(false);
+  // Peek-Ausrichtung beim Öffnen messen (Tims Befund 12.08.: das Popover lief
+  // rechts aus dem Text bzw. wurde vom overflow-hidden der lg-Bühne
+  // beschnitten): nahe dem rechten Rand rechtsbündig, nahe der Oberkante
+  // nach unten öffnen.
+  const [lage, setLage] = useState<{ rechts: boolean; unten: boolean }>({ rechts: false, unten: false });
   const ref = useRef<HTMLSpanElement>(null);
+  const oeffnen = () => {
+    const r = ref.current?.getBoundingClientRect();
+    if (r) setLage({ rechts: r.left + 270 > window.innerWidth, unten: r.top < 170 });
+    setOffen((v) => !v);
+  };
   useEffect(() => {
     if (!offen) return;
     const zu = (e: MouseEvent | TouchEvent) => {
@@ -127,7 +137,7 @@ export function PersonBadge({ p }: { p: PersonEintrag }) {
 
   return (
     <span ref={ref} className="relative inline-block align-baseline">
-      <button type="button" onClick={() => setOffen((v) => !v)}
+      <button type="button" onClick={oeffnen}
         aria-expanded={offen} title={`${p.name} — ${rolle}`}
         className="ml-1 inline-flex -translate-y-[1px] items-center gap-1 rounded-full border border-border bg-card px-1.5 py-px align-baseline text-[10px] font-medium leading-[14px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
         <span aria-hidden className={cn("h-[7px] w-[7px] shrink-0 rounded-full", dot.ring && "ring-1 ring-border")}
@@ -135,7 +145,10 @@ export function PersonBadge({ p }: { p: PersonEintrag }) {
         {label}
       </button>
       {offen && (
-        <span className="absolute bottom-full left-0 z-30 mb-1.5 block w-64 rounded-xl border border-border bg-card p-3 text-left shadow-lg">
+        <span className={cn(
+          "absolute z-30 block w-64 rounded-xl border border-border bg-card p-3 text-left shadow-lg",
+          lage.rechts ? "right-0" : "left-0",
+          lage.unten ? "top-full mt-1.5" : "bottom-full mb-1.5")}>
           <span className="block text-[13px] font-semibold text-foreground">{p.name}</span>
           <span className="mt-0.5 block text-[11.5px] text-muted-foreground">
             {p.aktiv ? rolle : `Ehemals: ${rolle}`}
