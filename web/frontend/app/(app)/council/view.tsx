@@ -548,11 +548,19 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   // auf den Listen-Container (bleibt über den Ladewechsel gemountet), damit
   // Screenreader den Kontextwechsel mitbekommen.
   const listRef = useRef<HTMLDivElement>(null);
-  const changePage = (p: number) => {
+  // `springen` nur für die UNTERE Leiste: Von dort führt der Weg zurück an den
+  // Listenanfang. Die obere Leiste steht schon dort — dieselbe Bewegung
+  // verschob die Seite bei jedem Klick um ein paar Pixel (Tims Befund 12.08.:
+  // „immer im Wechsel hoch und runter"), weil scrollIntoView den Listenkopf
+  // unter den klebenden Seitenkopf zieht. Der Fokus wandert weiterhin auf die
+  // Liste, damit Vorleseprogramme den Wechsel mitbekommen.
+  const changePage = (p: number, springen = true) => {
     setPage(p);
     requestAnimationFrame(() => {
-      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      listRef.current?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+      if (springen) {
+        const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        listRef.current?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+      }
       listRef.current?.focus({ preventScroll: true });
     });
   };
@@ -798,7 +806,8 @@ function DecisionsTab({ committees }: { committees: string[] }) {
               {/* Blättern klein am rechten Rand der Zählerzeile (Tims Wunsch
                   12.08.) — die große, mittige Leiste oben wirkte wie ein
                   eigener Inhaltsblock. Unten bleibt sie in voller Größe. */}
-              <Pagination compact page={page} totalPages={totalPages} onChange={changePage} className="ml-auto" />
+              <Pagination compact page={page} totalPages={totalPages}
+                onChange={(p) => changePage(p, false)} className="ml-auto" />
             </div>
             {decisions.map((d) => <DecisionCard key={d.id} d={d} query={query} />)}
             <Pagination page={page} totalPages={totalPages} onChange={changePage} className="pt-2" />
@@ -1162,11 +1171,19 @@ function SessionsTab({ committees }: { committees: string[] }) {
   // Wie in der Beschluss-Suche (RL-U02): Seitenwechsel führt zurück an den
   // Listenanfang und setzt den Fokus dorthin — sonst steht man nach dem Klick
   // auf „2" mitten in der neuen Liste, weil der Knopf ganz unten liegt.
-  const changePage = (p: number) => {
+  // `springen` nur für die UNTERE Leiste: Von dort führt der Weg zurück an den
+  // Listenanfang. Die obere Leiste steht schon dort — dieselbe Bewegung
+  // verschob die Seite bei jedem Klick um ein paar Pixel (Tims Befund 12.08.:
+  // „immer im Wechsel hoch und runter"), weil scrollIntoView den Listenkopf
+  // unter den klebenden Seitenkopf zieht. Der Fokus wandert weiterhin auf die
+  // Liste, damit Vorleseprogramme den Wechsel mitbekommen.
+  const changePage = (p: number, springen = true) => {
     setPage(p);
     requestAnimationFrame(() => {
-      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      listRef.current?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+      if (springen) {
+        const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        listRef.current?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+      }
       listRef.current?.focus({ preventScroll: true });
     });
   };
@@ -1233,7 +1250,8 @@ function SessionsTab({ committees }: { committees: string[] }) {
               {/* Blättern klein rechts in der Zählerzeile — siehe Beschluss-
                   Suche. Der „Seite X von Y"-Text wäre damit doppelt; für
                   Vorleseprogramme steht er weiter in der sr-only-Zeile. */}
-              <Pagination compact page={page} totalPages={totalPages} onChange={changePage} className="ml-auto" />
+              <Pagination compact page={page} totalPages={totalPages}
+                onChange={(p) => changePage(p, false)} className="ml-auto" />
             </div>
             {sessions.map((s, i) => {
               // Jahres-Trenner, sobald sich das Jahr ändert — und immer über
