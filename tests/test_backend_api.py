@@ -792,6 +792,99 @@ def test_feedback_ok_without_email_config(client):
     assert r.status_code == 200 and r.json()["ok"] is True
 
 
+# ---- Kontaktformular der Hilfe-Seite (öffentlich, Apple-Richtlinie 1.5) ----
+def _support_settings():
+    from types import SimpleNamespace
+    return SimpleNamespace(resend_api_key="x", feedback_email="ops@test.de",
+                           web_admin_email="admin@test.de", email_from="Ratslotse <f@x.de>")
+
+
+def test_support_kontakt_ohne_anmeldung(client):
+    """Der Kern der Übung: Wer sich NICHT anmelden kann, muss trotzdem schreiben
+    können — genau das verlangt Apple für die Support-URL."""
+    sent = {}
+
+    def fake_send(to, subject, html, **kw):
+        sent.update(to=to, subject=subject, reply_to=kw.get("reply_to"), text=kw.get("text"))
+        return "msg-id"
+
+    with patch("app.routers.feedback.send_email", side_effect=fake_send), \
+         patch("app.routers.feedback.get_settings", return_value=_support_settings()):
+        r = TestClient(app).post("/api/feedback/kontakt", json={
+            "kind": "konto", "email": "gast@example.org",
+            "message": "Ich komme nicht mehr in mein Konto.",
+        })
+    assert r.status_code == 202 and r.json()["ok"] is True
+    assert sent["to"] == "ops@test.de"
+    # Ohne Reply-To wäre die Anfrage unbeantwortbar — das ist der ganze Zweck.
+    assert sent["reply_to"] == "gast@example.org"
+    assert "Konto & Anmeldung" in sent["subject"]
+    assert "nicht mehr in mein Konto" in sent["text"]
+
+
+def test_support_kontakt_wird_gespeichert(client):
+    """Erst ablegen, dann mailen: Ein Resend-Aussetzer darf niemanden still
+    aussperren. Anonyme Anfragen tragen owner_id 0."""
+    with patch("app.routers.feedback.send_email", side_effect=RuntimeError("Resend down")), \
+         patch("app.routers.feedback.get_settings", return_value=_support_settings()):
+        r = TestClient(app).post("/api/feedback/kontakt", json={
+            "kind": "bug", "email": "gast@example.org", "message": "Die Karte lädt nicht.",
+        })
+    assert r.status_code == 202          # der Absender merkt vom Mail-Fehler nichts
+    store = Store(NWZ_DB)
+    try:
+        row = store.list_feedback()[0]
+        assert row["owner_id"] == 0 and row["email"] == "gast@example.org"
+        assert row["message"] == "Die Karte lädt nicht."
+    finally:
+        store.close()
+
+
+def test_support_kontakt_honigtopf(client):
+    """Gefülltes Honigtopf-Feld: nach außen wie ein Erfolg, real verworfen."""
+    with patch("app.routers.feedback.send_email", side_effect=AssertionError("darf nicht mailen")), \
+         patch("app.routers.feedback.get_settings", return_value=_support_settings()):
+        r = TestClient(app).post("/api/feedback/kontakt", json={
+            "kind": "other", "email": "bot@example.org",
+            "message": "Günstige Uhren kaufen", "website": "http://spam.example",
+        })
+    assert r.status_code == 202 and r.json()["ok"] is True
+    store = Store(NWZ_DB)
+    try:
+        assert store.list_feedback() == []
+    finally:
+        store.close()
+
+
+def test_support_kontakt_validierung():
+    c = TestClient(app)
+    # Ohne Adresse gäbe es keine Antwort — deshalb Pflichtfeld.
+    assert c.post("/api/feedback/kontakt",
+                  json={"kind": "konto", "message": "hallo welt"}).status_code == 422
+    assert c.post("/api/feedback/kontakt",
+                  json={"kind": "konto", "email": "keine-adresse", "message": "hallo welt"}).status_code == 422
+    assert c.post("/api/feedback/kontakt",
+                  json={"kind": "nope", "email": "a@b.de", "message": "hallo welt"}).status_code == 422
+    assert c.post("/api/feedback/kontakt",
+                  json={"kind": "bug", "email": "a@b.de", "message": "x"}).status_code == 422
+
+
+def test_support_kontakt_ohne_mail_konfiguration():
+    """Kein Resend-Key → trotzdem 202, und die Nachricht liegt im Admin-Panel."""
+    from types import SimpleNamespace
+    fake = SimpleNamespace(resend_api_key="", feedback_email="", web_admin_email="", email_from="")
+    with patch("app.routers.feedback.get_settings", return_value=fake):
+        r = TestClient(app).post("/api/feedback/kontakt", json={
+            "kind": "feature", "email": "gast@example.org", "message": "Bitte eine Karte für Radwege",
+        })
+    assert r.status_code == 202 and r.json()["ok"] is True
+    store = Store(NWZ_DB)
+    try:
+        assert store.list_feedback()[0]["email"] == "gast@example.org"
+    finally:
+        store.close()
+
+
 # ---- onboarding (serverseitiger Kurs-Fortschritt) ----
 def test_onboarding_requires_auth():
     assert TestClient(app).get("/api/onboarding").status_code == 401

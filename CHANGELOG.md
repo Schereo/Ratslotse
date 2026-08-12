@@ -27,6 +27,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Namen stehen in den Anwesenheitslisten derselben Protokolle. (#463)
 
 ### Neu
+- **Hilfe-Seite mit Kontaktformular.** Unter `/hilfe` steht jetzt ein
+  Kontaktformular, das ohne Anmeldung funktioniert — wichtig für alle, die
+  gerade nicht in ihr Konto kommen. Dazu Antworten auf die häufigsten Fragen
+  (Konto löschen, Passwort vergessen, Benachrichtigungen, falsche Angaben).
+  Verlinkt vom Anmelde-Bildschirm und aus dem Fuß der Navigation; zugleich die
+  Support-Adresse, die Apple für den App Store verlangt. (#463)
 - **Von der Antwort direkt auf die Stadtkarte.** Die Mini-Karte einer
   KI-Antwort führt jetzt mit „Auf der Stadtkarte öffnen" in die große Karte —
   vorgefiltert auf genau die Orte der zitierten Beschlüsse, sichtbar und

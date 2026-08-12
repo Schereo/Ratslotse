@@ -232,6 +232,8 @@ function RechtsLinks({ zentriert = false }: { zentriert?: boolean }) {
       "text-[11px] leading-relaxed text-muted-foreground/80",
       zentriert ? "border-t border-border/60 pt-2.5 text-center" : "px-3 pb-1 pt-2",
     )}>
+      <a href="/hilfe" className="hover:text-foreground">Hilfe</a>
+      {" · "}
       <a href="/impressum" className="hover:text-foreground">Impressum</a>
       {" · "}
       <a href="/datenschutz" className="hover:text-foreground">Datenschutz</a>

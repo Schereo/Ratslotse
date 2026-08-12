@@ -178,6 +178,19 @@ class FeedbackIn(BaseModel):
     message: str = Field(min_length=3, max_length=4000)
 
 
+class SupportIn(BaseModel):
+    """Kontaktformular auf /hilfe — bewusst ohne Konto absendbar. Apples
+    Richtlinie 1.5 verlangt einen Kontaktweg für *alle* Nutzer; der
+    Feedback-Dialog in der App hilft genau dem nicht, der sich nicht anmelden
+    kann. Die Adresse ist deshalb Pflicht: ohne sie gibt es keine Antwort."""
+    kind: str = Field(pattern="^(konto|bug|feature|other)$")
+    email: EmailStr
+    message: str = Field(min_length=3, max_length=4000)
+    # Honigtopf: für Menschen unsichtbar (off-screen + aria-hidden), einfache
+    # Formular-Bots füllen jedes Feld aus. Gefüllt ⇒ still verwerfen.
+    website: str = Field(default="", max_length=200)
+
+
 # ---- onboarding ----
 class OnboardingUpdate(BaseModel):
     """Fortschritts-Patch: erledigte Schritte (Whitelist im Router) und/oder

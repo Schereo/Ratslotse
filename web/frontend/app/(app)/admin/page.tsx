@@ -315,6 +315,10 @@ const FEEDBACK_KIND: Record<string, { label: string; cls: string }> = {
   feature: { label: "Feature-Vorschlag", cls: "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300" },
   bug: { label: "Fehler", cls: "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300" },
   other: { label: "Sonstiges", cls: "bg-muted text-muted-foreground" },
+  // Kommt nur über das Kontaktformular auf /hilfe herein — und meist von
+  // jemandem, der gerade nicht in sein Konto kommt. Deshalb Amber: dringlicher
+  // als ein Vorschlag, aber kein Fehlerrot.
+  konto: { label: "Konto & Anmeldung", cls: "bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300" },
 };
 
 /** Eingegangenes Nutzer-Feedback. Offene Einträge stehen optisch vorn und

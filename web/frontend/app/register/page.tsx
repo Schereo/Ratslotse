@@ -91,6 +91,8 @@ export default function RegisterPage() {
           Ratslotse ist ein privates Bürgerprojekt und kein Angebot der Stadt Oldenburg.
         </p>
         <p className="mt-2 text-center text-xs text-muted-foreground">
+          <Link href="/hilfe" className="hover:text-foreground hover:underline">Hilfe &amp; Kontakt</Link>
+          {" · "}
           <Link href="/impressum" className="hover:text-foreground hover:underline">Impressum</Link>
           {" · "}
           <Link href="/datenschutz" className="hover:text-foreground hover:underline">Datenschutz</Link>
