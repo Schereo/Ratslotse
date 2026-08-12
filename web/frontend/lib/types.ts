@@ -40,6 +40,9 @@ export interface AgendaItem {
   /** Dokument-Anhänge des TOP (RIS-PDFs) — ältere API-Antworten kennen das
    *  Feld nicht. */
   anlagen?: { label: string; url: string }[];
+  /** Ein Satz, worum es geht — dieselbe KI-Zusammenfassung wie in der
+   *  Tagesordnungs-Mail. Fehlt bei Routine-Punkten und alten Sitzungen. */
+  summary?: string | null;
 }
 
 export type DecisionOutcome =
