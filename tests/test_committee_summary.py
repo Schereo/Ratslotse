@@ -191,3 +191,51 @@ def test_item_summaries_roundtrip(tmp_path):
         assert store.agenda_items(7)[0]["summary"] is None
     finally:
         store.close()
+
+
+def test_grosse_tagesordnung_wird_in_tranchen_zerlegt(monkeypatch):
+    """Eine Ratssitzung mit 49 öffentlichen TOPs sprengte die Antwort
+    (29.06.2026: finish_reason=length, JSON mitten im Satz → gar keine
+    Zusammenfassung). Jetzt fragt der Code in Tranchen, jede Antwort bleibt
+    klein genug — und das Token-Budget wächst mit der Anzahl."""
+    from council.scraper import AgendaItem
+    items = [AgendaItem(item_number=f"Ö {n}", title=f"Punkt {n}", is_public=True)
+             for n in range(1, 50)]
+    aufrufe: list[int] = []
+
+    def _fake(**kw):
+        # Wie viele Punkte standen in DIESEM Prompt?
+        text = kw["messages"][-1]["content"]
+        anzahl = sum(1 for z in text.splitlines() if z.startswith("Ö "))
+        aufrufe.append(anzahl)
+        assert kw["max_tokens"] >= 400 + 130 * anzahl - 1, "Budget wächst nicht mit"
+        nummern = [z.split(":")[0].strip() for z in text.splitlines() if z.startswith("Ö ")]
+        return _llm_returning(json.dumps({
+            "has_content": True,
+            "items": [{"number": n, "summary": f"Zu {n}."} for n in nummern]}))()
+
+    monkeypatch.setattr(committee_summary.llm, "chat_complete", _fake)
+    punkte = committee_summary.summarize_agenda_items(
+        committee="Rat", session_date="2026-06-29", agenda_items=items)
+    assert len(punkte) == 49                      # kein Punkt geht verloren
+    assert len(aufrufe) == 3 and max(aufrufe) <= 20   # in handlichen Tranchen
+    assert punkte[0]["number"] == "Ö 1" and punkte[-1]["number"] == "Ö 49"
+
+
+def test_gescheiterte_tranche_macht_die_ganze_sitzung_unbrauchbar(monkeypatch):
+    """Lieber keine Zusammenfassung als eine, der stillschweigend die Hälfte
+    der Punkte fehlt — die Mail behauptete sonst Vollständigkeit."""
+    from council.scraper import AgendaItem
+    items = [AgendaItem(item_number=f"Ö {n}", title=f"Punkt {n}", is_public=True)
+             for n in range(1, 45)]
+    zaehler = {"n": 0}
+
+    def _fake(**kw):
+        zaehler["n"] += 1
+        text = "kein json" if zaehler["n"] > 2 else json.dumps({
+            "has_content": True, "items": [{"number": "Ö 1", "summary": "Text."}]})
+        return _llm_returning(text)()
+
+    monkeypatch.setattr(committee_summary.llm, "chat_complete", _fake)
+    assert committee_summary.summarize_agenda_items(
+        committee="Rat", session_date="2026-06-29", agenda_items=items) is None

@@ -78,17 +78,46 @@ def summarize_agenda(
         for p in punkte)
 
 
+# Ab hier wird eine Tagesordnung in Häppchen zerlegt. Grund: Eine Ratssitzung
+# mit 49 öffentlichen TOPs sprengte die Antwort (gemessen am 29.06.2026:
+# finish_reason=length, JSON mitten im Satz abgeschnitten → gar keine
+# Zusammenfassung). Kleinere Häppchen halten jede Antwort sicher im Rahmen.
+_MAX_TOPS_PRO_LAUF = 20
+
+
+def _budget(anzahl: int) -> int:
+    """Token-Budget nach Anzahl der Punkte — ein Satz je TOP braucht Platz."""
+    return min(4000, 400 + 130 * anzahl)
+
+
 def _analyse(committee: str, session_date: str,
              agenda_items: list[AgendaItem]) -> list[dict] | None:
     if not agenda_items:
         return []
 
     _fragestunde_keywords = ("einwohnerfragestunde", "bürgerfragestunde", "fragestunde")
+    relevant = [i for i in agenda_items
+                if i.is_public and not any(kw in i.title.lower() for kw in _fragestunde_keywords)]
+    if not relevant:
+        return []
+
+    # Große Tagesordnungen in Tranchen: Jede Teil-Antwort bleibt klein genug,
+    # um vollständig zu sein. Scheitert EINE Tranche, gilt die ganze Sitzung
+    # als unbrauchbar (None) — eine Mail mit stillschweigend fehlenden Punkten
+    # wäre schlimmer als eine ohne Zusammenfassung.
+    if len(relevant) > _MAX_TOPS_PRO_LAUF:
+        alle: list[dict] = []
+        for start in range(0, len(relevant), _MAX_TOPS_PRO_LAUF):
+            teil = _analyse(committee, session_date, relevant[start:start + _MAX_TOPS_PRO_LAUF])
+            if teil is None:
+                return None
+            alle.extend(teil)
+        gesehen = set()
+        return [p for p in alle if not (p["number"] in gesehen or gesehen.add(p["number"]))]
 
     items_text = "\n".join(
         f"{i.item_number}: {i.title}" + (f" [{i.vorlage_nr}]" if i.vorlage_nr else "")
-        for i in agenda_items
-        if i.is_public and not any(kw in i.title.lower() for kw in _fragestunde_keywords)
+        for i in relevant
     )
     if not items_text.strip():
         return []
@@ -109,7 +138,7 @@ def _analyse(committee: str, session_date: str,
                 {"role": "system", "content": system},
                 {"role": "user", "content": prompt},
             ],
-            max_tokens=1024,
+            max_tokens=_budget(len(relevant)),
             _feature="committee_summary",
         )
         content = (resp.choices[0].message.content or "").strip()
@@ -134,7 +163,7 @@ def _analyse(committee: str, session_date: str,
     # Nur Punkte, die es wirklich gibt: Das Modell erfindet gelegentlich eine
     # Nummer (siehe die Verifizierung im Watcher, #438) — hier reicht der
     # Abgleich gegen die echten Nummern.
-    echte = {" ".join(str(i.item_number).split()).upper() for i in agenda_items}
+    echte = {" ".join(str(i.item_number).split()).upper() for i in relevant}
     punkte: list[dict] = []
     for item in data["items"]:
         nummer = " ".join(str(item.get("number", "")).split()).upper()
