@@ -58,6 +58,16 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Namen stehen in den Anwesenheitslisten derselben Protokolle. (#463)
 
 ### Neu
+- **„Diese Woche im Rat" — die Vorschau auf die kommenden Sitzungen.** Auf
+  „Heute" steht jetzt, was in den nächsten Tagen in Rat und Ausschüssen
+  ansteht: bis zu fünf Punkte mit einem erklärenden Satz, dazu die Termine.
+  Ausgewählt wird nach Gewicht — was zur Entscheidung ansteht, zählt mehr als
+  ein Bericht zur Kenntnis; ein Fraktionsantrag mehr als eine
+  Verwaltungsvorlage; ein Dauerthema mehr als eine Einzelfrage.
+  Gremien-Personalien bleiben draußen. Gibt es nichts Nennenswertes, fällt die
+  Karte weg, statt eine leere Ausgabe zu behaupten.
+
+### Neu
 - **Von der Antwort direkt auf die Stadtkarte.** Die Mini-Karte einer
   KI-Antwort führt jetzt mit „Auf der Stadtkarte öffnen" in die große Karte —
   vorgefiltert auf genau die Orte der zitierten Beschlüsse, sichtbar und

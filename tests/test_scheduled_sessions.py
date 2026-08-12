@@ -118,3 +118,77 @@ def test_replace_scheduled_sessions_is_full_swap(tmp_path):
     store.replace_scheduled_sessions([_scheduled("Kulturausschuss", -3)])
     assert store.upcoming_sessions() == []
     store.close()
+
+
+# ---- „Diese Woche im Rat" als Vorschau (Design 11d/12, 12.08.26) ----------
+
+def _vorschau_store(tmp_path):
+    """Eine Sitzung nächste Woche mit gemischter Tagesordnung."""
+    store = CouncilStore(tmp_path / "v.sqlite")
+    with store._conn:
+        store._conn.execute(
+            "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, "
+            "location, fetched_at) VALUES (1, 'Umweltausschuss', date('now','+2 day'), "
+            "'17:00', '', datetime('now'))")
+        punkte = [
+            ("Ö 1", "Feststellung der Beschlussfähigkeit", None, None),
+            ("Ö 2", "Genehmigung des Protokolls Nr. 03/26", None, None),
+            ("Ö 3", "Umsetzung der Ratsbeschlüsse zum Fliegerhorst (FDP-Fraktion vom 28.07.2026)", "26/1", 100),
+            ("Ö 4", "Aktionswochen - Bericht", "26/2", 200),
+            ("Ö 5", "Änderung der Satzung des Jugendamtes - Beschluss", "26/3", 300),
+            ("Ö 6", "Berufung Beratendes Mitglied im Ausschuss", "26/4", 400),
+        ]
+        store._conn.executemany(
+            "INSERT INTO council_agenda_items (ksinr, item_number, title, vorlage_nr, kvonr, is_public) "
+            "VALUES (1, ?, ?, ?, ?, 1)", punkte)
+        store._conn.execute(
+            "INSERT INTO council_entities (id, slug, name, kind, n) "
+            "VALUES (1, 'fliegerhorst', 'Fliegerhorst', 'ort', 166)")
+        # Behandlungsart je Punkt aus der Beratungsfolge
+        store._conn.executemany(
+            "INSERT INTO council_beratungen (kvonr, datum, gremium, ergebnis, fetched_at) "
+            "VALUES (?, date('now','+2 day'), 'Umweltausschuss', ?, datetime('now'))",
+            [(200, "Kenntnisnahme"), (300, "Entscheidung"), (400, "Entscheidung")])
+    return store
+
+
+def test_wochenvorschau_waehlt_nach_wichtigkeit(tmp_path):
+    """Die Karte trägt fünf Zeilen, die Woche bringt gut dreißig inhaltliche
+    Punkte — „hat eine Kurzfassung" ist als Auswahl zu wenig (Tims Befund
+    12.08.). Gewichtet wird nach amtlicher Behandlungsart, Fraktionsantrag und
+    Themen-Gewicht; Gremien-Personalien werden gedämpft."""
+    store = _vorschau_store(tmp_path)
+    try:
+        d = store.wochenvorschau(max_punkte=99)
+        titel = [p["title"][:30] for p in d["punkte"]]
+        # Formalien fliegen raus.
+        assert not any("Beschlussfähigkeit" in t for t in titel)
+        assert not any("Genehmigung des Protokolls" in t for t in titel)
+
+        rang = {p["title"][:12]: p["rang"] for p in d["punkte"]}
+        # Fraktionsantrag zu einem großen Thema schlägt die reine Entscheidung.
+        assert rang["Umsetzung de"] > rang["Änderung der"]
+        # Unter der Schwelle bleiben draußen: der reine Kenntnisnahme-Bericht
+        # und die Gremien-Personalie (formal „Entscheidung", aber Routine).
+        assert not any("Aktionswochen" in t for t in titel)
+        assert not any("Berufung" in t for t in titel)
+        # Ohne die Dämpfung stünde die Personalie gleichauf mit der Satzung —
+        # das war der Befund, der die Dämpfung ausgelöst hat.
+        roh = [{"title": "Berufung Beratendes Mitglied im Ausschuss",
+                "behandlung": "Entscheidung", "vorgeschichte": 0,
+                "summary": None, "vorlage_nr": "26/4"}]
+        store._punkte_bewerten(roh)
+        assert roh[0]["rang"] < store.RANG_MINDEST
+    finally:
+        store.close()
+
+
+def test_wochenvorschau_ohne_sitzungen_ist_ehrlich_leer(tmp_path):
+    """Sommerpause: keine Sitzung, keine Ausgabe — die Karte fällt weg, statt
+    einen Leerzustand zu zeigen."""
+    store = CouncilStore(tmp_path / "leer.sqlite")
+    try:
+        d = store.wochenvorschau()
+        assert d["found"] is False and d["punkte"] == [] and d["sitzungen"] == []
+    finally:
+        store.close()

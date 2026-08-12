@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Sparkles, ArrowRight, Check, Play } from "lucide-react";
+import { Sparkles, ArrowRight, Check, Play, CalendarDays } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { DecisionOutcome, Topic } from "@/lib/types";
@@ -40,6 +40,18 @@ type DieseWoche =
   | { found: false }
   | { found: true; decision_id: number; title: string; outcome: DecisionOutcome;
       committee: string; session_date: string; interest_reason: string };
+/** „Diese Woche im Rat" (Design 11d/12) — die Vorschau auf die kommenden
+ *  Sitzungen. Bewusst nach VORN gerichtet: Beschlüsse erreichen uns erst mit
+ *  dem Protokoll, im Median 119 Tage nach der Sitzung; Tagesordnungen liegen
+ *  dagegen vorher vor. */
+type Wochenvorschau = {
+  found: boolean; von: string; bis: string; inhaltlich_gesamt?: number;
+  sitzungen: { ksinr: number | null; committee: string; session_date: string;
+    session_time: string | null; n_items: number }[];
+  punkte: { ksinr: number; item_number: string; title: string; summary: string | null;
+    vorlage_nr: string | null; kvonr: number | null;
+    committee: string; session_date: string }[];
+};
 type ZahlDerWoche =
   | { kind: "betrag"; amount_eur: number; decision_id: number; title: string; session_date: string; window_days: number }
   | { kind: "anzahl"; count: number; window_days: number };
@@ -49,6 +61,14 @@ type ZahlDerWoche =
  *  dieselben Beschlüsse zeigt wie die Zahl auf der Karte. */
 const lastWeekIso = (days: number) =>
   new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+
+/** Kopfzeile der Wochen-Ausgabe: „12.–19. AUGUST" (Design 11d). */
+const ausgabeZeitraum = (von: string, bis: string) => {
+  const a = new Date(von + "T12:00:00");
+  const b = new Date(bis + "T12:00:00");
+  const monat = b.toLocaleDateString("de-DE", { month: "long" }).toUpperCase();
+  return `${a.getDate()}.–${b.getDate()}. ${monat}`;
+};
 
 const fmtDay = (iso: string) =>
   new Date(iso + "T12:00:00").toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" });
@@ -108,6 +128,15 @@ export default function DashboardPage() {
     staleTime: 60 * 60 * 1000,
   });
   const woche = wocheQuery.data?.found ? wocheQuery.data : null;
+  // Die Wochen-Ausgabe steht VOR dem Einzel-Beschluss: Sie ist aktuell, wo der
+  // Rückblick systematisch alt ist. Nur laden, wenn die Karte sie zeigen würde.
+  const vorschauQuery = useQuery({
+    queryKey: ["wochenvorschau"],
+    queryFn: () => api.get<Wochenvorschau>("/council/wochenvorschau"),
+    enabled: !hitsQuery.isLoading && hits.length === 0,
+    staleTime: 60 * 60 * 1000,
+  });
+  const vorschau = vorschauQuery.data?.found ? vorschauQuery.data : null;
 
   const sessions = sessionsQuery.data?.sessions ?? [];
   const zahl = zahlQuery.data;
@@ -201,9 +230,16 @@ export default function DashboardPage() {
 
         {/* Neu zu deinen Themen */}
         <Card className="flex flex-col p-5">
-          <h2 className="font-display text-base font-bold text-foreground">
-            {woche && hits.length === 0 ? "Diese Woche im Rat" : "Neu zu deinen Themen"}
-          </h2>
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="font-display text-base font-bold text-foreground">
+              {(vorschau || woche) && hits.length === 0 ? "Diese Woche im Rat" : "Neu zu deinen Themen"}
+            </h2>
+            {vorschau && hits.length === 0 && (
+              <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+                {ausgabeZeitraum(vorschau.von, vorschau.bis)}
+              </span>
+            )}
+          </div>
           <div className="mt-3 flex-1 space-y-2">
             {hits.map((h) => (
               <Link key={h.id} href={decisionHref(h.id)} className="block rounded-lg px-2 py-2 transition-colors hover:bg-accent">
@@ -216,7 +252,36 @@ export default function DashboardPage() {
                 </p>
               </Link>
             ))}
-            {!hitsQuery.isLoading && hits.length === 0 && topicCount > 0 && (
+            {/* Die Ausgabe: was in den nächsten Tagen ansteht. Sie zeigt sich
+                auch OHNE eigene Themen — sie braucht keine (Design 12). */}
+            {!hitsQuery.isLoading && hits.length === 0 && vorschau && (
+              <>
+                <div className="space-y-2">
+                  {vorschau.punkte.map((p) => (
+                    <Link key={`${p.ksinr}-${p.item_number}`}
+                      href={`/council?tab=sessions&ksinr=${p.ksinr}`}
+                      className="block rounded-lg px-2 py-2 transition-colors hover:bg-accent">
+                      <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <CalendarDays className="h-3 w-3 shrink-0" aria-hidden />
+                        {shortCommittee(p.committee)} · {fmtTermin(p.session_date, heute)}
+                      </span>
+                      <p className="mt-1 line-clamp-2 text-sm font-medium text-foreground">{p.title}</p>
+                      {p.summary && (
+                        <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                          {p.summary}
+                        </p>
+                      )}
+                    </Link>
+                  ))}
+                </div>
+                {/* Ehrlich zur Blickrichtung: Das sind Tagesordnungen, keine
+                    Beschlüsse — entschieden wird erst in der Sitzung. */}
+                <p className="px-2 pt-1 text-[11px] leading-relaxed text-muted-foreground/70">
+                  Steht auf der Tagesordnung — entschieden wird in der Sitzung.
+                </p>
+              </>
+            )}
+            {!hitsQuery.isLoading && hits.length === 0 && !vorschau && topicCount > 0 && (
               woche ? (
                 /* RL-U15 (13a-A): der interessanteste Beschluss der Woche statt
                    des leeren Texts — „Warum spannend" ist wörtlich der
@@ -254,7 +319,11 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
-          {topicCount > 0 && (
+          {vorschau && hits.length === 0 ? (
+            <Link href="/council?tab=sessions" className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
+              {vorschau.sitzungen.length === 1 ? "Die Sitzung" : `Alle ${vorschau.sitzungen.length} Sitzungen`} <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          ) : topicCount > 0 && (
             <Link href="/topics" className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
               Meine Themen <ArrowRight className="h-3.5 w-3.5" />
             </Link>
