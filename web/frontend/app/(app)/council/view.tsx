@@ -27,7 +27,8 @@ import { SitzungspauseBanner } from "@/components/sitzungspause-banner";
 import { AnalysisTab } from "@/components/council-analysis";
 import { EntitiesTab } from "@/components/council-entities";
 import { QaTab } from "@/components/council-qa";
-import { cn } from "@/lib/utils";
+import { cn, relativerTag } from "@/lib/utils";
+import { useHeute } from "@/lib/use-heute";
 
 type Scope = "all" | "upcoming" | "recent";
 type Tab = "sessions" | "decisions" | "themen" | "analysis";
@@ -943,6 +944,7 @@ function AttendanceSection({ detail }: { detail: SessionDetail }) {
 }
 
 function SessionsTab({ committees }: { committees: string[] }) {
+  const heute = useHeute();
   const [q, setQ] = useState("");
   const [committee, setCommittee] = useState("");
   // RL-F06: ?ksinr=… (Deep-Link von „Heute") — Sitzung aufklappen, sanft
@@ -1264,7 +1266,14 @@ function SessionsTab({ committees }: { committees: string[] }) {
                       <DateTile iso={s.session_date} />
                       <div className="min-w-0">
                         <CommitteeName name={s.committee} className="font-display text-base font-bold text-foreground" />
-                        <p className="mt-0.5 truncate text-sm text-muted-foreground">{s.session_time} Uhr{s.location && ` · ${s.location}`}</p>
+                        {/* „Morgen · 17:00 Uhr" statt nur der Uhrzeit — die
+                            Kachel links nennt den Tag, der Kopf benennt die
+                            Nähe (Tims Wunsch 12.08.). */}
+                        <p className="mt-0.5 truncate text-sm text-muted-foreground">
+                          {(() => { const r = relativerTag(s.session_date, heute);
+                            return r ? `${r[0].toUpperCase()}${r.slice(1)} · ` : ""; })()}
+                          {s.session_time} Uhr{s.location && ` · ${s.location}`}
+                        </p>
                       </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">

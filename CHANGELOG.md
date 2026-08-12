@@ -7,6 +7,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Verbessert
+- **„Morgen" statt „Do., 13.08."** Sitzungen, die heute, morgen oder gestern
+  sind, sagen das jetzt auch — im Dashboard und in der Sitzungsliste, das
+  genaue Datum bleibt an der Kachel bzw. als Titel. Die Angabe kommt vom
+  Gerät und stimmt auch, wenn die App über Mitternacht offen bleibt. (#445)
+
 ### Neu
 - **Zusagen der Verwaltung werden sichtbar.** „Die Verwaltung sagt zu, den
   Zeitplan vorzulegen" — solche Selbstverpflichtungen stehen in den
