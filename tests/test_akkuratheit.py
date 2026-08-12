@@ -278,3 +278,29 @@ def test_kommende_beratungen_matcht_auf_wortgrenzen(tmp_path):
         assert len(store.kommende_beratungen(["kompensation"])) == 1
     finally:
         store.close()
+
+
+def test_steckbrief_karte_nur_wenn_die_antwort_sie_nicht_wiederholt():
+    """Tims Befund 12.08.: Bei „Was ist die GSG?" las sich Steckbrief und
+    Antwort doppelt. Zwei Wege halfen gemessen NICHT — das Modell bitten
+    umzulenken (Überlappung 45 % → 44 %) und das „Kurz gesagt" streichen (die
+    Definition rutschte in den ersten Satz, 79 % Überlappung). Also die KARTE
+    weglassen; der Hintergrund bleibt im Prompt.
+
+    Nur bei echten Definitionsfragen: Bei der Cäcilienbrücke ergänzen sich
+    beide Blöcke — das war Tims ausdrückliches Lob."""
+    assert qa.steckbrief_karte_zeigen("Was ist die GSG und was macht sie?") is False
+    assert qa.steckbrief_karte_zeigen("Wer ist der Oberbürgermeister?") is False
+    assert qa.steckbrief_karte_zeigen("Was macht die GSG?") is False
+    # Sachstand und eigene Prädikate: Karte bleibt.
+    assert qa.steckbrief_karte_zeigen("Wie ist der Stand bei der Cäcilienbrücke?") is True
+    assert qa.steckbrief_karte_zeigen("Was ist beim Fliegerhorst geplant?") is True
+    assert qa.steckbrief_karte_zeigen("Was ist zum Stadion beschlossen worden?") is True
+    assert qa.steckbrief_karte_zeigen("Was kostet der Neubau?") is True
+
+    # Der Hintergrund bleibt in JEDEM Fall im Prompt — er macht die Antwort besser.
+    sb = [{"name": "GSG", "slug": "gsg", "description": "Kommunale Wohnungsgesellschaft."}]
+    messages, _ = qa._answer_messages("Was ist die GSG?", [{"id": 1, "title": "T"}],
+                                      gross=True, steckbriefe=sb)
+    assert "HINTERGRUND" in messages[0]["content"]
+    assert "**Kurz gesagt:**" in messages[0]["content"]   # Fazit bleibt unberührt

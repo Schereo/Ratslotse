@@ -1478,9 +1478,13 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         "debatten": _debatten_kompakt(debatten_rows),
                         "planungen": planungen,
                         "beleglage": lage,
+                        # Der Hintergrund geht IMMER in die Antwort; als eigene
+                        # Karte erscheint er nur, wenn die Antwort ihn nicht
+                        # ohnehin wiederholt (Definitionsfragen, Tims Befund).
                         "steckbriefe": [{"name": s["name"], "slug": s["slug"],
                                          "beschreibung": s["description"]}
-                                        for s in steckbriefe]})
+                                        for s in steckbriefe]
+                        if qa.steckbrief_karte_zeigen(q_suche) else []})
             yield _sse({"type": "step", "step": "answer"})
             if not candidates:
                 leer_text = "Dazu habe ich keine passenden Beschlüsse gefunden."
