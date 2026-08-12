@@ -256,3 +256,32 @@ def test_personen_lexikon_rat_verwaltung_und_zeitlichkeit(tmp_path):
         assert niessen["rolle"] == "Stadtbaurätin" and niessen["aktiv"] is False
     finally:
         store.close()
+
+
+def test_personen_lexikon_blocker_fuer_gaeste(tmp_path):
+    """Tims Oltmanns-Befund 12.08.: Ein Gast-Namensvetter (Wasserstraßen-Amt)
+    muss den kahlen Nachnamen mehrdeutig machen — als blocker-Eintrag ohne
+    Badge-Daten, damit das Frontend lieber gar kein Badge zeigt."""
+    from datetime import date, timedelta
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        frisch = (date.today() - timedelta(days=30)).isoformat()
+        with store._conn:
+            store._conn.execute(
+                "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, "
+                "location, fetched_at) VALUES (1, 'Rat', ?, '', '', datetime('now'))", (frisch,))
+            store._conn.executemany(
+                "INSERT INTO council_attendance (ksinr, name, party, role, note) "
+                "VALUES (1, ?, ?, ?, NULL)",
+                [("Mara-Marciel Oltmanns", "NABU", "mitglied"),
+                 ("Rüdiger Oltmanns", "Wasserstraßen- und Schifffahrtsamt", "gast"),
+                 ("Herr Oltmanns", None, "gast")])
+        lex = store.personen_lexikon()
+        oltmanns = [p for p in lex if p["nachname"] == "oltmanns"]
+        arten = sorted(p["art"] for p in oltmanns)
+        # Rats-Eintrag + mindestens ein Blocker → kahler Nachname ist mehrdeutig.
+        assert "rat" in arten and "blocker" in arten and len(oltmanns) >= 2
+        blocker = [p for p in oltmanns if p["art"] == "blocker"]
+        assert all(p["name"] is None for p in blocker)
+    finally:
+        store.close()

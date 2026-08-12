@@ -3036,6 +3036,7 @@ class CouncilStore:
         for sl, e in g.items():
             if sl in gesehen:  # Ratsmandat gewinnt über Gast-Auftritte der Verwaltung
                 continue
+            gesehen.add(sl)
             anzeige = self._person_anzeige(e["names"].most_common(1)[0][0])
             vor, nach = namensteile(anzeige)
             if not nach:
@@ -3048,6 +3049,25 @@ class CouncilStore:
                 "von": (e["first"] or "")[:4] or None,
                 "bis": (e["last"] or "")[:4] or None,
             })
+
+        # Blocker (Tims Oltmanns-Befund 12.08.): Gäste, Protokollführung und
+        # beratende Mitglieder bekommen NIE ein Badge — aber ihr Nachname macht
+        # einen kahlen Nachnamen im Text MEHRDEUTIG. „Herr Oltmanns" (Gast vom
+        # Wasserstraßen-Amt, 2019) trug sonst das Badge des einzigen
+        # Lexikon-Oltmanns — eines beratenden NABU-Mitglieds von 2026.
+        for (name,) in self._conn.execute(
+                "SELECT DISTINCT name FROM council_attendance "
+                "WHERE role NOT IN ('mitglied','vorsitz','verwaltung') "
+                "AND name IS NOT NULL AND name != ''"):
+            sl = self._person_slug(name)
+            if not sl or sl in gesehen:
+                continue
+            gesehen.add(sl)
+            _, nach = namensteile(self._person_anzeige(name))
+            if nach:
+                out.append({"slug": sl, "name": None, "vorname": "", "nachname": nach,
+                            "art": "blocker", "partei": None, "rolle": None,
+                            "aktiv": False, "von": None, "bis": None})
         return out
 
     def personen_suchindex(self) -> list[tuple[str, str]]:

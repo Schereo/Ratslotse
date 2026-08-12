@@ -7,6 +7,14 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Behoben
+- **Personen-Badges verwechseln keine Namensvettern mehr.** Ein Gast im
+  Ausschuss (etwa vom Wasserstraßen-Amt) trug im Text das Badge eines
+  gleichnamigen Gremienmitglieds. Gäste, Protokollführung und beratende
+  Mitglieder machen den kahlen Nachnamen jetzt mehrdeutig — und bei
+  Mehrdeutigkeit entscheidet nur noch ein Vorname im Text, sonst gibt es
+  gar kein Badge. (#437)
+
 ### Neu
 - **Kleine Zugehörigkeits-Badges hinter Personennamen in KI-Antworten.**
   Erwähnt eine Antwort ein Ratsmitglied, steht bei der ersten Nennung ein
