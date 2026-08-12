@@ -2963,6 +2963,93 @@ class CouncilStore:
 
     # --- Personen-Paket (10.08.26): Stammdaten für Auflösung + Fragetyp -----
 
+    # Vertretungs- und Zeit-Notizen sind keine Ämter („Für Oberbürgermeister
+    # Krogmann", „bis TOP 8.2") — nur echte Amtsbezeichnungen zählen.
+    _ROLLEN_RE = re.compile(
+        r"(?i)^(erste[rn]?\s+)?(oberbürgermeister(in)?|stadtkämmer(er|in)|"
+        r"stadtbaur(at|ätin)|stadtr(at|ätin))$")
+
+    def personen_lexikon(self) -> list[dict]:
+        """Das Personen-Lexikon für die Badges im Antwort-Text (Tims Wunsch
+        12.08.): Ratsmitglieder aus dem Verzeichnis (Partei, Zeitraum,
+        Personen-Seite) plus Verwaltungsleute aus den Anwesenheitslisten —
+        deren Amt kommt aus den Protokoll-Notizen selbst („Stadtkämmerin",
+        „Oberbürgermeister"), nicht aus Weltwissen. `aktiv` heißt: in den
+        letzten zwölf Monaten in einer Anwesenheitsliste — dieselbe
+        selbstheilende Regel wie bei der Parteien-Zeile; Ehemalige zeigen
+        ehrlich nur den belegten Zeitraum."""
+        from collections import Counter, defaultdict
+        from datetime import date, timedelta
+        stichtag = (date.today() - timedelta(days=365)).isoformat()
+
+        def falte(t: str) -> str:
+            t = t.lower()
+            for a, b in (("ä", "ae"), ("ö", "oe"), ("ü", "ue"), ("ß", "ss")):
+                t = t.replace(a, b)
+            return t
+
+        def namensteile(anzeige: str) -> tuple[str, str]:
+            """(vorname_gefaltet, nachname_gefaltet) — Nachname ist das letzte
+            Token (Bindestrich-Namen sind EIN Token), Titel zählen nicht als
+            Vorname."""
+            toks = [t for t in anzeige.replace(".", " ").split()
+                    if t.lower().rstrip(".") not in self._HONORIFICS]
+            if not toks:
+                return "", ""
+            return falte(toks[0]) if len(toks) > 1 else "", falte(toks[-1])
+
+        out: list[dict] = []
+        gesehen: set[str] = set()
+        for m in self.list_members():
+            vor, nach = namensteile(m["name"])
+            if not nach:
+                continue
+            gesehen.add(m["slug"])
+            out.append({
+                "slug": m["slug"], "name": m["name"], "vorname": vor,
+                "nachname": nach, "art": "rat", "partei": m["party"],
+                "rolle": None,
+                "aktiv": bool(m["last"] and m["last"] >= stichtag),
+                "von": (m["first"] or "")[:4] or None,
+                "bis": (m["last"] or "")[:4] or None,
+            })
+
+        rows = self._conn.execute(
+            """SELECT a.name, a.note, cs.session_date
+               FROM council_attendance a JOIN council_sessions cs ON cs.ksinr = a.ksinr
+               WHERE a.role = 'verwaltung' AND a.name IS NOT NULL AND a.name != ''"""
+        ).fetchall()
+        g: dict = defaultdict(lambda: {"names": Counter(), "rollen": Counter(),
+                                       "first": None, "last": None})
+        for r in rows:
+            sl = self._person_slug(r["name"])
+            if not sl:
+                continue
+            e = g[sl]
+            e["names"][r["name"]] += 1
+            note = " ".join((r["note"] or "").split())
+            if note and self._ROLLEN_RE.match(note):
+                e["rollen"][note] += 1
+            d = r["session_date"]
+            e["first"] = d if e["first"] is None else min(e["first"], d)
+            e["last"] = d if e["last"] is None else max(e["last"], d)
+        for sl, e in g.items():
+            if sl in gesehen:  # Ratsmandat gewinnt über Gast-Auftritte der Verwaltung
+                continue
+            anzeige = self._person_anzeige(e["names"].most_common(1)[0][0])
+            vor, nach = namensteile(anzeige)
+            if not nach:
+                continue
+            out.append({
+                "slug": sl, "name": anzeige, "vorname": vor, "nachname": nach,
+                "art": "stadt", "partei": None,
+                "rolle": e["rollen"].most_common(1)[0][0] if e["rollen"] else None,
+                "aktiv": bool(e["last"] and e["last"] >= stichtag),
+                "von": (e["first"] or "")[:4] or None,
+                "bis": (e["last"] or "")[:4] or None,
+            })
+        return out
+
     def personen_suchindex(self) -> list[tuple[str, str]]:
         """(Name, Partei) aller Ratspersonen mit bekannter Fraktion — Grundlage
         für die FDP/Volt-Auflösung und den Personen-Fragetyp. Die Stammdaten
