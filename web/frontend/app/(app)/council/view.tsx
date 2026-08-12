@@ -6,7 +6,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Search, ExternalLink, ChevronDown, ChevronRight, Scale, SlidersHorizontal, Users, Sparkles, Split, X, Flame, History, CalendarPlus, Paperclip } from "lucide-react";
 import { api, qs, ApiError } from "@/lib/api";
-import { decisionHref } from "@/lib/routes";
+import { fragenHref, decisionHref } from "@/lib/routes";
 import { useDebounce } from "@/lib/use-debounce";
 import { clearRecentSearches, getRecentSearches, pushRecentSearch } from "@/lib/recent-searches";
 import { offerIcs } from "@/lib/ics";
@@ -26,7 +26,6 @@ import { ChipPopover, DateRangeChip } from "@/components/filter-chips";
 import { SitzungspauseBanner } from "@/components/sitzungspause-banner";
 import { AnalysisTab } from "@/components/council-analysis";
 import { EntitiesTab } from "@/components/council-entities";
-import { QaTab } from "@/components/council-qa";
 import { cn, relativerTag } from "@/lib/utils";
 import { useHeute } from "@/lib/use-heute";
 import { useMerker } from "@/lib/use-merker";
@@ -160,11 +159,7 @@ function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
   const dazuFragen = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const params = new URLSearchParams(sp.toString());
-    params.set("tab", "decisions");
-    params.set("mode", "fragen");
-    params.set("q", `Erzähl mir mehr zu „${d.title ?? ""}".`);
-    router.replace(`/council?${params.toString()}`, { scroll: false });
+    router.push(fragenHref({ q: `Erzähl mir mehr zu „${d.title ?? ""}".` }));
   };
   return (
     <Link href={decisionHref(d.id)} className="block">
@@ -763,13 +758,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
               <Button
                 variant="signal"
                 size="sm"
-                onClick={() => {
-                  const params = new URLSearchParams(sp.toString());
-                  params.set("tab", "decisions");
-                  params.set("mode", "fragen");
-                  if (query) params.set("q", query);
-                  router.replace(`/council?${params.toString()}`, { scroll: false });
-                }}
+                onClick={() => router.push(fragenHref(query ? { q: query } : undefined))}
               >
                 <Sparkles /> Frag den Rat
               </Button>
@@ -1399,102 +1388,25 @@ function SessionsTab({ committees }: { committees: string[] }) {
   );
 }
 
-// The combined "Suche" tab: keyword search (DecisionsTab) and the AI question mode
-// (QaTab) as two lenses on the same decisions, switched by ?mode. Both render the
-// same decision cards, so it reads as one search rather than two features.
-function SearchTab({ committees }: { committees: string[] }) {
-  const sp = useSearchParams();
-  const mode: "suchen" | "fragen" = sp.get("mode") === "fragen" ? "fragen" : "suchen";
-  // RL-U01: Beide Modi bleiben gemountet und werden per `hidden` getauscht —
-  // eine gestreamte KI-Antwort überlebt so den Wechsel zu „Suchen" und zurück
-  // (Nutzer vergleichen genau so). Abbruch des Streams erst beim Unmount der
-  // Seite. Scroll-Position je Modus merken: der Scroll-Container ist #main.
-  const prevMode = useRef(mode);
-  const scrollPos = useRef<Record<"suchen" | "fragen", number>>({ suchen: 0, fragen: 0 });
-  useEffect(() => {
-    if (prevMode.current === mode) return;
-    const scroller = document.getElementById("main");
-    scrollPos.current[prevMode.current] = scroller?.scrollTop ?? 0;
-    prevMode.current = mode;
-    requestAnimationFrame(() => {
-      if (scroller) scroller.scrollTop = scrollPos.current[mode] ?? 0;
-    });
-  }, [mode]);
-  // Umschalter lebt jetzt im Seitenkopf (RL-501, 6a) — die Tabs rendern ohne.
+/** Brücke in die Fragen-Seite (Split 12.08.): ersetzt den früheren
+ *  Suchen/Fragen-Umschalter im Seitenkopf. QaTab, Gespräche-Knopf und der
+ *  Modus-Scroll-Tausch sind mit auf die eigene Seite /fragen umgezogen —
+ *  Fragen ist das Headliner-Feature und wohnt nicht mehr als Modus in der
+ *  Suche. */
+function FragenBruecke() {
   return (
-    <>
-      <div hidden={mode !== "suchen"}>
-        <DecisionsTab committees={committees} />
-      </div>
-      <div hidden={mode !== "fragen"}>
-        <QaTab />
-      </div>
-    </>
-  );
-}
-
-/** History-Knopf oben rechts im Seitenkopf (Tims TestFlight-Feedback 11.08.):
- *  öffnet das mobile Gespräche-Sheet. Sichtbarkeit und Tap laufen über
- *  Fenster-Events, weil der Gesprächs-State im Ratsgespräch lebt — der Knopf
- *  erscheint nur, wenn es dort etwas zu zeigen gibt. Nur mobil; Desktop hat
- *  seine Knöpfe im Bühnen-Kopf. */
-function GespraecheHeaderButton() {
-  const sp = useSearchParams();
-  const [sichtbar, setSichtbar] = useState(false);
-  useEffect(() => {
-    const auf = (e: Event) => setSichtbar(!!(e as CustomEvent).detail?.sichtbar);
-    window.addEventListener("rl:gespraeche-status", auf);
-    return () => window.removeEventListener("rl:gespraeche-status", auf);
-  }, []);
-  if (sp.get("mode") !== "fragen" || !sichtbar) return null;
-  return (
-    <button
-      type="button"
-      onClick={() => window.dispatchEvent(new CustomEvent("rl:gespraeche-oeffnen"))}
-      aria-label="Meine Gespräche öffnen"
-      title="Meine Gespräche"
-      className="inline-flex h-9 w-9 items-center justify-center rounded-[10px] border border-border bg-card text-muted-foreground shadow-sm transition-colors active:bg-muted sm:w-auto sm:gap-1.5 sm:px-2.5 md:hidden"
-    >
-      <History className="h-4 w-4" aria-hidden />
-      {/* Tims Nachschlag: Wo Platz ist, sagt der Knopf, was er ist. */}
-      <span className="hidden text-xs font-medium sm:inline">Gespräche</span>
-    </button>
-  );
-}
-
-/** „Suchen | KI-Frage"-Umschalter im Seitenkopf (RL-501); qa-glint-Lockruf
- *  bleibt, bis die erste Frage gestellt wurde (Flag setzt council-qa). */
-function SearchModeToggle() {
-  const sp = useSearchParams();
-  const router = useRouter();
-  const mode: "suchen" | "fragen" = sp.get("mode") === "fragen" ? "fragen" : "suchen";
-  const [qaUsed, setQaUsed] = useState(true);
-  useEffect(() => {
-    setQaUsed(localStorage.getItem("ratslotse:qa-benutzt") === "1");
-  }, [mode]);
-  const setMode = (m: "suchen" | "fragen") => {
-    const params = new URLSearchParams(sp.toString());
-    params.set("tab", "decisions");
-    if (m === "suchen") params.delete("mode"); else params.set("mode", m);
-    router.replace(`/council?${params.toString()}`, { scroll: false });
-  };
-  return (
-    <Segmented
-      className="sm:w-fit"
-      value={mode}
-      onChange={setMode}
-      options={[
-        { value: "suchen", label: "Suchen", icon: Search },
-        { value: "fragen", label: "Fragen", icon: Sparkles, tour: "ki-frage-tab", sparkle: !qaUsed },
-      ]}
-    />
+    <Button asChild variant="signal" size="sm">
+      <Link href={fragenHref()}>
+        <Sparkles /> Fragen
+      </Link>
+    </Button>
   );
 }
 
 // Navigation between these views now lives in the left sidebar (Ratsinfo section),
 // so the page only needs a per-view title/description instead of an in-page tab bar.
 const TAB_META: Record<Tab, { title: string; description: string }> = {
-  decisions: { title: "Suchen & Fragen", description: "Beschlüsse durchsuchen oder dem Rat eine Frage stellen." },
+  decisions: { title: "Suche", description: "Beschlüsse des Stadtrats durchsuchen — nach Stichwort, Ausschuss, Ergebnis und Zeitraum." },
   sessions: { title: "Sitzungen", description: "Sitzungen und Tagesordnungen von Rat und Ausschüssen." },
   themen: { title: "Themen", description: "Was den Rat wo beschäftigt — auf der Stadtkarte und als Liste." },
   analysis: { title: "Analyse", description: "Parteien, Personen, Finanzen, Trends und Ziele im Überblick." },
@@ -1513,18 +1425,32 @@ function CouncilInner() {
     : "decisions";
   const [committees, setCommittees] = useState<string[]>([]);
 
-  // Keep old standalone-tab links working by redirecting them to their new home.
+  // Keep old links working by redirecting them to their new home. Seit dem
+  // Split (12.08.) gilt das vor allem für den früheren Fragen-Modus: Links
+  // aus Mails, Push, geteilten Snapshots und Lesezeichen tragen
+  // ?mode=fragen (bzw. das ältere tab=ask) — sie landen auf /fragen, die
+  // Fracht (q, share) reist mit.
+  const umleitungZuFragen = searchParams.get("mode") === "fragen" || param === "ask";
   useEffect(() => {
-    if (param === "ask") router.replace("/council?tab=decisions&mode=fragen", { scroll: false });
+    if (umleitungZuFragen) {
+      const q = searchParams.get("q") ?? undefined;
+      const share = searchParams.get("share") ?? undefined;
+      router.replace(fragenHref({ q, share }), { scroll: false });
+    }
     else if (param === "goals") router.replace("/council?tab=analysis&sub=ziele", { scroll: false });
     else if (param === "trends") router.replace("/council?tab=analysis&sub=trends", { scroll: false });
-  }, [param, router]);
+  }, [umleitungZuFragen, param, searchParams, router]);
 
   useEffect(() => {
     api.get<{ committees: string[] }>("/council/committees").then((d) => setCommittees(d.committees)).catch(() => {});
   }, []);
 
   const meta = TAB_META[tab];
+  // Während der Umleitung nichts rendern: Die Suche synchronisiert ihre
+  // Filter in die URL und überschrieb sonst den Alt-Link, BEVOR der
+  // Redirect lief — q und share (Composer-Vorbefüllung, geteilte Antwort)
+  // gingen dabei verloren (im Browser gemessen, nicht geraten).
+  if (umleitungZuFragen) return null;
   return (
     <div>
       {/* Design 9a: Die mobile Ansichtsleiste (28a/S3) ist wieder weg — ihre
@@ -1534,14 +1460,9 @@ function CouncilInner() {
       <PageHeader
         title={meta.title}
         description={meta.description}
-        action={tab === "decisions" ? (
-          <div className="flex items-center gap-2">
-            <SearchModeToggle />
-            <GespraecheHeaderButton />
-          </div>
-        ) : undefined}
+        action={tab === "decisions" ? <FragenBruecke /> : undefined}
       />
-      {tab === "decisions" ? <SearchTab committees={committees} />
+      {tab === "decisions" ? <DecisionsTab committees={committees} />
         : tab === "sessions" ? <SessionsTab committees={committees} />
         : tab === "themen" ? <EntitiesTab />
         : <AnalysisTab />}

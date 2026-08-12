@@ -41,7 +41,7 @@ test.describe("Daumen-Feedback", () => {
       await route.fulfill({ status: 201, contentType: "application/json", body: '{"ok":true}' });
     });
 
-    await page.goto("/council?tab=decisions&mode=fragen");
+    await page.goto("/fragen");
     await page.getByPlaceholder(/Frag den Rat/).fill("Was wurde zum Radverkehr beschlossen?");
     await page.keyboard.press("Enter");
     await expect(page.getByText("Der Rat hat mehrere Fahrradstraßen beschlossen.")).toBeVisible();
