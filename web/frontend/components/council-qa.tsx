@@ -388,15 +388,16 @@ function FeedbackDaumen({ turn }: { turn: Turn }) {
   );
 }
 
-/** Chip-Zeile mit verstecktem Scrollbalken (Design 4a): an jedem Ende ein
- *  Fade als Scroll-Hinweis plus ein Pfeil — horizontales Scrollen per Maus
- *  ist schlecht unterstützt (Tims Feedback), die Pfeile schaffen den Zugang.
- *  Sie erscheinen nur, solange in DIESER Richtung wirklich noch Chips liegen.
+/** Chip-Zeile mit verstecktem Scrollbalken (Design 4a): die Pfeile stehen
+ *  NEBEN der Zeile, nicht darüber.
  *
- *  Tims Befund 12.08.: Vorher gab es nur rechts einen Pfeil — wer einmal
- *  gescrollt hatte, kam nicht mehr zurück. Und er lag ÜBER dem letzten Chip;
- *  jetzt hält die Zeile beidseitig so viel Platz frei, dass die Pfeile in
- *  ihrer eigenen Spur sitzen. */
+ *  Zwei Anläufe zuvor lagen sie als Overlay auf den Chips. Ein Innen-Polster
+ *  half nicht: Es sitzt am Anfang und Ende des Inhalts und scrollt mit —
+ *  mittendrin schob sich weiter ein Chip unter den Pfeil (Tims Befund
+ *  12.08.). Und der Verlauf darunter nahm die Seitenfarbe, die im Panel gar
+ *  nicht gilt: In der Bühne lag dadurch ein dunkler Fleck auf hellem Grund.
+ *  Als eigene Spalten im Flex-Layout können die Pfeile nichts mehr verdecken,
+ *  und der Verlauf entfällt ersatzlos. */
 function ChipZeile({ children }: { children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   const [mehr, setMehr] = useState(false);
@@ -414,38 +415,25 @@ function ChipZeile({ children }: { children: ReactNode }) {
     ro.observe(el);
     return () => ro.disconnect();
   }, [children]);
-  const pfeilKlassen = "absolute top-1/2 z-20 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-card shadow-sm transition-colors hover:bg-muted";
+  const pfeil = "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:bg-muted";
   return (
-    <div className="relative mb-2">
+    <div className="mb-2 flex items-center gap-1">
       {zurueck && (
-        <>
-          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-gradient-to-r from-background to-transparent" />
-          <button type="button" aria-label="Vorherige Vorschläge zeigen"
-            onClick={() => ref.current?.scrollBy({ left: -260, behavior: "smooth" })}
-            className={cn(pfeilKlassen, "left-0")}>
-            <ChevronLeft className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
-          </button>
-        </>
+        <button type="button" aria-label="Vorherige Vorschläge zeigen" className={pfeil}
+          onClick={() => ref.current?.scrollBy({ left: -260, behavior: "smooth" })}>
+          <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
+        </button>
       )}
-      {mehr && (
-        <>
-          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-background to-transparent" />
-          <button type="button" aria-label="Weitere Vorschläge zeigen"
-            onClick={() => ref.current?.scrollBy({ left: 260, behavior: "smooth" })}
-            className={cn(pfeilKlassen, "right-0")}>
-            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
-          </button>
-        </>
-      )}
-      {/* Die Polster gehören an die INNEREN Enden des Scroll-Inhalts (scroll-
-          padding wirkt hier nicht), damit kein Chip unter einem Pfeil endet. */}
       <div ref={ref} onScroll={pruefen}
-        className={cn(
-          "scrollbar-none flex gap-1.5 overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch]",
-          zurueck ? "pl-8" : "pl-0",
-          mehr ? "pr-8" : "pr-0")}>
+        className="scrollbar-none flex min-w-0 flex-1 gap-1.5 overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch]">
         {children}
       </div>
+      {mehr && (
+        <button type="button" aria-label="Weitere Vorschläge zeigen" className={pfeil}
+          onClick={() => ref.current?.scrollBy({ left: 260, behavior: "smooth" })}>
+          <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+        </button>
+      )}
     </div>
   );
 }
