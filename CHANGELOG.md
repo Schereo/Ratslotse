@@ -15,6 +15,17 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Verlinkt von Anmeldung, Registrierung, Startseite und beiden Seiten-Füßen;
   zugleich die Support-Adresse, die Apple für den App Store verlangt. (#467)
 
+### Behoben
+- **Die Lotti-Tour zeigt wieder dorthin, wo sie hinzeigt.** Seit der Trennung
+  von Fragen und Suche stand die Station „Das Ratsinfo" auf dem Punkt
+  „Fragen", und auf der Fragen-Seite lag der Scheinwerfer über der ganzen
+  Seite statt auf etwas Bestimmtem. Die Tour hat jetzt eine eigene Station für
+  „Frag den Rat" — mit einer Beispiel-Antwort samt Fußnote und Quelle, damit
+  man vor der ersten eigenen Frage sieht, was herauskommt. Außerdem: keine
+  Station springt mehr grundlos auf eine andere Seite, und wer die Tour über
+  die Befehlspalette startet, sieht auch dann jede Station, wenn die
+  „Erste Schritte"-Karte längst abgehakt ist. (#468)
+
 ### Verbessert
 - **Ratslotse sagt jetzt, wessen Angebot es ist.** Impressum, Anmeldung,
   Registrierung, Konto-Fuß und Seiten-Fuß stellen ausdrücklich klar: ein
