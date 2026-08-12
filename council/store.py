@@ -134,6 +134,18 @@ CREATE TABLE IF NOT EXISTS committee_summaries (
     PRIMARY KEY(ksinr, agenda_hash)
 );
 
+-- Kurze KI-Zusammenfassung je TOP (Tims Wunsch 12.08.) — dieselben Sätze,
+-- die auch in der Tagesordnungs-Mail stehen; hier je Punkt statt als
+-- HTML-Block, damit die App sie unter dem Titel zeigen kann.
+CREATE TABLE IF NOT EXISTS agenda_item_summaries (
+    ksinr       INTEGER NOT NULL,
+    item_number TEXT NOT NULL,
+    summary     TEXT NOT NULL,
+    agenda_hash TEXT NOT NULL,
+    created_at  TEXT NOT NULL,
+    PRIMARY KEY(ksinr, item_number)
+);
+
 -- Tagesordnungs-Stand je (Sitzung, Hash) — die Vergleichsbasis der
 -- Änderungs-Meldung (Tims Wunsch 12.08.): save_session ERSETZT die Items,
 -- der alte Stand wäre sonst weg, sobald sich die Tagesordnung ändert.
@@ -982,6 +994,17 @@ class CouncilStore:
         ).fetchone()
         return row[0] if row is not None else None
 
+    def save_item_summaries(self, ksinr: int, agenda_hash: str, punkte: list[dict]) -> None:
+        """TOP-Zusammenfassungen ersetzen (eine Tagesordnung, ein Stand)."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute("DELETE FROM agenda_item_summaries WHERE ksinr = ?", (ksinr,))
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO agenda_item_summaries "
+                "(ksinr, item_number, summary, agenda_hash, created_at) VALUES (?, ?, ?, ?, ?)",
+                [(ksinr, p["number"], p["summary"], agenda_hash, now)
+                 for p in punkte if p.get("number") and p.get("summary")])
+
     def save_agenda_snapshot(self, ksinr: int, agenda_hash: str, items: list[dict]) -> None:
         """Öffentliche Tagesordnungspunkte zu diesem Hash einfrieren — die
         Vergleichsbasis für die Diff-Änderungsmeldung. INSERT OR IGNORE:
@@ -1047,8 +1070,11 @@ class CouncilStore:
                 "SELECT item_number, label, url FROM council_agenda_anlagen "
                 "WHERE ksinr = ? ORDER BY id", (ksinr,)):
             anl.setdefault(r["item_number"], []).append({"label": r["label"], "url": r["url"]})
+        zus = {r["item_number"]: r["summary"] for r in self._conn.execute(
+            "SELECT item_number, summary FROM agenda_item_summaries WHERE ksinr = ?", (ksinr,))}
         for item in out:
             item["anlagen"] = anl.get(item["item_number"], [])
+            item["summary"] = zus.get(item["item_number"])
         return out
 
     def get_session(self, ksinr: int) -> dict | None:

@@ -807,6 +807,12 @@ function DecisionsTab({ committees }: { committees: string[] }) {
                 </button>
               )}
             </div>
+            {/* Blättern auch OBEN (Tims Wunsch 12.08.): Der Sprung an den
+                Listenanfang bleibt richtig — eine neue Seite beginnt oben —,
+                aber dann müsste man für „3" wieder ganz nach unten scrollen. */}
+            {totalPages > 1 && (
+              <Pagination page={page} totalPages={totalPages} onChange={changePage} className="pb-1" />
+            )}
             {decisions.map((d) => <DecisionCard key={d.id} d={d} query={query} />)}
             <Pagination page={page} totalPages={totalPages} onChange={changePage} className="pt-2" />
           </div>
@@ -877,6 +883,17 @@ function AgendaRow({ it, query, outcome, decisionId, myTopic, domId }: {
       <span className="w-10 shrink-0 whitespace-nowrap text-xs font-medium text-muted-foreground">{it.item_number}</span>
       <div className="min-w-0 flex-1">
         <p className="text-sm text-foreground"><Highlight text={it.title} query={query} /></p>
+        {/* Ein Satz, worum es geht (Tims Wunsch 12.08.) — dieselbe
+            KI-Zusammenfassung wie in der Tagesordnungs-Mail. Der Hinweis
+            „Kurzfassung" sagt, dass hier eine Maschine zusammengefasst hat. */}
+        {it.summary && (
+          <p className="mt-0.5 text-[12.5px] leading-relaxed text-muted-foreground">
+            <span className="mr-1 font-mono text-[9.5px] uppercase tracking-[0.1em] text-muted-foreground/70">
+              Kurzfassung
+            </span>
+            {it.summary}
+          </p>
+        )}
         {it.vorlage_nr && <p className="text-xs text-muted-foreground">Vorlage <Highlight text={it.vorlage_nr} query={query} /></p>}
         {/* Tims Befund 12.08.: Die TOP-Anhänge (RIS-PDFs) fehlten in der App
             komplett — gerade Fraktions-Anträge ohne Vorlage hängen NUR hier. */}
@@ -1226,6 +1243,10 @@ function SessionsTab({ committees }: { committees: string[] }) {
               {total} {total === 1 ? "Sitzung" : "Sitzungen"}
               {totalPages > 1 && <span className="text-muted-foreground/70"> · Seite {page} von {totalPages}</span>}
             </p>
+            {totalPages > 1 && (
+              /* Blättern auch oben — siehe Beschluss-Suche. */
+              <Pagination page={page} totalPages={totalPages} onChange={changePage} className="pt-1" />
+            )}
             {sessions.map((s, i) => {
               // Jahres-Trenner, sobald sich das Jahr ändert — und immer über
               // dem ersten Eintrag, damit die Einordnung nicht erst nach dem

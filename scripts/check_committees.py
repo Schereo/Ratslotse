@@ -21,7 +21,7 @@ from nwz import digest_email
 from council.store import CouncilStore
 from council.scraper import CouncilScraper
 from council.agenda_diff import diff_html, diff_tagesordnung, hat_aenderungen
-from council.committee_summary import sitzungskopf, summarize_agenda
+from council.committee_summary import sitzungskopf, summarize_agenda_items
 from council.ergebnisse import sitzung_href
 
 NWZ_DB = ROOT / "data" / "nwz.sqlite"
@@ -162,11 +162,19 @@ def main() -> dict:
         summary = _ohne_altkopf(_ohne_altlink(council_store.get_cached_summary(ksinr, agenda_hash)))
         if summary is None:
             try:
-                summary = summarize_agenda(
+                # Strukturiert holen: dieselben Sätze stehen in der Mail UND
+                # (seit Tims Wunsch 12.08.) unter den TOPs in der App.
+                punkte = summarize_agenda_items(
                     committee=session.committee,
                     session_date=session.session_date,
                     agenda_items=session.agenda_items,
                 )
+                if punkte is None:
+                    summary = None
+                else:
+                    council_store.save_item_summaries(ksinr, agenda_hash, punkte)
+                    summary = "\n".join(
+                        f"• <b>{p['number']}</b>: {p['summary']}" for p in punkte)
             except Exception as exc:  # noqa: BLE001
                 # Ein LLM-Fehler bei EINER Sitzung (Provider-Content-Filter, ein
                 # unretrybarer API-Fehler, kaputte Antwort) darf nicht den ganzen
