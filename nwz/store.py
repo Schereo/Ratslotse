@@ -13,50 +13,6 @@ from typing import Any
 logger = logging.getLogger("nwz.store")
 
 SCHEMA = """
-CREATE TABLE IF NOT EXISTS editions (
-    catalog          INTEGER PRIMARY KEY,
-    customer         TEXT NOT NULL,
-    folder           INTEGER NOT NULL,
-    title            TEXT NOT NULL,
-    publication_date TEXT NOT NULL,
-    pages            INTEGER NOT NULL,
-    content_version  INTEGER NOT NULL,
-    fetched_at       TEXT NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_editions_folder_date
-    ON editions(folder, publication_date DESC);
-
-CREATE TABLE IF NOT EXISTS articles (
-    catalog          INTEGER NOT NULL,
-    refid            TEXT NOT NULL,
-    external_id      TEXT,
-    page             INTEGER,
-    category_number  INTEGER,
-    category_name    TEXT,
-    title            TEXT,
-    subtitle         TEXT,
-    authors          TEXT,
-    content_html     TEXT,
-    content_text     TEXT,
-    priority         INTEGER,
-    PRIMARY KEY (catalog, refid),
-    FOREIGN KEY (catalog) REFERENCES editions(catalog)
-);
-CREATE INDEX IF NOT EXISTS idx_articles_category ON articles(category_name);
-
--- Full-text search (unicode61 handles German umlauts)
-CREATE VIRTUAL TABLE IF NOT EXISTS articles_fts USING fts5(
-    catalog    UNINDEXED,
-    refid      UNINDEXED,
-    pub_date   UNINDEXED,
-    category_name,
-    title,
-    subtitle,
-    authors,
-    content_text,
-    tokenize = 'unicode61 remove_diacritics 2'
-);
-
 CREATE TABLE IF NOT EXISTS users (
     chat_id    INTEGER PRIMARY KEY,
     username   TEXT NOT NULL DEFAULT '',
@@ -140,21 +96,6 @@ CREATE TABLE IF NOT EXISTS council_results_sent (
     PRIMARY KEY (ksinr, owner_id)
 );
 
-CREATE TABLE IF NOT EXISTS article_topic_matches (
-    id               INTEGER PRIMARY KEY AUTOINCREMENT,
-    owner_id         INTEGER NOT NULL,
-    topic_id         INTEGER NOT NULL,
-    catalog          INTEGER NOT NULL,
-    refid            TEXT NOT NULL,
-    pub_date         TEXT NOT NULL,
-    title            TEXT NOT NULL,
-    summary          TEXT NOT NULL,
-    is_continuation  INTEGER NOT NULL DEFAULT 0,
-    matched_at       TEXT NOT NULL,
-    UNIQUE(owner_id, topic_id, catalog, refid)
-);
-CREATE INDEX IF NOT EXISTS idx_atm_lookup ON article_topic_matches(owner_id, topic_id, pub_date DESC);
-
 -- Semantic matches between a user topic and council decisions (computed offline by
 -- scripts/match_topics_decisions.py from the precomputed decision embeddings).
 CREATE TABLE IF NOT EXISTS council_topic_matches (
@@ -166,14 +107,6 @@ CREATE TABLE IF NOT EXISTS council_topic_matches (
     PRIMARY KEY (topic_id, decision_id)
 );
 CREATE INDEX IF NOT EXISTS idx_ctm_topic ON council_topic_matches(topic_id);
-
-CREATE TABLE IF NOT EXISTS topic_classified_editions (
-    owner_id    INTEGER NOT NULL,
-    topic_id    INTEGER NOT NULL,
-    pub_date    TEXT NOT NULL,
-    classified_at TEXT NOT NULL,
-    PRIMARY KEY(owner_id, topic_id, pub_date)
-);
 
 -- Web frontend accounts. delivery_channel ∈ {email, push, both, off}.
 -- 'off' heißt: gar keine Benachrichtigungen. Kein eigenes Feld, weil es
@@ -447,8 +380,6 @@ USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     ("council_topic_matches", "owner_id"),
     ("council_agenda_matches", "owner_id"),
     ("council_agenda_classified", "owner_id"),
-    ("article_topic_matches", "owner_id"),
-    ("topic_classified_editions", "owner_id"),
     ("push_tokens", "owner_id"),
     ("qa_gespraeche", "user_id"),
     ("qa_gespraech_turns", "user_id"),
@@ -491,6 +422,7 @@ class Store:
         self._conn.executescript(SCHEMA)
         self._conn.commit()
         self._migrate()
+        self._zeitungsreste_entfernen()
 
     def _migrate(self) -> None:
         cols = {r[1] for r in self._conn.execute("PRAGMA table_info(topics)").fetchall()}
@@ -519,12 +451,6 @@ class Store:
                     self._conn.execute(
                         "UPDATE topics SET chat_id = ? WHERE chat_id = 0", (admin,)
                     )
-        atm_cols = {r[1] for r in self._conn.execute("PRAGMA table_info(article_topic_matches)").fetchall()}
-        if atm_cols and "is_continuation" not in atm_cols:
-            with self._conn:
-                self._conn.execute(
-                    "ALTER TABLE article_topic_matches ADD COLUMN is_continuation INTEGER NOT NULL DEFAULT 0"
-                )
         # web_users gained status / NWZ-verification columns after the first cut.
         wu_cols = {r[1] for r in self._conn.execute("PRAGMA table_info(web_users)").fetchall()}
         if wu_cols:
@@ -701,41 +627,43 @@ class Store:
                 self._conn.execute("DROP TABLE committee_subscriptions")
                 self._conn.execute("ALTER TABLE committee_subscriptions_new RENAME TO committee_subscriptions")
 
-            if "owner_id" not in self._table_cols("article_topic_matches"):
-                self._conn.execute(
-                    "CREATE TABLE article_topic_matches_new ("
-                    " id INTEGER PRIMARY KEY AUTOINCREMENT, owner_id INTEGER NOT NULL, topic_id INTEGER NOT NULL,"
-                    " catalog INTEGER NOT NULL, refid TEXT NOT NULL, pub_date TEXT NOT NULL,"
-                    " title TEXT NOT NULL, summary TEXT NOT NULL, is_continuation INTEGER NOT NULL DEFAULT 0,"
-                    " matched_at TEXT NOT NULL, UNIQUE(owner_id, topic_id, catalog, refid))"
-                )
-                self._conn.execute(
-                    "INSERT OR IGNORE INTO article_topic_matches_new "
-                    "(id, owner_id, topic_id, catalog, refid, pub_date, title, summary, is_continuation, matched_at) "
-                    "SELECT atm.id, wu.id, atm.topic_id, atm.catalog, atm.refid, atm.pub_date, atm.title, "
-                    "       atm.summary, atm.is_continuation, atm.matched_at "
-                    "FROM article_topic_matches atm JOIN web_users wu ON wu.telegram_chat_id = atm.chat_id"
-                )
-                self._conn.execute("DROP TABLE article_topic_matches")
-                self._conn.execute("ALTER TABLE article_topic_matches_new RENAME TO article_topic_matches")
-                self._conn.execute(
-                    "CREATE INDEX IF NOT EXISTS idx_atm_lookup "
-                    "ON article_topic_matches(owner_id, topic_id, pub_date DESC)"
-                )
+            # Die beiden Zeitungs-Tabellen (article_topic_matches,
+            # topic_classified_editions) hatten hier ebenfalls eine
+            # chat_id→owner_id-Migration. Sie sind mit dem NWZ-Ausbau
+            # entfallen; _zeitungsreste_entfernen räumt die leeren Hüllen weg.
 
-            if "owner_id" not in self._table_cols("topic_classified_editions"):
-                self._conn.execute(
-                    "CREATE TABLE topic_classified_editions_new ("
-                    " owner_id INTEGER NOT NULL, topic_id INTEGER NOT NULL, pub_date TEXT NOT NULL,"
-                    " classified_at TEXT NOT NULL, PRIMARY KEY(owner_id, topic_id, pub_date))"
-                )
-                self._conn.execute(
-                    "INSERT OR IGNORE INTO topic_classified_editions_new (owner_id, topic_id, pub_date, classified_at) "
-                    "SELECT wu.id, tce.topic_id, tce.pub_date, tce.classified_at FROM topic_classified_editions tce "
-                    "JOIN web_users wu ON wu.telegram_chat_id = tce.chat_id"
-                )
-                self._conn.execute("DROP TABLE topic_classified_editions")
-                self._conn.execute("ALTER TABLE topic_classified_editions_new RENAME TO topic_classified_editions")
+    #: Tabellen aus der Zeitungs-Zeit. Der Scraper ist mit der NWZ-Ausgliederung
+    #: entfallen, die Inhalte hat scripts/purge_nwz_data.py gelöscht — die leeren
+    #: Hüllen wurden aber bei JEDEM Start neu angelegt und schleppten drei
+    #: Alt-Migrationen mit sich.
+    _ZEITUNGSRESTE = ("articles_fts", "articles", "editions",
+                      "article_topic_matches", "topic_classified_editions")
+
+    def _zeitungsreste_entfernen(self) -> None:
+        """Leere Zeitungs-Tabellen aus Bestands-Datenbanken werfen.
+
+        Nur LEERE: Fände sich wider Erwarten noch eine Zeile, bleibt die Tabelle
+        stehen und meldet sich im Log. Löschen wäre hier der teurere Irrtum —
+        die Hülle kostet nichts, verlorene Daten wären weg. Neue Datenbanken
+        legen sie ohnehin nicht mehr an.
+        """
+        for tabelle in self._ZEITUNGSRESTE:
+            try:
+                da = self._conn.execute(
+                    "SELECT 1 FROM sqlite_master WHERE name = ?", (tabelle,)).fetchone()
+                if not da:
+                    continue
+                n = self._conn.execute(f"SELECT count(*) FROM {tabelle}").fetchone()[0]
+                if n:
+                    logger.warning("Zeitungs-Tabelle %s hat noch %d Zeile(n) — bleibt stehen. "
+                                   "Erst scripts/purge_nwz_data.py laufen lassen.", tabelle, n)
+                    continue
+                with self._conn:
+                    self._conn.execute(f"DROP TABLE IF EXISTS {tabelle}")
+                logger.info("leere Zeitungs-Tabelle %s entfernt", tabelle)
+            except sqlite3.Error:  # noqa: PERF203 — Aufräumen darf nie den Start kippen
+                logger.warning("Zeitungs-Tabelle %s ließ sich nicht prüfen/entfernen",
+                               tabelle, exc_info=True)
 
     def close(self) -> None:
         self._conn.close()
@@ -2129,8 +2057,6 @@ class Store:
         "council_topic_matches",
         "topic_hits_seen",
         "council_agenda_matches",
-        "article_topic_matches",
-        "topic_classified_editions",
     )
 
     def delete_topic(self, topic_id: int) -> None:

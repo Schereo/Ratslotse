@@ -5,6 +5,8 @@ sechzehn nutzerbezogene gewachsen war — Gerätetokens, Quiz-Antworten und
 Themen-Treffer überlebten die Löschung. Diese Tests halten die Liste
 vollständig: einer prüft sie gegen das Schema, einer löscht wirklich.
 """
+import sqlite3
+
 from nwz.store import USER_OWNED_TABLES, Store
 
 
@@ -172,3 +174,60 @@ def test_konto_loeschen_raeumt_auch_die_council_db(tmp_path):
     ]
     cs.close()
     assert [r[0][0] for r in rest] == [2, 2], "nur die Zeilen von Konto 1 dürfen weg sein"
+
+
+def test_zeitungsreste_werden_nur_leer_entfernt(tmp_path):
+    """Die Tabellen-Hüllen aus der Zeitungs-Zeit (articles, editions …) wurden
+    bei jedem Start neu angelegt. Sie fliegen jetzt raus — aber nur LEER:
+    Wären wider Erwarten Daten drin, wäre Löschen der teurere Irrtum."""
+    from nwz.store import Store
+
+    pfad = tmp_path / "alt.sqlite"
+    # Bestands-Datenbank mit den alten Hüllen nachbauen.
+    conn = sqlite3.connect(pfad)
+    conn.executescript(
+        "CREATE TABLE editions (catalog INTEGER PRIMARY KEY, title TEXT);"
+        "CREATE TABLE articles (catalog INTEGER, refid TEXT, title TEXT);"
+        "CREATE TABLE article_topic_matches (id INTEGER PRIMARY KEY, topic_id INTEGER);"
+        "CREATE TABLE topic_classified_editions (owner_id INTEGER, topic_id INTEGER);")
+    conn.commit()
+    conn.close()
+
+    store = Store(pfad)
+    try:
+        namen = {r[0] for r in store._conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'")}
+        assert not (namen & {"articles", "editions", "article_topic_matches",
+                             "topic_classified_editions"})
+        # Und die Tabellen, die weiterleben, sind unberührt.
+        assert "topics" in namen and "web_users" in namen and "topic_hits_seen" in namen
+    finally:
+        store.close()
+
+    # Zweiter Fall: eine Hülle mit Inhalt bleibt stehen, statt Daten zu verlieren.
+    pfad2 = tmp_path / "mit_inhalt.sqlite"
+    conn = sqlite3.connect(pfad2)
+    conn.executescript("CREATE TABLE articles (catalog INTEGER, title TEXT);")
+    conn.execute("INSERT INTO articles VALUES (1, 'Alter Artikel')")
+    conn.commit()
+    conn.close()
+
+    store = Store(pfad2)
+    try:
+        assert store._conn.execute(
+            "SELECT count(*) FROM articles").fetchone()[0] == 1
+    finally:
+        store.close()
+
+
+def test_neue_datenbank_legt_keine_zeitungstabellen_an(tmp_path):
+    from nwz.store import Store
+
+    store = Store(tmp_path / "neu.sqlite")
+    try:
+        namen = {r[0] for r in store._conn.execute(
+            "SELECT name FROM sqlite_master WHERE type IN ('table','view')")}
+        assert not (namen & {"articles", "articles_fts", "editions",
+                             "article_topic_matches", "topic_classified_editions"})
+    finally:
+        store.close()
