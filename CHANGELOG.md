@@ -17,6 +17,18 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   („sichert eine Antwort zu Protokoll zu") bleiben draußen.
 
 ### Verbessert
+- **Wiederholte Fragen antworten fast sofort.** Die Bewertung der gefundenen
+  Beschlüsse ist mit Abstand der teuerste Schritt der Suche; sie wird jetzt je
+  Frage gemerkt. Wer eine Beispielfrage anklickt, einen Weiterfragen-Chip
+  nutzt oder dieselbe Frage später erneut stellt, wartet dafür nicht noch
+  einmal — gemessen 3,6 Sekunden auf 0,07 Sekunden bei unveränderter
+  Reihenfolge der Treffer. Neue Fragen sind unberührt.
+- **Ehrliche Zeitangabe bei der Gründlichen Recherche.** Sie versprach „1–2
+  Minuten", brauchte real aber rund 30 Sekunden. Karte, Umschalter und Hinweis
+  nennen jetzt den gemessenen Wert.
+- **Erste Frage nach einem Neustart ist schneller.** Der Warmlauf lädt nun auch
+  die Zusatzkanäle (Pressemitteilungen, Wortbeiträge) vor, statt sie die erste
+  Frage bezahlen zu lassen.
 - **Angemeldete landen direkt im Dashboard.** Wer eingeloggt ratslotse.de
   aufruft, sieht nicht mehr die Werbeseite, sondern seine Startseite mit
   Themen und Sitzungen. Die Startseite bleibt erreichbar: über „Startseite"

@@ -42,7 +42,7 @@ export function RechercheToggle({ aktiv, frei, onToggle }: {
       onClick={onToggle}
       disabled={leer && !aktiv}
       aria-pressed={aktiv}
-      title={leer ? "Tageskontingent aufgebraucht — morgen wieder" : "Gründliche Recherche: dauert 1–2 Minuten, liest deutlich mehr Beschlüsse"}
+      title={leer ? "Tageskontingent aufgebraucht — morgen wieder" : "Gründliche Recherche: dauert etwa 30 Sekunden, liest deutlich mehr Beschlüsse"}
       className={cn(
         "inline-flex h-[30px] shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[11.5px] font-semibold transition-colors",
         aktiv
@@ -60,7 +60,7 @@ export function RechercheToggle({ aktiv, frei, onToggle }: {
 }
 
 /** Erwartungs-Hinweis beim Aktivieren (8a①): einmal täglich ausführlich als
- *  Karte — die Kurzform („1–2 Min · noch n heute") steht daneben im Composer. */
+ *  Karte — die Kurzform („~30 Sek · noch n heute") steht daneben im Composer. */
 export function RechercheHinweisKarte({ frei }: { frei: number | null }) {
   return (
     <div className="mb-1.5 flex items-start gap-2 rounded-xl border border-border bg-card px-3 py-2.5">
@@ -68,7 +68,7 @@ export function RechercheHinweisKarte({ frei }: { frei: number | null }) {
       <p className="text-[11.5px] leading-relaxed text-muted-foreground">
         <strong className="text-foreground">Gründliche Recherche:</strong>{" "}
         zerlegt deine Frage in Facetten, liest deutlich mehr Beschlüsse und
-        schreibt einen gegliederten Bericht. <strong>Dauert 1–2 Minuten</strong>
+        schreibt einen gegliederten Bericht. <strong>Dauert etwa 30 Sekunden</strong>
         {frei !== null && <> · noch {frei} von 5 heute</>}.
       </p>
     </div>
@@ -122,7 +122,10 @@ export function RechercheFortschritt({ phase, facetten, facettenFertig, dokument
     : phase === "suchen" ? 10 + (facetten.length ? (facettenFertig / facetten.length) * 45 : 20)
     : phase === "lesen" ? 62
     : Math.min(95, 68 + tick);
-  const restzeit = phase === "schreiben" || phase === "lesen" ? "~ noch 1 Min" : "~ noch 1–2 Min";
+  // Zeitangaben an echten Läufen gemessen (11.08.: 28 s und 36 s für eine
+  // komplette Recherche) — vorher versprach die Karte „1–2 Minuten" und war
+  // damit doppelt so pessimistisch wie die Wirklichkeit (Tims Befund).
+  const restzeit = phase === "schreiben" || phase === "lesen" ? "~ noch 15 Sek" : "~ noch 30 Sek";
 
   const schritt = (zustand: "fertig" | "aktiv" | "offen", text: string) => (
     <span className={cn("flex items-center gap-2 text-xs",
