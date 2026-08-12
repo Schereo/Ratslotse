@@ -40,9 +40,7 @@ jobs:
           # Ein LLM-Aufruf je Sitzung (gpt-4o-mini) — auch 30 Sitzungen
           # bleiben deutlich unter 30 Minuten.
           command_timeout: 45m
-          env:
-            SCHREIBEN: ${{ inputs.schreiben }}
-            VERGANGENE: ${{ inputs.vergangene }}
+          envs: SCHREIBEN,VERGANGENE
           script: |
             set -e
             cd ~/app
@@ -52,3 +50,6 @@ jobs:
             else
               .venv/bin/python scripts/backfill_top_summaries.py --vergangene "$VERGANGENE"
             fi
+        env:
+          SCHREIBEN: ${{ inputs.schreiben }}
+          VERGANGENE: ${{ inputs.vergangene }}
