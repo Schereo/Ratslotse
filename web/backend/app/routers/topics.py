@@ -12,7 +12,7 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from nwz.store import Store
+from kern.store import Store
 from council.store import CouncilStore
 
 from ..deps import get_council_store, get_store, require_active

@@ -2,13 +2,13 @@
 
 The Capacitor app registers its APNs (iOS) / FCM (Android) device token here after
 the user grants notification permission, so the digest cron can reach it. Delivery
-itself happens in ``nwz.delivery`` alongside Telegram/email.
+itself happens in ``kern.delivery`` alongside Telegram/email.
 """
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, status
 
-from nwz.store import Store
+from kern.store import Store
 
 from ..deps import get_store, require_active
 from ..schemas import PushRegisterRequest, PushUnregisterRequest

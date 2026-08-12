@@ -35,7 +35,7 @@ load_dotenv(ROOT / ".env")
 from council import qa  # noqa: E402
 from council import vorlagen as vorlagen_mod  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
-from nwz import llm  # noqa: E402
+from kern import llm  # noqa: E402
 
 RESULTS = ROOT / "eval" / "results" / "quality"
 # flash statt pro: gemini-2.5-pro verbrennt sein max_tokens-Budget im

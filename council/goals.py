@@ -14,7 +14,7 @@ from __future__ import annotations
 import json
 import os
 
-from nwz import llm
+from kern import llm
 from council.topics import _strip_fences
 
 MODEL = os.environ.get("COUNCIL_GOAL_MODEL", "deepseek/deepseek-v4-pro")

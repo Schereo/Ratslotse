@@ -269,7 +269,7 @@ CREATE TABLE IF NOT EXISTS council_field_recaps (
 
 #: Tabellen dieser Datenbank, die an einem Konto hängen.
 #:
-#: Die Konto-Löschung wohnt in ``nwz.store`` und räumte lange nur die dortigen
+#: Die Konto-Löschung wohnt in ``kern.store`` und räumte lange nur die dortigen
 #: Tabellen ab — der Wächter-Test (``test_account_deletion``) prüfte ebenfalls
 #: nur jenes Schema und konnte diese Lücke also gar nicht sehen. Hier liegen
 #: aber Verhaltensspuren: *welche* Sitzungen jemandem gemeldet wurden. Das ist
@@ -702,7 +702,7 @@ class CouncilStore:
         if "owner_id" in cn_cols and "owner_id" in sf_cols:
             return  # already migrated
 
-        # Build chat_id -> owner_id from nwz.sqlite if available.
+        # Build chat_id -> owner_id from kern.sqlite if available.
         chat_to_owner: dict[int, int] = {}
         nwz_path = self._nwz_db_path
         if nwz_path is not None and Path(str(nwz_path)).exists():

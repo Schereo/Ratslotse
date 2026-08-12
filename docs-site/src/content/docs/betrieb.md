@@ -158,7 +158,7 @@ Exception erzeugt.
 
 ### Fehler-Alarme
 
-Alle Cron-Einstiegspunkte laufen in `run_guarded` aus `nwz/alerts.py`. Stürzt
+Alle Cron-Einstiegspunkte laufen in `run_guarded` aus `kern/alerts.py`. Stürzt
 ein Job ab, passiert dreierlei: der Traceback landet im Log (journald bzw.
 Cron-Log), eine Alarm-Mail geht an `ALERT_EMAIL` (Fallback `WEB_ADMIN_EMAIL`)
 und die Exception wird erneut geworfen, damit Cron einen Exit-Code ungleich
@@ -220,9 +220,9 @@ kann den Datenbestand also nicht überschreiben.
 
 ## LLM-Kosten
 
-Jeder LLM-Aufruf kann seinen Token-Verbrauch protokollieren. `nwz/llm.py`
+Jeder LLM-Aufruf kann seinen Token-Verbrauch protokollieren. `kern/llm.py`
 akzeptiert dafür ein Schlüsselwort `_feature="…"`, das vor dem eigentlichen
-API-Call herausgezogen wird; `nwz/usage.py` schreibt daraus eine Zeile in die
+API-Call herausgezogen wird; `kern/usage.py` schreibt daraus eine Zeile in die
 Tabelle `llm_usage` (`ts`, `feature`, `model`, `prompt_tokens`,
 `completion_tokens`) in `nwz.sqlite`. Die Erfassung ist **best-effort**: Sie
 fängt jede Exception ab, damit Tracking niemals einen LLM-Aufruf kaputt macht —
@@ -238,7 +238,7 @@ Gekennzeichnet sind unter anderem `protokoll_extraktion`,
 `qa_query_expansion` und `qa_antwort`.
 
 Kosten stehen **nicht** in der Datenbank, sondern werden aus Tokens ×
-hinterlegtem Modellpreis gerechnet. Die Preistabelle `PRICES` in `nwz/usage.py`
+hinterlegtem Modellpreis gerechnet. Die Preistabelle `PRICES` in `kern/usage.py`
 führt $ je 1 Mio. Tokens (Input, Output) je Modell und muss beim Wechsel auf ein
 neues Modell ergänzt werden — ein unbekanntes Modell zählt mit 0,00 $.
 
@@ -320,7 +320,7 @@ Alle optional — greift keine Variable, gilt der Default aus dem Code.
 |---|---|---|---|
 | `NWZ_DB` | Pfad zur Konten-/Themen-Datenbank | nein | `data/nwz.sqlite` |
 | `COUNCIL_DB` | Pfad zur Ratsdaten-Datenbank | nein | `data/council.sqlite` |
-| `NWZ_SQLITE` | Abweichender Pfad für das Usage-Tracking (`nwz/usage.py`). **Achtung:** `nwz/usage.py` liest ausschließlich diese Variable, der ganze Rest des Projekts `NWZ_DB`. Wer die Datenbank per `NWZ_DB` verschiebt, nimmt das Kosten-Tracking **nicht** mit — es schreibt still am alten Ort weiter. Beide zusammen setzen. | nein | `data/nwz.sqlite` |
+| `NWZ_SQLITE` | Abweichender Pfad für das Usage-Tracking (`kern/usage.py`). **Achtung:** `kern/usage.py` liest ausschließlich diese Variable, der ganze Rest des Projekts `NWZ_DB`. Wer die Datenbank per `NWZ_DB` verschiebt, nimmt das Kosten-Tracking **nicht** mit — es schreibt still am alten Ort weiter. Beide zusammen setzen. | nein | `data/nwz.sqlite` |
 | `SETUP_REMIND_AFTER_HOURS` | Wartezeit, bevor `remind_setup.py` an eine offene Einrichtung erinnert | nein | `48` |
 
 ### E-Mail & Benachrichtigung

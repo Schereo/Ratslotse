@@ -24,7 +24,7 @@ import re
 import requests
 from bs4 import BeautifulSoup
 
-from nwz import llm
+from kern import llm
 from council import geo
 
 MODEL = os.environ.get("COUNCIL_QUIZ_MODEL", "deepseek/deepseek-v4-pro")

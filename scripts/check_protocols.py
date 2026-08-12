@@ -31,7 +31,7 @@ from scripts.generate_simple_summaries import process as generate_simple  # noqa
 from scripts.rate_impact import process as rate_impact  # noqa: E402
 from scripts.rate_interest import process as rate_interest  # noqa: E402
 from scripts.track_goals import process as track_goals  # noqa: E402
-from nwz import notify  # noqa: E402
+from kern import notify  # noqa: E402
 
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
 NWZ_DB = ROOT / "data" / "nwz.sqlite"
@@ -117,7 +117,7 @@ def main() -> dict:
     # Wochen zurück (gemessen: Ausschüsse 6+ Wochen), deshalb nennt die Meldung
     # das Sitzungsdatum. Zugestellt wird direkt danach, unter den Grenzen aus
     # nwz/notify.py.
-    from nwz.store import Store as NwzStore
+    from kern.store import Store as NwzStore
     from council.ergebnisse import melde_ergebnisse
 
     nwz = NwzStore(NWZ_DB)
@@ -141,6 +141,6 @@ def main() -> dict:
 
 
 if __name__ == "__main__":
-    from nwz.alerts import run_guarded
+    from kern.alerts import run_guarded
 
     run_guarded("check_protocols", main)

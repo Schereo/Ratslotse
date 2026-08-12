@@ -369,7 +369,7 @@ def main() -> int:
     from council import vorlagen as vorlagen_mod
     from council import embeddings as emb
     from council.store import CouncilStore
-    from nwz import llm
+    from kern import llm
 
     def kosten_ct_seit(usd_start: float) -> float:
         """Echte LLM-Kosten (OpenRouter usage.cost) seit ``usd_start``, in Cent."""

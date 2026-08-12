@@ -14,19 +14,29 @@ per LLM aufbereitet.
 | Pfad | Inhalt |
 |------|--------|
 | `council/` | Stadtrat-Scraper (SessionNet/Bürgerinfo), Protokoll-Parsing, LLM-Klassifikation, Watcher |
-| `nwz/` | Geteilte Infrastruktur: LLM-Client (`llm.py`), SQLite-Store (`store.py`), E-Mail, Push, Prompts. *(Der Paketname `nwz/` ist historisch.)* |
+| `kern/` | Geteilte Infrastruktur: LLM-Client (`llm.py`), SQLite-Store (`store.py`), E-Mail, Push, Prompts |
 | `scripts/` | Cron-Jobs & Ops-Tools (`check_*.py`, `weekly_enrich.py`, `backup_db.py`, …) |
 | `web/backend/` | FastAPI-Backend (uvicorn) |
 | `web/frontend/` | Next.js-Frontend (+ Capacitor für iOS/Android); **Designsprache: `web/frontend/DESIGNSPRACHE.md`** |
 | `docs-site/` | Astro-Starlight-Technik-Doku |
 | `eval/` | Eval-Harness für die LLM-Qualität |
 
-## Zum Paketnamen `nwz/`
+## Woher „nwz" noch stammt
 
-Der Paketname `nwz/` ist historisch und enthält heute nur noch geteilte
-Infrastruktur (LLM-Client, Store, E-Mail, Push, Prompts). Auf Beschluss-Seiten
-gibt es einen Link zur NWZonline-Suche nach dem jeweiligen Thema
-(`web/frontend/components/nwz-link.tsx`).
+Das Paket hieß bis 08/2026 `nwz/` — ein Rest aus der Zeit, als hier ein
+Zeitungs-Scraper lief. Der Inhalt hat damit nichts zu tun, deshalb heißt es
+jetzt `kern/`.
+
+Drei Stellen tragen den alten Namen bewusst weiter, weil ein Umbenennen dort
+Daten oder Betrieb anfasst statt nur Text:
+
+- **`data/nwz.sqlite`** und die Umgebungsvariable **`NWZ_DB`** — der Dateiname
+  ist unsichtbar, ein Fehler beim Umstellen hieße „App startet mit leerer
+  Datenbank".
+- **die systemd-Units** `nwz-web-api` / `nwz-web-frontend` — Umbenennen braucht
+  Root auf dem Server und einen Nachzug in `deploy.yml`.
+- **`web/frontend/components/nwz-link.tsx`** — der ist kein Rest: Auf
+  Beschluss-Seiten steht ein Link zur NWZonline-Suche nach dem jeweiligen Thema.
 
 ## Lokale Entwicklung
 
@@ -155,22 +165,22 @@ NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflic
   `remind_setup.py`
   (täglich; genau eine Service-Mail an Konten, die den Einrichtungs-
   Assistenten angefangen und seit 48 h nicht beendet haben). Alle laufen in
-  `run_guarded` (`nwz/alerts.py`): Ein Crash wird geloggt **und** per E-Mail an
+  `run_guarded` (`kern/alerts.py`): Ein Crash wird geloggt **und** per E-Mail an
   `ALERT_EMAIL`/`WEB_ADMIN_EMAIL` gemeldet. Außerdem protokolliert `run_guarded`
   jeden Lauf in `job_runs` (Dauer, Status, Kennzahlen aus dem Rückgabe-dict der
   `main()`); das Admin-Panel zeigt das unter *Statistik → Cron-Jobs*. Der
-  erwartete Takt je Job steht in **`nwz/jobs.py`** — wer die crontab ändert,
+  erwartete Takt je Job steht in **`kern/jobs.py`** — wer die crontab ändert,
   zieht ihn dort nach, sonst schlägt die Überfällig-Ampel falsch an.
 - **„Ähnliche Beschlüsse"** (`scripts/embed_decisions.py`): berechnet semantische
   Nachbarn per **fastembed** (ONNX, kein torch) — bewusst **nicht** in
   `requirements.txt`, damit Deploy + Web-Service unberührt bleiben.
 - **Zustellung**: Nutzer wählen pro Konto `email` / `push` / `both` / `off`
-  (`web_users.delivery_channel`). E-Mail über Resend (`nwz/email.py`), Push über
-  APNs/FCM (`nwz/push.py`); ohne `RESEND_API_KEY` wird E-Mail still übersprungen.
-  `off` greift in `nwz.notify.gewuenscht()`, also **vor** der Warteschlange —
+  (`web_users.delivery_channel`). E-Mail über Resend (`kern/email.py`), Push über
+  APNs/FCM (`kern/push.py`); ohne `RESEND_API_KEY` wird E-Mail still übersprungen.
+  `off` greift in `kern.notify.gewuenscht()`, also **vor** der Warteschlange —
   wer einen neuen Meldeanlass baut, muss ihn über `notify.einreihen` schicken,
   sonst umgeht er Aus-Schalter, Nachtruhe und Tagesgrenze zugleich.
-- **Prompts** liegen in `nwz/prompts.py` (DB-Tabelle `prompts`) und sind über das
+- **Prompts** liegen in `kern/prompts.py` (DB-Tabelle `prompts`) und sind über das
   Admin-UI live editierbar — Defaults greifen, solange kein Override existiert.
 - **Sicherheit**: Der Reverse-Proxy setzt `X-Forwarded-For` selbst
   (verhindert Rate-Limit-Bypass via XFF-Spoofing).

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from nwz import llm
+from kern import llm
 
 
 @pytest.fixture(autouse=True)

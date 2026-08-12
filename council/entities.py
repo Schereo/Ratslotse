@@ -12,7 +12,7 @@ import logging
 import os
 import re
 
-from nwz import llm
+from kern import llm
 
 MODEL = os.environ.get("COUNCIL_ENTITY_MODEL", "deepseek/deepseek-v4-pro")
 

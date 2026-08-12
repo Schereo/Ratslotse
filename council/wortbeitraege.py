@@ -16,7 +16,7 @@ from __future__ import annotations
 import json
 import os
 
-from nwz import llm, prompts
+from kern import llm, prompts
 from council.protocols import _strip_fences
 
 # Default Flash, nicht das Protokoll-Modell: im A/B auf ksinr 4066 lieferte

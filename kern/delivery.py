@@ -9,7 +9,7 @@ nicht. A former Telegram channel was removed; push notifications replace it.
 
 ``off`` fällt hier durch beide Prüfungen, weil es in keiner der beiden Listen
 steht. Das ist die letzte Bastion, nicht die erste: Wer abgeschaltet hat, kommt
-über ``nwz.notify.gewuenscht()`` gar nicht erst bis in die Warteschlange. Diese
+über ``kern.notify.gewuenscht()`` gar nicht erst bis in die Warteschlange. Diese
 Schicht greift für die wenigen Wege, die direkt zustellen — der Test-Knopf in
 den Einstellungen etwa.
 """
@@ -22,7 +22,7 @@ from .email import email_ready, send_email
 from .push import push_ready, send_push
 from .digest_email import render_html_email
 
-logger = logging.getLogger("nwz.delivery")
+logger = logging.getLogger("kern.delivery")
 
 
 def is_synthetic_email(email: str | None) -> bool:

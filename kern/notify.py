@@ -30,7 +30,7 @@ import os
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-logger = logging.getLogger("nwz.notify")
+logger = logging.getLogger("kern.notify")
 
 #: Für Links in E-Mails — dort ist ein App-Pfad allein wertlos.
 APP_BASE_URL = os.environ.get("APP_BASE_URL", "https://ratslotse.de").rstrip("/")
@@ -237,7 +237,7 @@ def zustellen(store, jetzt: datetime | None = None, stats: dict | None = None) -
 
 def _zustellen_fuer(store, owner_id: int, heute: str, jetzt_iso: str) -> int:
     """Die fälligen Meldungen *eines* Kontos. Gibt die Zahl der Zustellungen zurück."""
-    from nwz.delivery import deliver_message
+    from kern.delivery import deliver_message
 
     owner = store.get_owner_delivery(owner_id)
     if not owner:
