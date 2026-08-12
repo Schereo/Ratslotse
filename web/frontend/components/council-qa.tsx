@@ -20,7 +20,7 @@ import { createPortal } from "react-dom";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Sparkles, Send, Loader2, ChevronDown, ChevronRight, ChevronUp, ArrowRight, Plus,
-  Square, CircleSlash, ExternalLink, FlaskConical, History, Pencil, RotateCcw,
+  Square, CircleSlash, ExternalLink, FlaskConical, History, Pencil, RotateCcw, ChevronLeft,
   MessageSquarePlus, Share2, ThumbsDown, ThumbsUp, Trash2, Volume2, X,
   BookOpen, SearchX } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -388,16 +388,23 @@ function FeedbackDaumen({ turn }: { turn: Turn }) {
   );
 }
 
-/** Chip-Zeile mit verstecktem Scrollbalken (Design 4a): rechts ein Fade als
- *  Scroll-Hinweis plus ein Weiter-Pfeil — horizontales Scrollen per Maus ist
- *  schlecht unterstützt (Tims Feedback), der Pfeil schafft den Zugang. Beides
- *  erscheint nur, solange rechts wirklich noch Chips liegen. */
+/** Chip-Zeile mit verstecktem Scrollbalken (Design 4a): an jedem Ende ein
+ *  Fade als Scroll-Hinweis plus ein Pfeil — horizontales Scrollen per Maus
+ *  ist schlecht unterstützt (Tims Feedback), die Pfeile schaffen den Zugang.
+ *  Sie erscheinen nur, solange in DIESER Richtung wirklich noch Chips liegen.
+ *
+ *  Tims Befund 12.08.: Vorher gab es nur rechts einen Pfeil — wer einmal
+ *  gescrollt hatte, kam nicht mehr zurück. Und er lag ÜBER dem letzten Chip;
+ *  jetzt hält die Zeile beidseitig so viel Platz frei, dass die Pfeile in
+ *  ihrer eigenen Spur sitzen. */
 function ChipZeile({ children }: { children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   const [mehr, setMehr] = useState(false);
+  const [zurueck, setZurueck] = useState(false);
   const pruefen = () => {
     const el = ref.current;
     setMehr(!!el && el.scrollWidth - el.clientWidth - el.scrollLeft > 8);
+    setZurueck(!!el && el.scrollLeft > 8);
   };
   useEffect(() => {
     pruefen();
@@ -407,20 +414,36 @@ function ChipZeile({ children }: { children: ReactNode }) {
     ro.observe(el);
     return () => ro.disconnect();
   }, [children]);
+  const pfeilKlassen = "absolute top-1/2 z-20 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-card shadow-sm transition-colors hover:bg-muted";
   return (
     <div className="relative mb-2">
+      {zurueck && (
+        <>
+          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-gradient-to-r from-background to-transparent" />
+          <button type="button" aria-label="Vorherige Vorschläge zeigen"
+            onClick={() => ref.current?.scrollBy({ left: -260, behavior: "smooth" })}
+            className={cn(pfeilKlassen, "left-0")}>
+            <ChevronLeft className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+          </button>
+        </>
+      )}
       {mehr && (
         <>
-          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-12 bg-gradient-to-l from-background to-transparent" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-background to-transparent" />
           <button type="button" aria-label="Weitere Vorschläge zeigen"
             onClick={() => ref.current?.scrollBy({ left: 260, behavior: "smooth" })}
-            className="absolute right-0 top-1/2 z-20 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-card shadow-sm transition-colors hover:bg-muted">
+            className={cn(pfeilKlassen, "right-0")}>
             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
           </button>
         </>
       )}
+      {/* Die Polster gehören an die INNEREN Enden des Scroll-Inhalts (scroll-
+          padding wirkt hier nicht), damit kein Chip unter einem Pfeil endet. */}
       <div ref={ref} onScroll={pruefen}
-        className="scrollbar-none flex gap-1.5 overflow-x-auto pb-0.5 pr-8 [-webkit-overflow-scrolling:touch]">
+        className={cn(
+          "scrollbar-none flex gap-1.5 overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch]",
+          zurueck ? "pl-8" : "pl-0",
+          mehr ? "pr-8" : "pr-0")}>
         {children}
       </div>
     </div>
