@@ -11,8 +11,13 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 - **Der Personen-Peek bleibt im Bild.** Nahe dem rechten Rand oder der
   Oberkante lief die Info-Karte aus dem Text bzw. wurde abgeschnitten —
   sie richtet sich jetzt nach der verfügbaren Seite aus. (#439)
-
-### Behoben
+- **„dein Thema"-Markierungen sitzen am richtigen Tagesordnungspunkt.** Das
+  Themen-Matching übernahm die TOP-Nummer ungeprüft vom Sprachmodell — das
+  verrutscht bei Nummern-Listen gern um eins (Ö 14.6 trug ein
+  Fliegerhorst-Label, gemeint war Ö 14.7). Jetzt liefert das Modell Nummer
+  UND Titel; existiert die Nummer nicht oder widerspricht der Titel, gewinnt
+  der eindeutige Titel-Treffer — und ist gar nichts auflösbar, gibt es keine
+  Markierung statt einer falschen. (#438)
 - **Personen-Badges verwechseln keine Namensvettern mehr.** Ein Gast im
   Ausschuss (etwa vom Wasserstraßen-Amt) trug im Text das Badge eines
   gleichnamigen Gremienmitglieds. Gäste, Protokollführung und beratende

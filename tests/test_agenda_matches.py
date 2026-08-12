@@ -160,3 +160,36 @@ def test_content_filter_skips_owner_without_killing_the_run(tmp_path, monkeypatc
     assert nwz.agenda_matches_for_owner(1, [42]) == {}
     assert nwz.agenda_classified_hash(1, 42) is None
     nwz.close()
+
+
+def test_verifiziere_items_nummer_titel_und_offbyone():
+    """Tims Befund 12.08.: Das LLM lieferte Ö 14.6 statt Ö 14.7 — der Titel
+    im Treffer gehört zum Nachbar-TOP. Der Titel-Anker muss die Nummer
+    korrigieren; erfundene Nummern ohne Titel-Treffer fliegen raus."""
+    from council.scraper import AgendaItem, CouncilSession
+    from council.watcher import _verifiziere_items
+
+    session = CouncilSession(
+        ksinr=1, committee="ASUK", session_date="2026-08-13", session_time="17:00",
+        location="", agenda_items=[
+            AgendaItem(item_number="Ö 14.6", title="Vorhabenbezogener Bebauungsplan Nr. 81: Vorstellung des Bebauungsplans und des Artenschutzgutachtens", vorlage_nr="26/0627", is_public=True),
+            AgendaItem(item_number="Ö 14.7", title="Umsetzung der Ratsbeschlüsse zum Fliegerhorst (FDP-Fraktion) - Beschlussantrag", vorlage_nr="", is_public=True),
+            AgendaItem(item_number="N 2", title="Grundstücksangelegenheit", vorlage_nr="", is_public=False),
+        ])
+
+    # Off-by-one: Nummer 14.6, Titel gehört zu 14.7 → Titel gewinnt.
+    assert _verifiziere_items(session, [
+        {"nummer": "Ö 14.6", "titel": "Umsetzung der Ratsbeschlüsse zum Fliegerhorst"},
+    ]) == ["Ö 14.7"]
+    # Stimmige Paare bleiben; Nummern ohne Präfix werden kanonisch.
+    assert _verifiziere_items(session, [
+        {"nummer": "14.6", "titel": "Vorhabenbezogener Bebauungsplan Nr. 81"},
+    ]) == ["Ö 14.6"]
+    # Altformat (nackte Nummern) funktioniert weiter, erfundene fliegen raus.
+    assert _verifiziere_items(session, ["Ö 14.7", "Ö 99"]) == ["Ö 14.7"]
+    # Weder Nummer noch Titel auflösbar → kein Treffer statt falscher.
+    assert _verifiziere_items(session, [
+        {"nummer": "Ö 99", "titel": "Gibt es nicht"},
+    ]) == []
+    # Nichtöffentliche TOPs werden nie gemeldet.
+    assert _verifiziere_items(session, [{"nummer": "N 2", "titel": "Grundstücksangelegenheit"}]) == []
