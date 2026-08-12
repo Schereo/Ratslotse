@@ -21,7 +21,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Sparkles, Send, Loader2, ChevronDown, ChevronRight, ChevronUp, ArrowRight, Plus,
   Square, CircleSlash, ExternalLink, ArrowDown, FlaskConical, History, Pencil, RotateCcw,
-  MessageSquarePlus, Share2, ThumbsDown, ThumbsUp, Trash2, Volume2, X } from "lucide-react";
+  MessageSquarePlus, Share2, ThumbsDown, ThumbsUp, Trash2, Volume2, X,
+  BookOpen, SearchX } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Mascot } from "@/components/mascot";
 import type { QaOrtPin } from "@/components/qa-orte-karte";
@@ -185,6 +186,11 @@ type Turn = {
   zeitraum?: string;
   planungen?: Planung[];
   anlagen?: AnlagenHinweis[];
+  /** Wie tragfähig die gefundenen Beschlüsse sind (deterministisch aus den
+   *  Relevanz-Werten) — „duenn" blendet einen Ehrlichkeits-Hinweis ein. */
+  beleglage?: "solide" | "duenn";
+  /** Hintergrund zu den in der Frage genannten Objekten („Was ist die GSG?"). */
+  steckbriefe?: { name: string; slug: string; beschreibung: string }[];
 };
 
 /** Antwort vorlesen (5a/I-12, nur die TTS-Hälfte): SpeechSynthesis mit
@@ -734,6 +740,9 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             presse: (msg.presse as PresseHinweis[]) ?? [],
             debatten: (msg.debatten as DebattenHinweis[]) ?? [],
             kontext: (msg.frage as string) ?? null,
+            planungen: (msg.planungen as Planung[]) ?? [],
+            beleglage: (msg.beleglage as "solide" | "duenn") ?? undefined,
+            steckbriefe: (msg.steckbriefe as Turn["steckbriefe"]) ?? [],
           });
           else if (msg.type === "token") patchLast((t) => ({ antwort: t.antwort + (msg.text as string) }));
           // Riss der LLM-Stream mitten in der Antwort, generiert das Backend
@@ -1471,6 +1480,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                 onDeepVerwerfen={() => deepVerwerfen(t)}
                 onDeepFortsetzen={() => { deepVerwerfen(t); void askDeep(t.frage); }}
                 onDeepSchnell={() => { deepVerwerfen(t); void ask(t.frage); }}
+                onGruendlich={() => void askDeep(t.kontext || t.frage)}
               />
             ))}
           </div>
@@ -1648,7 +1658,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
 
 /* ------------------------------------------------------------------------- */
 
-function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJump, onRetry, onEigeneFrage, onDazuFragen, onFrageStellen, onDeepStop, onDeepTeilbericht, onDeepVerwerfen, onDeepFortsetzen, onDeepSchnell }: {
+function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJump, onRetry, onEigeneFrage, onDazuFragen, onFrageStellen, onDeepStop, onDeepTeilbericht, onDeepVerwerfen, onDeepFortsetzen, onDeepSchnell, onGruendlich }: {
   turn: Turn; turnIdx: number; istLetzter: boolean; loading: boolean;
   step: Step | null; word: string; flashId: number | null;
   onJump: (id: number) => void; onRetry: () => void; onEigeneFrage: () => void;
@@ -1656,6 +1666,8 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
   onFrageStellen?: (text: string) => void;
   onDeepStop?: () => void; onDeepTeilbericht?: () => void; onDeepVerwerfen?: () => void;
   onDeepFortsetzen?: () => void; onDeepSchnell?: () => void;
+  /** Dieselbe Frage gründlich nachrecherchieren — der Ausweg bei dünner Beleglage. */
+  onGruendlich?: () => void;
 }) {
   const [showAll, setShowAll] = useState(false);
   // Ältere Turns beruhigen (Design 2⑤): Belege hinter der Kompaktzeile.
@@ -1786,6 +1798,10 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
           {turn.recherche && abschnitte.length >= 4 && (
             <Sprungmarken abschnitte={abschnitte} ankerPrefix={`qa-abschnitt-${turnIdx}`} />
           )}
+          {/* Steckbrief ÜBER der Antwort: erst wissen, worum es geht. */}
+          {(turn.steckbriefe?.length ?? 0) > 0 && (
+            <SteckbriefBaustein steckbriefe={turn.steckbriefe ?? []} />
+          )}
           {/* div statt p: die Antwort darf Listen (ul) enthalten. */}
           <div className="whitespace-pre-wrap text-[14.5px] leading-[1.7] text-foreground sm:leading-[1.75]">
             {/* 5a/I-01: Der Chip öffnet erst das Peek — nicht sofort wegspringen. */}
@@ -1823,6 +1839,13 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
             </p>
           )}
 
+          {/* Dünne Beleglage: ehrlicher Hinweis + der Ausweg, der hier hilft. */}
+          {!beschaeftigt && turn.beleglage === "duenn" && !turn.recherche
+            && !turn.fehler && !turn.abgebrochen && (
+            <DuenneBeleglage onGruendlich={onGruendlich}
+              mitSteckbrief={(turn.steckbriefe?.length ?? 0) > 0} />
+          )}
+
           {/* RG-09: „Das sagen die Parteien" — direkt unter dem Antworttext,
               vor Zeitstrahl/Geld/Karte. Lädt nach der Antwort nach; bei dünner
               Lage verschwindet er ganz (kein Leerzustand). Gate ≥1 statt ≥2:
@@ -1839,8 +1862,10 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
           {!beschaeftigt && <Baustein turn={turn} idToNum={idToNum} onJump={(id) => setPeekId(id)} />}
 
           {/* RG-10 (8b): „Wie es weitergeht" — künftige Beratungsstationen
-              aus dem Sitzungskalender, deterministisch, nie vom Modell. */}
-          {deepFertig && (turn.planungen?.length ?? 0) > 0 && (
+              aus dem Sitzungskalender, deterministisch, nie vom Modell. Seit
+              Paket 1 auch unter der SCHNELLEN Antwort: Sachstands-Fragen sind
+              der häufigste Fragetyp, und bisher blickte die Antwort nur zurück. */}
+          {!beschaeftigt && (turn.planungen?.length ?? 0) > 0 && (
             <WieEsWeitergeht planungen={turn.planungen ?? []} />
           )}
 
@@ -2318,6 +2343,83 @@ export const parteiMeinungenCache = new Map<string, ParteiMeinung[]>();
 
 /** Lädt die verdichteten Fraktions-Positionen nach und übergibt sie an
  *  `ParteienListe` — die Darstellung teilt sich diese Seite mit app/g. */
+/** „Worum geht es?" — Steckbrief zu den in der Frage genannten Objekten.
+ *
+ *  Die Beschreibungen liegen seit dem Themen-Ausbau in der Datenbank, wurden
+ *  von der Frage-Antwort aber nie gezeigt. Echte Nutzerfragen wie „Was ist die
+ *  GSG, was macht sie?" beantworten Beschlüsse schlecht — sie dokumentieren
+ *  Entscheidungen, nicht Hintergrund. Der Baustein steht deshalb ÜBER der
+ *  Antwort: erst wissen, worum es geht, dann was beschlossen wurde. */
+function SteckbriefBaustein({ steckbriefe }: {
+  steckbriefe: NonNullable<Turn["steckbriefe"]>;
+}) {
+  const [offen, setOffen] = useState<string | null>(null);
+  if (steckbriefe.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-1.5">
+      {steckbriefe.slice(0, 2).map((s) => {
+        const lang = s.beschreibung.length > 180;
+        const auf = offen === s.slug;
+        return (
+          <div key={s.slug} className="rounded-xl border border-border bg-muted/30 px-3.5 py-2.5">
+            <p className="flex items-center gap-1.5 font-mono text-[9px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
+              <BookOpen className="h-3 w-3" aria-hidden /> Worum geht es?
+            </p>
+            <p className="mt-1.5 text-[13px] leading-relaxed text-foreground">
+              <strong className="font-semibold">{s.name}:</strong>{" "}
+              {auf || !lang ? s.beschreibung : `${s.beschreibung.slice(0, 180).trimEnd()} …`}
+            </p>
+            <div className="mt-1 flex items-center gap-3">
+              {lang && (
+                <button type="button" onClick={() => setOffen(auf ? null : s.slug)}
+                  className="text-[11.5px] font-medium text-primary hover:underline">
+                  {auf ? "Weniger" : "Mehr"}
+                </button>
+              )}
+              <Link href={`/council/entity?slug=${encodeURIComponent(s.slug)}`}
+                className="text-[11.5px] font-medium text-primary hover:underline">
+                Alle Beschlüsse dazu
+              </Link>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Ehrlichkeits-Hinweis bei dünner Beleglage.
+ *
+ *  Das einzige begründete 👎 („Falschinfo", Giftmüll am Fliegerhorst) traf eine
+ *  Frage mit genau dieser Signatur: wenige, schwache Treffer — und trotzdem eine
+ *  Antwort im selbstbewussten Ton. Der Hinweis sagt es offen und bietet den
+ *  Ausweg an, der hier wirklich hilft (die Recherche liest auch Anlagen und
+ *  Protokolle). */
+function DuenneBeleglage({ onGruendlich, mitSteckbrief }: {
+  onGruendlich?: () => void; mitSteckbrief?: boolean;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-card px-3.5 py-3">
+      <p className="flex items-start gap-2 text-[12.5px] leading-relaxed text-muted-foreground">
+        <SearchX className="mt-0.5 h-3.5 w-3.5 shrink-0 text-signal" aria-hidden />
+        <span>
+          {mitSteckbrief
+            /* Mit Steckbrief ist die EINORDNUNG belegt, nur die Beschlusslage
+               dünn — dann wäre ein pauschales „mit Vorsicht" schlicht falsch. */
+            ? "Der Rat hat zu dieser Frage wenig entschieden — die Einordnung oben stammt aus den Ratsunterlagen, die Beschlusslage darunter ist dünn."
+            : "Zu dieser Frage geben die Ratsunterlagen wenig her — die Antwort steht auf wenigen, nur schwach passenden Beschlüssen. Nimm sie mit Vorsicht."}
+        </span>
+      </p>
+      {onGruendlich && (
+        <button type="button" onClick={onGruendlich}
+          className="mt-2 inline-flex items-center gap-1.5 rounded-[10px] border border-border bg-card px-3 py-1.5 text-xs font-medium transition-colors hover:bg-muted">
+          <FlaskConical className="h-3 w-3" aria-hidden /> Gründlich recherchieren
+        </button>
+      )}
+    </div>
+  );
+}
+
 function ParteienBaustein({ frage, onFrageStellen }: {
   frage: string; onFrageStellen?: (text: string) => void;
 }) {

@@ -16,7 +16,26 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Einstiegs-Animation jeder Seite hielt dauerhaft ein `transform` und
   kaperte damit jedes fest positionierte Element der Seite. (#431)
 
+### Neu
+- **„Worum geht es?" — Einordnung vor der Antwort.** Nennt eine Frage ein
+  bekanntes Objekt (GSG, Cäcilienbrücke, Fliegerhorst), steht jetzt ein kurzer
+  Steckbrief darüber: was das ist und was es mit der Stadt zu tun hat. Fragen
+  wie „Was ist die GSG und was macht sie?" beantworten reine Beschluss-Zitate
+  schlecht — die Beschreibung dazu lag längst in den Themen-Daten, wurde von
+  der Frage-Antwort aber nie gezeigt.
+- **Ausblick: „Wie es weitergeht" auch bei der schnellen Frage.** Steht das
+  Thema demnächst auf einer Tagesordnung, nennt die Antwort Termin, Gremium und
+  geplante Behandlung. Bisher blickte nur die Gründliche Recherche nach vorn —
+  ausgerechnet bei „Wie ist der aktuelle Stand …?", der häufigsten Frage.
+
 ### Verbessert
+- **Ehrlicher Hinweis, wenn die Beleglage dünn ist.** Findet die Suche zu einer
+  Frage nur wenige und schwach passende Beschlüsse, sagt die Antwort das jetzt —
+  statt im gleichen selbstbewussten Ton zu klingen wie bei gut belegten Themen.
+  Dazu ein Knopf, der die Gründliche Recherche startet, die auch Gutachten und
+  Protokolle liest.
+- **Lange Antworten beginnen mit einem Fazit.** Umfangreiche Themen führen jetzt
+  mit einer Zeile „Kurz gesagt: …", bevor die Gliederung kommt.
 - **Die Aussprache zu einem Bericht steht jetzt auch in der Antwort.** Wenn
   „Frag den Rat" einen Bericht zitiert, kommen die Wortbeiträge aus genau
   diesem Tagesordnungspunkt mit dazu — bisher fand die Suche nur Beiträge,
@@ -40,6 +59,10 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Senden-Knopf). (#427)
 
 ### Behoben
+- **Der Ausblick auf kommende Beratungen war immer leer.** Die Abfrage verlangte
+  ein leeres Ergebnis-Feld — bei künftigen Terminen steht dort aber die geplante
+  Behandlung („Vorberatung", „Kenntnisnahme"). Gemessen: 22 anstehende Termine,
+  davon 0 gefunden. Betraf auch den Bericht der Gründlichen Recherche.
 - **Lange Sprungmarken-Chips schieben die Seite nicht mehr seitlich weg.**
   Ein langer Abschnittstitel im Recherche-Bericht machte seinen Chip breiter
   als das Telefon — die ganze Seite hing dann angeschnitten in der Luft

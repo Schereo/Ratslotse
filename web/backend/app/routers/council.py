@@ -1307,7 +1307,8 @@ def _turn_speichern(nwz: Store, user: dict, body: AskBody, q_suche: str,
                     answer_text: str, candidates: list[dict],
                     cited: list[int],
                     presse_rows: list[dict] | None = None,
-                    debatten_rows: list[dict] | None = None) -> int | None:
+                    debatten_rows: list[dict] | None = None,
+                    planungen: list[dict] | None = None) -> int | None:
     """„Meine Gespräche" (6a): Turn ins laufende Gespräch hängen (oder eines
     eröffnen) — nur mit ausdrücklicher Einwilligung, nie als Blocker.
 
@@ -1337,7 +1338,10 @@ def _turn_speichern(nwz: Store, user: dict, body: AskBody, q_suche: str,
             {"sources": [_qa_source(c) for c in candidates if c["id"] in zitiert],
              "cited": cited,
              "presse": _presse_kompakt(presse_rows or []),
-             "debatten": _debatten_kompakt(debatten_rows or [])}, ensure_ascii=False)
+             "debatten": _debatten_kompakt(debatten_rows or []),
+             # Der Ausblick gehört wie Presse und Debatten in den Snapshot,
+             # sonst öffnet ein gespeichertes Gespräch ohne „Wie es weitergeht".
+             "planungen": planungen or []}, ensure_ascii=False)
         if not nwz.qa_turn_speichern(gespraech_id, user["id"],
                                      body.question, answer_text, quellen_json):
             if neu:
@@ -1442,6 +1446,28 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     c.update(orte.get(c["id"], {}))
             except Exception:  # noqa: BLE001 — Karte ist Zusatz, nie Blocker
                 pass
+            # „Wie es weitergeht" (Paket 1): künftige Beratungsstationen der
+            # gefundenen Vorlagen. Bisher gab es den Blick nach vorn NUR in der
+            # Gründlichen Recherche — dabei sind Sachstands-Fragen („Wie ist
+            # der aktuelle Stand zum Stadion?") der häufigste Fragetyp
+            # überhaupt, und die Termine stehen längst gepflegt in der DB.
+            planungen: list[dict] = []
+            try:
+                planungen = store.geplante_beratungen_fuer(
+                    [c.get("kvonr") for c in candidates[:20]])
+                # Zweiter Weg, weil der erste systematisch leer läuft: Auf der
+                # Tagesordnung stehen die noch NICHT entschiedenen Vorlagen —
+                # die Suche findet aber Beschlüsse. Titel-Abgleich gegen die
+                # Suchbegriffe holt das Kommende zum Thema dazu.
+                gesehen = {p["kvonr"] for p in planungen}
+                planungen += [p for p in store.kommende_beratungen(expanded.split())
+                              if p["kvonr"] not in gesehen]
+            except Exception:  # noqa: BLE001 — Ausblick ist Zusatz, nie Blocker
+                pass
+            # Hintergrund zu den genannten Objekten („Was ist die GSG?").
+            steckbriefe = qa.steckbriefe_fuer(store, q_suche)
+            # Wie tragfähig ist der Fund? Deterministisch aus den Scores.
+            lage = qa.beleglage(candidates)
             zeiten["retrieve_ms"] = round((time.perf_counter() - t0) * 1000)
             # 5a/I-06: die kondensierte Frage mitschicken — der Kontext-Chip im
             # Frontend zeigt, worauf sich Anschlussfragen beziehen.
@@ -1449,7 +1475,12 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         "frage": q_suche,
                         "sources": [_qa_source(c) for c in candidates],
                         "presse": _presse_kompakt(presse_rows),
-                        "debatten": _debatten_kompakt(debatten_rows)})
+                        "debatten": _debatten_kompakt(debatten_rows),
+                        "planungen": planungen,
+                        "beleglage": lage,
+                        "steckbriefe": [{"name": s["name"], "slug": s["slug"],
+                                         "beschreibung": s["description"]}
+                                        for s in steckbriefe]})
             yield _sse({"type": "step", "step": "answer"})
             if not candidates:
                 leer_text = "Dazu habe ich keine passenden Beschlüsse gefunden."
@@ -1517,7 +1548,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             try:
                 for delta in qa.answer_stream(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
                                               haushalt=haushalt_zeilen, debatten=debatten_rows,
-                                              gross=gross):
+                                              gross=gross, steckbriefe=steckbriefe,
+                                              duenn=(lage == "duenn")):
                     if not buf and delta:
                         zeiten["ttft_ms"] = round((time.perf_counter() - t0) * 1000)
                     buf += delta
@@ -1544,7 +1576,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 try:
                     ans, _ = qa.answer_question(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
                                                 haushalt=haushalt_zeilen, debatten=debatten_rows,
-                                                gross=gross)
+                                                gross=gross, steckbriefe=steckbriefe,
+                                                duenn=(lage == "duenn"))
                     buf = ans
                     yield _sse({"type": "replace", "text": qa.split_followups(ans)[0]})
                     sent = len(ans)
@@ -1567,7 +1600,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             gespraech_id = _turn_speichern(nwz, user, body, q_suche, answer_text,
                                            candidates, cited,
                                            presse_rows=presse_rows,
-                                           debatten_rows=debatten_rows)
+                                           debatten_rows=debatten_rows,
+                                           planungen=planungen)
             yield _sse({"type": "done", "cited": cited, "timings": zeiten,
                         "gespraech_id": gespraech_id})
         except Exception:  # noqa: BLE001 — surface a terminal error to the client
