@@ -8,6 +8,13 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Behoben
+- **Auch große Ratssitzungen bekommen Kurzfassungen.** Bei knapp 50
+  Tagesordnungspunkten brach die Zusammenfassung mitten im Satz ab und fiel
+  komplett aus — die Sitzung blieb ohne. Lange Tagesordnungen werden jetzt in
+  Tranchen zusammengefasst; bricht eine ab, gibt es lieber gar keine
+  Zusammenfassung als eine, der stillschweigend Punkte fehlen. (#458)
+
+### Behoben
 - **Blättern verschiebt die Seite nicht mehr.** Beim Klick auf die obere
   Seiten-Leiste rutschte die Ansicht bei jedem Wechsel ein Stück hoch und
   runter — der Sprung an den Listenanfang war für die untere Leiste gedacht,
