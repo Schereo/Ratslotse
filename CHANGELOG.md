@@ -8,6 +8,32 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Behoben
+- **App-Navigation: Suche wieder erreichbar, aktiver Tab wieder sichtbar.**
+  In der App fehlte der Suche seit der Trennung von Fragen und Suche jeder
+  Einstieg — sie steht jetzt zuoberst im „Mehr"-Menü. Außerdem war der
+  Sitzungen-Tab nie blau hinterlegt: Die App hängt an jede Adresse einen
+  Schrägstrich, woran mehrere Vergleiche scheiterten. Dieselbe Ursache ließ
+  auf der Fragen-Seite den „Nach oben"-Pfeil erscheinen und hätte geteilte
+  Antwort-Links in der App ins Leere laufen lassen. (#459)
+- **Keine schwebenden Pfeile mehr im Gespräch.** „Nach oben" und „zum Ende"
+  lagen über dem Senden-Knopf; beide sind weg. Der Eingabebereich ist jetzt
+  deckend, dadurch scrollt der Antworttext nicht mehr sichtbar hinter die
+  Weiterfragen-Pillen. (#459)
+- **Personen-Peek bleibt im Bild.** Bei Personen am Zeilenende lief die
+  Karte links aus dem Bildschirm — sie wird jetzt in beide Richtungen an den
+  Rand geklemmt. (#459)
+- **Scroll-Position überlebt auch auf dem Handy.** Der Tipp auf die Tab-Leiste
+  galt fälschlich als „selbst gescrollt" und brach das Wiederherstellen ab;
+  außerdem war die Wartezeit zu knapp für das langsamere Nachladen auf dem
+  Gerät. (#459)
+
+### Geändert
+- **Weniger Ballast auf der Fragen-Seite.** Kürzerer Einleitungssatz, weniger
+  Leerraum über Lotti, der Verlaufs-Knopf sitzt in der Titelzeile — und der
+  Kontext-Chip über dem Eingabefeld entfällt: Ob eine Anschlussfrage zur
+  vorherigen gehört, entscheidet die Suche ohnehin selbst. (#459)
+
+### Behoben
 - **Auch große Ratssitzungen bekommen Kurzfassungen.** Bei knapp 50
   Tagesordnungspunkten brach die Zusammenfassung mitten im Satz ab und fiel
   komplett aus — die Sitzung blieb ohne. Lange Tagesordnungen werden jetzt in

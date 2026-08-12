@@ -46,25 +46,42 @@ export function ScrollMemory() {
     };
     let ziel = 0;
     try { ziel = Number(sessionStorage.getItem(key) || 0); } catch { /* s. o. */ }
+    const aufraeumen: (() => void)[] = [];
 
+    // NICHT bei touchstart abbrechen: Der Tipp auf die Tab-Leiste erzeugt auf
+    // dem iPhone einen Touch, der noch in der neuen Seite ankommt — das
+    // Wiederherstellen brach dadurch ab, bevor es begann (Tims Befund 12.08.:
+    // „von Fragen zurück auf Sitzungen ist die Liste ganz oben"). Abgebrochen
+    // wird erst, wenn jemand WIRKLICH selbst scrollt.
     const eigenerScroll = () => { abgebrochen = true; };
     if (ziel > 0) {
-      // Bis die Liste geladen ist, kann das Ziel noch außerhalb liegen —
-      // deshalb mehrere Anläufe, bis die Seite hoch genug ist.
       window.addEventListener("wheel", eigenerScroll, { passive: true, once: true });
-      window.addEventListener("touchstart", eigenerScroll, { passive: true, once: true });
+      window.addEventListener("touchmove", eigenerScroll, { passive: true, once: true });
+      window.addEventListener("keydown", eigenerScroll, { once: true });
+      // Bis die nachgeladene Liste steht, liegt das Ziel außerhalb. Auf dem
+      // Gerät dauert der API-Aufruf länger als im Browser — zwei Sekunden
+      // waren zu knapp, jetzt acht; ein ResizeObserver stößt den Versuch an,
+      // sobald die Seite wächst, statt nur zu pollen.
       const start = Date.now();
+      let beobachter: ResizeObserver | undefined;
+      const fertig = () => { beobachter?.disconnect(); beobachter = undefined; };
       const versuch = () => {
-        if (abgebrochen) return;
+        if (abgebrochen) return fertig();
         const machbar = document.documentElement.scrollHeight - window.innerHeight;
         if (machbar >= ziel - 4) {
           window.scrollTo(0, ziel);
           letzteY = ziel;
-          return;
+          return fertig();
         }
-        if (Date.now() - start < 2000) requestAnimationFrame(versuch);
+        if (Date.now() - start > 8000) return fertig();
+        requestAnimationFrame(versuch);
       };
       requestAnimationFrame(versuch);
+      if (typeof ResizeObserver !== "undefined") {
+        beobachter = new ResizeObserver(() => versuch());
+        beobachter.observe(document.documentElement);
+      }
+      aufraeumen.push(fertig);
     }
 
     let timer: number | undefined;
@@ -80,8 +97,10 @@ export function ScrollMemory() {
       window.clearTimeout(timer);
       window.removeEventListener("scroll", beiScroll);
       window.removeEventListener("wheel", eigenerScroll);
-      window.removeEventListener("touchstart", eigenerScroll);
+      window.removeEventListener("touchmove", eigenerScroll);
+      window.removeEventListener("keydown", eigenerScroll);
       document.removeEventListener("visibilitychange", merken);
+      for (const f of aufraeumen) f();
     };
   }, [schluessel]);
 

@@ -119,27 +119,42 @@ function klammerIstParteiLabel(inhalt: string, badgePartei: string | null): bool
  *  Ratsmitgliedern — dem Link zur Personen-Seite. */
 export function PersonBadge({ p }: { p: PersonEintrag }) {
   const [offen, setOffen] = useState(false);
-  // Peek-Ausrichtung beim Öffnen messen (Tims Befund 12.08.: das Popover lief
-  // rechts aus dem Text bzw. wurde vom overflow-hidden der lg-Bühne
-  // beschnitten): nahe dem rechten Rand rechtsbündig, nahe der Oberkante
-  // nach unten öffnen.
-  const [lage, setLage] = useState<{ rechts: boolean; unten: boolean }>({ rechts: false, unten: false });
+  // Das Peek wird FEST am Bildschirm positioniert und in den sichtbaren
+  // Bereich geklemmt. Zwei Anläufe zuvor scheiterten je an einer anderen
+  // Kante: rechts lief es aus dem Text, dann (rechtsbündig geöffnet) links
+  // aus dem Bild, wenn die Person früh in der Zeile steht (Tims Befund
+  // 12.08.). Mit position: fixed spielt außerdem kein overflow-hidden eines
+  // Vorfahren mehr hinein. Beim Scrollen schließt es — mitwandern wäre
+  // Bewegung ohne Nutzen.
+  const BREITE = 256;   // = w-64
+  const RAND = 8;
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
   const ref = useRef<HTMLSpanElement>(null);
   const oeffnen = () => {
+    if (offen) { setOffen(false); return; }
     const r = ref.current?.getBoundingClientRect();
-    if (r) setLage({ rechts: r.left + 270 > window.innerWidth, unten: r.top < 170 });
-    setOffen((v) => !v);
+    if (r) {
+      const links = Math.min(Math.max(r.left, RAND), window.innerWidth - BREITE - RAND);
+      const platzUnten = window.innerHeight - r.bottom;
+      // Unter dem Badge, außer es ist unten zu eng — dann darüber.
+      const oben = platzUnten > 190 || r.top < 190 ? r.bottom + 6 : r.top - 6 - 176;
+      setPos({ left: Math.max(RAND, links), top: Math.max(RAND, oben) });
+    }
+    setOffen(true);
   };
   useEffect(() => {
     if (!offen) return;
     const zu = (e: MouseEvent | TouchEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOffen(false);
     };
+    const zuBeiScroll = () => setOffen(false);
     document.addEventListener("mousedown", zu);
     document.addEventListener("touchstart", zu);
+    window.addEventListener("scroll", zuBeiScroll, { passive: true });
     return () => {
       document.removeEventListener("mousedown", zu);
       document.removeEventListener("touchstart", zu);
+      window.removeEventListener("scroll", zuBeiScroll);
     };
   }, [offen]);
 
@@ -162,11 +177,10 @@ export function PersonBadge({ p }: { p: PersonEintrag }) {
           style={{ backgroundColor: dot.bg }} />
         {label}
       </button>
-      {offen && (
-        <span className={cn(
-          "absolute z-30 block w-64 rounded-xl border border-border bg-card p-3 text-left shadow-lg",
-          lage.rechts ? "right-0" : "left-0",
-          lage.unten ? "top-full mt-1.5" : "bottom-full mb-1.5")}>
+      {offen && pos && (
+        <span
+          className="fixed z-50 block w-64 rounded-xl border border-border bg-card p-3 text-left shadow-lg"
+          style={{ left: pos.left, top: pos.top }}>
           <span className="block text-[13px] font-semibold text-foreground">{p.name}</span>
           <span className="mt-0.5 block text-[11.5px] text-muted-foreground">
             {p.aktiv ? rolle : `Ehemals: ${rolle}`}
