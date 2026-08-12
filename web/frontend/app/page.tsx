@@ -180,7 +180,9 @@ export default function LandingPage() {
 
       <footer className="border-t border-border">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-5 py-6 text-sm text-muted-foreground">
-          <span>© Ratslotse — Ratsinformationen für Oldenburg</span>
+          <span className="max-w-md text-balance">
+            © Ratslotse — Ratsinformationen für Oldenburg. Ein privates Bürgerprojekt, kein Angebot der Stadt.
+          </span>
           <div className="flex flex-wrap gap-4">
             <a href="/docs" className="hover:text-foreground">Technik-Doku</a>
             <Link href="/changelog" className="hover:text-foreground">Changelog</Link>

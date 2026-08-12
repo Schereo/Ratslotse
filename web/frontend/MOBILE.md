@@ -270,3 +270,19 @@ In App Store Connect vor der ersten Einreichung (manuell):
    (https://ratslotse.de), Datenschutz-URL (https://ratslotse.de/datenschutz).
 6. In den Review-Notes die nativen Mehrwerte nennen (Push-Themen-Alerts,
    Universal Links) — beugt einer 4.2-„Webseiten-Wrapper"-Rückfrage vor.
+7. **Abgrenzung zur Stadt** (Guideline 5.2): Die App trägt einen amtlich
+   klingenden Namen und zeigt fast ausschließlich Dokumente der Stadt — ohne
+   Klarstellung liest Apple das als Angebot einer Behörde, die die App gar nicht
+   eingereicht hat (5.2.1: Dienste einer Einrichtung darf nur diese Einrichtung
+   selbst anbieten; sonst braucht es eine deutliche Distanzierung). Der Satz steht
+   in der App (Anmeldung, Registrierung, Konto-Fuß, Impressum) **und** muss als
+   **erste Zeile der Store-Beschreibung** stehen — wörtlich:
+
+   > Ratslotse ist ein privates Bürgerprojekt und kein Angebot der Stadt
+   > Oldenburg — es besteht keine Verbindung zur Stadtverwaltung oder zum
+   > Stadtrat.
+
+   Danach erst der Werbetext. Der Untertitel („Subtitle", max. 30 Zeichen) darf
+   nichts Amtliches behaupten; passend ist **„Stadtrat Oldenburg verstehen"**
+   (28 Zeichen). Bei der Frage nach dem Government-Entity-Status in App Store
+   Connect: **nein** — Einreicher ist eine Privatperson.
