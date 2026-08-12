@@ -7,6 +7,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Behoben
+- **Scrollbalken passen sich dem Dunkelmodus an.** Der Kanal blieb weiß und
+  schnitt eine helle Spur durch die dunkle Oberfläche — jetzt färbt der
+  Browser Scrollbalken, Auswahlfelder und andere native Bedienelemente
+  passend zum Modus. (#448)
+
 ### Verbessert
 - **Seiten behalten ihren Stand — wie man es von einer App erwartet.** Wer
   in der Sitzungsliste weit nach unten scrollt, kurz auf einen anderen Tab
