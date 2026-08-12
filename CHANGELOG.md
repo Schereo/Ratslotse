@@ -18,7 +18,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Verwaltungsspitze („Oberbürgermeister", „Stadtkämmerin") stammen aus den
   Protokollen selbst; bei mehrdeutigen Nachnamen erscheint lieber kein
   Badge als ein geratenes. Funktioniert im Gespräch, im Recherche-Bericht
-  und auf geteilten Antworten. (#434)
+  und auf geteilten Antworten. (#435)
 
 ### Verbessert
 - **Der Fragen-Startbildschirm passt auf einen Handy-Bildschirm.** Kürzerer
