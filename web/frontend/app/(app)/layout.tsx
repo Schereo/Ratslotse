@@ -16,6 +16,7 @@ import { FeedbackDialog } from "@/components/feedback";
 import { OnboardingTracker } from "@/components/onboarding";
 import { BadgeCelebrator } from "@/components/badges";
 import { BackToTop } from "@/components/back-to-top";
+import { ScrollMemory } from "@/components/scroll-memory";
 import { PeekingChick } from "@/components/peeking-chick";
 import { PublicShell } from "@/components/public-shell";
 import { Button, Card, CardListSkeleton, Skeleton, toast } from "@/components/ui";
@@ -105,6 +106,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* BackToTop liest useSearchParams (im Ratsgespräch ausgeblendet). */}
       <Suspense fallback={null}>
         <BackToTop />
+      </Suspense>
+      {/* Scroll-Position je Seite behalten (Tims iOS-Befund 12.08.). */}
+      <Suspense fallback={null}>
+        <ScrollMemory />
       </Suspense>
       <PeekingChick />
       <DesktopSidebar />
