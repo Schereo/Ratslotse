@@ -13,8 +13,13 @@ import { QaTab } from "@/components/council-qa";
  *  als Fragen mit dem Split eine eigene Seite wurde.) */
 function GespraecheHeaderButton() {
   const [sichtbar, setSichtbar] = useState(false);
+  const [titel, setTitel] = useState<string | null>(null);
   useEffect(() => {
-    const auf = (e: Event) => setSichtbar(!!(e as CustomEvent).detail?.sichtbar);
+    const auf = (e: Event) => {
+      const d = (e as CustomEvent).detail ?? {};
+      setSichtbar(!!d.sichtbar);
+      setTitel(typeof d.titel === "string" && d.titel.trim() ? d.titel.trim() : null);
+    };
     window.addEventListener("rl:gespraeche-status", auf);
     return () => window.removeEventListener("rl:gespraeche-status", auf);
   }, []);
@@ -24,12 +29,16 @@ function GespraecheHeaderButton() {
       type="button"
       onClick={() => window.dispatchEvent(new CustomEvent("rl:gespraeche-oeffnen"))}
       aria-label="Meine Gespräche öffnen"
-      title="Meine Gespräche"
-      className="inline-flex h-9 w-9 items-center justify-center rounded-[10px] border border-border bg-card text-muted-foreground shadow-sm transition-colors active:bg-muted sm:w-auto sm:gap-1.5 sm:px-2.5 md:hidden"
+      title={titel ? `Gespräch: ${titel}` : "Meine Gespräche"}
+      className="inline-flex h-9 max-w-[52vw] items-center justify-center rounded-[10px] border border-border bg-card px-2 text-muted-foreground shadow-sm transition-colors active:bg-muted sm:gap-1.5 sm:px-2.5 md:hidden"
     >
-      <History className="h-4 w-4" aria-hidden />
-      {/* Tims Nachschlag: Wo Platz ist, sagt der Knopf, was er ist. */}
-      <span className="hidden text-xs font-medium sm:inline">Gespräche</span>
+      <History className="h-4 w-4 shrink-0" aria-hidden />
+      {/* V-03: Wo Platz ist, sagt der Knopf nicht nur WAS er ist, sondern in
+          welchem Gespräch man gerade steckt — nach Tagen ist das die
+          Orientierung, die sonst fehlt. Ohne aktives Gespräch: altes Label. */}
+      <span className="hidden truncate text-xs font-medium sm:inline">
+        {titel ?? "Gespräche"}
+      </span>
     </button>
   );
 }

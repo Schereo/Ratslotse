@@ -6,7 +6,7 @@ import os
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 
@@ -407,6 +407,19 @@ class TopicRow:
     name: str
     description: str
     created_at: str
+
+
+
+def _tagesbeginn_utc() -> str:
+    """Beginn des heutigen Tages in Oldenburg, als UTC-Zeitstempel im Format
+    der gespeicherten `created`-Spalte (datetime.utcnow().isoformat())."""
+    try:
+        from zoneinfo import ZoneInfo
+        jetzt = datetime.now(ZoneInfo("Europe/Berlin"))
+    except Exception:  # noqa: BLE001 — ohne tzdata bleibt es beim UTC-Tag
+        jetzt = datetime.now(timezone.utc)
+    start = jetzt.replace(hour=0, minute=0, second=0, microsecond=0)
+    return start.astimezone(timezone.utc).replace(tzinfo=None).isoformat(timespec="seconds")
 
 
 class Store:
@@ -1523,11 +1536,19 @@ class Store:
 
     def deep_jobs_heute(self, user_id: int) -> int:
         """Kontingent-Zählung: heutige Jobs, die zählen (laeuft + fertig).
-        Gestoppte, abgebrochene und fehlgeschlagene kosten nichts (RG-10)."""
+        Gestoppte, abgebrochene und fehlgeschlagene kosten nichts (RG-10).
+
+        „Heute" ist der Tag in OLDENBURG, nicht in UTC. Vorher verglich die
+        Abfrage `date(created) = date('now')` — beides UTC —, das Kontingent
+        sprang also im Sommer erst um 2 Uhr nachts um. Die Oberfläche sagt
+        „ab Mitternacht wieder"; damit das stimmt, beginnt der Tag hier an
+        der lokalen Mitternacht (als UTC-Zeitstempel gerechnet, denn genau so
+        liegt `created` in der Tabelle).
+        """
         row = self._conn.execute(
             "SELECT COUNT(*) FROM deep_research_jobs WHERE user_id = ? "
-            "AND status IN ('laeuft', 'fertig') AND date(created) = date('now')",
-            (user_id,)).fetchone()
+            "AND status IN ('laeuft', 'fertig') AND created >= ?",
+            (user_id, _tagesbeginn_utc())).fetchone()
         return int(row[0])
 
     def deep_job_gesehen(self, job_id: str, user_id: int) -> None:
