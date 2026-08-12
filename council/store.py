@@ -69,6 +69,17 @@ CREATE TABLE IF NOT EXISTS council_agenda_items (
     FOREIGN KEY(ksinr) REFERENCES council_sessions(ksinr)
 );
 
+-- Dokument-Anhänge je TOP von der Sitzungsseite (Tims Befund 12.08.):
+-- Fraktions-Anträge ohne Vorlage hängen NUR hier.
+CREATE TABLE IF NOT EXISTS council_agenda_anlagen (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    ksinr        INTEGER NOT NULL,
+    item_number  TEXT NOT NULL,
+    label        TEXT NOT NULL,
+    url          TEXT NOT NULL,
+    UNIQUE(ksinr, item_number, url)
+);
+
 -- Terminierte Sitzungen aus dem Sitzungskalender, noch ohne veröffentlichte
 -- Tagesordnung (und damit ohne ksinr — SessionNet verlinkt erst bei
 -- Veröffentlichung). Wird bei jedem Scrape komplett ersetzt; abgesagte
@@ -826,6 +837,19 @@ class CouncilStore:
                     for i in session.agenda_items
                 ],
             )
+            self._conn.execute(
+                "DELETE FROM council_agenda_anlagen WHERE ksinr = ?", (session.ksinr,)
+            )
+            self._conn.executemany(
+                """INSERT OR IGNORE INTO council_agenda_anlagen
+                   (ksinr, item_number, label, url) VALUES (?, ?, ?, ?)""",
+                [
+                    (session.ksinr, i.item_number, a.get("label") or "Anlage", a.get("url") or "")
+                    for i in session.agenda_items
+                    for a in (getattr(i, "anlagen", None) or [])
+                    if a.get("url")
+                ],
+            )
 
     def alert_already_sent(self, ksinr: int, topic_id: int) -> bool:
         row = self._conn.execute(
@@ -1016,7 +1040,16 @@ class CouncilStore:
                ORDER BY id""",
             (ksinr,),
         ).fetchall()
-        return [dict(r) for r in rows]
+        out = [dict(r) for r in rows]
+        # Anhänge je TOP dazulegen (Tims Befund 12.08.) — ein Query, gruppiert.
+        anl: dict[str, list[dict]] = {}
+        for r in self._conn.execute(
+                "SELECT item_number, label, url FROM council_agenda_anlagen "
+                "WHERE ksinr = ? ORDER BY id", (ksinr,)):
+            anl.setdefault(r["item_number"], []).append({"label": r["label"], "url": r["url"]})
+        for item in out:
+            item["anlagen"] = anl.get(item["item_number"], [])
+        return out
 
     def get_session(self, ksinr: int) -> dict | None:
         row = self._conn.execute(
