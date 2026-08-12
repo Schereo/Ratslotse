@@ -16,6 +16,11 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   wird über den Titel. (#440)
 
 ### Behoben
+- **Keine doppelte Partei mehr hinter Personennamen.** Nennt der
+  Antworttext die Partei direkt hinter dem Namen in Klammern („Ulf Prange
+  (SPD)"), ersetzt das Badge die Klammer — geschluckt wird nur das nackte
+  Partei-Label derselben Partei, Zusätze wie „(FDP-Fraktion vom 28.07.)"
+  bleiben stehen. (#441)
 - **Der Personen-Peek bleibt im Bild.** Nahe dem rechten Rand oder der
   Oberkante lief die Info-Karte aus dem Text bzw. wurde abgeschnitten —
   sie richtet sich jetzt nach der verfügbaren Seite aus. (#439)

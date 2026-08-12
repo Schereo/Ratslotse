@@ -95,6 +95,23 @@ function parteiKuerzel(label: string | null): string {
 const falteName = (t: string) =>
   t.toLowerCase().replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss");
 
+// Exakte Partei-Labels (gefaltet, ohne Satzzeichen) — NUR solche Klammern
+// werden nach einem Badge geschluckt. „(FDP-Fraktion vom 28.07.2026)" trägt
+// mehr als das Label und bleibt deshalb stehen.
+const _KLAMMER_LABELS = new Set([
+  "spd", "cdu", "fdp", "volt", "afd", "bsw", "linke", "die linke",
+  "gruene", "die gruenen", "buendnis 90 die gruenen", "buendnis90 die gruenen",
+  "fuer oldenburg", "fdp volt", "piraten", "die partei",
+]);
+
+function klammerIstParteiLabel(inhalt: string, badgePartei: string | null): boolean {
+  if (!badgePartei) return false;
+  const gefaltet = falteName(inhalt).replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+  if (!_KLAMMER_LABELS.has(gefaltet)) return false;
+  // Die Klammer muss DIESELBE Partei meinen wie das Badge daneben.
+  return parteiKuerzel(inhalt) === parteiKuerzel(badgePartei);
+}
+
 /** Kleines Zugehörigkeits-Badge hinter einem Personennamen: Punkt in
  *  Parteifarbe (Verwaltung: Hafenblau „Stadt", Ehemalige: grau „ehem.") plus
  *  Kürzel; Tipp öffnet den Peek mit Rolle, belegtem Zeitraum und — bei
@@ -244,9 +261,17 @@ export function AntwortText({ text: rohtext, idToNum, onJump, quelleHref,
       }
       if (!p || p.art === "blocker" || badgesGesetzt.has(p.slug)) continue;
       badgesGesetzt.add(p.slug);
-      const ende = m.index + m[0].length;
+      let ende = m.index + m[0].length;
       teile.push(s.slice(last, ende));
       teile.push(<PersonBadge key={`${keyBase}-p-${p.slug}`} p={p} />);
+      // „Ulf Prange ·SPD (SPD)" — nennt der Text die Partei direkt hinter dem
+      // Namen noch einmal in Klammern, ersetzt das Badge sie (Tims Befund
+      // 12.08.). Geschluckt wird NUR das nackte Partei-Label derselben Partei.
+      const klammer = s.slice(ende).match(/^\s*\(([^()]{2,40})\)/);
+      if (klammer && klammerIstParteiLabel(klammer[1], p.partei)) {
+        ende += klammer[0].length;
+        re.lastIndex = ende;
+      }
       last = ende;
     }
     if (teile.length === 0) return s;
