@@ -8,6 +8,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Verbessert
+- **Kurzfassungen auch für Sitzungen ohne Benachrichtigung.** Die Sätze unter
+  den Tagesordnungspunkten entstanden bisher nur dort, wo jemand eine Meldung
+  bekam. Ein Ops-Lauf trägt sie jetzt für alle kommenden Sitzungen und die
+  letzten Wochen nach. (#451)
+
+### Verbessert
 - **„Dein Thema" prüft jetzt die Vorlage, nicht nur den Titel.** Ob ein
   Tagesordnungspunkt wirklich das eigene Thema betrifft, entscheidet nach der
   Titel-Zuordnung ein zweiter Blick in den Vorlagentext — „Sanierung
