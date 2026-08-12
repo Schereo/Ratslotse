@@ -8,11 +8,11 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Behoben
-- **Weiterfragen-Vorschläge: Pfeil in beide Richtungen, kein Überlappen.**
+- **Weiterfragen-Vorschläge: Pfeil in beide Richtungen, nichts verdeckt.**
   Wer die Vorschläge einmal weitergeschoben hatte, kam nicht mehr zurück —
-  ein Pfeil nach links fehlte. Außerdem lag der rechte Pfeil über dem
-  letzten Vorschlag; die Zeile hält jetzt an beiden Enden Platz für ihn
-  frei. (#460)
+  ein Pfeil nach links fehlte. Und die Pfeile lagen auf den Vorschlägen; sie
+  stehen jetzt neben der Zeile, wo sie strukturell nichts verdecken können.
+  Der dunkle Verlauf darunter ist ersatzlos weg. (#460, #461)
 
 ### Behoben
 - **App-Navigation: Suche wieder erreichbar, aktiver Tab wieder sichtbar.**
