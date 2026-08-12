@@ -16,6 +16,11 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   wird über den Titel. (#440)
 
 ### Behoben
+- **Zurück von der Personen-Seite führt wieder in die Antwort.** Der Sprung
+  aus dem Personen-Peek lud die Seite bisher komplett neu — beim
+  Zurückkommen war das Gespräch weg und der leere Startbildschirm da. Der
+  Link navigiert jetzt in der App, und das aktive gespeicherte Gespräch
+  wird beim Zurückkommen automatisch wieder geladen. (#442)
 - **Keine doppelte Partei mehr hinter Personennamen.** Nennt der
   Antworttext die Partei direkt hinter dem Namen in Klammern („Ulf Prange
   (SPD)"), ersetzt das Badge die Klammer — geschluckt wird nur das nackte

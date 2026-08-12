@@ -15,6 +15,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { ArrowRight, ChevronDown, ExternalLink, MessageSquarePlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { personHref } from "@/lib/routes";
@@ -174,10 +175,13 @@ export function PersonBadge({ p }: { p: PersonEintrag }) {
             <span className="mt-1 block text-[10.5px] text-muted-foreground/70">{zeitraum}</span>
           )}
           {p.art === "rat" && (
-            <a href={personHref(p.slug)}
+            /* Next-Link statt <a>: Der harte Reload warf beim Zurückkommen
+               den Gesprächs-State weg (Tims Befund 12.08.) — client-seitig
+               bleibt die History intakt und der Restore greift. */
+            <Link href={personHref(p.slug)}
               className="mt-1.5 inline-flex items-center gap-1 text-[11.5px] font-medium text-primary hover:underline">
               Zur Personen-Seite <ArrowRight className="h-3 w-3" aria-hidden />
-            </a>
+            </Link>
           )}
         </span>
       )}
