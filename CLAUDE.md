@@ -140,6 +140,18 @@ NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflic
   anhängen). Beim Versionsschnitt: Unreleased → `## [x.y.z] – Datum`,
   annotierten Git-Tag `vx.y.z` setzen + pushen, Compare-Links am Dateiende
   nachziehen. Die Seite ratslotse.de/changelog rendert die Datei zur Build-Zeit.
+- **Keine fremden E-Mail-Adressen im Repo.** Das Repo ist öffentlich; die
+  Adresse einer echten Person gehört dort nicht hin — auch nicht „nur als
+  Beispiel" in einem Docstring. Für Beispiele und Testfixtures: `example.org`
+  (RFC 2606, kann niemandem gehören). `scripts/lint_adressen.py` prüft das und
+  läuft in der CI; lokal vorab per `git config core.hooksPath .githooks`.
+  **Wird es erst nach dem Push bemerkt, reicht ein Revert nicht** — die Adresse
+  bleibt über den alten Commit abrufbar. Dann hilft nur ein History-Rewrite
+  (`git filter-repo --replace-text`, Force-Push aller Branches und Tags) **plus**
+  eine Anfrage beim GitHub-Support, die Objekte und die betroffenen PR-Ansichten
+  zu purgen — ohne diesen zweiten Schritt bleibt sie öffentlich. Der Rewrite
+  entfernt außerdem alle GPG-Signaturen und ändert jeden Commit-Hash. Genau das
+  ist am 12.08.2026 passiert; der Aufwand ist der Grund für diesen Absatz.
 - **Cron-Jobs** (auf dem Server): `backup_db.py` (täglich, mit optionalem
   Off-Site-Mirror per `BACKUP_RSYNC_TARGET`), `check_committees.py`,
   `check_council.py`, `check_protocols.py` (Protokolle → Beschluss-Klassifikation;
