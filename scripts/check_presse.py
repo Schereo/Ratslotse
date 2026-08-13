@@ -55,15 +55,19 @@ def main() -> dict:
             pass
     # Laufende Bauleitplan-Beteiligungen im selben Tageslauf aktualisieren —
     # eigener try: ein Ausfall des Portals darf den Presse-Teil nicht kosten.
-    beteiligungen = -1
+    bet: dict = {}
     try:
         from council import beteiligung
-        beteiligungen = store.save_beteiligungen(beteiligung.fetch_planfaelle())
+        # Seit 13.08. wird nicht mehr ersetzt, sondern fortgeschrieben: Die
+        # Stadt löscht abgeschlossene Verfahren spurlos, wir behalten sie als
+        # Historie und markieren sie nur als beendet.
+        bet = store.save_beteiligungen(beteiligung.fetch_planfaelle())
     except Exception:  # noqa: BLE001
         pass
     store.close()
     return {"feed": len(feed), "neu": neu, "fehlgeschlagen": fehlgeschlagen,
-            "chunks": chunks, "beteiligungen": beteiligungen}
+            "chunks": chunks, "beteiligungen": bet.get("laufend", -1),
+            "bet_neu": bet.get("neu", 0), "bet_beendet": bet.get("beendet", 0)}
 
 
 if __name__ == "__main__":

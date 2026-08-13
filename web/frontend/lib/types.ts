@@ -323,7 +323,11 @@ export interface DecisionDetail {
   /** Stufe 3b: Läuft zu diesem Bauleitplan gerade eine Bürgerbeteiligung?
    *  Kommt von oldenburg.planungsbeteiligung.de, gematcht über die Plan-Nummer. */
   beteiligung?: { titel: string; schritt: string; von: string | null;
-                  bis: string | null; url: string } | null;
+                  bis: string | null; url: string;
+                  /** "laufend" oder "beendet": Abgeschlossene Verfahren
+                   *  loescht das Portal der Stadt spurlos — bei uns bleiben
+                   *  sie als Beleg stehen (Historie seit 13.08.). */
+                  status?: string; beendet_am?: string | null } | null;
   similar: SimilarDecision[];
   entities: Entity[];
   ratsinfo_url: string;

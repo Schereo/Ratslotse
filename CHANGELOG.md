@@ -7,13 +7,25 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Verbessert
+- **Abgelaufene Bürgerbeteiligungen bleiben dokumentiert.** Das Portal der
+  Stadt zeigt nur Verfahren, zu denen gerade eine Beteiligung möglich ist —
+  abgeschlossene verschwinden dort spurlos. Ratslotse behält sie jetzt und
+  markiert sie als beendet, statt sie beim nächsten Abgleich zu löschen. So
+  entsteht mit der Zeit eine Übersicht, die es sonst nirgends gibt. (#471)
+- **Ehrlichere Beschriftung der Beteiligungs-Karte.** „Bürgerbeteiligung
+  läuft" stand auch dort, wo gar keine Frist mehr lief: Beim Schritt
+  „Abwägungsergebnis" nennt die Quelle bewusst keinen Zeitraum. Jetzt steht
+  dort, was wirklich gilt — laufende Frist, ausliegende Unterlagen ohne
+  Frist, oder abgeschlossenes Verfahren mit Enddatum. (#471)
+
 ### Neu
 - **Hilfe-Seite mit Kontaktformular.** Unter `/hilfe` steht jetzt ein
   Kontaktformular, das ohne Anmeldung funktioniert — wichtig für alle, die
   gerade nicht in ihr Konto kommen. Dazu Antworten auf die häufigsten Fragen
   (Konto löschen, Passwort vergessen, Benachrichtigungen, falsche Angaben).
   Verlinkt von Anmeldung, Registrierung, Startseite und beiden Seiten-Füßen;
-  zugleich die Support-Adresse, die Apple für den App Store verlangt. (#467)
+  zugleich die Support-Adresse, die Apple für den App Store verlangt. (#471)
 
 ### Behoben
 - **Die Lotti-Tour zeigt wieder dorthin, wo sie hinzeigt.** Seit der Trennung
