@@ -298,6 +298,8 @@ export default function AccountPage() {
         {" · "}
         <a href="/changelog" className="hover:text-foreground">Changelog</a>
         {" · "}
+        <a href="/barrierefreiheit" className="hover:text-foreground">Barrierefreiheit</a>
+        {" · "}
         <a href="/docs" className="hover:text-foreground">Technik-Doku</a>
       </p>
 

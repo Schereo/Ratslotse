@@ -7,6 +7,23 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Neu
+- **Erklärung zur Barrierefreiheit.** Unter `/barrierefreiheit` steht jetzt,
+  was umgesetzt ist (Tastaturbedienung, Kontraste, „Bewegung reduzieren",
+  Textvergrößerung), wo es noch hakt (Stadtkarte, Diagramme, fremde PDFs) und
+  wie man eine Barriere meldet. Verlinkt aus allen Seiten-Füßen. (#473)
+- **Datenschutz: Abschnitt zu den Ratsmitgliedern.** Die Erklärung beschrieb
+  bisher nur Daten der Nutzer. Jetzt steht auch da, welche Angaben zu
+  Ratsmitgliedern und Verwaltung aus den amtlichen Protokollen verarbeitet
+  werden, woher sie stammen, auf welcher Grundlage — und wie Betroffene
+  widersprechen oder eine Verwechslung korrigieren lassen (Art. 14 DSGVO). (#473)
+
+### Behoben
+- **Geteilte Antworten und die Fragen-Seite öffnen wieder die App.** Seit der
+  Trennung von Fragen und Suche fehlten `/fragen` und die Teilen-Links `/g` in
+  der Universal-Links-Datei — beide landeten im Browser statt in der
+  installierten App. (#473)
+
 ### Verbessert
 - **Abgelaufene Bürgerbeteiligungen bleiben dokumentiert.** Das Portal der
   Stadt zeigt nur Verfahren, zu denen gerade eine Beteiligung möglich ist —
