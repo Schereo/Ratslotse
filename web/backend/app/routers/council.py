@@ -188,6 +188,22 @@ def diese_woche(
     }
 
 
+@router.get("/wochenvorschau")
+def wochenvorschau(
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """„Diese Woche im Rat" (Design 11d/12) — als VORSCHAU auf die kommenden
+    Sitzungen, nicht als Rückblick auf Beschlüsse.
+
+    Der Entwurf führt beide Blickrichtungen (Punkt 1 kündigt an, Punkt 4 blickt
+    zurück); tragfähig ist nur die vordere: Beschlüsse erreichen uns erst mit
+    dem Protokoll, im Median 119 Tage nach der Sitzung. Tagesordnungen liegen
+    dagegen vor dem Termin vor.
+    """
+    return store.wochenvorschau()
+
+
 @router.get("/fundstueck")
 def fundstueck(
     _user: dict = Depends(require_active),

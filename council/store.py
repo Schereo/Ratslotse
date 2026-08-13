@@ -939,6 +939,216 @@ class CouncilStore:
         ).fetchall()
         return [dict(r) for r in rows]
 
+    #: Tagesordnungspunkte, die in jeder Sitzung stehen und niemanden
+    #: interessieren. Am Bestand gemessen: 20 von 53 kommenden TOPs.
+    #: „- Bericht der Verwaltung" ist ein ZUSATZ, kein Punkt: Er hängt an den
+    #: spannendsten Titeln der Woche („Ermittlungen Abfallentsorgung
+    #: Fliegerhorst (CDU-Fraktion) - Bericht der Verwaltung"). Ein auf das
+    #: Zeilenende verankertes Muster warf davon neun weg, darunter fast alle
+    #: Fraktionsanträge — deshalb greift die Formalie nur, wenn der Punkt
+    #: NICHTS ANDERES ist als diese Floskel.
+    _FORMALIE_RE = re.compile(
+        r"Beschlussf[äa]higkeit|Genehmigung der Tagesordnung|Genehmigung des Protokolls|"
+        r"Einwohnerfragestunde|^Mitteilungen|Anfragen und Anregungen|Verschiedenes|"
+        r"^\s*Bericht(?:e)? der Verwaltung\s*$|Wahl der Schriftf[üu]hrung",
+        re.IGNORECASE)
+
+    #: „(CDU-Fraktion vom 10.06.2026)", „(Fraktionen BSW und SPD)", „(FDP-Fraktion …)"
+    _ANTRAG_RE = re.compile(r"\(\s*(?:die\s+)?(?:Fraktion(?:en)?|Gruppe|Ratsherr|Ratsfrau)\b|"
+                            r"[A-ZÄÖÜ][\wÄÖÜäöüß/. ]{1,24}-Fraktion\b", re.IGNORECASE)
+
+    _PERSONALIE_RE = re.compile(
+        r"Berufung|Umbesetzung|Bestellung\s+(?:eines|einer)|"
+        r"Wahl\s+(?:des|der|eines|einer)\s+(?:stellv|Vorsitz|Schriftf)|"
+        r"beratende[sn]?\s+Mitglied", re.IGNORECASE)
+
+    #: Unter diesem Rang kommt ein Punkt gar nicht auf die Karte. Lieber drei
+    #: gute Zeilen als fünf, von denen zwei „Bericht zur Kenntnis" heißen.
+    RANG_MINDEST = 1.5
+
+    #: „(CDU-Fraktion vom 14.07.2026)" → Antragsteller „CDU-Fraktion"; der
+    #: Zusatz frisst sonst die halbe Zeile auf der Karte (im Browser gesehen).
+    _ANTRAGSTELLER_RE = re.compile(
+        r"\s*\(\s*(?:die\s+)?(?P<wer>[^)]*?)\s*(?:vom\s+\d{1,2}\.\d{1,2}\.\d{2,4})?\s*\)")
+    #: Verfahrens-Anhängsel am Titelende, die auf der Karte nichts erklären.
+    _TITEL_ANHANG_RE = re.compile(
+        r"\s*[-–]\s*(?:\w*[Aa]ntrag mit Bericht der Verwaltung|Bericht(?:e)? der Verwaltung|"
+        r"Beschlussantrag|Berichtsantrag|Antrag|Bericht|Beschluss|Vorlage|Kenntnisnahme)\s*$",
+        re.IGNORECASE)
+
+    @classmethod
+    def _titel_zerlegen(cls, titel: str) -> tuple:
+        """Antragsteller heraustrennen und den Titel fürs Anzeigen kürzen.
+
+        „Bildende Kunst im Stadtmuseum (CDU-Fraktion vom 07.07.2026) - Bericht
+        der Verwaltung" → („CDU-Fraktion", „Bildende Kunst im Stadtmuseum").
+        Der Antragsteller gehört als eigenes Merkmal neben den Titel, nicht
+        mitten hinein — sonst bleibt vom Gegenstand nichts übrig.
+        """
+        wer = None
+        m = cls._ANTRAGSTELLER_RE.search(titel or "")
+        if m and cls._ANTRAG_RE.search(m.group(0)):
+            wer = " ".join((m.group("wer") or "").split()) or None
+            titel = (titel[:m.start()] + titel[m.end():]).strip()
+        kurz = cls._TITEL_ANHANG_RE.sub("", titel or "").strip(" -–;,")
+        return wer, kurz or (titel or "")
+
+    def _punkte_bewerten(self, punkte: list[dict]) -> None:
+        """Wichtigkeit je Tagesordnungspunkt — deterministisch, ohne Modell.
+
+        Die Karte trägt fünf Zeilen, die Woche bringt gut dreißig inhaltliche
+        Punkte (gemessen). Es braucht also eine Auswahl, und „hat eine
+        Kurzfassung" ist keine. Vier Signale, alle am Bestand geprüft:
+
+        * **Behandlungsart** aus der Beratungsfolge — die amtliche Einstufung
+          der Verwaltung: ``Entscheidung`` wiegt schwerer als ``Vorberatung``,
+          die schwerer als ``Kenntnisnahme``. Kein Titel-Raten.
+        * **Fraktionsantrag**: Was eine Fraktion beantragt, ist strittig und
+          damit meist bedeutsamer als ein Verwaltungsbericht (Tims Beobachtung
+          12.08.) — aber eben nur meist, deshalb ein Gewicht und kein Filter.
+        * **Themen-Gewicht**: Nennt der Titel eine bekannte Entität, zählt
+          deren Beschluss-Historie (Fliegerhorst 166, Stadtmuseum 30) —
+          gedämpft, damit ein Dauerthema nicht jede Woche alles verdrängt.
+        * **Vorgeschichte**: eine frühere Station derselben Vorlage. Selten
+          (diese Woche 1 von 22), aber wenn, dann ein echter Hinweis.
+
+        Bewusst NICHT verwendet: frühere BESCHLÜSSE zur selben Vorlage. Neue
+        Vorlagen haben per Definition keine, und ältere erreichen uns erst mit
+        dem Protokoll — gemessen 0 von 33 Punkten.
+        """
+        import math
+
+        entitaeten = []
+        try:
+            entitaeten = [(self._falte_namen(r["name"]), r["n"]) for r in self._conn.execute(
+                "SELECT name, n FROM council_entities WHERE n >= 5")
+                if len(r["name"] or "") >= 4]
+        except Exception:  # noqa: BLE001 — ohne Entitäten fehlt nur ein Signal
+            pass
+
+        for p in punkte:
+            rang = 0.0
+            art = (p.get("behandlung") or "").lower()
+            if "entscheid" in art:
+                rang += 3.0
+            elif "vorberat" in art:
+                rang += 2.0
+            elif art:
+                rang += 0.5          # Kenntnisnahme: informativ, nicht folgenlos
+            if self._ANTRAG_RE.search(p["title"]):
+                rang += 1.5
+            titel_gefaltet = f" {self._falte_namen(p['title'])} "
+            gewicht = max((n for name, n in entitaeten if name and f" {name} " in titel_gefaltet),
+                          default=0)
+            if gewicht:
+                rang += min(2.0, math.log10(gewicht) )   # 10 → 1.0, 100 → 2.0
+            if p.get("vorgeschichte"):
+                rang += 1.0
+            if p.get("summary"):
+                rang += 0.4          # erklärbar schlägt unerklärt bei Gleichstand
+            if p.get("vorlage_nr"):
+                rang += 0.2
+            # Gremien-Personalien sind formal Entscheidungen, aber für die
+            # Öffentlichkeit selten der Rede wert („Berufung Beratendes
+            # Mitglied …") — sie landeten sonst allein wegen der Behandlungsart
+            # ganz oben.
+            if self._PERSONALIE_RE.search(p["title"]):
+                rang -= 2.0
+            p["rang"] = round(rang, 2)
+
+    def wochenvorschau(self, tage: int = 7, max_punkte: int = 5) -> dict:
+        """Was steht in den nächsten Tagen im Rat an? — „Diese Woche im Rat".
+
+        Bewusst nach VORN gerichtet: Beschlüsse erreichen uns erst mit dem
+        Protokoll, und das dauert im Median 119 Tage (am Bestand gemessen).
+        Ein Wochenrückblick aus Beschlüssen wäre also ein Rückblick auf den
+        vorletzten Monat. Tagesordnungen dagegen liegen vor der Sitzung vor —
+        für die kommende Woche stehen sie heute schon da.
+
+        Ausgewählt werden inhaltliche Punkte (Formalien fliegen raus), bevorzugt
+        solche mit Kurzfassung und Vorlage, und höchstens zwei je Sitzung, damit
+        eine große Tagesordnung die Ausgabe nicht auffrisst.
+        """
+        from datetime import date, timedelta
+
+        heute = date.today()
+        bis = (heute + timedelta(days=tage)).isoformat()
+        sitzungen = [dict(r) for r in self._conn.execute(
+            "SELECT cs.ksinr, cs.committee, cs.session_date, cs.session_time, "
+            "       COUNT(ci.id) AS n_items "
+            "FROM council_sessions cs "
+            "LEFT JOIN council_agenda_items ci ON ci.ksinr = cs.ksinr AND ci.is_public = 1 "
+            "WHERE cs.session_date >= ? AND cs.session_date <= ? "
+            "GROUP BY cs.ksinr ORDER BY cs.session_date, cs.session_time",
+            (heute.isoformat(), bis))]
+        if not sitzungen:
+            return {"found": False, "von": heute.isoformat(), "bis": bis,
+                    "sitzungen": [], "punkte": []}
+
+        ph = ",".join("?" * len(sitzungen))
+        rohe = self._conn.execute(
+            f"SELECT a.ksinr, a.item_number, a.title, a.vorlage_nr, a.kvonr, s.summary "
+            f"FROM council_agenda_items a "
+            f"LEFT JOIN agenda_item_summaries s ON s.ksinr = a.ksinr AND s.item_number = a.item_number "
+            f"WHERE a.ksinr IN ({ph}) AND a.is_public = 1 ORDER BY a.id",
+            [s["ksinr"] for s in sitzungen]).fetchall()
+        nach_sitzung = {s["ksinr"]: s for s in sitzungen}
+
+        kandidaten = []
+        for r in rohe:
+            titel = (r["title"] or "").strip()
+            if not titel or self._FORMALIE_RE.search(titel):
+                continue
+            sitz = nach_sitzung[r["ksinr"]]
+            kandidaten.append({
+                "ksinr": r["ksinr"], "item_number": r["item_number"], "title": titel,
+                "summary": (r["summary"] or "").strip() or None,
+                "vorlage_nr": r["vorlage_nr"], "kvonr": r["kvonr"],
+                "committee": sitz["committee"], "session_date": sitz["session_date"],
+            })
+
+        # Behandlungsart und Vorgeschichte aus der Beratungsfolge — sie kommt
+        # direkt aus dem Ratsinformationssystem und hängt NICHT am Protokoll.
+        kvonrs = [k["kvonr"] for k in kandidaten if k["kvonr"]]
+        stationen: dict[int, list] = {}
+        if kvonrs:
+            ph2 = ",".join("?" * len(kvonrs))
+            for b in self._conn.execute(
+                    f"SELECT kvonr, datum, ergebnis FROM council_beratungen "
+                    f"WHERE kvonr IN ({ph2}) ORDER BY datum", kvonrs):
+                stationen.setdefault(b["kvonr"], []).append(dict(b))
+        for k in kandidaten:
+            reihe = stationen.get(k["kvonr"] or 0, [])
+            heutige = next((b for b in reihe if b["datum"] == k["session_date"]), None)
+            k["behandlung"] = (heutige or {}).get("ergebnis")
+            k["vorgeschichte"] = sum(1 for b in reihe if (b["datum"] or "9999") < k["session_date"])
+            k["antragsteller"], k["titel_kurz"] = self._titel_zerlegen(k["title"])
+
+        self._punkte_bewerten(kandidaten)
+        kandidaten.sort(key=lambda p: (-p["rang"], p["session_date"]))
+        je_sitzung: dict[int, int] = {}
+        punkte = []
+        for p in kandidaten:
+            if p["rang"] < self.RANG_MINDEST:
+                continue
+            # Höchstens drei je Sitzung: Eine volle Tagesordnung soll die
+            # Ausgabe nicht auffressen, aber Qualität schlägt Streuung — der
+            # frühere Deckel von zwei zog schwache Punkte herein.
+            if je_sitzung.get(p["ksinr"], 0) >= 3:
+                continue
+            je_sitzung[p["ksinr"]] = je_sitzung.get(p["ksinr"], 0) + 1
+            punkte.append(p)
+            if len(punkte) >= max_punkte:
+                break
+        punkte.sort(key=lambda p: (p["session_date"], p["item_number"] or ""))
+        return {
+            "found": bool(punkte),
+            "von": heute.isoformat(), "bis": bis,
+            "sitzungen": sitzungen,
+            "punkte": punkte,
+            "inhaltlich_gesamt": len(kandidaten),
+        }
+
     def count_upcoming_sessions(self) -> int:
         from datetime import date
         today = date.today().isoformat()

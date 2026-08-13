@@ -95,7 +95,12 @@ const config: Config = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  // Container-Queries (offizielles Tailwind-Plugin; in Tailwind 4 eingebaut):
+  // Karten liegen in unterschiedlich breiten Rasterspalten — eine Karte muss
+  // auf IHRE Breite reagieren, nicht auf die des Fensters. Mit
+  // Fenster-Breakpoints allein blieb in der schmalen Spalte vom Gremiennamen
+  // nur „K…" übrig (Tims Befund 12.08.).
+  plugins: [require("tailwindcss-animate"), require("@tailwindcss/container-queries")],
 };
 
 export default config;
