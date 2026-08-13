@@ -21,5 +21,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-dev.txt
 
+      # Eigener Schritt vor den Tests: Der Befund soll oben im Log stehen und
+      # nicht zwischen 600 Testergebnissen. Läuft trotzdem zusätzlich als Test
+      # (tests/test_lint_adressen.py), damit er lokal beim normalen pytest
+      # mitgeht.
+      - name: Fremde E-Mail-Adressen?
+        run: python scripts/lint_adressen.py
+
       - name: Run tests
         run: python -m pytest tests/ -q
