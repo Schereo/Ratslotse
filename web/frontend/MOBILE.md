@@ -243,6 +243,10 @@ Notes for review/submission:
 
 ## App-Store-Einreichung (Checkliste)
 
+> Die fertigen Feldwerte (Beschreibung, Keywords, Altersfreigabe-Antworten,
+> Review-Notizen) stehen in **[STORE.md](STORE.md)** — samt dem per API
+> geprüften Stand dessen, was in App Store Connect schon eingetragen ist.
+
 Im Repo bereits erledigt:
 
 - `PrivacyInfo.xcprivacy` (Pflicht seit 2024): E-Mail, Nutzerinhalte (Themen),
@@ -266,8 +270,12 @@ In App Store Connect vor der ersten Einreichung (manuell):
 4. **Screenshots**: nur iPhone — die App ist iPhone-only
    (`TARGETED_DEVICE_FAMILY = 1`; auf dem iPad läuft sie im
    Kompatibilitätsmodus, ohne iPad-Screenshot-Pflicht).
-5. Altersfreigabe-Fragebogen (läuft auf 4+ hinaus), Support-URL
-   (https://ratslotse.de), Datenschutz-URL (https://ratslotse.de/datenschutz).
+5. **Altersfreigabe-Fragebogen** — Apple hat ihn 2025 umgebaut (Stufen 4+/9+/13+/
+   16+/18+, neue Fragen zu Chat, sozialen Funktionen, In-App-Steuerung). Die
+   Antworten sind **ab September 2026 Pflicht bei jeder Einreichung**; für
+   Ratslotse sind sie feldweise in [STORE.md](STORE.md) vorbereitet und laufen
+   auf 4+ hinaus. Dazu Support-URL (https://ratslotse.de/hilfe) und
+   Datenschutz-URL (https://ratslotse.de/datenschutz).
 6. In den Review-Notes die nativen Mehrwerte nennen (Push-Themen-Alerts,
    Universal Links) — beugt einer 4.2-„Webseiten-Wrapper"-Rückfrage vor.
 7. **Abgrenzung zur Stadt** (Guideline 5.2): Die App trägt einen amtlich

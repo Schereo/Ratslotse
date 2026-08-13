@@ -189,6 +189,7 @@ export default function LandingPage() {
             <Link href="/changelog" className="hover:text-foreground">Changelog</Link>
             <Link href="/impressum" className="hover:text-foreground">Impressum</Link>
             <Link href="/datenschutz" className="hover:text-foreground">Datenschutz</Link>
+            <Link href="/barrierefreiheit" className="hover:text-foreground">Barrierefreiheit</Link>
           </div>
         </div>
       </footer>

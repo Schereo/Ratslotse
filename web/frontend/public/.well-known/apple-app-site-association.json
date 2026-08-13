@@ -8,6 +8,9 @@
           "/verify-email",
           "/reset-password",
           "/dashboard",
+          "/fragen",
+          "/fragen/*",
+          "/g",
           "/topics",
           "/council*"
         ]
