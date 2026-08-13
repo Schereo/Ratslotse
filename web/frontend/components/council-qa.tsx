@@ -1309,13 +1309,28 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   // Klassiker bleiben, aber ein bis zwei Vorschläge zeigen, dass hier
   // aktuelles Material liegt. Fehlt der Endpoint, bleiben die Klassiker.
   const [frische, setFrische] = useState<string[]>([]);
+  // Tims Befund 13.08. (iOS): Beim Wechsel auf „Fragen" tauschten die
+  // Beispiele nach ~0,5 s ihren Text — und weil die frischen Anlässe länger
+  // sind als die Klassiker, wuchs die Liste dabei um eine Zeile je Vorschlag.
+  // Nachgemessen auf 375 px: 200 px → 240 px, der Inhalt sprang um 40 px.
+  // Dagegen zwei Dinge, die zusammengehören: Solange geladen wird, stehen
+  // hier Platzhalter statt Text, der gleich wieder ausgetauscht wird — und
+  // jede Zeile ist zwei Textzeilen hoch, egal was drinsteht (s. Liste unten).
+  // Der Platzhalter allein reichte nicht: Ohne feste Zeilenhöhe verschöbe
+  // sich das Layout beim Wechsel vom Platzhalter zum echten Text genauso.
+  const [frischeLaedt, setFrischeLaedt] = useState(true);
   useEffect(() => {
     if (!showIntro) return;
+    let lebt = true;
+    const fertig = () => { if (lebt) setFrischeLaedt(false); };
+    // Notbremse: Hängt der Endpoint, bleiben die Platzhalter nicht stehen —
+    // nach 1,2 s zeigen wir die Klassiker, die es ohnehin schon gibt.
+    const bremse = setTimeout(fertig, 1200);
     fetch(apiUrl("/council/qa-beispiele"), { credentials: "include", headers: authHeaders() })
       .then((r) => (r.ok ? r.json() : null))
       .then((b) => {
         const rows = (b?.sitzungen ?? []) as { committee: string; session_date: string; top_titel?: string | null }[];
-        if (rows.length === 0) return;
+        if (rows.length === 0 || !lebt) return;
         // Zwei frische Anlässe, aber nicht zweimal dieselbe Datums-Formel:
         // erst die jüngste Sitzung, dann KONKRET ihr wichtigster Beschluss
         // (Tims Wunsch nach dynamischeren Vorschlägen).
@@ -1326,13 +1341,16 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         if (kurz) vorschlaege.push(`Was wurde zu „${kurz}" entschieden?`);
         setFrische(vorschlaege.slice(0, 2));
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => { clearTimeout(bremse); fertig(); });
+    return () => { lebt = false; clearTimeout(bremse); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showIntro]);
   // Die restlichen Plätze füllt der bewährte Pool — bei jedem Besuch mit
   // anderen Fragen (Tims Wunsch), aber nur solchen, die messbar tragen.
-  // Erstes Rendern zeigt die Klassiker; gewürfelt wird erst nach dem Mount,
-  // sonst weicht das Markup des statischen Exports von der Hydration ab.
+  // Gewürfelt wird erst nach dem Mount, sonst weicht das Markup des
+  // statischen Exports von der Hydration ab — hinter den Platzhaltern fällt
+  // das jetzt ohnehin nicht mehr ins Auge.
   const [gewuerfelt, setGewuerfelt] = useState<string[]>(() => EXAMPLES.slice(0, 4));
   useEffect(() => {
     if (!showIntro) return;
@@ -1491,19 +1509,51 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">
               Zum Beispiel
             </p>
+            {/* Jede Zeile ist genau zwei Textzeilen hoch (min-h-[3em] bei
+                13,5 px Schrift und leading-1.5), der Text darin auf zwei
+                Zeilen geklemmt. Damit hängt die Höhe der Liste NICHT mehr an
+                der Länge der Vorschläge — und der Wechsel Platzhalter → Text
+                bewegt nichts mehr. Das Klemmen kürzt nur die Anzeige: Getippt
+                wird `ex` in voller Länge, die Frage geht also vollständig raus.
+                em statt px, damit größere Systemschrift die Zeilen mitwachsen
+                lässt statt den Text abzuschneiden. */}
             <div className="mt-1.5 flex w-full max-w-md flex-col gap-1.5">
-              {beispiele.map((ex, i) => (
-                <button key={ex} type="button" onClick={() => frageStellen(ex)}
-                  className={cn(
-                    "items-center gap-2.5 rounded-[11px] border border-border bg-card px-3 py-2.5 text-left text-[13.5px] transition-[background-color,transform] duration-150 ease-out-strong hover:bg-muted active:scale-[0.99]",
-                    i >= 3 ? "hidden lg:flex" : "flex")}>
-                  <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
-                  <span className="min-w-0 flex-1">{ex}</span>
-                  {i < frische.length && (
-                    <span className="shrink-0 rounded-full bg-signal/10 px-1.5 py-0.5 text-[10px] font-medium text-signal">Neu</span>
-                  )}
-                </button>
-              ))}
+              {frischeLaedt
+                ? [0, 1, 2, 3].map((i) => (
+                    <div key={`skelett-${i}`} aria-hidden
+                      /* text-[13.5px] MUSS hier stehen, obwohl kein Text drin
+                         ist: Die reservierte Höhe unten rechnet in em, und
+                         ohne dieselbe Schriftgröße wie die echte Zeile geriete
+                         der Platzhalter 70 statt 63 px hoch — der Sprung wäre
+                         nur von 0,5 s auf den Moment des Austauschs verschoben. */
+                      className={cn(
+                        "items-center gap-2.5 rounded-[11px] border border-border bg-card px-3 py-2.5 text-[13.5px]",
+                        i >= 3 ? "hidden lg:flex" : "flex")}>
+                      <div className="h-3.5 w-3.5 shrink-0 animate-pulse rounded-sm bg-muted-foreground/20" />
+                      <div className="flex min-h-[3em] min-w-0 flex-1 flex-col justify-center gap-1.5">
+                        <div className="h-2.5 w-full animate-pulse rounded-full bg-muted-foreground/15" />
+                        <div className="h-2.5 w-2/3 animate-pulse rounded-full bg-muted-foreground/15" />
+                      </div>
+                    </div>
+                  ))
+                : beispiele.map((ex, i) => (
+                    <button key={ex} type="button" onClick={() => frageStellen(ex)} title={ex}
+                      className={cn(
+                        "items-center gap-2.5 rounded-[11px] border border-border bg-card px-3 py-2.5 text-left text-[13.5px] transition-[background-color,transform] duration-150 ease-out-strong hover:bg-muted active:scale-[0.99]",
+                        i >= 3 ? "hidden lg:flex" : "flex")}>
+                      <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+                      {/* Zwei Ebenen: außen die reservierte Höhe samt
+                          Zentrierung, innen das Klemmen — `line-clamp` setzt
+                          selbst `display:-webkit-box` und verträgt sich
+                          deshalb nicht mit Flex auf demselben Element. */}
+                      <span className="flex min-h-[3em] min-w-0 flex-1 items-center">
+                        <span className="line-clamp-2">{ex}</span>
+                      </span>
+                      {i < frische.length && (
+                        <span className="shrink-0 rounded-full bg-signal/10 px-1.5 py-0.5 text-[10px] font-medium text-signal">Neu</span>
+                      )}
+                    </button>
+                  ))}
             </div>
           </div>
         )}

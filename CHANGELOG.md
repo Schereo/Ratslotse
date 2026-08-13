@@ -57,6 +57,11 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   zugleich die Support-Adresse, die Apple für den App Store verlangt. (#471)
 
 ### Behoben
+- **„Fragen" ruckelt beim Öffnen nicht mehr.** Die Beispielfragen wurden erst
+  nach einem Moment durch tagesaktuelle ersetzt — und weil die länger sind,
+  sprang der Inhalt darunter um 40 Pixel nach unten, besonders sichtbar in der
+  iPhone-App. Jetzt stehen Platzhalter, solange geladen wird, und jede Zeile
+  hat von vornherein die Höhe, die sie danach behält. (#472)
 - **Ein Tagesordnungspunkt aus „Heute" öffnet die richtige Zeile.** Der Sprung
   landete auf der Sitzung, die Tagesordnung musste man selbst durchsuchen —
   und war sie bereits aufgeklappt, klappte der Link sie sogar zu. Das betraf
