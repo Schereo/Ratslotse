@@ -3979,10 +3979,24 @@ class CouncilStore:
 
     # ---- Laufende Bauleitplan-Beteiligungen (council/beteiligung.py) ----
 
-    def save_beteiligungen(self, rows: list[dict]) -> int:
-        """Aktuellen Stand komplett ersetzen (die Quelle listet nur Laufendes)."""
+    def save_beteiligungen(self, rows: list[dict]) -> dict:
+        """Stand einpflegen und Verschwundenes als beendet markieren.
+
+        Früher wurde die Tabelle je Lauf geleert und neu befüllt. Das war
+        bequem, aber es vernichtete Wissen: Das Portal der Stadt zeigt
+        ausschließlich Verfahren, zu denen GERADE eine Beteiligung möglich ist
+        („zum aktuellen Zeitpunkt", so der Seitentitel) — abgeschlossene sind
+        dort spurlos weg, auch über die direkte Adresse (geprüft 12.08.2026:
+        ältere Planfall-IDs liefern nur noch eine leere Hülle). Wer die Zeile
+        löscht, sobald sie aus der Liste fällt, hat sie für immer verloren.
+
+        Deshalb: Bekanntes aktualisieren, Neues anlegen, Fehlendes auf
+        `beendet` setzen (mit Datum des Laufs). So wächst über die Monate eine
+        Historie, die es sonst nirgends gibt.
+        """
         from datetime import datetime as _dt
         now = _dt.utcnow().isoformat(timespec="seconds")
+        heute = now[:10]
         with self._conn:
             self._conn.execute(
                 "CREATE TABLE IF NOT EXISTS council_beteiligungen ("
@@ -3990,23 +4004,68 @@ class CouncilStore:
                 "ort TEXT, schritt TEXT, von TEXT, bis TEXT, url TEXT NOT NULL, "
                 "plan_nrs TEXT NOT NULL, fetched_at TEXT NOT NULL)"
             )
-            self._conn.execute("DELETE FROM council_beteiligungen")
-            self._conn.executemany(
-                "INSERT INTO council_beteiligungen (titel, ort, schritt, von, bis, url, plan_nrs, fetched_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                [(r["titel"], r.get("ort"), r.get("schritt"), r.get("von"), r.get("bis"),
-                  r["url"], json.dumps(r.get("plan_nrs") or [], ensure_ascii=False), now)
-                 for r in rows],
-            )
-        return len(rows)
+            # Nachrüsten für Bestände aus der Zeit vor der Historie.
+            spalten = {r[1] for r in self._conn.execute("PRAGMA table_info(council_beteiligungen)")}
+            if "status" not in spalten:
+                self._conn.execute(
+                    "ALTER TABLE council_beteiligungen ADD COLUMN status TEXT NOT NULL DEFAULT 'laufend'")
+            if "beendet_am" not in spalten:
+                self._conn.execute("ALTER TABLE council_beteiligungen ADD COLUMN beendet_am TEXT")
+            self._conn.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_beteiligung_url_schritt "
+                "ON council_beteiligungen(url, schritt)")
 
-    def list_beteiligungen(self) -> list[dict]:
-        """Alle laufenden Beteiligungen (plan_nrs als Liste) — die Handvoll
-        Zeilen matcht der Aufrufer in Python gegen Beschluss-Titel."""
+            neu = akt = 0
+            gesehen: list[tuple[str, str]] = []
+            for r in rows:
+                url, schritt = r["url"], (r.get("schritt") or "")
+                gesehen.append((url, schritt))
+                cur = self._conn.execute(
+                    "UPDATE council_beteiligungen SET titel = ?, ort = ?, von = ?, bis = ?, "
+                    "plan_nrs = ?, fetched_at = ?, status = 'laufend', beendet_am = NULL "
+                    "WHERE url = ? AND schritt = ?",
+                    (r["titel"], r.get("ort"), r.get("von"), r.get("bis"),
+                     json.dumps(r.get("plan_nrs") or [], ensure_ascii=False), now, url, schritt))
+                if cur.rowcount:
+                    akt += 1
+                    continue
+                self._conn.execute(
+                    "INSERT INTO council_beteiligungen "
+                    "(titel, ort, schritt, von, bis, url, plan_nrs, fetched_at, status) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'laufend')",
+                    (r["titel"], r.get("ort"), schritt, r.get("von"), r.get("bis"), url,
+                     json.dumps(r.get("plan_nrs") or [], ensure_ascii=False), now))
+                neu += 1
+
+            # Was nicht mehr in der Liste steht, ist gelaufen — nicht gelöscht.
+            if gesehen:
+                bedingung = " AND ".join(["NOT (url = ? AND schritt = ?)"] * len(gesehen))
+                args: list = [heute]
+                for u, sch in gesehen:
+                    args += [u, sch]
+                cur = self._conn.execute(
+                    "UPDATE council_beteiligungen SET status = 'beendet', beendet_am = ? "
+                    f"WHERE status = 'laufend' AND {bedingung}", args)
+            else:
+                cur = self._conn.execute(
+                    "UPDATE council_beteiligungen SET status = 'beendet', beendet_am = ? "
+                    "WHERE status = 'laufend'", (heute,))
+            beendet = cur.rowcount
+        return {"laufend": len(rows), "neu": neu, "aktualisiert": akt, "beendet": beendet}
+
+    def list_beteiligungen(self, nur_laufende: bool = True) -> list[dict]:
+        """Beteiligungen (plan_nrs als Liste) — die Handvoll Zeilen matcht der
+        Aufrufer in Python gegen Beschluss-Titel. Standardmäßig nur laufende;
+        mit ``nur_laufende=False`` auch die beendeten (Historie)."""
         try:
-            rows = self._conn.execute(
-                "SELECT titel, ort, schritt, von, bis, url, plan_nrs "
-                "FROM council_beteiligungen").fetchall()
+            spalten = {r[1] for r in self._conn.execute("PRAGMA table_info(council_beteiligungen)")}
+            hat_status = "status" in spalten
+            felder = "titel, ort, schritt, von, bis, url, plan_nrs" + (
+                ", status, beendet_am" if hat_status else "")
+            sql = f"SELECT {felder} FROM council_beteiligungen"
+            if nur_laufende and hat_status:
+                sql += " WHERE status = 'laufend'"
+            rows = self._conn.execute(sql).fetchall()
         except sqlite3.OperationalError:  # Tabelle entsteht erst mit dem ersten Lauf
             return []
         out = []

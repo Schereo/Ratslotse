@@ -152,15 +152,20 @@ def test_plan_nummern_matching_ohne_fehlgriffe():
 
 def test_beteiligung_store_roundtrip(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
-    n = store.save_beteiligungen([{"titel": "Bebauungsplan 831", "ort": "Stadion",
-                                   "schritt": "Abwägung", "von": None, "bis": None,
-                                   "url": "https://x", "plan_nrs": ["bp-831"]}])
-    assert n == 1
+    stat = store.save_beteiligungen([{"titel": "Bebauungsplan 831", "ort": "Stadion",
+                                      "schritt": "Abwägung", "von": None, "bis": None,
+                                      "url": "https://x", "plan_nrs": ["bp-831"]}])
+    assert stat["neu"] == 1 and stat["laufend"] == 1
     rows = store.list_beteiligungen()
     assert rows[0]["plan_nrs"] == ["bp-831"]
-    # Zweiter Lauf ersetzt komplett.
-    store.save_beteiligungen([])
+    # Zweiter Lauf: aus der Portal-Liste verschwunden — die Zeile wird als
+    # beendet markiert, aber NICHT gelöscht (die Stadt löscht, wir nicht;
+    # sonst wäre das Verfahren nirgends mehr dokumentiert).
+    stat2 = store.save_beteiligungen([])
+    assert stat2["beendet"] == 1
     assert store.list_beteiligungen() == []
+    historie = store.list_beteiligungen(nur_laufende=False)
+    assert len(historie) == 1 and historie[0]["status"] == "beendet"
     store.close()
 
 

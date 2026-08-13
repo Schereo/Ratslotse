@@ -353,8 +353,11 @@ def decision_detail(
         from council import beteiligung as bet_mod
         out["beteiligung"] = next(
             ({"titel": b["titel"], "schritt": b["schritt"], "von": b["von"],
-              "bis": b["bis"], "url": b["url"]}
-             for b in store.list_beteiligungen()
+              "bis": b["bis"], "url": b["url"], "status": b.get("status") or "laufend",
+              "beendet_am": b.get("beendet_am")}
+             # Auch beendete: Sie sind der einzige Ort, an dem eine
+             # abgelaufene Beteiligung überhaupt noch dokumentiert ist.
+             for b in store.list_beteiligungen(nur_laufende=False)
              if bet_mod.passt_zu_titel(b["plan_nrs"], d.get("title") or "")), None)
     except Exception:  # noqa: BLE001 — Zusatzinfo, nie Blocker
         out["beteiligung"] = None

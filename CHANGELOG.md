@@ -7,6 +7,18 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Verbessert
+- **Abgelaufene Bürgerbeteiligungen bleiben dokumentiert.** Das Portal der
+  Stadt zeigt nur Verfahren, zu denen gerade eine Beteiligung möglich ist —
+  abgeschlossene verschwinden dort spurlos. Ratslotse behält sie jetzt und
+  markiert sie als beendet, statt sie beim nächsten Abgleich zu löschen. So
+  entsteht mit der Zeit eine Übersicht, die es sonst nirgends gibt. (#467)
+- **Ehrlichere Beschriftung der Beteiligungs-Karte.** „Bürgerbeteiligung
+  läuft" stand auch dort, wo gar keine Frist mehr lief: Beim Schritt
+  „Abwägungsergebnis" nennt die Quelle bewusst keinen Zeitraum. Jetzt steht
+  dort, was wirklich gilt — laufende Frist, ausliegende Unterlagen ohne
+  Frist, oder abgeschlossenes Verfahren mit Enddatum. (#467)
+
 ### Neu
 - **Hilfe-Seite mit Kontaktformular.** Unter `/hilfe` steht jetzt ein
   Kontaktformular, das ohne Anmeldung funktioniert — wichtig für alle, die
