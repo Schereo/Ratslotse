@@ -7,6 +7,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Behoben
+- **iPad-Build ließ sich nicht hochladen.** Apple verlangt für das
+  iPad-Multitasking alle vier Bildschirm-Ausrichtungen; die App meldete nur
+  drei und wurde beim Upload abgewiesen. Auf dem iPhone bleibt der Kopfstand
+  weiterhin aus — die Ausrichtungen sind jetzt pro Gerätetyp gesetzt. (#477)
+
 ## [1.9.0] – 2026-08-14
 
 ### Neu

@@ -34,9 +34,20 @@
 	<array>
 		<string>arm64</string>
 	</array>
+	<!-- iPhone: kein Kopfstand — die Tab-Bar landete sonst oben.
+	     iPad: Apple verlangt für Multitasking ALLE vier Ausrichtungen
+	     (Upload-Fehler 90474), seit die App auch dort läuft. Deshalb ein
+	     eigener ~ipad-Schlüssel statt einer gemeinsamen Liste. -->
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
