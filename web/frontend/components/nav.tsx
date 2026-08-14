@@ -263,7 +263,7 @@ function RechtsLinks({ zentriert = false }: { zentriert?: boolean }) {
 
 export function DesktopSidebar() {
   return (
-    <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-card md:flex md:sticky md:top-0 md:h-screen md:self-start md:overflow-y-auto">
+    <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-card desk:flex desk:sticky desk:top-0 desk:h-screen desk:self-start desk:overflow-y-auto">
       {/* Design 28a/R5: Hier standen zwei „Suchen" mit derselben Lupe 40 px
           übereinander — die Ghost-Zeile (Befehlspalette) und der Navigations-
           punkt „Suchen & Fragen". Wer die Lupe nahm, landete oft im falschen
@@ -292,7 +292,7 @@ export function MobileTopbar() {
   // Design 9a③: kein Burger mehr — die Hauptziele stehen in der Tab-Bar,
   // Sekundäres im „Mehr"-Sheet. Der Kopf behält nur Logo + Suche.
   return (
-    <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-border bg-card/95 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] backdrop-blur md:hidden">
+    <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-border bg-card/95 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] backdrop-blur desk:hidden">
       <div className="flex flex-1 items-center gap-2">
         <BrandMark className="h-7 w-7" />
         <span className="font-display text-base font-bold tracking-tight text-foreground">Ratslotse</span>
@@ -339,32 +339,50 @@ function BottomNavInner({ tab }: { tab: string | null }) {
         // Beim offenen „Mehr"-Sheet wird die Fläche deckend (9a④): das Sheet
         // dockt DARUNTER an, Glas würde seine Kante durchscheinen lassen.
         className={cn(
-          "fixed inset-x-0 bottom-0 flex border-t border-border/50 pb-[env(safe-area-inset-bottom)] md:hidden",
+          // Die Safe Area wird GETEILT statt komplett unten angehängt: Sonst
+          // sitzt der Inhalt 8 px unter der Oberkante, aber 8 + 20 px über der
+          // Unterkante — die Icons wirken nach oben gedrückt (Tims Befund
+          // 14.08.). Halb/halb ist optisch mittig, die Leiste bleibt gleich
+          // hoch (der Platzhalter in `main` rechnet mit derselben Summe), und
+          // der Abstand zum Home-Indikator reicht weiterhin.
+          "fixed inset-x-0 bottom-0 flex border-t border-border/50 pb-[calc(env(safe-area-inset-bottom)/2)] pt-[calc(env(safe-area-inset-bottom)/2)] desk:hidden",
           mehrOffen
             ? "z-50 bg-card shadow-[0_-10px_28px_-14px_rgba(2,32,71,0.22)]"
             : "z-40 bg-card/70 backdrop-blur-xl backdrop-saturate-150 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.45),0_-10px_28px_-14px_rgba(2,32,71,0.22)] dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),0_-10px_28px_-14px_rgba(0,0,0,0.5)]",
         )}
         aria-label="Hauptnavigation"
       >
-        {TABS.map((l) => (
-          <BottomNavItem key={l.label} item={l} active={!mehrOffen && l.aktiv(pathname, tab)} />
-        ))}
-        {/* „Mehr" ist ein Schalter, kein Link: öffnet/schließt das Sheet. */}
-        <button
-          type="button"
-          onClick={() => setMehrOffen((v) => !v)}
-          aria-expanded={mehrOffen}
-          aria-current={mehrAktiv && !mehrOffen ? "page" : undefined}
-          className={cn(
-            "flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition-[color,transform] duration-150 active:scale-95",
-            mehrAktiv ? "text-primary" : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          <span className={cn("relative rounded-full px-3.5 py-1 transition-colors", mehrAktiv && "bg-primary/10")}>
-            <MoreHorizontal className={cn("h-5 w-5 transition-transform", mehrAktiv && "scale-110")} />
-          </span>
-          Mehr
-        </button>
+        {/* Auf dem Handy verteilen sich die fünf Ziele über die Gerätebreite —
+            78 pt pro Ziel, dicht genug. Auf dem iPad wären es 206 pt: fünf
+            kleine Symbole, verloren in einer breiten Leiste (Tims Befund
+            14.08.). Ab md rücken sie deshalb zu einer mittigen Gruppe
+            zusammen — dieselbe Dichte wie auf dem Handy, und nah an der
+            schwebenden Tab-Leiste, die iPadOS selbst zeigt. `md:` heißt hier
+            immer „breites Touch-Gerät", weil die ganze Leiste ab `desk`
+            ohnehin der Seitenleiste weicht. */}
+        <div className="flex w-full md:mx-auto md:max-w-2xl">
+          {TABS.map((l) => (
+            <BottomNavItem key={l.label} item={l} active={!mehrOffen && l.aktiv(pathname, tab)} />
+          ))}
+          {/* „Mehr" ist ein Schalter, kein Link: öffnet/schließt das Sheet. */}
+          <button
+            type="button"
+            onClick={() => setMehrOffen((v) => !v)}
+            aria-expanded={mehrOffen}
+            aria-current={mehrAktiv && !mehrOffen ? "page" : undefined}
+            className={cn(
+              // Größere Symbole/Schrift auf dem iPad, dafür weniger Polsterung:
+              // Die Leiste bleibt gleich hoch, das Ziel darin wird größer.
+              "flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition-[color,transform] duration-150 active:scale-95 md:py-1 md:text-[12.5px]",
+              mehrAktiv ? "text-primary" : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <span className={cn("relative rounded-full px-3.5 py-1 transition-colors", mehrAktiv && "bg-primary/10")}>
+              <MoreHorizontal className={cn("h-5 w-5 transition-transform md:h-6 md:w-6", mehrAktiv && "scale-110")} />
+            </span>
+            Mehr
+          </button>
+        </div>
       </nav>
     </>
   );
@@ -382,12 +400,12 @@ function BottomNavItem({ item, active }: { item: Item; active: boolean }) {
       data-tour={item.tour}
       className={cn(
         // active:scale-95 = spürbares Touch-Feedback beim Antippen.
-        "flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition-[color,transform] duration-150 active:scale-95",
+        "flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition-[color,transform] duration-150 active:scale-95 md:py-1 md:text-[12.5px]",
         active ? "text-primary" : "text-muted-foreground hover:text-foreground",
       )}
     >
       <span className={cn("relative rounded-full px-3.5 py-1 transition-colors", active && "bg-primary/10")}>
-        <Icon className={cn("h-5 w-5 transition-transform", active && "scale-110")} />
+        <Icon className={cn("h-5 w-5 transition-transform md:h-6 md:w-6", active && "scale-110")} />
         {showDot && <span className="absolute right-1.5 top-0 h-2 w-2 rounded-full bg-signal ring-2 ring-card" aria-hidden />}
       </span>
       {item.label}
@@ -434,7 +452,7 @@ function MehrSheet({ onClose }: { onClose: () => void }) {
   };
   const initialen = (user?.email ?? "?").slice(0, 2).toUpperCase();
   return (
-    <div className="fixed inset-0 z-40 md:hidden" role="dialog" aria-modal="true" aria-label="Mehr">
+    <div className="fixed inset-0 z-40 desk:hidden" role="dialog" aria-modal="true" aria-label="Mehr">
       <button type="button" aria-label="Menü schließen" onClick={onClose}
         className="absolute inset-0 bg-[hsl(212_50%_12%/0.4)]" />
       <div

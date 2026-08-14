@@ -194,6 +194,82 @@ def test_wochenvorschau_ohne_sitzungen_ist_ehrlich_leer(tmp_path):
         store.close()
 
 
+# ---- „Die Woche im Rat" — eine Karte statt zwei (Design 14, 14.08.26) ------
+
+def test_woche_traegt_jede_sitzung_mit_ort_und_punktzahl(tmp_path):
+    """Design 14: Die Karte ersetzt auch „Nächste Sitzungen". Dafür braucht
+    jede Sitzung eine Zeile — mit Ort (Desktop) und der Punktzahl, aus der die
+    ruhige Zeile „nicht öffentlich" ableitet."""
+    store = _vorschau_store(tmp_path)
+    try:
+        with store._conn:
+            # Eine zweite Sitzung ganz ohne öffentliche Punkte.
+            store._conn.execute(
+                "INSERT INTO council_sessions (ksinr, committee, session_date, "
+                "session_time, location, fetched_at) VALUES (2, 'Verwaltungsausschuss', "
+                "date('now','+3 day'), '18:00', 'Kleiner Saal', datetime('now'))")
+            store._conn.execute(
+                "INSERT INTO council_agenda_items (ksinr, item_number, title, is_public) "
+                "VALUES (2, 'N 1', 'Grundstück', 0)")
+        d = store.wochenvorschau()
+        nach_ksinr = {s["ksinr"]: s for s in d["sitzungen"]}
+        assert set(nach_ksinr) == {1, 2}
+        assert nach_ksinr[2]["location"] == "Kleiner Saal"
+        # Nicht öffentlich = kein einziger öffentlicher Punkt.
+        assert nach_ksinr[2]["n_items"] == 0
+        # Die Karte hat Inhalt, sobald eine Sitzung ansteht — auch wenn diese
+        # zweite gar keinen relevanten Punkt beisteuert.
+        assert d["found"] is True
+    finally:
+        store.close()
+
+
+def test_eigenes_thema_schlaegt_die_rang_schwelle(tmp_path):
+    """Wer ein eigenes Thema trifft, ist relevant — auch wenn die allgemeine
+    Bewertung den Punkt aussortiert hätte. „Aktionswochen - Bericht" fällt
+    sonst als reine Kenntnisnahme durch (s. Test oben)."""
+    store = _vorschau_store(tmp_path)
+    try:
+        ohne = store.wochenvorschau()
+        assert not any("Aktionswochen" in p["title"] for p in ohne["punkte"])
+
+        mit = store.wochenvorschau(meine={1: [{"item_number": "Ö 4", "topic_name": "Radverkehr"}]})
+        treffer = [p for p in mit["punkte"] if "Aktionswochen" in p["title"]]
+        assert len(treffer) == 1
+        assert treffer[0]["topic_name"] == "Radverkehr"
+        # Und er steht vorn: eigenes Thema schlägt jeden Fremdpunkt.
+        assert treffer[0]["top"] is True
+        assert mit["treffer_gesamt"] == 1
+    finally:
+        store.close()
+
+
+def test_genau_ein_punkt_ist_hervorgehoben(tmp_path):
+    """Design 14a hebt EINEN Punkt der ganzen Karte hervor und gibt ihm die
+    Kurzbegründung — nicht einen je Sitzung."""
+    store = _vorschau_store(tmp_path)
+    try:
+        d = store.wochenvorschau(max_punkte=99)
+        assert sum(1 for p in d["punkte"] if p["top"]) == 1
+    finally:
+        store.close()
+
+
+def test_relevant_je_sitzung_zaehlt_vor_dem_deckel(tmp_path):
+    """Prinzip ② der Dichte-Matrix: verkürzen ja, verschweigen nein. Das
+    Abzeichen („3 für dich") und die Restzeile („1 weiterer Punkt") brauchen
+    die Zahl VOR dem Anzeige-Deckel."""
+    store = _vorschau_store(tmp_path)
+    try:
+        d = store.wochenvorschau(max_punkte=1)
+        assert len(d["punkte"]) == 1
+        # Gezählt wird, was relevant IST — nicht, was gezeigt wird. Genau aus
+        # dieser Differenz entsteht die Restzeile „n weitere Punkte".
+        assert d["relevant_je_sitzung"][1] > len(d["punkte"])
+    finally:
+        store.close()
+
+
 def test_bericht_der_verwaltung_ist_nur_allein_eine_formalie(tmp_path):
     """„- Bericht der Verwaltung" ist ein ZUSATZ, kein Punkt: Er hängt an den
     spannendsten Titeln der Woche. Ein aufs Zeilenende verankertes Muster warf

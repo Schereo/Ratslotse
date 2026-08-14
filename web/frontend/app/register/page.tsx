@@ -43,7 +43,7 @@ export default function RegisterPage() {
         <p className="mt-3 text-sm text-muted-foreground">
           Erstelle dein kostenloses Konto — Lotti lotst dich danach durch die ersten Schritte.
         </p>
-        <div className="mt-6">
+        <div className="mt-5">
           {/* RL-1001: Apple steht immer an erster Stelle (nur in der App sichtbar). */}
           <AppleSignInButton label="Mit Apple registrieren" />
         </div>
@@ -56,7 +56,13 @@ export default function RegisterPage() {
             <label htmlFor="display-name" className="mb-1 block text-sm font-medium text-foreground">
               Anzeigename <span className="font-normal text-muted-foreground">(optional)</span>
             </label>
-            <Input id="display-name" className="h-11" value={displayName} onChange={(e) => setDisplayName(e.target.value)} maxLength={60} autoFocus autoComplete="name" placeholder="Wie dürfen wir dich ansprechen?" />
+            {/* Kein autoFocus — dieselbe Lehre wie auf der Anmeldung: Das
+                statische HTML trägt das Attribut, iOS klappt die Tastatur schon
+                beim Parsen auf und scrollt das Feld über sie. Dabei wanderte die
+                ganze Karte nach oben und Lotti über ihrer Kante in die Dynamic
+                Island (Tims Befund 14.08.). Ohne Autofokus bleibt der Screen
+                stehen, wie er gebaut ist. */}
+            <Input id="display-name" className="h-11" value={displayName} onChange={(e) => setDisplayName(e.target.value)} maxLength={60} autoComplete="name" placeholder="Wie dürfen wir dich ansprechen?" />
           </div>
           <div>
             <label htmlFor="email" className="mb-1 block text-sm font-medium text-foreground">E-Mail</label>
@@ -79,24 +85,29 @@ export default function RegisterPage() {
             Danach bestätigst du kurz deine E-Mail-Adresse.
           </p>
         </form>
-        <p className="mt-6 text-center text-sm text-muted-foreground">
+        <p className="mt-4 text-center text-sm text-muted-foreground">
           Schon registriert?{" "}
           <Link href={`/login${weiter}`} className="font-medium text-primary hover:underline">
             Anmelden
           </Link>
         </p>
-        {/* Wie auf der Anmeldung: Wer hier ein Konto anlegt, soll vorher wissen,
-            bei wem — die Stadt ist es nicht (App-Store-Guideline 5.2). */}
-        <p className="mt-4 border-t border-border pt-4 text-balance text-center text-xs leading-relaxed text-muted-foreground">
-          Ratslotse ist ein privates Bürgerprojekt und kein Angebot der Stadt Oldenburg.
-        </p>
-        <p className="mt-2 text-center text-xs text-muted-foreground">
-          <Link href="/hilfe" className="hover:text-foreground hover:underline">Hilfe &amp; Kontakt</Link>
-          {" · "}
-          <Link href="/impressum" className="hover:text-foreground hover:underline">Impressum</Link>
-          {" · "}
-          <Link href="/datenschutz" className="hover:text-foreground hover:underline">Datenschutz</Link>
-        </p>
+        {/* Ein Fuß statt dreier Blöcke (Tims Befund 14.08.): Abgrenzung zur
+            Stadt (App-Store-Guideline 5.2) und Pflicht-Links standen mit je
+            eigenem Abstand untereinander und machten die Karte so hoch, dass
+            Lotti über ihrer Kante auf dem iPhone in die Dynamic Island rutschte.
+            Zusammengefasst spart das rund 40 px, ohne dass etwas wegfällt. */}
+        <div className="mt-4 space-y-1 border-t border-border pt-3 text-center text-xs leading-relaxed text-muted-foreground">
+          <p className="text-balance">
+            Ratslotse ist ein privates Bürgerprojekt und kein Angebot der Stadt Oldenburg.
+          </p>
+          <p>
+            <Link href="/hilfe" className="hover:text-foreground hover:underline">Hilfe &amp; Kontakt</Link>
+            {" · "}
+            <Link href="/impressum" className="hover:text-foreground hover:underline">Impressum</Link>
+            {" · "}
+            <Link href="/datenschutz" className="hover:text-foreground hover:underline">Datenschutz</Link>
+          </p>
+        </div>
     </AuthShell>
   );
 }

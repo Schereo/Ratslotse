@@ -3,12 +3,11 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Sparkles, ArrowRight, Check, Play, CalendarDays } from "lucide-react";
+import { Sparkles, ArrowRight, Check, Play } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { DecisionOutcome, Topic } from "@/lib/types";
 import { shortCommittee } from "@/lib/committees";
-import { relativerTag } from "@/lib/utils";
 import { useHeute } from "@/lib/use-heute";
 import { Button, Card } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
@@ -17,8 +16,8 @@ import { SitzungspauseBanner } from "@/components/sitzungspause-banner";
 import { LiveBanner } from "@/components/live-banner";
 import { FundstueckCard } from "@/components/fundstueck-card";
 import { RecentDecisions } from "@/components/recent-decisions";
+import { WocheImRat, type Wochenvorschau } from "@/components/woche-im-rat";
 import { HinweisSlot } from "@/components/hinweis-slot";
-import { isLiveNow } from "@/lib/live";
 import { PushPrimer } from "@/components/push-primer";
 import { formatEuro, OutcomeDot } from "@/components/decision-ui";
 import { fragenHref, decisionHref } from "@/lib/routes";
@@ -29,30 +28,11 @@ import { useCountUp } from "@/lib/use-countup";
 
 const FRAGEN_HREF = fragenHref();
 
-// ksinr null = terminiert, Tagesordnung noch nicht veröffentlicht.
-type UpcomingSession = {
-  ksinr: number | null; committee: string; session_date: string; session_time: string; n_items: number;
-  // RL-902: TOPs, die zu eigenen Themen passen.
-  my_topic_items?: { item_number: string; topic_name: string }[];
-};
 type TopicHit = { topic_name: string; id: number; title: string; committee: string; session_date: string };
 type DieseWoche =
   | { found: false }
   | { found: true; decision_id: number; title: string; outcome: DecisionOutcome;
       committee: string; session_date: string; interest_reason: string };
-/** „Diese Woche im Rat" (Design 11d/12) — die Vorschau auf die kommenden
- *  Sitzungen. Bewusst nach VORN gerichtet: Beschlüsse erreichen uns erst mit
- *  dem Protokoll, im Median 119 Tage nach der Sitzung; Tagesordnungen liegen
- *  dagegen vorher vor. */
-type Wochenvorschau = {
-  found: boolean; von: string; bis: string; inhaltlich_gesamt?: number;
-  sitzungen: { ksinr: number | null; committee: string; session_date: string;
-    session_time: string | null; n_items: number }[];
-  punkte: { ksinr: number; item_number: string; title: string; titel_kurz?: string;
-    antragsteller?: string | null; summary: string | null;
-    vorlage_nr: string | null; kvonr: number | null;
-    committee: string; session_date: string }[];
-};
 type ZahlDerWoche =
   | { kind: "betrag"; amount_eur: number; decision_id: number; title: string; session_date: string; window_days: number }
   | { kind: "anzahl"; count: number; window_days: number };
@@ -62,21 +42,6 @@ type ZahlDerWoche =
  *  dieselben Beschlüsse zeigt wie die Zahl auf der Karte. */
 const lastWeekIso = (days: number) =>
   new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
-
-/** Kopfzeile der Wochen-Ausgabe: „12.–19. AUGUST" (Design 11d). */
-const ausgabeZeitraum = (von: string, bis: string) => {
-  const a = new Date(von + "T12:00:00");
-  const b = new Date(bis + "T12:00:00");
-  const monat = b.toLocaleDateString("de-DE", { month: "long" }).toUpperCase();
-  return `${a.getDate()}.–${b.getDate()}. ${monat}`;
-};
-
-const fmtDay = (iso: string) =>
-  new Date(iso + "T12:00:00").toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" });
-
-/** Termin-Spalte: „heute“/„morgen“ schlagen das Datum (Tims Wunsch 12.08.) —
- *  das genaue Datum bleibt als Titel am Element. */
-const fmtTermin = (iso: string, heute: Date | null) => relativerTag(iso, heute) ?? fmtDay(iso);
 
 function relTime(iso: string): string {
   const days = Math.round((Date.now() - new Date(iso + "T12:00:00").getTime()) / 86400000);
@@ -91,8 +56,9 @@ function relTime(iso: string): string {
 }
 
 /** „Heute"-Briefing (RL-401, Design 2a/4a): Kopf mit Lotti + Signal-CTA,
- *  Pause-Banner, dann drei Karten — Nächste Sitzungen · Neu zu deinen Themen ·
- *  Zahl der Woche. Jeder Bereich hat einen definierten Leerzustand. */
+ *  Pause-Banner, dann die Wochen-Karte (Design 14) und darunter zwei kurze —
+ *  Neu zu deinen Themen · Zahl der Woche. Jeder Bereich hat einen definierten
+ *  Leerzustand. */
 export default function DashboardPage() {
   const theme = useMascotTheme();
   const { user } = useAuth();
@@ -107,10 +73,6 @@ export default function DashboardPage() {
   const topicsQuery = useQuery({ queryKey: ["topics"], queryFn: () => api.get<Topic[]>("/topics") });
   const topicCount = topicsQuery.data?.length ?? 0;
 
-  const sessionsQuery = useQuery({
-    queryKey: ["upcoming-sessions"],
-    queryFn: () => api.get<{ sessions: UpcomingSession[] }>("/council/sessions?scope=upcoming&limit=3"),
-  });
   const hitsQuery = useQuery({
     queryKey: ["topic-latest-hits"],
     queryFn: () => api.get<{ hits: TopicHit[] }>("/topics/latest-hits?limit=2"),
@@ -129,17 +91,24 @@ export default function DashboardPage() {
     staleTime: 60 * 60 * 1000,
   });
   const woche = wocheQuery.data?.found ? wocheQuery.data : null;
-  // Die Wochen-Ausgabe steht VOR dem Einzel-Beschluss: Sie ist aktuell, wo der
-  // Rückblick systematisch alt ist. Nur laden, wenn die Karte sie zeigen würde.
+  // Design 14: Die Wochen-Karte steht jetzt IMMER — sie ersetzt „Nächste
+  // Sitzungen" und ist damit die vollständige Sicht auf die Woche, nicht mehr
+  // ein Ersatz für einen Leerzustand.
   const vorschauQuery = useQuery({
     queryKey: ["wochenvorschau"],
     queryFn: () => api.get<Wochenvorschau>("/council/wochenvorschau"),
-    enabled: !hitsQuery.isLoading && hits.length === 0,
     staleTime: 60 * 60 * 1000,
   });
   const vorschau = vorschauQuery.data?.found ? vorschauQuery.data : null;
 
-  const sessions = sessionsQuery.data?.sessions ?? [];
+  // Lokales ISO-Datum für den „HEUTE"-Chip der Wochen-Karte. Bewusst nicht
+  // über toISOString(): Das rechnet in UTC und machte aus 00:30 Uhr deutscher
+  // Zeit den Vortag. Vor dem Mount ist es leer — dann zeigt die Karte Daten
+  // statt „heute", genau wie useHeute() es vorsieht.
+  const heuteIso = heute
+    ? `${heute.getFullYear()}-${String(heute.getMonth() + 1).padStart(2, "0")}-${String(heute.getDate()).padStart(2, "0")}`
+    : "";
+
   const zahl = zahlQuery.data;
 
   return (
@@ -210,83 +179,27 @@ export default function DashboardPage() {
           items-start: Jede Karte trägt ihre eigene Höhe. Vorher streckte das
           Raster „Nächste Sitzungen" und „Zahl der Woche" auf die Höhe der
           Ausgabe — mit einem Feld Leerraum darunter, das nichts sagt. */}
-      <div className="@container/raster mt-6">
-        <div className="grid grid-cols-1 items-start gap-4 @3xl/raster:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] @6xl/raster:grid-cols-[minmax(0,1.15fr)_minmax(0,1.35fr)_minmax(0,0.75fr)]">
-          {/* Nächste Sitzungen */}
-          <Card className="@container/karte flex flex-col p-5 @3xl/raster:order-2 @6xl/raster:order-none">
-            <h2 className="font-display text-base font-bold text-foreground">Nächste Sitzungen</h2>
-            <div className="mt-3 flex-1 space-y-1">
-              {sessions.slice(0, 3).map((s) => (
-                <Link
-                  key={s.ksinr ?? `${s.committee}|${s.session_date}`}
-                  // RL-F06: direkt zur jeweiligen Sitzung (Terminplan-Zeilen ohne
-                  // ksinr landen weiter auf der Liste).
-                  href={s.ksinr ? `/council?tab=sessions&ksinr=${s.ksinr}` : "/council?tab=sessions"}
-                  /* Gestapelt, sobald die Karte schmal ist; ab @xs/karte (20rem
-                     INHALTS-Breite der Karte, nicht Fensterbreite — die
-                     Polsterung zählt nicht mit) wieder einzeilig mit
-                     Gremium links und Datum/Merkmal rechts. */
-                  className="block rounded-lg px-2 py-2 transition-colors hover:bg-accent @xs/karte:flex @xs/karte:items-center @xs/karte:gap-3"
-                >
-                  {/* Zwei Zeilen statt drei Spalten (Tims Befund 12.08.): In der
-                      schmalen Spalte blieb vom Gremium nur „K…" übrig, weil das
-                      Datum eine feste Breite hatte und das TOP-Merkmal daneben.
-                      Gestapelt trägt jede Angabe ihre eigene Zeile — nichts muss
-                      weggelassen werden, und es funktioniert in jeder Spalte. */}
-                  <span className="flex items-center gap-2 text-xs text-muted-foreground @xs/karte:order-2 @xs/karte:ml-auto @xs/karte:shrink-0">
-                    <span className="whitespace-nowrap tabular-nums" title={fmtDay(s.session_date)}>
-                      {fmtTermin(s.session_date, heute)}
-                    </span>
-                  {isLiveNow(s) ? (
-                    /* RL-U10: laufende Sitzung — LIVE schlägt alle anderen Chips. */
-                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[11px] font-bold text-red-600 dark:text-red-400">
-                      <span className="h-1.5 w-1.5 rounded-full bg-red-500" aria-hidden /> LIVE
-                    </span>
-                  ) : (s.my_topic_items?.length ?? 0) > 0 ? (
-                    /* RL-902: persönlicher Treffer schlägt den generischen TOPs-Chip. */
-                    <span className="shrink-0 rounded-full bg-signal/10 px-2 py-0.5 text-[11px] font-semibold text-signal">
-                      {new Set(s.my_topic_items!.map((m) => m.item_number)).size} zu deinen Themen
-                    </span>
-                  ) : s.n_items > 0 && (
-                    <span className="shrink-0 rounded-full bg-signal/10 px-2 py-0.5 text-[11px] font-semibold text-signal">
-                      {s.n_items} {s.n_items === 1 ? "TOP" : "TOPs"}
-                    </span>
-                  )}
-                  </span>
-                  <span className="mt-0.5 block truncate text-sm font-medium text-foreground @xs/karte:mt-0 @xs/karte:min-w-0 @xs/karte:flex-1"
-                    title={s.committee}>
-                    {shortCommittee(s.committee)}
-                  </span>
-                </Link>
-              ))}
-              {!sessionsQuery.isLoading && sessions.length === 0 && (
-                <p className="px-2 py-2 text-sm leading-relaxed text-muted-foreground">
-                  Derzeit sind keine kommenden Sitzungen veröffentlicht — Details siehe Hinweis oben.
-                </p>
-              )}
-            </div>
-            <Link
-              href="/council?tab=sessions"
-              className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-            >
-              Alle Sitzungen <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-          </Card>
+      {/* Design 14: „Die Woche im Rat" steht über dem Raster und nimmt die
+          volle Breite. Sie ersetzt zwei Karten (Nächste Sitzungen + Diese
+          Woche im Rat) und braucht den Platz für ihre Tages-Rail — je breiter
+          sie ist, desto mehr trägt sie (Ort, Kurzbegründung, dritter Punkt).
+          Darunter bleibt das Raster für die beiden kurzen Karten. */}
+      {vorschau && (
+        <div className="mt-6">
+          <WocheImRat vorschau={vorschau} heuteIso={heuteIso} />
+        </div>
+      )}
 
-          {/* Neu zu deinen Themen / Diese Woche im Rat — die textreichste Karte:
-              auf mittleren Schirmen über die volle Breite, damit die Zeilen
-              lesbar bleiben. */}
-          <Card className="@container/ausgabe flex flex-col p-5 @3xl/raster:order-1 @3xl/raster:col-span-2 @6xl/raster:order-none @6xl/raster:col-span-1">
-            <div className="flex items-baseline justify-between gap-3">
-              <h2 className="font-display text-base font-bold text-foreground">
-                {(vorschau || woche) && hits.length === 0 ? "Diese Woche im Rat" : "Neu zu deinen Themen"}
-              </h2>
-              {vorschau && hits.length === 0 && (
-                <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-                  {ausgabeZeitraum(vorschau.von, vorschau.bis)}
-                </span>
-              )}
-            </div>
+      {/* Nur noch zwei kurze Karten: „Neu zu deinen Themen" (Rückblick) und
+          „Zahl der Woche". Zwei Spalten reichen — die dritte war für die
+          Sitzungs-Liste da, die jetzt in der Wochen-Karte steckt. */}
+      <div className="@container/raster mt-4">
+        <div className="grid grid-cols-1 items-start gap-4 @3xl/raster:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+          {/* Neu zu deinen Themen — der Rückblick auf entschiedene Beschlüsse.
+              Die Vorschau auf die Woche ist seit Design 14 eine eigene Karte
+              über dem Raster; diese hier trägt nur noch die Treffer. */}
+          <Card className="flex flex-col p-5">
+            <h2 className="font-display text-base font-bold text-foreground">Neu zu deinen Themen</h2>
             <div className="mt-3 flex-1 space-y-2">
               {hits.map((h) => (
                 <Link key={h.id} href={decisionHref(h.id)} className="block rounded-lg px-2 py-2 transition-colors hover:bg-accent">
@@ -299,58 +212,7 @@ export default function DashboardPage() {
                   </p>
                 </Link>
               ))}
-              {/* Die Ausgabe: was in den nächsten Tagen ansteht. Sie zeigt sich
-                  auch OHNE eigene Themen — sie braucht keine (Design 12). */}
-              {!hitsQuery.isLoading && hits.length === 0 && vorschau && (
-                <>
-                  {/* Zweispaltig, sobald die Karte selbst breit genug ist:
-                      Über die volle Rasterbreite (zwei Spalten, 976 px) lief
-                      eine Kurzfassung sonst über rund 150 Zeichen — weit über
-                      der gut lesbaren Zeilenlänge. Bei drei Rasterspalten ist
-                      dieselbe Karte 484 px schmal und bleibt einspaltig; die
-                      Query fragt deshalb die KARTE, nicht das Fenster.
-                      space-y-2 wäre bei Spalten die falsche Lücke (es kennt
-                      keine Spaltenumbrüche) — darum gap. */}
-                  <div className="space-y-2 @3xl/ausgabe:grid @3xl/ausgabe:grid-cols-2 @3xl/ausgabe:gap-x-5 @3xl/ausgabe:gap-y-2 @3xl/ausgabe:space-y-0">
-                    {vorschau.punkte.map((p) => (
-                      <Link key={`${p.ksinr}-${p.item_number}`}
-                        /* Direkt zum Punkt in der richtigen Sitzung: `?top=` ist
-                           die VOLLE Nummer inklusive Präfix („Ö 6.1"), sonst
-                           träfe der Sprung „N 6.1" gleich mit (Tims Wunsch,
-                           der Mechanismus existiert für Benachrichtigungen). */
-                        href={`/council?tab=sessions&ksinr=${p.ksinr}` +
-                          (p.item_number ? `&top=${encodeURIComponent(p.item_number)}` : "")}
-                        className="block rounded-lg px-2 py-2 transition-colors hover:bg-accent">
-                        <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <CalendarDays className="h-3 w-3 shrink-0" aria-hidden />
-                          {shortCommittee(p.committee)} · {fmtTermin(p.session_date, heute)}
-                        </span>
-                        <p className="mt-1 line-clamp-2 text-sm font-medium text-foreground">
-                          {p.titel_kurz || p.title}
-                        </p>
-                        {p.antragsteller && (
-                          /* Wer den Punkt gesetzt hat, ist eigene Information —
-                             im Titel fraß die Klammer die halbe Zeile. */
-                          <span className="mt-1 inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-[10.5px] font-semibold text-primary">
-                            Antrag: {p.antragsteller}
-                          </span>
-                        )}
-                        {p.summary && (
-                          <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
-                            {p.summary}
-                          </p>
-                        )}
-                      </Link>
-                    ))}
-                  </div>
-                  {/* Ehrlich zur Blickrichtung: Das sind Tagesordnungen, keine
-                      Beschlüsse — entschieden wird erst in der Sitzung. */}
-                  <p className="px-2 pt-1 text-[11px] leading-relaxed text-muted-foreground/70">
-                    Steht auf der Tagesordnung — entschieden wird in der Sitzung.
-                  </p>
-                </>
-              )}
-              {!hitsQuery.isLoading && hits.length === 0 && !vorschau && topicCount > 0 && (
+              {!hitsQuery.isLoading && hits.length === 0 && topicCount > 0 && (
                 woche ? (
                   /* RL-U15 (13a-A): der interessanteste Beschluss der Woche statt
                      des leeren Texts — „Warum spannend" ist wörtlich der
@@ -375,7 +237,7 @@ export default function DashboardPage() {
                   </p>
                 )
               )}
-              {!topicsQuery.isLoading && topicCount === 0 && !vorschau && (
+              {!topicsQuery.isLoading && topicCount === 0 && (
                 /* Leerzustand 4a: gestrichelte Lotti-Karte „Erstes Thema anlegen". */
                 <div className="flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border px-4 py-5 text-center">
                   <Mascot pose="point" theme={theme} decorative className="h-12 w-12" />
@@ -388,11 +250,7 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
-            {vorschau && hits.length === 0 ? (
-              <Link href="/council?tab=sessions" className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
-                {vorschau.sitzungen.length === 1 ? "Die Sitzung" : `Alle ${vorschau.sitzungen.length} Sitzungen`} <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            ) : topicCount > 0 && (
+            {topicCount > 0 && (
               <Link href="/topics" className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
                 Meine Themen <ArrowRight className="h-3.5 w-3.5" />
               </Link>
