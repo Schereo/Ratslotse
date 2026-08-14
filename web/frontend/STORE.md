@@ -4,24 +4,28 @@ Die Texte stammen aus dem Design-Canvas „App-Store-Release" und liegen hier,
 weil App Store Connect sie nicht versioniert: Wer den Eintrag ändert, ändert ihn
 hier mit. **Ergänzung zur Einreichungs-Checkliste in [MOBILE.md](MOBILE.md).**
 
-Stand 13.08.2026, per App-Store-Connect-API gegen die App `6786553049`
-(`de.ratslotse.app`) geprüft.
+Stand 14.08.2026, per App-Store-Connect-API gegen die App `6786553049`
+(`de.ratslotse.app`) gesetzt und gegengelesen.
 
-## Was in App Store Connect schon steht
+## Was in App Store Connect steht
 
 | Feld | Stand |
 |---|---|
 | App-Datensatz, Bundle-ID, primäre Sprache `de-DE` | ✅ angelegt |
-| Datenschutz-URL | ✅ `https://ratslotse.de/datenschutz` |
+| Untertitel, Kategorien (Nachrichten/Bildung) | ✅ gesetzt |
+| Beschreibung, Keywords, Werbetext, Support-/Marketing-/Datenschutz-URL | ✅ gesetzt |
+| Altersfreigabe-Fragebogen | ✅ vollständig beantwortet → **4+** |
+| Inhalte Dritter (`contentRightsDeclaration`) | ✅ `USES_THIRD_PARTY_CONTENT` (Begründung in den Prüfer-Notizen) |
+| App-Review-Informationen: Kontakt, Demo-Zugang, Notizen | ✅ gesetzt |
+| Screenshots iPhone 6.9" | ✅ 6 × 1320×2868, echte Simulator-Aufnahmen |
 | Builds | ✅ 1–9 hochgeladen, Build 9 (12.08.) gültig |
-| Version 1.0 | angelegt, Status `PREPARE_FOR_SUBMISSION` |
-| Untertitel, Kategorien, Beschreibung, Keywords, Support-URL, Marketing-URL, Werbetext, „Neue Funktionen" | ❌ leer |
-| Altersfreigabe-Fragebogen | ❌ **kein einziges Feld beantwortet** |
-| App-Review-Informationen (Demo-Zugang, Notizen) | ❌ nicht angelegt |
-| Screenshots | ❌ keine |
+| Version 1.0 | Status `PREPARE_FOR_SUBMISSION` — **nicht eingereicht** |
+| „Neue Funktionen" | — bei Version 1.0 nicht editierbar (erst ab dem ersten Update) |
+| EU-DSA-Trader-Status | ❌ offen, nur in der Oberfläche zu erklären |
+| App-Datenschutz (Nutrition Labels) | ❌ offen, nur in der Oberfläche zu pflegen (Werte unten) |
 
 Ab **September 2026** verlangt Apple die Antworten auf den neuen
-Altersfreigabe-Fragebogen bei jeder Einreichung — ohne sie geht nichts raus.
+Altersfreigabe-Fragebogen bei jeder Einreichung — sie stehen bereits drin.
 
 ## Metadaten
 
@@ -126,7 +130,7 @@ Datenschutzerklärung benannt, In-App-Hinweis vor der ersten Frage.
 Themen und etwas Verlauf — sonst wirkt die App leer):
 
 ```
-review@ratslotse.de · <Passwort setzen und hier eintragen>
+appreview@ratslotse.de · Passwort steht in App Store Connect (App-Review-Informationen) und im Passwortmanager
 ```
 
 **Notizen für die Prüfer:**
@@ -137,6 +141,8 @@ Ratslotse macht die öffentlich zugänglichen Beschlüsse des Stadtrats Oldenbur
 Unabhängigkeit: Ratslotse ist ein privates Bürgerprojekt und wird nicht von der Stadt Oldenburg herausgegeben oder beauftragt. Der Hinweis steht in der Store-Beschreibung, im Impressum der App sowie auf Anmelde- und Registrierungsbildschirm.
 
 KI-Funktion: Die Frage-Funktion antwortet ausschließlich auf Grundlage der importierten Ratsdokumente und nennt zu jeder Aussage die Quelle. Kein offener Chat, kein Zugriff auf das freie Web, keine Bildgenerierung.
+
+Rechte an den Inhalten: Die gezeigten Dokumente sind amtliche Werke der Stadt Oldenburg (§ 5 UrhG) und damit gemeinfrei; sie sind öffentlich unter buergerinfo.oldenburg.de abrufbar. Ratslotse gibt sie aufbereitet wieder, nennt zu jeder Aussage die Quelle und verlinkt jedes Originaldokument. Es werden keine kostenpflichtigen oder zugangsbeschränkten Inhalte verwendet.
 
 Personenbezogene Daten Dritter: In den amtlichen Protokollen kommen Ratsmitglieder in ihrer öffentlichen Funktion vor (Fraktion, Ämter, Anwesenheit, sinngemäße Wortbeiträge). Es werden keine privaten Daten und keine weiteren Quellen zusammengeführt. Grundlage, Umfang und ein Widerspruchsweg stehen unter ratslotse.de/datenschutz („Daten von Ratsmitgliedern und Verwaltung").
 
@@ -166,8 +172,20 @@ Store Connect ablesen — sie ändern sich mit jeder iPhone-Generation.
 
 - **DSA-Trader-Status** deklarieren (ohne Angabe keine Einreichung in der EU) —
   nicht-kommerzielles Privatprojekt ⇒ „Non-Trader" plausibel.
-- **Demo-Konto** auf Prod anlegen und bestätigen.
+- **App-Datenschutz-Formular** ausfüllen (Werte oben) — die API bietet dafür
+  keinen Weg, das geht nur in der Oberfläche.
 - **Marke „Ratslotse"** recherchieren, **Rückmeldung der Stadt** zur Datennutzung
-  einholen (beides aus Abschnitt ⑨ des Canvas).
+  einholen (beides aus Abschnitt ⑨ des Canvas). Für die Rechte-Erklärung
+  gegenüber Apple ist die Rückmeldung nicht nötig — amtliche Werke sind nach
+  § 5 UrhG gemeinfrei; sie deckt das Datenbankherstellerrecht (§ 87a ff. UrhG)
+  und die gute Nachbarschaft ab.
 - **Fehler-Überwachung im Frontend** — gibt es noch nicht; ohne sie kommen
   Abstürze als Ein-Stern-Bewertung.
+
+## Demo-Konto pflegen
+
+`appreview@ratslotse.de` (Konto-ID 19, Rolle `user`, seit 14.08.2026) trägt drei
+Themen und drei gespeicherte Gespräche, damit die App im Review nicht leer
+wirkt. **Nicht löschen** — Apple prüft bei jedem Update erneut. Wenn der Bestand
+altert, eine Frage neu stellen und ein Thema ergänzen; das Passwort steht in den
+App-Review-Informationen.
