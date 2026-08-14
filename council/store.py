@@ -1056,7 +1056,34 @@ class CouncilStore:
                 rang -= 2.0
             p["rang"] = round(rang, 2)
 
-    def wochenvorschau(self, tage: int = 7, max_punkte: int = 5) -> dict:
+    def sitzungen_im_fenster(self, tage: int = 7) -> list[dict]:
+        """Jede Sitzung der kommenden ``tage`` Tage — die Grundlage der
+        Wochen-Karte.
+
+        ``location`` und die Punktzahl gehören dazu: Design 14 zeigt auf dem
+        Desktop „17:00 · Ratssaal" und leitet aus ``n_items == 0`` die Zeile
+        „nicht öffentlich" ab — eine Sitzung ohne einen einzigen öffentlichen
+        Tagesordnungspunkt ist genau das.
+
+        Eigene Methode, weil der Router die ksinr-Liste **vor** der Vorschau
+        braucht: Die Themen-Treffer stehen in der anderen Datenbank und lassen
+        sich nicht im selben SQL mitnehmen.
+        """
+        from datetime import date, timedelta
+
+        heute = date.today()
+        bis = (heute + timedelta(days=tage)).isoformat()
+        return [dict(r) for r in self._conn.execute(
+            "SELECT cs.ksinr, cs.committee, cs.session_date, cs.session_time, "
+            "       cs.location, COUNT(ci.id) AS n_items "
+            "FROM council_sessions cs "
+            "LEFT JOIN council_agenda_items ci ON ci.ksinr = cs.ksinr AND ci.is_public = 1 "
+            "WHERE cs.session_date >= ? AND cs.session_date <= ? "
+            "GROUP BY cs.ksinr ORDER BY cs.session_date, cs.session_time",
+            (heute.isoformat(), bis))]
+
+    def wochenvorschau(self, tage: int = 7, max_punkte: int = 5,
+                       meine: dict[int, list[dict]] | None = None) -> dict:
         """Was steht in den nächsten Tagen im Rat an? — „Diese Woche im Rat".
 
         Bewusst nach VORN gerichtet: Beschlüsse erreichen uns erst mit dem
@@ -1068,19 +1095,19 @@ class CouncilStore:
         Ausgewählt werden inhaltliche Punkte (Formalien fliegen raus), bevorzugt
         solche mit Kurzfassung und Vorlage, und höchstens zwei je Sitzung, damit
         eine große Tagesordnung die Ausgabe nicht auffrisst.
+
+        ``meine`` sind die Tagesordnungs-Treffer der eigenen Themen
+        (``{ksinr: [{item_number, topic_name}]}``, kommt aus der anderen
+        Datenbank und wird deshalb hereingereicht). Wer ein Thema getroffen
+        hat, ist relevant — solche Punkte umgehen die Rang-Schwelle. Design 14
+        baut darauf auf: Sitzungen mit eigenen Treffern klappen ihre Punkte
+        auf, alle anderen bleiben eine ruhige Zeile.
         """
         from datetime import date, timedelta
 
         heute = date.today()
         bis = (heute + timedelta(days=tage)).isoformat()
-        sitzungen = [dict(r) for r in self._conn.execute(
-            "SELECT cs.ksinr, cs.committee, cs.session_date, cs.session_time, "
-            "       COUNT(ci.id) AS n_items "
-            "FROM council_sessions cs "
-            "LEFT JOIN council_agenda_items ci ON ci.ksinr = cs.ksinr AND ci.is_public = 1 "
-            "WHERE cs.session_date >= ? AND cs.session_date <= ? "
-            "GROUP BY cs.ksinr ORDER BY cs.session_date, cs.session_time",
-            (heute.isoformat(), bis))]
+        sitzungen = self.sitzungen_im_fenster(tage)
         if not sitzungen:
             return {"found": False, "von": heute.isoformat(), "bis": bis,
                     "sitzungen": [], "punkte": []}
@@ -1124,12 +1151,24 @@ class CouncilStore:
             k["vorgeschichte"] = sum(1 for b in reihe if (b["datum"] or "9999") < k["session_date"])
             k["antragsteller"], k["titel_kurz"] = self._titel_zerlegen(k["title"])
 
+        # Eigene Themen-Treffer anheften. Der Abgleich läuft über (ksinr,
+        # item_number) — dieselbe Kennung, die auch die Benachrichtigungen
+        # benutzen.
+        treffer = {(ksinr, m["item_number"]): m.get("topic_name")
+                   for ksinr, ms in (meine or {}).items() for m in ms}
+        for k in kandidaten:
+            k["topic_name"] = treffer.get((k["ksinr"], k["item_number"]))
+
         self._punkte_bewerten(kandidaten)
-        kandidaten.sort(key=lambda p: (-p["rang"], p["session_date"]))
+        # Treffer zuerst, danach nach Rang: Ein Punkt zu einem eigenen Thema ist
+        # relevanter als jeder gut bewertete Fremdpunkt.
+        kandidaten.sort(key=lambda p: (0 if p["topic_name"] else 1, -p["rang"], p["session_date"]))
         je_sitzung: dict[int, int] = {}
         punkte = []
         for p in kandidaten:
-            if p["rang"] < self.RANG_MINDEST:
+            # Wer ein eigenes Thema trifft, ist per Definition relevant — die
+            # Rang-Schwelle gilt nur für die allgemeine Auswahl.
+            if not p["topic_name"] and p["rang"] < self.RANG_MINDEST:
                 continue
             # Höchstens drei je Sitzung: Eine volle Tagesordnung soll die
             # Ausgabe nicht auffressen, aber Qualität schlägt Streuung — der
@@ -1140,12 +1179,34 @@ class CouncilStore:
             punkte.append(p)
             if len(punkte) >= max_punkte:
                 break
+        # Genau EIN Punkt der ganzen Karte wird hervorgehoben und trägt seine
+        # Kurzbegründung — Design 14a: „bis 3 Punkte je Sitzung, EIN Punkt
+        # offen mit Kurzbegründung". Das ist der bestbewertete; er steht hier
+        # noch vorn, gleich wird nach Datum umsortiert.
+        for i, p in enumerate(punkte):
+            p["top"] = i == 0
         punkte.sort(key=lambda p: (p["session_date"], p["item_number"] or ""))
+
+        # Wie viele relevante Punkte hätte jede Sitzung — VOR dem Anzeige-
+        # Deckel. Design 14 braucht das zweimal: für das Abzeichen („3 für
+        # dich") und für die ehrliche Restzeile („1 weiterer Punkt"). Ohne die
+        # Rohzahl würde die Karte verschweigen statt zu verkürzen, und genau
+        # das verbietet Prinzip ② der Dichte-Matrix.
+        relevant: dict[int, int] = {}
+        for k in kandidaten:
+            if k["topic_name"] or k["rang"] >= self.RANG_MINDEST:
+                relevant[k["ksinr"]] = relevant.get(k["ksinr"], 0) + 1
         return {
-            "found": bool(punkte),
+            # Seit Design 14 trägt die Karte auch die Sitzungen ohne relevante
+            # Punkte (sie ersetzt „Nächste Sitzungen"). Sie hat also Inhalt,
+            # sobald überhaupt eine Sitzung ansteht — vorher hing das an den
+            # Punkten, und eine Woche ohne Highlight ließ die Karte verschwinden.
+            "found": bool(sitzungen),
             "von": heute.isoformat(), "bis": bis,
             "sitzungen": sitzungen,
             "punkte": punkte,
+            "relevant_je_sitzung": relevant,
+            "treffer_gesamt": sum(1 for k in kandidaten if k["topic_name"]),
             "inhaltlich_gesamt": len(kandidaten),
         }
 

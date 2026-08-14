@@ -288,10 +288,10 @@ export default function AccountPage() {
           über den Konto-Tab jederzeit in zwei Tipps erreichbar. Darüber die
           Abgrenzung zur Stadt — in der App ist der Konto-Tab die einzige Stelle,
           an der ein Fuß überhaupt steht (App-Store-Guideline 5.2). */}
-      <p className="mt-8 text-balance text-center text-xs leading-relaxed text-muted-foreground md:hidden">
+      <p className="mt-8 text-balance text-center text-xs leading-relaxed text-muted-foreground desk:hidden">
         Ratslotse ist ein privates Bürgerprojekt und kein Angebot der Stadt Oldenburg.
       </p>
-      <p className="mt-2 text-center text-xs text-muted-foreground md:hidden">
+      <p className="mt-2 text-center text-xs text-muted-foreground desk:hidden">
         <a href="/impressum" className="hover:text-foreground">Impressum</a>
         {" · "}
         <a href="/datenschutz" className="hover:text-foreground">Datenschutz</a>

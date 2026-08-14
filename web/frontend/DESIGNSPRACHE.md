@@ -76,6 +76,14 @@ Dot hsl(209 18% 65%), kombiniertes Label.
   Sidebar 230 mit Pflicht-Links im Fuß. Mobil: Geräterahmen ist der Container,
   Composer sticky über Tab-Bar (Safe-Area), Chips laufen in 40–56-px-Fade aus.
 - Icons: Lucide, stroke-width 2, 11–22 px, currentColor.
+- **Desktop ist kein „breit", sondern „Maus".** Die Umschaltung zwischen
+  Seitenleiste und unterer Tab-Leiste hängt am Breakpoint `desk`
+  (`(pointer: fine) and (min-width: 1024px)`), nicht an `lg`. Ein iPad ist quer
+  1366 px breit und bekäme die Leiste sonst allein wegen seiner Breite — dort
+  gehört die Navigation aber an den Daumen. Alles, was zur Seitenleiste gehört
+  (Kopfzeile mobil, Tab-Leiste, Chat-Bühne mit Belege-Spalte, statischer
+  Composer, Pflicht-Links im Fuß), schaltet auf `desk:`. Reine Inhaltsbreite
+  (Spaltenraster, Innenabstände) bleibt bei `sm/md/lg`.
 
 ## 5. Wiederkehrende Bausteine (Spez im Artboard „Ratsgespräch")
 

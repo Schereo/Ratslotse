@@ -1360,8 +1360,12 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   // Weiterfragen leben im Composer (Design 2②) — nur vom jüngsten Turn.
   const composerFollowups = !loading && letzter && !letzter.fehler ? letzter.followups.slice(0, 3) : [];
 
+  // max-w-3xl gilt für Touch-Geräte, also auch fürs iPad: dort läuft der
+  // Verlauf sonst über die volle Gerätebreite (984 px hochkant, 1318 quer)
+  // und die Zeilen werden unlesbar lang. Am Desktop übernimmt das
+  // Bühnen-Raster mit seiner eigenen Breite.
   return (
-    <div className="mx-auto mt-3 lg:grid lg:max-w-[1220px] lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-6">
+    <div className="mx-auto mt-3 max-w-3xl desk:grid desk:max-w-[1220px] desk:grid-cols-[minmax(0,1fr)_320px] desk:items-start desk:gap-6">
       {/* Chat-Spalte. Die mobile min-height-Krücke (Design 2①: „Composer
           klebt auch im Empty State unten") ist seit dem FIXED-Composer
           obsolet — und machte die Seite höher als den Viewport, sodass das
@@ -1372,12 +1376,12 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
           der Composer klebt an der Panel-Unterkante statt „irgendwo am
           Seitenende" zu hängen (Tims Whitespace-Befund). */}
       <div className={cn("flex flex-col",
-        "lg:relative lg:h-[calc(100dvh-135px)] lg:min-h-0 lg:overflow-hidden lg:rounded-2xl lg:border lg:border-border lg:bg-primary/[0.04] dark:lg:bg-primary/[0.07]",
+        "desk:relative desk:h-[calc(100dvh-135px)] desk:min-h-0 desk:overflow-hidden desk:rounded-2xl desk:border desk:border-border desk:bg-primary/[0.04] dark:desk:bg-primary/[0.07]",
       )}>
         {/* Desktop (5a): „Gespräche"/„Neues Gespräch" im Bühnen-Kopf. Mobil
             ersetzt die EINE Gesprächs-Zeile (9a①) die zwei Streu-Icons. */}
         {(modeToggle || turns.length > 0 || gespraeche.length > 0) && (
-          <div className="mb-1 hidden items-center justify-between gap-2 md:flex lg:mb-0 lg:px-4 lg:pb-2 lg:pt-3">
+          <div className="mb-1 hidden items-center justify-between gap-2 desk:flex desk:mb-0 desk:px-4 desk:pb-2 desk:pt-3">
             {modeToggle ? <div>{modeToggle}</div> : <span />}
             <div className="relative flex shrink-0 items-center gap-1.5 print:hidden">
               {/* 5a/I-04: gespeicherte Gespräche — Liste lädt beim Öffnen frisch. */}
@@ -1454,7 +1458,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
 
         {/* Ab lg scrollt der Verlauf IM Panel (Design 4a) — mobil weiter am
             Window, der Wrapper ist dort nur ein durchreichender flex-Teil. */}
-        <div className="flex flex-1 flex-col lg:min-h-0 lg:overflow-y-auto lg:px-4">
+        <div className="flex flex-1 flex-col desk:min-h-0 desk:overflow-y-auto desk:px-4">
         {/* Empty State — bodenständig: Beispiele direkt über dem Composer. */}
         {showIntro && (
           /* justify-end hielt die Beispiele am Composer — aller freie Raum
@@ -1528,7 +1532,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                          nur von 0,5 s auf den Moment des Austauschs verschoben. */
                       className={cn(
                         "items-center gap-2.5 rounded-[11px] border border-border bg-card px-3 py-2.5 text-[13.5px]",
-                        i >= 3 ? "hidden lg:flex" : "flex")}>
+                        i >= 3 ? "hidden desk:flex" : "flex")}>
                       <div className="h-3.5 w-3.5 shrink-0 animate-pulse rounded-sm bg-muted-foreground/20" />
                       <div className="flex min-h-[3em] min-w-0 flex-1 flex-col justify-center gap-1.5">
                         <div className="h-2.5 w-full animate-pulse rounded-full bg-muted-foreground/15" />
@@ -1540,7 +1544,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                     <button key={ex} type="button" onClick={() => frageStellen(ex)} title={ex}
                       className={cn(
                         "items-center gap-2.5 rounded-[11px] border border-border bg-card px-3 py-2.5 text-left text-[13.5px] transition-[background-color,transform] duration-150 ease-out-strong hover:bg-muted active:scale-[0.99]",
-                        i >= 3 ? "hidden lg:flex" : "flex")}>
+                        i >= 3 ? "hidden desk:flex" : "flex")}>
                       <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
                       {/* Zwei Ebenen: außen die reservierte Höhe samt
                           Zentrierung, innen das Klemmen — `line-clamp` setzt
@@ -1606,18 +1610,23 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             hält im Fluss genau die gemessene Composer-Höhe frei, damit das
             Gesprächsende nie darunter verschwindet. Ab lg wie gehabt statisch
             in der Bühne. */}
-        <div aria-hidden style={{ height: composerHoehe }} className="md:hidden" />
+        <div aria-hidden style={{ height: composerHoehe }} className="desk:hidden" />
         <div ref={composerRef}
           /* Deckend statt Verlauf über die ganze Höhe (Tims Befund 12.08.:
              „keine Überlappungen"): Der alte Verlauf war oben durchsichtig,
              genau dort sitzen die Weiterfragen-Pillen — der Antworttext
              schien mitten durch sie hindurch. Jetzt trägt nur ein 16-px-
              Streifen ÜBER dem Block den weichen Übergang. */
-          className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+4rem)] z-10 bg-background px-4 pb-1.5 pt-2 before:pointer-events-none before:absolute before:inset-x-0 before:-top-4 before:h-4 before:bg-gradient-to-t before:from-background before:to-transparent before:content-[''] print:hidden md:static md:inset-x-auto md:bottom-auto md:bg-transparent md:px-0 md:pb-0 md:pt-2 md:before:hidden lg:px-4 lg:pb-4">
+          className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+4rem)] z-10 bg-background px-4 pb-1.5 pt-2 before:pointer-events-none before:absolute before:inset-x-0 before:-top-4 before:h-4 before:bg-gradient-to-t before:from-background before:to-transparent before:content-[''] print:hidden desk:static desk:inset-x-auto desk:bottom-auto desk:bg-transparent desk:pt-2 desk:before:hidden desk:px-4 desk:pb-4">
+          {/* Der Balken bleibt randlos (er deckt den durchscrollenden Text ab),
+              sein Inhalt hält sich an dieselbe Spaltenbreite wie der Verlauf —
+              sonst zöge sich das Eingabefeld auf dem iPad über die ganze
+              Gerätebreite. */}
+          <div className="mx-auto w-full max-w-3xl desk:max-w-none">
           {/* 9a-Regel: Ohne aktives Speichern gibt es keine Gesprächs-Zeile —
               „Neues Gespräch" ist dann ein schlichter Text-Link überm Composer. */}
           {turns.length > 0 && einstellung !== 1 && (
-            <div className="mb-1.5 flex justify-end md:hidden">
+            <div className="mb-1.5 flex justify-end desk:hidden">
               <button type="button" onClick={neuesGespraech}
                 className="inline-flex items-center gap-1 text-[12px] font-medium text-muted-foreground transition-colors active:text-foreground">
                 <MessageSquarePlus className="h-3.5 w-3.5" aria-hidden /> Neues Gespräch
@@ -1710,6 +1719,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
           )}
           {/* Der KI-Datenschutz-Hinweis wohnt jetzt in den Einstellungen
               (Gespräche-Karte) — Tims TestFlight-Feedback 11.08. */}
+          </div>
         </div>
       </div>
 
@@ -1717,7 +1727,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
           gleiche Höhe, eigener Scroll — nie ein leeres Loch: Vor der ersten
           Frage erklärt sie sich, während der Suche zeigt sie ein Skelett
           (Tims Feedback), danach Quellen, Presse und Aktionen. */}
-      <aside className="hidden print:hidden lg:flex lg:h-[calc(100dvh-135px)] lg:flex-col lg:overflow-hidden lg:rounded-2xl lg:border lg:border-border lg:bg-card">
+      <aside className="hidden print:hidden desk:flex desk:h-[calc(100dvh-135px)] desk:flex-col desk:overflow-hidden desk:rounded-2xl desk:border desk:border-border desk:bg-card">
         <div className="flex-1 overflow-y-auto p-4">
           {letzter && letzter.antwort && !letzter.fehler ? (
             <BelegeSpalte turn={letzter} flashId={flashId}
@@ -1798,7 +1808,7 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
   const nichtsGefunden = !beschaeftigt && hatAntwort && turn.sources.length === 0 && !turn.fehler;
   // Mobil zeigt der jüngste Turn seine Belege inline (die Desktop-Spalte
   // übernimmt ab lg); ältere Turns nur nach Klick auf die Kompaktzeile.
-  const belegeInline = istLetzter ? "lg:hidden" : aufgeklappt ? "" : "hidden";
+  const belegeInline = istLetzter ? "desk:hidden" : aufgeklappt ? "" : "hidden";
 
   return (
     <div className="flex flex-col gap-3">
@@ -2156,7 +2166,7 @@ function GespraecheSheet({ gespraeche, aktivId, onNeu, onLaden, onLoeschen, onUm
     return () => { document.body.style.overflow = alt; };
   }, []);
   return createPortal(
-    <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label="Gespräche">
+    <div className="fixed inset-0 z-50 desk:hidden" role="dialog" aria-modal="true" aria-label="Gespräche">
       <button type="button" aria-label="Schließen" onClick={onClose}
         className="absolute inset-0 bg-[hsl(212_50%_12%/0.4)]" />
       <div

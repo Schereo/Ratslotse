@@ -190,18 +190,26 @@ def diese_woche(
 
 @router.get("/wochenvorschau")
 def wochenvorschau(
-    _user: dict = Depends(require_active),
+    user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
+    nwz: Store = Depends(get_store),
 ) -> dict:
-    """„Diese Woche im Rat" (Design 11d/12) — als VORSCHAU auf die kommenden
-    Sitzungen, nicht als Rückblick auf Beschlüsse.
+    """„Die Woche im Rat" (Design 14, davor 11d/12) — als VORSCHAU auf die
+    kommenden Sitzungen, nicht als Rückblick auf Beschlüsse.
 
     Der Entwurf führt beide Blickrichtungen (Punkt 1 kündigt an, Punkt 4 blickt
     zurück); tragfähig ist nur die vordere: Beschlüsse erreichen uns erst mit
     dem Protokoll, im Median 119 Tage nach der Sitzung. Tagesordnungen liegen
     dagegen vor dem Termin vor.
+
+    Seit Design 14 trägt die Antwort **jede** Sitzung der Woche und dazu die
+    relevanten Punkte je Sitzung — die Karte ersetzt damit auch „Nächste
+    Sitzungen". Die Themen-Treffer liegen in der anderen Datenbank (Konten und
+    Themen), deshalb werden sie hier geholt und hineingereicht.
     """
-    return store.wochenvorschau()
+    vorschau_ksinrs = [s["ksinr"] for s in store.sitzungen_im_fenster()]
+    meine = nwz.agenda_matches_for_owner(user["id"], vorschau_ksinrs)
+    return store.wochenvorschau(meine=meine)
 
 
 @router.get("/fundstueck")

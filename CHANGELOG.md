@@ -8,6 +8,15 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Neu
+- **Die App läuft jetzt auch auf dem iPad.** Bisher lief sie dort nur im
+  iPhone-Fenster. Jetzt ist sie eine Universal-App für beide Ausrichtungen —
+  und die Navigation richtet sich nach dem Eingabegerät statt nach der
+  Fensterbreite: Maus oder Trackpad bekommen die Seitenleiste, der Finger die
+  Tab-Leiste unten. Ein iPad ist quer 1366 Punkte breit und hätte die
+  Seitenleiste sonst allein wegen seiner Breite bekommen, obwohl die
+  Navigation dort an den Daumen gehört. Auf dem iPad sind die Symbole größer
+  und rücken zu einer mittigen Gruppe zusammen, statt sich über die ganze
+  Gerätebreite zu verteilen. (#475)
 - **Erklärung zur Barrierefreiheit.** Unter `/barrierefreiheit` steht jetzt,
   was umgesetzt ist (Tastaturbedienung, Kontraste, „Bewegung reduzieren",
   Textvergrößerung), wo es noch hakt (Stadtkarte, Diagramme, fremde PDFs) und
@@ -25,6 +34,22 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   installierten App. (#473)
 
 ### Verbessert
+- **„Die Woche im Rat" zeigt auf jedem Gerät so viel, wie hineinpasst.** Die
+  Karte hat jetzt drei Ausbaustufen und wählt sie nach ihrer eigenen
+  Inhaltsbreite, nicht nach der Fensterbreite: auf dem Telefon Kurznamen der
+  Gremien und Uhrzeit, auf dem Tablet zusätzlich Sitzungsort und Antragsteller,
+  am Desktop dazu die volle Gremienbezeichnung und eine Kurzfassung des
+  wichtigsten Punkts. Pro Karte wird genau ein Punkt hervorgehoben — der
+  Server entscheidet welcher, statt dass jede Sitzung einen eigenen bekommt.
+  Punkte, die zu deinen Themen passen, stehen oben und kommen auch dann durch,
+  wenn sie für sich genommen unauffällig wären. Und der Parteipunkt neben einem
+  Antrag stimmt wieder: „CDU-Fraktion" oder „SPD & Grüne" wurden vorher grau
+  gezeichnet, weil nur exakte Parteinamen erkannt wurden. (#475)
+- **Registrieren passt wieder auf den Bildschirm.** Auf dem iPhone sprang die
+  Tastatur schon beim Laden auf und schob die Karte so weit nach oben, dass
+  Lotti in der Dynamic Island verschwand. Ohne den automatischen Fokus bleibt
+  der Screen stehen; die drei Fußzeilen-Blöcke sind außerdem zu einem
+  zusammengefasst. (#475)
 - **Die Karten auf „Heute" nutzen den Platz besser.** Drei Spalten gab es
   schon ab 1024 Pixeln — dort brach die Überschrift mitten im Wort um. Jetzt
   gilt: eine Spalte auf dem Telefon, zwei ab Tablet-Breite (die Wochen-Ausgabe
