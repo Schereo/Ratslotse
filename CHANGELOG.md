@@ -14,7 +14,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Open-Data-Portal der Stadt (maschinenlesbar, Lizenz dl-de/by-2.0), die
   Reihe 2020–2026 ist vollständig. Dazu, als Fundament für den kommenden
   Stadtfinanzen-Bereich: Ist-Steuereinnahmen je Steuerart seit 1998 und
-  Steuerkraft samt Schlüsselzuweisungen seit 1992, aus derselben Quelle. (#PR)
+  Steuerkraft samt Schlüsselzuweisungen seit 1992, aus derselben Quelle. (#489)
 
 <!-- GEPARKT (nur dev.ratslotse.de, Umgebungs-Gate): Eintrag aktivieren,
      sobald der Kommunalwahl-Vergleich auf Prod freigeschaltet wird.
