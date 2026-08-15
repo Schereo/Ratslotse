@@ -102,8 +102,18 @@ export default function LoginPage() {
             </Link>
           </p>
         )}
-        {/* RL-F08: Docs-Link gestrichen — bleibt über Landing + Footer erreichbar. */}
-        <p className="mt-4 border-t border-border pt-4 text-center text-xs text-muted-foreground">
+        {/* RL-F08: Docs-Link gestrichen — bleibt über Landing + Footer erreichbar.
+            Die Abgrenzung zur Stadt steht hier, weil die Anmeldung in der App
+            der erste Bildschirm überhaupt ist (App-Store-Guideline 5.2).
+            „Hilfe" steht aus demselben Grund hier: Der Feedback-Dialog hängt am
+            angemeldeten Konto, hilft also ausgerechnet dem nicht, der auf dieser
+            Seite hängenbleibt (Apple-Richtlinie 1.5 verlangt genau diesen Weg). */}
+        <p className="mt-4 border-t border-border pt-4 text-balance text-center text-xs leading-relaxed text-muted-foreground">
+          Ratslotse ist ein privates Bürgerprojekt und kein Angebot der Stadt Oldenburg.
+        </p>
+        <p className="mt-2 text-center text-xs text-muted-foreground">
+          <Link href="/hilfe" className="hover:text-foreground hover:underline">Hilfe &amp; Kontakt</Link>
+          {" · "}
           <Link href="/impressum" className="hover:text-foreground hover:underline">Impressum</Link>
           {" · "}
           <Link href="/datenschutz" className="hover:text-foreground hover:underline">Datenschutz</Link>

@@ -31,7 +31,7 @@ from scripts.generate_simple_summaries import process as generate_simple  # noqa
 from scripts.rate_impact import process as rate_impact  # noqa: E402
 from scripts.rate_interest import process as rate_interest  # noqa: E402
 from scripts.track_goals import process as track_goals  # noqa: E402
-from nwz import notify  # noqa: E402
+from kern import notify  # noqa: E402
 
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
 NWZ_DB = ROOT / "data" / "nwz.sqlite"
@@ -70,6 +70,17 @@ def main() -> dict:
     print(f"Interessantheit: {irated}/{itotal} bewertet.")
     ptotal, prated = rate_impact(COUNCIL_DB, limit=200, workers=2)
     print(f"Tragweite: {prated}/{ptotal} bewertet.")
+    # Wortbeiträge (Task 16): Reden, Anfragen, Einwohnerfragen aus den frisch
+    # geparsten Protokollen für den Debatten-Kanal der KI-Frage. Klein
+    # limitiert (Tageszuwachs); den Bestand füllt extract_wortbeitraege.py.
+    try:
+        from scripts.extract_wortbeitraege import process as extract_wb
+        wstats = extract_wb(COUNCIL_DB, limit=20, workers=2)
+        print(f"Wortbeiträge: {wstats['beitraege']} aus {wstats['protokolle']} "
+              f"Protokollen, {wstats['fehler']} Fehler.")
+    except Exception as exc:  # noqa: BLE001 — Zusatzkanal, nie Blocker des Nachtlaufs
+        wstats = {"beitraege": 0, "protokolle": 0, "kosten_usd": 0}
+        print(f"Wortbeiträge übersprungen: {exc}")
     # Ingest Vorlagen texts for new agenda items (network + pypdf only, no LLM).
     # Newest first + capped, so a normal day fetches a handful; the historic bulk
     # is scripts/backfill_vorlagen.py without limit. Runs before the FTS rebuild
@@ -106,7 +117,7 @@ def main() -> dict:
     # Wochen zurück (gemessen: Ausschüsse 6+ Wochen), deshalb nennt die Meldung
     # das Sitzungsdatum. Zugestellt wird direkt danach, unter den Grenzen aus
     # nwz/notify.py.
-    from nwz.store import Store as NwzStore
+    from kern.store import Store as NwzStore
     from council.ergebnisse import melde_ergebnisse
 
     nwz = NwzStore(NWZ_DB)
@@ -121,6 +132,7 @@ def main() -> dict:
         "Einfach erklärt": sstats["written"],
         "Interessantheit bewertet": irated,
         "Tragweite bewertet": prated,
+        "Wortbeiträge": wstats["beitraege"],
         "Vorlagen geladen": vstats["fetched"],
         "Wichtig-Score neu": wichtig,
         "Ergebnis-Meldungen": ergebnisse,
@@ -129,6 +141,6 @@ def main() -> dict:
 
 
 if __name__ == "__main__":
-    from nwz.alerts import run_guarded
+    from kern.alerts import run_guarded
 
     run_guarded("check_protocols", main)

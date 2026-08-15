@@ -3,11 +3,12 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, ExternalLink, FileText, FileDown, Newspaper, Tag } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, ExternalLink, FileText, FileDown, GitCompareArrows, Leaf, Newspaper, Tag } from "lucide-react";
 import { DecisionDetail, CouncilDecision, SessionDetail } from "@/lib/types";
 import { Card, DetailSkeleton, formatDate } from "@/components/ui";
 import { OutcomeDot, OUTCOME_META, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard, ImportanceMeter, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
 import { decisionHref, themaHref, sessionHref } from "@/lib/routes";
+import { apiUrl } from "@/lib/api";
 import { shortCommittee } from "@/lib/committees";
 import { ShareButton } from "@/components/share-button";
 import { PrintButton } from "@/components/print-button";
@@ -76,7 +77,7 @@ function SimpleSummaryHero({ text }: { text: string }) {
       </div>
       <p className="mt-3 text-[15px] leading-relaxed text-foreground">{text}</p>
       <p className="mt-2.5 text-xs text-muted-foreground">
-        KI-Kurzfassung — verbindlich ist der amtliche Wortlaut.
+        Automatische Kurzfassung — verbindlich ist der amtliche Wortlaut.
       </p>
     </div>
   );
@@ -196,6 +197,29 @@ function GlanceCard({
             {d.parties.map((p) => <PartyBadge key={p} party={p} />)}
           </div>
         </GlanceRow>
+      )}
+
+      {/* Regex-Ernte, minimiert (Feedback-Runde 3): beide nur als Zeile mit
+          Symbol — die Erklärung öffnet sich erst auf Klick, die Erzählspalte
+          links bleibt clean. */}
+      {d.abweichung === "stark" && d.beschluss && (
+        <GlanceDisclosure
+          icon={<GitCompareArrows className="h-3.5 w-3.5 text-signal" />}
+          label="Vom Vorschlag abgewichen"
+        >
+          Der Rat hat hier nicht den Beschlussvorschlag der Verwaltung übernommen,
+          sondern deutlich anders entschieden — das kommt nur bei rund 8 % der
+          angenommenen Beschlüsse vor.
+        </GlanceDisclosure>
+      )}
+      {data.vorlage?.klima_check && (
+        <GlanceDisclosure
+          icon={<Leaf className={cn("h-3.5 w-3.5", data.vorlage.klima_relevant ? "text-primary" : "text-muted-foreground")} />}
+          label="Klima-Check"
+          badge={data.vorlage.klima_relevant == null ? undefined : data.vorlage.klima_relevant ? "relevant" : "nicht relevant"}
+        >
+          {data.vorlage.klima_check}
+        </GlanceDisclosure>
       )}
 
       {d.kind !== "subvote" && data.importance_breakdown && (
@@ -415,6 +439,32 @@ function SimilarList({ items }: { items: DecisionDetail["similar"] }) {
   );
 }
 
+/** Kompakte Seitenleisten-Zeile mit Symbol; die Erklärung klappt erst auf
+ *  Klick auf (Feedback-Runde 3 — „links clean, Details auf Wunsch"). */
+function GlanceDisclosure({ icon, label, badge, children }: {
+  icon: React.ReactNode; label: string; badge?: string; children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-3 border-t border-border pt-3">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="flex w-full items-center gap-1.5 text-left text-xs font-medium text-foreground"
+      >
+        {icon}
+        <span className="min-w-0 flex-1 truncate">{label}</span>
+        {badge && (
+          <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{badge}</span>
+        )}
+        <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
+      </button>
+      {open && <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{children}</p>}
+    </div>
+  );
+}
+
 /** Sachverhalt/Begründung aus der eingelesenen Vorlage — eingeklappt auf wenige
  *  Zeilen, weil die Auszüge lang sein können. */
 function VorlageExcerpt({ text }: { text: string }) {
@@ -504,6 +554,22 @@ function DecisionDetailInner() {
         </div>
       </div>
 
+      {/* Stufe 3b: Läuft zu diesem Bauleitplan GERADE eine Beteiligung, ist die
+          Stellungnahme-Frist die eine Sache, die Bürger:innen JETZT tun können —
+          deshalb prominent über allem anderen. */}
+      {data.beteiligung && (
+        <a href={data.beteiligung.url} target="_blank" rel="noreferrer"
+          className="mt-2 flex items-start gap-2.5 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5 text-sm transition-colors hover:bg-primary/10">
+          <ExternalLink className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+          <span className="min-w-0">
+            <span className="font-medium text-foreground">Bürgerbeteiligung läuft: </span>
+            {data.beteiligung.schritt}
+            {data.beteiligung.bis ? ` — Stellungnahme bis ${formatDate(data.beteiligung.bis)}` : ""}
+            <span className="text-muted-foreground"> (oldenburg.planungsbeteiligung.de)</span>
+          </span>
+        </a>
+      )}
+
       {/* Nachbar-TOPs: Wer eine Sitzung durchgeht, musste bisher für jeden TOP
           zurück und neu suchen. */}
       {pos >= 0 && siblings.length > 1 && (
@@ -581,6 +647,25 @@ function DecisionDetailInner() {
 
           {d.beschluss && <OfficialTextCard text={d.beschluss} />}
 
+          {/* P1: Die Planzeichnung aus der Vorlage — ein B-Plan-Beschluss lebt
+              vom Bild. Thumb inline, Klick öffnet das volle Blatt. */}
+          {data.plan_bild && (
+            <a href={apiUrl(`/council/plan-bild/${data.plan_bild}`)} target="_blank" rel="noreferrer"
+              className="block overflow-hidden rounded-xl border border-border bg-card transition-shadow hover:shadow-md">
+              {/* Volle Auflösung, nicht das Thumb: Das 480er-Bild wurde auf
+                  Spaltenbreite hochskaliert und war matschig (Tims Feedback).
+                  loading=lazy hält den Seitenaufbau schlank. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={apiUrl(`/council/plan-bild/${data.plan_bild}`)}
+                alt="Planzeichnung aus der Vorlage" loading="lazy"
+                className="w-full object-cover" />
+              <p className="px-3 py-2 text-[11px] text-muted-foreground">
+                Planzeichnung aus der Vorlage — antippen für das volle Blatt.
+                Kartengrundlage: LGLN (Vermerk auf dem Plan).
+              </p>
+            </a>
+          )}
+
           {/* Auf Mobil klappt das Grid zu einer Spalte — die Kennzahlen kämen
               dann erst hinter der ganzen Erzählung. Deshalb hier ein zweiter
               Platz, der nur unterhalb von lg sichtbar ist (display:none blendet
@@ -602,6 +687,7 @@ function DecisionDetailInner() {
                     <p className="text-sm font-semibold text-foreground">Warum es dazu kam</p>
                     <p className="mb-2 text-xs text-muted-foreground/70">
                       Sachverhalt und Begründung aus der {vorlageArt(data.vorlage.art)} der Verwaltung
+                      {data.vorlage.amt ? ` — federführend: ${data.vorlage.amt}` : ""}
                     </p>
                     <VorlageExcerpt text={data.vorlage.excerpt} />
                   </div>

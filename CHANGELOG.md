@@ -7,6 +7,8 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+<!-- GEPARKT (nur dev.ratslotse.de, Umgebungs-Gate): Eintrag aktivieren,
+     sobald der Kommunalwahl-Vergleich auf Prod freigeschaltet wird.
 ### Hinzugefügt
 - **Wahlprogramm-Vergleich zur Ratswahl am 13. September.** Unter
   `/kommunalwahl` — öffentlich, ohne Konto — hat Ratslotse alle Programme
@@ -28,6 +30,1059 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   dieselben 44 Thesen selbst beantworten (Überspringen erlaubt, Wichtiges
   zählt mit ★ doppelt) und sehen, wie oft jede Liste übereinstimmt, Satz für
   Satz belegt. Kein Wahltipp, und die Antworten bleiben auf dem Gerät. (#356)
+-->
+
+### Behoben
+- **„Fragen" steht sofort komplett da.** Nach dem Tippen auf den Tab erschienen
+  die unterste Beispielfrage und der Gespräche-Knopf oben rechts erst nach
+  einer halben Sekunde. Zwei Ursachen: Die Seiten-Animation hob die neue Seite
+  kurz an und riss dabei das Eingabefeld mit, das die dritte Beispielfrage
+  verdeckte, bis die Animation endete — sie blendet jetzt nur noch ein. Und
+  Beispielfragen wie Gespräche-Knopf hängen an Server-Antworten, die beim
+  letzten Besuch dieselben waren: Der Stand von damals steht jetzt sofort,
+  aufgefrischt wird im Hintergrund. Gemessen bei 600 ms Antwortzeit: alles ab
+  dem ersten Bild an seinem Platz. (#486)
+- **Kein Verschieben mehr beim Öffnen von „Fragen".** Die Frage „Soll ich mir
+  deine Gespräche merken?" erschien erst, wenn der Server geantwortet hatte —
+  und schob dann den halben Bildschirm nach unten. Die Einwilligung reist
+  jetzt mit dem Konto, das ohnehin geladen ist; die Seite steht damit vom
+  ersten Bild an richtig. Gemessen bei 600 ms Antwortzeit: vorher ein Sprung
+  mit CLS 0,196, jetzt keiner. (#485)
+
+### Verbessert
+- **Wochentag im Sitzungstab.** Die Kachel nannte nur Monat und Tag — ob eine
+  Sitzung auf einen Montag oder einen Samstag fällt, musste man selbst
+  nachrechnen. Jetzt steht der Wochentag vor der Uhrzeit, bei nahen Terminen
+  weiterhin „Heute" bzw. „Morgen". (#484)
+- **„Worum geht es?" als Karussell.** Nennt eine Frage mehrere Orte oder
+  Projekte, standen die Steckbriefe untereinander und schoben die eigentliche
+  Antwort aus dem Bild. Jetzt liegen sie nebeneinander, werden gewischt und
+  zeigen mit Punkten an, wie viele es sind. (#484)
+
+### Behoben
+- **„8 Beschlüsse" und die Suche fand nichts.** Die gespeicherten Treffer eines
+  Themas zeigten auf Beschlüsse, die es nach einer Neu-Extraktion nicht mehr
+  gab — auf dem Server waren das alle. Der Zähler auf der Themen-Karte zählt
+  jetzt nur, was die Suche auch findet, verwaiste Verweise werden beim
+  Abgleich entfernt, und es werden mehr Treffer je Thema gespeichert (25 statt
+  8), damit die Karte nicht weniger zeigt als die Live-Prüfung beim
+  Bearbeiten. (#483)
+- **Tab-Leiste auf dem iPhone wieder normal hoch.** Mit der iPad-Runde wanderte
+  die Hälfte der Sicherheitszone nach oben — auf dem iPhone wurde die Leiste
+  dadurch rund 17 Punkte höher. Der Ausgleich gilt jetzt nur noch für breite
+  Touch-Geräte. (#483)
+- **Mehr Luft im Thema-Bearbeiten-Blatt**: Der Kasten „Passt gerade auf" klebte
+  an den Knöpfen. (#483)
+
+## [1.10.0] – 2026-08-15
+
+### Verbessert
+- **Keiner, einer oder zwei Schwerpunkte — je nachdem, was die Woche hergibt.**
+  Bisher hob die Karte genau einen Punkt hervor, auch in Wochen, in denen der
+  beste ein Bericht war — und deckelte auf einen, wenn gleich zwei große
+  Entscheidungen anstanden. Jetzt wird hervorgehoben, was schwer wiegt: in
+  ruhigen Wochen gar nichts, in dichten bis zu zwei. Zweimal dieselbe Sache
+  (Bebauungsplan und Flächennutzungsplan zum selben Projekt) zählt dabei als
+  einer. Ein Punkt zu einem eigenen Thema wird immer hervorgehoben. (#481)
+
+### Verbessert
+- **Der wichtigste Punkt der Woche wird jetzt erkannt, nicht geraten — und in
+  Alltagssprache erklärt.** Die Auswahl kannte nur Verfahrenssignale und hielt
+  deshalb wiederkehrende Routine für bedeutend: „Annahme von Zuwendungen"
+  stand 101-mal auf einer Tagesordnung und trotzdem ganz oben. Jetzt zählt
+  Ratslotse, wie oft dieselbe Formulierung schon dran war, liest den
+  Beschlussvorschlag und den Kostenteil der Vorlage — und schreibt in zwei
+  einfachen Sätzen dazu, worum es geht und wen es angeht. Statt „Annahme von
+  Zuwendungen" steht dort jetzt etwa der Flächennutzungsplan fürs Stadion:
+  „Damit werden die Weichen für ein neues Stadion gestellt." (#480)
+
+### Verbessert
+- **„Die Woche im Rat" hebt jetzt hervor, was Folgen hat.** Bisher entschied
+  eine Heuristik aus Verfahrenssignalen, welcher Punkt oben steht — ein
+  Bericht über das Stadtmuseum schlug damit eine Satzungsänderung. Jetzt
+  bewertet dieselbe Tragweite-Rubrik wie bei den Beschlüssen (Betroffene,
+  Geld, Bindungswirkung, Präzedenz), was hervorgehoben wird; die Regeln
+  bleiben der Boden, wenn noch keine Bewertung vorliegt. In der Rückschau auf
+  sechs vergangene Wochen wählt die Karte in fünf davon einen anderen — und
+  einleuchtenderen — Spitzenpunkt, darunter der Stadionneubau statt eines
+  Jahresabschlusses. (#479)
+
+### Verbessert
+- **„Die Woche im Rat": ehrlichere Abzeichen und weniger Rätsel.** Das
+  Abzeichen sagte „2 für dich", auch wenn kein einziges eigenes Thema im Spiel
+  war — gezählt wird jetzt getrennt: „für dich" nur bei echten Themen-Treffern,
+  sonst „wichtig". Jede Sitzung führt zu ihrer Tagesordnung (nicht mehr nur die
+  ohne hervorgehobene Punkte), der hervorgehobene Punkt sagt mit einer Zeile,
+  warum er hervorgehoben ist, und der erklärende Fußtext samt Kalender-Link ist
+  weg — jede Zeile führt ohnehin dorthin. Mobil steht jetzt jede Sitzung
+  einzeln, und „1 weiterer Punkt" klappt auf, statt die Seite zu wechseln.
+  (#478)
+
+### Behoben
+- **Grüne ohne Farbpunkt.** Steht die Fraktion als „Fraktion Bündnis 90/Die
+  Grünen" in der Vorlage (Wort vorn statt hinten), blieb der Punkt vor dem
+  Antragsteller leer. Jetzt trägt sie ihr Grün wie alle anderen. (#478)
+- **Sprung auf einen Tagesordnungspunkt endete im Ungewissen.** Wer aus der
+  Wochen-Karte „Öffnen" antippte, landete zwar an der richtigen Stelle, aber
+  die Zeile sah aus wie jede andere. Sie wird jetzt kurz hervorgehoben. (#478)
+
+### Behoben
+- **iPad-Build ließ sich nicht hochladen.** Apple verlangt für das
+  iPad-Multitasking alle vier Bildschirm-Ausrichtungen; die App meldete nur
+  drei und wurde beim Upload abgewiesen. Auf dem iPhone bleibt der Kopfstand
+  weiterhin aus — die Ausrichtungen sind jetzt pro Gerätetyp gesetzt. (#477)
+
+## [1.9.0] – 2026-08-14
+
+### Neu
+- **Die App läuft jetzt auch auf dem iPad.** Bisher lief sie dort nur im
+  iPhone-Fenster. Jetzt ist sie eine Universal-App für beide Ausrichtungen —
+  und die Navigation richtet sich nach dem Eingabegerät statt nach der
+  Fensterbreite: Maus oder Trackpad bekommen die Seitenleiste, der Finger die
+  Tab-Leiste unten. Ein iPad ist quer 1366 Punkte breit und hätte die
+  Seitenleiste sonst allein wegen seiner Breite bekommen, obwohl die
+  Navigation dort an den Daumen gehört. Auf dem iPad sind die Symbole größer
+  und rücken zu einer mittigen Gruppe zusammen, statt sich über die ganze
+  Gerätebreite zu verteilen. (#475)
+- **Erklärung zur Barrierefreiheit.** Unter `/barrierefreiheit` steht jetzt,
+  was umgesetzt ist (Tastaturbedienung, Kontraste, „Bewegung reduzieren",
+  Textvergrößerung), wo es noch hakt (Stadtkarte, Diagramme, fremde PDFs) und
+  wie man eine Barriere meldet. Verlinkt aus allen Seiten-Füßen. (#473)
+- **Datenschutz: Abschnitt zu den Ratsmitgliedern.** Die Erklärung beschrieb
+  bisher nur Daten der Nutzer. Jetzt steht auch da, welche Angaben zu
+  Ratsmitgliedern und Verwaltung aus den amtlichen Protokollen verarbeitet
+  werden, woher sie stammen, auf welcher Grundlage — und wie Betroffene
+  widersprechen oder eine Verwechslung korrigieren lassen (Art. 14 DSGVO). (#473)
+
+### Behoben
+- **Geteilte Antworten und die Fragen-Seite öffnen wieder die App.** Seit der
+  Trennung von Fragen und Suche fehlten `/fragen` und die Teilen-Links `/g` in
+  der Universal-Links-Datei — beide landeten im Browser statt in der
+  installierten App. (#473)
+
+### Verbessert
+- **„Die Woche im Rat" zeigt auf jedem Gerät so viel, wie hineinpasst.** Die
+  Karte hat jetzt drei Ausbaustufen und wählt sie nach ihrer eigenen
+  Inhaltsbreite, nicht nach der Fensterbreite: auf dem Telefon Kurznamen der
+  Gremien und Uhrzeit, auf dem Tablet zusätzlich Sitzungsort und Antragsteller,
+  am Desktop dazu die volle Gremienbezeichnung und eine Kurzfassung des
+  wichtigsten Punkts. Pro Karte wird genau ein Punkt hervorgehoben — der
+  Server entscheidet welcher, statt dass jede Sitzung einen eigenen bekommt.
+  Punkte, die zu deinen Themen passen, stehen oben und kommen auch dann durch,
+  wenn sie für sich genommen unauffällig wären. Und der Parteipunkt neben einem
+  Antrag stimmt wieder: „CDU-Fraktion" oder „SPD & Grüne" wurden vorher grau
+  gezeichnet, weil nur exakte Parteinamen erkannt wurden. (#475)
+- **Registrieren passt wieder auf den Bildschirm.** Auf dem iPhone sprang die
+  Tastatur schon beim Laden auf und schob die Karte so weit nach oben, dass
+  Lotti in der Dynamic Island verschwand. Ohne den automatischen Fokus bleibt
+  der Screen stehen; die drei Fußzeilen-Blöcke sind außerdem zu einem
+  zusammengefasst. (#475)
+- **Die Karten auf „Heute" nutzen den Platz besser.** Drei Spalten gab es
+  schon ab 1024 Pixeln — dort brach die Überschrift mitten im Wort um. Jetzt
+  gilt: eine Spalte auf dem Telefon, zwei ab Tablet-Breite (die Wochen-Ausgabe
+  über die volle Zeile, damit sie lesbar bleibt), drei erst auf breiten
+  Schirmen — und dort bekommt die textreichste Karte auch die meiste Breite.
+  Außerdem behält jede Karte ihre eigene Höhe, statt auf die längste gestreckt
+  zu werden. Das Raster und die Karten darin richten sich jetzt nach dem Platz,
+  den sie wirklich haben, statt nach der Fensterbreite: drei Spalten erst,
+  wenn die dritte auch etwas trägt; die Sitzungs-Zeilen stapeln sich nur noch
+  dort, wo es eng ist (vorher blieb vom Gremiennamen „K…" übrig); und die
+  Wochen-Ausgabe legt ihre Punkte nebeneinander, sobald sie breit ist — sonst
+  liefen die Zeilen quer über den ganzen Bildschirm.
+- **Abgelaufene Bürgerbeteiligungen bleiben dokumentiert.** Das Portal der
+  Stadt zeigt nur Verfahren, zu denen gerade eine Beteiligung möglich ist —
+  abgeschlossene verschwinden dort spurlos. Ratslotse behält sie jetzt und
+  markiert sie als beendet, statt sie beim nächsten Abgleich zu löschen. So
+  entsteht mit der Zeit eine Übersicht, die es sonst nirgends gibt. (#471)
+- **Ehrlichere Beschriftung der Beteiligungs-Karte.** „Bürgerbeteiligung
+  läuft" stand auch dort, wo gar keine Frist mehr lief: Beim Schritt
+  „Abwägungsergebnis" nennt die Quelle bewusst keinen Zeitraum. Jetzt steht
+  dort, was wirklich gilt — laufende Frist, ausliegende Unterlagen ohne
+  Frist, oder abgeschlossenes Verfahren mit Enddatum. (#471)
+
+### Neu
+- **Hilfe-Seite mit Kontaktformular.** Unter `/hilfe` steht jetzt ein
+  Kontaktformular, das ohne Anmeldung funktioniert — wichtig für alle, die
+  gerade nicht in ihr Konto kommen. Dazu Antworten auf die häufigsten Fragen
+  (Konto löschen, Passwort vergessen, Benachrichtigungen, falsche Angaben).
+  Verlinkt von Anmeldung, Registrierung, Startseite und beiden Seiten-Füßen;
+  zugleich die Support-Adresse, die Apple für den App Store verlangt. (#471)
+
+### Behoben
+- **„Fragen" ruckelt beim Öffnen nicht mehr.** Die Beispielfragen wurden erst
+  nach einem Moment durch tagesaktuelle ersetzt — und weil die länger sind,
+  sprang der Inhalt darunter um 40 Pixel nach unten, besonders sichtbar in der
+  iPhone-App. Jetzt stehen Platzhalter, solange geladen wird, und jede Zeile
+  hat von vornherein die Höhe, die sie danach behält. (#472)
+- **Ein Tagesordnungspunkt aus „Heute" öffnet die richtige Zeile.** Der Sprung
+  landete auf der Sitzung, die Tagesordnung musste man selbst durchsuchen —
+  und war sie bereits aufgeklappt, klappte der Link sie sogar zu. Das betraf
+  auch die Sprünge aus Benachrichtigungen.
+- **Die Lotti-Tour zeigt wieder dorthin, wo sie hinzeigt.** Seit der Trennung
+  von Fragen und Suche stand die Station „Das Ratsinfo" auf dem Punkt
+  „Fragen", und auf der Fragen-Seite lag der Scheinwerfer über der ganzen
+  Seite statt auf etwas Bestimmtem. Die Tour hat jetzt eine eigene Station für
+  „Frag den Rat" — mit einer Beispiel-Antwort samt Fußnote und Quelle, damit
+  man vor der ersten eigenen Frage sieht, was herauskommt. Außerdem: keine
+  Station springt mehr grundlos auf eine andere Seite, und wer die Tour über
+  die Befehlspalette startet, sieht auch dann jede Station, wenn die
+  „Erste Schritte"-Karte längst abgehakt ist. (#468)
+
+### Verbessert
+- **Ratslotse sagt jetzt, wessen Angebot es ist.** Impressum, Anmeldung,
+  Registrierung, Konto-Fuß und Seiten-Fuß stellen ausdrücklich klar: ein
+  privates Bürgerprojekt, kein Angebot der Stadt Oldenburg, keine Verbindung zu
+  Verwaltung, Rat oder Parteien — verbindlich bleiben die amtlichen
+  Originale. (#466)
+- **Kurze Fragen bekommen kurze Antworten.** Wer nach einem Datum, einer Zahl
+  oder einem Namen fragt („Wann wurde der Bebauungsplan 831 beschlossen?"),
+  bekommt jetzt zwei Sätze statt einer Seite — inklusive Beleg, aber ohne
+  Vorgeschichte und ohne Debatten-Absatz, nach dem niemand gefragt hat.
+  Breite Fragen bleiben unverändert ausführlich. (#465)
+
+### Behoben
+- **Abgeschnittene Verbands- und Fraktionsnamen in Wortbeiträgen.** Namen
+  wurden bei 40 Zeichen hart gekappt — in einer KI-Antwort stand deshalb
+  „Fraktion Bündnis Vernunft und Gerechtigk". Neue Beiträge werden nicht mehr
+  mitten im Wort abgeschnitten, und der Bestand ist repariert: Die vollen
+  Namen stehen in den Anwesenheitslisten derselben Protokolle. (#463)
+
+### Neu
+- **Von der Antwort direkt auf die Stadtkarte.** Die Mini-Karte einer
+  KI-Antwort führt jetzt mit „Auf der Stadtkarte öffnen" in die große Karte —
+  vorgefiltert auf genau die Orte der zitierten Beschlüsse, sichtbar und
+  abwählbar als Chip. (#462)
+- **Personen-Badges auch in den Belegen.** Die Zugehörigkeit hinter einem
+  Namen (Partei bzw. Verwaltung, mit Peek zu Rolle und Zeitraum) gab es nur
+  im Antworttext; jetzt tragen auch die Sprecher der Ratsdebatten und die
+  Kernaussagen der Parteien dasselbe Abzeichen. Bei Namensvettern bleibt es
+  wie bisher aus, wenn der Vorname fehlt. (#462)
+- **Die Lupe führt zur Suche.** In der Befehlspalette steht bei leerem Feld
+  „Zur Beschluss-Suche" ganz oben, und wenn die Palette nichts findet, bietet
+  sie an, den Begriff im Volltext aller Beschlüsse zu suchen. (#462)
+
+### Verbessert
+- **Datenschutz-Hinweis dort, wo er ankommt.** Der Satz zum externen
+  KI-Dienst steht jetzt in der Frage-am-Anfang-Karte statt nur in den
+  Einstellungen — genau einmal, vor der ersten Frage. (#462)
+- **Der Gesprächs-Knopf sagt, wo du bist.** Statt „Gespräche" steht dort der
+  Titel des aktuellen Gesprächs. (#462)
+- **Geteilte Antworten sehen im Messenger nach etwas aus.** Vorschau mit der
+  Frage als Titel, dem ersten ganzen Satz der Antwort und einem Ratslotse-
+  Bild. (#462)
+
+### Behoben
+- **„Ab Mitternacht wieder" stimmt jetzt.** Das Tageskontingent der
+  gründlichen Recherche sprang nach UTC um — im Sommer also erst um 2 Uhr
+  nachts. Es zählt jetzt nach Oldenburger Zeit, passend zur Anzeige. (#462)
+
+### Behoben
+- **Weiterfragen-Vorschläge: Pfeil in beide Richtungen, nichts verdeckt.**
+  Wer die Vorschläge einmal weitergeschoben hatte, kam nicht mehr zurück —
+  ein Pfeil nach links fehlte. Und die Pfeile lagen auf den Vorschlägen; sie
+  stehen jetzt neben der Zeile, wo sie strukturell nichts verdecken können.
+  Der dunkle Verlauf darunter ist ersatzlos weg. (#460, #461)
+
+### Behoben
+- **App-Navigation: Suche wieder erreichbar, aktiver Tab wieder sichtbar.**
+  In der App fehlte der Suche seit der Trennung von Fragen und Suche jeder
+  Einstieg — sie steht jetzt zuoberst im „Mehr"-Menü. Außerdem war der
+  Sitzungen-Tab nie blau hinterlegt: Die App hängt an jede Adresse einen
+  Schrägstrich, woran mehrere Vergleiche scheiterten. Dieselbe Ursache ließ
+  auf der Fragen-Seite den „Nach oben"-Pfeil erscheinen und hätte geteilte
+  Antwort-Links in der App ins Leere laufen lassen. (#459)
+- **Keine schwebenden Pfeile mehr im Gespräch.** „Nach oben" und „zum Ende"
+  lagen über dem Senden-Knopf; beide sind weg. Der Eingabebereich ist jetzt
+  deckend, dadurch scrollt der Antworttext nicht mehr sichtbar hinter die
+  Weiterfragen-Pillen. (#459)
+- **Personen-Peek bleibt im Bild.** Bei Personen am Zeilenende lief die
+  Karte links aus dem Bildschirm — sie wird jetzt in beide Richtungen an den
+  Rand geklemmt. (#459)
+- **Scroll-Position überlebt auch auf dem Handy.** Der Tipp auf die Tab-Leiste
+  galt fälschlich als „selbst gescrollt" und brach das Wiederherstellen ab;
+  außerdem war die Wartezeit zu knapp für das langsamere Nachladen auf dem
+  Gerät. (#459)
+
+### Geändert
+- **Weniger Ballast auf der Fragen-Seite.** Kürzerer Einleitungssatz, weniger
+  Leerraum über Lotti, der Verlaufs-Knopf sitzt in der Titelzeile — und der
+  Kontext-Chip über dem Eingabefeld entfällt: Ob eine Anschlussfrage zur
+  vorherigen gehört, entscheidet die Suche ohnehin selbst. (#459)
+
+### Behoben
+- **Auch große Ratssitzungen bekommen Kurzfassungen.** Bei knapp 50
+  Tagesordnungspunkten brach die Zusammenfassung mitten im Satz ab und fiel
+  komplett aus — die Sitzung blieb ohne. Lange Tagesordnungen werden jetzt in
+  Tranchen zusammengefasst; bricht eine ab, gibt es lieber gar keine
+  Zusammenfassung als eine, der stillschweigend Punkte fehlen. (#458)
+
+### Behoben
+- **Blättern verschiebt die Seite nicht mehr.** Beim Klick auf die obere
+  Seiten-Leiste rutschte die Ansicht bei jedem Wechsel ein Stück hoch und
+  runter — der Sprung an den Listenanfang war für die untere Leiste gedacht,
+  oben steht man ohnehin schon dort. (#457)
+
+## [1.8.0] – 2026-08-12
+
+### Geändert
+- **Fragen und Suche sind jetzt zwei Seiten.** Die KI-Frage — das Herzstück
+  von Ratslotse — hat mit /fragen eine eigene Adresse und einen eigenen
+  Platz in der Navigation, statt als Modus hinter einem Umschalter der
+  Suche zu wohnen. Die Suche konzentriert sich auf das Durchsuchen der
+  Beschlüsse und behält eine Brücke ins Ratsgespräch („Fragen"-Knopf im
+  Kopf, „Dazu fragen" an Treffern, Handoff bei null Treffern). Alte Links —
+  aus Mails, geteilten Antworten und Lesezeichen — leiten automatisch auf
+  die neue Seite weiter, samt vorbefüllter Frage bzw. geteiltem
+  Gesprächs-Snapshot. (#455)
+
+### Verbessert
+- **Blättern ohne Ballast.** Die obere Seiten-Leiste in Suche und
+  Sitzungsliste ist jetzt klein und sitzt rechts in der Trefferzeile statt
+  als breiter Block über der Liste; der doppelte „Seite X von Y"-Text
+  entfällt. Und der Kalender-Link bei Sitzungen ohne Tagesordnung steht in
+  der Zeile der „Tagesordnung folgt"-Marke statt in einer eigenen Reihe —
+  die Karten wirken wieder gleichmäßig. (#454)
+- **Kurzfassungen auch für Sitzungen ohne Benachrichtigung.** Die Sätze unter
+  den Tagesordnungspunkten entstanden bisher nur dort, wo jemand eine Meldung
+  bekam. Ein Ops-Lauf trägt sie jetzt für alle kommenden Sitzungen und die
+  letzten Wochen nach. (#451)
+- **Die Sicherung umfasst jetzt wirklich alles.** Gesichert wurden bisher zwei
+  fest eingetragene Datenbanken — eine dritte wäre still übersprungen worden.
+  Jetzt kommt jede Datenbank mit, dazu die gerenderten Planzeichnungen und die
+  Konfigurationsdatei mit den Zugangsdaten (abschaltbar). Ohne Letztere wäre
+  nach einem Serververlust jede Anmeldung ungültig gewesen.
+
+### Behoben
+- **Reste des früheren Zeitungs-Teils entfernt.** Fünf Tabellen aus der Zeit
+  vor dem Ratslotse wurden bei jedem Start neu angelegt, obwohl sie seit der
+  Ausgliederung leer sind und niemand sie liest; drei zugehörige
+  Daten-Umbauten liefen ebenfalls ins Leere. Alles raus — leere Tabellen
+  werden auf bestehenden Installationen mit aufgeräumt, gefüllte bleiben
+  vorsichtshalber stehen.
+
+### Verbessert
+- **„Dein Thema" prüft jetzt die Vorlage, nicht nur den Titel.** Ob ein
+  Tagesordnungspunkt wirklich das eigene Thema betrifft, entscheidet nach der
+  Titel-Zuordnung ein zweiter Blick in den Vorlagentext — „Sanierung
+  Grundschule X" und „Neubau Sporthalle an der Grundschule X" klingen im Titel
+  gleich nah, erst der Sachverhalt trennt sie. Punkte ohne Vorlage (etwa
+  Fraktions-Anträge) bleiben beim Titel-Urteil, und fällt die Prüfung aus,
+  bleibt die Zuordnung stehen. (#450)
+
+### Behoben
+- **Themen-Zuordnung würfelt nicht mehr.** Derselbe Tagesordnungspunkt wurde
+  mal gemeldet, mal nicht — die Zuordnung lief mit zufälliger Streuung. Jetzt
+  entscheidet sie deterministisch. Außerdem riss eine zu lange Antwort das
+  Ergebnis mitten im Datensatz ab und hätte den ganzen nächtlichen Lauf
+  beenden können; sie hat jetzt mehr Platz, und ein unbrauchbares Ergebnis
+  überspringt nur diese eine Sitzung. (#450)
+
+### Neu
+- **Kurzfassung unter jedem Tagesordnungspunkt.** Ein Satz, worum es geht —
+  dieselbe Zusammenfassung, die auch in der Tagesordnungs-Mail steht, jetzt
+  direkt in der aufgeklappten Tagesordnung. Routine-Punkte
+  (Beschlussfähigkeit, Protokollgenehmigung) bleiben bewusst ohne. (#449)
+
+### Verbessert
+- **Blättern geht jetzt auch oben.** Suche und Sitzungsliste haben ihre
+  Seiten-Knöpfe zusätzlich über der Liste — bisher musste man nach jedem
+  Seitenwechsel wieder ans Ende scrollen, um weiterzublättern. (#449)
+
+### Behoben
+- **Scrollbalken passen sich dem Dunkelmodus an.** Der Kanal blieb weiß und
+  schnitt eine helle Spur durch die dunkle Oberfläche — jetzt färbt der
+  Browser Scrollbalken, Auswahlfelder und andere native Bedienelemente
+  passend zum Modus. (#448)
+
+### Verbessert
+- **Seiten behalten ihren Stand — wie man es von einer App erwartet.** Wer
+  in der Sitzungsliste weit nach unten scrollt, kurz auf einen anderen Tab
+  wechselt und zurückkommt, steht wieder an derselben Stelle statt am
+  Listenanfang. Genauso überleben Suchtext, Ausschuss-Filter und Zeitraum
+  den Abstecher. Scrollt man beim Zurückkommen selbst, bleibt die Hand am
+  Steuer — dann springt nichts mehr. (#446)
+
+### Verbessert
+- **„Morgen" statt „Do., 13.08."** Sitzungen, die heute, morgen oder gestern
+  sind, sagen das jetzt auch — im Dashboard und in der Sitzungsliste, das
+  genaue Datum bleibt an der Kachel bzw. als Titel. Die Angabe kommt vom
+  Gerät und stimmt auch, wenn die App über Mitternacht offen bleibt. (#445)
+
+### Neu
+- **Zusagen der Verwaltung werden sichtbar.** „Die Verwaltung sagt zu, den
+  Zeitplan vorzulegen" — solche Selbstverpflichtungen stehen in den
+  Protokollen, gingen in den Belegen aber unter: Sie sind kurz und nüchtern
+  formuliert und verloren jedes Duell gegen ausführliche Reden. Sie haben
+  jetzt einen eigenen Kanal, ein eigenes Abzeichen in den Belegen, und die
+  Antwort nennt sie ausdrücklich mit Datum. Reine Verfahrens-Floskeln
+  („sichert eine Antwort zu Protokoll zu") bleiben draußen.
+
+### Verbessert
+- **Wiederholte Fragen antworten fast sofort.** Die Bewertung der gefundenen
+  Beschlüsse ist mit Abstand der teuerste Schritt der Suche; sie wird jetzt je
+  Frage gemerkt. Wer eine Beispielfrage anklickt, einen Weiterfragen-Chip
+  nutzt oder dieselbe Frage später erneut stellt, wartet dafür nicht noch
+  einmal — gemessen 3,6 Sekunden auf 0,07 Sekunden bei unveränderter
+  Reihenfolge der Treffer. Neue Fragen sind unberührt.
+- **Ehrliche Zeitangabe bei der Gründlichen Recherche.** Sie versprach „1–2
+  Minuten", brauchte real aber rund 30 Sekunden. Karte, Umschalter und Hinweis
+  nennen jetzt den gemessenen Wert.
+- **Erste Frage nach einem Neustart ist schneller.** Der Warmlauf lädt nun auch
+  die Zusatzkanäle (Pressemitteilungen, Wortbeiträge) vor, statt sie die erste
+  Frage bezahlen zu lassen.
+- **Angemeldete landen direkt im Dashboard.** Wer eingeloggt ratslotse.de
+  aufruft, sieht nicht mehr die Werbeseite, sondern seine Startseite mit
+  Themen und Sitzungen. Die Startseite bleibt erreichbar: über „Startseite"
+  im Menü-Fuß (bzw. ratslotse.de/?start=1) — dann bleibt sie für die ganze
+  Sitzung stehen, auch beim Klick aufs Logo. Nach dem Abmelden erscheint sie
+  ohnehin wieder. (#444)
+
+### Neu
+- **Tagesordnungen zeigen die Anhänge ihrer Punkte.** Jeder TOP verlinkt
+  jetzt seine Dokumente aus dem Ratsinformationssystem — gerade
+  Fraktions-Anträge ohne Vorlage hingen bisher nur dort und waren in der
+  App unsichtbar. Die Anhänge füllen sich mit dem täglichen Abgleich für
+  alle kommenden Sitzungen. (#443)
+
+### Verbessert
+- **„Tagesordnung geändert"-Meldungen zeigen nur noch die Unterschiede.**
+  Statt der kompletten Liste steht in der Mail, was sich getan hat: neue
+  Punkte grün, verschobene und umformulierte gelb (mit dem alten Wortlaut),
+  gestrichene rot durchgestrichen. Ein eingeschobener Punkt färbt dabei
+  nicht die halbe Liste um, nur weil sich Nummern verschieben — verglichen
+  wird über den Titel. (#440)
+
+### Behoben
+- **Zurück von der Personen-Seite führt wieder in die Antwort.** Der Sprung
+  aus dem Personen-Peek lud die Seite bisher komplett neu — beim
+  Zurückkommen war das Gespräch weg und der leere Startbildschirm da. Der
+  Link navigiert jetzt in der App, und das aktive gespeicherte Gespräch
+  wird beim Zurückkommen automatisch wieder geladen. (#442)
+- **Keine doppelte Partei mehr hinter Personennamen.** Nennt der
+  Antworttext die Partei direkt hinter dem Namen in Klammern („Ulf Prange
+  (SPD)"), ersetzt das Badge die Klammer — geschluckt wird nur das nackte
+  Partei-Label derselben Partei, Zusätze wie „(FDP-Fraktion vom 28.07.)"
+  bleiben stehen. (#441)
+- **Der Personen-Peek bleibt im Bild.** Nahe dem rechten Rand oder der
+  Oberkante lief die Info-Karte aus dem Text bzw. wurde abgeschnitten —
+  sie richtet sich jetzt nach der verfügbaren Seite aus. (#439)
+- **„dein Thema"-Markierungen sitzen am richtigen Tagesordnungspunkt.** Das
+  Themen-Matching übernahm die TOP-Nummer ungeprüft vom Sprachmodell — das
+  verrutscht bei Nummern-Listen gern um eins (Ö 14.6 trug ein
+  Fliegerhorst-Label, gemeint war Ö 14.7). Jetzt liefert das Modell Nummer
+  UND Titel; existiert die Nummer nicht oder widerspricht der Titel, gewinnt
+  der eindeutige Titel-Treffer — und ist gar nichts auflösbar, gibt es keine
+  Markierung statt einer falschen. (#438)
+- **Personen-Badges verwechseln keine Namensvettern mehr.** Ein Gast im
+  Ausschuss (etwa vom Wasserstraßen-Amt) trug im Text das Badge eines
+  gleichnamigen Gremienmitglieds. Gäste, Protokollführung und beratende
+  Mitglieder machen den kahlen Nachnamen jetzt mehrdeutig — und bei
+  Mehrdeutigkeit entscheidet nur noch ein Vorname im Text, sonst gibt es
+  gar kein Badge. (#437)
+
+### Neu
+- **Kleine Zugehörigkeits-Badges hinter Personennamen in KI-Antworten.**
+  Erwähnt eine Antwort ein Ratsmitglied, steht bei der ersten Nennung ein
+  kompakter Punkt in Parteifarbe mit Kürzel dahinter („Lükermann ·Volt");
+  Verwaltungsleute tragen „Stadt", Ehemalige einen grauen „ehem."-Punkt —
+  nie eine veraltete Rolle als aktuell. Antippen öffnet eine Karte mit
+  vollem Namen, Amt bzw. Fraktion, belegtem Zeitraum aus den
+  Anwesenheitslisten und dem Link zur Personen-Seite. Die Ämter der
+  Verwaltungsspitze („Oberbürgermeister", „Stadtkämmerin") stammen aus den
+  Protokollen selbst; bei mehrdeutigen Nachnamen erscheint lieber kein
+  Badge als ein geratenes. Funktioniert im Gespräch, im Recherche-Bericht
+  und auf geteilten Antworten. (#435)
+
+### Verbessert
+- **Der Fragen-Startbildschirm passt auf einen Handy-Bildschirm.** Kürzerer
+  Untertitel, weniger Leerraum, mobil drei statt vier Beispielfragen (die
+  vierte gibt es weiter am großen Bildschirm) — nichts verschwindet mehr
+  hinter dem Eingabefeld. (#433)
+- **Kein doppelter Einstieg mehr bei „Was ist …?"-Fragen.** Der Steckbrief
+  „Worum geht es?" und die Antwort sagten dort dasselbe — bei einer reinen
+  Definitionsfrage *ist* die Antwort die Definition. Die Karte entfällt jetzt
+  genau dort; der Hintergrund fließt weiterhin in die Antwort ein, die ihn mit
+  Quellen belegt. Bei Sachstands- und Themenfragen („Wie ist der Stand bei der
+  Cäcilienbrücke?") bleibt beides stehen — dort ergänzen sich Steckbrief (was
+  es ist) und Fazit (wo es steht).
+
+### Behoben
+- **Das Eingabefeld der KI-Frage sitzt jetzt wirklich auf der Tab-Leiste.**
+  Der zweite Anlauf: `sticky` kann ein Element nur nach oben halten — auf
+  kurzen Seiten blieb darunter eine Lücke. Jetzt ist der Composer auf dem
+  Handy fest über der Tab-Leiste verankert, ein mitwachsender Platzhalter
+  hält das Gesprächsende frei. Dabei eine tiefere Ursache behoben: Die
+  Einstiegs-Animation jeder Seite hielt dauerhaft ein `transform` und
+  kaperte damit jedes fest positionierte Element der Seite. (#431)
+
+### Neu
+- **„Worum geht es?" — Einordnung vor der Antwort.** Nennt eine Frage ein
+  bekanntes Objekt (GSG, Cäcilienbrücke, Fliegerhorst), steht jetzt ein kurzer
+  Steckbrief darüber: was das ist und was es mit der Stadt zu tun hat. Fragen
+  wie „Was ist die GSG und was macht sie?" beantworten reine Beschluss-Zitate
+  schlecht — die Beschreibung dazu lag längst in den Themen-Daten, wurde von
+  der Frage-Antwort aber nie gezeigt.
+- **Ausblick: „Wie es weitergeht" auch bei der schnellen Frage.** Steht das
+  Thema demnächst auf einer Tagesordnung, nennt die Antwort Termin, Gremium und
+  geplante Behandlung. Bisher blickte nur die Gründliche Recherche nach vorn —
+  ausgerechnet bei „Wie ist der aktuelle Stand …?", der häufigsten Frage.
+
+### Verbessert
+- **Ehrlicher Hinweis, wenn die Beleglage dünn ist.** Findet die Suche zu einer
+  Frage nur wenige und schwach passende Beschlüsse, sagt die Antwort das jetzt —
+  statt im gleichen selbstbewussten Ton zu klingen wie bei gut belegten Themen.
+  Dazu ein Knopf, der die Gründliche Recherche startet, die auch Gutachten und
+  Protokolle liest.
+- **Lange Antworten beginnen mit einem Fazit.** Umfangreiche Themen führen jetzt
+  mit einer Zeile „Kurz gesagt: …", bevor die Gliederung kommt.
+- **Die Aussprache zu einem Bericht steht jetzt auch in der Antwort.** Wenn
+  „Frag den Rat" einen Bericht zitiert, kommen die Wortbeiträge aus genau
+  diesem Tagesordnungspunkt mit dazu — bisher fand die Suche nur Beiträge,
+  die zufällig dieselben Wörter benutzten wie die Frage. Bei der Frage nach
+  dem Sondermüll auf dem Fliegerhorst fehlte deshalb die jüngste Debatte vom
+  Februar 2026 über erhöhte Vinylchlorid-Werte; die Antwort endete mit einer
+  beruhigenden Aussage von Juni 2025. Jetzt ist sie dabei.
+- **Keine maschinellen Einschätzungen mehr als Aussage des Rates.** Ratslotse
+  bewertet intern die Tragweite jedes Beschlusses. Diese Begründung konnte in
+  einer Antwort landen und klang dort wie eine Feststellung aus dem Rathaus
+  („Dieser Beschluss wird als weitreichend … eingestuft"). Sie steuert jetzt
+  nur noch die Gewichtung und taucht im Text nicht mehr auf.
+- **Aufgeräumter Fragen-Screen auf dem Handy.** Aus Tims TestFlight-Feedback:
+  Die Gesprächs-Historie sitzt jetzt als Knopf oben rechts im Seitenkopf
+  (statt als breite Zeile mitten im Screen), der KI-Datenschutz-Hinweis wohnt
+  in den Einstellungen bei der Gespräche-Karte, und der „Gründlich
+  recherchieren"-Schalter steht als Pill direkt über dem Eingabefeld. Der
+  Composer klebt außerdem in jeder Scroll-Lage an der Tab-Leiste, statt sich
+  beim Scrollen vom unteren Rand zu lösen, und der schwebende „Nach
+  oben"-Pfeil erscheint im Ratsgespräch nicht mehr (er lag genau über dem
+  Senden-Knopf). (#427)
+
+### Behoben
+- **Der Ausblick auf kommende Beratungen war immer leer.** Die Abfrage verlangte
+  ein leeres Ergebnis-Feld — bei künftigen Terminen steht dort aber die geplante
+  Behandlung („Vorberatung", „Kenntnisnahme"). Gemessen: 22 anstehende Termine,
+  davon 0 gefunden. Betraf auch den Bericht der Gründlichen Recherche.
+- **Lange Sprungmarken-Chips schieben die Seite nicht mehr seitlich weg.**
+  Ein langer Abschnittstitel im Recherche-Bericht machte seinen Chip breiter
+  als das Telefon — die ganze Seite hing dann angeschnitten in der Luft
+  (Tims TestFlight-Screenshot). Jetzt wird der Chip-Text mit „…" gekürzt.
+  (#427)
+- **„###"-Überschriften in KI-Antworten werden als Überschriften gezeigt.**
+  Bisher kannte die Antwort-Darstellung nur „##" — tiefere Ebenen standen
+  als rohe Rauten im Text. (#427)
+- **Die „Keine passenden Wortbeiträge von:"-Zeile nennt nur noch Parteien.**
+  Vorher listete sie alle Anwesenheits-Labels der Protokolle — Verbände,
+  Gremienrollen und kaputte Einzel-Label („ADFC", „Elternvertreter", „BSW
+  Für RH Dr. Onken"); außerdem erschien „CDU-Fraktion" neben „CDU". Jetzt
+  filtert eine kuratierte Ratsparteien-Liste, Schreibvarianten werden
+  zusammengeführt. (#427)
+- **Die Tagesordnungs-Mail spricht wieder über eine bevorstehende Sitzung.**
+  Die Punkte standen in der Vergangenheit („Der GLOBE-Bericht wurde
+  vorgestellt"), obwohl der Ausschuss erst noch tagt — das behauptete
+  Ergebnisse, die es noch gar nicht gibt. Jetzt heißt es „Vorgestellt wird …"
+  bzw. „Der Ausschuss berät über …". (#426)
+- **Der Sitzungsort steht wieder in der Mail.** Unter dem Termin blieb eine
+  Ortsmarke ohne Ort: Der Scraper suchte ihn in der Überschrift der
+  Sitzungsseite, wo er nicht steht — er kommt aus dem Feld „Raum". Damit
+  tragen auch die Sitzungslisten in der App wieder ihren Ort; fehlt er
+  ausnahmsweise, entfällt die Zeile ganz statt leer dazustehen. (#426)
+
+## [1.7.1] – 2026-08-10
+
+### Behoben
+- **Der Eingabe-Composer der KI-Frage liegt wieder über der Tab-Leiste.** Auf
+  dem Handy verschwand das Eingabefeld hinter der neuen Tab-Bar-Navigation;
+  jetzt klebt es sichtbar darüber. (#424)
+
+## [1.7.0] – 2026-08-10
+
+### Verbessert
+- **Keine Anreden-Dubletten mehr im Ratsmitglieder-Verzeichnis.** „Herr Jens
+  Freymuth" und „Jens Freymuth" waren zwei Einträge — Anreden (Herr/Frau/
+  Ratsherr/Ratsfrau) werden jetzt beim Zusammenführen und in der Anzeige
+  entfernt; Titel wie „Dr." bleiben Teil des Namens. (#419)
+- **Alle Wortbeiträge einer Person — mit Gremien-Filter.** „Aus den
+  Protokollen" zeigte nur die zehn jüngsten Beiträge; wer viel redet, kommt
+  aber auf weit über tausend. Jetzt lädt die Liste seitenweise nach, nennt die
+  Gesamtzahl und lässt sich auf ein Gremium eingrenzen (mit Anzahl je
+  Ausschuss). Dabei behoben: Namensvettern wurden zusammengeworfen — trägt ein
+  Protokolleintrag einen anderen Vornamen zum selben Nachnamen, gehört er
+  nicht mehr auf die Seite. (#420)
+- **Ehrlicher Hinweis auf den Ratsmitglieder-Seiten.** Unter den
+  Wortbeiträgen steht jetzt, dass die Protokolle sinngemäß zusammenfassen
+  und nicht jede Wortmeldung erfassen — die Liste ist ein Ausschnitt, kein
+  vollständiges Redeprotokoll. (#418)
+
+### Neu
+- **Die Gründliche Recherche meldet sich, wenn sie fertig ist.** Wer sie in der
+  App startet und das Handy weglegt, bekommt eine Mitteilung, sobald der
+  Bericht steht — Antippen öffnet ihn. Auch ein Fehlschlag meldet sich, damit
+  niemand auf einen Bericht wartet, der nicht mehr kommt; ein selbst
+  abgebrochener Lauf bleibt still. Wer gerade zusieht, bekommt kein Banner über
+  den eigenen Text. Die Meldung beantwortet eine eigene Handlung und wartet
+  deshalb nicht auf das nächste Zustellfenster; nur wer Benachrichtigungen ganz
+  abgeschaltet hat, hört auch hier nichts. (#413)
+- **Kostenentwicklung bei Geld-Fragen.** Der Geld-Baustein zeigt die
+  zitierten Beträge jetzt als „Beträge im Zeitverlauf" — chronologisch mit
+  Datum, Balken und Fußnote. Ein „von X auf Y gestiegen"-Vergleich
+  erscheint nur, wenn beide Beträge zur selben Vorlage gehören; Beträge
+  verschiedener Vorlagen bleiben eine neutrale Zeitreihe (Planungskosten
+  und Gesamtkosten wären sonst ein Äpfel-Birnen-Pfeil). Dazu sagt der
+  Debatten-Block jetzt ehrlich, dass Protokolle Wortbeiträge sinngemäß
+  zusammenfassen — ohne Anspruch auf Vollständigkeit. (#417)
+- **Aufgeräumte Navigation auf dem Handy.** Statt drei gestapelter
+  Nav-Ebenen (Burger-Menü, wischbare Ansichts-Pills, Modus-Schalter) gibt es
+  jetzt eine feste Tab-Leiste unten: Start · Fragen · Sitzungen · Themen ·
+  Mehr. Hinter „Mehr" liegen Stadtkarte, Analyse, Quiz, Konto, Feedback,
+  Abmelden und die Pflicht-Links — als Liste mit Beschriftung, nicht als
+  Icon-Gitter. Das Burger-Menü und die orangene Schwebe-Taste entfallen; der
+  Kopf der App behält nur Logo und Suche.
+- **Eine Gesprächs-Zeile statt zweier Schwebe-Icons.** Im Ratsgespräch zeigt
+  auf dem Handy eine Zeile über dem Chat, in welchem Gespräch du bist, und
+  öffnet die Gespräche-Liste als Bottom Sheet — „Neues Gespräch" ist dort
+  die erste Aktion. Zeilen lassen sich nach links wischen: Umbenennen oder
+  Löschen (Umbenennen ist neu, auch per API). Die Zeile erscheint nur, wenn
+  Gespräche gespeichert werden und es etwas zu zeigen gibt; ohne Speichern
+  steht stattdessen ein schlichter „Neues Gespräch"-Link über dem
+  Eingabefeld. Am Rechner bleibt alles wie gewohnt.
+- **„Was sagt Ratsfrau X dazu?" — Fragen zu Personen.** Nennt eine Frage
+  ein Ratsmitglied, antwortet „Frag den Rat" aus dessen Wortbeiträgen
+  („Laut Protokoll sagte …") statt nur aus Beschlüssen; der Belege-Block
+  zeigt die Beiträge der Person. Auf den Ratsmitglieder-Seiten steht neu
+  die Sektion „Aus den Protokollen" mit den jüngsten Wortbeiträgen. (#414)
+
+### Verbessert
+- **FDP und Volt getrennt statt als Gruppen-Eimer.** Die Protokolle führen
+  nur die Ratsgruppe „FDP/Volt" — über die Personen-Stammdaten wird jeder
+  Beitrag jetzt der Einzel-Partei des Sprechers zugeordnet: Der
+  Parteien-Baustein führt FDP und Volt als eigene Zeilen (Volt mit eigener
+  Farbe), und die Fußzeile benennt ehrlich, wenn eine der beiden nichts
+  Passendes gesagt hat. „Für Oldenburg" bleibt als Gruppe stehen — mehr
+  gibt das Ratsinformationssystem dort nicht her. (#414)
+- **Wortbeiträge in voller Länge lesbar.** Die Debatten-Belege unter den
+  Antworten waren auf 220 Zeichen gekappt — mitten im Satz. Jetzt lässt
+  sich jeder Beitrag komplett aufklappen („Ganzen Beitrag anzeigen"), im
+  Ratsgespräch wie auf den Ratsmitglieder-Seiten. Bei Personen-Fragen
+  entfällt der Parteien-Baustein — die Frage zielt ja auf eine Person. (#414)
+
+### Behoben
+- **Der Fortschritt der Gründlichen Recherche läuft wieder mit.** Die Karte
+  blieb beim ersten Schritt stehen und sprang dann unvermittelt zum fertigen
+  Bericht: Der Browser fordert komprimierte Antworten an, und die Kompression
+  sammelte den Ereignis-Strom der Recherche, statt ihn durchzulassen. Jetzt
+  kommen Facetten, gelesene Dokumente und Phasen wieder in dem Takt an, in dem
+  sie entstehen. (#413)
+- **Vorschläge und Weiterfragen beachten den Recherche-Schalter.** Wer
+  „Gründlich recherchieren" eingeschaltet und dann einen Beispiel-Vorschlag,
+  einen Weiterfragen-Chip oder „Dazu fragen" angetippt hat, bekam wortlos die
+  schnelle Antwort — den Schalter las bisher nur das Absenden im Eingabefeld.
+  Jetzt starten auch diese Wege die gründliche Recherche. („Einfacher
+  erklären", „Ausführlicher" und „stattdessen schnell fragen" bleiben
+  bewusst schnell.) (#413)
+- **Geteilte Antworten zeigen wieder alles.** Wer einen „Frag den Rat"-Link
+  verschickte, teilte bisher nur Text und Beschlussliste: Die Ratsdebatten,
+  der Parteien-Baustein, „Aus den Anlagen" und „Aktuelles von der Stadt"
+  fehlten auf der geteilten Seite komplett. Sie wandern jetzt mit in den
+  Link — auch für Eingeloggte, die ihn im Ratsgespräch öffnen. Außerdem
+  setzte die geteilte Seite ganze Absätze fett, sobald sie mit einer
+  Zwischenüberschrift begannen; sie benutzt jetzt dieselbe Darstellung wie
+  das Gespräch (Überschriften, Listen, Fettdruck, klickbare Fußnoten).
+  Bereits geteilte ältere Links behalten ihren bisherigen Umfang. (#421)
+- **Datumsangaben in den Antworten stehen deutsch da.** In Sätzen wie „Laut
+  Protokoll sagte Ratsherr Wenzel am 2026-06-01 …" rutschte das technische
+  Datumsformat aus den Quellenangaben in den Antworttext. Der Kontext für
+  die KI trägt die Daten jetzt durchgängig als „01.06.2026", und bereits
+  gespeicherte Antworten werden beim Anzeigen umgeschrieben. (#421)
+- **Gespeicherte Gespräche verlieren keine Bausteine mehr.** Beim Öffnen
+  eines Gesprächs aus dem Verlauf fehlten bisher die Ratsdebatten, der
+  Parteien-Baustein und „Aktuelles von der Stadt" — sie wurden schlicht
+  nicht mitgespeichert. Jetzt wandern Debatten, Presse und bei Recherchen
+  auch Anlagen, Termine und die Meta-Zahlen mit in den Gesprächs-Snapshot;
+  ältere Gespräche bleiben ohne (dort wurden die Daten nie gesichert).
+  Außerdem scrollt die Gespräche-Liste jetzt, statt bei vielen Einträgen
+  über den Bildschirmrand zu wachsen, und jeder Eintrag zeigt neben dem
+  Datum auch die Uhrzeit. (#412)
+- **Die Bewertung einer Antwort lässt sich ändern.** Wer einmal „Daumen
+  runter" gedrückt hatte, konnte das nicht mehr korrigieren — beide Daumen
+  waren danach dauerhaft gesperrt. Jetzt bleiben sie anklickbar: ein Wechsel
+  ersetzt die frühere Bewertung (samt hinfällig gewordener Begründung), ein
+  erneuter Klick auf denselben Daumen ändert nichts. (#411)
+
+### Verbessert
+- **Gutachten und Konzepte sind im Recherche-Bericht belegt.** Die Anlagen
+  einer Vorlage flossen zwar schon in die Gründliche Recherche ein, standen im
+  Text aber nur als Nebensatz — ob der Bericht sie wirklich benutzt hat, war
+  nicht zu erkennen. Jetzt tragen Aussagen aus einer Anlage eine eigene kleine
+  Fußnote (a, b, c … statt der Zahlen der Beschlüsse); ein Klick springt zur
+  passenden Karte unter „Aus den Anlagen". Anlagen, die gelesen, aber nicht
+  belegt wurden, treten optisch zurück.
+- **Die Quellen-Liste zeigt beim Ausklappen nur noch die übrigen Treffer.**
+  „Alle 28" listete bisher auch die oben schon genannten Quellen ein zweites
+  Mal auf, dort in Relevanz- statt Fußnoten-Reihenfolge — die Nummern wirkten
+  durcheinandergewürfelt. Der Knopf heißt jetzt „N weitere" und öffnet
+  ausschließlich das, was in der Antwort nicht zitiert wurde.
+- **„Frag den Rat" schlägt wechselnde Beispielfragen vor.** Statt immer
+  derselben zwei Klassiker rotieren die Vorschläge über einen kuratierten Pool
+  von 22 Fragen — jede vorab durch das echte Retrieval geschickt und nur
+  aufgenommen, wenn sie tatsächlich viele einschlägige Beschlüsse trifft
+  (Themen ohne Substanz im Ratsinformationssystem bleiben draußen). Deckt ein
+  frischer Vorschlag schon ein Thema ab, wird es nicht doppelt angeboten.
+  Außerdem sind die frischen Vorschläge lesbarer: Firmierungen und
+  Titel-Anhängsel des Ratsinformationssystems fallen weg, und abgeschnitten
+  wird nur noch an der Wortgrenze — statt „Stadion Oldenburg GmbH & Co. KG:
+  Stadionneubau Maastrichter " steht dort jetzt „Stadionneubau Maastrichter
+  Straße". (#410)
+- **Admins steuern die Frage-Limits je Konto.** Im Nutzer-Detail des
+  Admin-Panels lässt sich das Tageskontingent der Gründlichen Recherche
+  erhöhen oder ganz ausschalten (0 = unbegrenzt, leer = Standard 5) und ein
+  Konto von den Rate-Limits der Frage-Endpoints befreien — etwa für
+  Power-Nutzer oder Tests. (#409)
+- **Die Suche wird akkurater — drei deterministische Signale neben der KI.**
+  Erkennt die Frage ein benanntes Objekt (Cäcilienbrücke, Fliegerhorst — auch
+  umgangssprachlich als „Cäci"), kommen dessen verknüpfte Beschlüsse gesetzt
+  in die Auswahl; Sachstands-Fragen („Wie ist der Stand …?") bevorzugen im
+  Ranking frischere Beschlüsse; und durchläuft dieselbe Vorlage mehrere
+  Gremien, weist die Antwort ältere Stationen als überholt aus, statt sie als
+  aktuellen Stand zu verkaufen. Die Kurzform-Aliasse pflegen wir in derselben
+  Tabelle wie die Themen-Dubletten. (#408)
+
+### Neu
+- **Die Gründliche Recherche liest jetzt auch die Anlagen.** Gutachten,
+  Konzepte und Stellungnahmen zu den Vorlagen (z. B. Schallgutachten und
+  Verkehrskonzept zum Stadionneubau) sind als eigener Recherche-Kanal
+  durchsuchbar; einschlägige Fundstellen fließen in den Bericht ein und
+  erscheinen als Block „Aus den Anlagen" mit Link aufs Original-PDF.
+  Die schnelle Frage bleibt davon unberührt (und genauso schnell). (#407)
+- **„Gründliche Recherche" — der zweite Frage-Modus.** Ein Umschalter am
+  Eingabefeld lässt den Rat gründlich recherchieren: Die Frage wird in
+  Facetten zerlegt, deutlich mehr Beschlüsse samt Vorlagen-Volltexten werden
+  gelesen, und heraus kommt ein gegliederter Bericht mit Sprungmarken,
+  Debatten-Stimmen und einem „Wie es weitergeht"-Block aus dem
+  Sitzungskalender. Die Recherche läuft auf dem Server weiter, auch wenn
+  man den Tab wechselt, in der App weiternavigiert oder sie ganz schließt —
+  der fertige Bericht wartet dann im Gespräch. Dauert 1–2 Minuten,
+  5 Recherchen pro Tag; Abbruch (mit Teilbericht aus den fertigen Facetten)
+  und Fehler kosten kein Kontingent. (#406)
+- **Die KI-Suche kennt jetzt auch die Debatten.** Aus den Sitzungsprotokollen
+  werden Redebeiträge, „Anfragen und Anregungen" samt Verwaltungsantwort,
+  Einwohnerfragen und Zusagen der Verwaltung herausgelesen und durchsuchbar
+  gemacht. Wer nach einem Thema fragt, bekommt neben den Beschlüssen einen
+  Block „Aus den Ratsdebatten" — also auch das, was im Rat nur besprochen
+  wurde und in keinem Beschlusstext steht (etwa der Streit um die
+  Fliegerhorst-Altlasten). Die Antwort nennt solche Stellen ehrlich als
+  „Laut Protokoll …", nie als Beschluss. (#387)
+
+### Verbessert
+- **Der Parteien-Baustein benennt fehlende Fraktionen.** Findet die Suche
+  zu einer aktiven Ratsfraktion keine passenden Wortbeiträge, steht das
+  jetzt ausdrücklich in der Fußzeile („Keine passenden Wortbeiträge
+  gefunden von: …") — statt die Fraktion stillschweigend wegzulassen. (#405)
+
+### Verbessert
+- **Fraktions-Zeilen im Parteien-Baustein sind aufklappbar.** Ein Klick auf
+  eine Fraktion zeigt die Original-Wortbeiträge, aus denen ihre Position
+  verdichtet wurde — mit Sprecher, Datum und Gremium. (#404)
+
+### Verbessert
+- **Die Suche versteht Fragen jetzt aus mehreren Blickwinkeln.** Jede Frage
+  wird intern zusätzlich umformuliert (etwa eine Stand-Frage auch als
+  Finanzierungs- und Planungs-Frage) — dadurch hängt die Qualität der
+  Treffer deutlich weniger davon ab, wie genau man das Thema benennt.
+  Und bei Themen mit langer Beratungs-Historie wie dem Stadionneubau
+  antwortet „Frag den Rat" jetzt ausführlich und gegliedert: mit
+  Zwischenüberschriften, Listen und einem Überblick am Anfang, statt
+  alles in vier Sätze zu pressen. (#403)
+
+### Verbessert
+- **Von geteilten Antworten direkt weiterfragen.** Wer angemeldet ist,
+  springt von einer geteilten Antwort mit einem Klick ins Ratsgespräch —
+  die geteilte Frage samt Antwort steht dort als Gesprächsbeginn, und
+  Anschlussfragen knüpfen automatisch daran an. Ohne Konto zeigt die Seite
+  „Kostenlos registrieren" und „Anmelden"; nach beidem geht es direkt im
+  Gespräch weiter, nicht auf dem Dashboard. (#402)
+
+### Verbessert
+- **Geteilte Links zeigen eine echte Vorschau.** Wer einen „Frag den
+  Rat"-Link in WhatsApp, Signal oder Slack teilt, sieht dort jetzt die
+  Frage als Titel und den Anfang der Antwort als Beschreibung — statt
+  einer generischen Ratslotse-Karte. Geteilte Antworten bleiben von
+  Suchmaschinen ausgenommen. (#401)
+
+### Verbessert
+- **Teilen teilt jetzt die Antwort, nicht nur die Frage.** Der Teilen-Knopf
+  unter einer Antwort erzeugt einen Link, der genau diese Antwort zeigt —
+  mit Frage, Fußnoten und den zitierten Beschlüssen, öffentlich lesbar auch
+  ohne Konto. Vorher enthielt der Link nur die Frage, und wer ihn öffnete,
+  bekam eine neu berechnete, womöglich andere Antwort. Geteilte Antworten
+  werden beim Löschen des Kontos mit entfernt. (#400)
+
+### Verbessert
+- **Der Parteien-Baustein zeigt Haltung und Datenbasis.** Jede Fraktion
+  trägt jetzt ein kleines Label — „dafür", „dagegen" oder „Haltung
+  gewandelt", wenn sich eine Position über die Jahre erkennbar geändert
+  hat — und daneben steht, aus wie vielen Wortbeiträgen die Einschätzung
+  verdichtet wurde. Die Positionen entstehen jetzt aus der Breite der
+  Beiträge je Fraktion statt aus einer einzelnen Aussage, und einmal
+  berechnete Einschätzungen werden wiederverwendet, bis neue Wortbeiträge
+  zum Thema dazukommen — dann wird automatisch nachverdichtet. (#398)
+
+### Neu
+- **Baustein „Das sagen die Parteien".** Bei Themen mit echter Debatte zeigt
+  „Frag den Rat" unter der Antwort die Positionen der Fraktionen: Farb-Punkt,
+  Haltung in ein bis zwei Sätzen, dazu eine Kernaussage mit Sprecher und
+  Datum — als Paraphrase aus den Sitzungsprotokollen, bewusst ohne
+  Anführungszeichen. Widersprechen sich Beiträge derselben Fraktion, steht
+  „uneinheitlich" daneben. Über „Dazu fragen" an jeder Zeile lässt sich die
+  Position einer Fraktion direkt vertiefen. Der Baustein erscheint nur, wenn
+  mindestens zwei Fraktionen substanziell zu Wort kamen. (#395)
+
+### Verbessert
+- **Antworten geben jetzt auch die Debatte wieder.** Bei Themen mit
+  Wortbeiträgen und Pressemitteilungen fasst „Frag den Rat" nicht mehr nur
+  die Beschlüsse zusammen, sondern webt das Meinungsbild aus dem Ratssaal
+  („Laut Protokoll betonte …") und den Stand der Verwaltung („Laut
+  Pressemitteilung vom …") in die Antwort ein — klar getrennt von den
+  zitierten Beschlüssen. (#392)
+
+### Verbessert
+- **„Frag den Rat" statt „KI-Frage".** Das Frage-Feature tritt jetzt unter
+  seinem eigenen Namen auf: Der Umschalter heißt „Suchen | Fragen", Knöpfe
+  und Menüs sagen „Frag den Rat", und Kurzfassungen oder Einschätzungen
+  heißen schlicht „automatisch" statt „KI". Dass im Hintergrund ein
+  KI-Dienst arbeitet, steht weiterhin transparent im Datenschutzhinweis
+  unterm Eingabefeld, in der Datenschutzerklärung und in der
+  Technik-Doku — nur eben nicht mehr in jeder Überschrift. (#391)
+
+### Verbessert
+- **Drei Live-Befunde vom Morgen behoben.** Reißt die Verbindung zum
+  KI-Dienst mitten in der Antwort ab, wird sie automatisch einmal neu
+  erzeugt statt mitten im Wort stehenzubleiben. Die Bewertung (Daumen
+  hoch/runter) steht jetzt unter jeder Antwort, nicht mehr nur unten in der
+  Belege-Spalte. Und die Blöcke „Aktuelles von der Stadt" und „Aus den
+  Ratsdebatten" zeigen nur noch wirklich einschlägige Treffer: Ein
+  Präzisions-Prüfschritt sortiert Beifang wie Ampel-Wartungsmeldungen zur
+  Straßenbau-Frage aus — im Zweifel bleibt der Block leer. (#389)
+
+### Verbessert
+- **Debatten-Nachschliff aus dem Review.** Findet die KI-Frage zwar keine
+  Beschlüsse, aber Wortbeiträge aus den Ratsdebatten, sagt die Antwort das
+  jetzt ehrlich, statt „nichts gefunden" neben sichtbaren Belegen zu
+  behaupten. Intern: Protokolle ohne einen einzigen Wortbeitrag werden als
+  erledigt markiert (statt jede Nacht erneut geprüft), und parallele
+  Extraktionsläufe können sich keine verwaisten Suchindex-Einträge mehr
+  hinterlassen. (#388)
+
+### Verbessert
+- **Die KI-Suche antwortet deutlich schneller.** Zwei Stellschrauben: Die
+  Server-VM nutzt jetzt die modernen Vektorbefehle ihres Prozessors (die der
+  Relevanz-Sortierung bisher vorenthalten waren), und die Textpaare für die
+  Sortierung sind auf das Wesentliche gekürzt — bei unveränderter
+  Trefferquote im Eval sinkt die Zeit bis zu den Quellen von gut zwanzig auf
+  wenige Sekunden. Außerdem bleibt die Aktionszeile mit Teilen, Vorlesen und
+  Bewertung in der Belege-Spalte jetzt immer sichtbar, statt hinter langen
+  Quellenlisten zu verschwinden. (#386)
+
+### Verbessert
+- **Die Beschluss-Seite bleibt lesbar, auch mit den neuen Angaben.** „Vom
+  Vorschlag abgewichen" und der Klima-Check stehen nicht mehr als Kästen in der
+  Erzählspalte, sondern als ruhige Symbolzeilen unter „Auf einen Blick" — ein
+  Klick öffnet die Erklärung, der Klima-Check trägt vorab ein „relevant"/„nicht
+  relevant". Außerdem liest sich „Warum es dazu kam" endlich wie Fließtext: Die
+  harten Zeilenumbrüche aus dem PDF werden zusammengezogen (Silbentrennungen
+  inklusive), Überschriften und Aufzählungen bleiben stehen. Lange Klima-Texte
+  brechen nicht mehr mitten im Wort ab. (#374)
+- **Im Ratsgespräch stört weniger.** Der Hinweis auf den externen KI-Dienst
+  steht nur noch vor der ersten Frage statt dauerhaft unter dem Eingabefeld,
+  und Impressum, Datenschutz, Changelog und Technik-Doku sind vom mitlaufenden
+  Seitenfuß in den Menü-Fuß gewandert — auf großen Bildschirmen in die
+  Seitenleiste, mobil ins Burger-Menü. (#374)
+- **Das Ratsgespräch ist aufgeräumter.** Das Eingabefeld klebt jetzt immer
+  unten — auch vor der ersten Frage — und die vorgeschlagenen Weiterfragen
+  liegen als Chips direkt darüber, sodass sie beim Lesen langer Antworten
+  nicht mehr aus dem Blick geraten. Zitierte Quellen sind kompakte einzeilige
+  Pills (Titel + Jahr), Teilen und Drucken sind stille Symbole statt Knöpfe,
+  und am großen Bildschirm wandern Quellen, Pressemitteilungen und Aktionen
+  in eine eigene Spalte neben dem Gespräch; ältere Antworten zeigen nur noch
+  eine aufklappbare Kurzzeile. (#372)
+- **Breite Fragen bekommen ausführlichere, strukturierte Antworten.** Die
+  starre 2–5-Sätze-Regel ist Geschichte: Eine enge Frage bleibt knapp, aber
+  „Was macht die Stadt alles für den Radverkehr?" darf jetzt die wichtigsten
+  Vorhaben nacheinander nennen — mit dezentem Fettdruck auf den zentralen
+  Projekten und echten Aufzählungen, damit das Auge Halt findet. (#371)
+- **Die Weiterfragen-Chips klingen jetzt wie im Gespräch.** Da Anschlussfragen
+  den Zusammenhang kennen, müssen die Vorschläge nicht mehr jedes Detail
+  wiederholen — aus „Wer stimmte gegen den Ersatzneubau der Grundschule
+  Wechloy?" wird ein natürliches „Wer stimmte dagegen?". (#369)
+
+### Verbessert
+- **Das Ratsgespräch bekommt seine Bühne.** Auf großen Bildschirmen fassen
+  ein getöntes Panel und eine gleich hohe Belege-Karte das Gespräch zusammen:
+  Das Eingabefeld klebt an der Panel-Unterkante statt irgendwo im Weiß zu
+  schweben, der Verlauf scrollt im Panel, und die rechte Spalte ist nie mehr
+  ein leeres Loch — vor der ersten Frage erklärt sie sich, während der Suche
+  zeigt sie ein Skelett. Dazu: Der Zeitstrahl erscheint nur noch, wenn es
+  wirklich einen Verlauf über mehrere Sitzungen gibt; die Vorlesestimme wählt
+  jetzt die beste deutsche Stimme des Geräts statt der erstbesten; und einer
+  der Beispiel-Vorschläge fragt konkret nach dem wichtigsten frischen
+  Beschluss. Unter der Haube: 31 Feinschliffe aus einer systematischen
+  Edge-Case-Prüfung aller Neuerungen dieses Tages — vom Rate-Limit für
+  anonymes Feedback über die Planbild-Anzeige in der App bis zur sauberen
+  Datums-Ernte aus Protokollköpfen. (#384)
+
+### Hinzugefügt
+- **Ratsgespräche lassen sich merken — wenn du willst.** Beim ersten Öffnen
+  fragt Lotti einmalig, ob Verläufe im Konto gespeichert werden sollen; nur
+  bei „Ja" landet jedes Gespräch unter dem neuen „Gespräche"-Knopf und lässt
+  sich auf jedem Gerät weiterführen oder löschen. In den Konto-Einstellungen
+  gibt es den Schalter samt der Frage, was beim Ausschalten mit den
+  bestehenden Gesprächen passieren soll — und beim Löschen des Kontos
+  verschwinden sie mit. (#382)
+- **Antworten lassen sich vorlesen.** Ein Lautsprecher-Symbol an jeder
+  KI-Antwort liest den Text mit deutscher Stimme vor — Fußnoten und
+  Formatierung bleiben stumm, ein zweiter Tipp stoppt. Der Knopf erscheint
+  nur, wenn das Gerät Sprachausgabe kann. (#381)
+- **KI-Antworten zeigen ihre Orte auf einer Mini-Karte.** Zitiert die Antwort
+  Beschlüsse zu konkreten Orten — einer Brücke, einem Baugebiet, einer
+  Straße —, erscheint darunter eine kleine Karte mit nummerierten Pins;
+  ein Tipp auf den Pin öffnet die Quellen-Vorschau, ein Link führt zur
+  großen Stadtkarte. (#380)
+- **Fußnoten zeigen erst eine Vorschau.** Ein Klick auf eine Zitat-Nummer in
+  der KI-Antwort springt nicht mehr sofort weg, sondern öffnet eine kleine
+  Karte: Titel, Gremium, Datum, Ergebnis und die Kurzfassung des Beschlusses —
+  von dort geht es in den Beschluss oder zur Quellenliste. (#379)
+- **KI-Antworten kann man jetzt bewerten.** Daumen hoch oder runter direkt an
+  der Antwort — beim Daumen runter fragt Ratslotse optional, was gefehlt hat.
+  Das ist der ehrlichste Qualitätsmesser, den es geben kann: echte Fragen
+  echter Nutzer:innen statt Testfälle. Die Weiterfragen-Zeile bekommt außerdem
+  einen kleinen Weiter-Pfeil — horizontales Wischen mit der Maus ist mühsam,
+  ein Klick nicht. (#378)
+- **Das Ratsgespräch denkt mit.** Fünf Ideen aus der Design-Werkstatt: Die
+  Antwort sagt ehrlich, worauf sie fußt („stützt sich auf 12 Beschlüsse von
+  2019 bis 2026"); ein Kontext-Chip über dem Eingabefeld zeigt, worauf sich
+  Anschlussfragen beziehen (✕ beginnt ein frisches Gespräch); unter jeder
+  Antwort laden „Einfacher erklären" und „Ausführlicher" zum Nachjustieren
+  ein; die Beispielfragen beginnen mit frischen Anlässen aus den jüngsten
+  Sitzungen („Neu"); und „Dazu fragen" führt das Gespräch direkt an einer
+  Quelle oder einer Beschlusskarte der Suche weiter. Die Weiterfragen-Zeile
+  läuft jetzt weich aus statt eine graue Scrollbar zu zeigen. (#377)
+- **Bebauungsplan-Beschlüsse zeigen jetzt den Plan.** Die Planzeichnung aus
+  der Vorlage — bisher nur ein PDF-Download unter „Anlagen" — steht als Bild
+  direkt auf der Beschluss-Seite: antippen öffnet das volle Blatt mit
+  Geltungsbereich, Festsetzungen und Planzeichenerklärung. Ein Beschluss zum
+  B-Plan lebt vom Visuellen; rund 190 Beschlüsse bekommen so ihr Bild, neue
+  Pläne werden wöchentlich nachgerendert. (#375)
+- **Beschluss-Seiten zeigen mehr aus den amtlichen Dokumenten — ganz ohne KI.**
+  Vier Informationen steckten schon immer in den Vorlagen und Protokollen und
+  werden jetzt einfach herausgelesen: der **Klima-Check der Verwaltung**
+  (Pflichtvermerk seit 2022, als eigener Kasten unter „Verlauf & Begründung"),
+  das **federführende Amt** (in der Quellenzeile der Begründung), der
+  **Sitzungsort** vergangener Sitzungen (bisher immer leer) — und ein Hinweis,
+  wenn der Rat **deutlich vom Beschlussvorschlag der Verwaltung abgewichen**
+  ist, also die Politik die Verwaltung korrigiert hat (rund 8 % aller
+  angenommenen Beschlüsse). Auch „Frag den Rat" kennt diese Angaben jetzt.
+  Nebenbei erkennt die Antragsteller-Erkennung Fraktionen auch dann, wenn sie
+  in Antrags-PDFs erst nach einem langen Briefkopf genannt werden. (#373)
+- **„Frag den Rat" ist jetzt ein Gespräch.** Der KI-Frage-Tab wird zum Chat:
+  Fragen und Antworten bleiben untereinander stehen, Anschlussfragen („Und
+  was kostet das?") verstehen den Zusammenhang, und die vorgeschlagenen
+  Weiterfragen führen das Gespräch direkt fort. Die Quellen sind kompakter
+  geworden — zitierte Beschlüsse stehen als antippbare Chips mit
+  Fußnoten-Nummer direkt unter der Antwort, der Rest wartet hinter „Alle N
+  Quellen". Je nach Frage baut die Antwort eigene Elemente ein: eine
+  Zeitleiste der Beratungsstationen bei Verlaufsfragen, Beträge bei
+  Geldfragen, Antragsteller-Kennzeichnung bei Fraktionsfragen — alles direkt
+  aus den Beschlussdaten, nichts davon erfindet die KI. Pressemitteilungen
+  erscheinen klar als externe Links, und wer nichts findet, kann die Frage
+  mit einem Tipp als beobachtetes Thema anlegen. (#368)
+
+### Hinzugefügt
+- **Läuft zu einem Bebauungsplan gerade die Bürgerbeteiligung, steht das
+  jetzt am Beschluss.** Ratslotse gleicht täglich die laufenden Planverfahren
+  auf oldenburg.planungsbeteiligung.de ab und verbindet sie über die
+  Plan-Nummer mit den passenden Beschlüssen: Auf der Beschluss-Seite
+  erscheint ein Hinweis mit Verfahrensschritt und Stellungnahme-Frist samt
+  Link zu den Planungsunterlagen — und auch die KI-Antwort weist darauf hin,
+  wenn sie einen betroffenen Bebauungsplan zitiert. Beschlüsse sagen, was
+  geplant ist; jetzt sieht man auch, wann man selbst dazu Stellung nehmen
+  kann. (#367)
+
+### Hinzugefügt
+- **Die KI-Frage versteht jetzt Anschlussfragen.** Wer nachhakt („Und was
+  kostet das?", „Wer ist dafür zuständig?"), bekommt eine Antwort im
+  Gesprächskontext: Die Frage-Analyse löst Rückbezüge mit Hilfe der letzten
+  Runden auf und macht daraus eine vollwertige Suchfrage — die Suche selbst
+  bleibt dadurch genauso treffsicher wie bei einer ausformulierten Frage (im
+  Messlauf: 100 % Trefferquote inklusive der neuen Ketten-Testfälle). Das ist
+  der Unterbau für das kommende Chat-Interface; die heutige Oberfläche
+  verhält sich unverändert. (#366)
+
+### Hinzugefügt
+- **„Aktuelles von der Stadt": Die KI-Frage kennt jetzt die Pressemitteilungen
+  der Stadt Oldenburg.** Beschlüsse sagen, was entschieden wurde — die
+  Pressemitteilungen sagen, was daraus geworden ist (Spatenstich, Eröffnung,
+  Termine). Passt eine aktuelle Mitteilung zur Frage, erscheint sie als
+  eigener Block unter den Quellen mit Link auf oldenburg.de, und die Antwort
+  darf sie als „Laut Pressemitteilung vom …" einordnen — sauber getrennt von
+  den zitierten Beschlüssen. Ein täglicher Abgleich holt neue Mitteilungen
+  über den RSS-Feed der Stadt. (#365)
+- **Die KI-Suche erkennt, was für eine Frage man stellt — und antwortet
+  passend.** Verlaufsfragen („Wie ist der Stand bei …?", „Was wurde aus …?")
+  bekommen eine chronologische Antwort mit Datumsangaben von der ersten
+  Beratung bis zum aktuellen Stand, mit mehr Platz als die üblichen 2–5
+  Sätze. Fragen nach einer Fraktion („Was hat die SPD zu … beantragt?")
+  holen gezielt deren Anträge und Änderungsanträge in die Quellen — und die
+  Antwort sagt ehrlich dazu, dass die Ratsprotokolle kein Stimmverhalten
+  einzelner Fraktionen festhalten, statt eines zu erfinden. Bei Geldfragen
+  („Wie teuer …?", „Wie hoch …?") stehen die Beträge aus den Beschlüssen in
+  der Antwort. Die Erkennung kostet keinen zusätzlichen Wartezeit-Schritt —
+  sie steckt im selben Aufruf, der die Frage in Suchbegriffe übersetzt. (#361)
+
+### Verbessert
+- **LLM-Kosten sind jetzt echte Zahlen statt Schätzungen.** Jeder KI-Aufruf
+  holt die tatsächlichen Kosten vom Anbieter zurück (inklusive der
+  datenschutzkonformen Anbieter-Wahl); die Admin-Statistik rechnet damit, und
+  der Qualitäts-Messlauf der KI-Suche weist neben Trefferquote und Antwortzeit
+  nun auch die Kosten pro Frage in Cent aus — Modellentscheidungen fallen
+  damit immer über alle drei Größen: Qualität, Tempo, Preis. Für alte
+  Einträge ohne Kostenwert bleibt die Preisliste als Schätz-Fallback. (#364)
+- **Die KI-Antwort kommt jetzt in 1–2 Sekunden statt in 20.** Nach der
+  Suchbegriffs-Übersetzung war die Antwort-Formulierung der letzte große
+  Zeitfresser: Das bisherige Modell brauchte dafür über die
+  datenschutzkonformen Anbieter-Routen 3–32 Sekunden. Der Modellvergleich
+  gegen das Gold-Set zeigt ein schnelleres Modell mit gleicher oder besserer
+  Zitier-Qualität — Antworten kommen jetzt typisch nach gut einer Sekunde.
+  Die vorgeschlagenen Folgefragen bleiben dabei auf Dinge beschränkt, die in
+  den gefundenen Beschlüssen wirklich vorkommen. (#363)
+- **Die KI-Suche „Frag den Rat" findet mehr und antwortet schneller.** Die
+  Suche liest jetzt auch die Vorlagen selbst (Sachverhalt und Begründung als
+  eigener semantischer Index) und die Änderungsanträge der Fraktionen — bisher
+  sah sie im Kern nur Titel und Einzeiler der Beschlüsse, und die
+  Relevanz-Sortierung bewertete Volltext-Treffer blind. Fragen wie „Plant die
+  Stadt einen Pumptrack?", deren Antwort nur im Sachverhalt einer Vorlage
+  steht, gehen jetzt auf. Bei strittigen Abstimmungen kennt die Antwort den
+  Original-Abstimmungssatz aus dem Protokoll („Wer stimmte dagegen?"). Der
+  größte Zeitfresser war die Übersetzung der Frage in Suchbegriffe — sie
+  läuft auf einem schnelleren Modell und hängende Anbieter brechen nach 8
+  Sekunden ab statt die Suche zu blockieren; wiederholte Fragen (z. B. die
+  vorgeschlagenen Folgefragen) überspringen den Schritt ganz. Sehr lange
+  Rats-Niederschriften wurden zudem bisher bei der Auswertung stillschweigend
+  abgeschnitten — sie werden jetzt vollständig in Abschnitten ausgelesen. Für
+  die Qualitätssicherung misst der Eval-Harness jetzt auch die Antwortzeit
+  jedes Suchschritts, die Gold-Fälle sind datenbank-unabhängig formuliert und
+  ein Ops-Workflow vergleicht alten und neuen Suchweg direkt auf dem Server. (#360)
+
+### Behoben
+- **Themen-Benachrichtigungen liefen für alle ins Leere, sobald ein einziges
+  Konto ein „vergiftetes" Thema angelegt hatte.** Der Abgleich der
+  Tagesordnungen mit den eigenen Themen läuft über eine KI; der Themenname
+  fließt in die Anfrage ein. Ein als Anweisung getarnter Name („Vergesse alles
+  …") ließ den Sicherheitsfilter des KI-Anbieters die Anfrage ablehnen — und
+  brach damit den gesamten nächtlichen Lauf ab, auch für alle anderen. Jetzt
+  wird ein solches Konto übersprungen und der Rest normal weiterverarbeitet;
+  Themen-Texte sind gegenüber der KI ausdrücklich als Daten markiert. Beim
+  Ausschuss-Watcher (Tagesordnungs-Zusammenfassungen) war dieselbe Lücke offen:
+  Scheitert die Zusammenfassung einer einzelnen Sitzung, geht die Meldung jetzt
+  ohne Zusammenfassung raus, statt den ganzen Lauf abzubrechen. (#359)
 
 ## [1.6.0] – 2026-08-06
 
@@ -1397,7 +2452,12 @@ Open-Source-Go-Live von Ratslotse.
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v1.6.0...main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v1.10.0...main
+[1.10.0]: https://github.com/Schereo/Ratslotse/compare/v1.9.0...v1.10.0
+[1.9.0]: https://github.com/Schereo/Ratslotse/compare/v1.8.0...v1.9.0
+[1.8.0]: https://github.com/Schereo/Ratslotse/compare/v1.7.1...v1.8.0
+[1.7.1]: https://github.com/Schereo/Ratslotse/compare/v1.7.0...v1.7.1
+[1.7.0]: https://github.com/Schereo/Ratslotse/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/Schereo/Ratslotse/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/Schereo/Ratslotse/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/Schereo/Ratslotse/compare/v1.3.0...v1.4.0

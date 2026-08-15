@@ -125,7 +125,9 @@ def _build_anlage_rows(anlagen: list[dict], skip_document_ids: frozenset = froze
                 row["status"] = "ok" if len(text.strip()) >= 50 else "empty"
             except Exception:  # noqa: BLE001 — ein kaputtes Anlagen-PDF kippt nicht den ganzen kvonr
                 row["status"] = "failed"
-            row["antragsteller"] = parties_in_text(a["label"]) or parties_in_text(row["raw_text"][:1500])
+            # 4000 statt 1500 Zeichen: bei Anträgen mit langem Briefkopf stehen
+            # die Fraktionen erst nach der Anrede — 1500 ließ 37 % leer.
+            row["antragsteller"] = parties_in_text(a["label"]) or parties_in_text(row["raw_text"][:4000])
         rows.append(row)
     return rows
 
@@ -168,6 +170,38 @@ def fetch_anlagen(kvonr: int, skip_document_ids: frozenset = frozenset()) -> lis
     return _build_anlage_rows(meta["anlagen"], skip_document_ids)
 
 
+def _entzeilen(lines: list[str]) -> list[str]:
+    """PDF-Zeilenumbrüche zu Fließtext joinen: Das Text-Layer bricht Zeilen hart
+    nach Satzbreite um, was auf der Beschluss-Seite als wilde Umbrüche mitten im
+    Satz landete. Kurze Label-Zeilen („Anlass:") und Aufzählungspunkte bleiben
+    eigene Zeilen, Silbentrennungen am Zeilenende werden zusammengezogen."""
+    out: list[str] = []
+    for ln in lines:
+        ist_label = ln.endswith(":") and len(ln) <= 40
+        # Aufzählungszeichen mit Text — und allein stehende Striche (PDF-
+        # Bullet-Artefakt): Ohne die Solo-Variante wurde „-" erst angejoint
+        # und dann vom Silbentrennungs-Zweig verschluckt (Review-Befund E5).
+        ist_liste = bool(re.match(r"^(?:[-•–]\s|[-•–]$|\d+[.)]\s|[a-z]\)\s)", ln))
+        vor_label = bool(out) and out[-1].endswith(":") and len(out[-1]) <= 40
+        vor_liste = bool(out) and re.match(r"^[-•–]$", out[-1])
+        if out and not ist_label and not ist_liste and not vor_label:
+            if vor_liste:
+                out[-1] = out[-1] + " " + ln         # Solo-Strich + Folgetext = Listenpunkt
+            elif out[-1].endswith("-") and len(out[-1]) > 1 and out[-1][-2].isalpha():
+                # Silbentrennung am Zeilenende: „einge-" + „schränkt" →
+                # „eingeschränkt"; bei großgeschriebener Fortsetzung bleibt der
+                # Bindestrich („Weser-" + „Ems" → „Weser-Ems", Befund E4).
+                if ln[:1].islower():
+                    out[-1] = out[-1][:-1] + ln
+                else:
+                    out[-1] = out[-1] + ln
+            else:
+                out[-1] = out[-1] + " " + ln
+        else:
+            out.append(ln)
+    return out
+
+
 def excerpt(raw_text: str, chars: int = 400) -> str:
     """A readable excerpt of a Vorlage text: starts at the first substantive
     section (Sachverhalt/Begründung/…) when one is found, drops per-page
@@ -179,7 +213,7 @@ def excerpt(raw_text: str, chars: int = 400) -> str:
     start = next((i for i, ln in enumerate(kept) if _SECTION_RE.match(ln)), None)
     if start is None:
         start = next((i for i, ln in enumerate(kept) if _FALLBACK_SECTION_RE.match(ln)), 0)
-    text = "\n".join(kept[start:])
+    text = "\n".join(_entzeilen(kept[start:]))
     text = re.sub(r"[ \t]+", " ", text).strip()
     if len(text) > chars:
         # Cut at a word boundary so the ellipsis doesn't split a word.

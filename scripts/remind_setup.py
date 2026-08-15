@@ -34,9 +34,9 @@ from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv(ROOT / ".env")
 
-from nwz.digest_email import render_html_email  # noqa: E402
-from nwz.email import email_ready, send_email  # noqa: E402
-from nwz.store import Store  # noqa: E402
+from kern.digest_email import render_html_email  # noqa: E402
+from kern.email import email_ready, send_email  # noqa: E402
+from kern.store import Store  # noqa: E402
 
 REMIND_AFTER_HOURS = int(os.environ.get("SETUP_REMIND_AFTER_HOURS", "48"))
 APP_URL = os.environ.get("APP_BASE_URL", "https://ratslotse.de")
@@ -102,6 +102,6 @@ def main() -> dict:
 
 
 if __name__ == "__main__":
-    from nwz.alerts import run_guarded
+    from kern.alerts import run_guarded
 
     run_guarded("remind_setup", main)

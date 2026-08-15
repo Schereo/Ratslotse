@@ -9,8 +9,8 @@ from datetime import datetime, timedelta
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
 
-from nwz.store import Store
-from nwz.email import send_email
+from kern.store import Store
+from kern.email import send_email
 
 from ..config import get_settings
 from ..deps import get_current_user, get_store
@@ -174,6 +174,7 @@ def _to_out(user: dict, access_token: str | None = None) -> UserOut:
         apple_linked=bool(user.get("apple_sub")),
         has_password=bool(user.get("password_set", 1)),
         display_name=user.get("display_name"),
+        qa_speichern=user.get("qa_speichern"),
         access_token=access_token,
     )
 

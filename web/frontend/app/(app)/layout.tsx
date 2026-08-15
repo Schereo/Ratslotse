@@ -16,6 +16,7 @@ import { FeedbackDialog } from "@/components/feedback";
 import { OnboardingTracker } from "@/components/onboarding";
 import { BadgeCelebrator } from "@/components/badges";
 import { BackToTop } from "@/components/back-to-top";
+import { ScrollMemory } from "@/components/scroll-memory";
 import { PeekingChick } from "@/components/peeking-chick";
 import { PublicShell } from "@/components/public-shell";
 import { Button, Card, CardListSkeleton, Skeleton, toast } from "@/components/ui";
@@ -84,7 +85,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (loading || !user) return <ShellSkeleton />;
 
   return (
-    <div className="flex min-h-screen flex-col md:flex-row">
+    <div className="flex min-h-screen flex-col desk:flex-row">
       {/* Screenreader/Tastatur: direkt zum Inhalt, an Sidebar und Topbar vorbei. */}
       <a
         href="#main"
@@ -102,29 +103,38 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </Suspense>
       {/* RL-U12: feiert neu verdiente Lotsen-Abzeichen — auf jeder Seite. */}
       <BadgeCelebrator />
-      <BackToTop />
+      {/* BackToTop liest useSearchParams (im Ratsgespräch ausgeblendet). */}
+      <Suspense fallback={null}>
+        <BackToTop />
+      </Suspense>
+      {/* Scroll-Position je Seite behalten (Tims iOS-Befund 12.08.). */}
+      <Suspense fallback={null}>
+        <ScrollMemory />
+      </Suspense>
       <PeekingChick />
       <DesktopSidebar />
       <MobileTopbar />
-      {/* Mobile-QA C: ≥ 5,5rem Freiraum, damit Seitenenden nie unter dem
-          angehobenen FAB der Bottom-Nav liegen. */}
-      <main id="main" tabIndex={-1} className="flex flex-1 flex-col overflow-y-auto outline-none pb-[calc(env(safe-area-inset-bottom)+5.5rem)] md:pb-0">
+      {/* Design 9a: Freiraum = Tab-Bar-Höhe + Luft (der angehobene FAB ist
+          weg, 5,5rem hinterließen nur totes Ende unter jeder Seite).
+          KEIN overflow-y-auto: Der Root ist min-h-screen, gescrollt wird immer
+          am Window — ein overflow-Container, der nie selbst scrollt, macht
+          nur jede sticky-Leiste in main wirkungslos (Composer 2①, RG-10-
+          Sprungmarken, Analyse-/Quiz-Leisten klebten deshalb nie). */}
+      {/* min-w-0: `main` liegt als Flex-Kind NEBEN der Seitenleiste. Ohne das
+          gilt `min-width:auto`, und die Mindestbreite des längsten
+          unumbrechbaren Inhalts (ein Beschluss-Titel in „Zuletzt angesehen")
+          schiebt die ganze Seite auf. Auf dem iPad hochkant lief das Layout
+          dadurch 1228 px breit bei 834 px Fenster — die Karten rechts waren
+          abgeschnitten, die Seite ließ sich seitlich wegschieben. */}
+      <main id="main" tabIndex={-1} className="flex min-w-0 flex-1 flex-col outline-none pb-[calc(env(safe-area-inset-bottom)+4.75rem)] desk:pb-0">
         {/* Design 11a: Inhalt läuft breiter (~1280 px statt 1024) — die Karten
             atmen wie im Mock; Text-Detailseiten begrenzen sich weiter selbst. */}
         <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
           {children}
         </div>
-        {/* Nur Desktop-Web: mobil (Web wie App) wohnen die Pflicht-Links auf
-            der Konto-Seite — der Fuß klebte sonst auf jeder Seite überm FAB. */}
-        <footer className="hidden border-t border-border bg-background/85 py-3 text-center text-xs text-muted-foreground backdrop-blur md:sticky md:bottom-0 md:block">
-          <a href="/impressum" className="hover:text-foreground">Impressum</a>
-          {" · "}
-          <a href="/datenschutz" className="hover:text-foreground">Datenschutz</a>
-          {" · "}
-          <a href="/changelog" className="hover:text-foreground">Changelog</a>
-          {" · "}
-          <a href="/docs" className="hover:text-foreground">Technik-Doku</a>
-        </footer>
+        {/* Design 6a③: Der sticky Seiten-Footer entfällt — die Pflicht-Links
+            sitzen jetzt im Sidebar-Fuß (Desktop) bzw. Burger-Menü (mobil),
+            beides über den UserFooter in components/nav.tsx. */}
       </main>
       <MobileBottomNav />
     </div>
@@ -140,11 +150,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
  */
 function ShellSkeleton() {
   return (
-    <div className="flex min-h-screen flex-col md:flex-row" aria-busy="true" aria-live="polite">
+    <div className="flex min-h-screen flex-col desk:flex-row" aria-busy="true" aria-live="polite">
       <span className="sr-only">Ratslotse wird geladen …</span>
 
       {/* Seitenspalte (Desktop) */}
-      <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-card md:flex md:sticky md:top-0 md:h-screen">
+      <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-card desk:flex desk:sticky desk:top-0 desk:h-screen">
         <div className="flex items-center gap-2.5 px-4 py-4">
           <Image src="/icon-192.png" alt="" width={32} height={32} className="h-8 w-8 rounded-lg" priority />
           <span className="font-display text-lg font-bold text-foreground">Ratslotse</span>
@@ -161,13 +171,13 @@ function ShellSkeleton() {
       </aside>
 
       {/* Kopfleiste (Mobil) — dieselben Maße wie die echte, damit nichts springt. */}
-      <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-border bg-card/95 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] backdrop-blur md:hidden">
-        <Skeleton className="h-11 w-11 rounded-lg" />
+      <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-border bg-card/95 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] backdrop-blur desk:hidden">
         <Image src="/icon-192.png" alt="" width={28} height={28} className="h-7 w-7 rounded-lg" priority />
-        <span className="font-display text-base font-bold text-foreground">Ratslotse</span>
+        <span className="flex-1 font-display text-base font-bold text-foreground">Ratslotse</span>
+        <Skeleton className="h-9 w-9 rounded-md" />
       </header>
 
-      <main className="flex flex-1 flex-col pb-[calc(env(safe-area-inset-bottom)+5.5rem)] md:pb-0">
+      <main className="flex min-w-0 flex-1 flex-col pb-[calc(env(safe-area-inset-bottom)+4.75rem)] desk:pb-0">
         <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
           <Skeleton className="h-7 w-52" />
           <Skeleton className="mt-2 h-3.5 w-72" />
@@ -178,7 +188,9 @@ function ShellSkeleton() {
       </main>
 
       {/* Fußleiste (Mobil) */}
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/90 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
+      {/* Gleiche Aufteilung der Safe Area wie in der echten Tab-Leiste —
+          sonst springt der Inhalt beim Übergang vom Skelett zur Navigation. */}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/90 pb-[calc(env(safe-area-inset-bottom)/2)] pt-[calc(env(safe-area-inset-bottom)/2)] backdrop-blur desk:hidden">
         <div className="flex h-[4.25rem] items-center justify-around px-2">
           {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-9 w-12 rounded-lg" />

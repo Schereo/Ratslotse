@@ -38,7 +38,7 @@ def process(db: Path, top_k: int = 6, threshold: float = 0.45, batch: int = 256)
     n = len(ids)
     if n == 0:
         store.close()
-        return {"decisions": 0, "links": 0}
+        return {"decisions": 0, "links": 0, "vorlagen_chunks": 0}
 
     interest_by_id = {
         r[0]: r[1]
@@ -73,8 +73,39 @@ def process(db: Path, top_k: int = 6, threshold: float = 0.45, batch: int = 256)
     store.set_similar(out)
     # Store the raw vectors too, for query-time semantic search (QA / goals).
     store.save_embeddings([(ids[i], vecs[i].tobytes()) for i in range(n)])
+
+    # Vorlagen-Chunk-Index für die Hybrid-Suche: Sachverhalt/Begründung je
+    # Vorlage in ~4 Fenstern embedden. Hash-idempotent — nach dem ersten
+    # Volllauf embeddet jeder weitere nur neue/geänderte Vorlagen.
+    todo = store.vorlagen_missing_embeddings()
+    n_chunks = 0
+    if todo:
+        print(f"Embedding Vorlagen-Chunks für {len(todo)} Vorlagen…", flush=True)
+        for start in range(0, len(todo), batch):
+            block = todo[start:start + batch]
+            chunk_lists = [embeddings.vorlage_chunks(v["raw_text"]) for v in block]
+            flat = [c for chunks in chunk_lists for c in chunks]
+            if not flat:
+                continue
+            cvecs = embeddings.embed(flat)
+            pos = 0
+            for v, chunks in zip(block, chunk_lists):
+                if not chunks:
+                    continue
+                rows_v = [(chunks[j], cvecs[pos + j].tobytes()) for j in range(len(chunks))]
+                pos += len(chunks)
+                store.replace_vorlage_embeddings(v["vorlage_nr"], v["text_hash"], rows_v)
+                n_chunks += len(chunks)
+            print(f"  {min(start + batch, len(todo))}/{len(todo)}", flush=True)
+
+    # Presse-Chunks als Wochen-Backstop (der tägliche check_presse embeddet
+    # Neues sofort; hier wird nachgeholt, was dort ohne fastembed liegen blieb).
+    n_presse = embeddings.embed_presse_missing(store)
+    n_wb = embeddings.embed_wortbeitraege_missing(store)
+
     store.close()
-    return {"decisions": n, "links": len(out)}
+    return {"decisions": n, "links": len(out), "vorlagen_chunks": n_chunks,
+            "presse_chunks": n_presse, "wortbeitraege": n_wb}
 
 
 def main() -> int:
@@ -85,7 +116,8 @@ def main() -> int:
     args = ap.parse_args()
 
     stats = process(args.db, args.top_k, args.threshold)
-    print(f"\n=== done: {stats['links']} links for {stats['decisions']} decisions ===")
+    print(f"\n=== done: {stats['links']} links for {stats['decisions']} decisions, "
+          f"{stats['vorlagen_chunks']} neue Vorlagen-Chunks ===")
     return 0
 
 

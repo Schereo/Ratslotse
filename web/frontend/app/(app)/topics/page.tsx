@@ -290,7 +290,10 @@ function TopicsInner() {
                     onClick={() => markTopicSeen(t)}
                     className="text-sm font-medium text-primary hover:underline"
                   >
-                    {t.decision_count} {t.decision_count === 1 ? "Beschluss" : "Beschlüsse"} insgesamt · alle ansehen
+                    {/* „insgesamt" behauptete Vollständigkeit, die der
+                        Treffer-Deckel nicht einlöst — und stand im Widerspruch
+                        zur Live-Zahl im Bearbeiten-Blatt (Tim, 15.08.). */}
+                    {t.decision_count} {t.decision_count === 1 ? "Beschluss" : "Beschlüsse"} · alle ansehen
                   </Link>
                 ) : (
                   <p className="text-xs text-muted-foreground">Noch keine Treffer — wir melden uns, sobald der Rat dazu entscheidet.</p>

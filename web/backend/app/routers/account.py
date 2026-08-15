@@ -6,8 +6,8 @@ import logging
 from pydantic import BaseModel, Field
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, status
 
-from nwz.email import send_email
-from nwz.store import Store
+from kern.email import send_email
+from kern.store import Store
 from council.store import CouncilStore
 
 from ..config import get_settings
@@ -105,7 +105,7 @@ def get_notifications(
     keine zweite Liste pflegen muss — eine vergessene Art fällt sonst erst auf,
     wenn sich jemand über eine unabschaltbare Meldung ärgert.
     """
-    from nwz.notify import NACHTRUHE_AB, NACHTRUHE_BIS, NOTIFY_DEFAULTS, NOTIFY_LABELS, TAGESGRENZE
+    from kern.notify import NACHTRUHE_AB, NACHTRUHE_BIS, NOTIFY_DEFAULTS, NOTIFY_LABELS, TAGESGRENZE
 
     gesetzt = store.get_notify_prefs(user["id"])
     return {
@@ -152,7 +152,7 @@ def test_notification(
     """RL-702: Test-Benachrichtigung über die aktiven Kanäle — damit man prüfen
     kann, ob E-Mail/Push wirklich ankommen. Nutzt exakt den Cron-Versandpfad
     (deliver_message); ohne RESEND_API_KEY wird E-Mail still übersprungen."""
-    from nwz.delivery import deliver_message
+    from kern.delivery import deliver_message
     owner = {
         "email": user["email"],
         "delivery_channel": user.get("delivery_channel") or "email",

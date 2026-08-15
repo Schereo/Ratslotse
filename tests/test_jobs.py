@@ -8,9 +8,9 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from nwz.alerts import run_guarded  # noqa: E402
-from nwz.jobs import BY_KEY, JOBS  # noqa: E402
-from nwz.store import Store  # noqa: E402
+from kern.alerts import run_guarded  # noqa: E402
+from kern.jobs import BY_KEY, JOBS  # noqa: E402
+from kern.store import Store  # noqa: E402
 
 
 @pytest.fixture()
@@ -87,6 +87,8 @@ def test_registry_deckt_die_cron_eintraege_ab():
         "check_council", "check_committees", "check_protocols", "weekly_enrich",
         "check_vorlage_follows", "remind_setup", "backup_db",
         "abendmeldungen",   # Design 30a: N5 täglich 18 Uhr, N6 sonntags
+        "check_presse",     # Stufe 3a: Stadt-Pressemitteilungen, täglich 5:15
+        "render_plaene",    # P1: Planzeichnungen als Bilder, sonntags 4:30
     }
     for job in JOBS:
         assert BY_KEY[job["key"]] is job

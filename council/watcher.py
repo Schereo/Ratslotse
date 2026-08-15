@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
-from nwz import digest_email, llm, notify, prompts
+from kern import digest_email, llm, notify, prompts
 from .ergebnisse import sitzung_href
 from .scraper import CouncilScraper, CouncilSession
 from .store import CouncilStore
@@ -13,10 +14,55 @@ BASE_URL = "https://buergerinfo.oldenburg.de"
 MODEL = "openai/gpt-4o-mini"
 
 
-def _classify_agenda(session: CouncilSession, topics: list[dict]) -> dict[int, list[str]]:
+# So viel Vorlagentext bekommt das Modell je TOP zu sehen. Der Anfang trägt
+# die Substanz (Betreff, Sachverhalt); 700 Zeichen halten 27 TOPs zusammen
+# unter ~20k Zeichen — komfortabel für gpt-4o-mini und billig.
+_VORLAGE_AUSZUG = 700
+
+
+# Der Kopf jeder Vorlage ist Formular („Ausdruck vom: … Seite: 1/4 … Amt für
+# … Vorlagen-Nr.: … Beratungsfolge: …") — 700 Zeichen davon sagen NICHTS über
+# den Inhalt. Die Substanz beginnt am ersten dieser Marker (gemessen an
+# Oldenburger Vorlagen: „Anlass" und „Beschlussvorschlag" decken den Großteil).
+_VORLAGE_START = re.compile(
+    r"(Anlass|Sachverhalt|Sachdarstellung|Beschlussvorschlag|Begründung)\s*:", re.IGNORECASE)
+
+
+def _vorlagen_auszuege(store, session: CouncilSession) -> dict[str, str]:
+    """vorlage_nr → aussagekräftiger Auszug aus dem Vorlagentext."""
+    nrs = [i.vorlage_nr for i in session.agenda_items if i.is_public and i.vorlage_nr]
+    if not nrs or store is None:
+        return {}
+    try:
+        texte = store.vorlage_texts_for(nrs)
+    except Exception:  # noqa: BLE001 — Anreicherung ist Kür, nie Blocker
+        return {}
+    out: dict[str, str] = {}
+    for nr, text in texte.items():
+        sauber = " ".join(str(text or "").split())
+        if len(sauber) <= 60:
+            continue
+        m = _VORLAGE_START.search(sauber[:3000])
+        out[nr] = sauber[m.start():m.start() + _VORLAGE_AUSZUG] if m else sauber[:_VORLAGE_AUSZUG]
+    return out
+
+
+def _classify_agenda(session: CouncilSession, topics: list[dict],
+                     store=None) -> dict[int, list[str]]:
     """
     Returns {topic_id: [item_numbers_matched]}.
     Only called for future sessions with agenda items.
+
+    ZWEI STUFEN (Tims Wunsch 12.08.): Erst die Zuordnung über die Titel wie
+    bisher, dann eine Gegenprüfung der Kandidaten am VORLAGENTEXT — „Sanierung
+    Grundschule X" und „Neubau Sporthalle an der Grundschule X" klingen im
+    Titel gleich nah, erst der Sachverhalt entscheidet.
+
+    Warum nicht alles in einem Aufruf: Die Vorlagen-Auszüge im Haupt-Prompt
+    haben das Modell messbar abgelenkt — es übersah dann sogar den
+    offensichtlichen Titel-Treffer („Ermittlungen Abfallentsorgung
+    Fliegerhorst" fiel bei Thema „Fliegerhorst" durch). Die Prüfung sieht
+    deshalb nur die wenigen Kandidaten, dafür mit Text.
     """
     if not session.agenda_items or not topics:
         return {}
@@ -43,21 +89,140 @@ def _classify_agenda(session: CouncilSession, topics: list[dict]) -> dict[int, l
     resp = llm.chat_complete(
         model=MODEL,
         response_format={"type": "json_object"},
+        # Zuordnung ist Klassifikation, keine Textproduktion: Ohne
+        # temperature=0 lieferte derselbe Prompt mal drei Treffer, mal keinen
+        # (hier an der 27-TOP-Sitzung gemessen) — und wer benachrichtigt wird,
+        # darf nicht vom Würfel abhängen.
+        temperature=0,
         messages=[
             {"role": "system", "content": system},
             {"role": "user", "content": prompt},
         ],
-        max_tokens=512,
+        # Seit die Treffer Nummer UND Titel tragen (#438), ist die Antwort
+        # deutlich länger — mit 512 Token riss sie bei großen Tagesordnungen
+        # mitten im JSON ab (hier beim Test an der 27-TOP-Sitzung gemessen).
+        max_tokens=1200,
     )
-    data = json.loads(resp.choices[0].message.content)
+    # Ein kaputtes/abgeschnittenes JSON darf NICHT den ganzen Cron-Lauf
+    # abbrechen — dieselbe Lehre wie beim Content-Filter-DoS (#359): lieber
+    # für diese Sitzung keine Treffer als für alle keine Meldungen.
+    roh = (resp.choices[0].message.content or "").strip()
+    if roh.startswith("```"):
+        roh = roh.strip("`")
+        roh = roh[roh.find("{"):]
+    try:
+        data = json.loads(roh)
+    except json.JSONDecodeError:
+        print(f"    ⚠️ Themen-Zuordnung: unbrauchbares JSON für {session.committee} "
+              f"am {session.session_date} — keine Treffer für diese Sitzung")
+        return {}
+    if not isinstance(data, dict):
+        return {}
 
     result: dict[int, list[str]] = {}
+    auszuege = _vorlagen_auszuege(store, session)
     for m in data.get("matches", []):
         idx = m.get("topic_index", 0) - 1
-        nums = m.get("item_numbers", [])
+        # Neues Format: [{"nummer", "titel"}]; Altformat (auch für Admin-
+        # Prompt-Overrides): ["Ö 6.1", …] ohne Titel-Anker.
+        roh = m.get("items")
+        if roh is None:
+            roh = [{"nummer": n} for n in m.get("item_numbers", [])]
+        nums = _verifiziere_items(session, roh)
         if 0 <= idx < len(topics) and nums:
-            result[idx] = nums
+            if auszuege:
+                nums = _pruefe_am_vorlagentext(session, topics[idx], nums, auszuege)
+            if nums:
+                result[idx] = nums
     return result
+
+
+def _pruefe_am_vorlagentext(session: CouncilSession, topic: dict,
+                            nums: list[str], auszuege: dict[str, str]) -> list[str]:
+    """Zweite Stufe: Kandidaten am Vorlagentext gegenprüfen.
+
+    Nur Kandidaten MIT Text können scheitern — wo kein Text vorliegt, bleibt
+    es beim Titel-Urteil (und der Punkt bleibt drin). Fällt der Aufruf aus,
+    bleibt die Titel-Zuordnung stehen: Die Prüfung schärft, sie blockiert nie.
+    """
+    per_nr = {i.item_number: i for i in session.agenda_items}
+    mit_text = [n for n in nums if auszuege.get((per_nr.get(n) or _LEER).vorlage_nr or "")]
+    if not mit_text:
+        return nums
+    zeilen = []
+    for n in nums:
+        item = per_nr.get(n)
+        text = auszuege.get((item.vorlage_nr or "") if item else "") or "—"
+        zeilen.append(f"{n}: {item.title if item else n}\n    Vorlage: {text}")
+    try:
+        antwort = llm.chat_complete(
+            model=MODEL, response_format={"type": "json_object"}, temperature=0,
+            max_tokens=400,
+            messages=[{"role": "user", "content": prompts.render(
+                "council_watcher_pruefung", thema=topic.get("name", ""),
+                beschreibung=topic.get("description", ""), kandidaten="\n".join(zeilen))}],
+        )
+        roh = (antwort.choices[0].message.content or "").strip()
+        if roh.startswith("```"):
+            roh = roh.strip("`")
+            roh = roh[roh.find("{"):]
+        behalten = json.loads(roh).get("treffer", [])
+    except Exception:  # noqa: BLE001 — Prüfung ist Schärfung, kein Blocker
+        return nums
+    erlaubt = {" ".join(str(x).split()).upper() for x in behalten}
+    gefiltert = [n for n in nums
+                 if " ".join(n.split()).upper() in erlaubt
+                 or not auszuege.get((per_nr.get(n) or _LEER).vorlage_nr or "")]
+    return gefiltert
+
+
+class _Leer:
+    vorlage_nr = ""
+    title = ""
+
+
+_LEER = _Leer()
+
+
+def _falte_titel(text: str) -> str:
+    t = str(text or "").lower()
+    for a, b in (("ä", "ae"), ("ö", "oe"), ("ü", "ue"), ("ß", "ss")):
+        t = t.replace(a, b)
+    return re.sub(r"[^a-z0-9]+", " ", t).strip()
+
+
+def _verifiziere_items(session: CouncilSession, roh: list) -> list[str]:
+    """LLM-Treffer gegen die echte Tagesordnung prüfen (Tims Befund 12.08.:
+    Ö 14.6 trug das Fliegerhorst-Label, gemeint war Ö 14.7 — das Modell
+    verrutscht bei Nummern-Listen gern um eins, und der Code glaubte ihm
+    blind). Regeln: Die Nummer muss existieren; widerspricht der mitgelieferte
+    Titel dem Item hinter der Nummer, gewinnt der EINDEUTIGE Titel-Treffer —
+    Titel verdreht das Modell viel seltener als Nummern. Ist ein Treffer
+    weder über Nummer noch Titel auflösbar, fällt er weg: lieber keine
+    Markierung als eine falsche. Zurück kommen kanonische Nummern."""
+    items = [i for i in session.agenda_items if i.is_public]
+    per_nummer = {" ".join(str(i.item_number).split()).upper(): i for i in items}
+    out: list[str] = []
+    for eintrag in roh:
+        if isinstance(eintrag, str):
+            eintrag = {"nummer": eintrag}
+        nummer = " ".join(str(eintrag.get("nummer") or "").split()).upper()
+        titel = _falte_titel(eintrag.get("titel") or "")
+        item = per_nummer.get(nummer)
+        if item is None and nummer:
+            # „14.7" ohne Ö/N-Präfix: nur übernehmen, wenn eindeutig.
+            kandidaten = [i for i in items
+                          if " ".join(str(i.item_number).split()).upper().split(" ", 1)[-1] == nummer]
+            item = kandidaten[0] if len(kandidaten) == 1 else None
+        if titel:
+            anker = titel[:32]
+            passt = item is not None and anker[:20] and anker[:20] in _falte_titel(item.title)
+            if not passt:
+                treffer = [i for i in items if anker and anker in _falte_titel(i.title)]
+                item = treffer[0] if len(treffer) == 1 else (item if item and not treffer else None)
+        if item is not None and item.item_number not in out:
+            out.append(item.item_number)
+    return out
 
 
 def _datum(iso: str) -> str:
@@ -134,7 +299,7 @@ def _melden(nwz_store, owner: dict, art: str, titel: str, html: str, url: str,
             deliver_message) -> None:
     """Eine Meldung abgeben — über die Warteschlange, wenn es sie gibt.
 
-    Design 30a: Alle Anlässe laufen durch ``nwz.notify``, sonst greifen die
+    Design 30a: Alle Anlässe laufen durch ``kern.notify``, sonst greifen die
     Grenzen (zwei am Tag, Nachtruhe) nicht. Ohne ``nwz_store`` — in Tests und
     bei Direktaufrufen — bleibt der bisherige Sofortversand, damit dieser Pfad
     weiter ohne Datenbank prüfbar ist.
@@ -170,13 +335,13 @@ def run_watcher(
 
     owners: get_all_owner_digests()-Zeilen — je {owner_id, topics: [TopicRow],
             delivery_channel, email, push_tokens}.
-    nwz_store: offener nwz.store.Store für die Treffer-Persistenz; ohne ihn
+    nwz_store: offener kern.store.Store für die Treffer-Persistenz; ohne ihn
             (Tests) wird klassifiziert und alarmiert, aber nichts gemerkt —
             dann läuft die Klassifikation beim nächsten Mal erneut.
     stats: optionales dict, in das der Lauf seine Kennzahlen schreibt (für die
             Cron-Übersicht im Admin-Panel).
     """
-    from nwz.delivery import deliver_message
+    from kern.delivery import deliver_message
 
     scraper = CouncilScraper()
     store = CouncilStore(db_path)
@@ -223,7 +388,31 @@ def run_watcher(
             if topics:
                 print(f"  {session.session_date} {session.committee}: "
                       f"{len(session.agenda_items)} items → classifying for owner {owner['owner_id']}…")
-                matches = _classify_agenda(session, topics)
+                try:
+                    matches = _classify_agenda(session, topics, store=store)
+                except llm.BadRequestError as exc:
+                    # Ein 400 hängt am Inhalt DIESER Anfrage, nicht am System:
+                    # Die Themen-Namen/Beschreibungen der Nutzer:in landen im
+                    # Prompt, und ein einzelner vergifteter Text (z. B. ein als
+                    # Prompt-Injection getarnter Themenname) lässt den Provider-
+                    # Content-Filter anschlagen. Ohne dieses Fangnetz reißt eine
+                    # solche Nutzer:in den GANZEN Cron-Lauf für alle ab — ein
+                    # DoS, den jedes Konto auslösen könnte. Also nur diese
+                    # Nutzer:in bei dieser Sitzung überspringen und weitermachen.
+                    if llm.is_content_filter(exc):
+                        print(f"    ⚠️ Content-Filter für owner {owner['owner_id']} "
+                              f"(möglicher Prompt-Injection-Versuch in einem Themennamen) "
+                              f"— übersprungen.")
+                        if stats is not None:
+                            stats["Content-Filter übersprungen"] = \
+                                stats.get("Content-Filter übersprungen", 0) + 1
+                    else:
+                        print(f"    ⚠️ Ungültige Klassifikations-Anfrage für owner "
+                              f"{owner['owner_id']}: {exc} — übersprungen.")
+                    # agenda_hash NICHT als klassifiziert merken: Sobald das
+                    # Thema korrigiert oder gelöscht ist, versucht der nächste
+                    # Lauf es neu, statt die Nutzer:in dauerhaft leer auszugehen.
+                    continue
 
                 if nwz_store is not None:
                     nwz_store.replace_agenda_matches(

@@ -8,6 +8,7 @@ daily cron calls it too::
 """
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
 
@@ -20,7 +21,10 @@ COUNCIL_DB = ROOT / "data" / "council.sqlite"
 
 
 def main() -> int:
-    store = CouncilStore(COUNCIL_DB)
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--db", type=Path, default=COUNCIL_DB)
+    args = ap.parse_args()
+    store = CouncilStore(args.db)
     n = store.rebuild_fts()
     store.close()
     print(f"=== FTS rebuilt: {n} decisions indexed ===")

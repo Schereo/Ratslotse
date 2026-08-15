@@ -12,12 +12,13 @@ import json
 import logging
 import os
 import re
+from types import SimpleNamespace
 
 import requests
 import pypdf
 from bs4 import BeautifulSoup
 
-from nwz import llm
+from kern import llm
 
 BASE = "https://buergerinfo.oldenburg.de"
 MODEL = os.environ.get("COUNCIL_PROTOCOL_MODEL", "deepseek/deepseek-v4-pro")
@@ -127,8 +128,78 @@ def _strip_fences(content: str) -> str:
     return c
 
 
+# TOP-Kopfzeilen („TOP 9.4 …", „Ö 6.1 …", „14. …") — die sauberen Schnittstellen,
+# wenn ein langes Protokoll für die Extraktion zerlegt werden muss.
+_TOP_LINE_RE = re.compile(r"^[ \t]*(?:TOP\s+)?(?:Ö\s?|N\s?)?\d{1,2}(?:\.\d{1,2}){0,2}[.)]?\s+\S",
+                          re.MULTILINE)
+
+
+def _split_protocol(text: str, max_chars: int | None = None) -> list[str]:
+    """Langen Protokolltext in extrahierbare Teile zerlegen, geschnitten an
+    TOP-Kopfzeilen (Notnagel: harter Schnitt). Ersetzt die frühere stille
+    Kappung bei MAX_INPUT_CHARS, die alle späteren TOPs verschluckte —
+    Rats-Niederschriften überschreiten die Grenze regelmäßig."""
+    max_chars = max_chars or MAX_INPUT_CHARS
+    if len(text) <= max_chars:
+        return [text]
+    breaks = [m.start() for m in _TOP_LINE_RE.finditer(text)]
+    parts, start = [], 0
+    while start < len(text):
+        end = start + max_chars
+        if end >= len(text):
+            parts.append(text[start:])
+            break
+        # Letzte TOP-Kopfzeile im Fenster — aber nicht im ersten Drittel, sonst
+        # entstehen Mini-Teile, wenn direkt nach dem Start ein TOP beginnt.
+        cut = max((b for b in breaks if start + max_chars // 3 <= b <= end), default=end)
+        parts.append(text[start:cut])
+        start = cut
+    return parts
+
+
+def _merge_parts(results: list[dict]) -> dict:
+    """Teil-Extraktionen zu einem Protokoll zusammenführen: Kopfdaten aus dem
+    ersten Teil, der sie kennt (Anwesenheit steht immer vorn), Sitzungsende aus
+    dem letzten, Beschlüsse aneinandergereiht (Dubletten an den Schnittkanten
+    über TOP-Nummer+Titel verworfen)."""
+    merged = {
+        "protocol_nr": next((r.get("protocol_nr") for r in results if r.get("protocol_nr")), None),
+        "session_start": next((r.get("session_start") for r in results if r.get("session_start")), None),
+        "session_end": next((r.get("session_end") for r in reversed(results) if r.get("session_end")), None),
+        "attendance": next((r.get("attendance") for r in results if r.get("attendance")), []),
+        "decisions": [],
+    }
+    seen: set[tuple] = set()
+    for r in results:
+        for d in r.get("decisions") or []:
+            key = ((d.get("item_number") or "").strip(),
+                   (d.get("title") or "").strip().lower()[:60])
+            if key in seen:
+                continue
+            seen.add(key)
+            merged["decisions"].append(d)
+    return merged
+
+
 def extract_protocol(text: str, model: str = MODEL):
-    """Run the LLM extraction. Returns (data_dict, usage). Retries once on an
+    """Run the LLM extraction. Returns (data_dict, usage). Lange Protokolle
+    werden an TOP-Grenzen zerlegt, je Teil extrahiert und zusammengeführt —
+    vorher fielen alle TOPs jenseits von MAX_INPUT_CHARS stillschweigend weg."""
+    parts = _split_protocol(text)
+    if len(parts) > 1:
+        logger.info("Protokoll (%d Zeichen) in %d Teile zerlegt", len(text), len(parts))
+    results, tok_in, tok_out = [], 0, 0
+    for part in parts:
+        data, usage = _extract_one(part, model)
+        results.append(data)
+        tok_in += getattr(usage, "prompt_tokens", 0) or 0
+        tok_out += getattr(usage, "completion_tokens", 0) or 0
+    data = results[0] if len(results) == 1 else _merge_parts(results)
+    return data, SimpleNamespace(prompt_tokens=tok_in, completion_tokens=tok_out)
+
+
+def _extract_one(text: str, model: str = MODEL):
+    """Ein LLM-Durchlauf über einen (Teil-)Text. Retries once on an
     empty/unparseable response (deepseek occasionally returns null content);
     raises if it still fails so the caller can mark the protocol failed."""
     extra: dict = {}

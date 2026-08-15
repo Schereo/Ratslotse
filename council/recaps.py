@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 import os
 
-from nwz import llm, prompts
+from kern import llm, prompts
 
 MODEL = os.environ.get("COUNCIL_RECAP_MODEL", "deepseek/deepseek-v4-pro")
 

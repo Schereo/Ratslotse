@@ -8,6 +8,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { DecisionOutcome, Topic } from "@/lib/types";
 import { shortCommittee } from "@/lib/committees";
+import { useHeute } from "@/lib/use-heute";
 import { Button, Card } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
 import { useMascotTheme } from "@/components/seasonal-mascot";
@@ -15,24 +16,18 @@ import { SitzungspauseBanner } from "@/components/sitzungspause-banner";
 import { LiveBanner } from "@/components/live-banner";
 import { FundstueckCard } from "@/components/fundstueck-card";
 import { RecentDecisions } from "@/components/recent-decisions";
+import { WocheImRat, type Wochenvorschau } from "@/components/woche-im-rat";
 import { HinweisSlot } from "@/components/hinweis-slot";
-import { isLiveNow } from "@/lib/live";
 import { PushPrimer } from "@/components/push-primer";
 import { formatEuro, OutcomeDot } from "@/components/decision-ui";
-import { decisionHref } from "@/lib/routes";
+import { fragenHref, decisionHref } from "@/lib/routes";
 import { startGuidedTour } from "@/components/tour";
 import { ConfettiBurst } from "@/components/confetti";
 import { useOnboarding, type StepId } from "@/components/onboarding";
 import { useCountUp } from "@/lib/use-countup";
 
-const FRAGEN_HREF = "/council?tab=decisions&mode=fragen";
+const FRAGEN_HREF = fragenHref();
 
-// ksinr null = terminiert, Tagesordnung noch nicht veröffentlicht.
-type UpcomingSession = {
-  ksinr: number | null; committee: string; session_date: string; session_time: string; n_items: number;
-  // RL-902: TOPs, die zu eigenen Themen passen.
-  my_topic_items?: { item_number: string; topic_name: string }[];
-};
 type TopicHit = { topic_name: string; id: number; title: string; committee: string; session_date: string };
 type DieseWoche =
   | { found: false }
@@ -48,9 +43,6 @@ type ZahlDerWoche =
 const lastWeekIso = (days: number) =>
   new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
 
-const fmtDay = (iso: string) =>
-  new Date(iso + "T12:00:00").toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" });
-
 function relTime(iso: string): string {
   const days = Math.round((Date.now() - new Date(iso + "T12:00:00").getTime()) / 86400000);
   if (days <= 0) return "heute";
@@ -64,11 +56,13 @@ function relTime(iso: string): string {
 }
 
 /** „Heute"-Briefing (RL-401, Design 2a/4a): Kopf mit Lotti + Signal-CTA,
- *  Pause-Banner, dann drei Karten — Nächste Sitzungen · Neu zu deinen Themen ·
- *  Zahl der Woche. Jeder Bereich hat einen definierten Leerzustand. */
+ *  Pause-Banner, dann die Wochen-Karte (Design 14) und darunter zwei kurze —
+ *  Neu zu deinen Themen · Zahl der Woche. Jeder Bereich hat einen definierten
+ *  Leerzustand. */
 export default function DashboardPage() {
   const theme = useMascotTheme();
   const { user } = useAuth();
+  const heute = useHeute();
 
   // Datumszeile erst nach dem Mount (vermeidet SSR/Client-Hydration-Drift).
   const [today, setToday] = useState("");
@@ -79,10 +73,6 @@ export default function DashboardPage() {
   const topicsQuery = useQuery({ queryKey: ["topics"], queryFn: () => api.get<Topic[]>("/topics") });
   const topicCount = topicsQuery.data?.length ?? 0;
 
-  const sessionsQuery = useQuery({
-    queryKey: ["upcoming-sessions"],
-    queryFn: () => api.get<{ sessions: UpcomingSession[] }>("/council/sessions?scope=upcoming&limit=3"),
-  });
   const hitsQuery = useQuery({
     queryKey: ["topic-latest-hits"],
     queryFn: () => api.get<{ hits: TopicHit[] }>("/topics/latest-hits?limit=2"),
@@ -101,8 +91,24 @@ export default function DashboardPage() {
     staleTime: 60 * 60 * 1000,
   });
   const woche = wocheQuery.data?.found ? wocheQuery.data : null;
+  // Design 14: Die Wochen-Karte steht jetzt IMMER — sie ersetzt „Nächste
+  // Sitzungen" und ist damit die vollständige Sicht auf die Woche, nicht mehr
+  // ein Ersatz für einen Leerzustand.
+  const vorschauQuery = useQuery({
+    queryKey: ["wochenvorschau"],
+    queryFn: () => api.get<Wochenvorschau>("/council/wochenvorschau"),
+    staleTime: 60 * 60 * 1000,
+  });
+  const vorschau = vorschauQuery.data?.found ? vorschauQuery.data : null;
 
-  const sessions = sessionsQuery.data?.sessions ?? [];
+  // Lokales ISO-Datum für den „HEUTE"-Chip der Wochen-Karte. Bewusst nicht
+  // über toISOString(): Das rechnet in UTC und machte aus 00:30 Uhr deutscher
+  // Zeit den Vortag. Vor dem Mount ist es leer — dann zeigt die Karte Daten
+  // statt „heute", genau wie useHeute() es vorsieht.
+  const heuteIso = heute
+    ? `${heute.getFullYear()}-${String(heute.getMonth() + 1).padStart(2, "0")}-${String(heute.getDate()).padStart(2, "0")}`
+    : "";
+
   const zahl = zahlQuery.data;
 
   return (
@@ -143,158 +149,158 @@ export default function DashboardPage() {
         ]}
       />
 
-      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_1.2fr_0.9fr]">
-        {/* Nächste Sitzungen */}
-        <Card className="flex flex-col p-5">
-          <h2 className="font-display text-base font-bold text-foreground">Nächste Sitzungen</h2>
-          <div className="mt-3 flex-1 space-y-1">
-            {sessions.slice(0, 3).map((s) => (
-              <Link
-                key={s.ksinr ?? `${s.committee}|${s.session_date}`}
-                // RL-F06: direkt zur jeweiligen Sitzung (Terminplan-Zeilen ohne
-                // ksinr landen weiter auf der Liste).
-                href={s.ksinr ? `/council?tab=sessions&ksinr=${s.ksinr}` : "/council?tab=sessions"}
-                className="flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-accent"
-              >
-                <span className="w-[104px] shrink-0 whitespace-nowrap text-sm font-medium tabular-nums text-foreground">
-                  {fmtDay(s.session_date)}
-                </span>
-                <span className="min-w-0 flex-1 truncate text-sm text-foreground" title={s.committee}>{shortCommittee(s.committee)}</span>
-                {isLiveNow(s) ? (
-                  /* RL-U10: laufende Sitzung — LIVE schlägt alle anderen Chips. */
-                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[11px] font-bold text-red-600 dark:text-red-400">
-                    <span className="h-1.5 w-1.5 rounded-full bg-red-500" aria-hidden /> LIVE
-                  </span>
-                ) : (s.my_topic_items?.length ?? 0) > 0 ? (
-                  /* RL-902: persönlicher Treffer schlägt den generischen TOPs-Chip. */
-                  <span className="shrink-0 rounded-full bg-signal/10 px-2 py-0.5 text-[11px] font-semibold text-signal">
-                    {new Set(s.my_topic_items!.map((m) => m.item_number)).size} zu deinen Themen
-                  </span>
-                ) : s.n_items > 0 && (
-                  <span className="shrink-0 rounded-full bg-signal/10 px-2 py-0.5 text-[11px] font-semibold text-signal">
-                    {s.n_items} {s.n_items === 1 ? "TOP" : "TOPs"}
-                  </span>
-                )}
-              </Link>
-            ))}
-            {!sessionsQuery.isLoading && sessions.length === 0 && (
-              <p className="px-2 py-2 text-sm leading-relaxed text-muted-foreground">
-                Derzeit sind keine kommenden Sitzungen veröffentlicht — Details siehe Hinweis oben.
-              </p>
-            )}
-          </div>
-          <Link
-            href="/council?tab=sessions"
-            className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-          >
-            Alle Sitzungen <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        </Card>
+      {/* Karten-Raster (Tims Befund 12.08.: drei Spalten kamen zu früh).
 
-        {/* Neu zu deinen Themen */}
-        <Card className="flex flex-col p-5">
-          <h2 className="font-display text-base font-bold text-foreground">
-            {woche && hits.length === 0 ? "Diese Woche im Rat" : "Neu zu deinen Themen"}
-          </h2>
-          <div className="mt-3 flex-1 space-y-2">
-            {hits.map((h) => (
-              <Link key={h.id} href={decisionHref(h.id)} className="block rounded-lg px-2 py-2 transition-colors hover:bg-accent">
-                <span className="inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
-                  {h.topic_name}
-                </span>
-                <p className="mt-1 line-clamp-2 text-sm font-medium text-foreground">{h.title}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {shortCommittee(h.committee)} · {relTime(h.session_date)}
-                </p>
-              </Link>
-            ))}
-            {!hitsQuery.isLoading && hits.length === 0 && topicCount > 0 && (
-              woche ? (
-                /* RL-U15 (13a-A): der interessanteste Beschluss der Woche statt
-                   des leeren Texts — „Warum spannend" ist wörtlich der
-                   interest_reason der Bewertungs-Pipeline. */
-                <Link href={decisionHref(woche.decision_id)} className="block rounded-lg px-2 py-2 transition-colors hover:bg-accent">
-                  <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <OutcomeDot outcome={woche.outcome} /> {shortCommittee(woche.committee)}
+          Die Stufen zählen die Breite des RASTERS, nicht die des Fensters —
+          dazwischen liegt die Seitenleiste. Bei 1280 px Fenster bleiben dem
+          Raster nur 976 px (im Browser nachgemessen), und die Fenster-Stufe
+          `xl:` schaltete trotzdem auf drei Spalten: 334 / 392 / 218 px. Die
+          dritte Spalte war damit schmaler als ein Telefon. Auf dem Telefon
+          selbst gibt es die Leiste gar nicht — dieselbe Fensterbreite meint
+          also zwei verschiedene Platzangebote, und nur eine Container-Query
+          kann beide auseinanderhalten.
+
+          Die Schwellen richten sich danach, was die TEXTREICHSTE Karte zum
+          Lesen braucht — die Wochen-Ausgabe —, nicht danach, was gerade noch
+          hineinpasst:
+
+            < 768 px   eine Spalte    (Telefon)
+            ≥ 768 px   zwei Spalten   (iPad hoch/quer, kleine Laptops)
+                       die Ausgabe nimmt die erste Zeile ganz ein, die beiden
+                       kurzen Karten teilen sich die zweite
+            ≥ 1152 px  drei Spalten   — erst hier trägt die dritte Spalte
+                       mehr als eine Zahl und drei Wörter
+
+          minmax(0, …fr) statt nacktem fr: Sonst gewinnt die Mindestbreite des
+          Inhalts gegen die Gewichtung — die Sitzungs-Liste mit ihren langen
+          Gremiennamen drückte sich auf 420 px, während die Ausgabe mit 334 px
+          auskommen musste (im Browser nachgemessen).
+
+          items-start: Jede Karte trägt ihre eigene Höhe. Vorher streckte das
+          Raster „Nächste Sitzungen" und „Zahl der Woche" auf die Höhe der
+          Ausgabe — mit einem Feld Leerraum darunter, das nichts sagt. */}
+      {/* Design 14: „Die Woche im Rat" steht über dem Raster und nimmt die
+          volle Breite. Sie ersetzt zwei Karten (Nächste Sitzungen + Diese
+          Woche im Rat) und braucht den Platz für ihre Tages-Rail — je breiter
+          sie ist, desto mehr trägt sie (Ort, Kurzbegründung, dritter Punkt).
+          Darunter bleibt das Raster für die beiden kurzen Karten. */}
+      {vorschau && (
+        <div className="mt-6">
+          <WocheImRat vorschau={vorschau} heuteIso={heuteIso} />
+        </div>
+      )}
+
+      {/* Nur noch zwei kurze Karten: „Neu zu deinen Themen" (Rückblick) und
+          „Zahl der Woche". Zwei Spalten reichen — die dritte war für die
+          Sitzungs-Liste da, die jetzt in der Wochen-Karte steckt. */}
+      <div className="@container/raster mt-4">
+        <div className="grid grid-cols-1 items-start gap-4 @3xl/raster:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+          {/* Neu zu deinen Themen — der Rückblick auf entschiedene Beschlüsse.
+              Die Vorschau auf die Woche ist seit Design 14 eine eigene Karte
+              über dem Raster; diese hier trägt nur noch die Treffer. */}
+          <Card className="flex flex-col p-5">
+            <h2 className="font-display text-base font-bold text-foreground">Neu zu deinen Themen</h2>
+            <div className="mt-3 flex-1 space-y-2">
+              {hits.map((h) => (
+                <Link key={h.id} href={decisionHref(h.id)} className="block rounded-lg px-2 py-2 transition-colors hover:bg-accent">
+                  <span className="inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                    {h.topic_name}
                   </span>
-                  <p className="mt-1 line-clamp-2 text-sm font-medium text-foreground">{woche.title}</p>
-                  {woche.interest_reason && (
-                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                      <span className="font-semibold text-signal">Warum spannend:</span> {woche.interest_reason}
-                    </p>
-                  )}
-                  <span className="mt-1.5 inline-flex items-center gap-1 text-sm font-medium text-primary">
-                    Zum Beschluss <ArrowRight className="h-3.5 w-3.5" />
-                  </span>
+                  <p className="mt-1 line-clamp-2 text-sm font-medium text-foreground">{h.title}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {shortCommittee(h.committee)} · {relTime(h.session_date)}
+                  </p>
                 </Link>
-              ) : (
-                <p className="px-2 py-2 text-sm leading-relaxed text-muted-foreground">
-                  Noch keine Treffer — sobald der Rat zu deinen Themen entscheidet, steht es hier.
-                </p>
-              )
-            )}
-            {!topicsQuery.isLoading && topicCount === 0 && (
-              /* Leerzustand 4a: gestrichelte Lotti-Karte „Erstes Thema anlegen". */
-              <div className="flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border px-4 py-5 text-center">
-                <Mascot pose="point" theme={theme} decorative className="h-12 w-12" />
-                <p className="text-sm text-muted-foreground">
-                  Lege dein erstes Thema an und werde benachrichtigt, sobald der Rat dazu entscheidet.
-                </p>
-                <Button size="sm" asChild>
-                  <Link href="/topics">Erstes Thema anlegen</Link>
-                </Button>
-              </div>
-            )}
-          </div>
-          {topicCount > 0 && (
-            <Link href="/topics" className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
-              Meine Themen <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-          )}
-        </Card>
-
-        {/* Zahl der Woche (RL-905) */}
-        <Card className="flex flex-col border-signal/30 bg-signal/5 p-5">
-          <h2 className="font-display text-base font-bold text-foreground">Zahl der Woche</h2>
-          {zahl?.kind === "betrag" && (
-            <>
-              <p className="mt-3 font-display text-[40px] font-extrabold leading-none tracking-tight text-signal">
-                <CountUpEuro amount={zahl.amount_eur} /></p>
-              <p className="mt-2 line-clamp-3 flex-1 text-sm leading-relaxed text-muted-foreground">
-                beschlossen für: {zahl.title}
-              </p>
-              <Link
-                href={decisionHref(zahl.decision_id)}
-                className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-              >
-                Zum Beschluss <ArrowRight className="h-3.5 w-3.5" />
+              ))}
+              {!hitsQuery.isLoading && hits.length === 0 && topicCount > 0 && (
+                woche ? (
+                  /* RL-U15 (13a-A): der interessanteste Beschluss der Woche statt
+                     des leeren Texts — „Warum spannend" ist wörtlich der
+                     interest_reason der Bewertungs-Pipeline. */
+                  <Link href={decisionHref(woche.decision_id)} className="block rounded-lg px-2 py-2 transition-colors hover:bg-accent">
+                    <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <OutcomeDot outcome={woche.outcome} /> {shortCommittee(woche.committee)}
+                    </span>
+                    <p className="mt-1 line-clamp-2 text-sm font-medium text-foreground">{woche.title}</p>
+                    {woche.interest_reason && (
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                        <span className="font-semibold text-signal">Warum spannend:</span> {woche.interest_reason}
+                      </p>
+                    )}
+                    <span className="mt-1.5 inline-flex items-center gap-1 text-sm font-medium text-primary">
+                      Zum Beschluss <ArrowRight className="h-3.5 w-3.5" />
+                    </span>
+                  </Link>
+                ) : (
+                  <p className="px-2 py-2 text-sm leading-relaxed text-muted-foreground">
+                    Noch keine Treffer — sobald der Rat zu deinen Themen entscheidet, steht es hier.
+                  </p>
+                )
+              )}
+              {!topicsQuery.isLoading && topicCount === 0 && (
+                /* Leerzustand 4a: gestrichelte Lotti-Karte „Erstes Thema anlegen". */
+                <div className="flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border px-4 py-5 text-center">
+                  <Mascot pose="point" theme={theme} decorative className="h-12 w-12" />
+                  <p className="text-sm text-muted-foreground">
+                    Lege dein erstes Thema an und werde benachrichtigt, sobald der Rat dazu entscheidet.
+                  </p>
+                  <Button size="sm" asChild>
+                    <Link href="/topics">Erstes Thema anlegen</Link>
+                  </Button>
+                </div>
+              )}
+            </div>
+            {topicCount > 0 && (
+              <Link href="/topics" className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
+                Meine Themen <ArrowRight className="h-3.5 w-3.5" />
               </Link>
-            </>
-          )}
-          {zahl?.kind === "anzahl" && (
-            <>
-              <p className="mt-3 font-display text-[40px] font-extrabold leading-none tracking-tight text-signal">
-                <CountUpNumber value={zahl.count} />
-              </p>
-              <p className="mt-2 flex-1 text-sm leading-relaxed text-muted-foreground">
-                {zahl.count === 1 ? "Beschluss" : "Beschlüsse"} in den letzten 7 Tagen — in der Sitzungspause
-                sammelt sich hier wenig an.
-              </p>
-              {/* Design 28a/S5: Die auffälligste Zahl des Screens war in dieser
-                  Variante der einzige Inhalt ohne Ziel. Die Suche kennt
-                  date_from längst — es fehlte nur der Link dorthin. */}
-              {zahl.count > 0 && (
+            )}
+          </Card>
+
+          {/* Zahl der Woche (RL-905) — eine Zahl und ein Satz, braucht am
+              wenigsten Breite. */}
+          <Card className="flex flex-col border-signal/30 bg-signal/5 p-5 @3xl/raster:order-3 @6xl/raster:order-none">
+            <h2 className="font-display text-base font-bold text-foreground">Zahl der Woche</h2>
+            {zahl?.kind === "betrag" && (
+              <>
+                <p className="mt-3 font-display text-[40px] font-extrabold leading-none tracking-tight text-signal">
+                  <CountUpEuro amount={zahl.amount_eur} /></p>
+                <p className="mt-2 line-clamp-3 flex-1 text-sm leading-relaxed text-muted-foreground">
+                  beschlossen für: {zahl.title}
+                </p>
                 <Link
-                  href={`/council?tab=decisions&date_from=${lastWeekIso(zahl.window_days)}`}
+                  href={decisionHref(zahl.decision_id)}
                   className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
                 >
-                  Diese {zahl.count} ansehen <ArrowRight className="h-3.5 w-3.5" />
+                  Zum Beschluss <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
-              )}
-            </>
-          )}
-          {!zahl && <div className="mt-3 h-10 animate-pulse rounded-lg bg-signal/10" />}
-        </Card>
+              </>
+            )}
+            {zahl?.kind === "anzahl" && (
+              <>
+                <p className="mt-3 font-display text-[40px] font-extrabold leading-none tracking-tight text-signal">
+                  <CountUpNumber value={zahl.count} />
+                </p>
+                <p className="mt-2 flex-1 text-sm leading-relaxed text-muted-foreground">
+                  {zahl.count === 1 ? "Beschluss" : "Beschlüsse"} in den letzten 7 Tagen — in der Sitzungspause
+                  sammelt sich hier wenig an.
+                </p>
+                {/* Design 28a/S5: Die auffälligste Zahl des Screens war in dieser
+                    Variante der einzige Inhalt ohne Ziel. Die Suche kennt
+                    date_from längst — es fehlte nur der Link dorthin. */}
+                {zahl.count > 0 && (
+                  <Link
+                    href={`/council?tab=decisions&date_from=${lastWeekIso(zahl.window_days)}`}
+                    className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+                  >
+                    Diese {zahl.count} ansehen <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                )}
+              </>
+            )}
+            {!zahl && <div className="mt-3 h-10 animate-pulse rounded-lg bg-signal/10" />}
+          </Card>
+        </div>
       </div>
 
       {/* Design 28a/S5: „Zuletzt angesehen" lag fertig im Repo, wurde aber von

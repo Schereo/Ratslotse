@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from council import geo
 from council.store import CouncilStore
-from nwz.store import Store
+from kern.store import Store
 
 from ..deps import get_council_store, get_store, require_active, require_admin
 from ..schemas import (QuizAnswerIn, QuizDailyIn, QuizMapIn, QuizRateIn,

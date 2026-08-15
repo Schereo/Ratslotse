@@ -19,7 +19,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from council.store import CouncilStore  # noqa: E402
-from nwz.store import Store  # noqa: E402
+from kern.store import Store  # noqa: E402
 
 
 @pytest.fixture
@@ -83,7 +83,7 @@ def test_bekannter_stand_loest_nichts_aus(dbs):
     _seed(nwz_db, council_db, stationen, snapshot=mod.signature(_rows(stationen)))
 
     with patch.object(mod.stammdaten, "fetch_beratungsfolge", return_value=_rows(stationen)), \
-         patch("nwz.delivery.deliver_message") as deliver:
+         patch("kern.delivery.deliver_message") as deliver:
         stats = mod.main()
 
     deliver.assert_not_called()
@@ -98,7 +98,7 @@ def test_neue_station_wird_gemeldet_und_dann_nicht_mehr(dbs):
     _seed(nwz_db, council_db, alt, snapshot=mod.signature(_rows(alt)))
 
     with patch.object(mod.stammdaten, "fetch_beratungsfolge", return_value=_rows(neu)), \
-         patch("nwz.delivery.deliver_message") as deliver:
+         patch("kern.delivery.deliver_message") as deliver:
         stats = mod.main()
     assert stats["Benachrichtigungen"] == 1
     html = _letzte_meldung(nwz_db)
@@ -107,7 +107,7 @@ def test_neue_station_wird_gemeldet_und_dann_nicht_mehr(dbs):
     assert "Verkehrsausschuss" not in html
 
     with patch.object(mod.stammdaten, "fetch_beratungsfolge", return_value=_rows(neu)), \
-         patch("nwz.delivery.deliver_message") as deliver2:
+         patch("kern.delivery.deliver_message") as deliver2:
         assert mod.main()["Benachrichtigungen"] == 0
     deliver2.assert_not_called()
 
@@ -120,7 +120,7 @@ def test_nachgetragenes_ergebnis_gilt_als_neu(dbs):
     _seed(nwz_db, council_db, offen, snapshot=mod.signature(_rows(offen)))
 
     with patch.object(mod.stammdaten, "fetch_beratungsfolge", return_value=_rows(entschieden)), \
-         patch("nwz.delivery.deliver_message") as deliver:
+         patch("kern.delivery.deliver_message") as deliver:
         assert mod.main()["Benachrichtigungen"] == 1
     assert "beschlossen" in _letzte_meldung(nwz_db)
 
@@ -138,13 +138,13 @@ def test_abruf_fehler_meldet_nichts_und_friert_den_stand_nicht_ein(dbs):
     council.close()
 
     with patch.object(mod.stammdaten, "fetch_beratungsfolge", side_effect=RuntimeError("502")), \
-         patch("nwz.delivery.deliver_message") as deliver:
+         patch("kern.delivery.deliver_message") as deliver:
         stats = mod.main()
     deliver.assert_not_called()
     assert stats["Abruf-Fehler"] == 1
 
     with patch.object(mod.stammdaten, "fetch_beratungsfolge", return_value=_rows(neu)), \
-         patch("nwz.delivery.deliver_message") as deliver2:
+         patch("kern.delivery.deliver_message") as deliver2:
         assert mod.main()["Benachrichtigungen"] == 1
     assert "Rat am 20.02.2026" in _letzte_meldung(nwz_db)
 
@@ -159,7 +159,7 @@ def test_gesperrtes_konto_bekommt_keine_post(dbs):
 
     with patch.object(mod.stammdaten, "fetch_beratungsfolge",
                       return_value=_rows(alt + [("2026-02-20", "Rat", "beschlossen")])), \
-         patch("nwz.delivery.deliver_message") as deliver:
+         patch("kern.delivery.deliver_message") as deliver:
         stats = mod.main()
     deliver.assert_not_called()
     assert stats["Benachrichtigungen"] == 0

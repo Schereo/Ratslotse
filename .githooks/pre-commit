@@ -1,0 +1,27 @@
+#!/bin/sh
+# Blockt Commits mit fremden E-Mail-Adressen.
+#
+# Der verbindliche Gate ist die CI (.github/workflows/test.yml) — dieser Hook
+# ist die schnelle Rückmeldung davor, damit so etwas gar nicht erst in einen
+# Commit gerät. Denn ist es einmal gepusht, hilft kein Revert mehr: Die Adresse
+# bleibt über den alten Commit abrufbar (siehe CLAUDE.md).
+#
+# Einschalten:  git config core.hooksPath .githooks
+
+set -e
+
+wurzel=$(git rev-parse --show-toplevel)
+if [ -x "$wurzel/.venv/bin/python" ]; then
+  py="$wurzel/.venv/bin/python"
+else
+  py=$(command -v python3 || command -v python) || exit 0  # kein Python — nicht im Weg stehen
+fi
+
+# -z/-0: Dateinamen können Leerzeichen enthalten.
+# --diff-filter=d: Gelöschte überspringen, die liegen nicht mehr auf der Platte.
+geaendert=$(git diff --cached --name-only --diff-filter=d -z | tr '\0' '\n')
+[ -z "$geaendert" ] && exit 0
+
+# shellcheck disable=SC2086
+git diff --cached --name-only --diff-filter=d -z \
+  | xargs -0 "$py" "$wurzel/scripts/lint_adressen.py" --

@@ -69,6 +69,17 @@ CREATE TABLE IF NOT EXISTS council_agenda_items (
     FOREIGN KEY(ksinr) REFERENCES council_sessions(ksinr)
 );
 
+-- Dokument-Anhänge je TOP von der Sitzungsseite (Tims Befund 12.08.):
+-- Fraktions-Anträge ohne Vorlage hängen NUR hier.
+CREATE TABLE IF NOT EXISTS council_agenda_anlagen (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    ksinr        INTEGER NOT NULL,
+    item_number  TEXT NOT NULL,
+    label        TEXT NOT NULL,
+    url          TEXT NOT NULL,
+    UNIQUE(ksinr, item_number, url)
+);
+
 -- Terminierte Sitzungen aus dem Sitzungskalender, noch ohne veröffentlichte
 -- Tagesordnung (und damit ohne ksinr — SessionNet verlinkt erst bei
 -- Veröffentlichung). Wird bei jedem Scrape komplett ersetzt; abgesagte
@@ -119,6 +130,42 @@ CREATE TABLE IF NOT EXISTS committee_summaries (
     ksinr       INTEGER NOT NULL,
     agenda_hash TEXT NOT NULL,
     summary     TEXT NOT NULL,
+    created_at  TEXT NOT NULL,
+    PRIMARY KEY(ksinr, agenda_hash)
+);
+
+-- Kurze KI-Zusammenfassung je TOP (Tims Wunsch 12.08.) — dieselben Sätze,
+-- die auch in der Tagesordnungs-Mail stehen; hier je Punkt statt als
+-- HTML-Block, damit die App sie unter dem Titel zeigen kann.
+CREATE TABLE IF NOT EXISTS agenda_item_summaries (
+    ksinr       INTEGER NOT NULL,
+    item_number TEXT NOT NULL,
+    summary     TEXT NOT NULL,
+    agenda_hash TEXT NOT NULL,
+    created_at  TEXT NOT NULL,
+    PRIMARY KEY(ksinr, item_number)
+);
+
+-- Tragweite eines Tagesordnungspunkts (0–100), dieselbe Rubrik wie bei den
+-- Beschlüssen (council/impact.py). Eigene Tabelle statt Spalte, weil
+-- save_session die Items einer Sitzung ERSETZT — eine Spalte wäre bei jeder
+-- Tagesordnungs-Änderung weg und müsste neu bezahlt werden.
+CREATE TABLE IF NOT EXISTS agenda_item_impact (
+    ksinr       INTEGER NOT NULL,
+    item_number TEXT NOT NULL,
+    impact      INTEGER NOT NULL,
+    reason      TEXT,           -- Grund in einfacher Sprache, steht auf der Karte
+    created_at  TEXT NOT NULL,
+    PRIMARY KEY(ksinr, item_number)
+);
+
+-- Tagesordnungs-Stand je (Sitzung, Hash) — die Vergleichsbasis der
+-- Änderungs-Meldung (Tims Wunsch 12.08.): save_session ERSETZT die Items,
+-- der alte Stand wäre sonst weg, sobald sich die Tagesordnung ändert.
+CREATE TABLE IF NOT EXISTS agenda_snapshots (
+    ksinr       INTEGER NOT NULL,
+    agenda_hash TEXT NOT NULL,
+    items_json  TEXT NOT NULL,
     created_at  TEXT NOT NULL,
     PRIMARY KEY(ksinr, agenda_hash)
 );
@@ -235,7 +282,7 @@ CREATE TABLE IF NOT EXISTS council_field_recaps (
 
 #: Tabellen dieser Datenbank, die an einem Konto hängen.
 #:
-#: Die Konto-Löschung wohnt in ``nwz.store`` und räumte lange nur die dortigen
+#: Die Konto-Löschung wohnt in ``kern.store`` und räumte lange nur die dortigen
 #: Tabellen ab — der Wächter-Test (``test_account_deletion``) prüfte ebenfalls
 #: nur jenes Schema und konnte diese Lücke also gar nicht sehen. Hier liegen
 #: aber Verhaltensspuren: *welche* Sitzungen jemandem gemeldet wurden. Das ist
@@ -243,6 +290,9 @@ CREATE TABLE IF NOT EXISTS council_field_recaps (
 COUNCIL_USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     ("committee_notifications", "owner_id"),
     ("session_followups_sent", "owner_id"),
+    # KI-Feedback (5a/I-03): Frage und Grund sind Freitext und können
+    # Persönliches tragen — beim Konto-Löschen mit weg, kein Sonderfall.
+    ("council_qa_feedback", "user_id"),
 )
 
 
@@ -306,6 +356,10 @@ class CouncilStore:
                     self._conn.execute("ALTER TABLE council_decisions ADD COLUMN impact INTEGER")
                 if "impact_reason" not in dec_cols:
                     self._conn.execute("ALTER TABLE council_decisions ADD COLUMN impact_reason TEXT")
+                # Abweichung des Beschlusses vom Beschlussvorschlag der Verwaltung
+                # (Regex-Ernte, council.ernte): unveraendert | leicht | stark.
+                if "abweichung" not in dec_cols:
+                    self._conn.execute("ALTER TABLE council_decisions ADD COLUMN abweichung TEXT")
                 self._conn.execute(
                     "CREATE INDEX IF NOT EXISTS idx_decisions_field ON council_decisions(policy_field)"
                 )
@@ -412,6 +466,20 @@ class CouncilStore:
             self._conn.execute(
                 "ALTER TABLE council_vorlagen ADD COLUMN anlagen_scanned INTEGER NOT NULL DEFAULT 0"
             )
+        # Regex-Ernte aus dem Volltext (council.ernte): federführendes Amt,
+        # Auswirkungen-Abschnitte, Beschlussvorschlag der Verwaltung.
+        for col in ("amt", "klima_check", "finanz_check", "beschlussvorschlag"):
+            if col not in vcols:
+                self._conn.execute(f"ALTER TABLE council_vorlagen ADD COLUMN {col} TEXT")
+        # Nutzer-Feedback zu KI-Antworten (5a/I-03) — der einzige Qualitäts-
+        # messer außerhalb der Eval-Gold-Fälle. Bewusst schlank: Frage,
+        # Antwort-Anfang, Daumen, optionaler Freitext-Grund.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_qa_feedback ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, frage TEXT NOT NULL, "
+            "antwort_auszug TEXT, bewertung TEXT NOT NULL, grund TEXT, "
+            "user_id INTEGER, created TEXT NOT NULL)"
+        )
         # Anlagen zu Vorlagen: alle als Label+Link, Fraktions-Anträge zusätzlich mit
         # PDF-Text und erkannten Antragstellern (council.vorlagen/_build_anlage_rows).
         self._conn.execute(
@@ -422,6 +490,12 @@ class CouncilStore:
             "status TEXT NOT NULL DEFAULT 'listed')"  # listed | ok | empty | failed
         )
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_anlagen_kvonr ON council_anlagen(kvonr)")
+        # Gerenderte Planzeichnung (scripts/render_plaene.py): 0 = offen,
+        # 1 = Bild liegt unter data/plaene/<document_id>.jpg, -1 = fehlgeschlagen.
+        acols = {r[1] for r in self._conn.execute("PRAGMA table_info(council_anlagen)").fetchall()}
+        if "bild" not in acols:
+            self._conn.execute(
+                "ALTER TABLE council_anlagen ADD COLUMN bild INTEGER NOT NULL DEFAULT 0")
         # Beratungsfolge je Vorlage (council.stammdaten): die offiziellen
         # Stationen einer Vorlage durch die Gremien — inkl. geplanter künftiger
         # Beratungen (ergebnis dann NULL). Je kvonr komplett ersetzt, weil
@@ -486,6 +560,113 @@ class CouncilStore:
             "source_url TEXT, fetched_at TEXT NOT NULL, "
             "UNIQUE(year, bereich))"
         )
+        # Vorlagen-Volltexte semantisch auffindbar machen: je Vorlage mehrere
+        # Chunk-Vektoren (Sachverhalt/Begründung), die die Hybrid-Suche auf die
+        # zugehörigen Beschlüsse abbildet. text_hash = SHA-256 des Volltexts —
+        # macht das Embedding-Skript idempotent (nur Geändertes wird neu embedded).
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_vorlage_embeddings ("
+            "vorlage_nr TEXT NOT NULL, "
+            "chunk_idx INTEGER NOT NULL, "
+            "text_hash TEXT NOT NULL, "
+            "chunk_text TEXT NOT NULL, "   # der Reranker bekommt die FUNDSTELLE zu sehen
+            "vector BLOB NOT NULL, "
+            "PRIMARY KEY (vorlage_nr, chunk_idx))"
+        )
+        # Anlagen-Chunks (Task 33): Gutachten, Konzepte, Stellungnahmen — die
+        # Volltexte lädt scripts/backfill_anlagen_texte.py, die Vektoren baut
+        # scripts/embed_anlagen.py. Kanal NUR der Gründlichen Recherche (RG-10);
+        # die schnelle Frage bleibt von der zusätzlichen Matrix unberührt.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_anlage_embeddings ("
+            "document_id INTEGER NOT NULL, "
+            "chunk_idx INTEGER NOT NULL, "
+            "text_hash TEXT NOT NULL, "
+            "chunk_text TEXT NOT NULL, "
+            "vector BLOB NOT NULL, "
+            "PRIMARY KEY (document_id, chunk_idx))"
+        )
+        # Pressemitteilungen der Stadt (council/presse.py): Volltext intern für
+        # Suche/Embedding, angezeigt werden Titel/Datum/Auszug/Link. Dazu ein
+        # eigener FTS-Index und Chunk-Vektoren analog den Vorlagen.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_presse ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "url TEXT NOT NULL UNIQUE, "
+            "news_id INTEGER, "
+            "titel TEXT NOT NULL, "
+            "datum TEXT, "
+            "text TEXT NOT NULL, "
+            "fetched_at TEXT NOT NULL)"
+        )
+        self._conn.execute(
+            "CREATE VIRTUAL TABLE IF NOT EXISTS council_presse_fts "
+            "USING fts5(content, tokenize=\"unicode61 remove_diacritics 2\")"
+        )
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_presse_embeddings ("
+            "presse_id INTEGER NOT NULL, "
+            "chunk_idx INTEGER NOT NULL, "
+            "text_hash TEXT NOT NULL, "
+            "chunk_text TEXT NOT NULL, "
+            "vector BLOB NOT NULL, "
+            "PRIMARY KEY (presse_id, chunk_idx))"
+        )
+        # Wortbeiträge aus den Protokollen (Task 16): Redebeiträge, „Anfragen
+        # und Anregungen", Einwohnerfragestunde und Zusagen der Verwaltung —
+        # die Debatten-Substanz, die in den Beschluss-Floskeln fehlt
+        # (Fliegerhorst-Befund). Jeder Beitrag ist sein eigener Such-Chunk.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_wortbeitraege ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "ksinr INTEGER NOT NULL, "
+            "position INTEGER NOT NULL, "
+            "art TEXT NOT NULL, "            # rede | anfrage | einwohnerfrage | zusage
+            "top TEXT, "
+            "sprecher TEXT, "
+            "partei TEXT, "
+            "text TEXT NOT NULL, "
+            "antwort TEXT, "                 # Verwaltungsantwort bei Anfragen
+            "extracted_at TEXT NOT NULL)"
+        )
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_wb_ksinr ON council_wortbeitraege(ksinr)")
+        self._conn.execute(
+            "CREATE VIRTUAL TABLE IF NOT EXISTS council_wortbeitraege_fts "
+            "USING fts5(content, tokenize=\"unicode61 remove_diacritics 2\")"
+        )
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_wortbeitraege_embeddings ("
+            "wb_id INTEGER PRIMARY KEY, "
+            "text_hash TEXT NOT NULL, "
+            "vector BLOB NOT NULL)"
+        )
+        # Server-Cache des Parteien-Bausteins (Task 30): Schlüssel ist der Hash
+        # der verdichteten Beitrags-IDs — verschieden formulierte Fragen zum
+        # selben Thema treffen denselben Eintrag, ein NEUER Beitrag zum Thema
+        # ändert den Hash und erzwingt die Nachverdichtung von selbst.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_partei_meinungen_cache ("
+            "schluessel TEXT PRIMARY KEY, frage TEXT, ergebnis TEXT NOT NULL, "
+            "created_at TEXT NOT NULL)"
+        )
+        # Erledigt-Marker der Wortbeitrags-Extraktion am Protokoll: auch ein
+        # leeres Ergebnis (Formalien-Niederschrift) zählt als erledigt — ohne
+        # den Marker fräße jedes davon dauerhaft einen nächtlichen LLM-Call.
+        wcols = {r[1] for r in self._conn.execute("PRAGMA table_info(council_protocols)").fetchall()}
+        if "wortbeitraege_extracted_at" not in wcols:
+            self._conn.execute(
+                "ALTER TABLE council_protocols ADD COLUMN wortbeitraege_extracted_at TEXT")
+        # Aus raw_result geparste Teilvoten: welche Fraktion stimmte laut
+        # Protokoll dagegen / enthielt sich. faction steht wie protokolliert
+        # (Gruppen nicht aufgelöst — Fraktion≠Partei, siehe council/parties.py).
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_decision_votes ("
+            "decision_id INTEGER NOT NULL, "
+            "faction TEXT NOT NULL, "
+            "stance TEXT NOT NULL, "                    # dagegen | enthaltung
+            "PRIMARY KEY (decision_id, faction, stance))"
+        )
         self._migrate_quiz_estimate()
         self._migrate_quiz_media()
         self._migrate_quiz_hint()
@@ -534,7 +715,7 @@ class CouncilStore:
         if "owner_id" in cn_cols and "owner_id" in sf_cols:
             return  # already migrated
 
-        # Build chat_id -> owner_id from nwz.sqlite if available.
+        # Build chat_id -> owner_id from kern.sqlite if available.
         chat_to_owner: dict[int, int] = {}
         nwz_path = self._nwz_db_path
         if nwz_path is not None and Path(str(nwz_path)).exists():
@@ -681,6 +862,19 @@ class CouncilStore:
                     for i in session.agenda_items
                 ],
             )
+            self._conn.execute(
+                "DELETE FROM council_agenda_anlagen WHERE ksinr = ?", (session.ksinr,)
+            )
+            self._conn.executemany(
+                """INSERT OR IGNORE INTO council_agenda_anlagen
+                   (ksinr, item_number, label, url) VALUES (?, ?, ?, ?)""",
+                [
+                    (session.ksinr, i.item_number, a.get("label") or "Anlage", a.get("url") or "")
+                    for i in session.agenda_items
+                    for a in (getattr(i, "anlagen", None) or [])
+                    if a.get("url")
+                ],
+            )
 
     def alert_already_sent(self, ksinr: int, topic_id: int) -> bool:
         row = self._conn.execute(
@@ -758,6 +952,374 @@ class CouncilStore:
         ).fetchall()
         return [dict(r) for r in rows]
 
+    #: Tagesordnungspunkte, die in jeder Sitzung stehen und niemanden
+    #: interessieren. Am Bestand gemessen: 20 von 53 kommenden TOPs.
+    #: „- Bericht der Verwaltung" ist ein ZUSATZ, kein Punkt: Er hängt an den
+    #: spannendsten Titeln der Woche („Ermittlungen Abfallentsorgung
+    #: Fliegerhorst (CDU-Fraktion) - Bericht der Verwaltung"). Ein auf das
+    #: Zeilenende verankertes Muster warf davon neun weg, darunter fast alle
+    #: Fraktionsanträge — deshalb greift die Formalie nur, wenn der Punkt
+    #: NICHTS ANDERES ist als diese Floskel.
+    _FORMALIE_RE = re.compile(
+        r"Beschlussf[äa]higkeit|Genehmigung der Tagesordnung|Genehmigung des Protokolls|"
+        r"Einwohnerfragestunde|^Mitteilungen|Anfragen und Anregungen|Verschiedenes|"
+        r"^\s*Bericht(?:e)? der Verwaltung\s*$|Wahl der Schriftf[üu]hrung",
+        re.IGNORECASE)
+
+    #: „(CDU-Fraktion vom 10.06.2026)", „(Fraktionen BSW und SPD)", „(FDP-Fraktion …)"
+    _ANTRAG_RE = re.compile(r"\(\s*(?:die\s+)?(?:Fraktion(?:en)?|Gruppe|Ratsherr|Ratsfrau)\b|"
+                            r"[A-ZÄÖÜ][\wÄÖÜäöüß/. ]{1,24}-Fraktion\b", re.IGNORECASE)
+
+    _PERSONALIE_RE = re.compile(
+        r"Berufung|Umbesetzung|Bestellung\s+(?:eines|einer)|"
+        r"Wahl\s+(?:des|der|eines|einer)\s+(?:stellv|Vorsitz|Schriftf)|"
+        r"beratende[sn]?\s+Mitglied", re.IGNORECASE)
+
+    #: Bindende Gegenstände: Was hier greift, wirkt über den Tag hinaus —
+    #: Satzungen, Gebühren, Haushalt, Bauleitplanung, Verträge, Grundsätze.
+    #: Genau die Rubrik „Bindungswirkung" des Tragweite-Prompts, nur als Regel.
+    _BINDEND_RE = re.compile(
+        r"Satzung|Geb[üu]hren|Beitrags|Entgelt|Haushalt|Nachtragshaushalt|"
+        r"Bebauungsplan|Fl[äa]chennutzungsplan|Bauleitplan|Grundsatzbeschluss|"
+        r"Vertrag|Vereinbarung|Konzession|Verordnung|Richtlinie", re.IGNORECASE)
+
+    #: Wo entschieden wird, wiegt schwerer als wo vorberaten wird. Der Rat und
+    #: der Verwaltungsausschuss binden die Stadt, ein Fachausschuss bereitet vor.
+    _GREMIUM_GEWICHT = ((("stadtrat", "rat der stadt"), 1.5), (("verwaltungsausschuss",), 1.0))
+
+    #: Ab hier gilt ein Punkt als Schwerpunkt der Woche und wird hervorgehoben.
+    #: Darunter zeigt die Karte ihre Zeilen ohne Hervorhebung — lieber kein
+    #: Schwerpunkt als ein behaupteter.
+    TOP_MINDEST = 60
+
+    #: Mehr als zwei Hervorhebungen entwerten sich gegenseitig.
+    TOP_MAX = 2
+
+    #: Unter diesem Wert kommt ein Punkt gar nicht auf die Karte. Skala ist die
+    #: Tragweite (0–100, s. council/impact.py): 20 ≈ Bericht zur Kenntnis,
+    #: 35 ≈ Maßnahme an einer Einrichtung. Darunter lohnt keine Zeile.
+    WICHTIG_MINDEST = 30
+
+    #: Alte Heuristik-Schwelle — nur noch für die Umrechnung relevant.
+    RANG_MINDEST = 1.5
+
+    #: Lazy geladener Wiederkehr-Zähler (s. _wiederkehr).
+    _wiederkehr_cache: dict[str, int] | None = None
+
+    #: „(CDU-Fraktion vom 14.07.2026)" → Antragsteller „CDU-Fraktion"; der
+    #: Zusatz frisst sonst die halbe Zeile auf der Karte (im Browser gesehen).
+    _ANTRAGSTELLER_RE = re.compile(
+        r"\s*\(\s*(?:die\s+)?(?P<wer>[^)]*?)\s*(?:vom\s+\d{1,2}\.\d{1,2}\.\d{2,4})?\s*\)")
+    #: Verfahrens-Anhängsel am Titelende, die auf der Karte nichts erklären.
+    _TITEL_ANHANG_RE = re.compile(
+        r"\s*[-–]\s*(?:\w*[Aa]ntrag mit Bericht der Verwaltung|Bericht(?:e)? der Verwaltung|"
+        r"Beschlussantrag|Berichtsantrag|Antrag|Bericht|Beschluss|Vorlage|Kenntnisnahme)\s*$",
+        re.IGNORECASE)
+
+    @classmethod
+    def _titel_zerlegen(cls, titel: str) -> tuple:
+        """Antragsteller heraustrennen und den Titel fürs Anzeigen kürzen.
+
+        „Bildende Kunst im Stadtmuseum (CDU-Fraktion vom 07.07.2026) - Bericht
+        der Verwaltung" → („CDU-Fraktion", „Bildende Kunst im Stadtmuseum").
+        Der Antragsteller gehört als eigenes Merkmal neben den Titel, nicht
+        mitten hinein — sonst bleibt vom Gegenstand nichts übrig.
+        """
+        wer = None
+        m = cls._ANTRAGSTELLER_RE.search(titel or "")
+        if m and cls._ANTRAG_RE.search(m.group(0)):
+            wer = " ".join((m.group("wer") or "").split()) or None
+            titel = (titel[:m.start()] + titel[m.end():]).strip()
+        kurz = cls._TITEL_ANHANG_RE.sub("", titel or "").strip(" -–;,")
+        return wer, kurz or (titel or "")
+
+    def _punkte_bewerten(self, punkte: list[dict]) -> None:
+        """Wichtigkeit je Tagesordnungspunkt — deterministisch, ohne Modell.
+
+        Die Karte trägt fünf Zeilen, die Woche bringt gut dreißig inhaltliche
+        Punkte (gemessen). Es braucht also eine Auswahl, und „hat eine
+        Kurzfassung" ist keine. Vier Signale, alle am Bestand geprüft:
+
+        * **Behandlungsart** aus der Beratungsfolge — die amtliche Einstufung
+          der Verwaltung: ``Entscheidung`` wiegt schwerer als ``Vorberatung``,
+          die schwerer als ``Kenntnisnahme``. Kein Titel-Raten.
+        * **Fraktionsantrag**: Was eine Fraktion beantragt, ist strittig und
+          damit meist bedeutsamer als ein Verwaltungsbericht (Tims Beobachtung
+          12.08.) — aber eben nur meist, deshalb ein Gewicht und kein Filter.
+        * **Themen-Gewicht**: Nennt der Titel eine bekannte Entität, zählt
+          deren Beschluss-Historie (Fliegerhorst 166, Stadtmuseum 30) —
+          gedämpft, damit ein Dauerthema nicht jede Woche alles verdrängt.
+        * **Vorgeschichte**: eine frühere Station derselben Vorlage. Selten
+          (diese Woche 1 von 22), aber wenn, dann ein echter Hinweis.
+
+        Bewusst NICHT verwendet: frühere BESCHLÜSSE zur selben Vorlage. Neue
+        Vorlagen haben per Definition keine, und ältere erreichen uns erst mit
+        dem Protokoll — gemessen 0 von 33 Punkten.
+        """
+        import math
+
+        entitaeten = []
+        try:
+            entitaeten = [(self._falte_namen(r["name"]), r["n"]) for r in self._conn.execute(
+                "SELECT name, n FROM council_entities WHERE n >= 5")
+                if len(r["name"] or "") >= 4]
+        except Exception:  # noqa: BLE001 — ohne Entitäten fehlt nur ein Signal
+            pass
+
+        for p in punkte:
+            rang = 0.0
+            art = (p.get("behandlung") or "").lower()
+            if "entscheid" in art:
+                rang += 3.0
+            elif "vorberat" in art:
+                rang += 2.0
+            elif art:
+                rang += 0.5          # Kenntnisnahme: informativ, nicht folgenlos
+            if self._ANTRAG_RE.search(p["title"]):
+                rang += 1.5
+            # Bindungswirkung: Satzung, Gebühren, Haushalt, Bauleitplan — das
+            # Signal, das dem Modell komplett fehlte. Eine Satzungsänderung
+            # verlor gegen einen Museumsbericht, weil „Bericht + bekannter
+            # Name" mehr Nebenpunkte sammelte als „Entscheidung" (Tim, 15.08.).
+            if self._BINDEND_RE.search(p["title"]):
+                rang += 2.0
+            titel_gefaltet = f" {self._falte_namen(p['title'])} "
+            gewicht = max((n for name, n in entitaeten if name and f" {name} " in titel_gefaltet),
+                          default=0)
+            if gewicht:
+                # Gedeckelt auf 1.0: Das Gewicht misst BEKANNTHEIT („Stadtmuseum
+                # kam in 30 Beschlüssen vor"), nicht die Bedeutung des heutigen
+                # Punktes. Als 2.0-Bonus hat es ganze Ränge gedreht.
+                rang += min(1.0, math.log10(gewicht))
+            if p.get("vorgeschichte"):
+                rang += 1.0
+            if p.get("summary"):
+                rang += 0.4          # erklärbar schlägt unerklärt bei Gleichstand
+            if p.get("vorlage_nr"):
+                rang += 0.2
+            for namen, bonus in self._GREMIUM_GEWICHT:
+                if any(n in (p.get("committee") or "").lower() for n in namen):
+                    rang += bonus
+                    break
+            # Gremien-Personalien sind formal Entscheidungen, aber für die
+            # Öffentlichkeit selten der Rede wert („Berufung Beratendes
+            # Mitglied …") — sie landeten sonst allein wegen der Behandlungsart
+            # ganz oben.
+            if self._PERSONALIE_RE.search(p["title"]):
+                rang -= 2.0
+            # Die Behandlungsart ist eine SCHRANKE, kein Summand mehr: Ein
+            # Bericht zur Kenntnis kann sich nicht mehr über Nebensignale an
+            # einer Entscheidung vorbeischieben. Die Deckel entsprechen den
+            # Ankern des Tragweite-Prompts (Kenntnisnahme ≈ 20 von 100).
+            if art and "entscheid" not in art and "vorberat" not in art:
+                rang = min(rang, 2.5)
+            p["rang"] = round(max(rang, 0.0), 2)
+            # Auf die Tragweite-Skala heben (0–100), damit Heuristik und
+            # LLM-Bewertung vergleichbar sind: 2.5 → 30, 5 → 60, 8 → 95.
+            p["wichtig"] = min(95, round(p["rang"] * 12))
+            p["wichtig_quelle"] = "regeln"
+
+    def sitzungen_im_fenster(self, tage: int = 7) -> list[dict]:
+        """Jede Sitzung der kommenden ``tage`` Tage — die Grundlage der
+        Wochen-Karte.
+
+        ``location`` und die Punktzahl gehören dazu: Design 14 zeigt auf dem
+        Desktop „17:00 · Ratssaal" und leitet aus ``n_items == 0`` die Zeile
+        „nicht öffentlich" ab — eine Sitzung ohne einen einzigen öffentlichen
+        Tagesordnungspunkt ist genau das.
+
+        Eigene Methode, weil der Router die ksinr-Liste **vor** der Vorschau
+        braucht: Die Themen-Treffer stehen in der anderen Datenbank und lassen
+        sich nicht im selben SQL mitnehmen.
+        """
+        from datetime import date, timedelta
+
+        heute = date.today()
+        bis = (heute + timedelta(days=tage)).isoformat()
+        return [dict(r) for r in self._conn.execute(
+            "SELECT cs.ksinr, cs.committee, cs.session_date, cs.session_time, "
+            "       cs.location, COUNT(ci.id) AS n_items "
+            "FROM council_sessions cs "
+            "LEFT JOIN council_agenda_items ci ON ci.ksinr = cs.ksinr AND ci.is_public = 1 "
+            "WHERE cs.session_date >= ? AND cs.session_date <= ? "
+            "GROUP BY cs.ksinr ORDER BY cs.session_date, cs.session_time",
+            (heute.isoformat(), bis))]
+
+    def wochenvorschau(self, tage: int = 7, max_punkte: int = 5,
+                       meine: dict[int, list[dict]] | None = None) -> dict:
+        """Was steht in den nächsten Tagen im Rat an? — „Diese Woche im Rat".
+
+        Bewusst nach VORN gerichtet: Beschlüsse erreichen uns erst mit dem
+        Protokoll, und das dauert im Median 119 Tage (am Bestand gemessen).
+        Ein Wochenrückblick aus Beschlüssen wäre also ein Rückblick auf den
+        vorletzten Monat. Tagesordnungen dagegen liegen vor der Sitzung vor —
+        für die kommende Woche stehen sie heute schon da.
+
+        Ausgewählt werden inhaltliche Punkte (Formalien fliegen raus), bevorzugt
+        solche mit Kurzfassung und Vorlage, und höchstens zwei je Sitzung, damit
+        eine große Tagesordnung die Ausgabe nicht auffrisst.
+
+        ``meine`` sind die Tagesordnungs-Treffer der eigenen Themen
+        (``{ksinr: [{item_number, topic_name}]}``, kommt aus der anderen
+        Datenbank und wird deshalb hereingereicht). Wer ein Thema getroffen
+        hat, ist relevant — solche Punkte umgehen die Rang-Schwelle. Design 14
+        baut darauf auf: Sitzungen mit eigenen Treffern klappen ihre Punkte
+        auf, alle anderen bleiben eine ruhige Zeile.
+        """
+        from datetime import date, timedelta
+
+        heute = date.today()
+        bis = (heute + timedelta(days=tage)).isoformat()
+        sitzungen = self.sitzungen_im_fenster(tage)
+        if not sitzungen:
+            return {"found": False, "von": heute.isoformat(), "bis": bis,
+                    "sitzungen": [], "punkte": []}
+
+        ph = ",".join("?" * len(sitzungen))
+        rohe = self._conn.execute(
+            f"SELECT a.ksinr, a.item_number, a.title, a.vorlage_nr, a.kvonr, s.summary "
+            f"FROM council_agenda_items a "
+            f"LEFT JOIN agenda_item_summaries s ON s.ksinr = a.ksinr AND s.item_number = a.item_number "
+            f"WHERE a.ksinr IN ({ph}) AND a.is_public = 1 ORDER BY a.id",
+            [s["ksinr"] for s in sitzungen]).fetchall()
+        nach_sitzung = {s["ksinr"]: s for s in sitzungen}
+
+        kandidaten = []
+        for r in rohe:
+            titel = (r["title"] or "").strip()
+            if not titel or self._FORMALIE_RE.search(titel):
+                continue
+            sitz = nach_sitzung[r["ksinr"]]
+            kandidaten.append({
+                "ksinr": r["ksinr"], "item_number": r["item_number"], "title": titel,
+                "summary": (r["summary"] or "").strip() or None,
+                "vorlage_nr": r["vorlage_nr"], "kvonr": r["kvonr"],
+                "committee": sitz["committee"], "session_date": sitz["session_date"],
+            })
+
+        # Behandlungsart und Vorgeschichte aus der Beratungsfolge — sie kommt
+        # direkt aus dem Ratsinformationssystem und hängt NICHT am Protokoll.
+        kvonrs = [k["kvonr"] for k in kandidaten if k["kvonr"]]
+        stationen: dict[int, list] = {}
+        if kvonrs:
+            ph2 = ",".join("?" * len(kvonrs))
+            for b in self._conn.execute(
+                    f"SELECT kvonr, datum, ergebnis FROM council_beratungen "
+                    f"WHERE kvonr IN ({ph2}) ORDER BY datum", kvonrs):
+                stationen.setdefault(b["kvonr"], []).append(dict(b))
+        for k in kandidaten:
+            reihe = stationen.get(k["kvonr"] or 0, [])
+            heutige = next((b for b in reihe if b["datum"] == k["session_date"]), None)
+            k["behandlung"] = (heutige or {}).get("ergebnis")
+            k["vorgeschichte"] = sum(1 for b in reihe if (b["datum"] or "9999") < k["session_date"])
+            k["antragsteller"], k["titel_kurz"] = self._titel_zerlegen(k["title"])
+
+        # Eigene Themen-Treffer anheften. Der Abgleich läuft über (ksinr,
+        # item_number) — dieselbe Kennung, die auch die Benachrichtigungen
+        # benutzen.
+        treffer = {(ksinr, m["item_number"]): m.get("topic_name")
+                   for ksinr, ms in (meine or {}).items() for m in ms}
+        for k in kandidaten:
+            k["topic_name"] = treffer.get((k["ksinr"], k["item_number"]))
+
+        self._punkte_bewerten(kandidaten)
+        # Wo eine LLM-Tragweite vorliegt, schlägt sie die Regeln: Die Regeln
+        # kennen Verfahrenssignale, die Bewertung kennt Betroffene, Geld und
+        # Bindungswirkung. Beide liegen auf derselben 0–100-Skala.
+        bewertet = {(r["ksinr"], r["item_number"]): (r["impact"], r["reason"])
+                    for r in self._conn.execute(
+                        f"SELECT ksinr, item_number, impact, reason FROM agenda_item_impact "
+                        f"WHERE ksinr IN ({ph})", [s["ksinr"] for s in sitzungen])}
+        for k in kandidaten:
+            eintrag = bewertet.get((k["ksinr"], k["item_number"]))
+            if eintrag:
+                k["wichtig"], k["wichtig_grund"] = eintrag[0], eintrag[1]
+                k["wichtig_quelle"] = "tragweite"
+        # Treffer zuerst, danach nach Rang: Ein Punkt zu einem eigenen Thema ist
+        # relevanter als jeder gut bewertete Fremdpunkt.
+        kandidaten.sort(key=lambda p: (0 if p["topic_name"] else 1, -p["wichtig"], p["session_date"]))
+        je_sitzung: dict[int, int] = {}
+        punkte = []
+        for p in kandidaten:
+            # Wer ein eigenes Thema trifft, ist per Definition relevant — die
+            # Rang-Schwelle gilt nur für die allgemeine Auswahl.
+            if not p["topic_name"] and p["wichtig"] < self.WICHTIG_MINDEST:
+                continue
+            # Höchstens drei je Sitzung: Eine volle Tagesordnung soll die
+            # Ausgabe nicht auffressen, aber Qualität schlägt Streuung — der
+            # frühere Deckel von zwei zog schwache Punkte herein.
+            if je_sitzung.get(p["ksinr"], 0) >= 3:
+                continue
+            je_sitzung[p["ksinr"]] = je_sitzung.get(p["ksinr"], 0) + 1
+            punkte.append(p)
+            if len(punkte) >= max_punkte:
+                break
+        # Hervorgehoben wird, was wirklich schwer wiegt — keiner, einer oder
+        # zwei. Design 14a sah genau EINEN vor; das erzwang eine Hervorhebung
+        # auch in Wochen, in denen der beste Punkt ein Bericht mit 30 war, und
+        # deckelte sie in Wochen mit mehreren großen Entscheidungen (Tim,
+        # 15.08.). Die Schwelle liegt an den Ankern des Prompts: 55 ≈ neue
+        # Richtlinie, 75 ≈ Bebauungsplan fürs Quartier.
+        for p in punkte:
+            p["top"] = False
+        gesetzt: list[set[str]] = []
+        # Ein Punkt zum eigenen Thema wird immer hervorgehoben, egal wie die
+        # allgemeine Bewertung ausfällt: Für wen ein Thema angelegt ist, ist
+        # genau das der Grund hinzusehen. Der Rest der Plätze geht an das,
+        # was für die ganze Stadt schwer wiegt.
+        eigene = sorted((p for p in punkte if p.get("topic_name")),
+                        key=lambda p: -p["wichtig"])
+        if eigene:
+            eigene[0]["top"] = True
+            gesetzt.append({w for w in self._falte_namen(eigene[0]["title"]).split()
+                            if len(w) >= 6})
+        for p in sorted(punkte, key=lambda p: -p["wichtig"]):
+            if p["top"]:
+                continue
+            if len(gesetzt) >= self.TOP_MAX or p["wichtig"] < self.TOP_MINDEST:
+                break
+            # Nicht zweimal dieselbe Sache: In der Stadion-Woche standen der
+            # Bebauungsplan UND die Flächennutzungsplan-Änderung ganz oben —
+            # zwei Hervorhebungen, ein Vorgang. Zwei geteilte Schlagwörter
+            # reichen als Beleg (gemessen an echten Wochen).
+            worte = {w for w in self._falte_namen(p["title"]).split() if len(w) >= 6}
+            if any(len(worte & frueher) >= 2 for frueher in gesetzt):
+                continue
+            p["top"] = True
+            gesetzt.append(worte)
+        punkte.sort(key=lambda p: (p["session_date"], p["item_number"] or ""))
+
+        # Wie viele relevante Punkte hätte jede Sitzung — VOR dem Anzeige-
+        # Deckel. Design 14 braucht das zweimal: für das Abzeichen („3 für
+        # dich") und für die ehrliche Restzeile („1 weiterer Punkt"). Ohne die
+        # Rohzahl würde die Karte verschweigen statt zu verkürzen, und genau
+        # das verbietet Prinzip ② der Dichte-Matrix.
+        relevant: dict[int, int] = {}
+        # Getrennt gezählt, weil es zwei verschiedene Dinge sind: „passt zu
+        # deinem Thema" und „ist allgemein wichtig". Die Karte trug beides als
+        # „N für dich" — bei jemandem ohne passendes Thema war das schlicht
+        # falsch (Tims Befund 15.08.).
+        treffer_je_sitzung: dict[int, int] = {}
+        for k in kandidaten:
+            if k["topic_name"]:
+                treffer_je_sitzung[k["ksinr"]] = treffer_je_sitzung.get(k["ksinr"], 0) + 1
+            if k["topic_name"] or k["wichtig"] >= self.WICHTIG_MINDEST:
+                relevant[k["ksinr"]] = relevant.get(k["ksinr"], 0) + 1
+        return {
+            # Seit Design 14 trägt die Karte auch die Sitzungen ohne relevante
+            # Punkte (sie ersetzt „Nächste Sitzungen"). Sie hat also Inhalt,
+            # sobald überhaupt eine Sitzung ansteht — vorher hing das an den
+            # Punkten, und eine Woche ohne Highlight ließ die Karte verschwinden.
+            "found": bool(sitzungen),
+            "von": heute.isoformat(), "bis": bis,
+            "sitzungen": sitzungen,
+            "punkte": punkte,
+            "relevant_je_sitzung": relevant,
+            "treffer_je_sitzung": treffer_je_sitzung,
+            "treffer_gesamt": sum(1 for k in kandidaten if k["topic_name"]),
+            "inhaltlich_gesamt": len(kandidaten),
+        }
+
     def count_upcoming_sessions(self) -> int:
         from datetime import date
         today = date.today().isoformat()
@@ -813,6 +1375,41 @@ class CouncilStore:
         ).fetchone()
         return row[0] if row is not None else None
 
+    def save_item_summaries(self, ksinr: int, agenda_hash: str, punkte: list[dict]) -> None:
+        """TOP-Zusammenfassungen ersetzen (eine Tagesordnung, ein Stand)."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute("DELETE FROM agenda_item_summaries WHERE ksinr = ?", (ksinr,))
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO agenda_item_summaries "
+                "(ksinr, item_number, summary, agenda_hash, created_at) VALUES (?, ?, ?, ?, ?)",
+                [(ksinr, p["number"], p["summary"], agenda_hash, now)
+                 for p in punkte if p.get("number") and p.get("summary")])
+
+    def save_agenda_snapshot(self, ksinr: int, agenda_hash: str, items: list[dict]) -> None:
+        """Öffentliche Tagesordnungspunkte zu diesem Hash einfrieren — die
+        Vergleichsbasis für die Diff-Änderungsmeldung. INSERT OR IGNORE:
+        Derselbe Stand wird nie überschrieben."""
+        import json as _json
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT OR IGNORE INTO agenda_snapshots (ksinr, agenda_hash, items_json, created_at) "
+                "VALUES (?, ?, ?, ?)",
+                (ksinr, agenda_hash, _json.dumps(items, ensure_ascii=False), now))
+
+    def get_agenda_snapshot(self, ksinr: int, agenda_hash: str) -> list[dict] | None:
+        import json as _json
+        row = self._conn.execute(
+            "SELECT items_json FROM agenda_snapshots WHERE ksinr = ? AND agenda_hash = ?",
+            (ksinr, agenda_hash)).fetchone()
+        if row is None:
+            return None
+        try:
+            return _json.loads(row[0])
+        except ValueError:
+            return None
+
     def save_summary(self, ksinr: int, agenda_hash: str, summary: str) -> None:
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
@@ -847,7 +1444,19 @@ class CouncilStore:
                ORDER BY id""",
             (ksinr,),
         ).fetchall()
-        return [dict(r) for r in rows]
+        out = [dict(r) for r in rows]
+        # Anhänge je TOP dazulegen (Tims Befund 12.08.) — ein Query, gruppiert.
+        anl: dict[str, list[dict]] = {}
+        for r in self._conn.execute(
+                "SELECT item_number, label, url FROM council_agenda_anlagen "
+                "WHERE ksinr = ? ORDER BY id", (ksinr,)):
+            anl.setdefault(r["item_number"], []).append({"label": r["label"], "url": r["url"]})
+        zus = {r["item_number"]: r["summary"] for r in self._conn.execute(
+            "SELECT item_number, summary FROM agenda_item_summaries WHERE ksinr = ?", (ksinr,))}
+        for item in out:
+            item["anlagen"] = anl.get(item["item_number"], [])
+            item["summary"] = zus.get(item["item_number"])
+        return out
 
     def get_session(self, ksinr: int) -> dict | None:
         row = self._conn.execute(
@@ -952,7 +1561,7 @@ class CouncilStore:
     def _insert_decision(self, ksinr, position, kind, parent_item, item_number, title,
                          beschluss, outcome, vote, gegenstimmen, enthaltungen, factions,
                          vorlage_nr, kvonr, raw_result) -> None:
-        self._conn.execute(
+        cur = self._conn.execute(
             "INSERT INTO council_decisions "
             "(ksinr, position, kind, parent_item, item_number, title, beschluss, outcome, "
             " vote, gegenstimmen, enthaltungen, factions, vorlage_nr, kvonr, raw_result) "
@@ -962,6 +1571,18 @@ class CouncilStore:
              json.dumps(factions or [], ensure_ascii=False),
              vorlage_nr, _int_or_none(kvonr), raw_result),
         )
+        # Nennt der Abstimmungssatz Fraktionen ausdrücklich (Gegenstimmen/
+        # Enthaltungen), landen sie strukturiert in council_decision_votes —
+        # neue Protokolle tragen ihre Teilvoten damit ab Import.
+        if raw_result:
+            from council.votes import parse_raw_result
+            parsed = parse_raw_result(raw_result)
+            if parsed:
+                self._conn.executemany(
+                    "INSERT OR IGNORE INTO council_decision_votes (decision_id, faction, stance) "
+                    "VALUES (?, ?, ?)",
+                    [(cur.lastrowid, f, s) for f, s in parsed],
+                )
 
     def save_protocol(
         self,
@@ -987,6 +1608,12 @@ class CouncilStore:
                 (ksinr, document.get("document_id"), document.get("url"), meta.get("protocol_nr"),
                  meta.get("session_start"), meta.get("session_end"), raw_text, n_pages, model, now, status),
             )
+            # Teilvoten hängen an den decision-ids — vor dem Ersetzen der
+            # Beschlüsse mitlöschen, sonst bleiben Waisen zurück (dieselbe
+            # Falle wie bei den Themen-Treffern, #340).
+            self._conn.execute(
+                "DELETE FROM council_decision_votes WHERE decision_id IN "
+                "(SELECT id FROM council_decisions WHERE ksinr = ?)", (ksinr,))
             self._conn.execute("DELETE FROM council_decisions WHERE ksinr = ?", (ksinr,))
             self._conn.execute("DELETE FROM council_attendance WHERE ksinr = ?", (ksinr,))
             pos = 0
@@ -1009,6 +1636,65 @@ class CouncilStore:
                     "INSERT INTO council_attendance (ksinr, name, party, role, note) VALUES (?, ?, ?, ?, ?)",
                     (ksinr, a.get("name"), a.get("party"), a.get("role"), a.get("note")),
                 )
+            # Regex-Ernte (council.ernte): Sitzungsort aus dem Protokollkopf in die
+            # Session übernehmen (der Terminplan liefert ihn leer) und Beschlüsse
+            # über die Vorlagen-Nummer an ihre kvonr hängen.
+            from council import ernte
+
+            ort = ernte.sitzungsort(raw_text)
+            if ort:
+                self._conn.execute(
+                    "UPDATE council_sessions SET location = ? WHERE ksinr = ? AND location = ''",
+                    (ort, ksinr),
+                )
+            # Auch Revisions-Zitate („22/0348/1") an die Basis-Vorlage
+            # („22/0348") hängen — exakter Treffer gewinnt vor dem Präfix
+            # (Review-Befund E2: sonst blieben kvonr und abweichung NULL,
+            # obwohl get_vorlage_by_nr die Vorlage längst auflöst).
+            self._conn.execute(
+                "UPDATE council_decisions SET kvonr = COALESCE("
+                "(SELECT MAX(v.kvonr) FROM council_vorlagen v WHERE v.vorlage_nr = council_decisions.vorlage_nr), "
+                "(SELECT MAX(v.kvonr) FROM council_vorlagen v "
+                " WHERE instr(council_decisions.vorlage_nr, v.vorlage_nr || '/') = 1)) "
+                "WHERE ksinr = ? AND kvonr IS NULL AND vorlage_nr IS NOT NULL",
+                (ksinr,),
+            )
+        self.refresh_abweichung(ksinr=ksinr)
+
+    def refresh_abweichung(self, ksinr: int | None = None, vorlage_nr: str | None = None) -> int:
+        """Beschluss ↔ Beschlussvorschlag vergleichen (council.ernte.abweichung)
+        und das Ergebnis an den Beschlüssen ablegen. Zwei Auslöser, weil Vorlage
+        und Protokoll in beliebiger Reihenfolge eintreffen: nach save_protocol
+        (per ksinr) und nach save_vorlage (per vorlage_nr). Nur angenommene
+        Beschlüsse — eine Vertagung oder Ablehnung ist keine Textänderung."""
+        from council import ernte
+
+        sql = ("SELECT id, vorlage_nr, beschluss FROM council_decisions "
+               "WHERE kind = 'decision' AND outcome = 'angenommen' "
+               "AND beschluss IS NOT NULL AND vorlage_nr IS NOT NULL")
+        args: tuple = ()
+        if ksinr is not None:
+            sql += " AND ksinr = ?"
+            args = (ksinr,)
+        elif vorlage_nr is not None:
+            # Auch Beschlüsse, die eine REVISION dieser Nummer zitieren
+            # („22/0348/1" bei gespeicherter Basis „22/0348") — der
+            # get_vorlage_by_nr-Fallback löst sie ohnehin auf (Befund E2).
+            base = "/".join(vorlage_nr.split("/")[:2])
+            sql += " AND (vorlage_nr IN (?, ?) OR vorlage_nr LIKE ? || '/%')"
+            args = (vorlage_nr, base, vorlage_nr)
+        vorschlaege: dict[str, str | None] = {}
+        updates = []
+        for did, nr, beschluss in self._conn.execute(sql, args).fetchall():
+            if nr not in vorschlaege:
+                v = self.get_vorlage_by_nr(nr)
+                vorschlaege[nr] = (v or {}).get("beschlussvorschlag")
+            updates.append((ernte.abweichung(vorschlaege[nr], beschluss), did))
+        if updates:
+            with self._conn:
+                self._conn.executemany(
+                    "UPDATE council_decisions SET abweichung = ? WHERE id = ?", updates)
+        return len(updates)
 
     def mark_protocol_failed(self, ksinr: int, document: dict) -> None:
         now = datetime.utcnow().isoformat(timespec="seconds")
@@ -1302,6 +1988,103 @@ class CouncilStore:
             args = (limit,)
         return [dict(r) for r in self._conn.execute(sql, args).fetchall()]
 
+    #: Titel auf seinen Kern eindampfen, damit „Annahme von Zuwendungen durch
+    #: den Rat - Beschluss (ungeändert beschlossen)" und dieselbe Zeile drei
+    #: Sitzungen später als EIN Punkt zählen: Klammern raus, Zahlen zu #,
+    #: Ergebniszusatz weg.
+    _WIEDERKEHR_UNWICHTIG = re.compile(
+        r"\([^)]*\)|\b(?:ungeändert|geändert)\s+beschlossen\b|"
+        r"\s+-\s+(?:beschluss|bericht|antrag|vorlage)\b", re.IGNORECASE)
+
+    def _wiederkehr(self) -> dict[str, int]:
+        """Wie oft stand dieselbe Formulierung schon auf einer Tagesordnung?
+
+        Das Signal, das jedem Modell fehlt: „Annahme von Zuwendungen durch den
+        Rat" kam 101× vor, die Haushaltssatzung 3× (einmal im Jahr). Ohne den
+        Zähler hält ein Sprachmodell den Zuwendungs-Punkt für eine
+        Geldentscheidung — er ist aber Verwaltungsalltag (Tim, 15.08.).
+        """
+        if getattr(self, "_wiederkehr_cache", None) is None:
+            zaehler: dict[str, int] = {}
+            for (titel,) in self._conn.execute(
+                    "SELECT title FROM council_agenda_items "
+                    "WHERE is_public = 1 AND title IS NOT NULL"):
+                schluessel = self._wiederkehr_schluessel(titel)
+                if schluessel:
+                    zaehler[schluessel] = zaehler.get(schluessel, 0) + 1
+            self._wiederkehr_cache = zaehler
+        return self._wiederkehr_cache
+
+    @classmethod
+    def _wiederkehr_schluessel(cls, titel: str | None) -> str:
+        roh = cls._WIEDERKEHR_UNWICHTIG.sub(" ", (titel or "").lower())
+        roh = re.sub(r"\d+", "#", roh)
+        return " ".join(re.sub(r"[^a-zäöüß# ]+", " ", roh).split())
+
+    def agenda_items_needing_impact(self, limit: int | None = None,
+                                    tage_voraus: int = 21) -> list[dict]:
+        """Öffentliche Tagesordnungspunkte kommender Sitzungen ohne Tragweite.
+
+        Nur nach vorn: Die Wochen-Karte schaut voraus, und für vergangene
+        Sitzungen gibt es später den Beschluss samt eigener Bewertung. Der
+        Auszug kommt aus der Kurzfassung, ersatzweise aus dem Vorlagentext —
+        beides liegt vor der Sitzung vor.
+        """
+        from datetime import date, timedelta
+
+        heute = date.today().isoformat()
+        bis = (date.today() + timedelta(days=tage_voraus)).isoformat()
+        sql = """SELECT a.ksinr, a.item_number, a.title, a.vorlage_nr, a.kvonr,
+                        s.summary, cs.committee, cs.session_date,
+                        v.beschlussvorschlag, v.finanz_check, v.amt,
+                        (SELECT COUNT(*) FROM council_beratungen b WHERE b.kvonr = a.kvonr)
+                            AS stationen,
+                        substr(v.raw_text, 1, 1200) AS sachverhalt
+                 FROM council_agenda_items a
+                 JOIN council_sessions cs ON cs.ksinr = a.ksinr
+                 LEFT JOIN agenda_item_summaries s
+                        ON s.ksinr = a.ksinr AND s.item_number = a.item_number
+                 LEFT JOIN council_vorlagen v ON v.kvonr = a.kvonr
+                 LEFT JOIN agenda_item_impact i
+                        ON i.ksinr = a.ksinr AND i.item_number = a.item_number
+                 WHERE a.is_public = 1 AND i.impact IS NULL
+                   AND cs.session_date >= ? AND cs.session_date <= ?
+                   AND a.title IS NOT NULL AND length(a.title) >= 8
+                 ORDER BY cs.session_date, a.id"""
+        args: tuple = (heute, bis)
+        if limit is not None:
+            # Großzügig holen und ERST danach kürzen: Die Formalien fliegen in
+            # Python raus, und von 20 Zeilen sind gut die Hälfte „Genehmigung
+            # der Tagesordnung" — ein SQL-LIMIT lieferte sonst eine halb leere
+            # Tranche.
+            sql += " LIMIT ?"
+            args = (heute, bis, limit * 3)
+        roh = [dict(r) for r in self._conn.execute(sql, args).fetchall()]
+        # Formalien kosten nur Geld — dieselbe Regel wie in der Wochen-Karte.
+        echte = [r for r in roh if not self._FORMALIE_RE.search(r["title"] or "")]
+        zaehler = self._wiederkehr()
+        for r in echte:
+            r["wiederkehr"] = zaehler.get(self._wiederkehr_schluessel(r["title"]), 1)
+            r["antragsteller"], _ = self._titel_zerlegen(r["title"] or "")
+            reihe = [dict(b) for b in self._conn.execute(
+                "SELECT datum, ergebnis FROM council_beratungen WHERE kvonr = ? ORDER BY datum",
+                (r["kvonr"] or 0,))]
+            heutige = next((b for b in reihe if b["datum"] == r["session_date"]), None)
+            r["behandlung"] = (heutige or {}).get("ergebnis")
+        return echte[:limit] if limit is not None else echte
+
+    def save_agenda_impact(self, ksinr: int, item_number: str,
+                           score: int, reason: str | None) -> None:
+        from datetime import datetime, timezone
+
+        with self._conn:
+            self._conn.execute(
+                "INSERT OR REPLACE INTO agenda_item_impact "
+                "(ksinr, item_number, impact, reason, created_at) VALUES (?, ?, ?, ?, ?)",
+                (ksinr, item_number, max(0, min(100, int(score))), reason,
+                 datetime.now(timezone.utc).isoformat(timespec="seconds")),
+            )
+
     def save_impact(self, decision_id: int, score: int, reason: str | None) -> None:
         with self._conn:
             self._conn.execute(
@@ -1458,16 +2241,27 @@ class CouncilStore:
         return [r[0] for r in self._conn.execute(sql).fetchall()]
 
     def save_vorlage(self, row: dict) -> None:
+        from council import ernte
+
         now = datetime.utcnow().isoformat(timespec="seconds")
+        # Regex-Ernte direkt beim Speichern — so tragen neue Vorlagen die
+        # Felder automatisch, das Backfill-Skript ist nur für den Bestand.
+        text = row.get("raw_text") or ""
+        aus = ernte.auswirkungen(text)
         with self._conn:
             self._conn.execute(
                 "INSERT OR REPLACE INTO council_vorlagen "
                 "(kvonr, vorlage_nr, title, art, document_id, document_url, "
-                " raw_text, n_pages, fetched_at, status) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                " raw_text, n_pages, fetched_at, status, amt, klima_check, "
+                " finanz_check, beschlussvorschlag) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (row["kvonr"], row.get("vorlage_nr"), row.get("title"), row.get("art"),
                  row.get("document_id"), row.get("document_url"), row.get("raw_text"),
-                 row.get("n_pages"), now, row.get("status", "ok")),
+                 row.get("n_pages"), now, row.get("status", "ok"),
+                 ernte.federfuehrendes_amt(text), aus["klima"], aus["finanzen"],
+                 ernte.beschlussvorschlag(text)),
             )
+        if row.get("vorlage_nr"):
+            self.refresh_abweichung(vorlage_nr=row["vorlage_nr"])
 
     def mark_vorlage_failed(self, kvonr: int) -> None:
         now = datetime.utcnow().isoformat(timespec="seconds")
@@ -1572,7 +2366,7 @@ class CouncilStore:
         if not v:
             return []
         rows = self._conn.execute(
-            "SELECT document_id, label, url, is_antrag, antragsteller, status "
+            "SELECT document_id, label, url, is_antrag, antragsteller, status, bild "
             "FROM council_anlagen WHERE kvonr = ? ORDER BY is_antrag DESC, label",
             (v["kvonr"],),
         ).fetchall()
@@ -1613,6 +2407,74 @@ class CouncilStore:
             "ORDER BY datum IS NULL, datum", (kvonr,),
         ).fetchall()
         return [dict(r) for r in rows]
+
+    def geplante_beratungen_fuer(self, kvonrs: list[int]) -> list[dict]:
+        """Künftige Stationen (Datum ab heute) der Vorlagen — der „Wie es
+        weitergeht"-Stoff.
+
+        Das Datum entscheidet, NICHT das Ergebnis-Feld. Die erste Fassung
+        verlangte zusätzlich ein leeres ``ergebnis`` — und lieferte damit
+        dauerhaft nichts: Bei künftigen Stationen trägt das Feld die geplante
+        BEHANDLUNG („Vorberatung", „Kenntnisnahme"), kein Resultat. Am
+        11.08.2026 nachgemessen: 22 Termine ab heute, davon 0 mit leerem
+        ``ergebnis`` — der Block blieb also immer leer, auch im
+        Recherche-Bericht. Die Behandlungsart kommt als ``art`` mit; sie sagt
+        dem Leser, was dort passieren soll.
+        """
+        kvonrs = [k for k in kvonrs if k]
+        if not kvonrs:
+            return []
+        ph = ",".join("?" * len(kvonrs))
+        rows = self._conn.execute(
+            f"SELECT b.kvonr, b.datum, b.gremium, b.ergebnis AS art, "
+            f"       v.vorlage_nr, v.title AS vorlage_titel "
+            f"FROM council_beratungen b JOIN council_vorlagen v ON v.kvonr = b.kvonr "
+            f"WHERE b.kvonr IN ({ph}) AND b.datum >= date('now') ORDER BY b.datum",
+            kvonrs).fetchall()
+        return [dict(r) for r in rows]
+
+    #: Wörter, die in fast jeder Frage stehen und jede Tagesordnung treffen
+    #: würden. „stand" ist der Klassiker: Als Teilwort-Suche traf es
+    #: „Sachstandsbericht" und „Baumstandort" und hängte einer Frage nach der
+    #: Cäcilienbrücke einen EU-Verordnungs-Termin an (gemessen 11.08.).
+    _AUSBLICK_STOPP = {
+        "stand", "sachstand", "aktuell", "beschluss", "beschlusse", "beschluesse",
+        "stadt", "oldenburg", "planung", "bericht", "vorlage", "thema", "themen",
+    }
+
+    def kommende_beratungen(self, begriffe: list[str], limit: int = 3) -> list[dict]:
+        """Kommende Beratungen, deren Vorlagen-Titel zur Frage passt.
+
+        Der Ausblick über die zitierten Vorlagen allein läuft ins Leere, und
+        zwar systematisch: Auf der Tagesordnung stehen die Vorlagen, über die
+        noch NICHT entschieden wurde — die Suche findet aber Beschlüsse. Am
+        11.08.2026 gemessen: 22 Termine ab heute, keiner davon zu einer
+        Vorlage mit vorhandenem Beschluss.
+
+        Deshalb hier der zweite Weg: Titel-Abgleich gegen die Suchbegriffe der
+        Frage. Deterministisch (kein Modell, kein Embedding), und die Menge ist
+        winzig — es geht nur um die nächsten Sitzungen.
+        """
+        worte = {self._falte_namen(w) for w in begriffe if len(w) >= 5}
+        worte -= self._AUSBLICK_STOPP
+        if not worte:
+            return []
+        rows = self._conn.execute(
+            "SELECT b.kvonr, b.datum, b.gremium, b.ergebnis AS art, "
+            "       v.vorlage_nr, v.title AS vorlage_titel "
+            "FROM council_beratungen b JOIN council_vorlagen v ON v.kvonr = b.kvonr "
+            "WHERE b.datum >= date('now') ORDER BY b.datum").fetchall()
+        bewertet: dict[int, tuple[int, dict]] = {}
+        for r in rows:
+            titel_worte = re.split(r"[^a-z0-9]+", self._falte_namen(r["vorlage_titel"] or ""))
+            n = sum(1 for w in worte if any(tw.startswith(w) for tw in titel_worte if tw))
+            if not n:
+                continue
+            # Je Vorlage nur die nächste Station (nach Datum sortiert gelesen).
+            if r["kvonr"] not in bewertet:
+                bewertet[r["kvonr"]] = (n, dict(r))
+        beste = sorted(bewertet.values(), key=lambda t: (-t[0], t[1]["datum"]))
+        return [d for _n, d in beste[:limit]]
 
     def kvonrs_without_beratungen(self, limit: int | None = None) -> list[int]:
         """Ingested Vorlagen whose Beratungsfolge has never been fetched,
@@ -2082,7 +2944,8 @@ class CouncilStore:
             self._conn.execute(
                 "INSERT INTO council_decisions_fts(rowid, content) "
                 "SELECT d.id, REPLACE(COALESCE(d.title,'') || ' ' || COALESCE(d.beschluss,'') || ' ' "
-                "|| COALESCE(d.summary,'') || ' ' || COALESCE(v.vtext,'') || ' ' || COALESCE(an.atext,''), "
+                "|| COALESCE(d.summary,'') || ' ' || COALESCE(sv.stext,'') || ' ' "
+                "|| COALESCE(v.vtext,'') || ' ' || COALESCE(an.atext,''), "
                 "'ß', 'ss') "  # unicode61 folds ä/ö/ü but not ß
                 "FROM council_decisions d "
                 "LEFT JOIN (SELECT vorlage_nr, substr(MAX(raw_text), 1, 8000) AS vtext "
@@ -2092,27 +2955,40 @@ class CouncilStore:
                 "           FROM council_anlagen a JOIN council_vorlagen cv ON cv.kvonr = a.kvonr "
                 "           WHERE a.is_antrag = 1 AND a.status = 'ok' GROUP BY cv.vorlage_nr) an "
                 "  ON an.vorlage_nr = d.vorlage_nr "
+                # Teilabstimmungen (Änderungsanträge) haben keine eigene FTS-Zeile —
+                # ihre Titel zählen zum Haupt-TOP, damit „Änderungsantrag der X zu Y"
+                # den zitierfähigen Hauptbeschluss findet (Design 23a: subvote-Inhalt
+                # steht im title, beschluss ist immer NULL).
+                "LEFT JOIN (SELECT ksinr, parent_item, substr(GROUP_CONCAT(title, ' '), 1, 2000) AS stext "
+                "           FROM council_decisions WHERE kind = 'subvote' AND parent_item IS NOT NULL "
+                "           GROUP BY ksinr, parent_item) sv "
+                "  ON sv.ksinr = d.ksinr AND sv.parent_item = d.item_number "
                 "WHERE d.kind = 'decision'"
             )
         return self._conn.execute("SELECT COUNT(*) FROM council_decisions_fts").fetchone()[0]
 
     def search_decisions_fts(self, query: str, limit: int = 40) -> list[tuple]:
-        """BM25 keyword search → ``[(decision_id, score)]`` (larger = better). Terms are
-        OR-combined for recall; returns ``[]`` on an empty or invalid query."""
+        """BM25 keyword search → ``[(decision_id, score, snippet)]`` (larger = better).
+        Terms are OR-combined for recall; returns ``[]`` on an empty or invalid query.
+
+        Das FTS5-``snippet()`` liefert die FUNDSTELLE im indexierten Text — bei
+        Treffern tief im Vorlagen-Volltext ist das der Kontext, den der Reranker
+        sehen muss (der Textanfang verrät dort nichts über den Match)."""
         terms = [t for t in re.findall(r"[0-9a-zäöü]+", query.lower().replace("ß", "ss")) if len(t) >= 3][:12]
         if not terms:
             return []
         match = " OR ".join(terms)
         try:
             rows = self._conn.execute(
-                "SELECT rowid, rank FROM council_decisions_fts WHERE council_decisions_fts MATCH ? "
+                "SELECT rowid, rank, snippet(council_decisions_fts, 0, '', '', ' … ', 16) "
+                "FROM council_decisions_fts WHERE council_decisions_fts MATCH ? "
                 "ORDER BY rank LIMIT ?",
                 (match, limit),
             ).fetchall()
         except sqlite3.OperationalError:
             return []
         # FTS5 rank is negative (more negative = better); flip so larger = better.
-        return [(r[0], -float(r[1])) for r in rows]
+        return [(r[0], -float(r[1]), r[2] or "") for r in rows]
 
     def decisions_for_entities(self) -> list[dict]:
         """Main decisions (id, title, beschluss) for the entity-extraction backfill."""
@@ -2421,6 +3297,99 @@ class CouncilStore:
             "SELECT slug, canonical_slug FROM council_entity_aliases")}
         return resolve_chains(raw)
 
+    # --- Entitäts-Anker der Suche (Akkuratheits-Paket, 10.08.26) -------------
+
+    def entity_suchindex(self) -> list[tuple[int, str, int]]:
+        """(entity_id, suchbarer Name, n Beschlüsse) für den deterministischen
+        Frage-Anker: alle Entitäts-Namen PLUS die Alias-Slugs aus
+        council_entity_aliases — dort leben auch die frei kuratierten
+        Glossar-Einträge („caeci" → caecilienbruecke, source='glossar'),
+        dieselbe Tabelle wie die Themen-Dubletten des Admin-Panels."""
+        rows = [(r["id"], r["name"], r["n"]) for r in self._conn.execute(
+            "SELECT id, name, n FROM council_entities")]
+        rows += [(r["id"], r["alias"], r["n"]) for r in self._conn.execute(
+            "SELECT e.id, a.slug AS alias, e.n FROM council_entity_aliases a "
+            "JOIN council_entities e ON e.slug = a.canonical_slug")]
+        return rows
+
+    def entity_steckbriefe(self, entity_ids: list[int]) -> list[dict]:
+        """Kurzbeschreibungen der erkannten Entitäten — Hintergrund für die
+        Antwort.
+
+        Die Beschreibungen liegen längst in ``council_entity_meta`` (1.114
+        Stück, erzeugt aus den Beschlüssen der jeweiligen Entität), wurden von
+        der KI-Frage aber nie gelesen. Genau sie beantworten die „Was ist
+        eigentlich X?"-Fragen, an denen reine Beschluss-Zitate scheitern.
+        """
+        ids = [i for i in entity_ids if i]
+        if not ids:
+            return []
+        ph = ",".join("?" * len(ids))
+        rows = self._conn.execute(
+            f"SELECT e.id, e.name, e.slug, e.kind, m.description "
+            f"FROM council_entities e JOIN council_entity_meta m ON m.slug = e.slug "
+            f"WHERE e.id IN ({ph}) AND m.description IS NOT NULL AND m.description != ''",
+            ids).fetchall()
+        nach_id = {r["id"]: dict(r) for r in rows}
+        return [nach_id[i] for i in ids if i in nach_id]   # Reihenfolge der Anker
+
+    def decision_ids_for_entities(self, entity_ids: list[int], je: int = 12) -> list[int]:
+        """Beschluss-ids der Entitäten, NEUESTE zuerst, dedupliziert — der
+        gesetzte Kandidaten-Sockel neben der semantischen Suche."""
+        if not entity_ids:
+            return []
+        ph = ",".join("?" * len(entity_ids))
+        rows = self._conn.execute(
+            f"SELECT l.entity_id, l.decision_id FROM council_entity_links l "
+            f"JOIN council_decisions d ON d.id = l.decision_id "
+            f"JOIN council_sessions cs ON cs.ksinr = d.ksinr "
+            f"WHERE l.entity_id IN ({ph}) ORDER BY cs.session_date DESC",
+            entity_ids).fetchall()
+        out, zaehler, gesehen = [], {}, set()
+        for r in rows:
+            if r["decision_id"] in gesehen:
+                continue
+            if zaehler.get(r["entity_id"], 0) >= je:
+                continue
+            zaehler[r["entity_id"]] = zaehler.get(r["entity_id"], 0) + 1
+            gesehen.add(r["decision_id"])
+            out.append(r["decision_id"])
+        return out
+
+    def neueste_stationen_fuer(self, kvonrs: list[int],
+                               vorlage_basen: list[str]) -> list[dict]:
+        """Alle Beschlüsse (id, kvonr, vorlage_nr, session_date, committee) der
+        genannten Vorlagen-Familien — Grundlage für den „ältere Station"-Marker:
+        derselbe Text durchläuft mehrere Gremien (gleiches kvonr), Revisionen
+        hängen ein Suffix an die Vorlagen-Nummer (26/0100 → 26/0100-1)."""
+        kvonrs = sorted({k for k in kvonrs if k})
+        basen = sorted({(b or "").strip() for b in vorlage_basen if b and str(b).strip()})
+        if not kvonrs and not basen:
+            return []
+        teile, params = [], []
+        if kvonrs:
+            teile.append(f"d.kvonr IN ({','.join('?' * len(kvonrs))})")
+            params += kvonrs
+        for b in basen[:60]:
+            teile.append("d.vorlage_nr = ? OR d.vorlage_nr LIKE ?")
+            params += [b, b + "-%"]
+        rows = self._conn.execute(
+            "SELECT d.id, d.kvonr, d.vorlage_nr, cs.session_date, cs.committee "
+            "FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr "
+            "WHERE " + " OR ".join(teile), params).fetchall()
+        return [dict(r) for r in rows]
+
+    def session_dates_fuer(self, decision_ids: list[int]) -> dict[int, str]:
+        """id → session_date (ISO) — für den Recency-Bonus im Ranking."""
+        if not decision_ids:
+            return {}
+        ph = ",".join("?" * len(decision_ids))
+        rows = self._conn.execute(
+            f"SELECT d.id, cs.session_date FROM council_decisions d "
+            f"JOIN council_sessions cs ON cs.ksinr = d.ksinr WHERE d.id IN ({ph})",
+            decision_ids).fetchall()
+        return {r["id"]: r["session_date"] for r in rows if r["session_date"]}
+
     def list_entity_aliases(self) -> list[dict]:
         """All merges with both display names — for the admin list.
 
@@ -2564,9 +3533,252 @@ class CouncilStore:
                 "WHERE geo_tried=1 OR lat IS NOT NULL")
         return cur.rowcount
 
+    # --- Personen-Paket (10.08.26): Stammdaten für Auflösung + Fragetyp -----
+
+    # Vertretungs- und Zeit-Notizen sind keine Ämter („Für Oberbürgermeister
+    # Krogmann", „bis TOP 8.2") — nur echte Amtsbezeichnungen zählen.
+    _ROLLEN_RE = re.compile(
+        r"(?i)^(erste[rn]?\s+)?(oberbürgermeister(in)?|stadtkämmer(er|in)|"
+        r"stadtbaur(at|ätin)|stadtr(at|ätin))$")
+
+    def personen_lexikon(self) -> list[dict]:
+        """Das Personen-Lexikon für die Badges im Antwort-Text (Tims Wunsch
+        12.08.): Ratsmitglieder aus dem Verzeichnis (Partei, Zeitraum,
+        Personen-Seite) plus Verwaltungsleute aus den Anwesenheitslisten —
+        deren Amt kommt aus den Protokoll-Notizen selbst („Stadtkämmerin",
+        „Oberbürgermeister"), nicht aus Weltwissen. `aktiv` heißt: in den
+        letzten zwölf Monaten in einer Anwesenheitsliste — dieselbe
+        selbstheilende Regel wie bei der Parteien-Zeile; Ehemalige zeigen
+        ehrlich nur den belegten Zeitraum."""
+        from collections import Counter, defaultdict
+        from datetime import date, timedelta
+        stichtag = (date.today() - timedelta(days=365)).isoformat()
+
+        def falte(t: str) -> str:
+            t = t.lower()
+            for a, b in (("ä", "ae"), ("ö", "oe"), ("ü", "ue"), ("ß", "ss")):
+                t = t.replace(a, b)
+            return t
+
+        def namensteile(anzeige: str) -> tuple[str, str]:
+            """(vorname_gefaltet, nachname_gefaltet) — Nachname ist das letzte
+            Token (Bindestrich-Namen sind EIN Token), Titel zählen nicht als
+            Vorname."""
+            toks = [t for t in anzeige.replace(".", " ").split()
+                    if t.lower().rstrip(".") not in self._HONORIFICS]
+            if not toks:
+                return "", ""
+            return falte(toks[0]) if len(toks) > 1 else "", falte(toks[-1])
+
+        out: list[dict] = []
+        gesehen: set[str] = set()
+        for m in self.list_members():
+            vor, nach = namensteile(m["name"])
+            if not nach:
+                continue
+            gesehen.add(m["slug"])
+            out.append({
+                "slug": m["slug"], "name": m["name"], "vorname": vor,
+                "nachname": nach, "art": "rat", "partei": m["party"],
+                "rolle": None,
+                "aktiv": bool(m["last"] and m["last"] >= stichtag),
+                "von": (m["first"] or "")[:4] or None,
+                "bis": (m["last"] or "")[:4] or None,
+            })
+
+        rows = self._conn.execute(
+            """SELECT a.name, a.note, cs.session_date
+               FROM council_attendance a JOIN council_sessions cs ON cs.ksinr = a.ksinr
+               WHERE a.role = 'verwaltung' AND a.name IS NOT NULL AND a.name != ''"""
+        ).fetchall()
+        g: dict = defaultdict(lambda: {"names": Counter(), "rollen": Counter(),
+                                       "first": None, "last": None})
+        for r in rows:
+            sl = self._person_slug(r["name"])
+            if not sl:
+                continue
+            e = g[sl]
+            e["names"][r["name"]] += 1
+            note = " ".join((r["note"] or "").split())
+            if note and self._ROLLEN_RE.match(note):
+                e["rollen"][note] += 1
+            d = r["session_date"]
+            e["first"] = d if e["first"] is None else min(e["first"], d)
+            e["last"] = d if e["last"] is None else max(e["last"], d)
+        for sl, e in g.items():
+            if sl in gesehen:  # Ratsmandat gewinnt über Gast-Auftritte der Verwaltung
+                continue
+            gesehen.add(sl)
+            anzeige = self._person_anzeige(e["names"].most_common(1)[0][0])
+            vor, nach = namensteile(anzeige)
+            if not nach:
+                continue
+            out.append({
+                "slug": sl, "name": anzeige, "vorname": vor, "nachname": nach,
+                "art": "stadt", "partei": None,
+                "rolle": e["rollen"].most_common(1)[0][0] if e["rollen"] else None,
+                "aktiv": bool(e["last"] and e["last"] >= stichtag),
+                "von": (e["first"] or "")[:4] or None,
+                "bis": (e["last"] or "")[:4] or None,
+            })
+
+        # Blocker (Tims Oltmanns-Befund 12.08.): Gäste, Protokollführung und
+        # beratende Mitglieder bekommen NIE ein Badge — aber ihr Nachname macht
+        # einen kahlen Nachnamen im Text MEHRDEUTIG. „Herr Oltmanns" (Gast vom
+        # Wasserstraßen-Amt, 2019) trug sonst das Badge des einzigen
+        # Lexikon-Oltmanns — eines beratenden NABU-Mitglieds von 2026.
+        for (name,) in self._conn.execute(
+                "SELECT DISTINCT name FROM council_attendance "
+                "WHERE role NOT IN ('mitglied','vorsitz','verwaltung') "
+                "AND name IS NOT NULL AND name != ''"):
+            sl = self._person_slug(name)
+            if not sl or sl in gesehen:
+                continue
+            gesehen.add(sl)
+            _, nach = namensteile(self._person_anzeige(name))
+            if nach:
+                out.append({"slug": sl, "name": None, "vorname": "", "nachname": nach,
+                            "art": "blocker", "partei": None, "rolle": None,
+                            "aktiv": False, "von": None, "bis": None})
+        return out
+
+    def personen_suchindex(self) -> list[tuple[str, str]]:
+        """(Name, Partei) aller Ratspersonen mit bekannter Fraktion — Grundlage
+        für die FDP/Volt-Auflösung und den Personen-Fragetyp. Die Stammdaten
+        führen die EINZEL-Partei (Lükermann=Volt, Pfeiffer=FDP), während die
+        Protokolle nur das Gruppen-Label kennen."""
+        return [(r["name"], r["fraktion_aktuell"]) for r in self._conn.execute(
+            "SELECT name, fraktion_aktuell FROM council_persons "
+            "WHERE fraktion_aktuell IS NOT NULL AND fraktion_aktuell != ''")]
+
+    def wortbeitraege_von_sprecher(self, nachname: str, limit: int = 120) -> list[dict]:
+        """Alle Wortbeiträge, deren Sprecher-Feld den Nachnamen trägt —
+        Kandidaten für den Personen-Fragetyp (der Cross-Encoder wählt daraus
+        die zur Frage passenden). Zwei LIKE-Varianten, weil Protokolle
+        Umlaute mal ausschreiben („Luekermann") und SQLite-lower() bei
+        Umlauten nichts tut."""
+        varianten = {nachname}
+        gefaltet = nachname
+        for a, b in (("ä", "ae"), ("ö", "oe"), ("ü", "ue"), ("ß", "ss"),
+                     ("Ä", "Ae"), ("Ö", "Oe"), ("Ü", "Ue")):
+            gefaltet = gefaltet.replace(a, b)
+        varianten.add(gefaltet)
+        teile = " OR ".join(["w.sprecher LIKE ?"] * len(varianten))
+        rows = self._conn.execute(
+            f"SELECT w.id, w.sprecher, w.partei, w.art, w.top, w.text, "
+            f"       cs.committee, cs.session_date "
+            f"FROM council_wortbeitraege w JOIN council_sessions cs ON cs.ksinr = w.ksinr "
+            f"WHERE {teile} ORDER BY cs.session_date DESC LIMIT ?",
+            [f"%{v}%" for v in varianten] + [limit]).fetchall()
+        return [dict(r) for r in rows]
+
+    #: Anreden, die vor einem Namen stehen dürfen, ohne ihn zu einem anderen zu
+    #: machen. Ohne die Liste hielte „Ratsfrau Hufeland" einen Vornamen für
+    #: vorhanden und fiele aus der Zuordnung.
+    #: Rollen zählen mit: „Ratsvorsitzender Harms" ist eine Funktion plus
+    #: Nachname, kein zweiter Name — genau wie „Ratsherr Harms".
+    _ANREDEN = {"ratsfrau", "ratsherr", "frau", "herr", "ratsmitglied",
+                "oberbuergermeister", "oberbürgermeister", "buergermeister",
+                "bürgermeister", "stadtrat", "staedtrat",
+                "ratsvorsitzender", "ratsvorsitzende", "vorsitzender", "vorsitzende",
+                "ausschussvorsitzender", "ausschussvorsitzende"}
+
+    @classmethod
+    def _spricht_diese_person(cls, sprecher: str, vorname: str, nachname: str) -> bool:
+        """Gehört dieser Sprecher-Eintrag zu genau dieser Person?
+
+        Die Protokolle schreiben denselben Menschen mal „Andrea Hufeland", mal
+        „Hufeland", mal „Ratsfrau Hufeland" — der Nachname allein muss also
+        reichen. Er reicht aber NICHT, wenn der Eintrag einen anderen Vornamen
+        trägt: „Dr. Ingo Harms" ist nicht „Tim Harms". Gemessen am Bestand ist
+        das selten (5 von 279 Treffern bei Harms), aber auf einer Seite, die
+        *alle* Beiträge zeigt, fällt jeder Fremdbeitrag auf.
+
+        Mehrere Sprecher in einem Eintrag („Christoph Baak, Dr. Esther
+        Niewerth-Baumann") gelten für beide — da haben tatsächlich beide geredet.
+        """
+        if not nachname:
+            return False
+        roh = cls._falte_namen(sprecher)
+        if cls._falte_namen(nachname) not in roh:
+            return False
+        if not vorname:
+            return True
+        v = cls._falte_namen(vorname)
+        if v in roh:
+            return True
+        # Kein passender Vorname: nur durchlassen, wenn der Eintrag überhaupt
+        # keinen führt (reiner Nachname, ggf. mit Anrede oder Titel).
+        rest = [t for t in re.split(r"[^\wäöüß]+", sprecher.lower()) if len(t) > 1]
+        nach_teile = set(re.split(r"[^\wäöüß]+", nachname.lower()))
+        for t in rest:
+            if t in nach_teile or t.rstrip(".") in cls._HONORIFICS or t in cls._ANREDEN:
+                continue
+            return False   # ein fremder Namensbestandteil → andere Person
+        return True
+
+    @staticmethod
+    def _falte_namen(s: str) -> str:
+        s = s.lower()
+        for a, b in (("ä", "ae"), ("ö", "oe"), ("ü", "ue"), ("ß", "ss")):
+            s = s.replace(a, b)
+        return s
+
+    def wortbeitraege_person(self, name: str, gremium: str | None = None,
+                             offset: int = 0, limit: int = 20) -> dict:
+        """Wortbeiträge einer Person — seitenweise und nach Gremium filterbar.
+
+        Gefiltert wird in Python statt in SQL: Die Zuordnung Sprecher→Person
+        kennt Schreibvarianten (s. ``_spricht_diese_person``), die keine
+        LIKE-Bedingung abbildet. Der Rohbestand je Person ist klein genug
+        (Vielredner kommen auf ~800 Beiträge), um ihn einmal zu holen.
+
+        Rückgabe: ``items`` (die angeforderte Seite), ``total`` (nach
+        Gremien-Filter), ``gesamt`` (ohne Filter) und ``gremien`` als Facetten
+        mit Anzahl — damit die Oberfläche gleich sagen kann, wo etwas zu holen
+        ist.
+        """
+        teile = [t for t in name.replace(".", " ").replace(",", " ").split()
+                 if t.lower().rstrip(".") not in self._HONORIFICS
+                 and t.lower() not in self._ANREDEN]
+        if not teile:
+            return {"items": [], "total": 0, "gesamt": 0, "gremien": []}
+        nachname, vorname = teile[-1], (teile[0] if len(teile) > 1 else "")
+        roh = self.wortbeitraege_von_sprecher(nachname, limit=5000)
+        meine = [w for w in roh
+                 if self._spricht_diese_person(w.get("sprecher") or "", vorname, nachname)]
+
+        from collections import Counter
+        zaehler = Counter(w["committee"] for w in meine if w.get("committee"))
+        gefiltert = [w for w in meine if not gremium or w.get("committee") == gremium]
+        seite = gefiltert[max(0, offset): max(0, offset) + max(1, min(limit, 100))]
+        return {
+            "items": [{"art": w["art"], "top": w["top"], "text": w["text"],
+                       "committee": w["committee"], "session_date": w["session_date"]}
+                      for w in seite],
+            "total": len(gefiltert),
+            "gesamt": len(meine),
+            "gremien": [{"committee": k, "n": n} for k, n in zaehler.most_common()],
+        }
+
     # --- Council members (from attendance: who sits on the council) ------------------
     _MEMBER_ROLES = ("mitglied", "vorsitz")  # exclude verwaltung/protokoll/gast/beratend
-    _HONORIFICS = {"prof", "dr", "dipl", "ing", "med"}
+    # Titel UND Anreden: „Herr Jens Freymuth" und „Jens Freymuth" sind dieselbe
+    # Person — ohne die Anreden entstanden Dubletten im Mitglieder-Verzeichnis
+    # (Tims Befund 10.08.). Adelspartikel („zu", „von") bleiben absichtlich
+    # stehen — sie gehören zum Nachnamen.
+    _HONORIFICS = {"prof", "dr", "dipl", "ing", "med",
+                   "herr", "frau", "ratsherr", "ratsfrau"}
+    _ANREDEN = {"herr", "frau", "ratsherr", "ratsfrau"}
+
+    @staticmethod
+    def _person_anzeige(name: str) -> str:
+        """Anzeige-Name ohne führende Anrede („Herr Jens Freymuth" → „Jens
+        Freymuth") — Titel wie „Dr." bleiben, die gehören zum Namen."""
+        toks = name.split()
+        while toks and toks[0].lower().rstrip(".") in CouncilStore._ANREDEN:
+            toks.pop(0)
+        return " ".join(toks) or name
 
     @staticmethod
     def _person_slug(name: str) -> str:
@@ -2608,13 +3820,24 @@ class CouncilStore:
             p = c["label"] if c["kind"] in ("partei", "gruppe") else None
             if p and (e["party_at"] is None or d >= e["party_at"][0]):
                 e["party_at"] = (d, p)
-        out = [{"slug": sl, "name": e["names"].most_common(1)[0][0],
+        out = [{"slug": sl, "name": self._person_anzeige(e["names"].most_common(1)[0][0]),
                 "party": e["party_at"][1] if e["party_at"] else None,
                 "n": len(e["ksinrs"]), "committees": len(e["committees"]),
                 "first": e["first"], "last": e["last"]}
                for sl, e in g.items()]
         out.sort(key=lambda m: -m["n"])
         return out
+
+    def member_name(self, slug: str) -> str | None:
+        """Der kanonische (häufigste) Name zu einem Slug — die schlanke Auskunft
+        für Endpunkte, die nicht das ganze Profil brauchen. Ohne Anrede, wie in
+        ``member_detail`` und im Verzeichnis (#419)."""
+        from collections import Counter
+        namen = [r["name"] for r in self._conn.execute(
+            "SELECT name FROM council_attendance WHERE role IN ('mitglied','vorsitz') "
+            "AND name IS NOT NULL AND name != ''")]
+        passend = [n for n in namen if self._person_slug(n) == slug]
+        return self._person_anzeige(Counter(passend).most_common(1)[0][0]) if passend else None
 
     def member_detail(self, slug: str) -> dict | None:
         """One member — all name variants merged by slug: party, sessions, active span,
@@ -2628,10 +3851,10 @@ class CouncilStore:
         if not matched:
             return None
         ph = ",".join("?" * len(matched))
-        name = Counter(  # canonical = most-frequent spelling
+        name = self._person_anzeige(Counter(  # canonical = most-frequent spelling
             r["name"] for r in self._conn.execute(
                 f"SELECT name FROM council_attendance WHERE name IN ({ph}) AND role IN ('mitglied','vorsitz')",
-                matched)).most_common(1)[0][0]
+                matched)).most_common(1)[0][0])
         chairs = {r["committee"] for r in self._conn.execute(
             f"SELECT DISTINCT cs.committee FROM council_attendance a JOIN council_sessions cs ON cs.ksinr=a.ksinr "
             f"WHERE a.name IN ({ph}) AND a.role='vorsitz'", matched)}
@@ -2683,6 +3906,13 @@ class CouncilStore:
                 timeline[-1]["n"] += run["n"]
             else:
                 timeline.append(dict(run))
+        # Wortbeiträge der Person (Personen-Paket 10.08.26): die jüngsten
+        # Beiträge in voller Länge — das Beleg-Versprechen gilt auch hier.
+        # Nachname = letztes Namens-Token ohne Titel (Umlaute intakt fürs LIKE).
+        # Erste Seite der Wortbeiträge gleich mitliefern (die Seite soll ohne
+        # zweiten Rundlauf etwas zeigen); weitere Seiten und der Gremien-Filter
+        # laufen über /person/{slug}/wortbeitraege.
+        wb = self.wortbeitraege_person(name, limit=10)
         return {
             "name": name, "slug": slug,
             # Aktuelle Zugehörigkeit (Ende der geglätteten Zeitreihe) — nicht die
@@ -2695,6 +3925,9 @@ class CouncilStore:
                            for r in committees],
             "recent": [{"ksinr": r["ksinr"], "committee": r["committee"], "session_date": r["session_date"]}
                        for r in recent],
+            "wortbeitraege": wb["items"],
+            "wortbeitraege_gesamt": wb["gesamt"],
+            "wortbeitraege_gremien": wb["gremien"],
         }
 
     def decisions_for_amount(self, only_missing: bool = False) -> list[dict]:
@@ -3024,14 +4257,25 @@ class CouncilStore:
 
     # --- Semantic similarity (precomputed offline) --------------------------
     def decisions_for_embedding(self) -> list[dict]:
-        """All main decisions with a short text for embedding (id + text)."""
+        """All main decisions with a short text for embedding (id + text).
+
+        Teilabstimmungs-Titel (Änderungsanträge, Design 23a) zählen zum Text des
+        Haupt-TOPs — sie tragen oft die konkreten Begriffe („Änderungsantrag der
+        Fraktion X: Tempo 30 auf …"), die im knappen Hauptbeschluss fehlen."""
         rows = self._conn.execute(
-            "SELECT id, title, summary, beschluss FROM council_decisions WHERE kind = 'decision'"
+            "SELECT d.id, d.title, d.summary, d.beschluss, sv.stext FROM council_decisions d "
+            "LEFT JOIN (SELECT ksinr, parent_item, substr(GROUP_CONCAT(title, ' · '), 1, 400) AS stext "
+            "           FROM council_decisions WHERE kind = 'subvote' AND parent_item IS NOT NULL "
+            "           GROUP BY ksinr, parent_item) sv "
+            "  ON sv.ksinr = d.ksinr AND sv.parent_item = d.item_number "
+            "WHERE d.kind = 'decision'"
         ).fetchall()
         out = []
         for r in rows:
-            text = f"{r['title'] or ''}. {r['summary'] or r['beschluss'] or ''}".strip()
-            out.append({"id": r["id"], "text": text[:500]})
+            text = f"{r['title'] or ''}. {r['summary'] or r['beschluss'] or ''}".strip()[:500]
+            if r["stext"]:
+                text = f"{text} · {r['stext']}"[:800]
+            out.append({"id": r["id"], "text": text})
         return out
 
     def set_similar(self, rows: list[tuple]) -> int:
@@ -3058,6 +4302,414 @@ class CouncilStore:
         return self._conn.execute(
             "SELECT decision_id, vector FROM council_embeddings ORDER BY decision_id"
         ).fetchall()
+
+    def embeddings_version(self) -> tuple:
+        """Billiger Versionsschlüssel des Embedding-Bestands. Der Matrix-Cache in
+        council/embeddings.py lädt neu, sobald sich der Wert ändert — ohne den
+        früher nötigen Service-Neustart nach embed_decisions.py. ``data_version``
+        deckt dabei auch ein Re-Embedding ab, das Anzahl und ids unverändert
+        lässt (Modellwechsel): Es zählt hoch, sobald ein *anderer* Prozess die
+        DB-Datei geschrieben hat."""
+        count, max_id = self._conn.execute(
+            "SELECT COUNT(*), COALESCE(MAX(decision_id), 0) FROM council_embeddings"
+        ).fetchone()
+        data_version = self._conn.execute("PRAGMA data_version").fetchone()[0]
+        return (count, max_id, data_version)
+
+    # ---- Vorlagen-Chunk-Embeddings (semantische Suche im Sachverhalt) ----
+
+    def vorlagen_missing_embeddings(self) -> list[dict]:
+        """Vorlagen (mit Text, an ≥1 Beschluss hängend), deren Chunk-Vektoren
+        fehlen oder deren Text sich seit dem letzten Embedding geändert hat.
+        Der Abgleich läuft über den SHA-256 des Volltexts (text_hash)."""
+        import hashlib
+
+        stored = dict(self._conn.execute(
+            "SELECT vorlage_nr, MIN(text_hash) FROM council_vorlage_embeddings GROUP BY vorlage_nr"
+        ).fetchall())
+        rows = self._conn.execute(
+            "SELECT v.vorlage_nr, MAX(v.raw_text) AS raw_text FROM council_vorlagen v "
+            "WHERE v.status = 'ok' AND v.vorlage_nr IN "
+            "  (SELECT DISTINCT vorlage_nr FROM council_decisions "
+            "   WHERE kind = 'decision' AND vorlage_nr IS NOT NULL AND vorlage_nr != '') "
+            "GROUP BY v.vorlage_nr"
+        ).fetchall()
+        out = []
+        for r in rows:
+            text = r["raw_text"] or ""
+            if not text.strip():
+                continue
+            h = hashlib.sha256(text.encode("utf-8", "replace")).hexdigest()
+            if stored.get(r["vorlage_nr"]) != h:
+                out.append({"vorlage_nr": r["vorlage_nr"], "raw_text": text, "text_hash": h})
+        return out
+
+    def replace_vorlage_embeddings(self, vorlage_nr: str, text_hash: str,
+                                   chunks: list[tuple[str, bytes]]) -> None:
+        """Chunk-Text+Vektor einer Vorlage komplett ersetzen (alte Chunk-Anzahl
+        kann abweichen, deshalb erst löschen)."""
+        with self._conn:
+            self._conn.execute(
+                "DELETE FROM council_vorlage_embeddings WHERE vorlage_nr = ?", (vorlage_nr,))
+            self._conn.executemany(
+                "INSERT INTO council_vorlage_embeddings "
+                "(vorlage_nr, chunk_idx, text_hash, chunk_text, vector) VALUES (?, ?, ?, ?, ?)",
+                [(vorlage_nr, i, text_hash, text, vec) for i, (text, vec) in enumerate(chunks)],
+            )
+
+    def get_vorlage_embeddings(self) -> list:
+        """Alle (vorlage_nr, chunk_text, vector)-Zeilen — der Aufrufer baut die Matrix."""
+        return self._conn.execute(
+            "SELECT vorlage_nr, chunk_text, vector FROM council_vorlage_embeddings "
+            "ORDER BY vorlage_nr, chunk_idx"
+        ).fetchall()
+
+    def vorlage_embeddings_version(self) -> tuple:
+        """Versionsschlüssel analog embeddings_version(), für den Chunk-Matrix-Cache."""
+        count = self._conn.execute(
+            "SELECT COUNT(*) FROM council_vorlage_embeddings").fetchone()[0]
+        data_version = self._conn.execute("PRAGMA data_version").fetchone()[0]
+        return (count, data_version)
+
+    # ---- Anlagen-Embeddings (Task 33, Kanal der Gründlichen Recherche) -----
+
+    def anlagen_missing_embeddings(self, limit: int | None = None) -> list[dict]:
+        """Anlagen mit Text, deren Chunk-Vektoren fehlen oder deren Text sich
+        geändert hat (SHA-256-Abgleich wie bei den Vorlagen). Neueste zuerst —
+        frisches Material zuerst durchsuchbar."""
+        import hashlib
+
+        stored = dict(self._conn.execute(
+            "SELECT document_id, MIN(text_hash) FROM council_anlage_embeddings "
+            "GROUP BY document_id").fetchall())
+        rows = self._conn.execute(
+            "SELECT document_id, label, raw_text FROM council_anlagen "
+            "WHERE status = 'ok' AND raw_text IS NOT NULL AND raw_text != '' "
+            "ORDER BY document_id DESC").fetchall()
+        out = []
+        for r in rows:
+            h = hashlib.sha256(r["raw_text"].encode("utf-8")).hexdigest()[:16]
+            if stored.get(r["document_id"]) != h:
+                out.append({"document_id": r["document_id"], "label": r["label"],
+                            "raw_text": r["raw_text"], "text_hash": h})
+                if limit and len(out) >= limit:
+                    break
+        return out
+
+    def replace_anlage_embeddings(self, document_id: int, text_hash: str,
+                                  chunks: list[tuple[str, bytes]]) -> None:
+        """Chunk-Text+Vektor einer Anlage komplett ersetzen."""
+        with self._conn:
+            self._conn.execute(
+                "DELETE FROM council_anlage_embeddings WHERE document_id = ?", (document_id,))
+            self._conn.executemany(
+                "INSERT INTO council_anlage_embeddings "
+                "(document_id, chunk_idx, text_hash, chunk_text, vector) VALUES (?, ?, ?, ?, ?)",
+                [(document_id, i, text_hash, text, vec) for i, (text, vec) in enumerate(chunks)],
+            )
+
+    def get_anlage_embeddings(self) -> list:
+        """Alle (document_id, chunk_text, vector)-Zeilen für die Matrix."""
+        return self._conn.execute(
+            "SELECT document_id, chunk_text, vector FROM council_anlage_embeddings "
+            "ORDER BY document_id, chunk_idx"
+        ).fetchall()
+
+    def anlage_embeddings_version(self) -> tuple:
+        count = self._conn.execute(
+            "SELECT COUNT(*) FROM council_anlage_embeddings").fetchone()[0]
+        data_version = self._conn.execute("PRAGMA data_version").fetchone()[0]
+        return (count, data_version)
+
+    def anlagen_by_ids(self, document_ids: list[int]) -> list[dict]:
+        """Anzeige-Zeilen der Anlagen-Treffer, Reihenfolge der ids bleibt:
+        Label, PDF-Link und die Vorlage (Nummer + Titel), zu der sie gehören."""
+        if not document_ids:
+            return []
+        ph = ",".join("?" * len(document_ids))
+        rows = self._conn.execute(
+            f"SELECT a.document_id, a.label, a.url, a.kvonr, "
+            f"       v.vorlage_nr, v.title AS vorlage_titel "
+            f"FROM council_anlagen a LEFT JOIN council_vorlagen v ON v.kvonr = a.kvonr "
+            f"WHERE a.document_id IN ({ph})", document_ids).fetchall()
+        by_id = {r["document_id"]: dict(r) for r in rows}
+        return [by_id[i] for i in document_ids if i in by_id]
+
+    def decision_ids_for_vorlagen(self, vorlage_nrs: list[str]) -> dict[str, list[int]]:
+        """vorlage_nr → Beschluss-ids (alle Beratungsstationen), neueste zuerst.
+        Bildet Vorlagen-Chunk-Treffer der semantischen Suche auf zitierbare
+        Beschlüsse ab."""
+        nrs = sorted({(n or "").strip() for n in vorlage_nrs if n and str(n).strip()})
+        if not nrs:
+            return {}
+        ph = ",".join("?" * len(nrs))
+        rows = self._conn.execute(
+            f"""SELECT d.vorlage_nr, d.id FROM council_decisions d
+                JOIN council_sessions cs ON cs.ksinr = d.ksinr
+                WHERE d.kind = 'decision' AND d.vorlage_nr IN ({ph})
+                ORDER BY cs.session_date DESC, d.id DESC""",
+            nrs,
+        ).fetchall()
+        out: dict[str, list[int]] = {}
+        for r in rows:
+            out.setdefault(r["vorlage_nr"], []).append(r["id"])
+        return out
+
+    # ---- Laufende Bauleitplan-Beteiligungen (council/beteiligung.py) ----
+
+    def save_beteiligungen(self, rows: list[dict]) -> dict:
+        """Stand einpflegen und Verschwundenes als beendet markieren.
+
+        Früher wurde die Tabelle je Lauf geleert und neu befüllt. Das war
+        bequem, aber es vernichtete Wissen: Das Portal der Stadt zeigt
+        ausschließlich Verfahren, zu denen GERADE eine Beteiligung möglich ist
+        („zum aktuellen Zeitpunkt", so der Seitentitel) — abgeschlossene sind
+        dort spurlos weg, auch über die direkte Adresse (geprüft 12.08.2026:
+        ältere Planfall-IDs liefern nur noch eine leere Hülle). Wer die Zeile
+        löscht, sobald sie aus der Liste fällt, hat sie für immer verloren.
+
+        Deshalb: Bekanntes aktualisieren, Neues anlegen, Fehlendes auf
+        `beendet` setzen (mit Datum des Laufs). So wächst über die Monate eine
+        Historie, die es sonst nirgends gibt.
+        """
+        from datetime import datetime as _dt
+        now = _dt.utcnow().isoformat(timespec="seconds")
+        heute = now[:10]
+        with self._conn:
+            self._conn.execute(
+                "CREATE TABLE IF NOT EXISTS council_beteiligungen ("
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, titel TEXT NOT NULL, "
+                "ort TEXT, schritt TEXT, von TEXT, bis TEXT, url TEXT NOT NULL, "
+                "plan_nrs TEXT NOT NULL, fetched_at TEXT NOT NULL)"
+            )
+            # Nachrüsten für Bestände aus der Zeit vor der Historie.
+            spalten = {r[1] for r in self._conn.execute("PRAGMA table_info(council_beteiligungen)")}
+            if "status" not in spalten:
+                self._conn.execute(
+                    "ALTER TABLE council_beteiligungen ADD COLUMN status TEXT NOT NULL DEFAULT 'laufend'")
+            if "beendet_am" not in spalten:
+                self._conn.execute("ALTER TABLE council_beteiligungen ADD COLUMN beendet_am TEXT")
+            self._conn.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_beteiligung_url_schritt "
+                "ON council_beteiligungen(url, schritt)")
+
+            neu = akt = 0
+            gesehen: list[tuple[str, str]] = []
+            for r in rows:
+                url, schritt = r["url"], (r.get("schritt") or "")
+                gesehen.append((url, schritt))
+                cur = self._conn.execute(
+                    "UPDATE council_beteiligungen SET titel = ?, ort = ?, von = ?, bis = ?, "
+                    "plan_nrs = ?, fetched_at = ?, status = 'laufend', beendet_am = NULL "
+                    "WHERE url = ? AND schritt = ?",
+                    (r["titel"], r.get("ort"), r.get("von"), r.get("bis"),
+                     json.dumps(r.get("plan_nrs") or [], ensure_ascii=False), now, url, schritt))
+                if cur.rowcount:
+                    akt += 1
+                    continue
+                self._conn.execute(
+                    "INSERT INTO council_beteiligungen "
+                    "(titel, ort, schritt, von, bis, url, plan_nrs, fetched_at, status) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'laufend')",
+                    (r["titel"], r.get("ort"), schritt, r.get("von"), r.get("bis"), url,
+                     json.dumps(r.get("plan_nrs") or [], ensure_ascii=False), now))
+                neu += 1
+
+            # Was nicht mehr in der Liste steht, ist gelaufen — nicht gelöscht.
+            if gesehen:
+                bedingung = " AND ".join(["NOT (url = ? AND schritt = ?)"] * len(gesehen))
+                args: list = [heute]
+                for u, sch in gesehen:
+                    args += [u, sch]
+                cur = self._conn.execute(
+                    "UPDATE council_beteiligungen SET status = 'beendet', beendet_am = ? "
+                    f"WHERE status = 'laufend' AND {bedingung}", args)
+            else:
+                cur = self._conn.execute(
+                    "UPDATE council_beteiligungen SET status = 'beendet', beendet_am = ? "
+                    "WHERE status = 'laufend'", (heute,))
+            beendet = cur.rowcount
+        return {"laufend": len(rows), "neu": neu, "aktualisiert": akt, "beendet": beendet}
+
+    def list_beteiligungen(self, nur_laufende: bool = True) -> list[dict]:
+        """Beteiligungen (plan_nrs als Liste) — die Handvoll Zeilen matcht der
+        Aufrufer in Python gegen Beschluss-Titel. Standardmäßig nur laufende;
+        mit ``nur_laufende=False`` auch die beendeten (Historie)."""
+        try:
+            spalten = {r[1] for r in self._conn.execute("PRAGMA table_info(council_beteiligungen)")}
+            hat_status = "status" in spalten
+            felder = "titel, ort, schritt, von, bis, url, plan_nrs" + (
+                ", status, beendet_am" if hat_status else "")
+            sql = f"SELECT {felder} FROM council_beteiligungen"
+            if nur_laufende and hat_status:
+                sql += " WHERE status = 'laufend'"
+            rows = self._conn.execute(sql).fetchall()
+        except sqlite3.OperationalError:  # Tabelle entsteht erst mit dem ersten Lauf
+            return []
+        out = []
+        for r in rows:
+            d = dict(r)
+            try:
+                d["plan_nrs"] = json.loads(d.get("plan_nrs") or "[]")
+            except ValueError:
+                d["plan_nrs"] = []
+            out.append(d)
+        return out
+
+    # ---- Haushalt als Geldfragen-Quelle (Tim, 09.08.) ----
+
+    def haushalt_fuer_begriffe(self, begriffe: list[str], limit: int = 3) -> list[dict]:
+        """Teilhaushalts-Zeilen des neuesten Jahres, deren Bereich einen der
+        Suchbegriffe trägt („Verkehr" → „Verkehr und Straßenbau"); fragt jemand
+        nach dem Haushalt insgesamt, kommt die Summenzeile. Für den
+        Geld-Kontext der KI-Frage — Plan-Zahlen, klar getrennt von Beschlüssen."""
+        try:
+            jahr = self._conn.execute("SELECT MAX(year) FROM council_haushalt").fetchone()[0]
+        except sqlite3.OperationalError:
+            return []
+        if not jahr:
+            return []
+        woerter = [w.lower() for w in begriffe if len(w) >= 4][:10]
+        rows = self._conn.execute(
+            "SELECT year, bereich, ertraege, aufwendungen, ergebnis, is_summe "
+            "FROM council_haushalt WHERE year = ?", (jahr,)).fetchall()
+        out = []
+        for r in rows:
+            b = (r["bereich"] or "").lower()
+            if r["is_summe"]:
+                if any(w in ("haushalt", "gesamthaushalt", "haushaltsplan") for w in woerter):
+                    out.append(dict(r))
+                continue
+            if any(w in b for w in woerter):
+                out.append(dict(r))
+        return out[:limit]
+
+    # ---- Teilvoten aus raw_result (welche Fraktion stimmte wie) ----
+
+    def save_decision_votes(self, decision_id: int, votes: list[tuple[str, str]]) -> None:
+        """Geparste (faction, stance)-Zeilen eines Beschlusses ersetzen."""
+        with self._conn:
+            self._conn.execute(
+                "DELETE FROM council_decision_votes WHERE decision_id = ?", (decision_id,))
+            self._conn.executemany(
+                "INSERT OR IGNORE INTO council_decision_votes (decision_id, faction, stance) "
+                "VALUES (?, ?, ?)",
+                [(decision_id, f, s) for f, s in votes],
+            )
+
+    def decision_votes_for(self, decision_ids: list[int]) -> dict[int, list[dict]]:
+        """decision_id → [{faction, stance}] für Anzeige/Auswertung."""
+        if not decision_ids:
+            return {}
+        ph = ",".join("?" * len(decision_ids))
+        rows = self._conn.execute(
+            f"SELECT decision_id, faction, stance FROM council_decision_votes "
+            f"WHERE decision_id IN ({ph}) ORDER BY faction", decision_ids,
+        ).fetchall()
+        out: dict[int, list[dict]] = {}
+        for r in rows:
+            out.setdefault(r["decision_id"], []).append(
+                {"faction": r["faction"], "stance": r["stance"]})
+        return out
+
+    def decisions_with_raw_result(self) -> list[dict]:
+        """Alle Beschlüsse mit Abstimmungssatz — Eingabe für den Teilvoten-Backfill."""
+        return [dict(r) for r in self._conn.execute(
+            "SELECT id, raw_result FROM council_decisions "
+            "WHERE raw_result IS NOT NULL AND raw_result != ''"
+        ).fetchall()]
+
+    # ---- Pressemitteilungen der Stadt (council/presse.py) ----
+
+    def save_presse(self, url: str, news_id: int | None, titel: str,
+                    datum: str | None, text: str) -> int:
+        """Upsert einer Pressemitteilung (Schlüssel: url) inkl. FTS-Zeile.
+        Liefert die Zeilen-id."""
+        from datetime import datetime as _dt
+        now = _dt.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT INTO council_presse (url, news_id, titel, datum, text, fetched_at) "
+                "VALUES (?, ?, ?, ?, ?, ?) "
+                "ON CONFLICT(url) DO UPDATE SET news_id=excluded.news_id, "
+                "titel=excluded.titel, datum=excluded.datum, text=excluded.text, "
+                "fetched_at=excluded.fetched_at",
+                (url, news_id, titel, datum, text, now),
+            )
+            pid = self._conn.execute(
+                "SELECT id FROM council_presse WHERE url = ?", (url,)).fetchone()[0]
+            self._conn.execute("DELETE FROM council_presse_fts WHERE rowid = ?", (pid,))
+            self._conn.execute(
+                "INSERT INTO council_presse_fts(rowid, content) VALUES (?, REPLACE(?, 'ß', 'ss'))",
+                (pid, f"{titel} {text[:8000]}"),
+            )
+        return pid
+
+    def presse_urls(self) -> set[str]:
+        """Alle bekannten PM-URLs — der Backfill überspringt Vorhandenes."""
+        return {r[0] for r in self._conn.execute("SELECT url FROM council_presse").fetchall()}
+
+    def presse_by_ids(self, ids: list[int]) -> list[dict]:
+        """PM-Zeilen (ohne Volltext-Riesen: Text auf 600 Zeichen gekürzt) in id-Reihenfolge."""
+        if not ids:
+            return []
+        ph = ",".join("?" * len(ids))
+        rows = self._conn.execute(
+            f"SELECT id, url, titel, datum, substr(text, 1, 600) AS auszug "
+            f"FROM council_presse WHERE id IN ({ph})", ids).fetchall()
+        by_id = {r["id"]: dict(r) for r in rows}
+        return [by_id[i] for i in ids if i in by_id]
+
+    def search_presse_fts(self, query: str, limit: int = 20) -> list[tuple]:
+        """BM25 über Pressemitteilungen → [(presse_id, score, snippet)] wie bei
+        den Beschlüssen (search_decisions_fts)."""
+        terms = [t for t in re.findall(r"[0-9a-zäöü]+", query.lower().replace("ß", "ss")) if len(t) >= 3][:12]
+        if not terms:
+            return []
+        try:
+            rows = self._conn.execute(
+                "SELECT rowid, rank, snippet(council_presse_fts, 0, '', '', ' … ', 16) "
+                "FROM council_presse_fts WHERE council_presse_fts MATCH ? ORDER BY rank LIMIT ?",
+                (" OR ".join(terms), limit)).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [(r[0], -float(r[1]), r[2] or "") for r in rows]
+
+    def presse_missing_embeddings(self) -> list[dict]:
+        """PMs, deren Chunk-Vektoren fehlen oder deren Text sich geändert hat
+        (SHA-256-Abgleich, analog vorlagen_missing_embeddings)."""
+        import hashlib
+        stored = dict(self._conn.execute(
+            "SELECT presse_id, MIN(text_hash) FROM council_presse_embeddings GROUP BY presse_id"
+        ).fetchall())
+        out = []
+        for r in self._conn.execute("SELECT id, titel, text FROM council_presse").fetchall():
+            blob = f"{r['titel']}\n{r['text']}"
+            h = hashlib.sha256(blob.encode("utf-8", "replace")).hexdigest()
+            if stored.get(r["id"]) != h:
+                out.append({"id": r["id"], "text": blob, "text_hash": h})
+        return out
+
+    def replace_presse_embeddings(self, presse_id: int, text_hash: str,
+                                  chunks: list[tuple[str, bytes]]) -> None:
+        with self._conn:
+            self._conn.execute(
+                "DELETE FROM council_presse_embeddings WHERE presse_id = ?", (presse_id,))
+            self._conn.executemany(
+                "INSERT INTO council_presse_embeddings "
+                "(presse_id, chunk_idx, text_hash, chunk_text, vector) VALUES (?, ?, ?, ?, ?)",
+                [(presse_id, i, text_hash, t, v) for i, (t, v) in enumerate(chunks)],
+            )
+
+    def get_presse_embeddings(self) -> list:
+        return self._conn.execute(
+            "SELECT presse_id, chunk_text, vector FROM council_presse_embeddings "
+            "ORDER BY presse_id, chunk_idx").fetchall()
+
+    def presse_embeddings_version(self) -> tuple:
+        count = self._conn.execute("SELECT COUNT(*) FROM council_presse_embeddings").fetchone()[0]
+        data_version = self._conn.execute("PRAGMA data_version").fetchone()[0]
+        return (count, data_version)
 
     # ---- field recaps (auto-generated LLM summaries per policy field) ----
 
@@ -3113,21 +4765,405 @@ class CouncilStore:
                 break
         return out
 
+    def orte_fuer_decisions(self, ids: list[int]) -> dict[int, dict]:
+        """Erste verortete Orts-Entität je Beschluss (5a/I-10) — Futter für die
+        Mini-Karte unter KI-Antworten. Nur kind='ort': der Sitz einer
+        Organisation wäre als Pin irreführend. Größte Entität (n) zuerst."""
+        if not ids:
+            return {}
+        ph = ",".join("?" * len(ids))
+        rows = self._conn.execute(
+            f"""SELECT l.decision_id, e.name, m.lat, m.lon
+                FROM council_entity_links l
+                JOIN council_entities e ON e.id = l.entity_id
+                JOIN council_entity_meta m ON m.slug = e.slug
+                WHERE l.decision_id IN ({ph}) AND m.lat IS NOT NULL
+                  AND e.kind = 'ort'
+                ORDER BY e.n DESC""",
+            ids,
+        ).fetchall()
+        out: dict[int, dict] = {}
+        for r in rows:
+            out.setdefault(r["decision_id"], {"ort_name": r["name"],
+                                              "lat": r["lat"], "lon": r["lon"]})
+        return out
+
+    # ---- Wortbeiträge aus Protokollen (Task 16) ----------------------------
+
+    def save_wortbeitraege(self, ksinr: int, rows: list[dict]) -> int:
+        """Beiträge einer Sitzung ersetzen (ein Protokoll = eine Wahrheit) —
+        FTS und Embeddings der alten Zeilen werden mit abgeräumt. Auch ein
+        LEERES Ergebnis markiert das Protokoll als erledigt (Formalien-
+        Niederschriften), sonst kostete es jede Nacht erneut einen LLM-Call."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            # DELETEs per Subquery über ksinr, NICHT über eine vorab gelesene
+            # ID-Liste: Läuft ein zweiter Save desselben Protokolls parallel,
+            # wäre die Liste beim eigenen BEGIN schon veraltet und FTS-/
+            # Embedding-Zeilen des anderen blieben als Waisen zurück
+            # (Review-Befund zu #387).
+            self._conn.execute(
+                "DELETE FROM council_wortbeitraege_fts WHERE rowid IN "
+                "(SELECT id FROM council_wortbeitraege WHERE ksinr = ?)", (ksinr,))
+            self._conn.execute(
+                "DELETE FROM council_wortbeitraege_embeddings WHERE wb_id IN "
+                "(SELECT id FROM council_wortbeitraege WHERE ksinr = ?)", (ksinr,))
+            self._conn.execute("DELETE FROM council_wortbeitraege WHERE ksinr = ?", (ksinr,))
+            self._conn.execute(
+                "UPDATE council_protocols SET wortbeitraege_extracted_at = ? WHERE ksinr = ?",
+                (now, ksinr))
+            n = 0
+            for pos, r in enumerate(rows):
+                text = (r.get("text") or "").strip()
+                if not text:
+                    continue
+                cur = self._conn.execute(
+                    "INSERT INTO council_wortbeitraege "
+                    "(ksinr, position, art, top, sprecher, partei, text, antwort, extracted_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (ksinr, pos, r.get("art") or "rede", r.get("top"),
+                     r.get("sprecher"), r.get("partei"), text[:2000],
+                     (r.get("antwort") or "").strip()[:2000] or None, now))
+                inhalt = " ".join(x for x in (r.get("sprecher"), r.get("partei"), r.get("top"),
+                                              text, r.get("antwort")) if x)
+                self._conn.execute(
+                    "INSERT INTO council_wortbeitraege_fts(rowid, content) VALUES (?, REPLACE(?, 'ß', 'ss'))",
+                    (cur.lastrowid, inhalt))
+                n += 1
+            return n
+
+    def aktive_fraktionen(self, monate: int = 12, min_beitraege: int = 5) -> list[str]:
+        """Fraktions-Labels mit nennenswerten Wortbeiträgen im Zeitraum — die
+        deterministische „Wer sitzt gerade im Rat"-Liste für die Vollständig-
+        keits-Zeile des Parteien-Bausteins (Tims Direktive 10.08.), ohne
+        kuratierte Stammdaten."""
+        rows = self._conn.execute(
+            "SELECT w.partei, COUNT(*) n FROM council_wortbeitraege w "
+            "JOIN council_sessions s ON s.ksinr = w.ksinr "
+            "WHERE w.partei IS NOT NULL AND w.partei != '' "
+            "AND s.session_date >= date('now', ?) "
+            "GROUP BY w.partei HAVING n >= ? ORDER BY n DESC",
+            (f"-{int(monate)} months", int(min_beitraege))).fetchall()
+        return [r[0] for r in rows]
+
+    def protocol_raw_text(self, ksinr: int) -> str | None:
+        row = self._conn.execute(
+            "SELECT raw_text FROM council_protocols WHERE ksinr = ?", (ksinr,)).fetchone()
+        return row[0] if row else None
+
+    def ksinr_ohne_wortbeitraege(self, limit: int = 0) -> list[int]:
+        """Protokolle mit Text, deren Wortbeitrags-Extraktion noch aussteht.
+        Marker-Spalte statt NOT EXISTS: auch ein leeres Ergebnis gilt als
+        erledigt; nur echte Fehlschläge (kein Save) kommen wieder dran."""
+        sql = ("SELECT p.ksinr FROM council_protocols p "
+               "WHERE p.raw_text IS NOT NULL AND p.status = 'ok' "
+               "AND p.wortbeitraege_extracted_at IS NULL "
+               "ORDER BY p.ksinr DESC")
+        if limit:
+            sql += f" LIMIT {int(limit)}"
+        return [r[0] for r in self._conn.execute(sql).fetchall()]
+
+    def wortbeitrag_ids_nach_art(self, art: str) -> list[int]:
+        """Alle Wortbeitrags-ids einer Art — Filter für den Zusagen-Kanal.
+        Klein genug (1.437 Zusagen), um sie je Frage zu holen."""
+        return [r[0] for r in self._conn.execute(
+            "SELECT id FROM council_wortbeitraege WHERE art = ?", (art,))]
+
+    def wortbeitraege_by_ids(self, ids: list[int]) -> list[dict]:
+        if not ids:
+            return []
+        ph = ",".join("?" * len(ids))
+        rows = self._conn.execute(
+            f"""SELECT w.id, w.ksinr, w.art, w.top, w.sprecher, w.partei,
+                       w.text, w.antwort, cs.committee, cs.session_date
+                FROM council_wortbeitraege w
+                LEFT JOIN council_sessions cs ON cs.ksinr = w.ksinr
+                WHERE w.id IN ({ph})""", ids).fetchall()
+        by_id = {r["id"]: dict(r) for r in rows}
+        return [by_id[i] for i in ids if i in by_id]
+
+    # Sammel-TOPs: Hier landet alles, was sonst nirgends hingehört. Ein Treffer
+    # darauf koppelt keine Debatte ZUR SACHE, sondern eine Wundertüte.
+    _SAMMEL_TOPS = ("anfragen und anregungen", "einwohnerfragestunde",
+                    "genehmigung der tagesordnung", "mitteilungen",
+                    "verschiedenes", "niederschrift")
+
+    @staticmethod
+    def _top_schluessel(text: str | None) -> tuple[str | None, str]:
+        """TOP-Angabe → (Nummer, normalisierter Titel).
+
+        Die Extraktion schreibt mal „10 Fliegerhorst …“, mal nur den Titel, mal
+        „Ö 6.1“ — und die Tagesordnung führt denselben Punkt gern mit Zusatz
+        („- Bericht“, „- Beschluss“). Beides wird hier eingeebnet, damit
+        Beschluss und Wortbeitrag über dieselbe Station zusammenfinden.
+        """
+        t = " ".join((text or "").split())
+        m = re.match(r"^(?:ö|n|ö\.|n\.)?\s*(\d+(?:\.\d+)*)\b[\s.:-]*(.*)$", t, re.I)
+        nummer, rest = (m.group(1), m.group(2)) if m else (None, t)
+        rest = re.sub(r"\s*[-–]\s*(bericht|beschluss|sachstandsbericht|antrag|"
+                      r"vorlage|sachstand)\s*$", "", rest, flags=re.I)
+        rest = re.sub(r"[^0-9a-zäöüß]+", " ", rest.lower().replace("ß", "ss")).strip()
+        return nummer, rest
+
+    def wortbeitraege_zu_beschluessen(self, decisions: list[dict], max_gesamt: int = 6,
+                                      max_je_top: int = 4) -> list[dict]:
+        """Die Debatte, die zu diesen Beschlüssen GEHÖRT — über die Station,
+        nicht über Wortähnlichkeit.
+
+        Warum es das braucht: Die semantische Suche findet nur Beiträge, die im
+        Wortfeld der Frage liegen. Die Aussprache zu einem Bericht benutzt aber
+        die Sprache der Sache — auf die Frage „Sondermüll im Schießstand?“
+        antwortet das Protokoll mit Vinylchlorid, Zu- und Abstrom, Messpunkten.
+        Diese Beiträge fielen durch jedes Wortfeld-Raster, obwohl sie zum
+        zitierten Bericht gehören (Befund an der Fliegerhorst-Antwort vom
+        10.08.2026). Zugehörigkeit ist hier das bessere Signal als Ähnlichkeit.
+
+        Gekoppelt wird über Sitzung (ksinr) UND Tagesordnungspunkt; Sammel-TOPs
+        („Anfragen und Anregungen“) bleiben außen vor, und die Menge ist hart
+        gedeckelt — der Kanal soll ergänzen, nicht den Kontext fluten.
+        """
+        stationen: dict[int, list[tuple[str | None, str, int]]] = {}
+        for d in decisions:
+            ks = d.get("ksinr")
+            if not ks:
+                continue
+            nummer, titel = self._top_schluessel(d.get("title"))
+            # item_number ist die verlässlichere Nummer (title trägt sie selten).
+            nr = str(d.get("item_number") or "").strip() or nummer
+            if not titel or any(s in titel for s in self._SAMMEL_TOPS):
+                continue
+            stationen.setdefault(int(ks), []).append((nr, titel, d["id"]))
+        if not stationen:
+            return []
+        ph = ",".join("?" * len(stationen))
+        rows = self._conn.execute(
+            f"""SELECT w.id, w.ksinr, w.art, w.top, w.sprecher, w.partei,
+                       w.text, w.antwort, cs.committee, cs.session_date
+                FROM council_wortbeitraege w
+                LEFT JOIN council_sessions cs ON cs.ksinr = w.ksinr
+                WHERE w.ksinr IN ({ph}) AND w.top IS NOT NULL
+                ORDER BY cs.session_date DESC, w.id""", list(stationen)).fetchall()
+        treffer: list[dict] = []
+        je_top: dict[tuple[int, str], int] = {}
+        for r in rows:
+            w_nr, w_titel = self._top_schluessel(r["top"])
+            if not w_titel or any(s in w_titel for s in self._SAMMEL_TOPS):
+                continue
+            for d_nr, d_titel, did in stationen[r["ksinr"]]:
+                # Titel-Enthaltensein in beide Richtungen: Die Tagesordnung
+                # kürzt mal den Beschluss-, mal den Protokoll-Titel.
+                passt = (d_titel in w_titel or w_titel in d_titel) or (
+                    bool(w_nr) and bool(d_nr) and w_nr == d_nr)
+                if not passt:
+                    continue
+                key = (r["ksinr"], d_titel)
+                if je_top.get(key, 0) >= max_je_top:
+                    break
+                je_top[key] = je_top.get(key, 0) + 1
+                treffer.append({**dict(r), "zu_beschluss": did})
+                break
+            if len(treffer) >= max_gesamt:
+                break
+        return treffer
+
+    def search_wortbeitraege_fts(self, query: str, limit: int = 20) -> list[tuple]:
+        """BM25 über die Beiträge → ``[(wb_id, score)]``; Fehler → leer.
+        Term-Aufbereitung wie bei search_presse_fts (OR-Verknüpfung)."""
+        terms = [t for t in re.findall(r"[0-9a-zäöü]+", query.lower().replace("ß", "ss"))
+                 if len(t) >= 3][:12]
+        if not terms:
+            return []
+        try:
+            rows = self._conn.execute(
+                "SELECT rowid, rank FROM council_wortbeitraege_fts "
+                "WHERE council_wortbeitraege_fts MATCH ? ORDER BY rank LIMIT ?",
+                (" OR ".join(terms), limit)).fetchall()
+            return [(r[0], -float(r[1])) for r in rows]
+        except sqlite3.OperationalError:
+            return []
+
+    def wortbeitraege_missing_embeddings(self) -> list[dict]:
+        rows = self._conn.execute(
+            """SELECT w.id, w.text, w.sprecher, w.top FROM council_wortbeitraege w
+               LEFT JOIN council_wortbeitraege_embeddings e ON e.wb_id = w.id
+               WHERE e.wb_id IS NULL""").fetchall()
+        return [dict(r) for r in rows]
+
+    def replace_wortbeitrag_embedding(self, wb_id: int, text_hash: str, vector: bytes) -> None:
+        with self._conn:
+            self._conn.execute(
+                "INSERT OR REPLACE INTO council_wortbeitraege_embeddings (wb_id, text_hash, vector) "
+                "VALUES (?, ?, ?)", (wb_id, text_hash, vector))
+
+    def wortbeitraege_embedding_rows(self) -> list[tuple]:
+        return self._conn.execute(
+            "SELECT wb_id, vector FROM council_wortbeitraege_embeddings").fetchall()
+
+    def partei_meinungen_cache_get(self, schluessel: str, max_age_days: int = 14):
+        row = self._conn.execute(
+            "SELECT ergebnis FROM council_partei_meinungen_cache "
+            "WHERE schluessel = ? AND created_at >= datetime('now', ?)",
+            (schluessel, f"-{int(max_age_days)} days")).fetchone()
+        if not row:
+            return None
+        try:
+            return json.loads(row[0])
+        except (ValueError, TypeError):
+            return None
+
+    def partei_meinungen_cache_set(self, schluessel: str, frage: str, ergebnis) -> None:
+        with self._conn:
+            self._conn.execute(
+                "INSERT OR REPLACE INTO council_partei_meinungen_cache "
+                "(schluessel, frage, ergebnis, created_at) VALUES (?, ?, ?, datetime('now'))",
+                (schluessel, frage[:300], json.dumps(ergebnis, ensure_ascii=False)))
+            # Alt-Einträge räumen sich beim Schreiben mit weg (klein halten).
+            self._conn.execute(
+                "DELETE FROM council_partei_meinungen_cache "
+                "WHERE created_at < datetime('now', '-30 days')")
+
+    def wortbeitraege_embeddings_version(self) -> str:
+        """Billiger Cache-Schlüssel für die In-Memory-Matrix."""
+        row = self._conn.execute(
+            "SELECT COUNT(*), COALESCE(MAX(wb_id), 0) "
+            "FROM council_wortbeitraege_embeddings").fetchone()
+        return f"{row[0]}-{row[1]}"
+
+    def save_qa_feedback(self, frage: str, antwort_auszug: str | None,
+                         bewertung: str, grund: str | None,
+                         user_id: int | None = None) -> None:
+        """Daumen hoch/runter zu einer KI-Antwort (5a/I-03).
+
+        Ein Konto hat je Frage **eine** Stimme: Der nachgereichte Grund und die
+        korrigierte Bewertung (Daumen runter → hoch) überschreiben die frühere
+        Zeile, statt sich als widersprüchliches Paar in der Tabelle zu stapeln —
+        sonst zählte jede Meinungsänderung doppelt. Anonyme Rückmeldungen haben
+        keinen Schlüssel und werden weiterhin angehängt.
+        """
+        if bewertung not in ("up", "down"):
+            raise ValueError(f"bewertung muss up/down sein, nicht {bewertung!r}")
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        werte = (frage[:300], (antwort_auszug or "")[:500] or None, bewertung,
+                 (grund or "").strip()[:500] or None, user_id, now)
+        with self._conn:
+            if user_id is not None:
+                vorher = self._conn.execute(
+                    "SELECT id FROM council_qa_feedback WHERE user_id = ? AND frage = ? "
+                    "ORDER BY id DESC LIMIT 1", (user_id, werte[0])).fetchone()
+                if vorher:
+                    self._conn.execute(
+                        "UPDATE council_qa_feedback SET antwort_auszug = ?, bewertung = ?, "
+                        "grund = ?, created = ? WHERE id = ?",
+                        (werte[1], bewertung, werte[3], now, vorher[0]))
+                    return
+            self._conn.execute(
+                "INSERT INTO council_qa_feedback (frage, antwort_auszug, bewertung, grund, user_id, created) "
+                "VALUES (?, ?, ?, ?, ?, ?)", werte,
+            )
+
+    def juengste_sitzungen_mit_beschluessen(self, limit: int = 2) -> list[dict]:
+        """Die jüngsten vergangenen Sitzungen, zu denen Beschlüsse extrahiert
+        sind — Futter für frische KI-Beispielfragen (5a/I-07). ``top_titel``
+        nennt den wichtigsten Beschluss der Sitzung, damit ein Vorschlag
+        konkret nach dem Inhalt fragen kann statt nur nach dem Datum."""
+        rows = self._conn.execute(
+            """SELECT cs.committee, cs.session_date, COUNT(*) AS n,
+                      (SELECT d2.title FROM council_decisions d2
+                       WHERE d2.ksinr = cs.ksinr AND d2.kind = 'decision'
+                         AND d2.title IS NOT NULL
+                       ORDER BY COALESCE(d2.importance, 0) DESC, d2.id LIMIT 1) AS top_titel
+               FROM council_decisions d
+               JOIN council_sessions cs ON cs.ksinr = d.ksinr
+               WHERE d.kind = 'decision'
+               GROUP BY d.ksinr ORDER BY cs.session_date DESC LIMIT ?""",
+            (int(limit),),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
     def get_decisions_by_ids(self, ids: list[int]) -> list[dict]:
-        """Fetch decisions by id, preserving the given order (for Q&A citations)."""
+        """Fetch decisions by id, preserving the given order (for Q&A citations).
+
+        Liefert auch Abstimmung (vote/gegenstimmen/enthaltungen/raw_result) und
+        amount_eur mit: raw_result geht bei strittigen Beschlüssen in den
+        QA-Kontext (dort stehen oft die Fraktionen der Gegenstimmen), und die
+        Fallback-Folgefragen in council/qa.py prüfen gegenstimmen/amount_eur —
+        ohne diese Felder liefen die Zweige ins Leere."""
         if not ids:
             return []
         ph = ",".join("?" * len(ids))
         rows = self._conn.execute(
             f"""SELECT d.id, d.title, d.summary, d.beschluss, d.vorlage_nr,
+                       d.kvonr,
+                       -- ksinr + item_number: Adresse der Station in der
+                       -- Sitzung — darüber koppelt wortbeitraege_zu_beschluessen
+                       -- die Aussprache an den Beschluss.
+                       d.ksinr, d.item_number,
                        d.policy_field, d.outcome, d.impact, d.impact_reason,
+                       d.vote, d.gegenstimmen, d.enthaltungen, d.raw_result,
+                       d.amount_eur, d.factions, d.abweichung,
+                       v.amt, v.klima_check,
                        cs.session_date, cs.committee
                 FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr
+                LEFT JOIN council_vorlagen v ON v.kvonr = d.kvonr
                 WHERE d.id IN ({ph})""",
             ids,
         ).fetchall()
         by_id = {r["id"]: dict(r) for r in rows}
         return [by_id[i] for i in ids if i in by_id]
+
+    def antrag_decision_ids(self, party: str, terms: str = "", limit: int = 12) -> list[int]:
+        """Beschluss-ids, bei denen die Fraktion/Gruppe ``party`` als Antragsteller
+        auftritt — aus dem factions-Feld des Protokolls ODER über eine als Antrag
+        erkannte Anlage der Vorlage. Mit ``terms`` wird thematisch eingegrenzt
+        (Schnitt mit der FTS-Trefferliste), sonst kommen die neuesten zuerst.
+        Für das Fragetyp-Routing der KI-Frage (typ=partei)."""
+        like = f'%{party.strip()}%'
+        rows = self._conn.execute(
+            """SELECT DISTINCT d.id FROM council_decisions d
+               JOIN council_sessions cs ON cs.ksinr = d.ksinr
+               LEFT JOIN council_vorlagen v ON v.vorlage_nr = d.vorlage_nr
+               LEFT JOIN council_anlagen a ON a.kvonr = v.kvonr AND a.is_antrag = 1
+               WHERE d.kind = 'decision'
+                 AND (d.factions LIKE ? OR a.antragsteller LIKE ?)
+               ORDER BY cs.session_date DESC, d.id DESC LIMIT 400""",
+            (like, like),
+        ).fetchall()
+        ids = [r["id"] for r in rows]
+        if terms:
+            fts = {i for i, *_ in self.search_decisions_fts(terms, limit=250)}
+            thematisch = [i for i in ids if i in fts]
+            # Thematischer Schnitt zuerst; ohne Schnitt-Treffer die neuesten Anträge
+            # der Fraktion — besser als gar kein Partei-Signal im Kandidaten-Pool.
+            ids = thematisch or ids
+        return ids[:limit]
+
+    def find_decision_ids(self, *, vorlage_nr: str | None = None, committee: str | None = None,
+                          session_date: str | None = None, title_like: str | None = None) -> list[int]:
+        """Beschluss-ids über natürliche Schlüssel statt AUTOINCREMENT-ids.
+
+        Für DB-portable Eval-Gold-Cases (eval/cases_qa.json): Vorlagen-Nummer,
+        Sitzungsdatum und Titel sind auf jeder Kopie der Datenbank gleich, die
+        ids nicht. Filter sind UND-verknüpft, mindestens einer ist Pflicht;
+        Teilabstimmungen bleiben außen vor (nicht eigenständig zitierbar)."""
+        conds, params = ["d.kind = 'decision'"], []
+        if vorlage_nr:
+            conds.append("d.vorlage_nr = ?"); params.append(str(vorlage_nr).strip())
+        if committee:
+            conds.append("cs.committee LIKE ?"); params.append(f"%{committee.strip()}%")
+        if session_date:
+            conds.append("cs.session_date = ?"); params.append(str(session_date).strip())
+        if title_like:
+            conds.append("d.title LIKE ?"); params.append(f"%{title_like.strip()}%")
+        if len(conds) == 1:
+            raise ValueError("find_decision_ids braucht mindestens einen Filter")
+        rows = self._conn.execute(
+            f"""SELECT d.id FROM council_decisions d
+                JOIN council_sessions cs ON cs.ksinr = d.ksinr
+                WHERE {' AND '.join(conds)}
+                ORDER BY cs.session_date DESC, d.id DESC""",
+            params,
+        ).fetchall()
+        return [r["id"] for r in rows]
 
     def get_protocols_raw(self) -> list[dict]:
         """All stored protocols with their raw text — for re-extraction without

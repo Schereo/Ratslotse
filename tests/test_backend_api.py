@@ -24,8 +24,8 @@ os.environ["DISABLE_RATE_LIMIT"] = "1"  # avoid state bleeding across tests
 
 from fastapi.testclient import TestClient  # noqa: E402
 from app.main import app  # noqa: E402
-from nwz import prompts  # noqa: E402
-from nwz.store import Store  # noqa: E402
+from kern import prompts  # noqa: E402
+from kern.store import Store  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 from council.scraper import CouncilSession, AgendaItem  # noqa: E402
 from scripts.grant_admin import grant_admin  # noqa: E402
@@ -306,6 +306,8 @@ def test_admin_jobs_listet_registry_auch_ohne_laeufe(client):
     assert {j["key"] for j in b} == {
         "check_council", "check_committees", "check_protocols", "weekly_enrich",
         "check_vorlage_follows", "remind_setup", "backup_db", "abendmeldungen",
+        "check_presse",  # Stufe 3a: Stadt-Pressemitteilungen, täglich
+        "render_plaene",  # P1: Planzeichnungen als Bilder, sonntags
     }
     job = next(j for j in b if j["key"] == "check_council")
     assert job["state"] == "unknown" and job["last"] is None and job["history"] == []
@@ -788,6 +790,99 @@ def test_feedback_ok_without_email_config(client):
     with patch("app.routers.feedback.get_settings", return_value=fake):
         r = client.post("/api/feedback", json={"kind": "other", "message": "Test ohne Mail-Config"})
     assert r.status_code == 200 and r.json()["ok"] is True
+
+
+# ---- Kontaktformular der Hilfe-Seite (öffentlich, Apple-Richtlinie 1.5) ----
+def _support_settings():
+    from types import SimpleNamespace
+    return SimpleNamespace(resend_api_key="x", feedback_email="ops@test.de",
+                           web_admin_email="admin@test.de", email_from="Ratslotse <f@x.de>")
+
+
+def test_support_kontakt_ohne_anmeldung(client):
+    """Der Kern der Übung: Wer sich NICHT anmelden kann, muss trotzdem schreiben
+    können — genau das verlangt Apple für die Support-URL."""
+    sent = {}
+
+    def fake_send(to, subject, html, **kw):
+        sent.update(to=to, subject=subject, reply_to=kw.get("reply_to"), text=kw.get("text"))
+        return "msg-id"
+
+    with patch("app.routers.feedback.send_email", side_effect=fake_send), \
+         patch("app.routers.feedback.get_settings", return_value=_support_settings()):
+        r = TestClient(app).post("/api/feedback/kontakt", json={
+            "kind": "konto", "email": "gast@example.org",
+            "message": "Ich komme nicht mehr in mein Konto.",
+        })
+    assert r.status_code == 202 and r.json()["ok"] is True
+    assert sent["to"] == "ops@test.de"
+    # Ohne Reply-To wäre die Anfrage unbeantwortbar — das ist der ganze Zweck.
+    assert sent["reply_to"] == "gast@example.org"
+    assert "Konto & Anmeldung" in sent["subject"]
+    assert "nicht mehr in mein Konto" in sent["text"]
+
+
+def test_support_kontakt_wird_gespeichert(client):
+    """Erst ablegen, dann mailen: Ein Resend-Aussetzer darf niemanden still
+    aussperren. Anonyme Anfragen tragen owner_id 0."""
+    with patch("app.routers.feedback.send_email", side_effect=RuntimeError("Resend down")), \
+         patch("app.routers.feedback.get_settings", return_value=_support_settings()):
+        r = TestClient(app).post("/api/feedback/kontakt", json={
+            "kind": "bug", "email": "gast@example.org", "message": "Die Karte lädt nicht.",
+        })
+    assert r.status_code == 202          # der Absender merkt vom Mail-Fehler nichts
+    store = Store(NWZ_DB)
+    try:
+        row = store.list_feedback()[0]
+        assert row["owner_id"] == 0 and row["email"] == "gast@example.org"
+        assert row["message"] == "Die Karte lädt nicht."
+    finally:
+        store.close()
+
+
+def test_support_kontakt_honigtopf(client):
+    """Gefülltes Honigtopf-Feld: nach außen wie ein Erfolg, real verworfen."""
+    with patch("app.routers.feedback.send_email", side_effect=AssertionError("darf nicht mailen")), \
+         patch("app.routers.feedback.get_settings", return_value=_support_settings()):
+        r = TestClient(app).post("/api/feedback/kontakt", json={
+            "kind": "other", "email": "bot@example.org",
+            "message": "Günstige Uhren kaufen", "website": "http://spam.example",
+        })
+    assert r.status_code == 202 and r.json()["ok"] is True
+    store = Store(NWZ_DB)
+    try:
+        assert store.list_feedback() == []
+    finally:
+        store.close()
+
+
+def test_support_kontakt_validierung():
+    c = TestClient(app)
+    # Ohne Adresse gäbe es keine Antwort — deshalb Pflichtfeld.
+    assert c.post("/api/feedback/kontakt",
+                  json={"kind": "konto", "message": "hallo welt"}).status_code == 422
+    assert c.post("/api/feedback/kontakt",
+                  json={"kind": "konto", "email": "keine-adresse", "message": "hallo welt"}).status_code == 422
+    assert c.post("/api/feedback/kontakt",
+                  json={"kind": "nope", "email": "a@b.de", "message": "hallo welt"}).status_code == 422
+    assert c.post("/api/feedback/kontakt",
+                  json={"kind": "bug", "email": "a@b.de", "message": "x"}).status_code == 422
+
+
+def test_support_kontakt_ohne_mail_konfiguration():
+    """Kein Resend-Key → trotzdem 202, und die Nachricht liegt im Admin-Panel."""
+    from types import SimpleNamespace
+    fake = SimpleNamespace(resend_api_key="", feedback_email="", web_admin_email="", email_from="")
+    with patch("app.routers.feedback.get_settings", return_value=fake):
+        r = TestClient(app).post("/api/feedback/kontakt", json={
+            "kind": "feature", "email": "gast@example.org", "message": "Bitte eine Karte für Radwege",
+        })
+    assert r.status_code == 202 and r.json()["ok"] is True
+    store = Store(NWZ_DB)
+    try:
+        assert store.list_feedback()[0]["email"] == "gast@example.org"
+    finally:
+        store.close()
 
 
 # ---- onboarding (serverseitiger Kurs-Fortschritt) ----
@@ -1503,7 +1598,7 @@ def test_display_name_register_change_and_greeting(client):
     client.post("/api/account/display-name", json={"display_name": "  "})
     assert client.get("/api/auth/me").json()["display_name"] is None
 
-    from nwz.digest_email import render_html_email
+    from kern.digest_email import render_html_email
     assert "Moin Timo," in render_html_email("Betreff", "Inhalt", greeting_name="Timo")
     assert "Moin" not in render_html_email("Betreff", "Inhalt").split("Ratslotse")[1][:40]
 
@@ -1547,6 +1642,209 @@ def test_topic_suggestions_dedupe_similar(client):
 
 
 # ---- KI-Frage: Folgefragen im Stream (Design 24a) ----
+def test_qa_share_roundtrip(client):
+    """Teilen mit Substanz (Task 31): POST speichert den Antwort-Snapshot,
+    GET liefert ihn ÖFFENTLICH (ohne Login) und ohne Konto-Daten."""
+    _register(client)
+    r = client.post("/api/council/qa-share", json={
+        "frage": "Was wurde zum Stadion entschieden?",
+        "antwort": "Der Rat stimmte zu [5].",
+        "quellen": [{"id": 5, "title": "Stadionneubau", "session_date": "2026-06-01",
+                     "committee": "Rat", "outcome": "angenommen"}],
+    })
+    assert r.status_code == 201
+    token = r.json()["token"]
+    assert len(token) >= 16
+
+    client.cookies.clear()  # public: auch ohne Login lesbar
+    r = client.get(f"/api/council/qa-share/{token}")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["antwort"] == "Der Rat stimmte zu [5]."
+    assert body["quellen"][0]["title"] == "Stadionneubau"
+    assert "user_id" not in body
+
+    # Alte Snapshots (ohne Bausteine) liefern leere Listen statt zu fehlen.
+    assert body["debatten"] == [] and body["presse"] == []
+    assert body["anlagen"] == [] and body["parteien"] == []
+
+    assert client.get("/api/council/qa-share/gibtsnicht").status_code == 404
+    # Ohne Login kein Anlegen.
+    assert client.post("/api/council/qa-share", json={
+        "frage": "x", "antwort": "y", "quellen": []}).status_code in (401, 403)
+
+
+def test_qa_share_traegt_bausteine(client):
+    """Die geteilte Seite zeigt dieselben Bausteine wie das Gespräch —
+    Debatten, Presse, Anlagen und Fraktions-Positionen wandern mit in den
+    Snapshot (vorher sah der Empfänger nur Text + Beschlüsse)."""
+    _register(client)
+    r = client.post("/api/council/qa-share", json={
+        "frage": "Was sagt der Rat zum Stadion?",
+        "antwort": "Der Rat stimmte zu [5].",
+        "quellen": [{"id": 5, "title": "Stadionneubau", "session_date": "2026-06-01",
+                     "committee": "Rat", "outcome": "angenommen"}],
+        "debatten": [{"sprecher": "Ratsherr Wenzel", "partei": "SPD", "art": "rede",
+                      "top": "6.1 Stadionneubau", "auszug": "Warnte vor einem Millionengrab.",
+                      "committee": "Rat", "datum": "2026-06-01"}],
+        "presse": [{"titel": "Stadion: Stadt informiert",
+                    "url": "https://www.oldenburg.de/x", "datum": "2026-06-02"}],
+        "anlagen": [{"label": "Machbarkeitsstudie", "url": "https://ris/anlage.pdf",
+                     "vorlage_nr": "26/0123", "vorlage_titel": "Stadionneubau",
+                     "auszug": "Kapazität 15.000."}],
+        "parteien": [{"partei": "SPD", "haltung": "dagegen", "position": "Skeptisch.",
+                      "einig": True, "hinweis": None, "beitraege": 3,
+                      "kernaussage": {"text": "Kein zweites Millionengrab.",
+                                      "sprecher": "Wenzel", "datum": "01.06.2026"}}],
+    })
+    assert r.status_code == 201
+    token = r.json()["token"]
+
+    client.cookies.clear()  # öffentlich lesbar
+    body = client.get(f"/api/council/qa-share/{token}").json()
+    assert body["debatten"][0]["sprecher"] == "Ratsherr Wenzel"
+    assert body["presse"][0]["url"] == "https://www.oldenburg.de/x"
+    assert body["anlagen"][0]["vorlage_nr"] == "26/0123"
+    assert body["parteien"][0]["haltung"] == "dagegen"
+    assert "user_id" not in body
+
+
+def test_partei_meinungen_endpoint(client, monkeypatch):
+    """Baustein-Endpoint (Task 30): liefert die LLM-Verdichtung; bei dünner
+    Lage oder Fehlern IMMER {parteien: []} statt 500 (Zusatzbaustein)."""
+    from app.routers import council as council_router
+    from council import embeddings as emb
+    from council import qa as qa_mod
+
+    _register(client)
+    # Je Aufruf andere Treffer-IDs: der ID-Hash-Cache des Endpoints würde
+    # sonst Fall 2 mit dem Ergebnis von Fall 1 beantworten.
+    zaehler = {"n": 0}
+
+    def hits(*a, **k):
+        zaehler["n"] += 1
+        return [(zaehler["n"], 0.5)]
+
+    monkeypatch.setattr(emb, "search_wortbeitraege_je_fraktion", hits)
+    meinung = [{"partei": "SPD", "haltung": "dafür", "position": "Dafür.", "einig": True,
+                "hinweis": None, "kernaussage": None, "beitraege": 3}]
+    monkeypatch.setattr(qa_mod, "partei_meinungen", lambda *a, **k: meinung)
+    r = client.post("/api/council/partei-meinungen", json={"frage": "Stadionneubau?"})
+    assert r.status_code == 200 and r.json()["parteien"] == meinung
+
+    monkeypatch.setattr(qa_mod, "partei_meinungen", lambda *a, **k: None)
+    assert client.post("/api/council/partei-meinungen",
+                       json={"frage": "Stadionneubau?"}).json()["parteien"] == []
+
+    def kaputt(*a, **k):
+        raise RuntimeError("llm down")
+    monkeypatch.setattr(qa_mod, "partei_meinungen", kaputt)
+    r = client.post("/api/council/partei-meinungen", json={"frage": "Stadionneubau?"})
+    assert r.status_code == 200 and r.json()["parteien"] == []
+
+    # Cache-Hit: gleiche Treffer-IDs wie Fall 1 → Ergebnis kommt ohne LLM
+    # (partei_meinungen ist noch der kaputt-Mock — er darf nicht laufen).
+    zaehler["n"] = 0
+    r = client.post("/api/council/partei-meinungen", json={"frage": "Anders formuliert?"})
+    assert r.status_code == 200 and r.json()["parteien"] == meinung
+
+
+def test_ask_ersetzt_abgerissenen_stream(client, monkeypatch):
+    """Riss der LLM-Stream mitten in der Antwort, generiert /ask einmal
+    komplett neu und ersetzt den Torso per replace-Event (Befund 10.08.) —
+    vorher blieb still ein Satz-Torso mit Fallback-Chips stehen."""
+    from app.routers import council as council_router
+    from council import qa as qa_mod
+
+    _register(client)
+    cand = [{"id": 5, "title": "Entlastungsstraße Fliegerhorst", "summary": "Planung",
+             "policy_field": "verkehr", "outcome": "angenommen", "session_date": "2026-04-13",
+             "committee": "Verkehrsausschuss", "score": 1.0}]
+    monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (cand, "semantisch"))
+    monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
+
+    def kaputter_stream(*a, **k):
+        yield "Die Planung begann am 15. März 2018 mit Aufstellungsbes"
+        raise RuntimeError("provider hung up")
+
+    monkeypatch.setattr(qa_mod, "answer_stream", kaputter_stream)
+    monkeypatch.setattr(qa_mod, "answer_question",
+                        lambda *a, **k: ("Die Planung begann 2018 und läuft [5].", [5]))
+
+    def frag():
+        with client.stream("POST", "/api/council/ask",
+                           json={"question": "Stand der Entlastungsstraße?"}) as r:
+            return [json.loads(line[6:]) for line in "".join(r.iter_text()).splitlines()
+                    if line.startswith("data: ")]
+
+    events = frag()
+    replace = next(e for e in events if e["type"] == "replace")
+    assert replace["text"] == "Die Planung begann 2018 und läuft [5]."
+    assert next(e for e in events if e["type"] == "done")["cited"] == [5]
+    assert not any(e["type"] == "abbruch" for e in events)
+
+    # Scheitert auch der Ersatz, wird der Turn ehrlich als abgebrochen markiert
+    # (der Torso bleibt, done kommt trotzdem — das Gespräch bleibt bedienbar).
+    def auch_kaputt(*a, **k):
+        raise RuntimeError("still down")
+
+    monkeypatch.setattr(qa_mod, "answer_question", auch_kaputt)
+    events = frag()
+    assert any(e["type"] == "abbruch" for e in events)
+    assert any(e["type"] == "done" for e in events)
+    assert not any(e["type"] == "replace" for e in events)
+
+
+def test_ask_speichert_nur_mit_einwilligung(client, monkeypatch):
+    """Die Einwilligungs-Schranke der Gesprächs-Speicherung (Review-Befund B6):
+    ohne qa_speichern=1 schreibt /ask NICHTS, mit Einwilligung trägt das
+    done-Event die Gesprächs-id und der Turn liegt in der Datenbank. Clients
+    ohne gespraech_id-Feld (alte App) lösen nie eine Speicherung aus."""
+    from app.routers import council as council_router
+    from council import qa as qa_mod
+    from kern.store import Store
+
+    _register(client)
+    cand = [{"id": 5, "title": "Radverkehrsplan 2026", "summary": "Ausbau",
+             "policy_field": "verkehr", "outcome": "angenommen", "session_date": "2026-07-02",
+             "committee": "Verkehrsausschuss", "score": 1.0}]
+    monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (cand, "semantisch"))
+    monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
+    monkeypatch.setattr(qa_mod, "answer_stream", lambda *a, **k: iter(["Wird ausgebaut [5]."]))
+
+    def frag(body):
+        with client.stream("POST", "/api/council/ask", json=body) as r:
+            events = [json.loads(line[6:]) for line in "".join(r.iter_text()).splitlines()
+                      if line.startswith("data: ")]
+        return next(e for e in events if e["type"] == "done")
+
+    store = Store(NWZ_DB)
+    try:
+        # Nie gefragt (NULL) → kein Save, obwohl der Client das Feld kennt.
+        done = frag({"question": "Was ist mit Radwegen?", "gespraech_id": None})
+        assert done["gespraech_id"] is None
+        assert store._conn.execute("SELECT COUNT(*) FROM qa_gespraeche").fetchone()[0] == 0
+
+        uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
+        store.set_qa_speichern(uid, True)
+        # Alte App: Feld fehlt im Body → weiterhin kein Save (Befund B5).
+        done = frag({"question": "Was ist mit Radwegen?"})
+        assert done.get("gespraech_id") is None
+        assert store._conn.execute("SELECT COUNT(*) FROM qa_gespraeche").fetchone()[0] == 0
+
+        # Einwilligung + Feld → Gespräch samt Turn, id im done-Event.
+        done = frag({"question": "Was ist mit Radwegen?", "gespraech_id": None})
+        gid = done["gespraech_id"]
+        assert gid is not None
+        turns = store.qa_gespraech(gid, uid)["turns"]
+        assert len(turns) == 1 and turns[0]["antwort"].startswith("Wird ausgebaut")
+        # Fremde/erfundene id → still kein Save, tote id wird nicht bestätigt.
+        done = frag({"question": "Und weiter?", "gespraech_id": 999999})
+        assert done["gespraech_id"] is None
+    finally:
+        store.close()
+
+
 def test_ask_stream_haelt_marker_zurueck_und_liefert_suggestions(client, monkeypatch):
     """Der Marker der Folgefragen darf NIE im Antworttext auftauchen — auch dann
     nicht, wenn er über mehrere Stream-Deltas verteilt ankommt. Stattdessen
@@ -2209,6 +2507,17 @@ def test_thema_und_person_sind_ohne_anmeldung_lesbar(client):
     assert client.get("/api/council/person/gibtsnicht").status_code == 404
     assert client.get("/api/council/entity/gibtsnicht").status_code == 404
 
+    # Die Wortbeiträge-Seiten derselben Person: gleicher Bestand, nur
+    # vollständig — und ebenfalls ohne Anmeldung lesbar.
+    wb = client.get("/api/council/person/anke-luedtke/wortbeitraege?limit=5")
+    assert wb.status_code == 200
+    b = wb.json()
+    assert set(b) >= {"items", "total", "gesamt", "gremien"}
+    assert client.get("/api/council/person/gibtsnicht/wortbeitraege").status_code == 404
+    # Grenzen greifen: limit über 100 und negatives offset werden abgewiesen.
+    assert client.get("/api/council/person/anke-luedtke/wortbeitraege?limit=500").status_code == 422
+    assert client.get("/api/council/person/anke-luedtke/wortbeitraege?offset=-1").status_code == 422
+
 
 def test_stoebern_und_persoenliches_bleiben_hinter_der_anmeldung(client):
     """Regressionsschutz zur Öffnung oben: Geöffnet wurden GENAU die geteilten
@@ -2304,7 +2613,7 @@ def test_zustellweg_off_ist_erlaubt_und_raeumt_die_warteschlange(client):
     verweigerte beides-aus. Wer nichts mehr hören wollte, hätte die sechs
     Anlass-Schalter einzeln umlegen müssen.
     """
-    from nwz import notify
+    from kern import notify
 
     owner = _register(client).json()["id"]
 
@@ -2334,3 +2643,391 @@ def test_zustellweg_off_ist_erlaubt_und_raeumt_die_warteschlange(client):
     # Unsinn bleibt Unsinn.
     assert client.put("/api/account/delivery",
                       json={"delivery_channel": "aus"}).status_code == 422
+
+
+def test_ask_reicht_verlauf_an_die_analyse(client, monkeypatch):
+    """Chat-Modus (Paket A): der optionale verlauf[] aus dem Body erreicht die
+    Frage-Analyse — dort wird die Anschlussfrage eigenständig gemacht."""
+    from app.routers import council as council_router
+    from council import qa as qa_mod
+
+    _register(client)
+    gesehen = {}
+
+    def fake_analyse(q, model=None, verlauf=None):
+        gesehen["frage"] = q
+        gesehen["verlauf"] = verlauf
+        return {"frage": "Was kostet der Neubau der Cäcilienbrücke?",
+                "begriffe": "Kosten Cäcilienbrücke", "typ": "geld", "partei": None}
+
+    cand = [{"id": 5, "title": "Ersatzbau Cäcilienbrücke", "summary": "Kosten",
+             "outcome": "angenommen", "session_date": "2025-08-25", "committee": "Rat", "score": 1.0}]
+    monkeypatch.setattr(qa_mod, "analyse_query", fake_analyse)
+    monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (cand, "semantisch"))
+    monkeypatch.setattr(qa_mod, "answer_stream", lambda *a, **k: iter(["Antwort [5]."]))
+
+    with client.stream("POST", "/api/council/ask", json={
+        "question": "Und was kostet das?",
+        "verlauf": [{"frage": "Wie ist der Stand bei der Cäcilienbrücke?",
+                     "antwort": "Resolution ans WSA."}],
+    }) as r:
+        assert r.status_code == 200
+        "".join(r.iter_text())
+    assert gesehen["verlauf"] == [{"frage": "Wie ist der Stand bei der Cäcilienbrücke?",
+                                   "antwort": "Resolution ans WSA."}]
+
+
+# ---- „Gründliche Recherche" (RG-10, Task 34) ----
+
+def _deep_mocks(monkeypatch):
+    """Recherche-Engine ohne LLM/Embeddings: Zerlegung, Suche und Bericht
+    gemockt, Store-Kandidaten als Klassen-Patch (der Job-Thread öffnet
+    eigene Verbindungen — Instanz-Patches griffen dort nie)."""
+    from council import embeddings as emb_mod
+    from council import qa as qa_mod
+
+    monkeypatch.setattr(qa_mod, "deep_zerlege", lambda frage, **k: [
+        {"name": "Beschlusslage", "frage": "Stand Stadion", "begriffe": "stadion neubau"},
+        {"name": "Kosten", "frage": "Kosten Stadion", "begriffe": "kosten finanzierung"},
+    ])
+    monkeypatch.setattr(emb_mod, "hybrid_search",
+                        lambda store, q, e, **k: [(5, 1.2)] if "stadion" in e else [(5, 0.8), (7, 0.4)])
+    monkeypatch.setattr(emb_mod, "search_presse", lambda *a, **k: [])
+    monkeypatch.setattr(emb_mod, "search_wortbeitraege", lambda *a, **k: [])
+    # Task 33: Anlagen-Kanal — nur die Gründliche Recherche fragt ihn ab.
+    monkeypatch.setattr(emb_mod, "search_anlagen",
+                        lambda *a, **k: [(901, 0.5, "Lärmpegel unter Grenzwert …")])
+    monkeypatch.setattr(CouncilStore, "anlagen_by_ids", lambda self, ids: [
+        {"document_id": 901, "label": "Schalltechnisches Gutachten", "kvonr": 111,
+         "url": "https://buergerinfo.oldenburg.de/getfile.asp?id=901",
+         "vorlage_nr": "26/0100", "vorlage_titel": "Grundsatzbeschluss Stadionneubau"}])
+    cand = [
+        {"id": 5, "title": "Grundsatzbeschluss Stadionneubau", "summary": "Neubau am Marschweg",
+         "vorlage_nr": "26/0100", "kvonr": 111, "policy_field": "sport", "outcome": "angenommen",
+         "session_date": "2026-06-01", "committee": "Rat", "factions": None, "amount_eur": None},
+        {"id": 7, "title": "Projektgesellschaft Stadion", "summary": "Gründung",
+         "vorlage_nr": "26/0200", "kvonr": 222, "policy_field": "sport", "outcome": "angenommen",
+         "session_date": "2024-03-11", "committee": "Finanzausschuss", "factions": None,
+         "amount_eur": None},
+    ]
+    monkeypatch.setattr(CouncilStore, "get_decisions_by_ids",
+                        lambda self, ids: [dict(c) for c in cand if c["id"] in ids])
+    monkeypatch.setattr(CouncilStore, "orte_fuer_decisions", lambda self, ids: {})
+    monkeypatch.setattr(CouncilStore, "geplante_beratungen_fuer", lambda self, kv: [
+        {"kvonr": 111, "datum": "2099-09-14", "gremium": "Ausschuss für Finanzen",
+         "vorlage_nr": "26/0815", "vorlage_titel": "Finanzierungsbeschluss Projektgesellschaft"}])
+    monkeypatch.setattr(CouncilStore, "haushalt_fuer_begriffe", lambda self, w: [])
+    monkeypatch.setattr(CouncilStore, "vorlage_texts_for", lambda self, nrs: {})
+    monkeypatch.setattr(qa_mod, "deep_bericht_stream",
+                        lambda frage, cands, **k: iter(["## Beschlusslage\nDer Rat hat den Neubau",
+                                                        " beschlossen [5]."]))
+
+
+def _deep_events(client, job_id, ab=0):
+    with client.stream("GET", f"/api/council/deep-research/{job_id}/events?ab={ab}") as s:
+        return [json.loads(line[6:]) for line in "".join(s.iter_text()).splitlines()
+                if line.startswith("data: ")]
+
+
+def test_deep_research_roundtrip_und_replay(client, monkeypatch):
+    """Der komplette Job-Lauf: Phasen → Facetten → sources (mit Planungen und
+    gelesen-Zahl) → Token → done. Der Events-Endpoint liefert beim ZWEITEN
+    Abruf exakt dieselben Events (Replay) — die Grundlage dafür, dass
+    Tab-Wechsel und App-Navigation die Recherche nicht abbrechen. Der
+    Endzustand steht persistent im Snapshot, „aktuell" findet ihn wieder."""
+    _register(client)
+    _deep_mocks(monkeypatch)
+
+    r = client.post("/api/council/deep-research", json={"frage": "Wie ist der Stand beim Stadionneubau?"})
+    assert r.status_code == 201
+    job_id = r.json()["job_id"]
+    assert r.json()["frei"] == 4  # 1 von 5 läuft
+
+    events = _deep_events(client, job_id)  # blockiert bis der Job fertig ist
+    typen = [e["type"] for e in events]
+    assert typen[0] == "phase" and events[0]["phase"] == "zerlegen"
+    assert next(e for e in events if e["type"] == "facetten")["facetten"] == ["Beschlusslage", "Kosten"]
+    assert sum(1 for t in typen if t == "facette") == 2
+    src = next(e for e in events if e["type"] == "sources")
+    assert [s["id"] for s in src["sources"]] == [5, 7]  # Union beider Facetten, bester Score zuerst
+    assert src["planungen"][0]["gremium"] == "Ausschuss für Finanzen"
+    # Task 33: Anlagen-Treffer mit Fundstelle im sources-Event, gelesen zählt sie mit.
+    assert src["anlagen"][0]["label"] == "Schalltechnisches Gutachten"
+    assert src["anlagen"][0]["auszug"].startswith("Lärmpegel")
+    # Beleg-Nummer: das Frontend macht daraus die Buchstaben-Fußnote zu „[A1]".
+    assert src["anlagen"][0]["nr"] == 1
+    assert src["gelesen"] == 3 and src["zeitraum"] == "2024–2026"
+    assert "lesen" in [e.get("phase") for e in events if e["type"] == "phase"]
+    done = next(e for e in events if e["type"] == "done")
+    assert done["cited"] == [5] and done["teilbericht"] is False
+
+    # Replay-Garantie: gleicher Abruf → exakt dieselben Events; ab=N liefert den Rest.
+    assert _deep_events(client, job_id) == events
+    assert _deep_events(client, job_id, ab=len(events) - 1) == events[-1:]
+
+    # Persistierter Endzustand + Wiederfinden über /aktuell.
+    snap = client.get(f"/api/council/deep-research/{job_id}").json()
+    assert snap["status"] == "fertig" and "[5]" in snap["bericht"]
+    assert snap["quellen"]["cited"] == [5]
+    assert snap["quellen"]["planungen"][0]["vorlage_titel"].startswith("Finanzierungsbeschluss")
+    assert snap["quellen"]["anlagen"][0]["vorlage_nr"] == "26/0100"
+    akt = client.get("/api/council/deep-research/aktuell").json()
+    assert akt["job"]["id"] == job_id and akt["job"]["gesehen"] == 0
+    assert akt["frei"] == 4  # fertig zählt weiter gegen das Tageskontingent
+    client.post(f"/api/council/deep-research/{job_id}/gesehen")
+    assert client.get("/api/council/deep-research/aktuell").json()["job"]["gesehen"] == 1
+
+    # Fremder Nutzer sieht NICHTS von diesem Job.
+    client.cookies.clear()
+    _register(client, email="zweite@test.de")
+    assert client.get(f"/api/council/deep-research/{job_id}").status_code == 404
+    assert client.get("/api/council/deep-research/aktuell").json()["job"] is None
+
+
+def test_deep_research_meldet_sich_am_ende(client, monkeypatch):
+    """Am Ende eines echten Job-Laufs steht die Fertig-Meldung — und der Stopp
+    löst keine aus (die war eine bewusste Handlung, kein Ergebnis)."""
+    from app import deepresearch
+
+    _register(client)
+    _deep_mocks(monkeypatch)
+    gemeldet: list[str] = []
+    monkeypatch.setattr(deepresearch, "melden",
+                        lambda job, nwz_db, status: gemeldet.append(status))
+
+    job_id = client.post("/api/council/deep-research",
+                         json={"frage": "Wie ist der Stand beim Stadionneubau?"}).json()["job_id"]
+    _deep_events(client, job_id)  # blockiert bis der Job fertig ist
+    assert gemeldet == ["fertig"]
+
+    gemeldet.clear()
+    job = deepresearch.DeepJob(id="x", user_id=1, frage="egal")
+    deepresearch._gestoppt(job, NWZ_DB)
+    assert gemeldet == []
+
+
+def test_deep_research_kontingent_und_ein_job_regel(client, monkeypatch):
+    """Kontingent 5/Tag je KONTO aus der DB: laufende und fertige Jobs zählen,
+    gestoppte/fehlgeschlagene nicht (Design 8c: Abbruch kostet nichts). Und:
+    nur EINE laufende Recherche je Konto (409)."""
+    from app import deepresearch
+
+    _register(client)
+    # Engine stilllegen: Job nur registrieren, kein Thread.
+    monkeypatch.setattr(deepresearch, "start_job",
+                        lambda job, a, b: deepresearch._registry.__setitem__(job.id, job))
+    deepresearch._registry.clear()
+
+    r = client.post("/api/council/deep-research", json={"frage": "Stand beim Stadionneubau?"})
+    assert r.status_code == 201
+    # Zweiter Start, während einer läuft → 409.
+    assert client.post("/api/council/deep-research",
+                       json={"frage": "Noch eine Frage dazu"}).status_code == 409
+
+    store = Store(NWZ_DB)
+    try:
+        uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
+        job_id = r.json()["job_id"]
+        # Der laufende Job wird gestoppt → zählt nicht mehr; 4 fertige dazu → 4/5.
+        store.deep_job_update(job_id, "gestoppt")
+        deepresearch._registry.clear()
+        for i in range(4):
+            store.deep_job_update(store.deep_job_anlegen(uid, f"Frage {i}"), "fertig")
+        assert store.deep_jobs_heute(uid) == 4
+        assert client.post("/api/council/deep-research",
+                           json={"frage": "Die fünfte heute"}).status_code == 201
+        # Jetzt 5/5 → 429; ein Fehler-Job ändert daran nichts (zählt nicht).
+        store.deep_job_update(store.deep_job_anlegen(uid, "kaputt"), "fehler")
+        deepresearch._registry.clear()
+        assert client.post("/api/council/deep-research",
+                           json={"frage": "Die sechste heute"}).status_code == 429
+    finally:
+        store.close()
+        deepresearch._registry.clear()
+
+
+def test_deep_research_stop_teilbericht_und_verwaiste(client, monkeypatch):
+    """Stopp sichert das Material und kostet kein Kontingent; der Teilbericht
+    entsteht daraus mit Vermerk und Status ``teilbericht`` (zählt ebenfalls
+    nicht). Nach einem Server-Neustart markiert der Snapshot-Endpoint einen
+    thread-losen „laeuft"-Job ehrlich als Fehler."""
+    from app import deepresearch
+    from council import qa as qa_mod
+
+    _register(client)
+    store = Store(NWZ_DB)
+    try:
+        uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
+
+        # Gestoppter Job mit gesichertem Material (wie nach „Abbrechen").
+        job_id = store.deep_job_anlegen(uid, "Stand beim Stadionneubau?")
+        job = deepresearch.DeepJob(id=job_id, user_id=uid, frage="Stand beim Stadionneubau?")
+        job.facetten_fertig, job.facetten_gesamt = 2, 5
+        job.material = {
+            "candidates": [{"id": 5, "title": "Grundsatzbeschluss", "summary": "Neubau",
+                            "session_date": "2026-06-01", "committee": "Rat",
+                            "vorlage_nr": None, "outcome": "angenommen"}],
+            "presse": [], "debatten": [], "haushalt": [], "planungen": [],
+            "facetten_namen": ["Beschlusslage", "Kosten", "B-Plan", "Debatte", "Weiter"],
+            "facetten_fertig": 2, "gelesen": 1, "zeitraum": "2026",
+            "sources": [{"id": 5, "title": "Grundsatzbeschluss"}],
+            "presse_kompakt": [], "debatten_kompakt": [],
+        }
+        deepresearch._registry[job_id] = job
+        job.stop.set()
+        deepresearch._finish(job)
+        store.deep_job_update(job_id, "gestoppt")
+
+        r = client.post(f"/api/council/deep-research/{job_id}/stop")
+        assert r.status_code == 409  # schon beendet — kein Doppel-Stopp
+
+        monkeypatch.setattr(qa_mod, "deep_bericht_stream",
+                            lambda frage, cands, **k: iter(["Bisheriger Stand [5]."]))
+        assert client.post(f"/api/council/deep-research/{job_id}/teilbericht").status_code == 200
+        events = _deep_events(client, job_id)  # wartet auf den Teilbericht-Thread
+        done = next(e for e in events if e["type"] == "done")
+        assert done["teilbericht"] is True
+        snap = client.get(f"/api/council/deep-research/{job_id}").json()
+        assert snap["status"] == "teilbericht"
+        assert snap["bericht"].startswith("**Teilbericht — 2 von 5 Facetten.**")
+        assert "B-Plan" in snap["bericht"]  # fehlende Facetten werden benannt
+        assert store.deep_jobs_heute(uid) == 0  # weder gestoppt noch teilbericht zählen
+
+        # Verwaister „laeuft"-Job (Neustart): Snapshot meldet ehrlich Fehler …
+        waise = store.deep_job_anlegen(uid, "Radwege?")
+        snap = client.get(f"/api/council/deep-research/{waise}").json()
+        assert snap["status"] == "fehler"
+        # … und der Events-Anschluss verweist mit 410 auf den Snapshot.
+        assert client.get(f"/api/council/deep-research/{waise}/events").status_code == 410
+
+        # Startup-Aufräumer erledigt dasselbe in einem Rutsch.
+        waise2 = store.deep_job_anlegen(uid, "Kitas?")
+        assert store.deep_jobs_verwaiste_beenden() == 1
+        assert store.deep_job_get(waise2, uid)["status"] == "fehler"
+    finally:
+        deepresearch._registry.clear()
+        store.close()
+
+
+# ---- Admin-steuerbare Frage-Limits (10.08.26) ----
+
+def test_admin_limits_steuern_recherche_kontingent(client, monkeypatch):
+    """Admins erhöhen das Recherche-Tageslimit je Konto oder schalten es ab
+    (deep_limit: NULL=Standard, 0=unbegrenzt, N=eigen) — der Start-Endpoint
+    und die frei-Anzeige folgen dem Override."""
+    from app import deepresearch
+
+    _register(client)  # admin@test.de mit Adminrechten
+    monkeypatch.setattr(deepresearch, "start_job",
+                        lambda job, a, b: deepresearch._registry.__setitem__(job.id, job))
+    deepresearch._registry.clear()
+    store = Store(NWZ_DB)
+    try:
+        uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
+        # Eigenes Limit 2: nach zwei zählenden Jobs ist Schluss.
+        r = client.put(f"/api/admin/users/{uid}/limits",
+                       json={"deep_limit": 2, "limits_frei": False})
+        assert r.status_code == 200 and r.json()["deep_limit"] == 2
+        for i in range(2):
+            store.deep_job_update(store.deep_job_anlegen(uid, f"F{i}"), "fertig")
+        assert client.post("/api/council/deep-research",
+                           json={"frage": "Noch eine Recherche?"}).status_code == 429
+        # Unbegrenzt (0): derselbe Stand startet wieder, frei wird null.
+        client.put(f"/api/admin/users/{uid}/limits",
+                   json={"deep_limit": 0, "limits_frei": False})
+        r = client.post("/api/council/deep-research", json={"frage": "Und jetzt unbegrenzt?"})
+        assert r.status_code == 201 and r.json()["frei"] is None
+        deepresearch._registry.clear()
+        akt = client.get("/api/council/deep-research/aktuell").json()
+        assert akt["frei"] is None
+        # Detail fürs Admin-Formular trägt beide Felder.
+        detail = client.get(f"/api/admin/users/{uid}").json()
+        assert detail["deep_limit"] == 0 and detail["limits_frei"] is False
+    finally:
+        deepresearch._registry.clear()
+        store.close()
+
+
+def test_limits_frei_ueberspringt_rate_limiter(client, monkeypatch):
+    """limits_frei=1 lässt die Frage-Endpoints am Rate-Limiter VORBEI —
+    gemessen am check()-Aufruf selbst (DISABLE_RATE_LIMIT macht check nur
+    wirkungslos, aufgerufen würde er trotzdem)."""
+    from app.routers import council as council_router
+    from council import qa as qa_mod
+
+    _register(client)
+    aufrufe = []
+    monkeypatch.setattr(council_router.qa_limiter, "check",
+                        lambda request: aufrufe.append(1))
+    cand = [{"id": 5, "title": "Radweg", "summary": "Ausbau", "policy_field": "verkehr",
+             "outcome": "angenommen", "session_date": "2026-07-02",
+             "committee": "Verkehrsausschuss", "score": 1.0}]
+    monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (cand, "semantisch"))
+    monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
+    monkeypatch.setattr(qa_mod, "answer_stream", lambda *a, **k: iter(["Wird ausgebaut [5]."]))
+
+    def frag():
+        with client.stream("POST", "/api/council/ask", json={"question": "Was ist mit Radwegen?"}):
+            pass
+
+    frag()
+    assert len(aufrufe) == 1  # normal: Limiter wird gefragt
+    store = Store(NWZ_DB)
+    try:
+        uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
+        client.put(f"/api/admin/users/{uid}/limits", json={"deep_limit": None, "limits_frei": True})
+    finally:
+        store.close()
+    frag()
+    assert len(aufrufe) == 1  # befreit: kein weiterer check-Aufruf
+
+
+def test_gespraech_snapshot_traegt_presse_und_debatten(client, monkeypatch):
+    """Tims Befund 10.08.: Ein geladenes Gespräch verlor Presse-Block und
+    (übers Debatten-Gate) den Parteien-Baustein — Presse + Debatten gehören
+    mit in den Turn-Snapshot und kommen beim Lesen wieder heraus."""
+    from app.routers import council as council_router
+    from council import embeddings as emb_mod
+    from council import qa as qa_mod
+
+    _register(client)
+    cand = [{"id": 5, "title": "Stadionneubau", "summary": "Grundsatz", "policy_field": "sport",
+             "outcome": "angenommen", "session_date": "2026-06-01",
+             "committee": "Rat", "score": 1.0}]
+    monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (cand, "semantisch"))
+    monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
+    monkeypatch.setattr(qa_mod, "answer_stream", lambda *a, **k: iter(["Beschlossen [5]."]))
+    monkeypatch.setattr(emb_mod, "search_presse", lambda *a, **k: [(9, 0.5)])
+    monkeypatch.setattr(emb_mod, "search_wortbeitraege", lambda *a, **k: [(7, 0.4)])
+    monkeypatch.setattr(CouncilStore, "presse_by_ids", lambda self, ids: [
+        {"id": 9, "titel": "Stadt informiert zum Stadion", "url": "https://x/pm", "datum": "2026-07-27"}])
+    monkeypatch.setattr(CouncilStore, "wortbeitraege_by_ids", lambda self, ids: [
+        {"id": 7, "sprecher": "Höpken", "partei": "BSW", "art": "rede", "top": "Ö 10",
+         "text": "Endlich kommt das Stadion.", "committee": "Rat", "session_date": "2026-06-01"}])
+
+    store = Store(NWZ_DB)
+    try:
+        uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
+        store.set_qa_speichern(uid, True)
+        with client.stream("POST", "/api/council/ask",
+                           json={"question": "Was ist mit dem Stadion?", "gespraech_id": None}) as r:
+            events = [json.loads(line[6:]) for line in "".join(r.iter_text()).splitlines()
+                      if line.startswith("data: ")]
+        gid = next(e for e in events if e["type"] == "done")["gespraech_id"]
+        turns = store.qa_gespraech(gid, uid)["turns"]
+        quellen = json.loads(turns[0]["quellen"]) if isinstance(turns[0]["quellen"], str) else turns[0]["quellen"]
+        assert quellen["presse"][0]["titel"] == "Stadt informiert zum Stadion"
+        assert quellen["debatten"][0]["sprecher"] == "Höpken"
+        assert quellen["debatten"][0]["auszug"].startswith("Endlich")
+        # Der Lese-Endpoint reicht den Snapshot durch (Frontend stellt daraus her).
+        g = client.get(f"/api/council/gespraeche/{gid}").json()
+        q0 = g["turns"][0]["quellen"]
+        assert q0["presse"] and q0["debatten"]
+        # Design 9a②: Umbenennen über die API — fremde ids bleiben 404.
+        r = client.patch(f"/api/council/gespraeche/{gid}", json={"titel": "Stadion"})
+        assert r.status_code == 200
+        assert store.qa_gespraech(gid, uid)["titel"] == "Stadion"
+        assert client.patch("/api/council/gespraeche/999999",
+                            json={"titel": "x"}).status_code == 404
+    finally:
+        store.close()

@@ -501,3 +501,92 @@ def test_anwesende_fraktionen_kollabieren_keine_gruppen():
     assert faction_label("Bündnis 90/Die Grünen") == "Grüne"
     # Verwaltung und Gäste tauchen gar nicht auf.
     assert faction_label("Stadtverwaltung") is None
+
+
+# ---- Anlagen-Embeddings (Task 33, Kanal der Gründlichen Recherche) ----
+
+def test_anlagen_embedding_roundtrip(tmp_path):
+    """Fehlende Anlagen erkennen (hash-idempotent), Chunks ersetzen, Anzeige-
+    Zeilen in Treffer-Reihenfolge — und ein geänderter Text landet wieder in
+    der Fehlt-Liste."""
+    from council.store import CouncilStore
+
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        with store._conn:
+            store._conn.execute(
+                "INSERT INTO council_vorlagen (kvonr, vorlage_nr, title, status, fetched_at) "
+                "VALUES (111, '26/0100', 'Grundsatzbeschluss Stadionneubau', 'ok', datetime('now'))")
+            store._conn.executemany(
+                "INSERT INTO council_anlagen (document_id, kvonr, label, url, raw_text, "
+                "fetched_at, status) VALUES (?, ?, ?, ?, ?, datetime('now'), ?)",
+                [(901, 111, "Schalltechnisches Gutachten", "https://x/901",
+                  "Lärmpegel liegt unter dem Grenzwert. " * 20, "ok"),
+                 (902, 111, "Scan ohne Text", "https://x/902", "", "empty"),
+                 (903, 111, "Verkehrskonzept", "https://x/903",
+                  "Die Erschließung erfolgt über die Maastrichter Straße. " * 20, "ok")])
+        todo = store.anlagen_missing_embeddings()
+        # Nur die beiden ok-Anlagen, neueste (höchste id) zuerst; empty fehlt.
+        assert [t["document_id"] for t in todo] == [903, 901]
+
+        for t in todo:
+            store.replace_anlage_embeddings(
+                t["document_id"], t["text_hash"],
+                [(t["raw_text"][:200], b"\x00" * 16), (t["raw_text"][200:400], b"\x01" * 16)])
+        assert store.anlagen_missing_embeddings() == []
+        assert len(store.get_anlage_embeddings()) == 4
+
+        # Anzeige-Zeilen behalten die Treffer-Reihenfolge + tragen die Vorlage.
+        rows = store.anlagen_by_ids([903, 901])
+        assert [r["document_id"] for r in rows] == [903, 901]
+        assert rows[1]["vorlage_titel"] == "Grundsatzbeschluss Stadionneubau"
+
+        # Geänderter Text → anderer Hash → wieder in der Fehlt-Liste.
+        with store._conn:
+            store._conn.execute(
+                "UPDATE council_anlagen SET raw_text = 'Neuer Text, deutlich anders und lang genug fuer einen Chunk. ' || raw_text "
+                "WHERE document_id = 901")
+        assert [t["document_id"] for t in store.anlagen_missing_embeddings()] == [901]
+    finally:
+        store.close()
+
+
+def test_anlage_chunks_deckel():
+    """Chunking: Überlappung, Mindestlänge, harter Deckel bei 8 Chunks."""
+    from council import embeddings as emb
+
+    assert emb.anlage_chunks("") == []
+    assert emb.anlage_chunks("zu kurz") == []
+    chunks = emb.anlage_chunks("Wort " * 5000)
+    assert 1 <= len(chunks) <= emb.ANLAGE_MAX_CHUNKS
+    assert all(len(c) <= emb.ANLAGE_CHUNK_SIZE for c in chunks)
+
+
+def test_agenda_anlagen_roundtrip(tmp_path):
+    """Tims Befund 12.08.: TOP-Anhänge der Sitzungsseite (gerade Anträge OHNE
+    Vorlage) fehlten komplett — save_session speichert sie jetzt je TOP, und
+    agenda_items liefert sie mit; ein Re-Save ersetzt den Stand."""
+    from council.scraper import AgendaItem, CouncilSession
+    from council.store import CouncilStore
+
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        sess = CouncilSession(
+            ksinr=9, committee="ASUK", session_date="2026-08-13",
+            session_time="17:00", location="Alte Fleiwa",
+            agenda_items=[
+                AgendaItem(item_number="Ö 14.7", title="Umsetzung Fliegerhorst",
+                           anlagen=[{"label": "Antrag Umsetzung", "url": "https://x/getfile.php?id=312020"}]),
+                AgendaItem(item_number="Ö 5", title="Ohne Anhang"),
+            ])
+        store.save_session(sess)
+        items = {i["item_number"]: i for i in store.agenda_items(9)}
+        assert items["Ö 14.7"]["anlagen"] == [
+            {"label": "Antrag Umsetzung", "url": "https://x/getfile.php?id=312020"}]
+        assert items["Ö 5"]["anlagen"] == []
+
+        sess.agenda_items[0].anlagen = []  # Anhang verschwunden → Re-Save ersetzt
+        store.save_session(sess)
+        assert store.agenda_items(9)[0]["anlagen"] == []
+    finally:
+        store.close()

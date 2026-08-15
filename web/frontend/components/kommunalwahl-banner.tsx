@@ -3,6 +3,8 @@
 // Der große Verweis von der Landing auf den Wahlprogramm-Vergleich —
 // befristetes Element bis zum 13.09.2026 (Bauplan §5.5/§5.6): Nach der Wahl
 // nimmt er sich selbst aus der Seite, ohne dass jemand deployen muss.
+// Trägt dasselbe Umgebungs-Gate wie /kommunalwahl (layout.tsx): Auf Prod ist
+// die Zielseite ein 404, also erscheint dort auch der Banner nicht.
 
 import Link from "next/link";
 import { ArrowRight, Vote } from "lucide-react";
@@ -13,6 +15,7 @@ import { useEffect, useState } from "react";
 export function KommunalwahlBanner() {
   const [vorbei, setVorbei] = useState(false);
   useEffect(() => setVorbei(tageBis() <= 0), []);
+  if (process.env.NEXT_PUBLIC_RATSLOTSE_ENV !== "dev") return null;
   if (vorbei) return null;
 
   return (

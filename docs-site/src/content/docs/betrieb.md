@@ -14,6 +14,27 @@ Doku — sie liegen als GitHub-Secrets bzw. in der `.env` auf dem Server.
 
 ---
 
+## Branch-Modell
+
+Seit 08/2026 ist **`main` der Prod-Stand und `dev` der Integrations-Branch**:
+
+- **Features** gehen per Pull Request nach `dev` (Squash-Merge). Jeder Push
+  auf `dev` deployt automatisch auf die Dev-VM — dort reift ein Release-Paket.
+- **Fixes** gehen weiterhin einzeln per Pull Request nach `main` (Squash-Merge)
+  und erreichen Prod sofort. Danach wird `main` nach `dev` zurückgemergt,
+  damit der nächste Release-PR konfliktfrei bleibt:
+  `git checkout dev && git merge origin/main && git push origin dev`.
+- **Ein Release** ist ein Pull Request `dev` → `main` mit **Merge-Commit**
+  (nicht squashen — sonst divergieren die Branches dauerhaft). Der
+  Versionsschnitt im Changelog und der Git-Tag gehören in diesen PR.
+- **Umgebungs-Gate:** Der Dev-Build setzt `NEXT_PUBLIC_RATSLOTSE_ENV=dev`
+  (der Prod-Build nicht). Features, die nur auf der Dev-Umgebung sichtbar
+  sein sollen, prüfen diese Variable und liefern auf Prod `notFound()` —
+  der Code kann so gefahrlos mit einem Release nach `main` fahren.
+- **Kein Force-Push auf `dev`:** Der Branch trägt gemeinsame Historie. (Bis
+  08/2026 war `dev` ein beweglicher Zeiger, auf den man beliebige Stände
+  force-pushen konnte — das gilt nicht mehr.)
+
 ## Deploy-Wege
 
 Fünf Workflows in `.github/workflows/`:
@@ -66,20 +87,21 @@ eigenen Secrets. Sie unterscheidet sich bewusst von Prod:
 - **Eigene Datenbanken und ein eigener OpenRouter-Key**, damit Testläufe weder
   Prod-Daten noch das Prod-Kostenbudget berühren.
 
-Deployt wird auf **jeden Push auf den Branch `dev`**:
+Deployt wird auf **jeden Push auf den Branch `dev`** — im Regelfall also bei
+jedem gemergten Feature-PR und bei jedem Rückmerge von `main` (siehe
+[Branch-Modell](#branch-modell)). Die VM holt den Stand per `git fetch` +
+`git reset --hard <sha>` statt per Merge — robust gegen jede Art von
+Branch-Umbau. `.env`, `data/`, `.venv/` und `node_modules/` sind untracked
+und bleiben unberührt.
 
-```bash
-git push origin HEAD:dev --force
-```
+Der Frontend-Build läuft mit `NEXT_PUBLIC_RATSLOTSE_ENV=dev` — das ist das
+Umgebungs-Gate, mit dem einzelne Seiten nur auf der Dev-Umgebung sichtbar
+sind (der Prod-Build setzt die Variable nicht, dort liefern solche Seiten
+`notFound()`). Da `NEXT_PUBLIC_`-Variablen zur Build-Zeit einkompiliert
+werden, braucht die Dev-VM dafür keinen `.env`-Eintrag.
 
-`dev` ist **kein Integrations-Branch**, sondern ein beweglicher Zeiger auf den
-Stand, den man gerade ausprobieren will. Deshalb holt die VM den Stand per
-`git fetch` + `git reset --hard <sha>` statt per Merge — Force-Pushes übersteht
-sie damit problemlos. `.env`, `data/`, `.venv/` und `node_modules/` sind
-untracked und bleiben unberührt.
-
-Der Lauf hat **kein Test-Gate** (die Tests laufen ohnehin an jedem PR nach
-`main`), ein `concurrency`-Block mit `cancel-in-progress: true` (bei schnell
+Der Lauf hat **kein Test-Gate** (die Tests laufen ohnehin an jedem PR), ein
+`concurrency`-Block mit `cancel-in-progress: true` (bei schnell
 aufeinanderfolgenden Pushes gewinnt der neueste), ein Kommando-Timeout von 30
 Minuten für `npm ci` + `next build` und am Ende zwei Smoke-Checks gegen
 Frontend und `/api/health`. Prod bleibt davon vollständig unberührt.
@@ -158,7 +180,7 @@ Exception erzeugt.
 
 ### Fehler-Alarme
 
-Alle Cron-Einstiegspunkte laufen in `run_guarded` aus `nwz/alerts.py`. Stürzt
+Alle Cron-Einstiegspunkte laufen in `run_guarded` aus `kern/alerts.py`. Stürzt
 ein Job ab, passiert dreierlei: der Traceback landet im Log (journald bzw.
 Cron-Log), eine Alarm-Mail geht an `ALERT_EMAIL` (Fallback `WEB_ADMIN_EMAIL`)
 und die Exception wird erneut geworfen, damit Cron einen Exit-Code ungleich
@@ -220,9 +242,9 @@ kann den Datenbestand also nicht überschreiben.
 
 ## LLM-Kosten
 
-Jeder LLM-Aufruf kann seinen Token-Verbrauch protokollieren. `nwz/llm.py`
+Jeder LLM-Aufruf kann seinen Token-Verbrauch protokollieren. `kern/llm.py`
 akzeptiert dafür ein Schlüsselwort `_feature="…"`, das vor dem eigentlichen
-API-Call herausgezogen wird; `nwz/usage.py` schreibt daraus eine Zeile in die
+API-Call herausgezogen wird; `kern/usage.py` schreibt daraus eine Zeile in die
 Tabelle `llm_usage` (`ts`, `feature`, `model`, `prompt_tokens`,
 `completion_tokens`) in `nwz.sqlite`. Die Erfassung ist **best-effort**: Sie
 fängt jede Exception ab, damit Tracking niemals einen LLM-Aufruf kaputt macht —
@@ -238,7 +260,7 @@ Gekennzeichnet sind unter anderem `protokoll_extraktion`,
 `qa_query_expansion` und `qa_antwort`.
 
 Kosten stehen **nicht** in der Datenbank, sondern werden aus Tokens ×
-hinterlegtem Modellpreis gerechnet. Die Preistabelle `PRICES` in `nwz/usage.py`
+hinterlegtem Modellpreis gerechnet. Die Preistabelle `PRICES` in `kern/usage.py`
 führt $ je 1 Mio. Tokens (Input, Output) je Modell und muss beim Wechsel auf ein
 neues Modell ergänzt werden — ein unbekanntes Modell zählt mit 0,00 $.
 
@@ -320,7 +342,7 @@ Alle optional — greift keine Variable, gilt der Default aus dem Code.
 |---|---|---|---|
 | `NWZ_DB` | Pfad zur Konten-/Themen-Datenbank | nein | `data/nwz.sqlite` |
 | `COUNCIL_DB` | Pfad zur Ratsdaten-Datenbank | nein | `data/council.sqlite` |
-| `NWZ_SQLITE` | Abweichender Pfad für das Usage-Tracking (`nwz/usage.py`). **Achtung:** `nwz/usage.py` liest ausschließlich diese Variable, der ganze Rest des Projekts `NWZ_DB`. Wer die Datenbank per `NWZ_DB` verschiebt, nimmt das Kosten-Tracking **nicht** mit — es schreibt still am alten Ort weiter. Beide zusammen setzen. | nein | `data/nwz.sqlite` |
+| `NWZ_SQLITE` | Abweichender Pfad für das Usage-Tracking (`kern/usage.py`). **Achtung:** `kern/usage.py` liest ausschließlich diese Variable, der ganze Rest des Projekts `NWZ_DB`. Wer die Datenbank per `NWZ_DB` verschiebt, nimmt das Kosten-Tracking **nicht** mit — es schreibt still am alten Ort weiter. Beide zusammen setzen. | nein | `data/nwz.sqlite` |
 | `SETUP_REMIND_AFTER_HOURS` | Wartezeit, bevor `remind_setup.py` an eine offene Einrichtung erinnert | nein | `48` |
 
 ### E-Mail & Benachrichtigung

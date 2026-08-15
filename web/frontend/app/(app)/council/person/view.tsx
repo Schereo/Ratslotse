@@ -8,6 +8,7 @@ import { MemberDetail } from "@/lib/types";
 import { Card, DetailSkeleton, formatDate } from "@/components/ui";
 import { PartyBadge, partyBrand, AffiliationBadge } from "@/components/decision-ui";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { apiUrl, authHeaders } from "@/lib/api";
 import { useFetch } from "@/lib/use-fetch";
 import { cn } from "@/lib/utils";
 import { shortCommittee } from "@/lib/committees";
@@ -283,6 +284,16 @@ function PersonInner() {
         </Section>
       )}
 
+      {/* Wortbeiträge (Personen-Paket 10.08.26): die jüngsten Beiträge in
+          voller Länge — dasselbe Beleg-Versprechen wie im Ratsgespräch.
+          Vielredner kommen auf über tausend Beiträge, deshalb seitenweise und
+          nach Gremium filterbar (Tims Wunsch 10.08.). */}
+      {(data.wortbeitraege?.length ?? 0) > 0 && (
+        <Wortbeitraege slug={data.slug} erste={data.wortbeitraege ?? []}
+          gesamt={data.wortbeitraege_gesamt ?? (data.wortbeitraege?.length ?? 0)}
+          gremien={data.wortbeitraege_gremien ?? []} />
+      )}
+
       {/* Zuletzt anwesend */}
       {data.recent.length > 0 && (
         <Section title="Zuletzt anwesend">
@@ -301,6 +312,136 @@ function PersonInner() {
         </Section>
       )}
     </Card>
+  );
+}
+
+const WB_ART: Record<string, string> = {
+  rede: "Rede", anfrage: "Anfrage", einwohnerfrage: "Einwohnerfrage", zusage: "Zusage",
+};
+
+function WortbeitragZeile({ w, erste }: {
+  w: NonNullable<MemberDetail["wortbeitraege"]>[number]; erste: boolean;
+}) {
+  const [offen, setOffen] = useState(false);
+  const lang = w.text.length > 300;
+  return (
+    <div className={cn("py-2.5 text-[13px] leading-relaxed", !erste && "border-t border-border")}>
+      <p className="flex items-baseline justify-between gap-3 text-xs text-muted-foreground">
+        <span className="min-w-0 truncate">
+          {WB_ART[w.art] ?? w.art}{w.top ? ` · ${w.top}` : ""} · {shortCommittee(w.committee ?? "")}
+        </span>
+        <span className="shrink-0">{formatDate(w.session_date)}</span>
+      </p>
+      <p className={cn("mt-1 whitespace-pre-wrap text-foreground", !offen && lang && "line-clamp-3")}>
+        {w.text}
+      </p>
+      {lang && (
+        <button type="button" onClick={() => setOffen((v) => !v)} aria-expanded={offen}
+          className="mt-0.5 text-[11.5px] font-medium text-primary hover:underline">
+          {offen ? "Weniger anzeigen" : "Ganzen Beitrag anzeigen"}
+        </button>
+      )}
+    </div>
+  );
+}
+
+type WB = NonNullable<MemberDetail["wortbeitraege"]>[number];
+
+/** „Aus den Protokollen": alle Beiträge, seitenweise nachladbar und nach
+ *  Gremium filterbar.
+ *
+ *  Die erste Seite kommt aus dem Profil mit (die Seite soll sofort etwas
+ *  zeigen); erst „Mehr anzeigen" oder ein Gremien-Wechsel fragt nach. Der
+ *  Filter zeigt die Anzahl je Gremium — bei vierzehn Ausschüssen ist das der
+ *  Unterschied zwischen Suchen und Finden. */
+function Wortbeitraege({ slug, erste, gesamt, gremien }: {
+  slug: string; erste: WB[]; gesamt: number;
+  gremien: { committee: string; n: number }[];
+}) {
+  const [items, setItems] = useState<WB[]>(erste);
+  const [gremium, setGremium] = useState<string>("");
+  const [total, setTotal] = useState(gesamt);
+  const [laedt, setLaedt] = useState(false);
+  const [fehler, setFehler] = useState(false);
+
+  const laden = async (naechstesGremium: string, ab: number) => {
+    setLaedt(true);
+    setFehler(false);
+    try {
+      const p = new URLSearchParams({ offset: String(ab), limit: "20" });
+      if (naechstesGremium) p.set("gremium", naechstesGremium);
+      const r = await fetch(apiUrl(`/council/person/${encodeURIComponent(slug)}/wortbeitraege?${p}`),
+        { credentials: "include", headers: authHeaders() });
+      if (!r.ok) throw new Error();
+      const b = await r.json();
+      setItems((alt) => (ab === 0 ? b.items : [...alt, ...b.items]));
+      setTotal(b.total ?? 0);
+    } catch {
+      // Ehrlich bleiben: kein stilles Nichts, sondern ein Hinweis mit
+      // Wiederholen — die Liste davor bleibt stehen.
+      setFehler(true);
+    } finally {
+      setLaedt(false);
+    }
+  };
+
+  const filtern = (naechstes: string) => {
+    setGremium(naechstes);
+    void laden(naechstes, 0);
+  };
+
+  return (
+    <Section title="Aus den Protokollen"
+      aside={`${items.length} von ${total} · Paraphrasen`}>
+      {gremien.length > 1 && (
+        <div className="mb-2.5">
+          <label className="sr-only" htmlFor="wb-gremium">Nach Gremium filtern</label>
+          <select id="wb-gremium" value={gremium}
+            onChange={(e) => filtern(e.target.value)}
+            className="h-8 w-full max-w-[22rem] rounded-[10px] border border-border bg-card px-2 text-[13px] outline-none focus:border-primary">
+            <option value="">Alle Gremien ({gesamt})</option>
+            {gremien.map((g) => (
+              <option key={g.committee} value={g.committee}>
+                {shortCommittee(g.committee)} ({g.n})
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+      <div className="flex flex-col">
+        {items.map((w, i) => (
+          <WortbeitragZeile key={`${w.session_date}-${w.top}-${i}`} w={w} erste={i === 0} />
+        ))}
+      </div>
+      {items.length === 0 && !laedt && (
+        <p className="py-3 text-[13px] text-muted-foreground">
+          In diesem Gremium ist kein Wortbeitrag protokolliert.
+        </p>
+      )}
+      {items.length < total && (
+        <button type="button" disabled={laedt}
+          onClick={() => void laden(gremium, items.length)}
+          className="mt-2 w-full rounded-[11px] border border-border bg-card py-2 text-[13px] font-medium transition-colors hover:bg-muted disabled:opacity-60">
+          {laedt ? "Wird geladen …" : `Mehr anzeigen (noch ${total - items.length})`}
+        </button>
+      )}
+      {fehler && (
+        <p className="mt-2 text-[12px] text-signal">
+          Konnte nicht geladen werden.{" "}
+          <button type="button" onClick={() => void laden(gremium, items.length)}
+            className="font-medium underline">Nochmal versuchen</button>
+        </p>
+      )}
+      {/* Ehrlichkeit zur Quelle (Tims Punkt 10.08.): Niederschriften sind
+          Verlaufsprotokolle — die Protokollführung fasst zusammen, nicht
+          jede Wortmeldung wird erfasst. Ohne den Hinweis läse sich eine
+          kurze Liste wie „mehr hat die Person nie gesagt". */}
+      <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground/60">
+        Die Protokolle fassen Wortbeiträge sinngemäß zusammen — nicht jede
+        Wortmeldung wird erfasst. Diese Liste ist deshalb ein Ausschnitt,
+        kein vollständiges Redeprotokoll.
+      </p>
+    </Section>
   );
 }
 

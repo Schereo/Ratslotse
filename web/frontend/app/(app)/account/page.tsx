@@ -12,6 +12,7 @@ import { applyTheme, getTheme, isDarkNow, THEME_EVENT, type Theme } from "@/lib/
 import { Button, Card, ConfirmDialog, Input, Label, PageHeader, PasswordInput, toast } from "@/components/ui";
 import { DeliverySettings } from "@/components/delivery-settings";
 import { BadgesCard } from "@/components/badges";
+import { GespraecheCard } from "@/components/gespraeche-settings";
 import { cn } from "@/lib/utils";
 
 /**
@@ -169,6 +170,10 @@ export default function AccountPage() {
         {/* RL-U12 (11a): zwischen Benachrichtigungen und Passwort. */}
         <BadgesCard />
 
+        {/* Design 6a②: „Gespräche speichern" — beidseitig änderbar zur
+            Erstnutzungs-Frage im Ratsgespräch. */}
+        <GespraecheCard />
+
         <DisplayNameCard />
 
         <AppearanceCard />
@@ -280,13 +285,20 @@ export default function AccountPage() {
       </div>
 
       {/* Pflicht-Links für Handy-Web und App (der Seiten-Fuß ist mobil aus):
-          über den Konto-Tab jederzeit in zwei Tipps erreichbar. */}
-      <p className="mt-8 text-center text-xs text-muted-foreground md:hidden">
+          über den Konto-Tab jederzeit in zwei Tipps erreichbar. Darüber die
+          Abgrenzung zur Stadt — in der App ist der Konto-Tab die einzige Stelle,
+          an der ein Fuß überhaupt steht (App-Store-Guideline 5.2). */}
+      <p className="mt-8 text-balance text-center text-xs leading-relaxed text-muted-foreground desk:hidden">
+        Ratslotse ist ein privates Bürgerprojekt und kein Angebot der Stadt Oldenburg.
+      </p>
+      <p className="mt-2 text-center text-xs text-muted-foreground desk:hidden">
         <a href="/impressum" className="hover:text-foreground">Impressum</a>
         {" · "}
         <a href="/datenschutz" className="hover:text-foreground">Datenschutz</a>
         {" · "}
         <a href="/changelog" className="hover:text-foreground">Changelog</a>
+        {" · "}
+        <a href="/barrierefreiheit" className="hover:text-foreground">Barrierefreiheit</a>
         {" · "}
         <a href="/docs" className="hover:text-foreground">Technik-Doku</a>
       </p>

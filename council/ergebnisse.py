@@ -28,7 +28,7 @@ from __future__ import annotations
 from urllib.parse import quote
 import logging
 
-from nwz import notify
+from kern import notify
 
 logger = logging.getLogger("council.ergebnisse")
 
@@ -131,7 +131,7 @@ def melde_ergebnisse(council_store, nwz_store, ksinrs: list[int]) -> int:
     nachträglich behelligt.
 
     Mehrere Treffer einer Sitzung werden zu **einer** Meldung zusammengefasst;
-    die Tagesgrenze aus nwz.notify käme sonst schnell ins Spiel.
+    die Tagesgrenze aus kern.notify käme sonst schnell ins Spiel.
     """
     eingereiht = 0
     for ksinr in ksinrs:

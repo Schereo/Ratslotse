@@ -1,0 +1,293 @@
+{
+  "suite": "qa",
+  "timestamp": "2026-08-09T10:53:16",
+  "cases": 18,
+  "retrieval": {
+    "hit_rate": 0.8889,
+    "mrr": 0.7018
+  },
+  "details": [
+    {
+      "id": "stadion",
+      "expected": [
+        5621,
+        5402,
+        5459,
+        5656,
+        5442,
+        5690,
+        5797
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 1,
+      "cited_mit": [],
+      "cited_ohne": []
+    },
+    {
+      "id": "fahrradstrassen",
+      "expected": [
+        7171,
+        7533,
+        5597,
+        3907,
+        373,
+        1532
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 9,
+      "cited_mit": [],
+      "cited_ohne": []
+    },
+    {
+      "id": "fliegerhorst-abfall",
+      "expected": [
+        7739,
+        7837,
+        7531,
+        7532
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 1,
+      "cited_mit": [],
+      "cited_ohne": []
+    },
+    {
+      "id": "wechloy-neubau",
+      "expected": [
+        7282,
+        6842,
+        6876,
+        6753,
+        6696,
+        6598,
+        6998,
+        6816
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 1,
+      "cited_mit": [],
+      "cited_ohne": []
+    },
+    {
+      "id": "vergnuegungssteuer",
+      "expected": [
+        8056,
+        7864,
+        8002,
+        7972,
+        7089,
+        7270
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 1,
+      "cited_mit": [],
+      "cited_ohne": []
+    },
+    {
+      "id": "huntebruecke",
+      "expected": [
+        8355,
+        8105
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 1,
+      "cited_mit": [],
+      "cited_ohne": []
+    },
+    {
+      "id": "lachgas",
+      "expected": [
+        7452,
+        7662,
+        7839,
+        7400
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 1,
+      "cited_mit": [],
+      "cited_ohne": []
+    },
+    {
+      "id": "machatschkala",
+      "expected": [
+        6169,
+        6571,
+        6652,
+        6301
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 1,
+      "cited_mit": [],
+      "cited_ohne": []
+    },
+    {
+      "id": "maerchen-strassen",
+      "expected": [
+        7477,
+        7478,
+        7476,
+        7648,
+        7649,
+        7651
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 13,
+      "cited_mit": [],
+      "cited_ohne": []
+    },
+    {
+      "id": "summer-street",
+      "expected": [
+        5207,
+        5367,
+        4480,
+        4635,
+        5069
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 1,
+      "cited_mit": [],
+      "cited_ohne": []
+    },
+    {
+      "id": "baeder-finanzen",
+      "expected": [
+        8197,
+        7061,
+        6840,
+        5911
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 3,
+      "cited_mit": [],
+      "cited_ohne": []
+    },
+    {
+      "id": "klimaneutral",
+      "expected": [
+        7617,
+        4183
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 1,
+      "cited_mit": [],
+      "cited_ohne": []
+    },
+    {
+      "id": "grundschulen-aktuell",
+      "expected": [
+        8425,
+        8312,
+        7282,
+        6842
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": null,
+      "cited_mit": [],
+      "cited_ohne": []
+    },
+    {
+      "id": "wohnraum",
+      "expected": [
+        5291,
+        5630,
+        2163,
+        2725
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 9,
+      "cited_mit": [],
+      "cited_ohne": []
+    },
+    {
+      "id": "caecilienbruecke-verlauf",
+      "expected": [
+        7822,
+        7193,
+        6692
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 1,
+      "cited_mit": [],
+      "cited_ohne": []
+    },
+    {
+      "id": "pumptrack-vorlagentiefe",
+      "expected": [
+        8515,
+        5859,
+        4271
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": null,
+      "cited_mit": [],
+      "cited_ohne": []
+    },
+    {
+      "id": "weser-ems-buergschaft",
+      "expected": [
+        7912,
+        7758
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 1,
+      "cited_mit": [],
+      "cited_ohne": []
+    },
+    {
+      "id": "seb-bus-samstag",
+      "expected": [
+        8047
+      ],
+      "retrieved_n": 40,
+      "first_expected_rank": 1,
+      "cited_mit": [],
+      "cited_ohne": []
+    }
+  ],
+  "latency": {
+    "bm25_ms": {
+      "mean": 25,
+      "p50": 24,
+      "p95": 44
+    },
+    "expand_ms": {
+      "mean": 8394,
+      "p50": 4787,
+      "p95": 22310
+    },
+    "kontext_ms": {
+      "mean": 12,
+      "p50": 12,
+      "p95": 22
+    },
+    "paare": {
+      "mean": 99,
+      "p50": 99,
+      "p95": 110
+    },
+    "rerank_ms": {
+      "mean": 3407,
+      "p50": 3594,
+      "p95": 4413
+    },
+    "retrieve_ms": {
+      "mean": 3454,
+      "p50": 3632,
+      "p95": 4478
+    },
+    "total_ms": {
+      "mean": 11860,
+      "p50": 8099,
+      "p95": 26144
+    },
+    "vektor_ms": {
+      "mean": 21,
+      "p50": 18,
+      "p95": 34
+    }
+  },
+  "cold_start_ms": 4206,
+  "skipped": 0,
+  "skipped_ids": []
+}

@@ -15,12 +15,13 @@ sys.path.insert(0, str(ROOT))
 from dotenv import load_dotenv
 load_dotenv(ROOT / ".env")
 
-from nwz import notify
-from nwz.store import Store
-from nwz import digest_email
+from kern import notify
+from kern.store import Store
+from kern import digest_email
 from council.store import CouncilStore
 from council.scraper import CouncilScraper
-from council.committee_summary import summarize_agenda
+from council.agenda_diff import diff_html, diff_tagesordnung, hat_aenderungen
+from council.committee_summary import sitzungskopf, summarize_agenda_items
 from council.ergebnisse import sitzung_href
 
 NWZ_DB = ROOT / "data" / "nwz.sqlite"
@@ -59,6 +60,7 @@ def _stunden_bis(session_date: str, session_time: str) -> float:
 
 
 _ALT_LINK = re.compile(r"\s*<a href=\"[^\"]*si0057[^\"]*\">[^<]*</a>\s*$")
+_ALT_KOPF = re.compile(r"\A<b>[^<]*</b>\n📅[^\n]*\n(?:📍[^\n]*\n)?\n")
 
 
 def _ohne_altlink(summary: str | None) -> str | None:
@@ -68,6 +70,16 @@ def _ohne_altlink(summary: str | None) -> str | None:
     Neu erzeugte Zusammenfassungen enthalten den Link nicht mehr, der Ausdruck
     trifft dann einfach nichts."""
     return summary if summary is None else _ALT_LINK.sub("", summary)
+
+
+def _ohne_altkopf(summary: str | None) -> str | None:
+    """Dasselbe für den Kopf, den `summarize_agenda` früher mitcachte.
+
+    In diesen Altbeständen steckt eine Ortsmarke ohne Ort (der Ort fehlte in
+    den Sitzungsdaten). Der Kopf kommt jetzt frisch vom Aufrufer — der alte
+    muss also weg, sonst stünde er zweimal in der Mail, einmal davon falsch.
+    """
+    return summary if summary is None else _ALT_KOPF.sub("", summary)
 
 
 def main() -> dict:
@@ -109,6 +121,13 @@ def main() -> dict:
 
         # Compute agenda hash once; drives both caching and change detection.
         agenda_hash = _agenda_hash(session.agenda_items)
+        # Den öffentlichen Stand zu diesem Hash einfrieren: save_session hat
+        # die Items bereits ERSETZT — ohne Snapshot gäbe es für die
+        # Diff-Änderungsmeldung (Tims Wunsch 12.08.) keine Vergleichsbasis.
+        oeffentliche_items = [{"item_number": i.item_number, "title": i.title,
+                               "vorlage_nr": i.vorlage_nr or ""}
+                              for i in session.agenda_items if i.is_public]
+        council_store.save_agenda_snapshot(ksinr, agenda_hash, oeffentliche_items)
 
         # Categorise subscribers:
         # - pending_new:    never notified before
@@ -140,15 +159,31 @@ def main() -> dict:
 
         # The summary depends only on the session — compute once and cache.
         # A cached '' means "only routine TOPs" (still a valid cache hit).
-        summary = _ohne_altlink(council_store.get_cached_summary(ksinr, agenda_hash))
+        summary = _ohne_altkopf(_ohne_altlink(council_store.get_cached_summary(ksinr, agenda_hash)))
         if summary is None:
-            summary = summarize_agenda(
-                committee=session.committee,
-                session_date=session.session_date,
-                session_time=session.session_time,
-                location=session.location,
-                agenda_items=session.agenda_items,
-            )
+            try:
+                # Strukturiert holen: dieselben Sätze stehen in der Mail UND
+                # (seit Tims Wunsch 12.08.) unter den TOPs in der App.
+                punkte = summarize_agenda_items(
+                    committee=session.committee,
+                    session_date=session.session_date,
+                    agenda_items=session.agenda_items,
+                )
+                if punkte is None:
+                    summary = None
+                else:
+                    council_store.save_item_summaries(ksinr, agenda_hash, punkte)
+                    summary = "\n".join(
+                        f"• <b>{p['number']}</b>: {p['summary']}" for p in punkte)
+            except Exception as exc:  # noqa: BLE001
+                # Ein LLM-Fehler bei EINER Sitzung (Provider-Content-Filter, ein
+                # unretrybarer API-Fehler, kaputte Antwort) darf nicht den ganzen
+                # Lauf für alle Konten abbrechen. summary=None ist ein gültiger
+                # Zustand: Die Benachrichtigung geht dann ohne Zusammenfassung
+                # raus (nur mit Link), und die nächste Runde versucht es erneut.
+                print(f"  ⚠️ summarize_agenda fehlgeschlagen für {session.committee} "
+                      f"am {session.session_date}: {exc!r} — Meldung geht ohne Zusammenfassung raus")
+                summary = None
             # None = LLM-Antwort unbrauchbar → NICHT cachen (sonst stünde für
             # diese Tagesordnung dauerhaft eine falsche Aussage fest); die
             # Benachrichtigung geht trotzdem raus, nur ohne Zusammenfassung.
@@ -159,12 +194,14 @@ def main() -> dict:
         # geklappt hat: Knopf auf die Sitzung, Ratsinfo als leiser Nebenlink.
         wege = (digest_email.knopf(sitzung_href(ksinr), "Tagesordnung ansehen")
                 + digest_email.nebenlink(session.url, "Im Ratsinformationssystem öffnen"))
-        kopf = (f"<p style='margin:0'><b>{session.committee}</b><br>"
-                f"{session.session_date}"
-                f"{f', {session.session_time} Uhr' if session.session_time else ''}</p>")
+        # Ein Kopf für alle drei Fälle, aus frischen Sitzungsdaten — vorher gab
+        # es zwei: einen aus der Zusammenfassung (mit deutschem Datum) und
+        # einen hier (mit ISO-Datum), je nachdem, ob das LLM geliefert hatte.
+        kopf = sitzungskopf(session.committee, session.session_date,
+                            session.session_time, session.location)
 
         if summary:
-            base_message = summary + wege
+            base_message = kopf + "\n\n" + summary + wege
         elif summary == "":
             base_message = kopf + "<p>Die Tagesordnung enthält nur Routine-Punkte.</p>" + wege
         else:  # Zusammenfassung fehlgeschlagen — nichts behaupten, nur verlinken.
@@ -180,18 +217,62 @@ def main() -> dict:
             council_store.mark_notified(ksinr, owner_id, agenda_hash)
             notifications_sent += 1
 
+        # Änderungs-Meldung als DIFF (Tims Wunsch 12.08.): nur was sich
+        # geändert hat — Neues grün, Verschobenes/Umformuliertes gelb,
+        # Entferntes rot. Die Vergleichsbasis ist der Snapshot des Standes,
+        # über den der jeweilige Owner zuletzt informiert wurde; Owner können
+        # verschiedene Stände kennen, deshalb je last_hash ein eigenes Diff.
+        # Ohne Snapshot (Bestand von vor diesem Feature) kommt die
+        # bisherige Voll-Mail.
         update_prefix = "<p><b>Die Tagesordnung hat sich geändert.</b></p>\n"
         update_subject = f"{session.committee}: Tagesordnung geändert"
+        diff_je_hash: dict[str, str | None] = {}
         for owner_id in pending_update:
             if owner_id not in targets:
                 continue
-            print(f"  {session.session_date} {session.committee} → owner {owner_id} (Änderung)")
+            last_hash = council_store.get_last_notified_hash(ksinr, owner_id) or ""
+            if last_hash not in diff_je_hash:
+                alt = council_store.get_agenda_snapshot(ksinr, last_hash)
+                if alt is None:
+                    diff_je_hash[last_hash] = None
+                else:
+                    d = diff_tagesordnung(alt, oeffentliche_items)
+                    diff_je_hash[last_hash] = diff_html(d) if hat_aenderungen(d) else (
+                        "<p>Details einzelner Punkte wurden angepasst.</p>")
+            diff_teil = diff_je_hash[last_hash]
+            nachricht = (update_prefix + kopf + diff_teil + wege) if diff_teil is not None \
+                else (update_prefix + base_message)
+            print(f"  {session.session_date} {session.committee} → owner {owner_id} "
+                  f"(Änderung{', Diff' if diff_teil is not None else ''})")
             notify.einreihen(nwz_store, owner_id, notify.N1_TAGESORDNUNG,
-                             update_subject, update_prefix + base_message, sitzung_href(ksinr))
+                             update_subject, nachricht, sitzung_href(ksinr))
             council_store.mark_notified(ksinr, owner_id, agenda_hash)
             notifications_sent += 1
 
     council_store.close()
+
+    # Tragweite der frisch importierten Tagesordnungspunkte bewerten — die
+    # Wochen-Karte hebt danach hervor. Läuft hier statt in einem eigenen Cron,
+    # weil genau hier die neuen Tagesordnungen hereinkommen; ein Fehler darf
+    # den Meldungs-Lauf nicht abbrechen.
+    bewertet = 0
+    try:
+        from council.impact import BATCH_SIZE, rate_agenda_batch
+
+        offen = council_store.agenda_items_needing_impact(limit=200)
+        for i, it in enumerate(offen):
+            it["id"] = i
+        nach_id = {it["id"]: it for it in offen}
+        for start in range(0, len(offen), BATCH_SIZE):
+            for iid, score, grund in rate_agenda_batch(offen[start : start + BATCH_SIZE]):
+                it = nach_id.get(iid)
+                if it:
+                    council_store.save_agenda_impact(it["ksinr"], it["item_number"], score, grund)
+                    bewertet += 1
+        if offen:
+            print(f"  Tragweite: {bewertet}/{len(offen)} Tagesordnungspunkte bewertet")
+    except Exception as exc:  # noqa: BLE001
+        print(f"  ⚠️ Tragweite-Bewertung fehlgeschlagen: {exc!r} — Karte nutzt solange die Regeln")
 
     # Der 7-Uhr-Lauf ist zugleich der Wecker der Warteschlange: Was über Nacht
     # anfiel (Nachtruhe 21–7), geht jetzt raus.
@@ -205,10 +286,11 @@ def main() -> dict:
         "Sitzungen mit Tagesordnung": len(session_ids),
         "Termine im Kalender": len(scheduled),
         "Benachrichtigungen": notifications_sent,
+        "Tragweite bewertet": bewertet,
         **stats,
     }
 
 
 if __name__ == "__main__":
-    from nwz.alerts import run_guarded
+    from kern.alerts import run_guarded
     run_guarded("check_committees", main)

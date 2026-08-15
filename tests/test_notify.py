@@ -14,8 +14,8 @@ from datetime import datetime, timezone
 
 import pytest
 
-from nwz import notify
-from nwz.store import Store
+from kern import notify
+from kern.store import Store
 
 BERLIN = notify.ZONE
 
@@ -66,7 +66,7 @@ def test_am_tag_geht_es_sofort():
 
 def test_in_der_nachtruhe_wird_nichts_zugestellt(store, monkeypatch):
     owner = _konto(store)
-    monkeypatch.setattr("nwz.delivery.deliver_message",
+    monkeypatch.setattr("kern.delivery.deliver_message",
                         lambda *a, **k: pytest.fail("in der Nachtruhe darf nichts rausgehen"))
     notify.einreihen(store, owner, notify.N3_ERGEBNIS, "Beschlossen", "<p>x</p>",
                      "/council/decision?id=1", jetzt=_zeit("2026-08-18", 22, 40))
@@ -76,7 +76,7 @@ def test_in_der_nachtruhe_wird_nichts_zugestellt(store, monkeypatch):
 def test_am_morgen_kommt_das_von_nachts_an(store, monkeypatch):
     owner = _konto(store)
     raus: list[str] = []
-    monkeypatch.setattr("nwz.delivery.deliver_message",
+    monkeypatch.setattr("kern.delivery.deliver_message",
                         lambda o, html, email_subject, push_url="/": (raus.append(email_subject), ["email"])[1])
     notify.einreihen(store, owner, notify.N3_ERGEBNIS, "Radwege: angenommen", "<p>x</p>",
                      "/council/decision?id=1", jetzt=_zeit("2026-08-18", 22, 40))
@@ -95,7 +95,7 @@ def _einreihen(store, owner, n: int, jetzt):
 def test_zwei_gehen_einzeln_raus(store, monkeypatch):
     owner = _konto(store)
     raus: list[str] = []
-    monkeypatch.setattr("nwz.delivery.deliver_message",
+    monkeypatch.setattr("kern.delivery.deliver_message",
                         lambda o, html, email_subject, push_url="/": (raus.append(email_subject), ["email"])[1])
     jetzt = _zeit("2026-08-18", 9)
     _einreihen(store, owner, 2, jetzt)
@@ -107,7 +107,7 @@ def test_ab_der_dritten_wird_gebuendelt(store, monkeypatch):
     """Fünf Anlässe an einem Tag → zwei Zustellungen: eine einzeln, eine als Bündel."""
     owner = _konto(store)
     raus: list[tuple[str, str]] = []
-    monkeypatch.setattr("nwz.delivery.deliver_message",
+    monkeypatch.setattr("kern.delivery.deliver_message",
                         lambda o, html, email_subject, push_url="/": (raus.append((email_subject, html)), ["email"])[1])
     jetzt = _zeit("2026-08-18", 9)
     _einreihen(store, owner, 5, jetzt)
@@ -126,7 +126,7 @@ def test_die_grenze_gilt_ueber_den_ganzen_tag(store, monkeypatch):
     """Zwei am Morgen, dann kommt mittags etwas nach: das wartet auf morgen."""
     owner = _konto(store)
     raus: list[str] = []
-    monkeypatch.setattr("nwz.delivery.deliver_message",
+    monkeypatch.setattr("kern.delivery.deliver_message",
                         lambda o, html, email_subject, push_url="/": (raus.append(email_subject), ["email"])[1])
     _einreihen(store, owner, 2, _zeit("2026-08-18", 8))
     assert notify.zustellen(store, jetzt=_zeit("2026-08-18", 8)) == 2
@@ -144,7 +144,7 @@ def test_die_grenze_gilt_ueber_den_ganzen_tag(store, monkeypatch):
 def test_die_grenze_gilt_pro_person(store, monkeypatch):
     a, b = _konto(store, "a@x.de"), _konto(store, "b@x.de")
     raus: list[int] = []
-    monkeypatch.setattr("nwz.delivery.deliver_message",
+    monkeypatch.setattr("kern.delivery.deliver_message",
                         lambda o, html, email_subject, push_url="/": (raus.append(o["owner_id"]), ["email"])[1])
     jetzt = _zeit("2026-08-18", 9)
     _einreihen(store, a, 2, jetzt)
@@ -156,7 +156,7 @@ def test_die_grenze_gilt_pro_person(store, monkeypatch):
 def test_ein_buendel_zaehlt_als_eine_zustellung(store, monkeypatch):
     """Sonst wäre die Grenze nach dem ersten Bündel für immer erschöpft."""
     owner = _konto(store)
-    monkeypatch.setattr("nwz.delivery.deliver_message", lambda *a, **k: ["email"])
+    monkeypatch.setattr("kern.delivery.deliver_message", lambda *a, **k: ["email"])
     _einreihen(store, owner, 5, _zeit("2026-08-18", 9))
     notify.zustellen(store, jetzt=_zeit("2026-08-18", 9))
     assert store.notifications_sent_on(owner, "2026-08-18") == 2
@@ -173,7 +173,7 @@ def test_ohne_ziel_wird_nichts_eingereiht(store):
 def test_gesperrtes_konto_bekommt_nichts(store, monkeypatch):
     owner = _konto(store)
     store.set_web_user_status(owner, "pending")
-    monkeypatch.setattr("nwz.delivery.deliver_message",
+    monkeypatch.setattr("kern.delivery.deliver_message",
                         lambda *a, **k: pytest.fail("gesperrte Konten bekommen keine Post"))
     notify.einreihen(store, owner, notify.N1_TAGESORDNUNG, "x", "<p>x</p>", "/council",
                      jetzt=_zeit("2026-08-18", 9))
@@ -224,7 +224,7 @@ def test_abgeschalteter_anlass_wird_gar_nicht_erst_eingereiht(store, monkeypatch
     """Sonst zählte er gegen die Tagesgrenze, ohne je zugestellt zu werden."""
     owner = _konto(store)
     store.set_notify_prefs(owner, {notify.N1_TAGESORDNUNG: False})
-    monkeypatch.setattr("nwz.delivery.deliver_message", lambda *a, **k: ["email"])
+    monkeypatch.setattr("kern.delivery.deliver_message", lambda *a, **k: ["email"])
 
     assert notify.einreihen(store, owner, notify.N1_TAGESORDNUNG, "x", "<p>x</p>",
                             "/council", jetzt=_zeit("2026-08-18", 9)) == 0
@@ -401,7 +401,7 @@ def test_erfolglose_zustellung_bleibt_in_der_warteschlange(store, monkeypatch):
     installiert hat.
     """
     owner = _konto(store)
-    monkeypatch.setattr("nwz.delivery.deliver_message", lambda *a, **k: [])
+    monkeypatch.setattr("kern.delivery.deliver_message", lambda *a, **k: [])
     notify.einreihen(store, owner, notify.N2_THEMA, "Radweg", "<p>x</p>",
                      "/council/decision?id=1", jetzt=_zeit("2026-08-18", 9))
 
@@ -411,7 +411,7 @@ def test_erfolglose_zustellung_bleibt_in_der_warteschlange(store, monkeypatch):
 
     # Und sie geht raus, sobald der Versand wieder läuft.
     raus: list[str] = []
-    monkeypatch.setattr("nwz.delivery.deliver_message",
+    monkeypatch.setattr("kern.delivery.deliver_message",
                         lambda o, html, email_subject, push_url="/": (raus.append(email_subject), ["email"])[1])
     assert notify.zustellen(store, jetzt=_zeit("2026-08-19", 9)) == 1
     assert raus == ["Radweg"]
@@ -420,7 +420,7 @@ def test_erfolglose_zustellung_bleibt_in_der_warteschlange(store, monkeypatch):
 def test_dauerhaft_unzustellbares_gibt_irgendwann_auf(store, monkeypatch):
     """Sonst beschäftigt eine tote Adresse jeden Lauf aufs Neue."""
     owner = _konto(store)
-    monkeypatch.setattr("nwz.delivery.deliver_message", lambda *a, **k: [])
+    monkeypatch.setattr("kern.delivery.deliver_message", lambda *a, **k: [])
     notify.einreihen(store, owner, notify.N2_THEMA, "x", "<p>x</p>", "/council",
                      jetzt=_zeit("2026-08-18", 9))
 
@@ -444,7 +444,7 @@ def test_ein_kaputtes_konto_reisst_die_anderen_nicht_mit(store, monkeypatch):
             raise RuntimeError("Gateway weg")
         return ["email"]
 
-    monkeypatch.setattr("nwz.delivery.deliver_message", kaputt_fuer_a)
+    monkeypatch.setattr("kern.delivery.deliver_message", kaputt_fuer_a)
     assert notify.zustellen(store, jetzt=_zeit("2026-08-18", 9)) == 1, "B muss trotzdem Post bekommen"
     assert len(store.due_notifications(a, _zeit("2026-08-18", 10).isoformat(timespec="seconds"))) == 1
     assert store.due_notifications(b, _zeit("2026-08-18", 10).isoformat(timespec="seconds")) == []
@@ -486,7 +486,7 @@ def test_buendel_verlinkt_absolut(store, monkeypatch):
     relativer Link tot, es gibt dort keine Basis dafür."""
     owner = _konto(store)
     raus: list[str] = []
-    monkeypatch.setattr("nwz.delivery.deliver_message",
+    monkeypatch.setattr("kern.delivery.deliver_message",
                         lambda o, html, email_subject, push_url="/": (raus.append(html), ["email"])[1])
     for i in range(3):
         notify.einreihen(store, owner, notify.N2_THEMA, f"Meldung {i}", "<p>x</p>",
@@ -561,7 +561,7 @@ def test_abschalten_verwirft_was_noch_wartet(store, monkeypatch):
     assert len(store.due_notifications(owner, "2999-01-01")) == 1
 
     store.set_delivery_channel(owner, "off")
-    monkeypatch.setattr("nwz.delivery.deliver_message",
+    monkeypatch.setattr("kern.delivery.deliver_message",
                         lambda *a, **k: pytest.fail("abgeschaltet — nichts darf rausgehen"))
     assert notify.zustellen(store, jetzt=_zeit("2026-08-18", 10)) == 0
     # Und zwar verworfen, nicht bloß übersprungen: Sonst läge es noch da, wenn
@@ -577,7 +577,7 @@ def test_abschalten_laesst_die_anderen_konten_in_ruhe(store, monkeypatch):
                          jetzt=_zeit("2026-08-18", 9))
     empfaenger: list[int] = []
     monkeypatch.setattr(
-        "nwz.delivery.deliver_message",
+        "kern.delivery.deliver_message",
         lambda o, *a, **k: (empfaenger.append(o["owner_id"]), ["email"])[1])
     assert notify.zustellen(store, jetzt=_zeit("2026-08-18", 10)) == 1
     assert empfaenger == [b]
@@ -596,7 +596,7 @@ def test_wieder_einschalten_faengt_bei_null_an(store, monkeypatch):
                      jetzt=_zeit("2026-08-19", 9))
     titel: list[str] = []
     monkeypatch.setattr(
-        "nwz.delivery.deliver_message",
+        "kern.delivery.deliver_message",
         lambda o, html, email_subject, push_url="/": (titel.append(email_subject), ["email"])[1])
     assert notify.zustellen(store, jetzt=_zeit("2026-08-19", 10)) == 1
     assert titel == ["danach"]

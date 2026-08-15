@@ -8,7 +8,12 @@ matches in ``council_topic_matches``. So a topic like "Radwege" surfaces the rel
 enrich cron does both). fastembed is needed (not a web dependency)::
 
     pip install fastembed
-    python scripts/match_topics_decisions.py --threshold 0.45 --top-k 8
+    python scripts/match_topics_decisions.py --threshold 0.45 --top-k 25
+
+Nach einer Neu-Extraktion der Beschlüsse einmal mit ``--ohne-meldungen``
+laufen lassen: Die gespeicherten Verweise zeigen dann auf gelöschte IDs, der
+Lauf legt sie neu an — und ohne den Schalter hielte er das für lauter neue
+Beschlüsse und meldete sie allen Konten.
 """
 from __future__ import annotations
 
@@ -25,8 +30,8 @@ load_dotenv(ROOT / ".env")
 
 from council import embeddings  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
-from nwz.store import Store  # noqa: E402
-from nwz import digest_email  # noqa: E402
+from kern.store import Store  # noqa: E402
+from kern import digest_email  # noqa: E402
 from council.ergebnisse import decision_href  # noqa: E402
 
 NWZ_DB = ROOT / "data" / "nwz.sqlite"
@@ -51,7 +56,7 @@ def _notify_new_matches(nwz, council, owner_id: int, topic_name: str, new_ids: l
     — für die Person ist es dieselbe Nachricht und gehört unter denselben
     Schalter.
     """
-    from nwz import notify
+    from kern import notify
 
     if not nwz.get_web_user_by_id(owner_id):
         return 0                      # Konto zwischenzeitlich gelöscht
@@ -82,10 +87,17 @@ def _notify_new_matches(nwz, council, owner_id: int, topic_name: str, new_ids: l
     return 1 if notify.einreihen(nwz, owner_id, notify.N3_ERGEBNIS, subject, msg, "/topics") else 0
 
 
-def process(top_k: int = 8, threshold: float = 0.45) -> dict:
+def process(top_k: int = 25, threshold: float = 0.45, *, ohne_meldungen: bool = False) -> dict:
     nwz = Store(NWZ_DB)
     council = CouncilStore(COUNCIL_DB)
     try:
+        # Erst aufräumen: Verweise auf Beschlüsse, die es nicht mehr gibt,
+        # machen aus jedem Zähler ein Versprechen, das die Suche nicht hält.
+        gueltige = {r["id"] for r in council._conn.execute("SELECT id FROM council_decisions")}
+        verwaist = nwz.purge_stale_topic_matches(gueltige)
+        if verwaist:
+            print(f"  {verwaist} verwaiste Treffer entfernt (Beschluss existiert nicht mehr)")
+
         by_owner = nwz.get_all_owner_topics()  # {owner_id: [TopicRow]}
         n_topics = sum(len(v) for v in by_owner.values())
         total = 0
@@ -101,12 +113,12 @@ def process(top_k: int = 8, threshold: float = 0.45) -> dict:
                 nwz.save_topic_decision_matches(t.id, owner_id, hits)
                 total += len(hits)
                 new_ids = [int(did) for did, _ in hits if int(did) not in old_ids]
-                if new_ids and old_ids:
+                if new_ids and old_ids and not ohne_meldungen:
                     notified += _notify_new_matches(nwz, council, owner_id, t.name, new_ids)
         # Eingereiht ist nicht zugestellt: Ohne diesen Aufruf läge alles bis zum
         # nächsten Cron-Job (7 Uhr) still. Die Nachtruhe verschiebt ohnehin, was
         # jetzt nicht raus darf — dieser Lauf startet sonntags um 3 Uhr.
-        from nwz import notify
+        from kern import notify
 
         zugestellt = notify.zustellen(nwz)
         return {"topics": n_topics, "matches": total, "notified": notified,
@@ -118,10 +130,17 @@ def process(top_k: int = 8, threshold: float = 0.45) -> dict:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--top-k", type=int, default=8)
+    # 8 war zu knapp: Die Karte schrieb „8 Beschlüsse insgesamt", während die
+    # Live-Prüfung im Bearbeiten-Blatt 12 fand — der Deckel, nicht die Sache.
+    ap.add_argument("--top-k", type=int, default=25)
     ap.add_argument("--threshold", type=float, default=0.45)
+    # Für Reparaturläufe: Nach einer Neu-Extraktion sind ALLE gespeicherten
+    # Treffer neu — ohne diesen Schalter bekäme jedes Konto für jedes Thema
+    # eine Meldung, obwohl der Rat nichts Neues entschieden hat.
+    ap.add_argument("--ohne-meldungen", action="store_true",
+                    help="Treffer neu berechnen, aber niemanden benachrichtigen")
     args = ap.parse_args()
-    st = process(args.top_k, args.threshold)
+    st = process(args.top_k, args.threshold, ohne_meldungen=args.ohne_meldungen)
     print(f"=== done: {st['matches']} decision matches across {st['topics']} topic(s) ===")
     return 0
 

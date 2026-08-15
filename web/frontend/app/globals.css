@@ -9,6 +9,7 @@
    * dazu Signal-Orange als Akzent: die traditionelle Farbe der Lotsenboote.
    */
   :root {
+    color-scheme: light;
     --background: 204 45% 97.5%;
     --foreground: 212 55% 11%;
     --card: 0 0% 100%;
@@ -44,6 +45,11 @@
   }
 
   .dark {
+    /* Sagt Browser UND Betriebssystem, dass hier dunkel gerendert wird —
+       sonst bleiben native Bedienelemente hell: Der Scrollbalken hatte im
+       Dunkelmodus einen weißen Kanal (Tims Befund 12.08.), ebenso Auswahl-
+       felder und die Rendering-Voreinstellung für Formulare. */
+    color-scheme: dark;
     --background: 213 50% 7%;
     --foreground: 204 40% 96%;
     --card: 212 42% 11%;
@@ -312,9 +318,21 @@
   .fab-pulse-ring {
     animation: fab-pulse 4s ease-out infinite;
   }
-  /* Seiten-/Antwort-Einstieg: kurzes Anheben + Einblenden. */
+  /* Einstieg einzelner Bausteine: kurzes Anheben + Einblenden. */
   .animate-fade-up {
     animation: fade-up 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  /* Seiten-Einstieg (app/(app)/template.tsx) — bewusst OHNE transform.
+     Solange eine transform-Animation läuft, ist das Element Containing Block
+     für jedes position:fixed darin. Der Chat-Composer hing dadurch die ersten
+     0,34 s einer Navigation 164 px zu hoch und deckte die dritte Beispielfrage
+     ab; am Ende der Animation sprang er an den Bildschirmrand — Tims Befund
+     15.08. („die unterste Frage popt auf"). Der Dauerzustand war schon
+     entschärft (fill-mode, s. fade-up), das Fenster WÄHREND der Animation
+     nicht. Reines Einblenden hat das Problem gar nicht erst. */
+  .animate-page-in {
+    animation: page-in 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
   /* Onboarding-Auftakt (26a): Lotti winkt herein, zwei Ringe laufen aus, Titel
@@ -350,7 +368,16 @@
 }
 @keyframes fade-up {
   from { transform: translateY(8px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  /* Endet auf `none`, nicht `translateY(0)`: fill-mode `both` hält den
+     End-Frame für immer fest, und ein Element mit transform — auch der
+     Identität — wird zum Containing Block für position:fixed. Da
+     template.tsx JEDE Seite in diese Animation wickelt, hing sonst jedes
+     fixed-Element (Chat-Composer) an der Seite statt am Viewport. */
+  to { transform: none; opacity: 1; }
+}
+@keyframes page-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 @keyframes qa-sparkle {
   0%, 68%, 100% { transform: scale(1) rotate(0deg); }
@@ -479,4 +506,16 @@
 }
 .dark .kw-fill {
   fill: var(--kw-fd, var(--kw-f));
+}
+
+/* Chip-Zeilen im Ratsgespräch (Design 4a): Die native horizontale Scrollbar
+   unter den Weiterfragen-Chips war ein grauer Fremdkörper — die Zeile läuft
+   stattdessen in einem Fade aus (Scroll-Hinweis), gescrollt wird weiter per
+   Touch/Trackpad/Mausrad. */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
 }

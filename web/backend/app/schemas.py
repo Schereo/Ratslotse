@@ -47,6 +47,12 @@ class UserOut(BaseModel):
     # cookie and leave this null.
     access_token: str | None = None
     display_name: str | None = None
+    # Einwilligung „Gespräche merken" (null = nie gefragt). Reist mit dem
+    # Konto mit, damit die Frage-Seite beim Öffnen sofort weiß, ob die
+    # Erstnutzungs-Karte steht — sonst erscheint sie erst nach der Antwort von
+    # /council/gespraeche und schiebt den halben Bildschirm nach unten
+    # (gemessen: ein Sprung mit CLS 0,196 bei 600 ms Antwortzeit).
+    qa_speichern: int | None = None
 
 
 class TopicIn(BaseModel):
@@ -136,6 +142,13 @@ class StatusUpdate(BaseModel):
     status: str  # 'active' | 'pending'
 
 
+class LimitsUpdate(BaseModel):
+    """Admin-steuerbare Frage-Limits je Konto: Recherchen/Tag (None = Standard,
+    0 = unbegrenzt, sonst eigenes Tageslimit) + Rate-Limit-Befreiung."""
+    deep_limit: int | None = Field(default=None, ge=0, le=999)
+    limits_frei: bool = False
+
+
 class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str = Field(min_length=8, max_length=128)
@@ -169,6 +182,19 @@ class NotifyPrefsIn(BaseModel):
 class FeedbackIn(BaseModel):
     kind: str = Field(pattern="^(feature|bug|other)$")
     message: str = Field(min_length=3, max_length=4000)
+
+
+class SupportIn(BaseModel):
+    """Kontaktformular auf /hilfe — bewusst ohne Konto absendbar. Apples
+    Richtlinie 1.5 verlangt einen Kontaktweg für *alle* Nutzer; der
+    Feedback-Dialog in der App hilft genau dem nicht, der sich nicht anmelden
+    kann. Die Adresse ist deshalb Pflicht: ohne sie gibt es keine Antwort."""
+    kind: str = Field(pattern="^(konto|bug|feature|other)$")
+    email: EmailStr
+    message: str = Field(min_length=3, max_length=4000)
+    # Honigtopf: für Menschen unsichtbar (off-screen + aria-hidden), einfache
+    # Formular-Bots füllen jedes Feld aus. Gefüllt ⇒ still verwerfen.
+    website: str = Field(default="", max_length=200)
 
 
 # ---- onboarding ----

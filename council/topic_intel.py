@@ -26,7 +26,7 @@ import json
 import os
 import re
 
-from nwz import llm, prompts
+from kern import llm, prompts
 
 MODEL = os.environ.get("TOPIC_INTEL_MODEL", "deepseek/deepseek-v4-pro")
 
@@ -60,7 +60,7 @@ def find_matches(store, name: str, limit: int = _MAX_CONTEXT) -> list[dict]:
         ids = []
     if not ids:
         try:
-            ids = [i for i, _ in store.search_decisions_fts(query, limit=limit)]
+            ids = [i for i, *_ in store.search_decisions_fts(query, limit=limit)]
         except Exception:  # noqa: BLE001
             return []
     if not ids:

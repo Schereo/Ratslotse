@@ -133,8 +133,8 @@ export function CommandPalette() {
 
     const actions: Item[] = [
       {
-        key: "act-frage", section: "Aktionen", label: "KI-Frage stellen", sub: "Frag den Stadtrat in normaler Sprache",
-        icon: Sparkles, run: () => go("/council?tab=decisions&mode=fragen"),
+        key: "act-frage", section: "Aktionen", label: "Frag den Rat", sub: "Stell deine Frage in normaler Sprache",
+        icon: Sparkles, run: () => go("/fragen"),
       },
       {
         // RL-U09: binär wie der Lotti-Schalter — der System-Zustand entfällt.
@@ -151,6 +151,17 @@ export function CommandPalette() {
       },
     ].filter((i) => match(i.label));
 
+    // V-02: Die Lupe im Kopf öffnet diese Palette, nicht die Suche — seit dem
+    // Split (#455) führte von dort kein Weg mehr in die Beschluss-Suche. Bei
+    // leerem Feld steht sie deshalb ganz oben, noch vor dem Zuletzt-Gesehenen.
+    const zurSuche: Item[] = q
+      ? []
+      : [{
+          key: "act-suche", section: "Springen", label: "Zur Beschluss-Suche",
+          sub: "Volltext mit Filtern nach Ausschuss, Ergebnis und Zeitraum",
+          icon: Search, run: () => go("/council"),
+        }];
+
     const recent: Item[] = q
       ? []
       : getRecentDecisions().slice(0, 4).map((r) => ({
@@ -166,12 +177,17 @@ export function CommandPalette() {
     }));
     if (debounced.length >= 3) {
       found.push({
-        key: "dec-all", section: "Beschlüsse", label: `Alle Ergebnisse für „${debounced}“`,
+        // Ohne Treffer ist das die Rettungsleine: Die Palette sucht nur in
+        // Titeln, die Beschluss-Suche im Volltext.
+        key: "dec-all", section: "Beschlüsse",
+        label: decisions.length
+          ? `Alle Ergebnisse für „${debounced}“`
+          : `„${debounced}“ in allen Beschlüssen suchen`,
         icon: Search, run: () => go(`/council?tab=decisions&q=${encodeURIComponent(debounced)}`),
       });
     }
 
-    return [...recent, ...found, ...nav, ...actions];
+    return [...zurSuche, ...recent, ...found, ...nav, ...actions];
   }, [query, debounced, decisions, user, go, close]);
 
   // Aktiven Eintrag im gültigen Bereich halten + sichtbar scrollen.
@@ -235,7 +251,7 @@ export function CommandPalette() {
               <div className="flex flex-col items-center py-8 text-center">
                 <Mascot pose="search" className="h-20 w-20" />
                 <p className="mt-2 text-sm font-medium text-foreground">Nichts gefunden</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">Versuch einen anderen Begriff — oder frag die KI direkt.</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Versuch einen anderen Begriff — oder frag den Rat direkt.</p>
               </div>
             )}
             {sections.map((section) => (

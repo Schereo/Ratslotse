@@ -125,7 +125,10 @@ export function TopicSheet({ topic, nameEditable = false, onClose, onSaved }: {
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-[18px]">
+        {/* pb: Der letzte Block (》Passt gerade auf《 bzw. die Vagheits-Warnung)
+            klebte sonst direkt an der Knopfleiste — im Bild vom 15.08. sitzt
+            der Kasten mit einem Haar Abstand auf der Trennlinie. */}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-[18px] pb-4">
 
         <p className="mb-1.5 mt-4 text-xs font-semibold text-muted-foreground">Name</p>
         {nameEditable ? (

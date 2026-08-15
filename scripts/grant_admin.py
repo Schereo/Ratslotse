@@ -11,7 +11,7 @@ Ohne `RESEND_API_KEY` gibt es aber keinen Bestätigungslink. Für diesen Fall �
 für „Admin ist ausgesperrt" — ist dieses Skript der Weg außen herum:
 
     # 1. Im Web ganz normal registrieren, dann auf dem Server:
-    .venv/bin/python scripts/grant_admin.py tim@example.de
+    .venv/bin/python scripts/grant_admin.py tim@example.org
 
 Es legt **nie** ein Konto an, normalisiert die Adresse (Kleinschreibung) und ist
 idempotent: ein zweiter Lauf meldet nur „ist bereits Admin".
@@ -34,7 +34,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")  # NWZ_DB
 
-from nwz.store import Store  # noqa: E402
+from kern.store import Store  # noqa: E402
 
 
 def _default_db() -> str:

@@ -34,7 +34,8 @@ export default function DatenschutzPage() {
         <h1 className="text-3xl font-bold tracking-tight text-foreground">Datenschutzerklärung</h1>
         <p className="mt-3 leading-relaxed text-muted-foreground">
           Diese Erklärung informiert über die Verarbeitung personenbezogener Daten bei der Nutzung von Ratslotse
-          (ratslotse.de) gemäß Art. 13 DSGVO.
+          (ratslotse.de) gemäß Art. 13 DSGVO — und, im vorletzten Abschnitt, über die Verarbeitung der Daten von
+          Ratsmitgliedern und Verwaltungsbeschäftigten aus den amtlichen Ratsdokumenten (Art. 14 DSGVO).
         </p>
 
         <div className="mt-6 space-y-6">
@@ -100,6 +101,62 @@ export default function DatenschutzPage() {
               Kontodaten werden gespeichert, solange dein Konto besteht. Server-Logs werden nur kurzzeitig zur
               Sicherheit vorgehalten. Du kannst die Löschung deines Kontos jederzeit verlangen.
             </p>
+          </Section>
+
+          {/* Art. 14 DSGVO: Ratslotse verarbeitet die mit Abstand meisten
+              personenbezogenen Daten NICHT über seine Nutzer, sondern über
+              Mandatsträger — erhoben aus amtlichen Protokollen, also nicht bei
+              den Betroffenen selbst. Ohne diesen Abschnitt fehlte die
+              Informationspflicht, und Apple liest das Zusammentragen aus
+              öffentlichen Quellen ohne Erklärung als Verstoß gegen
+              Guideline 5.1.1(viii). */}
+          <Section title="Daten von Ratsmitgliedern und Verwaltung">
+            <p>
+              Ratslotse wertet die öffentlich zugänglichen Dokumente des Ratsinformationssystems der Stadt Oldenburg
+              aus. Darin kommen Menschen vor: Ratsmitglieder, sachkundige Bürger:innen, Ausschussvorsitzende und
+              Beschäftigte der Verwaltung. Diese Daten stammen nicht von den Betroffenen selbst, deshalb informiert
+              dieser Abschnitt nach Art. 14 DSGVO.
+            </p>
+            <ul className="list-disc space-y-1 pl-5">
+              <li>
+                <strong>Welche Daten:</strong> Name, Fraktion bzw. Gruppe und Parteizugehörigkeit, Mitgliedschaften
+                und Ämter in Gremien samt Zeiträumen, protokollierte Anwesenheit, sinngemäß zusammengefasste
+                Wortbeiträge und eingebrachte Anträge — jeweils mit Datum und Gremium.
+              </li>
+              <li>
+                <strong>Woher:</strong> ausschließlich aus den veröffentlichten Einladungen, Vorlagen, Niederschriften
+                und Beschlüssen unter{" "}
+                <a href="https://buergerinfo.oldenburg.de" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                  buergerinfo.oldenburg.de
+                </a>
+                . Es werden keine weiteren Quellen zusammengeführt, keine Profile aus sozialen Netzwerken ergänzt und
+                keine Kontaktdaten, Anschriften oder Angaben aus dem Privatleben erhoben.
+              </li>
+              <li>
+                <strong>Wozu und auf welcher Grundlage:</strong> die Arbeit des Stadtrats nachvollziehbar zu machen
+                (Art. 6 Abs. 1 lit. f DSGVO). Das berechtigte Interesse ist die öffentliche Kontrolle politischer
+                Entscheidungen; verarbeitet wird deshalb nur, was Personen in Ausübung ihres öffentlichen Mandats
+                oder Amtes tun, nicht ihre Privatsphäre. Wortbeiträge werden als Zusammenfassung wiedergegeben, nicht
+                als wörtliches Zitat.
+              </li>
+              <li>
+                <strong>KI-Antworten:</strong> Für die Beantwortung einer Frage können Ausschnitte dieser Dokumente
+                — und damit auch Namen von Mandatsträger:innen — an den KI-Dienst übermittelt werden. Antworten
+                belegen jede Aussage mit der Quelle; maßgeblich bleibt das amtliche Original.
+              </li>
+              <li>
+                <strong>Speicherdauer:</strong> solange die zugrunde liegenden Dokumente amtlich veröffentlicht sind
+                und Ratslotse betrieben wird.
+              </li>
+              <li>
+                <strong>Widerspruch und Korrektur:</strong> Wer in diesen Daten vorkommt, kann der Verarbeitung nach
+                Art. 21 DSGVO widersprechen sowie Auskunft, Berichtigung oder Löschung verlangen — formlos an{" "}
+                <a href="mailto:ratslotse@timsigl.de" className="text-primary hover:underline">ratslotse@timsigl.de</a>.
+                Fehlerhafte Zuordnungen (etwa Namensverwechslungen) korrigiere ich auch ohne förmlichen Antrag; ein
+                Hinweis genügt. Bei einem Widerspruch prüfe ich im Einzelfall, ob das öffentliche Interesse an der
+                Nachvollziehbarkeit einer konkreten Entscheidung überwiegt, und teile das Ergebnis mit.
+              </li>
+            </ul>
           </Section>
 
           <Section title="Deine Rechte">

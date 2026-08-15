@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { pfad } from "@/lib/utils";
 
 /** Onboarding-Fortschritt („Erste Schritte mit Lotti") — serverseitig am Konto,
  *  damit der Kurs auf jedem Gerät denselben Stand hat und nach Abschluss
@@ -80,7 +81,7 @@ export function useOnboarding() {
 /** Seitenbesuch → Kurs-Schritt. „thema" fehlt bewusst: das erste Thema gilt
  *  erst als erledigt, wenn wirklich eins angelegt wurde (topics > 0). */
 function stepForLocation(pathname: string, sp: URLSearchParams): StepId | null {
-  if (pathname !== "/council") return null;
+  if (pfad(pathname) !== "/council") return null;
   const tab = sp.get("tab") ?? "decisions";
   if (tab === "analysis") return "analyse";
   if (tab === "themen") return "karten";

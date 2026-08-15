@@ -118,3 +118,190 @@ def test_replace_scheduled_sessions_is_full_swap(tmp_path):
     store.replace_scheduled_sessions([_scheduled("Kulturausschuss", -3)])
     assert store.upcoming_sessions() == []
     store.close()
+
+
+# ---- „Diese Woche im Rat" als Vorschau (Design 11d/12, 12.08.26) ----------
+
+def _vorschau_store(tmp_path):
+    """Eine Sitzung nächste Woche mit gemischter Tagesordnung."""
+    store = CouncilStore(tmp_path / "v.sqlite")
+    with store._conn:
+        store._conn.execute(
+            "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, "
+            "location, fetched_at) VALUES (1, 'Umweltausschuss', date('now','+2 day'), "
+            "'17:00', '', datetime('now'))")
+        punkte = [
+            ("Ö 1", "Feststellung der Beschlussfähigkeit", None, None),
+            ("Ö 2", "Genehmigung des Protokolls Nr. 03/26", None, None),
+            ("Ö 3", "Umsetzung der Ratsbeschlüsse zum Fliegerhorst (FDP-Fraktion vom 28.07.2026)", "26/1", 100),
+            ("Ö 4", "Aktionswochen - Bericht", "26/2", 200),
+            ("Ö 5", "Änderung der Satzung des Jugendamtes - Beschluss", "26/3", 300),
+            ("Ö 6", "Berufung Beratendes Mitglied im Ausschuss", "26/4", 400),
+        ]
+        store._conn.executemany(
+            "INSERT INTO council_agenda_items (ksinr, item_number, title, vorlage_nr, kvonr, is_public) "
+            "VALUES (1, ?, ?, ?, ?, 1)", punkte)
+        store._conn.execute(
+            "INSERT INTO council_entities (id, slug, name, kind, n) "
+            "VALUES (1, 'fliegerhorst', 'Fliegerhorst', 'ort', 166)")
+        # Behandlungsart je Punkt aus der Beratungsfolge
+        store._conn.executemany(
+            "INSERT INTO council_beratungen (kvonr, datum, gremium, ergebnis, fetched_at) "
+            "VALUES (?, date('now','+2 day'), 'Umweltausschuss', ?, datetime('now'))",
+            [(200, "Kenntnisnahme"), (300, "Entscheidung"), (400, "Entscheidung")])
+    return store
+
+
+def test_wochenvorschau_waehlt_nach_wichtigkeit(tmp_path):
+    """Die Karte trägt fünf Zeilen, die Woche bringt gut dreißig inhaltliche
+    Punkte — „hat eine Kurzfassung" ist als Auswahl zu wenig (Tims Befund
+    12.08.). Gewichtet wird nach Behandlungsart (als Schranke), Bindungswirkung,
+    Gremium und Fraktionsantrag; Gremien-Personalien werden gedämpft."""
+    store = _vorschau_store(tmp_path)
+    try:
+        d = store.wochenvorschau(max_punkte=99)
+        titel = [p["title"][:30] for p in d["punkte"]]
+        # Formalien fliegen raus.
+        assert not any("Beschlussfähigkeit" in t for t in titel)
+        assert not any("Genehmigung des Protokolls" in t for t in titel)
+
+        rang = {p["title"][:12]: p["rang"] for p in d["punkte"]}
+        # Die Satzungsänderung (Entscheidung, bindend) schlägt den
+        # Fraktionsantrag zu einem bekannten Thema — genau andersherum als
+        # bis zum 15.08.2026. Damals sammelte ein Bericht über Nebensignale
+        # (Antrag + bekannter Name) mehr Punkte als eine Entscheidung; auf der
+        # Karte stand deshalb ein Museumsbericht über einer Satzungsänderung.
+        assert rang["Änderung der"] > rang["Umsetzung de"]
+        # Die Behandlungsart ist eine Schranke: Ein Bericht zur Kenntnis kommt
+        # nicht über den Deckel, auch wenn er alle Nebensignale einsammelt
+        # (Fraktionsantrag, bekanntes Thema, Kurzfassung, Vorlage) — das war
+        # der Weg, auf dem der Museumsbericht nach oben rutschte.
+        bericht = [{"title": "Bildende Kunst im Stadtmuseum (CDU-Fraktion vom 07.07.2026)",
+                    "behandlung": "Kenntnisnahme", "vorgeschichte": 1,
+                    "summary": "Ein Satz dazu.", "vorlage_nr": "26/9",
+                    "committee": "Kulturausschuss"}]
+        store._punkte_bewerten(bericht)
+        assert bericht[0]["rang"] <= 2.5
+        assert bericht[0]["wichtig"] <= store.WICHTIG_MINDEST
+        # Unter der Schwelle bleiben draußen: der reine Kenntnisnahme-Bericht
+        # und die Gremien-Personalie (formal „Entscheidung", aber Routine).
+        assert not any("Aktionswochen" in t for t in titel)
+        assert not any("Berufung" in t for t in titel)
+        # Ohne die Dämpfung stünde die Personalie gleichauf mit der Satzung —
+        # das war der Befund, der die Dämpfung ausgelöst hat.
+        roh = [{"title": "Berufung Beratendes Mitglied im Ausschuss",
+                "behandlung": "Entscheidung", "vorgeschichte": 0,
+                "summary": None, "vorlage_nr": "26/4"}]
+        store._punkte_bewerten(roh)
+        assert roh[0]["wichtig"] < store.WICHTIG_MINDEST
+    finally:
+        store.close()
+
+
+def test_wochenvorschau_ohne_sitzungen_ist_ehrlich_leer(tmp_path):
+    """Sommerpause: keine Sitzung, keine Ausgabe — die Karte fällt weg, statt
+    einen Leerzustand zu zeigen."""
+    store = CouncilStore(tmp_path / "leer.sqlite")
+    try:
+        d = store.wochenvorschau()
+        assert d["found"] is False and d["punkte"] == [] and d["sitzungen"] == []
+    finally:
+        store.close()
+
+
+# ---- „Die Woche im Rat" — eine Karte statt zwei (Design 14, 14.08.26) ------
+
+def test_woche_traegt_jede_sitzung_mit_ort_und_punktzahl(tmp_path):
+    """Design 14: Die Karte ersetzt auch „Nächste Sitzungen". Dafür braucht
+    jede Sitzung eine Zeile — mit Ort (Desktop) und der Punktzahl, aus der die
+    ruhige Zeile „nicht öffentlich" ableitet."""
+    store = _vorschau_store(tmp_path)
+    try:
+        with store._conn:
+            # Eine zweite Sitzung ganz ohne öffentliche Punkte.
+            store._conn.execute(
+                "INSERT INTO council_sessions (ksinr, committee, session_date, "
+                "session_time, location, fetched_at) VALUES (2, 'Verwaltungsausschuss', "
+                "date('now','+3 day'), '18:00', 'Kleiner Saal', datetime('now'))")
+            store._conn.execute(
+                "INSERT INTO council_agenda_items (ksinr, item_number, title, is_public) "
+                "VALUES (2, 'N 1', 'Grundstück', 0)")
+        d = store.wochenvorschau()
+        nach_ksinr = {s["ksinr"]: s for s in d["sitzungen"]}
+        assert set(nach_ksinr) == {1, 2}
+        assert nach_ksinr[2]["location"] == "Kleiner Saal"
+        # Nicht öffentlich = kein einziger öffentlicher Punkt.
+        assert nach_ksinr[2]["n_items"] == 0
+        # Die Karte hat Inhalt, sobald eine Sitzung ansteht — auch wenn diese
+        # zweite gar keinen relevanten Punkt beisteuert.
+        assert d["found"] is True
+    finally:
+        store.close()
+
+
+def test_eigenes_thema_schlaegt_die_rang_schwelle(tmp_path):
+    """Wer ein eigenes Thema trifft, ist relevant — auch wenn die allgemeine
+    Bewertung den Punkt aussortiert hätte. „Aktionswochen - Bericht" fällt
+    sonst als reine Kenntnisnahme durch (s. Test oben)."""
+    store = _vorschau_store(tmp_path)
+    try:
+        ohne = store.wochenvorschau()
+        assert not any("Aktionswochen" in p["title"] for p in ohne["punkte"])
+
+        mit = store.wochenvorschau(meine={1: [{"item_number": "Ö 4", "topic_name": "Radverkehr"}]})
+        treffer = [p for p in mit["punkte"] if "Aktionswochen" in p["title"]]
+        assert len(treffer) == 1
+        assert treffer[0]["topic_name"] == "Radverkehr"
+        # Und er steht vorn: eigenes Thema schlägt jeden Fremdpunkt.
+        assert treffer[0]["top"] is True
+        assert mit["treffer_gesamt"] == 1
+    finally:
+        store.close()
+
+
+def test_genau_ein_punkt_ist_hervorgehoben(tmp_path):
+    """Design 14a hebt EINEN Punkt der ganzen Karte hervor und gibt ihm die
+    Kurzbegründung — nicht einen je Sitzung."""
+    store = _vorschau_store(tmp_path)
+    try:
+        d = store.wochenvorschau(max_punkte=99)
+        assert sum(1 for p in d["punkte"] if p["top"]) == 1
+    finally:
+        store.close()
+
+
+def test_relevant_je_sitzung_zaehlt_vor_dem_deckel(tmp_path):
+    """Prinzip ② der Dichte-Matrix: verkürzen ja, verschweigen nein. Das
+    Abzeichen („3 für dich") und die Restzeile („1 weiterer Punkt") brauchen
+    die Zahl VOR dem Anzeige-Deckel."""
+    store = _vorschau_store(tmp_path)
+    try:
+        d = store.wochenvorschau(max_punkte=1)
+        assert len(d["punkte"]) == 1
+        # Gezählt wird, was relevant IST — nicht, was gezeigt wird. Genau aus
+        # dieser Differenz entsteht die Restzeile „n weitere Punkte".
+        assert d["relevant_je_sitzung"][1] > len(d["punkte"])
+    finally:
+        store.close()
+
+
+def test_bericht_der_verwaltung_ist_nur_allein_eine_formalie(tmp_path):
+    """„- Bericht der Verwaltung" ist ein ZUSATZ, kein Punkt: Er hängt an den
+    spannendsten Titeln der Woche. Ein aufs Zeilenende verankertes Muster warf
+    neun inhaltliche Punkte weg, darunter fast alle Fraktionsanträge
+    (gemessen 12.08., Tims Nachfrage nach weiteren Kandidaten)."""
+    store = CouncilStore(tmp_path / "f.sqlite")
+    try:
+        formalie = store._FORMALIE_RE
+        # Der alleinstehende Sammelpunkt bleibt Formalie …
+        assert formalie.search("Bericht der Verwaltung")
+        assert formalie.search("  Berichte der Verwaltung  ")
+        # … der Zusatz an einem echten Punkt nicht.
+        for titel in (
+            "Ermittlungen Abfallentsorgung Fliegerhorst (CDU-Fraktion vom 14.07.2026) - Bericht der Verwaltung",
+            "Bekämpfung des Rattenbefalls in der Stadt Oldenburg (FDP-Fraktion) - Bericht der Verwaltung",
+            "Vorhabenbezogener Bebauungsplan Nr. 81: Vorstellung - Bericht der Verwaltung",
+        ):
+            assert not formalie.search(titel), titel
+    finally:
+        store.close()

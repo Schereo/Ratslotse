@@ -51,6 +51,25 @@ def test_excerpt_prefers_sachverhalt_over_beschlussvorschlag():
     assert "Seite:" not in out  # Seiten-Boilerplate entfernt
 
 
+def test_excerpt_joint_pdf_zeilenumbrueche():
+    # Das PDF-Textlayer bricht nach Satzbreite um — als Fließtext gelesen
+    # ergaben sich sinnlose Umbrüche mitten im Satz (Feedback-Runde 3).
+    raw = (
+        "Sachverhalt:\n"
+        "Anlass:\n"
+        "In den vergangenen Jahren hat es einen intensiven Dialog über die\n"
+        "Notwendigkeit eines Stadions gegeben. Die Stellungnahmen zur einge-\n"
+        "schränkten Beteiligung wurden geprüft.\n"
+        "- Erster Punkt der Liste\n"
+        "- Zweiter Punkt der Liste\n"
+    )
+    out = vorlagen.excerpt(raw, 900)
+    assert "Dialog über die Notwendigkeit" in out      # Umbruch geschlossen
+    assert "eingeschränkten Beteiligung" in out        # Silbentrennung geheilt
+    assert "Anlass:\n" in out                          # Label bleibt eigene Zeile
+    assert out.count("- Erster Punkt") == 1 and "\n- Zweiter Punkt" in out
+
+
 def test_excerpt_fallback_and_word_boundary():
     # Ohne Sachverhalt/Begründung: Beschlussvorschlag als Fallback.
     out = vorlagen.excerpt("Kopfzeile\nBeschlussvorschlag: Es wird beschlossen.", 300)
@@ -221,12 +240,20 @@ def test_qa_context_includes_vorlage_excerpt():
 
 def test_qa_context_marks_impact_extremes_only():
     """Tragweite fließt als Hinweis in den QA-Kontext — aber nur an den Skalen-Enden
-    (hoch mit Begründung, gering als Formalie); das Mittelfeld bleibt still."""
+    (hoch, gering als Formalie); das Mittelfeld bleibt still.
+
+    Die BEGRÜNDUNG bleibt draußen: Sie ist ein von uns erzeugter Bewertungssatz.
+    Im Kontext las das Modell sie als Feststellung und schrieb sie ab — „Dieser
+    Beschluss wird als weitreichend mit millionenschweren Folgeaufträgen
+    eingestuft" stand so in einer echten Antwort (Prüfung 10.08.2026), ohne dass
+    das je jemand im Rathaus gesagt hätte.
+    """
     from council.qa import _build_context
 
     hoch = _build_context([{"id": 1, "title": "Haushalt", "summary": "S",
                             "impact": 85, "impact_reason": "Bindet Millionen."}])
-    assert "— Tragweite: hoch (Bindet Millionen.)" in hoch
+    assert "— Tragweite: hoch" in hoch
+    assert "Bindet Millionen" not in hoch
     gering = _build_context([{"id": 2, "title": "Berufung", "summary": "S", "impact": 5}])
     assert "— Tragweite: gering (Formalie)" in gering
     mitte = _build_context([{"id": 3, "title": "B-Plan", "summary": "S", "impact": 50}])
@@ -323,3 +350,25 @@ def test_suggested_entity_topics_prefers_concrete_active(store):
     got = store.suggested_entity_topics(days_back=180)
     assert [(g["name"], g["n_recent"]) for g in got] == [("Veloroute 4", 3), ("Haarenufer", 2)]
     assert got[0]["description"].startswith("Geplanter Radschnellweg")
+
+
+def test_anlagen_block_traegt_belegmarker():
+    """Der Bericht-Prompt nummeriert die Anlagen als ``[A<n>]``. Ohne diesen
+    Marker verschwand die Anlage im Fließtext — die Karte rechts stand da,
+    ohne dass man sah, ob der Bericht sie überhaupt benutzt hat."""
+    from council import qa
+
+    block = qa._anlagen_block([
+        {"nr": 1, "label": "Schalltechnisches Gutachten", "vorlage_nr": "26/0100",
+         "vorlage_titel": "Grundsatzbeschluss Stadionneubau",
+         "fundstelle": "Lärmpegel unter Grenzwert."},
+        # Ohne nr zählt die Position — der Prompt bleibt auch dann belegbar.
+        {"label": "Wirtschaftsplan 2024", "vorlage_nr": None, "vorlage_titel": None,
+         "fundstelle": "Gesamtinvestitionen 1.050.000 Euro."},
+    ])
+    assert "[A1] Schalltechnisches Gutachten (zur Vorlage 26/0100" in block
+    assert "[A2] Wirtschaftsplan 2024 (zur Vorlage ?)" in block
+    assert "[A1], [A2]" in block          # die Anweisung nennt die Marker
+    assert "NIE mit [id]" in block
+    assert qa._anlagen_block([]) == ""
+    assert qa._anlagen_block(None) == ""

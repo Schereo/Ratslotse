@@ -4,9 +4,9 @@ import { Fragment, useEffect, useMemo, useRef, useState, useCallback, Suspense }
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Search, ExternalLink, ChevronDown, ChevronRight, Scale, SlidersHorizontal, Users, Sparkles, Split, X, Flame, CalendarDays, Map as MapIcon, BarChart3, History, CalendarPlus } from "lucide-react";
+import { Search, ExternalLink, ChevronDown, ChevronRight, Scale, SlidersHorizontal, Users, Sparkles, Split, X, Flame, History, CalendarPlus, Paperclip } from "lucide-react";
 import { api, qs, ApiError } from "@/lib/api";
-import { decisionHref } from "@/lib/routes";
+import { fragenHref, decisionHref } from "@/lib/routes";
 import { useDebounce } from "@/lib/use-debounce";
 import { clearRecentSearches, getRecentSearches, pushRecentSearch } from "@/lib/recent-searches";
 import { offerIcs } from "@/lib/ics";
@@ -14,7 +14,7 @@ import {
   CouncilSession, SessionDetail, AgendaItem, CouncilDecision, DecisionOutcome, PolicyField, Topic,
 } from "@/lib/types";
 import {
-  Badge, Button, Card, CardListSkeleton, DateField, EmptyState, Input, PageHeader, Pagination, Segmented, type SegmentedOption, Select,
+  Badge, Button, Card, CardListSkeleton, DateField, EmptyState, Input, PageHeader, Pagination, Segmented, Select,
   Sheet, SheetContent, SheetTitle, SheetTrigger, Spinner, formatDate, toast,
 } from "@/components/ui";
 import { OutcomeBadge, OutcomeDot, ImportanceBadge, OUTCOME_META, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
@@ -26,8 +26,9 @@ import { ChipPopover, DateRangeChip } from "@/components/filter-chips";
 import { SitzungspauseBanner } from "@/components/sitzungspause-banner";
 import { AnalysisTab } from "@/components/council-analysis";
 import { EntitiesTab } from "@/components/council-entities";
-import { QaTab } from "@/components/council-qa";
-import { cn } from "@/lib/utils";
+import { cn, relativerTag, wochentagKurz } from "@/lib/utils";
+import { useHeute } from "@/lib/use-heute";
+import { useMerker } from "@/lib/use-merker";
 
 type Scope = "all" | "upcoming" | "recent";
 type Tab = "sessions" | "decisions" | "themen" | "analysis";
@@ -151,6 +152,15 @@ function subvoteLabel(s: NonNullable<CouncilDecision["subvote_summary"]>): strin
 function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
   const isSub = d.kind === "subvote";
   const sub = d.subvote_summary;
+  const router = useRouter();
+  const sp = useSearchParams();
+  // 5a/I-08: aus der Trefferkarte direkt ins Ratsgespräch — die Frage steht
+  // vorbefüllt im Composer, gesendet wird bewusst erst per Hand.
+  const dazuFragen = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    router.push(fragenHref({ q: `Erzähl mir mehr zu „${d.title ?? ""}".` }));
+  };
   return (
     <Link href={decisionHref(d.id)} className="block">
       {/* Design 22a: drei feste Zonen statt verstreuter Elemente — Statuszeile
@@ -166,7 +176,14 @@ function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
               <OutcomeDot outcome={d.outcome} />
               {!isSub && <ImportanceBadge score={d.importance} />}
             </div>
-            <ChevronRight className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+            <span className="flex shrink-0 items-center gap-1">
+              <button type="button" onClick={dazuFragen} title="Im Ratsgespräch dazu fragen"
+                aria-label={`Im Ratsgespräch zu „${d.title ?? ""}" fragen`}
+                className="rounded-md p-1 text-muted-foreground opacity-60 transition-opacity hover:bg-muted hover:text-primary focus:opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
+                <Sparkles className="h-4 w-4" aria-hidden />
+              </button>
+              <ChevronRight className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+            </span>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
             {isSub
@@ -430,9 +447,9 @@ function FilterChip({ label, onClear }: { label: string; onClear: () => void }) 
 }
 
 function DecisionsTab({ committees }: { committees: string[] }) {
-  const [q, setQ] = useState("");
-  const [committee, setCommittee] = useState("");
-  const [outcome, setOutcome] = useState("");
+  const [q, setQ] = useMerker("suche:q", "");
+  const [committee, setCommittee] = useMerker("suche:gremium", "");
+  const [outcome, setOutcome] = useMerker("suche:ergebnis", "");
   const [sort, setSort] = useState("date_desc");
   const [fields, setFields] = useState<PolicyField[]>([]);
   const [page, setPage] = useState(1);
@@ -531,11 +548,19 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   // auf den Listen-Container (bleibt über den Ladewechsel gemountet), damit
   // Screenreader den Kontextwechsel mitbekommen.
   const listRef = useRef<HTMLDivElement>(null);
-  const changePage = (p: number) => {
+  // `springen` nur für die UNTERE Leiste: Von dort führt der Weg zurück an den
+  // Listenanfang. Die obere Leiste steht schon dort — dieselbe Bewegung
+  // verschob die Seite bei jedem Klick um ein paar Pixel (Tims Befund 12.08.:
+  // „immer im Wechsel hoch und runter"), weil scrollIntoView den Listenkopf
+  // unter den klebenden Seitenkopf zieht. Der Fokus wandert weiterhin auf die
+  // Liste, damit Vorleseprogramme den Wechsel mitbekommen.
+  const changePage = (p: number, springen = true) => {
     setPage(p);
     requestAnimationFrame(() => {
-      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      listRef.current?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+      if (springen) {
+        const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        listRef.current?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+      }
       listRef.current?.focus({ preventScroll: true });
     });
   };
@@ -741,15 +766,9 @@ function DecisionsTab({ committees }: { committees: string[] }) {
               <Button
                 variant="signal"
                 size="sm"
-                onClick={() => {
-                  const params = new URLSearchParams(sp.toString());
-                  params.set("tab", "decisions");
-                  params.set("mode", "fragen");
-                  if (query) params.set("q", query);
-                  router.replace(`/council?${params.toString()}`, { scroll: false });
-                }}
+                onClick={() => router.push(fragenHref(query ? { q: query } : undefined))}
               >
-                <Sparkles /> KI-Frage stellen
+                <Sparkles /> Frag den Rat
               </Button>
             }
           />
@@ -784,6 +803,11 @@ function DecisionsTab({ committees }: { committees: string[] }) {
                   <span className="sr-only">Themenfilter entfernen</span>
                 </button>
               )}
+              {/* Blättern klein am rechten Rand der Zählerzeile (Tims Wunsch
+                  12.08.) — die große, mittige Leiste oben wirkte wie ein
+                  eigener Inhaltsblock. Unten bleibt sie in voller Größe. */}
+              <Pagination compact page={page} totalPages={totalPages}
+                onChange={(p) => changePage(p, false)} className="ml-auto" />
             </div>
             {decisions.map((d) => <DecisionCard key={d.id} d={d} query={query} />)}
             <Pagination page={page} totalPages={totalPages} onChange={changePage} className="pt-2" />
@@ -841,11 +865,14 @@ function YearDivider({ jahr }: { jahr: string }) {
    toter Text — man musste zurück in die Suche, um den Beschluss zu finden, der
    direkt dahinter liegt. TOPs ohne Beschluss (Berichte, künftige Sitzungen)
    bleiben bewusst ruhiger Text, damit der Zeiger nichts verspricht, was fehlt. */
-function AgendaRow({ it, query, outcome, decisionId, myTopic, domId }: {
+function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flash }: {
   it: AgendaItem; query: string; outcome?: DecisionOutcome | null;
   decisionId?: number; myTopic?: string;
   /* Ziel des `?top=…`-Sprungs aus einer Benachrichtigung (s. topDomId). */
   domId?: string;
+  /** Kurz nach dem Sprung hervorgehoben — sonst sieht die Zielzeile aus wie
+   *  jede andere und man sucht, was gemeint war. */
+  flash?: boolean;
 }) {
   const hit = itemMatches(it, query);
   const body = (
@@ -855,7 +882,32 @@ function AgendaRow({ it, query, outcome, decisionId, myTopic, domId }: {
       <span className="w-10 shrink-0 whitespace-nowrap text-xs font-medium text-muted-foreground">{it.item_number}</span>
       <div className="min-w-0 flex-1">
         <p className="text-sm text-foreground"><Highlight text={it.title} query={query} /></p>
+        {/* Ein Satz, worum es geht (Tims Wunsch 12.08.) — dieselbe
+            KI-Zusammenfassung wie in der Tagesordnungs-Mail. Der Hinweis
+            „Kurzfassung" sagt, dass hier eine Maschine zusammengefasst hat. */}
+        {it.summary && (
+          <p className="mt-0.5 text-[12.5px] leading-relaxed text-muted-foreground">
+            <span className="mr-1 font-mono text-[9.5px] uppercase tracking-[0.1em] text-muted-foreground/70">
+              Kurzfassung
+            </span>
+            {it.summary}
+          </p>
+        )}
         {it.vorlage_nr && <p className="text-xs text-muted-foreground">Vorlage <Highlight text={it.vorlage_nr} query={query} /></p>}
+        {/* Tims Befund 12.08.: Die TOP-Anhänge (RIS-PDFs) fehlten in der App
+            komplett — gerade Fraktions-Anträge ohne Vorlage hängen NUR hier. */}
+        {(it.anlagen?.length ?? 0) > 0 && (
+          <p className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5">
+            {it.anlagen!.map((a) => (
+              <a key={a.url} href={a.url} target="_blank" rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex max-w-full items-center gap-1 text-xs text-primary hover:underline">
+                <Paperclip className="h-3 w-3 shrink-0" aria-hidden />
+                <span className="truncate">{a.label}</span>
+              </a>
+            ))}
+          </p>
+        )}
         {myTopic && (
           /* RL-902: TOP passt zu einem eigenen Thema. */
           <span className="mt-1 inline-flex rounded-full bg-signal/10 px-2 py-0.5 text-[11px] font-semibold text-signal">
@@ -868,7 +920,13 @@ function AgendaRow({ it, query, outcome, decisionId, myTopic, domId }: {
     </>
   );
   const tone = hit ? "bg-amber-50 dark:bg-amber-950/40" : myTopic ? "bg-signal/5" : "";
-  const layout = "flex flex-wrap items-start gap-x-3 gap-y-1 rounded-md px-2 py-2";
+  const layout = cn(
+    "flex flex-wrap items-start gap-x-3 gap-y-1 rounded-md px-2 py-2",
+    // Der Ring verschwindet nach 1,6 s von selbst; die Farbe blendet weich
+    // aus, damit die Markierung nicht springt.
+    "transition-[box-shadow,background-color] duration-500",
+    flash && "bg-primary/[0.07] ring-2 ring-primary",
+  );
 
   if (decisionId != null) {
     return (
@@ -909,22 +967,30 @@ function AttendanceSection({ detail }: { detail: SessionDetail }) {
 }
 
 function SessionsTab({ committees }: { committees: string[] }) {
-  const [q, setQ] = useState("");
-  const [committee, setCommittee] = useState("");
+  const heute = useHeute();
+  // Filter überleben den Tab-Wechsel (Tims iOS-Befund 12.08.): Wer sucht und
+  // kurz woanders nachsieht, will nicht neu tippen.
+  const [q, setQ] = useMerker("sitzungen:q", "");
+  const [committee, setCommittee] = useMerker("sitzungen:gremium", "");
   // RL-F06: ?ksinr=… (Deep-Link von „Heute") — Sitzung aufklappen, sanft
   // hinscrollen und kurz aufblitzen lassen (wie der Fußnoten-Flash der KI).
   const deepSp = useSearchParams();
   const targetKsinr = Number(deepSp.get("ksinr") || 0);
   const deepLinkDone = useRef(false);
   const [flashKsinr, setFlashKsinr] = useState<number | null>(null);
-  const [scope, setScope] = useState<Scope>("upcoming");
+  /** DOM-Id des per `?top=` angesprungenen Punktes — er blinkt kurz auf. */
+  const [flashTop, setFlashTop] = useState<string | null>(null);
+  const [scope, setScope] = useMerker<Scope>("sitzungen:zeitraum", "upcoming");
   const listRef = useRef<HTMLDivElement>(null);
   const [sessions, setSessions] = useState<CouncilSession[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [hasSearched, setHasSearched] = useState(false);
-  const [expanded, setExpanded] = useState<Record<number, boolean>>({});
+  // Aufgeklappte Sitzungen überleben den Tab-Wechsel (Tims Wunsch 12.08.):
+  // Wer eine Tagesordnung offen hat und kurz woanders nachsieht, findet sie
+  // beim Zurückkommen offen vor — die Details holt der Effekt unten nach.
+  const [expanded, setExpanded] = useMerker<Record<number, boolean>>("sitzungen:offen", {});
   const [detail, setDetail] = useState<Record<number, SessionDetail>>({});
   const [detailLoading, setDetailLoading] = useState<Record<number, boolean>>({});
   const debouncedQ = useDebounce(q, 350);
@@ -939,7 +1005,11 @@ function SessionsTab({ committees }: { committees: string[] }) {
   const load = useCallback(async () => {
     setLoading(true);
     setHasSearched(true);
-    setExpanded({});
+    // Kein Zuklappen mehr beim bloßen Nachladen: Der Effekt läuft auch beim
+    // Betreten der Seite, und damit war die gemerkte offene Tagesordnung
+    // sofort wieder zu (Tims Wunsch 12.08.). Beim Ändern von Suche, Filter
+    // oder Seite räumt der Effekt darunter auf — dort ist es richtig, weil
+    // die Liste dann andere Sitzungen zeigt.
     try {
       const effectiveScope = q || committee ? "all" : scope;
       const data = await api.get<{ sessions: CouncilSession[]; total: number }>(
@@ -964,8 +1034,18 @@ function SessionsTab({ committees }: { committees: string[] }) {
 
   // Jede Änderung an Suche, Ausschuss oder Zeitraum beginnt wieder auf Seite 1 —
   // sonst landet man im Nichts, wenn die neue Menge kürzer ist als die alte.
+  // Dabei klappt auch alles zu: Die Liste zeigt danach andere Sitzungen.
+  // Verglichen werden die WERTE, nicht „erster Lauf": React ruft Effekte im
+  // Entwicklungsmodus doppelt auf, ein verbrauchtes Erstlauf-Flag ließ den
+  // zweiten Durchgang alles zuklappen (gemessen).
+  const letzteFilter = useRef(`${debouncedQ}|${committee}|${scope}`);
   useEffect(() => {
+    const jetzt = `${debouncedQ}|${committee}|${scope}`;
+    if (jetzt === letzteFilter.current) return;
+    letzteFilter.current = jetzt;
     setPage(1);
+    setExpanded({});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedQ, committee, scope]);
 
   useEffect(() => {
@@ -973,7 +1053,11 @@ function SessionsTab({ committees }: { committees: string[] }) {
     const s = sessions.find((x) => x.ksinr === targetKsinr);
     if (!s) return;
     deepLinkDone.current = true;
-    void toggle(s);
+    // AUFKLAPPEN, nicht umschalten: Steht die Tagesordnung schon offen (etwa
+    // weil sie den Tab-Wechsel überlebt hat, #447), machte `toggle` sie zu —
+    // der Sprung landete dann auf einer geschlossenen Karte, und `?top=` fand
+    // seine Zeile nie (im Browser reproduziert 12.08.).
+    if (!expanded[targetKsinr]) void toggle(s);
     // Bewusst setTimeout und nicht requestAnimationFrame: Beim Antippen einer
     // Benachrichtigung wacht die App gerade erst auf. Ein Fenster, das noch
     // nicht zeichnet, ruft keine Animationsbilder ab — der Sprung wäre still
@@ -985,7 +1069,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
     const t = setTimeout(() => setFlashKsinr(null), 1600);
     return () => { clearTimeout(sprung); clearTimeout(t); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [targetKsinr, loading, sessions]);
+  }, [targetKsinr, loading, sessions, expanded]);
 
   /* ?top=… — der Tagesordnungspunkt aus einer Benachrichtigung.
    *
@@ -1037,6 +1121,15 @@ function SessionsTab({ committees }: { committees: string[] }) {
       // während das Dokument noch so hoch ist wie das Fenster, verpufft.
       if (el && document.documentElement.scrollHeight > window.innerHeight + 4) {
         topSprungDone.current = true;
+        // Den Zielpunkt kurz markieren: Nach dem Sprung stand die Zeile zwar
+        // in der Mitte, sah aber aus wie jede andere — man musste raten,
+        // welche gemeint war (Tims Befund 15.08.). Gleiche Dauer wie der
+        // Ring um die Sitzungskarte.
+        // Länger als der Ring um die Sitzungskarte (1,6 s): Der springt ins
+        // Auge, während man noch scrollt — die Zeile findet man erst, wenn
+        // die Bewegung steht.
+        setFlashTop(id);
+        setTimeout(() => setFlashTop(null), 2500);
         const vorher = window.scrollY;
         // `center` statt `start`: Die Zeile steht mitten im Bild, mit dem
         // Zusammenhang darüber und darunter — nicht am oberen Rand geklebt.
@@ -1064,7 +1157,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
     const ksinr = s.ksinr;
     if (ksinr == null) return; // terminierte Sitzung ohne Tagesordnung
     const willExpand = !expanded[ksinr];
-    setExpanded((prev) => ({ ...prev, [ksinr]: willExpand }));
+    setExpanded({ ...expanded, [ksinr]: willExpand });
     if (willExpand) reportBadgeEvent("sitzung"); // RL-U12: Sitzungsgast
     if (willExpand && !detail[ksinr]) {
       setDetailLoading((prev) => ({ ...prev, [ksinr]: true }));
@@ -1073,12 +1166,28 @@ function SessionsTab({ committees }: { committees: string[] }) {
         setDetail((prev) => ({ ...prev, [ksinr]: d }));
       } catch {
         toast.error("Sitzung konnte nicht geladen werden.");
-        setExpanded((prev) => ({ ...prev, [ksinr]: false }));
+        setExpanded({ ...expanded, [ksinr]: false });
       } finally {
         setDetailLoading((prev) => ({ ...prev, [ksinr]: false }));
       }
     }
   };
+
+  // Wiederhergestellte offene Sitzungen brauchen ihre Tagesordnung nach —
+  // gemerkt ist nur, WAS offen war, nicht der Inhalt.
+  useEffect(() => {
+    for (const [k, offen] of Object.entries(expanded)) {
+      const ksinr = Number(k);
+      if (!offen || detail[ksinr] || detailLoading[ksinr]) continue;
+      setDetailLoading((prev) => ({ ...prev, [ksinr]: true }));
+      api.get<SessionDetail>(`/council/session/${ksinr}`)
+        .then((d) => setDetail((prev) => ({ ...prev, [ksinr]: d })))
+        .catch(() => { /* stumm: die Karte zeigt dann nur den Kopf */ })
+        .finally(() => setDetailLoading((prev) => ({ ...prev, [ksinr]: false })));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expanded]);
+
 
   const query = q.trim();
   const totalPages = Math.ceil(total / PAGE_SIZE);
@@ -1086,11 +1195,19 @@ function SessionsTab({ committees }: { committees: string[] }) {
   // Wie in der Beschluss-Suche (RL-U02): Seitenwechsel führt zurück an den
   // Listenanfang und setzt den Fokus dorthin — sonst steht man nach dem Klick
   // auf „2" mitten in der neuen Liste, weil der Knopf ganz unten liegt.
-  const changePage = (p: number) => {
+  // `springen` nur für die UNTERE Leiste: Von dort führt der Weg zurück an den
+  // Listenanfang. Die obere Leiste steht schon dort — dieselbe Bewegung
+  // verschob die Seite bei jedem Klick um ein paar Pixel (Tims Befund 12.08.:
+  // „immer im Wechsel hoch und runter"), weil scrollIntoView den Listenkopf
+  // unter den klebenden Seitenkopf zieht. Der Fokus wandert weiterhin auf die
+  // Liste, damit Vorleseprogramme den Wechsel mitbekommen.
+  const changePage = (p: number, springen = true) => {
     setPage(p);
     requestAnimationFrame(() => {
-      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      listRef.current?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+      if (springen) {
+        const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        listRef.current?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+      }
       listRef.current?.focus({ preventScroll: true });
     });
   };
@@ -1150,10 +1267,16 @@ function SessionsTab({ committees }: { committees: string[] }) {
               {`${total} ${total === 1 ? "Sitzung" : "Sitzungen"} gefunden`
                 + (totalPages > 1 ? `, Seite ${page} von ${totalPages}` : "")}
             </p>
-            <p aria-hidden className="text-sm font-medium text-muted-foreground">
-              {total} {total === 1 ? "Sitzung" : "Sitzungen"}
-              {totalPages > 1 && <span className="text-muted-foreground/70"> · Seite {page} von {totalPages}</span>}
-            </p>
+            <div aria-hidden className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-medium text-muted-foreground">
+                {total} {total === 1 ? "Sitzung" : "Sitzungen"}
+              </p>
+              {/* Blättern klein rechts in der Zählerzeile — siehe Beschluss-
+                  Suche. Der „Seite X von Y"-Text wäre damit doppelt; für
+                  Vorleseprogramme steht er weiter in der sr-only-Zeile. */}
+              <Pagination compact page={page} totalPages={totalPages}
+                onChange={(p) => changePage(p, false)} className="ml-auto" />
+            </div>
             {sessions.map((s, i) => {
               // Jahres-Trenner, sobald sich das Jahr ändert — und immer über
               // dem ersten Eintrag, damit die Einordnung nicht erst nach dem
@@ -1178,6 +1301,14 @@ function SessionsTab({ committees }: { committees: string[] }) {
                         <div className="min-w-0">
                           <CommitteeName name={s.committee} className="font-display text-base font-bold text-foreground" />
                           <p className="mt-0.5 truncate text-sm text-muted-foreground">
+                            {/* Auch bei Terminen ohne Tagesordnung: Der
+                                Wochentag gehört vor die Uhrzeit. */}
+                            {(() => {
+                              const r = relativerTag(s.session_date, heute);
+                              if (r) return `${r[0].toUpperCase()}${r.slice(1)} · `;
+                              const w = wochentagKurz(s.session_date);
+                              return w ? `${w} · ` : "";
+                            })()}
                             {s.session_time ? `${s.session_time} Uhr` : "Uhrzeit folgt"}
                             {s.location && ` · ${s.location}`}
                           </p>
@@ -1186,12 +1317,14 @@ function SessionsTab({ committees }: { committees: string[] }) {
                       <div className="ml-[62px] flex shrink-0 items-center gap-2 self-start sm:ml-0 sm:self-auto">
                         {isLiveNow(s) && <LiveChip />}
                         <Badge>Tagesordnung folgt</Badge>
+                        {/* In DERSELBEN Zeile wie die Badge (Tims Befund
+                            12.08.): Als eigene Reihe darunter brach der Link
+                            die Gleichmäßigkeit der Karten — rechts sitzt bei
+                            den Schwester-Karten schließlich auch die Aktion.
+                            Und gerade hier lohnt der Kalender am meisten: Der
+                            Termin steht, die Tagesordnung kommt erst noch. */}
+                        <CalendarButton session={s} />
                       </div>
-                    </div>
-                    {/* Gerade hier lohnt der Kalender am meisten: Der Termin
-                        steht, die Tagesordnung kommt erst noch. */}
-                    <div className="ml-[62px] mt-2 sm:ml-0">
-                      <CalendarButton session={s} />
                     </div>
                   </Card>
                   </Fragment>
@@ -1230,7 +1363,22 @@ function SessionsTab({ committees }: { committees: string[] }) {
                       <DateTile iso={s.session_date} />
                       <div className="min-w-0">
                         <CommitteeName name={s.committee} className="font-display text-base font-bold text-foreground" />
-                        <p className="mt-0.5 truncate text-sm text-muted-foreground">{s.session_time} Uhr · {s.location}</p>
+                        {/* „Morgen · 17:00 Uhr" statt nur der Uhrzeit — die
+                            Kachel links nennt den Tag, der Kopf benennt die
+                            Nähe (Tims Wunsch 12.08.). */}
+                        <p className="mt-0.5 truncate text-sm text-muted-foreground">
+                          {/* „Heute/Morgen" schlägt den Wochentag — sonst steht
+                              er vorn (Tims Wunsch 15.08.): Die Kachel nennt nur
+                              Monat und Zahl, ob das ein Montag oder Samstag ist,
+                              musste man selbst nachrechnen. */}
+                          {(() => {
+                            const r = relativerTag(s.session_date, heute);
+                            if (r) return `${r[0].toUpperCase()}${r.slice(1)} · `;
+                            const w = wochentagKurz(s.session_date);
+                            return w ? `${w} · ` : "";
+                          })()}
+                          {s.session_time} Uhr{s.location && ` · ${s.location}`}
+                        </p>
                       </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
@@ -1258,7 +1406,8 @@ function SessionsTab({ committees }: { committees: string[] }) {
                                   outcome={it.is_public ? outcomeByItem[topKey(it.item_number)] : undefined}
                                   decisionId={it.is_public ? decisionByItem[topKey(it.item_number)] : undefined}
                                   myTopic={myByItem[it.item_number]}
-                                  domId={s.ksinr != null ? topDomId(s.ksinr, it.item_number) : undefined} />
+                                  domId={s.ksinr != null ? topDomId(s.ksinr, it.item_number) : undefined}
+                                  flash={s.ksinr != null && flashTop === topDomId(s.ksinr, it.item_number)} />
                               ))}
                             </ul>
                             {d && <AttendanceSection detail={d} />}
@@ -1298,87 +1447,29 @@ function SessionsTab({ committees }: { committees: string[] }) {
   );
 }
 
-// The combined "Suche" tab: keyword search (DecisionsTab) and the AI question mode
-// (QaTab) as two lenses on the same decisions, switched by ?mode. Both render the
-// same decision cards, so it reads as one search rather than two features.
-function SearchTab({ committees }: { committees: string[] }) {
-  const sp = useSearchParams();
-  const mode: "suchen" | "fragen" = sp.get("mode") === "fragen" ? "fragen" : "suchen";
-  // RL-U01: Beide Modi bleiben gemountet und werden per `hidden` getauscht —
-  // eine gestreamte KI-Antwort überlebt so den Wechsel zu „Suchen" und zurück
-  // (Nutzer vergleichen genau so). Abbruch des Streams erst beim Unmount der
-  // Seite. Scroll-Position je Modus merken: der Scroll-Container ist #main.
-  const prevMode = useRef(mode);
-  const scrollPos = useRef<Record<"suchen" | "fragen", number>>({ suchen: 0, fragen: 0 });
-  useEffect(() => {
-    if (prevMode.current === mode) return;
-    const scroller = document.getElementById("main");
-    scrollPos.current[prevMode.current] = scroller?.scrollTop ?? 0;
-    prevMode.current = mode;
-    requestAnimationFrame(() => {
-      if (scroller) scroller.scrollTop = scrollPos.current[mode] ?? 0;
-    });
-  }, [mode]);
-  // Umschalter lebt jetzt im Seitenkopf (RL-501, 6a) — die Tabs rendern ohne.
+/** Brücke in die Fragen-Seite (Split 12.08.): ersetzt den früheren
+ *  Suchen/Fragen-Umschalter im Seitenkopf. QaTab, Gespräche-Knopf und der
+ *  Modus-Scroll-Tausch sind mit auf die eigene Seite /fragen umgezogen —
+ *  Fragen ist das Headliner-Feature und wohnt nicht mehr als Modus in der
+ *  Suche. */
+function FragenBruecke() {
   return (
-    <>
-      <div hidden={mode !== "suchen"}>
-        <DecisionsTab committees={committees} />
-      </div>
-      <div hidden={mode !== "fragen"}>
-        <QaTab />
-      </div>
-    </>
-  );
-}
-
-/** „Suchen | KI-Frage"-Umschalter im Seitenkopf (RL-501); qa-glint-Lockruf
- *  bleibt, bis die erste Frage gestellt wurde (Flag setzt council-qa). */
-function SearchModeToggle() {
-  const sp = useSearchParams();
-  const router = useRouter();
-  const mode: "suchen" | "fragen" = sp.get("mode") === "fragen" ? "fragen" : "suchen";
-  const [qaUsed, setQaUsed] = useState(true);
-  useEffect(() => {
-    setQaUsed(localStorage.getItem("ratslotse:qa-benutzt") === "1");
-  }, [mode]);
-  const setMode = (m: "suchen" | "fragen") => {
-    const params = new URLSearchParams(sp.toString());
-    params.set("tab", "decisions");
-    if (m === "suchen") params.delete("mode"); else params.set("mode", m);
-    router.replace(`/council?${params.toString()}`, { scroll: false });
-  };
-  return (
-    <Segmented
-      className="sm:w-fit"
-      value={mode}
-      onChange={setMode}
-      options={[
-        { value: "suchen", label: "Suchen", icon: Search },
-        { value: "fragen", label: "KI-Frage", icon: Sparkles, tour: "ki-frage-tab", sparkle: !qaUsed },
-      ]}
-    />
+    <Button asChild variant="signal" size="sm">
+      <Link href={fragenHref()}>
+        <Sparkles /> Fragen
+      </Link>
+    </Button>
   );
 }
 
 // Navigation between these views now lives in the left sidebar (Ratsinfo section),
 // so the page only needs a per-view title/description instead of an in-page tab bar.
 const TAB_META: Record<Tab, { title: string; description: string }> = {
-  decisions: { title: "Suchen & Fragen", description: "Beschlüsse durchsuchen oder dem Rat eine KI-Frage stellen." },
+  decisions: { title: "Suche", description: "Beschlüsse des Stadtrats durchsuchen — nach Stichwort, Ausschuss, Ergebnis und Zeitraum." },
   sessions: { title: "Sitzungen", description: "Sitzungen und Tagesordnungen von Rat und Ausschüssen." },
   themen: { title: "Themen", description: "Was den Rat wo beschäftigt — auf der Stadtkarte und als Liste." },
   analysis: { title: "Analyse", description: "Parteien, Personen, Finanzen, Trends und Ziele im Überblick." },
 };
-
-/* Design 28a/S3: Kurzlabels für die mobile Ansichtsleiste — „Karte" statt
-   „Themen", weil daneben die Bottom-Nav schon „Themen" (= Meine Themen) führt
-   und beides sonst dasselbe zu meinen scheint. */
-const VIEW_TABS: SegmentedOption<Tab>[] = [
-  { value: "decisions", label: "Suchen", icon: Search },
-  { value: "sessions", label: "Sitzungen", icon: CalendarDays },
-  { value: "themen", label: "Karte", icon: MapIcon },
-  { value: "analysis", label: "Analyse", icon: BarChart3 },
-];
 
 function CouncilInner() {
   const searchParams = useSearchParams();
@@ -1393,46 +1484,44 @@ function CouncilInner() {
     : "decisions";
   const [committees, setCommittees] = useState<string[]>([]);
 
-  // Keep old standalone-tab links working by redirecting them to their new home.
+  // Keep old links working by redirecting them to their new home. Seit dem
+  // Split (12.08.) gilt das vor allem für den früheren Fragen-Modus: Links
+  // aus Mails, Push, geteilten Snapshots und Lesezeichen tragen
+  // ?mode=fragen (bzw. das ältere tab=ask) — sie landen auf /fragen, die
+  // Fracht (q, share) reist mit.
+  const umleitungZuFragen = searchParams.get("mode") === "fragen" || param === "ask";
   useEffect(() => {
-    if (param === "ask") router.replace("/council?tab=decisions&mode=fragen", { scroll: false });
+    if (umleitungZuFragen) {
+      const q = searchParams.get("q") ?? undefined;
+      const share = searchParams.get("share") ?? undefined;
+      router.replace(fragenHref({ q, share }), { scroll: false });
+    }
     else if (param === "goals") router.replace("/council?tab=analysis&sub=ziele", { scroll: false });
     else if (param === "trends") router.replace("/council?tab=analysis&sub=trends", { scroll: false });
-  }, [param, router]);
+  }, [umleitungZuFragen, param, searchParams, router]);
 
   useEffect(() => {
     api.get<{ committees: string[] }>("/council/committees").then((d) => setCommittees(d.committees)).catch(() => {});
   }, []);
 
   const meta = TAB_META[tab];
+  // Während der Umleitung nichts rendern: Die Suche synchronisiert ihre
+  // Filter in die URL und überschrieb sonst den Alt-Link, BEVOR der
+  // Redirect lief — q und share (Composer-Vorbefüllung, geteilte Antwort)
+  // gingen dabei verloren (im Browser gemessen, nicht geraten).
+  if (umleitungZuFragen) return null;
   return (
     <div>
-      {/* Design 28a/S3: Nur MOBIL eine Ansichtsleiste. Am Rechner trägt die
-          Sidebar alle vier Ziele; auf dem Telefon lagen Sitzungen, Stadtkarte
-          und Analyse ausschließlich hinter dem Burger-Menü — wer „Ratsinfo"
-          antippte, landete in der Suche und sah nie, dass drei weitere
-          Ansichten dazugehören. Deshalb ist die früher gestrichene Leiste
-          zurück, aber unter md beschränkt: keine dritte Navigation am Desktop.
-
-          Sie steht ÜBER dem Seitentitel, nicht darunter: Sonst stünde sie
-          direkt auf dem „Suchen | KI-Frage"-Umschalter, beide begännen mit
-          „Suchen" — dieselbe Verwechslung, die 28a/R5 in der Sidebar rügt.
-          Oben gelesen ergibt sich die Rangfolge: Wo bin ich → was ist das →
-          welcher Modus. */}
-      <div className="-mx-4 mb-3 overflow-x-auto px-4 md:hidden">
-        <Segmented
-          value={tab}
-          onChange={(v) => router.push(`/council?tab=${v}`, { scroll: false })}
-          options={VIEW_TABS}
-          className="w-max min-w-full"
-        />
-      </div>
+      {/* Design 9a: Die mobile Ansichtsleiste (28a/S3) ist wieder weg — ihre
+          Ziele stecken jetzt in der Tab-Bar (Sitzungen) bzw. im „Mehr"-Sheet
+          (Stadtkarte, Analyse). Drei Nav-Ebenen übereinander (Burger → Pills →
+          Suchen/Fragen) waren der Kern von Tims Mobil-Befund. */}
       <PageHeader
         title={meta.title}
         description={meta.description}
-        action={tab === "decisions" ? <SearchModeToggle /> : undefined}
+        action={tab === "decisions" ? <FragenBruecke /> : undefined}
       />
-      {tab === "decisions" ? <SearchTab committees={committees} />
+      {tab === "decisions" ? <DecisionsTab committees={committees} />
         : tab === "sessions" ? <SessionsTab committees={committees} />
         : tab === "themen" ? <EntitiesTab />
         : <AnalysisTab />}

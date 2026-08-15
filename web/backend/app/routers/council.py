@@ -2,28 +2,35 @@
 from __future__ import annotations
 
 import json
+import logging
 import math
+import time
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi.responses import FileResponse, StreamingResponse
+from pydantic import BaseModel, Field
 
 from council.store import CouncilStore
 from council.topics import POLICY_FIELDS
 from council.goals import GOALS
 from council.parties import faction_label, normalize_party, order_key
 from council import qa
+from council import ernte
 from council import importance
 from council import sitzungspause as pause_mod
 from council import vorlagen as vorlagen_mod
 
-from nwz.store import Store
+from kern.store import Store
 
+from .. import deepresearch
+from ..config import get_settings
 from ..deps import get_council_store, get_store, optional_user, require_active
-from ..ratelimit import qa_limiter
+from ..ratelimit import partei_meinungen_limiter, qa_feedback_limiter, qa_limiter, qa_share_limiter
 
 router = APIRouter(prefix="/api/council", tags=["council"])
+
+_log = logging.getLogger(__name__)
 
 BASE_URL = "https://buergerinfo.oldenburg.de"
 
@@ -179,6 +186,30 @@ def diese_woche(
         "session_date": d["session_date"],
         "interest_reason": d.get("interest_reason") or "",
     }
+
+
+@router.get("/wochenvorschau")
+def wochenvorschau(
+    user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+    nwz: Store = Depends(get_store),
+) -> dict:
+    """„Die Woche im Rat" (Design 14, davor 11d/12) — als VORSCHAU auf die
+    kommenden Sitzungen, nicht als Rückblick auf Beschlüsse.
+
+    Der Entwurf führt beide Blickrichtungen (Punkt 1 kündigt an, Punkt 4 blickt
+    zurück); tragfähig ist nur die vordere: Beschlüsse erreichen uns erst mit
+    dem Protokoll, im Median 119 Tage nach der Sitzung. Tagesordnungen liegen
+    dagegen vor dem Termin vor.
+
+    Seit Design 14 trägt die Antwort **jede** Sitzung der Woche und dazu die
+    relevanten Punkte je Sitzung — die Karte ersetzt damit auch „Nächste
+    Sitzungen". Die Themen-Treffer liegen in der anderen Datenbank (Konten und
+    Themen), deshalb werden sie hier geholt und hineingereicht.
+    """
+    vorschau_ksinrs = [s["ksinr"] for s in store.sitzungen_im_fenster()]
+    meine = nwz.agenda_matches_for_owner(user["id"], vorschau_ksinrs)
+    return store.wochenvorschau(meine=meine)
 
 
 @router.get("/fundstueck")
@@ -339,6 +370,21 @@ def decision_detail(
         "similar": store.get_similar(decision_id, limit=5),
         "entities": store.entities_for_decision(decision_id),
     }
+    # Läuft zu diesem Bauleitplan GERADE eine Beteiligung? Dann gehört der
+    # Hinweis samt Frist an den Beschluss — Stellungnahme ist eine der wenigen
+    # Handlungen, die Bürger:innen JETZT offenstehen (Stufe 3b).
+    try:
+        from council import beteiligung as bet_mod
+        out["beteiligung"] = next(
+            ({"titel": b["titel"], "schritt": b["schritt"], "von": b["von"],
+              "bis": b["bis"], "url": b["url"], "status": b.get("status") or "laufend",
+              "beendet_am": b.get("beendet_am")}
+             # Auch beendete: Sie sind der einzige Ort, an dem eine
+             # abgelaufene Beteiligung überhaupt noch dokumentiert ist.
+             for b in store.list_beteiligungen(nur_laufende=False)
+             if bet_mod.passt_zu_titel(b["plan_nrs"], d.get("title") or "")), None)
+    except Exception:  # noqa: BLE001 — Zusatzinfo, nie Blocker
+        out["beteiligung"] = None
     # Wichtigkeits-Aufschlüsselung (welche Signale trieben den Score) — erklärt
     # transparent, warum ein Beschluss als wichtig gilt.
     n_ber = len(store.get_beratungen(d["kvonr"])) if d.get("kvonr") else None
@@ -370,10 +416,25 @@ def decision_detail(
                 "art": v.get("art"), "document_url": v.get("document_url"),
                 "n_pages": v.get("n_pages"),
                 "excerpt": vorlagen_mod.excerpt(v.get("raw_text") or "", 2600) or None,
+                # Regex-Ernte: federführendes Amt + Klima-Check der Verwaltung.
+                "amt": v.get("amt"),
+                "klima_check": v.get("klima_check"),
+                "klima_relevant": ernte.klima_relevant(v.get("klima_check")),
             }
             if not out["vorlage_url"] and v.get("kvonr"):
                 out["vorlage_url"] = _vorlage_url(v["kvonr"])
         out["anlagen"] = store.anlagen_for_vorlage_nr(d["vorlage_nr"])
+        # P1: gerenderte Planzeichnung (scripts/render_plaene.py) — B-Plan-
+        # Beschlüsse leben vom Bild, nicht vom Anlagen-Download. Echte
+        # Planzeichnungen vor Mischdokumenten: „Begründung mit Leitplan" hat
+        # auch bild=1, zeigt auf Seite 1 aber Begründungstext — alphabetisch
+        # gewann „B…" vor „P…" (Review-Befund P3, kvonr 16438/17168).
+        def _plan_rang(a: dict) -> int:
+            label = (a.get("label") or "").lower()
+            return 0 if ("planzeichnung" in label or "plandarstellung" in label) else 1
+
+        bilder = sorted((a for a in out["anlagen"] if a.get("bild") == 1), key=_plan_rang)
+        out["plan_bild"] = bilder[0]["document_id"] if bilder else None
         # Offizielle Beratungsfolge aus dem Ratsinfo — reicher als die aus
         # unseren Tagesordnungen abgeleitete Journey (Ergebnis je Station,
         # geplante künftige Beratungen). Die Journey bleibt der Fallback.
@@ -392,6 +453,461 @@ def decision_detail(
             if user:
                 out["follow"] = {"kvonr": kv, "following": nwz.is_following_vorlage(user["id"], kv)}
     return out
+
+
+# ---- „Meine Gespräche" (5a/I-04 + Design 6a) --------------------------------
+
+
+class GespraechEinstellungBody(BaseModel):
+    an: bool
+
+
+@router.get("/gespraeche")
+def gespraeche_liste(user: dict = Depends(require_active),
+                     nwz: Store = Depends(get_store)) -> dict:
+    """Einwilligungs-Stand + gespeicherte Gespräche des Kontos. `einstellung`
+    ist null, solange die Erstnutzungs-Frage (6a①) nie beantwortet wurde."""
+    return {"einstellung": nwz.get_qa_speichern(user["id"]),
+            "gespraeche": nwz.qa_gespraeche(user["id"])}
+
+
+@router.post("/gespraeche/einstellung")
+def gespraeche_einstellung(body: GespraechEinstellungBody,
+                           user: dict = Depends(require_active),
+                           nwz: Store = Depends(get_store)) -> dict:
+    """6a②: Schalter setzen. Löscht nichts — das entscheidet der Dialog
+    über DELETE /gespraeche getrennt."""
+    nwz.set_qa_speichern(user["id"], body.an)
+    return {"einstellung": 1 if body.an else 0}
+
+
+@router.get("/gespraeche/{gespraech_id}")
+def gespraech_detail(gespraech_id: int, user: dict = Depends(require_active),
+                     nwz: Store = Depends(get_store)) -> dict:
+    g = nwz.qa_gespraech(gespraech_id, user["id"])
+    if not g:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Gespräch nicht gefunden.")
+    for t in g["turns"]:
+        try:
+            t["quellen"] = json.loads(t["quellen"]) if t["quellen"] else None
+        except ValueError:
+            t["quellen"] = None
+    return g
+
+
+class GespraechUmbenennenBody(BaseModel):
+    titel: str = Field(min_length=1, max_length=120)
+
+
+@router.patch("/gespraeche/{gespraech_id}")
+def gespraech_umbenennen(gespraech_id: int, body: GespraechUmbenennenBody,
+                         user: dict = Depends(require_active),
+                         nwz: Store = Depends(get_store)) -> dict:
+    """Design 9a②: Umbenennen aus dem Gespräche-Sheet (Wisch nach links)."""
+    if not nwz.qa_gespraech_umbenennen(gespraech_id, user["id"], body.titel):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Gespräch nicht gefunden.")
+    return {"ok": True}
+
+
+@router.delete("/gespraeche/{gespraech_id}")
+def gespraech_loeschen(gespraech_id: int, user: dict = Depends(require_active),
+                       nwz: Store = Depends(get_store)) -> dict:
+    if not nwz.qa_gespraech_loeschen(gespraech_id, user["id"]):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Gespräch nicht gefunden.")
+    return {"ok": True}
+
+
+@router.delete("/gespraeche")
+def gespraeche_alle_loeschen(user: dict = Depends(require_active),
+                             nwz: Store = Depends(get_store)) -> dict:
+    return {"geloescht": nwz.qa_gespraeche_loeschen(user["id"])}
+
+
+class QaFeedbackBody(BaseModel):
+    frage: str = Field(min_length=1, max_length=300)
+    antwort_auszug: str | None = Field(default=None, max_length=500)
+    bewertung: str = Field(pattern="^(up|down)$")
+    grund: str | None = Field(default=None, max_length=500)
+
+
+@router.post("/qa-feedback", status_code=status.HTTP_201_CREATED)
+def qa_feedback(
+    body: QaFeedbackBody,
+    request: Request,
+    user: dict | None = Depends(optional_user),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Daumen hoch/runter zu einer KI-Antwort (5a/I-03) — der einzige
+    Qualitätsmesser außerhalb der Eval-Gold-Fälle. Anonym erlaubt (die
+    KI-Frage selbst ist es auch); die Feldlängen begrenzt das Schema, das
+    Rate-Limit hält Skript-Flutung von Tabelle und Backups fern."""
+    qa_feedback_limiter.check(request)
+    store.save_qa_feedback(body.frage, body.antwort_auszug, body.bewertung,
+                           body.grund, user_id=(user or {}).get("id"))
+    return {"ok": True}
+
+
+class ParteiMeinungenBody(BaseModel):
+    frage: str = Field(min_length=3, max_length=300)
+
+
+@router.post("/partei-meinungen")
+def partei_meinungen_endpoint(
+    body: ParteiMeinungenBody,
+    request: Request,
+    user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Baustein „Das sagen die Parteien" (Task 30): Wird vom Frontend NACH der
+    gestreamten Antwort geladen (kostet die Hauptantwort keine Latenz). Zieht
+    deutlich mehr Debatten-Treffer als die Belege (top_k=24, Cross-Encoder-
+    geprüft) und verdichtet sie per LLM je Fraktion. Leer ({parteien: []}),
+    wenn die Datenlage zu dünn ist — der Baustein erscheint dann nicht."""
+    if not user.get("limits_frei"):
+        partei_meinungen_limiter.check(request)
+    try:
+        import hashlib
+
+        from council import embeddings as emb
+        # Fraktions-bewusst sammeln (je Fraktion bis 5 Beiträge) — das globale
+        # Top-24 bestand zur Hälfte aus Verwaltungs-Beiträgen ohne Fraktion,
+        # die „Parteimeinung" war real eine Einzel-Paraphrase (Befund 10.08.).
+        hits = emb.search_wortbeitraege_je_fraktion(store, body.frage, body.frage)
+        # Cache über den Hash der Beitrags-IDs: verschieden formulierte Fragen
+        # zum selben Thema (Stadion!) sammeln dieselben Beiträge ein → Treffer
+        # ohne LLM-Call; ein neuer Beitrag ändert den Hash → Nachverdichtung.
+        # „v2": seit der FDP/Volt-Auflösung — alte Cache-Einträge tragen noch
+        # das Gruppen-Label und sollen nicht 14 Tage weiterleben.
+        schluessel = "v2:" + hashlib.sha1(
+            ",".join(str(wid) for wid, _ in sorted(hits)).encode()).hexdigest()
+        meinungen = store.partei_meinungen_cache_get(schluessel) if hits else None
+        if meinungen is None and hits:
+            rows = store.wortbeitraege_by_ids([wid for wid, _ in hits])
+            # FDP/Volt über die Personen-Stammdaten in Einzel-Parteien
+            # auflösen (Tims Standing-Punkt) — der Baustein führt die beiden
+            # danach getrennt, statt sie in einen Gruppen-Eimer zu werfen.
+            qa.parteien_aufloesen(store, rows)
+            meinungen = qa.partei_meinungen(body.frage, rows)
+            if meinungen:
+                store.partei_meinungen_cache_set(schluessel, body.frage, meinungen)
+        # Vollständigkeits-Ehrlichkeit (Tims Direktive 10.08.): Fraktionen, die
+        # im Rat aktiv sind, aber ohne passende Wortbeiträge zum Thema — der
+        # Baustein sagt das, statt sie stillschweigend wegzulassen. Die
+        # FDP/Volt-Gruppe zählt dabei als ihre beiden Einzel-Parteien.
+        ohne: list[str] = []
+        if meinungen:
+            # Beide Seiten durch dieselbe Kanonisierung: Die Anwesenheits-
+            # Labels führen auch Verbände, Rollen und kaputte Einzel-Label als
+            # „Partei" („ADFC", „Elternvertreter", „BSW Für RH Dr. Onken") —
+            # in der Ehrlichkeits-Zeile stehen nur echte Ratsparteien (Tims
+            # TestFlight-Feedback 11.08.), und „CDU-Fraktion" dedupliziert
+            # gegen „CDU" statt daneben zu erscheinen.
+            vertreten = {qa.ratspartei_label(e["partei"]) or qa._fraktions_label(e["partei"])
+                         for e in meinungen}
+            aktive: list[str] = []
+            for x in store.aktive_fraktionen():
+                label = qa.ratspartei_label(x)
+                # FDP und Volt sitzen diese Ratsperiode als EINE Gruppe: taucht
+                # eine der beiden (oder das Gruppen-Label) auf, sind beide
+                # aktiv — die Protokolle labeln uneinheitlich mal Gruppe, mal
+                # Einzelpartei, und Volt fiele sonst still aus der
+                # Ehrlichkeits-Zeile.
+                if label in ("FDP/Volt", "FDP", "Volt"):
+                    aktive += ["FDP", "Volt"]
+                elif label:
+                    aktive.append(label)
+            gesehen_aktiv: set[str] = set()
+            aktive = [f for f in aktive if not (f in gesehen_aktiv or gesehen_aktiv.add(f))]
+            ohne = [f for f in aktive if f not in vertreten]
+    except Exception:  # noqa: BLE001 — Zusatzbaustein, nie 500 im Gespräch
+        _log.exception("partei_meinungen fehlgeschlagen")
+        meinungen = None
+        ohne = []
+    return {"parteien": meinungen or [], "ohne_beitraege": ohne}
+
+
+class QaShareQuelle(BaseModel):
+    id: int
+    title: str = Field(max_length=300)
+    session_date: str | None = Field(default=None, max_length=10)
+    committee: str | None = Field(default=None, max_length=120)
+    outcome: str | None = Field(default=None, max_length=40)
+
+
+class QaShareDebatte(BaseModel):
+    sprecher: str | None = Field(default=None, max_length=120)
+    partei: str | None = Field(default=None, max_length=60)
+    art: str = Field(default="rede", max_length=30)
+    top: str | None = Field(default=None, max_length=300)
+    auszug: str = Field(default="", max_length=2000)
+    committee: str | None = Field(default=None, max_length=120)
+    datum: str | None = Field(default=None, max_length=10)
+
+
+class QaSharePresse(BaseModel):
+    titel: str = Field(max_length=300)
+    url: str = Field(max_length=500)
+    datum: str | None = Field(default=None, max_length=10)
+
+
+class QaShareAnlage(BaseModel):
+    # Beleg-Nummer des Recherche-Berichts („[A1]") — ohne sie findet der
+    # Marker im geteilten Text seine Anlage nicht.
+    nr: int | None = Field(default=None, ge=1, le=99)
+    label: str | None = Field(default=None, max_length=300)
+    url: str | None = Field(default=None, max_length=500)
+    vorlage_nr: str | None = Field(default=None, max_length=60)
+    vorlage_titel: str | None = Field(default=None, max_length=300)
+    auszug: str = Field(default="", max_length=600)
+
+
+class QaShareKernaussage(BaseModel):
+    text: str = Field(default="", max_length=600)
+    sprecher: str | None = Field(default=None, max_length=120)
+    datum: str | None = Field(default=None, max_length=10)
+
+
+class QaSharePartei(BaseModel):
+    partei: str = Field(max_length=60)
+    haltung: str | None = Field(default=None, max_length=20)
+    position: str = Field(default="", max_length=800)
+    einig: bool = True
+    hinweis: str | None = Field(default=None, max_length=300)
+    kernaussage: QaShareKernaussage | None = None
+    beitraege: int = Field(default=0, ge=0)
+
+
+class QaShareBody(BaseModel):
+    frage: str = Field(min_length=1, max_length=300)
+    antwort: str = Field(min_length=1, max_length=8000)
+    quellen: list[QaShareQuelle] = Field(default_factory=list, max_length=40)
+    # Bausteine neben den Beschlüssen: ohne sie zeigte die geteilte Seite
+    # weniger als das Gespräch, aus dem sie stammt (Tims Befund 10.08.).
+    debatten: list[QaShareDebatte] = Field(default_factory=list, max_length=20)
+    presse: list[QaSharePresse] = Field(default_factory=list, max_length=10)
+    anlagen: list[QaShareAnlage] = Field(default_factory=list, max_length=10)
+    parteien: list[QaSharePartei] = Field(default_factory=list, max_length=12)
+
+
+@router.post("/qa-share", status_code=status.HTTP_201_CREATED)
+def qa_share_anlegen(
+    body: QaShareBody,
+    request: Request,
+    user: dict = Depends(require_active),
+    nwz: Store = Depends(get_store),
+) -> dict:
+    """Teilen mit Substanz (Task 31): speichert die KONKRETE Antwort als
+    Snapshot — der alte ?q=-Link ließ Empfänger die Frage neu würfeln und
+    eine andere Antwort sehen. Bewusste Einzel-Veröffentlichung per Klick."""
+    if not user.get("limits_frei"):
+        qa_share_limiter.check(request)
+    extras = {
+        "debatten": [d.model_dump() for d in body.debatten],
+        "presse": [p.model_dump() for p in body.presse],
+        "anlagen": [a.model_dump() for a in body.anlagen],
+        "parteien": [p.model_dump() for p in body.parteien],
+    }
+    token = nwz.qa_share_anlegen(user["id"], body.frage, body.antwort,
+                                 [q.model_dump() for q in body.quellen],
+                                 extras if any(extras.values()) else None)
+    return {"token": token}
+
+
+@router.get("/qa-share/{token}")
+def qa_share_lesen(token: str, nwz: Store = Depends(get_store)) -> dict:
+    """Öffentliche Snapshot-Ansicht — bewusst OHNE Login (der Link soll auch
+    Menschen ohne Konto erreichen); enthält nie Konto-Daten."""
+    if len(token) > 64:
+        raise HTTPException(status_code=404, detail="Nicht gefunden.")
+    share = nwz.qa_share_get(token)
+    if not share:
+        raise HTTPException(status_code=404, detail="Nicht gefunden.")
+    return share
+
+
+# ---- „Gründliche Recherche" (RG-10, Task 34) -------------------------------
+# Kein Request-gebundener Stream wie /ask: der Job läuft in einem Backend-
+# Thread weiter, wenn der Client wegnavigiert (Tims Kernanforderung). POST
+# startet, GET …/events klemmt sich an (Replay + live), GET …/{id} liefert
+# den persistierten Endzustand — auch nach App- oder Server-Neustart.
+
+
+class DeepResearchBody(BaseModel):
+    frage: str = Field(min_length=4, max_length=300)
+    # „Meine Gespräche": läuft ein Gespräch, wird der fertige Bericht dort
+    # angehängt — auch wenn die App längst zu ist.
+    gespraech_id: int | None = Field(default=None, ge=1)
+
+
+def _deep_limit(user: dict) -> int | None:
+    """Tageslimit des Kontos: Admin-Override aus web_users.deep_limit —
+    None = unbegrenzt (Wert 0), sonst eigener Wert bzw. Standard."""
+    override = user.get("deep_limit")
+    if override == 0:
+        return None
+    return override if override is not None else deepresearch.TAGES_KONTINGENT
+
+
+def _deep_frei(nwz: Store, user: dict) -> int | None:
+    limit = _deep_limit(user)
+    if limit is None:
+        return None  # unbegrenzt — der Client zeigt dann keinen Zähler
+    return max(0, limit - nwz.deep_jobs_heute(user["id"]))
+
+
+@router.post("/deep-research", status_code=status.HTTP_201_CREATED)
+def deep_research_start(body: DeepResearchBody, user: dict = Depends(require_active),
+                        nwz: Store = Depends(get_store)) -> dict:
+    """Recherche-Job starten. Kontingent: 5/Tag je KONTO aus der DB (nicht
+    IP — übersteht Neustarts, und Abbruch/Fehler kosten laut Design nichts,
+    was ein Fenster-Zähler nicht abbilden kann). Admins können das Limit je
+    Konto erhöhen oder ausschalten (web_users.deep_limit)."""
+    limit = _deep_limit(user)
+    if limit is not None and nwz.deep_jobs_heute(user["id"]) >= limit:
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS,
+                            "Deine Recherchen für heute sind aufgebraucht — ab morgen geht es weiter.")
+    if deepresearch.laufende_jobs(user["id"]) >= 1:
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            "Es läuft bereits eine Recherche — warte kurz, bis sie fertig ist.")
+    if deepresearch.laufende_jobs() >= deepresearch.MAX_PARALLEL:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE,
+                            "Gerade laufen viele Recherchen — bitte versuche es gleich nochmal.")
+    nwz.record_activity(user["id"], "recherche")
+    frage = body.frage.strip()
+    job_id = nwz.deep_job_anlegen(user["id"], frage)
+    settings = get_settings()
+    job = deepresearch.DeepJob(id=job_id, user_id=user["id"], frage=frage,
+                               gespraech_id=body.gespraech_id)
+    deepresearch.start_job(job, settings.nwz_db, settings.council_db)
+    return {"job_id": job_id, "frei": _deep_frei(nwz, user)}
+
+
+@router.get("/deep-research/aktuell")
+def deep_research_aktuell(user: dict = Depends(require_active),
+                          nwz: Store = Depends(get_store)) -> dict:
+    """Der jüngste Job des Kontos + Rest-Kontingent — damit der Client nach
+    Navigation/App-Neustart einen laufenden Job oder ungesehenen Bericht
+    wiederfindet, ohne sich die ID gemerkt zu haben."""
+    return {"job": nwz.deep_job_aktuell(user["id"]),
+            "frei": _deep_frei(nwz, user)}
+
+
+@router.get("/deep-research/{job_id}")
+def deep_research_snapshot(job_id: str, user: dict = Depends(require_active),
+                           nwz: Store = Depends(get_store)) -> dict:
+    """Persistierter Stand des Jobs (Bericht + Quellen bei fertig/teilbericht)."""
+    if len(job_id) > 64:
+        raise HTTPException(status_code=404, detail="Nicht gefunden.")
+    row = nwz.deep_job_get(job_id, user["id"])
+    if not row:
+        raise HTTPException(status_code=404, detail="Nicht gefunden.")
+    # Läuft laut DB, aber kein Thread mehr da (Server-Neustart, Deploy):
+    # ehrlich als Fehler ausweisen, sonst wartete der Client ewig.
+    if row["status"] == "laeuft" and deepresearch.get_job(job_id) is None:
+        nwz.deep_job_update(job_id, "fehler")
+        row["status"] = "fehler"
+    try:
+        row["quellen"] = json.loads(row["quellen"]) if row.get("quellen") else None
+    except (ValueError, TypeError):
+        row["quellen"] = None
+    return row
+
+
+@router.get("/deep-research/{job_id}/events")
+def deep_research_events(job_id: str, ab: int = Query(default=0, ge=0),
+                         user: dict = Depends(require_active),
+                         nwz: Store = Depends(get_store)) -> StreamingResponse:
+    """SSE-Anschluss an einen laufenden Job: Replay aller Events ab ``ab``,
+    dann live weiter. Ein Verbindungsabriss ist folgenlos — der Job läuft
+    im Backend weiter, der Client verbindet sich einfach neu."""
+    row = nwz.deep_job_get(job_id, user["id"])
+    if not row:
+        raise HTTPException(status_code=404, detail="Nicht gefunden.")
+    job = deepresearch.get_job(job_id)
+    if job is None:
+        # Kein lebender Job (fertig + aus dem Speicher geräumt, oder Neustart)
+        # → der Client holt den Endzustand über den Snapshot-Endpoint.
+        raise HTTPException(status.HTTP_410_GONE, "Recherche nicht mehr aktiv — Snapshot laden.")
+    return StreamingResponse(
+        deepresearch.sse_events(job, ab=ab), media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@router.post("/deep-research/{job_id}/stop")
+def deep_research_stop(job_id: str, user: dict = Depends(require_active),
+                       nwz: Store = Depends(get_store)) -> dict:
+    """Abbrechen (Design 8c⑥): stoppt vor dem nächsten Such-/LLM-Schritt.
+    Fertige Facetten bleiben als Material — die Antwort sagt, ob sich ein
+    Teilbericht lohnt. Kostet kein Kontingent."""
+    if not nwz.deep_job_get(job_id, user["id"]):
+        raise HTTPException(status_code=404, detail="Nicht gefunden.")
+    job = deepresearch.get_job(job_id)
+    if job is None or job.done:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Recherche läuft nicht mehr.")
+    job.stop.set()
+    with job.cond:
+        job.cond.notify_all()
+    return {"facetten_fertig": job.facetten_fertig,
+            "facetten_gesamt": job.facetten_gesamt,
+            "teilbericht_moeglich": bool(job.material and job.material.get("candidates"))}
+
+
+@router.post("/deep-research/{job_id}/teilbericht")
+def deep_research_teilbericht(job_id: str, user: dict = Depends(require_active),
+                              nwz: Store = Depends(get_store)) -> dict:
+    """Nach einem Stopp: aus den fertigen Facetten doch noch einen Bericht
+    schreiben („Teilbericht zeigen"). Zählt nicht gegen das Kontingent."""
+    row = nwz.deep_job_get(job_id, user["id"])
+    if not row:
+        raise HTTPException(status_code=404, detail="Nicht gefunden.")
+    job = deepresearch.get_job(job_id)
+    if job is None or row["status"] != "gestoppt":
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            "Kein Teilbericht möglich — die Recherche ist nicht gestoppt.")
+    if not (job.material and job.material.get("candidates")):
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            "Kein Material gesichert — bitte neu recherchieren.")
+    # Status VOR dem Thread-Start zurück auf laeuft — andersherum könnte der
+    # (schnelle) Thread sein „teilbericht" schreiben und würde überschrieben.
+    nwz.deep_job_update(job_id, "laeuft")
+    settings = get_settings()
+    deepresearch.teilbericht_starten(job, settings.nwz_db, settings.council_db)
+    return {"ok": True}
+
+
+@router.post("/deep-research/{job_id}/gesehen")
+def deep_research_gesehen(job_id: str, user: dict = Depends(require_active),
+                          nwz: Store = Depends(get_store)) -> dict:
+    """Client hat den fertigen Bericht gerendert — nicht erneut einblenden."""
+    nwz.deep_job_gesehen(job_id, user["id"])
+    return {"ok": True}
+
+
+@router.get("/qa-beispiele")
+def qa_beispiele(store: CouncilStore = Depends(get_council_store)) -> dict:
+    """Frische Beispiel-Anlässe für den Empty State der KI-Frage (5a/I-07):
+    die jüngsten Sitzungen mit Beschlüssen — das Frontend formuliert daraus
+    „Was hat der <Ausschuss> am <Datum> beschlossen?"."""
+    return {"sitzungen": store.juengste_sitzungen_mit_beschluessen(limit=2)}
+
+
+@router.get("/plan-bild/{document_id}")
+def plan_bild(document_id: int, thumb: bool = False) -> FileResponse:
+    """Gerenderte Planzeichnung einer Anlage (P1) — öffentlich wie die
+    Beschluss-Seite selbst; das PDF dahinter ist ohnehin frei abrufbar.
+    Dateien schreibt scripts/render_plaene.py nach ``data/plaene/``."""
+    from pathlib import Path
+
+    from ..config import get_settings
+
+    name = f"{int(document_id)}{'.thumb' if thumb else ''}.jpg"
+    pfad = Path(get_settings().council_db).parent / "plaene" / name
+    if not pfad.is_file():
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Kein Bild zu dieser Anlage.")
+    # Ein gerendertes Blatt ändert sich nie — aggressiv cachen.
+    return FileResponse(pfad, media_type="image/jpeg",
+                        headers={"Cache-Control": "public, max-age=2592000, immutable"})
 
 
 # ---- Vorgänge verfolgen (Design 28a/W1) ----
@@ -519,6 +1035,25 @@ def entities_map(_user: dict = Depends(require_active),
 def public_stats(store: CouncilStore = Depends(get_council_store)) -> dict:
     """Aggregate headline counts for the public landing page — no auth, no content."""
     return store.public_stats()
+
+
+# Personen-Lexikon für die Badges im Antwort-Text (Tims Wunsch 12.08.).
+# Public wie public-stats: Die geteilten Antwort-Seiten (app/g) brauchen es
+# ohne Konto, und der Inhalt sind amtliche RIS-Daten. Prozess-Cache mit
+# Tages-TTL — die Quelle ändert sich höchstens mit dem täglichen Import.
+_PERSONEN_LEXIKON_CACHE: dict = {"stand": 0.0, "daten": None}
+
+
+@router.get("/personen-lexikon")
+def personen_lexikon(response: Response,
+                     store: CouncilStore = Depends(get_council_store)) -> dict:
+    import time as _time
+    if _PERSONEN_LEXIKON_CACHE["daten"] is None or \
+            _time.time() - _PERSONEN_LEXIKON_CACHE["stand"] > 6 * 3600:
+        _PERSONEN_LEXIKON_CACHE["daten"] = store.personen_lexikon()
+        _PERSONEN_LEXIKON_CACHE["stand"] = _time.time()
+    response.headers["Cache-Control"] = "public, max-age=21600"
+    return {"personen": _PERSONEN_LEXIKON_CACHE["daten"]}
 
 
 # ---- Link-Vorschau (Design 29a, P1) ----
@@ -674,6 +1209,22 @@ def person(slug: str, store: CouncilStore = Depends(get_council_store)) -> dict:
     return data
 
 
+@router.get("/person/{slug}/wortbeitraege")
+def person_wortbeitraege(slug: str, gremium: str | None = None,
+                         offset: int = Query(default=0, ge=0),
+                         limit: int = Query(default=20, ge=1, le=100),
+                         store: CouncilStore = Depends(get_council_store)) -> dict:
+    """Wortbeiträge einer Person, seitenweise und nach Gremium filterbar.
+
+    Öffentlich wie die Personen-Seite selbst — es ist derselbe Bestand, nur
+    vollständig statt auf die jüngsten zehn gekürzt.
+    """
+    name = store.member_name(slug)
+    if not name:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Ratsmitglied nicht gefunden.")
+    return store.wortbeitraege_person(name, gremium=gremium, offset=offset, limit=limit)
+
+
 _EMPTY_GOAL = {"voran": 0, "bremst": 0, "neutral": 0, "total": 0}
 
 
@@ -699,8 +1250,21 @@ def goal_detail(key: str, _user: dict = Depends(require_active),
     }
 
 
+class AskRunde(BaseModel):
+    """Eine frühere Gesprächsrunde (Chat): Frage + gekürzte Antwort."""
+    frage: str = Field(max_length=300)
+    antwort: str = Field(default="", max_length=600)
+
+
 class AskBody(BaseModel):
     question: str
+    # Chat-Modus (Paket A): die letzten Runden erlauben Anschlussfragen wie
+    # „Und was kostet das?" — die Analyse kondensiert daraus eine eigenständige
+    # Suchfrage. Ohne Verlauf verhält sich /ask exakt wie bisher.
+    verlauf: list[AskRunde] = Field(default_factory=list, max_length=4)
+    # „Meine Gespräche" (6a): laufendes Gespräch, an das der Turn gehängt wird —
+    # nur wirksam, wenn das Konto qa_speichern = 1 gesetzt hat.
+    gespraech_id: int | None = Field(default=None, ge=1)
 
 
 # Q&A sizing: show up to QA_TOP_K reranked decisions as sources, feed the most
@@ -715,20 +1279,31 @@ QA_MIN_SCORE = 0.2
 QA_RERANK_BIAS = 1.5
 
 
-def _qa_retrieve(store: CouncilStore, q: str, expanded: str) -> tuple[list[dict], str]:
+def _qa_retrieve(store: CouncilStore, q: str, expanded: str,
+                 timings: dict | None = None,
+                 varianten: list[str] | None = None) -> tuple[list[dict], str]:
     """Hybrid retrieval + cross-encoder rerank → candidates in relevance order, each
     with an *absolute* relevance score: the sigmoid of the reranker logit, NOT a
     min-max normalisation (which forced the weakest hit to a misleading 0 %). Falls
     back to keyword retrieval when embeddings/the reranker are unavailable."""
     try:
         from council import embeddings as emb
-        hits = emb.hybrid_search(store, q, expanded, top_k=QA_TOP_K, pool=55)
+        # Akkuratheits-Paket: deterministische Signale neben der Semantik —
+        # Entitäts-Anker (benannte Objekte der Frage) in den Rerank-Pool,
+        # Frische-Bonus bei Sachstands-Formulierungen.
+        hits = emb.hybrid_search(store, q, expanded, top_k=QA_TOP_K, pool=55, timings=timings,
+                                 varianten=varianten,
+                                 anker_ids=qa.anker_ids_fuer(store, q),
+                                 recency=qa.recency_intent(q))
         if hits:
             candidates = store.get_decisions_by_ids([h[0] for h in hits])  # preserves order
             score = {h[0]: h[1] for h in hits}
             for c in candidates:
                 logit = score.get(c["id"])
                 c["score"] = round(1.0 / (1.0 + math.exp(-(logit + QA_RERANK_BIAS))), 3) if logit is not None else None
+            # „Ältere Station"-Marker: überholte Zwischenstände derselben
+            # Vorlage werden im Kontext als solche ausgewiesen.
+            qa.markiere_veraltete(store, candidates)
             return [c for c in candidates if (c.get("score") or 0) >= QA_MIN_SCORE] or candidates, "semantisch"
     except Exception:  # noqa: BLE001 — fastembed missing/any failure → keyword fallback
         pass
@@ -741,12 +1316,86 @@ def _sse(obj: dict) -> str:
 
 
 def _qa_source(c: dict) -> dict:
+    # amount_eur + factions tragen die Fragetyp-Bausteine des Ratsgesprächs
+    # (Geld-Betrag, Antragsteller-Tag) — deterministisch aus den Quellen,
+    # nie vom Sprachmodell (Design RG-04/RG-05).
     return {
         "id": c["id"], "title": c.get("title"), "summary": c.get("summary"),
         "policy_field": c.get("policy_field"), "outcome": c.get("outcome"),
         "session_date": c.get("session_date"), "committee": c.get("committee"),
-        "score": c.get("score"),
+        "score": c.get("score"), "amount_eur": c.get("amount_eur"),
+        # Kostenentwicklung (10.08.26): Familien-Erkennung (gleiche Vorlage)
+        # für das ehrliche Delta im Geld-Baustein — nur dort ist „gestiegen
+        # von X auf Y" belegbar, alles andere wäre ein Äpfel/Birnen-Vergleich.
+        "vorlage_nr": c.get("vorlage_nr"),
+        "factions": qa._factions_of(c),
+        # 5a/I-10: verortete Entität für die Mini-Karte unter der Antwort.
+        "ort_name": c.get("ort_name"), "lat": c.get("lat"), "lon": c.get("lon"),
     }
+
+
+def _presse_kompakt(rows: list[dict]) -> list[dict]:
+    """Anzeige-Form der Presse-Treffer — identisch im sources-Event und im
+    Gesprächs-Snapshot, damit ein geladenes Gespräch nichts verliert."""
+    return [{"titel": p.get("titel"), "url": p.get("url"),
+             "datum": p.get("datum")} for p in rows]
+
+
+def _debatten_kompakt(rows: list[dict]) -> list[dict]:
+    return [{"sprecher": d.get("sprecher"), "partei": d.get("partei"),
+             "art": d.get("art"), "top": d.get("top"),
+             "auszug": (d.get("text") or "")[:2000],
+             "committee": d.get("committee"),
+             "datum": d.get("session_date")} for d in rows]
+
+
+def _turn_speichern(nwz: Store, user: dict, body: AskBody, q_suche: str,
+                    answer_text: str, candidates: list[dict],
+                    cited: list[int],
+                    presse_rows: list[dict] | None = None,
+                    debatten_rows: list[dict] | None = None,
+                    planungen: list[dict] | None = None) -> int | None:
+    """„Meine Gespräche" (6a): Turn ins laufende Gespräch hängen (oder eines
+    eröffnen) — nur mit ausdrücklicher Einwilligung, nie als Blocker.
+
+    Nur wenn der Client das Feld ``gespraech_id`` überhaupt kennt: Alte
+    App-Versionen senden es nie und können die zurückgegebene id nicht
+    weiterreichen — jede Frage würde sonst ein 1-Turn-Fragment eröffnen und
+    die Gespräche-Liste fluten (Review-Befund B5). Ein frisch eröffnetes
+    Gespräch wird wieder gelöscht, wenn der Turn-Insert scheitert — sonst
+    bliebe ein leerer Eintrag in der Liste zurück (Befund B2)."""
+    try:
+        if "gespraech_id" not in body.model_fields_set:
+            return None
+        if not answer_text.strip() or nwz.get_qa_speichern(user["id"]) != 1:
+            return None
+        gespraech_id = body.gespraech_id
+        neu = gespraech_id is None
+        if neu:
+            gespraech_id = nwz.qa_gespraech_start(user["id"], q_suche or body.question)
+            if gespraech_id is None:
+                return None
+        zitiert = set(cited)
+        # Presse + Debatten gehören MIT in den Snapshot: Ohne sie öffnete ein
+        # gespeichertes Gespräch ohne den „Aktuelles von der Stadt"-Block und
+        # ohne Debatten — und damit auch ohne den Parteien-Baustein, der am
+        # Debatten-Gate hängt (Tims Befund 10.08.).
+        quellen_json = json.dumps(
+            {"sources": [_qa_source(c) for c in candidates if c["id"] in zitiert],
+             "cited": cited,
+             "presse": _presse_kompakt(presse_rows or []),
+             "debatten": _debatten_kompakt(debatten_rows or []),
+             # Der Ausblick gehört wie Presse und Debatten in den Snapshot,
+             # sonst öffnet ein gespeichertes Gespräch ohne „Wie es weitergeht".
+             "planungen": planungen or []}, ensure_ascii=False)
+        if not nwz.qa_turn_speichern(gespraech_id, user["id"],
+                                     body.question, answer_text, quellen_json):
+            if neu:
+                nwz.qa_gespraech_loeschen(gespraech_id, user["id"])
+            return None
+        return gespraech_id
+    except Exception:  # noqa: BLE001 — Speichern ist Zusatz, nie Blocker
+        return None
 
 
 @router.post("/ask")
@@ -758,7 +1407,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
     → the answer token-by-token → a final event with the cited ids. Streaming makes
     the wait feel far shorter (sources show in ~2 s) and degrades gracefully if a
     proxy buffers it (the client then renders the same final state at once)."""
-    qa_limiter.check(request)  # LLM-Kosten pro Aufruf — nicht unbegrenzt feuern lassen
+    if not user.get("limits_frei"):  # Admin kann Konten befreien (web_users.limits_frei)
+        qa_limiter.check(request)  # LLM-Kosten pro Aufruf — nicht unbegrenzt feuern lassen
     nwz.record_activity(user["id"], "ki_frage")  # Admin-Statistik (20a)
     q = body.question.strip()
     if len(q) < 4:
@@ -766,17 +1416,176 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
 
     def gen():
         try:
+            # Latenz je Schritt (ms) — geloggt und im done-Event mitgeschickt,
+            # damit Prod-Fragen dieselben Kennzahlen liefern wie eval/run_qa.py.
+            # (expand_ms misst seit dem Fragetyp-Routing den EINEN Analyse-Call
+            # — Begriffe + Typ —, der Schlüssel bleibt für Vergleichbarkeit.)
+            zeiten: dict = {}
+            verlauf = [r.model_dump() for r in body.verlauf]
             yield _sse({"type": "step", "step": "expand"})
-            expanded = qa.expand_query(q)
+            t0 = time.perf_counter()
+            analyse = qa.analyse_query(q, verlauf=verlauf)
+            expanded, typ = analyse["begriffe"], analyse["typ"]
+            # Punktfrage (Datum/Zahl/Name)? Dann antwortet das Modell knapp —
+            # der Befund kam aus einer echten Nutzer-Frage, der nach dem
+            # gesuchten Datum noch fünf Redebeiträge folgten (12.08.).
+            eng = bool(analyse.get("eng"))
+            # Retrieval + Reranker arbeiten mit der EIGENSTÄNDIGEN Fassung der
+            # Frage — „Und was kostet das?" sucht sonst nach nichts.
+            q_suche = analyse["frage"]
+            zeiten["expand_ms"] = round((time.perf_counter() - t0) * 1000)
+            # Personen-Fragetyp (10.08.26): nennt die Frage eine Ratsperson,
+            # antworten wir aus DEREN Wortbeiträgen — deterministisch erkannt,
+            # schlägt thema/verlauf (nicht aber partei/geld).
+            person = qa.finde_person(store, q_suche)
+            if person and typ not in ("partei", "geld"):
+                typ = "person"
             yield _sse({"type": "step", "step": "search"})
-            candidates, mode = _qa_retrieve(store, q, expanded)
-            yield _sse({"type": "sources", "mode": mode, "sources": [_qa_source(c) for c in candidates]})
+            t0 = time.perf_counter()
+            candidates, mode = _qa_retrieve(store, q_suche, expanded, timings=zeiten,
+                                            varianten=analyse.get("varianten"))
+            partei_ids: set[int] = set()
+            if typ == "partei" and analyse.get("partei"):
+                # Anträge der gefragten Fraktion zum Thema in den Pool — die
+                # semantische Suche kennt den Antragsteller-Filter nicht.
+                try:
+                    extra_ids = store.antrag_decision_ids(analyse["partei"], expanded)
+                    partei_ids = set(extra_ids)
+                    have = {c["id"] for c in candidates}
+                    candidates += store.get_decisions_by_ids([i for i in extra_ids if i not in have])
+                except Exception:  # noqa: BLE001 — Anreicherung ist best-effort
+                    pass
+            presse_rows: list[dict] = []
+            try:
+                # Eigener Kanal neben den Beschlüssen: „Aktuelles von der Stadt"
+                # (Pressemitteilungen) — strenge Schwelle, oft leer.
+                from council import embeddings as emb
+                hits_p = emb.search_presse(store, q_suche, expanded)
+                presse_rows = store.presse_by_ids([pid for pid, _ in hits_p])
+            except Exception:  # noqa: BLE001 — Presse ist Zusatz, nie Blocker
+                pass
+            debatten_rows: list[dict] = []
+            try:
+                # Task 16: Wortbeiträge aus den Protokollen (Reden, Anfragen,
+                # Einwohnerfragen, Zusagen) — die Substanz, die nicht in den
+                # Beschlusstexten steht. Strenge Schwelle, oft leer. Beim
+                # Personen-Fragetyp stattdessen die Beiträge DIESER Person.
+                from council import embeddings as emb
+                if person:
+                    debatten_rows = emb.search_wortbeitraege_von_person(
+                        store, q_suche, person["nachname"])
+                else:
+                    hits_w = emb.search_wortbeitraege(store, q_suche, expanded)
+                    debatten_rows = store.wortbeitraege_by_ids([wid for wid, _ in hits_w])
+                    # … plus die Aussprache ZU den gefundenen Beschlüssen:
+                    # Fachsprache (Vinylchlorid, Messpunkte) liegt außerhalb
+                    # des Frage-Wortfelds und fällt durch die Ähnlichkeits-
+                    # suche — Zugehörigkeit trägt hier weiter (Befund 10.08.).
+                    have = {d["id"] for d in debatten_rows}
+                    debatten_rows += [w for w in store.wortbeitraege_zu_beschluessen(
+                        candidates[:8]) if w["id"] not in have]
+                # Zusagen der Verwaltung als EIGENER Kanal: Im allgemeinen
+                # Debatten-Ranking gingen sie unter (1 von 19 Belegen; selbst
+                # auf „Was hat die Verwaltung zugesagt?" kam keine), weil sie
+                # kurz und nüchtern formuliert sind. Dabei sind sie der
+                # besondere Stoff — eine Selbstverpflichtung mit Datum.
+                if not person:
+                    try:
+                        hits_z = emb.search_zusagen(store, q_suche, expanded)
+                        schon = {r["id"] for r in debatten_rows}
+                        debatten_rows += [r for r in store.wortbeitraege_by_ids(
+                            [wid for wid, _ in hits_z]) if r["id"] not in schon]
+                    except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+                        pass
+                # FDP/Volt-Beiträge in die Einzel-Partei auflösen (Stammdaten).
+                qa.parteien_aufloesen(store, debatten_rows)
+            except Exception:  # noqa: BLE001 — Debatten sind Zusatz, nie Blocker
+                pass
+            # 5a/I-10: Orts-Pins für die Mini-Karte — deterministisch aus den
+            # geocodierten Entitäten, nie vom Sprachmodell.
+            try:
+                orte = store.orte_fuer_decisions([c["id"] for c in candidates])
+                for c in candidates:
+                    c.update(orte.get(c["id"], {}))
+            except Exception:  # noqa: BLE001 — Karte ist Zusatz, nie Blocker
+                pass
+            # „Wie es weitergeht" (Paket 1): künftige Beratungsstationen der
+            # gefundenen Vorlagen. Bisher gab es den Blick nach vorn NUR in der
+            # Gründlichen Recherche — dabei sind Sachstands-Fragen („Wie ist
+            # der aktuelle Stand zum Stadion?") der häufigste Fragetyp
+            # überhaupt, und die Termine stehen längst gepflegt in der DB.
+            planungen: list[dict] = []
+            try:
+                planungen = store.geplante_beratungen_fuer(
+                    [c.get("kvonr") for c in candidates[:20]])
+                # Zweiter Weg, weil der erste systematisch leer läuft: Auf der
+                # Tagesordnung stehen die noch NICHT entschiedenen Vorlagen —
+                # die Suche findet aber Beschlüsse. Titel-Abgleich gegen die
+                # Suchbegriffe holt das Kommende zum Thema dazu.
+                gesehen = {p["kvonr"] for p in planungen}
+                planungen += [p for p in store.kommende_beratungen(expanded.split())
+                              if p["kvonr"] not in gesehen]
+            except Exception:  # noqa: BLE001 — Ausblick ist Zusatz, nie Blocker
+                pass
+            # Hintergrund zu den genannten Objekten („Was ist die GSG?").
+            steckbriefe = qa.steckbriefe_fuer(store, q_suche)
+            # Wie tragfähig ist der Fund? Deterministisch aus den Scores.
+            lage = qa.beleglage(candidates)
+            zeiten["retrieve_ms"] = round((time.perf_counter() - t0) * 1000)
+            # 5a/I-06: die kondensierte Frage mitschicken — der Kontext-Chip im
+            # Frontend zeigt, worauf sich Anschlussfragen beziehen.
+            yield _sse({"type": "sources", "mode": mode, "qtype": typ,
+                        "frage": q_suche,
+                        "sources": [_qa_source(c) for c in candidates],
+                        "presse": _presse_kompakt(presse_rows),
+                        "debatten": _debatten_kompakt(debatten_rows),
+                        "planungen": planungen,
+                        "beleglage": lage,
+                        # Der Hintergrund geht IMMER in die Antwort; als eigene
+                        # Karte erscheint er nur, wenn die Antwort ihn nicht
+                        # ohnehin wiederholt (Definitionsfragen, Tims Befund).
+                        "steckbriefe": [{"name": s["name"], "slug": s["slug"],
+                                         "beschreibung": s["description"]}
+                                        for s in steckbriefe]
+                        if qa.steckbrief_karte_zeigen(q_suche) else []})
             yield _sse({"type": "step", "step": "answer"})
             if not candidates:
-                yield _sse({"type": "token", "text": "Dazu habe ich keine passenden Beschlüsse gefunden."})
-                yield _sse({"type": "done", "cited": []})
+                leer_text = "Dazu habe ich keine passenden Beschlüsse gefunden."
+                if debatten_rows:
+                    # Die Debatten-Treffer stehen bereits sichtbar in den
+                    # Belegen — ein hartes „nichts gefunden" daneben wäre
+                    # gelogen (Review-Befund zu #387).
+                    leer_text = ("Dazu habe ich keine passenden Beschlüsse gefunden — "
+                                 "aber Wortbeiträge aus den Ratsdebatten, siehe Belege.")
+                yield _sse({"type": "token", "text": leer_text})
+                # Auch der Kein-Treffer-Turn gehört ins gespeicherte Gespräch —
+                # sonst klafft im Transkript eine Lücke (Review-Befund B4).
+                gespraech_id = _turn_speichern(nwz, user, body, q_suche, leer_text, [], [],
+                                               debatten_rows=debatten_rows)
+                yield _sse({"type": "done", "cited": [], "gespraech_id": gespraech_id})
                 return
+            # Task 32: Themengröße deterministisch — viele Treffer über eine
+            # lange Zeitspanne (Stadion: 8 Jahre) heißt lange Historie, die
+            # Antwort darf dann ausführlich gegliedert sein (GROSS_REGEL).
+            daten = sorted(str(c.get("session_date") or "")[:4]
+                           for c in candidates[:20] if c.get("session_date"))
+            spanne = (int(daten[-1]) - int(daten[0])) if len(daten) >= 2 and daten[0].isdigit() else 0
+            gross = len(candidates) >= 25 or spanne >= 3
             ctx = candidates[:QA_ANSWER_N]
+            if partei_ids:
+                # Mindestens die besten Partei-Anträge in den Antwort-Kontext,
+                # auch wenn sie im Relevanz-Ranking hinter Platz 20 liegen.
+                fehlend = [c for c in candidates[QA_ANSWER_N:] if c["id"] in partei_ids][:6]
+                if fehlend:
+                    ctx = ctx[:QA_ANSWER_N - len(fehlend)] + fehlend
+            if typ == "verlauf":
+                ctx = qa.sort_verlauf(ctx)
+            haushalt_zeilen: list[dict] = []
+            if typ == "geld":
+                try:  # Plan-Zahlen aus dem Stadthaushalt als Zusatzkontext
+                    haushalt_zeilen = store.haushalt_fuer_begriffe(expanded.split())
+                except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+                    pass
             try:  # Vorlagen-Auszüge (Sachverhalt) beilegen — best-effort
                 texts = store.vorlage_texts_for([c.get("vorlage_nr") or "" for c in ctx])
                 for c in ctx:
@@ -785,14 +1594,31 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         c["vorlage_excerpt"] = vorlagen_mod.excerpt(t, 350)
             except Exception:  # noqa: BLE001
                 pass
+            try:  # Läuft zu einem Kandidaten gerade eine Bauleitplan-Beteiligung?
+                from council import beteiligung as bet_mod
+                bets = store.list_beteiligungen()
+                for c in ctx if bets else []:
+                    b = next((b for b in bets
+                              if bet_mod.passt_zu_titel(b["plan_nrs"], c.get("title") or "")), None)
+                    if b:
+                        frist = f" bis {b['bis']}" if b.get("bis") else ""
+                        c["beteiligung"] = f"{b['schritt']}{frist}"
+            except Exception:  # noqa: BLE001 — Zusatzsignal, nie Blocker
+                pass
             # Der Antworttext wird live gestreamt, die angehängten Folgefragen
             # (24a) dürfen dabei NICHT als Text erscheinen. Deshalb halten wir
             # stets die letzten len(MARKER) Zeichen zurück: so kann ein über
             # mehrere Deltas verteilter Marker nie durchrutschen.
             marker = qa.FOLLOWUP_MARKER
             buf, sent = "", 0
+            t0 = time.perf_counter()
             try:
-                for delta in qa.answer_stream(q, ctx):
+                for delta in qa.answer_stream(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
+                                              haushalt=haushalt_zeilen, debatten=debatten_rows,
+                                              gross=gross, steckbriefe=steckbriefe,
+                                              duenn=(lage == "duenn"), eng=eng):
+                    if not buf and delta:
+                        zeiten["ttft_ms"] = round((time.perf_counter() - t0) * 1000)
                     buf += delta
                     cut = buf.find(marker)
                     # Vor dem Marker: senden. Ab dem Marker: nur noch sammeln
@@ -805,20 +1631,48 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 if marker not in buf and len(buf) > sent:
                     yield _sse({"type": "token", "text": buf[sent:]})
                     sent = len(buf)
-            except Exception:  # noqa: BLE001 — streaming failed mid-way → one-shot fallback
-                if not buf:
-                    ans, _ = qa.answer_question(q, ctx)
+            except Exception:  # noqa: BLE001 — Stream riss mitten in der Antwort
+                # Vorher wurde der Fehler nur bei LEEREM Puffer repariert — ein
+                # Abriss nach den ersten Sätzen ließ still einen Antwort-Torso
+                # stehen (Tims „mitten im Wort zu Ende"-Befund 10.08.). Jetzt:
+                # immer einmal komplett neu generieren; der Client ersetzt den
+                # Torso per replace-Event. Scheitert auch das, wird der Turn
+                # ehrlich als abgebrochen markiert.
+                _log.warning("answer_stream brach nach %d Zeichen ab — one-shot Ersatz",
+                             len(buf), exc_info=True)
+                try:
+                    ans, _ = qa.answer_question(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
+                                                haushalt=haushalt_zeilen, debatten=debatten_rows,
+                                                gross=gross, steckbriefe=steckbriefe,
+                                                duenn=(lage == "duenn"), eng=eng)
                     buf = ans
-                    yield _sse({"type": "token", "text": ans})
+                    yield _sse({"type": "replace", "text": qa.split_followups(ans)[0]})
                     sent = len(ans)
+                except Exception:  # noqa: BLE001
+                    _log.exception("one-shot Ersatz scheiterte ebenfalls")
+                    if not buf:
+                        raise  # nichts gesendet → Netz-Fehlerpfad des Clients
+                    yield _sse({"type": "abbruch"})
             answer_text, followups = qa.split_followups(buf)
             if not followups:
                 followups = qa.fallback_followups(ctx)
             if followups:
                 yield _sse({"type": "suggestions", "questions": followups})
             _, cited = qa.resolve_citations(answer_text, {c["id"] for c in candidates})
-            yield _sse({"type": "done", "cited": cited})
+            zeiten["antwort_ms"] = round((time.perf_counter() - t0) * 1000)
+            zeiten["total_ms"] = (zeiten.get("expand_ms", 0) + zeiten.get("retrieve_ms", 0)
+                                  + zeiten.get("antwort_ms", 0))
+            _log.info("qa_timings mode=%s typ=%s %s", mode, typ,
+                      " ".join(f"{k}={v}" for k, v in sorted(zeiten.items())))
+            gespraech_id = _turn_speichern(nwz, user, body, q_suche, answer_text,
+                                           candidates, cited,
+                                           presse_rows=presse_rows,
+                                           debatten_rows=debatten_rows,
+                                           planungen=planungen)
+            yield _sse({"type": "done", "cited": cited, "timings": zeiten,
+                        "gespraech_id": gespraech_id})
         except Exception:  # noqa: BLE001 — surface a terminal error to the client
+            _log.exception("KI-Frage fehlgeschlagen")
             yield _sse({"type": "error", "message": "Frage fehlgeschlagen."})
 
     return StreamingResponse(

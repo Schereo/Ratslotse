@@ -1,7 +1,7 @@
 """Tests für den Gelesen-Status der Themen-Treffer (RL-903, nwz.sqlite)."""
 from __future__ import annotations
 
-from nwz.store import Store
+from kern.store import Store
 
 
 def _setup(tmp_path):

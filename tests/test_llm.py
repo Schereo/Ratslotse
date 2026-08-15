@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from nwz import llm
+from kern import llm
 
 
 @pytest.fixture(autouse=True)
@@ -111,7 +111,10 @@ def test_chat_complete_delegates_to_get_client(monkeypatch):
     monkeypatch.setattr(llm, "get_client", lambda: _FakeClient())
     result = llm.chat_complete(model="openai/gpt-4o-mini", messages=[])
     assert result == "response"
-    assert calls == [{"model": "openai/gpt-4o-mini", "messages": []}]
+    # usage.include ist gesetzter Standard: OpenRouter liefert damit die echten
+    # Kosten des Aufrufs zurück (usage.cost) — Basis für Admin-Statistik und Eval.
+    assert calls == [{"model": "openai/gpt-4o-mini", "messages": [],
+                      "extra_body": {"usage": {"include": True}}}]
 
 
 def test_provider_routing_excludes_china_and_requires_zdr(monkeypatch):

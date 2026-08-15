@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { X } from "lucide-react";
+import { Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui";
 import { Mascot, type MascotPose } from "@/components/mascot";
 import { reportBadgeEvent } from "@/components/badges";
@@ -27,6 +27,8 @@ type TourStep = {
   pose: MascotPose;
   title: string;
   text: string;
+  /** Zeigt die Beispiel-Antwort im Tour-Fenster (nur die Frag-den-Rat-Station). */
+  demo?: true;
   /** Kurs-Schritte, die dieser Tour-Schritt abhakt („Erste Schritte"-Leiste).
    *  Ausdrücklich hier hinterlegt statt dem Routen-Tracker überlassen: Der
    *  greift nur, wenn eine Tour-Route zufällig exakt einer Kurs-Seite
@@ -40,26 +42,35 @@ const STEPS: TourStep[] = [
     title: "Moin, ich bin Lotti!",
     text: "Ich lotse dich einmal durch Ratslotse — dauert keine Minute. Diese Checkliste hakt nebenbei ab, was du schon entdeckt hast.",
   },
+  // Vorher stand hier die Station „Das Ratsinfo" auf dem Anker „nav-ratsinfo".
+  // Den Punkt gibt es seit dem Fragen/Suche-Split (#455) nicht mehr — der Anker
+  // wanderte mit und ließ Lotti „hier liegen alle Beschlüsse" sagen, während
+  // der Spotlight auf „Fragen" stand. Jetzt zeigt die Station auf das, was
+  // dort wirklich steht, und das Ratsinfo erklären die Stationen danach.
   {
-    id: "ratsinfo", route: "/dashboard", anchor: "nav-ratsinfo", pose: "point",
-    title: "Das Ratsinfo",
-    text: "Hier liegen alle Beschlüsse, Sitzungen, Themen und Analysen des Stadtrats — durchsuchbar statt PDF-Stapel.",
+    id: "fragen", route: "/dashboard", anchor: "nav-fragen", pose: "point",
+    title: "Frag den Rat",
+    text: "Das Herzstück: Stell deine Frage in normaler Sprache — ich lese die Beschlüsse und antworte mit Quellen.",
   },
   {
-    id: "suche", route: "/council?tab=decisions&mode=suchen", anchor: "beschluss-suche", pose: "search",
+    id: "frage-beispiel", route: "/fragen", pose: "celebrate",
+    marks: ["frag"],
+    demo: true,
+    title: "So sieht eine Antwort aus",
+    // Ankerlos: Die Beispiel-Antwort IST der Inhalt dieser Station — sie steht
+    // mittig auf der abgedunkelten Fragen-Seite, ohne auf ein Bedienelement zu
+    // zeigen. So bleibt Platz für die Demo, auch auf dem Handy.
+    text: "Jede Antwort fußt auf echten Beschlüssen; die Fußnote führt zum Original. Nachfragen geht im selben Gespräch weiter.",
+  },
+  {
+    id: "suche", route: "/council?tab=decisions", anchor: "beschluss-suche", pose: "search",
     marks: ["beschluesse"],
     title: "Beschlüsse durchsuchen",
     // Ohne Wegbeschreibung: Der frühere Tipp „die Taste / springt hierher" ist
     // auf dem Handy nicht ausführbar — die Tour läuft aber in der App wie im
-    // Browser. Ein Nav-Label ginge auch nicht: Es heißt am Rechner „Suchen &
-    // Fragen" und auf dem Handy „Ratsinfo". Also nur, was überall gilt.
+    // Browser. Ein Nav-Label ginge auch nicht: Am Rechner steht „Suche" in der
+    // Sidebar, auf dem Handy wohnt sie hinter „Mehr". Also nur, was überall gilt.
     text: "Volltextsuche über alle Beschlüsse — eingrenzen lässt sich nach Ergebnis, Themenfeld, Ausschuss und Zeitraum.",
-  },
-  {
-    id: "ki", route: "/council?tab=decisions", anchor: "ki-frage-tab", pose: "celebrate",
-    marks: ["frag"],
-    title: "Oder frag einfach",
-    text: "Stell deine Frage in normaler Sprache — ich suche die passenden Beschlüsse raus und antworte mit Quellen.",
   },
   // Analyse und Stadtkarte gehören zur „Erste Schritte"-Liste, kamen in der
   // Tour aber gar nicht vor — wer sie durchlief, blieb trotzdem bei 1/5 stehen.
@@ -79,7 +90,10 @@ const STEPS: TourStep[] = [
     text: "Beschlüsse an ihrem Ort: Klick dich durch Quartiere und Straßen und sieh, was der Rat dort entschieden hat.",
   },
   {
-    id: "themen", route: "/council?tab=decisions", anchor: "nav-themen", pose: "point",
+    // Ohne Route: Der Anker steht in Sidebar bzw. Tab-Bar, also auf jeder
+    // Seite der App. Der frühere Sprung nach /council?tab=decisions führte
+    // nur zurück auf die Suche, die zwei Stationen vorher schon dran war.
+    id: "themen", anchor: "nav-themen", pose: "point",
     title: "Deine Themen",
     text: "Lege Suchbegriffe an, die dich interessieren — bei neuen Beschlüssen dazu melde ich mich per Push oder E-Mail.",
   },
@@ -89,6 +103,88 @@ const STEPS: TourStep[] = [
     text: "Das war’s schon. Alles Weitere zeigt dir die „Erste Schritte“-Karte auf der Übersicht — oder du legst direkt mit deiner ersten Frage los.",
   },
 ];
+
+/* --- Beispiel-Antwort in der Frag-den-Rat-Station ------------------------ */
+
+const DEMO_FRAGE = "Was wurde zum Radverkehr beschlossen?";
+const DEMO_ANTWORT =
+  "Der Rat hat den Radverkehrsplan fortgeschrieben und mehrere Fahrradstraßen beschlossen.";
+const DEMO_QUELLE = "Stadtrat · Radverkehrsplan";
+
+/**
+ * Die Frage tippt sich, Lotti sucht, die Antwort steht mit Fußnote und Quelle
+ * da — damit man sieht, was herauskommt, bevor man selbst tippt. Bewusst ohne
+ * API-Aufruf: Die Tour läuft auch, wenn gerade nichts erreichbar ist, und
+ * niemand wartet in einer Erklärung auf ein Modell. Als Demo gekennzeichnet,
+ * damit der Beispielsatz nicht als heutiger Beschlussstand gelesen wird.
+ * `min-h` reserviert die Endhöhe: Die Station ist ankerlos zentriert, die
+ * Karte würde sonst beim Erscheinen der Antwort nachrücken.
+ */
+function TourQaDemo() {
+  const [typed, setTyped] = useState("");
+  const [phase, setPhase] = useState<"typing" | "thinking" | "done">("typing");
+
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setTyped(DEMO_FRAGE);
+      setPhase("done");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (phase !== "typing") return;
+    if (typed.length >= DEMO_FRAGE.length) {
+      const t = setTimeout(() => setPhase("thinking"), 350);
+      return () => clearTimeout(t);
+    }
+    const t = setTimeout(() => setTyped(DEMO_FRAGE.slice(0, typed.length + 1)), 38);
+    return () => clearTimeout(t);
+  }, [phase, typed]);
+
+  useEffect(() => {
+    if (phase !== "thinking") return;
+    const t = setTimeout(() => setPhase("done"), 1100);
+    return () => clearTimeout(t);
+  }, [phase]);
+
+  return (
+    // min-h = die gemessene Endhöhe: Ohne sie wüchse die Karte, während die
+    // Antwort erscheint, und rückte beim Zentrieren sichtbar nach oben.
+    <div className="mt-3 min-h-[200px] rounded-xl border border-border bg-muted/40 p-3">
+      <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.11em] text-muted-foreground">
+        Beispiel
+      </p>
+      <div className="mt-1.5 flex items-start gap-1.5 rounded-lg border border-input bg-background px-2 py-1.5">
+        <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-signal" aria-hidden />
+        {/* Nicht abschneiden: Im 360-px-Fenster passt die Frage sonst nur bis
+            „…zum Radverkehr be…" — ausgerechnet die Frage soll man lesen. */}
+        <span className="text-xs leading-snug text-foreground">
+          {typed}
+          {phase === "typing" && <span className="ml-0.5 inline-block h-3 w-0.5 animate-pulse bg-primary align-middle" />}
+        </span>
+      </div>
+      {phase === "thinking" && (
+        <p className="mt-2.5 text-xs text-muted-foreground">Beschlüsse werden durchsucht …</p>
+      )}
+      {phase === "done" && (
+        <>
+          <p className="mt-2.5 rounded-lg rounded-tl-sm border border-border bg-background p-2 text-xs leading-relaxed text-foreground">
+            {DEMO_ANTWORT}{" "}
+            <span className="ml-0.5 inline-flex h-4 w-4 items-center justify-center rounded bg-primary/10 align-text-bottom font-mono text-[10px] font-bold text-primary">
+              1
+            </span>
+          </p>
+          <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-primary">
+            <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/10 font-mono text-[10px] font-bold">
+              1
+            </span>
+            <span className="truncate">{DEMO_QUELLE}</span>
+          </p>
+        </>
+      )}
+    </div>
+  );
+}
 
 const SEEN_KEY = "ratslotse:tour-seen";
 /** Signal „Tour startet" — auch der Hinweis-Slot hört mit und klappt auf,
@@ -156,7 +252,7 @@ export function GuidedTour() {
   const finishToQa = useCallback(() => {
     reportBadgeEvent("tour"); // RL-U12: Kompass — nur beim echten Durchlauf
     end();
-    router.push("/council?tab=decisions&mode=fragen");
+    router.push("/fragen");
   }, [end, router]);
 
   // Start-Event von außen.
@@ -204,7 +300,12 @@ export function GuidedTour() {
         await sleep(120);
       }
       if (cancelled) return;
-      if (!el) { next(); return; } // Anker fehlt (z. B. Feature ausgeblendet) → Schritt überspringen
+      // Anker nicht da (z. B. die „Erste Schritte"-Karte, die nach dem letzten
+      // Haken verschwindet — die Tour lässt sich aber weiter über ⌘K starten):
+      // Station trotzdem zeigen, mittig wie das Finale. Vorher wurde sie
+      // übersprungen, was den Text verschluckte und die Tour nach vier
+      // Sekunden Dunkelheit weiterspringen ließ.
+      if (!el) { setRect(null); setReady(true); return; }
       const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       el.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
       await sleep(reduce ? 60 : 380);
@@ -309,6 +410,7 @@ export function GuidedTour() {
             </button>
             <p className="pr-6 font-display text-base font-bold text-foreground">{step.title}</p>
             <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{step.text}</p>
+            {step.demo && <TourQaDemo key={step.id} />}
             <div className="mt-3.5 flex flex-wrap items-center justify-end gap-x-2 gap-y-2">
               <div className="mr-auto flex items-center gap-1" aria-label={`Schritt ${stepIndex + 1} von ${STEPS.length}`}>
                 {STEPS.map((s, i) => (

@@ -1,0 +1,55 @@
+# Manuell auslösbarer Ops-Lauf: erzeugt die Kurzfassungen je
+# Tagesordnungspunkt (#449) für alle KOMMENDEN Sitzungen und die letzten N
+# vergangenen nach. Im Alltag entstehen sie im täglichen check_committees —
+# aber nur für Sitzungen, zu denen jemand benachrichtigt wird.
+# Nutzt denselben Deploy-Key/ProxyJump wie deploy.yml. Nur Collaborator
+# können triggern.
+name: "Ops: TOP-Kurzfassungen nachgenerieren"
+
+on:
+  workflow_dispatch:
+    inputs:
+      schreiben:
+        description: "Wirklich schreiben (aus = nur Vorschau)"
+        type: boolean
+        default: false
+      vergangene:
+        description: "Wie viele vergangene Sitzungen zusätzlich"
+        type: string
+        default: "10"
+
+concurrency:
+  group: ops-top-kurzfassungen
+  cancel-in-progress: false
+
+jobs:
+  kurzfassungen:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Backfill TOP summaries on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          proxy_host: ${{ secrets.VPS_PROXY_HOST }}
+          proxy_username: ${{ secrets.VPS_USER }}
+          proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          proxy_port: ${{ secrets.VPS_SSH_PORT }}
+          # Ein LLM-Aufruf je Sitzung (gpt-4o-mini) — auch 30 Sitzungen
+          # bleiben deutlich unter 30 Minuten.
+          command_timeout: 45m
+          envs: SCHREIBEN,VERGANGENE
+          script: |
+            set -e
+            cd ~/app
+            case "$VERGANGENE" in ''|*[!0-9]*) VERGANGENE=10 ;; esac
+            if [ "$SCHREIBEN" = "true" ]; then
+              .venv/bin/python scripts/backfill_top_summaries.py --schreiben --vergangene "$VERGANGENE"
+            else
+              .venv/bin/python scripts/backfill_top_summaries.py --vergangene "$VERGANGENE"
+            fi
+        env:
+          SCHREIBEN: ${{ inputs.schreiben }}
+          VERGANGENE: ${{ inputs.vergangene }}

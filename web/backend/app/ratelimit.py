@@ -61,3 +61,15 @@ verify_email_limiter = RateLimiter(max_calls=5, window_seconds=900)
 # „Frag den Rat" ist der einzige Endpoint, der pro Aufruf LLM-Kosten erzeugt —
 # großzügig genug für echtes Nachfragen, aber kein offener Geldhahn.
 qa_limiter = RateLimiter(max_calls=10, window_seconds=600)
+# Daumen-Feedback ist anonym beschreibbar — ohne Limit ließe sich die Tabelle
+# (und mit ihr Backups + Off-Site-Mirror) per Skript um Gigabytes aufblähen.
+# 20 pro 10 Minuten deckt jedes ehrliche Gespräch, auch mit Grund-Nachträgen.
+qa_feedback_limiter = RateLimiter(max_calls=20, window_seconds=600)
+partei_meinungen_limiter = RateLimiter(max_calls=15, window_seconds=600)
+qa_share_limiter = RateLimiter(max_calls=10, window_seconds=600)
+# Das Kontaktformular auf /hilfe ist der einzige Schreib-Endpoint ganz ohne
+# Konto — also der einzige, den ein Bot ohne Vorleistung findet. Eng wie
+# „Passwort vergessen": Wer ehrlich schreibt, braucht keinen zweiten Versuch
+# in derselben Viertelstunde; ein Skript kann so weder die Tabelle aufblähen
+# noch unser Resend-Kontingent leerlaufen lassen.
+support_limiter = RateLimiter(max_calls=5, window_seconds=900)

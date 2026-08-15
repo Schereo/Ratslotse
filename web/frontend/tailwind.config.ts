@@ -13,6 +13,18 @@ const config: Config = {
       padding: "1rem",
     },
     extend: {
+      screens: {
+        /* „desk" = echter Desktop, nicht bloß ein breiter Screen.
+           Die Seitenleiste ist Maus-Navigation: schmale Ziele, Hover-Zustände,
+           kein Daumen in Reichweite. Ein iPad ist auch quer 1366 px breit und
+           bekäme sie nach reiner Breite — genau das sah auf dem 13"-iPad
+           hochkant falsch aus (Tims Befund 14.08.: „der Screen ist absolut
+           kacke aufgeteilt"). `pointer: fine` fragt das primäre Eingabegerät
+           ab: Maus/Trackpad → Leiste links, Finger → Tab-Leiste unten. Ein
+           angestecktes Magic Keyboard ändert daran nichts, Touch bleibt auf
+           dem iPad das primäre Gerät. */
+        desk: { raw: "(pointer: fine) and (min-width: 1024px)" },
+      },
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],
         display: ["var(--font-display)", "var(--font-inter)", "system-ui", "sans-serif"],
@@ -95,7 +107,12 @@ const config: Config = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  // Container-Queries (offizielles Tailwind-Plugin; in Tailwind 4 eingebaut):
+  // Karten liegen in unterschiedlich breiten Rasterspalten — eine Karte muss
+  // auf IHRE Breite reagieren, nicht auf die des Fensters. Mit
+  // Fenster-Breakpoints allein blieb in der schmalen Spalte vom Gremiennamen
+  // nur „K…" übrig (Tims Befund 12.08.).
+  plugins: [require("tailwindcss-animate"), require("@tailwindcss/container-queries")],
 };
 
 export default config;

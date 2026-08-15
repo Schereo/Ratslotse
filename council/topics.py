@@ -11,7 +11,7 @@ import json
 import logging
 import os
 
-from nwz import llm
+from kern import llm
 
 MODEL = os.environ.get("COUNCIL_TOPIC_MODEL", "deepseek/deepseek-v4-pro")
 

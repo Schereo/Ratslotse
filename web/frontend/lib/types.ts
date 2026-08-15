@@ -14,6 +14,10 @@ export interface User {
   // Present only on native-app auth responses; the web relies on the cookie.
   access_token?: string | null;
   display_name?: string | null;
+  /** Einwilligung „Gespräche merken": 1 = ja, 0 = nein, null = nie gefragt.
+   *  Kommt mit dem Konto, damit die Frage-Seite die Erstnutzungs-Karte sofort
+   *  richtig setzt statt sie nachzuschieben. */
+  qa_speichern?: number | null;
 }
 
 export interface CouncilSession {
@@ -37,6 +41,12 @@ export interface AgendaItem {
   vorlage_nr: string | null;
   kvonr: number | null;
   is_public: number;
+  /** Dokument-Anhänge des TOP (RIS-PDFs) — ältere API-Antworten kennen das
+   *  Feld nicht. */
+  anlagen?: { label: string; url: string }[];
+  /** Ein Satz, worum es geht — dieselbe KI-Zusammenfassung wie in der
+   *  Tagesordnungs-Mail. Fehlt bei Routine-Punkten und alten Sitzungen. */
+  summary?: string | null;
 }
 
 export type DecisionOutcome =
@@ -72,6 +82,8 @@ export interface CouncilDecision {
   /** Design 23a: kompakte Zusammenfassung der Änderungsanträge (subvotes),
    *  die zu diesem Beschluss gehören — für die Unterzeile in der Trefferliste. */
   subvote_summary?: { count: number; factions: string[]; outcomes: string[] } | null;
+  /** Regex-Ernte: Wie stark weicht der Beschluss vom Verwaltungsvorschlag ab? */
+  abweichung?: "unveraendert" | "leicht" | "stark" | null;
 }
 
 export interface PolicyField {
@@ -84,6 +96,16 @@ export interface QaSource {
   id: number; title: string | null; summary: string | null;
   policy_field: string | null; outcome: DecisionOutcome | null;
   session_date: string; committee: string; score?: number;
+  /** Ratsgespräch-Bausteine (RG-04/05): Betrag und Antragsteller-Fraktionen,
+   *  deterministisch aus den Beschluss-Metadaten. */
+  amount_eur?: number | null;
+  /** Kostenentwicklung: gleiche Vorlagen-Familie = belegbares Delta. */
+  vorlage_nr?: string | null;
+  factions?: string[];
+  /** 5a/I-10: verortete Entität für die Mini-Karte unter der Antwort. */
+  ort_name?: string | null;
+  lat?: number | null;
+  lon?: number | null;
 }
 
 export interface QaAnswer {
@@ -250,6 +272,15 @@ export interface MemberDetail {
   } | null;
   committees: { committee: string; n: number; chair: boolean }[];
   recent: { ksinr: number; committee: string; session_date: string }[];
+  /** Erste Seite der Wortbeiträge (volle Paraphrase); weitere holt
+   *  /council/person/{slug}/wortbeitraege. */
+  wortbeitraege?: { art: string; top: string | null; text: string;
+    committee: string | null; session_date: string }[];
+  /** Wie viele Beiträge die Person insgesamt hat — die erste Seite ist ein
+   *  Ausschnitt davon. */
+  wortbeitraege_gesamt?: number;
+  /** Gremien mit Beitrags-Anzahl, Futter für den Filter. */
+  wortbeitraege_gremien?: { committee: string; n: number }[];
 }
 
 /** Eine Station der offiziellen Beratungsfolge einer Vorlage. */
@@ -293,6 +324,14 @@ export interface DecisionDetail {
    *  Beschluss zu keiner eingelesenen Vorlage gehört — dann gibt es nichts,
    *  woran ein Abo hängen könnte. */
   follow?: { kvonr: number; following: boolean };
+  /** Stufe 3b: Läuft zu diesem Bauleitplan gerade eine Bürgerbeteiligung?
+   *  Kommt von oldenburg.planungsbeteiligung.de, gematcht über die Plan-Nummer. */
+  beteiligung?: { titel: string; schritt: string; von: string | null;
+                  bis: string | null; url: string;
+                  /** "laufend" oder "beendet": Abgeschlossene Verfahren
+                   *  loescht das Portal der Stadt spurlos — bei uns bleiben
+                   *  sie als Beleg stehen (Historie seit 13.08.). */
+                  status?: string; beendet_am?: string | null } | null;
   similar: SimilarDecision[];
   entities: Entity[];
   ratsinfo_url: string;
@@ -305,7 +344,15 @@ export interface DecisionDetail {
     document_url: string | null;
     n_pages: number | null;
     excerpt: string | null;
+    /** Regex-Ernte: federführendes Amt aus dem Vorlagen-Kopf. */
+    amt?: string | null;
+    /** Regex-Ernte: Klima-Check der Verwaltung („Auswirkungen: b) Klima"). */
+    klima_check?: string | null;
+    klima_relevant?: boolean | null;
   } | null;
+  /** P1: document_id der gerenderten Planzeichnung — B-Plan-Beschlüsse
+   *  zeigen sie als Bild statt nur als Anlagen-Download. */
+  plan_bild?: number | null;
   /** Anlagen der Vorlage (Anträge zuerst, mit erkannten Antragstellern). */
   anlagen?: {
     document_id: number;
@@ -314,6 +361,8 @@ export interface DecisionDetail {
     is_antrag: number;
     antragsteller: string[];
     status: string;
+    /** 1 = Planzeichnung gerendert (scripts/render_plaene.py). */
+    bild?: number;
   }[];
 }
 
@@ -423,6 +472,10 @@ export interface AdminUserDetail {
   verlauf: number[];
   /** ISO-Datum je Verlaufs-Balken (x-Achse, 30 Tage). */
   verlauf_days: string[];
+  /** Recherchen/Tag: null = Standard (5), 0 = unbegrenzt, sonst eigenes Limit. */
+  deep_limit: number | null;
+  /** true = Rate-Limits der Frage-Endpoints für dieses Konto aus. */
+  limits_frei: boolean;
 }
 
 /** Ein Cron-Job in der Admin-Übersicht: Registry-Angaben + letzter Lauf. */

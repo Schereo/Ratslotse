@@ -90,7 +90,7 @@ export function FieldBadge({ field, className }: { field: string | null; classNa
 }
 
 export const IMPORTANCE_HINT =
-  "Geschätzte Wichtigkeit für die Stadt — aus Ratsdaten (Geldbetrag, Gegenstimmen, Verbindlichkeit & Gremien-Ebene, Länge des Beratungswegs) und, wo vorhanden, einer KI-Einschätzung der Tragweite.";
+  "Geschätzte Wichtigkeit für die Stadt — aus Ratsdaten (Geldbetrag, Gegenstimmen, Verbindlichkeit & Gremien-Ebene, Länge des Beratungswegs) und, wo vorhanden, einer automatischen Einschätzung der Tragweite.";
 
 /** Kompakter „Wichtig"-Chip für Listen — nur ab einer Schwelle sichtbar, damit
  *  nur wirklich bedeutende Beschlüsse hervorstechen (statt jede Karte zu füllen). */
@@ -203,7 +203,7 @@ export function ImportanceMeter({ score, signals, contributions, baseScore, impa
               {impact != null && (
                 <>
                   <div className="flex items-center justify-between gap-2">
-                    <dt className="text-muted-foreground">Tragweite (KI-Einschätzung)</dt>
+                    <dt className="text-muted-foreground">Tragweite (automatische Einschätzung)</dt>
                     <dd className="tabular-nums text-foreground">{impact}</dd>
                   </div>
                   <div className="flex items-center justify-between gap-2 border-t border-border pt-1">

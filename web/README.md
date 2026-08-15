@@ -19,7 +19,7 @@ auf Loopback bleibt (nicht öffentlich). Lokal/Dev läuft alles ohne Caddy über
 denselben Same-Origin-`/api`-Proxy von Next.
 
 - **Backend** (`web/backend/`): FastAPI. Importiert die bestehenden Pakete
-  `nwz` und `council` (Stores, `nwz.prompts`). Keine eigene
+  `nwz` und `council` (Stores, `kern.prompts`). Keine eigene
   Datenhaltung außer der Tabelle `web_users` in `nwz.sqlite`.
 - **Frontend** (`web/frontend/`): Next.js (App Router) + Tailwind. Spricht das
   Backend über einen Same-Origin-`/api`-Proxy an (siehe `next.config.mjs`).

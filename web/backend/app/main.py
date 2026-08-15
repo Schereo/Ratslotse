@@ -33,7 +33,7 @@ def _warn_if_admin_bootstrap_pending() -> None:
         configured = (settings.web_admin_email or "").strip().lower()
         if not configured:
             return
-        from nwz.store import Store
+        from kern.store import Store
 
         store = Store(settings.nwz_db)
         try:
@@ -81,11 +81,21 @@ def _warm_models() -> None:
             from council import embeddings as emb
             from council.store import CouncilStore
 
-            # search() lädt Embedder UND die Vektor-Matrix (die vorher erst bei
-            # der ersten Frage aus SQLite kam); rerank() den Cross-Encoder.
+            # Ein hybrid_search wärmt ALLES auf dem Frage-Pfad: Embedder,
+            # Beschluss- und Vorlagen-Chunk-Matrix (kamen vorher erst bei der
+            # ersten Frage aus SQLite) sowie den FTS-Zugriff; rerank() den
+            # Cross-Encoder.
             store = CouncilStore(get_settings().council_db)
             try:
-                emb.search(store, "warmup", top_k=1)
+                emb.hybrid_search(store, "warmup", "warmup", top_k=1, pool=2)
+                # Die Zusatzkanäle haben EIGENE Matrizen (Presse, 42k
+                # Wortbeiträge, Anlagen), die hybrid_search nicht anfasst —
+                # ungewärmt zahlt sie die erste Frage nach jedem Deploy.
+                for laden in (emb.search_presse, emb.search_wortbeitraege):
+                    try:
+                        laden(store, "warmup", "warmup")
+                    except Exception:  # noqa: BLE001 — Kanal fehlt/leer: egal
+                        pass
             finally:
                 store.close()
             emb.rerank("warmup", [(0, "warmup")])
@@ -95,10 +105,29 @@ def _warm_models() -> None:
     threading.Thread(target=_load, daemon=True).start()
 
 
+def _deep_jobs_aufraeumen() -> None:
+    """„Gründliche Recherche"-Jobs, die laut DB noch laufen, sind nach einem
+    Neustart tot (ihr Thread starb mit dem alten Prozess) → als Fehler
+    markieren, damit der Client „Fortsetzen" anbietet statt ewig zu warten."""
+    try:
+        from kern.store import Store
+
+        store = Store(get_settings().nwz_db)
+        try:
+            n = store.deep_jobs_verwaiste_beenden()
+            if n:
+                logger.warning("%d verwaiste Recherche-Jobs als Fehler markiert", n)
+        finally:
+            store.close()
+    except Exception:  # noqa: BLE001 — Aufräumen darf den Start nie verhindern
+        pass
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # noqa: ANN001
     _startup_checks()
     _warn_if_admin_bootstrap_pending()
+    _deep_jobs_aufraeumen()
     _warm_models()
     yield
 
@@ -187,7 +216,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 @app.get("/api/health")
 def health():
-    from nwz.store import Store
+    from kern.store import Store
     from council.store import CouncilStore
 
     try:
