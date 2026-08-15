@@ -251,6 +251,29 @@ def main() -> dict:
 
     council_store.close()
 
+    # Tragweite der frisch importierten Tagesordnungspunkte bewerten — die
+    # Wochen-Karte hebt danach hervor. Läuft hier statt in einem eigenen Cron,
+    # weil genau hier die neuen Tagesordnungen hereinkommen; ein Fehler darf
+    # den Meldungs-Lauf nicht abbrechen.
+    bewertet = 0
+    try:
+        from council.impact import BATCH_SIZE, rate_agenda_batch
+
+        offen = council_store.agenda_items_needing_impact(limit=200)
+        for i, it in enumerate(offen):
+            it["id"] = i
+        nach_id = {it["id"]: it for it in offen}
+        for start in range(0, len(offen), BATCH_SIZE):
+            for iid, score, grund in rate_agenda_batch(offen[start : start + BATCH_SIZE]):
+                it = nach_id.get(iid)
+                if it:
+                    council_store.save_agenda_impact(it["ksinr"], it["item_number"], score, grund)
+                    bewertet += 1
+        if offen:
+            print(f"  Tragweite: {bewertet}/{len(offen)} Tagesordnungspunkte bewertet")
+    except Exception as exc:  # noqa: BLE001
+        print(f"  ⚠️ Tragweite-Bewertung fehlgeschlagen: {exc!r} — Karte nutzt solange die Regeln")
+
     # Der 7-Uhr-Lauf ist zugleich der Wecker der Warteschlange: Was über Nacht
     # anfiel (Nachtruhe 21–7), geht jetzt raus.
     stats: dict = {}
@@ -263,6 +286,7 @@ def main() -> dict:
         "Sitzungen mit Tagesordnung": len(session_ids),
         "Termine im Kalender": len(scheduled),
         "Benachrichtigungen": notifications_sent,
+        "Tragweite bewertet": bewertet,
         **stats,
     }
 

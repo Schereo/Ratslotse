@@ -8,6 +8,17 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Verbessert
+- **„Die Woche im Rat" hebt jetzt hervor, was Folgen hat.** Bisher entschied
+  eine Heuristik aus Verfahrenssignalen, welcher Punkt oben steht — ein
+  Bericht über das Stadtmuseum schlug damit eine Satzungsänderung. Jetzt
+  bewertet dieselbe Tragweite-Rubrik wie bei den Beschlüssen (Betroffene,
+  Geld, Bindungswirkung, Präzedenz), was hervorgehoben wird; die Regeln
+  bleiben der Boden, wenn noch keine Bewertung vorliegt. In der Rückschau auf
+  sechs vergangene Wochen wählt die Karte in fünf davon einen anderen — und
+  einleuchtenderen — Spitzenpunkt, darunter der Stadionneubau statt eines
+  Jahresabschlusses. (#479)
+
+### Verbessert
 - **„Die Woche im Rat": ehrlichere Abzeichen und weniger Rätsel.** Das
   Abzeichen sagte „2 für dich", auch wenn kein einziges eigenes Thema im Spiel
   war — gezählt wird jetzt getrennt: „für dich" nur bei echten Themen-Treffern,

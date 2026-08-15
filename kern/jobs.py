@@ -12,7 +12,7 @@ JOBS: list[dict] = [
     {
         "key": "check_committees",
         "label": "Gremien & Terminplan",
-        "description": "Gremienliste, Sitzungskalender und Ausschuss-Benachrichtigungen.",
+        "description": "Gremienliste, Sitzungskalender, Ausschuss-Benachrichtigungen und die Tragweite neuer Tagesordnungspunkte.",
         "schedule": "täglich 7 Uhr",
         "max_age_h": 30,
     },
