@@ -38,15 +38,19 @@ def list_topics(
     council: CouncilStore = Depends(get_council_store),
 ) -> list[TopicOut]:
     owner_id = user["id"]
-    dec_counts = store.topic_decision_counts(owner_id)
     unseen = store.unseen_hit_counts(owner_id)
     topics = store.get_topics(owner_id)
-    # Jüngster Treffer je Thema (RL-701): Kandidaten je Thema sammeln, Beschlüsse
-    # in EINEM Batch nachschlagen, dann pro Thema das neueste Sitzungsdatum wählen.
-    cand: dict[int, list[int]] = {t.id: [m["decision_id"] for m in store.get_topic_decision_matches(t.id)[:10]]
+    # Gezählt wird, was die Suche auch findet. Die gespeicherten Treffer liegen
+    # in nwz.sqlite, die Beschlüsse in council.sqlite — verschwindet ein
+    # Beschluss (Neu-Extraktion vergibt neue IDs), bleibt die Zeile hier stehen
+    # und der Zähler versprach Treffer, die „alle ansehen" nicht liefern konnte
+    # (Tims Befund 15.08.: „8 Einträge" → Suche sagt „nichts gefunden").
+    # Deshalb erst nachschlagen, dann zählen.
+    cand: dict[int, list[int]] = {t.id: [m["decision_id"] for m in store.get_topic_decision_matches(t.id)]
                                   for t in topics}
     all_ids = [d for ids in cand.values() for d in ids]
     by_id = {d["id"]: d for d in council.get_decisions_by_ids(all_ids)} if all_ids else {}
+    dec_counts = {tid: sum(1 for d in ids if d in by_id) for tid, ids in cand.items()}
     out = []
     for t in topics:
         hits = sorted((by_id[d] for d in cand.get(t.id, []) if d in by_id),

@@ -345,7 +345,14 @@ function BottomNavInner({ tab }: { tab: string | null }) {
           // 14.08.). Halb/halb ist optisch mittig, die Leiste bleibt gleich
           // hoch (der Platzhalter in `main` rechnet mit derselben Summe), und
           // der Abstand zum Home-Indikator reicht weiterhin.
-          "fixed inset-x-0 bottom-0 flex border-t border-border/50 pb-[calc(env(safe-area-inset-bottom)/2)] pt-[calc(env(safe-area-inset-bottom)/2)] desk:hidden",
+          // Die Sicherheitszone gehört UNTEN hin. Sie hälftig auf oben und
+          // unten zu verteilen (so kam sie mit der iPad-Runde #475 herein)
+          // macht die Leiste auf dem iPhone rund 17 pt höher und schiebt die
+          // Symbole in Richtung Home-Indikator — auf dem iPhone ist die Zone
+          // 34 pt hoch, auf dem iPad rund 20 (Tims Befund 15.08.). Der
+          // hälftige Ausgleich bleibt deshalb den breiten Touch-Geräten.
+          "fixed inset-x-0 bottom-0 flex border-t border-border/50 pb-[env(safe-area-inset-bottom)] desk:hidden",
+          "md:pb-[calc(env(safe-area-inset-bottom)/2)] md:pt-[calc(env(safe-area-inset-bottom)/2)]",
           mehrOffen
             ? "z-50 bg-card shadow-[0_-10px_28px_-14px_rgba(2,32,71,0.22)]"
             : "z-40 bg-card/70 backdrop-blur-xl backdrop-saturate-150 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.45),0_-10px_28px_-14px_rgba(2,32,71,0.22)] dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),0_-10px_28px_-14px_rgba(0,0,0,0.5)]",

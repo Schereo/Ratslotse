@@ -1990,6 +1990,28 @@ class Store:
             )
         return out
 
+    def purge_stale_topic_matches(self, gueltige_ids: set[int]) -> int:
+        """Treffer wegräumen, deren Beschluss es nicht mehr gibt.
+
+        Beschlüsse bekommen bei einer Neu-Extraktion neue IDs; die hier
+        gespeicherten Verweise zeigen danach ins Leere. Auf Prod waren am
+        15.08.2026 ALLE gespeicherten Treffer tot — der Zähler zeigte acht,
+        die Suche fand null. Aufgeräumt wird beim Matching-Lauf, der ohnehin
+        beide Datenbanken offen hat.
+        """
+        alle = [r[0] for r in self._conn.execute(
+            "SELECT DISTINCT decision_id FROM council_topic_matches")]
+        tot = [d for d in alle if d not in gueltige_ids]
+        if not tot:
+            return 0
+        with self._conn:
+            for i in range(0, len(tot), 500):
+                teil = tot[i : i + 500]
+                ph = ",".join("?" * len(teil))
+                self._conn.execute(
+                    f"DELETE FROM council_topic_matches WHERE decision_id IN ({ph})", teil)
+        return len(tot)
+
     def topic_decision_counts(self, owner_id: int) -> dict[int, int]:
         """{topic_id: number of matched council decisions} for an owner's topics."""
         rows = self._conn.execute(

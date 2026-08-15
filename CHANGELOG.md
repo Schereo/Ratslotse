@@ -7,6 +7,21 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Behoben
+- **„8 Beschlüsse" und die Suche fand nichts.** Die gespeicherten Treffer eines
+  Themas zeigten auf Beschlüsse, die es nach einer Neu-Extraktion nicht mehr
+  gab — auf dem Server waren das alle. Der Zähler auf der Themen-Karte zählt
+  jetzt nur, was die Suche auch findet, verwaiste Verweise werden beim
+  Abgleich entfernt, und es werden mehr Treffer je Thema gespeichert (25 statt
+  8), damit die Karte nicht weniger zeigt als die Live-Prüfung beim
+  Bearbeiten. (#483)
+- **Tab-Leiste auf dem iPhone wieder normal hoch.** Mit der iPad-Runde wanderte
+  die Hälfte der Sicherheitszone nach oben — auf dem iPhone wurde die Leiste
+  dadurch rund 17 Punkte höher. Der Ausgleich gilt jetzt nur noch für breite
+  Touch-Geräte. (#483)
+- **Mehr Luft im Thema-Bearbeiten-Blatt**: Der Kasten „Passt gerade auf" klebte
+  an den Knöpfen. (#483)
+
 ## [1.10.0] – 2026-08-15
 
 ### Verbessert
