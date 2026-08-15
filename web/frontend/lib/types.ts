@@ -349,6 +349,8 @@ export interface DecisionDetail {
     /** Regex-Ernte: Klima-Check der Verwaltung („Auswirkungen: b) Klima"). */
     klima_check?: string | null;
     klima_relevant?: boolean | null;
+    /** „Finanzielle Auswirkungen" aus der Vorlage (amtlicher Wortlaut). */
+    finanz_check?: string | null;
   } | null;
   /** P1: document_id der gerenderten Planzeichnung — B-Plan-Beschlüsse
    *  zeigen sie als Bild statt nur als Anlagen-Download. */

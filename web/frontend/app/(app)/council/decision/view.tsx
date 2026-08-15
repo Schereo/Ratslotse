@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, ExternalLink, FileText, FileDown, GitCompareArrows, Leaf, Newspaper, Tag } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, ExternalLink, FileText, FileDown, GitCompareArrows, Leaf, Newspaper, Tag, Euro } from "lucide-react";
 import { DecisionDetail, CouncilDecision, SessionDetail } from "@/lib/types";
 import { Card, DetailSkeleton, formatDate } from "@/components/ui";
 import { OutcomeDot, OUTCOME_META, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard, ImportanceMeter, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
@@ -219,6 +219,28 @@ function GlanceCard({
           badge={data.vorlage.klima_relevant == null ? undefined : data.vorlage.klima_relevant ? "relevant" : "nicht relevant"}
         >
           {data.vorlage.klima_check}
+        </GlanceDisclosure>
+      )}
+      {/* „Was kostet das?" (Design H-21): Die Verwaltung schreibt in jede
+          Vorlage, welche finanziellen Folgen sie sieht. Amtlicher Wortlaut,
+          deshalb unverändert und ausdrücklich als Verwaltungsangabe
+          gekennzeichnet — nicht unsere Einschätzung. */}
+      {data.vorlage?.finanz_check && (
+        <GlanceDisclosure
+          icon={<Euro className="h-3.5 w-3.5 text-primary" />}
+          label="Was kostet das?"
+          badge="Angabe der Verwaltung"
+        >
+          {/* Wörtliches Zitat: Zitatkante links, Anführungszeichen, kein
+              Fettdruck — es ist der amtliche Wortlaut, nicht unsere Zahl. */}
+          <span className="block border-l-2 border-border pl-2.5 text-foreground/85">
+            „{data.vorlage.finanz_check.trim()}“
+          </span>
+          <span className="mt-1.5 block text-[11px] text-muted-foreground">
+            Aus der Vorlage, Feld „Finanzielle Auswirkungen“ · wie sich das im
+            Gesamthaushalt ausnimmt, zeigt der{" "}
+            <Link href="/haushalt" className="font-medium text-primary">Haushalt</Link>.
+          </span>
         </GlanceDisclosure>
       )}
 

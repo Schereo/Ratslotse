@@ -443,6 +443,11 @@ def decision_detail(
                 "amt": v.get("amt"),
                 "klima_check": v.get("klima_check"),
                 "klima_relevant": ernte.klima_relevant(v.get("klima_check")),
+                # „Finanzielle Auswirkungen" der Verwaltung — dieselbe
+                # Regex-Ernte wie der Klima-Check, auf der Beschluss-Seite als
+                # „Was kostet das?" (Design H-21). Amtlicher Wortlaut, deshalb
+                # unverändert und als Zitat gekennzeichnet.
+                "finanz_check": v.get("finanz_check"),
             }
             if not out["vorlage_url"] and v.get("kvonr"):
                 out["vorlage_url"] = _vorlage_url(v["kvonr"])
