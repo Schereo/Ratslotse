@@ -15,7 +15,14 @@ import { NachWahlStreifen } from "@/components/kommunalwahl/countdown";
 // ein 404 — der Code darf deshalb gefahrlos mit Releases nach main fahren.
 const KOMMUNALWAHL_FREI = process.env.NEXT_PUBLIC_RATSLOTSE_ENV === "dev";
 
-export const metadata: Metadata = {
+// Als Funktion statt statischem Export, damit auch Titel/OG-Tags hinterm
+// Gate bleiben — sonst trüge die 404-Seite auf Prod den Kommunalwahl-Titel.
+export function generateMetadata(): Metadata {
+  if (!KOMMUNALWAHL_FREI) return {};
+  return metadataFrei;
+}
+
+const metadataFrei: Metadata = {
   title: {
     default: "Kommunalwahl 2026 — Wahlprogramme im Vergleich | Ratslotse",
     template: "%s — Kommunalwahl 2026 | Ratslotse",
