@@ -18,6 +18,36 @@ export function Sparkline({ reihe, className }: {
       </svg>
     );
   }
+  return <SparkSvg reihe={reihe} className={className} />;
+}
+
+/** Sparkline MIT Ankern (Tims Einwand 15.08.: ohne Achsen liest sich die
+ *  Linie als Deko). Unter der Linie stehen Start- und Endjahr plus das
+ *  Delta über den Zeitraum — die ehrliche Mindest-Beschriftung, ohne die
+ *  Karte mit einem vollen Diagramm zu erschlagen. */
+export function TrendMini({ reihe, className }: {
+  reihe: { jahr: number; wert: number }[];
+  className?: string;
+}) {
+  if (reihe.length < 2) return <Sparkline reihe={reihe} className={className} />;
+  const delta = Math.round((reihe[reihe.length - 1].wert - reihe[0].wert) * 10) / 10;
+  const deltaText = `${delta > 0 ? "+" : ""}${delta.toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`;
+  return (
+    <div className={className}>
+      <SparkSvg reihe={reihe} />
+      <div className="mt-0.5 flex w-[88px] items-baseline justify-between font-mono text-[8.5px] leading-none text-muted-foreground">
+        <span>’{String(reihe[0].jahr).slice(2)}</span>
+        <span className="font-medium">{deltaText}</span>
+        <span>’{String(reihe[reihe.length - 1].jahr).slice(2)}</span>
+      </div>
+    </div>
+  );
+}
+
+function SparkSvg({ reihe, className }: {
+  reihe: { jahr: number; wert: number }[];
+  className?: string;
+}) {
 
   const jahre = reihe.map((r) => r.jahr);
   const luecken = fehlendeJahre(jahre);

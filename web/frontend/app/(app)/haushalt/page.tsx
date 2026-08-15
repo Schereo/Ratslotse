@@ -14,7 +14,7 @@ import { useFetch } from "@/lib/use-fetch";
 import { Gegenbalken } from "@/components/haushalt/gegenbalken";
 import { Steuereuro } from "@/components/haushalt/steuereuro";
 import { Zeitreihe } from "@/components/haushalt/zeitreihe";
-import { Sparkline } from "@/components/haushalt/sparkline";
+import { TrendMini } from "@/components/haushalt/sparkline";
 import {
   BEREICH_INFO, HaushaltDaten, RUECKLAGE_MIO, RUECKLAGE_STAND,
   bereichSlug, bereiche, bereichsReihe, deMio, deckung, fehlendeJahre,
@@ -241,14 +241,20 @@ export default function HaushaltPage() {
         </div>
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
           {(alleBereiche ? karten : karten.slice(0, 6)).map(({ z, netto, brutto, deckung: d }) => {
-            const reihe = bereichsReihe(data, z.bereich)
-              .map((r) => ({ jahr: r.jahr, wert: -(mio(r.zeile.ergebnis) ?? 0) }));
+            // Die Mini-Reihe zeigt dieselbe Größe wie die große Zahl der Karte —
+            // sonst erzählen Zahl und Linie zwei verschiedene Geschichten.
+            const reihe = bereichsReihe(data, z.bereich).map((r) => ({
+              jahr: r.jahr,
+              wert: sortierung === "netto"
+                ? -(mio(r.zeile.ergebnis) ?? 0)
+                : (mio(r.zeile.aufwendungen) ?? 0),
+            }));
             return (
               <Link key={z.bereich} href={`/haushalt/bereich?name=${bereichSlug(z.bereich)}`}
                 className="rounded-xl border border-border bg-card p-3.5 shadow-sm transition-colors hover:border-primary/40">
                 <div className="flex items-start justify-between gap-2.5">
                   <p className="text-[13px] font-bold leading-snug">{z.bereich}</p>
-                  <Sparkline reihe={reihe} className="flex-none opacity-60" />
+                  <TrendMini reihe={reihe} className="flex-none opacity-70" />
                 </div>
                 <p className="mt-2 font-display text-[21px] font-bold tracking-tight tabular-nums">
                   {sortierung === "netto" ? `−${deMio(netto)}` : deMio(brutto)}
