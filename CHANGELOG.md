@@ -16,7 +16,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   hat, und bei Fragen nach Hebesätzen den Zusammenhang, den man leicht
   übersieht: Nimmt die Stadt mehr Steuern ein, kürzt das Land seine
   Zuweisungen. Plan- und Ist-Zahlen bleiben dabei streng getrennt und werden
-  in der Antwort als solche benannt. (#PR)
+  in der Antwort als solche benannt. (#492)
 
 ### Hinzugefügt
 - **Neuer Bereich „Haushalt".** Wohin fließt das Geld der Stadt? Unter
