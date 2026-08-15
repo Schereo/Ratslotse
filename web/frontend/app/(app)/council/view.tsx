@@ -865,11 +865,14 @@ function YearDivider({ jahr }: { jahr: string }) {
    toter Text — man musste zurück in die Suche, um den Beschluss zu finden, der
    direkt dahinter liegt. TOPs ohne Beschluss (Berichte, künftige Sitzungen)
    bleiben bewusst ruhiger Text, damit der Zeiger nichts verspricht, was fehlt. */
-function AgendaRow({ it, query, outcome, decisionId, myTopic, domId }: {
+function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flash }: {
   it: AgendaItem; query: string; outcome?: DecisionOutcome | null;
   decisionId?: number; myTopic?: string;
   /* Ziel des `?top=…`-Sprungs aus einer Benachrichtigung (s. topDomId). */
   domId?: string;
+  /** Kurz nach dem Sprung hervorgehoben — sonst sieht die Zielzeile aus wie
+   *  jede andere und man sucht, was gemeint war. */
+  flash?: boolean;
 }) {
   const hit = itemMatches(it, query);
   const body = (
@@ -917,7 +920,13 @@ function AgendaRow({ it, query, outcome, decisionId, myTopic, domId }: {
     </>
   );
   const tone = hit ? "bg-amber-50 dark:bg-amber-950/40" : myTopic ? "bg-signal/5" : "";
-  const layout = "flex flex-wrap items-start gap-x-3 gap-y-1 rounded-md px-2 py-2";
+  const layout = cn(
+    "flex flex-wrap items-start gap-x-3 gap-y-1 rounded-md px-2 py-2",
+    // Der Ring verschwindet nach 1,6 s von selbst; die Farbe blendet weich
+    // aus, damit die Markierung nicht springt.
+    "transition-[box-shadow,background-color] duration-500",
+    flash && "bg-primary/[0.07] ring-2 ring-primary",
+  );
 
   if (decisionId != null) {
     return (
@@ -969,6 +978,8 @@ function SessionsTab({ committees }: { committees: string[] }) {
   const targetKsinr = Number(deepSp.get("ksinr") || 0);
   const deepLinkDone = useRef(false);
   const [flashKsinr, setFlashKsinr] = useState<number | null>(null);
+  /** DOM-Id des per `?top=` angesprungenen Punktes — er blinkt kurz auf. */
+  const [flashTop, setFlashTop] = useState<string | null>(null);
   const [scope, setScope] = useMerker<Scope>("sitzungen:zeitraum", "upcoming");
   const listRef = useRef<HTMLDivElement>(null);
   const [sessions, setSessions] = useState<CouncilSession[]>([]);
@@ -1110,6 +1121,15 @@ function SessionsTab({ committees }: { committees: string[] }) {
       // während das Dokument noch so hoch ist wie das Fenster, verpufft.
       if (el && document.documentElement.scrollHeight > window.innerHeight + 4) {
         topSprungDone.current = true;
+        // Den Zielpunkt kurz markieren: Nach dem Sprung stand die Zeile zwar
+        // in der Mitte, sah aber aus wie jede andere — man musste raten,
+        // welche gemeint war (Tims Befund 15.08.). Gleiche Dauer wie der
+        // Ring um die Sitzungskarte.
+        // Länger als der Ring um die Sitzungskarte (1,6 s): Der springt ins
+        // Auge, während man noch scrollt — die Zeile findet man erst, wenn
+        // die Bewegung steht.
+        setFlashTop(id);
+        setTimeout(() => setFlashTop(null), 2500);
         const vorher = window.scrollY;
         // `center` statt `start`: Die Zeile steht mitten im Bild, mit dem
         // Zusammenhang darüber und darunter — nicht am oberen Rand geklebt.
@@ -1370,7 +1390,8 @@ function SessionsTab({ committees }: { committees: string[] }) {
                                   outcome={it.is_public ? outcomeByItem[topKey(it.item_number)] : undefined}
                                   decisionId={it.is_public ? decisionByItem[topKey(it.item_number)] : undefined}
                                   myTopic={myByItem[it.item_number]}
-                                  domId={s.ksinr != null ? topDomId(s.ksinr, it.item_number) : undefined} />
+                                  domId={s.ksinr != null ? topDomId(s.ksinr, it.item_number) : undefined}
+                                  flash={s.ksinr != null && flashTop === topDomId(s.ksinr, it.item_number)} />
                               ))}
                             </ul>
                             {d && <AttendanceSection detail={d} />}

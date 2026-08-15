@@ -7,6 +7,25 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Verbessert
+- **„Die Woche im Rat": ehrlichere Abzeichen und weniger Rätsel.** Das
+  Abzeichen sagte „2 für dich", auch wenn kein einziges eigenes Thema im Spiel
+  war — gezählt wird jetzt getrennt: „für dich" nur bei echten Themen-Treffern,
+  sonst „wichtig". Jede Sitzung führt zu ihrer Tagesordnung (nicht mehr nur die
+  ohne hervorgehobene Punkte), der hervorgehobene Punkt sagt mit einer Zeile,
+  warum er hervorgehoben ist, und der erklärende Fußtext samt Kalender-Link ist
+  weg — jede Zeile führt ohnehin dorthin. Mobil steht jetzt jede Sitzung
+  einzeln, und „1 weiterer Punkt" klappt auf, statt die Seite zu wechseln.
+  (#478)
+
+### Behoben
+- **Grüne ohne Farbpunkt.** Steht die Fraktion als „Fraktion Bündnis 90/Die
+  Grünen" in der Vorlage (Wort vorn statt hinten), blieb der Punkt vor dem
+  Antragsteller leer. Jetzt trägt sie ihr Grün wie alle anderen. (#478)
+- **Sprung auf einen Tagesordnungspunkt endete im Ungewissen.** Wer aus der
+  Wochen-Karte „Öffnen" antippte, landete zwar an der richtigen Stelle, aber
+  die Zeile sah aus wie jede andere. Sie wird jetzt kurz hervorgehoben. (#478)
+
 ### Behoben
 - **iPad-Build ließ sich nicht hochladen.** Apple verlangt für das
   iPad-Multitasking alle vier Bildschirm-Ausrichtungen; die App meldete nur

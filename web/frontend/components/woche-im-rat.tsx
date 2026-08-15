@@ -24,6 +24,8 @@ export type Wochenvorschau = {
   found: boolean; von: string; bis: string;
   sitzungen: WochenSitzung[]; punkte: WochenPunkt[];
   relevant_je_sitzung?: Record<string, number>;
+  /** Davon die, die zu einem EIGENEN Thema passen — nur die heißen „für dich". */
+  treffer_je_sitzung?: Record<string, number>;
   treffer_gesamt?: number; inhaltlich_gesamt?: number;
 };
 
@@ -99,7 +101,19 @@ function gremium(name: string, dichte: Dichte) {
  *  Genau darauf beruht auch die exakte Prüfung in `parteiDot`. */
 function fraktionen(wer: string): string[] {
   return wer.split(/\s*(?:&|\bund\b|,)\s*/)
-    .map((t) => t.replace(/[- ]?(Fraktion|Gruppe|Ratsgruppe)\b.*$/i, "").trim())
+    .map((t) => {
+      // Zwei Schreibweisen kommen aus den Vorlagen: „CDU-Fraktion" (Wort
+      // hinten) und „Fraktion Bündnis 90/Die Grünen" (Wort vorn). Die alte
+      // Regel schnitt nur hinten — und traf bei der vorangestellten Variante
+      // ab „Fraktion" ALLES, sodass ein leerer Name übrig blieb und die
+      // Grünen gar keinen Punkt bekamen (Tims Befund 15.08.).
+      const gekuerzt = t
+        .replace(/^\s*(?:Rats)?(?:Fraktion|Gruppe)\s+/i, "")
+        .replace(/[- ]?(?:Rats)?(?:Fraktion|Gruppe)\b.*$/i, "")
+        .trim();
+      // Nie leer zurückgeben: Lieber der rohe Name als kein Punkt.
+      return gekuerzt || t.trim();
+    })
     .filter(Boolean);
 }
 
@@ -170,22 +184,22 @@ export function WocheImRat({ vorschau, heuteIso }: {
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const dichte = useDichte(ref);
-  const [ruhigeOffen, setRuhigeOffen] = useState(false);
 
   const maxPunkte = dichte === "desktop" ? 3 : 2;
   const relevant = vorschau.relevant_je_sitzung ?? {};
+  const treffer_je = vorschau.treffer_je_sitzung ?? {};
 
   const punkteVon = (ksinr: number | null) =>
     ksinr == null ? [] : vorschau.punkte.filter((p) => p.ksinr === ksinr);
 
   const sitzungen = vorschau.sitzungen;
-  const mitPunkten = sitzungen.filter((s) => punkteVon(s.ksinr).length > 0);
-  const ohnePunkte = sitzungen.filter((s) => punkteVon(s.ksinr).length === 0);
   const treffer = vorschau.treffer_gesamt ?? 0;
 
-  // Auf den großen Stufen laufen alle Sitzungen in einer Tages-Rail; mobil
-  // stehen nur die mit Punkten einzeln, der Rest wird gebündelt (Matrix 14d).
-  const inRail = dichte === "mobil" ? mitPunkten : sitzungen;
+  // Jede Sitzung steht in der Rail — auch mobil. Vorher waren die ohne
+  // interessante Punkte hinter „N Sitzungen ohne deine Themen" gebündelt;
+  // das versteckte Termine und behauptete nebenbei einen Themenbezug, den
+  // es nicht gab (Tim, 15.08.). Jetzt: Name plus Tagesordnung, fertig.
+  const inRail = sitzungen;
 
   // Tagesweise gruppieren — die Rail trägt den Tag einmal, nicht je Sitzung.
   const tage: { datum: string; sitzungen: WochenSitzung[] }[] = [];
@@ -219,27 +233,32 @@ export function WocheImRat({ vorschau, heuteIso }: {
       {dichte === "mobil" ? (
         <div className="mt-3 flex flex-1 flex-col gap-3">
           {tage.map(({ datum, sitzungen: tagesSitzungen }) =>
-            tagesSitzungen.map((s, i) => (
-              <MobilSitzung
-                key={s.ksinr ?? `${s.committee}|${datum}`}
-                sitzung={s}
-                punkte={punkteVon(s.ksinr).slice(0, maxPunkte)}
-                weitere={Math.max((relevant[String(s.ksinr)] ?? 0) - maxPunkte, 0)}
-                badge={relevant[String(s.ksinr)] ?? 0}
-                heute={datum === heuteIso}
-                /* Trennlinie erst ab der zweiten Zeile — die erste sitzt
-                   direkt unter der Kopfzeile. */
-                mitTrennlinie={!(tage[0].datum === datum && i === 0)}
-              />
-            )),
-          )}
-          {ohnePunkte.length > 0 && (
-            <RuhigGebuendelt
-              sitzungen={ohnePunkte}
-              offen={ruhigeOffen}
-              onToggle={() => setRuhigeOffen((v) => !v)}
-              heuteIso={heuteIso}
-            />
+            tagesSitzungen.map((s, i) => {
+              const alle = punkteVon(s.ksinr);
+              const erste = tage[0].datum === datum && i === 0;
+              return alle.length > 0 ? (
+                <MobilSitzung
+                  key={s.ksinr ?? `${s.committee}|${datum}`}
+                  sitzung={s}
+                  punkte={alle.slice(0, maxPunkte)}
+                  rest={alle.slice(maxPunkte)}
+                  weitere={Math.max((relevant[String(s.ksinr)] ?? 0) - alle.length, 0)}
+                  badge={relevant[String(s.ksinr)] ?? 0}
+                  treffer={treffer_je[String(s.ksinr)] ?? 0}
+                  heute={datum === heuteIso}
+                  /* Trennlinie erst ab der zweiten Zeile — die erste sitzt
+                     direkt unter der Kopfzeile. */
+                  mitTrennlinie={!erste}
+                />
+              ) : (
+                <MobilRuhig
+                  key={s.ksinr ?? `${s.committee}|${datum}`}
+                  sitzung={s}
+                  heute={datum === heuteIso}
+                  mitTrennlinie={!erste}
+                />
+              );
+            }),
           )}
         </div>
       ) : (
@@ -267,6 +286,7 @@ export function WocheImRat({ vorschau, heuteIso }: {
                     punkte={p.slice(0, maxPunkte)}
                     weitere={Math.max((relevant[String(s.ksinr)] ?? 0) - maxPunkte, 0)}
                     badge={relevant[String(s.ksinr)] ?? 0}
+                    treffer={treffer_je[String(s.ksinr)] ?? 0}
                     dichte={dichte}
                   />
                 ) : (
@@ -282,31 +302,9 @@ export function WocheImRat({ vorschau, heuteIso }: {
         </div>
       )}
 
-      {/* Mobil steht der Link IM Satz (14c) statt rechts daneben: In einer
-          Zeile nebeneinander bricht der Hinweis um und drängt sich an den
-          Link. Ab iPad ist Platz für beides nebeneinander (14a/14b). */}
-      {dichte === "mobil" ? (
-        <p className="mt-2.5 border-t border-border/60 pt-2.5 text-[10.5px] leading-relaxed text-muted-foreground/85">
-          Entschieden wird in der Sitzung.{" "}
-          <Link href="/council?tab=sessions" className="font-semibold text-primary hover:underline">
-            Sitzungskalender →
-          </Link>
-        </p>
-      ) : (
-        <div className="mt-3 flex items-center justify-between gap-3 border-t border-border/60 pt-2.5">
-          <span className="text-[11.5px] leading-relaxed text-muted-foreground/85">
-            {dichte === "desktop"
-              ? "Steht auf der Tagesordnung — entschieden wird in der Sitzung."
-              : "Entschieden wird in der Sitzung."}
-          </span>
-          <Link
-            href="/council?tab=sessions"
-            className="shrink-0 text-xs font-semibold text-primary hover:underline"
-          >
-            Sitzungskalender →
-          </Link>
-        </div>
-      )}
+      {/* Ohne Fußzeile (Tim, 15.08.): Der Satz „entschieden wird in der
+          Sitzung" erklärte, was die Karte ohnehin zeigt, und der Link zum
+          Sitzungskalender war doppelt — jede Sitzungszeile führt dorthin. */}
       </div>
     </Card>
   );
@@ -340,8 +338,12 @@ function RailTag({ datum, heute, letzter, dichte, children }: {
 }
 
 /** Sitzung mit relevanten Punkten — sie klappt ihre Punkte auf. */
-function RailSitzung({ sitzung, punkte, weitere, badge, dichte }: {
-  sitzung: WochenSitzung; punkte: WochenPunkt[]; weitere: number; badge: number; dichte: Dichte;
+function RailSitzung({ sitzung, punkte, weitere, badge, treffer, dichte }: {
+  sitzung: WochenSitzung; punkte: WochenPunkt[]; weitere: number; badge: number;
+  /** Wie viele der Punkte zu einem EIGENEN Thema passen — nur die dürfen
+   *  „für dich" heißen. Der Rest ist allgemein wichtig. */
+  treffer: number;
+  dichte: Dichte;
 }) {
   const desktop = dichte === "desktop";
   const zeit = (sitzung.session_time || "").slice(0, 5);
@@ -360,8 +362,24 @@ function RailSitzung({ sitzung, punkte, weitere, badge, dichte }: {
             "inline-flex shrink-0 items-center rounded-full bg-primary/10 font-bold text-primary",
             desktop ? "px-2 py-px text-[10px]" : "px-1.5 py-px text-[9.5px]",
           )}>
-            {badge} für dich
+            {/* „für dich" nur, wenn wirklich ein eigenes Thema passt — sonst
+                behauptet das Abzeichen einen Bezug, den es nicht gibt. */}
+            {treffer > 0 ? `${treffer} für dich` : `${badge} wichtig`}
           </span>
+        )}
+        {/* Jede Sitzung führt zu ihrer Tagesordnung, nicht nur die ruhigen
+            Zeilen (Tims Befund 15.08.: „warum hat nur der Allgemeine
+            Ausschuss den Link?"). */}
+        {sitzung.ksinr != null && sitzung.n_items > 0 && (
+          <Link
+            href={`/council?tab=sessions&ksinr=${sitzung.ksinr}`}
+            className={cn(
+              "ml-auto shrink-0 font-medium text-primary hover:underline",
+              desktop ? "text-[11.5px]" : "text-[11px]",
+            )}
+          >
+            Tagesordnung →
+          </Link>
         )}
       </div>
       <div className="mt-1.5">
@@ -374,7 +392,7 @@ function RailSitzung({ sitzung, punkte, weitere, badge, dichte }: {
               href={`/council?tab=sessions&ksinr=${sitzung.ksinr}`}
               className="text-[11.5px] font-medium text-primary hover:underline"
             >
-              {weitere === 1 ? "1 weiterer Punkt für dich" : `${weitere} weitere Punkte für dich`}
+              {weitere === 1 ? "1 weiterer Punkt" : `${weitere} weitere Punkte`}
             </Link>
           </div>
         )}
@@ -400,6 +418,13 @@ function RailPunkt({ punkt, top, dichte }: { punkt: WochenPunkt; top: boolean; d
       )}
     >
       <span className="min-w-0 flex-1">
+        {/* Sagt, warum ausgerechnet dieser Punkt hinterlegt ist — ohne den
+            Kicker wirkte die Fläche willkürlich (Tims Befund 15.08.). */}
+        {top && desktop && (
+          <span className="mb-0.5 block font-mono text-[9px] font-semibold uppercase tracking-[0.11em] text-primary/80">
+            Wichtigster Punkt der Woche
+          </span>
+        )}
         <span className={cn(
           "block leading-snug text-foreground",
           top ? "font-semibold" : "",
@@ -488,11 +513,21 @@ function RuhigeZeile({ sitzung, dichte }: { sitzung: WochenSitzung; dichte: Dich
 /** Mobil wird die Rail-Spalte zur Zeile: Der Tag steht als Chip VOR dem
  *  Sitzungsnamen und spart damit die 74 px Spaltenbreite. Die Punkte hängen an
  *  einer 2-px-Kante. */
-function MobilSitzung({ sitzung, punkte, weitere, badge, heute, mitTrennlinie }: {
-  sitzung: WochenSitzung; punkte: WochenPunkt[]; weitere: number;
-  badge: number; heute: boolean; mitTrennlinie: boolean;
+function MobilSitzung({ sitzung, punkte, rest, weitere, badge, treffer, heute, mitTrennlinie }: {
+  sitzung: WochenSitzung; punkte: WochenPunkt[];
+  /** Punkte, die die Karte schon geladen hat, aber mobil erst nach dem
+   *  Aufklappen zeigt (Tims Wunsch 15.08.: aufklappen statt wegnavigieren). */
+  rest: WochenPunkt[];
+  /** Punkte, die es darüber hinaus noch gibt — die stehen nur in der
+   *  Tagesordnung, dafür bleibt der Link. */
+  weitere: number;
+  badge: number;
+  /** Wie viele davon zu einem eigenen Thema passen (s. RailSitzung). */
+  treffer: number;
+  heute: boolean; mitTrennlinie: boolean;
 }) {
   const zeit = (sitzung.session_time || "").slice(0, 5);
+  const [offen, setOffen] = useState(false);
   return (
     <div className={cn(mitTrennlinie && "border-t border-border/60 pt-2.5")}>
       <div className="flex items-center gap-1.5">
@@ -511,14 +546,19 @@ function MobilSitzung({ sitzung, punkte, weitere, badge, heute, mitTrennlinie }:
           {shortCommittee(sitzung.committee)}
         </span>
         {badge > 0 && (
-          /* Matrix 14d: mobil nur die Zahl, ohne „für dich". */
-          <span className="inline-flex shrink-0 items-center rounded-full bg-primary/10 px-1.5 py-px text-[9px] font-bold text-primary">
-            {badge}
+          /* Matrix 14d: mobil nur die Zahl — die Zahl allein behauptet nichts
+             über einen Themenbezug. Passt ein eigenes Thema, sagt das
+             Abzeichen es kurz dazu. */
+          <span
+            className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-px text-[9px] font-bold text-primary"
+            title={treffer > 0 ? `${treffer} zu deinen Themen` : `${badge} wichtige Punkte`}
+          >
+            {treffer > 0 ? `${treffer} für dich` : badge}
           </span>
         )}
       </div>
       <div className="ml-[3px] mt-1.5 flex flex-col gap-1.5 border-l-2 border-primary/25 pl-2.5">
-        {punkte.map((p) => (
+        {[...punkte, ...(offen ? rest : [])].map((p) => (
           <Link
             key={`${p.ksinr}-${p.item_number}`}
             href={topHref(p.ksinr, p.item_number)}
@@ -533,12 +573,25 @@ function MobilSitzung({ sitzung, punkte, weitere, badge, heute, mitTrennlinie }:
             </span>
           </Link>
         ))}
-        {weitere > 0 && (
+        {/* Was die Karte schon geladen hat, klappt hier auf, statt die Seite
+            zu wechseln — wegnavigieren für einen Titel war zu viel Weg. */}
+        {!offen && rest.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setOffen(true)}
+            className="flex items-center gap-1 self-start text-[11.5px] font-medium text-primary"
+          >
+            <ChevronDown className="h-3 w-3" aria-hidden />
+            {rest.length === 1 ? "1 weiterer Punkt" : `${rest.length} weitere Punkte`}
+          </button>
+        )}
+        {/* Nur was wirklich nicht in der Karte steckt, bleibt ein Link. */}
+        {weitere > 0 && (offen || rest.length === 0) && (
           <Link
             href={`/council?tab=sessions&ksinr=${sitzung.ksinr}`}
             className="text-[11.5px] font-medium text-primary"
           >
-            {weitere === 1 ? "1 weiterer Punkt" : `${weitere} weitere Punkte`}
+            Ganze Tagesordnung →
           </Link>
         )}
       </div>
@@ -546,53 +599,43 @@ function MobilSitzung({ sitzung, punkte, weitere, badge, heute, mitTrennlinie }:
   );
 }
 
-/** Mobil zu EINER Zeile gebündelt (Matrix 14d) — aufklappbar, damit die
- *  Vollständigkeit erhalten bleibt. */
-function RuhigGebuendelt({ sitzungen, offen, onToggle, heuteIso }: {
-  sitzungen: WochenSitzung[]; offen: boolean; onToggle: () => void; heuteIso: string;
+/** Mobil: eine Sitzung ohne hervorgehobene Punkte. Sie steht als eigene
+ *  Zeile in der Rail — Name, Punktzahl, Weg zur Tagesordnung. */
+function MobilRuhig({ sitzung, heute, mitTrennlinie }: {
+  sitzung: WochenSitzung; heute: boolean; mitTrennlinie: boolean;
 }) {
-  const tage = [...new Set(sitzungen.map((s) => s.session_date))];
-  return (
-    <div className="border-t border-border/60 pt-2.5">
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={offen}
-        className="flex w-full items-center gap-2 text-left"
-      >
-        <ChevronDown
-          className={cn("h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform", offen && "rotate-180")}
-          aria-hidden
-        />
-        <span className="flex-1 text-xs text-muted-foreground">
-          {sitzungen.length} {sitzungen.length === 1 ? "Sitzung" : "Sitzungen"} ohne deine Themen
+  const zeit = (sitzung.session_time || "").slice(0, 5);
+  const oeffentlich = sitzung.n_items > 0 && sitzung.ksinr != null;
+  const inhalt = (
+    <>
+      {heute ? (
+        <span className="inline-flex shrink-0 items-center rounded-full bg-signal/[0.12] px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.06em] text-signal">
+          Heute {zeit}
         </span>
-        {!offen && (
-          <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
-            {tage.length === 1 && tage[0] === heuteIso ? "HEUTE" : fmtTag(tage[0])}
-          </span>
-        )}
-      </button>
-      {offen && (
-        <div className="ml-[22px] mt-2 flex flex-col gap-1.5">
-          {sitzungen.map((s) => (
-            <Link
-              key={s.ksinr ?? `${s.committee}|${s.session_date}`}
-              href={s.ksinr && s.n_items > 0 ? `/council?tab=sessions&ksinr=${s.ksinr}` : "/council?tab=sessions"}
-              className="flex items-baseline gap-2"
-            >
-              <span className="w-[68px] shrink-0 whitespace-nowrap font-mono text-[10px] text-muted-foreground">
-                {s.session_date === heuteIso ? "HEUTE" : fmtTag(s.session_date)}
-              </span>
-              <span className="min-w-0 flex-1 truncate text-[12.5px] text-foreground/90">
-                {shortCommittee(s.committee)}
-              </span>
-              <span className="shrink-0 text-[10.5px] text-muted-foreground">
-                {s.n_items > 0 ? `${s.n_items} Punkte` : "nicht öffentlich"}
-              </span>
-            </Link>
-          ))}
-        </div>
+      ) : (
+        <span className="w-[68px] shrink-0 whitespace-nowrap font-mono text-[10px] font-medium tracking-[0.06em] text-muted-foreground">
+          {fmtTag(sitzung.session_date)}
+        </span>
+      )}
+      <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-foreground/90">
+        {shortCommittee(sitzung.committee)}
+      </span>
+      <span className="shrink-0 text-[11px] font-medium text-primary">
+        {oeffentlich ? "Tagesordnung →" : <span className="text-muted-foreground">nicht öffentlich</span>}
+      </span>
+    </>
+  );
+  return (
+    <div className={cn(mitTrennlinie && "border-t border-border/60 pt-2.5")}>
+      {oeffentlich ? (
+        <Link
+          href={`/council?tab=sessions&ksinr=${sitzung.ksinr}`}
+          className="-mx-1.5 flex items-center gap-1.5 rounded-lg px-1.5 py-0.5"
+        >
+          {inhalt}
+        </Link>
+      ) : (
+        <div className="flex items-center gap-1.5 px-1.5 py-0.5">{inhalt}</div>
       )}
     </div>
   );
