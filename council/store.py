@@ -571,6 +571,13 @@ class CouncilStore:
             "source_url TEXT, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (jahr, art))"
         )
+        # Einwohnerzahl je Haushaltsjahr (Open-Data, Stichtag 31.12. des
+        # Vorjahres) — Bezugsgröße für Pro-Kopf-Einordnungen.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_einwohner ("
+            "jahr INTEGER PRIMARY KEY, einwohner INTEGER NOT NULL, "
+            "source_url TEXT, fetched_at TEXT NOT NULL)"
+        )
         # Steuerkraftmesszahl + Schlüsselzuweisungen je Ausgleichsjahr (Open-Data,
         # seit 1992) — zeigt die NFAG-Mechanik: mehr Steuerkraft, weniger
         # Zuweisungen. Pflichtwissen für jede ehrliche Hebesatz-Simulation.
@@ -2860,6 +2867,25 @@ class CouncilStore:
                 [(r["jahr"], r.get("messzahl"), r.get("messzahl_je_ew"),
                   r.get("zuweisungen"), r.get("zuweisungen_je_ew"), source_url, now) for r in rows])
         return len(rows)
+
+    def save_einwohner(self, rows: list[dict], source_url: str) -> int:
+        """Einwohnerzahlen je Jahr ersetzen (idempotent)."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_einwohner (jahr, einwohner, source_url, fetched_at) "
+                "VALUES (?,?,?,?)",
+                [(r["jahr"], r["einwohner"], source_url, now) for r in rows])
+        return len(rows)
+
+    def einwohner_aktuell(self) -> dict | None:
+        """Jüngste bekannte Einwohnerzahl — Bezugsgröße für Pro-Kopf-Angaben."""
+        try:
+            r = self._conn.execute(
+                "SELECT jahr, einwohner FROM council_einwohner ORDER BY jahr DESC LIMIT 1").fetchone()
+        except sqlite3.OperationalError:
+            return None
+        return dict(r) if r else None
 
     def get_steuerkraft(self) -> list[dict]:
         """Steuerkraft/Zuweisungen je Jahr, älteste zuerst."""

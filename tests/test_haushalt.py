@@ -279,3 +279,24 @@ def test_parse_steuerkraft_und_store_roundtrip(tmp_path):
     assert store.save_steuerkraft(kraft, "http://csv") == 2
     got = store.get_steuerkraft()
     assert got[0]["jahr"] == 1992 and got[-1]["messzahl_je_ew"] == 1971.0
+
+
+def test_parse_einwohner():
+    """Einwohnerzahlen aus dem 1102-CSV — Bezugsgröße für Pro-Kopf-Angaben.
+    Die Aufwendungs-Spalten desselben CSV bleiben bewusst ungenutzt (sie sind
+    weder als Plan noch als Ist gekennzeichnet)."""
+    csv = ("Haushaltsjahr;Einwohner am 31.12. des Vorjahres;Aufwendungen gesamt [T Euro];"
+           "Aufwendungen je Einwohner [Euro]\n"
+           "2010;161334;358800;2224\n"
+           "2025;176614;850170;4814\n"
+           "Fußnote;;;\n")
+    rows = haushalt.parse_einwohner(csv)
+    assert rows == [{"jahr": 2010, "einwohner": 161334}, {"jahr": 2025, "einwohner": 176614}]
+
+
+def test_store_einwohner_roundtrip(tmp_path):
+    store = CouncilStore(tmp_path / "c.sqlite")
+    assert store.save_einwohner(
+        [{"jahr": 2024, "einwohner": 176242}, {"jahr": 2025, "einwohner": 176614}], "http://csv") == 2
+    assert store.einwohner_aktuell() == {"jahr": 2025, "einwohner": 176614}
+    store.close()

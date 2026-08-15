@@ -268,7 +268,8 @@ def haushalt_uebersicht(
     - ``jahre``: Ergebnishaushalt je Planjahr (Teilhaushalte + Summenzeile,
       Quelle je Zeile — Haushaltsplan-PDF bzw. Open-Data-CSV der Stadt),
     - ``steuern``: Ist-Steuereinnahmen je Steuerart seit 1998 (Langformat),
-    - ``steuerkraft``: Steuerkraftmesszahl + Schlüsselzuweisungen seit 1992.
+    - ``steuerkraft``: Steuerkraftmesszahl + Schlüsselzuweisungen seit 1992,
+    - ``einwohner``: jüngste Einwohnerzahl (Bezugsgröße für Pro-Kopf-Angaben).
 
     Fehlende Jahre (Datenlücken) fehlen schlicht in ``jahre`` — das Frontend
     zeigt Lücken ehrlich, statt zu interpolieren."""
@@ -276,6 +277,7 @@ def haushalt_uebersicht(
         "jahre": {str(y): store.get_haushalt(y) for y in store.haushalt_years()},
         "steuern": store.get_steuereinnahmen(),
         "steuerkraft": store.get_steuerkraft(),
+        "einwohner": store.einwohner_aktuell(),
     }
 
 
@@ -441,6 +443,11 @@ def decision_detail(
                 "amt": v.get("amt"),
                 "klima_check": v.get("klima_check"),
                 "klima_relevant": ernte.klima_relevant(v.get("klima_check")),
+                # „Finanzielle Auswirkungen" der Verwaltung — dieselbe
+                # Regex-Ernte wie der Klima-Check, auf der Beschluss-Seite als
+                # „Was kostet das?" (Design H-21). Amtlicher Wortlaut, deshalb
+                # unverändert und als Zitat gekennzeichnet.
+                "finanz_check": v.get("finanz_check"),
             }
             if not out["vorlage_url"] and v.get("kvonr"):
                 out["vorlage_url"] = _vorlage_url(v["kvonr"])

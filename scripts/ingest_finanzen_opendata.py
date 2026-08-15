@@ -10,6 +10,10 @@ fortgeschrieben — Grundlage des Haushalts-Bereichs:
 - **Steuerkraftmesszahlen + Schlüsselzuweisungen seit 1992** →
   ``council_steuerkraft``. Zeigt die NFAG-Mechanik (mehr eigene Steuerkraft
   → weniger Landeszuweisungen) — Pflichtkontext für jede Hebesatz-Simulation.
+- **Einwohnerzahlen seit 2010** → ``council_einwohner``. Bezugsgröße für
+  Pro-Kopf-Einordnungen. Aus demselben CSV NICHT übernommen: die
+  Aufwendungs-Spalte — sie weicht vom beschlossenen Plan ab, ohne als Ist
+  oder Nachtrag gekennzeichnet zu sein.
 
 Idempotent (INSERT OR REPLACE); einmal jährlich reicht, es gibt keinen Cron::
 
@@ -55,6 +59,15 @@ def main() -> int:
         n = store.save_steuerkraft(kraft, haushalt.STEUERKRAFT_CSV_URL)
         print(f"Steuerkraft/Schlüsselzuweisungen: {n} Jahre "
               f"({kraft[0]['jahr']}–{kraft[-1]['jahr']}).")
+
+        r = requests.get(haushalt.EINWOHNER_CSV_URL, headers=_UA, timeout=120)
+        r.raise_for_status()
+        ew = haushalt.parse_einwohner(r.text)
+        if ew:
+            n = store.save_einwohner(ew, haushalt.EINWOHNER_CSV_URL)
+            print(f"Einwohnerzahlen: {n} Jahre ({ew[0]['jahr']}–{ew[-1]['jahr']}).")
+        else:
+            print("Einwohner-CSV nicht lesbar — übersprungen.", file=sys.stderr)
     finally:
         store.close()
     return 0
