@@ -154,7 +154,7 @@ CREATE TABLE IF NOT EXISTS agenda_item_impact (
     ksinr       INTEGER NOT NULL,
     item_number TEXT NOT NULL,
     impact      INTEGER NOT NULL,
-    reason      TEXT,
+    reason      TEXT,           -- Grund in einfacher Sprache, steht auf der Karte
     created_at  TEXT NOT NULL,
     PRIMARY KEY(ksinr, item_number)
 );
@@ -994,6 +994,9 @@ class CouncilStore:
 
     #: Alte Heuristik-Schwelle — nur noch für die Umrechnung relevant.
     RANG_MINDEST = 1.5
+
+    #: Lazy geladener Wiederkehr-Zähler (s. _wiederkehr).
+    _wiederkehr_cache: dict[str, int] | None = None
 
     #: „(CDU-Fraktion vom 14.07.2026)" → Antragsteller „CDU-Fraktion"; der
     #: Zusatz frisst sonst die halbe Zeile auf der Karte (im Browser gesehen).
@@ -1950,6 +1953,39 @@ class CouncilStore:
             args = (limit,)
         return [dict(r) for r in self._conn.execute(sql, args).fetchall()]
 
+    #: Titel auf seinen Kern eindampfen, damit „Annahme von Zuwendungen durch
+    #: den Rat - Beschluss (ungeändert beschlossen)" und dieselbe Zeile drei
+    #: Sitzungen später als EIN Punkt zählen: Klammern raus, Zahlen zu #,
+    #: Ergebniszusatz weg.
+    _WIEDERKEHR_UNWICHTIG = re.compile(
+        r"\([^)]*\)|\b(?:ungeändert|geändert)\s+beschlossen\b|"
+        r"\s+-\s+(?:beschluss|bericht|antrag|vorlage)\b", re.IGNORECASE)
+
+    def _wiederkehr(self) -> dict[str, int]:
+        """Wie oft stand dieselbe Formulierung schon auf einer Tagesordnung?
+
+        Das Signal, das jedem Modell fehlt: „Annahme von Zuwendungen durch den
+        Rat" kam 101× vor, die Haushaltssatzung 3× (einmal im Jahr). Ohne den
+        Zähler hält ein Sprachmodell den Zuwendungs-Punkt für eine
+        Geldentscheidung — er ist aber Verwaltungsalltag (Tim, 15.08.).
+        """
+        if getattr(self, "_wiederkehr_cache", None) is None:
+            zaehler: dict[str, int] = {}
+            for (titel,) in self._conn.execute(
+                    "SELECT title FROM council_agenda_items "
+                    "WHERE is_public = 1 AND title IS NOT NULL"):
+                schluessel = self._wiederkehr_schluessel(titel)
+                if schluessel:
+                    zaehler[schluessel] = zaehler.get(schluessel, 0) + 1
+            self._wiederkehr_cache = zaehler
+        return self._wiederkehr_cache
+
+    @classmethod
+    def _wiederkehr_schluessel(cls, titel: str | None) -> str:
+        roh = cls._WIEDERKEHR_UNWICHTIG.sub(" ", (titel or "").lower())
+        roh = re.sub(r"\d+", "#", roh)
+        return " ".join(re.sub(r"[^a-zäöüß# ]+", " ", roh).split())
+
     def agenda_items_needing_impact(self, limit: int | None = None,
                                     tage_voraus: int = 21) -> list[dict]:
         """Öffentliche Tagesordnungspunkte kommender Sitzungen ohne Tragweite.
@@ -1965,6 +2001,9 @@ class CouncilStore:
         bis = (date.today() + timedelta(days=tage_voraus)).isoformat()
         sql = """SELECT a.ksinr, a.item_number, a.title, a.vorlage_nr, a.kvonr,
                         s.summary, cs.committee, cs.session_date,
+                        v.beschlussvorschlag, v.finanz_check, v.amt,
+                        (SELECT COUNT(*) FROM council_beratungen b WHERE b.kvonr = a.kvonr)
+                            AS stationen,
                         substr(v.raw_text, 1, 1200) AS sachverhalt
                  FROM council_agenda_items a
                  JOIN council_sessions cs ON cs.ksinr = a.ksinr
@@ -1988,6 +2027,15 @@ class CouncilStore:
         roh = [dict(r) for r in self._conn.execute(sql, args).fetchall()]
         # Formalien kosten nur Geld — dieselbe Regel wie in der Wochen-Karte.
         echte = [r for r in roh if not self._FORMALIE_RE.search(r["title"] or "")]
+        zaehler = self._wiederkehr()
+        for r in echte:
+            r["wiederkehr"] = zaehler.get(self._wiederkehr_schluessel(r["title"]), 1)
+            r["antragsteller"], _ = self._titel_zerlegen(r["title"] or "")
+            reihe = [dict(b) for b in self._conn.execute(
+                "SELECT datum, ergebnis FROM council_beratungen WHERE kvonr = ? ORDER BY datum",
+                (r["kvonr"] or 0,))]
+            heutige = next((b for b in reihe if b["datum"] == r["session_date"]), None)
+            r["behandlung"] = (heutige or {}).get("ergebnis")
         return echte[:limit] if limit is not None else echte
 
     def save_agenda_impact(self, ksinr: int, item_number: str,

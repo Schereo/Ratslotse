@@ -8,6 +8,17 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Verbessert
+- **Der wichtigste Punkt der Woche wird jetzt erkannt, nicht geraten — und in
+  Alltagssprache erklärt.** Die Auswahl kannte nur Verfahrenssignale und hielt
+  deshalb wiederkehrende Routine für bedeutend: „Annahme von Zuwendungen"
+  stand 101-mal auf einer Tagesordnung und trotzdem ganz oben. Jetzt zählt
+  Ratslotse, wie oft dieselbe Formulierung schon dran war, liest den
+  Beschlussvorschlag und den Kostenteil der Vorlage — und schreibt in zwei
+  einfachen Sätzen dazu, worum es geht und wen es angeht. Statt „Annahme von
+  Zuwendungen" steht dort jetzt etwa der Flächennutzungsplan fürs Stadion:
+  „Damit werden die Weichen für ein neues Stadion gestellt." (#480)
+
+### Verbessert
 - **„Die Woche im Rat" hebt jetzt hervor, was Folgen hat.** Bisher entschied
   eine Heuristik aus Verfahrenssignalen, welcher Punkt oben steht — ein
   Bericht über das Stadtmuseum schlug damit eine Satzungsänderung. Jetzt
