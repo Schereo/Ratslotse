@@ -103,21 +103,11 @@ export default function LoginPage() {
           </p>
         )}
         {/* RL-F08: Docs-Link gestrichen — bleibt über Landing + Footer erreichbar.
-            Die Abgrenzung zur Stadt steht hier, weil die Anmeldung in der App
-            der erste Bildschirm überhaupt ist (App-Store-Guideline 5.2).
-            „Hilfe" steht aus demselben Grund hier: Der Feedback-Dialog hängt am
-            angemeldeten Konto, hilft also ausgerechnet dem nicht, der auf dieser
-            Seite hängenbleibt (Apple-Richtlinie 1.5 verlangt genau diesen Weg). */}
-        <p className="mt-4 border-t border-border pt-4 text-balance text-center text-xs leading-relaxed text-muted-foreground">
-          Ratslotse ist ein privates Bürgerprojekt und kein Angebot der Stadt Oldenburg.
-        </p>
-        <p className="mt-2 text-center text-xs text-muted-foreground">
-          <Link href="/hilfe" className="hover:text-foreground hover:underline">Hilfe &amp; Kontakt</Link>
-          {" · "}
-          <Link href="/impressum" className="hover:text-foreground hover:underline">Impressum</Link>
-          {" · "}
-          <Link href="/datenschutz" className="hover:text-foreground hover:underline">Datenschutz</Link>
-        </p>
+            Abgrenzung zur Stadt (Richtlinie 5.2) und „Hilfe" (Richtlinie 1.5)
+            standen bis 15.08. hier in der Karte; sie stehen jetzt unter der
+            Karte auf dem Hintergrund und gelten dort für alle Auth-Seiten
+            (siehe AuthShell) — auf der Anmeldung, die in der App der erste
+            Bildschirm überhaupt ist, genauso sichtbar wie vorher. */}
     </AuthShell>
   );
 }

@@ -1286,6 +1286,13 @@ class AskBody(BaseModel):
     # „Meine Gespräche" (6a): laufendes Gespräch, an das der Turn gehängt wird —
     # nur wirksam, wenn das Konto qa_speichern = 1 gesetzt hat.
     gespraech_id: int | None = Field(default=None, ge=1)
+    # „Einfacher erklären": die zuletzt angezeigte Antwort im VOLLTEXT — genau
+    # die soll umgeschrieben werden. Der `verlauf` taugt dafür nicht, dort ist
+    # jede Antwort auf 600 Zeichen gekappt (er dient dem Auflösen von
+    # Rückbezügen, nicht dem Zitieren). Wird nur benutzt, wenn die Frage
+    # tatsächlich um eine einfachere Fassung bittet; alte App-Versionen senden
+    # das Feld nicht und bekommen die einfache Fassung aus den Beschlüssen.
+    vorherige_antwort: str = Field(default="", max_length=8000)
 
 
 # Q&A sizing: show up to QA_TOP_K reranked decisions as sources, feed the most
@@ -1451,6 +1458,15 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # der Befund kam aus einer echten Nutzer-Frage, der nach dem
             # gesuchten Datum noch fünf Redebeiträge folgten (12.08.).
             eng = bool(analyse.get("eng"))
+            # „Einfacher erklären" (Befund Build 11): Der Wunsch nach einfacher
+            # Sprache ist KEINE neue Frage — er verlangt dieselbe Auskunft in
+            # anderer Sprache. Deshalb ein eigener Prompt statt einer weiteren
+            # Zeile im Antwort-Prompt, wo er gegen zwei Dutzend Präzisions-
+            # Regeln verlor. Erkennung am ROHEN Fragetext: die kondensierte
+            # Fassung aus der Analyse hat den Wunsch schon wegübersetzt.
+            einfach = qa.will_vereinfachung(q)
+            if einfach:
+                eng = False  # „kurz und knapp" und „einfach" sind zwei Register
             # Retrieval + Reranker arbeiten mit der EIGENSTÄNDIGEN Fassung der
             # Frage — „Und was kostet das?" sucht sonst nach nichts.
             q_suche = analyse["frage"]
@@ -1476,6 +1492,22 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     candidates += store.get_decisions_by_ids([i for i in extra_ids if i not in have])
                 except Exception:  # noqa: BLE001 — Anreicherung ist best-effort
                     pass
+            # Beim Vereinfachen zählen die Belege der VORIGEN Antwort: Ihre ids
+            # müssen im Kandidatenset stehen, sonst streicht resolve_citations
+            # genau die Fußnoten weg, die die einfache Fassung übernehmen soll —
+            # die Antwort verlöre beim Vereinfachen ihre Quellen.
+            vorher_ids: list[int] = []
+            if einfach and body.vorherige_antwort.strip():
+                try:
+                    zitiert = qa.zitierte_ids(body.vorherige_antwort)
+                    have = {c["id"] for c in candidates}
+                    fehlend = [i for i in zitiert if i not in have]
+                    if fehlend:
+                        candidates += store.get_decisions_by_ids(fehlend)
+                        have = {c["id"] for c in candidates}
+                    vorher_ids = [i for i in zitiert if i in have]
+                except Exception:  # noqa: BLE001 — Nachladen ist Zusatz, nie Blocker
+                    vorher_ids = []
             presse_rows: list[dict] = []
             try:
                 # Eigener Kanal neben den Beschlüssen: „Aktuelles von der Stadt"
@@ -1591,9 +1623,20 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             daten = sorted(str(c.get("session_date") or "")[:4]
                            for c in candidates[:20] if c.get("session_date"))
             spanne = (int(daten[-1]) - int(daten[0])) if len(daten) >= 2 and daten[0].isdigit() else 0
-            gross = len(candidates) >= 25 or spanne >= 3
+            # Beim Vereinfachen NIE die Langfassungs-Regel: „umfangreiches Thema"
+            # verlangt ~500 Wörter mit Zwischenüberschriften — das ist das
+            # Gegenteil von dem, was der Knopf verspricht.
+            gross = (len(candidates) >= 25 or spanne >= 3) and not einfach
             ctx = candidates[:QA_ANSWER_N]
-            if partei_ids:
+            if vorher_ids:
+                # Beim Vereinfachen sieht das Modell NUR die Beschlüsse, die die
+                # vorige Antwort belegt haben. Das ist keine Sparmaßnahme,
+                # sondern die Fußnoten-Garantie: Mit den übrigen 30 Kandidaten
+                # im Kontext hängte das Modell im Test eine fremde Nummer an ein
+                # Debatten-Zitat, das in der Ausgangsantwort bewusst ohne Beleg
+                # stand. Was es nicht sieht, kann es nicht danebensetzen.
+                ctx = [c for c in candidates if c["id"] in set(vorher_ids)][:QA_ANSWER_N]
+            if partei_ids and not einfach:
                 # Mindestens die besten Partei-Anträge in den Antwort-Kontext,
                 # auch wenn sie im Relevanz-Ranking hinter Platz 20 liegen.
                 fehlend = [c for c in candidates[QA_ANSWER_N:] if c["id"] in partei_ids][:6]
@@ -1633,11 +1676,19 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             marker = qa.FOLLOWUP_MARKER
             buf, sent = "", 0
             t0 = time.perf_counter()
+            # Worum es ging, steht in der kondensierten Fassung der Analyse.
+            # Fällt die aus, ist q_suche der Knopftext selbst — dann trägt die
+            # letzte echte Frage aus dem Verlauf das Thema.
+            frage_thema = q_suche
+            if einfach and frage_thema.strip() == q and verlauf:
+                frage_thema = verlauf[-1].get("frage") or q
+            strom = (qa.vereinfachen_stream(frage_thema, body.vorherige_antwort, ctx) if einfach
+                     else qa.answer_stream(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
+                                           haushalt=haushalt_zeilen, debatten=debatten_rows,
+                                           gross=gross, steckbriefe=steckbriefe,
+                                           duenn=(lage == "duenn"), eng=eng))
             try:
-                for delta in qa.answer_stream(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
-                                              haushalt=haushalt_zeilen, debatten=debatten_rows,
-                                              gross=gross, steckbriefe=steckbriefe,
-                                              duenn=(lage == "duenn"), eng=eng):
+                for delta in strom:
                     if not buf and delta:
                         zeiten["ttft_ms"] = round((time.perf_counter() - t0) * 1000)
                     buf += delta
@@ -1662,10 +1713,12 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 _log.warning("answer_stream brach nach %d Zeichen ab — one-shot Ersatz",
                              len(buf), exc_info=True)
                 try:
-                    ans, _ = qa.answer_question(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
-                                                haushalt=haushalt_zeilen, debatten=debatten_rows,
-                                                gross=gross, steckbriefe=steckbriefe,
-                                                duenn=(lage == "duenn"), eng=eng)
+                    ans, _ = (qa.vereinfachen_question(frage_thema, body.vorherige_antwort, ctx)
+                              if einfach else
+                              qa.answer_question(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
+                                                 haushalt=haushalt_zeilen, debatten=debatten_rows,
+                                                 gross=gross, steckbriefe=steckbriefe,
+                                                 duenn=(lage == "duenn"), eng=eng))
                     buf = ans
                     yield _sse({"type": "replace", "text": qa.split_followups(ans)[0]})
                     sent = len(ans)

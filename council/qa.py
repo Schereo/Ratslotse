@@ -927,6 +927,95 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "thema",
     return [{"role": "user", "content": prompt}], extra
 
 
+# --- „Einfacher erklären" (Befund Build 11) ---------------------------------
+# Der Knopf schickte bisher nur den Satz „Erkläre das bitte einfacher, ohne
+# Fachbegriffe." als normale Frage in dieselbe Pipeline. Damit stand der Wunsch
+# als EINE beiläufige Zeile in einem Prompt, der zwei Dutzend Zeilen lang
+# Genauigkeit, Zitate, Debatten-Absatz und Gliederung verlangt — und verlor.
+# Ergebnis: dieselbe Antwort, nur anders sortiert, mit „Ausfallbürgschaften",
+# „Teilfortschreibung des Nahverkehrsplans" und „VBN-Tarifgebiet 3" darin.
+# Jetzt erkennt das Backend den Wunsch und nimmt einen EIGENEN Prompt
+# („qa_einfach"), der die vorliegende Antwort umschreibt statt neu zu antworten.
+_VEREINFACHEN_RE = re.compile(
+    r"ohne\s+(fachbegriffe|fachw[oö]rter|fachchinesisch|fachsprache|amtsdeutsch|"
+    r"beh[oö]rdendeutsch|fremdw[oö]rter)"
+    r"|(einfacher|leichter|simpler|verst[aä]ndlicher)\s+(erkl|sag|formul|schreib|aus|zusammen)"
+    r"|erkl[aä]r\w*[^.?!]{0,40}\b(einfacher|leichter|simpler|verst[aä]ndlicher)"
+    r"|in\s+(ganz\s+)?(einfache[rmn]?|leichte[rmn]?)\s+(sprache|worten?|deutsch)"
+    r"|laienverst[aä]ndlich|allgemeinverst[aä]ndlich"
+    r"|^\s*(bitte\s+)?(einfacher|verst[aä]ndlicher)\b",
+    re.IGNORECASE)
+
+
+def will_vereinfachung(frage: str) -> bool:
+    """Bittet diese Frage darum, die vorige Antwort einfacher zu erklären?
+
+    Deterministisch statt per LLM — der Knopf schickt immer denselben Satz, und
+    wer ihn selbst tippt („erklär mir das mal einfacher", „ohne Fachbegriffe
+    bitte"), meint dasselbe. Eine lange, inhaltliche Frage bleibt eine Frage,
+    auch wenn irgendwo „einfacher" darin vorkommt.
+    """
+    text = " ".join((frage or "").split())
+    if len(text) > 160:
+        return False
+    return bool(_VEREINFACHEN_RE.search(text))
+
+
+#: Die Ausgangsantwort im Prompt — länger braucht es nicht, und ein Deckel
+#: hält die Kosten je Klick vorhersagbar.
+VEREINFACHEN_MAX_CHARS = 6000
+
+
+def _bisher_block(bisher: str | None) -> str:
+    """Die zu vereinfachende Antwort — oder ein ehrlicher Hinweis, dass keine
+    vorliegt. Ältere App-Versionen schicken sie nicht mit (das Feld gibt es erst
+    seit dieser Runde); dann schreibt das Modell die einfache Fassung direkt aus
+    den Beschlüssen, statt mit einem leeren Zitat-Block zu hantieren."""
+    text = " ".join((bisher or "").split())
+    if not text:
+        return ("\nEs liegt keine frühere Antwort vor: Beantworte die Frage unten direkt "
+                "in einfacher Sprache, nach denselben Regeln.\n\n")
+    return ("\nDAS IST DIE ANTWORT, DIE DU VEREINFACHEN SOLLST (Inhalt und Belege bleiben, "
+            "die Sprache wird einfach):\n---\n"
+            f"{text[:VEREINFACHEN_MAX_CHARS]}\n---\n\n")
+
+
+def vereinfachen_messages(frage: str, bisher: str | None, candidates: list[dict],
+                          model: str = MODEL) -> tuple[list[dict], dict]:
+    """Prompt für den Vereinfachungs-Modus. Bewusst OHNE Presse-, Debatten- und
+    Haushalts-Block: Deren Kontext-Anweisungen („ergänze IMMER einen Absatz zum
+    Meinungsbild") arbeiten gegen die Kürze — genau daran ist die beiläufige
+    Bitte im normalen Prompt schon gescheitert."""
+    prompt = prompts.render("qa_einfach", frage=frage.strip()[:300],
+                            bisher=_bisher_block(bisher),
+                            context=_build_context(candidates))
+    extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
+    return [{"role": "user", "content": prompt}], extra
+
+
+#: Kurz ist das Ziel — das Budget ist die zweite Bremse neben der Prompt-Regel.
+VEREINFACHEN_TOKENS = 700
+
+
+def vereinfachen_stream(frage: str, bisher: str | None, candidates: list[dict],
+                        model: str = MODEL):
+    """Die einfache Fassung als Token-Stream (wie answer_stream)."""
+    messages, extra = vereinfachen_messages(frage, bisher, candidates, model)
+    yield from llm.chat_stream(model=model, _feature="qa_einfach", temperature=0.2,
+                               max_tokens=VEREINFACHEN_TOKENS, messages=messages, **extra)
+
+
+def vereinfachen_question(frage: str, bisher: str | None, candidates: list[dict],
+                          model: str = MODEL):
+    """One-shot-Variante für den Ersatzweg, wenn der Stream abreißt.
+    Liefert ``(antwort, cited_ids)`` wie answer_question."""
+    messages, extra = vereinfachen_messages(frage, bisher, candidates, model)
+    resp = llm.chat_complete(model=model, _feature="qa_einfach", temperature=0.2,
+                             max_tokens=VEREINFACHEN_TOKENS, messages=messages, **extra)
+    answer = (resp.choices[0].message.content or "").strip()
+    return resolve_citations(answer, {c["id"] for c in candidates})
+
+
 def _answer_tokens(typ: str, gross: bool = False, eng: bool = False) -> int:
     # Punktfrage: knappes Budget als zweite Bremse neben der Prompt-Regel.
     if eng:
@@ -1076,6 +1165,21 @@ def citation_ids(inner: str) -> list[int]:
         return [int(n) for n in re.findall(r"\d+", inner)]
     m = re.match(r"\s*(\d+)", inner)
     return [int(m.group(1))] if m else []
+
+
+def zitierte_ids(text: str) -> list[int]:
+    """Alle Beschluss-ids, die ein Antworttext zitiert — ohne Gültigkeitsprüfung.
+
+    resolve_citations braucht das Kandidatenset, um Geister-ids zu streichen.
+    Beim Vereinfachen ist es andersherum: Dort sind die ids aus der vorigen
+    Antwort der Anlass, die zugehörigen Beschlüsse überhaupt nachzuladen.
+    """
+    out: list[int] = []
+    for m in _CITE_RE.finditer(text or ""):
+        for v in citation_ids(m.group(1)):
+            if v not in out:
+                out.append(v)
+    return out
 
 
 def resolve_citations(answer: str, valid: set[int]):

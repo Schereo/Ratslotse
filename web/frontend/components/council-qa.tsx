@@ -548,7 +548,10 @@ function useAnlagenBuchstaben(turn: Turn) {
     [turn.antwort, turn.anlagen]);
 }
 
-/** Sprung zur Quelle: mobil zum Inline-Block, ab lg in die Belege-Spalte. */
+/** Sprung zur Quelle: einspaltig zum Inline-Block, sonst in die Belege-Spalte.
+ *  Die 1024 hier sind dieselbe Schwelle wie der Breakpoint `breit` — wer den
+ *  verschiebt, verschiebt sie mit, sonst zielt der Sprung auf einen Anker, den
+ *  es in dieser Lage gar nicht gibt (die Fallbacks fangen es nur ab). */
 function jumpZuQuelle(turnIdx: number, id: number, spalte: boolean) {
   const ziel = spalte && window.matchMedia("(min-width: 1024px)").matches
     ? document.getElementById(`qa-col-${id}`) ?? document.getElementById(`qa-source-${turnIdx}-${id}`)
@@ -693,6 +696,13 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
       .filter((t) => t.antwort && !t.fehler)
       .slice(-4)
       .map((t) => ({ frage: t.frage.slice(0, 300), antwort: t.antwort.slice(0, 600) }));
+    // „Einfacher erklären" schreibt die zuletzt gezeigte Antwort um — dafür
+    // braucht das Backend sie im VOLLTEXT. Der `verlauf` oben taugt nicht: dort
+    // ist jede Antwort auf 600 Zeichen gekappt, er dient dem Auflösen von
+    // Rückbezügen. Das Feld ist serverseitig optional und wird nur ausgewertet,
+    // wenn die Frage tatsächlich um eine einfachere Fassung bittet.
+    const vorherigeAntwort = (turns.filter((t) => t.antwort && !t.fehler)
+      .slice(-1)[0]?.antwort ?? "").slice(0, 8000);
     setQ("");
     setLoading(true);
     setStep("expand");
@@ -714,7 +724,8 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json", ...authHeaders() },
-        body: JSON.stringify({ question: text, verlauf, gespraech_id: gespraechId }),
+        body: JSON.stringify({ question: text, verlauf, gespraech_id: gespraechId,
+                               vorherige_antwort: vorherigeAntwort }),
         signal: ctrl.signal,
       });
       if (!res.ok || !res.body) {
@@ -1406,12 +1417,14 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   // Weiterfragen leben im Composer (Design 2②) — nur vom jüngsten Turn.
   const composerFollowups = !loading && letzter && !letzter.fehler ? letzter.followups.slice(0, 3) : [];
 
-  // max-w-3xl gilt für Touch-Geräte, also auch fürs iPad: dort läuft der
-  // Verlauf sonst über die volle Gerätebreite (984 px hochkant, 1318 quer)
-  // und die Zeilen werden unlesbar lang. Am Desktop übernimmt das
-  // Bühnen-Raster mit seiner eigenen Breite.
+  // max-w-3xl ist die Lesebreite, solange nur EINE Spalte da ist: sonst liefe
+  // der Verlauf über die volle Gerätebreite und die Zeilen würden unlesbar
+  // lang. Ab `breit` (also auch auf dem iPad quer, nicht erst am Desktop —
+  // Tims Befund 15.08.) trägt das Raster die Breite: Antwort links, Belege
+  // rechts. Hochkant bleibt es einspaltig, dafür ist `breit` die Breiten- und
+  // nicht die Geräte-Frage.
   return (
-    <div className="mx-auto mt-3 max-w-3xl desk:grid desk:max-w-[1220px] desk:grid-cols-[minmax(0,1fr)_320px] desk:items-start desk:gap-6">
+    <div className="mx-auto mt-3 max-w-3xl breit:grid breit:max-w-[1220px] breit:grid-cols-[minmax(0,1fr)_320px] breit:items-start breit:gap-6">
       {/* Chat-Spalte. Die mobile min-height-Krücke (Design 2①: „Composer
           klebt auch im Empty State unten") ist seit dem FIXED-Composer
           obsolet — und machte die Seite höher als den Viewport, sodass das
@@ -1663,12 +1676,20 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
              genau dort sitzen die Weiterfragen-Pillen — der Antworttext
              schien mitten durch sie hindurch. Jetzt trägt nur ein 16-px-
              Streifen ÜBER dem Block den weichen Übergang. */
-          className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+4rem)] z-10 bg-background px-4 pb-1.5 pt-2 before:pointer-events-none before:absolute before:inset-x-0 before:-top-4 before:h-4 before:bg-gradient-to-t before:from-background before:to-transparent before:content-[''] print:hidden desk:static desk:inset-x-auto desk:bottom-auto desk:bg-transparent desk:pt-2 desk:before:hidden desk:px-4 desk:pb-4">
+          className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+4rem)] z-10 bg-background px-4 pb-1.5 pt-2 before:pointer-events-none before:absolute before:inset-x-0 before:-top-4 before:h-4 before:bg-gradient-to-t before:from-background before:to-transparent before:content-[''] print:hidden tab:px-0 desk:static desk:inset-x-auto desk:bottom-auto desk:bg-transparent desk:pt-2 desk:before:hidden desk:px-4 desk:pb-4">
           {/* Der Balken bleibt randlos (er deckt den durchscrollenden Text ab),
               sein Inhalt hält sich an dieselbe Spaltenbreite wie der Verlauf —
               sonst zöge sich das Eingabefeld auf dem iPad über die ganze
-              Gerätebreite. */}
-          <div className="mx-auto w-full max-w-3xl desk:max-w-none">
+              Gerätebreite.
+              Auf breiten Touch-Geräten (`tab`) liegt der Verlauf links neben
+              der Belege-Spalte — das Eingabefeld folgt ihm aber NICHT: Es
+              bleibt in der Bildmitte. Ausgerichtet auf die Lesespalte saß es
+              sichtbar aus der Mitte gerückt, was wie ein Fehler aussieht
+              (Tims Befund 15.08.). Es gehört zum ganzen Bildschirmrand, nicht
+              zu einer Spalte; die Belege daneben sind zum Lesen da, nicht zum
+              Tippen. Am Desktop steht der Composer statisch IN der Bühne —
+              dort greift `tab` bewusst nicht. */}
+          <div className="mx-auto w-full max-w-3xl tab:px-8 desk:max-w-none">
           {/* 9a-Regel: Ohne aktives Speichern gibt es keine Gesprächs-Zeile —
               „Neues Gespräch" ist dann ein schlichter Text-Link überm Composer. */}
           {turns.length > 0 && einstellung !== 1 && (
@@ -1769,11 +1790,21 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         </div>
       </div>
 
-      {/* Belege-Spalte (Desktop, Design 2⑤/4a): eigene Karte neben der Bühne,
-          gleiche Höhe, eigener Scroll — nie ein leeres Loch: Vor der ersten
-          Frage erklärt sie sich, während der Suche zeigt sie ein Skelett
-          (Tims Feedback), danach Quellen, Presse und Aktionen. */}
-      <aside className="hidden print:hidden desk:flex desk:h-[calc(100dvh-135px)] desk:flex-col desk:overflow-hidden desk:rounded-2xl desk:border desk:border-border desk:bg-card">
+      {/* Belege-Spalte (Design 2⑤/4a): eigene Karte neben dem Verlauf — nie ein
+          leeres Loch: Vor der ersten Frage erklärt sie sich, während der Suche
+          zeigt sie ein Skelett (Tims Feedback), danach Quellen, Presse und
+          Aktionen.
+          An den Viewport gebunden (feste Höhe, eigener Scroll) ist sie NUR am
+          Desktop, wo sie neben der Bühne steht. Auf dem iPad gehört die
+          Unterkante des Bildschirms der Tab-Leiste und dem fixierten Composer
+          — eine Karte, die bis dorthin reicht, versteckt ihre letzten Quellen
+          dahinter. Dort scrollt sie deshalb einfach mit der Seite.
+          `tab:mb-28` ist die Reserve für genau diesen Composer: Ist die Karte
+          ausnahmsweise länger als das ganze Gespräch (kurze Antwort, viele
+          Quellen), endet sie sonst dort, wo er klebt — ihre letzten Zeilen
+          wären nicht erreichbar. Sonst kostet sie nichts, weil die Zeilenhöhe
+          im Raster ohnehin die längere Spalte bestimmt. */}
+      <aside className="hidden print:hidden breit:flex breit:flex-col breit:rounded-2xl breit:border breit:border-border breit:bg-card tab:mb-28 desk:h-[calc(100dvh-135px)] desk:overflow-hidden">
         <div className="flex-1 overflow-y-auto p-4">
           {letzter && letzter.antwort && !letzter.fehler ? (
             <BelegeSpalte turn={letzter} flashId={flashId}
@@ -1852,9 +1883,14 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
     () => (turn.recherche ? berichtAbschnitte(turn.antwort) : []),
     [turn.recherche, turn.antwort]);
   const nichtsGefunden = !beschaeftigt && hatAntwort && turn.sources.length === 0 && !turn.fehler;
-  // Mobil zeigt der jüngste Turn seine Belege inline (die Desktop-Spalte
-  // übernimmt ab lg); ältere Turns nur nach Klick auf die Kompaktzeile.
-  const belegeInline = istLetzter ? "desk:hidden" : aufgeklappt ? "" : "hidden";
+  // Einspaltig zeigt der jüngste Turn seine Belege inline; sobald die
+  // Belege-Spalte danebensteht (`breit`, also auch iPad quer), übernimmt sie —
+  // sonst stünden dieselben Quellen zweimal auf dem Schirm. Ältere Turns
+  // bleiben in beiden Fällen hinter ihrer Kompaktzeile.
+  // `print:flex` ist kein Schmuck: Die Spalte selbst ist `print:hidden`, und
+  // eine quer gedruckte Seite ist breiter als 1024 px — ohne das fiele der
+  // Ausdruck genau um seine Quellen kürzer aus.
+  const belegeInline = istLetzter ? "breit:hidden print:flex" : aufgeklappt ? "" : "hidden";
 
   return (
     <div className="flex flex-col gap-3">

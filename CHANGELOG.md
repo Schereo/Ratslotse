@@ -40,8 +40,54 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   zählt mit ★ doppelt) und sehen, wie oft jede Liste übereinstimmt, Satz für
   Satz belegt. Kein Wahltipp, und die Antworten bleiben auf dem Gerät. (#356)
 -->
+## [1.11.0] – 2026-08-15
 
 ### Behoben
+- **Das iPad bekommt endlich, was seine Breite hergibt.** Der Gespräche-Knopf
+  fehlte dort im Seitenkopf, und die Quellen standen im Textfluss statt daneben.
+  Beides war dasselbe Loch: Die mobile Fassung verschwand ab 768 px, die zweite
+  hing an „Maus vorhanden" — dazwischen zeigte keine von beiden. Jetzt trennen
+  drei Breakpoints, was zusammengehört: Platz (Spalten), Maus (Seitenleiste),
+  breites Touch-Gerät. Quer stehen die Quellen als Spalte neben der Antwort,
+  hochkant bleibt es einspaltig, das Eingabefeld bleibt in der Bildmitte. (#488)
+- **Kein Weg zurück aus der Vollbild-Karte.** Die Stadtkarte im Vollbild lag
+  unter Topbar und Tab-Leiste, der Schließen-Knopf war dahinter versteckt und
+  vom Rest der Seite stachen Suchfeld und Stadtteil-Wähler durch die Karte. Ein
+  überflüssiges `isolate` sperrte das Vollbild in einen eigenen Stapelkontext.
+  (#488)
+- **Die Stadtkarte war quer ein Briefschlitz.** Auf dem iPad lag ein 1114 × 310
+  px flacher Rahmen über der halben Region — Bremen bis Cloppenburg, Oldenburg
+  ein Klecks. Die Höhe hing allein am Bildschirm, nie an der Breite, und Leaflet
+  rundete den Ausschnitt zusätzlich um eine volle Zoomstufe ab. Jetzt hat der
+  Rahmen ein Seitenverhältnis und der Ausschnitt Zwischenstufen: sichtbar
+  42,9 × 15,7 km statt 102,1 × 28,4 km. (#488)
+- **Registrieren passte auf dem iPad nicht aufs Bild.** Die Karte war 793 px
+  hoch, Lotti darüber wurde abgeschnitten (auch auf dem Desktop), der Fuß stand
+  auf der Bildkante. Der Pflicht-Fuß steht jetzt unter der Karte auf dem
+  Hintergrund und gilt damit für alle Anmelde-Seiten; die Karte wird auf breiten
+  Geräten breiter und legt Name und E-Mail nebeneinander. Karte 793 → 578 px,
+  quer wie hoch ohne Scrollen. (#488)
+- **„Einfacher erklären" erklärte nicht einfacher.** Der Knopf schickte nur den
+  Satz „Erkläre das bitte einfacher" als normale Frage — gegen zwei Dutzend
+  Regeln für Präzision, Zitate und Langfassung, die ihn überstimmten. Jetzt
+  schreibt ein eigener Prompt die vorliegende Antwort um, im Ton von „Lotti
+  erklärt's einfach": kurze Sätze, kein Fachwort ohne Erklärung, gerundete
+  Beträge — die Fußnoten bleiben. Gemessen an drei echten Antworten: halb so
+  lang, längster Satz von 45 auf 18 Wörter, keine unerklärten Fachbegriffe mehr.
+  Nebenbei lernt jede Antwort, Beträge lesbar zu schreiben („rund 45 Millionen
+  Euro" statt „44,699 Millionen Euro"). (#488)
+- **Themen-Treffer waren zu einem guten Teil Rauschen.** Jedes Thema zeigte
+  exakt so viele Beschlüsse, wie der Lauf höchstens speichert — die Schwelle
+  darunter hat nachweislich nie etwas verworfen, weil sich amtliche Kurztexte
+  mit reiner Vektor-Ähnlichkeit nicht trennen lassen. „IQON" und „Wohnheim
+  Tegelbusch" bekamen deshalb dieselben fremden Beschlüsse und ihre eigenen
+  nicht. Gesucht wird jetzt wie bei der KI-Frage, bewertet wird mit demselben
+  Modell, das dort schon entscheidet; wo wirklich gedeckelt wird, sagt die Karte
+  „40+". Auch die falschen „dein Thema"-Marker in Tagesordnungen kommen daher —
+  ohne Vorlagentext fiel die Gegenprüfung bisher komplett aus. (#488)
+- **„25 neu" bei jedem Thema.** Beim Aufräumen verwaister Treffer blieben die
+  Gelesen-Marken auf gelöschten Beschlüssen liegen; danach galt alles wieder als
+  ungelesen. Sie werden jetzt mit aufgeräumt. (#488)
 - **„Fragen" steht sofort komplett da.** Nach dem Tippen auf den Tab erschienen
   die unterste Beispielfrage und der Gespräche-Knopf oben rechts erst nach
   einer halben Sekunde. Zwei Ursachen: Die Seiten-Animation hob die neue Seite
@@ -2461,7 +2507,8 @@ Open-Source-Go-Live von Ratslotse.
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v1.10.0...main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v1.11.0...main
+[1.11.0]: https://github.com/Schereo/Ratslotse/compare/v1.10.0...v1.11.0
 [1.10.0]: https://github.com/Schereo/Ratslotse/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/Schereo/Ratslotse/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/Schereo/Ratslotse/compare/v1.7.1...v1.8.0

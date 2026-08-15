@@ -76,14 +76,26 @@ Dot hsl(209 18% 65%), kombiniertes Label.
   Sidebar 230 mit Pflicht-Links im Fuß. Mobil: Geräterahmen ist der Container,
   Composer sticky über Tab-Bar (Safe-Area), Chips laufen in 40–56-px-Fade aus.
 - Icons: Lucide, stroke-width 2, 11–22 px, currentColor.
-- **Desktop ist kein „breit", sondern „Maus".** Die Umschaltung zwischen
-  Seitenleiste und unterer Tab-Leiste hängt am Breakpoint `desk`
-  (`(pointer: fine) and (min-width: 1024px)`), nicht an `lg`. Ein iPad ist quer
-  1366 px breit und bekäme die Leiste sonst allein wegen seiner Breite — dort
-  gehört die Navigation aber an den Daumen. Alles, was zur Seitenleiste gehört
-  (Kopfzeile mobil, Tab-Leiste, Chat-Bühne mit Belege-Spalte, statischer
-  Composer, Pflicht-Links im Fuß), schaltet auf `desk:`. Reine Inhaltsbreite
-  (Spaltenraster, Innenabstände) bleibt bei `sm/md/lg`.
+- **Zwei getrennte Fragen: „Wie viel Platz?" und „Womit bedient?".** Dafür gibt
+  es drei Breakpoints, und sie dürfen nicht vermischt werden:
+  - `breit` (`min-width: 1024px`) — **Platz.** Alles, was nur Breite braucht:
+    Spaltenraster, Belege-Spalte neben der Antwort, mehrspaltige Formulare.
+  - `desk` (`(pointer: fine) and (min-width: 1024px)`) — **Maus.** Alles, was
+    zur Seitenleiste gehört: Kopfzeile mobil, Tab-Leiste, statischer Composer,
+    viewport-gebundene Chat-Bühne, Pflicht-Links im Fuß.
+  - `tab` (`(pointer: coarse) and (min-width: 1024px)`) — **breites Touch-
+    Gerät.** Für das, was nur dort zu klären ist: Ausrichtung des fixierten
+    Composers auf die Lesespalte, Abstand zur Tab-Leiste.
+
+  Ein iPad ist quer 1180–1366 px breit und bekäme die Seitenleiste sonst allein
+  wegen seiner Breite — dort gehört die Navigation aber an den Daumen (Tims
+  Befund 14.08.). Umgekehrt bekam es lange gar nichts von der Breite ab: Der
+  Gespräche-Knopf hing mobil an `md:hidden`, sein Ersatz an `desk:` — zwischen
+  768 px und Maus zeigte **keiner** von beiden, und die Quellen standen im
+  Textfluss statt daneben (Tims iPad-Befunde 15.08.). Deshalb die Dreiteilung:
+  Wer eine Regel schreibt, fragt zuerst, ob sie am Platz oder am Eingabegerät
+  hängt. `desk` und `tab` schließen einander aus, damit keine Regel von
+  Tailwinds Ausgabereihenfolge abhängt.
 
 ## 5. Wiederkehrende Bausteine (Spez im Artboard „Ratsgespräch")
 

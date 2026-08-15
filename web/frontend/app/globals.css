@@ -467,7 +467,12 @@
 
 /* Leaflet-Panes tragen interne z-Indizes bis ~700 — ohne Isolation stechen
    sie auf Mobile über Topbar/Bottom-Nav (z-40). isolate fängt sie im
-   Karten-Container ein; gilt für alle Karten (Themen + Themen-Detail). */
+   Karten-Container ein; gilt für alle Karten (Themen + Themen-Detail).
+   Weil das hier zentral passiert, gehört an die *umgebenden* Container KEIN
+   zweites `isolate` mehr: Es fängt sonst auch das Vollbild-Overlay der Karte
+   (`fixed inset-0`) im Kasten ein — die Karte läge unter Topbar und
+   Tab-Leiste, und vom Rest der Seite stächen die positionierten Teile
+   (Suchfeld, Filter) mitten durch sie hindurch. */
 .leaflet-container {
   isolation: isolate;
 }
