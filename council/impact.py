@@ -41,6 +41,73 @@ def _batch_text(decisions: list[dict]) -> str:
     return "\n\n".join(lines)
 
 
+def _agenda_batch_text(items: list[dict]) -> str:
+    """Dieselbe Rubrik, andere Quelle: Ein Tagesordnungspunkt hat noch keinen
+    Beschlusstext, dafür Behandlungsart, Antragsteller und — wenn die Vorlage
+    schon da ist — deren Sachverhalt. Genau die Signale, aus denen sich
+    Bindungswirkung und Betroffene ablesen lassen."""
+    lines: list[str] = []
+    for it in items:
+        text = (it.get("sachverhalt") or it.get("summary") or "").strip().replace("\n", " ")
+        signals = (
+            f"Behandlung {it.get('behandlung') or 'unbekannt'} · "
+            f"Gremium {it.get('committee') or '?'} · "
+            f"Antragsteller {it.get('antragsteller') or 'Verwaltung'} · "
+            f"Vorlage {it.get('vorlage_nr') or 'keine'} · "
+            f"frühere Stationen {it.get('vorgeschichte') or 0}"
+        )
+        lines.append(
+            f"id {it['id']}: {(it.get('title') or '').strip()}\n"
+            f"  Signale: {signals}\n"
+            f"  Auszug: {text[:MAX_EXCERPT_CHARS] or '— kein Text, nur der Titel —'}"
+        )
+    return "\n\n".join(lines)
+
+
+def rate_agenda_batch(items: list[dict]) -> list[tuple[int, int, str]]:
+    """Tragweite für Tagesordnungspunkte — Gegenstück zu ``rate_batch``.
+
+    Warum überhaupt: Die Wochen-Karte wählte nach einer Heuristik aus, die
+    Verfahrenssignale addierte (Antrag, bekannter Name, Kurzfassung). Damit
+    schlug ein Bericht über das Stadtmuseum eine Satzungsänderung. Der
+    Tragweite-Prompt bewertet stattdessen Betroffene, Geld, Bindung und
+    Präzedenz — und ist an Beschlüssen bereits kalibriert.
+
+    ``id`` ist hier ein laufender Index des Batches (Tagesordnungspunkte haben
+    keinen eigenen Primärschlüssel), die Zuordnung passiert beim Aufrufer.
+    """
+    if not items:
+        return []
+    valid_ids = {it["id"] for it in items}
+    system = prompts.get("impact_bewertung_system")
+    user = prompts.render("impact_bewertung_user", batch=_agenda_batch_text(items))
+    try:
+        resp = llm.chat_complete(
+            model=MODEL,
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            max_tokens=2200,
+            temperature=0.1,
+            _feature="impact_rating_agenda",
+        )
+        data = json.loads(resp.choices[0].message.content or "{}")
+    except Exception:  # noqa: BLE001 — nächster Lauf versucht es erneut
+        return []
+    out: list[tuple[int, int, str]] = []
+    for r in data.get("ratings") or []:
+        try:
+            iid = int(r.get("id"))
+            score = int(r.get("score"))
+        except (TypeError, ValueError):
+            continue
+        if iid in valid_ids and 0 <= score <= 100:
+            out.append((iid, score, str(r.get("grund") or "").strip()[:300]))
+    return out
+
+
 def rate_batch(decisions: list[dict]) -> list[tuple[int, int, str]]:
     """Bewertet einen Batch → Liste (decision_id, impact 0–100, grund).
     Halluzinierte IDs und Out-of-range-Scores werden verworfen."""

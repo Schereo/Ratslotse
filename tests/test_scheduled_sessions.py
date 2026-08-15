@@ -155,8 +155,8 @@ def _vorschau_store(tmp_path):
 def test_wochenvorschau_waehlt_nach_wichtigkeit(tmp_path):
     """Die Karte trägt fünf Zeilen, die Woche bringt gut dreißig inhaltliche
     Punkte — „hat eine Kurzfassung" ist als Auswahl zu wenig (Tims Befund
-    12.08.). Gewichtet wird nach amtlicher Behandlungsart, Fraktionsantrag und
-    Themen-Gewicht; Gremien-Personalien werden gedämpft."""
+    12.08.). Gewichtet wird nach Behandlungsart (als Schranke), Bindungswirkung,
+    Gremium und Fraktionsantrag; Gremien-Personalien werden gedämpft."""
     store = _vorschau_store(tmp_path)
     try:
         d = store.wochenvorschau(max_punkte=99)
@@ -166,8 +166,23 @@ def test_wochenvorschau_waehlt_nach_wichtigkeit(tmp_path):
         assert not any("Genehmigung des Protokolls" in t for t in titel)
 
         rang = {p["title"][:12]: p["rang"] for p in d["punkte"]}
-        # Fraktionsantrag zu einem großen Thema schlägt die reine Entscheidung.
-        assert rang["Umsetzung de"] > rang["Änderung der"]
+        # Die Satzungsänderung (Entscheidung, bindend) schlägt den
+        # Fraktionsantrag zu einem bekannten Thema — genau andersherum als
+        # bis zum 15.08.2026. Damals sammelte ein Bericht über Nebensignale
+        # (Antrag + bekannter Name) mehr Punkte als eine Entscheidung; auf der
+        # Karte stand deshalb ein Museumsbericht über einer Satzungsänderung.
+        assert rang["Änderung der"] > rang["Umsetzung de"]
+        # Die Behandlungsart ist eine Schranke: Ein Bericht zur Kenntnis kommt
+        # nicht über den Deckel, auch wenn er alle Nebensignale einsammelt
+        # (Fraktionsantrag, bekanntes Thema, Kurzfassung, Vorlage) — das war
+        # der Weg, auf dem der Museumsbericht nach oben rutschte.
+        bericht = [{"title": "Bildende Kunst im Stadtmuseum (CDU-Fraktion vom 07.07.2026)",
+                    "behandlung": "Kenntnisnahme", "vorgeschichte": 1,
+                    "summary": "Ein Satz dazu.", "vorlage_nr": "26/9",
+                    "committee": "Kulturausschuss"}]
+        store._punkte_bewerten(bericht)
+        assert bericht[0]["rang"] <= 2.5
+        assert bericht[0]["wichtig"] <= store.WICHTIG_MINDEST
         # Unter der Schwelle bleiben draußen: der reine Kenntnisnahme-Bericht
         # und die Gremien-Personalie (formal „Entscheidung", aber Routine).
         assert not any("Aktionswochen" in t for t in titel)
@@ -178,7 +193,7 @@ def test_wochenvorschau_waehlt_nach_wichtigkeit(tmp_path):
                 "behandlung": "Entscheidung", "vorgeschichte": 0,
                 "summary": None, "vorlage_nr": "26/4"}]
         store._punkte_bewerten(roh)
-        assert roh[0]["rang"] < store.RANG_MINDEST
+        assert roh[0]["wichtig"] < store.WICHTIG_MINDEST
     finally:
         store.close()
 

@@ -146,6 +146,19 @@ CREATE TABLE IF NOT EXISTS agenda_item_summaries (
     PRIMARY KEY(ksinr, item_number)
 );
 
+-- Tragweite eines Tagesordnungspunkts (0–100), dieselbe Rubrik wie bei den
+-- Beschlüssen (council/impact.py). Eigene Tabelle statt Spalte, weil
+-- save_session die Items einer Sitzung ERSETZT — eine Spalte wäre bei jeder
+-- Tagesordnungs-Änderung weg und müsste neu bezahlt werden.
+CREATE TABLE IF NOT EXISTS agenda_item_impact (
+    ksinr       INTEGER NOT NULL,
+    item_number TEXT NOT NULL,
+    impact      INTEGER NOT NULL,
+    reason      TEXT,
+    created_at  TEXT NOT NULL,
+    PRIMARY KEY(ksinr, item_number)
+);
+
 -- Tagesordnungs-Stand je (Sitzung, Hash) — die Vergleichsbasis der
 -- Änderungs-Meldung (Tims Wunsch 12.08.): save_session ERSETZT die Items,
 -- der alte Stand wäre sonst weg, sobald sich die Tagesordnung ändert.
@@ -962,8 +975,24 @@ class CouncilStore:
         r"Wahl\s+(?:des|der|eines|einer)\s+(?:stellv|Vorsitz|Schriftf)|"
         r"beratende[sn]?\s+Mitglied", re.IGNORECASE)
 
-    #: Unter diesem Rang kommt ein Punkt gar nicht auf die Karte. Lieber drei
-    #: gute Zeilen als fünf, von denen zwei „Bericht zur Kenntnis" heißen.
+    #: Bindende Gegenstände: Was hier greift, wirkt über den Tag hinaus —
+    #: Satzungen, Gebühren, Haushalt, Bauleitplanung, Verträge, Grundsätze.
+    #: Genau die Rubrik „Bindungswirkung" des Tragweite-Prompts, nur als Regel.
+    _BINDEND_RE = re.compile(
+        r"Satzung|Geb[üu]hren|Beitrags|Entgelt|Haushalt|Nachtragshaushalt|"
+        r"Bebauungsplan|Fl[äa]chennutzungsplan|Bauleitplan|Grundsatzbeschluss|"
+        r"Vertrag|Vereinbarung|Konzession|Verordnung|Richtlinie", re.IGNORECASE)
+
+    #: Wo entschieden wird, wiegt schwerer als wo vorberaten wird. Der Rat und
+    #: der Verwaltungsausschuss binden die Stadt, ein Fachausschuss bereitet vor.
+    _GREMIUM_GEWICHT = ((("stadtrat", "rat der stadt"), 1.5), (("verwaltungsausschuss",), 1.0))
+
+    #: Unter diesem Wert kommt ein Punkt gar nicht auf die Karte. Skala ist die
+    #: Tragweite (0–100, s. council/impact.py): 20 ≈ Bericht zur Kenntnis,
+    #: 35 ≈ Maßnahme an einer Einrichtung. Darunter lohnt keine Zeile.
+    WICHTIG_MINDEST = 30
+
+    #: Alte Heuristik-Schwelle — nur noch für die Umrechnung relevant.
     RANG_MINDEST = 1.5
 
     #: „(CDU-Fraktion vom 14.07.2026)" → Antragsteller „CDU-Fraktion"; der
@@ -1037,24 +1066,47 @@ class CouncilStore:
                 rang += 0.5          # Kenntnisnahme: informativ, nicht folgenlos
             if self._ANTRAG_RE.search(p["title"]):
                 rang += 1.5
+            # Bindungswirkung: Satzung, Gebühren, Haushalt, Bauleitplan — das
+            # Signal, das dem Modell komplett fehlte. Eine Satzungsänderung
+            # verlor gegen einen Museumsbericht, weil „Bericht + bekannter
+            # Name" mehr Nebenpunkte sammelte als „Entscheidung" (Tim, 15.08.).
+            if self._BINDEND_RE.search(p["title"]):
+                rang += 2.0
             titel_gefaltet = f" {self._falte_namen(p['title'])} "
             gewicht = max((n for name, n in entitaeten if name and f" {name} " in titel_gefaltet),
                           default=0)
             if gewicht:
-                rang += min(2.0, math.log10(gewicht) )   # 10 → 1.0, 100 → 2.0
+                # Gedeckelt auf 1.0: Das Gewicht misst BEKANNTHEIT („Stadtmuseum
+                # kam in 30 Beschlüssen vor"), nicht die Bedeutung des heutigen
+                # Punktes. Als 2.0-Bonus hat es ganze Ränge gedreht.
+                rang += min(1.0, math.log10(gewicht))
             if p.get("vorgeschichte"):
                 rang += 1.0
             if p.get("summary"):
                 rang += 0.4          # erklärbar schlägt unerklärt bei Gleichstand
             if p.get("vorlage_nr"):
                 rang += 0.2
+            for namen, bonus in self._GREMIUM_GEWICHT:
+                if any(n in (p.get("committee") or "").lower() for n in namen):
+                    rang += bonus
+                    break
             # Gremien-Personalien sind formal Entscheidungen, aber für die
             # Öffentlichkeit selten der Rede wert („Berufung Beratendes
             # Mitglied …") — sie landeten sonst allein wegen der Behandlungsart
             # ganz oben.
             if self._PERSONALIE_RE.search(p["title"]):
                 rang -= 2.0
-            p["rang"] = round(rang, 2)
+            # Die Behandlungsart ist eine SCHRANKE, kein Summand mehr: Ein
+            # Bericht zur Kenntnis kann sich nicht mehr über Nebensignale an
+            # einer Entscheidung vorbeischieben. Die Deckel entsprechen den
+            # Ankern des Tragweite-Prompts (Kenntnisnahme ≈ 20 von 100).
+            if art and "entscheid" not in art and "vorberat" not in art:
+                rang = min(rang, 2.5)
+            p["rang"] = round(max(rang, 0.0), 2)
+            # Auf die Tragweite-Skala heben (0–100), damit Heuristik und
+            # LLM-Bewertung vergleichbar sind: 2.5 → 30, 5 → 60, 8 → 95.
+            p["wichtig"] = min(95, round(p["rang"] * 12))
+            p["wichtig_quelle"] = "regeln"
 
     def sitzungen_im_fenster(self, tage: int = 7) -> list[dict]:
         """Jede Sitzung der kommenden ``tage`` Tage — die Grundlage der
@@ -1160,15 +1212,27 @@ class CouncilStore:
             k["topic_name"] = treffer.get((k["ksinr"], k["item_number"]))
 
         self._punkte_bewerten(kandidaten)
+        # Wo eine LLM-Tragweite vorliegt, schlägt sie die Regeln: Die Regeln
+        # kennen Verfahrenssignale, die Bewertung kennt Betroffene, Geld und
+        # Bindungswirkung. Beide liegen auf derselben 0–100-Skala.
+        bewertet = {(r["ksinr"], r["item_number"]): (r["impact"], r["reason"])
+                    for r in self._conn.execute(
+                        f"SELECT ksinr, item_number, impact, reason FROM agenda_item_impact "
+                        f"WHERE ksinr IN ({ph})", [s["ksinr"] for s in sitzungen])}
+        for k in kandidaten:
+            eintrag = bewertet.get((k["ksinr"], k["item_number"]))
+            if eintrag:
+                k["wichtig"], k["wichtig_grund"] = eintrag[0], eintrag[1]
+                k["wichtig_quelle"] = "tragweite"
         # Treffer zuerst, danach nach Rang: Ein Punkt zu einem eigenen Thema ist
         # relevanter als jeder gut bewertete Fremdpunkt.
-        kandidaten.sort(key=lambda p: (0 if p["topic_name"] else 1, -p["rang"], p["session_date"]))
+        kandidaten.sort(key=lambda p: (0 if p["topic_name"] else 1, -p["wichtig"], p["session_date"]))
         je_sitzung: dict[int, int] = {}
         punkte = []
         for p in kandidaten:
             # Wer ein eigenes Thema trifft, ist per Definition relevant — die
             # Rang-Schwelle gilt nur für die allgemeine Auswahl.
-            if not p["topic_name"] and p["rang"] < self.RANG_MINDEST:
+            if not p["topic_name"] and p["wichtig"] < self.WICHTIG_MINDEST:
                 continue
             # Höchstens drei je Sitzung: Eine volle Tagesordnung soll die
             # Ausgabe nicht auffressen, aber Qualität schlägt Streuung — der
@@ -1201,7 +1265,7 @@ class CouncilStore:
         for k in kandidaten:
             if k["topic_name"]:
                 treffer_je_sitzung[k["ksinr"]] = treffer_je_sitzung.get(k["ksinr"], 0) + 1
-            if k["topic_name"] or k["rang"] >= self.RANG_MINDEST:
+            if k["topic_name"] or k["wichtig"] >= self.WICHTIG_MINDEST:
                 relevant[k["ksinr"]] = relevant.get(k["ksinr"], 0) + 1
         return {
             # Seit Design 14 trägt die Karte auch die Sitzungen ohne relevante
@@ -1885,6 +1949,58 @@ class CouncilStore:
             sql += " LIMIT ?"
             args = (limit,)
         return [dict(r) for r in self._conn.execute(sql, args).fetchall()]
+
+    def agenda_items_needing_impact(self, limit: int | None = None,
+                                    tage_voraus: int = 21) -> list[dict]:
+        """Öffentliche Tagesordnungspunkte kommender Sitzungen ohne Tragweite.
+
+        Nur nach vorn: Die Wochen-Karte schaut voraus, und für vergangene
+        Sitzungen gibt es später den Beschluss samt eigener Bewertung. Der
+        Auszug kommt aus der Kurzfassung, ersatzweise aus dem Vorlagentext —
+        beides liegt vor der Sitzung vor.
+        """
+        from datetime import date, timedelta
+
+        heute = date.today().isoformat()
+        bis = (date.today() + timedelta(days=tage_voraus)).isoformat()
+        sql = """SELECT a.ksinr, a.item_number, a.title, a.vorlage_nr, a.kvonr,
+                        s.summary, cs.committee, cs.session_date,
+                        substr(v.raw_text, 1, 1200) AS sachverhalt
+                 FROM council_agenda_items a
+                 JOIN council_sessions cs ON cs.ksinr = a.ksinr
+                 LEFT JOIN agenda_item_summaries s
+                        ON s.ksinr = a.ksinr AND s.item_number = a.item_number
+                 LEFT JOIN council_vorlagen v ON v.kvonr = a.kvonr
+                 LEFT JOIN agenda_item_impact i
+                        ON i.ksinr = a.ksinr AND i.item_number = a.item_number
+                 WHERE a.is_public = 1 AND i.impact IS NULL
+                   AND cs.session_date >= ? AND cs.session_date <= ?
+                   AND a.title IS NOT NULL AND length(a.title) >= 8
+                 ORDER BY cs.session_date, a.id"""
+        args: tuple = (heute, bis)
+        if limit is not None:
+            # Großzügig holen und ERST danach kürzen: Die Formalien fliegen in
+            # Python raus, und von 20 Zeilen sind gut die Hälfte „Genehmigung
+            # der Tagesordnung" — ein SQL-LIMIT lieferte sonst eine halb leere
+            # Tranche.
+            sql += " LIMIT ?"
+            args = (heute, bis, limit * 3)
+        roh = [dict(r) for r in self._conn.execute(sql, args).fetchall()]
+        # Formalien kosten nur Geld — dieselbe Regel wie in der Wochen-Karte.
+        echte = [r for r in roh if not self._FORMALIE_RE.search(r["title"] or "")]
+        return echte[:limit] if limit is not None else echte
+
+    def save_agenda_impact(self, ksinr: int, item_number: str,
+                           score: int, reason: str | None) -> None:
+        from datetime import datetime, timezone
+
+        with self._conn:
+            self._conn.execute(
+                "INSERT OR REPLACE INTO agenda_item_impact "
+                "(ksinr, item_number, impact, reason, created_at) VALUES (?, ?, ?, ?, ?)",
+                (ksinr, item_number, max(0, min(100, int(score))), reason,
+                 datetime.now(timezone.utc).isoformat(timespec="seconds")),
+            )
 
     def save_impact(self, decision_id: int, score: int, reason: str | None) -> None:
         with self._conn:
