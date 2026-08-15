@@ -1193,7 +1193,14 @@ class CouncilStore:
         # Rohzahl würde die Karte verschweigen statt zu verkürzen, und genau
         # das verbietet Prinzip ② der Dichte-Matrix.
         relevant: dict[int, int] = {}
+        # Getrennt gezählt, weil es zwei verschiedene Dinge sind: „passt zu
+        # deinem Thema" und „ist allgemein wichtig". Die Karte trug beides als
+        # „N für dich" — bei jemandem ohne passendes Thema war das schlicht
+        # falsch (Tims Befund 15.08.).
+        treffer_je_sitzung: dict[int, int] = {}
         for k in kandidaten:
+            if k["topic_name"]:
+                treffer_je_sitzung[k["ksinr"]] = treffer_je_sitzung.get(k["ksinr"], 0) + 1
             if k["topic_name"] or k["rang"] >= self.RANG_MINDEST:
                 relevant[k["ksinr"]] = relevant.get(k["ksinr"], 0) + 1
         return {
@@ -1206,6 +1213,7 @@ class CouncilStore:
             "sitzungen": sitzungen,
             "punkte": punkte,
             "relevant_je_sitzung": relevant,
+            "treffer_je_sitzung": treffer_je_sitzung,
             "treffer_gesamt": sum(1 for k in kandidaten if k["topic_name"]),
             "inhaltlich_gesamt": len(kandidaten),
         }
