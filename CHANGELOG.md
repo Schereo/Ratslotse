@@ -8,6 +8,15 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Verbessert
+- **Keiner, einer oder zwei Schwerpunkte — je nachdem, was die Woche hergibt.**
+  Bisher hob die Karte genau einen Punkt hervor, auch in Wochen, in denen der
+  beste ein Bericht war — und deckelte auf einen, wenn gleich zwei große
+  Entscheidungen anstanden. Jetzt wird hervorgehoben, was schwer wiegt: in
+  ruhigen Wochen gar nichts, in dichten bis zu zwei. Zweimal dieselbe Sache
+  (Bebauungsplan und Flächennutzungsplan zum selben Projekt) zählt dabei als
+  einer. Ein Punkt zu einem eigenen Thema wird immer hervorgehoben. (#481)
+
+### Verbessert
 - **Der wichtigste Punkt der Woche wird jetzt erkannt, nicht geraten — und in
   Alltagssprache erklärt.** Die Auswahl kannte nur Verfahrenssignale und hielt
   deshalb wiederkehrende Routine für bedeutend: „Annahme von Zuwendungen"

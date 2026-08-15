@@ -194,6 +194,10 @@ export function WocheImRat({ vorschau, heuteIso }: {
   const punkteVon = (ksinr: number | null) =>
     ksinr == null ? [] : vorschau.punkte.filter((p) => p.ksinr === ksinr);
 
+  // „Wichtigster Punkt der Woche" darf es nur einmal geben; hebt die Woche
+  // zwei Punkte hervor, heißen beide „Schwerpunkt".
+  const mehrereTop = vorschau.punkte.filter((p) => p.top).length > 1;
+
   const sitzungen = vorschau.sitzungen;
   const treffer = vorschau.treffer_gesamt ?? 0;
 
@@ -289,6 +293,7 @@ export function WocheImRat({ vorschau, heuteIso }: {
                     weitere={Math.max((relevant[String(s.ksinr)] ?? 0) - maxPunkte, 0)}
                     badge={relevant[String(s.ksinr)] ?? 0}
                     treffer={treffer_je[String(s.ksinr)] ?? 0}
+                    mehrere={mehrereTop}
                     dichte={dichte}
                   />
                 ) : (
@@ -340,8 +345,11 @@ function RailTag({ datum, heute, letzter, dichte, children }: {
 }
 
 /** Sitzung mit relevanten Punkten — sie klappt ihre Punkte auf. */
-function RailSitzung({ sitzung, punkte, weitere, badge, treffer, dichte }: {
+function RailSitzung({ sitzung, punkte, weitere, badge, treffer, mehrere, dichte }: {
   sitzung: WochenSitzung; punkte: WochenPunkt[]; weitere: number; badge: number;
+  /** Gibt es in der ganzen Woche mehr als eine Hervorhebung? Dann trägt keine
+   *  den Superlativ — „wichtigster" gibt es nur einmal. */
+  mehrere: boolean;
   /** Wie viele der Punkte zu einem EIGENEN Thema passen — nur die dürfen
    *  „für dich" heißen. Der Rest ist allgemein wichtig. */
   treffer: number;
@@ -386,7 +394,8 @@ function RailSitzung({ sitzung, punkte, weitere, badge, treffer, dichte }: {
       </div>
       <div className="mt-1.5">
         {punkte.map((p) => (
-          <RailPunkt key={`${p.ksinr}-${p.item_number}`} punkt={p} top={!!p.top} dichte={dichte} />
+          <RailPunkt key={`${p.ksinr}-${p.item_number}`} punkt={p} top={!!p.top}
+                     mehrere={mehrere} dichte={dichte} />
         ))}
         {weitere > 0 && (
           <div className={cn(desktop ? "px-2.5 py-1.5" : "px-2 py-1.5")}>
@@ -405,7 +414,9 @@ function RailSitzung({ sitzung, punkte, weitere, badge, treffer, dichte }: {
 
 /** Ein Tagesordnungspunkt in der Rail. Der oberste ist hervorgehoben und trägt
  *  auf dem Desktop die Kurzbegründung (Matrix 14d). */
-function RailPunkt({ punkt, top, dichte }: { punkt: WochenPunkt; top: boolean; dichte: Dichte }) {
+function RailPunkt({ punkt, top, mehrere, dichte }: {
+  punkt: WochenPunkt; top: boolean; mehrere?: boolean; dichte: Dichte;
+}) {
   const desktop = dichte === "desktop";
   const wer = punkt.antragsteller;
   return (
@@ -424,7 +435,9 @@ function RailPunkt({ punkt, top, dichte }: { punkt: WochenPunkt; top: boolean; d
             Kicker wirkte die Fläche willkürlich (Tims Befund 15.08.). */}
         {top && desktop && (
           <span className="mb-0.5 block font-mono text-[9px] font-semibold uppercase tracking-[0.11em] text-primary/80">
-            Wichtigster Punkt der Woche
+            {punkt.topic_name
+              ? "Dein Thema"
+              : mehrere ? "Schwerpunkt der Woche" : "Wichtigster Punkt der Woche"}
           </span>
         )}
         <span className={cn(
