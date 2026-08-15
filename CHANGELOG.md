@@ -7,6 +7,16 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Verbessert
+- **Wochentag im Sitzungstab.** Die Kachel nannte nur Monat und Tag — ob eine
+  Sitzung auf einen Montag oder einen Samstag fällt, musste man selbst
+  nachrechnen. Jetzt steht der Wochentag vor der Uhrzeit, bei nahen Terminen
+  weiterhin „Heute" bzw. „Morgen". (#484)
+- **„Worum geht es?" als Karussell.** Nennt eine Frage mehrere Orte oder
+  Projekte, standen die Steckbriefe untereinander und schoben die eigentliche
+  Antwort aus dem Bild. Jetzt liegen sie nebeneinander, werden gewischt und
+  zeigen mit Punkten an, wie viele es sind. (#484)
+
 ### Behoben
 - **„8 Beschlüsse" und die Suche fand nichts.** Die gespeicherten Treffer eines
   Themas zeigten auf Beschlüsse, die es nach einer Neu-Extraktion nicht mehr
