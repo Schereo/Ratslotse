@@ -7,6 +7,17 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Verbessert
+- **„Frag den Rat" rechnet jetzt mit echten Steuerzahlen.** Geldfragen bekamen
+  bisher nur die Planzahlen des laufenden Haushaltsjahres mit. Jetzt kennt die
+  Antwort auch, was die Stadt **tatsächlich eingenommen** hat — Gewerbesteuer,
+  Grundsteuer, Einkommen- und Umsatzsteueranteil, jeweils mit dem Wert von vor
+  zehn Jahren daneben —, wie sich ein Haushaltsbereich seit 2020 entwickelt
+  hat, und bei Fragen nach Hebesätzen den Zusammenhang, den man leicht
+  übersieht: Nimmt die Stadt mehr Steuern ein, kürzt das Land seine
+  Zuweisungen. Plan- und Ist-Zahlen bleiben dabei streng getrennt und werden
+  in der Antwort als solche benannt. (#492)
+
 ### Hinzugefügt
 - **Neuer Bereich „Haushalt".** Wohin fließt das Geld der Stadt? Unter
   `/haushalt` steht der Ergebnishaushalt 2020–2026 zum ersten Mal lesbar da:

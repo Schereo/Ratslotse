@@ -629,10 +629,13 @@ def deep_bericht_stream(frage: str, candidates: list[dict],
                         haushalt: list[dict] | None = None,
                         planungen: list[dict] | None = None,
                         anlagen: list[dict] | None = None,
-                        model: str = MODEL):
+                        model: str = MODEL,
+                        steuern: list[dict] | None = None,
+                        steuerkraft: dict | None = None):
     """Der lange Deep-Research-Bericht als Token-Stream (Task 34)."""
     zusatz = (_debatten_block(debatten) + _presse_block(presse)
-              + _haushalt_block(haushalt) + _anlagen_block(anlagen))
+              + _haushalt_block(haushalt) + _steuern_block(steuern)
+              + _steuerkraft_block(steuerkraft) + _anlagen_block(anlagen))
     prompt = prompts.render("deep_bericht", frage=frage.strip()[:300],
                             context=_build_context(candidates),
                             zusatz=zusatz,
@@ -830,20 +833,67 @@ def _debatten_block(debatten: list[dict] | None, eng: bool = False) -> str:
             + "\n".join(zeilen) + "\n")
 
 
+def _eur(v) -> str:
+    return f"{v:,.0f} €".replace(",", ".") if v is not None else "–"
+
+
 def _haushalt_block(zeilen: list[dict] | None) -> str:
     """Kontext-Absatz mit Plan-Zahlen aus dem Stadthaushalt (Geldfragen).
     KEINE Beschlüsse: nie mit [id] zitieren, sondern als „Laut Haushaltsplan
-    JAHR …" nennen."""
+    JAHR …" nennen. Liegt der Bereich unter gleichem Namen auch im ältesten
+    eingelesenen Jahr vor, steht die Entwicklung dabei."""
     if not zeilen:
         return ""
-    def eur(v):
-        return f"{v:,.0f} €".replace(",", ".") if v is not None else "–"
-    z = "\n".join(
-        f"- {r['bereich']} ({r['year']}): Aufwendungen {eur(r.get('aufwendungen'))}, "
-        f"Erträge {eur(r.get('ertraege'))}"
-        for r in zeilen)
-    return ("\nSTADTHAUSHALT (Plan-Zahlen; nur nutzen, wenn einschlägig — im Text als\n"
-            "„Laut Haushaltsplan JAHR …“ nennen, NIE mit [id]):\n" f"{z}\n")
+    teile = []
+    for r in zeilen:
+        s = (f"- {r['bereich']} ({r['year']}): Aufwendungen {_eur(r.get('aufwendungen'))}, "
+             f"Erträge {_eur(r.get('ertraege'))}")
+        if r.get("jahr_davor"):
+            s += (f" — {r['jahr_davor']} waren es {_eur(r.get('aufwendungen_davor'))} "
+                  f"Aufwendungen")
+        teile.append(s)
+    return ("\nSTADTHAUSHALT (GEPLANTE Zahlen aus dem beschlossenen Haushaltsplan; nur\n"
+            "nutzen, wenn einschlägig — im Text als „Laut Haushaltsplan JAHR …“ nennen,\n"
+            "NIE mit [id]):\n" + "\n".join(teile) + "\n")
+
+
+def _steuern_block(zeilen: list[dict] | None) -> str:
+    """Kontext-Absatz mit IST-Steuereinnahmen (Open-Data der Stadt).
+
+    Strikt getrennt vom Haushalts-Block: Das sind abgerechnete Einnahmen, keine
+    Planwerte. Die Regel steht ausdrücklich im Baustein, weil das Modell sonst
+    Plan und Ist in einem Satz mischt („die Stadt nimmt 2026 222 Mio. ein“)."""
+    if not zeilen:
+        return ""
+    teile = []
+    for r in zeilen:
+        name = "Steuereinnahmen insgesamt" if r["art"] == "insgesamt" else r["art"]
+        s = f"- {name} ({r['jahr']}, tatsächlich eingenommen): {_eur(r.get('betrag'))}"
+        if r.get("jahr_davor") and r.get("betrag_davor"):
+            s += f" — {r['jahr_davor']} waren es {_eur(r['betrag_davor'])}"
+        teile.append(s)
+    return ("\nSTEUEREINNAHMEN (IST-Zahlen der Stadt, NICHT der Haushaltsplan — nie mit\n"
+            "den Plan-Zahlen oben vermischen; im Text als „tatsächlich eingenommen“\n"
+            "kennzeichnen und das Jahr nennen, NIE mit [id]):\n" + "\n".join(teile) + "\n")
+
+
+def _steuerkraft_block(k: dict | None) -> str:
+    """Kontext-Absatz zur NFAG-Mechanik: mehr eigene Steuerkraft → weniger
+    Schlüsselzuweisungen. Nur bei Hebesatz-/Mehreinnahme-Fragen einschlägig,
+    dort aber entscheidend — sonst klingt jede Mehreinnahme nach vollem Plus."""
+    if not k:
+        return ""
+    return (
+        "\nFINANZAUSGLEICH (Hintergrund, nur nutzen, wenn nach Hebesätzen oder\n"
+        "höheren Einnahmen gefragt wird; NIE mit [id]):\n"
+        f"- Steuerkraftmesszahl {k['jahr']}: {_eur(k['messzahl'])} "
+        f"(davor {k['jahr_davor']}: {_eur(k['messzahl_davor'])})\n"
+        f"- Schlüsselzuweisungen des Landes {k['jahr']}: {_eur(k['zuweisungen'])} "
+        f"(davor {k['jahr_davor']}: {_eur(k['zuweisungen_davor'])})\n"
+        "- REGEL: Steigt die eigene Steuerkraft, sinken die Schlüsselzuweisungen des\n"
+        "  Landes. Von einer Steuererhöhung bleibt der Stadt deshalb nur ein Teil —\n"
+        "  sag das dazu, wenn du über mehr Einnahmen sprichst. Nenne keine\n"
+        "  Prozentsätze oder Beträge, die hier nicht stehen.\n")
 
 
 # Zusatzregel für Themen mit langer Historie (Task 32): Der 4-8-Sätze-Deckel
@@ -909,7 +959,9 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "thema",
                      haushalt: list[dict] | None = None,
                      debatten: list[dict] | None = None,
                      gross: bool = False, steckbriefe: list[dict] | None = None,
-                     duenn: bool = False, eng: bool = False) -> tuple[list[dict], dict]:
+                     duenn: bool = False, eng: bool = False,
+                     steuern: list[dict] | None = None,
+                     steuerkraft: dict | None = None) -> tuple[list[dict], dict]:
     vtext = _verlauf_zeilen(verlauf)
     gespraech = (f"Dies ist eine Anschlussfrage in einem Gespräch. Bisher:\n{vtext}\n\n"
                  if vtext else "")
@@ -919,7 +971,8 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "thema",
                             + ("" if eng else (GROSS_REGEL if gross else ""))
                             + (DUENN_REGEL if duenn else ""),
                             presse=_steckbrief_block(steckbriefe) + _presse_block(presse)
-                            + _haushalt_block(haushalt) + _debatten_block(debatten, eng),
+                            + _haushalt_block(haushalt) + _steuern_block(steuern)
+                            + _steuerkraft_block(steuerkraft) + _debatten_block(debatten, eng),
                             gespraech=gespraech)
     # reasoning-Schalter am TATSÄCHLICH genutzten Modell festmachen — vorher
     # hing er an der Modul-Konstante und lief bei model=-Overrides ins Leere.
@@ -1032,10 +1085,12 @@ def answer_question(question: str, candidates: list[dict], model: str = MODEL, t
                     presse: list[dict] | None = None, verlauf: list[dict] | None = None,
                     haushalt: list[dict] | None = None, debatten: list[dict] | None = None,
                     gross: bool = False, steckbriefe: list[dict] | None = None,
-                    duenn: bool = False, eng: bool = False):
+                    duenn: bool = False, eng: bool = False,
+                    steuern: list[dict] | None = None, steuerkraft: dict | None = None):
     """Synthesise an answer from retrieved candidates. Returns ``(answer, cited_ids)``."""
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
-                                       haushalt, debatten, gross, steckbriefe, duenn, eng)
+                                       haushalt, debatten, gross, steckbriefe, duenn, eng,
+                                       steuern, steuerkraft)
     resp = llm.chat_complete(model=model, _feature="qa_antwort", temperature=0.2,
                              max_tokens=_answer_tokens(typ, gross, eng), messages=messages, **extra)
     answer = (resp.choices[0].message.content or "").strip()
@@ -1046,12 +1101,14 @@ def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ
                   presse: list[dict] | None = None, verlauf: list[dict] | None = None,
                   haushalt: list[dict] | None = None, debatten: list[dict] | None = None,
                   gross: bool = False, steckbriefe: list[dict] | None = None,
-                  duenn: bool = False, eng: bool = False):
+                  duenn: bool = False, eng: bool = False,
+                  steuern: list[dict] | None = None, steuerkraft: dict | None = None):
     """Stream the answer text deltas (same prompt/context as answer_question) so the
     UI can render the answer as it is written. Citation resolution is the caller's
     job once the full text is assembled (see resolve_citations)."""
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
-                                       haushalt, debatten, gross, steckbriefe, duenn, eng)
+                                       haushalt, debatten, gross, steckbriefe, duenn, eng,
+                                       steuern, steuerkraft)
     yield from llm.chat_stream(model=model, _feature="qa_antwort", temperature=0.2,
                                max_tokens=_answer_tokens(typ, gross, eng), messages=messages, **extra)
 

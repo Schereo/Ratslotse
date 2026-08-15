@@ -353,8 +353,16 @@ def _run(job: DeepJob, nwz_db: str, council_db: str) -> None:
         except Exception:  # noqa: BLE001
             planungen = []
         haushalt_zeilen: list[dict] = []
+        steuer_zeilen: list[dict] = []
+        steuerkraft: dict | None = None
         try:
             haushalt_zeilen = store.haushalt_fuer_begriffe(begriffe_alle.split())
+        except Exception:  # noqa: BLE001
+            pass
+        try:  # Ist-Steuereinnahmen + Finanzausgleich (getrennt vom Plan!)
+            steuer_zeilen = store.steuern_fuer_begriffe(begriffe_alle.split())
+            if steuer_zeilen:
+                steuerkraft = store.steuerkraft_kontext()
         except Exception:  # noqa: BLE001
             pass
 
@@ -366,7 +374,8 @@ def _run(job: DeepJob, nwz_db: str, council_db: str) -> None:
 
         job.material = {
             "candidates": candidates, "presse": presse_rows, "debatten": debatten_rows,
-            "haushalt": haushalt_zeilen, "planungen": planungen, "anlagen": anlagen_rows,
+            "haushalt": haushalt_zeilen, "steuern": steuer_zeilen,
+            "steuerkraft": steuerkraft, "planungen": planungen, "anlagen": anlagen_rows,
             "facetten_namen": [f["name"] for f in facetten],
             "facetten_fertig": job.facetten_fertig, "gelesen": gelesen,
             "zeitraum": zeitraum,
@@ -468,6 +477,8 @@ def _schreiben_und_abschliessen(job: DeepJob, nwz_db: str, council_db: str,
                                                     presse=m.get("presse"),
                                                     debatten=m.get("debatten"),
                                                     haushalt=m.get("haushalt"),
+                                                    steuern=m.get("steuern"),
+                                                    steuerkraft=m.get("steuerkraft"),
                                                     planungen=m.get("planungen"),
                                                     anlagen=m.get("anlagen")):
                     if job.stop.is_set():

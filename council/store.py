@@ -4647,7 +4647,101 @@ class CouncilStore:
                 continue
             if any(w in b for w in woerter):
                 out.append(dict(r))
-        return out[:limit]
+        out = out[:limit]
+        # Entwicklung mitgeben: derselbe Bereich im ältesten vorhandenen Jahr.
+        # Nur bei EXAKT gleichem Namen — die Teilhaushalts-Zuschnitte ändern
+        # sich über die Jahre, ein Vergleich über Zuschnittgrenzen wäre falsch.
+        if out:
+            frueh = self._conn.execute("SELECT MIN(year) FROM council_haushalt").fetchone()[0]
+            if frueh and frueh != jahr:
+                namen = [r["bereich"] for r in out]
+                platz = ",".join("?" * len(namen))
+                alt = {
+                    r["bereich"]: r for r in self._conn.execute(
+                        f"SELECT bereich, ertraege, aufwendungen FROM council_haushalt "
+                        f"WHERE year = ? AND bereich IN ({platz})", (frueh, *namen))
+                }
+                for r in out:
+                    a = alt.get(r["bereich"])
+                    if a:
+                        r["jahr_davor"] = frueh
+                        r["aufwendungen_davor"] = a["aufwendungen"]
+                        r["ertraege_davor"] = a["ertraege"]
+        return out
+
+    #: Suchbegriffe → Steuerart, wie sie im Open-Data-CSV heißt. Bewusst
+    #: kuratiert statt Substring-Suche: „Steuer" allein trifft sonst jede Art,
+    #: und „Grundsteuer" steckt in „Grundsteuer A+B".
+    _STEUER_SYNONYME = {
+        "gewerbesteuer": "Gewerbesteuer (-umlage)",
+        "gewerbe": "Gewerbesteuer (-umlage)",
+        "grundsteuer": "Grundsteuer A+B",
+        "grundbesitz": "Grundsteuer A+B",
+        "einkommensteuer": "Einkommensteueranteil",
+        "einkommenssteuer": "Einkommensteueranteil",
+        "umsatzsteuer": "Gemeindeanteil an der Umsatzsteuer",
+        "mehrwertsteuer": "Gemeindeanteil an der Umsatzsteuer",
+        "vergnügungssteuer": "Vergnügungssteuer",
+        "vergnuegungssteuer": "Vergnügungssteuer",
+        "getränkesteuer": "Getränkesteuer",
+    }
+
+    def steuern_fuer_begriffe(self, begriffe: list[str]) -> list[dict]:
+        """IST-Steuereinnahmen zu den gefragten Steuerarten: neuester Wert plus
+        der Wert von vor zehn Jahren (Entwicklung), je Art. Fragt jemand
+        allgemein nach „Steuern"/„Einnahmen", kommt die Gesamtsumme.
+
+        Klar getrennt vom Haushalt: Das hier sind ABRECHNUNGSZAHLEN, keine
+        Planwerte — der Prompt-Baustein muss das benennen."""
+        woerter = {w.lower().strip(".,;:!?") for w in begriffe}
+        arten: list[str] = []
+        for w in woerter:
+            art = self._STEUER_SYNONYME.get(w)
+            if art and art not in arten:
+                arten.append(art)
+        if not arten and woerter & {"steuern", "steuereinnahmen", "steuer",
+                                    "einnahmen", "steuerkraft"}:
+            arten = ["insgesamt"]
+        if not arten:
+            return []
+        try:
+            neuestes = self._conn.execute("SELECT MAX(jahr) FROM council_steuern").fetchone()[0]
+        except sqlite3.OperationalError:
+            return []
+        if not neuestes:
+            return []
+        out: list[dict] = []
+        for art in arten[:3]:
+            rows = self._conn.execute(
+                "SELECT jahr, betrag FROM council_steuern WHERE art = ? AND jahr IN (?, ?)",
+                (art, neuestes, neuestes - 10)).fetchall()
+            werte = {r["jahr"]: r["betrag"] for r in rows}
+            if neuestes not in werte:
+                continue
+            out.append({"art": art, "jahr": neuestes, "betrag": werte[neuestes],
+                        "jahr_davor": neuestes - 10 if (neuestes - 10) in werte else None,
+                        "betrag_davor": werte.get(neuestes - 10)})
+        return out
+
+    def steuerkraft_kontext(self) -> dict | None:
+        """Steuerkraftmesszahl + Schlüsselzuweisungen der beiden jüngsten Jahre.
+
+        Für Fragen nach Hebesätzen und „mehr Steuern einnehmen": Steigt die
+        eigene Steuerkraft, sinken die Zuweisungen des Landes (NFAG) — ohne
+        diesen Kontext klingt jede Mehreinnahme nach vollem Gewinn."""
+        try:
+            rows = self._conn.execute(
+                "SELECT jahr, messzahl, zuweisungen FROM council_steuerkraft "
+                "WHERE messzahl IS NOT NULL AND zuweisungen IS NOT NULL "
+                "ORDER BY jahr DESC LIMIT 2").fetchall()
+        except sqlite3.OperationalError:
+            return None
+        if len(rows) < 2:
+            return None
+        neu, alt = dict(rows[0]), dict(rows[1])
+        return {"jahr": neu["jahr"], "messzahl": neu["messzahl"], "zuweisungen": neu["zuweisungen"],
+                "jahr_davor": alt["jahr"], "messzahl_davor": alt["messzahl"],
+                "zuweisungen_davor": alt["zuweisungen"]}
 
     # ---- Teilvoten aus raw_result (welche Fraktion stimmte wie) ----
 
