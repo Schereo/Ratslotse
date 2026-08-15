@@ -219,17 +219,23 @@ export default function HaushaltPage() {
 
       {defizit != null && <RuecklagenHinweis defizit={defizit} />}
 
-      <Link href="/haushalt/einnahmen"
-        className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/40">
-        <span className="min-w-0">
-          <span className="block text-[13px] font-bold">Woher kommt das Geld?</span>
-          <span className="mt-1 block text-[12.5px] leading-relaxed text-muted-foreground">
-            Alle Einnahmequellen einzeln — und bei welchen der Rat überhaupt etwas
-            zu entscheiden hat.
-          </span>
-        </span>
-        <span className="flex-none text-[12.5px] font-semibold text-primary">Ansehen →</span>
-      </Link>
+      <div className="grid gap-2.5 sm:grid-cols-3">
+        {[
+          { href: "/haushalt/einnahmen", titel: "Woher kommt das Geld?",
+            text: "Alle Einnahmequellen — und bei welchen der Rat überhaupt etwas zu entscheiden hat." },
+          { href: "/haushalt/pflicht", titel: "Muss oder kann?",
+            text: "Wie viel vom Haushalt gesetzlich vorgeschrieben ist — und wie wenig frei verfügbar." },
+          { href: "/haushalt/labor", titel: "Haushalts-Labor",
+            text: "Selbst an den Stellschrauben drehen und sehen, was das ausmacht." },
+        ].map((k) => (
+          <Link key={k.href} href={k.href}
+            className="rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/40">
+            <span className="block text-[13px] font-bold">{k.titel}</span>
+            <span className="mt-1 block text-[12.5px] leading-relaxed text-muted-foreground">{k.text}</span>
+            <span className="mt-2 block text-[12.5px] font-semibold text-primary">Ansehen →</span>
+          </Link>
+        ))}
+      </div>
 
       {/* Kern-Visual mit Umschalter Gegenbalken ↔ 100-Euro-Ansicht (H-03/H-04) */}
       <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
