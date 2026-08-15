@@ -10,6 +10,7 @@
 
 import { useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { X } from "lucide-react";
 import { HaushaltZeile, bereichSlug, deMio, mio } from "@/lib/haushalt";
 import { cn } from "@/lib/utils";
 
@@ -54,12 +55,13 @@ function SegmentText({ lang, kurz }: { lang: string; kurz: string }) {
 }
 
 function Leiste({
-  seite, zeilen, skala, onPick, aktiv,
+  seite, zeilen, skala, onHover, onPin, aktiv,
 }: {
   seite: Seite;
   zeilen: { z: HaushaltZeile; wert: number }[];
   skala: number;
-  onPick: (name: string | null) => void;
+  onHover: (name: string) => void;
+  onPin: (name: string) => void;
   aktiv: string | null;
 }) {
   return (
@@ -74,9 +76,9 @@ function Leiste({
             type="button"
             role="listitem"
             aria-label={`${z.bereich}: ${deMio(wert)} Mio. Euro`}
-            onClick={() => onPick(gewaehlt ? null : z.bereich)}
-            onMouseEnter={() => onPick(z.bereich)}
-            onMouseLeave={() => onPick(null)}
+            onClick={() => onPin(z.bereich)}
+            onMouseEnter={() => onHover(z.bereich)}
+            onFocus={() => onHover(z.bereich)}
             className={cn(
               "flex min-w-0 items-center overflow-hidden px-2 text-[11px] font-semibold transition-opacity",
               aktiv && !gewaehlt && "opacity-35",
@@ -92,9 +94,55 @@ function Leiste({
   );
 }
 
+/** Detail zum gewählten Bereich (H-03): Ausgaben, eigene Einnahmen, Netto,
+ *  Sprung ins Dossier. Sitzt direkt unter „seiner" Leiste und bleibt nach
+ *  einem Klick offen (gepinnt) — inklusive Schließen-Knopf, weil sie dann
+ *  nicht mehr von selbst verschwindet. */
+function Detail({ z, gepinnt, onClose, onOpen }: {
+  z: HaushaltZeile | null | undefined;
+  gepinnt: boolean;
+  onClose: () => void;
+  onOpen: (bereich: string) => void;
+}) {
+  if (!z) return null;
+  return (
+    <div className="mt-2.5 inline-block rounded-xl border border-border bg-card px-3 py-2.5 shadow-[0_12px_32px_-10px_rgba(2,32,71,0.28)]">
+      <div className="flex items-start gap-3">
+        <p className="text-[12.5px] font-bold">{z.bereich}</p>
+        {gepinnt && (
+          <button type="button" onClick={onClose} aria-label="Schließen"
+            className="-mr-1 -mt-0.5 rounded p-0.5 text-muted-foreground hover:text-foreground">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+      <p className="mt-1 text-[11.5px] leading-relaxed text-foreground/80">
+        {deMio(mio(z.aufwendungen))}&#8239;Mio. Ausgaben · {deMio(mio(z.ertraege))} eigene Einnahmen
+        <br />
+        <strong className="text-foreground">{deMio(mio(z.ergebnis))}&#8239;Mio.</strong>{" "}
+        {(z.ergebnis ?? 0) < 0 ? "trägt die Stadt" : "bleibt übrig"}
+      </p>
+      <button type="button" className="mt-1.5 text-[11.5px] font-semibold text-primary"
+        onClick={() => onOpen(z.bereich)}>
+        Bereich öffnen →
+      </button>
+    </div>
+  );
+}
+
 export function Gegenbalken({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: number }) {
   const router = useRouter();
-  const [aktiv, setAktiv] = useState<string | null>(null);
+  // Zwei Zustände statt einem: `hover` ist flüchtig, `gepinnt` überlebt das
+  // Verlassen des Segments. Vorher schloss das onMouseLeave des Segments die
+  // Detail-Box genau in dem Moment, in dem man sie anklicken wollte
+  // (Tim, 16.08.) — jetzt hält der Container den Hover, und ein Klick pinnt.
+  type Wahl = { seite: Seite; bereich: string };
+  const [hover, setHover] = useState<Wahl | null>(null);
+  const [gepinnt, setGepinnt] = useState<Wahl | null>(null);
+  const wahl = gepinnt ?? hover;
+  const aktiv = wahl?.bereich ?? null;
+  const pinnen = (w: Wahl) =>
+    setGepinnt((g) => (g?.bereich === w.bereich && g.seite === w.seite ? null : w));
 
   const parts = zeilen.filter((z) => z.is_summe !== 1);
   const gesamt = zeilen.find((z) => z.is_summe === 1);
@@ -116,6 +164,7 @@ export function Gegenbalken({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: n
   const ein = sortiert("ertraege");
   const aus = sortiert("aufwendungen");
   const gewaehlte = aktiv ? parts.find((z) => z.bereich === aktiv) : null;
+  const oeffnen = (bereich: string) => router.push(`/haushalt/bereich?name=${bereichSlug(bereich)}`);
 
   // Legende: alles, was in der Leiste kein Label mehr trägt, steht hier als Text.
   const legende = (rows: { z: HaushaltZeile; wert: number }[]) => {
@@ -138,11 +187,17 @@ export function Gegenbalken({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: n
         </span>
       </div>
 
+      {/* Ein Block = eine Hover-Fläche: Leiste, Legende UND Detail-Box liegen
+          im selben Container, damit der Weg von der Leiste zur Box den Hover
+          nicht abreißen lässt (Tim, 16.08.). */}
+      <div onMouseLeave={() => setHover(null)}>
       <p className="mb-1.5 text-[12.5px] font-semibold">
         Woher das Geld kommt <span className="font-normal text-muted-foreground">— {deMio(einSumme)}&#8239;Mio.</span>
       </p>
       <div style={{ width: `${einEnde}%` }}>
-        <Leiste seite="ein" zeilen={ein} skala={einSumme} onPick={setAktiv} aktiv={aktiv} />
+        <Leiste seite="ein" zeilen={ein} skala={einSumme} aktiv={aktiv}
+          onHover={(b) => setHover({ seite: "ein", bereich: b })}
+          onPin={(b) => pinnen({ seite: "ein", bereich: b })} />
       </div>
       <div className="mt-1.5 flex flex-wrap gap-x-3.5 gap-y-1">
         {einLeg.gezeigt.map(({ z, wert }, i) => (
@@ -154,6 +209,8 @@ export function Gegenbalken({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: n
         {einLeg.rest.length > 0 && (
           <span className="text-[11px] text-muted-foreground">{einLeg.rest.length} weitere {deMio(einLeg.restSumme)}</span>
         )}
+      </div>
+      {wahl?.seite === "ein" && <Detail z={gewaehlte} gepinnt={!!gepinnt} onClose={() => { setGepinnt(null); setHover(null); }} onOpen={oeffnen} />}
       </div>
 
       {/* Achse mit Überhang: Bei Minus ein schraffierter Rücklagen-Kasten,
@@ -189,11 +246,14 @@ export function Gegenbalken({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: n
         )}
       </div>
 
+      <div onMouseLeave={() => setHover(null)}>
       <p className="mb-1.5 text-[12.5px] font-semibold">
         Wohin es fließt <span className="font-normal text-muted-foreground">— {deMio(ausSumme)}&#8239;Mio.</span>
       </p>
       <div style={{ width: `${(ausSumme / skala) * 100}%` }}>
-        <Leiste seite="aus" zeilen={aus} skala={ausSumme} onPick={setAktiv} aktiv={aktiv} />
+        <Leiste seite="aus" zeilen={aus} skala={ausSumme} aktiv={aktiv}
+          onHover={(b) => setHover({ seite: "aus", bereich: b })}
+          onPin={(b) => pinnen({ seite: "aus", bereich: b })} />
       </div>
       <div className="mt-1.5 flex flex-wrap gap-x-3.5 gap-y-1">
         {ausLeg.gezeigt.map(({ z, wert }) => (
@@ -206,26 +266,9 @@ export function Gegenbalken({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: n
           <span className="text-[11px] text-muted-foreground">{ausLeg.rest.length} weitere {deMio(ausLeg.restSumme)}</span>
         )}
       </div>
+      {wahl?.seite === "aus" && <Detail z={gewaehlte} gepinnt={!!gepinnt} onClose={() => { setGepinnt(null); setHover(null); }} onOpen={oeffnen} />}
+      </div>
 
-      {/* Tap/Hover-Detail (H-03): Ausgaben, eigene Einnahmen, Netto + Sprung. */}
-      {gewaehlte && (
-        <div className="mt-3 inline-block rounded-xl border border-border bg-card px-3 py-2.5 shadow-[0_12px_32px_-10px_rgba(2,32,71,0.28)]">
-          <p className="text-[12.5px] font-bold">{gewaehlte.bereich}</p>
-          <p className="mt-1 text-[11.5px] leading-relaxed text-foreground/80">
-            {deMio(mio(gewaehlte.aufwendungen))}&#8239;Mio. Ausgaben · {deMio(mio(gewaehlte.ertraege))} eigene Einnahmen
-            <br />
-            <strong className="text-foreground">{deMio(mio(gewaehlte.ergebnis))}&#8239;Mio.</strong>{" "}
-            {(gewaehlte.ergebnis ?? 0) < 0 ? "trägt die Stadt" : "bleibt übrig"}
-          </p>
-          <button
-            type="button"
-            className="mt-1.5 text-[11.5px] font-semibold text-primary"
-            onClick={() => router.push(`/haushalt/bereich?name=${bereichSlug(gewaehlte.bereich)}`)}
-          >
-            Bereich öffnen →
-          </button>
-        </div>
-      )}
     </div>
   );
 }

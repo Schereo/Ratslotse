@@ -252,17 +252,23 @@ export default function HaushaltPage() {
             return (
               <Link key={z.bereich} href={`/haushalt/bereich?name=${bereichSlug(z.bereich)}`}
                 className="rounded-xl border border-border bg-card p-3.5 shadow-sm transition-colors hover:border-primary/40">
-                <div className="flex items-start justify-between gap-2.5">
-                  <p className="text-[13px] font-bold leading-snug">{z.bereich}</p>
-                  <TrendMini reihe={reihe} className="flex-none opacity-70" />
+                <p className="text-[13px] font-bold leading-snug">{z.bereich}</p>
+                {/* Zahl und Verlauf stehen zusammen: Der Trend erklärt genau
+                    diese Zahl. Vorher hing er per justify-between in der
+                    rechten Kopfecke und wirkte in breiten Karten losgelöst
+                    (Tim, 16.08.). */}
+                <div className="mt-2 flex items-end gap-3.5">
+                  <div className="min-w-0">
+                    <p className="font-display text-[21px] font-bold leading-none tracking-tight tabular-nums">
+                      {sortierung === "netto" ? `−${deMio(netto)}` : deMio(brutto)}
+                      <span className="text-xs font-semibold text-muted-foreground">&#8239;Mio.</span>
+                    </p>
+                    <p className="mt-1 text-[11.5px] text-muted-foreground">
+                      {sortierung === "netto" ? "kostet die Stadt unterm Strich" : "gibt der Bereich aus"}
+                    </p>
+                  </div>
+                  <TrendMini reihe={reihe} className="flex-none pb-0.5 opacity-70" />
                 </div>
-                <p className="mt-2 font-display text-[21px] font-bold tracking-tight tabular-nums">
-                  {sortierung === "netto" ? `−${deMio(netto)}` : deMio(brutto)}
-                  <span className="text-xs font-semibold text-muted-foreground">&#8239;Mio.</span>
-                </p>
-                <p className="text-[11.5px] text-muted-foreground">
-                  {sortierung === "netto" ? "kostet die Stadt unterm Strich" : "gibt der Bereich aus"}
-                </p>
                 {d != null && (
                   <>
                     <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-muted">
