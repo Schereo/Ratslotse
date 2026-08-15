@@ -8,6 +8,15 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Behoben
+- **„Fragen" steht sofort komplett da.** Nach dem Tippen auf den Tab erschienen
+  die unterste Beispielfrage und der Gespräche-Knopf oben rechts erst nach
+  einer halben Sekunde. Zwei Ursachen: Die Seiten-Animation hob die neue Seite
+  kurz an und riss dabei das Eingabefeld mit, das die dritte Beispielfrage
+  verdeckte, bis die Animation endete — sie blendet jetzt nur noch ein. Und
+  Beispielfragen wie Gespräche-Knopf hängen an Server-Antworten, die beim
+  letzten Besuch dieselben waren: Der Stand von damals steht jetzt sofort,
+  aufgefrischt wird im Hintergrund. Gemessen bei 600 ms Antwortzeit: alles ab
+  dem ersten Bild an seinem Platz. (#486)
 - **Kein Verschieben mehr beim Öffnen von „Fragen".** Die Frage „Soll ich mir
   deine Gespräche merken?" erschien erst, wenn der Server geantwortet hatte —
   und schob dann den halben Bildschirm nach unten. Die Einwilligung reist

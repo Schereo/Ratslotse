@@ -318,9 +318,21 @@
   .fab-pulse-ring {
     animation: fab-pulse 4s ease-out infinite;
   }
-  /* Seiten-/Antwort-Einstieg: kurzes Anheben + Einblenden. */
+  /* Einstieg einzelner Bausteine: kurzes Anheben + Einblenden. */
   .animate-fade-up {
     animation: fade-up 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  /* Seiten-Einstieg (app/(app)/template.tsx) — bewusst OHNE transform.
+     Solange eine transform-Animation läuft, ist das Element Containing Block
+     für jedes position:fixed darin. Der Chat-Composer hing dadurch die ersten
+     0,34 s einer Navigation 164 px zu hoch und deckte die dritte Beispielfrage
+     ab; am Ende der Animation sprang er an den Bildschirmrand — Tims Befund
+     15.08. („die unterste Frage popt auf"). Der Dauerzustand war schon
+     entschärft (fill-mode, s. fade-up), das Fenster WÄHREND der Animation
+     nicht. Reines Einblenden hat das Problem gar nicht erst. */
+  .animate-page-in {
+    animation: page-in 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
   /* Onboarding-Auftakt (26a): Lotti winkt herein, zwei Ringe laufen aus, Titel
@@ -362,6 +374,10 @@
      template.tsx JEDE Seite in diese Animation wickelt, hing sonst jedes
      fixed-Element (Chat-Composer) an der Seite statt am Viewport. */
   to { transform: none; opacity: 1; }
+}
+@keyframes page-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 @keyframes qa-sparkle {
   0%, 68%, 100% { transform: scale(1) rotate(0deg); }

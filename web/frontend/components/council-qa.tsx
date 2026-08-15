@@ -33,6 +33,7 @@ import { QaSource } from "@/lib/types";
 import { apiUrl, authHeaders } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { entwurfAbholen, entwurfMelden } from "@/lib/draft";
+import { leseHatGespraeche, leseQaBeispiele, merkeHatGespraeche, merkeQaBeispiele } from "@/lib/qa-zuletzt";
 import { Button, Input, toast } from "@/components/ui";
 import { decisionHref } from "@/lib/routes";
 import { PrintButton } from "@/components/print-button";
@@ -1160,6 +1161,11 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   );
   const [gespraechId, setGespraechId] = useState<number | null>(null);
   const [gespraeche, setGespraeche] = useState<GespraechEintrag[]>([]);
+  // Bis die Liste da ist, gilt der Stand vom letzten Besuch: sonst erscheint
+  // der Gespräche-Knopf erst nach einer halben Sekunde im Seitenkopf (Tims
+  // zweiter Befund 15.08.: „genauso wie oben der Verlauf-Button").
+  const [gespraecheGeladen, setGespraecheGeladen] = useState(false);
+  const [hatteGespraeche] = useState(leseHatGespraeche);
   const [zeigeListe, setZeigeListe] = useState(false);
   const ladeGespraeche = () =>
     fetch(apiUrl("/council/gespraeche"), { credentials: "include", headers: authHeaders() })
@@ -1168,8 +1174,14 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         if (!b) return;
         setEinstellung(b.einstellung);
         setGespraeche(b.gespraeche ?? []);
+        setGespraecheGeladen(true);
+        merkeHatGespraeche((b.gespraeche ?? []).length > 0);
       })
       .catch(() => {});
+  /** Gibt es Gespräche zu zeigen? Vor dem Laden zählt die Erinnerung. */
+  const zeigeGespraecheKnopf =
+    einstellung === 1 &&
+    (turns.length > 0 || gespraeche.length > 0 || (!gespraecheGeladen && hatteGespraeche));
   useEffect(() => { void ladeGespraeche(); }, []);
   const einwilligen = async (an: boolean) => {
     setEinstellung(an ? 1 : 0);
@@ -1304,11 +1316,11 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     const aktiv = gespraeche.find((g) => g.id === gespraechId);
     window.dispatchEvent(new CustomEvent("rl:gespraeche-status", {
       detail: {
-        sichtbar: einstellung === 1 && (turns.length > 0 || gespraeche.length > 0),
+        sichtbar: zeigeGespraecheKnopf,
         titel: aktiv?.titel ?? null,
       },
     }));
-  }, [einstellung, turns.length, gespraeche, gespraechId]);
+  }, [zeigeGespraecheKnopf, gespraeche, gespraechId]);
   useEffect(() => {
     const auf = () => { setSheetOffen(true); void ladeGespraeche(); };
     window.addEventListener("rl:gespraeche-oeffnen", auf);
@@ -1319,7 +1331,10 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   // 5a/I-07: frische Beispiel-Anlässe aus den jüngsten Sitzungen — die
   // Klassiker bleiben, aber ein bis zwei Vorschläge zeigen, dass hier
   // aktuelles Material liegt. Fehlt der Endpoint, bleiben die Klassiker.
-  const [frische, setFrische] = useState<string[]>([]);
+  // Was beim letzten Besuch hier stand. `null` heißt: allererster Besuch —
+  // nur dann sind Platzhalter richtig (s. `frischeLaedt`).
+  const [zuletzt] = useState(leseQaBeispiele);
+  const [frische, setFrische] = useState<string[]>(() => zuletzt?.frisch ?? []);
   // Tims Befund 13.08. (iOS): Beim Wechsel auf „Fragen" tauschten die
   // Beispiele nach ~0,5 s ihren Text — und weil die frischen Anlässe länger
   // sind als die Klassiker, wuchs die Liste dabei um eine Zeile je Vorschlag.
@@ -1329,7 +1344,14 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   // jede Zeile ist zwei Textzeilen hoch, egal was drinsteht (s. Liste unten).
   // Der Platzhalter allein reichte nicht: Ohne feste Zeilenhöhe verschöbe
   // sich das Layout beim Wechsel vom Platzhalter zum echten Text genauso.
-  const [frischeLaedt, setFrischeLaedt] = useState(true);
+  //
+  // Nachtrag 15.08.: Springen tat danach nichts mehr, aber die Fragen
+  // erschienen weiter erst nach einer halben Sekunde — „popt auf". Wer schon
+  // einmal hier war, sieht deshalb sofort die Vorschläge von damals; der
+  // Abruf läuft trotzdem und legt sein Ergebnis für das nächste Mal ab.
+  // Platzhalter bleiben für den allerersten Besuch, wo es nichts zu zeigen
+  // gibt (lib/qa-zuletzt.ts).
+  const [frischeLaedt, setFrischeLaedt] = useState(() => zuletzt === null);
   useEffect(() => {
     if (!showIntro) return;
     let lebt = true;
@@ -1350,7 +1372,12 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         ];
         const kurz = kurzerGegenstand(rows[0].top_titel ?? "");
         if (kurz) vorschlaege.push(`Was wurde zu „${kurz}" entschieden?`);
-        setFrische(vorschlaege.slice(0, 2));
+        const neu = vorschlaege.slice(0, 2);
+        merkeQaBeispiele(neu);
+        // Nur einwechseln, solange noch Platzhalter stehen. Steht schon Text
+        // da, würde er unter dem Blick ausgetauscht — genau das Aufpoppen,
+        // das hier weg soll. Beim nächsten Besuch stehen die neuen sofort.
+        if (zuletzt === null) setFrische(neu);
       })
       .catch(() => {})
       .finally(() => { clearTimeout(bremse); fertig(); });
@@ -1359,12 +1386,20 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   }, [showIntro]);
   // Die restlichen Plätze füllt der bewährte Pool — bei jedem Besuch mit
   // anderen Fragen (Tims Wunsch), aber nur solchen, die messbar tragen.
-  // Gewürfelt wird erst nach dem Mount, sonst weicht das Markup des
-  // statischen Exports von der Hydration ab — hinter den Platzhaltern fällt
-  // das jetzt ohnehin nicht mehr ins Auge.
-  const [gewuerfelt, setGewuerfelt] = useState<string[]>(() => EXAMPLES.slice(0, 4));
+  // Gewürfelt wird schon im ersten Render, damit der Text nicht gleich nach
+  // dem Mount noch einmal wechselt. Das kollidiert nicht mit dem statischen
+  // Export: Die Hülle zeigt bis `loading === false` das Shell-Skelett, dieses
+  // Gespräch hängt also gar nicht im exportierten Markup (app/(app)/layout.tsx).
+  const [gewuerfelt, setGewuerfelt] = useState<string[]>(() =>
+    waehleBeispiele(zuletzt?.frisch ?? [], 4 - (zuletzt?.frisch.length ?? 0)),
+  );
+  // Beim allerersten Besuch kommen die frischen Vorschläge nach — dann muss
+  // der Rest neu gewürfelt werden, damit nichts doppelt steht. Der Lauf zum
+  // Mount würde nur das Ergebnis von oben verwerfen und wird übersprungen.
+  const wuerfelnUebersprungen = useRef(false);
   useEffect(() => {
     if (!showIntro) return;
+    if (!wuerfelnUebersprungen.current) { wuerfelnUebersprungen.current = true; return; }
     setGewuerfelt(waehleBeispiele(frische, 4 - frische.length));
   }, [showIntro, frische]);
   const beispiele = [...frische, ...gewuerfelt].slice(0, 4);
@@ -1391,12 +1426,12 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
       )}>
         {/* Desktop (5a): „Gespräche"/„Neues Gespräch" im Bühnen-Kopf. Mobil
             ersetzt die EINE Gesprächs-Zeile (9a①) die zwei Streu-Icons. */}
-        {(modeToggle || turns.length > 0 || gespraeche.length > 0) && (
+        {(modeToggle || turns.length > 0 || zeigeGespraecheKnopf) && (
           <div className="mb-1 hidden items-center justify-between gap-2 desk:flex desk:mb-0 desk:px-4 desk:pb-2 desk:pt-3">
             {modeToggle ? <div>{modeToggle}</div> : <span />}
             <div className="relative flex shrink-0 items-center gap-1.5 print:hidden">
               {/* 5a/I-04: gespeicherte Gespräche — Liste lädt beim Öffnen frisch. */}
-              {einstellung === 1 && (gespraeche.length > 0 || gespraechId != null) && (
+              {(zeigeGespraecheKnopf || (einstellung === 1 && gespraechId != null)) && (
                 <button
                   type="button"
                   onClick={() => { setZeigeListe((v) => !v); if (!zeigeListe) void ladeGespraeche(); }}
