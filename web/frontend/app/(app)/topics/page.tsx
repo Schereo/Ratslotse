@@ -292,8 +292,11 @@ function TopicsInner() {
                   >
                     {/* „insgesamt" behauptete Vollständigkeit, die der
                         Treffer-Deckel nicht einlöst — und stand im Widerspruch
-                        zur Live-Zahl im Bearbeiten-Blatt (Tim, 15.08.). */}
-                    {t.decision_count} {t.decision_count === 1 ? "Beschluss" : "Beschlüsse"} · alle ansehen
+                        zur Live-Zahl im Bearbeiten-Blatt (Tim, 15.08.). Das
+                        „+" sagt jetzt offen, wann die Zahl der Deckel ist:
+                        vorher trug JEDES Thema dieselbe glatte 25. */}
+                    {t.decision_count}{t.decision_count_capped ? "+" : ""}{" "}
+                    {t.decision_count === 1 && !t.decision_count_capped ? "Beschluss" : "Beschlüsse"} · alle ansehen
                   </Link>
                 ) : (
                   <p className="text-xs text-muted-foreground">Noch keine Treffer — wir melden uns, sobald der Rat dazu entscheidet.</p>

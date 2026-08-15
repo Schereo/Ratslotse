@@ -39,7 +39,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <AuthShell title="Leinen los!" pose="celebrate">
+    <AuthShell title="Leinen los!" pose="celebrate" breit>
         <p className="mt-3 text-sm text-muted-foreground">
           Erstelle dein kostenloses Konto — Lotti lotst dich danach durch die ersten Schritte.
         </p>
@@ -48,30 +48,41 @@ export default function RegisterPage() {
           <AppleSignInButton label="Mit Apple registrieren" />
         </div>
         <form onSubmit={onSubmit} className="space-y-4">
-          <div>
-            {/* Freiwillig — und zwar überall sonst auch schon: der Server nimmt
-                null, „Mit Apple registrieren" liefert gar keinen Namen, und
-                jede Anzeige kommt ohne aus („Moin!“ statt „Moin, X!“). Nur
-                dieses Feld verlangte ihn und ließ sonst niemanden vorbei. */}
-            <label htmlFor="display-name" className="mb-1 block text-sm font-medium text-foreground">
-              Anzeigename <span className="font-normal text-muted-foreground">(optional)</span>
-            </label>
-            {/* Kein autoFocus — dieselbe Lehre wie auf der Anmeldung: Das
-                statische HTML trägt das Attribut, iOS klappt die Tastatur schon
-                beim Parsen auf und scrollt das Feld über sie. Dabei wanderte die
-                ganze Karte nach oben und Lotti über ihrer Kante in die Dynamic
-                Island (Tims Befund 14.08.). Ohne Autofokus bleibt der Screen
-                stehen, wie er gebaut ist. */}
-            <Input id="display-name" className="h-11" value={displayName} onChange={(e) => setDisplayName(e.target.value)} maxLength={60} autoComplete="name" placeholder="Wie dürfen wir dich ansprechen?" />
+          {/* Zwei Spalten, sobald die Karte breit ist (ab lg): Auf dem iPad quer
+              ist Höhe die knappe Größe, Breite die üppige — Name und E-Mail
+              nebeneinander sparen eine ganze Feldzeile. Schmal bleibt es
+              einspaltig, dort wäre nebeneinander unbedienbar. */}
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div>
+              {/* Freiwillig — und zwar überall sonst auch schon: der Server nimmt
+                  null, „Mit Apple registrieren" liefert gar keinen Namen, und
+                  jede Anzeige kommt ohne aus („Moin!“ statt „Moin, X!“). Nur
+                  dieses Feld verlangte ihn und ließ sonst niemanden vorbei. */}
+              <label htmlFor="display-name" className="mb-1 block text-sm font-medium text-foreground">
+                Anzeigename <span className="font-normal text-muted-foreground">(optional)</span>
+              </label>
+              {/* Kein autoFocus — dieselbe Lehre wie auf der Anmeldung: Das
+                  statische HTML trägt das Attribut, iOS klappt die Tastatur schon
+                  beim Parsen auf und scrollt das Feld über sie. Dabei wanderte die
+                  ganze Karte nach oben und Lotti über ihrer Kante in die Dynamic
+                  Island (Tims Befund 14.08.). Ohne Autofokus bleibt der Screen
+                  stehen, wie er gebaut ist. */}
+              <Input id="display-name" className="h-11" value={displayName} onChange={(e) => setDisplayName(e.target.value)} maxLength={60} autoComplete="name" placeholder="Dein Vorname genügt" />
+            </div>
+            <div>
+              <label htmlFor="email" className="mb-1 block text-sm font-medium text-foreground">E-Mail</label>
+              <Input id="email" type="email" className="h-11" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
+            </div>
           </div>
           <div>
-            <label htmlFor="email" className="mb-1 block text-sm font-medium text-foreground">E-Mail</label>
-            <Input id="email" type="email" className="h-11" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
-          </div>
-          <div>
-            <label htmlFor="password" className="mb-1 block text-sm font-medium text-foreground">Passwort</label>
-            <PasswordInput id="password" className="h-11" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="new-password" />
-            <p className="mt-1 text-xs text-muted-foreground">Mindestens 8 Zeichen.</p>
+            {/* Die Längenregel steht neben dem Label statt darunter: dieselbe
+                Auskunft, eine Zeile weniger Karte — und sie ist dort zu lesen,
+                bevor jemand tippt, nicht erst danach. */}
+            <div className="mb-1 flex items-baseline justify-between gap-2">
+              <label htmlFor="password" className="block text-sm font-medium text-foreground">Passwort</label>
+              <span id="password-hinweis" className="text-xs text-muted-foreground">Mindestens 8 Zeichen</span>
+            </div>
+            <PasswordInput id="password" aria-describedby="password-hinweis" className="h-11" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="new-password" />
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
           {/* RL-1001: Registrieren ist DIE Signal-Handlung dieses Screens. */}
@@ -91,23 +102,10 @@ export default function RegisterPage() {
             Anmelden
           </Link>
         </p>
-        {/* Ein Fuß statt dreier Blöcke (Tims Befund 14.08.): Abgrenzung zur
-            Stadt (App-Store-Guideline 5.2) und Pflicht-Links standen mit je
-            eigenem Abstand untereinander und machten die Karte so hoch, dass
-            Lotti über ihrer Kante auf dem iPhone in die Dynamic Island rutschte.
-            Zusammengefasst spart das rund 40 px, ohne dass etwas wegfällt. */}
-        <div className="mt-4 space-y-1 border-t border-border pt-3 text-center text-xs leading-relaxed text-muted-foreground">
-          <p className="text-balance">
-            Ratslotse ist ein privates Bürgerprojekt und kein Angebot der Stadt Oldenburg.
-          </p>
-          <p>
-            <Link href="/hilfe" className="hover:text-foreground hover:underline">Hilfe &amp; Kontakt</Link>
-            {" · "}
-            <Link href="/impressum" className="hover:text-foreground hover:underline">Impressum</Link>
-            {" · "}
-            <Link href="/datenschutz" className="hover:text-foreground hover:underline">Datenschutz</Link>
-          </p>
-        </div>
+        {/* Hier endete bis 15.08. der Bürgerprojekt-Hinweis mit den
+            Pflicht-Links. Beides steht jetzt unter der Karte auf dem
+            Hintergrund (siehe AuthShell) — das ist der Platz, der auf dem
+            iPad quer gefehlt hat. */}
     </AuthShell>
   );
 }

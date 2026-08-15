@@ -646,6 +646,7 @@ def test_topic_decision_matching(client):
     # decision_count surfaces in the topic list…
     topic = next(t for t in client.get("/api/topics").json() if t["id"] == tid)
     assert topic["decision_count"] == 1
+    assert topic["decision_count_capped"] is False
     # …and the decisions endpoint joins to the council store (title, committee, score).
     decisions = client.get(f"/api/topics/{tid}/decisions").json()["decisions"]
     assert len(decisions) == 1
@@ -664,6 +665,20 @@ def test_topic_decisions_replace_on_rerun(client):
     assert [m["decision_id"] for m in st.get_topic_decision_matches(tid)] == [2]
     assert st.topic_decision_counts(owner_id) == {tid: 1}
     st.close()
+
+
+def test_gedeckelte_trefferzahl_wird_als_solche_ausgeliefert(client):
+    """Tim, 15.08.2026: „warum sind hier überall 25 neu?" — jedes Thema trug
+    dieselbe Zahl, weil sie der Deckel war und nicht der Befund. Die Karte
+    schreibt jetzt „2+", wenn der Lauf mehr gefunden als gespeichert hat."""
+    owner_id = _register(client).json()["id"]
+    tid = client.post("/api/topics", json={"name": "Fliegerhorst", "description": "Konversion"}).json()["id"]
+    st = Store(NWZ_DB)
+    st.save_topic_decision_matches(tid, owner_id, [(1, 0.9), (2, 0.8)],
+                                   gedeckelt=True, kandidaten=120)
+    st.close()
+    topic = next(t for t in client.get("/api/topics").json() if t["id"] == tid)
+    assert topic["decision_count_capped"] is True
 
 
 def test_cannot_delete_foreign_topic(client):
@@ -1874,6 +1889,65 @@ def test_ask_stream_haelt_marker_zurueck_und_liefert_suggestions(client, monkeyp
     sugg = [e for e in events if e["type"] == "suggestions"]
     assert sugg and sugg[0]["questions"] == ["Wer stimmte dagegen?", "Was kostet der Ausbau?"]
     assert [e for e in events if e["type"] == "done"]
+
+
+def test_ask_einfacher_erklaeren_nimmt_den_eigenen_prompt(client, monkeypatch):
+    """„Einfacher erklären" (Befund Build 11): Der Knopftext ist keine neue
+    Frage, sondern ein Register-Wechsel. /ask erkennt ihn und nimmt den
+    Vereinfachungs-Prompt — mit der VORIGEN Antwort im Volltext und, als
+    Fußnoten-Garantie, nur den Beschlüssen, die diese Antwort belegt haben.
+    """
+    from app.routers import council as council_router
+    from council import qa as qa_mod
+
+    _register(client)
+    cand = [{"id": 5, "title": "Ausfallbürgschaft Stadion", "summary": "Bürgschaft",
+             "policy_field": "sport", "outcome": "angenommen", "session_date": "2026-06-01",
+             "committee": "Rat", "score": 1.0},
+            {"id": 6, "title": "Nahverkehrsplan Teilfortschreibung", "summary": "ÖPNV",
+             "policy_field": "verkehr", "outcome": "angenommen", "session_date": "2026-06-01",
+             "committee": "Rat", "score": 0.9},
+            {"id": 7, "title": "Ganz anderer Beschluss", "summary": "Formalie",
+             "policy_field": "sonstiges", "outcome": "angenommen", "session_date": "2026-05-01",
+             "committee": "Rat", "score": 0.8}]
+    monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (cand, "semantisch"))
+    monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
+    gesehen: dict = {}
+
+    def fake_vereinfachen(frage, bisher, ctx, *a, **k):
+        gesehen.update(frage=frage, bisher=bisher, ids=[c["id"] for c in ctx])
+        yield "Die Stadt zahlt, wenn der Verein den Kredit nicht bedient [5]."
+
+    def darf_nicht_laufen(*a, **k):
+        raise AssertionError("normaler Antwort-Prompt statt Vereinfachung")
+
+    monkeypatch.setattr(qa_mod, "vereinfachen_stream", fake_vereinfachen)
+    monkeypatch.setattr(qa_mod, "answer_stream", darf_nicht_laufen)
+
+    vorher = ("Der Rat übernahm Ausfallbürgschaften über 44.699.000 Euro [5] und "
+              "beauftragte den ZVBN mit der Teilfortschreibung [6].")
+    with client.stream("POST", "/api/council/ask", json={
+            "question": "Erkläre das bitte einfacher, ohne Fachbegriffe.",
+            "verlauf": [{"frage": "Was wurde am 1. Juni beschlossen?", "antwort": "…"}],
+            "vorherige_antwort": vorher}) as r:
+        body = "".join(r.iter_text())
+    events = [json.loads(line[6:]) for line in body.splitlines() if line.startswith("data: ")]
+    assert "".join(e["text"] for e in events if e["type"] == "token").startswith("Die Stadt zahlt")
+    assert gesehen["bisher"] == vorher
+    # Nur die zuvor zitierten Beschlüsse — 7 war nie Beleg und darf deshalb
+    # auch keine Fußnote der einfachen Fassung werden können.
+    assert gesehen["ids"] == [5, 6]
+    # Ohne Analyse-Call (kein API-Key im Test) trägt der Verlauf das Thema.
+    assert gesehen["frage"] == "Was wurde am 1. Juni beschlossen?"
+
+    # Gegenprobe: eine inhaltliche Frage geht weiter den normalen Weg.
+    monkeypatch.setattr(qa_mod, "answer_stream", lambda *a, **k: iter(["Normal [5]."]))
+    monkeypatch.setattr(qa_mod, "vereinfachen_stream", darf_nicht_laufen)
+    with client.stream("POST", "/api/council/ask",
+                       json={"question": "Was wurde zum Stadion beschlossen?"}) as r:
+        body = "".join(r.iter_text())
+    events = [json.loads(line[6:]) for line in body.splitlines() if line.startswith("data: ")]
+    assert "".join(e["text"] for e in events if e["type"] == "token") == "Normal [5]."
 
 
 def test_ask_stream_faellt_auf_abgeleitete_fragen_zurueck(client, monkeypatch):

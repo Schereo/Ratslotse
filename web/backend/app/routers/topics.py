@@ -51,6 +51,10 @@ def list_topics(
     all_ids = [d for ids in cand.values() for d in ids]
     by_id = {d["id"]: d for d in council.get_decisions_by_ids(all_ids)} if all_ids else {}
     dec_counts = {tid: sum(1 for d in ids if d in by_id) for tid, ids in cand.items()}
+    # Ob der Matching-Lauf gedeckelt hat, weiß nur er selbst — die Zahl der
+    # gespeicherten Zeilen sieht bei „genau 40 gefunden" und „bei 40 abgeschnitten"
+    # gleich aus. Fehlt die Zeile (Bestand vor dem 15.08.2026), gilt: nicht gedeckelt.
+    capped = store.topic_match_caps(owner_id)
     out = []
     for t in topics:
         hits = sorted((by_id[d] for d in cand.get(t.id, []) if d in by_id),
@@ -63,6 +67,7 @@ def list_topics(
                 description=t.description,
                 created_at=t.created_at,
                 decision_count=dec_counts.get(t.id, 0),
+                decision_count_capped=capped.get(t.id, False),
                 last_hit_id=last["id"] if last else None,
                 last_hit_title=last["title"] if last else None,
                 last_hit_date=last.get("session_date") if last else None,

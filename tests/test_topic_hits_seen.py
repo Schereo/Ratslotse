@@ -89,3 +89,66 @@ def test_purge_laesst_lebende_themen_in_ruhe(tmp_path):
     store, topic = _setup(tmp_path)
     assert store.purge_orphaned_topic_rows() == {}
     assert store.unseen_hit_counts(7) == {topic.id: 3}
+
+
+def test_purge_stale_raeumt_auch_die_gelesen_marken(tmp_path):
+    """Die zweite Hälfte von „warum sind hier überall 25 neu?" (Tim, 15.08.2026).
+
+    Eine Neu-Extraktion vergibt neue Beschluss-IDs. Aufgeräumt wurden bislang
+    nur die Treffer — die Gelesen-Marken blieben auf toten IDs liegen. Sie
+    markierten damit nichts mehr und wuchsen unbegrenzt weiter.
+    """
+    store, topic = _setup(tmp_path)
+    store.mark_topic_hits_seen(7, topic.id)
+    assert store.unseen_hit_counts(7) == {}
+
+    # 101 überlebt die Neu-Extraktion, 102 und 103 nicht.
+    assert store.purge_stale_topic_matches({101}) == 2
+    assert [r[0] for r in store._conn.execute(
+        "SELECT decision_id FROM topic_hits_seen ORDER BY decision_id")] == [101]
+    # Und was übrig ist, gilt weiter als gelesen.
+    assert store.unseen_hit_counts(7) == {}
+
+
+def test_gedeckelte_trefferliste_ist_als_solche_erkennbar(tmp_path):
+    """Die Karte darf den Deckel nicht als Endzahl ausgeben: „40 Beschlüsse"
+    sah bei „genau 40 gefunden" und „bei 40 abgeschnitten" identisch aus —
+    und weil top-k 25 war, trug auf Prod JEDES Thema dieselbe 25."""
+    store, topic = _setup(tmp_path)
+    store.save_topic_decision_matches(topic.id, 7, [(201, 0.5), (202, 0.4)])
+    assert store.topic_match_caps(7) == {topic.id: False}
+
+    store.save_topic_decision_matches(topic.id, 7, [(201, 0.5)],
+                                      gedeckelt=True, kandidaten=90)
+    assert store.topic_match_caps(7) == {topic.id: True}
+    # Mit dem Thema verschwindet auch die Meta-Zeile.
+    store.delete_topic(topic.id)
+    assert store.topic_match_caps(7) == {}
+
+
+def test_gelesen_stand_ueberlebt_einen_reparaturlauf(tmp_path):
+    """`--ohne-meldungen` heißt: Dieser Lauf ist keine Neuigkeit.
+
+    Nach einer Neu-Extraktion tragen dieselben Beschlüsse neue IDs. Wer die
+    Liste schon geöffnet hatte, darf sie nicht wieder als ungelesen vorfinden
+    — sonst leuchtet nach jedem technischen Lauf bei jedem Thema wieder
+    „n neu".
+    """
+    store, topic = _setup(tmp_path)
+    ungesehen = store.add_topic(7, "Stadtbäume", "Baumschutz")
+    store.save_topic_decision_matches(ungesehen.id, 7, [(301, 0.5)])
+    store.mark_topic_hits_seen(7, topic.id)
+
+    gesehen_vorher = store.topics_mit_gelesen_stand()
+    assert gesehen_vorher == {topic.id}
+
+    # Neu-Extraktion: alle IDs neu vergeben.
+    store.purge_stale_topic_matches(set())
+    store.save_topic_decision_matches(topic.id, 7, [(901, 0.9), (902, 0.8)])
+    store.save_topic_decision_matches(ungesehen.id, 7, [(903, 0.7)])
+    for tid in (topic.id, ungesehen.id):
+        if tid in gesehen_vorher:
+            store.mark_topic_hits_seen(7, tid)
+
+    # Das angesehene Thema bleibt still, das nie geöffnete meldet ehrlich neu.
+    assert store.unseen_hit_counts(7) == {ungesehen.id: 1}

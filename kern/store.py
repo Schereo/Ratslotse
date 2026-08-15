@@ -108,6 +108,22 @@ CREATE TABLE IF NOT EXISTS council_topic_matches (
 );
 CREATE INDEX IF NOT EXISTS idx_ctm_topic ON council_topic_matches(topic_id);
 
+-- Was der Matching-Lauf über SEINEN EIGENEN Lauf weiß — je Thema eine Zeile.
+-- `gedeckelt` = es gab mehr Beschlüsse über der Relevanzschwelle als der Lauf
+-- speichern durfte. Ohne diese Zeile kann die Oberfläche nicht unterscheiden,
+-- ob „40 Beschlüsse" das Ergebnis oder der Deckel ist — und genau das hat sie
+-- bis zum 15.08.2026 als Tatsache behauptet („25 Beschlüsse insgesamt" bei
+-- JEDEM Thema, weil top-k 25 war). `kandidaten` ist die Zahl der geprüften
+-- Beschlüsse: nur damit lässt sich ein „0 Treffer" später als „nichts
+-- Passendes gefunden" statt „Lauf ist nie gelaufen" lesen.
+CREATE TABLE IF NOT EXISTS council_topic_match_meta (
+    topic_id   INTEGER NOT NULL PRIMARY KEY,
+    owner_id   INTEGER NOT NULL,
+    gedeckelt  INTEGER NOT NULL DEFAULT 0,
+    kandidaten INTEGER NOT NULL DEFAULT 0,
+    matched_at TEXT NOT NULL
+);
+
 -- Web frontend accounts. delivery_channel ∈ {email, push, both, off}.
 -- 'off' heißt: gar keine Benachrichtigungen. Kein eigenes Feld, weil es
 -- dieselbe Frage beantwortet wie die anderen drei — wohin? — nur eben mit
@@ -378,6 +394,7 @@ USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     ("council_results_sent", "owner_id"),
     ("topic_hits_seen", "owner_id"),
     ("council_topic_matches", "owner_id"),
+    ("council_topic_match_meta", "owner_id"),
     ("council_agenda_matches", "owner_id"),
     ("council_agenda_classified", "owner_id"),
     ("push_tokens", "owner_id"),
@@ -1864,8 +1881,16 @@ class Store:
         ).fetchall()
         return [TopicRow(**dict(r)) for r in rows]
 
-    def save_topic_decision_matches(self, topic_id: int, owner_id: int, matches: list[tuple]) -> int:
-        """Replace a topic's matched council decisions. ``matches`` = [(decision_id, score)]."""
+    def save_topic_decision_matches(self, topic_id: int, owner_id: int, matches: list[tuple],
+                                    *, gedeckelt: bool = False, kandidaten: int = 0) -> int:
+        """Replace a topic's matched council decisions. ``matches`` = [(decision_id, score)].
+
+        ``gedeckelt`` sagt, ob der Lauf mehr relevante Beschlüsse gefunden als
+        gespeichert hat, ``kandidaten``, wie viele er geprüft hat. Beides
+        wandert nach ``council_topic_match_meta`` — die Oberfläche kann eine
+        gedeckelte Liste dann als „40+" ausweisen, statt den Deckel als
+        Ergebnis auszugeben.
+        """
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
             self._conn.execute("DELETE FROM council_topic_matches WHERE topic_id = ?", (topic_id,))
@@ -1874,7 +1899,30 @@ class Store:
                 "VALUES (?,?,?,?,?)",
                 [(topic_id, owner_id, int(did), float(sc), now) for did, sc in matches],
             )
+            self._conn.execute(
+                "INSERT OR REPLACE INTO council_topic_match_meta "
+                "(topic_id, owner_id, gedeckelt, kandidaten, matched_at) VALUES (?,?,?,?,?)",
+                (topic_id, owner_id, 1 if gedeckelt else 0, int(kandidaten), now),
+            )
         return len(matches)
+
+    def topic_match_caps(self, owner_id: int) -> dict[int, bool]:
+        """{topic_id: True, wenn die gespeicherte Trefferliste gedeckelt ist}."""
+        return {r["topic_id"]: bool(r["gedeckelt"]) for r in self._conn.execute(
+            "SELECT topic_id, gedeckelt FROM council_topic_match_meta WHERE owner_id = ?",
+            (owner_id,))}
+
+    def topics_mit_gelesen_stand(self) -> set[int]:
+        """Themen, deren Trefferliste schon mal jemand angesehen hat.
+
+        Braucht der Reparaturlauf (``--ohne-meldungen``): Nach einer
+        Neu-Extraktion tragen dieselben Beschlüsse neue IDs, der Gelesen-Stand
+        hängt aber an der alten ID. Ohne diese Unterscheidung stünde nach jedem
+        technischen Lauf bei JEDEM Thema wieder „n neu" — eine Neuigkeit, die
+        keine ist (Tims Befund 15.08.2026: „warum sind hier überall 25 neu?").
+        """
+        return {r[0] for r in self._conn.execute(
+            "SELECT DISTINCT topic_id FROM topic_hits_seen")}
 
     def get_topic_decision_matches(self, topic_id: int) -> list[dict]:
         """Matched council decisions for a topic — {decision_id, score}, best first."""
@@ -1991,16 +2039,24 @@ class Store:
         return out
 
     def purge_stale_topic_matches(self, gueltige_ids: set[int]) -> int:
-        """Treffer wegräumen, deren Beschluss es nicht mehr gibt.
+        """Treffer UND Gelesen-Marken wegräumen, deren Beschluss es nicht mehr gibt.
 
         Beschlüsse bekommen bei einer Neu-Extraktion neue IDs; die hier
         gespeicherten Verweise zeigen danach ins Leere. Auf Prod waren am
         15.08.2026 ALLE gespeicherten Treffer tot — der Zähler zeigte acht,
         die Suche fand null. Aufgeräumt wird beim Matching-Lauf, der ohnehin
         beide Datenbanken offen hat.
+
+        `topic_hits_seen` muss mit: Diese Tabelle wurde nie aufgeräumt, also
+        sammelte sie Marken auf gelöschte IDs — sie wuchs unbegrenzt und
+        markierte nichts mehr. Wer sie stehen lässt, räumt nur die eine Hälfte
+        des Problems weg und wundert sich, dass der „neu"-Zähler trotzdem
+        springt.
         """
-        alle = [r[0] for r in self._conn.execute(
-            "SELECT DISTINCT decision_id FROM council_topic_matches")]
+        alle = {r[0] for r in self._conn.execute(
+            "SELECT DISTINCT decision_id FROM council_topic_matches")}
+        alle |= {r[0] for r in self._conn.execute(
+            "SELECT DISTINCT decision_id FROM topic_hits_seen")}
         tot = [d for d in alle if d not in gueltige_ids]
         if not tot:
             return 0
@@ -2010,6 +2066,8 @@ class Store:
                 ph = ",".join("?" * len(teil))
                 self._conn.execute(
                     f"DELETE FROM council_topic_matches WHERE decision_id IN ({ph})", teil)
+                self._conn.execute(
+                    f"DELETE FROM topic_hits_seen WHERE decision_id IN ({ph})", teil)
         return len(tot)
 
     def topic_decision_counts(self, owner_id: int) -> dict[int, int]:
@@ -2098,6 +2156,7 @@ class Store:
     # geht über USER_OWNED_TABLES.)
     TOPIC_OWNED_TABLES: tuple[str, ...] = (
         "council_topic_matches",
+        "council_topic_match_meta",
         "topic_hits_seen",
         "council_agenda_matches",
     )

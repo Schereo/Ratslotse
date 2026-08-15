@@ -75,6 +75,11 @@ class TopicOut(BaseModel):
     description: str
     created_at: str
     decision_count: int = 0
+    # True, wenn der Matching-Lauf mehr relevante Beschlüsse gefunden hat, als
+    # er speichern durfte. Die Karte schreibt dann „40+" — vorher stand dort
+    # eine glatte Endzahl, die in Wahrheit der Deckel war (Tim, 15.08.2026:
+    # „warum sind hier überall 25?").
+    decision_count_capped: bool = False
     # Jüngster Beschluss-Treffer (RL-701: „letzter Treffer"-Zeile der Themen-Karte)
     last_hit_id: int | None = None
     last_hit_title: str | None = None

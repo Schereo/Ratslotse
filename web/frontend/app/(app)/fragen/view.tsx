@@ -10,7 +10,13 @@ import { QaTab } from "@/components/council-qa";
  *  Fenster-Events, weil der Gesprächs-State im Ratsgespräch lebt — der Knopf
  *  erscheint nur, wenn es dort etwas zu zeigen gibt. Nur mobil; Desktop hat
  *  seine Knöpfe im Bühnen-Kopf. (Hierher umgezogen aus der Council-Seite,
- *  als Fragen mit dem Split eine eigene Seite wurde.) */
+ *  als Fragen mit dem Split eine eigene Seite wurde.)
+ *
+ *  Die Grenze ist `desk`, nicht `md`: Der Bühnen-Kopf, der diesen Knopf
+ *  ablöst, hängt selbst an `desk` — mit `md:hidden` klaffte dazwischen ein
+ *  Loch, in dem KEINE der beiden Varianten stand. Genau dort liegt das iPad
+ *  (Tims Befund 15.08.: „irgendwie fehlt der gesprächsverlauf button?"), und
+ *  ein Handy quer (844 px) fiel schon vorher stillschweigend hinein. */
 function GespraecheHeaderButton() {
   const [sichtbar, setSichtbar] = useState(false);
   const [titel, setTitel] = useState<string | null>(null);
@@ -30,7 +36,7 @@ function GespraecheHeaderButton() {
       onClick={() => window.dispatchEvent(new CustomEvent("rl:gespraeche-oeffnen"))}
       aria-label="Meine Gespräche öffnen"
       title={titel ? `Gespräch: ${titel}` : "Meine Gespräche"}
-      className="inline-flex h-9 max-w-[52vw] items-center justify-center rounded-[10px] border border-border bg-card px-2 text-muted-foreground shadow-sm transition-colors active:bg-muted sm:gap-1.5 sm:px-2.5 md:hidden"
+      className="inline-flex h-9 max-w-[52vw] items-center justify-center rounded-[10px] border border-border bg-card px-2 text-muted-foreground shadow-sm transition-colors active:bg-muted sm:gap-1.5 sm:px-2.5 desk:hidden"
     >
       <History className="h-4 w-4 shrink-0" aria-hidden />
       {/* V-03: Wo Platz ist, sagt der Knopf nicht nur WAS er ist, sondern in

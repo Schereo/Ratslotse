@@ -79,7 +79,15 @@ export function CouncilMap({ points, outlines, className }: {
       // L.map() verweigert die Wiederverwendung („container is being reused").
       ref.current.innerHTML = "";
       delete (ref.current as HTMLDivElement & { _leaflet_id?: number })._leaflet_id;
-      const map = L.map(ref.current, { scrollWheelZoom: false });
+      // zoomSnap: 0.25 — Leaflets Voreinstellung 1 zwingt fitBounds auf die
+      // nächstkleinere GANZE Zoomstufe. Was rechnerisch 11,3 wäre, wird 11,
+      // im schlimmsten Fall verschenkt das den Faktor 2 in der Fläche: Auf dem
+      // iPad quer landete die Karte bei Zoom 10 und zeigte 102 km von Aurich
+      // bis Bremen, obwohl die Punktwolke keine 15 km misst. In Vierteln darf
+      // fitBounds so nah heran, wie der Rahmen es hergibt; Kacheln rendert
+      // Leaflet dafür auf der nächsten ganzen Stufe und skaliert sie — bei
+      // Retina-Kacheln (detectRetina) sieht man das nicht.
+      const map = L.map(ref.current, { scrollWheelZoom: false, zoomSnap: 0.25 });
       mapRef.current = map;
       // Initial-View VOR den Vektor-Layern: Polygone (der Stadtteil-Umriss)
       // crashen sonst beim ersten fitBounds in Leaflets _clipPoints, weil der
@@ -256,7 +264,13 @@ export function CouncilMap({ points, outlines, className }: {
     <div
       className={cn(
         full
-          ? "fixed inset-0 z-[100] bg-background"
+          // Vollbild deckt bewusst auch Topbar und Tab-Leiste ab (z-[100] über
+          // deren z-40) — zurück geht es über den Knopf oben rechts bzw. Esc.
+          // Die Safe-Area bleibt als Hintergrundstreifen frei: sonst lägen
+          // Statusleiste und Home-Indikator direkt auf den Kacheln und
+          // verdeckten Leaflets Zoom-Knöpfe (oben links) bzw. den
+          // Quellen-Nachweis (unten rechts).
+          ? "fixed inset-0 z-[100] bg-background pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
           // isolate: der Vollbild-Button (z-[1000]) und die Leaflet-Panes
           // dürfen inline nicht über Topbar/Bottom-Nav (z-40) stechen.
           : cn("relative isolate overflow-hidden border border-border", className),
@@ -269,8 +283,11 @@ export function CouncilMap({ points, outlines, className }: {
         aria-label={full ? "Vollbild verlassen" : "Karte im Vollbild anzeigen"}
         title={full ? "Vollbild verlassen (Esc)" : "Vollbild"}
         className={cn(
-          "absolute right-3 z-[1000] flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background/90 text-foreground shadow-sm backdrop-blur transition-colors hover:bg-muted",
-          full ? "top-[calc(env(safe-area-inset-top)+0.75rem)]" : "top-3",
+          "absolute z-[1000] flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background/90 text-foreground shadow-sm backdrop-blur transition-colors hover:bg-muted",
+          // Im Vollbild ist dieser Knopf der einzige Weg zurück (die Tab-Leiste
+          // liegt darunter) — er muss aus der Safe-Area heraus, sonst steckt er
+          // unter Statusleiste bzw. Notch.
+          full ? "right-[calc(env(safe-area-inset-right)+0.75rem)] top-[calc(env(safe-area-inset-top)+0.75rem)]" : "right-3 top-3",
         )}
       >
         {full ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
