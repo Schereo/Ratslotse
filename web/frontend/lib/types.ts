@@ -14,6 +14,10 @@ export interface User {
   // Present only on native-app auth responses; the web relies on the cookie.
   access_token?: string | null;
   display_name?: string | null;
+  /** Einwilligung „Gespräche merken": 1 = ja, 0 = nein, null = nie gefragt.
+   *  Kommt mit dem Konto, damit die Frage-Seite die Erstnutzungs-Karte sofort
+   *  richtig setzt statt sie nachzuschieben. */
+  qa_speichern?: number | null;
 }
 
 export interface CouncilSession {

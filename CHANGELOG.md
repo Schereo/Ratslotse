@@ -7,6 +7,14 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Behoben
+- **Kein Verschieben mehr beim Öffnen von „Fragen".** Die Frage „Soll ich mir
+  deine Gespräche merken?" erschien erst, wenn der Server geantwortet hatte —
+  und schob dann den halben Bildschirm nach unten. Die Einwilligung reist
+  jetzt mit dem Konto, das ohnehin geladen ist; die Seite steht damit vom
+  ersten Bild an richtig. Gemessen bei 600 ms Antwortzeit: vorher ein Sprung
+  mit CLS 0,196, jetzt keiner. (#485)
+
 ### Verbessert
 - **Wochentag im Sitzungstab.** Die Kachel nannte nur Monat und Tag — ob eine
   Sitzung auf einen Montag oder einen Samstag fällt, musste man selbst

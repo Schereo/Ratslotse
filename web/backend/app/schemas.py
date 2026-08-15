@@ -47,6 +47,12 @@ class UserOut(BaseModel):
     # cookie and leave this null.
     access_token: str | None = None
     display_name: str | None = None
+    # Einwilligung „Gespräche merken" (null = nie gefragt). Reist mit dem
+    # Konto mit, damit die Frage-Seite beim Öffnen sofort weiß, ob die
+    # Erstnutzungs-Karte steht — sonst erscheint sie erst nach der Antwort von
+    # /council/gespraeche und schiebt den halben Bildschirm nach unten
+    # (gemessen: ein Sprung mit CLS 0,196 bei 600 ms Antwortzeit).
+    qa_speichern: int | None = None
 
 
 class TopicIn(BaseModel):

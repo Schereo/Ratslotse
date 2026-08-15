@@ -31,6 +31,7 @@ import type { QaOrtPin } from "@/components/qa-orte-karte";
 const QaOrteKarte = dynamic(() => import("@/components/qa-orte-karte"), { ssr: false });
 import { QaSource } from "@/lib/types";
 import { apiUrl, authHeaders } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { entwurfAbholen, entwurfMelden } from "@/lib/draft";
 import { Button, Input, toast } from "@/components/ui";
 import { decisionHref } from "@/lib/routes";
@@ -565,6 +566,9 @@ function jumpZuAnlage(turnIdx: number, nr: number, spalte: boolean) {
 }
 
 export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
+  // Das Konto ist beim Öffnen des Tabs längst geladen (App-Hülle) — es trägt
+  // die Einwilligung, an der die Erstnutzungs-Karte hängt.
+  const { user: konto } = useAuth();
   const [q, setQ] = useState("");
   const sp = useSearchParams();
   const pathname = pfad(usePathname());
@@ -1146,7 +1150,14 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
 
   // „Meine Gespräche" (5a/I-04 + 6a): Einwilligung (null = nie gefragt),
   // laufendes Gespräch und die gespeicherte Liste.
-  const [einstellung, setEinstellung] = useState<number | null | undefined>(undefined);
+  // Startwert aus dem Konto: `undefined` hieß „wissen wir noch nicht" — und
+  // genau in dieser Lücke erschien die Erstnutzungs-Karte nachträglich und
+  // schob den ganzen Empty State nach unten (Tims Befund 15.08.; gemessen
+  // ein Sprung mit CLS 0,196). Der Wert steht im Konto, das ohnehin geladen
+  // ist; die Liste der Gespräche darf weiter nachkommen.
+  const [einstellung, setEinstellung] = useState<number | null | undefined>(
+    () => (konto ? konto.qa_speichern ?? null : undefined),
+  );
   const [gespraechId, setGespraechId] = useState<number | null>(null);
   const [gespraeche, setGespraeche] = useState<GespraechEintrag[]>([]);
   const [zeigeListe, setZeigeListe] = useState(false);
