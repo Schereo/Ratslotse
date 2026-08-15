@@ -41,6 +41,7 @@ export default defineConfig({
 					label: 'Produkt',
 					items: [
 						{ slug: 'beschluesse' },
+						{ slug: 'haushalt' },
 						{ slug: 'app-und-konten' },
 					],
 				},
