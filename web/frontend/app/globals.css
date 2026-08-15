@@ -524,3 +524,39 @@
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
+
+/* ── Haushalt: Farbrampen der Gegenbalken (Design H-01/H-06) ─────────────────
+   Einnahmen = Hafenblau-Rampe, Ausgaben = Schiefer-Rampe; im Dunkelmodus
+   drehen die Rampen um (hellster Ton = größter Posten), damit der größte
+   Posten auf dunklem Grund weiter der auffälligste ist. Segment-Text steht
+   hell auf dunklen Segmenten (hell) bzw. dunkel auf hellen (dunkel). */
+:root {
+  --hh-ein-0: hsl(205 85% 27%); --hh-ein-1: hsl(204 62% 44%);
+  --hh-ein-2: hsl(203 48% 56%); --hh-ein-3: hsl(202 38% 68%);
+  --hh-ein-4: hsl(203 30% 79%); --hh-ein-5: hsl(204 26% 85%);
+  --hh-ein-6: hsl(205 22% 90%);
+  --hh-aus-0: hsl(211 34% 26%); --hh-aus-1: hsl(210 26% 36%);
+  --hh-aus-2: hsl(209 20% 46%); --hh-aus-3: hsl(208 17% 57%);
+  --hh-aus-4: hsl(207 16% 67%); --hh-aus-5: hsl(206 18% 75%);
+  --hh-aus-6: hsl(206 20% 81%); --hh-aus-7: hsl(205 22% 86%);
+  --hh-aus-8: hsl(205 24% 90%); --hh-aus-9: hsl(205 26% 93%);
+  --hh-seg-text: #fff;
+}
+.dark {
+  --hh-ein-0: hsl(202 90% 60%); --hh-ein-1: hsl(203 62% 48%);
+  --hh-ein-2: hsl(204 45% 40%); --hh-ein-3: hsl(205 36% 33%);
+  --hh-ein-4: hsl(207 28% 27%); --hh-ein-5: hsl(208 24% 22%);
+  --hh-ein-6: hsl(209 22% 18%);
+  --hh-aus-0: hsl(206 20% 82%); --hh-aus-1: hsl(207 18% 68%);
+  --hh-aus-2: hsl(208 16% 56%); --hh-aus-3: hsl(209 16% 46%);
+  --hh-aus-4: hsl(210 18% 38%); --hh-aus-5: hsl(211 22% 29%);
+  --hh-aus-6: hsl(211 24% 25%); --hh-aus-7: hsl(212 26% 21%);
+  --hh-aus-8: hsl(212 28% 18%); --hh-aus-9: hsl(213 30% 15%);
+  --hh-seg-text: hsl(213 50% 7%);
+}
+
+/* Schraffur für Rücklage/Fehlbetrag (H-01/H-03/H-07): Signal nur als Kante
+   und Muster, nie als Fläche — die Lücken-Konvention aller Haushalts-Grafiken. */
+.hh-schraffur {
+  background: repeating-linear-gradient(135deg, hsl(19 92% 55% / 0.22) 0 3px, transparent 3px 6px);
+}

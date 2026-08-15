@@ -7,6 +7,20 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt
+- **Neuer Bereich „Haushalt".** Wohin fließt das Geld der Stadt? Unter
+  `/haushalt` steht der Ergebnishaushalt 2020–2026 zum ersten Mal lesbar da:
+  drei Kernzahlen, das Ersparte der Stadt (und wie lange es beim aktuellen
+  Minus noch reicht — als offene Rechnung, nicht als Prognose), zwei
+  Geldfluss-Ansichten („Woher & wohin" als Balken, „Von 100 Euro der Stadt"
+  als Raster), die Einnahmen-Ausgaben-Schere über die Jahre und alle 13
+  Teilhaushalte als Karten — sortiert nach dem, was sie die Stadt unterm
+  Strich kosten, nicht nach dem, was sie brutto ausgeben. Jeder Bereich hat
+  eine eigene Seite mit Kostendeckung, Brutto-gegen-Netto-Vergleich und
+  Entwicklung. Jede Zahl trägt ihre Quelle (Haushaltsplan-PDF bzw.
+  Open-Data-CSV der Stadt); fehlende Daten erscheinen als ehrliche Lücke,
+  nie geschätzt. (#PR)
+
 ### Verbessert
 - **Haushalts-Quiz ohne 2024-Lücke, Stadtfinanzen als Datenfundament.** Die
   Trend-Diagramme der Haushalts-Quizfragen übersprangen 2024 — das Plan-PDF
