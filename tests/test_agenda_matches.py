@@ -208,25 +208,76 @@ def _sess_mit_vorlagen():
         ])
 
 
+class _Antwort:
+    def __init__(self, text):
+        self.choices = [type("C", (), {"message": type("M", (), {"content": text})()})()]
+
+
 def test_pruefung_verwirft_nur_widerlegte_kandidaten(monkeypatch):
     """Tims Wunsch 12.08.: Der Vorlagentext soll entscheiden, ob das Thema
     wirklich behandelt wird — der Titel klingt bei Nachbar-TOPs oft gleich.
-    Ohne Vorlagentext (Fraktions-Antrag) bleibt es beim Titel-Urteil."""
+    Ganz ohne Beleg (weder Vorlage noch Kurzfassung) bleibt es beim Titel."""
     from council import watcher
-
-    class _Antwort:
-        def __init__(self, text):
-            self.choices = [type("C", (), {"message": type("M", (), {"content": text})()})()]
 
     monkeypatch.setattr(watcher.llm, "chat_complete",
                         lambda **kw: _Antwort('{"treffer": ["Ö 5"]}'))
     auszuege = {"26/0001": "Anlass: Sanierung des Schulgebäudes …",
                 "26/0002": "Anlass: Neubau einer Sporthalle für den Vereinssport …"}
-    behalten = watcher._pruefe_am_vorlagentext(
+    behalten = watcher._pruefe_am_text(
         _sess_mit_vorlagen(), {"name": "Schulgebäude", "description": "Sanierung von Schulen"},
-        ["Ö 5", "Ö 6", "Ö 7"], auszuege)
-    # Ö 6 widerlegt (Sporthalle), Ö 7 hat keinen Text → bleibt.
+        ["Ö 5", "Ö 6", "Ö 7"], auszuege, {})
+    # Ö 6 widerlegt (Sporthalle), Ö 7 hat gar keinen Beleg → bleibt.
     assert behalten == ["Ö 5", "Ö 7"]
+
+
+def test_pruefung_greift_auch_ohne_vorlage(monkeypatch):
+    """DER Fehler hinter Tims Befund 15.08.: „Ö 7 Aktueller Planungsstand
+    Spielplatz Eversten Holz" trug die Marke „dein Thema · Wohnheim Tegelbusch".
+
+    Der TOP hat keine Vorlage — und genau dann sprang die Gegenprüfung früher
+    komplett ab und ließ den Titel-Treffer unbesehen durch. Die KI-Kurzfassung
+    des TOP ist die Inhaltsangabe, die es trotzdem gibt.
+    """
+    from council import watcher
+
+    gesehen: dict = {}
+
+    def _fake(**kw):
+        gesehen["prompt"] = kw["messages"][0]["content"]
+        return _Antwort('{"treffer": []}')
+
+    monkeypatch.setattr(watcher.llm, "chat_complete", _fake)
+    behalten = watcher._pruefe_am_text(
+        _sess_mit_vorlagen(), {"name": "Wohnheim Tegelbusch",
+                               "description": "Studierendenwohnheim Tegelbusch"},
+        ["Ö 7"], {}, {"Ö 7": "Vorgestellt wird der Planungsstand des Spielplatzes."})
+    assert behalten == []
+    # Die Kurzfassung muss auch wirklich im Prompt stehen, sonst urteilt das
+    # Modell weiterhin blind über den Titel.
+    assert "Planungsstand des Spielplatzes" in gesehen["prompt"]
+
+
+def test_kurzfassungen_werden_notfalls_selbst_erzeugt(tmp_path, monkeypatch):
+    """Die TOP-Kurzfassungen entstehen sonst in `check_committees` — und der
+    Job überspringt ausgerechnet die Sitzungen mit Themen-Treffer („Themen-
+    Treffer gewinnt"). Ohne dieses Nachziehen stünde die Gegenprüfung dort
+    ohne Beleg da, wo sie gebraucht wird."""
+    from council import watcher
+    from council.store import CouncilStore
+
+    store = CouncilStore(tmp_path / "council.sqlite")
+    session = _sess_mit_vorlagen()
+    # Der Import passiert im Funktionsrumpf — gepatcht wird deshalb am Modul.
+    import council.committee_summary as cs
+    monkeypatch.setattr(cs, "summarize_agenda_items",
+                        lambda **kw: [{"number": "Ö 7", "summary": "Antrag zu Schulen."}])
+
+    assert watcher._kurzfassungen(store, session) == {"Ö 7": "Antrag zu Schulen."}
+    # Gecacht: der zweite Aufruf liest, statt erneut zu fragen.
+    monkeypatch.setattr(cs, "summarize_agenda_items",
+                        lambda **kw: (_ for _ in ()).throw(AssertionError("nochmal gefragt")))
+    assert watcher._kurzfassungen(store, session) == {"Ö 7": "Antrag zu Schulen."}
+    store.close()
 
 
 def test_pruefung_ist_kein_blocker(monkeypatch):
@@ -239,9 +290,9 @@ def test_pruefung_ist_kein_blocker(monkeypatch):
 
     monkeypatch.setattr(watcher.llm, "chat_complete", _kaputt)
     nums = ["Ö 5", "Ö 6"]
-    assert watcher._pruefe_am_vorlagentext(
+    assert watcher._pruefe_am_text(
         _sess_mit_vorlagen(), {"name": "X", "description": "Y"}, nums,
-        {"26/0001": "Anlass: …", "26/0002": "Anlass: …"}) == nums
+        {"26/0001": "Anlass: …", "26/0002": "Anlass: …"}, {}) == nums
 
 
 def test_vorlagen_auszug_beginnt_beim_inhalt():

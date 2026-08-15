@@ -14,16 +14,39 @@ const config: Config = {
     },
     extend: {
       screens: {
-        /* „desk" = echter Desktop, nicht bloß ein breiter Screen.
-           Die Seitenleiste ist Maus-Navigation: schmale Ziele, Hover-Zustände,
-           kein Daumen in Reichweite. Ein iPad ist auch quer 1366 px breit und
-           bekäme sie nach reiner Breite — genau das sah auf dem 13"-iPad
-           hochkant falsch aus (Tims Befund 14.08.: „der Screen ist absolut
-           kacke aufgeteilt"). `pointer: fine` fragt das primäre Eingabegerät
-           ab: Maus/Trackpad → Leiste links, Finger → Tab-Leiste unten. Ein
-           angestecktes Magic Keyboard ändert daran nichts, Touch bleibt auf
-           dem iPad das primäre Gerät. */
+        /* Zwei verschiedene Fragen — bitte nicht wieder zu einer machen:
+           „Wie BREIT ist der Platz?" (wie viele Lesespalten passen nebeneinander)
+           und „Womit wird GEZEIGT?" (Maus oder Daumen — Seitenleiste oder
+           Tab-Leiste). Ein iPad quer beantwortet sie unterschiedlich: breit
+           genug für zwei Spalten, aber immer noch ein Touch-Gerät.
+
+           breit  — reine Breite. Alles, was nur mit dem Platz zu tun hat:
+                    Lesespalte + Belege-Spalte, Raster, Innenabstände. Gilt
+                    auf dem iPad quer GENAUSO wie am Desktop (Tims Befund
+                    15.08.: „hier würden die quellen auch als spalte daneben
+                    passen").
+           desk   — echter Desktop, nicht bloß ein breiter Screen. Die
+                    Seitenleiste ist Maus-Navigation: schmale Ziele,
+                    Hover-Zustände, kein Daumen in Reichweite. Ein iPad ist
+                    auch quer 1366 px breit und bekäme sie nach reiner Breite
+                    — genau das sah auf dem 13"-iPad hochkant falsch aus
+                    (Tims Befund 14.08.: „der Screen ist absolut kacke
+                    aufgeteilt"). `pointer: fine` fragt das primäre
+                    Eingabegerät ab: Maus/Trackpad → Leiste links, Finger →
+                    Tab-Leiste unten. Ein angestecktes Magic Keyboard ändert
+                    daran nichts, Touch bleibt auf dem iPad das primäre Gerät.
+           tab    — der Rest von `breit`: breites Touch-Gerät. Dort gehören
+                    Tab-Leiste und fixierter Composer der Unterkante des
+                    Bildschirms; was sich daran ausrichten muss, hängt hier
+                    dran statt an `desk`.
+
+           `desk` und `tab` schließen einander aus — deshalb ist es egal, in
+           welcher Reihenfolge Tailwind ihre Regeln ausgibt. `breit` steht
+           bewusst VOR beiden: Wo eine Regel doppelt gesetzt wird, gewinnt die
+           gerätespezifische. */
+        breit: { raw: "(min-width: 1024px)" },
         desk: { raw: "(pointer: fine) and (min-width: 1024px)" },
+        tab: { raw: "(pointer: coarse) and (min-width: 1024px)" },
       },
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],

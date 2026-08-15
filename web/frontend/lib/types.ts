@@ -372,6 +372,9 @@ export interface Topic {
   description: string;
   created_at: string;
   decision_count: number;
+  /** Es gab mehr passende Beschlüsse, als der Matching-Lauf speichern durfte
+   *  — die Karte schreibt dann „40+" statt einer Endzahl, die keine ist. */
+  decision_count_capped?: boolean;
   last_hit_id?: number | null;
   last_hit_title?: string | null;
   last_hit_date?: string | null;

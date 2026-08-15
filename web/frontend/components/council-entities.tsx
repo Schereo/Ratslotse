@@ -13,10 +13,30 @@ import { themaHref } from "@/lib/routes";
 import { KIND_COLOR } from "@/components/council-map";
 import { loadStadtteile, stadtteilFor, stadtteileImWahlbereich, type StadtteilFeature } from "@/lib/stadtteile";
 
+// Form und Höhe der Stadtkarte stehen hier an EINER Stelle — Karte und beide
+// Platzhalter (Chunk, Geo-Fetch) müssen sie teilen, sonst springt das Layout
+// beim Nachladen.
+//
+// Seitenverhältnis statt reinem vh-Anteil: 38 vh ergeben auf dem Telefon einen
+// fast quadratischen Rahmen (356 × 319), auf dem iPad quer aber einen
+// Briefschlitz (1114 × 310, 3,6 : 1). In einen so flachen Rahmen passt die
+// Punktwolke nur, wenn Leaflet zwei Zoomstufen herauszoomt — sichtbar waren
+// 102 km von Aurich bis Bremen, Oldenburg ein Klecks in der Mitte (Tims
+// iPad-Befund). Deshalb: mindestens 38 vh (das Telefon bleibt, wie es ist),
+// Form 12 : 5, und nie mehr als die halbe Bildschirmhöhe — unter der Karte
+// muss die Filterzeile angeschnitten stehen bleiben, sonst merkt niemand,
+// dass es weitergeht. Der frühere Boden `min-h-[17rem]` fällt weg: auf einem
+// quer gehaltenen Telefon fraß er 70 % der Höhe.
+//
+// `w-full` ist Pflicht, nicht Deko: Ohne feste Breite rechnet der Browser sie
+// aus Seitenverhältnis und Höhe zurück, sobald `min-h` die Höhe bestimmt — die
+// Karte wuchs auf dem Telefon auf 768 px und lief aus dem Bild (gemessen).
+const KARTE_RAHMEN = "w-full aspect-[12/5] min-h-[38vh] max-h-[min(30rem,50vh)]";
+
 // Leaflet needs `window`, so the map is client-only (ssr:false).
 const CouncilMap = dynamic(() => import("@/components/council-map").then((m) => m.CouncilMap), {
   ssr: false,
-  loading: () => <div className="flex h-[22rem] items-center justify-center rounded-xl border border-border"><Spinner /></div>,
+  loading: () => <div className={cn(KARTE_RAHMEN, "flex items-center justify-center rounded-xl border border-border")}><Spinner /></div>,
 });
 
 export const ENTITY_KIND: Record<string, { label: string; plural: string; Icon: typeof MapPin }> = {
@@ -300,13 +320,20 @@ export function EntitiesTab() {
           Toggle-Feature. Kind-Chips unten filtern Karte UND Liste. Während der
           Geo-Fetch läuft, hält ein Platzhalter dieselbe Höhe (kein Pop-in-Shift). */}
       {geoLoading ? (
-        <div className="flex h-[38vh] min-h-[17rem] max-h-[26rem] items-center justify-center rounded-xl border border-border">
+        <div className={cn(KARTE_RAHMEN, "flex items-center justify-center rounded-xl border border-border")}>
           <Spinner />
         </div>
       ) : (geo?.entities.length ?? 0) > 0 ? (
-        // isolate: die Karte (z-500 intern) bleibt unter Topbar/Bottom-Nav (z-40).
-        <div className="relative isolate z-0">
-          <CouncilMap points={points} outlines={outlines} className="h-[38vh] min-h-[17rem] max-h-[26rem] rounded-xl" />
+        // Hier bewusst KEIN `isolate`: Leaflets Panes (z bis ~700) fängt schon
+        // `.leaflet-container` selbst ein (globals.css). Ein zweiter
+        // Stapelkontext an dieser Stelle sperrte dagegen das Vollbild der Karte
+        // in diesen Kasten — die Karte lag dann unter Topbar und Tab-Leiste,
+        // ihr Schließen-Knopf verschwand dahinter, und vom Rest der Seite
+        // stachen ausgerechnet die *positionierten* Teile durch: Suchfeld und
+        // Stadtteil-Wähler schwebten mitten auf der Karte, Titel, Legende und
+        // Art-Chips blieben unsichtbar (Tims iPad-Befund aus Build 11).
+        <div className="relative">
+          <CouncilMap points={points} outlines={outlines} className={cn(KARTE_RAHMEN, "rounded-xl")} />
           {/* Die Legende steht UNTER der Karte, nicht darin: Als Overlay unten
               links lag sie auf schmalen Displays über Leaflets Quellenangabe
               („OpenStreetMap, CARTO") — zwei Zeilen Text auf einer Zeile

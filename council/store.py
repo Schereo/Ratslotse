@@ -1437,6 +1437,17 @@ class CouncilStore:
         ).fetchall()
         return [r[0] for r in rows]
 
+    def agenda_summaries_for(self, ksinr: int) -> dict[str, str]:
+        """{item_number: KI-Kurzfassung} einer Sitzung.
+
+        Für TOPs ohne Vorlage ist die Kurzfassung die einzige Inhaltsangabe,
+        die es gibt — und damit das einzige, woran die Themen-Zuordnung sich
+        gegenprüfen lässt (siehe ``watcher._pruefe_am_text``).
+        """
+        return {r["item_number"]: r["summary"] for r in self._conn.execute(
+            "SELECT item_number, summary FROM agenda_item_summaries WHERE ksinr = ?",
+            (ksinr,)) if r["summary"]}
+
     def agenda_items(self, ksinr: int) -> list[dict]:
         rows = self._conn.execute(
             """SELECT item_number, title, vorlage_nr, kvonr, is_public

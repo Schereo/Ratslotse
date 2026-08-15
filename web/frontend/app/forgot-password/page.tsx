@@ -46,7 +46,11 @@ export default function ForgotPasswordPage() {
             <form onSubmit={onSubmit} className="mt-6 space-y-4">
               <div>
                 <label htmlFor="email" className="mb-1 block text-sm font-medium text-foreground">E-Mail</label>
-                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus autoComplete="email" />
+                {/* Kein autoFocus — dieselbe Lehre wie auf Anmelden und
+                    Registrieren: Das statische HTML trägt das Attribut, der
+                    Browser setzt es schon beim Parsen, und die Tastatur klappt
+                    auf, bevor die Seite überhaupt steht. */}
+                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
               </div>
               {error && <p className="text-sm text-destructive">{error}</p>}
               <Button type="submit" disabled={busy} className="w-full">

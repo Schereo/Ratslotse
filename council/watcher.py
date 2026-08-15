@@ -119,8 +119,13 @@ def _classify_agenda(session: CouncilSession, topics: list[dict],
     if not isinstance(data, dict):
         return {}
 
-    result: dict[int, list[str]] = {}
     auszuege = _vorlagen_auszuege(store, session)
+    per_nr = {i.item_number: i for i in session.agenda_items}
+
+    # Erst alle Vorschläge einsammeln, dann prüfen: So steht vor dem ersten
+    # Prüf-Aufruf fest, ob überhaupt ein Kandidat ohne Vorlage dabei ist —
+    # nur dann lohnt (und kostet) das Nachladen der TOP-Kurzfassungen.
+    vorschlaege: list[tuple[int, list[str]]] = []
     for m in data.get("matches", []):
         idx = m.get("topic_index", 0) - 1
         # Neues Format: [{"nummer", "titel"}]; Altformat (auch für Admin-
@@ -130,30 +135,88 @@ def _classify_agenda(session: CouncilSession, topics: list[dict],
             roh = [{"nummer": n} for n in m.get("item_numbers", [])]
         nums = _verifiziere_items(session, roh)
         if 0 <= idx < len(topics) and nums:
-            if auszuege:
-                nums = _pruefe_am_vorlagentext(session, topics[idx], nums, auszuege)
-            if nums:
-                result[idx] = nums
+            vorschlaege.append((idx, nums))
+
+    ohne_vorlage = any(
+        not auszuege.get((per_nr[n].vorlage_nr or "") if n in per_nr else "")
+        for _idx, nums in vorschlaege for n in nums)
+    kurzfassungen = _kurzfassungen(store, session) if ohne_vorlage else {}
+
+    result: dict[int, list[str]] = {}
+    for idx, nums in vorschlaege:
+        if auszuege or kurzfassungen:
+            nums = _pruefe_am_text(session, topics[idx], nums, auszuege, kurzfassungen)
+        if nums:
+            result[idx] = nums
     return result
 
 
-def _pruefe_am_vorlagentext(session: CouncilSession, topic: dict,
-                            nums: list[str], auszuege: dict[str, str]) -> list[str]:
-    """Zweite Stufe: Kandidaten am Vorlagentext gegenprüfen.
+def _kurzfassungen(store, session: CouncilSession) -> dict[str, str]:
+    """item_number → KI-Kurzfassung, für TOPs ohne Vorlage.
 
-    Nur Kandidaten MIT Text können scheitern — wo kein Text vorliegt, bleibt
-    es beim Titel-Urteil (und der Punkt bleibt drin). Fällt der Aufruf aus,
-    bleibt die Titel-Zuordnung stehen: Die Prüfung schärft, sie blockiert nie.
+    Notfalls selbst erzeugt: Die Kurzfassungen entstehen sonst in
+    `check_committees` — und zwar nur für Sitzungen, zu denen gerade jemand
+    eine Gremien-Meldung bekommt. Genau die Sitzungen mit Themen-Treffer
+    überspringt dieser Job aber („Themen-Treffer gewinnt"), sodass die
+    Gegenprüfung ausgerechnet dort ohne Beleg dastünde, wo sie gebraucht wird.
+    Der Aufruf kostet einen LLM-Call je Sitzung, wird gecacht und ist
+    best-effort: Schlägt er fehl, bleibt es beim Titel-Urteil wie bisher.
+    """
+    if store is None:
+        return {}
+    try:
+        vorhanden = store.agenda_summaries_for(session.ksinr)
+        if vorhanden:
+            return vorhanden
+        from .committee_summary import summarize_agenda_items
+
+        punkte = summarize_agenda_items(
+            committee=session.committee, session_date=session.session_date,
+            agenda_items=session.agenda_items)
+        if not punkte:
+            return {}
+        store.save_item_summaries(session.ksinr, _agenda_hash(session.agenda_items), punkte)
+        return {p["number"]: p["summary"] for p in punkte
+                if p.get("number") and p.get("summary")}
+    except Exception:  # noqa: BLE001 — Anreicherung ist Kür, nie Blocker
+        return {}
+
+
+def _pruefe_am_text(session: CouncilSession, topic: dict, nums: list[str],
+                    auszuege: dict[str, str], kurzfassungen: dict[str, str]) -> list[str]:
+    """Zweite Stufe: Kandidaten am Inhalt gegenprüfen, nicht nur am Titel.
+
+    Beleg je Kandidat ist der Vorlagentext — und wo es keinen gibt, die
+    KI-Kurzfassung des TOP. Der Zusatz ist der eigentliche Fix: Vorher konnte
+    diese Stufe genau dort nicht greifen, wo der Titel das einzige Indiz war,
+    und ließ jeden vorlagenlosen Punkt unbesehen durch. Genau so bekam „Ö 7
+    Aktueller Planungsstand Spielplatz Eversten Holz" (Jugendhilfeausschuss
+    19.08.2026, ohne Vorlage) die Marke „dein Thema · Wohnheim Tegelbusch"
+    — und in derselben Sitzung, für ein anderes Konto, „Am Bahndamm".
+
+    Ganz ohne Beleg (weder Vorlage noch Kurzfassung) bleibt es beim
+    Titel-Urteil. Fällt der Aufruf aus, bleibt die Titel-Zuordnung stehen:
+    Die Prüfung schärft, sie blockiert nie.
     """
     per_nr = {i.item_number: i for i in session.agenda_items}
-    mit_text = [n for n in nums if auszuege.get((per_nr.get(n) or _LEER).vorlage_nr or "")]
-    if not mit_text:
+
+    def beleg(n: str) -> tuple[str, str]:
+        """(Etikett, Text) — Vorlage schlägt Kurzfassung, sie ist die Quelle."""
+        item = per_nr.get(n)
+        text = auszuege.get((item.vorlage_nr or "") if item else "")
+        if text:
+            return "Vorlage", text
+        kurz = kurzfassungen.get(n) or ""
+        return ("Kurzfassung", kurz) if kurz else ("", "")
+
+    belege = {n: beleg(n) for n in nums}
+    if not any(t for _label, t in belege.values()):
         return nums
     zeilen = []
     for n in nums:
         item = per_nr.get(n)
-        text = auszuege.get((item.vorlage_nr or "") if item else "") or "—"
-        zeilen.append(f"{n}: {item.title if item else n}\n    Vorlage: {text}")
+        label, text = belege[n]
+        zeilen.append(f"{n}: {item.title if item else n}\n    {label or 'Vorlage'}: {text or '—'}")
     try:
         antwort = llm.chat_complete(
             model=MODEL, response_format={"type": "json_object"}, temperature=0,
@@ -170,18 +233,11 @@ def _pruefe_am_vorlagentext(session: CouncilSession, topic: dict,
     except Exception:  # noqa: BLE001 — Prüfung ist Schärfung, kein Blocker
         return nums
     erlaubt = {" ".join(str(x).split()).upper() for x in behalten}
-    gefiltert = [n for n in nums
-                 if " ".join(n.split()).upper() in erlaubt
-                 or not auszuege.get((per_nr.get(n) or _LEER).vorlage_nr or "")]
-    return gefiltert
-
-
-class _Leer:
-    vorlage_nr = ""
-    title = ""
-
-
-_LEER = _Leer()
+    # Verworfen wird nur, wer einen Beleg HAT und ihn nicht besteht — ein Punkt
+    # ohne jede Inhaltsangabe wurde nie geprüft und darf nicht stillschweigend
+    # als widerlegt gelten.
+    return [n for n in nums
+            if " ".join(n.split()).upper() in erlaubt or not belege[n][1]]
 
 
 def _falte_titel(text: str) -> str:
