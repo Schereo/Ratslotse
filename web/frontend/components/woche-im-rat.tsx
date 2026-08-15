@@ -17,6 +17,8 @@ export type WochenPunkt = {
   antragsteller?: string | null; summary: string | null;
   vorlage_nr: string | null; kvonr: number | null;
   committee: string; session_date: string; topic_name?: string | null;
+  /** Warum der Punkt zählt — in Alltagssprache, kommt aus der Bewertung. */
+  wichtig_grund?: string | null;
   /** Der EINE hervorgehobene Punkt der Karte (Design 14a). */
   top?: boolean;
 };
@@ -433,10 +435,12 @@ function RailPunkt({ punkt, top, dichte }: { punkt: WochenPunkt; top: boolean; d
         )}>
           {punkt.titel_kurz || punkt.title}
         </span>
-        {/* Kurzbegründung: nur Desktop, nur am obersten Punkt. */}
-        {desktop && top && punkt.summary && (
+        {/* Am obersten Punkt steht, WARUM er oben steht — in einfacher
+            Sprache aus der Bewertung. Die amtliche Kurzfassung ist die
+            Rückfallebene, solange noch keine Bewertung vorliegt. */}
+        {desktop && top && (punkt.wichtig_grund || punkt.summary) && (
           <span className="mt-0.5 block text-[11.5px] leading-relaxed text-muted-foreground">
-            {punkt.summary}
+            {punkt.wichtig_grund || punkt.summary}
             {punkt.topic_name && (
               <> — passt zu deinem Thema{" "}
                 <span className="font-medium text-foreground/90">{punkt.topic_name}</span>.</>

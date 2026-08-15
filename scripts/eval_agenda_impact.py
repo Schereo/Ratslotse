@@ -113,6 +113,19 @@ def punkte_der_woche(store: CouncilStore, von: str, bis: str) -> list[dict]:
         p["vorgeschichte"] = sum(1 for b in reihe if (b["datum"] or "9999") < p["session_date"])
         p["antragsteller"], p["titel_kurz"] = store._titel_zerlegen(p["title"])
         p["topic_name"] = None
+        p["stationen"] = len(reihe)
+        # Das Signal, das den Unterschied macht: Wie oft stand genau das schon
+        # auf einer Tagesordnung? (Zuwendungen 101×, Haushaltssatzung 3×.)
+        p["wiederkehr"] = store._wiederkehr().get(store._wiederkehr_schluessel(p["title"]), 1)
+    # Beschlussvorschlag und Kostenteil aus der Vorlage nachladen
+    kv = [p["kvonr"] for p in punkte if p["kvonr"]]
+    if kv:
+        ph3 = ",".join("?" * len(kv))
+        vor = {r["kvonr"]: dict(r) for r in store._conn.execute(
+            f"SELECT kvonr, beschlussvorschlag, finanz_check, amt FROM council_vorlagen "
+            f"WHERE kvonr IN ({ph3})", kv)}
+        for p in punkte:
+            p.update({k: v for k, v in (vor.get(p["kvonr"]) or {}).items() if k != "kvonr"})
     return punkte
 
 
@@ -151,10 +164,10 @@ def main() -> int:
                 for j, p in enumerate(teil):
                     p["id"] = start_i + j
                 nach_id = {p["id"]: p for p in teil}
-                for iid, score, grund in rate_agenda_batch(teil):
+                for iid, score, warum in rate_agenda_batch(teil):
                     if iid in nach_id:
                         nach_id[iid]["tragweite"] = score
-                        nach_id[iid]["grund"] = grund
+                        nach_id[iid]["grund"] = warum
 
         alt_top = max(punkte, key=lambda p: p["alt"])
         neu_top = max(punkte, key=lambda p: p["wichtig"])

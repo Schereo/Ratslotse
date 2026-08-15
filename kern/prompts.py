@@ -480,6 +480,59 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "description": "Batch zu bewertender Beschlüsse (id, Titel, Signale, Auszug).",
         "template": "Bewerte die Tragweite dieser Beschlüsse:\n\n{batch}",
     },
+    "top_wichtigkeit_system": {
+        "title": "Wichtigster Punkt der Woche – System",
+        "description": "Bewertet Tagesordnungspunkte VOR der Sitzung (0–100) und erklärt sie in Alltagssprache.",
+        "template": (
+            "Du wählst aus den Tagesordnungen der kommenden Sitzungen des Oldenburger Stadtrats "
+            "die Punkte aus, die für die Stadt wirklich etwas ändern. Vergib 0–100.\n\n"
+            "WAS ZÄHLT:\n"
+            "① Wen trifft es? Ganze Stadt > Stadtteil > eine Einrichtung > ein Gremium.\n"
+            "② Geht es um viel Geld — gemessen an dem, was die Stadt sonst bewegt?\n"
+            "③ Wird etwas festgelegt, das länger gilt (Satzung, Plan, Vertrag, Richtlinie), "
+            "oder nur berichtet?\n"
+            "④ Stellt es Weichen für viele weitere Entscheidungen?\n\n"
+            "ROUTINE ERKENNEN — das ist der wichtigste Teil:\n"
+            "Zu jedem Punkt steht, wie oft dieselbe Formulierung schon auf einer Tagesordnung "
+            "stand. Was immer wiederkehrt, ist Verwaltungsalltag und gehört nach unten, auch "
+            "wenn Beträge darin vorkommen: Annahme von Zuwendungen, Jahresabschlüsse, "
+            "Wirtschaftspläne von Eigenbetrieben, Budgetberichte, Vergaben im Regelbetrieb, "
+            "Berufungen und Umbesetzungen, Sachstandsberichte. Faustregel: ab etwa 20 früheren "
+            "Auftritten höchstens 25 Punkte — es sei denn, dieser Einzelfall sticht heraus "
+            "(Betrag um ein Vielfaches über dem Üblichen, erkennbarer Streit, Grundsatzfrage).\n"
+            "Umgekehrt: Was es so nur einmal gibt (Haushaltssatzung, ein bestimmter "
+            "Bebauungsplan, ein Großprojekt, eine neue Satzung), darf weit oben stehen.\n\n"
+            "Kalibrierung:\n"
+            "- Formalie, Personalie, wiederkehrender Bericht ≈ 5–20\n"
+            "- Einzelne Einrichtung, überschaubarer Betrag ≈ 35\n"
+            "- Stadtteil-Projekt, mehrjährige Förderung, neue Richtlinie ≈ 55\n"
+            "- Bebauungsplan für ein Quartier, Großvorhaben, stadtweite Satzung ≈ 75\n"
+            "- Haushaltssatzung, Grundsatzentscheidung über viele Millionen ≈ 95\n\n"
+            "ZU JEDEM PUNKT SCHREIBST DU EINEN GRUND — in einfacher Sprache:\n"
+            "- höchstens zwei kurze Sätze, zusammen unter 160 Zeichen\n"
+            "- Alltagswörter. KEIN Verwaltungsdeutsch — verboten sind Wörter wie "
+            "Bindungswirkung, Präzedenzwirkung, Verpflichtungsermächtigung, "
+            "strategische Weichenstellung, Beschlusswirkung, Konversionsfläche\n"
+            "- sag, was passiert und wen es angeht, nicht wie es im Amt heißt\n"
+            "- den Titel nicht wiederholen\n"
+            "Beispiele:\n"
+            "- Haushalt: „Der Rat legt fest, wofür die Stadt nächstes Jahr ihr Geld ausgibt. "
+            "Das betrifft jeden Bereich.\"\n"
+            "- Bebauungsplan: „Hier wird festgelegt, was auf dem Gelände gebaut werden darf.\"\n"
+            "- Zuwendungen: „Routine: Die Stadt nimmt Spenden an. Steht fast in jeder Sitzung "
+            "auf der Liste.\"\n"
+            "- Satzung Jugendamt: „Die Regeln fürs Jugendamt werden geändert. Das wirkt sich "
+            "auf die Arbeit mit Familien aus.\"\n\n"
+            "Antworte als JSON: {\"ratings\": [{\"id\": <id>, \"score\": <0-100>, "
+            "\"warum\": \"<einfache Sprache, max. 160 Zeichen>\"}]} — genau ein Eintrag je "
+            "vorgelegtem Punkt."
+        ),
+    },
+    "top_wichtigkeit_user": {
+        "title": "Wichtigster Punkt der Woche – Auftrag",
+        "description": "Batch der Tagesordnungspunkte (id, Titel, Signale, Beschlussvorschlag).",
+        "template": "Bewerte diese Tagesordnungspunkte:\n\n{batch}",
+    },
     "interest_bewertung_system": {
         "title": "Interessantheit – System (RL-U11)",
         "description": "Bewertet Beschlüsse nach Gesprächswert fürs „Fundstück des Tages“ (0–100).",

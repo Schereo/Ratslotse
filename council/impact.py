@@ -42,45 +42,56 @@ def _batch_text(decisions: list[dict]) -> str:
 
 
 def _agenda_batch_text(items: list[dict]) -> str:
-    """Dieselbe Rubrik, andere Quelle: Ein Tagesordnungspunkt hat noch keinen
-    Beschlusstext, dafür Behandlungsart, Antragsteller und — wenn die Vorlage
-    schon da ist — deren Sachverhalt. Genau die Signale, aus denen sich
-    Bindungswirkung und Betroffene ablesen lassen."""
+    """Ein Tagesordnungspunkt hat noch keinen Beschlusstext — dafür Signale,
+    die das Modell selbst nicht kennen kann: wie oft dieselbe Formulierung
+    schon dran war (Routine!), was beschlossen werden soll, was die Vorlage zu
+    den Kosten sagt, durch wie viele Gremien sie geht."""
     lines: list[str] = []
     for it in items:
-        text = (it.get("sachverhalt") or it.get("summary") or "").strip().replace("\n", " ")
-        signals = (
-            f"Behandlung {it.get('behandlung') or 'unbekannt'} · "
-            f"Gremium {it.get('committee') or '?'} · "
-            f"Antragsteller {it.get('antragsteller') or 'Verwaltung'} · "
-            f"Vorlage {it.get('vorlage_nr') or 'keine'} · "
-            f"frühere Stationen {it.get('vorgeschichte') or 0}"
-        )
-        lines.append(
-            f"id {it['id']}: {(it.get('title') or '').strip()}\n"
-            f"  Signale: {signals}\n"
-            f"  Auszug: {text[:MAX_EXCERPT_CHARS] or '— kein Text, nur der Titel —'}"
-        )
+        wieder = int(it.get("wiederkehr") or 0)
+        routine = ("erstmalig" if wieder <= 1 else
+                   f"stand schon {wieder}× so auf einer Tagesordnung")
+        signals = [
+            f"Behandlung {it.get('behandlung') or 'unbekannt'}",
+            f"Gremium {it.get('committee') or '?'}",
+            f"Wiederkehr: {routine}",
+        ]
+        if it.get("antragsteller"):
+            signals.append(f"Antrag von {it['antragsteller']}")
+        if it.get("stationen"):
+            signals.append(f"{it['stationen']} Stationen in der Beratungsfolge")
+        if it.get("amt"):
+            signals.append(f"Federführung {it['amt']}")
+        teile = [f"id {it['id']}: {(it.get('title') or '').strip()}",
+                 "  Signale: " + " · ".join(signals)]
+        if it.get("beschlussvorschlag"):
+            teile.append("  Soll beschlossen werden: "
+                         + " ".join(str(it["beschlussvorschlag"]).split())[:500])
+        if it.get("finanz_check"):
+            teile.append("  Kosten laut Vorlage: "
+                         + " ".join(str(it["finanz_check"]).split())[:280])
+        text = (it.get("summary") or it.get("sachverhalt") or "").strip().replace("\n", " ")
+        if text:
+            teile.append(f"  Auszug: {text[:MAX_EXCERPT_CHARS]}")
+        lines.append("\n".join(teile))
     return "\n\n".join(lines)
 
 
 def rate_agenda_batch(items: list[dict]) -> list[tuple[int, int, str]]:
-    """Tragweite für Tagesordnungspunkte — Gegenstück zu ``rate_batch``.
+    """Bewertet Tagesordnungspunkte VOR der Sitzung → (id, score, warum).
 
-    Warum überhaupt: Die Wochen-Karte wählte nach einer Heuristik aus, die
-    Verfahrenssignale addierte (Antrag, bekannter Name, Kurzfassung). Damit
-    schlug ein Bericht über das Stadtmuseum eine Satzungsänderung. Der
-    Tragweite-Prompt bewertet stattdessen Betroffene, Geld, Bindung und
-    Präzedenz — und ist an Beschlüssen bereits kalibriert.
-
-    ``id`` ist hier ein laufender Index des Batches (Tagesordnungspunkte haben
-    keinen eigenen Primärschlüssel), die Zuordnung passiert beim Aufrufer.
+    Eigener Prompt statt des Beschluss-Prompts (``top_wichtigkeit_*``): Vor der
+    Sitzung gibt es keinen Beschlusstext, dafür Beschlussvorschlag, Kostenteil
+    und — entscheidend — die Wiederkehr. „Annahme von Zuwendungen" stand 101×
+    auf einer Tagesordnung; ohne dieses Signal hält jedes Modell den Punkt für
+    eine Geldentscheidung (Tims Befund 15.08.). Der Grund kommt in einfacher
+    Sprache zurück und steht so auf der Karte.
     """
     if not items:
         return []
     valid_ids = {it["id"] for it in items}
-    system = prompts.get("impact_bewertung_system")
-    user = prompts.render("impact_bewertung_user", batch=_agenda_batch_text(items))
+    system = prompts.get("top_wichtigkeit_system")
+    user = prompts.render("top_wichtigkeit_user", batch=_agenda_batch_text(items))
     try:
         resp = llm.chat_complete(
             model=MODEL,
@@ -89,7 +100,7 @@ def rate_agenda_batch(items: list[dict]) -> list[tuple[int, int, str]]:
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
             ],
-            max_tokens=2200,
+            max_tokens=2600,
             temperature=0.1,
             _feature="impact_rating_agenda",
         )
@@ -104,7 +115,8 @@ def rate_agenda_batch(items: list[dict]) -> list[tuple[int, int, str]]:
         except (TypeError, ValueError):
             continue
         if iid in valid_ids and 0 <= score <= 100:
-            out.append((iid, score, str(r.get("grund") or "").strip()[:300]))
+            warum = str(r.get("warum") or r.get("grund") or "").strip()
+            out.append((iid, score, warum[:300]))
     return out
 
 
