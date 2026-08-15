@@ -26,7 +26,7 @@ import { ChipPopover, DateRangeChip } from "@/components/filter-chips";
 import { SitzungspauseBanner } from "@/components/sitzungspause-banner";
 import { AnalysisTab } from "@/components/council-analysis";
 import { EntitiesTab } from "@/components/council-entities";
-import { cn, relativerTag } from "@/lib/utils";
+import { cn, relativerTag, wochentagKurz } from "@/lib/utils";
 import { useHeute } from "@/lib/use-heute";
 import { useMerker } from "@/lib/use-merker";
 
@@ -1301,6 +1301,14 @@ function SessionsTab({ committees }: { committees: string[] }) {
                         <div className="min-w-0">
                           <CommitteeName name={s.committee} className="font-display text-base font-bold text-foreground" />
                           <p className="mt-0.5 truncate text-sm text-muted-foreground">
+                            {/* Auch bei Terminen ohne Tagesordnung: Der
+                                Wochentag gehört vor die Uhrzeit. */}
+                            {(() => {
+                              const r = relativerTag(s.session_date, heute);
+                              if (r) return `${r[0].toUpperCase()}${r.slice(1)} · `;
+                              const w = wochentagKurz(s.session_date);
+                              return w ? `${w} · ` : "";
+                            })()}
                             {s.session_time ? `${s.session_time} Uhr` : "Uhrzeit folgt"}
                             {s.location && ` · ${s.location}`}
                           </p>
@@ -1359,8 +1367,16 @@ function SessionsTab({ committees }: { committees: string[] }) {
                             Kachel links nennt den Tag, der Kopf benennt die
                             Nähe (Tims Wunsch 12.08.). */}
                         <p className="mt-0.5 truncate text-sm text-muted-foreground">
-                          {(() => { const r = relativerTag(s.session_date, heute);
-                            return r ? `${r[0].toUpperCase()}${r.slice(1)} · ` : ""; })()}
+                          {/* „Heute/Morgen" schlägt den Wochentag — sonst steht
+                              er vorn (Tims Wunsch 15.08.): Die Kachel nennt nur
+                              Monat und Zahl, ob das ein Montag oder Samstag ist,
+                              musste man selbst nachrechnen. */}
+                          {(() => {
+                            const r = relativerTag(s.session_date, heute);
+                            if (r) return `${r[0].toUpperCase()}${r.slice(1)} · `;
+                            const w = wochentagKurz(s.session_date);
+                            return w ? `${w} · ` : "";
+                          })()}
                           {s.session_time} Uhr{s.location && ` · ${s.location}`}
                         </p>
                       </div>

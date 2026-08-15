@@ -2461,36 +2461,90 @@ function SteckbriefBaustein({ steckbriefe }: {
   steckbriefe: NonNullable<Turn["steckbriefe"]>;
 }) {
   const [offen, setOffen] = useState<string | null>(null);
-  if (steckbriefe.length === 0) return null;
+  const [aktiv, setAktiv] = useState(0);
+  const spur = useRef<HTMLDivElement>(null);
+  const liste = steckbriefe.slice(0, 3);
+  if (liste.length === 0) return null;
+
+  // Ein Steckbrief bleibt eine Karte — erst ab zwei wird gewischt (Tims
+  // Wunsch 15.08.: zwei Kästen untereinander schoben die eigentliche Antwort
+  // aus dem Bild, bevor man sie gelesen hatte).
+  const karussell = liste.length > 1;
+
   return (
     <div className="flex flex-col gap-1.5">
-      {steckbriefe.slice(0, 2).map((s) => {
-        const lang = s.beschreibung.length > 180;
-        const auf = offen === s.slug;
-        return (
-          <div key={s.slug} className="rounded-xl border border-border bg-muted/30 px-3.5 py-2.5">
-            <p className="flex items-center gap-1.5 font-mono text-[9px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
-              <BookOpen className="h-3 w-3" aria-hidden /> Worum geht es?
-            </p>
-            <p className="mt-1.5 text-[13px] leading-relaxed text-foreground">
-              <strong className="font-semibold">{s.name}:</strong>{" "}
-              {auf || !lang ? s.beschreibung : `${s.beschreibung.slice(0, 180).trimEnd()} …`}
-            </p>
-            <div className="mt-1 flex items-center gap-3">
-              {lang && (
-                <button type="button" onClick={() => setOffen(auf ? null : s.slug)}
-                  className="text-[11.5px] font-medium text-primary hover:underline">
-                  {auf ? "Weniger" : "Mehr"}
-                </button>
+      <div
+        ref={spur}
+        onScroll={karussell ? (e) => {
+          const el = e.currentTarget;
+          setAktiv(Math.round(el.scrollLeft / Math.max(el.clientWidth, 1)));
+        } : undefined}
+        className={cn(
+          "flex",
+          karussell
+            // snap-Punkte statt freiem Scrollen: Eine halbe Karte am Rand
+            // sieht nach Fehler aus, nicht nach „da kommt noch was".
+            ? "snap-x snap-mandatory gap-2.5 overflow-x-auto scrollbar-none -mx-1 px-1"
+            : "flex-col",
+        )}
+      >
+        {liste.map((s) => {
+          const lang = s.beschreibung.length > 180;
+          const auf = offen === s.slug;
+          return (
+            <div key={s.slug}
+              className={cn(
+                "rounded-xl border border-border bg-muted/30 px-3.5 py-2.5",
+                karussell && "w-full shrink-0 snap-start",
               )}
-              <Link href={`/council/entity?slug=${encodeURIComponent(s.slug)}`}
-                className="text-[11.5px] font-medium text-primary hover:underline">
-                Alle Beschlüsse dazu
-              </Link>
+            >
+              <p className="flex items-center gap-1.5 font-mono text-[9px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
+                <BookOpen className="h-3 w-3" aria-hidden /> Worum geht es?
+              </p>
+              <p className="mt-1.5 text-[13px] leading-relaxed text-foreground">
+                <strong className="font-semibold">{s.name}:</strong>{" "}
+                {auf || !lang ? s.beschreibung : `${s.beschreibung.slice(0, 180).trimEnd()} …`}
+              </p>
+              <div className="mt-1 flex items-center gap-3">
+                {lang && (
+                  <button type="button" onClick={() => setOffen(auf ? null : s.slug)}
+                    className="text-[11.5px] font-medium text-primary hover:underline">
+                    {auf ? "Weniger" : "Mehr"}
+                  </button>
+                )}
+                <Link href={`/council/entity?slug=${encodeURIComponent(s.slug)}`}
+                  className="text-[11.5px] font-medium text-primary hover:underline">
+                  Alle Beschlüsse dazu
+                </Link>
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
+      {karussell && (
+        /* Punkte statt Pfeilen: Sie sagen „hier ist mehr", ohne eine Fläche
+           zu beanspruchen, und funktionieren auf dem Telefon per Wischen.
+           Antippbar bleiben sie trotzdem — mit der Maus wischt niemand. */
+        <div className="flex items-center justify-center gap-1.5" role="tablist"
+             aria-label={`${liste.length} Steckbriefe`}>
+          {liste.map((s, i) => (
+            <button
+              key={s.slug}
+              type="button"
+              role="tab"
+              aria-selected={i === aktiv}
+              aria-label={s.name}
+              onClick={() => spur.current?.scrollTo({
+                left: i * (spur.current?.clientWidth || 0), behavior: "smooth",
+              })}
+              className={cn(
+                "h-1.5 rounded-full transition-[width,background-color] duration-200",
+                i === aktiv ? "w-4 bg-primary" : "w-1.5 bg-muted-foreground/30",
+              )}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

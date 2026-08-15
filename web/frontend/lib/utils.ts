@@ -28,6 +28,14 @@ export function formatDateTime(iso: string): string {
  *  `heute` kommt als Parameter, weil der statische Export sonst das
  *  Build-Datum einbacken würde (siehe `useHeute`).
  */
+/** Wochentag kurz („Mi.") — im Sitzungstab steht sonst nur „AUG 13", und man
+ *  rechnet selbst nach, ob das ein Werktag oder ein Wochenende ist. */
+export function wochentagKurz(iso: string): string {
+  const tag = (iso || "").split("T")[0];
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(tag)) return "";
+  return new Date(tag + "T12:00:00").toLocaleDateString("de-DE", { weekday: "short" });
+}
+
 export function relativerTag(iso: string, heute: Date | null): string | null {
   if (!heute) return null;
   const tag = (iso || "").split("T")[0];
