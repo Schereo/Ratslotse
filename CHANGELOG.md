@@ -20,13 +20,13 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   kann man selbst am Hebesatz drehen — mit einer dauerhaft sichtbaren Spalte,
   was der Rechnung entgegensteht. Lotti übersetzt an den schweren Stellen,
   Fachwörter erklären sich beim Antippen, und jede Zahl trägt eine Fußnote
-  mit Quelle, Fundstelle, Stand und Lizenz. (#PR)
+  mit Quelle, Fundstelle, Stand und Lizenz. (#493)
 
 ### Verbessert
 - **Beschluss-Seiten sagen, was es kostet.** Steht in der Vorlage eine Angabe
   zu den finanziellen Auswirkungen, erscheint sie jetzt als „Was kostet das?"
   — im amtlichen Wortlaut, als Zitat der Verwaltung gekennzeichnet, mit dem
-  Weg in den Haushalt. Rund 1.400 Vorlagen tragen dieses Feld. (#PR)
+  Weg in den Haushalt. Rund 1.400 Vorlagen tragen dieses Feld. (#493)
 
 ### Verbessert
 - **„Frag den Rat" rechnet jetzt mit echten Steuerzahlen.** Geldfragen bekamen
