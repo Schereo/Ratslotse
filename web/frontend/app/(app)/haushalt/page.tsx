@@ -10,6 +10,10 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { FileText } from "lucide-react";
 import { Segmented } from "@/components/ui";
+import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
+import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
+import { LottiErklaert, LottiVergleich } from "@/components/haushalt/lotti-erklaert";
+import { GlossaryText } from "@/components/glossary-text";
 import { useFetch } from "@/lib/use-fetch";
 import { Gegenbalken } from "@/components/haushalt/gegenbalken";
 import { Steuereuro } from "@/components/haushalt/steuereuro";
@@ -69,6 +73,7 @@ function RuecklagenHinweis({ defizit }: { defizit: number }) {
         </p>
         <p className="mt-2 text-[11.5px] text-muted-foreground">
           Rechnerische Reichweite, keine Prognose der Stadt. {RUECKLAGE_STAND}.
+          <Beleg q="ruecklage" />
         </p>
       </div>
       <div className="w-full flex-none sm:w-[290px]">
@@ -129,7 +134,10 @@ export default function HaushaltPage() {
     return <div className="py-16 text-center text-sm text-muted-foreground">Haushalt wird geladen …</div>;
   }
 
+  const quellen: QuellenSchluessel[] = ["plan", "ruecklage"];
+
   return (
+    <Quellenkontext schluessel={quellen}>
     <div className="flex flex-col gap-4">
       {/* Kopf: mobil führt ein Satz (H-05), Desktop Titel + Unterzeile (H-01). */}
       <div className="flex items-end justify-between gap-5">
@@ -152,6 +160,11 @@ export default function HaushaltPage() {
           </a>
         )}
       </div>
+
+      <LottiErklaert
+        titel="Was ist der Haushalt überhaupt?"
+        text="Einmal im Jahr legt die Stadt fest, wofür sie ihr Geld ausgeben will — wie ein Haushaltsbuch für 176.000 Menschen. Der Rat beschließt diesen Plan; danach darf die Verwaltung nur ausgeben, was darin steht."
+      />
 
       {/* Jahr-Umschalter — fehlende Jahre bleiben sichtbar (gestrichelt). */}
       <div className="flex flex-wrap items-center gap-2.5">
@@ -199,7 +212,24 @@ export default function HaushaltPage() {
         )}
       </div>
 
+      {ausMio != null && data.einwohner && (
+        <LottiVergleich betragMio={ausMio} einwohner={data.einwohner.einwohner}
+          was={`Ausgaben im Jahr ${aktJahr}`} />
+      )}
+
       {defizit != null && <RuecklagenHinweis defizit={defizit} />}
+
+      <Link href="/haushalt/einnahmen"
+        className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/40">
+        <span className="min-w-0">
+          <span className="block text-[13px] font-bold">Woher kommt das Geld?</span>
+          <span className="mt-1 block text-[12.5px] leading-relaxed text-muted-foreground">
+            Alle Einnahmequellen einzeln — und bei welchen der Rat überhaupt etwas
+            zu entscheiden hat.
+          </span>
+        </span>
+        <span className="flex-none text-[12.5px] font-semibold text-primary">Ansehen →</span>
+      </Link>
 
       {/* Kern-Visual mit Umschalter Gegenbalken ↔ 100-Euro-Ansicht (H-03/H-04) */}
       <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
@@ -294,9 +324,12 @@ export default function HaushaltPage() {
       {/* Kuratierter Erklärtext, wo vorhanden — Lotti-ruhig, keine Bewertung. */}
       {BEREICH_INFO[karten[0]?.z.bereich] && (
         <p className="max-w-[86ch] text-xs leading-relaxed text-muted-foreground">
-          Übrigens: {BEREICH_INFO[karten[0].z.bereich]}
+          <GlossaryText text={`Übrigens: ${BEREICH_INFO[karten[0].z.bereich]}`} />
         </p>
       )}
+
+      <Quellenverzeichnis schluessel={quellen} />
     </div>
+    </Quellenkontext>
   );
 }

@@ -110,6 +110,13 @@ STEUERN_CSV_URL = ("https://opendata.oldenburg.de/sites/default/files/"
                    "1104_Steuereinnahmen_0.csv")
 STEUERKRAFT_CSV_URL = ("https://opendata.oldenburg.de/sites/default/files/"
                        "1106_Steuerkraftmesszahlen-Schl%C3%BCsselzuweisung_0.csv")
+# Aus diesem Datensatz nehmen wir NUR die Einwohnerzahl (Spalte klar
+# beschriftet). Die Aufwendungs-Spalte lassen wir bewusst liegen: Sie weicht
+# vom beschlossenen Plan ab (2024: 764,7 statt 728,2 Mio.), ist aber nirgends
+# als Ist oder Nachtrag gekennzeichnet — als „Ist“ ausgewiesen wäre sie eine
+# Behauptung. Plan-vs-Ist kommt aus den Jahresabschlüssen, wenn sie geparst sind.
+EINWOHNER_CSV_URL = ("https://opendata.oldenburg.de/sites/default/files/"
+                     "1102-Ordentliche_Aufwendungen_des_Ergebnishaushaltes_seit_2010.csv")
 
 # Steuerarten-Spalten wie im Portal, nur Umlaute restauriert.
 _STEUERART_NAMEN = {
@@ -136,6 +143,19 @@ def parse_steuereinnahmen(csv_text: str) -> list[dict]:
         for art, cell in zip(arten, cells[1:]):
             if cell:
                 rows.append({"jahr": jahr, "art": art, "betrag": float(cell)})
+    return rows
+
+
+def parse_einwohner(csv_text: str) -> list[dict]:
+    """Einwohnerzahlen je Haushaltsjahr (Stichtag 31.12. des Vorjahres) →
+    ``{jahr, einwohner}``. Basis für Pro-Kopf-Einordnungen; die
+    Aufwendungs-Spalten desselben CSV bleiben ungenutzt (s. o.)."""
+    rows: list[dict] = []
+    for line in csv_text.splitlines()[1:]:
+        cells = [c.strip() for c in line.split(";")]
+        if len(cells) < 2 or not cells[0].isdigit() or not cells[1].isdigit():
+            continue
+        rows.append({"jahr": int(cells[0]), "einwohner": int(cells[1])})
     return rows
 
 

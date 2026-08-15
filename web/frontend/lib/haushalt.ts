@@ -20,6 +20,8 @@ export type HaushaltDaten = {
     jahr: number; messzahl: number | null; messzahl_je_ew: number | null;
     zuweisungen: number | null; zuweisungen_je_ew: number | null;
   }[];
+  /** Jüngste Einwohnerzahl — Bezugsgröße für Pro-Kopf-Einordnungen. */
+  einwohner: { jahr: number; einwohner: number } | null;
 };
 
 /** Redaktionell gepflegte Konstanten — NICHT aus der DB. Quelle: Genehmigung

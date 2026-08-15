@@ -268,7 +268,8 @@ def haushalt_uebersicht(
     - ``jahre``: Ergebnishaushalt je Planjahr (Teilhaushalte + Summenzeile,
       Quelle je Zeile — Haushaltsplan-PDF bzw. Open-Data-CSV der Stadt),
     - ``steuern``: Ist-Steuereinnahmen je Steuerart seit 1998 (Langformat),
-    - ``steuerkraft``: Steuerkraftmesszahl + Schlüsselzuweisungen seit 1992.
+    - ``steuerkraft``: Steuerkraftmesszahl + Schlüsselzuweisungen seit 1992,
+    - ``einwohner``: jüngste Einwohnerzahl (Bezugsgröße für Pro-Kopf-Angaben).
 
     Fehlende Jahre (Datenlücken) fehlen schlicht in ``jahre`` — das Frontend
     zeigt Lücken ehrlich, statt zu interpolieren."""
@@ -276,6 +277,7 @@ def haushalt_uebersicht(
         "jahre": {str(y): store.get_haushalt(y) for y in store.haushalt_years()},
         "steuern": store.get_steuereinnahmen(),
         "steuerkraft": store.get_steuerkraft(),
+        "einwohner": store.einwohner_aktuell(),
     }
 
 
