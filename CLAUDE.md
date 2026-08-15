@@ -59,14 +59,36 @@ Zwei SQLite-DBs unter `data/` (gitignored): `nwz.sqlite` (Konten, Themen, Prompt
 und `council.sqlite` (Sitzungen, Beschlüsse). Beide werden lokal beim ersten Lauf
 angelegt.
 
-## Deployment
+## Deployment & Branch-Modell
 
-Gehostet auf einem eigenen VPS (privat). **Nur ein gemergter Pull Request nach
-`main`** löst die Deploy-Action aus (`.github/workflows/deploy.yml`, Trigger
-`pull_request: types:[closed]` + `merged == true`) — ein direkter Push auf `main`
-deployt **nicht**. Die Action baut die Doku, rsync't den Code auf den Server (via
-SSH-ProxyJump, Ziel-Hosts als GitHub-Secrets) und startet die systemd-Services neu.
-Nicht überschrieben werden `.env`, `data/`, `.venv/`.
+Gehostet auf einem eigenen VPS (privat). Seit 08/2026 gilt: **`main` ist der
+Prod-Stand, `dev` der Integrations-Branch.**
+
+| Was | Wohin | Wie |
+|-----|-------|-----|
+| **Neues Feature** | PR mit `--base dev` | Squash-Merge; jeder Push auf `dev` deployt auf dev.ratslotse.de |
+| **Fix/Hotfix** | PR mit `--base main` | Squash-Merge; deployt sofort auf Prod. Danach `main` nach `dev` zurückmergen (s. u.) |
+| **Release** | PR `dev` → `main` | **Merge-Commit, NICHT squashen** — sonst divergieren die Branches dauerhaft. Versionsschnitt (Changelog + Tag) gehört in diesen PR |
+
+**Nur ein gemergter Pull Request nach `main`** löst den Prod-Deploy aus
+(`.github/workflows/deploy.yml`, Trigger `pull_request: types:[closed]` +
+`merged == true`) — ein direkter Push auf `main` deployt **nicht**. Die Action
+baut die Doku, rsync't den Code auf den Server (via SSH-ProxyJump, Ziel-Hosts
+als GitHub-Secrets) und startet die systemd-Services neu. Nicht überschrieben
+werden `.env`, `data/`, `.venv/`.
+
+**Rückmerge nach jedem Fix auf `main`** (hält den nächsten Release-PR
+konfliktfrei, v. a. im Changelog):
+
+```bash
+git fetch origin && git checkout dev && git merge origin/main && git push origin dev
+```
+
+**Umgebungs-Gate:** Features, die (noch) nicht auf Prod sichtbar sein sollen,
+prüfen `process.env.NEXT_PUBLIC_RATSLOTSE_ENV === "dev"` und liefern sonst
+`notFound()`. Nur der Dev-Build (`deploy-dev.yml`) setzt die Variable — der
+Code darf also gefahrlos mit einem Release nach `main` fahren, die Seite
+bleibt dort ein 404.
 
 **GitHub-Secrets:** `SSH_PRIVATE_KEY` (Deploy-Key), `VPS_HOST`, `VPS_DEV_HOST`,
 `VPS_PROXY_HOST`, `VPS_USER`, `VPS_SSH_PORT`, `ANTHROPIC_API_KEY` (für `docs-review.yml`).
@@ -75,16 +97,12 @@ Nicht überschrieben werden `.env`, `data/`, `.venv/`.
 
 Eigene VM neben Prod, mit eigenen Datenbanken/Secrets (Basic-Auth vorm vhost,
 kein Mail-Versand, keine Crons). **Jeder Push auf den Branch `dev`** deployt
-dorthin (`.github/workflows/deploy-dev.yml`). `dev` ist kein Integrations-
-Branch, sondern ein beweglicher Zeiger — beliebigen Stand ausprobieren:
-
-```bash
-git push origin HEAD:dev --force
-```
-
-Die Dev-VM zieht per `git fetch` + `reset --hard` (übersteht Force-Pushes),
-baut Frontend + Backend-Deps und startet ihre Services neu. Prod bleibt davon
-komplett unberührt; nach `main` geht es weiterhin nur per PR.
+dorthin (`.github/workflows/deploy-dev.yml`, ohne Test-Gate — die Tests laufen
+auf jedem PR). Die Dev-VM zieht per `git fetch` + `reset --hard`, baut
+Frontend + Backend-Deps und startet ihre Services neu. Prod bleibt davon
+komplett unberührt. **Kein Force-Push auf `dev`** — der Branch trägt seit dem
+Umbau gemeinsame Historie; wer einen Wegwerf-Stand testen will, nimmt dafür
+einen PR nach `dev` oder fragt Tim.
 
 ## `.env` (nur auf dem Server, nicht im Repo)
 

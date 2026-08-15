@@ -1,13 +1,14 @@
 # Dev-Deploy: Jeder Push auf den Branch `dev` deployt auf die Dev-VM
-# (dev.ratslotse.de). `dev` ist bewusst KEIN Integrations-Branch, sondern ein
-# beweglicher Zeiger — beliebigen Stand testen mit:
+# (dev.ratslotse.de). Seit 08/2026 ist `dev` der INTEGRATIONS-Branch:
+# Feature-PRs gehen nach `dev`, Prod bekommt gesammelte Release-PRs
+# `dev` -> `main` (Merge-Commit!) und einzelne Fixes direkt nach `main`
+# (danach `main` nach `dev` zurückmergen). Kein Force-Push mehr auf `dev` —
+# der Branch trägt jetzt gemeinsame Historie.
 #
-#     git push origin HEAD:dev --force
-#
-# Deshalb holt die VM den Stand per fetch + reset --hard (übersteht
-# Force-Pushes); .env/data/.venv/node_modules sind untracked und bleiben
-# unberührt. Kein Test-Gate: Dev ist zum Ausprobieren da, die Tests laufen
-# auf jedem PR nach main. Prod deployt weiterhin NUR deploy.yml (PR-Merge).
+# Die VM holt den Stand weiterhin per fetch + reset --hard (robust gegen
+# jede Art von Branch-Umbau); .env/data/.venv/node_modules sind untracked
+# und bleiben unberührt. Kein Test-Gate: die Tests laufen ohnehin auf jedem
+# PR (test.yml). Prod deployt weiterhin NUR deploy.yml (PR-Merge auf main).
 name: Deploy to Dev
 
 on:
@@ -46,7 +47,11 @@ jobs:
             .venv/bin/pip install -q -r requirements.txt -r web/backend/requirements.txt
             cd web/frontend
             npm ci --no-audit --no-fund
-            npm run build
+            # Umgebungs-Gate: Features, die nur auf dev.ratslotse.de sichtbar
+            # sein sollen, prüfen NEXT_PUBLIC_RATSLOTSE_ENV === "dev". Der
+            # Prod-Build (deploy.yml) setzt die Variable nicht — dort werden
+            # solche Seiten zu 404. Zur Build-Zeit einkompiliert (NEXT_PUBLIC_).
+            NEXT_PUBLIC_RATSLOTSE_ENV=dev npm run build
             sudo systemctl restart nwz-web-api nwz-web-frontend
             sleep 3
             curl -sf -o /dev/null http://127.0.0.1:3000 && echo "Frontend OK"
