@@ -1645,11 +1645,25 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             if typ == "verlauf":
                 ctx = qa.sort_verlauf(ctx)
             haushalt_zeilen: list[dict] = []
+            steuer_zeilen: list[dict] = []
+            steuerkraft: dict | None = None
             if typ == "geld":
+                # Drei getrennte Geld-Quellen, bewusst nicht vermischt:
+                # Haushalt = Plan, Steuern = Ist, Finanzausgleich = Mechanik.
                 try:  # Plan-Zahlen aus dem Stadthaushalt als Zusatzkontext
                     haushalt_zeilen = store.haushalt_fuer_begriffe(expanded.split())
                 except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
                     pass
+                try:  # Ist-Steuereinnahmen zur gefragten Steuerart
+                    steuer_zeilen = store.steuern_fuer_begriffe(expanded.split())
+                except Exception:  # noqa: BLE001
+                    pass
+                if steuer_zeilen or any(
+                        w in expanded.lower() for w in ("hebesatz", "hebesätze", "erhöh", "mehreinnahm")):
+                    try:  # NFAG-Dämpfer nur, wo er wirklich einschlägig ist
+                        steuerkraft = store.steuerkraft_kontext()
+                    except Exception:  # noqa: BLE001
+                        pass
             try:  # Vorlagen-Auszüge (Sachverhalt) beilegen — best-effort
                 texts = store.vorlage_texts_for([c.get("vorlage_nr") or "" for c in ctx])
                 for c in ctx:
@@ -1684,7 +1698,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 frage_thema = verlauf[-1].get("frage") or q
             strom = (qa.vereinfachen_stream(frage_thema, body.vorherige_antwort, ctx) if einfach
                      else qa.answer_stream(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
-                                           haushalt=haushalt_zeilen, debatten=debatten_rows,
+                                           haushalt=haushalt_zeilen, steuern=steuer_zeilen,
+                                           steuerkraft=steuerkraft, debatten=debatten_rows,
                                            gross=gross, steckbriefe=steckbriefe,
                                            duenn=(lage == "duenn"), eng=eng))
             try:
@@ -1716,7 +1731,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     ans, _ = (qa.vereinfachen_question(frage_thema, body.vorherige_antwort, ctx)
                               if einfach else
                               qa.answer_question(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
-                                                 haushalt=haushalt_zeilen, debatten=debatten_rows,
+                                                 haushalt=haushalt_zeilen, steuern=steuer_zeilen,
+                                           steuerkraft=steuerkraft, debatten=debatten_rows,
                                                  gross=gross, steckbriefe=steckbriefe,
                                                  duenn=(lage == "duenn"), eng=eng))
                     buf = ans
