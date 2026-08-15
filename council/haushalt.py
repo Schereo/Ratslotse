@@ -20,8 +20,9 @@ import re
 from pypdf import PdfReader
 
 # Beschlossene Haushaltspläne der Stadt Oldenburg (aktuelles Jahr + Archiv).
-# 2024 fehlt bewusst: Die Übersichtsseite dieses PDFs hat eine defekte
-# Text-Kodierung (Zeichensalat statt Text) und ist ohne OCR nicht lesbar.
+# 2024 fehlt hier bewusst: Die Übersichtsseite dieses PDFs hat eine defekte
+# Text-Kodierung (Zeichensalat statt Text) — der Jahrgang kommt stattdessen
+# aus dem Open-Data-CSV (OPENDATA_CSV_URLS unten).
 _ARCHIV = ("https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/"
            "20_Controlling_und_Finanzen/200_Finanzen/Archiv_Haushaltsplaene/")
 HAUSHALT_URLS: dict[int, str] = {
@@ -34,6 +35,123 @@ HAUSHALT_URLS: dict[int, str] = {
            "20_Controlling_und_Finanzen/200_Finanzen/Haushalt_2026/"
            "Genehmigung_Haushalt_2026/04_Haushaltsplan_2026_-_UEbersichten.pdf"),
 }
+
+# --- Open-Data-CSV (opendata.oldenburg.de, Lizenz dl-de/by-2-0) ---------------
+# Die Stadt veröffentlicht die Plan-Ergebnishaushalte 2020–2025 zusätzlich
+# maschinenlesbar. Für 2024 ist das die EINZIGE nutzbare Quelle — die
+# Übersichtsseite des Plan-PDFs hat eine defekte Text-Kodierung (s. o.).
+# Die übrigen Jahre bleiben beim PDF-Parser: Er läuft produktiv, und ein
+# Quellenwechsel änderte Bereichsnamen rückwirkend (Trend-Fragen matchen Namen).
+OPENDATA_CSV_URLS: dict[int, str] = {
+    2024: ("https://opendata.oldenburg.de/sites/default/files/"
+           "1101_Haushaltsplan_StadtOL_2024_Ergebnishaushalt.csv"),
+}
+
+# Das Portal transliteriert Umlaute („Verwaltungsfuehrung"). Bekannte Namen
+# werden auf die PDF-Schreibweise zurückgeführt, damit Jahre vergleichbar
+# bleiben; unbekannte Namen laufen unverändert durch (neue THH-Zuschnitte
+# sollen den Import nicht stoppen). KEIN generisches ue→ü — „Steuer" u. ä.
+# würden zerschossen.
+_CSV_NAMEN = {
+    "Verwaltungsfuehrung": "Verwaltungsführung",
+    "Wirtschaftsfoerderung, Liegenschaften": "Wirtschaftsförderung, Liegenschaften",
+    "Verkehr und Strassenbau": "Verkehr und Straßenbau",
+    "Umwelt, Bauordnung, Gruen und Friedhoefe": "Umwelt, Bauordnung, Grün und Friedhöfe",
+    "Nicht rechtsfaehige Stiftungen": "nicht rechtsfähige Stiftungen",
+}
+
+
+def _csv_num(s: str) -> float | None:
+    """Deutsche Zahl aus dem Portal-CSV („ 446.540,00 ") → float, None bei leer."""
+    s = s.strip()
+    if not s:
+        return None
+    return float(s.replace(".", "").replace(",", "."))
+
+
+def parse_opendata_ergebnishaushalt(csv_text: str) -> list[dict]:
+    """Ergebnishaushalt-CSV des Open-Data-Portals → dieselbe Zeilenform wie
+    ``parse_ergebnishaushalt`` (bereich, ertraege, aufwendungen, ergebnis,
+    is_summe; Summenzeile heißt wie im PDF „Summe"). Validiert wie der
+    PDF-Parser gegen die Gesamtzeile (±1 %) — liefert [] statt Müll.
+
+    Das CSV kennt kein eigenes Ergebnis je Teilhaushalt; es ergibt sich als
+    Erträge − Aufwendungen (so rechnet auch die PDF-Übersicht). Die Zeile
+    „Ordentliches Ergebnis (Fehlbedarf)" ist redundant und fällt weg."""
+    rows: list[dict] = []
+    for line in csv_text.splitlines()[1:]:  # Kopfzeile weg
+        parts = line.split(";")
+        if len(parts) < 4:
+            continue
+        code, name = parts[0].strip(), " ".join(parts[1].split())
+        ertraege, aufwendungen = _csv_num(parts[2]), _csv_num(parts[3])
+        if ertraege is None or aufwendungen is None:
+            continue  # z. B. die Fehlbedarf-Zeile (leere Erträge-Spalte)
+        is_summe = code.startswith("Gesamtergebnishaushalt")
+        rows.append({
+            "bereich": "Summe" if is_summe else _CSV_NAMEN.get(name, name),
+            "ertraege": ertraege, "aufwendungen": aufwendungen,
+            "ergebnis": ertraege - aufwendungen,
+            "is_summe": 1 if is_summe else 0,
+        })
+    parts_ = [r for r in rows if not r["is_summe"]]
+    summe = next((r for r in rows if r["is_summe"]), None)
+    if not summe or len(parts_) < 5:
+        return []
+    for col in ("ertraege", "aufwendungen"):
+        total = sum(r[col] for r in parts_)
+        if abs(total - summe[col]) > 0.01 * max(summe[col], 1):
+            return []  # Layout-Drift → lieber nichts als falsche Zahlen
+    return rows
+
+
+# Weitere Finanz-Datensätze desselben Portals (jährlich fortgeschrieben):
+STEUERN_CSV_URL = ("https://opendata.oldenburg.de/sites/default/files/"
+                   "1104_Steuereinnahmen_0.csv")
+STEUERKRAFT_CSV_URL = ("https://opendata.oldenburg.de/sites/default/files/"
+                       "1106_Steuerkraftmesszahlen-Schl%C3%BCsselzuweisung_0.csv")
+
+# Steuerarten-Spalten wie im Portal, nur Umlaute restauriert.
+_STEUERART_NAMEN = {
+    "Getraenkesteuer": "Getränkesteuer",
+    "Vergnuegungssteuer": "Vergnügungssteuer",
+}
+
+
+def parse_steuereinnahmen(csv_text: str) -> list[dict]:
+    """Ist-Steuereinnahmen-CSV (eine Zeile je Jahr, Spalten je Steuerart) →
+    Langformat ``{jahr, art, betrag}``. Beträge sind ganze Euro ohne
+    Tausenderzeichen; leere Zellen fallen weg."""
+    lines = [ln for ln in csv_text.splitlines() if ln.strip()]
+    if not lines:
+        return []
+    kopf = [c.strip() for c in lines[0].split(";")]
+    arten = [_STEUERART_NAMEN.get(c, c) for c in kopf[1:]]
+    rows: list[dict] = []
+    for line in lines[1:]:
+        cells = [c.strip() for c in line.split(";")]
+        if not cells[0].isdigit():
+            continue  # Fußnoten-/Leerzeilen
+        jahr = int(cells[0])
+        for art, cell in zip(arten, cells[1:]):
+            if cell:
+                rows.append({"jahr": jahr, "art": art, "betrag": float(cell)})
+    return rows
+
+
+def parse_steuerkraft(csv_text: str) -> list[dict]:
+    """Steuerkraftmesszahl/Schlüsselzuweisungen-CSV → je Jahr ein dict
+    ``{jahr, messzahl, messzahl_je_ew, zuweisungen, zuweisungen_je_ew}``."""
+    rows: list[dict] = []
+    for line in csv_text.splitlines()[1:]:
+        cells = [c.strip() for c in line.split(";")]
+        if len(cells) < 5 or not cells[0].isdigit():
+            continue
+        vals = [float(c) if c else None for c in cells[1:5]]
+        rows.append({"jahr": int(cells[0]), "messzahl": vals[0], "messzahl_je_ew": vals[1],
+                     "zuweisungen": vals[2], "zuweisungen_je_ew": vals[3]})
+    return rows
+
 
 # Eine Tabellenzeile: Bereichsname (Buchstaben/Satzzeichen), dann 3–6 Zahlen-
 # kolonnen mit deutschen Tausenderpunkten (ordentliche Erträge, Aufwendungen,
