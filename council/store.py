@@ -560,6 +560,27 @@ class CouncilStore:
             "source_url TEXT, fetched_at TEXT NOT NULL, "
             "UNIQUE(year, bereich))"
         )
+        # Ist-Steuereinnahmen je Steuerart und Jahr (Open-Data-Portal der Stadt,
+        # seit 1998) — Grundlage der Steuer-Steckbriefe im Haushalts-Bereich.
+        # Langformat: eine Zeile je (Jahr, Steuerart), 'insgesamt' als eigene Art.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_steuern ("
+            "jahr INTEGER NOT NULL, "
+            "art TEXT NOT NULL, "        # z. B. 'Gewerbesteuer (-umlage)', 'insgesamt'
+            "betrag REAL, "              # Euro, Ist (nicht Plan!)
+            "source_url TEXT, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, art))"
+        )
+        # Steuerkraftmesszahl + Schlüsselzuweisungen je Ausgleichsjahr (Open-Data,
+        # seit 1992) — zeigt die NFAG-Mechanik: mehr Steuerkraft, weniger
+        # Zuweisungen. Pflichtwissen für jede ehrliche Hebesatz-Simulation.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_steuerkraft ("
+            "jahr INTEGER PRIMARY KEY, "
+            "messzahl REAL, messzahl_je_ew REAL, "          # Euro bzw. Euro/Einwohner
+            "zuweisungen REAL, zuweisungen_je_ew REAL, "    # Anordnungssoll
+            "source_url TEXT, fetched_at TEXT NOT NULL)"
+        )
         # Vorlagen-Volltexte semantisch auffindbar machen: je Vorlage mehrere
         # Chunk-Vektoren (Sachverhalt/Begründung), die die Hybrid-Suche auf die
         # zugehörigen Beschlüsse abbildet. text_hash = SHA-256 des Volltexts —
@@ -2801,6 +2822,39 @@ class CouncilStore:
         """Alle eingelesenen Haushaltsjahre (aufsteigend) — für Trend-Fragen."""
         return [r[0] for r in self._conn.execute(
             "SELECT DISTINCT year FROM council_haushalt ORDER BY year")]
+
+    def save_steuereinnahmen(self, rows: list[dict], source_url: str) -> int:
+        """Ist-Steuereinnahmen (jahr, art, betrag) ersetzen — Re-Ingest idempotent."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_steuern (jahr, art, betrag, source_url, fetched_at) "
+                "VALUES (?,?,?,?,?)",
+                [(r["jahr"], r["art"], r.get("betrag"), source_url, now) for r in rows])
+        return len(rows)
+
+    def get_steuereinnahmen(self) -> list[dict]:
+        """Alle Ist-Steuereinnahmen, älteste zuerst (Langformat je Jahr × Art)."""
+        return [dict(r) for r in self._conn.execute(
+            "SELECT jahr, art, betrag FROM council_steuern ORDER BY jahr, art")]
+
+    def save_steuerkraft(self, rows: list[dict], source_url: str) -> int:
+        """Steuerkraftmesszahl + Schlüsselzuweisungen je Jahr ersetzen."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_steuerkraft "
+                "(jahr, messzahl, messzahl_je_ew, zuweisungen, zuweisungen_je_ew, source_url, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?)",
+                [(r["jahr"], r.get("messzahl"), r.get("messzahl_je_ew"),
+                  r.get("zuweisungen"), r.get("zuweisungen_je_ew"), source_url, now) for r in rows])
+        return len(rows)
+
+    def get_steuerkraft(self) -> list[dict]:
+        """Steuerkraft/Zuweisungen je Jahr, älteste zuerst."""
+        return [dict(r) for r in self._conn.execute(
+            "SELECT jahr, messzahl, messzahl_je_ew, zuweisungen, zuweisungen_je_ew "
+            "FROM council_steuerkraft ORDER BY jahr")]
 
     def refresh_quiz_payloads(self, rows: list[dict]) -> int:
         """Deterministisch erzeugte Fragen (gleicher content_hash — die Haushalts-

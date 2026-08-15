@@ -258,6 +258,27 @@ def zahl_der_woche(
             "window_days": 7}
 
 
+@router.get("/haushalt")
+def haushalt_uebersicht(
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Datenfundament des Haushalts-Bereichs, in einem Aufruf:
+
+    - ``jahre``: Ergebnishaushalt je Planjahr (Teilhaushalte + Summenzeile,
+      Quelle je Zeile — Haushaltsplan-PDF bzw. Open-Data-CSV der Stadt),
+    - ``steuern``: Ist-Steuereinnahmen je Steuerart seit 1998 (Langformat),
+    - ``steuerkraft``: Steuerkraftmesszahl + Schlüsselzuweisungen seit 1992.
+
+    Fehlende Jahre (Datenlücken) fehlen schlicht in ``jahre`` — das Frontend
+    zeigt Lücken ehrlich, statt zu interpolieren."""
+    return {
+        "jahre": {str(y): store.get_haushalt(y) for y in store.haushalt_years()},
+        "steuern": store.get_steuereinnahmen(),
+        "steuerkraft": store.get_steuerkraft(),
+    }
+
+
 # Ohne Anmeldung lesbar (s. `decision_detail`) — die Beschluss-Seite zieht die
 # Sitzung nach, um Gremium und Datum zu benennen.
 @router.get("/session/{ksinr}")

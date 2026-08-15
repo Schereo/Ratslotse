@@ -7,6 +7,15 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Verbessert
+- **Haushalts-Quiz ohne 2024-Lücke, Stadtfinanzen als Datenfundament.** Die
+  Trend-Diagramme der Haushalts-Quizfragen übersprangen 2024 — das Plan-PDF
+  dieses Jahrgangs ist technisch unlesbar. Der Jahrgang kommt jetzt aus dem
+  Open-Data-Portal der Stadt (maschinenlesbar, Lizenz dl-de/by-2.0), die
+  Reihe 2020–2026 ist vollständig. Dazu, als Fundament für den kommenden
+  Stadtfinanzen-Bereich: Ist-Steuereinnahmen je Steuerart seit 1998 und
+  Steuerkraft samt Schlüsselzuweisungen seit 1992, aus derselben Quelle. (#489)
+
 <!-- GEPARKT (nur dev.ratslotse.de, Umgebungs-Gate): Eintrag aktivieren,
      sobald der Kommunalwahl-Vergleich auf Prod freigeschaltet wird.
 ### Hinzugefügt

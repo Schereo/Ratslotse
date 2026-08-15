@@ -208,3 +208,74 @@ def test_refresh_quiz_payloads_extends_trend(tmp_path):
     assert store.save_quiz_questions(later) == 0        # gleiche Hashes → kein Insert
     assert store.refresh_quiz_payloads(later) >= 1      # aber Payload aufgefrischt
     assert len(store.get_quiz_question(q_id)["chart"]["items"]) == 3
+
+
+# --- Open-Data-CSVs (opendata.oldenburg.de) -----------------------------------
+# Fixtures sind ECHTE Ausschnitte der Portal-Dateien (Stand 08/2026) — Format-
+# Eigenheiten inklusive: Leerzeichen um Zahlen, Doppel-Leerzeichen im Namen,
+# transliterierte Umlaute, Fehlbedarf-Zeile mit leerer Erträge-Spalte.
+
+CSV_2024 = """Teilhaushalt;Bezeichnung;Ertraege [Euro];Aufwendungen [Euro]
+THH01;Verwaltungsfuehrung; 446.540,00 ; 8.153.186,00 
+THH04;Finanzmanagement und Recht; 444.505.552,00 ; 61.926.379,00 
+THH05;Sicherheit  und Ordnung; 26.296.342,00 ; 55.971.760,00 
+THH08;Verkehr und Strassenbau; 17.769.486,00 ; 41.590.574,00 
+THH10;Soziales und Gesundheit; 144.236.532,00 ; 231.189.997,00 
+THH13;Nicht rechtsfaehige Stiftungen; 310.505,00 ; 286.683,00 
+Gesamtergebnishaushalt;; 633.564.957,00 ; 399.118.579,00 
+Ordentliches Ergebnis (Fehlbedarf);;;-34.240.657,00 
+"""
+
+CSV_STEUERN = """Haushaltsjahr;Grundsteuer A+B;Gewerbesteuer (-umlage);Einkommensteueranteil;Gemeindeanteil an der Umsatzsteuer ;Getraenkesteuer;Vergnuegungssteuer;sonstige Steuern;insgesamt
+1998;17629000;42719000;38025000;5428000;0;1321000;426000;105548000
+2025;32585000;222117000;106086000;22233000;0;3368000;819000;387208000
+"""
+
+CSV_STEUERKRAFT = """Ausgleichsjahr;Steuerkraftmesszahl [Euro];Steuerkraftmesszahl [Euro/EW];Schluesselzuweisungen, Anordnungssoll [Euro];Schluesselzuweisungen, Anordnungssoll [Euro/EW]
+1992;62980848;434;21478603;148
+2025;348164497;1971;82278144;466
+"""
+
+
+def test_parse_opendata_ergebnishaushalt():
+    rows = haushalt.parse_opendata_ergebnishaushalt(CSV_2024)
+    # 6 Teilhaushalte + Summe; die redundante Fehlbedarf-Zeile fällt weg.
+    assert len(rows) == 7 and sum(r["is_summe"] for r in rows) == 1
+    vf = next(r for r in rows if r["bereich"] == "Verwaltungsführung")  # Umlaut restauriert
+    assert vf["ertraege"] == 446_540.0 and vf["aufwendungen"] == 8_153_186.0
+    assert vf["ergebnis"] == 446_540.0 - 8_153_186.0
+    sich = next(r for r in rows if "Sicherheit" in r["bereich"])
+    assert sich["bereich"] == "Sicherheit und Ordnung"  # Doppel-Leerzeichen normalisiert
+    assert any(r["bereich"] == "Verkehr und Straßenbau" for r in rows)
+    summe = next(r for r in rows if r["is_summe"])
+    assert summe["bereich"] == "Summe"  # PDF-Konvention, damit Trends matchen
+
+
+def test_parse_opendata_rejects_broken_sums():
+    kaputt = CSV_2024.replace("633.564.957,00", "100.000,00")
+    assert haushalt.parse_opendata_ergebnishaushalt(kaputt) == []
+
+
+def test_parse_steuereinnahmen_langformat():
+    rows = haushalt.parse_steuereinnahmen(CSV_STEUERN)
+    assert len(rows) == 16  # 2 Jahre × 8 Spalten
+    gew_2025 = next(r for r in rows if r["jahr"] == 2025 and r["art"].startswith("Gewerbesteuer"))
+    assert gew_2025["betrag"] == 222_117_000.0
+    # Umlaute restauriert, Kopf-Leerzeichen weg:
+    arten = {r["art"] for r in rows}
+    assert "Vergnügungssteuer" in arten and "Gemeindeanteil an der Umsatzsteuer" in arten
+
+
+def test_parse_steuerkraft_und_store_roundtrip(tmp_path):
+    kraft = haushalt.parse_steuerkraft(CSV_STEUERKRAFT)
+    assert [k["jahr"] for k in kraft] == [1992, 2025]
+    assert kraft[1]["messzahl"] == 348_164_497.0 and kraft[1]["zuweisungen_je_ew"] == 466.0
+
+    store = CouncilStore(tmp_path / "c.sqlite")
+    steuern = haushalt.parse_steuereinnahmen(CSV_STEUERN)
+    assert store.save_steuereinnahmen(steuern, "http://csv") == 16
+    assert store.save_steuereinnahmen(steuern, "http://csv") == 16  # idempotent
+    assert len(store.get_steuereinnahmen()) == 16
+    assert store.save_steuerkraft(kraft, "http://csv") == 2
+    got = store.get_steuerkraft()
+    assert got[0]["jahr"] == 1992 and got[-1]["messzahl_je_ew"] == 1971.0

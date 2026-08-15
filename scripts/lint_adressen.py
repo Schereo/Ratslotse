@@ -49,6 +49,19 @@ ERLAUBTE_DOMAINS = {
 ERLAUBTE_ADRESSEN = {
     "a@b.de", "b@b.de", "a@t.de", "b@t.de", "a@x.de", "b@x.de", "f@x.de",
     "still@b.de", "laut@b.de",
+    # Kommunalwahl-Quelldaten (kommunalwahl/): publizierte Kontaktadressen aus
+    # den Wahlprogrammen der Parteien bzw. der amtlichen Bekanntmachung der
+    # Wahlvorschläge — Teil zitierter öffentlicher Dokumente, deren Wortlaut
+    # wir belegbar halten (Maskieren hieße, die Quelle zu verändern). Bewusst
+    # einzeln aufgezählt, nicht per Domain oder Verzeichnis: Jede weitere
+    # Adresse soll wieder hier auflaufen und begründet werden müssen.
+    # (Entscheidung Tim, 15.08.2026.)
+    "info@pgm-partei.de",            # PGM, Impressum/Programm
+    "info@gruene-oldenburg.de",      # Grüne, Programm
+    "buero.oldenburg@spd.de",        # SPD, Programm
+    "moin@bb-ol.org",                # Bürgerbündnis, Programm
+    "moin@holger-wilkens.de",        # Bürgerbündnis, Kontakt lt. eigenem Programm
+    "wahlbuero@stadt-oldenburg.de",  # Stadt, Bekanntmachung Wahlvorschläge
 }
 
 # Nicht von uns geschrieben und nicht von uns zu verantworten: Lockfiles tragen
