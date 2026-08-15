@@ -7,6 +7,8 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [1.10.0] – 2026-08-15
+
 ### Verbessert
 - **Keiner, einer oder zwei Schwerpunkte — je nachdem, was die Woche hergibt.**
   Bisher hob die Karte genau einen Punkt hervor, auch in Wochen, in denen der
@@ -2383,7 +2385,8 @@ Open-Source-Go-Live von Ratslotse.
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v1.9.0...main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v1.10.0...main
+[1.10.0]: https://github.com/Schereo/Ratslotse/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/Schereo/Ratslotse/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/Schereo/Ratslotse/compare/v1.7.1...v1.8.0
 [1.7.1]: https://github.com/Schereo/Ratslotse/compare/v1.7.0...v1.7.1
