@@ -987,6 +987,14 @@ class CouncilStore:
     #: der Verwaltungsausschuss binden die Stadt, ein Fachausschuss bereitet vor.
     _GREMIUM_GEWICHT = ((("stadtrat", "rat der stadt"), 1.5), (("verwaltungsausschuss",), 1.0))
 
+    #: Ab hier gilt ein Punkt als Schwerpunkt der Woche und wird hervorgehoben.
+    #: Darunter zeigt die Karte ihre Zeilen ohne Hervorhebung — lieber kein
+    #: Schwerpunkt als ein behaupteter.
+    TOP_MINDEST = 60
+
+    #: Mehr als zwei Hervorhebungen entwerten sich gegenseitig.
+    TOP_MAX = 2
+
     #: Unter diesem Wert kommt ein Punkt gar nicht auf die Karte. Skala ist die
     #: Tragweite (0–100, s. council/impact.py): 20 ≈ Bericht zur Kenntnis,
     #: 35 ≈ Maßnahme an einer Einrichtung. Darunter lohnt keine Zeile.
@@ -1246,12 +1254,39 @@ class CouncilStore:
             punkte.append(p)
             if len(punkte) >= max_punkte:
                 break
-        # Genau EIN Punkt der ganzen Karte wird hervorgehoben und trägt seine
-        # Kurzbegründung — Design 14a: „bis 3 Punkte je Sitzung, EIN Punkt
-        # offen mit Kurzbegründung". Das ist der bestbewertete; er steht hier
-        # noch vorn, gleich wird nach Datum umsortiert.
-        for i, p in enumerate(punkte):
-            p["top"] = i == 0
+        # Hervorgehoben wird, was wirklich schwer wiegt — keiner, einer oder
+        # zwei. Design 14a sah genau EINEN vor; das erzwang eine Hervorhebung
+        # auch in Wochen, in denen der beste Punkt ein Bericht mit 30 war, und
+        # deckelte sie in Wochen mit mehreren großen Entscheidungen (Tim,
+        # 15.08.). Die Schwelle liegt an den Ankern des Prompts: 55 ≈ neue
+        # Richtlinie, 75 ≈ Bebauungsplan fürs Quartier.
+        for p in punkte:
+            p["top"] = False
+        gesetzt: list[set[str]] = []
+        # Ein Punkt zum eigenen Thema wird immer hervorgehoben, egal wie die
+        # allgemeine Bewertung ausfällt: Für wen ein Thema angelegt ist, ist
+        # genau das der Grund hinzusehen. Der Rest der Plätze geht an das,
+        # was für die ganze Stadt schwer wiegt.
+        eigene = sorted((p for p in punkte if p.get("topic_name")),
+                        key=lambda p: -p["wichtig"])
+        if eigene:
+            eigene[0]["top"] = True
+            gesetzt.append({w for w in self._falte_namen(eigene[0]["title"]).split()
+                            if len(w) >= 6})
+        for p in sorted(punkte, key=lambda p: -p["wichtig"]):
+            if p["top"]:
+                continue
+            if len(gesetzt) >= self.TOP_MAX or p["wichtig"] < self.TOP_MINDEST:
+                break
+            # Nicht zweimal dieselbe Sache: In der Stadion-Woche standen der
+            # Bebauungsplan UND die Flächennutzungsplan-Änderung ganz oben —
+            # zwei Hervorhebungen, ein Vorgang. Zwei geteilte Schlagwörter
+            # reichen als Beleg (gemessen an echten Wochen).
+            worte = {w for w in self._falte_namen(p["title"]).split() if len(w) >= 6}
+            if any(len(worte & frueher) >= 2 for frueher in gesetzt):
+                continue
+            p["top"] = True
+            gesetzt.append(worte)
         punkte.sort(key=lambda p: (p["session_date"], p["item_number"] or ""))
 
         # Wie viele relevante Punkte hätte jede Sitzung — VOR dem Anzeige-
