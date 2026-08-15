@@ -19,7 +19,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   eine eigene Seite mit Kostendeckung, Brutto-gegen-Netto-Vergleich und
   Entwicklung. Jede Zahl trägt ihre Quelle (Haushaltsplan-PDF bzw.
   Open-Data-CSV der Stadt); fehlende Daten erscheinen als ehrliche Lücke,
-  nie geschätzt. (#PR)
+  nie geschätzt. (#491)
 
 ### Verbessert
 - **Haushalts-Quiz ohne 2024-Lücke, Stadtfinanzen als Datenfundament.** Die
