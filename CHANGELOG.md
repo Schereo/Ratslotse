@@ -19,9 +19,23 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   statt die kürzere Seite auf Länge zu ziehen. Kleine Posten sammeln sich in
   „weitere" und lassen sich aufklappen, alle Zahlen stehen unter „Zahlen
   anzeigen". Auf dem Handy werden daraus zwei Listen statt geschrumpfter
-  Bänder. Für Jahre ohne Jahresabschluss sagt das Bild, dass es das jüngste
-  vollständige Jahr zeigt — und wenn die Einzelposten die ausgewiesene Summe
-  nicht tragen, erscheint gar keine Grafik, sondern der Hinweis darauf. (#PR)
+  Bänder. Für Jahre ohne Jahresabschluss sagt das Bild, welches Jahr es
+  stattdessen zeigt — und wenn die Einzelposten die ausgewiesene Summe nicht
+  tragen, erscheint gar keine Grafik, sondern der Hinweis darauf. (#505)
+- **„Was kostet eigentlich …?" — der Haushalt, aufgeschlüsselt bis zur
+  einzelnen Aufgabe.** Die häufigste Frage zum Haushalt ist keine nach
+  Teilhaushalten, sondern nach einer konkreten Sache: dem Stadtarchiv, der
+  Feuerwehr, dem Schwimmbad. Die neue Seite durchsucht 63 Aufgaben des
+  Haushaltsjahres 2023 nach Name, Nummer, Amt und Beschreibung, filtert nach
+  Amt und Spielraum und öffnet zu jeder einen Steckbrief: was sie kostet, was
+  dahintersteckt, für wen sie da ist — und auf welchen Gesetzen sie beruht.
+  Die Archivierung etwa kostet die Stadt 421 Tsd. € im Jahr und beruht unter
+  anderem auf dem Bundesarchivgesetz und einem Vertrag mit dem Landesarchiv.
+  Neu ist dabei vor allem die Selbstauskunft der Stadt, wie viel Spielraum sie
+  bei einer Aufgabe überhaupt hat: Bei 35 der 63 Aufgaben ist es „kaum" — das
+  macht aus einer Zahl eine Antwort darauf, worüber der Rat streiten kann und
+  worüber nicht. Alle Angaben stammen wörtlich aus den Teilhaushaltsplänen;
+  wo der Plan ein Feld leer lässt, steht auch bei uns nichts. (#504)
 - **„Geplant und geworden" — was aus dem Haushalt wirklich wurde.** Ein
   Haushalt ist ein Plan; was am Jahresende zusammenkam, stand bisher nirgends.
   Die neue Seite stellt beides nebeneinander — für die Stadt insgesamt und für
@@ -31,6 +45,14 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Entwicklung über alle abgeschlossenen Jahre. Farben bewerten dabei nichts:
   Mehr ausgegeben kann ein Tarifabschluss sein, weniger ausgegeben heißt oft,
   dass etwas nicht gebaut wurde. (#502)
+
+### Behoben
+- **Kostendeckungsgrad über 100 % wurde falsch erklärt.** Bei „Finanzmanagement
+  und Recht" — dort verbucht die Stadt ihre Steuern — stand unter dem Wert von
+  518 %, „der Rest" komme aus Steuern und Zuweisungen. Einen Rest gibt es dort
+  nicht: Der Bereich nimmt mehr ein, als er ausgibt. Der Satz sagt das jetzt,
+  samt Hinweis, dass darin keine besondere Sparsamkeit steckt, sondern die
+  Zuordnung der Einnahmen. (#503)
 
 ### Verbessert
 - **Das Haushalts-Labor sagt jetzt, ob das viel ist.** Bisher bewegte man

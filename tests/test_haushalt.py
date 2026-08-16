@@ -369,10 +369,106 @@ Aufwendungen
 21. ordentliches Ergebnis -405.485,45 -480.033 -430.598 -437.476 -444.489 -451.635
 601
 Teilergebnishaushalt THH06: Kultur, Museen, Sport
+Produkt: Archivierung (P10.111023)
+Amt für Kultur, Museen und Sport
+Verantwortlich: Fachdienstleitung Zentrale Dienste
+Das Produkt umfasst die Bewertung der Archivwürdigkeit von Medien aller Art, die Erschließung,
+Verwahrung und Pflege der Archivbestände sowie die Beratung, Vermittlung und Information Dritter.
+Auch zu den Bereichen Forschung und Dokumentation der Stadtgeschichte werden Leistungen
+erbracht.
+Kurzbeschreibung:
+Bundesarchivgesetz, Nds. Archivgesetz, Entgeltordnung des Stadtarchivs Oldenburg, Benutzungs-
+und Gebührenordnung des Landesarchivs (Standort Oldenburg), Vertrag mit dem Landesarchiv,
+verschiedene privatrechtliche Vereinbarungen
+Auftragsgrundlage:
+Grad der Beeinflussbarkeit: niedrig
+Wirkungskreis: übertragender und eigener Wirkungskreis
+gesamte Stadtverwaltung, alle Oldenburger Einwohnerinnen und Einwohner, weitere Behörden,
+Historikerinnen und Historiker
+Zielgruppe(n):
+Sicherung potenziellen Archivgutes
+Ziel(e):
+702
+Teilergebnishaushalt THH06: Kultur, Museen, Sport
+Produkt: Archivierung (P10.111023)
+Leistung: Archivierung (Leistung) (P10.111023.001)
+Amt für Kultur, Museen und Sport
+Vorgänge aus den verschiedensten Bereichen der Stadtverwaltung werden hinsichtlich der
+Archivwürdigkeit bewertet und gegebenenfalls im Stadtarchiv verwahrt. Die Pflege und die Bildung
+neuer Archivbestände ist eine weitere Aufgabe im Rahmen dieser Leistung.
+Kurzbeschreibung:
+Bundesarchivgesetz, Nds. Archivgesetz
+Auftragsgrundlage:
+Grad der Beeinflussbarkeit: hoch
+Wirkungskreis: eigener Wirkungskreis
+Teilergebnishaushalt THH06: Kultur, Museen, Sport
 Produkt: Ohne Summenzeile (P10.999999)
 Amt für Kultur, Museen und Sport
 Erträge und Aufwendungen Ergebnis 2018
 Ansatz 2019
+"""
+
+# Steckbrief mit der Grunddaten-Tabelle DAZWISCHEN: Ihr Label steht
+# ausnahmsweise VOR seinem Inhalt, die Tabelle liegt also zwischen
+# „Wirkungskreis:" und „Zielgruppe(n):" und lief ungefiltert als Zielgruppe
+# auf die Seite. Wörtlicher Ausschnitt aus THH10 (Haushalt 2023).
+THH_MIT_GRUNDDATEN = """Teilergebnishaushalt THH10: Soziales und Gesundheit
+Produkt: Sozialhilfe SGB XII ö.T. (P10.311101)
+Amt für Teilhabe und Soziales
+Erträge und Aufwendungen Ergebnis 2021
+- Euro -
+Ansatz 2022
+- Euro -
+12. =Summe ordentliche
+Erträge
+1.000,00 2.000
+20. = Summe ordentliche
+Aufwendungen
+3.000,00 5.000
+21. ordentliches Ergebnis -2.000,00 -3.000
+1091
+Teilergebnishaushalt THH10: Soziales und Gesundheit
+Produkt: Sozialhilfe SGB XII ö.T. (P10.311101)
+Amt für Teilhabe und Soziales
+Verantwortlich: Amtsleitung
+Die Aufgabe der Sozialhilfe ist es, den Leistungsberechtigten die Führung eines Lebens zu
+ermöglichen, das der Würde des Menschen entspricht.
+Kurzbeschreibung:
+Sozialgesetzbuch Zwölftes Buch (SGB XII),
+dazu erlassene Verordnungen, Niedersächsisches Ausführungsgesetz zum SGB IX und SGB XII,
+SGB I und X
+Auftragsgrundlage:
+Grad der Beeinflussbarkeit: Niedrig
+Wirkungskreis: Eigener Wirkungskreis
+Grunddaten:
+Einheit
+Ist 2021 Plan 2022 Plan 2023 Plan 2024 Plan 2025 Plan 2026
+Mitarbeiter/innen PRS 3,46 3,44 3,50 3,50 3,50 3,50
+Mitarbeiter/innen,
+vollzeitverrechnet PRS 3,15 3,09 3,15 3,15 3,15 3,15
+HLU ö.T.,
+Leistungsberechtigte
+PRS 98 100 110 110 110 110
+1092
+1092
+1092
+Teilergebnishaushalt THH10: Soziales und Gesundheit
+Produkt: Sozialhilfe SGB XII ö.T. (P10.311101)
+Amt für Teilhabe und Soziales
+Einheit Ist 2021 Plan 2022 Plan 2023 Plan 2024 Plan 2025 Plan 2026
+BuT SGB XII ö.T.:
+Teilhabe am sozialen
+und kulturellen Leben,
+Leistungsberechtigte
+PRS 24 20 30 30 30 30
+Kinder und Jugendliche bis 18 Jahre, die ihren notwendigen Lebensunterhalt nicht oder nicht
+ausreichend aus eigenen Kräften und Mitteln, vor allem aus Einkommen und Vermögen, beschaffen
+oder die für sie notwendigen Tätigkeiten nicht ausführen können oder eine Absicherung im
+Krankheitsfall benötigen.
+Zielgruppe(n):
+Steigerung der Qualität, Ausbau der Beratungskultur, zeitnahe Auskünfte und Hilfestellungen, gute
+Erreichbarkeit.
+Ziel(e):
 """
 
 
@@ -420,6 +516,88 @@ def test_teilergebnishaushalt_prueft_summe():
     assert finanzberichte.parse_teilergebnishaushalt(kaputt) == []
 
 
+# --- Produkt-Steckbrief ------------------------------------------------------
+
+def test_steckbrief_liest_label_rueckwaerts():
+    """Die Label stehen im extrahierten Text NACH ihrem Inhalt. Wer vorwärts
+    liest, bekommt jedes Feld um eines verschoben — die Kurzbeschreibung wäre
+    dann das Gesetz."""
+    p = finanzberichte.parse_teilergebnishaushalt(THH_PLAN)[0]
+    assert p["kurzbeschreibung"].startswith("Das Produkt umfasst die Bewertung der Archivwürdigkeit")
+    assert p["kurzbeschreibung"].endswith("werden Leistungen erbracht.")
+    assert p["auftragsgrundlage"].startswith("Bundesarchivgesetz, Nds. Archivgesetz")
+    assert "Vertrag mit dem Landesarchiv" in p["auftragsgrundlage"]
+    # Genau die Verwechslung, die eine Vorwärtslesung produzieren würde:
+    assert "Bundesarchivgesetz" not in p["kurzbeschreibung"]
+    assert "Das Produkt umfasst" not in p["auftragsgrundlage"]
+
+
+def test_steckbrief_inline_felder():
+    """Kurze Werte passen im PDF neben ihr Label und stehen deshalb DAHINTER."""
+    p = finanzberichte.parse_teilergebnishaushalt(THH_PLAN)[0]
+    assert p["beeinflussbarkeit_roh"] == "niedrig"
+    assert p["beeinflussbarkeit"] == "niedrig"
+    assert p["wirkungskreis"] == "übertragender und eigener Wirkungskreis"
+    assert p["zielgruppe"].startswith("gesamte Stadtverwaltung, alle Oldenburger")
+    # „Verantwortlich: …" steht auf derselben Zeile wie sein Label und darf
+    # nicht vorn in der Kurzbeschreibung landen.
+    assert "Fachdienstleitung" not in p["kurzbeschreibung"]
+    # Und der Wirkungskreis nicht vorn in der Zielgruppe.
+    assert "Wirkungskreis" not in p["zielgruppe"]
+
+
+def test_steckbrief_ignoriert_leistungen():
+    """Jede Leistung trägt einen eigenen Steckbrief mit denselben Feldern.
+    Ungefiltert bekäme das Produkt den Text einer Unterposition."""
+    p = finanzberichte.parse_teilergebnishaushalt(THH_PLAN)[0]
+    assert "Vorgänge aus den verschiedensten Bereichen" not in p["kurzbeschreibung"]
+    assert p["beeinflussbarkeit"] == "niedrig"      # nicht das „hoch" der Leistung
+    assert p["wirkungskreis"] != "eigener Wirkungskreis"
+
+
+def test_steckbrief_ohne_tabelle():
+    """Zwischen „Wirkungskreis:" und „Zielgruppe(n):" kann die ganze
+    Grunddaten-Tabelle stehen — sie stand sonst als Zielgruppe auf der Seite."""
+    p = finanzberichte.parse_teilergebnishaushalt(THH_MIT_GRUNDDATEN)[0]
+    assert p["zielgruppe"].startswith("Kinder und Jugendliche bis 18 Jahre")
+    for rest in ("Einheit", "PRS", "Mitarbeiter/innen", "Plan 2024"):
+        assert rest not in p["zielgruppe"]
+    # Auch der wiederholte Seitenkopf gehört nicht in den Fließtext.
+    assert "Teilergebnishaushalt" not in p["zielgruppe"]
+    assert "Amt für Teilhabe und Soziales" not in p["zielgruppe"]
+
+
+def test_beeinflussbarkeit_normalisiert():
+    """Die Pläne schreiben denselben Spielraum mal „niedrig", mal „gering",
+    mal groß. Der Rohwert bleibt daneben stehen."""
+    norm = finanzberichte.normalisiere_beeinflussbarkeit
+    assert norm("gering") == "niedrig"
+    assert norm("Niedrig") == norm("niedrig") == "niedrig"
+    assert norm("Mittel") == "mittel" and norm("hoch") == "hoch"
+    # Mischformen bekommen keine Stufe — jede Wahl wäre eine Behauptung.
+    assert norm("niedrig/mittel bei Prävention") is None
+    assert norm("") is None and norm(None) is None
+
+    p = finanzberichte.parse_teilergebnishaushalt(THH_MIT_GRUNDDATEN)[0]
+    assert p["beeinflussbarkeit_roh"] == "Niedrig"   # Wortlaut des Plans
+    assert p["beeinflussbarkeit"] == "niedrig"       # normalisiert
+
+
+def test_steckbrief_erfindet_nichts():
+    """Fehlt ein Feld, bleibt es None — es wird nicht vom Nachbarprodukt
+    geerbt (der Fehler, den es bei den Zahlen schon einmal gab)."""
+    ohne = THH_PLAN.replace(
+        "Das Produkt umfasst die Bewertung der Archivwürdigkeit von Medien aller Art, die Erschließung,\n"
+        "Verwahrung und Pflege der Archivbestände sowie die Beratung, Vermittlung und Information Dritter.\n"
+        "Auch zu den Bereichen Forschung und Dokumentation der Stadtgeschichte werden Leistungen\n"
+        "erbracht.\n", "")
+    p = finanzberichte.parse_teilergebnishaushalt(ohne)[0]
+    assert p["kurzbeschreibung"] is None
+    # Die übrigen Felder bleiben lesbar.
+    assert p["auftragsgrundlage"].startswith("Bundesarchivgesetz")
+    assert p["beeinflussbarkeit"] == "niedrig"
+
+
 def test_store_finanzberichte_roundtrip(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     posten = finanzberichte.parse_ergebnisrechnung(JA_2023, 2023)
@@ -434,6 +612,74 @@ def test_store_finanzberichte_roundtrip(tmp_path):
     assert store.produkte_jahre() == [2019]
     assert store.get_produkte(2019, thh_nr=6)[0]["produkt_name"] == "Archivierung"
     assert store.get_produkte(2019, thh_nr=99) == []
+    # Der Steckbrief überlebt die Runde durch die Datenbank.
+    gespeichert = store.get_produkte(2019, thh_nr=6)[0]
+    assert gespeichert["beeinflussbarkeit"] == "niedrig"
+    assert gespeichert["beeinflussbarkeit_roh"] == "niedrig"
+    assert gespeichert["wirkungskreis"] == "übertragender und eigener Wirkungskreis"
+    assert "Archivwürdigkeit" in gespeichert["kurzbeschreibung"]
+    store.close()
+
+
+def test_produkt_suche_und_filter(tmp_path):
+    """Suche und Filter laufen serverseitig — mit dem Steckbrief trägt jede
+    Zeile mehrere hundert Zeichen Fließtext."""
+    store = CouncilStore(tmp_path / "c.sqlite")
+    store.save_produkte(2019, finanzberichte.parse_teilergebnishaushalt(THH_PLAN),
+                        "THH06", None)
+    store.save_produkte(2019, finanzberichte.parse_teilergebnishaushalt(THH_MIT_GRUNDDATEN),
+                        "THH10", None)
+    assert len(store.get_produkte(2019)) == 2
+
+    # Name, Nummer, Amt und Kurzbeschreibung sind durchsuchbar …
+    assert [p["produkt_nr"] for p in store.get_produkte(2019, suche="Archiv")] == ["P10.111023"]
+    assert [p["produkt_nr"] for p in store.get_produkte(2019, suche="P10.311101")] == ["P10.311101"]
+    assert [p["produkt_nr"] for p in store.get_produkte(2019, suche="Teilhabe")] == ["P10.311101"]
+    assert [p["produkt_nr"] for p in store.get_produkte(2019, suche="Archivwürdigkeit")] == ["P10.111023"]
+    # … mehrere Begriffe grenzen ein (UND), statt zu erweitern.
+    assert store.get_produkte(2019, suche="Archiv Sozialhilfe") == []
+    assert store.get_produkte(2019, suche="Klärwerk") == []
+
+    assert len(store.get_produkte(2019, beeinflussbarkeit="niedrig")) == 2
+    assert store.get_produkte(2019, beeinflussbarkeit="hoch") == []
+    assert [p["produkt_nr"] for p in
+            store.get_produkte(2019, amt="Amt für Teilhabe und Soziales")] == ["P10.311101"]
+
+    # Einzelabruf für den Steckbrief — auch wenn ein Filter ihn ausblendete.
+    assert store.produkt(2019, "P10.111023")["produkt_name"] == "Archivierung"
+    assert store.produkt(2019, "P10.000000") is None
+
+    f = store.produkt_facetten(2019)
+    assert {a["amt"] for a in f["aemter"]} == {"Amt für Kultur, Museen und Sport",
+                                              "Amt für Teilhabe und Soziales"}
+    assert f["spielraum"] == {"niedrig": 2}
+    assert f["mit_feld"]["kurzbeschreibung"] == 2
+    store.close()
+
+
+def test_produkt_steckbrief_migration(tmp_path):
+    """Bestandsdatenbanken bekommen die Spalten per ALTER TABLE — der
+    Primärschlüssel bleibt, die vorhandenen Zeilen bleiben stehen."""
+    import sqlite3
+    pfad = tmp_path / "alt.sqlite"
+    conn = sqlite3.connect(pfad)
+    conn.execute(
+        "CREATE TABLE council_produkte ("
+        "jahr INTEGER NOT NULL, produkt_nr TEXT NOT NULL, produkt_name TEXT NOT NULL, "
+        "thh_nr INTEGER, thh_name TEXT, amt TEXT, "
+        "ertraege REAL, aufwendungen REAL, ergebnis REAL, "
+        "quelle_label TEXT, quelle_url TEXT, fetched_at TEXT NOT NULL, "
+        "PRIMARY KEY (jahr, produkt_nr))")
+    conn.execute("INSERT INTO council_produkte VALUES "
+                 "(2019,'P10.111023','Archivierung',6,'Kultur',NULL,1,2,-1,NULL,NULL,'x')")
+    conn.commit()
+    conn.close()
+
+    store = CouncilStore(pfad)
+    alt = store.produkt(2019, "P10.111023")
+    assert alt["produkt_name"] == "Archivierung"   # Bestand unangetastet
+    assert alt["kurzbeschreibung"] is None         # neue Spalte, noch leer
+    assert store.get_produkte(2019, suche="Archiv")[0]["produkt_nr"] == "P10.111023"
     store.close()
 
 
