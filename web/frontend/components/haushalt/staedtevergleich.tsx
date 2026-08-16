@@ -54,8 +54,11 @@ export function Staedtevergleich({
                 z.ist_oldenburg ? "font-bold text-foreground" : "text-muted-foreground",
               )}>
                 {z.name}
+                {/* Kreuz statt Sternchen: Die Fußnote unten endet auf
+                    „Einwohner*innen" — zwei Sternchen mit verschiedener
+                    Bedeutung nebeneinander liest niemand auseinander. */}
                 {hinweisUnter100k && z.unter_100k && (
-                  <span className="align-super text-[9px] text-muted-foreground"> *</span>
+                  <span className="align-super text-[9px] text-muted-foreground"> †</span>
                 )}
               </span>
               {/* Die Schiene macht sichtbar, dass die Skala bei null anfängt
@@ -82,7 +85,7 @@ export function Staedtevergleich({
       </ol>
       {betroffen && (
         <p className="mt-2.5 text-[11px] leading-relaxed text-muted-foreground">
-          <span className="align-super text-[9px]">*</span> Unter 100.000 Einwohner*innen
+          <span className="align-super text-[9px]">†</span> Unter 100.000 Einwohner*innen
           rechnet das Land die Steuerkraft mit anderen fiktiven Hebesätzen. Diese
           Städte stehen deshalb nicht auf derselben Rechenvorschrift wie die übrigen.
         </p>

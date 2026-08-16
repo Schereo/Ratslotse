@@ -113,7 +113,7 @@ dafür), Housing First (S1, 5/6), Sportförderung (C2, 7/9), Bürokratieabbau (V
 ### 2.6 Rahmendaten
 
 `data.json → fakten`: Termin, 52 Sitze (von 50 erhöht), 383 Kandidierende, 16 Wahlvorschläge,
-6 Wahlbereiche, Dreistimmenwahlrecht (kumulieren/panaschieren, ab 16, EU-Bürger:innen),
+6 Wahlbereiche, Dreistimmenwahlrecht (kumulieren/panaschieren, ab 16, EU-Bürger*innen),
 9 OB-Kandidaturen, Bürgerentscheid Baumschutz vom 22.02.2026 mit vollem Ergebnis.
 
 ---
@@ -161,7 +161,7 @@ Neun Parteifarben plus Marke plus Ampel ist sonst ein Jahrmarkt.
 
 **E6 — Die Ampel ist eine eigene Skala und nie Dekoration.** Zustimmung / teils / Ablehnung /
 keine Aussage bekommen **je eine eigene Glyphe** zusätzlich zur Farbe. Ohne das ist die
-gesamte Positionsdarstellung für farbfehlsichtige Leser:innen wertlos — und das ist bei einer
+gesamte Positionsdarstellung für farbfehlsichtige Leser*innen wertlos — und das ist bei einer
 Positionsmatrix nicht ein Detail, sondern der ganze Inhalt.
 
 **E7 — Keine aggregierte Ampel-Bilanz je Partei.** Sieben Thesen (K4, B3, C1, F3, I2, W4, O4)
@@ -349,7 +349,7 @@ ohnehin schon auf dem Server. Einmalig 42 MB Erstübertragung, danach inkremente
   greift der Auth-Gate in `app/(app)/layout.tsx` gar nicht erst. `lib/public-routes.ts` muss
   nicht angefasst werden. Präzedenz: `/changelog`, `/impressum`.
 - Eigenes `app/kommunalwahl/layout.tsx` auf Basis von `PublicShell` — Marke, Rücksprung,
-  am Ende die Einladung ins Konto. Angemeldete Nutzer:innen sollen aber nicht ihre Navigation
+  am Ende die Einladung ins Konto. Angemeldete Nutzer*innen sollen aber nicht ihre Navigation
   verlieren: eine schmale Rückleiste „← Zurück zu Ratslotse" reicht.
 - **Einstiege:** Sidebar-Punkt (`components/nav.tsx`, befristet bis 13.09.), Karte auf dem
   Dashboard, Eintrag in der Command-Palette, Banner auf `app/page.tsx` (Landing).
@@ -491,7 +491,7 @@ im Median um 3,4 Punkte, maximal 6,4. **Kein Wert hängt an einer einzelnen Thes
   (B1, B2, B3, O2, D2, S2) beruhen auf zwei oder drei Positionen.
 - Bürgerentscheid Baumschutz: `ja + nein = 37 242`, Beteiligung `37 295` — die Differenz sind
   **53 ungültige Stimmen**. Die Prozentwerte sind korrekt auf die gültigen Stimmen gerechnet,
-  aber ohne diese Zeile gehen die Zahlen für Leser:innen nicht auf.
+  aber ohne diese Zeile gehen die Zahlen für Leser*innen nicht auf.
 - Die Volltexte sind schmutzig extrahiert (Wörter mitten getrennt: `Aug|enhöhe`,
   `part eipolitisches`, `Kita - und`). Für seitengenaue Links reicht das; für Volltextsuche
   oder Textstellen-Anker auf der Seite taugen sie nicht.

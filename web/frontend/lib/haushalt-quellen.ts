@@ -42,9 +42,13 @@ export type QuellenSchluessel =
 export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   plan: {
     titel: "Beschlossener Haushaltsplan der Stadt Oldenburg",
+    // Der Halbsatz „wir lesen maschinell aus und prüfen gegen die Summenzeile"
+    // stand hier bis 16.08. Er benennt keine Grenze der Quelle, sondern nur
+    // unser Verfahren — genau die Selbstvergewisserung, die DESIGNSPRACHE.md
+    // als Anti-Pattern führt. Was eine Quelle NICHT hergibt, steht weiterhin
+    // dabei (siehe steuern, teilhaushalt, pruefbericht).
     fundstelle:
-      "Übersicht „Ergebnishaushalt“ — ordentliche Erträge und Aufwendungen je Teilhaushalt. " +
-      "Wir lesen die Tabellenseite maschinell aus und prüfen sie gegen die Summenzeile.",
+      "Übersicht „Ergebnishaushalt“ — ordentliche Erträge und Aufwendungen je Teilhaushalt.",
     herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
     stand: "Haushaltsjahre 2020–2026",
     art: "pdf",
@@ -104,9 +108,6 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "Die Ergebnisrechnung, einmal für die Kernverwaltung und einmal je Teilhaushalt: " +
       "Plan und Ergebnis nebeneinander, Posten 1–24. Dazu die Erläuterungen der " +
       "Verwaltung zu den erheblichen Abweichungen (Abschnitt 6.3.1). " +
-      "Wir übernehmen eine Zeile nur, wenn die Probe des Dokuments aufgeht: " +
-      "Abweichung = Ergebnis − Plan. Die Teilhaushalts-Ebene zusätzlich nur, wenn ihre " +
-      "Summe die Gesamtrechnung ergibt. " +
       "Womit ein Jahrgang seinen Plan misst — Ansatz, Ansatz mit Nachtrag oder " +
       "Gesamtermächtigung —, steht auf der Seite dabei. " +
       "Die Dokumente hängen als Anlagen an Ratsvorlagen im Bürgerinformationssystem.",
@@ -119,8 +120,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     titel: "Teilhaushaltspläne der Stadt Oldenburg (Produktebene)",
     fundstelle:
       "Teilergebnishaushalte je Teilhaushalt (THH 01–13): was einzelne Aufgaben kosten, " +
-      "mit Produktnummer und zuständigem Amt. Übernommen werden nur Produktzeilen, bei denen " +
-      "Erträge − Aufwendungen = ordentliches Ergebnis aufgeht. Die Abdeckung ist unvollständig — " +
+      "mit Produktnummer und zuständigem Amt. Die Abdeckung ist unvollständig — " +
       "nicht jeder Teilhaushalt liegt für jedes Jahr auslesbar vor.",
     herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
     stand: "Haushaltsjahre 2018–2023",
@@ -132,11 +132,8 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     fundstelle:
       "Die Randmarken des Berichts (B, WB, H, K) und der Absatz, der jeweils dahinter steht — " +
       "mit der Textziffer und der Seite, unter der er dort geführt wird. " +
-      "Übernommen wird nur, was der Bericht selbst erklärt: Die Marke muss in seiner Legende " +
-      "stehen, die Textziffer in seinem Inhaltsverzeichnis. " +
       "Der Jahrgang 2024 fehlt, weil sein PDF keine Zeichenzuordnung mitbringt — der " +
       "Textextrakt besteht aus Glyphen-Nummern, und eine zweite Kopie gibt es nicht. " +
-      "Wir lesen dann lieber nichts als etwas Geratenes. " +
       "Die Berichte hängen als Anlagen an Ratsvorlagen im Bürgerinformationssystem.",
     herausgeber: "Stadt Oldenburg, Rechnungsprüfungsamt",
     stand: "Jahresabschlüsse 2017–2023",
