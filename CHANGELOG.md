@@ -158,6 +158,20 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   ab, steht hinterher der alte Stand da und kein halber neuer. (#511)
 
 ### Behoben
+- **Steuerkraft und Schlüsselzuweisungen standen unter dem falschen Jahr.** Der
+  offene Datensatz der Stadt, aus dem wir beide Reihen lesen, beschriftet seine
+  Zeilen um ein Jahr zu früh — die Beträge selbst stimmen, nur die Jahreszahl
+  daneben nicht. Damit nannte die KI-Frage zu einer richtigen Zahl das falsche
+  Jahr, und auf der Seite „Woher kommt das Geld?" stand der Betrag des
+  laufenden Ausgleichsjahres unter dem Vorjahr. Wir rücken die Jahreszahlen
+  jetzt beim Einlesen zurecht. Belegt ist das doppelt: Die Tabellen des
+  Landesamts für Statistik Niedersachsen führen dieselben Beträge auf den Euro
+  genau, aber ein Jahr später (geprüft für die Ausgleichsjahre 2016 bis 2026),
+  und die Haushaltspläne der Stadt weisen dieselben Summen als abgerechnetes
+  Ergebnis des jeweils späteren Jahres aus. Die Pro-Kopf-Spalten des
+  Datensatzes zeigen wir nicht mehr an — sie rechnen gegen die Einwohnerzahl
+  des zu frühen Jahres. Im Quellenverzeichnis steht die Korrektur samt
+  Begründung. (#516)
 - **Bei doppelt veröffentlichten Teilhaushalts-Plänen stand die schlechtere
   Quellenangabe an der Zahl.** Sechs Teilhaushalte hängen an zwei Vorlagen —
   dieselbe Datei, ein zweites Mal unter einem anderen Tagesordnungspunkt
@@ -351,6 +365,19 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   davon waren zudem schief: Die Eingliederungshilfe ist bei Soziales der größte
   Block, und im Finanzmanagement liegen alle Steuern, aber nur die allgemeinen
   Zuweisungen des Landes. (#517)
+- **„Muss oder kann?" sagt jetzt, was die Stadt selbst dazu sagt.** Die Seite
+  beginnt mit einem Balken, der die geplanten Ausgaben in Pflicht, Pflicht mit
+  Spielraum und Kür zerlegt und das geplante Minus als Marke daneben setzt —
+  statt drei Filterklicks über einer Liste aus 13 Karten. Neu ist der
+  Gegencheck: Die Stadt gibt in ihren Teilhaushaltsplänen zu jeder Aufgabe an,
+  worauf sie beruht und wie viel Spielraum sie bei ihr sieht. Bei 6 von 9
+  Bereichen, für die es diese Angabe gibt, deckt sich das mit unserer
+  Einordnung — bei Jugend und Familie, Finanzmanagement und Recht sowie
+  Stadtplanung nicht, und genau das steht jetzt da, statt geglättet zu werden.
+  Dazu die Rechtsgrundlagen im Wortlaut des Plans und die Korrektur einer
+  schiefen Rechnung: Das Freiwillige zu streichen spart nicht seine 47,1 Mio. €
+  Aufwand, sondern seinen Zuschussbedarf von 43,0 Mio. — rund 60 % des
+  geplanten Minus. (#521)
 - **„Woher kommt das Geld?" sortiert jetzt nach Entscheidungsmacht — und sagt
   beim Finanzausgleich ehrlich, dass es die Zahl nicht gibt.** Die
   Einnahmequellen standen bisher nach Betrag sortiert nebeneinander, jede mit
@@ -381,6 +408,19 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Einnahmen aus dem Jahresabschluss statt einer Schätzung, die teuersten
   Aufgaben des Bereichs aus der Produktebene mit Jahresstempel, und drei Reiter
   statt einer sehr langen Rolle. (#523)
+- **Die Einnahmen-Ausgaben-Schere zeigt jetzt die Lücke selbst — und was
+  tatsächlich daraus wurde.** Zwei Linien zwangen dazu, den Abstand mit dem
+  Auge abzumessen; genau der Abstand ist aber die Aussage. Er ist jetzt eine
+  Fläche mit einer Strebe an jedem Jahr, und der größte Abstand trägt seinen
+  Betrag im Bild. Dazu der Wirklichkeitstest: Für die Jahre, für die ein
+  Jahresabschluss vorliegt, steht als Raute daneben, was am Ende herauskam —
+  2023 und 2024 plante die Stadt ein Minus und schloss mit einem Plus ab.
+  Deshalb heißt die Überschrift jetzt „Seit 2023 *plant* Oldenburg mit mehr
+  Ausgaben als Einnahmen", und sie wird aus den Daten gerechnet statt
+  festgeschrieben. Wo ein Jahrgang seinen Plan an einer anderen Bezugsgröße
+  misst (2020: Ansatz samt Nachtragshaushalt), steht ein Sternchen mit
+  Fußnote. Farbe bewertet dabei weiterhin nichts: Signal-Orange heißt „hier
+  ist die Differenz" — in den Plus- wie in den Minusjahren. (#522)
 
 <!-- GEPARKT (nur dev.ratslotse.de, Umgebungs-Gate): Eintrag aktivieren,
      sobald der Kommunalwahl-Vergleich auf Prod freigeschaltet wird.
