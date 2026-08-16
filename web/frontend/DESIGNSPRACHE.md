@@ -76,6 +76,26 @@ Dot hsl(209 18% 65%), kombiniertes Label.
   Sidebar 230 mit Pflicht-Links im Fuß. Mobil: Geräterahmen ist der Container,
   Composer sticky über Tab-Bar (Safe-Area), Chips laufen in 40–56-px-Fade aus.
 - Icons: Lucide, stroke-width 2, 11–22 px, currentColor.
+- **Anzeigetafel (`.hh-tafel`) — die dunkle Fläche.** Neben der hellen *Bühne*
+  (Tonfläche, s. o.) gibt es eine Fläche, die in **beiden** Themes dunkel ist:
+  der Blickfang, auf dem die eine Zahl steht, um die es auf einer Seite geht
+  (Haushalts-Einstieg). Zwei Regeln, sonst wird sie falsch:
+  - **Im Dunkelmodus eine Stufe HELLER als die Seite, plus Rand** —
+    hell hsl(213 48% 9%) auf hsl(204 45% 97,5%), dunkel hsl(212 44% 12%) mit
+    Rand hsl(211 36% 19%). Gleich dunkel wie die Seite hieße: Die Kernzahl
+    steht im Nichts.
+  - **Datengrafiken binden ihre Farbrampe an die FLÄCHE, nicht ans Theme.**
+    Die Rampen `--hh-ein-*`/`--hh-aus-*` hingen am `.dark`-Selektor. Auf einer
+    immer dunklen Fläche heißt das im Hellmodus: der größte Einnahmeposten in
+    hsl(205 85% 27%) auf hsl(213 48% 9%) — praktisch unsichtbar. Im
+    Dunkelmodus umgekehrt: Die Rampenenden lagen 3–6 Helligkeitspunkte über
+    dem Grund. `.hh-tafel` setzt deshalb nicht nur den Hintergrund, sondern
+    auch `--card`, `--border`, `--muted-foreground`, `--primary`, `--signal`
+    und beide Rampen neu. Wer eine Grafik auf eine solche Fläche stellt,
+    schreibt keine Sonderfarben in die Komponente, sondern verlässt sich auf
+    die Token — und prüft die Fläche in beiden Themes.
+  Die Fuge zwischen Feldern einer Grafik ist `--hh-raster` (die Farbe der
+  Fläche), nicht `--card`: Auf der Tafel sind das zwei verschiedene Farben.
 - **Ebenen & Abdunkler:** Fünf benannte Stufen, definiert in `app/globals.css`
   (`--ebene-huelle` 40 · `--ebene-schwebend` 60 · `--ebene-flaeche` 100 ·
   `--ebene-dialog` 110 · `--ebene-meldung` 120) — eine neue Ebene wird dort

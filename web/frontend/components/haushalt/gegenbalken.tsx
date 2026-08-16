@@ -11,15 +11,21 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
+import { bereichKanon } from "@/lib/haushalt-bereiche";
 import { HaushaltZeile, bereichSlug, deMio, mio } from "@/lib/haushalt";
 import { cn } from "@/lib/utils";
 
 type Seite = "ein" | "aus";
 
 /** Beschriftungsregel (H-03) wörtlich: Ein Segment trägt seinen Text nur,
- *  wenn er WIRKLICH hineinpasst — gemessen, nicht geschätzt. Erst die lange
- *  Fassung (Name · Wert), dann der Kurzname, sonst nichts. Nie verkleinern,
- *  nie abschneiden: eine abgeschnittene 169,2 liest sich als 16.
+ *  wenn er WIRKLICH hineinpasst — gemessen, nicht geschätzt. Der Reihe nach
+ *  probiert: „Name · Wert", „Kurzname · Wert", Kurzname, nichts. Nie
+ *  verkleinern, nie abschneiden: eine abgeschnittene 169,2 liest sich als 16.
+ *
+ *  Die mittlere Stufe kam mit der Anzeigetafel dazu. Auf 375 px passt
+ *  „Finanzmanagement und Recht · 529,3" nicht mehr, „Finanzen" allein schon —
+ *  und dann stand im größten Segment des Bildes ein Name ohne Zahl, obwohl
+ *  daneben Platz für beides war.
  *
  *  Gemessen wird in einem UNSICHTBAREN Zwilling, nicht am sichtbaren Text.
  *  Die erste Fassung schaltete zum Messen kurz auf den Langtext und wieder
@@ -28,14 +34,21 @@ type Seite = "ein" | "aus";
  *  sichtbares Dauerflackern (Tim, 16.08.). Jetzt bleibt der sichtbare Text
  *  während der Messung stehen, und der State wird nur gesetzt, wenn sich das
  *  Ergebnis wirklich ändert. */
-function SegmentText({ lang, kurz }: { lang: string; kurz: string }) {
+function SegmentText({ stufen }: { stufen: string[] }) {
   const box = useRef<HTMLSpanElement>(null);
   const mess = useRef<HTMLSpanElement>(null);
   const [text, setText] = useState("");
+  // Die Kandidatenliste wird zu EINEM String serialisiert, damit der Effekt
+  // eine stabile Abhängigkeit hat — ein Array wäre bei jedem Render ein neues
+  // Objekt, und der ResizeObserver setzte sich jedes Mal neu auf. JSON statt
+  // eines Trennzeichens, weil die Kandidaten selbst Leerzeichen, Mittelpunkte
+  // und Kommata enthalten.
+  const schluessel = JSON.stringify(stufen);
 
   useLayoutEffect(() => {
     const el = box.current, m = mess.current;
     if (!el || !m) return;
+    const kandidaten = JSON.parse(schluessel) as string[];
     const entscheide = () => {
       // clientWidth SCHLIESST das Padding ein, der Zwilling misst nur den
       // Text — ohne Abzug hielten wir „Soziales" für passend, obwohl die
@@ -45,19 +58,26 @@ function SegmentText({ lang, kurz }: { lang: string; kurz: string }) {
         - parseFloat(stil.paddingLeft || "0") - parseFloat(stil.paddingRight || "0");
       // Der Zwilling liegt absolut und unsichtbar im selben Span, erbt also
       // Schrift und Größe — seine scrollWidth ist die echte Textbreite.
-      m.textContent = lang;
-      const breiteLang = m.scrollWidth;
-      m.textContent = kurz;
-      const breiteKurz = m.scrollWidth;
+      let passend = "";
+      for (const k of kandidaten) {
+        m.textContent = k;
+        if (m.scrollWidth <= platz) { passend = k; break; }
+      }
       m.textContent = "";
-      const passend = breiteLang <= platz ? lang : breiteKurz <= platz ? kurz : "";
       setText((alt) => (alt === passend ? alt : passend));
     };
     entscheide();
     const ro = new ResizeObserver(entscheide);
     ro.observe(el);
-    return () => ro.disconnect();
-  }, [lang, kurz]);
+    // Noch einmal, sobald die Webfonts geladen sind. Läuft die Messung vor
+    // dem Font-Swap, misst sie die Ersatzschrift — und danach ändert sich nur
+    // die SCHRIFT, nicht die Elementbreite, der ResizeObserver schlägt also
+    // nie an. Die einmal getroffene Entscheidung bliebe für immer stehen,
+    // obwohl sie zur falschen Schrift gehört.
+    let lebt = true;
+    document.fonts?.ready.then(() => { if (lebt) entscheide(); });
+    return () => { lebt = false; ro.disconnect(); };
+  }, [schluessel]);
 
   return (
     <span ref={box} className="relative block w-full overflow-hidden whitespace-nowrap px-2">
@@ -82,13 +102,18 @@ function Leiste({
       {zeilen.map(({ z, wert }, i) => {
         const breite = (wert / skala) * 100;
         const gewaehlt = aktiv === z.bereich;
-        const kurz = z.bereich.split(" und ")[0].split(",")[0].split("/")[0];
+        // Kurzname aus dem Wörterbuch (`lib/haushalt-bereiche.ts`), nicht am
+        // Trennzeichen abgeschnitten: „Klima/Umwelt/Mobilität/Bau/Grün/Friedh."
+        // wurde so zu „Klima", „Personal/Organisation/Digitalisierung/IT" zu
+        // „Personal" — beides sagt weniger, als der Bereich enthält, und beim
+        // nächsten Namenswechsel wäre es wieder etwas anderes.
+        const kanon = bereichKanon(z.bereich);
         return (
           <button
             key={z.bereich}
             type="button"
             role="listitem"
-            aria-label={`${z.bereich}: ${deMio(wert)} Mio. Euro`}
+            aria-label={`${kanon.name}: ${deMio(wert)} Mio. Euro`}
             onClick={() => onPin(z.bereich)}
             onMouseEnter={() => onHover(z.bereich)}
             onFocus={() => onHover(z.bereich)}
@@ -105,7 +130,11 @@ function Leiste({
             )}
             style={{ width: `${breite}%`, background: `var(--hh-${seite}-${Math.min(i, seite === "ein" ? 6 : 9)})`, color: "var(--hh-seg-text)" }}
           >
-            <SegmentText lang={`${z.bereich} · ${deMio(wert)}`} kurz={kurz} />
+            <SegmentText stufen={[
+              `${kanon.name} · ${deMio(wert)}`,
+              `${kanon.kurz} · ${deMio(wert)}`,
+              kanon.kurz,
+            ]} />
           </button>
         );
       })}
@@ -127,7 +156,7 @@ function Detail({ z, gepinnt, onClose, onOpen }: {
   return (
     <div className="mt-2.5 inline-block rounded-xl border border-border bg-card px-3 py-2.5 shadow-[0_12px_32px_-10px_rgba(2,32,71,0.28)]">
       <div className="flex items-start gap-3">
-        <p className="text-[12.5px] font-bold">{z.bereich}</p>
+        <p className="text-[12.5px] font-bold">{bereichKanon(z.bereich).name}</p>
         {gepinnt && (
           <button type="button" onClick={onClose} aria-label="Schließen"
             className="-mr-1 -mt-0.5 rounded p-0.5 text-muted-foreground hover:text-foreground">
@@ -197,7 +226,9 @@ export function Gegenbalken({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: n
 
   return (
     <div>
-      <div className="mb-3.5 flex items-baseline justify-between gap-3">
+      {/* Umbricht statt zu spalten: Auf 375 px zerriss `justify-between` beide
+          Kicker in je zwei Zeilen, die dann ineinander verzahnt standen. */}
+      <div className="mb-3.5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
           Woher &amp; wohin · {jahr}
         </p>
@@ -229,7 +260,7 @@ export function Gegenbalken({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: n
         {einLeg.gezeigt.map(({ z, wert }, i) => (
           <span key={z.bereich} className="inline-flex items-center gap-1.5 text-[11px] text-foreground/80">
             <span className="h-2 w-2 rounded-[2px]" style={{ background: `var(--hh-ein-${Math.min(ein.findIndex((e) => e.z === z), 6)})` }} />
-            {z.bereich} {deMio(wert)}
+            {bereichKanon(z.bereich).name} {deMio(wert)}
           </span>
         ))}
         {einLeg.rest.length > 0 && (
@@ -238,9 +269,9 @@ export function Gegenbalken({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: n
       </div>
       {ein[0] && (
         <p className="mt-1.5 max-w-[74ch] text-[11.5px] leading-relaxed text-muted-foreground">
-          Der große Block links ist keine Einnahmequelle: In „{ein[0].z.bereich}“ verbucht die
-          Stadt Steuern und Zuweisungen zentral für alle Aufgaben. Aus welchen Quellen das Geld
-          stammt, steht unter <em>Woher kommt das Geld?</em>
+          Der große Block links ist keine Einnahmequelle: In „{bereichKanon(ein[0].z.bereich).name}“
+          verbucht die Stadt Steuern und Zuweisungen zentral für alle Aufgaben. Aus welchen
+          Quellen das Geld stammt, steht unter <em>Woher kommt das Geld?</em>
         </p>
       )}
       {wahl?.seite === "ein" && <Detail z={gewaehlte} gepinnt={!!gepinnt} onClose={() => { setGepinnt(null); setHover(null); }} onOpen={oeffnen} />}
@@ -298,7 +329,7 @@ export function Gegenbalken({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: n
         {ausLeg.gezeigt.map(({ z, wert }) => (
           <span key={z.bereich} className="inline-flex items-center gap-1.5 text-[11px] text-foreground/80">
             <span className="h-2 w-2 rounded-[2px]" style={{ background: `var(--hh-aus-${Math.min(aus.findIndex((a) => a.z === z), 9)})` }} />
-            {z.bereich} {deMio(wert)}
+            {bereichKanon(z.bereich).name} {deMio(wert)}
           </span>
         ))}
         {ausLeg.rest.length > 0 && (

@@ -6,11 +6,12 @@
 // Metapher steht sichtbar darunter: Es sind nicht 100 Euro Steuergeld —
 // bei einem Minus stammt ein Teil aus dem Ersparten.
 
+import { bereichKanon } from "@/lib/haushalt-bereiche";
 import { HaushaltZeile, deMio, mio } from "@/lib/haushalt";
 
 /** Ganze Euro je Bereich per größtem Rest auf exakt 100 bringen —
  *  simple Rundung ergäbe je nach Jahr 98–102 Felder. */
-function verteile100(rows: { name: string; wert: number }[], gesamt: number) {
+function verteile100<T extends { wert: number }>(rows: T[], gesamt: number) {
   const roh = rows.map((r) => ({ ...r, exakt: (r.wert / gesamt) * 100 }));
   const basis = roh.map((r) => ({ ...r, euro: Math.floor(r.exakt) }));
   let rest = 100 - basis.reduce((s, r) => s + r.euro, 0);
@@ -28,15 +29,25 @@ export function Steuereuro({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: nu
   const gesamt = zeilen.find((z) => z.is_summe === 1);
   if (!gesamt?.aufwendungen) return null;
 
+  // Namen aus dem Wörterbuch (`lib/haushalt-bereiche.ts`): Die Schreibweise
+  // wechselt je Jahrgang, die Legende soll beim Jahreswechsel aber nicht
+  // mitwandern. `kurz` trägt die Überschrift, `name` die Legende.
   const sortiert = [...parts]
-    .map((z) => ({ name: z.bereich, wert: z.aufwendungen ?? 0 }))
+    .map((z) => {
+      const kanon = bereichKanon(z.bereich);
+      return { name: kanon.name, kurz: kanon.kurz, wert: z.aufwendungen ?? 0 };
+    })
     .filter((r) => r.wert > 0)
     .sort((a, b) => b.wert - a.wert);
   // Ab Platz 10 bündeln — kleiner als 1 Feld wird sonst unsichtbar.
   const gross = sortiert.slice(0, 9);
   const kleine = sortiert.slice(9);
   const rows = kleine.length
-    ? [...gross, { name: `${kleine.length} kleinere Bereiche`, wert: kleine.reduce((s, r) => s + r.wert, 0) }]
+    ? [...gross, {
+        name: `${kleine.length} kleinere Bereiche`,
+        kurz: `${kleine.length} kleinere`,
+        wert: kleine.reduce((s, r) => s + r.wert, 0),
+      }]
     : gross;
   const felder = verteile100(rows, gesamt.aufwendungen);
 
@@ -61,7 +72,7 @@ export function Steuereuro({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: nu
       </p>
       {top && zweit && (
         <p className="mb-3 mt-1.5 max-w-[38ch] font-display text-[19px] font-bold leading-snug tracking-tight">
-          Gibt Oldenburg {top.euro} Euro für {top.name.split(" und ")[0]} aus — und {zweit.euro} für {zweit.name}.
+          Gibt Oldenburg {top.euro} Euro für {top.kurz} aus — und {zweit.euro} für {zweit.kurz}.
         </p>
       )}
 
@@ -69,8 +80,11 @@ export function Steuereuro({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: nu
         <svg viewBox="0 0 280 280" className="w-full max-w-[280px] flex-none" role="img"
           aria-label={`Aufteilung von 100 Euro Ausgaben ${jahr}: ${felder.map((f) => `${f.name} ${f.euro} Euro`).join(", ")}`}>
           {zellen.map((bereichIdx, i) => (
+            // Die Fuge zwischen den Feldern hat die Farbe der FLÄCHE, auf der
+            // das Raster liegt — auf der dunklen Anzeigetafel ist das nicht
+            // die Kartenfarbe (`--hh-raster`, s. app/globals.css).
             <rect key={i} x={(i % 10) * 28} y={Math.floor(i / 10) * 28} width={28} height={28}
-              fill={farbe(bereichIdx)} strokeWidth={2} className="stroke-card" />
+              fill={farbe(bereichIdx)} strokeWidth={2} stroke="hsl(var(--hh-raster))" />
           ))}
           <rect x={0.5} y={0.5} width={279} height={279} fill="none" className="stroke-border" />
         </svg>

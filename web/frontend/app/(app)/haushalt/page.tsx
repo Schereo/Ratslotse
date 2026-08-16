@@ -1,13 +1,24 @@
 "use client";
 
-// /haushalt — Stadtfinanzen-Übersicht (Design H-01 Desktop / H-05 Mobil /
-// H-06 Dunkel). Leserichtung: drei Kernzahlen → das Ersparte (die eigentliche
-// Story) → Kern-Visual (Gegenbalken, Umschalter auf die 100-Euro-Ansicht) →
-// Zeitreihe → Bereichskarten (Default-Sortierung Zuschussbedarf — so passiert
-// der Brutto/Netto-Aha ohne Fußnote). Jede Karte trägt ihre Quelle.
+// /haushalt — Stadtfinanzen-Übersicht (Entwürfe H2-01 Desktop, H2-11 mobil,
+// H2-12 dunkel; die Bereichstabelle ist H2-03).
+//
+// Leserichtung: Jahr wählen → Anzeigetafel mit der Kernzahl und dem
+// Kern-Visual (Gegenbalken, umschaltbar auf die 100-Euro-Ansicht) → was der
+// Haushalt überhaupt ist → das Ersparte (die eigentliche Story) → die
+// Bereiche als Tabelle → Wegweiser → woher das Geld kommt (Flussbild) →
+// Zeitreihe. Jede Karte trägt ihre Quelle.
+//
+// Zwei Dinge, die hier bewusst NICHT stehen:
+//
+//  * **Kein zweiter Seitentitel über der Tafel.** Die Kernzahl IST die
+//    Überschrift (`<h1>` in `tafel.tsx`); ein „Wohin fließt das Geld der
+//    Stadt?" darüber wäre eine zweite Überschrift für dieselbe Sache.
+//  * **Keine drei Kernzahl-Karten mehr.** Ein­nahmen, Ausgaben und Differenz
+//    stehen auf der Tafel neben der großen Zahl — als Karten daneben nannte
+//    die Seite dieselben drei Zahlen zweimal.
 
-import { useMemo, useState } from "react";
-import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FileText } from "lucide-react";
 import { Segmented } from "@/components/ui";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
@@ -15,42 +26,17 @@ import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { LottiErklaert, LottiVergleich } from "@/components/haushalt/lotti-erklaert";
 import { Wegweiser } from "@/components/haushalt/wegweiser";
 import { Datenstand } from "@/components/haushalt/datenstand";
-import { GlossaryText } from "@/components/glossary-text";
 import { useFetch } from "@/lib/use-fetch";
+import { Tafel } from "@/components/haushalt/tafel";
+import { Bereichstabelle } from "@/components/haushalt/bereichstabelle";
 import { Gegenbalken } from "@/components/haushalt/gegenbalken";
 import { Flussbild } from "@/components/haushalt/flussbild";
 import { Steuereuro } from "@/components/haushalt/steuereuro";
 import { Zeitreihe } from "@/components/haushalt/zeitreihe";
-import { TrendMini } from "@/components/haushalt/sparkline";
 import {
-  BEREICH_INFO, HaushaltDaten, RUECKLAGE_MIO, RUECKLAGE_STAND,
-  bereichSlug, bereiche, bereichsReihe, deMio, deckung, fehlendeJahre,
-  flussJahre, jahreSortiert, mio, quellenLabel, summe,
+  HaushaltDaten, RUECKLAGE_MIO, RUECKLAGE_STAND,
+  deMio, fehlendeJahre, flussJahre, jahreSortiert, mio, quellenLabel, summe,
 } from "@/lib/haushalt";
-import { cn } from "@/lib/utils";
-
-function Kernzahl({ label, wert, hint, ton }: {
-  label: string; wert: number | null; hint: string; ton?: "signal";
-}) {
-  return (
-    <div className={cn(
-      "rounded-2xl border bg-card p-4 shadow-sm",
-      ton === "signal" ? "border-signal/40" : "border-border",
-    )}>
-      <p className={cn(
-        "font-mono text-[10px] font-medium uppercase tracking-[0.11em]",
-        ton === "signal" ? "text-signal" : "text-muted-foreground",
-      )}>{label}</p>
-      <p className={cn(
-        "mt-1.5 font-display text-[26px] font-bold tracking-tight tabular-nums sm:text-3xl",
-        ton === "signal" ? "text-signal" : "text-foreground",
-      )}>
-        {deMio(wert)}<span className="text-base font-semibold text-muted-foreground">&#8239;Mio.&nbsp;€</span>
-      </p>
-      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{hint}</p>
-    </div>
-  );
-}
 
 /** Rücklagen-Hinweis (H-01): erklärt das Minus, statt es zu bewerten —
  *  Reichweite als offene Rechnung, ausgewiesen als solche.
@@ -91,6 +77,11 @@ function RuecklagenHinweis({ defizit, jahr: startJahr, einwohner }: {
         </p>
       </div>
       <div className="w-full flex-none sm:w-[290px]">
+        {/* Achse angeschrieben: eine namenlose abfallende Treppe mit orangem
+            Reststummel liest sich als amtliche Insolvenzprognose. */}
+        <p className="mb-1 font-mono text-[9.5px] uppercase tracking-[0.09em] text-muted-foreground">
+          Rücklage in Mio.&nbsp;€ zum Jahresbeginn
+        </p>
         <div className="flex h-14 items-end gap-1.5">
           {stufen.map((s) => (
             <div key={s.label} className="flex flex-1 flex-col items-center gap-1">
@@ -120,29 +111,32 @@ export default function HaushaltPage() {
   const jahre = useMemo(() => (data ? jahreSortiert(data) : []), [data]);
   const [jahr, setJahr] = useState<number | null>(null);
   const [visual, setVisual] = useState<"balken" | "euro">("balken");
-  const [sortierung, setSortierung] = useState<"netto" | "brutto">("netto");
-  const [alleBereiche, setAlleBereiche] = useState(false);
+  const jahrLeiste = useRef<HTMLDivElement>(null);
 
   const aktJahr = jahr ?? jahre[jahre.length - 1] ?? null;
   const zeilen = aktJahr && data ? data.jahre[String(aktJahr)] ?? [] : [];
   const gesamt = summe(zeilen);
-  const einMio = mio(gesamt?.ertraege), ausMio = mio(gesamt?.aufwendungen);
+  const ausMio = mio(gesamt?.aufwendungen);
   // Aus Rohwerten gerundet — 883,9 − 812,9 ergäbe 71,0, tatsächlich sind es 71,1.
   const defizit = gesamt?.ertraege != null && gesamt?.aufwendungen != null
     ? mio(gesamt.aufwendungen - gesamt.ertraege) : null;
   const luecken = fehlendeJahre(jahre);
   const quelle = aktJahr ? quellenLabel(zeilen, aktJahr) : null;
 
-  const karten = useMemo(() => {
-    const rows = bereiche(zeilen).map((z) => ({
-      z,
-      netto: -(mio(z.ergebnis) ?? 0),
-      brutto: mio(z.aufwendungen) ?? 0,
-      deckung: deckung(z),
-    }));
-    rows.sort((a, b) => (sortierung === "netto" ? b.netto - a.netto : b.brutto - a.brutto));
-    return rows;
-  }, [zeilen, sortierung]);
+  // Das gewählte Jahr in die Scrollzeile holen — NUR waagerecht.
+  // Sieben Jahre passen auf 375 px nicht nebeneinander, und die Voreinstellung
+  // ist das jüngste, also das letzte: Ohne das hier stand beim Öffnen „2020"
+  // links und die aktive Pille lag außerhalb des Bildes. `scrollLeft` statt
+  // `scrollIntoView`, weil letzteres auch die SEITE scrollt und damit die
+  // Anzeigetafel unter die Kopfzeile schieben würde.
+  useEffect(() => {
+    const leiste = jahrLeiste.current;
+    if (!leiste || aktJahr == null) return;
+    const pille = leiste.querySelector<HTMLElement>(`[data-jahr="${aktJahr}"]`);
+    if (!pille) return;
+    const ziel = pille.offsetLeft - (leiste.clientWidth - pille.offsetWidth) / 2;
+    leiste.scrollLeft = Math.max(0, ziel);
+  }, [aktJahr]);
 
   if (loading || !data || !aktJahr) {
     return <div className="py-16 text-center text-sm text-muted-foreground">Haushalt wird geladen …</div>;
@@ -158,27 +152,81 @@ export default function HaushaltPage() {
   return (
     <Quellenkontext schluessel={quellen}>
     <div className="flex flex-col gap-4">
-      {/* Kopf: mobil führt ein Satz (H-05), Desktop Titel + Unterzeile (H-01). */}
-      <div className="flex items-end justify-between gap-5">
+      {/* Kopf: Jahr-Umschalter und Quelle. Der Titel der Seite steht auf der
+          Anzeigetafel — hier oben nur der Kicker, damit klar ist, wo man ist. */}
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-end sm:justify-between sm:gap-5">
         <div className="min-w-0">
           <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
             Stadtfinanzen Oldenburg
           </p>
-          <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
-            Wohin fließt das Geld der Stadt?
-          </h1>
-          <p className="mt-1.5 max-w-[62ch] text-sm leading-relaxed text-muted-foreground">
-            Der Haushalt ist der Plan, den der Rat beschließt: Was die Stadt im Jahr einnimmt und
-            wofür sie es ausgibt. Hier steht er in ganzen Zahlen — mit Quelle an jeder Stelle.
-          </p>
+          {/* Scrollt statt überzulaufen: Sieben Jahre passen auf 375 px nicht in
+              eine Zeile (Tim, 16.08.). Umbrechen zerrisse die Pill-Gruppe,
+              deshalb dieselbe Fade-Scrollzeile wie bei den Chips im
+              Ratsgespräch — Scrollbalken ausgeblendet. */}
+          <div ref={jahrLeiste}
+            className="scrollbar-none -mx-1 mt-1.5 flex items-center gap-1 overflow-x-auto px-1 py-0.5">
+            <div className="flex flex-none items-center gap-1 rounded-full border border-border bg-card p-1">
+              {(() => {
+                const alle: number[] = [];
+                for (let y = jahre[0]; y <= jahre[jahre.length - 1]; y++) alle.push(y);
+                return alle.map((y) =>
+                  jahre.includes(y) ? (
+                    <button key={y} type="button" data-jahr={y} onClick={() => setJahr(y)}
+                      className={
+                        "rounded-full px-3 py-1 text-[12.5px] " + (y === aktJahr
+                          ? "bg-primary font-semibold text-primary-foreground"
+                          : "text-foreground/75 hover:bg-accent")
+                      }>
+                      {y}
+                    </button>
+                  ) : (
+                    <span key={y} title="Für dieses Jahr fehlen uns die Daten"
+                      className="rounded-full border border-dashed border-border px-2.5 py-1 text-[12.5px] text-muted-foreground">
+                      {y}
+                    </span>
+                  ));
+              })()}
+            </div>
+          </div>
+          {luecken.length > 0 && (
+            <span className="mt-1 block text-[11.5px] text-muted-foreground">
+              Für {luecken.join(", ")} fehlen uns die Daten — die Zeitreihe zeigt die Lücke.
+            </span>
+          )}
         </div>
         {quelle?.url && (
           <a href={quelle.url} target="_blank" rel="noopener noreferrer"
-            className="hidden flex-none items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-[12.5px] font-semibold text-primary shadow-sm desk:inline-flex">
-            <FileText className="h-3.5 w-3.5" /> Quelle öffnen
+            className="hidden flex-none items-center gap-2 self-end rounded-xl border border-border bg-card px-3 py-2 text-[12.5px] font-semibold text-primary shadow-sm desk:inline-flex">
+            <FileText className="h-3.5 w-3.5" /> Haushaltsplan als PDF
           </a>
         )}
       </div>
+
+      {/* Anzeigetafel (H2-01/H2-11/H2-12): Kernzahl, die drei Summen und das
+          Kern-Visual auf einer Fläche, die in beiden Themes dunkel ist. */}
+      <Tafel
+        zeilen={zeilen}
+        jahr={aktJahr}
+        aktuell={aktJahr === jahre[jahre.length - 1]}
+        aktion={
+          <Segmented value={visual} onChange={setVisual} options={[
+            { value: "balken", label: "Balken" },
+            { value: "euro", label: "100-Euro-Ansicht" },
+          ]} />
+        }
+      >
+        {visual === "balken"
+          ? <Gegenbalken zeilen={zeilen} jahr={aktJahr} />
+          : <Steuereuro zeilen={zeilen} jahr={aktJahr} />}
+      </Tafel>
+      {quelle && (
+        <p className="-mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+          Quelle: {quelle.url
+            ? <a href={quelle.url} target="_blank" rel="noopener noreferrer" className="underline decoration-dotted">{quelle.text}</a>
+            : quelle.text} · Ergebnishaushalt, ordentliche Erträge und Aufwendungen ·
+          Rundung auf eine Nachkommastelle.
+        </p>
+      )}
 
       {/* „Haushaltsbuch" stand hier bis 16.08. — das Wort fing die
           Glossar-Erklärung zu „Haushalt" ein und erklärte das Bild mit der
@@ -196,58 +244,6 @@ export default function HaushaltPage() {
           + ". Der Rat beschließt diesen Plan; danach darf die Verwaltung nur ausgeben, "
           + "was darin steht."}
       />
-
-      {/* Jahr-Umschalter — fehlende Jahre bleiben sichtbar (gestrichelt). */}
-      <div className="flex flex-col gap-1.5">
-        <span className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">Haushaltsjahr</span>
-        {/* Scrollt statt überzulaufen: Sieben Jahre passen auf 375 px nicht in
-            eine Zeile (Tim, 16.08.). Umbrechen zerrisse die Pill-Gruppe,
-            deshalb dieselbe Fade-Scrollzeile wie bei den Chips im
-            Ratsgespräch — Scrollbalken ausgeblendet. */}
-        <div className="scrollbar-none -mx-1 flex items-center gap-1 overflow-x-auto px-1 py-0.5">
-        <div className="flex flex-none items-center gap-1 rounded-full border border-border bg-card p-1">
-          {(() => {
-            const alle: number[] = [];
-            for (let y = jahre[0]; y <= jahre[jahre.length - 1]; y++) alle.push(y);
-            return alle.map((y) =>
-              jahre.includes(y) ? (
-                <button key={y} type="button" onClick={() => setJahr(y)}
-                  className={cn(
-                    "rounded-full px-3 py-1 text-[12.5px]",
-                    y === aktJahr ? "bg-primary font-semibold text-primary-foreground" : "text-foreground/75 hover:bg-accent",
-                  )}>
-                  {y}
-                </button>
-              ) : (
-                <span key={y} title="Für dieses Jahr fehlen uns die Daten"
-                  className="rounded-full border border-dashed border-border px-2.5 py-1 text-[12.5px] text-muted-foreground">
-                  {y}
-                </span>
-              ));
-          })()}
-        </div>
-        </div>
-        {luecken.length > 0 && (
-          <span className="text-[11.5px] text-muted-foreground">
-            Für {luecken.join(", ")} fehlen uns die Daten — die Zeitreihe zeigt die Lücke.
-          </span>
-        )}
-      </div>
-
-      {/* Kernzahlen */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Kernzahl label="Nimmt die Stadt ein" wert={einMio}
-          hint={`Steuern, Zuweisungen, Gebühren — geplant für ${aktJahr}`} />
-        <Kernzahl label="Gibt die Stadt aus" wert={ausMio}
-          hint="Personal, Leistungen, Zuschüsse, Gebäude" />
-        {defizit != null && defizit > 0 ? (
-          <Kernzahl label="Fehlt am Ende" wert={defizit} ton="signal"
-            hint="Die Stadt plant mehr Ausgaben als Einnahmen — die Differenz kommt aus dem Ersparten." />
-        ) : (
-          <Kernzahl label="Bleibt übrig" wert={defizit != null ? -defizit : null}
-            hint="Die Stadt plant mehr Einnahmen als Ausgaben." />
-        )}
-      </div>
 
       {ausMio != null && data.einwohner && (
         <LottiVergleich betragMio={ausMio} einwohner={data.einwohner.einwohner}
@@ -272,26 +268,12 @@ export default function HaushaltPage() {
         </div>
       ) : null}
 
-      <Wegweiser />
+      {/* Die Bereiche als Tabelle (H2-03): löst die untere Hälfte der
+          Anzeigetafel auf — welcher Bereich wie viel ausgibt und wie viel
+          davon die Stadt selbst trägt. */}
+      <Bereichstabelle zeilen={zeilen} jahr={aktJahr} />
 
-      {/* Kern-Visual mit Umschalter Gegenbalken ↔ 100-Euro-Ansicht (H-03/H-04) */}
-      <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
-        <div className="mb-3 flex justify-end">
-          <Segmented value={visual} onChange={setVisual} options={[
-            { value: "balken", label: "Balken" },
-            { value: "euro", label: "100-Euro-Ansicht" },
-          ]} />
-        </div>
-        {visual === "balken"
-          ? <Gegenbalken zeilen={zeilen} jahr={aktJahr} />
-          : <Steuereuro zeilen={zeilen} jahr={aktJahr} />}
-        {quelle && (
-          <p className="mt-3 border-t border-dashed border-border pt-2.5 text-[11px] text-muted-foreground">
-            Quelle: {quelle.url ? <a href={quelle.url} target="_blank" rel="noopener noreferrer" className="underline decoration-dotted">{quelle.text}</a> : quelle.text} · Ergebnishaushalt,
-            ordentliche Erträge und Aufwendungen · Rundung auf eine Nachkommastelle.
-          </p>
-        )}
-      </div>
+      <Wegweiser />
 
       {/* Flussbild (H-18): Einnahmearten → eine Kasse → Bereiche. Steht NACH
           dem Gegenbalken, weil es dessen linke Seite auflöst: Der Balken zeigt,
@@ -322,81 +304,6 @@ export default function HaushaltPage() {
           Quelle: Beschlossene Haushaltspläne {jahre[0]}–{jahre[jahre.length - 1]}, Stadt Oldenburg · jeweils Planwerte, nicht Jahresabschluss.
         </p>
       </div>
-
-      {/* Bereichskarten — Default nach Zuschussbedarf (der Aha passiert von selbst) */}
-      <div>
-        {/* Auf Mobil untereinander: Nebeneinander zerriss die Überschrift in
-            vier Zeilen und schob den Umschalter über den Rand (Tim, 16.08.). */}
-        <div className="mb-2.5 flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            Die Bereiche im Einzelnen
-          </p>
-          <div className="scrollbar-none -mx-1 overflow-x-auto px-1">
-            <Segmented className="w-max" value={sortierung} onChange={setSortierung} tone="primary" options={[
-              { value: "netto", label: "nach Zuschussbedarf" },
-              { value: "brutto", label: "nach Ausgaben" },
-            ]} />
-          </div>
-        </div>
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-          {(alleBereiche ? karten : karten.slice(0, 6)).map(({ z, netto, brutto, deckung: d }) => {
-            // Die Mini-Reihe zeigt dieselbe Größe wie die große Zahl der Karte —
-            // sonst erzählen Zahl und Linie zwei verschiedene Geschichten.
-            const reihe = bereichsReihe(data, z.bereich).map((r) => ({
-              jahr: r.jahr,
-              wert: sortierung === "netto"
-                ? -(mio(r.zeile.ergebnis) ?? 0)
-                : (mio(r.zeile.aufwendungen) ?? 0),
-            }));
-            return (
-              <Link key={z.bereich} href={`/haushalt/bereich?name=${bereichSlug(z.bereich)}`}
-                className="rounded-xl border border-border bg-card p-3.5 shadow-sm transition-colors hover:border-primary/40">
-                <p className="text-[13px] font-bold leading-snug">{z.bereich}</p>
-                {/* Zahl und Verlauf stehen zusammen: Der Trend erklärt genau
-                    diese Zahl. Vorher hing er per justify-between in der
-                    rechten Kopfecke und wirkte in breiten Karten losgelöst
-                    (Tim, 16.08.). */}
-                <div className="mt-2 flex items-end gap-3.5">
-                  <div className="min-w-0">
-                    <p className="font-display text-[21px] font-bold leading-none tracking-tight tabular-nums">
-                      {sortierung === "netto" ? `−${deMio(netto)}` : deMio(brutto)}
-                      <span className="text-xs font-semibold text-muted-foreground">&#8239;Mio.</span>
-                    </p>
-                    <p className="mt-1 text-[11.5px] text-muted-foreground">
-                      {sortierung === "netto" ? "kostet die Stadt unterm Strich" : "gibt der Bereich aus"}
-                    </p>
-                  </div>
-                  <TrendMini reihe={reihe} className="flex-none pb-0.5 opacity-70" />
-                </div>
-                {d != null && (
-                  <>
-                    <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-muted">
-                      <div className="h-full rounded-full" style={{ width: `${Math.min(d, 100)}%`, background: "var(--hh-ein-0)" }} />
-                    </div>
-                    <p className="mt-1.5 text-[11px] text-muted-foreground">
-                      {d}&nbsp;% der Kosten deckt der Bereich selbst ·{" "}
-                      {deMio(mio(z.aufwendungen))}&#8239;Mio.&nbsp;€ Ausgaben
-                    </p>
-                  </>
-                )}
-              </Link>
-            );
-          })}
-        </div>
-        {karten.length > 6 && (
-          <button type="button" onClick={() => setAlleBereiche((v) => !v)}
-            className="mt-2.5 text-xs font-semibold text-primary">
-            {alleBereiche ? "Weniger anzeigen" : `Alle ${karten.length} Bereiche ansehen`}
-          </button>
-        )}
-      </div>
-
-      {/* Kuratierter Erklärtext, wo vorhanden — Lotti-ruhig, keine Bewertung. */}
-      {BEREICH_INFO[karten[0]?.z.bereich] && (
-        <p className="max-w-[86ch] text-xs leading-relaxed text-muted-foreground">
-          <GlossaryText text={`Übrigens: ${BEREICH_INFO[karten[0].z.bereich]}`} />
-        </p>
-      )}
 
       {/* Steht am Fuß und gilt für den ganzen Bereich: Wer hier ankommt, hat
           die Zahlen gesehen und fragt sich, bis wann sie reichen. */}

@@ -333,6 +333,19 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   davon waren zudem schief: Die Eingliederungshilfe ist bei Soziales der größte
   Block, und im Finanzmanagement liegen alle Steuern, aber nur die allgemeinen
   Zuweisungen des Landes. (#517)
+- **Der Haushalt fängt jetzt mit einer Zahl an — und die Bereiche stehen als
+  Tabelle statt als Kachelwand.** Ganz oben steht auf dunklem Grund, worum es
+  geht („Oldenburg plant 883,9 Millionen Euro", daneben Einnahmen, Ausgaben und
+  Differenz) samt dem Hinweis, dass Investitionen in einem eigenen Haushalt
+  laufen und das Budget also größer ist. Darunter zeigt eine Tabelle für jeden
+  Bereich in einem Balken, wie sich seine Ausgaben zusammensetzen — alle Balken
+  auf einer Skala, sodass ohne Fußnote sichtbar wird, dass der längste
+  Ausgabenposten nicht der ist, der die Stadt am meisten kostet (2026: Soziales
+  und Gesundheit 283,1 Mio. Ausgaben gegen Jugend und Familie 169,2 Mio. — aber
+  113,2 zu 129,9 Mio. Zuschussbedarf). Welche Bereiche in der Liste fehlen und
+  warum, wird gerechnet statt behauptet. Und die Farbskalen der Balken hängen
+  jetzt an der Fläche statt am Hell/Dunkel-Modus: Im hellen Modus wäre der
+  größte Einnahmeposten auf dem dunklen Grund sonst fast unsichtbar. (#PR)
 
 <!-- GEPARKT (nur dev.ratslotse.de, Umgebungs-Gate): Eintrag aktivieren,
      sobald der Kommunalwahl-Vergleich auf Prod freigeschaltet wird.
