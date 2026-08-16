@@ -329,14 +329,15 @@ export function Kassenzettel({ daten, jahr, einwohner, className }: {
                 von oben nach unten und balancieren sich selbst. */}
             <ul className="mt-2.5 space-y-2.5 @2xl/zettel:columns-2 @2xl/zettel:gap-5 @2xl/zettel:space-y-0">
               {[
-                // Geschütztes Leerzeichen als Zeichen, nicht als Entität: In
-                // einem JS-String bliebe `&nbsp;` wörtlich stehen. Ohne es
-                // stand auf 375 px das „€" allein in der nächsten Zeile.
-                ["Keine Rechnung.",
-                  `Niemand überweist ${de(summeJeKopf)} €. Es ist eine Division, kein Beitrag.`],
-                ["Alle zählen mit.",
-                  "Kinder, Rentnerinnen, Menschen ohne eigenes Einkommen — geteilt wird durch "
-                  + "alle Einwohnerinnen und Einwohner, nicht durch Steuerzahlende."],
+                // Was hier steht, muss jemandem etwas sagen, das er nicht ohnehin
+                // weiß. „Keine Rechnung — niemand überweist diesen Betrag" stand
+                // hier bis zum 16.08.2026 und ist gestrichen: Dass eine
+                // Pro-Kopf-Zahl keine Forderung ist, weiß jede Leserin. Geblieben
+                // ist, was überrascht — der Bezugskreis, die Herkunft, der
+                // fehlende Investitionsteil, die Vergleichsfalle.
+                ["Geteilt wird durch alle.",
+                  "Auch durch Kinder, Rentnerinnen und Menschen ohne eigenes Einkommen — "
+                  + "nicht durch die Zahl der Steuerzahlenden."],
                 ["Das Geld kommt nicht nur aus Oldenburg.",
                   "Ein großer Teil sind Zuweisungen des Landes und Anteile an Bundessteuern."],
                 // Der fünfte Punkt, den der Entwurf nicht hatte. Die

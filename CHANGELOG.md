@@ -158,6 +158,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   ab, steht hinterher der alte Stand da und kein halber neuer. (#511)
 
 ### Behoben
+- **Der Kassenzettel erklärte etwas, das niemand erklärt bekommen muss.** „Keine
+  Rechnung — niemand überweist diesen Betrag" stand im Kasten „Was diese Zahl
+  nicht ist". Dass eine Pro-Kopf-Zahl keine Forderung ist, weiß jede Leserin;
+  der Hinweis las sich belehrend. Geblieben sind die vier Punkte, die
+  tatsächlich überraschen — wer mitgezählt wird, woher das Geld kommt, dass
+  keine Investition darin steckt und warum Städtevergleiche hinken. (#PR)
 - **Die Vergleichsseite nannte den Jahresversatz noch als offene Frage.** Sie
   ist mit #516 beantwortet: Der offene Datensatz der Stadt beschriftete die
   Steuerkraft ein Jahr zu früh, nachgewiesen an den eigenen Büchern der Stadt.
