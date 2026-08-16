@@ -451,6 +451,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   warum, wird gerechnet statt behauptet. Und die Farbskalen der Balken hängen
   jetzt an der Fläche statt am Hell/Dunkel-Modus: Im hellen Modus wäre der
   größte Einnahmeposten auf dem dunklen Grund sonst fast unsichtbar. (#525)
+- **„Woher, wohin" zeigt kein anderes Jahr mehr, wenn das gewählte fehlt.** Wer auf der Haushalts-Seite ein Planjahr wählte, bekam wortlos die Grafik des nächstgelegenen Jahres mit Jahresabschluss zu sehen; dass da ein anderes Jahr stand, verriet nur eine Zeile darüber. Jetzt sagt die Seite, was fehlt — die Einnahmearten liegen uns für dieses Jahr noch nicht vor — und bietet das jüngste vollständige Jahr zum Anklicken an, statt es ersatzweise anzuzeigen.
 
 <!-- GEPARKT (nur dev.ratslotse.de, Umgebungs-Gate): Eintrag aktivieren,
      sobald der Kommunalwahl-Vergleich auf Prod freigeschaltet wird.
