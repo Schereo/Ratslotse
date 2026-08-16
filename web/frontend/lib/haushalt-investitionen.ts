@@ -1,0 +1,111 @@
+// Die Investitionen des Finanzhaushalts — Typen und Rechenwege für
+// /haushalt/investitionen.
+//
+// Die Seite beantwortet: Was will die Stadt bauen und kaufen, und in welchen
+// Bereichen? Alles hier dient dieser Frage.
+//
+// ZWEI FALLEN, die jeden Rechenweg betreffen:
+//
+// 1. DIE SUMME KOMMT AUS DER DATEI, NICHT VON UNS. `gesamt` ist die
+//    Summenzeile, die das Dokument selbst ausweist — und genau das Ziel der
+//    Rechenprobe beim Einlesen. Wer die Teilhaushalte hier noch einmal
+//    addiert und das Ergebnis zeigt, zeigt eine zweite Zahl, die dasselbe
+//    meint, und muss erklären, warum es zwei gibt.
+//
+// 2. `finanzhaushalt` IST NICHT DIE SUMME DER INVESTITIONEN, sondern der
+//    Gesamtbetrag aller Ein- und Auszahlungen des Jahres — samt Personal,
+//    Zuschüssen, Steuern. Er ist rund zehnmal so groß. Er dient als
+//    Bezugsgröße („9,5 % aller Auszahlungen sind Investitionen") und trägt als
+//    einzige Zahl dieser Seite keine Rechenprobe.
+
+import type { Herkunft } from "@/lib/haushalt-konzern";
+
+export type { Herkunft };
+
+/** Eine Zeile aus `council_investitionen`. */
+export type InvestitionsZeile = {
+  jahr: number;
+  ebene: "teilhaushalt" | "investitionen" | "finanzhaushalt";
+  /** 0 auf den beiden Summenzeilen — sie tragen keine Teilhaushaltsnummer. */
+  thh_nr: number;
+  bezeichnung: string;
+  einzahlungen: number;
+  auszahlungen: number;
+  herkunft_id: number | null;
+};
+
+export type InvestitionenDaten = {
+  jahre: number[];
+  teilhaushalte: InvestitionsZeile[];
+  gesamt: InvestitionsZeile[];
+  finanzhaushalt: InvestitionsZeile[];
+  herkunft: Record<string, Herkunft>;
+};
+
+export function herkunftVon(
+  daten: InvestitionenDaten | null,
+  id: number | null | undefined,
+): Herkunft | null {
+  if (!daten || id == null) return null;
+  return daten.herkunft[String(id)] ?? null;
+}
+
+/** Die Teilhaushalte eines Jahres, nach Auszahlungen absteigend.
+ *
+ *  Nach Auszahlungen und nicht nach dem Saldo: „Wofür gibt die Stadt Geld
+ *  aus?" ist die Frage der Seite. Der Saldo wäre eine andere (und würde einen
+ *  Bereich nach vorn sortieren, der viel ausgibt UND viel zurückbekommt). */
+export function teilhaushalte(
+  daten: InvestitionenDaten | null,
+  jahr: number,
+): InvestitionsZeile[] {
+  if (!daten) return [];
+  return daten.teilhaushalte
+    .filter((z) => z.jahr === jahr)
+    .sort((a, b) => b.auszahlungen - a.auszahlungen);
+}
+
+export function gesamtJahr(
+  daten: InvestitionenDaten | null,
+  jahr: number,
+): InvestitionsZeile | null {
+  return daten?.gesamt.find((z) => z.jahr === jahr) ?? null;
+}
+
+export function finanzhaushaltJahr(
+  daten: InvestitionenDaten | null,
+  jahr: number,
+): InvestitionsZeile | null {
+  return daten?.finanzhaushalt.find((z) => z.jahr === jahr) ?? null;
+}
+
+/** Wie viel Prozent aller geplanten Auszahlungen Investitionen sind.
+ *
+ *  UNSERE Rechnung, nicht die des Dokuments — die Seite schreibt das dazu.
+ *  `null`, solange die Bezugsgröße fehlt: Ein Anteil ohne Nenner wäre eine
+ *  erfundene Zahl. */
+export function investitionsAnteil(
+  daten: InvestitionenDaten | null,
+  jahr: number,
+): number | null {
+  const g = gesamtJahr(daten, jahr);
+  const f = finanzhaushaltJahr(daten, jahr);
+  if (!g || !f || !f.auszahlungen) return null;
+  return (g.auszahlungen / f.auszahlungen) * 100;
+}
+
+/** Was nach Abzug der Einzahlungen übrig bleibt — die Nettobelastung.
+ *
+ *  Investitionen sind nicht nur Ausgaben: Zuschüsse von Bund und Land,
+ *  Grundstücksverkäufe und Beiträge stehen als Einzahlungen dagegen. Die
+ *  Differenz ist der Betrag, den die Stadt selbst aufbringen muss. */
+export function netto(zeile: InvestitionsZeile | null): number | null {
+  if (!zeile) return null;
+  return zeile.auszahlungen - zeile.einzahlungen;
+}
+
+/** Die Zeitreihe der Gesamtinvestitionen, aufsteigend nach Jahr. */
+export function reihe(daten: InvestitionenDaten | null): InvestitionsZeile[] {
+  if (!daten) return [];
+  return [...daten.gesamt].sort((a, b) => a.jahr - b.jahr);
+}

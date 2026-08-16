@@ -8,6 +8,21 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **„Was wird gebaut?" — der Haushalts-Bereich zeigt jetzt auch die
+  Investitionen.** Bisher stand dort ausschließlich der laufende Betrieb:
+  Personal, Zuschüsse, Energie, Mieten. Neubauten, Fahrzeuge und Grundstücke
+  haben einen eigenen Haushalt, und der kam schlicht nicht vor — ein Schulneubau
+  tauchte nur als Abschreibung auf, verteilt über Jahrzehnte, lange nachdem
+  gebaut wurde. Eine neue Seite zeigt für 2022 bis 2025, was die Stadt sich
+  vorgenommen hat: 2025 sind das 80,8 Mio. € Auszahlungen, davon 39,7 Mio. €
+  durch Zuschüsse, Verkäufe und Beiträge gedeckt — 9,5 % des gesamten
+  Finanzhaushalts. Dazu, in welchen Bereichen das Geld liegt, und was
+  zurückfließt. Übernommen wird ein Jahrgang nur, wenn die Rechnung der Datei
+  aufgeht: Die Teilhaushalte müssen die Summenzeile ergeben, in beiden Spalten.
+  Was diese Zahlen **nicht** sagen, steht als eigener Abschnitt auf der Seite —
+  einzelne Vorhaben nennt die Quelle nicht („Verkehr und Straßenbau:
+  10,5 Mio. €", nicht welche Straße), es sind Planzahlen, und sie enden 2025,
+  weil die Stadt den Datensatz erst im Folgejahr veröffentlicht. (#PR)
 - **„Und ist das die ganze Stadt?" — der Haushalt zeigt jetzt auch, was neben
   ihm läuft.** Klinikum, Busse, Bäder und die städtischen Gebäude führen eigene
   Bücher; im Haushalt tauchen sie bestenfalls als Zuschusszeile auf. Eine neue

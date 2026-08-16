@@ -35,7 +35,9 @@ export type QuellenSchluessel =
   | "einwohner" | "ergebnisrechnung_thh" | "ratsbeschluss"
   // A10: Städtevergleich — die einzigen Quellen des Bereichs, die nicht von
   // der Stadt Oldenburg stammen, sondern vom Land.
-  | "lsn_finanzausgleich" | "lsn_realsteuern" | "vergleich_2018";
+  | "lsn_finanzausgleich" | "lsn_realsteuern" | "vergleich_2018"
+  // A11: Die Investitionen des Finanzhaushalts.
+  | "investitionen";
 
 export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   plan: {
@@ -276,5 +278,30 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     stand: "26.11.2018",
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de/vo0050.php?__kvonr=17170",
+  },
+  // A11: Die Investitionen des Finanzhaushalts (/haushalt/investitionen). Die
+  // einzige CSV des Open-Data-Portals in diesem Verzeichnis, die eine
+  // Rechenprobe mitbringt — bei den drei anderen steht ausdrücklich, dass sie
+  // keine haben.
+  investitionen: {
+    titel: "Finanzhaushalt der Stadt Oldenburg — Investitionen je Teilhaushalt",
+    fundstelle:
+      "Datensatz 1101, Tabellenblatt „Finanzhaushalt“: je Teilhaushalt eine Zeile " +
+      "mit den Ein- und Auszahlungen aus Investitionstätigkeit, darunter die " +
+      "Summenzeile „Finanzhaushalt Gesamtinvestitionen“. " +
+      "Übernommen wird ein Jahrgang nur, wenn die Rechnung der Datei aufgeht: Die " +
+      "Teilhaushalte müssen die Summenzeile ergeben, in beiden Spalten. " +
+      "Die Zeile „Gesamtbetrag des Finanzhaushaltes“ zeigen wir als Bezugsgröße " +
+      "daneben — sie zählt die laufende Verwaltungstätigkeit mit und ist von " +
+      "dieser Probe nicht gedeckt. " +
+      "Für welches Jahr eine Datei gilt, steht nicht in ihr, sondern in ihrem " +
+      "Dateinamen. " +
+      "Es sind Planzahlen: Was am Jahresende wirklich gebaut wurde, steht nicht " +
+      "darin, und einzelne Vorhaben nennt der Datensatz gar nicht.",
+    herausgeber: "Stadt Oldenburg, Open-Data-Portal",
+    stand: "Haushaltsjahre 2022–2025",
+    lizenz: "dl-de/by-2.0",
+    art: "csv",
+    url: "https://opendata.oldenburg.de/dataset/haushaltsplan-stadt-oldenburg-2025",
   },
 };

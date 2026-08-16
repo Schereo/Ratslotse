@@ -23,8 +23,11 @@
 //  3. **Die Summe ist nicht das Budget.** 883,9 Mio. sind der
 //     Ergebnishaushalt; die Investitionen des Finanzhaushalts fehlen darin.
 //     Der Hinweis steht auf der Tafel neben der Zahl, nicht als Fußnote
-//     irgendwo unten — wer nur die große Zahl liest, soll ihn mitlesen.
+//     irgendwo unten — wer nur die große Zahl liest, soll ihn mitlesen. Seit
+//     08/2026 verweist er auf `/haushalt/investitionen`: Bis dahin nannte der
+//     Bereich diese Zahl nirgends, der Satz endete also in einer Sackgasse.
 
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { Beleg } from "@/components/haushalt/quelle";
 import { HaushaltZeile, deMio, mio, summe } from "@/lib/haushalt";
@@ -124,8 +127,11 @@ export function Tafel({ zeilen, jahr, aktuell, aktion, children }: {
         Diese Summe ist der{" "}
         <strong className="font-semibold text-foreground/90">Ergebnishaushalt</strong>
         <Beleg q="plan" />: alles Laufende eines Jahres. Investitionen — Neubauten,
-        Fahrzeuge, Grundstücke — stehen in einem eigenen Haushalt. Das Budget der Stadt
-        ist also größer als die Zahl oben.
+        Fahrzeuge, Grundstücke — stehen in einem eigenen Haushalt und damit{" "}
+        <Link href="/haushalt/investitionen" className="text-primary hover:underline">
+          auf einer eigenen Seite
+        </Link>
+        . Das Budget der Stadt ist also größer als die Zahl oben.
       </p>
 
       {children && <div className="mt-5">{children}</div>}

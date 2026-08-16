@@ -188,6 +188,12 @@ PROBEN: dict[str, str] = {
         "der drei Jahreswerte daneben — und geteilt durch die Einwohnerzahl, "
         "die dieselbe Zeile mitliefert, ergibt er den Pro-Kopf-Wert, den die "
         "Tabelle nennt.",
+    # Investitionen aus dem Finanzhaushalt (council/investitionen.py). Die
+    # einzige Portal-CSV des Bereichs, die eine Probe mitbringt.
+    "investitionen_summenzeile":
+        "Die Teilhaushalte ergeben zusammen genau die Summenzeile, die dieselbe "
+        "Datei ausweist — in beiden Spalten, bei den Einzahlungen wie bei den "
+        "Auszahlungen.",
     UNGEPRUEFT:
         "Diese Quelle trägt keine Rechenprobe: Sie liefert eine Zeile je Jahr "
         "ohne Summe, gegen die sich etwas prüfen ließe. Übernommen wie "
@@ -232,6 +238,8 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     "council_staedtevergleich",
     # Die Planjahre aus dem Gesamtergebnishaushalt — neu, ohne Altbestand.
     "council_ergebnishaushalt",
+    # Die Investitionen des Finanzhaushalts — neu, ohne Altbestand.
+    "council_investitionen",
 )
 
 

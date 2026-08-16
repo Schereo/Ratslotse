@@ -710,6 +710,35 @@ class CouncilStore:
         self._conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_ergebnishaushalt_jahr "
             "ON council_ergebnishaushalt(jahr, art)")
+        # Die Investitionen des Finanzhaushalts (council/investitionen.py) —
+        # was die Stadt bauen und kaufen will, je Teilhaushalt. Die andere
+        # Hälfte des Haushaltsplans: Im Ergebnishaushalt darüber steht keine
+        # einzige Investition.
+        #
+        # `ebene` trennt drei Dinge, die verschieden weit reichen:
+        #   `teilhaushalt`  eine der 13 Zeilen (thh_nr 1–13)
+        #   `investitionen` die Summenzeile der Datei — das ZIEL der
+        #                   Rechenprobe, nicht unsere Addition
+        #   `finanzhaushalt` der Gesamtbetrag ALLER Ein-/Auszahlungen, also
+        #                   samt laufender Verwaltungstätigkeit. Bezugsgröße,
+        #                   von keiner Probe der Datei gedeckt und deshalb mit
+        #                   eigener Herkunft (herkunft.UNGEPRUEFT).
+        #
+        # `thh_nr` ist 0 auf den beiden Summenzeilen — sie tragen keine
+        # Teilhaushaltsnummer. Bewusst 0 statt NULL: SQLite lässt NULL in einer
+        # PRIMARY KEY zu und hält zwei NULL-Zeilen für verschieden, der
+        # Schlüssel wäre dort also gar keiner.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_investitionen ("
+            "jahr INTEGER NOT NULL, "              # Haushaltsjahr (Plan)
+            "ebene TEXT NOT NULL, "                # teilhaushalt|investitionen|finanzhaushalt
+            "thh_nr INTEGER NOT NULL DEFAULT 0, "  # 0 = Summenzeile
+            "bezeichnung TEXT NOT NULL, "
+            "einzahlungen REAL NOT NULL, "
+            "auszahlungen REAL NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, ebene, thh_nr))"
+        )
         # Schlussberichte des Rechnungsprüfungsamts — nur die **Fundstelle**,
         # nicht der Inhalt: „Das Rechnungsprüfungsamt hat diesen Abschluss
         # geprüft → Schlussbericht". Eine Zeile je Jahrgang.
@@ -1115,6 +1144,9 @@ class CouncilStore:
         "council_staedtevergleich":     (None, "quelle_url", "lsn"),
         # Und die Planjahre aus dem Gesamtergebnishaushalt.
         "council_ergebnishaushalt":     (None, "quelle_url", "ris"),
+        # Ebenso die Investitionen des Finanzhaushalts: neu, ohne Altspalten,
+        # Herkunft ausschließlich über `herkunft_id`.
+        "council_investitionen":        (None, "quelle_url", "opendata"),
     }
 
     @staticmethod
@@ -3480,6 +3512,12 @@ class CouncilStore:
         "teilhaushalt":         ("council_produkte", "jahr", None, "quelle_url"),
         "pruefbericht":         ("council_pruefbericht_quellen", "jahr", None, "url"),
         "gesamtabschluss":      ("council_konzern_posten", "jahr", None, None),
+        # Nur die geprüften Zeilen: Die Bezugsgröße „Gesamtbetrag des
+        # Finanzhaushaltes" steht in derselben Datei, aber an einer anderen
+        # Fundstelle und ohne Probe — ohne diesen Filter stünden je Jahrgang
+        # zwei Dokumente im Verzeichnis, wo es eines ist.
+        "investitionen":        ("council_investitionen", "jahr",
+                                 "t.ebene = 'teilhaushalt'", None),
     }
 
     def haushalt_dokumente(self) -> dict[str, list[dict]]:
@@ -3875,6 +3913,83 @@ class CouncilStore:
             return [r[0] for r in self._conn.execute(
                 "SELECT DISTINCT jahr FROM council_ergebnishaushalt "
                 "WHERE art = 'ansatz' ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    # --- Investitionen des Finanzhaushalts (council.investitionen) ----------
+
+    def save_investitionen(self, jahr: int, zeilen: list[dict], gesamt: dict,
+                           herkunft, finanzhaushalt: dict | None = None,
+                           herkunft_finanzhaushalt=None) -> int:
+        """Einen Jahrgang Investitionen ersetzen — Teilhaushalte und
+        Summenzeile zusammen, weil sie aus **einer** Tabelle stammen und die
+        Summenzeile das Ziel der Rechenprobe ist.
+
+        Zwei Herkünfte, weil es zwei verschiedene Aussagen sind: Die
+        Investitionen sind durch die Summenprobe der Datei gedeckt, der
+        *Gesamtbetrag des Finanzhaushaltes* ist es nicht (er zählt die laufende
+        Verwaltungstätigkeit mit, und nichts in der Datei summiert sich auf
+        ihn). Eine gemeinsame Herkunft behauptete für ihn eine Probe, die es
+        nicht gibt.
+
+        Übergeben wird nur, was die Probe bestanden hat — diese Methode prüft
+        nichts nach, sie schreibt."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute(
+                "DELETE FROM council_investitionen WHERE jahr = ?", (jahr,))
+            werte = [(jahr, "teilhaushalt", z["thh_nr"], z["bezeichnung"],
+                      z["einzahlungen"], z["auszahlungen"], now, hid)
+                     for z in zeilen]
+            werte.append((jahr, "investitionen", 0, gesamt["bezeichnung"],
+                          gesamt["einzahlungen"], gesamt["auszahlungen"], now, hid))
+            if finanzhaushalt:
+                hid_fh = (self.merke_herkunft(herkunft_finanzhaushalt, fetched_at=now)
+                          if herkunft_finanzhaushalt is not None else hid)
+                werte.append((jahr, "finanzhaushalt", 0,
+                              finanzhaushalt["bezeichnung"],
+                              finanzhaushalt["einzahlungen"],
+                              finanzhaushalt["auszahlungen"], now, hid_fh))
+            self._conn.executemany(
+                "INSERT INTO council_investitionen (jahr, ebene, thh_nr, bezeichnung, "
+                " einzahlungen, auszahlungen, fetched_at, herkunft_id) "
+                "VALUES (?,?,?,?,?,?,?,?)", werte)
+        return len(werte)
+
+    def investitionen_jahre(self) -> list[int]:
+        """Haushaltsjahre, für die Investitionen vorliegen (aufsteigend).
+
+        Gezählt wird an der **Summenzeile**, nicht an irgendeiner Zeile: Sie
+        kommt nur in die Tabelle, wenn die Rechenprobe aufging, und ist damit
+        das Kennzeichen eines vollständigen Jahrgangs."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT jahr FROM council_investitionen "
+                "WHERE ebene = 'investitionen' ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    def get_investitionen(self, jahr: int | None = None,
+                          ebene: str | None = None) -> list[dict]:
+        """Investitionszeilen — gefiltert nach Jahr und/oder Ebene.
+
+        Ohne Filter kommen alle drei Ebenen mit; sie sind als ``ebene``
+        beschriftet und dürfen nur so gezeigt werden. Wer die Teilhaushalte
+        addiert und das Ergebnis neben die Summenzeile stellt, zeigt zweimal
+        dieselbe Zahl."""
+        wo, werte = [], []
+        if jahr is not None:
+            wo.append("jahr = ?")
+            werte.append(jahr)
+        if ebene is not None:
+            wo.append("ebene = ?")
+            werte.append(ebene)
+        satz = (" WHERE " + " AND ".join(wo)) if wo else ""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_investitionen" + satz
+                + " ORDER BY jahr, ebene, thh_nr", werte)]
         except sqlite3.OperationalError:
             return []
 

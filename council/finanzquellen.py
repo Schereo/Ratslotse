@@ -407,6 +407,16 @@ def _bestand_ergebnishaushalt(store: CouncilStore) -> set[tuple]:
     return {(j,) for j in store.ergebnishaushalt_jahrgaenge()}
 
 
+def _bestand_investitionen(store: CouncilStore) -> set[tuple]:
+    """Die Haushaltsjahre, für die Investitionen vorliegen.
+
+    Eine Portal-Datei trägt einen ganzen Jahrgang — die Einheit ist der
+    Jahrgang, und „da" heißt hier tatsächlich „fertig". Gezählt wird an der
+    Summenzeile (``store.investitionen_jahre``): Sie steht nur in der Tabelle,
+    wenn die Rechenprobe aufging."""
+    return {(j,) for j in store.investitionen_jahre()}
+
+
 def _bestand_konzernabschluss(store: CouncilStore) -> set[tuple]:
     """Ein Dokument trägt einen ganzen Jahrgang — die Einheit ist der Jahrgang.
 
@@ -1400,6 +1410,28 @@ for _q in (
         einlesen=lies_ergebnishaushalte,
     ),
     Finanzquelle(
+        key="investitionen",
+        label="Investitionen (Finanzhaushalt)",
+        was="Was die Stadt bauen und kaufen will — die andere Hälfte des "
+            "Haushaltsplans, in der die Schulen, Straßen und Fahrzeuge stehen.",
+        tabelle="council_investitionen",
+        # Gemessen an den vier Lieferungen des Portals, nicht geschätzt: Der
+        # Jahrgang erscheint im FOLGEJAHR (2022 → 24.04.2024 als Nachzügler,
+        # 2023 → 19.06.2024, 2024 → 16.06.2025, 2025 → 14.07.2026). Juli ist
+        # der späteste gemessene Monat und deshalb die Schwelle — wer Juni
+        # nähme, meldete den Jahrgang 2025 drei Wochen lang als überfällig,
+        # obwohl das Portal nur seinem üblichen Takt folgte.
+        erwarteter_monat=7,
+        versatz=1,
+        # Kommt NICHT aus council_anlagen, sondern als CSV vom Open-Data-Portal
+        # (scripts/ingest_finanzen_opendata.py). Der Cron lädt nichts herunter
+        # — er beobachtet diese Schicht nur und meldet, wenn sie ausbleibt.
+        herkunft="opendata",
+        nachschub="Download vom Open-Data-Portal, "
+                  "scripts/ingest_finanzen_opendata.py",
+        bestand=_bestand_investitionen,
+    ),
+    Finanzquelle(
         key="haushaltsplan",
         label="Haushaltsplan",
         was="Der Plan, den der Rat beschließt: was die Stadt im kommenden Jahr "
@@ -1472,9 +1504,16 @@ for _q in (
 #: Dinge dasselbe zu meinen scheinen — genau die Verwechslung, gegen die die
 #: eigene Tabelle des Städtevergleichs angelegt wurde
 #: (s. Kopf von ``council/staedtevergleich``).
-REIHENFOLGE = ("haushaltsplan", "ergebnishaushalt", "jahresabschluss",
-               "teilhaushalt", "rpa_fundstelle", "pruefungsfeststellungen",
-               "konzernabschluss", "lsn_steuerkraft", "lsn_realsteuern")
+#: Die Investitionen stehen direkt hinter dem Gesamtergebnishaushalt: Beide
+#: sind Plan, und zusammen sind sie der ganze Haushaltsplan — der eine die
+#: laufenden Erträge und Aufwendungen, der andere das, was gebaut und gekauft
+#: wird. Getrennt aufgeführt und nicht unter „Haushaltsplan" zusammengefasst,
+#: weil sie aus verschiedenen Dateien kommen, verschieden weit reichen
+#: (2022–2025 gegen 2020–2026) und verschiedene Proben tragen.
+REIHENFOLGE = ("haushaltsplan", "ergebnishaushalt", "investitionen",
+               "jahresabschluss", "teilhaushalt", "rpa_fundstelle",
+               "pruefungsfeststellungen", "konzernabschluss",
+               "lsn_steuerkraft", "lsn_realsteuern")
 
 #: Die Stelle hinter einer Herkunft, im Klartext. Sie steht in der Fußzeile des
 #: Datenstands („Nicht dabei: … — die Zahlen holen wir bei …") und muss deshalb
@@ -1483,6 +1522,7 @@ REIHENFOLGE = ("haushaltsplan", "ergebnishaushalt", "jahresabschluss",
 STELLEN = {
     "ris": "Ratsinformationssystem",
     "stadt": "Portal der Stadt",
+    "opendata": "Open-Data-Portal der Stadt",
     "lsn": "Landesamt für Statistik Niedersachsen",
 }
 
