@@ -345,7 +345,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   statt als Prozent-Ring. Dazu die tatsächliche Zusammensetzung der eigenen
   Einnahmen aus dem Jahresabschluss statt einer Schätzung, die teuersten
   Aufgaben des Bereichs aus der Produktebene mit Jahresstempel, und drei Reiter
-  statt einer sehr langen Rolle. (#PR)
+  statt einer sehr langen Rolle. (#523)
 
 <!-- GEPARKT (nur dev.ratslotse.de, Umgebungs-Gate): Eintrag aktivieren,
      sobald der Kommunalwahl-Vergleich auf Prod freigeschaltet wird.
