@@ -158,6 +158,20 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   ab, steht hinterher der alte Stand da und kein halber neuer. (#511)
 
 ### Behoben
+- **Steuerkraft und Schlüsselzuweisungen standen unter dem falschen Jahr.** Der
+  offene Datensatz der Stadt, aus dem wir beide Reihen lesen, beschriftet seine
+  Zeilen um ein Jahr zu früh — die Beträge selbst stimmen, nur die Jahreszahl
+  daneben nicht. Damit nannte die KI-Frage zu einer richtigen Zahl das falsche
+  Jahr, und auf der Seite „Woher kommt das Geld?" stand der Betrag des
+  laufenden Ausgleichsjahres unter dem Vorjahr. Wir rücken die Jahreszahlen
+  jetzt beim Einlesen zurecht. Belegt ist das doppelt: Die Tabellen des
+  Landesamts für Statistik Niedersachsen führen dieselben Beträge auf den Euro
+  genau, aber ein Jahr später (geprüft für die Ausgleichsjahre 2016 bis 2026),
+  und die Haushaltspläne der Stadt weisen dieselben Summen als abgerechnetes
+  Ergebnis des jeweils späteren Jahres aus. Die Pro-Kopf-Spalten des
+  Datensatzes zeigen wir nicht mehr an — sie rechnen gegen die Einwohnerzahl
+  des zu frühen Jahres. Im Quellenverzeichnis steht die Korrektur samt
+  Begründung. (#516)
 - **Bei doppelt veröffentlichten Teilhaushalts-Plänen stand die schlechtere
   Quellenangabe an der Zahl.** Sechs Teilhaushalte hängen an zwei Vorlagen —
   dieselbe Datei, ein zweites Mal unter einem anderen Tagesordnungspunkt
