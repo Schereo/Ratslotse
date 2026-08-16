@@ -258,6 +258,28 @@ def zahl_der_woche(
             "window_days": 7}
 
 
+@router.get("/haushalt/produkte")
+def haushalt_produkte(
+    jahr: int,
+    thh: int | None = None,
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Produktebene eines Haushaltsjahres — was einzelne Aufgaben kosten.
+
+    Aus den Teilhaushalts-Plänen des Ratsinformationssystems. Die Abdeckung
+    ist unvollständig (nicht jeder Teilhaushalt liegt für jedes Jahr als
+    auslesbares Dokument vor); ``abdeckung_prozent`` sagt, wie viel der
+    geplanten Aufwendungen die gefundenen Produkte erklären — damit die
+    Oberfläche das nicht als Vollbild ausgeben kann."""
+    produkte = store.get_produkte(jahr, thh)
+    summe = sum(p["aufwendungen"] or 0 for p in store.get_produkte(jahr))
+    plan = next((z for z in store.get_haushalt(jahr) if z["is_summe"]), None)
+    quote = round(summe / plan["aufwendungen"] * 100, 1) if plan and plan["aufwendungen"] else None
+    return {"jahr": jahr, "produkte": produkte, "abdeckung_prozent": quote,
+            "plan_aufwendungen": plan["aufwendungen"] if plan else None}
+
+
 @router.get("/haushalt")
 def haushalt_uebersicht(
     _user: dict = Depends(require_active),
@@ -269,7 +291,10 @@ def haushalt_uebersicht(
       Quelle je Zeile — Haushaltsplan-PDF bzw. Open-Data-CSV der Stadt),
     - ``steuern``: Ist-Steuereinnahmen je Steuerart seit 1998 (Langformat),
     - ``steuerkraft``: Steuerkraftmesszahl + Schlüsselzuweisungen seit 1992,
-    - ``einwohner``: jüngste Einwohnerzahl (Bezugsgröße für Pro-Kopf-Angaben).
+    - ``einwohner``: jüngste Einwohnerzahl (Bezugsgröße für Pro-Kopf-Angaben),
+    - ``ergebnisrechnung``: Ansatz und Ergebnis je Posten aus den
+      Jahresabschlüssen — Grundlage für „geplant gegen tatsächlich",
+    - ``produkt_jahre``: Jahre, für die die Produktebene vorliegt.
 
     Fehlende Jahre (Datenlücken) fehlen schlicht in ``jahre`` — das Frontend
     zeigt Lücken ehrlich, statt zu interpolieren."""
@@ -278,6 +303,10 @@ def haushalt_uebersicht(
         "steuern": store.get_steuereinnahmen(),
         "steuerkraft": store.get_steuerkraft(),
         "einwohner": store.einwohner_aktuell(),
+        # Aus den Jahresabschlüssen (RIS-Anlagen): Ansatz UND Ergebnis je
+        # Posten — „geplant gegen tatsächlich" und die Erträge nach Arten.
+        "ergebnisrechnung": store.get_ergebnisrechnung(),
+        "produkt_jahre": store.produkte_jahre(),
     }
 
 

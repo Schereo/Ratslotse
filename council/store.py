@@ -571,6 +571,33 @@ class CouncilStore:
             "source_url TEXT, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (jahr, art))"
         )
+        # Ergebnisrechnung aus den Jahresabschlüssen (RIS-Anlagen): Ansatz UND
+        # Ergebnis je Posten — die Grundlage für „geplant gegen tatsächlich"
+        # und für die Aufschlüsselung der Erträge nach Arten.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_ergebnisrechnung ("
+            "jahr INTEGER NOT NULL, "
+            "nr INTEGER NOT NULL, "               # Postennummer der Tabelle (1–24)
+            "bezeichnung TEXT NOT NULL, "
+            "vorjahr REAL, ansatz REAL, ergebnis REAL, abweichung REAL, "
+            "ist_summe INTEGER NOT NULL DEFAULT 0, "
+            "quelle_label TEXT, quelle_url TEXT, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, nr))"
+        )
+        # Produktebene aus den Teilhaushalts-Plänen: was einzelne Aufgaben
+        # kosten, mit Produktnummer und zuständigem Amt.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_produkte ("
+            "jahr INTEGER NOT NULL, "
+            "produkt_nr TEXT NOT NULL, "          # z. B. P10.111023
+            "produkt_name TEXT NOT NULL, "
+            "thh_nr INTEGER, thh_name TEXT, amt TEXT, "
+            "ertraege REAL, aufwendungen REAL, ergebnis REAL, "
+            "quelle_label TEXT, quelle_url TEXT, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, produkt_nr))"
+        )
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_produkte_thh ON council_produkte(jahr, thh_nr)")
         # Einwohnerzahl je Haushaltsjahr (Open-Data, Stichtag 31.12. des
         # Vorjahres) — Bezugsgröße für Pro-Kopf-Einordnungen.
         self._conn.execute(
@@ -2886,6 +2913,70 @@ class CouncilStore:
         except sqlite3.OperationalError:
             return None
         return dict(r) if r else None
+
+    def save_ergebnisrechnung(self, jahr: int, posten: list[dict],
+                              label: str, url: str | None) -> int:
+        """Ergebnisrechnung eines Jahres ersetzen (Re-Ingest idempotent)."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute("DELETE FROM council_ergebnisrechnung WHERE jahr = ?", (jahr,))
+            self._conn.executemany(
+                "INSERT INTO council_ergebnisrechnung (jahr, nr, bezeichnung, vorjahr, ansatz, "
+                " ergebnis, abweichung, ist_summe, quelle_label, quelle_url, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                [(jahr, p["nr"], p["bezeichnung"], p.get("vorjahr"), p.get("ansatz"),
+                  p.get("ergebnis"), p.get("abweichung"), p.get("ist_summe", 0),
+                  label, url, now) for p in posten])
+        return len(posten)
+
+    def get_ergebnisrechnung(self, jahr: int | None = None) -> list[dict]:
+        """Ergebnisrechnung — ein Jahr oder alle, Posten in Tabellenreihenfolge."""
+        if jahr is None:
+            rows = self._conn.execute(
+                "SELECT * FROM council_ergebnisrechnung ORDER BY jahr, nr").fetchall()
+        else:
+            rows = self._conn.execute(
+                "SELECT * FROM council_ergebnisrechnung WHERE jahr = ? ORDER BY nr", (jahr,)).fetchall()
+        return [dict(r) for r in rows]
+
+    def ergebnisrechnung_jahre(self) -> list[int]:
+        """Jahre mit eingelesenem Jahresabschluss (aufsteigend)."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT jahr FROM council_ergebnisrechnung ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    def save_produkte(self, jahr: int, produkte: list[dict],
+                      label: str, url: str | None) -> int:
+        """Produkte eines Jahres einfügen/aktualisieren. Bewusst KEIN Löschen
+        des Jahrgangs: Die Produkte eines Jahres verteilen sich auf mehrere
+        Teilhaushalts-Dokumente, die nacheinander eingelesen werden."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_produkte (jahr, produkt_nr, produkt_name, "
+                " thh_nr, thh_name, amt, ertraege, aufwendungen, ergebnis, "
+                " quelle_label, quelle_url, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                [(jahr, p["produkt_nr"], p["produkt_name"], p.get("thh_nr"), p.get("thh_name"),
+                  p.get("amt"), p.get("ertraege"), p.get("aufwendungen"), p.get("ergebnis"),
+                  label, url, now) for p in produkte])
+        return len(produkte)
+
+    def get_produkte(self, jahr: int, thh_nr: int | None = None) -> list[dict]:
+        """Produkte eines Jahres, teuerste zuerst (nach Zuschussbedarf)."""
+        sql = ("SELECT * FROM council_produkte WHERE jahr = ?"
+               + (" AND thh_nr = ?" if thh_nr is not None else "")
+               + " ORDER BY ergebnis ASC")
+        args = (jahr, thh_nr) if thh_nr is not None else (jahr,)
+        return [dict(r) for r in self._conn.execute(sql, args)]
+
+    def produkte_jahre(self) -> list[int]:
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT jahr FROM council_produkte ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
 
     def get_steuerkraft(self) -> list[dict]:
         """Steuerkraft/Zuweisungen je Jahr, älteste zuerst."""
