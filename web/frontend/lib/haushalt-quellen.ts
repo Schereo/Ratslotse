@@ -39,6 +39,12 @@ export type QuellenSchluessel =
   | "lsn_finanzausgleich" | "lsn_realsteuern" | "vergleich_2018"
   // A11: Die Investitionen des Finanzhaushalts.
   | "investitionen"
+  // Und ihr Ist-Gegenstück aus dem Statistischen Jahrbuch. Bewusst ein
+  // eigener Schlüssel und nicht ein zweiter Absatz unter `investitionen`:
+  // Plan und Ist sind zwei Dokumente mit zwei Abgrenzungen, und ein
+  // gemeinsamer Eintrag im Quellenverzeichnis lüde dazu ein, sie als eine
+  // Quelle zu lesen.
+  | "gebaut"
   // Die Schuldenzeitreihe — die einzige Quelle des Bereichs aus dem
   // Statistischen Jahrbuch der Stadt.
   | "schulden"
@@ -290,6 +296,30 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     stand: "26.11.2018",
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de/vo0050.php?__kvonr=17170",
+  },
+  gebaut: {
+    titel:
+      "Statistisches Jahrbuch der Stadt Oldenburg, Tabellen 1107 und 1107-1 — " +
+      "Investitionen der Stadt",
+    fundstelle:
+      "Kapitel 11 „Verwaltung und Finanzen“: die Rechnungsergebnisse, also was " +
+      "im Haushaltsjahr tatsächlich abgeflossen ist, je Jahr aufgeteilt nach " +
+      "Auszahlungsart und mit der Summe daneben. " +
+      "Zwei Tabellen in einer Datei, und der Schnitt zwischen ihnen ist die " +
+      "wichtigste Angabe: 1107 führt die Jahre 2003 bis 2009 als „Ausgaben für " +
+      "eigene Investitionen“ nach kameralem Rechnungswesen, 1107-1 die Jahre ab " +
+      "2010 als „Auszahlungen für Investitionstätigkeiten“ nach doppischem — die " +
+      "Fußnote nennt die Umstellung zum 1. Januar 2010 als Grund. " +
+      "1107-1 begrenzt sich außerdem ausdrücklich auf die Kernverwaltung: Die " +
+      "Eigenbetriebe und die städtischen Gesellschaften sind nicht enthalten. " +
+      "Für 2019 fehlt der Jahrgang — dort ergeben die Auszahlungsarten in der " +
+      "Tabelle selbst nicht die Summe daneben.",
+    herausgeber: "Stadt Oldenburg, Fachdienst Geo und Daten (Zahlen: Fachdienst Finanzen)",
+    stand: "2003–2025 (Ausgabe vom 08.07.2026)",
+    art: "pdf",
+    url:
+      "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/" +
+      "40_Stadtplanungsamt/402_Geo_und_Daten/Statistik/1107-1107-1-2025-AZ.pdf",
   },
   schulden: {
     titel: "Statistisches Jahrbuch der Stadt Oldenburg, Tabelle 1108 — Stand der Verschuldung",

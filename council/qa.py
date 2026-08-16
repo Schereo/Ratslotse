@@ -963,7 +963,14 @@ def _steuerkraft_block(k: dict | None) -> str:
 #: keine einzige. Hinter `produkte` kostet er nichts: Seine eigene Frage („Wer
 #: wollte den Haushalt ändern?") zieht sonst nur `plan` und `ansatz`, und die
 #: stehen beide dahinter.
-GELD_FACETTEN = ("schulden", "stellenplan", "investitionen",
+#:
+#: `gebaut` steht direkt hinter `investitionen`, und das ist kein Geschmack:
+#: Die beiden ziehen dieselbe Frage („Was wird gebaut?") und sind Plan und Ist
+#: desselben Themas. Fiele einer von beiden am Zeichenbudget heraus, während
+#: der andere drinbliebe, stünde eine Investitionszahl ohne ihr Gegenstück im
+#: Kontext — und die Regel „nie voneinander abziehen" hinge an einer Zahl, die
+#: gar nicht da ist. Nebeneinander fallen sie zusammen oder gar nicht.
+GELD_FACETTEN = ("schulden", "stellenplan", "investitionen", "gebaut",
                  "ist", "gruende", "pruefung", "produkte", "antraege",
                  "plan", "ansatz", "steuern", "ausgleich", "konzern", "vergleich")
 
@@ -1142,7 +1149,13 @@ def geld_facetten(frage: str, typ: str = "thema") -> set[str]:
     # Investitionen aus?"), kommen beide, und der Baustein sagt, dass es zwei
     # Haushalte sind.
     if _F_INVEST.search(t):
+        # Immer beide: „Was wird gebaut?" hat einen Plan und ein Ist, und die
+        # Frage sagt fast nie, welches von beidem gemeint ist. Nur den Plan zu
+        # liefern hieße, jede Rückschau mit Absichtserklärungen zu beantworten;
+        # nur das Ist, jede Frage nach dem laufenden Jahr mit Zahlen von
+        # vorgestern.
         f.add("investitionen")
+        f.add("gebaut")
     if _F_STELLEN_HART.search(t) or (_F_STELLEN_ZAHL.search(t)
                                      and not _F_STELLEN_NICHT.search(t)):
         f.add("stellenplan")
@@ -1207,6 +1220,8 @@ def geld_kontext(store, frage: str, begriffe: str = "", typ: str = "thema") -> d
         aus["schulden"] = _sicher(store.schulden_kontext)
     if "investitionen" in facetten:
         aus["investitionen"] = _sicher(store.investitionen_fuer_begriffe, woerter)
+    if "gebaut" in facetten:
+        aus["gebaut"] = _sicher(store.investitionen_ist_kontext)
     if "stellenplan" in facetten:
         aus["stellenplan"] = _sicher(store.stellenplan_kontext)
     if "antraege" in facetten:
@@ -1437,6 +1452,48 @@ def _investitionen_block(i: dict | None) -> str:
             + _beleg_text(i.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
 
 
+def _gebaut_block(g: dict | None) -> str:
+    """Was die Stadt wirklich investiert hat — das Ist zum Plan darüber.
+
+    Die Regel im Kopf ist der ganze Grund für den eigenen Baustein: Plan und
+    Ist stehen hier zum ersten Mal zusammen im Kontext, und die Rechnung
+    „Ist ÷ Plan = Umsetzungsquote" liegt einem Sprachmodell am nächsten. Sie
+    steht in keinem Dokument, und ihre beiden Hälften sind verschieden
+    abgegrenzt — nach Teilhaushalten die eine, nach Auszahlungsarten und nur
+    für die Kernverwaltung die andere.
+
+    Die Lücke wird ausdrücklich genannt: Ohne sie liest ein Modell die Reihe
+    als geschlossen und bildet Durchschnitte über ein Loch."""
+    if not g or g.get("insgesamt") is None:
+        return ""
+    zeilen = [f"- Tatsächliche Investitions-Auszahlungen {g['jahr']}: "
+              f"{_eur(g['insgesamt'])}"]
+    if g.get("davor"):
+        zeilen.append(f"- Ein Jahr davor ({g['davor']['jahr']}): "
+                      f"{_eur(g['davor']['insgesamt'])}")
+    if g.get("hoch"):
+        zeilen.append(f"- Höchster Wert der Reihe (sie beginnt {g['reihe_ab']}): "
+                      f"{g['hoch']['jahr']} mit {_eur(g['hoch']['insgesamt'])}")
+    for titel, betrag in g.get("arten") or []:
+        zeilen.append(f"  - davon {titel}: {_eur(betrag)}")
+    if g.get("fehlend"):
+        jahre = ", ".join(str(j) for j in g["fehlend"])
+        zeilen.append(f"- NICHT im Bestand: {jahre}. Dort ergeben die "
+                      "Auszahlungsarten in der Quelltabelle nicht die Summe "
+                      "daneben; der Jahrgang wurde deshalb nicht übernommen. "
+                      "Diese Jahre haben KEINEN Wert — weder null noch geschätzt.")
+    zeilen.append(f"- Abgrenzung, gehört an jede dieser Zahlen: {g['abgrenzung']}")
+    return ("\nINVESTITIONEN — TATSÄCHLICH ABGEFLOSSEN (Statistisches Jahrbuch der\n"
+            "Stadt, Tabelle 1107-1). Das sind Rechnungsergebnisse, also das IST.\n"
+            "NIE GEGEN DEN PLAN RECHNEN: Steht oben auch der Finanzhaushalt des\n"
+            "Haushaltsplans, sind das zwei verschieden abgegrenzte Zahlenwerke — der\n"
+            "Plan nach Teilhaushalten, dieses Ist nach Auszahlungsarten und nur für\n"
+            "die Kernverwaltung. Keine Differenz bilden, keine „Umsetzungsquote“, "
+            "keinen\nProzentsatz: Diese Rechnung steht in keinem Dokument. Nenne das "
+            "Jahr und die\nAbgrenzung mit, NIE mit [id]"
+            + _beleg_text(g.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
+
+
 def _stellenplan_block(s: dict | None) -> str:
     """Stellen statt Euro — die einzige Schicht des Haushalts, die Menschen
     zählt.
@@ -1519,6 +1576,7 @@ _GELD_BAUSTEINE = {
     "schulden": ("schulden", _schulden_block),
     "stellenplan": ("stellenplan", _stellenplan_block),
     "investitionen": ("investitionen", _investitionen_block),
+    "gebaut": ("gebaut", _gebaut_block),
     "ist": ("ist", _ist_block),
     "gruende": ("gruende", _gruende_block),
     "pruefung": ("pruefung", _pruefung_block),

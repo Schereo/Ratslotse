@@ -31,8 +31,8 @@ wacht darüber, dass kein neuer Verweis das Gate vergisst.
 ## Die Seiten
 
 Der Einstieg trägt einen **Wegweiser** (`components/haushalt/wegweiser.tsx`),
-und der ist keine Linkliste, sondern die Leserichtung des ganzen Bereichs: elf
-Schritte in vier Stufen. Die Tabelle steht deshalb in genau dieser Reihenfolge.
+und der ist keine Linkliste, sondern die Leserichtung des ganzen Bereichs:
+sechzehn Schritte in vier Stufen. Die Tabelle steht deshalb in genau dieser Reihenfolge.
 
 | Route | Inhalt |
 |---|---|
@@ -46,16 +46,17 @@ Schritte in vier Stufen. Die Tabelle steht deshalb in genau dieser Reihenfolge.
 | `/haushalt/investitionen` | Schritt 6 — „Was wird gebaut?": die Investitionen des **Finanz**haushalts je Teilhaushalt, 2022–2025, mit dem Anteil am ganzen Finanzhaushalt |
 | **Die Gegenprobe** | |
 | `/haushalt/plan-ist[?jahr=<jahr>]` | Schritt 7 — geplant gegen tatsächlich, je Teilhaushalt, mit den Abweichungsgründen der Verwaltung im Wortlaut |
-| `/haushalt/pruefung[?jahr=<jahr>]` | Schritt 8 — alle Feststellungen der RPA-Schlussberichte im Wortlaut, mit Textziffer, Seite und Deeplink; dazu die Ketten über die Jahrgänge |
+| `/haushalt/gebaut` | Schritt 8 — „Was wurde davon wirklich gebaut?": die **tatsächlichen** Investitions-Auszahlungen seit 2003, nach Auszahlungsart, aus dem Statistischen Jahrbuch |
+| `/haushalt/pruefung[?jahr=<jahr>]` | Schritt 9 — alle Feststellungen der RPA-Schlussberichte im Wortlaut, mit Textziffer, Seite und Deeplink; dazu die Ketten über die Jahrgänge |
 | **Der Rahmen** | |
-| `/haushalt/konzern` | Schritt 9 — Kernverwaltung gegen Gesamtabschluss über elf Jahrgänge, Aufschlüsselung nach Aufgabenträgern |
-| `/haushalt/beteiligungen[?g=<gesellschaft>]` | Schritt 10 — „Was machen die eigentlich?": jede städtische Gesellschaft mit Auftrag, Eigentümern, Aufsichtsorganen und Kennzahlen-Zeitreihe; `g` öffnet den Steckbrief |
-| `/haushalt/vergleich` | Schritt 11 — Steuerkraft, Hebesätze und Steuereinnahmekraft der acht kreisfreien Städte aus der amtlichen Statistik — und die Erklärung, warum Ausgaben und Personal **nicht** verglichen werden |
-| `/haushalt/schulden` | Schritt 12 — dreißig Jahre Schuldenstand aus Tabelle 1108 des Statistischen Jahrbuchs, mit der Angabe, was mitgezählt ist |
+| `/haushalt/konzern` | Schritt 10 — Kernverwaltung gegen Gesamtabschluss über elf Jahrgänge, Aufschlüsselung nach Aufgabenträgern |
+| `/haushalt/beteiligungen[?g=<gesellschaft>]` | Schritt 11 — „Was machen die eigentlich?": jede städtische Gesellschaft mit Auftrag, Eigentümern, Aufsichtsorganen und Kennzahlen-Zeitreihe; `g` öffnet den Steckbrief |
+| `/haushalt/vergleich` | Schritt 12 — Steuerkraft, Hebesätze und Steuereinnahmekraft der acht kreisfreien Städte aus der amtlichen Statistik — und die Erklärung, warum Ausgaben und Personal **nicht** verglichen werden |
+| `/haushalt/schulden` | Schritt 13 — dreißig Jahre Schuldenstand aus Tabelle 1108 des Statistischen Jahrbuchs, mit der Angabe, was mitgezählt ist |
 | **Mitreden** | |
-| `/haushalt/jahr` | Schritt 13 — wann der Haushalt entschieden wird: jede Station im Rat, aus acht Jahrgängen, mit Link auf die Sitzung |
-| `/haushalt/streit[?jahr=<jahr>]` | Schritt 14 — „Der Streit ums Geld": je Haushaltsjahrgang die Änderungslisten der Fraktionen und Gruppen mit ihrem Abstimmungsergebnis, die Wortbeiträge der Debatte im Protokollwortlaut und die Schlussabstimmung |
-| `/haushalt/labor` | Schritt 15 — Was-wäre-wenn: Hebesatz-Regler und Kürzungen, jede Bewegung in Mio. €, € je Einwohner und Anteil an der Lücke; dauerhaft sichtbare Gegenrechnung |
+| `/haushalt/jahr` | Schritt 14 — wann der Haushalt entschieden wird: jede Station im Rat, aus acht Jahrgängen, mit Link auf die Sitzung |
+| `/haushalt/streit[?jahr=<jahr>]` | Schritt 15 — „Der Streit ums Geld": je Haushaltsjahrgang die Änderungslisten der Fraktionen und Gruppen mit ihrem Abstimmungsergebnis, die Wortbeiträge der Debatte im Protokollwortlaut und die Schlussabstimmung |
+| `/haushalt/labor` | Schritt 16 — Was-wäre-wenn: Hebesatz-Regler und Kürzungen, jede Bewegung in Mio. €, € je Einwohner und Anteil an der Lücke; dauerhaft sichtbare Gegenrechnung |
 | **Steckbriefe (ohne Schritt)** | |
 | `/haushalt/bereich?name=<slug>` | Dossier je Teilhaushalt: Wasserfall Brutto → eigene Erträge → Zuschussbedarf, Entwicklung seit 2020, Produkte des Bereichs |
 | `/haushalt/steuer?art=<slug>` | Steckbrief je Einnahmeart: „Wer entscheidet was", Ist-Kurve, Hebesatz, Ein-Punkt-Überschlag |
@@ -97,6 +98,7 @@ die es nicht zeigen:
 | `…/haushalt/stellenplan` | `/haushalt/personal` | rund 190 Zeilen je Jahrgang; die Einzelposten kommen nur für den angefragten Jahrgang mit |
 | `…/haushalt/vergleich` | `/haushalt/vergleich` | eigene Tabelle (LSN), acht Städte × Jahrgänge |
 | `…/haushalt/investitionen` | `/haushalt/investitionen` | eigene Tabelle, **anderer Haushalt** (Finanz- statt Ergebnishaushalt) — nicht mit den übrigen Zahlen verrechenbar |
+| `…/haushalt/gebaut` | `/haushalt/gebaut` | eigene Tabellen; **Ist statt Plan** und nach Auszahlungsart statt nach Teilhaushalt — bewusst nicht mit `…/haushalt/investitionen` zusammengelegt, damit die beiden Summen nicht als „geplant gegen gebaut" gelesen und voneinander abgezogen werden |
 | `…/haushalt/schulden` | `/haushalt/schulden` | eigene Tabelle, eigene Jahrgangsreihe (bis 1995 zurück) |
 | `…/haushalt/weg` | `/haushalt/jahr` | Ratsdaten statt Finanzdokumenten (Beratungsfolge, Sitzungen) |
 | `…/haushalt/datenstand` | Block „Bis wann die Zahlen reichen" | rechnet über den Bestand, nicht über Inhalte |
@@ -119,6 +121,8 @@ die es nicht zeigen:
 | `council_konzern_posten` | Gesamtergebnisrechnung des **Konzerns** je Posten, 2014–2024 | Konsolidierte Gesamtabschlüsse — **Anlagen im RIS** | `scripts/ingest_konzernabschluss.py` |
 | `council_konzern_traeger` | Dieselben Summen je Aufgabenträger (Kernverwaltung, Klinikum, Eigenbetriebe …), 2017–2024, in **TEUR** | dito | dito |
 | `council_staedtevergleich` | Steuerkraft, Hebesätze und Steuereinnahmekraft der acht kreisfreien Städte je Jahrgang — Reihen `steuerkraft` und `realsteuern` | Landesamt für Statistik Niedersachsen (Kommunaler Finanzausgleich, Realsteuervergleich) | `scripts/ingest_staedtevergleich.py` |
+| `council_investitionen_ist` | Tatsächliche Investitions-Auszahlungen je Jahr seit 2003 (**Ist**) — Summe und `regelwerk` (`kameral` bis 2009, `doppik` ab 2010) | Statistisches Jahrbuch der Stadt, Tabellen 1107 und 1107-1 (PDF von oldenburg.de) | `scripts/ingest_investitionen_ist.py` |
+| `council_investitionen_ist_arten` | Dieselben Jahrgänge nach Auszahlungsart, mit der Überschrift der Quelle — vier Arten je kameralem, sechs je doppischem Jahrgang | dito | dito |
 | `council_schulden` | Schuldenstand je Jahr seit 1995 — vier Schuldenarten, Summe und Betrag je Einwohner\*in | Statistisches Jahrbuch der Stadt, Tabelle 1108 (PDF von oldenburg.de) | `scripts/ingest_schulden.py` |
 
 :::note[Zwei Tabellen zu denselben Berichten]
@@ -135,7 +139,8 @@ Ingest-Skripte bleiben der Weg von Hand, wenn ein verbesserter Parser über den
 `council_steuern`, `council_steuerkraft`, `council_einwohner`) kommen per
 Download von oldenburg.de und bleiben Handarbeit, ebenso der Städtevergleich
 (LSN, einmal jährlich — siehe [unten](#kein-neues-paket-kein-cron)) und die
-Schuldenzeitreihe (Statistisches Jahrbuch, einmal jährlich).
+Schuldenzeitreihe und die Ist-Investitionen (beide Statistisches Jahrbuch,
+einmal jährlich).
 
 ## Herkunft: woher jede einzelne Zahl stammt
 
@@ -1602,6 +1607,110 @@ hängen bleiben:
 
 Der Anteil am Finanzhaushalt ist **unsere** Division und steht auf der Seite als
 solche gekennzeichnet; die beiden Beträge darin stehen so in der Quelle.
+
+## Gebaut: das Ist zum Investitionsplan
+
+`/haushalt/gebaut` beantwortet die Frage, die der Abschnitt darüber offen
+lässt: Was ist von dem Geplanten wirklich abgeflossen? Die Quelle ist das
+**Statistische Jahrbuch der Stadt**, Kapitel 11 — dieselbe Veröffentlichung,
+aus der auch die Schuldenzeitreihe kommt.
+
+### Zwei Tabellen, zwei Rechnungswesen
+
+Die Stadt liefert beide in **einer** PDF-Datei, aber als **zwei** Tabellen, und
+sie begründet den Schnitt selbst in einer Fußnote:
+
+> Einführung Neues Komunales Rechnungswesens (NKR) zum 01. Januar 2010.
+
+- **1107 (2003–2009)** heißt „**Ausgaben** der Stadt Oldenburg für eigene
+  Investitionen" und führt vier Arten, darunter „Gewährung von Darlehen".
+- **1107-1 (2010–2025)** heißt „**Auszahlungen** der Stadt Oldenburg für
+  Investitionstätigkeiten" und führt sechs Arten, nach den Positionen, die
+  § 3 GemHKVO für die Finanzrechnung vorgibt. Der Untertitel nennt zusätzlich
+  die Abgrenzung: „Rechnungsergebnisse laut Finanzrechnung der
+  **Kernverwaltung**".
+
+Deshalb trägt jeder Jahrgang seine Spalte `regelwerk`, deshalb hat jedes
+Regelwerk **eigene** Feldnamen (auch wo sich zwei Überschriften ähneln), und
+deshalb zeichnet die Seite zwei getrennte Diagramme statt einer Achse. Wer die
+beiden Reihen verbindet, behauptet eine Vergleichbarkeit, die das Dokument mit
+seiner Fußnote gerade bestreitet.
+
+### Eine Probe, und warum es keine zweite gibt
+
+`investitionen_ist.zeilensumme` ist die Probe des Dokuments: Die
+Auszahlungsarten einer Zeile ergeben die Summe, die dieselbe Zeile daneben
+ausweist. Sie greift in **22 von 23** Jahrgängen.
+
+**2019 reißt sie**, im Dokument selbst: Die sechs Arten ergeben 66.595 T€,
+ausgewiesen sind 67.899 T€ — 1,304 Mio. € Unterschied. Welche der sieben
+Zahlen danebenliegt, sagt die Tabelle nicht.
+
+Bei den Schulden rettete an dieser Stelle eine zweite, unabhängige Probe den
+Jahrgang (Fall 2022, siehe unten): Die Summe hing an der Pro-Kopf-Gegenprobe,
+also kam sie herein und nur die Aufteilung fiel. Für 1107-1 wurde dieselbe
+zweite Probe gesucht und **nicht gefunden**:
+
+| Gesucht | Befund |
+|---|---|
+| Pro-Kopf-Spalte in der Tabelle | Es gibt keine. Eine eigene Division wäre unsere Rechnung und könnte einen Übertragungsfehler nicht aufdecken. |
+| Zweite Ausgabe des Jahrbuchs (Überlappungsprobe) | Die Übersichtsseite führt Tabellen aus zwei Jahrgängen, für Kapitel 11 aber nur den von 2025. Die Vorjahresdatei ist nicht mehr abrufbar. |
+| Spiegel im Open-Data-Portal | Das Portal führt 91 Datensätze, darunter die kameralen Ausgaben bis 2009 und die ordentlichen Aufwendungen seit 2010 — die Investitions-Ist-Zahlen sind nicht dabei. |
+| Der Plan als Gegenprobe | Andere Abgrenzung, siehe unten — keine Probe, sondern eine andere Größe. |
+
+Also gilt die Grundregel ohne Rettungsanker: **2019 wird ganz verworfen**, mit
+allen sieben Zahlen — anders als 2022 bei den Schulden ist hier auch die Summe
+durch nichts gedeckt. Die Seite zeichnet für das Jahr einen schraffierten
+Platzhalter mit gestricheltem Rahmen und benennt die Lücke im Text; der
+Endpunkt liefert sie als `fehlend`.
+
+### Warum die Seite keine „Umsetzungsquote" zeigt
+
+Die naheliegende Zahl wäre `Ist ÷ Plan`. Gerechnet ergäbe sie für 2022–2025
+Werte zwischen 41 % und 75 %. Sie steht auf keiner Seite, und das ist kein
+Übersehen:
+
+- Der **Plan** (`council_investitionen`, Datensatz 1101) ist nach
+  **Teilhaushalten** gegliedert — nach Organisation.
+- Das **Ist** (`council_investitionen_ist`) stammt aus der Finanzrechnung der
+  **Kernverwaltung** und ist nach **Auszahlungsarten** gegliedert.
+
+Keine der beiden Quellen nennt die andere, keine weist eine Differenz aus, und
+keine sagt, dass ihre Gesamtsumme dieselbe Menge zählt. Die Quote wäre die
+meistgelesene Zahl der Seite und die einzige, die in keinem Dokument steht.
+Beide Seiten stehen deshalb nebeneinander und verlinken einander; die
+Begründung steht auf `/haushalt/gebaut` als eigener Block, nicht als Fußnote.
+
+Dieselbe Regel gilt im Prompt der KI-Frage: `qa._gebaut_block` trägt sie im
+Klartext, und die Facetten `investitionen` und `gebaut` stehen in
+`GELD_FACETTEN` **nebeneinander**, damit nicht eine von beiden am
+Zeichenbudget herausfällt und die Warnung an einer Zahl hinge, die gar nicht
+im Kontext steht.
+
+### Die Falle im Textextrakt
+
+Wie bei Tabelle 1108 klebt eine Fußnotenziffer an einer Zahl — hier aber im
+**Titel** und nicht an den Beträgen: Aus „in Tausend Euro 2010 bis 2025" mit
+Fußnote 1 wird im Extrakt `2010 bis 20251`. Die Erkennung nimmt die Ziffer
+ausdrücklich als Marke an (Jahreszahlen haben vier Stellen). In den
+Datenzeilen selbst trägt heute kein Betrag eine Marke — geprüft an allen 23
+Zeilen mit einem Positions-Dump des PDFs; die Zellen-Regel bringt sie
+trotzdem mit, weil sie nichts kostet.
+
+### Was die Zahlen nicht sagen
+
+- **Nicht die ganze Bautätigkeit.** Gezählt wird die Kernverwaltung. Was der
+  Eigenbetrieb Gebäudewirtschaft und Hochbau baut — seit 2010 ein großer Teil
+  des städtischen Hochbaus —, steht nicht darin.
+- **Kein einzelnes Vorhaben.** „Baumaßnahmen: 16,2 Mio. €" sagt nicht, welche
+  Schule.
+- **„Sonstige Investitionstätigkeit" bleibt unaufgeschlüsselt** und ist in den
+  jüngeren Jahrgängen einer der größten Posten (2018 sprang er von 123.000 €
+  auf 19 Mio. €). Das Jahrbuch sagt nicht, was darin steckt, und die Seite
+  vermutet es nicht.
+- **Ein Abfluss, kein Baufortschritt.** Eine Abschlagszahlung im Dezember
+  zählt für das alte Jahr, auch wenn der Bagger im März kommt.
+
 ## Schulden: eine Zahl, die es zweimal gibt
 
 `/haushalt/schulden` beantwortet die häufigste offene Frage an den Bereich —

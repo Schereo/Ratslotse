@@ -82,8 +82,14 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     # dem der Schuldenstand nicht vorkommt.
     ("Wie viel Schulden hat Oldenburg?", "geld", {"schulden"}),
     # Der ANDERE Haushalt. Vorher: {} bzw. {"plan"}.
-    ("Was wird gebaut?", "thema", {"investitionen"}),
-    ("Wie viel investiert die Stadt?", "geld", {"investitionen"}),
+    #
+    # Seit 17.08. IMMER BEIDE: `investitionen` ist der Plan aus dem
+    # Haushaltsplan, `gebaut` das Ist aus dem Statistischen Jahrbuch. Die
+    # Frage sagt fast nie, welches von beidem gemeint ist — und die Regel
+    # „nie voneinander abziehen" hinge an einer Zahl, die gar nicht im
+    # Kontext steht, wenn nur eine der beiden käme.
+    ("Was wird gebaut?", "thema", {"investitionen", "gebaut"}),
+    ("Wie viel investiert die Stadt?", "geld", {"investitionen", "gebaut"}),
     # Stellen statt Euro. Vorher: {} — Personalfragen bekamen Aufwendungen.
     ("Wie viele Stellen sind unbesetzt?", "thema", {"stellenplan"}),
     ("Wie viele Mitarbeiter hat die Stadt?", "thema", {"stellenplan"}),
@@ -128,6 +134,7 @@ ERWARTETE_METHODEN = {
     "vergleich": "staedtevergleich_kontext",
     "schulden": "schulden_kontext",
     "investitionen": "investitionen_fuer_begriffe",
+    "gebaut": "investitionen_ist_kontext",
     "stellenplan": "stellenplan_kontext",
     "antraege": "haushaltsantraege_kontext",
 }
@@ -185,6 +192,9 @@ class _MessStore:
 
     def investitionen_fuer_begriffe(self, b, limit=3):
         return self._merken("investitionen_fuer_begriffe", None)
+
+    def investitionen_ist_kontext(self):
+        return self._merken("investitionen_ist_kontext", None)
 
     def stellenplan_kontext(self, jahrgang=None):
         return self._merken("stellenplan_kontext", None)
@@ -355,7 +365,12 @@ def test_neue_facetten_ziehen_sich_nicht_gegenseitig(facette, fragen):
     ändern?" trägt „Haushalt" im Wortlaut, und die Plan-Zahlen sind dort der
     Gegenstand des Streits, nicht Beiwerk.
     """
-    erlaubt = {facette} | ({"plan", "ansatz"} if facette == "antraege" else set())
+    zusatz = {"antraege": {"plan", "ansatz"},
+              # Plan und Ist derselben Frage — sie MÜSSEN zusammen kommen,
+              # sonst hinge die Regel „nie voneinander abziehen" an einer
+              # Zahl, die nicht im Kontext steht (council/qa.py).
+              "investitionen": {"gebaut"}}
+    erlaubt = {facette} | zusatz.get(facette, set())
     for frage in fragen:
         gefunden = qa.geld_facetten(frage, "thema")
         fremde = gefunden - erlaubt
@@ -375,9 +390,13 @@ def test_schuldenfrage_zieht_weder_plan_noch_stellenplan():
 
 
 def test_investitionsfrage_zieht_nicht_den_ergebnishaushalt():
-    """Im Ergebnishaushalt steht keine einzige Investition."""
+    """Im Ergebnishaushalt steht keine einzige Investition.
+
+    Sie zieht den Finanzhaushalt — und zwar in beiden Fassungen: den Plan
+    aus dem Haushaltsplan und das Ist aus dem Statistischen Jahrbuch."""
     f = qa.geld_facetten("Wie viel investiert die Stadt?", "geld")
-    assert f == {"investitionen"}
+    assert f == {"investitionen", "gebaut"}
+    assert "plan" not in f and "ansatz" not in f
 
 
 def test_stellen_als_verb_zieht_den_stellenplan_nicht():
