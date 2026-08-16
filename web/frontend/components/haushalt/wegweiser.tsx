@@ -64,11 +64,11 @@
 // „Was wird gebaut?" (08/2026) passiert und dort nachgezogen worden: Die
 // Seite trug bis dahin Schritt 7.
 //
-// **Zwei der dreizehn Seiten haben bewusst keinen Schritt.** `/haushalt/bereich`
+// **Zwei der vierzehn Seiten haben bewusst keinen Schritt.** `/haushalt/bereich`
 // und `/haushalt/steuer` sind Steckbriefe: Sie brauchen einen Query-Parameter
 // und öffnen ohne ihn den Vorgabefall. Als eigener Schritt stünde ein
 // beliebiger Bereich neben elf Fragen. Sie werden am Fuß benannt, damit die
-// Zählung „elf Schritte, dreizehn Seiten" nicht wie eine Lücke aussieht.
+// Zählung „elf Schritte, vierzehn Seiten" nicht wie eine Lücke aussieht.
 //
 // FORM: eine Karte, nicht zehn. Zehn Karten sind auf 375 px eine Liste ohne
 // Ende — die Stufen wären zwischen ihnen untergegangen, und genau sie sind
