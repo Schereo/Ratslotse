@@ -230,12 +230,198 @@ def _thh_zahlen(zeile: str) -> list[float]:
     return out
 
 
+# --- Teilhaushalte: Produkt-Steckbrief ---------------------------------------
+#
+# Zu jedem Produkt führen die Pläne einen Steckbrief: was die Aufgabe umfasst,
+# auf welchem Gesetz sie beruht, wie viel Spielraum die Stadt bei ihr hat.
+# Genau das beantwortet die häufigste Bürgerfrage zum Haushalt („was kostet
+# eigentlich das Stadtarchiv?") — und belegt die Pflicht/Kür-Einordnung, statt
+# sie zu schätzen.
+#
+# ZWEI FALLEN, beide beim Bauen aufgelaufen:
+#
+# 1. **Die Label stehen im extrahierten Text NACH ihrem Inhalt.** Im PDF sitzt
+#    „Kurzbeschreibung:" als Spaltenüberschrift links neben dem Absatz; die
+#    Textextraktion schiebt sie dahinter. Die Reihenfolge im Text ist also:
+#    Absatz, dann `Kurzbeschreibung:`, dann der Rechtsgrundlagen-Absatz, dann
+#    `Auftragsgrundlage:`. Wer vorwärts liest, bekommt jedes Feld um genau
+#    eines verschoben — die Kurzbeschreibung wäre dann das Gesetz.
+#    Kurze Werte passen im PDF neben ihr Label und stehen deshalb DAHINTER
+#    („Grad der Beeinflussbarkeit: mittel"). Beide Fälle stehen unten
+#    ausdrücklich als `rueckwaerts` markiert, statt sie zu erraten.
+#
+# 2. **Jede Leistung trägt einen eigenen Steckbrief.** Ein Produkt zerfällt in
+#    Leistungen („Leistung: Interne Gleichstellungsarbeit (P10.111000.001)"),
+#    und die haben dieselben Felder. Ungefiltert bekäme das Produkt den Text
+#    einer beliebigen Unterposition. Deshalb wird der Produktblock vor der
+#    ersten Leistungs-Überschrift abgeschnitten (in 661 von 664 Blöcken des
+#    Bestands steht der Produkt-Steckbrief davor; in den übrigen bleiben die
+#    Felder leer — lieber eine Lücke als ein fremder Text).
+
+#: Felder, die wir übernehmen: (Spalte, Label-Regex, Inhalt steht davor?).
+_STECKBRIEF_FELDER: tuple[tuple[str, str, bool], ...] = (
+    ("kurzbeschreibung", r"Kurzbeschreibung", True),
+    ("auftragsgrundlage", r"Auftragsgrundlage", True),
+    ("beeinflussbarkeit_roh", r"Grad der Beeinflussbarkeit", False),
+    ("wirkungskreis", r"Wirkungskreis", False),
+    ("zielgruppe", r"Zielgruppe\(n\)", True),
+)
+
+#: Weitere Label des Steckbriefs. Wir lesen sie nicht, aber sie begrenzen die
+#: rückwärts gelesenen Felder — ohne sie liefe die Zielgruppe bis in die
+#: Kennzahlen-Tabelle.
+_WEITERE_LABEL = (
+    r"Ziel\(e\)", r"Kennzahl\(en\)", r"Maßnahme\(n\)", r"Erläuterung\(en\)",
+    r"Grunddaten", r"Haushaltsvermerk\(e\)", r"Zuweisungen und Zuschüsse an Dritte",
+    r"Leistungen", r"Das Produkt enthält [^\n:]{0,40}Leistungen", r"Projekte",
+    r"Investitionen", r"Städtische Einrichtungen", r"Verantwortlich", r"Hinweis",
+)
+
+#: Alle Label als eine Alternative — Zeilenanfang, damit „… im eigenen
+#: Wirkungskreis:" mitten im Fließtext keine Grenze zieht.
+_LABEL = re.compile(
+    r"^[ \t]*(" + "|".join([r for _, r, _ in _STECKBRIEF_FELDER] + list(_WEITERE_LABEL))
+    + r"):", re.M)
+
+#: Zeilen, die kein Fließtext sind: Tabellenkopf der Grunddaten/Kennzahlen,
+#: Tabellenzeile (endet auf mehreren Zahlen), nacktes Einheiten-Kürzel,
+#: Seitenzahl.
+_KEIN_FLIESSTEXT = re.compile(
+    r"^\s*(?:\d{1,4}"                                  # Seitenzahl
+    r"|(?:PRS|ST|EUR|VZÄ|%|Anzahl)"                    # nacktes Einheiten-Kürzel
+    r"|.*\bEinheit\b.*(?:Ist|Plan)\s+20\d\d.*"         # Tabellenkopf
+    r"|.*?(?:\s-?[\d.,]+){2,}"                         # Tabellenzeile
+    r")\s*$")
+
+#: Erste Zeile eines wiederholten Seitenkopfs. Der Kopf ist mehrzeilig
+#: (Teilergebnishaushalt · Produkt · [Leistung ·] Amt) und muss als Einheit
+#: fallen: Die Amtszeile allein sieht aus wie Fließtext und stand sonst vorn
+#: in der Zielgruppe („Amt für Umweltschutz und Bauordnung Verwaltung und
+#: Politik sowie alle …").
+_KOPFZEILE = re.compile(r"^\s*Teilergebnishaushalt\b")
+
+
+def _ohne_seitenkopf(zeilen: list[str]) -> list[str]:
+    """Wiederholte Seitenköpfe aus einem Steckbrief-Abschnitt entfernen."""
+    out: list[str] = []
+    i = 0
+    while i < len(zeilen):
+        if not _KOPFZEILE.match(zeilen[i]):
+            out.append(zeilen[i])
+            i += 1
+            continue
+        i += 1  # „Teilergebnishaushalt THH…"
+        for muster in (r"^\s*Produkt:", r"^\s*Leistung:"):
+            if i < len(zeilen) and re.match(muster, zeilen[i]):
+                i += 1
+        if i < len(zeilen) and zeilen[i].strip():
+            i += 1  # die Amtszeile
+    return out
+
+#: Überschrift einer Leistung — die Grenze des Produkt-Steckbriefs.
+_LEISTUNG_KOPF = re.compile(r"^[ \t]*Leistung:[^\n]*\(P[\d.]+\.\d+\)[ \t]*$", re.M)
+
+#: Die Stadt schreibt denselben Spielraum mal „niedrig", mal „gering" — und
+#: mal groß. Wir vereinheitlichen für Filter und Vergleich, behalten den
+#: Rohwert aber in `beeinflussbarkeit_roh`: Was im Plan steht, bleibt
+#: nachlesbar, auch wenn wir es anders einsortieren.
+_BEEINFLUSSBARKEIT = {
+    "niedrig": "niedrig", "gering": "niedrig",
+    "mittel": "mittel", "hoch": "hoch",
+}
+
+
+def normalisiere_beeinflussbarkeit(roh: str | None) -> str | None:
+    """„gering"/„Niedrig"/„niedrig" → ``"niedrig"``; Unbekanntes → ``None``.
+
+    Bewusst streng: Mischformen („niedrig - mittel") bekommen keine der drei
+    Stufen zugewiesen, weil jede Wahl eine Behauptung wäre. Sie bleiben über
+    den Rohwert sichtbar."""
+    if not roh:
+        return None
+    return _BEEINFLUSSBARKEIT.get(roh.strip().strip(".").lower())
+
+
+def _saeubern(roh: str) -> str | None:
+    """Absatz aus dem PDF-Text zu einem lesbaren Satz zusammenziehen.
+
+    Der Text ist an der Satzbreite umbrochen, nicht am Satzende — Zeilenumbrüche
+    sind hier also Layout, keine Bedeutung und werden zu Leerzeichen.
+
+    Vom Ende her gelesen: Der gesuchte Absatz steht unmittelbar VOR seinem
+    Label; was davor liegt, kann eine Tabelle sein. Zwischen „Wirkungskreis:"
+    und „Zielgruppe(n):" steht bei einigen Produkten die ganze Grunddaten-
+    Tabelle („Einheit · Ist 2021 · Plan 2022 …", Zeilen wie „PRS 3,46 3,44 …"),
+    weil deren Label ausnahmsweise VOR seinem Inhalt steht. Ungefiltert stand
+    diese Zahlenwüste als „Zielgruppe" auf der Seite. Deshalb wird nur der
+    zusammenhängende Fließtext-Block am Ende übernommen."""
+    absatz: list[str] = []
+    for zeile in reversed(_ohne_seitenkopf(roh.split("\n"))):
+        if not zeile.strip():
+            continue
+        if _KEIN_FLIESSTEXT.match(zeile):
+            break
+        absatz.append(zeile)
+    text = re.sub(r"\s+", " ", " ".join(reversed(absatz))).strip(" -–—·\t")
+    # Zu kurz ist kein Inhalt (etwa ein übrig gebliebener Doppelpunkt), zu lang
+    # heißt: Ein Label fehlte und wir haben doch eine Tabelle mitgelesen.
+    if not (3 <= len(text) <= 2000):
+        return None
+    return text
+
+
+def _steckbrief(block: str) -> dict[str, str | None]:
+    """Steckbrief-Felder eines Produktblocks lesen.
+
+    ``block`` reicht vom Produktkopf bis zum Kopf des NÄCHSTEN Produkts. Alles
+    ab der ersten Leistungs-Überschrift wird verworfen (Falle 2 oben)."""
+    leistung = _LEISTUNG_KOPF.search(block)
+    stamm = block[:leistung.start()] if leistung else block
+
+    marken = list(_LABEL.finditer(stamm))
+    out: dict[str, str | None] = {name: None for name, _, _ in _STECKBRIEF_FELDER}
+    for i, m in enumerate(marken):
+        name, rueckwaerts = next(
+            ((n, r) for n, muster, r in _STECKBRIEF_FELDER
+             if re.fullmatch(muster, m.group(1))), (None, None))
+        if name is None or out[name] is not None:
+            continue  # unbekanntes Label oder Wiederholung (erster Treffer gilt)
+        if rueckwaerts:
+            # Inhalt steht VOR dem Label: vom Ende der vorigen Marke bis hierher.
+            # Ohne vorige Marke ab Blockanfang — dann steht der Seitenkopf davor,
+            # den `_saeubern` entfernt.
+            #
+            # Und zwar ab dem ZEILENENDE der vorigen Marke, nicht ab dem Label:
+            # Trägt die vorige Marke ihren Wert auf derselben Zeile
+            # („Verantwortlich: Leitung des Gleichstellungsbüros"), rutscht er
+            # sonst vorn in dieses Feld — jede Kurzbeschreibung begänne mit dem
+            # Namen der Amtsleitung, jede Zielgruppe mit dem Wirkungskreis.
+            beginn = 0
+            if i:
+                zeilenende = stamm.find("\n", marken[i - 1].end())
+                beginn = zeilenende + 1 if zeilenende >= 0 else marken[i - 1].end()
+            out[name] = _saeubern(stamm[beginn:m.start()])
+        else:
+            # Inhalt steht hinter dem Doppelpunkt, auf DERSELBEN Zeile: Ein
+            # Umbruch bedeutet hier, dass der Wert fehlt — die nächste Zeile
+            # gehört schon zum nächsten Feld.
+            zeile = stamm[m.end():].split("\n", 1)[0]
+            out[name] = _saeubern(zeile)
+    return out
+
+
 def parse_teilergebnishaushalt(text: str) -> list[dict]:
     """Produkte eines Teilhaushalts-Plans → je Produkt ein dict mit
     ``{thh_nr, thh_name, produkt_nr, produkt_name, amt, jahr, ertraege,
     aufwendungen, ergebnis}`` für das **Haushaltsjahr** des Dokuments — das
     ist der ERSTE Ansatz im Tabellenkopf; die weiteren Spalten sind die
     mittelfristige Finanzplanung und keine beschlossenen Ansätze.
+
+    Dazu der Steckbrief des Produkts (``kurzbeschreibung``,
+    ``auftragsgrundlage``, ``beeinflussbarkeit`` + ``beeinflussbarkeit_roh``,
+    ``wirkungskreis``, ``zielgruppe``), soweit der Plan ihn führt — fehlende
+    Felder bleiben ``None``, nichts wird vom Nachbarprodukt übernommen.
+    Zu den beiden Fallen dabei siehe den Abschnitt „Produkt-Steckbrief" oben.
 
     Nur die Summenzeilen (12/20/21) werden gelesen: Die Einzelposten sind im
     PDF-Text oft verschmolzen („355.188334.704“). Die Zahl der Wertespalten
@@ -245,8 +431,9 @@ def parse_teilergebnishaushalt(text: str) -> list[dict]:
 
     Übernommen wird ein Produkt nur, wenn ``Erträge − Aufwendungen =
     ordentliches Ergebnis`` aufgeht."""
+    koepfe = list(_PRODUKT_KOPF.finditer(text))
     gefunden: dict[str, dict] = {}
-    for m in _PRODUKT_KOPF.finditer(text):
+    for i, m in enumerate(koepfe):
         thh_nr, thh_name, produkt_name, produkt_nr, amt = m.groups()
         if produkt_nr in gefunden:
             continue  # Fortsetzungsseite desselben Produkts
@@ -254,8 +441,16 @@ def parse_teilergebnishaushalt(text: str) -> list[dict]:
         # Summenzeile, würden sonst die Werte des FOLGENDEN Produkts gelesen —
         # zwei Produkte trügen dieselben Zahlen (aufgefallen bei „Soziale
         # Beratung" und „Grundsicherung für Arbeitsuchende", beide 54,0 Mio.).
-        naechster = _PRODUKT_KOPF.search(text, m.end())
+        naechster = koepfe[i + 1] if i + 1 < len(koepfe) else None
         block = text[m.end():naechster.start() if naechster else m.end() + 4000]
+
+        # Der Steckbrief steht ein paar Seiten weiter, hinter den Fortsetzungs-
+        # köpfen DESSELBEN Produkts — sein Block reicht deshalb bis zum ersten
+        # Kopf eines ANDEREN Produkts. Dieselbe Grenzziehung wie oben, nur eine
+        # Ebene weiter: Wer hier am nächstbesten Kopf abschneidet, findet den
+        # Steckbrief nie; wer gar nicht abschneidet, holt den des Nachbarn.
+        fremd = next((k for k in koepfe[i + 1:] if k.group(4) != produkt_nr), None)
+        steckbrief = _steckbrief(text[m.end():fremd.start() if fremd else len(text)])
 
         # Spalten aus dem Kopf: „Ergebnis JJJJ“ + n × „Ansatz JJJJ“.
         # Das HAUSHALTSJAHR ist der ERSTE Ansatz — die weiteren Spalten sind
@@ -293,5 +488,8 @@ def parse_teilergebnishaushalt(text: str) -> list[dict]:
             "thh_nr": int(thh_nr), "thh_name": thh_name.strip(),
             "produkt_nr": produkt_nr, "produkt_name": produkt_name.strip(),
             "amt": amt.strip(), "jahr": jahre[ansatz_idx], **werte,
+            **steckbrief,
+            "beeinflussbarkeit": normalisiere_beeinflussbarkeit(
+                steckbrief["beeinflussbarkeit_roh"]),
         }
     return list(gefunden.values())

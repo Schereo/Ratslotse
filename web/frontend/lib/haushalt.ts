@@ -26,17 +26,64 @@ export type ErgebnisPosten = {
 };
 
 /** Produktebene aus den Teilhaushalts-Plänen (#500) — was einzelne Aufgaben
- *  kosten. `ergebnis` ist negativ = Zuschussbedarf. */
+ *  kosten. `ergebnis` ist negativ = Zuschussbedarf.
+ *
+ *  Dazu der Steckbrief, den die Pläne zu jedem Produkt führen: was die Aufgabe
+ *  umfasst, worauf sie beruht, wie viel Spielraum die Stadt bei ihr hat. Alle
+ *  Steckbrief-Felder sind optional — nicht jedes Produkt trägt jedes Feld, und
+ *  eine Lücke wird gezeigt, nicht gefüllt. */
+export type Spielraum = "niedrig" | "mittel" | "hoch";
+
 export type Produkt = {
   jahr: number; produkt_nr: string; produkt_name: string;
   thh_nr: number | null; thh_name: string | null; amt: string | null;
   ertraege: number | null; aufwendungen: number | null; ergebnis: number | null;
+  kurzbeschreibung?: string | null;
+  /** Die Rechtsgrundlagen, im Wortlaut des Plans. */
+  auftragsgrundlage?: string | null;
+  /** Normalisiert. Der Plan schreibt mal „niedrig", mal „gering". */
+  beeinflussbarkeit?: Spielraum | null;
+  /** Der Wortlaut des Plans — steht neben der normalisierten Stufe, damit
+   *  Mischformen („niedrig/mittel bei Prävention") nicht verschwinden. */
+  beeinflussbarkeit_roh?: string | null;
+  wirkungskreis?: string | null;
+  zielgruppe?: string | null;
   quelle_label: string | null; quelle_url: string | null;
 };
 
 export type ProdukteAntwort = {
-  jahr: number; produkte: Produkt[];
+  jahr: number; produkte: Produkt[]; treffer?: number;
   abdeckung_prozent: number | null; plan_aufwendungen: number | null;
+  /** Filterwerte mit Anzahl + wie viele Produkte welches Feld tragen. */
+  facetten?: {
+    aemter: { amt: string; anzahl: number }[];
+    spielraum: Partial<Record<Spielraum, number>>;
+    mit_feld: Record<string, number>;
+  };
+  /** Das per `?nr=` angeforderte Produkt — auch wenn ein Filter es aus der
+   *  Liste nähme. */
+  produkt?: Produkt | null;
+};
+
+/** Wie die Stadt den Spielraum selbst benennt, in Alltagssprache übersetzt.
+ *  „Grad der Beeinflussbarkeit: niedrig" heißt: Die Stadt kann hier kaum etwas
+ *  ändern — nicht, dass die Aufgabe unwichtig wäre. */
+export const SPIELRAUM_TEXT: Record<Spielraum, { kurz: string; lang: string }> = {
+  niedrig: {
+    kurz: "kaum Spielraum",
+    lang: "Die Stadt sieht bei dieser Aufgabe kaum Spielraum: Was sie kostet, "
+      + "bestimmen im Wesentlichen Gesetze und Fallzahlen, nicht der Rat.",
+  },
+  mittel: {
+    kurz: "etwas Spielraum",
+    lang: "Die Stadt sieht hier einen mittleren Spielraum — über das Wie lässt "
+      + "sich entscheiden, über das Ob meist nicht.",
+  },
+  hoch: {
+    kurz: "viel Spielraum",
+    lang: "Die Stadt sieht hier viel Spielraum: Umfang und Zuschnitt dieser "
+      + "Aufgabe kann der Rat weitgehend selbst bestimmen.",
+  },
 };
 
 export type HaushaltDaten = {
@@ -118,6 +165,23 @@ export function mio(euro: number | null | undefined): number | null {
 export function deMio(v: number | null | undefined): string {
   if (v == null) return "—";
   return v.toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}
+
+/** Betrag mit PASSENDER Einheit — Millionen nur, wo es welche sind.
+ *
+ *  Die Produktebene spannt vier Größenordnungen: 58,6 Mio. € für die
+ *  Kindertagesbetreuung, 4.206 € Erträge beim Stadtarchiv. Alles starr in
+ *  Mio. anzugeben macht aus dem halben Bestand „0,0 Mio. €" — eine Zahl, die
+ *  nichts mehr sagt, obwohl wir sie genau kennen. Auf den Bereichs- und
+ *  Übersichtsseiten bleibt `deMio` richtig: dort ist Mio. die Hausnummer. */
+export function betrag(euro: number | null | undefined): { wert: string; einheit: string } {
+  if (euro == null) return { wert: "—", einheit: "" };
+  const abs = Math.abs(euro);
+  if (abs >= 1_000_000) return { wert: deMio(euro / 1e6), einheit: "Mio. €" };
+  if (abs >= 10_000) {
+    return { wert: Math.round(euro / 1000).toLocaleString("de-DE"), einheit: "Tsd. €" };
+  }
+  return { wert: Math.round(euro).toLocaleString("de-DE"), einheit: "€" };
 }
 
 export function jahreSortiert(daten: HaushaltDaten): number[] {

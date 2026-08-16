@@ -8,6 +8,20 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **„Was kostet eigentlich …?" — der Haushalt, aufgeschlüsselt bis zur
+  einzelnen Aufgabe.** Die häufigste Frage zum Haushalt ist keine nach
+  Teilhaushalten, sondern nach einer konkreten Sache: dem Stadtarchiv, der
+  Feuerwehr, dem Schwimmbad. Die neue Seite durchsucht 63 Aufgaben des
+  Haushaltsjahres 2023 nach Name, Nummer, Amt und Beschreibung, filtert nach
+  Amt und Spielraum und öffnet zu jeder einen Steckbrief: was sie kostet, was
+  dahintersteckt, für wen sie da ist — und auf welchen Gesetzen sie beruht.
+  Die Archivierung etwa kostet die Stadt 421 Tsd. € im Jahr und beruht unter
+  anderem auf dem Bundesarchivgesetz und einem Vertrag mit dem Landesarchiv.
+  Neu ist dabei vor allem die Selbstauskunft der Stadt, wie viel Spielraum sie
+  bei einer Aufgabe überhaupt hat: Bei 35 der 63 Aufgaben ist es „kaum" — das
+  macht aus einer Zahl eine Antwort darauf, worüber der Rat streiten kann und
+  worüber nicht. Alle Angaben stammen wörtlich aus den Teilhaushaltsplänen;
+  wo der Plan ein Feld leer lässt, steht auch bei uns nichts. (#504)
 - **„Geplant und geworden" — was aus dem Haushalt wirklich wurde.** Ein
   Haushalt ist ein Plan; was am Jahresende zusammenkam, stand bisher nirgends.
   Die neue Seite stellt beides nebeneinander — für die Stadt insgesamt und für

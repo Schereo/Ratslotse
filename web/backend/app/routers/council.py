@@ -262,22 +262,42 @@ def zahl_der_woche(
 def haushalt_produkte(
     jahr: int,
     thh: int | None = None,
+    q: str | None = None,
+    amt: str | None = None,
+    spielraum: str | None = None,
+    nr: str | None = None,
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
 ) -> dict:
-    """Produktebene eines Haushaltsjahres — was einzelne Aufgaben kosten.
+    """Produktebene eines Haushaltsjahres — was einzelne Aufgaben kosten,
+    samt Steckbrief (Kurzbeschreibung, Rechtsgrundlage, Spielraum,
+    Wirkungskreis, Zielgruppe) aus den Teilhaushalts-Plänen.
 
     Aus den Teilhaushalts-Plänen des Ratsinformationssystems. Die Abdeckung
     ist unvollständig (nicht jeder Teilhaushalt liegt für jedes Jahr als
     auslesbares Dokument vor); ``abdeckung_prozent`` sagt, wie viel der
     geplanten Aufwendungen die gefundenen Produkte erklären — damit die
-    Oberfläche das nicht als Vollbild ausgeben kann."""
-    produkte = store.get_produkte(jahr, thh)
+    Oberfläche das nicht als Vollbild ausgeben kann.
+
+    ``q``/``amt``/``spielraum`` filtern **serverseitig**: Mit dem Steckbrief
+    trägt jede der knapp 400 Zeilen mehrere hundert Zeichen Fließtext, die
+    niemand im Browser sortieren muss. ``nr`` holt zusätzlich ein einzelnes
+    Produkt — die Steckbrief-Ansicht braucht es auch dann, wenn der gerade
+    gesetzte Filter es aus der Liste nähme.
+
+    ``facetten`` liefert die Filterwerte mit Anzahl und dazu, wie viele
+    Produkte überhaupt welches Steckbrief-Feld tragen: Die Seite weist die
+    Lücke aus, statt sie zu verschweigen."""
+    produkte = store.get_produkte(jahr, thh, suche=q, amt=amt,
+                                  beeinflussbarkeit=spielraum)
     summe = sum(p["aufwendungen"] or 0 for p in store.get_produkte(jahr))
     plan = next((z for z in store.get_haushalt(jahr) if z["is_summe"]), None)
     quote = round(summe / plan["aufwendungen"] * 100, 1) if plan and plan["aufwendungen"] else None
     return {"jahr": jahr, "produkte": produkte, "abdeckung_prozent": quote,
-            "plan_aufwendungen": plan["aufwendungen"] if plan else None}
+            "plan_aufwendungen": plan["aufwendungen"] if plan else None,
+            "treffer": len(produkte),
+            "facetten": store.produkt_facetten(jahr),
+            "produkt": store.produkt(jahr, nr) if nr else None}
 
 
 @router.get("/haushalt")

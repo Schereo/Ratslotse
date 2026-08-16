@@ -1,5 +1,5 @@
-// Wegweiser zu den Vertiefungsseiten (Einnahmen, Pflicht/Kür, Labor,
-// Plan gegen Ist).
+// Wegweiser zu den Vertiefungsseiten (Einnahmen, Produkte, Pflicht/Kür,
+// Labor, Plan gegen Ist).
 //
 // Die drei Karten standen als reine Textkacheln zwischen zwei großen
 // Diagramm-Panels und gingen dort unter (Tim, 16.08.). Sie sind aber der
@@ -9,7 +9,7 @@
 // dem Minus vorbehalten.
 
 import Link from "next/link";
-import { ArrowRight, Coins, GitCompareArrows, Scale, SlidersHorizontal } from "lucide-react";
+import { ArrowRight, Coins, GitCompareArrows, Receipt, Scale, SlidersHorizontal } from "lucide-react";
 
 const ZIELE = [
   {
@@ -17,6 +17,12 @@ const ZIELE = [
     Icon: Coins,
     titel: "Woher kommt das Geld?",
     text: "Alle Einnahmequellen — und bei welchen der Rat überhaupt etwas zu entscheiden hat.",
+  },
+  {
+    href: "/haushalt/produkte",
+    Icon: Receipt,
+    titel: "Was kostet eigentlich …?",
+    text: "Archiv, Feuerwehr, Schwimmbad: einzelne Aufgaben mit Kosten, Auftrag und Spielraum.",
   },
   {
     href: "/haushalt/pflicht",
@@ -44,7 +50,9 @@ export function Wegweiser() {
       <p className="mb-2.5 font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
         Tiefer einsteigen
       </p>
-      <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Fünf Karten: auf breiten Schirmen drei/zwei statt vier/eins — bei
+          `lg:grid-cols-4` stünde die fünfte allein in einer eigenen Zeile. */}
+      <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {ZIELE.map(({ href, Icon, titel, text }) => (
           <Link key={href} href={href}
             className="group flex items-start gap-3.5 rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/40 sm:flex-col sm:gap-0">

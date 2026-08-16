@@ -17,6 +17,7 @@ welche schlicht fehlt.
 | `/haushalt/bereich?name=<slug>` | Dossier je Teilhaushalt: Brutto/Netto, Kostendeckung, Brutto-gegen-Netto-Vergleich, Entwicklung |
 | `/haushalt/einnahmen` | Alle Einnahmequellen mit Spielraum-Kodierung (frei / begrenzt / kein Einfluss) |
 | `/haushalt/steuer?art=<slug>` | Steckbrief je Einnahmeart: „Wer entscheidet was", Ist-Kurve, Hebesatz, Ein-Punkt-Überschlag |
+| `/haushalt/produkte[?nr=<produkt_nr>]` | „Was kostet eigentlich …?" — Produktsuche mit Filtern (Amt, Spielraum); `nr` öffnet den Steckbrief |
 | `/haushalt/pflicht` | Muss oder kann — Teilhaushalte nach Gestaltungsspielraum |
 | `/haushalt/labor` | Was-wäre-wenn: Hebesatz-Regler und Kürzungen, jede Bewegung in Mio., € je Einwohner und Anteil an der Lücke; dauerhaft sichtbare Gegenrechnung |
 
@@ -35,7 +36,7 @@ Planjahre, Ist-Steuern, Steuerkraft und die Einwohnerzahl in einem Aufruf.
 | `council_steuerkraft` | Steuerkraftmesszahl + Schlüsselzuweisungen seit 1992 | Open-Data-Portal, Datensatz 1106 | dito |
 | `council_einwohner` | Einwohnerzahl je Jahr seit 2010 | Open-Data-Portal, Datensatz 1102 | dito |
 | `council_ergebnisrechnung` | Ansatz **und** Ergebnis je Posten — gesamt (5 Jahrgänge) und je Teilhaushalt (4) | Jahresabschlüsse — **Anlagen im RIS** | `scripts/ingest_finanzberichte.py` |
-| `council_produkte` | Produktebene: was einzelne Aufgaben kosten | Teilhaushalts-Pläne — **Anlagen im RIS** | dito |
+| `council_produkte` | Produktebene: was einzelne Aufgaben kosten — plus Steckbrief (Kurzbeschreibung, Auftragsgrundlage, Beeinflussbarkeit, Wirkungskreis, Zielgruppe) | Teilhaushalts-Pläne — **Anlagen im RIS** | dito |
 
 Beide Ingests sind idempotent und laufen **nicht** als Cron — einmal jährlich
 von Hand reicht, wenn die Stadt einen neuen Jahrgang veröffentlicht.
@@ -91,6 +92,60 @@ Zuschussbedarf). Die Abdeckung ist unvollständig — für 2023 erklären die
 gefundenen Produkte rund 82 % der geplanten Aufwendungen. Der Endpunkt
 liefert diese Quote als `abdeckung_prozent` mit, damit die Oberfläche die
 Liste nicht als Vollbild ausgeben kann.
+
+## Der Produkt-Steckbrief
+
+Zu jedem Produkt führen die Pläne einen Steckbrief: **Kurzbeschreibung**
+(was die Aufgabe umfasst), **Auftragsgrundlage** (die Gesetze, Satzungen und
+Verträge dahinter), **Grad der Beeinflussbarkeit**, **Wirkungskreis** und
+**Zielgruppe**. Das beantwortet die häufigste Bürgerfrage zum Haushalt — „was
+kostet eigentlich das Stadtarchiv?" — und belegt die Pflicht/Kür-Einordnung,
+die auf `/haushalt/pflicht` bisher nur geschätzt ist.
+
+Der Bestand (377 Produkte, 2018–2023): Auftragsgrundlage und Wirkungskreis
+tragen 100 %, Kurzbeschreibung, Beeinflussbarkeit und Zielgruppe je 98,4 %.
+Die sechs Lücken sind echt — „Personalzuweisung an das Jobcenter" führt den
+Plan ohne Beschreibungstext. Der Lauf von `ingest_finanzberichte.py` weist
+die Quote je Feld aus, die Seite nennt sie ebenfalls.
+
+:::caution[Die Label stehen NACH ihrem Inhalt]
+Im PDF sitzt „Kurzbeschreibung:" als Spaltenüberschrift **links neben** dem
+Absatz. Die Textextraktion schiebt sie dahinter, die Reihenfolge im Text ist
+also: Absatz — `Kurzbeschreibung:` — Rechtsgrundlagen-Absatz —
+`Auftragsgrundlage:`. Wer vorwärts liest, bekommt jedes Feld um eines
+verschoben; die Kurzbeschreibung wäre dann das Gesetz. Kurze Werte passen im
+PDF neben ihr Label und stehen deshalb **dahinter** („Grad der
+Beeinflussbarkeit: mittel"). `_STECKBRIEF_FELDER` markiert beide Fälle
+ausdrücklich, statt sie zu erraten.
+
+Zwei Folgefehler, die dabei auffielen und je einen eigenen Schutz haben:
+- **Jede Leistung trägt einen eigenen Steckbrief.** Ein Produkt zerfällt in
+  Leistungen (`P10.111023.001`) mit denselben Feldern. Der Produktblock wird
+  deshalb vor der ersten Leistungs-Überschrift abgeschnitten.
+- **Die Grunddaten-Tabelle steht mitten drin.** Ihr Label steht ausnahmsweise
+  vor ihrem Inhalt, die Tabelle liegt also zwischen `Wirkungskreis:` und
+  `Zielgruppe(n):` — ungefiltert stand eine Zahlenwüste („Einheit · Ist 2021 ·
+  Plan 2022 …") als Zielgruppe auf der Seite. Übernommen wird nur der
+  zusammenhängende Fließtext-Block unmittelbar vor dem Label.
+:::
+
+`beeinflussbarkeit` ist normalisiert (`niedrig` / `mittel` / `hoch`; die Pläne
+schreiben mal „niedrig", mal „gering", mal groß). Der Wortlaut bleibt in
+`beeinflussbarkeit_roh` erhalten — Mischformen wie „niedrig/mittel bei
+Gesundheitsförderung und Prävention" bekommen **keine** Stufe zugewiesen,
+weil jede Wahl eine Behauptung wäre; die Seite zeigt dann den Rohwert.
+
+Gesucht und gefiltert wird **serverseitig** (`q`, `amt`, `spielraum` am
+Endpunkt): Mit dem Steckbrief trägt jede Zeile mehrere hundert Zeichen
+Fließtext. `nr` holt zusätzlich ein einzelnes Produkt, damit der Steckbrief
+auch dann lädt, wenn ein Filter es aus der Liste nähme. `facetten` liefert
+Ämter und Spielraum-Stufen mit Anzahl sowie die Abdeckung je Feld.
+
+Verwaltungsdeutsch wird nicht ungefiltert durchgereicht: „übertragender
+Wirkungskreis", „Grad der Beeinflussbarkeit" und „Produkt" stehen im Glossar
+(`lib/glossary.ts`), die drei Stufen werden in `SPIELRAUM_TEXT` zu Sätzen
+übersetzt. Eingefärbt wird nichts — ein teures Produkt ist keine schlechte
+Note, und „kaum Spielraum" kein Missstand.
 
 :::note[Die dritte Prüfung: die Summe über alle Teilhaushalte]
 Der Jahresabschluss führt dieselbe Ergebnisrechnung noch einmal je
