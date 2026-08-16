@@ -97,6 +97,13 @@ def parse_ergebnisrechnung(text: str, jahr: int) -> list[dict]:
     ende = text.find("Gesamtergebnisrechnung", start + 6000)
     block = text[start:ende if ende > 0 else start + 12000]
 
+    return _posten_aus_block(block, jahr)
+
+
+def _posten_aus_block(block: str, jahr: int) -> list[dict]:
+    """Die Posten einer Ergebnisrechnungs-Tabelle lesen — gemeinsam genutzt
+    von der Gesamtrechnung und den Teil-Ergebnisrechnungen je Teilhaushalt,
+    die dieselbe Tabellenform haben."""
     # Zeilenumbrüche in Bezeichnungen zusammenziehen: Der Postenname kann über
     # zwei Zeilen laufen („07. Kostenerstattungen und\nKostenumlagen 119.0…").
     flach = re.sub(r"\s*\n\s*", " ", block)
@@ -123,6 +130,65 @@ def parse_ergebnisrechnung(text: str, jahr: int) -> list[dict]:
         out.append({"nr": nr, "bezeichnung": bezeichnung, "jahr": jahr,
                     "ist_summe": 1 if nr in SUMMEN_POSTEN else 0, **werte})
     return out
+
+
+#: Kopf einer Teil-Ergebnisrechnung: „A. Teil-Ergebnisrechnung THH01 Name".
+#: Die Schreibweise schwankt zwischen den Jahrgängen (mit/ohne Bindestrich,
+#: ein oder zwei Leerzeichen), deshalb großzügig.
+_THH_ABSCHNITT = re.compile(r"Teil-?\s?Ergebnisrechnung\s+THH\s?(\d\d)\s*([^\n]{0,60})")
+
+
+def parse_teilergebnisrechnungen(text: str, jahr: int) -> list[dict]:
+    """Teil-Ergebnisrechnungen je Teilhaushalt aus dem Jahresabschluss.
+
+    Liefert dieselben Posten wie ``parse_ergebnisrechnung``, zusätzlich mit
+    ``thh_nr`` und ``thh_name`` — die Grundlage für „geplant gegen
+    tatsächlich" je Bereich (Design H-16).
+
+    Je Teilhaushalt stehen im Dokument mehrere Abschnitte (Ergebnis-, dann
+    Finanzrechnung, dazu Fortsetzungsseiten). Genommen wird der erste, der
+    beide Summenzeilen (12 und 20) liefert — so landet nie die Finanzrechnung
+    in der Ergebnis-Tabelle."""
+    treffer: dict[int, dict] = {}
+    stellen = list(_THH_ABSCHNITT.finditer(text))
+    for i, m in enumerate(stellen):
+        thh_nr = int(m.group(1))
+        if thh_nr in treffer:
+            continue
+        # Bis zum nächsten Abschnitt lesen, damit keine Werte des folgenden
+        # Teilhaushalts hineinrutschen.
+        ende = stellen[i + 1].start() if i + 1 < len(stellen) else m.end() + 9000
+        posten = _posten_aus_block(text[m.end():ende], jahr)
+        nummern = {p["nr"] for p in posten}
+        if not {12, 20} <= nummern:
+            continue  # kein vollständiger Ergebnis-Abschnitt
+        name = re.sub(r"^\s*(THH\s?\d\d)?\s*", "", m.group(2)).strip(" -–—:")
+        treffer[thh_nr] = {"thh_nr": thh_nr, "thh_name": name, "posten": posten}
+    return list(treffer.values())
+
+
+def summenprobe(teilhaushalte: list[dict], gesamt: list[dict],
+                toleranz: float = 0.01) -> tuple[bool, float]:
+    """Zweite Absicherung: Die Summe der Teilhaushalts-Ansätze muss der
+    Gesamt-Ergebnisrechnung entsprechen.
+
+    Nötig, weil die zeilenweise Prüfung (``Abweichung = Ergebnis − Ansatz``)
+    einen Fall nicht fängt: Wird für einen Teilhaushalt versehentlich eine
+    andere, in sich stimmige Tabelle gelesen, sind die Zahlen konsistent —
+    aber falsch. Im Jahresabschluss 2022 wurde THH09 so mit 0,1 statt
+    26,8 Mio. € gelesen; erst die Summe über alle Teilhaushalte machte es
+    sichtbar (26,7 Mio. Differenz).
+
+    Gibt ``(besteht, abweichung_anteil)`` zurück."""
+    def summe(posten_liste, nr):
+        return sum(next((p["ansatz"] for p in x["posten"] if p["nr"] == nr), 0) or 0
+                   for x in posten_liste)
+    ganz = next((p["ansatz"] for p in gesamt if p["nr"] == 20), None)
+    if not ganz:
+        return False, 1.0
+    teil = summe(teilhaushalte, 20)
+    anteil = abs(teil - ganz) / ganz
+    return anteil <= toleranz, anteil
 
 
 def _spalten_zuordnen(zahlen: list[float]) -> dict | None:

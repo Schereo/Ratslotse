@@ -7,6 +7,17 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt
+- **„Geplant und geworden" — was aus dem Haushalt wirklich wurde.** Ein
+  Haushalt ist ein Plan; was am Jahresende zusammenkam, stand bisher nirgends.
+  Die neue Seite stellt beides nebeneinander — für die Stadt insgesamt und für
+  jeden Bereich einzeln. 2024 etwa nahm Oldenburg 799 Mio. € ein statt der
+  geplanten 694, vor allem durch Steuern; aus einem geplanten Minus von 34
+  Mio. wurde ein Überschuss von 35. Auf den Bereichsseiten steht die
+  Entwicklung über alle abgeschlossenen Jahre. Farben bewerten dabei nichts:
+  Mehr ausgegeben kann ein Tarifabschluss sein, weniger ausgegeben heißt oft,
+  dass etwas nicht gebaut wurde. (#502)
+
 ### Verbessert
 - **Das Haushalts-Labor sagt jetzt, ob das viel ist.** Bisher bewegte man
   Regler und eine Zahl änderte sich — ohne Maßstab. Jetzt füllt jede Bewegung

@@ -1,4 +1,5 @@
-// Wegweiser zu den drei Vertiefungsseiten (Einnahmen, Pflicht/Kür, Labor).
+// Wegweiser zu den Vertiefungsseiten (Einnahmen, Pflicht/Kür, Labor,
+// Plan gegen Ist).
 //
 // Die drei Karten standen als reine Textkacheln zwischen zwei großen
 // Diagramm-Panels und gingen dort unter (Tim, 16.08.). Sie sind aber der
@@ -8,7 +9,7 @@
 // dem Minus vorbehalten.
 
 import Link from "next/link";
-import { ArrowRight, Coins, Scale, SlidersHorizontal } from "lucide-react";
+import { ArrowRight, Coins, GitCompareArrows, Scale, SlidersHorizontal } from "lucide-react";
 
 const ZIELE = [
   {
@@ -29,6 +30,12 @@ const ZIELE = [
     titel: "Haushalts-Labor",
     text: "Selbst an den Stellschrauben drehen und sehen, was das ausmacht.",
   },
+  {
+    href: "/haushalt/plan-ist",
+    Icon: GitCompareArrows,
+    titel: "Geplant und geworden",
+    text: "Was am Jahresende wirklich zusammenkam — aus den Jahresabschlüssen.",
+  },
 ];
 
 export function Wegweiser() {
@@ -37,7 +44,7 @@ export function Wegweiser() {
       <p className="mb-2.5 font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
         Tiefer einsteigen
       </p>
-      <div className="grid gap-2.5 sm:grid-cols-3">
+      <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
         {ZIELE.map(({ href, Icon, titel, text }) => (
           <Link key={href} href={href}
             className="group flex items-start gap-3.5 rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/40 sm:flex-col sm:gap-0">

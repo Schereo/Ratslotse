@@ -3,8 +3,10 @@
   "configurations": [
     {
       "name": "frontend",
-      "runtimeExecutable": "npm",
+      "runtimeExecutable": "env",
       "runtimeArgs": [
+        "BACKEND_URL=http://127.0.0.1:8020",
+        "npm",
         "run",
         "dev",
         "--prefix",

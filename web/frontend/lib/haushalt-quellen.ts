@@ -75,9 +75,11 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   jahresabschluss: {
     titel: "Jahresabschlüsse der Stadt Oldenburg",
     fundstelle:
-      "Ergebnisrechnung der Kernverwaltung — Ansatz und Ergebnis nebeneinander, Posten 1–24. " +
-      "Wir übernehmen nur Zeilen, bei denen die im Dokument ausgewiesene Probe aufgeht " +
-      "(Abweichung = Ergebnis − Ansatz). Als Anlagen zu Ratsvorlagen im Bürgerinformationssystem.",
+      "Ergebnisrechnung der Kernverwaltung UND je Teilhaushalt — Ansatz und Ergebnis " +
+      "nebeneinander, Posten 1–24. Wir übernehmen nur Zeilen, bei denen die im Dokument " +
+      "ausgewiesene Probe aufgeht (Abweichung = Ergebnis − Ansatz); die Teilhaushalts-Ebene " +
+      "zusätzlich nur, wenn ihre Summe die Gesamtrechnung ergibt. Als Anlagen zu " +
+      "Ratsvorlagen im Bürgerinformationssystem.",
     herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
     stand: "Jahresabschlüsse 2019 und 2021–2024",
     art: "pdf",
