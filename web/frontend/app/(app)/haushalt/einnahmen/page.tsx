@@ -105,30 +105,41 @@ export default function EinnahmenPage() {
         <span className="font-semibold text-foreground">Woher das Geld kommt</span>
       </div>
 
-      <div>
+      <div className="@container/kopf">
         {/* Die Überschrift zählt aus den Daten. Der Entwurf schrieb „drei von
             neun" fest — es sind weder drei noch neun, und beides ändert sich,
             sobald eine Einnahmeart dazukommt. */}
         <h1 className="font-display text-2xl font-bold tracking-tight sm:text-[25px]">
           Bei {frei} von {karten.length} Einnahmequellen kann der Rat wirklich drehen
         </h1>
-        <p className="mt-2 max-w-[70ch] text-sm leading-relaxed text-foreground/90">
-          Die Debatte „die Stadt soll sich das Geld doch besorgen“ läuft meistens an den
-          Zuständigkeiten vorbei. Deshalb sortieren wir die Einnahmequellen nicht nach Größe,
-          sondern <strong>nach Entscheidungsmacht</strong>. Gezählt sind Quellen, nicht Euro.
-        </p>
-        {/* Der Jahres-Sprung gehört nach oben, nicht ans Seitenende. Wer von
-            der Übersicht kommt, hat dort Planzahlen des kommenden Jahres
-            gesehen; hier stehen abgerechnete Werte eines früheren. Ohne den
-            Hinweis liest man beide Seiten als dieselbe Rechnung und wundert
-            sich über die Differenz. */}
-        <p className="mt-2 max-w-[70ch] text-[12.5px] leading-relaxed text-muted-foreground">
-          Achtung beim Jahr: Bei den Steuern stehen hier <strong>abgerechnete Beträge
-          aus {jahr}</strong> — was wirklich geflossen ist. Die Übersicht zeigt dagegen den
-          <em>Plan</em> für ein späteres Jahr. Beide Zahlen sind richtig, sie beantworten nur
-          verschiedene Fragen. Jede Karte nennt ihr Jahr selbst — die Schlüsselzuweisungen
-          laufen dem Rest voraus.
-        </p>
+        {/* Zwei Absätze, zwei Spalten: Der Aufhänger und der Jahres-Hinweis
+            sagen Verschiedenes und standen untereinander — zusammen nutzten
+            sie 618 von 1136 px, rechts blieb die halbe Seite leer. Die
+            Zeilenlänge bleibt, wo sie war (66–70 Zeichen); sie zu verbreitern
+            hätte den Platz gefüllt und das Lesen verschlechtert. Schwelle am
+            CONTAINER, nicht am Fenster (Designsprache §4): Am Desktop liegt
+            der Kopf neben der 240-px-Seitenleiste, auf dem iPad nicht —
+            dieselbe Fensterbreite meint zwei verschiedene Platzangebote, und
+            bei 1024 px Fenster wären zwei Spalten je 344 px breit. */}
+        <div className="mt-2 grid gap-x-8 gap-y-2 @5xl/kopf:grid-cols-2">
+          <p className="max-w-[70ch] text-sm leading-relaxed text-foreground/90">
+            Die Debatte „die Stadt soll sich das Geld doch besorgen“ läuft meistens an den
+            Zuständigkeiten vorbei. Deshalb sortieren wir die Einnahmequellen nicht nach Größe,
+            sondern <strong>nach Entscheidungsmacht</strong>. Gezählt sind Quellen, nicht Euro.
+          </p>
+          {/* Der Jahres-Sprung gehört nach oben, nicht ans Seitenende. Wer von
+              der Übersicht kommt, hat dort Planzahlen des kommenden Jahres
+              gesehen; hier stehen abgerechnete Werte eines früheren. Ohne den
+              Hinweis liest man beide Seiten als dieselbe Rechnung und wundert
+              sich über die Differenz. */}
+          <p className="max-w-[70ch] text-[12.5px] leading-relaxed text-muted-foreground">
+            Achtung beim Jahr: Bei den Steuern stehen hier <strong>abgerechnete Beträge
+            aus {jahr}</strong> — was wirklich geflossen ist. Die Übersicht zeigt dagegen den
+            <em>Plan</em> für ein späteres Jahr. Beide Zahlen sind richtig, sie beantworten nur
+            verschiedene Fragen. Jede Karte nennt ihr Jahr selbst — die Schlüsselzuweisungen
+            laufen dem Rest voraus.
+          </p>
+        </div>
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-3.5 shadow-sm">

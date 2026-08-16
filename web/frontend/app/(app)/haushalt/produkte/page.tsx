@@ -318,25 +318,34 @@ function ProdukteInner() {
           <span className="font-semibold text-foreground">Was kostet eigentlich …?</span>
         </div>
 
-        <div>
+        <div className="@container/kopf">
           <h1 className="font-display text-2xl font-bold tracking-tight sm:text-[26px]">
             Was kostet eigentlich …?
           </h1>
-          <p className="mt-2 max-w-[68ch] text-[15px] leading-relaxed text-foreground/90">
-            Der Haushalt ist in <GlossaryText text="Produkte" /> gegliedert — einzelne Aufgaben mit
-            eigener Nummer, eigenem Budget und zuständigem Amt. Hier stehen{" "}
-            <strong>{gesamt}</strong> davon aus dem Haushaltsjahr {jahr}: was sie kosten, was
-            dahintersteckt und wie viel Spielraum die Stadt bei ihnen sieht.
-          </p>
-          {/* Der Jahres-Sprung stand bisher nur ganz unten im Abdeckungs-Block.
-              Wer von der Übersicht kommt, hat dort ein späteres Planjahr
-              gesehen und rechnet die Beträge hier sonst dagegen. */}
-          <p className="mt-2 max-w-[68ch] text-[12.5px] leading-relaxed text-muted-foreground">
-            {jahr} ist das jüngste Jahr, für das die Teilhaushaltspläne maschinell auslesbar
-            vorliegen — die Beträge lassen sich deshalb nicht mit denen der Übersicht
-            verrechnen. Auch die Namen stehen im Wortlaut des Plans: Wir kürzen nichts ab,
-            aber wir schreiben seine Abkürzungen auch nicht aus.
-          </p>
+          {/* Zwei Absätze, zwei Spalten — dieselbe Stelle wie im Kopf von
+              „Woher das Geld kommt": Aufhänger und Jahres-Hinweis standen
+              untereinander und ließen rechts 493 von 1136 px leer, während
+              die Lotti-Karte direkt darunter die volle Breite nahm. Die
+              Zeilenlänge bleibt bei 68 Zeichen. Schwelle am CONTAINER
+              (Designsprache §4), weil die Seitenleiste am Desktop 240 px vom
+              Platz nimmt und dieselbe Fensterbreite auf dem iPad mehr hergibt. */}
+          <div className="mt-2 grid gap-x-8 gap-y-2 @5xl/kopf:grid-cols-2">
+            <p className="max-w-[68ch] text-[15px] leading-relaxed text-foreground/90">
+              Der Haushalt ist in <GlossaryText text="Produkte" /> gegliedert — einzelne Aufgaben mit
+              eigener Nummer, eigenem Budget und zuständigem Amt. Hier stehen{" "}
+              <strong>{gesamt}</strong> davon aus dem Haushaltsjahr {jahr}: was sie kosten, was
+              dahintersteckt und wie viel Spielraum die Stadt bei ihnen sieht.
+            </p>
+            {/* Der Jahres-Sprung stand bisher nur ganz unten im Abdeckungs-Block.
+                Wer von der Übersicht kommt, hat dort ein späteres Planjahr
+                gesehen und rechnet die Beträge hier sonst dagegen. */}
+            <p className="max-w-[68ch] text-[12.5px] leading-relaxed text-muted-foreground">
+              {jahr} ist das jüngste Jahr, für das die Teilhaushaltspläne maschinell auslesbar
+              vorliegen — die Beträge lassen sich deshalb nicht mit denen der Übersicht
+              verrechnen. Auch die Namen stehen im Wortlaut des Plans: Wir kürzen nichts ab,
+              aber wir schreiben seine Abkürzungen auch nicht aus.
+            </p>
+          </div>
         </div>
 
         <LottiErklaert
@@ -449,30 +458,37 @@ function ProdukteInner() {
         )}
 
         {/* Abdeckung ehrlich: was die Produktebene erklärt und was nicht. */}
-        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <div className="@container/abdeckung rounded-2xl border border-border bg-card p-4 shadow-sm">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
             Wie vollständig das ist
           </p>
-          <p className="mt-2 max-w-[70ch] text-[12.5px] leading-relaxed text-foreground/85">
-            {/* toLocaleString, nicht die nackte Zahl: Der Wert kam als 81.7
-                mit englischem Punkt auf die Seite — mitten in einem Text, der
-                sonst durchgehend Komma schreibt. */}
-            {data?.abdeckung_prozent != null ? (
-              <>Die {gesamt} Produkte erklären{" "}
-                <strong>{data.abdeckung_prozent.toLocaleString("de-DE", { maximumFractionDigits: 1 })}&nbsp;%</strong> der
-                für {jahr} geplanten Ausgaben.<Beleg q="plan" /> Nicht jeder Teilhaushalt liegt für
-                jedes Jahr als auslesbares Dokument vor — dies ist also ein Ausschnitt, kein
-                Vollbild.</>
-            ) : (
-              <>Nicht jeder Teilhaushalt liegt für jedes Jahr als auslesbares Dokument vor —
-                dies ist ein Ausschnitt, kein Vollbild.</>
-            )}
-          </p>
-          <p className="mt-2 max-w-[70ch] text-[12.5px] leading-relaxed text-foreground/85">
-            Einen Steckbrief mit Kurzbeschreibung tragen <strong>{mitBeschreibung} von {gesamt}</strong>{" "}
-            Produkten; die übrigen führt der Plan ohne Beschreibungstext. Wo ein Feld fehlt, steht
-            hier nichts — wir füllen keine Lücke mit einer Vermutung.
-          </p>
+          {/* Zwei Angaben, zwei Spalten: „wie viel der Ausgaben" und „wie viele
+              Steckbriefe" messen Verschiedenes und standen untereinander — die
+              Karte blieb rechts auf 584 von 1136 px leer. Die Zeilenlänge
+              bleibt bei 70 Zeichen (Designsprache §4); breiter zu setzen wäre
+              schlechter zu lesen, nicht besser. */}
+          <div className="mt-2 grid gap-x-8 gap-y-2 @5xl/abdeckung:grid-cols-2">
+            <p className="max-w-[70ch] text-[12.5px] leading-relaxed text-foreground/85">
+              {/* toLocaleString, nicht die nackte Zahl: Der Wert kam als 81.7
+                  mit englischem Punkt auf die Seite — mitten in einem Text, der
+                  sonst durchgehend Komma schreibt. */}
+              {data?.abdeckung_prozent != null ? (
+                <>Die {gesamt} Produkte erklären{" "}
+                  <strong>{data.abdeckung_prozent.toLocaleString("de-DE", { maximumFractionDigits: 1 })}&nbsp;%</strong> der
+                  für {jahr} geplanten Ausgaben.<Beleg q="plan" /> Nicht jeder Teilhaushalt liegt für
+                  jedes Jahr als auslesbares Dokument vor — dies ist also ein Ausschnitt, kein
+                  Vollbild.</>
+              ) : (
+                <>Nicht jeder Teilhaushalt liegt für jedes Jahr als auslesbares Dokument vor —
+                  dies ist ein Ausschnitt, kein Vollbild.</>
+              )}
+            </p>
+            <p className="max-w-[70ch] text-[12.5px] leading-relaxed text-foreground/85">
+              Einen Steckbrief mit Kurzbeschreibung tragen <strong>{mitBeschreibung} von {gesamt}</strong>{" "}
+              Produkten; die übrigen führt der Plan ohne Beschreibungstext. Wo ein Feld fehlt, steht
+              hier nichts — wir füllen keine Lücke mit einer Vermutung.
+            </p>
+          </div>
         </div>
 
         <Quellenverzeichnis schluessel={QUELLEN} />
