@@ -43,9 +43,9 @@ export const GLOSSARY: Record<string, string> = {
   "Doppelhaushalt":
     "Ein Haushalt, der gleich für zwei Jahre auf einmal beschlossen wird.",
   "Bürgerbegehren":
-    "Ein Weg, mit dem Bürger:innen einen Bürgerentscheid zu einer kommunalen Frage erzwingen können — wenn genug Unterschriften zusammenkommen.",
+    "Ein Weg, mit dem Bürger*innen einen Bürgerentscheid zu einer kommunalen Frage erzwingen können — wenn genug Unterschriften zusammenkommen.",
   "Bürgerentscheid":
-    "Eine direkte Abstimmung der Bürger:innen über eine kommunale Sachfrage, so bindend wie ein Ratsbeschluss.",
+    "Eine direkte Abstimmung der Bürger*innen über eine kommunale Sachfrage, so bindend wie ein Ratsbeschluss.",
   "Konzession":
     "Eine behördliche Erlaubnis, ein bestimmtes Gewerbe oder Recht auszuüben (z. B. Strom- oder Gasnetz zu betreiben).",
   // Krankenhaus-Versorgungsstufen (niedersächsische Krankenhausplanung) —
@@ -102,7 +102,7 @@ export const GLOSSARY: Record<string, string> = {
   "Gewerbesteuerumlage":
     "Ein Anteil der Gewerbesteuer, den die Stadt an Bund und Land weiterreichen muss — von jedem eingenommenen Euro bleibt ihr also nicht alles.",
   "Grundsteuer":
-    "Steuer auf Grundstücke und Gebäude, gezahlt von Eigentümerinnen und Eigentümern — über die Nebenkosten meist auch von Mieterinnen und Mietern. Den Hebesatz beschließt der Rat.",
+    "Steuer auf Grundstücke und Gebäude, gezahlt von Eigentümer*innen — über die Nebenkosten meist auch von Mieter*innen. Den Hebesatz beschließt der Rat.",
   "Haushaltssatzung":
     "Der förmliche Beschluss, mit dem der Rat den Haushalt in Kraft setzt — darin stehen auch die Hebesätze für das Jahr.",
   "Doppik":

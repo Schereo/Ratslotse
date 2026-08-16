@@ -504,13 +504,18 @@ def test_haushalt_datenstand_nennt_alle_schichten(client):
     _register(client)
     b = client.get("/api/council/haushalt/datenstand").json()
     schichten = {s["key"]: s for s in b["schichten"]}
-    assert set(schichten) == {"haushaltsplan", "jahresabschluss", "teilhaushalt",
-                              "rpa_fundstelle", "pruefungsfeststellungen",
-                              "konzernabschluss",
+    assert set(schichten) == {"haushaltsplan", "ergebnishaushalt", "jahresabschluss",
+                              "teilhaushalt", "rpa_fundstelle",
+                              "pruefungsfeststellungen", "konzernabschluss",
                               "lsn_steuerkraft", "lsn_realsteuern"}
     # Vier verschiedene Takte — das ist der Grund, warum der Block existiert.
     assert schichten["jahresabschluss"]["monat"] == "September"
     assert schichten["haushaltsplan"]["monat"] == "Oktober"
+    # Der Gesamtergebnishaushalt ist eine Anlage des Haushaltsplans und kommt
+    # deshalb mit ihm — anders als der Plan zieht der Cron ihn aber selbst
+    # nach, weil er im Anlagenbestand liegt statt auf oldenburg.de.
+    assert schichten["ergebnishaushalt"]["monat"] == "Oktober"
+    assert schichten["ergebnishaushalt"]["automatisch"] is True
     # Der Gesamtabschluss hinkt am weitesten hinterher: Er kann erst entstehen,
     # wenn alle einbezogenen Betriebe geprüft sind.
     assert schichten["konzernabschluss"]["monat"] == "Februar"
@@ -1577,7 +1582,7 @@ def apple_jwks(monkeypatch):
 
 
 def test_apple_login_creates_active_account(client, apple_jwks):
-    _register(client)  # Admin existiert → Apple-Konto wird normale:r Nutzer:in
+    _register(client)  # Admin existiert → Apple-Konto wird normale:r Nutzer*in
     anna = TestClient(app)
     r = anna.post("/api/auth/apple", json={"identity_token": _apple_token()})
     assert r.status_code == 200

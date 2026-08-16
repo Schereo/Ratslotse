@@ -170,6 +170,20 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Jahr erscheinen. (#530)
 
 ### Behoben
+- **Der Herkunfts-Nachweis konnte eine ganze Datenschicht still verlieren.**
+  Das Aufräumen der Herkunfts-Einträge und die Meldung fehlender Herkünfte
+  gingen beide eine von Hand gepflegte Tabellenliste durch. Eine neue
+  Datenschicht, die dort vergessen wird — der Eintrag ist ausdrücklich Schritt
+  drei für einen neuen Parser —, war für beide unsichtbar: Ihre Herkünfte
+  galten als verwaist und wurden gelöscht, während ihre Zeilen weiter auf
+  deren Nummern zeigten, und die Lücken-Meldung schwieg dazu. Weil die Nummern
+  danach neu vergeben werden, zeigte so eine Zeile am Ende nicht ins Leere —
+  das wäre aufgefallen —, sondern auf ein **fremdes Dokument**. Beides fragt
+  jetzt das Datenbankschema statt der Liste; eine vergessene Tabelle ist damit
+  nicht mehr stillgestellt, sondern meldet sich. Aufgefallen ist es am
+  Gesamtabschluss auf der Testumgebung, wo die Jahrgänge 2014–2020 als Quelle
+  einen Teilhaushalts-Plan auswiesen; die Jahrgänge sind neu eingelesen und
+  nennen wieder ihren Prüfbericht. (#537)
 - **Die Vergleichsseite nannte den Jahresversatz noch als offene Frage.** Sie
   ist mit #516 beantwortet: Der offene Datensatz der Stadt beschriftete die
   Steuerkraft ein Jahr zu früh, nachgewiesen an den eigenen Büchern der Stadt.
@@ -477,6 +491,66 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   176.614 Einwohnerinnen und Einwohner zum Stichtag 31.12.2024 — der steht mit
   an der Rechnung, weil eine Pro-Kopf-Angabe ohne Bezugsjahr nichts wert ist.
   (#528)
+- **Woher das Geld kommt, steht jetzt auch für 2025 und 2026 da — und was nur
+  Vorausschau ist, sagt es dazu.** Die Aufschlüsselung nach Steuern,
+  Zuwendungen und Gebühren gab es bisher nur bis 2024, weil sie aus den
+  Jahresabschlüssen stammt; für die laufenden Planjahre fehlte sie. Sie steht
+  längst im Haushaltsplan selbst und ist jetzt für acht Planjahre (2019–2026)
+  eingelesen. Der Plan nennt fünf Spalten „Ansatz", aufgestellt ist aber immer
+  nur ein Jahr — die drei danach sind mittelfristige Finanzplanung, und die
+  schreibt jeder neue Haushalt neu (von 23 Posten bleiben zwischen zwei Plänen
+  0 bis 2 gleich). Beides wird deshalb getrennt gespeichert und getrennt
+  beschriftet, damit später nirgends ein „Plan für 2029" behauptet wird, den
+  es nicht gibt. Übernommen wird ein Jahrgang nur, wenn die Tabelle in allen
+  sechs Spalten aufgeht und der Plan seine Ansatz-Spalte selbst markiert. Und
+  weil die Zahlen aus der Vorlage stammen, mit der die Verwaltung den Haushalt
+  einbringt, steht an jeder von ihnen, dass sie der Stand der Einbringung
+  sind — was der Rat in den Beratungen noch ändert, waren zuletzt bis zu
+  13 Mio. €. (#530)
+- **Der Haushalt hat jetzt einen Weg statt einer Kachelwand — und drei Seiten
+  sind überhaupt erst auffindbar.** „Wann wird der Haushalt entschieden?" und
+  der Städtevergleich waren von keiner Seite aus verlinkt, das Verzeichnis der
+  Teilhaushalte nur rückwärts über die Detailseite eines einzelnen Bereichs.
+  Der Wegweiser auf der Übersicht führt jetzt durch alle zehn
+  Vertiefungsseiten, und zwar in vier benannten Stufen statt als lange Liste:
+  erst die Zahlen (woher das Geld kommt, was hinter den Bereichsnamen steckt,
+  was fest ist, was einzelne Aufgaben kosten), dann die Gegenprobe (was
+  daraus wurde, und was das Rechnungsprüfungsamt dazu sagt), dann der Rahmen
+  (die Betriebe neben dem Haushalt, der Vergleich mit anderen Städten),
+  zuletzt das Mitreden (wann entschieden wird, und was sich drehen ließe).
+  Der Städtevergleich steht bewusst spät: Er beantwortet eine Frage, die sich
+  erst stellt, wenn man die eigenen Zahlen kennt. Auf dem Handy braucht das
+  trotz drei zusätzlicher Ziele kaum mehr Platz als vorher. (#529)
+- **Ratslotse gendert jetzt durchgängig — mit Sternchen.** Aus „Nutzer" wird
+  „Nutzer*innen", aus „je Einwohnerin und Einwohner" wird „je Einwohner*in";
+  auch die Anweisungen an die KI sind mitgezogen, damit die Antworten nicht
+  weiter in generischen Maskulina zurückschreiben. Namen und Rechtsbegriffe
+  bleiben, wie sie heißen: Die „Einwohnerfragestunde" steht so im
+  Kommunalverfassungsgesetz, „Bürgerinfo" heißt das Ratsinformationssystem der
+  Stadt, und „Antragsteller" sind hier Fraktionen, keine Personen. (#533)
+- **Die Anzeigetafel des Haushalts ist im Hellmodus hell — und die Tabelle,
+  mit der die Konzern-Seite sich selbst bestätigte, ist weg.** Die Fläche mit
+  „Oldenburg plant 883,9 Millionen Euro" war in beiden Farbmodi dunkel und
+  stand im hellen Modus als schwarzblaues Feld über der halben Seite; sie
+  folgt jetzt dem Modus und bleibt trotzdem vom Rest der Seite abgesetzt. Die
+  Balken darauf wurden dafür neu gestuft, damit auch der kleinste Posten und
+  die schraffierte Rücklagen-Marke sichtbar bleiben — im Hellmodus stehen sie
+  jetzt weiter vom Grund ab als vorher im Dunkelmodus. Von der Konzern-Seite
+  verschwunden ist der Block „Dieselbe Zahl, zwei Quellen": acht Zeilen, in
+  denen jedes Jahr zweimal dieselbe Summe und daneben „unter 1 Tsd. €
+  Unterschied" stand. Dass zwei Dokumente übereinstimmen, ist unsere
+  Qualitätssicherung — sie läuft unverändert weiter, steht in der Technik-Doku
+  und in Tests, aber nicht mehr auf der Seite. (#535)
+- **Die Grafiken im Haushalt schreiben ihre Zahlen jetzt selbst an.** Unter der
+  Zeitreihe auf `/haushalt`, der Steuerkurve auf `/haushalt/steuer` und den
+  beiden Reihen des Finanzausgleichs steht eine Leiste, die immer ein Jahr mit
+  allen seinen Werten zeigt — im Ruhezustand das jüngste. Überfahren, Antippen
+  oder die Pfeiltasten wechseln das Jahr, und weil die Leiste echter Text ist,
+  steht die Zahl auch im Screenshot, im Ausdruck und in der Vorlesehilfe; ein
+  Tooltip wäre nur für die Maus da gewesen. In der 100-Euro-Ansicht hebt ein
+  Bereich seine Felder im Raster hervor, egal ob man ihn in der Liste oder im
+  Bild wählt. Die Zahlentabellen bleiben — 28 Werte nebeneinander kann kein
+  Bild —, starten aber zugeklappt. (#536)
 
 <!-- GEPARKT (nur dev.ratslotse.de, Umgebungs-Gate): Eintrag aktivieren,
      sobald der Kommunalwahl-Vergleich auf Prod freigeschaltet wird.

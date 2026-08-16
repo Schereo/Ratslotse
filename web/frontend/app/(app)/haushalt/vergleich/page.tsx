@@ -163,19 +163,19 @@ export default function VergleichSeite() {
         />
 
         {hatZahlen && skJahr && (
-          <Abschnitt kicker="Steuerkraft je Einwohnerin"
+          <Abschnitt kicker="Steuerkraft je Einwohner*in"
             zusatz={`Ausgleichsjahr ${skJahr} · alle acht kreisfreien Städte`}>
             <p className="mt-1.5 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
               Die <GlossaryText text="Steuerkraftmesszahl" /> ist die Größe, mit der das
               Land bemisst, wie finanzstark eine Gemeinde ist.
               {oldenburg && platz === 1 && (
                 <> Oldenburg liegt mit <strong>{Math.round(oldenburg.wert).toLocaleString("de-DE")}&nbsp;Euro
-                je Einwohnerin</strong> an der <strong>Spitze aller acht kreisfreien Städte
+                je Einwohner*in</strong> an der <strong>Spitze aller acht kreisfreien Städte
                 Niedersachsens</strong>.</>
               )}
               {oldenburg && platz !== null && platz > 1 && (
                 <> Oldenburg steht mit <strong>{Math.round(oldenburg.wert).toLocaleString("de-DE")}&nbsp;Euro
-                je Einwohnerin</strong> auf Platz {platz} von {steuerkraft.length}.</>
+                je Einwohner*in</strong> auf Platz {platz} von {steuerkraft.length}.</>
               )}
               <Beleg q="lsn_finanzausgleich" />
             </p>
@@ -213,7 +213,7 @@ export default function VergleichSeite() {
         )}
 
         {einnahmekraft.length > 0 && rsJahr && (
-          <Abschnitt kicker="Steuereinnahmekraft je Einwohnerin" zusatz={`${rsJahr}`}>
+          <Abschnitt kicker="Steuereinnahmekraft je Einwohner*in" zusatz={`${rsJahr}`}>
             <p className="mt-1.5 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
               Was am Ende tatsächlich hereinkommt — Realsteuern und die Anteile an
               Einkommen- und Umsatzsteuer, nach Abzug der Gewerbesteuerumlage.
@@ -249,7 +249,7 @@ export default function VergleichSeite() {
           </h2>
           <div className="mt-2 flex max-w-[76ch] flex-col gap-2.5 text-[13px] leading-relaxed text-foreground/90">
             <p>
-              Was gibt Oldenburg je Einwohnerin aus, was Osnabrück? Die Zahl steht in
+              Was gibt Oldenburg je Einwohner*in aus, was Osnabrück? Die Zahl steht in
               beiden Haushalten, man könnte sie nebeneinanderlegen. Sie würde nur etwas
               anderes bedeuten, als man denkt: <strong>zuerst misst sie, wie eine Stadt
               sich organisiert hat</strong> — und erst danach, was sie leistet.
@@ -398,7 +398,7 @@ export default function VergleichSeite() {
           </p>
           <ul className="mt-2 flex max-w-[76ch] list-disc flex-col gap-1.5 pl-4 text-[13px] leading-relaxed text-foreground/90">
             <li>
-              <strong>Ausgaben, Personal und Schulden je Einwohner.</strong> Die Gründe
+              <strong>Ausgaben, Personal und Schulden je Einwohner*in.</strong> Die Gründe
               stehen oben. Sie gelten auch dann, wenn die Zahlen sauber erhoben sind —
               präzise Zahlen ergeben hier trotzdem keinen gültigen Vergleich.
             </li>

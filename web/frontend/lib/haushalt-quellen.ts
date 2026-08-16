@@ -235,7 +235,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "Wir übernehmen einen Jahrgang nur, wenn er sich mit dem vorherigen deckt: " +
       "Das ältere der beiden Jahre muss die Hauptspalte der Vorjahresausgabe " +
       "wiederholen, und zwar für jede der 403 Gemeinden. " +
-      "Die Steuerkraft je Einwohnerin ist unsere eigene Division; das Landesamt " +
+      "Die Steuerkraft je Einwohner*in ist unsere eigene Division; das Landesamt " +
       "weist sie nicht aus.",
     herausgeber: "Landesamt für Statistik Niedersachsen",
     stand: "Ausgleichsjahr 2026 (endgültig, Stand 26.03.2026)",
@@ -248,7 +248,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     fundstelle:
       "Blatt 2.1: Grundbeträge, Hebesätze und Ist-Aufkommen der Grundsteuern A und B " +
       "sowie der Gewerbesteuer je kreisfreier Stadt. Blatt 5.1: die " +
-      "Steuereinnahmekraft je Einwohnerin über drei Jahre. " +
+      "Steuereinnahmekraft je Einwohner*in über drei Jahre. " +
       "Grundlage ist die vierteljährliche Kassenstatistik — dieselbe Erhebung für " +
       "alle Gemeinden, keine Selbstauskunft der Städte. " +
       "Übernommen wird eine Stadt nur, wenn die Rechnung des Dokuments aufgeht: " +

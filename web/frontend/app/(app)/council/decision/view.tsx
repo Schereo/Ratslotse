@@ -39,7 +39,7 @@ function vorlageArt(art: string | null | undefined): string {
 
 /** `subtitle` trägt den Fachbegriff, während die Überschrift in Alltagssprache
  *  sagt, was man hier liest — Ratsmitglieder finden den amtlichen Namen also
- *  weiterhin, ohne dass Erstbesucher:innen über ihn stolpern. */
+ *  weiterhin, ohne dass Erstbesucher*innen über ihn stolpern. */
 function Section({
   title,
   subtitle,
@@ -577,7 +577,7 @@ function DecisionDetailInner() {
       </div>
 
       {/* Stufe 3b: Läuft zu diesem Bauleitplan GERADE eine Beteiligung, ist die
-          Stellungnahme-Frist die eine Sache, die Bürger:innen JETZT tun können —
+          Stellungnahme-Frist die eine Sache, die Bürger*innen JETZT tun können —
           deshalb prominent über allem anderen. */}
       {data.beteiligung && (
         <a href={data.beteiligung.url} target="_blank" rel="noreferrer"

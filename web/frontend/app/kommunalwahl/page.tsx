@@ -169,7 +169,7 @@ export default function KommunalwahlSeite() {
                 <p className="mt-2 max-w-[56ch] text-[13px] leading-relaxed text-primary-foreground/85 sm:text-sm">
                   Alle drei auf eine Person häufen (kumulieren) oder über Listen verteilen (panaschieren) —
                   beides geht. Mehr als drei Kreuze machen den Zettel ungültig. Wählen ab 16, auch
-                  EU-Bürger:innen.
+                  EU-Bürger*innen.
                 </p>
               </div>
               <div className="flex flex-none items-center gap-4 sm:ml-auto">

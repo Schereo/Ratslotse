@@ -12,6 +12,16 @@
 // September und Oktober liegt für einen Jahrgang deshalb immer nur die eine
 // Hälfte vor. Das steht hier einmal, in Sätzen statt in einer Matrix.
 //
+// ZWEI TAKTE WAREN EINMAL ALLE. Mit dem Konzern-Bereich (#514) kam eine
+// dritte Schicht dazu, und sie hat einen eigenen Rhythmus: Der konsolidierte
+// Gesamtabschluss entsteht erst, wenn alle einbezogenen Betriebe geprüft
+// sind, und liegt damit rund zwei Jahre hinter dem Haushaltsjahr
+// (`finanzquellen.QUELLEN`, Februar / Jahrgang + 2). Der Einleitungssatz
+// nennt Plan und Abrechnung deshalb weiter als die zwei bekannten Fälle,
+// behauptet aber nicht mehr, es seien alle — welcher Takt für welche Schicht
+// gilt, steht ohnehin an jeder Zeile. Wer eine vierte Schicht ergänzt, muss
+// hier nichts nachziehen; die Liste kommt aus dem Endpunkt.
+//
 // Bewusst eine eigene Datei: Der Block hängt an einem eigenen Endpunkt, und
 // eine Änderung an den Texten der Übersichtsseite soll ihn nicht anfassen.
 
@@ -171,8 +181,9 @@ export function Datenstand() {
           </h2>
           <p className="mt-1 max-w-[74ch] text-[12.5px] leading-relaxed text-muted-foreground">
             Die Stadt legt ihre Zahlen zu verschiedenen Zeiten vor: den Plan im Herbst für das
-            kommende Jahr, die Abrechnung ein knappes Jahr nach dessen Ende. Deshalb reicht nicht
-            jede Seite gleich weit.
+            kommende Jahr, die Abrechnung ein knappes Jahr nach dessen Ende — und was die
+            Betriebe der Stadt einschließt, noch einmal später. Deshalb reicht nicht jede Seite
+            gleich weit; welcher Takt wo gilt, steht an jeder Zeile.
           </p>
         </div>
       </div>

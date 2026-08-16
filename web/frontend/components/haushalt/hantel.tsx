@@ -93,7 +93,7 @@ export function Hantel({ zeilen, klein = false, einheit = "Mio.", massstab = "pr
             <span className={cn("truncate", klein ? "text-[11.5px] tabular-nums text-muted-foreground" : "text-[12.5px]")}>
               {z.label}
             </span>
-            <div className="relative h-5">
+            <div aria-hidden="true" className="relative h-5">
               {/* Achse und die Marke „wie geplant" */}
               <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-border/60" />
               <div className="absolute inset-y-0 w-px bg-border" style={{ left: `${nullPos}%` }} />
@@ -105,22 +105,35 @@ export function Hantel({ zeilen, klein = false, einheit = "Mio.", massstab = "pr
                   width: `${Math.max(Math.abs(pos(s) - nullPos), 0.5)}%`,
                 }}
               />
-              {/* Geplant: offener Punkt auf der Null. Tatsächlich: gefüllter Punkt am Ende. */}
+              {/* Geplant: offener Punkt auf der Null. Tatsächlich: gefüllter
+                  Punkt am Ende. Beide ohne `title`: Ein Browser-Tooltip
+                  wiederholte nur, was zwei Zentimeter weiter rechts ohnehin
+                  als Text steht — und zwar ausschließlich für die Maus. Auf
+                  dem Telefon und für die Tastatur gab es ihn nie, für die
+                  Vorlesehilfe war er eine zweite Stimme über derselben Zahl.
+                  Die Punkte sind Bild zur Zeile, also `aria-hidden`. */}
               <span
+                aria-hidden="true"
                 className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 bg-card"
                 style={{ left: `${nullPos}%`, borderColor: "var(--hh-ein-0)" }}
-                title={`geplant ${deMio(plan)}`}
               />
               <span
+                aria-hidden="true"
                 className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full"
                 style={{ left: `${pos(s)}%`, background: "var(--hh-aus-0)" }}
-                title={`tatsächlich ${deMio(z.ist as number)}`}
               />
             </div>
+            {/* Die drei Zahlen stehen dauerhaft da — hier braucht es keine
+                Ablese-Leiste, die Zeile IST die Beschriftung. Die sr-only-
+                Wörter sagen nur, was der Pfeil sichtbar sagt: „6,2 → 6,3
+                +0,1" ist vorgelesen ohne sie nicht zuzuordnen. */}
             <span className="whitespace-nowrap text-right text-[12px] tabular-nums">
+              <span className="sr-only">geplant </span>
               <span className="text-muted-foreground">{deMio(plan)}</span>
-              <span className="mx-1 text-muted-foreground">→</span>
+              <span aria-hidden="true" className="mx-1 text-muted-foreground">→</span>
+              <span className="sr-only">, tatsächlich </span>
               <span className="font-semibold">{deMio(z.ist as number)}</span>
+              <span className="sr-only">, Abweichung </span>
               <span className={cn("ml-1.5", d !== 0 && "text-signal")}>
                 {d > 0 ? "+" : ""}{deMio(d)}
               </span>

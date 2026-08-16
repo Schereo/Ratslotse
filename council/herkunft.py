@@ -126,6 +126,20 @@ PROBEN: dict[str, str] = {
         "Jahrgang für diesen Posten führt.",
     "produktzeile":
         "Je Produktzeile: Erträge − Aufwendungen = ordentliches Ergebnis.",
+    # Gesamtergebnishaushalt der Haushaltspläne (council/ergebnishaushalt.py).
+    # Die zweite Probe ist die wichtigere: Sie entscheidet, welche der sechs
+    # Spalten als beschlossener Ansatz gespeichert wird.
+    "ergebnishaushalt_summenzeilen":
+        "Der Haushaltsplan rechnet sich in jeder seiner sechs Jahresspalten "
+        "selbst vor: Die Einnahmearten ergeben die Summe der Erträge, die "
+        "Ausgabearten die Summe der Aufwendungen, und beide zusammen das "
+        "ausgewiesene Ergebnis.",
+    "ergebnishaushalt_planspalte":
+        "Das Jahr, über das der Rat wirklich entscheidet, ist im Plan "
+        "hervorgehoben und steht in jeder Zeile ein zweites Mal. Diese "
+        "Wiederholung zeigt in allen gelesenen Zeilen auf dieselbe Spalte — "
+        "damit ist der beschlossene Ansatz von der mittelfristigen "
+        "Finanzplanung getrennt, ohne sich auf die Reihenfolge zu verlassen.",
     "legende_und_verzeichnis":
         "Die Randmarke der Feststellung steht in der Legende dieses Berichts, "
         "ihre Textziffer in seinem Inhaltsverzeichnis.",
@@ -186,12 +200,17 @@ PROBEN: dict[str, str] = {
 
 #: Jede Tabelle, deren Zeilen eine ``herkunft_id`` tragen.
 #:
-#: Diese Liste ist die Arbeitsanweisung an drei Stellen: Sie legt die Spalte
-#: an (``CouncilStore._migrate_herkunft``), sie füllt sie beim Nachrüsten aus
-#: den alten Feldern, und sie ist der Prüfumfang von
-#: ``CouncilStore.herkunft_luecken()``. Wer eine Tabelle hier vergisst,
-#: bekommt keine Spalte; wer sie einträgt und nicht füllt, bekommt eine
-#: Meldung nach jedem Lauf.
+#: Diese Liste ist die Arbeitsanweisung fürs **Anlegen**: Sie legt die Spalte
+#: an (``CouncilStore._migrate_herkunft``) und füllt sie beim Nachrüsten aus
+#: den alten Feldern (``_HERKUNFT_ALTFELDER``). Wer eine Tabelle hier
+#: vergisst, bekommt keine Spalte — trägt seine Tabelle die ``herkunft_id``
+#: aber schon im ``CREATE TABLE`` (so die neueren), fällt das Vergessen beim
+#: Anlegen gar nicht auf.
+#:
+#: **Geprüft und aufgeräumt wird deshalb nicht nach dieser Liste, sondern
+#: nach dem Schema** (``CouncilStore._herkunft_verweistabellen()``): Sonst
+#: verlöre eine hier vergessene Tabelle beim Aufräumen still ihre Herkünfte,
+#: und die Lücken-Meldung schwiege dazu. Die Begründung steht dort.
 HERKUNFT_TABELLEN: tuple[str, ...] = (
     "council_haushalt",
     "council_steuern",
@@ -211,6 +230,8 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     # Der Städtevergleich aus den LSN-Tabellen — ebenfalls ohne Altbestand und
     # deshalb ausschließlich über `herkunft_id` belegt.
     "council_staedtevergleich",
+    # Die Planjahre aus dem Gesamtergebnishaushalt — neu, ohne Altbestand.
+    "council_ergebnishaushalt",
 )
 
 
@@ -232,7 +253,7 @@ def _proben_normalisieren(roh: str | Sequence[str]) -> str:
         if n not in PROBEN:
             raise ValueError(
                 f"Unbekannte Probe {n!r}. Bekannt sind: {', '.join(sorted(PROBEN))}. "
-                "Eine neue Probe gehört mit einem Satz für Leserinnen nach "
+                "Eine neue Probe gehört mit einem Satz für Leser*innen nach "
                 "council/herkunft.py:PROBEN.")
     for allein in (UNGEPRUEFT, UNBEKANNT):
         if allein in namen and len(namen) > 1:
