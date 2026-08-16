@@ -14,7 +14,7 @@
 // aufeinander aufbauen. Die Nummern sind eine Empfehlung, keine Sperre.
 //
 // AUS SIEBEN SCHRITTEN WERDEN VIER STUFEN (16.08., dritte Runde). Der
-// Bereich hat inzwischen zwölf Unterseiten, und drei davon fand niemand:
+// Bereich hatte damals zwölf Unterseiten, und drei davon fand niemand:
 // `/haushalt/jahr` und `/haushalt/vergleich` waren im ganzen Frontend von
 // keinem einzigen `href` erreichbar, `/haushalt/bereiche` nur rückwärts —
 // über die Detailseite eines einzelnen Bereichs, also von innen nach außen.
@@ -36,7 +36,13 @@
 //   9–11  Der Rahmen      Der Kernhaushalt ist rund zwei Drittel der Stadt,
 //                         Oldenburg steht nicht allein da, und was aus allen
 //                         Jahren zusammen offen blieb, sind die Schulden.
-//   12–13 Mitreden        Wann entschieden wird, und was sich drehen ließe.
+//   13–14 Mitreden        Wann entschieden wird, und was sich drehen ließe.
+//
+// „Was machen die eigentlich?" kam 08/2026 als Schritt 10 dazu und steht
+// **direkt hinter dem Gesamtabschluss**, weil es dieselbe Gesellschaft von
+// der anderen Seite zeigt: Schritt 9 sagt, wie viel Klinikum, Busse und Bäder
+// bewegen, Schritt 10 sagt, was sie damit tun und wer sie beaufsichtigt. Vor
+// dem Gesamtabschluss gelesen wäre es eine Liste von Firmennamen ohne Anlass.
 //
 // „Was wird gebaut?" kam 08/2026 dazu — mit der ersten Schicht, die den
 // FINANZhaushalt liest. Es steht am Ende der Zahlen-Stufe und nicht vorn, weil
@@ -50,7 +56,7 @@
 //    die griffigste Seite, beantwortet aber eine Frage, die erst Sinn ergibt,
 //    wenn man weiß, dass der größte Teil des Geldes gar nicht zur Disposition
 //    steht. Das stand schon in der zweiten Runde hier und gilt weiter.
-//  * **Der Städtevergleich steht spät (Schritt 10), nicht vorn.** „Steht
+//  * **Der Städtevergleich steht spät (Schritt 11), nicht vorn.** „Steht
 //    Oldenburg besser da als Osnabrück?" ist eine Frage, die sich erst stellt,
 //    wenn man die eigenen Zahlen kennt — und die Seite selbst besteht zur
 //    Hälfte aus der Begründung, warum der Vergleich bei den Ausgaben nicht
@@ -60,7 +66,7 @@
 //    ist der letzte Schritt, nicht der zweite: Vorher fehlt der Bezug, an dem
 //    sich ablesen ließe, ob eine Bewegung viel ist.
 //
-//  * **Die Schulden stehen am Ende des Rahmens (Schritt 11), nicht bei den
+//  * **Die Schulden stehen am Ende des Rahmens (Schritt 12), nicht bei den
 //    Zahlen.** Sie sind die einzige Bestandsgröße im ganzen Weg: nicht was in
 //    einem Jahr floss, sondern was aus allen Jahren zusammen offen blieb. Vorn
 //    gelesen wäre das eine weitere Jahreszahl unter vielen; hinter dem Konzern
@@ -70,7 +76,8 @@
 // **Zwei Seiten schreiben ihre Nummer selbst in den Kicker** und müssen
 // deshalb mitgeändert werden, wenn sich die Reihenfolge hier ändert — sonst
 // widersprechen sich zwei Seiten still: `/haushalt/personal` („Schritt 5") und
-// `/haushalt/konzern` („Schritt 9"). Genau das ist zweimal passiert und beide
+// `/haushalt/konzern` („Schritt 9") und `/haushalt/beteiligungen`
+// („Schritt 10"). Genau das ist mehrfach passiert und jedes Mal
 // Male nachgezogen worden: „Was wird gebaut?" schob den Konzern von 7 auf 8,
 // der Stellenplan von 8 auf 9. Die Schulden-Seite hängt aus demselben Grund
 // HINTER dem Städtevergleich und nicht zwischen ihm und dem Konzern: Dort
@@ -84,14 +91,14 @@
 // er sie lesbar macht: Unbesetzte Stellen sind eine der Erklärungen dafür,
 // dass Personalausgaben im Jahresabschluss unter dem Plan bleiben können.
 //
-// **Zwei der fünfzehn Unterseiten haben bewusst keinen Schritt.**
+// **Zwei der sechzehn Unterseiten haben bewusst keinen Schritt.**
 // `/haushalt/bereich` und `/haushalt/steuer` sind Steckbriefe: Sie brauchen
 // einen Query-Parameter und öffnen ohne ihn den Vorgabefall. Als eigener
-// Schritt stünde ein beliebiger Bereich neben dreizehn Fragen. Sie werden am
-// Fuß benannt, damit die Zählung „dreizehn Schritte, fünfzehn Unterseiten"
+// Schritt stünde ein beliebiger Bereich neben vierzehn Fragen. Sie werden am
+// Fuß benannt, damit die Zählung „vierzehn Schritte, sechzehn Unterseiten"
 // nicht wie eine Lücke aussieht. (Die Übersicht `/haushalt` selbst ist kein
 // Ziel dieses Wegweisers — von dort kommt man ja. Sie zählt nur beim
-// Umgebungs-Gate mit, das alle sechzehn Seiten deckt: `lib/haushalt-frei.ts`.)
+// Umgebungs-Gate mit, das alle siebzehn Seiten deckt: `lib/haushalt-frei.ts`.)
 //
 // FORM: eine Karte, nicht zehn. Zehn Karten sind auf 375 px eine Liste ohne
 // Ende — die Stufen wären zwischen ihnen untergegangen, und genau sie sind
@@ -194,6 +201,12 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         Icon: Building2,
         titel: "Und ist das die ganze Stadt?",
         text: "Klinikum, Busse, Bäder, Gebäude: was neben dem Haushalt noch läuft.",
+      },
+      {
+        href: "/haushalt/beteiligungen",
+        Icon: Landmark,
+        titel: "Was machen die eigentlich?",
+        text: "Die Gesellschaften einzeln: Auftrag, Aufsichtsrat, Ergebnis — vom Klinikum bis zur Volkshochschule.",
       },
       {
         href: "/haushalt/vergleich",
@@ -313,7 +326,7 @@ export function Wegweiser() {
       ))}
 
       {/* Ohne diesen Satz sähen die Schritte nach einer Lücke aus: Der
-          Bereich hat fünfzehn Unterseiten. Die beiden übrigen sind Steckbriefe
+          Bereich hat sechzehn Unterseiten. Die beiden übrigen sind Steckbriefe
           und brauchen einen Bereich bzw. eine Einnahmeart, über die man sie
           aufruft — als Schritt stünde dort ein beliebiger Einzelfall. */}
       <p className="mt-3.5 border-t border-dashed border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground">

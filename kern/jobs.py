@@ -74,6 +74,17 @@ JOBS: list[dict] = [
         "max_age_h": 16 * 24,
     },
     {
+        "key": "check_beteiligungsbericht",
+        "label": "Beteiligungsbericht",
+        "description": "Lädt die Beteiligungsberichte von oldenburg.de und liest Gesellschaften, Aufsichtsorgane und Kennzahlen daraus.",
+        # Der zweite Cron des Haushalts-Bereichs, und der einzige, der selbst
+        # herunterlädt. Bestandsgesteuert wie check_finanzdaten — der Takt
+        # bestimmt nur, wie schnell ein neuer Bericht auf der Seite steht, und
+        # die Quelle erscheint einmal im Jahr.
+        "schedule": "alle vier Wochen, sonntags 4:45 Uhr",
+        "max_age_h": 30 * 24,
+    },
+    {
         "key": "weekly_enrich",
         "label": "Wöchentliche Anreicherung",
         "description": "Entitäten, Geocoding, Embeddings, Rückblicke, Interessantheit und Tragweite in Tranchen.",

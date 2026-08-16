@@ -225,10 +225,31 @@ PROBEN: dict[str, str] = {
         "dem Open-Data-Datensatz der Stadt, ergibt den Betrag je Einwohner*in, "
         "den dieselbe Zeile nennt. Beide Seiten stammen aus verschiedenen "
         "Veröffentlichungen und beziehen sich auf denselben Stichtag.",
+    # Beteiligungsbericht nach § 151 NKomVG (council/beteiligungsbericht.py).
+    # Die ersten beiden stehen im Dokument selbst, die dritte spannt sich über
+    # mehrere Jahrgänge — zusammen decken sie auch das jüngste Berichtsjahr,
+    # das noch in keinem zweiten Bericht steht.
+    "beteiligung_seitenprobe":
+        "Der Bericht sagt zweimal, wo diese Gesellschaft steht: Sein "
+        "Inhaltsverzeichnis nennt die Seite, und auf genau dieser Seite steht "
+        "ihre Gliederungsnummer. Damit gehört der Abschnitt nachweislich zu "
+        "ihr und nicht zur Gesellschaft davor.",
+    "beteiligung_bilanzprobe":
+        "Die Bilanz der Gesellschaft weist ihre Summe zweimal aus — einmal "
+        "unter den Aktiva, einmal unter den Passiva —, und die "
+        "Kennzahlen-Tabelle desselben Abschnitts nennt sie ein drittes Mal. "
+        "Alle drei stimmen überein.",
+    "beteiligung_ergebnisprobe":
+        "Die Gewinn- und Verlustrechnung der Gesellschaft schließt mit genau "
+        "dem Jahresergebnis, das die Kennzahlen-Tabelle desselben Abschnitts "
+        "führt.",
+    "beteiligung_ueberlappung":
+        "Jeder Beteiligungsbericht führt vier bis fünf Jahre nebeneinander. "
+        "Dieses Jahr steht deshalb in mehreren Berichten — verschiedene "
+        "Veröffentlichungen, dieselbe Zahl.",
     UNGEPRUEFT:
-        "Diese Quelle trägt keine Rechenprobe: Sie liefert eine Zeile je Jahr "
-        "ohne Summe, gegen die sich etwas prüfen ließe. Übernommen wie "
-        "veröffentlicht.",
+        "Diese Angabe trägt keine Rechenprobe — es gibt im Dokument nichts, "
+        "wogegen sie sich prüfen ließe. Übernommen wie veröffentlicht.",
     UNBEKANNT:
         "Aus dem Bestand vor der Herkunfts-Vereinheitlichung übernommen. Die "
         "Zeilen haben eine Probe bestanden — welche, hielt der alte Bestand "
@@ -276,6 +297,13 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     # Die Schuldenzeitreihe aus dem Statistischen Jahrbuch — ebenfalls neu und
     # ausschließlich über `herkunft_id` belegt.
     "council_schulden",
+    # Der Beteiligungsbericht (council/beteiligungsbericht.py). Die Texte
+    # stehen bewusst mit dabei: Sie tragen `UNGEPRUEFT`, aber sie tragen eine
+    # Herkunft — Dokument, Abschnitt und Seite. „Keine Probe" ist etwas
+    # anderes als „keine Quelle".
+    "council_gesellschaften",
+    "council_gesellschaft_texte",
+    "council_gesellschaft_kennzahlen",
 )
 
 

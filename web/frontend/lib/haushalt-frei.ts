@@ -7,7 +7,7 @@
 // mit Releases nach main fahren.
 //
 // Eine Einschränkung, gemessen statt vermutet: Der Bereich liegt unter
-// app/(app)/, dessen Layout „use client" ist, und alle fünfzehn Seiten sind
+// app/(app)/, dessen Layout „use client" ist, und alle siebzehn Seiten sind
 // selbst Client-Komponenten. Das notFound() im Haushalts-Layout wird zwar
 // ausgeführt (nachgewiesen: HAUSHALT_FREI=false, der Aufruf greift), aber
 // Next liefert die Antwort mit HTTP 200 statt 404 aus — ein „Soft 404".
@@ -19,7 +19,7 @@
 // ungeklärt und wäre eigene Arbeit.
 //
 // Die Konstante steht hier statt im Layout, weil sie an drei Orten gebraucht
-// wird: im Layout selbst (die fünfzehn Seiten), in der Navigation (Sidebar +
+// wird: im Layout selbst (die siebzehn Seiten), in der Navigation (Sidebar +
 // „Mehr"-Sheet) und auf den Beschluss-Seiten (Anschlussstelle H-21). Ein Gate
 // ohne die Einstiegspunkte wäre nur die halbe Miete — die Links stünden auf
 // Prod weiter da und führten ins Leere. Genau diese Falle gab es schon einmal

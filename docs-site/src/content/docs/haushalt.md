@@ -40,16 +40,19 @@ Schritte in vier Stufen. Die Tabelle steht deshalb in genau dieser Reihenfolge.
 | `/haushalt/bereiche` | Schritt 2 — die Teilhaushalte im Klartext: was hinter „Soziales" oder „Finanzmanagement" steckt, mit Betrag |
 | `/haushalt/pflicht` | Schritt 3 — muss oder kann: Ausgaben nach Gestaltungsspielraum, gegen die Selbstauskunft der Stadt gehalten |
 | `/haushalt/produkte[?nr=<produkt_nr>]` | Schritt 4 — „Was kostet eigentlich …?", Produktsuche mit Filtern (Amt, Spielraum); `nr` öffnet den Steckbrief |
-| `/haushalt/investitionen` | Schritt 5 — „Was wird gebaut?": die Investitionen des **Finanz**haushalts je Teilhaushalt, 2022–2025, mit dem Anteil am ganzen Finanzhaushalt |
+| `/haushalt/personal` | Schritt 5 — „Wer macht die Arbeit?“: der Stellenplan je Amtsbezeichnung, mit besetzten und unbesetzten Stellen zum Stichtag |
+| `/haushalt/investitionen` | Schritt 6 — „Was wird gebaut?": die Investitionen des **Finanz**haushalts je Teilhaushalt, 2022–2025, mit dem Anteil am ganzen Finanzhaushalt |
 | **Die Gegenprobe** | |
-| `/haushalt/plan-ist[?jahr=<jahr>]` | Schritt 6 — geplant gegen tatsächlich, je Teilhaushalt, mit den Abweichungsgründen der Verwaltung im Wortlaut |
-| `/haushalt/pruefung[?jahr=<jahr>]` | Schritt 7 — alle Feststellungen der RPA-Schlussberichte im Wortlaut, mit Textziffer, Seite und Deeplink; dazu die Ketten über die Jahrgänge |
+| `/haushalt/plan-ist[?jahr=<jahr>]` | Schritt 7 — geplant gegen tatsächlich, je Teilhaushalt, mit den Abweichungsgründen der Verwaltung im Wortlaut |
+| `/haushalt/pruefung[?jahr=<jahr>]` | Schritt 8 — alle Feststellungen der RPA-Schlussberichte im Wortlaut, mit Textziffer, Seite und Deeplink; dazu die Ketten über die Jahrgänge |
 | **Der Rahmen** | |
-| `/haushalt/konzern` | Schritt 8 — Kernverwaltung gegen Gesamtabschluss über elf Jahrgänge, Aufschlüsselung nach Aufgabenträgern |
-| `/haushalt/vergleich` | Schritt 9 — Steuerkraft, Hebesätze und Steuereinnahmekraft der acht kreisfreien Städte aus der amtlichen Statistik — und die Erklärung, warum Ausgaben und Personal **nicht** verglichen werden |
+| `/haushalt/konzern` | Schritt 9 — Kernverwaltung gegen Gesamtabschluss über elf Jahrgänge, Aufschlüsselung nach Aufgabenträgern |
+| `/haushalt/beteiligungen[?g=<gesellschaft>]` | Schritt 10 — „Was machen die eigentlich?": jede städtische Gesellschaft mit Auftrag, Eigentümern, Aufsichtsorganen und Kennzahlen-Zeitreihe; `g` öffnet den Steckbrief |
+| `/haushalt/vergleich` | Schritt 11 — Steuerkraft, Hebesätze und Steuereinnahmekraft der acht kreisfreien Städte aus der amtlichen Statistik — und die Erklärung, warum Ausgaben und Personal **nicht** verglichen werden |
 | **Mitreden** | |
-| `/haushalt/jahr` | Schritt 10 — wann der Haushalt entschieden wird: jede Station im Rat, aus acht Jahrgängen, mit Link auf die Sitzung |
-| `/haushalt/labor` | Schritt 11 — Was-wäre-wenn: Hebesatz-Regler und Kürzungen, jede Bewegung in Mio. €, € je Einwohner und Anteil an der Lücke; dauerhaft sichtbare Gegenrechnung |
+| `/haushalt/schulden` | Schritt 12 — dreißig Jahre Schuldenstand aus Tabelle 1108 des Statistischen Jahrbuchs, mit der Angabe, was mitgezählt ist |
+| `/haushalt/jahr` | Schritt 13 — wann der Haushalt entschieden wird: jede Station im Rat, aus acht Jahrgängen, mit Link auf die Sitzung |
+| `/haushalt/labor` | Schritt 14 — Was-wäre-wenn: Hebesatz-Regler und Kürzungen, jede Bewegung in Mio. €, € je Einwohner und Anteil an der Lücke; dauerhaft sichtbare Gegenrechnung |
 | **Steckbriefe (ohne Schritt)** | |
 | `/haushalt/bereich?name=<slug>` | Dossier je Teilhaushalt: Wasserfall Brutto → eigene Erträge → Zuschussbedarf, Entwicklung seit 2020, Produkte des Bereichs |
 | `/haushalt/steuer?art=<slug>` | Steckbrief je Einnahmeart: „Wer entscheidet was", Ist-Kurve, Hebesatz, Ein-Punkt-Überschlag |
@@ -60,11 +63,13 @@ dort ein beliebiger Einzelfall. Man erreicht sie aus Schritt 1 und 2 sowie aus
 der Bereichstabelle des Einstiegs.
 
 :::caution[Die Reihenfolge steht an zwei Stellen]
-`/haushalt/konzern` schreibt seine Nummer selbst in den Kicker („Stadtfinanzen
-Oldenburg · Schritt 8"). Der Wegweiser ist so geordnet, dass das stimmt. Wer
-Schritte umsortiert oder einen dazwischenschiebt, zieht `konzern/page.tsx` mit
-nach — sonst widersprechen sich zwei Seiten still. Genau das war beim Einfügen
-von „Was wird gebaut?" (08/2026) fällig: Die Seite trug bis dahin Schritt 7.
+Drei Seiten schreiben ihre Nummer selbst in den Kicker: `/haushalt/personal`
+(„Schritt 5"), `/haushalt/konzern` („Schritt 9") und `/haushalt/beteiligungen`
+(„Schritt 10"). Der Wegweiser ist so geordnet, dass das stimmt. Wer Schritte
+umsortiert oder einen dazwischenschiebt, zieht diese Seiten mit nach — sonst
+widersprechen sich zwei Seiten still. Genau das war schon dreimal fällig:
+„Was wird gebaut?" schob den Konzern von 7 auf 8, der Stellenplan von 8 auf 9,
+der Beteiligungsbericht den Städtevergleich von 10 auf 11.
 :::
 
 Query-Parameter statt dynamischer Segmente, weil der Capacitor-Export die
@@ -1198,6 +1203,153 @@ ist mit den Planzahlen auf `/haushalt` **nicht verrechenbar** — auch nicht
 durch Subtraktion. Die API liefert deshalb keine gemischten Summen, sondern
 beide Reihen getrennt, und die Seite sagt es in einem eigenen Block statt im
 Kleingedruckten.
+:::
+
+## Beteiligungsbericht: was die Gesellschaften tun
+
+Der Gesamtabschluss sagt, **wie viel** die städtischen Betriebe bewegen. Was
+sie damit *tun*, steht dort nicht — nur ihre Beiträge zur Ergebnisrechnung.
+Das sagt der **Beteiligungsbericht nach § 151 NKomVG**: einmal im Jahr, rund
+200 Seiten, je Gesellschaft acht Abschnitte (Gegenstand, Beteiligungs-
+verhältnisse, Aufsichtsorgane, eigene Beteiligungen, Geschäftsverlauf, Bilanz
+und Kennzahlen, öffentlicher Zweck, Auswirkungen auf den Haushalt).
+
+Parser: `council/beteiligungsbericht.py`. Seite: `/haushalt/beteiligungen`
+(Schritt 9), Steckbrief über `?g=<gesellschaft>`.
+
+### Ein zweiter Cron-Typ: der erste, der herunterlädt
+
+`check_finanzdaten` **lädt nichts herunter**. Das ist seine erste Regel, und
+sie ist richtig: Seine Dokumente hängen als Anlagen an Ratsvorlagen und werden
+vom Protokoll-Scraper ohnehin geholt; ein zweiter Weg dorthin wäre Doppelarbeit
+mit doppelter Fehlerquelle.
+
+Der Beteiligungsbericht hängt an keiner Vorlage. Er liegt auf oldenburg.de.
+Ihn im bestehenden Job mitzuholen hieße, dessen klarste Regel aufzuweichen —
+deshalb `scripts/check_beteiligungsbericht.py` als **eigener Job** mit eigenem
+Takt (alle vier Wochen; die Quelle erscheint einmal im Jahr) und
+`council/stadtdownload.py` als eigener, geprüfter Netzweg. Der hält vier
+Dinge ein, die ein Abruf auf fremden Servern einhalten muss:
+
+- **Er sagt, wer er ist** — ein `User-Agent` mit Namen, Adresse und Zweck.
+- **Er fragt erst, ob es sich lohnt** — `If-Modified-Since` / `If-None-Match`;
+  bei `304` wird nichts übertragen. Sieben Berichte sind zusammen 25 MB.
+- **Er wartet zwischen den Abrufen** und nimmt nur, was er erwartet: PDF laut
+  `Content-Type`, `%PDF` am Anfang, höchstens 40 MB. Eine Fehlerseite mit
+  `200 OK` ist bei CMS-Systemen der Normalfall.
+- **Er hält die Regeln der Seite ein.** `robots.txt` erlaubt `User-agent: *`
+  mit `Allow: /`; gesperrt sind TYPO3-Innereien und `cHash`-Adressen. Die
+  Berichts-PDFs unter `/fileadmin/oldenburg/…` sind frei (nachgesehen
+  16.08.2026).
+
+Die Adressen der PDFs werden **aus der Übersichtsseite gelesen**, nicht
+geraten: Der Dateiname wechselt von Jahrgang zu Jahrgang
+(`Beteiligungsbericht_2021.pdf` gegen `Beteiligungsbericht_2024_kombiniert_final.pdf`).
+
+Im Datenstand steht die Schicht mit `automatisch = false` — `check_finanzdaten`
+beobachtet sie mit und meldet, wenn ein Jahrgang ausbleibt, lädt aber selbst
+nichts.
+
+### Warum nur drei von sieben Jahrgängen
+
+Auf oldenburg.de stehen sieben Berichte (2018–2024). Gelesen werden **2022,
+2023 und 2024**. Der Grund ist ein Formatbruch, kein Aufwand:
+
+| | 2018–2021 | ab 2022 |
+|---|---|---|
+| Gliederung je Gesellschaft | frei betextet | acht nummerierte Abschnitte `1)`–`8)` |
+| Bilanz | Aktiva und Passiva **nebeneinander** | einspaltig, `BILANZSUMME` auf beiden Seiten |
+| Kennzahlen | keine Tabelle | „Kennzahlen im Zeitverlauf", 4–5 Jahre |
+
+Gemessen am Bestand: „Kennzahlen im Zeitverlauf" kommt in den Jahrgängen
+2018–2021 **null**-mal vor, ab 2022 je 14–16-mal. `BILANZSUMME` ebenso: null
+gegen 28–32. Die zweispaltige Bilanz der alten Jahrgänge verschränkt pypdf zu
+Zeilen, in denen Aktiv- und Passivbeträge abwechselnd stehen.
+
+**Der Verzicht kostet keine Zahlen.** Jeder Bericht führt vier bis fünf Jahre
+mit; der Bestand deckt deshalb **2017–2024**. Was fehlt, ist der Fließtext der
+Jahre 2018–2021 — und „was macht die GSG eigentlich?" beantwortet ohnehin der
+jüngste Bericht.
+
+### Die Zuordnung Abschnitt → Gesellschaft
+
+Der eigentliche Fallstrick bei 200 Seiten. Der Bericht beantwortet ihn selbst
+**zweimal**: Das Inhaltsverzeichnis nennt für jede Gesellschaft ihre
+Gliederungsnummer und ihre Anfangsseite, und auf genau dieser Seite steht eine
+Trennseite mit derselben Nummer. Stimmen beide nicht überein, ist die Zuordnung
+nicht gesichert und der Abschnitt fällt weg. In den drei gelesenen Jahrgängen
+gehen **45 von 45** Zuordnungen auf; das ist die Probe
+`beteiligung_seitenprobe`.
+
+### Drei Proben für die Kennzahlen — und keine für den Text
+
+| Probe | Was sie zeigt |
+|---|---|
+| `beteiligung_bilanzprobe` | Die Bilanz weist ihre Summe zweimal aus (Aktiva, Passiva), die Kennzahlen-Tabelle ein drittes Mal |
+| `beteiligung_ergebnisprobe` | Die Gewinn- und Verlustrechnung schließt mit dem Jahresergebnis der Kennzahlen-Tabelle |
+| `beteiligung_ueberlappung` | Dasselbe Jahr steht in bis zu drei Berichten — verschiedene Veröffentlichungen, dieselbe Zahl |
+
+Gemessen über die drei Jahrgänge: **246 von 246 Dokumentproben bestanden**,
+**202 Werte** durch die Überlappung bestätigt, **kein einziger Widerspruch**.
+Von 286 gelesenen Werten tragen 230 eine Probe; die übrigen 56 werden
+**verworfen statt geschätzt** — es trifft die älteste Spalte des ältesten
+Berichts (keine Bilanz daneben, kein zweiter Bericht) und die
+Eigenkapitalquote des jüngsten Jahres, die das Dokument nirgends vorrechnet.
+
+**Die beschreibenden Abschnitte tragen `herkunft.UNGEPRUEFT`**, und das ist die
+ehrliche Angabe: Gegen Fließtext lässt sich nichts rechnen. Er steht trotzdem
+mit Dokument, Abschnitt und Seite da — „keine Probe" ist etwas anderes als
+„keine Quelle".
+
+### Fünf Eigenheiten, an denen ein naiver Parser scheitert
+
+- **Die Jahresspalten wechseln die Richtung.** Der Eigenbetrieb
+  Gebäudewirtschaft führt 2024 → 2020, der Abfallwirtschaftsbetrieb zwei
+  Seiten weiter 2020 → 2024. Gelesen wird die Kopfzeile, nie die Reihenfolge.
+- **Der Berichtsjahrgang steht nicht immer in der Tabelle.** Die Großleitstelle
+  führt noch im Bericht für 2024 die Jahre 2017–2021.
+- **Beträge tragen Leerzeichen mitten drin** — `650 .289,04`,
+  `23.439 .654,83`, `2.103.265, 69`. Dieselbe Sorte Schaden wie im
+  Gesamtabschluss (`105.667.339, 23`).
+- **Die Beschriftung schwankt:** `Eigenkapitalquote`, `Eigenkapitaquote`
+  (Tippfehler im Bericht 2022), `Eigenkapital-\nquote`,
+  `Eigenkapital -\nQuote in Prozent`.
+- **Manche Zahl ist im Dokument falsch gesetzt.** Der Bericht 2022 führt für
+  die GSG ein Jahresergebnis `5.698.082.44` — Punkt statt Komma. Die Zeile wird
+  verworfen, nicht zurechtgebogen; im Bericht 2024 beginnt dieselbe Reihe erst
+  2020 und geht durch.
+
+### Der Abgleich mit dem Gesamtabschluss — nachgerechnet, aber keine Probe
+
+Dieselben Gesellschaften stehen auch in `council_konzern_traeger`, dort mit
+ihren ordentlichen Erträgen und Aufwendungen. Deren Differenz ist die einzige
+Größe, die sich mit dem Jahresergebnis vergleichen lässt. Nachgerechnet für
+2024 (in TEUR):
+
+| Gesellschaft | Konzern E−A | Jahresergebnis | Differenz |
+|---|---:|---:|---:|
+| Klinikum Oldenburg AöR | −27.132 | −27.132 | 0 |
+| Weser-Ems Halle | −4.378 | −4.378 | 0 |
+| Bäderbetriebsgesellschaft | −5.699 | −5.709 | 10 |
+| Eigenbetrieb Gebäudewirtschaft | −2.701 | −2.726 | 25 |
+| Abfallwirtschaftsbetrieb | 231 | 294 | −63 |
+| Bäderbetrieb | 233 | 0 | 233 |
+| Verkehr und Wasser GmbH | −77 | 0 | −77 |
+
+Zwei stimmen auf die Tausenderstelle, drei liegen dicht daneben, zwei weichen
+deutlich ab — und **alle drei Befunde sind richtig**: Der Gesamtabschluss zählt
+nur die *ordentlichen* Posten (daher die kleinen Abweichungen), und Bäderbetrieb
+wie Verkehr und Wasser weisen 0,00 € aus, weil ihr Ergebnis abgeführt
+beziehungsweise ausgeglichen wird.
+
+:::caution[Deshalb ist das keine Probe]
+Eine Toleranz, die 233 TEUR durchgehen ließe, prüfte bei der
+Bäderbetriebsgesellschaft nichts mehr; eine engere verwürfe genau die beiden
+Betriebe, bei denen die Quelle nachweislich recht hat. Der Abgleich wird
+trotzdem bei jedem Lauf gerechnet (`beteiligungsbericht.konzernvergleich`) und
+steht im Cron-Protokoll sowie auf der Seite — als **Einordnung**, nicht als
+Urteil. Springt eine Abweichung, die jahrelang null war, auf Millionen, ist das
+den Blick wert.
 :::
 
 ## Städtevergleich: was sich vergleichen lässt — und was nicht

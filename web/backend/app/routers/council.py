@@ -15,7 +15,7 @@ from council.store import CouncilStore
 from council.topics import POLICY_FIELDS
 from council.goals import GOALS
 from council.parties import faction_label, normalize_party, order_key
-from council import qa
+from council import beteiligungsbericht, qa
 from council import ernte
 from council import importance
 from council import sitzungspause as pause_mod
@@ -475,6 +475,60 @@ def haushalt_konzern(
                     for t in traeger],
         "posten": posten,
         "gegenprobe": gegenprobe,
+        "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
+    }
+
+
+@router.get("/haushalt/beteiligungen")
+def haushalt_beteiligungen(
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Die städtischen Gesellschaften — was sie tun, wer sie beaufsichtigt.
+
+    Die Ergänzung zum Gesamtabschluss (``/haushalt/konzern``): Der sagt, wie
+    viel die Betriebe bewegen, diese Seite, was sie damit machen.
+
+    - ``gesellschaften``: je Gesellschaft Name, Gliederungsnummer und Seite im
+      jüngsten Bericht, dazu ``konzern_key``, wo der Gesamtabschluss sie als
+      eigenen Träger führt,
+    - ``texte``: die beschreibenden Abschnitte (Gegenstand, Eigentümer,
+      Aufsichtsorgane, eigene Beteiligungen, Auswirkungen auf den Haushalt) —
+      alle ausdrücklich **ungeprüft**, denn Fließtext lässt sich gegen nichts
+      rechnen,
+    - ``kennzahlen``: die Zeitreihe je Gesellschaft (Jahresergebnis,
+      Bilanzsumme, Eigenkapitalquote). ``berichte`` sagt, wie viele Berichte
+      denselben Wert nennen — 1 heißt „durch eine Probe im Dokument gedeckt",
+      mehr heißt zusätzlich „von einer zweiten Veröffentlichung bestätigt",
+    - ``konzernvergleich``: für die Gesellschaften, die auch im
+      Gesamtabschluss stehen, beide Zahlen desselben Jahres nebeneinander.
+      **Keine Probe** — die beiden Rechnungen unterscheiden sich systematisch,
+      und zwei Betriebe weisen wegen Ergebnisabführung 0 € aus, obwohl sie
+      etwas erwirtschaftet haben. Eine Einordnung, kein Urteil,
+    - ``berichtsjahre`` / ``jahre``: welche Berichte gelesen sind und welche
+      Bezugsjahre die Kennzahlen abdecken (sie reichen weiter zurück als die
+      Berichte — jeder führt vier bis fünf Jahre mit),
+    - ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, Seite und Probe.
+
+    Gelesen werden die Berichte ab 2022; davor ist das Dokument anders
+    aufgebaut und nicht maschinenlesbar (``council/beteiligungsbericht.py``)."""
+    berichtsjahre = store.beteiligungsbericht_jahre()
+    gesellschaften = store.get_gesellschaften()
+    kennzahlen = store.get_gesellschaft_kennzahlen()
+    texte = [t for g in gesellschaften
+             for t in store.get_gesellschaft_texte(g["gesellschaft"])]
+    vergleich = (beteiligungsbericht.konzernvergleich(store, berichtsjahre[-1])
+                 if berichtsjahre else [])
+
+    ids = sorted({z["herkunft_id"] for z in (*gesellschaften, *texte, *kennzahlen)
+                  if z["herkunft_id"] is not None})
+    return {
+        "berichtsjahre": berichtsjahre,
+        "jahre": sorted({z["jahr"] for z in kennzahlen}),
+        "gesellschaften": gesellschaften,
+        "texte": texte,
+        "kennzahlen": kennzahlen,
+        "konzernvergleich": vergleich,
         "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
 
