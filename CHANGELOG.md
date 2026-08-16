@@ -8,6 +8,24 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Was wurde davon wirklich gebaut?** Der Haushalts-Bereich zeigte bisher nur
+  die Bau- und Kaufpläne der Stadt — was am Jahresende tatsächlich abgeflossen
+  ist, stand nirgends. Die neue Seite `/haushalt/gebaut` zeigt es für die Jahre
+  2003 bis 2025, aufgeteilt danach, wofür das Geld ging: Baumaßnahmen,
+  Grundstücke, Fahrzeuge und Geräte, Zuschüsse an Dritte. Zwei Dinge stehen
+  dabei ausdrücklich dabei, weil die Zahl sonst mehr behauptet, als sie sagt.
+  Erstens: Gezählt wird die Kernverwaltung — was der Eigenbetrieb
+  Gebäudewirtschaft baut, und das ist seit 2010 ein großer Teil des
+  städtischen Hochbaus, steht nicht darin. Zweitens: Für **2019 fehlt der
+  Jahrgang**. Die Stadt weist dort eine Summe aus, die ihre eigenen
+  Einzelposten um 1,3 Mio. € verfehlen, und welche Zahl danebenliegt, sagt die
+  Tabelle nicht — also steht das Jahr gar nicht da statt in geschätzter Höhe.
+  Bewusst **nicht** gezeigt wird eine „Umsetzungsquote" aus Plan und Ist:
+  Beide Zahlen sind verschieden abgegrenzt, keine Veröffentlichung der Stadt
+  stellt sie nebeneinander, und der Prozentsatz stünde in keinem Dokument.
+  Die Seite verlinkt stattdessen den Investitionsplan und erklärt den
+  Unterschied. Auch „Frag den Rat" kennt die neuen Zahlen — mit derselben
+  Regel im Gepäck. (#566)
 - **„Frag den Rat" kennt den Haushalt jetzt ganz — und beantwortet vier Fragen
   nicht mehr aus der falschen Quelle.** Der Haushalts-Bereich war auf dreizehn
   Datenschichten gewachsen, die KI-Frage kannte zehn davon. Die vier fehlenden
