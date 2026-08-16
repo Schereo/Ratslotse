@@ -3406,3 +3406,55 @@ def test_gespraech_snapshot_traegt_presse_und_debatten(client, monkeypatch):
                             json={"titel": "x"}).status_code == 404
     finally:
         store.close()
+
+
+def test_haushalt_schulden_traegt_die_zinslast_aus_dem_jahresabschluss(client):
+    """Der Bestand kommt aus dem Jahrbuch, seine Kosten aus dem Abschluss.
+
+    „337 Mio. € Schulden" ist eine Zahl ohne Erfahrungswert. Was sie im Jahr
+    kostet, steht in Posten 17 der Ergebnisrechnung — einer ANDEREN Quelle als
+    die Zeitreihe. Der Endpunkt liefert beides mit getrennter Herkunft, damit
+    die Seite nicht eine Quelle für die andere ausgibt.
+
+    Ausdrücklich nur die Zinsen: Die Tilgung steht im Finanzhaushalt und wäre
+    hier eine Zahl, die in keinem Dokument steht.
+    """
+    from council import herkunft, schulden
+
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    try:
+        cs.save_ergebnisrechnung(2024, [
+            {"nr": schulden.POSTEN_ZINSAUFWAND,
+             "bezeichnung": "Zinsen und ähnliche Aufwendungen",
+             "ergebnis": 7_250_000.0, "ist_summe": 0},
+            {"nr": 12, "bezeichnung": "Summe ordentliche Erträge",
+             "ergebnis": 799_057_202.86, "ist_summe": 1},
+        ], herkunft.Herkunft(art="ris", probe="strukturprobe", dokument_id=295294,
+                             label="Jahresabschluss 2024",
+                             url="https://example.org/ja.pdf"))
+
+        antwort = client.get("/api/council/haushalt/schulden")
+        assert antwort.status_code == 200
+        daten = antwort.json()
+
+        zins = daten["zinslast"]
+        assert [z["jahr"] for z in zins] == [2024]
+        assert zins[0]["aufwand"] == 7_250_000.0
+        # Die Herkunft muss mitkommen — sonst steht die Zahl ohne Beleg da.
+        assert str(zins[0]["herkunft_id"]) in daten["herkunft"]
+    finally:
+        cs.close()
+
+
+def test_haushalt_schulden_ohne_jahresabschluss_bleibt_die_zinslast_leer(client):
+    """Ohne Abschluss keine Zinszahl — und trotzdem eine Antwort.
+
+    Auf Produktion sind die Haushalts-Tabellen leer (Umgebungs-Gate). Der
+    Endpunkt darf daran nicht scheitern, und die Seite zeigt lieber nichts als
+    eine Null, die wie „keine Zinsen" aussieht.
+    """
+    _register(client)
+    antwort = client.get("/api/council/haushalt/schulden")
+    assert antwort.status_code == 200
+    assert antwort.json()["zinslast"] == []

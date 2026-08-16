@@ -2385,10 +2385,40 @@ def haushalt_schulden(
 
     zeilen = store.get_schulden()
     ids = sorted({z["herkunft_id"] for z in zeilen if z["herkunft_id"] is not None})
+
+    # Was die Schulden im Jahr KOSTEN — Posten 17 der Ergebnisrechnung
+    # („Zinsen und ähnliche Aufwendungen"), also Ist aus dem geprüften
+    # Jahresabschluss, nicht aus dem Jahrbuch.
+    #
+    # Bewusst nur die Zinsen: Die TILGUNG steht im Finanzhaushalt und nicht in
+    # der Ergebnisrechnung — sie mindert den Schuldenstand, ist aber kein
+    # Aufwand. Beides in einer Zahl zusammenzuziehen wäre die häufigste
+    # Verwechslung im Thema, und sie stünde in keinem Dokument.
+    zins: list[dict] = []
+    try:
+        for jahr in store.ergebnisrechnung_jahre():
+            for posten in store.get_ergebnisrechnung(jahr):
+                if posten["nr"] != _s.POSTEN_ZINSAUFWAND:
+                    continue
+                if posten.get("ergebnis") is None:
+                    continue          # ein Jahrgang ohne Ist trägt hier nichts
+                zins.append({
+                    "jahr": jahr,
+                    "aufwand": posten["ergebnis"],
+                    "herkunft_id": posten.get("herkunft_id"),
+                })
+    except Exception:  # noqa: BLE001 — Zusatzangabe, nie Blocker für die Seite
+        zins = []
+    ids = sorted(set(ids) | {z["herkunft_id"] for z in zins
+                             if z["herkunft_id"] is not None})
+
     return {
         "reihe": zeilen,
         "jahre": [z["jahr"] for z in zeilen],
         "abgrenzung": _s.ABGRENZUNG,
+        # Leer, solange kein Jahresabschluss eingelesen ist — die Seite lässt
+        # den Block dann weg, statt eine Null zu zeigen.
+        "zinslast": zins,
         # Die Spaltenüberschriften der Quelle, in ihrer Reihenfolge — damit die
         # Legende nicht in zwei Sprachen existiert.
         "arten": [{"feld": feld, "titel": titel}

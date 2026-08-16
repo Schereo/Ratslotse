@@ -45,8 +45,28 @@ export type SchuldenDaten = {
    *  Oberfläche und Datenbank dieselbe Auskunft geben. */
   abgrenzung: string;
   arten: { feld: string; titel: string }[];
+  /** Was der Schuldenstand im Jahr kostet: Posten 17 der Ergebnisrechnung
+   *  („Zinsen und ähnliche Aufwendungen"), also Ist aus dem Jahresabschluss —
+   *  nicht aus dem Jahrbuch, aus dem der Bestand kommt.
+   *
+   *  Ohne die Tilgung: Sie steht im Finanzhaushalt, mindert den Schuldenstand
+   *  und ist kein Aufwand. Beides zusammenzuzählen ergäbe eine Zahl, die in
+   *  keinem Dokument steht.
+   *
+   *  Leer, solange kein Jahresabschluss eingelesen ist. */
+  zinslast: { jahr: number; aufwand: number; herkunft_id: number | null }[];
   herkunft: Record<string, Herkunft>;
 };
+
+/** Die Zinslast des jüngsten Jahres, für das sie vorliegt — oder null.
+ *
+ *  Bewusst nicht „das jüngste Schuldenjahr": Der Bestand reicht bis 2025, die
+ *  Jahresabschlüsse enden früher. Wer beide Reihen am selben Jahr aufhängt,
+ *  zeigt für die Zinsen dauerhaft nichts. */
+export function juengsteZinslast(daten: SchuldenDaten | null) {
+  const reihe = daten?.zinslast ?? [];
+  return reihe.length ? reihe[reihe.length - 1] : null;
+}
 
 export function herkunftVon(daten: SchuldenDaten | null, id: number | null): Herkunft | null {
   if (!daten || id == null) return null;
