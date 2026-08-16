@@ -642,12 +642,18 @@ def deep_bericht_stream(frage: str, candidates: list[dict],
     """Der lange Deep-Research-Bericht als Token-Stream (Task 34).
 
     ``geld`` ist der vollständige Haushalts-Kontext aus ``geld_kontext``; die
-    drei Einzel-Parameter bleiben, weil die Deep-Research-Pipeline sie so
-    durchreicht (``app/deepresearch.py``) — ohne ``geld`` verhält sich der
-    Aufruf exakt wie vorher."""
+    drei Einzel-Parameter bleiben als alter Aufrufweg bestehen — ohne ``geld``
+    verhält sich der Aufruf exakt wie vorher.
+
+    Seit dem 17.08. stehen hier auch die HAUSHALTS-REGELN, nicht nur die
+    Zahlen. Sie hingen bis dahin allein am Antwort-Prompt von ``/ask``; der
+    lange Bericht bekam die Beträge ohne die vier Regeln dazu (Jahr nennen,
+    Plan ist nicht Ist, Quelle nennen, nicht rechnen). Sie stehen VOR den
+    Zahlen, weil ihr eigener Wortlaut auf „eigene Abschnitte unten" verweist.
+    """
     geld = _geld_vereinheitlichen(geld, haushalt, steuern, steuerkraft)
     zusatz = (_debatten_block(debatten) + _presse_block(presse)
-              + geld_block(geld) + _anlagen_block(anlagen))
+              + geld_regeln(geld) + geld_block(geld) + _anlagen_block(anlagen))
     prompt = prompts.render("deep_bericht", frage=frage.strip()[:300],
                             context=_build_context(candidates),
                             zusatz=zusatz,
@@ -943,8 +949,23 @@ def _steuerkraft_block(k: dict | None) -> str:
 
 #: Die Quellen, die eine Geldfrage beantworten können. Reihenfolge = Rang im
 #: Kontext, wenn das Zeichenbudget nicht für alle reicht.
-GELD_FACETTEN = ("ist", "gruende", "pruefung", "produkte", "plan", "ansatz",
-                 "steuern", "ausgleich", "konzern", "vergleich")
+#:
+#: Drei der vier Neuzugänge stehen VORN, und zwar nach Auslöse-Enge: Sie feuern
+#: nur bei ihren eigenen, eindeutigen Wörtern. Wenn „schulden" erkannt wurde,
+#: ist der Schuldenstand die Antwort und alles andere Beiwerk — er darf also
+#: nicht derjenige sein, der bei knappem Budget herausfällt. Die zehn älteren
+#: behalten ihre Reihenfolge untereinander unverändert.
+#:
+#: `antraege` steht bewusst NICHT vorn, obwohl es genauso eng auslöst: Der
+#: Baustein ist mit Abstand der dickste (gemessen 1.379 Zeichen gegen 875–1.046
+#: der anderen drei). Vorn gestellt fraß er zusammen mit ihnen das ganze Budget
+#: — eine Frage, die alles zog, behielt danach von den zehn älteren Quellen
+#: keine einzige. Hinter `produkte` kostet er nichts: Seine eigene Frage („Wer
+#: wollte den Haushalt ändern?") zieht sonst nur `plan` und `ansatz`, und die
+#: stehen beide dahinter.
+GELD_FACETTEN = ("schulden", "stellenplan", "investitionen",
+                 "ist", "gruende", "pruefung", "produkte", "antraege",
+                 "plan", "ansatz", "steuern", "ausgleich", "konzern", "vergleich")
 
 #: Alle Muster arbeiten auf `_falte()`-Text: kleingeschrieben, Umlaute
 #: ausgeschrieben, Satzzeichen zu Leerzeichen. Deshalb steht hier „pruef",
@@ -976,11 +997,19 @@ _F_AUFGABE = re.compile(
 _F_KOSTEN = re.compile(
     r"\bkost|\bteuer|\bpreis|gibt.{0,40}\baus\b|geben.{0,40}\baus\b|"
     r"ausgegeben fuer|ausgaben fuer|aufwend")
+# Zwei Wörter sind hier am 17.08. HERAUSGEFALLEN, und beide waren gemessene
+# Fehlleitungen — nicht Kosmetik:
+# * „schulden" → zog den Ergebnishaushalt. Schulden sind ein BESTAND am
+#   Stichtag; in der Ergebnisrechnung kommen sie überhaupt nicht vor. Sie
+#   haben jetzt ihre eigene Quelle (`_F_SCHULDEN`).
+# * „investit" → zog denselben Ergebnishaushalt, in dem keine einzige
+#   Investition steht (ein Schulneubau taucht dort nur als Abschreibung auf).
+#   Auch sie hat jetzt ihre eigene (`_F_INVEST`).
 _F_PLAN = re.compile(
     r"haushalt|\betat\b|budget|\bansatz|\bkost|\bteuer|\bpreis|\bausga[bp]|ausgeb|"
     r"ausgeg|ausgib|gibt.{0,40}\baus\b|geben.{0,40}\baus\b|"
-    r"aufwend|einnahm|ertrag|ertraeg|finanziert|zuschuss|foerder|investit|"
-    r"million|\bmio\b|\beuro\b|defizit|ueberschuss|schulden")
+    r"aufwend|einnahm|ertrag|ertraeg|finanziert|zuschuss|foerder|"
+    r"million|\bmio\b|\beuro\b|defizit|ueberschuss")
 # Enger als `_F_PLAN`, und das mit Absicht: `ansatz_fuer_begriffe` fällt ohne
 # Begriffs-Treffer auf die Summenzeilen des Gesamthaushalts zurück, liefert
 # also IMMER etwas. An `_F_PLAN` gehängt, hätte damit „Was kostete der
@@ -1006,6 +1035,48 @@ _F_STEUERN = re.compile(r"steuer|hebesatz|gewerbe|grundbesitz")
 _F_AUSGLEICH = re.compile(
     r"hebesatz|schluesselzuweisung|finanzausgleich|steuerkraft|\bnfag\b|"
     r"zuweisung.{0,10}land|land.{0,15}zuweisung")
+# --- Die vier Quellen, die die KI-Frage bis zum 17.08. nicht kannte ---------
+_F_SCHULDEN = re.compile(
+    r"schulden|verschuld|entschuld|schuldenstand|\bkredit|darlehen|tilgung")
+_F_INVEST = re.compile(
+    r"investit|investier|investiv|\bgebaut\b|\bbauen\b|neubau|baumassnahm|"
+    r"finanzhaushalt|auszahlung")
+# „Stellen" ist im Deutschen zuerst ein Verb („Anträge stellen") und erst
+# dann eine Planstelle. Das Wort allein reicht deshalb nicht — es zöge den
+# Stellenplan in „Wie viele Anträge stellen die Fraktionen?". Also zwei
+# Stufen wie bei `ist`: ein eindeutiges Stellenplan-Wort, oder eine Zählfrage
+# rund um „Stellen", der kein Antrags-/Fragewort dazwischenfunkt.
+_F_STELLEN_HART = re.compile(
+    r"stellenplan|planstelle|stellenbesetzung|besetzungsgrad|unbesetzt|\bvakan|"
+    # „personal" ohne den Ausweis: „Wo bekomme ich einen Personalausweis?" ist
+    # keine Stellenplan-Frage und hätte ihn sonst im Kontext gehabt.
+    r"personal(?!ausweis)|beschaeftigt|mitarbeiter|mitarbeitende|belegschaft|\bbeamt")
+_F_STELLEN_ZAHL = re.compile(
+    r"(?:viele|anzahl|zahl der|wie hoch)[^.?!]{0,30}\bstellen\b|"
+    r"\bstellen\b[^.?!]{0,30}(?:besetzt|frei|gestrichen|geschaffen|abgebaut)")
+_F_STELLEN_NICHT = re.compile(r"\bantrag|antraeg|anfrage|\bfragen\b|weichen")
+# Die Änderungslisten: eigenständig bei ihrem eigenen Namen, sonst nur mit
+# einem Haushalts-Anker. „Wie lief die Debatte um das Stadion?" trägt
+# `\bdebatt`, meint aber keinen Haushaltsstreit.
+_F_AENDERUNGSLISTE = re.compile(r"aenderungsliste|aenderungsantr|haushaltsantr")
+_F_STREIT = re.compile(
+    r"\baender|\bantrag|antraeg|beantragt|durchgesetz|durchkam|durchgekommen|"
+    r"abgelehnt|angenommen|umstritten|\bstreit|gestritten|mehrheit|wer wollte|"
+    # „debatt" ohne Wortgrenze, sonst verfehlt es „HaushaltsDEBATTE" — das
+    # Kompositum ist die häufigere Schreibweise als „Debatte über den Haushalt".
+    r"vorschlag|verabschied|kontrovers|debatt")
+#: Ein Jahrgang aus dem Fragewortlaut — „Wer wollte den Haushalt 2024 ändern?".
+_F_JAHRGANG = re.compile(r"\b(19[89]\d|20[0-4]\d)\b")
+
+
+def haushaltsjahr(frage: str) -> int | None:
+    """Das Haushaltsjahr aus der Frage, falls eines darinsteht.
+
+    Nur die Änderungslisten brauchen das: Sie liegen je Jahrgang vor, und
+    „Wer wollte den Haushalt 2024 ändern?" meint 2024 und nicht den jüngsten
+    Jahrgang. Steht keine Jahreszahl da, entscheidet die Quelle."""
+    m = _F_JAHRGANG.search(frage or "")
+    return int(m.group(1)) if m else None
 
 
 def geld_facetten(frage: str, typ: str = "thema") -> set[str]:
@@ -1056,6 +1127,22 @@ def geld_facetten(frage: str, typ: str = "thema") -> set[str]:
     # antwortet darauf mit 799 Mio., der Konzern mit 1.242 Mio.
     if _F_KONZERN_WORT.search(t) or (_F_GANZ.search(t) and "plan" in f):
         f.add("konzern")
+    # Schulden: ein Bestand, und deshalb ohne Plan-Beiwerk. „Wie hoch sind die
+    # Schulden?" bekam bis hierher den Ergebnishaushalt und sonst nichts.
+    if _F_SCHULDEN.search(t):
+        f.add("schulden")
+    # Investitionen: der ANDERE Haushalt. Bewusst kein `plan` dazu — wer
+    # fragt, was gebaut wird, soll keine Ergebnishaushalt-Zahl danebengelegt
+    # bekommen. Fragt jemand nach beidem („Wie viel gibt die Stadt für
+    # Investitionen aus?"), kommen beide, und der Baustein sagt, dass es zwei
+    # Haushalte sind.
+    if _F_INVEST.search(t):
+        f.add("investitionen")
+    if _F_STELLEN_HART.search(t) or (_F_STELLEN_ZAHL.search(t)
+                                     and not _F_STELLEN_NICHT.search(t)):
+        f.add("stellenplan")
+    if _F_AENDERUNGSLISTE.search(t) or (_F_STREIT.search(t) and (f & {"plan", "ansatz"})):
+        f.add("antraege")
     if not f and typ == "geld":
         f = {"plan"}   # das Verhalten von vor dieser Runde, unverändert
     return f
@@ -1111,6 +1198,16 @@ def geld_kontext(store, frage: str, begriffe: str = "", typ: str = "thema") -> d
         # einen Teilhaushalt zur Frage hat, reicht der. Erst wenn er nichts
         # hergibt, lohnt der Ansatz die Zeichen.
         aus["ansatz"] = _sicher(store.ansatz_fuer_begriffe, woerter)
+    if "schulden" in facetten:
+        aus["schulden"] = _sicher(store.schulden_kontext)
+    if "investitionen" in facetten:
+        aus["investitionen"] = _sicher(store.investitionen_fuer_begriffe, woerter)
+    if "stellenplan" in facetten:
+        aus["stellenplan"] = _sicher(store.stellenplan_kontext)
+    if "antraege" in facetten:
+        # Das Jahr aus der FRAGE, nicht aus den Begriffen: Die Expansion
+        # streut Jahreszahlen ein, die niemand getippt hat.
+        aus["antraege"] = _sicher(store.haushaltsantraege_kontext, haushaltsjahr(frage))
     return aus
 
 
@@ -1265,6 +1362,147 @@ def _ansatz_block(a: dict | None) -> str:
             + _beleg_text(a.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
 
 
+def _stellen(v) -> str:
+    """„1.702,25" — Stellen sind Bruchzahlen (Teilzeit steht als Anteil)."""
+    if v is None:
+        return "–"
+    return f"{v:,.2f}".replace(",", "\x00").replace(".", ",").replace("\x00", ".")
+
+
+def _schulden_block(s: dict | None) -> str:
+    """Der Schuldenstand — ein Bestand am Stichtag.
+
+    Der Baustein, der die schlichteste Frage des ganzen Bereichs beantwortet
+    („Wie viel Schulden hat Oldenburg?") und bis zum 17.08. fehlte; sie wurde
+    stattdessen vom Ergebnishaushalt beantwortet, in dem der Schuldenstand
+    nicht vorkommt. Die Abgrenzung steht ausdrücklich dabei: Zwei Zahlen
+    heißen „die Schulden der Stadt" und unterscheiden sich um ein Vielfaches.
+    """
+    if not s or s.get("insgesamt") is None:
+        return ""
+    kopf = f"- Schuldenstand am Jahresende {s['jahr']}: {_eur(s['insgesamt'])}"
+    if s.get("je_einwohner"):
+        kopf += f" — das sind {_eur(s['je_einwohner'])} je Einwohner*in"
+    if s.get("revidiert"):
+        kopf += " (von der Quelle als revidierter Wert gekennzeichnet)"
+    zeilen = [kopf]
+    if s.get("davor"):
+        zeilen.append(f"- Ein Jahr davor ({s['davor']['jahr']}): "
+                      f"{_eur(s['davor']['insgesamt'])}")
+    if s.get("hoch"):
+        zeilen.append(f"- Höchster Stand der Reihe (sie beginnt {s['reihe_ab']}): "
+                      f"{s['hoch']['jahr']} mit {_eur(s['hoch']['insgesamt'])}")
+    for titel, betrag in s.get("arten") or []:
+        zeilen.append(f"  - davon {titel}: {_eur(betrag)}")
+    if s.get("aufteilung_verworfen"):
+        zeilen.append("  - Die Aufteilung nach Schuldenarten fehlt für dieses Jahr: "
+                      "Sie ging in der Quelle selbst nicht auf und wurde deshalb "
+                      "nicht übernommen. Die Gesamtsumme trägt eine eigene Probe.")
+    zeilen.append(f"- Abgrenzung, gehört an jede dieser Zahlen: {s['abgrenzung']}")
+    return ("\nSCHULDENSTAND (Statistisches Jahrbuch der Stadt, Tabelle 1108). Das ist\n"
+            "ein BESTAND am Stichtag, kein Jahresbetrag — nie mit Aufwendungen, "
+            "Erträgen\noder dem Defizit eines Haushaltsjahres verrechnen und nie als "
+            "„Ausgaben“\nbezeichnen. Nenne das Jahr und die Abgrenzung mit, NIE mit [id]"
+            + _beleg_text(s.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
+
+
+def _investitionen_block(i: dict | None) -> str:
+    """Was die Stadt bauen und kaufen will — mit der Warnung, dass der
+    Ergebnishaushalt daneben ein anderes Zahlenwerk ist.
+
+    Ohne diese Warnung ist der Baustein schädlicher als sein Fehlen: Zwei
+    Millionenbeträge im selben Kontext, die nichts miteinander zu tun haben,
+    addiert ein Sprachmodell bereitwillig."""
+    if not i or not i.get("gesamt"):
+        return ""
+    g = i["gesamt"]
+    zeilen = [f"- {g['bezeichnung']} ({i['jahr']}): Auszahlungen "
+              f"{_eur(g.get('auszahlungen'))}, Einzahlungen {_eur(g.get('einzahlungen'))}"]
+    for r in i.get("teilhaushalte") or []:
+        zeilen.append(f"  - {r['bezeichnung']}: Auszahlungen {_eur(r.get('auszahlungen'))}, "
+                      f"Einzahlungen {_eur(r.get('einzahlungen'))}")
+    return (f"\nINVESTITIONEN (Finanzhaushalt des Haushaltsplans {i['jahr']} — GEPLANT).\n"
+            "ES SIND ZWEI HAUSHALTE, NICHT EINER: Hier steht, was die Stadt bauen und\n"
+            "kaufen will. Im Ergebnishaushalt (Aufwendungen und Erträge, eigener\n"
+            "Abschnitt) steht davon keine einzige Investition — ein Schulneubau taucht\n"
+            "dort nur als Abschreibung auf, verteilt über Jahrzehnte. Die Beträge der\n"
+            "beiden nie addieren, nie voneinander abziehen, nie als Anteil "
+            "gegeneinander\nrechnen. Und diese Zeilen nennen KEIN einzelnes Vorhaben: "
+            "„Verkehr und\nStraßenbau: 10,5 Mio. €“ sagt nicht, welche Straße. NIE mit [id]"
+            + _beleg_text(i.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
+
+
+def _stellenplan_block(s: dict | None) -> str:
+    """Stellen statt Euro — die einzige Schicht des Haushalts, die Menschen
+    zählt.
+
+    Die Regel im Kopf ist der ganze Grund für diesen Baustein: „besetzt" und
+    „nicht besetzt" gehören zur Vorjahresspalte. `Stellen − besetzt` mischt
+    zwei Stichtage und ergibt eine Zahl, die in keinem Dokument steht — und
+    genau diese Rechnung liegt einem Sprachmodell am nächsten."""
+    if not s or not s.get("teile"):
+        return ""
+    zeilen = []
+    for t in s["teile"]:
+        zeilen.append(
+            f"- Teil {t['teil']} ({t['teil_name']}): {_stellen(t.get('stellen_plan'))} "
+            f"Stellen im Haushaltsjahr {s['jahrgang']}. Im Vorjahr waren es "
+            f"{_stellen(t.get('stellen_vorjahr'))} Stellen, davon "
+            f"{_stellen(t.get('besetzt'))} besetzt und "
+            f"{_stellen(t.get('nicht_besetzt'))} nicht besetzt")
+    if s.get("fehlend"):
+        zeilen.append(f"- NICHT im Bestand: der Teil für {', '.join(s['fehlend'])}. "
+                      "Die Zahlen oben sind deshalb nicht der ganze Stellenplan — "
+                      "sag das dazu.")
+    stichtag = f", Stichtag {s['stichtag']}" if s.get("stichtag") else ""
+    return (f"\nSTELLENPLAN {s['jahrgang']} (Anlage des Haushaltsplans). Gezählt werden\n"
+            "STELLEN, keine Köpfe — Teilzeit steht als Bruchteil —, und nur die\n"
+            "Kernverwaltung: Klinikum, Bäder, Bus und Gebäudewirtschaft haben eigene\n"
+            f"Wirtschaftspläne.\nSO IST ES ZU LESEN: „besetzt“ und „nicht besetzt“ "
+            f"gehören zur VORJAHRESSPALTE{stichtag}\n— geplant wird vorwärts, gezählt "
+            "werden kann nur rückwärts. Rechne deshalb NIE\n„Stellen im Haushaltsjahr "
+            "minus besetzt“: Das mischt zwei Stichtage und steht\nin keinem Dokument. "
+            "Die unbesetzten Stellen stehen als eigene Angabe da.\nEine Zeile „Stellen "
+            "insgesamt“ gibt es im Plan nicht; addiere die Teile nicht.\nNIE mit [id]"
+            + _beleg_text(s.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
+
+
+def _antraege_block(a: dict | None) -> str:
+    """Wer wollte am Haushalt etwas ändern — und kam damit durch?
+
+    Die Grenze steht im Baustein und nicht nur in diesem Docstring: Die Quelle
+    kennt Urheber und Ergebnis, aber **nicht den Inhalt** einer Änderungsliste
+    (der liegt in Anlagen-PDFs ohne Volltext). Ohne den Satz füllt das Modell
+    die Lücke mit Plausiblem — „die CDU wollte bei den Sozialausgaben kürzen"
+    steht nirgends."""
+    if not a or not a.get("stationen"):
+        return ""
+    zeilen = []
+    for st in a["stationen"]:
+        kopf = (f"- {st['gremium']}, {_datum_de(st.get('datum'))}: "
+                f"{st['gesamt']} Änderungslisten zur Abstimmung")
+        if st.get("verwaltung"):
+            kopf += (f", davon {st['verwaltung']} der Verwaltung (Fortschreibung des "
+                     "eigenen Entwurfs, kein Fraktionsantrag)")
+        zeilen.append(kopf)
+        for u in st.get("urheber") or []:
+            zeilen.append(f"  - {u['name']}: {u['anzahl']} — davon {u['angenommen']} "
+                          f"angenommen, {u['abgelehnt']} abgelehnt")
+        b = st.get("beschluss") or {}
+        if b.get("outcome"):
+            zeilen.append(f"  - Schlussabstimmung über die Haushaltssatzung: "
+                          f"{b['outcome']}" + (f" ({b['vote']})" if b.get("vote") else ""))
+    return (f"\nDER STREIT UM DEN HAUSHALT {a['jahr']} (Änderungslisten aus den "
+            "Sitzungs-\nprotokollen; Jahreszahl = HAUSHALTSjahr, der Beschluss fällt "
+            "oft im Jahr\ndavor).\nDIE GRENZE DIESER QUELLE GEHÖRT IN DIE ANTWORT: Sie "
+            "sagt, WER etwas ändern\nwollte und ob es durchkam — nicht WAS genau. "
+            "Welche Position um welchen Betrag\nsteht in den Anlagen der Vorlage und "
+            "liegt uns nicht als Text vor; erfinde\nkeine Inhalte dazu und leite auch "
+            "keine aus dem Titel ab. Gemeinsame Listen\nzählen für jede beteiligte "
+            "Fraktion, die Zahlen sind deshalb nicht\naddierbar. NIE mit [id]:\n"
+            + "\n".join(zeilen) + "\n")
+
+
 #: Zeichenbudget für ALLE Geld-Bausteine zusammen. Der Antwort-Prompt trägt
 #: schon 20 Beschlüsse à ~600 Zeichen, Debatten, Presse und Steckbriefe; was
 #: hier dazukommt, geht davon ab. Reicht es nicht, fallen die hinteren
@@ -1273,10 +1511,14 @@ GELD_MAX_CHARS = 4500
 
 #: Baustein je Facette. Reihenfolge steckt in GELD_FACETTEN.
 _GELD_BAUSTEINE = {
+    "schulden": ("schulden", _schulden_block),
+    "stellenplan": ("stellenplan", _stellenplan_block),
+    "investitionen": ("investitionen", _investitionen_block),
     "ist": ("ist", _ist_block),
     "gruende": ("gruende", _gruende_block),
     "pruefung": ("pruefung", _pruefung_block),
     "produkte": ("produkte", _produkte_block),
+    "antraege": ("antraege", _antraege_block),
     "plan": ("haushalt", _haushalt_block),
     "ansatz": ("ansatz", _ansatz_block),
     "steuern": ("steuern", _steuern_block),
