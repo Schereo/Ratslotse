@@ -529,6 +529,16 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Unterschied" stand. Dass zwei Dokumente übereinstimmen, ist unsere
   Qualitätssicherung — sie läuft unverändert weiter, steht in der Technik-Doku
   und in Tests, aber nicht mehr auf der Seite. (#535)
+- **Die Grafiken im Haushalt schreiben ihre Zahlen jetzt selbst an.** Unter der
+  Zeitreihe auf `/haushalt`, der Steuerkurve auf `/haushalt/steuer` und den
+  beiden Reihen des Finanzausgleichs steht eine Leiste, die immer ein Jahr mit
+  allen seinen Werten zeigt — im Ruhezustand das jüngste. Überfahren, Antippen
+  oder die Pfeiltasten wechseln das Jahr, und weil die Leiste echter Text ist,
+  steht die Zahl auch im Screenshot, im Ausdruck und in der Vorlesehilfe; ein
+  Tooltip wäre nur für die Maus da gewesen. In der 100-Euro-Ansicht hebt ein
+  Bereich seine Felder im Raster hervor, egal ob man ihn in der Liste oder im
+  Bild wählt. Die Zahlentabellen bleiben — 28 Werte nebeneinander kann kein
+  Bild —, starten aber zugeklappt. (#536)
 
 <!-- GEPARKT (nur dev.ratslotse.de, Umgebungs-Gate): Eintrag aktivieren,
      sobald der Kommunalwahl-Vergleich auf Prod freigeschaltet wird.

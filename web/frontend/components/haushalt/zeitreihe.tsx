@@ -48,14 +48,32 @@
 // MOBIL WIRD UMGEBAUT, NICHT GESCHRUMPFT (wie `flussbild.tsx`): unter 860 px
 // Containerbreite fällt die zweite Spalte unter das Diagramm, unter 520 px
 // wächst die Schrift und die Jahresbeschriftung dünnt aus.
+//
+// SIEBEN JAHRE MAL VIER GRÖSSEN PASSEN NICHT ALLE INS BILD — DIE WICHTIGSTEN
+// SCHON. Dauerhaft angeschrieben sind das Ergebnis jedes Jahres (unter seiner
+// Strebe), der größte Abstand und die beiden Linienenden. Die restlichen Werte
+// trägt die Ableseleiste unter dem Bild (`ablesen.tsx`): Sie zeigt IMMER ein
+// Jahr — im Ruhezustand das jüngste — und wechselt beim Überfahren, Antippen
+// oder mit den Pfeiltasten. Kein Tooltip: Was nur beim Hovern existiert, fehlt
+// im Ausdruck, im Screenshot und in der Vorlesehilfe.
+//
+// DIE TABELLE BLEIBT, ABER EINGEKLAPPT. Vier Größen über sieben Jahre sind 28
+// Zahlen; die kann kein Liniendiagramm gleichzeitig anschreiben, ohne
+// unlesbar zu werden. Die Leiste zeigt sie einzeln, die Tabelle alle
+// nebeneinander — beides hat seinen Fall, und wer die Reihe vergleichen will,
+// braucht die Tabelle. Sie startet deshalb zugeklappt statt zu verschwinden.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ErgebnisPosten, HaushaltDaten, PLAN_ART_LABEL, PlanArt,
   deMio, fehlendeJahre, jahreSortiert, mio, summe,
 } from "@/lib/haushalt";
 import { Beleg } from "@/components/haushalt/quelle";
+import {
+  AbleseBeschreibung, AbleseFlaeche, AbleseMarke, AbleseStelle, AbleseWert,
+  Ableseleiste, useAblesen,
+} from "@/components/haushalt/ablesen";
 
 // saldo aus den ROHWERTEN gerundet, nicht aus den gerundeten Mio. — sonst
 // driftet er um 0,1 (693,9 − 728,2 = −34,3, tatsächlich sind es −34,2).
@@ -127,11 +145,17 @@ export function Zeitreihe({ daten }: { daten: HaushaltDaten }) {
       return ein != null && aus != null && saldo != null ? { jahr, ein, aus, saldo } : null;
     })
     .filter((p): p is Punkt => p !== null);
-  if (punkte.length < 2) return null;
 
-  const luecken = fehlendeJahre(punkte.map((p) => p.jahr));
+  const luecken = punkte.length >= 2 ? fehlendeJahre(punkte.map((p) => p.jahr)) : [];
   const alleJahre: number[] = [];
-  for (let y = punkte[0].jahr; y <= punkte[punkte.length - 1].jahr; y++) alleJahre.push(y);
+  if (punkte.length >= 2) {
+    for (let y = punkte[0].jahr; y <= punkte[punkte.length - 1].jahr; y++) alleJahre.push(y);
+  }
+  // Die beiden Ablese-Haken stehen VOR dem Ausstieg: Ein Hook hinter einem
+  // `return` ist kein Hook mehr, sondern ein Absturz beim nächsten Render.
+  const ablesen = useAblesen(alleJahre.length, alleJahre.length - 1);
+  const beschreibungId = useId();
+  if (punkte.length < 2) return null;
 
   // --- Was tatsächlich daraus wurde (Jahresabschlüsse) --------------------
   // Posten 12 = Summe ordentliche Erträge, 20 = Summe ordentliche
@@ -250,7 +274,40 @@ export function Zeitreihe({ daten }: { daten: HaushaltDaten }) {
   const alsSatz = (v: number) =>
     `${v < 0 ? "ein Minus" : "ein Plus"} von ${deMio(Math.abs(v))} Mio. €`;
 
-  const tabelleOffen = tabelleGeschaltet ?? breit;
+  // Zugeklappt als Vorgabe: Die Werte stehen jetzt in der Ableseleiste, die
+  // Tabelle ist der vollständige Nachschlagestand für den, der vergleichen
+  // will — nicht mehr die einzige Quelle der Zahlen.
+  const tabelleOffen = tabelleGeschaltet ?? false;
+
+  // --- Was die Ableseleiste je Jahr zeigt ---------------------------------
+  const stellen: AbleseStelle[] = alleJahre.map((jahr) => {
+    const p = punkte.find((q) => q.jahr === jahr);
+    const ist = istNach.get(jahr);
+    const werte: AbleseWert[] = [
+      { label: "ein", wert: p ? deMio(p.ein) : "—", farbe: "var(--hh-ein-0)" },
+      { label: "aus", wert: p ? deMio(p.aus) : "—", farbe: "var(--hh-aus-0)" },
+      { label: "Ergebnis", wert: p ? vorzeichen(p.saldo) : "—", signal: !!p && p.saldo < 0 },
+    ];
+    if (istPunkte.length) {
+      werte.push({ label: "tatsächlich", wert: ist ? vorzeichen(ist.saldo) : "—" });
+    }
+    const vorlesen = p
+      ? [
+          `${jahr}: geplant ${deMio(p.ein)} Millionen Euro Einnahmen,`,
+          `${deMio(p.aus)} Millionen Euro Ausgaben,`,
+          `Ergebnis ${alsSatz(p.saldo)}.`,
+          ist ? `Tatsächlich laut Jahresabschluss ${alsSatz(ist.saldo)}.` : "Noch kein Jahresabschluss.",
+        ].join(" ")
+      : `${jahr}: keine Daten.`;
+    return { titel: String(jahr) + (bezugsJahre.has(jahr) ? "*" : ""), werte, vorlesen };
+  });
+  // Ringe an den Punkten des abgelesenen Jahres — sehen und lesen am selben Ort.
+  const ableseMarken = (i: number): AbleseMarke[] => {
+    const p = punkte.find((q) => q.jahr === alleJahre[i]);
+    return p
+      ? [{ y: y(p.ein), farbe: "var(--hh-ein-0)" }, { y: y(p.aus), farbe: "var(--hh-aus-0)" }]
+      : [];
+  };
 
   const beschreibung = [
     `Geplante Einnahmen und Ausgaben ${alleJahre[0]} bis ${alleJahre[alleJahre.length - 1]} in Mio. Euro.`,
@@ -294,11 +351,11 @@ export function Zeitreihe({ daten }: { daten: HaushaltDaten }) {
       <div className="rounded-xl border border-border p-3.5">
         <div className="flex items-baseline justify-between gap-2">
           <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            Zahlen zur Grafik
+            Alle Jahre nebeneinander
           </p>
           <button type="button" onClick={() => setTabelleGeschaltet(!tabelleOffen)}
-            className="text-[11.5px] font-semibold text-primary">
-            {tabelleOffen ? "ausblenden" : "anzeigen"}
+            aria-expanded={tabelleOffen} className="text-[11.5px] font-semibold text-primary">
+            {tabelleOffen ? "Tabelle ausblenden" : `Tabelle anzeigen (${alleJahre.length} Jahre)`}
           </button>
         </div>
         {tabelleOffen && (<>
@@ -411,7 +468,13 @@ export function Zeitreihe({ daten }: { daten: HaushaltDaten }) {
           </p>
 
           <div ref={bildBox} className="mt-2.5">
-            <svg viewBox={`0 0 ${W} ${H}`} className="block w-full" role="img" aria-label={beschreibung}>
+            {/* `role="group"`, nicht `role="img"`: Ein `img` fasst seinen
+                Inhalt zu einem Objekt zusammen — die Jahres-Ziele darin wären
+                für die Vorlesehilfe unsichtbar. Die Gesamtbeschreibung hängt
+                daneben als sr-only-Absatz. */}
+            <AbleseBeschreibung id={beschreibungId}>{beschreibung}</AbleseBeschreibung>
+            <svg viewBox={`0 0 ${W} ${H}`} className="block w-full" role="group"
+              aria-label={titel} aria-describedby={beschreibungId}>
               {gitter.map((v) => (
                 <g key={v}>
                   <line x1={X0} y1={y(v)} x2={W - 2} y2={y(v)} className="stroke-border/60" />
@@ -568,8 +631,22 @@ export function Zeitreihe({ daten }: { daten: HaushaltDaten }) {
                   </g>
                 );
               })}
+
+              {/* Zuletzt: die Ablese-Fläche. Sie liegt über allem, sonst
+                  fangen Linien und Punkte den Zeiger ab. Das Fingerziel reicht
+                  bis unter die Ergebniszeile — ein Streifen über die volle
+                  Höhe statt eines 3-px-Punktes. */}
+              <AbleseFlaeche
+                stellen={stellen} steuerung={ablesen} gruppe="Jahre der Reihe"
+                x={(i) => x(alleJahre[i])} xVon={X0} xBis={W - 2}
+                yVon={YTOP} hoehe={Y0 - YTOP} fangHoehe={ySaldo + 4 - YTOP}
+                marken={ableseMarken}
+              />
             </svg>
           </div>
+
+          <Ableseleiste className="mt-2" stelle={stellen[ablesen.aktiv]} steuerung={ablesen}
+            hinweis="Mio. € · Jahr überfahren, antippen oder mit den Pfeiltasten wechseln." />
 
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-border/60 pt-2">
             <span className="inline-flex items-center gap-1.5 text-[11.5px] text-foreground/80">
