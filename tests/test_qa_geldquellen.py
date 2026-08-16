@@ -389,11 +389,15 @@ def _befuellter_store(tmp_path) -> CouncilStore:
              (12, "Summe ordentliche Erträge", 812_000_000.0, 1),
              (20, "Summe ordentliche Aufwendungen", 846_000_000.0, 1)])
         # Finanzplanungsjahr desselben Dokuments — darf NIE in den Kontext.
+        # Der Betrag als Parameter, nicht als Literal: Pythons
+        # Unterstrich-Schreibweise (999_000_000.0) ist KEIN SQL. Neuere
+        # SQLite-Versionen schlucken sie klaglos, die der CI nicht — lokal
+        # grün, in der CI 17 Fehler (16.08.).
         store._conn.execute(
             "INSERT INTO council_ergebnishaushalt (plan_jahrgang, jahr, art, nr, bezeichnung, "
             " betrag, ist_summe, fetched_at, herkunft_id) "
             "VALUES (2026, 2029, 'finanzplanung', 12, 'Summe ordentliche Erträge', "
-            " 999_000_000.0, 1, '', 1)")
+            " ?, 1, '', 1)", (999_000_000.0,))
         store._conn.execute(
             "INSERT INTO council_haushalt (year, bereich, ertraege, aufwendungen, ergebnis, "
             " is_summe, fetched_at) VALUES "
