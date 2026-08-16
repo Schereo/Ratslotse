@@ -61,7 +61,7 @@ flowchart TD
 | **Fundstück des Tages** (kuratierte Archivfunde) | bewertete Beschlüsse | wöchentlich, 21 Tage Vorlauf |
 | **Anreicherung** (Entitäten, Embeddings, Rückblicke) | Beschlüsse | wöchentlich |
 | **Quiz-Fragen** (Generierung + Verify-Pass) | Wikipedia · Stadt-Website · Ratsdaten | Backfill (manuell + wöchentlich) |
-| **KI-Frage „Frag den Rat"** (Ratsgespräch) | Beschlüsse + Vorlagen-Chunks + Stadt-Pressemitteilungen + laufende Bauleitplan-Beteiligungen; Anschlussfragen mit Gesprächskontext | auf Zuruf (Streaming) |
+| **KI-Frage „Frag den Rat"** (Ratsgespräch) | Beschlüsse + Vorlagen-Chunks + Stadt-Pressemitteilungen + laufende Bauleitplan-Beteiligungen + bei Geldfragen der [Haushalts-Bestand](#frag-den-rat-welche-quelle-eine-geldfrage-zieht); Anschlussfragen mit Gesprächskontext | auf Zuruf (Streaming) |
 
 Tragweite, Gesprächswert und der daraus gemischte Wichtigkeits-Wert haben eine
 eigene Seite: [Bewertungs-Scores](/docs/bewertungen/).
@@ -214,6 +214,66 @@ Wikipedia-Artikel statt auf die Gebiets-Seite. Zu kniffligen Fragen kann es eine
 optionalen **Tipp** geben (vor dem Auflösen einblendbar), und Fachbegriffe in der
 Erklärung (z. B. „Vergnügungsstätte", „Bebauungsplan") unterlegt das Frontend mit
 einem Hover-Glossar.
+
+## „Frag den Rat": welche Quelle eine Geldfrage zieht
+
+Die KI-Frage antwortet nicht nur aus Beschlüssen. Zu Geldfragen liegen zehn
+weitere Quellen bereit — der ganze [Haushalts-Bestand](/docs/haushalt/). Alle
+anzuhängen wäre die bequeme und die falsche Lösung: Jeder Baustein kostet
+Platz im Antwort-Prompt, in dem schon 20 Beschlüsse, Debatten-Auszüge,
+Pressemitteilungen und Steckbriefe stehen.
+
+**Welche Quelle gefragt wird, entscheidet `qa.geld_facetten` am
+Frage-Wortlaut** — deterministisch, ohne LLM-Call:
+
+| Facette | Quelle | Beantwortet | Bestand endet |
+|---------|--------|-------------|---------------|
+| `plan` | `council_haushalt` | „Was kostet die Feuerwehr?" (Teilhaushalt) | Planjahr |
+| `ansatz` | `council_ergebnishaushalt` | „Was nimmt die Stadt ein?" (Ertrags-/Aufwandsarten) | Planjahr |
+| `ist` | `council_ergebnisrechnung` | „Hat die Stadt mehr ausgegeben als geplant?" | 2024 |
+| `gruende` | `council_abweichungsgruende` | „Warum kam mehr Gewerbesteuer rein?" | 2024 |
+| `produkte` | `council_produkte` | „Muss die Stadt das Theater betreiben?" (Rechtsgrundlage) | 2023 |
+| `pruefung` | `council_pruefberichte` | „Was hat das Rechnungsprüfungsamt beanstandet?" | 2023 |
+| `konzern` | `council_konzern_*` | „Was kostet die Stadt insgesamt?" (1.242 statt 799 Mio.) | 2024 |
+| `vergleich` | `council_staedtevergleich` | „Wie steht Oldenburg da?" | LSN-Jahrgang |
+| `steuern` | `council_steuern` | „Wie hoch waren die Steuereinnahmen?" (Ist) | Open-Data-Jahrgang |
+| `ausgleich` | `council_steuerkraft` | „Was bringt eine Hebesatz-Erhöhung wirklich?" | Ausgleichsjahr |
+
+Drei Entscheidungen dahinter, die sich beim Weiterbauen leicht umdrehen
+lassen — und dann Schaden anrichten:
+
+1. **Nicht am LLM-Fragetyp.** Der Typ `geld` ist ein Modell-Urteil und lautet
+   für „Was hat das Rechnungsprüfungsamt beanstandet?" mit gutem Grund
+   `thema` — es ist keine Betragsfrage. Hinge der Haushalts-Kontext am Typ,
+   bekämen genau diese Fragen nichts. `geld` bleibt trotzdem als Auffangnetz:
+   Sagt das Modell `geld` und trifft kein Muster, kommen die Plan-Zahlen.
+2. **Nicht an den expandierten Suchbegriffen.** Der Analyse-Prompt verlangt
+   ausdrücklich eine Umformulierung „aus anderem Blickwinkel — z. B. die
+   Sachstands-Frage zusätzlich als Finanzierungs-Frage". Wer die Facetten
+   daran festmacht, zieht den halben Haushalt in jede Stadion-Frage. Der
+   **Wortlaut** entscheidet, ob gefragt wird; die **Expansion** entscheidet,
+   was die Quelle liefert.
+3. **Feuern heißt nicht anhängen.** Eine Facette kostet zunächst nur eine
+   Datenbank-Abfrage. „Was kostete der Stadionumbau?" befragt die Produkt- und
+   die Plan-Ebene, findet dort nichts (ein Stadionumbau ist weder Produkt noch
+   Teilhaushalt) und schreibt kein Zeichen in den Prompt.
+
+Der Prompt-Abschnitt ist auf **4.500 Zeichen** gedeckelt
+(`qa.GELD_MAX_CHARS`); reißt das Budget, fallen die **hinteren** Facetten ganz
+weg statt alle in der Mitte abzubrechen. Gemessen an einer Frage, die acht
+Quellen zieht: rund 3.900 Zeichen Bausteine plus 1.000 Zeichen Antwort-Regeln.
+
+Jede Zeile trägt ihren **Beleg** aus `council_herkunft` (Dokument, Fundstelle,
+Seite, Stichtag) und ihr **Jahr** — die Quellen enden zu verschiedenen
+Zeitpunkten, und eine Antwort, die das verschweigt, behauptet eine Aktualität,
+die die Daten nicht haben. Haushaltszahlen sind keine Beschlüsse und bekommen
+deshalb nie eine `[id]`.
+
+Gemessen wird das Ganze in `tests/test_qa_geldquellen.py`: ein Korpus echter
+Fragen mit erwarteten Quellen, dazu Negativfälle (Fragen, die *nichts* laden
+dürfen) und Formulierungs-Varianten derselben Frage. Ein manuell startbarer
+Lauf am Dateiende prüft zusätzlich die LLM-Klassifikation gegen denselben
+Korpus.
 
 ## LLM-Integration
 
