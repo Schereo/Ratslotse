@@ -9,6 +9,23 @@ Ebenen. Der Bereich unter `/haushalt` übersetzt ihn — und macht dabei an jede
 Stelle sichtbar, welche Zahl amtlich ist, welche wir gerechnet haben und
 welche schlicht fehlt.
 
+:::note[Vorerst nur auf dev.ratslotse.de]
+Der Bereich liegt hinter dem Umgebungs-Gate: `web/frontend/lib/haushalt-frei.ts`
+prüft `NEXT_PUBLIC_RATSLOTSE_ENV`, das nur der Dev-Build setzt. Auf
+ratslotse.de rendern die dreizehn Seiten nicht, und die Anker dorthin
+(Seitenleiste, „Mehr"-Sheet, der Verweis auf den Beschluss-Seiten) fehlen
+ebenfalls — ein Gate ohne seine Einstiege hinterließe Links ins Leere.
+
+Zwei Dinge, die daraus folgen: Auf Prod laufen weder die Ingest-Skripte noch
+der Cron `check_finanzdaten`, die Haushalts-Tabellen entstehen dort leer und
+bleiben es (die drei Geld-Bausteine der KI-Frage vertragen das — sie liefern
+bei leeren Daten einen Leerstring, und der Router ruft sie ohnehin
+`best-effort` auf). Und: Weil `app/(app)/` ein Client-Layout ist, kommt die
+Antwort mit HTTP 200 statt 404 — ein „Soft 404". Inhaltlich folgenlos,
+weshalb `/haushalt` auch nicht in der Sitemap steht. `tests/test_haushalt_gate.py`
+wacht darüber, dass kein neuer Verweis das Gate vergisst.
+:::
+
 ## Die Seiten
 
 Der Einstieg trägt einen **Wegweiser** (`components/haushalt/wegweiser.tsx`),

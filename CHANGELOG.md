@@ -148,6 +148,14 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   (#516)
 
 ### Geändert
+- **Der Haushalts-Bereich bleibt vorerst der Dev-Umgebung vorbehalten.** Die
+  dreizehn Seiten unter `/haushalt` sind jetzt — wie der Wahlprogramm-Vergleich
+  — an `NEXT_PUBLIC_RATSLOTSE_ENV` gebunden: Auf ratslotse.de rendern sie
+  nicht, und die Anker dorthin (Seitenleiste, „Mehr"-Sheet, der Verweis auf den
+  Beschluss-Seiten) verschwinden mit ihnen — ein Gate ohne seine Einstiege
+  hinterließe Links, die ins Leere führen. Damit kann der Bereich weiterentwickelt
+  werden, ohne den nächsten Release aufzuhalten. Ein Testwächter prüft künftig,
+  dass kein neuer Verweis das Gate vergisst. (#546)
 - **Zahlen, die eine Rechenprobe nicht bestehen, ersetzen keine vorhandenen
   mehr.** Liest ein Parser für einen bereits gespeicherten Jahrgang plötzlich
   nichts oder deutlich weniger — etwa weil die Stadt ihre Tabellen umbaut —,
