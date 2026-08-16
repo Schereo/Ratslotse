@@ -41,6 +41,14 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     # „Was kostet X?" ist die Frage der Produktebene: dort steht eine Aufgabe
     # mit ihren Kosten. Der Teilhaushalt (plan) trägt die grobe Summe dazu.
     ("Was kostet die Feuerwehr?", "geld", {"plan", "produkte"}),
+    # Dieselbe Frage als KOMPOSITUM. `\bkost` trifft nur „kostet"/„Kosten" am
+    # Wortanfang; „Personalkosten", „Baukosten", „Betriebskosten" gingen bis
+    # zum 17.08. leer aus — gemessen, nicht vermutet. Die Endung `kosten\b`
+    # fängt sie. Beim Personal kommt der Stellenplan dazu, und das ist die
+    # bessere Antwort: Personalausgaben ohne die Stellen dahinter sind eine
+    # Zahl ohne Erklärung.
+    ("Wie hoch sind die Personalkosten?", "geld", {"plan", "produkte", "stellenplan"}),
+    ("Was sind die Baukosten der Schule?", "geld", {"plan", "produkte"}),
     # Plan gegen Ist — das kann NUR der Jahresabschluss beantworten.
     ("Hat die Stadt 2024 mehr ausgegeben als geplant?", "geld", {"plan", "ist"}),
     # Das „Warum" steht in den Erläuterungen; die Steuer-Ist-Zahlen und der
