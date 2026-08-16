@@ -181,10 +181,11 @@ export default function PflichtPage() {
     { label: "noch nicht eingeordnet", wert: summeAus(ohneStufe), farbe: TON_OFFEN, offen: true },
   ];
 
-  // Der Abgleich in einer Zahl — und ehrlich über den Nenner: Bereiche ohne
-  // Produktebene sind keine Übereinstimmung.
+  // Der Abgleich — und ehrlich über den Nenner: Bereiche ohne Produktebene
+  // sind kein Befund, weder in die eine noch in die andere Richtung. Gezählt
+  // wird nur noch, wo beide Seiten AUSEINANDERGEHEN; die Gegenzahl („deckt")
+  // war Selbstbestätigung und ist am 16.08. rausgefallen.
   const geprueft = rows.filter((r) => r.urteil !== "offen");
-  const deckt = geprueft.filter((r) => r.urteil === "deckt");
   const weicht = geprueft.filter((r) => r.urteil === "weicht");
 
   return (
@@ -250,25 +251,35 @@ export default function PflichtPage() {
         </p>
       </section>
 
-      {/* Der Befund, den es vor der Produktebene nicht geben konnte. */}
+      {/* Der Befund, den es vor der Produktebene nicht geben konnte.
+
+          DIE ÜBEREINSTIMMUNGS-QUOTE IST AM 16.08. RAUSGEFLOGEN. Hier stand
+          „Bei 6 von 9 Bereichen deckt sich das mit unserer Einordnung" — eine
+          Zahl, die nur uns bestätigt: Sie sagt der Leserin nichts über den
+          Haushalt, sondern über die Güte unserer Redaktion
+          (DESIGNSPRACHE.md § 7). Die ABWEICHUNG ist das Gegenteil davon und
+          bleibt deshalb, mitsamt ihrer Bezugsgröße: Wo unsere Stufe der
+          Selbstauskunft der Stadt widerspricht, ist das eine echte Auskunft
+          über die Aufgabe — und die interessanteste der Seite. Der Abgleich
+          selbst läuft unverändert (`abgleich()` in `lib/haushalt-pflicht.ts`,
+          Doku: „Die Einordnung ist redaktionell — aber nicht mehr
+          ungeprüft"). */}
       {produktJahr && geprueft.length > 0 && (
         <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <div className="flex items-center gap-2">
             <Scale className="h-3.5 w-3.5 text-muted-foreground" />
             <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-              Unsere Einordnung, gegengelesen · Stand {produktJahr}
+              Die Selbstauskunft der Stadt · Stand {produktJahr}
             </h2>
           </div>
           <p className="mt-2 text-[13px] leading-relaxed text-foreground/90">
             Die Stadt gibt in den Teilhaushaltsplänen zu jeder Aufgabe selbst an, wie viel Spielraum
-            sie bei ihr sieht. Bei{" "}
-            <strong>{deckt.length} von {geprueft.length} Bereichen</strong>, für die es diese Angabe gibt,
-            deckt sich das mit unserer Einordnung
-            <Beleg q="teilhaushalt" />
+            sie bei ihr sieht; unten steht das an jeder Zeile neben unserer Einordnung
+            <Beleg q="teilhaushalt" />.
             {weicht.length > 0 && (
-              <> — bei {weicht.length} nicht: {weicht.map((r) => bereichKanon(r.z.bereich).name).join(", ")}.</>
+              <> Bei <strong>{weicht.length} von {geprueft.length} Bereichen</strong> widerspricht
+              sie ihr: {weicht.map((r) => bereichKanon(r.z.bereich).name).join(", ")}.</>
             )}
-            {weicht.length === 0 && <>.</>}
           </p>
           <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted-foreground">
             Für {rows.length - geprueft.length} von {rows.length} Teilhaushalten gibt es keine Angabe:
@@ -285,10 +296,15 @@ export default function PflichtPage() {
         </section>
       )}
 
+      {/* Warum die Antworten auseinandergehen — ohne die Zahl zu wiederholen:
+          Die steht seit dem 16.08. im Befund darüber. Zweimal dieselbe Quote
+          auf einem Bildschirm liest sich wie ein Beleg, den die Seite sich
+          selbst ausstellt. Lotti erklärt hier den Mechanismus, nicht die
+          Menge. */}
       {weicht.length > 0 && (
         <LottiErklaert
           titel="Zwei Antworten auf dieselbe Frage"
-          text={`Wir ordnen ganze Teilhaushalte ein, die Stadt beantwortet eine etwas andere Frage: nicht „muss es diese Aufgabe geben?“, sondern „lassen sich ihre Kosten beeinflussen?“. Bei ${weicht.length} von ${geprueft.length} Bereichen fallen beide Antworten auseinander. Das ist keine Panne, sondern die interessanteste Stelle der Seite — dort lohnt das Nachlesen am meisten.`}
+          text={`Wir ordnen ganze Teilhaushalte ein, die Stadt beantwortet eine etwas andere Frage: nicht „muss es diese Aufgabe geben?“, sondern „lassen sich ihre Kosten beeinflussen?“. Dass beide Antworten auseinanderfallen, ist deshalb keine Panne — dort lohnt das Nachlesen am meisten.`}
         />
       )}
 

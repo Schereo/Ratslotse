@@ -142,10 +142,21 @@ export function Fussnote({ schichten }: { schichten: Datenschicht[] }) {
     /* Der Satz stand pauschal über der ganzen Liste — und deren erste,
        prominenteste Zeile ist der Haushaltsplan, der gerade NICHT
        automatisch nachkommt. Was von Hand läuft, wird deshalb aus den
-       Daten benannt statt mitversprochen. */
+       Daten benannt statt mitversprochen. Das ist die eine Auskunft, die
+       den Stand wirklich begrenzt: welche Schicht von selbst nachkommt und
+       welche auf eine Hand wartet.
+
+       ZWEI SÄTZE STANDEN BIS 16.08. ZU VIEL, beide über uns statt über die
+       Zahlen: der Takt, in dem der Cron nachsieht („geprüft wird alle zwei
+       Wochen"), und die Rechenprobe als Türsteher („Zahlen, die eine
+       Rechenprobe des Dokuments nicht bestehen, bleiben draußen"). Beides
+       läuft unverändert weiter und steht in der Technik-Doku. Für die Frage
+       dieses Blocks — „bis wann reichen die Zahlen?" — ist es keine Antwort:
+       Wo ein Jahrgang tatsächlich fehlt, sagt das die Zeile darüber
+       (`luecken`, „Für 2019 liegen uns keine auswertbaren Zahlen vor"), und
+       zwar am richtigen Ort und ohne Prüfzeugnis. DESIGNSPRACHE.md § 7. */
     <p className="mt-3.5 border-t border-dashed border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground">
-      Was im Ratsinformationssystem veröffentlicht wird, tragen wir automatisch nach —
-      geprüft wird alle zwei Wochen.
+      Was im Ratsinformationssystem veröffentlicht wird, tragen wir automatisch nach.
       {/* Aufzählung ohne Artikel und ohne Verb-Kongruenz: Die Namen kommen
           aus den Daten, „Nur den Haushaltsplan holen wir …" ließe sich für
           eine beliebige Liste nicht grammatisch bilden. Die Stelle steht in
@@ -155,8 +166,6 @@ export function Fussnote({ schichten }: { schichten: Datenschicht[] }) {
           {i > 0 && "; "}{aufzaehlung(g.labels)} ({g.quelle})
         </span>
       ))} — die Zahlen dafür holen wir von Hand.</>}
-      {" "}Zahlen, die eine Rechenprobe des Dokuments nicht bestehen, bleiben draußen; dann
-      steht hier weiter der ältere Stand.
     </p>
   );
 }
