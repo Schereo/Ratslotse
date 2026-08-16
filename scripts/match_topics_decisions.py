@@ -11,6 +11,12 @@ needed (not a web dependency)::
     pip install fastembed
     python scripts/match_topics_decisions.py --schwelle -1.0 --top-k 40
 
+Die Definition selbst („welcher Beschluss gehört zu diesem Thema") steht seit
+dem 16.08.2026 nicht mehr hier, sondern in ``council.topic_intel.treffer`` —
+das Bearbeiten-Blatt im Web rechnet damit vorab dasselbe aus. Vorher hatte es
+eine eigene Suche mit eigener Schwelle und eigenem Deckel und zeigte deshalb
+zu demselben Thema eine andere Zahl als die Themen-Karte.
+
 Warum nicht mehr der reine Bi-Encoder mit Mindest-Cosinus: Am Bestand
 gemessen (15.08.2026, 32 echte Themen) lagen ALLE 60 besten Kandidaten JEDES
 Themas über der alten Schwelle 0.45 — sie hat nie etwas verworfen, und jedes
@@ -43,52 +49,13 @@ sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
 from council.store import CouncilStore  # noqa: E402
+from council.topic_intel import DECKEL, SCHWELLE, treffer  # noqa: E402,F401
 from kern.store import Store  # noqa: E402
 from kern import digest_email  # noqa: E402
 from council.ergebnisse import decision_href  # noqa: E402
 
 NWZ_DB = ROOT / "data" / "nwz.sqlite"
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
-
-#: Relevanzschwelle auf den Cross-Encoder-Logits. Am Bestand kalibriert
-#: (15.08.2026, 32 echte Themen): −1,0 ist genau der Bruch zwischen dem
-#: letzten offensichtlich richtigen und dem ersten offensichtlich falschen
-#: Treffer des Problem-Themas „Wohnheim Tegelbusch" — die Bebauungsplan-Kette
-#: „Am Tegelbusch" reicht bis −0,90 hinunter, der erste Fremdkörper
-#: („Unterbringung von Asylbewerberinnen und Asylbewerbern") liegt bei −1,03.
-#: Strenger (−0,5) verlöre die Veränderungssperre „Am Tegelbusch" (−0,70),
-#: lockerer (−1,25) holte die Asyl-Berichte zurück. Der Wert liegt damit
-#: zwischen den beiden schon vorhandenen Toren der KI-Frage: −1,5 für
-#: Zusatzkanäle, −0,5 für Zusagen.
-SCHWELLE = -1.0
-
-#: So viele Kandidaten je Quelle (Vektor und BM25) gehen in die Bewertung.
-POOL = 45
-
-
-def _treffer(council, name: str, text: str, deckel: int,
-             schwelle: float) -> tuple[list[tuple], bool, int]:
-    """Relevante Beschlüsse zu einem Thema → ``(treffer, gedeckelt, kandidaten)``.
-
-    Der Cross-Encoder ist hier nicht Kür, sondern der ganze Punkt: Ohne ihn
-    fällt ``hybrid_search`` still auf die Vektor-Reihenfolge zurück und liefert
-    Cosinus-Werte (0,4…0,9) — die lägen alle über der Logit-Schwelle, und der
-    Lauf schriebe genau das Rauschen, das er verhindern soll. Deshalb prüfen
-    wir, ob der Reranker wirklich lief, und brechen sonst ab: Die Treffer von
-    letzter Woche sind besser als frisches Rauschen.
-    """
-    from council import embeddings
-
-    zeiten: dict = {}
-    roh = embeddings.hybrid_search(council, name, text, top_k=deckel + 1,
-                                   pool=POOL, timings=zeiten)
-    if "rerank_ms" not in zeiten:
-        raise RuntimeError(
-            "Cross-Encoder nicht verfügbar (COUNCIL_RERANK_MODEL) — ohne ihn "
-            "wäre jede Relevanzschwelle wirkungslos. Lauf abgebrochen, die "
-            "bisherigen Treffer bleiben stehen.")
-    ueber = [(int(did), float(s)) for did, s in roh if s >= schwelle]
-    return ueber[:deckel], len(ueber) > deckel, zeiten.get("paare", 0)
 
 
 def _notify_new_matches(nwz, council, owner_id: int, topic_name: str, new_ids: list[int]) -> int:
@@ -140,7 +107,7 @@ def _notify_new_matches(nwz, council, owner_id: int, topic_name: str, new_ids: l
     return 1 if notify.einreihen(nwz, owner_id, notify.N3_ERGEBNIS, subject, msg, "/topics") else 0
 
 
-def process(top_k: int = 40, threshold: float = SCHWELLE, *, ohne_meldungen: bool = False) -> dict:
+def process(top_k: int = DECKEL, threshold: float = SCHWELLE, *, ohne_meldungen: bool = False) -> dict:
     nwz = Store(NWZ_DB)
     council = CouncilStore(COUNCIL_DB)
     try:
@@ -172,7 +139,11 @@ def process(top_k: int = 40, threshold: float = SCHWELLE, *, ohne_meldungen: boo
                 old_ids = {m["decision_id"] for m in nwz.get_topic_decision_matches(t.id)}
                 name = (t.name or "").strip()
                 text = f"{name}. {t.description}".strip()
-                hits, gedeckelt, kandidaten = _treffer(council, name, text, top_k, threshold)
+                # Bricht der Cross-Encoder weg, wirft `treffer` — und der Lauf
+                # endet, statt Rauschen zu speichern. Die Treffer von letzter
+                # Woche sind besser als frisches Rauschen.
+                hits, gedeckelt, kandidaten = treffer(council, name, text,
+                                                      deckel=top_k, schwelle=threshold)
                 nwz.save_topic_decision_matches(t.id, owner_id, hits,
                                                 gedeckelt=gedeckelt, kandidaten=kandidaten)
                 total += len(hits)
@@ -207,7 +178,7 @@ def main() -> int:
     # Schwelle — sondern nur noch, wie viel je Thema gespeichert wird. Bei
     # breiten Themen („Fliegerhorst": 198 Beschlüsse im Bestand) greift er,
     # und dann sagt die Themen-Karte „40+" statt einer erfundenen Endzahl.
-    ap.add_argument("--top-k", type=int, default=40)
+    ap.add_argument("--top-k", type=int, default=DECKEL)
     ap.add_argument("--schwelle", "--threshold", type=float, default=SCHWELLE,
                     dest="schwelle",
                     help="Mindest-Relevanz (Cross-Encoder-Logit), Vorgabe %(default)s")

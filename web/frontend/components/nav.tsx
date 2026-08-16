@@ -23,6 +23,32 @@ import { openCommandPalette } from "@/components/command-palette";
 // Sidebar und Bottom-Nav tragen denselben Wert — die Tour nimmt das sichtbare.
 type Item = { href: string; label: string; icon: typeof Home; tour?: string };
 
+/** Höhe der Tab-Leiste (inkl. Sicherheitszone) — die EINE Quelle dafür.
+ *
+ *  Bis 16.08. war die Leiste inhaltsgetrieben hoch, und alles, was auf ihr
+ *  aufsitzt, riet ihre Höhe mit einer eigenen Zahl: der fixierte Composer im
+ *  Ratsgespräch mit `4rem`, das „Mehr"-Sheet und der Platzhalter in `main` mit
+ *  `4.75rem`. Nachgemessen war sie aber je Breakpoint verschieden hoch — 63 px
+ *  auf dem Telefon, 61 px ab `md` (dort `py-1` statt `py-2`, dafür größere
+ *  Symbole). Zwischen Composer-Unterkante und Leisten-Oberkante blieb dadurch
+ *  ein Streifen offen, durch den der Antworttext scrollte (Tims iPad-Befund
+ *  16.08.). Zwei Zahlen an zwei Orten laufen immer wieder auseinander; deshalb
+ *  ERZWINGT die Leiste diese Höhe, und wer an ihr andockt, importiert
+ *  denselben Ausdruck, statt ihn nachzubauen.
+ *
+ *  Wer hier etwas ändert, ändert damit auch die Andockkante des Composers —
+ *  das ist der Sinn. Nur `main` in app/(app)/layout.tsx rechnet noch mit einer
+ *  eigenen Zahl (4.75rem = diese Höhe + Luft); das ist ein Platzhalter im
+ *  Fluss, der ein paar Pixel Toleranz verträgt. */
+const TABLEISTE_INHALT = "4rem"; // die Leiste selbst, ohne Sicherheitszone
+export const TABLEISTE_HOEHE = `calc(env(safe-area-inset-bottom) + ${TABLEISTE_INHALT})`;
+
+/** Höhe der mobilen Kopfleiste (inkl. Sicherheitszone) — dieselbe Rolle für
+ *  oben: `pt-0.75rem` + Inhalt `h-9` + `pb-3` + 1 px Rahmen = 3.8125rem. Wer
+ *  etwas unter dem Kopf festpinnt (die Belege-Spalte auf dem iPad), nimmt das
+ *  hier statt einer geschätzten Zahl. */
+export const KOPFLEISTE_HOEHE = "calc(env(safe-area-inset-top) + 3.8125rem)";
+
 /** RL-903: Zahl ungesehener Themen-Treffer — der Orange-Zähler an
  *  „Meine Themen". Ruhig gepollt (60 s), 0 blendet aus. */
 function useUnreadTopicHits(): number {
@@ -351,12 +377,17 @@ function BottomNavInner({ tab }: { tab: string | null }) {
           // Symbole in Richtung Home-Indikator — auf dem iPhone ist die Zone
           // 34 pt hoch, auf dem iPad rund 20 (Tims Befund 15.08.). Der
           // hälftige Ausgleich bleibt deshalb den breiten Touch-Geräten.
+          // Die Höhe steht fest (TABLEISTE_HOEHE, s. o.) statt sich aus dem
+          // Inhalt zu ergeben: Nur so ist die Oberkante der Leiste dieselbe
+          // Kante, an der der Composer andockt. Die Ziele darin zentrieren
+          // sich in der verbleibenden Fläche (`justify-center`).
           "fixed inset-x-0 bottom-0 flex border-t border-border/50 pb-[env(safe-area-inset-bottom)] desk:hidden",
           "md:pb-[calc(env(safe-area-inset-bottom)/2)] md:pt-[calc(env(safe-area-inset-bottom)/2)]",
           mehrOffen
             ? "z-50 bg-card shadow-[0_-10px_28px_-14px_rgba(2,32,71,0.22)]"
             : "z-40 bg-card/70 backdrop-blur-xl backdrop-saturate-150 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.45),0_-10px_28px_-14px_rgba(2,32,71,0.22)] dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),0_-10px_28px_-14px_rgba(0,0,0,0.5)]",
         )}
+        style={{ height: TABLEISTE_HOEHE }}
         aria-label="Hauptnavigation"
       >
         {/* Auf dem Handy verteilen sich die fünf Ziele über die Gerätebreite —
@@ -380,7 +411,7 @@ function BottomNavInner({ tab }: { tab: string | null }) {
             className={cn(
               // Größere Symbole/Schrift auf dem iPad, dafür weniger Polsterung:
               // Die Leiste bleibt gleich hoch, das Ziel darin wird größer.
-              "flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition-[color,transform] duration-150 active:scale-95 md:py-1 md:text-[12.5px]",
+              "flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium transition-[color,transform] duration-150 active:scale-95 md:py-1 md:text-[12.5px]",
               mehrAktiv ? "text-primary" : "text-muted-foreground hover:text-foreground",
             )}
           >
@@ -407,7 +438,7 @@ function BottomNavItem({ item, active }: { item: Item; active: boolean }) {
       data-tour={item.tour}
       className={cn(
         // active:scale-95 = spürbares Touch-Feedback beim Antippen.
-        "flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition-[color,transform] duration-150 active:scale-95 md:py-1 md:text-[12.5px]",
+        "flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium transition-[color,transform] duration-150 active:scale-95 md:py-1 md:text-[12.5px]",
         active ? "text-primary" : "text-muted-foreground hover:text-foreground",
       )}
     >
@@ -461,9 +492,12 @@ function MehrSheet({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-40 desk:hidden" role="dialog" aria-modal="true" aria-label="Mehr">
       <button type="button" aria-label="Menü schließen" onClick={onClose}
-        className="absolute inset-0 bg-[hsl(212_50%_12%/0.4)]" />
+        className="scrim absolute inset-0" />
       <div
-        className="absolute inset-x-0 bottom-0 rounded-t-[20px] bg-card px-4 pb-[calc(env(safe-area-inset-bottom)+4.75rem)] pt-2 shadow-[0_-18px_50px_-12px_rgba(2,32,71,0.45)]"
+        className="absolute inset-x-0 bottom-0 rounded-t-[20px] bg-card px-4 pt-2 shadow-[0_-18px_50px_-12px_rgba(2,32,71,0.45)]"
+        /* Das Sheet dockt UNTER der Leiste an — sein Fuß hält deren Höhe frei,
+           plus 0,75 rem Luft. Aus derselben Quelle wie die Leiste selbst. */
+        style={{ paddingBottom: `calc(${TABLEISTE_HOEHE} + 0.75rem)` }}
         onTouchStart={(e) => { startY.current = e.touches[0]?.clientY ?? null; }}
         onTouchMove={(e) => {
           const y = e.touches[0]?.clientY;

@@ -35,6 +35,10 @@ import { useAuth } from "@/lib/auth";
 import { entwurfAbholen, entwurfMelden } from "@/lib/draft";
 import { leseHatGespraeche, leseQaBeispiele, merkeHatGespraeche, merkeQaBeispiele } from "@/lib/qa-zuletzt";
 import { Button, Input, toast } from "@/components/ui";
+// Die beiden Kanten, an denen der fixierte Composer und die Belege-Spalte
+// hängen, gehören der Navigation — deshalb kommen sie von dort und werden
+// hier nicht nachgebaut (s. components/nav.tsx).
+import { KOPFLEISTE_HOEHE, TABLEISTE_HOEHE } from "@/components/nav";
 import { decisionHref } from "@/lib/routes";
 import { PrintButton } from "@/components/print-button";
 import { pfad, cn } from "@/lib/utils";
@@ -1664,32 +1668,73 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             Seite kürzer als der Viewport (Empty State), bleibt es an seiner
             Fluss-Position und über der Tab-Bar klafft die Lücke aus
             Container-Padding und Flex-Rest. Deshalb der klassische
-            Chat-Aufbau: mobil FIXED direkt auf der Tab-Bar-Oberkante
-            (4rem + Safe-Area = Höhe der Leiste), und der Spacer darunter
-            hält im Fluss genau die gemessene Composer-Höhe frei, damit das
-            Gesprächsende nie darunter verschwindet. Ab lg wie gehabt statisch
-            in der Bühne. */}
+            Chat-Aufbau: mobil FIXED direkt auf der Tab-Bar-Oberkante — die
+            Kante kommt als TABLEISTE_HOEHE aus components/nav.tsx, damit hier
+            nicht wieder eine zweite Zahl neben der echten Leistenhöhe steht
+            (Tims Befund 16.08.: „man sieht hier unten den Text durch") — und
+            der Spacer darunter hält im Fluss genau die gemessene
+            Composer-Höhe frei, damit das Gesprächsende nie darunter
+            verschwindet. Ab lg wie gehabt statisch in der Bühne. */}
         <div aria-hidden style={{ height: composerHoehe }} className="desk:hidden" />
         <div ref={composerRef}
+          /* `bottom` als Inline-Wert statt als Klasse: Es ist derselbe
+             Ausdruck, den die Tab-Leiste als `height` bekommt. Ab `desk` ist
+             der Composer `static` und ignoriert ihn (statische Elemente kennen
+             kein `bottom`), die Bühne bleibt also unberührt. */
+          style={{ bottom: TABLEISTE_HOEHE }}
           /* Deckend statt Verlauf über die ganze Höhe (Tims Befund 12.08.:
              „keine Überlappungen"): Der alte Verlauf war oben durchsichtig,
              genau dort sitzen die Weiterfragen-Pillen — der Antworttext
              schien mitten durch sie hindurch. Jetzt trägt nur ein 16-px-
              Streifen ÜBER dem Block den weichen Übergang. */
-          className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+4rem)] z-10 bg-background px-4 pb-1.5 pt-2 before:pointer-events-none before:absolute before:inset-x-0 before:-top-4 before:h-4 before:bg-gradient-to-t before:from-background before:to-transparent before:content-[''] print:hidden tab:px-0 desk:static desk:inset-x-auto desk:bottom-auto desk:bg-transparent desk:pt-2 desk:before:hidden desk:px-4 desk:pb-4">
+          className={cn(
+            "fixed inset-x-0 z-10 bg-background px-4 pb-1.5 pt-2 print:hidden",
+            "before:pointer-events-none before:absolute before:inset-x-0 before:-top-4 before:h-4 before:bg-gradient-to-t before:from-background before:to-transparent before:content-['']",
+            // `tab` (breites Touch-Gerät): Die volle Bildbreite gehört hier
+            // NICHT mehr dem Balken — er wird zur Andockleiste der Lesespalte
+            // (s. Kommentar unten). Fläche, Polster und Verlauf wandern
+            // deshalb nach innen. `pointer-events-none` gehört dazu: Der
+            // durchsichtige Rest des Balkens liegt über den unteren ~100 px der
+            // Belege-Spalte — ohne das wären deren letzte Quellen sichtbar,
+            // aber nicht antippbar. Das Panel selbst nimmt Tipper wieder an.
+            "tab:pointer-events-none tab:bg-transparent tab:p-0 tab:before:hidden",
+            "desk:static desk:inset-x-auto desk:bottom-auto desk:bg-transparent desk:px-4 desk:pb-4 desk:pt-2 desk:before:hidden",
+          )}>
+          {/* Auf `tab` baut der fixierte Balken dieselbe Bühne nach, in der
+              der Inhalt steht (Container aus app/(app)/layout.tsx + das
+              Raster von oben) — nur so kann das Andock-Panel exakt auf der
+              Lesespalte sitzen, obwohl es aus dem Fluss gelöst ist. Ändert
+              sich dort das Raster, muss es hier mitkommen; die zweite Spalte
+              bleibt bewusst leer, damit die Belege daneben bis zur Tab-Leiste
+              sichtbar bleiben. */}
+          <div className="tab:mx-auto tab:w-full tab:max-w-7xl tab:px-8">
+          <div className="tab:mx-auto tab:grid tab:max-w-[1220px] tab:grid-cols-[minmax(0,1fr)_320px] tab:gap-6">
           {/* Der Balken bleibt randlos (er deckt den durchscrollenden Text ab),
               sein Inhalt hält sich an dieselbe Spaltenbreite wie der Verlauf —
               sonst zöge sich das Eingabefeld auf dem iPad über die ganze
               Gerätebreite.
-              Auf breiten Touch-Geräten (`tab`) liegt der Verlauf links neben
-              der Belege-Spalte — das Eingabefeld folgt ihm aber NICHT: Es
-              bleibt in der Bildmitte. Ausgerichtet auf die Lesespalte saß es
-              sichtbar aus der Mitte gerückt, was wie ein Fehler aussieht
-              (Tims Befund 15.08.). Es gehört zum ganzen Bildschirmrand, nicht
-              zu einer Spalte; die Belege daneben sind zum Lesen da, nicht zum
-              Tippen. Am Desktop steht der Composer statisch IN der Bühne —
-              dort greift `tab` bewusst nicht. */}
-          <div className="mx-auto w-full max-w-3xl tab:px-8 desk:max-w-none">
+              Auf breiten Touch-Geräten (`tab`) war er zuletzt ein Riegel über
+              die volle Bildbreite: Das Eingabefeld stand mittig, links und
+              rechts davon blieb nichts als Farbe, und die Belege-Spalte war
+              unten abgeschnitten (Tims Befund 16.08.). Jetzt ist der Balken
+              genau so breit wie die Lesespalte, über der er liegt — ein
+              angedocktes Panel mit Rahmen, Glas und Schatten, unten bündig auf
+              der Tab-Leiste (deshalb nur oben gerundet: eine Rundung unten
+              bräuchte Luft, und durch die liefe der Text). Damit ist die
+              Ausrichtung kein „aus der Mitte gerückt" mehr wie beim randlosen
+              Riegel (Befund 15.08.), sondern die sichtbare Unterkante der
+              Spalte, zu der das Feld gehört. Am Desktop steht der Composer
+              statisch IN der Bühne — dort greift `tab` bewusst nicht. */}
+          <div data-composer-dock className={cn(
+            "mx-auto w-full max-w-3xl desk:max-w-none",
+            "tab:pointer-events-auto tab:max-w-none tab:rounded-t-2xl tab:border tab:border-b-0 tab:border-border tab:bg-card/[0.96] tab:px-4 tab:pb-2 tab:pt-2.5",
+            // Glas wie bei der Tab-Leiste darunter, aber deutlich dichter: Bei
+            // /90 blieb im Hellmodus die Karten-Attribution als Geist unter dem
+            // Panel sichtbar (nachgemessen 16.08.) — und Durchscheinen ist
+            // genau das, was hier weg soll.
+            "tab:backdrop-blur-xl tab:backdrop-saturate-150",
+            "tab:shadow-[0_-12px_30px_-14px_rgba(2,32,71,0.28)] dark:tab:shadow-[0_-12px_30px_-14px_rgba(0,0,0,0.55)]",
+          )}>
           {/* 9a-Regel: Ohne aktives Speichern gibt es keine Gesprächs-Zeile —
               „Neues Gespräch" ist dann ein schlichter Text-Link überm Composer. */}
           {turns.length > 0 && einstellung !== 1 && (
@@ -1787,6 +1832,8 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
           {/* Der KI-Datenschutz-Hinweis wohnt jetzt in den Einstellungen
               (Gespräche-Karte) — Tims TestFlight-Feedback 11.08. */}
           </div>
+          </div>
+          </div>
         </div>
       </div>
 
@@ -1794,22 +1841,59 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
           leeres Loch: Vor der ersten Frage erklärt sie sich, während der Suche
           zeigt sie ein Skelett (Tims Feedback), danach Quellen, Presse und
           Aktionen.
-          An den Viewport gebunden (feste Höhe, eigener Scroll) ist sie NUR am
-          Desktop, wo sie neben der Bühne steht. Auf dem iPad gehört die
-          Unterkante des Bildschirms der Tab-Leiste und dem fixierten Composer
-          — eine Karte, die bis dorthin reicht, versteckt ihre letzten Quellen
-          dahinter. Dort scrollt sie deshalb einfach mit der Seite.
-          `tab:mb-28` ist die Reserve für genau diesen Composer: Ist die Karte
-          ausnahmsweise länger als das ganze Gespräch (kurze Antwort, viele
-          Quellen), endet sie sonst dort, wo er klebt — ihre letzten Zeilen
-          wären nicht erreichbar. Sonst kostet sie nichts, weil die Zeilenhöhe
-          im Raster ohnehin die längere Spalte bestimmt. */}
-      <aside className="hidden print:hidden breit:flex breit:flex-col breit:rounded-2xl breit:border breit:border-border breit:bg-card tab:mb-28 desk:h-[calc(100dvh-135px)] desk:overflow-hidden">
+          An den Viewport gebunden (feste Höhe, eigener Scroll) ist sie am
+          Desktop, wo sie neben der Bühne steht.
+          Auf dem iPad stand sie bis 16.08. schlicht im Fluss: ganz oben, und
+          nach dem Scrollen zur Antwort auf eine Folgefrage war rechts nur noch
+          leere Fläche (Tims Befund: „die Quellen sind außerhalb des
+          Sichtfelds"). Sie läuft jetzt mit — `sticky` unter der Kopfleiste,
+          in der Höhe begrenzt auf das, was zwischen Kopf- und Tab-Leiste
+          übrig ist; was nicht hineinpasst, scrollt in der Karte. Der Composer
+          spielt dabei keine Rolle mehr: Er deckt seit derselben Runde nur noch
+          die Lesespalte ab, nicht mehr die volle Breite — deshalb ist auch die
+          alte Reserve `tab:mb-28` weg.
+          Hochkant und auf dem Telefon greift `breit` gar nicht, die Spalte ist
+          dort ausgeblendet. */}
+      <aside className={cn(
+        "hidden print:hidden breit:flex breit:flex-col breit:rounded-2xl breit:border breit:border-border breit:bg-card",
+        // Kopf- und Tab-Leiste stecken als Variablen im `style` (s. u.) — nur
+        // so bleiben Andockkante und Höhenbudget an die Leisten gebunden UND
+        // an den Breakpoint: Ein Inline-`max-height` kennt kein `tab` und
+        // hätte am Desktop die Bühnen-Höhe beschnitten.
+        // Die 3 rem sind nicht nur Luft an den Kanten: Am Ende der Seite endet
+        // das Raster ein Stück über der Tab-Leiste (Seiten-Polster), und die
+        // Spalte wird dort mit nach oben gezogen — ohne diese Reserve rutschte
+        // ihr Kopf unter die Kopfleiste (gemessen 16.08.: 20 px).
+        "tab:sticky tab:top-[calc(var(--rl-kopf)_+_0.75rem)] tab:overflow-hidden",
+        "tab:max-h-[calc(100dvh_-_var(--rl-kopf)_-_var(--rl-unten)_-_3rem)]",
+        "desk:h-[calc(100dvh-135px)] desk:overflow-hidden",
+      )}
+        style={{
+          "--rl-kopf": KOPFLEISTE_HOEHE,
+          "--rl-unten": TABLEISTE_HOEHE,
+        } as React.CSSProperties}>
         <div className="flex-1 overflow-y-auto p-4">
           {letzter && letzter.antwort && !letzter.fehler ? (
-            <BelegeSpalte turn={letzter} flashId={flashId}
-              onDazuFragen={(titel) => frageStellen(`Erzähl mir mehr zu „${titel}".`)}
-              onFlash={flash} />
+            <>
+              {/* Die Spalte zeigt immer die Belege des JÜNGSTEN Turns — beim
+                  Mitlaufen steht sie damit auch neben älteren Antworten. Ein
+                  Fußzeilen-Halbsatz ist billiger als eine zweite Spalte und
+                  sagt ehrlich, wozu diese Quellen gehören. Erst ab der zweiten
+                  Frage: davor gibt es nichts zu verwechseln. */}
+              {turns.length > 1 && (
+                <p className="mb-2.5 border-b border-border/60 pb-2">
+                  <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                    Belege zur letzten Frage
+                  </span>
+                  <span className="mt-0.5 line-clamp-2 block text-[11.5px] leading-snug text-foreground">
+                    {letzter.frage}
+                  </span>
+                </p>
+              )}
+              <BelegeSpalte turn={letzter} flashId={flashId}
+                onDazuFragen={(titel) => frageStellen(`Erzähl mir mehr zu „${titel}".`)}
+                onFlash={flash} />
+            </>
           ) : loading || deepAktiv ? (
             <div aria-hidden className="space-y-3 pt-1">
               <div className="h-3 w-24 animate-pulse rounded bg-muted" />

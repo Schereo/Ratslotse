@@ -681,6 +681,41 @@ def test_gedeckelte_trefferzahl_wird_als_solche_ausgeliefert(client):
     assert topic["decision_count_capped"] is True
 
 
+def test_themenliste_enthaelt_auch_berichte(client):
+    """„alle ansehen" muss halten, was die Karte verspricht.
+
+    Die Treffer eines Themas sind Beschlüsse UND Berichte — die Karte zählt
+    beide. ``/council/decisions?topic=…`` darf davon nichts von sich aus
+    wegfiltern; nur ein ausdrücklicher ``category``-Filter des Nutzers schränkt
+    ein. (Tim, Build 12: Karte „40+", Liste 25 — die Suchseite stand auf „nur
+    Beschlüsse" und schnitt still alle Berichte weg.)
+    """
+    owner_id = _register(client).json()["id"]
+    tid = client.post("/api/topics", json={"name": "Fliegerhorststraße",
+                                           "description": "Konversion"}).json()["id"]
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(78, "Bauausschuss", "2026-03-02", "18:00", "Rathaus",
+                                   agenda_items=[AgendaItem("Ö 1", "Fliegerhorst")]))
+    cs._insert_decision(78, 0, "decision", None, "1", "Erschließung Fliegerhorststraße",
+                        "Beschluss", "angenommen", None, None, None, [], None, None, None)
+    cs._insert_decision(78, 1, "decision", None, "2", "Sachstandsbericht Fliegerhorst",
+                        None, "zur_kenntnis", None, None, None, [], None, None, None)
+    cs._conn.commit()
+    ids = [r[0] for r in cs._conn.execute("SELECT id FROM council_decisions WHERE ksinr = 78")]
+    cs.close()
+
+    st = Store(NWZ_DB)
+    st.save_topic_decision_matches(tid, owner_id, [(i, 0.9) for i in ids])
+    st.close()
+
+    assert next(t for t in client.get("/api/topics").json() if t["id"] == tid)["decision_count"] == 2
+    liste = client.get(f"/api/council/decisions?topic={tid}").json()
+    assert liste["total"] == 2, "die Liste hinter „alle ansehen“ zählt anders als die Karte"
+    # Der Kategorie-Filter bleibt möglich — er ist eine Entscheidung des
+    # Nutzers, keine Voreinstellung auf dem Weg von der Karte hierher.
+    assert client.get(f"/api/council/decisions?topic={tid}&category=vote").json()["total"] == 1
+
+
 def test_cannot_delete_foreign_topic(client):
     _register(client)
     assert client.delete("/api/topics/9999").status_code == 404

@@ -34,15 +34,112 @@ MODEL = os.environ.get("TOPIC_INTEL_MODEL", "deepseek/deepseek-v4-pro")
 # Zwei statt einem: Ein einzelner Zufallstreffer (ein Name fällt in einem
 # Nebensatz) macht noch kein Thema, das sich zu abonnieren lohnt.
 MIN_MATCHES = 2
-# Kosinus-Schwelle der semantischen Suche. Darunter ist die Ähnlichkeit
-# Rauschen — „mein Hund" landet sonst über irgendeinem Tierheim-Beschluss.
+# Kosinus-Schwelle der BELEG-Suche (nicht der Trefferdefinition, s. u.).
+# Darunter ist die Ähnlichkeit Rauschen — „mein Hund" landet sonst über
+# irgendeinem Tierheim-Beschluss.
 MIN_SCORE = 0.42
 _MAX_CONTEXT = 12
 _MAX_DESC = 240
 
 
+# --- DIE Definition von „Beschlüsse zu diesem Thema" ------------------------
+#
+# Sie steht ab dem 16.08.2026 genau hier, weil sie vorher an drei Stellen
+# unabhängig voneinander getroffen wurde und drei verschiedene Zahlen ergab
+# (Tims Befund, Build 12: Karte „40+", Blatt „12 Beschlüsse", Trefferliste
+# „25" — dasselbe Thema „Fliegerhorststraße"):
+#
+#   Karte        gespeicherte Treffer  (Cross-Encoder ≥ −1,0, Deckel 40)
+#   Blatt        eigene Suche          (Bi-Encoder-Cosinus ≥ 0,42, Deckel 12)
+#   Trefferliste gespeicherte Treffer, aber durch den Voreinstellungs-Filter
+#                „nur Beschlüsse" um alle Berichte gekürzt
+#
+# Ein Beschluss gehört zu einem Thema, wenn der Cross-Encoder ihn gegen
+# „Name. Beschreibung" mit mindestens ``SCHWELLE`` bewertet. Mehr als
+# ``DECKEL`` Treffer werden nicht gespeichert und nicht gezählt; dass
+# abgeschnitten wurde, ist ein eigenes Signal (``gedeckelt``) und wird überall
+# als „40+" ausgewiesen — nie als glatte Endzahl.
+#
+#: Relevanzschwelle auf den Cross-Encoder-Logits. Am Bestand kalibriert
+#: (15.08.2026, 32 echte Themen): −1,0 ist genau der Bruch zwischen dem
+#: letzten offensichtlich richtigen und dem ersten offensichtlich falschen
+#: Treffer des Problem-Themas „Wohnheim Tegelbusch" — die Bebauungsplan-Kette
+#: „Am Tegelbusch" reicht bis −0,90 hinunter, der erste Fremdkörper
+#: („Unterbringung von Asylbewerberinnen und Asylbewerbern") liegt bei −1,03.
+#: Strenger (−0,5) verlöre die Veränderungssperre „Am Tegelbusch" (−0,70),
+#: lockerer (−1,25) holte die Asyl-Berichte zurück. Der Wert liegt damit
+#: zwischen den beiden schon vorhandenen Toren der KI-Frage: −1,5 für
+#: Zusatzkanäle, −0,5 für Zusagen.
+SCHWELLE = -1.0
+#: So viele Treffer je Thema werden höchstens gespeichert bzw. gezählt.
+DECKEL = 40
+#: So viele Kandidaten je Quelle (Vektor und BM25) gehen in die Bewertung.
+POOL = 45
+
+
+def treffer(store, name: str, text: str, *, deckel: int = DECKEL,
+            schwelle: float = SCHWELLE) -> tuple[list[tuple[int, float]], bool, int]:
+    """Relevante Beschlüsse zu einem Thema → ``(treffer, gedeckelt, kandidaten)``.
+
+    Die eine Quelle für alle drei Anzeigen: Der Cron-Lauf
+    (``scripts/match_topics_decisions.py``) schreibt damit, was gespeichert
+    wird; das Bearbeiten-Blatt zeigt damit vorab, was ein geänderter Text
+    fände. Wer hier etwas ändert, ändert es an allen Stellen gleichzeitig —
+    genau das ist der Zweck.
+
+    Der Cross-Encoder ist nicht Kür, sondern der ganze Punkt: Ohne ihn fällt
+    ``hybrid_search`` still auf die Vektor-Reihenfolge zurück und liefert
+    Cosinus-Werte (0,4…0,9) — die lägen alle über der Logit-Schwelle, und der
+    Aufrufer bekäme genau das Rauschen, das die Schwelle verhindern soll.
+    Deshalb prüfen wir, ob der Reranker wirklich lief, und werfen sonst:
+    Beim Cron heißt das „die Treffer von letzter Woche bleiben stehen", im
+    Web „lieber keine Zahl als eine falsche".
+    """
+    from council import embeddings
+
+    zeiten: dict = {}
+    # deckel + 1 anfragen: Nur so lässt sich „genau 40 gefunden" von „bei 40
+    # abgeschnitten" unterscheiden — die Zahl der Zeilen sieht sonst gleich aus.
+    roh = embeddings.hybrid_search(store, name, text, top_k=deckel + 1,
+                                   pool=POOL, timings=zeiten)
+    if "rerank_ms" not in zeiten:
+        raise RuntimeError(
+            "Cross-Encoder nicht verfügbar (COUNCIL_RERANK_MODEL) — ohne ihn "
+            "wäre jede Relevanzschwelle wirkungslos.")
+    ueber = [(int(did), float(s)) for did, s in roh if s >= schwelle]
+    return ueber[:deckel], len(ueber) > deckel, zeiten.get("paare", 0)
+
+
+def zaehle_treffer(store, name: str, text: str) -> tuple[int, bool] | None:
+    """``(anzahl, gedeckelt)`` nach derselben Definition — oder ``None``.
+
+    Die ausfallsichere Fassung für den Web-Request: ``None`` heißt „lässt sich
+    hier gerade nicht nach der einen Definition bestimmen" (kein fastembed,
+    kein Reranker, noch kein Embedding-Bestand). Der Aufrufer darf dann keine
+    Zahl behaupten, die er mit einem anderen Maß gemessen hat — genau daraus
+    entstanden die widersprüchlichen Zahlen.
+
+    Ohne Embedding-Bestand wird gar nicht erst gesucht: Dann hat der Matching-
+    Lauf ohnehin nie etwas gespeichert, und der Aufruf würde in Tests und
+    frischen Umgebungen nur das ~1 GB große Reranker-Modell nachladen.
+    """
+    try:
+        if not store.embeddings_version()[0]:
+            return None
+        hits, gedeckelt, _ = treffer(store, name, text)
+    except Exception:  # noqa: BLE001 — fastembed fehlt, Modell hakt, Store leer
+        return None
+    return len(hits), gedeckelt
+
+
 def find_matches(store, name: str, limit: int = _MAX_CONTEXT) -> list[dict]:
-    """Beschlüsse, die zum Themen-Namen passen — beste zuerst.
+    """BELEGE für die Beschreibung — nicht die Trefferzahl (die macht ``treffer``).
+
+    Diese Liste geht als Kontext in den Prompt und liefert die zwei, drei
+    Beispieltitel, die im Blatt unter der Zahl stehen. Sie ist deshalb bewusst
+    kurz und billig (Bi-Encoder statt Cross-Encoder) — und darf gerade **nicht**
+    als Zähler benutzt werden: Ihre 12 waren bis zum 16.08.2026 die „12
+    Beschlüsse" im Bearbeiten-Blatt, also schlicht die Länge des Prompt-Kontexts.
 
     Semantisch, wenn fastembed da ist (fängt „Radweg" ↔ „Veloroute"), sonst
     Volltext. Die Rückfallebene ist wichtig: Das Web-Backend läuft auch ohne
@@ -158,7 +255,7 @@ def _call_model(name: str, matches: list[dict]) -> dict | None:
 VERDICTS = ("belegt", "plausibel", "ungeeignet")
 
 
-def analyse(store, name: str) -> dict:
+def analyse(store, name: str, description: str = "") -> dict:
     """Ein Themen-Name → Einordnung + Beschreibung.
 
     Drei Zustände, weil zwei zu grob sind. „Grundschule Krusenbusch" ist eine
@@ -169,17 +266,24 @@ def analyse(store, name: str) -> dict:
       ``verdict``          — "belegt" | "plausibel" | "ungeeignet"
       ``is_council_topic`` — alles außer "ungeeignet" (Altlast, Frontend nutzt verdict)
       ``description``      — ein Satz, direkt als Themen-Beschreibung nutzbar
-      ``matches``          — Anzahl BELEGENDER Beschlüsse (0, wenn nur plausibel)
+      ``matches``          — Beschlüsse zu diesem Thema nach der EINEN Definition
+                             (s. ``treffer``); 0, wenn nur plausibel
+      ``matches_capped``   — die Zahl ist der Deckel, nicht das Ergebnis → „40+"
       ``examples``         — bis zu 3 Titel als sichtbarer Beleg
       ``reason``           — kurze Begründung, wenn es kein Ratsthema ist
+
+    ``description`` ist der Text, der beim Speichern im Thema stünde. Er geht
+    mit in die Zählung, weil der Matching-Lauf genauso zählt („Name.
+    Beschreibung") — nur so zeigt das Bearbeiten-Blatt vorab wirklich das, was
+    danach auf der Karte steht, statt einer zweiten Wahrheit.
 
     Gefragt wird immer — auch ohne Suchtreffer. Ohne die Frage könnten wir
     „plausibel" gar nicht von „ungeeignet" unterscheiden, und genau diese
     Unterscheidung ist der Punkt.
     """
     clean = (name or "").strip()
-    matches = find_matches(store, clean)
-    examples = [(m.get("title") or "").strip() for m in matches[:3] if m.get("title")]
+    belege = find_matches(store, clean)
+    examples = [(m.get("title") or "").strip() for m in belege[:3] if m.get("title")]
 
     # Freie Vorprüfung: Ein Themen-Name ist eine Sache, kein Satz. Was wie eine
     # Anweisung aussieht, geht gar nicht erst ans Modell — das spart den Aufruf
@@ -188,40 +292,49 @@ def analyse(store, name: str) -> dict:
     if looks_like_instruction(clean):
         return {
             "verdict": "ungeeignet", "is_council_topic": False, "description": "",
-            "matches": 0, "examples": [],
+            "matches": 0, "matches_capped": False, "examples": [],
             "reason": ("Das liest sich wie ein ganzer Satz. Ein Thema ist eine Sache — "
                        "etwa „Cäcilienbrücke\" oder „Grundschule Krusenbusch\"."),
         }
 
-    obj = _call_model(clean, matches)
+    # Die eine Definition, angewandt auf den Text, der gespeichert würde.
+    # Fällt sie aus (kein Reranker, kein Embedding-Bestand), zählen ersatzweise
+    # die Belege — dann ist die Zahl grob, aber wenigstens nicht aus einer
+    # zweiten, dauerhaft danebenliegenden Quelle.
+    gezaehlt = zaehle_treffer(store, clean, f"{clean}. {(description or '').strip()}".strip())
+    anzahl, gedeckelt = gezaehlt if gezaehlt is not None else (len(belege), False)
+
+    obj = _call_model(clean, belege)
 
     if not obj:
         # Modell weg: Wir dürfen weder fälschlich anlegen noch grundlos ablehnen.
         # Belege entscheiden — mit genug Treffern gilt es als belegt, sonst als
         # plausibel. „Ungeeignet" behaupten wir ohne Urteil nie.
-        belegt = len(matches) >= MIN_MATCHES
+        belegt = anzahl >= MIN_MATCHES
         return {"verdict": "belegt" if belegt else "plausibel", "is_council_topic": True,
-                "description": _fallback_description(clean, matches),
-                "matches": len(matches) if belegt else 0, "examples": examples if belegt else [],
-                "reason": ""}
+                "description": _fallback_description(clean, belege),
+                "matches": anzahl if belegt else 0,
+                "matches_capped": gedeckelt if belegt else False,
+                "examples": examples if belegt else [], "reason": ""}
 
     desc = str(obj.get("beschreibung") or "").strip()[:_MAX_DESC]
     verdict = str(obj.get("einordnung") or "").strip().lower()
     if verdict not in VERDICTS:
-        verdict = "belegt" if len(matches) >= MIN_MATCHES else "plausibel"
+        verdict = "belegt" if anzahl >= MIN_MATCHES else "plausibel"
     # Das Modell darf nur nach unten korrigieren: Es sieht die Beschlüsse und
     # erkennt, dass „Grundschule Krusenbusch" von der Wunderburg-Schule handelt —
     # eine Trefferzahl allein kann das nicht.
-    if verdict == "belegt" and len(matches) < MIN_MATCHES:
+    if verdict == "belegt" and anzahl < MIN_MATCHES:
         verdict = "plausibel"
     belegt = verdict == "belegt"
     return {
         "verdict": verdict,
         "is_council_topic": verdict != "ungeeignet",
-        "description": "" if verdict == "ungeeignet" else (desc or _fallback_description(clean, matches)),
+        "description": "" if verdict == "ungeeignet" else (desc or _fallback_description(clean, belege)),
         # Nur belegte Treffer zählen: Sonst stünde „12 Beschlüsse passen dazu"
         # unter einem Thema, zu dem das Modell gerade das Gegenteil gesagt hat.
-        "matches": len(matches) if belegt else 0,
+        "matches": anzahl if belegt else 0,
+        "matches_capped": gedeckelt if belegt else False,
         "examples": examples if belegt else [],
         "reason": str(obj.get("begruendung") or "").strip()[:200] if verdict == "ungeeignet" else "",
     }

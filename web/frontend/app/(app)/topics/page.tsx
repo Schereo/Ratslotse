@@ -187,7 +187,13 @@ function TopicsInner() {
                 className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-[color,background-color,transform] duration-150 ease-out-strong hover:bg-primary/10 active:scale-[0.97] disabled:opacity-50"
               >
                 <Plus className="h-3 w-3" /> {s.name}
-                <span className="text-primary/60">· {s.n} {s.n === 1 ? "Beschluss" : "Beschlüsse"}</span>
+                {/* „n im letzten Jahr" statt „n Beschlüsse": Diese Zahl kommt aus
+                    der Entitäten-Erkennung der letzten 365 Tage und ist etwas
+                    anderes als die Trefferzahl auf der Karte („Fliegerhorst"
+                    hier 12, dort 40+). Zwei verschiedene Zahlen dürfen nicht
+                    dasselbe Wort tragen — sonst steht die nächste Verwirrung
+                    schon fertig da. */}
+                <span className="text-primary/60">· {s.n} im letzten Jahr</span>
               </button>
             ))}
           </div>
@@ -284,9 +290,14 @@ function TopicsInner() {
                 {t.decision_count > 0 ? (
                   /* Design 28a/S4: führt in die echte Suche statt in einen Dialog.
                      Der Dialog konnte weder filtern noch sortieren noch teilen und
-                     war mobil eine Scroll-Wand — die Suchseite kann das alles längst. */
+                     war mobil eine Scroll-Wand — die Suchseite kann das alles längst.
+
+                     `cat=all` ist Pflicht, nicht Geschmack: Die Suchseite steht
+                     sonst auf „nur Beschlüsse" und wirft alle Berichte aus der
+                     Liste, die diese Zahl mitzählt. Genau das war Tims Befund
+                     (Build 12): Karte „40+", Liste 25. */
                   <Link
-                    href={`/council?tab=decisions&topic=${t.id}`}
+                    href={`/council?tab=decisions&cat=all&topic=${t.id}`}
                     onClick={() => markTopicSeen(t)}
                     className="text-sm font-medium text-primary hover:underline"
                   >

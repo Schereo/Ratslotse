@@ -7,6 +7,38 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Behoben
+- **Drei Zahlen für dieselbe Sache.** Ein Thema zeigte auf der Karte „40+
+  Beschlüsse", im Blatt „Thema anpassen" 12 und in der Liste hinter „alle
+  ansehen" 25. Die 12 war nie eine Trefferzahl, sondern die Länge des
+  Prompt-Kontexts; die Liste filterte still auf Beschlüsse mit
+  Abstimmungsergebnis und ließ alle Berichte weg. Jetzt gibt es eine Definition
+  an einer Stelle, die Cron und Web gemeinsam benutzen — dieselbe Zahl auf der
+  Karte, im Blatt und in der Liste, und wo wirklich gedeckelt wird, steht
+  überall „40+". Die Vorschlags-Chips nennen ihre viel gröbere Zahl jetzt beim
+  Namen („12 im letzten Jahr"). (#491)
+- **Dialoge lagen scheinbar hinter der Navigation.** Der Abdunkler unter „Thema
+  anpassen" war exakt die dunkle Seitenfarbe und dunkelte im Dunkelmodus nichts
+  ab — Kopfzeile und Tab-Leiste behielten ihren Glas-Look und wirkten dadurch
+  vor dem Dialog, der sie obendrein um wenige Pixel berührte. Es gibt jetzt
+  einen einheitlichen Abdunkler und fünf benannte Ebenen; auf breiten Geräten
+  hält der Dialog sichtbar Abstand zu Kopf und Leiste. (#491)
+- **Text schien unter dem Eingabefeld durch.** Zwischen Composer und Tab-Leiste
+  blieb ein Streifen offen, durch den die Antwort scrollte: Beide rechneten mit
+  einer eigenen Zahl für die Höhe der Leiste, und die war je nach Gerät
+  verschieden. Jetzt gibt es dafür eine gemeinsame Quelle. (#491)
+- **Der Eingabe-Balken verdeckte auf dem iPad die halbe Breite.** Statt eines
+  Riegels über den ganzen Bildschirm sitzt der Composer dort jetzt als Panel
+  auf der Chat-Spalte — die Quellen daneben bleiben bis unten sichtbar. (#491)
+- **Quellen liefen bei Folgefragen aus dem Bild.** Auf dem iPad läuft die
+  Belege-Spalte jetzt mit und sagt ab der zweiten Frage dazu, zu welcher Frage
+  sie gehört. (#491)
+- **Konto-Seite ließ die halbe Fläche leer.** Neben der langen
+  Benachrichtigungs-Karte stand ein Loch von fast 500 px Höhe, während links
+  noch zu scrollen war. Die Karten stapeln jetzt in Spalten statt in Zeilen und
+  nutzen die volle Breite — die Seite ist auf dem iPad quer ein Drittel kürzer.
+  (#491)
+
 ## [1.11.0] – 2026-08-15
 
 ### Behoben
