@@ -153,7 +153,7 @@ def apple_login(
         # Apple hat die Adresse bestätigt, deshalb darf die konfigurierte
         # Admin-Adresse hier sofort Admin werden — anders als bei der
         # Registrierung, wo die Adresse unbewiesen behauptet ist. Der
-        # „erste:r Nutzer:in wird Admin"-Notnagel entfällt: er verschenkte
+        # „erste:r Nutzer*in wird Admin"-Notnagel entfällt: er verschenkte
         # Admin an eine beliebige Person und hätte den Schutz in
         # _promote_configured_admin ausgehebelt.
         is_admin = bool(settings.web_admin_email) and email == settings.web_admin_email.lower()

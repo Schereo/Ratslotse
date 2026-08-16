@@ -113,7 +113,7 @@ export default function DatenschutzPage() {
           <Section title="Daten von Ratsmitgliedern und Verwaltung">
             <p>
               Ratslotse wertet die öffentlich zugänglichen Dokumente des Ratsinformationssystems der Stadt Oldenburg
-              aus. Darin kommen Menschen vor: Ratsmitglieder, sachkundige Bürger:innen, Ausschussvorsitzende und
+              aus. Darin kommen Menschen vor: Ratsmitglieder, sachkundige Bürger*innen, Ausschussvorsitzende und
               Beschäftigte der Verwaltung. Diese Daten stammen nicht von den Betroffenen selbst, deshalb informiert
               dieser Abschnitt nach Art. 14 DSGVO.
             </p>
@@ -141,7 +141,7 @@ export default function DatenschutzPage() {
               </li>
               <li>
                 <strong>KI-Antworten:</strong> Für die Beantwortung einer Frage können Ausschnitte dieser Dokumente
-                — und damit auch Namen von Mandatsträger:innen — an den KI-Dienst übermittelt werden. Antworten
+                — und damit auch Namen von Mandatsträger*innen — an den KI-Dienst übermittelt werden. Antworten
                 belegen jede Aussage mit der Quelle; maßgeblich bleibt das amtliche Original.
               </li>
               <li>

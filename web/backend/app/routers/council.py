@@ -88,7 +88,7 @@ def sessions(
         total = store.count_sessions(q, committee, date_from, date_to)
 
     # RL-902: „n TOPs zu deinen Themen" — Treffer der Tagesordnungs-
-    # Klassifikation für die eingeloggte Nutzer:in (eine Batch-Abfrage).
+    # Klassifikation für die eingeloggte Nutzer*in (eine Batch-Abfrage).
     ksinrs = [r["ksinr"] for r in rows if r.get("ksinr")]
     mine = nwz.agenda_matches_for_owner(user["id"], ksinrs)
     for r in rows:
@@ -657,7 +657,7 @@ def decision_detail(
     }
     # Läuft zu diesem Bauleitplan GERADE eine Beteiligung? Dann gehört der
     # Hinweis samt Frist an den Beschluss — Stellungnahme ist eine der wenigen
-    # Handlungen, die Bürger:innen JETZT offenstehen (Stufe 3b).
+    # Handlungen, die Bürger*innen JETZT offenstehen (Stufe 3b).
     try:
         from council import beteiligung as bet_mod
         out["beteiligung"] = next(
@@ -1489,7 +1489,7 @@ def person(slug: str, store: CouncilStore = Depends(get_council_store)) -> dict:
     """A council member's profile: party, sessions, active span, committees, recent sessions.
 
     Ohne Anmeldung lesbar (s. `decision_detail`). Es geht ausschließlich um
-    Mandatsträger:innen in ihrer öffentlichen Funktion, und die Angaben stammen
+    Mandatsträger*innen in ihrer öffentlichen Funktion, und die Angaben stammen
     aus den Anwesenheitslisten der amtlichen Protokolle — keine Privatperson
     wird hier auffindbar, die es nicht ohnehin schon ist.
     """

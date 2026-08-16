@@ -495,6 +495,13 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Der Städtevergleich steht bewusst spät: Er beantwortet eine Frage, die sich
   erst stellt, wenn man die eigenen Zahlen kennt. Auf dem Handy braucht das
   trotz drei zusätzlicher Ziele kaum mehr Platz als vorher. (#529)
+- **Ratslotse gendert jetzt durchgängig — mit Sternchen.** Aus „Nutzer" wird
+  „Nutzer*innen", aus „je Einwohnerin und Einwohner" wird „je Einwohner*in";
+  auch die Anweisungen an die KI sind mitgezogen, damit die Antworten nicht
+  weiter in generischen Maskulina zurückschreiben. Namen und Rechtsbegriffe
+  bleiben, wie sie heißen: Die „Einwohnerfragestunde" steht so im
+  Kommunalverfassungsgesetz, „Bürgerinfo" heißt das Ratsinformationssystem der
+  Stadt, und „Antragsteller" sind hier Fraktionen, keine Personen. (#533)
 
 <!-- GEPARKT (nur dev.ratslotse.de, Umgebungs-Gate): Eintrag aktivieren,
      sobald der Kommunalwahl-Vergleich auf Prod freigeschaltet wird.

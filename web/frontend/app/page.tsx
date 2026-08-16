@@ -43,7 +43,7 @@ export default function LandingPage() {
         <NativeRedirect />
       </Suspense>
       <PeekingChick />
-      {/* Tastatur-Nutzer:innen springen direkt zum Inhalt (visuell versteckt bis fokussiert). */}
+      {/* Tastatur-Nutzer*innen springen direkt zum Inhalt (visuell versteckt bis fokussiert). */}
       <a
         href="#inhalt"
         className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-primary-foreground"

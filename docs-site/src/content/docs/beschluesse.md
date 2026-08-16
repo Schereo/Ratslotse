@@ -7,7 +7,7 @@ Auswertung der öffentlichen Dokumente des Oldenburger Ratsinformationssystems:
 **Sitzungsprotokolle** (→ Beschlüsse, Abstimmungen, Anwesenheit), **Vorlagen**
 (→ Sachverhalt & Begründung) und **Anlagen** (→ Original-Anträge der Fraktionen
 mit Antragsteller-Erkennung) — durchsuchbar im Web, verknüpft mit den Themen
-der Nutzer:innen.
+der Nutzer*innen.
 
 ![Diagramm: Welche Dokumente Ratslotse auswertet — Sitzungskalender, Protokolle, Vorlagen und Anlagen — und welche Features daraus entstehen](../../assets/dokumente-pipeline.svg)
 
@@ -15,7 +15,7 @@ der Nutzer:innen.
 
 - Vergangene Sitzungen tragen ein **„Protokoll (öffentlich)"-PDF** (`getfile.php?id=…`),
   erkennbar am Label. Veröffentlicht mit Verzögerung (Tage–Wochen).
-- Inhalt pro Protokoll: Metadaten (Protokoll-Nr., Datum, Beginn/Ende), **Teilnehmer
+- Inhalt pro Protokoll: Metadaten (Protokoll-Nr., Datum, Beginn/Ende), **Teilnehmer*innen
   mit Fraktion**, und pro TOP **Beschlusstext + Abstimmungsergebnis** (einstimmig /
   mehrheitlich bei N Gegenstimmen, welche Fraktion, angenommen/abgelehnt/vertagt).
 - **Bestand:** lückenlos **seit Januar 2018** (~100 Sitzungen/Jahr, ~820 Protokolle,
@@ -126,7 +126,7 @@ council_memberships        -- Gremien-Mitgliedschaften je Person
 
 ### Anbindung an Nutzer-Themen
 
-Beschlüsse werden gegen die Themen der Nutzer:innen klassifiziert (mit strengem
+Beschlüsse werden gegen die Themen der Nutzer*innen klassifiziert (mit strengem
 Verify-Pass) und speisen „Beschlüsse zu deinen Themen" samt Benachrichtigung.
 Die Treffer liegen in **`council_topic_matches`** — und zwar in der **Konten-DB**
 (`nwz.sqlite`), nicht in `council.sqlite`: Sie hängen an einem Konto, die
