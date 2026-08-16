@@ -24,7 +24,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   518 %, „der Rest" komme aus Steuern und Zuweisungen. Einen Rest gibt es dort
   nicht: Der Bereich nimmt mehr ein, als er ausgibt. Der Satz sagt das jetzt,
   samt Hinweis, dass darin keine besondere Sparsamkeit steckt, sondern die
-  Zuordnung der Einnahmen. (#PR)
+  Zuordnung der Einnahmen. (#503)
 
 ### Verbessert
 - **Das Haushalts-Labor sagt jetzt, ob das viel ist.** Bisher bewegte man
