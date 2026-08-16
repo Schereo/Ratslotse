@@ -395,6 +395,19 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   ein Hebesatzpunkt mehr" war als „brutto" bezeichnet, obwohl der Datensatz die
   Gewerbesteuer bereits nach Abzug der Umlage führt, und beim Hebesatz stand
   „bis 2025", obwohl wir genau einen einzigen Jahrgang kennen. (#519)
+- **„Soziales", „Finanzmanagement" — was heißt das eigentlich? Der Haushalt hat
+  jetzt ein Verzeichnis seiner Bereiche.** Unter `/haushalt/bereiche` stehen alle
+  13 Teilhaushalte mit Betrag und einer Zeile Klartext, vorweg der schwierigste
+  Fall: Bei „Finanzmanagement und Recht" geht der Löwenanteil aller Einnahmen
+  ein, nicht weil die Kämmerei etwas erwirtschaftet, sondern weil dort alle
+  Steuern und die allgemeinen Zuweisungen des Landes zentral verbucht werden —
+  was da zusammenkommt, steht jetzt einzeln daneben. Die Bereichsseite selbst
+  rechnet ihre Kernaussage neu vor: ein Wasserfall von den Ausgaben über die
+  eigenen Einnahmen zu dem Betrag, den die Allgemeinheit trägt, in Millionen
+  statt als Prozent-Ring. Dazu die tatsächliche Zusammensetzung der eigenen
+  Einnahmen aus dem Jahresabschluss statt einer Schätzung, die teuersten
+  Aufgaben des Bereichs aus der Produktebene mit Jahresstempel, und drei Reiter
+  statt einer sehr langen Rolle. (#523)
 - **Die Einnahmen-Ausgaben-Schere zeigt jetzt die Lücke selbst — und was
   tatsächlich daraus wurde.** Zwei Linien zwangen dazu, den Abstand mit dem
   Auge abzumessen; genau der Abstand ist aber die Aussage. Er ist jetzt eine
