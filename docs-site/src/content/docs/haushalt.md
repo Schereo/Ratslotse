@@ -410,6 +410,27 @@ Antworten, und eine davon veraltet still.
 | Gesamtergebnishaushalt | Label `%Gesamtergebnishaushalt%`, > 10 Seiten; Jahrgang aus dem **Tabellenkopf** (vier der acht Dokumente tragen keine Jahreszahl im Label) | `council_ergebnishaushalt` | Oktober, Jahrgang − 1 |
 | Konsolidierter Gesamtabschluss | **nur** Text (`konzernabschluss.TEXT_MUSTER`), > 40 Seiten — die Labels dieser Reihe sind wertlos | `council_konzern_posten` (+ `council_konzern_traeger`) | Februar, Jahrgang + 2 |
 | Haushaltsplan | *(kein Anlagen-Muster — Download)* | `council_haushalt` | Oktober, Jahrgang − 1 |
+| Steuerkraft im Städtevergleich | *(kein Anlagen-Muster — Download beim LSN)* | `council_staedtevergleich`, Reihe `steuerkraft` | April, Jahrgang + 0 |
+| Realsteuervergleich (Hebesätze, Steuereinnahmekraft) | *(kein Anlagen-Muster — Download beim LSN)* | `council_staedtevergleich`, Reihe `realsteuern` | November, Jahrgang + 1 |
+
+:::note[Warum der Städtevergleich zwei Zeilen bekommt]
+Beide Reihen liegen in derselben Tabelle, aber ihre Jahresangaben bedeuten
+Verschiedenes: Beim Finanzausgleich ist es das **Ausgleichsjahr** (es läuft dem
+Kalender voraus — „KFA 2026" erscheint im März 2026), beim Realsteuervergleich
+das **Berichtsjahr** (es hinkt nach — der Bericht 2025 erschien im Juli 2026).
+Als eine Zeile ergäbe das die Spanne „2023–2026", in der zwei Jahresangaben
+dasselbe zu meinen scheinen. Genau diese Verwechslung ist der Grund, warum der
+Städtevergleich überhaupt eine eigene Tabelle hat.
+
+Die Monate sind an den Dateien nachgesehen, nicht geschätzt: Die
+**endgültigen** KFA-Tabellen tragen den Stand 25.04.2023, 02.04.2024,
+25.03.2025 und 26.03.2026; die Realsteuervergleiche erschienen im Juni 2022,
+August 2023, November 2024, November 2025 und Juli 2026. Als Schwelle steht
+jeweils der **späteste** gemessene Monat — zu früh gemeldet wäre der teurere
+Fehler. Und beim Finanzausgleich zählt ausdrücklich die endgültige Fassung: Die
+vorläufige erscheint schon im November davor, enthält aber gar kein Blatt
+`ST_KR_MESS_VGL` und kann die Schicht deshalb nicht füllen.
+:::
 
 Der Städtevergleich (`council_staedtevergleich`) steht **nicht** in dieser
 Tabelle: Seine Quellen sind Tabellenmappen des Landesamts, keine Anlagen im
@@ -445,6 +466,23 @@ Jahrgänge automatisch nach" galt pauschal für die ganze Liste — deren erste 
 prominenteste Zeile aber der Haushaltsplan ist, den der Cron gar nicht anfasst.
 Jetzt nennt sie die Schichten, die **nicht** automatisch nachkommen, beim
 Namen, und zieht die Liste aus den Daten: `automatisch === false`.
+
+**Auch die Stelle dahinter kommt aus den Daten.** Der Satz endete bis 08/2026
+auf „— die Zahlen dafür holen wir vom Portal der Stadt", was stimmte, solange
+der Haushaltsplan die einzige Schicht von Hand war. Mit dem Städtevergleich
+kamen zwei Reihen einer **Landesbehörde** dazu; der feste Satz hätte das
+Landesamt für Statistik zur Stadtverwaltung erklärt. Die Fußzeile gruppiert die
+Schichten deshalb nach ihrer Quelle (`quelle`, aus `finanzquellen.STELLEN`) und
+nennt sie in Klammern. Dieselbe Falle steckte in der Cron-Meldung, die pauschal
+zu `scripts/ingest_haushalt.py` schickte — welches Skript zuständig ist, steht
+jetzt bei der Schicht (`Finanzquelle.nachschub`).
+
+Der Städtevergleich ist überhaupt der Fall, für den der Ausblick gebaut ist: Es
+gibt kein Dokument im Ratsinformationssystem, an dem ein Cron merken könnte,
+dass ein Jahrgang vorliegt, und geholt wird nur **einmal im Jahr** von Hand. An
+eine Handreichung, die zwölf Monate zurückliegt, erinnert sich niemand von
+selbst — die Meldung „Der Jahrgang 2026 wäre seit November 2027 zu erwarten"
+ist der einzige Wecker, den diese Schicht hat.
 
 ## Die redaktionelle Schicht
 

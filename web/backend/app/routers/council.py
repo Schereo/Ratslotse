@@ -427,9 +427,11 @@ def haushalt_datenstand(
     die haben **verschiedene** Takte: Der Plan liegt im Oktober vor seinem
     Haushaltsjahr, die Abrechnung samt Prüfberichten im September danach,
     der Gesamtabschluss (Konzern Stadt) rund zwei Jahre danach — er entsteht
-    erst, wenn alle einbezogenen Jahresabschlüsse geprüft sind. Für einen
-    Jahrgang liegt deshalb fast nie alles gleichzeitig vor; das ist der
-    Normalfall, nicht die Störung.
+    erst, wenn alle einbezogenen Jahresabschlüsse geprüft sind. Die beiden
+    Reihen des Städtevergleichs hängen an einem ganz anderen Haus: Sie kommen
+    vom Landesamt für Statistik, einmal im Jahr. Für einen Jahrgang liegt
+    deshalb fast nie alles gleichzeitig vor; das ist der Normalfall, nicht
+    die Störung.
 
     Je Schicht: die vorhandenen Jahrgänge, Lücken darin, der nächste
     erwartete Jahrgang samt Datum, und ob er schon überfällig ist. Die Werte
