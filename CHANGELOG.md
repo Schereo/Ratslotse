@@ -8,6 +8,22 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Der Haushalt sagt jetzt, welche Vorhaben hinter den Summen stehen.** „Was
+  wird gebaut?" endete bisher bei „Verkehr und Straßenbau: 10,5 Mio. €" — und
+  die Seite musste selbst zugeben, dass sie die naheliegende Anschlussfrage
+  nicht beantwortet. Das Investitionsprogramm des Haushaltsplans führt jedes
+  Vorhaben einzeln auf; es lag die ganze Zeit im eigenen Anlagenbestand. Statt
+  „Kultur, Museen, Sport: 19,4 Mio. €" stehen dort jetzt das Post-SV-Gelände mit
+  seiner Skatehalle, zwei Kunstrasenplätze und der Sportplatz am Schweriner Weg
+  — 4.459 Vorhaben aus acht Haushaltsjahrgängen, durchsuchbar, und von der
+  Summe je Bereich in beide Richtungen verlinkt. Angegeben sind die
+  Gesamtkosten eines Vorhabens über alle Jahre; wie viel davon in welchem Jahr
+  fließen soll, steht im Plan zwar daneben, ließ sich aus dem Dokument aber
+  nicht verlässlich auslesen, und deshalb zeigen wir es nicht. Ein Befund gehört
+  ausdrücklich dazu: **Schulgebäude stehen nicht darin.** Sanierung und Neubau
+  verantwortet der Eigenbetrieb Gebäudewirtschaft und Hochbau mit einem eigenen
+  Wirtschaftsplan — die Seite sagt das, statt eine Antwort anzudeuten, die sie
+  nicht hat. (#565)
 - **„Frag den Rat" kennt den Haushalt jetzt ganz — und beantwortet vier Fragen
   nicht mehr aus der falschen Quelle.** Der Haushalts-Bereich war auf dreizehn
   Datenschichten gewachsen, die KI-Frage kannte zehn davon. Die vier fehlenden

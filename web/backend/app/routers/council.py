@@ -574,6 +574,48 @@ def haushalt_investitionen(
     }
 
 
+@router.get("/haushalt/investitionsprogramm")
+def haushalt_investitionsprogramm(
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Die einzelnen Vorhaben — die Ebene unter ``/haushalt/investitionen``.
+
+    Aus Anlage 004 des Haushaltsplans: nicht „Schule und Bildung: 8,3 Mio. €",
+    sondern „BBS Haarentor: Ausstattung". Acht Jahrgänge, rund 4.500 Vorhaben.
+
+    - ``jahre``: Jahrgänge, für die ein Programm vorliegt,
+    - ``massnahmen``: je Vorhaben Teilhaushalt, IPSP-Element, Bezeichnung und
+      **Gesamtinvestitionssumme**,
+    - ``teilhaushalte``: je Teilhaushalt die Gesamtsumme, die das Dokument am
+      Ende seines Abschnitts ausweist — das **Ziel der Rechenprobe**, nicht
+      unsere Addition,
+    - ``gesamt``: je Jahrgang die Gesamtsumme des Investitionsprogramms,
+    - ``herkunft``: Dokument, Fundstelle und die drei bestandenen Proben.
+
+    Drei Grenzen, die die Seite nennt und die API deshalb nicht verwischt:
+
+    1. **Nur die Gesamtinvestitionssumme**, keine Jahresraten — im Textextrakt
+       fallen leere Zellen ersatzlos weg, die Spaltenzuordnung wäre geraten.
+    2. **Plan, nicht Ist.** Was am Jahresende wirklich gebaut wurde, steht
+       nicht darin.
+    3. **Nicht deckungsgleich mit** ``/haushalt/investitionen``. Beide Zahlen
+       stimmen und zählen Verschiedenes: Das Investitionsprogramm führt die
+       Gesamtkosten eines Vorhabens über alle Jahre, der Finanzhaushalt die
+       Zahlungen eines Jahres — und die zu aktivierenden Eigenleistungen
+       gehören nur ins Programm. Das Dokument sagt das in einer Fußnote selbst.
+    """
+    zeilen = store.get_investitionsmassnahmen()
+    ids = sorted({z["herkunft_id"] for z in zeilen if z["herkunft_id"] is not None})
+    return {
+        "jahre": store.investitionsprogramm_jahre(),
+        "massnahmen": [z for z in zeilen if z["ebene"] == "massnahme"],
+        "teilhaushalte": [z for z in zeilen if z["ebene"] == "teilhaushalt"],
+        "gesamt": [z for z in zeilen if z["ebene"] == "gesamt"],
+        "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
+    }
+
+
 @router.get("/haushalt/datenstand")
 def haushalt_datenstand(
     _user: dict = Depends(require_active),

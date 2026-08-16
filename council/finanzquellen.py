@@ -69,8 +69,9 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Callable
 
-from council import (ergebnishaushalt, finanzberichte, herkunft, konzernabschluss,
-                     pruefberichte, stellenplan)
+from council import (ergebnishaushalt, finanzberichte, herkunft,
+                     investitionsprogramm, konzernabschluss, pruefberichte,
+                     stellenplan)
 from council.store import CouncilStore
 
 #: Wie lange nach dem erwarteten Monat ein fehlender Jahrgang als „die Stadt
@@ -436,6 +437,22 @@ def _bestand_investitionen(store: CouncilStore) -> set[tuple]:
     Summenzeile (``store.investitionen_jahre``): Sie steht nur in der Tabelle,
     wenn die Rechenprobe aufging."""
     return {(j,) for j in store.investitionen_jahre()}
+
+
+def _einheiten_investitionsprogramm(row: dict) -> set[tuple]:
+    """Ein Dokument trägt einen ganzen Jahrgang — die Einheit ist der Jahrgang.
+
+    Der Jahrgang kommt aus dem Textkopf, nicht aus dem Label: Vier der acht
+    Anlagen heißen nur „004 Investitionsprogramm" (s.
+    ``investitionsprogramm.jahrgang``)."""
+    jahr = investitionsprogramm.jahrgang(row.get("kopf"))
+    return {(jahr,)} if jahr else set()
+
+
+def _bestand_investitionsprogramm(store: CouncilStore) -> set[tuple]:
+    """Gezählt an der ``gesamt``-Zeile: Sie steht nur in der Tabelle, wenn alle
+    drei Proben des Dokuments aufgingen."""
+    return {(j,) for j in store.investitionsprogramm_jahre()}
 
 
 def _bestand_konzernabschluss(store: CouncilStore) -> set[tuple]:
@@ -917,6 +934,89 @@ def lies_ergebnishaushalte(store: CouncilStore, p: Protokoll,
                                  "geprueft": g["geprueft"],
                                  "anteil_prozent": round(g["anteil"] * 100, 4)}
                                 for g in gegenproben]}
+
+
+def lies_investitionsprogramme(store: CouncilStore, p: Protokoll,
+                               nur_fehlende: bool = False,
+                               schuetzen: bool = True) -> dict:
+    """Die einzelnen Vorhaben aus Anlage 004 der Haushaltspläne.
+
+    Die Ebene unter ``council_investitionen``: nicht „Schule und Bildung:
+    8,3 Mio. €", sondern die Maßnahme mit Namen. Drei Pflicht-Proben
+    entscheiden, alle drei im Dokument selbst (``investitionsprogramm.pruefe``);
+    reißt eine, kommt der ganze Jahrgang nicht herein.
+
+    Gespeichert wird **nur die Gesamtinvestitionssumme** je Maßnahme, nicht die
+    Jahresraten — der Textextrakt gibt sie nicht sicher her (Begründung im Kopf
+    von ``council/investitionsprogramm.py``).
+
+    Wie beim Gesamtergebnishaushalt hängt die Anlage an der
+    Einbringungs-Vorlage: Es ist der **Entwurf der Verwaltung**, nicht der
+    Stand nach den Beratungen. Das steht in der Herkunft (``stand``)."""
+    quelle = QUELLEN["investitionsprogramm"]
+    sql, werte = quelle.erkennung.abfrage("document_id, label, url, raw_text")
+    rows = [dict(r) for r in store._conn.execute(sql, werte)]  # noqa: SLF001
+    vorhanden = _bestand_investitionsprogramm(store) if nur_fehlende else set()
+
+    je_jahrgang: dict[int, dict] = {}
+    geschuetzt = verworfen = 0
+    for r in rows:
+        jahr = investitionsprogramm.jahrgang((r["raw_text"] or "")[:4000])
+        if jahr is None:
+            p.warnen(f"  Dokument {r['document_id']} ({r['label']!r}): kein "
+                     f"„Ansatz JJJJ“ im Tabellenkopf — übersprungen")
+            verworfen += 1
+            continue
+        if (jahr,) in vorhanden:
+            continue
+        if jahr in je_jahrgang:
+            # Zwei Dokumente je Jahrgang sind der Normalfall, nicht die
+            # Ausnahme: Neben dem Verwaltungsentwurf steht regelmäßig eine
+            # zweite Fassung an einer späteren Vorlage. `ordnung="document_id"`
+            # sortiert nach Veröffentlichung, das erste Dokument gewinnt.
+            p.sagen(f"  {jahr}: zweites Dokument ({r['document_id']}) — "
+                    f"übersprungen, der Jahrgang steht schon")
+            continue
+
+        gelesen = investitionsprogramm.lies(r["raw_text"] or "", jahr)
+        if not gelesen["bestanden"]:
+            p.warnen(f"  {jahr}: {gelesen['nachweis']} — Dokument "
+                     f"{r['document_id']}, nicht gespeichert")
+            verworfen += 1
+            continue
+
+        n = sum(len(a["massnahmen"]) for a in gelesen["abschnitte"].values())
+        alt = _anzahl(store, "SELECT COUNT(*) FROM council_investitionsmassnahmen "
+                             "WHERE jahr = ? AND ebene = 'massnahme'", (jahr,))
+        if not bestandsschutz(p, f"{jahr} Investitionsprogramm", alt, n, schuetzen):
+            geschuetzt += 1 if alt else 0
+            continue
+
+        store.save_investitionsprogramm(jahr, gelesen, herkunft.Herkunft(
+            art="ris", probe=["investitionsprogramm_abschnitt",
+                              "investitionsprogramm_wiederholung",
+                              "investitionsprogramm_kopftabelle"],
+            dokument_id=r["document_id"], label=r["label"], url=r["url"],
+            fundstelle="Investitionsprogramm — Gesamtinvestitionsprogramm und "
+                       "die Abschnitte je Teilhaushalt, Spalte "
+                       "„Gesamtinvestitionssumme“",
+            probe_ergebnis=gelesen["nachweis"],
+            stand=f"Haushaltsplan {jahr}, Anlage 004 — Stand der Einbringung"))
+
+        je_jahrgang[jahr] = {"massnahmen": n,
+                             "teilhaushalte": len(gelesen["abschnitte"]),
+                             "gesamtsumme": gelesen["kopfsumme"]}
+        p.sagen(f"  {jahr}: {n} Maßnahmen in {len(gelesen['abschnitte'])} "
+                f"Teilhaushalten · {(gelesen['kopfsumme'] or 0)/1e6:.1f} Mio. € "
+                f"Gesamtinvestitionsprogramm · Dokument {r['document_id']}")
+
+    return {"neue_jahrgaenge": sorted(je_jahrgang),
+            "neue_einheiten": [(j,) for j in sorted(je_jahrgang)],
+            "bestand_geschuetzt": geschuetzt,
+            "je_investitionsjahrgang": je_jahrgang,
+            "investitionsmassnahmen": sum(d["massnahmen"]
+                                          for d in je_jahrgang.values()),
+            "investitionsprogramm_verworfen": verworfen}
 
 
 def lies_stellenplaene(store: CouncilStore, p: Protokoll,
@@ -1623,6 +1723,38 @@ for _q in (
         bestand=_bestand_investitionen,
     ),
     Finanzquelle(
+        key="investitionsprogramm",
+        label="Investitionsprogramm (einzelne Vorhaben)",
+        was="Welche einzelnen Vorhaben hinter den Investitionssummen stehen — "
+            "vom Kunstrasenplatz über den Straßenabschnitt bis zum "
+            "Feuerwehrfahrzeug, jedes mit seiner Gesamtsumme.",
+        tabelle="council_investitionsmassnahmen",
+        # Anlage 004 des Haushaltsplans, also derselbe Takt wie der
+        # Gesamtergebnishaushalt (Anlage 005) und der Stellenplan: Einbringung
+        # Anfang Oktober des Vorjahres. Über die acht Jahrgänge 2019–2026
+        # gemessen liegen alle im Oktober oder November.
+        erwarteter_monat=10,
+        versatz=-1,
+        herkunft="ris",
+        erkennung=Erkennung(
+            # Das Label reicht: „Investitionsprogramm" steht bei genau diesen
+            # acht Anlagen im Titel — die Schreibweise davor schwankt
+            # („004 Investitionsprogramm" bis „2026 004 Vw Investitionsprogramm
+            # Haushalt 2026 Verwaltungsentwurf"), das Wort selbst nicht.
+            label_muster=(investitionsprogramm.LABEL_MUSTER,),
+            # Die Dokumente haben 76–84 Seiten; die Schwelle hält Deckblätter,
+            # Auszüge und die Änderungslisten der Beratung draußen.
+            mindest_seiten=40,
+            # Nach Veröffentlichung, damit bei zwei Fassungen eines Jahrgangs
+            # der Verwaltungsentwurf gewinnt und nicht der Zufall der
+            # Schreibweise (vgl. `teilhaushalt`).
+            ordnung="document_id",
+        ),
+        einheiten_von=_einheiten_investitionsprogramm,
+        bestand=_bestand_investitionsprogramm,
+        einlesen=lies_investitionsprogramme,
+    ),
+    Finanzquelle(
         key="haushaltsplan",
         label="Haushaltsplan",
         was="Der Plan, den der Rat beschließt: was die Stadt im kommenden Jahr "
@@ -1762,9 +1894,13 @@ for _q in (
 #: Schuldenstand: Beide verlassen die Kernverwaltung, und der Gesamtabschluss
 #: sagt, wie viel die Betriebe bewegen, der Beteiligungsbericht, was sie tun.
 #: Die Zahl kommt zuerst, die Erklärung gleich danach.
+#: Das Investitionsprogramm steht direkt hinter den Investitionen: Es ist
+#: dieselbe Frage eine Stufe feiner — erst wie viel ein Bereich investiert,
+#: dann welches Vorhaben das ist. Dieselbe Ordnung wie bei Teilhaushalten und
+#: Stellenplan, und aus demselben Grund.
 REIHENFOLGE = ("haushaltsplan", "ergebnishaushalt", "investitionen",
-               "jahresabschluss", "teilhaushalt", "stellenplan",
-               "rpa_fundstelle", "pruefungsfeststellungen",
+               "investitionsprogramm", "jahresabschluss", "teilhaushalt",
+               "stellenplan", "rpa_fundstelle", "pruefungsfeststellungen",
                "konzernabschluss", "beteiligungsbericht", "schulden",
                "lsn_steuerkraft", "lsn_realsteuern")
 
