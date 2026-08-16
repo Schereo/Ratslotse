@@ -157,7 +157,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   mehr, wie sich ein Jahrgang entwickelt hat, den die Seite gar nicht zeigt.
   Dazu die Sternchenform in den letzten eigenen Dokumenten (Zitate aus
   Wahlprogrammen bleiben unangetastet) und eine ungenutzte Komponente weniger.
-  (#547)
+  (#549)
 - **Zahlen, die eine Rechenprobe nicht bestehen, ersetzen keine vorhandenen
   mehr.** Liest ein Parser für einen bereits gespeicherten Jahrgang plötzlich
   nichts oder deutlich weniger — etwa weil die Stadt ihre Tabellen umbaut —,
