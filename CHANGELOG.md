@@ -381,6 +381,19 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   ein Hebesatzpunkt mehr" war als „brutto" bezeichnet, obwohl der Datensatz die
   Gewerbesteuer bereits nach Abzug der Umlage führt, und beim Hebesatz stand
   „bis 2025", obwohl wir genau einen einzigen Jahrgang kennen. (#519)
+- **Die Einnahmen-Ausgaben-Schere zeigt jetzt die Lücke selbst — und was
+  tatsächlich daraus wurde.** Zwei Linien zwangen dazu, den Abstand mit dem
+  Auge abzumessen; genau der Abstand ist aber die Aussage. Er ist jetzt eine
+  Fläche mit einer Strebe an jedem Jahr, und der größte Abstand trägt seinen
+  Betrag im Bild. Dazu der Wirklichkeitstest: Für die Jahre, für die ein
+  Jahresabschluss vorliegt, steht als Raute daneben, was am Ende herauskam —
+  2023 und 2024 plante die Stadt ein Minus und schloss mit einem Plus ab.
+  Deshalb heißt die Überschrift jetzt „Seit 2023 *plant* Oldenburg mit mehr
+  Ausgaben als Einnahmen", und sie wird aus den Daten gerechnet statt
+  festgeschrieben. Wo ein Jahrgang seinen Plan an einer anderen Bezugsgröße
+  misst (2020: Ansatz samt Nachtragshaushalt), steht ein Sternchen mit
+  Fußnote. Farbe bewertet dabei weiterhin nichts: Signal-Orange heißt „hier
+  ist die Differenz" — in den Plus- wie in den Minusjahren. (#522)
 
 <!-- GEPARKT (nur dev.ratslotse.de, Umgebungs-Gate): Eintrag aktivieren,
      sobald der Kommunalwahl-Vergleich auf Prod freigeschaltet wird.
