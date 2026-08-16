@@ -170,6 +170,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Jahr erscheinen. (#530)
 
 ### Behoben
+- **Die Überschrift der Anzeigetafel brach mitten im Wort um.** „Oldenburg plant
+  883,9 Mil-/lionen Euro" — dabei blieben rechts daneben rund 400 Pixel frei.
+  Ursache war eine Breitenbegrenzung von 19 Zeichen, die noch aus einer engeren
+  Fassung stammte; die Silbentrennung, die auf schmalen Geräten deutsche
+  Komposita rettet, tat dann ihr Übriges. Der Satz steht jetzt in zwei
+  ausgeglichenen Zeilen. (#539)
 - **Der Kassenzettel erklärte etwas, das niemand erklärt bekommen muss.** „Keine
   Rechnung — niemand überweist diesen Betrag" stand im Kasten „Was diese Zahl
   nicht ist". Dass eine Pro-Kopf-Zahl keine Forderung ist, weiß jede Leserin;

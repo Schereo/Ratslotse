@@ -81,7 +81,13 @@ export function Tafel({ zeilen, jahr, aktuell, aktion, children }: {
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-primary sm:text-[10.5px]">
             Stadthaushalt Oldenburg {jahr}
           </p>
-          <h1 className="mt-2.5 max-w-[19ch] font-display text-[23px] font-bold leading-[1.15] tracking-tight sm:text-[32px]">
+          {/* 19ch war zu eng: Der Satz passt in zwei Zeilen, die Begrenzung erzwang
+              aber eine dritte — und weil `hyphens: auto` auf allen Überschriften
+              steht (globals.css, für Komposita auf schmalen Screens), trennte der
+              Browser mitten in „Millionen", während rechts 400 px frei blieben.
+              `text-balance` verteilt die Zeilen gleichmäßig, statt die letzte
+              mit einem Wort stehen zu lassen. */}
+          <h1 className="mt-2.5 max-w-[30ch] text-balance font-display text-[23px] font-bold leading-[1.15] tracking-tight sm:text-[32px]">
             {aktuell
               ? <>Oldenburg plant {deMio(ausMio)} Millionen&nbsp;Euro.</>
               : <>{jahr} plante Oldenburg {deMio(ausMio)} Millionen&nbsp;Euro.</>}
