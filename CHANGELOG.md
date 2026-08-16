@@ -252,7 +252,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Ort. Die Absicherung war die ganze Zeit da, der Wächter schlug trotzdem an.
   Er prüft jetzt die Eigenschaft statt den Ort. Nebenbei stimmen die Angaben
   „elf Schritte, vierzehn Seiten" wieder mit dem überein, was der Bereich
-  tatsächlich hat. (#551)
+  tatsächlich hat. (#552)
 - **Der Erklärblock zum Finanzausgleich ließ die halbe Karte leer.** Zwei
   Absätze, die Verschiedenes sagen, standen untereinander und brachen bei
   74 Zeichen um — daneben blieb Platz. Sie stehen jetzt auf breiten
