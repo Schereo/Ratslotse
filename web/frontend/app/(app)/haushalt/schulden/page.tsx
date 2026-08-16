@@ -44,34 +44,37 @@ import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 
 const QUELLEN = ["schulden"] as const;
 
-/** Die Herkunft einer Angabe im Klartext: welcher Abschnitt, welche Probe,
- *  welcher Messwert. Das Quellenverzeichnis am Seitenende beschreibt die
- *  Quelle der ganzen Seite; das hier gehört an die einzelne Zahl.
+/** Wo eine Angabe im Dokument steht: welcher Abschnitt, welcher Stand. Das
+ *  Quellenverzeichnis am Seitenende beschreibt die Quelle der ganzen Seite;
+ *  das hier gehört an die einzelne Zahl und ist der Grund, warum man sie in
+ *  einem mehrseitigen PDF wiederfindet.
+ *
+ *  BEWUSST OHNE UNSERE PROBEN. Die erste Fassung dieser Seite zeigte hier die
+ *  Sätze aus `herkunft.PROBEN` und darunter „Gemessen: Summenprobe 30 von
+ *  31". Das sagt etwas über uns und nichts über die Schulden der Stadt —
+ *  Selbstvergewisserung (DESIGNSPRACHE.md § 7), und `konzern/page.tsx` hat
+ *  denselben Block am 16.08. aus demselben Grund verloren. Die Proben laufen
+ *  unverändert weiter, die API liefert sie weiter, Tests halten sie fest und
+ *  die Technik-Doku beschreibt sie. Nur die Zurschaustellung ist weg.
+ *
+ *  Was **inhaltlich** aus einer gerissenen Probe folgt, bleibt selbstver-
+ *  ständlich stehen: dass für 2022 die Aufteilung fehlt, steht als Satz an
+ *  der Aufteilung — das ist eine Grenze der Zahlen und keine Auskunft über
+ *  unsere Sorgfalt.
  *
  *  Bewusst dieselbe Bauart wie in `konzern/page.tsx` und `vergleich/page.tsx`
  *  und bewusst nicht geteilt — die drei Seiten sollen einander nicht brechen. */
 function Fundstelle({ h }: { h: Herkunft | null }) {
-  if (!h) return null;
+  // Ohne Fundstelle nichts — sonst bliebe eine Überschrift ohne Inhalt stehen.
+  if (!h?.fundstelle) return null;
   return (
     <div className="border-t border-dashed border-border pt-2.5">
       <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
         Woher diese Zahlen kommen
       </p>
-      {h.fundstelle && (
-        <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
-          {h.fundstelle}{h.stand ? ` · ${h.stand}` : ""}
-        </p>
-      )}
-      {h.proben.length > 0 && (
-        <ul className="mt-1 flex list-disc flex-col gap-0.5 pl-4 text-[11.5px] leading-relaxed text-muted-foreground">
-          {h.proben.map((satz) => <li key={satz}>{satz}</li>)}
-        </ul>
-      )}
-      {h.probe_ergebnis && (
-        <p className="mt-1 font-mono text-[10px] leading-relaxed text-muted-foreground">
-          Gemessen: {h.probe_ergebnis}
-        </p>
-      )}
+      <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
+        {h.fundstelle}{h.stand ? ` · ${h.stand}` : ""}
+      </p>
     </div>
   );
 }
