@@ -351,6 +351,19 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   davon waren zudem schief: Die Eingliederungshilfe ist bei Soziales der größte
   Block, und im Finanzmanagement liegen alle Steuern, aber nur die allgemeinen
   Zuweisungen des Landes. (#517)
+- **„Muss oder kann?" sagt jetzt, was die Stadt selbst dazu sagt.** Die Seite
+  beginnt mit einem Balken, der die geplanten Ausgaben in Pflicht, Pflicht mit
+  Spielraum und Kür zerlegt und das geplante Minus als Marke daneben setzt —
+  statt drei Filterklicks über einer Liste aus 13 Karten. Neu ist der
+  Gegencheck: Die Stadt gibt in ihren Teilhaushaltsplänen zu jeder Aufgabe an,
+  worauf sie beruht und wie viel Spielraum sie bei ihr sieht. Bei 6 von 9
+  Bereichen, für die es diese Angabe gibt, deckt sich das mit unserer
+  Einordnung — bei Jugend und Familie, Finanzmanagement und Recht sowie
+  Stadtplanung nicht, und genau das steht jetzt da, statt geglättet zu werden.
+  Dazu die Rechtsgrundlagen im Wortlaut des Plans und die Korrektur einer
+  schiefen Rechnung: Das Freiwillige zu streichen spart nicht seine 47,1 Mio. €
+  Aufwand, sondern seinen Zuschussbedarf von 43,0 Mio. — rund 60 % des
+  geplanten Minus. (#521)
 - **„Woher kommt das Geld?" sortiert jetzt nach Entscheidungsmacht — und sagt
   beim Finanzausgleich ehrlich, dass es die Zahl nicht gibt.** Die
   Einnahmequellen standen bisher nach Betrag sortiert nebeneinander, jede mit
