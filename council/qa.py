@@ -994,8 +994,13 @@ _F_AUFGABE = re.compile(
 # * „Was gibt die Stadt für X aus?" ist dieselbe Frage wie „Was kostet X?"
 #   und muss dieselbe Quelle ziehen; sonst hängt die Produktebene an der
 #   Laune der Formulierung.
+# `kosten\b` NEBEN `\bkost`: Die Wortgrenze vorn trifft „kostet" und „Kosten",
+# verfehlt aber jedes Kompositum — „Personalkosten", „Baukosten",
+# „Betriebskosten" gingen leer aus, obwohl sie dieselbe Frage stellen. Die
+# Endung fängt sie, ohne die Falle zu öffnen, die `\bteuer` schließt: Ein Wort
+# wie „Kostüm" endet nicht auf „kosten".
 _F_KOSTEN = re.compile(
-    r"\bkost|\bteuer|\bpreis|gibt.{0,40}\baus\b|geben.{0,40}\baus\b|"
+    r"\bkost|kosten\b|\bteuer|\bpreis|gibt.{0,40}\baus\b|geben.{0,40}\baus\b|"
     r"ausgegeben fuer|ausgaben fuer|aufwend")
 # Zwei Wörter sind hier am 17.08. HERAUSGEFALLEN, und beide waren gemessene
 # Fehlleitungen — nicht Kosmetik:
@@ -1006,7 +1011,7 @@ _F_KOSTEN = re.compile(
 #   Investition steht (ein Schulneubau taucht dort nur als Abschreibung auf).
 #   Auch sie hat jetzt ihre eigene (`_F_INVEST`).
 _F_PLAN = re.compile(
-    r"haushalt|\betat\b|budget|\bansatz|\bkost|\bteuer|\bpreis|\bausga[bp]|ausgeb|"
+    r"haushalt|\betat\b|budget|\bansatz|\bkost|kosten\b|\bteuer|\bpreis|\bausga[bp]|ausgeb|"
     r"ausgeg|ausgib|gibt.{0,40}\baus\b|geben.{0,40}\baus\b|"
     r"aufwend|einnahm|ertrag|ertraeg|finanziert|zuschuss|foerder|"
     r"million|\bmio\b|\beuro\b|defizit|ueberschuss")
