@@ -8,6 +8,21 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **„Was wird gebaut?" — der Haushalts-Bereich zeigt jetzt auch die
+  Investitionen.** Bisher stand dort ausschließlich der laufende Betrieb:
+  Personal, Zuschüsse, Energie, Mieten. Neubauten, Fahrzeuge und Grundstücke
+  haben einen eigenen Haushalt, und der kam schlicht nicht vor — ein Schulneubau
+  tauchte nur als Abschreibung auf, verteilt über Jahrzehnte, lange nachdem
+  gebaut wurde. Eine neue Seite zeigt für 2022 bis 2025, was die Stadt sich
+  vorgenommen hat: 2025 sind das 80,8 Mio. € Auszahlungen, davon 39,7 Mio. €
+  durch Zuschüsse, Verkäufe und Beiträge gedeckt — 9,5 % des gesamten
+  Finanzhaushalts. Dazu, in welchen Bereichen das Geld liegt, und was
+  zurückfließt. Übernommen wird ein Jahrgang nur, wenn die Rechnung der Datei
+  aufgeht: Die Teilhaushalte müssen die Summenzeile ergeben, in beiden Spalten.
+  Was diese Zahlen **nicht** sagen, steht als eigener Abschnitt auf der Seite —
+  einzelne Vorhaben nennt die Quelle nicht („Verkehr und Straßenbau:
+  10,5 Mio. €", nicht welche Straße), es sind Planzahlen, und sie enden 2025,
+  weil die Stadt den Datensatz erst im Folgejahr veröffentlicht. (#547)
 - **„Und ist das die ganze Stadt?" — der Haushalt zeigt jetzt auch, was neben
   ihm läuft.** Klinikum, Busse, Bäder und die städtischen Gebäude führen eigene
   Bücher; im Haushalt tauchen sie bestenfalls als Zuschusszeile auf. Eine neue
@@ -156,6 +171,16 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   hinterließe Links, die ins Leere führen. Damit kann der Bereich weiterentwickelt
   werden, ohne den nächsten Release aufzuhalten. Ein Testwächter prüft künftig,
   dass kein neuer Verweis das Gate vergisst. (#546)
+- **Kleinkram im Haushalts-Bereich, den sonst niemand bemerkt hätte.** Das
+  Fußnotenzeichen im Städtevergleich ist jetzt ein Kreuz statt eines Sternchens
+  — die Fußnote selbst endet auf „Einwohner*innen", und zwei Sternchen mit
+  verschiedener Bedeutung nebeneinander liest niemand auseinander. Im
+  Quellenverzeichnis stehen nicht mehr unsere Prüfverfahren, sondern nur noch,
+  was eine Quelle hergibt und was nicht. Im Haushalts-Labor behauptet kein Satz
+  mehr, wie sich ein Jahrgang entwickelt hat, den die Seite gar nicht zeigt.
+  Dazu die Sternchenform in den letzten eigenen Dokumenten (Zitate aus
+  Wahlprogrammen bleiben unangetastet) und eine ungenutzte Komponente weniger.
+  (#549)
 - **Zahlen, die eine Rechenprobe nicht bestehen, ersetzen keine vorhandenen
   mehr.** Liest ein Parser für einen bereits gespeicherten Jahrgang plötzlich
   nichts oder deutlich weniger — etwa weil die Stadt ihre Tabellen umbaut —,
@@ -192,6 +217,19 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   gehabt hätten. Ab großen Bildschirmen stehen sie jetzt nebeneinander. Die
   Absätze behalten ihre Zeilenlänge von 66 bis 68 Zeichen — längere Zeilen
   wären schwerer zu lesen, nicht besser. (#PR)
+- **Was einzelne Aufgaben kosten, endete bei 2023 — obwohl die Pläne längst
+  vorlagen.** Die Stadt hat mit dem Haushaltsplan 2025 zwei Zeilen in ihre
+  Tabellen eingezogen: Zwischen „21. ordentliches Ergebnis" und den Zahlen
+  stehen seitdem „Jahresüberschuss(+)" und „/Jahresfehlbetrag (-)". Der Parser
+  suchte die Kolonne direkt hinter der Beschriftung, fand sie nicht mehr — und
+  weil ohne diese Zeile die Rechenprobe *Erträge − Aufwendungen = Ergebnis*
+  nicht aufgeht, fiel jedes einzelne Produkt der betroffenen Jahrgänge durch:
+  0 von 78 und 0 von 89. Gesucht wird jetzt vorwärts bis zur Zahlenkolonne,
+  aber nur bis zur nächsten Tabellenzeile — ist die eigene Zelle leer, bleibt
+  sie leer, statt sich die Zahlen des Nachbarpostens zu borgen. Damit kommen
+  die Jahrgänge 2024 und 2025 dazu (131 Produkte, 19 Teilhaushalte); an den
+  Jahrgängen 2018–2023 ändert sich keine einzige Zahl. Der Job, der die Lücke
+  gemeldet hat, meldet sie nicht mehr. (#548)
 - **Der Nach-oben-Knopf saß auf dem Tablet hinter der Tab-Leiste.** Er rückte
   schon ab 768 Pixeln nach unten, obwohl die Leiste erst auf echten Desktops
   verschwindet — also auf jedem Tablet und jedem großen Touch-Gerät genau in
@@ -618,6 +656,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 - **„Dokument öffnen" öffnet jetzt das Dokument.** Im Quellenverzeichnis der Haushalts-Seiten führten sechs Quellen auf die Startseite des Ratsinformationssystems — man durfte das PDF selbst suchen. Der Link zeigt jetzt auf das Dokument des gerade gezeigten Jahres (wechselt das Jahr, wechselt das PDF), nennt die Fundstelle darin („Abschnitt 3.2"), und wo wir kein Dokument haben, verspricht er auch keines mehr. Der Knopf „Haushaltsplan als PDF" oben auf der Übersicht entfällt dafür: Er ließ eine von mehreren Quellen wie die einzige aussehen, seine jahresgenaue Adresse steckt jetzt im Beleg. Quellenverzeichnis und Datenstand stehen außerdem nicht mehr in der Kartenform des Inhalts, sondern zugeklappt als Apparat am Seitenfuß. (#538)
 - **Fünf Stellen im Haushalt erklären wieder den Haushalt statt uns.** Unter den Zahlen auf „Der Konzern Stadt" und „Steht Oldenburg besser da als Osnabrück?" standen bisher unsere eigenen Rechenproben und darunter „Gemessen: 0,00 % Abweichung" — jetzt steht dort nur noch, in welchem Abschnitt des Dokuments die Zahl zu finden ist, was beim Nachschlagen im 300-Seiten-PDF hilft. Ebenso raus: „Es erscheinen nur Jahre, deren Zahlen unsere Prüfung bestehen" samt drei Rechenproben in Prosa („Plan gegen Wirklichkeit"), die Parser-Bedingung im Fuß der Prüfungs-Seite und der Betriebsablauf im Datenstand („geprüft wird alle zwei Wochen"). Auf „Muss oder kann?" entfällt die Quote, zu wie viel Prozent unsere Einordnung sich mit der Selbstauskunft der Stadt deckt; die **Abweichung** bleibt und steht jetzt vorn, denn wo beide sich widersprechen, ist das eine Auskunft über die Aufgabe. Was bleibt, ist das, was jemandem etwas sagt: die Quelle, der Hinweis auf eigene Rechnungen und echte Grenzen wie „für dieses Jahr liegt der Schlussbericht nicht in lesbarer Form vor". Die Prüfungen selbst laufen unverändert weiter — sie stehen in Tests und in der Technik-Doku. (#542)
+- **„Frag den Rat" kennt jetzt den Haushalt.** Geldfragen sahen bisher nur Beschluss-Beträge, den Haushaltsplan und die Steuereinnahmen — Jahresabschlüsse, die 377 städtischen Aufgaben samt Rechtsgrundlage, die Feststellungen des Rechnungsprüfungsamts, der Konzern Stadt und der Städtevergleich blieben unsichtbar. Jetzt zieht jede Frage genau die Quellen, die sie beantworten: „Hat die Stadt 2024 mehr ausgegeben als geplant?" bekommt den Jahresabschluss samt Begründung der Verwaltung, „Muss die Stadt das Theater betreiben?" die Rechtsgrundlage der Aufgabe, „Was kostet die Stadt insgesamt?" den Konzern statt nur den Kernhaushalt. Jede Zahl kommt mit Jahr und Fundstelle, und Fragen ohne Geldbezug bekommen weiterhin nichts davon. (#543)
 
 ## [1.12.0] – 2026-08-16
 

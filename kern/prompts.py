@@ -314,7 +314,10 @@ DEFAULTS: dict[str, dict[str, str]] = {
             '- "partei": Die Frage fragt nach Position/Anträgen/Verhalten einer bestimmten '
             "Fraktion oder Gruppe (SPD, CDU, Grüne, FDP, Linke, AfD, Volt, BSW, Piraten, "
             '"Für Oldenburg" …). Dann "partei" auf den Namen setzen.\n'
-            '- "geld": Es geht um Kosten, Beträge, Förderhöhen, Haushalt ("Wie teuer", "Wie hoch").\n'
+            '- "geld": Es geht um Kosten, Beträge, Förderhöhen, Haushalt ("Wie teuer", "Wie hoch") '
+            "— auch dann, wenn die Zahl nicht in einem Beschluss steht, sondern im Haushalt der "
+            'Stadt ("Wie viel gibt Oldenburg für Soziales aus?", "Hat die Stadt mehr ausgegeben '
+            'als geplant?", "Was kostet die Stadt insgesamt?").\n'
             '- sonst "thema".\n'
             "Für die begriffe: KEINE Floskeln wie \"Was wurde\", \"beschlossen\", \"Stadtrat\"; "
             "bei Partei-Fragen den Fraktionsnamen NICHT in die begriffe aufnehmen (der wird "
