@@ -107,13 +107,17 @@ export function Vorhaben({
   const aktiv = gewaehlt ?? (bereiche.length ? bereiche[0].thh_nr : null);
   const liste = aktiv != null ? vorhaben(daten, jahr, aktiv) : [];
   const summe = aktiv != null ? teilhaushaltSumme(daten, jahr, aktiv) : null;
-  const skala = liste.length ? Math.max(...liste.map((z) => z.gesamtsumme)) : 0;
   const h = herkunftVon(daten, gesamt?.herkunft_id);
 
   if (!bereiche.length) return null;
 
-  const zeigen = wort.trim().length >= 2 ? treffer : liste;
   const suchend = wort.trim().length >= 2;
+  const zeigen = suchend ? treffer : liste;
+  // Einmal je Liste, nicht einmal je Zeile: Bei 565 Vorhaben wäre die
+  // Berechnung im map() ein Quadrat.
+  const massstab = zeigen.length
+    ? Math.max(...zeigen.map((z) => z.gesamtsumme), 0)
+    : 0;
 
   return (
     <section
@@ -191,9 +195,7 @@ export function Vorhaben({
 
       <ul className="mt-1 divide-y divide-[color:var(--border)]">
         {zeigen.map((z) => (
-          <Zeile key={`${z.thh_nr}-${z.code}`} zeile={z} skala={suchend
-            ? Math.max(...zeigen.map((x) => x.gesamtsumme), 0)
-            : skala} />
+          <Zeile key={`${z.thh_nr}-${z.code}`} zeile={z} skala={massstab} />
         ))}
       </ul>
 
