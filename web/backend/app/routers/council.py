@@ -1929,6 +1929,25 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # Wie tragfähig ist der Fund? Deterministisch aus den Scores.
             lage = qa.beleglage(candidates)
             zeiten["retrieve_ms"] = round((time.perf_counter() - t0) * 1000)
+            # Haushalts-Kontext: welche der zehn Geld-Quellen diese Frage
+            # beantworten, entscheidet `qa.geld_facetten` deterministisch am
+            # FRAGE-WORTLAUT — nicht am LLM-Fragetyp. Der Grund steht im
+            # Abschnittskopf von council/qa.py: Fragen wie „Was hat das
+            # Rechnungsprüfungsamt beanstandet?" oder „Muss die Stadt das
+            # Theater betreiben?" sind mit gutem Grund `thema` und bekämen an
+            # einem Typ-Gate nie ihre Daten. `typ` bleibt als Auffangnetz drin
+            # (siehe geld_facetten) — der bisherige Weg „typ=geld → Plan-Zahlen"
+            # ist damit unverändert erhalten.
+            #
+            # Gesucht wird mit `q_suche` (der eigenständigen Fassung), nicht mit
+            # `expanded`: Die Expansion ist ausdrücklich angewiesen, eine
+            # Sachstands-Frage zusätzlich als Finanzierungs-Frage zu
+            # formulieren, und trüge damit „Kosten" in jede Stadion-Frage.
+            #
+            # Beim Vereinfachen gar nicht erst fragen: Der Knopf schreibt die
+            # VORIGE Antwort um (eigener Prompt ohne Zusatz-Bausteine), die
+            # Abfragen wären sicher umsonst.
+            geld = {} if einfach else qa.geld_kontext(store, q_suche, expanded, typ)
             # 5a/I-06: die kondensierte Frage mitschicken — der Kontext-Chip im
             # Frontend zeigt, worauf sich Anschlussfragen beziehen.
             yield _sse({"type": "sources", "mode": mode, "qtype": typ,
@@ -1938,6 +1957,11 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         "debatten": _debatten_kompakt(debatten_rows),
                         "planungen": planungen,
                         "beleglage": lage,
+                        # Welche Haushalts-Quellen diese Frage gezogen hat.
+                        # Steht im Ereignis, damit im Log ohne Rätselraten zu
+                        # sehen ist, warum eine Antwort eine Zahl kannte —
+                        # oder eben nicht.
+                        "geldquellen": geld.get("facetten") or [],
                         # Der Hintergrund geht IMMER in die Antwort; als eigene
                         # Karte erscheint er nur, wenn die Antwort ihn nicht
                         # ohnehin wiederholt (Definitionsfragen, Tims Befund).
@@ -1988,26 +2012,6 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     ctx = ctx[:QA_ANSWER_N - len(fehlend)] + fehlend
             if typ == "verlauf":
                 ctx = qa.sort_verlauf(ctx)
-            haushalt_zeilen: list[dict] = []
-            steuer_zeilen: list[dict] = []
-            steuerkraft: dict | None = None
-            if typ == "geld":
-                # Drei getrennte Geld-Quellen, bewusst nicht vermischt:
-                # Haushalt = Plan, Steuern = Ist, Finanzausgleich = Mechanik.
-                try:  # Plan-Zahlen aus dem Stadthaushalt als Zusatzkontext
-                    haushalt_zeilen = store.haushalt_fuer_begriffe(expanded.split())
-                except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
-                    pass
-                try:  # Ist-Steuereinnahmen zur gefragten Steuerart
-                    steuer_zeilen = store.steuern_fuer_begriffe(expanded.split())
-                except Exception:  # noqa: BLE001
-                    pass
-                if steuer_zeilen or any(
-                        w in expanded.lower() for w in ("hebesatz", "hebesätze", "erhöh", "mehreinnahm")):
-                    try:  # NFAG-Dämpfer nur, wo er wirklich einschlägig ist
-                        steuerkraft = store.steuerkraft_kontext()
-                    except Exception:  # noqa: BLE001
-                        pass
             try:  # Vorlagen-Auszüge (Sachverhalt) beilegen — best-effort
                 texts = store.vorlage_texts_for([c.get("vorlage_nr") or "" for c in ctx])
                 for c in ctx:
@@ -2042,8 +2046,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 frage_thema = verlauf[-1].get("frage") or q
             strom = (qa.vereinfachen_stream(frage_thema, body.vorherige_antwort, ctx) if einfach
                      else qa.answer_stream(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
-                                           haushalt=haushalt_zeilen, steuern=steuer_zeilen,
-                                           steuerkraft=steuerkraft, debatten=debatten_rows,
+                                           geld=geld, debatten=debatten_rows,
                                            gross=gross, steckbriefe=steckbriefe,
                                            duenn=(lage == "duenn"), eng=eng))
             try:
@@ -2075,8 +2078,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     ans, _ = (qa.vereinfachen_question(frage_thema, body.vorherige_antwort, ctx)
                               if einfach else
                               qa.answer_question(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
-                                                 haushalt=haushalt_zeilen, steuern=steuer_zeilen,
-                                           steuerkraft=steuerkraft, debatten=debatten_rows,
+                                                 geld=geld, debatten=debatten_rows,
                                                  gross=gross, steckbriefe=steckbriefe,
                                                  duenn=(lage == "duenn"), eng=eng))
                     buf = ans

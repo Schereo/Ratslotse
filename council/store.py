@@ -6180,6 +6180,325 @@ class CouncilStore:
                 "jahr_davor": alt["jahr"], "messzahl_davor": alt["messzahl"],
                 "zuweisungen_davor": alt["zuweisungen"]}
 
+    # ---- Der Haushalts-Bestand als Quelle der KI-Frage (Tim, 16.08.) -------
+    #
+    # Bis hierher kannte die KI-Frage drei Geld-Quellen: Plan (council_haushalt),
+    # Ist-Steuern (council_steuern) und die NFAG-Mechanik (council_steuerkraft).
+    # Der Bestand darunter — Jahresabschlüsse, Produktebene, Prüfberichte,
+    # Konzern, Städtevergleich — war für sie unsichtbar.
+    #
+    # ZWEI REGELN GELTEN FÜR ALLE METHODEN HIER:
+    #
+    # 1. Jede liefert wenige Zeilen, nicht den Bestand. Der Antwort-Prompt hat
+    #    ein Zeichenbudget; ein Baustein, der 377 Produkte anhängt, verdrängt
+    #    die Beschlüsse, nach denen gefragt wurde.
+    # 2. Jede liefert ihren **Beleg** mit (`_beleg`). Eine Zahl ohne Fundstelle
+    #    ist in diesem Bereich keine Zahl, sondern eine Behauptung — und der
+    #    Prompt kann nur zitieren, was im Kontext steht.
+
+    @staticmethod
+    def _falte_wort(wort: str) -> str:
+        """Kleingeschrieben, Umlaute ausgeschrieben, Satzzeichen ab."""
+        w = wort.lower().strip(".,;:!?\"'()[]")
+        for a, b in (("ä", "ae"), ("ö", "oe"), ("ü", "ue"), ("ß", "ss")):
+            w = w.replace(a, b)
+        return w
+
+    @classmethod
+    def _stamm(cls, wort: str) -> str:
+        """Grober Wortstamm für den Begriffs-Abgleich — auf 6 Zeichen gekappt.
+
+        Die Kappung ist der ganze Zweck. „Gewerbesteuer" und „Steuern und
+        ähnliche Abgaben" haben kein gemeinsames Wort und in der einen
+        Richtung auch keine gemeinsame Teilzeichenkette
+        (``"steuern" not in "gewerbesteuer"``) — wohl aber denselben Stamm
+        ``steuer``. Ohne ihn findet „Warum kam mehr Gewerbesteuer rein?" die
+        zugehörige Erläuterung des Jahresabschlusses nicht."""
+        return cls._falte_wort(wort)[:6]
+
+    @classmethod
+    def _trifft(cls, text: str | None, begriffe: list[str]) -> int:
+        """Wie viele Suchbegriffe stecken in ``text``? 0 = kein Treffer.
+
+        BEIDE RICHTUNGEN, und das ist nötig: Der Begriff kann im Text stecken
+        („Feuerwehr" in „Brandschutz und Feuerwehr") und der Text im Begriff
+        („Steuern" in „Gewerbesteuer"). Eine Richtung allein verfehlt je einen
+        der beiden Fälle, und beide kommen im Bestand vor."""
+        if not text:
+            return 0
+        worte = [w for w in re.split(r"[^\wÄÖÜäöüß]+", text) if w]
+        text_voll = " ".join(cls._falte_wort(w) for w in worte)
+        text_staemme = [s for s in (cls._stamm(w) for w in worte) if len(s) >= 4]
+        n = 0
+        for b in begriffe:
+            b_voll = cls._falte_wort(b)
+            b_stamm = cls._stamm(b)
+            if len(b_stamm) < 4:
+                continue
+            if b_stamm in text_voll or any(s in b_voll for s in text_staemme):
+                n += 1
+        return n
+
+    def _beleg(self, herkunft_id: int | None) -> dict | None:
+        """Fundstelle einer Zahl: Dokument, Stelle darin, Stichtag.
+
+        Bewusst ohne die Erklärsätze zu den Proben (``get_herkunft``): Die
+        gehören auf die Haushalts-Seiten, wo Platz für sie ist. Im Prompt
+        zählt, was die Antwort zitieren können muss — Dokument und Stelle."""
+        if herkunft_id is None:
+            return None
+        try:
+            r = self._conn.execute(
+                "SELECT label, fundstelle, seite, stand, url FROM council_herkunft "
+                "WHERE id = ?", (herkunft_id,)).fetchone()
+        except sqlite3.OperationalError:
+            return None
+        return dict(r) if r else None
+
+    def ergebnis_ist_fuer_begriffe(self, begriffe: list[str], limit: int = 2) -> dict | None:
+        """„Geplant und tatsächlich" aus dem jüngsten Jahresabschluss.
+
+        Der Unterschied zu ``haushalt_fuer_begriffe`` ist das ganze Anliegen:
+        Dort stehen Planwerte, hier steht, was daraus geworden ist. Geliefert
+        werden die Summenzeilen der Gesamtrechnung (Erträge 12, Aufwendungen
+        20) und — wenn die Frage einen Bereich nennt — bis zu ``limit``
+        Teilhaushalte.
+
+        ``plan_art`` reist mit: „Plan" heißt 2018 Gesamtermächtigung und 2020
+        Ansatz samt Nachtrag. Eine Abweichung ohne ihre Bezugsgröße zu nennen,
+        wäre in genau den zwei Jahrgängen falsch, in denen es darauf ankommt."""
+        try:
+            jahr = self._conn.execute(
+                "SELECT MAX(jahr) FROM council_ergebnisrechnung "
+                "WHERE ergebnis IS NOT NULL").fetchone()[0]
+        except sqlite3.OperationalError:
+            return None
+        if not jahr:
+            return None
+        rows = [dict(r) for r in self._conn.execute(
+            "SELECT thh_nr, thh_name, nr, ansatz, plan, plan_art, ergebnis, abweichung, "
+            " herkunft_id FROM council_ergebnisrechnung "
+            "WHERE jahr = ? AND nr IN (12, 20) ORDER BY thh_nr, nr", (jahr,))]
+        if not rows:
+            return None
+
+        def paar(teil: list[dict]) -> dict:
+            e = next((r for r in teil if r["nr"] == 12), {})
+            a = next((r for r in teil if r["nr"] == 20), {})
+            # `plan` fällt auf `ansatz` zurück — Zeilen von vor #510 tragen
+            # dort NULL (ALTER TABLE füllt nichts nach), s. get_plan_ist.
+            return {
+                "name": (a.get("thh_name") or e.get("thh_name")),
+                "ertraege_plan": e.get("ansatz") if e.get("plan") is None else e.get("plan"),
+                "ertraege_ist": e.get("ergebnis"),
+                "aufwendungen_plan": a.get("ansatz") if a.get("plan") is None else a.get("plan"),
+                "aufwendungen_ist": a.get("ergebnis"),
+                "plan_art": a.get("plan_art") or e.get("plan_art"),
+                "herkunft_id": a.get("herkunft_id") or e.get("herkunft_id"),
+            }
+
+        gesamt = paar([r for r in rows if r["thh_nr"] is None])
+        bereiche: list[dict] = []
+        if begriffe:
+            nach_thh: dict[int, list[dict]] = {}
+            for r in rows:
+                if r["thh_nr"] is not None:
+                    nach_thh.setdefault(r["thh_nr"], []).append(r)
+            bewertet = [(self._trifft(t[0].get("thh_name"), begriffe), paar(t))
+                        for t in nach_thh.values()]
+            bereiche = [b for n, b in sorted(bewertet, key=lambda x: -x[0]) if n][:limit]
+        return {"jahr": jahr, "gesamt": gesamt, "bereiche": bereiche,
+                "beleg": self._beleg(gesamt.get("herkunft_id"))}
+
+    def abweichungsgruende_fuer_begriffe(self, begriffe: list[str],
+                                         limit: int = 3) -> list[dict]:
+        """Das *Warum* zu den Abweichungen, in den Worten der Verwaltung.
+
+        Passt kein Begriff, kommen die **größten** Abweichungen: Wer „Warum
+        wich der Haushalt ab?" fragt, meint die, über die es sich zu reden
+        lohnt — und der Fragetyp-Filter davor sorgt dafür, dass diese Methode
+        gar nicht erst läuft, wenn es nicht um Geld geht."""
+        try:
+            jahr = self._conn.execute(
+                "SELECT MAX(jahr) FROM council_abweichungsgruende").fetchone()[0]
+        except sqlite3.OperationalError:
+            return []
+        if not jahr:
+            return []
+        rows = [dict(r) for r in self._conn.execute(
+            "SELECT jahr, nr, bezeichnung, delta_mio, prozent, text, herkunft_id "
+            "FROM council_abweichungsgruende WHERE jahr = ? ORDER BY nr", (jahr,))]
+        treffer = [(self._trifft(f"{r['bezeichnung']} {r['text']}", begriffe), r) for r in rows]
+        passend = [r for n, r in sorted(treffer, key=lambda x: -x[0]) if n][:limit]
+        if not passend:
+            passend = sorted(rows, key=lambda r: -abs(r.get("delta_mio") or 0))[:limit]
+        for r in passend:
+            r["beleg"] = self._beleg(r.get("herkunft_id"))
+        return passend
+
+    def pruefberichte_fuer_begriffe(self, begriffe: list[str], limit: int = 4) -> dict | None:
+        """Feststellungen des Rechnungsprüfungsamts zum jüngsten geprüften
+        Jahrgang.
+
+        Ohne Begriffs-Treffer kommen die **wiederholten** Beanstandungen
+        zuerst: Etwas, das der Prüfer zum wiederholten Mal aufschreibt, ist der
+        Kern der Frage „Was wurde beanstandet?" — eine einmalige Randnotiz
+        nicht."""
+        try:
+            jahr = self._conn.execute(
+                "SELECT MAX(jahr) FROM council_pruefberichte").fetchone()[0]
+        except sqlite3.OperationalError:
+            return None
+        if not jahr:
+            return None
+        rows = [dict(r) for r in self._conn.execute(
+            "SELECT jahr, marke, marke_name, textziffer, abschnitt, kette, seite, text, "
+            " herkunft_id FROM council_pruefberichte WHERE jahr = ? ORDER BY lfd", (jahr,))]
+        if not rows:
+            return None
+        rang = {"WB": 0, "B": 1, "H": 2, "K": 3}
+        bewertet = [(self._trifft(f"{r['abschnitt']} {r['text']}", begriffe), r) for r in rows]
+        passend = [r for n, r in sorted(bewertet, key=lambda x: -x[0]) if n][:limit]
+        if not passend:
+            passend = sorted(rows, key=lambda r: rang.get(r["marke"], 9))[:limit]
+        # Wie viele Feststellungen es insgesamt gibt, gehört dazu: Ohne die
+        # Zahl liest sich eine Auswahl von vier wie der ganze Bericht.
+        zaehl: dict[str, int] = {}
+        for r in rows:
+            zaehl[r["marke_name"]] = zaehl.get(r["marke_name"], 0) + 1
+        return {"jahr": jahr, "feststellungen": passend, "gesamt": len(rows),
+                "nach_marke": zaehl, "beleg": self._beleg(rows[0].get("herkunft_id"))}
+
+    def produkte_fuer_begriffe(self, begriffe: list[str], limit: int = 4) -> dict | None:
+        """Aufgaben der Stadt mit Kosten, Amt, **Rechtsgrundlage** und der
+        Spielraum-Selbstauskunft des Plans.
+
+        Die Rechtsgrundlage ist der Grund, warum diese Quelle in der KI-Frage
+        etwas kann, das keine andere kann: „Muss die Stadt das Theater
+        betreiben?" beantwortet kein Beschluss und keine Haushaltszeile —
+        ``auftragsgrundlage`` schon.
+
+        Anders als ``get_produkte(suche=…)`` verlangt diese Suche **nicht**,
+        dass jeder Begriff trifft: Die Suchbegriffe kommen aus der
+        Query-Expansion und enthalten Synonyme, die absichtlich nicht alle
+        passen. Sortiert wird nach Trefferzahl, dann nach Zuschussbedarf."""
+        try:
+            jahr = self._conn.execute("SELECT MAX(jahr) FROM council_produkte").fetchone()[0]
+        except sqlite3.OperationalError:
+            return None
+        if not jahr:
+            return None
+        rows = [dict(r) for r in self._conn.execute(
+            "SELECT produkt_nr, produkt_name, amt, aufwendungen, ergebnis, "
+            " kurzbeschreibung, auftragsgrundlage, beeinflussbarkeit, herkunft_id "
+            "FROM council_produkte WHERE jahr = ?", (jahr,))]
+        bewertet = [(self._trifft(f"{r['produkt_name']} {r.get('amt') or ''} "
+                                  f"{r.get('kurzbeschreibung') or ''}", begriffe), r)
+                    for r in rows]
+        passend = [r for n, r in sorted(bewertet, key=lambda x: (-x[0], x[1].get("ergebnis") or 0))
+                   if n][:limit]
+        if not passend:
+            return None
+        for r in passend:
+            r["beleg"] = self._beleg(r.get("herkunft_id"))
+        return {"jahr": jahr, "produkte": passend}
+
+    def konzern_kontext(self) -> dict | None:
+        """Der Konzern Stadt: Erträge, Aufwendungen und die größten Träger.
+
+        Dazu die Kernverwaltung desselben Jahres aus dem Jahresabschluss — die
+        Differenz ist der ganze Punkt. „Was kostet die Stadt?" beantwortet der
+        Kernhaushalt zu klein, weil Klinikum, Eigenbetriebe und Beteiligungen
+        nicht darin stehen."""
+        try:
+            jahr = self._conn.execute(
+                "SELECT MAX(jahr) FROM council_konzern_posten").fetchone()[0]
+        except sqlite3.OperationalError:
+            return None
+        if not jahr:
+            return None
+        # Über die ROLLE, nicht über die Nummer: Posten 15 ist bis 2018 die
+        # Ertragssumme und ab 2019 der Versorgungsaufwand (s. Schema-Kommentar).
+        summen = {r["rolle"]: dict(r) for r in self._conn.execute(
+            "SELECT rolle, bezeichnung, betrag, herkunft_id FROM council_konzern_posten "
+            "WHERE jahr = ? AND rolle IN ('ertraege_summe', 'aufwendungen_summe')", (jahr,))}
+        traeger = [dict(r) for r in self._conn.execute(
+            "SELECT art, traeger, betrag_teur FROM council_konzern_traeger "
+            "WHERE jahr = ? AND art = 'aufwendungen' AND traeger_key != 'konsolidierung' "
+            "ORDER BY betrag_teur DESC LIMIT 5", (jahr,))]
+        if not summen and not traeger:
+            return None
+        ertraege = summen.get("ertraege_summe") or {}
+        aufwand = summen.get("aufwendungen_summe") or {}
+        return {"jahr": jahr, "ertraege": ertraege.get("betrag"),
+                "aufwendungen": aufwand.get("betrag"), "traeger": traeger,
+                "kern": self.kernverwaltung_ist().get(jahr) or {},
+                "beleg": self._beleg(aufwand.get("herkunft_id")
+                                     or ertraege.get("herkunft_id"))}
+
+    def staedtevergleich_kontext(self, reihe: str = "steuerkraft") -> dict | None:
+        """Die jüngste Kennzahl einer Reihe für alle acht kreisfreien Städte.
+
+        Eine Kennzahl, nicht alle: Der Vergleich soll die Antwort einordnen
+        („Oldenburg liegt auf Platz 5 von 8"), nicht eine Tabelle in den
+        Prompt schreiben."""
+        try:
+            jahr = self._conn.execute(
+                "SELECT MAX(jahr) FROM council_staedtevergleich WHERE reihe = ?",
+                (reihe,)).fetchone()[0]
+        except sqlite3.OperationalError:
+            return None
+        if not jahr:
+            return None
+        kennzahl = self._conn.execute(
+            "SELECT kennzahl FROM council_staedtevergleich WHERE reihe = ? AND jahr = ? "
+            "GROUP BY kennzahl ORDER BY COUNT(*) DESC, kennzahl LIMIT 1",
+            (reihe, jahr)).fetchone()
+        if not kennzahl:
+            return None
+        rows = [dict(r) for r in self._conn.execute(
+            "SELECT stadt, wert, einheit, herkunft_id FROM council_staedtevergleich "
+            "WHERE reihe = ? AND jahr = ? AND kennzahl = ? ORDER BY wert DESC",
+            (reihe, jahr, kennzahl[0]))]
+        if not rows:
+            return None
+        return {"jahr": jahr, "reihe": reihe, "kennzahl": kennzahl[0],
+                "einheit": rows[0].get("einheit"), "staedte": rows,
+                "beleg": self._beleg(rows[0].get("herkunft_id"))}
+
+    def ansatz_fuer_begriffe(self, begriffe: list[str], limit: int = 4) -> dict | None:
+        """Einnahme- und Ausgabearten des jüngsten **Planjahres** aus dem
+        Gesamtergebnishaushalt.
+
+        Nur ``art='ansatz'``: Die Finanzplanungsjahre desselben Dokuments sind
+        eine Vorausschau nach § 8 NKomVG und kein beschlossener Haushalt. Sie
+        in einen Antwort-Kontext zu legen hieße, dem Modell einen Plan für
+        2029 anzubieten, den nie jemand aufgestellt hat."""
+        try:
+            jahr = self._conn.execute(
+                "SELECT MAX(jahr) FROM council_ergebnishaushalt "
+                "WHERE art = 'ansatz'").fetchone()[0]
+        except sqlite3.OperationalError:
+            return None
+        if not jahr:
+            return None
+        rows = [dict(r) for r in self._conn.execute(
+            "SELECT nr, bezeichnung, betrag, ist_summe, herkunft_id "
+            "FROM council_ergebnishaushalt WHERE jahr = ? AND art = 'ansatz' ORDER BY nr",
+            (jahr,))]
+        if not rows:
+            return None
+        bewertet = [(self._trifft(r["bezeichnung"], begriffe), r) for r in rows]
+        passend = [r for n, r in sorted(bewertet, key=lambda x: -x[0]) if n][:limit]
+        if not passend:
+            # Ohne Treffer die Summenzeilen — sie beantworten „was nimmt die
+            # Stadt ein, was gibt sie aus" und sind nie daneben.
+            passend = [r for r in rows if r["ist_summe"]][:limit]
+        if not passend:
+            return None
+        return {"jahr": jahr, "posten": passend,
+                "beleg": self._beleg(passend[0].get("herkunft_id"))}
+
     # ---- Teilvoten aus raw_result (welche Fraktion stimmte wie) ----
 
     def save_decision_votes(self, decision_id: int, votes: list[tuple[str, str]]) -> None:

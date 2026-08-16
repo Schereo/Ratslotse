@@ -297,7 +297,19 @@ nicht für einen unbeaufsichtigten Lauf.
 dürfen nie in einem Satz vermischt werden — im Frontend stehen sie in
 getrennten Bausteinen, und die Prompt-Bausteine der KI-Frage
 (`_haushalt_block`, `_steuern_block`) sagen dem Modell ausdrücklich, was sie
-sind.
+sind. Seit `council_ergebnisrechnung` dazukam, gilt dasselbe für den
+Jahresabschluss (`_ist_block`): Er ist die einzige Quelle, die **beides**
+führt, und benennt deshalb je Zahl, ob sie geplant oder abgerechnet ist.
+:::
+
+:::note[Der ganze Bestand hängt an der KI-Frage]
+Alle Tabellen dieser Seite sind auch Quellen von „Frag den Rat". Welche eine
+Frage zieht, entscheidet `qa.geld_facetten` am Frage-Wortlaut — die Tabelle
+dazu steht unter
+[KI-Pipeline → Frag den Rat](/docs/ki-pipeline/#frag-den-rat-welche-quelle-eine-geldfrage-zieht).
+Wer hier eine Tabelle hinzufügt, hat sie damit **noch nicht** in der KI-Frage:
+Dazu gehören eine Facette, eine `*_fuer_begriffe`-Methode im Store, ein
+Prompt-Baustein und eine Zeile im Korpus `tests/test_qa_geldquellen.py`.
 :::
 
 ## Der Bereich hält sich selbst aktuell
