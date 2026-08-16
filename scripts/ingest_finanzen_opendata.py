@@ -7,9 +7,13 @@ fortgeschrieben — Grundlage des Haushalts-Bereichs:
 - **Steuereinnahmen seit 1998** (Ist, je Steuerart) → ``council_steuern``.
   Für Steuer-Steckbriefe und Zeitreihen: Grundsteuer A+B, Gewerbesteuer
   (nach Umlage), Einkommensteuer-/Umsatzsteueranteil, Vergnügungssteuer …
-- **Steuerkraftmesszahlen + Schlüsselzuweisungen seit 1992** →
+- **Steuerkraftmesszahlen + Schlüsselzuweisungen seit 1993** →
   ``council_steuerkraft``. Zeigt die NFAG-Mechanik (mehr eigene Steuerkraft
   → weniger Landeszuweisungen) — Pflichtkontext für jede Hebesatz-Simulation.
+  Einzige Stelle im Bereich, an der wir eine Quelle **korrigieren** statt sie
+  nur zu übernehmen: Der Datensatz beschriftet seine Jahrgänge um ein Jahr zu
+  früh, ``haushalt.parse_steuerkraft`` rückt sie aufs Ausgleichsjahr. Warum
+  wir uns das trauen, steht in ``council/haushalt._STEUERKRAFT_VERSATZ``.
 - **Einwohnerzahlen seit 2010** → ``council_einwohner``. Bezugsgröße für
   Pro-Kopf-Einordnungen. Aus demselben CSV NICHT übernommen: die
   Aufwendungs-Spalte — sie weicht vom beschlossenen Plan ab, ohne als Ist
@@ -75,9 +79,14 @@ def main() -> int:
             art="opendata", probe=herkunft.UNGEPRUEFT,
             url=haushalt.STEUERKRAFT_CSV_URL,
             label="Steuerkraftmesszahlen und Schlüsselzuweisungen",
-            fundstelle="Datensatz 1106 — je Ausgleichsjahr Steuerkraftmesszahl "
-                       "und Schlüsselzuweisungen (Anordnungssoll), absolut und "
-                       "je Einwohner",
+            fundstelle="Datensatz 1106 — je Jahr Steuerkraftmesszahl und "
+                       "Schlüsselzuweisungen (Anordnungssoll). Die Jahreszahl "
+                       "ist von uns um ein Jahr nach vorn gerückt: Der "
+                       "Datensatz beschriftet seine Zeilen um ein Jahr zu "
+                       "früh, geprüft gegen die Tabellen des Landesamts für "
+                       "Statistik (KFA 2016–2026) und gegen die Ist-Beträge "
+                       "in den Haushaltsplänen der Stadt. Die Pro-Kopf-Spalten "
+                       "des Datensatzes übernehmen wir deshalb nicht",
             stand=_spanne(kraft)))
         print(f"Steuerkraft/Schlüsselzuweisungen: {n} Jahre ({_spanne(kraft)}).")
 

@@ -38,7 +38,7 @@ Prosa und haben auf Seiten, die sie nicht zeigen, nichts zu suchen.
 |---|---|---|---|
 | `council_haushalt` | Ergebnishaushalt je Teilhaushalt, 2020–2026 (**Plan**) | Beschlossene Haushaltsplan-PDFs; 2024 aus dem Open-Data-CSV | `scripts/ingest_haushalt.py` |
 | `council_steuern` | Steuereinnahmen je Art seit 1998 (**Ist**) | Open-Data-Portal, Datensatz 1104 | `scripts/ingest_finanzen_opendata.py` |
-| `council_steuerkraft` | Steuerkraftmesszahl + Schlüsselzuweisungen seit 1992 | Open-Data-Portal, Datensatz 1106 | dito |
+| `council_steuerkraft` | Steuerkraftmesszahl + Schlüsselzuweisungen je Ausgleichsjahr seit 1993 (Jahreszahl beim Einlesen korrigiert, s. u.) | Open-Data-Portal, Datensatz 1106 | dito |
 | `council_einwohner` | Einwohnerzahl je Jahr seit 2010 | Open-Data-Portal, Datensatz 1102 | dito |
 | `council_ergebnisrechnung` | Ansatz, Plan **und** Ergebnis je Posten — gesamt und je Teilhaushalt, 2017–2024 | Jahresabschlüsse — **Anlagen im RIS** | `scripts/ingest_finanzberichte.py` |
 | `council_abweichungsgruende` | Warum ein Posten vom Plan abwich (Abschnitt 6.3.1), 45 Einträge | dito | dito |
@@ -810,14 +810,57 @@ plausibel klangen:
   stieg 2009 von 58,9 auf 61,9 Mio. €. Die realen Einbrüche liegen 2000
   (−8,5) und 2003 (−7,8); Corona 2020 kostete nur 3,8 Mio. Die Ist-Kurve
   berechnet ihre Marker deshalb aus den Daten, statt Geschichte zu deuten.
-- **Der Finanzausgleich dämpft, aber nicht mit festem Faktor.** 2023 → 2024
-  stieg die Steuerkraft um 45,9 Mio. €, während die Zuweisungen um 30,4 Mio.
-  fielen; 2024 → 2025 stiegen beide. Der Effekt ist systematisch real, seine
-  Höhe hängt am Landestopf — das Labor beziffert ihn deshalb nicht, sondern
-  benennt ihn mit den echten Jahreszahlen daneben.
+- **Der Finanzausgleich dämpft, aber nicht mit festem Faktor.** Ausgleichs-
+  jahr 2024 → 2025 stieg die Steuerkraft um 45,9 Mio. €, während die
+  Zuweisungen um 30,4 Mio. fielen; 2025 → 2026 stiegen beide. Der Effekt ist
+  systematisch real, seine Höhe hängt am Landestopf — das Labor beziffert ihn
+  deshalb nicht, sondern benennt ihn mit den echten Jahreszahlen daneben.
 - **Stiftungsvermögen ist keine freiwillige Leistung.** Es ist zweckgebunden
   und wird treuhänderisch verwaltet; als kürzbar geführt hätte das Labor eine
   Handlungsmöglichkeit behauptet, die es nicht gibt.
 - **Bestätigt:** Alle überwiegend freiwilligen Bereiche zusammen kosten
   47,1 Mio. € — das geplante Defizit beträgt 71,1 Mio. Kürzen allein schließt
   es rechnerisch nicht.
+
+### Der Datensatz 1106 ist um ein Jahr verschoben
+
+Der einzige Fall bisher, in dem wir eine Quelle **korrigieren** statt sie zu
+übernehmen — und der einzige, der eine so lange Begründung verdient.
+
+Der Open-Data-Datensatz 1106 („Steuerkraftmesszahlen und Schlüsselzuweisungen")
+führt seine Spalte als `Ausgleichsjahr`, beschriftet die Zeilen aber um ein
+Jahr zu früh. Geprüft am 16.08.2026, an drei unabhängigen Strängen:
+
+1. **Das Landesamt für Statistik Niedersachsen (LSN)** — die Stelle, die den
+   Begriff definiert und die Zahlen liefert. Seine KFA-Tabellen (Blatt
+   `ST_KR_MESS_VGL`, Schlüssel-Nr. 403000) tragen dieselben Beträge auf den
+   Euro genau, nur ein Jahr später: **12 von 12** Steuerkraftmesszahlen aus
+   den Jahrgängen KFA 2016–2026 decken sich mit der CSV-Zeile `Jahr−1`,
+   **keine einzige** mit der gleichnamigen. Für die Schlüsselzuweisungen
+   (Blatt `9a`) gilt dasselbe; die Ausreißer sind durchweg vorläufige Stände,
+   die das LSN später selbst korrigiert hat.
+2. **Die Bücher der Stadt** — und das entscheidet die Frage, weil es kein
+   Beschriftungs-, sondern ein Kassenfakt ist. Der Haushaltsplan 2026 weist
+   als **Ist 2024** 99.569.132 € Schlüsselzuweisungen aus (Konten 31111000 +
+   31112000), der Haushaltsplan 2025 als **Ist 2023** 100.319.768 € — beide
+   stehen in der CSV eine Zeile zu früh. Der Jahresabschluss 2024 nennt im
+   Fließtext „rund 109,5 Millionen Euro" und trifft damit den LSN-Nettobetrag
+   des Ausgleichsjahrs 2024.
+3. **Die Metadaten widersprechen sich selbst.** Die Spalte heißt
+   „Ausgleichsjahr", die Datensatzbeschreibung spricht von „für jedes
+   Haushaltsjahr". Der Widerspruch ist im Portal nicht aufgelöst.
+
+**Was wir daraus machen:** `haushalt.parse_steuerkraft` rückt jede Jahreszahl
+um eins nach vorn; `council_steuerkraft.jahr` ist damit das Ausgleichsjahr,
+wie es die Tabelle ohnehin immer behauptet hat. Die beiden Pro-Kopf-Spalten
+des Datensatzes bleiben liegen — die Stadt rechnet sie gegen die
+Einwohnerzahl ihrer eigenen, verschobenen Jahresangabe (16 von 16 Mal von
+2010 bis 2025 nachgerechnet), nach dem Rücken stünde eine
+Ausgleichsjahr-Zahl über einem Nenner aus dem Vorjahr.
+
+**Was offen bleibt:** Direkt belegt ist der Versatz für die CSV-Jahre
+2015–2025; weiter zurück stellt das LSN nichts mehr online. Dass die Reihe
+durchgehend derselben Konvention folgt, zeigt die Pro-Kopf-Probe oben auch
+für die Jahre davor — ein Bruch mitten in der Reihe müsste sich dort zeigen
+und tut es nicht. Gemeldet werden sollte der Befund trotzdem: Ansprechpartner
+laut Katalog ist die Statistikstelle der Stadt Oldenburg.

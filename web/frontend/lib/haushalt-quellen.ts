@@ -60,13 +60,19 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     url: "https://opendata.oldenburg.de/sites/default/files/1104_Steuereinnahmen_0.csv",
   },
   steuerkraft: {
-    titel: "Steuerkraftmesszahlen und Schlüsselzuweisungen seit 1992",
+    titel: "Steuerkraftmesszahlen und Schlüsselzuweisungen seit 1993",
     fundstelle:
-      "Datensatz 1106, je Ausgleichsjahr: Steuerkraftmesszahl und Schlüsselzuweisungen " +
-      "(Anordnungssoll), jeweils absolut und je Einwohner. Auch hier gibt es " +
-      "keine Summe zum Nachrechnen — übernommen wie veröffentlicht.",
+      "Datensatz 1106: Steuerkraftmesszahl und Schlüsselzuweisungen (Anordnungssoll) " +
+      "je Ausgleichsjahr. Die einzige Stelle im Bereich, an der wir eine Quelle nicht " +
+      "unverändert übernehmen: Der Datensatz beschriftet seine Jahrgänge um ein Jahr " +
+      "zu früh, wir rücken sie zurecht. Die Beträge des Landesamts für Statistik " +
+      "Niedersachsen stehen dort auf den Euro genau — nur ein Jahr später (geprüft für " +
+      "die Ausgleichsjahre 2016 bis 2026), und die Haushaltspläne der Stadt weisen " +
+      "dieselben Summen als Ist des jeweils späteren Jahres aus. Die Pro-Kopf-Spalten " +
+      "des Datensatzes lassen wir deshalb liegen: Sie rechnen gegen die Einwohnerzahl " +
+      "des zu frühen Jahres.",
     herausgeber: "Stadt Oldenburg, Open-Data-Portal",
-    stand: "1992–2025",
+    stand: "Ausgleichsjahre 1993–2026",
     lizenz: "dl-de/by-2.0",
     art: "csv",
     url: "https://opendata.oldenburg.de/sites/default/files/1106_Steuerkraftmesszahlen-Schl%C3%BCsselzuweisung_0.csv",

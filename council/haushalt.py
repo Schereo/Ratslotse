@@ -159,17 +159,68 @@ def parse_einwohner(csv_text: str) -> list[dict]:
     return rows
 
 
+#: Der Datensatz 1106 beschriftet seine Zeilen um ein Jahr zu früh — wir
+#: rücken sie beim Einlesen auf das Ausgleichsjahr, das die Beträge meinen.
+#:
+#: Der Befund (16.08.2026), an drei unabhängigen Strängen geprüft:
+#:
+#: 1. **Landesamt für Statistik Niedersachsen (LSN).** Die KFA-Tabellen
+#:    (Blatt ``ST_KR_MESS_VGL``, Schlüssel-Nr. 403000) führen dieselben
+#:    Beträge auf den Euro genau — aber ein Jahr später. Geprüft über die
+#:    Jahrgänge KFA 2016–2026, also elf Jahre am Stück: **12 von 12**
+#:    Steuerkraftmesszahlen decken sich mit der CSV-Zeile ``Jahr−1``,
+#:    **keine einzige** mit der gleichnamigen. Für die Schlüsselzuweisungen
+#:    (Blatt ``9a``, Gemeinde- + Kreisaufgaben) gilt dasselbe; die wenigen
+#:    Ausreißer sind durchweg vorläufige Jahrgänge oder Nachtragsstände,
+#:    die das LSN später selbst korrigiert hat.
+#: 2. **Die Bücher der Stadt.** Das entscheidet die Frage, weil es kein
+#:    Beschriftungs-, sondern ein Kassenfakt ist: In welchem Haushaltsjahr
+#:    ist das Geld geflossen? Der Ergebnishaushalt des Haushaltsplans 2026
+#:    weist als **Ist 2024** 99.569.132 € Schlüsselzuweisungen aus
+#:    (Konten 31111000 + 31112000), der Haushaltsplan 2025 als **Ist 2023**
+#:    100.319.768 € — beide stehen in der CSV eine Zeile zu früh (unter
+#:    2023 bzw. 2022). Der Jahresabschluss 2024 nennt im Fließtext
+#:    „rund 109,5 Millionen Euro" und trifft damit den LSN-Nettobetrag des
+#:    Ausgleichsjahrs 2024 (109.498 TEUR).
+#: 3. **Die Metadaten widersprechen sich selbst.** Die Spalte heißt
+#:    „Ausgleichsjahr", die Datensatzbeschreibung auf opendata.oldenburg.de
+#:    spricht von „für jedes Haushaltsjahr". Das LSN definiert den Begriff
+#:    und liefert die Zahlen — seine Beschriftung ist die amtliche.
+#:
+#: Direkt belegt ist der Versatz für die CSV-Jahre 2015–2025 (weiter zurück
+#: stellt das LSN nichts mehr online). Dass die Reihe *durchgehend* derselben
+#: Konvention folgt, zeigt die Pro-Kopf-Spalte: Sie geht 16 von 16 Mal
+#: (CSV 2010–2025) mit der Einwohnerzahl auf, die Datensatz 1102 dem
+#: gleichnamigen Jahr zuordnet — auch in den Jahren vor dem Prüffenster.
+#: Ein Bruch mitten in der Reihe müsste sich dort zeigen und tut es nicht,
+#: deshalb rücken wir alle Jahrgänge.
+_STEUERKRAFT_VERSATZ = 1
+
+
 def parse_steuerkraft(csv_text: str) -> list[dict]:
     """Steuerkraftmesszahl/Schlüsselzuweisungen-CSV → je Jahr ein dict
-    ``{jahr, messzahl, messzahl_je_ew, zuweisungen, zuweisungen_je_ew}``."""
+    ``{jahr, messzahl, messzahl_je_ew, zuweisungen, zuweisungen_je_ew}``.
+
+    ``jahr`` ist das **Ausgleichsjahr** — die CSV-Jahreszahl plus
+    :data:`_STEUERKRAFT_VERSATZ`; die Begründung steht dort.
+
+    Die beiden Pro-Kopf-Spalten kommen bewusst **nicht** mit. Die Stadt
+    rechnet sie gegen die Einwohnerzahl ihrer eigenen (verschobenen)
+    Jahresangabe — nach dem Rücken stünde eine Ausgleichsjahr-Zahl über
+    einer Einwohnerzahl, die ein Jahr zu früh ist. Das ist derselbe Grund,
+    aus dem schon die Aufwendungs-Spalte des Datensatzes 1102 liegen bleibt:
+    lieber keine Zahl als eine, deren Beschriftung nicht trägt. Wer sie
+    braucht, teilt den Absolutwert durch ``council_einwohner``.
+    """
     rows: list[dict] = []
     for line in csv_text.splitlines()[1:]:
         cells = [c.strip() for c in line.split(";")]
         if len(cells) < 5 or not cells[0].isdigit():
             continue
         vals = [float(c) if c else None for c in cells[1:5]]
-        rows.append({"jahr": int(cells[0]), "messzahl": vals[0], "messzahl_je_ew": vals[1],
-                     "zuweisungen": vals[2], "zuweisungen_je_ew": vals[3]})
+        rows.append({"jahr": int(cells[0]) + _STEUERKRAFT_VERSATZ,
+                     "messzahl": vals[0], "messzahl_je_ew": None,
+                     "zuweisungen": vals[2], "zuweisungen_je_ew": None})
     return rows
 
 
