@@ -33,6 +33,15 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   dass etwas nicht gebaut wurde. (#502)
 
 ### Behoben
+- **„Geplant und geworden": Die Abweichung war nicht zu sehen.** Plan und
+  Ergebnis lagen auf einer Skala, die bei null begann — bei einem Bereich mit
+  6,2 Mio. geplant und 6,3 tatsächlich fielen beide Punkte aufeinander. Die
+  Achse misst jetzt den Abstand zum Plan statt der Höhe des Betrags: Der
+  Nullpunkt ist „wie geplant", die Strecke zeigt, wie weit es davon abwich.
+  Dazu steht die Abweichung auch in Prozent, damit ein großer und ein kleiner
+  Bereich vergleichbar sind. Die Beträge selbst stehen unverändert daneben.
+  (#PR)
+
 - **Kostendeckungsgrad über 100 % wurde falsch erklärt.** Bei „Finanzmanagement
   und Recht" — dort verbucht die Stadt ihre Steuern — stand unter dem Wert von
   518 %, „der Rest" komme aus Steuern und Zuweisungen. Einen Rest gibt es dort

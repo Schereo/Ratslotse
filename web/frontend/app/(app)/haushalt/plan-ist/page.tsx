@@ -86,7 +86,6 @@ function PlanIstInner() {
   const aufwDiff = (gesamt.aufwIst ?? 0) - (gesamt.aufwPlan ?? 0);
   const saldoPlan = (gesamt.ertrPlan ?? 0) - (gesamt.aufwPlan ?? 0);
   const saldoIst = (gesamt.ertrIst ?? 0) - (gesamt.aufwIst ?? 0);
-  const maxWert = Math.max(...bereiche.flatMap((b) => [b.aufwPlan ?? 0, b.aufwIst ?? 0]));
   const quellen: QuellenSchluessel[] = ["jahresabschluss", "plan"];
 
   return (
@@ -178,7 +177,6 @@ function PlanIstInner() {
             </span>
           </div>
           <Hantel
-            maxWert={maxWert}
             zeilen={bereiche.map((b) => ({ label: b.name, plan: b.aufwPlan, ist: b.aufwIst }))}
           />
         </div>
