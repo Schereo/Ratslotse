@@ -57,7 +57,7 @@ export type Datenschicht = {
   teilweise: number[];
 };
 
-type Antwort = { heute: string; schichten: Datenschicht[] };
+export type Antwort = { heute: string; schichten: Datenschicht[] };
 
 /** „2017–2024" bzw. „2024" — und nichts, wo nichts ist. */
 function spanne(jahre: number[]): string | null {
@@ -113,7 +113,7 @@ function vonHandNachStelle(schichten: Datenschicht[]): { quelle: string; labels:
  *  erschienen. Erst danach lohnt der Hinweis, dass er auf sich warten lässt.
  *  „Fehlt" steht deshalb nirgends: Was die Stadt noch nicht veröffentlicht
  *  hat, fehlt uns nicht. */
-function ausblick(s: Datenschicht, heute: string): { text: string; wartet: boolean } {
+export function ausblick(s: Datenschicht, heute: string): { text: string; wartet: boolean } {
   const jahr = s.naechster_jahrgang;
   const ab = new Date(s.naechster_ab);
   const monatJahr = `${s.monat} ${ab.getFullYear()}`;
