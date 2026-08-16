@@ -13,6 +13,30 @@ export type HaushaltZeile = {
   source_url: string | null;
 };
 
+/** Ein Posten der Ergebnisrechnung aus dem Jahresabschluss (#500):
+ *  `ansatz` = was geplant war, `ergebnis` = was es tatsächlich wurde. */
+export type ErgebnisPosten = {
+  jahr: number; nr: number; bezeichnung: string;
+  vorjahr: number | null; ansatz: number | null;
+  ergebnis: number | null; abweichung: number | null;
+  ist_summe: 0 | 1;
+  quelle_label: string | null; quelle_url: string | null;
+};
+
+/** Produktebene aus den Teilhaushalts-Plänen (#500) — was einzelne Aufgaben
+ *  kosten. `ergebnis` ist negativ = Zuschussbedarf. */
+export type Produkt = {
+  jahr: number; produkt_nr: string; produkt_name: string;
+  thh_nr: number | null; thh_name: string | null; amt: string | null;
+  ertraege: number | null; aufwendungen: number | null; ergebnis: number | null;
+  quelle_label: string | null; quelle_url: string | null;
+};
+
+export type ProdukteAntwort = {
+  jahr: number; produkte: Produkt[];
+  abdeckung_prozent: number | null; plan_aufwendungen: number | null;
+};
+
 export type HaushaltDaten = {
   jahre: Record<string, HaushaltZeile[]>;
   steuern: { jahr: number; art: string; betrag: number | null }[];
@@ -22,7 +46,58 @@ export type HaushaltDaten = {
   }[];
   /** Jüngste Einwohnerzahl — Bezugsgröße für Pro-Kopf-Einordnungen. */
   einwohner: { jahr: number; einwohner: number } | null;
+  /** Ansatz und Ergebnis je Posten aus den Jahresabschlüssen. */
+  ergebnisrechnung?: ErgebnisPosten[];
+  /** Jahre, für die die Produktebene vorliegt. */
+  produkt_jahre?: number[];
 };
+
+/** „Geplant gegen tatsächlich" je abgeschlossenem Jahr, in Mio.
+ *
+ *  Verglichen wird das **Jahresergebnis**: ordentliches (Posten 21) plus
+ *  außerordentliches Ergebnis (24). Nur das ordentliche zu nehmen schmeichelte
+ *  der Stadt — die außerordentlichen Posten waren zuletzt durchweg negativ.
+ *  Jahre, in denen ein Posten fehlt, fallen raus statt halb gerechnet zu
+ *  werden. */
+export function planGegenIst(
+  daten: HaushaltDaten,
+): { jahr: number; plan: number; ist: number; delta: number }[] {
+  const posten = daten.ergebnisrechnung ?? [];
+  const jahre = [...new Set(posten.map((p) => p.jahr))].sort((a, b) => a - b);
+  return jahre
+    .map((jahr) => {
+      const teile = [21, 24].map((nr) => posten.find((p) => p.jahr === jahr && p.nr === nr));
+      if (teile.some((t) => !t || t.ansatz == null || t.ergebnis == null)) return null;
+      const plan = teile.reduce((s, t) => s + (t!.ansatz as number), 0) / 1e6;
+      const ist = teile.reduce((s, t) => s + (t!.ergebnis as number), 0) / 1e6;
+      return {
+        jahr,
+        plan: Math.round(plan * 10) / 10,
+        ist: Math.round(ist * 10) / 10,
+        delta: Math.round((ist - plan) * 10) / 10,
+      };
+    })
+    .filter((x): x is { jahr: number; plan: number; ist: number; delta: number } => x !== null);
+}
+
+/** Das Produkt, dessen Zuschussbedarf einem Betrag am nächsten kommt — die
+ *  Übersetzung von „4,0 Mio." in etwas, das man kennt.
+ *
+ *  `thhName` grenzt bewusst auf denselben Teilhaushalt ein: Eine Kürzung bei
+ *  Kultur mit einer Sozialleistung zu vergleichen legt nahe, man könne die
+ *  stattdessen streichen. Wo für den Bereich keine Produkte vorliegen, gibt es
+ *  lieber keinen Vergleich als einen schiefen. */
+export function naechstesProdukt(
+  produkte: Produkt[], mioBetrag: number, thhName?: string,
+): Produkt | null {
+  if (mioBetrag < 0.2) return null;
+  const passend = produkte.filter((p) =>
+    p.ergebnis != null && p.ergebnis < 0 && (!thhName || p.thh_name === thhName));
+  if (!passend.length) return null;
+  return passend.reduce((best, p) =>
+    Math.abs(-(p.ergebnis as number) / 1e6 - mioBetrag)
+      < Math.abs(-(best.ergebnis as number) / 1e6 - mioBetrag) ? p : best);
+}
 
 /** Redaktionell gepflegte Konstanten — NICHT aus der DB. Quelle: Genehmigung
  *  des Haushalts 2026 durch das Nds. Innenministerium (04/2026), oldenburg.de.

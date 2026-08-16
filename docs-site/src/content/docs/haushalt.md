@@ -18,7 +18,7 @@ welche schlicht fehlt.
 | `/haushalt/einnahmen` | Alle Einnahmequellen mit Spielraum-Kodierung (frei / begrenzt / kein Einfluss) |
 | `/haushalt/steuer?art=<slug>` | Steckbrief je Einnahmeart: „Wer entscheidet was", Ist-Kurve, Hebesatz, Ein-Punkt-Überschlag |
 | `/haushalt/pflicht` | Muss oder kann — Teilhaushalte nach Gestaltungsspielraum |
-| `/haushalt/labor` | Was-wäre-wenn: Hebesatz-Regler und Kürzungen, mit dauerhaft sichtbarer Gegenrechnung |
+| `/haushalt/labor` | Was-wäre-wenn: Hebesatz-Regler und Kürzungen, jede Bewegung in Mio., € je Einwohner und Anteil an der Lücke; dauerhaft sichtbare Gegenrechnung |
 
 Query-Parameter statt dynamischer Segmente, weil der Capacitor-Export die
 Slugs zur Bauzeit nicht kennt — dieselbe Konvention wie `/council/decision?id=`.
@@ -105,6 +105,35 @@ Ein Nebenertrag: Die Ansätze aus den Jahresabschlüssen bestätigen die Werte,
 die wir aus den Plan-PDFs lesen (2023: 664,6 gegen 664,9 Mio. €; 2024: 693,6
 gegen 693,9). Zwei unabhängige Wege zur selben Zahl.
 
+## Woran das Labor seine Zahlen misst
+
+Ein Regler, der eine Zahl verändert, sagt nichts darüber, ob das viel ist.
+Deshalb hängt an jeder Bewegung ein Bezug, und alle drei kommen aus Daten:
+
+- **Anteil an der Lücke** — der Balken im Ergebnis füllt sich, Einnahmen und
+  Kürzungen getrennt eingefärbt.
+- **Euro je Einwohner** — Bezugsgröße ist `council_einwohner` (jüngstes Jahr).
+- **Der Beispielbetrieb am Hebesatz** — 100.000 € Gewerbeertrag × Messzahl
+  3,5 % (§ 11 GewStG) × Hebesatz. Dieselbe Rechnung wie im Steuer-Steckbrief,
+  damit beide Seiten dieselbe Zahl nennen.
+- **Vergleichsgrößen aus der Produktebene** — „ungefähr so viel, wie
+  *Kulturgutvermittlung* im ganzen Jahr kostet". Verglichen wird nur
+  **innerhalb desselben Teilhaushalts**: Eine Kultur-Kürzung neben eine
+  Sozialleistung zu stellen legt nahe, man könne die stattdessen streichen.
+  Wo für einen Bereich keine Produkte vorliegen, entfällt der Vergleich.
+- **„Wie verlässlich ist der Plan?"** — der Ansatz gegen das Ergebnis aus den
+  Jahresabschlüssen. In allen fünf eingelesenen Jahren fiel das Ergebnis
+  besser aus als geplant (zwischen +2,9 und +38,1 Mio. €). Der Block sagt
+  ausdrücklich dazu, dass das Minus damit nicht unecht wird — ein Plan preist
+  Vorsicht ein.
+
+:::caution[Produktzahlen sind Vergleich, nicht Rechengrundlage]
+Die Simulation rechnet mit dem aktuellen Planjahr, die Produktebene stammt aus
+dem jüngsten auslesbaren Teilhaushaltsplan (2023). Beides zu verrechnen ergäbe
+eine Zahl, die in keinem Dokument steht. Die Produkte stehen deshalb nur
+daneben — als Größenordnung, nie als Summand.
+:::
+
 ## Was bewusst fehlt
 
 Der Bereich zeigt lieber eine Lücke als eine Schätzung:
@@ -121,8 +150,6 @@ Der Bereich zeigt lieber eine Lücke als eine Schätzung:
 - **Gebühren und Beiträge** — in keinem der Datensätze enthalten.
 - **Hebesatz-Zeitreihe und Städtevergleich** — kommen aus der
   Statistik-Schnittstelle des Landes, sobald sie angebunden ist.
-- **Produktebene** (Einzelbeträge je Einrichtung) — steckt in den
-  Teilhaushalts-PDFs des Ratsinformationssystems.
 
 ## Befunde aus dem Datenabgleich
 

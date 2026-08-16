@@ -7,6 +7,24 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Verbessert
+- **Das Haushalts-Labor sagt jetzt, ob das viel ist.** Bisher bewegte man
+  Regler und eine Zahl änderte sich — ohne Maßstab. Jetzt füllt jede Bewegung
+  sichtbar einen Anteil der Lücke, und unter jedem Regler steht, was er
+  bewirkt: in Millionen, in Euro je Einwohner und als Anteil am Minus. Am
+  Hebesatz kommt dazu, was ein Betrieb mit 100.000 € Gewerbeertrag danach
+  zahlt. Kürzungen werden in echte Aufgaben übersetzt („ungefähr so viel, wie
+  die Kulturgutvermittlung im ganzen Jahr kostet") — aus den
+  Teilhaushaltsplänen, immer aus demselben Bereich. Drei Szenarien zum
+  Anklicken zeigen die Größenordnungen, „Alles auf Anschlag" auch die
+  Obergrenze: Mehr als 39,4 Mio. € geben diese zwei Stellschrauben nicht her.
+  Auf dem Handy bleibt das Ergebnis beim Drehen sichtbar.
+- **Neu im Labor: „Wie verlässlich ist der Plan?"** Der Ansatz gegen das
+  tatsächliche Ergebnis aus den Jahresabschlüssen — in allen fünf
+  eingelesenen Jahren fiel es besser aus als geplant, zwischen 2,9 und
+  38,1 Mio. €. Damit steht das geplante Minus zum ersten Mal in einem
+  Verhältnis, ohne dass es dadurch unecht würde.
+
 ### Behoben
 - **Zahlen übereinander im Steuer-Verlauf.** Auf dem Steuer-Steckbrief lagen die
   beiden Rückgangs-Marken der Ist-Kurve ineinander und über der Achsenzahl

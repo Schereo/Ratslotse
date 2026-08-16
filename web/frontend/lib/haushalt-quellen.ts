@@ -22,7 +22,9 @@ export type Quelle = {
 /** Die Schlüssel explizit statt per Inferenz: So sind die Werte einheitlich
  *  als `Quelle` getypt (inklusive optionaler Felder wie `lizenz`), und die
  *  Union bleibt trotzdem eng genug, um Tippfehler beim Aufruf zu fangen. */
-export type QuellenSchluessel = "plan" | "steuern" | "steuerkraft" | "hebesaetze" | "ruecklage";
+export type QuellenSchluessel =
+  | "plan" | "steuern" | "steuerkraft" | "hebesaetze" | "ruecklage"
+  | "jahresabschluss" | "teilhaushalt";
 
 export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   plan: {
@@ -67,6 +69,31 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     stand: "2025",
     art: "web",
     url: "https://www.oldenburg.de/startseite/rathaus/informiert-bleiben/aktuelles/neue-hebesaetze.html",
+  },
+  // Beide aus dem eigenen Bestand: Die Dokumente liegen als Anlagen zu
+  // Ratsvorlagen im Bürgerinfo — kein externer Download (#500).
+  jahresabschluss: {
+    titel: "Jahresabschlüsse der Stadt Oldenburg",
+    fundstelle:
+      "Ergebnisrechnung der Kernverwaltung — Ansatz und Ergebnis nebeneinander, Posten 1–24. " +
+      "Wir übernehmen nur Zeilen, bei denen die im Dokument ausgewiesene Probe aufgeht " +
+      "(Abweichung = Ergebnis − Ansatz). Als Anlagen zu Ratsvorlagen im Bürgerinformationssystem.",
+    herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
+    stand: "Jahresabschlüsse 2019 und 2021–2024",
+    art: "pdf",
+    url: "https://buergerinfo.oldenburg.de",
+  },
+  teilhaushalt: {
+    titel: "Teilhaushaltspläne der Stadt Oldenburg (Produktebene)",
+    fundstelle:
+      "Teilergebnishaushalte je Teilhaushalt (THH 01–13): was einzelne Aufgaben kosten, " +
+      "mit Produktnummer und zuständigem Amt. Übernommen werden nur Produktzeilen, bei denen " +
+      "Erträge − Aufwendungen = ordentliches Ergebnis aufgeht. Die Abdeckung ist unvollständig — " +
+      "nicht jeder Teilhaushalt liegt für jedes Jahr auslesbar vor.",
+    herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
+    stand: "Haushaltsjahre 2018–2023",
+    art: "pdf",
+    url: "https://buergerinfo.oldenburg.de",
   },
   ruecklage: {
     titel: "Rücklage und Genehmigung des Haushalts 2026",
