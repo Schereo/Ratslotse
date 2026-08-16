@@ -64,6 +64,12 @@ JOBS: list[dict] = [
         "description": "Neue Jahresabschlüsse, Teilhaushalts-Pläne und Prüfberichte aus dem Anlagenbestand — plus Hinweis, wenn ein Jahrgang ausbleibt.",
         # Bestandsgesteuert, nicht kalendergesteuert: Der Takt bestimmt nur,
         # wie schnell ein neuer Jahrgang auf der Seite steht (s. Skript-Kopf).
+        #
+        # Läuft vorerst NUR auf der Dev-VM: Der Haushalts-Bereich steht hinterm
+        # Umgebungs-Gate (web/frontend/lib/haushalt-frei.ts), auf Prod bleiben
+        # seine Tabellen leer. In der Cron-Übersicht erscheint der Job dort
+        # deshalb als „unknown" (nie gelaufen) — nicht als überfällig; die
+        # Ampel kennt „stale" nur für Jobs mit mindestens einem Lauf.
         "schedule": "alle zwei Wochen, sonntags 4:30 Uhr",
         "max_age_h": 16 * 24,
     },
