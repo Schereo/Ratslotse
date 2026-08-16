@@ -188,6 +188,12 @@ PROBEN: dict[str, str] = {
         "der drei Jahreswerte daneben — und geteilt durch die Einwohnerzahl, "
         "die dieselbe Zeile mitliefert, ergibt er den Pro-Kopf-Wert, den die "
         "Tabelle nennt.",
+    # Investitionen aus dem Finanzhaushalt (council/investitionen.py). Die
+    # einzige Portal-CSV des Bereichs, die eine Probe mitbringt.
+    "investitionen_summenzeile":
+        "Die Teilhaushalte ergeben zusammen genau die Summenzeile, die dieselbe "
+        "Datei ausweist — in beiden Spalten, bei den Einzahlungen wie bei den "
+        "Auszahlungen.",
     # Schuldenzeitreihe aus Tabelle 1108 des Statistischen Jahrbuchs
     # (council/schulden.py). Die zweite ist die stärkere: Ihr Divisor kommt aus
     # einer anderen Veröffentlichung der Stadt, und 2022 ist sie die einzige,
@@ -245,6 +251,8 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     "council_staedtevergleich",
     # Die Planjahre aus dem Gesamtergebnishaushalt — neu, ohne Altbestand.
     "council_ergebnishaushalt",
+    # Die Investitionen des Finanzhaushalts — neu, ohne Altbestand.
+    "council_investitionen",
     # Die Schuldenzeitreihe aus dem Statistischen Jahrbuch — ebenfalls neu und
     # ausschließlich über `herkunft_id` belegt.
     "council_schulden",

@@ -449,6 +449,104 @@ Erträge und Aufwendungen Ergebnis 2018
 Ansatz 2019
 """
 
+# Wörtlicher Ausschnitt aus „2025 007 Vw THH01 Haushalt 2025
+# Verwaltungsentwurf" (Dokument 282814, Produkt P10.111001). Ab diesem
+# Jahrgang schiebt die Stadt zwei Beschriftungszeilen zwischen „21.
+# ordentliches Ergebnis" und seine Zahlen — davor stand die Kolonne direkt
+# hinter der Beschriftung. Der Parser fand sie nicht mehr und verlor damit
+# jedes Produkt der Jahrgänge 2024 und 2025 (0 von 78 bzw. 0 von 89).
+THH_PLAN_2025 = """Teilergebnishaushalt THH01: Verwaltungsführung
+Produkt: Rechnungsprüfung (örtliche Prüfung) (P10.111001)
+Rechnungsprüfungsamt
+Erträge und Aufwendungen Ergebnis 2023
+- Euro -
+Ansatz 2024
+- Euro -
+Ansatz 2025
+- Euro -
+Ansatz 2026
+- Euro -
+Ansatz 2027
+- Euro -
+Ansatz 2028
+- Euro -
+Ordentliche Erträge
+07. Kostenerstattungen und
+Kostenumlagen
+147.009,39 160.800 159.550 159.550 159.550159.550
+12. =Summe ordentliche
+Erträge
+147.009,39 160.800 159.550 159.550 159.550 159.550
+Ordentliche Aufwendungen
+13. Personalaufwendungen 1.277.950,80 1.237.704 1.344.145 1.371.027 1.398.4381.317.789
+16. Abschreibungen 923,25 929 954 981 1.009926
+20. = Summe ordentliche
+Aufwendungen
+1.401.260,58 1.349.214 1.431.642 1.458.025 1.484.935 1.512.373
+21. ordentliches Ergebnis
+Jahresüberschuss(+)
+/Jahresfehlbetrag (-)
+-1.254.251,19 -1.188.414 -1.272.092 -1.298.475 -1.325.385 -1.352.823
+280
+"""
+
+# Wörtlicher Ausschnitt aus „2026 007 Vw THH01 Haushalt 2026
+# Verwaltungsentwurf" (Dokument 297443). Hier zerreißt ein Seitenumbruch die
+# beiden neuen Beschriftungszeilen: „/Jahresfehlbetrag (-)" steht erst hinter
+# Seitenzahl und wiederholtem Seitenkopf, also HINTER den Zahlen. Eine feste
+# Zahl übersprungener Zeilen trifft beide Formen nicht.
+THH_2026_UMBRUCH = """20. = Summe ordentliche
+Aufwendungen
+8.499.006,28 9.624.601 9.622.001 9.764.036 9.908.888 10.056.552
+21. ordentliches Ergebnis
+Jahresüberschuss(+)
+-7.794.279,74 -8.964.051 -8.777.347 -8.919.382 -9.064.234 -9.211.898
+248
+Teilergebnishaushalt  THH01: Verwaltungsführung
+Erträge und Aufwendungen Ergebnis 2024
+- Euro -
+Ansatz 2025
+- Euro -
+/Jahresfehlbetrag (-)
+22. außerordentliche Erträge
+51310000 Außerplanmäßige AfA
+auf Sachvermögen 846,93
+"""
+
+# Ebenfalls wörtlich (Dokument 297443, Produkt P10.111002): Ein Produkt ohne
+# ordentliche Erträge lässt die Zeile „12. = Summe ordentliche Erträge" LEER.
+# Dahinter steht die nächste Tabellenzeile. Wer von der Beschriftung aus
+# vorwärts bis zur nächsten Zahlenkolonne liest, klebt dem Produkt die
+# Personalaufwendungen als Erträge an.
+THH_LEERE_ERTRAEGE = """Teilergebnishaushalt THH01: Verwaltungsführung
+Produkt: Zentrale Dienste (P10.111002)
+Büro der Oberbürgermeisterin
+Erträge und Aufwendungen Ergebnis 2024
+- Euro -
+Ansatz 2025
+- Euro -
+Ansatz 2026
+- Euro -
+Ansatz 2027
+- Euro -
+Ansatz 2028
+- Euro -
+Ansatz 2029
+- Euro -
+12. =Summe ordentliche
+Erträge
+Ordentliche Aufwendungen
+13. Personalaufwendungen 199.891,67 132.902 143.154 146.017 148.936140.347
+20. = Summe ordentliche
+Aufwendungen
+214.459,32 144.384 153.327 156.138 159.005 161.928
+21. ordentliches Ergebnis
+Jahresüberschuss(+)
+/Jahresfehlbetrag (-)
+-214.459,32 -144.384 -153.327 -156.138 -159.005 -161.928
+275
+"""
+
 # Steckbrief mit der Grunddaten-Tabelle DAZWISCHEN: Ihr Label steht
 # ausnahmsweise VOR seinem Inhalt, die Tabelle liegt also zwischen
 # „Wirkungskreis:" und „Zielgruppe(n):" und lief ungefiltert als Zielgruppe
@@ -555,6 +653,64 @@ def test_parse_teilergebnishaushalt_produkte():
 def test_teilergebnishaushalt_prueft_summe():
     kaputt = THH_PLAN.replace("-405.485,45 -480.033", "-405.485,45 -999.999")
     assert finanzberichte.parse_teilergebnishaushalt(kaputt) == []
+
+
+def test_teilergebnishaushalt_ab_plan_2025_mit_zwei_beschriftungszeilen():
+    """Ab dem Haushaltsplan 2025 stehen zwischen „21. ordentliches Ergebnis"
+    und seinen Zahlen zwei weitere Beschriftungszeilen. Vorher endete die
+    Suche eine Zeile zu früh — und ohne Posten 21 fiel das ganze Produkt
+    durch die Rechenprobe."""
+    produkte = finanzberichte.parse_teilergebnishaushalt(THH_PLAN_2025)
+    assert len(produkte) == 1
+    p = produkte[0]
+    assert p["produkt_nr"] == "P10.111001" and p["thh_nr"] == 1
+    assert p["produkt_name"] == "Rechnungsprüfung (örtliche Prüfung)"
+    assert p["amt"] == "Rechnungsprüfungsamt"
+    # Haushaltsjahr = ERSTER Ansatz (2024), nicht die Finanzplanungsjahre.
+    assert p["jahr"] == 2024
+    assert p["ertraege"] == 160_800.0 and p["aufwendungen"] == 1_349_214.0
+    assert p["ergebnis"] == -1_188_414.0
+    # Die Rechenprobe des Dokuments geht auf: 12 − 20 = 21.
+    assert p["ertraege"] - p["aufwendungen"] == p["ergebnis"]
+    # Die angeklebte Seitenzahl (280) darf kein Wert werden.
+    assert p["ergebnis"] != 280
+
+
+def test_wertezeile_ueberspringt_seitenumbruch_zwischen_den_beschriftungen():
+    """Ein Seitenumbruch kann die beiden neuen Beschriftungszeilen zerreißen:
+    Die Zahlen stehen dann zwischen ihnen. Eine feste Zahl übersprungener
+    Zeilen trifft das nicht — gesucht wird bis zur Zahlenkolonne."""
+    zahlen = finanzberichte._thh_wertezeile(
+        THH_2026_UMBRUCH, r"21\.\s*ordentliches Ergebnis", 6)
+    assert zahlen == [-7_794_279.74, -8_964_051.0, -8_777_347.0,
+                      -8_919_382.0, -9_064_234.0, -9_211_898.0]
+
+
+def test_wertezeile_nimmt_niemals_die_zahlen_der_naechsten_zeile():
+    """Die wichtigste Schutzregel: Ist die eigene Zelle leer, bleibt sie leer.
+
+    Sonst stünden die Personalaufwendungen als „Summe ordentliche Erträge" am
+    Produkt — im Bestand steht 85-mal „Ordentliche Aufwendungen" und 21-mal
+    „14. Versorgungsaufwendungen" zwischen einer Beschriftung und der
+    nächsten Zahlenkolonne."""
+    assert finanzberichte._thh_wertezeile(
+        THH_LEERE_ERTRAEGE, r"12\.\s*=?\s*Summe ordentliche\s*Erträge", 6) is None
+    # Und das Produkt fällt damit ganz weg, statt mit falschen Erträgen
+    # dazustehen: ohne Posten 12 geht die Rechenprobe nicht auf.
+    assert finanzberichte.parse_teilergebnishaushalt(THH_LEERE_ERTRAEGE) == []
+
+
+def test_wertezeile_haelt_betraege_nicht_fuer_postennummern():
+    """„38.949.730,76" fängt mit zwei Ziffern und einem Punkt an — wie eine
+    Postennummer. Ohne diese Unterscheidung hielte sich jede Zahlenzeile
+    selbst für die nächste Tabellenzeile, und Posten 20 bliebe überall leer."""
+    text = ("20. = Summe ordentliche\nAufwendungen\n"
+            "38.949.730,76 43.188.377 46.792.066 37.826.997 38.753.244 39.558.809\n"
+            "21. ordentliches Ergebnis 310.401.502,08 317.369.030 343.840.679 "
+            "365.857.393 376.901.396 388.219.126\n325\n")
+    zahlen = finanzberichte._thh_wertezeile(
+        text, r"20\.\s*=?\s*Summe ordentliche\s*Aufwendungen", 6)
+    assert zahlen is not None and zahlen[1] == 43_188_377.0
 
 
 # --- Produkt-Steckbrief ------------------------------------------------------

@@ -22,19 +22,25 @@
 // Die naheliegende Reparatur wäre gewesen, drei Kacheln anzuhängen. Zehn
 // durchnummerierte Karten sind aber genau das Problem, das die zweite Runde
 // gelöst hat, nur größer: Eine Nummer sagt „danach kommt elf", sie sagt nicht,
-// WOFÜR man weiterliest. Deshalb liegen die Schritte jetzt in vier
-// benannten Stufen, und jede Stufe sagt in einem Satz, welche Frage sie
-// beantwortet. Die Nummern laufen durch — es bleibt ein Weg, er hat nur
-// sichtbare Abschnitte:
+// WOFÜR man weiterliest. Deshalb liegen die Schritte jetzt in vier benannten
+// Stufen, und jede Stufe sagt in einem Satz, welche Frage sie beantwortet.
+// Die Nummern laufen durch — es bleibt ein Weg, er hat nur sichtbare
+// Abschnitte:
 //
-//   1–4   Die Zahlen      Woher das Geld kommt, wohin es geht, was fest ist,
-//                         was einzelne Aufgaben kosten.
-//   5–6   Die Gegenprobe  Ein Haushalt ist ein Plan; was daraus wurde, steht
+//   1–5   Die Zahlen      Woher das Geld kommt, wohin es geht, was fest ist,
+//                         was einzelne Aufgaben kosten — und was gebaut wird.
+//   6–7   Die Gegenprobe  Ein Haushalt ist ein Plan; was daraus wurde, steht
 //                         im Jahresabschluss, und geprüft wird er auch.
-//   7–9   Der Rahmen      Der Kernhaushalt ist rund zwei Drittel der Stadt,
+//   8–10  Der Rahmen      Der Kernhaushalt ist rund zwei Drittel der Stadt,
 //                         Oldenburg steht nicht allein da, und was aus allen
 //                         Jahren zusammen offen blieb, sind die Schulden.
-//   10–11 Mitreden        Wann entschieden wird, und was sich drehen ließe.
+//   11–12 Mitreden        Wann entschieden wird, und was sich drehen ließe.
+//
+// „Was wird gebaut?" kam 08/2026 als Schritt 5 dazu — mit der ersten Schicht,
+// die den FINANZhaushalt liest. Es steht am Ende der Zahlen-Stufe und nicht
+// vorn, weil es die einzige Seite ist, die einen anderen Haushalt zeigt als
+// die vier davor: Erst wenn klar ist, was im Ergebnishaushalt steht, ist die
+// Aussage „und hier steht das alles NICHT drin" überhaupt eine.
 //
 // Drei Entscheidungen dahinter, die man sonst rückgängig macht:
 //
@@ -42,7 +48,7 @@
 //    die griffigste Seite, beantwortet aber eine Frage, die erst Sinn ergibt,
 //    wenn man weiß, dass der größte Teil des Geldes gar nicht zur Disposition
 //    steht. Das stand schon in der zweiten Runde hier und gilt weiter.
-//  * **Der Städtevergleich steht spät (Schritt 8), nicht vorn.** „Steht
+//  * **Der Städtevergleich steht spät (Schritt 9), nicht vorn.** „Steht
 //    Oldenburg besser da als Osnabrück?" ist eine Frage, die sich erst stellt,
 //    wenn man die eigenen Zahlen kennt — und die Seite selbst besteht zur
 //    Hälfte aus der Begründung, warum der Vergleich bei den Ausgaben nicht
@@ -52,26 +58,28 @@
 //    ist der letzte Schritt, nicht der zweite: Vorher fehlt der Bezug, an dem
 //    sich ablesen ließe, ob eine Bewegung viel ist.
 //
-//  * **Die Schulden stehen am Ende des Rahmens (Schritt 9), nicht bei den
+//  * **Die Schulden stehen am Ende des Rahmens (Schritt 10), nicht bei den
 //    Zahlen.** Sie sind die einzige Bestandsgröße im ganzen Weg: nicht was in
 //    einem Jahr floss, sondern was aus allen Jahren zusammen offen blieb. Vorn
-//    gelesen wäre das eine vierte Jahreszahl unter dreien; hinter dem Konzern
+//    gelesen wäre das eine weitere Jahreszahl unter vielen; hinter dem Konzern
 //    gelesen hat der Leser gerade erfahren, dass „die Stadt" zwei verschiedene
 //    Abgrenzungen hat — und genau davon hängt ab, welche Schuldenzahl gilt.
 //
-// **`/haushalt/konzern` behält Schritt 7.** Die Seite schreibt ihre Nummer
+// **`/haushalt/konzern` steht auf Schritt 8.** Die Seite schreibt ihre Nummer
 // selbst in den Kicker (`konzern/page.tsx`, „Stadtfinanzen Oldenburg ·
-// Schritt 7"). Die Reihenfolge oben ist so gewählt, dass das stimmt — wer sie
-// ändert, ändert dort mit, sonst widersprechen sich zwei Seiten still. Aus
-// demselben Grund hängt die Schulden-Seite HINTER dem Städtevergleich und
-// nicht zwischen ihm und dem Konzern: Sonst rutschte der Vergleich auf 9 und
-// die Begründung „steht spät (Schritt 8)" oben wäre still falsch.
+// Schritt 8"). Wer die Reihenfolge oben ändert, ändert dort mit, sonst
+// widersprechen sich zwei Seiten still — genau das ist beim Einfügen von
+// „Was wird gebaut?" (08/2026) passiert und dort nachgezogen worden: Die
+// Seite trug bis dahin Schritt 7. Aus demselben Grund hängt die
+// Schulden-Seite HINTER dem Städtevergleich und nicht zwischen ihm und dem
+// Konzern: Sonst rutschten Konzern und Vergleich je eine Nummer weiter, und
+// beide Begründungen oben wären still falsch.
 //
-// **Zwei der dreizehn Seiten haben bewusst keinen Schritt.** `/haushalt/bereich`
+// **Zwei der vierzehn Seiten haben bewusst keinen Schritt.** `/haushalt/bereich`
 // und `/haushalt/steuer` sind Steckbriefe: Sie brauchen einen Query-Parameter
 // und öffnen ohne ihn den Vorgabefall. Als eigener Schritt stünde ein
-// beliebiger Bereich neben elf Fragen. Sie werden am Fuß benannt, damit die
-// Zählung „elf Schritte, dreizehn Seiten" nicht wie eine Lücke aussieht.
+// beliebiger Bereich neben zwölf Fragen. Sie werden am Fuß benannt, damit die
+// Zählung „zwölf Schritte, vierzehn Seiten" nicht wie eine Lücke aussieht.
 //
 // FORM: eine Karte, nicht zehn. Zehn Karten sind auf 375 px eine Liste ohne
 // Ende — die Stufen wären zwischen ihnen untergegangen, und genau sie sind
@@ -91,7 +99,8 @@
 import Link from "next/link";
 import {
   ArrowLeftRight, BookOpenText, Building2, CalendarDays, ChevronRight, Coins,
-  GitCompareArrows, Landmark, Receipt, Scale, SearchCheck, SlidersHorizontal,
+  GitCompareArrows, HardHat, Landmark, Receipt, Scale, SearchCheck,
+  SlidersHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -130,6 +139,12 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         Icon: Receipt,
         titel: "Was kostet eigentlich …?",
         text: "Archiv, Feuerwehr, Schwimmbad: einzelne Aufgaben mit Kosten und Auftrag.",
+      },
+      {
+        href: "/haushalt/investitionen",
+        Icon: HardHat,
+        titel: "Was wird gebaut?",
+        text: "Neubauten, Fahrzeuge, Grundstücke — der Haushalt, in dem die vier Seiten davor nicht vorkommen.",
       },
     ],
   },
@@ -280,7 +295,7 @@ export function Wegweiser() {
       ))}
 
       {/* Ohne diesen Satz sähe die Schrittzahl nach einer Lücke aus: Der
-          Bereich hat dreizehn Unterseiten. Die beiden übrigen sind Steckbriefe
+          Bereich hat vierzehn Unterseiten. Die beiden übrigen sind Steckbriefe
           und brauchen einen Bereich bzw. eine Einnahmeart, über die man sie
           aufruft — als Schritt stünde dort ein beliebiger Einzelfall. */}
       <p className="mt-3.5 border-t border-dashed border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground">

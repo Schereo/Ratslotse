@@ -36,6 +36,8 @@ export type QuellenSchluessel =
   // A10: Städtevergleich — die einzigen Quellen des Bereichs, die nicht von
   // der Stadt Oldenburg stammen, sondern vom Land.
   | "lsn_finanzausgleich" | "lsn_realsteuern" | "vergleich_2018"
+  // A11: Die Investitionen des Finanzhaushalts.
+  | "investitionen"
   // Die Schuldenzeitreihe — die einzige Quelle des Bereichs aus dem
   // Statistischen Jahrbuch der Stadt.
   | "schulden";
@@ -43,9 +45,13 @@ export type QuellenSchluessel =
 export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   plan: {
     titel: "Beschlossener Haushaltsplan der Stadt Oldenburg",
+    // Der Halbsatz „wir lesen maschinell aus und prüfen gegen die Summenzeile"
+    // stand hier bis 16.08. Er benennt keine Grenze der Quelle, sondern nur
+    // unser Verfahren — genau die Selbstvergewisserung, die DESIGNSPRACHE.md
+    // als Anti-Pattern führt. Was eine Quelle NICHT hergibt, steht weiterhin
+    // dabei (siehe steuern, teilhaushalt, pruefbericht).
     fundstelle:
-      "Übersicht „Ergebnishaushalt“ — ordentliche Erträge und Aufwendungen je Teilhaushalt. " +
-      "Wir lesen die Tabellenseite maschinell aus und prüfen sie gegen die Summenzeile.",
+      "Übersicht „Ergebnishaushalt“ — ordentliche Erträge und Aufwendungen je Teilhaushalt.",
     herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
     stand: "Haushaltsjahre 2020–2026",
     art: "pdf",
@@ -105,9 +111,6 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "Die Ergebnisrechnung, einmal für die Kernverwaltung und einmal je Teilhaushalt: " +
       "Plan und Ergebnis nebeneinander, Posten 1–24. Dazu die Erläuterungen der " +
       "Verwaltung zu den erheblichen Abweichungen (Abschnitt 6.3.1). " +
-      "Wir übernehmen eine Zeile nur, wenn die Probe des Dokuments aufgeht: " +
-      "Abweichung = Ergebnis − Plan. Die Teilhaushalts-Ebene zusätzlich nur, wenn ihre " +
-      "Summe die Gesamtrechnung ergibt. " +
       "Womit ein Jahrgang seinen Plan misst — Ansatz, Ansatz mit Nachtrag oder " +
       "Gesamtermächtigung —, steht auf der Seite dabei. " +
       "Die Dokumente hängen als Anlagen an Ratsvorlagen im Bürgerinformationssystem.",
@@ -120,8 +123,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     titel: "Teilhaushaltspläne der Stadt Oldenburg (Produktebene)",
     fundstelle:
       "Teilergebnishaushalte je Teilhaushalt (THH 01–13): was einzelne Aufgaben kosten, " +
-      "mit Produktnummer und zuständigem Amt. Übernommen werden nur Produktzeilen, bei denen " +
-      "Erträge − Aufwendungen = ordentliches Ergebnis aufgeht. Die Abdeckung ist unvollständig — " +
+      "mit Produktnummer und zuständigem Amt. Die Abdeckung ist unvollständig — " +
       "nicht jeder Teilhaushalt liegt für jedes Jahr auslesbar vor.",
     herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
     stand: "Haushaltsjahre 2018–2023",
@@ -133,11 +135,8 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     fundstelle:
       "Die Randmarken des Berichts (B, WB, H, K) und der Absatz, der jeweils dahinter steht — " +
       "mit der Textziffer und der Seite, unter der er dort geführt wird. " +
-      "Übernommen wird nur, was der Bericht selbst erklärt: Die Marke muss in seiner Legende " +
-      "stehen, die Textziffer in seinem Inhaltsverzeichnis. " +
       "Der Jahrgang 2024 fehlt, weil sein PDF keine Zeichenzuordnung mitbringt — der " +
       "Textextrakt besteht aus Glyphen-Nummern, und eine zweite Kopie gibt es nicht. " +
-      "Wir lesen dann lieber nichts als etwas Geratenes. " +
       "Die Berichte hängen als Anlagen an Ratsvorlagen im Bürgerinformationssystem.",
     herausgeber: "Stadt Oldenburg, Rechnungsprüfungsamt",
     stand: "Jahresabschlüsse 2017–2023",
@@ -298,5 +297,30 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     url:
       "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/" +
       "40_Stadtplanungsamt/402_Geo_und_Daten/Statistik/1108-2025-AZ.pdf",
+  },
+  // A11: Die Investitionen des Finanzhaushalts (/haushalt/investitionen). Die
+  // einzige CSV des Open-Data-Portals in diesem Verzeichnis, die eine
+  // Rechenprobe mitbringt — bei den drei anderen steht ausdrücklich, dass sie
+  // keine haben.
+  investitionen: {
+    titel: "Finanzhaushalt der Stadt Oldenburg — Investitionen je Teilhaushalt",
+    fundstelle:
+      "Datensatz 1101, Tabellenblatt „Finanzhaushalt“: je Teilhaushalt eine Zeile " +
+      "mit den Ein- und Auszahlungen aus Investitionstätigkeit, darunter die " +
+      "Summenzeile „Finanzhaushalt Gesamtinvestitionen“. " +
+      "Übernommen wird ein Jahrgang nur, wenn die Rechnung der Datei aufgeht: Die " +
+      "Teilhaushalte müssen die Summenzeile ergeben, in beiden Spalten. " +
+      "Die Zeile „Gesamtbetrag des Finanzhaushaltes“ zeigen wir als Bezugsgröße " +
+      "daneben — sie zählt die laufende Verwaltungstätigkeit mit und ist von " +
+      "dieser Probe nicht gedeckt. " +
+      "Für welches Jahr eine Datei gilt, steht nicht in ihr, sondern in ihrem " +
+      "Dateinamen. " +
+      "Es sind Planzahlen: Was am Jahresende wirklich gebaut wurde, steht nicht " +
+      "darin, und einzelne Vorhaben nennt der Datensatz gar nicht.",
+    herausgeber: "Stadt Oldenburg, Open-Data-Portal",
+    stand: "Haushaltsjahre 2022–2025",
+    lizenz: "dl-de/by-2.0",
+    art: "csv",
+    url: "https://opendata.oldenburg.de/dataset/haushaltsplan-stadt-oldenburg-2025",
   },
 };

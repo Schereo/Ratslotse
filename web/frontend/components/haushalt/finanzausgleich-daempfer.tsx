@@ -223,7 +223,12 @@ export function FinanzausgleichDaempfer({ steuerkraft }: { steuerkraft: Kraft[] 
 
       {/* Der Kern: Warum hier keine Zahl steht. Die Auszählung ist die
           Begründung, nicht der Ersatzfaktor. */}
-      <div className="mt-3 border-t border-dashed border-border pt-3">
+      {/* Zwei Gedanken, zwei Spalten: „was die Zahlen nicht sagen" und „warum
+          wir keinen Kurs nennen" sind getrennt, standen aber untereinander —
+          und ließen auf breiten Schirmen die halbe Karte leer. Die Zeilenlänge
+          bleibt bei 74 Zeichen; breiter zu setzen wäre schlechter zu lesen,
+          nicht besser (Designsprache §4). */}
+      <div className="mt-3 grid gap-x-8 gap-y-2 border-t border-dashed border-border pt-3 lg:grid-cols-2">
         <p className="max-w-[74ch] text-[12.5px] leading-relaxed text-foreground/85">
           <strong>Wie stark das gegenrechnet, sagen diese Zahlen nicht.</strong> In{" "}
           {steigend.length} Ausgleichsjahren stieg Oldenburgs Steuerkraft gegenüber dem Vorjahr —
@@ -231,7 +236,7 @@ export function FinanzausgleichDaempfer({ steuerkraft }: { steuerkraft: Kraft[] 
           {steigend.length - gegenlaeufig} stieg sie mit. Denn es bewegt sich beides zugleich:
           Oldenburg und der Landestopf, aus dem alle Kommunen bedient werden.
         </p>
-        <p className="mt-2 max-w-[74ch] text-[11.5px] leading-relaxed text-muted-foreground">
+        <p className="mt-2 max-w-[74ch] text-[11.5px] leading-relaxed text-muted-foreground lg:mt-0">
           Deshalb nennen wir hier <strong>keinen Umrechnungskurs</strong> — kein „von jedem Euro
           bleiben X Cent". Ein einzelnes Jahrespaar ergäbe eine solche Zahl mühelos, sie wäre nur
           im nächsten Jahr eine völlig andere. Dazu kommt: Die Messzahl bildet das Land mit

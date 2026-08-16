@@ -309,18 +309,22 @@ function PruefungInner() {
         </div>
       </div>
 
+      {/* Was hier fehlt und warum — plus, wie wörtlich der Text ist. Der
+          Absatz begann bis 16.08. mit unserer Parser-Bedingung („Jede Marke
+          muss in der Legende erklärt sein und unter einer Textziffer
+          stehen"). Die Bedingung gilt weiter (`council/pruefberichte.py`,
+          Doku: „Der Konsistenz-Check statt einer Rechenprobe"); auf der Seite
+          war sie Selbstvergewisserung. Der fehlende Jahrgang dagegen ist eine
+          echte Auskunft über die Datenlage und bleibt. DESIGNSPRACHE.md § 7. */}
       <p className="max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
-        Es erscheinen nur Jahrgänge, deren Schlussbericht die Prüfung besteht: Jede Marke muss in
-        der Legende des Berichts erklärt sein und unter einer Textziffer seines
-        Inhaltsverzeichnisses stehen.
         {data.ohne_bericht.length > 0 && (
           <>
-            {" "}Für {data.ohne_bericht.join(", ")} liegt ein ausgelesener Jahresabschluss vor, der
+            Für {data.ohne_bericht.join(", ")} liegt ein ausgelesener Jahresabschluss vor, der
             Schlussbericht aber nicht in lesbarer Form — sein PDF bringt keine Zeichenzuordnung
             mit, und eine zweite Kopie gibt es nicht<Beleg q="pruefbericht" />. Wir lesen dann
-            lieber nichts als etwas Geratenes.
+            lieber nichts als etwas Geratenes.{" "}
           </>
-        )}{" "}
+        )}
         Die Feststellungen stehen im Wortlaut des Berichts; Zeilenumbrüche des PDF-Textes sind
         zusammengezogen, sonst ist nichts verändert.
       </p>
