@@ -59,6 +59,15 @@ JOBS: list[dict] = [
         "max_age_h": 8 * 24,
     },
     {
+        "key": "check_finanzdaten",
+        "label": "Haushaltsdaten",
+        "description": "Neue Jahresabschlüsse, Teilhaushalts-Pläne und Prüfberichte aus dem Anlagenbestand — plus Hinweis, wenn ein Jahrgang ausbleibt.",
+        # Bestandsgesteuert, nicht kalendergesteuert: Der Takt bestimmt nur,
+        # wie schnell ein neuer Jahrgang auf der Seite steht (s. Skript-Kopf).
+        "schedule": "alle zwei Wochen, sonntags 4:30 Uhr",
+        "max_age_h": 16 * 24,
+    },
+    {
         "key": "weekly_enrich",
         "label": "Wöchentliche Anreicherung",
         "description": "Entitäten, Geocoding, Embeddings, Rückblicke, Interessantheit und Tragweite in Tranchen.",

@@ -14,6 +14,7 @@ import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { LottiErklaert, LottiVergleich } from "@/components/haushalt/lotti-erklaert";
 import { Wegweiser } from "@/components/haushalt/wegweiser";
+import { Datenstand } from "@/components/haushalt/datenstand";
 import { GlossaryText } from "@/components/glossary-text";
 import { useFetch } from "@/lib/use-fetch";
 import { Gegenbalken } from "@/components/haushalt/gegenbalken";
@@ -396,6 +397,10 @@ export default function HaushaltPage() {
           <GlossaryText text={`Übrigens: ${BEREICH_INFO[karten[0].z.bereich]}`} />
         </p>
       )}
+
+      {/* Steht am Fuß und gilt für den ganzen Bereich: Wer hier ankommt, hat
+          die Zahlen gesehen und fragt sich, bis wann sie reichen. */}
+      <Datenstand />
 
       <Quellenverzeichnis schluessel={quellen} />
     </div>

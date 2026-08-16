@@ -52,8 +52,12 @@ Prosa und haben auf Seiten, die sie nicht zeigen, nichts zu suchen.
 Randmarke). Zwei Ebenen, zwei Tabellen — die Namen halten sie auseinander.
 :::
 
-Alle Ingests sind idempotent und laufen **nicht** als Cron — einmal jährlich
-von Hand reicht, wenn die Stadt einen neuen Jahrgang veröffentlicht.
+Alle Ingests sind idempotent. Die vier Schichten aus dem **Ratsinformations-
+system** zieht seit 08/2026 ein Cron von allein nach (siehe unten); die
+Ingest-Skripte bleiben der Weg von Hand, wenn ein verbesserter Parser über den
+**Bestand** laufen soll. Die Plan- und Open-Data-Schichten (`council_haushalt`,
+`council_steuern`, `council_steuerkraft`, `council_einwohner`) kommen per
+Download von oldenburg.de und bleiben Handarbeit.
 
 :::caution[Plan ist nicht Ist]
 `council_haushalt` enthält **Planwerte** (was der Rat beschlossen hat),
@@ -63,6 +67,116 @@ getrennten Bausteinen, und die Prompt-Bausteine der KI-Frage
 (`_haushalt_block`, `_steuern_block`) sagen dem Modell ausdrücklich, was sie
 sind.
 :::
+
+## Der Bereich hält sich selbst aktuell
+
+Fünf Datenschichten, jede einmal von Hand eingelesen — ohne Cron veraltet der
+ganze Bereich still, sobald niemand mehr daran denkt. `check_finanzdaten.py`
+(alle zwei Wochen) nimmt das ab.
+
+**Bestandsgesteuert, nicht kalendergesteuert.** Der Job fragt nicht „ist es
+September?", sondern *„welcher Jahrgang fehlt mir, und liegt inzwischen ein
+Dokument dafür vor?"*. Ein Job, der im September nach dem Jahresabschluss
+sucht, bricht in dem Jahr, in dem die Stadt später dran ist. So ist der Takt
+egal: Verspätungen, Nachtragshaushalte und nachgereichte Prüfberichte sind
+automatisch abgedeckt, und der Job darf beliebig oft laufen.
+
+Aus acht Jahrgängen Sitzungsdaten (`council_sessions.session_date` über
+`council_agenda_items`) ergibt sich der Rhythmus der Stadt:
+
+| Was | Wann im Rat | Ausnahmen |
+|---|---|---|
+| Jahresabschluss + RPA-Schlussbericht + Rechenschaftsbericht | **Anfang September** | 1× August |
+| Haushaltsplan mit Gesamtergebnishaushalt und Teilhaushalten | **Anfang Oktober** | 1× November |
+
+Der Monat steuert **nicht** die Suche, sondern nur die Meldung: Bleibt ein
+Jahrgang länger als vier Wochen über seinen üblichen Monat hinaus aus, geht ein
+Hinweis an `ALERT_EMAIL` — kein Fehler, sondern die Frage, ob die Stadt spät
+dran ist oder ein Erkennungsmuster nicht mehr greift. Die Mail unterscheidet
+beides: Liegt ein passendes Dokument vor und wird trotzdem nichts übernommen,
+steht das ausdrücklich drin. Gemeldet wird nur, wenn sich die Liste gegenüber
+dem letzten Lauf geändert hat (Vergleich über `job_runs`) — alle vierzehn Tage
+dieselbe Mail wäre eine, die niemand mehr liest.
+
+:::note[Woher der Jahrgang kommt]
+`council_anlagen.fetched_at` trägt bei **allen** Finanzdokumenten den
+10.08.2026 — den Tag des Volltext-Backfills. Als Veröffentlichungsdatum ist das
+Feld wertlos. Der Jahrgang kommt deshalb aus dem Dokument selbst: aus dem Label
+(Jahresabschluss), dem Textanfang (Prüfberichte) oder der ersten Ansatzspalte
+im Tabellenkopf (Teilhaushalts-Pläne).
+
+Bei den Teilhaushalts-Plänen ist das nicht dasselbe wie die Jahreszahl im
+Dateinamen: „2024 007 IVw THH01" ist der Haushaltsplan **2024**, seine erste
+Ansatzspalte trägt **2023** — und genau die übernimmt der Parser (alles danach
+ist mittelfristige Finanzplanung). Wer hier das Label läse, suchte einen
+Jahrgang, den die Tabelle nie zurückgibt.
+:::
+
+### Drei Regeln, die ihn unbeaufsichtigt tragen
+
+1. **Er lädt nichts herunter.** Die Anlagen kommen über `check_protocols.py`
+   ins System; der Job liest nur aus, was schon in `council_anlagen` liegt.
+   Zwei Wege zu denselben Daten wären einer zu viel. Deshalb deckt er
+   `council_haushalt` und die Open-Data-Schichten **nicht** ab — ihr Ausbleiben
+   meldet er trotzdem, damit `ingest_haushalt.py` nicht vergessen wird.
+2. **Er senkt keine Prüfschwelle.** Summenprobe, Strukturprobe, Vorjahres-Kette
+   und die Rechenprobe der Erläuterungen gelten unverändert. Was sie reißt,
+   kommt nicht in die Datenbank, wird gezählt und gemeldet. Ein unbeaufsichtigter
+   Lauf ist der Grund, warum es diese Proben gibt — nicht der Anlass, sie zu
+   lockern.
+3. **Er ergänzt nur, was fehlt.** Ein vorhandener Jahrgang wird nicht angefasst.
+   Zweimal hintereinander laufen ändert beim zweiten Mal keine einzige Zeile.
+
+:::danger[Ein leeres Ergebnis ersetzt nie einen gefüllten Bestand]
+Alle Speicherwege ersetzen einen Jahrgang: Sie löschen ihn und schreiben ihn
+neu. Solange ein Mensch danebensteht, ist das richtig. Alle zwei Wochen
+unbeaufsichtigt kippt die Rechnung — ändert die Stadt ihr Tabellenlayout,
+liefert ein Parser irgendwann null oder halb so viele Zeilen, und wer das
+speichert, tauscht einen gefüllten Bestand gegen ein kaputtes Ergebnis. Bemerkt
+würde es erst, wenn die Seite leer ist.
+
+`finanzquellen.bestandsschutz()` steht vor jedem ersetzenden Schreibvorgang:
+**0 Zeilen ersetzen nie etwas**, weniger als 80 % des bisherigen Standes auch
+nicht — beides wird gemeldet statt stillschweigend vollzogen. Verglichen wird
+auf der Ebene, die ein Dokument abdeckt: bei den Produkten je Teilhaushalt,
+nicht je Jahr, sonst sähe jedes einzelne THH-Dokument wie ein Einbruch aus.
+Anlass war ein Beinahe-Unfall am 16.08.2026, bei dem ein Übertragungsskript
+257 Prüfungsfeststellungen gelöscht hätte, weil die Quelltabelle leer war.
+
+Das ist die Gegenrichtung zu den Pflicht-Proben: Die halten falsche Daten
+draußen, diese Regel hält richtige drin.
+:::
+
+### Eine Quelle für die Erkennung
+
+Woran ein Dokument erkannt wird — Label-Muster, Mindestseitenzahl, Ausschlüsse,
+Parser, Zieltabelle, erwarteter Monat — steht in **`council/finanzquellen.py`**,
+je Datenart einmal. Die Ingest-Skripte und der Cron benutzen dieselbe
+Definition; auf die Frage „ist das ein Jahresabschluss?" gibt es sonst zwei
+Antworten, und eine davon veraltet still.
+
+| Datenart | Erkennung | Zieltabelle | Erwartet |
+|---|---|---|---|
+| Jahresabschluss | Label `%Jahresabschluss%`, > 100 Seiten, **ohne** `%Rechenschaft%` / `%Schlussbericht%` | `council_ergebnisrechnung` (+ `council_abweichungsgruende`) | September, Jahrgang + 1 |
+| Schlussbericht des RPA (Fundstelle) | Label `%chlussbericht%` **oder** Text beginnt mit `Schlussbericht`; entschieden am Textanfang | `council_pruefbericht_quellen` | September, Jahrgang + 1 |
+| Prüfungsfeststellungen | Text `%Rechnungsprüfungsamtes%`, > 30 Seiten; entschieden am Textanfang | `council_pruefberichte` | September, Jahrgang + 1 |
+| Teilhaushalts-Pläne | Label `%THH%`, > 40 Seiten | `council_produkte` | Oktober, Jahrgang + 0 |
+| Haushaltsplan | *(kein Anlagen-Muster — Download)* | `council_haushalt` | Oktober, Jahrgang − 1 |
+
+### Der Datenstand ist sichtbar
+
+`GET /api/council/haushalt/datenstand` liefert diese Matrix live aus dem
+Bestand; der Block **„Bis wann die Zahlen reichen"** am Fuß von `/haushalt`
+(`components/haushalt/datenstand.tsx`) zeigt sie.
+
+Das ist kein Entwickler-Feature. Auf `/haushalt` steht der Plan für 2026, auf
+`/haushalt/plan-ist` die Abrechnung für 2024, auf `/haushalt/pruefung`
+Feststellungen bis 2023 — die Frage „warum steht hier 2024 und nicht 2025?"
+müsste sonst auf neun Seiten einzeln beantwortet werden. Die Ursache ist immer
+dieselbe und liegt bei der Stadt. Wo ein Jahrgang erwartet wird, aber noch
+fehlt, steht das ausdrücklich da: *„Der Jahrgang 2025 wird üblicherweise im
+September 2026 vorgelegt."* Das Wort „fehlt" kommt nicht vor — was die Stadt
+noch nicht veröffentlicht hat, fehlt uns nicht.
 
 ## Die redaktionelle Schicht
 
@@ -383,8 +497,13 @@ daneben — als Größenordnung, nie als Summand.
 
 Der Bereich zeigt lieber eine Lücke als eine Schätzung:
 
-- **Jahresabschlüsse 2017, 2018, 2020** — abweichendes Tabellenlayout, von
-  den Parser-Prüfsummen zurückgewiesen.
+- **Produktebene 2024 und 2025** — die Teilhaushalts-Pläne liegen als Anlage
+  vor, aber ihr Tabellenlayout hat sich geändert: Zwischen „21. ordentliches
+  Ergebnis" und den Zahlen stehen jetzt zwei Beschriftungszeilen
+  („Jahresüberschuss(+) / Jahresfehlbetrag (-)"), und die Prüfsumme
+  *Erträge − Aufwendungen = Ergebnis* greift ins Leere. Der Bestand bleibt
+  deshalb bei 2023 stehen. Genau dieser Fall ist der Grund für den Hinweis aus
+  `check_finanzdaten.py`: „Dokument liegt vor, wird aber nicht übernommen".
 - **Der Schlussbericht 2024** — sein PDF bringt keine Zeichenzuordnung mit,
   der Volltext besteht aus Glyphen-Nummern (`/12 /8 /6 □ /13 …`) und läuft in
   die 400.000-Zeichen-Kappung. Eine zweite Kopie gibt es nicht; ein neuer

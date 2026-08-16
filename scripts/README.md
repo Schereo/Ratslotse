@@ -18,6 +18,7 @@ Zeitpläne stehen in den jeweiligen Docstrings; maßgeblich ist die laufende
 | `remind_setup.py` | `0 11 * * *` | Eine Erinnerungsmail je Konto mit offener Einrichtung (≥ 48 h) |
 | `abendmeldungen.py` | `0 18 * * *` | Vorabend-Erinnerung (täglich) + Wochenüberblick (sonntags), Design 30a |
 | `weekly_enrich.py` | `0 3 * * 0` | LLM-/Embedding-Backfills → ruft die Sub-Steps (s.u.) |
+| `check_finanzdaten.py` | 14-tägig `30 4 * * 0` | Neue Haushalts-Jahrgänge aus dem Anlagenbestand nachziehen; meldet ausbleibende Jahrgänge |
 
 ## Sub-Steps (von einem Cron-Skript aufgerufen, nicht selbst geplant)
 
@@ -39,6 +40,8 @@ Zeitpläne stehen in den jeweiligen Docstrings; maßgeblich ist die laufende
 | `reextract_protocols.py` | Beschlüsse neu extrahieren nach Prompt-Änderung |
 | `build_decisions_fts.py` | Volltext-Index der Beschlüsse neu bauen |
 | `purge_nwz_data.py` | Gescrapte NWZ-Artikeldaten aus den DBs entfernen (Dry-Run-Default) |
+| `ingest_finanzberichte.py`, `ingest_pruefberichte.py` | **Alle** Haushalts-Jahrgänge neu einlesen — der Weg, einen verbesserten Parser über den Bestand zu ziehen. Neue Jahrgänge holt `check_finanzdaten.py` von allein; diese Skripte fassen auch Vorhandenes an |
+| `ingest_haushalt.py` | Haushaltsplan eines Jahres von oldenburg.de laden (der Cron lädt bewusst nichts herunter) |
 
 > **Ersten Admin einrichten:** Die Registrierung vergibt keine Rollen. Die Adresse
 > aus `WEB_ADMIN_EMAIL` wird zum Admin, sobald sie ihre E-Mail bestätigt hat (und

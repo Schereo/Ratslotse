@@ -308,6 +308,7 @@ def test_admin_jobs_listet_registry_auch_ohne_laeufe(client):
         "check_vorlage_follows", "remind_setup", "backup_db", "abendmeldungen",
         "check_presse",  # Stufe 3a: Stadt-Pressemitteilungen, täglich
         "render_plaene",  # P1: Planzeichnungen als Bilder, sonntags
+        "check_finanzdaten",  # neue Haushalts-Jahrgänge, alle zwei Wochen
     }
     job = next(j for j in b if j["key"] == "check_council")
     assert job["state"] == "unknown" and job["last"] is None and job["history"] == []
@@ -494,6 +495,26 @@ def test_council_sessions_and_detail(client):
 def test_council_session_404(client):
     _register(client)
     assert client.get("/api/council/session/999").status_code == 404
+
+
+def test_haushalt_datenstand_nennt_alle_schichten(client):
+    """Der Block auf /haushalt beantwortet „warum steht hier 2024 und nicht
+    2025?" — dafür braucht er jede Datenschicht mit ihrem eigenen Takt, auch
+    die, die der Cron nicht selbst nachzieht."""
+    _register(client)
+    b = client.get("/api/council/haushalt/datenstand").json()
+    schichten = {s["key"]: s for s in b["schichten"]}
+    assert set(schichten) == {"haushaltsplan", "jahresabschluss", "teilhaushalt",
+                              "rpa_fundstelle", "pruefungsfeststellungen"}
+    # Zwei verschiedene Takte — das ist der Grund, warum der Block existiert.
+    assert schichten["jahresabschluss"]["monat"] == "September"
+    assert schichten["haushaltsplan"]["monat"] == "Oktober"
+    # Leerer Bestand: Lücken behaupten, wo nie etwas war, wäre falsch.
+    assert schichten["jahresabschluss"]["jahrgaenge"] == []
+    assert schichten["jahresabschluss"]["luecken"] == []
+    # Der Plan kommt per Download, nicht aus dem Anlagenbestand.
+    assert schichten["haushaltsplan"]["automatisch"] is False
+    assert schichten["jahresabschluss"]["automatisch"] is True
 
 
 def test_sessions_carry_my_topic_items(client):
