@@ -967,11 +967,12 @@ _F_AUFGABE = re.compile(
     r"muessen wir|muss oldenburg|rechtsgrundlage|gesetzlich|vorgeschrieben|"
     r"spielraum|streichen|kuerzen|sparen|einsparen|abschaffen|weglassen|"
     r"verzichten|betreiben|zustaendig")
-# `\bteuer` statt `teuer`: Ohne die Wortgrenze steckt es in „GewerbesTEUER"
-# und zog die halbe Produktebene in jede Steuerfrage (gemessen 16.08.).
-# „Was gibt die Stadt für X aus?" ist dieselbe Frage wie „Was kostet X?" und
-# muss dieselbe Quelle ziehen — sonst hängt die Produktebene an der Laune der
-# Formulierung (Messung der Varianten, 16.08.).
+# Zwei Befunde aus der Varianten-Messung (16.08.) stecken hier drin:
+# * `\bteuer` statt `teuer` — ohne die Wortgrenze steckt es in
+#   „GewerbesTEUER" und zog die halbe Produktebene in jede Steuerfrage.
+# * „Was gibt die Stadt für X aus?" ist dieselbe Frage wie „Was kostet X?"
+#   und muss dieselbe Quelle ziehen; sonst hängt die Produktebene an der
+#   Laune der Formulierung.
 _F_KOSTEN = re.compile(
     r"\bkost|\bteuer|\bpreis|gibt.{0,40}\baus\b|geben.{0,40}\baus\b|"
     r"ausgegeben fuer|ausgaben fuer|aufwend")
