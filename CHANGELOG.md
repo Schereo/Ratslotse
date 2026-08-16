@@ -541,7 +541,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Satz belegt. Kein Wahltipp, und die Antworten bleiben auf dem Gerät. (#356)
 -->
 
-- **„Dokument öffnen" öffnet jetzt das Dokument.** Im Quellenverzeichnis der Haushalts-Seiten führten sechs Quellen auf die Startseite des Ratsinformationssystems — man durfte das PDF selbst suchen. Der Link zeigt jetzt auf das Dokument des gerade gezeigten Jahres (wechselt das Jahr, wechselt das PDF), nennt die Fundstelle darin („Abschnitt 3.2"), und wo wir kein Dokument haben, verspricht er auch keines mehr. Der Knopf „Haushaltsplan als PDF" oben auf der Übersicht entfällt dafür: Er ließ eine von mehreren Quellen wie die einzige aussehen, seine jahresgenaue Adresse steckt jetzt im Beleg. Quellenverzeichnis und Datenstand stehen außerdem nicht mehr in der Kartenform des Inhalts, sondern zugeklappt als Apparat am Seitenfuß. (#531)
+- **„Dokument öffnen" öffnet jetzt das Dokument.** Im Quellenverzeichnis der Haushalts-Seiten führten sechs Quellen auf die Startseite des Ratsinformationssystems — man durfte das PDF selbst suchen. Der Link zeigt jetzt auf das Dokument des gerade gezeigten Jahres (wechselt das Jahr, wechselt das PDF), nennt die Fundstelle darin („Abschnitt 3.2"), und wo wir kein Dokument haben, verspricht er auch keines mehr. Der Knopf „Haushaltsplan als PDF" oben auf der Übersicht entfällt dafür: Er ließ eine von mehreren Quellen wie die einzige aussehen, seine jahresgenaue Adresse steckt jetzt im Beleg. Quellenverzeichnis und Datenstand stehen außerdem nicht mehr in der Kartenform des Inhalts, sondern zugeklappt als Apparat am Seitenfuß. (#538)
 
 ## [1.12.0] – 2026-08-16
 
