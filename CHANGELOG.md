@@ -7,6 +7,15 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Behoben
+- **Zahlen übereinander im Steuer-Verlauf.** Auf dem Steuer-Steckbrief lagen die
+  beiden Rückgangs-Marken der Ist-Kurve ineinander und über der Achsenzahl
+  daneben — bei den meisten Steuerarten liegen die größten Einbrüche in
+  benachbarten Jahren ganz links. Die Beschriftungen bleiben jetzt in der
+  Zeichenfläche, weichen sich zeilenweise aus und tragen einen feinen
+  Führungsstrich zu ihrem Punkt; Kurve und Fall-Linien schneiden nicht mehr
+  durch die Ziffern.
+
 ### Hinzugefügt
 - **Der Haushalt erklärt sich jetzt selbst.** Vier neue Seiten machen aus
   Zahlenkolonnen eine Geschichte: **Woher kommt das Geld?** zeigt alle
