@@ -170,6 +170,19 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Jahr erscheinen. (#530)
 
 ### Behoben
+- **Was einzelne Aufgaben kosten, endete bei 2023 — obwohl die Pläne längst
+  vorlagen.** Die Stadt hat mit dem Haushaltsplan 2025 zwei Zeilen in ihre
+  Tabellen eingezogen: Zwischen „21. ordentliches Ergebnis" und den Zahlen
+  stehen seitdem „Jahresüberschuss(+)" und „/Jahresfehlbetrag (-)". Der Parser
+  suchte die Kolonne direkt hinter der Beschriftung, fand sie nicht mehr — und
+  weil ohne diese Zeile die Rechenprobe *Erträge − Aufwendungen = Ergebnis*
+  nicht aufgeht, fiel jedes einzelne Produkt der betroffenen Jahrgänge durch:
+  0 von 78 und 0 von 89. Gesucht wird jetzt vorwärts bis zur Zahlenkolonne,
+  aber nur bis zur nächsten Tabellenzeile — ist die eigene Zelle leer, bleibt
+  sie leer, statt sich die Zahlen des Nachbarpostens zu borgen. Damit kommen
+  die Jahrgänge 2024 und 2025 dazu (131 Produkte, 19 Teilhaushalte); an den
+  Jahrgängen 2018–2023 ändert sich keine einzige Zahl. Der Job, der die Lücke
+  gemeldet hat, meldet sie nicht mehr. (#PR)
 - **Die Überschrift der Anzeigetafel brach mitten im Wort um.** „Oldenburg plant
   883,9 Mil-/lionen Euro" — dabei blieben rechts daneben rund 400 Pixel frei.
   Ursache war eine Breitenbegrenzung von 19 Zeichen, die noch aus einer engeren
