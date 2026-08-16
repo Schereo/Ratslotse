@@ -150,7 +150,13 @@ export default function HaushaltsjahrPage() {
               <div className="mt-1 flex flex-wrap justify-center gap-x-4 gap-y-1.5 text-[11px] text-muted-foreground">
                 <Legende art="offen">Entwurf eingebracht</Legende>
                 <Legende art="voll">Beratung und Beschluss</Legende>
-                {runde.fachausschuesse && <Legende art="spur">Fachausschüsse</Legende>}
+                {/* Nur wenn die Spur auch gezeichnet ist: Bei einem einzigen
+                    Termin hat sie keine Länge, und eine Legende ohne
+                    Gegenstück im Bild schickt die Leserin auf die Suche. */}
+                {runde.fachausschuesse
+                  && runde.fachausschuesse.von !== runde.fachausschuesse.bis && (
+                  <Legende art="spur">Fachausschüsse</Legende>
+                )}
               </div>
             </div>
 

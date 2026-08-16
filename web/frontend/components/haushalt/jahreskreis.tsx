@@ -20,7 +20,7 @@
 // der Liste folgen der App-Grammatik (Angenommen/Vertagt/…), zeigen aber den
 // Wortlaut des Ratsinformationssystems, nicht unsere Übersetzung.
 
-import { ergebnisArt, jahresAnteil, WegRunde, WegStation } from "@/lib/haushalt-jahr";
+import { deDatum, ergebnisArt, jahresAnteil, WegRunde, WegStation } from "@/lib/haushalt-jahr";
 import { OUTCOME_META } from "@/components/decision-ui";
 import { cn } from "@/lib/utils";
 
@@ -66,8 +66,9 @@ export function Jahreskreis({ runde, className }: { runde: WegRunde; className?:
       className={cn("h-auto w-full max-w-[320px]", className)}
       role="img"
       aria-label={
-        `Der Haushalt ${runde.jahr} auf dem Kalenderjahr: Entwurf am ` +
-        `${start.datum}, letzte Station am ${letzte.datum}.`
+        `Der Haushalt ${runde.jahr} auf dem Kalenderjahr: erste Station am ` +
+        `${deDatum(start.datum)}, letzte am ${deDatum(letzte.datum)}. ` +
+        `Die Stationen im Einzelnen stehen als Liste daneben.`
       }
     >
       {/* Das Kalenderjahr als Grundring. */}
