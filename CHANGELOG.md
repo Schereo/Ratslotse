@@ -85,9 +85,9 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   fehlenden Zahl eine Null und schrieb: „799,1 Mio. € eingenommen — geplant
   waren —, also 799,1 Mio. mehr." Darunter stand eine Überschrift samt Legende
   über einer leeren Grafik. Jetzt nennt die Seite die tatsächlichen Werte und
-  sagt, dass die Bezugsgröße fehlt, statt eine Abweichung zu erfinden. (#PR)
+  sagt, dass die Bezugsgröße fehlt, statt eine Abweichung zu erfinden. (#512)
 - **Deckungsgrad der Produktebene mit englischem Dezimalpunkt.** „81.7 %" statt
-  „81,7 %" — mitten in einem Text, der sonst durchgehend Komma schreibt. (#PR)
+  „81,7 %" — mitten in einem Text, der sonst durchgehend Komma schreibt. (#512)
 - **„Geplant und geworden": Die kleinen Bereiche waren nicht zu sehen.** Auch
   als Euro-Strecke blieben fünf der zwölf Bereiche kürzer als zwei Prozent der
   Breite — zwischen −0,7 und +20,5 Mio. liegt zu viel. Die Grafik misst jetzt
@@ -128,7 +128,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Wochen da und jetzt von dort aus verlinkt. Große Beträge bekommen eine
   Bezugsgröße: die Rücklage steht auch je Einwohnerin und Einwohner, „169,2
   Ausgaben" heißt wieder „169,2 Mio. € Ausgaben". Und der Steuer-Verlauf sagt
-  dazu, dass in „das 5,2-Fache" seit 1998 die Teuerung steckt. (#PR)
+  dazu, dass in „das 5,2-Fache" seit 1998 die Teuerung steckt. (#512)
 - **Widersprüche zwischen zwei Seiten aufgelöst, statt sie zu übertünchen.**
   Der Steuer-Steckbrief rechnete aus, was ein Hebesatzpunkt Grundsteuer bringt —
   aus einem Betrag, der A und B zusammenfasst, geteilt durch den Hebesatz von
@@ -136,12 +136,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   derselben Begründung. Jetzt tun es beide: Der Steckbrief zeigt statt der Zahl,
   warum es sie nicht gibt. Ebenso heißt ein Minusbetrag im Bereichs-Dossier
   nicht mehr „bleibt der Stadt" (als bliebe ihr etwas übrig), sondern „trägt die
-  Stadt" — dasselbe Wort, das die Übersicht dafür benutzt. (#PR)
+  Stadt" — dasselbe Wort, das die Übersicht dafür benutzt. (#512)
 - **Kein Grün mehr im Haushalt.** Ein geplanter Überschuss trug den Erfolgs-Tint
   aus der Beschluss-Semantik und stand damit als gute Note neben dem
   orangefarbenen Minus. Für die Hantel-Grafik ist seit jeher begründet, warum es
   im Haushalt keine Bewertungsfarben gibt; das gilt jetzt auch für die
-  Überschuss-Pille und die Ergebnis-Spalte der Zeitreihen-Tabelle. (#PR)
+  Überschuss-Pille und die Ergebnis-Spalte der Zeitreihen-Tabelle. (#512)
 - **Das Glossar erklärt die Wörter, über die man wirklich stolpert.** Neu sind
   unter anderem Ansatz, Gesamtermächtigung, Ertrags- und Aufwandsart,
   Ergebnisrechnung, ordentliches Ergebnis, Kernverwaltung, Textziffer und
@@ -149,7 +149,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   erklärt sie jetzt an Ort und Stelle, statt sie nur zu benutzen. Die Erklärung
   zu „Erschließung" war dort, wo sie automatisch erschien, teils schlicht
   falsch: Im Steckbrief des Stadtarchivs meint das Wort das Ordnen von
-  Beständen, nicht den Straßenbau. (#PR)
+  Beständen, nicht den Straßenbau. (#512)
 
 - **Das Haushalts-Labor sagt jetzt, ob das viel ist.** Bisher bewegte man
   Regler und eine Zahl änderte sich — ohne Maßstab. Jetzt füllt jede Bewegung
