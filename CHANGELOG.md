@@ -333,6 +333,23 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   davon waren zudem schief: Die Eingliederungshilfe ist bei Soziales der größte
   Block, und im Finanzmanagement liegen alle Steuern, aber nur die allgemeinen
   Zuweisungen des Landes. (#517)
+- **„Woher kommt das Geld?" sortiert jetzt nach Entscheidungsmacht — und sagt
+  beim Finanzausgleich ehrlich, dass es die Zahl nicht gibt.** Die
+  Einnahmequellen standen bisher nach Betrag sortiert nebeneinander, jede mit
+  ihrem eigenen Spielraum-Zeichen; die eigentliche Aussage musste man sich aus
+  sieben Karten zusammensuchen. Sie stehen jetzt in drei Gruppen: was der Rat
+  selbst beschließt, was er nur innerhalb gesetzlicher Grenzen darf, und worauf
+  er gar keinen Einfluss hat. Neu dazu ein Block über den Finanzausgleich —
+  nimmt die Stadt mehr eigene Steuern ein, rechnet das Land in den
+  Schlüsselzuweisungen dagegen. Wie stark, sagen wir bewusst **nicht**: Über
+  die 33 Jahrespaare des Datensatzes streut dieser Wert so weit, dass jede
+  einzelne Zahl in die Irre führte, und in 15 von 26 Jahren mit steigender
+  Steuerkraft stieg die Zuweisung sogar mit. Der Block zeigt deshalb beide
+  Reihen nebeneinander und zählt aus, statt einen Umrechnungskurs zu erfinden.
+  Im Steuer-Steckbrief außerdem zwei Korrekturen: Der Überschlag „was brächte
+  ein Hebesatzpunkt mehr" war als „brutto" bezeichnet, obwohl der Datensatz die
+  Gewerbesteuer bereits nach Abzug der Umlage führt, und beim Hebesatz stand
+  „bis 2025", obwohl wir genau einen einzigen Jahrgang kennen. (#519)
 
 <!-- GEPARKT (nur dev.ratslotse.de, Umgebungs-Gate): Eintrag aktivieren,
      sobald der Kommunalwahl-Vergleich auf Prod freigeschaltet wird.
