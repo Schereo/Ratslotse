@@ -329,8 +329,11 @@ export function Kassenzettel({ daten, jahr, einwohner, className }: {
                 von oben nach unten und balancieren sich selbst. */}
             <ul className="mt-2.5 space-y-2.5 @2xl/zettel:columns-2 @2xl/zettel:gap-5 @2xl/zettel:space-y-0">
               {[
+                // Geschütztes Leerzeichen als Zeichen, nicht als Entität: In
+                // einem JS-String bliebe `&nbsp;` wörtlich stehen. Ohne es
+                // stand auf 375 px das „€" allein in der nächsten Zeile.
                 ["Keine Rechnung.",
-                  `Niemand überweist ${de(summeJeKopf)} €. Es ist eine Division, kein Beitrag.`],
+                  `Niemand überweist ${de(summeJeKopf)} €. Es ist eine Division, kein Beitrag.`],
                 ["Alle zählen mit.",
                   "Kinder, Rentnerinnen, Menschen ohne eigenes Einkommen — geteilt wird durch "
                   + "alle Einwohnerinnen und Einwohner, nicht durch Steuerzahlende."],
