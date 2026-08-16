@@ -120,6 +120,20 @@ ABGRENZUNG = ("Stadt Oldenburg als Rechtsträger: Kernhaushalt und Eigenbetriebe
               "Ohne die rechtlich selbstständigen Beteiligungen wie das Klinikum "
               "(AöR) oder die städtischen Gesellschaften.")
 
+#: Posten 17 der Ergebnisrechnung: „Zinsen und ähnliche Aufwendungen".
+#:
+#: Was der Schuldenstand im Jahr KOSTET, steht nicht in Tabelle 1108, sondern
+#: im Jahresabschluss — und dort als Ist, geprüft gegen die Probe des
+#: Dokuments. Die Nummer hier, damit Frontend und Endpunkt nicht zwei
+#: verschiedene Posten für dieselbe Aussage nehmen (``finanzberichte.
+#: ERGEBNIS_POSTEN`` führt sie im Wortlaut).
+#:
+#: Ausdrücklich NUR die Zinsen: Die Tilgung steht im Finanzhaushalt. Sie
+#: mindert den Schuldenstand, ist aber kein Aufwand — beides in einer Zahl
+#: zusammenzuziehen wäre die häufigste Verwechslung im ganzen Thema, und die
+#: Summe stünde in keinem Dokument.
+POSTEN_ZINSAUFWAND = 17
+
 #: Die Spalten der Tabelle, in ihrer Reihenfolge — Feldname und Überschrift.
 #: Die ersten vier sind die Schuldenarten, die fünfte ihre Summe, die sechste
 #: der Pro-Kopf-Betrag.

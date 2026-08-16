@@ -24,6 +24,30 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   verantwortet der Eigenbetrieb Gebäudewirtschaft und Hochbau mit einem eigenen
   Wirtschaftsplan — die Seite sagt das, statt eine Antwort anzudeuten, die sie
   nicht hat. (#565)
+- **„Frag den Rat" kennt den Haushalt jetzt ganz — und beantwortet vier Fragen
+  nicht mehr aus der falschen Quelle.** Der Haushalts-Bereich war auf dreizehn
+  Datenschichten gewachsen, die KI-Frage kannte zehn davon. Die vier fehlenden
+  wurden nicht etwa gar nicht beantwortet, sondern zum Teil falsch: „Wie viel
+  Schulden hat Oldenburg?" bekam den Ergebnishaushalt — dabei sind Schulden
+  ein Bestand am Stichtag und kommen dort überhaupt nicht vor. Investitions-
+  fragen bekamen denselben Ergebnishaushalt, in dem keine einzige Investition
+  steht (ein Schulneubau taucht dort nur als Abschreibung auf, verteilt über
+  Jahrzehnte). Personalfragen bekamen Aufwendungen in Euro statt Stellen und
+  Besetzungsgrad. Und „Wer wollte was am Haushalt ändern?" bekam nichts,
+  obwohl 664 Änderungslisten im Bestand liegen. Jetzt zieht jede dieser Fragen
+  ihre eigene Quelle — und nur die: Eine Schuldenfrage holt keinen Stellenplan
+  mit. Jede Antwort bekommt dabei die Grenze mitgeliefert, ohne die die Zahl
+  irreführt: bei den Schulden, was mitgezählt ist (Kernhaushalt und
+  Eigenbetriebe, ohne die selbstständigen Beteiligungen); bei den
+  Investitionen, dass Finanz- und Ergebnishaushalt zwei Zahlenwerke sind, die
+  man nicht verrechnen darf; beim Stellenplan, dass sich die Besetzung auf das
+  Vorjahr bezieht und „Stellen minus besetzt" zwei Stichtage mischt; und bei
+  den Änderungslisten, dass die Ratsdaten sagen, **wer** etwas ändern wollte
+  und ob es durchkam — nicht, was genau darin stand. Die „Gründliche
+  Recherche" hing am alten Stand und bekommt jetzt denselben Kontext samt der
+  Haushalts-Regeln, die ihr bislang ganz fehlten; umgekehrt zieht sie den
+  Haushalt nicht mehr in jede Frage, die nur zufällig das Wort „Kosten" in
+  ihren Suchbegriffen trug. (#563)
 - **Ein Knopf, der die Finanzdaten sofort einliest, statt bis zu vierzehn Tage
   zu warten.** Der Haushalts-Bereich hält sich selbst aktuell, aber für einen
   frisch gebauten Parser ist der Zwei-Wochen-Takt die falsche Wartezeit: Die

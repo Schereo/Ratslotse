@@ -18,9 +18,11 @@ ebenfalls — ein Gate ohne seine Einstiege hinterließe Links ins Leere.
 
 Zwei Dinge, die daraus folgen: Auf Prod laufen weder die Ingest-Skripte noch
 der Cron `check_finanzdaten`, die Haushalts-Tabellen entstehen dort leer und
-bleiben es (die drei Geld-Bausteine der KI-Frage vertragen das — sie liefern
-bei leeren Daten einen Leerstring, und der Router ruft sie ohnehin
-`best-effort` auf). Und: Weil `app/(app)/` ein Client-Layout ist, kommt die
+bleiben es (die Geld-Bausteine der KI-Frage vertragen das — **jeder** von
+ihnen liefert bei leeren Daten einen Leerstring, und jede Abfrage steht in
+`qa._sicher`, kann die Antwort also nicht blockieren; `tests/test_haushalt_gate.py`
+prüft beides über alle Bausteine automatisch, nicht über eine Aufzählung).
+Und: Weil `app/(app)/` ein Client-Layout ist, kommt die
 Antwort mit HTTP 200 statt 404 — ein „Soft 404". Inhaltlich folgenlos,
 weshalb `/haushalt` auch nicht in der Sitemap steht. `tests/test_haushalt_gate.py`
 wacht darüber, dass kein neuer Verweis das Gate vergisst.
@@ -323,8 +325,17 @@ Frage zieht, entscheidet `qa.geld_facetten` am Frage-Wortlaut — die Tabelle
 dazu steht unter
 [KI-Pipeline → Frag den Rat](/docs/ki-pipeline/#frag-den-rat-welche-quelle-eine-geldfrage-zieht).
 Wer hier eine Tabelle hinzufügt, hat sie damit **noch nicht** in der KI-Frage:
-Dazu gehören eine Facette, eine `*_fuer_begriffe`-Methode im Store, ein
-Prompt-Baustein und eine Zeile im Korpus `tests/test_qa_geldquellen.py`.
+Dazu gehören eine Facette, eine Methode im Store (`*_fuer_begriffe`, wenn die
+Suchbegriffe die Auswahl steuern, sonst `*_kontext`), ein Prompt-Baustein und
+eine Zeile im Korpus `tests/test_qa_geldquellen.py`.
+
+Am 17.08. hing genau das an vier Schichten nach: Schulden, Investitionen,
+Stellenplan und Änderungslisten waren im Bereich längst da und in der KI-Frage
+unsichtbar. Drei davon wurden sogar **falsch** beantwortet, weil ihre Wörter
+im Muster einer anderen Facette standen — „Wie viel Schulden hat Oldenburg?"
+zog den Ergebnishaushalt, in dem der Schuldenstand gar nicht vorkommt. Wer die
+nächste Tabelle anbindet, prüft deshalb nicht nur, ob seine Facette feuert,
+sondern auch, ob sie einer anderen etwas wegnimmt oder ihr etwas anhängt.
 :::
 
 ## Der Bereich hält sich selbst aktuell
