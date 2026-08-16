@@ -12,7 +12,7 @@ welche schlicht fehlt.
 :::note[Vorerst nur auf dev.ratslotse.de]
 Der Bereich liegt hinter dem Umgebungs-Gate: `web/frontend/lib/haushalt-frei.ts`
 prüft `NEXT_PUBLIC_RATSLOTSE_ENV`, das nur der Dev-Build setzt. Auf
-ratslotse.de rendern die dreizehn Seiten nicht, und die Anker dorthin
+ratslotse.de rendern die fünfzehn Seiten nicht, und die Anker dorthin
 (Seitenleiste, „Mehr"-Sheet, der Verweis auf den Beschluss-Seiten) fehlen
 ebenfalls — ein Gate ohne seine Einstiege hinterließe Links ins Leere.
 

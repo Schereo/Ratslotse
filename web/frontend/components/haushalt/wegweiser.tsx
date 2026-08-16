@@ -75,11 +75,14 @@
 // Konzern: Sonst rutschten Konzern und Vergleich je eine Nummer weiter, und
 // beide Begründungen oben wären still falsch.
 //
-// **Zwei der vierzehn Seiten haben bewusst keinen Schritt.** `/haushalt/bereich`
-// und `/haushalt/steuer` sind Steckbriefe: Sie brauchen einen Query-Parameter
-// und öffnen ohne ihn den Vorgabefall. Als eigener Schritt stünde ein
-// beliebiger Bereich neben zwölf Fragen. Sie werden am Fuß benannt, damit die
-// Zählung „zwölf Schritte, vierzehn Seiten" nicht wie eine Lücke aussieht.
+// **Zwei der vierzehn Unterseiten haben bewusst keinen Schritt.**
+// `/haushalt/bereich` und `/haushalt/steuer` sind Steckbriefe: Sie brauchen
+// einen Query-Parameter und öffnen ohne ihn den Vorgabefall. Als eigener
+// Schritt stünde ein beliebiger Bereich neben zwölf Fragen. Sie werden am Fuß
+// benannt, damit die Zählung „zwölf Schritte, vierzehn Unterseiten" nicht wie
+// eine Lücke aussieht. (Die Übersicht `/haushalt` selbst ist kein Ziel dieses
+// Wegweisers — von dort kommt man ja. Sie zählt nur beim Umgebungs-Gate mit,
+// das alle fünfzehn Seiten deckt: `lib/haushalt-frei.ts`.)
 //
 // FORM: eine Karte, nicht zehn. Zehn Karten sind auf 375 px eine Liste ohne
 // Ende — die Stufen wären zwischen ihnen untergegangen, und genau sie sind
