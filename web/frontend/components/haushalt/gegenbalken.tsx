@@ -210,8 +210,15 @@ export function Gegenbalken({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: n
           im selben Container, damit der Weg von der Leiste zur Box den Hover
           nicht abreißen lässt (Tim, 16.08.). */}
       <div onMouseLeave={() => setHover(null)}>
+      {/* Diese Leiste hieß bis 16.08. „Woher das Geld kommt". Das ist sie
+          nicht: Sie zeigt, WELCHER BEREICH eine Einnahme verbucht — und weil
+          Steuern und Zuweisungen zentral in der Kämmerei auflaufen, liegen
+          dort rund zwei Drittel. Wer die Überschrift wörtlich nahm, las
+          heraus, das meiste Geld komme aus der Verwaltung selbst. Woher es
+          wirklich stammt, beantwortet die Seite „Woher kommt das Geld?"
+          und das Flussbild darunter. */}
       <p className="mb-1.5 text-[12.5px] font-semibold">
-        Woher das Geld kommt <span className="font-normal text-muted-foreground">— {deMio(einSumme)}&#8239;Mio.</span>
+        Wo das Geld eingeht <span className="font-normal text-muted-foreground">— {deMio(einSumme)}&#8239;Mio.</span>
       </p>
       <div style={{ width: `${einEnde}%` }}>
         <Leiste seite="ein" zeilen={ein} skala={einSumme} aktiv={aktiv}
@@ -229,6 +236,13 @@ export function Gegenbalken({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: n
           <span className="text-[11px] text-muted-foreground">{einLeg.rest.length} weitere {deMio(einLeg.restSumme)}</span>
         )}
       </div>
+      {ein[0] && (
+        <p className="mt-1.5 max-w-[74ch] text-[11.5px] leading-relaxed text-muted-foreground">
+          Der große Block links ist keine Einnahmequelle: In „{ein[0].z.bereich}“ verbucht die
+          Stadt Steuern und Zuweisungen zentral für alle Aufgaben. Aus welchen Quellen das Geld
+          stammt, steht unter <em>Woher kommt das Geld?</em>
+        </p>
+      )}
       {wahl?.seite === "ein" && <Detail z={gewaehlte} gepinnt={!!gepinnt} onClose={() => { setGepinnt(null); setHover(null); }} onOpen={oeffnen} />}
       </div>
 
@@ -258,8 +272,14 @@ export function Gegenbalken({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: n
             )}
           </>
         )}
+        {/* Kein Grün. Ein geplanter Überschuss ist keine gute Note und ein
+            geplantes Minus keine schlechte — dieselbe Regel, die für die
+            Hantel gilt (components/haushalt/hantel.tsx). Der Überschuss trug
+            bis 16.08. den Erfolgs-Tint aus der Beschluss-Semantik und stand
+            damit als Gegenstück zum orangefarbenen Minus da: gut gegen
+            schlecht, ohne dass irgendwer das behaupten wollte. */}
         {saldo > 0 && (
-          <span className="absolute right-0 top-0 rounded-full bg-[#dcfce7] px-2 py-0.5 text-[10.5px] font-semibold text-[#15803d] dark:bg-[#15803d]/20 dark:text-[#4ade80]">
+          <span className="absolute right-0 top-0 rounded-full border border-border bg-muted px-2 py-0.5 text-[10.5px] font-semibold text-foreground/80">
             +{deMio(saldo)}&#8239;Mio. Überschuss geplant
           </span>
         )}

@@ -74,15 +74,19 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   // Ratsvorlagen im Bürgerinfo — kein externer Download (#500).
   jahresabschluss: {
     titel: "Jahresabschlüsse der Stadt Oldenburg",
+    // Ein Satz, ein Gedanke: Die erste Fassung packte Fundstelle, zwei
+    // Prüfregeln und die Bezugsgrößen-Frage in Schachtelsätze — lesbar für
+    // den, der die Antwort schon kennt (16.08.).
     fundstelle:
-      "Ergebnisrechnung der Kernverwaltung UND je Teilhaushalt — Plan und Ergebnis " +
-      "nebeneinander, Posten 1–24, dazu die Erläuterungen zu den erheblichen " +
-      "Abweichungen (Abschnitt 6.3.1). Wir übernehmen nur Zeilen, bei denen die im " +
-      "Dokument ausgewiesene Probe aufgeht (Abweichung = Ergebnis − Plan); die " +
-      "Teilhaushalts-Ebene zusätzlich nur, wenn ihre Summe die Gesamtrechnung ergibt. " +
-      "Welche Bezugsgröße ein Jahrgang als Plan führt (Ansatz, Ansatz mit Nachtrag oder " +
-      "Gesamtermächtigung), steht auf der Seite dabei. Als Anlagen zu Ratsvorlagen im " +
-      "Bürgerinformationssystem.",
+      "Die Ergebnisrechnung, einmal für die Kernverwaltung und einmal je Teilhaushalt: " +
+      "Plan und Ergebnis nebeneinander, Posten 1–24. Dazu die Erläuterungen der " +
+      "Verwaltung zu den erheblichen Abweichungen (Abschnitt 6.3.1). " +
+      "Wir übernehmen eine Zeile nur, wenn die Probe des Dokuments aufgeht: " +
+      "Abweichung = Ergebnis − Plan. Die Teilhaushalts-Ebene zusätzlich nur, wenn ihre " +
+      "Summe die Gesamtrechnung ergibt. " +
+      "Womit ein Jahrgang seinen Plan misst — Ansatz, Ansatz mit Nachtrag oder " +
+      "Gesamtermächtigung —, steht auf der Seite dabei. " +
+      "Die Dokumente hängen als Anlagen an Ratsvorlagen im Bürgerinformationssystem.",
     herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
     stand: "Jahresabschlüsse 2017–2024",
     art: "pdf",
@@ -104,12 +108,13 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     titel: "Schlussberichte des Rechnungsprüfungsamtes der Stadt Oldenburg",
     fundstelle:
       "Die Randmarken des Berichts (B, WB, H, K) und der Absatz, der jeweils dahinter steht — " +
-      "mit der Textziffer und der Seite, unter der er dort geführt wird. Übernommen wird nur, " +
-      "was der Bericht selbst erklärt: Die Marke muss in seiner Legende stehen, die Textziffer " +
-      "in seinem Inhaltsverzeichnis. Für 2024 fehlt der Jahrgang: Sein PDF bringt keine " +
-      "Zeichenzuordnung mit, der Textextrakt besteht aus Glyphen-Nummern, und eine zweite " +
-      "Kopie gibt es nicht — wir lesen dann lieber nichts als etwas Geratenes. Als Anlagen zu " +
-      "Ratsvorlagen im Bürgerinformationssystem.",
+      "mit der Textziffer und der Seite, unter der er dort geführt wird. " +
+      "Übernommen wird nur, was der Bericht selbst erklärt: Die Marke muss in seiner Legende " +
+      "stehen, die Textziffer in seinem Inhaltsverzeichnis. " +
+      "Der Jahrgang 2024 fehlt, weil sein PDF keine Zeichenzuordnung mitbringt — der " +
+      "Textextrakt besteht aus Glyphen-Nummern, und eine zweite Kopie gibt es nicht. " +
+      "Wir lesen dann lieber nichts als etwas Geratenes. " +
+      "Die Berichte hängen als Anlagen an Ratsvorlagen im Bürgerinformationssystem.",
     herausgeber: "Stadt Oldenburg, Rechnungsprüfungsamt",
     stand: "Jahresabschlüsse 2017–2023",
     art: "pdf",

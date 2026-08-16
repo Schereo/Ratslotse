@@ -59,7 +59,9 @@ function Kernzahl({ label, wert, hint, ton }: {
  *  Reichweite, die es nie gab — die Zahlen änderten sich beim Jahreswechsel,
  *  die Quelle darunter blieb dieselbe (Tim, 16.08.). Für abgeschlossene
  *  Jahre steht deshalb ein anderer, ehrlicher Satz. */
-function RuecklagenHinweis({ defizit, jahr: startJahr }: { defizit: number; jahr: number }) {
+function RuecklagenHinweis({ defizit, jahr: startJahr, einwohner }: {
+  defizit: number; jahr: number; einwohner: number | null;
+}) {
   if (defizit <= 0) return null;
   const stufen: { label: string; wert: number }[] = [];
   let rest = RUECKLAGE_MIO;
@@ -75,7 +77,10 @@ function RuecklagenHinweis({ defizit, jahr: startJahr }: { defizit: number; jahr
       <div className="min-w-0 flex-1">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal">Das Ersparte der Stadt</p>
         <p className="mt-1.5 max-w-[74ch] text-sm leading-relaxed text-foreground/90">
-          Das Minus wird aus der <strong>Rücklage von rund {RUECKLAGE_MIO}&#8239;Mio.&nbsp;€</strong> gedeckt.
+          Das Minus wird aus der <strong>Rücklage von rund {RUECKLAGE_MIO}&#8239;Mio.&nbsp;€</strong> gedeckt
+          {einwohner ? <> — dem Ersparten aus früheren Jahren, rund{" "}
+            {Math.round((RUECKLAGE_MIO * 1e6) / einwohner).toLocaleString("de-DE")}&nbsp;€ je
+            Einwohnerin und Einwohner</> : null}.
           Bleibt es bei einem Minus in dieser Größe, ist die Rücklage in wenigen Jahren aufgebraucht.
           Was dann passiert, entscheidet der Rat — bisher gibt es dafür keinen Beschluss.
         </p>
@@ -174,9 +179,21 @@ export default function HaushaltPage() {
         )}
       </div>
 
+      {/* „Haushaltsbuch" stand hier bis 16.08. — das Wort fing die
+          Glossar-Erklärung zu „Haushalt" ein und erklärte das Bild mit der
+          Sache, die es erklären sollte. „Kassenbuch" kollidiert mit keinem
+          Eintrag. Die Einwohnerzahl kommt aus den Daten statt fest im Text:
+          Sie steht zwei Karten weiter unten schon einmal, und zwei Stände
+          derselben Zahl auf einer Seite sind eine Frage zu viel. */}
       <LottiErklaert
         titel="Was ist der Haushalt überhaupt?"
-        text="Einmal im Jahr legt die Stadt fest, wofür sie ihr Geld ausgeben will — wie ein Haushaltsbuch für 176.000 Menschen. Der Rat beschließt diesen Plan; danach darf die Verwaltung nur ausgeben, was darin steht."
+        text={"Einmal im Jahr legt die Stadt fest, wofür sie ihr Geld ausgeben will — wie ein "
+          + "Kassenbuch für "
+          + (data.einwohner
+            ? `${data.einwohner.einwohner.toLocaleString("de-DE")} Menschen`
+            : "eine ganze Stadt")
+          + ". Der Rat beschließt diesen Plan; danach darf die Verwaltung nur ausgeben, "
+          + "was darin steht."}
       />
 
       {/* Jahr-Umschalter — fehlende Jahre bleiben sichtbar (gestrichelt). */}
@@ -237,7 +254,8 @@ export default function HaushaltPage() {
       )}
 
       {defizit != null && aktJahr === jahre[jahre.length - 1] ? (
-        <RuecklagenHinweis defizit={defizit} jahr={aktJahr} />
+        <RuecklagenHinweis defizit={defizit} jahr={aktJahr}
+          einwohner={data.einwohner?.einwohner ?? null} />
       ) : defizit != null && defizit > 0 ? (
         <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
@@ -355,7 +373,8 @@ export default function HaushaltPage() {
                       <div className="h-full rounded-full" style={{ width: `${Math.min(d, 100)}%`, background: "var(--hh-ein-0)" }} />
                     </div>
                     <p className="mt-1.5 text-[11px] text-muted-foreground">
-                      {d}&nbsp;% der Kosten deckt der Bereich selbst · {deMio(mio(z.aufwendungen))} Ausgaben
+                      {d}&nbsp;% der Kosten deckt der Bereich selbst ·{" "}
+                      {deMio(mio(z.aufwendungen))}&#8239;Mio.&nbsp;€ Ausgaben
                     </p>
                   </>
                 )}

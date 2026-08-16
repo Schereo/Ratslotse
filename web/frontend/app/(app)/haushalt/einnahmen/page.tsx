@@ -75,6 +75,16 @@ export default function EinnahmenPage() {
           {karten.length} Quellen — aber nur bei {frei} kann der Rat den Betrag wirklich beeinflussen.
           Die Striche links an jeder Karte zeigen, wie viel Spielraum Oldenburg hat.
         </p>
+        {/* Der Jahres-Sprung gehört nach oben, nicht ans Seitenende. Wer von
+            der Übersicht kommt, hat dort Planzahlen des kommenden Jahres
+            gesehen; hier stehen abgerechnete Werte eines früheren. Ohne den
+            Hinweis liest man beide Seiten als dieselbe Rechnung und wundert
+            sich über die Differenz. */}
+        <p className="mt-2 max-w-[66ch] text-[12.5px] leading-relaxed text-muted-foreground">
+          Achtung beim Jahr: Hier stehen <strong>abgerechnete Beträge aus {jahr}</strong> — was
+          wirklich geflossen ist. Die Übersicht zeigt dagegen den <em>Plan</em> für ein späteres
+          Jahr. Beide Zahlen sind richtig, sie beantworten nur verschiedene Fragen.
+        </p>
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-3.5 shadow-sm">
@@ -131,10 +141,21 @@ export default function EinnahmenPage() {
         ))}
       </div>
 
+      {/* Der Satz verglich bis 16.08. die Steuern eines Ist-Jahres mit den
+          Ausgaben eines Planjahres („deckt nur einen Teil dessen, was die
+          Stadt ausgibt") — zwei Zahlen aus zwei Rechnungen, deren Differenz
+          nichts bedeutet. Jetzt bleibt der Vergleich innerhalb derselben
+          Quelle: Steuern gegen Steuern plus Zuweisungen. */}
       {gesamt != null && (
         <LottiErklaert
-          titel="Die wichtigste Zahl auf dieser Seite"
-          text={`Alle Steuern zusammen brachten ${jahr} rund ${deMio(gesamt / 1e6)} Millionen Euro. Das klingt nach viel — es deckt aber nur einen Teil dessen, was die Stadt im Jahr ausgibt. Den Rest steuern das Land, der Bund, Gebühren und Erstattungen bei.`}
+          titel="Was diese Beträge zusammen sind — und was nicht"
+          text={`Alle Steuern zusammen brachten ${jahr} rund ${deMio(gesamt / 1e6)} Millionen Euro`
+            + (zuweisungJahr?.zuweisungen
+              ? `, dazu kamen ${deMio(zuweisungJahr.zuweisungen / 1e6)} Millionen Schlüsselzuweisungen vom Land`
+              : "")
+            + ". Das ist noch nicht alles, was die Stadt einnimmt: Gebühren, Kostenerstattungen"
+            + " und zweckgebundene Zuschüsse kommen hinzu, und die stehen nicht in diesen"
+            + " Datensätzen. Die Gesamtsumme aller Einnahmen steht auf der Übersicht."}
         />
       )}
 

@@ -155,11 +155,20 @@ export default function PflichtPage() {
         ))}
       </div>
 
+      {/* „Genauer wird es erst mit der Produktebene, die wir noch einlesen"
+          stand hier bis 16.08. — die Produktebene liegt seit #500 vor. Ein
+          Verweis, der auf sie zeigt, ist auch die ehrlichere Auskunft: Die
+          Grobzuordnung ganzer Teilhaushalte bleibt grob, aber man kann jetzt
+          nachsehen. „Kür" heißt auf dieser Seite und im Labor dasselbe wie
+          „überwiegend freiwillig" in den Karten darüber; das stand nirgends. */}
       <p className="max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
         <strong>Wie sicher ist diese Einordnung?</strong> Die Summen stammen aus dem beschlossenen
-        Haushaltsplan. Die Zuordnung zu Pflicht und Kür ist dagegen eine <em>redaktionelle
-        Einschätzung auf Ebene ganzer Teilhaushalte</em> — in fast jedem Bereich steckt beides.
-        Genauer wird es erst mit der Produktebene, die wir noch einlesen.
+        Haushaltsplan. Die Zuordnung zu Pflicht und Kür — also zu dem, was sein muss, und dem,
+        was der Rat freiwillig tut — ist dagegen eine <em>redaktionelle Einschätzung auf Ebene
+        ganzer Teilhaushalte</em>: In fast jedem Bereich steckt beides. Genauer steht es je
+        Aufgabe auf der{" "}
+        <Link href="/haushalt/produkte" className="font-semibold text-primary">Produktebene</Link>,
+        wo die Stadt für jedes Produkt selbst angibt, wie viel Spielraum sie sieht.
       </p>
 
       <Quellenverzeichnis schluessel={quellen} />

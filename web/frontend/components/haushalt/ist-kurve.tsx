@@ -136,6 +136,16 @@ export function IstKurve({ reihe, einheit = "Mio. Euro" }: {
           {deMio(-rueckgaenge[0].delta)}&#8239;Mio.</>
         )}
       </p>
+      {/* Ohne diesen Halbsatz liest sich „das 5,2-Fache" über 27 Jahre wie ein
+          Zuwachs an Kaufkraft. Herausrechnen können wir die Teuerung nicht —
+          dafür bräuchte es eine Preisreihe, die wir nicht führen. Also steht
+          dran, was die Zahl ist: ein Betrag in Euro des jeweiligen Jahres. */}
+      {faktor >= 1.5 && (
+        <p className="mb-3 max-w-[72ch] text-[11.5px] leading-relaxed text-muted-foreground">
+          Alle Beträge in Euro des jeweiligen Jahres — die Teuerung ist nicht herausgerechnet.
+          Ein Teil des Anstiegs ist also gestiegenes Preisniveau, kein zusätzlicher Spielraum.
+        </p>
+      )}
 
       <svg viewBox={`0 0 ${W} ${H}`} className="block w-full" role="img"
         aria-label={`Verlauf ${erste.jahr} bis ${letzte.jahr}: ${reihe.map((p) => `${p.jahr} ${deMio(p.betrag / 1e6)}`).join(", ")} Millionen Euro`}>

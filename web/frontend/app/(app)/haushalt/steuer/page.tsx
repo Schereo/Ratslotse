@@ -61,8 +61,11 @@ function SteuerInner() {
   const anteil = letzte && gesamt && !istZuweisung ? Math.round((letzte.betrag / gesamt) * 100) : null;
   const einwohner = data.einwohner?.einwohner ?? 0;
 
-  // Ein Hebesatzpunkt, überschlagen aus dem Ist — bewusst als Überschlag benannt.
-  const proPunkt = art.hebesatz && letzte ? letzte.betrag / art.hebesatz : null;
+  // Ein Hebesatzpunkt, überschlagen aus dem Ist — bewusst als Überschlag
+  // benannt. Nur wo Betrag und Hebesatz dieselbe Steuer meinen: Bei der
+  // Grundsteuer tun sie das nicht (siehe `punktUnmoeglich`).
+  const proPunkt = art.hebesatz && letzte && !art.punktUnmoeglich
+    ? letzte.betrag / art.hebesatz : null;
 
   // Die Quellen dieser Seite in Lese-Reihenfolge — daraus zählt der Provider
   // die Fußnoten-Nummern.
@@ -201,11 +204,28 @@ function SteuerInner() {
                 </div>
               )}
             </div>
+            {/* „aus zwei Stationen wird eine Treppe" stimmte nur bei der
+                Gewerbesteuer: Nur sie trägt hier zwei Kästen, alle anderen
+                Steckbriefe einen einzigen. */}
             <p className="mt-3 rounded-lg border border-dashed border-border p-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
-              Die Hebesätze früherer Jahre liegen uns noch nicht als Reihe vor — aus zwei
-              Stationen wird eine Treppe, sobald wir sie haben. Wir schätzen sie nicht.
+              Die Hebesätze früherer Jahre liegen uns noch nicht als Reihe vor — sobald wir sie
+              haben, wird daraus eine Treppe über die Jahre. Wir schätzen sie nicht.
             </p>
           </div>
+
+          {art.punktUnmoeglich && (
+            <div className="rounded-2xl border border-dashed border-border bg-card p-4">
+              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+                Was brächte ein Punkt mehr?
+              </p>
+              {/* Kein Link ins Labor: Dort fehlt derselbe Regler aus demselben
+                  Grund — ein Verweis verspräche, was die nächste Seite auch
+                  nicht kann. */}
+              <p className="mt-2 text-[12.5px] leading-relaxed text-foreground/80">
+                {art.punktUnmoeglich}
+              </p>
+            </div>
+          )}
 
           {proPunkt != null && (
             <div className="rounded-2xl border border-signal/40 bg-card p-4 shadow-sm">
@@ -221,9 +241,12 @@ function SteuerInner() {
                 geteilt durch {art.hebesatz}. <strong>Brutto</strong> — was davon in der Stadtkasse
                 bleibt, ist weniger.
               </p>
+              {/* „und Grundstückswerte" stand hier, solange die Karte auch bei
+                  der Grundsteuer erschien — dort tut sie es nicht mehr. */}
               <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-                Unsere Rechnung, keine amtliche Kennzahl: Sie unterstellt, dass Gewinne und
-                Grundstückswerte gleich bleiben.
+                Unsere Rechnung, keine amtliche Kennzahl: Sie unterstellt, dass die Gewinne der
+                Unternehmen gleich bleiben — steigt der Hebesatz, kann sich auch daran etwas
+                ändern.
               </p>
               <Link href="/haushalt/einnahmen"
                 className="mt-2.5 inline-flex text-[12px] font-semibold text-primary">
@@ -244,7 +267,7 @@ function SteuerInner() {
         </p>
         <Link href={`/council?q=${encodeURIComponent(art.titel)}`}
           className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
-          <Search className="h-3.5 w-3.5" /> Beschlüsse zu „{art.titel}" suchen
+          <Search className="h-3.5 w-3.5" /> Beschlüsse zu „{art.titel}“ suchen
         </Link>
       </div>
 

@@ -151,6 +151,9 @@ function PlanIstInner() {
     );
   }
 
+  // Ohne Planwerte gibt es nichts zu vergleichen — und einen Vergleich gegen
+  // eine fehlende Zahl schon gar nicht (siehe Kommentar an der Kernaussage).
+  const planVorhanden = gesamt.ertrPlan != null && gesamt.aufwPlan != null;
   const ertrDiff = (gesamt.ertrIst ?? 0) - (gesamt.ertrPlan ?? 0);
   const aufwDiff = (gesamt.aufwIst ?? 0) - (gesamt.aufwPlan ?? 0);
   const saldoPlan = (gesamt.ertrPlan ?? 0) - (gesamt.aufwPlan ?? 0);
@@ -202,37 +205,55 @@ function PlanIstInner() {
         </div>
       )}
 
-      {/* Kernaussage — die Einnahmeseite ist die eigentliche Nachricht. */}
+      {/* Kernaussage — die Einnahmeseite ist die eigentliche Nachricht.
+          FEHLT DER PLAN, WIRD NICHT VERGLICHEN. Wo der Jahrgang keine
+          Planspalte hergibt, stand hier bis 16.08. ein Satz, der aus der
+          fehlenden Zahl eine Null machte: „799,1 Mio. € eingenommen — geplant
+          waren —, also 799,1 Mio. mehr". Das ist keine Lücke mehr, das ist
+          eine falsche Aussage. Jetzt trägt die Seite den Ist-Wert und sagt
+          dazu, dass die Bezugsgröße fehlt. */}
       <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
           Das Jahr {jahr} in zwei Sätzen
         </p>
-        <p className="mt-2 max-w-[70ch] text-[15px] leading-relaxed text-foreground/90">
-          Die Stadt hat <strong>{deMio(gesamt.ertrIst)}&#8239;Mio.&nbsp;€ eingenommen</strong> —
-          geplant waren {deMio(gesamt.ertrPlan)}<Beleg q="jahresabschluss" />
-          {Math.abs(ertrDiff) >= 1 && (
-            <>, also {deMio(Math.abs(ertrDiff))}&#8239;Mio. {ertrDiff > 0 ? "mehr" : "weniger"}</>
-          )}. Ausgegeben hat sie <strong>{deMio(gesamt.aufwIst)}&#8239;Mio.</strong> statt der
-          geplanten {deMio(gesamt.aufwPlan)}
-          {Math.abs(aufwDiff) >= 1 && (
-            <> ({aufwDiff > 0 ? "+" : "−"}{deMio(Math.abs(aufwDiff))})</>
-          )}.
-        </p>
-        <div className="mt-3 grid gap-2.5 border-t border-border/60 pt-3 sm:grid-cols-2">
-          <div>
-            <p className="text-[11.5px] text-muted-foreground">Geplantes Jahresergebnis</p>
-            <p className="font-display text-[20px] font-bold tabular-nums">
-              {saldoPlan > 0 ? "+" : ""}{deMio(saldoPlan)}<span className="text-xs font-semibold text-muted-foreground">&#8239;Mio.</span>
-            </p>
+        {planVorhanden ? (
+          <p className="mt-2 max-w-[70ch] text-[15px] leading-relaxed text-foreground/90">
+            Die Stadt hat <strong>{deMio(gesamt.ertrIst)}&#8239;Mio.&nbsp;€ eingenommen</strong> —
+            geplant waren {deMio(gesamt.ertrPlan)}<Beleg q="jahresabschluss" />
+            {Math.abs(ertrDiff) >= 1 && (
+              <>, also {deMio(Math.abs(ertrDiff))}&#8239;Mio. {ertrDiff > 0 ? "mehr" : "weniger"}</>
+            )}. Ausgegeben hat sie <strong>{deMio(gesamt.aufwIst)}&#8239;Mio.</strong> statt der
+            geplanten {deMio(gesamt.aufwPlan)}
+            {Math.abs(aufwDiff) >= 1 && (
+              <> ({aufwDiff > 0 ? "+" : "−"}{deMio(Math.abs(aufwDiff))})</>
+            )}.
+          </p>
+        ) : (
+          <p className="mt-2 max-w-[70ch] text-[15px] leading-relaxed text-foreground/90">
+            Die Stadt hat {jahr} <strong>{deMio(gesamt.ertrIst)}&#8239;Mio.&nbsp;€ eingenommen</strong>{" "}
+            und <strong>{deMio(gesamt.aufwIst)}&#8239;Mio.</strong> ausgegeben
+            <Beleg q="jahresabschluss" />. Die Planwerte der Gesamtrechnung konnten wir für
+            diesen Jahrgang nicht auslesen — deshalb steht hier kein „geplant" daneben und keine
+            Abweichung. Geraten wird sie nicht. Wo der Abschluss einzelne Posten selbst mit
+            ihrem Plan vergleicht, steht das weiter unten.
+          </p>
+        )}
+        {planVorhanden && (
+          <div className="mt-3 grid gap-2.5 border-t border-border/60 pt-3 sm:grid-cols-2">
+            <div>
+              <p className="text-[11.5px] text-muted-foreground">Geplantes Jahresergebnis</p>
+              <p className="font-display text-[20px] font-bold tabular-nums">
+                {saldoPlan > 0 ? "+" : ""}{deMio(saldoPlan)}<span className="text-xs font-semibold text-muted-foreground">&#8239;Mio.</span>
+              </p>
+            </div>
+            <div>
+              <p className="text-[11.5px] text-muted-foreground">Tatsächliches Jahresergebnis</p>
+              <p className="font-display text-[20px] font-bold tabular-nums">
+                {saldoIst > 0 ? "+" : ""}{deMio(saldoIst)}<span className="text-xs font-semibold text-muted-foreground">&#8239;Mio.</span>
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-[11.5px] text-muted-foreground">Tatsächliches Jahresergebnis</p>
-            <p className={cn("font-display text-[20px] font-bold tabular-nums",
-              saldoIst > saldoPlan && "text-[color:var(--hh-ein-0)]")}>
-              {saldoIst > 0 ? "+" : ""}{deMio(saldoIst)}<span className="text-xs font-semibold text-muted-foreground">&#8239;Mio.</span>
-            </p>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Woran „geplant" hier gemessen wird. In den meisten Jahrgängen ist
@@ -262,8 +283,11 @@ function PlanIstInner() {
         text="Ein Haushalt wird ein Jahr im Voraus beschlossen — niemand weiß dann, wie viel Gewerbesteuer hereinkommt, welche Tarife steigen oder wie viele Kinder einen Kitaplatz brauchen. Die Stadt plant deshalb vorsichtig: lieber etwas zu wenig Einnahmen ansetzen als zu viel. Abweichungen sind normal und für sich genommen weder gut noch schlecht."
       />
 
-      {/* Hantel je Teilhaushalt (H-16) */}
-      {bereiche.length > 0 && (
+      {/* Hantel je Teilhaushalt (H-16). Die Bedingung fragt nach Zeilen, die
+          BEIDE Werte tragen: Sonst stand hier eine Überschrift mit Umschalter,
+          Erklärtext und Legende über einer leeren Fläche — die Hantel selbst
+          zeichnet ohne Planwert nichts. */}
+      {bereiche.some((b) => b.aufwPlan != null && b.aufwIst != null) && (
         <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
             <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">

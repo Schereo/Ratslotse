@@ -80,6 +80,14 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   dass etwas nicht gebaut wurde. (#502)
 
 ### Behoben
+- **„Geplant und geworden" behauptete einen Vergleich, den es nicht gab.** Wo
+  ein Jahresabschluss keine Planwerte hergibt, machte die Seite aus der
+  fehlenden Zahl eine Null und schrieb: „799,1 Mio. € eingenommen — geplant
+  waren —, also 799,1 Mio. mehr." Darunter stand eine Überschrift samt Legende
+  über einer leeren Grafik. Jetzt nennt die Seite die tatsächlichen Werte und
+  sagt, dass die Bezugsgröße fehlt, statt eine Abweichung zu erfinden. (#512)
+- **Deckungsgrad der Produktebene mit englischem Dezimalpunkt.** „81.7 %" statt
+  „81,7 %" — mitten in einem Text, der sonst durchgehend Komma schreibt. (#512)
 - **„Geplant und geworden": Die kleinen Bereiche waren nicht zu sehen.** Auch
   als Euro-Strecke blieben fünf der zwölf Bereiche kürzer als zwei Prozent der
   Breite — zwischen −0,7 und +20,5 Mio. liegt zu viel. Die Grafik misst jetzt
@@ -105,6 +113,44 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Zuordnung der Einnahmen. (#503)
 
 ### Verbessert
+- **Der Haushalts-Bereich einmal am Stück gelesen — mit den Augen von jemandem,
+  der noch nie einen kommunalen Haushalt gesehen hat.** Die neun Seiten sind in
+  zwei Wochen einzeln entstanden; diese Runde ändert keine Zahl und kein
+  Feature, sondern das, was zwischen ihnen stand. Aus den sechs gleichrangigen
+  Wegweiser-Karten wird ein Weg mit sechs nummerierten Schritten, der bei „Woher
+  kommt das Geld?" beginnt und bei der Prüfung endet. Die Balkenleiste auf der
+  Übersicht heißt nicht mehr „Woher das Geld kommt" — sie zeigt, welcher
+  *Bereich* eine Einnahme verbucht, und weil Steuern zentral in der Kämmerei
+  auflaufen, las man dort heraus, das meiste Geld komme aus der Verwaltung
+  selbst. Die Einnahmen- und die Produktseite sagen jetzt oben, dass ihre Jahre
+  nicht die der Übersicht sind, statt es unten nachzureichen. Zwei Seiten
+  behaupteten weiterhin, die Produktebene werde „noch eingelesen" — sie ist seit
+  Wochen da und jetzt von dort aus verlinkt. Große Beträge bekommen eine
+  Bezugsgröße: die Rücklage steht auch je Einwohnerin und Einwohner, „169,2
+  Ausgaben" heißt wieder „169,2 Mio. € Ausgaben". Und der Steuer-Verlauf sagt
+  dazu, dass in „das 5,2-Fache" seit 1998 die Teuerung steckt. (#512)
+- **Widersprüche zwischen zwei Seiten aufgelöst, statt sie zu übertünchen.**
+  Der Steuer-Steckbrief rechnete aus, was ein Hebesatzpunkt Grundsteuer bringt —
+  aus einem Betrag, der A und B zusammenfasst, geteilt durch den Hebesatz von
+  nur B. Das Haushalts-Labor verweigert genau diese Zahl seit jeher mit
+  derselben Begründung. Jetzt tun es beide: Der Steckbrief zeigt statt der Zahl,
+  warum es sie nicht gibt. Ebenso heißt ein Minusbetrag im Bereichs-Dossier
+  nicht mehr „bleibt der Stadt" (als bliebe ihr etwas übrig), sondern „trägt die
+  Stadt" — dasselbe Wort, das die Übersicht dafür benutzt. (#512)
+- **Kein Grün mehr im Haushalt.** Ein geplanter Überschuss trug den Erfolgs-Tint
+  aus der Beschluss-Semantik und stand damit als gute Note neben dem
+  orangefarbenen Minus. Für die Hantel-Grafik ist seit jeher begründet, warum es
+  im Haushalt keine Bewertungsfarben gibt; das gilt jetzt auch für die
+  Überschuss-Pille und die Ergebnis-Spalte der Zeitreihen-Tabelle. (#512)
+- **Das Glossar erklärt die Wörter, über die man wirklich stolpert.** Neu sind
+  unter anderem Ansatz, Gesamtermächtigung, Ertrags- und Aufwandsart,
+  Ergebnisrechnung, ordentliches Ergebnis, Kernverwaltung, Textziffer und
+  Rechnungsprüfungsamt — und das Quellenverzeichnis unter jeder Haushaltsseite
+  erklärt sie jetzt an Ort und Stelle, statt sie nur zu benutzen. Die Erklärung
+  zu „Erschließung" war dort, wo sie automatisch erschien, teils schlicht
+  falsch: Im Steckbrief des Stadtarchivs meint das Wort das Ordnen von
+  Beständen, nicht den Straßenbau. (#512)
+
 - **Das Haushalts-Labor sagt jetzt, ob das viel ist.** Bisher bewegte man
   Regler und eine Zahl änderte sich — ohne Maßstab. Jetzt füllt jede Bewegung
   sichtbar einen Anteil der Lücke, und unter jedem Regler steht, was er

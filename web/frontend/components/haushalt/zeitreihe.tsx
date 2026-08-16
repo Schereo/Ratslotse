@@ -225,7 +225,10 @@ export function Zeitreihe({ daten }: { daten: HaushaltDaten }) {
                 <span className={`border-t border-border/60 py-1 ${p ? "" : "text-signal"}`}>{jahr}</span>
                 <span className="border-t border-border/60 py-1 text-right" title={p ? undefined : "nicht auslesbar"}>{p ? deMio(p.ein) : "—"}</span>
                 <span className="border-t border-border/60 py-1 text-right">{p ? deMio(p.aus) : "—"}</span>
-                <span className={`border-t border-border/60 py-1 text-right ${(saldo ?? 0) < 0 ? "text-signal" : "text-[#15803d] dark:text-[#4ade80]"}`}>
+                {/* Minus in Signal-Orange (= „hier ist die Differenz"), Plus
+                    neutral. Grün stünde für „gut" — eine Bewertung, die im
+                    Haushalts-Bereich nirgends vorkommt. */}
+                <span className={`border-t border-border/60 py-1 text-right ${(saldo ?? 0) < 0 ? "text-signal" : ""}`}>
                   {p ? `${(saldo ?? 0) > 0 ? "+" : ""}${deMio(saldo)}` : "—"}
                 </span>
               </div>

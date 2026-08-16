@@ -323,10 +323,19 @@ function ProdukteInner() {
             Was kostet eigentlich …?
           </h1>
           <p className="mt-2 max-w-[68ch] text-[15px] leading-relaxed text-foreground/90">
-            Der Haushalt zerfällt in <GlossaryText text="Produkte" /> — einzelne Aufgaben mit
+            Der Haushalt ist in <GlossaryText text="Produkte" /> gegliedert — einzelne Aufgaben mit
             eigener Nummer, eigenem Budget und zuständigem Amt. Hier stehen{" "}
             <strong>{gesamt}</strong> davon aus dem Haushaltsjahr {jahr}: was sie kosten, was
             dahintersteckt und wie viel Spielraum die Stadt bei ihnen sieht.
+          </p>
+          {/* Der Jahres-Sprung stand bisher nur ganz unten im Abdeckungs-Block.
+              Wer von der Übersicht kommt, hat dort ein späteres Planjahr
+              gesehen und rechnet die Beträge hier sonst dagegen. */}
+          <p className="mt-2 max-w-[68ch] text-[12.5px] leading-relaxed text-muted-foreground">
+            {jahr} ist das jüngste Jahr, für das die Teilhaushaltspläne maschinell auslesbar
+            vorliegen — die Beträge lassen sich deshalb nicht mit denen der Übersicht
+            verrechnen. Auch die Namen stehen im Wortlaut des Plans: Wir kürzen nichts ab,
+            aber wir schreiben seine Abkürzungen auch nicht aus.
           </p>
         </div>
 
@@ -445,8 +454,12 @@ function ProdukteInner() {
             Wie vollständig das ist
           </p>
           <p className="mt-2 max-w-[70ch] text-[12.5px] leading-relaxed text-foreground/85">
+            {/* toLocaleString, nicht die nackte Zahl: Der Wert kam als 81.7
+                mit englischem Punkt auf die Seite — mitten in einem Text, der
+                sonst durchgehend Komma schreibt. */}
             {data?.abdeckung_prozent != null ? (
-              <>Die {gesamt} Produkte erklären <strong>{data.abdeckung_prozent}&nbsp;%</strong> der
+              <>Die {gesamt} Produkte erklären{" "}
+                <strong>{data.abdeckung_prozent.toLocaleString("de-DE", { maximumFractionDigits: 1 })}&nbsp;%</strong> der
                 für {jahr} geplanten Ausgaben.<Beleg q="plan" /> Nicht jeder Teilhaushalt liegt für
                 jedes Jahr als auslesbares Dokument vor — dies ist also ein Ausschnitt, kein
                 Vollbild.</>
