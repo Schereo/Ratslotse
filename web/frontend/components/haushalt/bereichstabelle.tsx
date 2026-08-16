@@ -55,8 +55,13 @@ type Zeile = {
 };
 
 /** Zwei Balkenstücke auf gemeinsamer Skala: dunkel = aus dem allgemeinen
- *  Topf, hell = eigene Erträge. Zusammen sind sie die Ausgaben des Bereichs. */
-function Anteilsbalken({ stadt, eigen, skala }: {
+ *  Topf, hell = eigene Erträge. Zusammen sind sie die Ausgaben des Bereichs.
+ *
+ *  Bewusst NICHT `components/haushalt/anteilsbalken.tsx`: Der schreibt seinen
+ *  Nenner und eine Legende an jeden Balken, weil er einzeln steht. Hier stehen
+ *  dreizehn Balken untereinander an einer gemeinsamen Skala — dieselbe
+ *  Beschriftung dreizehnmal wäre Lärm, der Nenner steht in der Kopfzeile. */
+function Zusammensetzungsbalken({ stadt, eigen, skala }: {
   stadt: number; eigen: number; skala: number;
 }) {
   const b = (v: number) => `${Math.max((v / skala) * 100, 0)}%`;
@@ -95,7 +100,7 @@ function Reihe({ z, skala }: { z: Zeile; skala: number }) {
         )}
       </span>
       <span className="flex items-center">
-        <Anteilsbalken stadt={z.stadt} eigen={z.eigen} skala={skala} />
+        <Zusammensetzungsbalken stadt={z.stadt} eigen={z.eigen} skala={skala} />
       </span>
       <span className="flex items-baseline justify-between gap-4 sm:contents">
         <span className="tabular-nums sm:text-right">

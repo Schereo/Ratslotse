@@ -235,6 +235,7 @@ CSV_STEUERN = """Haushaltsjahr;Grundsteuer A+B;Gewerbesteuer (-umlage);Einkommen
 
 CSV_STEUERKRAFT = """Ausgleichsjahr;Steuerkraftmesszahl [Euro];Steuerkraftmesszahl [Euro/EW];Schluesselzuweisungen, Anordnungssoll [Euro];Schluesselzuweisungen, Anordnungssoll [Euro/EW]
 1992;62980848;434;21478603;148
+2024;325716249;1848;69209992;393
 2025;348164497;1971;82278144;466
 """
 
@@ -268,10 +269,27 @@ def test_parse_steuereinnahmen_langformat():
     assert "Vergnügungssteuer" in arten and "Gemeindeanteil an der Umsatzsteuer" in arten
 
 
+def test_parse_steuerkraft_rueckt_aufs_ausgleichsjahr():
+    """Datensatz 1106 beschriftet um ein Jahr zu früh — der Parser rückt das
+    zurecht (Beleg: `haushalt._STEUERKRAFT_VERSATZ`). Die Beträge selbst
+    bleiben unangetastet: Sie stimmen auf den Euro mit den KFA-Tabellen des
+    LSN überein, nur eben unter dem nächsten Jahr."""
+    kraft = haushalt.parse_steuerkraft(CSV_STEUERKRAFT)
+    assert [k["jahr"] for k in kraft] == [1993, 2025, 2026]
+    # Der Betrag, den das LSN als Steuerkraftmesszahl 2026 führt, steht in der
+    # CSV unter 2025 — bei uns jetzt unter 2026.
+    assert kraft[-1]["messzahl"] == 348_164_497.0
+    assert kraft[-1]["zuweisungen"] == 82_278_144.0
+    # Ausgleichsjahr 2025: die Beträge, die das LSN in KFA 2025 führt.
+    assert kraft[1]["messzahl"] == 325_716_249.0
+    assert kraft[1]["zuweisungen"] == 69_209_992.0
+    # Pro-Kopf-Spalten kommen nicht mit: Ihr Nenner gehört zum falschen Jahr.
+    assert all(k["messzahl_je_ew"] is None and k["zuweisungen_je_ew"] is None
+               for k in kraft)
+
+
 def test_parse_steuerkraft_und_store_roundtrip(tmp_path, quelle):
     kraft = haushalt.parse_steuerkraft(CSV_STEUERKRAFT)
-    assert [k["jahr"] for k in kraft] == [1992, 2025]
-    assert kraft[1]["messzahl"] == 348_164_497.0 and kraft[1]["zuweisungen_je_ew"] == 466.0
 
     store = CouncilStore(tmp_path / "c.sqlite")
     steuern = haushalt.parse_steuereinnahmen(CSV_STEUERN)
@@ -279,9 +297,28 @@ def test_parse_steuerkraft_und_store_roundtrip(tmp_path, quelle):
     assert store.save_steuereinnahmen(steuern, q) == 16
     assert store.save_steuereinnahmen(steuern, q) == 16  # idempotent
     assert len(store.get_steuereinnahmen()) == 16
-    assert store.save_steuerkraft(kraft, q) == 2
+    assert store.save_steuerkraft(kraft, q) == 3
     got = store.get_steuerkraft()
-    assert got[0]["jahr"] == 1992 and got[-1]["messzahl_je_ew"] == 1971.0
+    assert [g["jahr"] for g in got] == [1993, 2025, 2026]
+    assert got[-1]["messzahl"] == 348_164_497.0
+
+
+def test_save_steuerkraft_raeumt_verwaiste_jahrgaenge_ab(tmp_path, quelle):
+    """Beim Umstellen auf das Ausgleichsjahr wandert jede Zeile ein Jahr
+    weiter — ein reines INSERT OR REPLACE ließe den ältesten Jahrgang als
+    Leiche zurück, mit den Beträgen seines Nachfolgers."""
+    store = CouncilStore(tmp_path / "c.sqlite")
+    q = quelle("Steuerkraft-CSV", "http://csv", probe=UNGEPRUEFT)
+    alt = [{"jahr": j, "messzahl": 1.0, "messzahl_je_ew": None,
+            "zuweisungen": 2.0, "zuweisungen_je_ew": None} for j in (1992, 1993)]
+    assert store.save_steuerkraft(alt, q) == 2
+
+    neu = [{"jahr": j, "messzahl": 9.0, "messzahl_je_ew": None,
+            "zuweisungen": 8.0, "zuweisungen_je_ew": None} for j in (1993, 1994)]
+    assert store.save_steuerkraft(neu, q) == 2
+    got = store.get_steuerkraft()
+    assert [g["jahr"] for g in got] == [1993, 1994]  # 1992 ist weg
+    assert all(g["messzahl"] == 9.0 for g in got)
 
 
 def test_parse_einwohner():
