@@ -167,7 +167,7 @@ export default function KonzernPage() {
   const quelleUrl = herkunftVon(data, jd?.herkunft_id)?.url ?? null;
 
   return (
-    <Quellenkontext schluessel={[...QUELLEN]}>
+    <Quellenkontext schluessel={[...QUELLEN]} jahr={aktJahr}>
       <div className="flex flex-col gap-4">
         <div className="flex items-end justify-between gap-5">
           <div className="min-w-0">

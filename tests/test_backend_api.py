@@ -533,6 +533,46 @@ def test_haushalt_datenstand_nennt_alle_schichten(client):
     assert schichten["jahresabschluss"]["automatisch"] is True
 
 
+def test_haushalt_dokumente_nennt_je_jahrgang_das_richtige_pdf(client):
+    """Der Beleg-Link führte auf die Startseite des Ratsinformationssystems.
+
+    Grund war die Bauart des Quellenverzeichnisses: Es beschreibt eine Quelle
+    über alle Jahrgänge hinweg und trug deshalb eine Adresse, die für alle
+    stimmt — also die Startseite. Dieser Endpunkt liefert die Jahrgangs-Ebene
+    nach, und das ist der ganze Unterschied zwischen „hier ist das Dokument"
+    und „such es dir".
+    """
+    from council import herkunft
+
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    try:
+        for jahr, doc in ((2023, 280861), (2024, 295294)):
+            cs.save_ergebnisrechnung(jahr, [
+                {"nr": 12, "bezeichnung": "Summe ordentliche Erträge",
+                 "ergebnis": 1.0, "ist_summe": 1}],
+                herkunft.Herkunft(
+                    art="ris", probe="strukturprobe", dokument_id=doc,
+                    label=f"Jahresabschluss {jahr}",
+                    url=f"https://buergerinfo.oldenburg.de/getfile.php?id={doc}&type=do",
+                    fundstelle="Ergebnisrechnung der Kernverwaltung", seite=161))
+    finally:
+        cs.close()
+
+    doks = client.get("/api/council/haushalt/dokumente").json()["dokumente"]
+    nach_jahr = {d["jahr"]: d for d in doks["jahresabschluss"]}
+    # Der Jahrgangswechsel führt auf ein ANDERES Dokument — genau das war die
+    # Zusage, und genau die konnte die statische Adresse nicht halten.
+    assert nach_jahr[2023]["url"].endswith("id=280861&type=do")
+    assert nach_jahr[2024]["url"].endswith("id=295294&type=do")
+    # Und die Fundstelle fährt mit: Bei 300 Seiten ist die URL allein zu wenig.
+    assert nach_jahr[2024]["fundstelle"] == "Ergebnisrechnung der Kernverwaltung"
+    assert nach_jahr[2024]["seite"] == 161
+    # Quellen ohne Dokument fehlen, statt mit einer erfundenen Adresse
+    # dazustehen: Die Oberfläche erkennt daran den Rückfall.
+    assert "gesamtabschluss" not in doks
+
+
 def test_haushalt_konzern_liefert_luecke_und_gegenprobe(client):
     """/haushalt/konzern trägt beide Reihen und den Abgleich dazwischen.
 

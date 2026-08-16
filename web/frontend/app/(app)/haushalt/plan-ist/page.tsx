@@ -167,7 +167,7 @@ function PlanIstInner() {
     .sort((a, b) => Math.abs(b.delta_mio ?? 0) - Math.abs(a.delta_mio ?? 0));
 
   return (
-    <Quellenkontext schluessel={quellen}>
+    <Quellenkontext schluessel={quellen} jahr={jahr}>
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
         <Link href="/haushalt" className="hover:text-foreground">Haushalt</Link>

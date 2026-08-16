@@ -199,7 +199,7 @@ export default function BereichePage() {
   const produktBis = produktJahre[produktJahre.length - 1] ?? null;
 
   return (
-    <Quellenkontext schluessel={QUELLEN}>
+    <Quellenkontext schluessel={QUELLEN} jahr={jahr}>
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
           <Link href="/haushalt" className="hover:text-foreground">Haushalt {jahr}</Link>

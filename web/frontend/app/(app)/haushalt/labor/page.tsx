@@ -12,7 +12,7 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
-import { HaushaltDaten, ProdukteAntwort } from "@/lib/haushalt";
+import { HaushaltDaten, ProdukteAntwort, jahreSortiert } from "@/lib/haushalt";
 import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
@@ -38,7 +38,7 @@ export default function LaborPage() {
   }
 
   return (
-    <Quellenkontext schluessel={quellen}>
+    <Quellenkontext schluessel={quellen} jahr={jahreSortiert(data).at(-1) ?? null}>
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
         <Link href="/haushalt" className="hover:text-foreground">Haushalt</Link>
