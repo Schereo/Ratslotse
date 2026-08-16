@@ -86,6 +86,7 @@ die es nicht zeigen:
 | `…/haushalt/stellenplan` | `/haushalt/personal` | rund 190 Zeilen je Jahrgang; die Einzelposten kommen nur für den angefragten Jahrgang mit |
 | `…/haushalt/vergleich` | `/haushalt/vergleich` | eigene Tabelle (LSN), acht Städte × Jahrgänge |
 | `…/haushalt/investitionen` | `/haushalt/investitionen` | eigene Tabelle, **anderer Haushalt** (Finanz- statt Ergebnishaushalt) — nicht mit den übrigen Zahlen verrechenbar |
+| `…/haushalt/schulden` | `/haushalt/schulden` | eigene Tabelle, eigene Jahrgangsreihe (bis 1995 zurück) |
 | `…/haushalt/weg` | `/haushalt/jahr` | Ratsdaten statt Finanzdokumenten (Beratungsfolge, Sitzungen) |
 | `…/haushalt/datenstand` | Block „Bis wann die Zahlen reichen" | rechnet über den Bestand, nicht über Inhalte |
 | `…/haushalt/dokumente` | Quellenverzeichnis **jeder** Haushalts-Seite | je Quelle und Jahrgang das Dokument — die Angabe, die die statische Quellenliste nicht haben kann |
@@ -107,6 +108,7 @@ die es nicht zeigen:
 | `council_konzern_posten` | Gesamtergebnisrechnung des **Konzerns** je Posten, 2014–2024 | Konsolidierte Gesamtabschlüsse — **Anlagen im RIS** | `scripts/ingest_konzernabschluss.py` |
 | `council_konzern_traeger` | Dieselben Summen je Aufgabenträger (Kernverwaltung, Klinikum, Eigenbetriebe …), 2017–2024, in **TEUR** | dito | dito |
 | `council_staedtevergleich` | Steuerkraft, Hebesätze und Steuereinnahmekraft der acht kreisfreien Städte je Jahrgang — Reihen `steuerkraft` und `realsteuern` | Landesamt für Statistik Niedersachsen (Kommunaler Finanzausgleich, Realsteuervergleich) | `scripts/ingest_staedtevergleich.py` |
+| `council_schulden` | Schuldenstand je Jahr seit 1995 — vier Schuldenarten, Summe und Betrag je Einwohner\*in | Statistisches Jahrbuch der Stadt, Tabelle 1108 (PDF von oldenburg.de) | `scripts/ingest_schulden.py` |
 
 :::note[Zwei Tabellen zu denselben Berichten]
 `council_pruefbericht_quellen` hält die **Fundstelle** des Schlussberichts
@@ -121,7 +123,8 @@ Ingest-Skripte bleiben der Weg von Hand, wenn ein verbesserter Parser über den
 **Bestand** laufen soll. Die Plan- und Open-Data-Schichten (`council_haushalt`,
 `council_steuern`, `council_steuerkraft`, `council_einwohner`) kommen per
 Download von oldenburg.de und bleiben Handarbeit, ebenso der Städtevergleich
-(LSN, einmal jährlich — siehe [unten](#kein-neues-paket-kein-cron)).
+(LSN, einmal jährlich — siehe [unten](#kein-neues-paket-kein-cron)) und die
+Schuldenzeitreihe (Statistisches Jahrbuch, einmal jährlich).
 
 ## Herkunft: woher jede einzelne Zahl stammt
 
@@ -1432,6 +1435,102 @@ hängen bleiben:
 
 Der Anteil am Finanzhaushalt ist **unsere** Division und steht auf der Seite als
 solche gekennzeichnet; die beiden Beträge darin stehen so in der Quelle.
+## Schulden: eine Zahl, die es zweimal gibt
+
+`/haushalt/schulden` beantwortet die häufigste offene Frage an den Bereich —
+und die Antwort hängt vollständig daran, **was** gezählt wird. Bei
+Kommunalschulden gibt es zwei Werte, die beide „die Schulden der Stadt" heißen
+und sich um ein Vielfaches unterscheiden.
+
+Quelle ist **Tabelle 1108 des Statistischen Jahrbuchs** (`council/schulden.py`,
+`scripts/ingest_schulden.py`): eine Seite, dreißig Jahre, je Jahr vier
+Schuldenarten, ihre Summe und der Betrag je Einwohner\*in.
+
+### Die Abgrenzung, und woran sie festgemacht ist
+
+Gezählt wird die **Stadt als Rechtsträger**: Kernhaushalt *und* Eigenbetriebe,
+ohne die rechtlich selbstständigen Beteiligungen. Das steht nicht als Satz in
+der Tabelle, sondern in ihren Spalten und Fußnoten:
+
+1. Die vierte Spalte heißt „Schulden der Eigenbetriebe einschließlich Kliniken
+   und innere Darlehen" — Eigenbetriebe haben keine eigene
+   Rechtspersönlichkeit, ihre Schulden sind rechtlich die der Stadt.
+2. Fußnote 1: „Ab 1999 ohne Kliniken, die jetzt als Klinikum Oldenburg AöR
+   geführt werden." Sobald eine Einheit eine eigene Rechtsform bekommt, fällt
+   sie aus der Reihe. Das Kriterium ist damit benannt: Rechtsträgerschaft,
+   nicht Eigentum.
+3. Fußnote 3 sagt es ausdrücklich (Weser-Ems-Halle): „Die Schulden des
+   Eigenbetriebs verbleiben rechtlich bei der Stadt. Wirtschaftlich werden die
+   Darlehen der WEH GmbH & Co. KG zugerechnet." Die Tabelle folgt der
+   rechtlichen Zurechnung.
+
+Der Wortlaut steht als `schulden.ABGRENZUNG` **im Backend** und kommt über das
+Feld `abgrenzung` des Endpunkts auf die Seite — zwei Formulierungen für
+dieselbe Grenze wären zwei Grenzen.
+
+### Zwei Proben, und 2022 braucht beide
+
+- **`schulden_summenzeile`** (intern): Die vier Schuldenarten müssen die Summe
+  ergeben, die die Tabelle daneben ausweist. Ohne Toleranz — die Quelle rundet
+  auf volle Tausend und geht in 30 von 31 Jahrgängen auf den Euro auf.
+- **`schulden_prokopf`** (unabhängig, und damit die stärkere): Die
+  ausgewiesene Gesamtschuld, geteilt durch die Einwohnerzahl aus
+  `council_einwohner` (Datensatz 1102), muss den Pro-Kopf-Betrag derselben
+  Zeile ergeben. Beide Seiten stammen aus **verschiedenen Veröffentlichungen**
+  der Stadt, und die Stichtage decken sich exakt (1108 im Kopf:
+  „Bevölkerungsstand: 31. Dezember des Vorjahres"; 1102 in der Spaltenüberschrift:
+  „Einwohner am 31.12. des Vorjahres"). Ergebnis: **16 von 16** prüfbaren
+  Jahrgängen gehen auf.
+
+**2022 ist der Fall, für den beide gebaut sind.** Dort ergeben die
+Schuldenarten 282.535 T€, ausgewiesen sind 281.457 T€ — 1,078 Mio. €
+Unterschied, im Dokument selbst. Die Summenprobe reißt. Die Pro-Kopf-Probe
+entscheidet den Jahrgang: 281.457.000 € / 170.389 = 1.651,85 €, und genau
+1.652 € nennt die Tabelle. Also kommt die **Summe** herein und die
+**Aufteilung** nicht (die vier Artenspalten stehen auf `NULL`,
+`aufteilung_verworfen` hält die Lücke fest). Welche Spalte danebenliegt, sagt
+das Dokument nicht, und geraten wird nicht. Die Seite benennt die Lücke, statt
+einen leeren Balken zu zeichnen.
+
+Weil die Probenlage nicht für alle Jahrgänge gleich ist, schreibt der Ingest
+**drei** Herkünfte statt einer: 1995–2009 (nur Summenprobe, davor gibt es keine
+Einwohnerzahlen), 2010–2025 ohne 2022 (beide), 2022 (nur Pro-Kopf). Der Beleg
+auf der Seite soll für *die jeweilige* Zahl gelten.
+
+### Die Falle im Textextrakt
+
+Fußnotenziffern kleben an den Beträgen: `26.5981` ist 26.598 mit Fußnote 1,
+nicht 265.981. Ein Parser, der bloß die Tausenderpunkte entfernt, liest dort
+das Zehnfache und meldet nichts. Auflösbar ist das, weil deutsche
+Tausendergruppen **genau drei** Ziffern haben — was hinter der letzten
+vollständigen Gruppe steht, gehört nicht mehr zur Zahl. Dasselbe gilt für das
+`r` revidierter Werte (`251.160r`), das als Angabe erhalten bleibt. Vier
+Jahrgänge tragen solche Marken (1999, 2001, 2008, 2010), und die Summenprobe
+schließt in allen vieren — sie prüft damit nicht nur die Quelle, sondern auch
+den Entzerrer.
+
+### Was die Kurve nicht bewertet
+
+Die beiden größten Sprünge der Reihe sind **keine Politik**, und die Seite sagt
+das im Text statt es der Farbe zu überlassen (Bewertungsfarben sind im ganzen
+Bereich ausgeschlossen, s. `components/haushalt/hantel.tsx`):
+
+- **2001, −139,1 Mio. €:** Die Stadtentwässerung ging an den
+  Oldenburgisch-Ostfriesischen Wasserverband, der dabei Darlehen über
+  139,5 Mio. € übernahm (Fußnote 2). Kein Abbau, sondern ein Übergang mit der
+  Aufgabe.
+- **2010, 108,9 Mio. € Spaltenwechsel bei nahezu gleicher Summe:** Gründung des
+  Eigenbetriebs Gebäudewirtschaft und Hochbau (Fußnote 4). Die
+  Kreditmarkt-Spalte fällt von 130,8 auf 30,5 Mio., die Eigenbetriebs-Spalte
+  steigt von 18,6 auf 123,5 Mio., die Summe bewegt sich von 149,5 auf
+  154,0 Mio. Wer nur die erste Spalte zeigte, verkündete einen Schuldenabbau um
+  drei Viertel, den es nie gab — der Grund, warum die Spalten einzeln
+  gespeichert werden.
+
+Aus demselben Grund trägt die Seite **zwei Ansichten**: Über dreißig Jahre sind
+die Schulden absolut um 35,5 Mio. € gestiegen und je Einwohner\*in um 106 €
+gesunken, weil die Stadt in derselben Zeit gewachsen ist. Nur die absolute
+Reihe zu zeigen läse Bevölkerungswachstum als Schuldenaufbau.
 
 ## Was bewusst fehlt
 
@@ -1469,6 +1568,14 @@ Der Bereich zeigt lieber eine Lücke als eine Schätzung:
   Oldenburg 2024, vom Dokument selbst markiert) — eine Grafik ohne Jahr an
   jedem Balken wäre still falsch, und das gehört sorgfältig gemacht statt
   nebenbei.
+- **Der Schuldenstand aus dem Vorbericht des Haushaltsplans** — er stünde als
+  zweite, aktuellere Quelle neben Tabelle 1108 zur Verfügung, steht dort aber
+  in einem **Diagramm**. Im Textextrakt sind die Achsenbeschriftungen nicht von
+  den Datenwerten zu unterscheiden: keine Summenzeile, keine zweite Spalte,
+  nichts, woran sich prüfen ließe, ob eine gelesene Zahl ein Datenpunkt oder
+  eine Gitterlinie ist. **Keine Probe möglich, also nicht eingelesen** — auch
+  nicht „mit Vorsicht". Tabelle 1108 deckt dieselbe Frage ab und bringt ihre
+  Proben mit.
 - **Einzelne Investitionsvorhaben** — seit 08/2026 gibt es die
   Investitionen als Schicht (`council_investitionen`,
   `council/investitionen.py`, Seite `/haushalt/investitionen`), aber nur je

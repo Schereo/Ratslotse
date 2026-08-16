@@ -1006,6 +1006,37 @@ class CouncilStore:
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (reihe, jahr, schluessel, kennzahl))"
         )
+        # Schuldenstand je Jahr (Tabelle 1108 des Statistischen Jahrbuchs,
+        # seit 1995). Beträge in Euro; die Quelle rechnet in Tausend Euro und
+        # ist damit auf Tausend genau — mehr behauptet auch diese Tabelle nicht.
+        #
+        # DIE ABGRENZUNG STEHT IM MODULKOPF VON `council/schulden.py` und ist
+        # die wichtigste Angabe der ganzen Schicht: Gezählt wird die Stadt als
+        # RECHTSTRÄGER, also Kernhaushalt UND Eigenbetriebe — nicht der Konzern
+        # mit seinen rechtlich selbstständigen Beteiligungen. Beide Zahlen
+        # heißen „die Schulden der Stadt" und unterscheiden sich um ein
+        # Vielfaches; kein Lesepfad darf sie zu einer Reihe mischen.
+        #
+        # Die vier Artenspalten sind NULL-bar, `insgesamt` nicht. Das ist kein
+        # Schönheitsfehler, sondern der Fall 2022: Dort ergeben die Arten im
+        # Dokument selbst 1,078 Mio. € mehr als die Summe daneben. Die Summe
+        # trägt die unabhängige Pro-Kopf-Gegenprobe, die Aufteilung trägt
+        # nichts — also kommt die Summe herein und die Aufteilung nicht.
+        # `aufteilung_verworfen` hält fest, wie groß die Lücke war, damit die
+        # Seite den leeren Balken erklären kann statt ihn zu verschweigen.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_schulden ("
+            "jahr INTEGER PRIMARY KEY, "
+            "kreditmarkt REAL, "               # Schulden aus Kreditmarktmitteln
+            "sondermittel REAL, "              # aus öffentlichen Sondermitteln
+            "gebietskoerperschaften REAL, "    # bei Gebietskörperschaften
+            "eigenbetriebe REAL, "             # Eigenbetriebe + innere Darlehen
+            "insgesamt REAL NOT NULL, "        # die ausgewiesene Summe
+            "je_einwohner REAL, "              # Euro je Einwohner*in
+            "aufteilung_verworfen REAL, "      # Lücke der Summenprobe, sonst NULL
+            "revidiert INTEGER NOT NULL DEFAULT 0, "   # „r" der Quelle
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
+        )
         # Vorlagen-Volltexte semantisch auffindbar machen: je Vorlage mehrere
         # Chunk-Vektoren (Sachverhalt/Begründung), die die Hybrid-Suche auf die
         # zugehörigen Beschlüsse abbildet. text_hash = SHA-256 des Volltexts —
@@ -1206,6 +1237,8 @@ class CouncilStore:
         "council_investitionen":        (None, "quelle_url", "opendata"),
         # Der Stellenplan — ebenfalls neu und ohne Altbestand.
         "council_stellenplan":          (None, "quelle_url", "ris"),
+        # Und die Schuldenzeitreihe aus dem Statistischen Jahrbuch.
+        "council_schulden":             (None, "quelle_url", "stadt"),
     }
 
     @staticmethod
@@ -4225,6 +4258,69 @@ class CouncilStore:
         except sqlite3.OperationalError:
             return []
         return [dict(r) for r in rows]
+
+    # --- Schuldenstand (Tabelle 1108 des Statistischen Jahrbuchs) ------------
+
+    def save_schulden(self, zeilen: list[dict], herkunft) -> int:
+        """Schuldenjahrgänge ersetzen — je Jahr eine Zeile.
+
+        Ersetzt wird **nur, was die Lieferung mitbringt**, nicht die ganze
+        Tabelle: Ein Lauf, dem ein Jahrgang an der Probe durchgefallen ist,
+        darf den vorher gespeicherten Stand dieses Jahrgangs nicht mit
+        wegräumen. Wer wirklich aufräumen will, tut das von Hand.
+
+        Übergeben wird nur, was seine Probe bestanden hat — diese Methode
+        prüft nichts nach, sie schreibt. Was die Aufteilung verloren hat
+        (Fall 2022, s. ``council/schulden.py``), kommt hier mit ``None`` in
+        den vier Artenspalten an und bleibt auch so stehen."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_schulden "
+                "(jahr, kreditmarkt, sondermittel, gebietskoerperschaften, "
+                " eigenbetriebe, insgesamt, je_einwohner, aufteilung_verworfen, "
+                " revidiert, herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                [(z["jahr"], z.get("kreditmarkt"), z.get("sondermittel"),
+                  z.get("gebietskoerperschaften"), z.get("eigenbetriebe"),
+                  z["insgesamt"], z.get("je_einwohner"),
+                  z.get("aufteilung_verworfen"), int(bool(z.get("revidiert"))),
+                  hid, now) for z in zeilen])
+        return len(zeilen)
+
+    def get_schulden(self) -> list[dict]:
+        """Die Schuldenzeitreihe, aufsteigend nach Jahr.
+
+        Fehlt die Tabelle (frische Datenbank ohne Ingest-Lauf), ist die Antwort
+        leer statt ein Fehler — der Haushalts-Bereich zeigt die Seite dann ohne
+        Zeitreihe."""
+        try:
+            rows = self._conn.execute(
+                "SELECT * FROM council_schulden ORDER BY jahr").fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [dict(r) for r in rows]
+
+    def schulden_jahre(self) -> list[int]:
+        """Welche Jahrgänge im Bestand stehen."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT jahr FROM council_schulden ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    def einwohner_je_jahr(self) -> dict[int, int]:
+        """Alle bekannten Einwohnerzahlen als ``{jahr: zahl}``.
+
+        Der Divisor der Pro-Kopf-Gegenprobe (``council/schulden.py``). Bewusst
+        die ganze Reihe und nicht nur der jüngste Wert wie bei
+        ``einwohner_aktuell``: Geprüft wird jeder Jahrgang gegen die
+        Einwohnerzahl **seines** Jahres, nicht gegen die von heute."""
+        try:
+            return {r[0]: r[1] for r in self._conn.execute(
+                "SELECT jahr, einwohner FROM council_einwohner")}
+        except sqlite3.OperationalError:
+            return {}
 
     # --- Städtevergleich (amtliche Statistik des LSN) ------------------------
 

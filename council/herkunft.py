@@ -212,6 +212,19 @@ PROBEN: dict[str, str] = {
         "Die Teilhaushalte ergeben zusammen genau die Summenzeile, die dieselbe "
         "Datei ausweist — in beiden Spalten, bei den Einzahlungen wie bei den "
         "Auszahlungen.",
+    # Schuldenzeitreihe aus Tabelle 1108 des Statistischen Jahrbuchs
+    # (council/schulden.py). Die zweite ist die stärkere: Ihr Divisor kommt aus
+    # einer anderen Veröffentlichung der Stadt, und 2022 ist sie die einzige,
+    # die den Jahrgang noch trägt.
+    "schulden_summenzeile":
+        "Die vier Schuldenarten der Tabelle — Kreditmarkt, öffentliche "
+        "Sondermittel, Gebietskörperschaften und Eigenbetriebe — ergeben "
+        "zusammen genau die Summe, die daneben ausgewiesen ist.",
+    "schulden_prokopf":
+        "Die ausgewiesene Gesamtschuld, geteilt durch die Einwohnerzahl aus "
+        "dem Open-Data-Datensatz der Stadt, ergibt den Betrag je Einwohner*in, "
+        "den dieselbe Zeile nennt. Beide Seiten stammen aus verschiedenen "
+        "Veröffentlichungen und beziehen sich auf denselben Stichtag.",
     UNGEPRUEFT:
         "Diese Quelle trägt keine Rechenprobe: Sie liefert eine Zeile je Jahr "
         "ohne Summe, gegen die sich etwas prüfen ließe. Übernommen wie "
@@ -260,6 +273,9 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     "council_investitionen",
     # Der Stellenplan — ebenso.
     "council_stellenplan",
+    # Die Schuldenzeitreihe aus dem Statistischen Jahrbuch — ebenfalls neu und
+    # ausschließlich über `herkunft_id` belegt.
+    "council_schulden",
 )
 
 

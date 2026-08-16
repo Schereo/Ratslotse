@@ -8,6 +8,24 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **„Wie viel Schulden hat Oldenburg?" — dreißig Jahre Schuldenstand, mit der
+  Angabe, was mitgezählt ist.** Eine der häufigsten Fragen an den Haushalt, und
+  der Bereich konnte sie bisher nicht beantworten. Eine neue Seite zeigt die
+  Zeitreihe seit 1995: Ende 2025 waren es 337,0 Mio. € oder 1.908 € je
+  Einwohner\*in. Beides steht nebeneinander, weil es über dreißig Jahre in
+  verschiedene Richtungen zeigt — insgesamt 35,5 Mio. € mehr als 1995, je
+  Einwohner\*in 106 € weniger, denn die Stadt ist in derselben Zeit gewachsen.
+  Direkt an der großen Zahl steht, **was** sie zählt: die Stadt als
+  Rechtsträger, also mit ihren Eigenbetrieben und ohne die eigenständigen
+  Gesellschaften. Bei Schulden ist das der Unterschied zwischen zwei Antworten,
+  die beide „die Schulden der Stadt" heißen. Die zwei größten Sprünge der Reihe
+  erklärt die Seite im Text, statt sie einer Farbe zu überlassen: 2001 fiel die
+  Schuld um mehr als die Hälfte, weil die Stadtentwässerung samt Darlehen an
+  einen Verband ging, und 2010 wechselten 108,9 Mio. € nur die Spalte, als die
+  Stadt einen Eigenbetrieb gründete. Für 2022 fehlt die Aufteilung nach
+  Schuldenarten — sie geht in der Quelle selbst nicht auf; die Gesamtschuld des
+  Jahres steht trotzdem, weil sie sich gegen die Einwohnerzahlen der Stadt
+  nachrechnen lässt. Quelle ist Tabelle 1108 des Statistischen Jahrbuchs. (#550)
 - **„Wer macht die Arbeit?" — der Stellenplan im Haushalts-Bereich.** Personal
   ist der größte Ausgabenblock der Stadt, aber bisher zeigte der Bereich nur
   Euro und nicht, wie viele Menschen dahinterstehen. Eine neue Seite liest den

@@ -283,7 +283,12 @@ export default function KonzernPage() {
             <li>
               <strong>Schulden stehen hier nicht.</strong> Der Bericht führt eine
               Schuldenübersicht als Pflichtanlage, aber die Seite trägt im PDF keinen Text —
-              wir hätten sie nur raten können, und das tun wir nicht.
+              wir hätten sie nur raten können, und das tun wir nicht. Für die Stadt als
+              Rechtsträger — Verwaltung und Eigenbetriebe, ohne die Gesellschaften auf
+              dieser Seite — gibt es die Zahlen dagegen seit 1995:{" "}
+              <Link href="/haushalt/schulden" className="font-semibold text-primary">
+                Wie viel Schulden hat Oldenburg?
+              </Link>
             </li>
           </ul>
         </section>

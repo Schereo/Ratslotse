@@ -33,9 +33,10 @@
 //                         gebaut wird.
 //   7–8   Die Gegenprobe  Ein Haushalt ist ein Plan; was daraus wurde, steht
 //                         im Jahresabschluss, und geprüft wird er auch.
-//   9–10  Der Rahmen      Der Kernhaushalt ist rund zwei Drittel der Stadt,
-//                         und Oldenburg steht nicht allein da.
-//   11–12 Mitreden        Wann entschieden wird, und was sich drehen ließe.
+//   9–11  Der Rahmen      Der Kernhaushalt ist rund zwei Drittel der Stadt,
+//                         Oldenburg steht nicht allein da, und was aus allen
+//                         Jahren zusammen offen blieb, sind die Schulden.
+//   12–13 Mitreden        Wann entschieden wird, und was sich drehen ließe.
 //
 // „Was wird gebaut?" kam 08/2026 dazu — mit der ersten Schicht, die den
 // FINANZhaushalt liest. Es steht am Ende der Zahlen-Stufe und nicht vorn, weil
@@ -59,12 +60,21 @@
 //    ist der letzte Schritt, nicht der zweite: Vorher fehlt der Bezug, an dem
 //    sich ablesen ließe, ob eine Bewegung viel ist.
 //
+//  * **Die Schulden stehen am Ende des Rahmens (Schritt 11), nicht bei den
+//    Zahlen.** Sie sind die einzige Bestandsgröße im ganzen Weg: nicht was in
+//    einem Jahr floss, sondern was aus allen Jahren zusammen offen blieb. Vorn
+//    gelesen wäre das eine weitere Jahreszahl unter vielen; hinter dem Konzern
+//    gelesen hat der Leser gerade erfahren, dass „die Stadt" zwei verschiedene
+//    Abgrenzungen hat — und genau davon hängt ab, welche Schuldenzahl gilt.
+//
 // **Zwei Seiten schreiben ihre Nummer selbst in den Kicker** und müssen
 // deshalb mitgeändert werden, wenn sich die Reihenfolge hier ändert — sonst
 // widersprechen sich zwei Seiten still: `/haushalt/personal` („Schritt 5") und
 // `/haushalt/konzern` („Schritt 9"). Genau das ist zweimal passiert und beide
 // Male nachgezogen worden: „Was wird gebaut?" schob den Konzern von 7 auf 8,
-// der Stellenplan von 8 auf 9.
+// der Stellenplan von 8 auf 9. Die Schulden-Seite hängt aus demselben Grund
+// HINTER dem Städtevergleich und nicht zwischen ihm und dem Konzern: Dort
+// eingefügt schöbe sie beide Nummern ein drittes Mal weiter.
 //
 // **Warum der Stellenplan zwischen „Was kostet …?" und „Was wird gebaut?"
 // steht:** Er beantwortet „wer macht die Arbeit?" — eine Frage, die sich erst
@@ -74,11 +84,14 @@
 // er sie lesbar macht: Unbesetzte Stellen sind eine der Erklärungen dafür,
 // dass Personalausgaben im Jahresabschluss unter dem Plan bleiben können.
 //
-// **Zwei der fünfzehn Seiten haben bewusst keinen Schritt.** `/haushalt/bereich`
-// und `/haushalt/steuer` sind Steckbriefe: Sie brauchen einen Query-Parameter
-// und öffnen ohne ihn den Vorgabefall. Als eigener Schritt stünde ein
-// beliebiger Bereich neben zwölf Fragen. Sie werden am Fuß benannt, damit die
-// Zählung „zwölf Schritte, fünfzehn Seiten" nicht wie eine Lücke aussieht.
+// **Zwei der fünfzehn Unterseiten haben bewusst keinen Schritt.**
+// `/haushalt/bereich` und `/haushalt/steuer` sind Steckbriefe: Sie brauchen
+// einen Query-Parameter und öffnen ohne ihn den Vorgabefall. Als eigener
+// Schritt stünde ein beliebiger Bereich neben dreizehn Fragen. Sie werden am
+// Fuß benannt, damit die Zählung „dreizehn Schritte, fünfzehn Unterseiten"
+// nicht wie eine Lücke aussieht. (Die Übersicht `/haushalt` selbst ist kein
+// Ziel dieses Wegweisers — von dort kommt man ja. Sie zählt nur beim
+// Umgebungs-Gate mit, das alle sechzehn Seiten deckt: `lib/haushalt-frei.ts`.)
 //
 // FORM: eine Karte, nicht zehn. Zehn Karten sind auf 375 px eine Liste ohne
 // Ende — die Stufen wären zwischen ihnen untergegangen, und genau sie sind
@@ -98,8 +111,8 @@
 import Link from "next/link";
 import {
   ArrowLeftRight, BookOpenText, Building2, CalendarDays, ChevronRight, Coins,
-  GitCompareArrows, HardHat, Receipt, Scale, SearchCheck, SlidersHorizontal,
-  Users,
+  GitCompareArrows, HardHat, Landmark, Receipt, Scale, SearchCheck,
+  SlidersHorizontal, Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -173,7 +186,8 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
   },
   {
     kicker: "Der Rahmen",
-    frage: "Der Haushalt ist nicht die ganze Stadt, und Oldenburg steht nicht allein da.",
+    frage: "Der Haushalt ist nicht die ganze Stadt, Oldenburg steht nicht allein da — "
+      + "und was aus allen Jahren zusammen offen blieb, steht in keinem davon.",
     ziele: [
       {
         href: "/haushalt/konzern",
@@ -186,6 +200,12 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         Icon: ArrowLeftRight,
         titel: "Steht Oldenburg besser da?",
         text: "Steuerkraft und Hebesätze der kreisfreien Städte — und warum Ausgaben sich nicht vergleichen lassen.",
+      },
+      {
+        href: "/haushalt/schulden",
+        Icon: Landmark,
+        titel: "Wie viel Schulden hat Oldenburg?",
+        text: "Der Schuldenstand seit 1995, insgesamt und je Einwohner*in — und was er zählt.",
       },
     ],
   },
@@ -293,7 +313,7 @@ export function Wegweiser() {
       ))}
 
       {/* Ohne diesen Satz sähen die Schritte nach einer Lücke aus: Der
-          Bereich hat vierzehn Unterseiten. Die beiden übrigen sind Steckbriefe
+          Bereich hat fünfzehn Unterseiten. Die beiden übrigen sind Steckbriefe
           und brauchen einen Bereich bzw. eine Einnahmeart, über die man sie
           aufruft — als Schritt stünde dort ein beliebiger Einzelfall. */}
       <p className="mt-3.5 border-t border-dashed border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground">
