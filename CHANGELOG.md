@@ -170,6 +170,11 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Jahr erscheinen. (#530)
 
 ### Behoben
+- **Der Kopf einer Bereichsseite ließ die halbe Breite leer.** Text und
+  Kennzahlen standen untereinander, obwohl die drei Zahlen daneben Platz
+  gehabt hätten. Ab großen Bildschirmen stehen sie jetzt nebeneinander. Die
+  Absätze behalten ihre Zeilenlänge von 66 bis 68 Zeichen — längere Zeilen
+  wären schwerer zu lesen, nicht besser. (#PR)
 - **Die Überschrift der Anzeigetafel brach mitten im Wort um.** „Oldenburg plant
   883,9 Mil-/lionen Euro" — dabei blieben rechts daneben rund 400 Pixel frei.
   Ursache war eine Breitenbegrenzung von 19 Zeichen, die noch aus einer engeren
