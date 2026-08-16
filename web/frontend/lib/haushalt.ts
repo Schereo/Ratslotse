@@ -13,16 +13,51 @@ export type HaushaltZeile = {
   source_url: string | null;
 };
 
+/** Bezugsgröße, gegen die der Jahresabschluss seine Abweichung rechnet.
+ *  Sie wechselt über die Jahrgänge — deshalb steht sie an jeder Zeile. */
+export type PlanArt = "ansatz" | "ansatz_nachtrag" | "gesamtermaechtigung";
+
+/** Wie die Bezugsgröße auf der Seite genannt wird. Ohne diese Angabe wäre
+ *  eine Mehrjahres-Kurve still falsch: 2018 vergleicht gegen die
+ *  Gesamtermächtigung, 2020 gegen den Ansatz samt Nachtrag (27 Mio. €
+ *  Unterschied), alle übrigen Jahrgänge gegen den nackten Ansatz. */
+export const PLAN_ART_LABEL: Record<PlanArt, string> = {
+  ansatz: "Haushaltsansatz",
+  ansatz_nachtrag: "Ansatz einschließlich Nachtragshaushalt",
+  gesamtermaechtigung: "Gesamtermächtigung (Ansatz, Nachtrag, Übertragungen)",
+};
+
 /** Ein Posten der Ergebnisrechnung aus dem Jahresabschluss (#500):
- *  `ansatz` = was geplant war, `ergebnis` = was es tatsächlich wurde. */
+ *  `plan` = die Bezugsgröße der Abweichung, `ansatz` = der ursprüngliche
+ *  Haushaltsansatz, `ergebnis` = was es tatsächlich wurde. In den meisten
+ *  Jahrgängen sind `plan` und `ansatz` derselbe Wert. */
 export type ErgebnisPosten = {
   jahr: number; nr: number; bezeichnung: string;
   /** null = Kernverwaltung gesamt, sonst der Teilhaushalt (1–13). */
   thh_nr: number | null; thh_name: string | null;
   vorjahr: number | null; ansatz: number | null;
+  plan: number | null; plan_art: PlanArt | null;
   ergebnis: number | null; abweichung: number | null;
   ist_summe: 0 | 1;
   quelle_label: string | null; quelle_url: string | null;
+};
+
+/** Warum ein Posten vom Plan abwich — Abschnitt 6.3.1 des Jahresabschlusses,
+ *  in den Worten der Verwaltung. Übernommen wird nur, was die Rechenprobe
+ *  besteht: Betrag UND Prozentsatz der Überschrift müssen zur Tabellenzeile
+ *  passen. */
+export type Abweichungsgrund = {
+  jahr: number; nr: number; bezeichnung: string;
+  delta_mio: number | null; prozent: number | null;
+  text: string;
+  quelle_label: string | null; quelle_url: string | null;
+};
+
+/** Fundstelle des Schlussberichts des Rechnungsprüfungsamts. `lesbar === 0`
+ *  heißt: Das PDF liegt vor, sein Textextrakt ist aber unbrauchbar (2024). */
+export type Pruefbericht = {
+  jahr: number; label: string | null; url: string | null;
+  n_pages: number | null; lesbar: 0 | 1;
 };
 
 /** Produktebene aus den Teilhaushalts-Plänen (#500) — was einzelne Aufgaben
@@ -48,8 +83,12 @@ export type HaushaltDaten = {
   }[];
   /** Jüngste Einwohnerzahl — Bezugsgröße für Pro-Kopf-Einordnungen. */
   einwohner: { jahr: number; einwohner: number } | null;
-  /** Ansatz und Ergebnis je Posten aus den Jahresabschlüssen. */
+  /** Ansatz, Plan und Ergebnis je Posten aus den Jahresabschlüssen. */
   ergebnisrechnung?: ErgebnisPosten[];
+  /** Warum ein Posten vom Plan abwich (Abschnitt 6.3.1). */
+  abweichungsgruende?: Abweichungsgrund[];
+  /** Schlussberichte des Rechnungsprüfungsamts je Jahrgang. */
+  pruefberichte?: Pruefbericht[];
   /** Jahre, für die die Produktebene vorliegt. */
   produkt_jahre?: number[];
   /** Jahre mit „geplant gegen tatsächlich" je Teilhaushalt. */
@@ -62,26 +101,68 @@ export type HaushaltDaten = {
  *  außerordentliches Ergebnis (24). Nur das ordentliche zu nehmen schmeichelte
  *  der Stadt — die außerordentlichen Posten waren zuletzt durchweg negativ.
  *  Jahre, in denen ein Posten fehlt, fallen raus statt halb gerechnet zu
- *  werden. */
+ *  werden.
+ *
+ *  Als Plan gilt `plan`, also die Bezugsgröße, gegen die der Jahresabschluss
+ *  selbst rechnet — nicht durchweg der nackte Ansatz. `planArt` gibt sie je
+ *  Jahr mit heraus, damit die Kurve sie anschreiben kann: 2018 ist es die
+ *  Gesamtermächtigung, 2020 der Ansatz samt Nachtrag. Eine Reihe, die das
+ *  vermischt, ohne es zu sagen, wäre still falsch. */
 export function planGegenIst(
   daten: HaushaltDaten,
-): { jahr: number; plan: number; ist: number; delta: number }[] {
+): { jahr: number; plan: number; ist: number; delta: number; planArt: PlanArt }[] {
   const posten = daten.ergebnisrechnung ?? [];
   const jahre = [...new Set(posten.map((p) => p.jahr))].sort((a, b) => a - b);
   return jahre
     .map((jahr) => {
-      const teile = [21, 24].map((nr) => posten.find((p) => p.jahr === jahr && p.nr === nr));
-      if (teile.some((t) => !t || t.ansatz == null || t.ergebnis == null)) return null;
-      const plan = teile.reduce((s, t) => s + (t!.ansatz as number), 0) / 1e6;
+      const teile = [21, 24].map((nr) =>
+        posten.find((p) => p.jahr === jahr && p.nr === nr && p.thh_nr == null));
+      if (teile.some((t) => !t || t.plan == null || t.ergebnis == null)) return null;
+      const plan = teile.reduce((s, t) => s + (t!.plan as number), 0) / 1e6;
       const ist = teile.reduce((s, t) => s + (t!.ergebnis as number), 0) / 1e6;
       return {
         jahr,
         plan: Math.round(plan * 10) / 10,
         ist: Math.round(ist * 10) / 10,
         delta: Math.round((ist - plan) * 10) / 10,
+        planArt: (teile[0]!.plan_art ?? "ansatz") as PlanArt,
       };
     })
-    .filter((x): x is { jahr: number; plan: number; ist: number; delta: number } => x !== null);
+    .filter((x): x is NonNullable<typeof x> => x !== null);
+}
+
+/** Die Erläuterung zu einem Posten eines Jahres — oder nichts. */
+export function grundZuPosten(
+  daten: HaushaltDaten, jahr: number, nr: number,
+): Abweichungsgrund | null {
+  return (daten.abweichungsgruende ?? []).find((g) => g.jahr === jahr && g.nr === nr) ?? null;
+}
+
+/** Der Schlussbericht des Rechnungsprüfungsamts zu einem Jahrgang. */
+export function pruefberichtZuJahr(
+  daten: HaushaltDaten, jahr: number,
+): Pruefbericht | null {
+  return (daten.pruefberichte ?? []).find((p) => p.jahr === jahr) ?? null;
+}
+
+/** Erläuterungen, die einen bestimmten Teilhaushalt ausdrücklich nennen.
+ *
+ *  Abschnitt 6.3.1 erläutert die Posten der **Gesamtrechnung**, nicht die
+ *  Bereiche — eine Zuordnung je Teilhaushalt gibt es dort nicht. Die Texte
+ *  benennen den Bereich aber regelmäßig selbst („Im Teilhaushalt 10 sind
+ *  Mehrerträge …"). Genau darauf, und nur darauf, stützt sich diese Auswahl;
+ *  sie wird auf der Seite auch so angeschrieben statt als Aufteilung
+ *  ausgegeben, die das Dokument nicht hergibt. */
+export function gruendeFuerBereich(
+  daten: HaushaltDaten, jahr: number, thhNr: number,
+): Abweichungsgrund[] {
+  // „Teilhaushalt 10", „THH 10", „THH10" — mit und ohne führende Null.
+  const n = String(thhNr);
+  const muster = new RegExp(
+    `(?:Teilhaushalt|THH)\\s?0?${n}(?!\\d)`, "i");
+  return (daten.abweichungsgruende ?? [])
+    .filter((g) => g.jahr === jahr && muster.test(g.text))
+    .sort((a, b) => Math.abs(b.delta_mio ?? 0) - Math.abs(a.delta_mio ?? 0));
 }
 
 /** Das Produkt, dessen Zuschussbedarf einem Betrag am nächsten kommt — die

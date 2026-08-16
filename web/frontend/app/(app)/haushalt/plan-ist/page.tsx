@@ -13,9 +13,13 @@
 import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, ExternalLink } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
-import { ErgebnisPosten, HaushaltDaten, deMio, mio } from "@/lib/haushalt";
+import {
+  ErgebnisPosten, HaushaltDaten, PLAN_ART_LABEL, PlanArt,
+  deMio, grundZuPosten, mio, pruefberichtZuJahr,
+} from "@/lib/haushalt";
+import { Warum } from "@/components/haushalt/warum";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
@@ -28,6 +32,7 @@ type Bereich = {
   ertrPlan: number | null; ertrIst: number | null;
 };
 
+
 function PlanIstInner() {
   const gewaehltesJahr = Number(useSearchParams().get("jahr")) || null;
   const { data, loading } = useFetch<HaushaltDaten>("/council/haushalt");
@@ -36,8 +41,12 @@ function PlanIstInner() {
   const jahre = data?.plan_ist_jahre ?? [];
   const jahr = gewaehltesJahr && jahre.includes(gewaehltesJahr) ? gewaehltesJahr : jahre.at(-1) ?? null;
 
-  const { gesamt, bereiche, arten } = useMemo(() => {
-    const leer = { gesamt: null as null | Record<string, number | null>, bereiche: [] as Bereich[], arten: [] as ErgebnisPosten[] };
+  const { gesamt, bereiche, arten, planArt, ansatzAbweichend } = useMemo(() => {
+    const leer = {
+      gesamt: null as null | Record<string, number | null>, bereiche: [] as Bereich[],
+      arten: [] as ErgebnisPosten[], planArt: "ansatz" as PlanArt,
+      ansatzAbweichend: null as null | { ertr: number | null; aufw: number | null },
+    };
     if (!data || !jahr) return leer;
     const zeilen = (data.ergebnisrechnung ?? []).filter((p) => p.jahr === jahr);
     const summe = (rows: ErgebnisPosten[], nr: number) => rows.find((p) => p.nr === nr);
@@ -50,8 +59,8 @@ function PlanIstInner() {
       const te = summe(teil, 12), ta = summe(teil, 20);
       return {
         nr, name: teil[0]?.thh_name ?? `Teilhaushalt ${nr}`,
-        aufwPlan: mio(ta?.ansatz), aufwIst: mio(ta?.ergebnis),
-        ertrPlan: mio(te?.ansatz), ertrIst: mio(te?.ergebnis),
+        aufwPlan: mio(ta?.plan), aufwIst: mio(ta?.ergebnis),
+        ertrPlan: mio(te?.plan), ertrIst: mio(te?.ergebnis),
       };
     }).sort((x, y) => (y.aufwPlan ?? 0) - (x.aufwPlan ?? 0));
 
@@ -61,12 +70,21 @@ function PlanIstInner() {
       .sort((x, y) => Math.abs(y.abweichung ?? 0) - Math.abs(x.abweichung ?? 0))
       .slice(0, 5);
 
+    // Weicht der fortgeschriebene Plan vom ursprünglichen Ansatz ab, gehört
+    // beides auf die Seite — 2020 sind das bei den Ausgaben 27 Mio. €.
+    const weicht = (p?: ErgebnisPosten) =>
+      p?.plan != null && p?.ansatz != null && Math.abs(p.plan - p.ansatz) > 1;
+
     return {
       gesamt: {
-        ertrPlan: mio(e?.ansatz), ertrIst: mio(e?.ergebnis),
-        aufwPlan: mio(a?.ansatz), aufwIst: mio(a?.ergebnis),
+        ertrPlan: mio(e?.plan), ertrIst: mio(e?.ergebnis),
+        aufwPlan: mio(a?.plan), aufwIst: mio(a?.ergebnis),
       },
       bereiche, arten,
+      planArt: (a?.plan_art ?? e?.plan_art ?? "ansatz") as PlanArt,
+      ansatzAbweichend: weicht(e) || weicht(a)
+        ? { ertr: mio(e?.ansatz), aufw: mio(a?.ansatz) }
+        : null,
     };
   }, [data, jahr]);
 
@@ -88,6 +106,12 @@ function PlanIstInner() {
   const saldoIst = (gesamt.ertrIst ?? 0) - (gesamt.aufwIst ?? 0);
   const maxWert = Math.max(...bereiche.flatMap((b) => [b.aufwPlan ?? 0, b.aufwIst ?? 0]));
   const quellen: QuellenSchluessel[] = ["jahresabschluss", "plan"];
+  const pruefbericht = pruefberichtZuJahr(data, jahr);
+  // Die Einnahmearten tragen ihre Erläuterung schon inline; hier der Rest.
+  const obenGezeigt = new Set(arten.map((p) => p.nr));
+  const uebrigeGruende = (data.abweichungsgruende ?? [])
+    .filter((g) => g.jahr === jahr && !obenGezeigt.has(g.nr))
+    .sort((a, b) => Math.abs(b.delta_mio ?? 0) - Math.abs(a.delta_mio ?? 0));
 
   return (
     <Quellenkontext schluessel={quellen}>
@@ -161,6 +185,28 @@ function PlanIstInner() {
         </div>
       </div>
 
+      {/* Woran „geplant" hier gemessen wird. In den meisten Jahrgängen ist
+          das der Haushaltsansatz; 2018 und 2020 nicht — und das ist keine
+          Kleinigkeit, sondern bei den Ausgaben 2020 ein Unterschied von
+          27 Mio. €. Also steht es dran, statt still unterzugehen. */}
+      {ansatzAbweichend && (
+        <div className="rounded-2xl border border-primary/25 bg-primary/[0.05] p-4">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+            Was „geplant" in diesem Jahr heißt
+          </p>
+          <p className="mt-2 max-w-[70ch] text-[13px] leading-relaxed text-foreground/90">
+            Für {jahr} vergleicht der Jahresabschluss nicht mit dem ursprünglichen Haushaltsplan,
+            sondern mit dem fortgeschriebenen Plan — der Bezugsgröße{" "}
+            <strong>{PLAN_ART_LABEL[planArt]}</strong>. Der Rat hatte im Ursprungsplan{" "}
+            {deMio(ansatzAbweichend.ertr)}&#8239;Mio.&nbsp;€ Einnahmen und{" "}
+            {deMio(ansatzAbweichend.aufw)}&#8239;Mio.&nbsp;€ Ausgaben beschlossen; unterjährig kam{" "}
+            {planArt === "ansatz_nachtrag" ? "ein Nachtragshaushalt" : "Ermächtigungen und Übertragungen"}{" "}
+            hinzu. Die Zahlen unten messen gegen den fortgeschriebenen Plan — so rechnet die
+            Stadt selbst<Beleg q="jahresabschluss" />.
+          </p>
+        </div>
+      )}
+
       <LottiErklaert
         titel="Warum ein Haushalt nie punktgenau aufgeht"
         text="Ein Haushalt wird ein Jahr im Voraus beschlossen — niemand weiß dann, wie viel Gewerbesteuer hereinkommt, welche Tarife steigen oder wie viele Kinder einen Kitaplatz brauchen. Die Stadt plant deshalb vorsichtig: lieber etwas zu wenig Einnahmen ansetzen als zu viel. Abweichungen sind normal und für sich genommen weder gut noch schlecht."
@@ -195,22 +241,66 @@ function PlanIstInner() {
               const abw = mio(p.abweichung) ?? 0;
               const groesste = mio(Math.max(...arten.map((x) => Math.abs(x.abweichung ?? 0)))) ?? 1;
               return (
-                <div key={p.nr} className="grid grid-cols-[minmax(110px,190px)_1fr_auto] items-center gap-x-3">
-                  <span className="truncate text-[12.5px]">{p.bezeichnung}</span>
-                  <div className="h-2.5 rounded-full bg-muted">
-                    <div className="h-full rounded-full bg-signal/70"
-                      style={{ width: `${Math.min((Math.abs(abw) / groesste) * 100, 100)}%` }} />
+                <div key={p.nr} className="flex flex-col gap-1.5">
+                  <div className="grid grid-cols-[minmax(110px,190px)_1fr_auto] items-center gap-x-3">
+                    <span className="truncate text-[12.5px]">{p.bezeichnung}</span>
+                    <div className="h-2.5 rounded-full bg-muted">
+                      <div className="h-full rounded-full bg-signal/70"
+                        style={{ width: `${Math.min((Math.abs(abw) / groesste) * 100, 100)}%` }} />
+                    </div>
+                    <span className="whitespace-nowrap text-right text-[12px] font-semibold tabular-nums">
+                      {abw > 0 ? "+" : ""}{deMio(abw)}&#8239;Mio.
+                    </span>
                   </div>
-                  <span className="whitespace-nowrap text-right text-[12px] font-semibold tabular-nums">
-                    {abw > 0 ? "+" : ""}{deMio(abw)}&#8239;Mio.
-                  </span>
+                  <Warum grund={grundZuPosten(data, jahr, p.nr)} />
                 </div>
               );
             })}
           </div>
           <p className="mt-3 text-[11.5px] leading-relaxed text-muted-foreground">
-            Abweichung zwischen Ansatz und Ergebnis je Einnahmeart<Beleg q="jahresabschluss" />.
+            Abweichung zwischen Plan und Ergebnis je Einnahmeart<Beleg q="jahresabschluss" />.
             Die größten Ausschläge erklären den Unterschied oben.
+          </p>
+        </div>
+      )}
+
+      {/* Die übrigen erläuterten Posten — vor allem die Ausgabenseite. Der
+          Jahresabschluss erläutert jede Abweichung ab 20 % gegenüber dem
+          Plan; die Einnahmearten stehen schon oben, hier kommt der Rest. */}
+      {uebrigeGruende.length > 0 && (
+        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+              Warum es anders kam · {jahr}
+            </p>
+            <span className="font-mono text-[10px] uppercase text-muted-foreground">
+              {uebrigeGruende.length} weitere Posten
+            </span>
+          </div>
+          <div className="flex flex-col gap-3">
+            {uebrigeGruende.map((g) => (
+              <div key={g.nr} className="flex flex-col gap-1">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+                  <span className="text-[12.5px] font-semibold">{g.bezeichnung}</span>
+                  <span className="whitespace-nowrap font-mono text-[11px] tabular-nums text-signal">
+                    {(g.delta_mio ?? 0) > 0 ? "+" : ""}{deMio(g.delta_mio)}&#8239;Mio.
+                    {g.prozent != null && (
+                      <span className="text-muted-foreground">
+                        {" "}({g.prozent > 0 ? "+" : ""}
+                        {g.prozent.toLocaleString("de-DE", { maximumFractionDigits: 1 })}&nbsp;%)
+                      </span>
+                    )}
+                  </span>
+                </div>
+                <Warum grund={g} />
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-[11.5px] leading-relaxed text-muted-foreground">
+            Erläutert wird, was um mindestens 20&nbsp;% vom Plan abweicht
+            <Beleg q="jahresabschluss" />. Übernommen haben wir eine Erläuterung nur, wenn
+            Betrag und Prozentsatz aus ihrer Überschrift zu der Zeile passen, die wir aus der
+            Tabelle gelesen haben.
           </p>
         </div>
       )}
@@ -260,9 +350,38 @@ function PlanIstInner() {
         )}
       </div>
 
+      {/* Der Abschluss ist geprüft — von einer anderen Stelle als der, die
+          ihn aufgestellt hat. Das gehört dazu, ohne den Bericht auszuschlachten. */}
+      {pruefbericht?.url && (
+        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+            Geprüft
+          </p>
+          <p className="mt-2 max-w-[74ch] text-[13px] leading-relaxed text-foreground/90">
+            Das Rechnungsprüfungsamt hat den Jahresabschluss {jahr} geprüft und dazu einen
+            Schlussbericht vorgelegt
+            {pruefbericht.n_pages ? ` (${pruefbericht.n_pages} Seiten)` : ""}.{" "}
+            <a href={pruefbericht.url} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 font-semibold text-primary hover:underline">
+              Schlussbericht öffnen
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          </p>
+          {pruefbericht.lesbar === 0 && (
+            <p className="mt-2 max-w-[74ch] text-[11.5px] leading-relaxed text-muted-foreground">
+              Von diesem Jahrgang liegt uns nur das PDF vor: Der Text darin ist nicht
+              maschinenlesbar hinterlegt, deshalb können wir daraus nichts zitieren oder
+              durchsuchbar machen. Wer hineinsehen möchte, öffnet den Bericht direkt.
+            </p>
+          )}
+        </div>
+      )}
+
       <p className="max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
         Es erscheinen nur Jahre, für die ein Jahresabschluss vorliegt und dessen Zahlen unsere
-        Prüfung bestehen — die Summe der Teilhaushalte muss die Gesamtrechnung ergeben. Für das
+        Prüfung bestehen: Die Summe der Teilhaushalte muss die Gesamtrechnung ergeben — in Plan
+        und Ist —, Erträge minus Aufwendungen müssen das ordentliche Ergebnis ergeben, und das
+        Ergebnis eines Jahres muss im Folgejahrgang als Vorjahreswert wieder auftauchen. Für das
         laufende und das kommende Haushaltsjahr gibt es naturgemäß noch keinen Abschluss.
       </p>
 
