@@ -34,7 +34,7 @@ Planjahre, Ist-Steuern, Steuerkraft und die Einwohnerzahl in einem Aufruf.
 | `council_steuern` | Steuereinnahmen je Art seit 1998 (**Ist**) | Open-Data-Portal, Datensatz 1104 | `scripts/ingest_finanzen_opendata.py` |
 | `council_steuerkraft` | Steuerkraftmesszahl + Schlüsselzuweisungen seit 1992 | Open-Data-Portal, Datensatz 1106 | dito |
 | `council_einwohner` | Einwohnerzahl je Jahr seit 2010 | Open-Data-Portal, Datensatz 1102 | dito |
-| `council_ergebnisrechnung` | Ansatz **und** Ergebnis je Posten, 5 Jahrgänge | Jahresabschlüsse — **Anlagen im RIS** | `scripts/ingest_finanzberichte.py` |
+| `council_ergebnisrechnung` | Ansatz **und** Ergebnis je Posten — gesamt (5 Jahrgänge) und je Teilhaushalt (4) | Jahresabschlüsse — **Anlagen im RIS** | `scripts/ingest_finanzberichte.py` |
 | `council_produkte` | Produktebene: was einzelne Aufgaben kosten | Teilhaushalts-Pläne — **Anlagen im RIS** | dito |
 
 Beide Ingests sind idempotent und laufen **nicht** als Cron — einmal jährlich
@@ -91,6 +91,17 @@ Zuschussbedarf). Die Abdeckung ist unvollständig — für 2023 erklären die
 gefundenen Produkte rund 82 % der geplanten Aufwendungen. Der Endpunkt
 liefert diese Quote als `abdeckung_prozent` mit, damit die Oberfläche die
 Liste nicht als Vollbild ausgeben kann.
+
+:::note[Die dritte Prüfung: die Summe über alle Teilhaushalte]
+Der Jahresabschluss führt dieselbe Ergebnisrechnung noch einmal je
+Teilhaushalt. Die zeilenweise Prüfung greift dort zu kurz: Wird für einen
+Teilhaushalt versehentlich eine andere, in sich stimmige Tabelle gelesen,
+sind die Zahlen konsistent — aber falsch. Im Abschluss 2022 wurde THH09 so
+mit 0,1 statt 26,8 Mio. € gelesen. Erst die Summe über alle Teilhaushalte
+machte es sichtbar. `finanzberichte.summenprobe()` verlangt deshalb, dass
+diese Summe die Gesamtrechnung ergibt (±1 %); 2022 fällt dadurch für die
+Teilhaushalts-Ebene aus, die vier übrigen Jahrgänge stimmen auf 0,00 %.
+:::
 
 :::note[Zwei Prüfsummen aus den Dokumenten selbst]
 Aus PDF-Text extrahierte Tabellen verschmelzen Zahlen („355.188334.704") und
