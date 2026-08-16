@@ -57,7 +57,14 @@ import { cn } from "@/lib/utils";
 const QUELLEN: QuellenSchluessel[] = ["investitionen"];
 
 /** Die Herkunft einer Angabe im Klartext — dieselbe Form wie auf
- *  `/haushalt/konzern`: welcher Abschnitt, welche Probe, welcher Messwert.
+ *  `/haushalt/konzern`: welcher Abschnitt, welcher Stand.
+ *
+ *  HIER STANDEN BIS 16.08. AUCH UNSERE PROBEN — die Sätze aus
+ *  `herkunft.PROBEN` und darunter „Gemessen: 0,00 € Restbetrag“. Das sagt
+ *  etwas über uns und nichts über den Haushalt (DESIGNSPRACHE.md § 7); auf
+ *  `/haushalt/konzern` ist es aus demselben Grund verschwunden. Die Proben
+ *  laufen unverändert weiter, die API liefert sie weiter, Tests halten sie
+ *  fest und die Technik-Doku beschreibt sie. Nur die Zurschaustellung ist weg.
  *  Gehört an die einzelne Zahl; das Verzeichnis am Seitenende beschreibt die
  *  Quelle der ganzen Seite. */
 function Fundstelle({ h }: { h: Herkunft | null }) {
@@ -70,16 +77,6 @@ function Fundstelle({ h }: { h: Herkunft | null }) {
       {h.fundstelle && (
         <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
           {h.fundstelle}{h.stand ? ` · ${h.stand}` : ""}
-        </p>
-      )}
-      {h.proben.length > 0 && (
-        <ul className="mt-1 flex list-disc flex-col gap-0.5 pl-4 text-[11.5px] leading-relaxed text-muted-foreground">
-          {h.proben.map((satz) => <li key={satz}>{satz}</li>)}
-        </ul>
-      )}
-      {h.probe_ergebnis && (
-        <p className="mt-1 font-mono text-[10px] leading-relaxed text-muted-foreground">
-          Gemessen: {h.probe_ergebnis}
         </p>
       )}
     </div>

@@ -72,11 +72,6 @@ function Fundstelle({ daten, id }: { daten: StellenplanDaten; id: number | null 
           {h.fundstelle}{h.stand ? ` · ${h.stand}` : ""}
         </p>
       )}
-      {h.proben.length > 0 && (
-        <ul className="mt-1 flex list-disc flex-col gap-0.5 pl-4 text-[11.5px] leading-relaxed text-muted-foreground">
-          {h.proben.map((satz) => <li key={satz}>{satz}</li>)}
-        </ul>
-      )}
     </div>
   );
 }
