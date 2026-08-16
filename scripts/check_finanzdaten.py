@@ -134,7 +134,6 @@ def main(db: str | None = None, heute: date | None = None,
     heute = heute or date.today()
     store = CouncilStore(Path(db or COUNCIL_DB))
     p = protokoll or finanzquellen.Protokoll(still=still)
-    berichte: dict[str, dict] = {}
     neu_gesamt: dict[str, list[int]] = {}
     #: Welche Jahrgänge als Dokument vorliegen — trennt in der Meldung „die
     #: Stadt ist spät dran" von „wir lesen es nicht mehr".
@@ -163,10 +162,8 @@ def main(db: str | None = None, heute: date | None = None,
             p.sagen(f"{q.label}: Dokument(e) für {', '.join(map(str, offen))} gefunden — "
                     f"wird eingelesen")
             if trocken:
-                berichte[key] = {"neue_jahrgaenge": [], "trocken": offen}
                 continue
             bericht = q.einlesen(store, p, nur_fehlende=True)
-            berichte[key] = bericht
             geschuetzt += bericht.get("bestand_geschuetzt", 0)
             gewonnen = sorted(set(bericht.get("neue_jahrgaenge") or []))
             if gewonnen:
