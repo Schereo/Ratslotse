@@ -38,6 +38,16 @@ export type SteuerArt = {
   beispiel?: { rechnung: string; hinweis: string };
   /** Hebesatz in Prozentpunkten, falls der Rat einen beschließt. */
   hebesatz?: number;
+  /** Gesetzt heißt: Der Überschlag „was brächte ein Punkt mehr?" lässt sich
+   *  hier NICHT rechnen, und das ist der Grund.
+   *
+   *  Bei der Grundsteuer war er bis 16.08.2026 trotzdem zu sehen: Der Betrag
+   *  aus dem Open-Data-Satz umfasst A und B zusammen, der Hebesatz daneben
+   *  gilt nur für B — die Division mischte also zwei Steuern. Das Labor
+   *  verweigert genau diese Zahl seit jeher mit derselben Begründung
+   *  (components/haushalt/labor.tsx); zwei Seiten dürfen nicht verschieden
+   *  antworten, wenn die Datenlage dieselbe ist. */
+  punktUnmoeglich?: string;
   /** Lotti-Erklärung an der schwersten Stelle der Seite. */
   lotti: { titel: string; text: string };
 };
@@ -78,8 +88,12 @@ export const STEUERARTEN: SteuerArt[] = [
         "Vereinfacht: Der Freibetrag für Einzelunternehmen und Personengesellschaften ist " +
         "nicht eingerechnet, ebenso wenig die Umlage an Bund und Land.",
     },
+    // Die Kicker-Zeile über einer Lotti-Karte ist überall im Haushalts-Bereich
+    // ihre Aussage („Warum Kürzen allein nicht reicht"), nicht ihr Absender.
+    // Drei Steckbriefe trugen bis 16.08. das generische „Lotti erklärt's
+    // einfach" — eine Überschrift, die nichts überschreibt.
     lotti: {
-      titel: "Lotti erklärt's einfach",
+      titel: "Wer an welcher Schraube dreht",
       text:
         "Stell dir die Steuer wie ein Rezept vor: Der Bund bestimmt die Zutaten und die " +
         "Grundmenge, die Stadt dreht am Ende nur an einem Regler — dem Hebesatz. Dreht der " +
@@ -97,6 +111,11 @@ export const STEUERARTEN: SteuerArt[] = [
     spielraum: "frei",
     stellschraube: "Der Rat setzt zwei Hebesätze",
     hebesatz: 539,
+    punktUnmoeglich:
+      "Was ein Hebesatzpunkt bringt, lässt sich hier nicht überschlagen: Der offene "
+      + "Datensatz führt Grundsteuer A und B in einer Spalte zusammen, die Hebesätze "
+      + "gelten aber getrennt. Wir schätzen die Aufteilung nicht — sobald wir sie "
+      + "belegen können, steht die Zahl hier.",
     stufen: [
       {
         wer: "Bundestag & Land",
@@ -153,7 +172,7 @@ export const STEUERARTEN: SteuerArt[] = [
       },
     ],
     lotti: {
-      titel: "Lotti erklärt's einfach",
+      titel: "Warum der Rat hier nichts beschließen kann",
       text:
         "Dieses Geld kommt wie ein Abo aufs Konto: Die Höhe hängt davon ab, wie viel die " +
         "Menschen in Oldenburg verdienen. Der Rat kann daran nichts drehen — er kann nur " +
@@ -175,7 +194,7 @@ export const STEUERARTEN: SteuerArt[] = [
       { wer: "Rat Oldenburg", titel: "Nichts.", text: "Keine kommunale Stellschraube." },
     ],
     lotti: {
-      titel: "Lotti erklärt's einfach",
+      titel: "Ein kleiner Teil von jedem Einkauf",
       text:
         "Von jedem Einkauf fließt Umsatzsteuer an den Staat. Ein sehr kleiner Teil davon " +
         "wandert weiter an die Städte — Oldenburg bekommt seinen Anteil automatisch.",

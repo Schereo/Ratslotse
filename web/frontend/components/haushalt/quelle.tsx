@@ -17,6 +17,7 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { ExternalLink, FileText } from "lucide-react";
 import { QuellenSchluessel, QUELLEN, Quelle } from "@/lib/haushalt-quellen";
+import { GlossaryText } from "@/components/glossary-text";
 import { cn } from "@/lib/utils";
 
 const SeitenQuellen = createContext<QuellenSchluessel[]>([]);
@@ -112,7 +113,14 @@ export function Quellenverzeichnis({ schluessel }: { schluessel: QuellenSchluess
               </span>
               <div className="min-w-0">
                 <p className="text-[12.5px] font-semibold leading-snug">{q.titel}</p>
-                <p className="mt-0.5 text-[11.5px] leading-relaxed text-muted-foreground">{q.fundstelle}</p>
+                {/* Im Verzeichnis stehen die schwersten Wörter des ganzen
+                    Bereichs — „Gesamtermächtigung", „Ergebnisrechnung",
+                    „Ertragsart". Sie hier zu erklären kostet nichts und
+                    erspart das Nachschlagen woanders. Im kleinen Beleg-Popover
+                    bewusst NICHT: 280 px tragen keinen zweiten Tooltip. */}
+                <p className="mt-0.5 text-[11.5px] leading-relaxed text-muted-foreground">
+                  <GlossaryText text={q.fundstelle} />
+                </p>
                 <p className="mt-1 flex flex-wrap items-center gap-x-2 font-mono text-[9.5px] uppercase tracking-wide text-muted-foreground">
                   <span>{q.herausgeber}</span><span>·</span><span>Stand {q.stand}</span>
                   {q.lizenz && (<><span>·</span><span>{q.lizenz}</span></>)}

@@ -28,8 +28,12 @@ export const GLOSSARY: Record<string, string> = {
     "Von mehreren Fraktionen gemeinsam getragen (z. B. ein gemeinsamer Antrag).",
   "Ausschuss":
     "Ein kleineres Fachgremium des Rats (z. B. Bau- oder Finanzausschuss), das Entscheidungen vorbereitet.",
+  // Homonym-Falle: In Produkt-Steckbriefen der Stadt („Erschließung der
+  // Archivbestände") meint das Wort das Ordnen und Verzeichnen, nicht den
+  // Straßenbau. Der Zusatz steht hier, weil die Erklärung sonst genau dort
+  // falsch wäre, wo sie automatisch erscheint.
   "Erschließung":
-    "Die Herstellung von Straßen, Wegen, Kanälen und Leitungen, damit ein Grundstück bebaut und genutzt werden kann.",
+    "Im Baurecht: die Herstellung von Straßen, Wegen, Kanälen und Leitungen, damit ein Grundstück bebaut und genutzt werden kann. In anderen Zusammenhängen meint das Wort etwas anderes — bei Archiven zum Beispiel das Ordnen und Verzeichnen von Beständen.",
   "Nutzungsänderung":
     "Wenn ein Gebäude künftig anders genutzt wird als bisher (z. B. Laden statt Wohnung) — oft genehmigungspflichtig.",
   "Sanierungsgebiet":
@@ -121,4 +125,33 @@ export const GLOSSARY: Record<string, string> = {
     "Schreibweise der Haushaltspläne für den übertragenen Wirkungskreis: Die Stadt erledigt die Aufgabe im Auftrag von Bund oder Land und ist an deren Weisungen gebunden.",
   "Grad der Beeinflussbarkeit":
     "Die Selbstauskunft der Stadt, wie viel Spielraum sie bei einer Aufgabe hat — von „niedrig“ (Kosten und Umfang stehen praktisch fest) bis „hoch“ (der Rat kann weitgehend selbst bestimmen).",
+  // Ergänzt 16.08.2026: die Wörter, die im Haushalts-Bereich auf der Seite
+  // stehen, ohne dass sie dort jemand erklärt — vor allem die Vokabeln aus den
+  // Jahresabschlüssen und aus dem Schlussbericht des Rechnungsprüfungsamts.
+  "Ansatz":
+    "Der Betrag, den der Rat für eine Position in den Haushalt geschrieben hat — der Plan, bevor das Jahr läuft. Am Jahresende wird verglichen, was daraus wurde.",
+  "Nachtragshaushalt":
+    "Eine Änderung des laufenden Haushalts, die der Rat mitten im Jahr beschließt, wenn sich Einnahmen oder Ausgaben deutlich anders entwickeln als geplant.",
+  "Gesamtermächtigung":
+    "Alles, was die Verwaltung in einem Jahr ausgeben durfte: der ursprüngliche Ansatz, ein etwaiger Nachtrag und Reste, die aus dem Vorjahr übertragen wurden. Manche Jahresabschlüsse vergleichen dagegen statt gegen den ursprünglichen Plan — die Abweichung fällt dann kleiner aus.",
+  "Ertragsart":
+    "Die Gliederung der Einnahmen nach ihrer Herkunft — Steuern, Zuweisungen, Gebühren, Kostenerstattungen und so weiter. Der Jahresabschluss führt sie als nummerierte Posten.",
+  "Aufwandsart":
+    "Die Gliederung der Ausgaben nach ihrer Art — Personal, Sachaufwand, Transferleistungen, Abschreibungen. Das Gegenstück zur Ertragsart.",
+  "Jahresabschluss":
+    "Die Abrechnung eines Haushaltsjahres: Was tatsächlich eingenommen und ausgegeben wurde, jeweils neben dem, was geplant war. Er erscheint erst ein bis zwei Jahre nach dem Jahr, das er abrechnet.",
+  "Ergebnisrechnung":
+    "Der Teil des Jahresabschlusses, der Erträge und Aufwendungen gegenüberstellt — das tatsächliche Gegenstück zum geplanten Ergebnishaushalt.",
+  "ordentliches Ergebnis":
+    "Erträge minus Aufwendungen aus dem laufenden Betrieb eines Jahres. Ist es negativ, hat die Stadt in diesem Jahr mehr verbraucht, als sie eingenommen hat.",
+  "Jahresergebnis":
+    "Das Ergebnis des ganzen Jahres: das ordentliche Ergebnis plus einmalige, außerordentliche Posten wie den Verkauf eines Grundstücks.",
+  "Kernverwaltung":
+    "Die Stadtverwaltung selbst — ohne ihre Eigenbetriebe und Beteiligungen, die eigene Bücher führen.",
+  "Rechnungsprüfungsamt":
+    "Die Stelle, die den Jahresabschluss der Stadt prüft. Sie gehört zur Stadt, berichtet aber dem Rat und nicht der Verwaltungsspitze.",
+  "Schlussbericht":
+    "Der Bericht, mit dem das Rechnungsprüfungsamt seine Prüfung eines Jahresabschlusses abschließt — mit allen Beanstandungen und Hinweisen im Wortlaut.",
+  "Textziffer":
+    "Die durchlaufende Nummer eines Abschnitts in einem amtlichen Bericht — die Adresse, unter der man eine Feststellung wiederfindet.",
 };

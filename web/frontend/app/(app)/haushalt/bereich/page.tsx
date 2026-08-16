@@ -48,8 +48,12 @@ function BruttoNettoBlock({ z }: { z: HaushaltZeile }) {
         </div>
       ))}
       <div className="flex items-center gap-2.5">
+        {/* „bleibt der Stadt" stand hier bis 16.08. neben einem Minusbetrag —
+            als bliebe der Stadt etwas übrig, obwohl sie genau diesen Betrag
+            zuschießen muss. Dieselbe Zahl heißt im Gegenbalken „trägt die
+            Stadt"; ein Begriff pro Sache. */}
         <span className="w-24 flex-none text-xs font-semibold sm:w-28">
-          {netto < 0 ? "bleibt der Stadt" : "bleibt übrig"}
+          {netto < 0 ? "trägt die Stadt" : "bleibt übrig"}
         </span>
         <div className="hh-schraffur flex h-6 flex-1 items-center rounded border border-signal/50 pl-2.5">
           <span className="text-[11px] font-semibold text-signal">
@@ -135,7 +139,7 @@ function BereichInner() {
           {netto > 0 ? (
             rangNetto === 1 ? (
               <>Kein Bereich kostet die Stadt unterm Strich so viel wie dieser: <strong>{deMio(netto)}&#8239;Mio.&nbsp;€</strong> im
-                Jahr {jahr}{bruttoTop.r.bereich !== z.bereich && <> — mehr als „{bruttoTop.r.bereich}", obwohl der brutto deutlich mehr ausgibt</>}.</>
+                Jahr {jahr}{bruttoTop.r.bereich !== z.bereich && <> — mehr als „{bruttoTop.r.bereich}“, obwohl dort insgesamt deutlich mehr Geld ausgegeben wird</>}.</>
             ) : (
               <>Unterm Strich kostet dieser Bereich die Stadt <strong>{deMio(netto)}&#8239;Mio.&nbsp;€</strong> im
                 Jahr {jahr} — Platz {rangNetto} von {alle.length} nach Zuschussbedarf.</>
@@ -194,9 +198,13 @@ function BereichInner() {
         <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <p className="mb-2 font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">Was steckt drin</p>
           <p className="text-[13.5px] leading-relaxed text-foreground/90">{info}</p>
+          {/* Bis 16.08. stand hier „Die Produktebene mit Einzelbeträgen lesen
+              wir erst ein". Sie ist seit #500 da — der Satz schickte Leute
+              weg von der Seite, die genau ihre Frage beantwortet. */}
           <p className="mt-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
             Redaktionelle Beschreibung nach dem Vorbericht des Haushaltsplans — keine amtliche Gliederung.
-            Die Produktebene mit Einzelbeträgen lesen wir erst ein.
+            Was einzelne Aufgaben dieses Bereichs kosten, steht auf der{" "}
+            <Link href="/haushalt/produkte" className="font-semibold text-primary">Produktebene</Link>.
           </p>
         </div>
       )}
@@ -300,7 +308,7 @@ function BereichInner() {
                     <div className="h-full rounded-[3px]" style={{ width: `${(Math.abs(n) / maxN) * 100}%`, background: "var(--hh-ein-0)" }} />
                   </div>
                   <span className="text-right">{n > 0 ? `−${deMio(n)}` : `+${deMio(-n)}`}&#8239;Mio. netto</span>
-                  <span className="text-right text-muted-foreground">{deMio(mio(zeile.aufwendungen))} Ausgaben</span>
+                  <span className="text-right text-muted-foreground">{deMio(mio(zeile.aufwendungen))}&#8239;Mio. Ausgaben</span>
                 </div>
               );
             })}
@@ -333,7 +341,7 @@ function BereichInner() {
         </p>
         <Link href={`/council?q=${encodeURIComponent(z.bereich.split("/")[0].split(",")[0])}`}
           className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
-          <Search className="h-3.5 w-3.5" /> Beschlüsse zu „{z.bereich.split("/")[0].split(",")[0]}" suchen
+          <Search className="h-3.5 w-3.5" /> Beschlüsse zu „{z.bereich.split("/")[0].split(",")[0]}“ suchen
         </Link>
       </div>
 
