@@ -606,6 +606,48 @@ class CouncilStore:
                 "quelle_label TEXT, quelle_url TEXT, fetched_at TEXT NOT NULL, "
                 "PRIMARY KEY (jahr, thh_nr, nr))"
             )
+        # „Plan" heißt nicht in jedem Jahrgang dasselbe: 2018 ist die
+        # Bezugsgröße der Abweichung die Gesamtermächtigung, 2020 der Ansatz
+        # samt Nachtrag (27 Mio. Unterschied!), sonst der nackte Ansatz.
+        # Deshalb steht in `ansatz` weiter der ursprüngliche Haushaltsansatz,
+        # in `plan` die Bezugsgröße und in `plan_art`, welche davon gemeint
+        # ist. Ohne das letzte Feld wäre eine Mehrjahres-Kurve still falsch.
+        # Nachrüsten per ALTER: Der Primärschlüssel bleibt, nichts geht verloren.
+        for spalte, typ in (("plan", "REAL"), ("plan_art", "TEXT")):
+            if spalte not in spalten:
+                try:
+                    self._conn.execute(
+                        f"ALTER TABLE council_ergebnisrechnung ADD COLUMN {spalte} {typ}")
+                except sqlite3.OperationalError:
+                    pass  # frisch angelegt — Spalte ist schon da
+        # Warum ein Posten vom Plan abweicht, in den Worten der Verwaltung:
+        # Abschnitt 6.3.1 des Jahresabschlusses, je Posten. Übernommen wird
+        # nur, was die Rechenprobe besteht (siehe finanzberichte).
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_abweichungsgruende ("
+            "jahr INTEGER NOT NULL, "
+            "nr INTEGER NOT NULL, "                # Postennummer der Tabelle
+            "bezeichnung TEXT NOT NULL, "          # so, wie der Abschnitt sie nennt
+            "delta_mio REAL, prozent REAL, "       # laut Überschrift des Blocks
+            "text TEXT NOT NULL, "
+            "quelle_label TEXT, quelle_url TEXT, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, nr))"
+        )
+        # Schlussberichte des Rechnungsprüfungsamts — nur die **Fundstelle**,
+        # nicht der Inhalt: „Das Rechnungsprüfungsamt hat diesen Abschluss
+        # geprüft → Schlussbericht". Eine Zeile je Jahrgang.
+        # `lesbar` = 0 heißt, der Volltext des PDFs ist unbrauchbar (2024).
+        #
+        # Der Name trägt bewusst „_quellen": Die einzelnen
+        # Prüfungsfeststellungen aus denselben Berichten (Beanstandung,
+        # Wiederholte Beanstandung, Hinweis) sind eine andere Ebene mit einer
+        # Zeile je Feststellung und gehören in eine eigene Tabelle.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_pruefbericht_quellen ("
+            "jahr INTEGER PRIMARY KEY, "
+            "label TEXT, url TEXT, n_pages INTEGER, "
+            "lesbar INTEGER NOT NULL DEFAULT 1, fetched_at TEXT NOT NULL)"
+        )
         # Produktebene aus den Teilhaushalts-Plänen: was einzelne Aufgaben
         # kosten, mit Produktnummer und zuständigem Amt — dazu der Steckbrief,
         # den die Pläne zu jedem Produkt führen (was die Aufgabe umfasst, auf
@@ -3010,12 +3052,62 @@ class CouncilStore:
                         (jahr, thh_nr))
             self._conn.executemany(
                 "INSERT INTO council_ergebnisrechnung (jahr, thh_nr, thh_name, nr, bezeichnung, "
-                " vorjahr, ansatz, ergebnis, abweichung, ist_summe, quelle_label, quelle_url, "
-                " fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                " vorjahr, ansatz, plan, plan_art, ergebnis, abweichung, ist_summe, "
+                " quelle_label, quelle_url, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 [(jahr, thh_nr, thh_name, p["nr"], p["bezeichnung"], p.get("vorjahr"),
-                  p.get("ansatz"), p.get("ergebnis"), p.get("abweichung"),
+                  p.get("ansatz"), p.get("plan", p.get("ansatz")), p.get("plan_art"),
+                  p.get("ergebnis"), p.get("abweichung"),
                   p.get("ist_summe", 0), label, url, now) for p in posten])
         return len(posten)
+
+    def save_abweichungsgruende(self, jahr: int, gruende: list[dict],
+                                label: str, url: str | None) -> int:
+        """Erläuterungen zu den Plan/Ist-Abweichungen eines Jahrgangs
+        ersetzen. Übergeben wird nur, was die Rechenprobe bestanden hat."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "DELETE FROM council_abweichungsgruende WHERE jahr = ?", (jahr,))
+            self._conn.executemany(
+                "INSERT INTO council_abweichungsgruende (jahr, nr, bezeichnung, "
+                " delta_mio, prozent, text, quelle_label, quelle_url, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?)",
+                [(jahr, g["nr"], g["bezeichnung"], g.get("delta_mio"), g.get("prozent"),
+                  g["text"], label, url, now) for g in gruende])
+        return len(gruende)
+
+    def get_abweichungsgruende(self, jahr: int | None = None) -> list[dict]:
+        """Erläuterungen — ein Jahr oder alle, in Tabellenreihenfolge."""
+        try:
+            if jahr is None:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_abweichungsgruende ORDER BY jahr, nr").fetchall()
+            else:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_abweichungsgruende WHERE jahr = ? ORDER BY nr",
+                    (jahr,)).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [dict(r) for r in rows]
+
+    def save_pruefbericht_quelle(self, jahr: int, label: str | None, url: str | None,
+                          n_pages: int | None, lesbar: bool) -> None:
+        """Fundstelle des RPA-Schlussberichts eines Jahrgangs merken."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT OR REPLACE INTO council_pruefbericht_quellen "
+                "(jahr, label, url, n_pages, lesbar, fetched_at) VALUES (?,?,?,?,?,?)",
+                (jahr, label, url, n_pages, 1 if lesbar else 0, now))
+
+    def get_pruefbericht_quellen(self) -> list[dict]:
+        """Alle bekannten Schlussberichte, ältester zuerst."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT jahr, label, url, n_pages, lesbar FROM council_pruefbericht_quellen "
+                "ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
 
     def get_plan_ist(self, jahr: int) -> dict:
         """„Geplant und geworden" eines Jahres: die Summenzeilen (Erträge 12,
@@ -3024,15 +3116,22 @@ class CouncilStore:
         Liefert ``{gesamt: {...}, bereiche: [...]}`` — die Bereiche nach
         geplanten Aufwendungen absteigend, damit die größten oben stehen."""
         rows = [dict(r) for r in self._conn.execute(
-            "SELECT thh_nr, thh_name, nr, ansatz, ergebnis, abweichung "
+            "SELECT thh_nr, thh_name, nr, ansatz, plan, plan_art, ergebnis, abweichung "
             "FROM council_ergebnisrechnung WHERE jahr = ? AND nr IN (12, 20) "
             "ORDER BY thh_nr, nr", (jahr,))]
 
         def bauen(teil: list[dict]) -> dict:
             e = next((r for r in teil if r["nr"] == 12), {})
             a = next((r for r in teil if r["nr"] == 20), {})
-            return {"ertraege_plan": e.get("ansatz"), "ertraege_ist": e.get("ergebnis"),
-                    "aufwendungen_plan": a.get("ansatz"), "aufwendungen_ist": a.get("ergebnis")}
+            # `plan` ist die Bezugsgröße der Abweichung, `ansatz` der
+            # ursprüngliche Haushaltsansatz — 2018 und 2020 fallen auseinander.
+            return {"ertraege_plan": e.get("plan", e.get("ansatz")),
+                    "ertraege_ansatz": e.get("ansatz"),
+                    "ertraege_ist": e.get("ergebnis"),
+                    "aufwendungen_plan": a.get("plan", a.get("ansatz")),
+                    "aufwendungen_ansatz": a.get("ansatz"),
+                    "aufwendungen_ist": a.get("ergebnis"),
+                    "plan_art": a.get("plan_art") or e.get("plan_art")}
 
         gesamt = [r for r in rows if r["thh_nr"] is None]
         bereiche = []

@@ -16,10 +16,12 @@ import { ChevronRight, Search } from "lucide-react";
 import { Segmented } from "@/components/ui";
 import { useFetch } from "@/lib/use-fetch";
 import {
-  BEREICH_INFO, HaushaltDaten, HaushaltZeile, bereichSlug, bereiche,
-  bereichsReihe, deMio, deckung, jahreSortiert, mio, quellenLabel,
+  BEREICH_INFO, HaushaltDaten, HaushaltZeile, PLAN_ART_LABEL, PlanArt,
+  bereichSlug, bereiche, bereichsReihe, deMio, deckung, gruendeFuerBereich,
+  jahreSortiert, mio, quellenLabel,
 } from "@/lib/haushalt";
 import { Hantel } from "@/components/haushalt/hantel";
+import { Warum } from "@/components/haushalt/warum";
 import { cn } from "@/lib/utils";
 
 function BruttoNettoBlock({ z }: { z: HaushaltZeile }) {
@@ -211,9 +213,20 @@ function BereichInner() {
         if (!jahre.length) return null;
         const zeilen = jahre.map((j) => {
           const a = treffer.find((p) => p.jahr === j && p.nr === 20);
-          return { label: String(j), plan: mio(a?.ansatz), ist: mio(a?.ergebnis) };
+          // `plan` ist die Bezugsgröße des jeweiligen Jahrgangs, nicht überall
+          // der nackte Ansatz — 2018 und 2020 weichen ab (Fußnote unten).
+          return {
+            label: String(j) + (a?.plan_art && a.plan_art !== "ansatz" ? "*" : ""),
+            plan: mio(a?.plan), ist: mio(a?.ergebnis),
+          };
         }).filter((r) => r.plan != null && r.ist != null);
         if (!zeilen.length) return null;
+        const abweichend = treffer.filter(
+          (p) => p.nr === 20 && p.plan_art && p.plan_art !== "ansatz");
+        const thhNr = treffer[0]?.thh_nr ?? null;
+        const letztesJahr = jahre[jahre.length - 1];
+        const bereichsGruende = thhNr != null
+          ? gruendeFuerBereich(data, letztesJahr, thhNr) : [];
         return (
           <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -232,6 +245,37 @@ function BereichInner() {
                 beieinander, also trägt die Euro-Skala. Auf der Vergleichsseite
                 ist es umgekehrt — dort spreizen 6 bis 231 Mio. zu weit. */}
             <Hantel zeilen={zeilen} massstab="betrag" />
+            {abweichend.length > 0 && (
+              <p className="mt-2.5 text-[11px] leading-relaxed text-muted-foreground">
+                * In {abweichend.map((p) => p.jahr).join(" und ")} vergleicht der Abschluss
+                nicht mit dem ursprünglichen Ansatz, sondern mit dem fortgeschriebenen Plan
+                ({[...new Set(abweichend.map((p) => PLAN_ART_LABEL[p.plan_art as PlanArt]))].join(", ")}).
+              </p>
+            )}
+            {bereichsGruende.length > 0 && (
+              <div className="mt-3 flex flex-col gap-2.5 border-t border-border/60 pt-3">
+                <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+                  Was der Abschluss {letztesJahr} zu diesem Bereich sagt
+                </p>
+                {bereichsGruende.map((g) => (
+                  <div key={g.nr} className="flex flex-col gap-1">
+                    <span className="text-[12.5px] font-semibold">
+                      {g.bezeichnung}
+                      <span className="ml-1.5 font-mono text-[11px] font-normal tabular-nums text-signal">
+                        {(g.delta_mio ?? 0) > 0 ? "+" : ""}{deMio(g.delta_mio)}&#8239;Mio.
+                      </span>
+                    </span>
+                    <Warum grund={g} kompakt />
+                  </div>
+                ))}
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  Der Jahresabschluss erläutert seine Abweichungen nach Ertrags- und
+                  Aufwandsarten für die ganze Stadt, nicht je Bereich. Hier stehen die
+                  Erläuterungen, die diesen Bereich ausdrücklich nennen — sie können also
+                  auch andere Bereiche mit betreffen.
+                </p>
+              </div>
+            )}
           </div>
         );
       })()}

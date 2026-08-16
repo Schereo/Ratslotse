@@ -39,9 +39,18 @@ Prosa und haben auf Seiten, die sie nicht zeigen, nichts zu suchen.
 | `council_steuern` | Steuereinnahmen je Art seit 1998 (**Ist**) | Open-Data-Portal, Datensatz 1104 | `scripts/ingest_finanzen_opendata.py` |
 | `council_steuerkraft` | Steuerkraftmesszahl + Schlüsselzuweisungen seit 1992 | Open-Data-Portal, Datensatz 1106 | dito |
 | `council_einwohner` | Einwohnerzahl je Jahr seit 2010 | Open-Data-Portal, Datensatz 1102 | dito |
-| `council_ergebnisrechnung` | Ansatz **und** Ergebnis je Posten — gesamt (5 Jahrgänge) und je Teilhaushalt (4) | Jahresabschlüsse — **Anlagen im RIS** | `scripts/ingest_finanzberichte.py` |
+| `council_ergebnisrechnung` | Ansatz, Plan **und** Ergebnis je Posten — gesamt und je Teilhaushalt, 2017–2024 | Jahresabschlüsse — **Anlagen im RIS** | `scripts/ingest_finanzberichte.py` |
+| `council_abweichungsgruende` | Warum ein Posten vom Plan abwich (Abschnitt 6.3.1), 45 Einträge | dito | dito |
+| `council_pruefbericht_quellen` | **Fundstelle** des RPA-Schlussberichts je Jahrgang (eine Zeile je Jahr) | dito | dito |
 | `council_produkte` | Produktebene: was einzelne Aufgaben kosten — plus Steckbrief (Kurzbeschreibung, Auftragsgrundlage, Beeinflussbarkeit, Wirkungskreis, Zielgruppe) | Teilhaushalts-Pläne — **Anlagen im RIS** | dito |
 | `council_pruefberichte` | Prüfungsfeststellungen 2017–2023, eine Zeile je Randmarke | Schlussberichte des Rechnungsprüfungsamts — **Anlagen im RIS** | `scripts/ingest_pruefberichte.py` |
+
+:::note[Zwei Tabellen zu denselben Berichten]
+`council_pruefbericht_quellen` hält die **Fundstelle** des Schlussberichts
+(eine Zeile je Jahrgang, für den Verweis „geprüft → Schlussbericht"),
+`council_pruefberichte` die **einzelnen Feststellungen** daraus (eine Zeile je
+Randmarke). Zwei Ebenen, zwei Tabellen — die Namen halten sie auseinander.
+:::
 
 Alle Ingests sind idempotent und laufen **nicht** als Cron — einmal jährlich
 von Hand reicht, wenn die Stadt einen neuen Jahrgang veröffentlicht.
@@ -86,9 +95,72 @@ an Ratsvorlagen und liegen mit Volltext in `council_anlagen`.
 **Jahresabschluss** (300+ Seiten je Jahrgang) → die Ergebnisrechnung der
 Kernverwaltung führt **Ansatz und Ergebnis nebeneinander**. Damit gibt es
 „geplant gegen tatsächlich" und die Aufschlüsselung der Erträge nach Arten
-(Steuern, Zuwendungen, Entgelte, Kostenerstattungen). Eingelesen sind 2019
-und 2021–2024; 2017, 2018 und 2020 haben ein abweichendes Tabellenlayout und
-werden übersprungen, statt geraten zu werden.
+(Steuern, Zuwendungen, Entgelte, Kostenerstattungen). Eingelesen sind alle
+acht Jahrgänge **2017–2024**, je mit zwölf Teilhaushalten.
+
+Dass 2017, 2018 und 2020 lange fehlten, lag nie am Text, sondern an drei
+verschiedenen Spaltenlayouts: 2017 steht das Ergebnis **vor** dem Ansatz,
+2018 hat elf Spalten mit sechs möglichen Leerfeldern, 2019–2024 tragen eine
+meist leere Nachtragsspalte. `_spalten_zuordnen()` liest die Anordnung
+deshalb aus dem **Tabellenkopf** statt aus einer festen Reihenfolge. Zwei
+Kleinigkeiten kamen dazu: 2017 schreibt die Summenzeilen als „12.= Summe"
+ohne Leerzeichen, und im Abschluss 2022 fällt bei THH09 ein Zeilenumbruch
+mitten in die Überschrift („A. Teil\n-Ergebnisrechnung THH09") — ohne ihn im
+Muster fand der Parser dort nur die Fortsetzungsseite und verwarf über die
+Summenprobe die ganze Teilhaushalts-Ebene.
+
+:::danger[„Plan" heißt nicht in jedem Jahrgang dasselbe]
+Die Ergebnisrechnung vergleicht das Ist mit dem Wert, den das Dokument selbst
+als Bezug führt — und der wechselt:
+
+| Jahrgang | Bezugsgröße (`plan_art`) |
+|---|---|
+| 2018 | Gesamtermächtigung (Ansatz + Nachtrag + Übertragungen) |
+| 2020 | Ansatz einschließlich Nachtragshaushalt |
+| alle übrigen | nackter Haushaltsansatz |
+
+Bei den Ausgaben 2020 sind das **27,2 Mio. € Unterschied** — also der
+Unterschied zwischen „21,5 Mio. weniger ausgegeben als geplant" und
+„5,7 Mio. mehr". Beide Werte stehen in derselben Zeile, deshalb speichert der
+Parser beide: `ansatz` den ursprünglichen Haushaltsansatz, `plan` die
+Bezugsgröße der Abweichung, `plan_art` welche davon. Die Oberfläche schreibt
+die Bezugsgröße an (Kasten „Was ‚geplant' in diesem Jahr heißt", Fußnote in
+der Mehrjahres-Kurve). Eine Kurve, die 2018 die Gesamtermächtigung und 2021
+den nackten Ansatz gegen das Ist stellt, ohne das zu sagen, wäre still
+falsch — und still falsch ist hier der schlechteste Ausgang.
+
+Bestätigt wird die Zuordnung aus dem Dokument selbst: Die Prozentsätze in
+Abschnitt 6.3.1 rechnen 2018 gegen die Gesamtermächtigung (3 von 3 Posten,
+gegen den Ansatz nur 1 von 3) und 2020 gegen Ansatz + Nachtrag (4 von 4).
+:::
+
+### Das „Warum" zu den Abweichungen
+
+Abschnitt **6.3.1** des Jahresabschlusses begründet jede Abweichung ab 20 %
+gegenüber dem Plan, je Posten und in den Worten der Verwaltung — etwa, dass
+die Mehrerträge 2024 „nahezu auf den Bereich der Gewerbesteuer" entfallen und
+„unter anderem aus einem Einmaleffekt" stammen. Der Abschnitt existiert in
+allen acht Jahrgängen (45 Posten, ~37.000 Zeichen).
+
+Die Eintrittskarte ist hart: Die Überschrift nennt die Abweichung **doppelt**,
+als Betrag und als Prozentsatz („+75,1 Millionen Euro, +24,82 %"). Beides muss
+zu der Zeile passen, die der Tabellen-Parser für denselben Posten gelesen hat
+(`pruefe_abweichungsgruende`) — damit prüft sich das Dokument an einer zweiten
+Stelle selbst. 45 von 45 bestehen; was nicht passt, wird verworfen statt
+angezeigt. Angezeigt wird der Wortlaut, nicht eine Zusammenfassung: nur
+Silbentrennung am Zeilenende und eingestreute Seitenfüße („JA 161") werden
+entfernt.
+
+**Schlussberichte des Rechnungsprüfungsamts** werden nur **verlinkt**, nicht
+ausgewertet — sie sagen selbst, dass die Plan-Ist-Abweichungen „im Anhang und
+im Rechenschaftsbericht erläutert" werden. Erkannt werden sie an der
+Eingangsformel, nicht am Label („Schlussbericht JA 2017" ist der Bericht zum
+Eigenbetrieb Gebäudewirtschaft, weitere Treffer betreffen Stiftungen). Achtung:
+Der Volltext ist umbrochen, ein `LIKE` auf die Formel findet **nichts** —
+`pruefbericht_aus_anlage()` normalisiert vorher. Der Jahrgang **2024** ist ein
+kaputter Textextrakt (Glyphen-Indizes statt Zeichen, Buchstabenanteil 0,00
+gegen 0,71–0,76 bei den übrigen); er wird als `lesbar = 0` gespeichert und auf
+der Seite so benannt, statt überspielt zu werden.
 
 **Teilhaushalts-Pläne** (THH01–13) → die Produktebene: was einzelne Aufgaben
 kosten, mit Produktnummer und zuständigem Amt (2023 etwa
@@ -152,29 +224,50 @@ Wirkungskreis", „Grad der Beeinflussbarkeit" und „Produkt" stehen im Glossar
 übersetzt. Eingefärbt wird nichts — ein teures Produkt ist keine schlechte
 Note, und „kaum Spielraum" kein Missstand.
 
-:::note[Die dritte Prüfung: die Summe über alle Teilhaushalte]
-Der Jahresabschluss führt dieselbe Ergebnisrechnung noch einmal je
-Teilhaushalt. Die zeilenweise Prüfung greift dort zu kurz: Wird für einen
-Teilhaushalt versehentlich eine andere, in sich stimmige Tabelle gelesen,
-sind die Zahlen konsistent — aber falsch. Im Abschluss 2022 wurde THH09 so
-mit 0,1 statt 26,8 Mio. € gelesen. Erst die Summe über alle Teilhaushalte
-machte es sichtbar. `finanzberichte.summenprobe()` verlangt deshalb, dass
-diese Summe die Gesamtrechnung ergibt (±1 %); 2022 fällt dadurch für die
-Teilhaushalts-Ebene aus, die vier übrigen Jahrgänge stimmen auf 0,00 %.
-:::
+## Vier Prüfungen, und keine davon ist optional
 
-:::note[Zwei Prüfsummen aus den Dokumenten selbst]
 Aus PDF-Text extrahierte Tabellen verschmelzen Zahlen („355.188334.704") und
-kleben Seitenzahlen an Werte. Beide Parser übernehmen deshalb nur Zeilen, die
-eine im Dokument dokumentierte Rechenbeziehung erfüllen: beim Jahresabschluss
-`Abweichung = Ergebnis − Ansatz` (Fußnote 4 der Tabelle), beim Teilhaushalt
-`Erträge − Aufwendungen = ordentliches Ergebnis`. Was durchfällt, fehlt —
-lieber eine Lücke als eine Zahl, die niemand nachrechnen kann.
+kleben Seitenzahlen an Werte. Ein Jahrgang kommt deshalb nur in die Datenbank,
+wenn er **alle** folgenden Proben besteht:
+
+| Probe | Was sie prüft | Wo |
+|---|---|---|
+| **Zeilenprobe** | `Abweichung = Ergebnis − Plan`, wobei als Plan nur zugelassen ist, was der Tabellenkopf als Spalte nennt | `_spalten_zuordnen` |
+| **Summenprobe** | Die zwölf Teilhaushalte ergeben die Gesamtrechnung — in **Plan und Ist**, Zeilen 12 und 20 | `summenprobe` |
+| **Strukturprobe** | `12 − 20 = 21` innerhalb der Tabelle, in Plan und Ist | `strukturprobe` |
+| **Vorjahres-Kette** | Das Ist eines Jahres taucht im Folgejahrgang als Vorjahresspalte wieder auf | `vorjahreskette` |
+
+Stand heute: Summenprobe 0,0000 % in allen acht Jahrgängen, Strukturprobe 8/8,
+Vorjahres-Kette 14/14 Glieder.
+
+Zwei Details, die teuer erkauft sind:
+
+- Die Summenprobe prüfte früher nur den Ansatz. Das genügt nicht — ein
+  Fehlgriff, der zufällig denselben Ansatz trägt, käme durch. Sie prüft
+  deshalb **Plan und Ist**. (Im Abschluss 2022 wurde THH09 einmal mit 0,1
+  statt 26,8 Mio. € gelesen; erst die Summe machte es sichtbar.)
+- Gesucht wird das **letzte** passende Fenster in der Zahlenfolge einer Zeile,
+  denn der Kopf ordnet von rechts: Abweichung, davor Ergebnis, davor die
+  Bezugsgröße. Damit dabei nicht die Zeile *unter* Posten 24 mitgelesen wird —
+  „Jahresergebnis" trägt keine Nummer und rutscht in dieselbe Zeile —, wird die
+  Zeile vorher an diesem Wort abgeschnitten. Ohne den Schnitt ergäbe sich für
+  Posten 24 ein zweites, in sich stimmiges Tripel (2024: 34,6 + −28,5 = 6,1).
+
+:::caution[Vorzeichen nur auf den Cent reparieren]
+Fehlt im Dokument ein Minuszeichen, darf der Parser es ergänzen — aber nur,
+wenn der Betrag **exakt** passt (1 Cent Toleranz statt 1 Euro) und alle drei
+Werte des Tripels von null verschieden sind. Ohne die zweite Bedingung erfüllt
+jedes „X | 0,00 | X" diese Probe: Im Abschluss 2018 hätte das für THH11 ein
+Ist von 0,00 € eingetragen, richtig sind 105,0 Mio. €. Der Fall wird gezählt
+und geloggt (`vorzeichen_repariert`); in den acht Jahresabschlüssen tritt er
+derzeit **null**-mal auf.
 :::
 
 Ein Nebenertrag: Die Ansätze aus den Jahresabschlüssen bestätigen die Werte,
-die wir aus den Plan-PDFs lesen (2023: 664,6 gegen 664,9 Mio. €; 2024: 693,6
-gegen 693,9). Zwei unabhängige Wege zur selben Zahl.
+die wir aus den Plan-PDFs lesen. `council_haushalt` minus der Zeile „nicht
+rechtsfähige Stiftungen" trifft den **ursprünglichen** Ansatz auf den Cent —
+2020 also 588.539.108,34 € (vor Nachtrag), nicht die 591,3 Mio. € des
+fortgeschriebenen Plans. Genau dafür gibt es die beiden Felder.
 
 ## Die Prüfung: was das Rechnungsprüfungsamt beanstandet
 

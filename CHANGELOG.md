@@ -8,6 +8,23 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **„Geplant und geworden" reicht jetzt bis 2017 — und sagt, warum.** Bisher
+  waren fünf Jahrgänge zu sehen; 2017, 2018 und 2020 fehlten, weil ihre
+  Tabellen im Jahresabschluss anders aufgebaut sind. Der Parser liest die
+  Spalten jetzt aus dem Tabellenkopf statt aus einer festen Reihenfolge und
+  schafft damit alle acht Jahrgänge; 2022 bekommt außerdem seine zwölf
+  Teilhaushalte zurück. Neu ist auch das *Warum*: Zu jeder erheblichen
+  Abweichung steht die Begründung der Verwaltung aus dem Jahresabschluss
+  daneben — etwa, dass die Mehreinnahmen 2024 fast vollständig aus der
+  Gewerbesteuer stammen und einen Einmaleffekt enthalten. Je Jahrgang gibt es
+  dazu den Verweis auf den Schlussbericht des Rechnungsprüfungsamts. (#510)
+- **Die Seite sagt jetzt, was „geplant" in einem Jahr bedeutet.** Das ist nicht
+  überall dasselbe: 2020 vergleicht der Jahresabschluss mit dem Ansatz
+  einschließlich Corona-Nachtrag, 2018 mit der Gesamtermächtigung. Bei den
+  Ausgaben 2020 sind das 27 Mio. € Unterschied — also der Unterschied zwischen
+  „21,5 Mio. weniger ausgegeben als geplant" und „5,7 Mio. mehr". Beide Werte
+  stehen jetzt in der Datenbank, die Seite schreibt die Bezugsgröße an, und in
+  der Mehrjahres-Kurve tragen die betroffenen Jahre eine Fußnote. (#510)
 - **Das Flussbild: woher das Geld kommt, wohin es geht — und was dazwischen
   liegt.** Auf der Haushalts-Übersicht steht jetzt ein Bild, das links die
   Einnahmearten (Steuern, Zuwendungen, Gebühren …) und rechts die Bereiche

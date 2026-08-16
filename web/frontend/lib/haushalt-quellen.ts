@@ -75,13 +75,16 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   jahresabschluss: {
     titel: "Jahresabschlüsse der Stadt Oldenburg",
     fundstelle:
-      "Ergebnisrechnung der Kernverwaltung UND je Teilhaushalt — Ansatz und Ergebnis " +
-      "nebeneinander, Posten 1–24. Wir übernehmen nur Zeilen, bei denen die im Dokument " +
-      "ausgewiesene Probe aufgeht (Abweichung = Ergebnis − Ansatz); die Teilhaushalts-Ebene " +
-      "zusätzlich nur, wenn ihre Summe die Gesamtrechnung ergibt. Als Anlagen zu " +
-      "Ratsvorlagen im Bürgerinformationssystem.",
+      "Ergebnisrechnung der Kernverwaltung UND je Teilhaushalt — Plan und Ergebnis " +
+      "nebeneinander, Posten 1–24, dazu die Erläuterungen zu den erheblichen " +
+      "Abweichungen (Abschnitt 6.3.1). Wir übernehmen nur Zeilen, bei denen die im " +
+      "Dokument ausgewiesene Probe aufgeht (Abweichung = Ergebnis − Plan); die " +
+      "Teilhaushalts-Ebene zusätzlich nur, wenn ihre Summe die Gesamtrechnung ergibt. " +
+      "Welche Bezugsgröße ein Jahrgang als Plan führt (Ansatz, Ansatz mit Nachtrag oder " +
+      "Gesamtermächtigung), steht auf der Seite dabei. Als Anlagen zu Ratsvorlagen im " +
+      "Bürgerinformationssystem.",
     herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
-    stand: "Jahresabschlüsse 2019 und 2021–2024",
+    stand: "Jahresabschlüsse 2017–2024",
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de",
   },

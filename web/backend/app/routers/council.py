@@ -353,8 +353,11 @@ def haushalt_uebersicht(
     - ``steuern``: Ist-Steuereinnahmen je Steuerart seit 1998 (Langformat),
     - ``steuerkraft``: Steuerkraftmesszahl + Schlüsselzuweisungen seit 1992,
     - ``einwohner``: jüngste Einwohnerzahl (Bezugsgröße für Pro-Kopf-Angaben),
-    - ``ergebnisrechnung``: Ansatz und Ergebnis je Posten aus den
+    - ``ergebnisrechnung``: Ansatz, Plan und Ergebnis je Posten aus den
       Jahresabschlüssen — Grundlage für „geplant gegen tatsächlich",
+    - ``abweichungsgruende``: warum ein Posten vom Plan abwich, in den Worten
+      der Verwaltung (Abschnitt 6.3.1 des Jahresabschlusses),
+    - ``pruefberichte``: Fundstelle des RPA-Schlussberichts je Jahrgang,
     - ``produkt_jahre``: Jahre, für die die Produktebene vorliegt,
     - ``plan_ist_jahre``: Jahre mit „geplant gegen tatsächlich" je Teilhaushalt.
 
@@ -367,7 +370,11 @@ def haushalt_uebersicht(
         "einwohner": store.einwohner_aktuell(),
         # Aus den Jahresabschlüssen (RIS-Anlagen): Ansatz UND Ergebnis je
         # Posten — „geplant gegen tatsächlich" und die Erträge nach Arten.
+        # `plan` ist die Bezugsgröße der Abweichung, `ansatz` der
+        # ursprüngliche Haushaltsansatz; `plan_art` sagt, welche gemeint ist.
         "ergebnisrechnung": store.get_ergebnisrechnung(),
+        "abweichungsgruende": store.get_abweichungsgruende(),
+        "pruefbericht_quellen": store.get_pruefbericht_quellen(),
         "produkt_jahre": store.produkte_jahre(),
         # Jahre mit Teilhaushalts-Ist — füttert den Jahr-Umschalter auf
         # /haushalt/plan-ist, ohne dass das Frontend die Liste durchsucht.

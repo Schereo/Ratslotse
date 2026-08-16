@@ -33,8 +33,8 @@
 import { useMemo, useState } from "react";
 import { RotateCcw } from "lucide-react";
 import {
-  HaushaltDaten, Produkt, RUECKLAGE_MIO, bereiche, deMio, jahreSortiert, mio,
-  naechstesProdukt, planGegenIst, summe,
+  HaushaltDaten, PLAN_ART_LABEL, Produkt, RUECKLAGE_MIO, bereiche, deMio,
+  jahreSortiert, mio, naechstesProdukt, planGegenIst, summe,
 } from "@/lib/haushalt";
 import { PFLICHT_ZUORDNUNG } from "@/lib/haushalt-pflicht";
 import { Beleg } from "@/components/haushalt/quelle";
@@ -61,6 +61,8 @@ function PlanIst({ daten }: { daten: HaushaltDaten }) {
   const spanne = Math.max(...reihe.flatMap((r) => [Math.abs(r.plan), Math.abs(r.ist)]));
   const besser = reihe.filter((r) => r.delta > 0).length;
   const deltas = reihe.map((r) => r.delta).sort((a, b) => a - b);
+  // Jahrgänge, deren „geplant" nicht der nackte Ansatz ist (2018, 2020).
+  const abweichenderBezug = reihe.filter((r) => r.planArt !== "ansatz");
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
@@ -93,10 +95,15 @@ function PlanIst({ daten }: { daten: HaushaltDaten }) {
                   }} />
               ))}
             </span>
-            <span className="w-[92px] shrink-0 text-right font-mono text-[11px] tabular-nums">
+            <span className="w-[100px] shrink-0 text-right font-mono text-[11px] tabular-nums">
               <span className="text-muted-foreground">{deMio(r.plan)}</span>
               <span className="mx-1 text-muted-foreground">→</span>
               <span className="font-semibold">{deMio(r.ist)}</span>
+              {/* Jahrgänge, deren „geplant" nicht der nackte Ansatz ist,
+                  tragen ein Sternchen — die Fußnote sagt, was gemeint ist. */}
+              <span className="w-2 text-left text-muted-foreground">
+                {r.planArt !== "ansatz" ? "*" : " "}
+              </span>
             </span>
           </div>
         ))}
@@ -114,6 +121,14 @@ function PlanIst({ daten }: { daten: HaushaltDaten }) {
         Aus den Jahresabschlüssen der Stadt <Beleg q="jahresabschluss" /> — ordentliches plus außerordentliches
         Ergebnis. Das heißt nicht, dass das Minus oben unecht wäre: Es heißt, dass ein Plan Vorsicht
         einpreist. Für {reihe[reihe.length - 1].jahr + 1} und später liegt noch kein Abschluss vor.
+        {abweichenderBezug.length > 0 && (
+          <>
+            {" "}* In {abweichenderBezug.map((r) => r.jahr).join(" und ")} vergleicht der
+            Abschluss nicht mit dem ursprünglichen Ansatz, sondern mit dem fortgeschriebenen
+            Plan ({[...new Set(abweichenderBezug.map((r) => PLAN_ART_LABEL[r.planArt]))].join(", ")}
+            ) — so rechnet die Stadt dort selbst.
+          </>
+        )}
       </p>
     </div>
   );

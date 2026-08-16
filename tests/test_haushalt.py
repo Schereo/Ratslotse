@@ -689,6 +689,22 @@ def test_produkt_steckbrief_migration(tmp_path):
 # Posten, die für „geplant gegen tatsächlich" zählen.
 
 JA_THH = """3.1 Ergebnisrechnung Kernverwaltung
+Erträge und Aufwendungen Ergebnis des
+Vorjahres
+2022
+Ansätze des
+Haushaltsjahres
+2023
+Veränderung
+durch Nachtrag
+Ergebnis des
+Haushaltsjahres
+2023
+mehr (+) /
+weniger (-)4)
+2023
+ - Euro -
+ordentliche Erträge
 01. Steuern und ähnliche Abgaben 305.411.797,55 287.275.000,00  341.608.473,52 54.333.473,52
 12. = Summe ordentliche Erträge 696.627.777,13 664.574.528,42  732.987.197,61 68.412.669,19
 20. = Summe ordentliche
@@ -699,11 +715,27 @@ Teilhaushalt 01 - Verwaltungsführung
 
 A. Teil-Ergebnisrechnung   THH01 Verwaltungsführung
 Erträge und Aufwendungen Ergebnis des
-Vorjahres 2022
-Ansätze des Haushaltsjahres 2023
-Ergebnis des Haushaltsjahres 2023
+Vorjahres
+2022
+Ansätze des
+Haushaltsjahres
+2023
+Veränderung
+durch Nachtrag
+mehr (+) /
+weniger (-) 20233)
+Ergebnis des
+Haushaltsjahres
+2023
+mehr (+) /
+weniger (-)4)
+2023
+ - Euro -
+1 2 3 4 5 6 7
+Ordentliche Erträge
 02. Zuwendungen u. allgem. Umlagen 1) 45.972,00 281.352,15  107.663,14 -173.689,01
 12. =Summe ordentliche Erträge 448.727,99 568.542,15  475.819,90 -92.722,25
+Ordentliche Aufwendungen
 13. Personalaufwendungen 5.560.455,48 5.716.337,99  5.791.734,64 75.396,65
 20. =Summe ordentliche Aufwendungen 8.011.111,11 674.305.462,42  683.032.270,32 8.726.807,90
 B. Teil-Finanzrechnung THH01 Verwaltungsführung
@@ -724,20 +756,37 @@ def test_parse_teilergebnisrechnungen():
     assert nach_nr[12]["ansatz"] != 222_222.22
 
 
+def _summenzeilen(ertraege_plan, ertraege_ist, aufw_plan, aufw_ist):
+    """Kleine Hilfe: die beiden Summenzeilen einer Ebene."""
+    return [{"nr": 12, "plan": ertraege_plan, "ergebnis": ertraege_ist},
+            {"nr": 20, "plan": aufw_plan, "ergebnis": aufw_ist}]
+
+
 def test_summenprobe_faengt_stille_fehlgriffe():
     """Die zeilenweise Prüfung erkennt nicht, wenn für einen Teilhaushalt eine
     andere, in sich stimmige Tabelle gelesen wurde — im Abschluss 2022 wurde
     THH09 so mit 0,1 statt 26,8 Mio. € gelesen. Erst die Summe zeigt es."""
-    gesamt = [{"nr": 20, "ansatz": 100_000_000.0}]
-    passend = [{"posten": [{"nr": 20, "ansatz": 60_000_000.0}]},
-               {"posten": [{"nr": 20, "ansatz": 40_000_000.0}]}]
-    daneben = [{"posten": [{"nr": 20, "ansatz": 60_000_000.0}]},
-               {"posten": [{"nr": 20, "ansatz": 100_000.0}]}]
+    gesamt = _summenzeilen(80_000_000.0, 82_000_000.0, 100_000_000.0, 99_000_000.0)
+    passend = [{"posten": _summenzeilen(50e6, 51e6, 60e6, 59e6)},
+               {"posten": _summenzeilen(30e6, 31e6, 40e6, 40e6)}]
+    daneben = [{"posten": _summenzeilen(50e6, 51e6, 60e6, 59e6)},
+               {"posten": _summenzeilen(30e6, 31e6, 100_000.0, 100_000.0)}]
     assert finanzberichte.summenprobe(passend, gesamt)[0] is True
     ok, anteil = finanzberichte.summenprobe(daneben, gesamt)
     assert ok is False and anteil > 0.3
     # Ohne Gesamtzeile keine Aussage — dann gilt die Probe als nicht bestanden.
     assert finanzberichte.summenprobe(passend, [])[0] is False
+
+
+def test_summenprobe_prueft_auch_das_ist():
+    """Nur den Plan zu prüfen genügt nicht: Ein Fehlgriff, der zufällig
+    denselben Ansatz trägt, käme sonst durch."""
+    gesamt = _summenzeilen(80e6, 82e6, 100e6, 99e6)
+    # Plan stimmt auf den Cent, das Ist eines Teilhaushalts ist Unsinn.
+    plan_ok_ist_falsch = [{"posten": _summenzeilen(50e6, 51e6, 60e6, 59e6)},
+                          {"posten": _summenzeilen(30e6, 31e6, 40e6, 5e6)}]
+    ok, anteil = finanzberichte.summenprobe(plan_ok_ist_falsch, gesamt)
+    assert ok is False and anteil > 0.3
 
 
 def test_store_plan_ist(tmp_path):
@@ -753,9 +802,364 @@ def test_store_plan_ist(tmp_path):
     assert pi["gesamt"]["ertraege_plan"] == 664_574_528.42
     assert pi["gesamt"]["ertraege_ist"] == 732_987_197.61
     assert len(pi["bereiche"]) == 1
+    # 2023 vergleicht gegen den nackten Ansatz — Plan und Ansatz fallen zusammen.
+    assert pi["gesamt"]["ertraege_ansatz"] == 664_574_528.42
+    assert pi["gesamt"]["plan_art"] == "ansatz"
     b = pi["bereiche"][0]
     assert b["thh_nr"] == 1 and b["thh_name"] == "Verwaltungsführung"
     assert b["ertraege_plan"] == 568_542.15 and b["ertraege_ist"] == 475_819.90
     # Gesamtzeile und Teilhaushalt liegen nebeneinander in derselben Tabelle.
     assert len(store.get_ergebnisrechnung(2023)) > len(gesamt)
+    store.close()
+
+
+# --- Die drei abweichenden Spaltenlayouts -----------------------------------
+# 2017, 2018 und 2020 scheiterten früher nicht am Text, sondern an drei
+# verschiedenen Spaltenanordnungen. Die Fixtures sind echte Ausschnitte aus
+# den jeweiligen RIS-Anlagen, samt der Eigenheiten, die sie schwierig machen.
+
+# 2017: Ergebnis steht VOR dem Ansatz, und die Summenzeilen heißen „12.= Summe".
+JA_2017 = """3.1 Ergebnisrechnung der Kernverwaltung
+Erträge und Aufwendungen Ergebnis 2016 Ergebnis 2017 Ansatz 2017 Differenz aus Spalte 5:
+bisher nicht
+bewilligte
+über-/außer-
+planmäßige
+Aufwendungen
+- Euro -
+Ordentliche Erträge
+01. Steuern und ähnliche Abgaben 230.255.777,11 239.004.300,84 231.033.600,00 7.970.700,84
+12.= Summe ordentliche Erträge 494.694.676,98 539.271.147,21 509.437.536,75 29.833.610,46
+Ordentliche Aufwendungen
+20.= Summe ordentliche Aufwendungen 491.747.154,41 521.419.747,44 509.265.601,41 12.154.146,03
+21. ordentliches Ergebnis 2.947.522,57 17.851.399,77 171.935,34 17.679.464,43
+3.2 Gesamtergebnisrechnung
+"""
+
+# 2018: elf Spalten, sechs davon dürfen leer bleiben. Bezugsgröße der
+# Abweichung ist die Gesamtermächtigung, nicht der Ansatz.
+JA_2018 = """3.1 Ergebnisrechnung der Kernverwaltung
+Erträge und Aufwendungen Ergebnis des
+Vorjahres
+2017
+Ansätze des
+Haushalts-
+jahres 2018
+Veränderung
+durch
+Nachtrag
+2018
+Sonstige
+Ermächti-
+gungen 2018
+3)
+Ermächti-
+gungen des
+Haushalts-
+jahres 2018 4)
+Ermächti-
+gungen aus
+Haushalts-
+vorjahren
+2018
+Gesamter-
+mächti-
+gungen im
+Haushaltsjahr
+2018 5)
+Ergebnis des
+Haushalts-
+jahres 2018
+mehr (+) /
+weniger (-)
+2018
+Zu Spalte 5:
+Davon bisher
+nicht
+bewilligte
+über- /
+außerplan-
+mäßige
+Aufwen-
+dungen 6)
+ - Euro -
+1 2 3 4 5 6 7 8 9 10 11
+ordentliche Erträge
+01. Steuern und ähnliche Abgaben 239.004.300,84 244.413.700,00  3.900.000,00 248.313.700,00  248.313.700,00 269.835.099,83 21.521.399,83
+12. = Summe ordentliche Erträge 539.271.147,21 548.948.733,89  7.888.050,82 556.836.784,71  556.836.784,71 591.905.846,44 35.069.061,73
+ordentliche Aufwendungen
+20. = Summe ordentliche Aufwendungen 521.419.747,44 540.007.674,03  7.663.352,16 547.671.026,19 3.443.863,58 551.114.889,77 537.517.730,88 -13.597.158,89
+21. ordentliches Ergebnis 17.851.399,77 8.941.059,86  224.698,66 9.165.758,52 -3.443.863,58 5.721.894,94 54.388.115,56 48.666.220,62
+3.2 Gesamtergebnisrechnung
+"""
+
+# 2020: Nachtragshaushalt. Die Fußnote der Tabelle sagt die Regel selbst:
+# „Spalte 6 = Spalte 5 − Summe (Spalte 3 + Spalte 4)". Posten 03 hat keinen
+# Nachtrag und vergleicht deshalb in derselben Tabelle gegen den nackten Ansatz.
+JA_2020 = """3.1 Ergebnisrechnung der Kernverwaltung
+Erträge und Aufwendungen Ergebnis des
+Vorjahres 2019
+Ansätze des
+Haushaltsjahres
+2020
+Veränderung
+durch Nachtrag
+mehr (+) /
+weniger (-) 2020
+Ergebnis des
+Haushaltsjahres
+2020
+mehr (+) /
+weniger (-) 3)
+2020
+Ermächtigung
+aus Haushalts-
+vorjahren 2020
+- Euro -
+1 2 3 4 5 6 7 8
+ordentliche Erträge
+01. Steuern und ähnliche Abgaben 274.850.289,05 269.277.800,00 -27.974.100,00 257.975.691,73 16.671.991,73
+03. Auflösungserträge aus Sonderposten 14.491.750,10 14.900.000,00  14.878.093,32 -21.906,68
+12. = Summe ordentliche Erträge 591.872.634,00 588.539.108,34 2.731.100,00 632.156.295,42 40.886.087,08
+ordentliche Aufwendungen
+20. = Summe ordentliche Aufwendungen 570.400.593,06 582.261.479,18 27.208.150,00 587.980.452,10 -21.489.177,08
+21. ordentliches Ergebnis 21.472.040,94 6.277.629,16 -24.477.050,00 44.175.843,32 62.375.264,16
+3.2 Gesamtergebnisrechnung
+"""
+
+
+def test_ergebnisrechnung_2017_ergebnis_steht_vor_dem_ansatz():
+    """2017 dreht die Reihenfolge um: Vorjahr, Ergebnis, Ansatz, Differenz.
+    Eine feste Reihenfolgeannahme vertauschte hier Plan und Ist."""
+    nach_nr = {p["nr"]: p for p in finanzberichte.parse_ergebnisrechnung(JA_2017, 2017)}
+    assert nach_nr[1]["ansatz"] == 231_033_600.00        # geplant
+    assert nach_nr[1]["ergebnis"] == 239_004_300.84      # tatsächlich
+    assert nach_nr[1]["vorjahr"] == 230_255_777.11
+    # Die Summenzeilen heißen „12.= Summe" ohne Leerzeichen vor dem Gleich.
+    assert nach_nr[12]["ansatz"] == 509_437_536.75
+    assert nach_nr[12]["ergebnis"] == 539_271_147.21
+    assert nach_nr[20]["ansatz"] == 509_265_601.41
+    # Ohne Nachtrag und ohne Ermächtigungsspalte ist der Plan der Ansatz.
+    assert nach_nr[12]["plan"] == nach_nr[12]["ansatz"]
+    assert nach_nr[12]["plan_art"] == "ansatz"
+
+
+def test_ergebnisrechnung_2018_bezug_ist_die_gesamtermaechtigung():
+    """2018 vergleicht das Ist nicht mit dem Ansatz, sondern mit der
+    Gesamtermächtigung — 7,9 bzw. 11,1 Mio. € Unterschied. Beide Werte
+    müssen erhalten bleiben, sonst ist die Mehrjahres-Kurve still falsch."""
+    nach_nr = {p["nr"]: p for p in finanzberichte.parse_ergebnisrechnung(JA_2018, 2018)}
+    ertraege, aufwendungen = nach_nr[12], nach_nr[20]
+    assert ertraege["plan_art"] == "gesamtermaechtigung"
+    assert ertraege["plan"] == 556_836_784.71          # Bezug der Abweichung
+    assert ertraege["ansatz"] == 548_948_733.89        # ursprünglicher Ansatz
+    assert ertraege["ergebnis"] == 591_905_846.44
+    assert aufwendungen["plan"] == 551_114_889.77
+    assert aufwendungen["ansatz"] == 540_007_674.03
+    assert aufwendungen["ergebnis"] == 537_517_730.88
+    # Die Abweichung bezieht sich auf den Plan, nicht auf den Ansatz.
+    assert abs((aufwendungen["ergebnis"] - aufwendungen["plan"])
+               - aufwendungen["abweichung"]) < 0.01
+
+
+def test_ergebnisrechnung_2020_bezug_ist_ansatz_plus_nachtrag():
+    """2020 ist der Jahrgang, an dem am meisten hängt: Der Corona-Nachtrag
+    verschiebt die Aufwendungen um 27,2 Mio. €. Ob die Stadt „21,5 Mio.
+    weniger ausgegeben als geplant" hat oder „5,7 Mio. mehr", entscheidet
+    allein diese Wahl — beide Zahlen stehen in derselben Zeile."""
+    nach_nr = {p["nr"]: p for p in finanzberichte.parse_ergebnisrechnung(JA_2020, 2020)}
+    aufwendungen = nach_nr[20]
+    assert aufwendungen["plan_art"] == "ansatz_nachtrag"
+    assert aufwendungen["ansatz"] == 582_261_479.18                 # vor Nachtrag
+    assert aufwendungen["plan"] == 609_469_629.18                   # + 27,2 Mio.
+    assert aufwendungen["ergebnis"] == 587_980_452.10
+    assert round(aufwendungen["plan"] - aufwendungen["ansatz"], 2) == 27_208_150.00
+    # Gegen den Plan: 21,5 Mio. weniger. Gegen den Ansatz: 5,7 Mio. mehr.
+    assert round(aufwendungen["abweichung"] / 1e6, 1) == -21.5
+    assert round((aufwendungen["ergebnis"] - aufwendungen["ansatz"]) / 1e6, 1) == 5.7
+    # Zeilen ohne Nachtrag vergleichen in derselben Tabelle gegen den Ansatz.
+    assert nach_nr[3]["plan_art"] == "ansatz"
+    assert nach_nr[3]["plan"] == nach_nr[3]["ansatz"] == 14_900_000.00
+
+
+def test_strukturprobe_12_minus_20_ist_21():
+    """Probe innerhalb der Tabelle, ohne jede zweite Quelle."""
+    for text, jahr in ((JA_2017, 2017), (JA_2018, 2018), (JA_2020, 2020)):
+        posten = finanzberichte.parse_ergebnisrechnung(text, jahr)
+        ok, warum = finanzberichte.strukturprobe(posten)
+        assert ok is True, f"{jahr}: {warum}"
+    # Stimmt das ordentliche Ergebnis nicht, fällt der Jahrgang durch.
+    posten = finanzberichte.parse_ergebnisrechnung(JA_2017, 2017)
+    for p in posten:
+        if p["nr"] == 21:
+            p["ergebnis"] += 5000
+    ok, warum = finanzberichte.strukturprobe(posten)
+    assert ok is False and "12 − 20 − 21" in warum
+
+
+def test_vorjahreskette_ueber_dokumentgrenzen():
+    """Das Ist eines Jahres taucht im Folgejahrgang als Vorjahresspalte auf."""
+    p2017 = finanzberichte.parse_ergebnisrechnung(JA_2017, 2017)
+    p2018 = finanzberichte.parse_ergebnisrechnung(JA_2018, 2018)
+    assert finanzberichte.vorjahreskette({2017: p2017, 2018: p2018}) == []
+    # Ein einzelner Jahrgang ohne Nachbarn hat keine Kette — und reißt keine.
+    assert finanzberichte.vorjahreskette({2017: p2017}) == []
+    # Ein verfälschtes Ist bricht das Glied.
+    verbogen = [dict(p) for p in p2017]
+    for p in verbogen:
+        if p["nr"] == 12:
+            p["ergebnis"] = 1.0
+    kaputt = finanzberichte.vorjahreskette({2017: verbogen, 2018: p2018})
+    assert kaputt and kaputt[0][0] == 2017 and kaputt[0][1] == 2018
+
+
+def test_thh_kopf_mit_zeilenumbruch():
+    """Im Abschluss 2022 fällt bei THH09 ein Zeilenumbruch mitten in die
+    Überschrift („A. Teil\\n-Ergebnisrechnung THH09"). Ohne den Umbruch im
+    Muster fand der Parser nur die Fortsetzungsseite ohne Summenzeilen und
+    verwarf über die Summenprobe die ganze Teilhaushalts-Ebene."""
+    umbrochen = JA_THH.replace("A. Teil-Ergebnisrechnung   THH01",
+                               "A. Teil\n-Ergebnisrechnung   THH01")
+    thh = finanzberichte.parse_teilergebnisrechnungen(umbrochen, 2023)
+    assert len(thh) == 1 and thh[0]["thh_nr"] == 1
+    assert {p["nr"] for p in thh[0]["posten"]} >= {12, 20}
+
+
+def test_vorzeichen_wird_nur_auf_den_cent_repariert():
+    """Fehlt im Dokument ein Minuszeichen, darf der Parser es ergänzen — aber
+    nur, wenn der Betrag exakt passt, und der Fall wird ausgewiesen."""
+    ohne_minus = JA_2017.replace("509.265.601,41 12.154.146,03",
+                                 "521.419.747,44 12.154.146,03")
+    nach_nr = {p["nr"]: p for p in
+               finanzberichte.parse_ergebnisrechnung(ohne_minus, 2017)}
+    # Hier passt gar nichts mehr auf den Cent — die Zeile fällt raus.
+    assert 20 not in nach_nr or not nach_nr[20].get("vorzeichen_repariert")
+
+
+def test_vorzeichen_reparatur_faellt_nicht_auf_nullzeilen_herein():
+    """Ohne Zusatzbedingung erfüllt jedes „X | 0,00 | X" die Vorzeichenprobe.
+    Im Abschluss 2018 hätte das für THH11 ein Ist von 0,00 € eingetragen,
+    richtig sind 105,0 Mio. €."""
+    kopf = {"positionen": {"vorjahr": 0, "ansatz": 1, "ergebnis": 2, "abweichung": 3},
+            "varianten": ("ansatz",), "hat_vorjahr": True}
+    # Vorjahr, dann das tückische Tripel, dann die echte Spaltenfolge.
+    zahlen = [102_428_787.88, 105_442_887.67, 0.0, 105_442_887.67,
+              61_095.97, 105_503_983.64, 104_950_447.44, -553_536.20]
+    werte = finanzberichte._spalten_zuordnen(zahlen, kopf)
+    assert werte is not None
+    assert werte["ergebnis"] == 104_950_447.44      # nicht 0,00
+    assert werte["plan"] == 105_503_983.64
+    assert werte["vorzeichen_repariert"] is False
+
+
+# --- Das „Warum": Erläuterungen zu den Abweichungen -------------------------
+# Echter Ausschnitt aus Abschnitt 6.3.1 des Jahresabschlusses 2024, samt
+# Silbentrennung am Zeilenende und eingestreutem Seitenfuß („JA 161").
+
+JA_WARUM = """6.3.1
+Erläuterung der erheblichen Plan / Ist-Abweichungen in der Ergebnis-
+rechnung
+
+Als erheblich werden die Abweichungen betrachtet, die mindestens 20 % ge-
+genüber dem Ansatz ausmachen.
+
+JA 161
+
+01. Steuern und ähnliche Abgaben (+75,1 Millionen Euro, +24,82 %)
+
+Die in dieser Kontengruppe planüberschreitenden Mehrerträge entfallen na-
+hezu auf den Bereich der Gewerbesteuer und resultieren unter anderem aus
+einem Einmaleffekt.
+
+04. sonstige Transfererträge (+2,1 Millionen Euro, +26,59 %)
+
+Im Teilhaushalt 10 ergeben sich Mehrerträge von circa 415.000 Euro.
+
+6.3.2
+Erläuterung der erheblichen Plan / Ist-Abweichungen in der Finanzrech-
+nung
+Laufende Verwaltungstätigkeit
+"""
+
+
+def test_parse_abweichungsgruende():
+    gruende = finanzberichte.parse_abweichungsgruende(JA_WARUM, 2024)
+    nach_nr = {g["nr"]: g for g in gruende}
+    assert set(nach_nr) == {1, 4}
+    steuern = nach_nr[1]
+    assert steuern["delta_mio"] == 75.1 and steuern["prozent"] == 24.82
+    assert steuern["bezeichnung"] == "Steuern und ähnliche Abgaben"
+    # Silbentrennung aufgelöst, Seitenfuß raus, Wortlaut unverändert.
+    assert "nahezu auf den Bereich der Gewerbesteuer" in steuern["text"]
+    assert "na- hezu" not in steuern["text"]
+    assert "JA 161" not in steuern["text"]
+    # Der Abschnitt zur FINANZrechnung trägt dieselbe Überschrift und darf
+    # nicht mitgelesen werden.
+    assert "Laufende Verwaltungstätigkeit" not in steuern["text"]
+
+
+def test_abweichungsgruende_brauchen_die_rechenprobe():
+    """Die Überschrift nennt die Abweichung doppelt — als Betrag und als
+    Prozentsatz. Beides muss zur geparsten Tabellenzeile passen."""
+    gruende = finanzberichte.parse_abweichungsgruende(JA_WARUM, 2024)
+    passend = [{"nr": 1, "abweichung": 75_138_954.16, "plan": 302_740_000.00},
+               {"nr": 4, "abweichung": 2_100_000.00, "plan": 7_898_000.00}]
+    angenommen, abgelehnt = finanzberichte.pruefe_abweichungsgruende(gruende, passend)
+    assert len(angenommen) == 2 and abgelehnt == []
+
+    # Betrag passt nicht → raus.
+    daneben = [{"nr": 1, "abweichung": 5_000_000.00, "plan": 302_740_000.00}]
+    angenommen, abgelehnt = finanzberichte.pruefe_abweichungsgruende(gruende, daneben)
+    assert angenommen == [] and len(abgelehnt) == 2
+
+    # Betrag passt, Prozentsatz nicht → ebenfalls raus.
+    schief = [{"nr": 1, "abweichung": 75_138_954.16, "plan": 1_000_000_000.00}]
+    angenommen, abgelehnt = finanzberichte.pruefe_abweichungsgruende(gruende, schief)
+    assert angenommen == [] and any("%" in a for a in abgelehnt)
+
+
+def test_store_abweichungsgruende_roundtrip(tmp_path):
+    store = CouncilStore(tmp_path / "c.sqlite")
+    gruende = finanzberichte.parse_abweichungsgruende(JA_WARUM, 2024)
+    assert store.save_abweichungsgruende(2024, gruende, "JA 2024", "http://x") == 2
+    assert store.save_abweichungsgruende(2024, gruende, "JA 2024", "http://x") == 2
+    geladen = store.get_abweichungsgruende(2024)
+    assert [g["nr"] for g in geladen] == [1, 4]
+    assert geladen[0]["prozent"] == 24.82
+    assert store.get_abweichungsgruende(1999) == []
+    store.close()
+
+
+# --- Schlussberichte des Rechnungsprüfungsamts ------------------------------
+
+def test_pruefbericht_erkennung():
+    """Die Labels taugen zur Auswahl nicht — „Schlussbericht JA 2017" ist der
+    Bericht zum Eigenbetrieb. Erkannt wird an der Eingangsformel, und die ist
+    im Volltext umbrochen: Ein LIKE darauf findet nichts."""
+    echt = ("Schlussbericht des Rechnungsprüfungsamtes über die \n"
+            "Prüfung des Jahresabschlusses 2021 der Stadt Oldenburg (Oldb)\n"
+            "Rechnungsprüfungsamt " + "Text zur Prüfung. " * 50)
+    treffer = finanzberichte.pruefbericht_aus_anlage("13 Schlussbericht RPA 2021", echt)
+    assert treffer and treffer["jahr"] == 2021 and treffer["lesbar"] is True
+
+    # Stiftungen und Eigenbetriebe tragen eine andere Formel.
+    stiftung = ("Schlussbericht des Rechnungsprüfungsamtes über die Prüfung des "
+                "Jahresabschlusses 2021 der Klävemann-Stiftung " + "Text. " * 50)
+    assert finanzberichte.pruefbericht_aus_anlage("Klävemann 2021", stiftung) is None
+
+    # 2024: Der Volltext ist Glyphen-Müll, das Dokument bleibt verlinkbar.
+    kaputt = "□ □ /12 /8 /6 □ /13 /8 /2 /3 /14 /5 " * 40
+    treffer = finanzberichte.pruefbericht_aus_anlage(
+        "Schlussbericht des Rechnungsprüfungsamtes über die Prüfung des "
+        "Jahresabschlusses 2024 der Stadt Oldenburg (Oldb)", kaputt)
+    assert treffer and treffer["jahr"] == 2024 and treffer["lesbar"] is False
+
+
+def test_store_pruefberichte_roundtrip(tmp_path):
+    store = CouncilStore(tmp_path / "c.sqlite")
+    store.save_pruefbericht_quelle(2023, "Schlussbericht 2023", "http://x", 61, True)
+    store.save_pruefbericht_quelle(2024, "Schlussbericht 2024", "http://y", 64, False)
+    berichte = store.get_pruefbericht_quellen()
+    assert [b["jahr"] for b in berichte] == [2023, 2024]
+    assert berichte[0]["lesbar"] == 1 and berichte[1]["lesbar"] == 0
     store.close()
