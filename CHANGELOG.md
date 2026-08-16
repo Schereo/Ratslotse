@@ -481,6 +481,20 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   einbringt, steht an jeder von ihnen, dass sie der Stand der Einbringung
   sind — was der Rat in den Beratungen noch ändert, waren zuletzt bis zu
   13 Mio. €. (#530)
+- **Der Haushalt hat jetzt einen Weg statt einer Kachelwand — und drei Seiten
+  sind überhaupt erst auffindbar.** „Wann wird der Haushalt entschieden?" und
+  der Städtevergleich waren von keiner Seite aus verlinkt, das Verzeichnis der
+  Teilhaushalte nur rückwärts über die Detailseite eines einzelnen Bereichs.
+  Der Wegweiser auf der Übersicht führt jetzt durch alle zehn
+  Vertiefungsseiten, und zwar in vier benannten Stufen statt als lange Liste:
+  erst die Zahlen (woher das Geld kommt, was hinter den Bereichsnamen steckt,
+  was fest ist, was einzelne Aufgaben kosten), dann die Gegenprobe (was
+  daraus wurde, und was das Rechnungsprüfungsamt dazu sagt), dann der Rahmen
+  (die Betriebe neben dem Haushalt, der Vergleich mit anderen Städten),
+  zuletzt das Mitreden (wann entschieden wird, und was sich drehen ließe).
+  Der Städtevergleich steht bewusst spät: Er beantwortet eine Frage, die sich
+  erst stellt, wenn man die eigenen Zahlen kennt. Auf dem Handy braucht das
+  trotz drei zusätzlicher Ziele kaum mehr Platz als vorher. (#529)
 
 <!-- GEPARKT (nur dev.ratslotse.de, Umgebungs-Gate): Eintrag aktivieren,
      sobald der Kommunalwahl-Vergleich auf Prod freigeschaltet wird.

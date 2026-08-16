@@ -11,29 +11,62 @@ welche schlicht fehlt.
 
 ## Die Seiten
 
+Der Einstieg trägt einen **Wegweiser** (`components/haushalt/wegweiser.tsx`),
+und der ist keine Linkliste, sondern die Leserichtung des ganzen Bereichs: zehn
+Schritte in vier Stufen. Die Tabelle steht deshalb in genau dieser Reihenfolge.
+
 | Route | Inhalt |
 |---|---|
-| `/haushalt` | Übersicht: Kernzahlen, Rücklagen-Reichweite, Geldfluss (Balken oder 100-Euro-Ansicht), Zeitreihe, Bereichskarten |
-| `/haushalt/bereich?name=<slug>` | Dossier je Teilhaushalt: Brutto/Netto, Kostendeckung, Brutto-gegen-Netto-Vergleich, Entwicklung |
-| `/haushalt/einnahmen` | Alle Einnahmequellen mit Spielraum-Kodierung (frei / begrenzt / kein Einfluss) |
+| `/haushalt` | Einstieg: Anzeigetafel mit der Kernzahl, Gegenbalken (umschaltbar auf die 100-Euro-Ansicht), Rücklagen-Reichweite, Bereichstabelle, Geldfluss, Zeitreihe, Datenstand |
+| **Die Zahlen** | |
+| `/haushalt/einnahmen` | Schritt 1 — alle Einnahmequellen, **nach Entscheidungsmacht gruppiert** statt nach Betrag sortiert |
+| `/haushalt/bereiche` | Schritt 2 — die Teilhaushalte im Klartext: was hinter „Soziales" oder „Finanzmanagement" steckt, mit Betrag |
+| `/haushalt/pflicht` | Schritt 3 — muss oder kann: Ausgaben nach Gestaltungsspielraum, gegen die Selbstauskunft der Stadt gehalten |
+| `/haushalt/produkte[?nr=<produkt_nr>]` | Schritt 4 — „Was kostet eigentlich …?", Produktsuche mit Filtern (Amt, Spielraum); `nr` öffnet den Steckbrief |
+| **Die Gegenprobe** | |
+| `/haushalt/plan-ist[?jahr=<jahr>]` | Schritt 5 — geplant gegen tatsächlich, je Teilhaushalt, mit den Abweichungsgründen der Verwaltung im Wortlaut |
+| `/haushalt/pruefung[?jahr=<jahr>]` | Schritt 6 — alle Feststellungen der RPA-Schlussberichte im Wortlaut, mit Textziffer, Seite und Deeplink; dazu die Ketten über die Jahrgänge |
+| **Der Rahmen** | |
+| `/haushalt/konzern` | Schritt 7 — Kernverwaltung gegen Gesamtabschluss über elf Jahrgänge, Aufschlüsselung nach Aufgabenträgern, Gegenprobe gegen den Jahresabschluss |
+| `/haushalt/vergleich` | Schritt 8 — Steuerkraft, Hebesätze und Steuereinnahmekraft der acht kreisfreien Städte aus der amtlichen Statistik — und die Erklärung, warum Ausgaben und Personal **nicht** verglichen werden |
+| **Mitreden** | |
+| `/haushalt/jahr` | Schritt 9 — wann der Haushalt entschieden wird: jede Station im Rat, aus acht Jahrgängen, mit Link auf die Sitzung |
+| `/haushalt/labor` | Schritt 10 — Was-wäre-wenn: Hebesatz-Regler und Kürzungen, jede Bewegung in Mio. €, € je Einwohner und Anteil an der Lücke; dauerhaft sichtbare Gegenrechnung |
+| **Steckbriefe (ohne Schritt)** | |
+| `/haushalt/bereich?name=<slug>` | Dossier je Teilhaushalt: Wasserfall Brutto → eigene Erträge → Zuschussbedarf, Entwicklung seit 2020, Produkte des Bereichs |
 | `/haushalt/steuer?art=<slug>` | Steckbrief je Einnahmeart: „Wer entscheidet was", Ist-Kurve, Hebesatz, Ein-Punkt-Überschlag |
-| `/haushalt/produkte[?nr=<produkt_nr>]` | „Was kostet eigentlich …?" — Produktsuche mit Filtern (Amt, Spielraum); `nr` öffnet den Steckbrief |
-| `/haushalt/pflicht` | Muss oder kann — Teilhaushalte nach Gestaltungsspielraum |
-| `/haushalt/labor` | Was-wäre-wenn: Hebesatz-Regler und Kürzungen, jede Bewegung in Mio., € je Einwohner und Anteil an der Lücke; dauerhaft sichtbare Gegenrechnung |
-| `/haushalt/pruefung` | Was das Rechnungsprüfungsamt beanstandet: alle Feststellungen der Schlussberichte im Wortlaut, mit Textziffer, Seite und Deeplink; dazu die Ketten über die Jahrgänge |
-| `/haushalt/konzern` | Der Konzern Stadt: Kernverwaltung gegen Gesamtabschluss über elf Jahrgänge, Aufschlüsselung nach Aufgabenträgern, Gegenprobe gegen den Jahresabschluss |
-| `/haushalt/vergleich` | Städtevergleich: Steuerkraft, Hebesätze und Steuereinnahmekraft der acht kreisfreien Städte aus der amtlichen Statistik — und die Erklärung, warum Ausgaben und Personal **nicht** verglichen werden |
+
+Die beiden Steckbriefe tragen keinen Schritt, weil sie einen Bereich bzw. eine
+Einnahmeart brauchen, über die man sie aufruft — als eigener Schritt stünde
+dort ein beliebiger Einzelfall. Man erreicht sie aus Schritt 1 und 2 sowie aus
+der Bereichstabelle des Einstiegs.
+
+:::caution[Die Reihenfolge steht an zwei Stellen]
+`/haushalt/konzern` schreibt seine Nummer selbst in den Kicker („Stadtfinanzen
+Oldenburg · Schritt 7"). Der Wegweiser ist so geordnet, dass das stimmt. Wer
+Schritte umsortiert oder einen dazwischenschiebt, zieht `konzern/page.tsx` mit
+nach — sonst widersprechen sich zwei Seiten still.
+:::
 
 Query-Parameter statt dynamischer Segmente, weil der Capacitor-Export die
 Slugs zur Bauzeit nicht kennt — dieselbe Konvention wie `/council/decision?id=`.
 
 ## Woher die Daten kommen
 
-Fast alles läuft über **einen** Endpunkt: `GET /api/council/haushalt` liefert
-Planjahre, Ist-Steuern, Steuerkraft und die Einwohnerzahl in einem Aufruf.
-Nur die Prüfungsfeststellungen hängen an einem eigenen
-(`GET /api/council/haushalt/pruefberichte`) — sie sind eine Viertel-Megabyte
-Prosa und haben auf Seiten, die sie nicht zeigen, nichts zu suchen.
+Das Fundament liefert **ein** Endpunkt: `GET /api/council/haushalt` gibt
+Planjahre, Ergebnisrechnung, Ist-Steuern, Steuerkraft und die Einwohnerzahl in
+einem Aufruf — er trägt den Einstieg und die meisten Vertiefungsseiten. Einen
+**eigenen** Endpunkt bekommt nur, was groß genug ist, um Seiten zu belasten,
+die es nicht zeigen:
+
+| Endpunkt | Wofür | Warum getrennt |
+|---|---|---|
+| `…/haushalt/pruefberichte` | `/haushalt/pruefung`, Prüfungs-Karte auf `/haushalt/plan-ist` | eine Viertel-Megabyte Prosa |
+| `…/haushalt/produkte` | `/haushalt/produkte`, `/haushalt/pflicht`, `/haushalt/bereich`, Labor | mehrere hundert Zeichen Steckbrief je Zeile; gesucht und gefiltert wird serverseitig |
+| `…/haushalt/konzern` | `/haushalt/konzern` | eigene Tabellen, eigene Jahrgangsreihe |
+| `…/haushalt/vergleich` | `/haushalt/vergleich` | eigene Tabelle (LSN), acht Städte × Jahrgänge |
+| `…/haushalt/weg` | `/haushalt/jahr` | Ratsdaten statt Finanzdokumenten (Beratungsfolge, Sitzungen) |
+| `…/haushalt/datenstand` | Block „Bis wann die Zahlen reichen" | rechnet über den Bestand, nicht über Inhalte |
 
 | Tabelle | Inhalt | Quelle | Ingest |
 |---|---|---|---|
@@ -49,6 +82,7 @@ Prosa und haben auf Seiten, die sie nicht zeigen, nichts zu suchen.
 | `council_pruefberichte` | Prüfungsfeststellungen 2017–2023, eine Zeile je Randmarke | Schlussberichte des Rechnungsprüfungsamts — **Anlagen im RIS** | `scripts/ingest_pruefberichte.py` |
 | `council_konzern_posten` | Gesamtergebnisrechnung des **Konzerns** je Posten, 2014–2024 | Konsolidierte Gesamtabschlüsse — **Anlagen im RIS** | `scripts/ingest_konzernabschluss.py` |
 | `council_konzern_traeger` | Dieselben Summen je Aufgabenträger (Kernverwaltung, Klinikum, Eigenbetriebe …), 2017–2024, in **TEUR** | dito | dito |
+| `council_staedtevergleich` | Steuerkraft, Hebesätze und Steuereinnahmekraft der acht kreisfreien Städte je Jahrgang — Reihen `steuerkraft` und `realsteuern` | Landesamt für Statistik Niedersachsen (Kommunaler Finanzausgleich, Realsteuervergleich) | `scripts/ingest_staedtevergleich.py` |
 
 :::note[Zwei Tabellen zu denselben Berichten]
 `council_pruefbericht_quellen` hält die **Fundstelle** des Schlussberichts
@@ -57,21 +91,22 @@ Prosa und haben auf Seiten, die sie nicht zeigen, nichts zu suchen.
 Randmarke). Zwei Ebenen, zwei Tabellen — die Namen halten sie auseinander.
 :::
 
-Alle Ingests sind idempotent. Die vier Schichten aus dem **Ratsinformations-
+Alle Ingests sind idempotent. Die fünf Schichten aus dem **Ratsinformations-
 system** zieht seit 08/2026 ein Cron von allein nach (siehe unten); die
 Ingest-Skripte bleiben der Weg von Hand, wenn ein verbesserter Parser über den
 **Bestand** laufen soll. Die Plan- und Open-Data-Schichten (`council_haushalt`,
 `council_steuern`, `council_steuerkraft`, `council_einwohner`) kommen per
-Download von oldenburg.de und bleiben Handarbeit.
+Download von oldenburg.de und bleiben Handarbeit, ebenso der Städtevergleich
+(LSN, einmal jährlich — siehe [unten](#kein-neues-paket-kein-cron)).
 
 ## Herkunft: woher jede einzelne Zahl stammt
 
-Jede Zeile der neun Tabellen oben trägt eine `herkunft_id`. Sie zeigt auf
+Jede Zeile der Tabellen oben trägt eine `herkunft_id`. Sie zeigt auf
 **`council_herkunft`** — einen Datensatz je Dokument-und-Abschnitt mit:
 
 | Feld | Was drinsteht | Beispiel |
 |---|---|---|
-| `art` | `ris` · `opendata` · `stadt` | `ris` |
+| `art` | `ris` · `opendata` · `stadt` · `lsn` | `ris` |
 | `dokument_id` | `council_anlagen.document_id` — der **stabile Anker** | `280863` |
 | `label` / `url` | wie das Dokument heißt und wo es liegt | „Jahresabschluss 2024 …" |
 | `fundstelle` | wo **im** Dokument gelesen wurde | „Abschnitt 6.3.1 — Erläuterungen …" |
@@ -91,14 +126,19 @@ ausführlich im Modulkopf von `council/herkunft.py`, kurz:
    Konsolidierungsstufen. Verschiedene Dokumente heißen automatisch
    verschiedene Herkunfts-Datensätze — ohne dass eine Tabelle dafür etwas
    wissen muss.
-2. **Ein neues Herkunftsfeld darf nicht neun `ALTER TABLE` kosten.**
+2. **Ein neues Herkunftsfeld darf nicht zwölf `ALTER TABLE` kosten.** So viele
+   Tabellen stehen inzwischen in `HERKUNFT_TABELLEN`, und es werden mehr.
 3. **Wiederholung.** Ein Jahresabschluss-Jahrgang schreibt rund 200 Zeilen aus
    demselben Abschnitt hinter derselben Probe.
 
 Die alten Spalten (`quelle_label`, `quelle_url`, `source_url`) **bleiben** und
-werden weiter aus derselben Angabe gefüllt. Sie zu entfernen hieße, neun
-Tabellen neu zu schreiben, darunter vier, deren Inhalt nur über einen Download
-von oldenburg.de wiederzubeschaffen wäre — kosmetischer Gewinn, echtes Risiko.
+werden weiter aus derselben Angabe gefüllt. Sie zu entfernen hieße, neun der
+zwölf Tabellen neu zu schreiben, darunter vier, deren Inhalt nur über einen
+Download von oldenburg.de wiederzubeschaffen wäre — kosmetischer Gewinn,
+echtes Risiko. Die drei jüngsten (beide Konzern-Tabellen und der
+Städtevergleich) sind erst mit der Herkunft entstanden und tragen gar keine
+Altspalten; im Nachrüst-Weg stehen sie trotzdem, weil ein Eintrag „nichts
+nachzutragen" billiger ist als eine Ausnahme (`_HERKUNFT_ALTFELDER`).
 
 `GET /api/council/haushalt` liefert die Datensätze als `herkunft`, nach ID
 nachschlagbar, samt eines Erklärsatzes je Probe für die Oberfläche.
@@ -176,9 +216,10 @@ sind.
 
 ## Der Bereich hält sich selbst aktuell
 
-Fünf Datenschichten, jede einmal von Hand eingelesen — ohne Cron veraltet der
+Sechs Datenschichten, jede einmal von Hand eingelesen — ohne Cron veraltet der
 ganze Bereich still, sobald niemand mehr daran denkt. `check_finanzdaten.py`
-(alle zwei Wochen) nimmt das ab.
+(alle zwei Wochen) nimmt das ab. Maßgeblich ist `finanzquellen.REIHENFOLGE`;
+diese Doku zählt nach, sie legt nichts fest.
 
 **Bestandsgesteuert, nicht kalendergesteuert.** Der Job fragt nicht „ist es
 September?", sondern *„welche Einheit fehlt mir, und liegt inzwischen ein
@@ -209,7 +250,7 @@ Tupel, deren erstes Element immer der Jahrgang ist:
 |---|---|---|
 | Jahresabschluss | Ebene | `(2024, "gesamt")`, `(2024, "teilhaushalte")` |
 | Teilhaushalts-Pläne | Teilhaushalt | `(2024, 7)` |
-| Schlussbericht, Prüfungsfeststellungen, Haushaltsplan | der Jahrgang selbst | `(2024,)` |
+| Schlussbericht, Prüfungsfeststellungen, Gesamtabschluss, Haushaltsplan | der Jahrgang selbst | `(2024,)` |
 
 Den Schlüssel eines Teilhaushalts-Plans liefern Textkopf und Label zusammen:
 der Jahrgang aus der ersten Ansatzspalte, die Nummer aus `THH\s*0*(\d+)` im
@@ -220,10 +261,17 @@ trifft immer genau das, was `parse_teilergebnishaushalt` am Ende vergibt.
 Aus acht Jahrgängen Sitzungsdaten (`council_sessions.session_date` über
 `council_agenda_items`) ergibt sich der Rhythmus der Stadt:
 
-| Was | Wann im Rat | Ausnahmen |
-|---|---|---|
-| Jahresabschluss + RPA-Schlussbericht + Rechenschaftsbericht | **Anfang September** | 1× August |
-| Haushaltsplan mit Gesamtergebnishaushalt und Teilhaushalten | **Anfang Oktober** | 1× November |
+| Was | Wann im Rat | Versatz zum Jahrgang | Ausnahmen |
+|---|---|---|---|
+| Jahresabschluss + RPA-Schlussbericht + Rechenschaftsbericht | **Anfang September** | + 1 Jahr | 1× August |
+| Haushaltsplan mit Gesamtergebnishaushalt und Teilhaushalten | **Anfang Oktober** | Plan: − 1 Jahr · Teilhaushalte: ± 0 | 1× November |
+| Konsolidierter Gesamtabschluss (Prüfbericht des RPA) | **Februar** | + 2 Jahre | Juni bis Februar |
+
+Der dritte Takt kam mit dem Konzern-Bereich dazu und ist der langsamste: Ein
+Gesamtabschluss entsteht erst, wenn alle einbezogenen Betriebe geprüft sind,
+und liegt damit rund zwei Jahre hinter seinem Haushaltsjahr. Deshalb steht auf
+`/haushalt` der Plan für das kommende Jahr und auf `/haushalt/konzern` eine
+Rechnung von vorgestern — beides richtig, beides erklärt der Datenstand-Block.
 
 Der Monat steuert **nicht** die Suche, sondern nur die Meldung: Bleibt ein
 Jahrgang länger als vier Wochen über seinen üblichen Monat hinaus aus, geht ein
@@ -313,7 +361,14 @@ Antworten, und eine davon veraltet still.
 | Prüfungsfeststellungen | Text `%Rechnungsprüfungsamtes%`, > 30 Seiten; entschieden am Textanfang | `council_pruefberichte` | September, Jahrgang + 1 |
 | Teilhaushalts-Pläne | Label `%THH%`, > 40 Seiten | `council_produkte` | Oktober, Jahrgang + 0 |
 | Gesamtergebnishaushalt | Label `%Gesamtergebnishaushalt%`, > 10 Seiten; Jahrgang aus dem **Tabellenkopf** (vier der acht Dokumente tragen keine Jahreszahl im Label) | `council_ergebnishaushalt` | Oktober, Jahrgang − 1 |
+| Konsolidierter Gesamtabschluss | **nur** Text (`konzernabschluss.TEXT_MUSTER`), > 40 Seiten — die Labels dieser Reihe sind wertlos | `council_konzern_posten` (+ `council_konzern_traeger`) | Februar, Jahrgang + 2 |
 | Haushaltsplan | *(kein Anlagen-Muster — Download)* | `council_haushalt` | Oktober, Jahrgang − 1 |
+
+Der Städtevergleich (`council_staedtevergleich`) steht **nicht** in dieser
+Tabelle: Seine Quellen sind Tabellenmappen des Landesamts, keine Anlagen im
+Ratsinformationssystem, und sie erscheinen einmal jährlich. Er hat deshalb
+weder Erkennung noch Cron — und taucht folgerichtig auch im Datenstand-Block
+nicht auf.
 
 ### Der Datenstand ist sichtbar
 
@@ -323,8 +378,9 @@ Bestand; der Block **„Bis wann die Zahlen reichen"** am Fuß von `/haushalt`
 
 Das ist kein Entwickler-Feature. Auf `/haushalt` steht der Plan für 2026, auf
 `/haushalt/plan-ist` die Abrechnung für 2024, auf `/haushalt/pruefung`
-Feststellungen bis 2023 — die Frage „warum steht hier 2024 und nicht 2025?"
-müsste sonst auf neun Seiten einzeln beantwortet werden. Die Ursache ist immer
+Feststellungen bis 2023, auf `/haushalt/konzern` eine Rechnung bis 2024 — die
+Frage „warum steht hier 2024 und nicht 2025?" müsste sonst auf jeder der zwölf
+Unterseiten einzeln beantwortet werden. Die Ursache ist immer
 dieselbe und liegt bei der Stadt. Wo ein Jahrgang erwartet wird, aber noch
 fehlt, steht das ausdrücklich da: *„Der Jahrgang 2025 wird üblicherweise im
 September 2026 vorgelegt."* Das Wort „fehlt" kommt nicht vor — was die Stadt
@@ -345,15 +401,37 @@ Namen, und zieht die Liste aus den Daten: `automatisch === false`.
 
 ## Die redaktionelle Schicht
 
-Drei Dinge liefert keine Datenquelle. Sie stehen als gepflegte Konstanten im
+Fünf Dinge liefert keine Datenquelle. Sie stehen als gepflegte Konstanten im
 Frontend, damit sie überprüfbar bleiben:
 
+- **`lib/haushalt-bereiche.ts`** — das Bereichs-Wörterbuch: je Teilhaushalt ein
+  kanonischer Schlüssel, die Alias-Liste **jeder im Bestand vorkommenden**
+  Schreibweise (gegen `council_haushalt`, `council_ergebnisrechnung` und
+  `council_produkte` geprüft), ein Kurzname fürs Balkensegment und die eine
+  Zeile Klartext, die `/haushalt/bereiche` trägt.
+  Der Grund ist eine Wartungsfalle: Die Stadt benennt Teilhaushalte um,
+  ohne den Zuschnitt zu ändern — Teilhaushalt 9 hat vier Schreibweisen in
+  sieben Jahrgängen. Jede Map auf den exakten Namen verliert beim nächsten
+  Jahrgang stillschweigend Zeilen. `bereichKanon()` gibt deshalb **immer** etwas
+  zurück; ein unbekannter Name fällt auf sich selbst zurück (`bekannt: false`),
+  statt zu verschwinden.
 - **`lib/haushalt-steuern.ts`** — je Einnahmeart: die Stufen „Wer entscheidet
   was", Spielraum-Einstufung, Rechenbeispiel, Lotti-Erklärung.
 - **`lib/haushalt-pflicht.ts`** — Einordnung der Teilhaushalte in Pflicht /
   Pflicht mit Spielraum / überwiegend freiwillig. Eine Einschätzung auf Ebene
-  ganzer Teilhaushalte; die Seite sagt das auch.
+  ganzer Teilhaushalte; die Seite sagt das auch — und hält sie seit 08/2026
+  gegen die Selbstauskunft der Stadt (s. u.).
+- **`lib/haushalt-vergleich.ts`** — was auf `/haushalt/vergleich` nicht aus der
+  Landesstatistik kommt: die Ausgliederungs-Übersicht der sieben Städte aus
+  Vorlage 18/0911 und das wörtliche Zitat der Verwaltung dazu.
 - **`lib/haushalt-quellen.ts`** — Fundstellen, Datenstände und Lizenzen.
+
+Nicht redaktionell, aber leicht damit zu verwechseln: `lib/haushalt-jahr.ts`,
+`lib/haushalt-konzern.ts` und `lib/haushalt-pruefung.ts` halten **Rechenwege**
+zu ihren Endpunkten, keine gepflegten Inhalte. Sie liegen im Frontend, weil es
+Aussagen *über* die Jahrgänge sind („der Entwurf kam siebenmal im Oktober") und
+sich mitverändern müssen, wenn ein Jahrgang dazukommt — genau das, was die
+Regel „keine jahresabhängige Rechenaussage als fester Text" verlangt.
 
 ## Quellen-System
 
@@ -460,8 +538,37 @@ Zu jedem Produkt führen die Pläne einen Steckbrief: **Kurzbeschreibung**
 (was die Aufgabe umfasst), **Auftragsgrundlage** (die Gesetze, Satzungen und
 Verträge dahinter), **Grad der Beeinflussbarkeit**, **Wirkungskreis** und
 **Zielgruppe**. Das beantwortet die häufigste Bürgerfrage zum Haushalt — „was
-kostet eigentlich das Stadtarchiv?" — und belegt die Pflicht/Kür-Einordnung,
-die auf `/haushalt/pflicht` bisher nur geschätzt ist.
+kostet eigentlich das Stadtarchiv?" — und gibt der Pflicht/Kür-Einordnung auf
+`/haushalt/pflicht` einen Boden.
+
+:::note[Die Einordnung ist redaktionell — aber nicht mehr ungeprüft]
+Bis 08/2026 stand hier und im Kopf von `lib/haushalt-pflicht.ts`, es gebe
+**keine** Datenquelle, die Teilhaushalte in Pflicht und Kür einteilt. Der erste
+Halbsatz gilt weiter: Eine amtliche Einteilung **ganzer** Teilhaushalte gibt es
+nicht und wird es nicht geben, weil in jedem beides steckt. Der Rest stimmt
+nicht mehr — die Produktebene trägt zu jeder einzelnen Aufgabe zwei Angaben der
+Stadt selbst: `auftragsgrundlage` (377 von 377 Zeilen) und `beeinflussbarkeit`,
+also wie viel Spielraum die **Stadt** sieht (371 von 377).
+
+`spielraumBefunde()` fasst beides je Teilhaushalt **nach Aufwand gewichtet**
+zusammen (nicht nach Kopfzahl — sonst zöge ein 200.000-€-Produkt so schwer wie
+ein 70-Mio.-€-Produkt), `abgleich()` hält es gegen unsere Stufe. Ergebnis:
+**Bei 6 von 9 Teilhaushalten mit Produktdaten (Stand 2023) deckt es sich.** Bei
+drei nicht — bei „Jugend und Familie" sagen wir „Pflicht mit Spielraum", die
+Stadt sieht für 95 % des Geldes kaum welchen; bei „Finanzmanagement und Recht"
+und „Stadtplanung" ist es umgekehrt. Vier Teilhaushalte haben gar keine
+Produktebene und zählen als **offen**, nicht als Übereinstimmung.
+
+Die Abweichung wird ausgewiesen, nicht geglättet: Die redaktionelle Stufe
+bleibt stehen, die Zeile bekommt eine Marke, die Zahl steht als Befund über der
+Liste. Das ist die interessanteste Auskunft, die die Seite hat — sie
+verschwände, wenn wir uns der Selbstauskunft anpassten.
+
+**Zwei Jahre, nicht eins.** Der Plan reicht bis ins Kopfjahr der Seite, die
+Produktebene endet 2023. Jede Aussage aus ihr trägt deshalb ihren eigenen
+Jahresstempel (`SpielraumBefund.jahr`). Vermischen wäre die stillste Art, hier
+falsch zu liegen.
+:::
 
 Der Bestand (377 Produkte, 2018–2023): Auftragsgrundlage und Wirkungskreis
 tragen 100 %, Kurzbeschreibung, Beeinflussbarkeit und Zielgruppe je 98,4 %.
@@ -972,19 +1079,23 @@ einzelne Stadt, deren Hebesatzprobe nicht aufgeht, fällt mit Begründung heraus
 ohne den Jahrgang mitzunehmen.
 
 :::danger[Nicht mit `council_steuerkraft` mischen]
-Beide Tabellen führen Steuerkraftmesszahlen, und sie sind **nicht** dasselbe.
-Unser Open-Data-Datensatz 1106 trägt dieselben Beträge wie das LSN, aber unter
-einer um **ein Jahr verschobenen** Beschriftung: Was das LSN „KFA 2026" nennt,
-heißt dort „Ausgleichsjahr 2025" (drei Wertepaare geprüft, zwei unabhängige
-Wege). Welche Angabe stimmt, ist offen und wird bei der Statistikstelle der
-Stadt geklärt.
+Beide Tabellen führen Steuerkraftmesszahlen. **Der Jahresversatz ist seit
+#516 entschieden** — nicht an einer Definition, sondern an den Büchern der
+Stadt: Der Open-Data-Datensatz 1106 beschriftete seine Zeilen ein Jahr zu früh,
+`parse_steuerkraft` rückt sie aufs Ausgleichsjahr (Begründung
+[unten](#der-datensatz-1106-ist-um-ein-jahr-verschoben)). Beide Reihen tragen
+damit dieselbe Jahresangabe; der frühere Satz „welche Angabe stimmt, ist offen"
+gilt nicht mehr.
 
-Bis dahin liegen die LSN-Werte in einer **eigenen Tabelle**
-(`council_staedtevergleich`) mit der Jahresangabe des Landesamts, und kein
-Lesepfad legt die beiden Reihen zusammen. Sie zu mischen hieße, zwei Jahre
-gegeneinander zu plotten, die nicht dasselbe meinen. Die Seite nennt den
-offenen Punkt in ihrem Grenzen-Block — `/haushalt/steuer` zeigt dieselben
-Beträge unter der anderen Beschriftung.
+**Zusammengerechnet werden sie trotzdem nicht.** Der Grund ist jetzt ein
+anderer, aber es bleibt einer: Es sind zwei Veröffentlichungen — die CSV der
+Stadt und der Bericht des Landesamts —, und die können sich durch Nachträge und
+Revisionen um kleine Beträge unterscheiden. Die LSN-Werte liegen deshalb in
+einer **eigenen Tabelle** (`council_staedtevergleich`), kein Lesepfad legt die
+Reihen zusammen, und `/haushalt/vergleich` sagt das in seinem Grenzen-Block.
+
+Offen ist nur noch die Meldung an die Quelle: Ansprechpartner laut Katalog ist
+die Statistikstelle der Stadt Oldenburg.
 :::
 
 ## Was bewusst fehlt
@@ -1023,6 +1134,29 @@ Der Bereich zeigt lieber eine Lücke als eine Schätzung:
   Oldenburg 2024, vom Dokument selbst markiert) — eine Grafik ohne Jahr an
   jedem Balken wäre still falsch, und das gehört sorgfältig gemacht statt
   nebenbei.
+- **Investitionen (Finanzhaushalt)** — es gibt dafür weder Tabelle noch
+  Parser: `council_haushalt` trägt ausschließlich den **Ergebnis**haushalt
+  (`ertraege`, `aufwendungen`, `ergebnis` je Teilhaushalt). Deshalb steht auf
+  der Anzeigetafel ausdrücklich, dass das Budget größer ist als die gezeigte
+  Zahl, und deshalb nennt **keine** Seite eine Investitionssumme — auch nicht
+  gerundet, auch nicht als Größenordnung. Der Kassenzettel-Gedanke „227 € für
+  Kultur und Sport" enthält keine neue Sporthalle, wohl aber die Abschreibung
+  auf die alte; wer eine Investitionszahl daneben schreibt, ohne sie zu haben,
+  macht aus dem Bon eine Erfindung.
+- **Erträge je Teilhaushalt nach Herkunft — für Planjahre** —
+  `council_haushalt` kennt je Bereich nur **eine** Ertragssumme. Wer sie in
+  Bund, Land und Gebühren aufteilen will, braucht
+  `council_ergebnisrechnung` — und die löst die Posten 01–11 zwar je
+  Teilhaushalt auf, endet aber mit dem letzten Jahresabschluss. Für das
+  Kopfjahr der Seite gibt es diese Aufteilung also **nicht**. Darum heißt die
+  Leiste auf `/haushalt` „Wo das Geld eingeht" und nicht „Woher das Geld
+  kommt": Im Plan 2026 stehen 529,3 der 812,9 Mio. € Erträge bei
+  „Finanzmanagement und Recht", weil dort die Kämmerei bucht — das ist ein
+  Buchungsort, keine Geldquelle. Aus demselben Grund heißt die zweite Spalte
+  der Bereichstabelle „eigene Erträge des Bereichs" und nicht „von Bund, Land
+  oder über Gebühren". Nachrüstbar wäre es durch Einlesen des
+  **Gesamtergebnishaushalts** (acht Dokumente, recherchiert) — ein eigener
+  Datenauftrag.
 
 ## Befunde aus dem Datenabgleich
 
