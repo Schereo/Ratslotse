@@ -505,7 +505,8 @@ def test_haushalt_datenstand_nennt_alle_schichten(client):
     b = client.get("/api/council/haushalt/datenstand").json()
     schichten = {s["key"]: s for s in b["schichten"]}
     assert set(schichten) == {"haushaltsplan", "ergebnishaushalt", "investitionen",
-                              "jahresabschluss", "teilhaushalt", "rpa_fundstelle",
+                              "jahresabschluss", "teilhaushalt", "stellenplan",
+                              "rpa_fundstelle",
                               "pruefungsfeststellungen", "konzernabschluss",
                               "lsn_steuerkraft", "lsn_realsteuern"}
     # Vier verschiedene Takte — das ist der Grund, warum der Block existiert.
@@ -520,6 +521,11 @@ def test_haushalt_datenstand_nennt_alle_schichten(client):
     # nach, weil er im Anlagenbestand liegt statt auf oldenburg.de.
     assert schichten["ergebnishaushalt"]["monat"] == "Oktober"
     assert schichten["ergebnishaushalt"]["automatisch"] is True
+    # Der Stellenplan hängt am selben Plan und wird ebenso selbst nachgezogen.
+    # Seine Einheit ist der TEIL, nicht der Jahrgang: Teil A und Teil B kommen
+    # einzeln durch ihre Proben (2026 ist Teil B im PDF unlesbar).
+    assert schichten["stellenplan"]["monat"] == "Oktober"
+    assert schichten["stellenplan"]["einheit"] == "Teile"
     # Der Gesamtabschluss hinkt am weitesten hinterher: Er kann erst entstehen,
     # wenn alle einbezogenen Betriebe geprüft sind.
     assert schichten["konzernabschluss"]["monat"] == "Februar"

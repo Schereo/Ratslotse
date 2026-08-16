@@ -300,6 +300,71 @@ def haushalt_produkte(
             "produkt": store.produkt(jahr, nr) if nr else None}
 
 
+@router.get("/haushalt/stellenplan")
+def haushalt_stellenplan(
+    jahrgang: int | None = None,
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Der Stellenplan: wie viele Stellen die Stadt vorhält und wie viele
+    davon nicht besetzt sind.
+
+    Die einzige Schicht des Haushalts-Bereichs, die nicht in Euro rechnet.
+    Personal ist der größte Ausgabenblock; hier stehen die Menschen dahinter —
+    und die Lücke zwischen geplanten und tatsächlich besetzten Stellen.
+
+    - ``jahrgaenge``: Haushaltsjahre mit eingelesenem Plan,
+    - ``summen``: je Jahrgang und Teil die Gesamtzeile des Dokuments (Stellen
+      im Haushaltsjahr, Stellen im Vorjahr, besetzt, nicht besetzt) samt
+      Stichtag der Besetzung,
+    - ``gruppen``: dieselben Zahlen je Laufbahn- bzw. Beschäftigtengruppe,
+    - ``zeilen``: die Einzelposten — nur mit ``jahrgang``, weil das rund 190
+      Zeilen je Jahrgang sind,
+    - ``fehlend``: welche ``(Jahrgang, Teil)`` **nicht** vorliegen, obwohl der
+      Jahrgang eingelesen ist. Ohne diese Liste sähe ein Jahrgang mit nur
+      einem Teil aus wie ein vollständiger,
+    - ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, bestandene Probe
+      samt Messwert und Stichtag. Teil A und Teil B eines Jahrgangs tragen
+      **verschiedene** IDs: verschiedene Tabellen, verschiedene Proben.
+
+    Zwei Dinge, die die Zahlen nicht hergeben und die eine Seite dazusagen
+    muss: Der Plan zählt **Stellen**, keine Köpfe (Teilzeit steht als
+    Bruchteil), und er zählt nur die **Kernverwaltung** — Klinikum, Bäder,
+    Bus und Gebäudewirtschaft haben eigene Wirtschaftspläne.
+
+    Und die Besetzungszahlen gehören zur **Vorjahresspalte**, nicht zum
+    Haushaltsjahr: Geplant wird vorwärts, gezählt werden kann nur rückwärts.
+    ``stichtag`` sagt, auf welchen Tag sie sich beziehen."""
+    summen = store.get_stellenplan(art="gesamt")
+    gruppen = store.get_stellenplan(art="gruppe")
+    zeilen = (store.get_stellenplan(art="posten", jahrgang=jahrgang)
+              if jahrgang is not None else [])
+    jahrgaenge = sorted({z["jahrgang"] for z in summen})
+
+    # Was fehlt, und in welchem Jahrgang: Ein Jahrgang steht mit einem Teil in
+    # der Tabelle, wenn der andere seine Probe nicht bestanden hat oder im
+    # PDF unlesbar war (Stellenplan 2026, Teil B). Die Oberfläche muss das
+    # zeigen können, statt die Lücke als Null darzustellen.
+    from council import stellenplan as _sp
+
+    da = store.stellenplan_einheiten()
+    fehlend = [{"jahrgang": j, "teil": t, "name": _sp.TEIL_NAMEN[t]}
+               for j in jahrgaenge for t in sorted(_sp.TEIL_SPALTEN)
+               if (j, t) not in da]
+
+    ids = sorted({z["herkunft_id"] for z in (*summen, *gruppen, *zeilen)
+                  if z["herkunft_id"] is not None})
+    return {
+        "jahrgaenge": jahrgaenge,
+        "teile": _sp.TEIL_NAMEN,
+        "summen": summen,
+        "gruppen": gruppen,
+        "zeilen": zeilen,
+        "fehlend": fehlend,
+        "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
+    }
+
+
 @router.get("/haushalt/pruefberichte")
 def haushalt_pruefberichte(
     marke: str | None = Query(None, pattern="^(B|WB|H|K)$"),

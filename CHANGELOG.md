@@ -8,6 +8,21 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **„Wer macht die Arbeit?" — der Stellenplan im Haushalts-Bereich.** Personal
+  ist der größte Ausgabenblock der Stadt, aber bisher zeigte der Bereich nur
+  Euro und nicht, wie viele Menschen dahinterstehen. Eine neue Seite liest den
+  Stellenplan aus, den der Rat mit jedem Haushalt beschließt: 2023 waren es 717
+  Beamtenstellen, für 2026 sind es 815; dazu rund 1.700 Stellen für
+  Tarifbeschäftigte. Die eigentliche Zahl steht daneben — **rund jede sechste
+  bis fünfte Stelle war am Stichtag nicht besetzt** (18,1 % der Beamtenstellen
+  zum 30. Juni 2025). Das erklärt eine Zeile, die im Jahresabschluss sonst wie
+  ein Sparerfolg aussieht: Bleiben die Personalausgaben unter dem Plan, hat die
+  Stadt das Geld nicht gespart, sondern die Leute nicht gefunden. Die Seite
+  bewertet das nicht — sie sagt, was der Plan sagt, und wo seine Grenzen sind:
+  Stellen sind keine Menschen, es ist nur die Kernverwaltung, und die Besetzung
+  bezieht sich auf das Jahr vor dem Plan. Für 2026 fehlen die Tarifbeschäftigten
+  und die Seite sagt auch das: Diese Seiten des PDFs geben keine Buchstaben aus,
+  und geraten wird nicht. (#551)
 - **„Was wird gebaut?" — der Haushalts-Bereich zeigt jetzt auch die
   Investitionen.** Bisher stand dort ausschließlich der laufende Betrieb:
   Personal, Zuschüsse, Energie, Mieten. Neubauten, Fahrzeuge und Grundstücke

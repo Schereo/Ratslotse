@@ -710,6 +710,63 @@ class CouncilStore:
         self._conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_ergebnishaushalt_jahr "
             "ON council_ergebnishaushalt(jahr, art)")
+        # Der Stellenplan (Anlage 21/22 des Haushaltsplans, council/stellenplan.py):
+        # wie viele Stellen die Stadt vorhält, wie viele davon besetzt sind
+        # und wie viele nicht.
+        #
+        # `teil`  A = Beamtinnen und Beamte, B = Arbeitnehmerinnen und
+        #         Arbeitnehmer. Zwei Tabellen im Dokument, zwei Spaltensätze,
+        #         zwei Rechenproben — und sie kommen einzeln herein: Im
+        #         Stellenplan 2026 ist Teil B im Textextrakt Glyphen-Salat,
+        #         Teil A steht sauber da. Ohne `teil` im Schlüssel wäre dieser
+        #         Jahrgang entweder ganz draußen oder still halb drin.
+        # `art`   posten | gruppe | gesamt — die drei Stufen der Summenzeilen.
+        #         Die Summen stehen als eigene Zeilen in der Tabelle, weil sie
+        #         im Dokument stehen: Eine Seite, die „815 Stellen" zeigt, soll
+        #         die Zahl der Stadt zeigen und nicht unsere Addition.
+        # `zeile` Laufende Nummer innerhalb von (jahrgang, teil, art) —
+        #         nicht die Lfd.Nr. des Plans. Die taugt nicht als Schlüssel:
+        #         Die Summenzeilen tragen keine, und zwei Teile fangen beide
+        #         bei 1 an. Sie steht daneben in `lfd_nr`.
+        # `stimmig` 0 heißt: In dieser Zeile ergeben besetzt + nicht besetzt
+        #         nicht die Stellen des Vorjahres — so steht es im Plan. Zwei
+        #         Zeilen im Bestand sind das (Begründung in
+        #         `council/stellenplan.besetzungsprobe`).
+        #
+        # `besetzt_beamte`/`besetzt_arbeitnehmer` gibt es nur in Teil A: Eine
+        # Beamtenstelle darf mit Tarifbeschäftigten besetzt werden, und der
+        # Plan weist das getrennt aus. Teil B kennt die Unterscheidung nicht
+        # und lässt beide Spalten leer; `besetzt` trägt in beiden Teilen die
+        # Gesamtbesetzung.
+        #
+        # Herkunft ausschließlich über `herkunft_id` — neue Tabelle, kein
+        # Altbestand (s. council/herkunft.py).
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_stellenplan ("
+            "jahrgang INTEGER NOT NULL, "          # Haushaltsjahr des Plans
+            "teil TEXT NOT NULL, "                 # A | B
+            "zeile INTEGER NOT NULL, "             # Reihenfolge im Dokument
+            "art TEXT NOT NULL, "                  # posten | gruppe | gesamt
+            "gruppe TEXT, "                        # Laufbahngruppe 2, Beschäftigte TVöD …
+            "lfd_nr INTEGER, "                     # Nummer im Plan (Summen: NULL)
+            "bezeichnung TEXT NOT NULL, "
+            "besoldung TEXT, "                     # A 13, S 08 a, 15 …
+            "stellen_plan REAL NOT NULL, "         # Stellen im Haushaltsjahr
+            "stellen_vorjahr REAL NOT NULL, "      # Stellen im Vorjahr
+            "besetzt REAL NOT NULL, "              # am Stichtag besetzt
+            "besetzt_beamte REAL, "                # davon mit Beamt*innen (Teil A)
+            "besetzt_arbeitnehmer REAL, "          # davon mit Tarifbeschäftigten (Teil A)
+            "nicht_besetzt REAL NOT NULL, "
+            "stichtag TEXT, "                      # auf welchen Tag sich die Besetzung bezieht
+            "stimmig INTEGER NOT NULL DEFAULT 1, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahrgang, teil, zeile))"
+        )
+        # Die Seite fragt fast immer „gib mir die Summen aller Jahrgänge" —
+        # eine Handvoll Zeilen aus rund tausend.
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_stellenplan_art "
+            "ON council_stellenplan(art, jahrgang)")
         # Die Investitionen des Finanzhaushalts (council/investitionen.py) —
         # was die Stadt bauen und kaufen will, je Teilhaushalt. Die andere
         # Hälfte des Haushaltsplans: Im Ergebnishaushalt darüber steht keine
@@ -1147,6 +1204,8 @@ class CouncilStore:
         # Ebenso die Investitionen des Finanzhaushalts: neu, ohne Altspalten,
         # Herkunft ausschließlich über `herkunft_id`.
         "council_investitionen":        (None, "quelle_url", "opendata"),
+        # Der Stellenplan — ebenfalls neu und ohne Altbestand.
+        "council_stellenplan":          (None, "quelle_url", "ris"),
     }
 
     @staticmethod
@@ -3518,6 +3577,12 @@ class CouncilStore:
         # zwei Dokumente im Verzeichnis, wo es eines ist.
         "investitionen":        ("council_investitionen", "jahr",
                                  "t.ebene = 'teilhaushalt'", None),
+        # Ein Jahrgang, zwei Herkünfte (Teil A und Teil B im selben PDF, aber
+        # unter verschiedenen Proben). Beide zeigen auf dieselbe Datei; die
+        # Fundstelle unterscheidet sie, und `DISTINCT` fasst sie deshalb nicht
+        # zusammen — genau richtig, denn ein Beleg an einer Beamtenzahl soll
+        # „Teil A" sagen und nicht „Stellenplan".
+        "stellenplan":          ("council_stellenplan", "jahrgang", None, None),
     }
 
     def haushalt_dokumente(self) -> dict[str, list[dict]]:
@@ -3913,6 +3978,75 @@ class CouncilStore:
             return [r[0] for r in self._conn.execute(
                 "SELECT DISTINCT jahr FROM council_ergebnishaushalt "
                 "WHERE art = 'ansatz' ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    # --- Stellenplan (council.stellenplan) ----------------------------------
+
+    def save_stellenplan(self, jahrgang: int, teil: str, zeilen: list[dict],
+                         herkunft, stichtag: str | None = None) -> int:
+        """Einen Teil eines Stellenplan-Jahrgangs ersetzen.
+
+        Ersetzt wird nach ``(jahrgang, teil)``, nicht nach Jahrgang: Die
+        beiden Teile stehen zwar im selben PDF, kommen aber einzeln durch
+        ihre Proben — im Jahrgang 2026 ist Teil B im Textextrakt unlesbar,
+        Teil A tadellos. Wer nach Jahrgang löschte, risse mit dem einen den
+        anderen mit.
+
+        Übergeben wird nur, was seine Proben bestanden hat; diese Methode
+        prüft nichts nach, sie schreibt."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute(
+                "DELETE FROM council_stellenplan WHERE jahrgang = ? AND teil = ?",
+                (jahrgang, teil))
+            self._conn.executemany(
+                "INSERT INTO council_stellenplan (jahrgang, teil, zeile, art, "
+                " gruppe, lfd_nr, bezeichnung, besoldung, stellen_plan, "
+                " stellen_vorjahr, besetzt, besetzt_beamte, besetzt_arbeitnehmer, "
+                " nicht_besetzt, stichtag, stimmig, fetched_at, herkunft_id) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                [(jahrgang, teil, i, z["art"], z.get("gruppe"), z.get("lfd_nr"),
+                  z["bezeichnung"], z.get("besoldung"), z["stellen_plan"],
+                  z["stellen_vorjahr"], z["besetzt"], z.get("besetzt_beamte"),
+                  z.get("besetzt_arbeitnehmer"), z["nicht_besetzt"], stichtag,
+                  1 if z.get("stimmig", 1) else 0, now, hid)
+                 for i, z in enumerate(zeilen)])
+        return len(zeilen)
+
+    def stellenplan_einheiten(self) -> set[tuple]:
+        """Welche ``(Jahrgang, Teil)`` im Bestand stehen.
+
+        Die Einheit ist der **Teil**, nicht der Jahrgang: Ein Jahrgang, von
+        dem nur Teil A lesbar war, sähe sonst aus wie ein vollständiger — und
+        eine Seite, die dann „2026: 815 Stellen" schreibt, unterschlüge die
+        1.700 Tarifstellen, statt sie zu vermissen."""
+        try:
+            return {(r[0], r[1]) for r in self._conn.execute(
+                "SELECT DISTINCT jahrgang, teil FROM council_stellenplan")}
+        except sqlite3.OperationalError:
+            return set()
+
+    def get_stellenplan(self, art: str | None = None,
+                        jahrgang: int | None = None) -> list[dict]:
+        """Stellenplan-Zeilen — gefiltert nach Stufe und/oder Jahrgang.
+
+        ``art="gesamt"`` ist die Frage, die die Übersichtsseite meint („wie
+        viele Stellen, wie viele davon unbesetzt?"); ohne Filter kommen alle
+        rund tausend Einzelposten mit."""
+        wo, werte = [], []
+        if art is not None:
+            wo.append("art = ?")
+            werte.append(art)
+        if jahrgang is not None:
+            wo.append("jahrgang = ?")
+            werte.append(jahrgang)
+        satz = (" WHERE " + " AND ".join(wo)) if wo else ""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_stellenplan" + satz
+                + " ORDER BY jahrgang, teil, zeile", werte)]
         except sqlite3.OperationalError:
             return []
 

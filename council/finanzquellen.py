@@ -68,7 +68,7 @@ from datetime import date, timedelta
 from typing import Callable
 
 from council import (ergebnishaushalt, finanzberichte, herkunft, konzernabschluss,
-                     pruefberichte)
+                     pruefberichte, stellenplan)
 from council.store import CouncilStore
 
 #: Wie lange nach dem erwarteten Monat ein fehlender Jahrgang als „die Stadt
@@ -405,6 +405,24 @@ def _bestand_ergebnishaushalt(store: CouncilStore) -> set[tuple]:
     Finanzplanungsjahr, das ein älterer Plan nebenbei mitliefert, den
     zugehörigen Haushalt für schon eingelesen."""
     return {(j,) for j in store.ergebnishaushalt_jahrgaenge()}
+
+
+def _einheiten_stellenplan(row: dict) -> set[tuple]:
+    """Je Dokument zwei Einheiten: Teil A und Teil B.
+
+    Beide werden angemeldet, obwohl der Kopf nur Teil A sehen kann (Teil B
+    beginnt auf Seite 5, der Kandidaten-Ausschnitt endet bei 4.000 Zeichen).
+    Das ist Absicht: Der Stellenplan **hat** zwei Teile, und ein Jahrgang, bei
+    dem nur einer hereinkommt, ist unvollständig — genau das soll die
+    Buchführung sagen. Im Jahrgang 2026 ist das der Fall, weil Teil B im PDF
+    keine Zeichenzuordnung mitbringt; der Cron meldet ihn einmal als offen und
+    schweigt danach (``_schon_gemeldet``)."""
+    jahr = stellenplan.jahrgang(row.get("kopf"))
+    return {(jahr, t) for t in sorted(stellenplan.TEIL_SPALTEN)} if jahr else set()
+
+
+def _bestand_stellenplan(store: CouncilStore) -> set[tuple]:
+    return store.stellenplan_einheiten()
 
 
 def _bestand_investitionen(store: CouncilStore) -> set[tuple]:
@@ -876,6 +894,124 @@ def lies_ergebnishaushalte(store: CouncilStore, p: Protokoll,
                                  "geprueft": g["geprueft"],
                                  "anteil_prozent": round(g["anteil"] * 100, 4)}
                                 for g in gegenproben]}
+
+
+def lies_stellenplaene(store: CouncilStore, p: Protokoll,
+                       nur_fehlende: bool = False,
+                       schuetzen: bool = True) -> dict:
+    """Die Stellenpläne aus den Haushaltsplänen — Teil A und Teil B getrennt.
+
+    Die einzige Schicht des Bereichs, die nicht in Euro rechnet: Sie sagt, wie
+    viele Menschen hinter dem größten Ausgabenblock stehen — und wie viele
+    Stellen davon **nicht besetzt** sind. Das ist die Zahl, wegen der es sich
+    lohnt: Bleiben die Personalaufwendungen unter dem Plan, hat die Stadt
+    nicht gespart, sondern niemanden gefunden.
+
+    Gespeichert wird je **Teil**, nicht je Jahrgang. Die beiden Teile stehen
+    im selben PDF, kommen aber einzeln durch ihre Proben — im Jahrgang 2026
+    liefert der Textextrakt für Teil B Glyphen-Nummern statt Buchstaben, für
+    Teil A tadellosen Text. Ein Jahrgang, der so halb hereinkommt, steht mit
+    ``teilweise`` im Datenstand und nicht als vollständiger.
+
+    Welche Proben entscheiden, steht in ``council/stellenplan.py``. Eine
+    Besonderheit: Zeilen, in denen sich der Plan selbst widerspricht (2023
+    hat zwei davon), werden **gekennzeichnet statt verworfen** — die
+    Summenzeilen darüber gehen auf, und ein Teil mit 140 Zeilen wegen eines
+    städtischen Übertragsfehlers wegzuwerfen hieße, eine belegte Zahl gegen
+    gar keine zu tauschen. Die Zahl steht im Protokoll."""
+    quelle = QUELLEN["stellenplan"]
+    sql, werte = quelle.erkennung.abfrage("document_id, label, url, raw_text")
+    rows = [dict(r) for r in store._conn.execute(sql, werte)]  # noqa: SLF001
+    vorhanden = _bestand_stellenplan(store) if nur_fehlende else set()
+
+    je_jahrgang: dict[int, dict] = {}
+    neue_einheiten: set[tuple] = set()
+    geschuetzt = verworfen = unstimmig_gesamt = 0
+    for r in rows:
+        gelesen = stellenplan.lies(r["raw_text"] or "")
+        jahrgang = gelesen["jahrgang"]
+        if jahrgang is None:
+            p.warnen(f"  Dokument {r['document_id']} ({r['label']!r}): kein "
+                     f"Haushaltsjahr im Tabellenkopf — übersprungen")
+            verworfen += 1
+            continue
+        if jahrgang in je_jahrgang:
+            p.warnen(f"  {jahrgang}: zweites Dokument ({r['document_id']}) — übersprungen")
+            continue
+        je_jahrgang[jahrgang] = {"teile": {}, "unstimmig": 0}
+
+        gefunden = {t["teil"] for t in gelesen["teile"]}
+        fehlend = sorted(set(stellenplan.TEIL_SPALTEN) - gefunden)
+        if fehlend:
+            # Der Unterschied, den ein Leser sonst nicht sähe: „gibt es nicht"
+            # gegen „steht drin, ist aber nicht lesbar".
+            grund = ("das PDF gibt dort Glyphen statt Buchstaben aus"
+                     if gelesen["glyphen"] else "im Dokument nicht gefunden")
+            p.warnen(f"  {jahrgang}: Teil {', '.join(fehlend)} fehlt — {grund} "
+                     f"(Dokument {r['document_id']})")
+
+        for teil in gelesen["teile"]:
+            name = teil["teil"]
+            if (jahrgang, name) in vorhanden:
+                continue
+            if not teil["bestanden"]:
+                p.warnen(f"  {jahrgang} Teil {name}: {teil['nachweis']} — "
+                         f"Dokument {r['document_id']}, nicht gespeichert")
+                verworfen += 1
+                continue
+
+            alt = _anzahl(store, "SELECT COUNT(*) FROM council_stellenplan "
+                                 "WHERE jahrgang = ? AND teil = ?", (jahrgang, name))
+            if not bestandsschutz(p, f"{jahrgang} Stellenplan Teil {name}", alt,
+                                  len(teil["zeilen"]), schuetzen):
+                geschuetzt += 1 if alt else 0
+                continue
+
+            store.save_stellenplan(
+                jahrgang, name, teil["zeilen"],
+                herkunft.Herkunft(
+                    art="ris", probe=[pr["probe"] for pr in teil["proben"]],
+                    dokument_id=r["document_id"], label=r["label"], url=r["url"],
+                    fundstelle=f"Teil {name}: {stellenplan.TEIL_NAMEN[name]}",
+                    probe_ergebnis=teil["nachweis"],
+                    # Wie beim Gesamtergebnishaushalt: Die Anlage hängt an der
+                    # Vorlage, mit der die Verwaltung den Haushalt einbringt.
+                    stand=f"Stellenplan {jahrgang} — Stand der Einbringung, "
+                          f"Besetzung am {teil['stichtag']}"),
+                stichtag=teil["stichtag"])
+            neue_einheiten.add((jahrgang, name))
+
+            gesamt = next((z for z in teil["zeilen"] if z["art"] == "gesamt"), None)
+            je_jahrgang[jahrgang]["teile"][name] = {
+                "zeilen": len(teil["zeilen"]),
+                "stellen": gesamt["stellen_plan"] if gesamt else None,
+                "nicht_besetzt": gesamt["nicht_besetzt"] if gesamt else None,
+            }
+            je_jahrgang[jahrgang]["unstimmig"] += len(teil["unstimmig"])
+            unstimmig_gesamt += len(teil["unstimmig"])
+            if gesamt:
+                anteil = (gesamt["nicht_besetzt"] / gesamt["stellen_vorjahr"] * 100
+                          if gesamt["stellen_vorjahr"] else 0.0)
+                p.sagen(f"  {jahrgang} Teil {name}: {gesamt['stellen_plan']:,.2f} Stellen "
+                        f"geplant · am {teil['stichtag']} waren {gesamt['nicht_besetzt']:,.2f} "
+                        f"von {gesamt['stellen_vorjahr']:,.2f} nicht besetzt "
+                        f"({anteil:.1f} %) · {len(teil['zeilen'])} Zeilen · "
+                        f"Dokument {r['document_id']}")
+            for u in teil["unstimmig"]:
+                p.warnen(f"      Zeile {u['lfd_nr']} ({u['bezeichnung']}): der Plan "
+                         f"weicht hier um {u['abweichung']:+.2f} Stellen von sich "
+                         f"selbst ab — gespeichert und gekennzeichnet")
+
+    voll = sorted(j for j, d in je_jahrgang.items() if len(d["teile"]) == 2)
+    return {"neue_jahrgaenge": sorted({e[0] for e in neue_einheiten}),
+            "neue_einheiten": sorted(neue_einheiten, key=repr),
+            "bestand_geschuetzt": geschuetzt,
+            "je_stellenplan_jahrgang": {j: d["teile"] for j, d in je_jahrgang.items()},
+            "stellenplan_vollstaendig": voll,
+            "stellenplan_zeilen": sum(t["zeilen"] for d in je_jahrgang.values()
+                                      for t in d["teile"].values()),
+            "stellenplan_verworfen": verworfen,
+            "stellenplan_unstimmig": unstimmig_gesamt}
 
 
 def lies_schlussbericht_fundstellen(store: CouncilStore, p: Protokoll,
@@ -1410,6 +1546,38 @@ for _q in (
         einlesen=lies_ergebnishaushalte,
     ),
     Finanzquelle(
+        key="stellenplan",
+        label="Stellenplan",
+        was="Wie viele Stellen die Stadt vorhält — und wie viele davon nicht "
+            "besetzt sind.",
+        tabelle="council_stellenplan",
+        # Anlage 21/22 des Haushaltsplans, also derselbe Takt wie der
+        # Gesamtergebnishaushalt: Einbringung Anfang Oktober des Vorjahres.
+        erwarteter_monat=10,
+        versatz=-1,
+        herkunft="ris",
+        erkennung=Erkennung(
+            label_muster=("%Stellenplan%",),
+            # „Geänderter Stellenplan Teil B" (2021, für das Haushaltsjahr
+            # 2020) und die „Geänderte Übersicht zum Stellenplan Teil A" sind
+            # Änderungen des Plans, nicht der eingebrachte Plan — und die
+            # erste trägt nur Teil B. Ein Jahr, das nur die Tarifhälfte zeigt,
+            # läse sich wie ein Jahr ohne Beamtenstellen (s. Kopf von
+            # council/stellenplan.py).
+            ausschluesse=("%eändert%",),
+            # Die vier Dokumente haben 20–22 Seiten; die Schwelle hält
+            # Deckblätter und Auszüge draußen.
+            mindest_seiten=10,
+            ordnung="document_id",
+        ),
+        # Die Einheit ist der Teil, nicht der Jahrgang: Teil A und Teil B
+        # kommen einzeln durch ihre Proben.
+        einheit="Teile",
+        einheiten_von=_einheiten_stellenplan,
+        bestand=_bestand_stellenplan,
+        einlesen=lies_stellenplaene,
+    ),
+    Finanzquelle(
         key="investitionen",
         label="Investitionen (Finanzhaushalt)",
         was="Was die Stadt bauen und kaufen will — die andere Hälfte des "
@@ -1510,8 +1678,13 @@ for _q in (
 #: wird. Getrennt aufgeführt und nicht unter „Haushaltsplan" zusammengefasst,
 #: weil sie aus verschiedenen Dateien kommen, verschieden weit reichen
 #: (2022–2025 gegen 2020–2026) und verschiedene Proben tragen.
+#:
+#: Der Stellenplan steht hinter den Teilhaushalten: Er kommt mit demselben
+#: Dokument wie sie, beantwortet aber die Frage eine Stufe feiner — erst was
+#: eine Aufgabe kostet, dann wie viele Menschen sie tun sollen.
 REIHENFOLGE = ("haushaltsplan", "ergebnishaushalt", "investitionen",
-               "jahresabschluss", "teilhaushalt", "rpa_fundstelle",
+               "jahresabschluss", "teilhaushalt", "stellenplan",
+               "rpa_fundstelle",
                "pruefungsfeststellungen", "konzernabschluss",
                "lsn_steuerkraft", "lsn_realsteuern")
 

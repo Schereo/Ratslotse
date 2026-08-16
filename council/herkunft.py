@@ -140,6 +140,24 @@ PROBEN: dict[str, str] = {
         "Wiederholung zeigt in allen gelesenen Zeilen auf dieselbe Spalte — "
         "damit ist der beschlossene Ansatz von der mittelfristigen "
         "Finanzplanung getrennt, ohne sich auf die Reihenfolge zu verlassen.",
+    # Stellenplan (council/stellenplan.py). Vier Proben, die zusammen die
+    # Tabelle tragen — Teil B hat die vierte nicht, weil er nur eine Gruppe
+    # führt und deren Summe zugleich die Gesamtsumme ist.
+    "stellenplan_spaltenprobe":
+        "Der Stellenplan nummeriert seine Spalten selbst, auf jeder Seite "
+        "neu — und nennt überall dieselbe Zahl. Damit steht fest, welche "
+        "Spalte die geplanten Stellen sind und welche die besetzten.",
+    "stellenplan_gruppensummen":
+        "Die einzelnen Amtsbezeichnungen ergeben die Summe ihrer Gruppe, die "
+        "der Plan selbst ausweist („Summe Laufbahngruppe 2“) — und zwar in "
+        "jeder Spalte, nicht nur bei den geplanten Stellen.",
+    "stellenplan_besetzung":
+        "Die Rechnung hinter den unbesetzten Stellen geht auf: besetzte plus "
+        "unbesetzte Stellen ergeben genau die Zahl der Stellen, die der Plan "
+        "für den Stichtag ausweist.",
+    "stellenplan_gesamtsumme":
+        "Die Gruppensummen ergeben zusammen die Gesamtzeile des Plans. Der "
+        "Stellenplan führt sie zweimal hintereinander; beide stimmen.",
     "legende_und_verzeichnis":
         "Die Randmarke der Feststellung steht in der Legende dieses Berichts, "
         "ihre Textziffer in seinem Inhaltsverzeichnis.",
@@ -240,6 +258,8 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     "council_ergebnishaushalt",
     # Die Investitionen des Finanzhaushalts — neu, ohne Altbestand.
     "council_investitionen",
+    # Der Stellenplan — ebenso.
+    "council_stellenplan",
 )
 
 
