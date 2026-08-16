@@ -57,7 +57,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   ungeprüft da. Was der Bericht **nicht** hergibt, steht als eigener Abschnitt
   auf der Seite: Er kommt zwei Jahre später, ein Jahresergebnis von 0 € heißt
   nicht „nichts verdient" (mehrere Betriebe führen ihr Ergebnis ab), und die
-  Jahrgänge vor 2022 sind anders aufgebaut. (#PR)
+  Jahrgänge vor 2022 sind anders aufgebaut. (#555)
 - **„Was wird gebaut?" — der Haushalts-Bereich zeigt jetzt auch die
   Investitionen.** Bisher stand dort ausschließlich der laufende Betrieb:
   Personal, Zuschüsse, Energie, Mieten. Neubauten, Fahrzeuge und Grundstücke

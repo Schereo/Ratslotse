@@ -1657,6 +1657,8 @@ for _q in (
         herkunft="stadt",
         nachschub="Download von oldenburg.de, scripts/ingest_schulden.py",
         bestand=_bestand_schulden,
+    ),
+    Finanzquelle(
         key="beteiligungsbericht",
         label="Beteiligungsbericht",
         was="Was die städtischen Gesellschaften tun, wer sie beaufsichtigt "

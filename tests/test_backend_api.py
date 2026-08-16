@@ -509,8 +509,7 @@ def test_haushalt_datenstand_nennt_alle_schichten(client):
                               "jahresabschluss", "teilhaushalt", "stellenplan",
                               "rpa_fundstelle",
                               "pruefungsfeststellungen", "konzernabschluss",
-                              "schulden", "lsn_steuerkraft", "lsn_realsteuern"}
-                              "beteiligungsbericht",
+                              "beteiligungsbericht", "schulden",
                               "lsn_steuerkraft", "lsn_realsteuern"}
     # Vier verschiedene Takte — das ist der Grund, warum der Block existiert.
     assert schichten["jahresabschluss"]["monat"] == "September"
