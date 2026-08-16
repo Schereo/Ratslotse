@@ -12,7 +12,7 @@ welche schlicht fehlt.
 :::note[Vorerst nur auf dev.ratslotse.de]
 Der Bereich liegt hinter dem Umgebungs-Gate: `web/frontend/lib/haushalt-frei.ts`
 prüft `NEXT_PUBLIC_RATSLOTSE_ENV`, das nur der Dev-Build setzt. Auf
-ratslotse.de rendern die fünfzehn Seiten nicht, und die Anker dorthin
+ratslotse.de rendern die siebzehn Seiten nicht, und die Anker dorthin
 (Seitenleiste, „Mehr"-Sheet, der Verweis auf den Beschluss-Seiten) fehlen
 ebenfalls — ein Gate ohne seine Einstiege hinterließe Links ins Leere.
 
@@ -49,10 +49,11 @@ Schritte in vier Stufen. Die Tabelle steht deshalb in genau dieser Reihenfolge.
 | `/haushalt/konzern` | Schritt 9 — Kernverwaltung gegen Gesamtabschluss über elf Jahrgänge, Aufschlüsselung nach Aufgabenträgern |
 | `/haushalt/beteiligungen[?g=<gesellschaft>]` | Schritt 10 — „Was machen die eigentlich?": jede städtische Gesellschaft mit Auftrag, Eigentümern, Aufsichtsorganen und Kennzahlen-Zeitreihe; `g` öffnet den Steckbrief |
 | `/haushalt/vergleich` | Schritt 11 — Steuerkraft, Hebesätze und Steuereinnahmekraft der acht kreisfreien Städte aus der amtlichen Statistik — und die Erklärung, warum Ausgaben und Personal **nicht** verglichen werden |
-| **Mitreden** | |
 | `/haushalt/schulden` | Schritt 12 — dreißig Jahre Schuldenstand aus Tabelle 1108 des Statistischen Jahrbuchs, mit der Angabe, was mitgezählt ist |
+| **Mitreden** | |
 | `/haushalt/jahr` | Schritt 13 — wann der Haushalt entschieden wird: jede Station im Rat, aus acht Jahrgängen, mit Link auf die Sitzung |
-| `/haushalt/labor` | Schritt 14 — Was-wäre-wenn: Hebesatz-Regler und Kürzungen, jede Bewegung in Mio. €, € je Einwohner und Anteil an der Lücke; dauerhaft sichtbare Gegenrechnung |
+| `/haushalt/streit[?jahr=<jahr>]` | Schritt 14 — „Der Streit ums Geld": je Haushaltsjahrgang die Änderungslisten der Fraktionen und Gruppen mit ihrem Abstimmungsergebnis, die Wortbeiträge der Debatte im Protokollwortlaut und die Schlussabstimmung |
+| `/haushalt/labor` | Schritt 15 — Was-wäre-wenn: Hebesatz-Regler und Kürzungen, jede Bewegung in Mio. €, € je Einwohner und Anteil an der Lücke; dauerhaft sichtbare Gegenrechnung |
 | **Steckbriefe (ohne Schritt)** | |
 | `/haushalt/bereich?name=<slug>` | Dossier je Teilhaushalt: Wasserfall Brutto → eigene Erträge → Zuschussbedarf, Entwicklung seit 2020, Produkte des Bereichs |
 | `/haushalt/steuer?art=<slug>` | Steckbrief je Einnahmeart: „Wer entscheidet was", Ist-Kurve, Hebesatz, Ein-Punkt-Überschlag |
@@ -62,14 +63,17 @@ Einnahmeart brauchen, über die man sie aufruft — als eigener Schritt stünde
 dort ein beliebiger Einzelfall. Man erreicht sie aus Schritt 1 und 2 sowie aus
 der Bereichstabelle des Einstiegs.
 
-:::caution[Die Reihenfolge steht an zwei Stellen]
-Drei Seiten schreiben ihre Nummer selbst in den Kicker: `/haushalt/personal`
-(„Schritt 5"), `/haushalt/konzern` („Schritt 9") und `/haushalt/beteiligungen`
-(„Schritt 10"). Der Wegweiser ist so geordnet, dass das stimmt. Wer Schritte
-umsortiert oder einen dazwischenschiebt, zieht diese Seiten mit nach — sonst
-widersprechen sich zwei Seiten still. Genau das war schon dreimal fällig:
-„Was wird gebaut?" schob den Konzern von 7 auf 8, der Stellenplan von 8 auf 9,
-der Beteiligungsbericht den Städtevergleich von 10 auf 11.
+:::caution[Die Reihenfolge steht an mehreren Stellen]
+Vier Seiten schreiben ihre Nummer selbst in den Kicker: `/haushalt/personal`
+(„Schritt 5"), `/haushalt/konzern` („Schritt 9"), `/haushalt/beteiligungen`
+(„Schritt 10") und `/haushalt/streit` („Schritt 14"). Der Wegweiser ist so
+geordnet, dass das stimmt. Wer Schritte umsortiert oder einen
+dazwischenschiebt, zieht diese Seiten mit nach — sonst widersprechen sich zwei
+Seiten still. Genau das war schon dreimal fällig: „Was wird gebaut?" schob den
+Konzern von 7 auf 8, der Stellenplan von 8 auf 9, der Beteiligungsbericht den
+Städtevergleich von 10 auf 11. Wer eine Seite ans Ende der letzten Stufe hängt,
+verschiebt keine dieser Nummern — „Der Streit ums Geld" (08/2026) ist so ein
+Fall.
 :::
 
 Query-Parameter statt dynamischer Segmente, weil der Capacitor-Export die
