@@ -1,7 +1,7 @@
 """Woher die Finanzzahlen des Haushalts-Bereichs stammen — eine Definition je
 Datenart, und das Einlesen dazu.
 
-Fünf Schichten tragen den Bereich. Vier davon hängen als **Anlagen** an
+Sieben Schichten tragen den Bereich. Sechs davon hängen als **Anlagen** an
 Ratsvorlagen und liegen mit Volltext in ``council_anlagen``; woran man sie
 dort erkennt (Label-Muster, Mindestseitenzahl, Ausschlüsse), stand bis 08/2026
 verstreut in zwei Ingest-Skripten. Hier steht es einmal. ``ingest_finanz-
@@ -11,12 +11,13 @@ es sonst zwei Antworten, und eine davon veraltet still.
 
 Der Takt der Stadt, gemessen an acht Jahrgängen Sitzungsdaten:
 
-===========================================  ==================
-Was                                          Wann im Rat
-===========================================  ==================
-Jahresabschluss + Schlussbericht des RPA     Anfang September
-Haushaltsplan samt Teilhaushalten            Anfang Oktober
-===========================================  ==================
+=================================================  ==================
+Was                                                Wann im Rat
+=================================================  ==================
+Jahresabschluss + Schlussbericht des RPA           Anfang September
+Haushaltsplan: Gesamtergebnishaushalt + Teil-      Anfang Oktober
+haushalte
+=================================================  ==================
 
 Der Cron rechnet damit **nicht**. Er fragt den Bestand, nicht den Kalender:
 „Welche Einheit fehlt mir, und liegt inzwischen ein Dokument dafür vor?"
@@ -43,7 +44,8 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Callable
 
-from council import finanzberichte, herkunft, konzernabschluss, pruefberichte
+from council import (ergebnishaushalt, finanzberichte, herkunft, konzernabschluss,
+                     pruefberichte)
 from council.store import CouncilStore
 
 #: Wie lange nach dem erwarteten Monat ein fehlender Jahrgang als „die Stadt
@@ -350,6 +352,26 @@ def _bestand_feststellungen(store: CouncilStore) -> set[tuple]:
 
 def _bestand_haushaltsplan(store: CouncilStore) -> set[tuple]:
     return {(j,) for j in store.haushalt_years()}
+
+
+def _einheiten_ergebnishaushalt(row: dict) -> set[tuple]:
+    """Der Jahrgang kommt aus dem **Tabellenkopf**, nicht aus dem Label.
+
+    Vier der acht Dokumente heißen schlicht „005 Gesamtergebnishaushalt" und
+    tragen gar keine Jahreszahl; die anderen vier tragen sie, aber an
+    verschiedenen Stellen. Der Kopf dagegen sagt es immer und sagt es genau:
+    Die dritte Spalte ist das Planjahr (s. ``ergebnishaushalt.jahrgang``)."""
+    jahr = ergebnishaushalt.jahrgang(row.get("kopf"))
+    return {(jahr,)} if jahr else set()
+
+
+def _bestand_ergebnishaushalt(store: CouncilStore) -> set[tuple]:
+    """Ein Dokument trägt einen ganzen Plan-Jahrgang — Einheit = Jahrgang.
+
+    Gezählt wird nach ``plan_jahrgang``, nicht nach ``jahr``: Sonst hielte ein
+    Finanzplanungsjahr, das ein älterer Plan nebenbei mitliefert, den
+    zugehörigen Haushalt für schon eingelesen."""
+    return {(j,) for j in store.ergebnishaushalt_jahrgaenge()}
 
 
 def _bestand_konzernabschluss(store: CouncilStore) -> set[tuple]:
@@ -659,6 +681,132 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
             "vorzeichen_repariert": vorzeichen_repariert,
             "bestand_geschuetzt": geschuetzt,
             "abweichungsgruende": gruende_gesamt}
+
+
+def lies_ergebnishaushalte(store: CouncilStore, p: Protokoll,
+                           nur_fehlende: bool = False,
+                           schuetzen: bool = True) -> dict:
+    """Die Planjahre aus dem Gesamtergebnishaushalt der Haushaltspläne.
+
+    Die einzige Schicht, die etwas über **Jahre ohne Jahresabschluss** sagen
+    kann: Die Einnahmearten (Steuern, Zuwendungen, Gebühren …) stehen dort in
+    derselben Gliederung wie später im Abschluss, nur eben als Ansatz.
+
+    Zwei Pflicht-Proben entscheiden, beide in
+    ``council/ergebnishaushalt.py``: Die Summenzeilen müssen in allen sechs
+    Spalten aufgehen, und die hervorgehobene Planjahr-Spalte muss sich in
+    jeder Zeile wiederholen. Die zweite ist die wichtigere — sie ist der
+    Beleg dafür, welche Spalte der **Haushaltsansatz** ist und welche bloß
+    Finanzplanung. Ohne sie wäre die Trennung eine Reihenfolgeannahme.
+
+    Die Ist-Spalte des Vorvorjahres wird **nicht gespeichert**, sondern gegen
+    ``council_ergebnisrechnung`` gehalten und im Protokoll ausgewiesen. Sie
+    trifft dort bewusst nicht auf den Cent: Der Gesamtergebnishaushalt ist die
+    Gesamtebene (mit den nicht rechtsfähigen Stiftungen), der gespeicherte
+    Jahresabschluss die Kernverwaltung. Der Abstand liegt über acht Jahrgänge
+    bei höchstens 0,075 % der Ertragssumme; wird er größer, meldet der Lauf
+    es — dann stammt eine Spalte aus dem falschen Jahr.
+
+    **Gespeichert wird der Entwurf, nicht der Beschluss** — die Anlage hängt
+    an der Einbringungs-Vorlage. Das steht in der Herkunft (``stand``), damit
+    eine Seite es anschreiben kann; die Begründung samt Messwerten im
+    Modulkopf von ``council/ergebnishaushalt.py``."""
+    quelle = QUELLEN["ergebnishaushalt"]
+    sql, werte = quelle.erkennung.abfrage("document_id, label, url, raw_text")
+    rows = [dict(r) for r in store._conn.execute(sql, werte)]  # noqa: SLF001
+    vorhanden = _bestand_ergebnishaushalt(store) if nur_fehlende else set()
+
+    # Die Ist-Werte der Kernverwaltung einmal holen — Grundlage der Gegenprobe.
+    ist_bestand: dict[int, dict[int, float]] = {}
+    for zeile in store.get_ergebnisrechnung():
+        if zeile.get("thh_nr") is None and zeile.get("ergebnis") is not None:
+            ist_bestand.setdefault(zeile["jahr"], {})[zeile["nr"]] = zeile["ergebnis"]
+
+    je_jahrgang: dict[int, dict] = {}
+    geschuetzt = verworfen = 0
+    gegenproben: list[dict] = []
+    for r in rows:
+        gelesen = ergebnishaushalt.lies(r["raw_text"] or "")
+        jahrgang = gelesen["jahrgang"]
+        if jahrgang is None:
+            p.warnen(f"  Dokument {r['document_id']} ({r['label']!r}): Tabellenkopf "
+                     f"nicht lesbar — übersprungen")
+            verworfen += 1
+            continue
+        if (jahrgang,) in vorhanden:
+            continue
+        if jahrgang in je_jahrgang:
+            p.warnen(f"  {jahrgang}: zweites Dokument ({r['document_id']}) — übersprungen")
+            continue
+        if not gelesen["bestanden"]:
+            p.warnen(f"  {jahrgang}: {gelesen['nachweis']} — Dokument "
+                     f"{r['document_id']}, nicht gespeichert")
+            verworfen += 1
+            continue
+
+        alt = _anzahl(store, "SELECT COUNT(*) FROM council_ergebnishaushalt "
+                             "WHERE plan_jahrgang = ?", (jahrgang,))
+        if not bestandsschutz(p, f"{jahrgang} Ergebnishaushalt", alt,
+                              len(gelesen["zeilen"]), schuetzen):
+            geschuetzt += 1 if alt else 0
+            continue
+
+        # Gegenprobe VOR dem Speichern, damit ihr Messwert in die Herkunft
+        # kommt: Der Beleg auf der Seite soll sagen, woran die Zahl hängt.
+        gp = ergebnishaushalt.gegenprobe(
+            gelesen["ist"], ist_bestand.get(gelesen["ist_jahr"], {}))
+        if gp["plausibel"] is False:
+            p.warnen(f"  {jahrgang}: die Ist-Spalte {gelesen['ist_jahr']} weicht um "
+                     f"{gp['groesste_abweichung']:,.2f} € ({gp['anteil']*100:.3f} % der "
+                     f"Ertragssumme) vom gespeicherten Jahresabschluss ab — mehr, als "
+                     f"die Stiftungen erklären. Bitte das Dokument ansehen.")
+        gp["jahrgang"] = jahrgang
+        gegenproben.append(gp)
+
+        store.save_ergebnishaushalt(jahrgang, gelesen["zeilen"], herkunft.Herkunft(
+            art="ris", probe=["ergebnishaushalt_summenzeilen",
+                              "ergebnishaushalt_planspalte"],
+            dokument_id=r["document_id"], label=r["label"], url=r["url"],
+            fundstelle="Gesamtergebnishaushalt, Posten 1–24 — Spalte "
+                       f"„Ansatz {jahrgang}“ und die drei Finanzplanungsjahre",
+            probe_ergebnis=gelesen["nachweis"],
+            # NICHT „Haushaltsplan {jahrgang}" schlechthin: Die Anlage hängt
+            # an der Vorlage, mit der die Verwaltung den Haushalt einbringt.
+            # Was der Rat in den Beratungen ändert, steht nicht drin — bei den
+            # ordentlichen Erträgen sind das 0,7 bis 13,1 Mio. € gegenüber dem
+            # Ansatz, den der spätere Jahresabschluss führt. Der Beleg auf der
+            # Seite muss das sagen können.
+            stand=f"Haushaltsplan {jahrgang}, Anlage 005 — Stand der Einbringung"))
+
+        ansatz = [z for z in gelesen["zeilen"] if z["art"] == "ansatz"]
+        e = next((z["betrag"] for z in ansatz if z["nr"] == 12), None)
+        a = next((z["betrag"] for z in ansatz if z["nr"] == 20), None)
+        fp = sorted({z["jahr"] for z in gelesen["zeilen"] if z["art"] == "finanzplanung"})
+        je_jahrgang[jahrgang] = {"zeilen": len(gelesen["zeilen"]),
+                                 "ansatz": len(ansatz), "finanzplanung": fp}
+        p.sagen(f"  {jahrgang}: Ansatz {e/1e6:.1f} Mio. Erträge / {a/1e6:.1f} Mio. "
+                f"Aufwendungen · {len(ansatz)} Posten · Finanzplanung "
+                f"{'/'.join(map(str, fp))} getrennt gespeichert · Dokument "
+                f"{r['document_id']}")
+        p.sagen(f"      Gegenprobe Ist {gelesen['ist_jahr']}: {gp['gleich']}/"
+                f"{gp['geprueft']} Posten deckungsgleich mit dem Jahresabschluss, "
+                f"größter Abstand {gp['groesste_abweichung']:,.0f} € "
+                f"({gp['anteil']*100:.3f} % — Gesamtebene gegen Kernverwaltung)")
+
+    # Die Schlüssel jenseits von `neue_jahrgaenge`, `neue_einheiten` und
+    # `bestand_geschuetzt` tragen einen eigenen Namen: Der gemeinsame Bericht
+    # in `scripts/ingest_finanzberichte.py` legt alle Schichten in ein dict,
+    # und ein zweites `verworfen` überschriebe stumm das der Nachbarschicht.
+    return {"neue_jahrgaenge": sorted(je_jahrgang),
+            "neue_einheiten": [(j,) for j in sorted(je_jahrgang)],
+            "bestand_geschuetzt": geschuetzt,
+            "je_plan_jahrgang": je_jahrgang,
+            "planzeilen": sum(d["zeilen"] for d in je_jahrgang.values()),
+            "plan_verworfen": verworfen,
+            "plan_gegenprobe": [{"jahrgang": g["jahrgang"], "gleich": g["gleich"],
+                                 "geprueft": g["geprueft"],
+                                 "anteil_prozent": round(g["anteil"] * 100, 4)}
+                                for g in gegenproben]}
 
 
 def lies_schlussbericht_fundstellen(store: CouncilStore, p: Protokoll,
@@ -1165,6 +1313,34 @@ for _q in (
         einlesen=lies_konzernabschluesse,
     ),
     Finanzquelle(
+        key="ergebnishaushalt",
+        label="Gesamtergebnishaushalt (Planjahre)",
+        was="Woher das Geld im kommenden Jahr kommen soll und wofür es "
+            "ausgegeben wird — nach Arten, für Jahre, die noch keinen "
+            "Jahresabschluss haben.",
+        tabelle="council_ergebnishaushalt",
+        # Anlage 005 des Haushaltsplans, also derselbe Takt wie die
+        # Teilhaushalte: Einbringung Anfang Oktober des Vorjahres. Über acht
+        # Jahrgänge gemessen 7 von 8 im Oktober, einer im November.
+        erwarteter_monat=10,
+        versatz=-1,
+        herkunft="ris",
+        erkennung=Erkennung(
+            # Das Label reicht hier ausnahmsweise: „Gesamtergebnishaushalt"
+            # steht bei genau diesen acht Anlagen im Titel. Ein Textfilter
+            # zöge 45 weitere herein (Vorberichte, Rechenschaftsberichte,
+            # Finanz- und Leistungsberichte), die das Wort bloß erwähnen.
+            label_muster=("%Gesamtergebnishaushalt%",),
+            # Die Dokumente haben 16–18 Seiten; die Schwelle hält Deckblätter
+            # und Auszüge draußen, ohne den kleinsten Jahrgang zu verlieren.
+            mindest_seiten=10,
+            ordnung="document_id",
+        ),
+        einheiten_von=_einheiten_ergebnishaushalt,
+        bestand=_bestand_ergebnishaushalt,
+        einlesen=lies_ergebnishaushalte,
+    ),
+    Finanzquelle(
         key="haushaltsplan",
         label="Haushaltsplan",
         was="Der Plan, den der Rat beschließt: was die Stadt im kommenden Jahr "
@@ -1184,9 +1360,12 @@ for _q in (
 
 #: Reihenfolge für Oberfläche und Protokoll — vom Groben zum Feinen.
 #: Der Gesamtabschluss steht am Ende: Er ist die weiteste Sicht, kommt aber
-#: zeitlich zuletzt und beantwortet eine andere Frage als die vier davor.
-REIHENFOLGE = ("haushaltsplan", "jahresabschluss", "teilhaushalt",
-               "rpa_fundstelle", "pruefungsfeststellungen", "konzernabschluss")
+#: zeitlich zuletzt und beantwortet eine andere Frage als die fünf davor.
+#: Der Gesamtergebnishaushalt steht direkt hinter dem Haushaltsplan — beide
+#: beantworten „was ist geplant?", nur in verschiedener Auflösung.
+REIHENFOLGE = ("haushaltsplan", "ergebnishaushalt", "jahresabschluss",
+               "teilhaushalt", "rpa_fundstelle", "pruefungsfeststellungen",
+               "konzernabschluss")
 
 
 def datenstand(store: CouncilStore, heute: date | None = None) -> list[dict]:
