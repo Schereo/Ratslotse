@@ -228,7 +228,10 @@ function BereichInner() {
               Ausgaben dieses Bereichs: was der Rat beschlossen hatte und was der Jahresabschluss
               am Ende ausweist.
             </p>
-            <Hantel zeilen={zeilen} />
+            {/* Hier eine Zeitreihe EINES Bereichs: Die Beträge liegen nah
+                beieinander, also trägt die Euro-Skala. Auf der Vergleichsseite
+                ist es umgekehrt — dort spreizen 6 bis 231 Mio. zu weit. */}
+            <Hantel zeilen={zeilen} massstab="betrag" />
           </div>
         );
       })()}

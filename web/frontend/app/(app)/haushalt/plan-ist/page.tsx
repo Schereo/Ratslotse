@@ -19,7 +19,7 @@ import { ErgebnisPosten, HaushaltDaten, deMio, mio } from "@/lib/haushalt";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
-import { Hantel } from "@/components/haushalt/hantel";
+import { Hantel, HantelMassstab } from "@/components/haushalt/hantel";
 import { cn } from "@/lib/utils";
 
 type Bereich = {
@@ -32,6 +32,7 @@ function PlanIstInner() {
   const gewaehltesJahr = Number(useSearchParams().get("jahr")) || null;
   const { data, loading } = useFetch<HaushaltDaten>("/council/haushalt");
   const [zahlenOffen, setZahlenOffen] = useState(false);
+  const [massstab, setMassstab] = useState<HantelMassstab>("prozent");
 
   const jahre = data?.plan_ist_jahre ?? [];
   const jahr = gewaehltesJahr && jahre.includes(gewaehltesJahr) ? gewaehltesJahr : jahre.at(-1) ?? null;
@@ -53,7 +54,12 @@ function PlanIstInner() {
         aufwPlan: mio(ta?.ansatz), aufwIst: mio(ta?.ergebnis),
         ertrPlan: mio(te?.ansatz), ertrIst: mio(te?.ergebnis),
       };
-    }).sort((x, y) => (y.aufwPlan ?? 0) - (x.aufwPlan ?? 0));
+    });
+    type Aufw = { aufwPlan: number | null; aufwIst: number | null };
+    const abw = (b: Aufw) => (b.aufwIst ?? 0) - (b.aufwPlan ?? 0);
+    bereiche.sort((x, y) => massstab === "prozent"
+      ? Math.abs(abw(y)) / Math.abs(y.aufwPlan || 1) - Math.abs(abw(x)) / Math.abs(x.aufwPlan || 1)
+      : Math.abs(abw(y)) - Math.abs(abw(x)));
 
     // Woran es lag: die Ertragsarten (Posten 1–11) mit der größten Abweichung.
     const arten = g
@@ -68,7 +74,7 @@ function PlanIstInner() {
       },
       bereiche, arten,
     };
-  }, [data, jahr]);
+  }, [data, jahr, massstab]);
 
   if (loading || !data) {
     return <div className="py-16 text-center text-sm text-muted-foreground">Wird geladen …</div>;
@@ -173,10 +179,38 @@ function PlanIstInner() {
               Ausgaben je Bereich · {jahr}
             </p>
             <span className="font-mono text-[10px] uppercase text-muted-foreground">
-              {bereiche.length} Teilhaushalte · Mio. Euro
+              {bereiche.length} Teilhaushalte
             </span>
           </div>
+
+          {/* Umschalter wie brutto/netto auf der Bereichsseite: Der Wechsel
+              dreht die Reihenfolge, und darin steckt die Aussage. */}
+          <div className="mb-3 flex flex-col gap-1.5">
+            <div className="scrollbar-none -mx-1 flex items-center gap-1 overflow-x-auto px-1 py-0.5">
+              <div className="flex w-max flex-none items-center gap-1 rounded-full border border-border bg-muted/40 p-1">
+                {([
+                  ["prozent", "Abweichung in Prozent"],
+                  ["betrag", "Abweichung in Millionen"],
+                ] as [HantelMassstab, string][]).map(([wert, text]) => (
+                  <button key={wert} type="button" onClick={() => setMassstab(wert)}
+                    className={cn("whitespace-nowrap rounded-full px-3 py-1 text-[12.5px]",
+                      massstab === wert
+                        ? "bg-card font-semibold shadow-sm"
+                        : "text-foreground/70 hover:text-foreground")}>
+                    {text}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <p className="text-[11.5px] leading-relaxed text-muted-foreground">
+              {massstab === "prozent"
+                ? "Gemessen am eigenen Plan — so lässt sich ein Bereich von 231 Mio. mit einem von 6 Mio. vergleichen. Vorn steht, wessen Plan am weitesten danebenlag."
+                : "Gemessen in Euro — vorn steht, wo am meisten Geld anders floss als geplant. Kleine Bereiche verschwinden dabei fast."}
+            </p>
+          </div>
+
           <Hantel
+            massstab={massstab}
             zeilen={bereiche.map((b) => ({ label: b.name, plan: b.aufwPlan, ist: b.aufwIst }))}
           />
         </div>
