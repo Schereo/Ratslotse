@@ -182,7 +182,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   sie leer, statt sich die Zahlen des Nachbarpostens zu borgen. Damit kommen
   die Jahrgänge 2024 und 2025 dazu (131 Produkte, 19 Teilhaushalte); an den
   Jahrgängen 2018–2023 ändert sich keine einzige Zahl. Der Job, der die Lücke
-  gemeldet hat, meldet sie nicht mehr. (#PR)
+  gemeldet hat, meldet sie nicht mehr. (#548)
 - **Die Überschrift der Anzeigetafel brach mitten im Wort um.** „Oldenburg plant
   883,9 Mil-/lionen Euro" — dabei blieben rechts daneben rund 400 Pixel frei.
   Ursache war eine Breitenbegrenzung von 19 Zeichen, die noch aus einer engeren
