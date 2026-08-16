@@ -43,7 +43,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Callable
 
-from council import finanzberichte, herkunft, pruefberichte
+from council import finanzberichte, herkunft, konzernabschluss, pruefberichte
 from council.store import CouncilStore
 
 #: Wie lange nach dem erwarteten Monat ein fehlender Jahrgang als „die Stadt
@@ -350,6 +350,21 @@ def _bestand_feststellungen(store: CouncilStore) -> set[tuple]:
 
 def _bestand_haushaltsplan(store: CouncilStore) -> set[tuple]:
     return {(j,) for j in store.haushalt_years()}
+
+
+def _bestand_konzernabschluss(store: CouncilStore) -> set[tuple]:
+    """Ein Dokument trägt einen ganzen Jahrgang — die Einheit ist der Jahrgang.
+
+    Gemessen wird an den Posten, nicht an der Trägeraufstellung: Die Posten
+    sind der Kern (ohne sie kommt der Jahrgang gar nicht herein), die
+    Trägeraufstellung kann einzeln an ihrer Probe scheitern, ohne dass der
+    Jahrgang deswegen unvollständig wäre — 2018 ist genau dieser Fall."""
+    return {(j,) for j in store.konzern_jahre()}
+
+
+def _einheiten_konzernabschluss(row: dict) -> set[tuple]:
+    jahr = konzernabschluss.jahrgang(row.get("kopf"))
+    return {(jahr,)} if jahr else set()
 
 
 # --- Einlesen ---------------------------------------------------------------
@@ -836,6 +851,142 @@ def lies_pruefungsfeststellungen(store: CouncilStore, p: Protokoll,
             "verworfen": sum(d["verworfen"] for d in je_jahr.values())}
 
 
+def lies_konzernabschluesse(store: CouncilStore, p: Protokoll,
+                            nur_fehlende: bool = False,
+                            schuetzen: bool = True) -> dict:
+    """Der Konzern Stadt Oldenburg aus den konsolidierten Gesamtabschlüssen.
+
+    Vier Proben entscheiden, und zwar in dieser Reihenfolge:
+
+    1. die drei **Rechenproben der Gesamtergebnisrechnung** — sie sind das
+       Eintrittsbillett; ohne sie kommt der Jahrgang gar nicht erst herein;
+    2. die **Spaltenprobe** je Trägeraufstellung (Träger + Konsolidierung =
+       Summe);
+    3. die **Querprobe** zwischen beiden Tabellen (Trägersumme = Summenposten
+       der Gesamtergebnisrechnung);
+    4. die **Vorjahres-Kette** über Dokumentgrenzen: Die Vorjahresspalte des
+       Jahrgangs N muss die Jahresspalte von N−1 aus einem *anderen* Dokument
+       wiedergeben.
+
+    Die Kette ist bewusst **kein** Ausschlussgrund, sondern eine Meldung: Sie
+    prüft zwei Jahrgänge gegeneinander, und wer bei Streit beide wegwirft,
+    verliert einen guten wegen eines schlechten. Sie steht deshalb im
+    Protokoll und in der Rückgabe — schlägt sie an, hat sich etwas an der
+    Quelle geändert, und das gehört angesehen, nicht automatisch entschieden.
+    """
+    quelle = QUELLEN["konzernabschluss"]
+    sql, werte = quelle.erkennung.abfrage("document_id, label, url, n_pages, raw_text")
+    rows = [dict(r) for r in store._conn.execute(sql, werte)]  # noqa: SLF001
+    vorhanden = _bestand_konzernabschluss(store) if nur_fehlende else set()
+
+    je_jahr: dict[int, dict] = {}
+    gelesen: dict[int, list[dict]] = {}
+    geschuetzt = verworfen_gesamt = 0
+    for r in rows:
+        jahr = konzernabschluss.jahrgang(r["raw_text"])
+        if jahr is None:
+            continue  # Schlussbericht oder Teilhaushalts-Plan im selben Vorfilter
+        if (jahr,) in vorhanden:
+            continue
+        if jahr in je_jahr:
+            p.warnen(f"  {jahr}: zweites Dokument ({r['document_id']}) — übersprungen")
+            continue
+        ergebnis = konzernabschluss.lies(r["raw_text"] or "")
+        if not ergebnis["bestanden"]:
+            gerissen = [x["probe"] for x in ergebnis["proben"] if not x["ok"]]
+            grund = (f"Probe gerissen: {'; '.join(gerissen)}" if gerissen
+                     else f"nur {len(ergebnis['proben'])} von 3 Proben rechenbar")
+            p.warnen(f"  {jahr}: {grund} — Dokument {r['document_id']}, nicht gespeichert")
+            verworfen_gesamt += ergebnis["verworfen"]
+            continue
+        alt = _anzahl(store, "SELECT COUNT(*) FROM council_konzern_posten WHERE jahr = ?",
+                      (jahr,))
+        if not bestandsschutz(p, f"{jahr} Konzern-Posten", alt,
+                              len(ergebnis["posten"]), schuetzen):
+            geschuetzt += 1 if alt else 0
+            continue
+        traeger = [z | {"art": block["art"]}
+                   for block in ergebnis["traeger"] for z in block["zeilen"]]
+
+        # Zwei Herkünfte, weil es zwei Abschnitte sind: Die Posten stehen in
+        # 3.2, die Trägeraufstellung in 4.1.1, und sie sind durch verschiedene
+        # Proben gedeckt. `stand` nennt den Stichtag des Inhalts — bei den
+        # Beteiligungen ist genau das der Punkt, an dem sich Konzern- und
+        # Einzelabschluss unterscheiden werden.
+        anker = dict(art="ris", dokument_id=r["document_id"], label=r["label"],
+                     url=r["url"], stand=f"Gesamtabschluss zum 31.12.{jahr}")
+        h_posten = herkunft.Herkunft(
+            probe=["konzern_ergebnisprobe", "konzern_ausserordentlich",
+                   "konzern_gesamtergebnis"],
+            fundstelle="Abschnitt 3.2, Gesamtergebnisrechnung des Konzerns",
+            probe_ergebnis=konzernabschluss.probennachweis(ergebnis["proben"]),
+            **anker)
+        h_traeger = herkunft.Herkunft(
+            probe=["konzern_zeilenprobe", "konzern_traegersumme", "konzern_querprobe"],
+            fundstelle="Abschnitt 4.1.1, Aufstellung nach Aufgabenträgern",
+            probe_ergebnis=konzernabschluss.traegernachweis(ergebnis["traeger"]),
+            **anker) if traeger else None
+        store.save_konzern_jahrgang(jahr, ergebnis["posten"], traeger,
+                                    h_posten, h_traeger)
+        gelesen[jahr] = ergebnis["posten"]
+        verworfen_gesamt += ergebnis["verworfen"]
+        je_jahr[jahr] = {"posten": len(ergebnis["posten"]), "traeger": len(traeger),
+                         "aufstellungen": len(ergebnis["traeger"]),
+                         "verworfen": ergebnis["verworfen"]}
+        p.sagen(f"  {jahr}: {len(ergebnis['posten'])} Posten · {len(traeger)} Trägerzeilen "
+                f"aus {len(ergebnis['traeger'])} Aufstellungen"
+                f" · verworfen {ergebnis['verworfen']} · Dokument {r['document_id']}")
+        # Nur melden, wenn eine *vorhandene* Aufstellung durchgefallen ist.
+        # Bis 2016 führt der Bericht den Abschnitt 4.1.1 noch nicht — das ist
+        # eine Lücke der Quelle und keine Meldung wert.
+        if len(ergebnis["traeger"]) < ergebnis["traeger_gefunden"]:
+            p.warnen(f"  {jahr}: {ergebnis['traeger_gefunden'] - len(ergebnis['traeger'])} "
+                     f"von {ergebnis['traeger_gefunden']} Trägeraufstellungen an ihrer "
+                     "Spalten- oder Querprobe gescheitert")
+
+    kette = _kette_pruefen(gelesen, p)
+    return {"neue_jahrgaenge": sorted(je_jahr),
+            "neue_einheiten": [(j,) for j in sorted(je_jahr)],
+            "je_jahr": je_jahr, "bestand_geschuetzt": geschuetzt,
+            "konzern_posten": sum(d["posten"] for d in je_jahr.values()),
+            "konzern_traeger": sum(d["traeger"] for d in je_jahr.values()),
+            "verworfen": verworfen_gesamt, **kette}
+
+
+#: Rollen, deren Vorjahresspalte gegen den Vorjahrgang geprüft wird.
+_KETTEN_ROLLEN = ("ertraege_summe", "aufwendungen_summe", "ord_ergebnis",
+                  "gesamtergebnis")
+
+
+def _kette_pruefen(gelesen: dict[int, list[dict]], p: Protokoll) -> dict:
+    """Vorjahresspalte gegen den Vorjahrgang — über Dokumentgrenzen hinweg.
+
+    Bis 2016 führt der Bericht die Vorjahreszahlen in Tausend Euro; die
+    Toleranz muss dort eine halbe Rundungseinheit hergeben, sonst schlägt
+    jede Zeile an, die auf Tausend gerundet wurde."""
+    geprueft = bestanden = 0
+    for jahr in sorted(gelesen):
+        if jahr - 1 not in gelesen:
+            continue
+        jetzt = {x["rolle"]: x for x in gelesen[jahr] if x["rolle"]}
+        vorher = {x["rolle"]: x for x in gelesen[jahr - 1] if x["rolle"]}
+        toleranz = 1000.0 if jahr <= 2016 else konzernabschluss.TOLERANZ_EUR
+        for rolle in _KETTEN_ROLLEN:
+            a = (jetzt.get(rolle) or {}).get("vorjahr")
+            b = (vorher.get(rolle) or {}).get("betrag")
+            if a is None or b is None:
+                continue
+            geprueft += 1
+            if abs(a - b) <= toleranz:
+                bestanden += 1
+            else:
+                p.warnen(f"  Vorjahres-Kette {jahr - 1}→{jahr} {rolle}: "
+                         f"{b:,.2f} gegen {a:,.2f} — Abweichung {a - b:+,.2f}")
+    if geprueft:
+        p.sagen(f"  Vorjahres-Kette: {bestanden}/{geprueft} über Dokumentgrenzen geschlossen")
+    return {"kette_geprueft": geprueft, "kette_bestanden": bestanden}
+
+
 # --- Die Registry -----------------------------------------------------------
 
 QUELLEN: dict[str, Finanzquelle] = {}
@@ -916,6 +1067,33 @@ for _q in (
         einlesen=lies_teilhaushalte,
     ),
     Finanzquelle(
+        key="konzernabschluss",
+        label="Konsolidierter Gesamtabschluss (Konzern Stadt)",
+        was="Was die Stadt mit Klinikum, Bussen, Bädern und Gebäudewirtschaft "
+            "zusammen bewegt — nicht nur die Kernverwaltung.",
+        tabelle="council_konzern_posten",
+        nebentabellen=("council_konzern_traeger",),
+        # Der Rat bekam den Bericht zuletzt zwischen Juni und Februar; er
+        # entsteht erst, wenn alle einbezogenen Jahresabschlüsse geprüft sind,
+        # und liegt damit rund zwei Jahre hinter dem Haushaltsjahr.
+        erwarteter_monat=2,
+        versatz=2,
+        herkunft="ris",
+        erkennung=Erkennung(
+            # Bewusst nur auf dem Text: Die Labels dieser Reihe sind wertlos —
+            # der Jahrgang 2016 heißt „Anlage", 2013 ebenso, und „Prüfbericht
+            # GA 2021" trifft nur drei der zwölf. Was der Vorfilter zu viel
+            # hereinlässt (Schlussberichte, Teilhaushalts-Pläne), wirft
+            # `konzernabschluss.jahrgang` am Textkopf wieder hinaus.
+            text_muster=(konzernabschluss.TEXT_MUSTER,),
+            mindest_seiten=40,
+            ordnung="document_id",
+        ),
+        einheiten_von=_einheiten_konzernabschluss,
+        bestand=_bestand_konzernabschluss,
+        einlesen=lies_konzernabschluesse,
+    ),
+    Finanzquelle(
         key="haushaltsplan",
         label="Haushaltsplan",
         was="Der Plan, den der Rat beschließt: was die Stadt im kommenden Jahr "
@@ -934,8 +1112,10 @@ for _q in (
     QUELLEN[_q.key] = _q
 
 #: Reihenfolge für Oberfläche und Protokoll — vom Groben zum Feinen.
+#: Der Gesamtabschluss steht am Ende: Er ist die weiteste Sicht, kommt aber
+#: zeitlich zuletzt und beantwortet eine andere Frage als die vier davor.
 REIHENFOLGE = ("haushaltsplan", "jahresabschluss", "teilhaushalt",
-               "rpa_fundstelle", "pruefungsfeststellungen")
+               "rpa_fundstelle", "pruefungsfeststellungen", "konzernabschluss")
 
 
 def datenstand(store: CouncilStore, heute: date | None = None) -> list[dict]:

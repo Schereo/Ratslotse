@@ -20,11 +20,23 @@
 // „Was kostet eigentlich …?" stand vorher an Platz 2. Es ist die griffigste
 // Karte, beantwortet aber eine Frage, die erst Sinn ergibt, wenn man weiß,
 // dass der größte Teil des Geldes gar nicht zur Disposition steht.
+//
+// DER SIEBTE SCHRITT IST BREIT, UND ZWAR AUS ZWEI GRÜNDEN. Inhaltlich stellt
+// „Und ist das die ganze Stadt?" die sechs Schritte davor in einen Rahmen:
+// Alle sechs handeln vom Kernhaushalt, und der ist rund zwei Drittel dessen,
+// was die Stadt bewegt. Das ist kein weiteres Angebot auf gleicher Ebene,
+// sondern der Zoom nach draußen — und die volle Breite ist die einzige
+// Auszeichnung, die dafür ohne eine zweite Farbe auskommt. Formal löst sie
+// zugleich das Rasterproblem: Sieben Karten gehen in keiner Spaltenzahl auf,
+// und eine einzelne in der letzten Zeile liest sich wie ein Nachtrag (genau
+// die Falle, vor der der Kommentar am Raster unten warnt).
 
 import Link from "next/link";
 import {
-  ArrowRight, Coins, GitCompareArrows, Receipt, Scale, SearchCheck, SlidersHorizontal,
+  ArrowRight, Building2, Coins, GitCompareArrows, Receipt, Scale, SearchCheck,
+  SlidersHorizontal,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const ZIELE = [
   {
@@ -63,6 +75,14 @@ const ZIELE = [
     titel: "Die Prüfung",
     text: "Was das Rechnungsprüfungsamt an den Abschlüssen beanstandet — im Wortlaut.",
   },
+  {
+    href: "/haushalt/konzern",
+    Icon: Building2,
+    titel: "Und ist das die ganze Stadt?",
+    text: "Klinikum, Busse, Bäder, städtische Gebäude: was neben dem Haushalt noch läuft — "
+      + "und wie viel größer die Stadt damit ist.",
+    breit: true,
+  },
 ];
 
 export function Wegweiser() {
@@ -72,31 +92,45 @@ export function Wegweiser() {
         Der Weg durch den Haushalt
       </p>
       <p className="mb-2.5 mt-1 max-w-[76ch] text-[12.5px] leading-relaxed text-muted-foreground">
-        Sechs Seiten, die aufeinander aufbauen — von der Frage, woher das Geld kommt, bis zu der,
-        wer am Ende nachprüft. Wer zum ersten Mal hier ist, liest sie am besten der Reihe nach;
-        einzeln funktioniert aber jede für sich.
+        Sieben Seiten, die aufeinander aufbauen — von der Frage, woher das Geld kommt, über die,
+        wer am Ende nachprüft, bis zu der, ob das überhaupt die ganze Stadt ist. Wer zum ersten
+        Mal hier ist, liest sie am besten der Reihe nach; einzeln funktioniert aber jede für sich.
       </p>
-      {/* Sechs Karten: zwei/drei — jede Stufe geht glatt auf. Bei
+      {/* Sechs Karten im Raster zwei/drei — jede Stufe geht glatt auf. Bei
           `lg:grid-cols-4` oder `xl:grid-cols-5` bliebe die letzte Zeile
           angebrochen, und eine einzelne Karte neben viel Leerfläche liest
-          sich wie ein Nachtrag. */}
+          sich wie ein Nachtrag. Die siebte spannt deshalb die ganze Zeile
+          (`breit`), statt allein darin zu stehen. */}
       <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
 
-        {ZIELE.map(({ href, Icon, titel, text }, i) => (
+        {ZIELE.map(({ href, Icon, titel, text, breit }, i) => (
           <Link key={href} href={href}
-            className="group flex items-start gap-3.5 rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/40 sm:flex-col sm:gap-0">
-            <span aria-hidden className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary/[0.16] sm:mb-3">
+            className={cn(
+              "group flex items-start gap-3.5 rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/40",
+              breit
+                ? "sm:col-span-2 sm:flex-row sm:items-center lg:col-span-3"
+                : "sm:flex-col sm:gap-0",
+            )}>
+            <span aria-hidden className={cn(
+              "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary/[0.16]",
+              !breit && "sm:mb-3",
+            )}>
               <Icon size={22} strokeWidth={2} />
             </span>
             {/* Der Spalte gibt flex-1 + mt-auto eine gemeinsame Grundlinie:
-                Sonst rutscht „Ansehen" mit der Textlänge auf und ab. */}
+                Sonst rutscht „Ansehen" mit der Textlänge auf und ab. In der
+                breiten Karte liegt alles nebeneinander — dort wäre mt-auto
+                nur ein Sprung nach unten. */}
             <span className="flex min-w-0 flex-col sm:flex-1">
               <span className="block font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
                 Schritt {i + 1} von {ZIELE.length}
               </span>
               <span className="mt-0.5 block font-display text-[15px] font-bold leading-snug tracking-tight">{titel}</span>
               <span className="mt-1 block text-[12.5px] leading-relaxed text-muted-foreground">{text}</span>
-              <span className="mt-2.5 flex items-center gap-1 text-[12.5px] font-semibold text-primary sm:mt-auto sm:pt-2.5">
+              <span className={cn(
+                "mt-2.5 flex items-center gap-1 text-[12.5px] font-semibold text-primary",
+                !breit && "sm:mt-auto sm:pt-2.5",
+              )}>
                 Ansehen
                 <ArrowRight size={14} strokeWidth={2}
                   className="transition-transform group-hover:translate-x-0.5" />

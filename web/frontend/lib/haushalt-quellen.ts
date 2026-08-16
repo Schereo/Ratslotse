@@ -31,7 +31,7 @@ export type Quelle = {
  *  Union bleibt trotzdem eng genug, um Tippfehler beim Aufruf zu fangen. */
 export type QuellenSchluessel =
   | "plan" | "steuern" | "steuerkraft" | "hebesaetze" | "ruecklage"
-  | "jahresabschluss" | "teilhaushalt" | "pruefbericht";
+  | "jahresabschluss" | "teilhaushalt" | "pruefbericht" | "gesamtabschluss";
 
 export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   plan: {
@@ -128,6 +128,28 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "Die Berichte hängen als Anlagen an Ratsvorlagen im Bürgerinformationssystem.",
     herausgeber: "Stadt Oldenburg, Rechnungsprüfungsamt",
     stand: "Jahresabschlüsse 2017–2023",
+    art: "pdf",
+    url: "https://buergerinfo.oldenburg.de",
+  },
+  gesamtabschluss: {
+    titel: "Konsolidierte Gesamtabschlüsse der Stadt Oldenburg",
+    fundstelle:
+      "Der Bericht, mit dem das Rechnungsprüfungsamt den Gesamtabschluss nach § 128 NKomVG " +
+      "prüft — die einzige Rechnung, in der Kernverwaltung, Eigenbetriebe und Beteiligungen " +
+      "zusammen stehen. Wir lesen zwei Tabellen daraus: die Gesamtergebnisrechnung " +
+      "(Abschnitt 3.2) und die Aufstellung, wer wie viel beiträgt (Abschnitt 4.1.1). " +
+      "Ein Jahrgang kommt nur herein, wenn drei Rechenproben des Dokuments aufgehen: " +
+      "Erträge − Aufwendungen = ordentliches Ergebnis, dasselbe für die außerordentlichen " +
+      "Posten, und beides zusammen = Gesamtjahresergebnis. " +
+      "Die Trägeraufstellung zusätzlich nur, wenn ihre Zeilen die ausgewiesene Summe ergeben " +
+      "und diese Summe zur Gesamtergebnisrechnung passt. " +
+      "Der Jahrgang 2013 fehlt, weil sein PDF die Tabellenseiten ohne Textebene mitbringt; " +
+      "beim Jahrgang 2018 fehlt die Aufwendungsseite der Trägeraufstellung, weil ihre " +
+      "Konsolidierungszeile nicht zur eigenen Summe passt — der Bericht des Folgejahres " +
+      "führt dort einen anderen Wert. " +
+      "Die Berichte hängen als Anlagen an Ratsvorlagen im Bürgerinformationssystem.",
+    herausgeber: "Stadt Oldenburg, Rechnungsprüfungsamt",
+    stand: "Gesamtabschlüsse 2014–2024",
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de",
   },

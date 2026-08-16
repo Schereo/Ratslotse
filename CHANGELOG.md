@@ -8,6 +8,18 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **„Und ist das die ganze Stadt?" — der Haushalt zeigt jetzt auch, was neben
+  ihm läuft.** Klinikum, Busse, Bäder und die städtischen Gebäude führen eigene
+  Bücher; im Haushalt tauchen sie bestenfalls als Zuschusszeile auf. Eine neue
+  Seite stellt beides nebeneinander: 2024 bewegt die Verwaltung 799 Mio. €, die
+  Stadt mit allen Betrieben und Beteiligungen 1.242 Mio. € — der Haushalts-
+  Bereich zeigte bis jetzt also rund zwei Drittel. Dazu über elf Jahre, wer wie
+  viel beiträgt, und eine Erklärung, warum die Geschäfte der Betriebe
+  untereinander wieder herausgerechnet werden. Die Zahlen stammen aus den
+  geprüften Gesamtabschlüssen der Stadt; übernommen wird ein Jahrgang nur, wenn
+  die Rechnungen des Dokuments aufgehen. Was der Vergleich **nicht** kann, steht
+  als eigener Abschnitt auf der Seite: Ein Gesamtabschluss ist kein Haushalt,
+  er kommt zwei Jahre später, und verrechnen lässt sich beides nicht. (#PR)
 - **Jede Haushalts-Zahl hält jetzt fest, woher sie stammt — auf den Abschnitt
   genau.** Bisher stand an einer gespeicherten Zahl bestenfalls eine URL, und
   bei einem 300-seitigen Jahresabschluss ist das zu wenig: Man sah nicht, an

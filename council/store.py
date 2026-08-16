@@ -769,6 +769,67 @@ class CouncilStore:
         self._conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_herkunft_dokument "
             "ON council_herkunft(dokument_id)")
+        # Der Konzern Stadt Oldenburg aus dem konsolidierten Gesamtabschluss
+        # (council/konzernabschluss.py). Zwei Ebenen, zwei Tabellen:
+        #
+        # `council_konzern_posten` = die Gesamtergebnisrechnung des Konzerns,
+        # Posten für Posten. `rolle` ist der Grund, warum es diese Spalte gibt:
+        # Bis 2018 ist Posten 15 die Summe der ordentlichen Erträge, ab 2019
+        # ist es Posten 13. Wer über Jahre hinweg nach `nr` fragt, bekommt ab
+        # 2019 stillschweigend die Versorgungsaufwendungen. Gefragt wird
+        # deshalb nach der Rolle; die Nummer steht nur noch als Fundstelle
+        # daneben.
+        #
+        # BEIDE TABELLEN FÜHREN IHRE HERKUNFT AUSSCHLIESSLICH ÜBER
+        # `herkunft_id` — kein `quelle_label`, kein `quelle_url`. Die neun
+        # älteren Finanztabellen tragen ihre Altspalten weiter, weil ein
+        # Umbau dort neun Lesepfade anfasste (s. council/herkunft.py). Diese
+        # zwei sind neu und haben keinen Altbestand; sie hier trotzdem
+        # anzulegen hieße, dieselbe Angabe von Anfang an doppelt zu führen —
+        # mit der bekannten Folge, dass eine der beiden irgendwann veraltet.
+        # Die Spalte selbst rüstet `_migrate_herkunft` über
+        # `herkunft.HERKUNFT_TABELLEN` nach; sie steht hier nur mit, damit
+        # eine frische Datenbank sie sofort trägt.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_konzern_posten ("
+            "jahr INTEGER NOT NULL, "
+            "nr INTEGER NOT NULL, "                # Postennummer DIESES Jahrgangs
+            "bezeichnung TEXT NOT NULL, "
+            "rolle TEXT, "                         # ertraege_summe, zinsaufwand, …
+            "betrag REAL NOT NULL, vorjahr REAL, "  # Euro; vorjahr NULL = Spalte unlesbar
+            "ist_summe INTEGER NOT NULL DEFAULT 0, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, nr))"
+        )
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_konzern_posten_rolle "
+            "ON council_konzern_posten(rolle, jahr)")
+        # `council_konzern_traeger` = wer den Konzern ausmacht: dieselben
+        # Summen, aufgeteilt auf Kernverwaltung, Eigenbetriebe und
+        # Beteiligungen, plus die Zeile „Konsolidierung" (die Verrechnung der
+        # Geschäfte untereinander).
+        #
+        # Die Beträge stehen in **Tausend Euro**, so wie der Bericht sie
+        # ausweist, und die Spalten heißen auch so. Sie in Euro umzurechnen
+        # hieße, sechs Stellen Genauigkeit zu behaupten, die das Dokument
+        # nicht hergibt — und niemand sähe es der Spalte `betrag` später an.
+        #
+        # Eigene `herkunft_id` je Zeile, nicht je Jahrgang: Diese Aufstellung
+        # steht in einem anderen Abschnitt des Berichts als die Posten (4.1.1
+        # statt 3.2) und ist durch andere Proben gedeckt. Und sobald die
+        # Beteiligungen einmal aus ihren Einzelabschlüssen kommen, sitzen in
+        # derselben Tabelle Zeilen aus verschiedenen Dokumenten — genau der
+        # Fall, für den die Herkunft eine eigene Tabelle ist.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_konzern_traeger ("
+            "jahr INTEGER NOT NULL, "
+            "art TEXT NOT NULL, "                  # 'ertraege' | 'aufwendungen'
+            "traeger_key TEXT NOT NULL, "          # stadt, klinikum, egh, konsolidierung, …
+            "traeger TEXT NOT NULL, "
+            "betrag_teur REAL NOT NULL, vorjahr_teur REAL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, art, traeger_key))"
+        )
         # Vorlagen-Volltexte semantisch auffindbar machen: je Vorlage mehrere
         # Chunk-Vektoren (Sachverhalt/Begründung), die die Hybrid-Suche auf die
         # zugehörigen Beschlüsse abbildet. text_hash = SHA-256 des Volltexts —
@@ -951,6 +1012,14 @@ class CouncilStore:
         "council_pruefbericht_quellen": ("label", "url", "ris"),
         "council_produkte":             ("quelle_label", "quelle_url", "ris"),
         "council_pruefberichte":        ("quelle_label", "quelle_url", "ris"),
+        # Die beiden Konzern-Tabellen sind erst mit der Herkunft entstanden
+        # und tragen gar keine Altspalten. Sie stehen hier trotzdem, weil
+        # `_herkunft_nachtragen` jede Tabelle aus `HERKUNFT_TABELLEN`
+        # nachschlägt; ohne URL-Spalte kehrt es sofort zurück, ohne etwas zu
+        # tun. Ein Eintrag „nichts nachzutragen" ist billiger als eine
+        # Ausnahme im Nachrüst-Weg.
+        "council_konzern_posten":       (None, "quelle_url", "ris"),
+        "council_konzern_traeger":      (None, "quelle_url", "ris"),
     }
 
     @staticmethod
@@ -3496,6 +3565,105 @@ class CouncilStore:
                 "SELECT DISTINCT jahr FROM council_ergebnisrechnung ORDER BY jahr")]
         except sqlite3.OperationalError:
             return []
+
+    # --- Konzern Stadt Oldenburg (konsolidierter Gesamtabschluss) -----------
+
+    def save_konzern_jahrgang(self, jahr: int, posten: list[dict],
+                              traeger: list[dict], herkunft,
+                              herkunft_traeger=None) -> dict:
+        """Einen Jahrgang des Gesamtabschlusses ersetzen — beide Ebenen.
+
+        Zusammen, weil sie aus **einem** Dokument stammen und ein halb
+        geschriebener Jahrgang für den nächsten Lauf wie ein fertiger aussähe.
+        Aber mit **zwei** Herkünften: Die Posten stehen in Abschnitt 3.2, die
+        Trägeraufstellung in 4.1.1, und sie sind durch verschiedene Proben
+        gedeckt. Fehlt ``herkunft_traeger``, gilt dieselbe für beide.
+
+        Übergeben wird nur, was die Proben bestanden hat — diese Methode prüft
+        nichts nach, sie schreibt."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            hid_traeger = (self.merke_herkunft(herkunft_traeger, fetched_at=now)
+                           if herkunft_traeger is not None else hid)
+            self._conn.execute("DELETE FROM council_konzern_posten WHERE jahr = ?", (jahr,))
+            self._conn.execute("DELETE FROM council_konzern_traeger WHERE jahr = ?", (jahr,))
+            self._conn.executemany(
+                "INSERT INTO council_konzern_posten (jahr, nr, bezeichnung, rolle, "
+                " betrag, vorjahr, ist_summe, fetched_at, herkunft_id) "
+                "VALUES (?,?,?,?,?,?,?,?,?)",
+                [(jahr, p["nr"], p["bezeichnung"], p.get("rolle"), p["betrag"],
+                  p.get("vorjahr"), 1 if p.get("ist_summe") else 0, now, hid)
+                 for p in posten])
+            self._conn.executemany(
+                "INSERT INTO council_konzern_traeger (jahr, art, traeger_key, traeger, "
+                " betrag_teur, vorjahr_teur, fetched_at, herkunft_id) "
+                "VALUES (?,?,?,?,?,?,?,?)",
+                [(jahr, t["art"], t["traeger_key"], t["traeger"], t["betrag_teur"],
+                  t.get("vorjahr_teur"), now, hid_traeger) for t in traeger])
+        return {"posten": len(posten), "traeger": len(traeger)}
+
+    def konzern_jahre(self) -> list[int]:
+        """Jahrgänge mit eingelesenem Gesamtabschluss (aufsteigend)."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT jahr FROM council_konzern_posten ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    def get_konzern_posten(self, jahr: int | None = None) -> list[dict]:
+        """Posten der Gesamtergebnisrechnung — ein Jahrgang oder alle."""
+        try:
+            if jahr is None:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_konzern_posten ORDER BY jahr, nr").fetchall()
+            else:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_konzern_posten WHERE jahr = ? ORDER BY nr",
+                    (jahr,)).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [dict(r) for r in rows]
+
+    def kernverwaltung_ist(self) -> dict[int, dict]:
+        """Ist-Summen der Kernverwaltung je Jahr, aus den Jahresabschlüssen.
+
+        Nur die beiden Summenzeilen, und bewusst über die **Bezeichnung**
+        gesucht statt über die Postennummer: Diese Tabelle wird sonst nirgends
+        nach Nummern gefragt, und eine Nummer, die niemand nachprüft, ist
+        genau die, die beim nächsten Formatwechsel still etwas anderes meint.
+
+        Zweck ist die Gegenprobe: Der Gesamtabschluss führt die Kernverwaltung
+        als eigene Trägerzeile. Beide Zahlen stammen aus verschiedenen
+        Dokumenten verschiedener Jahre — dass sie übereinstimmen, ist die
+        stärkste Bestätigung, die dieser Bestand hergibt."""
+        try:
+            rows = self._conn.execute(
+                "SELECT jahr, bezeichnung, ergebnis FROM council_ergebnisrechnung "
+                "WHERE thh_nr IS NULL AND ergebnis IS NOT NULL "
+                "  AND bezeichnung LIKE 'Summe ordentliche%' ORDER BY jahr").fetchall()
+        except sqlite3.OperationalError:
+            return {}
+        aus: dict[int, dict] = {}
+        for r in rows:
+            art = "ertraege" if "Erträge" in r["bezeichnung"] else "aufwendungen"
+            aus.setdefault(r["jahr"], {})[art] = r["ergebnis"]
+        return aus
+
+    def get_konzern_traeger(self, jahr: int | None = None) -> list[dict]:
+        """Trägeraufstellung — wer wie viel zum Konzern beiträgt, in TEUR."""
+        try:
+            if jahr is None:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_konzern_traeger ORDER BY jahr, art, "
+                    "betrag_teur DESC").fetchall()
+            else:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_konzern_traeger WHERE jahr = ? "
+                    "ORDER BY art, betrag_teur DESC", (jahr,)).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [dict(r) for r in rows]
 
     def save_produkte(self, jahr: int, produkte: list[dict], herkunft) -> int:
         """Produkte eines Jahres einfügen/aktualisieren. Bewusst KEIN Löschen
