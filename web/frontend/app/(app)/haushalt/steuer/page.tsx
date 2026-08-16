@@ -179,8 +179,12 @@ function SteuerInner() {
               Der Hebesatz im Rat
             </p>
             <div className="mt-3 space-y-3">
+              {/* „Bis 2025" stand hier bis 16.08. und behauptete eine Dauer,
+                  die wir nicht belegen können: Wir kennen genau EINEN
+                  Hebesatz, den für 2025. Ob er davor derselbe war, wissen wir
+                  nicht — „bis" und „unverändert" sind deshalb beide raus. */}
               <div className="rounded-xl bg-muted/40 p-3">
-                <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">Bis 2025 · Rat</p>
+                <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">2025 · Rat</p>
                 <p className="mt-1 text-[13px] font-semibold">
                   Hebesatz {art.hebesatz}&nbsp;%
                   <span className="font-normal text-muted-foreground"> — beschlossen mit der Haushaltssatzung</span>
@@ -236,10 +240,23 @@ function SteuerInner() {
                 ≈ {deMio(proPunkt / 1e6)}
                 <span className="text-sm font-semibold text-muted-foreground">&#8239;Mio.&nbsp;€</span>
               </p>
+              {/* Die offengelegte Rechnung bleibt stehen — wer die Zahl
+                  nachrechnen will, soll das können, ohne uns zu glauben. */}
               <p className="mt-1.5 text-[12.5px] leading-relaxed text-foreground/80">
                 Überschlagen: {deMio(letzte!.betrag / 1e6)}&#8239;Mio. bei {art.hebesatz} Punkten,
-                geteilt durch {art.hebesatz}. <strong>Brutto</strong> — was davon in der Stadtkasse
-                bleibt, ist weniger.
+                geteilt durch {art.hebesatz}.
+              </p>
+              {/* Hier stand bis 16.08. „Brutto — was davon in der Stadtkasse
+                  bleibt, ist weniger". Falsch: Der Datensatz weist die
+                  Gewerbesteuer bereits NACH Abzug der Umlage aus (siehe
+                  Quellenverzeichnis), der Überschlag also auch. Was den Betrag
+                  weiter drücken kann, ist der Finanzausgleich — und der lässt
+                  sich nicht beziffern (components/haushalt/finanzausgleich-daempfer.tsx). */}
+              <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted-foreground">
+                Der Betrag ist bereits <strong>nach Abzug der Umlage</strong> an Bund und Land —
+                so führt der offene Datensatz die Gewerbesteuer.<Beleg q="steuern" /> Ob das Land
+                über den Finanzausgleich zusätzlich gegenrechnet, hängt an seiner Formel; wie
+                stark, geben die Zahlen nicht her.
               </p>
               {/* „und Grundstückswerte" stand hier, solange die Karte auch bei
                   der Grundsteuer erschien — dort tut sie es nicht mehr. */}
@@ -248,9 +265,9 @@ function SteuerInner() {
                 Unternehmen gleich bleiben — steigt der Hebesatz, kann sich auch daran etwas
                 ändern.
               </p>
-              <Link href="/haushalt/einnahmen"
+              <Link href="/haushalt/labor"
                 className="mt-2.5 inline-flex text-[12px] font-semibold text-primary">
-                Alle Einnahmequellen ansehen →
+                Im Labor ausprobieren →
               </Link>
             </div>
           )}

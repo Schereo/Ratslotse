@@ -128,6 +128,24 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Entwicklung über alle abgeschlossenen Jahre. Farben bewerten dabei nichts:
   Mehr ausgegeben kann ein Tarifabschluss sein, weniger ausgegeben heißt oft,
   dass etwas nicht gebaut wurde. (#502)
+- **„Steht Oldenburg besser da als Osnabrück?" — eine neue Seite beantwortet
+  die Frage, so weit sie sich seriös beantworten lässt, und erklärt den Rest.**
+  Bei der Steuerkraft geht es: Oldenburg liegt mit 1.974 € je Einwohnerin an
+  der Spitze aller acht kreisfreien Städte Niedersachsens, vor Osnabrück
+  (1.651), Braunschweig (1.518) und Delmenhorst (949). Dazu die Hebesätze — auf
+  denselben Messbetrag zahlt man in Braunschweig 750 statt 539 Prozent — und
+  die Steuereinnahmekraft über drei Jahre, an der sich zeigt, was eine hohe
+  Gewerbesteuer kosten kann: In Wolfsburg fiel sie um 30 Prozent, während sie
+  in Oldenburg um 22 Prozent stieg. Alle Zahlen kommen aus zwei Tabellen des
+  Landesamts für Statistik, also für jede Gemeinde nach derselben Vorschrift
+  gerechnet. **Ausgaben, Personal und Schulden je Einwohner stehen bewusst
+  nicht dort**, und die Seite sagt auch, warum: Solche Zahlen messen zuerst,
+  wie weit eine Stadt ausgelagert hat — in Oldenburgs Haushalt stehen rund 64
+  Prozent dessen, was die Stadt insgesamt bewegt, in Osnabrücks knapp 48. Die
+  Stadt Oldenburg hat diesen Vergleich 2018 auf Antrag der FDP-Fraktion selbst
+  angestellt und im selben Dokument festgestellt, dass er nichts aussagt; die
+  Seite zitiert sie wörtlich und verlinkt den Vorgang im Ratsinformationssystem.
+  (#516)
 
 ### Geändert
 - **Zahlen, die eine Rechenprobe nicht bestehen, ersetzen keine vorhandenen
@@ -346,6 +364,23 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   schiefen Rechnung: Das Freiwillige zu streichen spart nicht seine 47,1 Mio. €
   Aufwand, sondern seinen Zuschussbedarf von 43,0 Mio. — rund 60 % des
   geplanten Minus. (#521)
+- **„Woher kommt das Geld?" sortiert jetzt nach Entscheidungsmacht — und sagt
+  beim Finanzausgleich ehrlich, dass es die Zahl nicht gibt.** Die
+  Einnahmequellen standen bisher nach Betrag sortiert nebeneinander, jede mit
+  ihrem eigenen Spielraum-Zeichen; die eigentliche Aussage musste man sich aus
+  sieben Karten zusammensuchen. Sie stehen jetzt in drei Gruppen: was der Rat
+  selbst beschließt, was er nur innerhalb gesetzlicher Grenzen darf, und worauf
+  er gar keinen Einfluss hat. Neu dazu ein Block über den Finanzausgleich —
+  nimmt die Stadt mehr eigene Steuern ein, rechnet das Land in den
+  Schlüsselzuweisungen dagegen. Wie stark, sagen wir bewusst **nicht**: Über
+  die 33 Jahrespaare des Datensatzes streut dieser Wert so weit, dass jede
+  einzelne Zahl in die Irre führte, und in 15 von 26 Jahren mit steigender
+  Steuerkraft stieg die Zuweisung sogar mit. Der Block zeigt deshalb beide
+  Reihen nebeneinander und zählt aus, statt einen Umrechnungskurs zu erfinden.
+  Im Steuer-Steckbrief außerdem zwei Korrekturen: Der Überschlag „was brächte
+  ein Hebesatzpunkt mehr" war als „brutto" bezeichnet, obwohl der Datensatz die
+  Gewerbesteuer bereits nach Abzug der Umlage führt, und beim Hebesatz stand
+  „bis 2025", obwohl wir genau einen einzigen Jahrgang kennen. (#519)
 
 <!-- GEPARKT (nur dev.ratslotse.de, Umgebungs-Gate): Eintrag aktivieren,
      sobald der Kommunalwahl-Vergleich auf Prod freigeschaltet wird.
