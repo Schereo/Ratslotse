@@ -46,30 +46,23 @@ import { GlossaryText } from "@/components/glossary-text";
 
 const QUELLEN = ["lsn_finanzausgleich", "lsn_realsteuern", "vergleich_2018"] as const;
 
-/** Herkunft einer Angabe im Klartext — dieselbe Bauart wie auf der
- *  Konzern-Seite: Fundstelle, bestandene Probe, Messwert. */
+/** Wo eine Angabe im Dokument steht — dieselbe Bauart wie auf der
+ *  Konzern-Seite: Abschnitt und Stand, sonst nichts.
+ *
+ *  Unsere Proben und ihr Messwert standen bis 16.08. daneben, auf dieser
+ *  Seite gleich dreimal. Sie sind raus (DESIGNSPRACHE.md § 7) — sie laufen
+ *  weiter, sie stehen in der Technik-Doku, aber sie sagen einer Leserin
+ *  nichts über die Steuerkraft Oldenburgs. */
 function Fundstelle({ h }: { h: Herkunft | null }) {
-  if (!h) return null;
+  if (!h?.fundstelle) return null;
   return (
     <div className="mt-3 border-t border-dashed border-border pt-2.5">
       <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
         Woher diese Zahlen kommen
       </p>
-      {h.fundstelle && (
-        <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
-          {h.fundstelle}{h.stand ? ` · ${h.stand}` : ""}
-        </p>
-      )}
-      {h.proben.length > 0 && (
-        <ul className="mt-1 flex list-disc flex-col gap-0.5 pl-4 text-[11.5px] leading-relaxed text-muted-foreground">
-          {h.proben.map((satz) => <li key={satz}>{satz}</li>)}
-        </ul>
-      )}
-      {h.probe_ergebnis && (
-        <p className="mt-1 font-mono text-[10px] leading-relaxed text-muted-foreground">
-          Gemessen: {h.probe_ergebnis}
-        </p>
-      )}
+      <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
+        {h.fundstelle}{h.stand ? ` · ${h.stand}` : ""}
+      </p>
     </div>
   );
 }

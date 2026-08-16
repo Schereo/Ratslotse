@@ -148,6 +148,14 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   (#516)
 
 ### Geändert
+- **Der Haushalts-Bereich bleibt vorerst der Dev-Umgebung vorbehalten.** Die
+  dreizehn Seiten unter `/haushalt` sind jetzt — wie der Wahlprogramm-Vergleich
+  — an `NEXT_PUBLIC_RATSLOTSE_ENV` gebunden: Auf ratslotse.de rendern sie
+  nicht, und die Anker dorthin (Seitenleiste, „Mehr"-Sheet, der Verweis auf den
+  Beschluss-Seiten) verschwinden mit ihnen — ein Gate ohne seine Einstiege
+  hinterließe Links, die ins Leere führen. Damit kann der Bereich weiterentwickelt
+  werden, ohne den nächsten Release aufzuhalten. Ein Testwächter prüft künftig,
+  dass kein neuer Verweis das Gate vergisst. (#546)
 - **Zahlen, die eine Rechenprobe nicht bestehen, ersetzen keine vorhandenen
   mehr.** Liest ein Parser für einen bereits gespeicherten Jahrgang plötzlich
   nichts oder deutlich weniger — etwa weil die Stadt ihre Tabellen umbaut —,
@@ -169,7 +177,21 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Prüflauf; geholt werden die Tabellen weiter von Hand, weil sie nur einmal im
   Jahr erscheinen. (#530)
 
+### Verbessert
+- **Das Flussbild zeigt wieder eine Grafik — und sagt dazu, von wann sie ist.**
+  Für Jahre ohne Jahresabschluss stand zuletzt nur ein Hinweis und sonst
+  nichts. Jetzt steht dort das jüngste Jahr, für das die Aufschlüsselung
+  vorliegt, mit einer Ansage darüber: welches Jahr fehlt, warum, und wann es
+  üblicherweise vorgelegt wird. Der Termin kommt aus denselben Daten wie der
+  Datenstand am Seitenfuß — für den Jahresabschluss 2025 also „September
+  2026". (#PR)
+
 ### Behoben
+- **Der Kopf einer Bereichsseite ließ die halbe Breite leer.** Text und
+  Kennzahlen standen untereinander, obwohl die drei Zahlen daneben Platz
+  gehabt hätten. Ab großen Bildschirmen stehen sie jetzt nebeneinander. Die
+  Absätze behalten ihre Zeilenlänge von 66 bis 68 Zeichen — längere Zeilen
+  wären schwerer zu lesen, nicht besser. (#PR)
 - **Der Nach-oben-Knopf saß auf dem Tablet hinter der Tab-Leiste.** Er rückte
   schon ab 768 Pixeln nach unten, obwohl die Leiste erst auf echten Desktops
   verschwindet — also auf jedem Tablet und jedem großen Touch-Gerät genau in
@@ -595,6 +617,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 -->
 
 - **„Dokument öffnen" öffnet jetzt das Dokument.** Im Quellenverzeichnis der Haushalts-Seiten führten sechs Quellen auf die Startseite des Ratsinformationssystems — man durfte das PDF selbst suchen. Der Link zeigt jetzt auf das Dokument des gerade gezeigten Jahres (wechselt das Jahr, wechselt das PDF), nennt die Fundstelle darin („Abschnitt 3.2"), und wo wir kein Dokument haben, verspricht er auch keines mehr. Der Knopf „Haushaltsplan als PDF" oben auf der Übersicht entfällt dafür: Er ließ eine von mehreren Quellen wie die einzige aussehen, seine jahresgenaue Adresse steckt jetzt im Beleg. Quellenverzeichnis und Datenstand stehen außerdem nicht mehr in der Kartenform des Inhalts, sondern zugeklappt als Apparat am Seitenfuß. (#538)
+- **Fünf Stellen im Haushalt erklären wieder den Haushalt statt uns.** Unter den Zahlen auf „Der Konzern Stadt" und „Steht Oldenburg besser da als Osnabrück?" standen bisher unsere eigenen Rechenproben und darunter „Gemessen: 0,00 % Abweichung" — jetzt steht dort nur noch, in welchem Abschnitt des Dokuments die Zahl zu finden ist, was beim Nachschlagen im 300-Seiten-PDF hilft. Ebenso raus: „Es erscheinen nur Jahre, deren Zahlen unsere Prüfung bestehen" samt drei Rechenproben in Prosa („Plan gegen Wirklichkeit"), die Parser-Bedingung im Fuß der Prüfungs-Seite und der Betriebsablauf im Datenstand („geprüft wird alle zwei Wochen"). Auf „Muss oder kann?" entfällt die Quote, zu wie viel Prozent unsere Einordnung sich mit der Selbstauskunft der Stadt deckt; die **Abweichung** bleibt und steht jetzt vorn, denn wo beide sich widersprechen, ist das eine Auskunft über die Aufgabe. Was bleibt, ist das, was jemandem etwas sagt: die Quelle, der Hinweis auf eigene Rechnungen und echte Grenzen wie „für dieses Jahr liegt der Schlussbericht nicht in lesbarer Form vor". Die Prüfungen selbst laufen unverändert weiter — sie stehen in Tests und in der Technik-Doku. (#542)
 
 ## [1.12.0] – 2026-08-16
 

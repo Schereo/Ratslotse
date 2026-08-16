@@ -54,34 +54,32 @@ import { cn } from "@/lib/utils";
 // Verzeichnis, auf den nichts zeigt.
 const QUELLEN = ["gesamtabschluss"] as const;
 
-/** Die Herkunft einer Angabe im Klartext: welcher Abschnitt, welche Probe,
- *  welcher Messwert. Das Quellenverzeichnis am Seitenende beschreibt die
- *  Quelle der ganzen Seite; das hier gehört an die einzelne Zahl.
+/** Wo eine Angabe im Dokument steht: welcher Abschnitt, welcher Stand. Das
+ *  Quellenverzeichnis am Seitenende beschreibt die Quelle der ganzen Seite;
+ *  das hier gehört an die einzelne Zahl und ist der Grund, warum man sie in
+ *  einem 300-Seiten-PDF wiederfindet.
  *
- *  Die Sätze kommen aus `herkunft.PROBEN` im Backend — sie einmal dort für
- *  Leserinnen zu schreiben ist der Grund, warum es das Format gibt. */
-function Fundstelle({ h }: { h: Herkunft | null }) {
-  if (!h) return null;
+ *  HIER STANDEN BIS 16.08. AUCH UNSERE PROBEN: die Sätze aus
+ *  `herkunft.PROBEN` und darunter „Gemessen: 0,00 % Abweichung". Das sagte
+ *  etwas über uns und nichts über den Haushalt — dieselbe
+ *  Selbstvergewisserung wie die Gegenproben-Tabelle, die auf dieser Seite
+ *  stand (DESIGNSPRACHE.md § 7). Die Proben laufen unverändert weiter, die
+ *  API liefert sie weiter, Tests halten sie fest und die Technik-Doku
+ *  beschreibt sie. Nur die Zurschaustellung ist weg. */
+function Fundstelle({ h, className }: { h: Herkunft | null; className?: string }) {
+  // Ohne Fundstelle nichts — sonst bliebe eine Überschrift ohne Inhalt stehen.
+  // Der Abstand kommt deshalb per `className` von außen statt aus einem
+  // Wrapper-<div>: Ein leerer Wrapper mit `mt-3` hinterließe genau die Lücke,
+  // die dieses `return null` vermeiden soll.
+  if (!h?.fundstelle) return null;
   return (
-    <div className="border-t border-dashed border-border pt-2.5">
+    <div className={cn("border-t border-dashed border-border pt-2.5", className)}>
       <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
         Woher diese Zahlen kommen
       </p>
-      {h.fundstelle && (
-        <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
-          {h.fundstelle}{h.stand ? ` · ${h.stand}` : ""}
-        </p>
-      )}
-      {h.proben.length > 0 && (
-        <ul className="mt-1 flex list-disc flex-col gap-0.5 pl-4 text-[11.5px] leading-relaxed text-muted-foreground">
-          {h.proben.map((satz) => <li key={satz}>{satz}</li>)}
-        </ul>
-      )}
-      {h.probe_ergebnis && (
-        <p className="mt-1 font-mono text-[10px] leading-relaxed text-muted-foreground">
-          Gemessen: {h.probe_ergebnis}
-        </p>
-      )}
+      <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
+        {h.fundstelle}{h.stand ? ` · ${h.stand}` : ""}
+      </p>
     </div>
   );
 }
@@ -254,9 +252,7 @@ export default function KonzernPage() {
             <KonzernTraegerListe zeilen={zeilen} verrechnung={verrechnung}
               summe={summe ?? null} />
           </div>
-          <div className="mt-3">
-            <Fundstelle h={hTraeger} />
-          </div>
+          <Fundstelle h={hTraeger} className="mt-3" />
         </section>
 
         {/* Die Grenzen — eigener Block, nicht Kleingedrucktes. */}
