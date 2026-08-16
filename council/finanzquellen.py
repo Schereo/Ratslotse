@@ -1195,7 +1195,8 @@ def datenstand(store: CouncilStore, heute: date | None = None) -> list[dict]:
     Eine Zeile je Datenart mit den vorhandenen Jahrgängen, den Lücken
     dazwischen, dem nächsten erwarteten Jahrgang und der Angabe, ob er
     überfällig ist. Beantwortet die Leserfrage „warum steht hier 2024 und
-    nicht 2025?" an einer Stelle, statt sie auf neun Seiten zu wiederholen.
+    nicht 2025?" an einer Stelle, statt sie auf jeder Unterseite von
+    ``/haushalt`` zu wiederholen.
 
     ``teilweise`` ist der ehrliche Teil davon: Ein Jahrgang, von dem nur drei
     von neun Teilhaushalten gelesen sind, steht sonst in derselben
