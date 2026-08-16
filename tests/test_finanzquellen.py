@@ -382,6 +382,96 @@ def test_fehlende_teilhaushalts_ebene_wird_nachgezogen(bestand, tmp_path):
     assert bericht["Neue Einheiten"] == 1
 
 
+# --- Derselbe Teilhaushalt in zwei Dokumenten -------------------------------
+#
+# Der Befund aus dem Bestand (08/2026): Sechs (Jahrgang, Teilhaushalt)-Paare
+# hängen an zwei Vorlagen — dieselbe PDF-Datei, ein zweites Mal unter einem
+# anderen Tagesordnungspunkt hochgeladen. Nachgemessen an den echten Daten:
+# der Volltext ist Byte für Byte derselbe, die Zahlen also auch.
+
+
+def _zwei_dokumente_ein_teilhaushalt(tmp_path, zweite_produkte=None):
+    """Ein Teilhaushalt, zweimal im Anlagenbestand — wie im echten Bestand:
+    dasselbe Dokument unter zwei Labels, das zweite später hochgeladen
+    (höhere ``document_id``) und mit dem tagesordnungs-spezifischen Label."""
+    store = CouncilStore(tmp_path / "council.sqlite")
+    name, produkte = THH_PLAENE[1]
+    anlage(store, 600, "007 THH01", teilhaushalt_plan(1, name, produkte, 2027))
+    anlage(store, 640, "TOP 5 - Anlage III - THH 01",
+           teilhaushalt_plan(1, name, zweite_produkte or produkte, 2027))
+    return store
+
+
+def test_zweites_dokument_zum_selben_teilhaushalt_wird_uebersprungen(tmp_path):
+    """Ohne Regel entschied die Sortierung der Kandidaten, welches Dokument in
+    der Zeile als Quelle steht — und nebenbei entstand je Lauf ein
+    Herkunfts-Datensatz, auf den am Ende keine Zeile mehr zeigt."""
+    store = _zwei_dokumente_ein_teilhaushalt(tmp_path)
+    try:
+        p = finanzquellen.Protokoll(still=True)
+        lauf = finanzquellen.lies_teilhaushalte(store, p)
+
+        assert lauf["dokumente"] == 2          # beide gefunden …
+        assert lauf["dubletten"] == 1          # … eines davon übersprungen
+        assert lauf["produkte"] == lauf["in_tabelle"] == 2
+        assert not p.warnungen                 # gleiche Zahlen: keine Meldung
+
+        # Es gilt das ERSTE Dokument — die Anlage der Haushaltsvorlage selbst,
+        # nicht die Zweitveröffentlichung unter einem Tagesordnungspunkt.
+        quellen = {r[0] for r in store._conn.execute(  # noqa: SLF001
+            "SELECT DISTINCT quelle_label FROM council_produkte")}
+        assert quellen == {"007 THH01"}
+        dokumente = {r[0] for r in store._conn.execute(  # noqa: SLF001
+            "SELECT DISTINCT h.dokument_id FROM council_produkte p "
+            "JOIN council_herkunft h ON h.id = p.herkunft_id")}
+        assert dokumente == {600}
+
+        # Und keine Herkunft, auf die niemand zeigt: Genau daran ist der
+        # Befund aufgefallen (`herkunft_verwaist` meldete sechs je Lauf).
+        assert store.herkunft_aufraeumen() == 0
+    finally:
+        store.close()
+
+
+def test_abweichende_zahlen_im_zweiten_dokument_werden_gemeldet(tmp_path):
+    """Die Gegenprobe zum Befund: Heute tragen die Doppel-Dokumente
+    identische Zahlen. Täten sie es einmal nicht — ein Nachtragshaushalt
+    ändert einen Ansatz wirklich —, wäre das eine Entscheidung, die niemand
+    nebenbei in einem unbeaufsichtigten Lauf treffen soll."""
+    name, produkte = THH_PLAENE[1]
+    geaendert = [(nr, n, amt, ertraege + 1_000, aufwendungen)
+                 for nr, n, amt, ertraege, aufwendungen in produkte]
+    store = _zwei_dokumente_ein_teilhaushalt(tmp_path, zweite_produkte=geaendert)
+    try:
+        p = finanzquellen.Protokoll(still=True)
+        finanzquellen.lies_teilhaushalte(store, p)
+
+        assert len(p.warnungen) == 1
+        meldung = p.warnungen[0]
+        assert "ANDERE Zahlen" in meldung
+        assert "2027 THH1" in meldung
+        # Beide Dokumente werden benannt — ohne sie ist die Meldung nicht
+        # nachprüfbar.
+        assert "600" in meldung and "640" in meldung
+
+        # Gemeldet, nicht überschrieben: Es gilt weiter das erste Dokument.
+        ertraege = sorted(r[0] for r in store._conn.execute(  # noqa: SLF001
+            "SELECT ertraege FROM council_produkte"))
+        assert ertraege == [1_000.0, 4_000.0]
+    finally:
+        store.close()
+
+
+def test_kandidaten_kommen_in_veroeffentlichungs_reihenfolge():
+    """Die Regel „das erste Dokument versorgt den Teilhaushalt" braucht ein
+    Kriterium, das etwas bedeutet. ``document_id`` ist die getfile-Nummer des
+    Ratsinformationssystems und steigt mit jedem Upload; nach ``label``
+    sortiert gewänne der Zufall der Schreibweise — im echten Bestand hieße
+    das „2019 THH 08" am Plan für 2018."""
+    sql, _ = finanzquellen.QUELLEN["teilhaushalt"].erkennung.abfrage("document_id")
+    assert sql.endswith("ORDER BY document_id")
+
+
 # --- Der Lauf ---------------------------------------------------------------
 
 def test_holt_den_fehlenden_jahrgang_nach(bestand, tmp_path):

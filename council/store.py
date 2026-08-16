@@ -3500,7 +3500,18 @@ class CouncilStore:
     def save_produkte(self, jahr: int, produkte: list[dict], herkunft) -> int:
         """Produkte eines Jahres einfügen/aktualisieren. Bewusst KEIN Löschen
         des Jahrgangs: Die Produkte eines Jahres verteilen sich auf mehrere
-        Teilhaushalts-Dokumente, die nacheinander eingelesen werden."""
+        Teilhaushalts-Dokumente, die nacheinander eingelesen werden.
+
+        ``INSERT OR REPLACE`` ersetzt bei gleichem ``(jahr, produkt_nr)`` die
+        **ganze** Zeile, samt Herkunft — wer zuletzt schreibt, gewinnt. Das ist
+        hier nur deshalb ungefährlich, weil der Aufrufer dafür sorgt, dass ein
+        Teilhaushalt genau einmal geschrieben wird: Sechs (Jahrgang,
+        Teilhaushalt)-Paare liegen doppelt im Anlagenbestand, und welches der
+        beiden Dokumente in der Zeile steht, soll keine Frage der
+        Sortierreihenfolge sein. Die Regel und die Messung dazu stehen in
+        ``council.finanzquellen.lies_teilhaushalte``. Wer einen zweiten
+        Schreibweg zu dieser Tabelle baut, braucht dieselbe Vorentscheidung —
+        die Tabelle selbst kann sie nicht treffen, sie sieht nur eine Zeile."""
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self.transaktion():
             hid = self.merke_herkunft(herkunft, fetched_at=now)
