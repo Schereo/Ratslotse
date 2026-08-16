@@ -17,7 +17,15 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   sich dabei nach dem Bestand, nicht nach dem Kalender — eine verspätete
   Veröffentlichung oder ein Nachtragshaushalt wird eingesammelt, sobald sie da
   ist. Bleibt ein erwarteter Jahrgang vier Wochen über seinen üblichen Monat
-  hinaus aus, gibt es eine Nachricht statt eines stillen Stillstands. (#511)
+  hinaus aus, gibt es eine Nachricht statt eines stillen Stillstands — ebenso,
+  wenn ein Dokument vorliegt, aber nicht gelesen werden kann. (#511)
+- **Halbe Jahrgänge werden vollständig, sobald die Unterlagen da sind.** Die
+  Zahlen eines Jahres kommen nicht auf einmal: Die Produktebene steckt in rund
+  neun einzelnen Dokumenten, und die werden nacheinander lesbar. Wir tragen
+  jetzt jedes Stück für sich nach, statt ein Jahr für erledigt zu halten,
+  sobald das erste Dokument gelesen ist. Auf der Seite steht außerdem, wenn ein
+  Jahrgang noch unvollständig ist („Für 2023 haben wir 6 von 9
+  Teilhaushalten") — vorher sah ein halbes Jahr aus wie ein ganzes. (#511)
 - **„Bis wann die Zahlen reichen" — der Datenstand steht jetzt auf der Seite.**
   Am Fuß von `/haushalt` steht, wie weit jede Datenschicht reicht und was als
   Nächstes erwartet wird: „Der Jahrgang 2025 wird üblicherweise im September
@@ -102,7 +110,10 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   mehr.** Liest ein Parser für einen bereits gespeicherten Jahrgang plötzlich
   nichts oder deutlich weniger — etwa weil die Stadt ihre Tabellen umbaut —,
   bleibt der alte Stand stehen und der Lauf meldet es, statt den Bestand gegen
-  ein kaputtes Ergebnis zu tauschen. (#511)
+  ein kaputtes Ergebnis zu tauschen. Beim Einlesen von Hand lässt sich das mit
+  `--auch-schrumpfen` übergehen; ein leeres Ergebnis ersetzt auch dann nichts.
+  Ein Jahrgang wird außerdem am Stück gespeichert — bricht ein Lauf mittendrin
+  ab, steht hinterher der alte Stand da und kein halber neuer. (#511)
 
 ### Behoben
 - **„Geplant und geworden" behauptete einen Vergleich, den es nicht gab.** Wo

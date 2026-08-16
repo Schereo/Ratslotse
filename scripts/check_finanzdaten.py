@@ -8,10 +8,20 @@ Oktober einen Haushaltsplan vor, und beides landet ohne Zutun als PDF-Anlage
 in ``council_anlagen`` — gelesen hat es bloß niemand.
 
 **Der Job ist bestandsgesteuert, nicht kalendergesteuert.** Er fragt nicht
-„ist es September?", sondern „welcher Jahrgang fehlt mir, und liegt inzwischen
-ein Dokument dafür vor?". Damit ist der Takt egal: Ein verspäteter
+„ist es September?", sondern „welche **Einheit** fehlt mir, und liegt
+inzwischen ein Dokument dafür vor?". Damit ist der Takt egal: Ein verspäteter
 Jahresabschluss, ein Nachtragshaushalt oder ein nachgereichter Prüfbericht
 werden eingesammelt, sobald sie da sind, und der Job darf beliebig oft laufen.
+
+**Einheit, nicht Jahrgang** — das ist der Punkt, an dem die erste Fassung
+falsch lag. Ein Produkt-Jahrgang verteilt sich auf rund neun
+Teilhaushalts-Anlagen, ein Jahresabschluss auf zwei Ebenen. Und die kommen
+**nicht gleichzeitig**: ``check_protocols`` legt eine Anlage ohne Volltext an
+(``n_pages=0``), den holt ``backfill_anlagen_texte.py`` erst später und in
+Tranchen. Zwischen zwei Läufen liegt also regelmäßig ein Jahrgang, von dem die
+Hälfte lesbar ist. Wer je Jahrgang buchführt, sperrt ihn nach dem ersten
+Dokument und verliert den Rest für immer — ohne dass irgendetwas auffällt, denn
+das Jahr steht ja in der Tabelle.
 
 Drei Regeln, die ihn unbeaufsichtigt tragen:
 
@@ -22,18 +32,29 @@ Drei Regeln, die ihn unbeaufsichtigt tragen:
    und die Rechenprobe der Erläuterungen gelten unverändert (sie stehen in
    ``council/finanzquellen.py``, gemeinsam mit den Ingest-Skripten). Was sie
    reißt, kommt nicht in die Datenbank, wird gezählt und gemeldet.
-3. **Er ergänzt nur, was fehlt.** Ein vorhandener Jahrgang wird nicht angefasst
-   — und ein leeres oder deutlich geschrumpftes Parse-Ergebnis ersetzt nie
-   einen gefüllten Bestand (``finanzquellen.bestandsschutz``). Einen
-   verbesserten Parser über den Bestand zu ziehen bleibt Sache der
-   Ingest-Skripte von Hand.
+3. **Er ergänzt nur, was fehlt — Einheit für Einheit.** Eine vorhandene
+   Einheit wird nicht angefasst, und ein leeres oder deutlich geschrumpftes
+   Parse-Ergebnis ersetzt nie einen gefüllten Bestand
+   (``finanzquellen.bestandsschutz``). Einen verbesserten Parser über den
+   **vorhandenen** Bestand zu ziehen bleibt Sache der Ingest-Skripte von Hand
+   (dort ``--auch-schrumpfen``).
 
-Bleibt ein erwarteter Jahrgang länger als vier Wochen über seinen üblichen
-Monat hinaus aus, geht ein **Hinweis** an ``ALERT_EMAIL`` — kein Fehler,
-sondern die Frage: Ist die Stadt spät dran, oder greift ein Erkennungsmuster
-nicht mehr? Das zweite ist der eigentliche Zweck. Gemeldet wird nur, wenn sich
-gegenüber dem letzten Lauf etwas geändert hat; alle vierzehn Tage dieselbe
-Mail wäre eine, die niemand mehr liest.
+Was ein Jahrgang bekommt, bekommt er in **einer** Transaktion
+(``store.transaktion()``). Ein Abbruch mittendrin ließe ihn sonst halb
+zurück — und halb sähe für den nächsten Lauf aus wie fertig.
+
+Gemeldet wird an ``ALERT_EMAIL``, wenn eines von beidem zutrifft:
+
+- ein erwarteter Jahrgang bleibt länger als vier Wochen über seinen üblichen
+  Monat hinaus aus, oder
+- eine Einheit fehlt weiter, **obwohl** ein Dokument dafür vorliegt. Dieser
+  zweite Fall macht keinen Jahrgang überfällig (der steht ja da) und wäre ohne
+  die Meldung unsichtbar.
+
+Beides ist kein Fehler, sondern die Frage: Ist die Stadt spät dran, oder greift
+ein Erkennungsmuster nicht mehr? Das zweite ist der eigentliche Zweck. Gemeldet
+wird nur, wenn sich gegenüber dem letzten Lauf etwas geändert hat; alle
+vierzehn Tage dieselbe Mail wäre eine, die niemand mehr liest.
 
 Was der Job **nicht** abdeckt: ``council_haushalt`` (die Planwerte) und die
 Open-Data-Schichten (Steuern, Steuerkraft, Einwohner). Sie kommen nicht aus
@@ -96,30 +117,59 @@ def _schon_gemeldet(ausbleibend: list[str]) -> bool:
     return (laeufe[0].get("stats") or {}).get("ausbleibend") == ausbleibend
 
 
-def _hinweis_text(zeilen: list[dict], gesehen: dict[str, set[int]], heute: date) -> str:
+def _kurz(einheiten: set[tuple]) -> str:
+    """Einheiten für das Protokoll: „2024 gesamt, 2025 THH03"."""
+    def eine(e: tuple) -> str:
+        if len(e) == 1:
+            return str(e[0])
+        rest = e[1]
+        return f"{e[0]} THH{rest:02d}" if isinstance(rest, int) else f"{e[0]} {rest}"
+    gereiht = sorted(einheiten, key=lambda e: (e[0], str(e[1:])))
+    return ", ".join(eine(e) for e in gereiht[:8]) + (" …" if len(gereiht) > 8 else "")
+
+
+def _hinweis_text(zeilen: list[dict], gesehen: dict[str, set[int]],
+                  rest: dict[str, set[tuple]], heute: date) -> str:
     """Die Mail: was fehlt, seit wann es fällig wäre — und welcher der beiden
     Gründe es ist.
 
     Der Unterschied trägt die Nachricht. „Kein Dokument da" heißt: Die Stadt
     ist spät dran, abwarten. „Dokument liegt vor, wird aber nicht gelesen"
     heißt: Ein Muster oder ein Parser greift nicht mehr — und genau dafür
-    gibt es diesen Job."""
-    teile = ["Im Haushalts-Bereich fehlen Jahrgänge, die inzwischen vorliegen müssten:"]
-    for z in zeilen:
+    gibt es diesen Job.
+
+    ``rest`` ist der zweite Block: Einheiten, für die ein Dokument vorliegt,
+    die nach dem Lauf aber weiter fehlen. Sie machen keinen Jahrgang
+    überfällig — der steht ja da — und wären ohne diesen Block unsichtbar."""
+    teile = []
+    faellige = [(z, j) for z in zeilen for j in z["ueberfaellig"]]
+    if faellige:
+        teile.append("Im Haushalts-Bereich fehlen Jahrgänge, die inzwischen "
+                     "vorliegen müssten:")
+    for z, jahrgang in faellige:
         q = finanzquellen.QUELLEN[z["key"]]
-        for jahrgang in z["ueberfaellig"]:
-            faellig = q.faellig_ab(jahrgang)
-            monat = finanzquellen.MONATE[q.erwarteter_monat]
-            if jahrgang in gesehen.get(z["key"], set()):
-                grund = ("<b>Dokument liegt vor, wird aber nicht übernommen</b> — "
-                         "Erkennung oder Parser prüfen")
-            elif q.herkunft == "ris":
-                grund = "kein passendes Dokument in council_anlagen"
-            else:
-                grund = "Download von oldenburg.de, scripts/ingest_haushalt.py"
-            teile.append(
-                f"• <b>{html.escape(q.label)} {jahrgang}</b> — üblich im {monat} "
-                f"{faellig.year}, seit {(heute - faellig).days} Tagen offen: {grund}")
+        faellig = q.faellig_ab(jahrgang)
+        monat = finanzquellen.MONATE[q.erwarteter_monat]
+        if jahrgang in gesehen.get(z["key"], set()):
+            grund = ("<b>Dokument liegt vor, wird aber nicht übernommen</b> — "
+                     "Erkennung oder Parser prüfen")
+        elif q.herkunft == "ris":
+            grund = "kein passendes Dokument in council_anlagen"
+        else:
+            grund = "Download von oldenburg.de, scripts/ingest_haushalt.py"
+        teile.append(
+            f"• <b>{html.escape(q.label)} {jahrgang}</b> — üblich im {monat} "
+            f"{faellig.year}, seit {(heute - faellig).days} Tagen offen: {grund}")
+
+    if rest:
+        if teile:
+            teile.append("")
+        teile.append("Außerdem stehen Jahrgänge nur teilweise in der Datenbank, "
+                     "obwohl ein Dokument dafür vorliegt:")
+        for key, offen in rest.items():
+            q = finanzquellen.QUELLEN[key]
+            teile.append(f"• <b>{html.escape(q.label)}</b> — {len(offen)} Einheit(en) "
+                         f"offen: {html.escape(_kurz(offen))}")
     teile.append("")
     teile.append("Der Job hat nichts gelöscht und nichts verändert. Die Muster stehen "
                  "in council/finanzquellen.py.")
@@ -138,64 +188,93 @@ def main(db: str | None = None, heute: date | None = None,
     #: Welche Jahrgänge als Dokument vorliegen — trennt in der Meldung „die
     #: Stadt ist spät dran" von „wir lesen es nicht mehr".
     gesehen: dict[str, set[int]] = {}
-    geschuetzt = 0
+    geschuetzt = neue_einheiten = 0
+    rest: dict[str, set[tuple]] = {}
 
     try:
         for key in finanzquellen.REIHENFOLGE:
             q = finanzquellen.QUELLEN[key]
-            vorhanden = set(q.bestand(store))
+            vorhanden = q.bestand(store)
             if not q.automatisch:
                 # Beobachtet, nicht eingelesen: Diese Schicht kommt per
                 # Download und bleibt Sache von ingest_haushalt.py.
-                p.sagen(f"{q.label}: {len(vorhanden)} Jahrgänge, kein Selbstlauf "
-                        f"(Quelle: oldenburg.de)")
+                p.sagen(f"{q.label}: {len(finanzquellen.jahrgaenge(vorhanden))} Jahrgänge, "
+                        f"kein Selbstlauf (Quelle: oldenburg.de)")
                 continue
 
+            # Gefragt wird nach EINHEITEN, nicht nach Jahrgängen: Ein
+            # Produkt-Jahrgang steckt in rund neun Anlagen, ein Jahresabschluss
+            # in zwei Ebenen. „Jahr ist da" hieße sonst „Jahr ist fertig" —
+            # und der Rest käme nie nach.
             kandidaten = q.kandidaten(store)
-            gesehen[key] = {r["jahrgang"] for r in kandidaten if r["jahrgang"]}
-            offen = sorted(gesehen[key] - vorhanden)
+            moeglich: set[tuple] = set()
+            for r in kandidaten:
+                moeglich |= r["einheiten"]
+            gesehen[key] = {e[0] for e in moeglich}
+            offen = moeglich - vorhanden
             if not offen:
                 p.sagen(f"{q.label}: nichts Neues "
-                        f"({len(vorhanden)} Jahrgänge, {len(kandidaten)} Dokumente geprüft)")
+                        f"({len(vorhanden)} Einheiten, {len(kandidaten)} Dokumente geprüft)")
                 continue
 
-            p.sagen(f"{q.label}: Dokument(e) für {', '.join(map(str, offen))} gefunden — "
-                    f"wird eingelesen")
+            p.sagen(f"{q.label}: {len(offen)} fehlende Einheit(en) mit Dokument "
+                    f"({_kurz(offen)}) — wird eingelesen")
             if trocken:
                 continue
             bericht = q.einlesen(store, p, nur_fehlende=True)
             geschuetzt += bericht.get("bestand_geschuetzt", 0)
-            gewonnen = sorted(set(bericht.get("neue_jahrgaenge") or []))
+            gewonnen = {tuple(e) for e in (bericht.get("neue_einheiten") or [])}
             if gewonnen:
-                neu_gesamt[key] = gewonnen
-            nicht_gepackt = [j for j in offen if j not in gewonnen]
+                neu_gesamt[key] = sorted({e[0] for e in gewonnen})
+            neue_einheiten += len(gewonnen)
+            nicht_gepackt = offen - gewonnen
             if nicht_gepackt:
                 # Kein Fehler: Ein Dokument, das die Proben nicht besteht, ist
                 # genau der Fall, für den es die Proben gibt. Aber es gehört
                 # gezählt — sonst versickert es im Log.
-                p.warnen(f"  {q.label}: {', '.join(map(str, nicht_gepackt))} nicht "
-                         f"übernommen (Probe gerissen oder Dokument unlesbar)")
+                p.warnen(f"  {q.label}: {len(nicht_gepackt)} Einheit(en) nicht übernommen "
+                         f"({_kurz(nicht_gepackt)}) — Probe gerissen oder Dokument unlesbar")
 
         stand = finanzquellen.datenstand(store, heute)
+        # Nach dem Lauf noch offen: Einheiten, für die ein Dokument vorliegt,
+        # die aber nicht in die Datenbank gekommen sind. Das ist der Teil, den
+        # niemand von selbst bemerkt — ein Jahrgang, der halb dasteht, sieht
+        # in jeder Jahresliste aus wie ein ganzer.
+        for key in finanzquellen.REIHENFOLGE:
+            q = finanzquellen.QUELLEN[key]
+            if q.automatisch:
+                offen_nachher = q.offene_einheiten(store)
+                if offen_nachher:
+                    rest[key] = offen_nachher
     finally:
         store.close()
 
-    ausbleibend = sorted(f"{z['key']}:{j}" for z in stand for j in z["ueberfaellig"])
     for z in stand:
         if z["ueberfaellig"]:
             p.warnen(f"  {z['label']}: {', '.join(map(str, z['ueberfaellig']))} überfällig")
+    for key, offen in rest.items():
+        p.warnen(f"  {finanzquellen.QUELLEN[key].label}: {len(offen)} Einheit(en) weiter "
+                 f"offen, obwohl ein Dokument vorliegt ({_kurz(offen)})")
+
+    # Der Vergleichsschlüssel für „habe ich das schon gemeldet?" — überfällige
+    # Jahrgänge UND liegengebliebene Einheiten. Ohne den zweiten Teil bliebe
+    # ein halb gelesener Jahrgang für immer stumm.
+    ausbleibend = sorted(
+        [f"{z['key']}:{j}" for z in stand for j in z["ueberfaellig"]]
+        + [f"{key}:offen:{e}" for key, offen in rest.items() for e in sorted(map(str, offen))])
 
     gemeldet = False
     if ausbleibend and not trocken and not _schon_gemeldet(ausbleibend):
         from kern.alerts import notify_admin
 
-        notify_admin(_hinweis_text(stand, gesehen, heute),
-                     betreff="Ratslotse – Haushaltsdaten: ein Jahrgang fehlt",
+        notify_admin(_hinweis_text(stand, gesehen, rest, heute),
+                     betreff="Ratslotse – Haushaltsdaten: es fehlt etwas",
                      fusszeile="Hinweis des Cron-Jobs check_finanzdaten — kein Fehler.")
         gemeldet = True
 
     ergebnis = {
         "Neue Jahrgänge": sum(len(v) for v in neu_gesamt.values()),
+        "Neue Einheiten": neue_einheiten,
         "Bestand geschützt": geschuetzt,
         "Hinweis verschickt": 1 if gemeldet else 0,
         "ausbleibend": ausbleibend,

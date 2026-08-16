@@ -43,12 +43,17 @@ def main() -> int:
     ap.add_argument("--trocken", action="store_true",
                     help="nur zählen, nichts schreiben")
     ap.add_argument("--db", default=str(COUNCIL_DB))
+    ap.add_argument("--auch-schrumpfen", action="store_true",
+                    help="einen Jahrgang auch dann ersetzen, wenn er dabei deutlich "
+                         "kleiner wird — für den Fall, dass genau das die Absicht ist. "
+                         "Ein LEERES Ergebnis ersetzt trotzdem nichts.")
     args = ap.parse_args()
 
     store = CouncilStore(Path(args.db))
     p = finanzquellen.Protokoll()
     try:
-        bericht = finanzquellen.lies_pruefungsfeststellungen(store, p, trocken=args.trocken)
+        bericht = finanzquellen.lies_pruefungsfeststellungen(
+            store, p, schuetzen=not args.auch_schrumpfen, trocken=args.trocken)
     finally:
         store.close()
 

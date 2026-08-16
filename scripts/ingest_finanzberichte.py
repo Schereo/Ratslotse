@@ -54,10 +54,16 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Jahresabschlüsse und Teilhaushalte einlesen")
     ap.add_argument("--nur", choices=["jahresabschluss", "teilhaushalte"], default=None)
     ap.add_argument("--db", default=str(COUNCIL_DB))
+    ap.add_argument("--auch-schrumpfen", action="store_true",
+                    help="einen Jahrgang auch dann ersetzen, wenn er dabei deutlich "
+                         "kleiner wird — für den Fall, dass genau das die Absicht ist "
+                         "(ein früherer Lauf war zu großzügig). Ein LEERES Ergebnis "
+                         "ersetzt trotzdem nichts.")
     args = ap.parse_args()
 
     store = CouncilStore(Path(args.db))
     p = finanzquellen.Protokoll()
+    schuetzen = not args.auch_schrumpfen
     ergebnis: dict = {}
 
     def uebernehmen(name: str, teil: dict) -> None:
@@ -67,12 +73,14 @@ def main() -> int:
     try:
         if args.nur != "teilhaushalte":
             print("Jahresabschlüsse (Ergebnisrechnung):")
-            uebernehmen("jahresabschluss", finanzquellen.lies_jahresabschluesse(store, p))
+            uebernehmen("jahresabschluss",
+                        finanzquellen.lies_jahresabschluesse(store, p, schuetzen=schuetzen))
             print("Schlussberichte des Rechnungsprüfungsamts:")
             uebernehmen("rpa", finanzquellen.lies_schlussbericht_fundstellen(store, p))
         if args.nur != "jahresabschluss":
             print("Teilhaushalte (Produktebene):")
-            uebernehmen("teilhaushalt", finanzquellen.lies_teilhaushalte(store, p))
+            uebernehmen("teilhaushalt",
+                        finanzquellen.lies_teilhaushalte(store, p, schuetzen=schuetzen))
     finally:
         store.close()
     print(f"Fertig: {ergebnis}")

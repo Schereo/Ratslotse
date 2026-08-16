@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import json
 import re
 from datetime import datetime
@@ -315,6 +316,33 @@ class CouncilStore:
         self._conn.executescript(SCHEMA)
         self._conn.commit()
         self._migrate()
+        #: Läuft gerade eine geklammerte Transaktion (siehe ``transaktion``)?
+        self._sammelt = False
+
+    @contextlib.contextmanager
+    def transaktion(self):
+        """Mehrere ``save_*``-Aufrufe zu **einer** Transaktion klammern.
+
+        Ohne die Klammer committet jeder Aufruf für sich. Für einen
+        Jahresabschluss sind das 1 + n + 1 Transaktionen (Gesamtrechnung, je
+        Teilhaushalt eine, Erläuterungen) — bricht der Lauf dazwischen ab,
+        bleibt der Jahrgang halb in der Datenbank stehen. Genau das darf einem
+        unbeaufsichtigten Cron nicht passieren, der einen halben Jahrgang
+        anschließend für erledigt hält.
+
+        Verschachtelung ist erlaubt und tut nichts: Die innerste Klammer
+        überlässt Commit und Rollback der äußersten. Die ``save_*``-Methoden
+        benutzen sie deshalb selbst — ein Aufruf ohne äußere Klammer verhält
+        sich wie vorher."""
+        if self._sammelt:
+            yield  # schon geklammert — die äußere Klammer committet
+            return
+        self._sammelt = True
+        try:
+            with self._conn:
+                yield
+        finally:
+            self._sammelt = False
 
     def _migrate(self) -> None:
         cols = {r[1] for r in self._conn.execute("PRAGMA table_info(committee_notifications)").fetchall()}
@@ -3040,7 +3068,7 @@ class CouncilStore:
         ``ersetzen`` löscht vorher die betroffene Ebene dieses Jahres; beim
         Einlesen mehrerer Teilhaushalte nacheinander bleibt es an."""
         now = datetime.utcnow().isoformat(timespec="seconds")
-        with self._conn:
+        with self.transaktion():
             if ersetzen:
                 if thh_nr is None:
                     self._conn.execute(
@@ -3065,7 +3093,7 @@ class CouncilStore:
         """Erläuterungen zu den Plan/Ist-Abweichungen eines Jahrgangs
         ersetzen. Übergeben wird nur, was die Rechenprobe bestanden hat."""
         now = datetime.utcnow().isoformat(timespec="seconds")
-        with self._conn:
+        with self.transaktion():
             self._conn.execute(
                 "DELETE FROM council_abweichungsgruende WHERE jahr = ?", (jahr,))
             self._conn.executemany(
@@ -3094,7 +3122,7 @@ class CouncilStore:
                           n_pages: int | None, lesbar: bool) -> None:
         """Fundstelle des RPA-Schlussberichts eines Jahrgangs merken."""
         now = datetime.utcnow().isoformat(timespec="seconds")
-        with self._conn:
+        with self.transaktion():
             self._conn.execute(
                 "INSERT OR REPLACE INTO council_pruefbericht_quellen "
                 "(jahr, label, url, n_pages, lesbar, fetched_at) VALUES (?,?,?,?,?,?)",
@@ -3174,7 +3202,7 @@ class CouncilStore:
         des Jahrgangs: Die Produkte eines Jahres verteilen sich auf mehrere
         Teilhaushalts-Dokumente, die nacheinander eingelesen werden."""
         now = datetime.utcnow().isoformat(timespec="seconds")
-        with self._conn:
+        with self.transaktion():
             self._conn.executemany(
                 "INSERT OR REPLACE INTO council_produkte (jahr, produkt_nr, produkt_name, "
                 " thh_nr, thh_name, amt, ertraege, aufwendungen, ergebnis, "
@@ -3268,7 +3296,7 @@ class CouncilStore:
         ein erneuter Ingest liest dasselbe Dokument neu — Zeilen von früheren
         Läufen stehen zu lassen hieße, alte Parser-Stände zu konservieren."""
         now = datetime.utcnow().isoformat(timespec="seconds")
-        with self._conn:
+        with self.transaktion():
             self._conn.execute("DELETE FROM council_pruefberichte WHERE jahr = ?", (jahr,))
             self._conn.executemany(
                 "INSERT INTO council_pruefberichte (jahr, lfd, marke, marke_name, "

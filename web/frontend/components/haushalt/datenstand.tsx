@@ -33,6 +33,14 @@ export type Datenschicht = {
   monat: string;
   herkunft: string;
   automatisch: boolean;
+  /** Wie eine Einheit heißt („Teilhaushalte"), wo ein Jahrgang aus mehreren
+   *  Dokumenten besteht — sonst null. */
+  einheit: string | null;
+  /** Je Jahrgang die Zahl der Einheiten, und wie viele der bestbelegte hat. */
+  einheiten: Record<string, number>;
+  einheiten_voll: number | null;
+  /** Jahrgänge, die weniger Einheiten tragen als der bestbelegte. */
+  teilweise: number[];
 };
 
 type Antwort = { heute: string; schichten: Datenschicht[] };
@@ -43,6 +51,18 @@ function spanne(jahre: number[]): string | null {
   const von = jahre[0], bis = jahre[jahre.length - 1];
   return von === bis ? String(von) : `${von}–${bis}`;
 }
+
+/** Wie eine Lücke *innerhalb* eines Jahrgangs heißt.
+ *
+ *  Nicht generisch formuliert: „Von 2023 haben wir 6 der 9 Einheiten" wäre
+ *  Buchhaltersprache. Ein fehlender Teilhaushalt lässt sich zählen, eine
+ *  fehlende Auswertungsebene nicht — die sagt man besser als Sache. */
+const LUECKENTEXT: Record<string, (jahr: number, hat: number, voll: number) => string> = {
+  Teilhaushalte: (jahr, hat, voll) =>
+    `Für ${jahr} haben wir ${hat} von ${voll} Teilhaushalten.`,
+  Ebenen: (jahr) =>
+    `Für ${jahr} fehlt noch die Aufteilung auf die einzelnen Bereiche.`,
+};
 
 /** Was als Nächstes ansteht, als Satz.
  *
@@ -72,6 +92,7 @@ export function Datenstand() {
   // Still bleiben, solange nichts da ist: Ein Skelett für einen Nachtrag am
   // Seitenende wäre mehr Unruhe als Information.
   if (!data || data.schichten.length === 0) return null;
+  const vonHand = data.schichten.filter((s) => !s.automatisch).map((s) => s.label);
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
@@ -98,6 +119,13 @@ export function Datenstand() {
         {data.schichten.map((s) => {
           const bereich = spanne(s.jahrgaenge);
           const { text, wartet } = ausblick(s, data.heute);
+          // Nur der jüngste unvollständige Jahrgang wird benannt: Die älteren
+          // sind eine Geschichte für sich und würden die Zeile zumauern.
+          const offen = s.teilweise[s.teilweise.length - 1];
+          const satz = s.einheit ? LUECKENTEXT[s.einheit] : undefined;
+          const luecke = offen != null && satz && s.einheiten_voll
+            ? satz(offen, s.einheiten[String(offen)], s.einheiten_voll)
+            : null;
           return (
             <li key={s.key} className="flex flex-col gap-1">
               {/* Titel und Jahresspanne auf einer Zeile, in jeder Breite: Die
@@ -123,6 +151,11 @@ export function Datenstand() {
                   {s.luecken.length > 0 && (
                     <> Für {s.luecken.join(", ")} liegen uns keine auswertbaren Zahlen vor.</>
                   )}
+                  {/* Ein Jahrgang aus neun Dokumenten kann zu einem Drittel
+                      gelesen sein und stünde trotzdem in derselben
+                      Jahresspanne wie ein vollständiger. Das gehört
+                      danebengeschrieben, nicht verschwiegen. */}
+                  {luecke && <> {luecke}</>}
                 </span>
               </span>
             </li>
@@ -130,11 +163,20 @@ export function Datenstand() {
         })}
       </ul>
 
+      {/* Der Satz stand pauschal über der ganzen Liste — und deren erste,
+          prominenteste Zeile ist der Haushaltsplan, der gerade NICHT
+          automatisch nachkommt. Was von Hand läuft, wird deshalb aus den
+          Daten benannt statt mitversprochen. */}
       <p className="mt-3.5 border-t border-dashed border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground">
-        Wir tragen neue Jahrgänge automatisch nach, sobald die Stadt sie im
-        Ratsinformationssystem veröffentlicht — geprüft wird alle zwei Wochen. Zahlen, die eine
-        Rechenprobe des Dokuments nicht bestehen, bleiben draußen; dann steht hier weiter der
-        ältere Stand.
+        Was im Ratsinformationssystem veröffentlicht wird, tragen wir automatisch nach —
+        geprüft wird alle zwei Wochen.
+        {/* Aufzählung ohne Artikel und ohne Verb-Kongruenz: Die Namen kommen
+            aus den Daten, „Nur den Haushaltsplan holen wir …" ließe sich für
+            eine beliebige Liste nicht grammatisch bilden. */}
+        {vonHand.length > 0 && <> Nicht dabei: {vonHand.join(" und ")} — die Zahlen dafür
+          holen wir vom Portal der Stadt.</>}
+        {" "}Zahlen, die eine Rechenprobe des Dokuments nicht bestehen, bleiben draußen; dann
+        steht hier weiter der ältere Stand.
       </p>
     </div>
   );

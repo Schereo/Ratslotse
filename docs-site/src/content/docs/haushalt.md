@@ -75,11 +75,41 @@ ganze Bereich still, sobald niemand mehr daran denkt. `check_finanzdaten.py`
 (alle zwei Wochen) nimmt das ab.
 
 **Bestandsgesteuert, nicht kalendergesteuert.** Der Job fragt nicht „ist es
-September?", sondern *„welcher Jahrgang fehlt mir, und liegt inzwischen ein
+September?", sondern *„welche Einheit fehlt mir, und liegt inzwischen ein
 Dokument dafür vor?"*. Ein Job, der im September nach dem Jahresabschluss
 sucht, bricht in dem Jahr, in dem die Stadt später dran ist. So ist der Takt
 egal: Verspätungen, Nachtragshaushalte und nachgereichte Prüfberichte sind
 automatisch abgedeckt, und der Job darf beliebig oft laufen.
+
+:::danger[Einheit, nicht Jahrgang]
+Die kleinste Einheit ist **nicht** der Jahrgang, sondern das Dokument
+beziehungsweise die Ebene: Ein Produkt-Jahrgang verteilt sich auf rund neun
+Teilhaushalts-Anlagen, ein Jahresabschluss auf zwei Ebenen (Gesamtrechnung und
+Teil-Ergebnisrechnungen). **„Jahr ist da" heißt nicht „Jahr ist vollständig".**
+
+Und die Teile kommen nicht gleichzeitig. `check_protocols.py` legt eine Anlage
+zunächst ohne Volltext an (`n_pages = 0`, `status = 'listed'`); den Text holt
+`backfill_anlagen_texte.py` später und in Tranchen. Zwischen zwei Läufen liegt
+also regelmäßig ein Jahrgang, von dem die Hälfte lesbar ist — kein Sonderfall,
+sondern Normalbetrieb. Ein Bestand je Jahrgang sperrt ihn nach dem ersten
+Dokument und verliert die übrigen acht **dauerhaft**, ohne dass etwas auffällt:
+Das Jahr steht in der Tabelle, ist also nicht überfällig, und keine Meldung
+schlägt an.
+
+Deshalb führt `council/finanzquellen.py` den Bestand als Menge von Einheiten —
+Tupel, deren erstes Element immer der Jahrgang ist:
+
+| Datenart | Einheit | Beispiel |
+|---|---|---|
+| Jahresabschluss | Ebene | `(2024, "gesamt")`, `(2024, "teilhaushalte")` |
+| Teilhaushalts-Pläne | Teilhaushalt | `(2024, 7)` |
+| Schlussbericht, Prüfungsfeststellungen, Haushaltsplan | der Jahrgang selbst | `(2024,)` |
+
+Den Schlüssel eines Teilhaushalts-Plans liefern Textkopf und Label zusammen:
+der Jahrgang aus der ersten Ansatzspalte, die Nummer aus `THH\s*0*(\d+)` im
+Label. Gegen alle 79 Teilhaushalts-Anlagen des Bestands geprüft — das Paar
+trifft immer genau das, was `parse_teilergebnishaushalt` am Ende vergibt.
+:::
 
 Aus acht Jahrgängen Sitzungsdaten (`council_sessions.session_date` über
 `council_agenda_items`) ergibt sich der Rhythmus der Stadt:
@@ -124,8 +154,15 @@ Jahrgang, den die Tabelle nie zurückgibt.
    kommt nicht in die Datenbank, wird gezählt und gemeldet. Ein unbeaufsichtigter
    Lauf ist der Grund, warum es diese Proben gibt — nicht der Anlass, sie zu
    lockern.
-3. **Er ergänzt nur, was fehlt.** Ein vorhandener Jahrgang wird nicht angefasst.
-   Zweimal hintereinander laufen ändert beim zweiten Mal keine einzige Zeile.
+3. **Er ergänzt nur, was fehlt — Einheit für Einheit.** Eine vorhandene Einheit
+   wird nicht angefasst. Zweimal hintereinander laufen ändert beim zweiten Mal
+   keine einzige Zeile.
+
+Und was ein Jahrgang bekommt, bekommt er in **einer** Transaktion
+(`store.transaktion()`, verschachtelbar). Ohne die Klammer braucht ein
+Jahresabschluss 1 + n + 1 Transaktionen — Gesamtrechnung, je Teilhaushalt eine,
+Erläuterungen. Ein Abbruch dazwischen ließe den Jahrgang halb in der Datenbank,
+und halb sieht für den nächsten Lauf aus wie fertig.
 
 :::danger[Ein leeres Ergebnis ersetzt nie einen gefüllten Bestand]
 Alle Speicherwege ersetzen einen Jahrgang: Sie löschen ihn und schreiben ihn
@@ -145,6 +182,14 @@ Anlass war ein Beinahe-Unfall am 16.08.2026, bei dem ein Übertragungsskript
 
 Das ist die Gegenrichtung zu den Pflicht-Proben: Die halten falsche Daten
 draußen, diese Regel hält richtige drin.
+
+**Der Schutz gilt dem unbeaufsichtigten Weg, nicht dem bewussten Handgriff.**
+Wer einen verbesserten Parser über den Bestand zieht, will einen kleineren
+Jahrgang oft genau so — ein früherer Lauf war zu großzügig. Ein Schutz, der das
+blockiert, macht den einzigen Weg unbenutzbar, auf dem sich ein Parser-Fehler je
+korrigieren ließe. Die Ingest-Skripte haben dafür `--auch-schrumpfen`: Der
+Schrumpf wird deutlich gemeldet und dann vollzogen. Ein **leeres** Ergebnis
+bleibt auch damit tabu — null Zeilen sind nie eine Absicht.
 :::
 
 ### Eine Quelle für die Erkennung
@@ -177,6 +222,19 @@ dieselbe und liegt bei der Stadt. Wo ein Jahrgang erwartet wird, aber noch
 fehlt, steht das ausdrücklich da: *„Der Jahrgang 2025 wird üblicherweise im
 September 2026 vorgelegt."* Das Wort „fehlt" kommt nicht vor — was die Stadt
 noch nicht veröffentlicht hat, fehlt uns nicht.
+
+**Ein halber Jahrgang gibt sich zu erkennen.** Sonst stünde er in derselben
+Jahresspanne wie ein vollständiger und sähe aus wie einer: *„Für 2023 haben wir
+6 von 9 Teilhaushalten."* / *„Für 2024 fehlt noch die Aufteilung auf die
+einzelnen Bereiche."* Der Maßstab ist der bestbelegte Jahrgang desselben
+Bestands — mehr wissen wir nicht, und weniger zu behaupten wäre falsche
+Bescheidenheit.
+
+Auch die Fußzeile verspricht nur, was sie halten kann. „Wir tragen neue
+Jahrgänge automatisch nach" galt pauschal für die ganze Liste — deren erste und
+prominenteste Zeile aber der Haushaltsplan ist, den der Cron gar nicht anfasst.
+Jetzt nennt sie die Schichten, die **nicht** automatisch nachkommen, beim
+Namen, und zieht die Liste aus den Daten: `automatisch === false`.
 
 ## Die redaktionelle Schicht
 
