@@ -276,9 +276,13 @@ export default function PflichtPage() {
             Die Stadt gibt in den Teilhaushaltsplänen zu jeder Aufgabe selbst an, wie viel Spielraum
             sie bei ihr sieht; unten steht das an jeder Zeile neben unserer Einordnung
             <Beleg q="teilhaushalt" />.
+            {/* „weicht ab" statt „widerspricht": Welche der beiden Antworten
+                die richtige ist, entscheidet die Seite nicht — sie beantworten
+                zwei verschiedene Fragen (s. Lotti darunter). */}
             {weicht.length > 0 && (
-              <> Bei <strong>{weicht.length} von {geprueft.length} Bereichen</strong> widerspricht
-              sie ihr: {weicht.map((r) => bereichKanon(r.z.bereich).name).join(", ")}.</>
+              <> Bei <strong>{weicht.length} von {geprueft.length} Bereichen</strong> weicht
+              diese Angabe von unserer Einordnung ab:{" "}
+              {weicht.map((r) => bereichKanon(r.z.bereich).name).join(", ")}.</>
             )}
           </p>
           <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted-foreground">
