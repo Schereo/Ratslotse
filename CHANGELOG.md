@@ -286,6 +286,22 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Er prüft jetzt die Eigenschaft statt den Ort. Nebenbei stimmen die Angaben
   „elf Schritte, vierzehn Seiten" wieder mit dem überein, was der Bereich
   tatsächlich hat. (#552)
+- **Vier weitere Stellen im Haushalts-Bereich ließen die halbe Breite leer.**
+  Auf „Woher das Geld kommt", „Was kostet eigentlich …?" und im Städtevergleich
+  standen je zwei Absätze untereinander, die Verschiedenes sagen — zusammen
+  nutzten sie rund 600 von 1136 Pixeln, während Karten, Listen und Zitate
+  direkt darunter die volle Breite nahmen. Dieselbe Karte behauptete damit zwei
+  verschiedene Textbreiten. Sie stehen jetzt nebeneinander, sobald der Platz für
+  zwei vollwertige Lesespalten reicht; im Städtevergleich rückt der Beleg aus
+  dem Ratsinformationssystem neben das Argument, das ihn ankündigt, und die drei
+  Vergleichsstädte stehen nebeneinander statt untereinander — sie sind der
+  Vergleich, um den es dort geht. Die Zeilenlänge bleibt überall zwischen 62 und
+  74 Zeichen: breiter zu setzen hätte den leeren Platz gefüllt und das Lesen
+  verschlechtert. Ob zwei Spalten passen, entscheidet der Platz des Blocks
+  selbst und nicht die Fensterbreite — am Desktop liegt er neben der
+  Seitenleiste, auf dem Tablet nicht. Die übrigen elf durchgesehenen Seiten
+  bleiben unverändert: Dort steht je ein einzelner Absatz über einer Grafik,
+  und das ist die richtige Form. (#557)
 - **Der Erklärblock zum Finanzausgleich ließ die halbe Karte leer.** Zwei
   Absätze, die Verschiedenes sagen, standen untereinander und brachen bei
   74 Zeichen um — daneben blieb Platz. Sie stehen jetzt auf breiten
