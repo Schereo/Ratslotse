@@ -17,14 +17,14 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   sich dabei nach dem Bestand, nicht nach dem Kalender — eine verspätete
   Veröffentlichung oder ein Nachtragshaushalt wird eingesammelt, sobald sie da
   ist. Bleibt ein erwarteter Jahrgang vier Wochen über seinen üblichen Monat
-  hinaus aus, gibt es eine Nachricht statt eines stillen Stillstands. (#PR)
+  hinaus aus, gibt es eine Nachricht statt eines stillen Stillstands. (#511)
 - **„Bis wann die Zahlen reichen" — der Datenstand steht jetzt auf der Seite.**
   Am Fuß von `/haushalt` steht, wie weit jede Datenschicht reicht und was als
   Nächstes erwartet wird: „Der Jahrgang 2025 wird üblicherweise im September
   2026 vorgelegt." Damit beantwortet sich die Frage „warum steht hier 2024 und
   nicht 2025?" an einer Stelle, statt auf neun Seiten einzeln. Der Grund liegt
   bei der Stadt: Den Plan legt sie im Herbst für das kommende Jahr vor, die
-  Abrechnung erst ein knappes Jahr nach dessen Ende. (#PR)
+  Abrechnung erst ein knappes Jahr nach dessen Ende. (#511)
 
 - **„Geplant und geworden" reicht jetzt bis 2017 — und sagt, warum.** Bisher
   waren fünf Jahrgänge zu sehen; 2017, 2018 und 2020 fehlten, weil ihre
@@ -102,7 +102,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   mehr.** Liest ein Parser für einen bereits gespeicherten Jahrgang plötzlich
   nichts oder deutlich weniger — etwa weil die Stadt ihre Tabellen umbaut —,
   bleibt der alte Stand stehen und der Lauf meldet es, statt den Bestand gegen
-  ein kaputtes Ergebnis zu tauschen. (#PR)
+  ein kaputtes Ergebnis zu tauschen. (#511)
 
 ### Behoben
 - **„Geplant und geworden" behauptete einen Vergleich, den es nicht gab.** Wo
