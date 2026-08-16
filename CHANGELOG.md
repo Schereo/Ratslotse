@@ -86,6 +86,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   zählt mit ★ doppelt) und sehen, wie oft jede Liste übereinstimmt, Satz für
   Satz belegt. Kein Wahltipp, und die Antworten bleiben auf dem Gerät. (#356)
 -->
+## [1.12.0] – 2026-08-16
 
 ### Behoben
 - **Drei Zahlen für dieselbe Sache.** Ein Thema zeigte auf der Karte „40+
@@ -96,28 +97,28 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   an einer Stelle, die Cron und Web gemeinsam benutzen — dieselbe Zahl auf der
   Karte, im Blatt und in der Liste, und wo wirklich gedeckelt wird, steht
   überall „40+". Die Vorschlags-Chips nennen ihre viel gröbere Zahl jetzt beim
-  Namen („12 im letzten Jahr"). (#491)
+  Namen („12 im letzten Jahr"). (#495)
 - **Dialoge lagen scheinbar hinter der Navigation.** Der Abdunkler unter „Thema
   anpassen" war exakt die dunkle Seitenfarbe und dunkelte im Dunkelmodus nichts
   ab — Kopfzeile und Tab-Leiste behielten ihren Glas-Look und wirkten dadurch
   vor dem Dialog, der sie obendrein um wenige Pixel berührte. Es gibt jetzt
   einen einheitlichen Abdunkler und fünf benannte Ebenen; auf breiten Geräten
-  hält der Dialog sichtbar Abstand zu Kopf und Leiste. (#491)
+  hält der Dialog sichtbar Abstand zu Kopf und Leiste. (#495)
 - **Text schien unter dem Eingabefeld durch.** Zwischen Composer und Tab-Leiste
   blieb ein Streifen offen, durch den die Antwort scrollte: Beide rechneten mit
   einer eigenen Zahl für die Höhe der Leiste, und die war je nach Gerät
-  verschieden. Jetzt gibt es dafür eine gemeinsame Quelle. (#491)
+  verschieden. Jetzt gibt es dafür eine gemeinsame Quelle. (#495)
 - **Der Eingabe-Balken verdeckte auf dem iPad die halbe Breite.** Statt eines
   Riegels über den ganzen Bildschirm sitzt der Composer dort jetzt als Panel
-  auf der Chat-Spalte — die Quellen daneben bleiben bis unten sichtbar. (#491)
+  auf der Chat-Spalte — die Quellen daneben bleiben bis unten sichtbar. (#495)
 - **Quellen liefen bei Folgefragen aus dem Bild.** Auf dem iPad läuft die
   Belege-Spalte jetzt mit und sagt ab der zweiten Frage dazu, zu welcher Frage
-  sie gehört. (#491)
+  sie gehört. (#495)
 - **Konto-Seite ließ die halbe Fläche leer.** Neben der langen
   Benachrichtigungs-Karte stand ein Loch von fast 500 px Höhe, während links
   noch zu scrollen war. Die Karten stapeln jetzt in Spalten statt in Zeilen und
   nutzen die volle Breite — die Seite ist auf dem iPad quer ein Drittel kürzer.
-  (#491)
+  (#495)
 
 ## [1.11.0] – 2026-08-15
 
@@ -2586,7 +2587,8 @@ Open-Source-Go-Live von Ratslotse.
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v1.11.0...main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v1.12.0...main
+[1.12.0]: https://github.com/Schereo/Ratslotse/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/Schereo/Ratslotse/compare/v1.10.0...v1.11.0
 [1.10.0]: https://github.com/Schereo/Ratslotse/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/Schereo/Ratslotse/compare/v1.8.0...v1.9.0
