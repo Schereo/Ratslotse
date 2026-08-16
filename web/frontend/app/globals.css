@@ -600,3 +600,36 @@
 .hh-schraffur {
   background: repeating-linear-gradient(135deg, hsl(19 92% 55% / 0.22) 0 3px, transparent 3px 6px);
 }
+
+/* Regler im Haushalts-Labor (H-19): Der Browser bringt Tastatur- und
+   Touch-Verhalten mit, die Bahn zeichnen wir selbst — nur so lassen sich
+   Ist-Marke und Füllung ab dieser Marke zeigen. Deshalb ist der Input
+   durchsichtig und trägt nur den Griff. */
+.hh-regler {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+.hh-regler::-webkit-slider-runnable-track { background: transparent; height: 24px; }
+.hh-regler::-moz-range-track { background: transparent; height: 24px; }
+.hh-regler::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 22px;
+  width: 22px;
+  border-radius: 9999px;
+  background: hsl(var(--card));
+  border: 2.5px solid hsl(var(--primary));
+  box-shadow: 0 1px 3px rgba(2, 32, 71, 0.22);
+}
+.hh-regler::-moz-range-thumb {
+  height: 17px;
+  width: 17px;
+  border-radius: 9999px;
+  background: hsl(var(--card));
+  border: 2.5px solid hsl(var(--primary));
+  box-shadow: 0 1px 3px rgba(2, 32, 71, 0.22);
+}
+.hh-regler:focus-visible { outline: none; }
+.hh-regler:focus-visible::-webkit-slider-thumb { outline: 2px solid hsl(var(--primary)); outline-offset: 2px; }
+.hh-regler:focus-visible::-moz-range-thumb { outline: 2px solid hsl(var(--primary)); outline-offset: 2px; }
