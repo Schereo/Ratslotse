@@ -76,6 +76,18 @@ Dot hsl(209 18% 65%), kombiniertes Label.
   Sidebar 230 mit Pflicht-Links im Fuß. Mobil: Geräterahmen ist der Container,
   Composer sticky über Tab-Bar (Safe-Area), Chips laufen in 40–56-px-Fade aus.
 - Icons: Lucide, stroke-width 2, 11–22 px, currentColor.
+- **Ebenen & Abdunkler:** Fünf benannte Stufen, definiert in `app/globals.css`
+  (`--ebene-huelle` 40 · `--ebene-schwebend` 60 · `--ebene-flaeche` 100 ·
+  `--ebene-dialog` 110 · `--ebene-meldung` 120) — eine neue Ebene wird dort
+  eingetragen, nicht als freie Zahl in die Komponente geschrieben. Der
+  Abdunkler unter jedem Dialog ist die Klasse `.scrim` (schwarz 50 % / dunkel
+  62 %), nie eine handgemischte Farbe: `rgba(9,17,27,0.42)` im Blatt „Thema
+  anpassen" war exakt die dunkle Seitenfarbe und dunkelte im Dunkelmodus
+  nichts ab (4,7 von 255 Stufen statt 98) — Kopfzeile und Tab-Leiste
+  behielten ihren Glas-Look und standen scheinbar VOR dem Dialog. Ein
+  mittiger Dialog lässt die App-Hülle frei (Kopfzeile und Tab-Leiste sind je
+  ~61 px + Sicherheitszone hoch); ein Blatt an der Unterkante deckt die
+  Tab-Leiste bewusst ab.
 - **Zwei getrennte Fragen: „Wie viel Platz?" und „Womit bedient?".** Dafür gibt
   es drei Breakpoints, und sie dürfen nicht vermischt werden:
   - `breit` (`min-width: 1024px`) — **Platz.** Alles, was nur Breite braucht:
@@ -96,6 +108,19 @@ Dot hsl(209 18% 65%), kombiniertes Label.
   Wer eine Regel schreibt, fragt zuerst, ob sie am Platz oder am Eingabegerät
   hängt. `desk` und `tab` schließen einander aus, damit keine Regel von
   Tailwinds Ausgabereihenfolge abhängt.
+- **Karten-Raster: Container-Query statt Fenster-Stufe — und Spalten statt
+  Zeilen.** Am Desktop liegt ein Raster neben der 240-px-Seitenleiste, auf dem
+  iPad nicht: Dieselbe Fensterbreite meint zwei verschiedene Platzangebote.
+  Spaltenzahlen hängen deshalb an `@container` (Schwelle 768 px = zwei
+  Spalten), nicht an `lg:`. Und ein `grid` füllt ZEILEN — jede Zeile wird so
+  hoch wie ihre höchste Karte, unter der kurzen Nachbarin bleibt also Leere
+  stehen. Wo Karten sehr verschieden hoch sind, sind die Rasterkinder darum
+  **Spalten** (`flex flex-col gap-6`), die je für sich stapeln; welche Karte
+  in welche Spalte gehört, entscheidet der Inhalt, nicht die Höhe (Konto-Seite,
+  Tims iPad-Befund 16.08.: 459 × 494 px Leerfläche neben einer Karte, die
+  weiter unten noch lange nicht zu Ende war). Die
+  Breite deckelt die Hülle (`max-w-7xl` im App-Layout) — ein eigenes
+  `max-w-*` auf einem Raster verschenkt genau den Platz, den das Gerät hat.
 
 ## 5. Wiederkehrende Bausteine (Spez im Artboard „Ratsgespräch")
 
@@ -117,6 +142,17 @@ Dot hsl(209 18% 65%), kombiniertes Label.
   nie Fußnoten-Ziel.
 - **Composer**: h 48–52, Radius 16, Funken-Icon (Signal-Orange) links, Senden
   36–38 ⌀ primary (disabled: primary/35); Datenschutz-Zeile 10 px darunter, immer.
+- **Composer als Andock-Panel (`tab`)**: Auf breiten Touch-Geräten ist der
+  fixierte Balken kein durchgehender Riegel mehr. Er wird durchsichtig und
+  klick-durchlässig; sichtbar ist nur ein Panel genau auf der Lesespalte —
+  oben gerundet (Radius 16), Rahmen, `bg-card/[0.96]` mit Unschärfe, weicher
+  Schatten nach oben, unten bündig auf der Tab-Leiste. Zwei Regeln dahinter:
+  Was hinter dem Eingabefeld durchscrollt, muss **gedeckt** sein (rein
+  durchsichtig scheitert daran, `/90` ließ im Hellmodus die Karten-Attribution
+  durchschimmern), und die Belege-Spalte daneben darf der Balken nicht
+  anschneiden (Tims iPad-Befund 16.08.: „der ganze Bereich wird von dieser
+  Fläche verdeckt"). Die Andockkante ist `TABLEISTE_HOEHE` aus
+  `components/nav.tsx` — nie eine eigene Zahl.
 - **Turn-Fußzeile**: KI-Disclaimer 10,5–11 px + stille Icon-Aktionen 15 px
   (Teilen, Drucken, Vorlesen, 👍/👎) — keine gerahmten Buttons.
 

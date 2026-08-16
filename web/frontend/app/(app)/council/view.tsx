@@ -477,7 +477,13 @@ function DecisionsTab({ committees }: { committees: string[] }) {
     queryFn: () => api.get<Topic[]>("/topics"),
     enabled: !!topicId,
   });
-  const topicName = myTopics?.find((t) => String(t.id) === topicId)?.name ?? "";
+  const myTopic = myTopics?.find((t) => String(t.id) === topicId);
+  const topicName = myTopic?.name ?? "";
+  /* Hat der Matching-Lauf mehr Treffer gefunden, als er speichern durfte, ist
+     JEDE Zahl hier eine Untergrenze — auch eine zusätzlich gefilterte. Dann
+     steht dasselbe „+" wie auf der Themen-Karte davor, statt eine Endzahl zu
+     behaupten, die keine ist. */
+  const topicCapped = !!topicId && !!myTopic?.decision_count_capped;
 
   // ?q= aus der URL übernehmen (Deep-Link aus der Command-Palette) — einmalig
   // nach dem Mount, um keinen Hydration-Mismatch im Input zu erzeugen.
@@ -498,7 +504,15 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   // Beschlüsse (votes) / Berichte (reports) / Alle (both) — in the URL so the
   // Themenfeld-Rückblicke can deep-link to the combined "Alle" view.
   const catParam = sp.get("cat");
-  const mode: "vote" | "report" | "all" = catParam === "report" || catParam === "all" ? catParam : "vote";
+  /* Ohne ?cat= gilt „nur Beschlüsse" — außer die Liste gehört zu einem eigenen
+     Thema. Dessen Trefferliste enthält beides, und die Voreinstellung schnitt
+     davon still die Berichte weg: Die Karte sagte „40+", die Liste zeigte 25
+     (Tim, Build 12). Ein Thema bringt seine Menge selbst mit; sie zu filtern,
+     ist eine Entscheidung des Nutzers, keine Voreinstellung. */
+  const mode: "vote" | "report" | "all" =
+    catParam === "report" || catParam === "all" ? catParam
+      : catParam === "vote" ? "vote"
+        : topicId ? "all" : "vote";
   // Mehrere Params in EINEM replace ändern — zwei Aufrufe nacheinander würden
   // sich gegenseitig überschreiben (beide bauen auf demselben sp-Snapshot auf).
   const setUrlParams = (entries: Record<string, string>) => {
@@ -568,9 +582,18 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   const query = q.trim();
   const totalPages = Math.ceil(total / PAGE_SIZE);
   const isReport = mode === "report";
+  const einer = total === 1 && !topicCapped;
+  /* Unter einem eigenen Thema heißt dieselbe Menge auch hier „Beschlüsse" —
+     so wie auf der Themen-Karte, in der Meldung und im Bearbeiten-Blatt. Das
+     Sammelwort „Vorgänge" der freien Suche wäre zwar präziser (die Menge
+     enthält auch Berichte), erzeugte aber genau das, was hier abgeschafft
+     wird: dieselbe Zahl unter zwei Namen. Wer die Kategorie danach selbst
+     umstellt, bekommt wieder die Wörter der Suche. */
   const noun = mode === "all"
-    ? (total === 1 ? "Vorgang" : "Vorgänge")
-    : isReport ? (total === 1 ? "Bericht" : "Berichte") : (total === 1 ? "Beschluss" : "Beschlüsse");
+    ? (topicId ? (einer ? "Beschluss" : "Beschlüsse") : einer ? "Vorgang" : "Vorgänge")
+    : isReport ? (einer ? "Bericht" : "Berichte") : (einer ? "Beschluss" : "Beschlüsse");
+  /* „40+" statt „40": s. topicCapped. Steht überall dort, wo die Zahl steht. */
+  const totalLabel = `${total}${topicCapped ? "+" : ""}`;
 
   // Zeitraum zählt als EIN Filter; Sortierung ist eine Einstellung, kein Filter.
   const activeFilterCount = [outcome, field, committee, dateFrom || dateTo].filter(Boolean).length;
@@ -649,6 +672,10 @@ function DecisionsTab({ committees }: { committees: string[] }) {
       </div>
 
       <div className="mt-3 hidden flex-wrap items-center gap-2 md:flex">
+        {/* „Beschlüsse" räumt den cat-Parameter sonst weg, weil es die
+            Voreinstellung ist — unter einem Thema ist die Voreinstellung aber
+            „alle", und die Auswahl spränge sofort dorthin zurück. Dort wird
+            „vote" deshalb ausgeschrieben; überall sonst bleibt die URL kurz. */}
         <ChipPopover
           label="Beschlüsse"
           clearable={false}
@@ -659,7 +686,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
             { value: "report", label: "Berichte" },
             { value: "all", label: "Alle Vorgänge" },
           ]}
-          onChange={(m) => { setUrlParam("cat", m === "vote" ? "" : m); setOutcome(""); }}
+          onChange={(m) => { setUrlParam("cat", m === "vote" && !topicId ? "" : m); setOutcome(""); }}
         />
         {fields.length > 0 && (
           <ChipPopover
@@ -712,7 +739,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
             </p>
             {refineFilters}
             <Button className="mt-5 w-full" onClick={() => setFiltersOpen(false)}>
-              {loading ? "Ergebnisse anzeigen" : `${total} ${noun} anzeigen`}
+              {loading ? "Ergebnisse anzeigen" : `${totalLabel} ${noun} anzeigen`}
             </Button>
           </SheetContent>
         </Sheet>
@@ -781,13 +808,13 @@ function DecisionsTab({ committees }: { committees: string[] }) {
             <p className="sr-only" role="status" aria-live="polite">
               {loading
                 ? "Beschlüsse werden geladen"
-                : `${total} ${noun} gefunden${query ? ` zu ${query}` : ""}`
+                : `${totalLabel} ${noun} gefunden${query ? ` zu ${query}` : ""}`
                   + (totalPages > 1 ? `, Seite ${page} von ${totalPages}` : "")}
             </p>
             {/* RL-F07: Trefferzeile gleitet bei Filterwechsel neu ein (key-Remount). */}
             <div className="flex flex-wrap items-center gap-2">
               <p key={`${total}|${query}|${outcome}|${field}|${committee}`} className="animate-fade-up text-sm font-medium text-muted-foreground">
-                {total} {noun}
+                {totalLabel} {noun}
                 {query && <> zu <strong className="font-semibold text-foreground">{query}</strong></>}
               </p>
               {/* Design 28a/S4: sichtbar und abwählbar — sonst wüsste niemand,

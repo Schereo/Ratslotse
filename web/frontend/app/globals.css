@@ -30,6 +30,26 @@
     --input: 208 30% 85%;
     --ring: 205 92% 34%;
     --radius: 0.75rem;
+    /* ── Ebenen ───────────────────────────────────────────────────────────
+       Fünf Stufen, mehr braucht die App nicht. Wer eine sechste erfindet,
+       trägt sie HIER ein, statt in der Komponente eine freie Zahl daneben zu
+       setzen — sonst weiß am Ende niemand mehr, was über was liegt, und der
+       nächste Konflikt wird per Zuschlag statt per Regel gelöst.
+         huelle    Seitenleiste, Kopfzeile, Tab-Leiste — die App-Hülle
+         schwebend Popover/Menü, das an einem Element der Seite hängt
+         flaeche   bildschirmfüllender Modus, der die Hülle ERSETZT
+                   (Onboarding-Auftakt, Karte im Vollbild)
+         dialog    Blatt/Dialog samt Abdunkler — liegt auch über einer Fläche
+         meldung   Toast/Feier: bleibt auch über einem Dialog sichtbar
+       Benutzung: `className="z-[var(--ebene-dialog)]"`.
+       Noch nicht überall nachgezogen (die Zahlen dort stimmen, nur die Namen
+       fehlen): components/nav.tsx, components/ui/dialog.tsx + sheet.tsx,
+       components/tour.tsx, components/badges.tsx. */
+    --ebene-huelle: 40;
+    --ebene-schwebend: 60;
+    --ebene-flaeche: 100;
+    --ebene-dialog: 110;
+    --ebene-meldung: 120;
     /* Signal-Orange (Lotsenboot): Maskottchen, Highlights, sparsame Akzente.
        Token-Spec 6a: hell 19 92% 50 (Button-Fill), dunkel 19 95% 60. */
     --signal: 19 92% 50%;
@@ -99,6 +119,26 @@
 }
 
 @layer components {
+  /* Der Abdunkler unter jedem Dialog — eine Klasse statt einer Farbe je
+     Komponente, weil genau daran ein Blatt zerbrochen ist.
+     „Thema anpassen" trug `rgba(9,17,27,0.42)`; das ist Pixel für Pixel die
+     dunkle Seitenfarbe `hsl(213 50% 7%)` = rgb(9,17,27). Im hellen Modus
+     dunkelte das die Kopfzeile um 98 von 255 Helligkeitsstufen ab, im dunklen
+     um 4,7 — der Abdunkler lag also richtig (Ebene 110 über Ebene 40, per
+     elementFromPoint geprüft), war dort aber schlicht unsichtbar. Kopfzeile
+     und Tab-Leiste behielten ihren Glas-Look und standen scheinbar VOR dem
+     Dialog (Tims iPad-Befund 16.08.).
+     Schwarz funktioniert in beiden Themes, weil es in beiden dunkler ist als
+     der Untergrund; im Dunkeln etwas kräftiger, weil dort weniger Spielraum
+     nach unten bleibt. Es ist derselbe Ton, den Dialog, Sheet und
+     Befehlspalette schon benutzen (`bg-black/50`) — jetzt mit einem Namen. */
+  .scrim {
+    background-color: rgb(0 0 0 / 0.5);
+  }
+  .dark .scrim {
+    background-color: rgb(0 0 0 / 0.62);
+  }
+
   /* Subtle lift for clickable cards — the Linear/Stripe hover affordance.
      Kein transition-all (nur die drei Properties, die sich wirklich ändern),
      starke ease-out-Kurve — und der Hover-Lift nur für echte Zeiger: auf

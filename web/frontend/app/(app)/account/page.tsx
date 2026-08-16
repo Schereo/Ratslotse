@@ -164,124 +164,171 @@ export default function AccountPage() {
         </span>
       )}
 
-      <div className="mt-6 grid max-w-4xl items-start gap-6 lg:grid-cols-2">
-        <DeliverySettings />
+      {/* Karten-Raster (Tims iPad-Befund 16.08.: „Die Karten nutzen nicht die
+          ganze Breite und stacken auch nicht so schön wie im Dashboard").
+          Beides hatte je eine eigene Ursache:
 
-        {/* RL-U12 (11a): zwischen Benachrichtigungen und Passwort. */}
-        <BadgesCard />
+          1. `max-w-4xl` deckelte das Raster bei 896 px. Auf dem iPad quer
+             stehen 1116 px Inhalt zur Verfügung, am Desktop 1136 — 220 bzw.
+             240 px blieben ungenutzt. Die Breite gibt jetzt die Hülle vor
+             (max-w-7xl in app/(app)/layout.tsx), wie auf allen anderen Seiten.
 
-        {/* Design 6a②: „Gespräche speichern" — beidseitig änderbar zur
-            Erstnutzungs-Frage im Ratsgespräch. */}
-        <GespraecheCard />
+          2. `lg:grid-cols-2` maß das FENSTER, das Raster liegt aber neben der
+             Seitenleiste — dieselbe Falle, die auf dem Dashboard schon
+             dokumentiert ist. Deshalb hier dieselbe Antwort: eine
+             Container-Query auf der Breite des Rasters. Die Schwelle (768 px)
+             ist die des Dashboards; darunter ist eine Spalte breiter als zwei
+             enge.
 
-        <DisplayNameCard />
+          3. Und der eigentliche Befund: In einem Raster aus sieben Karten
+             füllt die Auto-Platzierung ZEILEN, und eine Zeile ist so hoch wie
+             ihre höchste Karte. Neben der sehr langen Benachrichtigungen-Karte
+             stand deshalb die kurze Abzeichen-Karte und darunter ein halber
+             Bildschirm Nichts (gemessen 459 × 494 px), während links noch zu
+             scrollen war. Statt eines Rasters aus Einzelkarten sind es jetzt
+             ZWEI SPALTEN, die je für sich stapeln — die kurzen Karten füllen
+             den Platz neben der langen auf. Auf dem iPad quer sind das
+             1116 statt 896 px Breite, 1580 statt 2118 px Höhe und eine größte
+             Lücke von 565 × 88 statt 459 × 494 px (im Browser nachgemessen).
 
-        <AppearanceCard />
+          Die Aufteilung ist inhaltlich, nicht nach Höhe gewürfelt: links, was
+          Ratslotse von sich aus tut (melden, speichern), rechts, was dich und
+          dein Gerät betrifft (Sammlung, Name, Aussehen, Anmeldung). Mobil
+          stapelt alles in genau dieser Reihenfolge — die Abzeichen bleiben
+          zwischen Benachrichtigungen und Passwort (RL-U12, 11a). */}
+      <div className="@container/konto mt-6">
+        <div className="grid items-start gap-6 @3xl/konto:grid-cols-2">
+          <div className="flex flex-col gap-6">
+            <DeliverySettings />
 
-        {hasPassword ? (
-        <Card className="p-6">
-          <h2 className="font-semibold text-foreground">Passwort ändern</h2>
-          <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-            <div>
-              <Label htmlFor="current-password">Aktuelles Passwort</Label>
-              <PasswordInput
-                id="current-password"
-                className="mt-1"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-              />
+            {/* Design 6a②: „Gespräche speichern" — beidseitig änderbar zur
+                Erstnutzungs-Frage im Ratsgespräch. */}
+            <GespraecheCard />
+          </div>
+
+          <div className="flex flex-col gap-6">
+            <BadgesCard />
+
+            <DisplayNameCard />
+
+            <AppearanceCard />
+
+            {hasPassword ? (
+              <Card className="p-6">
+                <h2 className="font-semibold text-foreground">Passwort ändern</h2>
+                <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+                  <div>
+                    <Label htmlFor="current-password">Aktuelles Passwort</Label>
+                    <PasswordInput
+                      id="current-password"
+                      className="mt-1"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      required
+                      autoComplete="current-password"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="new-password">Neues Passwort</Label>
+                    <PasswordInput
+                      id="new-password"
+                      className="mt-1"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      required
+                      minLength={8}
+                      autoComplete="new-password"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="confirm-password">Neues Passwort bestätigen</Label>
+                    <PasswordInput
+                      id="confirm-password"
+                      className="mt-1"
+                      value={confirm}
+                      onChange={(e) => setConfirm(e.target.value)}
+                      required
+                      autoComplete="new-password"
+                    />
+                  </div>
+                  <Button type="submit" disabled={changeMutation.isPending} className="w-full">
+                    {changeMutation.isPending ? "Speichern…" : "Passwort ändern"}
+                  </Button>
+                </form>
+              </Card>
+            ) : (
+              /* Apple-only (RL-1002): keine Passwort-Karte — stattdessen der Weg,
+                 eines nachzurüsten (Reset-Link an die Konto-Adresse). */
+              <Card className="p-6">
+                <h2 className="font-semibold text-foreground">Anmeldung</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Du meldest dich mit Apple an — ein Passwort hat dieses Konto nicht.
+                  Falls du zusätzlich eines möchtest, kannst du dir einen Link zum
+                  Setzen an deine E-Mail-Adresse schicken lassen.
+                </p>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="mt-4"
+                  onClick={async () => {
+                    try {
+                      await api.post("/auth/forgot-password", { email: user?.email });
+                      toast.success("Link zum Passwort-Setzen ist unterwegs — schau in dein Postfach.");
+                    } catch (err) {
+                      toast.error(err instanceof ApiError ? err.message : "Konnte den Link nicht senden.");
+                    }
+                  }}
+                >
+                  Passwort per E-Mail einrichten
+                </Button>
+              </Card>
+            )}
+          </div>
+
+          {/* Die Gefahrenzone steht quer unter beiden Spalten — sie gehört zu
+              keiner von beiden und soll auch nicht zwischen zwei harmlose
+              Karten geraten. Ihr Inhalt legt sich bei Platz nebeneinander
+              (Erklärung links, Bestätigung rechts), statt eine Karte über die
+              volle Breite mit einem kurzen Feld am linken Rand zu füllen. */}
+          <Card className="border-destructive/30 p-6 @3xl/konto:col-span-2">
+            <div className="@3xl/konto:flex @3xl/konto:items-end @3xl/konto:justify-between @3xl/konto:gap-8">
+              <div className="@3xl/konto:max-w-xl">
+                <h2 className="font-semibold text-destructive">Konto löschen</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Löscht dein Konto und alle zugehörigen Daten (Themen, Treffer, Abos) unwiderruflich.
+                  {hasPassword
+                    ? " Zur Bestätigung brauchst du dein aktuelles Passwort."
+                    : " Zur Bestätigung meldest du dich einmal frisch mit Apple an."}
+                </p>
+              </div>
+              <div className="mt-4 flex flex-wrap items-end gap-3 @3xl/konto:mt-0 @3xl/konto:shrink-0 @3xl/konto:justify-end">
+                {hasPassword ? (
+                  <div className="w-full max-w-xs space-y-1.5 @3xl/konto:w-64">
+                    <Label htmlFor="delete-password">Aktuelles Passwort</Label>
+                    <PasswordInput
+                      id="delete-password"
+                      value={deletePassword}
+                      onChange={(e) => setDeletePassword(e.target.value)}
+                      autoComplete="current-password"
+                    />
+                  </div>
+                ) : !nativeApple ? (
+                  <p className="text-sm text-muted-foreground @3xl/konto:max-w-xs">
+                    Die Apple-Bestätigung funktioniert nur in der App — oder richte dir oben
+                    zuerst ein Passwort ein.
+                  </p>
+                ) : null}
+                <Button
+                  variant="danger"
+                  onClick={() => setDeleteOpen(true)}
+                  disabled={(hasPassword ? !deletePassword : !nativeApple) || deleteMutation.isPending}
+                >
+                  {deleteMutation.isPending ? "Lösche…" : hasPassword ? "Konto löschen" : "Mit Apple bestätigen & löschen"}
+                </Button>
+              </div>
             </div>
-            <div>
-              <Label htmlFor="new-password">Neues Passwort</Label>
-              <PasswordInput
-                id="new-password"
-                className="mt-1"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                required
-                minLength={8}
-                autoComplete="new-password"
-              />
-            </div>
-            <div>
-              <Label htmlFor="confirm-password">Neues Passwort bestätigen</Label>
-              <PasswordInput
-                id="confirm-password"
-                className="mt-1"
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                required
-                autoComplete="new-password"
-              />
-            </div>
-            <Button type="submit" disabled={changeMutation.isPending} className="w-full">
-              {changeMutation.isPending ? "Speichern…" : "Passwort ändern"}
-            </Button>
-          </form>
-        </Card>
-        ) : (
-        /* Apple-only (RL-1002): keine Passwort-Karte — stattdessen der Weg,
-           eines nachzurüsten (Reset-Link an die Konto-Adresse). */
-        <Card className="p-6">
-          <h2 className="font-semibold text-foreground">Anmeldung</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Du meldest dich mit Apple an — ein Passwort hat dieses Konto nicht.
-            Falls du zusätzlich eines möchtest, kannst du dir einen Link zum
-            Setzen an deine E-Mail-Adresse schicken lassen.
-          </p>
-          <Button
-            variant="secondary"
-            size="sm"
-            className="mt-4"
-            onClick={async () => {
-              try {
-                await api.post("/auth/forgot-password", { email: user?.email });
-                toast.success("Link zum Passwort-Setzen ist unterwegs — schau in dein Postfach.");
-              } catch (err) {
-                toast.error(err instanceof ApiError ? err.message : "Konnte den Link nicht senden.");
-              }
-            }}
-          >
-            Passwort per E-Mail einrichten
-          </Button>
-        </Card>
-        )}
-
-        <Card className="border-destructive/30 p-6 lg:col-span-2">
-          <h2 className="font-semibold text-destructive">Konto löschen</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Löscht dein Konto und alle zugehörigen Daten (Themen, Treffer, Abos) unwiderruflich.
-            {hasPassword
-              ? " Zur Bestätigung brauchst du dein aktuelles Passwort."
-              : " Zur Bestätigung meldest du dich einmal frisch mit Apple an."}
-          </p>
-          {hasPassword ? (
-            <div className="mt-4 max-w-xs space-y-1.5">
-              <Label htmlFor="delete-password">Aktuelles Passwort</Label>
-              <PasswordInput
-                id="delete-password"
-                value={deletePassword}
-                onChange={(e) => setDeletePassword(e.target.value)}
-                autoComplete="current-password"
-              />
-            </div>
-          ) : !nativeApple ? (
-            <p className="mt-3 text-sm text-muted-foreground">
-              Die Apple-Bestätigung funktioniert nur in der App — oder richte dir oben
-              zuerst ein Passwort ein.
-            </p>
-          ) : null}
-          <Button
-            variant="danger"
-            className="mt-4"
-            onClick={() => setDeleteOpen(true)}
-            disabled={(hasPassword ? !deletePassword : !nativeApple) || deleteMutation.isPending}
-          >
-            {deleteMutation.isPending ? "Lösche…" : hasPassword ? "Konto löschen" : "Mit Apple bestätigen & löschen"}
-          </Button>
-        </Card>
+          </Card>
+        </div>
       </div>
 
       {/* Pflicht-Links für Handy-Web und App (der Seiten-Fuß ist mobil aus):

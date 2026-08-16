@@ -4,6 +4,26 @@ Ownership is keyed on the web account (owner_id = web_users.id); a linked
 Telegram chat is only a delivery target, so these endpoints work for web-only
 users too. Topics match against council decisions (semantic); the former NWZ
 article matching was removed with the NWZ scraper.
+
+**Eine Definition von „Beschlüsse zu diesem Thema"** — sie steht in
+``council.topic_intel`` (Cross-Encoder ≥ ``SCHWELLE``, höchstens ``DECKEL``
+Treffer, „gedeckelt" wird als „40+" ausgewiesen). Alles, was hier eine Zahl
+ausliefert, bezieht sich darauf:
+
+* ``GET /topics`` → ``decision_count`` (+ ``decision_count_capped``): die
+  gespeicherten Treffer des letzten Matching-Laufs — die Zahl auf der Karte.
+* ``GET /council/decisions?topic=…`` → dieselbe Menge als Liste. Sie darf nicht
+  heimlich kleiner sein als die Karte; die Liste holt sich das Thema über
+  ``get_topic_decision_matches``.
+* ``POST /topics/describe`` → ``matches`` (+ ``matches_capped``): dieselbe
+  Rechnung, aber live auf den Text im Bearbeiten-Blatt statt auf den
+  gespeicherten Stand. Die beiden Zahlen dürfen auseinandergehen (der Lauf ist
+  wöchentlich, der Text noch ungespeichert) — deshalb beschriftet das Blatt
+  seine Zahl als Vorschau und nicht als Bestand.
+
+Bis zum 16.08.2026 waren es drei verschiedene Rechnungen mit drei
+verschiedenen Ergebnissen (Tim, Build 12: „40+" / „12 Beschlüsse" / 25 Treffer
+zu ein und demselben Thema).
 """
 from __future__ import annotations
 
@@ -175,13 +195,25 @@ def describe_topic(
 
     Mit ``description`` im Body wird zusätzlich die (bis 26a brachliegende)
     Vagheits-Prüfung auf den selbst getippten Text angewandt.
+
+    ``matches``/``matches_capped`` zählen nach derselben Definition wie die
+    Themen-Karte (s. Modul-Kopf), nur eben auf den Text, der gerade im Feld
+    steht: Wer die Beschreibung ändert, soll vorher sehen, was das mit der
+    Trefferliste macht. Vorher lief hier eine eigene Suche mit eigener
+    Schwelle und einem Deckel von 12 — daher stand unter jedem breiten Thema
+    „12 Beschlüsse", während die Karte „40+" sagte.
     """
     topic_describe_limiter.check(request)
     from council import topic_intel
 
     name = body.name.strip()
     own = (body.description or "").strip()
-    result = topic_intel.analyse(council, name)
+    # Gezählt wird auf „Name. eigener Text" — ohne eigenen Text auf den Namen
+    # allein. Kein zweiter Durchlauf auf die frisch erzeugte Beschreibung: Die
+    # Bewertung des Cross-Encoders hängt am Namen (er ist die Rerank-Anfrage),
+    # der Fließtext steuert nur die Kandidatenauswahl — ein zweiter Lauf kostete
+    # einen weiteren LLM-Aufruf und verschöbe die Zahl kaum.
+    result = topic_intel.analyse(council, name, own)
     # Vagheit nur für selbst geschriebene Texte: Was wir selbst erzeugt haben,
     # ist per Konstruktion aus Beschlüssen abgeleitet und damit konkret.
     check = topic_intel.check_vagueness(name, own) if own else {"vague": False, "hint": "", "suggestion": ""}
@@ -189,6 +221,7 @@ def describe_topic(
         "name": name,
         "description": result["description"],
         "matches": result["matches"],
+        "matches_capped": result["matches_capped"],
         "examples": result["examples"],
         "verdict": result["verdict"],
         "is_council_topic": result["is_council_topic"],
@@ -227,17 +260,25 @@ def update_topic(
     body: TopicIn,
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
+    council: CouncilStore = Depends(get_council_store),
 ) -> TopicOut:
     owner_id = user["id"]
     _own_topic(store, owner_id, topic_id)
     store.update_topic(topic_id, body.name, body.description)
     t = store.get_topic_for_owner(owner_id, topic_id)
+    # Dieselbe Zählung wie in list_topics — inklusive Existenzprüfung und
+    # Deckel-Kennzeichen. Vorher zählte hier nur die Zeilen der Match-Tabelle,
+    # sodass die Karte direkt nach dem Speichern kurz eine andere Zahl trug als
+    # nach dem nächsten Neuladen.
+    ids = [m["decision_id"] for m in store.get_topic_decision_matches(topic_id)]
+    lebende = len(council.get_decisions_by_ids(ids)) if ids else 0
     return TopicOut(
         id=t.id,
         name=t.name,
         description=t.description,
         created_at=t.created_at,
-        decision_count=len(store.get_topic_decision_matches(topic_id)),
+        decision_count=lebende,
+        decision_count_capped=store.topic_match_caps(owner_id).get(topic_id, False),
     )
 
 
@@ -288,7 +329,12 @@ def topic_decisions(
     store: Store = Depends(get_store),
     council: CouncilStore = Depends(get_council_store),
 ) -> dict:
-    """Council decisions matched to this topic (semantic), best first."""
+    """Council decisions matched to this topic (semantic), best first.
+
+    Dieselbe Menge, die die Karte zählt und ``/council/decisions?topic=…``
+    anzeigt — ungefiltert und ohne eigenen Deckel. Wer hier filtert, baut die
+    vierte Zahl.
+    """
     owner_id = user["id"]
     _own_topic(store, owner_id, topic_id)
     matches = store.get_topic_decision_matches(topic_id)

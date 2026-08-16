@@ -8,7 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { initPush } from "@/lib/push";
-import { DesktopSidebar, MobileTopbar, MobileBottomNav } from "@/components/nav";
+import { DesktopSidebar, MobileTopbar, MobileBottomNav, TABLEISTE_HOEHE } from "@/components/nav";
 import { SlashSearchShortcut } from "@/components/keyboard-shortcuts";
 import { GuidedTour } from "@/components/tour";
 import { CommandPalette } from "@/components/command-palette";
@@ -126,7 +126,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           schiebt die ganze Seite auf. Auf dem iPad hochkant lief das Layout
           dadurch 1228 px breit bei 834 px Fenster — die Karten rechts waren
           abgeschnitten, die Seite ließ sich seitlich wegschieben. */}
-      <main id="main" tabIndex={-1} className="flex min-w-0 flex-1 flex-col outline-none pb-[calc(env(safe-area-inset-bottom)+4.75rem)] desk:pb-0">
+      {/* Der Platzhalter unter dem Inhalt rechnet mit derselben Leistenhöhe wie
+          die Leiste selbst (TABLEISTE_HOEHE aus components/nav.tsx) plus etwas
+          Luft — vorher stand hier eine eigene Zahl, und genau solche zweiten
+          Zahlen sind am 16.08. auseinandergelaufen. Als Variable, nicht als
+          Inline-Höhe: `desk:pb-0` muss weiter gewinnen, wo es keine Leiste gibt. */}
+      <main id="main" tabIndex={-1} style={{ "--rl-unten": TABLEISTE_HOEHE } as React.CSSProperties}
+        className="flex min-w-0 flex-1 flex-col outline-none pb-[calc(var(--rl-unten)+0.75rem)] desk:pb-0">
         {/* Design 11a: Inhalt läuft breiter (~1280 px statt 1024) — die Karten
             atmen wie im Mock; Text-Detailseiten begrenzen sich weiter selbst. */}
         <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
@@ -177,7 +183,8 @@ function ShellSkeleton() {
         <Skeleton className="h-9 w-9 rounded-md" />
       </header>
 
-      <main className="flex min-w-0 flex-1 flex-col pb-[calc(env(safe-area-inset-bottom)+4.75rem)] desk:pb-0">
+      <main style={{ "--rl-unten": TABLEISTE_HOEHE } as React.CSSProperties}
+        className="flex min-w-0 flex-1 flex-col pb-[calc(var(--rl-unten)+0.75rem)] desk:pb-0">
         <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
           <Skeleton className="h-7 w-52" />
           <Skeleton className="mt-2 h-3.5 w-72" />

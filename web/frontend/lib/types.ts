@@ -371,9 +371,14 @@ export interface Topic {
   name: string;
   description: string;
   created_at: string;
+  /** „Beschlüsse zu diesem Thema" — die gespeicherten Treffer des letzten
+   *  Matching-Laufs (Definition: `council.topic_intel.treffer`). Dieselbe
+   *  Menge, die `/council?tab=decisions&cat=all&topic=<id>` auflistet; wer
+   *  die Zahl irgendwo anders herrechnet, baut die nächste Widersprüchlichkeit. */
   decision_count: number;
   /** Es gab mehr passende Beschlüsse, als der Matching-Lauf speichern durfte
-   *  — die Karte schreibt dann „40+" statt einer Endzahl, die keine ist. */
+   *  — die Karte schreibt dann „40+" statt einer Endzahl, die keine ist. Gilt
+   *  genauso für die Trefferliste dahinter (view.tsx: `topicCapped`). */
   decision_count_capped?: boolean;
   last_hit_id?: number | null;
   last_hit_title?: string | null;
