@@ -421,6 +421,17 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   misst (2020: Ansatz samt Nachtragshaushalt), steht ein Sternchen mit
   Fußnote. Farbe bewertet dabei weiterhin nichts: Signal-Orange heißt „hier
   ist die Differenz" — in den Plus- wie in den Minusjahren. (#522)
+- **„Wann wird der Haushalt eigentlich entschieden?" — eine neue Seite zeigt
+  den Weg durch den Rat.** Unter `/haushalt/jahr` steht für acht Haushaltsjahre
+  jede Station mit Datum, Gremium und Ergebnis: Einbringung des Entwurfs,
+  Teilhaushalte in den Fachausschüssen, Vorberatungen, Beschluss — jede Station
+  verlinkt auf ihre Sitzung. Ein Jahreskreis zeigt, wo im Kalender die Runde
+  liegt. Der Befund darin ist der eigentliche Grund für die Seite: Der Entwurf
+  kommt verlässlich im Oktober, die Entscheidung wandert vom 16. Dezember bis
+  zum 28. Februar — fünf der acht Haushalte wurden erst beschlossen, als das
+  Jahr schon lief. Termine der laufenden Runde nennt die Seite bewusst nicht:
+  Das Ratsinformationssystem veröffentlicht Tagesordnungen erst kurz vorher,
+  und ein geratenes Datum wäre schlechter als keins. (#524)
 
 <!-- GEPARKT (nur dev.ratslotse.de, Umgebungs-Gate): Eintrag aktivieren,
      sobald der Kommunalwahl-Vergleich auf Prod freigeschaltet wird.
