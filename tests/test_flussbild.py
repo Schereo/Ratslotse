@@ -5,8 +5,10 @@ dazwischen EINEN Knoten — kein Band überquert die Mitte, weil im kommunalen
 Haushalt keine Einnahme zu einer bestimmten Ausgabe gehört. Damit die
 Bandbreiten links und rechts vergleichbar sind, müssen beide Seiten auf
 dieselbe Summe kommen. Genau das prüft diese Datei, und zwar an der echten
-Funktion: ``web/frontend/lib/haushalt.ts`` ist reines TypeScript ohne Importe,
-Node führt sie seit v22.6 direkt aus (Typen werden beim Laden entfernt).
+Funktion: ``web/frontend/lib/haushalt.ts`` ist reines TypeScript, Node führt es
+seit v22.6 direkt aus (Typen werden beim Laden entfernt). Seine Importe aus
+demselben ``lib``-Verzeichnis werden dafür kopiert und der ``@/``-Alias des
+Frontends zu einem relativen Pfad gemacht — Node kennt den Alias nicht.
 
 Warum nicht im Frontend testen: Das Repo hat keinen JS-Testlauf, und die CI
 richtet nur Python ein (``.github/workflows/test.yml``). Steht kein Node
@@ -21,6 +23,7 @@ Der Aufbau spiegelt den echten Weg: Die Zahlen gehen durch
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -154,9 +157,25 @@ braucht_node = pytest.mark.skipif(
     _NODE is None, reason="Node fehlt (die CI richtet nur Python ein)")
 
 
+def _lib_fuer_node(tmp_path: Path) -> Path:
+    """``lib/haushalt.ts`` samt seiner Geschwister-Module nach tmp kopieren.
+
+    Einzige Änderung: ``@/lib/x`` wird zu ``./x.ts``. Node hat keinen
+    Pfad-Alias und braucht in ESM die Dateiendung — der Code selbst bleibt
+    Zeichen für Zeichen der Produktionscode."""
+    ziel = tmp_path / "lib"
+    ziel.mkdir(exist_ok=True)
+    for name in ("haushalt.ts", "haushalt-bereiche.ts"):
+        quelle = (FRONTEND / "lib" / name).read_text(encoding="utf-8")
+        (ziel / name).write_text(
+            re.sub(r'from "@/lib/([\w-]+)"', r'from "./\1.ts"', quelle),
+            encoding="utf-8")
+    return ziel / "haushalt.ts"
+
+
 def _fluss(tmp_path: Path, daten: dict, jahr: int = JAHR, stand: str = "ist") -> dict:
     skript = tmp_path / "fluss.mjs"
-    skript.write_text(SKRIPT % {"lib": (FRONTEND / "lib" / "haushalt.ts").as_posix()},
+    skript.write_text(SKRIPT % {"lib": _lib_fuer_node(tmp_path).as_posix()},
                       encoding="utf-8")
     fertig = subprocess.run(
         [_NODE, "--no-warnings", str(skript),

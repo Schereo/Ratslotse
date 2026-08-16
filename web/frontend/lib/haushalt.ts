@@ -3,6 +3,13 @@
 // (Teilhaushalte + Summenzeile), dazu Ist-Steuereinnahmen und Steuerkraft —
 // hier stehen nur Ableitungen, keine erfundenen Zahlen (Designprinzip:
 // fehlende Daten heißen sichtbar „[folgt]", nie interpoliert).
+//
+// Bereichsnamen werden hier NICHT als Schlüssel benutzt — sie wechseln je
+// Jahrgang. Das Wörterbuch dazu steht in `lib/haushalt-bereiche.ts`.
+
+import {
+  BEREICHE, bereichSchluessel, type BereichSchluessel,
+} from "@/lib/haushalt-bereiche";
 
 export type HaushaltZeile = {
   bereich: string;
@@ -540,32 +547,89 @@ export function quellenLabel(zeilen: HaushaltZeile[], jahr: number): { text: str
   };
 }
 
-/** Kuratierte Kurzbeschreibungen der Teilhaushalte — redaktionell, nach dem
- *  Vorbericht des Haushaltsplans (Spiegel zu council/haushalt.py); bei neuen
- *  Jahrgängen prüfen. Bereiche ohne Eintrag zeigen den Block nicht. */
-export const BEREICH_INFO: Record<string, string> = {
-  "Jugend und Familie":
+/** Kuratierte Langtexte der Teilhaushalte — redaktionell, nach dem Vorbericht
+ *  des Haushaltsplans und den Produktzeilen des Bestands (Spiegel zu
+ *  `council/haushalt.py`); bei neuen Jahrgängen prüfen.
+ *
+ *  Geschlüsselt auf den kanonischen Bereich, nicht auf den Namen: Sonst hätte
+ *  der Text zu Teilhaushalt 9 nur in drei von sieben Jahrgängen gegriffen. */
+const BEREICH_TEXTE: Record<BereichSchluessel, string> = {
+  jugend:
     "Der größte Brocken sind die Kindertagesstätten — die Stadt betreibt eigene, " +
     "bezuschusst freie Träger und zahlt für Plätze in der Kindertagespflege. Dazu " +
     "kommt die Jugendhilfe: Hilfen zur Erziehung, Pflegefamilien, Heimunterbringung, " +
     "Jugendarbeit und der Allgemeine Soziale Dienst. Vieles davon ist gesetzliche " +
     "Pflicht — wie gut es ausgestattet ist, entscheidet der Rat.",
-  "Soziales und Gesundheit":
-    "Vor allem gesetzliche Sozialleistungen, Hilfen zur Pflege und der öffentliche " +
-    "Gesundheitsdienst. Ein großer Teil der Ausgaben wird durch Erstattungen von " +
-    "Bund und Land gedeckt — deshalb ist der Bereich brutto der größte, unterm " +
-    "Strich aber nicht der teuerste.",
-  "Schule und Bildung":
+  // Reihenfolge nach den Produktzeilen 2023, nicht nach Gefühl: Die
+  // Eingliederungshilfe ist über ihre drei Produkte zusammen der größte Block
+  // des Teilhaushalts (rund 77 Mio. €), das größte Einzelprodukt ist die
+  // Grundsicherung für Arbeitsuchende (54 Mio. €).
+  soziales:
+    "Fast alles davon sind gesetzliche Sozialleistungen: Grundsicherung, " +
+    "Eingliederungshilfe für Menschen mit Behinderung, Hilfe zur Pflege, " +
+    "Leistungen für Asylbewerber. Dazu kommt der öffentliche Gesundheitsdienst. " +
+    "Ein großer Teil der Ausgaben wird durch Erstattungen von Bund und Land " +
+    "gedeckt — deshalb ist der Bereich brutto der größte, unterm Strich aber " +
+    "nicht der teuerste.",
+  schule:
     "Schulgebäude, Ausstattung und Ganztagsangebote der Stadt als Schulträgerin — " +
     "die Lehrkräfte selbst bezahlt das Land.",
-  "Finanzmanagement und Recht":
-    "Die zentrale Finanzwirtschaft: Hier werden Steuern und Zuweisungen für die " +
-    "ganze Stadt verbucht. Die hohen Einnahmen sind kein Gewinn der Kämmerei — " +
-    "sie werden von hier auf alle Aufgaben verteilt.",
-  "Kultur, Museen, Sport":
+  // NICHT „alle Steuern und Zuweisungen": Die Steuern liegen zu 100 % hier
+  // (2024: 377,9 Mio. €), die Zuwendungen nur zu rund zwei Dritteln
+  // (115,4 von 179,1 Mio. €) — 46,4 Mio. buchen Soziales, 11,5 Mio. Jugend.
+  // Quelle: council_ergebnisrechnung, Posten 1 und 2, Jahresabschluss 2024.
+  finanzen:
+    "Die zentrale Finanzwirtschaft: Hier werden alle Steuern und die allgemeinen " +
+    "Zuweisungen des Landes für die ganze Stadt verbucht — zweckgebundene " +
+    "Zuschüsse dagegen stehen bei den Fachbereichen, die sie erhalten. Die hohen " +
+    "Einnahmen sind kein Gewinn der Kämmerei: Sie werden von hier auf alle " +
+    "Aufgaben verteilt.",
+  kultur:
     "Museen, Bibliotheken sowie Kultur- und Sportförderung — überwiegend " +
     "freiwillige Leistungen, über deren Umfang der Rat frei entscheidet.",
-  "Verkehr und Straßenbau": "Straßen, Radwege, Brücken und der Nahverkehr.",
-  "Sicherheit und Ordnung": "Feuerwehr, Rettungsdienst und Ordnungsverwaltung.",
-  Stadtplanung: "Bauleitplanung und Stadtentwicklung.",
+  verkehr: "Straßen, Radwege, Brücken und der Nahverkehr.",
+  sicherheit:
+    "Feuerwehr, Rettungsdienst und Ordnungsverwaltung — dazu die Bürgerdienste, " +
+    "die man selbst am ehesten kennt: Einwohnermeldeamt, Standesamt, " +
+    "Ausländerbehörde.",
+  stadtplanung:
+    "Bauleitplanung und Stadtentwicklung, Städtebau und Stadterneuerung, dazu " +
+    "Vermessung und Geoinformation.",
+  verwaltungsfuehrung:
+    "Die Spitze des Hauses: Oberbürgermeister, Ratsbüro und die Stabsstellen — " +
+    "dazu die örtliche Rechnungsprüfung, die die Verwaltung von innen " +
+    "kontrolliert, und die Gleichstellungsstelle.",
+  personal:
+    "Personal, Organisation und IT der gesamten Verwaltung. Der Bereich hat kaum " +
+    "eigene Einnahmen, aber hohe Aufwendungen für Menschen, die für die ganze " +
+    "Stadt arbeiten — samt der Versorgung der Pensionärinnen und Pensionäre. Der " +
+    "Zuschnitt heißt seit dem Haushalt 2026 „Personal/Organisation/" +
+    "Digitalisierung/IT“; davor war es das „Personal- und Verwaltungsmanagement“.",
+  wirtschaft:
+    "Wirtschaftsförderung und Standortmarketing, dazu die Grundstücke und " +
+    "Beteiligungen der Stadt — gemessen an den Aufwendungen einer der kleinsten " +
+    "Teilhaushalte.",
+  umwelt:
+    "Grünflächen und Friedhöfe, Bauordnung, Natur- und Klimaschutz, zeitweise " +
+    "auch die Verkehrsplanung. Kein anderer Teilhaushalt wurde seit 2020 so oft " +
+    "neu zugeschnitten und umbenannt — Vergleiche über die Jahre sind hier mit " +
+    "Vorsicht zu lesen.",
+  stiftungen:
+    "Treuhänderisch verwaltetes Stiftungsvermögen, das die Stadt für andere " +
+    "führt. Zweckgebunden: Der Rat kann es nicht umwidmen, und es ist kein frei " +
+    "verfügbares Geld der Stadt.",
 };
+
+/** Dieselben Texte unter jedem Namen, unter dem der Bereich in der Datenbank
+ *  auftaucht. Bestehende Aufrufe (`BEREICH_INFO[zeile.bereich]`) bleiben damit
+ *  gültig und treffen jetzt auch die Schreibweisen fremder Jahrgänge. */
+export const BEREICH_INFO: Record<string, string> = Object.fromEntries(
+  BEREICHE.flatMap((b) => b.aliase.map((a) => [a, BEREICH_TEXTE[b.schluessel]])),
+);
+
+/** Langtext zu einem Bereichsnamen — robuster als der Zugriff auf
+ *  `BEREICH_INFO`, weil zusätzlich Schreibvarianten aufgelöst werden. */
+export function bereichInfo(name: string): string | null {
+  const k = bereichSchluessel(name);
+  return k ? BEREICH_TEXTE[k] : null;
+}
