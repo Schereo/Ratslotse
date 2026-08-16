@@ -329,6 +329,15 @@ export function Kassenzettel({ daten, jahr, einwohner, className }: {
                 von oben nach unten und balancieren sich selbst. */}
             <ul className="mt-2.5 space-y-2.5 @2xl/zettel:columns-2 @2xl/zettel:gap-5 @2xl/zettel:space-y-0">
               {[
+                // Was hier steht, muss jemandem etwas sagen, das er nicht ohnehin
+                // weiß. „Keine Rechnung — niemand überweist diesen Betrag" stand
+                // hier bis zum 16.08.2026 und ist gestrichen: Dass eine
+                // Pro-Kopf-Zahl keine Forderung ist, weiß jede Leserin. Geblieben
+                // ist, was überrascht — der Bezugskreis, die Herkunft, der
+                // fehlende Investitionsteil, die Vergleichsfalle.
+                ["Geteilt wird durch alle.",
+                  "Auch durch Kinder, Rentnerinnen und Menschen ohne eigenes Einkommen — "
+                  + "nicht durch die Zahl der Steuerzahlenden."],
                 // Geschütztes Leerzeichen als Zeichen, nicht als Entität: In
                 // einem JS-String bliebe `&nbsp;` wörtlich stehen. Ohne es
                 // stand auf 375 px das „€" allein in der nächsten Zeile.

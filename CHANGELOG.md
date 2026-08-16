@@ -158,6 +158,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   ab, steht hinterher der alte Stand da und kein halber neuer. (#511)
 
 ### Behoben
+- **Der Kassenzettel erklärte etwas, das niemand erklärt bekommen muss.** „Keine
+  Rechnung — niemand überweist diesen Betrag" stand im Kasten „Was diese Zahl
+  nicht ist". Dass eine Pro-Kopf-Zahl keine Forderung ist, weiß jede Leserin;
+  der Hinweis las sich belehrend. Geblieben sind die vier Punkte, die
+  tatsächlich überraschen — wer mitgezählt wird, woher das Geld kommt, dass
+  keine Investition darin steckt und warum Städtevergleiche hinken. (#532)
 - **Der Herkunfts-Nachweis konnte eine ganze Datenschicht still verlieren.**
   Das Aufräumen der Herkunfts-Einträge und die Meldung fehlender Herkünfte
   gingen beide eine von Hand gepflegte Tabellenliste durch. Eine neue
