@@ -36,7 +36,7 @@ import { useFetch } from "@/lib/use-fetch";
 import { deMio } from "@/lib/haushalt";
 import {
   Ansicht, Herkunft, SchuldenDaten, aufteilungen, deEuro, herkunftVon,
-  ohneAufteilung, punkte,
+  juengsteZinslast, ohneAufteilung, punkte,
 } from "@/lib/haushalt-schulden";
 import { SchuldenKurve } from "@/components/haushalt/schulden-kurve";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
@@ -185,6 +185,43 @@ export default function SchuldenPage() {
           )}
           <Fundstelle h={hLetzter} />
         </section>
+
+        {/* WAS DER BESTAND IM JAHR KOSTET.
+            Der Schuldenstand allein sagt wenig — 337 Mio. € sind eine Zahl ohne
+            Erfahrungswert. Die Zinslast übersetzt sie in etwas, das jedes Jahr
+            im Haushalt steht und mit allem anderen konkurriert.
+
+            Sie kommt aus einer ANDEREN Quelle als der Bestand darüber: Der
+            Stand steht im Statistischen Jahrbuch, die Zinsen im geprüften
+            Jahresabschluss. Deshalb ein eigener Beleg und ein eigenes Jahr —
+            die Abschlüsse enden früher als die Zeitreihe, und beide am selben
+            Jahr aufzuhängen hieße, für die Zinsen dauerhaft nichts zu zeigen. */}
+        {(() => {
+          const zins = juengsteZinslast(data);
+          if (!zins) return null;
+          const hZins = herkunftVon(data, zins.herkunft_id);
+          return (
+            <section className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+                Was der Schuldenstand im Jahr kostet
+              </p>
+              <p className="mt-2 font-display text-[26px] font-extrabold leading-none tracking-tight text-foreground">
+                {deMio(zins.aufwand / 1e6)}&#8239;Mio.&nbsp;€
+              </p>
+              <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">
+                Zinsen im Jahr {zins.jahr} — aus dem Jahresabschluss
+                <Beleg q="jahresabschluss" />, nicht aus der Reihe oben.
+              </p>
+              <p className="mt-2.5 max-w-[68ch] text-[12.5px] leading-relaxed text-foreground/85">
+                <strong>Zinsen, nicht Tilgung.</strong> Was die Stadt an ihren Krediten
+                zurückzahlt, mindert den Schuldenstand und ist kein Aufwand — es steht im
+                Finanzhaushalt und nicht in dieser Rechnung. Beide Beträge zusammenzuzählen
+                ergäbe eine Zahl, die in keinem Dokument steht.
+              </p>
+              <Fundstelle h={hZins} />
+            </section>
+          );
+        })()}
 
         <LottiErklaert
           titel="Warum es zwei Schuldenzahlen gibt"
