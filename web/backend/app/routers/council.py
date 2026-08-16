@@ -491,6 +491,36 @@ def haushalt_uebersicht(
     }
 
 
+@router.get("/haushalt/weg")
+def haushalt_weg(
+    jahr: int | None = None,
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Der Weg eines Haushalts durch den Rat — wann welche Station war.
+
+    Anders als der Rest des Haushalts-Bereichs kommt hier nichts aus einem
+    Finanzdokument, sondern alles aus den Ratsdaten: Beratungsfolge,
+    Tagesordnung und Protokoll-Beschluss. Je Haushaltsjahr eine ``runde`` mit
+    ``einbringung``, ``fachausschuesse`` (Zeitraum und Gremien) und
+    ``stationen`` bis zur Entscheidung im Rat; jede Station trägt ``ksinr``
+    und ``top``, ist also auf ihre Sitzung verlinkbar.
+
+    **Ohne ``jahr`` kommen alle Jahrgänge.** Das ist Absicht: Die Aussage
+    dieser Seite liegt nicht im einzelnen Jahr, sondern in der Streuung — dass
+    der Entwurf verlässlich im Oktober kommt, die Entscheidung aber zwischen
+    Dezember und Februar wandert, sieht man erst über acht Jahrgänge. Eine
+    Seite, die das behaupten will, braucht sie alle gleichzeitig; ein
+    Jahres-Umschalter, der je Klick nachlädt, wäre acht Anfragen für 30 Zeilen.
+    ``jahr`` grenzt trotzdem ein, wenn jemand nur eine Runde braucht.
+
+    Was hier **nicht** steht: die Termine der laufenden Runde.
+    ``council_scheduled_sessions`` kennt keine Tagesordnung — wir können nicht
+    sagen, welche der kommenden Sitzungen die Haushaltssitzung wird, und raten
+    es auch nicht."""
+    return {"runden": store.haushalt_weg(jahr)}
+
+
 # Ohne Anmeldung lesbar (s. `decision_detail`) — die Beschluss-Seite zieht die
 # Sitzung nach, um Gremium und Datum zu benennen.
 @router.get("/session/{ksinr}")

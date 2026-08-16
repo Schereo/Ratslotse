@@ -6291,3 +6291,158 @@ class CouncilStore:
             "FROM council_protocols WHERE raw_text IS NOT NULL AND raw_text != ''"
         ).fetchall()
         return [dict(r) for r in rows]
+
+    # ---- Der Weg eines Haushalts durch den Rat (A6, 08/2026) ---------------
+    #
+    # Gebaut aus dem, was das Ratsinformationssystem ohnehin führt: der
+    # Beratungsfolge (`council_beratungen`), den Tagesordnungen
+    # (`council_agenda_items`) und den Protokoll-Beschlüssen
+    # (`council_decisions`). Kein eigener Datenbestand, kein Cron.
+    #
+    # `council_anlagen.fetched_at` ist hier KEINE Quelle: Bei allen
+    # Finanzdokumenten steht dort der 10.08.2026 — der Tag unseres
+    # Volltext-Backfills, nicht der Tag der Veröffentlichung. Das Datum einer
+    # Station kommt ausschließlich aus `council_sessions.session_date`.
+
+    #: Ein Haushaltsjahr trägt drei Sorten Vorlagen, und sie heißen nicht
+    #: einheitlich. Die Jahreszahl steht immer vorn, das Wort davor variiert
+    #: („Haushalt 2026", „Haushaltsentwurf 2024", „HH 2020").
+    _HH_TITEL = re.compile(r"^(?:Haushaltsentwurf|Haushalt|HH)\s*(\d{4})")
+
+    #: Woran ein Verwaltungsentwurf als Teilhaushalts-Bericht erkennbar ist —
+    #: er geht in den jeweiligen Fachausschuss, nicht in den Finanzausschuss.
+    _HH_TEILBERICHT = ("Teilhaushalt", "THH", "Budget", "Stiftung")
+
+    def haushalt_weg(self, jahr: int | None = None) -> list[dict]:
+        """Wann ein Haushaltsjahr welche Station im Rat durchlaufen hat.
+
+        Je Haushaltsjahr eine Runde mit drei Abschnitten:
+
+        - ``einbringung``: die früheste Beratung einer Entwurfs-Vorlage — der
+          Moment, ab dem der Entwurf öffentlich einsehbar ist,
+        - ``fachausschuesse``: die Teilhaushalts-Berichte danach, als Zeitraum
+          und Gremienliste (einzeln aufzuzählen hilft niemandem, es sind rund
+          ein Dutzend Termine),
+        - ``stationen``: die Beratungsfolge der Sammelvorlage „Haushalt
+          <jahr> - Beschluss" bis zur Entscheidung im Rat, je Station mit dem
+          Ergebnis, das die Tagesordnung ausweist.
+
+        **Die Fensterregel** (Einbringung … letzte Beschluss-Station) ist kein
+        Schönheitsfilter, sondern Notwehr gegen falsch betitelte Vorlagen:
+        22/0824 heißt „Haushalt 2022 …", wurde aber im November 2022 beraten
+        und gehört zur Runde 2023; 25/0643 heißt „Haushalt 2025 …" und liegt
+        in der Runde 2026. Ohne die Regel zöge je ein Ausreißer den Zeitraum
+        der Fachausschuss-Runde um ein volles Jahr auf.
+
+        Ohne Sammelvorlage gibt es keine Runde: Das Haushaltsjahr 2018 wurde
+        vor dem Beginn unseres Bestands (Januar 2018) beschlossen.
+        """
+        vorlagen: dict[int, dict[str, list[dict]]] = {}
+        for r in self._conn.execute(
+                "SELECT kvonr, vorlage_nr, title FROM council_vorlagen "
+                "WHERE title LIKE 'Haushalt%' OR title LIKE 'HH %'").fetchall():
+            m = self._HH_TITEL.match(r["title"] or "")
+            if not m:
+                continue                      # „Haushaltsplan der …", „Haushaltsvermerk …"
+            j = int(m.group(1))
+            if jahr is not None and j != jahr:
+                continue
+            titel = r["title"]
+            if "Verwaltungsentwurf" in titel:
+                art = "teil" if any(k in titel for k in self._HH_TEILBERICHT) else "entwurf"
+            elif "Beschluss" in titel:
+                art = "beschluss"
+            else:
+                continue
+            vorlagen.setdefault(j, {"entwurf": [], "teil": [], "beschluss": []})[art].append(dict(r))
+
+        runden = []
+        for j in sorted(vorlagen):
+            runde = self._haushalt_runde(j, vorlagen[j])
+            if runde:
+                runden.append(runde)
+        return runden
+
+    def _haushalt_runde(self, jahr: int, teile: dict[str, list[dict]]) -> dict | None:
+        """Eine Haushaltsrunde zusammensetzen — siehe ``haushalt_weg``."""
+        beschluss_vorlagen = teile["beschluss"]
+        stationen = self._hh_beratungen([v["kvonr"] for v in beschluss_vorlagen])
+        if not stationen:
+            return None
+
+        entwurf_beratungen = self._hh_beratungen(
+            [v["kvonr"] for v in (*teile["entwurf"], *teile["teil"])])
+        einbringung = entwurf_beratungen[0] if entwurf_beratungen else None
+
+        von = einbringung["datum"] if einbringung else stationen[0]["datum"]
+        bis = stationen[-1]["datum"]
+        fach = [b for b in entwurf_beratungen[1:] if von <= b["datum"] <= bis]
+
+        # Der Kernhaushalt ist der Punkt, an dem tatsächlich abgestimmt wird —
+        # die Sammelvorlage bündelt daneben Stiftungen und Eigenbetriebe. Der
+        # Beschluss trägt den Jahrgang im Titel, deshalb ist er ohne Raten
+        # zuzuordnen: über die Sitzung, nicht über eine geratene TOP-Nummer.
+        votum = {}
+        for d in self._conn.execute(
+                "SELECT id, ksinr, item_number, outcome, vote, gegenstimmen, enthaltungen "
+                "FROM council_decisions WHERE kind = 'decision' AND title LIKE ? "
+                "ORDER BY id", (f"Haushaltssatzung und Haushaltsplan {jahr}%",)).fetchall():
+            votum.setdefault(d["ksinr"], dict(d))
+
+        for s in stationen:
+            s["votum"] = votum.get(s["ksinr"])
+
+        return {
+            "jahr": jahr,
+            "vorlage_nr": beschluss_vorlagen[0]["vorlage_nr"] if beschluss_vorlagen else None,
+            "kvonr": beschluss_vorlagen[0]["kvonr"] if beschluss_vorlagen else None,
+            "einbringung": einbringung,
+            "fachausschuesse": {
+                "von": fach[0]["datum"], "bis": fach[-1]["datum"],
+                "anzahl": len(fach),
+                "gremien": sorted({b["gremium"] for b in fach}),
+            } if fach else None,
+            "stationen": stationen,
+        }
+
+    def _hh_beratungen(self, kvonrs: list[int]) -> list[dict]:
+        """Beratungen mehrerer Vorlagen, nach Datum sortiert, je mit dem
+        Ergebnis aus der Tagesordnung.
+
+        Die TOP-Nummer kommt aus `council_agenda_items` und nicht aus
+        `council_beratungen.top`: Nur dort trägt sie das Präfix („Ö 6"), und
+        „Ö 6" und „N 6" sind verschiedene Punkte."""
+        if not kvonrs:
+            return []
+        platz = ",".join("?" * len(kvonrs))
+        rows = self._conn.execute(
+            f"""SELECT b.kvonr, b.datum, b.gremium, b.ergebnis AS rolle, b.is_public,
+                       b.ksinr, v.vorlage_nr, v.title AS vorlage_titel,
+                       a.item_number AS top, a.title AS top_titel
+                  FROM council_beratungen b
+                  JOIN council_vorlagen v ON v.kvonr = b.kvonr
+             LEFT JOIN council_agenda_items a ON a.ksinr = b.ksinr AND a.kvonr = b.kvonr
+                 WHERE b.kvonr IN ({platz})
+              ORDER BY b.datum, b.gremium""", kvonrs).fetchall()
+        out = []
+        for r in rows:
+            s = dict(r)
+            s["ergebnis"] = self._hh_ergebnis(s.pop("top_titel"))
+            # Jede Station trägt den Schlüssel, auch wenn nur die Stationen der
+            # Sammelvorlage ihn je füllen — eine Station mit und eine ohne
+            # `votum` wären zwei Formen derselben Sache.
+            s["votum"] = None
+            out.append(s)
+        return out
+
+    @staticmethod
+    def _hh_ergebnis(top_titel: str | None) -> str | None:
+        """Das Ergebnis, das die Tagesordnung an den Punkt schreibt —
+        „geändert beschlossen", „zurückgestellt/abgesetzt", „zur Kenntnis
+        genommen". Die angehängte Stimmenzählung bleibt weg: Sie steht bei
+        einem Teil der Punkte und fehlt beim Rest, taugt also nicht als
+        Angabe, auf die sich eine Seite verlassen könnte."""
+        if not top_titel or "Beschluss: " not in top_titel:
+            return None
+        rest = top_titel.split("Beschluss: ", 1)[1].strip()
+        return rest.split("Abstimmung:")[0].strip() or None
