@@ -39,7 +39,12 @@ export type PruefberichtDaten = {
   ohne_bericht: number[];
 };
 
-/** Reihenfolge der Marken auf der Seite — schwerste zuerst, wie im Bericht. */
+/** Reihenfolge der Marken auf der Seite: schwerste zuerst.
+ *
+ *  Bewusst NICHT die Reihenfolge der Legende (dort B, WB, H, K) — eine
+ *  wiederholte Beanstandung ist die schwerere Aussage als eine erstmalige,
+ *  und sie ist der Grund, warum es diese Seite gibt. Die Legende selbst wird
+ *  im Wortlaut des Berichts wiedergegeben, nur eben in dieser Ordnung. */
 export const MARKEN_REIHE = ["WB", "B", "K", "H"] as const;
 
 export function markeRang(marke: string): number {
