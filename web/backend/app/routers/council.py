@@ -385,6 +385,9 @@ def haushalt_uebersicht(
     - ``abweichungsgruende``: warum ein Posten vom Plan abwich, in den Worten
       der Verwaltung (Abschnitt 6.3.1 des Jahresabschlusses),
     - ``pruefberichte``: Fundstelle des RPA-Schlussberichts je Jahrgang,
+    - ``herkunft``: je ``herkunft_id`` das Dokument, die Fundstelle darin, die
+      bestandene Rechenprobe samt Messwert und der Stichtag — nachschlagbar
+      über die ``herkunft_id`` der einzelnen Datenzeilen,
     - ``produkt_jahre``: Jahre, für die die Produktebene vorliegt,
     - ``plan_ist_jahre``: Jahre mit „geplant gegen tatsächlich" je Teilhaushalt.
 
@@ -402,6 +405,12 @@ def haushalt_uebersicht(
         "ergebnisrechnung": store.get_ergebnisrechnung(),
         "abweichungsgruende": store.get_abweichungsgruende(),
         "pruefbericht_quellen": store.get_pruefbericht_quellen(),
+        # Woher jede dieser Zeilen stammt: je Dokument-und-Abschnitt ein
+        # Eintrag mit Fundstelle, bestandener Rechenprobe und der stabilen
+        # `document_id`. Die Datenzeilen verweisen per `herkunft_id` darauf.
+        # Als eigene Liste statt an jede Zeile gehängt: Ein Jahrgang teilt
+        # sich eine Herkunft über rund 200 Posten.
+        "herkunft": {str(h["id"]): h for h in store.get_herkunft()},
         "produkt_jahre": store.produkte_jahre(),
         # Jahre mit Teilhaushalts-Ist — füttert den Jahr-Umschalter auf
         # /haushalt/plan-ist, ohne dass das Frontend die Liste durchsucht.

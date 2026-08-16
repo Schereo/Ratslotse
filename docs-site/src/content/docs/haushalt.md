@@ -59,6 +59,89 @@ Ingest-Skripte bleiben der Weg von Hand, wenn ein verbesserter Parser über den
 `council_steuern`, `council_steuerkraft`, `council_einwohner`) kommen per
 Download von oldenburg.de und bleiben Handarbeit.
 
+## Herkunft: woher jede einzelne Zahl stammt
+
+Jede Zeile der neun Tabellen oben trägt eine `herkunft_id`. Sie zeigt auf
+**`council_herkunft`** — einen Datensatz je Dokument-und-Abschnitt mit:
+
+| Feld | Was drinsteht | Beispiel |
+|---|---|---|
+| `art` | `ris` · `opendata` · `stadt` | `ris` |
+| `dokument_id` | `council_anlagen.document_id` — der **stabile Anker** | `280863` |
+| `label` / `url` | wie das Dokument heißt und wo es liegt | „Jahresabschluss 2024 …" |
+| `fundstelle` | wo **im** Dokument gelesen wurde | „Abschnitt 6.3.1 — Erläuterungen …" |
+| `seite` | Seitenzahl, wo das Dokument eine trägt | `161` |
+| `probe` | die bestandene(n) Rechenprobe(n) | `strukturprobe,vorjahreskette` |
+| `probe_ergebnis` | ihr Messwert | „0.00 % Abweichung zur Gesamtrechnung" |
+| `stand` | Stichtag des **Inhalts**, nicht des Abrufs | „Jahresabschluss 2024" |
+| `fetched_at` | zuletzt bestätigt (wandert nur vorwärts) | |
+
+Warum eine eigene Tabelle statt Spalten je Zieltabelle — die Begründung steht
+ausführlich im Modulkopf von `council/herkunft.py`, kurz:
+
+1. **Eine Zieltabelle trägt Zeilen aus mehreren Dokumenten.** Bei den
+   Beteiligungen ist das der Normalfall: dieselbe Kennzahl im
+   Konzernabschluss, im Einzelabschluss der Gesellschaft und im
+   Beteiligungsbericht, mit verschiedenen Stichtagen und
+   Konsolidierungsstufen. Verschiedene Dokumente heißen automatisch
+   verschiedene Herkunfts-Datensätze — ohne dass eine Tabelle dafür etwas
+   wissen muss.
+2. **Ein neues Herkunftsfeld darf nicht neun `ALTER TABLE` kosten.**
+3. **Wiederholung.** Ein Jahresabschluss-Jahrgang schreibt rund 200 Zeilen aus
+   demselben Abschnitt hinter derselben Probe.
+
+Die alten Spalten (`quelle_label`, `quelle_url`, `source_url`) **bleiben** und
+werden weiter aus derselben Angabe gefüllt. Sie zu entfernen hieße, neun
+Tabellen neu zu schreiben, darunter vier, deren Inhalt nur über einen Download
+von oldenburg.de wiederzubeschaffen wäre — kosmetischer Gewinn, echtes Risiko.
+
+`GET /api/council/haushalt` liefert die Datensätze als `herkunft`, nach ID
+nachschlagbar, samt eines Erklärsatzes je Probe für die Oberfläche.
+
+:::note[Was der Altbestand mitbringt — und was nicht]
+Das Nachrüsten übernimmt aus den alten Feldern Label und URL und löst über die
+URL zusätzlich die `document_id` in `council_anlagen` auf. **Fundstelle und
+Probe bleiben leer bzw. tragen `unbekannt`:** Der Altbestand hält nicht fest,
+an welchem Abschnitt er gelesen wurde und welche Probe er bestanden hat. Das
+zu erfinden — „steht schon meistens in Abschnitt 6.3.1" — wäre genau die Sorte
+Angabe, die diese Umstellung abschaffen soll. Der nächste Einlese-Lauf trägt
+beides nach, weil er den Jahrgang ohnehin ersetzt; `herkunft_aufraeumen()`
+räumt die abgelösten Datensätze weg.
+:::
+
+### Was ein neuer Parser tun muss
+
+Drei Schritte, mehr nicht:
+
+1. **Eine `Herkunft` bauen.** `art` und `probe` sind Pflicht — eine Herkunft
+   ohne Probe lässt sich nicht konstruieren (`ValueError`). Trägt die Quelle
+   wirklich keine Rechenprobe, ist das ausdrücklich zu sagen:
+   `probe=herkunft.UNGEPRUEFT`. Dazu mindestens ein Verweis (`dokument_id`
+   oder `url`), und so viel von `fundstelle`, `seite`, `probe_ergebnis`,
+   `stand`, wie das Dokument hergibt. Leer ist erlaubt, geraten nicht.
+2. **Sie an die `save_*`-Methode geben** — sie steht dort, wo früher
+   `label, url` bzw. `source_url` standen. Der Store trägt sie ein
+   (`merke_herkunft`, idempotent über einen Fingerabdruck der Inhaltsfelder)
+   und verknüpft die Zeilen.
+3. **Die Zieltabelle in `herkunft.HERKUNFT_TABELLEN` eintragen.** Damit
+   bekommt sie ihre `herkunft_id`-Spalte beim nächsten Öffnen, wird beim
+   Nachrüsten mitversorgt, und `store.herkunft_luecken()` meldet ab sofort
+   jede Zeile darin, die ohne Herkunft geschrieben wurde. Die Ingest-Skripte
+   geben das nach jedem Lauf aus; leer ist der Sollzustand.
+
+Eine **neue Rechenprobe** braucht einen Eintrag in `herkunft.PROBEN` — Name
+plus einen Satz für Leserinnen, denn der Satz landet über die API im Beleg und
+beantwortet dort „warum soll ich das glauben?". Ein unbekannter Probenname
+fliegt beim Bauen der `Herkunft` auf, nicht erst in der Datenbank.
+
+:::tip[Herkunft ist dokumentweit — was je Zeile schwankt, bleibt je Zeile]
+Die Prüfungsfeststellungen führen ihre **Textziffer** und ihre **Seite**
+selbst; das ist ihre Fundstelle, und sie ist für jede Feststellung eine
+andere. Die Herkunft beschreibt das Dokument und den Abschnitt, aus dem ein
+Lauf gelesen hat — nicht die Zeile darin. Wer beides vermischt, bekommt so
+viele Herkunfts-Datensätze wie Datenzeilen und hat nichts gewonnen.
+:::
+
 :::caution[Plan ist nicht Ist]
 `council_haushalt` enthält **Planwerte** (was der Rat beschlossen hat),
 `council_steuern` **Ist-Werte** (was tatsächlich geflossen ist). Die beiden
@@ -259,6 +342,11 @@ Werte, die wir selbst bilden (Anteile, Differenzen, Rücklagen-Reichweite,
 Pro-Kopf-Angaben, Ein-Punkt-Überschlag), sind an Ort und Stelle als
 *„unsere Rechnung, keine amtliche Kennzahl"* gekennzeichnet.
 
+`lib/haushalt-quellen.ts` fasst die Quelle einer ganzen **Seite** in einem
+Absatz zusammen. Je einzelner Datenzeile weiß es die Datenbank genauer:
+`council_herkunft` (siehe [oben](#herkunft-woher-jede-einzelne-zahl-stammt))
+führt Fundstelle, Probe und Anker je Dokument-und-Abschnitt.
+
 ## Jahresabschlüsse und Produktebene aus dem eigenen Bestand
 
 Beide Dokumenttypen mussten nirgends beschafft werden: Sie hängen als Anlagen
@@ -411,6 +499,13 @@ wenn er **alle** folgenden Proben besteht:
 
 Stand heute: Summenprobe 0,0000 % in allen acht Jahrgängen, Strukturprobe 8/8,
 Vorjahres-Kette 14/14 Glieder.
+
+**Welche Probe eine gespeicherte Zeile bestanden hat, steht seit 08/2026 an
+der Zeile** — über ihre `herkunft_id` in `council_herkunft.probe`, mitsamt dem
+Messwert (`probe_ergebnis`, etwa „0.00 % Abweichung zur Gesamtrechnung"). Bis
+dahin lief die Probe zwar, aber nur das Lauf-Protokoll wusste davon, und das
+ist nach dem Lauf weg. Jede Probe hier braucht deshalb einen Eintrag in
+`herkunft.PROBEN` — Name plus einen Satz für Leserinnen.
 
 Zwei Details, die teuer erkauft sind:
 

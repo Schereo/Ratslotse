@@ -1,9 +1,16 @@
 // Quellenverzeichnis des Haushalts-Bereichs — eine Quelle, ein Schlüssel.
 //
-// Warum als Konstante statt aus der API: Die Fundstelle („Übersicht
-// Ergebnishaushalt", „Tabelle 1104") ist eine redaktionelle Angabe, die
-// niemand aus den Daten ableiten kann. Sie hier zu pflegen macht sie
-// überprüfbar; die DB liefert nur die URL des jeweiligen Jahrgangs.
+// Warum als Konstante statt aus der API: Hier steht die Quelle einer ganzen
+// SEITE in einem Absatz — was das Dokument ist, was wir daraus lesen und
+// warum man es glauben kann. Das ist eine redaktionelle Zusammenfassung über
+// alle Jahrgänge hinweg, keine Angabe, die aus einer einzelnen Zeile fällt.
+//
+// Je Datenzeile weiß es die Datenbank seit 08/2026 genauer: `council_herkunft`
+// führt Dokument, Fundstelle darin, bestandene Rechenprobe samt Messwert und
+// Stichtag, und `GET /api/council/haushalt` liefert das als `herkunft` mit
+// (Format und Begründung: `council/herkunft.py`). Wer einen Beleg auf die
+// einzelne Zahl genau machen will, nimmt die `herkunft_id` der Zeile — nicht
+// diese Konstante.
 //
 // Beim Nachziehen eines neuen Haushaltsjahres bitte `stand` aktualisieren.
 
@@ -41,7 +48,10 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     titel: "Steuereinnahmen der Stadt Oldenburg seit 1998",
     fundstelle:
       "Datensatz 1104, eine Zeile je Haushaltsjahr, Spalten je Steuerart. " +
-      "Ist-Werte (abgerechnet), Gewerbesteuer nach Abzug der Umlage.",
+      "Ist-Werte (abgerechnet), Gewerbesteuer nach Abzug der Umlage. " +
+      "Anders als die Dokumente aus dem Ratsinformationssystem trägt dieser " +
+      "Datensatz keine Summe, gegen die wir ihn nachrechnen könnten — wir " +
+      "übernehmen ihn, wie die Stadt ihn veröffentlicht.",
     herausgeber: "Stadt Oldenburg, Open-Data-Portal",
     stand: "1998–2025",
     lizenz: "dl-de/by-2.0",
@@ -52,7 +62,8 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     titel: "Steuerkraftmesszahlen und Schlüsselzuweisungen seit 1992",
     fundstelle:
       "Datensatz 1106, je Ausgleichsjahr: Steuerkraftmesszahl und Schlüsselzuweisungen " +
-      "(Anordnungssoll), jeweils absolut und je Einwohner.",
+      "(Anordnungssoll), jeweils absolut und je Einwohner. Auch hier gibt es " +
+      "keine Summe zum Nachrechnen — übernommen wie veröffentlicht.",
     herausgeber: "Stadt Oldenburg, Open-Data-Portal",
     stand: "1992–2025",
     lizenz: "dl-de/by-2.0",

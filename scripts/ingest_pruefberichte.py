@@ -54,9 +54,15 @@ def main() -> int:
     try:
         bericht = finanzquellen.lies_pruefungsfeststellungen(
             store, p, schuetzen=not args.auch_schrumpfen, trocken=args.trocken)
+        if not args.trocken:
+            store.herkunft_aufraeumen()
+        luecken = store.herkunft_luecken()
     finally:
         store.close()
 
+    if luecken:
+        # Sollzustand ist leer: Jede Zeile weiß, woher sie kommt.
+        print(f"Ohne Herkunft: {luecken}", file=sys.stderr)
     je_jahr = bericht["je_jahr"]
     gesamt: Counter = Counter()
     for d in je_jahr.values():

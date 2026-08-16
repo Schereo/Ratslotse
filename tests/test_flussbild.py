@@ -27,6 +27,7 @@ from pathlib import Path
 
 import pytest
 
+from council.herkunft import Herkunft
 from council.store import CouncilStore
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -72,6 +73,14 @@ AUFWENDUNGEN_PLAN = 776_500_000.0
 JAHR = 2024
 
 
+def _quelle(jahr: int, probe: str = "strukturprobe") -> Herkunft:
+    """Die Herkunft, die `save_ergebnisrechnung` verlangt — hier nur Beiwerk:
+    Das Flussbild liest Zahlen, nicht Belege."""
+    return Herkunft(art="ris", probe=probe, label=f"Jahresabschluss {jahr}",
+                    url=f"https://example.org/ja-{jahr}.pdf",
+                    fundstelle="Ergebnisrechnung der Kernverwaltung")
+
+
 def _befuellen(store: CouncilStore, ohne_posten: int | None = None) -> None:
     """Ein Abschlussjahr speichern — optional mit einer fehlenden Ertragsart,
     wie sie entsteht, wenn eine Zeile im PDF nicht lesbar war."""
@@ -90,14 +99,14 @@ def _befuellen(store: CouncilStore, ohne_posten: int | None = None) -> None:
          "ansatz": ERTRAEGE_PLAN - AUFWENDUNGEN_PLAN,
          "ergebnis": ERTRAEGE_IST - AUFWENDUNGEN_IST, "ist_summe": 1},
     ]
-    store.save_ergebnisrechnung(JAHR, gesamt, f"Jahresabschluss {JAHR}", None)
+    store.save_ergebnisrechnung(JAHR, gesamt, _quelle(JAHR))
 
     anteil_a = AUFWENDUNGEN_PLAN / AUFWENDUNGEN_IST
     for nr, name, wert in TEILHAUSHALTE:
         store.save_ergebnisrechnung(JAHR, [
             {"nr": 20, "bezeichnung": "Summe ordentliche Aufwendungen",
              "ansatz": round(wert * anteil_a, 2), "ergebnis": wert, "ist_summe": 1},
-        ], f"Jahresabschluss {JAHR}", None, thh_nr=nr, thh_name=name)
+        ], _quelle(JAHR, "summenprobe"), thh_nr=nr, thh_name=name)
 
 
 def _daten(store: CouncilStore) -> dict:
@@ -273,7 +282,7 @@ def test_nur_jahre_mit_beiden_seiten(tmp_path):
          "ansatz": 1.0, "ergebnis": 300_000_000.0, "ist_summe": 1},
         {"nr": 20, "bezeichnung": "Summe ordentliche Aufwendungen",
          "ansatz": 1.0, "ergebnis": 310_000_000.0, "ist_summe": 1},
-    ], "Jahresabschluss 2019", None)
+    ], _quelle(2019))
     r = _fluss(tmp_path, _daten(store))
     store.close()
 

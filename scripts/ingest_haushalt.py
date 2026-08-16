@@ -35,7 +35,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
-from council import haushalt  # noqa: E402
+from council import haushalt, herkunft  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 
 COUNCIL_DB = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlite")
@@ -57,7 +57,14 @@ def _ingest_year(store: CouncilStore, year: int, url: str | None, pdf: str | Non
     if not rows:
         print(f"  {year}: Übersicht nicht gefunden/validiert — übersprungen.", file=sys.stderr)
         return False
-    store.save_haushalt(year, rows, url or f"file:{pdf}")
+    # `extract_from_pdf` gibt nur zurück, was gegen die Summenzeile aufgeht —
+    # die Probe ist also bestanden, sobald wir hier stehen.
+    store.save_haushalt(year, rows, herkunft.Herkunft(
+        art="stadt", probe="summenzeile", url=url or f"file:{pdf}",
+        label=f"Beschlossener Haushaltsplan {year}",
+        fundstelle="Übersicht „Ergebnishaushalt“ — Teilhaushalte mit "
+                   "ordentlichen Erträgen und Aufwendungen",
+        stand=f"Haushaltsjahr {year}"))
     summe = next((r for r in rows if r["is_summe"]), {})
     print(f"  {year}: {len(rows)} Zeilen (Aufwendungen {round((summe.get('aufwendungen') or 0) / 1e6)} Mio. €)")
     return True
@@ -71,7 +78,12 @@ def _ingest_year_csv(store: CouncilStore, year: int, url: str) -> bool:
     if not rows:
         print(f"  {year}: Open-Data-CSV nicht validiert — übersprungen.", file=sys.stderr)
         return False
-    store.save_haushalt(year, rows, url)
+    store.save_haushalt(year, rows, herkunft.Herkunft(
+        art="opendata", probe="summenzeile", url=url,
+        label=f"Ergebnishaushalt {year} (Open-Data-Portal)",
+        fundstelle="Ergebnishaushalt-CSV, eine Zeile je Teilhaushalt plus "
+                   "Zeile „Gesamtergebnishaushalt“",
+        stand=f"Haushaltsjahr {year}"))
     summe = next((r_ for r_ in rows if r_["is_summe"]), {})
     print(f"  {year}: {len(rows)} Zeilen aus Open-Data-CSV "
           f"(Aufwendungen {round((summe.get('aufwendungen') or 0) / 1e6)} Mio. €)")
