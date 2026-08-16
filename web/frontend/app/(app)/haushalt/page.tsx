@@ -13,6 +13,7 @@ import { Segmented } from "@/components/ui";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { LottiErklaert, LottiVergleich } from "@/components/haushalt/lotti-erklaert";
+import { Wegweiser } from "@/components/haushalt/wegweiser";
 import { GlossaryText } from "@/components/glossary-text";
 import { useFetch } from "@/lib/use-fetch";
 import { Gegenbalken } from "@/components/haushalt/gegenbalken";
@@ -246,23 +247,7 @@ export default function HaushaltPage() {
         </div>
       ) : null}
 
-      <div className="grid gap-2.5 sm:grid-cols-3">
-        {[
-          { href: "/haushalt/einnahmen", titel: "Woher kommt das Geld?",
-            text: "Alle Einnahmequellen — und bei welchen der Rat überhaupt etwas zu entscheiden hat." },
-          { href: "/haushalt/pflicht", titel: "Muss oder kann?",
-            text: "Wie viel vom Haushalt gesetzlich vorgeschrieben ist — und wie wenig frei verfügbar." },
-          { href: "/haushalt/labor", titel: "Haushalts-Labor",
-            text: "Selbst an den Stellschrauben drehen und sehen, was das ausmacht." },
-        ].map((k) => (
-          <Link key={k.href} href={k.href}
-            className="rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/40">
-            <span className="block text-[13px] font-bold">{k.titel}</span>
-            <span className="mt-1 block text-[12.5px] leading-relaxed text-muted-foreground">{k.text}</span>
-            <span className="mt-2 block text-[12.5px] font-semibold text-primary">Ansehen →</span>
-          </Link>
-        ))}
-      </div>
+      <Wegweiser />
 
       {/* Kern-Visual mit Umschalter Gegenbalken ↔ 100-Euro-Ansicht (H-03/H-04) */}
       <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">

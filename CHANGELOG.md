@@ -7,6 +7,23 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Behoben
+- **Zahlen übereinander im Steuer-Verlauf.** Auf dem Steuer-Steckbrief lagen die
+  beiden Rückgangs-Marken der Ist-Kurve ineinander und über der Achsenzahl
+  daneben — bei den meisten Steuerarten liegen die größten Einbrüche in
+  benachbarten Jahren ganz links. Die Beschriftungen bleiben jetzt in der
+  Zeichenfläche, weichen sich zeilenweise aus und tragen einen feinen
+  Führungsstrich zu ihrem Punkt; Kurve und Fall-Linien schneiden nicht mehr
+  durch die Ziffern.
+
+### Verbessert
+- **Die drei Wege in die Tiefe sind jetzt zu sehen.** „Woher kommt das Geld?",
+  „Muss oder kann?" und das Haushalts-Labor standen als blasse Textkacheln
+  zwischen zwei großen Diagrammen und gingen dort unter. Sie tragen jetzt ein
+  Piktogramm, ihren Titel in der Display-Schrift und einen Pfeil, der beim
+  Überfahren mitgeht — und stehen unter einer eigenen Zeile „Tiefer
+  einsteigen".
+
 ### Hinzugefügt
 - **Der Haushalt erklärt sich jetzt selbst.** Vier neue Seiten machen aus
   Zahlenkolonnen eine Geschichte: **Woher kommt das Geld?** zeigt alle
