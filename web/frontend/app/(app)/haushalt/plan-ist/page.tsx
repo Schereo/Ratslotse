@@ -482,12 +482,16 @@ function PlanIstInner() {
         </div>
       )}
 
+      {/* Warum hier nicht jedes Jahr steht — als Grenze, nicht als Prüfzeugnis.
+          Bis 16.08. folgten dem ersten Halbsatz drei Rechenproben in Prosa
+          („Die Summe der Teilhaushalte muss die Gesamtrechnung ergeben …").
+          Die Proben gelten unverändert (`summenprobe`, `strukturprobe` und
+          `vorjahreskette` in `council/finanzberichte.py`, Doku:
+          „Vier Prüfungen, und keine davon ist optional"), aber sie erklären
+          niemandem den Haushalt — sie beruhigen uns. DESIGNSPRACHE.md § 7. */}
       <p className="max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
-        Es erscheinen nur Jahre, für die ein Jahresabschluss vorliegt und dessen Zahlen unsere
-        Prüfung bestehen: Die Summe der Teilhaushalte muss die Gesamtrechnung ergeben — in Plan
-        und Ist —, Erträge minus Aufwendungen müssen das ordentliche Ergebnis ergeben, und das
-        Ergebnis eines Jahres muss im Folgejahrgang als Vorjahreswert wieder auftauchen. Für das
-        laufende und das kommende Haushaltsjahr gibt es naturgemäß noch keinen Abschluss.
+        Es erscheinen nur Jahre, für die ein Jahresabschluss vorliegt. Für das laufende und
+        das kommende Haushaltsjahr gibt es naturgemäß noch keinen.
       </p>
 
       <Quellenverzeichnis schluessel={quellen} />
