@@ -15,7 +15,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   echten Bestand trägt. Der neue Ops-Lauf zieht den Cron vor und meldet
   hinterher, wie viele Zeilen je Schicht dastehen — und ob eine davon ohne
   Herkunftsnachweis durchgerutscht ist. Er zielt bewusst nur auf die
-  Dev-Umgebung. (#555)
+  Dev-Umgebung. (#556)
 - **„Wie viel Schulden hat Oldenburg?" — dreißig Jahre Schuldenstand, mit der
   Angabe, was mitgezählt ist.** Eine der häufigsten Fragen an den Haushalt, und
   der Bereich konnte sie bisher nicht beantworten. Eine neue Seite zeigt die
