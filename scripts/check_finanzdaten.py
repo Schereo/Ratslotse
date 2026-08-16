@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Neue Haushalts-Jahrgänge von allein nachziehen (alle zwei Wochen).
 
-Der Haushalts-Bereich lebt von fünf Datenschichten, die bis 08/2026 alle von
+Der Haushalts-Bereich lebt von acht Datenschichten, die bis 08/2026 alle von
 Hand eingelesen wurden. Ohne diesen Job veraltet er still, sobald niemand mehr
 daran denkt: Die Stadt legt jeden September einen Jahresabschluss und jeden
 Oktober einen Haushaltsplan vor, und beides landet ohne Zutun als PDF-Anlage
@@ -56,11 +56,16 @@ ein Erkennungsmuster nicht mehr? Das zweite ist der eigentliche Zweck. Gemeldet
 wird nur, wenn sich gegenüber dem letzten Lauf etwas geändert hat; alle
 vierzehn Tage dieselbe Mail wäre eine, die niemand mehr liest.
 
-Was der Job **nicht** abdeckt: ``council_haushalt`` (die Planwerte) und die
-Open-Data-Schichten (Steuern, Steuerkraft, Einwohner). Sie kommen nicht aus
-dem Ratsinformationssystem, sondern per Download von oldenburg.de — und
-Herunterladen ist Regel 1. Ihr Ausbleiben meldet der Job trotzdem, damit
-``scripts/ingest_haushalt.py`` nicht vergessen wird.
+Was der Job **nicht** abdeckt: ``council_haushalt`` (die Planwerte), die
+Open-Data-Schichten (Steuern, Steuerkraft, Einwohner) und den Städtevergleich
+(``council_staedtevergleich``). Sie kommen nicht aus dem
+Ratsinformationssystem, sondern per Download von oldenburg.de bzw. vom
+Landesamt für Statistik — und Herunterladen ist Regel 1. Ihr Ausbleiben meldet
+der Job trotzdem; welches Skript dann dran ist, steht bei der Schicht
+(``Finanzquelle.nachschub``). Beim Städtevergleich ist dieser Hinweis der
+eigentliche Wert: Die beiden LSN-Tabellen erscheinen nur **einmal im Jahr**
+und werden von Hand geholt — eine Handreichung, an die sich nach zwölf Monaten
+niemand mehr von selbst erinnert.
 
 Crontab (Server), alle zwei Wochen sonntags::
 
@@ -156,7 +161,10 @@ def _hinweis_text(zeilen: list[dict], gesehen: dict[str, set[int]],
         elif q.herkunft == "ris":
             grund = "kein passendes Dokument in council_anlagen"
         else:
-            grund = "Download von oldenburg.de, scripts/ingest_haushalt.py"
+            # Was zu tun ist, weiß die Schicht selbst — hier stand bis 08/2026
+            # ein fester Satz über oldenburg.de, und der schickte den Leser
+            # bei der Landesstatistik zur falschen Stelle.
+            grund = q.nachschub or "wird von Hand eingelesen"
         teile.append(
             f"• <b>{html.escape(q.label)} {jahrgang}</b> — üblich im {monat} "
             f"{faellig.year}, seit {(heute - faellig).days} Tagen offen: {grund}")
@@ -197,9 +205,9 @@ def main(db: str | None = None, heute: date | None = None,
             vorhanden = q.bestand(store)
             if not q.automatisch:
                 # Beobachtet, nicht eingelesen: Diese Schicht kommt per
-                # Download und bleibt Sache von ingest_haushalt.py.
+                # Download und bleibt Sache eines Ingest-Skripts von Hand.
                 p.sagen(f"{q.label}: {len(finanzquellen.jahrgaenge(vorhanden))} Jahrgänge, "
-                        f"kein Selbstlauf (Quelle: oldenburg.de)")
+                        f"kein Selbstlauf ({q.nachschub})")
                 continue
 
             # Gefragt wird nach EINHEITEN, nicht nach Jahrgängen: Ein

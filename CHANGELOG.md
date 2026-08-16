@@ -156,6 +156,18 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   `--auch-schrumpfen` übergehen; ein leeres Ergebnis ersetzt auch dann nichts.
   Ein Jahrgang wird außerdem am Stück gespeichert — bricht ein Lauf mittendrin
   ab, steht hinterher der alte Stand da und kein halber neuer. (#511)
+- **„Bis wann die Zahlen reichen" sagt es jetzt auch für den Städtevergleich.**
+  Der Block am Fuß von `/haushalt` führte jede Datenschicht auf — außer den
+  beiden Reihen, die den Vergleich mit den anderen kreisfreien Städten tragen.
+  Wer `/haushalt/vergleich` las, erfuhr an keiner Stelle, bis wann sie reichen
+  und wann der nächste Jahrgang kommt. Beide stehen jetzt dort, mit ihrem
+  eigenen Takt: Die Steuerkraft-Reihe erscheint im April desselben Jahres, der
+  Realsteuervergleich im November des Folgejahres. Und die Fußzeile nennt die
+  Stelle beim Namen: Sie versprach bisher pauschal, die Zahlen „vom Portal der
+  Stadt" zu holen — die beiden neuen Reihen kommen vom Landesamt für Statistik
+  Niedersachsen. Bleibt ein Jahrgang aus, meldet das der zweiwöchentliche
+  Prüflauf; geholt werden die Tabellen weiter von Hand, weil sie nur einmal im
+  Jahr erscheinen. (#530)
 
 ### Behoben
 - **Die Überschrift der Anzeigetafel brach mitten im Wort um.** „Oldenburg plant
@@ -164,6 +176,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Fassung stammte; die Silbentrennung, die auf schmalen Geräten deutsche
   Komposita rettet, tat dann ihr Übriges. Der Satz steht jetzt in zwei
   ausgeglichenen Zeilen. (#539)
+- **Der Kassenzettel erklärte etwas, das niemand erklärt bekommen muss.** „Keine
+  Rechnung — niemand überweist diesen Betrag" stand im Kasten „Was diese Zahl
+  nicht ist". Dass eine Pro-Kopf-Zahl keine Forderung ist, weiß jede Leserin;
+  der Hinweis las sich belehrend. Geblieben sind die vier Punkte, die
+  tatsächlich überraschen — wer mitgezählt wird, woher das Geld kommt, dass
+  keine Investition darin steckt und warum Städtevergleiche hinken. (#532)
 - **Der Herkunfts-Nachweis konnte eine ganze Datenschicht still verlieren.**
   Das Aufräumen der Herkunfts-Einträge und die Meldung fehlender Herkünfte
   gingen beide eine von Hand gepflegte Tabellenliste durch. Eine neue

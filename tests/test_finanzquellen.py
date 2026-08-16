@@ -825,3 +825,137 @@ def test_hinweis_trennt_spaete_stadt_von_kaputtem_muster(bestand, tmp_path):
     mit = check_finanzdaten._hinweis_text(stand, gesehen, {}, date(2027, 11, 1))
     assert "wird aber nicht übernommen" in mit
     bestand.close()
+
+
+# --- Städtevergleich: die Schicht, die keinen Cron hat ----------------------
+#
+# Sie ist der Grund, warum der Datenstand-Block überhaupt eine Fußzeile hat.
+# Die beiden LSN-Tabellen erscheinen einmal im Jahr und werden von Hand
+# geholt — es gibt kein Dokument im Ratsinformationssystem, an dem der Cron
+# merken könnte, dass ein Jahrgang da ist. Beobachtet wird trotzdem: Ein
+# Jahrgang, der nach seinem üblichen Monat plus Karenz ausbleibt, ist eine
+# Meldung wert, sonst erinnert sich nach zwölf Monaten niemand.
+
+def staedtevergleich(store: CouncilStore, reihe: str, jahre: list[int]) -> None:
+    """Ein paar Zeilen je Jahrgang — der Inhalt ist hier egal, gezählt wird
+    das Jahr."""
+    from council import herkunft as h
+
+    for jahr in jahre:
+        store.save_staedtevergleich(reihe, [
+            {"jahr": jahr, "schluessel": "403000", "stadt": "Oldenburg (Oldb), Stadt",
+             "kennzahl": "steuerkraftmesszahl", "wert": 1.0, "einheit": "teur"},
+        ], h.Herkunft(art="lsn", probe=h.UNGEPRUEFT,
+                      url="https://www.statistik.niedersachsen.de/download/227086"))
+
+
+@pytest.fixture()
+def lsn_bestand(tmp_path):
+    """Der Stand vom 16.08.2026: Finanzausgleich für das Ausgleichsjahr 2026,
+    Realsteuervergleich für die Berichtsjahre 2023–2025.
+
+    Die Jahresmengen sind verschieden groß, weil die Quellen verschieden
+    gebaut sind: Eine KFA-Datei trägt genau ein Ausgleichsjahr in den Bestand
+    (das zweite ist ihre Rechenprobe), ein Realsteuervergleich drei."""
+    store = CouncilStore(tmp_path / "council.sqlite")
+    staedtevergleich(store, "steuerkraft", [2026])
+    staedtevergleich(store, "realsteuern", [2023, 2024, 2025])
+    return store
+
+
+def test_staedtevergleich_steht_im_datenstand(lsn_bestand):
+    """Bis 08/2026 fehlte er dort: Wer /haushalt/vergleich las, erfuhr an
+    keiner Stelle, bis wann die Reihe reicht."""
+    stand = {z["key"]: z for z in
+             finanzquellen.datenstand(lsn_bestand, date(2026, 8, 16))}
+
+    sk = stand["lsn_steuerkraft"]
+    assert sk["jahrgaenge"] == [2026] and sk["ueberfaellig"] == []
+    rs = stand["lsn_realsteuern"]
+    assert rs["jahrgaenge"] == [2023, 2024, 2025] and rs["ueberfaellig"] == []
+
+    # Kein Cron holt das — und die Fußzeile sagt, wo es stattdessen herkommt.
+    for z in (sk, rs):
+        assert z["automatisch"] is False
+        assert z["quelle"] == "Landesamt für Statistik Niedersachsen"
+    lsn_bestand.close()
+
+
+def test_die_beiden_reihen_bleiben_zwei_zeilen(lsn_bestand):
+    """Eine gemeinsame Zeile ergäbe die Spanne „2023–2026" — und darin meinten
+    zwei Jahresangaben Verschiedenes: Das Ausgleichsjahr des Finanzausgleichs
+    läuft dem Kalender voraus, das Berichtsjahr des Realsteuervergleichs
+    hinkt ihm nach. Genau diese Verwechslung ist der Grund, warum der
+    Städtevergleich überhaupt eine eigene Tabelle hat."""
+    stand = finanzquellen.datenstand(lsn_bestand, date(2026, 8, 16))
+    zeilen = [z for z in stand if z["tabelle"] == "council_staedtevergleich"]
+    assert [z["key"] for z in zeilen] == ["lsn_steuerkraft", "lsn_realsteuern"]
+    # Keine der beiden Zeilen behauptet eine Lücke, die es nicht gibt.
+    assert all(z["luecken"] == [] for z in zeilen)
+    lsn_bestand.close()
+
+
+def test_lsn_takt_ist_an_den_dateien_gemessen(lsn_bestand):
+    """Die Monate sind nachgesehen, nicht geschätzt (Modul-Kopf):
+
+    - Finanzausgleich **endgültig** trägt den Stand März/April des
+      Ausgleichsjahres (25.04.2023 … 26.03.2026) — April ist der späteste
+      gemessene Fall und deshalb die Schwelle.
+    - Der Realsteuervergleich erscheint im Folgejahr, zuletzt Juni 2022,
+      August 2023, November 2024, November 2025, Juli 2026 — November.
+    """
+    stand = {z["key"]: z for z in
+             finanzquellen.datenstand(lsn_bestand, date(2026, 8, 16))}
+
+    sk = stand["lsn_steuerkraft"]
+    assert sk["erwarteter_monat"] == 4
+    # Das Ausgleichsjahr 2027 liegt im April 2027 vor, nicht 2028.
+    assert sk["naechster_jahrgang"] == 2027 and sk["naechster_ab"] == "2027-04-01"
+
+    rs = stand["lsn_realsteuern"]
+    assert rs["erwarteter_monat"] == 11
+    # Das Berichtsjahr 2026 erscheint im November 2027 — ein Jahr später.
+    assert rs["naechster_jahrgang"] == 2026 and rs["naechster_ab"] == "2027-11-01"
+    lsn_bestand.close()
+
+
+def test_ausbleibender_jahrgang_wird_erst_nach_der_karenz_gemeldet(lsn_bestand):
+    """Fünf Monate Streuung beim Realsteuervergleich — deshalb liegt die
+    Schwelle am spätesten gemessenen Monat und nicht am Durchschnitt. Ein
+    Bericht, der wie 2026 schon im Juli kommt, ist nie ein Problem; einer, der
+    im Dezember immer noch fehlt, schon."""
+    def offen(heute: date) -> list[int]:
+        stand = {z["key"]: z for z in finanzquellen.datenstand(lsn_bestand, heute)}
+        return stand["lsn_realsteuern"]["ueberfaellig"]
+
+    # Das Berichtsjahr 2026 wird erst im November 2027 erwartet — ein Jahr
+    # nach dem Jahr, das es beschreibt.
+    assert offen(date(2027, 11, 15)) == []      # üblicher Monat läuft noch
+    assert offen(date(2027, 12, 15)) == [2026]  # vier Wochen Karenz vorbei
+    lsn_bestand.close()
+
+
+def test_hinweis_schickt_zum_richtigen_skript(lsn_bestand):
+    """Der Satz stand fest verdrahtet als „Download von oldenburg.de,
+    scripts/ingest_haushalt.py" — bei einer Landesbehörde schickte er den
+    Leser zur falschen Stelle und zum falschen Skript."""
+    heute = date(2027, 12, 15)  # beide LSN-Jahrgänge sind jetzt überfällig
+    stand = finanzquellen.datenstand(lsn_bestand, heute)
+    text = check_finanzdaten._hinweis_text(stand, {}, {}, heute)
+
+    assert "scripts/ingest_staedtevergleich.py" in text
+    assert "Landesamt für Statistik" in text
+    # Der Haushaltsplan bleibt bei seinem eigenen Weg.
+    plan = finanzquellen.QUELLEN["haushaltsplan"]
+    assert "ingest_haushalt.py" in plan.nachschub
+    lsn_bestand.close()
+
+
+def test_jede_schicht_ohne_selbstlauf_sagt_wo_sie_herkommt():
+    """Ohne ``nachschub`` stünde in der Meldung des Cron ein leeres Feld —
+    und die Schicht wäre genau die, die man von Hand nachziehen müsste."""
+    for key in finanzquellen.REIHENFOLGE:
+        q = finanzquellen.QUELLEN[key]
+        if not q.automatisch:
+            assert q.nachschub, f"{key} sagt nicht, woher der Nachschub kommt"
+        assert q.herkunft in finanzquellen.STELLEN, f"{key}: Herkunft ohne Klartext"
