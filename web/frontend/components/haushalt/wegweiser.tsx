@@ -33,7 +33,7 @@
 //                         gebaut wird.
 //   7–8   Die Gegenprobe  Ein Haushalt ist ein Plan; was daraus wurde, steht
 //                         im Jahresabschluss, und geprüft wird er auch.
-//   9–11  Der Rahmen      Der Kernhaushalt ist rund zwei Drittel der Stadt,
+//   9–12  Der Rahmen      Der Kernhaushalt ist rund zwei Drittel der Stadt,
 //                         Oldenburg steht nicht allein da, und was aus allen
 //                         Jahren zusammen offen blieb, sind die Schulden.
 //   13–15 Mitreden        Wann entschieden wird, worüber gestritten wurde,
