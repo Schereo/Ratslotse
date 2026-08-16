@@ -128,6 +128,24 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Entwicklung über alle abgeschlossenen Jahre. Farben bewerten dabei nichts:
   Mehr ausgegeben kann ein Tarifabschluss sein, weniger ausgegeben heißt oft,
   dass etwas nicht gebaut wurde. (#502)
+- **„Steht Oldenburg besser da als Osnabrück?" — eine neue Seite beantwortet
+  die Frage, so weit sie sich seriös beantworten lässt, und erklärt den Rest.**
+  Bei der Steuerkraft geht es: Oldenburg liegt mit 1.974 € je Einwohnerin an
+  der Spitze aller acht kreisfreien Städte Niedersachsens, vor Osnabrück
+  (1.651), Braunschweig (1.518) und Delmenhorst (949). Dazu die Hebesätze — auf
+  denselben Messbetrag zahlt man in Braunschweig 750 statt 539 Prozent — und
+  die Steuereinnahmekraft über drei Jahre, an der sich zeigt, was eine hohe
+  Gewerbesteuer kosten kann: In Wolfsburg fiel sie um 30 Prozent, während sie
+  in Oldenburg um 22 Prozent stieg. Alle Zahlen kommen aus zwei Tabellen des
+  Landesamts für Statistik, also für jede Gemeinde nach derselben Vorschrift
+  gerechnet. **Ausgaben, Personal und Schulden je Einwohner stehen bewusst
+  nicht dort**, und die Seite sagt auch, warum: Solche Zahlen messen zuerst,
+  wie weit eine Stadt ausgelagert hat — in Oldenburgs Haushalt stehen rund 64
+  Prozent dessen, was die Stadt insgesamt bewegt, in Osnabrücks knapp 48. Die
+  Stadt Oldenburg hat diesen Vergleich 2018 auf Antrag der FDP-Fraktion selbst
+  angestellt und im selben Dokument festgestellt, dass er nichts aussagt; die
+  Seite zitiert sie wörtlich und verlinkt den Vorgang im Ratsinformationssystem.
+  (#516)
 
 ### Geändert
 - **Zahlen, die eine Rechenprobe nicht bestehen, ersetzen keine vorhandenen
