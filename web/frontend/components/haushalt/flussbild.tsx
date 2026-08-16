@@ -28,13 +28,17 @@
 //  3. MOBIL WIRD UMGEBAUT, NICHT GESCHRUMPFT. Unter 620 px Containerbreite
 //     gibt es keine Bänder mehr, sondern zwei gestapelte Listen mit dem Topf
 //     dazwischen. Ein zusammengeschobenes Flussbild wäre unlesbar.
+//  4. DAS BILD ZEIGT DAS JAHR DER SEITE — ODER KEINES. Fehlen die Daten,
+//     benennt `Luecke` die Lücke und bietet das jüngste vollständige Jahr zum
+//     Anklicken an. Ersatzweise ein anderes Jahr zu zeichnen wäre bequemer und
+//     stünde doch unter einer Jahreszahl, die niemand gewählt hat.
 //
 // KEINE BEWERTUNGSFARBEN: `--hh-ein-*` und `--hh-aus-*` unterscheiden
 // Kategorien, sie benoten nicht. Kein Grün, kein Rot. Signal-Orange steht wie
 // überall im Bereich nur an den Ehrlichkeits-Bändern (Rücklage, Lücke).
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { ArrowRight, X } from "lucide-react";
 import { Segmented } from "@/components/ui";
 import {
   FlussBand, FlussDaten, FlussSeite, HaushaltDaten,
@@ -246,7 +250,68 @@ function Topf({ bild }: { bild: FlussDaten }) {
   );
 }
 
-export function Flussbild({ daten, jahr }: { daten: HaushaltDaten; jahr: number }) {
+/** Was an der Stelle des Bildes steht, wenn für das gewählte Jahr die
+ *  Einnahmearten fehlen.
+ *
+ *  Hier stand bis 16.08. ein ANDERES Jahr: das nächstgelegene mit
+ *  Jahresabschluss, dazu ein Satz darüber. Der Handel war falsch herum — wer
+ *  2026 gewählt hatte, sah eine Grafik von 2024, und die einzige Stelle, an
+ *  der der Tausch stand, war eine Zeile über ihr. Wo Daten für das gewählte
+ *  Jahr fehlen, sagt die Seite jetzt genau das (Entscheidung Tim, 16.08.).
+ *
+ *  Der Wortlaut ist mit Absicht ein „noch nicht": Die Aufschlüsselung
+ *  EXISTIERT — sie steht für jedes Haushaltsjahr im Gesamtergebnishaushalt,
+ *  wir haben sie nur noch nicht eingelesen. „Für Planjahre gibt es das nicht"
+ *  wäre schon heute falsch und würde in dem Moment zur Unwahrheit erstarren,
+ *  in dem der Bestand nachgezogen ist. Dieser Text verschwindet dann von
+ *  selbst: Sobald `flussbild()` für das Jahr etwas liefert, steht hier das
+ *  Bild — ohne dass jemand eine Formulierung nachziehen müsste.
+ *
+ *  Das jüngste vollständige Jahr ist ein ANGEBOT, keine Ersatzanzeige:
+ *  gewechselt wird nur, wenn jemand darauf tippt. */
+function Luecke({ jahr, letztes, aufJahr }: {
+  jahr: number; letztes: number; aufJahr: (() => void) | null;
+}) {
+  return (
+    <div>
+      {/* Der Kicker bleibt: Ohne ihn stünde in der Karte eine Meldung ohne
+          Gegenstand — man wüsste nicht, welcher Abschnitt hier fehlt. */}
+      <p className="mb-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+        Woher, wohin — und was dazwischen liegt
+      </p>
+      <div className="rounded-lg border border-dashed border-border bg-muted/40 px-3.5 py-3">
+        <p className="text-[13px] font-semibold leading-relaxed">
+          Für {jahr} liegen uns die Einnahmearten noch nicht vor.
+        </p>
+        <p className="mt-1 max-w-[68ch] text-[12.5px] leading-relaxed text-foreground/85">
+          Womit die Stadt ihr Geld einnimmt, lesen wir aus ihren Haushaltsdokumenten ein — für
+          dieses Jahr sind wir damit noch nicht durch. Statt ersatzweise ein anderes Jahr zu
+          zeigen, steht hier lieber nichts.
+        </p>
+        <div className="mt-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+          <span className="text-[12px] text-muted-foreground">
+            Vollständig haben wir sie zuletzt für {letztes}.
+          </span>
+          {aufJahr && (
+            <button type="button" onClick={aufJahr}
+              className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1 text-[12px] font-semibold text-primary shadow-sm">
+              {letztes} ansehen <ArrowRight className="h-3 w-3" />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function Flussbild({ daten, jahr, onJahrWechsel }: {
+  daten: HaushaltDaten;
+  jahr: number;
+  /** Der saubere Weg, das Angebot einzulösen — die Seite hält das Jahr.
+   *  Optional, damit die Einbindung unverändert weiterläuft; ohne ihn greift
+   *  die Pillen-Notlösung unten. */
+  onJahrWechsel?: (jahr: number) => void;
+}) {
   const [stand, setStand] = useState<"plan" | "ist">("ist");
   const [offen, setOffen] = useState<Seite | null>(null);
   const [tabelle, setTabelle] = useState(false);
@@ -267,32 +332,40 @@ export function Flussbild({ daten, jahr }: { daten: HaushaltDaten; jahr: number 
   }, []);
 
   const jahre = useMemo(() => flussJahre(daten), [daten]);
-  // Das Bild folgt dem Jahr der Seite. Gibt es dafür keinen Jahresabschluss,
-  // zeigen wir das NÄCHSTGELEGENE Jahr, das einen hat — und sagen es über der
-  // Grafik. Die Einnahmearten stehen erst im Abschluss; für ein reines
-  // Planjahr gibt es sie schlicht nicht, und ein halbes Bild (links leer,
-  // rechts voll) wäre schlechter als ein benanntes anderes Jahr.
-  const zeigeJahr = useMemo(() => {
-    if (!jahre.length) return null;
-    if (jahre.includes(jahr)) return jahr;
-    // Bei gleichem Abstand gewinnt das ältere: Ein Abschluss aus der
-    // Vergangenheit ist eine Tatsache, einer aus der Zukunft gibt es nicht.
-    return jahre.reduce((best, j) =>
-      Math.abs(j - jahr) < Math.abs(best - jahr) ? j : best);
-  }, [jahre, jahr]);
-
-  const istBild = useMemo(
-    () => (zeigeJahr ? flussbild(daten, zeigeJahr, "ist") : null), [daten, zeigeJahr]);
-  const planBild = useMemo(
-    () => (zeigeJahr ? flussbild(daten, zeigeJahr, "plan") : null), [daten, zeigeJahr]);
+  // KEIN stiller Jahreswechsel: Das Bild zeigt das Jahr der Seite oder gar
+  // keines. Fehlt es, tritt `Luecke` an seine Stelle (Begründung dort).
+  const istBild = useMemo(() => flussbild(daten, jahr, "ist"), [daten, jahr]);
+  const planBild = useMemo(() => flussbild(daten, jahr, "plan"), [daten, jahr]);
   const bild = stand === "ist" ? istBild ?? planBild : planBild ?? istBild;
 
-  if (!zeigeJahr || !bild) return null;
+  // `flussJahre` ist aufsteigend — das jüngste vollständige Jahr steht hinten.
+  const letztes = jahre.length ? jahre[jahre.length - 1] : null;
+
+  // NOTLÖSUNG, solange `onJahrWechsel` nicht verdrahtet ist: Das Jahr hält
+  // `app/(app)/haushalt/page.tsx`, und die Jahres-Pillen dort tragen bereits
+  // ein `data-jahr` (die Seite scrollt sich damit selbst zurecht). Wir tippen
+  // also die Pille an, statt einen zweiten Jahres-Zustand aufzumachen.
+  // Geprüft wird VOR dem Zeichnen: Lieber kein Knopf als ein toter Knopf.
+  const [pilleDa, setPilleDa] = useState(false);
+  useEffect(() => {
+    if (onJahrWechsel || letztes == null) { setPilleDa(false); return; }
+    setPilleDa(!!document.querySelector(`[data-jahr="${letztes}"]`));
+  }, [onJahrWechsel, letztes, jahr]);
+
+  const aufLetztes = letztes == null || (!onJahrWechsel && !pilleDa) ? null : () => {
+    if (onJahrWechsel) { onJahrWechsel(letztes); return; }
+    document.querySelector<HTMLElement>(`[data-jahr="${letztes}"]`)?.click();
+  };
+
+  // Ohne ein einziges Jahr mit Abschluss gibt es nichts zu sagen und nichts
+  // anzubieten — dann bleibt der Block leer wie bisher (die Seite blendet ihn
+  // in dem Fall ohnehin ganz aus).
+  if (letztes == null) return null;
+  if (!bild) return <Luecke jahr={jahr} letztes={letztes} aufJahr={aufLetztes} />;
 
   const echterStand: "plan" | "ist" = bild.stand;
   const beideStaende = !!istBild && !!planBild;
   const schmal = breite < SCHWELLE_BREIT;
-  const ersatzJahr = zeigeJahr !== jahr ? zeigeJahr : null;
 
   const saldoMio = mio(bild.saldo) ?? 0;
   // Nur die Seite benennen, die WIRKLICH klemmt: „792,6 statt 792,6 bei den
@@ -313,7 +386,7 @@ export function Flussbild({ daten, jahr }: { daten: HaushaltDaten; jahr: number 
           Woher, wohin — und was dazwischen liegt
         </p>
         <span className="font-mono text-[10px] uppercase text-muted-foreground">
-          {echterStand === "ist" ? `Jahresabschluss ${zeigeJahr}` : `Haushaltsplan ${zeigeJahr}`} · Mio. Euro
+          {echterStand === "ist" ? `Jahresabschluss ${bild.jahr}` : `Haushaltsplan ${bild.jahr}`} · Mio. Euro
         </span>
       </div>
 
@@ -324,14 +397,6 @@ export function Flussbild({ daten, jahr }: { daten: HaushaltDaten; jahr: number 
         wofür alles zusammen ausgegeben wird. Deshalb führt hier kein Band von links nach
         rechts durch.
       </p>
-
-      {ersatzJahr && (
-        <p className="mb-2.5 rounded-lg border border-dashed border-border bg-muted/40 px-3 py-2 text-[11.5px] leading-relaxed text-foreground/85">
-          Für {jahr} lässt sich das nicht zeigen: Womit die Stadt ihr Geld einnimmt, steht erst
-          im Jahresabschluss, und für {jahr} liegt uns keiner vor. Das Bild zeigt deshalb{" "}
-          <strong>{ersatzJahr}</strong> — dafür haben wir beide Seiten.
-        </p>
-      )}
 
       {beideStaende && (
         <div className="mb-3 flex justify-end">
