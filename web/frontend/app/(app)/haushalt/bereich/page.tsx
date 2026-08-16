@@ -27,6 +27,7 @@ function BruttoNettoBlock({ z }: { z: HaushaltZeile }) {
   const ein = mio(z.ertraege) ?? 0;
   const netto = Math.round((ein - aus) * 10) / 10;
   const d = deckung(z);
+  const ringAnteil = Math.min(d ?? 0, 100);
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
       <p className="mb-3 font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
@@ -57,15 +58,28 @@ function BruttoNettoBlock({ z }: { z: HaushaltZeile }) {
       </div>
       {d != null && (
         <div className="mt-3.5 flex items-center gap-4 border-t border-border/60 pt-3">
+          {/* Über 100 % bleibt der Ring voll — mehr als ganz gibt es nicht.
+              Die Zahl in der Mitte trägt dann die eigentliche Aussage. */}
           <div className="flex h-14 w-14 flex-none items-center justify-center rounded-full"
-            style={{ background: `conic-gradient(var(--hh-ein-0) 0 ${d}%, hsl(var(--muted)) ${d}% 100%)` }}>
+            style={{ background: `conic-gradient(var(--hh-ein-0) 0 ${ringAnteil}%, hsl(var(--muted)) ${ringAnteil}% 100%)` }}>
             <span className="flex h-9 w-9 items-center justify-center rounded-full bg-card font-display text-[13px] font-bold">
               {d}<span className="text-[9px]">%</span>
             </span>
           </div>
           <p className="text-[12.5px] leading-relaxed text-foreground/90">
-            <strong>Kostendeckungsgrad {d}&nbsp;%.</strong> Von 100 Euro Ausgaben holt der Bereich {d} Euro
-            selbst herein — der Rest kommt aus Steuern und Zuweisungen, die zentral eingehen.
+            <strong>Kostendeckungsgrad {d}&nbsp;%.</strong>{" "}
+            {d > 100 ? (
+              <>
+                Der Bereich nimmt mehr ein, als er ausgibt: Auf 100 Euro Ausgaben kommen {d} Euro
+                Einnahmen. Das heißt nicht, dass hier besonders sparsam gewirtschaftet wird — es
+                liegt daran, welche Einnahmen diesem Bereich zugeordnet sind.
+              </>
+            ) : (
+              <>
+                Von 100 Euro Ausgaben holt der Bereich {d} Euro selbst herein — der Rest kommt aus
+                Steuern und Zuweisungen, die zentral eingehen.
+              </>
+            )}
           </p>
         </div>
       )}

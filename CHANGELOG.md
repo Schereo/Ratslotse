@@ -18,6 +18,14 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Mehr ausgegeben kann ein Tarifabschluss sein, weniger ausgegeben heißt oft,
   dass etwas nicht gebaut wurde. (#502)
 
+### Behoben
+- **Kostendeckungsgrad über 100 % wurde falsch erklärt.** Bei „Finanzmanagement
+  und Recht" — dort verbucht die Stadt ihre Steuern — stand unter dem Wert von
+  518 %, „der Rest" komme aus Steuern und Zuweisungen. Einen Rest gibt es dort
+  nicht: Der Bereich nimmt mehr ein, als er ausgibt. Der Satz sagt das jetzt,
+  samt Hinweis, dass darin keine besondere Sparsamkeit steckt, sondern die
+  Zuordnung der Einnahmen. (#PR)
+
 ### Verbessert
 - **Das Haushalts-Labor sagt jetzt, ob das viel ist.** Bisher bewegte man
   Regler und eine Zahl änderte sich — ohne Maßstab. Jetzt füllt jede Bewegung
