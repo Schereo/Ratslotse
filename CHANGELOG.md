@@ -21,7 +21,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   bei einer Aufgabe überhaupt hat: Bei 35 der 63 Aufgaben ist es „kaum" — das
   macht aus einer Zahl eine Antwort darauf, worüber der Rat streiten kann und
   worüber nicht. Alle Angaben stammen wörtlich aus den Teilhaushaltsplänen;
-  wo der Plan ein Feld leer lässt, steht auch bei uns nichts. (#PR)
+  wo der Plan ein Feld leer lässt, steht auch bei uns nichts. (#504)
 - **„Geplant und geworden" — was aus dem Haushalt wirklich wurde.** Ein
   Haushalt ist ein Plan; was am Jahresende zusammenkam, stand bisher nirgends.
   Die neue Seite stellt beides nebeneinander — für die Stadt insgesamt und für
