@@ -13,25 +13,32 @@ import { HaushaltDaten, deMio, fehlendeJahre, jahreSortiert, mio, summe } from "
 // driftet er um 0,1 (693,9 − 728,2 = −34,3, tatsächlich sind es −34,2).
 type Punkt = { jahr: number; ein: number; aus: number; saldo: number };
 
-const W = 660, H = 272, X0 = 46, X1 = 620, Y0 = 236, PAD = 26;
+const H = 272, Y0 = 236, PAD = 26;
 
 export function Zeitreihe({ daten }: { daten: HaushaltDaten }) {
   const [tabelleOffen, setTabelleOffen] = useState(false);
-  // Auf schmalen Bildschirmen skaliert das SVG die Schrift mit herunter, bis
-  // die Achsen unlesbar sind (Tim, 16.08.). Dort dieselbe Grafik mit weniger
-  // Beschriftungen und größerer Schrift — nicht dieselbe, nur kleiner.
+  // Die viewBox ist so breit wie der Container, NICHT fix 660: Sonst staucht
+  // das SVG alles mit — bei 486 px Containerbreite landeten „16 px" Schrift
+  // als 11 px auf dem Schirm, und die Achsen blieben unlesbar, obwohl die
+  // Zahl im Code größer wurde (Tim, 16.08., zweiter Anlauf). Mit
+  // viewBox-Breite = Containerbreite ist eine SVG-Einheit ein echtes Pixel.
   const box = useRef<HTMLDivElement>(null);
-  const [schmal, setSchmal] = useState(false);
+  const [breite, setBreite] = useState(660);
   useEffect(() => {
     const el = box.current;
     if (!el) return;
-    const pruefe = () => setSchmal(el.clientWidth < 520);
+    const pruefe = () => setBreite(Math.max(el.clientWidth, 280));
     pruefe();
     const ro = new ResizeObserver(pruefe);
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  const fs = schmal ? { achse: 15, jahr: 16, saldo: 15, legende: 15 } : { achse: 9.5, jahr: 10, saldo: 10, legende: 11 };
+  const schmal = breite < 520;
+  const fs = schmal ? { achse: 13, jahr: 14, saldo: 12.5, legende: 13 } : { achse: 11, jahr: 12, saldo: 11.5, legende: 12 };
+  // Ränder wachsen mit der Schrift: links Platz für „900", rechts für „aus".
+  const W = breite;
+  const X0 = schmal ? 40 : 44;
+  const X1 = W - (schmal ? 36 : 40);
 
   const jahre = jahreSortiert(daten);
   const punkte: Punkt[] = jahre
@@ -57,7 +64,9 @@ export function Zeitreihe({ daten }: { daten: HaushaltDaten }) {
   const y = (v: number) => Y0 - PAD - ((v - lo) / (hi - lo)) * (Y0 - 2 * PAD - 14);
 
   const gitter: number[] = [];
-  for (let v = lo; v <= hi; v += 100) gitter.push(v);
+  // Auf schmal jede zweite Linie — bei lesbarer Schrift kleben sie sonst.
+  const schritt100 = schmal && (hi - lo) / 100 > 3 ? 200 : 100;
+  for (let v = lo; v <= hi; v += schritt100) gitter.push(v);
 
   // Liniensegmente: an jeder Lücke neu ansetzen (Konvention: kein Durchziehen).
   const segmente: Punkt[][] = [];
