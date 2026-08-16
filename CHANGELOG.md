@@ -504,7 +504,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Tooltip wäre nur für die Maus da gewesen. In der 100-Euro-Ansicht hebt ein
   Bereich seine Felder im Raster hervor, egal ob man ihn in der Liste oder im
   Bild wählt. Die Zahlentabellen bleiben — 28 Werte nebeneinander kann kein
-  Bild —, starten aber zugeklappt. (#PR)
+  Bild —, starten aber zugeklappt. (#536)
 
 <!-- GEPARKT (nur dev.ratslotse.de, Umgebungs-Gate): Eintrag aktivieren,
      sobald der Kommunalwahl-Vergleich auf Prod freigeschaltet wird.
