@@ -29,7 +29,7 @@ wacht darüber, dass kein neuer Verweis das Gate vergisst.
 ## Die Seiten
 
 Der Einstieg trägt einen **Wegweiser** (`components/haushalt/wegweiser.tsx`),
-und der ist keine Linkliste, sondern die Leserichtung des ganzen Bereichs: zehn
+und der ist keine Linkliste, sondern die Leserichtung des ganzen Bereichs: elf
 Schritte in vier Stufen. Die Tabelle steht deshalb in genau dieser Reihenfolge.
 
 | Route | Inhalt |
@@ -40,15 +40,16 @@ Schritte in vier Stufen. Die Tabelle steht deshalb in genau dieser Reihenfolge.
 | `/haushalt/bereiche` | Schritt 2 — die Teilhaushalte im Klartext: was hinter „Soziales" oder „Finanzmanagement" steckt, mit Betrag |
 | `/haushalt/pflicht` | Schritt 3 — muss oder kann: Ausgaben nach Gestaltungsspielraum, gegen die Selbstauskunft der Stadt gehalten |
 | `/haushalt/produkte[?nr=<produkt_nr>]` | Schritt 4 — „Was kostet eigentlich …?", Produktsuche mit Filtern (Amt, Spielraum); `nr` öffnet den Steckbrief |
+| `/haushalt/investitionen` | Schritt 5 — „Was wird gebaut?": die Investitionen des **Finanz**haushalts je Teilhaushalt, 2022–2025, mit dem Anteil am ganzen Finanzhaushalt |
 | **Die Gegenprobe** | |
-| `/haushalt/plan-ist[?jahr=<jahr>]` | Schritt 5 — geplant gegen tatsächlich, je Teilhaushalt, mit den Abweichungsgründen der Verwaltung im Wortlaut |
-| `/haushalt/pruefung[?jahr=<jahr>]` | Schritt 6 — alle Feststellungen der RPA-Schlussberichte im Wortlaut, mit Textziffer, Seite und Deeplink; dazu die Ketten über die Jahrgänge |
+| `/haushalt/plan-ist[?jahr=<jahr>]` | Schritt 6 — geplant gegen tatsächlich, je Teilhaushalt, mit den Abweichungsgründen der Verwaltung im Wortlaut |
+| `/haushalt/pruefung[?jahr=<jahr>]` | Schritt 7 — alle Feststellungen der RPA-Schlussberichte im Wortlaut, mit Textziffer, Seite und Deeplink; dazu die Ketten über die Jahrgänge |
 | **Der Rahmen** | |
-| `/haushalt/konzern` | Schritt 7 — Kernverwaltung gegen Gesamtabschluss über elf Jahrgänge, Aufschlüsselung nach Aufgabenträgern |
-| `/haushalt/vergleich` | Schritt 8 — Steuerkraft, Hebesätze und Steuereinnahmekraft der acht kreisfreien Städte aus der amtlichen Statistik — und die Erklärung, warum Ausgaben und Personal **nicht** verglichen werden |
+| `/haushalt/konzern` | Schritt 8 — Kernverwaltung gegen Gesamtabschluss über elf Jahrgänge, Aufschlüsselung nach Aufgabenträgern |
+| `/haushalt/vergleich` | Schritt 9 — Steuerkraft, Hebesätze und Steuereinnahmekraft der acht kreisfreien Städte aus der amtlichen Statistik — und die Erklärung, warum Ausgaben und Personal **nicht** verglichen werden |
 | **Mitreden** | |
-| `/haushalt/jahr` | Schritt 9 — wann der Haushalt entschieden wird: jede Station im Rat, aus acht Jahrgängen, mit Link auf die Sitzung |
-| `/haushalt/labor` | Schritt 10 — Was-wäre-wenn: Hebesatz-Regler und Kürzungen, jede Bewegung in Mio. €, € je Einwohner und Anteil an der Lücke; dauerhaft sichtbare Gegenrechnung |
+| `/haushalt/jahr` | Schritt 10 — wann der Haushalt entschieden wird: jede Station im Rat, aus acht Jahrgängen, mit Link auf die Sitzung |
+| `/haushalt/labor` | Schritt 11 — Was-wäre-wenn: Hebesatz-Regler und Kürzungen, jede Bewegung in Mio. €, € je Einwohner und Anteil an der Lücke; dauerhaft sichtbare Gegenrechnung |
 | **Steckbriefe (ohne Schritt)** | |
 | `/haushalt/bereich?name=<slug>` | Dossier je Teilhaushalt: Wasserfall Brutto → eigene Erträge → Zuschussbedarf, Entwicklung seit 2020, Produkte des Bereichs |
 | `/haushalt/steuer?art=<slug>` | Steckbrief je Einnahmeart: „Wer entscheidet was", Ist-Kurve, Hebesatz, Ein-Punkt-Überschlag |
@@ -60,9 +61,10 @@ der Bereichstabelle des Einstiegs.
 
 :::caution[Die Reihenfolge steht an zwei Stellen]
 `/haushalt/konzern` schreibt seine Nummer selbst in den Kicker („Stadtfinanzen
-Oldenburg · Schritt 7"). Der Wegweiser ist so geordnet, dass das stimmt. Wer
+Oldenburg · Schritt 8"). Der Wegweiser ist so geordnet, dass das stimmt. Wer
 Schritte umsortiert oder einen dazwischenschiebt, zieht `konzern/page.tsx` mit
-nach — sonst widersprechen sich zwei Seiten still.
+nach — sonst widersprechen sich zwei Seiten still. Genau das war beim Einfügen
+von „Was wird gebaut?" (08/2026) fällig: Die Seite trug bis dahin Schritt 7.
 :::
 
 Query-Parameter statt dynamischer Segmente, weil der Capacitor-Export die
@@ -82,6 +84,7 @@ die es nicht zeigen:
 | `…/haushalt/produkte` | `/haushalt/produkte`, `/haushalt/pflicht`, `/haushalt/bereich`, Labor | mehrere hundert Zeichen Steckbrief je Zeile; gesucht und gefiltert wird serverseitig |
 | `…/haushalt/konzern` | `/haushalt/konzern` | eigene Tabellen, eigene Jahrgangsreihe |
 | `…/haushalt/vergleich` | `/haushalt/vergleich` | eigene Tabelle (LSN), acht Städte × Jahrgänge |
+| `…/haushalt/investitionen` | `/haushalt/investitionen` | eigene Tabelle, **anderer Haushalt** (Finanz- statt Ergebnishaushalt) — nicht mit den übrigen Zahlen verrechenbar |
 | `…/haushalt/weg` | `/haushalt/jahr` | Ratsdaten statt Finanzdokumenten (Beratungsfolge, Sitzungen) |
 | `…/haushalt/datenstand` | Block „Bis wann die Zahlen reichen" | rechnet über den Bestand, nicht über Inhalte |
 | `…/haushalt/dokumente` | Quellenverzeichnis **jeder** Haushalts-Seite | je Quelle und Jahrgang das Dokument — die Angabe, die die statische Quellenliste nicht haben kann |
@@ -92,6 +95,7 @@ die es nicht zeigen:
 | `council_steuern` | Steuereinnahmen je Art seit 1998 (**Ist**) | Open-Data-Portal, Datensatz 1104 | `scripts/ingest_finanzen_opendata.py` |
 | `council_steuerkraft` | Steuerkraftmesszahl + Schlüsselzuweisungen je Ausgleichsjahr seit 1993 (Jahreszahl beim Einlesen korrigiert, s. u.) | Open-Data-Portal, Datensatz 1106 | dito |
 | `council_einwohner` | Einwohnerzahl je Jahr seit 2010 | Open-Data-Portal, Datensatz 1102 | dito |
+| `council_investitionen` | Investitionen des **Finanz**haushalts je Teilhaushalt, 2022–2025 (**Plan**) — Ein- und Auszahlungen, dazu die Summenzeile und der Gesamtbetrag des Finanzhaushalts als Bezugsgröße | Open-Data-Portal, Datensatz 1101, Tabellenblatt „Finanzhaushalt" | dito |
 | `council_ergebnisrechnung` | Ansatz, Plan **und** Ergebnis je Posten — gesamt und je Teilhaushalt, 2017–2024 | Jahresabschlüsse — **Anlagen im RIS** | `scripts/ingest_finanzberichte.py` |
 | `council_ergebnishaushalt` | Dieselben Posten für Jahre **ohne** Abschluss, 2019–2026 — je Zeile `art` (`ansatz` / `finanzplanung`) und `plan_jahrgang` | Gesamtergebnishaushalt (Anlage 005 des Haushaltsplans) — **Anlagen im RIS** | dito |
 | `council_abweichungsgruende` | Warum ein Posten vom Plan abwich (Abschnitt 6.3.1), 45 Einträge | dito | dito |
@@ -293,7 +297,19 @@ nicht für einen unbeaufsichtigten Lauf.
 dürfen nie in einem Satz vermischt werden — im Frontend stehen sie in
 getrennten Bausteinen, und die Prompt-Bausteine der KI-Frage
 (`_haushalt_block`, `_steuern_block`) sagen dem Modell ausdrücklich, was sie
-sind.
+sind. Seit `council_ergebnisrechnung` dazukam, gilt dasselbe für den
+Jahresabschluss (`_ist_block`): Er ist die einzige Quelle, die **beides**
+führt, und benennt deshalb je Zahl, ob sie geplant oder abgerechnet ist.
+:::
+
+:::note[Der ganze Bestand hängt an der KI-Frage]
+Alle Tabellen dieser Seite sind auch Quellen von „Frag den Rat". Welche eine
+Frage zieht, entscheidet `qa.geld_facetten` am Frage-Wortlaut — die Tabelle
+dazu steht unter
+[KI-Pipeline → Frag den Rat](/docs/ki-pipeline/#frag-den-rat-welche-quelle-eine-geldfrage-zieht).
+Wer hier eine Tabelle hinzufügt, hat sie damit **noch nicht** in der KI-Frage:
+Dazu gehören eine Facette, eine `*_fuer_begriffe`-Methode im Store, ein
+Prompt-Baustein und eine Zeile im Korpus `tests/test_qa_geldquellen.py`.
 :::
 
 ## Der Bereich hält sich selbst aktuell
@@ -1266,6 +1282,103 @@ Offen ist nur noch die Meldung an die Quelle: Ansprechpartner laut Katalog ist
 die Statistikstelle der Stadt Oldenburg.
 :::
 
+## Investitionen: der zweite Haushalt
+
+Bis 08/2026 zeigte der Bereich ausschließlich den **Ergebnis**haushalt —
+laufende Erträge und Aufwendungen. Darin steht keine einzige Investition. Ein
+Schulneubau taucht dort nur als Abschreibung auf, verteilt über Jahrzehnte,
+lange nachdem gebaut wurde. Die häufigste Bürgerfrage überhaupt („was wird
+eigentlich gebaut?") war damit unbeantwortbar, und zwar nicht aus Nachlässigkeit:
+Die Zahl stand in keiner Tabelle.
+
+Sie steht im **Finanz**haushalt, der zweiten Hälfte jedes Haushaltsplans. Ein-
+und Auszahlungen statt Erträgen und Aufwendungen — das ist der Unterschied
+zwischen „was verbraucht die Stadt in diesem Jahr?" und „was legt sie in
+diesem Jahr an?".
+
+### Die Quelle rechnet sich selbst vor
+
+Datensatz 1101 des Open-Data-Portals, dasselbe Paket wie beim
+Plan-Ergebnishaushalt, nur das zweite Tabellenblatt. Je Jahrgang eine Datei mit
+15 Zeilen:
+
+```
+Teilhaushalt;Bezeichnung;Einzahlungen [Euro];Auszahlungen [Euro]
+THH01;Verwaltungsfuehrung;0;44500
+…
+THH13;Nicht rechtsfaehige Stiftungen;27900;0
+Finanzhaushalt Gesamtinvestitionen;;39672063;80781520
+Gesamtbetrag des Finanzhaushaltes;;743796496;850520503
+```
+
+Das macht sie zur **einzigen Portal-CSV des Bereichs mit einer Rechenprobe im
+Dokument selbst**: Die 13 Teilhaushalts-Zeilen müssen die Zeile *Finanzhaushalt
+Gesamtinvestitionen* ergeben, in beiden Spalten. Die drei anderen Portal-CSVs
+(Steuern, Steuerkraft, Einwohner) tragen ausdrücklich keine und stehen mit
+`herkunft.UNGEPRUEFT` in der Datenbank. Über die vier verfügbaren Jahrgänge
+(2022–2025) geht die Probe auf den Euro genau auf — acht Proben, Restbetrag
+jeweils 0 €.
+
+:::caution[Die Toleranz ist kleiner als ein Euro, und das ist der Punkt]
+Die Datei führt volle Euro ohne Nachkommastellen. Die kleinste Abweichung, die
+es hier überhaupt geben kann, ist damit 1 € — eine Toleranz von 1 € ließe genau
+diesen Fall durch und wäre für den einzigen Fehler blind, den die Probe sehen
+könnte. `investitionen.TOLERANZ_EUR` steht deshalb auf **0,5**. Aufgefallen
+beim Schreiben von `tests/test_investitionen.py`, wo der manipulierte Jahrgang
+zunächst bestand.
+:::
+
+### Eine Zahl in der Datei ist nicht gedeckt — und wird als solche geführt
+
+Die zweite Summenzeile, *Gesamtbetrag des Finanzhaushaltes*, zählt auch die
+laufende Verwaltungstätigkeit mit (Personal, Zuschüsse, Steuern) und ist rund
+zehnmal so groß wie die Investitionssumme. **Nichts in der Datei summiert sich
+auf sie.** Sie wird trotzdem übernommen, weil sie die Bezugsgröße ist, die aus
+„80,8 Mio. €" erst eine Aussage macht (2025: 9,5 % aller Auszahlungen) — aber
+mit einer **eigenen** `herkunft_id` und `herkunft.UNGEPRUEFT`. Käme sie unter
+derselben Herkunft wie die geprüften Zeilen, behauptete die Seite eine Probe,
+die es für diese Zahl nicht gibt. `save_investitionen` nimmt die zweite
+Herkunft deshalb als eigenes Argument.
+
+### Drei Eigenheiten der Quelle
+
+1. **Das Jahr steht nicht in der Datei.** Keine Spalte, keine Kopfzeile. Es
+   steht im Dateinamen (`…_2025_Finanzhaushalt.csv`) und im Titel des
+   Datensatzes. Der Jahrgang kommt deshalb aus der URL
+   (`investitionen.jahrgang_aus_url`), und die Herkunft nennt den Dateinamen
+   ausdrücklich als Fundstelle des Jahrgangs. Das ist die schwächste Stelle
+   dieser Schicht; sie wird ausgewiesen statt weggelassen.
+2. **Die Schreibweisen schwanken zwischen den Jahrgängen.** 2022 steht dort
+   „Verkehr und Straßenbau" und „Gruen u Friedhoefe", 2025 „Strassenbau" und
+   „Gruen und Friedhoefe"; 2022 hat außerdem „Sicherheit  und Ordnung" mit
+   doppeltem Leerzeichen und als einziger die Kopfzeile „Einzahlungen in Euro"
+   statt „[Euro]". `investitionen.NAMEN` führt die bekannten Formen zusammen —
+   sonst stünden in jeder Zeitreihe zwei Bereiche, wo einer ist. Unbekannte
+   Namen laufen unverändert durch: Ein neuer Teilhaushalts-Zuschnitt soll den
+   Import nicht stoppen. Der Schlüssel ist ohnehin `thh_nr`, nicht der Name.
+3. **Der Jahrgang erscheint erst im Folgejahr.** Gemessen an den vier
+   Lieferungen: 2023 → 19.06.2024, 2024 → 16.06.2025, 2025 → 14.07.2026 (2022
+   kam am 24.04.2024 als Nachzügler). `Finanzquelle.erwarteter_monat` steht
+   deshalb auf **Juli**, dem spätesten gemessenen Monat — mit Juni meldete der
+   Cron den Jahrgang 2025 drei Wochen lang als überfällig, obwohl das Portal
+   nur seinem üblichen Takt folgte.
+
+### Was die Seite sagen muss
+
+`/haushalt/investitionen` trägt einen eigenen Block „Was diese Zahlen nicht
+sagen", und er steht nicht am Ende, sondern als Abschnitt. Drei Sätze müssen
+hängen bleiben:
+
+- **Kein einzelnes Vorhaben.** Die Quelle sagt „Verkehr und Straßenbau:
+  10,5 Mio. €", nicht welche Straße. Die häufigste Frage an diese Seite („wird
+  MEINE Schule saniert?") beantwortet sie nicht.
+- **Plan, nicht Ist.** Was am Jahresende wirklich verbaut wurde, steht nicht
+  darin. Bei Investitionen ist der Abstand notorisch groß.
+- **Die Zahlen enden 2025**, weil das Portal erst im Folgejahr liefert.
+
+Der Anteil am Finanzhaushalt ist **unsere** Division und steht auf der Seite als
+solche gekennzeichnet; die beiden Beträge darin stehen so in der Quelle.
+
 ## Was bewusst fehlt
 
 Der Bereich zeigt lieber eine Lücke als eine Schätzung:
@@ -1302,15 +1415,29 @@ Der Bereich zeigt lieber eine Lücke als eine Schätzung:
   Oldenburg 2024, vom Dokument selbst markiert) — eine Grafik ohne Jahr an
   jedem Balken wäre still falsch, und das gehört sorgfältig gemacht statt
   nebenbei.
-- **Investitionen (Finanzhaushalt)** — es gibt dafür weder Tabelle noch
-  Parser: `council_haushalt` trägt ausschließlich den **Ergebnis**haushalt
-  (`ertraege`, `aufwendungen`, `ergebnis` je Teilhaushalt). Deshalb steht auf
-  der Anzeigetafel ausdrücklich, dass das Budget größer ist als die gezeigte
-  Zahl, und deshalb nennt **keine** Seite eine Investitionssumme — auch nicht
-  gerundet, auch nicht als Größenordnung. Der Kassenzettel-Gedanke „227 € für
-  Kultur und Sport" enthält keine neue Sporthalle, wohl aber die Abschreibung
-  auf die alte; wer eine Investitionszahl daneben schreibt, ohne sie zu haben,
-  macht aus dem Bon eine Erfindung.
+- **Einzelne Investitionsvorhaben** — seit 08/2026 gibt es die
+  Investitionen als Schicht (`council_investitionen`,
+  `council/investitionen.py`, Seite `/haushalt/investitionen`), aber nur je
+  **Teilhaushalt**: „Verkehr und Straßenbau: 10,5 Mio. €". Welche Straße,
+  welche Schule, welches Fahrzeug — das steht in keinem der maschinenlesbaren
+  Datensätze. Dafür bräuchte es das Investitionsprogramm aus dem
+  Haushaltsplan-PDF, eine eigene Schicht mit eigener Probe.
+
+  Was der Rest des Bereichs zeigt, bleibt der **Ergebnis**haushalt
+  (`council_haushalt`: `ertraege`, `aufwendungen`, `ergebnis` je
+  Teilhaushalt). Deshalb steht auf der Anzeigetafel weiter, dass das Budget
+  größer ist als die gezeigte Zahl — der Hinweis verweist jetzt auf die neue
+  Seite, statt in einer Sackgasse zu enden. Und deshalb nennt außerhalb von
+  `/haushalt/investitionen` weiterhin **keine** Seite eine Investitionssumme:
+  Der Kassenzettel-Gedanke „227 € für Kultur und Sport" enthält keine neue
+  Sporthalle, wohl aber die Abschreibung auf die alte. Die beiden Haushalte
+  sind nicht addierbar; wer sie nebeneinanderstellt, muss sagen, dass es zwei
+  sind.
+- **Investitionen als Ist** — die Quelle ist der Haushalts**plan**. Was am
+  Jahresende wirklich verbaut wurde, steht in keinem der vier CSVs, und bei
+  Investitionen ist der Abstand notorisch groß (Planung zieht sich, Aufträge
+  werden nicht vergeben). Die Seite sagt das in ihrem Grenzen-Block, statt es
+  zu überspielen.
 - **Erträge je Teilhaushalt nach Herkunft — für Planjahre** —
   `council_haushalt` kennt je Bereich nur **eine** Ertragssumme. Wer sie in
   Bund, Land und Gebühren aufteilen will, braucht
