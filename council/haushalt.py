@@ -118,6 +118,22 @@ STEUERKRAFT_CSV_URL = ("https://opendata.oldenburg.de/sites/default/files/"
 EINWOHNER_CSV_URL = ("https://opendata.oldenburg.de/sites/default/files/"
                      "1102-Ordentliche_Aufwendungen_des_Ergebnishaushaltes_seit_2010.csv")
 
+# Das zweite Tabellenblatt desselben Datensatzes 1101: der **Finanzhaushalt**,
+# aus dem die Investitionen kommen (council/investitionen.py). Anders als beim
+# Ergebnishaushalt oben ist das Portal hier die einzige maschinenlesbare
+# Quelle — und die einzige Portal-CSV des Bereichs mit einer Rechenprobe in der
+# Datei selbst.
+#
+# Die Jahrgänge stehen einzeln da und nicht als Muster: Das Portal liefert sie
+# im Folgejahr nach (2025 erschien am 14.07.2026), und ein geratener Dateiname
+# für ein Jahr, das es noch nicht gibt, ergäbe bei jedem Lauf einen 404. Ein
+# neuer Jahrgang ist eine Zeile hier.
+INVESTITIONEN_CSV_URLS: dict[int, str] = {
+    jahr: ("https://opendata.oldenburg.de/sites/default/files/"
+           f"1101_Haushaltsplan_StadtOL_{jahr}_Finanzhaushalt.csv")
+    for jahr in (2022, 2023, 2024, 2025)
+}
+
 # Steuerarten-Spalten wie im Portal, nur Umlaute restauriert.
 _STEUERART_NAMEN = {
     "Getraenkesteuer": "Getränkesteuer",

@@ -1,7 +1,7 @@
 # Designplan — Wahlprogramm-Vergleich Oldenburg 2026
 
 **Gegenstand:** 16 Wahlvorschläge zur Ratswahl Oldenburg, 13.09.2026.
-**Publikum:** politisch interessierte Oldenburger:innen, Volt-Aktive im Wahlkampf.
+**Publikum:** politisch interessierte Oldenburger*innen, Volt-Aktive im Wahlkampf.
 **Aufgabe der Seite:** nachvollziehbar zeigen, wer zu welchem Thema was sagt — und wie nah
 sich zwei Listen stehen.
 

@@ -25,17 +25,23 @@
 // WOFÜR man weiterliest. Deshalb liegen die Schritte jetzt in vier benannten
 // Stufen, und jede Stufe sagt in einem Satz, welche Frage sie beantwortet.
 // Die Nummern laufen durch — es bleibt ein Weg, er hat nur sichtbare
-// Abschnitte. Die Stufen tragen deshalb auch die Erweiterung: Der Stellenplan
-// kam am 16.08. dazu und ist eine Zeile mehr in „Die Zahlen", keine elfte
-// Kachel in einer Reihe von zehn.
+// Abschnitte. Die Stufen tragen deshalb auch jede Erweiterung: Eine neue Seite
+// ist eine Zeile mehr in ihrer Stufe, keine weitere Kachel in einer Reihe.
 //
-//   1–5   Die Zahlen      Woher das Geld kommt, wohin es geht, was fest ist,
-//                         was einzelne Aufgaben kosten, wer sie tut.
-//   6–7   Die Gegenprobe  Ein Haushalt ist ein Plan; was daraus wurde, steht
+//   1–6   Die Zahlen      Woher das Geld kommt, wohin es geht, was fest ist,
+//                         was einzelne Aufgaben kosten, wer sie tut — und was
+//                         gebaut wird.
+//   7–8   Die Gegenprobe  Ein Haushalt ist ein Plan; was daraus wurde, steht
 //                         im Jahresabschluss, und geprüft wird er auch.
-//   8–9   Der Rahmen      Der Kernhaushalt ist rund zwei Drittel der Stadt,
+//   9–10  Der Rahmen      Der Kernhaushalt ist rund zwei Drittel der Stadt,
 //                         und Oldenburg steht nicht allein da.
-//   10–11 Mitreden        Wann entschieden wird, und was sich drehen ließe.
+//   11–12 Mitreden        Wann entschieden wird, und was sich drehen ließe.
+//
+// „Was wird gebaut?" kam 08/2026 dazu — mit der ersten Schicht, die den
+// FINANZhaushalt liest. Es steht am Ende der Zahlen-Stufe und nicht vorn, weil
+// es die einzige Seite ist, die einen anderen Haushalt zeigt als die davor:
+// Erst wenn klar ist, was im Ergebnishaushalt steht, ist die Aussage „und hier
+// steht das alles NICHT drin" überhaupt eine.
 //
 // Drei Entscheidungen dahinter, die man sonst rückgängig macht:
 //
@@ -43,7 +49,7 @@
 //    die griffigste Seite, beantwortet aber eine Frage, die erst Sinn ergibt,
 //    wenn man weiß, dass der größte Teil des Geldes gar nicht zur Disposition
 //    steht. Das stand schon in der zweiten Runde hier und gilt weiter.
-//  * **Der Städtevergleich steht spät (Schritt 8), nicht vorn.** „Steht
+//  * **Der Städtevergleich steht spät (Schritt 10), nicht vorn.** „Steht
 //    Oldenburg besser da als Osnabrück?" ist eine Frage, die sich erst stellt,
 //    wenn man die eigenen Zahlen kennt — und die Seite selbst besteht zur
 //    Hälfte aus der Begründung, warum der Vergleich bei den Ausgaben nicht
@@ -55,23 +61,24 @@
 //
 // **Zwei Seiten schreiben ihre Nummer selbst in den Kicker** und müssen
 // deshalb mitgeändert werden, wenn sich die Reihenfolge hier ändert — sonst
-// widersprechen sich zwei Seiten still: `/haushalt/personal` (Schritt 5) und
-// `/haushalt/konzern` (Schritt 8). Der Stellenplan kam am 16.08. als fünfter
-// Schritt dazu und hat den Konzern von 7 auf 8 geschoben; das ist genau der
-// Fall, für den dieser Absatz steht.
+// widersprechen sich zwei Seiten still: `/haushalt/personal` („Schritt 5") und
+// `/haushalt/konzern` („Schritt 9"). Genau das ist zweimal passiert und beide
+// Male nachgezogen worden: „Was wird gebaut?" schob den Konzern von 7 auf 8,
+// der Stellenplan von 8 auf 9.
 //
-// **Warum der Stellenplan ans Ende von „Die Zahlen" gehört und nicht weiter
-// nach vorn:** Er beantwortet „wer macht die Arbeit?" — eine Frage, die sich
-// erst stellt, wenn man weiß, was die Arbeit kostet (Schritt 4). Umgekehrt
-// gehört er noch vor die Gegenprobe, weil er sie lesbar macht: Unbesetzte
-// Stellen sind eine der Erklärungen dafür, dass Personalausgaben im
-// Jahresabschluss unter dem Plan bleiben können.
+// **Warum der Stellenplan zwischen „Was kostet …?" und „Was wird gebaut?"
+// steht:** Er beantwortet „wer macht die Arbeit?" — eine Frage, die sich erst
+// stellt, wenn man weiß, was die Arbeit kostet (Schritt 4). Und er gehört noch
+// vor die Investitionen, weil er wie sie zum laufenden Betrieb gehört, während
+// die Investitionen den Haushalt wechseln. Vor die Gegenprobe gehört er, weil
+// er sie lesbar macht: Unbesetzte Stellen sind eine der Erklärungen dafür,
+// dass Personalausgaben im Jahresabschluss unter dem Plan bleiben können.
 //
-// **Zwei der dreizehn Seiten haben bewusst keinen Schritt.** `/haushalt/bereich`
+// **Zwei der vierzehn Seiten haben bewusst keinen Schritt.** `/haushalt/bereich`
 // und `/haushalt/steuer` sind Steckbriefe: Sie brauchen einen Query-Parameter
 // und öffnen ohne ihn den Vorgabefall. Als eigener Schritt stünde ein
-// beliebiger Bereich neben elf Fragen. Sie werden am Fuß benannt, damit die
-// Zählung „elf Schritte, dreizehn Seiten" nicht wie eine Lücke aussieht.
+// beliebiger Bereich neben zwölf Fragen. Sie werden am Fuß benannt, damit die
+// Zählung „zwölf Schritte, vierzehn Seiten" nicht wie eine Lücke aussieht.
 //
 // FORM: eine Karte, nicht zehn. Zehn Karten sind auf 375 px eine Liste ohne
 // Ende — die Stufen wären zwischen ihnen untergegangen, und genau sie sind
@@ -91,7 +98,8 @@
 import Link from "next/link";
 import {
   ArrowLeftRight, BookOpenText, Building2, CalendarDays, ChevronRight, Coins,
-  GitCompareArrows, Receipt, Scale, SearchCheck, SlidersHorizontal, Users,
+  GitCompareArrows, HardHat, Receipt, Scale, SearchCheck, SlidersHorizontal,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -136,6 +144,12 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         Icon: Users,
         titel: "Wer macht die Arbeit?",
         text: "Der Stellenplan: wie viele Stellen die Stadt vorhält — und wie viele leer stehen.",
+      },
+      {
+        href: "/haushalt/investitionen",
+        Icon: HardHat,
+        titel: "Was wird gebaut?",
+        text: "Neubauten, Fahrzeuge, Grundstücke — der Haushalt, in dem die Seiten davor nicht vorkommen.",
       },
     ],
   },
@@ -279,7 +293,7 @@ export function Wegweiser() {
       ))}
 
       {/* Ohne diesen Satz sähen die Schritte nach einer Lücke aus: Der
-          Bereich hat dreizehn Unterseiten. Die beiden übrigen sind Steckbriefe
+          Bereich hat vierzehn Unterseiten. Die beiden übrigen sind Steckbriefe
           und brauchen einen Bereich bzw. eine Einnahmeart, über die man sie
           aufruft — als Schritt stünde dort ein beliebiger Einzelfall. */}
       <p className="mt-3.5 border-t border-dashed border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground">

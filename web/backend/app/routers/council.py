@@ -479,6 +479,47 @@ def haushalt_konzern(
     }
 
 
+@router.get("/haushalt/investitionen")
+def haushalt_investitionen(
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Was die Stadt bauen und kaufen will — die Investitionen des
+    Finanzhaushalts, je Teilhaushalt.
+
+    Die andere Hälfte des Haushaltsplans: Im Ergebnishaushalt, den der Rest des
+    Bereichs zeigt, steht keine einzige Investition (ein Schulneubau taucht dort
+    nur als Abschreibung auf, verteilt über Jahrzehnte).
+
+    - ``jahre``: Haushaltsjahre, für die Investitionen vorliegen,
+    - ``teilhaushalte``: je Jahr und Teilhaushalt Ein- und Auszahlungen aus
+      Investitionstätigkeit,
+    - ``gesamt``: je Jahr die Summenzeile der Datei — das **Ziel der
+      Rechenprobe**, nicht unsere Addition,
+    - ``finanzhaushalt``: je Jahr der Gesamtbetrag aller Ein- und Auszahlungen,
+      also samt laufender Verwaltungstätigkeit. Die Bezugsgröße, die aus
+      „80,8 Mio. €" erst eine Aussage macht — und die einzige Zahl hier ohne
+      Rechenprobe (eigene ``herkunft_id`` mit ``ungeprueft``, s. u.),
+    - ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, bestandene Probe
+      samt Messwert. Die geprüften Zeilen und die Bezugsgröße tragen
+      **verschiedene** IDs; sie stehen in derselben Datei, aber nur die einen
+      sind durch deren Summenzeile gedeckt.
+
+    Zwei Grenzen, die die Seite nennt und die API deshalb nicht verwischt:
+    Diese Zahlen sind **Plan**, nicht Ist, und sie nennen **kein einzelnes
+    Vorhaben** — „Verkehr und Straßenbau: 10,5 Mio. €" sagt nicht, welche
+    Straße."""
+    zeilen = store.get_investitionen()
+    ids = sorted({z["herkunft_id"] for z in zeilen if z["herkunft_id"] is not None})
+    return {
+        "jahre": store.investitionen_jahre(),
+        "teilhaushalte": [z for z in zeilen if z["ebene"] == "teilhaushalt"],
+        "gesamt": [z for z in zeilen if z["ebene"] == "investitionen"],
+        "finanzhaushalt": [z for z in zeilen if z["ebene"] == "finanzhaushalt"],
+        "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
+    }
+
+
 @router.get("/haushalt/datenstand")
 def haushalt_datenstand(
     _user: dict = Depends(require_active),
@@ -1953,6 +1994,25 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # Wie tragfähig ist der Fund? Deterministisch aus den Scores.
             lage = qa.beleglage(candidates)
             zeiten["retrieve_ms"] = round((time.perf_counter() - t0) * 1000)
+            # Haushalts-Kontext: welche der zehn Geld-Quellen diese Frage
+            # beantworten, entscheidet `qa.geld_facetten` deterministisch am
+            # FRAGE-WORTLAUT — nicht am LLM-Fragetyp. Der Grund steht im
+            # Abschnittskopf von council/qa.py: Fragen wie „Was hat das
+            # Rechnungsprüfungsamt beanstandet?" oder „Muss die Stadt das
+            # Theater betreiben?" sind mit gutem Grund `thema` und bekämen an
+            # einem Typ-Gate nie ihre Daten. `typ` bleibt als Auffangnetz drin
+            # (siehe geld_facetten) — der bisherige Weg „typ=geld → Plan-Zahlen"
+            # ist damit unverändert erhalten.
+            #
+            # Gesucht wird mit `q_suche` (der eigenständigen Fassung), nicht mit
+            # `expanded`: Die Expansion ist ausdrücklich angewiesen, eine
+            # Sachstands-Frage zusätzlich als Finanzierungs-Frage zu
+            # formulieren, und trüge damit „Kosten" in jede Stadion-Frage.
+            #
+            # Beim Vereinfachen gar nicht erst fragen: Der Knopf schreibt die
+            # VORIGE Antwort um (eigener Prompt ohne Zusatz-Bausteine), die
+            # Abfragen wären sicher umsonst.
+            geld = {} if einfach else qa.geld_kontext(store, q_suche, expanded, typ)
             # 5a/I-06: die kondensierte Frage mitschicken — der Kontext-Chip im
             # Frontend zeigt, worauf sich Anschlussfragen beziehen.
             yield _sse({"type": "sources", "mode": mode, "qtype": typ,
@@ -1962,6 +2022,11 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         "debatten": _debatten_kompakt(debatten_rows),
                         "planungen": planungen,
                         "beleglage": lage,
+                        # Welche Haushalts-Quellen diese Frage gezogen hat.
+                        # Steht im Ereignis, damit im Log ohne Rätselraten zu
+                        # sehen ist, warum eine Antwort eine Zahl kannte —
+                        # oder eben nicht.
+                        "geldquellen": geld.get("facetten") or [],
                         # Der Hintergrund geht IMMER in die Antwort; als eigene
                         # Karte erscheint er nur, wenn die Antwort ihn nicht
                         # ohnehin wiederholt (Definitionsfragen, Tims Befund).
@@ -2012,26 +2077,6 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     ctx = ctx[:QA_ANSWER_N - len(fehlend)] + fehlend
             if typ == "verlauf":
                 ctx = qa.sort_verlauf(ctx)
-            haushalt_zeilen: list[dict] = []
-            steuer_zeilen: list[dict] = []
-            steuerkraft: dict | None = None
-            if typ == "geld":
-                # Drei getrennte Geld-Quellen, bewusst nicht vermischt:
-                # Haushalt = Plan, Steuern = Ist, Finanzausgleich = Mechanik.
-                try:  # Plan-Zahlen aus dem Stadthaushalt als Zusatzkontext
-                    haushalt_zeilen = store.haushalt_fuer_begriffe(expanded.split())
-                except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
-                    pass
-                try:  # Ist-Steuereinnahmen zur gefragten Steuerart
-                    steuer_zeilen = store.steuern_fuer_begriffe(expanded.split())
-                except Exception:  # noqa: BLE001
-                    pass
-                if steuer_zeilen or any(
-                        w in expanded.lower() for w in ("hebesatz", "hebesätze", "erhöh", "mehreinnahm")):
-                    try:  # NFAG-Dämpfer nur, wo er wirklich einschlägig ist
-                        steuerkraft = store.steuerkraft_kontext()
-                    except Exception:  # noqa: BLE001
-                        pass
             try:  # Vorlagen-Auszüge (Sachverhalt) beilegen — best-effort
                 texts = store.vorlage_texts_for([c.get("vorlage_nr") or "" for c in ctx])
                 for c in ctx:
@@ -2066,8 +2111,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 frage_thema = verlauf[-1].get("frage") or q
             strom = (qa.vereinfachen_stream(frage_thema, body.vorherige_antwort, ctx) if einfach
                      else qa.answer_stream(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
-                                           haushalt=haushalt_zeilen, steuern=steuer_zeilen,
-                                           steuerkraft=steuerkraft, debatten=debatten_rows,
+                                           geld=geld, debatten=debatten_rows,
                                            gross=gross, steckbriefe=steckbriefe,
                                            duenn=(lage == "duenn"), eng=eng))
             try:
@@ -2099,8 +2143,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     ans, _ = (qa.vereinfachen_question(frage_thema, body.vorherige_antwort, ctx)
                               if einfach else
                               qa.answer_question(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
-                                                 haushalt=haushalt_zeilen, steuern=steuer_zeilen,
-                                           steuerkraft=steuerkraft, debatten=debatten_rows,
+                                                 geld=geld, debatten=debatten_rows,
                                                  gross=gross, steckbriefe=steckbriefe,
                                                  duenn=(lage == "duenn"), eng=eng))
                     buf = ans

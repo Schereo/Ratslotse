@@ -504,13 +504,18 @@ def test_haushalt_datenstand_nennt_alle_schichten(client):
     _register(client)
     b = client.get("/api/council/haushalt/datenstand").json()
     schichten = {s["key"]: s for s in b["schichten"]}
-    assert set(schichten) == {"haushaltsplan", "ergebnishaushalt", "jahresabschluss",
-                              "teilhaushalt", "stellenplan", "rpa_fundstelle",
+    assert set(schichten) == {"haushaltsplan", "ergebnishaushalt", "investitionen",
+                              "jahresabschluss", "teilhaushalt", "stellenplan",
+                              "rpa_fundstelle",
                               "pruefungsfeststellungen", "konzernabschluss",
                               "lsn_steuerkraft", "lsn_realsteuern"}
     # Vier verschiedene Takte — das ist der Grund, warum der Block existiert.
     assert schichten["jahresabschluss"]["monat"] == "September"
     assert schichten["haushaltsplan"]["monat"] == "Oktober"
+    # Die Investitionen hängen nicht am Rat, sondern am Open-Data-Portal: Der
+    # Jahrgang erscheint dort erst im Folgejahr (gemessen Juni/Juli).
+    assert schichten["investitionen"]["monat"] == "Juli"
+    assert schichten["investitionen"]["automatisch"] is False
     # Der Gesamtergebnishaushalt ist eine Anlage des Haushaltsplans und kommt
     # deshalb mit ihm — anders als der Plan zieht der Cron ihn aber selbst
     # nach, weil er im Anlagenbestand liegt statt auf oldenburg.de.
@@ -576,6 +581,68 @@ def test_haushalt_dokumente_nennt_je_jahrgang_das_richtige_pdf(client):
     # Quellen ohne Dokument fehlen, statt mit einer erfundenen Adresse
     # dazustehen: Die Oberfläche erkennt daran den Rückfall.
     assert "gesamtabschluss" not in doks
+
+
+def test_haushalt_investitionen_trennt_geprueft_von_bezugsgroesse(client):
+    """/haushalt/investitionen liefert die Investitionen je Teilhaushalt — und
+    hält die Bezugsgröße davon getrennt.
+
+    Die eine Verwechslung, die diese Seite teuer machen würde: „Gesamtbetrag
+    des Finanzhaushaltes" (alle Ein- und Auszahlungen des Jahres, samt Personal
+    und Zuschüssen) ist rund zehnmal so groß wie die Investitionssumme und
+    trägt als einzige Zahl der Datei **keine** Rechenprobe. Käme beides unter
+    derselben Herkunft, behauptete die Seite eine Probe, die es nicht gibt."""
+    from council import herkunft, investitionen
+
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    try:
+        gelesen = investitionen.lies(
+            "Teilhaushalt;Bezeichnung;Einzahlungen [Euro];Auszahlungen [Euro]\n"
+            "THH01;Verwaltungsfuehrung;0;44500\n"
+            "THH03;Wirtschaftsfoerderung, Liegenschaften;13878863;14130150\n"
+            "THH04;Finanzmanagement und Recht;21065300;36813610\n"
+            "THH08;Verkehr und Strassenbau;145000;10451500\n"
+            "THH12;Schule und Bildung;0;1912500\n"
+            "Finanzhaushalt Gesamtinvestitionen;;35089163;63352260\n"
+            "Gesamtbetrag des Finanzhaushaltes;;743796496;850520503\n", 2025)
+        assert gelesen["bestanden"] is True
+        anker = dict(art="opendata", label="Finanzhaushalt der Stadt Oldenburg 2025",
+                     url="https://example.org/1101_2025_Finanzhaushalt.csv")
+        cs.save_investitionen(
+            2025, gelesen["zeilen"], gelesen["gesamt"],
+            herkunft.Herkunft(probe="investitionen_summenzeile",
+                              fundstelle="Datensatz 1101, Tabellenblatt Finanzhaushalt",
+                              probe_ergebnis=gelesen["nachweis"], **anker),
+            finanzhaushalt=gelesen["finanzhaushalt"],
+            herkunft_finanzhaushalt=herkunft.Herkunft(
+                probe=herkunft.UNGEPRUEFT,
+                fundstelle="Zeile „Gesamtbetrag des Finanzhaushaltes“", **anker))
+    finally:
+        cs.close()
+
+    b = client.get("/api/council/haushalt/investitionen").json()
+    assert b["jahre"] == [2025]
+    assert len(b["teilhaushalte"]) == 5
+    assert {z["thh_nr"] for z in b["teilhaushalte"]} == {1, 3, 4, 8, 12}
+    assert b["gesamt"][0]["auszahlungen"] == 63352260
+    assert b["finanzhaushalt"][0]["auszahlungen"] == 850520503
+
+    # Zwei Ebenen, zwei Herkünfte — und nur eine davon trägt eine Probe.
+    h_gepr = b["herkunft"][str(b["gesamt"][0]["herkunft_id"])]
+    h_bezug = b["herkunft"][str(b["finanzhaushalt"][0]["herkunft_id"])]
+    assert h_gepr["id"] != h_bezug["id"]
+    assert h_gepr["probe"] == "investitionen_summenzeile"
+    assert h_bezug["probe"] == "ungeprueft"
+    # Der Erklärsatz für Leser*innen fährt mit, samt Messwert.
+    assert h_gepr["proben"] and "Summenzeile" in h_gepr["proben"][0]
+    assert "Restbetrag 0,00 €" in h_gepr["probe_ergebnis"]
+    # Die Teilhaushalte hängen an der geprüften Herkunft, nicht an der anderen.
+    assert {z["herkunft_id"] for z in b["teilhaushalte"]} == {h_gepr["id"]}
+
+    # Und der Beleg findet das Dokument des Jahrgangs — einmal, nicht zweimal.
+    doks = client.get("/api/council/haushalt/dokumente").json()["dokumente"]
+    assert [d["jahr"] for d in doks["investitionen"]] == [2025]
 
 
 def test_haushalt_konzern_liefert_luecke_und_gegenprobe(client):

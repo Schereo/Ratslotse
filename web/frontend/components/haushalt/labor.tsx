@@ -490,7 +490,13 @@ export function Labor({ daten, produkte, produktJahr }: {
                   Steuerkraft um {deMio(((basis.kraft[1].messzahl ?? 0) - (basis.kraft[0].messzahl ?? 0)) / 1e6)}
                   &#8239;Mio. und die Zuweisung um{" "}
                   {deMio(((basis.kraft[1].zuweisungen ?? 0) - (basis.kraft[0].zuweisungen ?? 0)) / 1e6)}
-                  &#8239;Mio. — im Jahr davor sank sie deutlich, weil auch der Landestopf schwankt.
+                  {/* Vorher stand hier „im Jahr davor sank sie deutlich" — eine
+                      feste Aussage über einen dritten Jahrgang, den basis.kraft
+                      gar nicht führt (dort stehen zwei). Sie stimmte beim
+                      Schreiben und wäre mit dem nächsten Ausgleichsjahr still
+                      falsch geworden. Was immer gilt, ist die Mechanik. */}
+                  &#8239;Mio. — die Richtung kann von Jahr zu Jahr wechseln, weil auch der
+                  Landestopf schwankt, aus dem das Land verteilt.
                 </>
               )}
             </li>
