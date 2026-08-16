@@ -169,6 +169,15 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Prüflauf; geholt werden die Tabellen weiter von Hand, weil sie nur einmal im
   Jahr erscheinen. (#530)
 
+### Verbessert
+- **Das Flussbild zeigt wieder eine Grafik — und sagt dazu, von wann sie ist.**
+  Für Jahre ohne Jahresabschluss stand zuletzt nur ein Hinweis und sonst
+  nichts. Jetzt steht dort das jüngste Jahr, für das die Aufschlüsselung
+  vorliegt, mit einer Ansage darüber: welches Jahr fehlt, warum, und wann es
+  üblicherweise vorgelegt wird. Der Termin kommt aus denselben Daten wie der
+  Datenstand am Seitenfuß — für den Jahresabschluss 2025 also „September
+  2026". (#PR)
+
 ### Behoben
 - **Die Überschrift der Anzeigetafel brach mitten im Wort um.** „Oldenburg plant
   883,9 Mil-/lionen Euro" — dabei blieben rechts daneben rund 400 Pixel frei.
