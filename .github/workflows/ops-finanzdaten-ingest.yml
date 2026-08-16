@@ -1,0 +1,99 @@
+# Manuell auslösbarer Ops-Lauf: liest die Finanzdaten des Haushalts-Bereichs
+# auf der DEV-VM ein und meldet, was danach im Bestand steht.
+#
+# WARUM ES IHN GIBT. Der Bereich hält sich selbst aktuell — `check_finanzdaten`
+# läuft alle zwei Wochen und holt, was neu dazugekommen ist (`kern/jobs.py`).
+# Für einen frisch gebauten Parser ist das aber die falsche Wartezeit: Die
+# Seite steht, die Tabelle ist leer, und bis zu vierzehn Tage sieht niemand,
+# ob der Parser auf dem echten Bestand trägt. Dieser Lauf schließt genau diese
+# Lücke — er ersetzt den Cron nicht, er zieht ihn vor.
+#
+# WARUM NUR DEV. Der Haushalts-Bereich steht hinterm Umgebungs-Gate
+# (`web/frontend/lib/haushalt-frei.ts`) und ist auf ratslotse.de nicht
+# sichtbar. Auf Prod sollen seine Tabellen deshalb leer bleiben; dieser
+# Workflow zielt bewusst auf `VPS_DEV_HOST` und NICHT auf `VPS_HOST`. Wer ihn
+# einmal auf Prod richten will, ändert damit eine Produktentscheidung, nicht
+# nur ein Secret.
+#
+# Der Bestandsschutz in `council/finanzquellen.py` macht den Lauf gefahrlos
+# wiederholbar: Eine Quelle, die weniger liest als der gespeicherte Stand,
+# überschreibt ihn nicht, sondern meldet es.
+name: "Ops: Finanzdaten einlesen (dev)"
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ops-finanzdaten-ingest
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ingests auf der Dev-VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_DEV_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          proxy_host: ${{ secrets.VPS_PROXY_HOST }}
+          proxy_username: ${{ secrets.VPS_USER }}
+          proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          proxy_port: ${{ secrets.VPS_SSH_PORT }}
+          # Die Jahresabschlüsse und Teilhaushalts-Pläne sind mehrere hundert
+          # Seiten je Jahrgang; der Erstlauf über alle liegt deutlich über der
+          # 10-Minuten-Vorgabe der Action.
+          command_timeout: 90m
+          script: |
+            set -e
+            cd ~/app
+
+            # Reihenfolge nach Abhängigkeit: erst die Downloads (sie brauchen
+            # nichts aus dem Bestand), dann die Dokumente aus dem eigenen
+            # Anlagen-Bestand, zuletzt der Städtevergleich.
+            #
+            # Nicht jede Schicht hat ein eigenes Skript: Die Investitionen
+            # hängen an `ingest_finanzen_opendata.py`, der Stellenplan an
+            # `ingest_finanzberichte.py`. Wer eine neue Schicht baut, prüft
+            # hier, ob sie überhaupt aufgerufen wird — ein Parser ohne Ingest
+            # fällt sonst nur dadurch auf, dass die Seite leer bleibt.
+            .venv/bin/python scripts/ingest_haushalt.py
+            .venv/bin/python scripts/ingest_finanzen_opendata.py
+            .venv/bin/python scripts/ingest_schulden.py
+            .venv/bin/python scripts/ingest_finanzberichte.py
+            .venv/bin/python scripts/ingest_pruefberichte.py
+            .venv/bin/python scripts/ingest_konzernabschluss.py
+            .venv/bin/python scripts/ingest_staedtevergleich.py
+
+            # Was danach dasteht — und vor allem, ob eine Zeile ohne Herkunft
+            # durchgerutscht ist. Das ist die einzige Zahl, die null sein MUSS.
+            .venv/bin/python - <<'PY'
+            from council.store import CouncilStore
+            s = CouncilStore("data/council.sqlite")
+            tabellen = [
+                "council_haushalt", "council_ergebnishaushalt",
+                "council_ergebnisrechnung", "council_abweichungsgruende",
+                "council_produkte", "council_pruefberichte",
+                "council_konzern_posten", "council_konzern_traeger",
+                "council_steuern", "council_steuerkraft", "council_einwohner",
+                "council_staedtevergleich", "council_investitionen",
+                "council_stellenplan", "council_schulden",
+            ]
+            print("Bestand nach dem Lauf:")
+            for t in tabellen:
+                try:
+                    n = s._conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
+                    jahre = s._conn.execute(
+                        f"SELECT MIN(jahr), MAX(jahr) FROM {t}").fetchone()
+                    spanne = f"{jahre[0]}–{jahre[1]}" if jahre and jahre[0] else "—"
+                    print(f"  {t:32} {n:>6} Zeilen  {spanne}")
+                except Exception as e:                      # noqa: BLE001
+                    print(f"  {t:32} — {e}")
+            luecken = s.herkunft_luecken()
+            print(f"\nZeilen ohne Herkunft: {len(luecken)}")
+            for l in luecken[:20]:
+                print(f"  {l}")
+            s.close()
+            PY

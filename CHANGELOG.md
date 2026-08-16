@@ -8,6 +8,14 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Ein Knopf, der die Finanzdaten sofort einliest, statt bis zu vierzehn Tage
+  zu warten.** Der Haushalts-Bereich hält sich selbst aktuell, aber für einen
+  frisch gebauten Parser ist der Zwei-Wochen-Takt die falsche Wartezeit: Die
+  Seite steht, die Tabelle ist leer, und niemand sieht, ob der Parser auf dem
+  echten Bestand trägt. Der neue Ops-Lauf zieht den Cron vor und meldet
+  hinterher, wie viele Zeilen je Schicht dastehen — und ob eine davon ohne
+  Herkunftsnachweis durchgerutscht ist. Er zielt bewusst nur auf die
+  Dev-Umgebung. (#555)
 - **„Wie viel Schulden hat Oldenburg?" — dreißig Jahre Schuldenstand, mit der
   Angabe, was mitgezählt ist.** Eine der häufigsten Fragen an den Haushalt, und
   der Bereich konnte sie bisher nicht beantworten. Eine neue Seite zeigt die
