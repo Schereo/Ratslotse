@@ -345,7 +345,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Dazu die Rechtsgrundlagen im Wortlaut des Plans und die Korrektur einer
   schiefen Rechnung: Das Freiwillige zu streichen spart nicht seine 47,1 Mio. €
   Aufwand, sondern seinen Zuschussbedarf von 43,0 Mio. — rund 60 % des
-  geplanten Minus. (#519)
+  geplanten Minus. (#521)
 
 <!-- GEPARKT (nur dev.ratslotse.de, Umgebungs-Gate): Eintrag aktivieren,
      sobald der Kommunalwahl-Vergleich auf Prod freigeschaltet wird.
