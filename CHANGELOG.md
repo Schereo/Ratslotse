@@ -158,6 +158,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   ab, steht hinterher der alte Stand da und kein halber neuer. (#511)
 
 ### Behoben
+- **Die Überschrift der Anzeigetafel brach mitten im Wort um.** „Oldenburg plant
+  883,9 Mil-/lionen Euro" — dabei blieben rechts daneben rund 400 Pixel frei.
+  Ursache war eine Breitenbegrenzung von 19 Zeichen, die noch aus einer engeren
+  Fassung stammte; die Silbentrennung, die auf schmalen Geräten deutsche
+  Komposita rettet, tat dann ihr Übriges. Der Satz steht jetzt in zwei
+  ausgeglichenen Zeilen. (#PR)
 - **Die Vergleichsseite nannte den Jahresversatz noch als offene Frage.** Sie
   ist mit #516 beantwortet: Der offene Datensatz der Stadt beschriftete die
   Steuerkraft ein Jahr zu früh, nachgewiesen an den eigenen Büchern der Stadt.
