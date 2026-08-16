@@ -465,6 +465,36 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   176.614 Einwohnerinnen und Einwohner zum Stichtag 31.12.2024 — der steht mit
   an der Rechnung, weil eine Pro-Kopf-Angabe ohne Bezugsjahr nichts wert ist.
   (#528)
+- **Woher das Geld kommt, steht jetzt auch für 2025 und 2026 da — und was nur
+  Vorausschau ist, sagt es dazu.** Die Aufschlüsselung nach Steuern,
+  Zuwendungen und Gebühren gab es bisher nur bis 2024, weil sie aus den
+  Jahresabschlüssen stammt; für die laufenden Planjahre fehlte sie. Sie steht
+  längst im Haushaltsplan selbst und ist jetzt für acht Planjahre (2019–2026)
+  eingelesen. Der Plan nennt fünf Spalten „Ansatz", aufgestellt ist aber immer
+  nur ein Jahr — die drei danach sind mittelfristige Finanzplanung, und die
+  schreibt jeder neue Haushalt neu (von 23 Posten bleiben zwischen zwei Plänen
+  0 bis 2 gleich). Beides wird deshalb getrennt gespeichert und getrennt
+  beschriftet, damit später nirgends ein „Plan für 2029" behauptet wird, den
+  es nicht gibt. Übernommen wird ein Jahrgang nur, wenn die Tabelle in allen
+  sechs Spalten aufgeht und der Plan seine Ansatz-Spalte selbst markiert. Und
+  weil die Zahlen aus der Vorlage stammen, mit der die Verwaltung den Haushalt
+  einbringt, steht an jeder von ihnen, dass sie der Stand der Einbringung
+  sind — was der Rat in den Beratungen noch ändert, waren zuletzt bis zu
+  13 Mio. €. (#530)
+- **Der Haushalt hat jetzt einen Weg statt einer Kachelwand — und drei Seiten
+  sind überhaupt erst auffindbar.** „Wann wird der Haushalt entschieden?" und
+  der Städtevergleich waren von keiner Seite aus verlinkt, das Verzeichnis der
+  Teilhaushalte nur rückwärts über die Detailseite eines einzelnen Bereichs.
+  Der Wegweiser auf der Übersicht führt jetzt durch alle zehn
+  Vertiefungsseiten, und zwar in vier benannten Stufen statt als lange Liste:
+  erst die Zahlen (woher das Geld kommt, was hinter den Bereichsnamen steckt,
+  was fest ist, was einzelne Aufgaben kosten), dann die Gegenprobe (was
+  daraus wurde, und was das Rechnungsprüfungsamt dazu sagt), dann der Rahmen
+  (die Betriebe neben dem Haushalt, der Vergleich mit anderen Städten),
+  zuletzt das Mitreden (wann entschieden wird, und was sich drehen ließe).
+  Der Städtevergleich steht bewusst spät: Er beantwortet eine Frage, die sich
+  erst stellt, wenn man die eigenen Zahlen kennt. Auf dem Handy braucht das
+  trotz drei zusätzlicher Ziele kaum mehr Platz als vorher. (#529)
 - **Ratslotse gendert jetzt durchgängig — mit Sternchen.** Aus „Nutzer" wird
   „Nutzer*innen", aus „je Einwohnerin und Einwohner" wird „je Einwohner*in";
   auch die Anweisungen an die KI sind mitgezogen, damit die Antworten nicht

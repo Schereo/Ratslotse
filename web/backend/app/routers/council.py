@@ -458,6 +458,19 @@ def haushalt_uebersicht(
     - ``einwohner``: jüngste Einwohnerzahl (Bezugsgröße für Pro-Kopf-Angaben),
     - ``ergebnisrechnung``: Ansatz, Plan und Ergebnis je Posten aus den
       Jahresabschlüssen — Grundlage für „geplant gegen tatsächlich",
+    - ``ergebnishaushalt``: dieselben Posten für Jahre **ohne**
+      Jahresabschluss, aus dem Gesamtergebnishaushalt der Haushaltspläne.
+      Jede Zeile trägt ``art`` (``ansatz`` = das Jahr, für das dieser Plan
+      der Haushalt ist; ``finanzplanung`` = mittelfristige Vorausschau nach
+      § 8 NKomVG) und ``plan_jahrgang`` (aus welchem Haushalt sie stammt).
+      **Beides gehört an jede Anzeige**: Der Plan nennt alle fünf Spalten
+      „Ansatz", der Haushalt ist aber nur eines der Jahre, und die
+      Finanzplanung schreibt jeder neue Haushalt neu. Die Zahlen stammen aus
+      der Einbringungs-Vorlage, sind also der **Entwurf** der Verwaltung —
+      der Beleg (``herkunft.stand``) sagt das, die Anzeige sollte es
+      anschreiben,
+    - ``ansatz_jahre``: die Jahre mit einem Haushaltsansatz — die Liste, aus
+      der ein Jahr-Umschalter bestehen darf (ohne die Finanzplanungsjahre),
     - ``abweichungsgruende``: warum ein Posten vom Plan abwich, in den Worten
       der Verwaltung (Abschnitt 6.3.1 des Jahresabschlusses),
     - ``pruefberichte``: Fundstelle des RPA-Schlussberichts je Jahrgang,
@@ -479,6 +492,12 @@ def haushalt_uebersicht(
         # `plan` ist die Bezugsgröße der Abweichung, `ansatz` der
         # ursprüngliche Haushaltsansatz; `plan_art` sagt, welche gemeint ist.
         "ergebnisrechnung": store.get_ergebnisrechnung(),
+        # Die Planjahre: dieselbe Postengliederung für Jahre, die noch keinen
+        # Abschluss haben. `art` trennt den Haushaltsansatz von der
+        # mittelfristigen Finanzplanung — ohne diese Angabe darf keine Zahl
+        # aus dieser Liste angezeigt werden.
+        "ergebnishaushalt": store.get_ergebnishaushalt(),
+        "ansatz_jahre": store.ansatz_jahre(),
         "abweichungsgruende": store.get_abweichungsgruende(),
         "pruefbericht_quellen": store.get_pruefbericht_quellen(),
         # Woher jede dieser Zeilen stammt: je Dokument-und-Abschnitt ein

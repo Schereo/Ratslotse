@@ -126,6 +126,20 @@ PROBEN: dict[str, str] = {
         "Jahrgang für diesen Posten führt.",
     "produktzeile":
         "Je Produktzeile: Erträge − Aufwendungen = ordentliches Ergebnis.",
+    # Gesamtergebnishaushalt der Haushaltspläne (council/ergebnishaushalt.py).
+    # Die zweite Probe ist die wichtigere: Sie entscheidet, welche der sechs
+    # Spalten als beschlossener Ansatz gespeichert wird.
+    "ergebnishaushalt_summenzeilen":
+        "Der Haushaltsplan rechnet sich in jeder seiner sechs Jahresspalten "
+        "selbst vor: Die Einnahmearten ergeben die Summe der Erträge, die "
+        "Ausgabearten die Summe der Aufwendungen, und beide zusammen das "
+        "ausgewiesene Ergebnis.",
+    "ergebnishaushalt_planspalte":
+        "Das Jahr, über das der Rat wirklich entscheidet, ist im Plan "
+        "hervorgehoben und steht in jeder Zeile ein zweites Mal. Diese "
+        "Wiederholung zeigt in allen gelesenen Zeilen auf dieselbe Spalte — "
+        "damit ist der beschlossene Ansatz von der mittelfristigen "
+        "Finanzplanung getrennt, ohne sich auf die Reihenfolge zu verlassen.",
     "legende_und_verzeichnis":
         "Die Randmarke der Feststellung steht in der Legende dieses Berichts, "
         "ihre Textziffer in seinem Inhaltsverzeichnis.",
@@ -211,6 +225,8 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     # Der Städtevergleich aus den LSN-Tabellen — ebenfalls ohne Altbestand und
     # deshalb ausschließlich über `herkunft_id` belegt.
     "council_staedtevergleich",
+    # Die Planjahre aus dem Gesamtergebnishaushalt — neu, ohne Altbestand.
+    "council_ergebnishaushalt",
 )
 
 
