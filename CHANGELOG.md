@@ -324,6 +324,15 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Reihe 2020–2026 ist vollständig. Dazu, als Fundament für den kommenden
   Stadtfinanzen-Bereich: Ist-Steuereinnahmen je Steuerart seit 1998 und
   Steuerkraft samt Schlüsselzuweisungen seit 1992, aus derselben Quelle. (#489)
+- **Ein umbenannter Haushaltsbereich verliert nicht mehr seine Erklärung.** Die
+  Stadt tauft ihre Teilhaushalte um, ohne den Zuschnitt zu ändern — „Umwelt,
+  Bauordnung, Grün u. Friedhöfe" heißt im Haushalt 2026
+  „Klima/Umwelt/Mobilität/Bau/Grün/Friedh.". Bisher war der Erklärtext an den
+  Namen geknüpft und fiel bei jedem neuen Jahrgang still weg; jetzt hängt er am
+  Bereich selbst, und alle 13 Teilhaushalte haben einen — vorher acht. Zwei
+  davon waren zudem schief: Die Eingliederungshilfe ist bei Soziales der größte
+  Block, und im Finanzmanagement liegen alle Steuern, aber nur die allgemeinen
+  Zuweisungen des Landes. (#517)
 
 <!-- GEPARKT (nur dev.ratslotse.de, Umgebungs-Gate): Eintrag aktivieren,
      sobald der Kommunalwahl-Vergleich auf Prod freigeschaltet wird.

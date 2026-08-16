@@ -298,16 +298,75 @@ def _estimate(question: str, answer_mio: int, lo: int, hi: int, *, year: int,
 
 # Kuratierte Kurzbeschreibungen der Teilhaushalte — redaktionell gepflegt, bei
 # neuen Jahrgängen prüfen (allgemeines Verwaltungswissen, keine Planzahlen).
-_BEREICH_INFO = {
-    "Soziales und Gesundheit": "vor allem gesetzliche Sozialleistungen, Hilfen zur Pflege und den öffentlichen Gesundheitsdienst",
-    "Jugend und Familie": "vor allem Kitas, Kindertagespflege und Jugendhilfe",
-    "Schule und Bildung": "Schulgebäude, Ausstattung und Ganztagsangebote der Stadt als Schulträgerin",
-    "Finanzmanagement und Recht": "die zentrale Finanzwirtschaft — hier werden Steuern und Zuweisungen für die ganze Stadt verbucht",
-    "Kultur, Museen, Sport": "Museen, Bibliotheken sowie Kultur- und Sportförderung",
-    "Verkehr und Straßenbau": "Straßen, Radwege, Brücken und den Nahverkehr",
-    "Sicherheit und Ordnung": "Feuerwehr, Rettungsdienst und Ordnungsverwaltung",
-    "Stadtplanung": "Bauleitplanung und Stadtentwicklung",
+# Spiegel zu web/frontend/lib/haushalt-bereiche.ts; die Fragmente stehen im
+# Satz hinter „… umfasst".
+#
+# Geschlüsselt auf den kanonischen Teilhaushalt, NICHT auf den Namen: Die
+# Stadt benennt ihre Teilhaushalte um, ohne den Zuschnitt zu ändern (THH 9
+# heißt in sieben Jahrgängen viererlei). Eine Map auf den exakten Namen
+# verliert beim nächsten Jahrgang stillschweigend Einträge.
+def _norm_bereich(name: str) -> str:
+    """Vergleichsform eines Bereichsnamens: fängt Groß-/Kleinschreibung,
+    doppelte Leerzeichen („Grün  u. Friedhöfe"), „u." gegen „und" und den
+    Jahres-Präfix der Ergebnisrechnung („_2019 Stadtplanung") ab."""
+    n = re.sub(r"^_\d{4}\s+", "", name or "")
+    n = re.sub(r"\s+", " ", n).strip().lower()
+    return re.sub(r"(^|\s)u\.(\s|$)", r"\1und\2", n)
+
+
+_BEREICH_ALIASE = {
+    "verwaltungsfuehrung": ("Verwaltungsführung",),
+    "personal": ("Personal/Organisation/Digitalisierung/IT",
+                 "Personal- und Verwaltungsmanagement",
+                 "Personal- u. Verwaltungsmanagement"),
+    "wirtschaft": ("Wirtschaftsförderung, Liegenschaften",),
+    "finanzen": ("Finanzmanagement und Recht",),
+    "sicherheit": ("Sicherheit und Ordnung",),
+    "kultur": ("Kultur, Museen, Sport",),
+    "stadtplanung": ("Stadtplanung",),
+    "verkehr": ("Verkehr und Straßenbau",),
+    "umwelt": ("Klima/Umwelt/Mobilität/Bau/Grün/Friedh.",
+               "Umwelt, Bauordnung, Grün und Friedhöfe",
+               "Klima, Umwelt, Bauordnung, Grün",
+               "Umwelt, Bauordnung, Grün  u. Friedhöfe"),
+    "soziales": ("Soziales und Gesundheit",),
+    "jugend": ("Jugend und Familie",),
+    "schule": ("Schule und Bildung",),
+    "stiftungen": ("nicht rechtsfähige Stiftungen",),
 }
+
+_BEREICH_INFO = {
+    # Reihenfolge nach den Produktzeilen 2023: Die Eingliederungshilfe ist über
+    # ihre drei Produkte zusammen der größte Block (rund 77 Mio. €) — „vor allem
+    # Hilfen zur Pflege" wäre falsch herum.
+    "soziales": "gesetzliche Sozialleistungen — Grundsicherung, Eingliederungshilfe, Hilfe zur Pflege — und den öffentlichen Gesundheitsdienst",
+    "jugend": "vor allem Kitas, Kindertagespflege und Jugendhilfe",
+    "schule": "Schulgebäude, Ausstattung und Ganztagsangebote der Stadt als Schulträgerin",
+    # NICHT „Steuern und Zuweisungen": Die Steuern liegen zu 100 % hier, die
+    # Zuwendungen nur zu rund zwei Dritteln (2024: 115,4 von 179,1 Mio. €).
+    "finanzen": "die zentrale Finanzwirtschaft — hier werden alle Steuern und die allgemeinen Zuweisungen des Landes für die ganze Stadt verbucht",
+    "kultur": "Museen, Bibliotheken sowie Kultur- und Sportförderung",
+    "verkehr": "Straßen, Radwege, Brücken und den Nahverkehr",
+    "sicherheit": "Feuerwehr, Rettungsdienst, Ordnungsverwaltung und die Bürgerdienste vom Einwohnermeldeamt bis zum Standesamt",
+    "stadtplanung": "Bauleitplanung und Stadtentwicklung",
+    "verwaltungsfuehrung": "Oberbürgermeister, Ratsbüro und Verwaltungsspitze, dazu Rechnungsprüfung und Gleichstellungsstelle",
+    "personal": "Personal, Organisation und IT der gesamten Verwaltung samt der Versorgung der Pensionärinnen und Pensionäre",
+    "wirtschaft": "Wirtschaftsförderung und Standortmarketing sowie die Grundstücke und Beteiligungen der Stadt",
+    "umwelt": "Grünflächen und Friedhöfe, Bauordnung sowie Natur- und Klimaschutz",
+    "stiftungen": "treuhänderisch verwaltetes Stiftungsvermögen — zweckgebunden, kein frei verfügbares Geld der Stadt",
+}
+
+_BEREICH_NACH_ALIAS = {
+    _norm_bereich(alias): schluessel
+    for schluessel, aliase in _BEREICH_ALIASE.items()
+    for alias in aliase
+}
+
+
+def bereich_info(name: str) -> str | None:
+    """Kurzbeschreibung eines Teilhaushalts, unabhängig von seiner Schreibweise
+    im jeweiligen Jahrgang. Unbekannter Name → None (nie geraten)."""
+    return _BEREICH_INFO.get(_BEREICH_NACH_ALIAS.get(_norm_bereich(name), ""))
 
 _PFLICHT_SATZ = (
     "Ein großer Teil davon sind gesetzliche Pflichtaufgaben nach Bundes- und "
@@ -400,7 +459,7 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
         if m < 10:
             continue
         lo_f, hi_f = span_pairs[i % len(span_pairs)]
-        info = _BEREICH_INFO.get(r["bereich"])
+        info = bereich_info(r["bereich"])
         rang = "der größte Posten" if i == 0 else "einer der größten Posten"
         detail = (f"„{r['bereich']}“ umfasst {info} — mit rund {m} Mio. Euro {rang} "
                   f"im Haushalt {year}. " + _PFLICHT_SATZ) if info else (
@@ -421,7 +480,7 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
     rng.shuffle(distractors)
     opts = [top["bereich"], *distractors[:3]]
     rng.shuffle(opts)
-    top_info = _BEREICH_INFO.get(top["bereich"], "zentrale Aufgaben der Stadt")
+    top_info = bereich_info(top["bereich"]) or "zentrale Aufgaben der Stadt"
     qs.append({
         "area_type": "thema", "area_key": "haushalt", "category": "ratspolitik",
         "difficulty": "leicht", "qtype": "mc",
@@ -499,7 +558,7 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
     if len(mid) >= 4:
         pick = [mid[0], mid[2], mid[-2], mid[-1]]
         kleinster = min(pick, key=lambda r: r["aufwendungen"])
-        k_info = _BEREICH_INFO.get(kleinster["bereich"])
+        k_info = bereich_info(kleinster["bereich"])
         k_opts = [r["bereich"] for r in pick]
         rng.shuffle(k_opts)
         qs.append({

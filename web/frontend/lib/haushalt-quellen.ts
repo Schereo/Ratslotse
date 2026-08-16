@@ -31,7 +31,8 @@ export type Quelle = {
  *  Union bleibt trotzdem eng genug, um Tippfehler beim Aufruf zu fangen. */
 export type QuellenSchluessel =
   | "plan" | "steuern" | "steuerkraft" | "hebesaetze" | "ruecklage"
-  | "jahresabschluss" | "teilhaushalt" | "pruefbericht" | "gesamtabschluss";
+  | "jahresabschluss" | "teilhaushalt" | "pruefbericht" | "gesamtabschluss"
+  | "einwohner" | "ergebnisrechnung_thh" | "ratsbeschluss";
 
 export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   plan: {
@@ -162,5 +163,53 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     stand: "April 2026",
     art: "web",
     url: "https://www.oldenburg.de/startseite/politik/verwaltung-finanzen/finanzen/haushalt-2026.html",
+  },
+  // Ab hier auf Vorrat angelegt (A1, 08/2026), damit die Folgearbeiten am
+  // Haushalts-Bereich diese Datei nicht gleichzeitig anfassen müssen. Wer
+  // später doch einen Schlüssel braucht: nur ANHÄNGEN, mit Kommentarmarke,
+  // niemals bestehende Einträge umsortieren oder umformatieren.
+  einwohner: {
+    titel: "Einwohnerzahlen der Stadt Oldenburg je Haushaltsjahr",
+    fundstelle:
+      "Datensatz 1102, Einwohner-Spalte — eine Zeile je Haushaltsjahr, Stichtag " +
+      "jeweils der 31.12. des Vorjahres. Bezugsgröße aller Pro-Kopf-Angaben; das " +
+      "jüngste Jahr mit Einwohnerzahl steht deshalb an der Zahl dabei. Die " +
+      "Aufwendungs-Spalten desselben Datensatzes bleiben bewusst ungenutzt: Sie " +
+      "weichen vom beschlossenen Plan ab, ohne als Ist oder Nachtrag " +
+      "gekennzeichnet zu sein. Auch dieser Datensatz trägt keine Summe, gegen die " +
+      "wir ihn nachrechnen könnten.",
+    herausgeber: "Stadt Oldenburg, Open-Data-Portal",
+    stand: "Haushaltsjahre 2010–2025",
+    lizenz: "dl-de/by-2.0",
+    art: "csv",
+    url: "https://opendata.oldenburg.de/sites/default/files/1102-Ordentliche_Aufwendungen_des_Ergebnishaushaltes_seit_2010.csv",
+  },
+  ergebnisrechnung_thh: {
+    titel: "Ergebnisrechnung je Teilhaushalt (Jahresabschlüsse)",
+    fundstelle:
+      "Dieselben Jahresabschlüsse wie oben, aber die Ebene darunter: die " +
+      "Ergebnisrechnung eines einzelnen Teilhaushalts, Posten 1–24 mit Plan und " +
+      "Ergebnis nebeneinander. Hier steht, was ein Bereich tatsächlich eingenommen " +
+      "und ausgegeben hat — Steuern, Zuwendungen, Entgelte, Personal, Transfers. " +
+      "Übernommen nur, wenn die Probe des Dokuments aufgeht und die Summe der " +
+      "Teilhaushalte die Gesamtrechnung ergibt. Anders als der Plan reicht diese " +
+      "Ebene nicht bis ins laufende Jahr.",
+    herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
+    stand: "Jahresabschlüsse 2017–2024",
+    art: "pdf",
+    url: "https://buergerinfo.oldenburg.de",
+  },
+  ratsbeschluss: {
+    titel: "Sitzungen, Vorlagen und Beschlüsse des Rates (Bürgerinformationssystem)",
+    fundstelle:
+      "Der amtliche Weg einer Vorlage: Sitzungstermin, Tagesordnungspunkt, " +
+      "Beratungsfolge und Beschluss, wie das Ratsinformationssystem der Stadt sie " +
+      "führt. Wir übernehmen nur öffentlich einsehbare Sitzungen und verlinken " +
+      "jede Station auf ihren Eintrag dort. Was das System nicht kennt — etwa die " +
+      "Tagesordnung künftiger Sitzungen —, steht auch bei uns nicht.",
+    herausgeber: "Stadt Oldenburg, Ratsinformationssystem",
+    stand: "Sitzungen seit Januar 2018",
+    art: "web",
+    url: "https://buergerinfo.oldenburg.de",
   },
 };
