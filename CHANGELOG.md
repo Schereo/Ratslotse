@@ -349,7 +349,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Im Steuer-Steckbrief außerdem zwei Korrekturen: Der Überschlag „was brächte
   ein Hebesatzpunkt mehr" war als „brutto" bezeichnet, obwohl der Datensatz die
   Gewerbesteuer bereits nach Abzug der Umlage führt, und beim Hebesatz stand
-  „bis 2025", obwohl wir genau einen einzigen Jahrgang kennen. (#PR)
+  „bis 2025", obwohl wir genau einen einzigen Jahrgang kennen. (#519)
 
 <!-- GEPARKT (nur dev.ratslotse.de, Umgebungs-Gate): Eintrag aktivieren,
      sobald der Kommunalwahl-Vergleich auf Prod freigeschaltet wird.
