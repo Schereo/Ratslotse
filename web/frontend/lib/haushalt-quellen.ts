@@ -24,7 +24,7 @@ export type Quelle = {
  *  Union bleibt trotzdem eng genug, um Tippfehler beim Aufruf zu fangen. */
 export type QuellenSchluessel =
   | "plan" | "steuern" | "steuerkraft" | "hebesaetze" | "ruecklage"
-  | "jahresabschluss" | "teilhaushalt";
+  | "jahresabschluss" | "teilhaushalt" | "pruefbericht";
 
 export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   plan: {
@@ -94,6 +94,21 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "nicht jeder Teilhaushalt liegt für jedes Jahr auslesbar vor.",
     herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
     stand: "Haushaltsjahre 2018–2023",
+    art: "pdf",
+    url: "https://buergerinfo.oldenburg.de",
+  },
+  pruefbericht: {
+    titel: "Schlussberichte des Rechnungsprüfungsamtes der Stadt Oldenburg",
+    fundstelle:
+      "Die Randmarken des Berichts (B, WB, H, K) und der Absatz, der jeweils dahinter steht — " +
+      "mit der Textziffer und der Seite, unter der er dort geführt wird. Übernommen wird nur, " +
+      "was der Bericht selbst erklärt: Die Marke muss in seiner Legende stehen, die Textziffer " +
+      "in seinem Inhaltsverzeichnis. Für 2024 fehlt der Jahrgang: Sein PDF bringt keine " +
+      "Zeichenzuordnung mit, der Textextrakt besteht aus Glyphen-Nummern, und eine zweite " +
+      "Kopie gibt es nicht — wir lesen dann lieber nichts als etwas Geratenes. Als Anlagen zu " +
+      "Ratsvorlagen im Bürgerinformationssystem.",
+    herausgeber: "Stadt Oldenburg, Rechnungsprüfungsamt",
+    stand: "Jahresabschlüsse 2017–2023",
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de",
   },

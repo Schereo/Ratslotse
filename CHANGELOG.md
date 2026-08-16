@@ -36,6 +36,22 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   macht aus einer Zahl eine Antwort darauf, worüber der Rat streiten kann und
   worüber nicht. Alle Angaben stammen wörtlich aus den Teilhaushaltsplänen;
   wo der Plan ein Feld leer lässt, steht auch bei uns nichts. (#504)
+- **„Was das Rechnungsprüfungsamt beanstandet" — die Prüfung des Haushalts,
+  zum ersten Mal lesbar.** Jeder Jahresabschluss der Stadt wird geprüft, und
+  zwar von einer Stelle, die dem Rat berichtet und nicht der
+  Verwaltungsspitze. Ihre Schlussberichte hängen als PDF an einer Ratsvorlage
+  und werden dort nie wieder gelesen. Die neue Seite `/haushalt/pruefung`
+  führt ihre 257 Feststellungen aus den Jahrgängen 2017–2023 einzeln auf — im
+  Wortlaut, mit Textziffer, Seite und Deeplink ins Originaldokument. Die
+  Randmarken des Berichts werden erklärt, nicht bewertet: Die große Mehrheit
+  (166) sind Hinweise, 42 sind Beanstandungen, 37 wiederholte. Ein eigener
+  Block zeigt, was über Jahre offen blieb — den Plan-Ist-Vergleich etwa
+  beanstandet das Amt in allen sieben geprüften Jahren, zuletzt mit dem Satz
+  „Dies widerspricht dem Grundsatz der Haushaltswahrheit". Wo die Verwaltung
+  im Bericht direkt geantwortet hat, steht die Antwort daneben. Keine
+  Bewertungsfarben, wie überall im Haushalts-Bereich. Für 2024 fehlt der
+  Bericht: Sein PDF bringt keine Zeichenzuordnung mit, und eine zweite Kopie
+  gibt es nicht — das steht auf der Seite, statt überspielt zu werden. (#509)
 - **„Geplant und geworden" — was aus dem Haushalt wirklich wurde.** Ein
   Haushalt ist ein Plan; was am Jahresende zusammenkam, stand bisher nirgends.
   Die neue Seite stellt beides nebeneinander — für die Stadt insgesamt und für
