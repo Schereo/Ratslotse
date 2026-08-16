@@ -163,7 +163,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Ursache war eine Breitenbegrenzung von 19 Zeichen, die noch aus einer engeren
   Fassung stammte; die Silbentrennung, die auf schmalen Geräten deutsche
   Komposita rettet, tat dann ihr Übriges. Der Satz steht jetzt in zwei
-  ausgeglichenen Zeilen. (#PR)
+  ausgeglichenen Zeilen. (#539)
 - **Die Vergleichsseite nannte den Jahresversatz noch als offene Frage.** Sie
   ist mit #516 beantwortet: Der offene Datensatz der Stadt beschriftete die
   Steuerkraft ein Jahr zu früh, nachgewiesen an den eigenen Büchern der Stadt.
