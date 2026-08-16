@@ -264,7 +264,12 @@ function BereichInner() {
         <span className="font-semibold text-foreground">{kanon.name}</span>
       </div>
 
-      <div>
+      {/* Kopf und Kennzahlen nebeneinander, sobald Platz ist. Die Absätze
+          bleiben bei 66–68 Zeichen — längere Zeilen liest niemand gern —,
+          aber der Rest der Breite stand vorher leer, weil die Kennzahlen-
+          karte darunter die volle Breite nahm für drei Zahlen. */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-8">
+      <div className="min-w-0 lg:flex-1">
         <h1 className="font-display text-2xl font-bold tracking-tight sm:text-[25px]">{kanon.name}</h1>
         {/* Die Zeile Klartext steht überall dort, wo der Name auftaucht — hier
             als Absatz direkt darunter (Wörterbuch, `lib/haushalt-bereiche.ts`). */}
@@ -303,12 +308,13 @@ function BereichInner() {
           lesbar. „trägt die Stadt" ist die Vokabel des ganzen Bereichs
           (Gegenbalken, Wasserfall, Bereichskarten); „kostet die Stadt" wäre
           eine zweite für dieselbe Sache. */}
-      <div className="flex flex-wrap gap-x-8 gap-y-3 rounded-2xl border border-border bg-card px-4 py-3.5 shadow-sm">
+      <div className="flex flex-none flex-wrap gap-x-8 gap-y-3 rounded-2xl border border-border bg-card px-4 py-3.5 shadow-sm lg:flex-col lg:gap-y-3.5">
         <Kopfzahl label={`Ausgaben ${jahr}`} wert={aus} beleg={<Beleg q="plan" />} />
         <Kopfzahl label="eigene Einnahmen" wert={ein} ton="ein" />
         {/* Dieselbe Schwelle wie im Wasserfall (`netto < 0`), damit Kopf und
             Bild nie zwei verschiedene Richtungen behaupten. */}
         <Kopfzahl label={netto < 0 ? "Überschuss" : "trägt die Stadt"} wert={Math.abs(netto)} ton="signal" />
+      </div>
       </div>
 
       <BereichReiter reiter={reiterListe} aktiv={aktiv} onChange={setReiter} />

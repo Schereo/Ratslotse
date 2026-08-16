@@ -9,6 +9,23 @@ Ebenen. Der Bereich unter `/haushalt` übersetzt ihn — und macht dabei an jede
 Stelle sichtbar, welche Zahl amtlich ist, welche wir gerechnet haben und
 welche schlicht fehlt.
 
+:::note[Vorerst nur auf dev.ratslotse.de]
+Der Bereich liegt hinter dem Umgebungs-Gate: `web/frontend/lib/haushalt-frei.ts`
+prüft `NEXT_PUBLIC_RATSLOTSE_ENV`, das nur der Dev-Build setzt. Auf
+ratslotse.de rendern die dreizehn Seiten nicht, und die Anker dorthin
+(Seitenleiste, „Mehr"-Sheet, der Verweis auf den Beschluss-Seiten) fehlen
+ebenfalls — ein Gate ohne seine Einstiege hinterließe Links ins Leere.
+
+Zwei Dinge, die daraus folgen: Auf Prod laufen weder die Ingest-Skripte noch
+der Cron `check_finanzdaten`, die Haushalts-Tabellen entstehen dort leer und
+bleiben es (die drei Geld-Bausteine der KI-Frage vertragen das — sie liefern
+bei leeren Daten einen Leerstring, und der Router ruft sie ohnehin
+`best-effort` auf). Und: Weil `app/(app)/` ein Client-Layout ist, kommt die
+Antwort mit HTTP 200 statt 404 — ein „Soft 404". Inhaltlich folgenlos,
+weshalb `/haushalt` auch nicht in der Sitemap steht. `tests/test_haushalt_gate.py`
+wacht darüber, dass kein neuer Verweis das Gate vergisst.
+:::
+
 ## Die Seiten
 
 Der Einstieg trägt einen **Wegweiser** (`components/haushalt/wegweiser.tsx`),
@@ -143,6 +160,24 @@ nachzutragen" billiger ist als eine Ausnahme (`_HERKUNFT_ALTFELDER`).
 
 `GET /api/council/haushalt` liefert die Datensätze als `herkunft`, nach ID
 nachschlagbar, samt eines Erklärsatzes je Probe für die Oberfläche.
+
+:::note[Was die Seite davon zeigt — und was seit 16.08. nicht mehr]
+Der Block „Woher diese Zahlen kommen" auf `/haushalt/konzern` und
+`/haushalt/vergleich` zeigt **`fundstelle` und `stand`**, sonst nichts. Das
+ist die Angabe, mit der man eine Zahl in einem 300-Seiten-PDF wiederfindet —
+sie hat einen Adressaten außerhalb dieses Projekts.
+
+`proben` und `probe_ergebnis` standen bis dahin daneben, auf der
+Vergleichsseite dreimal je Seite: die Erklärsätze aus `herkunft.PROBEN` und
+darunter „Gemessen: 0,00 % Abweichung". Das war dieselbe
+Selbstvergewisserung wie die Gegenproben-Tabelle einen Abschnitt weiter
+unten — es sagt etwas über uns, nichts über den Haushalt
+(`DESIGNSPRACHE.md` § 7). **Die Felder bleiben** in der Tabelle, in der API
+und in `herkunft.PROBEN`: Sie sind der Weg, auf dem sich Jahre später
+nachvollziehen lässt, woran ein Jahrgang gemessen wurde. Wer eine neue Probe
+baut, trägt ihren Erklärsatz weiter dort ein — er wird nur nicht mehr
+ausgestellt.
+:::
 
 ### Vom Beleg zum Dokument
 
@@ -477,6 +512,17 @@ nennt sie in Klammern. Dieselbe Falle steckte in der Cron-Meldung, die pauschal
 zu `scripts/ingest_haushalt.py` schickte — welches Skript zuständig ist, steht
 jetzt bei der Schicht (`Finanzquelle.nachschub`).
 
+**Und sonst steht dort nichts mehr.** Zwei Sätze sind am 16.08. aus der
+Fußzeile gefallen, beide über unseren Betriebsablauf statt über den
+Datenstand: der Takt, in dem der Cron nachsieht („geprüft wird alle zwei
+Wochen" — er steht in `finanzquellen.REIHENFOLGE` und weiter oben in diesem
+Kapitel), und die Rechenprobe als Türsteher („Zahlen, die eine Rechenprobe des
+Dokuments nicht bestehen, bleiben draußen" — Kapitel „Vier Prüfungen"). Beides
+läuft unverändert weiter. Für die Frage, die dieser Block beantwortet — *bis
+wann reichen die Zahlen?* — war es keine Antwort: Wo ein Jahrgang wirklich
+fehlt, sagt das die Zeile darüber aus `luecken`, am richtigen Ort und ohne
+Prüfzeugnis (`DESIGNSPRACHE.md` § 7).
+
 Der Städtevergleich ist überhaupt der Fall, für den der Ausblick gebaut ist: Es
 gibt kein Dokument im Ratsinformationssystem, an dem ein Cron merken könnte,
 dass ein Jahrgang vorliegt, und geholt wird nur **einmal im Jahr** von Hand. An
@@ -649,6 +695,16 @@ bleibt stehen, die Zeile bekommt eine Marke, die Zahl steht als Befund über der
 Liste. Das ist die interessanteste Auskunft, die die Seite hat — sie
 verschwände, wenn wir uns der Selbstauskunft anpassten.
 
+**Ausgewiesen wird seit 16.08. nur noch die Abweichung.** Der Befund über der
+Liste nannte beide Hälften, und die Übereinstimmungs-Hälfte („Bei 6 von 9
+Bereichen deckt sich das mit unserer Einordnung") war Selbstbestätigung: Sie
+sagt etwas über die Güte unserer Redaktion, nichts über die Aufgabe, um die es
+geht (`DESIGNSPRACHE.md` § 7). Die Abweichung ist das genaue Gegenteil und
+steht weiter da, mitsamt ihrer Bezugsgröße — „bei 3 von 9" ohne Nenner wäre
+eine Zahl ohne Maßstab. `abgleich()` rechnet beide Richtungen unverändert;
+`deckt` ist damit nur noch das, was es sein sollte: die Gegenprobe im Code,
+nicht die Schlagzeile auf der Seite.
+
 **Zwei Jahre, nicht eins.** Der Plan reicht bis ins Kopfjahr der Seite, die
 Produktebene endet 2023. Jede Aussage aus ihr trägt deshalb ihren eigenen
 Jahresstempel (`SpielraumBefund.jahr`). Vermischen wäre die stillste Art, hier
@@ -777,6 +833,15 @@ wenn er **alle** folgenden Proben besteht:
 Stand heute: Summenprobe 0,0000 % in allen acht Jahrgängen, Strukturprobe 8/8,
 Vorjahres-Kette 14/14 Glieder.
 
+**Diese Tabelle ist der Ort dafür.** Die drei letzten Proben standen bis
+16.08. auch als Fließtext unter `/haushalt/plan-ist` („nur Jahre, deren Zahlen
+unsere Prüfung bestehen: Die Summe der Teilhaushalte muss die Gesamtrechnung
+ergeben …"). Sie sind dort raus — was bleibt, ist die Grenze, die eine Leserin
+angeht: Es erscheinen nur Jahre, für die überhaupt ein Jahresabschluss
+vorliegt. Dass ein Jahrgang an einer Probe scheitert, ist kein Seiteninhalt,
+sondern ein Betriebsvorgang; er steht hier und im Lauf-Protokoll
+(`DESIGNSPRACHE.md` § 7).
+
 Für die Planjahre (`council/ergebnishaushalt.py`) gelten zwei eigene, und beide
 sind Pflicht:
 
@@ -871,6 +936,15 @@ Was die Klammer nicht erfüllt, wird verworfen und **gezählt**. Der Ingest
 weist die Zahl je Jahrgang aus; sie ist derzeit 0 und bleibt es, solange das
 Dokumentformat hält. Steigt sie, hat sich etwas geändert — dann gehört ein
 Blick in den Bericht, keine gelockerte Regel.
+
+Die Regeln 1 und 2 standen bis 16.08. als erster Satz im Fußabsatz von
+`/haushalt/pruefung` („Es erscheinen nur Jahrgänge, deren Schlussbericht die
+Prüfung besteht: …"). Sie stehen jetzt nur noch hier. Der **Rest** des
+Absatzes ist geblieben, und der Unterschied ist genau der, um den es geht:
+dass für einen Jahrgang der Schlussbericht nicht in lesbarer Form vorliegt,
+ist eine Auskunft über die Datenlage, die jemand kennen muss — dass unser
+Parser eine Marke nur hinter einer Textziffer akzeptiert, ist es nicht
+(`DESIGNSPRACHE.md` § 7).
 :::
 
 Zwei Fallen, die dabei teuer waren und als Test festgehalten sind:

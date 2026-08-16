@@ -348,12 +348,15 @@ def test_schmal_wird_umgebaut_nicht_geschrumpft():
     quelle = _lies("components/haushalt/flussbild.tsx")
     assert "SCHWELLE_BREIT" in quelle
     assert "breite < SCHWELLE_BREIT" in quelle
-    assert "<Listen bild={bild}" in quelle
+    assert "<Listen bild={zeigBild}" in quelle
 
 
 def test_ohne_vollstaendige_aufschluesselung_kein_bild():
     """Die Weigerung ist Absicht und muss im Code stehen bleiben: Lieber keine
     Grafik als eine, die eine Lücke glattzieht."""
     quelle = _lies("components/haushalt/flussbild.tsx")
-    assert "!bild.aufgeschluesselt ?" in quelle
+    # Seit 16.08. heißt die Variable `zeigBild`: Fehlt das gewählte Jahr,
+    # zeigt die Komponente das jüngste vollständige — die Weigerung, eine
+    # LÜCKE glattzuziehen, gilt unverändert und ist genau das hier Geprüfte.
+    assert "!zeigBild.aufgeschluesselt ?" in quelle
     assert "gestreckt" in quelle
