@@ -196,6 +196,14 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   (#516)
 
 ### Geändert
+- **Zwei weitere Seiten hören auf, ihre eigene Gründlichkeit vorzuführen.**
+  „Was wird gebaut?" und „Wer macht die Arbeit?" zeigten unter jeder Zahl noch,
+  gegen welche Rechenprobe wir sie geprüft haben — bis hin zum Messwert
+  („Gemessen: 0,00 € Restbetrag"). Das sagt etwas über uns und nichts über den
+  Haushalt; die übrigen Seiten hatten es schon abgelegt. Wo eine Zahl steht,
+  steht weiterhin, **wo im Dokument** man sie findet — und was eine Quelle
+  nicht hergibt, sagen die Seiten unverändert. Die Proben laufen weiter, nur
+  ohne Publikum. (#554)
 - **Der Haushalts-Bereich bleibt vorerst der Dev-Umgebung vorbehalten.** Die
   dreizehn Seiten unter `/haushalt` sind jetzt — wie der Wahlprogramm-Vergleich
   — an `NEXT_PUBLIC_RATSLOTSE_ENV` gebunden: Auf ratslotse.de rendern sie
