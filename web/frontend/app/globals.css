@@ -569,7 +569,13 @@
    Einnahmen = Hafenblau-Rampe, Ausgaben = Schiefer-Rampe; im Dunkelmodus
    drehen die Rampen um (hellster Ton = größter Posten), damit der größte
    Posten auf dunklem Grund weiter der auffälligste ist. Segment-Text steht
-   hell auf dunklen Segmenten (hell) bzw. dunkel auf hellen (dunkel). */
+   hell auf dunklen Segmenten (hell) bzw. dunkel auf hellen (dunkel).
+
+   Die Rampen hängen am THEME, solange die Grafik auf einer Karte steht. Auf
+   der immer dunklen Anzeigetafel (`.hh-tafel`, s. u.) hängen sie an der
+   FLÄCHE — sonst wäre der Hellmodus dort blind (siehe Kommentar dort).
+   `--hh-raster` ist die Fuge zwischen den Feldern der 100-Euro-Ansicht: die
+   Farbe der Fläche, auf der die Grafik liegt, nicht die der Karte allgemein. */
 :root {
   --hh-ein-0: hsl(205 85% 27%); --hh-ein-1: hsl(204 62% 44%);
   --hh-ein-2: hsl(203 48% 56%); --hh-ein-3: hsl(202 38% 68%);
@@ -581,6 +587,8 @@
   --hh-aus-6: hsl(206 20% 81%); --hh-aus-7: hsl(205 22% 86%);
   --hh-aus-8: hsl(205 24% 90%); --hh-aus-9: hsl(205 26% 93%);
   --hh-seg-text: #fff;
+  --hh-raster: 0 0% 100%;
+  --hh-schraffur: 19 92% 55%;
 }
 .dark {
   --hh-ein-0: hsl(202 90% 60%); --hh-ein-1: hsl(203 62% 48%);
@@ -593,12 +601,93 @@
   --hh-aus-6: hsl(211 24% 25%); --hh-aus-7: hsl(212 26% 21%);
   --hh-aus-8: hsl(212 28% 18%); --hh-aus-9: hsl(213 30% 15%);
   --hh-seg-text: hsl(213 50% 7%);
+  --hh-raster: 212 42% 11%;
+  /* `--hh-schraffur` bleibt im Dunkelmodus bewusst der Wert aus `:root`: Die
+     Schraffur sieht in Zeitreihe, Flussbild und Konzern-Lücke aus wie bisher.
+     Heller wird sie nur dort, wo der Grund wirklich dunkel ist (`.hh-tafel`). */
+}
+
+/* ── Anzeigetafel: dunkel in BEIDEN Themes ─────────────────────────────────
+   Die Kernzahl des Haushalts steht auf einer dunklen Fläche, damit die Seite
+   einen Blickfang hat (Entwurf H2-01). Sie heißt bewusst NICHT „Bühne": das
+   Wort ist in DESIGNSPRACHE.md schon für die helle Tonfläche
+   hsl(205 42% 96,5%) vergeben, und zwei Flächen mit einem Namen sind eine
+   Verwechslung, die niemand mehr auflöst.
+
+   Zwei Dinge machen die Klasse aus:
+
+   1. Sie ist in beiden Themes dunkel, im DUNKELMODUS aber eine Stufe HELLER
+      als die Seite plus Rand — sonst verschmilzt sie mit dem Hintergrund und
+      die Kernzahl steht im Nichts.
+   2. Sie bindet alle Farbtoken der Fläche neu, nicht nur den Hintergrund.
+      Das ist die eigentliche Substanz: Die Farbrampen hingen am
+      `.dark`-Selektor, also am Theme. Auf einer immer dunklen Fläche heißt
+      das im Hellmodus `--hh-ein-0: hsl(205 85% 27%)` auf hsl(213 48% 9%) —
+      der GRÖSSTE Einnahmeposten wäre dort fast unsichtbar; im Dunkelmodus
+      lägen umgekehrt die Rampenenden (18 bzw. 15 % Helligkeit) 3–6 Punkte
+      über der Fläche. Weil `--card`, `--border`, `--muted-foreground`,
+      `--primary` und `--signal` hier mitwandern, stimmen auch die
+      Detail-Box, die Beleg-Chips und die Schraffur ohne Sonderfälle in der
+      Komponente. */
+.hh-tafel {
+  color-scheme: dark;
+  --background: 213 48% 9%;
+  --foreground: 204 40% 97%;
+  --card: 212 34% 15%;
+  --card-foreground: 204 40% 97%;
+  --popover: 212 34% 15%;
+  --popover-foreground: 204 40% 97%;
+  --muted: 211 30% 19%;
+  --muted-foreground: 206 22% 68%;
+  --accent: 211 30% 19%;
+  --accent-foreground: 204 40% 97%;
+  --border: 211 30% 21%;
+  --primary: 202 88% 66%;
+  --primary-foreground: 213 48% 9%;
+  --ring: 202 88% 66%;
+  --signal: 19 95% 70%;
+  --signal-foreground: 213 48% 9%;
+  --hh-raster: 213 48% 9%;
+  --hh-schraffur: 19 95% 64%;
+  /* Einnahmen: hellster Ton = größter Posten. Das Rampenende liegt bei
+     26 % Helligkeit — vierzehn Punkte über der HELLSTEN Fassung der Fläche
+     (12 % im Dunkelmodus). Vorher endete die Rampe im Dunkelmodus bei 18 %
+     und lag damit drei Punkte über dem Grund: der kleinste Posten war da,
+     aber nicht zu sehen. */
+  --hh-ein-0: hsl(202 90% 66%); --hh-ein-1: hsl(203 66% 56%);
+  --hh-ein-2: hsl(204 50% 48%); --hh-ein-3: hsl(205 40% 41%);
+  --hh-ein-4: hsl(206 32% 35%); --hh-ein-5: hsl(207 27% 30%);
+  --hh-ein-6: hsl(208 24% 26%);
+  /* Ausgaben: dieselbe Richtung, aber flacher — hier tragen bis zu vier
+     Segmente eine Beschriftung, die vier hellsten Stufen bleiben deshalb
+     über 55 % Helligkeit (dunkler Text, `--hh-seg-text`). */
+  --hh-aus-0: hsl(206 24% 89%); --hh-aus-1: hsl(207 20% 76%);
+  --hh-aus-2: hsl(208 17% 65%); --hh-aus-3: hsl(209 16% 56%);
+  --hh-aus-4: hsl(210 18% 48%); --hh-aus-5: hsl(211 20% 42%);
+  --hh-aus-6: hsl(211 22% 37%); --hh-aus-7: hsl(212 24% 33%);
+  --hh-aus-8: hsl(212 26% 29%); --hh-aus-9: hsl(213 28% 26%);
+  --hh-seg-text: hsl(213 48% 9%);
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  /* Der Rand ist im Hellmodus durchsichtig statt gar nicht da: Sonst wäre die
+     Fläche im Dunkelmodus zwei Pixel größer, und das Umschalten des Themes
+     verschöbe die halbe Seite. */
+  border: 1px solid transparent;
+}
+.dark .hh-tafel {
+  --background: 212 44% 12%;
+  --card: 212 34% 18%;
+  --popover: 212 34% 18%;
+  --hh-raster: 212 44% 12%;
+  border-color: hsl(211 36% 19%);
 }
 
 /* Schraffur für Rücklage/Fehlbetrag (H-01/H-03/H-07): Signal nur als Kante
-   und Muster, nie als Fläche — die Lücken-Konvention aller Haushalts-Grafiken. */
+   und Muster, nie als Fläche — die Lücken-Konvention aller Haushalts-Grafiken.
+   Die Farbe kommt aus `--hh-schraffur`, damit das Muster auf der dunklen
+   Anzeigetafel hell genug bleibt. */
 .hh-schraffur {
-  background: repeating-linear-gradient(135deg, hsl(19 92% 55% / 0.22) 0 3px, transparent 3px 6px);
+  background: repeating-linear-gradient(135deg, hsl(var(--hh-schraffur) / 0.22) 0 3px, transparent 3px 6px);
 }
 
 /* Regler im Haushalts-Labor (H-19): Der Browser bringt Tastatur- und
