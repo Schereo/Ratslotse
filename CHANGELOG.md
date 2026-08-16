@@ -40,7 +40,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Nullpunkt ist „wie geplant", die Strecke zeigt, wie weit es davon abwich.
   Dazu steht die Abweichung auch in Prozent, damit ein großer und ein kleiner
   Bereich vergleichbar sind. Die Beträge selbst stehen unverändert daneben.
-  (#PR)
+  (#506)
 
 - **Kostendeckungsgrad über 100 % wurde falsch erklärt.** Bei „Finanzmanagement
   und Recht" — dort verbucht die Stadt ihre Steuern — stand unter dem Wert von
