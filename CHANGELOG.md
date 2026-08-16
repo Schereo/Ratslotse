@@ -332,7 +332,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Bereich selbst, und alle 13 Teilhaushalte haben einen — vorher acht. Zwei
   davon waren zudem schief: Die Eingliederungshilfe ist bei Soziales der größte
   Block, und im Finanzmanagement liegen alle Steuern, aber nur die allgemeinen
-  Zuweisungen des Landes. (#PR)
+  Zuweisungen des Landes. (#517)
 
 <!-- GEPARKT (nur dev.ratslotse.de, Umgebungs-Gate): Eintrag aktivieren,
      sobald der Kommunalwahl-Vergleich auf Prod freigeschaltet wird.
