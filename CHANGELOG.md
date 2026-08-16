@@ -19,7 +19,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   geprüften Gesamtabschlüssen der Stadt; übernommen wird ein Jahrgang nur, wenn
   die Rechnungen des Dokuments aufgehen. Was der Vergleich **nicht** kann, steht
   als eigener Abschnitt auf der Seite: Ein Gesamtabschluss ist kein Haushalt,
-  er kommt zwei Jahre später, und verrechnen lässt sich beides nicht. (#PR)
+  er kommt zwei Jahre später, und verrechnen lässt sich beides nicht. (#514)
 - **Jede Haushalts-Zahl hält jetzt fest, woher sie stammt — auf den Abschnitt
   genau.** Bisher stand an einer gespeicherten Zahl bestenfalls eine URL, und
   bei einem 300-seitigen Jahresabschluss ist das zu wenig: Man sah nicht, an
