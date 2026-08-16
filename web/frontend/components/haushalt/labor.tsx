@@ -31,6 +31,7 @@
 // vermischen wäre eine Zahl, die es nirgends gibt.
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { RotateCcw } from "lucide-react";
 import {
   HaushaltDaten, PLAN_ART_LABEL, Produkt, RUECKLAGE_MIO, bereiche, deMio,
@@ -365,6 +366,13 @@ export function Labor({ daten, produkte, produktJahr }: {
               }
             />
           </div>
+          {/* Gegenrichtung zum „Im Labor ausprobieren" des Steckbriefs: Wer
+              hier am Hebesatz dreht, will als Nächstes wissen, wer ihn
+              überhaupt beschließt. */}
+          <Link href="/haushalt/steuer?art=gewerbesteuer"
+            className="mt-2.5 inline-flex text-[12px] font-semibold text-primary">
+            Wer den Hebesatz beschließt →
+          </Link>
           <div className="mt-4 rounded-xl border border-dashed border-border p-3">
             <p className="text-[12.5px] font-semibold">Grundsteuer B</p>
             <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">

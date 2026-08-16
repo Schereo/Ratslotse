@@ -22,6 +22,7 @@ welche schlicht fehlt.
 | `/haushalt/labor` | Was-wäre-wenn: Hebesatz-Regler und Kürzungen, jede Bewegung in Mio., € je Einwohner und Anteil an der Lücke; dauerhaft sichtbare Gegenrechnung |
 | `/haushalt/pruefung` | Was das Rechnungsprüfungsamt beanstandet: alle Feststellungen der Schlussberichte im Wortlaut, mit Textziffer, Seite und Deeplink; dazu die Ketten über die Jahrgänge |
 | `/haushalt/konzern` | Der Konzern Stadt: Kernverwaltung gegen Gesamtabschluss über elf Jahrgänge, Aufschlüsselung nach Aufgabenträgern, Gegenprobe gegen den Jahresabschluss |
+| `/haushalt/vergleich` | Städtevergleich: Steuerkraft, Hebesätze und Steuereinnahmekraft der acht kreisfreien Städte aus der amtlichen Statistik — und die Erklärung, warum Ausgaben und Personal **nicht** verglichen werden |
 
 Query-Parameter statt dynamischer Segmente, weil der Capacitor-Export die
 Slugs zur Bauzeit nicht kennt — dieselbe Konvention wie `/council/decision?id=`.
@@ -766,6 +767,141 @@ beide Reihen getrennt, und die Seite sagt es in einem eigenen Block statt im
 Kleingedruckten.
 :::
 
+## Städtevergleich: was sich vergleichen lässt — und was nicht
+
+`/haushalt/vergleich` ist aus einer Absage entstanden. Der Entwurf sah einen
+breiten Städtevergleich vor (Ausgaben, Personal, Schulden je Einwohner). Der
+wurde **nicht** gebaut, und zwar nicht wegen fehlender Daten: Ein Vergleich
+von Kernhaushalten misst zuerst, wie weit eine Stadt ausgelagert hat.
+
+Oldenburgs Kernhaushalt zeigt rund **64 %** dessen, was der Konzern bewegt;
+Osnabrücks knapp **48 %**, weil dort die Stadtwerke dazugehören. Dieselbe
+Kennzahl, dieselbe Stadt, dasselbe Jahr — Kern gegen Konzern — unterscheidet
+sich bei der Pro-Kopf-Verschuldung um **Faktor 2,53** (2024) und **6,04**
+(2023). Wer eine Kernhaushaltszahl aus Stadt A gegen eine Konzernzahl aus
+Stadt B stellt, kennt nicht einmal die Größenordnung des Fehlers.
+
+:::note[Die beste Quelle zum Fallstrick liegt im eigenen Bestand]
+Die Stadt Oldenburg hat genau diesen Vergleich 2018 auf Antrag der
+FDP-Fraktion angestellt (Vorlage **18/0911**, `kvonr` 17170) — sieben Städte,
+neun Jahrgänge — und ihn im selben Dokument entwertet: *„Die heterogenen
+Strukturen der verschiedenen Städte lassen einen aussagefähigen Vergleich in
+dem Sinne nicht zu, dass eine niedrigere Quote ‚besser' als eine höhere Quote
+ist."* Danach listet sie je Stadt auf, was im Kernhaushalt steckt und was
+nicht. Antrag: `document_id` **196000**, Antwort: **196525**.
+
+Dieselbe Warnung kommt vom Nds. Innenministerium (Runderlass 13.12.2017) und
+vom Statistischen Bundesamt. Die Seite zitiert die Verwaltung wörtlich und
+verlinkt den Vorgang in unserem Bestand — die Vorlage wurde als Bericht **zur
+Kenntnis genommen**, es gibt also einen `council_decisions`-Eintrag. Aufgelöst
+wird er über die **Vorlagennummer**, nicht über die gespeicherte id: Die
+Nummer ist auf jeder Kopie der Datenbank dieselbe.
+:::
+
+### Was trotzdem trägt
+
+Robust gegen die Auslagerungsfrage ist, was die Stadt als Hoheitsträger
+festlegt oder was das Land für alle gleich berechnet — es wandert nicht mit,
+wenn ein Aufgabenblock in einen Eigenbetrieb zieht:
+
+| Reihe | Kennzahlen | Quelle |
+|---|---|---|
+| `steuerkraft` | Steuerkraftmesszahl (TEUR), Einwohnerzahl | LSN, Kommunaler Finanzausgleich, Blatt `ST_KR_MESS_VGL` |
+| `realsteuern` | Hebesätze Grundsteuer A/B und Gewerbesteuer, Ist-Aufkommen je Einwohner, Steuereinnahmekraft je Einwohner | LSN, Realsteuervergleich, Blätter `2_1` und `5_1` |
+
+Die Steuerkraftmesszahl rechnet § 11 NFAG mit **Nivellierungshebesätzen**, also
+für alle Gemeinden mit denselben fiktiven Sätzen; sie misst die Steuerbasis,
+nicht die Hebesatzpolitik. Und Steuern erhebt nie ein Eigenbetrieb — der
+Auslagerungseffekt existiert hier schlicht nicht.
+
+**Die Steuerkraft je Einwohnerin wird nicht gespeichert.** Das Landesamt weist
+sie nicht aus; die Division ist unsere und steht auf der Seite als solche
+gekennzeichnet. Gespeichert werden Messzahl und Einwohnerzahl getrennt, sonst
+ließe sich später nicht mehr unterscheiden, was amtlich ist und was gerechnet.
+
+### Drei Proben, und eine davon prüft zwei Dokumente gegeneinander
+
+- **`lsn_zweijahresueberlappung`** — Jede KFA-Ausgabe nennt zwei Ausgleichsjahre
+  nebeneinander. Das ältere muss die Hauptspalte der Vorjahresausgabe
+  wiederholen, **für jede der 403 Gemeinden**. Das ist die stärkste Probe des
+  Bereichs: Sie prüft nicht eine Rechnung innerhalb eines Dokuments, sondern
+  zwei Veröffentlichungen gegeneinander. Gemessen: 403 von 403 identisch.
+- **`lsn_hebesatzprobe`** — `Grundbetrag × Hebesatz = Ist-Aufkommen`, die
+  Definition einer Realsteuer. Bei der Gewerbesteuer zusätzlich
+  `brutto − Umlage = netto`.
+- **`lsn_dreijahresmittel`** — Der ausgewiesene Dreijahresdurchschnitt ist das
+  Mittel der drei Jahreswerte, und geteilt durch die mitgelieferte
+  durchschnittliche Einwohnerzahl ergibt er den Pro-Kopf-Wert der Zeile.
+
+:::caution[Die Toleranz folgt der Rundung, nicht dem Gefühl]
+Das LSN rundet Grundbetrag und Ist-Aufkommen auf volle Tausend Euro. Ein
+Rundungsfehler von ±0,5 T€ im Grundbetrag wird mit dem Hebesatz
+multipliziert — bei 500 % sind das ±2,5 T€. Eine feste Prozentschranke
+verwürfe deshalb ausgerechnet die **Grundsteuer A**, deren Beträge so klein
+sind (13–44 T€), dass die Rundung dort 1–3 % ausmacht. Die Schranke ist
+darum `0,5 × Hebesatz/100 + 0,5`.
+
+Und die Gewerbesteuer wird gegen **brutto** geprüft, nicht gegen netto: Die
+erste Fassung prüfte gegen netto und verwarf alle acht Städte — die
+Abweichung war jedes Mal auf die Tausend Euro genau die Gewerbesteuerumlage.
+:::
+
+### Drei Fallen im Dateiformat
+
+1. **Der Städtename ist nicht stabil.** KFA 2025 schreibt `Oldenburg (Oldb),
+   Stadt`, KFA 2026 `Oldenburg (Oldenburg), Stadt`; `Bad Zwischenahn` bekommt
+   zwischendurch ein `*`. Verbunden wird über die **Schlüsselnummer**.
+2. **Die Schlüsselnummer hat zwei Schreibweisen** — sechsstellig im
+   Finanzausgleich (`403000`), dreistellig im Realsteuervergleich (`403`).
+   `schluessel_normalisieren()` gleicht das an; ohne sie fänden die beiden
+   Reihen einander nie, und der Fehler wäre still.
+3. **Die Spaltenposition ist keine Zusage.** Gelesen wird über den
+   ausgeschriebenen Tabellenkopf, den das LSN als Vorlesehilfe für
+   Screenreader mitliefert — und **wo** er steht, sagt die Datei in ihren
+   ersten Zeilen selbst („Der Tabellenkopf für Vorlesehilfen befindet sich in
+   Zeile 14"). Fehlt der Hinweis, bricht der Parser ab, statt zu raten.
+
+### Kein neues Paket, kein Cron
+
+XLSX ist ein ZIP mit XML darin; `council/staedtevergleich.py` liest beides mit
+der Standardbibliothek. Ein Extra-Paket nur für einen jährlichen Ingest käme in
+`requirements.txt` und damit auf den Server — dieselbe Überlegung, aus der
+`fastembed` draußen steht. Eine Dokumenttyp-Deklaration lehnt der Leser ab
+(eine echte Tabellenmappe hat keine), womit die Entity-Expansion-Lücke der
+Standardbibliothek zu ist.
+
+Beide Quellen erscheinen **einmal jährlich**, deshalb kein Cron. Die
+Download-Adressen des LSN tragen undurchsichtige Nummern (`/download/227086`),
+die sich nicht hochzählen lassen; sie stehen auf der Übersichtsseite und
+werden beim jährlichen Lauf mitgegeben:
+
+```bash
+python scripts/ingest_staedtevergleich.py \
+  --kfa <KFA N, Datei oder Adresse> \
+  --kfa-vorjahr <KFA N−1> \
+  --realsteuer <Realsteuervergleich>
+```
+
+Der Lauf **schreibt nichts**, wenn die Zwei-Jahres-Überlappung scheitert; eine
+einzelne Stadt, deren Hebesatzprobe nicht aufgeht, fällt mit Begründung heraus,
+ohne den Jahrgang mitzunehmen.
+
+:::danger[Nicht mit `council_steuerkraft` mischen]
+Beide Tabellen führen Steuerkraftmesszahlen, und sie sind **nicht** dasselbe.
+Unser Open-Data-Datensatz 1106 trägt dieselben Beträge wie das LSN, aber unter
+einer um **ein Jahr verschobenen** Beschriftung: Was das LSN „KFA 2026" nennt,
+heißt dort „Ausgleichsjahr 2025" (drei Wertepaare geprüft, zwei unabhängige
+Wege). Welche Angabe stimmt, ist offen und wird bei der Statistikstelle der
+Stadt geklärt.
+
+Bis dahin liegen die LSN-Werte in einer **eigenen Tabelle**
+(`council_staedtevergleich`) mit der Jahresangabe des Landesamts, und kein
+Lesepfad legt die beiden Reihen zusammen. Sie zu mischen hieße, zwei Jahre
+gegeneinander zu plotten, die nicht dasselbe meinen. Die Seite nennt den
+offenen Punkt in ihrem Grenzen-Block — `/haushalt/steuer` zeigt dieselben
+Beträge unter der anderen Beschriftung.
+:::
+
 ## Was bewusst fehlt
 
 Der Bereich zeigt lieber eine Lücke als eine Schätzung:
@@ -791,8 +927,10 @@ Der Bereich zeigt lieber eine Lücke als eine Schätzung:
 - **Grundsteuer A und B getrennt** — das Portal führt sie in einer Spalte.
   Deshalb eine gemeinsame Karte und im Labor kein Grundsteuer-Regler.
 - **Gebühren und Beiträge** — in keinem der Datensätze enthalten.
-- **Hebesatz-Zeitreihe und Städtevergleich** — kommen aus der
-  Statistik-Schnittstelle des Landes, sobald sie angebunden ist.
+- **Hebesatz-Zeitreihe** — die Sätze der Vorjahre liegen im Realsteuervergleich
+  (Blatt 1) nur nach Größenklassen vor, nicht je Stadt; und über die
+  Grundsteuerreform 2025 hinweg wären sie ohnehin nicht vergleichbar. Der
+  Städtevergleich selbst steht seit 08/2026 unter `/haushalt/vergleich`.
 - **Verschuldung pro Einwohner im Städtevergleich** — Anlage 2 der
   Gesamtabschlüsse führt sie über acht Jahrgänge samt Osnabrück, Braunschweig
   und Hannover, und die Vorjahres-Kette schließt dort 4/4. Nicht gebaut, weil

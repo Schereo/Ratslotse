@@ -1989,3 +1989,95 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
         gen(), media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+# Die Ratsvorlage, mit der die Stadt Oldenburg den Städtevergleich selbst
+# angestellt und im selben Dokument entwertet hat. Sie ist der Beleg für die
+# Erklärseite und wird über die **Vorlagennummer** aufgelöst, nicht über eine
+# gespeicherte Beschluss-id: Die Nummer ist auf jeder Kopie der Datenbank
+# dieselbe, die AUTOINCREMENT-id nicht.
+VERGLEICH_BELEG_VORLAGE = "18/0911"
+VERGLEICH_BELEG_KVONR = 17170
+
+
+@router.get("/haushalt/vergleich")
+def haushalt_vergleich(
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Was sich zwischen Städten vergleichen lässt — und der Beleg, warum das
+    meiste sich **nicht** vergleichen lässt.
+
+    Zwei Teile, und der zweite ist der wichtigere:
+
+    - ``werte``/``staedte``/``jahre``: Steuerkraft und Hebesätze der acht
+      kreisfreien Städte Niedersachsens aus den beiden Tabellen des
+      Landesamts für Statistik. Dieselbe Kennzahl, dieselbe Stelle, dieselbe
+      Abgrenzung für alle — der Auslagerungsgrad einer Stadt greift hier
+      nicht, weil Steuern nie ein Eigenbetrieb erhebt.
+    - ``beleg``: die Ratsvorlage 18/0911, in der die Stadt Oldenburg 2018 auf
+      Antrag der FDP-Fraktion sieben Städte verglichen und im selben Dokument
+      festgestellt hat, dass dieser Vergleich nichts aussagt. Aufgelöst wird
+      sie über die Vorlagennummer; ``beschluss_id`` zeigt auf den Eintrag in
+      unserem eigenen Bestand (der Ausschuss hat den Bericht zur Kenntnis
+      genommen), ``anlagen`` auf Antrag und Antwort im Original.
+
+    **Was diese Antwort bewusst nicht tut:** Sie mischt die LSN-Steuerkraft
+    nicht mit ``council_steuerkraft`` (Datensatz 1106). Beide führen dieselben
+    Beträge, aber unter einer um ein Jahr verschobenen Jahresangabe; welche
+    stimmt, ist ungeklärt. Zusammengelegt ergäbe das eine Reihe, in der zwei
+    verschiedene Jahre dasselbe zu meinen scheinen.
+    """
+    # Lokal importiert, damit dieser Endpunkt ein zusammenhängender Block am
+    # Dateiende bleibt (mehrere Aufträge arbeiten parallel in dieser Datei) —
+    # dieselbe Bauart wie `from council import herkunft as _h` im Store.
+    import sqlite3
+
+    from council import staedtevergleich as sv
+
+    werte = store.get_staedtevergleich()
+    jahre: dict[str, list[int]] = {}
+    for w in werte:
+        jahre.setdefault(w["reihe"], [])
+        if w["jahr"] not in jahre[w["reihe"]]:
+            jahre[w["reihe"]].append(w["jahr"])
+    for liste in jahre.values():
+        liste.sort()
+
+    staedte = [{
+        "schluessel": key,
+        "name": name,
+        "ist_oldenburg": key == sv.OLDENBURG,
+        # Unter 100.000 Einwohnern rechnet das NFAG die Steuerkraftmesszahl
+        # mit anderen Nivellierungshebesätzen. Das gehört an den Wert, sonst
+        # vergleicht die Seite still zwei Rechenvorschriften.
+        "unter_100k": key in sv.UNTER_100K,
+    } for key, name in sv.KREISFREIE_STAEDTE.items()]
+
+    beleg: dict = {"vorlage_nr": VERGLEICH_BELEG_VORLAGE,
+                   "kvonr": VERGLEICH_BELEG_KVONR,
+                   "vorlage_url": _vorlage_url(VERGLEICH_BELEG_KVONR),
+                   "beschluss_id": None, "titel": None, "anlagen": []}
+    try:
+        ids = store.find_decision_ids(vorlage_nr=VERGLEICH_BELEG_VORLAGE)
+        beleg["beschluss_id"] = ids[0] if ids else None
+        vorlage = store.get_vorlage_by_nr(VERGLEICH_BELEG_VORLAGE)
+        if vorlage:
+            beleg["titel"] = vorlage.get("title")
+        beleg["anlagen"] = [
+            {"document_id": a["document_id"], "label": a["label"],
+             "url": a["url"], "is_antrag": a.get("is_antrag", 0)}
+            for a in store.anlagen_for_vorlage_nr(VERGLEICH_BELEG_VORLAGE)]
+    except sqlite3.OperationalError:
+        # Eine Datenbank ohne Vorlagen-Bestand (etwa im Test) soll die Seite
+        # nicht umbringen — der Erklärtext trägt auch ohne die Verweise.
+        pass
+
+    ids = sorted({w["herkunft_id"] for w in werte if w["herkunft_id"] is not None})
+    return {
+        "staedte": staedte,
+        "werte": werte,
+        "jahre": jahre,
+        "beleg": beleg,
+        "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
+    }

@@ -32,7 +32,10 @@ export type Quelle = {
 export type QuellenSchluessel =
   | "plan" | "steuern" | "steuerkraft" | "hebesaetze" | "ruecklage"
   | "jahresabschluss" | "teilhaushalt" | "pruefbericht" | "gesamtabschluss"
-  | "einwohner" | "ergebnisrechnung_thh" | "ratsbeschluss";
+  | "einwohner" | "ergebnisrechnung_thh" | "ratsbeschluss"
+  // A10: Städtevergleich — die einzigen Quellen des Bereichs, die nicht von
+  // der Stadt Oldenburg stammen, sondern vom Land.
+  | "lsn_finanzausgleich" | "lsn_realsteuern" | "vergleich_2018";
 
 export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   plan: {
@@ -217,5 +220,61 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     stand: "Sitzungen seit Januar 2018",
     art: "web",
     url: "https://buergerinfo.oldenburg.de",
+  },
+  // A10: Der Städtevergleich (/haushalt/vergleich). Die einzigen Quellen des
+  // Bereichs, die nicht die Stadt Oldenburg herausgibt — und genau das ist
+  // ihr Wert: eine Stelle, eine Abgrenzung, alle Gemeinden.
+  lsn_finanzausgleich: {
+    titel: "Kommunaler Finanzausgleich in Niedersachsen — Vergleichstabellen",
+    fundstelle:
+      "Blatt „ST_KR_MESS_VGL“: die Steuerkraftmesszahl jeder niedersächsischen " +
+      "Gemeinde, zwei Ausgleichsjahre nebeneinander, dazu die Einwohnerzahl. " +
+      "Berechnet nach § 11 NFAG mit Nivellierungshebesätzen — also für alle " +
+      "Gemeinden mit denselben fiktiven Hebesätzen, damit die Zahl die Steuerbasis " +
+      "misst und nicht die Hebesatzpolitik. " +
+      "Wir übernehmen einen Jahrgang nur, wenn er sich mit dem vorherigen deckt: " +
+      "Das ältere der beiden Jahre muss die Hauptspalte der Vorjahresausgabe " +
+      "wiederholen, und zwar für jede der 403 Gemeinden. " +
+      "Die Steuerkraft je Einwohnerin ist unsere eigene Division; das Landesamt " +
+      "weist sie nicht aus.",
+    herausgeber: "Landesamt für Statistik Niedersachsen",
+    stand: "Ausgleichsjahr 2026 (endgültig, Stand 26.03.2026)",
+    lizenz: "Vervielfältigung mit Quellennachweis gestattet",
+    art: "csv",
+    url: "https://www.statistik.niedersachsen.de/kommunaler-finanzausgleich/kommunaler-finanzausgleich-in-niedersachsen-tabellen-214575.html",
+  },
+  lsn_realsteuern: {
+    titel: "Realsteuervergleich Niedersachsen",
+    fundstelle:
+      "Blatt 2.1: Grundbeträge, Hebesätze und Ist-Aufkommen der Grundsteuern A und B " +
+      "sowie der Gewerbesteuer je kreisfreier Stadt. Blatt 5.1: die " +
+      "Steuereinnahmekraft je Einwohnerin über drei Jahre. " +
+      "Grundlage ist die vierteljährliche Kassenstatistik — dieselbe Erhebung für " +
+      "alle Gemeinden, keine Selbstauskunft der Städte. " +
+      "Übernommen wird eine Stadt nur, wenn die Rechnung des Dokuments aufgeht: " +
+      "Grundbetrag mal Hebesatz ergibt das ausgewiesene Aufkommen, und der " +
+      "Dreijahresdurchschnitt ist das Mittel der drei Jahre daneben. " +
+      "Die Hebesätze der Grundsteuer sind ab 2025 nicht mit früheren vergleichbar — " +
+      "die Grundsteuerreform hat die Messbeträge geändert, nicht die Belastung.",
+    herausgeber: "Landesamt für Statistik Niedersachsen",
+    stand: "Berichtsjahr 2025 (korrigierte Fassung vom 30.07.2026)",
+    lizenz: "Vervielfältigung mit Quellennachweis gestattet",
+    art: "csv",
+    url: "https://www.statistik.niedersachsen.de/startseite/themen/steuern_in_niedersachsen/realsteuervergleich_in_niedersachsen/realsteuervergleich-in-niedersachsen-197957.html",
+  },
+  vergleich_2018: {
+    titel: "Personalentwicklung seit dem Jahr 2000 — Antrag der FDP-Fraktion und Antwort der Verwaltung",
+    fundstelle:
+      "Ratsvorlage 18/0911 mit zwei Anlagen: dem Antrag der FDP-Fraktion vom " +
+      "13.11.2018 und der Antwort der Verwaltung. Die Antwort enthält eine Tabelle " +
+      "der Personalintensitätsquote über sieben Städte und neun Jahrgänge, die " +
+      "Feststellung, dass diese Quoten keinen aussagefähigen Vergleich zulassen, " +
+      "und die Aufstellung, was in welcher Stadt im Kernhaushalt steckt. " +
+      "Zitiert wird sie auf dieser Seite wörtlich. " +
+      "Das Dokument hängt als Anlage an der Vorlage im Bürgerinformationssystem.",
+    herausgeber: "Stadt Oldenburg, Amt für Personal- und Verwaltungsmanagement",
+    stand: "26.11.2018",
+    art: "pdf",
+    url: "https://buergerinfo.oldenburg.de/vo0050.php?__kvonr=17170",
   },
 };

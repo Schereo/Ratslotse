@@ -835,6 +835,42 @@ class CouncilStore:
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (jahr, art, traeger_key))"
         )
+        # Städtevergleich aus der amtlichen Statistik des Landesamts für
+        # Statistik Niedersachsen (council/staedtevergleich.py). Langformat —
+        # eine Zeile je Stadt, Jahr und Kennzahl.
+        #
+        # WARUM LANGFORMAT: Die beiden Quellen haben verschiedene Zuschnitte.
+        # Der Finanzausgleich liefert je Stadt zwei Zahlen für EIN Jahr, der
+        # Realsteuervergleich Hebesätze für das Berichtsjahr UND eine
+        # Steuereinnahmekraft-Reihe über drei Jahre. Als Spaltensatz bräuchte
+        # das entweder zwei Tabellen oder eine mit lauter leeren Feldern; so
+        # ist es eine, und eine neunte Kennzahl kostet keine Migration.
+        #
+        # `jahr` ist das Bezugsjahr DER KENNZAHL, nicht der Datei: Der
+        # Realsteuervergleich 2025 führt auch 2023 und 2024. Alles unter dem
+        # Dateijahr abzulegen machte aus drei Jahren eines.
+        #
+        # UND DIE WICHTIGE ABGRENZUNG ZU `council_steuerkraft`: Beide Tabellen
+        # führen Steuerkraftmesszahlen, und sie sind NICHT dasselbe. Unser
+        # Open-Data-Datensatz 1106 trägt dieselben Beträge wie das LSN, aber
+        # unter einer um ein Jahr verschobenen Beschriftung (drei Wertepaare
+        # geprüft, zwei unabhängige Wege). Welche stimmt, ist offen. Deshalb
+        # eine eigene Tabelle mit der Jahresangabe des LSN — und deshalb darf
+        # kein Lesepfad die beiden zu einer Reihe mischen, solange das nicht
+        # geklärt ist. Er plottete zwei Jahre gegeneinander, die nicht dasselbe
+        # meinen.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_staedtevergleich ("
+            "reihe TEXT NOT NULL, "                # 'steuerkraft' | 'realsteuern'
+            "jahr INTEGER NOT NULL, "              # Bezugsjahr der Kennzahl (LSN)
+            "schluessel TEXT NOT NULL, "           # amtliche Schlüsselnr., 6-stellig
+            "stadt TEXT NOT NULL, "
+            "kennzahl TEXT NOT NULL, "
+            "wert REAL NOT NULL, "
+            "einheit TEXT NOT NULL, "              # teur | anzahl | prozent | eur_je_ew
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (reihe, jahr, schluessel, kennzahl))"
+        )
         # Vorlagen-Volltexte semantisch auffindbar machen: je Vorlage mehrere
         # Chunk-Vektoren (Sachverhalt/Begründung), die die Hybrid-Suche auf die
         # zugehörigen Beschlüsse abbildet. text_hash = SHA-256 des Volltexts —
@@ -1025,6 +1061,9 @@ class CouncilStore:
         # Ausnahme im Nachrüst-Weg.
         "council_konzern_posten":       (None, "quelle_url", "ris"),
         "council_konzern_traeger":      (None, "quelle_url", "ris"),
+        # Ebenso der Städtevergleich: erst mit der Herkunft entstanden, keine
+        # Altspalten, nichts nachzutragen.
+        "council_staedtevergleich":     (None, "quelle_url", "lsn"),
     }
 
     @staticmethod
@@ -3685,6 +3724,57 @@ class CouncilStore:
                 rows = self._conn.execute(
                     "SELECT * FROM council_konzern_traeger WHERE jahr = ? "
                     "ORDER BY art, betrag_teur DESC", (jahr,)).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [dict(r) for r in rows]
+
+    # --- Städtevergleich (amtliche Statistik des LSN) ------------------------
+
+    def save_staedtevergleich(self, reihe: str, zeilen: list[dict], herkunft) -> int:
+        """Eine Reihe des Städtevergleichs ersetzen — ``steuerkraft`` oder
+        ``realsteuern``.
+
+        Ersetzt wird **je Reihe und je betroffenem Jahr**, nicht die ganze
+        Tabelle: Die beiden Reihen kommen aus verschiedenen Dateien, die zu
+        verschiedenen Zeiten im Jahr erscheinen. Ein Lauf, der nur den
+        Realsteuervergleich neu einliest, darf die Steuerkraft-Reihe nicht
+        mitnehmen — sonst hinge der Bestand davon ab, in welcher Reihenfolge
+        jemand die beiden Ingests anstößt.
+
+        Übergeben wird nur, was seine Probe bestanden hat; diese Methode prüft
+        nichts nach, sie schreibt."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        jahre = {int(z["jahr"]) for z in zeilen}
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            for jahr in sorted(jahre):
+                self._conn.execute(
+                    "DELETE FROM council_staedtevergleich WHERE reihe = ? AND jahr = ?",
+                    (reihe, jahr))
+            self._conn.executemany(
+                "INSERT INTO council_staedtevergleich (reihe, jahr, schluessel, "
+                " stadt, kennzahl, wert, einheit, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?)",
+                [(reihe, z["jahr"], z["schluessel"], z["stadt"], z["kennzahl"],
+                  z["wert"], z["einheit"], hid, now) for z in zeilen])
+        return len(zeilen)
+
+    def get_staedtevergleich(self, reihe: str | None = None) -> list[dict]:
+        """Der Städtevergleich — eine Reihe oder beide.
+
+        Sortiert nach Jahr und Stadt, damit die Oberfläche nichts umsortieren
+        muss. Fehlt die Tabelle (frische Datenbank ohne Ingest-Lauf), ist die
+        Antwort leer statt ein Fehler — der Haushalts-Bereich zeigt die Seite
+        dann schlicht ohne Vergleichszahlen."""
+        try:
+            if reihe is None:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_staedtevergleich "
+                    "ORDER BY reihe, jahr, stadt, kennzahl").fetchall()
+            else:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_staedtevergleich WHERE reihe = ? "
+                    "ORDER BY jahr, stadt, kennzahl", (reihe,)).fetchall()
         except sqlite3.OperationalError:
             return []
         return [dict(r) for r in rows]

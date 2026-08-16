@@ -128,6 +128,24 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Entwicklung über alle abgeschlossenen Jahre. Farben bewerten dabei nichts:
   Mehr ausgegeben kann ein Tarifabschluss sein, weniger ausgegeben heißt oft,
   dass etwas nicht gebaut wurde. (#502)
+- **„Steht Oldenburg besser da als Osnabrück?" — eine neue Seite beantwortet
+  die Frage, so weit sie sich seriös beantworten lässt, und erklärt den Rest.**
+  Bei der Steuerkraft geht es: Oldenburg liegt mit 1.974 € je Einwohnerin an
+  der Spitze aller acht kreisfreien Städte Niedersachsens, vor Osnabrück
+  (1.651), Braunschweig (1.518) und Delmenhorst (949). Dazu die Hebesätze — auf
+  denselben Messbetrag zahlt man in Braunschweig 750 statt 539 Prozent — und
+  die Steuereinnahmekraft über drei Jahre, an der sich zeigt, was eine hohe
+  Gewerbesteuer kosten kann: In Wolfsburg fiel sie um 30 Prozent, während sie
+  in Oldenburg um 22 Prozent stieg. Alle Zahlen kommen aus zwei Tabellen des
+  Landesamts für Statistik, also für jede Gemeinde nach derselben Vorschrift
+  gerechnet. **Ausgaben, Personal und Schulden je Einwohner stehen bewusst
+  nicht dort**, und die Seite sagt auch, warum: Solche Zahlen messen zuerst,
+  wie weit eine Stadt ausgelagert hat — in Oldenburgs Haushalt stehen rund 64
+  Prozent dessen, was die Stadt insgesamt bewegt, in Osnabrücks knapp 48. Die
+  Stadt Oldenburg hat diesen Vergleich 2018 auf Antrag der FDP-Fraktion selbst
+  angestellt und im selben Dokument festgestellt, dass er nichts aussagt; die
+  Seite zitiert sie wörtlich und verlinkt den Vorgang im Ratsinformationssystem.
+  (#516)
 
 ### Geändert
 - **Zahlen, die eine Rechenprobe nicht bestehen, ersetzen keine vorhandenen
@@ -347,6 +365,49 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   davon waren zudem schief: Die Eingliederungshilfe ist bei Soziales der größte
   Block, und im Finanzmanagement liegen alle Steuern, aber nur die allgemeinen
   Zuweisungen des Landes. (#517)
+- **„Muss oder kann?" sagt jetzt, was die Stadt selbst dazu sagt.** Die Seite
+  beginnt mit einem Balken, der die geplanten Ausgaben in Pflicht, Pflicht mit
+  Spielraum und Kür zerlegt und das geplante Minus als Marke daneben setzt —
+  statt drei Filterklicks über einer Liste aus 13 Karten. Neu ist der
+  Gegencheck: Die Stadt gibt in ihren Teilhaushaltsplänen zu jeder Aufgabe an,
+  worauf sie beruht und wie viel Spielraum sie bei ihr sieht. Bei 6 von 9
+  Bereichen, für die es diese Angabe gibt, deckt sich das mit unserer
+  Einordnung — bei Jugend und Familie, Finanzmanagement und Recht sowie
+  Stadtplanung nicht, und genau das steht jetzt da, statt geglättet zu werden.
+  Dazu die Rechtsgrundlagen im Wortlaut des Plans und die Korrektur einer
+  schiefen Rechnung: Das Freiwillige zu streichen spart nicht seine 47,1 Mio. €
+  Aufwand, sondern seinen Zuschussbedarf von 43,0 Mio. — rund 60 % des
+  geplanten Minus. (#521)
+- **„Woher kommt das Geld?" sortiert jetzt nach Entscheidungsmacht — und sagt
+  beim Finanzausgleich ehrlich, dass es die Zahl nicht gibt.** Die
+  Einnahmequellen standen bisher nach Betrag sortiert nebeneinander, jede mit
+  ihrem eigenen Spielraum-Zeichen; die eigentliche Aussage musste man sich aus
+  sieben Karten zusammensuchen. Sie stehen jetzt in drei Gruppen: was der Rat
+  selbst beschließt, was er nur innerhalb gesetzlicher Grenzen darf, und worauf
+  er gar keinen Einfluss hat. Neu dazu ein Block über den Finanzausgleich —
+  nimmt die Stadt mehr eigene Steuern ein, rechnet das Land in den
+  Schlüsselzuweisungen dagegen. Wie stark, sagen wir bewusst **nicht**: Über
+  die 33 Jahrespaare des Datensatzes streut dieser Wert so weit, dass jede
+  einzelne Zahl in die Irre führte, und in 15 von 26 Jahren mit steigender
+  Steuerkraft stieg die Zuweisung sogar mit. Der Block zeigt deshalb beide
+  Reihen nebeneinander und zählt aus, statt einen Umrechnungskurs zu erfinden.
+  Im Steuer-Steckbrief außerdem zwei Korrekturen: Der Überschlag „was brächte
+  ein Hebesatzpunkt mehr" war als „brutto" bezeichnet, obwohl der Datensatz die
+  Gewerbesteuer bereits nach Abzug der Umlage führt, und beim Hebesatz stand
+  „bis 2025", obwohl wir genau einen einzigen Jahrgang kennen. (#519)
+- **Die Einnahmen-Ausgaben-Schere zeigt jetzt die Lücke selbst — und was
+  tatsächlich daraus wurde.** Zwei Linien zwangen dazu, den Abstand mit dem
+  Auge abzumessen; genau der Abstand ist aber die Aussage. Er ist jetzt eine
+  Fläche mit einer Strebe an jedem Jahr, und der größte Abstand trägt seinen
+  Betrag im Bild. Dazu der Wirklichkeitstest: Für die Jahre, für die ein
+  Jahresabschluss vorliegt, steht als Raute daneben, was am Ende herauskam —
+  2023 und 2024 plante die Stadt ein Minus und schloss mit einem Plus ab.
+  Deshalb heißt die Überschrift jetzt „Seit 2023 *plant* Oldenburg mit mehr
+  Ausgaben als Einnahmen", und sie wird aus den Daten gerechnet statt
+  festgeschrieben. Wo ein Jahrgang seinen Plan an einer anderen Bezugsgröße
+  misst (2020: Ansatz samt Nachtragshaushalt), steht ein Sternchen mit
+  Fußnote. Farbe bewertet dabei weiterhin nichts: Signal-Orange heißt „hier
+  ist die Differenz" — in den Plus- wie in den Minusjahren. (#522)
 
 <!-- GEPARKT (nur dev.ratslotse.de, Umgebungs-Gate): Eintrag aktivieren,
      sobald der Kommunalwahl-Vergleich auf Prod freigeschaltet wird.
