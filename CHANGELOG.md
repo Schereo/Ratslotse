@@ -34,7 +34,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Produktebene aus den Teilhaushalts-Plänen: was einzelne Aufgaben kosten,
   von der Kindertagesbetreuung (71,1 Mio. €) bis zum Brandschutz — mit dem
   zuständigen Amt und einer ehrlichen Angabe, wie viel des Haushalts diese
-  Liste abdeckt. (#PR)
+  Liste abdeckt. (#500)
 
 ### Hinzugefügt
 - **Der Haushalt erklärt sich jetzt selbst.** Vier neue Seiten machen aus
