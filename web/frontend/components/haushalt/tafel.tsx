@@ -1,13 +1,16 @@
 "use client";
 
 // Anzeigetafel des Haushalts-Einstiegs (Entwurf H2-01 Desktop, H2-11 mobil,
-// H2-12 dunkel): eine dunkle Fläche, auf der die Kernzahl des Jahres steht,
-// daneben die drei Summen und darunter das Kern-Visual.
+// H2-12 dunkel): eine abgesetzte Fläche, auf der die Kernzahl des Jahres
+// steht, daneben die drei Summen und darunter das Kern-Visual.
 //
-// Warum „Tafel" und nicht „Bühne": In `DESIGNSPRACHE.md` heißt die HELLE
+// Warum „Tafel" und nicht „Bühne": In `DESIGNSPRACHE.md` heißt die
 // Tonfläche hsl(205 42% 96,5%) bereits Bühne. Zwei Flächen unter einem Namen
-// löst später niemand mehr auf, deshalb trägt die dunkle hier einen eigenen —
+// löst später niemand mehr auf, deshalb trägt diese hier einen eigenen —
 // die Farb- und Rampenbindung dazu steht als `.hh-tafel` in `app/globals.css`.
+// Dort steht auch, warum die Fläche seit 16.08. dem Theme folgt, statt in
+// beiden dunkel zu sein: Im Hellmodus war ein schwarzblaues Feld über die
+// halbe Seite schlicht zu viel.
 //
 // Drei Dinge sind an den Texten wichtig, weil sie sonst still falsch werden:
 //

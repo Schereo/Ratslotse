@@ -9,8 +9,19 @@
 // einmal gut die Hälfte davon.
 //
 // Leserichtung: die Lücke als Zahl → was ein Gesamtabschluss überhaupt ist →
-// die Lücke über die Jahre → wer dazugehört → dieselbe Zahl aus zwei Quellen
-// → was der Vergleich NICHT kann → Quellen.
+// die Lücke über die Jahre → wer dazugehört → was der Vergleich NICHT kann
+// → Quellen.
+//
+// HIER STAND BIS 16.08. EIN BLOCK „Dieselbe Zahl, zwei Quellen": acht Zeilen
+// Tabelle, in denen für jedes Jahr dieselbe Zahl zweimal danebenstand und in
+// der dritten Spalte „unter 1 Tsd. €". Das war Selbstvergewisserung, keine
+// Information — die Seite bewies sich selbst, statt jemandem etwas zu
+// erklären („du musst nicht beweisen anhand von einer Tabelle, dass deine
+// Zahlen richtig sind", Tim 16.08.). Die PRÜFUNG ist geblieben: Das Backend
+// rechnet sie weiter (`gegenprobe` in `routers/council.py`), Tests halten sie
+// fest (`test_konzernabschluss.py::test_gegenprobe_gegen_die_kernverwaltung`,
+// `test_backend_api.py::test_haushalt_konzern_liefert_luecke_und_gegenprobe`),
+// und die Technik-Doku beschreibt sie. Nur die Zurschaustellung ist weg.
 //
 // WARUM DIE GRENZEN NICHT AM ENDE VERSTECKT SIND, sondern einen eigenen
 // Block bekommen: Ein Gesamtabschluss ist kein Haushalt. Er kommt zwei Jahre
@@ -37,7 +48,11 @@ import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { GlossaryText } from "@/components/glossary-text";
 import { cn } from "@/lib/utils";
 
-const QUELLEN = ["gesamtabschluss", "jahresabschluss"] as const;
+// Nur was auf dieser Seite auch zitiert wird: „jahresabschluss" stand hier,
+// solange der Gegenproben-Block stand — er war die einzige Stelle mit einem
+// Beleg darauf. Ein Schlüssel ohne Fußnote im Text wäre ein Eintrag im
+// Verzeichnis, auf den nichts zeigt.
+const QUELLEN = ["gesamtabschluss"] as const;
 
 /** Die Herkunft einer Angabe im Klartext: welcher Abschnitt, welche Probe,
  *  welcher Messwert. Das Quellenverzeichnis am Seitenende beschreibt die
@@ -114,62 +129,6 @@ function Lueckenkopf({ daten, jahr }: { daten: KonzernDaten; jahr: number }) {
         </p>
       </div>
     </div>
-  );
-}
-
-/** Dieselbe Zahl aus zwei Dokumenten. Der Block steht hier, weil er die
- *  einzige Stelle im Haushalts-Bereich ist, an der sich zwei unabhängig
- *  eingelesene Quellen gegenseitig bestätigen — und weil eine Seite, die
- *  Vertrauen verlangt, zeigen sollte, woher sie es nimmt. */
-function Gegenprobe({ daten }: { daten: KonzernDaten }) {
-  const zeilen = daten.gegenprobe.filter((g) => g.art === "ertraege");
-  if (!zeilen.length) return null;
-  const stimmt = zeilen.filter((g) => g.ok).length;
-  return (
-    <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-      <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-        Dieselbe Zahl, zwei Quellen
-      </p>
-      <p className="mt-1.5 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
-        Die Kernverwaltung steht zweimal in unserem Bestand: einmal in ihrem eigenen{" "}
-        <GlossaryText text="Jahresabschluss" />, einmal als Zeile im Gesamtabschluss — zwei
-        Dokumente, in verschiedenen Jahren von verschiedenen Stellen erstellt. Sie müssen
-        dasselbe sagen, und sie tun es in {stimmt} von {zeilen.length} vergleichbaren Jahren.
-      </p>
-      <div className="mt-3 overflow-x-auto">
-        <table className="w-full min-w-[440px] text-[12px]">
-          <thead>
-            <tr className="border-b border-border text-left font-mono text-[9.5px] uppercase tracking-wide text-muted-foreground">
-              <th className="pb-1.5 font-medium">Jahr</th>
-              <th className="pb-1.5 text-right font-medium">Jahresabschluss</th>
-              <th className="pb-1.5 text-right font-medium">Gesamtabschluss</th>
-              <th className="pb-1.5 text-right font-medium">Unterschied</th>
-            </tr>
-          </thead>
-          <tbody>
-            {zeilen.map((g) => (
-              <tr key={g.jahr} className="border-b border-border/60 last:border-0">
-                <td className="py-1.5 font-mono tabular-nums">{g.jahr}</td>
-                <td className="py-1.5 text-right font-mono tabular-nums">
-                  {deMio(g.jahresabschluss / 1e6)}
-                </td>
-                <td className="py-1.5 text-right font-mono tabular-nums">
-                  {deMio(g.konzern / 1e6)}
-                </td>
-                <td className="py-1.5 text-right font-mono tabular-nums text-muted-foreground">
-                  {g.ok ? "unter 1 Tsd. €" : `${deMio((g.konzern - g.jahresabschluss) / 1e6)} Mio.`}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <p className="mt-2 text-[11.5px] leading-relaxed text-muted-foreground">
-        Beträge in Mio.&nbsp;€, ordentliche Erträge. Der Gesamtabschluss weist auf Tausend
-        gerundet aus — genauer als „unter 1 Tsd.&nbsp;€ Unterschied" lässt sich der Abgleich
-        deshalb nicht machen.<Beleg q="jahresabschluss" />
-      </p>
-    </section>
   );
 }
 
@@ -299,8 +258,6 @@ export default function KonzernPage() {
             <Fundstelle h={hTraeger} />
           </div>
         </section>
-
-        <Gegenprobe daten={data} />
 
         {/* Die Grenzen — eigener Block, nicht Kleingedrucktes. */}
         <section className="rounded-2xl border border-border border-l-[3px] border-l-signal bg-card p-4 shadow-sm">
