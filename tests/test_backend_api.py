@@ -505,16 +505,80 @@ def test_haushalt_datenstand_nennt_alle_schichten(client):
     b = client.get("/api/council/haushalt/datenstand").json()
     schichten = {s["key"]: s for s in b["schichten"]}
     assert set(schichten) == {"haushaltsplan", "jahresabschluss", "teilhaushalt",
-                              "rpa_fundstelle", "pruefungsfeststellungen"}
-    # Zwei verschiedene Takte — das ist der Grund, warum der Block existiert.
+                              "rpa_fundstelle", "pruefungsfeststellungen",
+                              "konzernabschluss"}
+    # Drei verschiedene Takte — das ist der Grund, warum der Block existiert.
     assert schichten["jahresabschluss"]["monat"] == "September"
     assert schichten["haushaltsplan"]["monat"] == "Oktober"
+    # Der Gesamtabschluss hinkt am weitesten hinterher: Er kann erst entstehen,
+    # wenn alle einbezogenen Betriebe geprüft sind.
+    assert schichten["konzernabschluss"]["monat"] == "Februar"
     # Leerer Bestand: Lücken behaupten, wo nie etwas war, wäre falsch.
     assert schichten["jahresabschluss"]["jahrgaenge"] == []
     assert schichten["jahresabschluss"]["luecken"] == []
     # Der Plan kommt per Download, nicht aus dem Anlagenbestand.
     assert schichten["haushaltsplan"]["automatisch"] is False
     assert schichten["jahresabschluss"]["automatisch"] is True
+
+
+def test_haushalt_konzern_liefert_luecke_und_gegenprobe(client):
+    """/haushalt/konzern trägt beide Reihen und den Abgleich dazwischen.
+
+    Die Seite lebt von einer Differenz — Kernverwaltung gegen Konzern —, und
+    die Gegenprobe ist der Grund, warum man ihr glauben darf: Dieselbe
+    Kernverwaltungs-Zahl steht in zwei unabhängig eingelesenen Dokumenten."""
+    from council import herkunft
+
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    try:
+        cs.save_ergebnisrechnung(2024, [
+            {"nr": 12, "bezeichnung": "Summe ordentliche Erträge",
+             "ergebnis": 799057202.86, "ist_summe": 1},
+        ], herkunft.Herkunft(art="ris", probe="strukturprobe", dokument_id=295294,
+                             label="Jahresabschluss 2024",
+                             url="https://example.org/ja.pdf"))
+        anker = dict(art="ris", dokument_id=302709, label="Prüfbericht GA 2024",
+                     url="https://example.org/ga.pdf")
+        cs.save_konzern_jahrgang(
+            2024,
+            [{"nr": 13, "bezeichnung": "Summe ordentliche Erträge",
+              "rolle": "ertraege_summe", "betrag": 1241548906.55,
+              "vorjahr": 1139375959.21, "ist_summe": 1}],
+            [{"art": "ertraege", "traeger_key": "stadt",
+              "traeger": "Kernverwaltung (Stadt Oldenburg)",
+              "betrag_teur": 799057.0, "vorjahr_teur": 732987.0},
+             {"art": "ertraege", "traeger_key": "klinikum",
+              "traeger": "Klinikum Oldenburg AöR",
+              "betrag_teur": 368100.0, "vorjahr_teur": 336858.0}],
+            herkunft.Herkunft(probe=["konzern_ergebnisprobe", "konzern_ausserordentlich",
+                                     "konzern_gesamtergebnis"],
+                              fundstelle="Abschnitt 3.2", **anker),
+            herkunft.Herkunft(probe=["konzern_zeilenprobe", "konzern_traegersumme",
+                                     "konzern_querprobe"],
+                              fundstelle="Abschnitt 4.1.1", **anker))
+    finally:
+        cs.close()
+
+    b = client.get("/api/council/haushalt/konzern").json()
+    assert b["jahre"] == [2024]
+    assert b["konzern"][0]["ertraege_summe"] == 1241548906.55
+    # Träger kommen in Euro heraus, gespeichert sind sie in TEUR.
+    stadt = next(t for t in b["traeger"] if t["traeger_key"] == "stadt")
+    assert stadt["betrag"] == 799057000.0
+    # Die beiden Ebenen tragen verschiedene Herkünfte — verschiedene
+    # Abschnitte desselben Berichts, verschiedene Proben.
+    h_posten = b["herkunft"][str(b["konzern"][0]["herkunft_id"])]
+    h_traeger = b["herkunft"][str(stadt["herkunft_id"])]
+    assert h_posten["fundstelle"] == "Abschnitt 3.2"
+    assert h_traeger["fundstelle"] == "Abschnitt 4.1.1"
+    assert h_posten["dokument_id"] == 302709
+    # Die Erklärsätze für die Leserin kommen mit.
+    assert len(h_posten["proben"]) == 3
+    # Gegenprobe: 799.057 TEUR gegen 799.057.202,86 € — auf Tausend genau.
+    assert b["gegenprobe"] == [{"jahr": 2024, "art": "ertraege",
+                                "konzern": 799057000.0,
+                                "jahresabschluss": 799057202.86, "ok": True}]
 
 
 def test_sessions_carry_my_topic_items(client):

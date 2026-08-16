@@ -21,6 +21,7 @@ welche schlicht fehlt.
 | `/haushalt/pflicht` | Muss oder kann — Teilhaushalte nach Gestaltungsspielraum |
 | `/haushalt/labor` | Was-wäre-wenn: Hebesatz-Regler und Kürzungen, jede Bewegung in Mio., € je Einwohner und Anteil an der Lücke; dauerhaft sichtbare Gegenrechnung |
 | `/haushalt/pruefung` | Was das Rechnungsprüfungsamt beanstandet: alle Feststellungen der Schlussberichte im Wortlaut, mit Textziffer, Seite und Deeplink; dazu die Ketten über die Jahrgänge |
+| `/haushalt/konzern` | Der Konzern Stadt: Kernverwaltung gegen Gesamtabschluss über elf Jahrgänge, Aufschlüsselung nach Aufgabenträgern, Gegenprobe gegen den Jahresabschluss |
 
 Query-Parameter statt dynamischer Segmente, weil der Capacitor-Export die
 Slugs zur Bauzeit nicht kennt — dieselbe Konvention wie `/council/decision?id=`.
@@ -44,6 +45,8 @@ Prosa und haben auf Seiten, die sie nicht zeigen, nichts zu suchen.
 | `council_pruefbericht_quellen` | **Fundstelle** des RPA-Schlussberichts je Jahrgang (eine Zeile je Jahr) | dito | dito |
 | `council_produkte` | Produktebene: was einzelne Aufgaben kosten — plus Steckbrief (Kurzbeschreibung, Auftragsgrundlage, Beeinflussbarkeit, Wirkungskreis, Zielgruppe) | Teilhaushalts-Pläne — **Anlagen im RIS** | dito |
 | `council_pruefberichte` | Prüfungsfeststellungen 2017–2023, eine Zeile je Randmarke | Schlussberichte des Rechnungsprüfungsamts — **Anlagen im RIS** | `scripts/ingest_pruefberichte.py` |
+| `council_konzern_posten` | Gesamtergebnisrechnung des **Konzerns** je Posten, 2014–2024 | Konsolidierte Gesamtabschlüsse — **Anlagen im RIS** | `scripts/ingest_konzernabschluss.py` |
+| `council_konzern_traeger` | Dieselben Summen je Aufgabenträger (Kernverwaltung, Klinikum, Eigenbetriebe …), 2017–2024, in **TEUR** | dito | dito |
 
 :::note[Zwei Tabellen zu denselben Berichten]
 `council_pruefbericht_quellen` hält die **Fundstelle** des Schlussberichts
@@ -646,6 +649,105 @@ eine Zahl, die in keinem Dokument steht. Die Produkte stehen deshalb nur
 daneben — als Größenordnung, nie als Summand.
 :::
 
+## Der Konzern Stadt: was der Kernhaushalt nicht zeigt
+
+Alles bisher Beschriebene ist die **Kernverwaltung**. Das ist nicht die ganze
+Stadt: Klinikum, Verkehr und Wasser, Abfallwirtschaftsbetrieb, Bäderbetrieb,
+Weser-Ems Halle und der Eigenbetrieb Gebäudewirtschaft führen eigene Bücher
+und tauchen im Haushalt bestenfalls als Zuschusszeile auf. 2024 stehen
+799,1 Mio. € Kernverwaltung gegen 1.241,5 Mio. € Konzern — der Haushalts-
+Bereich zeigte bis dahin rund **64 %** dessen, was die Stadt bewegt.
+
+Die Quelle ist der **konsolidierte Gesamtabschluss** nach § 128 NKomVG, genauer
+der Prüfbericht, den das Rechnungsprüfungsamt dazu vorlegt (`council_anlagen`,
+zwölf Jahrgänge 2013–2024). Parser: `council/konzernabschluss.py`.
+
+**Die Labels dieser Reihe sind wertlos.** Der Gesamtabschluss 2016 heißt im
+Bürgerinfo schlicht „Anlage", 2013 ebenso; „Prüfbericht GA 2021" trifft nur
+drei von zwölf. Erkannt wird deshalb am **Textanfang** — und zwar erst nach
+dem Glätten des Zeilenumbruchs, denn im Rohtext steht der Titel über fünf
+Zeilen verteilt. Ein `raw_text LIKE 'Bericht über die Prüfung des
+konsolidierten Gesamtabschlusses zum 31.12.2016%'` fände **nichts**.
+
+### Zwei Tabellen, sechs Proben
+
+| Abschnitt | Tabelle | Proben |
+|---|---|---|
+| 3.2 Gesamtergebnisrechnung | `council_konzern_posten` | `Erträge − Aufwendungen = ordentliches Ergebnis`; dasselbe für die außerordentlichen Posten; beide zusammen = Gesamtjahresergebnis |
+| 4.1.1 Trägeraufstellung | `council_konzern_traeger` | je Zeile `Jahr − Vorjahr = Veränderung`; Träger + Konsolidierung = ausgewiesene Summe; diese Summe = Summenposten aus 3.2 |
+
+Dazu die **Vorjahres-Kette** über Dokumentgrenzen: 39 von 39 Gliedern schließen.
+Sie ist bewusst **kein** Ausschlussgrund, sondern eine Meldung — sie prüft zwei
+Jahrgänge gegeneinander, und wer bei Streit beide wegwirft, verliert einen
+guten wegen eines schlechten.
+
+Stand heute: **11 von 12 Jahrgängen** gespeichert (2014–2024), 289 Posten,
+135 Trägerzeilen.
+
+### Drei Fallen, an denen ein naiver Parser scheitert
+
+- **Die Postennummern wechseln.** Bis 2018 ist Posten 15 die Summe der
+  ordentlichen Erträge, ab 2019 ist es Posten 13. Wer weiter 15 liest, bekommt
+  ab 2019 „Versorgungsaufwendungen" — 8,4 Mio. statt 1,14 Mrd., und keine
+  Zeile im Log. Gespeichert wird deshalb eine **Rolle**
+  (`ertraege_summe`, `zinsaufwand`, …), erkannt an der Beschriftung; die
+  Nummer steht nur noch als Fundstelle daneben.
+- **Die Vorjahresspalte ist nicht immer in Euro.** 2014–2016 führt der
+  Tabellenkopf `EUR EUR TEUR`. Wer das übersieht, liest einen Konzern, der
+  über Nacht auf ein Tausendstel schrumpft. Die Einheit kommt aus dem Kopf.
+- **2019 hat keine Zeilenumbrüche.** Der Extrakt setzt die ganze Tabelle in
+  eine Zeile, und die nächste Postennummer klebt am Vorjahreswert
+  (`269.835.099,832. Zuwendungen`). Auflösbar, weil ein deutscher Betrag immer
+  genau zwei Nachkommastellen hat — mehr macht `entzerren()` nicht, und die
+  drei Proben entscheiden anschließend wie bei jedem anderen Jahrgang.
+
+Dazu kommt eine Eigenheit, die keine Falle, sondern eine Grenze ist: In den
+Jahrgängen bis 2017 stehen **Leerzeichen mitten in Beträgen**
+(`105.667.339, 23`, `160.026.568 ,55`). Solche Zeilen fallen weg, statt eine
+geratene Zahl zu liefern — der erste *saubere* Betrag einer Zeile ist sonst
+nicht mehr der des Haushaltsjahres, sondern der des Vorjahres. Die
+Beschriftung darf deshalb keine Ziffernfolge enthalten; tut sie es, ist die
+Zeile zerschossen.
+
+### Die Gegenprobe — die stärkste Bestätigung im ganzen Bereich
+
+Der Gesamtabschluss führt die Kernverwaltung als eigene Trägerzeile. Diese
+Zeile muss den Ist-Wert wiedergeben, den `council_ergebnisrechnung` aus einem
+**anderen** Dokument eines **anderen** Jahres trägt. Sie tut es in **10 von 10**
+vergleichbaren Fällen (5 Jahrgänge × Erträge und Aufwendungen), jeweils auf
+die Rundung eines Tausend genau — 2024 etwa 799.057 TEUR gegen
+799.057.202,86 €. Zwei getrennt eingelesene Quellen, dieselbe Zahl; die Seite
+zeigt den Abgleich offen.
+
+### Was der Gesamtabschluss nicht hergibt
+
+- **Die Liste der einbezogenen Gesellschaften.** In den jüngeren Jahrgängen ist
+  der Konsolidierungskreis eine **Grafik ohne Textebene** („Aus der
+  nachfolgenden Grafik ist ersichtlich, welche Aufgabenträger …") — dieselbe
+  Sackgasse wie bei der Schuldenübersicht. Wer dazugehört, sagt stattdessen die
+  Trägeraufstellung, und die trägt Zahlen. Beteiligungsquoten stehen nirgends.
+- **Der Schuldenstand.** Die Gesamtschuldenübersicht ist Pflichtanlage, aber
+  ihre Seiten tragen im PDF keinen Text. Ohne OCR ist dort nichts zu holen, und
+  ein aus Diagrammbeschriftungen zusammengerechneter Schuldenstand wäre still
+  falsch.
+- **Der Jahrgang 2013** (`document_id` 188333): 74 Seiten, aber nur 38.000
+  Zeichen Volltext — die Tabellenseiten kommen ohne Textebene. Keine der drei
+  Proben ist überhaupt rechenbar, der Jahrgang fällt durch.
+- **Die Aufwendungsseite der Trägeraufstellung 2018.** Ihre Konsolidierungs-
+  zeile (−80.462 TEUR) passt nicht zur eigenen Summenzeile; der Bericht des
+  Folgejahres führt für dasselbe Jahr −80.398. Die Spaltenprobe schlägt mit
+  64 TEUR an, die Aufstellung wird verworfen — die Ertragsseite desselben
+  Jahrgangs und seine Postentabelle bleiben. **Das ist der Gate im Betrieb**,
+  nicht die Theorie dazu.
+
+:::caution[Ein Gesamtabschluss ist kein Haushalt]
+Er wird rund zwei Jahre später aufgestellt, folgt handelsrechtlichen Regeln und
+ist mit den Planzahlen auf `/haushalt` **nicht verrechenbar** — auch nicht
+durch Subtraktion. Die API liefert deshalb keine gemischten Summen, sondern
+beide Reihen getrennt, und die Seite sagt es in einem eigenen Block statt im
+Kleingedruckten.
+:::
+
 ## Was bewusst fehlt
 
 Der Bereich zeigt lieber eine Lücke als eine Schätzung:
@@ -673,6 +775,13 @@ Der Bereich zeigt lieber eine Lücke als eine Schätzung:
 - **Gebühren und Beiträge** — in keinem der Datensätze enthalten.
 - **Hebesatz-Zeitreihe und Städtevergleich** — kommen aus der
   Statistik-Schnittstelle des Landes, sobald sie angebunden ist.
+- **Verschuldung pro Einwohner im Städtevergleich** — Anlage 2 der
+  Gesamtabschlüsse führt sie über acht Jahrgänge samt Osnabrück, Braunschweig
+  und Hannover, und die Vorjahres-Kette schließt dort 4/4. Nicht gebaut, weil
+  die Vergleichsstädte **nicht aktuell** sind (Braunschweig 2016 gegen
+  Oldenburg 2024, vom Dokument selbst markiert) — eine Grafik ohne Jahr an
+  jedem Balken wäre still falsch, und das gehört sorgfältig gemacht statt
+  nebenbei.
 
 ## Befunde aus dem Datenabgleich
 

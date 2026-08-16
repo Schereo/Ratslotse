@@ -128,6 +128,29 @@ PROBEN: dict[str, str] = {
     "textextrakt":
         "Der Buchstabenanteil des Volltexts belegt, dass das PDF eine "
         "Zeichenzuordnung mitbringt und kein Glyphen-Salat ist.",
+    # Konzern Stadt Oldenburg (council/konzernabschluss.py). Die ersten drei
+    # stehen im Gesamtabschluss nebeneinander und sichern ihn gemeinsam ab:
+    # Erst wenn alle drei aufgehen, kommt ein Jahrgang herein.
+    "konzern_ergebnisprobe":
+        "In der Ergebnisrechnung des Konzerns geht die Rechnung des Dokuments "
+        "auf: Summe der ordentlichen Erträge − Summe der ordentlichen "
+        "Aufwendungen = ordentliches Ergebnis.",
+    "konzern_ausserordentlich":
+        "Dasselbe für die einmaligen Posten: außerordentliche Erträge − "
+        "außerordentliche Aufwendungen = außerordentliches Ergebnis.",
+    "konzern_gesamtergebnis":
+        "Beide Teile zusammen ergeben das ausgewiesene Gesamtjahresergebnis — "
+        "die Tabelle ist also von oben bis unten in sich stimmig.",
+    "konzern_traegersumme":
+        "Die einbezogenen Betriebe und Gesellschaften ergeben zusammen mit der "
+        "Verrechnung untereinander genau die Summe, die der Bericht ausweist.",
+    "konzern_querprobe":
+        "Dieselbe Summe steht an zwei Stellen des Berichts — in der "
+        "Ergebnisrechnung des Konzerns und in der Aufstellung, wer wie viel "
+        "beiträgt. Beide stimmen überein.",
+    "konzern_zeilenprobe":
+        "Je Betrieb nennt der Bericht Jahr, Vorjahr und Veränderung; die "
+        "Veränderung ist die Differenz der beiden anderen.",
     UNGEPRUEFT:
         "Diese Quelle trägt keine Rechenprobe: Sie liefert eine Zeile je Jahr "
         "ohne Summe, gegen die sich etwas prüfen ließe. Übernommen wie "
@@ -156,6 +179,12 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     "council_pruefbericht_quellen",
     "council_produkte",
     "council_pruefberichte",
+    # Beide neu mit dem Konzern-Bereich und ohne Altbestand: Sie führen ihre
+    # Herkunft ausschließlich über `herkunft_id`, tragen also keine
+    # `quelle_label`/`quelle_url`-Spalten mehr, aus denen etwas nachzutragen
+    # wäre (s. `CouncilStore._HERKUNFT_ALTFELDER`).
+    "council_konzern_posten",
+    "council_konzern_traeger",
 )
 
 

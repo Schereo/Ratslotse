@@ -341,6 +341,79 @@ def haushalt_pruefberichte(
     }
 
 
+@router.get("/haushalt/konzern")
+def haushalt_konzern(
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Der Konzern Stadt Oldenburg — was der Kernhaushalt **nicht** zeigt.
+
+    Alles auf einmal, weil die Aussage dieser Seite eine Differenz ist: Eine
+    Konzernzahl allein sagt nichts, sie sagt erst etwas neben der
+    Kernverwaltung im selben Jahr.
+
+    - ``jahre``: Jahrgänge mit eingelesenem Gesamtabschluss,
+    - ``konzern``: je Jahrgang die Summen des Konzerns (Erträge,
+      Aufwendungen, ordentliches Ergebnis, Gesamtjahresergebnis, Zins- und
+      Personalaufwand) samt bestandener Rechenprobe und Fundstelle,
+    - ``traeger``: wer den Konzern ausmacht — je Jahrgang und Aufstellung eine
+      Zeile pro Aufgabenträger, Beträge in **Euro** (der Bericht rundet sie
+      auf Tausend, daher die glatten Endziffern),
+    - ``posten``: die vollständige Gesamtergebnisrechnung je Jahrgang,
+    - ``gegenprobe``: dieselbe Kernverwaltungs-Zahl aus zwei unabhängigen
+      Dokumenten — der Trägerzeile des Gesamtabschlusses und dem
+      Jahresabschluss, den wir getrennt eingelesen haben,
+    - ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, bestandene Probe
+      samt Messwert und Stichtag. Die beiden Ebenen eines Jahrgangs tragen
+      **verschiedene** IDs: Sie stehen in verschiedenen Abschnitten des
+      Berichts und sind durch verschiedene Proben gedeckt.
+
+    Der Gesamtabschluss ist **kein Haushalt**: Er wird rund zwei Jahre später
+    aufgestellt, folgt handelsrechtlichen Regeln und ist mit den Planzahlen
+    auf ``/haushalt`` nicht verrechenbar. Die Seite sagt das; die API liefert
+    deshalb auch keine gemischten Summen, sondern beide Reihen getrennt."""
+    posten = store.get_konzern_posten()
+    traeger = store.get_konzern_traeger()
+    kern = store.kernverwaltung_ist()
+
+    je_jahr: dict[int, dict] = {}
+    for p in posten:
+        eintrag = je_jahr.setdefault(
+            p["jahr"], {"jahr": p["jahr"], "herkunft_id": p["herkunft_id"]})
+        if p["rolle"]:
+            eintrag[p["rolle"]] = p["betrag"]
+
+    # Gegenprobe: Trägerzeile „Stadt Oldenburg" (TEUR) gegen unseren
+    # Jahresabschluss (Euro). Abgeglichen wird auf Tausend genau — feiner
+    # kann es nicht sein, der Bericht rundet dort.
+    gegenprobe = []
+    for t in traeger:
+        if t["traeger_key"] != "stadt":
+            continue
+        ist = (kern.get(t["jahr"]) or {}).get(t["art"])
+        if ist is None:
+            continue
+        gegenprobe.append({
+            "jahr": t["jahr"], "art": t["art"],
+            "konzern": t["betrag_teur"] * 1000.0, "jahresabschluss": ist,
+            "ok": abs(t["betrag_teur"] - ist / 1000.0) <= 1.0,
+        })
+
+    ids = sorted({z["herkunft_id"] for z in (*posten, *traeger)
+                  if z["herkunft_id"] is not None})
+    return {
+        "jahre": store.konzern_jahre(),
+        "konzern": [je_jahr[j] for j in sorted(je_jahr)],
+        "traeger": [{**t, "betrag": t["betrag_teur"] * 1000.0,
+                     "vorjahr": (t["vorjahr_teur"] * 1000.0
+                                 if t["vorjahr_teur"] is not None else None)}
+                    for t in traeger],
+        "posten": posten,
+        "gegenprobe": gegenprobe,
+        "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
+    }
+
+
 @router.get("/haushalt/datenstand")
 def haushalt_datenstand(
     _user: dict = Depends(require_active),

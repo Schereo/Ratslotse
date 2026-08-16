@@ -154,4 +154,29 @@ export const GLOSSARY: Record<string, string> = {
     "Der Bericht, mit dem das Rechnungsprüfungsamt seine Prüfung eines Jahresabschlusses abschließt — mit allen Beanstandungen und Hinweisen im Wortlaut.",
   "Textziffer":
     "Die durchlaufende Nummer eines Abschnitts in einem amtlichen Bericht — die Adresse, unter der man eine Feststellung wiederfindet.",
+  // Ergänzt mit /haushalt/konzern: die Vokabeln des Gesamtabschlusses. Sie
+  // stehen unvermeidlich auf der Seite (sie sind die Namen der Sache), und
+  // ungeklärt ist jedes einzelne ein Grund wegzuklicken.
+  "Gesamtabschluss":
+    "Die Rechnung, die einmal im Jahr alles zusammenzieht, was der Stadt gehört: die Verwaltung selbst, ihre Eigenbetriebe und ihre Gesellschaften. Sie zeigt die Stadt so, als wäre sie ein einziges Unternehmen — daher auch „Konzernabschluss“.",
+  "Konzernabschluss":
+    "Anderes Wort für den Gesamtabschluss: die Rechnung, die Stadtverwaltung, Eigenbetriebe und städtische Gesellschaften zu einer einzigen zusammenfasst.",
+  "Konsolidierung":
+    "Das Herausrechnen der Geschäfte, die städtische Betriebe miteinander machen. Zahlt die Stadt ihrem Klinikum einen Zuschuss, ist das für den einen Ausgabe und für den anderen Einnahme — in einer gemeinsamen Rechnung stünde es doppelt. Deshalb wird es abgezogen.",
+  "Konsolidierungskreis":
+    "Die Liste der Betriebe und Gesellschaften, die in den Gesamtabschluss einbezogen werden. Wer zu klein ist, um das Bild zu verändern, bleibt draußen.",
+  "Eigenbetrieb":
+    "Ein Betrieb der Stadt mit eigener Buchführung und eigenem Wirtschaftsplan, aber ohne eigene Rechtsform — er gehört rechtlich weiter zur Stadt. In Oldenburg zum Beispiel die Gebäudewirtschaft, die Abfallwirtschaft und der Bäderbetrieb.",
+  "Aufgabenträger":
+    "Sammelbegriff des Gesamtabschlusses für alles, was für die Stadt Aufgaben erledigt: die Verwaltung selbst, ihre Eigenbetriebe, Anstalten und Gesellschaften.",
+  "Anstalt des öffentlichen Rechts":
+    "Eine rechtlich selbstständige Einrichtung in öffentlicher Hand — sie hat eigene Organe und eigene Bücher, gehört aber weiterhin der Stadt. Das Klinikum Oldenburg ist eine.",
+  "Beteiligung":
+    "Ein Anteil der Stadt an einem Unternehmen. Bei einer Mehrheit bestimmt sie mit, bei kleineren Anteilen sitzt sie eher mit am Tisch als am Steuer.",
+  "Eigenkapitalmethode":
+    "Ein Weg, ein Unternehmen in die Gesamtrechnung aufzunehmen, an dem die Stadt zwar beteiligt ist, das sie aber nicht allein bestimmt: Statt aller Einnahmen und Ausgaben fließt nur der Anteil am Wert des Unternehmens ein. Fachlich auch „Equity-Methode“.",
+  "Equity-Methode":
+    "Anderes Wort für die Eigenkapitalmethode: Von einem Unternehmen, an dem die Stadt nur beteiligt ist, geht nicht das ganze Geschäft in die Gesamtrechnung ein, sondern nur der Anteil an seinem Wert.",
+  "Vollkonsolidierung":
+    "Die vollständige Aufnahme eines Betriebs in die Gesamtrechnung: Alle seine Einnahmen und Ausgaben zählen mit, so als gehörten sie der Stadt direkt.",
 };
