@@ -418,11 +418,13 @@ export default function VergleichSeite() {
               <strong>Eine gemeinsame Zeitreihe mit den Steuerkraft-Zahlen auf{" "}
               <Link href="/haushalt/steuer" className="font-semibold text-primary">
                 Woher das Geld kommt
-              </Link>.</strong> Beide Reihen nennen dieselben Beträge, beschriften sie
-              aber unterschiedlich: Das Landesamt führt sie ein Jahr später als der
-              Datensatz der Stadt. Welche Angabe die richtige ist, klären wir gerade —
-              bis dahin steht hier ausschließlich die Beschriftung des Landesamts, und
-              die beiden Reihen werden nicht zusammengerechnet.
+              </Link>.</strong> Beide Reihen nennen dieselben Beträge und tragen
+              inzwischen auch dieselbe Jahresangabe: Der offene Datensatz der Stadt
+              beschriftete sie ein Jahr zu früh — nachgewiesen an den eigenen Büchern
+              der Stadt, in denen das Geld ein Jahr später als Ist verbucht ist —, und
+              wir haben das korrigiert. Wir rechnen sie trotzdem nicht zusammen: Sie
+              stammen aus zwei Veröffentlichungen, die sich in Nachträgen und
+              Revisionen um kleine Beträge unterscheiden können.
             </li>
           </ul>
         </section>

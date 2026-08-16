@@ -158,6 +158,12 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   ab, steht hinterher der alte Stand da und kein halber neuer. (#511)
 
 ### Behoben
+- **Die Vergleichsseite nannte den Jahresversatz noch als offene Frage.** Sie
+  ist mit #516 beantwortet: Der offene Datensatz der Stadt beschriftete die
+  Steuerkraft ein Jahr zu früh, nachgewiesen an den eigenen Büchern der Stadt.
+  Beide Reihen tragen jetzt dieselbe Jahresangabe. Zusammengerechnet werden sie
+  weiterhin nicht — sie stammen aus zwei Veröffentlichungen, die sich in
+  Nachträgen um kleine Beträge unterscheiden können. (#PR)
 - **Steuerkraft und Schlüsselzuweisungen standen unter dem falschen Jahr.** Der
   offene Datensatz der Stadt, aus dem wir beide Reihen lesen, beschriftet seine
   Zeilen um ein Jahr zu früh — die Beträge selbst stimmen, nur die Jahreszahl
