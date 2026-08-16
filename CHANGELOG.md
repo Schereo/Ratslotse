@@ -16,7 +16,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Mio. wurde ein Überschuss von 35. Auf den Bereichsseiten steht die
   Entwicklung über alle abgeschlossenen Jahre. Farben bewerten dabei nichts:
   Mehr ausgegeben kann ein Tarifabschluss sein, weniger ausgegeben heißt oft,
-  dass etwas nicht gebaut wurde. (#PR)
+  dass etwas nicht gebaut wurde. (#502)
 
 ### Verbessert
 - **Das Haushalts-Labor sagt jetzt, ob das viel ist.** Bisher bewegte man
