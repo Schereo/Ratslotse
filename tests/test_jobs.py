@@ -89,6 +89,7 @@ def test_registry_deckt_die_cron_eintraege_ab():
         "abendmeldungen",   # Design 30a: N5 täglich 18 Uhr, N6 sonntags
         "check_presse",     # Stufe 3a: Stadt-Pressemitteilungen, täglich 5:15
         "render_plaene",    # P1: Planzeichnungen als Bilder, sonntags 4:30
+        "check_finanzdaten",  # neue Haushalts-Jahrgänge, alle zwei Wochen
     }
     for job in JOBS:
         assert BY_KEY[job["key"]] is job

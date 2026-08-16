@@ -341,6 +341,33 @@ def haushalt_pruefberichte(
     }
 
 
+@router.get("/haushalt/datenstand")
+def haushalt_datenstand(
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Bis wann die Zahlen reichen — je Datenschicht ein Jahrgangs-Stand.
+
+    Beantwortet die Frage, die sonst auf neun Seiten einzeln erklärt werden
+    müsste: „Warum steht hier 2024 und nicht 2025?" Der Haushalts-Bereich
+    trägt fünf Schichten mit **verschiedenen** Takten — der Plan kommt im
+    Oktober für das nächste Jahr, die Abrechnung im September für das
+    vorletzte. Zwischen September und Oktober liegt für einen Jahrgang immer
+    nur die eine Hälfte vor; das ist der Normalfall, nicht die Störung.
+
+    Je Schicht: die vorhandenen Jahrgänge, Lücken darin, der nächste
+    erwartete Jahrgang samt Datum, und ob er schon überfällig ist. Die Werte
+    kommen aus dem Bestand, nicht aus einer gepflegten Liste — eine Angabe,
+    die jemand von Hand nachziehen müsste, wäre genau die, die veraltet.
+    Gefüllt wird der Bestand vom Cron ``scripts/check_finanzdaten.py``."""
+    from council import finanzquellen
+
+    zeilen = finanzquellen.datenstand(store)
+    for z in zeilen:
+        z["monat"] = finanzquellen.MONATE[z["erwarteter_monat"]]
+    return {"heute": date.today().isoformat(), "schichten": zeilen}
+
+
 @router.get("/haushalt")
 def haushalt_uebersicht(
     _user: dict = Depends(require_active),

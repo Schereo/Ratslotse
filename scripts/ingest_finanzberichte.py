@@ -18,8 +18,14 @@ Dieses Skript liest sie aus, ohne etwas herunterzuladen:
 
 Beide Parser verlangen eine im Dokument selbst dokumentierte Rechenprobe
 (siehe ``council/finanzberichte.py``); was sie nicht besteht, wird
-übersprungen und am Ende als übersprungen ausgewiesen. Läuft einmal je neuem
-Jahrgang, es gibt keinen Cron::
+übersprungen und am Ende als übersprungen ausgewiesen.
+
+**Woran ein Dokument erkannt wird, steht nicht mehr hier**, sondern in
+``council/finanzquellen.py`` — dieselbe Definition benutzt der Cron
+``scripts/check_finanzdaten.py``, der neue Jahrgänge von allein nachzieht.
+Dieses Skript bleibt der Weg von Hand: Es liest **alle** Jahrgänge neu ein,
+auch die schon gespeicherten, und ist damit das Mittel, einen verbesserten
+Parser über den Bestand zu ziehen (was der Cron bewusst nicht tut)::
 
     python scripts/ingest_finanzberichte.py
     python scripts/ingest_finanzberichte.py --nur jahresabschluss
@@ -28,214 +34,53 @@ from __future__ import annotations
 
 import argparse
 import os
-import re
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from council import finanzberichte  # noqa: E402
+from council import finanzquellen  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 
 COUNCIL_DB = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlite")
 
-
-def _jahresabschluesse(store: CouncilStore) -> dict:
-    """Gesamtdokumente der Jahresabschlüsse — nicht die Rechenschaftsberichte
-    und nicht die Prüfberichte, die dieselbe Jahreszahl im Titel tragen.
-
-    Zwei Durchgänge: erst alle Jahrgänge lesen und prüfen, dann speichern.
-    Die Vorjahres-Kette lässt sich nur über Dokumentgrenzen hinweg prüfen —
-    dafür müssen der Jahrgang und sein Nachbar gelesen vorliegen."""
-    rows = store._conn.execute(
-        "SELECT label, url, raw_text FROM council_anlagen "
-        "WHERE label LIKE '%Jahresabschluss%' AND n_pages > 100 "
-        "  AND label NOT LIKE '%Rechenschaft%' AND label NOT LIKE '%Schlussbericht%' "
-        "ORDER BY label").fetchall()
-
-    gelesen: dict[int, dict] = {}
-    uebersprungen = vorzeichen_repariert = 0
-    for r in rows:
-        m = re.search(r"(20\d\d)", r["label"] or "")
-        if not m:
-            continue
-        jahr = int(m.group(1))
-        text = r["raw_text"] or ""
-        posten = finanzberichte.parse_ergebnisrechnung(text, jahr)
-        # Ohne beide Summenzeilen ist der Jahrgang für „Plan gegen Ist" wertlos.
-        if {p["nr"] for p in posten} < {12, 20}:
-            print(f"  {jahr}: nur {len(posten)} Posten, keine Summenzeilen — übersprungen",
-                  file=sys.stderr)
-            uebersprungen += 1
-            continue
-        # Innerhalb der Tabelle: 12 − 20 = 21, in Plan und Ist.
-        ok, warum = finanzberichte.strukturprobe(posten)
-        if not ok:
-            print(f"  {jahr}: Strukturprobe gerissen ({warum}) — übersprungen", file=sys.stderr)
-            uebersprungen += 1
-            continue
-        repariert = sum(1 for p in posten if p.get("vorzeichen_repariert"))
-        if repariert:
-            # Zählen und melden: Wird das häufiger, stimmt etwas anderes nicht.
-            print(f"  {jahr}: {repariert} Zeile(n) mit fehlendem Minuszeichen im Dokument — "
-                  f"Betrag passte auf den Cent, Vorzeichen ergänzt", file=sys.stderr)
-            vorzeichen_repariert += repariert
-        gelesen[jahr] = {"posten": posten, "text": text,
-                         "label": r["label"], "url": r["url"]}
-
-    # Vorjahres-Kette: Das Ist eines Jahres steht im Folgejahrgang noch einmal.
-    # Ein gerissenes Glied verrät nicht, welche Seite falsch ist — also fallen
-    # beide raus. In der Praxis schließen alle Glieder.
-    kette = finanzberichte.vorjahreskette({j: v["posten"] for j, v in gelesen.items()})
-    verdaechtig: set[int] = set()
-    for jahr, folge, warum in kette:
-        print(f"  Vorjahres-Kette {jahr}→{folge} gerissen: {warum} — beide Jahrgänge "
-              f"werden nicht gespeichert", file=sys.stderr)
-        verdaechtig |= {jahr, folge}
-    glieder = sum(1 for j in gelesen if j + 1 in gelesen) * 2
-
-    mit_thh = verworfen = gruende_gesamt = 0
-    for jahr in sorted(gelesen):
-        if jahr in verdaechtig:
-            uebersprungen += 1
-            continue
-        v = gelesen[jahr]
-        posten, label, url = v["posten"], v["label"], v["url"]
-        store.save_ergebnisrechnung(jahr, posten, label, url)
-        e = next(p for p in posten if p["nr"] == 12)
-        a = next(p for p in posten if p["nr"] == 20)
-        arten = sorted({p["plan_art"] for p in posten})
-        print(f"  {jahr}: {len(posten)} Posten · Erträge {e['plan']/1e6:.1f} → "
-              f"{e['ergebnis']/1e6:.1f} · Aufwendungen {a['plan']/1e6:.1f} → "
-              f"{a['ergebnis']/1e6:.1f} · Bezug {'/'.join(arten)}")
-        if a["plan"] != a["ansatz"] or e["plan"] != e["ansatz"]:
-            print(f"      ursprünglicher Ansatz: Erträge {e['ansatz']/1e6:.1f} · "
-                  f"Aufwendungen {a['ansatz']/1e6:.1f}")
-
-        # Zweite Ebene: dieselbe Rechnung je Teilhaushalt. Sie wird nur
-        # übernommen, wenn ihre Summe zur Gesamtrechnung passt — in Plan UND
-        # Ist. Sonst wurde für einen Teilhaushalt die falsche (in sich
-        # stimmige) Tabelle gelesen, was zeilenweise nicht auffällt.
-        thh = finanzberichte.parse_teilergebnisrechnungen(v["text"], jahr)
-        if thh:
-            passt, abweichung = finanzberichte.summenprobe(thh, posten)
-            if not passt:
-                print(f"    Teilhaushalte verworfen: Summe weicht um {abweichung*100:.1f} % "
-                      f"von der Gesamtrechnung ab", file=sys.stderr)
-                verworfen += 1
-            else:
-                for x in thh:
-                    store.save_ergebnisrechnung(jahr, x["posten"], label, url,
-                                                thh_nr=x["thh_nr"], thh_name=x["thh_name"])
-                print(f"    + {len(thh)} Teilhaushalte "
-                      f"(Summenprobe {abweichung*100:.2f} % Abweichung)")
-                mit_thh += 1
-
-        # Das „Warum": Abschnitt 6.3.1 je Posten. Eintrittskarte ist der
-        # Abgleich mit der Tabellenzeile — Betrag und Prozentsatz stehen in
-        # der Überschrift des Blocks und müssen beide passen.
-        roh = finanzberichte.parse_abweichungsgruende(v["text"], jahr)
-        angenommen, abgelehnt = finanzberichte.pruefe_abweichungsgruende(roh, posten)
-        for grund in abgelehnt:
-            print(f"    Erläuterung verworfen — {grund}", file=sys.stderr)
-        if angenommen:
-            store.save_abweichungsgruende(jahr, angenommen, label, url)
-            gruende_gesamt += len(angenommen)
-            print(f"    + {len(angenommen)} Erläuterungen zu Abweichungen")
-
-    return {"jahre": len(gelesen) - len(verdaechtig), "uebersprungen": uebersprungen,
-            "jahre_mit_teilhaushalten": mit_thh, "thh_verworfen": verworfen,
-            "kettenglieder_geprueft": glieder, "kette_gerissen": len(kette),
-            "vorzeichen_repariert": vorzeichen_repariert,
-            "abweichungsgruende": gruende_gesamt}
-
-
-def _pruefberichte(store: CouncilStore) -> dict:
-    """Schlussberichte des Rechnungsprüfungsamts als Fundstelle merken —
-    nur Verweis, kein Inhalt („Das Rechnungsprüfungsamt hat diesen Abschluss
-    geprüft")."""
-    rows = store._conn.execute(
-        "SELECT label, url, n_pages, raw_text FROM council_anlagen "
-        "WHERE label LIKE '%chlussbericht%' OR raw_text LIKE 'Schlussbericht%'").fetchall()
-    gefunden = unlesbar = 0
-    for r in rows:
-        treffer = finanzberichte.pruefbericht_aus_anlage(r["label"], r["raw_text"])
-        if not treffer:
-            continue
-        store.save_pruefbericht_quelle(treffer["jahr"], r["label"], r["url"],
-                                r["n_pages"], treffer["lesbar"])
-        gefunden += 1
-        hinweis = "" if treffer["lesbar"] else "  (Volltext unbrauchbar, nur Verweis)"
-        print(f'  {treffer["jahr"]}: {r["n_pages"]} Seiten{hinweis}')
-        unlesbar += 0 if treffer["lesbar"] else 1
-    return {"pruefberichte": gefunden, "pruefberichte_ohne_text": unlesbar}
-
-
-#: Steckbrief-Felder, deren Abdeckung der Lauf ausweist. Die Zahl gehört ins
-#: Protokoll, weil sie später auf der Seite steht: „Von 377 Produkten tragen
-#: 371 eine Kurzbeschreibung" ist eine Angabe, die stimmen muss.
-_STECKBRIEF = ("kurzbeschreibung", "auftragsgrundlage", "beeinflussbarkeit",
-               "wirkungskreis", "zielgruppe")
-
-
-def _teilhaushalte(store: CouncilStore) -> dict:
-    rows = store._conn.execute(
-        "SELECT label, url, raw_text FROM council_anlagen "
-        "WHERE label LIKE '%THH%' AND n_pages > 40 ORDER BY label").fetchall()
-    je_jahr: dict[int, int] = {}
-    mit_feld: dict[str, int] = {f: 0 for f in _STECKBRIEF}
-    ohne = 0
-    for r in rows:
-        produkte = finanzberichte.parse_teilergebnishaushalt(r["raw_text"] or "")
-        if not produkte:
-            ohne += 1
-            continue
-        for jahr in {p["jahr"] for p in produkte}:
-            teil = [p for p in produkte if p["jahr"] == jahr]
-            store.save_produkte(jahr, teil, r["label"], r["url"])
-            je_jahr[jahr] = je_jahr.get(jahr, 0) + len(teil)
-            for feld in _STECKBRIEF:
-                mit_feld[feld] += sum(1 for p in teil if p.get(feld))
-    for jahr in sorted(je_jahr):
-        print(f"  {jahr}: {je_jahr[jahr]} Produkt-Zeilen")
-
-    # Abdeckung je Feld — gezählt wird der TABELLENSTAND, nicht die Zahl der
-    # gelesenen Zeilen: Dieselbe Produktnummer kommt in mehreren Dokumenten
-    # desselben Jahres vor und überschreibt sich, die Summe oben ist also
-    # größer als die Tabelle. Auf der Seite steht später der Tabellenstand.
-    gesamt = store._conn.execute("SELECT COUNT(*) FROM council_produkte").fetchone()[0]
-    print(f"  Steckbrief-Abdeckung ({gesamt} Produkte in der Tabelle):")
-    abdeckung: dict[str, int] = {}
-    for feld in _STECKBRIEF:
-        n = store._conn.execute(
-            f"SELECT COUNT(*) FROM council_produkte WHERE {feld} IS NOT NULL "
-            f"AND {feld} != ''").fetchone()[0]
-        abdeckung[feld] = n
-        anteil = f"{n / gesamt * 100:.1f} %" if gesamt else "–"
-        print(f"    {feld:20s} {n:>5}  ({anteil})")
-    return {"dokumente": len(rows), "ohne_treffer": ohne,
-            "produkte": sum(je_jahr.values()), "in_tabelle": gesamt,
-            "steckbrief": abdeckung}
+#: Kennzahlen, die jede Schicht führt — sie brauchen im gemeinsamen Bericht
+#: einen Präfix, sonst überschriebe die letzte Schicht die vorherigen.
+_EIGEN = ("neue_jahrgaenge", "bestand_geschuetzt")
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Jahresabschlüsse und Teilhaushalte einlesen")
     ap.add_argument("--nur", choices=["jahresabschluss", "teilhaushalte"], default=None)
     ap.add_argument("--db", default=str(COUNCIL_DB))
+    ap.add_argument("--auch-schrumpfen", action="store_true",
+                    help="einen Jahrgang auch dann ersetzen, wenn er dabei deutlich "
+                         "kleiner wird — für den Fall, dass genau das die Absicht ist "
+                         "(ein früherer Lauf war zu großzügig). Ein LEERES Ergebnis "
+                         "ersetzt trotzdem nichts.")
     args = ap.parse_args()
 
     store = CouncilStore(Path(args.db))
+    p = finanzquellen.Protokoll()
+    schuetzen = not args.auch_schrumpfen
     ergebnis: dict = {}
+
+    def uebernehmen(name: str, teil: dict) -> None:
+        for schluessel, wert in teil.items():
+            ergebnis[f"{name}_{schluessel}" if schluessel in _EIGEN else schluessel] = wert
+
     try:
         if args.nur != "teilhaushalte":
             print("Jahresabschlüsse (Ergebnisrechnung):")
-            ergebnis |= _jahresabschluesse(store)
+            uebernehmen("jahresabschluss",
+                        finanzquellen.lies_jahresabschluesse(store, p, schuetzen=schuetzen))
             print("Schlussberichte des Rechnungsprüfungsamts:")
-            ergebnis |= _pruefberichte(store)
+            uebernehmen("rpa", finanzquellen.lies_schlussbericht_fundstellen(store, p))
         if args.nur != "jahresabschluss":
             print("Teilhaushalte (Produktebene):")
-            ergebnis |= _teilhaushalte(store)
+            uebernehmen("teilhaushalt",
+                        finanzquellen.lies_teilhaushalte(store, p, schuetzen=schuetzen))
     finally:
         store.close()
     print(f"Fertig: {ergebnis}")
