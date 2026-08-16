@@ -370,6 +370,28 @@ def test_datenstand_kennt_die_schicht(tmp_path, gelesen):
         store.close()
 
 
+def test_bestandsschutz_haelt_einen_kaputten_parser_draussen():
+    """Der Ingest schreibt nur gegen ein Ergebnis, das den Bestand trägt.
+
+    `save_schulden` löscht zwar nichts, was eine Lieferung nicht mitbringt —
+    ein halb gelesener Satz kann den Bestand also nicht abräumen. Er könnte
+    ihn aber überschreiben, wenn die Stadt ihr Tabellenlayout ändert und der
+    Parser nur noch die Hälfte versteht. Davor schützt diese Regel; `0 Zeilen`
+    bleibt auch mit `--schrumpf-erlauben` tabu."""
+    def entscheide(neu: int, schuetzen: bool = True) -> bool:
+        p = finanzquellen.Protokoll(still=True)
+        return finanzquellen.bestandsschutz(p, "Schuldenzeitreihe", 31, neu,
+                                            schuetzen=schuetzen)
+
+    assert entscheide(31) is True          # voller Lauf
+    assert entscheide(12) is False         # kaputter Parser
+    assert entscheide(0) is False          # gar nichts gelesen
+    # Der bewusste Handgriff lässt einen kleineren Satz durch …
+    assert entscheide(12, schuetzen=False) is True
+    # … ein leeres Ergebnis aber nie.
+    assert entscheide(0, schuetzen=False) is False
+
+
 def test_endpunkt_liefert_reihe_abgrenzung_und_belege(tmp_path, gelesen):
     """Der Endpunkt muss drei Dinge zusammen ausliefern: die Zahlen, ihre
     Abgrenzung und den Beleg. Ohne die Abgrenzung ist die Zahl mehrdeutig,

@@ -43,6 +43,7 @@ from pypdf import PdfReader
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+from council import finanzquellen  # noqa: E402
 from council import herkunft as h  # noqa: E402
 from council import schulden  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
@@ -90,6 +91,9 @@ def main() -> int:
     ap.add_argument("--pdf", help="lokale Datei statt Download")
     ap.add_argument("--trockenlauf", action="store_true",
                     help="alles rechnen und zeigen, nichts speichern")
+    ap.add_argument("--schrumpf-erlauben", action="store_true",
+                    help="einen deutlich kleineren Jahrgangssatz trotzdem "
+                         "speichern (bewusster Handgriff, s. bestandsschutz)")
     args = ap.parse_args()
 
     store = CouncilStore(Path(args.db))
@@ -156,6 +160,32 @@ def main() -> int:
             if args.trockenlauf:
                 print("Trockenlauf — nichts gespeichert.")
                 return 0
+
+            # Bestandsschutz vor dem Schreiben (council/finanzquellen.py).
+            # `save_schulden` löscht zwar nichts, was die Lieferung nicht
+            # mitbringt — ein halb gelesener Jahrgangssatz kann den Bestand
+            # also nicht abräumen. Was er aber KANN, ist vorhandene Jahrgänge
+            # mit schlechteren Werten überschreiben, wenn die Stadt ihr
+            # Tabellenlayout ändert und der Parser nur noch die Hälfte
+            # versteht. Genau davor schützt diese Regel: Ein deutlich
+            # kleineres Ergebnis ersetzt den Bestand nicht.
+            #
+            # `--schrumpf-erlauben` ist der bewusste Handgriff für den Fall,
+            # dass ein verbesserter Parser absichtlich weniger Jahrgänge
+            # übernimmt (etwa weil eine Probe schärfer geworden ist).
+            p = finanzquellen.Protokoll()
+            alt = len(store.schulden_jahre())
+            if not finanzquellen.bestandsschutz(
+                    p, "Schuldenzeitreihe", alt, len(zeilen),
+                    schuetzen=not args.schrumpf_erlauben):
+                for zeile in p.warnungen:
+                    print(zeile.strip(), file=sys.stderr)
+                print("ABBRUCH: Der vorhandene Bestand bleibt unangetastet. Wenn "
+                      "das Schrumpfen Absicht ist: --schrumpf-erlauben.",
+                      file=sys.stderr)
+                return 1
+            for zeile in p.zeilen:
+                print(zeile.strip())
 
             # Zwei Herkünfte, weil zwei verschiedene Probenlagen vorliegen und
             # eine gemeinsame Angabe für beide ungenau wäre: Die meisten
