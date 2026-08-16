@@ -480,7 +480,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   weil die Zahlen aus der Vorlage stammen, mit der die Verwaltung den Haushalt
   einbringt, steht an jeder von ihnen, dass sie der Stand der Einbringung
   sind — was der Rat in den Beratungen noch ändert, waren zuletzt bis zu
-  13 Mio. €. (#PR)
+  13 Mio. €. (#530)
 
 <!-- GEPARKT (nur dev.ratslotse.de, Umgebungs-Gate): Eintrag aktivieren,
      sobald der Kommunalwahl-Vergleich auf Prod freigeschaltet wird.
