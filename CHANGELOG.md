@@ -170,6 +170,11 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Jahr erscheinen. (#530)
 
 ### Behoben
+- **Der Nach-oben-Knopf saß auf dem Tablet hinter der Tab-Leiste.** Er rückte
+  schon ab 768 Pixeln nach unten, obwohl die Leiste erst auf echten Desktops
+  verschwindet — also auf jedem Tablet und jedem großen Touch-Gerät genau in
+  ihren Bereich. Jetzt hängt seine Position am selben Punkt wie die Leiste
+  selbst. (#PR)
 - **Die Überschrift der Anzeigetafel brach mitten im Wort um.** „Oldenburg plant
   883,9 Mil-/lionen Euro" — dabei blieben rechts daneben rund 400 Pixel frei.
   Ursache war eine Breitenbegrenzung von 19 Zeichen, die noch aus einer engeren
