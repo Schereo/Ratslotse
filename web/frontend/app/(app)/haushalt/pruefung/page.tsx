@@ -321,8 +321,7 @@ function PruefungInner() {
           <>
             Für {data.ohne_bericht.join(", ")} liegt ein ausgelesener Jahresabschluss vor, der
             Schlussbericht aber nicht in lesbarer Form — sein PDF bringt keine Zeichenzuordnung
-            mit, und eine zweite Kopie gibt es nicht<Beleg q="pruefbericht" />. Wir lesen dann
-            lieber nichts als etwas Geratenes.{" "}
+            mit, und eine zweite Kopie gibt es nicht<Beleg q="pruefbericht" />.{" "}
           </>
         )}
         Die Feststellungen stehen im Wortlaut des Berichts; Zeilenumbrüche des PDF-Textes sind

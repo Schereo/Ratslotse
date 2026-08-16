@@ -34,7 +34,10 @@
 //    nicht trägt.
 //
 // Zwei Jahre auf einer Seite: Der Plan reicht bis ins Kopfjahr, die
-// Produktebene endet 2023. Jede Aussage aus ihr trägt ihren Jahresstempel.
+// Die Produktebene reicht nicht so weit wie der Plan — jede Aussage aus ihr
+// trägt deshalb ihren Jahresstempel. Wie weit sie reicht, sagen die Daten
+// selbst; hier stand bis 16.08. „endet 2023", was mit dem Nachziehen der
+// Jahrgänge 2024/25 (#548) still falsch wurde.
 
 import { useMemo } from "react";
 import Link from "next/link";

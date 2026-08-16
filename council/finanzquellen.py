@@ -1,7 +1,7 @@
 """Woher die Finanzzahlen des Haushalts-Bereichs stammen — eine Definition je
 Datenart, und das Einlesen dazu.
 
-Neun Schichten tragen den Bereich. Sechs davon hängen als **Anlagen** an
+Dreizehn Schichten tragen den Bereich. Sieben davon hängen als **Anlagen** an
 Ratsvorlagen und liegen mit Volltext in ``council_anlagen``; woran man sie
 dort erkennt (Label-Muster, Mindestseitenzahl, Ausschlüsse), stand bis 08/2026
 verstreut in zwei Ingest-Skripten. Hier steht es einmal. ``ingest_finanz-
@@ -19,9 +19,11 @@ Haushaltsplan: Gesamtergebnishaushalt + Teil-      Anfang Oktober
 haushalte
 =================================================  ==================
 
-Die drei übrigen kommen **nicht** aus dem Ratsinformationssystem: der
-Haushaltsplan als Download von oldenburg.de, der Städtevergleich in zwei
-Reihen vom Landesamt für Statistik Niedersachsen. Deren Takt ist an den
+Die sechs übrigen kommen **nicht** aus dem Ratsinformationssystem: der
+Haushaltsplan, die Investitionen des Finanzhaushalts, der Beteiligungsbericht
+und die Schuldenzeitreihe als Downloads von oldenburg.de beziehungsweise aus
+dem Open-Data-Portal, dazu der Städtevergleich in zwei Reihen vom Landesamt
+für Statistik Niedersachsen. Deren Takt ist an den
 Dokumenten selbst gemessen, nicht geschätzt (16.08.2026):
 
 ===========================================  ===========================
@@ -160,8 +162,9 @@ class Finanzquelle:
     """Eine Datenart: woran man sie erkennt, was sie füllt, wann sie kommt.
 
     Buchgeführt wird über **Einheiten**, nicht über Jahrgänge. Eine Einheit ist
-    das, was **ein** Dokument liefert — und das ist bei zwei der fünf Schichten
-    kleiner als ein Jahrgang:
+    das, was **ein** Dokument liefert — und das ist nicht überall ein ganzer
+    Jahrgang. Wo die Einheit kleiner ist, sagt es ``einheiten_von``; zwei
+    Beispiele, an denen die Regel hängt:
 
     - Ein Produkt-Jahrgang verteilt sich auf rund neun Teilhaushalts-Anlagen
       (``council/store.py`` sagt es bei ``save_produkte`` selbst: „Die Produkte
