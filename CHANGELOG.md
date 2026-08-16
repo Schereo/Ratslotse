@@ -495,6 +495,26 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Der Städtevergleich steht bewusst spät: Er beantwortet eine Frage, die sich
   erst stellt, wenn man die eigenen Zahlen kennt. Auf dem Handy braucht das
   trotz drei zusätzlicher Ziele kaum mehr Platz als vorher. (#529)
+- **Ratslotse gendert jetzt durchgängig — mit Sternchen.** Aus „Nutzer" wird
+  „Nutzer*innen", aus „je Einwohnerin und Einwohner" wird „je Einwohner*in";
+  auch die Anweisungen an die KI sind mitgezogen, damit die Antworten nicht
+  weiter in generischen Maskulina zurückschreiben. Namen und Rechtsbegriffe
+  bleiben, wie sie heißen: Die „Einwohnerfragestunde" steht so im
+  Kommunalverfassungsgesetz, „Bürgerinfo" heißt das Ratsinformationssystem der
+  Stadt, und „Antragsteller" sind hier Fraktionen, keine Personen. (#533)
+- **Die Anzeigetafel des Haushalts ist im Hellmodus hell — und die Tabelle,
+  mit der die Konzern-Seite sich selbst bestätigte, ist weg.** Die Fläche mit
+  „Oldenburg plant 883,9 Millionen Euro" war in beiden Farbmodi dunkel und
+  stand im hellen Modus als schwarzblaues Feld über der halben Seite; sie
+  folgt jetzt dem Modus und bleibt trotzdem vom Rest der Seite abgesetzt. Die
+  Balken darauf wurden dafür neu gestuft, damit auch der kleinste Posten und
+  die schraffierte Rücklagen-Marke sichtbar bleiben — im Hellmodus stehen sie
+  jetzt weiter vom Grund ab als vorher im Dunkelmodus. Von der Konzern-Seite
+  verschwunden ist der Block „Dieselbe Zahl, zwei Quellen": acht Zeilen, in
+  denen jedes Jahr zweimal dieselbe Summe und daneben „unter 1 Tsd. €
+  Unterschied" stand. Dass zwei Dokumente übereinstimmen, ist unsere
+  Qualitätssicherung — sie läuft unverändert weiter, steht in der Technik-Doku
+  und in Tests, aber nicht mehr auf der Seite. (#535)
 - **Die Grafiken im Haushalt schreiben ihre Zahlen jetzt selbst an.** Unter der
   Zeitreihe auf `/haushalt`, der Steuerkurve auf `/haushalt/steuer` und den
   beiden Reihen des Finanzausgleichs steht eine Leiste, die immer ein Jahr mit

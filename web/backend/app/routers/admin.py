@@ -227,7 +227,7 @@ def user_detail(user_id: int, _admin: dict = Depends(require_admin), store: Stor
     """Nutzer-Detail (Design 20a): Feature-Nutzung, Angelegtes, 30-Tage-Verlauf."""
     detail = store.admin_user_detail(user_id)
     if not detail:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nutzer:in nicht gefunden.")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nutzer*in nicht gefunden.")
     return detail
 
 
@@ -242,7 +242,7 @@ def set_role(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Rolle muss 'user' oder 'admin' sein.")
     target = store.get_web_user_by_id(user_id)
     if not target:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nutzer:in nicht gefunden.")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nutzer*in nicht gefunden.")
     if target["id"] == admin["id"] and body.role != "admin":
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Du kannst dir nicht selbst die Adminrechte entziehen.")
     store.set_web_user_role(user_id, body.role)
@@ -262,7 +262,7 @@ def set_status(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Status muss 'active' oder 'pending' sein.")
     target = store.get_web_user_by_id(user_id)
     if not target:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nutzer:in nicht gefunden.")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nutzer*in nicht gefunden.")
     if target["id"] == admin["id"] and body.status != "active":
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Du kannst dich nicht selbst sperren.")
     store.set_web_user_status(user_id, body.status)
@@ -283,7 +283,7 @@ def set_limits(
     (None = Standard, 0 = unbegrenzt, N = eigenes Limit) und Befreiung von den
     Rate-Limitern der Frage-Endpoints — z. B. für Power-Nutzer oder Tests."""
     if not store.get_web_user_by_id(user_id):
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nutzer:in nicht gefunden.")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nutzer*in nicht gefunden.")
     store.set_web_user_limits(user_id, body.deep_limit, body.limits_frei)
     u = store.get_web_user_by_id(user_id)
     return {"deep_limit": u.get("deep_limit"), "limits_frei": bool(u.get("limits_frei"))}

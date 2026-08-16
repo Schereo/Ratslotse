@@ -9,7 +9,7 @@ letzten Meldung dazugekommen ist: eine neue Station, ein nachgetragenes
 Ergebnis.
 
 Bewusst kein LLM und kein Zusatz-Scraping über das Nötige hinaus: Geholt wird
-nur, was Menschen tatsächlich verfolgen — eine kleine, von Nutzer:innen selbst
+nur, was Menschen tatsächlich verfolgen — eine kleine, von Nutzer*innen selbst
 bestimmte Menge.
 
 Täglich per Cron, nach check_protocols.

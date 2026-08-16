@@ -2,7 +2,7 @@
 
 Bewusst getrennt vom Wichtigkeits-Score (``council/importance.py``): Der misst
 Tragweite (Geld, Umstrittenheit, Ebene) als billige Heuristik — hier bewertet
-ein LLM den GESPRÄCHSWERT für normale Stadtbewohner:innen (Kuriosität,
+ein LLM den GESPRÄCHSWERT für normale Stadtbewohner*innen (Kuriosität,
 Alltagsnähe, Konkretheit). Der Score speist das „Fundstück des Tages"
 (``council/fundstueck.py``) und ist per Backfill über den ganzen Bestand
 berechenbar (``scripts/rate_interest.py``). Prompts in ``nwz/prompts.py``,

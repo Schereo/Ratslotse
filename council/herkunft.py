@@ -248,7 +248,7 @@ def _proben_normalisieren(roh: str | Sequence[str]) -> str:
         if n not in PROBEN:
             raise ValueError(
                 f"Unbekannte Probe {n!r}. Bekannt sind: {', '.join(sorted(PROBEN))}. "
-                "Eine neue Probe gehört mit einem Satz für Leserinnen nach "
+                "Eine neue Probe gehört mit einem Satz für Leser*innen nach "
                 "council/herkunft.py:PROBEN.")
     for allein in (UNGEPRUEFT, UNBEKANNT):
         if allein in namen and len(namen) > 1:
