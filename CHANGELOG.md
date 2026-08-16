@@ -163,7 +163,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   nicht ist". Dass eine Pro-Kopf-Zahl keine Forderung ist, weiß jede Leserin;
   der Hinweis las sich belehrend. Geblieben sind die vier Punkte, die
   tatsächlich überraschen — wer mitgezählt wird, woher das Geld kommt, dass
-  keine Investition darin steckt und warum Städtevergleiche hinken. (#PR)
+  keine Investition darin steckt und warum Städtevergleiche hinken. (#532)
 - **Die Vergleichsseite nannte den Jahresversatz noch als offene Frage.** Sie
   ist mit #516 beantwortet: Der offene Datensatz der Stadt beschriftete die
   Steuerkraft ein Jahr zu früh, nachgewiesen an den eigenen Büchern der Stadt.
