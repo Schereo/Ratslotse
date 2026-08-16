@@ -1,7 +1,7 @@
 """Woher die Finanzzahlen des Haushalts-Bereichs stammen — eine Definition je
 Datenart, und das Einlesen dazu.
 
-Sieben Schichten tragen den Bereich. Sechs davon hängen als **Anlagen** an
+Neun Schichten tragen den Bereich. Sechs davon hängen als **Anlagen** an
 Ratsvorlagen und liegen mit Volltext in ``council_anlagen``; woran man sie
 dort erkennt (Label-Muster, Mindestseitenzahl, Ausschlüsse), stand bis 08/2026
 verstreut in zwei Ingest-Skripten. Hier steht es einmal. ``ingest_finanz-
@@ -18,6 +18,29 @@ Jahresabschluss + Schlussbericht des RPA           Anfang September
 Haushaltsplan: Gesamtergebnishaushalt + Teil-      Anfang Oktober
 haushalte
 =================================================  ==================
+
+Die drei übrigen kommen **nicht** aus dem Ratsinformationssystem: der
+Haushaltsplan als Download von oldenburg.de, der Städtevergleich in zwei
+Reihen vom Landesamt für Statistik Niedersachsen. Deren Takt ist an den
+Dokumenten selbst gemessen, nicht geschätzt (16.08.2026):
+
+===========================================  ===========================
+Was                                          Wann veröffentlicht
+===========================================  ===========================
+Kommunaler Finanzausgleich, **endgültig**    März/April des Ausgleichs-
+(Blatt ``ST_KR_MESS_VGL``)                   jahres — Stand der Dateien:
+                                             25.04.2023, 02.04.2024,
+                                             25.03.2025, 26.03.2026
+Realsteuervergleich                          im Folgejahr des Berichts-
+(Statistischer Bericht L II 7 / L II 9)      jahres, zuletzt Juni 2022,
+                                             August 2023, November 2024,
+                                             November 2025, Juli 2026
+===========================================  ===========================
+
+Beim Finanzausgleich zählt ausdrücklich die **endgültige** Fassung: Die
+vorläufige erscheint zwar schon im November davor (19.11.2025 für 2026),
+enthält aber gar kein Blatt ``ST_KR_MESS_VGL`` — nachgesehen in den Dateien
+beider Jahrgänge. Sie kann diese Schicht also nicht füllen.
 
 Der Cron rechnet damit **nicht**. Er fragt den Bestand, nicht den Kalender:
 „Welche Einheit fehlt mir, und liegt inzwischen ein Dokument dafür vor?"
@@ -167,13 +190,17 @@ class Finanzquelle:
     was: str
     #: Zieltabelle (bei mehreren die führende — sie entscheidet den Bestand).
     tabelle: str
-    #: In welchem Monat der Rat das Dokument üblicherweise bekommt (1–12).
+    #: In welchem Monat das Dokument üblicherweise vorliegt (1–12) — bei den
+    #: Rats-Schichten der Monat der Einbringung, bei der Landesstatistik der
+    #: der Veröffentlichung.
     erwarteter_monat: int
-    #: Kalenderjahr der Einbringung = Jahrgang + ``versatz``.
+    #: Kalenderjahr, in dem das passiert = Jahrgang + ``versatz``.
     versatz: int
     #: Wo das Dokument herkommt: ``ris`` = Anlage im Ratsinformationssystem
-    #: (der Cron liest sie aus), ``stadt`` = Download von oldenburg.de (der
-    #: Cron lädt bewusst nichts herunter, s. Modul-Kopf von check_finanzdaten).
+    #: (der Cron liest sie aus), ``stadt`` = Download von oldenburg.de,
+    #: ``lsn`` = Tabelle des Landesamts für Statistik Niedersachsen (bei
+    #: beiden lädt der Cron bewusst nichts herunter, s. Modul-Kopf von
+    #: check_finanzdaten).
     herkunft: str
     #: Welche **Einheiten** schon im Bestand stehen (Menge von Tupeln).
     bestand: Callable[[CouncilStore], set[tuple]]
@@ -188,6 +215,12 @@ class Finanzquelle:
     einlesen: Callable[..., dict] | None = None
     #: Weitere Tabellen, die derselbe Lauf mitfüllt.
     nebentabellen: tuple[str, ...] = ()
+    #: Was ein Mensch tut, wenn diese Schicht ausbleibt — Quelle und Skript im
+    #: Klartext. Nur bei ``automatisch is False`` gesetzt; der Cron schreibt es
+    #: in seine Meldung. Dort stand es bis 08/2026 fest verdrahtet als
+    #: „Download von oldenburg.de, scripts/ingest_haushalt.py" und wurde mit
+    #: der ersten Schicht einer anderen Stelle still falsch.
+    nachschub: str | None = None
 
     @property
     def automatisch(self) -> bool:
@@ -387,6 +420,32 @@ def _bestand_konzernabschluss(store: CouncilStore) -> set[tuple]:
 def _einheiten_konzernabschluss(row: dict) -> set[tuple]:
     jahr = konzernabschluss.jahrgang(row.get("kopf"))
     return {(jahr,)} if jahr else set()
+
+
+def _bestand_lsn_steuerkraft(store: CouncilStore) -> set[tuple]:
+    """Die Ausgleichsjahre, für die eine Steuerkraftmesszahl vorliegt.
+
+    Eine Datei trägt genau **ein** Ausgleichsjahr in den Bestand: Das zweite,
+    das sie mitführt, ist die Rechenprobe (``probe_ueberlappung``) und wird
+    nicht gespeichert. Die Einheit ist deshalb der Jahrgang, und „da" heißt
+    hier tatsächlich „fertig"."""
+    return {(r[0],) for r in _jahre(
+        store, "SELECT DISTINCT jahr FROM council_staedtevergleich "
+               "WHERE reihe = 'steuerkraft'")}
+
+
+def _bestand_lsn_realsteuern(store: CouncilStore) -> set[tuple]:
+    """Die Berichtsjahre des Realsteuervergleichs.
+
+    Ein Bericht füllt **drei** Jahrgänge: Hebesätze und Ist-Aufkommen für sein
+    Berichtsjahr, die Steuereinnahmekraft für dieses und die zwei davor
+    (``zeilen_realsteuern`` sagt es selbst: „Jeder Jahreswert trägt SEIN
+    Jahr"). Gezählt wird trotzdem je Jahr und nicht je Bericht — die Frage der
+    Seite ist „bis wann reichen die Zahlen?", und darauf antwortet das Jahr an
+    der Zahl, nicht das Deckblatt, auf dem sie stand."""
+    return {(r[0],) for r in _jahre(
+        store, "SELECT DISTINCT jahr FROM council_staedtevergleich "
+               "WHERE reihe = 'realsteuern'")}
 
 
 # --- Einlesen ---------------------------------------------------------------
@@ -1353,19 +1412,79 @@ for _q in (
         # (scripts/ingest_haushalt.py). Der Cron lädt nichts herunter — er
         # beobachtet diese Schicht nur und meldet, wenn ein Jahrgang ausbleibt.
         herkunft="stadt",
+        nachschub="Download von oldenburg.de, scripts/ingest_haushalt.py",
         bestand=_bestand_haushaltsplan,
+    ),
+    Finanzquelle(
+        key="lsn_steuerkraft",
+        label="Steuerkraft im Städtevergleich",
+        was="Wie viel Steuerkraft Oldenburg gegenüber den anderen sieben "
+            "kreisfreien Städten Niedersachsens auf die Waage bringt.",
+        tabelle="council_staedtevergleich",
+        # Die endgültigen Tabellen tragen den Stand März/April des
+        # Ausgleichsjahres (vier Jahrgänge nachgesehen, s. Modul-Kopf). April
+        # ist der späteste gemessene Monat — wer März nähme, meldete 2023 und
+        # 2024 einen Rückstand, den es nicht gab.
+        erwarteter_monat=4,
+        versatz=0,
+        herkunft="lsn",
+        nachschub="Download vom Landesamt für Statistik, "
+                  "scripts/ingest_staedtevergleich.py --kfa",
+        bestand=_bestand_lsn_steuerkraft,
+    ),
+    Finanzquelle(
+        key="lsn_realsteuern",
+        # Der amtliche Titel, und bewusst ohne „und": Die Fußzeile des
+        # Datenstands reiht die Namen der Schichten zu einer Aufzählung
+        # („A und B") — ein Label, das selbst ein „und" trägt, ergibt darin
+        # „A und B und C" und liest sich wie drei Dinge. Was drinsteckt, sagt
+        # der Satz darunter.
+        label="Realsteuervergleich",
+        was="Was die acht Städte bei Grund- und Gewerbesteuer verlangen — und "
+            "was am Ende je Einwohnerin hereinkommt.",
+        tabelle="council_staedtevergleich",
+        # Immer im Folgejahr, aber mit fünf Monaten Streuung (Juni bis
+        # November, fünf Jahrgänge gemessen). Der November ist der späteste
+        # gemessene Fall und deshalb die Schwelle: Früher ist nie ein Problem,
+        # zu früh gemeldet dagegen schon.
+        erwarteter_monat=11,
+        versatz=1,
+        herkunft="lsn",
+        nachschub="Download vom Landesamt für Statistik, "
+                  "scripts/ingest_staedtevergleich.py --realsteuer",
+        bestand=_bestand_lsn_realsteuern,
     ),
 ):
     QUELLEN[_q.key] = _q
 
 #: Reihenfolge für Oberfläche und Protokoll — vom Groben zum Feinen.
 #: Der Gesamtabschluss steht am Ende: Er ist die weiteste Sicht, kommt aber
-#: zeitlich zuletzt und beantwortet eine andere Frage als die fünf davor.
+#: zeitlich zuletzt und beantwortet eine andere Frage als die davor.
 #: Der Gesamtergebnishaushalt steht direkt hinter dem Haushaltsplan — beide
-#: beantworten „was ist geplant?", nur in verschiedener Auflösung.
+#: beantworten „was ist geplant?", nur in verschiedener Auflösung. Ganz hinten
+#: der Städtevergleich, denn der verlässt Oldenburg.
+#:
+#: Beim Städtevergleich zwei Zeilen und nicht eine, obwohl beide aus derselben
+#: Tabelle kommen: Die Jahresangaben bedeuten Verschiedenes — beim
+#: Finanzausgleich ist es das **Ausgleichsjahr** (läuft dem Kalender voraus),
+#: beim Realsteuervergleich das **Berichtsjahr** (hinkt ihm nach).
+#: Zusammengelegt ergäbe das eine Spanne „2023–2026", in der zwei verschiedene
+#: Dinge dasselbe zu meinen scheinen — genau die Verwechslung, gegen die die
+#: eigene Tabelle des Städtevergleichs angelegt wurde
+#: (s. Kopf von ``council/staedtevergleich``).
 REIHENFOLGE = ("haushaltsplan", "ergebnishaushalt", "jahresabschluss",
                "teilhaushalt", "rpa_fundstelle", "pruefungsfeststellungen",
-               "konzernabschluss")
+               "konzernabschluss", "lsn_steuerkraft", "lsn_realsteuern")
+
+#: Die Stelle hinter einer Herkunft, im Klartext. Sie steht in der Fußzeile des
+#: Datenstands („Nicht dabei: … — die Zahlen holen wir bei …") und muss deshalb
+#: aus den Daten kommen: Der Satz nannte bis 08/2026 pauschal das „Portal der
+#: Stadt" und wurde mit der ersten Schicht einer Landesbehörde falsch.
+STELLEN = {
+    "ris": "Ratsinformationssystem",
+    "stadt": "Portal der Stadt",
+    "lsn": "Landesamt für Statistik Niedersachsen",
+}
 
 
 def datenstand(store: CouncilStore, heute: date | None = None) -> list[dict]:
@@ -1404,6 +1523,7 @@ def datenstand(store: CouncilStore, heute: date | None = None) -> list[dict]:
         zeilen.append({
             "key": q.key, "label": q.label, "was": q.was,
             "tabelle": q.tabelle, "herkunft": q.herkunft,
+            "quelle": STELLEN.get(q.herkunft, q.herkunft),
             "automatisch": q.automatisch,
             "jahrgaenge": jahre, "luecken": luecken,
             # Je Jahrgang die Zahl der Einheiten (Teilhaushalte bzw. Ebenen) —

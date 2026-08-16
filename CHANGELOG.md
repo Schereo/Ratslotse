@@ -156,6 +156,18 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   `--auch-schrumpfen` übergehen; ein leeres Ergebnis ersetzt auch dann nichts.
   Ein Jahrgang wird außerdem am Stück gespeichert — bricht ein Lauf mittendrin
   ab, steht hinterher der alte Stand da und kein halber neuer. (#511)
+- **„Bis wann die Zahlen reichen" sagt es jetzt auch für den Städtevergleich.**
+  Der Block am Fuß von `/haushalt` führte jede Datenschicht auf — außer den
+  beiden Reihen, die den Vergleich mit den anderen kreisfreien Städten tragen.
+  Wer `/haushalt/vergleich` las, erfuhr an keiner Stelle, bis wann sie reichen
+  und wann der nächste Jahrgang kommt. Beide stehen jetzt dort, mit ihrem
+  eigenen Takt: Die Steuerkraft-Reihe erscheint im April desselben Jahres, der
+  Realsteuervergleich im November des Folgejahres. Und die Fußzeile nennt die
+  Stelle beim Namen: Sie versprach bisher pauschal, die Zahlen „vom Portal der
+  Stadt" zu holen — die beiden neuen Reihen kommen vom Landesamt für Statistik
+  Niedersachsen. Bleibt ein Jahrgang aus, meldet das der zweiwöchentliche
+  Prüflauf; geholt werden die Tabellen weiter von Hand, weil sie nur einmal im
+  Jahr erscheinen. (#530)
 
 ### Behoben
 - **Der Kassenzettel erklärte etwas, das niemand erklärt bekommen muss.** „Keine
