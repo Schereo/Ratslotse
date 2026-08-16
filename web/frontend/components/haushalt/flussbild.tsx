@@ -44,6 +44,8 @@ import {
   FlussBand, FlussDaten, FlussSeite, HaushaltDaten,
   deMio, fasseKleineZusammen, flussJahre, flussbild, mio,
 } from "@/lib/haushalt";
+import { ausblick, type Antwort as DatenstandAntwort } from "@/components/haushalt/datenstand";
+import { useFetch } from "@/lib/use-fetch";
 import { cn } from "@/lib/utils";
 
 type Seite = "herkunft" | "verwendung";
@@ -340,6 +342,19 @@ export function Flussbild({ daten, jahr, onJahrWechsel }: {
 
   // `flussJahre` ist aufsteigend — das jüngste vollständige Jahr steht hinten.
   const letztes = jahre.length ? jahre[jahre.length - 1] : null;
+  // Für den Ersatzfall: dasselbe noch einmal für das jüngste Jahr. Muss ein
+  // Hook sein und vor jedem `return` stehen.
+  const letztesIst = useMemo(
+    () => (letztes == null ? null : flussbild(daten, letztes, "ist")), [daten, letztes]);
+  const letztesPlan = useMemo(
+    () => (letztes == null ? null : flussbild(daten, letztes, "plan")), [daten, letztes]);
+  // Wann die Stadt den fehlenden Jahrgang üblicherweise vorlegt — derselbe
+  // Satz, den der Datenstand am Seitenfuß baut, statt einer zweiten Fassung.
+  const { data: stand_ } = useFetch<DatenstandAntwort>("/council/haushalt/datenstand");
+  const ausblickText = useMemo(() => {
+    const schicht = stand_?.schichten.find((x) => x.key === "jahresabschluss");
+    return schicht && stand_ ? ausblick(schicht, stand_.heute).text : null;
+  }, [stand_]);
 
   // NOTLÖSUNG, solange `onJahrWechsel` nicht verdrahtet ist: Das Jahr hält
   // `app/(app)/haushalt/page.tsx`, und die Jahres-Pillen dort tragen bereits
@@ -361,18 +376,27 @@ export function Flussbild({ daten, jahr, onJahrWechsel }: {
   // anzubieten — dann bleibt der Block leer wie bisher (die Seite blendet ihn
   // in dem Fall ohnehin ganz aus).
   if (letztes == null) return null;
-  if (!bild) return <Luecke jahr={jahr} letztes={letztes} aufJahr={aufLetztes} />;
 
-  const echterStand: "plan" | "ist" = bild.stand;
+  // Fehlt das gewählte Jahr, zeigen wir das jüngste vollständige — aber die
+  // Ansage steht ÜBER dem Bild, nicht als Fußnote darunter. Bis 16.08. stand
+  // hier gar kein Bild; der Hinweis allein ließ die Karte leer, obwohl wir
+  // etwas zu zeigen haben. Der Fehler der Fassung davor war nicht das
+  // Ersatzjahr, sondern dass der Tausch versteckt war (Entscheidung Tim).
+  const ersatz = !bild;
+  const zeigJahr = ersatz ? letztes : jahr;
+  const zeigBild = bild ?? (stand === "ist" ? letztesIst ?? letztesPlan : letztesPlan ?? letztesIst);
+  if (!zeigBild) return <Luecke jahr={jahr} letztes={letztes} aufJahr={aufLetztes} />;
+
+  const echterStand: "plan" | "ist" = zeigBild.stand;
   const beideStaende = !!istBild && !!planBild;
   const schmal = breite < SCHWELLE_BREIT;
 
-  const saldoMio = mio(bild.saldo) ?? 0;
+  const saldoMio = mio(zeigBild.saldo) ?? 0;
   // Nur die Seite benennen, die WIRKLICH klemmt: „792,6 statt 792,6 bei den
   // Ausgaben" ist keine Auskunft, sondern Rauschen.
   const luecken = ([
-    { seite: "Einnahmen", s: bild.herkunft },
-    { seite: "Ausgaben", s: bild.verwendung },
+    { seite: "Einnahmen", s: zeigBild.herkunft },
+    { seite: "Ausgaben", s: zeigBild.verwendung },
   ] as const)
     .filter(({ s }) => Math.abs(s.gesamt - s.teile) > 0.02 * s.gesamt)
     .map(({ seite, s }) => ({
@@ -381,12 +405,29 @@ export function Flussbild({ daten, jahr, onJahrWechsel }: {
 
   return (
     <div>
+      {/* Der Hinweis steht ÜBER dem Bild und nennt beides: dass hier ein
+          anderes Jahr steht, und wann das gewählte zu erwarten ist. Der
+          Termin kommt aus demselben Endpunkt wie der Datenstand am Seitenfuß
+          — eine zweite Fassung desselben Satzes würde auseinanderlaufen. */}
+      {ersatz && (
+        <div className="mb-2.5 rounded-lg border border-dashed border-border bg-muted/40 px-3.5 py-2.5">
+          <p className="text-[13px] font-semibold leading-relaxed">
+            Für {jahr} liegen uns die Einnahmearten noch nicht vor — hier steht {zeigJahr}.
+          </p>
+          <p className="mt-1 max-w-[74ch] text-[12.5px] leading-relaxed text-foreground/85">
+            Woher das Geld kommt, steht erst im Jahresabschluss.{" "}
+            {ausblickText ?? "Er wird üblicherweise im September des Folgejahres vorgelegt."}{" "}
+            Bis dahin zeigt diese Grafik das jüngste Jahr, für das die Aufschlüsselung vorliegt.
+          </p>
+        </div>
+      )}
+
       <div className="mb-1.5 flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
           Woher, wohin — und was dazwischen liegt
         </p>
         <span className="font-mono text-[10px] uppercase text-muted-foreground">
-          {echterStand === "ist" ? `Jahresabschluss ${bild.jahr}` : `Haushaltsplan ${bild.jahr}`} · Mio. Euro
+          {echterStand === "ist" ? `Jahresabschluss ${zeigBild.jahr}` : `Haushaltsplan ${zeigBild.jahr}`} · Mio. Euro
         </span>
       </div>
 
@@ -408,7 +449,7 @@ export function Flussbild({ daten, jahr, onJahrWechsel }: {
       )}
 
       <div ref={box}>
-        {!bild.aufgeschluesselt ? (
+        {!zeigBild.aufgeschluesselt ? (
           // Ehrlich statt gestreckt: Wenn die Einzelposten die ausgewiesene
           // Summe nicht tragen, wird nichts hochgerechnet und nichts gedehnt.
           <p className="rounded-lg border border-dashed border-signal/60 bg-card px-3 py-2.5 text-[12px] leading-relaxed text-foreground/85">
@@ -418,18 +459,18 @@ export function Flussbild({ daten, jahr, onJahrWechsel }: {
             daraus wäre gestreckt — die Zahlen stehen deshalb nur in der Tabelle.
           </p>
         ) : schmal ? (
-          <Listen bild={bild} offen={offen} setOffen={setOffen} />
+          <Listen bild={zeigBild} offen={offen} setOffen={setOffen} />
         ) : (
-          <Baender bild={bild} breite={breite} musterId={musterId}
+          <Baender bild={zeigBild} breite={breite} musterId={musterId}
             offen={offen} setOffen={setOffen} />
         )}
       </div>
 
-      {offen && !schmal && bild.aufgeschluesselt && (() => {
-        const seite = offen === "herkunft" ? bild.herkunft : bild.verwendung;
-        const { gebuendelt } = fasseKleineZusammen(seite.baender, bild.skala, MINDEST_ANTEIL);
+      {offen && !schmal && zeigBild.aufgeschluesselt && (() => {
+        const seite = offen === "herkunft" ? zeigBild.herkunft : zeigBild.verwendung;
+        const { gebuendelt } = fasseKleineZusammen(seite.baender, zeigBild.skala, MINDEST_ANTEIL);
         return gebuendelt.length ? (
-          <SammelPanel seite={offen} teile={gebuendelt} skala={bild.skala}
+          <SammelPanel seite={offen} teile={gebuendelt} skala={zeigBild.skala}
             onClose={() => setOffen(null)} />
         ) : null;
       })()}
@@ -455,19 +496,19 @@ export function Flussbild({ daten, jahr, onJahrWechsel }: {
         </button>
       </div>
 
-      {tabelle && <Tabelle bild={bild} />}
+      {tabelle && <Tabelle bild={zeigBild} />}
 
       {/* Die Skalen-Erklärung gehört nur unter ein Bild, das es auch gibt. */}
-      {bild.aufgeschluesselt && (
+      {zeigBild.aufgeschluesselt && (
         <p className="mt-2.5 text-[11px] leading-relaxed text-muted-foreground">
           Die Bandbreiten links und rechts liegen auf derselben Skala:{" "}
-          {deMio(mio(bild.summeLinks))}&#8239;Mio.&nbsp;€ hier wie dort.{" "}
+          {deMio(mio(zeigBild.summeLinks))}&#8239;Mio.&nbsp;€ hier wie dort.{" "}
           {saldoMio < 0
             ? `Weil die Stadt ${deMio(-saldoMio)} Mio. mehr ausgibt als sie einnimmt, trägt die linke Seite ein zusätzliches Band „aus dem Ersparten“ — sonst wären die Seiten nicht gleich lang.`
             : saldoMio > 0
               ? `Weil ${deMio(saldoMio)} Mio. übrig bleiben, trägt die rechte Seite ein zusätzliches Band „bleibt übrig“ — sonst wären die Seiten nicht gleich lang.`
               : "Einnahmen und Ausgaben liegen gleichauf."}
-          {!bild.stimmt && " Die Summenprobe geht nicht auf — die Grafik zeigt das, statt zu strecken."}
+          {!zeigBild.stimmt && " Die Summenprobe geht nicht auf — die Grafik zeigt das, statt zu strecken."}
         </p>
       )}
     </div>
