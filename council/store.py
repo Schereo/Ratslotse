@@ -733,8 +733,13 @@ class CouncilStore:
             "source_url TEXT, fetched_at TEXT NOT NULL)"
         )
         # Steuerkraftmesszahl + Schlüsselzuweisungen je Ausgleichsjahr (Open-Data,
-        # seit 1992) — zeigt die NFAG-Mechanik: mehr Steuerkraft, weniger
+        # seit 1993) — zeigt die NFAG-Mechanik: mehr Steuerkraft, weniger
         # Zuweisungen. Pflichtwissen für jede ehrliche Hebesatz-Simulation.
+        # `jahr` ist das Ausgleichsjahr, nicht die Jahreszahl aus der Quelle:
+        # Der Datensatz 1106 beschriftet um ein Jahr zu früh, wir rücken beim
+        # Einlesen (Beleg in `council/haushalt._STEUERKRAFT_VERSATZ`). Die
+        # beiden `*_je_ew`-Spalten bleiben deshalb leer — sie tragen die
+        # Pro-Kopf-Rechnung der Quelle und damit deren falsches Bezugsjahr.
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS council_steuerkraft ("
             "jahr INTEGER PRIMARY KEY, "
@@ -3423,7 +3428,22 @@ class CouncilStore:
             "SELECT jahr, art, betrag FROM council_steuern ORDER BY jahr, art")]
 
     def save_steuerkraft(self, rows: list[dict], herkunft) -> int:
-        """Steuerkraftmesszahl + Schlüsselzuweisungen je Jahr ersetzen."""
+        """Steuerkraftmesszahl + Schlüsselzuweisungen je Ausgleichsjahr ersetzen.
+
+        Anders als die Nachbar-Methoden räumt diese auch auf: Der Datensatz
+        1106 liefert die **ganze** Reihe bei jedem Lauf, und seit der
+        Jahres-Korrektur (``haushalt._STEUERKRAFT_VERSATZ``) trägt jede Zeile
+        ein anderes Jahr als beim letzten Mal. Ein reines INSERT OR REPLACE
+        ließe genau einen Jahrgang als Leiche zurück — den ältesten, den es
+        nach dem Rücken nicht mehr gibt. Der stünde dann mit den Beträgen
+        seines Nachfolgers in der Tabelle, und niemand käme je darauf.
+
+        Eine leere Lieferung räumt **nichts** ab: Ein misslungener Download
+        darf den Bestand nicht löschen. Der Ingest bricht in dem Fall ohnehin
+        vorher ab, aber die Methode soll das auch allein aushalten.
+        """
+        if not rows:
+            return 0
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
             hid = self.merke_herkunft(herkunft, fetched_at=now)
@@ -3434,6 +3454,10 @@ class CouncilStore:
                 [(r["jahr"], r.get("messzahl"), r.get("messzahl_je_ew"),
                   r.get("zuweisungen"), r.get("zuweisungen_je_ew"),
                   herkunft.url, now, hid) for r in rows])
+            jahre = [r["jahr"] for r in rows]
+            self._conn.execute(
+                "DELETE FROM council_steuerkraft WHERE jahr NOT IN "
+                f"({','.join('?' * len(jahre))})", jahre)
         return len(rows)
 
     def save_einwohner(self, rows: list[dict], herkunft) -> int:
