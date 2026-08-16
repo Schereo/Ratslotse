@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """Neue Haushalts-Jahrgänge von allein nachziehen (alle zwei Wochen).
 
-Der Haushalts-Bereich lebt von acht Datenschichten, die bis 08/2026 alle von
-Hand eingelesen wurden. Ohne diesen Job veraltet er still, sobald niemand mehr
+Der Haushalts-Bereich lebt von dreizehn Datenschichten (``finanzquellen.
+REIHENFOLGE``), die bis 08/2026 alle von Hand eingelesen wurden. Dieser Job
+holt die **sieben**, die als Anlage im Ratsinformationssystem liegen; die
+sechs übrigen kommen von außerhalb und haben eigene Wege — ausdrücklich so,
+denn „lädt nichts herunter" ist die Regel, an der dieser Job hängt. Ohne diesen Job veraltet er still, sobald niemand mehr
 daran denkt: Die Stadt legt jeden September einen Jahresabschluss und jeden
 Oktober einen Haushaltsplan vor, und beides landet ohne Zutun als PDF-Anlage
 in ``council_anlagen`` — gelesen hat es bloß niemand.

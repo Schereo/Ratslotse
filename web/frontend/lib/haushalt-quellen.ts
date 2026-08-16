@@ -130,7 +130,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "mit Produktnummer und zuständigem Amt. Die Abdeckung ist unvollständig — " +
       "nicht jeder Teilhaushalt liegt für jedes Jahr auslesbar vor.",
     herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
-    stand: "Haushaltsjahre 2018–2023",
+    stand: "Haushaltsjahre 2018–2025",
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de",
   },
@@ -142,10 +142,6 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "Amtsbezeichnung mit Besoldungs- oder Entgeltgruppe, die Zahl der " +
       "Stellen im Haushaltsjahr — und daneben, wie viele davon am Stichtag " +
       "des Vorjahres besetzt waren und wie viele nicht. " +
-      "Übernommen wird ein Teil nur, wenn der Plan sich selbst bestätigt: " +
-      "Er nummeriert seine Spalten, die Einzelzeilen ergeben ihre " +
-      "Gruppensummen, die Gruppensummen die Gesamtzeile, und besetzte plus " +
-      "unbesetzte Stellen ergeben die Stellen des Vorjahres. " +
       "Es ist der Verwaltungsentwurf, nicht der Beschluss des Rates. " +
       "Die Dokumente hängen als Anlagen an Ratsvorlagen im " +
       "Bürgerinformationssystem.",
@@ -226,9 +222,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "Ergebnisrechnung eines einzelnen Teilhaushalts, Posten 1–24 mit Plan und " +
       "Ergebnis nebeneinander. Hier steht, was ein Bereich tatsächlich eingenommen " +
       "und ausgegeben hat — Steuern, Zuwendungen, Entgelte, Personal, Transfers. " +
-      "Übernommen nur, wenn die Probe des Dokuments aufgeht und die Summe der " +
-      "Teilhaushalte die Gesamtrechnung ergibt. Anders als der Plan reicht diese " +
-      "Ebene nicht bis ins laufende Jahr.",
+      "Anders als der Plan reicht diese Ebene nicht bis ins laufende Jahr.",
     herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
     stand: "Jahresabschlüsse 2017–2024",
     art: "pdf",
@@ -258,9 +252,6 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "Berechnet nach § 11 NFAG mit Nivellierungshebesätzen — also für alle " +
       "Gemeinden mit denselben fiktiven Hebesätzen, damit die Zahl die Steuerbasis " +
       "misst und nicht die Hebesatzpolitik. " +
-      "Wir übernehmen einen Jahrgang nur, wenn er sich mit dem vorherigen deckt: " +
-      "Das ältere der beiden Jahre muss die Hauptspalte der Vorjahresausgabe " +
-      "wiederholen, und zwar für jede der 403 Gemeinden. " +
       "Die Steuerkraft je Einwohner*in ist unsere eigene Division; das Landesamt " +
       "weist sie nicht aus.",
     herausgeber: "Landesamt für Statistik Niedersachsen",
@@ -277,9 +268,6 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "Steuereinnahmekraft je Einwohner*in über drei Jahre. " +
       "Grundlage ist die vierteljährliche Kassenstatistik — dieselbe Erhebung für " +
       "alle Gemeinden, keine Selbstauskunft der Städte. " +
-      "Übernommen wird eine Stadt nur, wenn die Rechnung des Dokuments aufgeht: " +
-      "Grundbetrag mal Hebesatz ergibt das ausgewiesene Aufkommen, und der " +
-      "Dreijahresdurchschnitt ist das Mittel der drei Jahre daneben. " +
       "Die Hebesätze der Grundsteuer sind ab 2025 nicht mit früheren vergleichbar — " +
       "die Grundsteuerreform hat die Messbeträge geändert, nicht die Belastung.",
     herausgeber: "Landesamt für Statistik Niedersachsen",
@@ -332,8 +320,6 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "Datensatz 1101, Tabellenblatt „Finanzhaushalt“: je Teilhaushalt eine Zeile " +
       "mit den Ein- und Auszahlungen aus Investitionstätigkeit, darunter die " +
       "Summenzeile „Finanzhaushalt Gesamtinvestitionen“. " +
-      "Übernommen wird ein Jahrgang nur, wenn die Rechnung der Datei aufgeht: Die " +
-      "Teilhaushalte müssen die Summenzeile ergeben, in beiden Spalten. " +
       "Die Zeile „Gesamtbetrag des Finanzhaushaltes“ zeigen wir als Bezugsgröße " +
       "daneben — sie zählt die laufende Verwaltungstätigkeit mit und ist von " +
       "dieser Probe nicht gedeckt. " +

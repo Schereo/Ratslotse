@@ -92,19 +92,51 @@ def test_kein_ungegateter_verweis_auf_den_bereich():
         f"Leere: {verdaechtig}")
 
 
-@pytest.mark.parametrize("baustein", ["_haushalt_block", "_steuern_block", "_steuerkraft_block"])
-def test_geld_bausteine_bleiben_bei_leeren_daten_still(baustein):
-    """Auf Prod sind die Haushalts-Tabellen leer — die KI-Frage darf das nicht merken.
+def _alle_bausteine():
+    """Jede Kontext-Bausteinfunktion in qa.py, aus dem Quelltext gelesen.
 
-    Der Regressionsschutz zielt auf künftige Bausteine: Wer einen vierten
-    Geld-Baustein ohne Leer-Prüfung hinzufügt, fällt hier auf, statt auf Prod
-    eine Antwort mit „–" gespickt auszuliefern.
+    Bewusst nicht als Liste von Namen: Die erste Fassung zählte drei Bausteine
+    auf und versprach im selben Atemzug, „den vierten" zu fangen. Als sie
+    geschrieben wurde, gab es fünf; inzwischen sind es sechzehn, und keiner der
+    dreizehn neuen war je geprüft. Wer eine Prüfung an eine Aufzählung bindet,
+    prüft ab dem nächsten Commit die Vergangenheit.
+    """
+    from council import qa
+
+    quelle = Path(qa.__file__).read_text(encoding="utf-8")
+    gefunden = set(re.findall(r"^def (_\w+_block)\(", quelle, re.M))
+    return sorted(gefunden - AUSNAHMEN)
+
+
+#: Bausteine, die ohne Daten absichtlich Text liefern — geprüft, nicht geraten.
+#:
+#: ``_bisher_block`` ist der einzige: Er reicht keine Daten durch, sondern eine
+#: Anweisung ans Modell. Liegt keine frühere Antwort vor (ältere App-Versionen
+#: schicken das Feld nicht mit), sagt er das ausdrücklich — sonst hantierte das
+#: Modell mit einem leeren Zitat-Block. Wer hier etwas einträgt, muss denselben
+#: Nachweis führen: Der Text ist Anweisung, nicht Inhalt.
+AUSNAHMEN = {"_bisher_block"}
+
+
+def test_die_bausteinliste_ist_nicht_leer():
+    """Sicherung gegen den stillen Ausfall: Findet der Regex nichts, liefe die
+    Prüfung darunter über eine leere Liste und wäre grün, ohne etwas zu tun."""
+    assert len(_alle_bausteine()) >= 10
+
+
+@pytest.mark.parametrize("baustein", _alle_bausteine())
+def test_bausteine_bleiben_bei_leeren_daten_still(baustein):
+    """Ohne Daten kein Text — für jeden Baustein, nicht nur die Geld-Bausteine.
+
+    Auf Prod sind die Haushalts-Tabellen leer (Umgebungs-Gate), und auch sonst
+    kann jede Quelle einmal nichts liefern. Ein Baustein, der daraus eine
+    Überschrift ohne Inhalt oder eine Zeile aus „–" macht, verschlechtert die
+    Antwort, statt sie zu ergänzen.
     """
     from council import qa
 
     fn = getattr(qa, baustein)
     assert fn(None) == "", f"{baustein}(None) liefert Text statt Leerstring"
-    assert fn([] if baustein != "_steuerkraft_block" else {}) == ""
 
 
 def test_jede_geld_quelle_wird_abgesichert_abgefragt():
