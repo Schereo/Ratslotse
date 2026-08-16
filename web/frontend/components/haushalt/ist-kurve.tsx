@@ -9,18 +9,36 @@
 // den Daten berechnet und neutral beschriftet — eine Jahreszahl mit
 // Rückgang, keine historische Deutung, die die Reihe nicht hergibt.
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { deMio } from "@/lib/haushalt";
 
 type Punkt = { jahr: number; betrag: number };
 
-const W = 640, H = 210, X0 = 40, X1 = 612, Y0 = 172, YTOP = 22;
+const H = 210, Y0 = 172, YTOP = 22;
 
 export function IstKurve({ reihe, einheit = "Mio. Euro" }: {
   reihe: Punkt[];
   einheit?: string;
 }) {
   const [tabelle, setTabelle] = useState(false);
+  // viewBox-Breite = Containerbreite, sonst staucht das SVG die Schrift mit
+  // (siehe Zeitreihe): Eine SVG-Einheit soll ein echtes Pixel sein.
+  const box = useRef<HTMLDivElement>(null);
+  const [breite, setBreite] = useState(640);
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const pruefe = () => setBreite(Math.max(el.clientWidth, 280));
+    pruefe();
+    const ro = new ResizeObserver(pruefe);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const schmal = breite < 520;
+  const fs = schmal
+    ? { achse: 13, jahr: 13, marke: 12.5, wert: 14 }
+    : { achse: 11, jahr: 11, marke: 11, wert: 13 };
+  const W = breite, X0 = schmal ? 38 : 42, X1 = W - 20;
   if (reihe.length < 2) return null;
 
   const werte = reihe.map((p) => p.betrag / 1e6);
@@ -43,11 +61,11 @@ export function IstKurve({ reihe, einheit = "Mio. Euro" }: {
   const erste = reihe[0], letzte = reihe[reihe.length - 1];
   const faktor = erste.betrag > 0 ? letzte.betrag / erste.betrag : 0;
   // Jahres-Beschriftung ausdünnen, damit nichts überlappt.
-  const schritt = Math.ceil(reihe.length / 6);
+  const schritt = Math.ceil(reihe.length / (schmal ? 4 : 6));
 
   return (
-    <div>
-      <div className="mb-1.5 flex items-baseline justify-between gap-3">
+    <div ref={box}>
+      <div className="mb-1.5 flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
           Tatsächlich eingenommen
         </p>
@@ -70,7 +88,7 @@ export function IstKurve({ reihe, einheit = "Mio. Euro" }: {
         {gitter.map((v) => (
           <g key={v}>
             <line x1={X0} y1={y(v)} x2={X1} y2={y(v)} className="stroke-border/60" />
-            <text x={X0 - 6} y={y(v) + 3} textAnchor="end" fontSize={9.5} className="fill-muted-foreground font-mono">{v}</text>
+            <text x={X0 - 6} y={y(v) + 4} textAnchor="end" fontSize={fs.achse} className="fill-muted-foreground font-mono">{v}</text>
           </g>
         ))}
         <line x1={X0} y1={Y0} x2={X1} y2={Y0} className="stroke-border" />
@@ -84,22 +102,22 @@ export function IstKurve({ reihe, einheit = "Mio. Euro" }: {
             <line x1={x(r.i)} y1={y(reihe[r.i].betrag / 1e6)} x2={x(r.i)} y2={Y0}
               strokeWidth={1} strokeDasharray="3 3" className="stroke-muted-foreground" />
             <circle cx={x(r.i)} cy={y(reihe[r.i].betrag / 1e6)} r={4} className="fill-card stroke-signal" strokeWidth={2} />
-            <text x={x(r.i)} y={y(reihe[r.i].betrag / 1e6) - 9} textAnchor="middle" fontSize={10}
+            <text x={x(r.i)} y={y(reihe[r.i].betrag / 1e6) - 9} textAnchor="middle" fontSize={fs.marke}
               className="fill-signal">{r.jahr}: {deMio(r.delta)}</text>
           </g>
         ))}
 
         <circle cx={x(0)} cy={y(erste.betrag / 1e6)} r={4} className="fill-card" strokeWidth={2}
           style={{ stroke: "var(--hh-ein-0)" }} />
-        <text x={x(0)} y={y(erste.betrag / 1e6) + 16} fontSize={11} fontWeight={600}
+        <text x={x(0)} y={y(erste.betrag / 1e6) + 17} fontSize={fs.wert} fontWeight={600}
           style={{ fill: "var(--hh-ein-0)" }}>{deMio(erste.betrag / 1e6)}</text>
         <circle cx={x(reihe.length - 1)} cy={y(letzte.betrag / 1e6)} r={5} style={{ fill: "var(--hh-ein-0)" }} />
-        <text x={x(reihe.length - 1) - 6} y={y(letzte.betrag / 1e6) - 9} textAnchor="end" fontSize={12.5}
+        <text x={x(reihe.length - 1) - 6} y={y(letzte.betrag / 1e6) - 10} textAnchor="end" fontSize={fs.wert + 1}
           fontWeight={700} style={{ fill: "var(--hh-ein-0)" }}>{deMio(letzte.betrag / 1e6)}</text>
 
         {reihe.map((p, i) => (
           (i % schritt === 0 || i === reihe.length - 1) && (
-            <text key={p.jahr} x={x(i)} y={191} textAnchor="middle" fontSize={10}
+            <text key={p.jahr} x={x(i)} y={193} textAnchor="middle" fontSize={fs.jahr}
               className={i === reihe.length - 1 ? "fill-foreground font-mono" : "fill-muted-foreground font-mono"}>
               {p.jahr}
             </text>
