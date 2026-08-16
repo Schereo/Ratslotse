@@ -270,7 +270,7 @@ function Topf({ bild }: { bild: FlussDaten }) {
  *  Das jüngste vollständige Jahr ist ein ANGEBOT, keine Ersatzanzeige:
  *  gewechselt wird nur, wenn jemand darauf tippt. */
 function Luecke({ jahr, letztes, aufJahr }: {
-  jahr: number; letztes: number | null; aufJahr: (() => void) | null;
+  jahr: number; letztes: number; aufJahr: (() => void) | null;
 }) {
   return (
     <div>
@@ -288,19 +288,17 @@ function Luecke({ jahr, letztes, aufJahr }: {
           dieses Jahr sind wir damit noch nicht durch. Statt ersatzweise ein anderes Jahr zu
           zeigen, steht hier lieber nichts.
         </p>
-        {letztes != null && (
-          <div className="mt-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
-            <span className="text-[12px] text-muted-foreground">
-              Vollständig haben wir sie zuletzt für {letztes}.
-            </span>
-            {aufJahr && (
-              <button type="button" onClick={aufJahr}
-                className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1 text-[12px] font-semibold text-primary shadow-sm">
-                {letztes} ansehen <ArrowRight className="h-3 w-3" />
-              </button>
-            )}
-          </div>
-        )}
+        <div className="mt-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+          <span className="text-[12px] text-muted-foreground">
+            Vollständig haben wir sie zuletzt für {letztes}.
+          </span>
+          {aufJahr && (
+            <button type="button" onClick={aufJahr}
+              className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1 text-[12px] font-semibold text-primary shadow-sm">
+              {letztes} ansehen <ArrowRight className="h-3 w-3" />
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -362,7 +360,7 @@ export function Flussbild({ daten, jahr, onJahrWechsel }: {
   // Ohne ein einziges Jahr mit Abschluss gibt es nichts zu sagen und nichts
   // anzubieten — dann bleibt der Block leer wie bisher (die Seite blendet ihn
   // in dem Fall ohnehin ganz aus).
-  if (!jahre.length) return null;
+  if (letztes == null) return null;
   if (!bild) return <Luecke jahr={jahr} letztes={letztes} aufJahr={aufLetztes} />;
 
   const echterStand: "plan" | "ist" = bild.stand;
