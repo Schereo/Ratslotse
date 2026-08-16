@@ -386,6 +386,13 @@ def _einheiten_konzernabschluss(row: dict) -> set[tuple]:
 STECKBRIEF = ("kurzbeschreibung", "auftragsgrundlage", "beeinflussbarkeit",
               "wirkungskreis", "zielgruppe")
 
+#: Die Produkt-Felder, die aus dem Dokument kommen — alles, was
+#: ``save_produkte`` aus der gelesenen Zeile schreibt, ohne Herkunft und
+#: Zeitstempel. Grundlage von :func:`_produkt_signatur`.
+PRODUKT_FELDER = ("produkt_nr", "produkt_name", "thh_nr", "thh_name", "amt",
+                  "ertraege", "aufwendungen", "ergebnis",
+                  "beeinflussbarkeit_roh") + STECKBRIEF
+
 #: Wie stark ein neu gelesener Jahrgang gegenüber dem gespeicherten Stand
 #: schrumpfen darf, bevor der Lauf ihn zurückweist. 20 % Spielraum: Ein
 #: Jahrgang kann echt ein paar Zeilen verlieren (ein Posten entfällt, eine
@@ -399,6 +406,18 @@ def _anzahl(store: CouncilStore, sql: str, args: tuple) -> int:
         return store._conn.execute(sql, args).fetchone()[0]  # noqa: SLF001
     except sqlite3.OperationalError:
         return 0
+
+
+def _produkt_signatur(zeilen: list[dict]) -> tuple:
+    """Der Inhalt eines Teilhaushalts, unabhängig vom Dokument, aus dem er
+    stammt — die Antwort auf „sagen zwei Dokumente dasselbe?".
+
+    Sortiert wird **nur** nach Produktnummer (im Dokument eindeutig), nicht
+    über die ganze Zeile: Sonst vergliche die Sortierung irgendwann ``None``
+    mit einem Text, und ein leeres Steckbrief-Feld risse einen unbeaufsichtigten
+    Lauf mit einem ``TypeError`` ab."""
+    return tuple(tuple(z.get(feld) for feld in PRODUKT_FELDER)
+                 for z in sorted(zeilen, key=lambda z: z["produkt_nr"]))
 
 
 def bestandsschutz(p: Protokoll, was: str, alt: int, neu: int,
@@ -699,7 +718,24 @@ def lies_teilhaushalte(store: CouncilStore, p: Protokoll,
     ``check_protocols`` kommen sie ohne Volltext herein, den holt
     ``backfill_anlagen_texte.py`` später und tranchenweise nach. Wer den
     Jahrgang sperrt, sobald das erste Dokument gelesen ist, verliert die
-    anderen acht dauerhaft — und merkt es nie, weil der Jahrgang „da" ist."""
+    anderen acht dauerhaft — und merkt es nie, weil der Jahrgang „da" ist.
+
+    **Ein Teilhaushalt wird genau einmal versorgt, vom ersten Dokument.**
+    Sechs (Jahrgang, Teilhaushalt)-Paare hängen an zwei Vorlagen — dieselbe
+    PDF-Datei, ein zweites Mal unter einem anderen Tagesordnungspunkt
+    hochgeladen (2018/THH08, 2018/THH11, 2019/THH11, 2020/THH08, 2021/THH08,
+    2022/THH08; nachgemessen 08/2026, der Volltext ist Byte für Byte
+    derselbe). Ohne Regel entschied die Sortierung der Kandidaten, welches
+    Dokument als Quelle in der Zeile steht — und das fiel zugunsten der
+    schlechteren Angabe aus: „TOP 5 - Anlage III - THH 08" sagt außerhalb
+    seiner Sitzung nichts, und „2019 THH 08" trägt am Plan für **2018** die
+    falsche Jahreszahl. Das erste Dokument ist die Anlage der Haushalts-
+    vorlage selbst und führt die Zählung des Plans („014 THH08").
+
+    Weichen die Zahlen des zweiten Dokuments ab, ist das eine **neue Lage** —
+    ein Nachtragshaushalt etwa, der einen Ansatz wirklich ändert. Dann wird
+    gemeldet statt still überschrieben; welcher Stand gilt, entscheidet
+    niemand nebenbei in einem unbeaufsichtigten Lauf."""
     sql, werte = QUELLEN["teilhaushalt"].erkennung.abfrage(
         "document_id, label, url, raw_text")
     rows = [dict(r) for r in store._conn.execute(sql, werte)]  # noqa: SLF001
@@ -711,7 +747,9 @@ def lies_teilhaushalte(store: CouncilStore, p: Protokoll,
     je_jahr: dict[int, int] = {}
     neue_einheiten: set[tuple] = set()
     mit_feld: dict[str, int] = {f: 0 for f in STECKBRIEF}
-    ohne = geschuetzt = 0
+    ohne = geschuetzt = dubletten = 0
+    # (jahr, thh_nr) → (Signatur, Dokument), das den Teilhaushalt versorgt hat.
+    versorgt: dict[tuple, tuple] = {}
     for r in rows:
         produkte = finanzberichte.parse_teilergebnishaushalt(r["raw_text"] or "")
         if not produkte:
@@ -728,6 +766,24 @@ def lies_teilhaushalte(store: CouncilStore, p: Protokoll,
                     if (jahr, thh_nr) in vorhanden:
                         continue
                     stueck = [x for x in teil if x.get("thh_nr") == thh_nr]
+                    # Zweites Dokument für denselben Teilhaushalt: Das erste
+                    # hat ihn versorgt (siehe Docstring). Nur die Herkunft
+                    # würde hier noch getauscht — und mit ihr entstünde ein
+                    # Herkunfts-Datensatz, auf den am Ende des Laufs keine
+                    # Zeile mehr zeigt (`herkunft_aufraeumen` fegte sechs
+                    # Stück je Lauf wieder weg).
+                    if (jahr, thh_nr) in versorgt:
+                        signatur, quelle = versorgt[(jahr, thh_nr)]
+                        if _produkt_signatur(stueck) != signatur:
+                            p.warnen(
+                                f"  {jahr} THH{thh_nr}: Dokument {r['document_id']} "
+                                f"({r['label']!r}) trägt ANDERE Zahlen als "
+                                f"Dokument {quelle['document_id']} "
+                                f"({quelle['label']!r}), das den Teilhaushalt "
+                                f"versorgt hat — es gilt weiter das erste. "
+                                f"Bitte prüfen, welcher Stand der richtige ist.")
+                        dubletten += 1
+                        continue
                     alt = _anzahl(store, "SELECT COUNT(*) FROM council_produkte "
                                          "WHERE jahr = ? AND thh_nr IS ?", (jahr, thh_nr))
                     if not bestandsschutz(p, f"{jahr} THH{thh_nr}", alt,
@@ -743,21 +799,28 @@ def lies_teilhaushalte(store: CouncilStore, p: Protokoll,
                         probe_ergebnis=f"{len(stueck)} Produktzeilen mit "
                                        f"aufgehender Ergebnis-Rechnung",
                         stand=f"Haushaltsplan {jahr}"))
+                    versorgt[(jahr, thh_nr)] = (_produkt_signatur(stueck), r)
                     neue_einheiten.add((jahr, thh_nr))
                     je_jahr[jahr] = je_jahr.get(jahr, 0) + len(stueck)
                     for feld in STECKBRIEF:
                         mit_feld[feld] += sum(1 for x in stueck if x.get(feld))
     for jahr in sorted(je_jahr):
         p.sagen(f"  {jahr}: {je_jahr[jahr]} Produkt-Zeilen")
+    if dubletten:
+        # Keine Warnung: Das ist der bekannte, gemessene Normalfall (sechs
+        # Paare). Auffällig wäre erst, wenn die Zahl wächst — dann steht eine
+        # Vorlage mehrfach im Bestand, die vorher einmal dastand.
+        p.sagen(f"  {dubletten}× ein zweites Dokument zu einem bereits "
+                f"versorgten Teilhaushalt — übersprungen")
     if ohne:
         # Der eigentliche Frühwarnwert dieses Laufs: Dokumente, die aussehen
         # wie ein Teilhaushalts-Plan, aus denen der Parser aber nichts holt.
         p.warnen(f"  {ohne} Dokument(e) ohne lesbare Produkt-Tabelle")
 
     # Abdeckung je Feld — gezählt wird der TABELLENSTAND, nicht die Zahl der
-    # gelesenen Zeilen: Dieselbe Produktnummer kommt in mehreren Dokumenten
-    # desselben Jahres vor und überschreibt sich, die Summe oben ist also
-    # größer als die Tabelle. Auf der Seite steht später der Tabellenstand.
+    # gelesenen Zeilen: Der Lauf liest nur, was ihm fehlt, die Tabelle trägt
+    # aber auch die Jahrgänge früherer Läufe. Auf der Seite steht später der
+    # Tabellenstand.
     gesamt = store._conn.execute(  # noqa: SLF001
         "SELECT COUNT(*) FROM council_produkte").fetchone()[0]
     p.sagen(f"  Steckbrief-Abdeckung ({gesamt} Produkte in der Tabelle):")
@@ -772,7 +835,7 @@ def lies_teilhaushalte(store: CouncilStore, p: Protokoll,
     return {"neue_jahrgaenge": sorted(je_jahr),
             "neue_einheiten": sorted(neue_einheiten), "dokumente": len(rows),
             "ohne_treffer": ohne, "bestand_geschuetzt": geschuetzt,
-            "produkte": sum(je_jahr.values()),
+            "dubletten": dubletten, "produkte": sum(je_jahr.values()),
             "in_tabelle": gesamt, "steckbrief": abdeckung}
 
 
@@ -1058,7 +1121,15 @@ for _q in (
         erwarteter_monat=10,
         versatz=0,
         herkunft="ris",
-        erkennung=Erkennung(label_muster=("%THH%",), mindest_seiten=40),
+        # ``document_id`` ist die getfile-Nummer des Ratsinformationssystems
+        # und steigt mit jedem Upload — die Kandidaten kommen damit in
+        # VERÖFFENTLICHUNGS-Reihenfolge. Das ist hier keine Kosmetik: Sechs
+        # Teilhaushalte hängen an zwei Vorlagen, und die Regel „das erste
+        # Dokument versorgt den Teilhaushalt" (siehe `lies_teilhaushalte`)
+        # braucht ein Kriterium, das etwas bedeutet. Nach `label` sortiert
+        # gewänne sonst der Zufall der Schreibweise.
+        erkennung=Erkennung(label_muster=("%THH%",), mindest_seiten=40,
+                            ordnung="document_id"),
         # Die Einheit ist der Teilhaushalt, nicht der Jahrgang: Ein Jahr
         # verteilt sich auf rund neun Anlagen, die einzeln lesbar werden.
         einheit="Teilhaushalte",

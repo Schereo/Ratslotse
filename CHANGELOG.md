@@ -31,7 +31,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   mitbringt — die Steuer-Datensätze des Open-Data-Portals etwa —, steht das
   jetzt ausdrücklich da, statt offenzubleiben. Bestehende Zahlen ändern sich
   dadurch nicht; was der alte Bestand nicht festhielt, bleibt leer, statt
-  geraten zu werden, und wird beim nächsten Einlesen nachgetragen. (#PR)
+  geraten zu werden, und wird beim nächsten Einlesen nachgetragen. (#513)
 - **Der Haushalts-Bereich hält sich ab jetzt selbst aktuell.** Bisher wurde
   jeder neue Jahrgang von Hand eingelesen — wer nicht daran dachte, ließ den
   ganzen Bereich still veralten. Ein neuer Job sieht alle zwei Wochen nach, ob
@@ -140,6 +140,19 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   ab, steht hinterher der alte Stand da und kein halber neuer. (#511)
 
 ### Behoben
+- **Bei doppelt veröffentlichten Teilhaushalts-Plänen stand die schlechtere
+  Quellenangabe an der Zahl.** Sechs Teilhaushalte hängen an zwei Vorlagen —
+  dieselbe Datei, ein zweites Mal unter einem anderen Tagesordnungspunkt
+  hochgeladen. Welche der beiden Angaben an den Zahlen landete, entschied bis
+  jetzt die Sortierreihenfolge, und sie fiel zugunsten der weniger
+  brauchbaren aus: „TOP 5 - Anlage III - THH 08" sagt außerhalb seiner Sitzung
+  nichts, und am Plan für 2018 stand „2019 THH 08" — die falsche Jahreszahl.
+  Jetzt gilt ausdrücklich das zuerst veröffentlichte Dokument, also die Anlage
+  der Haushaltsvorlage selbst. **Keine Zahl ändert sich dadurch** (die
+  Dokumente sind Byte für Byte gleich, nachgemessen), nur die Angabe daneben.
+  Tragen zwei Dokumente einmal wirklich verschiedene Zahlen — ein
+  Nachtragshaushalt etwa —, wird das künftig gemeldet, statt still
+  überschrieben zu werden. (#PR)
 - **„Geplant und geworden" behauptete einen Vergleich, den es nicht gab.** Wo
   ein Jahresabschluss keine Planwerte hergibt, machte die Seite aus der
   fehlenden Zahl eine Null und schrieb: „799,1 Mio. € eingenommen — geplant

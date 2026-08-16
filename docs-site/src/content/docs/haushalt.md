@@ -145,6 +145,24 @@ Lauf gelesen hat — nicht die Zeile darin. Wer beides vermischt, bekommt so
 viele Herkunfts-Datensätze wie Datenzeilen und hat nichts gewonnen.
 :::
 
+:::tip[Eine Einheit wird einmal versorgt — und zwar vom ersten Dokument]
+Dieselbe Zeile kann in **zwei** Anlagen stehen: Sechs (Jahrgang,
+Teilhaushalt)-Paare hängen an zwei Vorlagen — dieselbe PDF-Datei, ein zweites
+Mal unter einem anderen Tagesordnungspunkt hochgeladen. Da die `save_*`-
+Methoden bei gleichem Schlüssel die ganze Zeile ersetzen, gewinnt sonst das
+zuletzt gelesene Dokument, und welches das ist, entscheidet die Sortierung der
+Kandidaten. Das ist keine Kosmetik: Es steht danach in der Zeile, und
+„TOP 5 - Anlage III - THH 08“ sagt außerhalb seiner Sitzung nichts.
+
+`lies_teilhaushalte` überspringt deshalb, was schon versorgt ist; maßgeblich
+ist das Dokument mit der **kleinsten `document_id`** — die getfile-Nummer des
+Ratsinformationssystems steigt mit jedem Upload, das erste Dokument ist also
+die Anlage der Haushaltsvorlage selbst. Weichen die Zahlen des zweiten
+Dokuments ab, wird **gemeldet statt überschrieben**: Ein Nachtragshaushalt,
+der einen Ansatz wirklich ändert, ist eine Entscheidung für einen Menschen,
+nicht für einen unbeaufsichtigten Lauf.
+:::
+
 :::caution[Plan ist nicht Ist]
 `council_haushalt` enthält **Planwerte** (was der Rat beschlossen hat),
 `council_steuern` **Ist-Werte** (was tatsächlich geflossen ist). Die beiden
