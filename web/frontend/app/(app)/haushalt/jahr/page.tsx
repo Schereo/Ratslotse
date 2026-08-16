@@ -277,8 +277,9 @@ function Weg({ runde }: { runde: WegRunde }) {
       ))}
 
       <Ablauf titel="Danach">
-        Die beschlossene Haushaltssatzung wird der Kommunalaufsicht angezeigt; genehmigen muss
-        sie nur einzelne Teile, etwa den Gesamtbetrag der Kredite. Dann läuft das Haushaltsjahr,
+        Die beschlossene Haushaltssatzung wird der Kommunalaufsicht angezeigt;
+        genehmigungsbedürftig sind nur einzelne Teile, etwa der Gesamtbetrag der Kredite.
+        Die Satzung als Ganze wartet also auf keine Freigabe. Dann läuft das Haushaltsjahr,
         und erst der Jahresabschluss danach zeigt, was tatsächlich daraus geworden ist —{" "}
         <Link href="/haushalt/plan-ist" className="font-semibold text-primary">
           geplant gegen tatsächlich
