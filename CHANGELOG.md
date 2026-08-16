@@ -163,7 +163,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Steuerkraft ein Jahr zu früh, nachgewiesen an den eigenen Büchern der Stadt.
   Beide Reihen tragen jetzt dieselbe Jahresangabe. Zusammengerechnet werden sie
   weiterhin nicht — sie stammen aus zwei Veröffentlichungen, die sich in
-  Nachträgen um kleine Beträge unterscheiden können. (#PR)
+  Nachträgen um kleine Beträge unterscheiden können. (#526)
 - **Steuerkraft und Schlüsselzuweisungen standen unter dem falschen Jahr.** Der
   offene Datensatz der Stadt, aus dem wir beide Reihen lesen, beschriftet seine
   Zeilen um ein Jahr zu früh — die Beträge selbst stimmen, nur die Jahreszahl
