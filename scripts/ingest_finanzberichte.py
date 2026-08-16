@@ -6,7 +6,10 @@ Volltext in ``council_anlagen`` — der Protokoll-Scraper zieht sie ohnehin.
 Dieses Skript liest sie aus, ohne etwas herunterzuladen:
 
 - **Jahresabschluss** → ``council_ergebnisrechnung``: Ansatz und Ergebnis je
-  Posten, also „geplant gegen tatsächlich", plus die Erträge nach Arten.
+  Posten, also „geplant gegen tatsächlich", plus die Erträge nach Arten —
+  zweimal: für die Kernverwaltung gesamt und je Teilhaushalt. Die
+  Teilhaushalts-Ebene wird nur gespeichert, wenn ihre Summe zur
+  Gesamtrechnung passt (``finanzberichte.summenprobe``).
 - **Teilhaushalts-Pläne (THH)** → ``council_produkte``: was einzelne Aufgaben
   kosten, mit Produktnummer und Amt.
 
@@ -43,7 +46,7 @@ def _jahresabschluesse(store: CouncilStore) -> dict:
         "WHERE label LIKE '%Jahresabschluss%' AND n_pages > 100 "
         "  AND label NOT LIKE '%Rechenschaft%' AND label NOT LIKE '%Schlussbericht%' "
         "ORDER BY label").fetchall()
-    gelesen = uebersprungen = 0
+    gelesen = uebersprungen = mit_thh = verworfen = 0
     for r in rows:
         m = re.search(r"(20\d\d)", r["label"] or "")
         if not m:
@@ -63,7 +66,27 @@ def _jahresabschluesse(store: CouncilStore) -> dict:
         print(f"  {jahr}: {len(posten)} Posten · Erträge {e['ansatz']/1e6:.1f} → "
               f"{e['ergebnis']/1e6:.1f} · Aufwendungen {a['ansatz']/1e6:.1f} → {a['ergebnis']/1e6:.1f}")
         gelesen += 1
-    return {"jahre": gelesen, "uebersprungen": uebersprungen}
+
+        # Zweite Ebene: dieselbe Rechnung je Teilhaushalt. Sie wird nur
+        # übernommen, wenn ihre Summe zur Gesamtrechnung passt — sonst wurde
+        # für einen Teilhaushalt die falsche (in sich stimmige) Tabelle
+        # gelesen, was zeilenweise nicht auffällt.
+        thh = finanzberichte.parse_teilergebnisrechnungen(r["raw_text"] or "", jahr)
+        if not thh:
+            continue
+        passt, abweichung = finanzberichte.summenprobe(thh, posten)
+        if not passt:
+            print(f"    Teilhaushalte verworfen: Summe weicht um {abweichung*100:.1f} % "
+                  f"von der Gesamtrechnung ab", file=sys.stderr)
+            verworfen += 1
+            continue
+        for x in thh:
+            store.save_ergebnisrechnung(jahr, x["posten"], r["label"], r["url"],
+                                        thh_nr=x["thh_nr"], thh_name=x["thh_name"])
+        print(f"    + {len(thh)} Teilhaushalte (Summenprobe {abweichung*100:.2f} % Abweichung)")
+        mit_thh += 1
+    return {"jahre": gelesen, "uebersprungen": uebersprungen,
+            "jahre_mit_teilhaushalten": mit_thh, "thh_verworfen": verworfen}
 
 
 def _teilhaushalte(store: CouncilStore) -> dict:

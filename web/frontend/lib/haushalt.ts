@@ -17,6 +17,8 @@ export type HaushaltZeile = {
  *  `ansatz` = was geplant war, `ergebnis` = was es tatsächlich wurde. */
 export type ErgebnisPosten = {
   jahr: number; nr: number; bezeichnung: string;
+  /** null = Kernverwaltung gesamt, sonst der Teilhaushalt (1–13). */
+  thh_nr: number | null; thh_name: string | null;
   vorjahr: number | null; ansatz: number | null;
   ergebnis: number | null; abweichung: number | null;
   ist_summe: 0 | 1;
@@ -50,6 +52,8 @@ export type HaushaltDaten = {
   ergebnisrechnung?: ErgebnisPosten[];
   /** Jahre, für die die Produktebene vorliegt. */
   produkt_jahre?: number[];
+  /** Jahre mit „geplant gegen tatsächlich" je Teilhaushalt. */
+  plan_ist_jahre?: number[];
 };
 
 /** „Geplant gegen tatsächlich" je abgeschlossenem Jahr, in Mio.

@@ -19,6 +19,7 @@ import {
   BEREICH_INFO, HaushaltDaten, HaushaltZeile, bereichSlug, bereiche,
   bereichsReihe, deMio, deckung, jahreSortiert, mio, quellenLabel,
 } from "@/lib/haushalt";
+import { Hantel } from "@/components/haushalt/hantel";
 import { cn } from "@/lib/utils";
 
 function BruttoNettoBlock({ z }: { z: HaushaltZeile }) {
@@ -138,10 +139,14 @@ function BereichInner() {
           Brutto gegen Netto · alle Bereiche
         </p>
         <p className="mb-3 mt-1 text-[12.5px] text-foreground/80">Umschalten dreht die Reihenfolge — und genau darin steckt der Punkt.</p>
-        <Segmented value={ranking} onChange={setRanking} tone="primary" className="mb-3" options={[
-          { value: "brutto", label: "Ausgaben (brutto)" },
-          { value: "netto", label: "Kosten für die Stadt (netto)" },
-        ]} />
+        {/* Scrollzeile: „Kosten für die Stadt (netto)" ragte auf 375 px über
+            den Bildschirmrand und ließ die ganze Seite horizontal wackeln. */}
+        <div className="scrollbar-none -mx-1 mb-3 overflow-x-auto px-1">
+          <Segmented value={ranking} onChange={setRanking} tone="primary" className="w-max" options={[
+            { value: "brutto", label: "Ausgaben (brutto)" },
+            { value: "netto", label: "Kosten für die Stadt (netto)" },
+          ]} />
+        </div>
         <div className="grid grid-cols-[minmax(110px,150px)_1fr_60px] items-center gap-x-2.5 gap-y-1.5 text-xs">
           {alle.slice(0, 6).map(({ r, netto: n, brutto: b }, i) => {
             const wert = ranking === "netto" ? n : b;
@@ -179,6 +184,40 @@ function BereichInner() {
           </p>
         </div>
       )}
+
+      {/* Geplant und geworden: nur wo für diesen Bereich ein Jahresabschluss
+          ausgelesen ist. Der Name im Abschluss weicht leicht ab („Personal- u.
+          Verwaltungsmanagement"), deshalb Vergleich über die ersten Wörter. */}
+      {(() => {
+        const norm = (t: string) => t.toLowerCase().replace(/[^a-zäöüß]+/g, " ").trim().split(" ")[0];
+        const treffer = (data.ergebnisrechnung ?? []).filter(
+          (p) => p.thh_nr != null && p.thh_name && norm(p.thh_name) === norm(z.bereich)
+                 && (p.nr === 12 || p.nr === 20));
+        const jahre = [...new Set(treffer.map((p) => p.jahr))].sort();
+        if (!jahre.length) return null;
+        const zeilen = jahre.map((j) => {
+          const a = treffer.find((p) => p.jahr === j && p.nr === 20);
+          return { label: String(j), plan: mio(a?.ansatz), ist: mio(a?.ergebnis) };
+        }).filter((r) => r.plan != null && r.ist != null);
+        if (!zeilen.length) return null;
+        return (
+          <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+                Geplant und geworden
+              </p>
+              <Link href="/haushalt/plan-ist" className="text-[11.5px] font-semibold text-primary">
+                Alle Bereiche vergleichen →
+              </Link>
+            </div>
+            <p className="mb-3 mt-1.5 max-w-[70ch] text-[12.5px] leading-relaxed text-foreground/85">
+              Ausgaben dieses Bereichs: was der Rat beschlossen hatte und was der Jahresabschluss
+              am Ende ausweist.
+            </p>
+            <Hantel zeilen={zeilen} />
+          </div>
+        );
+      })()}
 
       {/* Entwicklung — echte Reihe, sobald der Bereichsname über Jahre stabil ist. */}
       <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">

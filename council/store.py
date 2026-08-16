@@ -574,16 +574,38 @@ class CouncilStore:
         # Ergebnisrechnung aus den Jahresabschlüssen (RIS-Anlagen): Ansatz UND
         # Ergebnis je Posten — die Grundlage für „geplant gegen tatsächlich"
         # und für die Aufschlüsselung der Erträge nach Arten.
+        # thh_nr trennt die Ebenen: NULL = Kernverwaltung gesamt, 1–13 = der
+        # jeweilige Teilhaushalt. Beide Ebenen teilen sich die Tabelle, weil
+        # sie dieselben Posten tragen.
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS council_ergebnisrechnung ("
             "jahr INTEGER NOT NULL, "
+            "thh_nr INTEGER, thh_name TEXT, "     # NULL = Gesamtrechnung
             "nr INTEGER NOT NULL, "               # Postennummer der Tabelle (1–24)
             "bezeichnung TEXT NOT NULL, "
             "vorjahr REAL, ansatz REAL, ergebnis REAL, abweichung REAL, "
             "ist_summe INTEGER NOT NULL DEFAULT 0, "
             "quelle_label TEXT, quelle_url TEXT, fetched_at TEXT NOT NULL, "
-            "PRIMARY KEY (jahr, nr))"
+            "PRIMARY KEY (jahr, thh_nr, nr))"
         )
+        # Die Tabelle kam mit der Vorversion ohne thh_nr; SQLite kann den
+        # Primärschlüssel nicht per ALTER TABLE erweitern. Neu anlegen ist
+        # hier gefahrlos: Der Inhalt stammt vollständig aus council_anlagen
+        # und wird von scripts/ingest_finanzberichte.py in Sekunden wieder
+        # hergestellt — es geht keine Quelle verloren.
+        spalten = {r[1] for r in self._conn.execute(
+            "PRAGMA table_info(council_ergebnisrechnung)")}
+        if spalten and "thh_nr" not in spalten:
+            self._conn.execute("DROP TABLE council_ergebnisrechnung")
+            self._conn.execute(
+                "CREATE TABLE council_ergebnisrechnung ("
+                "jahr INTEGER NOT NULL, thh_nr INTEGER, thh_name TEXT, "
+                "nr INTEGER NOT NULL, bezeichnung TEXT NOT NULL, "
+                "vorjahr REAL, ansatz REAL, ergebnis REAL, abweichung REAL, "
+                "ist_summe INTEGER NOT NULL DEFAULT 0, "
+                "quelle_label TEXT, quelle_url TEXT, fetched_at TEXT NOT NULL, "
+                "PRIMARY KEY (jahr, thh_nr, nr))"
+            )
         # Produktebene aus den Teilhaushalts-Plänen: was einzelne Aufgaben
         # kosten, mit Produktnummer und zuständigem Amt.
         self._conn.execute(
@@ -2915,19 +2937,67 @@ class CouncilStore:
         return dict(r) if r else None
 
     def save_ergebnisrechnung(self, jahr: int, posten: list[dict],
-                              label: str, url: str | None) -> int:
-        """Ergebnisrechnung eines Jahres ersetzen (Re-Ingest idempotent)."""
+                              label: str, url: str | None,
+                              thh_nr: int | None = None, thh_name: str | None = None,
+                              ersetzen: bool = True) -> int:
+        """Ergebnisrechnung einer Ebene speichern — ohne ``thh_nr`` die
+        Gesamtrechnung, sonst der jeweilige Teilhaushalt.
+
+        ``ersetzen`` löscht vorher die betroffene Ebene dieses Jahres; beim
+        Einlesen mehrerer Teilhaushalte nacheinander bleibt es an."""
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
-            self._conn.execute("DELETE FROM council_ergebnisrechnung WHERE jahr = ?", (jahr,))
+            if ersetzen:
+                if thh_nr is None:
+                    self._conn.execute(
+                        "DELETE FROM council_ergebnisrechnung WHERE jahr = ? AND thh_nr IS NULL",
+                        (jahr,))
+                else:
+                    self._conn.execute(
+                        "DELETE FROM council_ergebnisrechnung WHERE jahr = ? AND thh_nr = ?",
+                        (jahr, thh_nr))
             self._conn.executemany(
-                "INSERT INTO council_ergebnisrechnung (jahr, nr, bezeichnung, vorjahr, ansatz, "
-                " ergebnis, abweichung, ist_summe, quelle_label, quelle_url, fetched_at) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-                [(jahr, p["nr"], p["bezeichnung"], p.get("vorjahr"), p.get("ansatz"),
-                  p.get("ergebnis"), p.get("abweichung"), p.get("ist_summe", 0),
-                  label, url, now) for p in posten])
+                "INSERT INTO council_ergebnisrechnung (jahr, thh_nr, thh_name, nr, bezeichnung, "
+                " vorjahr, ansatz, ergebnis, abweichung, ist_summe, quelle_label, quelle_url, "
+                " fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                [(jahr, thh_nr, thh_name, p["nr"], p["bezeichnung"], p.get("vorjahr"),
+                  p.get("ansatz"), p.get("ergebnis"), p.get("abweichung"),
+                  p.get("ist_summe", 0), label, url, now) for p in posten])
         return len(posten)
+
+    def get_plan_ist(self, jahr: int) -> dict:
+        """„Geplant und geworden" eines Jahres: die Summenzeilen (Erträge 12,
+        Aufwendungen 20) für die Kernverwaltung und je Teilhaushalt.
+
+        Liefert ``{gesamt: {...}, bereiche: [...]}`` — die Bereiche nach
+        geplanten Aufwendungen absteigend, damit die größten oben stehen."""
+        rows = [dict(r) for r in self._conn.execute(
+            "SELECT thh_nr, thh_name, nr, ansatz, ergebnis, abweichung "
+            "FROM council_ergebnisrechnung WHERE jahr = ? AND nr IN (12, 20) "
+            "ORDER BY thh_nr, nr", (jahr,))]
+
+        def bauen(teil: list[dict]) -> dict:
+            e = next((r for r in teil if r["nr"] == 12), {})
+            a = next((r for r in teil if r["nr"] == 20), {})
+            return {"ertraege_plan": e.get("ansatz"), "ertraege_ist": e.get("ergebnis"),
+                    "aufwendungen_plan": a.get("ansatz"), "aufwendungen_ist": a.get("ergebnis")}
+
+        gesamt = [r for r in rows if r["thh_nr"] is None]
+        bereiche = []
+        for nr in sorted({r["thh_nr"] for r in rows if r["thh_nr"] is not None}):
+            teil = [r for r in rows if r["thh_nr"] == nr]
+            bereiche.append({"thh_nr": nr, "thh_name": teil[0]["thh_name"], **bauen(teil)})
+        bereiche.sort(key=lambda b: -(b["aufwendungen_plan"] or 0))
+        return {"jahr": jahr, "gesamt": bauen(gesamt) if gesamt else None, "bereiche": bereiche}
+
+    def plan_ist_jahre(self) -> list[int]:
+        """Jahre, für die Teilhaushalts-Ist vorliegt (aufsteigend)."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT jahr FROM council_ergebnisrechnung "
+                "WHERE thh_nr IS NOT NULL ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
 
     def get_ergebnisrechnung(self, jahr: int | None = None) -> list[dict]:
         """Ergebnisrechnung — ein Jahr oder alle, Posten in Tabellenreihenfolge."""

@@ -294,7 +294,8 @@ def haushalt_uebersicht(
     - ``einwohner``: jüngste Einwohnerzahl (Bezugsgröße für Pro-Kopf-Angaben),
     - ``ergebnisrechnung``: Ansatz und Ergebnis je Posten aus den
       Jahresabschlüssen — Grundlage für „geplant gegen tatsächlich",
-    - ``produkt_jahre``: Jahre, für die die Produktebene vorliegt.
+    - ``produkt_jahre``: Jahre, für die die Produktebene vorliegt,
+    - ``plan_ist_jahre``: Jahre mit „geplant gegen tatsächlich" je Teilhaushalt.
 
     Fehlende Jahre (Datenlücken) fehlen schlicht in ``jahre`` — das Frontend
     zeigt Lücken ehrlich, statt zu interpolieren."""
@@ -307,6 +308,9 @@ def haushalt_uebersicht(
         # Posten — „geplant gegen tatsächlich" und die Erträge nach Arten.
         "ergebnisrechnung": store.get_ergebnisrechnung(),
         "produkt_jahre": store.produkte_jahre(),
+        # Jahre mit Teilhaushalts-Ist — füttert den Jahr-Umschalter auf
+        # /haushalt/plan-ist, ohne dass das Frontend die Liste durchsucht.
+        "plan_ist_jahre": store.plan_ist_jahre(),
     }
 
 

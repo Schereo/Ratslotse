@@ -435,3 +435,81 @@ def test_store_finanzberichte_roundtrip(tmp_path):
     assert store.get_produkte(2019, thh_nr=6)[0]["produkt_name"] == "Archivierung"
     assert store.get_produkte(2019, thh_nr=99) == []
     store.close()
+
+
+# --- Plan gegen Ist je Teilhaushalt -----------------------------------------
+# Der Jahresabschluss führt dieselbe Tabelle noch einmal je Teilhaushalt.
+# Fixture ist ein Ausschnitt aus dem Abschluss 2023 (THH01), gekürzt auf die
+# Posten, die für „geplant gegen tatsächlich" zählen.
+
+JA_THH = """3.1 Ergebnisrechnung Kernverwaltung
+01. Steuern und ähnliche Abgaben 305.411.797,55 287.275.000,00  341.608.473,52 54.333.473,52
+12. = Summe ordentliche Erträge 696.627.777,13 664.574.528,42  732.987.197,61 68.412.669,19
+20. = Summe ordentliche
+Aufwendungen 661.705.829,31 674.305.462,42  683.032.270,32 8.726.807,90
+Gesamtergebnisrechnung
+5 Teilhaushalte
+Teilhaushalt 01 - Verwaltungsführung
+
+A. Teil-Ergebnisrechnung   THH01 Verwaltungsführung
+Erträge und Aufwendungen Ergebnis des
+Vorjahres 2022
+Ansätze des Haushaltsjahres 2023
+Ergebnis des Haushaltsjahres 2023
+02. Zuwendungen u. allgem. Umlagen 1) 45.972,00 281.352,15  107.663,14 -173.689,01
+12. =Summe ordentliche Erträge 448.727,99 568.542,15  475.819,90 -92.722,25
+13. Personalaufwendungen 5.560.455,48 5.716.337,99  5.791.734,64 75.396,65
+20. =Summe ordentliche Aufwendungen 8.011.111,11 674.305.462,42  683.032.270,32 8.726.807,90
+B. Teil-Finanzrechnung THH01 Verwaltungsführung
+12. =Summe ordentliche Erträge 111.111,11 222.222,22  333.333,33 111.111,11
+"""
+
+
+def test_parse_teilergebnisrechnungen():
+    thh = finanzberichte.parse_teilergebnisrechnungen(JA_THH, 2023)
+    assert len(thh) == 1
+    t = thh[0]
+    assert t["thh_nr"] == 1 and t["thh_name"] == "Verwaltungsführung"
+    nach_nr = {p["nr"]: p for p in t["posten"]}
+    # Die Werte stammen aus der Teil-ERGEBNISrechnung, nicht aus der
+    # Teil-Finanzrechnung, die direkt darunter dieselben Postennummern trägt.
+    assert nach_nr[12]["ansatz"] == 568_542.15
+    assert nach_nr[12]["ergebnis"] == 475_819.90
+    assert nach_nr[12]["ansatz"] != 222_222.22
+
+
+def test_summenprobe_faengt_stille_fehlgriffe():
+    """Die zeilenweise Prüfung erkennt nicht, wenn für einen Teilhaushalt eine
+    andere, in sich stimmige Tabelle gelesen wurde — im Abschluss 2022 wurde
+    THH09 so mit 0,1 statt 26,8 Mio. € gelesen. Erst die Summe zeigt es."""
+    gesamt = [{"nr": 20, "ansatz": 100_000_000.0}]
+    passend = [{"posten": [{"nr": 20, "ansatz": 60_000_000.0}]},
+               {"posten": [{"nr": 20, "ansatz": 40_000_000.0}]}]
+    daneben = [{"posten": [{"nr": 20, "ansatz": 60_000_000.0}]},
+               {"posten": [{"nr": 20, "ansatz": 100_000.0}]}]
+    assert finanzberichte.summenprobe(passend, gesamt)[0] is True
+    ok, anteil = finanzberichte.summenprobe(daneben, gesamt)
+    assert ok is False and anteil > 0.3
+    # Ohne Gesamtzeile keine Aussage — dann gilt die Probe als nicht bestanden.
+    assert finanzberichte.summenprobe(passend, [])[0] is False
+
+
+def test_store_plan_ist(tmp_path):
+    store = CouncilStore(tmp_path / "c.sqlite")
+    gesamt = finanzberichte.parse_ergebnisrechnung(JA_THH, 2023)
+    store.save_ergebnisrechnung(2023, gesamt, "JA 2023", None)
+    for t in finanzberichte.parse_teilergebnisrechnungen(JA_THH, 2023):
+        store.save_ergebnisrechnung(2023, t["posten"], "JA 2023", None,
+                                    thh_nr=t["thh_nr"], thh_name=t["thh_name"])
+
+    assert store.plan_ist_jahre() == [2023]
+    pi = store.get_plan_ist(2023)
+    assert pi["gesamt"]["ertraege_plan"] == 664_574_528.42
+    assert pi["gesamt"]["ertraege_ist"] == 732_987_197.61
+    assert len(pi["bereiche"]) == 1
+    b = pi["bereiche"][0]
+    assert b["thh_nr"] == 1 and b["thh_name"] == "Verwaltungsführung"
+    assert b["ertraege_plan"] == 568_542.15 and b["ertraege_ist"] == 475_819.90
+    # Gesamtzeile und Teilhaushalt liegen nebeneinander in derselben Tabelle.
+    assert len(store.get_ergebnisrechnung(2023)) > len(gesamt)
+    store.close()
