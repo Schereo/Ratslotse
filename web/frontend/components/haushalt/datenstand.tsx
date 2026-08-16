@@ -5,8 +5,9 @@
 // Kein Betreiber-Werkzeug, sondern die Antwort auf eine echte Leserfrage:
 // Auf /haushalt steht der Plan für 2026, auf /haushalt/plan-ist die
 // Abrechnung für 2024, auf /haushalt/pruefung Feststellungen bis 2023 — und
-// jede dieser Seiten müsste sonst für sich erklären, warum. Die Ursache ist
-// immer dieselbe und liegt bei der Stadt: Der Plan kommt im Oktober für das
+// jede dieser Seiten müsste sonst für sich erklären, warum. Die Ursache liegt
+// meist bei der Stadt (seit dem Städtevergleich nicht mehr immer: dessen
+// Reihen gibt das Land heraus): Der Plan kommt im Oktober für das
 // kommende Jahr, die Abrechnung im September für das vorletzte. Zwischen
 // September und Oktober liegt für einen Jahrgang deshalb immer nur die eine
 // Hälfte vor. Das steht hier einmal, in Sätzen statt in einer Matrix.
@@ -32,6 +33,8 @@ export type Datenschicht = {
   erwarteter_monat: number;
   monat: string;
   herkunft: string;
+  /** Die veröffentlichende Stelle im Klartext („Portal der Stadt"). */
+  quelle: string;
   automatisch: boolean;
   /** Wie eine Einheit heißt („Teilhaushalte"), wo ein Jahrgang aus mehreren
    *  Dokumenten besteht — sonst null. */
@@ -64,6 +67,34 @@ const LUECKENTEXT: Record<string, (jahr: number, hat: number, voll: number) => s
     `Für ${jahr} fehlt noch die Aufteilung auf die einzelnen Bereiche.`,
 };
 
+/** „a", „a und b", „a, b und c" — für Namen, die aus den Daten kommen und
+ *  deren Zahl niemand vorher kennt. `join(" und ")` reichte, solange es eine
+ *  einzige Schicht von Hand gab; bei dreien käme „a und b und c" heraus. */
+function aufzaehlung(teile: string[]): string {
+  if (teile.length <= 1) return teile[0] ?? "";
+  return `${teile.slice(0, -1).join(", ")} und ${teile[teile.length - 1]}`;
+}
+
+/** Die Schichten, die der Cron nicht nachzieht — gruppiert nach der Stelle,
+ *  die sie herausgibt.
+ *
+ *  Die Gruppierung ist der ganze Punkt: Die Fußzeile nannte pauschal das
+ *  „Portal der Stadt", und das stimmte genau so lange, wie der Haushaltsplan
+ *  die einzige Schicht von Hand war. Der Städtevergleich kommt vom Landesamt
+ *  für Statistik — mit dem alten Satz hätte die Seite eine Landesbehörde zur
+ *  Stadtverwaltung erklärt. Die Namen der Stellen kommen deshalb aus den
+ *  Daten, genau wie die der Schichten. */
+function vonHandNachStelle(schichten: Datenschicht[]): { quelle: string; labels: string[] }[] {
+  const gruppen: { quelle: string; labels: string[] }[] = [];
+  for (const s of schichten) {
+    if (s.automatisch) continue;
+    const treffer = gruppen.find((g) => g.quelle === s.quelle);
+    if (treffer) treffer.labels.push(s.label);
+    else gruppen.push({ quelle: s.quelle, labels: [s.label] });
+  }
+  return gruppen;
+}
+
 /** Was als Nächstes ansteht, als Satz.
  *
  *  Zwei Fälle, und der Unterschied ist der ganze Punkt: Ein Jahrgang, dessen
@@ -87,12 +118,43 @@ function ausblick(s: Datenschicht, heute: string): { text: string; wartet: boole
   return { text: `Der Jahrgang ${jahr} wird gerade erwartet (üblich: ${monatJahr}).`, wartet: false };
 }
 
+/** Was der Block verspricht — und was er ausdrücklich nicht verspricht.
+ *
+ *  Eigene Komponente, weil sie die einzige Stelle des Blocks ist, die einen
+ *  Satz aus Daten *baut* statt ihn hinzuschreiben: Namen der Schichten, Namen
+ *  der Stellen, Zahl der Gruppen — alles kommt aus dem Endpunkt. So lässt sie
+ *  sich mit einem Stand füttern und lesen, ohne den ganzen Block samt
+ *  Endpunkt aufzubauen. */
+export function Fussnote({ schichten }: { schichten: Datenschicht[] }) {
+  const vonHand = vonHandNachStelle(schichten);
+  return (
+    /* Der Satz stand pauschal über der ganzen Liste — und deren erste,
+       prominenteste Zeile ist der Haushaltsplan, der gerade NICHT
+       automatisch nachkommt. Was von Hand läuft, wird deshalb aus den
+       Daten benannt statt mitversprochen. */
+    <p className="mt-3.5 border-t border-dashed border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground">
+      Was im Ratsinformationssystem veröffentlicht wird, tragen wir automatisch nach —
+      geprüft wird alle zwei Wochen.
+      {/* Aufzählung ohne Artikel und ohne Verb-Kongruenz: Die Namen kommen
+          aus den Daten, „Nur den Haushaltsplan holen wir …" ließe sich für
+          eine beliebige Liste nicht grammatisch bilden. Die Stelle steht in
+          Klammern dahinter — ein Satzbau, der auch bei vier Stellen hält. */}
+      {vonHand.length > 0 && <> Nicht dabei: {vonHand.map((g, i) => (
+        <span key={g.quelle}>
+          {i > 0 && "; "}{aufzaehlung(g.labels)} ({g.quelle})
+        </span>
+      ))} — die Zahlen dafür holen wir von Hand.</>}
+      {" "}Zahlen, die eine Rechenprobe des Dokuments nicht bestehen, bleiben draußen; dann
+      steht hier weiter der ältere Stand.
+    </p>
+  );
+}
+
 export function Datenstand() {
   const { data } = useFetch<Antwort>("/council/haushalt/datenstand");
   // Still bleiben, solange nichts da ist: Ein Skelett für einen Nachtrag am
   // Seitenende wäre mehr Unruhe als Information.
   if (!data || data.schichten.length === 0) return null;
-  const vonHand = data.schichten.filter((s) => !s.automatisch).map((s) => s.label);
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
@@ -163,21 +225,7 @@ export function Datenstand() {
         })}
       </ul>
 
-      {/* Der Satz stand pauschal über der ganzen Liste — und deren erste,
-          prominenteste Zeile ist der Haushaltsplan, der gerade NICHT
-          automatisch nachkommt. Was von Hand läuft, wird deshalb aus den
-          Daten benannt statt mitversprochen. */}
-      <p className="mt-3.5 border-t border-dashed border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground">
-        Was im Ratsinformationssystem veröffentlicht wird, tragen wir automatisch nach —
-        geprüft wird alle zwei Wochen.
-        {/* Aufzählung ohne Artikel und ohne Verb-Kongruenz: Die Namen kommen
-            aus den Daten, „Nur den Haushaltsplan holen wir …" ließe sich für
-            eine beliebige Liste nicht grammatisch bilden. */}
-        {vonHand.length > 0 && <> Nicht dabei: {vonHand.join(" und ")} — die Zahlen dafür
-          holen wir vom Portal der Stadt.</>}
-        {" "}Zahlen, die eine Rechenprobe des Dokuments nicht bestehen, bleiben draußen; dann
-        steht hier weiter der ältere Stand.
-      </p>
+      <Fussnote schichten={data.schichten} />
     </div>
   );
 }

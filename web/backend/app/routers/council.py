@@ -423,10 +423,12 @@ def haushalt_datenstand(
 
     Beantwortet die Frage, die sonst auf neun Seiten einzeln erklärt werden
     müsste: „Warum steht hier 2024 und nicht 2025?" Der Haushalts-Bereich
-    trägt fünf Schichten mit **verschiedenen** Takten — der Plan kommt im
+    trägt acht Schichten mit **verschiedenen** Takten — der Plan kommt im
     Oktober für das nächste Jahr, die Abrechnung im September für das
     vorletzte. Zwischen September und Oktober liegt für einen Jahrgang immer
-    nur die eine Hälfte vor; das ist der Normalfall, nicht die Störung.
+    nur die eine Hälfte vor; das ist der Normalfall, nicht die Störung. Die
+    beiden Reihen des Städtevergleichs hängen sogar an einem ganz anderen
+    Haus: Sie kommen vom Landesamt für Statistik, einmal im Jahr.
 
     Je Schicht: die vorhandenen Jahrgänge, Lücken darin, der nächste
     erwartete Jahrgang samt Datum, und ob er schon überfällig ist. Die Werte

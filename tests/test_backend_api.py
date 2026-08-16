@@ -506,13 +506,20 @@ def test_haushalt_datenstand_nennt_alle_schichten(client):
     schichten = {s["key"]: s for s in b["schichten"]}
     assert set(schichten) == {"haushaltsplan", "jahresabschluss", "teilhaushalt",
                               "rpa_fundstelle", "pruefungsfeststellungen",
-                              "konzernabschluss"}
-    # Drei verschiedene Takte — das ist der Grund, warum der Block existiert.
+                              "konzernabschluss",
+                              "lsn_steuerkraft", "lsn_realsteuern"}
+    # Vier verschiedene Takte — das ist der Grund, warum der Block existiert.
     assert schichten["jahresabschluss"]["monat"] == "September"
     assert schichten["haushaltsplan"]["monat"] == "Oktober"
     # Der Gesamtabschluss hinkt am weitesten hinterher: Er kann erst entstehen,
     # wenn alle einbezogenen Betriebe geprüft sind.
     assert schichten["konzernabschluss"]["monat"] == "Februar"
+    # Der Städtevergleich kommt gar nicht von der Stadt — das muss die
+    # Fußzeile des Blocks aus den Daten lesen können.
+    assert schichten["lsn_realsteuern"]["monat"] == "November"
+    assert (schichten["lsn_steuerkraft"]["quelle"]
+            == "Landesamt für Statistik Niedersachsen")
+    assert schichten["haushaltsplan"]["quelle"] == "Portal der Stadt"
     # Leerer Bestand: Lücken behaupten, wo nie etwas war, wäre falsch.
     assert schichten["jahresabschluss"]["jahrgaenge"] == []
     assert schichten["jahresabschluss"]["luecken"] == []
