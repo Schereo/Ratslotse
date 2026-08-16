@@ -83,6 +83,7 @@ die es nicht zeigen:
 | `…/haushalt/pruefberichte` | `/haushalt/pruefung`, Prüfungs-Karte auf `/haushalt/plan-ist` | eine Viertel-Megabyte Prosa |
 | `…/haushalt/produkte` | `/haushalt/produkte`, `/haushalt/pflicht`, `/haushalt/bereich`, Labor | mehrere hundert Zeichen Steckbrief je Zeile; gesucht und gefiltert wird serverseitig |
 | `…/haushalt/konzern` | `/haushalt/konzern` | eigene Tabellen, eigene Jahrgangsreihe |
+| `…/haushalt/stellenplan` | `/haushalt/personal` | rund 190 Zeilen je Jahrgang; die Einzelposten kommen nur für den angefragten Jahrgang mit |
 | `…/haushalt/vergleich` | `/haushalt/vergleich` | eigene Tabelle (LSN), acht Städte × Jahrgänge |
 | `…/haushalt/investitionen` | `/haushalt/investitionen` | eigene Tabelle, **anderer Haushalt** (Finanz- statt Ergebnishaushalt) — nicht mit den übrigen Zahlen verrechenbar |
 | `…/haushalt/schulden` | `/haushalt/schulden` | eigene Tabelle, eigene Jahrgangsreihe (bis 1995 zurück) |
@@ -102,6 +103,7 @@ die es nicht zeigen:
 | `council_abweichungsgruende` | Warum ein Posten vom Plan abwich (Abschnitt 6.3.1), 45 Einträge | dito | dito |
 | `council_pruefbericht_quellen` | **Fundstelle** des RPA-Schlussberichts je Jahrgang (eine Zeile je Jahr) | dito | dito |
 | `council_produkte` | Produktebene: was einzelne Aufgaben kosten — plus Steckbrief (Kurzbeschreibung, Auftragsgrundlage, Beeinflussbarkeit, Wirkungskreis, Zielgruppe) | Teilhaushalts-Pläne — **Anlagen im RIS** | dito |
+| `council_stellenplan` | Stellen je Amtsbezeichnung, 2023–2026 — `teil` A (Beamt\*innen) / B (Tarifbeschäftigte), `art` (`posten` / `gruppe` / `gesamt`), dazu Besetzung und unbesetzte Stellen zum Stichtag | Stellenplan (Anlage 21/22 des Haushaltsplans) — **Anlagen im RIS** | dito |
 | `council_pruefberichte` | Prüfungsfeststellungen 2017–2023, eine Zeile je Randmarke | Schlussberichte des Rechnungsprüfungsamts — **Anlagen im RIS** | `scripts/ingest_pruefberichte.py` |
 | `council_konzern_posten` | Gesamtergebnisrechnung des **Konzerns** je Posten, 2014–2024 | Konsolidierte Gesamtabschlüsse — **Anlagen im RIS** | `scripts/ingest_konzernabschluss.py` |
 | `council_konzern_traeger` | Dieselben Summen je Aufgabenträger (Kernverwaltung, Klinikum, Eigenbetriebe …), 2017–2024, in **TEUR** | dito | dito |
@@ -365,7 +367,7 @@ Aus acht Jahrgängen Sitzungsdaten (`council_sessions.session_date` über
 | Was | Wann im Rat | Versatz zum Jahrgang | Ausnahmen |
 |---|---|---|---|
 | Jahresabschluss + RPA-Schlussbericht + Rechenschaftsbericht | **Anfang September** | + 1 Jahr | 1× August |
-| Haushaltsplan mit Gesamtergebnishaushalt und Teilhaushalten | **Anfang Oktober** | Plan: − 1 Jahr · Teilhaushalte: ± 0 | 1× November |
+| Haushaltsplan mit Gesamtergebnishaushalt, Teilhaushalten und Stellenplan | **Anfang Oktober** | Plan und Stellenplan: − 1 Jahr · Teilhaushalte: ± 0 | 1× November |
 | Konsolidierter Gesamtabschluss (Prüfbericht des RPA) | **Februar** | + 2 Jahre | Juni bis Februar |
 
 Der dritte Takt kam mit dem Konzern-Bereich dazu und ist der langsamste: Ein
@@ -462,6 +464,7 @@ Antworten, und eine davon veraltet still.
 | Prüfungsfeststellungen | Text `%Rechnungsprüfungsamtes%`, > 30 Seiten; entschieden am Textanfang | `council_pruefberichte` | September, Jahrgang + 1 |
 | Teilhaushalts-Pläne | Label `%THH%`, > 40 Seiten | `council_produkte` | Oktober, Jahrgang + 0 |
 | Gesamtergebnishaushalt | Label `%Gesamtergebnishaushalt%`, > 10 Seiten; Jahrgang aus dem **Tabellenkopf** (vier der acht Dokumente tragen keine Jahreszahl im Label) | `council_ergebnishaushalt` | Oktober, Jahrgang − 1 |
+| Stellenplan | Label `%Stellenplan%`, > 10 Seiten, **ohne** `%eändert%`; Jahrgang aus dem **Tabellenkopf** (drei Schreibweisen im Label, eine mit zwei Jahreszahlen) | `council_stellenplan` | Oktober, Jahrgang − 1 |
 | Konsolidierter Gesamtabschluss | **nur** Text (`konzernabschluss.TEXT_MUSTER`), > 40 Seiten — die Labels dieser Reihe sind wertlos | `council_konzern_posten` (+ `council_konzern_traeger`) | Februar, Jahrgang + 2 |
 | Haushaltsplan | *(kein Anlagen-Muster — Download)* | `council_haushalt` | Oktober, Jahrgang − 1 |
 | Steuerkraft im Städtevergleich | *(kein Anlagen-Muster — Download beim LSN)* | `council_staedtevergleich`, Reihe `steuerkraft` | April, Jahrgang + 0 |
@@ -872,6 +875,57 @@ sind Pflicht:
 Die zweite trägt die Trennlinie zwischen Ansatz und Finanzplanung: Ohne sie
 wäre „dritte Spalte = beschlossener Ansatz" eine Reihenfolgeannahme. Stand
 heute in 8/8 Dokumenten aufgegangen, 23 von 23 Zeilen je Dokument.
+
+### Der Stellenplan: vier Proben, und eine davon absichtlich kein Gate
+
+Der Stellenplan (`council/stellenplan.py`) ist die einzige Schicht des
+Bereichs, die nicht in Euro rechnet. Er hat zwei Teile — A für Beamtinnen und
+Beamte (neun Spalten), B für Tarifbeschäftigte (acht) — und jeder Teil kommt
+**einzeln** durch seine Proben. Deshalb ist die Einheit der Teil und nicht der
+Jahrgang: Im Stellenplan 2026 gibt der Textextrakt für Teil B Glyphen-Nummern
+statt Buchstaben aus, Teil A steht sauber da.
+
+| Probe | Was sie prüft | Wo |
+|---|---|---|
+| **Spaltenprobe** | Die Tabelle nummeriert ihre Spalten selbst (`1 2 3 … 9`), auf jeder Seite neu und überall gleich | `_spaltenzeile` |
+| **Gruppensummen** | Die Einzelzeilen zwischen zwei Summenzeilen ergeben die Summenzeile — in **jeder** Wertespalte | `gruppenprobe` |
+| **Besetzungsprobe** | `besetzt + nicht besetzt = Stellen im Vorjahr`, geprüft auf den Summenzeilen | `besetzungsprobe` |
+| **Gesamtsumme** | Die Gruppensummen ergeben die Gesamtzeile; Teil A führt sie zweimal, beide müssen stimmen | `gesamtprobe` |
+
+Teil B trägt die vierte nicht: Er hat eine Gruppe, deren Summe zugleich die
+Gesamtsumme ist — sie wiederholte dort nur die zweite unter neuem Namen.
+
+:::caution[Die Besetzung gehört zur Vorjahresspalte]
+Der Plan 2026 sieht 815 Stellen vor **und** sagt daneben, wie es am 30.6.2025
+aussah: 796 Stellen, davon 143,71 nicht besetzt. Geplant wird vorwärts,
+gezählt werden kann nur rückwärts. `815 − 652,31 = 162,69` mischt zwei
+Stichtage und steht in keinem Dokument; `lib/haushalt-stellenplan.ts` hat
+deshalb gar keine Funktion, die Plan und Besetzung verrechnet.
+:::
+
+**Warum die Besetzungsprobe auf Summenzeilen läuft und nicht auf jeder
+Einzelzeile.** Der Stellenplan 2023 widerspricht sich in Teil B in genau zwei
+Zeilen: Bei „Dipl.-Ingenieur/-in E 11" ist die Besetzung um eine Stelle zu
+hoch, bei „Verw.-Angest. E 11" um eine zu niedrig — die Stadt hat eine Stelle
+in der falschen Zeile verbucht. In der Gruppensumme heben sich beide auf, und
+alle vier Spalten stimmen auf 0,00. Als Gate über jede Einzelzeile fiele dafür
+ein Teil mit 140 Zeilen und 1.643 Stellen. Die beiden Zeilen werden deshalb
+**gekennzeichnet statt verworfen** (Spalte `stimmig`), gezählt und im
+Lauf-Protokoll namentlich gemeldet. Was ein Zeilen-Gate abfangen sollte — eine
+verrutschte Spalte — fangen die Spaltenvergleiche ohnehin ab.
+
+Die Toleranz der Besetzungsprobe **wächst mit der Zeilenzahl** (`0,01 ×
+Zeilen`, mindestens 0,05). Das ist keine Nachgiebigkeit, sondern eine
+Ableitung: Der Plan rundet jede Zeile auf zwei Nachkommastellen (eine halbe
+Stelle im Schichtdienst steht als `0,88` und `0,13`), je Zeile bleiben
+höchstens 0,01 übrig, und diese Reste addieren sich in die Summenzeile. Ein
+fester Wert wäre genau falsch herum streng — er ginge bei vier Zeilen durch
+und schlüge bei 143 zu.
+
+Stand heute: Sieben von acht möglichen Teilen im Bestand (2023–2026 Teil A,
+2023–2025 Teil B), 611 Zeilen, alle Summenproben auf 0,00 aufgegangen, zwei
+gekennzeichnete Zeilen. Die Jahrgänge 2019–2022 gibt es nicht — dort endet das
+Anlagenverzeichnis des Haushaltsplans bei „021 Wirtschaftsplan EGH".
 
 **Gegenprobe, keine Probe:** Die Ist-Spalte des Vorvorjahres lässt sich gegen
 `council_ergebnisrechnung` halten — aber sie ist die *Gesamt*ebene (mit den
