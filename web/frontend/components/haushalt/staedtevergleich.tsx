@@ -82,7 +82,7 @@ export function Staedtevergleich({
       </ol>
       {betroffen && (
         <p className="mt-2.5 text-[11px] leading-relaxed text-muted-foreground">
-          <span className="align-super text-[9px]">*</span> Unter 100.000 Einwohnern
+          <span className="align-super text-[9px]">*</span> Unter 100.000 Einwohner*innen
           rechnet das Land die Steuerkraft mit anderen fiktiven Hebesätzen. Diese
           Städte stehen deshalb nicht auf derselben Rechenvorschrift wie die übrigen.
         </p>

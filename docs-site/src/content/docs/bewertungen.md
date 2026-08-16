@@ -156,7 +156,7 @@ LLM-Aufrufe über OpenRouter ([ADR 0001](/docs/adr/0001-openrouter/)).
 ## 3. Gesprächswert — bewusst nicht Wichtigkeit
 
 `council/interest.py` misst etwas ganz anderes: Wie **erzählenswert** ist ein
-Beschluss für normale Stadtbewohner:innen? Der Prompt
+Beschluss für normale Stadtbewohner*innen? Der Prompt
 (`interest_bewertung_system`) fragt nach Gesprächswert („Würde man es beim
 Abendessen erzählen?"), Alltagsnähe, Kuriosität/Überraschung und Konkretheit
 (ein Ort, ein Ding, ein Datum) und staffelt die Skala:

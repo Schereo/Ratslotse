@@ -828,7 +828,7 @@ def _debatten_block(debatten: list[dict] | None, eng: bool = False) -> str:
             "NIE mit [id] zitieren.\n"
             "Steht dort eine ZUSAGE DER VERWALTUNG, nenne sie ausdrücklich und mit\n"
             "Datum („Die Verwaltung sagte am … zu, …“) — das ist eine\n"
-            "Selbstverpflichtung und für die Leserin oft das Verwertbarste am\n"
+            "Selbstverpflichtung und für die Leser*innen oft das Verwertbarste am\n"
             "ganzen Protokoll:\n"
             + "\n".join(zeilen) + "\n")
 

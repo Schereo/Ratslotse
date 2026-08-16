@@ -221,7 +221,7 @@ export function Kassenzettel({ daten, jahr, einwohner, className }: {
               Haushaltsplan {jahr}
             </p>
             <p className="mt-3 text-center text-[10.5px] uppercase tracking-[0.07em] text-signal">
-              je Einwohnerin und Einwohner<Beleg q="einwohner" />
+              je Einwohner*in<Beleg q="einwohner" />
             </p>
 
             <div className="mt-3 space-y-[7px] border-t border-dashed border-border pt-3">
@@ -229,7 +229,7 @@ export function Kassenzettel({ daten, jahr, einwohner, className }: {
                   vorgelesen bekommt, hört sonst nur „Soziales 1.603" — die
                   Währung stünde erst zwölf Zeilen später. */}
               <p className="sr-only">
-                Ausgaben je Bereich in Euro je Einwohnerin und Einwohner:
+                Ausgaben je Bereich in Euro je Einwohner*in:
               </p>
               {posten.map((p) => (
                 <Bonzeile key={p.roh} label={p.kanon.kurz} wert={p.wert}
@@ -335,8 +335,8 @@ export function Kassenzettel({ daten, jahr, einwohner, className }: {
                 ["Keine Rechnung.",
                   `Niemand überweist ${de(summeJeKopf)} €. Es ist eine Division, kein Beitrag.`],
                 ["Alle zählen mit.",
-                  "Kinder, Rentnerinnen, Menschen ohne eigenes Einkommen — geteilt wird durch "
-                  + "alle Einwohnerinnen und Einwohner, nicht durch Steuerzahlende."],
+                  "Kinder, Rentner*innen, Menschen ohne eigenes Einkommen — geteilt wird durch "
+                  + "alle Einwohner*innen, nicht durch Steuerzahlende."],
                 ["Das Geld kommt nicht nur aus Oldenburg.",
                   "Ein großer Teil sind Zuweisungen des Landes und Anteile an Bundessteuern."],
                 // Der fünfte Punkt, den der Entwurf nicht hatte. Die
@@ -368,8 +368,8 @@ export function Kassenzettel({ daten, jahr, einwohner, className }: {
                 Geplante Aufwendungen {jahr}{" "}
                 <span className="font-mono">{de(gesamt.aufwendungen)}&nbsp;€</span>
                 <Beleg q="plan" /> geteilt durch{" "}
-                <span className="font-mono">{de(kopf)}</span> Einwohnerinnen und
-                Einwohner<Beleg q="einwohner" /> ={" "}
+                <span className="font-mono">{de(kopf)}</span> Einwohner*innen
+                <Beleg q="einwohner" /> ={" "}
                 <strong className="font-semibold">{de(summeJeKopf)}&nbsp;€</strong>.
               </p>
               <p className="mt-2 text-[11.5px] leading-relaxed text-muted-foreground">

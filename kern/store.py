@@ -209,7 +209,7 @@ CREATE TABLE IF NOT EXISTS council_agenda_matches (
 );
 CREATE INDEX IF NOT EXISTS idx_cam_owner ON council_agenda_matches(owner_id, ksinr);
 
--- Merkt je Nutzer:in + Sitzung, welcher Tagesordnungs-Stand (Hash) schon
+-- Merkt je Nutzer*in + Sitzung, welcher Tagesordnungs-Stand (Hash) schon
 -- klassifiziert wurde — die LLM-Klassifikation läuft nur bei Änderungen.
 CREATE TABLE IF NOT EXISTS council_agenda_classified (
   owner_id      INTEGER NOT NULL,
@@ -1972,7 +1972,7 @@ class Store:
         return cur.rowcount
 
     def agenda_classified_hash(self, owner_id: int, ksinr: int) -> str | None:
-        """Hash des zuletzt für diese Nutzer:in klassifizierten
+        """Hash des zuletzt für diese Nutzer*in klassifizierten
         Tagesordnungs-Stands — None, wenn noch nie klassifiziert (RL-902)."""
         row = self._conn.execute(
             "SELECT agenda_hash FROM council_agenda_classified WHERE owner_id = ? AND ksinr = ?",
@@ -1983,7 +1983,7 @@ class Store:
     def replace_agenda_matches(
         self, owner_id: int, ksinr: int, agenda_hash: str, matches: dict[int, list[str]]
     ) -> None:
-        """Treffer einer Sitzung für eine Nutzer:in komplett ersetzen und den
+        """Treffer einer Sitzung für eine Nutzer*in komplett ersetzen und den
         klassifizierten Stand festhalten. matches: {topic_id: [item_numbers]}.
         Voller Austausch, damit bei geänderter Tagesordnung keine veralteten
         Treffer stehen bleiben (RL-902)."""
@@ -2011,7 +2011,7 @@ class Store:
             )
 
     def has_agenda_match(self, owner_id: int, ksinr: int) -> bool:
-        """Hat diese Nutzer:in für diese Sitzung schon einen Themen-Treffer?
+        """Hat diese Nutzer*in für diese Sitzung schon einen Themen-Treffer?
 
         Design 30a: „Themen-Treffer gewinnt" — wer bereits gehört hat, WELCHER
         Tagesordnungspunkt ihn betrifft, braucht daneben nicht die Meldung, dass

@@ -25,14 +25,14 @@ export default function AdminPage() {
 
   return (
     <div>
-      <PageHeader title="Admin" description="Prompts und Web-Nutzer:innen verwalten." />
+      <PageHeader title="Admin" description="Prompts und Web-Nutzer*innen verwalten." />
       <div className="mt-4 flex gap-1 border-b border-border">
         {([
           ["stats", "Statistik"],
           ["feedback", "Feedback"],
           ["llm", "LLM-Kosten"],
           ["prompts", "Prompts"],
-          ["users", "Web-Nutzer:innen"],
+          ["users", "Web-Nutzer*innen"],
           ["quiz", "Quiz"],
           ["themen", "Themen-Dubletten"],
         ] as [Tab, string][]).map(([t, label]) => (
@@ -135,7 +135,7 @@ function StatsTab() {
 
       {/* Zwei Verlaufs-Karten. */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <GrowthCard kicker="Registrierte Nutzer:innen" total={data.users.total} delta={data.users.delta} series={data.users.series} days={data.users.days} color="hsl(var(--primary))" />
+        <GrowthCard kicker="Registrierte Nutzer*innen" total={data.users.total} delta={data.users.delta} series={data.users.series} days={data.users.days} color="hsl(var(--primary))" />
         <GrowthCard kicker="Angelegte Themen" total={data.topics.total} delta={data.topics.delta} series={data.topics.series} days={data.topics.days} color="hsl(var(--signal))" />
       </div>
 
@@ -143,7 +143,7 @@ function StatsTab() {
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.4fr_1fr]">
         <Card className="p-4">
           <div className="flex items-baseline justify-between">
-            <StatKicker>Aktive Nutzer:innen je Woche</StatKicker>
+            <StatKicker>Aktive Nutzer*innen je Woche</StatKicker>
             <span className="text-[11.5px] text-muted-foreground">WAU · 8 Wochen</span>
           </div>
           <MiniBars values={data.wau.length ? data.wau : [0]} days={data.wau_days} height={70} className="mt-3.5" />
@@ -702,7 +702,7 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
   });
 
   if (isPending) return <Spinner />;
-  if (isError) return <ErrorState title="Die Nutzer:innen kamen nicht durch" onRetry={() => void refetch()} busy={isFetching} />;
+  if (isError) return <ErrorState title="Die Nutzer*innen kamen nicht durch" onRetry={() => void refetch()} busy={isFetching} />;
 
   const needle = q.trim().toLowerCase();
   const filtered = needle ? users.filter((u) => u.email.toLowerCase().includes(needle)) : users;
@@ -716,7 +716,7 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="E-Mail suchen…"
               className="h-9 w-full rounded-[9px] border border-input bg-card pl-9 pr-3 text-base sm:text-[12.5px] text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
           </div>
-          <span className="shrink-0 text-xs text-muted-foreground">{users.length} Nutzer:innen</span>
+          <span className="shrink-0 text-xs text-muted-foreground">{users.length} Nutzer*innen</span>
         </div>
         <div className="divide-y divide-border">
           {filtered.map((u) => {
@@ -748,13 +748,13 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
               </button>
             );
           })}
-          {!filtered.length && <p className="px-4 py-6 text-center text-sm text-muted-foreground">Keine Nutzer:in passt zu „{q}".</p>}
+          {!filtered.length && <p className="px-4 py-6 text-center text-sm text-muted-foreground">Keine Nutzer*in passt zu „{q}".</p>}
         </div>
       </Card>
 
       {selected != null
         ? <UserDetailPanel userId={selected} isSelf={selected === currentUserId} onClose={() => setSelected(null)} />
-        : <Card className="hidden p-8 text-center text-sm text-muted-foreground lg:block">Nutzer:in wählen, um Details zu sehen.</Card>}
+        : <Card className="hidden p-8 text-center text-sm text-muted-foreground lg:block">Nutzer*in wählen, um Details zu sehen.</Card>}
     </div>
   );
 }
@@ -833,7 +833,7 @@ function UserDetailPanel({ userId, isSelf, onClose }: { userId: number; isSelf: 
           </Button>
           <Button variant="secondary" size="sm"
             onClick={() => roleMutation.mutate(data.role === "admin" ? "user" : "admin")}>
-            {data.role === "admin" ? "Zu Nutzer:in" : "Zu Admin"}
+            {data.role === "admin" ? "Zu Nutzer*in" : "Zu Admin"}
           </Button>
         </div>
       )}
@@ -955,7 +955,7 @@ function QuizModerationTab() {
         <Card className="p-8 text-center text-sm text-muted-foreground">Keine schlecht bewerteten Fragen. 🎉</Card>
       ) : (<>
       <p className="text-sm text-muted-foreground">
-        Von Nutzer:innen als „schlecht" markierte Fragen, meist-gemeldete zuerst.
+        Von Nutzer*innen als „schlecht" markierte Fragen, meist-gemeldete zuerst.
         Ausmustern nimmt die Frage aus künftigen Runden.
       </p>
       <Card className="divide-y divide-border">

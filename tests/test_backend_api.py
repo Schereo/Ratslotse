@@ -1570,7 +1570,7 @@ def apple_jwks(monkeypatch):
 
 
 def test_apple_login_creates_active_account(client, apple_jwks):
-    _register(client)  # Admin existiert → Apple-Konto wird normale:r Nutzer:in
+    _register(client)  # Admin existiert → Apple-Konto wird normale:r Nutzer*in
     anna = TestClient(app)
     r = anna.post("/api/auth/apple", json={"identity_token": _apple_token()})
     assert r.status_code == 200

@@ -117,8 +117,8 @@ Die Zeitpläne stehen als Docstring im jeweiligen Skript und in
 | Skript | Rhythmus | Aufgabe |
 |---|---|---|
 | `backup_db.py` | täglich `0 3 * * *` | SQLite-Backup beider Datenbanken, rotierend, optional off-site gespiegelt. |
-| `check_committees.py` | täglich `0 7 * * *` | Gremienliste und Kalender (3 Monate voraus) auffrischen, Terminplan-Sitzungen ohne Tagesordnung mitschreiben, Tagesordnungen zusammenfassen und Ausschuss-Abonnent:innen benachrichtigen (auch bei *geänderter* Tagesordnung, erkannt über einen Agenda-Hash). |
-| `check_council.py` | zweimal täglich `0 8,14 * * *` | Kommende Sitzungen gegen die Themen aller Nutzer:innen klassifizieren und Treffer per E-Mail/Push ausliefern. |
+| `check_committees.py` | täglich `0 7 * * *` | Gremienliste und Kalender (3 Monate voraus) auffrischen, Terminplan-Sitzungen ohne Tagesordnung mitschreiben, Tagesordnungen zusammenfassen und Ausschuss-Abonnent*innen benachrichtigen (auch bei *geänderter* Tagesordnung, erkannt über einen Agenda-Hash). |
+| `check_council.py` | zweimal täglich `0 8,14 * * *` | Kommende Sitzungen gegen die Themen aller Nutzer*innen klassifizieren und Treffer per E-Mail/Push ausliefern. |
 | `check_protocols.py` | täglich `0 9 * * *` | Neue Protokolle parsen — und alles Nachgelagerte gleich mit (siehe unten). |
 | `weekly_enrich.py` | sonntags `0 3 * * 0` | LLM- und Embedding-Backfills in 14 Schritten (siehe unten). |
 | `remind_setup.py` | täglich `0 11 * * *` | Genau eine Service-Mail an Konten, die den Einrichtungs-Assistenten angefangen und seit 48 h nicht beendet haben. |
@@ -353,8 +353,8 @@ Alle optional — greift keine Variable, gilt der Default aus dem Code.
 | `RESEND_API_KEY` | Versand über Resend; fehlt er, wird E-Mail still übersprungen | nein | leer |
 | `EMAIL_FROM` | Absender der Mails | nein | `Ratslotse <noreply@ratslotse.de>` |
 | `APP_BASE_URL` | Basis-URL in Mail-Links | nein | `https://ratslotse.de` |
-| `FEEDBACK_EMAIL` | Empfänger des Nutzer-Feedbacks | nein | leer → `WEB_ADMIN_EMAIL` |
-| `ALERT_EMAIL` | Empfänger der Cron-Alarme | nein | nicht gesetzt → `WEB_ADMIN_EMAIL` |
+| `FEEDBACK_EMAIL` | Empfänger*in des Nutzer-Feedbacks | nein | leer → `WEB_ADMIN_EMAIL` |
+| `ALERT_EMAIL` | Empfänger*in der Cron-Alarme | nein | nicht gesetzt → `WEB_ADMIN_EMAIL` |
 
 ### Push (APNs / FCM)
 
