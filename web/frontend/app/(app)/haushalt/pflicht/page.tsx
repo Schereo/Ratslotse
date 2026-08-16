@@ -103,6 +103,9 @@ export default function PflichtPage() {
   // sagt die Übersicht. Deshalb erst der zweite Aufruf, und nur wenn es
   // überhaupt eines gibt (`useFetch(null)` überspringt).
   const produktJahr = data?.produkt_jahre?.length ? Math.max(...data.produkt_jahre) : null;
+  // Der erste Jahrgang kommt ebenfalls aus den Daten. „2018" als feste Zahl in
+  // den Satz zu schreiben hieße, beim nächsten Nachzug still zu lügen.
+  const produktVon = data?.produkt_jahre?.length ? Math.min(...data.produkt_jahre) : null;
   const { data: produktdaten } = useFetch<ProdukteAntwort>(
     produktJahr ? `/council/haushalt/produkte?jahr=${produktJahr}` : null,
   );
@@ -269,10 +272,12 @@ export default function PflichtPage() {
           </p>
           <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted-foreground">
             Für {rows.length - geprueft.length} von {rows.length} Teilhaushalten gibt es keine Angabe:
-            Die Produktebene reicht von 2018 bis {produktJahr} und deckt nicht jeden Teilhaushalt ab.
+            Die Produktebene reicht von {produktVon} bis {produktJahr} und deckt nicht jeden
+            Teilhaushalt ab.
             {produktdaten?.abdeckung_prozent != null && (
-              <> Die gefundenen Aufgaben erklären {deMio(produktdaten.abdeckung_prozent)}&nbsp;% der
-              für {produktJahr} geplanten Aufwendungen.</>
+              <> Die gefundenen Aufgaben erklären{" "}
+              {produktdaten.abdeckung_prozent.toLocaleString("de-DE", { maximumFractionDigits: 1 })}
+              &nbsp;% der für {produktJahr} geplanten Aufwendungen.</>
             )}{" "}
             Aufgabe für Aufgabe steht es auf der{" "}
             <Link href="/haushalt/produkte" className="font-semibold text-primary">Produktebene</Link>.
