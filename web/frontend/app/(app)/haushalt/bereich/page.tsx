@@ -254,7 +254,7 @@ function BereichInner() {
   const aktiv = reiterListe.some((r) => r.id === reiter) ? reiter : "ueberblick";
 
   return (
-    <Quellenkontext schluessel={quellen}>
+    <Quellenkontext schluessel={quellen} jahr={jahr}>
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-1.5 text-[11.5px] text-muted-foreground">
         <Link href="/haushalt" className="hover:text-foreground">Haushalt {jahr}</Link>

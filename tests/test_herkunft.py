@@ -390,3 +390,92 @@ def test_verwaiste_herkunft_wird_aufgeraeumt(tmp_path):
     assert store.herkunft_luecken() == {}
     assert store.herkunft_aufraeumen() == 0    # zweimal aufräumen tut nichts
     store.close()
+
+
+# --- 4. Vom Beleg zum Dokument -----------------------------------------------
+#
+# Das Quellenverzeichnis der Haushalts-Seiten beschreibt eine Quelle über alle
+# Jahrgänge hinweg („Die Jahresabschlüsse 2017–2024"). Sein Link führte
+# deshalb auf `https://buergerinfo.oldenburg.de` — die Startseite, auf der man
+# das Dokument selbst suchen darf. `haushalt_dokumente()` liefert die fehlende
+# Hälfte: welches PDF zu welchem Jahrgang gehört.
+
+def test_dokumente_je_quelle_und_jahrgang(tmp_path):
+    """Zwei Jahrgänge derselben Quelle führen auf zwei verschiedene PDFs —
+    genau das war der Fehler: Ein Beleg an einer Zahl von 2023 zeigte auf
+    dieselbe Startseite wie einer von 2017."""
+    store = CouncilStore(tmp_path / "c.sqlite")
+    posten = [{"nr": 12, "bezeichnung": "Summe", "ansatz": 1.0, "ergebnis": 2.0}]
+    for jahr, doc in ((2023, 280861), (2024, 295294)):
+        store.save_ergebnisrechnung(jahr, posten, Herkunft(
+            art="ris", probe="strukturprobe", dokument_id=doc,
+            label=f"Jahresabschluss {jahr}",
+            url=f"https://buergerinfo.oldenburg.de/getfile.php?id={doc}&type=do",
+            fundstelle="Ergebnisrechnung der Kernverwaltung", seite=161))
+
+    nach_jahr = {d["jahr"]: d for d in store.haushalt_dokumente()["jahresabschluss"]}
+    assert nach_jahr[2023]["url"].endswith("id=280861&type=do")
+    assert nach_jahr[2024]["url"].endswith("id=295294&type=do")
+    # Die Fundstelle fährt mit: Ohne sie ist die URL bei 300 Seiten zu wenig.
+    assert nach_jahr[2024]["fundstelle"] == "Ergebnisrechnung der Kernverwaltung"
+    assert nach_jahr[2024]["seite"] == 161
+    store.close()
+
+
+def test_dokumente_trennen_die_zwei_ebenen_eines_jahresabschlusses(tmp_path):
+    """Gesamtrechnung und Teilhaushalts-Ebene sind im Verzeichnis zwei
+    Quellen. Sie stehen im selben PDF, aber an verschiedenen Stellen — und
+    genau die Stelle ist der Gewinn gegenüber einem nackten Link."""
+    store = CouncilStore(tmp_path / "c.sqlite")
+    gemeinsam = dict(art="ris", dokument_id=99, label="JA 2023", url=JA_URL)
+    posten = [{"nr": 12, "bezeichnung": "Summe", "ansatz": 1.0, "ergebnis": 2.0}]
+    store.save_ergebnisrechnung(2023, posten, Herkunft(
+        probe="strukturprobe", fundstelle="Ergebnisrechnung der Kernverwaltung",
+        **gemeinsam))
+    store.save_ergebnisrechnung(2023, posten, Herkunft(
+        probe="summenprobe", fundstelle="Teil-Ergebnisrechnung THH07",
+        **gemeinsam), thh_nr=7, thh_name="Stadtplanung")
+
+    doks = store.haushalt_dokumente()
+    assert doks["jahresabschluss"][0]["fundstelle"] == "Ergebnisrechnung der Kernverwaltung"
+    assert doks["ergebnisrechnung_thh"][0]["fundstelle"] == "Teil-Ergebnisrechnung THH07"
+    store.close()
+
+
+def test_ein_jahrgang_darf_mehrere_dokumente_tragen(tmp_path):
+    """Ein Produkt-Jahrgang verteilt sich auf mehrere Teilhaushalts-Anlagen.
+    Eine davon zu verlinken und die übrigen zu verschweigen wäre wieder die
+    halbe Wahrheit — die API nennt alle, die Seite entscheidet."""
+    store = CouncilStore(tmp_path / "c.sqlite")
+    for thh in (1, 4):
+        store.save_produkte(2023, [
+            {"produkt_nr": f"P{thh}", "produkt_name": "Aufgabe", "thh_nr": thh,
+             "ertraege": 1.0, "aufwendungen": 2.0, "ergebnis": -1.0}],
+            Herkunft(art="ris", probe="produktzeile", dokument_id=thh,
+                     label=f"007 THH0{thh}",
+                     url=f"https://buergerinfo.oldenburg.de/getfile.php?id={thh}&type=do"))
+
+    teil = store.haushalt_dokumente()["teilhaushalt"]
+    assert {d["jahr"] for d in teil} == {2023}
+    assert {d["label"] for d in teil} == {"007 THH01", "007 THH04"}
+    store.close()
+
+
+def test_ohne_dokument_meldet_sich_die_quelle_gar_nicht(tmp_path):
+    """Kein toter Link: Wo wir keine Adresse haben, fehlt der Schlüssel — die
+    Oberfläche fällt dann auf die statische Adresse zurück und schreibt
+    „Im Ratsinformationssystem suchen" statt „Dokument öffnen"."""
+    store = CouncilStore(tmp_path / "c.sqlite")
+    assert store.haushalt_dokumente() == {}
+
+    # Altbestand ohne Herkunft, aber mit URL an der Datenzeile: Der Rückfall
+    # auf die Alt-Spalte greift, sonst verlöre die Umstellung Belege, die es
+    # vorher schon gab.
+    store._conn.execute(
+        "INSERT INTO council_haushalt (year, bereich, aufwendungen, is_summe, "
+        " source_url, fetched_at) VALUES (2020, 'Summe', 1.0, 1, ?, '2026-01-01')",
+        (PLAN_URL,))
+    store._conn.commit()
+    assert store.haushalt_dokumente()["plan"] == [
+        {"jahr": 2020, "url": PLAN_URL, "label": None, "fundstelle": None, "seite": None}]
+    store.close()

@@ -67,6 +67,7 @@ die es nicht zeigen:
 | `…/haushalt/vergleich` | `/haushalt/vergleich` | eigene Tabelle (LSN), acht Städte × Jahrgänge |
 | `…/haushalt/weg` | `/haushalt/jahr` | Ratsdaten statt Finanzdokumenten (Beratungsfolge, Sitzungen) |
 | `…/haushalt/datenstand` | Block „Bis wann die Zahlen reichen" | rechnet über den Bestand, nicht über Inhalte |
+| `…/haushalt/dokumente` | Quellenverzeichnis **jeder** Haushalts-Seite | je Quelle und Jahrgang das Dokument — die Angabe, die die statische Quellenliste nicht haben kann |
 
 | Tabelle | Inhalt | Quelle | Ingest |
 |---|---|---|---|
@@ -142,6 +143,38 @@ nachzutragen" billiger ist als eine Ausnahme (`_HERKUNFT_ALTFELDER`).
 
 `GET /api/council/haushalt` liefert die Datensätze als `herkunft`, nach ID
 nachschlagbar, samt eines Erklärsatzes je Probe für die Oberfläche.
+
+### Vom Beleg zum Dokument
+
+Das Quellenverzeichnis am Fuß jeder Haushalts-Seite beschreibt eine Quelle
+**über alle Jahrgänge hinweg** („Die Jahresabschlüsse 2017–2024"). Das ist
+Absicht — es ist eine redaktionelle Zusammenfassung, keine Angabe, die aus
+einer Zeile fällt. Genau daran scheiterte aber sein Link: Eine Adresse, die
+für acht Jahrgänge zugleich stimmt, ist bei sechs Quellen die **Startseite**
+des Ratsinformationssystems gewesen. Wer dort landete, durfte selbst suchen.
+
+`GET /api/council/haushalt/dokumente` liefert die fehlende Ebene: je
+Quellenschlüssel eine Liste `{jahr, url, label, fundstelle, seite}`. Die
+Zuordnung Quelle → Tabelle steht in `CouncilStore._DOKUMENT_QUELLEN`; sie ist
+die einzige Stelle, an der Backend-Code die Schlüssel des Frontend-
+Verzeichnisses kennt, und das mit Grund: Welche Zeile aus welchem Dokument
+stammt, weiß nur die Datenbank.
+
+Drei Regeln, die die Oberfläche daraus ableitet
+(`web/frontend/lib/haushalt-dokumente.ts`):
+
+1. **Der Link folgt dem gezeigten Jahr.** Wechselt der Jahr-Umschalter, führt
+   derselbe Beleg auf ein anderes PDF.
+2. **Kein Jahrgang wird verschwiegen.** Hat die Seite kein Jahr, oder liegt
+   für ihres kein Dokument vor, nimmt sie das jüngste und **schreibt den
+   Jahrgang an** („Jahrgang 2024").
+3. **Kein Link verspricht mehr, als er hält.** Fehlt ein Dokument, bleibt die
+   statische Adresse — aber der Linktext wird aus ihr abgeleitet und heißt
+   dann „Im Ratsinformationssystem suchen" statt „Dokument öffnen".
+
+Ein Jahrgang darf mehrere Dokumente tragen: Die Produktebene verteilt sich auf
+rund neun Teilhaushalts-Anlagen. Die API nennt alle; das Verzeichnis listet
+sie, der Beleg-Chip verweist auf die Langfassung.
 
 :::note[Was der Altbestand mitbringt — und was nicht]
 Das Nachrüsten übernimmt aus den alten Feldern Label und URL und löst über die

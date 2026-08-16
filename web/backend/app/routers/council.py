@@ -444,6 +444,35 @@ def haushalt_datenstand(
     return {"heute": date.today().isoformat(), "schichten": zeilen}
 
 
+@router.get("/haushalt/dokumente")
+def haushalt_dokumente(
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Je Quelle des Haushalts-Bereichs das **Dokument** — Jahrgang für Jahrgang.
+
+    Das Quellenverzeichnis am Fuß jeder Haushalts-Seite beschreibt eine Quelle
+    als Ganzes („Die Jahresabschlüsse der Stadt Oldenburg, 2017–2024"). Diese
+    Beschreibung ist redaktionell und kennt keine Jahrgänge — ihr „Dokument
+    öffnen" führte deshalb auf die Startseite des Ratsinformationssystems, wo
+    man wieder selbst suchen darf. Hier steht, welches PDF zu welchem Jahr
+    gehört, damit der Link das Dokument des **gezeigten** Jahres öffnet.
+
+    ``{"dokumente": {"<quellenschluessel>": [{jahr, url, label, fundstelle,
+    seite}, …]}}`` — aufsteigend nach Jahr. Ein Schlüssel fehlt, wo wir kein
+    Dokument haben; die Oberfläche fällt dann auf die statische Adresse
+    zurück und sagt dazu, wohin sie führt.
+
+    Ein Jahrgang kann mehrere Dokumente tragen: Die Produktebene verteilt sich
+    auf rund neun Teilhaushalts-Anlagen. Die Liste nennt sie alle statt eine
+    auszuwählen — welche gemeint ist, entscheidet die Seite, nicht die API.
+
+    Die Fundstelle kommt aus ``council_herkunft`` und ist der eigentliche
+    Gewinn: „Abschnitt 3.2" macht aus einem 300-Seiten-PDF eine nachschlagbare
+    Stelle."""
+    return {"dokumente": store.haushalt_dokumente()}
+
+
 @router.get("/haushalt")
 def haushalt_uebersicht(
     _user: dict = Depends(require_active),

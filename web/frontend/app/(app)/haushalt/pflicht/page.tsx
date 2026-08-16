@@ -188,7 +188,7 @@ export default function PflichtPage() {
   const weicht = geprueft.filter((r) => r.urteil === "weicht");
 
   return (
-    <Quellenkontext schluessel={QUELLEN}>
+    <Quellenkontext schluessel={QUELLEN} jahr={jahr}>
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
         <Link href="/haushalt" className="hover:text-foreground">Haushalt</Link>

@@ -24,7 +24,8 @@
 // Bewusst eine eigene Datei: Der Block hängt an einem eigenen Endpunkt, und
 // eine Änderung an den Texten der Übersichtsseite soll ihn nicht anfassen.
 
-import { CalendarClock, Check, Clock } from "lucide-react";
+import { Check, Clock } from "lucide-react";
+import { Apparat } from "@/components/haushalt/quelle";
 import { useFetch } from "@/lib/use-fetch";
 import { cn } from "@/lib/utils";
 
@@ -103,30 +104,29 @@ export function Datenstand() {
   // Seitenende wäre mehr Unruhe als Information.
   if (!data || data.schichten.length === 0) return null;
   const vonHand = data.schichten.filter((s) => !s.automatisch).map((s) => s.label);
+  // Die Spanne über ALLE Schichten — das, was in der zugeklappten Lade steht.
+  // Ein „bis 2026" wäre gelogen: Der Plan reicht so weit, die Abrechnung
+  // zwei Jahre kürzer. Beide Enden zu nennen ist die einzige Angabe, die für
+  // die ganze Liste stimmt.
+  const alleJahre = data.schichten.flatMap((s) => s.jahrgaenge);
+  const gesamtspanne = spanne(
+    [...new Set(alleJahre)].sort((a, b) => a - b));
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
-      <div className="flex items-start gap-3">
-        <span aria-hidden className="mt-0.5 flex h-8 w-8 flex-none items-center justify-center rounded-xl bg-primary/10 text-primary">
-          <CalendarClock size={16} strokeWidth={2} />
-        </span>
-        <div className="min-w-0">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            Stand der Daten
-          </p>
-          <h2 className="mt-1 font-display text-[16px] font-bold tracking-tight">
-            Bis wann die Zahlen reichen
-          </h2>
-          <p className="mt-1 max-w-[74ch] text-[12.5px] leading-relaxed text-muted-foreground">
-            Die Stadt legt ihre Zahlen zu verschiedenen Zeiten vor: den Plan im Herbst für das
-            kommende Jahr, die Abrechnung ein knappes Jahr nach dessen Ende — und was die
-            Betriebe der Stadt einschließt, noch einmal später. Deshalb reicht nicht jede Seite
-            gleich weit; welcher Takt wo gilt, steht an jeder Zeile.
-          </p>
-        </div>
-      </div>
+    <Apparat
+      kicker="Stand der Daten"
+      zusatz={gesamtspanne
+        ? `${gesamtspanne} · bis wann die Zahlen reichen`
+        : "bis wann die Zahlen reichen"}
+    >
+      <p className="mt-3 max-w-[74ch] text-[12.5px] leading-relaxed text-muted-foreground">
+        Die Stadt legt ihre Zahlen zu verschiedenen Zeiten vor: den Plan im Herbst für das
+        kommende Jahr, die Abrechnung ein knappes Jahr nach dessen Ende — und was die
+        Betriebe der Stadt einschließt, noch einmal später. Deshalb reicht nicht jede Seite
+        gleich weit; welcher Takt wo gilt, steht an jeder Zeile.
+      </p>
 
-      <ul className="mt-3.5 flex flex-col gap-2.5 border-t border-dashed border-border pt-3.5">
+      <ul className="mt-3 flex flex-col gap-2.5">
         {data.schichten.map((s) => {
           const bereich = spanne(s.jahrgaenge);
           const { text, wartet } = ausblick(s, data.heute);
@@ -189,6 +189,6 @@ export function Datenstand() {
         {" "}Zahlen, die eine Rechenprobe des Dokuments nicht bestehen, bleiben draußen; dann
         steht hier weiter der ältere Stand.
       </p>
-    </div>
+    </Apparat>
   );
 }

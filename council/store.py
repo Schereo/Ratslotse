@@ -3422,6 +3422,75 @@ class CouncilStore:
                 aus[tabelle] = n
         return aus
 
+    #: Welches **Dokument** hinter einer Quelle des Haushalts-Bereichs steht —
+    #: je Schlüssel die Tabelle, ihre Jahresspalte, eine Einschränkung und die
+    #: Alt-Spalte mit der URL.
+    #:
+    #: Die Schlüssel sind die des Quellenverzeichnisses im Frontend
+    #: (``web/frontend/lib/haushalt-quellen.ts``). Das ist Absicht und der
+    #: einzige Grund, warum diese Zuordnung hier steht und nicht dort: Welche
+    #: Zeile aus welchem Dokument stammt, weiß die Datenbank — das Frontend
+    #: kennt nur den Absatz, der eine ganze Seite beschreibt. Wer einen
+    #: Schlüssel dort ergänzt, ergänzt ihn hier; wer ihn hier vergisst,
+    #: bekommt keinen kaputten Link, sondern den Rückfall auf die statische
+    #: Adresse (und das Frontend schreibt dann „im Ratsinformationssystem
+    #: suchen" statt „Dokument öffnen").
+    #:
+    #: Die Alt-Spalte ist die Rückfallebene für Bestände, die vor der
+    #: Herkunfts-Vereinheitlichung (#513) geschrieben wurden: Dort steht die
+    #: URL an der Datenzeile, aber noch keine ``herkunft_id``. Die beiden
+    #: Konzern-Tabellen haben keine — sie sind erst mit der Herkunft
+    #: entstanden (s. ``_HERKUNFT_ALTFELDER``).
+    _DOKUMENT_QUELLEN: dict[str, tuple[str, str, str | None, str | None]] = {
+        "plan":                 ("council_haushalt", "year", None, "source_url"),
+        # Die zwei Ebenen eines Jahresabschlusses stehen in derselben Tabelle
+        # und im selben Dokument, tragen aber verschiedene Herkünfte (eigene
+        # Abschnitte, eigene Proben). Beide Schlüssel gibt es im Verzeichnis.
+        "jahresabschluss":      ("council_ergebnisrechnung", "jahr",
+                                 "thh_nr IS NULL", "quelle_url"),
+        "ergebnisrechnung_thh": ("council_ergebnisrechnung", "jahr",
+                                 "thh_nr IS NOT NULL", "quelle_url"),
+        # Der einzige Schlüssel, hinter dem je Jahrgang MEHRERE Dokumente
+        # stehen: Ein Produkt-Jahrgang verteilt sich auf rund neun
+        # Teilhaushalts-Anlagen (s. finanzquellen.Finanzquelle).
+        "teilhaushalt":         ("council_produkte", "jahr", None, "quelle_url"),
+        "pruefbericht":         ("council_pruefbericht_quellen", "jahr", None, "url"),
+        "gesamtabschluss":      ("council_konzern_posten", "jahr", None, None),
+    }
+
+    def haushalt_dokumente(self) -> dict[str, list[dict]]:
+        """Je Quellenschlüssel die Dokumente, Jahrgang für Jahrgang.
+
+        Die Antwort auf die Frage, die das Quellenverzeichnis stellt: „Der
+        Beleg steht an einer Zahl von 2021 — welches PDF ist das?" Ohne sie
+        führte der Link auf die Startseite des Ratsinformationssystems, und
+        ein Beleg, der nur zur Startseite führt, ist keiner.
+
+        Bevorzugt wird ``council_herkunft``: Dort steht neben der URL auch die
+        **Fundstelle** im Dokument („Abschnitt 3.1") — bei 300 Seiten der
+        Unterschied zwischen Nachschlagen und Suchen. Fehlt die Herkunft
+        (Altbestand), tritt die URL an der Datenzeile ein; fehlt auch die,
+        fällt der Jahrgang weg statt mit einer erfundenen Adresse
+        dazustehen."""
+        aus: dict[str, list[dict]] = {}
+        for key, (tabelle, jahrspalte, filter_, alt) in self._DOKUMENT_QUELLEN.items():
+            wo = [f"{filter_}"] if filter_ else []
+            url = f"COALESCE(k.url, t.{alt})" if alt else "k.url"
+            sql = (f"SELECT DISTINCT t.{jahrspalte} AS jahr, {url} AS url, "
+                   f" k.label AS label, k.fundstelle AS fundstelle, k.seite AS seite "
+                   f"FROM {tabelle} t "
+                   f"LEFT JOIN council_herkunft k ON k.id = t.herkunft_id"
+                   + (" WHERE " + " AND ".join(wo) if wo else "")
+                   + f" ORDER BY t.{jahrspalte}, url")
+            try:
+                rows = [dict(r) for r in self._conn.execute(sql)]
+            except sqlite3.OperationalError:
+                continue  # Tabelle oder Spalte gibt es in dieser DB (noch) nicht
+            treffer = [r for r in rows if r["url"]]
+            if treffer:
+                aus[key] = treffer
+        return aus
+
     # --- Stadt-Haushalt (council.haushalt) -----------------------------------
 
     def save_haushalt(self, year: int, rows: list[dict], herkunft) -> int:

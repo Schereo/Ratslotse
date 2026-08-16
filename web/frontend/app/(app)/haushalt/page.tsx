@@ -26,7 +26,6 @@
 //    2025 zu teilen wäre ein stiller Fehler von rund 4 %.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FileText } from "lucide-react";
 import { Segmented } from "@/components/ui";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
@@ -96,7 +95,7 @@ export default function HaushaltPage() {
   ];
 
   return (
-    <Quellenkontext schluessel={quellen}>
+    <Quellenkontext schluessel={quellen} jahr={aktJahr}>
     <div className="flex flex-col gap-4">
       {/* Kopf: Jahr-Umschalter und Quelle. Der Titel der Seite steht auf der
           Anzeigetafel — hier oben nur der Kicker, damit klar ist, wo man ist. */}
@@ -140,12 +139,12 @@ export default function HaushaltPage() {
             </span>
           )}
         </div>
-        {quelle?.url && (
-          <a href={quelle.url} target="_blank" rel="noopener noreferrer"
-            className="hidden flex-none items-center gap-2 self-end rounded-xl border border-border bg-card px-3 py-2 text-[12.5px] font-semibold text-primary shadow-sm desk:inline-flex">
-            <FileText className="h-3.5 w-3.5" /> Haushaltsplan als PDF
-          </a>
-        )}
+        {/* Hier stand bis 16.08. ein Knopf „Haushaltsplan als PDF". Er war die
+            einzige prominent verlinkte Quelle der Seite und ließ sie deshalb
+            wie die einzige aussehen (Tim). Verloren ist nichts: Er trug die
+            jahresgenaue PDF-Adresse — genau die zeigt der Beleg „Beschlossener
+            Haushaltsplan" im Quellenverzeichnis jetzt selbst, statt wie früher
+            auf die Finanz-Übersichtsseite der Stadt. */}
       </div>
 
       {/* Anzeigetafel (H2-01/H2-11/H2-12): Kernzahl, die drei Summen und das

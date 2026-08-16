@@ -310,7 +310,7 @@ function ProdukteInner() {
   const aktiv = data?.produkt ?? null;
 
   return (
-    <Quellenkontext schluessel={QUELLEN}>
+    <Quellenkontext schluessel={QUELLEN} jahr={jahr}>
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-1.5 text-[11.5px] text-muted-foreground">
           <Link href="/haushalt" className="hover:text-foreground">Haushalt</Link>
