@@ -36,9 +36,12 @@
 // steht an der Achse „Ausgleichsjahr" und nicht „Haushaltsjahr", und keine
 // Zahl von hier wird mit einem Jahr aus `council_steuern` gepaart.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { deMio } from "@/lib/haushalt";
 import { Beleg } from "@/components/haushalt/quelle";
+import {
+  AbleseBeschreibung, AbleseFlaeche, AbleseStelle, Ableseleiste, useAblesen,
+} from "@/components/haushalt/ablesen";
 
 type Kraft = {
   jahr: number;
@@ -58,7 +61,13 @@ export function FinanzausgleichDaempfer({ steuerkraft }: { steuerkraft: Kraft[] 
   useEffect(() => {
     const el = box.current;
     if (!el) return;
-    const pruefe = () => setBreite(Math.max(el.clientWidth, 260));
+    // `getBoundingClientRect`, nicht `clientWidth`: Letzteres rundet auf ganze
+    // Pixel, und schon ein Skalierungsfaktor von 1,0008 zieht die Schrift der
+    // Achsen mit (die viewBox-Falle aus `zeitreihe.tsx`).
+    const pruefe = () => {
+      const w = Math.max(el.getBoundingClientRect().width, 260);
+      setBreite((alt) => (Math.abs(w - alt) > 0.5 ? w : alt));
+    };
     pruefe();
     const ro = new ResizeObserver(pruefe);
     ro.observe(el);
@@ -70,6 +79,9 @@ export function FinanzausgleichDaempfer({ steuerkraft }: { steuerkraft: Kraft[] 
       k.messzahl != null && k.zuweisungen != null)
     .sort((a, b) => a.jahr - b.jahr);
 
+  // Vor dem Ausstieg: Ein Hook hinter einem `return` ist kein Hook mehr.
+  const ablesen = useAblesen(reihe.length, Math.max(reihe.length - 1, 0));
+  const beschreibungId = useId();
   if (reihe.length < 3) return null;
 
   // Wie oft ist die Zuweisung überhaupt gegenläufig? Das ist die einzige
@@ -100,6 +112,22 @@ export function FinanzausgleichDaempfer({ steuerkraft }: { steuerkraft: Kraft[] 
   const schritt = Math.ceil(reihe.length / (schmal ? 4 : 7));
   const letzte = reihe[reihe.length - 1];
 
+  // Angeschrieben sind dauerhaft die beiden Endwerte — mehr passt zwischen 33
+  // Jahrgänge nicht, ohne dass sich die Ziffern überlagern. Jedes einzelne
+  // Ausgleichsjahr trägt die Leiste unter dem Bild, die immer eines zeigt und
+  // beim Überfahren, Antippen oder mit den Pfeiltasten wechselt. Eine Tabelle
+  // hatte dieser Block nie; die vollständige Reihe steht als sr-only-Absatz
+  // daneben und wird von der Grafik referenziert.
+  const stellen: AbleseStelle[] = reihe.map((k) => ({
+    titel: String(k.jahr),
+    werte: [
+      { label: "Steuerkraft", wert: deMio(k.messzahl / 1e6), farbe: "var(--hh-ein-0)" },
+      { label: "Zuweisungen", wert: deMio(k.zuweisungen / 1e6), farbe: "var(--hh-aus-2)" },
+    ],
+    vorlesen: `Ausgleichsjahr ${k.jahr}: Steuerkraftmesszahl ${deMio(k.messzahl / 1e6)} Millionen Euro, `
+      + `Schlüsselzuweisungen ${deMio(k.zuweisungen / 1e6)} Millionen Euro.`,
+  }));
+
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
       <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
@@ -118,12 +146,14 @@ export function FinanzausgleichDaempfer({ steuerkraft }: { steuerkraft: Kraft[] 
       </p>
 
       <div ref={box} className="mt-3">
-        <svg viewBox={`0 0 ${W} ${H}`} className="block w-full" role="img"
-          aria-label={
-            `Zwei Reihen über die Ausgleichsjahre ${reihe[0].jahr} bis ${letzte.jahr}, in Millionen Euro. `
+        <AbleseBeschreibung id={beschreibungId}>
+          {`Zwei Reihen über die Ausgleichsjahre ${reihe[0].jahr} bis ${letzte.jahr}, in Millionen Euro. `
             + `Steuerkraftmesszahl: ${reihe.map((k) => `${k.jahr} ${deMio(k.messzahl / 1e6)}`).join(", ")}. `
-            + `Schlüsselzuweisungen: ${reihe.map((k) => `${k.jahr} ${deMio(k.zuweisungen / 1e6)}`).join(", ")}.`
-          }>
+            + `Schlüsselzuweisungen: ${reihe.map((k) => `${k.jahr} ${deMio(k.zuweisungen / 1e6)}`).join(", ")}.`}
+        </AbleseBeschreibung>
+        <svg viewBox={`0 0 ${W} ${H}`} className="block w-full" role="group"
+          aria-describedby={beschreibungId}
+          aria-label={`Steuerkraft und Zuweisungen, Ausgleichsjahre ${reihe[0].jahr} bis ${letzte.jahr}`}>
           {gitter.map((v) => (
             <g key={v}>
               <line x1={X0} y1={y(v)} x2={X1} y2={y(v)} className="stroke-border/60" />
@@ -160,7 +190,21 @@ export function FinanzausgleichDaempfer({ steuerkraft }: { steuerkraft: Kraft[] 
               </text>
             );
           })}
+
+          {/* Zuletzt: die Ablese-Fläche liegt über beiden Kurven. Das
+              Fingerziel reicht bis unter die Jahreszeile. */}
+          <AbleseFlaeche
+            stellen={stellen} steuerung={ablesen} gruppe="Ausgleichsjahre der Reihe"
+            x={(i) => x(i)} xVon={X0} xBis={X1}
+            yVon={YTOP} hoehe={Y0 - YTOP} fangHoehe={176 - YTOP}
+            marken={(i) => [
+              { y: y(reihe[i].messzahl / 1e6), farbe: "var(--hh-ein-0)" },
+              { y: y(reihe[i].zuweisungen / 1e6), farbe: "var(--hh-aus-2)" },
+            ]}
+          />
         </svg>
+        <Ableseleiste className="mt-2" stelle={stellen[ablesen.aktiv]} steuerung={ablesen}
+          hinweis="Mio. € · Ausgleichsjahr überfahren, antippen oder mit den Pfeiltasten wechseln." />
       </div>
 
       <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
