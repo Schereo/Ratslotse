@@ -175,7 +175,10 @@ export function OnboardingFlow() {
   if (step === null) return null;
 
   return (
-    <div ref={rootRef} className="fixed inset-0 z-[100] flex flex-col bg-background pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-[calc(0.75rem+env(safe-area-inset-top))]">
+    /* Ebene „flaeche": Der Auftakt ERSETZT die App-Hülle (deckend, inset-0),
+       das Blatt „Thema anpassen" liegt eine Stufe darüber. Die Leiter steht in
+       app/globals.css. */
+    <div ref={rootRef} className="fixed inset-0 z-[var(--ebene-flaeche)] flex flex-col bg-background pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-[calc(0.75rem+env(safe-area-inset-top))]">
       {step > 0 && (
         <div className="px-[18px]">
           <div className="flex items-center gap-3">
@@ -358,7 +361,12 @@ function TopicStep({ theme, onNext }: { theme: ReturnType<typeof useMascotTheme>
   // /topics — das zählt, was der Wächter bereits zugeordnet hat, und ist bei
   // einem frisch angelegten Thema immer 0 („0 Beschlüsse passen dazu" beim
   // Fliegerhorst mit 158 Beschlüssen). Hier zählt, was die Beschreibung trifft.
-  const [matchCount, setMatchCount] = useState<Record<string, number>>({});
+  //
+  // Die Zahl trägt ihre Herkunft mit: Der Vorschlags-Chip kennt nur, wie oft
+  // die Entitäts-Erkennung den Namen im letzten Jahr gesehen hat — eine andere
+  // Größe als die Treffer auf die Beschreibung. Beide „12 Beschlüsse" zu nennen
+  // war genau Tims Befund vom 16.08. („die zahlen passen nicht zusammen").
+  const [matchCount, setMatchCount] = useState<Record<string, { n: number; quelle: "jahr" | "treffer" }>>({});
   const topics = useQuery({
     queryKey: ["topics"],
     queryFn: () => api.get<TopicRow[]>("/topics"),
@@ -388,7 +396,7 @@ function TopicStep({ theme, onNext }: { theme: ReturnType<typeof useMascotTheme>
     setNote(null);
     try {
       let description = presetDescription ?? "";
-      if (typeof presetMatches === "number") setMatchCount((m) => ({ ...m, [clean]: presetMatches }));
+      if (typeof presetMatches === "number") setMatchCount((m) => ({ ...m, [clean]: { n: presetMatches, quelle: "jahr" } }));
       if (!description) {
         const d = await api.post<Described>("/topics/describe", { name: clean });
         if (d.verdict === "ungeeignet") {
@@ -396,7 +404,7 @@ function TopicStep({ theme, onNext }: { theme: ReturnType<typeof useMascotTheme>
           return;
         }
         description = d.description;
-        setMatchCount((m) => ({ ...m, [clean]: d.matches }));
+        setMatchCount((m) => ({ ...m, [clean]: { n: d.matches, quelle: "treffer" } }));
         if (d.verdict === "plausibel") {
           setNote(`Über „${clean}" hat der Rat bisher nichts entschieden — Lotti meldet sich, sobald es so weit ist.`);
         }
@@ -499,9 +507,13 @@ function TopicStep({ theme, onNext }: { theme: ReturnType<typeof useMascotTheme>
  *  dafür, dass die Beschreibung etwas taugt; ohne sie bliebe sie eine Behauptung. */
 function TopicCard({ topic, matches, onEdit, onRemove }: {
   topic: TopicRow;
-  /** Treffer der Beschreibung — undefined, solange nicht ermittelt. Dann bleibt
-   *  die Zeile leer statt „0" zu behaupten. */
-  matches?: number;
+  /** Zahl samt Herkunft — undefined, solange nichts ermittelt ist. Dann bleibt
+   *  die Zeile leer statt „0" zu behaupten. `treffer` sind Beschlüsse, die auf
+   *  die Beschreibung passen (dieselbe Definition wie Themen-Karte und Liste);
+   *  `jahr` ist die viel gröbere Zahl aus dem Vorschlags-Chip — wie oft der
+   *  Name im letzten Jahr überhaupt vorkam. Beide „Beschlüsse" zu nennen hat
+   *  genau die Verwirrung erzeugt, die Tim am 16.08. gemeldet hat. */
+  matches?: { n: number; quelle: "jahr" | "treffer" };
   onEdit: () => void;
   onRemove: () => void;
 }) {
@@ -520,12 +532,16 @@ function TopicCard({ topic, matches, onEdit, onRemove }: {
       </p>
       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{topic.description}</p>
       <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-        {typeof matches === "number" && matches > 0 && (
+        {matches && matches.n > 0 && (
           <>
             <span className="rounded bg-primary/10 px-1.5 font-semibold tabular-nums text-primary">
-              {matches} {matches === 1 ? "Beschluss" : "Beschlüsse"}
+              {matches.n} {matches.n === 1 ? "Beschluss" : "Beschlüsse"}
             </span>
-            <span>{matches === 1 ? "passt dazu" : "passen dazu"}</span>
+            <span>
+              {matches.quelle === "jahr"
+                ? "im letzten Jahr"
+                : matches.n === 1 ? "passt dazu" : "passen dazu"}
+            </span>
           </>
         )}
         <button type="button" onClick={onEdit}

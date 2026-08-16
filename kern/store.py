@@ -1885,11 +1885,16 @@ class Store:
                                     *, gedeckelt: bool = False, kandidaten: int = 0) -> int:
         """Replace a topic's matched council decisions. ``matches`` = [(decision_id, score)].
 
+        Was ein Treffer ist, entscheidet ``council.topic_intel.treffer`` — die
+        eine Definition, an der auch das Bearbeiten-Blatt im Web rechnet. Hier
+        wird sie nur noch abgelegt.
+
         ``gedeckelt`` sagt, ob der Lauf mehr relevante Beschlüsse gefunden als
         gespeichert hat, ``kandidaten``, wie viele er geprüft hat. Beides
         wandert nach ``council_topic_match_meta`` — die Oberfläche kann eine
         gedeckelte Liste dann als „40+" ausweisen, statt den Deckel als
-        Ergebnis auszugeben.
+        Ergebnis auszugeben. Dieses „+" gehört an JEDE Stelle, die die Zahl
+        zeigt: Karte, Trefferliste, Bearbeiten-Blatt.
         """
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:

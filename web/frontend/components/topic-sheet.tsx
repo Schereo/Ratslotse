@@ -12,6 +12,8 @@ import { Button, Skeleton } from "@/components/ui";
 export type Described = {
   description: string;
   matches: number;
+  /** Die Zahl ist der Deckel, nicht das Ergebnis → „40+" (wie auf der Karte). */
+  matches_capped: boolean;
   verdict: "belegt" | "plausibel" | "ungeeignet";
   examples: string[];
   is_council_topic: boolean;
@@ -92,6 +94,16 @@ export function TopicSheet({ topic, nameEditable = false, onClose, onSaved }: {
     return () => { document.body.style.overflow = prev; };
   }, []);
 
+  // Esc schließt — was `aria-modal` verspricht, muss die Tastatur auch halten:
+  // Wer keine Maus hat, kam sonst nur über die Tab-Reise bis zum Kreuz wieder
+  // heraus. Nur der oberste Dialog reagiert (das Blatt ist immer der oberste,
+  // es hängt als letztes Kind an <body>).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   // Direkt an <body> hängen. `position: fixed` bezieht sich sonst nicht auf das
   // Fenster, sondern auf den nächsten Vorfahren mit `transform` — und genau so
   // einer steht auf der Themen-Seite im Weg (`.animate-fade-up`). Das Blatt saß
@@ -105,19 +117,38 @@ export function TopicSheet({ topic, nameEditable = false, onClose, onSaved }: {
   return createPortal(
     // data-topic-sheet: Kennzeichen für den Fokus-Wächter des Onboardings —
     // es erkennt daran, dass dieses Blatt dazugehört, obwohl es an <body> hängt.
-    <div data-topic-sheet className="fixed inset-0 z-[110] flex flex-col justify-end sm:items-center sm:justify-center sm:p-6">
+    //
+    // Ab sm ist das hier ein Dialog in der Bildmitte — und der muss die
+    // App-Hülle erkennbar frei lassen, statt sie zu streifen: Auf dem iPad quer
+    // (1180×820) ragte das Blatt mit `max-h-[92%]` 3 px in die Kopfzeile und
+    // 6 px in die Tab-Leiste, auf dem Gerät mehr, weil die Sicherheitszonen
+    // beide Leisten höher machen — „irgendwie ist dieses Fenster weird und
+    // überlappt die Nav und Header" (Tim, 16.08.).
+    // Statt einer kleineren Prozentzahl steht der Abstand deshalb dort, wo er
+    // herkommt: Kopfzeile und Tab-Leiste sind je rund 61 px PLUS ihrer
+    // Sicherheitszone hoch (components/nav.tsx). 5 rem + dieselbe Zone lassen
+    // darüber 16–19 px Luft — und zwar auf jedem Gerät, weil die Zone in beiden
+    // Rechnungen steht. Die Karte füllt den so gepolsterten Kasten dann ganz
+    // aus (`sm:max-h-full`); mehr Platz gibt es nicht, ohne die Navigation zu
+    // berühren. Ist der Inhalt höher, scrollt die Mitte (s. u.).
+    // Auf dem Telefon bleibt es ein Blatt an der Unterkante: Dort DECKT es die
+    // Tab-Leiste bewusst ab, wie jedes iOS-Sheet.
+    <div data-topic-sheet role="dialog" aria-modal="true" aria-labelledby="thema-anpassen-titel"
+      className="fixed inset-0 z-[var(--ebene-dialog)] flex flex-col justify-end sm:items-center sm:justify-center sm:px-6 sm:pb-[calc(env(safe-area-inset-bottom)+5rem)] sm:pt-[calc(env(safe-area-inset-top)+5rem)]">
+      {/* .scrim statt einer eigenen Farbe — s. app/globals.css: Der frühere Ton
+          war exakt die dunkle Seitenfarbe und dunkelte im Dunkelmodus nichts ab. */}
       <button type="button" aria-label="Schließen" onClick={onClose}
-        className="absolute inset-0 touch-none bg-[rgba(9,17,27,0.42)]" />
+        className="scrim absolute inset-0 touch-none" />
       {/* Kopf und Fußzeile bleiben stehen, nur die Mitte scrollt: Vorher scrollte
           der ganze Inhalt samt „Speichern" weg, sodass man für die Knöpfe erst
           ans Ende wischen musste. Zusammen mit der höheren Textarea passt die
           Beschreibung jetzt meist ohne Scrollen hinein. */}
-      <div className="relative flex max-h-[92%] w-full flex-col rounded-t-[22px] bg-card pt-2.5 shadow-[0_-12px_40px_-14px_rgba(2,32,71,0.4)] sm:max-w-lg sm:rounded-[22px] sm:shadow-[0_24px_60px_-20px_rgba(2,32,71,0.45)]">
+      <div className="relative flex max-h-[92%] w-full flex-col rounded-t-[22px] bg-card pt-2.5 shadow-[0_-12px_40px_-14px_rgba(2,32,71,0.4)] sm:max-h-full sm:max-w-lg sm:rounded-[22px] sm:shadow-[0_24px_60px_-20px_rgba(2,32,71,0.45)]">
         <div className="shrink-0 px-[18px]">
           {/* Ziehgriff nur auf dem Telefon — auf dem Desktop ist es ein Dialog. */}
           <span aria-hidden className="mx-auto mb-3.5 block h-1 w-9 rounded-full bg-border sm:hidden" />
           <div className="flex items-center gap-2.5">
-            <h3 className="flex-1 font-display text-lg font-bold text-foreground">Thema anpassen</h3>
+            <h3 id="thema-anpassen-titel" className="flex-1 font-display text-lg font-bold text-foreground">Thema anpassen</h3>
             <button type="button" onClick={onClose} aria-label="Schließen"
               className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-muted text-muted-foreground">
               <X className="h-4 w-4" />
@@ -161,8 +192,14 @@ export function TopicSheet({ topic, nameEditable = false, onClose, onSaved }: {
           className="w-full rounded-xl border-[1.5px] border-primary bg-card px-3.5 py-3 text-base leading-relaxed text-foreground outline-none sm:text-[13px]" />
 
         <div className="mt-3.5 rounded-xl bg-muted/60 px-3.5 py-3">
+          {/* „auf den Text im Feld": Dieselbe Definition wie die Themen-Karte,
+              aber live auf den ungespeicherten Text — die Karte zeigt den Stand
+              des letzten Abgleichs. Zwei Zahlen, die auseinandergehen dürfen,
+              brauchen zwei Beschriftungen (Tims Befund 16.08.: Karte „40+",
+              Blatt „12" beim selben Thema — die 12 war damals nichts weiter
+              als die Länge des Prompt-Kontexts). */}
           <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">
-            Passt gerade auf
+            Passt auf den Text im Feld
           </p>
           {/* Während der Prüfung Platzhalterzeilen statt Spinner + „prüft…":
               Der Block behält seine Höhe (kein Springen, wenn das Ergebnis
@@ -177,7 +214,8 @@ export function TopicSheet({ topic, nameEditable = false, onClose, onSaved }: {
               {!check ? "—" : check.matches > 0 ? (
                 <>
                   <strong className="font-semibold text-foreground">
-                    {check.matches} {check.matches === 1 ? "Beschluss" : "Beschlüsse"}
+                    {check.matches}{check.matches_capped ? "+" : ""}{" "}
+                    {check.matches === 1 && !check.matches_capped ? "Beschluss" : "Beschlüsse"}
                   </strong>
                   {check.examples.length > 0 && <> — u. a. „{check.examples.slice(0, 2).join("“, „")}“.</>}
                 </>
@@ -214,7 +252,12 @@ export function TopicSheet({ topic, nameEditable = false, onClose, onSaved }: {
 
         </div>
 
-        <div className="shrink-0 flex gap-2.5 border-t border-border/60 px-[18px] pb-[calc(1.125rem+env(safe-area-inset-bottom))] pt-3.5">
+        {/* Die Sicherheitszone gehört nur ins Blatt an der Unterkante — dort
+            reicht die Karte bis an den Bildrand. Ab sm schwebt sie frei, und der
+            Rahmen darum hält den Abstand zur Zone schon ein: Ohne das `sm:`
+            stünde sie zweimal drin und ließe auf dem iPad ~20 pt tote Fläche
+            unter den Knöpfen. */}
+        <div className="shrink-0 flex gap-2.5 border-t border-border/60 px-[18px] pb-[calc(1.125rem+env(safe-area-inset-bottom))] pt-3.5 sm:pb-[1.125rem]">
           <button type="button" onClick={onClose}
             className="h-[46px] flex-1 rounded-xl border border-border bg-card text-sm font-medium text-foreground">
             Abbrechen
