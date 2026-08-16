@@ -202,13 +202,14 @@ def test_kettenschluessel_ueberbrueckt_umbenennungen():
 
 # --- Speicherung ------------------------------------------------------------
 
-def test_speichern_und_lesen(tmp_path):
+def test_speichern_und_lesen(tmp_path, quelle):
     store = CouncilStore(tmp_path / "council.sqlite")
     try:
         gefunden = pruefberichte.parse_feststellungen(BERICHT)["feststellungen"]
-        n = store.save_pruefbericht(
-            2023, gefunden, "Schlussbericht 2023",
-            "https://buergerinfo.oldenburg.de/getfile.php?id=280863&type=do")
+        n = store.save_pruefbericht(2023, gefunden, quelle(
+            "Schlussbericht 2023",
+            "https://buergerinfo.oldenburg.de/getfile.php?id=280863&type=do",
+            probe="legende_und_verzeichnis"))
         assert n == 2
         assert store.pruefbericht_jahre() == [2023]
         zeilen = store.get_pruefberichte()
@@ -218,7 +219,9 @@ def test_speichern_und_lesen(tmp_path):
         assert zeilen[1]["quelle_url"].endswith("id=280863&type=do")
 
         # Erneuter Ingest ersetzt den Jahrgang, statt ihn zu verdoppeln.
-        store.save_pruefbericht(2023, gefunden, "Schlussbericht 2023", None)
+        store.save_pruefbericht(2023, gefunden, quelle(
+            "Schlussbericht 2023", "https://example.org/sb2023.pdf",
+            probe="legende_und_verzeichnis"))
         assert len(store.get_pruefberichte(2023)) == 2
     finally:
         store.close()

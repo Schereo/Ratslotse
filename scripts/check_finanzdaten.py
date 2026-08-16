@@ -235,6 +235,14 @@ def main(db: str | None = None, heute: date | None = None,
                 p.warnen(f"  {q.label}: {len(nicht_gepackt)} Einheit(en) nicht übernommen "
                          f"({_kurz(nicht_gepackt)}) — Probe gerissen oder Dokument unlesbar")
 
+        # Herkunft aufräumen und nachzählen. Ein Jahrgang, der neu eingelesen
+        # wurde, hat seine alten Herkunfts-Datensätze abgelöst; und eine
+        # Zieltabelle, die ihre `herkunft_id` nicht füllt, soll auffallen,
+        # bevor jemand sie auf der Seite als Beleg vermisst.
+        if not trocken:
+            store.herkunft_aufraeumen()
+        ohne_herkunft = store.herkunft_luecken()
+
         stand = finanzquellen.datenstand(store, heute)
         # Nach dem Lauf noch offen: Einheiten, für die ein Dokument vorliegt,
         # die aber nicht in die Datenbank gekommen sind. Das ist der Teil, den
@@ -255,6 +263,9 @@ def main(db: str | None = None, heute: date | None = None,
     for key, offen in rest.items():
         p.warnen(f"  {finanzquellen.QUELLEN[key].label}: {len(offen)} Einheit(en) weiter "
                  f"offen, obwohl ein Dokument vorliegt ({_kurz(offen)})")
+    for tabelle, n in ohne_herkunft.items():
+        p.warnen(f"  {tabelle}: {n} Zeile(n) ohne Herkunft — die Tabelle sagt nicht, "
+                 f"woher sie kommen (siehe council/herkunft.py)")
 
     # Der Vergleichsschlüssel für „habe ich das schon gemeldet?" — überfällige
     # Jahrgänge UND liegengebliebene Einheiten. Ohne den zweiten Teil bliebe
@@ -277,6 +288,7 @@ def main(db: str | None = None, heute: date | None = None,
         "Neue Einheiten": neue_einheiten,
         "Bestand geschützt": geschuetzt,
         "Hinweis verschickt": 1 if gemeldet else 0,
+        "Zeilen ohne Herkunft": sum(ohne_herkunft.values()),
         "ausbleibend": ausbleibend,
     }
     for key, jahre in neu_gesamt.items():

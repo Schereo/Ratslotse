@@ -81,6 +81,11 @@ def main() -> int:
             print("Teilhaushalte (Produktebene):")
             uebernehmen("teilhaushalt",
                         finanzquellen.lies_teilhaushalte(store, p, schuetzen=schuetzen))
+        # Zeilen, die nicht sagen, woher sie kommen. Leer ist der Sollzustand;
+        # steht hier etwas, hat eine Zieltabelle ihre `herkunft_id` nicht
+        # gefüllt (siehe council/herkunft.py).
+        ergebnis["herkunft_verwaist"] = store.herkunft_aufraeumen()
+        ergebnis["ohne_herkunft"] = store.herkunft_luecken()
     finally:
         store.close()
     print(f"Fertig: {ergebnis}")

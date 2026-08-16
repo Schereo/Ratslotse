@@ -742,6 +742,33 @@ class CouncilStore:
             "zuweisungen REAL, zuweisungen_je_ew REAL, "    # Anordnungssoll
             "source_url TEXT, fetched_at TEXT NOT NULL)"
         )
+        # Herkunft der Finanzzahlen — ein Datensatz je Dokument-und-Abschnitt,
+        # auf den die Datenzeilen per `herkunft_id` zeigen. Warum eine eigene
+        # Tabelle statt Spalten in jeder Zieltabelle, steht ausführlich im
+        # Modulkopf von `council/herkunft.py`; kurz: Eine Zieltabelle trägt
+        # Zeilen aus mehreren Dokumenten (bei den Beteiligungen der
+        # Normalfall), ein neues Herkunftsfeld darf nicht neun ALTER TABLE
+        # kosten, und ein Jahrgang schriebe dieselbe Angabe sonst 200-mal.
+        #
+        # `schluessel` ist der Fingerabdruck über alle Inhaltsfelder und macht
+        # das Eintragen idempotent — `fetched_at` steht bewusst NICHT darin
+        # (s. Herkunft.schluessel), sonst wüchse die Tabelle mit der Zahl der
+        # Läufe statt mit der Zahl der Quellen.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_herkunft ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "schluessel TEXT NOT NULL UNIQUE, "
+            "art TEXT NOT NULL, "                  # ris | opendata | stadt
+            "dokument_id INTEGER, "                # council_anlagen.document_id
+            "label TEXT, url TEXT, "
+            "fundstelle TEXT, seite INTEGER, "     # wo IM Dokument
+            "probe TEXT NOT NULL, probe_ergebnis TEXT, "  # womit abgesichert
+            "stand TEXT, "                         # Stichtag des Inhalts
+            "fetched_at TEXT NOT NULL)"            # zuletzt bestätigt
+        )
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_herkunft_dokument "
+            "ON council_herkunft(dokument_id)")
         # Vorlagen-Volltexte semantisch auffindbar machen: je Vorlage mehrere
         # Chunk-Vektoren (Sachverhalt/Begründung), die die Hybrid-Suche auf die
         # zugehörigen Beschlüsse abbildet. text_hash = SHA-256 des Volltexts —
@@ -853,6 +880,7 @@ class CouncilStore:
         self._migrate_quiz_media()
         self._migrate_quiz_hint()
         self._migrate_produkt_steckbrief()
+        self._migrate_herkunft()
         self._migrate_owner_id()
 
     def _migrate_quiz_estimate(self) -> None:
@@ -904,6 +932,132 @@ class CouncilStore:
                          "beeinflussbarkeit_roh", "wirkungskreis", "zielgruppe"):
                 if name not in cols:
                     self._conn.execute(f"ALTER TABLE council_produkte ADD COLUMN {name} TEXT")
+
+    #: Wie eine Tabelle ihre Herkunft bisher führte: (Label-Spalte,
+    #: URL-Spalte, Quellenart). Drei Schreibweisen für dieselbe Sache — genau
+    #: das war der Anlass für `council/herkunft.py`.
+    #:
+    #: Die Quellenart steht hier nur, wo sie aus der Tabelle folgt. Bei
+    #: `council_haushalt` folgt sie das nicht: Ein Jahrgang kam als PDF von
+    #: oldenburg.de, ein anderer als CSV aus dem Open-Data-Portal — dort
+    #: entscheidet die URL (s. `_herkunft_art_aus_url`).
+    _HERKUNFT_ALTFELDER: dict[str, tuple[str | None, str, str | None]] = {
+        "council_haushalt":             (None, "source_url", None),
+        "council_steuern":              (None, "source_url", "opendata"),
+        "council_steuerkraft":          (None, "source_url", "opendata"),
+        "council_einwohner":            (None, "source_url", "opendata"),
+        "council_ergebnisrechnung":     ("quelle_label", "quelle_url", "ris"),
+        "council_abweichungsgruende":   ("quelle_label", "quelle_url", "ris"),
+        "council_pruefbericht_quellen": ("label", "url", "ris"),
+        "council_produkte":             ("quelle_label", "quelle_url", "ris"),
+        "council_pruefberichte":        ("quelle_label", "quelle_url", "ris"),
+    }
+
+    @staticmethod
+    def _herkunft_art_aus_url(url: str | None) -> str | None:
+        """Quellenart aus einer gespeicherten URL — abgeleitet, nicht geraten.
+
+        Entschieden wird an Zeichenketten, die wörtlich in der URL stehen —
+        das Portal, die Stadt-Domain, das Bürgerinfo. Alles andere (etwa ein
+        ``file:``-Pfad aus einem Lauf mit ``--pdf``) bleibt ohne Herkunft,
+        statt eine Art zu erfinden; ``herkunft_luecken()`` zeigt es dann an."""
+        if not url:
+            return None
+        if "opendata.oldenburg.de" in url:
+            return "opendata"
+        if "oldenburg.de" in url:
+            return "stadt"
+        if "buergerinfo" in url or "/getfile" in url:
+            return "ris"
+        return None
+
+    def _migrate_herkunft(self) -> None:
+        """Herkunfts-Fundament nachrüsten: `herkunft_id` an jede Zieltabelle,
+        und was in den alten Feldern steht, in `council_herkunft` überführen.
+
+        Rein additiv. Die alten Spalten (`quelle_label`, `quelle_url`,
+        `source_url`, `fetched_at`) bleiben unangetastet — sie zu entfernen
+        hieße, neun Tabellen neu zu schreiben, darunter vier, deren Inhalt nur
+        über einen Download von oldenburg.de wiederzubeschaffen wäre. Deshalb
+        genügt hier durchgehend ALTER TABLE, und kein bestehender Wert ändert
+        sich.
+
+        **Übernommen wird, was in den Daten steht: Label, URL und — neu — die
+        `document_id`, die sich über die URL in `council_anlagen` eindeutig
+        auflösen lässt. Fundstelle und Probe bleiben leer bzw. tragen
+        `unbekannt`:** Der Altbestand sagt nicht, an welchem Abschnitt er
+        gelesen wurde und welche Probe er bestanden hat. Das zu erfinden wäre
+        genau die Sorte Angabe, die diese Umstellung abschaffen soll. Der
+        nächste Ingest-Lauf trägt beides nach, weil er den Jahrgang ohnehin
+        ersetzt."""
+        from council import herkunft as _h
+
+        with self._conn:
+            for tabelle in _h.HERKUNFT_TABELLEN:
+                cols = {r[1] for r in self._conn.execute(
+                    f"PRAGMA table_info({tabelle})")}
+                if not cols:
+                    continue  # Tabelle gibt es in dieser DB (noch) nicht
+                if "herkunft_id" not in cols:
+                    self._conn.execute(
+                        f"ALTER TABLE {tabelle} ADD COLUMN herkunft_id INTEGER")
+                self._herkunft_nachtragen(tabelle)
+
+    def _herkunft_nachtragen(self, tabelle: str) -> int:
+        """Zeilen einer Tabelle ohne `herkunft_id` aus ihren Altfeldern
+        versorgen. Idempotent: Wer schon eine hat, wird nicht angefasst."""
+        from council import herkunft as _h
+
+        label_spalte, url_spalte, feste_art = self._HERKUNFT_ALTFELDER[tabelle]
+        cols = {r[1] for r in self._conn.execute(f"PRAGMA table_info({tabelle})")}
+        if url_spalte not in cols:
+            return 0
+        gelesen = [label_spalte, url_spalte] if label_spalte in cols else [url_spalte]
+        # Je *Kombination* aus Label und URL ein Herkunfts-Datensatz — das ist
+        # die Granularität, in der der Altbestand seine Quelle kennt.
+        auswahl = ", ".join(gelesen)
+        gruppen = self._conn.execute(
+            f"SELECT {auswahl}, MAX(fetched_at) AS zuletzt FROM {tabelle} "
+            f"WHERE herkunft_id IS NULL GROUP BY {auswahl}").fetchall()
+        getroffen = 0
+        for g in gruppen:
+            url = g[url_spalte]
+            label = g[label_spalte] if label_spalte in cols else None
+            art = feste_art or self._herkunft_art_aus_url(url)
+            if not art or not url:
+                # Ohne Verweis keine Herkunft. Lieber eine leere Spalte als
+                # ein Datensatz, der auf nichts zeigt.
+                continue
+            hid = self.merke_herkunft(
+                _h.Herkunft(art=art, probe=_h.UNBEKANNT, label=label, url=url,
+                            dokument_id=self._dokument_zu_url(url)),
+                fetched_at=g["zuletzt"])
+            bedingung = f"{url_spalte} IS ?"
+            args: list = [url]
+            if label_spalte in cols:
+                bedingung += f" AND {label_spalte} IS ?"
+                args.append(label)
+            cur = self._conn.execute(
+                f"UPDATE {tabelle} SET herkunft_id = ? "
+                f"WHERE herkunft_id IS NULL AND {bedingung}", [hid, *args])
+            getroffen += cur.rowcount
+        return getroffen
+
+    def _dokument_zu_url(self, url: str | None) -> int | None:
+        """Die `council_anlagen.document_id` zu einer Anlagen-URL.
+
+        Der stabile Anker, den der Altbestand nicht mitführte. Nur bei einem
+        **eindeutigen** Treffer — zwei Anlagen unter derselben URL wären ein
+        Fall für einen Blick, nicht für eine Vermutung."""
+        if not url:
+            return None
+        try:
+            treffer = self._conn.execute(
+                "SELECT document_id FROM council_anlagen WHERE url = ? LIMIT 2",
+                (url,)).fetchall()
+        except sqlite3.OperationalError:
+            return None
+        return treffer[0][0] if len(treffer) == 1 else None
 
     def _migrate_owner_id(self) -> None:
         """Re-key the per-recipient dedup tables from Telegram chat_id to the
@@ -2983,20 +3137,150 @@ class CouncilStore:
                  "lat": r["lat"], "lon": r["lon"]}
                 for r in rows]
 
+    # --- Herkunft der Finanzzahlen (council.herkunft) ------------------------
+
+    def merke_herkunft(self, h, fetched_at: str | None = None) -> int:
+        """Eine :class:`council.herkunft.Herkunft` eintragen und ihre ID
+        liefern — der eine Weg, auf dem Herkunft in die Datenbank kommt.
+
+        Idempotent über den inhaltlichen Fingerabdruck: Derselbe Abschnitt
+        desselben Dokuments mit derselben Probe bekommt bei jedem Lauf
+        dieselbe ID. Was sich ändert, ist `fetched_at` — „zuletzt bestätigt",
+        nicht „zuerst gesehen".
+
+        Der Zeitstempel wandert dabei nur **vorwärts** (``MAX``). Beim
+        Nachrüsten teilen sich mehrere Tabellen eine Herkunft und bringen je
+        einen eigenen Zeitstempel mit; ohne diese Regel gewönne schlicht die
+        zuletzt bearbeitete Tabelle, und „zuletzt bestätigt" stünde auf einem
+        älteren Datum als eine Zeile, die darauf zeigt.
+
+        Läuft absichtlich **ohne** eigene Transaktion: Der Aufrufer schreibt
+        Herkunft und Datenzeilen zusammen, oder gar nicht."""
+        jetzt = fetched_at or datetime.utcnow().isoformat(timespec="seconds")
+        schluessel = h.schluessel()
+        vorhanden = self._conn.execute(
+            "SELECT id FROM council_herkunft WHERE schluessel = ?",
+            (schluessel,)).fetchone()
+        if vorhanden:
+            self._conn.execute(
+                "UPDATE council_herkunft SET fetched_at = MAX(fetched_at, ?) "
+                "WHERE id = ?", (jetzt, vorhanden[0]))
+            return int(vorhanden[0])
+        f = h.felder()
+        cur = self._conn.execute(
+            "INSERT INTO council_herkunft (schluessel, art, dokument_id, label, url, "
+            " fundstelle, seite, probe, probe_ergebnis, stand, fetched_at) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            (schluessel, f["art"], f["dokument_id"], f["label"], f["url"],
+             f["fundstelle"], f["seite"], f["probe"], f["probe_ergebnis"],
+             f["stand"], jetzt))
+        return int(cur.lastrowid)
+
+    def get_herkunft(self, ids: list[int] | None = None) -> list[dict]:
+        """Herkunfts-Datensätze — alle oder eine Auswahl, mit den Erklärsätzen
+        zu ihren Proben.
+
+        Die Sätze kommen aus dem Code (``herkunft.PROBEN``) und nicht aus der
+        Datenbank: Sie sind Text für Leserinnen und dürfen sich verbessern,
+        ohne dass ein Jahrgang neu eingelesen werden muss."""
+        from council import herkunft as _h
+
+        try:
+            if ids is None:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_herkunft ORDER BY id").fetchall()
+            elif not ids:
+                return []
+            else:
+                platz = ",".join("?" * len(ids))
+                rows = self._conn.execute(
+                    f"SELECT * FROM council_herkunft WHERE id IN ({platz}) ORDER BY id",
+                    list(ids)).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        aus = []
+        for r in rows:
+            d = dict(r)
+            d.pop("schluessel", None)   # interner Fingerabdruck, kein Lesestoff
+            d["proben"] = _h.probe_texte(d.get("probe"))
+            aus.append(d)
+        return aus
+
+    def herkunft_aufraeumen(self) -> int:
+        """Herkunfts-Datensätze löschen, auf die keine Zeile mehr zeigt.
+
+        Nötig, weil ein erneuter Einlesen-Lauf einen Jahrgang **ersetzt**: Die
+        alten Zeilen verschwinden, ihre Herkunft bliebe sonst liegen. Das
+        passiert planmäßig einmal beim Nachrüsten (die `unbekannt`-Datensätze
+        des Altbestands werden von den echten abgelöst) und danach immer, wenn
+        sich eine Fundstelle oder eine Probe ändert.
+
+        Läuft **nur auf Ansage** aus den Ingest-Skripten, nicht beim Öffnen der
+        Datenbank: Aufräumen ist eine Schreiboperation, und die gehört nicht in
+        den Startpfad eines Webservers."""
+        from council import herkunft as _h
+
+        verweise = []
+        for tabelle in _h.HERKUNFT_TABELLEN:
+            try:
+                self._conn.execute(f"SELECT herkunft_id FROM {tabelle} LIMIT 0")
+            except sqlite3.OperationalError:
+                continue
+            verweise.append(
+                f"SELECT herkunft_id FROM {tabelle} WHERE herkunft_id IS NOT NULL")
+        if not verweise:
+            return 0
+        with self._conn:
+            cur = self._conn.execute(
+                "DELETE FROM council_herkunft WHERE id NOT IN ("
+                + " UNION ".join(verweise) + ")")
+        return cur.rowcount
+
+    def herkunft_luecken(self) -> dict[str, int]:
+        """Je Zieltabelle: wie viele Zeilen ohne Herkunft dastehen.
+
+        Das Frühwarnsystem der Umstellung. Eine Tabelle, die in
+        ``HERKUNFT_TABELLEN`` steht, aber ihre ``herkunft_id`` nicht füllt,
+        taucht hier nach jedem Lauf auf — und die Ingest-Skripte schreiben es
+        ins Protokoll. Genannt werden nur Tabellen mit Lücken; eine leere
+        Antwort heißt „jede Zeile weiß, woher sie kommt"."""
+        from council import herkunft as _h
+
+        aus: dict[str, int] = {}
+        for tabelle in _h.HERKUNFT_TABELLEN:
+            try:
+                n = self._conn.execute(
+                    f"SELECT COUNT(*) FROM {tabelle} WHERE herkunft_id IS NULL"
+                ).fetchone()[0]
+            except sqlite3.OperationalError:
+                continue  # Tabelle oder Spalte gibt es hier nicht
+            if n:
+                aus[tabelle] = n
+        return aus
+
     # --- Stadt-Haushalt (council.haushalt) -----------------------------------
 
-    def save_haushalt(self, year: int, rows: list[dict], source_url: str) -> int:
+    def save_haushalt(self, year: int, rows: list[dict], herkunft) -> int:
         """Ergebnishaushalt eines Jahres speichern — ersetzt den bisherigen
-        Stand des Jahres komplett (Re-Ingest idempotent)."""
+        Stand des Jahres komplett (Re-Ingest idempotent).
+
+        ``herkunft`` ist eine :class:`council.herkunft.Herkunft` und hat den
+        früheren ``source_url``-String abgelöst: Eine URL allein sagt nicht,
+        an welcher Stelle eines 300-Seiten-PDFs gelesen wurde und was die
+        Zahlen absichert. ``source_url`` steht weiter in der Tabelle und wird
+        aus derselben Angabe gefüllt."""
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
             self._conn.execute("DELETE FROM council_haushalt WHERE year = ?", (year,))
             for r in rows:
                 self._conn.execute(
                     "INSERT INTO council_haushalt (year, bereich, ertraege, aufwendungen, "
-                    " ergebnis, is_summe, source_url, fetched_at) VALUES (?,?,?,?,?,?,?,?)",
+                    " ergebnis, is_summe, source_url, fetched_at, herkunft_id) "
+                    "VALUES (?,?,?,?,?,?,?,?,?)",
                     (year, r["bereich"], r.get("ertraege"), r.get("aufwendungen"),
-                     r.get("ergebnis"), int(r.get("is_summe", 0)), source_url, now))
+                     r.get("ergebnis"), int(r.get("is_summe", 0)),
+                     herkunft.url, now, hid))
         return len(rows)
 
     def get_haushalt(self, year: int) -> list[dict]:
@@ -3012,14 +3296,17 @@ class CouncilStore:
         return [r[0] for r in self._conn.execute(
             "SELECT DISTINCT year FROM council_haushalt ORDER BY year")]
 
-    def save_steuereinnahmen(self, rows: list[dict], source_url: str) -> int:
+    def save_steuereinnahmen(self, rows: list[dict], herkunft) -> int:
         """Ist-Steuereinnahmen (jahr, art, betrag) ersetzen — Re-Ingest idempotent."""
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
             self._conn.executemany(
-                "INSERT OR REPLACE INTO council_steuern (jahr, art, betrag, source_url, fetched_at) "
-                "VALUES (?,?,?,?,?)",
-                [(r["jahr"], r["art"], r.get("betrag"), source_url, now) for r in rows])
+                "INSERT OR REPLACE INTO council_steuern "
+                "(jahr, art, betrag, source_url, fetched_at, herkunft_id) "
+                "VALUES (?,?,?,?,?,?)",
+                [(r["jahr"], r["art"], r.get("betrag"), herkunft.url, now, hid)
+                 for r in rows])
         return len(rows)
 
     def get_steuereinnahmen(self) -> list[dict]:
@@ -3027,26 +3314,30 @@ class CouncilStore:
         return [dict(r) for r in self._conn.execute(
             "SELECT jahr, art, betrag FROM council_steuern ORDER BY jahr, art")]
 
-    def save_steuerkraft(self, rows: list[dict], source_url: str) -> int:
+    def save_steuerkraft(self, rows: list[dict], herkunft) -> int:
         """Steuerkraftmesszahl + Schlüsselzuweisungen je Jahr ersetzen."""
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
             self._conn.executemany(
                 "INSERT OR REPLACE INTO council_steuerkraft "
-                "(jahr, messzahl, messzahl_je_ew, zuweisungen, zuweisungen_je_ew, source_url, fetched_at) "
-                "VALUES (?,?,?,?,?,?,?)",
+                "(jahr, messzahl, messzahl_je_ew, zuweisungen, zuweisungen_je_ew, "
+                " source_url, fetched_at, herkunft_id) VALUES (?,?,?,?,?,?,?,?)",
                 [(r["jahr"], r.get("messzahl"), r.get("messzahl_je_ew"),
-                  r.get("zuweisungen"), r.get("zuweisungen_je_ew"), source_url, now) for r in rows])
+                  r.get("zuweisungen"), r.get("zuweisungen_je_ew"),
+                  herkunft.url, now, hid) for r in rows])
         return len(rows)
 
-    def save_einwohner(self, rows: list[dict], source_url: str) -> int:
+    def save_einwohner(self, rows: list[dict], herkunft) -> int:
         """Einwohnerzahlen je Jahr ersetzen (idempotent)."""
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
             self._conn.executemany(
-                "INSERT OR REPLACE INTO council_einwohner (jahr, einwohner, source_url, fetched_at) "
-                "VALUES (?,?,?,?)",
-                [(r["jahr"], r["einwohner"], source_url, now) for r in rows])
+                "INSERT OR REPLACE INTO council_einwohner "
+                "(jahr, einwohner, source_url, fetched_at, herkunft_id) "
+                "VALUES (?,?,?,?,?)",
+                [(r["jahr"], r["einwohner"], herkunft.url, now, hid) for r in rows])
         return len(rows)
 
     def einwohner_aktuell(self) -> dict | None:
@@ -3058,17 +3349,22 @@ class CouncilStore:
             return None
         return dict(r) if r else None
 
-    def save_ergebnisrechnung(self, jahr: int, posten: list[dict],
-                              label: str, url: str | None,
+    def save_ergebnisrechnung(self, jahr: int, posten: list[dict], herkunft,
                               thh_nr: int | None = None, thh_name: str | None = None,
                               ersetzen: bool = True) -> int:
         """Ergebnisrechnung einer Ebene speichern — ohne ``thh_nr`` die
         Gesamtrechnung, sonst der jeweilige Teilhaushalt.
 
         ``ersetzen`` löscht vorher die betroffene Ebene dieses Jahres; beim
-        Einlesen mehrerer Teilhaushalte nacheinander bleibt es an."""
+        Einlesen mehrerer Teilhaushalte nacheinander bleibt es an.
+
+        ``herkunft`` steht, wo früher ``label, url`` standen. Die beiden
+        Ebenen dieses Dokuments bekommen bewusst **verschiedene** Herkünfte:
+        Sie stehen an verschiedenen Stellen des Jahresabschlusses und sind
+        durch verschiedene Proben gedeckt."""
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
             if ersetzen:
                 if thh_nr is None:
                     self._conn.execute(
@@ -3081,27 +3377,29 @@ class CouncilStore:
             self._conn.executemany(
                 "INSERT INTO council_ergebnisrechnung (jahr, thh_nr, thh_name, nr, bezeichnung, "
                 " vorjahr, ansatz, plan, plan_art, ergebnis, abweichung, ist_summe, "
-                " quelle_label, quelle_url, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                " quelle_label, quelle_url, fetched_at, herkunft_id) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 [(jahr, thh_nr, thh_name, p["nr"], p["bezeichnung"], p.get("vorjahr"),
                   p.get("ansatz"), p.get("plan", p.get("ansatz")), p.get("plan_art"),
                   p.get("ergebnis"), p.get("abweichung"),
-                  p.get("ist_summe", 0), label, url, now) for p in posten])
+                  p.get("ist_summe", 0), herkunft.label, herkunft.url, now, hid)
+                 for p in posten])
         return len(posten)
 
-    def save_abweichungsgruende(self, jahr: int, gruende: list[dict],
-                                label: str, url: str | None) -> int:
+    def save_abweichungsgruende(self, jahr: int, gruende: list[dict], herkunft) -> int:
         """Erläuterungen zu den Plan/Ist-Abweichungen eines Jahrgangs
         ersetzen. Übergeben wird nur, was die Rechenprobe bestanden hat."""
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
             self._conn.execute(
                 "DELETE FROM council_abweichungsgruende WHERE jahr = ?", (jahr,))
             self._conn.executemany(
                 "INSERT INTO council_abweichungsgruende (jahr, nr, bezeichnung, "
-                " delta_mio, prozent, text, quelle_label, quelle_url, fetched_at) "
-                "VALUES (?,?,?,?,?,?,?,?,?)",
+                " delta_mio, prozent, text, quelle_label, quelle_url, fetched_at, "
+                " herkunft_id) VALUES (?,?,?,?,?,?,?,?,?,?)",
                 [(jahr, g["nr"], g["bezeichnung"], g.get("delta_mio"), g.get("prozent"),
-                  g["text"], label, url, now) for g in gruende])
+                  g["text"], herkunft.label, herkunft.url, now, hid) for g in gruende])
         return len(gruende)
 
     def get_abweichungsgruende(self, jahr: int | None = None) -> list[dict]:
@@ -3118,22 +3416,25 @@ class CouncilStore:
             return []
         return [dict(r) for r in rows]
 
-    def save_pruefbericht_quelle(self, jahr: int, label: str | None, url: str | None,
-                          n_pages: int | None, lesbar: bool) -> None:
+    def save_pruefbericht_quelle(self, jahr: int, herkunft,
+                                 n_pages: int | None, lesbar: bool) -> None:
         """Fundstelle des RPA-Schlussberichts eines Jahrgangs merken."""
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
             self._conn.execute(
                 "INSERT OR REPLACE INTO council_pruefbericht_quellen "
-                "(jahr, label, url, n_pages, lesbar, fetched_at) VALUES (?,?,?,?,?,?)",
-                (jahr, label, url, n_pages, 1 if lesbar else 0, now))
+                "(jahr, label, url, n_pages, lesbar, fetched_at, herkunft_id) "
+                "VALUES (?,?,?,?,?,?,?)",
+                (jahr, herkunft.label, herkunft.url, n_pages,
+                 1 if lesbar else 0, now, hid))
 
     def get_pruefbericht_quellen(self) -> list[dict]:
         """Alle bekannten Schlussberichte, ältester zuerst."""
         try:
             return [dict(r) for r in self._conn.execute(
-                "SELECT jahr, label, url, n_pages, lesbar FROM council_pruefbericht_quellen "
-                "ORDER BY jahr")]
+                "SELECT jahr, label, url, n_pages, lesbar, herkunft_id "
+                "FROM council_pruefbericht_quellen ORDER BY jahr")]
         except sqlite3.OperationalError:
             return []
 
@@ -3196,25 +3497,26 @@ class CouncilStore:
         except sqlite3.OperationalError:
             return []
 
-    def save_produkte(self, jahr: int, produkte: list[dict],
-                      label: str, url: str | None) -> int:
+    def save_produkte(self, jahr: int, produkte: list[dict], herkunft) -> int:
         """Produkte eines Jahres einfügen/aktualisieren. Bewusst KEIN Löschen
         des Jahrgangs: Die Produkte eines Jahres verteilen sich auf mehrere
         Teilhaushalts-Dokumente, die nacheinander eingelesen werden."""
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
             self._conn.executemany(
                 "INSERT OR REPLACE INTO council_produkte (jahr, produkt_nr, produkt_name, "
                 " thh_nr, thh_name, amt, ertraege, aufwendungen, ergebnis, "
                 " kurzbeschreibung, auftragsgrundlage, beeinflussbarkeit, "
                 " beeinflussbarkeit_roh, wirkungskreis, zielgruppe, "
-                " quelle_label, quelle_url, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                " quelle_label, quelle_url, fetched_at, herkunft_id) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 [(jahr, p["produkt_nr"], p["produkt_name"], p.get("thh_nr"), p.get("thh_name"),
                   p.get("amt"), p.get("ertraege"), p.get("aufwendungen"), p.get("ergebnis"),
                   p.get("kurzbeschreibung"), p.get("auftragsgrundlage"),
                   p.get("beeinflussbarkeit"), p.get("beeinflussbarkeit_roh"),
                   p.get("wirkungskreis"), p.get("zielgruppe"),
-                  label, url, now) for p in produkte])
+                  herkunft.label, herkunft.url, now, hid) for p in produkte])
         return len(produkte)
 
     def get_produkte(self, jahr: int, thh_nr: int | None = None,
@@ -3288,24 +3590,29 @@ class CouncilStore:
         except sqlite3.OperationalError:
             return []
 
-    def save_pruefbericht(self, jahr: int, feststellungen: list[dict],
-                          label: str, url: str | None) -> int:
+    def save_pruefbericht(self, jahr: int, feststellungen: list[dict], herkunft) -> int:
         """Prüfungsfeststellungen eines Schlussberichts speichern.
 
         Der Jahrgang wird vorher geleert: Ein Bericht ist ein Dokument, und
         ein erneuter Ingest liest dasselbe Dokument neu — Zeilen von früheren
-        Läufen stehen zu lassen hieße, alte Parser-Stände zu konservieren."""
+        Läufen stehen zu lassen hieße, alte Parser-Stände zu konservieren.
+
+        Die ``fundstelle`` der Herkunft bleibt hier bewusst grob („Randmarken
+        des Berichts"): Die genaue Fundstelle einer Feststellung ist ihre
+        **Textziffer** und ihre **Seite**, und die stehen je Zeile in der
+        Tabelle. Die Herkunft beschreibt das Dokument, nicht die Zeile."""
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
             self._conn.execute("DELETE FROM council_pruefberichte WHERE jahr = ?", (jahr,))
             self._conn.executemany(
                 "INSERT INTO council_pruefberichte (jahr, lfd, marke, marke_name, "
                 " marke_erlaeuterung, textziffer, abschnitt, kette, seite, text, "
-                " folgeabsatz, quelle_label, quelle_url, fetched_at) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                " folgeabsatz, quelle_label, quelle_url, fetched_at, herkunft_id) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 [(jahr, f["lfd"], f["marke"], f["marke_name"], f.get("marke_erlaeuterung"),
                   f["textziffer"], f["abschnitt"], f.get("kette"), f.get("seite"),
-                  f["text"], f.get("folgeabsatz"), label, url, now)
+                  f["text"], f.get("folgeabsatz"), herkunft.label, herkunft.url, now, hid)
                  for f in feststellungen])
         return len(feststellungen)
 

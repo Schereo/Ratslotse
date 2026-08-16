@@ -8,6 +8,18 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Jede Haushalts-Zahl hält jetzt fest, woher sie stammt — auf den Abschnitt
+  genau.** Bisher stand an einer gespeicherten Zahl bestenfalls eine URL, und
+  bei einem 300-seitigen Jahresabschluss ist das zu wenig: Man sah nicht, an
+  welcher Stelle des Dokuments sie steht und womit sie abgesichert ist. Zu
+  jeder Zeile gehört jetzt ein Herkunfts-Eintrag mit dem Dokument, der
+  Fundstelle darin („Abschnitt 6.3.1 — Erläuterungen zu den Abweichungen"),
+  der bestandenen Rechenprobe samt Messwert („0,00 % Abweichung zur
+  Gesamtrechnung") und dem Stichtag. Wo eine Quelle gar keine Rechenprobe
+  mitbringt — die Steuer-Datensätze des Open-Data-Portals etwa —, steht das
+  jetzt ausdrücklich da, statt offenzubleiben. Bestehende Zahlen ändern sich
+  dadurch nicht; was der alte Bestand nicht festhielt, bleibt leer, statt
+  geraten zu werden, und wird beim nächsten Einlesen nachgetragen. (#PR)
 - **Der Haushalts-Bereich hält sich ab jetzt selbst aktuell.** Bisher wurde
   jeder neue Jahrgang von Hand eingelesen — wer nicht daran dachte, ließ den
   ganzen Bereich still veralten. Ein neuer Job sieht alle zwei Wochen nach, ob

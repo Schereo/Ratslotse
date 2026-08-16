@@ -505,7 +505,7 @@ def test_job_laesst_bestand_stehen_wenn_der_parser_nichts_mehr_liefert(bestand, 
     assert any("keine Summenzeilen" in z for z in p2.warnungen)
 
 
-def test_leerer_prueferbericht_loescht_die_feststellungen_nicht(tmp_path):
+def test_leerer_prueferbericht_loescht_die_feststellungen_nicht(tmp_path, quelle):
     """Dieselbe Regel für die Prüfungsfeststellungen — die Tabelle, an der der
     Beinahe-Unfall hing. ``save_pruefbericht`` leert den Jahrgang, bevor es
     schreibt; gegen ein leeres Ergebnis darf es dazu gar nicht erst kommen."""
@@ -513,7 +513,9 @@ def test_leerer_prueferbericht_loescht_die_feststellungen_nicht(tmp_path):
     store.save_pruefbericht(2023, [
         {"lfd": i, "marke": "H", "marke_name": "Hinweis", "textziffer": "1.1",
          "abschnitt": "Prüfungsauftrag", "text": f"Feststellung {i}"}
-        for i in range(1, 21)], "Schlussbericht 2023", None)
+        for i in range(1, 21)], quelle("Schlussbericht 2023",
+                                       "https://example.org/sb2023.pdf",
+                                       probe="legende_und_verzeichnis"))
     assert len(store.get_pruefberichte(2023)) == 20
 
     # Ein Bericht, der als Dokument erkannt wird, aus dem aber nichts zu holen

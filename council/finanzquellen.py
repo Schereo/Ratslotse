@@ -43,7 +43,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Callable
 
-from council import finanzberichte, pruefberichte
+from council import finanzberichte, herkunft, pruefberichte
 from council.store import CouncilStore
 
 #: Wie lange nach dem erwarteten Monat ein fehlender Jahrgang als „die Stadt
@@ -452,7 +452,8 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
     Was ein Jahrgang bekommt, bekommt er in **einer** Transaktion
     (``store.transaktion()``): Ein Abbruch mittendrin ließe ihn sonst halb
     zurück, und halb sieht für den nächsten Lauf aus wie fertig."""
-    sql, werte = QUELLEN["jahresabschluss"].erkennung.abfrage("label, url, raw_text")
+    sql, werte = QUELLEN["jahresabschluss"].erkennung.abfrage(
+        "document_id, label, url, raw_text")
     rows = store._conn.execute(sql, werte).fetchall()  # noqa: SLF001
     vorhanden = _bestand_jahresabschluss(store) if nur_fehlende else set()
 
@@ -483,7 +484,8 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
                      f"Betrag passte auf den Cent, Vorzeichen ergänzt")
             vorzeichen_repariert += repariert
         gelesen[jahr] = {"posten": posten, "text": text,
-                         "label": r["label"], "url": r["url"]}
+                         "label": r["label"], "url": r["url"],
+                         "document_id": r["document_id"]}
 
     # Vorjahres-Kette: Das Ist eines Jahres steht im Folgejahrgang noch einmal.
     # Ein gerissenes Glied verrät nicht, welche Seite falsch ist — also fallen
@@ -510,6 +512,17 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
         v = gelesen[jahr]
         posten, label, url = v["posten"], v["label"], v["url"]
 
+        # Woher diese Zeilen kommen — je Ebene eine eigene Angabe. Beide
+        # stehen im selben Dokument, aber an verschiedenen Stellen und hinter
+        # verschiedenen Proben; eine gemeinsame Herkunft wäre für beide
+        # ungenau. Die Vorjahres-Kette wird nur genannt, wo sie greift: Ohne
+        # gelesenen Nachbarjahrgang gibt es kein Glied, das schließen könnte.
+        anker = dict(art="ris", dokument_id=v["document_id"], label=label,
+                     url=url, stand=f"Jahresabschluss {jahr}")
+        proben_gesamt = ["strukturprobe"]
+        if jahr - 1 in gelesen or jahr + 1 in gelesen:
+            proben_gesamt.append("vorjahreskette")
+
         # Ein Jahrgang, eine Transaktion: Gesamtrechnung, Teilhaushalte und
         # Erläuterungen stehen zusammen in der Datenbank oder gar nicht.
         with store.transaktion():
@@ -523,7 +536,10 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
                     geschuetzt += 1
                     uebersprungen += 1
                     continue
-                store.save_ergebnisrechnung(jahr, posten, label, url)
+                store.save_ergebnisrechnung(jahr, posten, herkunft.Herkunft(
+                    probe=proben_gesamt,
+                    fundstelle="Ergebnisrechnung der Kernverwaltung, Posten 1–24",
+                    **anker))
                 neue_einheiten.add((jahr, "gesamt"))
                 e = next(x for x in posten if x["nr"] == 12)
                 a = next(x for x in posten if x["nr"] == 20)
@@ -558,7 +574,13 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
                     else:
                         for x in thh:
                             store.save_ergebnisrechnung(
-                                jahr, x["posten"], label, url,
+                                jahr, x["posten"], herkunft.Herkunft(
+                                    probe="summenprobe",
+                                    fundstelle=f"Teil-Ergebnisrechnung THH"
+                                               f"{x['thh_nr']:02d} — {x['thh_name']}",
+                                    probe_ergebnis=f"{abweichung * 100:.2f} % "
+                                                   f"Abweichung zur Gesamtrechnung",
+                                    **anker),
                                 thh_nr=x["thh_nr"], thh_name=x["thh_name"])
                         p.sagen(f"    + {len(thh)} Teilhaushalte "
                                 f"(Summenprobe {abweichung*100:.2f} % Abweichung)")
@@ -581,7 +603,13 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
                     p.warnen(f"    Erläuterung verworfen — {grund}")
                 if bestandsschutz(p, f"{jahr} Erläuterungen", alt_gruende,
                                   len(angenommen), schuetzen):
-                    store.save_abweichungsgruende(jahr, angenommen, label, url)
+                    store.save_abweichungsgruende(jahr, angenommen, herkunft.Herkunft(
+                        probe="abweichungstext",
+                        fundstelle="Abschnitt 6.3.1 — Erläuterungen zu den "
+                                   "Abweichungen gegenüber dem Plan",
+                        probe_ergebnis=f"{len(angenommen)} von {len(roh)} "
+                                       f"Erläuterungen bestanden",
+                        **anker))
                     gruende_gesamt += len(angenommen)
                     p.sagen(f"    + {len(angenommen)} Erläuterungen zu Abweichungen")
                 elif alt_gruende:
@@ -608,7 +636,8 @@ def lies_schlussbericht_fundstellen(store: CouncilStore, p: Protokoll,
 
     Eine Zeile je Jahrgang, ein Dokument je Zeile — hier ist die Einheit
     tatsächlich der Jahrgang, und „da" heißt „fertig"."""
-    sql, werte = QUELLEN["rpa_fundstelle"].erkennung.abfrage("label, url, n_pages, raw_text")
+    sql, werte = QUELLEN["rpa_fundstelle"].erkennung.abfrage(
+        "document_id, label, url, n_pages, raw_text")
     rows = store._conn.execute(sql, werte).fetchall()  # noqa: SLF001
     vorhanden = _bestand_schlussberichte(store) if nur_fehlende else set()
     neu: list[int] = []
@@ -619,8 +648,21 @@ def lies_schlussbericht_fundstellen(store: CouncilStore, p: Protokoll,
             continue
         if (treffer["jahr"],) in vorhanden:
             continue
-        store.save_pruefbericht_quelle(treffer["jahr"], r["label"], r["url"],
-                                       r["n_pages"], treffer["lesbar"])
+        # Der Buchstabenanteil steht auch dann dabei, wenn er die Probe
+        # REISST (2024: 0,00) — dann fehlt `textextrakt` in der Liste, und
+        # die Zahl daneben sagt, warum. Eine gerissene Probe zu verschweigen
+        # wäre schlimmer, als sie zu nennen.
+        proben = ["eingangsformel"] + (["textextrakt"] if treffer["lesbar"] else [])
+        store.save_pruefbericht_quelle(
+            treffer["jahr"],
+            herkunft.Herkunft(
+                art="ris", probe=proben, dokument_id=r["document_id"],
+                label=r["label"], url=r["url"],
+                fundstelle="Deckblatt und Eingangsformel des Schlussberichts",
+                probe_ergebnis=f"Buchstabenanteil im Volltext "
+                               f"{treffer['buchstabenanteil']:.2f}",
+                stand=f"Jahresabschluss {treffer['jahr']}"),
+            r["n_pages"], treffer["lesbar"])
         neu.append(treffer["jahr"])
         gefunden += 1
         hinweis = "" if treffer["lesbar"] else "  (Volltext unbrauchbar, nur Verweis)"
@@ -643,7 +685,8 @@ def lies_teilhaushalte(store: CouncilStore, p: Protokoll,
     ``backfill_anlagen_texte.py`` später und tranchenweise nach. Wer den
     Jahrgang sperrt, sobald das erste Dokument gelesen ist, verliert die
     anderen acht dauerhaft — und merkt es nie, weil der Jahrgang „da" ist."""
-    sql, werte = QUELLEN["teilhaushalt"].erkennung.abfrage("label, url, raw_text")
+    sql, werte = QUELLEN["teilhaushalt"].erkennung.abfrage(
+        "document_id, label, url, raw_text")
     rows = [dict(r) for r in store._conn.execute(sql, werte)]  # noqa: SLF001
     vorhanden = _bestand_produkte(store) if nur_fehlende else set()
     if nur_fehlende:
@@ -676,7 +719,15 @@ def lies_teilhaushalte(store: CouncilStore, p: Protokoll,
                                           len(stueck), schuetzen):
                         geschuetzt += 1 if alt else 0
                         continue
-                    store.save_produkte(jahr, stueck, r["label"], r["url"])
+                    store.save_produkte(jahr, stueck, herkunft.Herkunft(
+                        art="ris", probe="produktzeile",
+                        dokument_id=r["document_id"], label=r["label"], url=r["url"],
+                        fundstelle=(f"Teilergebnishaushalt THH{thh_nr:02d}, "
+                                    f"Produktebene mit Steckbrief" if thh_nr
+                                    else "Teilergebnishaushalt, Produktebene"),
+                        probe_ergebnis=f"{len(stueck)} Produktzeilen mit "
+                                       f"aufgehender Ergebnis-Rechnung",
+                        stand=f"Haushaltsplan {jahr}"))
                     neue_einheiten.add((jahr, thh_nr))
                     je_jahr[jahr] = je_jahr.get(jahr, 0) + len(stueck)
                     for feld in STECKBRIEF:
@@ -759,7 +810,16 @@ def lies_pruefungsfeststellungen(store: CouncilStore, p: Protokoll,
             continue
         marken = Counter(f["marke"] for f in gefunden)
         if not trocken:
-            store.save_pruefbericht(jahr, gefunden, r["label"], r["url"])
+            store.save_pruefbericht(jahr, gefunden, herkunft.Herkunft(
+                art="ris", probe="legende_und_verzeichnis",
+                dokument_id=r["document_id"], label=r["label"], url=r["url"],
+                # Grob mit Absicht: Die genaue Fundstelle einer Feststellung
+                # ist ihre Textziffer und ihre Seite, und die stehen je Zeile
+                # in der Tabelle.
+                fundstelle="Randmarken B, WB, H und K im Fließtext",
+                probe_ergebnis=f"{len(gefunden)} Feststellungen übernommen, "
+                               f"{len(ergebnis['verworfen'])} verworfen",
+                stand=f"Schlussbericht zum Jahresabschluss {jahr}"))
         je_jahr[jahr] = {"feststellungen": len(gefunden),
                          "verworfen": len(ergebnis["verworfen"]),
                          "marken": dict(marken)}
