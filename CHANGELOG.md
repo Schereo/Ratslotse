@@ -8,6 +8,20 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Das Flussbild: woher das Geld kommt, wohin es geht — und was dazwischen
+  liegt.** Auf der Haushalts-Übersicht steht jetzt ein Bild, das links die
+  Einnahmearten (Steuern, Zuwendungen, Gebühren …) und rechts die Bereiche
+  zeigt. Dazwischen liegt ein einziger Knoten: die Stadtkasse. Kein Band führt
+  von links nach rechts durch, und das ist der Punkt — im kommunalen Haushalt
+  gehört keine Einnahme zu einer bestimmten Ausgabe, alles fließt erst
+  zusammen und wird dann verteilt. Bandbreiten links und rechts liegen auf
+  derselben Skala; ein Minus erscheint als eigenes Band „aus dem Ersparten",
+  statt die kürzere Seite auf Länge zu ziehen. Kleine Posten sammeln sich in
+  „weitere" und lassen sich aufklappen, alle Zahlen stehen unter „Zahlen
+  anzeigen". Auf dem Handy werden daraus zwei Listen statt geschrumpfter
+  Bänder. Für Jahre ohne Jahresabschluss sagt das Bild, welches Jahr es
+  stattdessen zeigt — und wenn die Einzelposten die ausgewiesene Summe nicht
+  tragen, erscheint gar keine Grafik, sondern der Hinweis darauf. (#505)
 - **„Was kostet eigentlich …?" — der Haushalt, aufgeschlüsselt bis zur
   einzelnen Aufgabe.** Die häufigste Frage zum Haushalt ist keine nach
   Teilhaushalten, sondern nach einer konkreten Sache: dem Stadtarchiv, der
