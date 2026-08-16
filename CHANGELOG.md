@@ -464,7 +464,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Neues, denn Investitionen laufen in einem eigenen Haushalt. Bezugsgröße sind
   176.614 Einwohnerinnen und Einwohner zum Stichtag 31.12.2024 — der steht mit
   an der Rechnung, weil eine Pro-Kopf-Angabe ohne Bezugsjahr nichts wert ist.
-  (#527)
+  (#528)
 
 <!-- GEPARKT (nur dev.ratslotse.de, Umgebungs-Gate): Eintrag aktivieren,
      sobald der Kommunalwahl-Vergleich auf Prod freigeschaltet wird.
