@@ -28,9 +28,10 @@
 import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, ChevronRight, Search } from "lucide-react";
+import { ArrowRight, ChevronRight, MessageCircle, Search } from "lucide-react";
 import { Segmented } from "@/components/ui";
 import { useFetch } from "@/lib/use-fetch";
+import { fragenHref } from "@/lib/routes";
 import {
   ERTRAGSART_KURZ, HaushaltDaten, HaushaltZeile, PLAN_ART_LABEL, PlanArt,
   ProdukteAntwort, betrag, bereichInfo, bereichSlug, bereiche, bereichsReihe,
@@ -538,11 +539,22 @@ function BereichInner() {
             belastbare Brücke zwischen beidem haben wir nicht. Bis dahin findet die Suche
             alles, was der Rat zu diesem Bereich entschieden hat.
           </p>
-          <Link href={`/council?q=${encodeURIComponent(kanon.name.split("/")[0].split(",")[0])}`}
-            className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
-            <Search aria-hidden className="h-3.5 w-3.5" />
-            Beschlüsse zu „{kanon.name.split("/")[0].split(",")[0]}“ suchen
-          </Link>
+          {/* Zwei Wege weiter, beide ehrlich: die Suche über den Bereichsnamen
+              und eine vorformulierte Frage. Der Chip gibt dem Ratsgespräch nur
+              den Fragetext mit — einen Bereichs-Kontext, den es auswerten
+              könnte, gibt es nicht, und er wird hier auch nicht behauptet. */}
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-5 gap-y-2">
+            <Link href={`/council?q=${encodeURIComponent(kanon.name.split("/")[0].split(",")[0])}`}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
+              <Search aria-hidden className="h-3.5 w-3.5" />
+              Beschlüsse zu „{kanon.name.split("/")[0].split(",")[0]}“ suchen
+            </Link>
+            <Link href={fragenHref({ q: `Was hat der Rat zuletzt zum Bereich ${kanon.name} entschieden?` })}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
+              <MessageCircle aria-hidden className="h-3.5 w-3.5" />
+              Frag den Rat zu diesem Bereich
+            </Link>
+          </div>
         </div>
       </ReiterTafel>
 
