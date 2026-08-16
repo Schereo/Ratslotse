@@ -422,6 +422,18 @@ def _einheiten_konzernabschluss(row: dict) -> set[tuple]:
     return {(jahr,)} if jahr else set()
 
 
+def _bestand_schulden(store: CouncilStore) -> set[tuple]:
+    """Die Jahrgänge der Schuldenzeitreihe.
+
+    Ein Dokument trägt die ganze Reihe von 1995 bis heute — die Einheit ist
+    trotzdem der Jahrgang und nicht das Dokument: Die Frage der Seite ist „bis
+    wann reichen die Zahlen?", und die beantwortet der jüngste Jahrgang. Dass
+    ein Jahrgang fehlen kann, ohne dass die Lieferung fehlt, ist hier kein
+    Sonderfall, sondern eingeplant (s. ``council/schulden.py``)."""
+    return {(r[0],) for r in _jahre(
+        store, "SELECT DISTINCT jahr FROM council_schulden")}
+
+
 def _bestand_lsn_steuerkraft(store: CouncilStore) -> set[tuple]:
     """Die Ausgleichsjahre, für die eine Steuerkraftmesszahl vorliegt.
 
@@ -1416,6 +1428,29 @@ for _q in (
         bestand=_bestand_haushaltsplan,
     ),
     Finanzquelle(
+        key="schulden",
+        label="Schuldenstand",
+        was="Wie viel die Stadt schuldet und wie sich das seit 1995 entwickelt "
+            "hat — für die Stadt als Rechtsträger, also mit ihren "
+            "Eigenbetrieben und ohne die eigenständigen Beteiligungen.",
+        tabelle="council_schulden",
+        # Gemessen am Dokument, nicht geschätzt: Die Tabelle für den Jahrgang
+        # 2025 steht seit dem 08.07.2026 online (Last-Modified des PDF, das
+        # Dokument selbst ist vom 07.07.2026). Das ist EIN Messpunkt für diese
+        # Tabelle — die Schwelle steht trotzdem auf September, weil das
+        # Jahrbuch seine Tabellen einzeln über das Jahr verteilt nachzieht und
+        # die letzten Blätter eines Jahrgangs erst Ende September kamen
+        # (0229-2024: 29.09.2025). Zu früh gemeldet wäre der teurere Fehler.
+        erwarteter_monat=9,
+        # Der Schuldenstand zum 31.12. eines Jahres erscheint im Folgejahr.
+        versatz=1,
+        # Kommt NICHT aus council_anlagen, sondern als PDF von oldenburg.de.
+        # Der Cron beobachtet diese Schicht nur und meldet, wenn sie ausbleibt.
+        herkunft="stadt",
+        nachschub="Download von oldenburg.de, scripts/ingest_schulden.py",
+        bestand=_bestand_schulden,
+    ),
+    Finanzquelle(
         key="lsn_steuerkraft",
         label="Steuerkraft im Städtevergleich",
         was="Wie viel Steuerkraft Oldenburg gegenüber den anderen sieben "
@@ -1472,9 +1507,16 @@ for _q in (
 #: Dinge dasselbe zu meinen scheinen — genau die Verwechslung, gegen die die
 #: eigene Tabelle des Städtevergleichs angelegt wurde
 #: (s. Kopf von ``council/staedtevergleich``).
+#:
+#: Der Schuldenstand steht hinter dem Gesamtabschluss und vor dem
+#: Städtevergleich: Er ist die einzige Schicht, die einen **Bestand** zeigt
+#: statt eines Jahresverlaufs — was am Stichtag noch offen ist, nicht was in
+#: zwölf Monaten geflossen ist. Deshalb steht er nicht zwischen den
+#: Rechnungen, sondern hinter ihnen.
 REIHENFOLGE = ("haushaltsplan", "ergebnishaushalt", "jahresabschluss",
                "teilhaushalt", "rpa_fundstelle", "pruefungsfeststellungen",
-               "konzernabschluss", "lsn_steuerkraft", "lsn_realsteuern")
+               "konzernabschluss", "schulden", "lsn_steuerkraft",
+               "lsn_realsteuern")
 
 #: Die Stelle hinter einer Herkunft, im Klartext. Sie steht in der Fußzeile des
 #: Datenstands („Nicht dabei: … — die Zahlen holen wir bei …") und muss deshalb

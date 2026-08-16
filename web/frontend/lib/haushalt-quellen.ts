@@ -35,7 +35,10 @@ export type QuellenSchluessel =
   | "einwohner" | "ergebnisrechnung_thh" | "ratsbeschluss"
   // A10: Städtevergleich — die einzigen Quellen des Bereichs, die nicht von
   // der Stadt Oldenburg stammen, sondern vom Land.
-  | "lsn_finanzausgleich" | "lsn_realsteuern" | "vergleich_2018";
+  | "lsn_finanzausgleich" | "lsn_realsteuern" | "vergleich_2018"
+  // Die Schuldenzeitreihe — die einzige Quelle des Bereichs aus dem
+  // Statistischen Jahrbuch der Stadt.
+  | "schulden";
 
 export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   plan: {
@@ -276,5 +279,24 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     stand: "26.11.2018",
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de/vo0050.php?__kvonr=17170",
+  },
+  schulden: {
+    titel: "Statistisches Jahrbuch der Stadt Oldenburg, Tabelle 1108 — Stand der Verschuldung",
+    fundstelle:
+      "Kapitel 11 „Verwaltung und Finanzen“: eine Zeile je Jahr seit 1995, " +
+      "aufgeteilt nach Kreditmarktmitteln, öffentlichen Sondermitteln, Schulden " +
+      "bei Gebietskörperschaften und Schulden der Eigenbetriebe, dazu die Summe " +
+      "und der Betrag je Einwohner*in. " +
+      "Gezählt wird die Stadt als Rechtsträger — Kernhaushalt und Eigenbetriebe, " +
+      "ohne die rechtlich selbstständigen Beteiligungen; die Kliniken fallen " +
+      "deshalb ab 1999 aus der Reihe, als sie eine eigene Rechtsform bekamen. " +
+      "Der Betrag je Einwohner*in ist die Angabe der Stadt, nicht unsere Division; " +
+      "die Einwohnerzahl bezieht sich auf den 31. Dezember des Vorjahres.",
+    herausgeber: "Stadt Oldenburg, Fachdienst Geo und Daten (Zahlen: Fachdienst Finanzen)",
+    stand: "1995–2025 (Ausgabe vom 08.07.2026)",
+    art: "pdf",
+    url:
+      "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/" +
+      "40_Stadtplanungsamt/402_Geo_und_Daten/Statistik/1108-2025-AZ.pdf",
   },
 };

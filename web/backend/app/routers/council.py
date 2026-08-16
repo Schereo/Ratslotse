@@ -2164,3 +2164,46 @@ def haushalt_vergleich(
         "beleg": beleg,
         "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
+
+
+@router.get("/haushalt/schulden")
+def haushalt_schulden(
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Der Schuldenstand der Stadt seit 1995 — Tabelle 1108 des Statistischen
+    Jahrbuchs.
+
+    ``abgrenzung`` ist kein Beiwerk, sondern die Bedingung dafür, dass die
+    Zahlen etwas bedeuten: Bei Kommunalschulden gibt es zwei Werte, die beide
+    „die Schulden der Stadt" heißen und sich um ein Vielfaches unterscheiden.
+    Diese Reihe zählt die Stadt als **Rechtsträger** — Kernhaushalt und
+    Eigenbetriebe, ohne die rechtlich selbstständigen Beteiligungen. Der Wert
+    kommt aus ``council/schulden.py`` und nicht aus dem Frontend, damit beide
+    Seiten dieselbe Auskunft geben.
+
+    ``je_einwohner`` ist die Angabe **der Quelle**, nicht unsere Rechnung. Sie
+    kommt so aus der Tabelle; dass sie zur Einwohnerzahl aus dem Open-Data-
+    Datensatz passt, ist die Probe, die den Wert überhaupt hereingelassen hat
+    (``herkunft[…].proben``).
+
+    Wo ``aufteilung_verworfen`` gesetzt ist, fehlen die vier Artenspalten:
+    Dort ergeben sie im Dokument selbst nicht die ausgewiesene Summe. Die
+    Summe steht trotzdem — sie hängt an der unabhängigen Pro-Kopf-Probe. Die
+    Oberfläche kann den fehlenden Balken damit **erklären**, statt ihn als
+    Null zu zeichnen oder still zu überspringen.
+    """
+    from council import schulden as _s
+
+    zeilen = store.get_schulden()
+    ids = sorted({z["herkunft_id"] for z in zeilen if z["herkunft_id"] is not None})
+    return {
+        "reihe": zeilen,
+        "jahre": [z["jahr"] for z in zeilen],
+        "abgrenzung": _s.ABGRENZUNG,
+        # Die Spaltenüberschriften der Quelle, in ihrer Reihenfolge — damit die
+        # Legende nicht in zwei Sprachen existiert.
+        "arten": [{"feld": feld, "titel": titel}
+                  for feld, titel in _s.SPALTEN[:4]],
+        "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
+    }
