@@ -16,6 +16,26 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   hinterher, wie viele Zeilen je Schicht dastehen — und ob eine davon ohne
   Herkunftsnachweis durchgerutscht ist. Er zielt bewusst nur auf die
   Dev-Umgebung. (#556)
+- **„Der Streit ums Geld" — der Haushalt zeigt jetzt auch, worüber gestritten
+  wurde.** Der Bereich führte bisher ausschließlich Zahlen: Plan, Ist,
+  Produkte, Konzern, Prüfberichte. Dass über diese Zahlen politisch
+  gerungen wurde, kam nicht vor — dabei ist ein Haushalt kein Rechenergebnis,
+  sondern ein Kompromiss. Eine neue Seite zeigt je Haushaltsjahrgang 2019 bis
+  2026 drei Dinge: welche Änderungslisten die Fraktionen und Gruppen einbrachten
+  und wie darüber abgestimmt wurde (im Finanzausschuss und im Rat getrennt, weil
+  dieselbe Liste dort verschieden ausgehen kann), die Wortbeiträge der Debatte
+  im Wortlaut des Protokolls — 134 über alle Jahrgänge —, und wie am Ende über
+  die Haushaltssatzung entschieden wurde. Die Fraktion einer Rednerin kommt aus
+  der Anwesenheitsliste derselben Sitzung, nicht aus einer gepflegten Liste:
+  Fraktionen wandern, wer 2023 für Die Linke sprach, saß 2025 für das BSW.
+  Ratsgruppen bleiben Gruppen („FDP/Volt", „Für Oldenburg"), statt auf eine
+  Partei zusammengezogen zu werden. Alle Beiträge stehen in der Reihenfolge des
+  Protokolls und sind auf dieselbe Länge gekürzt — eine Auswahl „der wichtigsten
+  Stellen" träfe sonst jemand. Was **nicht** dabei steht, sagt die Seite selbst:
+  der Inhalt der Änderungslisten (er liegt in Anlagen-PDFs, die nicht als
+  Volltext vorliegen), das Stimmverhalten Einzelner (das Ratsinformationssystem
+  kennt keins) und die Fraktion bei Namensgleichheit im Rat — eine geratene wäre
+  schlimmer als eine fehlende. (#558)
 - **„Wie viel Schulden hat Oldenburg?" — dreißig Jahre Schuldenstand, mit der
   Angabe, was mitgezählt ist.** Eine der häufigsten Fragen an den Haushalt, und
   der Bereich konnte sie bisher nicht beantworten. Eine neue Seite zeigt die
