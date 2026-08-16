@@ -22,7 +22,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Was diese Zahlen **nicht** sagen, steht als eigener Abschnitt auf der Seite —
   einzelne Vorhaben nennt die Quelle nicht („Verkehr und Straßenbau:
   10,5 Mio. €", nicht welche Straße), es sind Planzahlen, und sie enden 2025,
-  weil die Stadt den Datensatz erst im Folgejahr veröffentlicht. (#PR)
+  weil die Stadt den Datensatz erst im Folgejahr veröffentlicht. (#547)
 - **„Und ist das die ganze Stadt?" — der Haushalt zeigt jetzt auch, was neben
   ihm läuft.** Klinikum, Busse, Bäder und die städtischen Gebäude führen eigene
   Bücher; im Haushalt tauchen sie bestenfalls als Zuschusszeile auf. Eine neue
