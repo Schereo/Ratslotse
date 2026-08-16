@@ -414,6 +414,47 @@ def haushalt_konzern(
     }
 
 
+@router.get("/haushalt/investitionen")
+def haushalt_investitionen(
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Was die Stadt bauen und kaufen will — die Investitionen des
+    Finanzhaushalts, je Teilhaushalt.
+
+    Die andere Hälfte des Haushaltsplans: Im Ergebnishaushalt, den der Rest des
+    Bereichs zeigt, steht keine einzige Investition (ein Schulneubau taucht dort
+    nur als Abschreibung auf, verteilt über Jahrzehnte).
+
+    - ``jahre``: Haushaltsjahre, für die Investitionen vorliegen,
+    - ``teilhaushalte``: je Jahr und Teilhaushalt Ein- und Auszahlungen aus
+      Investitionstätigkeit,
+    - ``gesamt``: je Jahr die Summenzeile der Datei — das **Ziel der
+      Rechenprobe**, nicht unsere Addition,
+    - ``finanzhaushalt``: je Jahr der Gesamtbetrag aller Ein- und Auszahlungen,
+      also samt laufender Verwaltungstätigkeit. Die Bezugsgröße, die aus
+      „80,8 Mio. €" erst eine Aussage macht — und die einzige Zahl hier ohne
+      Rechenprobe (eigene ``herkunft_id`` mit ``ungeprueft``, s. u.),
+    - ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, bestandene Probe
+      samt Messwert. Die geprüften Zeilen und die Bezugsgröße tragen
+      **verschiedene** IDs; sie stehen in derselben Datei, aber nur die einen
+      sind durch deren Summenzeile gedeckt.
+
+    Zwei Grenzen, die die Seite nennt und die API deshalb nicht verwischt:
+    Diese Zahlen sind **Plan**, nicht Ist, und sie nennen **kein einzelnes
+    Vorhaben** — „Verkehr und Straßenbau: 10,5 Mio. €" sagt nicht, welche
+    Straße."""
+    zeilen = store.get_investitionen()
+    ids = sorted({z["herkunft_id"] for z in zeilen if z["herkunft_id"] is not None})
+    return {
+        "jahre": store.investitionen_jahre(),
+        "teilhaushalte": [z for z in zeilen if z["ebene"] == "teilhaushalt"],
+        "gesamt": [z for z in zeilen if z["ebene"] == "investitionen"],
+        "finanzhaushalt": [z for z in zeilen if z["ebene"] == "finanzhaushalt"],
+        "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
+    }
+
+
 @router.get("/haushalt/datenstand")
 def haushalt_datenstand(
     _user: dict = Depends(require_active),

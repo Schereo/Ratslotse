@@ -18,6 +18,11 @@ fortgeschrieben — Grundlage des Haushalts-Bereichs:
   Pro-Kopf-Einordnungen. Aus demselben CSV NICHT übernommen: die
   Aufwendungs-Spalte — sie weicht vom beschlossenen Plan ab, ohne als Ist
   oder Nachtrag gekennzeichnet zu sein.
+- **Investitionen des Finanzhaushalts 2022–2025** → ``council_investitionen``.
+  Was die Stadt bauen und kaufen will, je Teilhaushalt. Die einzige dieser
+  Dateien mit einer **Rechenprobe im Dokument selbst**: Die Teilhaushalte
+  ergeben die Summenzeile, die dieselbe Datei ausweist. Was sie reißt, wird
+  verworfen (``council/investitionen.py``).
 
 Idempotent (INSERT OR REPLACE); einmal jährlich reicht, es gibt keinen Cron::
 
@@ -34,7 +39,7 @@ import requests
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from council import haushalt, herkunft  # noqa: E402
+from council import finanzquellen, haushalt, herkunft, investitionen  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 
 COUNCIL_DB = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlite")
@@ -105,6 +110,72 @@ def main() -> int:
             print(f"Einwohnerzahlen: {n} Jahre ({_spanne(ew)}).")
         else:
             print("Einwohner-CSV nicht lesbar — übersprungen.", file=sys.stderr)
+
+        # --- Investitionen (Finanzhaushalt) ---------------------------------
+        # Die einzige dieser Dateien mit einer Rechenprobe im Dokument selbst.
+        # Ein Jahrgang, der sie reißt, wird übersprungen — nicht geschätzt und
+        # nicht halb gespeichert (council/investitionen.py entscheidet das).
+        p = finanzquellen.Protokoll()
+        gespeichert: list[int] = []
+        for jahr, url in sorted(haushalt.INVESTITIONEN_CSV_URLS.items()):
+            r = requests.get(url, headers=_UA, timeout=120)
+            if r.status_code != 200:
+                print(f"Investitionen {jahr}: HTTP {r.status_code} — übersprungen",
+                      file=sys.stderr)
+                continue
+            gelesen = investitionen.lies(r.text, jahr)
+            if not gelesen["bestanden"]:
+                print(f"Investitionen {jahr}: {gelesen['nachweis']} — "
+                      f"nicht gespeichert", file=sys.stderr)
+                continue
+            # Ein leeres oder deutlich geschrumpftes Ergebnis ersetzt keinen
+            # gefüllten Jahrgang (dieselbe Regel wie in den Finanzberichten).
+            alt = len(store.get_investitionen(jahr=jahr))
+            neu = len(gelesen["zeilen"]) + 1 + (1 if gelesen["finanzhaushalt"] else 0)
+            if not finanzquellen.bestandsschutz(p, f"Investitionen {jahr}", alt, neu):
+                continue
+
+            anker = dict(art="opendata", url=url,
+                         label=f"Finanzhaushalt der Stadt Oldenburg {jahr}")
+            n = store.save_investitionen(
+                jahr, gelesen["zeilen"], gelesen["gesamt"],
+                herkunft.Herkunft(
+                    probe="investitionen_summenzeile",
+                    fundstelle="Datensatz 1101, Tabellenblatt „Finanzhaushalt“ — "
+                               "je Teilhaushalt eine Zeile mit Ein- und "
+                               "Auszahlungen aus Investitionstätigkeit, darunter "
+                               "die Summenzeile „Finanzhaushalt "
+                               "Gesamtinvestitionen“. Für welches Jahr die Datei "
+                               "gilt, steht nicht in ihr, sondern in ihrem "
+                               f"Dateinamen (…_{jahr}_Finanzhaushalt.csv)",
+                    probe_ergebnis=gelesen["nachweis"],
+                    stand=f"Haushaltsplan {jahr} — Plan, nicht Ist",
+                    **anker),
+                finanzhaushalt=gelesen["finanzhaushalt"],
+                herkunft_finanzhaushalt=herkunft.Herkunft(
+                    # Diese eine Zeile trägt die Probe NICHT: Sie zählt die
+                    # laufende Verwaltungstätigkeit mit, und nichts in der
+                    # Datei summiert sich auf sie. Als geprüft auszuweisen,
+                    # was nur danebensteht, wäre die eine Behauptung, die der
+                    # ganze Bereich vermeiden soll.
+                    probe=herkunft.UNGEPRUEFT,
+                    fundstelle="Datensatz 1101, Zeile „Gesamtbetrag des "
+                               "Finanzhaushaltes“ — alle Ein- und Auszahlungen "
+                               "des Jahres, also samt laufender "
+                               "Verwaltungstätigkeit. Bezugsgröße für den "
+                               "Investitionsanteil, nicht Teil der geprüften "
+                               "Rechnung",
+                    stand=f"Haushaltsplan {jahr} — Plan, nicht Ist",
+                    **anker) if gelesen["finanzhaushalt"] else None)
+            gespeichert.append(jahr)
+            g = gelesen["gesamt"]
+            print(f"Investitionen {jahr}: {len(gelesen['zeilen'])} Teilhaushalte, "
+                  f"{n} Zeilen · Auszahlungen {g['auszahlungen']/1e6:.1f} Mio. · "
+                  f"Einzahlungen {g['einzahlungen']/1e6:.1f} Mio. · "
+                  f"{gelesen['nachweis']}")
+        if gespeichert:
+            print(f"Investitionen gesamt: {len(gespeichert)} Jahrgänge "
+                  f"({gespeichert[0]}–{gespeichert[-1]}).")
 
         store.herkunft_aufraeumen()
         luecken = store.herkunft_luecken()
