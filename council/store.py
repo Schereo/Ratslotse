@@ -649,7 +649,9 @@ class CouncilStore:
             "lesbar INTEGER NOT NULL DEFAULT 1, fetched_at TEXT NOT NULL)"
         )
         # Produktebene aus den Teilhaushalts-Plänen: was einzelne Aufgaben
-        # kosten, mit Produktnummer und zuständigem Amt.
+        # kosten, mit Produktnummer und zuständigem Amt — dazu der Steckbrief,
+        # den die Pläne zu jedem Produkt führen (was die Aufgabe umfasst, auf
+        # welchem Gesetz sie beruht, wie viel Spielraum die Stadt bei ihr hat).
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS council_produkte ("
             "jahr INTEGER NOT NULL, "
@@ -657,11 +659,44 @@ class CouncilStore:
             "produkt_name TEXT NOT NULL, "
             "thh_nr INTEGER, thh_name TEXT, amt TEXT, "
             "ertraege REAL, aufwendungen REAL, ergebnis REAL, "
+            "kurzbeschreibung TEXT, auftragsgrundlage TEXT, "
+            "beeinflussbarkeit TEXT, "            # normalisiert: niedrig|mittel|hoch
+            "beeinflussbarkeit_roh TEXT, "        # Wortlaut des Plans
+            "wirkungskreis TEXT, zielgruppe TEXT, "
             "quelle_label TEXT, quelle_url TEXT, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (jahr, produkt_nr))"
         )
         self._conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_produkte_thh ON council_produkte(jahr, thh_nr)")
+        # Prüfungsfeststellungen aus den Schlussberichten des Rechnungs-
+        # prüfungsamts (RIS-Anlagen): die einzige regelmäßige, förmliche
+        # Kontrolle der Verwaltung durch eine eigene Stelle.
+        #
+        # `marke` ist die Randmarke des Berichts (B/WB/H/K), `marke_name` und
+        # `marke_erlaeuterung` sind die Legende DIESES Jahrgangs — nicht unsere
+        # Formulierung. Sie stehen bewusst je Zeile statt in einer zweiten
+        # Tabelle: Die Legende ändert sich zwischen den Jahrgängen (2023 kennt
+        # kein K mehr), und ein Bericht ohne seine eigene Legende wäre gar
+        # nicht erst eingelesen worden.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_pruefberichte ("
+            "jahr INTEGER NOT NULL, "              # geprüfter Jahresabschluss
+            "lfd INTEGER NOT NULL, "               # Reihenfolge im Dokument
+            "marke TEXT NOT NULL, "                # B | WB | H | K
+            "marke_name TEXT NOT NULL, "           # 'Wiederholte Beanstandung'
+            "marke_erlaeuterung TEXT, "            # Legendentext des Jahrgangs
+            "textziffer TEXT NOT NULL, "           # Fundstelle, z. B. '4.5.2'
+            "abschnitt TEXT NOT NULL, "            # Überschrift der Textziffer
+            "kette TEXT, "                         # Schlüssel für WB-Ketten
+            "seite INTEGER, "                      # Seite im Bericht
+            "text TEXT NOT NULL, "
+            "folgeabsatz TEXT, "                   # was im Bericht direkt folgt
+            "quelle_label TEXT, quelle_url TEXT, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, lfd))"
+        )
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pruefberichte_kette "
+            "ON council_pruefberichte(kette, jahr)")
         # Einwohnerzahl je Haushaltsjahr (Open-Data, Stichtag 31.12. des
         # Vorjahres) — Bezugsgröße für Pro-Kopf-Einordnungen.
         self._conn.execute(
@@ -789,6 +824,7 @@ class CouncilStore:
         self._migrate_quiz_estimate()
         self._migrate_quiz_media()
         self._migrate_quiz_hint()
+        self._migrate_produkt_steckbrief()
         self._migrate_owner_id()
 
     def _migrate_quiz_estimate(self) -> None:
@@ -824,6 +860,22 @@ class CouncilStore:
             for name in ("hint", "topic", "chart"):
                 if name not in cols:
                     self._conn.execute(f"ALTER TABLE council_quiz_questions ADD COLUMN {name} TEXT")
+
+    def _migrate_produkt_steckbrief(self) -> None:
+        """Produkt-Steckbrief (Kurzbeschreibung, Rechtsgrundlage, Spielraum,
+        Wirkungskreis, Zielgruppe) in bestehende Produkt-Tabellen nachrüsten.
+
+        Anders als bei ``council_ergebnisrechnung`` reicht hier ALTER TABLE:
+        Der Primärschlüssel (jahr, produkt_nr) bleibt, wie er ist — es kommen
+        nur Spalten dazu. Die Werte füllt der nächste Lauf von
+        ``scripts/ingest_finanzberichte.py`` nach; bis dahin sind sie NULL und
+        die Oberfläche zeigt den Steckbrief schlicht nicht an."""
+        cols = {r[1] for r in self._conn.execute("PRAGMA table_info(council_produkte)").fetchall()}
+        with self._conn:
+            for name in ("kurzbeschreibung", "auftragsgrundlage", "beeinflussbarkeit",
+                         "beeinflussbarkeit_roh", "wirkungskreis", "zielgruppe"):
+                if name not in cols:
+                    self._conn.execute(f"ALTER TABLE council_produkte ADD COLUMN {name} TEXT")
 
     def _migrate_owner_id(self) -> None:
         """Re-key the per-recipient dedup tables from Telegram chat_id to the
@@ -3126,24 +3178,131 @@ class CouncilStore:
             self._conn.executemany(
                 "INSERT OR REPLACE INTO council_produkte (jahr, produkt_nr, produkt_name, "
                 " thh_nr, thh_name, amt, ertraege, aufwendungen, ergebnis, "
-                " quelle_label, quelle_url, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                " kurzbeschreibung, auftragsgrundlage, beeinflussbarkeit, "
+                " beeinflussbarkeit_roh, wirkungskreis, zielgruppe, "
+                " quelle_label, quelle_url, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 [(jahr, p["produkt_nr"], p["produkt_name"], p.get("thh_nr"), p.get("thh_name"),
                   p.get("amt"), p.get("ertraege"), p.get("aufwendungen"), p.get("ergebnis"),
+                  p.get("kurzbeschreibung"), p.get("auftragsgrundlage"),
+                  p.get("beeinflussbarkeit"), p.get("beeinflussbarkeit_roh"),
+                  p.get("wirkungskreis"), p.get("zielgruppe"),
                   label, url, now) for p in produkte])
         return len(produkte)
 
-    def get_produkte(self, jahr: int, thh_nr: int | None = None) -> list[dict]:
-        """Produkte eines Jahres, teuerste zuerst (nach Zuschussbedarf)."""
-        sql = ("SELECT * FROM council_produkte WHERE jahr = ?"
-               + (" AND thh_nr = ?" if thh_nr is not None else "")
-               + " ORDER BY ergebnis ASC")
-        args = (jahr, thh_nr) if thh_nr is not None else (jahr,)
+    def get_produkte(self, jahr: int, thh_nr: int | None = None,
+                     suche: str | None = None, amt: str | None = None,
+                     beeinflussbarkeit: str | None = None,
+                     limit: int | None = None) -> list[dict]:
+        """Produkte eines Jahres, teuerste zuerst (nach Zuschussbedarf).
+
+        Suche und Filter laufen bewusst HIER und nicht im Frontend: Mit dem
+        Steckbrief trägt jede Zeile mehrere hundert Zeichen Fließtext — knapp
+        400 davon über die Leitung zu schicken, damit der Browser sie filtert,
+        wäre Verschwendung. Gesucht wird über Name, Nummer, Amt und
+        Kurzbeschreibung; ``LIKE`` genügt bei dieser Menge (kein FTS nötig)."""
+        wo = ["jahr = ?"]
+        args: list = [jahr]
+        if thh_nr is not None:
+            wo.append("thh_nr = ?")
+            args.append(thh_nr)
+        if amt:
+            wo.append("amt = ?")
+            args.append(amt)
+        if beeinflussbarkeit:
+            wo.append("beeinflussbarkeit = ?")
+            args.append(beeinflussbarkeit)
+        if suche and suche.strip():
+            # Jeder Begriff muss irgendwo vorkommen (UND über die Begriffe,
+            # ODER über die Felder) — so grenzt „archiv stadt" wirklich ein.
+            for wort in suche.split()[:6]:
+                wo.append("(produkt_name LIKE ? OR produkt_nr LIKE ? OR amt LIKE ? "
+                          "OR kurzbeschreibung LIKE ?)")
+                args.extend([f"%{wort}%"] * 4)
+        sql = ("SELECT * FROM council_produkte WHERE " + " AND ".join(wo)
+               + " ORDER BY ergebnis ASC" + (" LIMIT ?" if limit else ""))
+        if limit:
+            args.append(limit)
         return [dict(r) for r in self._conn.execute(sql, args)]
+
+    def produkt(self, jahr: int, produkt_nr: str) -> dict | None:
+        """Ein Produkt samt Steckbrief — die Steckbrief-Ansicht braucht es
+        auch dann, wenn es durch Suche oder Filter gerade nicht in der Liste
+        stünde."""
+        row = self._conn.execute(
+            "SELECT * FROM council_produkte WHERE jahr = ? AND produkt_nr = ?",
+            (jahr, produkt_nr)).fetchone()
+        return dict(row) if row else None
+
+    def produkt_facetten(self, jahr: int) -> dict:
+        """Womit sich die Produktliste filtern lässt — Ämter und Spielraum-
+        Stufen mit Anzahl, plus wie viele Produkte überhaupt einen Steckbrief
+        tragen. Letzteres gehört sichtbar auf die Seite: Ein Filter, der die
+        halbe Liste verschluckt, muss sich erklären."""
+        aemter = [{"amt": r[0], "anzahl": r[1]} for r in self._conn.execute(
+            "SELECT amt, COUNT(*) FROM council_produkte WHERE jahr = ? AND amt IS NOT NULL "
+            "GROUP BY amt ORDER BY COUNT(*) DESC, amt", (jahr,))]
+        spielraum = {r[0]: r[1] for r in self._conn.execute(
+            "SELECT beeinflussbarkeit, COUNT(*) FROM council_produkte "
+            "WHERE jahr = ? AND beeinflussbarkeit IS NOT NULL "
+            "GROUP BY beeinflussbarkeit", (jahr,))}
+        felder = {}
+        for feld in ("kurzbeschreibung", "auftragsgrundlage", "beeinflussbarkeit",
+                     "wirkungskreis", "zielgruppe"):
+            felder[feld] = self._conn.execute(
+                f"SELECT COUNT(*) FROM council_produkte WHERE jahr = ? "
+                f"AND {feld} IS NOT NULL AND {feld} != ''", (jahr,)).fetchone()[0]
+        return {"aemter": aemter, "spielraum": spielraum, "mit_feld": felder}
 
     def produkte_jahre(self) -> list[int]:
         try:
             return [r[0] for r in self._conn.execute(
                 "SELECT DISTINCT jahr FROM council_produkte ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    def save_pruefbericht(self, jahr: int, feststellungen: list[dict],
+                          label: str, url: str | None) -> int:
+        """Prüfungsfeststellungen eines Schlussberichts speichern.
+
+        Der Jahrgang wird vorher geleert: Ein Bericht ist ein Dokument, und
+        ein erneuter Ingest liest dasselbe Dokument neu — Zeilen von früheren
+        Läufen stehen zu lassen hieße, alte Parser-Stände zu konservieren."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute("DELETE FROM council_pruefberichte WHERE jahr = ?", (jahr,))
+            self._conn.executemany(
+                "INSERT INTO council_pruefberichte (jahr, lfd, marke, marke_name, "
+                " marke_erlaeuterung, textziffer, abschnitt, kette, seite, text, "
+                " folgeabsatz, quelle_label, quelle_url, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                [(jahr, f["lfd"], f["marke"], f["marke_name"], f.get("marke_erlaeuterung"),
+                  f["textziffer"], f["abschnitt"], f.get("kette"), f.get("seite"),
+                  f["text"], f.get("folgeabsatz"), label, url, now)
+                 for f in feststellungen])
+        return len(feststellungen)
+
+    def get_pruefberichte(self, jahr: int | None = None) -> list[dict]:
+        """Prüfungsfeststellungen — ein Jahrgang oder alle, in Dokumentreihenfolge.
+
+        Ohne Argument alle: Die Ketten über die Jahrgänge („seit wann steht
+        das offen?") lassen sich nur aus dem Gesamtbestand bilden."""
+        try:
+            if jahr is None:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_pruefberichte ORDER BY jahr, lfd").fetchall()
+            else:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_pruefberichte WHERE jahr = ? ORDER BY lfd",
+                    (jahr,)).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [dict(r) for r in rows]
+
+    def pruefbericht_jahre(self) -> list[int]:
+        """Jahrgänge mit eingelesenem Schlussbericht (aufsteigend)."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT jahr FROM council_pruefberichte ORDER BY jahr")]
         except sqlite3.OperationalError:
             return []
 

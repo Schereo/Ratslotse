@@ -103,4 +103,22 @@ export const GLOSSARY: Record<string, string> = {
     "Der förmliche Beschluss, mit dem der Rat den Haushalt in Kraft setzt — darin stehen auch die Hebesätze für das Jahr.",
   "Doppik":
     "Die kaufmännische Buchführung der Kommunen: Sie zeigt nicht nur Zahlungen, sondern auch den Werteverzehr (etwa Abnutzung von Gebäuden).",
+  // Wörter aus den Produkt-Steckbriefen der Teilhaushaltspläne. Sie stehen dort
+  // im Verwaltungsdeutsch der Stadt; ungefiltert durchgereicht wäre die
+  // Produktseite unlesbar. Beide Wirkungskreis-Formen sind erklärt, weil die
+  // Pläne beide Schreibweisen führen („übertragend" ist ihr eigener Tippfehler).
+  "Produkt":
+    "Die kleinste Einheit des städtischen Haushalts: eine einzelne Aufgabe mit eigener Nummer, eigenem Budget und einem zuständigen Amt — zum Beispiel „Archivierung“ oder „Brand- und Katastrophenschutz“.",
+  "Auftragsgrundlage":
+    "Die Gesetze, Verträge und Satzungen, auf denen eine städtische Aufgabe beruht — die Antwort auf „Warum macht die Stadt das überhaupt?“.",
+  "Wirkungskreis":
+    "Ob die Stadt eine Aufgabe in eigener Verantwortung erledigt oder im Auftrag von Bund und Land. Das entscheidet, wer die Regeln setzt — und wer bei Streit das letzte Wort hat.",
+  "eigener Wirkungskreis":
+    "Die Stadt erledigt die Aufgabe in eigener Verantwortung. Der Rat kann über das Wie entscheiden; das Land prüft nur, ob alles rechtmäßig ist.",
+  "übertragener Wirkungskreis":
+    "Die Stadt erledigt die Aufgabe im Auftrag von Bund oder Land und ist dabei an deren Weisungen gebunden — der Rat hat hier praktisch nichts zu entscheiden.",
+  "übertragender Wirkungskreis":
+    "Schreibweise der Haushaltspläne für den übertragenen Wirkungskreis: Die Stadt erledigt die Aufgabe im Auftrag von Bund oder Land und ist an deren Weisungen gebunden.",
+  "Grad der Beeinflussbarkeit":
+    "Die Selbstauskunft der Stadt, wie viel Spielraum sie bei einer Aufgabe hat — von „niedrig“ (Kosten und Umfang stehen praktisch fest) bis „hoch“ (der Rat kann weitgehend selbst bestimmen).",
 };

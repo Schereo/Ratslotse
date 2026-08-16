@@ -11,7 +11,10 @@ Dieses Skript liest sie aus, ohne etwas herunterzuladen:
   Teilhaushalts-Ebene wird nur gespeichert, wenn ihre Summe zur
   Gesamtrechnung passt (``finanzberichte.summenprobe``).
 - **Teilhaushalts-Pläne (THH)** → ``council_produkte``: was einzelne Aufgaben
-  kosten, mit Produktnummer und Amt.
+  kosten, mit Produktnummer und Amt — dazu der Steckbrief je Produkt
+  (Kurzbeschreibung, Auftragsgrundlage, Grad der Beeinflussbarkeit,
+  Wirkungskreis, Zielgruppe). Wie viele Produkte welches Feld tragen, weist
+  der Lauf am Ende aus; die Zahl steht später so auf der Produktseite.
 
 Beide Parser verlangen eine im Dokument selbst dokumentierte Rechenprobe
 (siehe ``council/finanzberichte.py``); was sie nicht besteht, wird
@@ -169,11 +172,19 @@ def _pruefberichte(store: CouncilStore) -> dict:
     return {"pruefberichte": gefunden, "pruefberichte_ohne_text": unlesbar}
 
 
+#: Steckbrief-Felder, deren Abdeckung der Lauf ausweist. Die Zahl gehört ins
+#: Protokoll, weil sie später auf der Seite steht: „Von 377 Produkten tragen
+#: 371 eine Kurzbeschreibung" ist eine Angabe, die stimmen muss.
+_STECKBRIEF = ("kurzbeschreibung", "auftragsgrundlage", "beeinflussbarkeit",
+               "wirkungskreis", "zielgruppe")
+
+
 def _teilhaushalte(store: CouncilStore) -> dict:
     rows = store._conn.execute(
         "SELECT label, url, raw_text FROM council_anlagen "
         "WHERE label LIKE '%THH%' AND n_pages > 40 ORDER BY label").fetchall()
     je_jahr: dict[int, int] = {}
+    mit_feld: dict[str, int] = {f: 0 for f in _STECKBRIEF}
     ohne = 0
     for r in rows:
         produkte = finanzberichte.parse_teilergebnishaushalt(r["raw_text"] or "")
@@ -184,10 +195,28 @@ def _teilhaushalte(store: CouncilStore) -> dict:
             teil = [p for p in produkte if p["jahr"] == jahr]
             store.save_produkte(jahr, teil, r["label"], r["url"])
             je_jahr[jahr] = je_jahr.get(jahr, 0) + len(teil)
+            for feld in _STECKBRIEF:
+                mit_feld[feld] += sum(1 for p in teil if p.get(feld))
     for jahr in sorted(je_jahr):
         print(f"  {jahr}: {je_jahr[jahr]} Produkt-Zeilen")
+
+    # Abdeckung je Feld — gezählt wird der TABELLENSTAND, nicht die Zahl der
+    # gelesenen Zeilen: Dieselbe Produktnummer kommt in mehreren Dokumenten
+    # desselben Jahres vor und überschreibt sich, die Summe oben ist also
+    # größer als die Tabelle. Auf der Seite steht später der Tabellenstand.
+    gesamt = store._conn.execute("SELECT COUNT(*) FROM council_produkte").fetchone()[0]
+    print(f"  Steckbrief-Abdeckung ({gesamt} Produkte in der Tabelle):")
+    abdeckung: dict[str, int] = {}
+    for feld in _STECKBRIEF:
+        n = store._conn.execute(
+            f"SELECT COUNT(*) FROM council_produkte WHERE {feld} IS NOT NULL "
+            f"AND {feld} != ''").fetchone()[0]
+        abdeckung[feld] = n
+        anteil = f"{n / gesamt * 100:.1f} %" if gesamt else "–"
+        print(f"    {feld:20s} {n:>5}  ({anteil})")
     return {"dokumente": len(rows), "ohne_treffer": ohne,
-            "produkte": sum(je_jahr.values())}
+            "produkte": sum(je_jahr.values()), "in_tabelle": gesamt,
+            "steckbrief": abdeckung}
 
 
 def main() -> int:

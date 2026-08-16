@@ -17,16 +17,21 @@ welche schlicht fehlt.
 | `/haushalt/bereich?name=<slug>` | Dossier je Teilhaushalt: Brutto/Netto, Kostendeckung, Brutto-gegen-Netto-Vergleich, Entwicklung |
 | `/haushalt/einnahmen` | Alle Einnahmequellen mit Spielraum-Kodierung (frei / begrenzt / kein Einfluss) |
 | `/haushalt/steuer?art=<slug>` | Steckbrief je Einnahmeart: „Wer entscheidet was", Ist-Kurve, Hebesatz, Ein-Punkt-Überschlag |
+| `/haushalt/produkte[?nr=<produkt_nr>]` | „Was kostet eigentlich …?" — Produktsuche mit Filtern (Amt, Spielraum); `nr` öffnet den Steckbrief |
 | `/haushalt/pflicht` | Muss oder kann — Teilhaushalte nach Gestaltungsspielraum |
 | `/haushalt/labor` | Was-wäre-wenn: Hebesatz-Regler und Kürzungen, jede Bewegung in Mio., € je Einwohner und Anteil an der Lücke; dauerhaft sichtbare Gegenrechnung |
+| `/haushalt/pruefung` | Was das Rechnungsprüfungsamt beanstandet: alle Feststellungen der Schlussberichte im Wortlaut, mit Textziffer, Seite und Deeplink; dazu die Ketten über die Jahrgänge |
 
 Query-Parameter statt dynamischer Segmente, weil der Capacitor-Export die
 Slugs zur Bauzeit nicht kennt — dieselbe Konvention wie `/council/decision?id=`.
 
 ## Woher die Daten kommen
 
-Alles läuft über **einen** Endpunkt: `GET /api/council/haushalt` liefert
+Fast alles läuft über **einen** Endpunkt: `GET /api/council/haushalt` liefert
 Planjahre, Ist-Steuern, Steuerkraft und die Einwohnerzahl in einem Aufruf.
+Nur die Prüfungsfeststellungen hängen an einem eigenen
+(`GET /api/council/haushalt/pruefberichte`) — sie sind eine Viertel-Megabyte
+Prosa und haben auf Seiten, die sie nicht zeigen, nichts zu suchen.
 
 | Tabelle | Inhalt | Quelle | Ingest |
 |---|---|---|---|
@@ -37,9 +42,17 @@ Planjahre, Ist-Steuern, Steuerkraft und die Einwohnerzahl in einem Aufruf.
 | `council_ergebnisrechnung` | Ansatz, Plan **und** Ergebnis je Posten — gesamt und je Teilhaushalt, 2017–2024 | Jahresabschlüsse — **Anlagen im RIS** | `scripts/ingest_finanzberichte.py` |
 | `council_abweichungsgruende` | Warum ein Posten vom Plan abwich (Abschnitt 6.3.1), 45 Einträge | dito | dito |
 | `council_pruefbericht_quellen` | **Fundstelle** des RPA-Schlussberichts je Jahrgang (eine Zeile je Jahr) | dito | dito |
-| `council_produkte` | Produktebene: was einzelne Aufgaben kosten | Teilhaushalts-Pläne — **Anlagen im RIS** | dito |
+| `council_produkte` | Produktebene: was einzelne Aufgaben kosten — plus Steckbrief (Kurzbeschreibung, Auftragsgrundlage, Beeinflussbarkeit, Wirkungskreis, Zielgruppe) | Teilhaushalts-Pläne — **Anlagen im RIS** | dito |
+| `council_pruefberichte` | Prüfungsfeststellungen 2017–2023, eine Zeile je Randmarke | Schlussberichte des Rechnungsprüfungsamts — **Anlagen im RIS** | `scripts/ingest_pruefberichte.py` |
 
-Beide Ingests sind idempotent und laufen **nicht** als Cron — einmal jährlich
+:::note[Zwei Tabellen zu denselben Berichten]
+`council_pruefbericht_quellen` hält die **Fundstelle** des Schlussberichts
+(eine Zeile je Jahrgang, für den Verweis „geprüft → Schlussbericht"),
+`council_pruefberichte` die **einzelnen Feststellungen** daraus (eine Zeile je
+Randmarke). Zwei Ebenen, zwei Tabellen — die Namen halten sie auseinander.
+:::
+
+Alle Ingests sind idempotent und laufen **nicht** als Cron — einmal jährlich
 von Hand reicht, wenn die Stadt einen neuen Jahrgang veröffentlicht.
 
 :::caution[Plan ist nicht Ist]
@@ -157,7 +170,61 @@ gefundenen Produkte rund 82 % der geplanten Aufwendungen. Der Endpunkt
 liefert diese Quote als `abdeckung_prozent` mit, damit die Oberfläche die
 Liste nicht als Vollbild ausgeben kann.
 
-### Vier Prüfungen, und keine davon ist optional
+## Der Produkt-Steckbrief
+
+Zu jedem Produkt führen die Pläne einen Steckbrief: **Kurzbeschreibung**
+(was die Aufgabe umfasst), **Auftragsgrundlage** (die Gesetze, Satzungen und
+Verträge dahinter), **Grad der Beeinflussbarkeit**, **Wirkungskreis** und
+**Zielgruppe**. Das beantwortet die häufigste Bürgerfrage zum Haushalt — „was
+kostet eigentlich das Stadtarchiv?" — und belegt die Pflicht/Kür-Einordnung,
+die auf `/haushalt/pflicht` bisher nur geschätzt ist.
+
+Der Bestand (377 Produkte, 2018–2023): Auftragsgrundlage und Wirkungskreis
+tragen 100 %, Kurzbeschreibung, Beeinflussbarkeit und Zielgruppe je 98,4 %.
+Die sechs Lücken sind echt — „Personalzuweisung an das Jobcenter" führt den
+Plan ohne Beschreibungstext. Der Lauf von `ingest_finanzberichte.py` weist
+die Quote je Feld aus, die Seite nennt sie ebenfalls.
+
+:::caution[Die Label stehen NACH ihrem Inhalt]
+Im PDF sitzt „Kurzbeschreibung:" als Spaltenüberschrift **links neben** dem
+Absatz. Die Textextraktion schiebt sie dahinter, die Reihenfolge im Text ist
+also: Absatz — `Kurzbeschreibung:` — Rechtsgrundlagen-Absatz —
+`Auftragsgrundlage:`. Wer vorwärts liest, bekommt jedes Feld um eines
+verschoben; die Kurzbeschreibung wäre dann das Gesetz. Kurze Werte passen im
+PDF neben ihr Label und stehen deshalb **dahinter** („Grad der
+Beeinflussbarkeit: mittel"). `_STECKBRIEF_FELDER` markiert beide Fälle
+ausdrücklich, statt sie zu erraten.
+
+Zwei Folgefehler, die dabei auffielen und je einen eigenen Schutz haben:
+- **Jede Leistung trägt einen eigenen Steckbrief.** Ein Produkt zerfällt in
+  Leistungen (`P10.111023.001`) mit denselben Feldern. Der Produktblock wird
+  deshalb vor der ersten Leistungs-Überschrift abgeschnitten.
+- **Die Grunddaten-Tabelle steht mitten drin.** Ihr Label steht ausnahmsweise
+  vor ihrem Inhalt, die Tabelle liegt also zwischen `Wirkungskreis:` und
+  `Zielgruppe(n):` — ungefiltert stand eine Zahlenwüste („Einheit · Ist 2021 ·
+  Plan 2022 …") als Zielgruppe auf der Seite. Übernommen wird nur der
+  zusammenhängende Fließtext-Block unmittelbar vor dem Label.
+:::
+
+`beeinflussbarkeit` ist normalisiert (`niedrig` / `mittel` / `hoch`; die Pläne
+schreiben mal „niedrig", mal „gering", mal groß). Der Wortlaut bleibt in
+`beeinflussbarkeit_roh` erhalten — Mischformen wie „niedrig/mittel bei
+Gesundheitsförderung und Prävention" bekommen **keine** Stufe zugewiesen,
+weil jede Wahl eine Behauptung wäre; die Seite zeigt dann den Rohwert.
+
+Gesucht und gefiltert wird **serverseitig** (`q`, `amt`, `spielraum` am
+Endpunkt): Mit dem Steckbrief trägt jede Zeile mehrere hundert Zeichen
+Fließtext. `nr` holt zusätzlich ein einzelnes Produkt, damit der Steckbrief
+auch dann lädt, wenn ein Filter es aus der Liste nähme. `facetten` liefert
+Ämter und Spielraum-Stufen mit Anzahl sowie die Abdeckung je Feld.
+
+Verwaltungsdeutsch wird nicht ungefiltert durchgereicht: „übertragender
+Wirkungskreis", „Grad der Beeinflussbarkeit" und „Produkt" stehen im Glossar
+(`lib/glossary.ts`), die drei Stufen werden in `SPIELRAUM_TEXT` zu Sätzen
+übersetzt. Eingefärbt wird nichts — ein teures Produkt ist keine schlechte
+Note, und „kaum Spielraum" kein Missstand.
+
+## Vier Prüfungen, und keine davon ist optional
 
 Aus PDF-Text extrahierte Tabellen verschmelzen Zahlen („355.188334.704") und
 kleben Seitenzahlen an Werte. Ein Jahrgang kommt deshalb nur in die Datenbank,
@@ -202,6 +269,87 @@ rechtsfähige Stiftungen" trifft den **ursprünglichen** Ansatz auf den Cent —
 2020 also 588.539.108,34 € (vor Nachtrag), nicht die 591,3 Mio. € des
 fortgeschriebenen Plans. Genau dafür gibt es die beiden Felder.
 
+## Die Prüfung: was das Rechnungsprüfungsamt beanstandet
+
+Der Jahresabschluss ist die Abrechnung — der **Schlussbericht des
+Rechnungsprüfungsamts** ist die einzige regelmäßige, förmliche Kontrolle
+davon durch eine Stelle, die dem Rat berichtet und nicht der
+Verwaltungsspitze. Auch er hängt als PDF an einer Ratsvorlage und wird dort
+nie wieder gelesen.
+
+Greifbar ist er, weil er seine Befunde mit **Randmarken** auszeichnet und
+deren Bedeutung selbst in den Vorbemerkungen erklärt: `B` Beanstandung,
+`WB` Wiederholte Beanstandung, `H` Hinweis, `K` Korrektur/Klärung. Für
+2017–2023 stehen so **257 Feststellungen** im Bestand — 166 Hinweise,
+42 Beanstandungen, 37 wiederholte, 12 Korrekturen.
+
+Jede trägt Jahr, Textziffer, Seite und einen Deeplink auf das Quelldokument.
+Die Marken werden auf der Seite **erklärt, nicht bewertet**, und zwar mit dem
+Wortlaut aus der Legende des jeweiligen Jahrgangs — die ändert sich (der
+Bericht 2023 führt kein `K` mehr). Bewertungsfarben gibt es keine: Rot für
+„Beanstandung" machte aus einer Aufbereitung eine Anklage, mit einem Mittel,
+das dem Bericht selbst fremd ist.
+
+:::note[Der Konsistenz-Check statt einer Rechenprobe]
+Prosa lässt sich nicht nachrechnen — das Dokument liefert aber eine eigene
+Klammer, und `council/pruefberichte.py` macht sie zum Pflicht-Gate:
+
+1. Es muss eine Legende geben, und **nur die dort erklärten Marken** zählen.
+2. Jede Marke muss unter einer **Textziffer aus dem Inhaltsverzeichnis**
+   stehen (das Verzeichnis überschreibt seine erste Spalte selbst mit
+   „Textziffer").
+3. Der Textblock endet an der nächsten Marke oder der nächsten
+   Abschnittsüberschrift — nie „so viele Zeichen".
+
+Was die Klammer nicht erfüllt, wird verworfen und **gezählt**. Der Ingest
+weist die Zahl je Jahrgang aus; sie ist derzeit 0 und bleibt es, solange das
+Dokumentformat hält. Steigt sie, hat sich etwas geändert — dann gehört ein
+Blick in den Bericht, keine gelockerte Regel.
+:::
+
+Zwei Fallen, die dabei teuer waren und als Test festgehalten sind:
+
+- **Die Legende schreibt die Marken genau wie der Fließtext** (` B  Beanstandung`).
+  Wer vor dem Berichtsanfang zu zählen beginnt, zählt für 2019–2023 jede Marke
+  einmal zu oft.
+- **Am Berichtsende steht der Name der Amtsleitung in gesperrter Schrift**
+  („K R U P K E"). Mit nur einem Leerzeichen hinter der Marke ginge er als
+  `K`-Marke durch. Deshalb verlangt das Muster **zwei** Leerzeichen — den
+  Abstand der Randspalte.
+
+**Zuordnung und Dedup.** Welcher Bericht zu welchem Jahresabschluss gehört,
+entscheidet der **Textanfang**, nicht das Label: „Schlussbericht JA 2017"
+(`document_id` 192039) ist der Bericht zum Eigenbetrieb Gebäudewirtschaft,
+und jedes Jahr kommen die formgleichen Berichte zu Klävemann-Stiftung, VOSS,
+AWB und EGH dazu. Der Titel steht im Extrakt über vier Zeilen — ein
+`LIKE 'Schlussbericht des …'` in SQL findet deshalb **keinen einzigen**
+Bericht; erst nach Whitespace-Normalisierung greift der Vergleich.
+
+**Die Ketten.** Eine „wiederholte Beanstandung" sagt von selbst, dass ein
+Mangel schon einmal dastand — sie sagt nur nicht, seit wann. Über den
+Abschnittstitel (ohne Klammerzusätze, weil „Internes Kontrollsystem (IKS)" ab
+2020 nur noch „Internes Kontrollsystem" heißt) finden dieselben Sachen über
+die Jahrgänge zusammen. Die Textziffer taugt dafür **nicht**, sie verschiebt
+sich. Längste Kette: **Plan-Ist-Vergleich**, in allen sieben geprüften Jahren
+als `WB` ausgewiesen — zuletzt mit dem Satz „Dies widerspricht dem Grundsatz
+der Haushaltswahrheit". Deshalb steht der Hinweis auf die Prüfung auch auf
+`/haushalt/plan-ist`, im Wortlaut und mit Link.
+
+**Was daneben steht.** Der Absatz, der im Bericht direkt auf eine Marke
+folgt, wird als `folgeabsatz` getrennt geführt und getrennt angezeigt. Dort
+steht oft die Gegenseite („Die Verwaltung hat hierzu erklärt, dass eine
+entsprechende Umsetzung bis 31.12.2024 erfolgen soll."). Getrennt, weil sonst
+als Beanstandung gälte, was der Bericht gar nicht so gemeint hat — 97 der 257
+Feststellungen haben einen, 23 davon mit Bezug auf die Verwaltung.
+
+Eine **regelmäßige** Rückmeldung der Verwaltung gibt es nicht: Im ganzen
+Bestand liegen dazu drei Dokumente — die „Nacharbeiten-Übersicht" zum
+Prüfbericht 2020 (`council_anlagen` 243109, Vorlage 21/0944) und je eine
+Stellungnahme des Oberbürgermeisters zu den Berichten 2019 und 2021. Die
+Nacharbeiten-Übersicht war beim Bau die beste Gegenprobe: Sie nennt zu jeder
+Feststellung Ziffer **und** Seite, und beide stimmen mit dem Geparsten
+überein (3.1.1 → Seite 18, 3.1.3 → 20, 3.2 → 22).
+
 ## Woran das Labor seine Zahlen misst
 
 Ein Regler, der eine Zahl verändert, sagt nichts darüber, ob das viel ist.
@@ -237,6 +385,12 @@ Der Bereich zeigt lieber eine Lücke als eine Schätzung:
 
 - **Jahresabschlüsse 2017, 2018, 2020** — abweichendes Tabellenlayout, von
   den Parser-Prüfsummen zurückgewiesen.
+- **Der Schlussbericht 2024** — sein PDF bringt keine Zeichenzuordnung mit,
+  der Volltext besteht aus Glyphen-Nummern (`/12 /8 /6 □ /13 …`) und läuft in
+  die 400.000-Zeichen-Kappung. Eine zweite Kopie gibt es nicht; ein neuer
+  Versuch bräuchte OCR. Der Jahrgang scheitert schon an der
+  Textanfang-Erkennung, ganz ohne Sonderfall — und die Seite sagt das, statt
+  es zu überspielen.
 - **Vollständige Produktebene** — für einige Teilhaushalte fehlen auslesbare
   Dokumente; die Abdeckung schwankt je Jahr zwischen 63 % und 82 %.
 - Der Open-Data-Datensatz 1102 enthält abweichende Aufwendungen (2024: 764,7

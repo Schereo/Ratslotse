@@ -13,18 +13,63 @@
 import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ChevronRight, ExternalLink } from "lucide-react";
+import { ArrowRight, ChevronRight, ExternalLink } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
 import {
   ErgebnisPosten, HaushaltDaten, PLAN_ART_LABEL, PlanArt,
   deMio, grundZuPosten, mio, pruefberichtZuJahr,
 } from "@/lib/haushalt";
+import { PruefberichtDaten, wiederholungsketten } from "@/lib/haushalt-pruefung";
 import { Warum } from "@/components/haushalt/warum";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
-import { Hantel } from "@/components/haushalt/hantel";
+import { MarkePille } from "@/components/haushalt/marke";
+import { Hantel, HantelMassstab } from "@/components/haushalt/hantel";
 import { cn } from "@/lib/utils";
+
+/** Hinweis auf die Prüfung — hier und nirgends sonst, weil das
+ *  Rechnungsprüfungsamt genau diesen Vergleich seit Jahren beanstandet:
+ *  „Dies widerspricht dem Grundsatz der Haushaltswahrheit."
+ *
+ *  Die Karte behauptet das nicht selbst, sondern zeigt den Wortlaut des
+ *  jüngsten Befundes zu diesem Abschnitt — und verlinkt den Rest. Ohne Daten
+ *  (Feature noch nicht eingelesen) erscheint sie gar nicht. */
+function PruefungsHinweis() {
+  // Nur die wiederholten Beanstandungen: Der volle Bestand ist rund 250 kB
+  // Prosa und wird auf dieser Seite nirgends angezeigt.
+  const { data } = useFetch<PruefberichtDaten>("/council/haushalt/pruefberichte?marke=WB");
+  const kette = useMemo(() => {
+    if (!data?.feststellungen?.length) return null;
+    return wiederholungsketten(data.feststellungen)
+      .find((k) => k.schluessel.includes("planistvergleich")) ?? null;
+  }, [data]);
+  if (!kette) return null;
+  // Ausdrücklich die jüngste WIEDERHOLTE Beanstandung, nicht einfach den
+  // letzten Eintrag: Der Abschnitt trägt in denselben Jahren auch Hinweise.
+  const juengste = [...kette.eintraege].reverse().find((f) => f.marke === "WB");
+  if (!juengste) return null;
+
+  return (
+    <Link href="/haushalt/pruefung"
+      className="group flex flex-col gap-2 rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/40">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <MarkePille marke={juengste.marke} name={juengste.marke_name} klein />
+        <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+          Rechnungsprüfungsamt · Schlussbericht {juengste.jahr} · Textziffer {juengste.textziffer}
+        </span>
+      </div>
+      <p className="border-l-2 border-border pl-3 text-[13.5px] leading-relaxed text-foreground/90">
+        {juengste.text}
+      </p>
+      <span className="flex items-center gap-1 text-[12.5px] font-semibold text-primary">
+        In {kette.jahre.length} von {data?.jahre.length} geprüften Jahren als wiederholte
+        Beanstandung ausgewiesen — alle Feststellungen ansehen
+        <ArrowRight size={14} strokeWidth={2} className="transition-transform group-hover:translate-x-0.5" />
+      </span>
+    </Link>
+  );
+}
 
 type Bereich = {
   nr: number; name: string;
@@ -37,6 +82,7 @@ function PlanIstInner() {
   const gewaehltesJahr = Number(useSearchParams().get("jahr")) || null;
   const { data, loading } = useFetch<HaushaltDaten>("/council/haushalt");
   const [zahlenOffen, setZahlenOffen] = useState(false);
+  const [massstab, setMassstab] = useState<HantelMassstab>("prozent");
 
   const jahre = data?.plan_ist_jahre ?? [];
   const jahr = gewaehltesJahr && jahre.includes(gewaehltesJahr) ? gewaehltesJahr : jahre.at(-1) ?? null;
@@ -62,7 +108,12 @@ function PlanIstInner() {
         aufwPlan: mio(ta?.plan), aufwIst: mio(ta?.ergebnis),
         ertrPlan: mio(te?.plan), ertrIst: mio(te?.ergebnis),
       };
-    }).sort((x, y) => (y.aufwPlan ?? 0) - (x.aufwPlan ?? 0));
+    });
+    type Aufw = { aufwPlan: number | null; aufwIst: number | null };
+    const abw = (b: Aufw) => (b.aufwIst ?? 0) - (b.aufwPlan ?? 0);
+    bereiche.sort((x, y) => massstab === "prozent"
+      ? Math.abs(abw(y)) / Math.abs(y.aufwPlan || 1) - Math.abs(abw(x)) / Math.abs(x.aufwPlan || 1)
+      : Math.abs(abw(y)) - Math.abs(abw(x)));
 
     // Woran es lag: die Ertragsarten (Posten 1–11) mit der größten Abweichung.
     const arten = g
@@ -86,7 +137,7 @@ function PlanIstInner() {
         ? { ertr: mio(e?.ansatz), aufw: mio(a?.ansatz) }
         : null,
     };
-  }, [data, jahr]);
+  }, [data, jahr, massstab]);
 
   if (loading || !data) {
     return <div className="py-16 text-center text-sm text-muted-foreground">Wird geladen …</div>;
@@ -104,7 +155,6 @@ function PlanIstInner() {
   const aufwDiff = (gesamt.aufwIst ?? 0) - (gesamt.aufwPlan ?? 0);
   const saldoPlan = (gesamt.ertrPlan ?? 0) - (gesamt.aufwPlan ?? 0);
   const saldoIst = (gesamt.ertrIst ?? 0) - (gesamt.aufwIst ?? 0);
-  const maxWert = Math.max(...bereiche.flatMap((b) => [b.aufwPlan ?? 0, b.aufwIst ?? 0]));
   const quellen: QuellenSchluessel[] = ["jahresabschluss", "plan"];
   const pruefbericht = pruefberichtZuJahr(data, jahr);
   // Die Einnahmearten tragen ihre Erläuterung schon inline; hier der Rest.
@@ -220,11 +270,38 @@ function PlanIstInner() {
               Ausgaben je Bereich · {jahr}
             </p>
             <span className="font-mono text-[10px] uppercase text-muted-foreground">
-              {bereiche.length} Teilhaushalte · Mio. Euro
+              {bereiche.length} Teilhaushalte
             </span>
           </div>
+
+          {/* Umschalter wie brutto/netto auf der Bereichsseite: Der Wechsel
+              dreht die Reihenfolge, und darin steckt die Aussage. */}
+          <div className="mb-3 flex flex-col gap-1.5">
+            <div className="scrollbar-none -mx-1 flex items-center gap-1 overflow-x-auto px-1 py-0.5">
+              <div className="flex w-max flex-none items-center gap-1 rounded-full border border-border bg-muted/40 p-1">
+                {([
+                  ["prozent", "Abweichung in Prozent"],
+                  ["betrag", "Abweichung in Millionen"],
+                ] as [HantelMassstab, string][]).map(([wert, text]) => (
+                  <button key={wert} type="button" onClick={() => setMassstab(wert)}
+                    className={cn("whitespace-nowrap rounded-full px-3 py-1 text-[12.5px]",
+                      massstab === wert
+                        ? "bg-card font-semibold shadow-sm"
+                        : "text-foreground/70 hover:text-foreground")}>
+                    {text}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <p className="text-[11.5px] leading-relaxed text-muted-foreground">
+              {massstab === "prozent"
+                ? "Gemessen am eigenen Plan — so lässt sich ein Bereich von 231 Mio. mit einem von 6 Mio. vergleichen. Vorn steht, wessen Plan am weitesten danebenlag."
+                : "Gemessen in Euro — vorn steht, wo am meisten Geld anders floss als geplant. Kleine Bereiche verschwinden dabei fast."}
+            </p>
+          </div>
+
           <Hantel
-            maxWert={maxWert}
+            massstab={massstab}
             zeilen={bereiche.map((b) => ({ label: b.name, plan: b.aufwPlan, ist: b.aufwIst }))}
           />
         </div>
@@ -304,6 +381,10 @@ function PlanIstInner() {
           </p>
         </div>
       )}
+
+      {/* Wer den Plan gegen das Ist gelesen hat, gehört als Nächstes hierhin:
+          Genau diesen Vergleich beanstandet das Rechnungsprüfungsamt. */}
+      <PruefungsHinweis />
 
       {/* Nicht-Chart-Entsprechung (H-17 als Tabelle) */}
       <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">

@@ -25,6 +25,50 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   „21,5 Mio. weniger ausgegeben als geplant" und „5,7 Mio. mehr". Beide Werte
   stehen jetzt in der Datenbank, die Seite schreibt die Bezugsgröße an, und in
   der Mehrjahres-Kurve tragen die betroffenen Jahre eine Fußnote. (#PR)
+- **Das Flussbild: woher das Geld kommt, wohin es geht — und was dazwischen
+  liegt.** Auf der Haushalts-Übersicht steht jetzt ein Bild, das links die
+  Einnahmearten (Steuern, Zuwendungen, Gebühren …) und rechts die Bereiche
+  zeigt. Dazwischen liegt ein einziger Knoten: die Stadtkasse. Kein Band führt
+  von links nach rechts durch, und das ist der Punkt — im kommunalen Haushalt
+  gehört keine Einnahme zu einer bestimmten Ausgabe, alles fließt erst
+  zusammen und wird dann verteilt. Bandbreiten links und rechts liegen auf
+  derselben Skala; ein Minus erscheint als eigenes Band „aus dem Ersparten",
+  statt die kürzere Seite auf Länge zu ziehen. Kleine Posten sammeln sich in
+  „weitere" und lassen sich aufklappen, alle Zahlen stehen unter „Zahlen
+  anzeigen". Auf dem Handy werden daraus zwei Listen statt geschrumpfter
+  Bänder. Für Jahre ohne Jahresabschluss sagt das Bild, welches Jahr es
+  stattdessen zeigt — und wenn die Einzelposten die ausgewiesene Summe nicht
+  tragen, erscheint gar keine Grafik, sondern der Hinweis darauf. (#505)
+- **„Was kostet eigentlich …?" — der Haushalt, aufgeschlüsselt bis zur
+  einzelnen Aufgabe.** Die häufigste Frage zum Haushalt ist keine nach
+  Teilhaushalten, sondern nach einer konkreten Sache: dem Stadtarchiv, der
+  Feuerwehr, dem Schwimmbad. Die neue Seite durchsucht 63 Aufgaben des
+  Haushaltsjahres 2023 nach Name, Nummer, Amt und Beschreibung, filtert nach
+  Amt und Spielraum und öffnet zu jeder einen Steckbrief: was sie kostet, was
+  dahintersteckt, für wen sie da ist — und auf welchen Gesetzen sie beruht.
+  Die Archivierung etwa kostet die Stadt 421 Tsd. € im Jahr und beruht unter
+  anderem auf dem Bundesarchivgesetz und einem Vertrag mit dem Landesarchiv.
+  Neu ist dabei vor allem die Selbstauskunft der Stadt, wie viel Spielraum sie
+  bei einer Aufgabe überhaupt hat: Bei 35 der 63 Aufgaben ist es „kaum" — das
+  macht aus einer Zahl eine Antwort darauf, worüber der Rat streiten kann und
+  worüber nicht. Alle Angaben stammen wörtlich aus den Teilhaushaltsplänen;
+  wo der Plan ein Feld leer lässt, steht auch bei uns nichts. (#504)
+- **„Was das Rechnungsprüfungsamt beanstandet" — die Prüfung des Haushalts,
+  zum ersten Mal lesbar.** Jeder Jahresabschluss der Stadt wird geprüft, und
+  zwar von einer Stelle, die dem Rat berichtet und nicht der
+  Verwaltungsspitze. Ihre Schlussberichte hängen als PDF an einer Ratsvorlage
+  und werden dort nie wieder gelesen. Die neue Seite `/haushalt/pruefung`
+  führt ihre 257 Feststellungen aus den Jahrgängen 2017–2023 einzeln auf — im
+  Wortlaut, mit Textziffer, Seite und Deeplink ins Originaldokument. Die
+  Randmarken des Berichts werden erklärt, nicht bewertet: Die große Mehrheit
+  (166) sind Hinweise, 42 sind Beanstandungen, 37 wiederholte. Ein eigener
+  Block zeigt, was über Jahre offen blieb — den Plan-Ist-Vergleich etwa
+  beanstandet das Amt in allen sieben geprüften Jahren, zuletzt mit dem Satz
+  „Dies widerspricht dem Grundsatz der Haushaltswahrheit". Wo die Verwaltung
+  im Bericht direkt geantwortet hat, steht die Antwort daneben. Keine
+  Bewertungsfarben, wie überall im Haushalts-Bereich. Für 2024 fehlt der
+  Bericht: Sein PDF bringt keine Zeichenzuordnung mit, und eine zweite Kopie
+  gibt es nicht — das steht auf der Seite, statt überspielt zu werden. (#509)
 - **„Geplant und geworden" — was aus dem Haushalt wirklich wurde.** Ein
   Haushalt ist ein Plan; was am Jahresende zusammenkam, stand bisher nirgends.
   Die neue Seite stellt beides nebeneinander — für die Stadt insgesamt und für
@@ -36,6 +80,23 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   dass etwas nicht gebaut wurde. (#502)
 
 ### Behoben
+- **„Geplant und geworden": Die kleinen Bereiche waren nicht zu sehen.** Auch
+  als Euro-Strecke blieben fünf der zwölf Bereiche kürzer als zwei Prozent der
+  Breite — zwischen −0,7 und +20,5 Mio. liegt zu viel. Die Grafik misst jetzt
+  wahlweise in Prozent des jeweiligen Plans; damit wird die mittlere Strecke
+  fünfmal so lang und ein Bereich von 231 Mio. mit einem von 6 Mio.
+  vergleichbar. Der Umschalter dreht dabei die Reihenfolge: nach Euro steht
+  vorn, wo am meisten Geld anders floss, nach Prozent, wessen Plan am
+  weitesten danebenlag. (#507)
+- **„Geplant und geworden": Die Abweichung war nicht zu sehen.** Plan und
+  Ergebnis lagen auf einer Skala, die bei null begann — bei einem Bereich mit
+  6,2 Mio. geplant und 6,3 tatsächlich fielen beide Punkte aufeinander. Die
+  Achse misst jetzt den Abstand zum Plan statt der Höhe des Betrags: Der
+  Nullpunkt ist „wie geplant", die Strecke zeigt, wie weit es davon abwich.
+  Dazu steht die Abweichung auch in Prozent, damit ein großer und ein kleiner
+  Bereich vergleichbar sind. Die Beträge selbst stehen unverändert daneben.
+  (#506)
+
 - **Kostendeckungsgrad über 100 % wurde falsch erklärt.** Bei „Finanzmanagement
   und Recht" — dort verbucht die Stadt ihre Steuern — stand unter dem Wert von
   518 %, „der Rest" komme aus Steuern und Zuweisungen. Einen Rest gibt es dort

@@ -1,5 +1,5 @@
-// Wegweiser zu den Vertiefungsseiten (Einnahmen, Pflicht/Kür, Labor,
-// Plan gegen Ist).
+// Wegweiser zu den Vertiefungsseiten (Einnahmen, Produkte, Pflicht/Kür,
+// Labor, Plan gegen Ist, Prüfung).
 //
 // Die drei Karten standen als reine Textkacheln zwischen zwei großen
 // Diagramm-Panels und gingen dort unter (Tim, 16.08.). Sie sind aber der
@@ -9,7 +9,9 @@
 // dem Minus vorbehalten.
 
 import Link from "next/link";
-import { ArrowRight, Coins, GitCompareArrows, Scale, SlidersHorizontal } from "lucide-react";
+import {
+  ArrowRight, Coins, GitCompareArrows, Receipt, Scale, SearchCheck, SlidersHorizontal,
+} from "lucide-react";
 
 const ZIELE = [
   {
@@ -17,6 +19,12 @@ const ZIELE = [
     Icon: Coins,
     titel: "Woher kommt das Geld?",
     text: "Alle Einnahmequellen — und bei welchen der Rat überhaupt etwas zu entscheiden hat.",
+  },
+  {
+    href: "/haushalt/produkte",
+    Icon: Receipt,
+    titel: "Was kostet eigentlich …?",
+    text: "Archiv, Feuerwehr, Schwimmbad: einzelne Aufgaben mit Kosten, Auftrag und Spielraum.",
   },
   {
     href: "/haushalt/pflicht",
@@ -36,6 +44,12 @@ const ZIELE = [
     titel: "Geplant und geworden",
     text: "Was am Jahresende wirklich zusammenkam — aus den Jahresabschlüssen.",
   },
+  {
+    href: "/haushalt/pruefung",
+    Icon: SearchCheck,
+    titel: "Die Prüfung",
+    text: "Was das Rechnungsprüfungsamt an den Abschlüssen beanstandet — im Wortlaut.",
+  },
 ];
 
 export function Wegweiser() {
@@ -44,7 +58,12 @@ export function Wegweiser() {
       <p className="mb-2.5 font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
         Tiefer einsteigen
       </p>
-      <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Sechs Karten: zwei/drei — jede Stufe geht glatt auf. Bei
+          `lg:grid-cols-4` oder `xl:grid-cols-5` bliebe die letzte Zeile
+          angebrochen, und eine einzelne Karte neben viel Leerfläche liest
+          sich wie ein Nachtrag. */}
+      <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+
         {ZIELE.map(({ href, Icon, titel, text }) => (
           <Link key={href} href={href}
             className="group flex items-start gap-3.5 rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/40 sm:flex-col sm:gap-0">

@@ -262,22 +262,83 @@ def zahl_der_woche(
 def haushalt_produkte(
     jahr: int,
     thh: int | None = None,
+    q: str | None = None,
+    amt: str | None = None,
+    spielraum: str | None = None,
+    nr: str | None = None,
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
 ) -> dict:
-    """Produktebene eines Haushaltsjahres — was einzelne Aufgaben kosten.
+    """Produktebene eines Haushaltsjahres — was einzelne Aufgaben kosten,
+    samt Steckbrief (Kurzbeschreibung, Rechtsgrundlage, Spielraum,
+    Wirkungskreis, Zielgruppe) aus den Teilhaushalts-Plänen.
 
     Aus den Teilhaushalts-Plänen des Ratsinformationssystems. Die Abdeckung
     ist unvollständig (nicht jeder Teilhaushalt liegt für jedes Jahr als
     auslesbares Dokument vor); ``abdeckung_prozent`` sagt, wie viel der
     geplanten Aufwendungen die gefundenen Produkte erklären — damit die
-    Oberfläche das nicht als Vollbild ausgeben kann."""
-    produkte = store.get_produkte(jahr, thh)
+    Oberfläche das nicht als Vollbild ausgeben kann.
+
+    ``q``/``amt``/``spielraum`` filtern **serverseitig**: Mit dem Steckbrief
+    trägt jede der knapp 400 Zeilen mehrere hundert Zeichen Fließtext, die
+    niemand im Browser sortieren muss. ``nr`` holt zusätzlich ein einzelnes
+    Produkt — die Steckbrief-Ansicht braucht es auch dann, wenn der gerade
+    gesetzte Filter es aus der Liste nähme.
+
+    ``facetten`` liefert die Filterwerte mit Anzahl und dazu, wie viele
+    Produkte überhaupt welches Steckbrief-Feld tragen: Die Seite weist die
+    Lücke aus, statt sie zu verschweigen."""
+    produkte = store.get_produkte(jahr, thh, suche=q, amt=amt,
+                                  beeinflussbarkeit=spielraum)
     summe = sum(p["aufwendungen"] or 0 for p in store.get_produkte(jahr))
     plan = next((z for z in store.get_haushalt(jahr) if z["is_summe"]), None)
     quote = round(summe / plan["aufwendungen"] * 100, 1) if plan and plan["aufwendungen"] else None
     return {"jahr": jahr, "produkte": produkte, "abdeckung_prozent": quote,
-            "plan_aufwendungen": plan["aufwendungen"] if plan else None}
+            "plan_aufwendungen": plan["aufwendungen"] if plan else None,
+            "treffer": len(produkte),
+            "facetten": store.produkt_facetten(jahr),
+            "produkt": store.produkt(jahr, nr) if nr else None}
+
+
+@router.get("/haushalt/pruefberichte")
+def haushalt_pruefberichte(
+    marke: str | None = Query(None, pattern="^(B|WB|H|K)$"),
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Prüfungsfeststellungen des Rechnungsprüfungsamts, alle Jahrgänge.
+
+    Bewusst alles auf einmal statt je Jahr: Die Aussage dieses Bestands liegt
+    nicht im einzelnen Jahrgang, sondern in der Wiederholung — eine
+    „Wiederholte Beanstandung" ist erst dann etwas wert, wenn daneben steht,
+    seit wann sie dort steht. Dafür braucht die Seite alle Jahre gleichzeitig.
+
+    - ``feststellungen``: eine Zeile je Randmarke, mit Textziffer, Seite und
+      Deeplink auf das Quelldokument,
+    - ``legende``: die Bedeutung der Marken, wie der Bericht sie selbst
+      erklärt (jüngster Jahrgang, der die Marke noch führt),
+    - ``ohne_bericht``: Jahre, für die ein Jahresabschluss ausgelesen ist, ein
+      Schlussbericht aber nicht — die Lücke gehört sichtbar, nicht kaschiert.
+
+    ``marke`` grenzt auf eine Randmarke ein. Gedacht für den Hinweis auf
+    ``/haushalt/plan-ist``, der nur die Kette der wiederholten Beanstandungen
+    braucht: Der volle Bestand ist eine Viertel-Megabyte Prosa und hat auf
+    einer Seite nichts zu suchen, die ihn gar nicht anzeigt. ``jahre`` und
+    ``legende`` bleiben dabei die des Gesamtbestands — sonst stünde in der
+    Fußzeile eine Jahresliste, die vom Filter abhängt.
+    """
+    zeilen = store.get_pruefberichte()
+    jahre = store.pruefbericht_jahre()
+    legende: dict[str, dict] = {}
+    for z in zeilen:  # aufsteigend sortiert — der letzte Eintrag gewinnt
+        legende[z["marke"]] = {"name": z["marke_name"],
+                               "erlaeuterung": z["marke_erlaeuterung"]}
+    return {
+        "jahre": jahre,
+        "legende": legende,
+        "feststellungen": [z for z in zeilen if marke is None or z["marke"] == marke],
+        "ohne_bericht": [j for j in store.ergebnisrechnung_jahre() if j not in jahre],
+    }
 
 
 @router.get("/haushalt")

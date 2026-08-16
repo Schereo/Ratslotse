@@ -61,17 +61,64 @@ export type Pruefbericht = {
 };
 
 /** Produktebene aus den Teilhaushalts-Plänen (#500) — was einzelne Aufgaben
- *  kosten. `ergebnis` ist negativ = Zuschussbedarf. */
+ *  kosten. `ergebnis` ist negativ = Zuschussbedarf.
+ *
+ *  Dazu der Steckbrief, den die Pläne zu jedem Produkt führen: was die Aufgabe
+ *  umfasst, worauf sie beruht, wie viel Spielraum die Stadt bei ihr hat. Alle
+ *  Steckbrief-Felder sind optional — nicht jedes Produkt trägt jedes Feld, und
+ *  eine Lücke wird gezeigt, nicht gefüllt. */
+export type Spielraum = "niedrig" | "mittel" | "hoch";
+
 export type Produkt = {
   jahr: number; produkt_nr: string; produkt_name: string;
   thh_nr: number | null; thh_name: string | null; amt: string | null;
   ertraege: number | null; aufwendungen: number | null; ergebnis: number | null;
+  kurzbeschreibung?: string | null;
+  /** Die Rechtsgrundlagen, im Wortlaut des Plans. */
+  auftragsgrundlage?: string | null;
+  /** Normalisiert. Der Plan schreibt mal „niedrig", mal „gering". */
+  beeinflussbarkeit?: Spielraum | null;
+  /** Der Wortlaut des Plans — steht neben der normalisierten Stufe, damit
+   *  Mischformen („niedrig/mittel bei Prävention") nicht verschwinden. */
+  beeinflussbarkeit_roh?: string | null;
+  wirkungskreis?: string | null;
+  zielgruppe?: string | null;
   quelle_label: string | null; quelle_url: string | null;
 };
 
 export type ProdukteAntwort = {
-  jahr: number; produkte: Produkt[];
+  jahr: number; produkte: Produkt[]; treffer?: number;
   abdeckung_prozent: number | null; plan_aufwendungen: number | null;
+  /** Filterwerte mit Anzahl + wie viele Produkte welches Feld tragen. */
+  facetten?: {
+    aemter: { amt: string; anzahl: number }[];
+    spielraum: Partial<Record<Spielraum, number>>;
+    mit_feld: Record<string, number>;
+  };
+  /** Das per `?nr=` angeforderte Produkt — auch wenn ein Filter es aus der
+   *  Liste nähme. */
+  produkt?: Produkt | null;
+};
+
+/** Wie die Stadt den Spielraum selbst benennt, in Alltagssprache übersetzt.
+ *  „Grad der Beeinflussbarkeit: niedrig" heißt: Die Stadt kann hier kaum etwas
+ *  ändern — nicht, dass die Aufgabe unwichtig wäre. */
+export const SPIELRAUM_TEXT: Record<Spielraum, { kurz: string; lang: string }> = {
+  niedrig: {
+    kurz: "kaum Spielraum",
+    lang: "Die Stadt sieht bei dieser Aufgabe kaum Spielraum: Was sie kostet, "
+      + "bestimmen im Wesentlichen Gesetze und Fallzahlen, nicht der Rat.",
+  },
+  mittel: {
+    kurz: "etwas Spielraum",
+    lang: "Die Stadt sieht hier einen mittleren Spielraum — über das Wie lässt "
+      + "sich entscheiden, über das Ob meist nicht.",
+  },
+  hoch: {
+    kurz: "viel Spielraum",
+    lang: "Die Stadt sieht hier viel Spielraum: Umfang und Zuschnitt dieser "
+      + "Aufgabe kann der Rat weitgehend selbst bestimmen.",
+  },
 };
 
 export type HaushaltDaten = {
@@ -165,6 +212,217 @@ export function gruendeFuerBereich(
     .sort((a, b) => Math.abs(b.delta_mio ?? 0) - Math.abs(a.delta_mio ?? 0));
 }
 
+// --- Flussbild: Herkunft → ein Topf → Verwendung (Design H-18) -------------
+//
+// Kein klassisches Sankey. Ein durchgehendes Band von „Gewerbesteuer" nach
+// „Soziales" behauptete eine Zweckbindung, die der kommunale Haushalt nicht
+// kennt: Alle Einnahmen finanzieren gemeinsam alle Ausgaben. Deshalb laufen
+// hier ALLE Bänder in EINEN Knoten und von dort neu heraus — dass alles durch
+// einen Topf läuft, ist die Aussage des Bildes.
+
+/** Kurznamen der Ertragsarten für die Grafik — redaktionell, nah am amtlichen
+ *  Begriff und ohne Deutung. Die Langfassung steht in der Tabelle und im
+ *  aria-Label; wo kein Kurzname gepflegt ist, gilt die Langfassung. */
+export const ERTRAGSART_KURZ: Record<number, string> = {
+  1: "Steuern",
+  2: "Zuwendungen und Umlagen",
+  3: "Auflösung von Sonderposten",
+  4: "Transfererträge",
+  5: "Gebühren und Beiträge",
+  6: "privatrechtliche Entgelte",
+  7: "Kostenerstattungen",
+  8: "Zinsen",
+  9: "Eigenleistungen",
+  10: "Bestandsveränderungen",
+  11: "sonstige Erträge",
+};
+
+export type FlussBand = {
+  id: string;
+  /** Kurzform für die Grafik. */
+  label: string;
+  /** Amtliche Bezeichnung — Tabelle, Titel, aria. */
+  lang: string;
+  /** Betrag in EURO (nicht Mio.): Sämtliche Summen und die Probe rechnen mit
+   *  Rohwerten, sonst driftet der Vergleich um bis zu 0,1 je Posten. */
+  wert: number;
+  art: "posten" | "rest" | "ausgleich";
+};
+
+export type FlussSeite = {
+  /** Absteigend nach Betrag; „rest" und „ausgleich" stehen immer hinten. */
+  baender: FlussBand[];
+  /** Die ausgewiesene Summenzeile (Posten 12 bzw. 20) in Euro. */
+  gesamt: number;
+  /** Summe der Einzelposten in Euro — ohne rest/ausgleich. */
+  teile: number;
+};
+
+export type FlussDaten = {
+  jahr: number;
+  stand: "plan" | "ist";
+  herkunft: FlussSeite;
+  verwendung: FlussSeite;
+  /** Gemeinsame Achse beider Seiten in Euro — die größere der beiden Summen. */
+  skala: number;
+  /** Erträge − Aufwendungen in Euro. */
+  saldo: number;
+  /** Summenprobe (Geometrie): Σ der gezeichneten Bänder je Seite. */
+  summeLinks: number;
+  summeRechts: number;
+  /** Beide Seiten ergeben dieselbe Skala — die Bandbreiten sind vergleichbar. */
+  stimmt: boolean;
+  /** Beide Seiten sind bis auf ≤ 2 % durch Einzelposten gedeckt. Sonst wird
+   *  das Bild NICHT gezeichnet: eine gestreckte Grafik wäre eine Behauptung. */
+  aufgeschluesselt: boolean;
+};
+
+/** 0,05 Mio. € — feiner als die Anzeige (eine Nachkommastelle in Mio.). */
+const FLUSS_TOLERANZ = 50_000;
+
+/** Jahre, für die sich ein Flussbild bauen lässt: Der Jahresabschluss muss
+ *  Ertragsarten UND Teilhaushalte hergeben. Ein Abschluss ohne
+ *  Teilhaushalts-Ebene (2019) trägt nur die halbe Grafik — die zeigen wir
+ *  nicht, sonst stünde rechts nichts neben einer vollen linken Seite. */
+export function flussJahre(daten: HaushaltDaten): number[] {
+  const posten = daten.ergebnisrechnung ?? [];
+  return [...new Set(posten.map((p) => p.jahr))]
+    .sort((a, b) => a - b)
+    .filter((jahr) => {
+      const gesamt = posten.filter((p) => p.jahr === jahr && p.thh_nr == null);
+      return (
+        gesamt.some((p) => p.nr >= 1 && p.nr <= 11) &&
+        gesamt.some((p) => p.nr === 12) &&
+        gesamt.some((p) => p.nr === 20) &&
+        posten.some((p) => p.jahr === jahr && p.thh_nr != null && p.nr === 20)
+      );
+    });
+}
+
+/** Eine Seite bauen: Einzelposten, dann die beiden Ehrlichkeits-Bänder.
+ *
+ *  `rest` = was die Summenzeile mehr ausweist, als die Einzelposten hergeben
+ *  (bei uns unlesbare Zeilen) — sichtbar als eigenes Band statt still verteilt.
+ *  `ausgleich` = der Abstand zur gemeinsamen Skala, also genau der Saldo: Bei
+ *  einem Minus steht links „aus dem Ersparten", bei einem Plus rechts
+ *  „bleibt übrig". Erst dadurch sind beide Seiten wirklich gleich lang — und
+ *  das Bild behauptet nicht, ein Defizit-Haushalt sei ausgeglichen. */
+function flussSeite(
+  teile: FlussBand[], gesamt: number, skala: number,
+  restLabel: string, ausgleichLabel: string,
+): FlussSeite {
+  const summeTeile = teile.reduce((s, b) => s + b.wert, 0);
+  const baender = [...teile].sort((a, b) => b.wert - a.wert);
+  const rest = gesamt - summeTeile;
+  if (rest > FLUSS_TOLERANZ) {
+    baender.push({ id: "rest", label: restLabel, lang: restLabel, wert: rest, art: "rest" });
+  }
+  const gedeckt = summeTeile + Math.max(rest, 0);
+  const ausgleich = skala - gedeckt;
+  if (ausgleich > FLUSS_TOLERANZ) {
+    baender.push({
+      id: "ausgleich", label: ausgleichLabel, lang: ausgleichLabel,
+      wert: ausgleich, art: "ausgleich",
+    });
+  }
+  return { baender, gesamt, teile: summeTeile };
+}
+
+/** Das Flussbild eines Jahres in einem Stand (Plan oder Ist).
+ *
+ *  Links die Ertragsarten (Posten 01–11), rechts die Teilhaushalte (Posten 20
+ *  je `thh_nr`) — beide aus derselben Tabelle desselben Jahres, damit nie zwei
+ *  Stände nebeneinander stehen. `null`, wenn eine Seite fehlt. */
+export function flussbild(
+  daten: HaushaltDaten, jahr: number, stand: "plan" | "ist",
+): FlussDaten | null {
+  const zahl = (p: ErgebnisPosten | undefined) =>
+    p ? (stand === "ist" ? p.ergebnis : p.ansatz) : null;
+  const rows = (daten.ergebnisrechnung ?? []).filter((p) => p.jahr === jahr);
+  const gesamt = rows.filter((p) => p.thh_nr == null);
+
+  const ertraege = zahl(gesamt.find((p) => p.nr === 12));
+  const aufwendungen = zahl(gesamt.find((p) => p.nr === 20));
+  if (!ertraege || !aufwendungen || ertraege <= 0 || aufwendungen <= 0) return null;
+
+  const arten: FlussBand[] = gesamt
+    .filter((p) => p.nr >= 1 && p.nr <= 11 && (zahl(p) ?? 0) > 0)
+    .map((p) => ({
+      id: `art-${p.nr}`,
+      label: ERTRAGSART_KURZ[p.nr] ?? p.bezeichnung,
+      lang: p.bezeichnung,
+      wert: zahl(p) as number,
+      art: "posten" as const,
+    }));
+  const bereiche: FlussBand[] = rows
+    .filter((p) => p.thh_nr != null && p.nr === 20 && (zahl(p) ?? 0) > 0)
+    .map((p) => ({
+      id: `thh-${p.thh_nr}`,
+      label: p.thh_name ?? `Teilhaushalt ${p.thh_nr}`,
+      lang: p.thh_name ?? `Teilhaushalt ${p.thh_nr}`,
+      wert: zahl(p) as number,
+      art: "posten" as const,
+    }));
+  if (!arten.length || !bereiche.length) return null;
+
+  // Die Skala deckt auch den Fall ab, dass Einzelposten ihre eigene
+  // Summenzeile übersteigen (fehlgelesene Zeile): Dann ragt nichts über den
+  // Knoten hinaus, und `aufgeschluesselt` schaltet das Bild ohnehin ab.
+  const skala = Math.max(
+    ertraege, aufwendungen,
+    arten.reduce((s, b) => s + b.wert, 0),
+    bereiche.reduce((s, b) => s + b.wert, 0),
+  );
+
+  const herkunft = flussSeite(arten, ertraege, skala,
+    "im Abschluss nicht aufgeschlüsselt", "aus dem Ersparten");
+  const verwendung = flussSeite(bereiche, aufwendungen, skala,
+    "im Abschluss nicht aufgeschlüsselt", "bleibt übrig");
+
+  const summeLinks = herkunft.baender.reduce((s, b) => s + b.wert, 0);
+  const summeRechts = verwendung.baender.reduce((s, b) => s + b.wert, 0);
+  const luecke = (s: FlussSeite) => Math.abs(s.gesamt - s.teile);
+  return {
+    jahr, stand, herkunft, verwendung, skala,
+    saldo: ertraege - aufwendungen,
+    summeLinks, summeRechts,
+    stimmt: Math.abs(summeLinks - summeRechts) <= FLUSS_TOLERANZ
+      && Math.abs(summeLinks - skala) <= FLUSS_TOLERANZ,
+    aufgeschluesselt: luecke(herkunft) <= 0.02 * herkunft.gesamt
+      && luecke(verwendung) <= 0.02 * verwendung.gesamt,
+  };
+}
+
+/** Kleine Posten bündeln, damit die Bänder beschriftbar bleiben: Wer unter
+ *  `mindestAnteil` der Skala liegt, wandert in einen Sammelposten „weitere".
+ *
+ *  Die Schwelle ist eine Lesbarkeits-, keine Relevanzentscheidung — ein Band
+ *  unter der Zeilenhöhe seiner eigenen Beschriftung ist nicht mehr zuzuordnen.
+ *  Was im Sammelposten steckt, steht aufklappbar darunter und vollständig in
+ *  der Tabelle. Die Ehrlichkeits-Bänder (rest/ausgleich) werden nie gebündelt:
+ *  Genau sie erklären, warum das Bild aussieht, wie es aussieht. */
+export function fasseKleineZusammen(
+  baender: FlussBand[], skala: number, mindestAnteil: number,
+): { gezeigt: FlussBand[]; gebuendelt: FlussBand[] } {
+  const gross = baender.filter(
+    (b) => b.art !== "posten" || b.wert >= mindestAnteil * skala);
+  const gebuendelt = baender.filter(
+    (b) => b.art === "posten" && b.wert < mindestAnteil * skala);
+  if (gebuendelt.length < 2) return { gezeigt: baender, gebuendelt: [] };
+  const sammel: FlussBand = {
+    id: "weitere",
+    label: `${gebuendelt.length} weitere`,
+    lang: `${gebuendelt.length} weitere Posten`,
+    wert: gebuendelt.reduce((s, b) => s + b.wert, 0),
+    art: "posten",
+  };
+  // Sammelposten und Ehrlichkeits-Bänder ans Ende: Der Stapel liest sich von
+  // oben nach unten „groß nach klein", die Sonderfälle stehen unten.
+  const posten = gross.filter((b) => b.art === "posten");
+  const sonder = gross.filter((b) => b.art !== "posten");
+  return { gezeigt: [...posten, sammel, ...sonder], gebuendelt };
+}
+
 /** Das Produkt, dessen Zuschussbedarf einem Betrag am nächsten kommt — die
  *  Übersetzung von „4,0 Mio." in etwas, das man kennt.
  *
@@ -199,6 +457,23 @@ export function mio(euro: number | null | undefined): number | null {
 export function deMio(v: number | null | undefined): string {
   if (v == null) return "—";
   return v.toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}
+
+/** Betrag mit PASSENDER Einheit — Millionen nur, wo es welche sind.
+ *
+ *  Die Produktebene spannt vier Größenordnungen: 58,6 Mio. € für die
+ *  Kindertagesbetreuung, 4.206 € Erträge beim Stadtarchiv. Alles starr in
+ *  Mio. anzugeben macht aus dem halben Bestand „0,0 Mio. €" — eine Zahl, die
+ *  nichts mehr sagt, obwohl wir sie genau kennen. Auf den Bereichs- und
+ *  Übersichtsseiten bleibt `deMio` richtig: dort ist Mio. die Hausnummer. */
+export function betrag(euro: number | null | undefined): { wert: string; einheit: string } {
+  if (euro == null) return { wert: "—", einheit: "" };
+  const abs = Math.abs(euro);
+  if (abs >= 1_000_000) return { wert: deMio(euro / 1e6), einheit: "Mio. €" };
+  if (abs >= 10_000) {
+    return { wert: Math.round(euro / 1000).toLocaleString("de-DE"), einheit: "Tsd. €" };
+  }
+  return { wert: Math.round(euro).toLocaleString("de-DE"), einheit: "€" };
 }
 
 export function jahreSortiert(daten: HaushaltDaten): number[] {
