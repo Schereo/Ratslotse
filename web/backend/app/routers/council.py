@@ -451,7 +451,10 @@ def haushalt_uebersicht(
     - ``jahre``: Ergebnishaushalt je Planjahr (Teilhaushalte + Summenzeile,
       Quelle je Zeile — Haushaltsplan-PDF bzw. Open-Data-CSV der Stadt),
     - ``steuern``: Ist-Steuereinnahmen je Steuerart seit 1998 (Langformat),
-    - ``steuerkraft``: Steuerkraftmesszahl + Schlüsselzuweisungen seit 1992,
+    - ``steuerkraft``: Steuerkraftmesszahl + Schlüsselzuweisungen je
+      Ausgleichsjahr seit 1993 (die Jahreszahl der Quelle ist beim Einlesen
+      um ein Jahr korrigiert, s. ``council/haushalt._STEUERKRAFT_VERSATZ``;
+      die ``*_je_ew``-Felder sind deshalb leer),
     - ``einwohner``: jüngste Einwohnerzahl (Bezugsgröße für Pro-Kopf-Angaben),
     - ``ergebnisrechnung``: Ansatz, Plan und Ergebnis je Posten aus den
       Jahresabschlüssen — Grundlage für „geplant gegen tatsächlich",

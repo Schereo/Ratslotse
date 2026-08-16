@@ -123,9 +123,11 @@ export default function EinnahmenPage() {
             Hinweis liest man beide Seiten als dieselbe Rechnung und wundert
             sich über die Differenz. */}
         <p className="mt-2 max-w-[70ch] text-[12.5px] leading-relaxed text-muted-foreground">
-          Achtung beim Jahr: Hier stehen <strong>abgerechnete Beträge aus {jahr}</strong> — was
-          wirklich geflossen ist. Die Übersicht zeigt dagegen den <em>Plan</em> für ein späteres
-          Jahr. Beide Zahlen sind richtig, sie beantworten nur verschiedene Fragen.
+          Achtung beim Jahr: Bei den Steuern stehen hier <strong>abgerechnete Beträge
+          aus {jahr}</strong> — was wirklich geflossen ist. Die Übersicht zeigt dagegen den
+          <em>Plan</em> für ein späteres Jahr. Beide Zahlen sind richtig, sie beantworten nur
+          verschiedene Fragen. Jede Karte nennt ihr Jahr selbst — die Schlüsselzuweisungen
+          laufen dem Rest voraus.
         </p>
       </div>
 
@@ -194,13 +196,21 @@ export default function EinnahmenPage() {
           Ausgaben eines Planjahres („deckt nur einen Teil dessen, was die
           Stadt ausgibt") — zwei Zahlen aus zwei Rechnungen, deren Differenz
           nichts bedeutet. Jetzt bleibt der Vergleich innerhalb derselben
-          Quelle: Steuern gegen Steuern plus Zuweisungen. */}
+          Quelle: Steuern gegen Steuern plus Zuweisungen.
+
+          Die Zuweisungen tragen ihr eigenes Jahr im Satz, seit die
+          Jahres-Korrektur am Datensatz 1106 die beiden Reihen auseinander-
+          gezogen hat: Die Steuern enden beim letzten abgerechneten Jahr, der
+          Finanzausgleich steht schon für das laufende Ausgleichsjahr fest.
+          Ein gemeinsames „brachten 2025" wäre für eine der beiden Zahlen
+          falsch. */}
       {gesamt != null && (
         <LottiErklaert
           titel="Was diese Beträge zusammen sind — und was nicht"
           text={`Alle Steuern zusammen brachten ${jahr} rund ${deMio(gesamt / 1e6)} Millionen Euro`
             + (zuweisungJahr?.zuweisungen
-              ? `, dazu kamen ${deMio(zuweisungJahr.zuweisungen / 1e6)} Millionen Schlüsselzuweisungen vom Land`
+              ? `. Dazu kommen die Schlüsselzuweisungen des Landes: für das Ausgleichsjahr `
+                + `${zuweisungJahr.jahr} rund ${deMio(zuweisungJahr.zuweisungen / 1e6)} Millionen`
               : "")
             + ". Das ist noch nicht alles, was die Stadt einnimmt: Gebühren, Kostenerstattungen"
             + " und zweckgebundene Zuschüsse kommen hinzu, und die stehen nicht in diesen"
@@ -209,10 +219,13 @@ export default function EinnahmenPage() {
       )}
 
       <p className="text-[11.5px] leading-relaxed text-muted-foreground">
-        Alle Beträge sind <strong>Ist-Werte</strong> — also abgerechnete Einnahmen, nicht die
+        Die Steuerbeträge sind <strong>Ist-Werte</strong> — also abgerechnete Einnahmen, nicht die
         Planzahlen des Haushalts. Die Aufteilung der geplanten Erträge nach Arten lesen wir
         noch ein; bis dahin zeigen wir hier lieber, was wirklich geflossen ist. Die Einteilung
         in drei Stufen ist unsere Einordnung nach der Rechtslage, keine amtliche Kategorie.
+        Die Schlüsselzuweisungen folgen noch einer anderen Logik: Das Land setzt sie je
+        Ausgleichsjahr fest, deshalb steht dort auch das laufende Jahr schon mit einem
+        festen Betrag — das Jahr an der Zahl sagt, welches gemeint ist.
       </p>
 
       <Quellenverzeichnis schluessel={quellen} />
