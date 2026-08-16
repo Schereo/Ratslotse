@@ -77,6 +77,13 @@ ARTEN: dict[str, str] = {
     "ris": "Anlage zu einer Ratsvorlage im Bürgerinformationssystem",
     "opendata": "Datensatz des Open-Data-Portals der Stadt Oldenburg",
     "stadt": "Veröffentlichung auf oldenburg.de",
+    # Der dritte Fall, und der einzige, der nicht von der Stadt kommt: eine
+    # Landesbehörde. Er ist der Grund, warum ein Städtevergleich überhaupt
+    # tragfähig ist — dieselbe Kennzahl für alle Gemeinden, nach demselben
+    # Gesetz gerechnet, von einer Stelle. Der Cron lädt hier nichts nach; die
+    # beiden Quellen erscheinen einmal jährlich und werden von Hand geholt
+    # (s. council/staedtevergleich.py).
+    "lsn": "Statistischer Bericht des Landesamts für Statistik Niedersachsen",
 }
 
 #: Der ausdrückliche Verzicht. Keine Quelle darf ohne Angabe gespeichert
@@ -151,6 +158,22 @@ PROBEN: dict[str, str] = {
     "konzern_zeilenprobe":
         "Je Betrieb nennt der Bericht Jahr, Vorjahr und Veränderung; die "
         "Veränderung ist die Differenz der beiden anderen.",
+    # Städtevergleich aus der amtlichen Statistik (council/staedtevergleich.py).
+    "lsn_zweijahresueberlappung":
+        "Jede Ausgabe des Finanzausgleichs nennt zwei Jahre nebeneinander. Das "
+        "ältere davon steht in der Ausgabe des Vorjahres noch einmal — beide "
+        "stammen aus verschiedenen Veröffentlichungen und stimmen trotzdem für "
+        "jede der 403 Gemeinden überein.",
+    "lsn_hebesatzprobe":
+        "Die Rechnung, die eine Grundsteuer oder Gewerbesteuer ausmacht, geht "
+        "auf: Grundbetrag mal Hebesatz ergibt das Aufkommen, das die Tabelle "
+        "ausweist. Bei der Gewerbesteuer zusätzlich, dass nach Abzug der "
+        "Umlage genau der Betrag bleibt, den wir zeigen.",
+    "lsn_dreijahresmittel":
+        "Der ausgewiesene Dreijahresdurchschnitt ist tatsächlich das Mittel "
+        "der drei Jahreswerte daneben — und geteilt durch die Einwohnerzahl, "
+        "die dieselbe Zeile mitliefert, ergibt er den Pro-Kopf-Wert, den die "
+        "Tabelle nennt.",
     UNGEPRUEFT:
         "Diese Quelle trägt keine Rechenprobe: Sie liefert eine Zeile je Jahr "
         "ohne Summe, gegen die sich etwas prüfen ließe. Übernommen wie "
@@ -185,6 +208,9 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     # wäre (s. `CouncilStore._HERKUNFT_ALTFELDER`).
     "council_konzern_posten",
     "council_konzern_traeger",
+    # Der Städtevergleich aus den LSN-Tabellen — ebenfalls ohne Altbestand und
+    # deshalb ausschließlich über `herkunft_id` belegt.
+    "council_staedtevergleich",
 )
 
 
