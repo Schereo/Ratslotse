@@ -76,24 +76,36 @@ Dot hsl(209 18% 65%), kombiniertes Label.
   Sidebar 230 mit Pflicht-Links im Fuß. Mobil: Geräterahmen ist der Container,
   Composer sticky über Tab-Bar (Safe-Area), Chips laufen in 40–56-px-Fade aus.
 - Icons: Lucide, stroke-width 2, 11–22 px, currentColor.
-- **Anzeigetafel (`.hh-tafel`) — die dunkle Fläche.** Neben der hellen *Bühne*
-  (Tonfläche, s. o.) gibt es eine Fläche, die in **beiden** Themes dunkel ist:
-  der Blickfang, auf dem die eine Zahl steht, um die es auf einer Seite geht
-  (Haushalts-Einstieg). Zwei Regeln, sonst wird sie falsch:
-  - **Im Dunkelmodus eine Stufe HELLER als die Seite, plus Rand** —
-    hell hsl(213 48% 9%) auf hsl(204 45% 97,5%), dunkel hsl(212 44% 12%) mit
-    Rand hsl(211 36% 19%). Gleich dunkel wie die Seite hieße: Die Kernzahl
-    steht im Nichts.
+- **Anzeigetafel (`.hh-tafel`) — die abgesetzte Fläche.** Neben der *Bühne*
+  (Tonfläche, s. o.) gibt es eine zweite Sonderfläche: der Blickfang, auf dem
+  die eine Zahl steht, um die es auf einer Seite geht (Haushalts-Einstieg).
+  Sie war bis 16.08. in **beiden** Themes dunkel — im Hellmodus ein
+  schwarzblaues Feld über die halbe Seite, „sieht sehr dunkel aus" (Tim).
+  Jetzt folgt sie dem Theme. Drei Regeln, sonst wird sie falsch:
+  - **Nie die Farbe der Seite, immer plus Rand.** Hell hsl(205 52% 92%) auf
+    einer Seite von 97,5 % (Rand hsl(206 38% 82%)), dunkel hsl(212 44% 12%)
+    auf 7 % (Rand hsl(211 36% 19%)). Gleich wie die Seite hieße: Die Kernzahl
+    steht im Nichts. Der Unterschied zur Bühne ist der Zweck — die Bühne
+    trägt einen Container, die Tafel eine Aussage.
   - **Datengrafiken binden ihre Farbrampe an die FLÄCHE, nicht ans Theme.**
-    Die Rampen `--hh-ein-*`/`--hh-aus-*` hingen am `.dark`-Selektor. Auf einer
-    immer dunklen Fläche heißt das im Hellmodus: der größte Einnahmeposten in
-    hsl(205 85% 27%) auf hsl(213 48% 9%) — praktisch unsichtbar. Im
-    Dunkelmodus umgekehrt: Die Rampenenden lagen 3–6 Helligkeitspunkte über
-    dem Grund. `.hh-tafel` setzt deshalb nicht nur den Hintergrund, sondern
-    auch `--card`, `--border`, `--muted-foreground`, `--primary`, `--signal`
-    und beide Rampen neu. Wer eine Grafik auf eine solche Fläche stellt,
-    schreibt keine Sonderfarben in die Komponente, sondern verlässt sich auf
-    die Token — und prüft die Fläche in beiden Themes.
+    Die Rampen `--hh-ein-*`/`--hh-aus-*` gelten für Grafiken auf einer
+    **Karte**. Die Tafel ist keine Karte: Im Hellmodus endet die Karten-Rampe
+    bei 90–93 % Helligkeit und läge ein bis zwei Punkte neben ihrem Grund,
+    im Dunkelmodus lagen die Enden 3–6 Punkte über der Fläche. `.hh-tafel`
+    setzt deshalb nicht nur den Hintergrund, sondern auch `--card`,
+    `--border`, `--muted-foreground`, `--primary`, `--signal` und beide
+    Rampen neu — je Theme einmal. Wer eine Grafik auf eine solche Fläche
+    stellt, schreibt keine Sonderfarben in die Komponente, sondern verlässt
+    sich auf die Token — und prüft die Fläche in beiden Themes.
+  - **Zwei Maße, beide messen, keines schätzen.** Das ferne Rampenende hält
+    mindestens **14 Helligkeitspunkte** Abstand zum Grund *und* mindestens
+    **1,65 : 1** WCAG-Kontrast. Die zweite Zahl braucht es, weil dieselbe
+    Punktzahl am hellen Ende viel weniger Kontrast bedeutet als am dunklen:
+    Ist heute dunkel 14 Punkte / 1,65 : 1, hell 23 Punkte / 1,81 : 1. Und
+    Segmente, die eine Beschriftung tragen können, halten gegen
+    `--hh-seg-text` 4,5 : 1 — das sind hell die sechs dunkelsten Stufen der
+    Ausgaben-Rampe (unter 48 % Helligkeit, weißer Text), dunkel die vier
+    hellsten (über 55 %, dunkler Text).
   Die Fuge zwischen Feldern einer Grafik ist `--hh-raster` (die Farbe der
   Fläche), nicht `--card`: Auf der Tafel sind das zwei verschiedene Farben.
 - **Ebenen & Abdunkler:** Fünf benannte Stufen, definiert in `app/globals.css`
@@ -196,3 +208,14 @@ kein Signal-Orange als Flächenfarbe · keine Parteifarben-Flächen · kein Emoj
 im UI-Text · keine gerahmten Button-Reihen unter Antworten (stille Icons) ·
 Bricolage nie im Fließtext · Externes nie wie Beschlüsse stylen · Footer nie
 auf der Chat-Seite (Links im Sidebar-Fuß).
+
+**Und keine Selbstvergewisserung.** Dass unsere Zahlen stimmen, ist kein
+Seiteninhalt. Eine Tabelle, in der acht Jahre lang zweimal dieselbe Zahl und
+daneben „unter 1 Tsd. € Unterschied" steht, beruhigt uns und erklärt
+niemandem etwas („du musst nicht beweisen anhand von einer Tabelle, dass
+deine Zahlen richtig sind", Tim 16.08.). Die Prüfung gehört in Tests und in
+die Technik-Doku und bleibt dort auch bestehen; auf die Seite gehören die
+**Quelle** (welches Dokument, welcher Abschnitt, Link aufs Original), der
+Hinweis, wenn eine Zahl **unsere Rechnung** ist, und die **Grenzen** dessen,
+was sie hergibt. Das ist der Unterschied zwischen quellen-ehrlich (§ 1) und
+selbstbezogen.

@@ -502,6 +502,19 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   bleiben, wie sie heißen: Die „Einwohnerfragestunde" steht so im
   Kommunalverfassungsgesetz, „Bürgerinfo" heißt das Ratsinformationssystem der
   Stadt, und „Antragsteller" sind hier Fraktionen, keine Personen. (#533)
+- **Die Anzeigetafel des Haushalts ist im Hellmodus hell — und die Tabelle,
+  mit der die Konzern-Seite sich selbst bestätigte, ist weg.** Die Fläche mit
+  „Oldenburg plant 883,9 Millionen Euro" war in beiden Farbmodi dunkel und
+  stand im hellen Modus als schwarzblaues Feld über der halben Seite; sie
+  folgt jetzt dem Modus und bleibt trotzdem vom Rest der Seite abgesetzt. Die
+  Balken darauf wurden dafür neu gestuft, damit auch der kleinste Posten und
+  die schraffierte Rücklagen-Marke sichtbar bleiben — im Hellmodus stehen sie
+  jetzt weiter vom Grund ab als vorher im Dunkelmodus. Von der Konzern-Seite
+  verschwunden ist der Block „Dieselbe Zahl, zwei Quellen": acht Zeilen, in
+  denen jedes Jahr zweimal dieselbe Summe und daneben „unter 1 Tsd. €
+  Unterschied" stand. Dass zwei Dokumente übereinstimmen, ist unsere
+  Qualitätssicherung — sie läuft unverändert weiter, steht in der Technik-Doku
+  und in Tests, aber nicht mehr auf der Seite. (#535)
 
 <!-- GEPARKT (nur dev.ratslotse.de, Umgebungs-Gate): Eintrag aktivieren,
      sobald der Kommunalwahl-Vergleich auf Prod freigeschaltet wird.

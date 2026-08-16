@@ -27,7 +27,7 @@ Schritte in vier Stufen. Die Tabelle steht deshalb in genau dieser Reihenfolge.
 | `/haushalt/plan-ist[?jahr=<jahr>]` | Schritt 5 — geplant gegen tatsächlich, je Teilhaushalt, mit den Abweichungsgründen der Verwaltung im Wortlaut |
 | `/haushalt/pruefung[?jahr=<jahr>]` | Schritt 6 — alle Feststellungen der RPA-Schlussberichte im Wortlaut, mit Textziffer, Seite und Deeplink; dazu die Ketten über die Jahrgänge |
 | **Der Rahmen** | |
-| `/haushalt/konzern` | Schritt 7 — Kernverwaltung gegen Gesamtabschluss über elf Jahrgänge, Aufschlüsselung nach Aufgabenträgern, Gegenprobe gegen den Jahresabschluss |
+| `/haushalt/konzern` | Schritt 7 — Kernverwaltung gegen Gesamtabschluss über elf Jahrgänge, Aufschlüsselung nach Aufgabenträgern |
 | `/haushalt/vergleich` | Schritt 8 — Steuerkraft, Hebesätze und Steuereinnahmekraft der acht kreisfreien Städte aus der amtlichen Statistik — und die Erklärung, warum Ausgaben und Personal **nicht** verglichen werden |
 | **Mitreden** | |
 | `/haushalt/jahr` | Schritt 9 — wann der Haushalt entschieden wird: jede Station im Rat, aus acht Jahrgängen, mit Link auf die Sitzung |
@@ -927,8 +927,17 @@ Zeile muss den Ist-Wert wiedergeben, den `council_ergebnisrechnung` aus einem
 **anderen** Dokument eines **anderen** Jahres trägt. Sie tut es in **10 von 10**
 vergleichbaren Fällen (5 Jahrgänge × Erträge und Aufwendungen), jeweils auf
 die Rundung eines Tausend genau — 2024 etwa 799.057 TEUR gegen
-799.057.202,86 €. Zwei getrennt eingelesene Quellen, dieselbe Zahl; die Seite
-zeigt den Abgleich offen.
+799.057.202,86 €. Zwei getrennt eingelesene Quellen, dieselbe Zahl.
+
+Die API rechnet den Abgleich weiter (`gegenprobe` in
+`web/backend/app/routers/council.py`), festgehalten ist er in
+`tests/test_konzernabschluss.py::test_gegenprobe_gegen_die_kernverwaltung` und
+`tests/test_backend_api.py::test_haushalt_konzern_liefert_luecke_und_gegenprobe`.
+**Die Seite zeigt ihn seit 16.08. nicht mehr**: Acht Zeilen, in denen dieselbe
+Zahl zweimal steht und daneben „unter 1 Tsd. € Unterschied", waren
+Selbstvergewisserung, keine Information für Leserinnen. Der Beleg dafür, dass
+wir den Zahlen trauen können, gehört hierher und in die Tests — nicht auf die
+Seite.
 
 ### Was der Gesamtabschluss nicht hergibt
 
