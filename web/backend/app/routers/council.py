@@ -88,7 +88,7 @@ def sessions(
         total = store.count_sessions(q, committee, date_from, date_to)
 
     # RL-902: „n TOPs zu deinen Themen" — Treffer der Tagesordnungs-
-    # Klassifikation für die eingeloggte Nutzer:in (eine Batch-Abfrage).
+    # Klassifikation für die eingeloggte Nutzer*in (eine Batch-Abfrage).
     ksinrs = [r["ksinr"] for r in rows if r.get("ksinr")]
     mine = nwz.agenda_matches_for_owner(user["id"], ksinrs)
     for r in rows:
@@ -421,12 +421,15 @@ def haushalt_datenstand(
 ) -> dict:
     """Bis wann die Zahlen reichen — je Datenschicht ein Jahrgangs-Stand.
 
-    Beantwortet die Frage, die sonst auf neun Seiten einzeln erklärt werden
-    müsste: „Warum steht hier 2024 und nicht 2025?" Der Haushalts-Bereich
-    trägt fünf Schichten mit **verschiedenen** Takten — der Plan kommt im
-    Oktober für das nächste Jahr, die Abrechnung im September für das
-    vorletzte. Zwischen September und Oktober liegt für einen Jahrgang immer
-    nur die eine Hälfte vor; das ist der Normalfall, nicht die Störung.
+    Beantwortet die Frage, die sonst auf jeder Unterseite von ``/haushalt``
+    einzeln erklärt werden müsste: „Warum steht hier 2024 und nicht 2025?"
+    Der Bereich trägt die Schichten aus ``finanzquellen.REIHENFOLGE``, und
+    die haben **verschiedene** Takte: Der Plan liegt im Oktober vor seinem
+    Haushaltsjahr, die Abrechnung samt Prüfberichten im September danach,
+    der Gesamtabschluss (Konzern Stadt) rund zwei Jahre danach — er entsteht
+    erst, wenn alle einbezogenen Jahresabschlüsse geprüft sind. Für einen
+    Jahrgang liegt deshalb fast nie alles gleichzeitig vor; das ist der
+    Normalfall, nicht die Störung.
 
     Je Schicht: die vorhandenen Jahrgänge, Lücken darin, der nächste
     erwartete Jahrgang samt Datum, und ob er schon überfällig ist. Die Werte
@@ -657,7 +660,7 @@ def decision_detail(
     }
     # Läuft zu diesem Bauleitplan GERADE eine Beteiligung? Dann gehört der
     # Hinweis samt Frist an den Beschluss — Stellungnahme ist eine der wenigen
-    # Handlungen, die Bürger:innen JETZT offenstehen (Stufe 3b).
+    # Handlungen, die Bürger*innen JETZT offenstehen (Stufe 3b).
     try:
         from council import beteiligung as bet_mod
         out["beteiligung"] = next(
@@ -1489,7 +1492,7 @@ def person(slug: str, store: CouncilStore = Depends(get_council_store)) -> dict:
     """A council member's profile: party, sessions, active span, committees, recent sessions.
 
     Ohne Anmeldung lesbar (s. `decision_detail`). Es geht ausschließlich um
-    Mandatsträger:innen in ihrer öffentlichen Funktion, und die Angaben stammen
+    Mandatsträger*innen in ihrer öffentlichen Funktion, und die Angaben stammen
     aus den Anwesenheitslisten der amtlichen Protokolle — keine Privatperson
     wird hier auffindbar, die es nicht ohnehin schon ist.
     """

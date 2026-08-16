@@ -36,8 +36,8 @@ def main() -> dict:
         print(f"Owner {owner['owner_id']} ({owner['delivery_channel']}): "
               f"{[t.name for t in owner['topics']]}")
 
-    # Ein Kalender-Durchlauf für alle Nutzer:innen; Klassifikation läuft je
-    # Nutzer:in nur bei geänderter Tagesordnung (council_agenda_classified).
+    # Ein Kalender-Durchlauf für alle Nutzer*innen; Klassifikation läuft je
+    # Nutzer*in nur bei geänderter Tagesordnung (council_agenda_classified).
     stats: dict = {"Konten mit Themen": len(owner_digests)}
     alerts = run_watcher(COUNCIL_DB, owner_digests, months_ahead=3, nwz_store=store, stats=stats)
 

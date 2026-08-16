@@ -106,7 +106,7 @@ export const STEUERARTEN: SteuerArt[] = [
     titel: "Grundsteuer",
     kurz:
       "Wer ein Grundstück oder ein Haus besitzt, zahlt sie — über die Nebenkosten tragen " +
-      "sie meist auch Mieterinnen und Mieter mit. Sie fällt jedes Jahr an, unabhängig davon, " +
+      "sie meist auch Mieter*innen mit. Sie fällt jedes Jahr an, unabhängig davon, " +
       "ob jemand Gewinn macht.",
     spielraum: "frei",
     stellschraube: "Der Rat setzt zwei Hebesätze",

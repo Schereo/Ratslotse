@@ -71,12 +71,12 @@ export function LottiVergleich({
         </p>
         <p className="mt-1.5 text-[13px] leading-relaxed text-foreground/90">
           {betragMio.toLocaleString("de-DE", { maximumFractionDigits: 1 })}&#8239;Mio.&nbsp;€ {was} sind{" "}
-          <strong>{proKopf.toLocaleString("de-DE")}&nbsp;€ pro Einwohnerin und Einwohner im Jahr</strong>
+          <strong>{proKopf.toLocaleString("de-DE")}&nbsp;€ pro Einwohner*in im Jahr</strong>
           {proKopfMonat >= 1 && <> — rund {proKopfMonat.toLocaleString("de-DE")}&nbsp;€ im Monat</>}.
         </p>
         <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-          Unsere Rechnung: Betrag geteilt durch {einwohner.toLocaleString("de-DE")} Einwohnerinnen und
-          Einwohner. Keine amtliche Kennzahl — die Stadt weist sie so nicht aus.
+          Unsere Rechnung: Betrag geteilt durch {einwohner.toLocaleString("de-DE")} Einwohner*innen.
+          Keine amtliche Kennzahl — die Stadt weist sie so nicht aus.
         </p>
       </div>
     </aside>

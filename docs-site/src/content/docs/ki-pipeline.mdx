@@ -12,7 +12,7 @@ laufen über **OpenRouter** (siehe [ADR 0001](/docs/adr/0001-openrouter/)).
 
 Die Pipeline-Qualität entscheidet über den Produktwert: Sie bestimmt, wie
 zuverlässig relevante Tagesordnungspunkte und Beschlüsse zu den Themen der
-Nutzer gefunden werden — bei hoher **Precision** (keine Fehltreffer) *und*
+Nutzer*innen gefunden werden — bei hoher **Precision** (keine Fehltreffer) *und*
 brauchbarem **Recall**.
 
 Wichtig vorab: **Das Scraping selbst nutzt kein LLM.** Tagesordnungen und
@@ -79,11 +79,11 @@ eigene Seite: [Bewertungs-Scores](/docs/bewertungen/).
 
 ## Watcher / Themen-Matching
 
-- Pro Nutzer werden nur **zukünftige** Sitzungen mit Tagesordnung
-  klassifiziert, die dieser Nutzer noch nicht gesehen hat — ändert sich eine
+- Pro Konto werden nur **zukünftige** Sitzungen mit Tagesordnung
+  klassifiziert, die dieses Konto noch nicht gesehen hat — ändert sich eine
   Tagesordnung, wird erneut geprüft und benachrichtigt.
 - Das LLM bekommt die öffentlichen TOPs und die nummerierte Themenliste des
-  Nutzers und liefert die Treffer-Paare als JSON. Alerts werden dedupliziert.
+  Kontos und liefert die Treffer-Paare als JSON. Alerts werden dedupliziert.
 - Der Prompt liegt zentral in der Prompt-Verwaltung und ist über das Admin-UI
   editierbar.
 
@@ -161,7 +161,7 @@ Erklärung, Kategorie und **Quellenangabe**; es erfindet nichts frei.
 Ein zweiter, günstiger **Verify-Pass** (kleines Modell) verwirft Fragen, die
 nicht eindeutig aus der Quelle belegbar sind. Antwortoptionen werden gemischt
 (die richtige Antwort liegt sonst gern auf Position A), Dubletten fängt ein
-`content_hash`. Zusätzlich bewerten **Nutzer:innen** jede Frage nach dem
+`content_hash`. Zusätzlich bewerten **Nutzer*innen** jede Frage nach dem
 Beantworten (👍/👎) — schlecht bewertete erscheinen in einer Admin-Liste und
 werden ausgemustert; da der Backfill nur Gebiete **unter** der Ziel-Fragenzahl
 auffüllt, erzeugt der nächste Lauf automatisch Ersatz.

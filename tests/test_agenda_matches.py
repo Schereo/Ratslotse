@@ -1,6 +1,6 @@
 """Tagesordnungs-Treffer zu eigenen Themen (RL-902): Persistenz + Watcher.
 
-Der Watcher klassifiziert Tagesordnungen kommender Sitzungen je Nutzer:in per
+Der Watcher klassifiziert Tagesordnungen kommender Sitzungen je Nutzer*in per
 LLM; die Treffer landen in nwz.sqlite (council_agenda_matches) und speisen die
 „n TOPs zu deinen Themen"-Chips. Klassifiziert wird nur, wenn sich die
 Tagesordnung seit dem letzten Lauf geändert hat (council_agenda_classified).
@@ -109,7 +109,7 @@ def test_run_watcher_persists_matches_and_skips_unchanged(tmp_path, monkeypatch)
 
 def test_content_filter_skips_owner_without_killing_the_run(tmp_path, monkeypatch):
     """Ein als Prompt-Injection getarnter Themenname lässt den Provider-Content-
-    Filter anschlagen (HTTP 400). Das darf NUR diese Nutzer:in bei dieser Sitzung
+    Filter anschlagen (HTTP 400). Das darf NUR diese Nutzer*in bei dieser Sitzung
     überspringen — nicht den ganzen Cron-Lauf für alle abbrechen (DoS-Schutz)."""
     from council import watcher
     from council.scraper import AgendaItem, CouncilSession
@@ -147,7 +147,7 @@ def test_content_filter_skips_owner_without_killing_the_run(tmp_path, monkeypatc
 
     monkeypatch.setattr(watcher, "_classify_agenda", fake_classify)
 
-    # Darf NICHT werfen — der Lauf überlebt die vergiftete Nutzer:in.
+    # Darf NICHT werfen — der Lauf überlebt die vergiftete Nutzer*in.
     alerts = watcher.run_watcher(tmp_path / "council.sqlite", owners, nwz_store=nwz)
 
     # Owner 2 wurde trotzdem klassifiziert und alarmiert …

@@ -137,7 +137,7 @@ export function kennzahlen(): Kennzahl[] {
     { wert: String(w.kandidierende), label: "Kandidierende" },
     { wert: String(w.wahlvorschlaege_anzahl), label: "Wahlvorschläge" },
     { wert: String(w.wahlrecht.stimmen), label: "Stimmen pro Person" },
-    { wert: `ab ${w.wahlrecht.mindestalter}`, label: "auch EU-Bürger:innen" },
+    { wert: `ab ${w.wahlrecht.mindestalter}`, label: "auch EU-Bürger*innen" },
   ];
 }
 

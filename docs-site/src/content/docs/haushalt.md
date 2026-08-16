@@ -27,7 +27,7 @@ Schritte in vier Stufen. Die Tabelle steht deshalb in genau dieser Reihenfolge.
 | `/haushalt/plan-ist[?jahr=<jahr>]` | Schritt 5 — geplant gegen tatsächlich, je Teilhaushalt, mit den Abweichungsgründen der Verwaltung im Wortlaut |
 | `/haushalt/pruefung[?jahr=<jahr>]` | Schritt 6 — alle Feststellungen der RPA-Schlussberichte im Wortlaut, mit Textziffer, Seite und Deeplink; dazu die Ketten über die Jahrgänge |
 | **Der Rahmen** | |
-| `/haushalt/konzern` | Schritt 7 — Kernverwaltung gegen Gesamtabschluss über elf Jahrgänge, Aufschlüsselung nach Aufgabenträgern, Gegenprobe gegen den Jahresabschluss |
+| `/haushalt/konzern` | Schritt 7 — Kernverwaltung gegen Gesamtabschluss über elf Jahrgänge, Aufschlüsselung nach Aufgabenträgern |
 | `/haushalt/vergleich` | Schritt 8 — Steuerkraft, Hebesätze und Steuereinnahmekraft der acht kreisfreien Städte aus der amtlichen Statistik — und die Erklärung, warum Ausgaben und Personal **nicht** verglichen werden |
 | **Mitreden** | |
 | `/haushalt/jahr` | Schritt 9 — wann der Haushalt entschieden wird: jede Station im Rat, aus acht Jahrgängen, mit Link auf die Sitzung |
@@ -169,10 +169,24 @@ Drei Schritte, mehr nicht:
    (`merke_herkunft`, idempotent über einen Fingerabdruck der Inhaltsfelder)
    und verknüpft die Zeilen.
 3. **Die Zieltabelle in `herkunft.HERKUNFT_TABELLEN` eintragen.** Damit
-   bekommt sie ihre `herkunft_id`-Spalte beim nächsten Öffnen, wird beim
-   Nachrüsten mitversorgt, und `store.herkunft_luecken()` meldet ab sofort
-   jede Zeile darin, die ohne Herkunft geschrieben wurde. Die Ingest-Skripte
-   geben das nach jedem Lauf aus; leer ist der Sollzustand.
+   bekommt sie ihre `herkunft_id`-Spalte beim nächsten Öffnen und wird beim
+   Nachrüsten aus den Altfeldern mitversorgt.
+
+   **Geprüft und aufgeräumt wird aber nicht nach dieser Liste, sondern nach
+   dem Schema** (`store._herkunft_verweistabellen()` sucht jede Tabelle mit
+   einer `herkunft_id`-Spalte). Der Grund ist genau dieser Schritt 3: Er ist
+   der, den man vergisst — und wer seine Tabelle mit `herkunft_id` schon im
+   `CREATE TABLE` anlegt (so die neueren), merkt davon beim Anlegen nichts.
+   Ginge das Aufräumen nach der Liste, hätte eine vergessene Tabelle aus
+   dessen Sicht keine Verweise: Ihre Herkünfte gälten als verwaist und fielen
+   weg, während ihre Zeilen weiter auf deren Nummern zeigen. Weil die Nummern
+   neu vergeben werden, zeigte so eine Zeile am Ende nicht ins Leere, sondern
+   auf ein **fremdes Dokument** — und `herkunft_luecken()` schwiege dazu, weil
+   auch sie nur die Liste durchginge.
+
+   So gemeldet wird jede Zeile ohne Herkunft, auch aus einer Tabelle, die die
+   Liste nicht kennt. Die Ingest-Skripte geben das nach jedem Lauf aus; leer
+   ist der Sollzustand.
 
 Eine **neue Rechenprobe** braucht einen Eintrag in `herkunft.PROBEN` — Name
 plus einen Satz für Leserinnen, denn der Satz landet über die API im Beleg und
@@ -927,8 +941,17 @@ Zeile muss den Ist-Wert wiedergeben, den `council_ergebnisrechnung` aus einem
 **anderen** Dokument eines **anderen** Jahres trägt. Sie tut es in **10 von 10**
 vergleichbaren Fällen (5 Jahrgänge × Erträge und Aufwendungen), jeweils auf
 die Rundung eines Tausend genau — 2024 etwa 799.057 TEUR gegen
-799.057.202,86 €. Zwei getrennt eingelesene Quellen, dieselbe Zahl; die Seite
-zeigt den Abgleich offen.
+799.057.202,86 €. Zwei getrennt eingelesene Quellen, dieselbe Zahl.
+
+Die API rechnet den Abgleich weiter (`gegenprobe` in
+`web/backend/app/routers/council.py`), festgehalten ist er in
+`tests/test_konzernabschluss.py::test_gegenprobe_gegen_die_kernverwaltung` und
+`tests/test_backend_api.py::test_haushalt_konzern_liefert_luecke_und_gegenprobe`.
+**Die Seite zeigt ihn seit 16.08. nicht mehr**: Acht Zeilen, in denen dieselbe
+Zahl zweimal steht und daneben „unter 1 Tsd. € Unterschied", waren
+Selbstvergewisserung, keine Information für Leserinnen. Der Beleg dafür, dass
+wir den Zahlen trauen können, gehört hierher und in die Tests — nicht auf die
+Seite.
 
 ### Was der Gesamtabschluss nicht hergibt
 

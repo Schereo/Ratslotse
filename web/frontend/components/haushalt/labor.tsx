@@ -181,7 +181,7 @@ export function Labor({ daten, produkte, produktJahr }: {
   const anteilText = (m: number) =>
     basis.defizit > 0 ? `${Math.round((m / basis.defizit) * 100)} % der Lücke` : "";
   const jeEinwohner = (m: number) =>
-    einwohner > 0 ? `${eur((m * 1e6) / einwohner)} € je Einwohner` : "";
+    einwohner > 0 ? `${eur((m * 1e6) / einwohner)} € je Einwohner*in` : "";
 
   const zuruecksetzen = () => { setPunkte(0); setKuerzung({}); };
   const alle = (pct: number) =>
