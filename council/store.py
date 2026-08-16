@@ -6918,6 +6918,275 @@ class CouncilStore:
         return {"jahr": jahr, "posten": passend,
                 "beleg": self._beleg(passend[0].get("herkunft_id"))}
 
+    # ---- Vier Schichten, die die KI-Frage nicht kannte (Tim, 17.08.) -------
+    #
+    # Der Bestand ist seit der Runde oben um vier Schichten gewachsen, und die
+    # KI-Frage beantwortete deren Fragen mit den Quellen, die sie schon kannte
+    # — also falsch:
+    #
+    #   „Wie viel Schulden hat Oldenburg?"      → Ergebnishaushalt. Schulden
+    #        sind ein BESTAND am Stichtag, kein Jahresverlauf; in der
+    #        Ergebnisrechnung stehen sie überhaupt nicht.
+    #   „Was wird gebaut?"                      → Ergebnishaushalt, in dem
+    #        keine einzige Investition steht (ein Schulneubau taucht dort nur
+    #        als Abschreibung auf, verteilt über Jahrzehnte).
+    #   „Wie viele Stellen sind unbesetzt?"     → Personalaufwendungen in Euro.
+    #   „Wer wollte den Haushalt ändern?"       → gar nichts, obwohl 664
+    #        Änderungslisten im Bestand liegen.
+    #
+    # Es gelten dieselben zwei Regeln wie für den Abschnitt darüber: wenige
+    # Zeilen statt Bestand, und jede Zahl mit ihrem Beleg.
+
+    def schulden_kontext(self) -> dict | None:
+        """Der Schuldenstand: jüngstes Jahr, Vorjahr, höchster Stand der Reihe.
+
+        Ein **Bestand**, kein Jahresverlauf — und genau deshalb eine eigene
+        Quelle. Der Haushaltsplan sagt, was die Stadt in einem Jahr einnimmt
+        und ausgibt; was am 31.12. an Krediten offen ist, sagt er nicht.
+
+        Die Abgrenzung reist als Feld mit (``council.schulden.ABGRENZUNG``)
+        und ist nicht schmückendes Beiwerk: Gezählt wird die Stadt als
+        Rechtsträger — Kernhaushalt und Eigenbetriebe, ohne die rechtlich
+        selbstständigen Beteiligungen. Die Konzern-Zahl heißt genauso und ist
+        ein Vielfaches; ohne den Satz daneben ist „337 Mio. €" eine von zwei
+        Zahlen, die beide so heißen.
+
+        Die vier Artenspalten dürfen NULL sein (Fall 2022, s.
+        ``council/schulden.py``) — dann kommt die Aufteilung nicht mit, und
+        ``aufteilung_verworfen`` sagt, warum.
+        """
+        from council import schulden as _schulden
+
+        try:
+            rows = [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_schulden ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return None
+        if not rows:
+            return None
+        neu = rows[-1]
+        arten = [(titel, neu[feld]) for feld, titel in _schulden.SPALTEN
+                 if feld not in ("insgesamt", "je_einwohner")
+                 and neu.get(feld) is not None]
+        # Der höchste Stand der Reihe ist eine Angabe der Daten, keine
+        # Bewertung: Er sagt, ob die jüngste Zahl im historischen Vergleich
+        # oben oder unten liegt — sonst schwebt sie ohne jeden Maßstab.
+        hoch = max(rows, key=lambda r: r["insgesamt"])
+        return {
+            "jahr": neu["jahr"],
+            "insgesamt": neu["insgesamt"],
+            "je_einwohner": neu.get("je_einwohner"),
+            "arten": arten,
+            "aufteilung_verworfen": neu.get("aufteilung_verworfen"),
+            "revidiert": bool(neu.get("revidiert")),
+            "davor": ({"jahr": rows[-2]["jahr"], "insgesamt": rows[-2]["insgesamt"]}
+                      if len(rows) > 1 else None),
+            "hoch": ({"jahr": hoch["jahr"], "insgesamt": hoch["insgesamt"]}
+                     if hoch["jahr"] != neu["jahr"] else None),
+            "reihe_ab": rows[0]["jahr"],
+            "abgrenzung": _schulden.ABGRENZUNG,
+            "beleg": self._beleg(neu.get("herkunft_id")),
+        }
+
+    def investitionen_fuer_begriffe(self, begriffe: list[str],
+                                    limit: int = 3) -> dict | None:
+        """Was die Stadt bauen und kaufen will — Summenzeile und die
+        Teilhaushalte, die zur Frage passen.
+
+        Die andere Hälfte des Haushaltsplans. Sie mit dem Ergebnishaushalt in
+        einem Satz zu verrechnen wäre der Fehler, gegen den diese Methode
+        gebaut ist: Es sind zwei Haushalte mit zwei Zahlenwerken.
+
+        Geliefert wird die **Summenzeile der Datei** (``ebene``
+        ``investitionen``) — das Ziel der Rechenprobe, nicht unsere Addition.
+        Der *Gesamtbetrag des Finanzhaushaltes* (``ebene``
+        ``finanzhaushalt``) bleibt bewusst draußen: Er zählt die laufende
+        Verwaltungstätigkeit mit, ist von keiner Probe der Datei gedeckt und
+        stünde im Prompt direkt neben einer geprüften Zahl.
+        """
+        try:
+            jahr = self._conn.execute(
+                "SELECT MAX(jahr) FROM council_investitionen "
+                "WHERE ebene = 'investitionen'").fetchone()[0]
+        except sqlite3.OperationalError:
+            return None
+        if not jahr:
+            return None
+        rows = [dict(r) for r in self._conn.execute(
+            "SELECT ebene, thh_nr, bezeichnung, einzahlungen, auszahlungen, herkunft_id "
+            "FROM council_investitionen WHERE jahr = ? AND ebene IN "
+            "('investitionen', 'teilhaushalt') ORDER BY thh_nr", (jahr,))]
+        gesamt = next((r for r in rows if r["ebene"] == "investitionen"), None)
+        if not gesamt:
+            return None
+        teile = [r for r in rows if r["ebene"] == "teilhaushalt"]
+        bewertet = [(self._trifft(r["bezeichnung"], begriffe), r) for r in teile]
+        passend = [r for n, r in sorted(bewertet, key=lambda x: -x[0]) if n][:limit]
+        if not passend:
+            # Ohne Begriffs-Treffer die größten Brocken: „Was wird gebaut?"
+            # meint die, über die zu reden sich lohnt.
+            passend = sorted(teile, key=lambda r: -(r["auszahlungen"] or 0))[:limit]
+        return {"jahr": jahr, "gesamt": gesamt, "teilhaushalte": passend,
+                "beleg": self._beleg(gesamt.get("herkunft_id"))}
+
+    def stellenplan_kontext(self, jahrgang: int | None = None) -> dict | None:
+        """Die Gesamtzeilen des Stellenplans — Stellen, besetzt, nicht besetzt.
+
+        Die einzige Schicht des Haushalts, die nicht in Euro rechnet. Auf
+        „Wie viele Stellen sind unbesetzt?" antwortet keine Euro-Zahl.
+
+        DREI DINGE, DIE MITREISEN MÜSSEN, weil die Zahlen sonst falsch gelesen
+        werden:
+
+        1. Die Besetzungszahlen gehören zur **Vorjahresspalte**, nicht zum
+           Haushaltsjahr — geplant wird vorwärts, gezählt werden kann nur
+           rückwärts (``stichtag`` sagt, auf welchen Tag). ``stellen_plan``
+           minus ``besetzt`` mischt zwei Stichtage und steht in keinem
+           Dokument; ``nicht_besetzt`` steht dort, und zwar als eigene Spalte.
+        2. Teil A und Teil B sind zwei Tabellen mit zwei Rechenproben, und sie
+           kommen einzeln herein. ``fehlend`` sagt, welcher Teil eines
+           Jahrgangs **nicht** vorliegt — ohne das sähe ein halber Jahrgang
+           wie ein ganzer aus.
+        3. Es gibt im Plan keine Zeile „Stellen insgesamt". Diese Methode
+           bildet auch keine: Was hier steht, steht so im Dokument.
+        """
+        try:
+            jahrgang = jahrgang or self._conn.execute(
+                "SELECT MAX(jahrgang) FROM council_stellenplan "
+                "WHERE art = 'gesamt'").fetchone()[0]
+        except sqlite3.OperationalError:
+            return None
+        if not jahrgang:
+            return None
+        rows = [dict(r) for r in self._conn.execute(
+            "SELECT teil, bezeichnung, stellen_plan, stellen_vorjahr, besetzt, "
+            " nicht_besetzt, stichtag, herkunft_id FROM council_stellenplan "
+            "WHERE jahrgang = ? AND art = 'gesamt' ORDER BY teil", (jahrgang,))]
+        if not rows:
+            return None
+        from council import stellenplan as _stellenplan
+
+        for r in rows:
+            r["teil_name"] = _stellenplan.TEIL_NAMEN.get(r["teil"], r["teil"])
+        fehlend = [t for t in sorted(_stellenplan.TEIL_NAMEN)
+                   if t not in {r["teil"] for r in rows}]
+        return {
+            "jahrgang": jahrgang,
+            "stichtag": next((r["stichtag"] for r in rows if r.get("stichtag")), None),
+            "teile": rows,
+            "fehlend": [_stellenplan.TEIL_NAMEN[t] for t in fehlend],
+            "beleg": self._beleg(rows[0].get("herkunft_id")),
+        }
+
+    def haushaltsantraege_kontext(self, jahr: int | None = None,
+                                  limit: int = 8) -> dict | None:
+        """Wer wollte am Haushalt etwas ändern — und kam damit durch?
+
+        Die leichte Schwester von ``haushalt_streit``: dieselben Anker, aber
+        ohne Debatte und ohne Protokoll-Volltext. Die Wortbeiträge kommen im
+        Antwort-Prompt ohnehin über ``_debatten_block``; das Zerlegen jedes
+        Protokolls kostete in einem Web-Request mehr, als es dort einbrächte.
+
+        Gezählt statt aufgezählt: Ein Jahrgang bringt es auf mehrere Dutzend
+        Änderungslisten, und „CDU: 9 Listen, 2 angenommen, 7 abgelehnt" sagt
+        dasselbe wie neun Titelzeilen, die alle „Änderungsliste der
+        CDU-Fraktion zum Ergebnishaushalt" heißen.
+
+        ``jahr`` ist das **Haushaltsjahr**, nicht das Sitzungsjahr: Der
+        Haushalt 2026 wurde im Februar 2026 beschlossen, der Haushalt 2023 im
+        Dezember 2022. Ohne Angabe kommt der jüngste Jahrgang.
+
+        WAS DIESE QUELLE NICHT WEISS, und was der Baustein dazu deshalb
+        ausdrücklich sagt: den **Inhalt** einer Änderungsliste. Welche Position
+        um welchen Betrag — das liegt in den Anlagen-PDFs der Vorlage, die
+        nicht als Volltext im Bestand sind.
+        """
+        from council import haushaltsdebatte as hd
+
+        try:
+            rows = self._conn.execute(
+                "SELECT d.ksinr, d.item_number, d.title, d.outcome, d.vote, "
+                "       cs.committee, cs.session_date "
+                "FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr "
+                "WHERE d.kind = 'decision' AND (d.title LIKE 'Haushaltssatzung und Haushaltsplan%' "
+                "   OR d.title LIKE 'Haushalt 2%')").fetchall()
+        except sqlite3.OperationalError:
+            return None
+        anker: dict[int, dict[int, dict]] = {}
+        for r in rows:
+            titel = (r["title"] or "").strip()
+            satzung = self._STREIT_SATZUNG.match(titel)
+            sammel = self._STREIT_SAMMEL.match(titel)
+            if not satzung and not sammel:
+                continue
+            j = int((satzung or sammel).group(1))
+            st = anker.setdefault(j, {}).setdefault(r["ksinr"], {
+                "ksinr": r["ksinr"], "gremium": r["committee"],
+                "datum": r["session_date"], "top": None, "beschluss": None})
+            if sammel:
+                # Der Sammelpunkt selbst ist die verlässlichste Angabe.
+                st["top"] = (r["item_number"] or "").strip() or st["top"]
+            else:
+                if not st["top"]:
+                    st["top"] = self._streit_oberpunkt(r["item_number"])
+                st["beschluss"] = {"outcome": r["outcome"], "vote": r["vote"]}
+        if not anker:
+            return None
+        gewaehlt = jahr if jahr in anker else max(anker)
+
+        stationen = []
+        for st in sorted(anker[gewaehlt].values(),
+                         key=lambda s: (s["datum"], s["gremium"] == "Rat", s["ksinr"])):
+            if not st["top"]:
+                continue
+            praefix = st["top"] + "."
+            traeger: dict[str, dict] = {}
+            verwaltung = gesamt = 0
+            for r in self._conn.execute(
+                    "SELECT ksinr, item_number, title, outcome, vote FROM council_decisions "
+                    "WHERE ksinr = ? AND kind = 'subvote' ORDER BY position",
+                    (st["ksinr"],)).fetchall():
+                nr = (r["item_number"] or "").strip()
+                if nr != st["top"] and not nr.startswith(praefix):
+                    continue
+                antrag = hd.antrag_aus_zeile(dict(r))
+                if not antrag:
+                    continue
+                gesamt += 1
+                if antrag.ist_verwaltung:
+                    verwaltung += 1
+                    continue
+                # Gemeinsame Listen zählen für ALLE Beteiligten — „SPD/Grüne"
+                # ist keine Fraktion, sondern zwei, die sich zusammengetan
+                # haben. Sie unter einem Kunstnamen zu führen ließe die Frage
+                # „Wie viele Anträge stellte die SPD?" ins Leere laufen.
+                for name in (antrag.urheber or "").split(" / "):
+                    if not name:
+                        continue
+                    e = traeger.setdefault(name, {"name": name, "anzahl": 0,
+                                                  "angenommen": 0, "abgelehnt": 0})
+                    e["anzahl"] += 1
+                    if antrag.outcome == "angenommen":
+                        e["angenommen"] += 1
+                    elif antrag.outcome == "abgelehnt":
+                        e["abgelehnt"] += 1
+            if not gesamt:
+                continue
+            stationen.append({
+                "gremium": st["gremium"], "datum": st["datum"],
+                "urheber": sorted(traeger.values(), key=lambda u: (-u["anzahl"], u["name"]))[:limit],
+                "verwaltung": verwaltung, "gesamt": gesamt,
+                "beschluss": st["beschluss"],
+            })
+        if not stationen:
+            return None
+        # Die LETZTEN beiden Stationen, nicht die ersten: In Oldenburg sind das
+        # der Ausschuss für Finanzen und Beteiligungen und der Rat, und der Rat
+        # tagt zuletzt. Käme je eine dritte Station dazu, fiele damit die
+        # früheste heraus — nie die entscheidende.
+        return {"jahr": gewaehlt, "jahre": sorted(anker),
+                "stationen": stationen[-2:]}
+
     # ---- Teilvoten aus raw_result (welche Fraktion stimmte wie) ----
 
     def save_decision_votes(self, decision_id: int, votes: list[tuple[str, str]]) -> None:

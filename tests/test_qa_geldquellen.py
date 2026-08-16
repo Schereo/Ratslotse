@@ -66,6 +66,25 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     ("Wie hoch waren die Steuereinnahmen?", "geld",
      {"plan", "ansatz", "steuern", "ausgleich"}),
 
+    # --- Die vier Schichten, die die KI-Frage bis 17.08. nicht kannte -------
+    # Vorher zog jede dieser Fragen die falsche Quelle oder gar keine; die
+    # Messung dazu steht im Kopf von `test_neue_facetten_ziehen_allein`.
+    #
+    # Schulden sind ein BESTAND. Vorher: {"plan"} — der Ergebnishaushalt, in
+    # dem der Schuldenstand nicht vorkommt.
+    ("Wie viel Schulden hat Oldenburg?", "geld", {"schulden"}),
+    # Der ANDERE Haushalt. Vorher: {} bzw. {"plan"}.
+    ("Was wird gebaut?", "thema", {"investitionen"}),
+    ("Wie viel investiert die Stadt?", "geld", {"investitionen"}),
+    # Stellen statt Euro. Vorher: {} — Personalfragen bekamen Aufwendungen.
+    ("Wie viele Stellen sind unbesetzt?", "thema", {"stellenplan"}),
+    ("Wie viele Mitarbeiter hat die Stadt?", "thema", {"stellenplan"}),
+    # Die Änderungslisten. Vorher: {"plan", "ansatz"} — die Plan-Zahlen des
+    # Haushalts, aber kein Wort darüber, wer ihn ändern wollte.
+    ("Wer wollte den Haushalt ändern?", "thema", {"plan", "ansatz", "antraege"}),
+    ("Welche Änderungslisten gab es zum Haushalt 2026?", "thema",
+     {"plan", "ansatz", "antraege"}),
+
     # --- Negativfälle -------------------------------------------------------
     # Ohne diese Zeilen optimiert man auf „lädt immer alles" und überflutet
     # den Kontext. Jede Frage hier muss GAR KEINE Haushaltsquelle ziehen.
@@ -79,6 +98,11 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     ("Was sagte die SPD zum Klimaschutz?", "partei", set()),
     ("Was ist die GSG?", "thema", set()),
     ("Wer ist im Verwaltungsausschuss?", "thema", set()),
+    # Die Gegenprobe zu den vier Neuzugängen: Wörter, die ihnen nahekommen,
+    # ohne sie zu meinen. „Anträge stellen" ist das Verb, keine Planstelle;
+    # „Debatte" ohne Haushalts-Anker ist kein Haushaltsstreit.
+    ("Wie viele Anträge stellen die Fraktionen?", "thema", set()),
+    ("Wer stellte den Antrag zum Radweg?", "thema", set()),
 ]
 
 #: Welche Store-Methode eine Facette anfasst. Die zweite Hälfte der Messung:
@@ -94,6 +118,10 @@ ERWARTETE_METHODEN = {
     "ausgleich": "steuerkraft_kontext",
     "konzern": "konzern_kontext",
     "vergleich": "staedtevergleich_kontext",
+    "schulden": "schulden_kontext",
+    "investitionen": "investitionen_fuer_begriffe",
+    "stellenplan": "stellenplan_kontext",
+    "antraege": "haushaltsantraege_kontext",
 }
 
 
@@ -143,6 +171,19 @@ class _MessStore:
 
     def staedtevergleich_kontext(self, reihe="steuerkraft"):
         return self._merken("staedtevergleich_kontext", None)
+
+    def schulden_kontext(self):
+        return self._merken("schulden_kontext", None)
+
+    def investitionen_fuer_begriffe(self, b, limit=3):
+        return self._merken("investitionen_fuer_begriffe", None)
+
+    def stellenplan_kontext(self, jahrgang=None):
+        return self._merken("stellenplan_kontext", None)
+
+    def haushaltsantraege_kontext(self, jahr=None, limit=8):
+        self.jahr_argument = jahr
+        return self._merken("haushaltsantraege_kontext", None)
 
 
 # ---------------------------------------------------------------------------
@@ -242,6 +283,124 @@ def test_stadion_regression(frage, tmp_path):
                  "DER KONZERN STADT", "AUFGABEN DER STADT", "HAUSHALTSANSATZ"):
         assert kopf not in prompt, kopf
     store.close()
+
+
+# ---------------------------------------------------------------------------
+# 1b. Die vier Schichten der 17.08.-Runde
+# ---------------------------------------------------------------------------
+# Gemessen vor dem Umbau: 0 von 20 dieser Fragen zog ihre Quelle. Vier davon
+# zogen eine FALSCHE — „Wie viel Schulden hat Oldenburg?" bekam den
+# Ergebnishaushalt, in dem der Schuldenstand gar nicht vorkommt. Nach dem
+# Umbau: 20 von 20, und jede allein (s. den Test darunter).
+
+NEUE_FACETTEN = [
+    ("schulden", [
+        "Wie viel Schulden hat Oldenburg?",
+        "Wie hoch sind die Schulden der Stadt?",
+        "Wie hat sich der Schuldenstand entwickelt?",
+        "Wie viele Schulden hat die Stadt pro Kopf?",
+        "Ist Oldenburg verschuldet?",
+    ]),
+    ("investitionen", [
+        "Was wird gebaut?",
+        "Wie viel investiert die Stadt?",
+        "Was sind die größten Investitionen?",
+        "Wie hoch ist das Investitionsvolumen?",
+        "Was will die Stadt bauen und kaufen?",
+    ]),
+    ("stellenplan", [
+        "Wie viele Stellen sind unbesetzt?",
+        "Wie viele Stellen hat die Stadtverwaltung?",
+        "Wie viele Mitarbeiter hat die Stadt?",
+        "Wie hoch ist der Besetzungsgrad im Stellenplan?",
+        "Sucht die Stadt Personal?",
+    ]),
+    ("antraege", [
+        "Wer wollte den Haushalt ändern?",
+        "Welche Änderungslisten gab es zum Haushalt?",
+        "Wer hat Änderungsanträge zum Haushalt gestellt?",
+        "Wie umstritten war der Haushalt 2026?",
+        "Kam die CDU mit ihren Haushaltsanträgen durch?",
+    ]),
+]
+
+
+@pytest.mark.parametrize("facette,fragen", NEUE_FACETTEN, ids=[f[0] for f in NEUE_FACETTEN])
+def test_neue_facetten_werden_erkannt(facette, fragen):
+    """Fünf Formulierungen je Schicht — alle müssen ihre Quelle ziehen."""
+    for frage in fragen:
+        gefunden = qa.geld_facetten(frage, "thema")
+        assert facette in gefunden, f"„{frage}“ → {sorted(gefunden)}"
+
+
+@pytest.mark.parametrize("facette,fragen", NEUE_FACETTEN, ids=[f[0] for f in NEUE_FACETTEN])
+def test_neue_facetten_ziehen_sich_nicht_gegenseitig(facette, fragen):
+    """Die Gegenrichtung, und sie ist der wichtigere Teil der Messung.
+
+    Zu viele Bausteine sind so schädlich wie zu wenige: Eine Schuldenfrage,
+    die den Stellenplan mitzieht, verbraucht Kontext für etwas, wonach
+    niemand gefragt hat — und stellt dem Modell zwei Zahlenwerke nebeneinander,
+    die es dann in Beziehung setzt.
+
+    Die drei Bestands-Schichten stehen für sich allein. `antraege` ist die
+    Ausnahme und darf `plan`/`ansatz` mitbringen: „Wer wollte den Haushalt
+    ändern?" trägt „Haushalt" im Wortlaut, und die Plan-Zahlen sind dort der
+    Gegenstand des Streits, nicht Beiwerk.
+    """
+    erlaubt = {facette} | ({"plan", "ansatz"} if facette == "antraege" else set())
+    for frage in fragen:
+        gefunden = qa.geld_facetten(frage, "thema")
+        fremde = gefunden - erlaubt
+        assert not fremde, f"„{frage}“ zieht zusätzlich {sorted(fremde)}"
+
+
+def test_schuldenfrage_zieht_weder_plan_noch_stellenplan():
+    """Der namentlich benannte Befund: „Wie viel Schulden hat Oldenburg?" wurde
+    vom Ergebnishaushalt beantwortet — der falschen Quelle.
+
+    Schulden sind ein Bestand am Stichtag. Weder `plan` (Teilhaushalte) noch
+    `ansatz` (Gesamtergebnishaushalt) führen sie; beide zu laden hieße, dem
+    Modell Jahresbeträge neben einen Bestand zu legen."""
+    f = qa.geld_facetten("Wie viel Schulden hat Oldenburg?", "geld")
+    assert f == {"schulden"}
+    assert "plan" not in f and "ansatz" not in f and "stellenplan" not in f
+
+
+def test_investitionsfrage_zieht_nicht_den_ergebnishaushalt():
+    """Im Ergebnishaushalt steht keine einzige Investition."""
+    f = qa.geld_facetten("Wie viel investiert die Stadt?", "geld")
+    assert f == {"investitionen"}
+
+
+def test_stellen_als_verb_zieht_den_stellenplan_nicht():
+    """„Anträge stellen" ist das Verb, keine Planstelle.
+
+    Ohne diese Unterscheidung hinge der ganze Stellenplan an einem der
+    häufigsten deutschen Verben."""
+    assert qa.geld_facetten("Wie viele Anträge stellen die Fraktionen?", "thema") == set()
+    assert qa.geld_facetten("Wer stellte den Antrag zum Radweg?", "thema") == set()
+    # Die echte Zählfrage bleibt erkannt.
+    assert "stellenplan" in qa.geld_facetten("Wie viele Stellen hat die Stadt?", "thema")
+
+
+def test_debatte_ohne_haushalt_ist_kein_haushaltsstreit():
+    """`antraege` braucht einen Haushalts-Anker; „Debatte" allein reicht nicht."""
+    assert "antraege" not in qa.geld_facetten("Wie lief die Debatte um das Stadion?", "verlauf")
+    assert "antraege" in qa.geld_facetten("Wie lief die Haushaltsdebatte?", "thema")
+
+
+def test_jahrgang_aus_der_frage_geht_an_die_aenderungslisten():
+    """„Wer wollte den Haushalt 2024 ändern?" meint 2024, nicht den jüngsten
+    Jahrgang — und das Jahr kommt aus der FRAGE, nicht aus den expandierten
+    Begriffen (die streuen Jahreszahlen ein, die niemand getippt hat)."""
+    assert qa.haushaltsjahr("Wer wollte den Haushalt 2024 ändern?") == 2024
+    assert qa.haushaltsjahr("Wer wollte den Haushalt ändern?") is None
+    store = _MessStore()
+    qa.geld_kontext(store, "Wer wollte den Haushalt 2024 ändern?", "Haushalt 2026 Etat", "thema")
+    assert store.jahr_argument == 2024
+    store = _MessStore()
+    qa.geld_kontext(store, "Wer wollte den Haushalt ändern?", "Haushalt 2026 Etat", "thema")
+    assert store.jahr_argument is None
 
 
 def test_typ_geld_bleibt_das_auffangnetz():
@@ -402,6 +561,80 @@ def _befuellter_store(tmp_path) -> CouncilStore:
             "INSERT INTO council_haushalt (year, bereich, ertraege, aufwendungen, ergebnis, "
             " is_summe, fetched_at) VALUES "
             "(2026, 'Brandschutz und Rettungsdienst', 2000000, 31000000, -29000000, 0, '')")
+        # --- Die vier Schichten der 17.08.-Runde ---------------------------
+        # Schulden: Reihenanfang, Höchststand, Vorjahr, jüngstes Jahr. Vier
+        # Zeilen reichen — der Baustein zeigt genau diese vier Bezugspunkte.
+        store._conn.executemany(
+            "INSERT INTO council_schulden (jahr, kreditmarkt, sondermittel, "
+            " gebietskoerperschaften, eigenbetriebe, insgesamt, je_einwohner, "
+            " revidiert, herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,0,3,'')",
+            [(1995, None, None, None, None, 198_000_000.0, 1_420.0),
+             (2013, None, None, None, None, 512_400_000.0, 3_180.0),
+             (2024, 214_000_000.0, 1_200_000.0, 8_600_000.0, 109_000_000.0,
+              332_800_000.0, 1_910.0),
+             (2025, 219_400_000.0, 1_100_000.0, 8_300_000.0, 108_600_000.0,
+              337_400_000.0, 1_932.0)])
+        # Investitionen: Summenzeile, drei Teilhaushalte und die Bezugsgröße
+        # `finanzhaushalt` — die darf NICHT im Kontext landen (ungeprüft).
+        store._conn.executemany(
+            "INSERT INTO council_investitionen (jahr, ebene, thh_nr, bezeichnung, "
+            " einzahlungen, auszahlungen, herkunft_id, fetched_at) VALUES (2026,?,?,?,?,?,4,'')",
+            [("investitionen", 0, "Summe Investitionstätigkeit", 22_300_000.0, 80_800_000.0),
+             ("teilhaushalt", 4, "Schule und Sport", 6_100_000.0, 24_600_000.0),
+             ("teilhaushalt", 7, "Verkehr und Straßenbau", 3_400_000.0, 10_500_000.0),
+             ("teilhaushalt", 9, "Feuerwehr", 200_000.0, 3_900_000.0),
+             ("finanzhaushalt", 0, "Gesamtbetrag des Finanzhaushaltes",
+              871_000_000.0, 903_000_000.0)])
+        # Stellenplan: beide Teile, nur die Gesamtzeilen. besetzt +
+        # nicht_besetzt = stellen_vorjahr (die Besetzungsprobe des Plans).
+        store._conn.executemany(
+            "INSERT INTO council_stellenplan (jahrgang, teil, zeile, art, bezeichnung, "
+            " stellen_plan, stellen_vorjahr, besetzt, nicht_besetzt, stichtag, "
+            " herkunft_id, fetched_at) VALUES (2026,?,0,'gesamt',?,?,?,?,?,'30.06.2025',?,'')",
+            [("A", "Gesamt Teil A", 815.50, 802.00, 761.25, 40.75, 5),
+             ("B", "Gesamt Teil B", 1_702.25, 1_688.50, 1_579.00, 109.50, 6)])
+        # Der Streit ums Geld: eine Runde zum Haushalt 2026 mit zwei
+        # Stationen. Die Titel sind die echten Anker (`_STREIT_SATZUNG`,
+        # `_STREIT_SAMMEL`) — an ihnen hängt die ganze Erkennung.
+        store._conn.executemany(
+            "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, "
+            " location, fetched_at) VALUES (?,?,?,'16:00','Rathaus','')",
+            [(9001, "Ausschuss für Finanzen und Beteiligungen", "2026-02-10"),
+             (9002, "Rat", "2026-02-23")])
+        eintraege = []
+        for ksinr, top in ((9001, "6"), (9002, "7")):
+            eintraege.append((ksinr, 0, "decision", top, "Haushalt 2026", None, None))
+            eintraege.append((ksinr, 1, "decision", f"{top}.9",
+                              "Haushaltssatzung und Haushaltsplan 2026",
+                              "angenommen", "mehrheitlich"))
+        for ksinr, top, lauf in ((9001, "6", 10), (9002, "7", 10)):
+            listen = [
+                ("Änderungsliste Verwaltung I zum Ergebnishaushalt", "angenommen"),
+                ("Änderungsliste der CDU-Fraktion zum Ergebnishaushalt", "abgelehnt"),
+                ("Änderungsliste der CDU-Fraktion zum Finanzhaushalt", "abgelehnt"),
+                ("Änderungsliste der Fraktionen SPD und Bündnis 90/Die Grünen "
+                 "zum Ergebnishaushalt", "angenommen"),
+                ("Änderungsliste der Gruppe FDP/Volt zum Ergebnishaushalt", "abgelehnt"),
+                ("So geänderter Ergebnishaushalt einschließlich der Änderungslisten",
+                 "angenommen"),
+            ]
+            for i, (titel, ergebnis) in enumerate(listen):
+                eintraege.append((ksinr, lauf + i, "subvote", f"{top}.{i + 1}",
+                                  titel, ergebnis, "mehrheitlich"))
+        store._conn.executemany(
+            "INSERT INTO council_decisions (ksinr, position, kind, item_number, title, "
+            " outcome, vote) VALUES (?,?,?,?,?,?,?)", eintraege)
+        store._conn.executemany(
+            "INSERT INTO council_herkunft (id, schluessel, art, label, url, fundstelle, "
+            " probe, stand, fetched_at) VALUES (?,?,'ris',?,?,?,?,?,'2026-08-17')",
+            [(3, "k3", "Statistisches Jahrbuch, Tabelle 1108",
+              "https://example.org/1108", "Tabelle 1108", "prokopfprobe", "2025"),
+             (4, "k4", "Haushaltsplan 2026, Finanzhaushalt",
+              "https://example.org/hh2026", "Gesamtfinanzhaushalt", "summenprobe", "2026"),
+             (5, "k5", "Haushaltsplan 2026, Stellenplan Teil A",
+              "https://example.org/sp-a", "Anlage 21", "besetzungsprobe", "30.06.2025"),
+             (6, "k6", "Haushaltsplan 2026, Stellenplan Teil B",
+              "https://example.org/sp-b", "Anlage 22", "besetzungsprobe", "30.06.2025")])
     return store
 
 
@@ -499,12 +732,146 @@ def test_ansatz_block_laesst_die_finanzplanung_draussen(tmp_path):
     store.close()
 
 
+def test_schulden_block_traegt_die_abgrenzung_woertlich(tmp_path):
+    """Die Abgrenzung ist an dieser Zahl keine Fußnote, sondern ihre Bedeutung:
+    „Schulden der Stadt" heißen zwei Zahlen, die sich um ein Vielfaches
+    unterscheiden. Der Wortlaut kommt aus ``council.schulden.ABGRENZUNG`` —
+    eine zweite Formulierung daneben wäre eine dritte Zahl."""
+    from council import schulden
+
+    store = _befuellter_store(tmp_path)
+    s = store.schulden_kontext()
+    text = qa._schulden_block(s)
+    assert s["jahr"] == 2025
+    assert "337.400.000" in text and "1.932 €" in text        # Stand und Pro-Kopf
+    assert "332.800.000" in text                              # das Jahr davor
+    assert "2013 mit 512.400.000" in text                     # Höchststand der Reihe
+    assert "sie beginnt 1995" in text
+    assert schulden.ABGRENZUNG in text                        # wörtlich, nicht nachgebaut
+    assert "Eigenbetriebe" in text and "Klinikum" in text
+    # Die Bestands-Regel steht ausdrücklich drin — sonst wird die Zahl als
+    # Jahresbetrag gelesen und gegen den Haushalt gerechnet.
+    assert "BESTAND am Stichtag" in text and "nie mit Aufwendungen" in text
+    assert "[id]" in text
+    assert "Tabelle 1108" in text                             # Beleg
+    assert qa._schulden_block(None) == ""
+    store.close()
+
+
+def test_investitionen_block_warnt_vor_dem_zweiten_haushalt(tmp_path):
+    """Zwei Millionenbeträge im selben Kontext, die nichts miteinander zu tun
+    haben, addiert ein Sprachmodell bereitwillig. Ohne die Warnung wäre der
+    Baustein schädlicher als sein Fehlen."""
+    store = _befuellter_store(tmp_path)
+    i = store.investitionen_fuer_begriffe(["Schule", "Sport"])
+    text = qa._investitionen_block(i)
+    assert i["jahr"] == 2026
+    assert "80.800.000" in text                        # Summenzeile der Datei
+    assert "Schule und Sport" in text                  # der getroffene Teilhaushalt
+    assert "ZWEI HAUSHALTE, NICHT EINER" in text
+    assert "keine einzige Investition" in text and "Abschreibung" in text
+    assert "nie addieren" in text
+    assert "KEIN einzelnes Vorhaben" in text           # sagt nicht, welche Straße
+    # Der Gesamtbetrag des Finanzhaushaltes ist von keiner Probe gedeckt und
+    # steht deshalb bewusst NICHT im Prompt — er läge dort neben geprüften
+    # Zahlen und sähe aus wie eine von ihnen.
+    assert "903.000.000" not in text and "Gesamtbetrag des Finanzhaushaltes" not in text
+    assert qa._investitionen_block(None) == ""
+    store.close()
+
+
+def test_stellenplan_block_bindet_die_besetzung_an_das_vorjahr(tmp_path):
+    """`Stellen − besetzt` ist die Rechnung, die einem Modell am nächsten
+    liegt und die in keinem Dokument steht: Sie mischt zwei Stichtage.
+
+    815,50 − 761,25 wären 54,25 „unbesetzte" Stellen. Im Plan stehen 40,75 —
+    weil sich die Besetzung auf die 802,00 Stellen des Vorjahres bezieht."""
+    store = _befuellter_store(tmp_path)
+    s = store.stellenplan_kontext()
+    text = qa._stellenplan_block(s)
+    assert s["jahrgang"] == 2026 and s["stichtag"] == "30.06.2025"
+    assert "815,50 Stellen im Haushaltsjahr 2026" in text
+    assert "Im Vorjahr waren es 802,00 Stellen" in text
+    assert "761,25 besetzt und 40,75 nicht besetzt" in text
+    assert "54,25" not in text                      # die verbotene Differenz
+    assert "VORJAHRESSPALTE, Stichtag 30.06.2025" in text
+    assert "minus besetzt" in text and "mischt zwei Stichtage" in text
+    assert "Beamtinnen und Beamte" in text and "Arbeitnehmerinnen" in text
+    # Stellen sind keine Köpfe, und es ist nur die Kernverwaltung.
+    assert "keine Köpfe" in text and "Kernverwaltung" in text
+    assert "addiere die Teile nicht" in text
+    assert not s["fehlend"]
+    assert qa._stellenplan_block(None) == ""
+    store.close()
+
+
+def test_stellenplan_nennt_den_fehlenden_teil(tmp_path):
+    """Ein Jahrgang mit nur einem Teil sähe sonst wie ein ganzer aus — und
+    eine Antwort, die dann „815 Stellen" sagt, unterschlägt 1.700."""
+    store = _befuellter_store(tmp_path)
+    with store._conn:
+        store._conn.execute("DELETE FROM council_stellenplan WHERE teil = 'B'")
+    text = qa._stellenplan_block(store.stellenplan_kontext())
+    assert "NICHT im Bestand: der Teil für Arbeitnehmerinnen und Arbeitnehmer" in text
+    assert "nicht der ganze Stellenplan" in text
+    store.close()
+
+
+def test_antraege_block_sagt_wer_und_zieht_die_grenze(tmp_path):
+    """Wer wollte ändern und kam durch — und der ausdrückliche Satz, dass der
+    INHALT der Listen nicht im Bestand ist.
+
+    Ohne ihn füllt das Modell die Lücke mit Plausiblem: „Die CDU wollte bei
+    den Sozialausgaben kürzen" steht nirgends und ließe sich auch nicht
+    widerlegen."""
+    store = _befuellter_store(tmp_path)
+    a = store.haushaltsantraege_kontext()
+    text = qa._antraege_block(a)
+    assert a["jahr"] == 2026
+    # Beide Stationen: Der Ausschuss stimmt über dieselben Listen ab wie der
+    # Rat, oft mit anderem Ergebnis.
+    assert "Ausschuss für Finanzen und Beteiligungen" in text and "Rat," in text
+    assert "CDU: 2 — davon 0 angenommen, 2 abgelehnt" in text
+    # Gemeinsame Listen zählen für BEIDE Fraktionen, nicht für die erstgenannte.
+    assert "SPD: 1" in text and "Grüne: 1" in text
+    assert "FDP/Volt: 1" in text
+    # Die Verwaltungsliste ist kein Fraktionsantrag.
+    assert "1 der Verwaltung" in text and "kein Fraktionsantrag" in text
+    # Die Schlussabstimmung über die Sache selbst.
+    assert "Schlussabstimmung über die Haushaltssatzung: angenommen" in text
+    # Und die Grenze der Quelle.
+    assert "WER etwas ändern" in text and "nicht WAS genau" in text
+    assert "erfinde" in text and "nicht als Text vor" in text
+    assert "nicht\naddierbar" in text
+    # „So geänderter Ergebnishaushalt …" ist die Sammelabstimmung, kein Antrag.
+    assert "So geänderter" not in text
+    assert qa._antraege_block(None) == ""
+    store.close()
+
+
+def test_antraege_folgen_dem_jahrgang_aus_der_frage(tmp_path):
+    """Das Haushaltsjahr ist nicht das Sitzungsjahr — und ein Jahrgang, den es
+    nicht gibt, fällt auf den jüngsten zurück statt ins Leere."""
+    store = _befuellter_store(tmp_path)
+    assert store.haushaltsantraege_kontext(2026)["jahr"] == 2026
+    assert store.haushaltsantraege_kontext(1999)["jahr"] == 2026
+    store.close()
+
+
 def test_leere_datenbank_liefert_leere_bausteine(tmp_path):
-    """Eine frische Datenbank ohne Ingest-Lauf darf die Antwort nicht kosten."""
+    """Eine frische Datenbank ohne Ingest-Lauf darf die Antwort nicht kosten.
+
+    Auf Prod ist das der Normalfall und kein Randfall: Der Haushalts-Bereich
+    steht dort hinter dem Umgebungs-Gate, die Tabellen entstehen leer und
+    bleiben es. Jede der vierzehn Quellen muss das aushalten — deshalb hier
+    zwei Fragen, die zusammen alle vier Neuzugänge ziehen."""
     store = CouncilStore(tmp_path / "leer.sqlite")
-    kontext = qa.geld_kontext(store, "Was kostet die Stadt insgesamt?", "", "geld")
-    assert qa.geld_block(kontext) == ""
-    assert qa.geld_regeln(kontext) == ""
+    for frage in ("Was kostet die Stadt insgesamt?",
+                  "Wie viel Schulden hat Oldenburg, was wird gebaut, wie viele "
+                  "Stellen sind unbesetzt und wer wollte den Haushalt ändern?"):
+        kontext = qa.geld_kontext(store, frage, "", "geld")
+        assert qa.geld_block(kontext) == "", frage
+        assert qa.geld_regeln(kontext) == "", frage
     store.close()
 
 
@@ -531,6 +898,92 @@ def test_voller_geld_kontext_bleibt_im_budget(tmp_path):
     assert len(text) <= qa.GELD_MAX_CHARS, f"{len(text)} Zeichen"
     # Und er ist auch nicht leer — sonst misst der Deckel nichts.
     assert len(text) > 1500, f"nur {len(text)} Zeichen"
+    store.close()
+
+
+#: Obergrenze je NEUEM Baustein, gemessen am 17.08. an einer Datenbank im
+#: Zuschnitt des Prod-Bestands (die Werte in Klammern sind die Messung):
+#:
+#:     schulden       1.046   stellenplan    1.044
+#:     investitionen    955   antraege       1.379
+#:
+#: Die Grenzen liegen bewusst knapp darüber. Sie sind keine Willkür, sondern
+#: die Antwort auf Tims Frage „wie viel brauchen die neuen Bausteine wirklich,
+#: BEVOR Du sie alle zuschaltest": Zusammen sind es rund 4.400 Zeichen — das
+#: ganze Budget. Sie feuern nur nie zusammen (s. die Gegenrichtungs-Tests
+#: oben), und genau deshalb ist der Deckel bei 4.500 geblieben.
+NEUE_BAUSTEIN_GRENZEN = {
+    "schulden": 1200,
+    "stellenplan": 1200,
+    "investitionen": 1100,
+    "antraege": 1600,
+}
+
+
+@pytest.mark.parametrize("facette,grenze", sorted(NEUE_BAUSTEIN_GRENZEN.items()))
+def test_neuer_baustein_bleibt_in_seiner_groesse(facette, grenze, tmp_path):
+    """Jeder neue Baustein einzeln vermessen — wächst einer davon, fällt es
+    hier auf und nicht erst, wenn er im Prompt die Beschlüsse verdrängt."""
+    store = _befuellter_store(tmp_path)
+    frage = {"schulden": "Wie viel Schulden hat Oldenburg?",
+             "stellenplan": "Wie viele Stellen sind unbesetzt?",
+             "investitionen": "Was wird gebaut?",
+             "antraege": "Welche Änderungslisten gab es zum Haushalt 2026?"}[facette]
+    kontext = qa.geld_kontext(store, frage, frage, "thema")
+    schluessel, bauer = qa._GELD_BAUSTEINE[facette]
+    text = bauer(kontext.get(schluessel))
+    assert text, f"{facette} liefert nichts — Fixture verrutscht?"
+    assert len(text) <= grenze, f"{facette}: {len(text)} Zeichen (Grenze {grenze})"
+    store.close()
+
+
+def test_echte_fragen_bleiben_weit_unter_dem_deckel(tmp_path):
+    """Die Messung, die zählt: nicht der Vollausschlag, sondern was echte
+    Fragen wirklich kosten.
+
+    Gemessen am 17.08.: 616–1.755 Zeichen. Der Deckel bei 4.500 ist damit für
+    den Normalfall keine Fessel — er greift erst bei Fragen, die ein halbes
+    Dutzend Quellen auf einmal ziehen, und genau dafür ist er da."""
+    store = _befuellter_store(tmp_path)
+    for frage in ["Wie viel Schulden hat Oldenburg?",
+                  "Was wird gebaut?",
+                  "Wie viele Stellen sind unbesetzt?",
+                  "Wer wollte den Haushalt 2026 ändern?",
+                  "Wie viel gibt die Stadt für Personal aus?",
+                  "Was kostet die Feuerwehr?",
+                  "Warum kam so viel mehr Gewerbesteuer rein?"]:
+        kontext = qa.geld_kontext(store, frage, frage, "thema")
+        laenge = len(qa.geld_block(kontext))
+        assert 0 < laenge <= 2200, f"„{frage}“: {laenge} Zeichen"
+    store.close()
+
+
+def test_die_neuen_facetten_verdraengen_die_alten_nicht_komplett(tmp_path):
+    """Der Grund, warum `antraege` nicht vorn in GELD_FACETTEN steht.
+
+    Zieht eine Frage alles, füllen allein die vier Neuzugänge das Budget
+    (gemessen: 4.344 von 4.500 Zeichen) — mit ihnen an den ersten vier
+    Plätzen blieb von den zehn älteren Quellen keine einzige übrig. Der
+    Jahresabschluss aus einer Frage zu werfen, die ausdrücklich nach ihm
+    fragt, wäre kein Zeichensparen, sondern ein Datenverlust."""
+    store = _befuellter_store(tmp_path)
+    kontext = qa.geld_kontext(
+        store, "Warum kostet die Stadt insgesamt mehr als geplant, wie viele "
+               "Schulden hat sie, was wird gebaut, wie viele Stellen sind "
+               "unbesetzt, was hat das Rechnungsprüfungsamt beanstandet und wie "
+               "ist das im Vergleich zu Osnabrück?",
+        "Haushalt Soziales Theater Feuerwehr Steuern Schule", "geld")
+    text = qa.geld_block(kontext)
+    assert len(kontext["facetten"]) >= 10, sorted(kontext["facetten"])
+    assert len(text) <= qa.GELD_MAX_CHARS
+    # Die drei neuen Bestands-Quellen sind drin …
+    for kopf in ("SCHULDENSTAND", "STELLENPLAN", "INVESTITIONEN"):
+        assert kopf in text, kopf
+    # … und mindestens zwei der älteren haben es ebenfalls geschafft.
+    alt = sum(1 for kopf in ("GEPLANT UND TATSÄCHLICH", "WARUM DER PLAN NICHT AUFGING",
+                             "RECHNUNGSPRÜFUNGSAMT", "AUFGABEN DER STADT")
+              if kopf in text)
+    assert alt >= 2, f"nur {alt} der älteren Quellen überlebten den Deckel"
     store.close()
 
 
@@ -592,15 +1045,56 @@ def test_geldregeln_treten_bei_punktfragen_zurueck(tmp_path):
 
 
 def test_alter_aufrufweg_bleibt_unveraendert():
-    """Die Deep-Research-Pipeline reicht haushalt=/steuern=/steuerkraft=
-    einzeln durch (``app/deepresearch.py``, nicht Teil dieser Runde). Ohne
-    ``geld=`` muss dabei exakt das Alte herauskommen."""
+    """Der Einzelweg haushalt=/steuern=/steuerkraft= bleibt bestehen.
+
+    Die Deep-Research-Pipeline benutzt ihn seit dem 17.08. nicht mehr (sie
+    ruft ``geld_kontext`` wie ``/ask``), aber der Parameter-Weg bleibt: Er ist
+    die Rückfallebene für Aufrufer außerhalb des Routers, und ein stiller
+    Verhaltenswechsel wäre der schlechtere Weg, ihn abzuräumen."""
     zeilen = [{"year": 2026, "bereich": "Verkehr und Straßenbau",
                "aufwendungen": 46194645.0, "ertraege": 17510637.0}]
     messages, _ = qa._answer_messages("Was kostet der Verkehr?", [], typ="geld",
                                       haushalt=zeilen)
     assert "STADTHAUSHALT" in messages[0]["content"]
     assert "46.194.645" in messages[0]["content"]
+
+
+def test_deep_research_bekommt_denselben_geld_kontext(tmp_path):
+    """Die „Gründliche Recherche" hing am Stand von vor der Facetten-Runde:
+    drei fest verdrahtete Store-Aufrufe, also weder Schulden noch
+    Investitionen, Stellenplan oder Änderungslisten.
+
+    Geprüft wird beides — dass der lange Bericht die neuen Quellen jetzt sieht
+    UND dass er die vier Haushalts-Regeln dazu bekommt. Die hingen bis dahin
+    allein am Antwort-Prompt von ``/ask``; der Bericht bekam die Beträge ohne
+    die Anweisung, Jahr und Quelle zu nennen."""
+    store = _befuellter_store(tmp_path)
+    kontext = qa.geld_kontext(store, "Wie viel Schulden hat Oldenburg?",
+                              "Schulden Kredite", "thema")
+    zusatz = qa.geld_regeln(kontext) + qa.geld_block(kontext)
+    assert "SCHULDENSTAND" in zusatz
+    assert "JAHR IMMER NENNEN" in zusatz and "PLAN IST NICHT IST" in zusatz
+    # Die Regeln stehen VOR den Zahlen — ihr eigener Wortlaut verweist auf
+    # „eigene Abschnitte unten".
+    assert zusatz.index("eigene Abschnitte unten") < zusatz.index("SCHULDENSTAND")
+    store.close()
+
+
+def test_deepresearch_ruft_geld_kontext_statt_einzelquellen():
+    """Der Verdrahtungstest: Ruft ``app/deepresearch.py`` wirklich die
+    gebündelte Quelle — oder hängt es wieder an Einzelaufrufen?
+
+    Am Quelltext gemessen und nicht an einem Lauf: Die Pipeline braucht einen
+    Job, einen Thread und eine Datenbank, und der Befund („es fragt die
+    falsche Stelle") steht schon in der Zeile."""
+    from pathlib import Path
+
+    quelle = (Path(__file__).resolve().parents[1] / "web" / "backend" / "app"
+              / "deepresearch.py").read_text(encoding="utf-8")
+    assert "qa.geld_kontext(" in quelle
+    for alt in ("store.haushalt_fuer_begriffe", "store.steuern_fuer_begriffe",
+                "store.steuerkraft_kontext"):
+        assert alt not in quelle, f"{alt} hängt noch am alten Einzelweg"
 
 
 def test_facetten_stehen_im_kontext_zum_mitloggen():
