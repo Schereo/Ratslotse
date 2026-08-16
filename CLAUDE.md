@@ -5,7 +5,7 @@ verständlich — über ein Web-Frontend ([ratslotse.de](https://ratslotse.de)) 
 Web-Push- und E-Mail-Benachrichtigungen. Aus dem amtlichen Ratsinformationssystem,
 per LLM aufbereitet.
 
-> Diese Datei ist die Kurz-Orientierung für Contributor:innen und Coding-Agents.
+> Diese Datei ist die Kurz-Orientierung für Contributor*innen und Coding-Agents.
 > Ausführliche Technik-Doku: [ratslotse.de/docs](https://ratslotse.de/docs)
 > (Quelle in `docs-site/`).
 

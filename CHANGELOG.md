@@ -148,6 +148,16 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   (#516)
 
 ### Geändert
+- **Kleinkram im Haushalts-Bereich, den sonst niemand bemerkt hätte.** Das
+  Fußnotenzeichen im Städtevergleich ist jetzt ein Kreuz statt eines Sternchens
+  — die Fußnote selbst endet auf „Einwohner*innen", und zwei Sternchen mit
+  verschiedener Bedeutung nebeneinander liest niemand auseinander. Im
+  Quellenverzeichnis stehen nicht mehr unsere Prüfverfahren, sondern nur noch,
+  was eine Quelle hergibt und was nicht. Im Haushalts-Labor behauptet kein Satz
+  mehr, wie sich ein Jahrgang entwickelt hat, den die Seite gar nicht zeigt.
+  Dazu die Sternchenform in den letzten eigenen Dokumenten (Zitate aus
+  Wahlprogrammen bleiben unangetastet) und eine ungenutzte Komponente weniger.
+  (#547)
 - **Zahlen, die eine Rechenprobe nicht bestehen, ersetzen keine vorhandenen
   mehr.** Liest ein Parser für einen bereits gespeicherten Jahrgang plötzlich
   nichts oder deutlich weniger — etwa weil die Stadt ihre Tabellen umbaut —,

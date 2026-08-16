@@ -288,7 +288,7 @@ herauszunehmen; dann bleiben 8 Listen und 28 Paare.
 
 `ja + nein = 37 242`, ausgewiesene Beteiligung `37 295` — Differenz **53 ungültige Stimmen**.
 Die Prozentwerte (60,58 % Ja) sind korrekt auf die gültigen Stimmen gerechnet. Kein Fehler,
-aber die Zahlen gehen für Leser:innen sonst nicht auf: **„53 ungültig" mit ausweisen.**
+aber die Zahlen gehen für Leser*innen sonst nicht auf: **„53 ungültig" mit ausweisen.**
 
 ---
 

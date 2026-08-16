@@ -20,5 +20,5 @@ auf dem Laufenden. Verantwortungsvolle Offenlegung wird geschätzt.
 ## Scope
 
 Ratslotse verarbeitet öffentliche Ratsinformationen sowie Konto-/Abo-Daten
-registrierter Nutzer:innen. Besonders relevant sind Auth/Session-Handling,
+registrierter Nutzer*innen. Besonders relevant sind Auth/Session-Handling,
 Rate-Limiting und alles, was Nutzerdaten berührt.

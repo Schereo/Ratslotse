@@ -43,7 +43,7 @@ denselben Same-Origin-`/api`-Proxy von Next.
 - **Aktivierung durch E-Mail-Bestätigung:** Neue Konten starten als `pending`
   und werden mit dem Klick auf den Bestätigungslink (24 h gültig) automatisch
   aktiv — keine manuelle Freischaltung. Admins bekommen eine FYI-Mail und können
-  Konten unter Admin → Web-Nutzer:innen jederzeit sperren/entsperren.
+  Konten unter Admin → Web-Nutzer*innen jederzeit sperren/entsperren.
   (Ohne konfigurierten `RESEND_API_KEY` — z. B. lokal — sind neue Konten sofort
   aktiv, weil kein Link verschickt werden kann.)
 
