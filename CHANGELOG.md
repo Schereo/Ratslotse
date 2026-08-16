@@ -25,7 +25,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Stadt einen Eigenbetrieb gründete. Für 2022 fehlt die Aufteilung nach
   Schuldenarten — sie geht in der Quelle selbst nicht auf; die Gesamtschuld des
   Jahres steht trotzdem, weil sie sich gegen die Einwohnerzahlen der Stadt
-  nachrechnen lässt. Quelle ist Tabelle 1108 des Statistischen Jahrbuchs. (#PR)
+  nachrechnen lässt. Quelle ist Tabelle 1108 des Statistischen Jahrbuchs. (#550)
 - **„Und ist das die ganze Stadt?" — der Haushalt zeigt jetzt auch, was neben
   ihm läuft.** Klinikum, Busse, Bäder und die städtischen Gebäude führen eigene
   Bücher; im Haushalt tauchen sie bestenfalls als Zuschusszeile auf. Eine neue
