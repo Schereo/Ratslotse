@@ -212,6 +212,11 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   2026". (#PR)
 
 ### Behoben
+- **Der Erklärblock zum Finanzausgleich ließ die halbe Karte leer.** Zwei
+  Absätze, die Verschiedenes sagen, standen untereinander und brachen bei
+  74 Zeichen um — daneben blieb Platz. Sie stehen jetzt auf breiten
+  Bildschirmen nebeneinander. Die Zeilenlänge bleibt: breiter zu setzen wäre
+  schlechter zu lesen, nicht besser. (#PR)
 - **Der Kopf einer Bereichsseite ließ die halbe Breite leer.** Text und
   Kennzahlen standen untereinander, obwohl die drei Zahlen daneben Platz
   gehabt hätten. Ab großen Bildschirmen stehen sie jetzt nebeneinander. Die
