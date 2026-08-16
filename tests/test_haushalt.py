@@ -300,3 +300,138 @@ def test_store_einwohner_roundtrip(tmp_path):
         [{"jahr": 2024, "einwohner": 176242}, {"jahr": 2025, "einwohner": 176614}], "http://csv") == 2
     assert store.einwohner_aktuell() == {"jahr": 2025, "einwohner": 176614}
     store.close()
+
+
+# --- Jahresabschluss und Teilhaushalte (council/finanzberichte.py) -----------
+# Fixtures sind echte Ausschnitte aus den RIS-Anlagen: Jahresabschluss 2023
+# (Ergebnisrechnung der Kernverwaltung) und ein Teilhaushalts-Plan. Beide
+# Formate haben Eigenheiten, die der Parser aushalten muss — mehrzeilige
+# Bezeichnungen, leere Spalten, angeklebte Seitenzahlen.
+
+from council import finanzberichte  # noqa: E402
+
+JA_2023 = """3.1 Ergebnisrechnung Kernverwaltung
+Erträge und Aufwendungen Ergebnis des
+Vorjahres
+2022
+Ansätze des
+Haushaltsjahres
+2023
+Veränderung
+durch Nachtrag
+Ergebnis des
+Haushaltsjahres
+2023
+mehr (+) /
+weniger (-)4)
+2023
+ - Euro -
+1 2 3 4 5 6 7
+ordentliche Erträge
+01. Steuern und ähnliche Abgaben 305.411.797,55 287.275.000,00  341.608.473,52 54.333.473,52
+02. Zuwendungen und allgemeine
+Umlagen 1) 174.056.740,20 173.491.384,15  168.262.169,22 -5.229.214,93
+12. = Summe ordentliche Erträge 696.627.777,13 664.574.528,42  732.987.197,61 68.412.669,19
+JA 23
+ordentliche Aufwendungen
+13. Personalaufwendungen 156.269.655,13 165.843.899,07  164.821.893,60 -1.022.005,47 249.897,84
+20. = Summe ordentliche
+Aufwendungen 661.705.829,31 674.305.462,42  683.032.270,32 8.726.807,90 12.508.878,04
+21. ordentliches Ergebnis 34.921.947,82 -9.730.934,00  49.954.927,29 59.685.861,29 -12.508.878,04
+3.2 Gesamtergebnisrechnung
+01. Steuern und ähnliche Abgaben 999.999.999,99 888.888.888,88  777.777.777,77 -111.111.111,11
+"""
+
+THH_PLAN = """Teilergebnishaushalt THH06: Kultur, Museen, Sport
+Produkt: Archivierung (P10.111023)
+Amt für Kultur, Museen und Sport
+Erträge und Aufwendungen Ergebnis 2018
+- Euro -
+Ansatz 2019
+- Euro -
+Ansatz 2020
+- Euro -
+Ansatz 2021
+- Euro -
+Ansatz 2022
+- Euro -
+Ansatz 2023
+- Euro -
+Ordentliche Erträge
+06. privatrechtliche Entgelte 4.861,50 2.000 3.500 3.500 3.5003.500
+12. =Summe ordentliche
+Erträge
+13.583,31 4.206 5.684 5.684 5.684 5.684
+Ordentliche Aufwendungen
+20. = Summe ordentliche
+Aufwendungen
+419.068,76 484.239 436.282 443.160 450.173 457.319
+21. ordentliches Ergebnis -405.485,45 -480.033 -430.598 -437.476 -444.489 -451.635
+601
+Teilergebnishaushalt THH06: Kultur, Museen, Sport
+Produkt: Ohne Summenzeile (P10.999999)
+Amt für Kultur, Museen und Sport
+Erträge und Aufwendungen Ergebnis 2018
+Ansatz 2019
+"""
+
+
+def test_parse_ergebnisrechnung_plan_und_ist():
+    posten = finanzberichte.parse_ergebnisrechnung(JA_2023, 2023)
+    nach_nr = {p["nr"]: p for p in posten}
+    steuern = nach_nr[1]
+    assert steuern["ansatz"] == 287_275_000.0      # geplant
+    assert steuern["ergebnis"] == 341_608_473.52   # tatsächlich
+    assert steuern["vorjahr"] == 305_411_797.55
+    # Mehrzeilige Bezeichnung („Zuwendungen und allgemeine\nUmlagen 1)")
+    assert nach_nr[2]["ergebnis"] == 168_262_169.22
+    # Summenzeilen als solche markiert
+    assert nach_nr[12]["ist_summe"] == 1 and nach_nr[20]["ist_summe"] == 1
+    assert nach_nr[12]["ansatz"] == 664_574_528.42
+    # Die Gesamtergebnisrechnung (anderer Umfang!) darf NICHT mitgelesen werden.
+    assert steuern["ansatz"] != 888_888_888.88
+
+
+def test_ergebnisrechnung_verwirft_unplausible_zeilen():
+    """Stimmt die dokumentierte Beziehung Abweichung = Ergebnis − Ansatz nicht,
+    ist die Spaltenzuordnung unsicher — dann lieber nichts."""
+    kaputt = JA_2023.replace("54.333.473,52", "11.111.111,11")
+    nach_nr = {p["nr"]: p for p in finanzberichte.parse_ergebnisrechnung(kaputt, 2023)}
+    assert 1 not in nach_nr        # Steuern-Zeile fällt raus
+    assert 12 in nach_nr           # der Rest bleibt lesbar
+
+
+def test_parse_teilergebnishaushalt_produkte():
+    produkte = finanzberichte.parse_teilergebnishaushalt(THH_PLAN)
+    assert len(produkte) == 1      # das zweite Produkt hat keine Summenzeilen
+    p = produkte[0]
+    assert p["produkt_nr"] == "P10.111023" and p["produkt_name"] == "Archivierung"
+    assert p["thh_nr"] == 6 and p["amt"] == "Amt für Kultur, Museen und Sport"
+    # Haushaltsjahr = ERSTER Ansatz (2019), nicht das letzte Finanzplanungsjahr
+    assert p["jahr"] == 2019
+    assert p["ertraege"] == 4206.0 and p["aufwendungen"] == 484_239.0
+    assert p["ergebnis"] == -480_033.0
+    # Die angeklebte Seitenzahl (601) darf kein Wert werden.
+    assert p["ergebnis"] != 601
+
+
+def test_teilergebnishaushalt_prueft_summe():
+    kaputt = THH_PLAN.replace("-405.485,45 -480.033", "-405.485,45 -999.999")
+    assert finanzberichte.parse_teilergebnishaushalt(kaputt) == []
+
+
+def test_store_finanzberichte_roundtrip(tmp_path):
+    store = CouncilStore(tmp_path / "c.sqlite")
+    posten = finanzberichte.parse_ergebnisrechnung(JA_2023, 2023)
+    assert store.save_ergebnisrechnung(2023, posten, "JA 2023", "http://x") == len(posten)
+    assert store.save_ergebnisrechnung(2023, posten, "JA 2023", "http://x") == len(posten)  # idempotent
+    assert store.ergebnisrechnung_jahre() == [2023]
+    geladen = {p["nr"]: p for p in store.get_ergebnisrechnung(2023)}
+    assert geladen[1]["ansatz"] == 287_275_000.0
+
+    produkte = finanzberichte.parse_teilergebnishaushalt(THH_PLAN)
+    assert store.save_produkte(2019, produkte, "THH06", None) == 1
+    assert store.produkte_jahre() == [2019]
+    assert store.get_produkte(2019, thh_nr=6)[0]["produkt_name"] == "Archivierung"
+    assert store.get_produkte(2019, thh_nr=99) == []
+    store.close()

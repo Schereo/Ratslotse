@@ -25,6 +25,18 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   einsteigen".
 
 ### Hinzugefügt
+- **Geplant und tatsächlich — der Haushalt bekommt seine zweite Hälfte.** Bis
+  jetzt zeigte Ratslotse nur, was die Stadt ausgeben *wollte*. Aus den
+  Jahresabschlüssen, die als Anlagen längst im Ratsinformationssystem lagen,
+  lesen wir nun auch, was daraus geworden ist — für fünf Jahrgänge, samt
+  Aufschlüsselung der Einnahmen nach Steuern, Zuweisungen und Gebühren. 2023
+  etwa nahm die Stadt 733 Mio. € ein statt der geplanten 665. Dazu kommt die
+  Produktebene aus den Teilhaushalts-Plänen: was einzelne Aufgaben kosten,
+  von der Kindertagesbetreuung (71,1 Mio. €) bis zum Brandschutz — mit dem
+  zuständigen Amt und einer ehrlichen Angabe, wie viel des Haushalts diese
+  Liste abdeckt. (#500)
+
+### Hinzugefügt
 - **Der Haushalt erklärt sich jetzt selbst.** Vier neue Seiten machen aus
   Zahlenkolonnen eine Geschichte: **Woher kommt das Geld?** zeigt alle
   Einnahmequellen — und dass der Rat nur bei dreien von sieben überhaupt

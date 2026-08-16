@@ -34,6 +34,8 @@ Planjahre, Ist-Steuern, Steuerkraft und die Einwohnerzahl in einem Aufruf.
 | `council_steuern` | Steuereinnahmen je Art seit 1998 (**Ist**) | Open-Data-Portal, Datensatz 1104 | `scripts/ingest_finanzen_opendata.py` |
 | `council_steuerkraft` | Steuerkraftmesszahl + Schlüsselzuweisungen seit 1992 | Open-Data-Portal, Datensatz 1106 | dito |
 | `council_einwohner` | Einwohnerzahl je Jahr seit 2010 | Open-Data-Portal, Datensatz 1102 | dito |
+| `council_ergebnisrechnung` | Ansatz **und** Ergebnis je Posten, 5 Jahrgänge | Jahresabschlüsse — **Anlagen im RIS** | `scripts/ingest_finanzberichte.py` |
+| `council_produkte` | Produktebene: was einzelne Aufgaben kosten | Teilhaushalts-Pläne — **Anlagen im RIS** | dito |
 
 Beide Ingests sind idempotent und laufen **nicht** als Cron — einmal jährlich
 von Hand reicht, wenn die Stadt einen neuen Jahrgang veröffentlicht.
@@ -70,15 +72,50 @@ Werte, die wir selbst bilden (Anteile, Differenzen, Rücklagen-Reichweite,
 Pro-Kopf-Angaben, Ein-Punkt-Überschlag), sind an Ort und Stelle als
 *„unsere Rechnung, keine amtliche Kennzahl"* gekennzeichnet.
 
+## Jahresabschlüsse und Produktebene aus dem eigenen Bestand
+
+Beide Dokumenttypen mussten nirgends beschafft werden: Sie hängen als Anlagen
+an Ratsvorlagen und liegen mit Volltext in `council_anlagen`.
+
+**Jahresabschluss** (300+ Seiten je Jahrgang) → die Ergebnisrechnung der
+Kernverwaltung führt **Ansatz und Ergebnis nebeneinander**. Damit gibt es
+„geplant gegen tatsächlich" und die Aufschlüsselung der Erträge nach Arten
+(Steuern, Zuwendungen, Entgelte, Kostenerstattungen). Eingelesen sind 2019
+und 2021–2024; 2017, 2018 und 2020 haben ein abweichendes Tabellenlayout und
+werden übersprungen, statt geraten zu werden.
+
+**Teilhaushalts-Pläne** (THH01–13) → die Produktebene: was einzelne Aufgaben
+kosten, mit Produktnummer und zuständigem Amt (2023 etwa
+„Kindertagesbetreuung" mit 71,1 Mio. € Aufwand und 58,6 Mio. €
+Zuschussbedarf). Die Abdeckung ist unvollständig — für 2023 erklären die
+gefundenen Produkte rund 82 % der geplanten Aufwendungen. Der Endpunkt
+liefert diese Quote als `abdeckung_prozent` mit, damit die Oberfläche die
+Liste nicht als Vollbild ausgeben kann.
+
+:::note[Zwei Prüfsummen aus den Dokumenten selbst]
+Aus PDF-Text extrahierte Tabellen verschmelzen Zahlen („355.188334.704") und
+kleben Seitenzahlen an Werte. Beide Parser übernehmen deshalb nur Zeilen, die
+eine im Dokument dokumentierte Rechenbeziehung erfüllen: beim Jahresabschluss
+`Abweichung = Ergebnis − Ansatz` (Fußnote 4 der Tabelle), beim Teilhaushalt
+`Erträge − Aufwendungen = ordentliches Ergebnis`. Was durchfällt, fehlt —
+lieber eine Lücke als eine Zahl, die niemand nachrechnen kann.
+:::
+
+Ein Nebenertrag: Die Ansätze aus den Jahresabschlüssen bestätigen die Werte,
+die wir aus den Plan-PDFs lesen (2023: 664,6 gegen 664,9 Mio. €; 2024: 693,6
+gegen 693,9). Zwei unabhängige Wege zur selben Zahl.
+
 ## Was bewusst fehlt
 
 Der Bereich zeigt lieber eine Lücke als eine Schätzung:
 
-- **Plan gegen Ist** — die Jahresabschlüsse (PDF, 2019–2023) sind ungeparst.
-  Ein Open-Data-Datensatz enthält abweichende Aufwendungen (2024: 764,7 statt
-  728,2 Mio. €), ist aber weder als Ist noch als Nachtrag gekennzeichnet; als
-  „Ist" ausgewiesen wäre er eine Behauptung. Genutzt wird daraus nur die klar
-  beschriftete Einwohnerspalte.
+- **Jahresabschlüsse 2017, 2018, 2020** — abweichendes Tabellenlayout, von
+  den Parser-Prüfsummen zurückgewiesen.
+- **Vollständige Produktebene** — für einige Teilhaushalte fehlen auslesbare
+  Dokumente; die Abdeckung schwankt je Jahr zwischen 63 % und 82 %.
+- Der Open-Data-Datensatz 1102 enthält abweichende Aufwendungen (2024: 764,7
+  statt 728,2 Mio. €), ist aber weder als Ist noch als Nachtrag
+  gekennzeichnet; genutzt wird daraus nur die Einwohnerspalte.
 - **Grundsteuer A und B getrennt** — das Portal führt sie in einer Spalte.
   Deshalb eine gemeinsame Karte und im Labor kein Grundsteuer-Regler.
 - **Gebühren und Beiträge** — in keinem der Datensätze enthalten.
