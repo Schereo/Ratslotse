@@ -19,37 +19,50 @@ type Seite = "ein" | "aus";
 /** Beschriftungsregel (H-03) wörtlich: Ein Segment trägt seinen Text nur,
  *  wenn er WIRKLICH hineinpasst — gemessen, nicht geschätzt. Erst die lange
  *  Fassung (Name · Wert), dann der Kurzname, sonst nichts. Nie verkleinern,
- *  nie abschneiden: eine abgeschnittene 169,2 liest sich als 16. */
+ *  nie abschneiden: eine abgeschnittene 169,2 liest sich als 16.
+ *
+ *  Gemessen wird in einem UNSICHTBAREN Zwilling, nicht am sichtbaren Text.
+ *  Die erste Fassung schaltete zum Messen kurz auf den Langtext und wieder
+ *  zurück; bei Segmenten, deren Langtext knapp nicht passt („Finanzmanagement
+ *  und Recht · 529,3"), stieß jeder Wechsel den ResizeObserver erneut an —
+ *  sichtbares Dauerflackern (Tim, 16.08.). Jetzt bleibt der sichtbare Text
+ *  während der Messung stehen, und der State wird nur gesetzt, wenn sich das
+ *  Ergebnis wirklich ändert. */
 function SegmentText({ lang, kurz }: { lang: string; kurz: string }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const [stufe, setStufe] = useState(0); // 0 = lang, 1 = kurz, 2 = nichts
+  const box = useRef<HTMLSpanElement>(null);
+  const mess = useRef<HTMLSpanElement>(null);
+  const [text, setText] = useState("");
 
   useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const pruefe = () => {
-      // Von vorn messen (Viewport-Resize kann wieder Platz schaffen).
-      setStufe(0);
-      requestAnimationFrame(() => {
-        const e = ref.current;
-        if (!e) return;
-        if (e.scrollWidth <= e.clientWidth) return;
-        setStufe(1);
-        requestAnimationFrame(() => {
-          const e2 = ref.current;
-          if (e2 && e2.scrollWidth > e2.clientWidth) setStufe(2);
-        });
-      });
+    const el = box.current, m = mess.current;
+    if (!el || !m) return;
+    const entscheide = () => {
+      // clientWidth SCHLIESST das Padding ein, der Zwilling misst nur den
+      // Text — ohne Abzug hielten wir „Soziales" für passend, obwohl die
+      // 16 px Innenabstand fehlten und es doch überlief.
+      const stil = getComputedStyle(el);
+      const platz = el.clientWidth
+        - parseFloat(stil.paddingLeft || "0") - parseFloat(stil.paddingRight || "0");
+      // Der Zwilling liegt absolut und unsichtbar im selben Span, erbt also
+      // Schrift und Größe — seine scrollWidth ist die echte Textbreite.
+      m.textContent = lang;
+      const breiteLang = m.scrollWidth;
+      m.textContent = kurz;
+      const breiteKurz = m.scrollWidth;
+      m.textContent = "";
+      const passend = breiteLang <= platz ? lang : breiteKurz <= platz ? kurz : "";
+      setText((alt) => (alt === passend ? alt : passend));
     };
-    pruefe();
-    const ro = new ResizeObserver(pruefe);
+    entscheide();
+    const ro = new ResizeObserver(entscheide);
     ro.observe(el);
     return () => ro.disconnect();
   }, [lang, kurz]);
 
   return (
-    <span ref={ref} className="block w-full overflow-hidden whitespace-nowrap">
-      {stufe === 0 ? lang : stufe === 1 ? kurz : ""}
+    <span ref={box} className="relative block w-full overflow-hidden whitespace-nowrap px-2">
+      {text}
+      <span ref={mess} aria-hidden="true" className="pointer-events-none invisible absolute left-0 top-0 whitespace-nowrap" />
     </span>
   );
 }
@@ -80,13 +93,19 @@ function Leiste({
             onMouseEnter={() => onHover(z.bereich)}
             onFocus={() => onHover(z.bereich)}
             className={cn(
-              "flex min-w-0 items-center overflow-hidden px-2 text-[11px] font-semibold transition-opacity",
+              // KEIN Padding am Button: Es zählt zur Elementbreite und macht
+              // die Leiste auf schmalen Bildschirmen unmaßstäblich — bei 13
+              // Segmenten fraßen 13×16 px Innenabstand so viel Platz, dass der
+              // größte Balken statt 65 % nur noch 23 % einnahm (Tim, 16.08.).
+              // Der Innenabstand sitzt jetzt im Text-Span, wo er die Breite
+              // des Balkens nicht verändert.
+              "flex min-w-0 items-center overflow-hidden text-[11px] font-semibold transition-opacity",
               aktiv && !gewaehlt && "opacity-35",
               gewaehlt && "z-[2] rounded ring-2 ring-signal",
             )}
             style={{ width: `${breite}%`, background: `var(--hh-${seite}-${Math.min(i, seite === "ein" ? 6 : 9)})`, color: "var(--hh-seg-text)" }}
           >
-            {breite > 8 && <SegmentText lang={`${z.bereich} · ${deMio(wert)}`} kurz={kurz} />}
+            <SegmentText lang={`${z.bereich} · ${deMio(wert)}`} kurz={kurz} />
           </button>
         );
       })}

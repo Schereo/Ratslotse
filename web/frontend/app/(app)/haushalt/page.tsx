@@ -50,12 +50,18 @@ function Kernzahl({ label, wert, hint, ton }: {
 }
 
 /** Rücklagen-Hinweis (H-01): erklärt das Minus, statt es zu bewerten —
- *  Reichweite als offene Rechnung, ausgewiesen als solche. */
-function RuecklagenHinweis({ defizit }: { defizit: number }) {
+ *  Reichweite als offene Rechnung, ausgewiesen als solche.
+ *
+ *  NUR für das jüngste Haushaltsjahr: Die Rücklagen-Angabe hat den Stand
+ *  April 2026. Sie gegen das Defizit von 2021 zu rechnen ergäbe eine
+ *  Reichweite, die es nie gab — die Zahlen änderten sich beim Jahreswechsel,
+ *  die Quelle darunter blieb dieselbe (Tim, 16.08.). Für abgeschlossene
+ *  Jahre steht deshalb ein anderer, ehrlicher Satz. */
+function RuecklagenHinweis({ defizit, jahr: startJahr }: { defizit: number; jahr: number }) {
   if (defizit <= 0) return null;
   const stufen: { label: string; wert: number }[] = [];
   let rest = RUECKLAGE_MIO;
-  let jahr = new Date().getFullYear();
+  let jahr = startJahr;
   while (rest > 0 && stufen.length < 4) {
     stufen.push({ label: String(jahr), wert: rest });
     rest = Math.round((rest - defizit) * 10) / 10;
@@ -167,9 +173,14 @@ export default function HaushaltPage() {
       />
 
       {/* Jahr-Umschalter — fehlende Jahre bleiben sichtbar (gestrichelt). */}
-      <div className="flex flex-wrap items-center gap-2.5">
+      <div className="flex flex-col gap-1.5">
         <span className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">Haushaltsjahr</span>
-        <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1">
+        {/* Scrollt statt überzulaufen: Sieben Jahre passen auf 375 px nicht in
+            eine Zeile (Tim, 16.08.). Umbrechen zerrisse die Pill-Gruppe,
+            deshalb dieselbe Fade-Scrollzeile wie bei den Chips im
+            Ratsgespräch — Scrollbalken ausgeblendet. */}
+        <div className="scrollbar-none -mx-1 flex items-center gap-1 overflow-x-auto px-1 py-0.5">
+        <div className="flex flex-none items-center gap-1 rounded-full border border-border bg-card p-1">
           {(() => {
             const alle: number[] = [];
             for (let y = jahre[0]; y <= jahre[jahre.length - 1]; y++) alle.push(y);
@@ -189,6 +200,7 @@ export default function HaushaltPage() {
                 </span>
               ));
           })()}
+        </div>
         </div>
         {luecken.length > 0 && (
           <span className="text-[11.5px] text-muted-foreground">
@@ -217,7 +229,22 @@ export default function HaushaltPage() {
           was={`Ausgaben im Jahr ${aktJahr}`} />
       )}
 
-      {defizit != null && <RuecklagenHinweis defizit={defizit} />}
+      {defizit != null && aktJahr === jahre[jahre.length - 1] ? (
+        <RuecklagenHinweis defizit={defizit} jahr={aktJahr} />
+      ) : defizit != null && defizit > 0 ? (
+        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+            Abgeschlossenes Haushaltsjahr
+          </p>
+          <p className="mt-1.5 max-w-[74ch] text-sm leading-relaxed text-foreground/90">
+            Für {aktJahr} plante die Stadt ein Minus von {deMio(defizit)}&#8239;Mio.&nbsp;€. Wie viel
+            davon am Ende wirklich fehlte und wie hoch die Rücklage damals war, steht im
+            Jahresabschluss — den lesen wir noch ein. Die Reichweite der heutigen Rücklage
+            zeigen wir nur beim aktuellen Haushaltsjahr, weil sie sonst eine Rechnung wäre,
+            die es so nie gab.
+          </p>
+        </div>
+      ) : null}
 
       <div className="grid gap-2.5 sm:grid-cols-3">
         {[
@@ -266,14 +293,18 @@ export default function HaushaltPage() {
 
       {/* Bereichskarten — Default nach Zuschussbedarf (der Aha passiert von selbst) */}
       <div>
-        <div className="mb-2.5 flex items-baseline justify-between gap-3">
+        {/* Auf Mobil untereinander: Nebeneinander zerriss die Überschrift in
+            vier Zeilen und schob den Umschalter über den Rand (Tim, 16.08.). */}
+        <div className="mb-2.5 flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
             Die Bereiche im Einzelnen
           </p>
-          <Segmented value={sortierung} onChange={setSortierung} tone="primary" options={[
-            { value: "netto", label: "nach Zuschussbedarf" },
-            { value: "brutto", label: "nach Ausgaben" },
-          ]} />
+          <div className="scrollbar-none -mx-1 overflow-x-auto px-1">
+            <Segmented className="w-max" value={sortierung} onChange={setSortierung} tone="primary" options={[
+              { value: "netto", label: "nach Zuschussbedarf" },
+              { value: "brutto", label: "nach Ausgaben" },
+            ]} />
+          </div>
         </div>
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
           {(alleBereiche ? karten : karten.slice(0, 6)).map(({ z, netto, brutto, deckung: d }) => {
