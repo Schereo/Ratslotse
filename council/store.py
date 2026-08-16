@@ -7662,3 +7662,152 @@ class CouncilStore:
             return None
         rest = top_titel.split("Beschluss: ", 1)[1].strip()
         return rest.split("Abstimmung:")[0].strip() or None
+
+    # ---- Der Streit ums Geld (08/2026) ------------------------------------
+    #
+    # Die Zahlen des Haushalts stehen in den Finanzdokumenten; dass über sie
+    # gestritten wurde, steht nur im Protokoll. Diese Methode setzt beides
+    # zusammen, was die Ratsdaten dazu hergeben: welche Änderungslisten zur
+    # Abstimmung standen (`council_decisions` mit `kind='subvote'`), was in
+    # der Debatte gesagt wurde (`council_protocols.raw_text`, zerlegt in
+    # `council.haushaltsdebatte`) und wie am Ende abgestimmt wurde.
+    #
+    # Kein eigener Datenbestand und kein Cron: Alles wird beim Lesen aus dem
+    # gerechnet, was der Protokoll-Import ohnehin schreibt. Damit kann die
+    # Seite nicht veralten, und ein nachgetragenes Protokoll erscheint ohne
+    # Backfill.
+
+    #: Die Schlussabstimmung trägt in jedem Jahrgang denselben Titel; die
+    #: Jahreszahl darin ist das HAUSHALTSJAHR, nicht das Sitzungsjahr (der
+    #: Haushalt 2023 wurde im Dezember 2022 beschlossen, der Haushalt 2026
+    #: erst im Februar 2026).
+    _STREIT_SATZUNG = re.compile(r"^Haushaltssatzung und Haushaltsplan\s+(\d{4})")
+    #: Der Sammelpunkt, unter dem die Debatte geführt wird. Er steht nicht in
+    #: jedem Protokoll als eigene Beschlusszeile — wo er fehlt, wird der
+    #: Oberpunkt aus der Nummer der Schlussabstimmung abgeleitet.
+    _STREIT_SAMMEL = re.compile(r"^Haushalt\s+(\d{4})\s*$")
+
+    def haushalt_streit(self, jahr: int | None = None) -> list[dict]:
+        """Die politische Auseinandersetzung um jeden Haushaltsjahrgang.
+
+        Je Haushaltsjahr eine Runde mit ihren ``stationen`` — in Oldenburg
+        sind das der Ausschuss für Finanzen und Beteiligungen und der Rat.
+        Jede Station trägt:
+
+        - ``antraege``: die Änderungslisten, die dort zur Abstimmung standen,
+          mit ``urheber`` (Fraktion/Gruppe) und ``outcome``. Der **Inhalt**
+          einer Liste — welche Position um welchen Betrag — steht nicht dabei:
+          Er liegt in den Anlagen-PDFs der Vorlage, die nicht als Volltext im
+          Bestand sind. Was hier steht, ist „wer wollte ändern und kam damit
+          durch", nicht „was genau".
+        - ``debatte``: die Wortbeiträge unter dem Sammelpunkt, in der
+          Reihenfolge des Protokolls. Keine Auswahl, keine Zusammenfassung —
+          wer kürzt, kürzt für alle gleich, und das tut erst die Anzeige.
+        - ``beschluss``: die Schlussabstimmung über die Haushaltssatzung.
+
+        Der Ausschuss stimmt über dieselben Listen ab wie der Rat, oft mit
+        anderem Ergebnis; deshalb stehen beide Stationen nebeneinander statt
+        zusammengefasst.
+        """
+        from council import haushaltsdebatte as hd
+
+        anker: dict[int, dict[int, dict]] = {}
+        for r in self._conn.execute(
+                "SELECT d.id, d.ksinr, d.item_number, d.title, d.outcome, d.vote, "
+                "       d.gegenstimmen, d.enthaltungen, d.raw_result, d.vorlage_nr, "
+                "       cs.committee, cs.session_date "
+                "FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr "
+                "WHERE d.kind = 'decision' AND (d.title LIKE 'Haushaltssatzung und Haushaltsplan%' "
+                "   OR d.title LIKE 'Haushalt 2%')").fetchall():
+            titel = (r["title"] or "").strip()
+            satzung = self._STREIT_SATZUNG.match(titel)
+            sammel = self._STREIT_SAMMEL.match(titel)
+            if not satzung and not sammel:
+                continue
+            j = int((satzung or sammel).group(1))
+            if jahr is not None and j != jahr:
+                continue
+            eintrag = anker.setdefault(j, {}).setdefault(r["ksinr"], {
+                "ksinr": r["ksinr"],
+                "gremium": r["committee"],
+                "datum": r["session_date"],
+                "top": None,
+                "beschluss": None,
+            })
+            if satzung:
+                eintrag["beschluss"] = {
+                    "id": r["id"], "top": r["item_number"], "titel": titel,
+                    "outcome": r["outcome"], "vote": r["vote"],
+                    "gegenstimmen": r["gegenstimmen"], "enthaltungen": r["enthaltungen"],
+                    "wortlaut": (r["raw_result"] or "").strip() or None,
+                    "vorlage_nr": r["vorlage_nr"],
+                }
+                if not eintrag["top"]:
+                    eintrag["top"] = self._streit_oberpunkt(r["item_number"])
+            else:
+                # Der Sammelpunkt selbst — die verlässlichste Angabe für die Debatte.
+                eintrag["top"] = (r["item_number"] or "").strip() or eintrag["top"]
+                if eintrag["beschluss"] is None:
+                    eintrag["beschluss"] = {
+                        "id": r["id"], "top": r["item_number"], "titel": titel,
+                        "outcome": r["outcome"], "vote": r["vote"],
+                        "gegenstimmen": r["gegenstimmen"], "enthaltungen": r["enthaltungen"],
+                        "wortlaut": (r["raw_result"] or "").strip() or None,
+                        "vorlage_nr": r["vorlage_nr"],
+                    }
+
+        runden = []
+        for j in sorted(anker):
+            stationen = []
+            # Am selben Tag tagt erst der Ausschuss, dann der Rat — das Datum
+            # allein stellt sie sonst in beliebiger Reihenfolge nebeneinander.
+            for st in sorted(anker[j].values(),
+                             key=lambda s: (s["datum"], s["gremium"] == "Rat", s["ksinr"])):
+                stationen.append(self._streit_station(st, hd))
+            if stationen:
+                runden.append({"jahr": j, "stationen": stationen})
+        return runden
+
+    @staticmethod
+    def _streit_oberpunkt(item_number: str | None) -> str | None:
+        """Der Sammelpunkt über einer Schlussabstimmung: „6.5" → „6",
+        „7.1.7" → „7.1". Unter ihm steht die Debatte, unter seinen
+        Unterpunkten stehen die Abstimmungen."""
+        nr = (item_number or "").strip().rstrip(".")
+        if "." not in nr:
+            return nr or None
+        return nr.rsplit(".", 1)[0]
+
+    def _streit_station(self, st: dict, hd) -> dict:
+        """Eine Station anreichern: Änderungslisten, Debatte, Protokoll-Link."""
+        ksinr, top = st["ksinr"], st["top"]
+
+        antraege = []
+        if top:
+            praefix = top + "."
+            for r in self._conn.execute(
+                    "SELECT ksinr, item_number, title, outcome, vote FROM council_decisions "
+                    "WHERE ksinr = ? AND kind = 'subvote' ORDER BY position", (ksinr,)).fetchall():
+                nr = (r["item_number"] or "").strip()
+                if nr != top and not nr.startswith(praefix):
+                    continue
+                antrag = hd.antrag_aus_zeile(dict(r))
+                if antrag:
+                    antraege.append(antrag.als_dict())
+
+        prot = self._conn.execute(
+            "SELECT document_url, raw_text FROM council_protocols WHERE ksinr = ?",
+            (ksinr,)).fetchone()
+        debatte: list[dict] = []
+        if prot and prot["raw_text"] and top:
+            abschnitt = hd.top_abschnitt(hd.saeubern(prot["raw_text"]), top, bis_unterpunkt=True)
+            anwesende = [dict(a) for a in self._conn.execute(
+                "SELECT name, party, role FROM council_attendance WHERE ksinr = ?", (ksinr,)).fetchall()]
+            debatte = [b.als_dict() for b in hd.debatte(abschnitt, anwesende)]
+
+        return {
+            **st,
+            "antraege": antraege,
+            "debatte": debatte,
+            "protokoll_url": prot["document_url"] if prot else None,
+        }

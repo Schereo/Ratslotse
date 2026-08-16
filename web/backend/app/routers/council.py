@@ -737,6 +737,32 @@ def haushalt_weg(
     return {"runden": store.haushalt_weg(jahr)}
 
 
+@router.get("/haushalt/streit")
+def haushalt_streit(
+    jahr: int | None = None,
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Der Streit ums Geld — die Auseinandersetzung um jeden Haushaltsjahrgang.
+
+    Je Haushaltsjahr eine ``runde`` mit ihren Stationen (Finanzausschuss und
+    Rat), und je Station die Änderungslisten, die Debatte und die
+    Schlussabstimmung. Alles kommt aus den Ratsdaten: Beschlusszeilen,
+    Anwesenheitsliste und Protokoll-Volltext derselben Sitzung.
+
+    **Ohne ``jahr`` kommen alle Jahrgänge** — wie bei ``/haushalt/weg``, und
+    aus demselben Grund: Dass sich die Mehrheiten verschieben, sieht man erst
+    über die Jahre. Die Antwort ist entsprechend groß (rund ein halbes MB);
+    die Seite lädt sie einmal und schaltet danach ohne Netz zwischen den
+    Jahrgängen um.
+
+    Was hier **nicht** steht: der Inhalt der Änderungslisten. Welche Position
+    eine Fraktion um welchen Betrag verschieben wollte, steht in den
+    Anlagen-PDFs der Vorlage — die liegen nicht als Volltext im Bestand.
+    Genannt wird deshalb, **wer** was einbrachte und **ob** es durchkam."""
+    return {"runden": store.haushalt_streit(jahr)}
+
+
 # Ohne Anmeldung lesbar (s. `decision_detail`) — die Beschluss-Seite zieht die
 # Sitzung nach, um Gremium und Datum zu benennen.
 @router.get("/session/{ksinr}")

@@ -1,13 +1,13 @@
 import { notFound } from "next/navigation";
 import { HAUSHALT_FREI } from "@/lib/haushalt-frei";
 
-// Umgebungs-Gate für den gesamten Haushalts-Bereich — die siebzehn Seiten
-// unter /haushalt (die Übersicht und sechzehn Unterseiten) sind nur auf
+// Umgebungs-Gate für den gesamten Haushalts-Bereich — die achtzehn Seiten
+// unter /haushalt (die Übersicht und siebzehn Unterseiten) sind nur auf
 // dev.ratslotse.de erreichbar (Begründung und Wirkungsweise:
 // lib/haushalt-frei.ts).
 //
-// Bewusst als Layout und nicht je Seite: Sechzehn einzelne Gates wären
-// siebzehn Gelegenheiten, eines zu vergessen — und die achtzehnte Seite käme
+// Bewusst als Layout und nicht je Seite: Achtzehn einzelne Gates wären
+// achtzehn Gelegenheiten, eines zu vergessen — und die neunzehnte Seite käme
 // ungeschützt dazu. Das Layout greift für alles, was unter diesem Pfad liegt,
 // auch für später Hinzukommendes. Der Stellenplan (`/haushalt/personal`) und
 // die Schuldenzeitreihe (`/haushalt/schulden`) sind genau dieser Fall: beide
