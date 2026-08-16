@@ -465,6 +465,13 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   176.614 Einwohnerinnen und Einwohner zum Stichtag 31.12.2024 — der steht mit
   an der Rechnung, weil eine Pro-Kopf-Angabe ohne Bezugsjahr nichts wert ist.
   (#528)
+- **Ratslotse gendert jetzt durchgängig — mit Sternchen.** Aus „Nutzer" wird
+  „Nutzer*innen", aus „je Einwohnerin und Einwohner" wird „je Einwohner*in";
+  auch die Anweisungen an die KI sind mitgezogen, damit die Antworten nicht
+  weiter in generischen Maskulina zurückschreiben. Namen und Rechtsbegriffe
+  bleiben, wie sie heißen: Die „Einwohnerfragestunde" steht so im
+  Kommunalverfassungsgesetz, „Bürgerinfo" heißt das Ratsinformationssystem der
+  Stadt, und „Antragsteller" sind hier Fraktionen, keine Personen. (#533)
 
 <!-- GEPARKT (nur dev.ratslotse.de, Umgebungs-Gate): Eintrag aktivieren,
      sobald der Kommunalwahl-Vergleich auf Prod freigeschaltet wird.
