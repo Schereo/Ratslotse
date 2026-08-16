@@ -22,18 +22,20 @@
 // Die naheliegende Reparatur wäre gewesen, drei Kacheln anzuhängen. Zehn
 // durchnummerierte Karten sind aber genau das Problem, das die zweite Runde
 // gelöst hat, nur größer: Eine Nummer sagt „danach kommt elf", sie sagt nicht,
-// WOFÜR man weiterliest. Deshalb liegen die zehn Schritte jetzt in vier
-// benannten Stufen, und jede Stufe sagt in einem Satz, welche Frage sie
-// beantwortet. Die Nummern laufen durch — es bleibt ein Weg, er hat nur
-// sichtbare Abschnitte:
+// WOFÜR man weiterliest. Deshalb liegen die Schritte jetzt in vier benannten
+// Stufen, und jede Stufe sagt in einem Satz, welche Frage sie beantwortet.
+// Die Nummern laufen durch — es bleibt ein Weg, er hat nur sichtbare
+// Abschnitte. Die Stufen tragen deshalb auch die Erweiterung: Der Stellenplan
+// kam am 16.08. dazu und ist eine Zeile mehr in „Die Zahlen", keine elfte
+// Kachel in einer Reihe von zehn.
 //
-//   1–4  Die Zahlen      Woher das Geld kommt, wohin es geht, was fest ist,
-//                        was einzelne Aufgaben kosten.
-//   5–6  Die Gegenprobe  Ein Haushalt ist ein Plan; was daraus wurde, steht
-//                        im Jahresabschluss, und geprüft wird er auch.
-//   7–8  Der Rahmen      Der Kernhaushalt ist rund zwei Drittel der Stadt,
-//                        und Oldenburg steht nicht allein da.
-//   9–10 Mitreden        Wann entschieden wird, und was sich drehen ließe.
+//   1–5   Die Zahlen      Woher das Geld kommt, wohin es geht, was fest ist,
+//                         was einzelne Aufgaben kosten, wer sie tut.
+//   6–7   Die Gegenprobe  Ein Haushalt ist ein Plan; was daraus wurde, steht
+//                         im Jahresabschluss, und geprüft wird er auch.
+//   8–9   Der Rahmen      Der Kernhaushalt ist rund zwei Drittel der Stadt,
+//                         und Oldenburg steht nicht allein da.
+//   10–11 Mitreden        Wann entschieden wird, und was sich drehen ließe.
 //
 // Drei Entscheidungen dahinter, die man sonst rückgängig macht:
 //
@@ -51,16 +53,25 @@
 //    ist der letzte Schritt, nicht der zweite: Vorher fehlt der Bezug, an dem
 //    sich ablesen ließe, ob eine Bewegung viel ist.
 //
-// **`/haushalt/konzern` behält Schritt 7.** Die Seite schreibt ihre Nummer
-// selbst in den Kicker (`konzern/page.tsx`, „Stadtfinanzen Oldenburg ·
-// Schritt 7"). Die Reihenfolge oben ist so gewählt, dass das stimmt — wer sie
-// ändert, ändert dort mit, sonst widersprechen sich zwei Seiten still.
+// **Zwei Seiten schreiben ihre Nummer selbst in den Kicker** und müssen
+// deshalb mitgeändert werden, wenn sich die Reihenfolge hier ändert — sonst
+// widersprechen sich zwei Seiten still: `/haushalt/personal` (Schritt 5) und
+// `/haushalt/konzern` (Schritt 8). Der Stellenplan kam am 16.08. als fünfter
+// Schritt dazu und hat den Konzern von 7 auf 8 geschoben; das ist genau der
+// Fall, für den dieser Absatz steht.
 //
-// **Zwei der zwölf Seiten haben bewusst keinen Schritt.** `/haushalt/bereich`
+// **Warum der Stellenplan ans Ende von „Die Zahlen" gehört und nicht weiter
+// nach vorn:** Er beantwortet „wer macht die Arbeit?" — eine Frage, die sich
+// erst stellt, wenn man weiß, was die Arbeit kostet (Schritt 4). Umgekehrt
+// gehört er noch vor die Gegenprobe, weil er sie lesbar macht: Unbesetzte
+// Stellen sind eine der Erklärungen dafür, dass Personalausgaben im
+// Jahresabschluss unter dem Plan bleiben können.
+//
+// **Zwei der dreizehn Seiten haben bewusst keinen Schritt.** `/haushalt/bereich`
 // und `/haushalt/steuer` sind Steckbriefe: Sie brauchen einen Query-Parameter
 // und öffnen ohne ihn den Vorgabefall. Als eigener Schritt stünde ein
-// beliebiger Bereich neben zehn Fragen. Sie werden am Fuß benannt, damit die
-// Zählung „zehn Schritte, zwölf Seiten" nicht wie eine Lücke aussieht.
+// beliebiger Bereich neben elf Fragen. Sie werden am Fuß benannt, damit die
+// Zählung „elf Schritte, dreizehn Seiten" nicht wie eine Lücke aussieht.
 //
 // FORM: eine Karte, nicht zehn. Zehn Karten sind auf 375 px eine Liste ohne
 // Ende — die Stufen wären zwischen ihnen untergegangen, und genau sie sind
@@ -80,7 +91,7 @@
 import Link from "next/link";
 import {
   ArrowLeftRight, BookOpenText, Building2, CalendarDays, ChevronRight, Coins,
-  GitCompareArrows, Receipt, Scale, SearchCheck, SlidersHorizontal,
+  GitCompareArrows, Receipt, Scale, SearchCheck, SlidersHorizontal, Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -119,6 +130,12 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         Icon: Receipt,
         titel: "Was kostet eigentlich …?",
         text: "Archiv, Feuerwehr, Schwimmbad: einzelne Aufgaben mit Kosten und Auftrag.",
+      },
+      {
+        href: "/haushalt/personal",
+        Icon: Users,
+        titel: "Wer macht die Arbeit?",
+        text: "Der Stellenplan: wie viele Stellen die Stadt vorhält — und wie viele leer stehen.",
       },
     ],
   },
@@ -261,8 +278,8 @@ export function Wegweiser() {
         </section>
       ))}
 
-      {/* Ohne diesen Satz sähe „zehn Schritte" nach einer Lücke aus: Der
-          Bereich hat zwölf Unterseiten. Die beiden übrigen sind Steckbriefe
+      {/* Ohne diesen Satz sähen die Schritte nach einer Lücke aus: Der
+          Bereich hat dreizehn Unterseiten. Die beiden übrigen sind Steckbriefe
           und brauchen einen Bereich bzw. eine Einnahmeart, über die man sie
           aufruft — als Schritt stünde dort ein beliebiger Einzelfall. */}
       <p className="mt-3.5 border-t border-dashed border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground">

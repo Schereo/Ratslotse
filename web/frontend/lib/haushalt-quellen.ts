@@ -31,7 +31,8 @@ export type Quelle = {
  *  Union bleibt trotzdem eng genug, um Tippfehler beim Aufruf zu fangen. */
 export type QuellenSchluessel =
   | "plan" | "steuern" | "steuerkraft" | "hebesaetze" | "ruecklage"
-  | "jahresabschluss" | "teilhaushalt" | "pruefbericht" | "gesamtabschluss"
+  | "jahresabschluss" | "teilhaushalt" | "stellenplan" | "pruefbericht"
+  | "gesamtabschluss"
   | "einwohner" | "ergebnisrechnung_thh" | "ratsbeschluss"
   // A10: Städtevergleich — die einzigen Quellen des Bereichs, die nicht von
   // der Stadt Oldenburg stammen, sondern vom Land.
@@ -122,6 +123,26 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "nicht jeder Teilhaushalt liegt für jedes Jahr auslesbar vor.",
     herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
     stand: "Haushaltsjahre 2018–2023",
+    art: "pdf",
+    url: "https://buergerinfo.oldenburg.de",
+  },
+  stellenplan: {
+    titel: "Stellenpläne der Stadt Oldenburg",
+    fundstelle:
+      "Die Anlage zum Haushaltsplan, in der jede Stelle steht: Teil A für " +
+      "Beamtinnen und Beamte, Teil B für Tarifbeschäftigte. Je Zeile eine " +
+      "Amtsbezeichnung mit Besoldungs- oder Entgeltgruppe, die Zahl der " +
+      "Stellen im Haushaltsjahr — und daneben, wie viele davon am Stichtag " +
+      "des Vorjahres besetzt waren und wie viele nicht. " +
+      "Übernommen wird ein Teil nur, wenn der Plan sich selbst bestätigt: " +
+      "Er nummeriert seine Spalten, die Einzelzeilen ergeben ihre " +
+      "Gruppensummen, die Gruppensummen die Gesamtzeile, und besetzte plus " +
+      "unbesetzte Stellen ergeben die Stellen des Vorjahres. " +
+      "Es ist der Verwaltungsentwurf, nicht der Beschluss des Rates. " +
+      "Die Dokumente hängen als Anlagen an Ratsvorlagen im " +
+      "Bürgerinformationssystem.",
+    herausgeber: "Stadt Oldenburg, Amt für Personal- und Verwaltungsmanagement",
+    stand: "Haushaltsjahre 2023–2026 (2026 ohne Teil B)",
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de",
   },

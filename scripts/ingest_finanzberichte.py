@@ -20,6 +20,10 @@ Dieses Skript liest sie aus, ohne etwas herunterzuladen:
   Jahre, die noch **keinen** Jahresabschluss haben. Ansatz und mittelfristige
   Finanzplanung stehen dabei getrennt in der Tabelle — das Dokument nennt
   beides „Ansatz", beschlossen ist aber nur ein Jahr.
+- **Stellenplan** (Anlage 21/22 desselben Plans) → ``council_stellenplan``:
+  die einzige Schicht, die nicht in Euro rechnet. Wie viele Stellen die Stadt
+  vorhält, getrennt nach Beamt*innen (Teil A) und Tarifbeschäftigten
+  (Teil B) — und wie viele davon am Stichtag **nicht besetzt** waren.
 
 Beide Parser verlangen eine im Dokument selbst dokumentierte Rechenprobe
 (siehe ``council/finanzberichte.py``); was sie nicht besteht, wird
@@ -59,7 +63,8 @@ _EIGEN = ("neue_jahrgaenge", "bestand_geschuetzt")
 def main() -> int:
     ap = argparse.ArgumentParser(description="Jahresabschlüsse und Teilhaushalte einlesen")
     ap.add_argument("--nur", choices=["jahresabschluss", "teilhaushalte",
-                                      "ergebnishaushalt"], default=None)
+                                      "ergebnishaushalt", "stellenplan"],
+                    default=None)
     ap.add_argument("--db", default=str(COUNCIL_DB))
     ap.add_argument("--auch-schrumpfen", action="store_true",
                     help="einen Jahrgang auch dann ersetzen, wenn er dabei deutlich "
@@ -92,6 +97,10 @@ def main() -> int:
             print("Gesamtergebnishaushalt (Planjahre):")
             uebernehmen("ergebnishaushalt",
                         finanzquellen.lies_ergebnishaushalte(store, p, schuetzen=schuetzen))
+        if args.nur in (None, "stellenplan"):
+            print("Stellenplan (Stellen und Besetzung):")
+            uebernehmen("stellenplan",
+                        finanzquellen.lies_stellenplaene(store, p, schuetzen=schuetzen))
         # Zeilen, die nicht sagen, woher sie kommen. Leer ist der Sollzustand;
         # steht hier etwas, hat eine Zieltabelle ihre `herkunft_id` nicht
         # gefüllt (siehe council/herkunft.py).
