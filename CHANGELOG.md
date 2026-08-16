@@ -333,6 +333,19 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   davon waren zudem schief: Die Eingliederungshilfe ist bei Soziales der größte
   Block, und im Finanzmanagement liegen alle Steuern, aber nur die allgemeinen
   Zuweisungen des Landes. (#517)
+- **„Soziales", „Finanzmanagement" — was heißt das eigentlich? Der Haushalt hat
+  jetzt ein Verzeichnis seiner Bereiche.** Unter `/haushalt/bereiche` stehen alle
+  13 Teilhaushalte mit Betrag und einer Zeile Klartext, vorweg der schwierigste
+  Fall: Bei „Finanzmanagement und Recht" geht der Löwenanteil aller Einnahmen
+  ein, nicht weil die Kämmerei etwas erwirtschaftet, sondern weil dort alle
+  Steuern und die allgemeinen Zuweisungen des Landes zentral verbucht werden —
+  was da zusammenkommt, steht jetzt einzeln daneben. Die Bereichsseite selbst
+  rechnet ihre Kernaussage neu vor: ein Wasserfall von den Ausgaben über die
+  eigenen Einnahmen zu dem Betrag, den die Allgemeinheit trägt, in Millionen
+  statt als Prozent-Ring. Dazu die tatsächliche Zusammensetzung der eigenen
+  Einnahmen aus dem Jahresabschluss statt einer Schätzung, die teuersten
+  Aufgaben des Bereichs aus der Produktebene mit Jahresstempel, und drei Reiter
+  statt einer sehr langen Rolle. (#PR)
 
 <!-- GEPARKT (nur dev.ratslotse.de, Umgebungs-Gate): Eintrag aktivieren,
      sobald der Kommunalwahl-Vergleich auf Prod freigeschaltet wird.
