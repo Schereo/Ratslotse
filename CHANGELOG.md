@@ -16,6 +16,14 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Führungsstrich zu ihrem Punkt; Kurve und Fall-Linien schneiden nicht mehr
   durch die Ziffern.
 
+### Verbessert
+- **Die drei Wege in die Tiefe sind jetzt zu sehen.** „Woher kommt das Geld?",
+  „Muss oder kann?" und das Haushalts-Labor standen als blasse Textkacheln
+  zwischen zwei großen Diagrammen und gingen dort unter. Sie tragen jetzt ein
+  Piktogramm, ihren Titel in der Display-Schrift und einen Pfeil, der beim
+  Überfahren mitgeht — und stehen unter einer eigenen Zeile „Tiefer
+  einsteigen".
+
 ### Hinzugefügt
 - **Der Haushalt erklärt sich jetzt selbst.** Vier neue Seiten machen aus
   Zahlenkolonnen eine Geschichte: **Woher kommt das Geld?** zeigt alle
