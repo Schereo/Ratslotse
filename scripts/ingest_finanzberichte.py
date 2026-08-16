@@ -160,7 +160,7 @@ def _pruefberichte(store: CouncilStore) -> dict:
         treffer = finanzberichte.pruefbericht_aus_anlage(r["label"], r["raw_text"])
         if not treffer:
             continue
-        store.save_pruefbericht(treffer["jahr"], r["label"], r["url"],
+        store.save_pruefbericht_quelle(treffer["jahr"], r["label"], r["url"],
                                 r["n_pages"], treffer["lesbar"])
         gefunden += 1
         hinweis = "" if treffer["lesbar"] else "  (Volltext unbrauchbar, nur Verweis)"

@@ -313,7 +313,7 @@ def haushalt_uebersicht(
         # ursprüngliche Haushaltsansatz; `plan_art` sagt, welche gemeint ist.
         "ergebnisrechnung": store.get_ergebnisrechnung(),
         "abweichungsgruende": store.get_abweichungsgruende(),
-        "pruefberichte": store.get_pruefberichte(),
+        "pruefbericht_quellen": store.get_pruefbericht_quellen(),
         "produkt_jahre": store.produkte_jahre(),
         # Jahre mit Teilhaushalts-Ist — füttert den Jahr-Umschalter auf
         # /haushalt/plan-ist, ohne dass das Frontend die Liste durchsucht.

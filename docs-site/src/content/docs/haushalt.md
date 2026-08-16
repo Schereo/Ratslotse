@@ -36,7 +36,7 @@ Planjahre, Ist-Steuern, Steuerkraft und die Einwohnerzahl in einem Aufruf.
 | `council_einwohner` | Einwohnerzahl je Jahr seit 2010 | Open-Data-Portal, Datensatz 1102 | dito |
 | `council_ergebnisrechnung` | Ansatz, Plan **und** Ergebnis je Posten — gesamt und je Teilhaushalt, 2017–2024 | Jahresabschlüsse — **Anlagen im RIS** | `scripts/ingest_finanzberichte.py` |
 | `council_abweichungsgruende` | Warum ein Posten vom Plan abwich (Abschnitt 6.3.1), 45 Einträge | dito | dito |
-| `council_pruefberichte` | Fundstelle des RPA-Schlussberichts je Jahrgang | dito | dito |
+| `council_pruefbericht_quellen` | **Fundstelle** des RPA-Schlussberichts je Jahrgang (eine Zeile je Jahr) | dito | dito |
 | `council_produkte` | Produktebene: was einzelne Aufgaben kosten | Teilhaushalts-Pläne — **Anlagen im RIS** | dito |
 
 Beide Ingests sind idempotent und laufen **nicht** als Cron — einmal jährlich

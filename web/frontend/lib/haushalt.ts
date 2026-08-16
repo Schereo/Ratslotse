@@ -88,7 +88,7 @@ export type HaushaltDaten = {
   /** Warum ein Posten vom Plan abwich (Abschnitt 6.3.1). */
   abweichungsgruende?: Abweichungsgrund[];
   /** Schlussberichte des Rechnungsprüfungsamts je Jahrgang. */
-  pruefberichte?: Pruefbericht[];
+  pruefbericht_quellen?: Pruefbericht[];
   /** Jahre, für die die Produktebene vorliegt. */
   produkt_jahre?: number[];
   /** Jahre mit „geplant gegen tatsächlich" je Teilhaushalt. */
@@ -142,7 +142,7 @@ export function grundZuPosten(
 export function pruefberichtZuJahr(
   daten: HaushaltDaten, jahr: number,
 ): Pruefbericht | null {
-  return (daten.pruefberichte ?? []).find((p) => p.jahr === jahr) ?? null;
+  return (daten.pruefbericht_quellen ?? []).find((p) => p.jahr === jahr) ?? null;
 }
 
 /** Erläuterungen, die einen bestimmten Teilhaushalt ausdrücklich nennen.

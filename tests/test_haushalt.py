@@ -911,9 +911,9 @@ def test_pruefbericht_erkennung():
 
 def test_store_pruefberichte_roundtrip(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
-    store.save_pruefbericht(2023, "Schlussbericht 2023", "http://x", 61, True)
-    store.save_pruefbericht(2024, "Schlussbericht 2024", "http://y", 64, False)
-    berichte = store.get_pruefberichte()
+    store.save_pruefbericht_quelle(2023, "Schlussbericht 2023", "http://x", 61, True)
+    store.save_pruefbericht_quelle(2024, "Schlussbericht 2024", "http://y", 64, False)
+    berichte = store.get_pruefbericht_quellen()
     assert [b["jahr"] for b in berichte] == [2023, 2024]
     assert berichte[0]["lesbar"] == 1 and berichte[1]["lesbar"] == 0
     store.close()

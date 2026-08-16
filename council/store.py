@@ -633,11 +633,17 @@ class CouncilStore:
             "quelle_label TEXT, quelle_url TEXT, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (jahr, nr))"
         )
-        # Schlussberichte des Rechnungsprüfungsamts — nur Fundstelle, nicht
-        # Inhalt: „Das Rechnungsprüfungsamt hat diesen Abschluss geprüft".
+        # Schlussberichte des Rechnungsprüfungsamts — nur die **Fundstelle**,
+        # nicht der Inhalt: „Das Rechnungsprüfungsamt hat diesen Abschluss
+        # geprüft → Schlussbericht". Eine Zeile je Jahrgang.
         # `lesbar` = 0 heißt, der Volltext des PDFs ist unbrauchbar (2024).
+        #
+        # Der Name trägt bewusst „_quellen": Die einzelnen
+        # Prüfungsfeststellungen aus denselben Berichten (Beanstandung,
+        # Wiederholte Beanstandung, Hinweis) sind eine andere Ebene mit einer
+        # Zeile je Feststellung und gehören in eine eigene Tabelle.
         self._conn.execute(
-            "CREATE TABLE IF NOT EXISTS council_pruefberichte ("
+            "CREATE TABLE IF NOT EXISTS council_pruefbericht_quellen ("
             "jahr INTEGER PRIMARY KEY, "
             "label TEXT, url TEXT, n_pages INTEGER, "
             "lesbar INTEGER NOT NULL DEFAULT 1, fetched_at TEXT NOT NULL)"
@@ -3032,21 +3038,21 @@ class CouncilStore:
             return []
         return [dict(r) for r in rows]
 
-    def save_pruefbericht(self, jahr: int, label: str | None, url: str | None,
+    def save_pruefbericht_quelle(self, jahr: int, label: str | None, url: str | None,
                           n_pages: int | None, lesbar: bool) -> None:
         """Fundstelle des RPA-Schlussberichts eines Jahrgangs merken."""
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
             self._conn.execute(
-                "INSERT OR REPLACE INTO council_pruefberichte "
+                "INSERT OR REPLACE INTO council_pruefbericht_quellen "
                 "(jahr, label, url, n_pages, lesbar, fetched_at) VALUES (?,?,?,?,?,?)",
                 (jahr, label, url, n_pages, 1 if lesbar else 0, now))
 
-    def get_pruefberichte(self) -> list[dict]:
+    def get_pruefbericht_quellen(self) -> list[dict]:
         """Alle bekannten Schlussberichte, ältester zuerst."""
         try:
             return [dict(r) for r in self._conn.execute(
-                "SELECT jahr, label, url, n_pages, lesbar FROM council_pruefberichte "
+                "SELECT jahr, label, url, n_pages, lesbar FROM council_pruefbericht_quellen "
                 "ORDER BY jahr")]
         except sqlite3.OperationalError:
             return []
