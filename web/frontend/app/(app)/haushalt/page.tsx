@@ -5,11 +5,11 @@
 //
 // Leserichtung: Jahr wählen → Anzeigetafel mit der Kernzahl und dem
 // Kern-Visual (Gegenbalken, umschaltbar auf die 100-Euro-Ansicht) → was der
-// Haushalt überhaupt ist → das Ersparte (die eigentliche Story) → die
-// Bereiche als Tabelle → Wegweiser → woher das Geld kommt (Flussbild) →
-// Zeitreihe. Jede Karte trägt ihre Quelle.
+// Haushalt überhaupt ist → der Kassenzettel pro Kopf samt Ersparten (die
+// eigentliche Story) → die Bereiche als Tabelle → Wegweiser → woher das Geld
+// kommt (Flussbild) → Zeitreihe. Jede Karte trägt ihre Quelle.
 //
-// Zwei Dinge, die hier bewusst NICHT stehen:
+// Drei Dinge, die hier bewusst NICHT stehen:
 //
 //  * **Kein zweiter Seitentitel über der Tafel.** Die Kernzahl IST die
 //    Überschrift (`<h1>` in `tafel.tsx`); ein „Wohin fließt das Geld der
@@ -17,13 +17,20 @@
 //  * **Keine drei Kernzahl-Karten mehr.** Ein­nahmen, Ausgaben und Differenz
 //    stehen auf der Tafel neben der großen Zahl — als Karten daneben nannte
 //    die Seite dieselben drei Zahlen zweimal.
+//  * **Kein `LottiVergleich` und kein eigener Rücklagen-Hinweis mehr.** Beide
+//    standen bis 08/2026 hier und sagten zusammen mit dem Kassenzettel
+//    dieselbe Pro-Kopf-Zahl dreimal. Der Zettel (`kassenzettel.tsx`) hat sie
+//    abgelöst und trägt beides: die Division und die Reichweite des Ersparten.
+//    Er läuft nur fürs jüngste Planjahr — `council_einwohner` endet mit dem
+//    Haushaltsjahr 2025, und den Plan von 2020 durch die Einwohnerzahl von
+//    2025 zu teilen wäre ein stiller Fehler von rund 4 %.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FileText } from "lucide-react";
 import { Segmented } from "@/components/ui";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
-import { LottiErklaert, LottiVergleich } from "@/components/haushalt/lotti-erklaert";
+import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { Wegweiser } from "@/components/haushalt/wegweiser";
 import { Datenstand } from "@/components/haushalt/datenstand";
 import { useFetch } from "@/lib/use-fetch";
@@ -31,80 +38,13 @@ import { Tafel } from "@/components/haushalt/tafel";
 import { Bereichstabelle } from "@/components/haushalt/bereichstabelle";
 import { Gegenbalken } from "@/components/haushalt/gegenbalken";
 import { Flussbild } from "@/components/haushalt/flussbild";
+import { Kassenzettel, kassenzettelQuellen } from "@/components/haushalt/kassenzettel";
 import { Steuereuro } from "@/components/haushalt/steuereuro";
 import { Zeitreihe } from "@/components/haushalt/zeitreihe";
 import {
-  HaushaltDaten, RUECKLAGE_MIO, RUECKLAGE_STAND,
+  HaushaltDaten,
   deMio, fehlendeJahre, flussJahre, jahreSortiert, mio, quellenLabel, summe,
 } from "@/lib/haushalt";
-
-/** Rücklagen-Hinweis (H-01): erklärt das Minus, statt es zu bewerten —
- *  Reichweite als offene Rechnung, ausgewiesen als solche.
- *
- *  NUR für das jüngste Haushaltsjahr: Die Rücklagen-Angabe hat den Stand
- *  April 2026. Sie gegen das Defizit von 2021 zu rechnen ergäbe eine
- *  Reichweite, die es nie gab — die Zahlen änderten sich beim Jahreswechsel,
- *  die Quelle darunter blieb dieselbe (Tim, 16.08.). Für abgeschlossene
- *  Jahre steht deshalb ein anderer, ehrlicher Satz. */
-function RuecklagenHinweis({ defizit, jahr: startJahr, einwohner }: {
-  defizit: number; jahr: number; einwohner: number | null;
-}) {
-  if (defizit <= 0) return null;
-  const stufen: { label: string; wert: number }[] = [];
-  let rest = RUECKLAGE_MIO;
-  let jahr = startJahr;
-  while (rest > 0 && stufen.length < 4) {
-    stufen.push({ label: String(jahr), wert: rest });
-    rest = Math.round((rest - defizit) * 10) / 10;
-    jahr += 1;
-  }
-  const max = RUECKLAGE_MIO;
-  return (
-    <div className="flex flex-col gap-4 rounded-2xl border border-signal/40 border-l-[3px] border-l-signal bg-card p-4 shadow-sm sm:flex-row sm:items-center">
-      <div className="min-w-0 flex-1">
-        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal">Das Ersparte der Stadt</p>
-        <p className="mt-1.5 max-w-[74ch] text-sm leading-relaxed text-foreground/90">
-          Das Minus wird aus der <strong>Rücklage von rund {RUECKLAGE_MIO}&#8239;Mio.&nbsp;€</strong> gedeckt
-          {einwohner ? <> — dem Ersparten aus früheren Jahren, rund{" "}
-            {Math.round((RUECKLAGE_MIO * 1e6) / einwohner).toLocaleString("de-DE")}&nbsp;€ je
-            Einwohnerin und Einwohner</> : null}.
-          Bleibt es bei einem Minus in dieser Größe, ist die Rücklage in wenigen Jahren aufgebraucht.
-          Was dann passiert, entscheidet der Rat — bisher gibt es dafür keinen Beschluss.
-        </p>
-        <p className="mt-2 text-[11.5px] text-muted-foreground">
-          Rechnerische Reichweite, keine Prognose der Stadt. {RUECKLAGE_STAND}.
-          <Beleg q="ruecklage" />
-        </p>
-      </div>
-      <div className="w-full flex-none sm:w-[290px]">
-        {/* Achse angeschrieben: eine namenlose abfallende Treppe mit orangem
-            Reststummel liest sich als amtliche Insolvenzprognose. */}
-        <p className="mb-1 font-mono text-[9.5px] uppercase tracking-[0.09em] text-muted-foreground">
-          Rücklage in Mio.&nbsp;€ zum Jahresbeginn
-        </p>
-        <div className="flex h-14 items-end gap-1.5">
-          {stufen.map((s) => (
-            <div key={s.label} className="flex flex-1 flex-col items-center gap-1">
-              <div className="w-full rounded" style={{
-                height: `${Math.max((s.wert / max) * 52, 4)}px`,
-                background: `var(--hh-ein-${Math.min(stufen.indexOf(s) * 2, 6)})`,
-              }} />
-              <span className="font-mono text-[9.5px] text-muted-foreground">{s.label}</span>
-            </div>
-          ))}
-          <div className="flex flex-1 flex-col items-center gap-1">
-            <div className="hh-schraffur h-[9px] w-full rounded border border-dashed border-signal" />
-            <span className="font-mono text-[9.5px] text-signal">{Number(stufen[stufen.length - 1]?.label ?? 0) + 1}</span>
-          </div>
-        </div>
-        <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">
-          {stufen.map((s) => deMio(s.wert)).join(" → ")} → <span className="font-semibold text-signal">aufgebraucht</span>,
-          wenn das Minus bleibt.
-        </p>
-      </div>
-    </div>
-  );
-}
 
 export default function HaushaltPage() {
   const { data, loading } = useFetch<HaushaltDaten>("/council/haushalt");
@@ -116,7 +56,6 @@ export default function HaushaltPage() {
   const aktJahr = jahr ?? jahre[jahre.length - 1] ?? null;
   const zeilen = aktJahr && data ? data.jahre[String(aktJahr)] ?? [] : [];
   const gesamt = summe(zeilen);
-  const ausMio = mio(gesamt?.aufwendungen);
   // Aus Rohwerten gerundet — 883,9 − 812,9 ergäbe 71,0, tatsächlich sind es 71,1.
   const defizit = gesamt?.ertraege != null && gesamt?.aufwendungen != null
     ? mio(gesamt.aufwendungen - gesamt.ertraege) : null;
@@ -142,12 +81,19 @@ export default function HaushaltPage() {
     return <div className="py-16 text-center text-sm text-muted-foreground">Haushalt wird geladen …</div>;
   }
 
-  // Das Flussbild zieht seine Zahlen aus den Jahresabschlüssen — die Quelle
-  // wird deshalb nur angemeldet, wenn es die auch gibt. Sonst stünde im
-  // Verzeichnis ein Beleg für nichts.
-  const quellen: QuellenSchluessel[] = flussJahre(data).length > 0
-    ? ["plan", "ruecklage", "jahresabschluss"]
-    : ["plan", "ruecklage"];
+  // Der Kassenzettel braucht die amtliche Einwohnerzahl und läuft nur fürs
+  // jüngste Planjahr (Begründung im Kopf dieser Datei).
+  const zeigtZettel = aktJahr === jahre[jahre.length - 1] && data.einwohner != null;
+
+  // Angemeldet wird nur, was auf DIESER Seite auch zitiert wird — sonst stünde
+  // im Verzeichnis ein Beleg für nichts, und die seitenweise Nummerierung
+  // zeigte ins Leere. Reihenfolge = Leserichtung der Seite: Tafel, Zettel,
+  // Flussbild.
+  const quellen: QuellenSchluessel[] = [
+    "plan",
+    ...(zeigtZettel ? kassenzettelQuellen(data, aktJahr) : []),
+    ...(flussJahre(data).length > 0 ? (["jahresabschluss"] as const) : []),
+  ];
 
   return (
     <Quellenkontext schluessel={quellen}>
@@ -232,8 +178,8 @@ export default function HaushaltPage() {
           Glossar-Erklärung zu „Haushalt" ein und erklärte das Bild mit der
           Sache, die es erklären sollte. „Kassenbuch" kollidiert mit keinem
           Eintrag. Die Einwohnerzahl kommt aus den Daten statt fest im Text:
-          Sie steht zwei Karten weiter unten schon einmal, und zwei Stände
-          derselben Zahl auf einer Seite sind eine Frage zu viel. */}
+          Sie steht auf dem Kassenzettel gleich darunter noch einmal, und zwei
+          Stände derselben Zahl auf einer Seite sind eine Frage zu viel. */}
       <LottiErklaert
         titel="Was ist der Haushalt überhaupt?"
         text={"Einmal im Jahr legt die Stadt fest, wofür sie ihr Geld ausgeben will — wie ein "
@@ -245,14 +191,11 @@ export default function HaushaltPage() {
           + "was darin steht."}
       />
 
-      {ausMio != null && data.einwohner && (
-        <LottiVergleich betragMio={ausMio} einwohner={data.einwohner.einwohner}
-          was={`Ausgaben im Jahr ${aktJahr}`} />
-      )}
-
-      {defizit != null && aktJahr === jahre[jahre.length - 1] ? (
-        <RuecklagenHinweis defizit={defizit} jahr={aktJahr}
-          einwohner={data.einwohner?.einwohner ?? null} />
+      {/* Der Kassenzettel (H2-02): die Kernzahl in einer Einheit, die man
+          fühlt — und die Zeile, um die es politisch geht, als letzte des Bons
+          („aus dem Ersparten"). */}
+      {zeigtZettel && data.einwohner ? (
+        <Kassenzettel daten={data} jahr={aktJahr} einwohner={data.einwohner} />
       ) : defizit != null && defizit > 0 ? (
         <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
