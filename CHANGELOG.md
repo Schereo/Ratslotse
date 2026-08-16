@@ -351,6 +351,19 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   davon waren zudem schief: Die Eingliederungshilfe ist bei Soziales der größte
   Block, und im Finanzmanagement liegen alle Steuern, aber nur die allgemeinen
   Zuweisungen des Landes. (#517)
+- **„Muss oder kann?" sagt jetzt, was die Stadt selbst dazu sagt.** Die Seite
+  beginnt mit einem Balken, der die geplanten Ausgaben in Pflicht, Pflicht mit
+  Spielraum und Kür zerlegt und das geplante Minus als Marke daneben setzt —
+  statt drei Filterklicks über einer Liste aus 13 Karten. Neu ist der
+  Gegencheck: Die Stadt gibt in ihren Teilhaushaltsplänen zu jeder Aufgabe an,
+  worauf sie beruht und wie viel Spielraum sie bei ihr sieht. Bei 6 von 9
+  Bereichen, für die es diese Angabe gibt, deckt sich das mit unserer
+  Einordnung — bei Jugend und Familie, Finanzmanagement und Recht sowie
+  Stadtplanung nicht, und genau das steht jetzt da, statt geglättet zu werden.
+  Dazu die Rechtsgrundlagen im Wortlaut des Plans und die Korrektur einer
+  schiefen Rechnung: Das Freiwillige zu streichen spart nicht seine 47,1 Mio. €
+  Aufwand, sondern seinen Zuschussbedarf von 43,0 Mio. — rund 60 % des
+  geplanten Minus. (#521)
 - **„Woher kommt das Geld?" sortiert jetzt nach Entscheidungsmacht — und sagt
   beim Finanzausgleich ehrlich, dass es die Zahl nicht gibt.** Die
   Einnahmequellen standen bisher nach Betrag sortiert nebeneinander, jede mit
@@ -368,6 +381,19 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   ein Hebesatzpunkt mehr" war als „brutto" bezeichnet, obwohl der Datensatz die
   Gewerbesteuer bereits nach Abzug der Umlage führt, und beim Hebesatz stand
   „bis 2025", obwohl wir genau einen einzigen Jahrgang kennen. (#519)
+- **Die Einnahmen-Ausgaben-Schere zeigt jetzt die Lücke selbst — und was
+  tatsächlich daraus wurde.** Zwei Linien zwangen dazu, den Abstand mit dem
+  Auge abzumessen; genau der Abstand ist aber die Aussage. Er ist jetzt eine
+  Fläche mit einer Strebe an jedem Jahr, und der größte Abstand trägt seinen
+  Betrag im Bild. Dazu der Wirklichkeitstest: Für die Jahre, für die ein
+  Jahresabschluss vorliegt, steht als Raute daneben, was am Ende herauskam —
+  2023 und 2024 plante die Stadt ein Minus und schloss mit einem Plus ab.
+  Deshalb heißt die Überschrift jetzt „Seit 2023 *plant* Oldenburg mit mehr
+  Ausgaben als Einnahmen", und sie wird aus den Daten gerechnet statt
+  festgeschrieben. Wo ein Jahrgang seinen Plan an einer anderen Bezugsgröße
+  misst (2020: Ansatz samt Nachtragshaushalt), steht ein Sternchen mit
+  Fußnote. Farbe bewertet dabei weiterhin nichts: Signal-Orange heißt „hier
+  ist die Differenz" — in den Plus- wie in den Minusjahren. (#522)
 - **„Wann wird der Haushalt eigentlich entschieden?" — eine neue Seite zeigt
   den Weg durch den Rat.** Unter `/haushalt/jahr` steht für acht Haushaltsjahre
   jede Station mit Datum, Gremium und Ergebnis: Einbringung des Entwurfs,
