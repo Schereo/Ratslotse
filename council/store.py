@@ -970,6 +970,79 @@ class CouncilStore:
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (jahr, art, traeger_key))"
         )
+        # Der Beteiligungsbericht nach § 151 NKomVG
+        # (council/beteiligungsbericht.py). Drei Tabellen, weil hier drei
+        # verschiedene Dinge zusammenkommen — und weil sie verschieden oft
+        # ihren Wert wechseln.
+        #
+        # ACHTUNG, NAMENSFALLE: `council_beteiligungen` ist etwas ganz
+        # anderes. Dort stehen die **Bürgerbeteiligungen** an Bauleitplänen
+        # (oldenburg.planungsbeteiligung.de, s. `council/beteiligung.py`).
+        # Gesellschaften heißen hier deshalb Gesellschaften.
+        #
+        # `council_gesellschaften` = die Stammdaten je Bericht: Wie die
+        # Gesellschaft heißt, an welcher Stelle sie im Bericht steht, auf
+        # welcher Seite. Je Berichtsjahr eine Zeile, weil sich alles davon
+        # ändern kann — die Gliederungsnummer tut es regelmäßig, sobald eine
+        # Beteiligung dazukommt.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_gesellschaften ("
+            "bericht_jahr INTEGER NOT NULL, "      # Berichtsjahr des Dokuments
+            "gesellschaft TEXT NOT NULL, "         # stabiler Schlüssel: egh, vwg, …
+            "name TEXT NOT NULL, "
+            "gliederung TEXT NOT NULL, "           # '2.4.9'
+            "seite INTEGER, "                      # gedruckte Seite im Bericht
+            "konzern_key TEXT, "                   # → council_konzern_traeger
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (bericht_jahr, gesellschaft))"
+        )
+        # `council_gesellschaft_texte` = die beschreibenden Abschnitte.
+        # Langformat, nicht fünf Spalten: Der Bericht führt acht Abschnitte,
+        # gespeichert werden fünf, und welche das sind, ist eine Entscheidung
+        # über den Nutzen — keine über das Schema. Ein sechster kostet so
+        # keine Migration.
+        #
+        # Diese Zeilen tragen `herkunft.UNGEPRUEFT`, und das ist die ehrliche
+        # Angabe: Fließtext lässt sich gegen nichts rechnen. Sie stehen
+        # trotzdem mit Dokument, Fundstelle und Seite da.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_gesellschaft_texte ("
+            "bericht_jahr INTEGER NOT NULL, "
+            "gesellschaft TEXT NOT NULL, "
+            "abschnitt TEXT NOT NULL, "            # gegenstand, aufsichtsorgane, …
+            "text TEXT NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (bericht_jahr, gesellschaft, abschnitt))"
+        )
+        # `council_gesellschaft_kennzahlen` = die Zeitreihe.
+        #
+        # SCHLÜSSEL IST DAS BEZUGSJAHR DER KENNZAHL, NICHT DER BERICHT. Jeder
+        # Bericht führt vier bis fünf Jahre; dasselbe Jahr steht also in bis
+        # zu drei Berichten. Als (Bericht, Jahr) abgelegt läge es dreimal da
+        # und jede Auswertung müsste sich entscheiden — mit dem Bezugsjahr als
+        # Schlüssel ist es eine Zeile, und die Frage „stimmen die Berichte
+        # überein?" ist beim Schreiben beantwortet statt beim Lesen.
+        #
+        # `berichte` hält fest, wie viele Berichte den Wert übereinstimmend
+        # nennen. Das ist keine Statistik, sondern das Ergebnis der
+        # Überlappungsprobe: 1 heißt „steht bisher nur in einem Bericht" und
+        # damit „durch eine Dokumentprobe gedeckt, nicht durch die
+        # Überlappung". Die Seite sagt es so auch.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_gesellschaft_kennzahlen ("
+            "gesellschaft TEXT NOT NULL, "
+            "kennzahl TEXT NOT NULL, "             # jahresergebnis|bilanzsumme|…
+            "jahr INTEGER NOT NULL, "              # Bezugsjahr der Kennzahl
+            "wert REAL NOT NULL, "
+            "einheit TEXT NOT NULL, "              # eur | prozent
+            "bericht_jahr INTEGER NOT NULL, "      # jüngster Bericht mit diesem Wert
+            "berichte INTEGER NOT NULL, "          # wie viele Berichte ihn nennen
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (gesellschaft, kennzahl, jahr))"
+        )
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_gesellschaft_kennzahlen_jahr "
+            "ON council_gesellschaft_kennzahlen(jahr, kennzahl)")
         # Städtevergleich aus der amtlichen Statistik des Landesamts für
         # Statistik Niedersachsen (council/staedtevergleich.py). Langformat —
         # eine Zeile je Stadt, Jahr und Kennzahl.
@@ -1239,6 +1312,11 @@ class CouncilStore:
         "council_stellenplan":          (None, "quelle_url", "ris"),
         # Und die Schuldenzeitreihe aus dem Statistischen Jahrbuch.
         "council_schulden":             (None, "quelle_url", "stadt"),
+        # Der Beteiligungsbericht: ebenfalls erst mit der Herkunft entstanden.
+        # Seine Dokumente kommen von oldenburg.de, nicht aus dem Bürgerinfo.
+        "council_gesellschaften":            (None, "quelle_url", "stadt"),
+        "council_gesellschaft_texte":        (None, "quelle_url", "stadt"),
+        "council_gesellschaft_kennzahlen":   (None, "quelle_url", "stadt"),
     }
 
     @staticmethod
@@ -4243,6 +4321,117 @@ class CouncilStore:
             art = "ertraege" if "Erträge" in r["bezeichnung"] else "aufwendungen"
             aus.setdefault(r["jahr"], {})[art] = r["ergebnis"]
         return aus
+
+    # --- Beteiligungsbericht (§ 151 NKomVG) ---------------------------------
+
+    def save_beteiligungsbericht(self, stammdaten: list[dict], texte: list[dict],
+                                 kennzahlen: list[dict]) -> dict:
+        """Den **ganzen** Bestand des Beteiligungsberichts ersetzen.
+
+        Ungewöhnlich für diesen Store, und mit Grund: Die Überlappungsprobe
+        spannt sich über mehrere Berichte. Ob der Wert für 2022 gilt,
+        entscheidet nicht der Bericht 2022 allein, sondern sein Vergleich mit
+        2023 und 2024 — und `berichte` (in wie vielen er steht) ändert sich,
+        sobald ein neuer Jahrgang dazukommt. Jahrgangsweise zu schreiben
+        hieße, diese Zahl in jeder zweiten Zeile veralten zu lassen.
+
+        Das Einlesen liest deshalb immer alle vorhandenen Berichte und
+        übergibt das Ergebnis in einem Stück. Übergeben wird nur, was die
+        Proben bestanden hat — diese Methode prüft nichts nach, sie schreibt.
+
+        Jede Liste bringt ihre eigene ``herkunft`` je Zeile mit: Die Kennzahlen
+        eines Jahres stammen aus einem anderen Bericht als die Texte daneben,
+        und die Probe ist eine andere."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            for tabelle in ("council_gesellschaft_kennzahlen",
+                            "council_gesellschaft_texte", "council_gesellschaften"):
+                self._conn.execute(f"DELETE FROM {tabelle}")
+            for z in stammdaten:
+                self._conn.execute(
+                    "INSERT INTO council_gesellschaften (bericht_jahr, gesellschaft, "
+                    " name, gliederung, seite, konzern_key, fetched_at, herkunft_id) "
+                    "VALUES (?,?,?,?,?,?,?,?)",
+                    (z["bericht_jahr"], z["gesellschaft"], z["name"], z["gliederung"],
+                     z.get("seite"), z.get("konzern_key"), now,
+                     self.merke_herkunft(z["herkunft"], fetched_at=now)))
+            for z in texte:
+                self._conn.execute(
+                    "INSERT INTO council_gesellschaft_texte (bericht_jahr, "
+                    " gesellschaft, abschnitt, text, fetched_at, herkunft_id) "
+                    "VALUES (?,?,?,?,?,?)",
+                    (z["bericht_jahr"], z["gesellschaft"], z["abschnitt"], z["text"],
+                     now, self.merke_herkunft(z["herkunft"], fetched_at=now)))
+            for z in kennzahlen:
+                self._conn.execute(
+                    "INSERT INTO council_gesellschaft_kennzahlen (gesellschaft, "
+                    " kennzahl, jahr, wert, einheit, bericht_jahr, berichte, "
+                    " fetched_at, herkunft_id) VALUES (?,?,?,?,?,?,?,?,?)",
+                    (z["gesellschaft"], z["kennzahl"], z["jahr"], z["wert"],
+                     z["einheit"], z["bericht_jahr"], z["berichte"], now,
+                     self.merke_herkunft(z["herkunft"], fetched_at=now)))
+        return {"gesellschaften": len(stammdaten), "texte": len(texte),
+                "kennzahlen": len(kennzahlen)}
+
+    def beteiligungsbericht_jahre(self) -> list[int]:
+        """Berichtsjahrgänge, die eingelesen sind (aufsteigend)."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT bericht_jahr FROM council_gesellschaften "
+                "ORDER BY bericht_jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    def get_gesellschaften(self, bericht_jahr: int | None = None) -> list[dict]:
+        """Die Gesellschaften eines Berichts — ohne Angabe die des jüngsten.
+
+        „Der jüngste" ist hier die richtige Vorgabe und nicht Bequemlichkeit:
+        Die Frage „was macht die GSG?" meint den heutigen Stand, und ein
+        Bericht von 2022 nennt Aufsichtsräte, die längst ausgewechselt sind."""
+        try:
+            if bericht_jahr is None:
+                jahre = self.beteiligungsbericht_jahre()
+                if not jahre:
+                    return []
+                bericht_jahr = jahre[-1]
+            rows = self._conn.execute(
+                "SELECT * FROM council_gesellschaften WHERE bericht_jahr = ? "
+                "ORDER BY gliederung", (bericht_jahr,)).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [dict(r) for r in rows]
+
+    def get_gesellschaft_texte(self, gesellschaft: str,
+                               bericht_jahr: int | None = None) -> list[dict]:
+        """Die beschreibenden Abschnitte einer Gesellschaft."""
+        try:
+            if bericht_jahr is None:
+                jahre = self.beteiligungsbericht_jahre()
+                if not jahre:
+                    return []
+                bericht_jahr = jahre[-1]
+            rows = self._conn.execute(
+                "SELECT * FROM council_gesellschaft_texte WHERE gesellschaft = ? "
+                "AND bericht_jahr = ?", (gesellschaft, bericht_jahr)).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [dict(r) for r in rows]
+
+    def get_gesellschaft_kennzahlen(self, gesellschaft: str | None = None) -> list[dict]:
+        """Die Kennzahlen-Zeitreihe — einer Gesellschaft oder aller."""
+        try:
+            if gesellschaft is None:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_gesellschaft_kennzahlen "
+                    "ORDER BY gesellschaft, kennzahl, jahr").fetchall()
+            else:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_gesellschaft_kennzahlen "
+                    "WHERE gesellschaft = ? ORDER BY kennzahl, jahr",
+                    (gesellschaft,)).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [dict(r) for r in rows]
 
     def get_konzern_traeger(self, jahr: int | None = None) -> list[dict]:
         """Trägeraufstellung — wer wie viel zum Konzern beiträgt, in TEUR."""

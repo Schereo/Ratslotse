@@ -41,7 +41,10 @@ export type QuellenSchluessel =
   | "investitionen"
   // Die Schuldenzeitreihe — die einzige Quelle des Bereichs aus dem
   // Statistischen Jahrbuch der Stadt.
-  | "schulden";
+  | "schulden"
+  // A12: Der Beteiligungsbericht — die einzige Quelle des Bereichs, die ein
+  // eigener Cron von oldenburg.de herunterlädt.
+  | "beteiligungsbericht";
 
 export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   plan: {
@@ -343,5 +346,25 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     lizenz: "dl-de/by-2.0",
     art: "csv",
     url: "https://opendata.oldenburg.de/dataset/haushaltsplan-stadt-oldenburg-2025",
+  },
+  beteiligungsbericht: {
+    titel: "Beteiligungsbericht der Stadt Oldenburg (§ 151 NKomVG)",
+    fundstelle:
+      "Je Gesellschaft ein Abschnitt mit acht Teilen: Gegenstand, " +
+      "Beteiligungsverhältnisse, Aufsichtsorgane, eigene Beteiligungen, " +
+      "Geschäftsverlauf, Bilanz und Kennzahlen, öffentlicher Zweck, " +
+      "Auswirkungen auf den städtischen Haushalt. " +
+      "Gelesen werden die Berichte ab dem Berichtsjahr 2022 — davor ist das " +
+      "Dokument anders aufgebaut (die Bilanz steht zweispaltig, es gibt keine " +
+      "Kennzahlen-Tabellen). Die Kennzahlen reichen trotzdem bis 2017 zurück, " +
+      "weil jeder Bericht vier bis fünf Jahre nebeneinander führt. " +
+      "Der Bericht erscheint rund zwei Jahre nach dem Geschäftsjahr; für " +
+      "einzelne Gesellschaften stehen ältere Zahlen darin als für die übrigen. " +
+      "Die beschreibenden Abschnitte sind Text der Verwaltung und tragen " +
+      "keine Rechenprobe.",
+    herausgeber: "Stadt Oldenburg, Amt für Controlling und Finanzen",
+    stand: "Berichtsjahre 2022–2024, Kennzahlen ab 2017",
+    art: "pdf",
+    url: "https://www.oldenburg.de/startseite/politik/verwaltung-finanzen/finanzen/beteiligungsbericht.html",
   },
 };

@@ -49,6 +49,23 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   bezieht sich auf das Jahr vor dem Plan. Für 2026 fehlen die Tarifbeschäftigten
   und die Seite sagt auch das: Diese Seiten des PDFs geben keine Buchstaben aus,
   und geraten wird nicht. (#551)
+- **„Was machen die eigentlich?" — die städtischen Gesellschaften einzeln.**
+  Der Haushalts-Bereich zeigte bisher, wie viel Klinikum, Busse und Bäder
+  bewegen, aber nicht, was sie tun. Eine neue Seite stellt jede städtische
+  Gesellschaft vor: ihren Auftrag im Wortlaut, wem sie gehört, wer im
+  Aufsichtsrat oder Betriebsausschuss sitzt, woran sie selbst beteiligt ist und
+  was sie für den Haushalt bedeutet — dazu Jahresergebnis, Bilanzsumme und
+  Eigenkapitalquote von 2017 bis 2024. Die Angaben stammen aus den
+  Beteiligungsberichten der Stadt (§ 151 NKomVG), die ein neuer Cron seit jetzt
+  selbst von oldenburg.de holt. Eine Kennzahl kommt nur in den Bestand, wenn
+  der Bericht sie belegt: Die Bilanz muss aufgehen, die Gewinn- und
+  Verlustrechnung dieselbe Zahl nennen, oder ein zweiter Bericht sie
+  bestätigen — was keine Probe trägt, wird verworfen statt geschätzt. Die
+  beschreibenden Abschnitte sind Text der Verwaltung und stehen ausdrücklich
+  ungeprüft da. Was der Bericht **nicht** hergibt, steht als eigener Abschnitt
+  auf der Seite: Er kommt zwei Jahre später, ein Jahresergebnis von 0 € heißt
+  nicht „nichts verdient" (mehrere Betriebe führen ihr Ergebnis ab), und die
+  Jahrgänge vor 2022 sind anders aufgebaut. (#555)
 - **„Was wird gebaut?" — der Haushalts-Bereich zeigt jetzt auch die
   Investitionen.** Bisher stand dort ausschließlich der laufende Betrieb:
   Personal, Zuschüsse, Energie, Mieten. Neubauten, Fahrzeuge und Grundstücke

@@ -460,6 +460,14 @@ def _bestand_schulden(store: CouncilStore) -> set[tuple]:
     Sonderfall, sondern eingeplant (s. ``council/schulden.py``)."""
     return {(r[0],) for r in _jahre(
         store, "SELECT DISTINCT jahr FROM council_schulden")}
+def _bestand_beteiligungsbericht(store: CouncilStore) -> set[tuple]:
+    """Die **Berichts**jahrgänge, die eingelesen sind.
+
+    Gezählt wird nach dem Bericht, nicht nach den Bezugsjahren seiner
+    Kennzahlen: Ein Bericht führt vier bis fünf Jahre mit, und wer die als
+    Jahrgänge zählte, hielte den Bestand nach einem einzigen Dokument für bis
+    2017 zurückreichend — und meldete nie wieder, dass ein Bericht fehlt."""
+    return {(j,) for j in store.beteiligungsbericht_jahre()}
 
 
 def _bestand_lsn_steuerkraft(store: CouncilStore) -> set[tuple]:
@@ -1651,6 +1659,30 @@ for _q in (
         bestand=_bestand_schulden,
     ),
     Finanzquelle(
+        key="beteiligungsbericht",
+        label="Beteiligungsbericht",
+        was="Was die städtischen Gesellschaften tun, wer sie beaufsichtigt "
+            "und was sie erwirtschaften — vom Klinikum bis zur Volkshochschule.",
+        tabelle="council_gesellschaft_kennzahlen",
+        # Gemessen an den sieben Jahrgängen auf oldenburg.de (Last-Modified des
+        # Servers): Der Bericht erscheint immer im **zweiten** Folgejahr,
+        # zwischen Januar und Juni — 2018→Feb 2020, 2019→Jan 2021, 2020→Apr
+        # 2022, 2021→Feb 2023, 2022→Jun 2024, 2023→Jan 2025, 2024→Mär 2026.
+        # Juni ist der späteste gemessene Monat und deshalb die Schwelle: zu
+        # früh gemeldet ist der teurere Fehler.
+        erwarteter_monat=6,
+        versatz=2,
+        # Kommt von oldenburg.de, nicht aus dem Bürgerinfo — und anders als bei
+        # den übrigen `stadt`-Schichten holt ihn ein Cron **selbst**. Er steht
+        # hier trotzdem als `automatisch=False`: `check_finanzdaten` lädt nichts
+        # herunter (seine Regel 1), beobachtet diese Schicht aber mit und meldet,
+        # wenn ein Jahrgang ausbleibt.
+        herkunft="stadt",
+        nachschub="eigener Cron scripts/check_beteiligungsbericht.py "
+                  "(lädt von oldenburg.de)",
+        bestand=_bestand_beteiligungsbericht,
+    ),
+    Finanzquelle(
         key="lsn_steuerkraft",
         label="Steuerkraft im Städtevergleich",
         was="Wie viel Steuerkraft Oldenburg gegenüber den anderen sieben "
@@ -1717,16 +1749,20 @@ for _q in (
 #: Der Stellenplan steht hinter den Teilhaushalten: Er kommt mit demselben
 #: Dokument wie sie, beantwortet aber die Frage eine Stufe feiner — erst was
 #: eine Aufgabe kostet, dann wie viele Menschen sie tun sollen.
-#:
 #: Der Schuldenstand steht hinter dem Gesamtabschluss und vor dem
 #: Städtevergleich: Er ist die einzige Schicht, die einen **Bestand** zeigt
 #: statt eines Jahresverlaufs — was am Stichtag noch offen ist, nicht was in
 #: zwölf Monaten geflossen ist. Deshalb steht er nicht zwischen den
 #: Rechnungen, sondern hinter ihnen.
+#:
+#: Der Beteiligungsbericht steht direkt hinter dem Gesamtabschluss und vor dem
+#: Schuldenstand: Beide verlassen die Kernverwaltung, und der Gesamtabschluss
+#: sagt, wie viel die Betriebe bewegen, der Beteiligungsbericht, was sie tun.
+#: Die Zahl kommt zuerst, die Erklärung gleich danach.
 REIHENFOLGE = ("haushaltsplan", "ergebnishaushalt", "investitionen",
                "jahresabschluss", "teilhaushalt", "stellenplan",
                "rpa_fundstelle", "pruefungsfeststellungen",
-               "konzernabschluss", "schulden",
+               "konzernabschluss", "beteiligungsbericht", "schulden",
                "lsn_steuerkraft", "lsn_realsteuern")
 
 #: Die Stelle hinter einer Herkunft, im Klartext. Sie steht in der Fußzeile des

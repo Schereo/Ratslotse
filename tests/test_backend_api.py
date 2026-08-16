@@ -309,6 +309,7 @@ def test_admin_jobs_listet_registry_auch_ohne_laeufe(client):
         "check_presse",  # Stufe 3a: Stadt-Pressemitteilungen, täglich
         "render_plaene",  # P1: Planzeichnungen als Bilder, sonntags
         "check_finanzdaten",  # neue Haushalts-Jahrgänge, alle zwei Wochen
+        "check_beteiligungsbericht",  # lädt von oldenburg.de, alle vier Wochen
     }
     job = next(j for j in b if j["key"] == "check_council")
     assert job["state"] == "unknown" and job["last"] is None and job["history"] == []
@@ -508,7 +509,8 @@ def test_haushalt_datenstand_nennt_alle_schichten(client):
                               "jahresabschluss", "teilhaushalt", "stellenplan",
                               "rpa_fundstelle",
                               "pruefungsfeststellungen", "konzernabschluss",
-                              "schulden", "lsn_steuerkraft", "lsn_realsteuern"}
+                              "beteiligungsbericht", "schulden",
+                              "lsn_steuerkraft", "lsn_realsteuern"}
     # Vier verschiedene Takte — das ist der Grund, warum der Block existiert.
     assert schichten["jahresabschluss"]["monat"] == "September"
     assert schichten["haushaltsplan"]["monat"] == "Oktober"
@@ -643,6 +645,61 @@ def test_haushalt_investitionen_trennt_geprueft_von_bezugsgroesse(client):
     # Und der Beleg findet das Dokument des Jahrgangs — einmal, nicht zweimal.
     doks = client.get("/api/council/haushalt/dokumente").json()["dokumente"]
     assert [d["jahr"] for d in doks["investitionen"]] == [2025]
+
+
+def test_haushalt_beteiligungen_liefert_texte_kennzahlen_und_herkunft(client):
+    """/haushalt/beteiligungen trägt beides: was die Gesellschaft tut und was
+    sie erwirtschaftet — mit der Fundstelle im 200-Seiten-PDF.
+
+    Der Unterschied der beiden Sorten muss über die API sichtbar bleiben: Die
+    Kennzahl ist durch eine Rechenprobe gedeckt, der Fließtext ausdrücklich
+    nicht. Wer beides gleich ausliefert, macht auf der Seite aus einer
+    Verwaltungsbeschreibung eine geprüfte Angabe."""
+    from council import beteiligungsbericht, finanzquellen, herkunft
+    from tests.test_beteiligungsbericht import _bericht_2024
+
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    try:
+        beteiligungsbericht.einlesen(cs, {2024: {
+            "seiten": _bericht_2024(),
+            "url": "https://example.org/beteiligungsbericht_2024.pdf",
+            "label": "Beteiligungsbericht 2024"}},
+            finanzquellen.Protokoll(still=True))
+    finally:
+        cs.close()
+
+    b = client.get("/api/council/haushalt/beteiligungen").json()
+    assert b["berichtsjahre"] == [2024]
+    keys = {g["gesellschaft"] for g in b["gesellschaften"]}
+    assert keys == {"egh", "gsg"}
+    egh = next(g for g in b["gesellschaften"] if g["gesellschaft"] == "egh")
+    # Der Verweis auf den Gesamtabschluss steht am Stammdatensatz — er macht
+    # aus zwei Seiten über dieselbe Gesellschaft einen Zusammenhang.
+    assert egh["konzern_key"] == "egh"
+    assert egh["seite"] == 2
+
+    bilanz = next(k for k in b["kennzahlen"]
+                  if k["gesellschaft"] == "egh" and k["kennzahl"] == "bilanzsumme"
+                  and k["jahr"] == 2024)
+    assert bilanz["wert"] == 580193968.91
+    assert bilanz["einheit"] == "eur"
+    # Ein einzelner Bericht kann die Überlappung nicht bieten — die Zahl ist
+    # trotzdem gedeckt, nämlich durch die Bilanz im Dokument selbst.
+    assert bilanz["berichte"] == 1
+    h_zahl = b["herkunft"][str(bilanz["herkunft_id"])]
+    assert h_zahl["probe"] == "beteiligung_bilanzprobe"
+    assert "Abschnitt 2.2.1" in h_zahl["fundstelle"]
+    assert h_zahl["seite"] == 2
+    assert h_zahl["proben"]
+
+    gegenstand = next(t for t in b["texte"]
+                      if t["gesellschaft"] == "egh" and t["abschnitt"] == "gegenstand")
+    assert "gebäudewirtschaftlichen" in gegenstand["text"]
+    h_text = b["herkunft"][str(gegenstand["herkunft_id"])]
+    assert h_text["probe"] == herkunft.UNGEPRUEFT
+    # Ungeprüft heißt nicht quellenlos: Dokument und Fundstelle stehen da.
+    assert h_text["url"] and h_text["fundstelle"]
 
 
 def test_haushalt_konzern_liefert_luecke_und_gegenprobe(client):
