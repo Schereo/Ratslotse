@@ -452,6 +452,19 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   jetzt an der Fläche statt am Hell/Dunkel-Modus: Im hellen Modus wäre der
   größte Einnahmeposten auf dem dunklen Grund sonst fast unsichtbar. (#525)
 - **„Woher, wohin" zeigt kein anderes Jahr mehr, wenn das gewählte fehlt.** Wer auf der Haushalts-Seite ein Planjahr wählte, bekam wortlos die Grafik des nächstgelegenen Jahres mit Jahresabschluss zu sehen; dass da ein anderes Jahr stand, verriet nur eine Zeile darüber. Jetzt sagt die Seite, was fehlt — die Einnahmearten liegen uns für dieses Jahr noch nicht vor — und bietet das jüngste vollständige Jahr zum Anklicken an, statt es ersatzweise anzuzeigen.
+- **Der Haushalt als Kassenzettel: 883,9 Millionen sind 5.005 Euro je
+  Einwohnerin und Einwohner.** Millionenbeträge lassen sich nicht fühlen, ein
+  Kassenbon schon — er zeigt dieselben Bereiche in derselben Reihenfolge, nur
+  geteilt durch die amtliche Einwohnerzahl: 1.603 € für Soziales und
+  Gesundheit, 958 € für Jugend und Familie, 225 € für Kultur und Sport. Ganz
+  unten steht die Zeile, um die es politisch geht — 402 € kommen aus dem
+  Ersparten, von dem danach noch 702 € je Kopf übrig sind. Daneben steht, was
+  die Zahl **nicht** ist: keine Rechnung, die jemand überweist; geteilt wird
+  durch alle Menschen, nicht durch Steuerzahlende; und nichts davon baut etwas
+  Neues, denn Investitionen laufen in einem eigenen Haushalt. Bezugsgröße sind
+  176.614 Einwohnerinnen und Einwohner zum Stichtag 31.12.2024 — der steht mit
+  an der Rechnung, weil eine Pro-Kopf-Angabe ohne Bezugsjahr nichts wert ist.
+  (#527)
 
 <!-- GEPARKT (nur dev.ratslotse.de, Umgebungs-Gate): Eintrag aktivieren,
      sobald der Kommunalwahl-Vergleich auf Prod freigeschaltet wird.
