@@ -17,13 +17,14 @@ import { Wegweiser } from "@/components/haushalt/wegweiser";
 import { GlossaryText } from "@/components/glossary-text";
 import { useFetch } from "@/lib/use-fetch";
 import { Gegenbalken } from "@/components/haushalt/gegenbalken";
+import { Flussbild } from "@/components/haushalt/flussbild";
 import { Steuereuro } from "@/components/haushalt/steuereuro";
 import { Zeitreihe } from "@/components/haushalt/zeitreihe";
 import { TrendMini } from "@/components/haushalt/sparkline";
 import {
   BEREICH_INFO, HaushaltDaten, RUECKLAGE_MIO, RUECKLAGE_STAND,
   bereichSlug, bereiche, bereichsReihe, deMio, deckung, fehlendeJahre,
-  jahreSortiert, mio, quellenLabel, summe,
+  flussJahre, jahreSortiert, mio, quellenLabel, summe,
 } from "@/lib/haushalt";
 import { cn } from "@/lib/utils";
 
@@ -141,7 +142,12 @@ export default function HaushaltPage() {
     return <div className="py-16 text-center text-sm text-muted-foreground">Haushalt wird geladen …</div>;
   }
 
-  const quellen: QuellenSchluessel[] = ["plan", "ruecklage"];
+  // Das Flussbild zieht seine Zahlen aus den Jahresabschlüssen — die Quelle
+  // wird deshalb nur angemeldet, wenn es die auch gibt. Sonst stünde im
+  // Verzeichnis ein Beleg für nichts.
+  const quellen: QuellenSchluessel[] = flussJahre(data).length > 0
+    ? ["plan", "ruecklage", "jahresabschluss"]
+    : ["plan", "ruecklage"];
 
   return (
     <Quellenkontext schluessel={quellen}>
@@ -267,6 +273,28 @@ export default function HaushaltPage() {
           </p>
         )}
       </div>
+
+      {/* Flussbild (H-18): Einnahmearten → eine Kasse → Bereiche. Steht NACH
+          dem Gegenbalken, weil es dessen linke Seite auflöst: Der Balken zeigt,
+          welcher Bereich das Geld verbucht („Finanzmanagement und Recht" —
+          dort laufen alle Steuern auf), das Flussbild, woher es kommt. */}
+      {flussJahre(data).length > 0 && (
+        <>
+          <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+            <Flussbild daten={data} jahr={aktJahr} />
+            <p className="mt-3 border-t border-dashed border-border pt-2.5 text-[11px] text-muted-foreground">
+              Quelle: Ergebnisrechnung des jeweiligen Jahresabschlusses<Beleg q="jahresabschluss" /> —
+              Einnahmearten (Posten 01–11) und Aufwendungen je Teilhaushalt (Posten 20) aus
+              derselben Tabelle desselben Jahres.
+            </p>
+          </div>
+
+          <LottiErklaert
+            titel="Warum die Gewerbesteuer nicht der Feuerwehr gehört"
+            text="Was die Stadt einnimmt, ist fast nie für einen bestimmten Zweck reserviert: Steuern, Gebühren und Zuweisungen landen erst alle zusammen in einer Kasse, und aus dieser einen Kasse wird dann jede Aufgabe bezahlt. Nur wenige Zuschüsse von Bund und Land sind ausdrücklich an einen Zweck gebunden. Deshalb lässt sich nicht sagen, welche Einnahme welche Ausgabe trägt."
+          />
+        </>
+      )}
 
       {/* Zeitreihe (H-07) */}
       <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
