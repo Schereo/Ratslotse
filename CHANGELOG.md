@@ -22,7 +22,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Stellen sind keine Menschen, es ist nur die Kernverwaltung, und die Besetzung
   bezieht sich auf das Jahr vor dem Plan. Für 2026 fehlen die Tarifbeschäftigten
   und die Seite sagt auch das: Diese Seiten des PDFs geben keine Buchstaben aus,
-  und geraten wird nicht. (#PR)
+  und geraten wird nicht. (#551)
 - **„Und ist das die ganze Stadt?" — der Haushalt zeigt jetzt auch, was neben
   ihm läuft.** Klinikum, Busse, Bäder und die städtischen Gebäude führen eigene
   Bücher; im Haushalt tauchen sie bestenfalls als Zuschusszeile auf. Eine neue
