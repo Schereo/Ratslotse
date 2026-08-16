@@ -9,8 +9,11 @@
 // den Daten berechnet und neutral beschriftet — eine Jahreszahl mit
 // Rückgang, keine historische Deutung, die die Reihe nicht hergibt.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { deMio } from "@/lib/haushalt";
+import {
+  AbleseBeschreibung, AbleseFlaeche, AbleseStelle, Ableseleiste, useAblesen,
+} from "@/components/haushalt/ablesen";
 
 type Punkt = { jahr: number; betrag: number };
 
@@ -27,18 +30,25 @@ export function IstKurve({ reihe, einheit = "Mio. Euro" }: {
 }) {
   const [tabelle, setTabelle] = useState(false);
   // viewBox-Breite = Containerbreite, sonst staucht das SVG die Schrift mit
-  // (siehe Zeitreihe): Eine SVG-Einheit soll ein echtes Pixel sein.
+  // (siehe Zeitreihe): Eine SVG-Einheit soll ein echtes Pixel sein. Gemessen
+  // mit `getBoundingClientRect`, nicht `clientWidth` — letzteres rundet auf
+  // ganze Pixel und brächte bei 486,4 px schon einen Faktor von 1,0008.
   const box = useRef<HTMLDivElement>(null);
   const [breite, setBreite] = useState(640);
   useEffect(() => {
     const el = box.current;
     if (!el) return;
-    const pruefe = () => setBreite(Math.max(el.clientWidth, 280));
+    const pruefe = () => {
+      const w = Math.max(el.getBoundingClientRect().width, 280);
+      setBreite((alt) => (Math.abs(w - alt) > 0.5 ? w : alt));
+    };
     pruefe();
     const ro = new ResizeObserver(pruefe);
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+  const ablesen = useAblesen(reihe.length, Math.max(reihe.length - 1, 0));
+  const beschreibungId = useId();
   const schmal = breite < 520;
   const fs = schmal
     ? { achse: 13, jahr: 13, marke: 12.5, wert: 14 }
@@ -117,6 +127,28 @@ export function IstKurve({ reihe, einheit = "Mio. Euro" }: {
       return { ...m, ty };
     });
 
+  // --- Ableseleiste --------------------------------------------------------
+  // 28 Jahre lassen sich nicht alle anschreiben — angeschrieben sind deshalb
+  // dauerhaft der erste, der letzte und die zwei größten Rückgänge. Alles
+  // andere zeigt die Leiste unter dem Bild, die IMMER ein Jahr trägt (zuletzt
+  // erhobenes) und beim Überfahren, Antippen oder mit den Pfeiltasten
+  // wechselt. Die Tabelle bleibt: 28 Werte nebeneinander kann ein Bild nicht,
+  // und wer eine einzelne Jahreszahl sucht, findet sie dort schneller.
+  const ableseStellen: AbleseStelle[] = reihe.map((p, i) => {
+    const wert = p.betrag / 1e6;
+    const vor = i > 0 ? (p.betrag - reihe[i - 1].betrag) / 1e6 : null;
+    const deltaText = vor == null ? null : `${vor > 0 ? "+" : ""}${deMio(vor)}`;
+    return {
+      titel: String(p.jahr),
+      werte: [
+        { label: einheit.startsWith("Mio") ? "Mio. €" : einheit, wert: deMio(wert), farbe: "var(--hh-ein-0)" },
+        ...(deltaText ? [{ label: "ggü. Vorjahr", wert: deltaText, signal: (vor as number) < 0 }] : []),
+      ],
+      vorlesen: `${p.jahr}: ${deMio(wert)} Millionen Euro`
+        + (vor == null ? "." : `, ${deMio(Math.abs(vor))} Millionen ${vor < 0 ? "weniger" : "mehr"} als im Vorjahr.`),
+    };
+  });
+
   return (
     <div ref={box}>
       <div className="mb-1.5 flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
@@ -147,8 +179,15 @@ export function IstKurve({ reihe, einheit = "Mio. Euro" }: {
         </p>
       )}
 
-      <svg viewBox={`0 0 ${W} ${H}`} className="block w-full" role="img"
-        aria-label={`Verlauf ${erste.jahr} bis ${letzte.jahr}: ${reihe.map((p) => `${p.jahr} ${deMio(p.betrag / 1e6)}`).join(", ")} Millionen Euro`}>
+      {/* `role="group"` statt `role="img"`: Ein `img` fasst seinen Inhalt zu
+          einem Objekt zusammen — die Jahres-Ziele darin wären für die
+          Vorlesehilfe unsichtbar. Die Gesamtbeschreibung steht daneben. */}
+      <AbleseBeschreibung id={beschreibungId}>
+        {`Verlauf ${erste.jahr} bis ${letzte.jahr}: ${reihe.map((p) => `${p.jahr} ${deMio(p.betrag / 1e6)}`).join(", ")} Millionen Euro`}
+      </AbleseBeschreibung>
+      <svg viewBox={`0 0 ${W} ${H}`} className="block w-full" role="group"
+        aria-describedby={beschreibungId}
+        aria-label={`Tatsächlich eingenommen, ${erste.jahr} bis ${letzte.jahr}`}>
         {gitter.map((v) => (
           <g key={v}>
             <line x1={X0} y1={y(v)} x2={X1} y2={y(v)} className="stroke-border/60" />
@@ -199,11 +238,25 @@ export function IstKurve({ reihe, einheit = "Mio. Euro" }: {
             </text>
           )
         ))}
+
+        {/* Zuletzt: die Ablese-Fläche liegt über allem, sonst fangen Kurve und
+            Punkte den Zeiger ab. Das Fingerziel reicht bis unter die
+            Jahreszeile — bei 28 Jahren ist ein Streifen von 12–20 px Breite
+            über 175 px Höhe das Ziel, nicht der 4-px-Punkt. */}
+        <AbleseFlaeche
+          stellen={ableseStellen} steuerung={ablesen} gruppe="Jahre der Reihe"
+          x={(i) => x(i)} xVon={X0} xBis={X1}
+          yVon={YTOP} hoehe={Y0 - YTOP} fangHoehe={197 - YTOP}
+          marken={(i) => [{ y: y(reihe[i].betrag / 1e6), farbe: "var(--hh-ein-0)" }]}
+        />
       </svg>
 
+      <Ableseleiste className="mt-2" stelle={ableseStellen[ablesen.aktiv]} steuerung={ablesen}
+        hinweis="Jahr überfahren, antippen oder mit den Pfeiltasten wechseln." />
+
       <button type="button" onClick={() => setTabelle((t) => !t)}
-        className="mt-1.5 text-[12px] font-semibold text-primary">
-        {tabelle ? "Zahlen ausblenden" : `Zahlen anzeigen (${reihe.length} Werte)`}
+        aria-expanded={tabelle} className="mt-2 text-[12px] font-semibold text-primary">
+        {tabelle ? "Tabelle ausblenden" : `Alle ${reihe.length} Werte als Tabelle`}
       </button>
       {tabelle && (
         <div className="mt-2 grid grid-cols-[repeat(auto-fill,minmax(96px,1fr))] gap-x-3 gap-y-1 text-[11.5px] tabular-nums">

@@ -200,12 +200,17 @@ PROBEN: dict[str, str] = {
 
 #: Jede Tabelle, deren Zeilen eine ``herkunft_id`` tragen.
 #:
-#: Diese Liste ist die Arbeitsanweisung an drei Stellen: Sie legt die Spalte
-#: an (``CouncilStore._migrate_herkunft``), sie füllt sie beim Nachrüsten aus
-#: den alten Feldern, und sie ist der Prüfumfang von
-#: ``CouncilStore.herkunft_luecken()``. Wer eine Tabelle hier vergisst,
-#: bekommt keine Spalte; wer sie einträgt und nicht füllt, bekommt eine
-#: Meldung nach jedem Lauf.
+#: Diese Liste ist die Arbeitsanweisung fürs **Anlegen**: Sie legt die Spalte
+#: an (``CouncilStore._migrate_herkunft``) und füllt sie beim Nachrüsten aus
+#: den alten Feldern (``_HERKUNFT_ALTFELDER``). Wer eine Tabelle hier
+#: vergisst, bekommt keine Spalte — trägt seine Tabelle die ``herkunft_id``
+#: aber schon im ``CREATE TABLE`` (so die neueren), fällt das Vergessen beim
+#: Anlegen gar nicht auf.
+#:
+#: **Geprüft und aufgeräumt wird deshalb nicht nach dieser Liste, sondern
+#: nach dem Schema** (``CouncilStore._herkunft_verweistabellen()``): Sonst
+#: verlöre eine hier vergessene Tabelle beim Aufräumen still ihre Herkünfte,
+#: und die Lücken-Meldung schwiege dazu. Die Begründung steht dort.
 HERKUNFT_TABELLEN: tuple[str, ...] = (
     "council_haushalt",
     "council_steuern",
