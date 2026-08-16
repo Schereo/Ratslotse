@@ -158,6 +158,20 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   ab, steht hinterher der alte Stand da und kein halber neuer. (#511)
 
 ### Behoben
+- **Der Herkunfts-Nachweis konnte eine ganze Datenschicht still verlieren.**
+  Das Aufräumen der Herkunfts-Einträge und die Meldung fehlender Herkünfte
+  gingen beide eine von Hand gepflegte Tabellenliste durch. Eine neue
+  Datenschicht, die dort vergessen wird — der Eintrag ist ausdrücklich Schritt
+  drei für einen neuen Parser —, war für beide unsichtbar: Ihre Herkünfte
+  galten als verwaist und wurden gelöscht, während ihre Zeilen weiter auf
+  deren Nummern zeigten, und die Lücken-Meldung schwieg dazu. Weil die Nummern
+  danach neu vergeben werden, zeigte so eine Zeile am Ende nicht ins Leere —
+  das wäre aufgefallen —, sondern auf ein **fremdes Dokument**. Beides fragt
+  jetzt das Datenbankschema statt der Liste; eine vergessene Tabelle ist damit
+  nicht mehr stillgestellt, sondern meldet sich. Aufgefallen ist es am
+  Gesamtabschluss auf der Testumgebung, wo die Jahrgänge 2014–2020 als Quelle
+  einen Teilhaushalts-Plan auswiesen; die Jahrgänge sind neu eingelesen und
+  nennen wieder ihren Prüfbericht. (#537)
 - **Die Vergleichsseite nannte den Jahresversatz noch als offene Frage.** Sie
   ist mit #516 beantwortet: Der offene Datensatz der Stadt beschriftete die
   Steuerkraft ein Jahr zu früh, nachgewiesen an den eigenen Büchern der Stadt.
@@ -515,6 +529,16 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Unterschied" stand. Dass zwei Dokumente übereinstimmen, ist unsere
   Qualitätssicherung — sie läuft unverändert weiter, steht in der Technik-Doku
   und in Tests, aber nicht mehr auf der Seite. (#535)
+- **Die Grafiken im Haushalt schreiben ihre Zahlen jetzt selbst an.** Unter der
+  Zeitreihe auf `/haushalt`, der Steuerkurve auf `/haushalt/steuer` und den
+  beiden Reihen des Finanzausgleichs steht eine Leiste, die immer ein Jahr mit
+  allen seinen Werten zeigt — im Ruhezustand das jüngste. Überfahren, Antippen
+  oder die Pfeiltasten wechseln das Jahr, und weil die Leiste echter Text ist,
+  steht die Zahl auch im Screenshot, im Ausdruck und in der Vorlesehilfe; ein
+  Tooltip wäre nur für die Maus da gewesen. In der 100-Euro-Ansicht hebt ein
+  Bereich seine Felder im Raster hervor, egal ob man ihn in der Liste oder im
+  Bild wählt. Die Zahlentabellen bleiben — 28 Werte nebeneinander kann kein
+  Bild —, starten aber zugeklappt. (#536)
 
 <!-- GEPARKT (nur dev.ratslotse.de, Umgebungs-Gate): Eintrag aktivieren,
      sobald der Kommunalwahl-Vergleich auf Prod freigeschaltet wird.

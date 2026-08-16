@@ -478,4 +478,46 @@ def test_ohne_dokument_meldet_sich_die_quelle_gar_nicht(tmp_path):
     store._conn.commit()
     assert store.haushalt_dokumente()["plan"] == [
         {"jahr": 2020, "url": PLAN_URL, "label": None, "fundstelle": None, "seite": None}]
+def test_vergessene_zieltabelle_verliert_ihre_herkunft_nicht(tmp_path):
+    """Der Schritt, den man vergisst: eine neue Zieltabelle nicht in
+    ``HERKUNFT_TABELLEN`` eintragen.
+
+    Bis 08/2026 kostete das die Herkunft. Aufräumen und Lücken-Meldung gingen
+    beide nur die handgepflegte Liste durch — eine Tabelle, die dort fehlt,
+    hat aus Sicht des DELETE keine Verweise, ihre Herkünfte gälten als
+    verwaist. Ihre Zeilen zeigten danach auf eine Nummer, die es nicht mehr
+    gibt oder, nach der nächsten Vergabe, auf ein **fremdes Dokument**.
+
+    Beides wird jetzt am Schema entschieden, nicht an der Liste."""
+    store = CouncilStore(tmp_path / "c.sqlite")
+    store.save_ergebnisrechnung(2023, [
+        {"nr": 12, "bezeichnung": "Summe", "ansatz": 1.0, "ergebnis": 2.0}],
+        Herkunft(art="ris", probe="strukturprobe", url=JA_URL,
+                 fundstelle="Ergebnisrechnung der Kernverwaltung"))
+
+    # Eine Schicht, die es in `HERKUNFT_TABELLEN` nie geschafft hat.
+    with store._conn:
+        store._conn.execute(
+            "CREATE TABLE council_beteiligungen_kennzahlen ("
+            "jahr INTEGER, wert REAL, herkunft_id INTEGER)")
+        hid = store.merke_herkunft(Herkunft(
+            art="ris", probe="summenzeile", url=JA_URL,
+            fundstelle="Abschnitt 4.1.1, Aufstellung nach Aufgabenträgern"))
+        store._conn.execute(
+            "INSERT INTO council_beteiligungen_kennzahlen VALUES (2023, 1.0, ?)", (hid,))
+    assert "council_beteiligungen_kennzahlen" not in herkunft.HERKUNFT_TABELLEN
+
+    assert store.herkunft_aufraeumen() == 0        # nichts ist verwaist
+    assert {h["id"] for h in store.get_herkunft()} == {hid, hid - 1}
+    # Und der Verweis zeigt weiter auf genau das Dokument, aus dem er stammt.
+    (probe,) = store._conn.execute(
+        "SELECT h.fundstelle FROM council_beteiligungen_kennzahlen k "
+        "JOIN council_herkunft h ON h.id = k.herkunft_id").fetchone()
+    assert probe == "Abschnitt 4.1.1, Aufstellung nach Aufgabenträgern"
+
+    # Und sie ist auch für die Lücken-Meldung sichtbar, statt stillgestellt.
+    with store._conn:
+        store._conn.execute(
+            "INSERT INTO council_beteiligungen_kennzahlen VALUES (2024, 2.0, NULL)")
+    assert store.herkunft_luecken() == {"council_beteiligungen_kennzahlen": 1}
     store.close()

@@ -202,10 +202,24 @@ Drei Schritte, mehr nicht:
    (`merke_herkunft`, idempotent über einen Fingerabdruck der Inhaltsfelder)
    und verknüpft die Zeilen.
 3. **Die Zieltabelle in `herkunft.HERKUNFT_TABELLEN` eintragen.** Damit
-   bekommt sie ihre `herkunft_id`-Spalte beim nächsten Öffnen, wird beim
-   Nachrüsten mitversorgt, und `store.herkunft_luecken()` meldet ab sofort
-   jede Zeile darin, die ohne Herkunft geschrieben wurde. Die Ingest-Skripte
-   geben das nach jedem Lauf aus; leer ist der Sollzustand.
+   bekommt sie ihre `herkunft_id`-Spalte beim nächsten Öffnen und wird beim
+   Nachrüsten aus den Altfeldern mitversorgt.
+
+   **Geprüft und aufgeräumt wird aber nicht nach dieser Liste, sondern nach
+   dem Schema** (`store._herkunft_verweistabellen()` sucht jede Tabelle mit
+   einer `herkunft_id`-Spalte). Der Grund ist genau dieser Schritt 3: Er ist
+   der, den man vergisst — und wer seine Tabelle mit `herkunft_id` schon im
+   `CREATE TABLE` anlegt (so die neueren), merkt davon beim Anlegen nichts.
+   Ginge das Aufräumen nach der Liste, hätte eine vergessene Tabelle aus
+   dessen Sicht keine Verweise: Ihre Herkünfte gälten als verwaist und fielen
+   weg, während ihre Zeilen weiter auf deren Nummern zeigen. Weil die Nummern
+   neu vergeben werden, zeigte so eine Zeile am Ende nicht ins Leere, sondern
+   auf ein **fremdes Dokument** — und `herkunft_luecken()` schwiege dazu, weil
+   auch sie nur die Liste durchginge.
+
+   So gemeldet wird jede Zeile ohne Herkunft, auch aus einer Tabelle, die die
+   Liste nicht kennt. Die Ingest-Skripte geben das nach jedem Lauf aus; leer
+   ist der Sollzustand.
 
 Eine **neue Rechenprobe** braucht einen Eintrag in `herkunft.PROBEN` — Name
 plus einen Satz für Leserinnen, denn der Satz landet über die API im Beleg und

@@ -3370,6 +3370,34 @@ class CouncilStore:
             aus.append(d)
         return aus
 
+    def _herkunft_verweistabellen(self) -> list[str]:
+        """Jede Tabelle **dieser Datenbank**, die eine ``herkunft_id`` führt.
+
+        Gefragt wird das Schema und nicht ``herkunft.HERKUNFT_TABELLEN``. Die
+        Liste dort ist die Arbeitsanweisung fürs Anlegen der Spalte und fürs
+        Nachrüsten aus den Altfeldern; sie wird von Hand gepflegt, und der
+        Modulkopf von `council/herkunft.py` nennt das Eintragen ausdrücklich
+        als Schritt 3 für einen neuen Parser. Genau dieser Schritt ist der,
+        den man vergisst.
+
+        Fürs Aufräumen wäre das teuer: Eine Tabelle, die die Liste nicht
+        kennt, hat aus Sicht des DELETE **keine** Verweise. Ihre Herkünfte
+        gälten als verwaist und fielen weg — während ihre Zeilen weiter auf
+        deren Nummern zeigen. Weil die Nummern danach neu vergeben werden
+        können, zeigt so eine Zeile am Ende nicht ins Leere (das fiele auf),
+        sondern auf ein **fremdes Dokument**. Und ``herkunft_luecken()``
+        schwiege dazu, weil auch sie nur die Liste durchging.
+
+        Das Schema kennt die Tabelle trotzdem. Deshalb entscheidet es."""
+        aus: list[str] = []
+        for (name,) in self._conn.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table' "
+                "AND name NOT LIKE 'sqlite_%' ORDER BY name").fetchall():
+            cols = {r[1] for r in self._conn.execute(f'PRAGMA table_info("{name}")')}
+            if "herkunft_id" in cols:
+                aus.append(name)
+        return aus
+
     def herkunft_aufraeumen(self) -> int:
         """Herkunfts-Datensätze löschen, auf die keine Zeile mehr zeigt.
 
@@ -3379,19 +3407,15 @@ class CouncilStore:
         des Altbestands werden von den echten abgelöst) und danach immer, wenn
         sich eine Fundstelle oder eine Probe ändert.
 
+        Gefragt wird, wer wirklich zeigt — ``_herkunft_verweistabellen()``
+        liest das Schema, nicht die handgepflegte Liste. Dort steht auch,
+        warum: Eine vergessene Zieltabelle verlöre hier sonst ihre Herkunft.
+
         Läuft **nur auf Ansage** aus den Ingest-Skripten, nicht beim Öffnen der
         Datenbank: Aufräumen ist eine Schreiboperation, und die gehört nicht in
         den Startpfad eines Webservers."""
-        from council import herkunft as _h
-
-        verweise = []
-        for tabelle in _h.HERKUNFT_TABELLEN:
-            try:
-                self._conn.execute(f"SELECT herkunft_id FROM {tabelle} LIMIT 0")
-            except sqlite3.OperationalError:
-                continue
-            verweise.append(
-                f"SELECT herkunft_id FROM {tabelle} WHERE herkunft_id IS NOT NULL")
+        verweise = [f'SELECT herkunft_id FROM "{t}" WHERE herkunft_id IS NOT NULL'
+                    for t in self._herkunft_verweistabellen()]
         if not verweise:
             return 0
         with self._conn:
@@ -3403,21 +3427,21 @@ class CouncilStore:
     def herkunft_luecken(self) -> dict[str, int]:
         """Je Zieltabelle: wie viele Zeilen ohne Herkunft dastehen.
 
-        Das Frühwarnsystem der Umstellung. Eine Tabelle, die in
-        ``HERKUNFT_TABELLEN`` steht, aber ihre ``herkunft_id`` nicht füllt,
-        taucht hier nach jedem Lauf auf — und die Ingest-Skripte schreiben es
-        ins Protokoll. Genannt werden nur Tabellen mit Lücken; eine leere
-        Antwort heißt „jede Zeile weiß, woher sie kommt"."""
-        from council import herkunft as _h
+        Das Frühwarnsystem der Umstellung. Eine Tabelle, die eine
+        ``herkunft_id`` trägt, sie aber nicht füllt, taucht hier nach jedem
+        Lauf auf — und die Ingest-Skripte schreiben es ins Protokoll. Genannt
+        werden nur Tabellen mit Lücken; eine leere Antwort heißt „jede Zeile
+        weiß, woher sie kommt".
 
+        Der Prüfumfang kommt wie beim Aufräumen aus dem Schema: Eine Tabelle,
+        die in ``HERKUNFT_TABELLEN`` vergessen wurde, ist damit **nicht**
+        stillgestellt, sondern meldet sich hier — sie ist ja gerade der Fall,
+        der eine Meldung verdient."""
         aus: dict[str, int] = {}
-        for tabelle in _h.HERKUNFT_TABELLEN:
-            try:
-                n = self._conn.execute(
-                    f"SELECT COUNT(*) FROM {tabelle} WHERE herkunft_id IS NULL"
-                ).fetchone()[0]
-            except sqlite3.OperationalError:
-                continue  # Tabelle oder Spalte gibt es hier nicht
+        for tabelle in self._herkunft_verweistabellen():
+            n = self._conn.execute(
+                f'SELECT COUNT(*) FROM "{tabelle}" WHERE herkunft_id IS NULL'
+            ).fetchone()[0]
             if n:
                 aus[tabelle] = n
         return aus
