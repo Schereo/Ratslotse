@@ -40,7 +40,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   fünfmal so lang und ein Bereich von 231 Mio. mit einem von 6 Mio.
   vergleichbar. Der Umschalter dreht dabei die Reihenfolge: nach Euro steht
   vorn, wo am meisten Geld anders floss, nach Prozent, wessen Plan am
-  weitesten danebenlag. (#PR)
+  weitesten danebenlag. (#507)
 - **„Geplant und geworden": Die Abweichung war nicht zu sehen.** Plan und
   Ergebnis lagen auf einer Skala, die bei null begann — bei einem Bereich mit
   6,2 Mio. geplant und 6,3 tatsächlich fielen beide Punkte aufeinander. Die
