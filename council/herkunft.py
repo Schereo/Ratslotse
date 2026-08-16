@@ -212,6 +212,22 @@ PROBEN: dict[str, str] = {
         "Die Teilhaushalte ergeben zusammen genau die Summenzeile, die dieselbe "
         "Datei ausweist — in beiden Spalten, bei den Einzahlungen wie bei den "
         "Auszahlungen.",
+    # Investitionsprogramm, Anlage 004 des Haushaltsplans
+    # (council/investitionsprogramm.py). Drei Proben, die das Dokument selbst
+    # rechnet; erst wenn alle drei aufgehen, kommt ein Jahrgang herein. Die
+    # zweite ist die stärkste — sie verbindet zwei Stellen, die siebzig Seiten
+    # auseinanderliegen.
+    "investitionsprogramm_abschnitt":
+        "Die einzelnen Vorhaben eines Teilhaushalts ergeben zusammen genau die "
+        "Gesamtsumme, die das Investitionsprogramm am Ende seines Abschnitts "
+        "ausweist.",
+    "investitionsprogramm_wiederholung":
+        "Jede dieser Teilhaushaltssummen steht ein zweites Mal im Dokument — "
+        "rund siebzig Seiten früher, in der Übersicht über alle Teilhaushalte. "
+        "Beide Stellen stimmen überein.",
+    "investitionsprogramm_kopftabelle":
+        "In dieser Übersicht ergeben die Teilhaushalte zusammen genau die "
+        "Gesamtsumme des Investitionsprogramms.",
     # Schuldenzeitreihe aus Tabelle 1108 des Statistischen Jahrbuchs
     # (council/schulden.py). Die zweite ist die stärkere: Ihr Divisor kommt aus
     # einer anderen Veröffentlichung der Stadt, und 2022 ist sie die einzige,
@@ -292,6 +308,8 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     "council_ergebnishaushalt",
     # Die Investitionen des Finanzhaushalts — neu, ohne Altbestand.
     "council_investitionen",
+    # Die einzelnen Vorhaben aus Anlage 004 des Haushaltsplans — ebenso.
+    "council_investitionsmassnahmen",
     # Der Stellenplan — ebenso.
     "council_stellenplan",
     # Die Schuldenzeitreihe aus dem Statistischen Jahrbuch — ebenfalls neu und

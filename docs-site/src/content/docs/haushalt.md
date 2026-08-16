@@ -41,7 +41,7 @@ Schritte in vier Stufen. Die Tabelle steht deshalb in genau dieser Reihenfolge.
 | `/haushalt/pflicht` | Schritt 3 — muss oder kann: Ausgaben nach Gestaltungsspielraum, gegen die Selbstauskunft der Stadt gehalten |
 | `/haushalt/produkte[?nr=<produkt_nr>]` | Schritt 4 — „Was kostet eigentlich …?", Produktsuche mit Filtern (Amt, Spielraum); `nr` öffnet den Steckbrief |
 | `/haushalt/personal` | Schritt 5 — „Wer macht die Arbeit?“: der Stellenplan je Amtsbezeichnung, mit besetzten und unbesetzten Stellen zum Stichtag |
-| `/haushalt/investitionen` | Schritt 6 — „Was wird gebaut?": die Investitionen des **Finanz**haushalts je Teilhaushalt, 2022–2025, mit dem Anteil am ganzen Finanzhaushalt |
+| `/haushalt/investitionen[?bereich=<thh_nr>]` | Schritt 6 — „Was wird gebaut?": die Investitionen des **Finanz**haushalts je Teilhaushalt, 2022–2025, mit dem Anteil am ganzen Finanzhaushalt — darunter die **einzelnen Vorhaben** aus dem Investitionsprogramm, 2019–2026, durchsuchbar; `bereich` öffnet einen Teilhaushalt |
 | **Die Gegenprobe** | |
 | `/haushalt/plan-ist[?jahr=<jahr>]` | Schritt 7 — geplant gegen tatsächlich, je Teilhaushalt, mit den Abweichungsgründen der Verwaltung im Wortlaut |
 | `/haushalt/pruefung[?jahr=<jahr>]` | Schritt 8 — alle Feststellungen der RPA-Schlussberichte im Wortlaut, mit Textziffer, Seite und Deeplink; dazu die Ketten über die Jahrgänge |
@@ -107,6 +107,7 @@ die es nicht zeigen:
 | `council_steuerkraft` | Steuerkraftmesszahl + Schlüsselzuweisungen je Ausgleichsjahr seit 1993 (Jahreszahl beim Einlesen korrigiert, s. u.) | Open-Data-Portal, Datensatz 1106 | dito |
 | `council_einwohner` | Einwohnerzahl je Jahr seit 2010 | Open-Data-Portal, Datensatz 1102 | dito |
 | `council_investitionen` | Investitionen des **Finanz**haushalts je Teilhaushalt, 2022–2025 (**Plan**) — Ein- und Auszahlungen, dazu die Summenzeile und der Gesamtbetrag des Finanzhaushalts als Bezugsgröße | Open-Data-Portal, Datensatz 1101, Tabellenblatt „Finanzhaushalt" | dito |
+| `council_investitionsmassnahmen` | **Einzelne Vorhaben** je Teilhaushalt, 2019–2026 (**Plan**) — IPSP-Element, Bezeichnung und Gesamtinvestitionssumme; `ebene` (`massnahme` / `teilhaushalt` / `gesamt`). Ohne Jahresraten, s. u. | Investitionsprogramm (Anlage 004 des Haushaltsplans) — **Anlagen im RIS** | `scripts/ingest_finanzberichte.py` |
 | `council_ergebnisrechnung` | Ansatz, Plan **und** Ergebnis je Posten — gesamt und je Teilhaushalt, 2017–2024 | Jahresabschlüsse — **Anlagen im RIS** | `scripts/ingest_finanzberichte.py` |
 | `council_ergebnishaushalt` | Dieselben Posten für Jahre **ohne** Abschluss, 2019–2026 — je Zeile `art` (`ansatz` / `finanzplanung`) und `plan_jahrgang` | Gesamtergebnishaushalt (Anlage 005 des Haushaltsplans) — **Anlagen im RIS** | dito |
 | `council_abweichungsgruende` | Warum ein Posten vom Plan abwich (Abschnitt 6.3.1), 45 Einträge | dito | dito |
@@ -1582,15 +1583,111 @@ Herkunft deshalb als eigenes Argument.
 sagen", und er steht nicht am Ende, sondern als Abschnitt. Drei Sätze müssen
 hängen bleiben:
 
-- **Kein einzelnes Vorhaben.** Die Quelle sagt „Verkehr und Straßenbau:
-  10,5 Mio. €", nicht welche Straße. Die häufigste Frage an diese Seite („wird
-  MEINE Schule saniert?") beantwortet sie nicht.
+- **Schulgebäude stehen nicht darin** — siehe den Abschnitt zum
+  Investitionsprogramm unten.
 - **Plan, nicht Ist.** Was am Jahresende wirklich verbaut wurde, steht nicht
   darin. Bei Investitionen ist der Abstand notorisch groß.
 - **Die Zahlen enden 2025**, weil das Portal erst im Folgejahr liefert.
+- **Die beiden Summen der Seite zählen Verschiedenes** — auch das unten.
 
 Der Anteil am Finanzhaushalt ist **unsere** Division und steht auf der Seite als
 solche gekennzeichnet; die beiden Beträge darin stehen so in der Quelle.
+
+## Investitionsprogramm: die einzelne Maßnahme
+
+Die Ebene unter `council_investitionen`, auf derselben Seite: nicht „Schule und
+Bildung: 8,3 Mio. €", sondern „BBS Haarentor: Ausstattung". Quelle ist **Anlage
+004 des Haushaltsplans**, seit acht Jahrgängen (2019–2026) im Anlagenbestand —
+kein Download nötig, der Cron liest sie wie den Gesamtergebnishaushalt und den
+Stellenplan aus `council_anlagen` (`council/investitionsprogramm.py`).
+
+Gemessen über alle acht Jahrgänge: **4.459 Vorhaben**, 102 Teilhaushalts-Summen,
+kein verworfener Jahrgang.
+
+### Drei Proben, und die mittlere ist die stärkste
+
+Das Dokument rechnet sich selbst vor, auf drei Ebenen. Alle drei gehen in allen
+acht Jahrgängen **auf den Euro** auf:
+
+1. **`investitionsprogramm_abschnitt`** — die Vorhaben eines Teilhaushalts
+   ergeben die `Gesamtsumme` seines Abschnitts.
+2. **`investitionsprogramm_wiederholung`** — diese Summe steht ein zweites Mal
+   im Dokument, rund siebzig Seiten früher, in der Übersicht
+   „Investitionssummen je Teilhaushalt". Zwei unabhängig gesetzte Stellen, die
+   übereinstimmen müssen. Verglichen wird über den **Betrag**, nicht über den
+   Namen: Die Übersicht schreibt „Klima/Umwelt/Mobilität/Bau/Grün/Fri edh.", der
+   Abschnittskopf „…/Friedh." — über den Namen verglichen scheiterte die Probe
+   an einem Zeilenumbruch statt an einer Zahl.
+3. **`investitionsprogramm_kopftabelle`** — in dieser Übersicht ergeben die
+   Teilhaushalte die ausgewiesene Gesamtsumme (2026: 170.140.918 €).
+
+Reißt eine, fällt der ganze Jahrgang; halbe Maßnahmen kommen nicht herein.
+
+### Nur eine Spalte — und warum das die richtige Entscheidung ist
+
+Die Tabelle führt neun Spalten: Gesamtinvestitionssumme, bisher bereitgestellt,
+und je Planjahr Ansatz und Verpflichtungsermächtigung. Übernommen wird **nur die
+erste**.
+
+Grund ist der Textextrakt: Leere Zellen fallen darin ersatzlos weg. Eine Zeile
+mit sechs Zahlen kann die Spalten 1, 2, 3, 4, 6, 8 meinen oder 1, 2, 5, 7, 8, 9
+— welche, steht nirgends. Zu retten wären sie nur über die x-Koordinaten des
+PDFs, und die trägt `council_anlagen.raw_text` nicht. Die **erste** Zahl einer
+Zeile ist dagegen immer die Gesamtinvestitionssumme: Sie ist die linke Spalte,
+und links kann nichts wegfallen. Eine Spalte, die trägt, ist mehr wert als fünf
+geratene — die Seite sagt, dass die Jahresaufteilung fehlt.
+
+### Drei Fallen, jede real aufgetreten
+
+1. **Jede Maßnahme steht zweimal da** — als IPSP-Element (`I10.090126`) und als
+   Sachkonto-Detailzeile (`I10.090126.525`) mit denselben Beträgen; 31
+   Elternelemente haben mehrere Kinder. Gezählt wird nur das Elternelement.
+2. **Namen brechen um**, und der Rest landet mal auf einer eigenen Zeile
+   („Inklusion, Baukosten," / „2026" / „0 0"), mal **vor den Beträgen derselben
+   Zeile** („Erwerb Sportgeräte," / „2027 110.000 110.000"). Die zweite Form
+   kostete THH06, weil das führende Jahr als Betrag gelesen wurde.
+3. **Ziffern im Namen sind keine Beträge.** Fachdienst-Nummern
+   („…, FD 102, 2026 135.000 135.000"), Bebauungsplan-Nummern („BPL 823") und
+   die Seitenzahl am Blattfuß sehen wie Zahlen aus. Die erste Fassung suchte vom
+   Zeilenanfang nach der ersten Zahl und las 102 statt 135.000 — dem
+   Teilhaushalt 02 fehlten 134.898 €, und Probe 1 hat es gefunden.
+
+Gelesen wird deshalb vom **Zeilenende** her, solange die Token Tausenderpunkte
+tragen oder Null sind; besteht eine Zeile ganz aus Zahlen (mindestens zwei,
+mindestens eine mit Punkt), gilt der erste Token mit Punkt. Das deckt auch
+Beträge unter 1.000 ab, die es gibt („6.100 4.000 700 700 700").
+
+### Was das Programm nicht hergibt
+
+- **Keine Schulgebäude.** Der Teilhaushalt „Schule und Bildung" führt
+  Ausstattung und die berufsbildenden Schulen namentlich (BBS Haarentor, BBS
+  Maastrichter Str., BBS Wechloy, BZTG); die allgemeinbildenden Schulen stehen
+  nur als Sammelposten. Sanierung und Neubau der Gebäude liegen beim
+  **Eigenbetrieb Gebäudewirtschaft und Hochbau** mit eigenem Wirtschaftsplan,
+  den dieses Dokument nur referenziert. Die Frage „wird MEINE Schule saniert?"
+  ist damit auch hier nicht beantwortet, und die Seite sagt das.
+- **Plan, und zwar der Entwurf.** Die Anlage hängt an der Einbringungs-Vorlage;
+  was der Rat in den Beratungen ändert, steht nicht darin (das steht in der
+  Herkunft als `stand`).
+- **Negative Beträge sind normal**, keine Fehler: Tilgungen, Zuschüsse von Land
+  und Bund, Grundstücksverkäufe. „Finanzmanagement und Recht" ist 2026 in der
+  Summe −121,4 Mio. €. Sie bekommen kein Rot (keine Bewertungsfarben) und dürfen
+  nicht weggelassen werden — ohne sie ginge keine Probe auf.
+
+### Kein Abgleich mit `council_investitionen` — und warum das keine Lücke ist
+
+Naheliegend wäre, die Teilhaushalts-Summen des Programms gegen die
+Investitionen aus Datensatz 1101 zu halten. Das wäre **keine Probe, sondern ein
+Fehlschluss**: Das Dokument sagt in einer Fußnote der Übersicht selbst an, dass
+seine Gesamtsumme von der Zeile 31 „Saldo aus Investitionstätigkeit" des
+Gesamtfinanzhaushaltes abweicht — zu aktivierende Eigenleistungen gehören ins
+Investitionsprogramm, sind aber nicht zahlungswirksam und stehen deshalb nicht
+im Finanzhaushalt. Dazu kommt: Das Programm führt die **Gesamtkosten über alle
+Jahre**, der Finanzhaushalt die **Zahlungen eines Jahres**.
+
+Beide Zahlen stimmen und zählen Verschiedenes. Auf der Seite steht das als
+Erklärung, die Verbindung zwischen den beiden Blöcken ist **Navigation**
+(„welche Vorhaben stecken in diesem Bereich?") und nirgends eine Differenz.
 ## Schulden: eine Zahl, die es zweimal gibt
 
 `/haushalt/schulden` beantwortet die häufigste offene Frage an den Bereich —

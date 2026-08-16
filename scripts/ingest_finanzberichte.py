@@ -63,7 +63,8 @@ _EIGEN = ("neue_jahrgaenge", "bestand_geschuetzt")
 def main() -> int:
     ap = argparse.ArgumentParser(description="Jahresabschlüsse und Teilhaushalte einlesen")
     ap.add_argument("--nur", choices=["jahresabschluss", "teilhaushalte",
-                                      "ergebnishaushalt", "stellenplan"],
+                                      "ergebnishaushalt", "stellenplan",
+                                      "investitionsprogramm"],
                     default=None)
     ap.add_argument("--db", default=str(COUNCIL_DB))
     ap.add_argument("--auch-schrumpfen", action="store_true",
@@ -101,6 +102,11 @@ def main() -> int:
             print("Stellenplan (Stellen und Besetzung):")
             uebernehmen("stellenplan",
                         finanzquellen.lies_stellenplaene(store, p, schuetzen=schuetzen))
+        if args.nur in (None, "investitionsprogramm"):
+            print("Investitionsprogramm (einzelne Vorhaben):")
+            uebernehmen("investitionsprogramm",
+                        finanzquellen.lies_investitionsprogramme(
+                            store, p, schuetzen=schuetzen))
         # Zeilen, die nicht sagen, woher sie kommen. Leer ist der Sollzustand;
         # steht hier etwas, hat eine Zieltabelle ihre `herkunft_id` nicht
         # gefüllt (siehe council/herkunft.py).
