@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { HAUSHALT_FREI } from "@/lib/haushalt-frei";
 
-// Umgebungs-Gate für den gesamten Haushalts-Bereich — die vierzehn Seiten
+// Umgebungs-Gate für den gesamten Haushalts-Bereich — die fünfzehn Seiten
 // unter /haushalt sind nur auf dev.ratslotse.de erreichbar (Begründung und
 // Wirkungsweise: lib/haushalt-frei.ts).
 //

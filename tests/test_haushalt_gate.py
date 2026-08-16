@@ -107,17 +107,32 @@ def test_geld_bausteine_bleiben_bei_leeren_daten_still(baustein):
     assert fn([] if baustein != "_steuerkraft_block" else {}) == ""
 
 
-def test_geld_kontext_ist_best_effort_umschlossen():
+def test_jede_geld_quelle_wird_abgesichert_abgefragt():
     """Die Abfragen selbst dürfen die Antwort nie blockieren.
 
-    Auf Prod existieren die Tabellen (leer), aber sollte je eine fehlen, darf
-    die KI-Frage nicht ausfallen. Der Router fängt das ab; dieser Test hält
-    fest, dass die Absicherung bleibt.
+    Auf Prod existieren die Haushalts-Tabellen (leer), aber sollte je eine
+    fehlen, darf die KI-Frage nicht ausfallen.
+
+    Die erste Fassung dieses Tests suchte die Aufrufe im Router und ihr
+    ``try:`` davor. Das war zu eng an einer Struktur festgemacht: #543 hat sie
+    nach ``qa.geld_kontext`` gebündelt, wo jede Quelle in ``_sicher(...)``
+    steht — die Absicherung blieb, der Test fiel trotzdem. Er prüft jetzt die
+    Eigenschaft statt den Ort.
     """
-    router = (Path(__file__).resolve().parents[1] / "web" / "backend" / "app"
-              / "routers" / "council.py").read_text(encoding="utf-8")
-    for aufruf in ("haushalt_fuer_begriffe", "steuern_fuer_begriffe", "steuerkraft_kontext"):
-        stelle = router.find(f"store.{aufruf}(")
-        assert stelle > 0, f"{aufruf} nicht mehr im Router — Test nachziehen"
-        davor = router[max(0, stelle - 400):stelle]
-        assert "try:" in davor, f"store.{aufruf}() steht ohne try/except — Ausfallrisiko"
+    from council import qa
+
+    quelle = (Path(__file__).resolve().parents[1] / "council" / "qa.py").read_text(encoding="utf-8")
+    körper = quelle[quelle.index("def geld_kontext("):]
+    körper = körper[:körper.index("\ndef ", 1)]
+
+    ungeschützt = [
+        zeile.strip()
+        for zeile in körper.splitlines()
+        if "store." in zeile and "_sicher(" not in zeile and not zeile.strip().startswith("#")
+    ]
+    assert not ungeschützt, (
+        "Store-Abfrage in geld_kontext() ohne _sicher() — bei fehlender Tabelle "
+        f"fällt die ganze Antwort aus: {ungeschützt}")
+
+    # Und der Wrapper tut, was sein Name sagt.
+    assert qa._sicher(lambda: 1 / 0, standard=[]) == []

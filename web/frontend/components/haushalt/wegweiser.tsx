@@ -74,11 +74,11 @@
 // er sie lesbar macht: Unbesetzte Stellen sind eine der Erklärungen dafür,
 // dass Personalausgaben im Jahresabschluss unter dem Plan bleiben können.
 //
-// **Zwei der vierzehn Seiten haben bewusst keinen Schritt.** `/haushalt/bereich`
+// **Zwei der fünfzehn Seiten haben bewusst keinen Schritt.** `/haushalt/bereich`
 // und `/haushalt/steuer` sind Steckbriefe: Sie brauchen einen Query-Parameter
 // und öffnen ohne ihn den Vorgabefall. Als eigener Schritt stünde ein
 // beliebiger Bereich neben zwölf Fragen. Sie werden am Fuß benannt, damit die
-// Zählung „zwölf Schritte, vierzehn Seiten" nicht wie eine Lücke aussieht.
+// Zählung „zwölf Schritte, fünfzehn Seiten" nicht wie eine Lücke aussieht.
 //
 // FORM: eine Karte, nicht zehn. Zehn Karten sind auf 375 px eine Liste ohne
 // Ende — die Stufen wären zwischen ihnen untergegangen, und genau sie sind
