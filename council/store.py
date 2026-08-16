@@ -661,6 +661,55 @@ class CouncilStore:
             "quelle_label TEXT, quelle_url TEXT, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (jahr, nr))"
         )
+        # Gesamtergebnishaushalt aus den Haushaltsplänen (RIS-Anlage 005):
+        # dieselbe Postengliederung wie die Ergebnisrechnung, aber für Jahre,
+        # die noch gar keinen Jahresabschluss haben (council/ergebnishaushalt.py).
+        #
+        # DREI SPALTEN, DIE ZUSAMMENGEHÖREN — und deren Trennung der ganze
+        # Zweck dieser Tabelle ist:
+        #
+        # `jahr`          Für welches Jahr die Zahl gilt.
+        # `art`           `ansatz` = das Jahr, für das dieser Plan DER Haushalt
+        #                 ist. `finanzplanung` = mittelfristige Vorausschau
+        #                 nach § 8 NKomVG. Das Dokument nennt beides „Ansatz";
+        #                 das ist Haushaltsrecht, aber keine Beschlusslage.
+        #                 Wer die Unterscheidung wegwirft, behauptet für 2029
+        #                 einen Plan. (Und auch `ansatz` ist der Stand der
+        #                 Einbringung, nicht der Beschluss des Rates — die
+        #                 Herkunft sagt es je Zeile, die Messwerte dazu stehen
+        #                 im Kopf von council/ergebnishaushalt.py.)
+        # `plan_jahrgang` Aus welchem Haushalt die Zahl stammt. Sie steht im
+        #                 Schlüssel, weil dasselbe Jahr in mehreren Plänen
+        #                 vorkommt: 2027 ist im Haushalt 2026 die erste
+        #                 Finanzplanungsstufe, im Haushalt 2027 der Ansatz.
+        #                 Und die Finanzplanung wird jedes Jahr neu
+        #                 geschrieben — von 23 Posten stimmen zwischen zwei
+        #                 aufeinanderfolgenden Plänen 0 bis 2 überein.
+        #
+        # Ohne `plan_jahrgang` im Schlüssel überschriebe der jüngste Plan
+        # stillschweigend, was der ältere für dasselbe Jahr sagte. Mit ihm
+        # ist beides nachlesbar, und die Frage „was war der Ansatz für 2026?"
+        # hat genau eine Antwort: art='ansatz'.
+        #
+        # Herkunft ausschließlich über `herkunft_id` — die Tabelle ist neu und
+        # hat keinen Altbestand (s. council/herkunft.py).
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_ergebnishaushalt ("
+            "plan_jahrgang INTEGER NOT NULL, "     # Haushalt, aus dem die Zahl stammt
+            "jahr INTEGER NOT NULL, "              # Jahr, für das sie gilt
+            "art TEXT NOT NULL, "                  # ansatz | finanzplanung
+            "nr INTEGER NOT NULL, "                # Postennummer 1–24, wie im Abschluss
+            "bezeichnung TEXT NOT NULL, "
+            "betrag REAL NOT NULL, "
+            "ist_summe INTEGER NOT NULL DEFAULT 0, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (plan_jahrgang, jahr, nr))"
+        )
+        # Der Lesepfad fragt „welcher Ansatz gilt für Jahr X?" — nicht „was
+        # stand im Plan Y?". Deshalb der Index auf (jahr, art).
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_ergebnishaushalt_jahr "
+            "ON council_ergebnishaushalt(jahr, art)")
         # Schlussberichte des Rechnungsprüfungsamts — nur die **Fundstelle**,
         # nicht der Inhalt: „Das Rechnungsprüfungsamt hat diesen Abschluss
         # geprüft → Schlussbericht". Eine Zeile je Jahrgang.
@@ -1064,6 +1113,8 @@ class CouncilStore:
         # Ebenso der Städtevergleich: erst mit der Herkunft entstanden, keine
         # Altspalten, nichts nachzutragen.
         "council_staedtevergleich":     (None, "quelle_url", "lsn"),
+        # Und die Planjahre aus dem Gesamtergebnishaushalt.
+        "council_ergebnishaushalt":     (None, "quelle_url", "ris"),
     }
 
     @staticmethod
@@ -3511,8 +3562,15 @@ class CouncilStore:
                 " vorjahr, ansatz, plan, plan_art, ergebnis, abweichung, ist_summe, "
                 " quelle_label, quelle_url, fetched_at, herkunft_id) "
                 "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                # `plan` fällt auf `ansatz` zurück, wenn der Aufrufer keine
+                # eigene Bezugsgröße mitbringt — und zwar auch bei
+                # ausdrücklichem ``None``. `p.get("plan", …)` täte das nicht:
+                # Der Vorgabewert greift nur bei fehlendem Schlüssel. Dieselbe
+                # Falle stand im Lesepfad (s. `get_plan_ist.plan_von`).
                 [(jahr, thh_nr, thh_name, p["nr"], p["bezeichnung"], p.get("vorjahr"),
-                  p.get("ansatz"), p.get("plan", p.get("ansatz")), p.get("plan_art"),
+                  p.get("ansatz"),
+                  p.get("ansatz") if p.get("plan") is None else p.get("plan"),
+                  p.get("plan_art"),
                   p.get("ergebnis"), p.get("abweichung"),
                   p.get("ist_summe", 0), herkunft.label, herkunft.url, now, hid)
                  for p in posten])
@@ -3581,15 +3639,35 @@ class CouncilStore:
             "FROM council_ergebnisrechnung WHERE jahr = ? AND nr IN (12, 20) "
             "ORDER BY thh_nr, nr", (jahr,))]
 
+        def plan_von(r: dict):
+            """Bezugsgröße der Abweichung — mit Rückfall auf den Ansatz.
+
+            Der Rückfall ist kein Schönheitsfehler, sondern der Normalfall für
+            jeden Bestand, der vor #510 geschrieben wurde: `plan` und
+            `plan_art` kamen damals per ALTER TABLE dazu, und ALTER TABLE füllt
+            nichts nach — alle vorhandenen Zeilen tragen dort seither NULL,
+            obwohl `ansatz` danebensteht und richtig ist. Auf `/haushalt/
+            plan-ist` hieß das: „Die Planwerte der Gesamtrechnung konnten wir
+            für diesen Jahrgang nicht auslesen" für **jeden** Jahrgang, bis
+            jemand von Hand neu einliest.
+
+            Bis 16.08.2026 stand hier ``r.get("plan", r.get("ansatz"))``. Das
+            sieht aus wie genau dieser Rückfall und ist keiner: `r` kommt aus
+            einem ``SELECT plan, …``, der Schlüssel ist also **immer** da, und
+            `dict.get` greift seinen Vorgabewert nur bei fehlendem Schlüssel
+            ab — nie bei ``None``. Der Zweig war toter Code."""
+            wert = r.get("plan")
+            return r.get("ansatz") if wert is None else wert
+
         def bauen(teil: list[dict]) -> dict:
             e = next((r for r in teil if r["nr"] == 12), {})
             a = next((r for r in teil if r["nr"] == 20), {})
             # `plan` ist die Bezugsgröße der Abweichung, `ansatz` der
             # ursprüngliche Haushaltsansatz — 2018 und 2020 fallen auseinander.
-            return {"ertraege_plan": e.get("plan", e.get("ansatz")),
+            return {"ertraege_plan": plan_von(e),
                     "ertraege_ansatz": e.get("ansatz"),
                     "ertraege_ist": e.get("ergebnis"),
-                    "aufwendungen_plan": a.get("plan", a.get("ansatz")),
+                    "aufwendungen_plan": plan_von(a),
                     "aufwendungen_ansatz": a.get("ansatz"),
                     "aufwendungen_ist": a.get("ergebnis"),
                     "plan_art": a.get("plan_art") or e.get("plan_art")}
@@ -3626,6 +3704,84 @@ class CouncilStore:
         try:
             return [r[0] for r in self._conn.execute(
                 "SELECT DISTINCT jahr FROM council_ergebnisrechnung ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    # --- Gesamtergebnishaushalt (Planjahre, council.ergebnishaushalt) --------
+
+    def save_ergebnishaushalt(self, plan_jahrgang: int, zeilen: list[dict],
+                              herkunft) -> int:
+        """Einen Haushaltsplan-Jahrgang ersetzen — Ansatz und Finanzplanung
+        zusammen, weil sie aus **einer** Tabelle eines Dokuments stammen.
+
+        Gelöscht wird nach ``plan_jahrgang``, nicht nach ``jahr``: Was der
+        Haushalt 2026 über 2027 sagt, gehört ihm; was der Haushalt 2027 über
+        2027 sagt, ist eine andere Zeile und bleibt stehen.
+
+        Übergeben wird nur, was beide Pflicht-Proben bestanden hat — diese
+        Methode prüft nichts nach, sie schreibt."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute(
+                "DELETE FROM council_ergebnishaushalt WHERE plan_jahrgang = ?",
+                (plan_jahrgang,))
+            self._conn.executemany(
+                "INSERT INTO council_ergebnishaushalt (plan_jahrgang, jahr, art, nr, "
+                " bezeichnung, betrag, ist_summe, fetched_at, herkunft_id) "
+                "VALUES (?,?,?,?,?,?,?,?,?)",
+                [(plan_jahrgang, z["jahr"], z["art"], z["nr"], z["bezeichnung"],
+                  z["betrag"], 1 if z.get("ist_summe") else 0, now, hid)
+                 for z in zeilen])
+        return len(zeilen)
+
+    def ergebnishaushalt_jahrgaenge(self) -> list[int]:
+        """Haushaltsplan-Jahrgänge, die eingelesen sind (aufsteigend).
+
+        Der **Plan**-Jahrgang, nicht die Jahre darin: Ein Dokument trägt sein
+        Planjahr und drei Finanzplanungsjahre, und vollständig ist es erst,
+        wenn alle vier dastehen — was ``save_ergebnishaushalt`` zusammen
+        schreibt oder gar nicht."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT plan_jahrgang FROM council_ergebnishaushalt "
+                "ORDER BY plan_jahrgang")]
+        except sqlite3.OperationalError:
+            return []
+
+    def get_ergebnishaushalt(self, jahr: int | None = None,
+                             art: str | None = None) -> list[dict]:
+        """Planzahlen je Posten — gefiltert nach Jahr und/oder Art.
+
+        ``art="ansatz"`` ist die Frage, die eine Seite fast immer meint: „was
+        ist für dieses Jahr geplant?". Ohne Filter kommt auch die
+        Finanzplanung mit; sie ist als solche beschriftet und darf nur so
+        gezeigt werden."""
+        wo, werte = [], []
+        if jahr is not None:
+            wo.append("jahr = ?")
+            werte.append(jahr)
+        if art is not None:
+            wo.append("art = ?")
+            werte.append(art)
+        satz = (" WHERE " + " AND ".join(wo)) if wo else ""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_ergebnishaushalt" + satz
+                + " ORDER BY jahr, art, nr", werte)]
+        except sqlite3.OperationalError:
+            return []
+
+    def ansatz_jahre(self) -> list[int]:
+        """Jahre, für die ein Haushaltsansatz vorliegt (aufsteigend).
+
+        Bewusst ohne die Finanzplanungsjahre: Eine Jahresliste, die 2029
+        mitführt, wird irgendwo zu einem Umschalter, und dann steht auf der
+        Seite ein Jahr, für das nie ein Haushalt aufgestellt wurde."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT jahr FROM council_ergebnishaushalt "
+                "WHERE art = 'ansatz' ORDER BY jahr")]
         except sqlite3.OperationalError:
             return []
 

@@ -465,6 +465,22 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   176.614 Einwohnerinnen und Einwohner zum Stichtag 31.12.2024 — der steht mit
   an der Rechnung, weil eine Pro-Kopf-Angabe ohne Bezugsjahr nichts wert ist.
   (#528)
+- **Woher das Geld kommt, steht jetzt auch für 2025 und 2026 da — und was nur
+  Vorausschau ist, sagt es dazu.** Die Aufschlüsselung nach Steuern,
+  Zuwendungen und Gebühren gab es bisher nur bis 2024, weil sie aus den
+  Jahresabschlüssen stammt; für die laufenden Planjahre fehlte sie. Sie steht
+  längst im Haushaltsplan selbst und ist jetzt für acht Planjahre (2019–2026)
+  eingelesen. Der Plan nennt fünf Spalten „Ansatz", aufgestellt ist aber immer
+  nur ein Jahr — die drei danach sind mittelfristige Finanzplanung, und die
+  schreibt jeder neue Haushalt neu (von 23 Posten bleiben zwischen zwei Plänen
+  0 bis 2 gleich). Beides wird deshalb getrennt gespeichert und getrennt
+  beschriftet, damit später nirgends ein „Plan für 2029" behauptet wird, den
+  es nicht gibt. Übernommen wird ein Jahrgang nur, wenn die Tabelle in allen
+  sechs Spalten aufgeht und der Plan seine Ansatz-Spalte selbst markiert. Und
+  weil die Zahlen aus der Vorlage stammen, mit der die Verwaltung den Haushalt
+  einbringt, steht an jeder von ihnen, dass sie der Stand der Einbringung
+  sind — was der Rat in den Beratungen noch ändert, waren zuletzt bis zu
+  13 Mio. €. (#PR)
 
 <!-- GEPARKT (nur dev.ratslotse.de, Umgebungs-Gate): Eintrag aktivieren,
      sobald der Kommunalwahl-Vergleich auf Prod freigeschaltet wird.

@@ -42,6 +42,7 @@ Prosa und haben auf Seiten, die sie nicht zeigen, nichts zu suchen.
 | `council_steuerkraft` | Steuerkraftmesszahl + Schlüsselzuweisungen je Ausgleichsjahr seit 1993 (Jahreszahl beim Einlesen korrigiert, s. u.) | Open-Data-Portal, Datensatz 1106 | dito |
 | `council_einwohner` | Einwohnerzahl je Jahr seit 2010 | Open-Data-Portal, Datensatz 1102 | dito |
 | `council_ergebnisrechnung` | Ansatz, Plan **und** Ergebnis je Posten — gesamt und je Teilhaushalt, 2017–2024 | Jahresabschlüsse — **Anlagen im RIS** | `scripts/ingest_finanzberichte.py` |
+| `council_ergebnishaushalt` | Dieselben Posten für Jahre **ohne** Abschluss, 2019–2026 — je Zeile `art` (`ansatz` / `finanzplanung`) und `plan_jahrgang` | Gesamtergebnishaushalt (Anlage 005 des Haushaltsplans) — **Anlagen im RIS** | dito |
 | `council_abweichungsgruende` | Warum ein Posten vom Plan abwich (Abschnitt 6.3.1), 45 Einträge | dito | dito |
 | `council_pruefbericht_quellen` | **Fundstelle** des RPA-Schlussberichts je Jahrgang (eine Zeile je Jahr) | dito | dito |
 | `council_produkte` | Produktebene: was einzelne Aufgaben kosten — plus Steckbrief (Kurzbeschreibung, Auftragsgrundlage, Beeinflussbarkeit, Wirkungskreis, Zielgruppe) | Teilhaushalts-Pläne — **Anlagen im RIS** | dito |
@@ -311,6 +312,7 @@ Antworten, und eine davon veraltet still.
 | Schlussbericht des RPA (Fundstelle) | Label `%chlussbericht%` **oder** Text beginnt mit `Schlussbericht`; entschieden am Textanfang | `council_pruefbericht_quellen` | September, Jahrgang + 1 |
 | Prüfungsfeststellungen | Text `%Rechnungsprüfungsamtes%`, > 30 Seiten; entschieden am Textanfang | `council_pruefberichte` | September, Jahrgang + 1 |
 | Teilhaushalts-Pläne | Label `%THH%`, > 40 Seiten | `council_produkte` | Oktober, Jahrgang + 0 |
+| Gesamtergebnishaushalt | Label `%Gesamtergebnishaushalt%`, > 10 Seiten; Jahrgang aus dem **Tabellenkopf** (vier der acht Dokumente tragen keine Jahreszahl im Label) | `council_ergebnishaushalt` | Oktober, Jahrgang − 1 |
 | Haushaltsplan | *(kein Anlagen-Muster — Download)* | `council_haushalt` | Oktober, Jahrgang − 1 |
 
 ### Der Datenstand ist sichtbar
@@ -506,6 +508,67 @@ Wirkungskreis", „Grad der Beeinflussbarkeit" und „Produkt" stehen im Glossar
 übersetzt. Eingefärbt wird nichts — ein teures Produkt ist keine schlechte
 Note, und „kaum Spielraum" kein Missstand.
 
+## Planjahre: „Ansatz" heißt fünfmal etwas anderes
+
+`council_ergebnisrechnung` kann die Einnahmearten nur für **abgeschlossene**
+Jahre zeigen — 2025 und 2026 haben keinen Jahresabschluss. Die Zahlen stehen
+aber längst im Haushaltsplan selbst: Anlage 005, der *Gesamtergebnishaushalt*,
+führt dieselben Posten 01–24 auf 16 bis 18 Seiten. Acht Dokumente decken die
+Planjahre 2019–2026 ab (`council/ergebnishaushalt.py`).
+
+Der Tabellenkopf sieht harmlos aus und ist die eigentliche Gefahr:
+
+```
+Ergebnis 2024 | Ansatz 2025 | Ansatz 2026 | Ansatz 2027 | Ansatz 2028 | Ansatz 2029
+```
+
+Fünfmal „Ansatz" — beschlossen ist genau **eins** davon (hier 2026). 2027–2029
+sind mittelfristige Finanzplanung nach § 8 NKomVG, 2025 ist der
+*fortgeschriebene* Vorjahresansatz. Gespeichert wird deshalb nur, was sich
+belegen lässt, und jede Zeile sagt, was sie ist:
+
+| Spalte | Was sie ist | Wird gespeichert? |
+|---|---|---|
+| 1 — `Ergebnis JJJJ` | Ist des Vorvorjahres, **Gesamtebene** (mit den nicht rechtsfähigen Stiftungen) | nein — Gegenprobe |
+| 2 — `Ansatz JJJJ+1` | fortgeschriebener Vorjahresansatz | nein (s. u.) |
+| 3 — `Ansatz JJJJ+2` | **beschlossener Haushaltsansatz** | ja, `art='ansatz'` |
+| 4–6 | mittelfristige Finanzplanung | ja, `art='finanzplanung'` |
+
+**Warum Spalte 2 draußen bleibt:** Sie widerspricht dem, was der Plan des
+Vorjahres für dasselbe Jahr beschlossen hat — über sieben Jahrgangspaare
+stimmen nur 7 bis 11 von 23 Posten überein (Nachträge, Umschichtungen). Zwei
+Zeilen für dasselbe Jahr mit verschiedenen Beträgen und keine Regel, welche
+gilt: das wäre eine Lücke, die aussieht wie ein Bestand.
+
+**Warum `plan_jahrgang` im Schlüssel steht:** Dasselbe Jahr kommt in mehreren
+Plänen vor — 2027 ist im Haushalt 2026 die erste Finanzplanungsstufe und im
+Haushalt 2027 der Ansatz. Und die Finanzplanung wird jedes Jahr neu
+geschrieben: Zwischen zwei aufeinanderfolgenden Plänen stimmen für dasselbe
+Finanzplanungsjahr **0 bis 2 von 23** Posten überein. Ohne `plan_jahrgang`
+überschriebe der jüngste Plan stumm den älteren.
+
+:::caution[Es ist der Entwurf, nicht der Beschluss]
+Anlage 005 hängt an der Vorlage, mit der die Verwaltung den Haushalt
+**einbringt**; vier der acht Dokumente sagen das im Titel („Haushalt 2026
+Verwaltungsentwurf"). Über die sechs Jahre mit Jahresabschluss liegt der
+Ansatz dieser Tabelle bei den ordentlichen Erträgen 0,7 bis 13,1 Mio. €
+**unter** dem Ansatz, den der Abschluss desselben Jahres als Bezugsgröße
+führt — deutlich mehr, als die Stiftungen erklären. Jede Zeile trägt deshalb
+`stand = "Haushaltsplan JJJJ, Anlage 005 — Stand der Einbringung"`. Wer die
+Zahl zeigt, zeigt den Vorschlag der Verwaltung und sollte das anschreiben.
+:::
+
+:::caution[Was diese Schicht **nicht** liefert]
+Eine Aufteilung nach Teilhaushalten. Der Jahresabschluss führt sie in
+Abschnitt 5 („Teil-Ergebnisrechnung THH01…"), der Gesamtergebnishaushalt
+nicht: In allen acht Dokumenten kommt „THH" kein einziges Mal vor. Für ein
+Bild, das Herkunft und Verwendung gegenüberstellt, liefert sie also nur die
+Herkunftsseite. `council_produkte` deckt nur 8 bis 10 der 13 Teilhaushalte ab
+(17–36 % unter der Summenzeile), `council_haushalt` ist vollständig, aber eine
+andere Gliederung (2026: 812,9 statt 788,6 Mio. € Erträge). Beides ist
+brauchbar — aber nur, wenn die Seite den Unterschied benennt.
+:::
+
 ## Vier Prüfungen, und keine davon ist optional
 
 Aus PDF-Text extrahierte Tabellen verschmelzen Zahlen („355.188334.704") und
@@ -521,6 +584,28 @@ wenn er **alle** folgenden Proben besteht:
 
 Stand heute: Summenprobe 0,0000 % in allen acht Jahrgängen, Strukturprobe 8/8,
 Vorjahres-Kette 14/14 Glieder.
+
+Für die Planjahre (`council/ergebnishaushalt.py`) gelten zwei eigene, und beide
+sind Pflicht:
+
+| Probe | Was sie prüft | Wo |
+|---|---|---|
+| **Summenzeilen** | `01–11 = 12`, `13–19 = 20` und `12 − 20 = 21` — in **allen sechs** Jahresspalten, also achtzehnmal je Dokument | `summenprobe` |
+| **Planspalte** | Die hervorgehobene Planjahr-Spalte steht in jeder Zeile ein zweites Mal am Zeilenende und zeigt auf dieselbe Spalte wie der Kopf | `planspaltenprobe` |
+
+Die zweite trägt die Trennlinie zwischen Ansatz und Finanzplanung: Ohne sie
+wäre „dritte Spalte = beschlossener Ansatz" eine Reihenfolgeannahme. Stand
+heute in 8/8 Dokumenten aufgegangen, 23 von 23 Zeilen je Dokument.
+
+**Gegenprobe, keine Probe:** Die Ist-Spalte des Vorvorjahres lässt sich gegen
+`council_ergebnisrechnung` halten — aber sie ist die *Gesamt*ebene (mit den
+nicht rechtsfähigen Stiftungen), der gespeicherte Abschluss die
+Kernverwaltung. Deckungsgleich sind 6 bis 8 von 23 Posten, der größte Abstand
+liegt bei 0,075 % der Ertragssumme. Gegen die *Gesamt*ergebnisrechnung
+desselben Abschlusses trifft sie dagegen auf den Cent: **184 von 184 Posten in
+allen acht Jahrgängen**. Der Lauf misst den Abstand und meldet ihn ab 0,5 % —
+verwerfen darf er deswegen nichts, sonst flöge irgendwann ein richtiger
+Jahrgang wegen einer anderen Konsolidierungsstufe raus.
 
 **Welche Probe eine gespeicherte Zeile bestanden hat, steht seit 08/2026 an
 der Zeile** — über ihre `herkunft_id` in `council_herkunft.probe`, mitsamt dem
