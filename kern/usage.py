@@ -117,11 +117,19 @@ def cost_timeseries(days: int = 30) -> list[dict]:
     try:
         conn = _connect()
         rows = conn.execute(
-            "SELECT date(ts) d, model, COUNT(*) calls, "
+            # date(ts, 'localtime'), nicht date(ts): `ts` kommt aus SQLites
+            # datetime('now') und ist damit UTC, verglichen wird aber gegen
+            # date.today() — den LOKALEN Tag. In Deutschland (UTC+1/+2) fiel
+            # die Kostenübersicht dadurch jede Nacht zwischen 0 und 2 Uhr auf
+            # null zurück: Sie suchte einen Tag, den es in den Daten noch nicht
+            # gab. In der CI läuft alles in UTC, dort sind beide gleich —
+            # deshalb ist es erst am 17.08.2026 um 00:45 lokal aufgefallen.
+            "SELECT date(ts, 'localtime') d, model, COUNT(*) calls, "
             "COALESCE(SUM(cost_usd),0) creal, "
             "COALESCE(SUM(CASE WHEN cost_usd IS NULL THEN prompt_tokens END),0) pin, "
             "COALESCE(SUM(CASE WHEN cost_usd IS NULL THEN completion_tokens END),0) pout "
-            "FROM llm_usage WHERE date(ts) >= ? GROUP BY date(ts), model",
+            "FROM llm_usage WHERE date(ts, 'localtime') >= ? "
+            "GROUP BY date(ts, 'localtime'), model",
             (since,)).fetchall()
         conn.close()
     except Exception:  # noqa: BLE001
