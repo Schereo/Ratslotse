@@ -171,19 +171,19 @@ def _proben_normalisieren(roh: str | Sequence[str]) -> str:
     if not namen:
         raise ValueError(
             "Herkunft ohne Probe. Womit ist die Zahl abgesichert? Trägt die "
-            f"Quelle keine Rechenprobe, ist das ausdrücklich zu sagen: "
-            f"probe=herkunft.UNGEPRUEFT.")
+            "Quelle keine Rechenprobe, ist das ausdrücklich zu sagen: "
+            "probe=herkunft.UNGEPRUEFT.")
     for n in namen:
         if n not in PROBEN:
             raise ValueError(
                 f"Unbekannte Probe {n!r}. Bekannt sind: {', '.join(sorted(PROBEN))}. "
-                f"Eine neue Probe gehört mit einem Satz für Leserinnen nach "
-                f"council/herkunft.py:PROBEN.")
+                "Eine neue Probe gehört mit einem Satz für Leserinnen nach "
+                "council/herkunft.py:PROBEN.")
     for allein in (UNGEPRUEFT, UNBEKANNT):
         if allein in namen and len(namen) > 1:
             raise ValueError(
                 f"{allein!r} neben einer benannten Probe ist ein Widerspruch — "
-                f"entweder ist die Probe bekannt oder nicht.")
+                "entweder ist die Probe bekannt oder nicht.")
     # Reihenfolge des Aufrufers bleibt (sie erzählt, was zuerst greift),
     # Doppelnennungen fallen weg.
     gesehen: list[str] = []
