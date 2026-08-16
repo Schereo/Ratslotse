@@ -152,7 +152,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Dokumente sind Byte für Byte gleich, nachgemessen), nur die Angabe daneben.
   Tragen zwei Dokumente einmal wirklich verschiedene Zahlen — ein
   Nachtragshaushalt etwa —, wird das künftig gemeldet, statt still
-  überschrieben zu werden. (#PR)
+  überschrieben zu werden. (#515)
 - **„Geplant und geworden" behauptete einen Vergleich, den es nicht gab.** Wo
   ein Jahresabschluss keine Planwerte hergibt, machte die Seite aus der
   fehlenden Zahl eine Null und schrieb: „799,1 Mio. € eingenommen — geplant
