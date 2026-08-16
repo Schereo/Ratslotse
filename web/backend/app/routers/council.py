@@ -300,6 +300,47 @@ def haushalt_produkte(
             "produkt": store.produkt(jahr, nr) if nr else None}
 
 
+@router.get("/haushalt/pruefberichte")
+def haushalt_pruefberichte(
+    marke: str | None = Query(None, pattern="^(B|WB|H|K)$"),
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Prüfungsfeststellungen des Rechnungsprüfungsamts, alle Jahrgänge.
+
+    Bewusst alles auf einmal statt je Jahr: Die Aussage dieses Bestands liegt
+    nicht im einzelnen Jahrgang, sondern in der Wiederholung — eine
+    „Wiederholte Beanstandung" ist erst dann etwas wert, wenn daneben steht,
+    seit wann sie dort steht. Dafür braucht die Seite alle Jahre gleichzeitig.
+
+    - ``feststellungen``: eine Zeile je Randmarke, mit Textziffer, Seite und
+      Deeplink auf das Quelldokument,
+    - ``legende``: die Bedeutung der Marken, wie der Bericht sie selbst
+      erklärt (jüngster Jahrgang, der die Marke noch führt),
+    - ``ohne_bericht``: Jahre, für die ein Jahresabschluss ausgelesen ist, ein
+      Schlussbericht aber nicht — die Lücke gehört sichtbar, nicht kaschiert.
+
+    ``marke`` grenzt auf eine Randmarke ein. Gedacht für den Hinweis auf
+    ``/haushalt/plan-ist``, der nur die Kette der wiederholten Beanstandungen
+    braucht: Der volle Bestand ist eine Viertel-Megabyte Prosa und hat auf
+    einer Seite nichts zu suchen, die ihn gar nicht anzeigt. ``jahre`` und
+    ``legende`` bleiben dabei die des Gesamtbestands — sonst stünde in der
+    Fußzeile eine Jahresliste, die vom Filter abhängt.
+    """
+    zeilen = store.get_pruefberichte()
+    jahre = store.pruefbericht_jahre()
+    legende: dict[str, dict] = {}
+    for z in zeilen:  # aufsteigend sortiert — der letzte Eintrag gewinnt
+        legende[z["marke"]] = {"name": z["marke_name"],
+                               "erlaeuterung": z["marke_erlaeuterung"]}
+    return {
+        "jahre": jahre,
+        "legende": legende,
+        "feststellungen": [z for z in zeilen if marke is None or z["marke"] == marke],
+        "ohne_bericht": [j for j in store.ergebnisrechnung_jahre() if j not in jahre],
+    }
+
+
 @router.get("/haushalt")
 def haushalt_uebersicht(
     _user: dict = Depends(require_active),

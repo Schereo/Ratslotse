@@ -626,6 +626,35 @@ class CouncilStore:
         )
         self._conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_produkte_thh ON council_produkte(jahr, thh_nr)")
+        # Prüfungsfeststellungen aus den Schlussberichten des Rechnungs-
+        # prüfungsamts (RIS-Anlagen): die einzige regelmäßige, förmliche
+        # Kontrolle der Verwaltung durch eine eigene Stelle.
+        #
+        # `marke` ist die Randmarke des Berichts (B/WB/H/K), `marke_name` und
+        # `marke_erlaeuterung` sind die Legende DIESES Jahrgangs — nicht unsere
+        # Formulierung. Sie stehen bewusst je Zeile statt in einer zweiten
+        # Tabelle: Die Legende ändert sich zwischen den Jahrgängen (2023 kennt
+        # kein K mehr), und ein Bericht ohne seine eigene Legende wäre gar
+        # nicht erst eingelesen worden.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_pruefberichte ("
+            "jahr INTEGER NOT NULL, "              # geprüfter Jahresabschluss
+            "lfd INTEGER NOT NULL, "               # Reihenfolge im Dokument
+            "marke TEXT NOT NULL, "                # B | WB | H | K
+            "marke_name TEXT NOT NULL, "           # 'Wiederholte Beanstandung'
+            "marke_erlaeuterung TEXT, "            # Legendentext des Jahrgangs
+            "textziffer TEXT NOT NULL, "           # Fundstelle, z. B. '4.5.2'
+            "abschnitt TEXT NOT NULL, "            # Überschrift der Textziffer
+            "kette TEXT, "                         # Schlüssel für WB-Ketten
+            "seite INTEGER, "                      # Seite im Bericht
+            "text TEXT NOT NULL, "
+            "folgeabsatz TEXT, "                   # was im Bericht direkt folgt
+            "quelle_label TEXT, quelle_url TEXT, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, lfd))"
+        )
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pruefberichte_kette "
+            "ON council_pruefberichte(kette, jahr)")
         # Einwohnerzahl je Haushaltsjahr (Open-Data, Stichtag 31.12. des
         # Vorjahres) — Bezugsgröße für Pro-Kopf-Einordnungen.
         self._conn.execute(
@@ -3129,6 +3158,52 @@ class CouncilStore:
         try:
             return [r[0] for r in self._conn.execute(
                 "SELECT DISTINCT jahr FROM council_produkte ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    def save_pruefbericht(self, jahr: int, feststellungen: list[dict],
+                          label: str, url: str | None) -> int:
+        """Prüfungsfeststellungen eines Schlussberichts speichern.
+
+        Der Jahrgang wird vorher geleert: Ein Bericht ist ein Dokument, und
+        ein erneuter Ingest liest dasselbe Dokument neu — Zeilen von früheren
+        Läufen stehen zu lassen hieße, alte Parser-Stände zu konservieren."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute("DELETE FROM council_pruefberichte WHERE jahr = ?", (jahr,))
+            self._conn.executemany(
+                "INSERT INTO council_pruefberichte (jahr, lfd, marke, marke_name, "
+                " marke_erlaeuterung, textziffer, abschnitt, kette, seite, text, "
+                " folgeabsatz, quelle_label, quelle_url, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                [(jahr, f["lfd"], f["marke"], f["marke_name"], f.get("marke_erlaeuterung"),
+                  f["textziffer"], f["abschnitt"], f.get("kette"), f.get("seite"),
+                  f["text"], f.get("folgeabsatz"), label, url, now)
+                 for f in feststellungen])
+        return len(feststellungen)
+
+    def get_pruefberichte(self, jahr: int | None = None) -> list[dict]:
+        """Prüfungsfeststellungen — ein Jahrgang oder alle, in Dokumentreihenfolge.
+
+        Ohne Argument alle: Die Ketten über die Jahrgänge („seit wann steht
+        das offen?") lassen sich nur aus dem Gesamtbestand bilden."""
+        try:
+            if jahr is None:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_pruefberichte ORDER BY jahr, lfd").fetchall()
+            else:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_pruefberichte WHERE jahr = ? ORDER BY lfd",
+                    (jahr,)).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [dict(r) for r in rows]
+
+    def pruefbericht_jahre(self) -> list[int]:
+        """Jahrgänge mit eingelesenem Schlussbericht (aufsteigend)."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT jahr FROM council_pruefberichte ORDER BY jahr")]
         except sqlite3.OperationalError:
             return []
 
