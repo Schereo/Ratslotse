@@ -630,6 +630,89 @@ def _thh_zahlen(zeile: str) -> list[float]:
     return out
 
 
+# Beschriftung und Zahlenkolonne stehen im PDF-Extrakt nicht zwingend auf
+# derselben Zeile — und seit dem **Haushaltsplan 2025** regelmäßig nicht mehr.
+# Die Stadt hat der Zeile „21. ordentliches Ergebnis" zwei Beschriftungszeilen
+# nachgestellt::
+#
+#     20. = Summe ordentliche
+#     Aufwendungen
+#     7.723.524,43 8.153.186 9.520.575 9.708.260 9.656.398 9.798.826
+#     21. ordentliches Ergebnis
+#     Jahresüberschuss(+)
+#     /Jahresfehlbetrag (-)
+#     -7.247.704,53 -7.706.646 -8.860.025 -9.016.606 -9.197.608 -9.340.036
+#
+# Wer nur „Rest der Zeile plus höchstens eine weitere" liest, findet dort
+# nichts mehr — und verliert mit Posten 21 das ganze Produkt, weil die
+# Rechenprobe ohne ihn nicht aufgeht. Genau das ist ab dem Plan 2025 passiert:
+# 0 von 78 bzw. 0 von 89 Produkten, während 2018–2023 unverändert durchliefen.
+#
+# Ein Seitenumbruch kann die beiden Zeilen sogar zerreißen (Plan 2026, THH01:
+# „Jahresüberschuss(+)" steht vor der Zahlenzeile, „/Jahresfehlbetrag (-)"
+# hinter dem Seitenkopf dahinter). Eine feste Zeilenzahl trifft das nicht;
+# gesucht wird deshalb vorwärts bis zur Zahlenzeile.
+#
+# DIE GEFAHR DABEI ist nicht theoretisch: Läuft die Suche zu weit, holt sie
+# die Zahlen der NÄCHSTEN Zeile. Über den Bestand gemessen steht zwischen
+# Beschriftung und Zahlen 155-mal „Jahresüberschuss(+)", aber 85-mal auch
+# „Ordentliche Aufwendungen" und 21-mal „14. Versorgungsaufwendungen" — dort
+# ist die eigene Zelle nämlich leer. Ohne harte Grenze klebte der Personal-
+# aufwand als „Summe ordentliche Erträge" am Produkt. Deshalb endet die Suche
+# an der ersten Zeile, die eine neue Tabellenzeile beginnt.
+
+#: Beginn einer neuen Tabellenzeile: nummerierter Posten („13.", „21."),
+#: Kontonummer („34859902 …"), Zwischenüberschrift oder ein wiederholter
+#: Seitenkopf. Hier ist Schluss — was dahinter steht, gehört einem anderen
+#: Posten.
+#:
+#: Das ``(?!\d)`` hinter der Postennummer ist nicht kosmetisch: Ohne es gilt
+#: „38.949.730,76" als Beginn von Posten 38 — die Zahlenzeile hielte sich
+#: selbst für die nächste Zeile, und Posten 20 bliebe in jedem Dokument leer.
+_THH_NEUE_ZEILE = re.compile(
+    r"^[ \t]*(?:\d\d\.(?!\d)|\d{6,}|Ordentliche\s+(?:Erträge|Aufwendungen)\b"
+    r"|Nachrichtlich\b|Teilergebnishaushalt\b|Teilfinanzhaushalt\b)")
+
+#: Eine Zahlenzeile trägt nur Zahlen. Das schließt die Kopfzeilen aus, die
+#: ein Seitenumbruch einstreut („Ansatz 2025", „- Euro -"): Sie enthalten
+#: zwar Ziffern, aber eben auch Text.
+_THH_NUR_ZAHLEN = re.compile(r"[ \t]*(?:-?\d{1,3}(?:\.\d{3})*(?:,\d{2})?[ \t]*)+")
+
+#: Sicherheitsnetz gegen eine davonlaufende Suche. Gemessen am Bestand liegen
+#: zwischen Beschriftung und Zahlen höchstens zwei Zeilen; acht lassen einem
+#: eingestreuten Seitenkopf Luft, ohne in die übernächste Tabelle zu geraten.
+_THH_MAX_ZEILEN = 8
+
+
+def _thh_wertezeile(block: str, muster: str, spalten: int) -> list[float] | None:
+    """Die Zahlenkolonne zu einer Postenbeschriftung holen.
+
+    Gesucht wird ab dem Ende der Beschriftung vorwärts nach der ersten Zeile,
+    die aus **nur** Zahlen besteht und mindestens so viele trägt, wie der
+    Tabellenkopf Spalten nennt. Übersprungen wird dabei alles, was selbst
+    keine Tabellenzeile ist: die Fortsetzung der Beschriftung
+    („Jahresüberschuss(+)"), eine Seitenzahl, ein wiederholter Seitenkopf.
+
+    ``None``, sobald eine neue Tabellenzeile anfängt — dann ist die eigene
+    Zelle leer, und die Zahlen dahinter gehören jemand anderem. Das ist der
+    häufige Fall (Produkte ohne Erträge), und er bleibt bewusst eine Lücke:
+    Wo im Dokument nichts steht, lässt sich auch nichts nachrechnen."""
+    m = re.search(muster, block)
+    if not m:
+        return None
+    for zeile in block[m.end():].split("\n")[:_THH_MAX_ZEILEN]:
+        if _THH_NEUE_ZEILE.match(zeile):
+            return None
+        if not zeile.strip():
+            continue
+        if not _THH_NUR_ZAHLEN.fullmatch(zeile.rstrip()):
+            continue
+        zahlen = _thh_zahlen(zeile)
+        if len(zahlen) >= spalten:
+            return zahlen
+    return None
+
+
 # --- Teilhaushalte: Produkt-Steckbrief ---------------------------------------
 #
 # Zu jedem Produkt führen die Pläne einen Steckbrief: was die Aufgabe umfasst,
@@ -829,6 +912,12 @@ def parse_teilergebnishaushalt(text: str) -> list[dict]:
     blind die letzte Zahl zu nehmen ginge schief, weil hinter der
     Ergebniszeile die Seitenzahl klebt („−451.635\n601“).
 
+    Beschriftung und Zahlen stehen dabei nicht zwingend auf derselben Zeile;
+    seit dem Haushaltsplan 2025 trägt Posten 21 zwei Beschriftungszeilen
+    dazwischen. ``_thh_wertezeile`` sucht deshalb vorwärts — aber nur bis zur
+    nächsten Tabellenzeile, damit nie die Zahlen des Nachbarpostens an einem
+    Produkt kleben.
+
     Übernommen wird ein Produkt nur, wenn ``Erträge − Aufwendungen =
     ordentliches Ergebnis`` aufgeht."""
     koepfe = list(_PRODUKT_KOPF.finditer(text))
@@ -867,16 +956,14 @@ def parse_teilergebnishaushalt(text: str) -> list[dict]:
 
         werte = {}
         for schluessel, muster in (
-            ("ertraege", r"12\.\s*=?\s*Summe ordentliche\s*Erträge([^\n]*(?:\n[^\n]*)?)"),
-            ("aufwendungen", r"20\.\s*=?\s*Summe ordentliche\s*Aufwendungen([^\n]*(?:\n[^\n]*)?)"),
-            ("ergebnis", r"21\.\s*ordentliches Ergebnis([^\n]*(?:\n[^\n]*)?)"),
+            ("ertraege", r"12\.\s*=?\s*Summe ordentliche\s*Erträge"),
+            ("aufwendungen", r"20\.\s*=?\s*Summe ordentliche\s*Aufwendungen"),
+            ("ergebnis", r"21\.\s*ordentliches Ergebnis"),
         ):
-            mm = re.search(muster, block)
-            if not mm:
-                continue
-            zahlen = _thh_zahlen(mm.group(1))
-            # Genau so viele Werte wie Spalten — alles danach ist Seitenzahl.
-            if len(zahlen) < spalten:
+            # Mindestens so viele Werte wie Spalten — alles danach ist
+            # Seitenzahl. Zur Suche siehe `_thh_wertezeile`.
+            zahlen = _thh_wertezeile(block, muster, spalten)
+            if zahlen is None:
                 continue
             werte[schluessel] = zahlen[ansatz_idx]
         if len(werte) < 3:
