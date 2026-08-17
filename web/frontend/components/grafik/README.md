@@ -74,7 +74,10 @@ Erklärsatz kompiliert nicht. Gerendert werden sie über `<Einordnung>`.
 | `<Hantel>` (GB-05) | `hantel.tsx` | `zeilen {label, plan, ist, einordnung}[] · massstab ("prozent" \| "betrag") · sortierung ("abweichung" Default \| "alpha") · schwelle?`. `einordnung` ist Pflicht-FELD — eine Hantel ohne Erklärsatz kompiliert nicht (`null` = „Quelle erläutert nicht", ausgeschrieben). Verbindung immer Orange, Punkte nie farbcodiert; Achse trägt ihre Einheit selbst. Verallgemeinert aus der früheren `components/haushalt/hantel.tsx` — deren Kopfkommentar (Abweichungs-Achse, keine Log-Skala, **keine Bewertungsfarben**) ist mitgewandert und bleibt die Referenz des Bereichs. Einsatz: Plan-Ist, Bereichs-Steckbrief. |
 | `<Waffel>` (GB-06) | `waffel.tsx` | `gesamt · proQuadrat · markiert {anzahl, grund, stichtag} · einheit · grundLabel`. Markierung immer Signal-**Umriss**, nie Fläche; Stichtag und Rundungszeile rendert die Komponente. 14 Quadrate je Reihe, mobil 10 à 13 px (CSS `.gb-waffel`). Nicht interaktiv, `role="img"`. Einsatz: Personal. |
 | `<Treemap>` (GB-08) | `treemap.tsx` | `knoten {key, name, wert, gruppe, zusatz?}[] · farbe(gruppe) · buendelnAb · treffer? · aufRest?`. Fläche ∝ Gesamtsumme (`treemapSquarify`, zur Laufzeit), Rest-Kachel ist Pflicht (neutral schraffiert — gebündelt ist keine Lücke). Nur positive Werte; Verworfenes steht als Satz. Unter 520 px Containerbreite rendert sie selbst eine `<RanglisteSchiene>` — gleiche Daten, gleiche Sortierung (H4-A). Einsatz: Investitionen-Explorer. |
+
+| `<PunkteBilanz>` (GB-09) | `punkte-bilanz.tsx` | `zeilen {fraktion, farbe?, gremien {fa {ein, durch}, rat {ein, durch}}}[] · beleg?`. Verhandlungsbilanz: jeder Punkt eine Abstimmung über eine Änderungsliste, gefüllt = fand Mehrheit. **Fairness als API**: keine Prozent-Prop, Sortierung alphabetisch FEST in der Komponente, Punktgröße 11 px erzwungen, Fraktionsfarbe nur als 8-px-Identitätspunkt. Mobil je Fraktion eine Karte mit FA/RAT-Zeilen. Einsatz: Streit. |
 | `<KettenMatrix>` (GB-10) | `ketten-matrix.tsx` | Feststellung × Jahr: `ketten` · `jahre` · `lueckenJahre` (rendern in JEDER Zeile + als `<LueckenFeld>` ÜBER der Matrix) · `marken` = Legende **aus der Quelle**, nie geraten. B/WB Signal-Orange (Abweichungs-Kategorie), H Rampen-Blau, K neutral. Mobil Karten-Liste mit Chip-Zeile, nie horizontal scrollen; Tastatur ↑/↓ je Kette, Enter klappt den Wortlaut (`detail`) auf. |
+| `<Zeitstrahl>` (GB-11) | `zeitstrahl.tsx` | `stationen {label, von, bis?, gemessen, offen?, ungefaehr?, href?}[] · heute · termin? {label, datum, quelle: "kalender"}`. Liegender Verfahrens-Strahl (`scaleTime`, d3-time-Ticks) mit „Sie sind hier"-Pin. `gemessen` ist Pflicht je Station — der Strahl behauptet nichts Ungezähltes; `ungefaehr` = Lage aus früheren Jahrgängen gemessen („≈"), `termin` nur aus dem Ratskalender. Unter 744 px kippt er senkrecht, Pin und Termin sortieren sich als eigene Einträge ein (H4-A). Einsatz: Jahr. |
 | `<SlopePaar>` (GB-12) | `slope-paar.tsx` | `paare {label, vorher, nachher, hervorgehoben?}[] · bruchLabel (Pflicht) · vonLabel · bisLabel · einheit`. Ein Slope über einen Systembruch ohne Label ist nicht baubar; „unverändert" wird ausgeschrieben, nie als flache Linie versteckt. Mobil automatisch Delta-Liste, der Bruch bleibt Trennzeile. Einsatz: Vergleich (Grundsteuer-Sprung). |
 
 ## Zahlen (`format.ts`)
@@ -114,6 +117,11 @@ Regeln:
   senkrecht. Jahr-Pills: mobil Scrollband mit Fade, NIE ein Dropdown.
 - Punkte-Bilanz: gleiche Punktgröße, alphabetisch — Fairness gilt auf
   jedem Gerät.
+
+Der 744-px-Schwellwert steht in den Komponenten als arbiträre Variante
+`[@media(min-width:744px)]:` — Tailwinds `min-[…]`-Kurzform ist in diesem
+Projekt AUS, weil die `screens`-Konfiguration raw-Werte enthält (`breit`/
+`desk`/`tab`) und Tailwind die Varianten dann nicht sortieren kann.
 
 ## Sonst noch Vertrag
 

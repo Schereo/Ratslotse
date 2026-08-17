@@ -8,6 +8,25 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Wer wollte den Haushalt ändern — und kam damit durch?** „Der Streit ums
+  Geld" (`/haushalt/streit`) trägt jetzt eine Verhandlungsbilanz als
+  tragendes Bild: je Fraktion ein Punkt pro Abstimmung über eine
+  Änderungsliste, Finanzausschuss und Rat getrennt, gefüllt heißt „fand
+  eine Mehrheit". Bewusst ohne Erfolgsquote — eingebracht und abgelehnt ist
+  parlamentarischer Alltag der Opposition, kein Zeugnis; die Reihenfolge
+  ist alphabetisch, die Punktgröße für alle gleich. Wortbeiträge ohne
+  Fraktion (Namensvettern in der Anwesenheitsliste) stehen als eigene,
+  gezählte Karte da — es wird keine geraten. (#578)
+- **Ein Haushalt lebt länger als ein Jahr — der Strahl zeigt es.** „Wann
+  der Haushalt entschieden wird" (`/haushalt/jahr`) ersetzt den Jahreskreis
+  durch einen liegenden Zeitstrahl mit „Sie sind hier"-Pin: von der
+  Einbringung über Ausschüsse und Ratsbeschluss bis zum Jahresabschluss,
+  jede Station mit gezählter Angabe („in 7 von 8 Jahrgängen im Oktober")
+  statt Behauptung. Auf dem Telefon kippt der Strahl senkrecht. Dazu eine
+  Termin-Karte mit dem nächsten echten Termin von Finanzausschuss oder Rat
+  aus dem Ratskalender — samt Kalender-Export und dem ehrlichen Hinweis,
+  dass erst die Tagesordnung zeigt, ob dort der Haushalt aufgerufen
+  wird. (#578)
 - **4.459 Vorhaben, durchsuchbar.** „Was wird gebaut?"
   (`/haushalt/investitionen`) endete bisher bei einer Liste je Bereich —
   jetzt trägt eine Kachelfläche die Übersicht: Jede Kachel ist ein Vorhaben,
