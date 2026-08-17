@@ -59,14 +59,33 @@ jobs:
             # `ingest_finanzberichte.py`. Wer eine neue Schicht baut, prüft
             # hier, ob sie überhaupt aufgerufen wird — ein Parser ohne Ingest
             # fällt sonst nur dadurch auf, dass die Seite leer bleibt.
+            # ERST die Volltexte, DANN die Parser. Auf der Dev-VM standen
+            # fünf Tabellen leer, obwohl ihre Parser liefen: Sieben der
+            # vierzehn Schichten lesen aus `council_anlagen`, und dort lagen
+            # 5.186 Anlagen ohne Text. `--nur-finanz` holt die 293, aus denen
+            # der Haushalts-Bereich tatsächlich liest, statt aller 5.500.
+            .venv/bin/python scripts/backfill_anlagen_texte.py --nur-finanz --retry-failed
+
             .venv/bin/python scripts/ingest_haushalt.py
             .venv/bin/python scripts/ingest_finanzen_opendata.py
             .venv/bin/python scripts/ingest_schulden.py
-            .venv/bin/python scripts/ingest_investitionen_ist.py
             .venv/bin/python scripts/ingest_finanzberichte.py
             .venv/bin/python scripts/ingest_pruefberichte.py
             .venv/bin/python scripts/ingest_konzernabschluss.py
-            .venv/bin/python scripts/ingest_staedtevergleich.py
+            .venv/bin/python scripts/ingest_investitionen_ist.py
+            .venv/bin/python scripts/check_beteiligungsbericht.py
+
+            # ingest_staedtevergleich.py läuft hier BEWUSST NICHT mit. Es
+            # verlangt drei Datei-URLs als Pflichtargumente (--kfa,
+            # --kfa-vorjahr, --realsteuer), und die tragen beim Landesamt für
+            # Statistik undurchsichtige Download-Nummern („/download/227086"),
+            # die sich nicht vorhersagen lassen — sie stehen nur auf den
+            # Übersichtsseiten. Der Lauf brach deshalb am 17.08. mit Exit 2 ab,
+            # nachdem alles davor bereits erledigt war.
+            #
+            # Der Städtevergleich wird von Hand nachgezogen, wenn das Land eine
+            # neue Ausgabe veröffentlicht; die Adressen stehen im Kopf des
+            # Skripts.
 
             # Was danach dasteht — und vor allem, ob eine Zeile ohne Herkunft
             # durchgerutscht ist. Das ist die einzige Zahl, die null sein MUSS.
@@ -80,22 +99,47 @@ jobs:
                 "council_konzern_posten", "council_konzern_traeger",
                 "council_steuern", "council_steuerkraft", "council_einwohner",
                 "council_staedtevergleich", "council_investitionen",
-                "council_investitionen_ist",
                 "council_stellenplan", "council_schulden",
+                "council_investitionsmassnahmen", "council_investitionen_ist",
+                "council_investitionen_ist_arten",
             ]
+            # Die Jahresspalte heißt nicht überall „jahr": council_haushalt
+            # führt „year", der Stellenplan „jahrgang". Der erste Lauf meldete
+            # für beide „no such column" — deshalb wird sie hier aus dem Schema
+            # gelesen statt geraten.
+            def jahresspalte(tabelle):
+                namen = [r[1] for r in s._conn.execute(f"PRAGMA table_info({tabelle})")]
+                for kandidat in ("jahr", "jahrgang", "year"):
+                    if kandidat in namen:
+                        return kandidat
+                return None
+
             print("Bestand nach dem Lauf:")
             for t in tabellen:
                 try:
                     n = s._conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
-                    jahre = s._conn.execute(
-                        f"SELECT MIN(jahr), MAX(jahr) FROM {t}").fetchone()
-                    spanne = f"{jahre[0]}–{jahre[1]}" if jahre and jahre[0] else "—"
-                    print(f"  {t:32} {n:>6} Zeilen  {spanne}")
+                    spalte = jahresspalte(t)
+                    spanne = "—"
+                    if spalte and n:
+                        von, bis = s._conn.execute(
+                            f"SELECT MIN({spalte}), MAX({spalte}) FROM {t}").fetchone()
+                        spanne = f"{von}–{bis}" if von else "—"
+                    # Eine leere Tabelle ist keine Panne, aber eine Ansage: Die
+                    # Seite dazu steht dann ohne Daten da.
+                    print(f"  {t:32} {n:>6} Zeilen  {spanne}"
+                          + ("   ← LEER" if not n else ""))
                 except Exception as e:                      # noqa: BLE001
                     print(f"  {t:32} — {e}")
+            # herkunft_luecken() liefert ein dict {Tabelle: Anzahl}, keine
+            # Liste — das hat den Lauf am 17.08. mit „KeyError: slice" beendet,
+            # nachdem alles Inhaltliche schon erledigt war. Leeres dict heißt:
+            # keine Zeile ohne Herkunftsnachweis.
             luecken = s.herkunft_luecken()
-            print(f"\nZeilen ohne Herkunft: {len(luecken)}")
-            for l in luecken[:20]:
-                print(f"  {l}")
+            if luecken:
+                print("\nZeilen OHNE Herkunft — das darf nicht sein:")
+                for tabelle, anzahl in sorted(luecken.items()):
+                    print(f"  {tabelle:32} {anzahl}")
+            else:
+                print("\nKeine Zeile ohne Herkunft.")
             s.close()
             PY

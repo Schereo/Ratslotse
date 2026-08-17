@@ -326,7 +326,11 @@ def test_vorabend_erinnert_an_die_sitzung_von_morgen(store, tmp_path):
     assert vorabend(council, store, heute) == 1
     p = store.due_notifications(owner, "2999-01-01")[0]
     assert p["kind"] == "n5_vorabend"
-    assert "Morgen, 17:00 Uhr" in p["title"] and "Radwege" in p["title"]
+    # Der Titel nennt den Tag, nicht „Morgen": Eingereiht wird am Vorabend,
+    # zugestellt aber ggf. erst am nächsten Morgen (Tagesgrenze) — dann wäre
+    # „Morgen" der Sitzungstag selbst. Tims Befund 17.08.2026.
+    assert "18. August, 17:00 Uhr" in p["title"] and "Radwege" in p["title"]
+    assert "Morgen" not in p["title"]
     assert "Ö 6" in p["body_html"] and "Fleiwa" in p["body_html"]
     assert p["url"] == "/council?tab=sessions&ksinr=4652"
 
@@ -373,6 +377,124 @@ def test_wochenueberblick_fasst_die_woche_zusammen(store, tmp_path):
     assert p["kind"] == "n6_woche"
     assert p["title"] == "Diese Woche: 2 Beschlüsse zu deinen Themen"
     assert "angenommen" in p["body_html"] and "abgelehnt" in p["body_html"]
+    council.close()
+
+
+def _zwei_beschluesse(council, ksinr: int = 88):
+    from council.scraper import CouncilSession
+
+    council.save_session(CouncilSession(ksinr, "Rat", "2026-08-14", "18:00", "Rathaus"))
+    with council._conn:
+        council._insert_decision(ksinr, 0, "decision", None, "Ö 1", "Radweg A", "x",
+                                 "angenommen", None, None, None, [], None, None, None)
+        council._insert_decision(ksinr, 1, "decision", None, "Ö 2", "Radweg B", "x",
+                                 "abgelehnt", None, None, None, [], None, None, None)
+    return [r[0] for r in council._conn.execute(
+        "SELECT id FROM council_decisions ORDER BY id")]
+
+
+def test_der_matching_lauf_datiert_bekannte_treffer_nicht_um(store, tmp_path):
+    """Der wöchentliche Lauf legt dieselben Treffer neu ab. Setzte er dabei
+    ``matched_at`` zurück, meldete der Wochenüberblick am selben Abend den
+    kompletten Bestand als Neuigkeit der Woche — Tims Befund 17.08.2026,
+    „Diese Woche: 119 Beschlüsse zu deinen Themen" (in der Prod-DB trugen
+    danach alle 919 Trefferzeilen dasselbe Datum)."""
+    from datetime import date
+    from council.abendmeldungen import wochenueberblick
+
+    owner = _konto(store)
+    thema = store.add_topic(owner, "Radwege", "Ausbau")
+    store.set_notify_prefs(owner, {notify.N6_WOCHE: True})
+    council = _council(tmp_path)
+    ids = _zwei_beschluesse(council)
+
+    store.save_topic_decision_matches(thema.id, owner, [(i, 0.9) for i in ids])
+    with store._conn:      # so sähe es eine Woche später aus
+        store._conn.execute("UPDATE council_topic_matches SET matched_at = '2026-01-01T00:00:00'")
+
+    # Derselbe Lauf noch einmal, mit neuen Scores.
+    store.save_topic_decision_matches(thema.id, owner, [(i, 0.95) for i in ids])
+    rows = list(store._conn.execute(
+        "SELECT matched_at, score FROM council_topic_matches ORDER BY decision_id"))
+    assert [r[0] for r in rows] == ["2026-01-01T00:00:00"] * 2   # Datum bleibt
+    assert [r[1] for r in rows] == [0.95, 0.95]                  # Score zieht nach
+    assert wochenueberblick(council, store, date.today()) == 0   # nichts Neues
+    council.close()
+
+
+def test_wirklich_neue_treffer_zaehlen_weiter(store, tmp_path):
+    """Die Gegenprobe: Ein Beschluss, der vorher nicht dabei war, ist neu —
+    und Weggefallenes verschwindet."""
+    owner = _konto(store)
+    thema = store.add_topic(owner, "Radwege", "Ausbau")
+    council = _council(tmp_path)
+    a, b = _zwei_beschluesse(council)
+
+    store.save_topic_decision_matches(thema.id, owner, [(a, 0.9)])
+    with store._conn:
+        store._conn.execute("UPDATE council_topic_matches SET matched_at = '2026-01-01T00:00:00'")
+    store.save_topic_decision_matches(thema.id, owner, [(a, 0.9), (b, 0.8)])
+
+    stand = dict(store._conn.execute(
+        "SELECT decision_id, matched_at FROM council_topic_matches").fetchall())
+    assert stand[a] == "2026-01-01T00:00:00"
+    assert stand[b] > "2026-01-01T00:00:00"      # frisch gestempelt
+
+    store.save_topic_decision_matches(thema.id, owner, [(b, 0.8)])
+    assert [r[0] for r in store._conn.execute(
+        "SELECT decision_id FROM council_topic_matches")] == [b]
+    council.close()
+
+
+def test_reparaturlauf_stempelt_nichts_als_neu(store, tmp_path):
+    """``--ohne-meldungen`` nach einer Neu-Extraktion: Dieselben Beschlüsse
+    tragen neue IDs, also sind formal alle Treffer neu. Sie dürfen trotzdem
+    nicht als Neuigkeit der Woche gelten."""
+    from datetime import date
+    from council.abendmeldungen import wochenueberblick
+
+    owner = _konto(store)
+    thema = store.add_topic(owner, "Radwege", "Ausbau")
+    store.set_notify_prefs(owner, {notify.N6_WOCHE: True})
+    council = _council(tmp_path)
+    ids = _zwei_beschluesse(council)
+
+    store.save_topic_decision_matches(thema.id, owner, [(i, 0.9) for i in ids], als_neu=False)
+    assert [r[0] for r in store._conn.execute(
+        "SELECT matched_at FROM council_topic_matches")] == ["", ""]
+    assert wochenueberblick(council, store, date.today()) == 0
+    council.close()
+
+
+def test_altbestand_wird_einmalig_entstempelt(store, tmp_path):
+    """Die Reparatur beim Öffnen: Der Bestand aus der Zeit vor dem Fix trägt
+    lauter frische Daten. Ohne sie käme die 119er-Meldung noch ein zweites Mal
+    — der Fehler behoben, die Meldung trotzdem da."""
+    from kern.store import Store
+
+    owner = _konto(store)
+    thema = store.add_topic(owner, "Radwege", "Ausbau")
+    council = _council(tmp_path)
+    ids = _zwei_beschluesse(council)
+    store.save_topic_decision_matches(thema.id, owner, [(i, 0.9) for i in ids])
+    with store._conn:      # so sah der Bestand am 17.08. aus …
+        store._conn.execute("UPDATE council_topic_matches SET matched_at = '2026-08-16T03:09:00'")
+        store._conn.execute("PRAGMA user_version = 0")
+    pfad = store.path
+    store.close()
+
+    zweiter = Store(pfad)
+    assert [r[0] for r in zweiter._conn.execute(
+        "SELECT matched_at FROM council_topic_matches")] == ["", ""]
+
+    # … und beim nächsten Öffnen bleibt ein echtes Datum stehen.
+    with zweiter._conn:
+        zweiter._conn.execute("UPDATE council_topic_matches SET matched_at = '2026-09-01T00:00:00'")
+    zweiter.close()
+    dritter = Store(pfad)
+    assert [r[0] for r in dritter._conn.execute(
+        "SELECT matched_at FROM council_topic_matches")] == ["2026-09-01T00:00:00"] * 2
+    dritter.close()
     council.close()
 
 

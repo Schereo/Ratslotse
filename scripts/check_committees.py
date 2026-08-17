@@ -82,6 +82,28 @@ def _ohne_altkopf(summary: str | None) -> str | None:
     return summary if summary is None else _ALT_KOPF.sub("", summary)
 
 
+def _aenderungs_teil(alt: list[dict] | None, jetzt: list[dict]) -> str | None:
+    """Der Diff-Block einer Änderungsmeldung — drei Ausgänge:
+
+    * ``None`` — keine Vergleichsbasis (Stand von vor der Snapshot-Zeit).
+      Dann geht die vollständige Tagesordnung raus, wie eh und je.
+    * ``""`` — der Hash ist anders, die Tagesordnung liest sich aber gleich
+      (etwa nur eine andere Reihenfolge im Quelltext). Dazu gibt es nichts zu
+      sagen; der Aufrufer meldet dann gar nicht.
+    * sonst die farbmarkierte Liste der Unterschiede.
+    """
+    if alt is None:
+        return None
+    # Altbestand: Snapshots von vor dem 17.08.2026 enthalten nur die
+    # öffentlichen Punkte und kein is_public. Gegen die neue Vollliste
+    # verglichen gälte jeder nichtöffentliche TOP als frisch eingefügt —
+    # deshalb wird dann auch die neue Seite auf die öffentlichen beschnitten.
+    if not any("is_public" in i for i in alt):
+        jetzt = [i for i in jetzt if i.get("is_public", True)]
+    d = diff_tagesordnung(alt, jetzt)
+    return diff_html(d) if hat_aenderungen(d) else ""
+
+
 def main() -> dict:
     """Gibt die Kennzahlen des Laufs für die Cron-Übersicht zurück."""
     nwz_store = Store(NWZ_DB)
@@ -121,13 +143,21 @@ def main() -> dict:
 
         # Compute agenda hash once; drives both caching and change detection.
         agenda_hash = _agenda_hash(session.agenda_items)
-        # Den öffentlichen Stand zu diesem Hash einfrieren: save_session hat
-        # die Items bereits ERSETZT — ohne Snapshot gäbe es für die
-        # Diff-Änderungsmeldung (Tims Wunsch 12.08.) keine Vergleichsbasis.
-        oeffentliche_items = [{"item_number": i.item_number, "title": i.title,
-                               "vorlage_nr": i.vorlage_nr or ""}
-                              for i in session.agenda_items if i.is_public]
-        council_store.save_agenda_snapshot(ksinr, agenda_hash, oeffentliche_items)
+        # Den Stand zu diesem Hash einfrieren: save_session hat die Items
+        # bereits ERSETZT — ohne Snapshot gäbe es für die Diff-Änderungsmeldung
+        # (Tims Wunsch 12.08.) keine Vergleichsbasis.
+        #
+        # Gespeichert wird, was auch in den Hash eingeht: ALLE Punkte samt
+        # Öffentlichkeits-Merkmal. Vorher waren es nur die öffentlichen — der
+        # Diff sah damit weniger als die Änderungserkennung, und eine Änderung
+        # im nichtöffentlichen Teil erzeugte eine Mail ohne jede Aussage. Die
+        # Titel der nichtöffentlichen TOPs stehen ohnehin im Ratsinfo und auf
+        # der Sitzungsseite der App (dort mit „nichtöffentlich"-Marke).
+        snapshot_items = [{"item_number": i.item_number, "title": i.title,
+                           "vorlage_nr": i.vorlage_nr or "",
+                           "is_public": bool(i.is_public)}
+                          for i in session.agenda_items]
+        council_store.save_agenda_snapshot(ksinr, agenda_hash, snapshot_items)
 
         # Categorise subscribers:
         # - pending_new:    never notified before
@@ -226,20 +256,23 @@ def main() -> dict:
         # bisherige Voll-Mail.
         update_prefix = "<p><b>Die Tagesordnung hat sich geändert.</b></p>\n"
         update_subject = f"{session.committee}: Tagesordnung geändert"
-        diff_je_hash: dict[str, str | None] = {}
+        diff_je_hash: dict[str, str | None] = {}   # Ausgänge: s. _aenderungs_teil
         for owner_id in pending_update:
             if owner_id not in targets:
                 continue
             last_hash = council_store.get_last_notified_hash(ksinr, owner_id) or ""
             if last_hash not in diff_je_hash:
-                alt = council_store.get_agenda_snapshot(ksinr, last_hash)
-                if alt is None:
-                    diff_je_hash[last_hash] = None
-                else:
-                    d = diff_tagesordnung(alt, oeffentliche_items)
-                    diff_je_hash[last_hash] = diff_html(d) if hat_aenderungen(d) else (
-                        "<p>Details einzelner Punkte wurden angepasst.</p>")
+                diff_je_hash[last_hash] = _aenderungs_teil(
+                    council_store.get_agenda_snapshot(ksinr, last_hash), snapshot_items)
             diff_teil = diff_je_hash[last_hash]
+            if diff_teil == "":
+                # Der Hash ist anders, die Tagesordnung liest sich aber gleich
+                # (etwa nur die Reihenfolge im Quelltext). „Details einzelner
+                # Punkte wurden angepasst" stand hier früher — ein Satz, der
+                # niemandem sagt, was los ist, und genau deshalb weg muss
+                # (Tims Befund 17.08.). Stand nachziehen, nicht melden.
+                council_store.mark_notified(ksinr, owner_id, agenda_hash)
+                continue
             nachricht = (update_prefix + kopf + diff_teil + wege) if diff_teil is not None \
                 else (update_prefix + base_message)
             print(f"  {session.session_date} {session.committee} → owner {owner_id} "

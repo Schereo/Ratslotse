@@ -580,6 +580,30 @@ class Store:
         )
         self._conn.commit()
         self._migrate_owner_id()
+        self._treffer_datum_reparieren()
+
+    def _treffer_datum_reparieren(self) -> None:
+        """Einmalige Reparatur: ``council_topic_matches.matched_at`` im Bestand.
+
+        Bis zum 17.08.2026 löschte ``save_topic_decision_matches`` vor jedem
+        Lauf alle Treffer eines Themas und legte sie neu an — im Bestand trägt
+        deshalb JEDE Zeile das Datum des letzten wöchentlichen Matchings (am
+        17.08. gemessen: alle 919 Zeilen der Prod-DB auf denselben Tag). Ohne
+        diese Reparatur meldete der nächste Wochenüberblick denselben
+        vollständigen Bestand noch einmal als Neuigkeit der Woche — der Fehler
+        wäre behoben und die Meldung käme trotzdem.
+
+        Leeres ``matched_at`` ist der Vorgabewert der Spalte und heißt „schon
+        bekannt": Genau das ist der Bestand. ``PRAGMA user_version`` merkt sich,
+        dass es erledigt ist — sonst liefe die Reparatur bei jedem Start und
+        machte echte neue Treffer wieder unsichtbar.
+        """
+        if self._conn.execute("PRAGMA user_version").fetchone()[0] >= 1:
+            return
+        with self._conn:
+            self._conn.execute("UPDATE council_topic_matches SET matched_at = ''")
+        self._conn.execute("PRAGMA user_version = 1")
+        self._conn.commit()
 
     def _table_cols(self, table: str) -> set[str]:
         return {r[1] for r in self._conn.execute(f"PRAGMA table_info({table})").fetchall()}
@@ -1882,12 +1906,28 @@ class Store:
         return [TopicRow(**dict(r)) for r in rows]
 
     def save_topic_decision_matches(self, topic_id: int, owner_id: int, matches: list[tuple],
-                                    *, gedeckelt: bool = False, kandidaten: int = 0) -> int:
+                                    *, gedeckelt: bool = False, kandidaten: int = 0,
+                                    als_neu: bool = True) -> int:
         """Replace a topic's matched council decisions. ``matches`` = [(decision_id, score)].
 
         Was ein Treffer ist, entscheidet ``council.topic_intel.treffer`` — die
         eine Definition, an der auch das Bearbeiten-Blatt im Web rechnet. Hier
         wird sie nur noch abgelegt.
+
+        **Bestehende Treffer behalten ihr ``matched_at``.** Nur die Zeilen, die
+        es vorher nicht gab, tragen den Zeitpunkt dieses Laufs; weggefallene
+        verschwinden. Vorher warf der Lauf erst alles weg und legte es neu an —
+        damit trug nach jedem wöchentlichen Matching (sonntags 3 Uhr) JEDER
+        Treffer das Datum von heute, und der Wochenüberblick am selben Abend
+        meldete den kompletten Bestand als Neuigkeit der Woche („Diese Woche:
+        119 Beschlüsse zu deinen Themen", Tims Befund 17.08.2026 — am Bestand
+        gemessen trugen alle 919 Zeilen dasselbe Datum).
+
+        ``als_neu=False`` ist für Reparaturläufe (``--ohne-meldungen``): Nach
+        einer Neu-Extraktion tragen dieselben Beschlüsse neue IDs, also sind
+        formal ALLE Treffer neu. Die frischen Zeilen bekommen dann ein leeres
+        ``matched_at`` (der Vorgabewert der Spalte) und gelten damit nirgends
+        als Neuigkeit.
 
         ``gedeckelt`` sagt, ob der Lauf mehr relevante Beschlüsse gefunden als
         gespeichert hat, ``kandidaten``, wie viele er geprüft hat. Beides
@@ -1897,12 +1937,24 @@ class Store:
         zeigt: Karte, Trefferliste, Bearbeiten-Blatt.
         """
         now = datetime.utcnow().isoformat(timespec="seconds")
+        stempel = now if als_neu else ""
+        neu = {int(did): float(sc) for did, sc in matches}
         with self._conn:
-            self._conn.execute("DELETE FROM council_topic_matches WHERE topic_id = ?", (topic_id,))
+            if neu:
+                ph = ",".join("?" * len(neu))
+                self._conn.execute(
+                    f"DELETE FROM council_topic_matches WHERE topic_id = ? "
+                    f"AND decision_id NOT IN ({ph})", (topic_id, *neu))
+            else:
+                self._conn.execute("DELETE FROM council_topic_matches WHERE topic_id = ?",
+                                   (topic_id,))
+            # DO UPDATE fasst matched_at bewusst nicht an — das ist der Kern
+            # der Sache: „seit wann gehört dieser Beschluss zu diesem Thema".
             self._conn.executemany(
-                "INSERT OR IGNORE INTO council_topic_matches(topic_id, owner_id, decision_id, score, matched_at) "
-                "VALUES (?,?,?,?,?)",
-                [(topic_id, owner_id, int(did), float(sc), now) for did, sc in matches],
+                "INSERT INTO council_topic_matches(topic_id, owner_id, decision_id, score, matched_at) "
+                "VALUES (?,?,?,?,?) ON CONFLICT(topic_id, decision_id) DO UPDATE SET "
+                "owner_id = excluded.owner_id, score = excluded.score",
+                [(topic_id, owner_id, did, sc, stempel) for did, sc in neu.items()],
             )
             self._conn.execute(
                 "INSERT OR REPLACE INTO council_topic_match_meta "
