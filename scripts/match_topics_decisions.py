@@ -144,8 +144,13 @@ def process(top_k: int = DECKEL, threshold: float = SCHWELLE, *, ohne_meldungen:
                 # Woche sind besser als frisches Rauschen.
                 hits, gedeckelt, kandidaten = treffer(council, name, text,
                                                       deckel=top_k, schwelle=threshold)
+                # als_neu=False im Reparaturlauf: Die neu angelegten Zeilen
+                # dürfen nicht als Treffer dieser Woche gelten — sonst holt der
+                # Wochenüberblick nach, was die abgeschalteten Meldungen gerade
+                # verhindert haben.
                 nwz.save_topic_decision_matches(t.id, owner_id, hits,
-                                                gedeckelt=gedeckelt, kandidaten=kandidaten)
+                                                gedeckelt=gedeckelt, kandidaten=kandidaten,
+                                                als_neu=not ohne_meldungen)
                 total += len(hits)
                 gedeckelte += 1 if gedeckelt else 0
                 # Ein Reparaturlauf ist keine Neuigkeit: Dieselben Beschlüsse

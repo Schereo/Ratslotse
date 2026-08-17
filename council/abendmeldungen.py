@@ -43,12 +43,20 @@ def _datum(iso: str) -> str:
 # --------------------------------------------------------------- N5 ----------
 
 def _n5_text(sitzung: dict, tops: list[dict]) -> tuple[str, str]:
-    """Titel + HTML der Vorabend-Erinnerung."""
+    """Titel + HTML der Vorabend-Erinnerung.
+
+    Der Titel nennt den **Tag**, nicht „Morgen". Eingereiht wird um 18 Uhr am
+    Vorabend, zugestellt aber erst, wenn die Grenzen aus 30a es zulassen: Waren
+    an dem Tag schon zwei Meldungen draußen, wartet die Erinnerung bis zum
+    nächsten Morgen — und „Morgen, 16:45 Uhr" hieß dann in Wahrheit heute
+    (Tims Befund 17.08.2026). Ein Datum stimmt in jedem Fenster.
+    """
     zeit = f", {sitzung['session_time']} Uhr" if sitzung.get("session_time") else ""
+    wann = f"{_datum(sitzung['session_date'])}{zeit}"
     if tops:
         namen = sorted({t["topic_name"] for t in tops})
-        titel = f"Morgen{zeit}: {namen[0]} im {sitzung['committee']}" if len(namen) == 1 \
-            else f"Morgen{zeit}: deine Themen im {sitzung['committee']}"
+        titel = f"{wann}: {namen[0]} im {sitzung['committee']}" if len(namen) == 1 \
+            else f"{wann}: deine Themen im {sitzung['committee']}"
         zeilen = "".join(
             f"<li style='margin-bottom:4px'>TOP {t['item_number']} — {t['topic_name']}</li>"
             for t in tops)
@@ -56,7 +64,7 @@ def _n5_text(sitzung: dict, tops: list[dict]) -> tuple[str, str]:
                 + (f", {sitzung['location']}" if sitzung.get("location") else "") + ".</p>"
                 f"<ul style='margin:0;padding-left:18px'>{zeilen}</ul>")
     else:
-        titel = f"Morgen{zeit}: {sitzung['committee']} tagt"
+        titel = f"{wann}: {sitzung['committee']} tagt"
         html = (f"<p>{sitzung['committee']} am {_datum(sitzung['session_date'])}{zeit}"
                 + (f", {sitzung['location']}" if sitzung.get("location") else "") + ".</p>")
     return titel, html

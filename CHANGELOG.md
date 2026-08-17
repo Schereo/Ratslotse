@@ -7,6 +7,29 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Behoben
+- **„Die Tagesordnung hat sich geändert" verriet nicht, was.** Wurde zu einem
+  Punkt nur die Vorlage nachgereicht — Nummer und Titel blieben gleich —, fand
+  der Vergleich nichts und die Mail behalf sich mit „Details einzelner Punkte
+  wurden angepasst". Genau so ist es am 17.08. beim Ausschuss für Allgemeine
+  Angelegenheiten passiert. Nachgereichte, getauschte und zurückgezogene
+  Vorlagen stehen jetzt als eigene Zeile in der Änderungsliste („Vorlage
+  nachgereicht · TOP Ö 5 — Vorlage 26/0019/9 liegt jetzt vor"), und der
+  Vergleich sieht dieselben Punkte wie die Änderungserkennung, also auch die
+  nichtöffentlichen. Bleibt am Ende doch nichts Nennbares übrig, kommt gar
+  keine Mail mehr statt einer ohne Inhalt. (#582)
+- **„Morgen, 16:45 Uhr" kam am Sitzungstag selbst.** Die Vorabend-Erinnerung
+  wird um 18 Uhr eingereiht, geht aber erst raus, wenn die Grenzen es zulassen
+  — waren an dem Tag schon zwei Meldungen draußen, wartet sie bis zum nächsten
+  Morgen, und „morgen" war dann heute. Der Titel nennt jetzt den Tag statt
+  eines Wortes, das vom Zustellzeitpunkt abhängt. (#582)
+- **„Diese Woche: 119 Beschlüsse zu deinen Themen".** Der wöchentliche
+  Abgleich Thema ↔ Beschluss legte alle Treffer neu an und stempelte sie dabei
+  auf heute; der Wochenüberblick am selben Abend hielt deshalb den gesamten
+  Bestand für die Neuigkeiten der Woche. Bekannte Treffer behalten jetzt ihr
+  Datum, nur wirklich neue zählen — und ein Reparaturlauf nach einer
+  Neu-Extraktion stempelt gar nichts als neu. (#582)
+
 ## [1.12.0] – 2026-08-16
 
 ### Behoben
