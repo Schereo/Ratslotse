@@ -732,6 +732,29 @@
   background: repeating-linear-gradient(135deg, hsl(var(--hh-schraffur) / 0.22) 0 3px, transparent 3px 6px);
 }
 
+/* Ableseleiste des Grafik-Baukastens (GB-00, Regel „Zeitreihe + Ableseleiste"
+   aus H4-A): Unter 744 px — der Mobil-Schwelle der H4-Boards, bewusst NICHT
+   Tailwinds `md` (768) — wird die Wertzeile sticky: Sie bleibt am unteren
+   Rand sichtbar, solange ihre Grafik im Bild ist, damit Tippen und Wischen
+   auf einer hohen Karte den Wert nicht aus dem Bild schieben. Der Abstand
+   (`--gb-ablese-bottom`) kommt aus der Komponente und rechnet mit
+   `TABLEISTE_HOEHE` — die Andockkante der Tab-Leiste ist EIN Ausdruck, keine
+   geratene Zahl (DESIGNSPRACHE § 5). Der Hintergrund wird hier gedeckt
+   (Karte + Muted-Schleier statt nur `bg-muted/40`): Im angehefteten Zustand
+   scrollt Karteninhalt unter der Leiste durch, und durch eine durchsichtige
+   Fläche schimmerte er hindurch. z-index unter `--ebene-huelle` (40): Die
+   Leiste schwebt über ihrer Karte, nie über Kopf- oder Tab-Leiste. */
+@media (max-width: 743.98px) {
+  .gb-ablese-leiste {
+    position: sticky;
+    bottom: var(--gb-ablese-bottom, 0.5rem);
+    z-index: 30;
+    background:
+      linear-gradient(hsl(var(--muted) / 0.4), hsl(var(--muted) / 0.4)),
+      hsl(var(--card));
+  }
+}
+
 /* Regler im Haushalts-Labor (H-19): Der Browser bringt Tastatur- und
    Touch-Verhalten mit, die Bahn zeichnen wir selbst — nur so lassen sich
    Ist-Marke und Füllung ab dieser Marke zeigen. Deshalb ist der Input

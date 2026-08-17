@@ -8,6 +8,17 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Ein Baukasten für alle Haushalts-Grafiken.** Bisher brachte jede Grafik
+  des Haushalts-Bereichs ihre eigenen Bausteine mit; jetzt gibt es ein
+  gemeinsames Fundament (`components/grafik/`), aus dem die kommenden
+  Diagramme zusammengesetzt werden. Vier Teile stecken drin, weil sie überall
+  gleich sein müssen: der Beleg-Chip an jeder Zahl, das Lücken-Feld („2019 —
+  verworfen: 1,3 Mio. € Differenz im Dokument" — nie einklappbar), die
+  Ableseleiste (zeigen, tippen oder Pfeiltasten; auf dem Telefon bleibt die
+  Wertzeile jetzt beim Scrollen sichtbar) und die Einordnung — der Satz, der
+  eine Zahl davor bewahrt, missverstanden zu werden, samt „Was diese Zahl
+  nicht sagt". Die Geometrie rechnen ab jetzt vier kleine d3-Pakete, das
+  Zeichnen bleibt eigenes SVG in unseren Farben. (#575)
 - **Jede Haushaltszahl sagt jetzt auch, wer sie beschlossen hat.** Der kleine
   Beleg an einer Zahl nannte bisher das Dokument und die Stelle darin — „im
   Jahresabschluss 2024, Ergebnisrechnung der Kernverwaltung". Was fehlte, war

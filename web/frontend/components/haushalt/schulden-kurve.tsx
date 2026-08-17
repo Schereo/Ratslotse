@@ -27,7 +27,7 @@ import { deMio } from "@/lib/haushalt";
 import { Ansicht, Punkt, deEuro } from "@/lib/haushalt-schulden";
 import {
   AbleseBeschreibung, AbleseFlaeche, AbleseStelle, Ableseleiste, useAblesen,
-} from "@/components/haushalt/ablesen";
+} from "@/components/grafik/ablesen";
 
 const H = 210, Y0 = 172, YTOP = 22;
 

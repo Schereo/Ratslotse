@@ -14,7 +14,7 @@ import { useBreite } from "@/lib/use-breite";
 import { deMio } from "@/lib/haushalt";
 import {
   AbleseBeschreibung, AbleseFlaeche, AbleseStelle, Ableseleiste, useAblesen,
-} from "@/components/haushalt/ablesen";
+} from "@/components/grafik/ablesen";
 
 type Punkt = { jahr: number; betrag: number };
 
