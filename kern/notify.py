@@ -9,6 +9,8 @@ werden, und ein Beschluss um 22:40 Uhr klingelte um 22:40 Uhr.
 * **Höchstens zwei am Tag.** Pro Person, nicht pro Anlass. Fällt mehr an, wird
   gebündelt statt gestapelt — die letzte freie Zustellung des Tages nimmt alles
   Übrige als eine Nachricht mit. Nichts geht verloren, nichts wird zur Flut.
+  Ausnahme sind die **termingebundenen** Anlässe (s. ``TERMINGEBUNDEN``): Sie
+  haben ihren eigenen Vorrat von zwei am Tag.
 * **Nachtruhe 21–7 Uhr.** Ratssitzungen enden regelmäßig nach 22 Uhr. Was danach
   entschieden wird, wartet bis zum Morgen — nichts im Rat ist so dringend, dass
   es jemanden weckt.
@@ -51,6 +53,21 @@ N3_ERGEBNIS = "n3_ergebnis"
 N4_VORGANG = "n4_vorgang"
 N5_VORABEND = "n5_vorabend"
 N6_WOCHE = "n6_woche"
+
+#: Anlässe, die an einen Termin gebunden sind: Kommen sie einen Tag später, sind
+#: sie nicht verspätet, sondern wertlos — die Sitzung hat dann stattgefunden.
+#: Sie bekommen deshalb einen eigenen Vorrat von ``TAGESGRENZE`` Zustellungen am
+#: Tag (Tims Wunsch 17.08.2026: „die Morgen-Erinnerung soll immer am Vortag
+#: kommen, egal wie viele Meldungen es schon gab"). Vorher teilten sie sich
+#: einen Topf mit allem anderen — und weil der Vorabend-Lauf um 18 Uhr der
+#: letzte des Tages ist, verlor die Erinnerung diesen Wettlauf regelmäßig: Am
+#: 16.08.2026 lag sie ab 18 Uhr fertig da und ging erst am nächsten Morgen
+#: raus, am Sitzungstag selbst.
+#:
+#: Es bleibt bei einem *eigenen* Topf statt bei „gar keine Grenze": Ein
+#: Sitzungsabend mit drei Gremien soll nicht drei Erinnerungen einzeln
+#: schicken — ab der dritten wird auch hier gebündelt.
+TERMINGEBUNDEN = frozenset({N5_VORABEND})
 
 #: Vorgaben aus 30a/B: drei an, drei aus. N5 und N6 sind bewusst aus — die
 #: meisten brauchen keinen Kalender, sondern das Ergebnis; und wer den
@@ -256,18 +273,6 @@ def _zustellen_fuer(store, owner_id: int, heute: str, jetzt_iso: str) -> int:
     if not offen:
         return 0
 
-    frei = TAGESGRENZE - store.notifications_sent_on(owner_id, heute)
-    if frei <= 0:
-        logger.info("owner %s: Tagesgrenze erreicht, %d warten auf morgen",
-                    owner_id, len(offen))
-        return 0
-
-    # Passt alles einzeln? Sonst nimmt die letzte freie Zustellung den Rest
-    # als ein Bündel mit — „ab der dritten wird gebündelt statt gestapelt".
-    einzeln = offen if len(offen) <= frei else offen[: frei - 1]
-    rest = offen[len(einzeln):]
-    verschickt = 0
-
     def _abschicken(posten_ids: list[int], html: str, titel: str, url: str, gebuendelt: bool) -> bool:
         """Einmal zustellen und das Ergebnis verbuchen.
 
@@ -285,13 +290,35 @@ def _zustellen_fuer(store, owner_id: int, heute: str, jetzt_iso: str) -> int:
         store.mark_notification_sent(posten_ids, jetzt_iso, bundled=gebuendelt)
         return True
 
-    for p in einzeln:
-        if _abschicken([p["id"]], p["body_html"], p["title"], p["url"], False):
-            verschickt += 1
+    def _topf(posten: list[dict], schon: int, name: str) -> int:
+        """Ein Kontingent abarbeiten: einzeln, solange Platz ist, Rest als Bündel."""
+        if not posten:
+            return 0
+        frei = TAGESGRENZE - schon
+        if frei <= 0:
+            logger.info("owner %s: Tagesgrenze (%s) erreicht, %d warten auf morgen",
+                        owner_id, name, len(posten))
+            return 0
+        # Passt alles einzeln? Sonst nimmt die letzte freie Zustellung den Rest
+        # als ein Bündel mit — „ab der dritten wird gebündelt statt gestapelt".
+        einzeln = posten if len(posten) <= frei else posten[: frei - 1]
+        rest = posten[len(einzeln):]
+        n = 0
+        for p in einzeln:
+            if _abschicken([p["id"]], p["body_html"], p["title"], p["url"], False):
+                n += 1
+        if rest:
+            titel, html, url = _buendel(rest)
+            if _abschicken([p["id"] for p in rest], html, titel, url, True):
+                n += 1
+        return n
 
-    if rest:
-        titel, html, url = _buendel(rest)
-        if _abschicken([p["id"] for p in rest], html, titel, url, True):
-            verschickt += 1
-
-    return verschickt
+    # Zwei Kontingente statt einem. Ein Bündel enthält damit immer nur Posten
+    # EINER Sorte — nur deshalb darf die Tagesgrenze je Sorte nach `kind`
+    # zählen (ein gemischtes Bündel wäre in beiden Töpfen eine Zustellung).
+    termin = [p for p in offen if p["kind"] in TERMINGEBUNDEN]
+    uebrige = [p for p in offen if p["kind"] not in TERMINGEBUNDEN]
+    schon_termin = store.notifications_sent_on(owner_id, heute, TERMINGEBUNDEN)
+    schon_uebrige = store.notifications_sent_on(owner_id, heute, TERMINGEBUNDEN, ohne=True)
+    return (_topf(termin, schon_termin, "termingebunden")
+            + _topf(uebrige, schon_uebrige, "übrige"))

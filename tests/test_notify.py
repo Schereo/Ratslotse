@@ -162,6 +162,94 @@ def test_ein_buendel_zaehlt_als_eine_zustellung(store, monkeypatch):
     assert store.notifications_sent_on(owner, "2026-08-18") == 2
 
 
+# ---- Termingebundene Meldungen haben ihr eigenes Kontingent -----------------
+
+def _vorabend_einreihen(store, owner, jetzt, titel="18. August, 16:45 Uhr: Rat tagt"):
+    return notify.einreihen(store, owner, notify.N5_VORABEND, titel, "<p>x</p>",
+                            "/council?tab=sessions&ksinr=1", jetzt=jetzt)
+
+
+def test_die_vorabend_erinnerung_kommt_trotz_erschoepfter_grenze(store, monkeypatch):
+    """Tims Wunsch 17.08.2026. Der echte Fall: Am 16.08. waren die zwei
+    Meldungen schon um 7 Uhr draußen, die Erinnerung lag ab 18 Uhr fertig da —
+    und ging erst am Sitzungstag selbst raus."""
+    owner = _konto(store)
+    store.set_notify_prefs(owner, {notify.N5_VORABEND: True})   # Vorgabe ist AUS
+    raus: list[str] = []
+    monkeypatch.setattr("kern.delivery.deliver_message",
+                        lambda o, html, email_subject, push_url="/": (raus.append(email_subject), ["email"])[1])
+
+    _einreihen(store, owner, 2, _zeit("2026-08-17", 7))
+    assert notify.zustellen(store, jetzt=_zeit("2026-08-17", 7)) == 2
+
+    _vorabend_einreihen(store, owner, _zeit("2026-08-17", 18))
+    assert notify.zustellen(store, jetzt=_zeit("2026-08-17", 18)) == 1
+    assert raus[-1] == "18. August, 16:45 Uhr: Rat tagt"
+    assert store.due_notifications(owner, "2999-01-01") == []
+
+
+def test_die_erinnerung_nimmt_keiner_anderen_meldung_den_platz(store, monkeypatch):
+    """Die Umkehrung: Ein eigenes Kontingent heißt auch, dass die Erinnerung
+    das der übrigen Meldungen nicht anknabbert."""
+    owner = _konto(store)
+    store.set_notify_prefs(owner, {notify.N5_VORABEND: True})
+    raus: list[str] = []
+    monkeypatch.setattr("kern.delivery.deliver_message",
+                        lambda o, html, email_subject, push_url="/": (raus.append(email_subject), ["email"])[1])
+
+    jetzt = _zeit("2026-08-17", 18)
+    _vorabend_einreihen(store, owner, jetzt)
+    _einreihen(store, owner, 2, jetzt)
+    assert notify.zustellen(store, jetzt=jetzt) == 3          # 1 termingebunden + 2 übrige
+    assert raus[0] == "18. August, 16:45 Uhr: Rat tagt"       # der Termin geht vor
+    assert raus[1:] == ["Meldung 1", "Meldung 2"]
+
+
+def test_auch_termingebundenes_wird_ab_der_dritten_gebuendelt(store, monkeypatch):
+    """Kein Freifahrtschein: Ein Abend mit vier Sitzungen schickt nicht vier
+    Erinnerungen einzeln."""
+    owner = _konto(store)
+    store.set_notify_prefs(owner, {notify.N5_VORABEND: True})
+    raus: list[str] = []
+    monkeypatch.setattr("kern.delivery.deliver_message",
+                        lambda o, html, email_subject, push_url="/": (raus.append(email_subject), ["email"])[1])
+    jetzt = _zeit("2026-08-17", 18)
+    for i in range(4):
+        _vorabend_einreihen(store, owner, jetzt, f"Gremium {i + 1} tagt")
+    assert notify.zustellen(store, jetzt=jetzt) == 2
+    assert raus == ["Gremium 1 tagt", "3 Neuigkeiten aus dem Rat"]
+
+
+def test_zwei_erinnerungen_am_tag_sind_das_ende(store, monkeypatch):
+    """Das eigene Kontingent ist eines, keine Ausnahme von allem: Die dritte
+    Erinnerung eines Tages wartet auf morgen wie jede andere Meldung."""
+    owner = _konto(store)
+    store.set_notify_prefs(owner, {notify.N5_VORABEND: True})
+    monkeypatch.setattr("kern.delivery.deliver_message", lambda *a, **k: ["email"])
+    _vorabend_einreihen(store, owner, _zeit("2026-08-17", 8), "erste")
+    assert notify.zustellen(store, jetzt=_zeit("2026-08-17", 8)) == 1
+    _vorabend_einreihen(store, owner, _zeit("2026-08-17", 12), "zweite")
+    assert notify.zustellen(store, jetzt=_zeit("2026-08-17", 12)) == 1
+    _vorabend_einreihen(store, owner, _zeit("2026-08-17", 18), "dritte")
+    assert notify.zustellen(store, jetzt=_zeit("2026-08-17", 18)) == 0
+    assert [p["title"] for p in store.due_notifications(owner, "2999-01-01")] == ["dritte"]
+
+
+def test_die_kontingente_zaehlen_getrennt(store, monkeypatch):
+    owner = _konto(store)
+    store.set_notify_prefs(owner, {notify.N5_VORABEND: True})
+    monkeypatch.setattr("kern.delivery.deliver_message", lambda *a, **k: ["email"])
+    jetzt = _zeit("2026-08-17", 18)
+    _vorabend_einreihen(store, owner, jetzt)
+    _einreihen(store, owner, 3, jetzt)
+    notify.zustellen(store, jetzt=jetzt)
+
+    tag = "2026-08-17"
+    assert store.notifications_sent_on(owner, tag) == 3            # alles zusammen
+    assert store.notifications_sent_on(owner, tag, notify.TERMINGEBUNDEN) == 1
+    assert store.notifications_sent_on(owner, tag, notify.TERMINGEBUNDEN, ohne=True) == 2
+
+
 # ---- Grenze 4: jede Meldung hat ein Ziel -----------------------------------
 
 def test_ohne_ziel_wird_nichts_eingereiht(store):

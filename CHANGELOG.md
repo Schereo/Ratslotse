@@ -7,6 +7,16 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert
+- **Die Vorabend-Erinnerung kommt jetzt immer am Vortag.** Sie teilte sich das
+  Kontingent von zwei Meldungen am Tag mit allem anderen — und weil sie als
+  letzte des Tages um 18 Uhr eingereiht wird, verlor sie diesen Wettlauf
+  regelmäßig und kam erst am Sitzungstag selbst an. Termingebundene Meldungen
+  haben jetzt ihren eigenen Vorrat: Die Erinnerung geht raus, egal wie viel an
+  dem Tag schon kam, und sie nimmt umgekehrt keiner anderen Meldung den Platz.
+  An einem Abend mit mehreren Sitzungen wird ab der dritten weiterhin
+  gebündelt. (#585)
+
 ### Behoben
 - **„Die Tagesordnung hat sich geändert" verriet nicht, was.** Wurde zu einem
   Punkt nur die Vorlage nachgereicht — Nummer und Titel blieben gleich —, fand
