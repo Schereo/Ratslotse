@@ -102,9 +102,16 @@ jobs:
                     print(f"  {t:32} {n:>6} Zeilen  {spanne}")
                 except Exception as e:                      # noqa: BLE001
                     print(f"  {t:32} — {e}")
+            # herkunft_luecken() liefert ein dict {Tabelle: Anzahl}, keine
+            # Liste — das hat den Lauf am 17.08. mit „KeyError: slice" beendet,
+            # nachdem alles Inhaltliche schon erledigt war. Leeres dict heißt:
+            # keine Zeile ohne Herkunftsnachweis.
             luecken = s.herkunft_luecken()
-            print(f"\nZeilen ohne Herkunft: {len(luecken)}")
-            for l in luecken[:20]:
-                print(f"  {l}")
+            if luecken:
+                print("\nZeilen OHNE Herkunft — das darf nicht sein:")
+                for tabelle, anzahl in sorted(luecken.items()):
+                    print(f"  {tabelle:32} {anzahl}")
+            else:
+                print("\nKeine Zeile ohne Herkunft.")
             s.close()
             PY
