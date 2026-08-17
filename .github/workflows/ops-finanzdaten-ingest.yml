@@ -59,12 +59,21 @@ jobs:
             # `ingest_finanzberichte.py`. Wer eine neue Schicht baut, prüft
             # hier, ob sie überhaupt aufgerufen wird — ein Parser ohne Ingest
             # fällt sonst nur dadurch auf, dass die Seite leer bleibt.
+            # ERST die Volltexte, DANN die Parser. Auf der Dev-VM standen
+            # fünf Tabellen leer, obwohl ihre Parser liefen: Sieben der
+            # vierzehn Schichten lesen aus `council_anlagen`, und dort lagen
+            # 5.186 Anlagen ohne Text. `--nur-finanz` holt die 293, aus denen
+            # der Haushalts-Bereich tatsächlich liest, statt aller 5.500.
+            .venv/bin/python scripts/backfill_anlagen_texte.py --nur-finanz --retry-failed
+
             .venv/bin/python scripts/ingest_haushalt.py
             .venv/bin/python scripts/ingest_finanzen_opendata.py
             .venv/bin/python scripts/ingest_schulden.py
             .venv/bin/python scripts/ingest_finanzberichte.py
             .venv/bin/python scripts/ingest_pruefberichte.py
             .venv/bin/python scripts/ingest_konzernabschluss.py
+            .venv/bin/python scripts/ingest_investitionen_ist.py
+            .venv/bin/python scripts/check_beteiligungsbericht.py
 
             # ingest_staedtevergleich.py läuft hier BEWUSST NICHT mit. Es
             # verlangt drei Datei-URLs als Pflichtargumente (--kfa,
@@ -91,6 +100,8 @@ jobs:
                 "council_steuern", "council_steuerkraft", "council_einwohner",
                 "council_staedtevergleich", "council_investitionen",
                 "council_stellenplan", "council_schulden",
+                "council_investitionsmassnahmen", "council_investitionen_ist",
+                "council_investitionen_ist_arten",
             ]
             # Die Jahresspalte heißt nicht überall „jahr": council_haushalt
             # führt „year", der Stellenplan „jahrgang". Der erste Lauf meldete
