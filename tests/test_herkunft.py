@@ -476,8 +476,12 @@ def test_ohne_dokument_meldet_sich_die_quelle_gar_nicht(tmp_path):
         " source_url, fetched_at) VALUES (2020, 'Summe', 1.0, 1, ?, '2026-01-01')",
         (PLAN_URL,))
     store._conn.commit()
+    # `beschluss` steht auch hier — als None. Der Altbestand hängt an keiner
+    # Anlage, also gibt es keinen Ratsvorgang zu zeigen; das Feld fehlt aber
+    # nicht, sonst müsste die Oberfläche zwei Formen unterscheiden.
     assert store.haushalt_dokumente()["plan"] == [
-        {"jahr": 2020, "url": PLAN_URL, "label": None, "fundstelle": None, "seite": None}]
+        {"jahr": 2020, "url": PLAN_URL, "label": None, "fundstelle": None,
+         "seite": None, "beschluss": None}]
 def test_vergessene_zieltabelle_verliert_ihre_herkunft_nicht(tmp_path):
     """Der Schritt, den man vergisst: eine neue Zieltabelle nicht in
     ``HERKUNFT_TABELLEN`` eintragen.
@@ -520,4 +524,116 @@ def test_vergessene_zieltabelle_verliert_ihre_herkunft_nicht(tmp_path):
         store._conn.execute(
             "INSERT INTO council_beteiligungen_kennzahlen VALUES (2024, 2.0, NULL)")
     assert store.herkunft_luecken() == {"council_beteiligungen_kennzahlen": 1}
+    store.close()
+
+
+# --- Der Ratsvorgang hinter der Zahl -----------------------------------------
+#
+# Der Beleg-Chip kannte bisher das Dokument. Was fehlte, war der Weg vom
+# Dokument zu dem Beschluss, der es verabschiedet hat — die Strecke
+# `council_herkunft.dokument_id` → `council_anlagen.kvonr` →
+# `council_decisions.kvonr`. Erst damit wird aus „steht im Jahresabschluss
+# 2024" ein „der Rat hat das am … beschlossen".
+
+def _vorgang(store, *, kvonr=900, document_id=7001, stationen=()):
+    """Eine Vorlage mit einer Anlage und ihren Stationen durch die Gremien."""
+    from council.scraper import AgendaItem, CouncilSession
+
+    store.save_vorlage({"kvonr": kvonr, "vorlage_nr": "24/0815",
+                        "title": "Jahresabschluss 2024", "raw_text": ""})
+    store.save_anlagen(kvonr, [{"document_id": document_id,
+                                "label": "Jahresabschluss 2024",
+                                "url": "https://example.org/ja2024.pdf"}])
+    for ksinr, gremium, datum, outcome in stationen:
+        store.save_session(CouncilSession(
+            ksinr=ksinr, committee=gremium, session_date=datum,
+            session_time="17:00", location="Rathaus",
+            agenda_items=[AgendaItem(item_number="5", title="Jahresabschluss 2024",
+                                     kvonr=kvonr)]))
+        store.save_protocol(
+            ksinr, {"document_id": ksinr, "url": f"https://example.org/p{ksinr}.pdf"},
+            {"protocol_nr": "01/25"}, "Kurzbericht.", 4, "test",
+            [{"item_number": "5", "title": "Jahresabschluss 2024",
+              "outcome": outcome, "vote": "mehrheitlich", "kvonr": kvonr}], [])
+
+
+def _herkunft_mit_dokument(store, document_id=7001):
+    with store.transaktion():
+        return store.merke_herkunft(Herkunft(
+            art="ris", probe="summenzeile", dokument_id=document_id,
+            label="Jahresabschluss 2024", url="https://example.org/ja2024.pdf",
+            fundstelle="Ergebnisrechnung der Kernverwaltung"))
+
+
+def test_beschluss_haengt_am_dokument(tmp_path):
+    """Die Zahl kennt nicht nur ihr Papier, sondern ihren Vorgang."""
+    store = CouncilStore(tmp_path / "c.sqlite")
+    _vorgang(store, stationen=[(41, "Rat", "2025-09-16", "angenommen")])
+    hid = _herkunft_mit_dokument(store)
+
+    (h,) = store.get_herkunft([hid])
+    assert h["beschluss"]["datum"] == "2025-09-16"
+    assert h["beschluss"]["gremium"] == "Rat"
+    assert h["beschluss"]["outcome"] == "angenommen"
+    assert h["beschluss"]["kvonr"] == 900
+    store.close()
+
+
+def test_rat_sticht_den_ausschuss(tmp_path):
+    """Eine Vorlage läuft durch mehrere Gremien — verabschiedet wird sie im Rat.
+
+    Der Ausschuss tagt vorher und trägt bei derselben Vorlage ein eigenes
+    Ergebnis. Entschieden wird deshalb am Gremium, nicht am Datum."""
+    store = CouncilStore(tmp_path / "c.sqlite")
+    _vorgang(store, stationen=[
+        (40, "Ausschuss für Finanzen und Beteiligungen", "2025-09-02", "zur_kenntnis"),
+        (41, "Rat", "2025-09-16", "angenommen"),
+    ])
+    hid = _herkunft_mit_dokument(store)
+
+    (h,) = store.get_herkunft([hid])
+    assert h["beschluss"]["gremium"] == "Rat"
+    assert h["beschluss"]["datum"] == "2025-09-16"
+    store.close()
+
+
+def test_vertagter_vorgang_wird_nicht_verschwiegen(tmp_path):
+    """Ein laufender Vorgang ist keine Zahl ohne Beleg.
+
+    Wer hier auf `angenommen` filterte, ließe genau die interessanten Fälle
+    stumm verschwinden — die Seite soll sagen können, dass noch nichts
+    entschieden ist."""
+    store = CouncilStore(tmp_path / "c.sqlite")
+    _vorgang(store, stationen=[(41, "Rat", "2025-09-16", "vertagt")])
+    hid = _herkunft_mit_dokument(store)
+
+    (h,) = store.get_herkunft([hid])
+    assert h["beschluss"]["outcome"] == "vertagt"
+    store.close()
+
+
+def test_anlage_ohne_vorgang_erfindet_keinen(tmp_path):
+    """Kein Beschluss im Bestand heißt: kein Beschluss auf der Seite."""
+    store = CouncilStore(tmp_path / "c.sqlite")
+    _vorgang(store, stationen=[])          # Vorlage und Anlage, aber keine Sitzung
+    hid = _herkunft_mit_dokument(store)
+
+    (h,) = store.get_herkunft([hid])
+    assert h["beschluss"] is None
+    store.close()
+
+
+def test_herkunft_ohne_dokument_bleibt_unberuehrt(tmp_path):
+    """Die Schichten von oldenburg.de und vom Landesamt haben keine Anlage —
+    sie dürfen an der neuen Abfrage nicht hängenbleiben."""
+    store = CouncilStore(tmp_path / "c.sqlite")
+    with store.transaktion():
+        hid = store.merke_herkunft(Herkunft(
+            art="stadt", probe="summenzeile",
+            url="https://oldenburg.de/haushalt.pdf",
+            fundstelle="Gesamtergebnisplan"))
+
+    (h,) = store.get_herkunft([hid])
+    assert h["beschluss"] is None
+    assert h["dokument_id"] is None
     store.close()

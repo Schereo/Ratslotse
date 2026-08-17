@@ -19,15 +19,41 @@
 
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 
+/** Der Ratsvorgang hinter einem Dokument: Welches Gremium wann worüber
+ *  entschieden hat.
+ *
+ *  `outcome` wird ungefiltert durchgereicht — auch `vertagt` oder
+ *  `abgelehnt`. Eine Zahl, deren Vorgang noch läuft, ist keine Zahl ohne
+ *  Beleg; sie ist eine, bei der noch nichts entschieden ist, und das gehört
+ *  dahin statt weggelassen. */
+export type Ratsvorgang = {
+  id: number;
+  ksinr: number;
+  kvonr: number | null;
+  top: string | null;
+  titel: string | null;
+  outcome: string | null;
+  vote: string | null;
+  vorlage_nr: string | null;
+  gremium: string | null;
+  datum: string | null;
+};
+
 /** Ein konkretes Dokument hinter einer Quelle. `fundstelle` kommt aus
  *  `council_herkunft` und ist der eigentliche Gewinn: „Abschnitt 3.2" macht
- *  aus 300 Seiten eine Stelle, an der man nachschlägt. */
+ *  aus 300 Seiten eine Stelle, an der man nachschlägt.
+ *
+ *  `beschluss` ist die zweite Hälfte davon: nicht nur, in welchem Papier die
+ *  Zahl steht, sondern welcher Ratsvorgang sie verabschiedet hat. `null` bei
+ *  den Schichten von oldenburg.de und vom Landesamt — die hängen an keiner
+ *  Vorlage. */
 export type HaushaltDokument = {
   jahr: number | null;
   url: string;
   label: string | null;
   fundstelle: string | null;
   seite: number | null;
+  beschluss: Ratsvorgang | null;
 };
 
 /** Nach Quellenschlüssel. Ein Schlüssel fehlt, wo wir kein Dokument haben. */
@@ -54,6 +80,22 @@ export type Belegziel = {
   abweichend: boolean;
   weitere: number;
 };
+
+/** Was der Rat mit dieser Vorlage gemacht hat, als Satzanfang.
+ *
+ *  Bewusst ein Verb je Ergebnis statt eines Etiketts: „beschlossen" und
+ *  „vertagt" sind verschiedene Auskünfte, und ein neutrales „Status:
+ *  vertagt" verlangt vom Leser die Übersetzung. Unbekannte oder fehlende
+ *  Ergebnisse sagen „behandelt" — das stimmt immer und behauptet nichts. */
+export function vorgangVerb(outcome: string | null): string {
+  switch (outcome) {
+    case "angenommen": return "beschlossen";
+    case "abgelehnt": return "abgelehnt";
+    case "vertagt": return "vertagt";
+    case "zur_kenntnis": return "zur Kenntnis genommen";
+    default: return "behandelt";
+  }
+}
 
 function neuester(liste: HaushaltDokument[]): HaushaltDokument | null {
   if (!liste.length) return null;

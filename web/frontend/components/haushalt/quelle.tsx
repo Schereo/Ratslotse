@@ -49,9 +49,10 @@ import {
 import { ChevronRight, ExternalLink } from "lucide-react";
 import { QuellenSchluessel, QUELLEN, Quelle } from "@/lib/haushalt-quellen";
 import {
-  belegziel, belegzieleAlle, zielText,
+  belegziel, belegzieleAlle, zielText, vorgangVerb,
   type Belegziel, type DokumenteAntwort, type HaushaltDokumente,
 } from "@/lib/haushalt-dokumente";
+import { datumLang, gremiumKurz } from "@/lib/haushalt-streit";
 import { GlossaryText } from "@/components/glossary-text";
 import { useFetch } from "@/lib/use-fetch";
 import { cn } from "@/lib/utils";
@@ -164,6 +165,30 @@ function Fundstelle({ ziel }: { ziel: Belegziel }) {
   );
 }
 
+/** Der Ratsvorgang hinter dem Dokument — wo die Datenbank ihn kennt.
+ *
+ *  Die Ergänzung zu `Fundstelle`: Die sagt, WO im Papier die Zahl steht, dies
+ *  hier, WANN der Rat darüber entschieden hat. Damit hängt eine Haushaltszahl
+ *  nicht mehr nur an einem PDF, sondern an einem Vorgang, den man
+ *  weiterverfolgen kann.
+ *
+ *  Keine Farbe am Ergebnis — auch nicht rot an „abgelehnt". Der Beleg-Apparat
+ *  berichtet, er bewertet nicht (DESIGNSPRACHE § 7); ein grünes
+ *  „beschlossen" machte aus einer Herkunftsangabe eine Meinung. */
+function Vorgang({ ziel }: { ziel: Belegziel }) {
+  const b = ziel.dokument.beschluss;
+  if (!b || !b.datum) return null;
+  const gremium = b.gremium ? gremiumKurz(b.gremium) : "Der Rat";
+  return (
+    <span className="mt-1 block text-[11px] leading-relaxed text-foreground/80">
+      {gremium} hat das am {datumLang(b.datum)} {vorgangVerb(b.outcome)}
+      {b.vorlage_nr && (
+        <span className="text-muted-foreground"> · Vorlage {b.vorlage_nr}</span>
+      )}
+    </span>
+  );
+}
+
 /** Der Link ans Dokument — oder, wo keines vorliegt, die ehrliche Auskunft.
  *
  *  Beides derselbe Baustein, weil sich beides nur in einem unterscheidet: der
@@ -206,6 +231,7 @@ function QuelleInhalt({ quelle, nr, ziel, imVerzeichnis }: {
         {quelle.fundstelle}
       </span>
       {ziel && <Fundstelle ziel={ziel} />}
+      {ziel && <Vorgang ziel={ziel} />}
       <span className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[9.5px] uppercase tracking-wide text-muted-foreground">
         <span>{quelle.herausgeber}</span>
         <span>·</span>
@@ -293,6 +319,7 @@ export function Quellenverzeichnis({ schluessel }: { schluessel: QuellenSchluess
                   {q.lizenz && (<><span>·</span><span>{q.lizenz}</span></>)}
                 </p>
                 {ziel && <Fundstelle ziel={ziel} />}
+                {ziel && <Vorgang ziel={ziel} />}
                 <Zeile ziel={ziel} quelle={q} />
                 {weitere.length > 0 && (
                   <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5">
