@@ -23,21 +23,28 @@
 // Gesucht und gefiltert wird SERVERSEITIG: Mit dem Steckbrief trägt jede der
 // knapp 400 Zeilen mehrere hundert Zeichen Fließtext.
 //
-// ZWEI FELDER SIND KEIN FLIESSTEXT (Umbau 17.08., dieselbe Einsicht wie beim
-// Beteiligungs-Steckbrief):
+// DREI FELDER DES STECKBRIEFS SIND KEIN FLIESSTEXT (Umbau 17.08., dieselbe
+// Einsicht wie beim Beteiligungs-Steckbrief):
 //
-//  * **„Was dahintersteckt"** ist bei 111 von 507 Produkten länger als 420
-//    Zeichen, im Höchstfall 1.776 — ein einziger Absatz ohne einen
-//    Zeilenumbruch (Naturschutz, P10.554000). Er steht jetzt bis zum ersten
-//    Satzende sichtbar da, der Rest hinter einem Auslöser. Gekürzt wird die
-//    DARSTELLUNG, nie der Wortlaut (H4-A).
-//  * **„Worauf die Aufgabe beruht"** ist eine Aufzählung von Gesetzen, als
-//    Absatz gesetzt. 272 von 515 Einträgen lassen sich verlustfrei in ihre
-//    Glieder zerlegen (Trennung nur an Komma und Semikolon außerhalb von
-//    Klammern) — die stehen jetzt als Liste. Wo die Probe scheitert, weil ein
-//    Glied zu lang ist oder aus bloßen Paragraphen-Nummern besteht
-//    („§§ 2 (3),17,18,42 …"), bleibt der Absatz, wie er ist. Geraten wird
-//    nichts, und kein Wort ändert sich.
+//  * **„Was dahintersteckt"** ist bei 60 von 507 Produkten eine Aufzählung von
+//    Leistungen — der Plan setzt je Zeile eine, beim Auslesen wird daraus ein
+//    Absatz voller „ - " (bis 1.776 Zeichen ohne einen Umbruch, Klimaschutz
+//    und Friedhöfe). Sie steht wieder als Liste. Bleibt der Text Prosa und ist
+//    er länger als 420 Zeichen, ist bis zum ersten Satzende zu sehen und der
+//    Rest hinter einem Auslöser: Gekürzt wird die DARSTELLUNG, nie der
+//    Wortlaut (H4-A).
+//  * **„Für wen"** ist dieselbe Aufzählung in klein und wird ebenso zerlegt —
+//    hier NUR am Spiegelstrich, weil die Kommas innerhalb der Glieder stehen
+//    („Privathaushalte, -personen").
+//  * **„Worauf die Aufgabe beruht"** zählt Gesetze und Satzungen auf, getrennt
+//    durch Komma, Semikolon oder Spiegelstrich; 278 von 515 Einträgen lassen
+//    sich verlustfrei zerlegen und stehen als Liste.
+//
+// Getrennt wird immer nur an Zeichen, die die Quelle selbst setzt, und nie
+// innerhalb von Klammern („EU-Richtlinien (FFH, WRRL, VRL)" bleibt eins).
+// Scheitert eine der Proben — zu wenige Glieder, ein Glied über 130 Zeichen,
+// oder bloße Paragraphen-Nummern wie „§§ 2 (3),17,18,42 …" —, bleibt der
+// Absatz, wie er ist. Geraten wird nichts, und kein Wort ändert sich.
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
