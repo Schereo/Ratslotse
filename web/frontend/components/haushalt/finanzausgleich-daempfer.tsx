@@ -22,7 +22,13 @@
 //  3. **Sie misst das Falsche.** Der Quotient stammt aus wachsender
 //     Bemessungsgrundlage. Die Debatte, in der er zitiert würde, dreht sich um
 //     den Hebesatz — und die Steuerkraftmesszahl wird nach NFAG mit
-//     landeseinheitlichen Nivellierungshebesätzen gebildet.
+//     Nivellierungshebesätzen gebildet, also mit fiktiven statt den
+//     tatsächlichen Sätzen.
+//
+//     NICHT „landeseinheitlich": § 11 NFAG staffelt sie nach Größenklasse —
+//     Gemeinden unter 100.000 Einwohner*innen rechnen mit anderen Sätzen als
+//     die darüber. Das stand hier bis zum 17.08. falsch und widersprach dem
+//     eigenen Hinweis auf `/haushalt/vergleich`, der die Schwelle benennt.
 //
 // Deshalb: Der Mechanismus wird benannt, seine Wirkung nicht beziffert. Diese
 // Komponente rechnet bewusst KEINEN Faktor aus — sie zeigt die beiden Reihen
@@ -227,8 +233,9 @@ export function FinanzausgleichDaempfer({ steuerkraft }: { steuerkraft: Kraft[] 
           Deshalb nennen wir hier <strong>keinen Umrechnungskurs</strong> — kein „von jedem Euro
           bleiben X Cent". Ein einzelnes Jahrespaar ergäbe eine solche Zahl mühelos, sie wäre nur
           im nächsten Jahr eine völlig andere. Dazu kommt: Die Messzahl bildet das Land mit
-          landeseinheitlichen Sätzen. Ein höherer Hebesatz aus Oldenburg schlägt dort also nicht
-          eins zu eins durch — anders als ein echter Zuwachs an Gewinnen und Grundstückswerten.
+          fiktiven Sätzen, die für alle Städte einer Größenklasse gleich sind. Ein höherer
+          Hebesatz aus Oldenburg schlägt dort also nicht eins zu eins durch — anders als ein
+          echter Zuwachs an Gewinnen und Grundstückswerten.
         </p>
       </div>
     </div>

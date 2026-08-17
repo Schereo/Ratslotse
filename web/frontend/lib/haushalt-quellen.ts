@@ -321,9 +321,11 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     fundstelle:
       "Blatt „ST_KR_MESS_VGL“: die Steuerkraftmesszahl jeder niedersächsischen " +
       "Gemeinde, zwei Ausgleichsjahre nebeneinander, dazu die Einwohnerzahl. " +
-      "Berechnet nach § 11 NFAG mit Nivellierungshebesätzen — also für alle " +
-      "Gemeinden mit denselben fiktiven Hebesätzen, damit die Zahl die Steuerbasis " +
-      "misst und nicht die Hebesatzpolitik. " +
+      "Berechnet mit Nivellierungshebesätzen (§ 11 NFAG, amtlich " +
+      "„Steuerkraftzahlen“) — also mit fiktiven statt den tatsächlichen Sätzen, " +
+      "damit die Zahl die Steuerbasis misst und nicht die Hebesatzpolitik. " +
+      "Landeseinheitlich sind sie nicht: Gemeinden unter 100.000 Einwohner*innen " +
+      "rechnen mit anderen Sätzen als die darüber. " +
       "Die Steuerkraft je Einwohner*in ist unsere eigene Division; das Landesamt " +
       "weist sie nicht aus.",
     herausgeber: "Landesamt für Statistik Niedersachsen",
