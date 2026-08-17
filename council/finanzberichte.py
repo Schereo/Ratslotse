@@ -461,6 +461,38 @@ _ERLAEUTERUNG_POSTEN = re.compile(
 #: Jahreszahlen („JA 2020" bliebe stehen).
 _SEITENFUSS = re.compile(r"\s*\bJA\s*\d{1,3}\b\s*")
 
+#: Die nächste nummerierte Abschnittsüberschrift — sie beendet den letzten
+#: Posten.
+#:
+#: Warum es die braucht: Der Erläuterungsteil endet nicht mit einer eigenen
+#: Marke. Für jeden Posten außer dem letzten liefert der nächste Posten das
+#: Ende; der letzte lief bis zum Blockende — und das ist erst die
+#: Finanzrechnungs-Fassung derselben Überschrift, die im Dokument **hinter**
+#: Abschnitt 6.4 steht. Der letzte Posten schluckte damit ganze Folge-
+#: abschnitte: gemessen über alle acht Jahrgänge 5.371–7.176 Zeichen, während
+#: der längste aller übrigen 1.378 hat.
+#:
+#: Die Bedingungen sind einzeln nötig: Ziffernfolge (der Bericht nummeriert
+#: seine Abschnitte), führender Leerraum (sonst greift sie in „1.049.000"),
+#: Großbuchstabe mit kleiner Fortsetzung dahinter (sonst greift sie in
+#: Verweisen wie „unter Ziffer 2.2.1.1 des Rechenschaftsberichts" — dort geht
+#: es klein weiter).
+_NAECHSTER_ABSCHNITT = re.compile(r"\s\d{1,2}(?:\.\d{1,2}){1,3}\s+[A-ZÄÖÜ][a-zäöüß]")
+
+
+def _bis_abschnittsende(text: str) -> str:
+    """Schneidet an der nächsten Abschnittsüberschrift ab.
+
+    Wird auf **jeden** Posten angewandt, nicht nur auf den letzten: Für die
+    übrigen ist es folgenlos (ihr Ende liegt vorher), und die Regel muss nicht
+    wissen, welcher Posten der letzte ist.
+
+    **Probe am Bestand (17.08.2026, alle 45 Zeilen):** greift bei 8 von 8
+    letzten Posten, bei 0 von 37 übrigen. Ein Muster, das auch die kurzen
+    Erläuterungen anschnitte, wäre zu gierig und dürfte nicht bleiben."""
+    m = _NAECHSTER_ABSCHNITT.search(text)
+    return text[:m.start()].rstrip() if m else text
+
 
 def _fliesstext(roh: str) -> str:
     """Erläuterungstext lesbar machen, ohne ihn zu verändern.
@@ -489,7 +521,12 @@ def parse_abweichungsgruende(text: str, jahr: int) -> list[dict]:
 
     Der Abschnitt existiert zweimal je Dokument — einmal für die Ergebnis-,
     einmal für die Finanzrechnung. Gesucht ist die Ergebnisrechnung; erkannt
-    wird sie am entzifferten Überschrifts-Rest, nicht an der Reihenfolge."""
+    wird sie am entzifferten Überschrifts-Rest, nicht an der Reihenfolge.
+
+    Jeder Text endet an der nächsten Abschnittsüberschrift
+    (``_bis_abschnittsende``). Ohne diesen Schnitt lief der **letzte** Posten
+    bis zum Blockende weiter und nahm Abschnitt 6.4 mitsamt Folgeabschnitten
+    mit — der Erläuterungsteil hat keine eigene Schlussmarke."""
     stellen = [m.start() for m in _ERLAEUTERUNG_KOPF.finditer(text)]
     gewaehlt = None
     for i, s in enumerate(stellen):
@@ -519,7 +556,7 @@ def parse_abweichungsgruende(text: str, jahr: int) -> list[dict]:
             "bezeichnung": " ".join(m.group(2).split()),
             "delta_mio": _eur_lose(m.group(4)) * vorzeichen,
             "prozent": _eur_lose(m.group(6)) * vz_prozent,
-            "text": _fliesstext(gewaehlt[m.end():ende]),
+            "text": _bis_abschnittsende(_fliesstext(gewaehlt[m.end():ende])),
         })
     return out
 
