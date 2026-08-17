@@ -47,6 +47,17 @@ const config: Config = {
         breit: { raw: "(min-width: 1024px)" },
         desk: { raw: "(pointer: fine) and (min-width: 1024px)" },
         tab: { raw: "(pointer: coarse) and (min-width: 1024px)" },
+        /* Die Mobil-Schwelle der H4-Boards: unter 744 px stapeln Karten,
+           Konzernkarte und Matrix kippen in ihre Mobil-Form — bewusst NICHT
+           Tailwinds `md` (768), sondern die 744 der Boards (dieselbe Zahl wie
+           `.gb-ablese-leiste` in globals.css). Als BENANNTE Screens, weil die
+           arbiträren `min-[744px]:`-Varianten hier nicht funktionieren:
+           Sobald `screens` raw-Einträge trägt (breit/desk/tab oben), kann
+           Tailwind arbiträre Breiten nicht mehr einsortieren und lässt sie
+           stumm weg — gemessen am 17.08.: die Klasse stand im DOM, CSS gab
+           es keins. */
+        mobil: { raw: "(max-width: 743.98px)" },
+        "ab-tablet": { raw: "(min-width: 744px)" },
       },
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],

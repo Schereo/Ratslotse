@@ -293,6 +293,23 @@ export default function KonzernPage() {
           </ul>
         </section>
 
+        {/* Arbeitsteilung mit Schritt 11 (H4-10-Review): hier das GANZE,
+            dort die Gesellschaften einzeln — gegenseitige Verweis-Karte am
+            Seitenende, auf jedem Gerät. */}
+        <Link href="/haushalt/beteiligungen"
+          className="group flex items-center justify-between gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/40">
+          <span className="min-w-0">
+            <span className="block font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+              Schritt 11 · Was machen die eigentlich?
+            </span>
+            <span className="mt-0.5 block text-[13.5px] font-semibold leading-snug">
+              Die Gesellschaften einzeln — mit Auftrag, Aufsicht und Ergebnis-Verlauf.
+            </span>
+          </span>
+          <ArrowRight size={16} strokeWidth={2}
+            className="flex-none text-primary transition-transform group-hover:translate-x-0.5" />
+        </Link>
+
         <Link href="/haushalt"
           className="group flex items-center gap-2 text-[13px] font-semibold text-primary">
           Zurück zur Übersicht über den Haushalt
