@@ -369,3 +369,60 @@ def test_jahr_grenzt_ein(store):
     _runde_2026(store)
     assert store.haushalt_streit(2026)
     assert store.haushalt_streit(2019) == []
+
+
+# ------------------------------------------------- Das Gedächtnis der Zerlegung
+#
+# Die Seite rechnet bewusst beim Lesen und führt keinen eigenen Datenbestand —
+# damit kann sie nicht veralten. Das Gedächtnis darf diese Zusage nicht
+# aufweichen: Es ist über den INHALT geschlüsselt, also ist ein Treffer
+# dasselbe wie ein Neuberechnen.
+
+def test_gedaechtnis_rechnet_dasselbe_und_nur_einmal(store, monkeypatch):
+    """Zweiter Aufruf: gleiches Ergebnis, ohne noch einmal zu zerlegen."""
+    hd.gedaechtnis_leeren()
+    _runde_2026(store)
+    erste = store.haushalt_streit()
+
+    laeufe = []
+    echt = hd.debatte
+    monkeypatch.setattr(hd, "debatte",
+                        lambda *a, **k: (laeufe.append(1), echt(*a, **k))[1])
+    zweite = store.haushalt_streit()
+
+    assert zweite == erste
+    assert laeufe == []          # nichts wurde noch einmal zerlegt
+
+
+def test_geaendertes_protokoll_wird_neu_gerechnet(store):
+    """Der Kern der Zusage: Ein nachgetragenes Protokoll erscheint sofort.
+
+    Kein Backfill, kein Cron, kein Ungültigmachen — der Schlüssel deckt den
+    Protokolltext ab, also findet ein geänderter Text seinen alten Eintrag
+    gar nicht erst."""
+    hd.gedaechtnis_leeren()
+    _runde_2026(store)
+    vorher = store.haushalt_streit()[0]["stationen"][-1]["debatte"]
+    assert vorher
+
+    # Dasselbe Protokoll, aber ohne die Reden — wie ein Kurzbericht, der
+    # später durch die Langfassung ersetzt wird (hier andersherum).
+    store.save_protocol(
+        11, {"document_id": 11, "url": "https://example.org/p11.pdf"},
+        {"protocol_nr": "01/26"}, "zu 6 Haushalt 2026\nKurzbericht.\n", 22, "test",
+        [{"item_number": "6", "title": "Haushalt 2026", "outcome": "angenommen",
+          "vote": "mehrheitlich"}], ANWESEND)
+
+    nachher = store.haushalt_streit()[0]["stationen"][-1]["debatte"]
+    assert nachher != vorher
+
+
+def test_gedaechtnis_gibt_kopien_heraus(store):
+    """Wer an der Antwort herumschreibt, verdirbt sie nicht für alle."""
+    hd.gedaechtnis_leeren()
+    _runde_2026(store)
+    erste = store.haushalt_streit()[0]["stationen"][-1]["debatte"]
+    erste[0]["name"] = "verbogen"
+
+    zweite = store.haushalt_streit()[0]["stationen"][-1]["debatte"]
+    assert zweite[0]["name"] != "verbogen"

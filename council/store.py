@@ -8443,10 +8443,12 @@ class CouncilStore:
             (ksinr,)).fetchone()
         debatte: list[dict] = []
         if prot and prot["raw_text"] and top:
-            abschnitt = hd.top_abschnitt(hd.saeubern(prot["raw_text"]), top, bis_unterpunkt=True)
             anwesende = [dict(a) for a in self._conn.execute(
                 "SELECT name, party, role FROM council_attendance WHERE ksinr = ?", (ksinr,)).fetchall()]
-            debatte = [b.als_dict() for b in hd.debatte(abschnitt, anwesende)]
+            # Säubern, schneiden, zerlegen — mit Gedächtnis über den Inhalt.
+            # Es bleibt beim Rechnen zur Lesezeit (s. Kopf von `haushalt_streit`);
+            # nur wird dasselbe Protokoll nicht bei jedem Aufruf neu zerlegt.
+            debatte = hd.debatte_zu_top(prot["raw_text"], top, anwesende)
 
         return {
             **st,

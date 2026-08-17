@@ -57,7 +57,9 @@ Zwei Fallen sind hier eingebaut behandelt:
 """
 from __future__ import annotations
 
+import hashlib
 import re
+from collections import OrderedDict
 from dataclasses import dataclass, field
 
 from council.parties import faction_label
@@ -355,6 +357,74 @@ def debatte(abschnitt: str, anwesende: list[dict]) -> list[Wortbeitrag]:
                 beitrag.fraktion_unklar = True
         ergebnis.append(beitrag)
     return ergebnis
+
+
+#: Wie viele zerlegte Debatten gleichzeitig im Gedächtnis bleiben. Ein Aufruf
+#: von ``/haushalt/streit`` fragt rund sechzehn (zwei Stationen je Jahrgang,
+#: acht Jahrgänge); vierundsechzig lassen Luft für parallele Abfragen, ohne
+#: dass der Web-Prozess nennenswert wächst — ein zerlegter Jahrgang sind ein
+#: paar Dutzend Wortbeiträge, keine Protokolle.
+_GEDAECHTNIS_MAX = 64
+_gedaechtnis: OrderedDict[str, list[dict]] = OrderedDict()
+
+
+def _gedaechtnis_schluessel(text: str, top: str, anwesende: list[dict]) -> str:
+    """Ein Fingerabdruck über **alles**, was das Ergebnis bestimmt.
+
+    Genau darauf beruht, dass dieses Gedächtnis nichts veralten lässt: Ändert
+    sich das Protokoll, der Tagesordnungspunkt oder die Anwesenheitsliste,
+    ändert sich der Schlüssel, und es wird neu gerechnet. Ein Eintrag, der
+    nicht mehr stimmen kann, wird also nie gefunden — er muss nicht
+    weggeräumt werden."""
+    h = hashlib.sha256()
+    h.update(text.encode("utf-8"))
+    h.update(b"\x00")
+    h.update(top.encode("utf-8"))
+    for a in anwesende:
+        h.update(b"\x00")
+        h.update(f"{a.get('name')}\x1f{a.get('party')}\x1f{a.get('role')}"
+                 .encode("utf-8"))
+    return h.hexdigest()
+
+
+def debatte_zu_top(text: str, top: str, anwesende: list[dict]) -> list[dict]:
+    """Säubern, Abschnitt schneiden, zerlegen — die drei Schritte, die
+    ``/haushalt/streit`` je Station braucht, mit Gedächtnis über den Inhalt.
+
+    Die Seite rechnet bewusst **beim Lesen** und führt keinen eigenen
+    Datenbestand: Damit kann sie nicht veralten, und ein nachgetragenes
+    Protokoll erscheint ohne Backfill. Das ist richtig und bleibt so — nur
+    kostete es bis 08/2026 bei **jedem** Aufruf rund sechzehn vollständige
+    Ratsprotokolle: fünf Regex-Durchgänge über den ganzen Text, zwei Scans für
+    den Abschnitt, dann die Zerlegung. Die teuerste Seite des Bereichs, und
+    das Ergebnis war jedes Mal dasselbe.
+
+    Ein Gedächtnis über den **Inhalt** löst das, ohne die Zusage aufzugeben:
+    Der Schlüssel deckt Protokolltext, Tagesordnungspunkt und
+    Anwesenheitsliste ab, also alles, woraus gerechnet wird. Ein Treffer ist
+    damit dasselbe wie ein Neuberechnen — nur ohne die Arbeit. Kein Cron,
+    keine Tabelle, kein Backfill und nichts, was ungültig werden könnte.
+
+    Zurück kommen **Kopien**: Die Listen gehen in eine API-Antwort, und ein
+    Aufrufer, der daran herumschreibt, änderte sonst den Eintrag für alle
+    folgenden."""
+    schluessel = _gedaechtnis_schluessel(text, top, anwesende)
+    gemerkt = _gedaechtnis.get(schluessel)
+    if gemerkt is None:
+        abschnitt = top_abschnitt(saeubern(text), top, bis_unterpunkt=True)
+        gemerkt = [b.als_dict() for b in debatte(abschnitt, anwesende)]
+        _gedaechtnis[schluessel] = gemerkt
+        while len(_gedaechtnis) > _GEDAECHTNIS_MAX:
+            _gedaechtnis.popitem(last=False)
+    else:
+        _gedaechtnis.move_to_end(schluessel)
+    return [dict(b) for b in gemerkt]
+
+
+def gedaechtnis_leeren() -> None:
+    """Das Debatten-Gedächtnis vergessen — für Tests, die den Rechenweg
+    selbst prüfen wollen."""
+    _gedaechtnis.clear()
 
 
 def _fraktion_von(person: dict) -> str | None:
