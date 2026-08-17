@@ -311,6 +311,33 @@ export function eigentuemerVon(daten: BeteiligungsDaten | null,
     .sort((a, b) => a.reihenfolge - b.reihenfolge);
 }
 
+/** Der Anteil der Stadt Oldenburg an einer Gesellschaft, in Prozent.
+ *
+ *  Kommt aus der Gesellschaftertabelle des Berichts (`council_gesellschaft_
+ *  eigentuemer`), die nur übernommen wird, wenn ihre Probe hält: Summe der
+ *  Prozente = 100 ± 0,5 UND Summe der Beträge = Stammkapital. Was hier steht,
+ *  ist also gedruckt und nachgerechnet — nicht aus dem Fließtext geschätzt.
+ *
+ *  `null` heißt „der Bericht nennt für diese Gesellschaft keine Quote": bei
+ *  der TGO Besitz führt er statt Anteilseignern nur Entsendungsrechte. Eine
+ *  fehlende Quote als „0 %" zu zeigen wäre eine Falschaussage. */
+export function stadtAnteil(daten: BeteiligungsDaten | null,
+                            gesellschaft: string): number | null {
+  const zeile = eigentuemerVon(daten, gesellschaft)
+    .find((e) => /^Stadt Oldenburg\b/.test(e.name.trim()));
+  return zeile?.anteil_prozent ?? null;
+}
+
+/** Hält die Stadt weniger als die Hälfte?
+ *
+ *  Die Schwelle ist keine Design-Setzung, sondern die Grenze, an der die
+ *  Stadt ihre Mehrheit in der Gesellschafterversammlung verliert. Im Bestand
+ *  trifft das drei Gesellschaften: GSG 34,5 %, GOL 16,67 % und — knapp
+ *  darüber und deshalb NICHT betroffen — die VWG mit 74 %. */
+export function istMinderheit(anteil: number | null): boolean {
+  return anteil !== null && anteil < 50;
+}
+
 /** Das Gewicht einer Zeile im Anteilsstreifen.
  *
  *  Prozent, wo der Bericht Prozent nennt, sonst der Betrag — die Breite ist
@@ -360,13 +387,12 @@ export function sortiert(daten: BeteiligungsDaten | null): Gesellschaft[] {
 
 /** Die drei Formen, die der Bericht selbst unterscheidet.
  *
- *  TODO (Datenpfad): „Minderheitsanteil" als vierte Form braucht die
- *  Beteiligungsquote je Gesellschaft. Die steht im Bericht nur im Fließtext
- *  des Abschnitts „Beteiligungsverhältnisse" und in der Grafik von Abschnitt
- *  2.1 („Beteiligungen im grafischen Überblick") — beides liest
- *  `council/beteiligungsbericht.py` bewusst nicht strukturiert aus (kein
- *  prüfbarer Zahlwert). Erst wenn der Parser eine Quote mit Probe liefert,
- *  bekommt die Karte den Ring; bis dahin wird hier nichts geraten. */
+ *  „Minderheitsanteil" ist bewusst KEINE vierte Form: Eine Rechtsform sagt,
+ *  wie eine Einheit verfasst ist, ein Anteil sagt, wie viel davon der Stadt
+ *  gehört. Beides in eine Aufzählung zu werfen hieße, eine GmbH mit 34 %
+ *  könne keine GmbH mehr sein. Die Quote steht deshalb als eigenes Zeichen
+ *  neben der Form (`stadtAnteil`, `istMinderheit`) — seit die
+ *  Gesellschaftertabelle mit Probe gelesen wird. */
 export type Rechtsform = "eigenbetrieb" | "aoer" | "gesellschaft";
 
 export const RECHTSFORM_TITEL: Record<Rechtsform, string> = {
