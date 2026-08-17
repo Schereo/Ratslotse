@@ -30,7 +30,7 @@ import { useId, useState } from "react";
 import { useBreite } from "@/lib/use-breite";
 import {
   AbleseBeschreibung, AbleseFlaeche, AbleseStelle, Ableseleiste, useAblesen,
-} from "@/components/haushalt/ablesen";
+} from "@/components/grafik/ablesen";
 import { Art, GebautJahr, deMioEuro } from "@/lib/haushalt-gebaut";
 
 const H = 208, Y0 = 168, YTOP = 20;

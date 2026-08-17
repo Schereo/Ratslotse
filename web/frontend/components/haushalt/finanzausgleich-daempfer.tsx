@@ -48,7 +48,7 @@ import { deMio } from "@/lib/haushalt";
 import { Beleg } from "@/components/haushalt/quelle";
 import {
   AbleseBeschreibung, AbleseFlaeche, AbleseStelle, Ableseleiste, useAblesen,
-} from "@/components/haushalt/ablesen";
+} from "@/components/grafik/ablesen";
 
 type Kraft = {
   jahr: number;

@@ -1,6 +1,20 @@
 "use client";
 
-// „Wert am Punkt" — der gemeinsame Ablese-Baustein der Haushalts-Diagramme.
+// <Ableseleiste> — der gemeinsame Ablese-Baustein des Grafik-Baukastens
+// (GB-00): ersetzt Tooltips überall. Desktop Hover, mobil sticky Tap-Zeile,
+// immer Pfeiltasten — eine Implementierung, drei Geräte.
+//
+// Entstanden in der Haushalts-Runde als `components/haushalt/ablesen.tsx`;
+// mit dem Baukasten hierher verallgemeinert. Neu gegenüber der Haushalts-
+// Fassung sind nur zwei Dinge:
+//  * Die STICKY-WERTZEILE (H4-A): unter 744 px bleibt die Leiste am unteren
+//    Rand sichtbar, solange ihre Karte im Bild ist — eingebaut, kein Prop.
+//    Das CSS dazu ist `.gb-ablese-leiste` in `app/globals.css`; der Abstand
+//    zur Tab-Leiste kommt aus `TABLEISTE_HOEHE` (nie eine eigene Zahl).
+//  * `bisectCenter` aus d3-array sucht die nächstgelegene Stelle zum
+//    Zeiger — O(log n) statt Linear-Scan, der Ableseleisten-Helfer aus
+//    GB-15. Voraussetzung: `x(i)` wächst mit i (alle Reihen des Baukastens
+//    laufen von links nach rechts).
 //
 // WARUM EINE LEISTE UND KEIN TOOLTIP.
 // Ein Tooltip ist immer die zweite Wahl: Er existiert nur, solange jemand
@@ -38,7 +52,9 @@
 // darin wären für die Vorlesehilfe unsichtbar. Die Gesamtbeschreibung hängt
 // als `aria-describedby` an einem sr-only-Absatz daneben (`AbleseTexte`).
 
-import { useCallback, useId, useRef, useState } from "react";
+import { useCallback, useId, useRef, useState, type CSSProperties } from "react";
+import { bisectCenter } from "d3-array";
+import { TABLEISTE_HOEHE } from "@/components/nav";
 import { cn } from "@/lib/utils";
 
 export type AbleseWert = {
@@ -94,7 +110,14 @@ export function useAblesen(anzahl: number, standard: number): AbleseSteuerung {
   return { aktiv, gewaehlt: gewaehlt != null, waehle, zuruecksetzen, tastatur, setTastatur };
 }
 
-/** Die Leiste unter dem Diagramm — echter Text, immer sichtbar. */
+/** Die Leiste unter dem Diagramm — echter Text, immer sichtbar.
+ *
+ *  Mobil (unter 744 px) zusätzlich STICKY am unteren Rand (H4-A): Solange
+ *  die Karte im Bild ist, bleibt die Wertzeile über der Tab-Leiste sichtbar —
+ *  wer eine hohe Grafik antippt und wischt, liest den Wert, ohne zu
+ *  scrollen. Der Abstand nach unten ist die Andockkante der Tab-Leiste
+ *  (`TABLEISTE_HOEHE` aus `components/nav.tsx`) plus etwas Luft; das
+ *  Verhalten selbst steht in `.gb-ablese-leiste` (app/globals.css). */
 export function Ableseleiste({ stelle, steuerung, hinweis, className }: {
   stelle: AbleseStelle;
   steuerung: AbleseSteuerung;
@@ -103,7 +126,10 @@ export function Ableseleiste({ stelle, steuerung, hinweis, className }: {
   className?: string;
 }) {
   return (
-    <div className={cn("rounded-xl border border-border bg-muted/40 px-3 py-2", className)}>
+    <div
+      className={cn("gb-ablese-leiste rounded-xl border border-border bg-muted/40 px-3 py-2", className)}
+      style={{ "--gb-ablese-bottom": `calc(${TABLEISTE_HOEHE} + 0.5rem)` } as CSSProperties}
+    >
       <div className="flex flex-wrap items-baseline gap-x-3.5 gap-y-1">
         <span className="font-mono text-[12.5px] font-semibold uppercase tracking-[0.08em] tabular-nums">
           {stelle.titel}
@@ -172,17 +198,18 @@ export function AbleseFlaeche({
   /** Nächstgelegene Stelle zur Zeigerposition. Gerechnet wird über die
    *  gemessene Breite der Fangfläche, nicht über `offsetX`: Die viewBox ist
    *  zwar so breit wie ihr Container (Faktor 1,0), aber der Bruchteil eines
-   *  Pixels und ein künftiges Zoom-Layout dürfen die Zuordnung nicht kippen. */
+   *  Pixels und ein künftiges Zoom-Layout dürfen die Zuordnung nicht kippen.
+   *
+   *  Die Suche selbst ist `bisectCenter` über den (aufsteigenden)
+   *  x-Positionen — der dafür gebaute Griff aus d3-array (GB-15), statt
+   *  eines eigenen Linear-Scans. Ein quadtree wäre zu viel: Die Reihen des
+   *  Baukastens sind eindimensional. */
+  const xs = stellen.map((_, i) => x(i));
   const stelleAn = (klientX: number, el: SVGRectElement): number => {
     const box = el.getBoundingClientRect();
     if (box.width <= 0) return aktiv;
     const sx = xVon + ((klientX - box.left) / box.width) * (xBis - xVon);
-    let beste = 0, abstand = Infinity;
-    for (let i = 0; i < stellen.length; i++) {
-      const d = Math.abs(x(i) - sx);
-      if (d < abstand) { abstand = d; beste = i; }
-    }
-    return beste;
+    return bisectCenter(xs, sx);
   };
 
   const bandBreite = stellen.length > 1

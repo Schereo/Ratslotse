@@ -73,7 +73,7 @@ import { Beleg } from "@/components/haushalt/quelle";
 import {
   AbleseBeschreibung, AbleseFlaeche, AbleseMarke, AbleseStelle, AbleseWert,
   Ableseleiste, useAblesen,
-} from "@/components/haushalt/ablesen";
+} from "@/components/grafik/ablesen";
 
 // saldo aus den ROHWERTEN gerundet, nicht aus den gerundeten Mio. — sonst
 // driftet er um 0,1 (693,9 − 728,2 = −34,3, tatsächlich sind es −34,2).
