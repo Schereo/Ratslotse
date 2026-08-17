@@ -88,7 +88,7 @@ export function Fundstelle({ h, className }: {
       <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
         Woher das stammt
       </p>
-      <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
+      <p className="mt-1 max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
         {h.label ?? "Beteiligungsbericht"}, {h.fundstelle}
         {h.seite ? `, Seite ${h.seite}` : ""}
         {ziel && (

@@ -37,7 +37,13 @@ export function LottiErklaert({
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-primary">
           {titel}
         </p>
-        <p className="mt-1.5 text-[13px] leading-relaxed text-foreground/90">
+        {/* Lesebreite gedeckelt (76ch — die im Bereich vorherrschende, 53×
+            verwendet): Ohne den Deckel lief der Erklärtext auf 1440 px über
+            die volle Kartenbreite, gemessen 127 Zeichen je Zeile, während die
+            Einstiegstexte derselben Seiten bei 66 enden. Lotti steht auf 18
+            Seiten — der Deckel gehört deshalb in die Komponente und nicht 18×
+            an die Aufrufstelle. */}
+        <p className="mt-1.5 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
           <GlossaryText text={text} />
         </p>
       </div>
@@ -69,12 +75,12 @@ export function LottiVergleich({
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-primary">
           Was heißt das pro Kopf?
         </p>
-        <p className="mt-1.5 text-[13px] leading-relaxed text-foreground/90">
+        <p className="mt-1.5 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
           {betragMio.toLocaleString("de-DE", { maximumFractionDigits: 1 })}&#8239;Mio.&nbsp;€ {was} sind{" "}
           <strong>{proKopf.toLocaleString("de-DE")}&nbsp;€ pro Einwohner*in im Jahr</strong>
           {proKopfMonat >= 1 && <> — rund {proKopfMonat.toLocaleString("de-DE")}&nbsp;€ im Monat</>}.
         </p>
-        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+        <p className="mt-1 max-w-[76ch] text-[11px] leading-relaxed text-muted-foreground">
           Unsere Rechnung: Betrag geteilt durch {einwohner.toLocaleString("de-DE")} Einwohner*innen.
           Keine amtliche Kennzahl — die Stadt weist sie so nicht aus.
         </p>
