@@ -54,6 +54,7 @@ sys.path.insert(0, str(ROOT))
 
 from council import herkunft as h  # noqa: E402
 from council import staedtevergleich as sv  # noqa: E402
+from council import steuerkraft as sk  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 
 COUNCIL_DB = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlite")
@@ -98,10 +99,15 @@ def main() -> int:
                     help="derselbe Bericht ein Jahr früher — die Gegenprobe")
     ap.add_argument("--realsteuer", required=True,
                     help="Realsteuervergleich (Datei oder Adresse)")
+    ap.add_argument("--jahrbuch-1103", default=None, metavar="JAHR:TEUR",
+                    help="Gegenprobe: die Zeile „Finanzzuweisungen“ aus Tabelle "
+                         "1103 des Statistischen Jahrbuchs, z. B. 2025:79787. "
+                         "Weicht sie um mehr als 0,5 %% ab, wird nichts "
+                         "geschrieben.")
     args = ap.parse_args()
 
     store = CouncilStore(Path(args.db))
-    geschrieben = {"steuerkraft": 0, "realsteuern": 0}
+    geschrieben = {"steuerkraft": 0, "realsteuern": 0, "finanzausgleich": 0}
     try:
         with tempfile.TemporaryDirectory() as tmp:
             ablage = Path(tmp)
@@ -139,6 +145,51 @@ def main() -> int:
                     stand=neu.stand))
             print(f"  gespeichert: {geschrieben['steuerkraft']} Werte "
                   f"({len(sv.KREISFREIE_STAEDTE)} kreisfreie Städte)")
+
+            # --- Die drei Komponenten der Zuweisung (Blatt 9a) --------------
+            # Dieselbe Datei, zweites Blatt. Sie trägt die Komponente, die in
+            # unserem Open-Data-Bestand fehlt: „Zuweisungen für Aufgaben des
+            # übertragenen Wirkungskreises" (s. council/steuerkraft.py).
+            print("Finanzausgleich, Komponenten (Blatt 9a):")
+            zeilen_fa: list[dict] = []
+            proben: list[str] = []
+            for jahrgang in sk.lies_zuweisungen(str(pfad_neu)):
+                probe_k = sk.probe_komponenten(jahrgang)
+                print(f"  {probe_k['ergebnis']}")
+                if not probe_k["ok"]:
+                    for abw in probe_k["abweichungen"][:8]:
+                        print(f"    ABWEICHUNG {abw['stadt']}: {abw['grund']}")
+                    print("  ÜBERSPRUNGEN: Was seine Probe reißt, kommt nicht "
+                          "in die Datenbank.")
+                    continue
+                zeilen_fa += sk.zeilen_finanzausgleich(jahrgang)
+                proben.append(probe_k["ergebnis"])
+                if args.jahrbuch_1103:
+                    jahr_s, _, wert_s = args.jahrbuch_1103.partition(":")
+                    if jahr_s.strip().isdigit() and int(jahr_s) == jahrgang.jahr:
+                        probe_j = sk.probe_gegen_jahrbuch(jahrgang, float(wert_s))
+                        print(f"  {probe_j['ergebnis']} "
+                              f"— {'geht auf' if probe_j['ok'] else 'REISST'}")
+                        if not probe_j["ok"]:
+                            print("  ABBRUCH: Land und Stadt widersprechen sich.")
+                            return 1
+                        proben.append(probe_j["ergebnis"])
+            if zeilen_fa:
+                geschrieben["finanzausgleich"] = store.save_staedtevergleich(
+                    "finanzausgleich", zeilen_fa,
+                    h.Herkunft(
+                        art="lsn",
+                        probe=["kfa_komponentenprobe", "kfa_jahrbuchabgleich"],
+                        label=f"Kommunaler Finanzausgleich {neu.jahr}, endgültig — "
+                              f"Ergebnis- und Vergleichstabellen",
+                        url=url_neu or QUELLEN_STAND.get(f"kfa{neu.jahr}"),
+                        fundstelle="Blatt „9a“ — Schlüsselzuweisungen für "
+                                   "Gemeinde- und Kreisaufgaben, Zuweisungen für "
+                                   "Aufgaben des übertragenen Wirkungskreises und "
+                                   "Finanzausgleichsumlage je kreisfreier Stadt",
+                        probe_ergebnis=" · ".join(proben),
+                        stand=neu.stand))
+                print(f"  gespeichert: {geschrieben['finanzausgleich']} Werte")
 
             # --- Realsteuervergleich ---
             print("Realsteuervergleich:")

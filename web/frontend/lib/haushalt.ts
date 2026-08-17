@@ -167,6 +167,20 @@ export const SPIELRAUM_TEXT: Record<Spielraum, { kurz: string; lang: string }> =
   },
 };
 
+/** Ein Ausgleichsjahr aus Blatt „9a" der KFA-Tabellen des Landes.
+ *
+ *  Alle Beträge in **Tausend Euro**. Die Jahresangabe ist die des Landes
+ *  (Ausgleichsjahr) — dieselbe, auf die `steuerkraft` seit der
+ *  Jahres-Korrektur am Datensatz 1106 gerückt ist. */
+export type FinanzausgleichJahr = {
+  jahr: number;
+  zuweisungen_gemeindeaufgaben?: number | null;
+  zuweisungen_kreisaufgaben?: number | null;
+  zuweisungen_uebertragener_wirkungskreis?: number | null;
+  finanzausgleichsumlage?: number | null;
+  nettobetrag?: number | null;
+};
+
 export type HaushaltDaten = {
   jahre: Record<string, HaushaltZeile[]>;
   steuern: { jahr: number; art: string; betrag: number | null }[];
@@ -174,6 +188,16 @@ export type HaushaltDaten = {
     jahr: number; messzahl: number | null; messzahl_je_ew: number | null;
     zuweisungen: number | null; zuweisungen_je_ew: number | null;
   }[];
+  /** Die drei Komponenten der Landeszuweisung je Ausgleichsjahr, in **Tausend
+   *  Euro** (so führt das Landesamt sie) — Quelle: LSN, Blatt „9a".
+   *
+   *  Warum das neben `steuerkraft` steht und nicht darin: `steuerkraft.
+   *  zuweisungen` kommt aus dem Open-Data-Datensatz 1106 der Stadt und
+   *  enthält **nur zwei** der drei Komponenten (Gemeinde- plus Kreisaufgaben,
+   *  auf den Euro nachgemessen). Die dritte gibt es nur beim Land. Zwei
+   *  Quellen, zwei Felder — ein gemeinsames Feld verlöre die Auskunft, wer
+   *  welche Zahl veröffentlicht. */
+  finanzausgleich?: FinanzausgleichJahr[];
   /** Jüngste Einwohnerzahl — Bezugsgröße für Pro-Kopf-Einordnungen. */
   einwohner: { jahr: number; einwohner: number } | null;
   /** Ansatz, Plan und Ergebnis je Posten aus den Jahresabschlüssen. */

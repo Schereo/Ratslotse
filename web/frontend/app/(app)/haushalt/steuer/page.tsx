@@ -206,10 +206,15 @@ function SteuerInner() {
       )}
 
       {letzte && einwohner > 0 && (
+        /* „vom Land" stand hier bis 17.08. und war zu weit: Der Betrag ist
+           die Schlüsselzuweisung, also zwei von drei Komponenten des
+           Ausgleichs — die dritte (übertragener Wirkungskreis) fehlt darin
+           und kommt ebenfalls vom Land. Der Satz benennt jetzt, was er
+           teilt; die vollständige Zahl steht auf /haushalt/einnahmen. */
         <LottiVergleich
           betragMio={letzte.betrag / 1e6}
           einwohner={einwohner}
-          was={istZuweisung ? "vom Land" : `aus der ${art.titel}`}
+          was={istZuweisung ? "an Schlüsselzuweisungen vom Land" : `aus der ${art.titel}`}
         />
       )}
 
