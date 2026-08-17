@@ -47,6 +47,7 @@ import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { MarkePille } from "@/components/haushalt/marke";
 import { cn } from "@/lib/utils";
+import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 
 const QUELLEN: QuellenSchluessel[] = ["pruefbericht", "jahresabschluss"];
 
@@ -353,6 +354,8 @@ function PruefungInner() {
         Die Feststellungen stehen im Wortlaut des Berichts; Zeilenumbrüche des PDF-Textes sind
         zusammengezogen, sonst ist nichts verändert.
       </p>
+
+      <SchrittWeiter href="/haushalt/pruefung" />
 
       <Quellenverzeichnis schluessel={QUELLEN} />
     </div>

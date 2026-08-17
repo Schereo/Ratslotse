@@ -59,6 +59,7 @@ import { OutcomeBadge, OutcomeDot } from "@/components/decision-ui";
 import { parteiDot } from "@/components/qa-bausteine";
 import type { DecisionOutcome } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 
 const QUELLEN: QuellenSchluessel[] = ["ratsbeschluss"];
 
@@ -515,6 +516,8 @@ function StreitInner() {
             </li>
           </ul>
         </div>
+
+        <SchrittWeiter href="/haushalt/streit" />
 
         <Quellenverzeichnis schluessel={QUELLEN} />
 

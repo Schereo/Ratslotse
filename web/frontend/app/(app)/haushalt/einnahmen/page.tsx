@@ -23,6 +23,7 @@ import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { FinanzausgleichDaempfer } from "@/components/haushalt/finanzausgleich-daempfer";
 import { cn } from "@/lib/utils";
+import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 
 /** Drei Striche als Spielraum-Marke — gefüllt, halb, gestrichelt.
  *
@@ -238,6 +239,8 @@ export default function EinnahmenPage() {
         Ausgleichsjahr fest, deshalb steht dort auch das laufende Jahr schon mit einem
         festen Betrag — das Jahr an der Zahl sagt, welches gemeint ist.
       </p>
+
+      <SchrittWeiter href="/haushalt/einnahmen" />
 
       <Quellenverzeichnis schluessel={quellen} />
     </div>

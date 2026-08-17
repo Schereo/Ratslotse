@@ -44,6 +44,7 @@ import { SlopePaar, type SlopePaarZeile } from "@/components/grafik/slope-paar";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { GlossaryText } from "@/components/glossary-text";
+import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 
 const QUELLEN = ["lsn_finanzausgleich", "lsn_realsteuern", "vergleich_2018"] as const;
 
@@ -507,6 +508,8 @@ export default function VergleichSeite() {
           <ArrowRight size={14} strokeWidth={2}
             className="transition-transform group-hover:translate-x-0.5" />
         </Link>
+
+        <SchrittWeiter href="/haushalt/vergleich" />
 
         <Quellenverzeichnis schluessel={[...QUELLEN]} />
       </div>

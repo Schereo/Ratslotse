@@ -28,6 +28,7 @@ import { bereichSchluessel } from "@/lib/haushalt-bereiche";
 import {
   HaushaltDaten, HaushaltZeile, bereichSlug, bereiche, deMio, jahreSortiert, mio,
 } from "@/lib/haushalt";
+import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 
 const QUELLEN: QuellenSchluessel[] = ["plan", "steuern", "steuerkraft", "teilhaushalt"];
 
@@ -273,6 +274,8 @@ export default function BereichePage() {
             + "wird jede Aufgabe bezahlt — deshalb lässt sich nicht sagen, welche Einnahme "
             + "welche Ausgabe trägt."} />
         </p>
+
+        <SchrittWeiter href="/haushalt/bereiche" />
 
         <Quellenverzeichnis schluessel={QUELLEN} />
       </div>

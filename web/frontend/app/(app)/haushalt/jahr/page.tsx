@@ -69,6 +69,7 @@ import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { offerIcs } from "@/lib/ics";
 import { toast } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 
 const QUELLEN: QuellenSchluessel[] = ["ratsbeschluss"];
 
@@ -346,6 +347,8 @@ export default function HaushaltsjahrPage() {
         </section>
 
         <Nachlauf />
+
+        <SchrittWeiter href="/haushalt/jahr" />
 
         <Quellenverzeichnis schluessel={QUELLEN} />
       </div>

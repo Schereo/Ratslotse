@@ -47,6 +47,7 @@ import { Einordnung } from "@/components/grafik/einordnung";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { cn } from "@/lib/utils";
+import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 
 const QUELLEN = ["stellenplan"] as const;
 
@@ -434,6 +435,8 @@ export default function PersonalPage() {
           <ArrowRight size={14} strokeWidth={2}
             className="transition-transform group-hover:translate-x-0.5" />
         </Link>
+
+        <SchrittWeiter href="/haushalt/personal" />
 
         <Quellenverzeichnis schluessel={[...QUELLEN]} />
       </div>
