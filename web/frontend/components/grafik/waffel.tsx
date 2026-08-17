@@ -4,7 +4,7 @@
 // Stellen). Die MARKIERTEN Quadrate sind die Abweichung vom Plan — unbesetzte
 // Stellen — und tragen deshalb einen Signal-Orange-UMRISS, nie eine Fläche:
 // Eine unbesetzte Stelle ist weder gut noch schlecht, sie weicht nur vom Plan
-// ab (Bereichsregel, s. components/haushalt/hantel.tsx). Eine orangene
+// ab (Bereichsregel, s. components/grafik/hantel.tsx). Eine orangene
 // Fläche läse sich als Alarm.
 //
 // ZWEI ANGABEN, DIE DIE KOMPONENTE SELBST RENDERT, DAMIT SIE NIEMAND

@@ -11,7 +11,7 @@
 // Der Rest ist dann per Definition „alles Übrige, schon verrechnet".
 //
 // KEINE BEWERTUNGSFARBEN, wie überall im Haushalts-Bereich (siehe
-// components/haushalt/hantel.tsx). Ein großer Konzernanteil ist weder gut
+// components/grafik/hantel.tsx). Ein großer Konzernanteil ist weder gut
 // noch schlecht — er heißt nur, dass die Stadt viel über eigene Betriebe
 // erledigt statt über die Verwaltung. Die beiden Töne sind deshalb zwei
 // Stufen derselben blauen Rampe, nicht Grün gegen Rot.

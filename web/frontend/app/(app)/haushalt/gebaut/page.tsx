@@ -31,7 +31,7 @@
 // gehört der Betrag in den Lücken-Grund; bis dahin bleibt er weg statt
 // hart codiert.
 //
-// KEINE BEWERTUNGSFARBEN (components/haushalt/hantel.tsx). Ein hoher Balken
+// KEINE BEWERTUNGSFARBEN (components/grafik/hantel.tsx). Ein hoher Balken
 // ist keine gute Nachricht und ein niedriger keine schlechte: 2020 steht
 // oben, weil ein zweistelliger Millionenbetrag unter „Sonstige
 // Investitionstätigkeit" fällt — was das ist, sagt die Quelle nicht, und wir

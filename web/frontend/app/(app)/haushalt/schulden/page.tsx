@@ -22,7 +22,7 @@
 // Schuldenaufbau. Deshalb der Umschalter, und deshalb nennt der Fließtext
 // beide Richtungen.
 //
-// KEINE BEWERTUNGSFARBEN (components/haushalt/hantel.tsx). Kein Rot für
+// KEINE BEWERTUNGSFARBEN (components/grafik/hantel.tsx). Kein Rot für
 // „viel". Die beiden größten Sprünge der Reihe zeigen, warum: 2001 fiel die
 // Schuld um 139 Mio., weil die Stadt die Stadtentwässerung abgab — kein
 // Sparerfolg. 2010 sprang eine Spalte um 100 Mio., ohne dass sich die Summe
@@ -87,6 +87,13 @@ export default function SchuldenPage() {
   const kurve = useMemo(() => punkte(reihe, ansicht), [reihe, ansicht]);
   const teilung = useMemo(() => aufteilungen(reihe), [reihe]);
   const luecken = useMemo(() => ohneAufteilung(reihe), [reihe]);
+  // Die Zinslinie in der Kurve (H4-13) — nur in der absoluten Ansicht: Die
+  // Quelle weist keinen Pro-Kopf-Zins aus, und wir dividieren nicht selbst.
+  const zinsreihe = useMemo(
+    () => (ansicht === "insgesamt"
+      ? (data?.zinslast ?? []).map((z) => ({ jahr: z.jahr, wert: z.aufwand / 1e6 }))
+      : undefined),
+    [data, ansicht]);
 
   if (loading) {
     return <div className="py-16 text-center text-sm text-muted-foreground">
@@ -249,7 +256,23 @@ export default function SchuldenPage() {
           />
         </div>
         <section className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
-          <SchuldenKurve punkte={kurve} ansicht={ansicht} />
+          {/* Zinslinie und 2010-Annotation direkt im Bild (H4-13): Was der
+              Bestand im Jahr kostet, auf derselben Skala — und der Knick von
+              2010 mit seiner Erklärung am Ort des Knicks. Der ganze Satz samt
+              Beleg steht darunter in „Zwei Sprünge, die keine Politik waren". */}
+          <SchuldenKurve
+            punkte={kurve}
+            ansicht={ansicht}
+            zweitreihe={zinsreihe}
+            zweitreiheLabel="Zinslast p. a."
+            annotationen={ansicht === "insgesamt" ? [{
+              jahr: 2010,
+              kurz: "108,9 Mio. umgebucht",
+              text: "2010 übertrug die Stadt 108,9 Mio. € Kredite an den neuen "
+                + "Eigenbetrieb Gebäudewirtschaft — eine Spalte sprang, die Summe "
+                + "kaum. Kein Tilgungswunder.",
+            }] : []}
+          />
           {/* Die beiden Richtungen nebeneinander — der Grund, warum es den
               Umschalter überhaupt gibt. Gerechnet, nicht geschrieben. */}
           {gegenlaeufig && (
