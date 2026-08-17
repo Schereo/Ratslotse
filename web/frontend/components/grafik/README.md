@@ -74,6 +74,8 @@ Erklärsatz kompiliert nicht. Gerendert werden sie über `<Einordnung>`.
 | `<Waffel>` (GB-06) | `waffel.tsx` | `gesamt · proQuadrat · markiert {anzahl, grund, stichtag} · einheit · grundLabel`. Markierung immer Signal-**Umriss**, nie Fläche; Stichtag und Rundungszeile rendert die Komponente. 14 Quadrate je Reihe, mobil 10 à 13 px (CSS `.gb-waffel`). Nicht interaktiv, `role="img"`. Einsatz: Personal. |
 | `<Flussbild>` (GB-07) | `flussbild.tsx` | Quellen → **ein** Topf (→ Empfänger). Bewusst KEIN Sankey — kein Band überquert die Mitte, `d3-sankey` bleibt draußen. Mobil kippt es senkrecht (Listen-Fassung, eingebaut); kleine Posten bündeln sich in einen aufklappbaren Sammelposten, Differenz-Bänder nie. Daten und Skala liefert die Seite (Haushalts-Adapter: `components/haushalt/flussbild.tsx`). Einsatz: Übersicht, Einnahmen (geplant). |
 | `<Treemap>` (GB-08) | `treemap.tsx` | `knoten {key, name, wert, gruppe, zusatz?}[] · farbe(gruppe) · buendelnAb · treffer? · aufRest?`. Fläche ∝ Gesamtsumme (`treemapSquarify`, zur Laufzeit), Rest-Kachel ist Pflicht (neutral schraffiert — gebündelt ist keine Lücke). Nur positive Werte; Verworfenes steht als Satz. Unter 520 px Containerbreite rendert sie selbst eine `<RanglisteSchiene>` — gleiche Daten, gleiche Sortierung (H4-A). Einsatz: Investitionen-Explorer. |
+| `<PunkteBilanz>` (GB-09) | `punkte-bilanz.tsx` | `zeilen {fraktion, farbe?, gremien {fa {ein, durch}, rat {ein, durch}}}[] · beleg?`. Verhandlungsbilanz: jeder Punkt eine Abstimmung über eine Änderungsliste, gefüllt = fand Mehrheit. **Fairness als API**: keine Prozent-Prop, Sortierung alphabetisch FEST in der Komponente, Punktgröße 11 px erzwungen, Fraktionsfarbe nur als 8-px-Identitätspunkt. Mobil je Fraktion eine Karte mit FA/RAT-Zeilen. Einsatz: Streit. |
+| `<Zeitstrahl>` (GB-11) | `zeitstrahl.tsx` | `stationen {label, von, bis?, gemessen, offen?, ungefaehr?, href?}[] · heute · termin? {label, datum, quelle: "kalender"}`. Liegender Verfahrens-Strahl (`scaleTime`, d3-time-Ticks) mit „Sie sind hier"-Pin. `gemessen` ist Pflicht je Station — der Strahl behauptet nichts Ungezähltes; `ungefaehr` = Lage aus früheren Jahrgängen gemessen („≈"), `termin` nur aus dem Ratskalender. Unter 744 px kippt er senkrecht, Pin und Termin sortieren sich als eigene Einträge ein (H4-A). Einsatz: Jahr. |
 | `<SlopePaar>` (GB-12) | `slope-paar.tsx` | `paare {label, vorher, nachher, hervorgehoben?}[] · bruchLabel (Pflicht) · vonLabel · bisLabel · einheit`. Ein Slope über einen Systembruch ohne Label ist nicht baubar; „unverändert" wird ausgeschrieben, nie als flache Linie versteckt. Mobil automatisch Delta-Liste, der Bruch bleibt Trennzeile. Einsatz: Vergleich (Grundsteuer-Sprung). |
 | `<Kassenzettel>` (GB-13) | `kassenzettel.tsx` | `posten` · `teiler` (Bezugsgröße + Stichtag + Quelle, sichtbar **unter** dem Zettel) · `bezahltMit` · `nichtAussagen` (**Pflicht** — der Bon reist nie ohne seinen Kasten). Rundungszeile automatisch. Einsatz: Übersicht (Pro-Kopf-Bon). |
 | `<Wasserfall>` (GB-14) | `wasserfall.tsx` | `schritte {label, wert, art: start·abzug·ergebnis}` — Abzüge hängen per `cumsum` (d3-array) an der Laufsumme, kein „schwebender Balken" von Hand. Eingebaute Summenprobe meldet Rechenfehler der Seite; das Ergebnis ist nie rot (Zuschussbedarf ist Daseinsvorsorge). Einsatz: Bereichs-Steckbrief. |
@@ -115,6 +117,11 @@ Regeln:
   senkrecht. Jahr-Pills: mobil Scrollband mit Fade, NIE ein Dropdown.
 - Punkte-Bilanz: gleiche Punktgröße, alphabetisch — Fairness gilt auf
   jedem Gerät.
+
+Der 744-px-Schwellwert steht in den Komponenten als arbiträre Variante
+`[@media(min-width:744px)]:` — Tailwinds `min-[…]`-Kurzform ist in diesem
+Projekt AUS, weil die `screens`-Konfiguration raw-Werte enthält (`breit`/
+`desk`/`tab`) und Tailwind die Varianten dann nicht sortieren kann.
 
 ## Sonst noch Vertrag
 

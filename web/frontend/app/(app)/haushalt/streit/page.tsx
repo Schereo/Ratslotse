@@ -7,8 +7,10 @@
 // Genau das ist der Teil, den kein Open-Data-Portal liefern kann — Zahlen hat
 // jedes, die Debatte hat nur, wer die Protokolle hat.
 //
-// Leserichtung: Jahrgang wählen → wie es ausging → wer was ändern wollte →
-// was gesagt wurde → was hier fehlt → Quellen.
+// Leserichtung (H3-04): Jahrgang wählen → Verhandlungsbilanz (das tragende
+// Bild: Punkte statt Prozente, <PunkteBilanz> aus dem Grafik-Baukasten) →
+// wie es ausging → die Listen im Einzelnen → was gesagt wurde → ohne
+// Zuordnung → was hier fehlt → Quellen.
 //
 // DIE HALTUNG DIESER SEITE ist die schwierigste im ganzen Bereich, weil hier
 // Personen zitiert werden und jede Anordnung eine Aussage ist. Vier Regeln,
@@ -44,12 +46,14 @@ import { ChevronRight, ExternalLink, FileText } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
 import { sessionHref } from "@/lib/routes";
 import {
-  HINWEIS_REDE, StreitAntrag, StreitDaten, StreitStation, StreitWortbeitrag,
-  antragsBilanz, antragsStationen, datumLang, debattenStation, gremiumKurz,
-  jahrgaenge, redenJeFraktion, runde, schlussbeschluss, vorschau,
+  EINZELNE, HINWEIS_REDE, StreitAntrag, StreitDaten, StreitStation, StreitWortbeitrag,
+  antragsStationen, bestand, datumLang, debattenStation, gremiumKurz,
+  jahrgaenge, ohneZuordnung, redenJeFraktion, runde, schlussbeschluss,
+  verhandlungsBilanz, vorschau,
 } from "@/lib/haushalt-streit";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
-import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
+import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
+import { PunkteBilanz, PunkteZeile } from "@/components/grafik/punkte-bilanz";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { OutcomeBadge, OutcomeDot } from "@/components/decision-ui";
 import { parteiDot } from "@/components/qa-bausteine";
@@ -201,8 +205,23 @@ function StreitInner() {
   const debatte = debattenStation(r);
   const schluss = schlussbeschluss(r);
   const antragsSt = antragsStationen(r);
-  const bilanz = antragsBilanz(r);
   const jeFraktion = redenJeFraktion(debatte);
+
+  // Die Verhandlungsbilanz des gewählten Jahrgangs. Kombinierte Labels
+  // (gemeinsame Listen, Gruppen) und „Einzelne Ratsmitglieder" bekommen
+  // KEINEN Parteipunkt — dieselbe Regel wie in <Fraktion> oben.
+  const bilanzZeilen: PunkteZeile[] = useMemo(
+    () => verhandlungsBilanz(r).map((z) => ({
+      fraktion: z.urheber,
+      farbe: z.urheber.includes("/") || z.urheber === EINZELNE
+        ? undefined
+        : parteiDot(z.urheber),
+      gremien: { fa: z.fa, rat: z.rat },
+    })),
+    [r],
+  );
+  const zuordnung = useMemo(() => ohneZuordnung(data ?? null), [data]);
+  const quelle = useMemo(() => bestand(data ?? null), [data]);
 
   if (loading || !data) {
     return <div className="py-16 text-center text-sm text-muted-foreground">Wird geladen …</div>;
@@ -246,14 +265,17 @@ function StreitInner() {
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
             Haushaltsjahr
           </p>
-          <div className="mt-2 flex flex-wrap gap-1.5">
+          {/* H4-A: mobil ein Scrollband (nie ein Dropdown — der Vergleichs-
+              Blick über die Jahre ist der Sinn des Umschalters), ab 744 px
+              passen alle Pillen nebeneinander. */}
+          <div className="scrollbar-none -mx-1 mt-2 flex gap-1.5 overflow-x-auto px-1 pb-0.5 [@media(min-width:744px)]:flex-wrap">
             {jahre.map((j) => (
               <Link
                 key={j}
                 href={`/haushalt/streit?jahr=${j}`}
                 scroll={false}
                 className={cn(
-                  "rounded-full border px-3 py-1 font-mono text-[12px] font-medium tabular-nums transition-colors",
+                  "flex-none rounded-full border px-3 py-1 font-mono text-[12px] font-medium tabular-nums transition-colors",
                   j === jahr
                     ? "border-primary bg-primary text-primary-foreground"
                     : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground",
@@ -270,6 +292,44 @@ function StreitInner() {
             erste Jahrgang, dessen Beratung hier steht.
           </p>
         </div>
+
+        {/* Die Verhandlungsbilanz — das tragende Bild der Seite (H3-04):
+            Punkte statt Prozente, alphabetisch, Finanzausschuss und Rat
+            getrennt. Die Fairness-Regeln stecken in <PunkteBilanz> selbst. */}
+        {bilanzZeilen.length > 0 && (
+          <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+              <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+                Verhandlungsbilanz
+              </h2>
+              <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                Haushalt {jahr}
+              </span>
+            </div>
+            <p className="mt-1 text-[15px] font-bold leading-snug">
+              Wer wollte den Haushalt {jahr} ändern — und kam damit durch?
+            </p>
+            <p className="mt-1 max-w-[66ch] text-[12.5px] leading-relaxed text-muted-foreground">
+              Jeder Punkt ist eine Abstimmung über eine Änderungsliste, gefüllt heißt: fand eine
+              Mehrheit. Die Bilanz sagt, wer ändern wollte — was genau, steckt in Anlagen ohne
+              Volltext und wird nicht behauptet. Eine Erfolgsquote steht hier bewusst nicht:
+              Eingebracht und abgelehnt ist parlamentarischer Alltag der Opposition, kein
+              Zeugnis.
+            </p>
+            <PunkteBilanz
+              className="mt-3"
+              zeilen={bilanzZeilen}
+              beleg={<Beleg q="ratsbeschluss" />}
+            />
+            {quelle.jahrgaenge > 0 && (
+              <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+                Ratsinformationssystem, Änderungslisten und Protokolle {quelle.von}–{quelle.bis}{" "}
+                · {quelle.listen.toLocaleString("de-DE")} Listen ·{" "}
+                {quelle.beitraege.toLocaleString("de-DE")} Wortbeiträge
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Wie es ausging. */}
         {schluss?.beschluss && (
@@ -321,11 +381,11 @@ function StreitInner() {
           </div>
         )}
 
-        {/* Wer was ändern wollte. */}
+        {/* Die Listen im Einzelnen — das Detail hinter der Bilanz. */}
         <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
             <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-              Wer etwas ändern wollte
+              Die Listen im Einzelnen
             </h2>
             <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
               {antragsSt.reduce((n, s) => n + s.antraege.filter((a) => !a.ist_verwaltung).length, 0)}{" "}
@@ -345,23 +405,9 @@ function StreitInner() {
               die Schlussabstimmung über den fertigen Haushalt.
             </p>
           ) : (
-            <>
-              {bilanz.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 border-t border-dashed border-border pt-2.5">
-                  {bilanz.map((b) => (
-                    <span key={b.urheber} className="inline-flex items-center gap-1.5">
-                      <Fraktion label={b.urheber} />
-                      <span className="font-mono text-[10.5px] tabular-nums text-muted-foreground">
-                        {b.angenommen}/{b.angenommen + b.abgelehnt} durchgekommen
-                      </span>
-                    </span>
-                  ))}
-                </div>
-              )}
-              <div className="mt-3 flex flex-col gap-3.5">
-                {antragsSt.map((s) => <StationsAntraege key={s.ksinr} s={s} />)}
-              </div>
-            </>
+            <div className="mt-3 flex flex-col gap-3.5">
+              {antragsSt.map((s) => <StationsAntraege key={s.ksinr} s={s} />)}
+            </div>
           )}
         </div>
 
@@ -397,6 +443,36 @@ function StreitInner() {
             <p className="mt-3 border-t border-dashed border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground">
               {HINWEIS_REDE}
             </p>
+          </div>
+        )}
+
+        {/* Ohne Zuordnung — die Namensvettern-Karte (H3-04). Sie bleibt
+            IMMER sichtbar, sobald Wortbeiträge im Bestand sind: Dass acht
+            Beiträge keine Fraktion tragen, ist eine Eigenschaft des
+            Bestands, kein Kleingedrucktes. Die Zahlen sind gezählt, nicht
+            geschrieben. */}
+        {zuordnung.gesamt > 0 && (
+          <div className="rounded-2xl border border-dashed border-border bg-card p-4 shadow-sm">
+            <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+              Ohne Zuordnung
+            </h2>
+            {zuordnung.ohne > 0 ? (
+              <p className="mt-1.5 max-w-[70ch] text-[12.5px] leading-relaxed text-foreground/85">
+                <strong className="font-semibold">
+                  {zuordnung.ohne} der {zuordnung.gesamt} Wortbeiträge
+                </strong>{" "}
+                aller Jahrgänge tragen keine Fraktion: In der Anwesenheitsliste stehen
+                Namensvettern, und das Protokoll nennt nur den Nachnamen. Sie erscheinen so —
+                es wird keine geraten. Die Sitzungsleitung zählt als Rolle, nicht als Fraktion.
+              </p>
+            ) : (
+              <p className="mt-1.5 max-w-[70ch] text-[12.5px] leading-relaxed text-foreground/85">
+                Derzeit tragen alle {zuordnung.gesamt} Wortbeiträge eine eindeutige Zuordnung.
+                Wo das nicht gelingt — etwa bei Namensvettern in der Anwesenheitsliste —,
+                erscheint ein Beitrag ohne Fraktion; geraten wird keine. Die Sitzungsleitung
+                zählt als Rolle, nicht als Fraktion.
+              </p>
+            )}
           </div>
         )}
 
