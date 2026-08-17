@@ -6032,13 +6032,92 @@ class CouncilStore:
         Beteiligungsberichts tun das), muss ihn genauso falten wie das Lexikon
         selbst. Eine zweite, leicht abweichende Faltung träfe an den Umlauten
         und Titeln nichts mehr — und niemand sähe es, weil ein Fehltreffer wie
-        ein fehlender Eintrag aussieht."""
+        ein fehlender Eintrag aussieht.
+
+        Titel-Erkennung mit abgestreiften Satzzeichen (``-Ing`` → ``ing``):
+        ``_person_slug`` zerlegt an allem, was kein Buchstabe ist, und sah
+        „Ing" deshalb schon immer als Titel — hier zählte der Bindestrich noch
+        mit, und „Prof. Dr.-Ing. Manfred Weisensee" bekam den Vornamen „-ing".
+        Zwei Faltungen desselben Namens dürfen nicht verschiedene Personen
+        sehen: Die eine bildete den Slug ``manfred-weisensee``, die andere
+        hielt ihn für einen Namensvetter von „Prof. Dr.-Ing. Weisensee"."""
         toks = [t for t in anzeige.replace(".", " ").split()
-                if t.lower().rstrip(".") not in cls._HONORIFICS]
+                if t.strip("-–—").lower() not in cls._HONORIFICS]
         if not toks:
             return "", ""
         return (cls._falte_namen(toks[0]) if len(toks) > 1 else "",
                 cls._falte_namen(toks[-1]))
+
+    #: Funktionsangabe des Beteiligungsberichts, die „diese Person sitzt im
+    #: Stadtrat" behauptet — mit optionalem Klammerzusatz, wie ihn der Bericht
+    #: auch anderswo führt („1. Kreisrat (Vorsitzender)").
+    _FUNKTION_RATSMITGLIED = re.compile(r"(?i)^ratsmitglied(\s*\(.*\))?$")
+
+    @staticmethod
+    def _ein_buchstabe_abstand(a: str, b: str) -> bool:
+        """Unterscheiden sich die beiden Zeichenketten um höchstens einen
+        Buchstaben (Levenshtein ≤ 1)? Gleichheit zählt mit."""
+        if abs(len(a) - len(b)) > 1:
+            return False
+        if len(a) == len(b):
+            return sum(x != y for x, y in zip(a, b)) <= 1
+        kurz, lang = (a, b) if len(a) < len(b) else (b, a)
+        i = 0
+        while i < len(kurz) and kurz[i] == lang[i]:
+            i += 1
+        return kurz[i:] == lang[i + 1:]   # ein Zeichen im langen übersprungen
+
+    @classmethod
+    def tippfehler_ratsmitglied(cls, vorname: str, nachname: str,
+                                funktion: str | None,
+                                nach_paar: dict[tuple[str, str], list[dict]]
+                                ) -> dict | None:
+        """Der Beteiligungsbericht schreibt ein Ratsmitglied falsch — welcher
+        Lexikon-Eintrag ist gemeint? ``None``, wenn die Regel nicht greift.
+
+        Der Bericht ist ein gesetztes PDF und hat Druckfehler: „Claudia
+        Oeljeschl**e**ger" (statt -schläger) und „Jens Lükerman" (statt
+        -mann). Beide sitzen im Rat und stehen längst im Verzeichnis; der
+        strenge Abgleich über Vor- UND Nachnamen findet sie trotzdem nicht,
+        und zwei berechtigte Links auf die Personen-Seite gehen verloren.
+
+        Geraten wird trotzdem nicht — geheilt wird nur, wo **alle drei**
+        Bedingungen zusammenkommen:
+
+        1. **Der Bericht nennt die Funktion „Ratsmitglied".** Die Quelle
+           behauptet also selbst, dass diese Person im Stadtrat sitzt; wir
+           suchen dann im Verzeichnis der Ratsmitglieder nach genau der
+           Person, die sie meint. Ohne diese Bedingung liefe die Regel über
+           alle 116 Namen des Berichts — auch über Beschäftigtenvertretungen
+           und Vertreter der Mitgesellschafter, die im Rat gar nichts zu
+           suchen haben und deren Nachname zufällig um einen Buchstaben neben
+           dem eines Ratsmitglieds liegen darf.
+        2. **Der Vorname stimmt exakt.** Ein Druckfehler trifft selten zwei
+           Wörter; zwei verschiedene Menschen unterscheiden sich dagegen fast
+           immer schon im Vornamen. Ohne diese Bedingung würde aus „Meier"
+           ein „Meyer" und aus zwei Familien eine.
+        3. **Der Nachname weicht um höchstens einen Buchstaben ab.** Das ist
+           die Reichweite eines Druckfehlers — ein fehlendes „n", ein „e"
+           statt „ä". Ohne diese Bedingung (etwa bei Abstand 2) fielen
+           „Schmidt" und „Schmitz" zusammen.
+
+        Jede Bedingung für sich wäre zu lose: Funktion allein heilte jeden
+        Verwechsler unter 300 Ratszeilen, Vorname allein jeden Namensvetter,
+        Buchstabenabstand allein jede zufällige Nachbarschaft im Alphabet.
+        Zusammen treffen sie Druckfehler und nicht zwei verschiedene Menschen.
+
+        **Mehr als ein Kandidat heißt gescheitert.** Ein fehlender Link ist
+        ein fehlender Link; ein falscher ist eine Falschaussage über einen
+        namentlich genannten Menschen.
+        """
+        if not vorname or not nachname:
+            return None
+        if not (funktion and cls._FUNKTION_RATSMITGLIED.match(funktion.strip())):
+            return None
+        treffer = [e for (v, n), liste in nach_paar.items()
+                   if v == vorname and cls._ein_buchstabe_abstand(n, nachname)
+                   for e in liste if e.get("art") == "rat"]
+        return treffer[0] if len(treffer) == 1 else None
 
     def personen_lexikon(self) -> list[dict]:
         """Das Personen-Lexikon für die Badges im Antwort-Text (Tims Wunsch
@@ -6048,7 +6127,16 @@ class CouncilStore:
         „Oberbürgermeister"), nicht aus Weltwissen. `aktiv` heißt: in den
         letzten zwölf Monaten in einer Anwesenheitsliste — dieselbe
         selbstheilende Regel wie bei der Parteien-Zeile; Ehemalige zeigen
-        ehrlich nur den belegten Zeitraum."""
+        ehrlich nur den belegten Zeitraum.
+
+        Dritte Quelle (Tims Auftrag 17.08.): die Aufsichtsorgane der
+        städtischen Gesellschaften aus dem Beteiligungsbericht — Landrätin und
+        Kreistagsmitglieder der Gemeinschaftsgesellschaften, Beschäftigten-
+        und Mitgesellschafter-Vertretungen. Sie standen bis dahin namenlos da,
+        weil sie in keiner Anwesenheitsliste des Stadtrats vorkommen. Ihre
+        Rolle ist die **Funktion aus dem Bericht**, ihr Zeitraum sind die
+        **Berichtsjahrgänge**, in denen sie vorkommen — mehr ist nicht belegt
+        (s. :meth:`_beteiligungs_personen`)."""
         from collections import Counter, defaultdict
         from datetime import date, timedelta
         stichtag = (date.today() - timedelta(days=365)).isoformat()
@@ -6106,6 +6194,31 @@ class CouncilStore:
                 "bis": (e["last"] or "")[:4] or None,
             })
 
+        # Dritte Quelle: die Aufsichtsorgane des Beteiligungsberichts. Sie
+        # kommt NACH Rat und Verwaltung, weil sie nur ergänzen darf, was fehlt
+        # — sonst überschriebe ein Aufsichtsratsposten ein Ratsmandat, und aus
+        # der Oberbürgermeisterei würde „Vertreter Mitgesellschafter".
+        # Verglichen wird über das Namenspaar und nicht über den Slug: Das
+        # Verzeichnis führt „Ruth Regina Drügemöller", der Bericht „Ruth
+        # Drügemöller" — verschiedene Slugs, derselbe Mensch. Als zweiter
+        # Eintrag angelegt, gewönne die Bericht-Schreibweise beim Abgleich der
+        # Beteiligungsseite den Stichentscheid und nähme dem Ratsmitglied
+        # seine Personen-Seite weg.
+        bekannt: dict[tuple[str, str], list[dict]] = {}
+        for e in out:
+            if e["vorname"]:
+                bekannt.setdefault((e["vorname"], e["nachname"]), []).append(e)
+        for p in self._beteiligungs_personen():
+            if p["slug"] in gesehen or (p["vorname"], p["nachname"]) in bekannt:
+                continue
+            # Und auch der Druckfehler eines bekannten Ratsmitglieds ist kein
+            # neuer Mensch — sonst stünde „Claudia Oeljeschleger" neben
+            # „Claudia Oeljeschläger" im Verzeichnis.
+            if self.tippfehler_ratsmitglied(p["vorname"], p["nachname"], p["rolle"], bekannt):
+                continue
+            gesehen.add(p["slug"])
+            out.append(p)
+
         # Blocker (Tims Oltmanns-Befund 12.08.): Gäste, Protokollführung und
         # beratende Mitglieder bekommen NIE ein Badge — aber ihr Nachname macht
         # einen kahlen Nachnamen im Text MEHRDEUTIG. „Herr Oltmanns" (Gast vom
@@ -6124,6 +6237,90 @@ class CouncilStore:
                 out.append({"slug": sl, "name": None, "vorname": "", "nachname": nach,
                             "art": "blocker", "partei": None, "rolle": None,
                             "aktiv": False, "von": None, "bis": None})
+        return out
+
+    def _beteiligungs_personen(self) -> list[dict]:
+        """Lexikon-Einträge aus den Aufsichtsorganen des Beteiligungsberichts.
+
+        Was hier steht, steht so im amtlichen, veröffentlichten Bericht —
+        **Name, Funktion und Berichtsjahrgang, sonst nichts.** Keine Partei
+        (der Bericht nennt keine, und aus einem Aufsichtsmandat eine
+        Zugehörigkeit zu folgern wäre erfunden), keine Zusammenführung mit
+        anderen Quellen, keine Anreicherung. Ein Teil dieser Menschen sind
+        Privatpersonen — Betriebsratsvorsitzende, Beschäftigtenvertretungen —,
+        und ein Verzeichniseintrag macht auffindbar, was der Bericht nur
+        abdruckt. Deshalb genau so viel wie belegt und keine Zeile mehr.
+
+        - ``rolle`` ist die **Funktion aus dem Bericht** („Landrätin",
+          „Beschäftigtenvertreter"), die häufigste, wo mehrere dastehen —
+          dieselbe Haltung wie bei den Verwaltungsleuten, deren Amt aus den
+          Protokoll-Notizen kommt statt aus Weltwissen.
+        - ``von``/``bis`` sind **Berichtsjahrgänge**, nicht Amtszeiten: Belegt
+          ist nur, in welchen Berichten die Person vorkommt. Wann sie berufen
+          wurde, sagt der Bericht nicht.
+        - ``aktiv`` heißt „steht im jüngsten eingelesenen Bericht". Die Berichte
+          hinken der Gegenwart um Jahre hinterher; die Zwölf-Monats-Regel der
+          Anwesenheitslisten träfe hier auf niemanden zu und machte jeden
+          amtierenden Aufsichtsrat zum „Ehemaligen".
+
+        Drei Sorten Zeile werden **nicht** zu Personen:
+
+        1. **Entsendungsrechte statt Menschen.** Die TGO Besitz benennt keine
+           Personen, sondern Ansprüche: „Vertreter/in der Landessparkasse zu
+           Oldenburg". Der Schrägstrich ist das Erkennungszeichen des
+           Berichts für diese Form — kein Personenname trägt einen.
+        2. **Namen ohne Vornamen.** „Prof. Dr. Bruder" ist derselbe Mensch wie
+           „Prof. Dr. Ralph Bruder", zwei Zeilen weiter im selben Bericht —
+           aber ein bloßer Nachname ist von einem Namensvetter nicht zu
+           unterscheiden. Dieselbe Regel, aus der die Beteiligungsseite ihre
+           Links zieht (``_lexikon_zuordnung``).
+        3. **Nachnamen unter drei Buchstaben.** Der Bericht ist zweispaltig
+           gesetzt, und der Extrakt bricht gelegentlich mitten im Namen um
+           („Jens Lükerm an", Bericht 2023). Der Badge-Matcher übergeht solche
+           Nachnamen ohnehin — im Verzeichnis wären sie nur ein Mensch, den es
+           nicht gibt.
+        """
+        from collections import Counter, defaultdict
+        try:
+            rows = self._conn.execute(
+                "SELECT bericht_jahr, name, funktion FROM council_gesellschaft_personen "
+                "WHERE name IS NOT NULL AND name != ''").fetchall()
+        except sqlite3.OperationalError:
+            return []
+        if not rows:
+            return []
+        jungster = max(r["bericht_jahr"] for r in rows)
+
+        g: dict = defaultdict(lambda: {"names": Counter(), "rollen": Counter(),
+                                       "first": None, "last": None})
+        for r in rows:
+            name = r["name"]
+            if "/" in name:                      # Entsendungsrecht, kein Mensch
+                continue
+            sl = self._person_slug(name)
+            if not sl:
+                continue
+            e = g[sl]
+            e["names"][name] += 1
+            if r["funktion"]:
+                e["rollen"][r["funktion"]] += 1
+            j = r["bericht_jahr"]
+            e["first"] = j if e["first"] is None else min(e["first"], j)
+            e["last"] = j if e["last"] is None else max(e["last"], j)
+
+        out: list[dict] = []
+        for sl, e in g.items():
+            anzeige = self._person_anzeige(e["names"].most_common(1)[0][0])
+            vor, nach = self.namensteile(anzeige)
+            if not vor or len(nach) < 3:
+                continue
+            out.append({
+                "slug": sl, "name": anzeige, "vorname": vor, "nachname": nach,
+                "art": "beteiligung", "partei": None,
+                "rolle": e["rollen"].most_common(1)[0][0] if e["rollen"] else None,
+                "aktiv": e["last"] == jungster,
+                "von": str(e["first"]), "bis": str(e["last"]),
+            })
         return out
 
     def personen_suchindex(self) -> list[tuple[str, str]]:

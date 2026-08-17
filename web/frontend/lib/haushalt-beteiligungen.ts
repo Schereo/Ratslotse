@@ -49,8 +49,11 @@ export type Aufsichtsperson = {
   vorsitz: "vorsitz" | "stellvertretung" | null;
   /** Klammerzusatz aus dem Bericht, etwa „bis 30. Juni 2022". */
   hinweis: string | null;
-  /** Im Personenverzeichnis gefunden — dann führt der Name auf die
-   *  Personen-Seite. `null` heißt: nicht gefunden, kein Link. */
+  /** Als **Ratsmitglied** im Personenverzeichnis gefunden — dann führt der
+   *  Name auf die Personen-Seite. `null` heißt: kein Link. Das ist mehr als
+   *  „nicht gefunden": Verwaltungsleute und die Aufsichtsorgane selbst stehen
+   *  zwar im Verzeichnis, haben aber keine Seite (nur Mandatsträger*innen
+   *  haben eine) — sie bleiben deshalb bewusst unverlinkt. */
   slug: string | null;
   partei: string | null;
   reihenfolge: number;
