@@ -9,7 +9,8 @@
 // auf den Euro: Ausgleichsjahr 2025 = 51.653 + 17.557 = 69.210 T€,
 // Ausgleichsjahr 2026 = 62.654 + 19.624 = 82.278 T€. Die dritte, „Zuweisungen
 // für Aufgaben des übertragenen Wirkungskreises", steht nur beim Land und ist
-// mit rund 13 % kein Rundungsposten.
+// mit 12–13 % des Ausgleichs kein Rundungsposten. Der Anteil im Text wird
+// gerechnet, nicht geschrieben — er ist je Jahr ein anderer.
 //
 // Warum die alte Zahl trotzdem stehen bleibt: Sie ist nicht falsch, sie ist
 // enger. „Schlüsselzuweisungen" heißen genau die beiden ersten Teile; der

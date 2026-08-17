@@ -21,8 +21,11 @@ Geld, das die Stadt dafür bekommt, dass sie staatliche Aufgaben erledigt
 (Standesamt, Einwohnermeldewesen, Ausländerbehörde, Bauaufsicht). Sie steht in
 keiner städtischen Veröffentlichung, die wir einlesen; sie steht beim Land.
 
-Deshalb ist die Zahl auf unseren Seiten bisher **zu niedrig**, und zwar um
-13 %. Das ist kein Rundungsfehler, das ist eine fehlende Zeile.
+Deshalb ist die Zahl auf unseren Seiten bisher **zu niedrig**: um 10.575 T€
+für 2025 und 11.160 T€ für 2026 — auf den gezeigten Betrag bezogen 15,3 %
+bzw. 13,6 %, gemessen am vollständigen Ausgleich 13,3 % bzw. 11,9 %. Welche
+Bezugsgröße man nimmt, ändert nichts am Befund: Das ist kein Rundungsfehler,
+das ist eine fehlende Zeile.
 
 Die Quelle
 ----------
