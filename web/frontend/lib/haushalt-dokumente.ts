@@ -17,7 +17,7 @@
 // Rückfallebene — aber wo sie greift, heißt der Link auch nicht mehr
 // „Dokument öffnen".
 
-import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
+import type { Jahrgaenge, QuellenSchluessel } from "@/lib/haushalt-quellen";
 
 // Der Ratsvorgang ist kein Typ dieser Seite: Er hängt an `council_herkunft`
 // und kommt an zwei Endpunkten heraus (hier und bei `get_herkunft`). Deshalb
@@ -46,7 +46,13 @@ export type HaushaltDokument = {
 /** Nach Quellenschlüssel. Ein Schlüssel fehlt, wo wir kein Dokument haben. */
 export type HaushaltDokumente = Partial<Record<QuellenSchluessel, HaushaltDokument[]>>;
 
-export type DokumenteAntwort = { dokumente: HaushaltDokumente };
+export type DokumenteAntwort = {
+  dokumente: HaushaltDokumente;
+  /** Je Quelle die Jahrgänge, die wirklich im Bestand stehen — die Grundlage
+   *  des Datenstands im Quellenverzeichnis (s. `standText`). Kommt aus
+   *  derselben Antwort, weil es an derselben Stelle gebraucht wird. */
+  jahrgaenge: Jahrgaenge;
+};
 
 /** Das Dokument, auf das ein Beleg zeigt — samt allem, was danebengeschrieben
  *  gehört.

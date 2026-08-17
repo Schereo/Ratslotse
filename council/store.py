@@ -3852,6 +3852,59 @@ class CouncilStore:
         "stellenplan":          ("council_stellenplan", "jahrgang", None, None),
     }
 
+    #: Jahresquellen, die KEIN Dokument im Ratsinformationssystem haben und
+    #: deshalb nicht in ``_DOKUMENT_QUELLEN`` stehen — Downloads von
+    #: oldenburg.de, Open Data und die Landesstatistik. Für die Frage „welche
+    #: Jahrgänge deckt diese Quelle ab?" zählen sie genauso.
+    _WEITERE_JAHRESQUELLEN: dict[str, tuple[str, str, str | None]] = {
+        "steuern":     ("council_steuern", "jahr", None),
+        "steuerkraft": ("council_steuerkraft", "jahr", None),
+        "einwohner":   ("council_einwohner", "jahr", None),
+        "schulden":    ("council_schulden", "jahr", None),
+        "gebaut":      ("council_investitionen_ist", "jahr", None),
+    }
+
+    def haushalt_jahrgaenge(self) -> dict[str, list[int]]:
+        """Je Quellenschlüssel die Jahrgänge, die **wirklich** im Bestand
+        stehen — aufsteigend, ohne Dubletten.
+
+        Wofür: Das Quellenverzeichnis schrieb seine Datenstände von Hand
+        („Jahresabschlüsse 2017–2024"), einundzwanzig Stück in
+        ``lib/haushalt-quellen.ts``, mit der Bitte im Dateikopf, sie beim
+        Nachziehen eines Haushaltsjahres zu aktualisieren. Genau das passiert
+        naturgemäß nicht zuverlässig: Ein Ingest-Lauf zieht einen Jahrgang
+        nach, die Seite behauptet weiter den alten Stand, und niemand merkt
+        es — die Angabe steht ja nicht neben den Daten, sondern in einer
+        anderen Datei.
+
+        Bewusst **nicht** über ``haushalt_dokumente`` gerechnet: Das dort
+        nötige „hat eine URL" ist eine andere Frage. Ein Jahrgang, der im
+        Bestand steht, dessen Herkunft aber keine Adresse führt, ist für den
+        Datenstand vorhanden und für den Dokumentlink nicht. Wer beides aus
+        einer Abfrage nähme, verschwiege im Datenstand genau die Jahrgänge,
+        die ohnehin schon am dünnsten belegt sind.
+
+        Was hier fehlt, bleibt in der Konstante von Hand gepflegt: Die
+        Ausgabe-Datumsangaben der Statistikstellen („Ausgabe vom 08.07.2026")
+        stehen in keiner Tabelle, und zwei Quellen sind schlicht statisch
+        (eine einzelne Ratsvorlage von 2018; „Sitzungen seit Januar 2018"
+        ohne obere Grenze)."""
+        quellen = {k: (t, j, f) for k, (t, j, f, _) in self._DOKUMENT_QUELLEN.items()}
+        quellen.update(self._WEITERE_JAHRESQUELLEN)
+        aus: dict[str, list[int]] = {}
+        for key, (tabelle, jahrspalte, filter_) in quellen.items():
+            sql = (f"SELECT DISTINCT t.{jahrspalte} AS jahr FROM {tabelle} t"
+                   + (f" WHERE {filter_}" if filter_ else "")
+                   + f" ORDER BY t.{jahrspalte}")
+            try:
+                jahre = [int(r["jahr"]) for r in self._conn.execute(sql)
+                         if r["jahr"] is not None]
+            except sqlite3.OperationalError:
+                continue  # Tabelle oder Spalte gibt es in dieser DB (noch) nicht
+            if jahre:
+                aus[key] = jahre
+        return aus
+
     def haushalt_dokumente(self) -> dict[str, list[dict]]:
         """Je Quellenschlüssel die Dokumente, Jahrgang für Jahrgang.
 

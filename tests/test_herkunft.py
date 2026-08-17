@@ -623,6 +623,52 @@ def test_anlage_ohne_vorgang_erfindet_keinen(tmp_path):
     store.close()
 
 
+# --- Der Datenstand fällt aus dem Bestand ------------------------------------
+
+def test_jahrgaenge_kommen_aus_dem_bestand(tmp_path):
+    """Das Quellenverzeichnis soll seine Jahresspanne nicht mehr behaupten.
+
+    Und zwar getrennt von der Frage, ob ein Dokument verlinkt ist: Ein
+    Jahrgang, der im Bestand steht, dessen Herkunft aber keine Adresse führt,
+    ist für den Datenstand da und für den Dokumentlink nicht. Wer beides aus
+    einer Abfrage nähme, verschwiege im Datenstand genau die Jahrgänge, die
+    ohnehin am dünnsten belegt sind."""
+    store = CouncilStore(tmp_path / "c.sqlite")
+    assert store.haushalt_jahrgaenge() == {}
+
+    with store._conn:
+        store._conn.execute(
+            "INSERT INTO council_haushalt (year, bereich, aufwendungen, is_summe, "
+            " source_url, fetched_at) VALUES (2019, 'Summe', 1.0, 1, NULL, '2026-01-01')")
+        store._conn.execute(
+            "INSERT INTO council_haushalt (year, bereich, aufwendungen, is_summe, "
+            " source_url, fetched_at) VALUES (2020, 'Summe', 1.0, 1, ?, '2026-01-01')",
+            (PLAN_URL,))
+
+    assert store.haushalt_jahrgaenge()["plan"] == [2019, 2020]
+    # Der Dokumentlink kennt nur den Jahrgang mit Adresse — genau der
+    # Unterschied, wegen dem das zwei Abfragen sind.
+    assert [d["jahr"] for d in store.haushalt_dokumente()["plan"]] == [2020]
+    store.close()
+
+
+def test_jahrgaenge_trennen_die_zwei_ebenen_des_abschlusses(tmp_path):
+    """Gesamtrechnung und Teilhaushalte stehen in DERSELBEN Tabelle und sind
+    zwei Quellen mit eigenem Datenstand — die Teilhaushalts-Ebene kann an
+    ihrer Summenprobe scheitern, während die Gesamtrechnung steht."""
+    store = CouncilStore(tmp_path / "c.sqlite")
+    with store._conn:
+        for jahr, thh in ((2022, None), (2023, None), (2022, 7)):
+            store._conn.execute(
+                "INSERT INTO council_ergebnisrechnung (jahr, thh_nr, nr, bezeichnung, "
+                " fetched_at) VALUES (?, ?, 12, 'Erträge', '2026-01-01')", (jahr, thh))
+
+    jahre = store.haushalt_jahrgaenge()
+    assert jahre["jahresabschluss"] == [2022, 2023]
+    assert jahre["ergebnisrechnung_thh"] == [2022]
+    store.close()
+
+
 def test_herkunft_ohne_dokument_bleibt_unberuehrt(tmp_path):
     """Die Schichten von oldenburg.de und vom Landesamt haben keine Anlage —
     sie dürfen an der neuen Abfrage nicht hängenbleiben."""

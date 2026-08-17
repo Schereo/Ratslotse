@@ -47,7 +47,9 @@ import {
   createContext, useContext, useState, type ReactNode,
 } from "react";
 import { ChevronRight, ExternalLink } from "lucide-react";
-import { QuellenSchluessel, QUELLEN, Quelle } from "@/lib/haushalt-quellen";
+import {
+  QuellenSchluessel, QUELLEN, Quelle, standText, type Jahrgaenge,
+} from "@/lib/haushalt-quellen";
 import {
   belegziel, belegzieleAlle, zielText, vorgangVerb,
   type Belegziel, type DokumenteAntwort, type HaushaltDokumente,
@@ -60,12 +62,15 @@ import { cn } from "@/lib/utils";
 type Kontext = {
   schluessel: QuellenSchluessel[];
   dokumente: HaushaltDokumente | undefined;
+  /** Die Jahrgänge je Quelle aus dem Bestand — daraus wird der Datenstand
+   *  gerechnet, statt ihn von Hand zu pflegen (s. `standText`). */
+  jahrgaenge: Jahrgaenge | undefined;
   /** Der Jahrgang, den die Seite gerade zeigt — `null`, wo sie keinen hat. */
   jahr: number | null;
 };
 
 const SeitenQuellen = createContext<Kontext>({
-  schluessel: [], dokumente: undefined, jahr: null,
+  schluessel: [], dokumente: undefined, jahrgaenge: undefined, jahr: null,
 });
 
 /** Die id des Verzeichnisses am Seitenfuß. Es gibt genau eines je Seite —
@@ -105,7 +110,9 @@ export function Quellenkontext({ schluessel, jahr = null, children }: {
   // und die eine, die es vergisst, zeigt wieder auf die Startseite.
   const { data } = useFetch<DokumenteAntwort>("/council/haushalt/dokumente");
   return (
-    <SeitenQuellen.Provider value={{ schluessel, dokumente: data?.dokumente, jahr }}>
+    <SeitenQuellen.Provider value={{
+      schluessel, dokumente: data?.dokumente, jahrgaenge: data?.jahrgaenge, jahr,
+    }}>
       {children}
     </SeitenQuellen.Provider>
   );
@@ -114,7 +121,7 @@ export function Quellenkontext({ schluessel, jahr = null, children }: {
 /** Beleg-Chip direkt an der Zahl. Klick öffnet die Fundstelle. */
 export function Beleg({ q, className }: { q: QuellenSchluessel; className?: string }) {
   const [offen, setOffen] = useState(false);
-  const { schluessel, dokumente, jahr } = useContext(SeitenQuellen);
+  const { schluessel, dokumente, jahrgaenge, jahr } = useContext(SeitenQuellen);
   const quelle = QUELLEN[q];
   const idx = schluessel.indexOf(q);
   // Quelle nicht angemeldet: lieber keinen Chip als eine falsche Nummer.
@@ -140,6 +147,7 @@ export function Beleg({ q, className }: { q: QuellenSchluessel; className?: stri
           <QuelleInhalt
             quelle={quelle} nr={nr}
             ziel={belegziel(dokumente, q, jahr)}
+            jahrgaenge={jahrgaenge?.[q]}
             imVerzeichnis={() => { setOffen(false); zeigeImVerzeichnis(q); }}
           />
         </span>
@@ -219,8 +227,9 @@ function Zeile({ ziel, quelle, klein }: {
   );
 }
 
-function QuelleInhalt({ quelle, nr, ziel, imVerzeichnis }: {
-  quelle: Quelle; nr: number; ziel: Belegziel | null; imVerzeichnis: () => void;
+function QuelleInhalt({ quelle, nr, ziel, jahrgaenge, imVerzeichnis }: {
+  quelle: Quelle; nr: number; ziel: Belegziel | null;
+  jahrgaenge: number[] | undefined; imVerzeichnis: () => void;
 }) {
   return (
     <>
@@ -235,7 +244,7 @@ function QuelleInhalt({ quelle, nr, ziel, imVerzeichnis }: {
       <span className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[9.5px] uppercase tracking-wide text-muted-foreground">
         <span>{quelle.herausgeber}</span>
         <span>·</span>
-        <span>Stand {quelle.stand}</span>
+        <span>Stand {standText(quelle, jahrgaenge)}</span>
         {quelle.lizenz && (<><span>·</span><span>{quelle.lizenz}</span></>)}
       </span>
       <Zeile ziel={ziel} quelle={quelle} klein />
@@ -281,7 +290,7 @@ export function Apparat({ id, kicker, zusatz, children }: {
 
 /** Quellenverzeichnis am Seitenende — die Langfassung aller benutzten Belege. */
 export function Quellenverzeichnis({ schluessel }: { schluessel: QuellenSchluessel[] }) {
-  const { dokumente, jahr } = useContext(SeitenQuellen);
+  const { dokumente, jahrgaenge, jahr } = useContext(SeitenQuellen);
   const genutzt = schluessel;
   if (!genutzt.length) return null;
   return (
@@ -315,7 +324,8 @@ export function Quellenverzeichnis({ schluessel }: { schluessel: QuellenSchluess
                   <GlossaryText text={q.fundstelle} />
                 </p>
                 <p className="mt-1 flex flex-wrap items-center gap-x-2 font-mono text-[9.5px] uppercase tracking-wide text-muted-foreground">
-                  <span>{q.herausgeber}</span><span>·</span><span>Stand {q.stand}</span>
+                  <span>{q.herausgeber}</span><span>·</span>
+                  <span>Stand {standText(q, jahrgaenge?.[k])}</span>
                   {q.lizenz && (<><span>·</span><span>{q.lizenz}</span></>)}
                 </p>
                 {ziel && <Fundstelle ziel={ziel} />}
