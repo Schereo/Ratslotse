@@ -18,32 +18,57 @@
 // Karte im Graustufendruck und in beiden Themes lesbar. Alle drei tragen
 // denselben Rampenton; keine Form ist „besser" als eine andere.
 //
-// TODO (Datenpfad): Beteiligungsquoten („VWG 74 %") und die Beteiligungen
-// UNTER einer Gesellschaft (Klinikum → KMO/KSO/…) stehen im Bericht nur als
-// Fließtext bzw. Grafik in Abschnitt 2.1 — `council/beteiligungsbericht.py`
-// liest beides bewusst nicht strukturiert aus. Bis der Parser Quoten mit
-// Probe liefert, zeigt die Karte Formen ohne Prozentzahl; die
-// Unterbeteiligungen stehen im Steckbrief als Abschnitt „Woran sie selbst
-// beteiligt ist" im Wortlaut.
+// DIE QUOTE STEHT NEBEN DER FORM, NICHT IN IHR: Seit die
+// Gesellschaftertabelle mit Probe gelesen wird (Summe der Prozente = 100 ±
+// 0,5 UND Summe der Beträge = Stammkapital), ist der Anteil der Stadt ein
+// belegter Wert. Er erscheint als Zahl an der Gesellschaft und — wo die Stadt
+// unter 50 % hält — als offener Ring um das Formzeichen. Kein vierter
+// Formtyp: Eine GmbH bleibt eine GmbH, auch wenn der Stadt nur ein Drittel
+// davon gehört.
+//
+// Wo der Bericht keine Quote nennt (TGO Besitz führt statt Anteilseignern
+// Entsendungsrechte), steht KEINE Zahl — nicht „0 %".
+//
+// TODO (Datenpfad): Die Beteiligungen UNTER einer Gesellschaft
+// (Klinikum → KMO/KSO/…) stehen im Bericht nur als Grafik in Abschnitt 2.1;
+// `council/beteiligungsbericht.py` liest sie bewusst nicht aus. Sie stehen
+// im Steckbrief als Abschnitt „Woran sie selbst beteiligt ist" im Wortlaut.
 
 import { cn } from "@/lib/utils";
+import { deZahl } from "@/components/grafik/format";
 import {
-  Gesellschaft, RECHTSFORM_TITEL, Rechtsform, rechtsform,
+  Gesellschaft, RECHTSFORM_TITEL, Rechtsform, istMinderheit, rechtsform,
 } from "@/lib/haushalt-beteiligungen";
+
+/** Quote so anschreiben, wie der Bericht sie druckt: „100 %", aber
+ *  „16,67 %" — die Nachkommastellen fallen nur weg, wo sie null sind. */
+function deProzent(v: number): string {
+  return `${deZahl(v, Number.isInteger(v) ? 0 : 2)} %`;
+}
 
 /** Das Formen-Zeichen — auch die Karten-Liste und die Filter-Chips nutzen es,
  *  damit „Raute = AöR" überall dieselbe Aussage ist. */
-export function FormZeichen({ form, ton: tonProp, className }: {
+export function FormZeichen({ form, ton: tonProp, minderheit = false, className }: {
   form: Rechtsform;
   /** Eigene Farbe (z. B. `currentColor` auf einem gefüllten Chip) —
    *  Vorgabe ist der Rampenton. */
   ton?: string;
+  /** Hält die Stadt weniger als die Hälfte? Dann steht ein offener Ring um
+   *  das Zeichen — gestrichelt, weil „nicht ganz herum" hier die Aussage
+   *  ist. Das ist ein zweites Zeichen neben der Form, keine Bewertung: Ein
+   *  Minderheitsanteil ist nicht schlechter als ein voller, er bedeutet nur
+   *  andere Einflussmöglichkeiten. */
+  minderheit?: boolean;
   className?: string;
 }) {
   const ton = tonProp ?? "var(--hh-ein-0)";
   return (
     <svg viewBox="0 0 14 14" aria-hidden="true"
       className={cn("h-3.5 w-3.5 flex-none", className)}>
+      {minderheit && (
+        <circle cx="7" cy="7" r="6.4" fill="none" strokeWidth="1"
+          strokeDasharray="2.2 1.8" style={{ stroke: ton, opacity: 0.75 }} />
+      )}
       {form === "eigenbetrieb" && (
         <rect x="2.2" y="2.2" width="9.6" height="9.6" rx="1.5" style={{ fill: ton }} />
       )}
@@ -61,9 +86,13 @@ export function FormZeichen({ form, ton: tonProp, className }: {
 /** Reihenfolge der Gruppen = Reihenfolge des Berichts. */
 const GRUPPEN: Rechtsform[] = ["eigenbetrieb", "aoer", "gesellschaft"];
 
-export function Konzernkarte({ gesellschaften, aufGesellschaft, className }: {
+export function Konzernkarte({ gesellschaften, aufGesellschaft, anteil, className }: {
   gesellschaften: Gesellschaft[];
   aufGesellschaft: (key: string) => void;
+  /** Anteil der Stadt je Gesellschaft in Prozent, `null` wo der Bericht
+   *  keinen nennt. Optional, damit die Karte auch ohne Eigentümerdaten
+   *  rendert (alte API, Gesellschaft ohne bestandene Probe). */
+  anteil?: (gesellschaft: string) => number | null;
   className?: string;
 }) {
   const je = new Map<Rechtsform, Gesellschaft[]>();
@@ -100,14 +129,22 @@ export function Konzernkarte({ gesellschaften, aufGesellschaft, className }: {
                   {RECHTSFORM_TITEL[form]} · {liste.length}
                 </p>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {liste.map((g) => (
-                    <button key={g.gesellschaft} type="button"
-                      onClick={() => aufGesellschaft(g.gesellschaft)}
-                      className="inline-flex min-h-[36px] max-w-full items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-1.5 text-left text-[12px] leading-snug transition-colors hover:border-primary/40 mobil:w-full">
-                      <FormZeichen form={form} />
-                      <span className="min-w-0">{g.name}</span>
-                    </button>
-                  ))}
+                  {liste.map((g) => {
+                    const quote = anteil?.(g.gesellschaft) ?? null;
+                    return (
+                      <button key={g.gesellschaft} type="button"
+                        onClick={() => aufGesellschaft(g.gesellschaft)}
+                        className="inline-flex min-h-[36px] max-w-full items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-1.5 text-left text-[12px] leading-snug transition-colors hover:border-primary/40 mobil:w-full">
+                        <FormZeichen form={form} minderheit={istMinderheit(quote)} />
+                        <span className="min-w-0">{g.name}</span>
+                        {quote !== null && (
+                          <span className="flex-none font-mono text-[10.5px] tabular-nums text-muted-foreground">
+                            {deProzent(quote)}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             );
@@ -117,8 +154,10 @@ export function Konzernkarte({ gesellschaften, aufGesellschaft, className }: {
 
       <p className="mt-3 border-t border-border/60 pt-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
         Die Gruppen sind die des Beteiligungsberichts. Wer hier eine eigene Form hat,
-        taucht auf der Schulden-Seite als eigener Rechtsträger auf — Beteiligungsquoten
-        nennt der Bericht nur im Fließtext, deshalb stehen hier keine Prozentzahlen.
+        taucht auf der Schulden-Seite als eigener Rechtsträger auf. Die Prozentzahl ist
+        der Anteil der Stadt aus der Gesellschaftertabelle des Berichts; ein offener Ring
+        um das Zeichen heißt, dass die Stadt weniger als die Hälfte hält. Wo keine Zahl
+        steht, nennt der Bericht für diese Einheit keine Anteilseigner.
       </p>
     </div>
   );

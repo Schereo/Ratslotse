@@ -55,7 +55,7 @@ import { useFetch } from "@/lib/use-fetch";
 import {
   BeteiligungsDaten, Gesellschaft, Kennzahl, RECHTSFORM_TITEL, Rechtsform,
   auftragSatz, einordnungFuer, eur, herkunftVon, rechtsform, reihen, sortiert,
-  wertText,
+  istMinderheit, stadtAnteil, wertText,
 } from "@/lib/haushalt-beteiligungen";
 import type { JahrPunkt } from "@/components/grafik/daten";
 import { deZahl } from "@/components/grafik/format";
@@ -91,6 +91,7 @@ function Karte({ daten, g, onOeffnen }: {
   const einordnung = einordnungFuer(daten, g, ergebnisse);
   const reihe = ergebnisReihe(ergebnisse);
   const von = ergebnisse[0]?.jahr, bis = juengstes?.jahr;
+  const anteil = stadtAnteil(daten, g.gesellschaft);
 
   // Aufbau als Artikel mit aufgespanntem Öffnen-Knopf (kein Block- und kein
   // interaktiver Inhalt IN einem <button> — der Beleg-Chip ist selbst einer).
@@ -103,8 +104,13 @@ function Karte({ daten, g, onOeffnen }: {
 
       <div className="flex items-center justify-between gap-3">
         <span className="inline-flex items-center gap-1.5 font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-          {form && <FormZeichen form={form} className="h-3 w-3" />}
+          {form && <FormZeichen form={form} minderheit={istMinderheit(anteil)} className="h-3 w-3" />}
           {form ? RECHTSFORM_TITEL[form] : "Städtische Einheit"}
+          {/* Die Quote steht nur, wo der Bericht sie nennt — keine „0 %“
+              für Einheiten, deren Gesellschaftertabelle er nicht führt. */}
+          {anteil !== null && (
+            <span className="tabular-nums">· Stadt {deZahl(anteil, Number.isInteger(anteil) ? 0 : 2)} %</span>
+          )}
         </span>
         <span className="font-mono text-[9.5px] uppercase tracking-[0.1em] text-muted-foreground">
           Bericht {g.bericht_jahr}
@@ -257,6 +263,10 @@ function Seite() {
   const oeffne = (key: string) =>
     router.push(`/haushalt/beteiligungen?g=${encodeURIComponent(key)}`);
 
+  // Der Anteil der Stadt je Gesellschaft — aus der Gesellschaftertabelle des
+  // Berichts, die nur mit bestandener Probe im Bestand landet.
+  const quote = (g: string) => stadtAnteil(data, g);
+
   return (
     <Quellenkontext schluessel={[...QUELLEN]} jahr={bericht}>
       {aktiv ? (
@@ -293,11 +303,10 @@ function Seite() {
           </div>
 
           {/* Die Formen-Sprache — einmal erklärt, dann tragen Karte und
-              Karten sie wortlos. TODO (Datenpfad): die vierte Zeile
-              „Minderheitsanteil" braucht Beteiligungsquoten aus
-              council/beteiligungsbericht.py — bis der Parser sie mit Probe
-              liefert, wird hier keine geraten
-              (lib/haushalt-beteiligungen.ts, Rechtsform). */}
+              Karten sie wortlos. Die vierte Zeile ist bewusst KEINE vierte
+              Form, sondern ein zweites Zeichen: Die Rechtsform sagt, wie eine
+              Einheit verfasst ist, der Ring sagt, wie viel davon der Stadt
+              gehört. Eine GmbH bleibt eine GmbH, auch bei 34,5 %. */}
           <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
             <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
               Die Form sagt, wie nah sie der Stadt stehen
@@ -330,13 +339,23 @@ function Seite() {
                   privatrechtlich, die Stadt ist Eigentümerin
                 </dd>
               </div>
+              <div className="flex items-baseline gap-2.5 border-t border-dashed border-border pt-1.5">
+                <dt className="flex flex-none items-center gap-1.5">
+                  <FormZeichen form="gesellschaft" minderheit />
+                  <span className="text-[12.5px] font-semibold">Minderheitsanteil</span>
+                </dt>
+                <dd className="text-[12.5px] leading-relaxed text-muted-foreground">
+                  die Stadt hält weniger als die Hälfte
+                  <Beleg q="beteiligungsbericht" />
+                </dd>
+              </div>
             </dl>
           </div>
 
           {/* Konzernkarte: ab 744 px im Seitenfluss (H4-11); mobil hinter dem
               Auslöser — hinter einem Auslöser, nie ersatzlos (H4-A). */}
           <div className="mobil:hidden">
-            <Konzernkarte gesellschaften={liste} aufGesellschaft={oeffne} />
+            <Konzernkarte gesellschaften={liste} aufGesellschaft={oeffne} anteil={quote} />
           </div>
           <div className="ab-tablet:hidden">
             <button type="button" onClick={() => setKarteOffen(!karteOffen)}
@@ -348,7 +367,8 @@ function Seite() {
               </span>
             </button>
             {karteOffen && (
-              <Konzernkarte className="mt-2" gesellschaften={liste} aufGesellschaft={oeffne} />
+              <Konzernkarte className="mt-2" gesellschaften={liste} aufGesellschaft={oeffne}
+                anteil={quote} />
             )}
           </div>
 
