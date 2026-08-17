@@ -324,13 +324,20 @@ export default function SchuldenPage() {
           </p>
         </section>
 
-        {/* Was hinter den zwei größten Sprüngen steckt. Beides steht als
-            Fußnote in der Quelltabelle — deshalb darf es hier stehen. Ohne
-            diesen Block liest sich die Kurve als Spar- und Schuldenpolitik,
-            und beides wäre falsch. */}
+        {/* Was hinter den größten Sprüngen steckt. Alles steht als Fußnote in
+            der Quelltabelle — deshalb darf es hier stehen. Ohne diesen Block
+            liest sich die Kurve als Spar- und Schuldenpolitik, und beides wäre
+            falsch.
+
+            DIE LETZTEN ZWEI PUNKTE STEHEN NUR IN DER PRO-KOPF-ANSICHT, weil
+            sie nur dort etwas verzerren: Sie liegen im NENNER. In der
+            Gesamtsumme kommen sie nicht vor, und sie dort zu erwähnen hieße,
+            einen Sprung zu behaupten, den man nicht sieht. */}
         <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            Zwei Sprünge, die keine Politik waren
+            {ansicht === "insgesamt"
+              ? "Zwei Sprünge, die keine Politik waren"
+              : "Drei Sprünge, die keine Politik waren"}
           </p>
           <ul className="mt-2 flex max-w-[76ch] list-disc flex-col gap-1.5 pl-4 text-[13px] leading-relaxed text-foreground/90">
             <li>
@@ -346,7 +353,33 @@ export default function SchuldenPage() {
               Kreditportfolios. Dieselbe Stadt, dieselben Schulden, andere
               Spalte.<Beleg q="schulden" />
             </li>
+            {ansicht === "je_einwohner" && (
+              <li>
+                <strong>2023 sank der Betrag je Einwohner*in um 36&nbsp;€ — obwohl
+                die Schulden stiegen.</strong> Der Zensus 2022 zählte 4.079 Menschen
+                mehr, als die Statistik bis dahin fortgeschrieben hatte. Dieselbe
+                Schuld auf mehr Schultern ergibt einen kleineren Betrag; die
+                Gesamtsumme wuchs im selben Jahr von 281,5 auf
+                281,9&#8239;Mio.&nbsp;€.<Beleg q="schulden" />
+              </li>
+            )}
           </ul>
+          {ansicht === "je_einwohner" && (
+            /* Der Vollständigkeit halber, aber NICHT als vierter Aufzählungspunkt:
+               2012 wirkte dieselbe Mechanik, trug aber nur 30 der 125 € — den Rest
+               hat die Stadt wirklich aufgenommen. Als gleichrangiger Punkt neben
+               2023 gelistet, würde das eine Verzerrung behaupten, die es so nicht
+               gab. Die Zahlen sind aus der Reihe selbst gerechnet (Betrag geteilt
+               durch Pro-Kopf-Wert ergibt den Nenner, den die Statistik benutzt). */
+            <p className="mt-2.5 max-w-[76ch] text-[12px] leading-relaxed text-muted-foreground">
+              Alle zehn Jahre zählt eine Volkszählung die Einwohner*innen neu, und
+              die Statistik rechnet ab da mit der neuen Zahl. 2012 wirkte das
+              ebenfalls, aber schwächer: Von den +125&nbsp;€ jenes Jahres gehen rund
+              30&nbsp;€ auf den Zensus 2011 zurück, die übrigen 95&nbsp;€ auf echte
+              Kredite. In der Ansicht „Insgesamt" kommt keiner dieser beiden
+              Nenner-Effekte vor.
+            </p>
+          )}
         </section>
 
         {/* Die Aufteilung — nur wo sie belegt ist. */}
