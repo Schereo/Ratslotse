@@ -212,6 +212,15 @@ PROBEN: dict[str, str] = {
         "Die Teilhaushalte ergeben zusammen genau die Summenzeile, die dieselbe "
         "Datei ausweist — in beiden Spalten, bei den Einzahlungen wie bei den "
         "Auszahlungen.",
+    # Die Ist-Investitionen aus den Tabellen 1107/1107-1 des Statistischen
+    # Jahrbuchs (council/investitionen_ist.py). Die einzige Probe, die diese
+    # Tabelle hergibt — es gibt keine Pro-Kopf-Spalte, keine zweite Ausgabe und
+    # keinen Spiegel im Open-Data-Portal, gegen die sich gegenprüfen ließe. Was
+    # sie reißt, wird deshalb ganz verworfen und nicht halb übernommen.
+    "investitionen_ist_zeilensumme":
+        "Die Auszahlungsarten des Jahres — Baumaßnahmen, Grundstücke, "
+        "bewegliches Vermögen und die übrigen — ergeben zusammen genau den "
+        "Betrag, den dieselbe Zeile daneben als Summe ausweist.",
     # Investitionsprogramm, Anlage 004 des Haushaltsplans
     # (council/investitionsprogramm.py). Drei Proben, die das Dokument selbst
     # rechnet; erst wenn alle drei aufgehen, kommt ein Jahrgang herein. Die
@@ -310,6 +319,11 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     "council_investitionen",
     # Die einzelnen Vorhaben aus Anlage 004 des Haushaltsplans — ebenso.
     "council_investitionsmassnahmen",
+    # Und das Ist dazu, die Rechnungsergebnisse aus dem Statistischen Jahrbuch.
+    # Zwei Tabellen, weil die Arten je Jahrgang verschieden viele sind: die
+    # Summe steht in der einen, die Aufteilung in der anderen.
+    "council_investitionen_ist",
+    "council_investitionen_ist_arten",
     # Der Stellenplan — ebenso.
     "council_stellenplan",
     # Die Schuldenzeitreihe aus dem Statistischen Jahrbuch — ebenfalls neu und

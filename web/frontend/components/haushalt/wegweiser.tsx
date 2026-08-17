@@ -30,20 +30,28 @@
 //
 //   1–6   Die Zahlen      Woher das Geld kommt, wohin es geht, was fest ist,
 //                         was einzelne Aufgaben kosten, wer sie tut — und was
-//                         gebaut wird.
-//   7–8   Die Gegenprobe  Ein Haushalt ist ein Plan; was daraus wurde, steht
-//                         im Jahresabschluss, und geprüft wird er auch.
-//   9–12  Der Rahmen      Der Kernhaushalt ist rund zwei Drittel der Stadt,
+//                         gebaut werden soll.
+//   7–9   Die Gegenprobe  Ein Haushalt ist ein Plan; was daraus wurde, steht
+//                         im Jahresabschluss und in den Rechnungsergebnissen,
+//                         und geprüft wird er auch.
+//   10–13 Der Rahmen      Der Kernhaushalt ist rund zwei Drittel der Stadt,
 //                         Oldenburg steht nicht allein da, und was aus allen
 //                         Jahren zusammen offen blieb, sind die Schulden.
-//   13–15 Mitreden        Wann entschieden wird, worüber gestritten wurde,
+//   14–16 Mitreden        Wann entschieden wird, worüber gestritten wurde,
 //                         und was sich drehen ließe.
 //
-// „Was machen die eigentlich?" kam 08/2026 als Schritt 10 dazu und steht
+// „Was machen die eigentlich?" kam 08/2026 als Schritt 11 dazu und steht
 // **direkt hinter dem Gesamtabschluss**, weil es dieselbe Gesellschaft von
-// der anderen Seite zeigt: Schritt 9 sagt, wie viel Klinikum, Busse und Bäder
-// bewegen, Schritt 10 sagt, was sie damit tun und wer sie beaufsichtigt. Vor
+// der anderen Seite zeigt: Schritt 10 sagt, wie viel Klinikum, Busse und Bäder
+// bewegen, Schritt 11 sagt, was sie damit tun und wer sie beaufsichtigt. Vor
 // dem Gesamtabschluss gelesen wäre es eine Liste von Firmennamen ohne Anlass.
+//
+// „Was wurde davon wirklich gebaut?" kam 08/2026 als Schritt 8 dazu und steht
+// **direkt hinter „Geplant und geworden"**: Beide sind dieselbe Gegenprobe,
+// nur für den jeweils anderen Haushalt — der Ergebnishaushalt hat seine in
+// `plan-ist`, der Finanzhaushalt hier. Vor der Prüfung, weil die sich auf
+// beide bezieht. Es ist zugleich die Seite, die Schritt 6 („Was wird
+// gebaut?") erst zu einer Aussage macht: Dort steht der Plan, hier das Ist.
 //
 // „Was wird gebaut?" kam 08/2026 dazu — mit der ersten Schicht, die den
 // FINANZhaushalt liest. Es steht am Ende der Zahlen-Stufe und nicht vorn, weil
@@ -57,7 +65,7 @@
 //    die griffigste Seite, beantwortet aber eine Frage, die erst Sinn ergibt,
 //    wenn man weiß, dass der größte Teil des Geldes gar nicht zur Disposition
 //    steht. Das stand schon in der zweiten Runde hier und gilt weiter.
-//  * **Der Städtevergleich steht spät (Schritt 11), nicht vorn.** „Steht
+//  * **Der Städtevergleich steht spät (Schritt 12), nicht vorn.** „Steht
 //    Oldenburg besser da als Osnabrück?" ist eine Frage, die sich erst stellt,
 //    wenn man die eigenen Zahlen kennt — und die Seite selbst besteht zur
 //    Hälfte aus der Begründung, warum der Vergleich bei den Ausgaben nicht
@@ -67,13 +75,13 @@
 //    ist der letzte Schritt, nicht der zweite: Vorher fehlt der Bezug, an dem
 //    sich ablesen ließe, ob eine Bewegung viel ist.
 //
-//  * **Die Schulden stehen am Ende des Rahmens (Schritt 12), nicht bei den
+//  * **Die Schulden stehen am Ende des Rahmens (Schritt 13), nicht bei den
 //    Zahlen.** Sie sind die einzige Bestandsgröße im ganzen Weg: nicht was in
 //    einem Jahr floss, sondern was aus allen Jahren zusammen offen blieb. Vorn
 //    gelesen wäre das eine weitere Jahreszahl unter vielen; hinter dem Konzern
 //    gelesen hat der Leser gerade erfahren, dass „die Stadt" zwei verschiedene
 //    Abgrenzungen hat — und genau davon hängt ab, welche Schuldenzahl gilt.
-//  * **„Der Streit ums Geld" steht zwischen Terminplan und Labor (Schritt 14).**
+//  * **„Der Streit ums Geld" steht zwischen Terminplan und Labor (Schritt 15).**
 //    Die Seite zeigt als einzige des Bereichs keine Zahlen, sondern die
 //    Auseinandersetzung um sie — Änderungslisten, Abstimmungen, Wortbeiträge
 //    aus den Protokollen. Sie gehört hinter „Wann wird das entschieden?",
@@ -81,17 +89,24 @@
 //    und vor das Labor, weil man erst weiß, worum gestritten wurde, bevor man
 //    selbst an den Schrauben dreht.
 //
-// **Zwei Seiten schreiben ihre Nummer selbst in den Kicker** und müssen
+// **Fünf Seiten schreiben ihre Nummer selbst in den Kicker** und müssen
 // deshalb mitgeändert werden, wenn sich die Reihenfolge hier ändert — sonst
-// widersprechen sich zwei Seiten still: `/haushalt/personal` („Schritt 5") und
-// `/haushalt/konzern` („Schritt 9") und `/haushalt/beteiligungen`
-// („Schritt 10"). Genau das ist mehrfach passiert und jedes Mal
-// Male nachgezogen worden: „Was wird gebaut?" schob den Konzern von 7 auf 8,
-// der Stellenplan von 8 auf 9. Die Schulden-Seite hängt aus demselben Grund
-// HINTER dem Städtevergleich und nicht zwischen ihm und dem Konzern: Dort
-// eingefügt schöbe sie beide Nummern ein drittes Mal weiter. „Der Streit ums
-// Geld" (08/2026) steht aus demselben Grund in der LETZTEN Stufe: Alles, was
-// dort dazukommt, liegt hinter allen drei Kicker-Nummern und lässt sie in Ruhe.
+// widersprechen sich zwei Seiten still: `/haushalt/personal` („Schritt 5"),
+// `/haushalt/gebaut` („Schritt 8"), `/haushalt/konzern` („Schritt 10"),
+// `/haushalt/beteiligungen` („Schritt 11") und `/haushalt/streit`
+// („Schritt 15"). Genau das ist mehrfach passiert und jedes Mal nachgezogen
+// worden: „Was wird gebaut?" schob den Konzern von 7 auf 8, der Stellenplan
+// von 8 auf 9, „Was wurde davon wirklich gebaut?" (08/2026) alles ab der
+// Prüfung noch einmal um eins. Seit 17.08. hält
+// `tests/test_haushalt_schritte.py` die geschriebenen Nummern gegen die
+// gerechneten — die Kommentare in dieser Datei prüft er allerdings NICHT, die
+// bleiben Handarbeit.
+//
+// Die Schulden-Seite hängt aus demselben Grund HINTER dem Städtevergleich und
+// nicht zwischen ihm und dem Konzern: Dort eingefügt schöbe sie beide Nummern
+// ein weiteres Mal. „Der Streit ums Geld" (08/2026) steht aus demselben Grund
+// in der LETZTEN Stufe: Alles, was dort dazukommt, liegt hinter allen anderen
+// Kicker-Nummern und lässt sie in Ruhe.
 //
 // **Warum der Stellenplan zwischen „Was kostet …?" und „Was wird gebaut?"
 // steht:** Er beantwortet „wer macht die Arbeit?" — eine Frage, die sich erst
@@ -101,14 +116,14 @@
 // er sie lesbar macht: Unbesetzte Stellen sind eine der Erklärungen dafür,
 // dass Personalausgaben im Jahresabschluss unter dem Plan bleiben können.
 //
-// **Zwei der siebzehn Unterseiten haben bewusst keinen Schritt.**
+// **Zwei der achtzehn Unterseiten haben bewusst keinen Schritt.**
 // `/haushalt/bereich` und `/haushalt/steuer` sind Steckbriefe: Sie brauchen
 // einen Query-Parameter und öffnen ohne ihn den Vorgabefall. Als eigener
-// Schritt stünde ein beliebiger Bereich neben fünfzehn Fragen. Sie werden am
-// Fuß benannt, damit die Zählung „fünfzehn Schritte, siebzehn Unterseiten"
+// Schritt stünde ein beliebiger Bereich neben sechzehn Fragen. Sie werden am
+// Fuß benannt, damit die Zählung „sechzehn Schritte, achtzehn Unterseiten"
 // nicht wie eine Lücke aussieht. (Die Übersicht `/haushalt` selbst ist kein
 // Ziel dieses Wegweisers — von dort kommt man ja. Sie zählt nur beim
-// Umgebungs-Gate mit, das alle achtzehn Seiten deckt: `lib/haushalt-frei.ts`.)
+// Umgebungs-Gate mit, das alle neunzehn Seiten deckt: `lib/haushalt-frei.ts`.)
 //
 // FORM: eine Karte, nicht zehn. Zehn Karten sind auf 375 px eine Liste ohne
 // Ende — die Stufen wären zwischen ihnen untergegangen, und genau sie sind
@@ -128,7 +143,7 @@
 import Link from "next/link";
 import {
   ArrowLeftRight, BookOpenText, Building2, CalendarDays, ChevronRight, Coins,
-  GitCompareArrows, HardHat, Landmark, MessagesSquare, Receipt, Scale,
+  GitCompareArrows, Hammer, HardHat, Landmark, MessagesSquare, Receipt, Scale,
   SearchCheck, SlidersHorizontal, Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -192,6 +207,16 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         Icon: GitCompareArrows,
         titel: "Geplant und geworden",
         text: "Was am Jahresende wirklich zusammenkam — aus den Jahresabschlüssen.",
+      },
+      {
+        // Direkt hinter „Geplant und geworden": Das ist dieselbe Gegenprobe,
+        // nur für den anderen Haushalt. Der Ergebnishaushalt hat seine in
+        // `plan-ist`, der Finanzhaushalt hier. Vor der Prüfung, weil die sich
+        // auf beide bezieht.
+        href: "/haushalt/gebaut",
+        Icon: Hammer,
+        titel: "Was wurde davon wirklich gebaut?",
+        text: "Was am Jahresende tatsächlich abgeflossen ist — seit 2003, nach Auszahlungsart.",
       },
       {
         href: "/haushalt/pruefung",
@@ -342,7 +367,7 @@ export function Wegweiser() {
       ))}
 
       {/* Ohne diesen Satz sähen die Schritte nach einer Lücke aus: Der
-          Bereich hat siebzehn Unterseiten. Die beiden übrigen sind Steckbriefe
+          Bereich hat achtzehn Unterseiten. Die beiden übrigen sind Steckbriefe
           und brauchen einen Bereich bzw. eine Einnahmeart, über die man sie
           aufruft — als Schritt stünde dort ein beliebiger Einzelfall. */}
       <p className="mt-3.5 border-t border-dashed border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground">

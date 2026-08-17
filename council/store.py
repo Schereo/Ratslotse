@@ -1144,6 +1144,47 @@ class CouncilStore:
             "revidiert INTEGER NOT NULL DEFAULT 0, "   # „r" der Quelle
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
         )
+        # Was die Stadt in einem Jahr WIRKLICH investiert hat — Tabellen 1107
+        # (2003–2009) und 1107-1 (2010–2025) des Statistischen Jahrbuchs.
+        # Beträge in Euro; die Quelle rechnet in Tausend Euro.
+        #
+        # NICHT ZU VERWECHSELN mit `council_investitionen`: Das sind die
+        # PLANZAHLEN aus dem Finanzhaushalt des Haushaltsplans, gegliedert nach
+        # Teilhaushalten. Hier stehen die Rechnungsergebnisse, gegliedert nach
+        # Auszahlungsarten. Die beiden Summen sind verschieden abgegrenzt und
+        # dürfen nicht voneinander abgezogen werden — die Begründung steht im
+        # Kopf von `council/investitionen_ist.py`.
+        #
+        # `regelwerk` ist der Grund für die eigene Spalte statt einer stillen
+        # Annahme: Zum 01.01.2010 stellte die Stadt von kameraler auf doppische
+        # Buchführung um, und das Dokument trennt seine beiden Tabellen genau
+        # dort — mit eigener Fußnote. Eine Kurve, die über 2009/2010 hinweg
+        # durchzieht, behauptet eine Vergleichbarkeit, die die Quelle bestreitet.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_investitionen_ist ("
+            "jahr INTEGER PRIMARY KEY, "
+            "regelwerk TEXT NOT NULL, "        # kameral | doppik
+            "insgesamt REAL NOT NULL, "        # die ausgewiesene Summenspalte
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
+        )
+        # Die Aufteilung nach Auszahlungsart — eigene Tabelle, weil die Zahl
+        # der Arten vom Regelwerk abhängt (kameral vier, doppisch sechs) und
+        # eine gemeinsame Spalte für „bewegliches Vermögen" zwei Begriffe aus
+        # zwei Rechnungswesen unter einen Namen zwänge.
+        #
+        # `titel` reist mit der Zeile, statt im Frontend zu stehen: Die
+        # Legende soll nicht in zwei Sprachen existieren, und die Überschrift
+        # ist eine Angabe der Quelle wie der Betrag selbst.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_investitionen_ist_arten ("
+            "jahr INTEGER NOT NULL, "
+            "feld TEXT NOT NULL, "             # Schlüssel aus investitionen_ist.SPALTEN
+            "titel TEXT NOT NULL, "            # die Überschrift der Quelle
+            "reihenfolge INTEGER NOT NULL, "   # Spaltenfolge der Tabelle
+            "betrag REAL NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, feld))"
+        )
         # Vorlagen-Volltexte semantisch auffindbar machen: je Vorlage mehrere
         # Chunk-Vektoren (Sachverhalt/Begründung), die die Hybrid-Suche auf die
         # zugehörigen Beschlüsse abbildet. text_hash = SHA-256 des Volltexts —
@@ -1346,6 +1387,11 @@ class CouncilStore:
         # Altspalten. Der Eintrag muss trotzdem stehen — `_herkunft_nachtragen`
         # schlägt hier nach, bevor es merkt, dass es nichts nachzutragen gibt.
         "council_investitionsmassnahmen": (None, "quelle_url", "ris"),
+        # Das Ist-Gegenstück aus dem Statistischen Jahrbuch — anders als Plan
+        # und Programm kommt es weder vom Portal noch aus dem RIS, sondern von
+        # oldenburg.de.
+        "council_investitionen_ist":       (None, "quelle_url", "stadt"),
+        "council_investitionen_ist_arten": (None, "quelle_url", "stadt"),
         # Der Stellenplan — ebenfalls neu und ohne Altbestand.
         "council_stellenplan":          (None, "quelle_url", "ris"),
         # Und die Schuldenzeitreihe aus dem Statistischen Jahrbuch.
@@ -4605,6 +4651,130 @@ class CouncilStore:
         except sqlite3.OperationalError:
             return []
         return [dict(r) for r in rows]
+
+    # --- Ist-Investitionen (Tabellen 1107/1107-1 des Jahrbuchs) -------------
+
+    def save_investitionen_ist(self, zeilen: list[dict], herkunft) -> int:
+        """Investitions-Jahrgänge ersetzen — je Jahr eine Zeile plus ihre Arten.
+
+        Ersetzt wird **nur, was die Lieferung mitbringt**, nicht die ganze
+        Tabelle: Ein Lauf, dem ein Jahrgang an der Probe durchgefallen ist,
+        darf den vorher gespeicherten Stand dieses Jahrgangs nicht mit
+        wegräumen (derselbe Grund wie bei ``save_schulden``).
+
+        Die Arten eines Jahrgangs werden vorher gelöscht statt nur überschrieben:
+        Wechselte die Quelle ihren Spaltenschnitt, bliebe eine abgeschaffte Art
+        sonst als Karteileiche stehen und die Aufteilung summierte sich auf
+        mehr als die Summe daneben.
+
+        Übergeben wird nur, was seine Probe bestanden hat — diese Methode
+        prüft nichts nach, sie schreibt."""
+        from council import investitionen_ist as _ii
+
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_investitionen_ist "
+                "(jahr, regelwerk, insgesamt, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?)",
+                [(z["jahr"], z["regelwerk"], z["insgesamt"], hid, now)
+                 for z in zeilen])
+            self._conn.executemany(
+                "DELETE FROM council_investitionen_ist_arten WHERE jahr = ?",
+                [(z["jahr"],) for z in zeilen])
+            arten = []
+            for z in zeilen:
+                spalten = _ii.SPALTEN[z["regelwerk"]]
+                for i, (feld, titel) in enumerate(spalten[:-1]):
+                    if z.get(feld) is None:
+                        continue
+                    arten.append((z["jahr"], feld, titel, i, z[feld], hid, now))
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_investitionen_ist_arten "
+                "(jahr, feld, titel, reihenfolge, betrag, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?)", arten)
+        return len(zeilen)
+
+    def get_investitionen_ist(self) -> list[dict]:
+        """Die Ist-Reihe, aufsteigend nach Jahr, mit ihrer Aufteilung.
+
+        Je Jahrgang ein dict mit ``arten`` — den Auszahlungsarten in der
+        Spaltenfolge der Quelle. Fehlt die Tabelle (frische Datenbank ohne
+        Ingest-Lauf), ist die Antwort leer statt ein Fehler."""
+        try:
+            rows = [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_investitionen_ist ORDER BY jahr")]
+            arten = [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_investitionen_ist_arten "
+                "ORDER BY jahr, reihenfolge")]
+        except sqlite3.OperationalError:
+            return []
+        je_jahr: dict[int, list[dict]] = {}
+        for a in arten:
+            je_jahr.setdefault(a["jahr"], []).append(
+                {"feld": a["feld"], "titel": a["titel"], "betrag": a["betrag"]})
+        for r in rows:
+            r["arten"] = je_jahr.get(r["jahr"], [])
+        return rows
+
+    def investitionen_ist_jahre(self) -> list[int]:
+        """Welche Jahrgänge im Bestand stehen — der Bestandsschutz vergleicht
+        gegen diese Zahl, bevor ein Lauf sie überschreibt."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT jahr FROM council_investitionen_ist ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    def investitionen_ist_kontext(self) -> dict | None:
+        """Was die Stadt zuletzt wirklich investiert hat — für die KI-Frage.
+
+        Wenige Zeilen statt Bestand, wie bei allen Geld-Bausteinen: der
+        jüngste Jahrgang mit seiner Aufteilung, das Vorjahr als Maßstab und
+        der höchste Stand der doppischen Reihe.
+
+        **Nur die doppische Reihe.** Die kameralen Jahrgänge bis 2009 zählen
+        etwas anderes (s. ``council/investitionen_ist.py``); in einem
+        Prompt-Baustein nebeneinander wären sie eine Einladung, sie zu einer
+        Reihe zu addieren.
+        """
+        from council import investitionen_ist as _ii
+
+        try:
+            rows = [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_investitionen_ist "
+                "WHERE regelwerk = 'doppik' ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return None
+        if not rows:
+            return None
+        neu = rows[-1]
+        try:
+            arten = [(r["titel"], r["betrag"]) for r in self._conn.execute(
+                "SELECT titel, betrag FROM council_investitionen_ist_arten "
+                "WHERE jahr = ? ORDER BY reihenfolge", (neu["jahr"],))]
+        except sqlite3.OperationalError:
+            arten = []
+        hoch = max(rows, key=lambda r: r["insgesamt"])
+        # Welche Jahre die Quelle ankündigt, aber nicht belegt — die Lücke
+        # gehört in den Kontext, sonst liest ein Modell die Reihe als
+        # lückenlos und rechnet Durchschnitte über ein Loch.
+        fehlend = [j for j in range(rows[0]["jahr"], neu["jahr"] + 1)
+                   if j not in {r["jahr"] for r in rows}]
+        return {
+            "jahr": neu["jahr"],
+            "insgesamt": neu["insgesamt"],
+            "arten": arten,
+            "davor": ({"jahr": rows[-2]["jahr"], "insgesamt": rows[-2]["insgesamt"]}
+                      if len(rows) > 1 else None),
+            "hoch": ({"jahr": hoch["jahr"], "insgesamt": hoch["insgesamt"]}
+                     if hoch["jahr"] != neu["jahr"] else None),
+            "reihe_ab": rows[0]["jahr"],
+            "fehlend": fehlend,
+            "abgrenzung": _ii.ABGRENZUNG,
+            "beleg": self._beleg(neu.get("herkunft_id")),
+        }
 
     def schulden_jahre(self) -> list[int]:
         """Welche Jahrgänge im Bestand stehen."""

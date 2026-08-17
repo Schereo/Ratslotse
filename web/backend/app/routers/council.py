@@ -2396,6 +2396,68 @@ def haushalt_vergleich(
     }
 
 
+@router.get("/haushalt/gebaut")
+def haushalt_gebaut(
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Was die Stadt wirklich investiert hat — Tabellen 1107/1107-1 des
+    Statistischen Jahrbuchs.
+
+    Das **Ist** zu den Planzahlen von ``/haushalt/investitionen``. Beide
+    Endpunkte bleiben getrennt, und zwar nicht aus Bequemlichkeit: Der Plan ist
+    nach Teilhaushalten gegliedert, das Ist nach Auszahlungsarten und
+    ausdrücklich auf die Kernverwaltung begrenzt. Kein Dokument stellt die
+    beiden Summen nebeneinander; eine gemeinsame Antwort lüde dazu ein, sie
+    voneinander abzuziehen und das Ergebnis „Umsetzungsquote" zu nennen — eine
+    Zahl, die in keiner Quelle steht (``council/investitionen_ist.py``).
+
+    ``regelwerk`` trennt die beiden Tabellen, und das ist die tragende Angabe
+    dieser Antwort: Zum 01.01.2010 stellte die Stadt von kameraler auf
+    doppische Buchführung um. Das Dokument trennt seine Reihen genau dort und
+    begründet es in einer Fußnote. Wer über diesen Schnitt hinweg eine Linie
+    zieht, behauptet eine Vergleichbarkeit, die die Quelle bestreitet.
+
+    ``fehlend`` nennt die Jahre, die **innerhalb** einer Reihe fehlen, weil
+    ihre Zeilensumme im Dokument selbst nicht aufgeht. Anders als bei den
+    Schulden gibt es hier keine zweite, unabhängige Probe, die wenigstens die
+    Summe trüge — also fällt der ganze Jahrgang, und die Oberfläche kann die
+    Lücke **benennen**, statt sie als Null zu zeichnen oder still zu
+    überspringen.
+    """
+    from council import investitionen_ist as _ii
+
+    reihe = store.get_investitionen_ist()
+    ids = sorted({z["herkunft_id"] for z in reihe if z["herkunft_id"] is not None})
+
+    # Lücken je Regelwerk: Was zwischen dem ersten und dem letzten belegten
+    # Jahrgang einer Reihe fehlt, fehlt nachweislich — dafür braucht es die
+    # Spanne aus dem Titel nicht. (Fiele der JÜNGSTE angekündigte Jahrgang
+    # durch, sähe man ihn hier nicht; das steht dann im Beleg-Messwert der
+    # Herkunft, den derselbe Lauf schreibt.)
+    fehlend: dict[str, list[int]] = {}
+    for regelwerk in _ii.REGELWERK:
+        jahre = sorted(z["jahr"] for z in reihe if z["regelwerk"] == regelwerk)
+        if len(jahre) < 2:
+            continue
+        luecke = [j for j in range(jahre[0], jahre[-1] + 1) if j not in set(jahre)]
+        if luecke:
+            fehlend[regelwerk] = luecke
+
+    return {
+        "reihe": reihe,
+        "jahre": [z["jahr"] for z in reihe],
+        "abgrenzung": _ii.ABGRENZUNG,
+        # Wie die beiden Rechnungswesen heißen — damit die Beschriftung nicht
+        # in zwei Sprachen existiert (dieselbe Entscheidung wie bei `arten`
+        # in /haushalt/schulden).
+        "regelwerke": [{"schluessel": k, "titel": t}
+                       for k, t in _ii.REGELWERK.items()],
+        "fehlend": fehlend,
+        "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
+    }
+
+
 @router.get("/haushalt/schulden")
 def haushalt_schulden(
     _user: dict = Depends(require_active),

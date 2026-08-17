@@ -309,7 +309,7 @@ function Seite() {
           <div className="flex items-end justify-between gap-5">
             <div className="min-w-0">
               <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-                Stadtfinanzen Oldenburg · Schritt 10
+                Stadtfinanzen Oldenburg · Schritt 11
               </p>
               <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
                 Was machen die eigentlich?
