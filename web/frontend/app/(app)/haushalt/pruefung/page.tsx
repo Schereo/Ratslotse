@@ -15,22 +15,34 @@
 //   Legende des jeweiligen Berichts. Ein Hinweis ist etwas anderes als eine
 //   Beanstandung, und die große Mehrheit sind Hinweise. Das steht oben, nicht
 //   im Kleingedruckten.
-// - Keine Bewertungsfarben (siehe components/haushalt/marke.tsx).
+// - Keine Bewertungsfarben (siehe components/haushalt/marke.tsx). Die Matrix
+//   markiert B/WB in Signal-Orange — als Abweichungs-KATEGORIE des Berichts
+//   (GB-10), nicht als Urteil von uns.
 // - Wo die Verwaltung geantwortet hat, steht die Antwort daneben.
 //
-// Leserichtung: Was ist das → wie viel ist es → was heißen die Marken → was
-// steht seit Jahren offen (die eigentliche Nachricht) → Bericht für Bericht.
+// SEIT H3-05 IST DIE WIEDERHOLUNGS-MATRIX DAS BILD DER SEITE: Feststellung ×
+// Jahr (<KettenMatrix>, GB-10), denn die Wiederholungen sind die Geschichte —
+// was seit Jahren angemahnt wird, steht als Kette. Der Jahrgang 2024 fehlt
+// ersatzlos (PDF ohne Zeichenzuordnung); dieser Satz gehört auf die Seite,
+// und die Spalte bleibt trotzdem stehen — die Komponente erzwingt sie in
+// jeder Zeile. Das Board ist zugleich der Dunkelmodus-Nachweis der Serie:
+// alles hier rechnet in Theme-Tokens, keine Sonderfarbe.
+//
+// Leserichtung: Was ist das → wie viel ist es (Zähler-Trio) → was heißen die
+// Marken → was steht seit Jahren offen (die Matrix) → Bericht für Bericht.
 
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useMemo } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ChevronRight, ExternalLink } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
 import {
-  Feststellung, PruefberichtDaten, belegLink, markenZaehlen, markeRang,
+  Feststellung, Kette, PruefberichtDaten, belegLink, markenZaehlen, markeRang,
   nachAbschnitt, wiederholungsketten,
 } from "@/lib/haushalt-pruefung";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
+import { KettenMatrix, type MatrixKette } from "@/components/grafik/ketten-matrix";
+import { LueckenFeld } from "@/components/grafik/luecken-feld";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { MarkePille } from "@/components/haushalt/marke";
@@ -84,45 +96,43 @@ function FeststellungsZeile({ f, zeigeJahr = false }: { f: Feststellung; zeigeJa
   );
 }
 
-/** Kettenband: je Jahrgang eine Zelle mit der Marke, die der Abschnitt dort
- *  trug — leer, wo der Bericht nichts vermerkt hat. Das ist der ganze Punkt
- *  einer „wiederholten Beanstandung": Man sieht die Reihe, nicht nur das Wort. */
-function Kettenband({ jahre, eintraege }: { jahre: number[]; eintraege: Feststellung[] }) {
-  return (
-    <div className="scrollbar-none -mx-0.5 flex gap-1 overflow-x-auto px-0.5 py-0.5">
-      {jahre.map((jahr) => {
-        const hier = eintraege.filter((f) => f.jahr === jahr)
-          .sort((a, b) => markeRang(a.marke) - markeRang(b.marke));
-        const marke = hier[0]?.marke;
-        const schwer = marke === "B" || marke === "WB";
-        return (
-          <div key={jahr} className={cn(
-            "flex flex-none flex-col items-center rounded-lg border px-2 py-1",
-            marke ? (schwer ? "border-foreground/25 bg-card" : "border-border bg-card") : "border-dashed border-border",
-          )}>
-            <span className={cn(
-              "font-mono text-[11px] leading-none",
-              schwer ? "font-bold text-foreground" : "text-muted-foreground",
-            )}>
-              {marke ?? "·"}
-            </span>
-            <span className="mt-1 font-mono text-[9px] leading-none text-muted-foreground">{jahr}</span>
-          </div>
-        );
-      })}
-    </div>
-  );
+/** Der Grund, warum ein Jahrgang fehlt — die eine Lücke des Bestands, als
+ *  ganzer Satz (H3-05: „Dieser Satz gehört auf die Seite"). */
+const LUECKEN_GRUND = "fehlt ersatzlos: Das PDF trägt keine Zeichenzuordnung, "
+  + "eine zweite Kopie existiert nicht. Die Spalte bleibt trotzdem stehen — "
+  + "als Lücke, nicht als Null.";
+
+/** Die Wiederholungsketten in den Vertrag der <KettenMatrix> (GB-10)
+ *  übersetzen: je Jahr höchstens eine Zelle, und zwar die SCHWERSTE Marke
+ *  des Abschnitts in diesem Jahrgang (WB vor B vor K vor H). */
+function alsMatrixKetten(ketten: Kette[], jahreAnzahl: number): MatrixKette[] {
+  return ketten.map((k) => {
+    const zellen: { jahr: number; marke: string }[] = [];
+    for (const jahr of k.jahre) {
+      const hier = k.eintraege.filter((f) => f.jahr === jahr)
+        .sort((a, b) => markeRang(a.marke) - markeRang(b.marke));
+      if (hier[0]) zellen.push({ jahr, marke: hier[0].marke });
+    }
+    return {
+      key: k.schluessel,
+      titel: k.titel,
+      untertitel: `in ${k.beanstandet.length} von ${jahreAnzahl} Berichten beanstandet`
+        + (k.beanstandet.length ? ` · zuletzt ${k.beanstandet.at(-1)}` : ""),
+      zellen,
+    };
+  });
 }
 
 function PruefungInner() {
   const gewaehltesJahr = Number(useSearchParams().get("jahr")) || null;
   const { data, loading } = useFetch<PruefberichtDaten>("/council/haushalt/pruefberichte");
-  const [offen, setOffen] = useState<string | null>(null);
 
   const jahre = data?.jahre ?? [];
   const jahr = gewaehltesJahr && jahre.includes(gewaehltesJahr) ? gewaehltesJahr : jahre.at(-1) ?? null;
   const alle = useMemo(() => data?.feststellungen ?? [], [data]);
   const ketten = useMemo(() => wiederholungsketten(alle), [alle]);
+  const matrixKetten = useMemo(
+    () => alsMatrixKetten(ketten, jahre.length), [ketten, jahre.length]);
   const zahl = useMemo(() => markenZaehlen(alle), [alle]);
   const gruppen = useMemo(() => (jahr ? nachAbschnitt(alle, jahr) : []), [alle, jahr]);
 
@@ -140,7 +150,8 @@ function PruefungInner() {
 
   const marken = Object.keys(data.legende).sort((a, b) => markeRang(a) - markeRang(b));
   const hinweise = zahl["H"] ?? 0;
-  const beanstandungen = (zahl["B"] ?? 0) + (zahl["WB"] ?? 0);
+  const beanstandungen = zahl["B"] ?? 0;
+  const wiederholt = zahl["WB"] ?? 0;
 
   return (
     <Quellenkontext schluessel={QUELLEN} jahr={jahr}>
@@ -152,29 +163,50 @@ function PruefungInner() {
       </div>
 
       <div>
-        <h1 className="font-display text-2xl font-bold tracking-tight sm:text-[25px]">
-          Was das Rechnungsprüfungsamt beanstandet
+        <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+          Rechnungsprüfungsamt · {jahre[0]}–{jahre.at(-1)}
+        </p>
+        {/* Die Überschrift wird gerechnet, nicht geschrieben — ein fester
+            Satz wäre beim nächsten Jahrgang still falsch. */}
+        <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[25px]">
+          {alle.length} Feststellungen — {wiederholt} kehren Jahr für Jahr wieder
         </h1>
         <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-foreground/90">
           Jeder Jahresabschluss der Stadt wird geprüft — von einer eigenen Stelle, die dem Rat
           berichtet und nicht der Verwaltungsspitze untersteht. Ihre Befunde stehen in einem
-          Schlussbericht, der als Anlage an einer Ratsvorlage hängt. Hier sind sie einzeln
-          aufgeführt, im Wortlaut und mit der Fundstelle.
+          Schlussbericht, der als Anlage an einer Ratsvorlage hängt. Die Wiederholungen sind
+          die Geschichte: Was seit Jahren angemahnt wird, steht hier als Kette — und der
+          Wortlaut bleibt das Zentrum.
         </p>
       </div>
 
-      {/* Wie viel ist es — und wovon das meiste. */}
+      {/* Wie viel ist es — das Zähler-Trio (H3-05), mobil als 3er-Raster
+          (H4-09). Die drei Zahlen sind die Marken selbst: H, B und WB —
+          erst darunter erklärt der Satz, was sie bedeuten. */}
       <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
           {jahre.length} geprüfte Jahresabschlüsse · {jahre[0]}–{jahre.at(-1)}
         </p>
-        <p className="mt-2 max-w-[70ch] text-[15px] leading-relaxed text-foreground/90">
-          In diesen Berichten stehen{" "}
-          <strong>{alle.length} Feststellungen</strong><Beleg q="pruefbericht" />. Die große
-          Mehrheit sind <strong>{hinweise} Hinweise</strong> — Dinge, die künftig zu beachten
-          sind. Als Beanstandung, also als bedeutsamer Mangel, sind{" "}
-          <strong>{beanstandungen}</strong> ausgewiesen, davon {zahl["WB"] ?? 0} als wiederholt:
-          ein Mangel, der schon in einem Vorjahr festgestellt und noch nicht ausgeräumt war.
+        <div className="mt-2.5 grid grid-cols-3 gap-2">
+          {([
+            { wert: hinweise, name: "Hinweise" },
+            { wert: beanstandungen, name: "Beanstandungen" },
+            { wert: wiederholt, name: "wiederholt" },
+          ] as const).map((t) => (
+            <div key={t.name} className="rounded-xl bg-muted/45 px-3 py-2.5">
+              <p className="font-display text-[26px] font-bold leading-none tracking-tight tabular-nums">
+                {t.wert}
+              </p>
+              <p className="mt-1 text-[11.5px] leading-snug text-muted-foreground">{t.name}</p>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 max-w-[70ch] text-[13px] leading-relaxed text-foreground/90">
+          In den Berichten stehen <strong>{alle.length} Feststellungen</strong>
+          <Beleg q="pruefbericht" />. Die große Mehrheit sind Hinweise — Dinge, die künftig zu
+          beachten sind. Eine Beanstandung meint einen bedeutsamen Mangel; „wiederholt" ist
+          die eigene Aussage des Amts, dass ein Mangel aus einem Vorjahr noch nicht
+          ausgeräumt war.
         </p>
         <div className="mt-3 flex flex-wrap gap-1.5 border-t border-border/60 pt-3">
           {marken.map((m) => (
@@ -214,12 +246,15 @@ function PruefungInner() {
         text="Das Rechnungsprüfungsamt gehört zur Stadt, arbeitet aber für den Rat und nicht für die Verwaltungsspitze. Es schaut jedes Jahr nach, ob der Jahresabschluss stimmt und ob nach den Regeln gewirtschaftet wurde. Ein Hinweis ist dabei kein Vorwurf, sondern eine Notiz für das nächste Mal — erst eine Beanstandung meint einen bedeutsamen Mangel."
       />
 
-      {/* Die eigentliche Nachricht: was seit Jahren offen ist. */}
-      {ketten.length > 0 && (
+      {/* Die eigentliche Nachricht: was seit Jahren offen ist — als
+          Wiederholungs-Matrix (GB-10). Kette antippen oder mit Enter öffnen
+          zeigt den Wortlaut aller Feststellungen; die 2024-Lücke rendert die
+          Komponente in jeder Zeile und als Satz darüber. */}
+      {ketten.length > 0 ? (
         <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
             <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-              Was über Jahre offen blieb
+              Wiederholungs-Ketten · was über Jahre offen blieb
             </p>
             <span className="font-mono text-[10px] uppercase text-muted-foreground">
               {ketten.length} Themen · {jahre[0]}–{jahre.at(-1)}
@@ -229,42 +264,38 @@ function PruefungInner() {
             Hier steht nur, was das Rechnungsprüfungsamt selbst als <em>wiederholte</em>{" "}
             Beanstandung ausgewiesen hat — also seine eigene Aussage, dass ein Mangel aus einem
             Vorjahr noch offen war. Zugeordnet wird über den Abschnitt des Berichts; die
-            Textziffern verschieben sich zwischen den Jahrgängen.
+            Textziffern verschieben sich zwischen den Jahrgängen. Ein „erledigt/offen" kennt
+            die Quelle nicht — die Kette endet, wo der Bericht nichts mehr vermerkt.
           </p>
-          <div className="flex flex-col gap-3">
-            {ketten.map((k) => {
-              const auf = offen === k.schluessel;
+          <KettenMatrix
+            ketten={matrixKetten}
+            jahre={jahre}
+            lueckenJahre={data.ohne_bericht.map((j) => ({ jahr: j, grund: LUECKEN_GRUND }))}
+            marken={data.legende}
+            beleg={<Beleg q="pruefbericht" />}
+            detail={(mk) => {
+              const k = ketten.find((x) => x.schluessel === mk.key);
+              if (!k) return null;
               return (
-                <div key={k.schluessel} className="border-t border-border/60 pt-3 first:border-t-0 first:pt-0">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                    <div className="min-w-0">
-                      <p className="font-display text-[15px] font-bold leading-snug tracking-tight">
-                        {k.titel}
-                      </p>
-                      <p className="mt-0.5 text-[12px] text-muted-foreground">
-                        In {k.beanstandet.length} von {jahre.length} Berichten beanstandet
-                        {k.beanstandet.length > 0 && <> · zuletzt {k.beanstandet.at(-1)}</>}
-                      </p>
-                    </div>
-                    <div className="flex-none"><Kettenband jahre={jahre} eintraege={k.eintraege} /></div>
-                  </div>
-                  <button type="button" onClick={() => setOffen(auf ? null : k.schluessel)}
-                    aria-expanded={auf}
-                    className="mt-1.5 text-[12px] font-semibold text-primary">
-                    {auf ? "Wortlaut ausblenden" : `Wortlaut aller ${k.eintraege.length} Feststellungen`}
-                  </button>
-                  {auf && (
-                    <div className="mt-2.5 flex flex-col gap-3">
-                      {k.eintraege.map((f) => (
-                        <FeststellungsZeile key={`${f.jahr}-${f.lfd}`} f={f} zeigeJahr />
-                      ))}
-                    </div>
-                  )}
+                <div className="flex flex-col gap-3 rounded-xl bg-muted/35 p-3">
+                  {k.eintraege.map((f) => (
+                    <FeststellungsZeile key={`${f.jahr}-${f.lfd}`} f={f} zeigeJahr />
+                  ))}
                 </div>
               );
-            })}
-          </div>
+            }}
+          />
         </div>
+      ) : (
+        /* Ohne Ketten gäbe es keine Matrix — der Lücken-Satz bleibt trotzdem
+           Pflicht auf der Seite (H4-09: auf jedem Gerät). */
+        data.ohne_bericht.length > 0 && (
+          <div className="flex flex-col gap-1.5">
+            {data.ohne_bericht.map((j) => (
+              <LueckenFeld key={j} label={String(j)} grund={LUECKEN_GRUND} />
+            ))}
+          </div>
+        )
       )}
 
       {/* Bericht für Bericht */}
@@ -316,14 +347,9 @@ function PruefungInner() {
           Doku: „Der Konsistenz-Check statt einer Rechenprobe"); auf der Seite
           war sie Selbstvergewisserung. Der fehlende Jahrgang dagegen ist eine
           echte Auskunft über die Datenlage und bleibt. DESIGNSPRACHE.md § 7. */}
+      {/* Der 2024-Satz steht oben an der Matrix (LueckenFeld) — hier bleibt
+          nur noch, wie wörtlich der Text ist. */}
       <p className="max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
-        {data.ohne_bericht.length > 0 && (
-          <>
-            Für {data.ohne_bericht.join(", ")} liegt ein ausgelesener Jahresabschluss vor, der
-            Schlussbericht aber nicht in lesbarer Form — sein PDF bringt keine Zeichenzuordnung
-            mit, und eine zweite Kopie gibt es nicht<Beleg q="pruefbericht" />.{" "}
-          </>
-        )}
         Die Feststellungen stehen im Wortlaut des Berichts; Zeilenumbrüche des PDF-Textes sind
         zusammengezogen, sonst ist nichts verändert.
       </p>

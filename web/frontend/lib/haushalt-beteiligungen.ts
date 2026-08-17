@@ -159,3 +159,40 @@ export function sortiert(daten: BeteiligungsDaten | null): Gesellschaft[] {
   return [...(daten?.gesellschaften ?? [])].sort((a, b) =>
     a.gliederung.localeCompare(b.gliederung, "de", { numeric: true }));
 }
+
+// --- Rechtsform (H3-02: die Formen-Sprache der Konzernkarte) ----------------
+
+/** Die drei Formen, die der Bericht selbst unterscheidet.
+ *
+ *  TODO (Datenpfad): „Minderheitsanteil" als vierte Form braucht die
+ *  Beteiligungsquote je Gesellschaft. Die steht im Bericht nur im Fließtext
+ *  des Abschnitts „Beteiligungsverhältnisse" und in der Grafik von Abschnitt
+ *  2.1 („Beteiligungen im grafischen Überblick") — beides liest
+ *  `council/beteiligungsbericht.py` bewusst nicht strukturiert aus (kein
+ *  prüfbarer Zahlwert). Erst wenn der Parser eine Quote mit Probe liefert,
+ *  bekommt die Karte den Ring; bis dahin wird hier nichts geraten. */
+export type Rechtsform = "eigenbetrieb" | "aoer" | "gesellschaft";
+
+export const RECHTSFORM_TITEL: Record<Rechtsform, string> = {
+  eigenbetrieb: "Eigenbetrieb",
+  aoer: "Anstalt öffentlichen Rechts",
+  gesellschaft: "GmbH / Co. KG",
+};
+
+/** Rechtsform aus der Gliederungsnummer des Berichts — deterministisch, aus
+ *  der Quelle statt geraten: Der Bericht gliedert seine Abschnitte selbst
+ *  nach Rechtsform (Inhaltsverzeichnis, geprüft am Bericht 2023):
+ *
+ *    2.2 Eigenbetriebe · 2.3 Kommunale Anstalten des öffentlichen Rechts
+ *    · 2.4 Privatrechtliche Organisationsformen
+ *
+ *  Der Name allein taugt nicht („Abfallwirtschaftsbetrieb Stadt Oldenburg"
+ *  trägt sein „Eigenbetrieb" nicht im Namen). Eine unbekannte Gruppe liefert
+ *  `null` — dann rendert die Karte KEINE Form statt einer falschen. */
+export function rechtsform(g: Pick<Gesellschaft, "gliederung">): Rechtsform | null {
+  const gruppe = g.gliederung.split(".")[1];
+  if (gruppe === "2") return "eigenbetrieb";
+  if (gruppe === "3") return "aoer";
+  if (gruppe === "4") return "gesellschaft";
+  return null;
+}

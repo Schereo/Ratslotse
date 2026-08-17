@@ -63,6 +63,14 @@ Beteiligungen), `nichtAussagen` (Kassenzettel/Pro-Kopf) oder `gemessen`
 (Zeitstrahl) führt, sind das Pflicht-Props der Grafik — eine Hantel ohne
 Erklärsatz kompiliert nicht. Gerendert werden sie über `<Einordnung>`.
 
+## Die Grafiken
+
+| Komponente | Datei | Vertrag (Kurzfassung) |
+|---|---|---|
+| `<Zeitreihe>` (GB-01) | `zeitreihe.tsx` | Linien-Zeitreihe: `reihe: JahrPunkt[]` · `einheit` · `zweitreihe?` (dünn, gestrichelt) · `annotationen?` (ⓘ im Bild, Text IMMER darunter) · `umschalter?` (kontrolliert, mobil full-width). `d3-shape` mit `defined(vorhanden)` bricht die Linie an Lücken — Interpolation ist im Code unmöglich. Direktbeschriftung nur Endwerte, Rest über die Ableseleiste; Achse `d3-scale` nice ticks, mobil nur Dekaden. |
+| `<ZeitreiheMini>` (GB-01 mini) | `zeitreihe.tsx` | Karten-Sparkline: gleiche `defined()`-Lückenbrüche, Endpunkt-Beschriftung bleibt auf jedem Gerät (H4-11), Nulllinie bei Vorzeichenwechsel, `role="img"` mit ganzem Satz. Ohne Achsen und Ableseleiste — die große Kennzahl daneben ist die Auskunft. |
+| `<KettenMatrix>` (GB-10) | `ketten-matrix.tsx` | Feststellung × Jahr: `ketten` · `jahre` · `lueckenJahre` (rendern in JEDER Zeile + als `<LueckenFeld>` ÜBER der Matrix) · `marken` = Legende **aus der Quelle**, nie geraten. B/WB Signal-Orange (Abweichungs-Kategorie), H Rampen-Blau, K neutral. Mobil Karten-Liste mit Chip-Zeile, nie horizontal scrollen; Tastatur ↑/↓ je Kette, Enter klappt den Wortlaut (`detail`) auf. |
+
 ## Zahlen (`format.ts`)
 
 `Intl.NumberFormat("de-DE")`, gecacht. `deZahl` (feste Nachkommastellen),
