@@ -247,6 +247,11 @@ export interface EntityDetail {
 export interface Member {
   slug: string; name: string; party: string | null;
   n: number; committees: number; first: string | null; last: string | null;
+  /** Die belegten Schreibweisen dieser Person aus den Anwesenheitslisten —
+   *  meist nur eine, gelegentlich zwei Namensformen. Nicht zur Anzeige
+   *  gedacht: Die Suche im Verzeichnis findet damit auch, wer die ältere Form
+   *  eintippt, ohne dass die Seite eine Behauptung über den Menschen aufstellt. */
+  formen?: string[];
 }
 
 export interface MemberDetail {

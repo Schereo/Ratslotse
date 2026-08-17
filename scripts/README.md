@@ -42,6 +42,7 @@ Zeitpläne stehen in den jeweiligen Docstrings; maßgeblich ist die laufende
 | `purge_nwz_data.py` | Gescrapte NWZ-Artikeldaten aus den DBs entfernen (Dry-Run-Default) |
 | `ingest_finanzberichte.py`, `ingest_pruefberichte.py` | **Alle** Haushalts-Jahrgänge neu einlesen — der Weg, einen verbesserten Parser über den Bestand zu ziehen. Neue Jahrgänge holt `check_finanzdaten.py` von allein; diese Skripte fassen auch Vorhandenes an |
 | `ingest_haushalt.py` | Haushaltsplan eines Jahres von oldenburg.de laden (der Cron lädt bewusst nichts herunter) |
+| `check_namensformen.py` | Bericht: Welche Namensformen könnten zu **einer** Person gehören? Schreibt nichts — geprüfte Paare trägt ein Mensch in `council/namensformen.py` ein |
 
 > **Ersten Admin einrichten:** Die Registrierung vergibt keine Rollen. Die Adresse
 > aus `WEB_ADMIN_EMAIL` wird zum Admin, sobald sie ihre E-Mail bestätigt hat (und

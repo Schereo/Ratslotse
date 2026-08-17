@@ -38,7 +38,14 @@ export function PersonenView() {
   }
   const parties = Array.from(new Set(all.map((m) => m.party).filter((p): p is string => !!p))).sort();
   const needle = q.trim().toLowerCase();
-  const filtered = all.filter((m) => (!needle || m.name.toLowerCase().includes(needle)) && (!party || m.party === party));
+  // Gesucht wird über alle belegten Schreibweisen, angezeigt wird die aktuelle:
+  // Wer eine Person aus einem älteren Protokoll unter der damaligen Namensform
+  // sucht, soll sie finden — die Karte bleibt trotzdem so beschriftet, wie die
+  // jüngste Anwesenheitsliste sie nennt.
+  const passt = (m: Member) =>
+    m.name.toLowerCase().includes(needle) ||
+    (m.formen ?? []).some((f) => f.toLowerCase().includes(needle));
+  const filtered = all.filter((m) => (!needle || passt(m)) && (!party || m.party === party));
 
   return (
     <div className="space-y-4">

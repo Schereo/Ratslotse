@@ -555,13 +555,14 @@ def _lexikon_zuordnung(store: CouncilStore,
         vor, nach = CouncilStore.namensteile(name)
         treffer = nach_paar.get((vor, nach), []) if vor and nach else []
         if len(treffer) > 1:
-            # Gleicher Vor- und Nachname, zwei Einträge — im Verzeichnis fast
-            # immer dieselbe Person mit und ohne zweiten Vornamen („Christine
-            # Wolff" und „Christine Berta Wolff", beide Grüne, überlappende
-            # Zeiträume). Dann entscheidet der **ganze** Name: Wer genau so
-            # heißt, wie der Bericht ihn druckt, gewinnt. Passen null oder
-            # zwei genau, bleibt es beim Verzicht — zwei echte Namensvettern
-            # sind hier nicht auseinanderzuhalten.
+            # Gleicher Vor- und Nachname, zwei Einträge. Wo dieselbe Person
+            # unter zwei Namensformen in den Quellen steht, führt das
+            # Verzeichnis sie längst als **einen** Eintrag zusammen
+            # (`council.namensformen`) — hier bleiben also die Fälle, die
+            # niemand geprüft hat. Dann entscheidet der **ganze** Name: Wer
+            # genau so heißt, wie der Bericht ihn druckt, gewinnt. Passen null
+            # oder zwei genau, bleibt es beim Verzicht — zwei echte
+            # Namensvettern sind hier nicht auseinanderzuhalten.
             treffer = [e for e in treffer if ganz(e["name"] or "") == ganz(name)]
         eintrag = treffer[0] if len(treffer) == 1 else None
         if eintrag is None:

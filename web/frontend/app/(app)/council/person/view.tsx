@@ -1,7 +1,7 @@
 "use client";
 
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, notFound } from "next/navigation";
 import { ArrowLeft, Gavel, Info, ExternalLink, ChevronDown } from "lucide-react";
 import { MemberDetail } from "@/lib/types";
@@ -129,6 +129,18 @@ function PersonInner() {
   const { zeigen: zeigeZurueck, zurueck } = useZurueck();
   const { data, loading } = useFetch<MemberDetail>(slug ? `/council/person/${slug}` : null);
   const [pastOpen, setPastOpen] = useState(false);
+
+  // Eine Person kann in den Anwesenheitslisten unter zwei Namensformen stehen;
+  // das Backend liefert für beide dasselbe Profil und nennt in `slug` die
+  // aktuelle Adresse. Die Zeile korrigiert nur die Adressleiste — der alte Link
+  // funktioniert weiter, aber wer von hier aus teilt, teilt die aktuelle
+  // Adresse. Ohne Router-Navigation, damit die Seite nicht neu lädt.
+  const kanon = data?.slug ?? null;
+  useEffect(() => {
+    if (kanon && slug && kanon !== slug) {
+      window.history.replaceState(null, "", `/council/person?slug=${encodeURIComponent(kanon)}`);
+    }
+  }, [kanon, slug]);
 
   if (loading) return <DetailSkeleton />;
   if (!data) notFound();
