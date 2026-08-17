@@ -26,7 +26,7 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronRight, Building2, Scale, Search, X } from "lucide-react";
+import { Check, ChevronRight, Building2, Scale, Search, X } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
 import {
   HaushaltDaten, Produkt, ProdukteAntwort, SPIELRAUM_TEXT, Spielraum,
@@ -47,9 +47,79 @@ function netto(p: Produkt): number {
   return -(p.ergebnis ?? 0);
 }
 
+/** Aufeinanderfolgende Jahre zu Spannen bündeln: [2019, 2020, 2022] →
+ *  „2019–2020, 2022". */
+function jahresspannen(jahre: number[]): string {
+  const sortiert = [...jahre].sort((a, b) => a - b);
+  const teile: string[] = [];
+  let von = sortiert[0], bis = sortiert[0];
+  for (const j of sortiert.slice(1)) {
+    if (j === bis + 1) { bis = j; continue; }
+    teile.push(von === bis ? String(von) : `${von}–${bis}`);
+    von = bis = j;
+  }
+  if (von != null) teile.push(von === bis ? String(von) : `${von}–${bis}`);
+  return teile.join(", ");
+}
+
+/** Abdeckungs-Badge (H4-04): Nicht jedes Jahr deckt jeden Teilhaushalt —
+ *  ein Produkt, das erst ab 2021 vorliegt, sagt das, statt wie eine
+ *  durchgehende Reihe auszusehen.
+ *
+ *  Vollständige Abdeckung ist die unauffällige Auskunft und verschwindet in
+ *  der Trefferliste auf schmalen Karten (`knapp`); die LÜCKE bleibt immer
+ *  sichtbar — Lücken zeigen geht vor (H4-A). Kein Signal-Orange: Eine Lücke
+ *  im Bestand ist die Lücken-Konvention (gestrichelt), keine Abweichung des
+ *  Produkts. */
+function AbdeckungsBadge({ jahre, alle, knapp }: {
+  jahre?: number[]; alle: number[]; knapp?: boolean;
+}) {
+  // Mit nur einem Jahrgang im Bestand gäbe es nichts abzudecken.
+  if (!jahre?.length || alle.length < 2) return null;
+  const fehlt = alle.filter((j) => !jahre.includes(j));
+  if (!fehlt.length) {
+    return (
+      <span className={cn(
+        "items-center gap-1 rounded border border-border px-1.5 py-0.5 font-mono text-[9.5px] font-medium uppercase tracking-[0.08em] text-muted-foreground",
+        knapp ? "hidden @2xl/treffer:inline-flex" : "inline-flex",
+      )}>
+        <Check aria-hidden className="h-3 w-3" />
+        {Math.min(...alle)}–{Math.max(...alle)}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded border border-dashed border-border px-1.5 py-0.5 font-mono text-[9.5px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+      ohne {jahresspannen(fehlt)}
+    </span>
+  );
+}
+
+/** Bigramme eines Suchbegriffs — der „Ähnlich klingen"-Vergleich des
+ *  Leerzustands. Bewusst reine Zeichenähnlichkeit (Dice über Bigramme),
+ *  keine Semantik: Für „Feuerwer" findet sie die Feuerwehr, für „Zoo"
+ *  findet sie ehrlich nichts — dann bleibt der Satz, dass Produkte wie im
+ *  Haushaltsplan heißen. */
+function bigramme(s: string): Set<string> {
+  const out = new Set<string>();
+  for (const wort of s.toLowerCase().replace(/[^a-zäöüß0-9]+/g, " ").trim().split(/\s+/)) {
+    for (let i = 0; i < wort.length - 1; i++) out.add(wort.slice(i, i + 2));
+  }
+  return out;
+}
+
+function aehnlichkeit(a: Set<string>, b: Set<string>): number {
+  if (!a.size || !b.size) return 0;
+  let gemeinsam = 0;
+  for (const g of a) if (b.has(g)) gemeinsam += 1;
+  return (2 * gemeinsam) / (a.size + b.size);
+}
+
 /** Eine Zeile der Trefferliste. Der Balken zeigt den Anteil am teuersten
  *  Treffer — Hafenblau, nicht Ampelfarben: teuer ist keine Note. */
-function Treffer({ p, max, aktiv }: { p: Produkt; max: number; aktiv: boolean }) {
+function Treffer({ p, max, aktiv, alleJahre }: {
+  p: Produkt; max: number; aktiv: boolean; alleJahre: number[];
+}) {
   const n = netto(p);
   const b = betrag(Math.abs(n));
   return (
@@ -85,11 +155,16 @@ function Treffer({ p, max, aktiv }: { p: Produkt; max: number; aktiv: boolean })
         <div className="h-full rounded-full bg-primary/60"
           style={{ width: `${Math.max((Math.abs(n) / max) * 100, 1.5)}%` }} />
       </div>
-      {p.beeinflussbarkeit && (
-        <p className="mt-2 text-[11.5px] text-muted-foreground">
-          Spielraum der Stadt: <span className="font-semibold text-foreground/80">
-            {SPIELRAUM_TEXT[p.beeinflussbarkeit].kurz}
+      {(p.beeinflussbarkeit || (p.jahre && alleJahre.length > 1)) && (
+        <p className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11.5px] text-muted-foreground">
+          <span>
+            {p.beeinflussbarkeit && (
+              <>Spielraum der Stadt: <span className="font-semibold text-foreground/80">
+                {SPIELRAUM_TEXT[p.beeinflussbarkeit].kurz}
+              </span></>
+            )}
           </span>
+          <AbdeckungsBadge jahre={p.jahre} alle={alleJahre} knapp />
         </p>
       )}
     </Link>
@@ -99,7 +174,7 @@ function Treffer({ p, max, aktiv }: { p: Produkt; max: number; aktiv: boolean })
 /** Der Steckbrief eines Produkts — Kosten, Zuständigkeit, was drinsteckt,
  *  worauf es beruht, wie viel Spielraum. Fehlende Felder bleiben weg; eine
  *  Lücke wird nicht mit einer Vermutung gefüllt. */
-function Steckbrief({ p, jahr }: { p: Produkt; jahr: number }) {
+function Steckbrief({ p, jahr, alleJahre }: { p: Produkt; jahr: number; alleJahre: number[] }) {
   const n = netto(p);
   const gross = betrag(Math.abs(n));
   const aus = betrag(p.aufwendungen ?? 0);
@@ -152,6 +227,22 @@ function Steckbrief({ p, jahr }: { p: Produkt; jahr: number }) {
             <>Dieses Produkt trägt sich {jahr} selbst: {ein.wert}&#8239;{ein.einheit} Einnahmen
               stehen {aus.wert}&#8239;{aus.einheit} Ausgaben gegenüber.</>
           )}
+        </p>
+        {/* Zwei Ehrlichkeits-Zeilen, auf jedem Gerät (H4-04): Ist-Zahlen gibt
+            es je Produkt NICHT — und wie weit das Produkt im Bestand
+            zurückreicht, steht als Abdeckung dabei (in der Trefferliste
+            trägt das nur der Lücken-Fall, hier immer). */}
+        <p className="mt-2 border-t border-border/60 pt-2 text-[11.5px] leading-relaxed text-muted-foreground">
+          Planzahlen: Was die Aufgabe tatsächlich gekostet hat, weist der Haushalt auf
+          Produktebene nicht aus.
+          {p.jahre && p.jahre.length > 0 && alleJahre.length > 1 && (() => {
+            const fehlt = alleJahre.filter((j) => !p.jahre!.includes(j));
+            return (
+              <> Im Bestand liegt das Produkt für {jahresspannen(p.jahre)}
+                {fehlt.length > 0 && <> — ohne {jahresspannen(fehlt)}, dort liegt der
+                  Teilhaushaltsplan nicht auslesbar vor</>}.</>
+            );
+          })()}
         </p>
       </div>
 
@@ -288,6 +379,25 @@ function ProdukteInner() {
 
   const { data, loading } = useFetch<ProdukteAntwort>(abfrage);
 
+  // Leerzustand mit „Ähnlich klingen" (H4-04): Erst wenn die gefilterte
+  // Suche wirklich leer ist, wird einmal die ungefilterte Liste geholt und
+  // nach Zeichenähnlichkeit durchsucht. `useFetch(null)` überspringt — der
+  // Hook läuft immer, die Anfrage nur im Leerfall.
+  const leer = !loading && data != null && data.produkte.length === 0
+    && entprellt.trim().length >= 2 && !amt && !spielraum;
+  const { data: alleDaten } = useFetch<ProdukteAntwort>(
+    leer && jahr ? `/council/haushalt/produkte?jahr=${jahr}` : null);
+  const vorschlaege = useMemo(() => {
+    if (!leer || !alleDaten) return [];
+    const q = bigramme(entprellt);
+    return alleDaten.produkte
+      .map((p) => ({ p, wert: aehnlichkeit(q, bigramme(p.produkt_name)) }))
+      .filter((x) => x.wert >= 0.25)
+      .sort((a, b) => b.wert - a.wert)
+      .slice(0, 3)
+      .map((x) => x.p);
+  }, [leer, alleDaten, entprellt]);
+
   if (uebersicht.loading || (loading && !data)) {
     return <div className="py-16 text-center text-sm text-muted-foreground">Produkte werden geladen …</div>;
   }
@@ -301,6 +411,7 @@ function ProdukteInner() {
   }
 
   const produkte = data?.produkte ?? [];
+  const alleJahre = data?.alle_jahre ?? uebersicht.data?.produkt_jahre ?? [];
   const maxWert = Math.max(...produkte.map((p) => Math.abs(netto(p))), 1);
   const gefiltert = Boolean(entprellt.trim() || amt || spielraum);
   const aemter = data?.facetten?.aemter ?? [];
@@ -428,7 +539,7 @@ function ProdukteInner() {
                 <X className="h-3.5 w-3.5" /> Schließen
               </button>
             </div>
-            <Steckbrief p={aktiv} jahr={jahr} />
+            <Steckbrief p={aktiv} jahr={jahr} alleJahre={alleJahre} />
           </section>
         )}
         {nr && !aktiv && !loading && (
@@ -444,15 +555,35 @@ function ProdukteInner() {
           <div className="@container/treffer">
             <div className="grid gap-2 @3xl/treffer:grid-cols-2">
               {produkte.map((p) => (
-                <Treffer key={p.produkt_nr} p={p} max={maxWert} aktiv={p.produkt_nr === nr} />
+                <Treffer key={p.produkt_nr} p={p} max={maxWert} aktiv={p.produkt_nr === nr}
+                  alleJahre={alleJahre} />
               ))}
             </div>
           </div>
         ) : (
+          /* Leerzustand (H4-04): Der Suchbegriff steht drin, ähnlich
+             klingende Produktnamen sind antippbar — und der Satz, WARUM man
+             nichts findet, bleibt auch ohne Vorschläge stehen. */
           <div className="rounded-2xl border-2 border-dashed border-border bg-muted/40 p-8 text-center">
             <p className="mx-auto max-w-[46ch] text-[13px] leading-relaxed text-foreground/80">
-              Zu dieser Suche finden wir kein Produkt. Vielleicht heißt die Aufgabe im Haushalt
-              anders — das Stadtarchiv steht dort als „Archivierung“.
+              {entprellt.trim()
+                ? <>Zu <strong>„{entprellt.trim()}“</strong> finden wir kein Produkt.</>
+                : <>Mit diesen Filtern bleibt kein Produkt übrig.</>}
+            </p>
+            {vorschlaege.length > 0 && (
+              <div className="mx-auto mt-3 flex max-w-[62ch] flex-wrap items-center justify-center gap-1.5">
+                <span className="text-[12px] text-muted-foreground">Ähnlich klingt:</span>
+                {vorschlaege.map((p) => (
+                  <button key={p.produkt_nr} type="button" onClick={() => setSuche(p.produkt_name)}
+                    className="rounded-full border border-primary/30 bg-card px-2.5 py-1 text-[12px] font-semibold text-primary transition-colors hover:border-primary/60">
+                    {p.produkt_name}
+                  </button>
+                ))}
+              </div>
+            )}
+            <p className="mx-auto mt-3 max-w-[46ch] text-[12px] leading-relaxed text-muted-foreground">
+              Produkte heißen wie im Haushaltsplan — nicht immer wie im Alltag: Das
+              Stadtarchiv steht dort als „Archivierung“.
             </p>
           </div>
         )}

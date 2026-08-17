@@ -8,84 +8,21 @@
 // Sankeys, hierher übernommen). Kein Sankey: Der Plan kennt keine
 // Euro-zu-Zweck-Flüsse, jede Verbindungslinie wäre erfunden.
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
+import { SegmentText } from "@/components/grafik/gegenbalken";
 import { bereichKanon } from "@/lib/haushalt-bereiche";
 import { HaushaltZeile, bereichSlug, deMio, mio } from "@/lib/haushalt";
 import { cn } from "@/lib/utils";
 
 type Seite = "ein" | "aus";
 
-/** Beschriftungsregel (H-03) wörtlich: Ein Segment trägt seinen Text nur,
- *  wenn er WIRKLICH hineinpasst — gemessen, nicht geschätzt. Der Reihe nach
- *  probiert: „Name · Wert", „Kurzname · Wert", Kurzname, nichts. Nie
- *  verkleinern, nie abschneiden: eine abgeschnittene 169,2 liest sich als 16.
- *
- *  Die mittlere Stufe kam mit der Anzeigetafel dazu. Auf 375 px passt
- *  „Finanzmanagement und Recht · 529,3" nicht mehr, „Finanzen" allein schon —
- *  und dann stand im größten Segment des Bildes ein Name ohne Zahl, obwohl
- *  daneben Platz für beides war.
- *
- *  Gemessen wird in einem UNSICHTBAREN Zwilling, nicht am sichtbaren Text.
- *  Die erste Fassung schaltete zum Messen kurz auf den Langtext und wieder
- *  zurück; bei Segmenten, deren Langtext knapp nicht passt („Finanzmanagement
- *  und Recht · 529,3"), stieß jeder Wechsel den ResizeObserver erneut an —
- *  sichtbares Dauerflackern (Tim, 16.08.). Jetzt bleibt der sichtbare Text
- *  während der Messung stehen, und der State wird nur gesetzt, wenn sich das
- *  Ergebnis wirklich ändert. */
-function SegmentText({ stufen }: { stufen: string[] }) {
-  const box = useRef<HTMLSpanElement>(null);
-  const mess = useRef<HTMLSpanElement>(null);
-  const [text, setText] = useState("");
-  // Die Kandidatenliste wird zu EINEM String serialisiert, damit der Effekt
-  // eine stabile Abhängigkeit hat — ein Array wäre bei jedem Render ein neues
-  // Objekt, und der ResizeObserver setzte sich jedes Mal neu auf. JSON statt
-  // eines Trennzeichens, weil die Kandidaten selbst Leerzeichen, Mittelpunkte
-  // und Kommata enthalten.
-  const schluessel = JSON.stringify(stufen);
-
-  useLayoutEffect(() => {
-    const el = box.current, m = mess.current;
-    if (!el || !m) return;
-    const kandidaten = JSON.parse(schluessel) as string[];
-    const entscheide = () => {
-      // clientWidth SCHLIESST das Padding ein, der Zwilling misst nur den
-      // Text — ohne Abzug hielten wir „Soziales" für passend, obwohl die
-      // 16 px Innenabstand fehlten und es doch überlief.
-      const stil = getComputedStyle(el);
-      const platz = el.clientWidth
-        - parseFloat(stil.paddingLeft || "0") - parseFloat(stil.paddingRight || "0");
-      // Der Zwilling liegt absolut und unsichtbar im selben Span, erbt also
-      // Schrift und Größe — seine scrollWidth ist die echte Textbreite.
-      let passend = "";
-      for (const k of kandidaten) {
-        m.textContent = k;
-        if (m.scrollWidth <= platz) { passend = k; break; }
-      }
-      m.textContent = "";
-      setText((alt) => (alt === passend ? alt : passend));
-    };
-    entscheide();
-    const ro = new ResizeObserver(entscheide);
-    ro.observe(el);
-    // Noch einmal, sobald die Webfonts geladen sind. Läuft die Messung vor
-    // dem Font-Swap, misst sie die Ersatzschrift — und danach ändert sich nur
-    // die SCHRIFT, nicht die Elementbreite, der ResizeObserver schlägt also
-    // nie an. Die einmal getroffene Entscheidung bliebe für immer stehen,
-    // obwohl sie zur falschen Schrift gehört.
-    let lebt = true;
-    document.fonts?.ready.then(() => { if (lebt) entscheide(); });
-    return () => { lebt = false; ro.disconnect(); };
-  }, [schluessel]);
-
-  return (
-    <span ref={box} className="relative block w-full overflow-hidden whitespace-nowrap px-2">
-      {text}
-      <span ref={mess} aria-hidden="true" className="pointer-events-none invisible absolute left-0 top-0 whitespace-nowrap" />
-    </span>
-  );
-}
+// Die Beschriftungsregel (H-03) — „Name · Wert", „Kurzname · Wert", Kurzname,
+// nichts, gemessen im unsichtbaren Zwilling — wohnt seit dem Baukasten in
+// `components/grafik/gegenbalken.tsx` (`SegmentText`): eine Implementierung,
+// beide Gegenbalken. Die Lehren aus dem Dauerflackern (Tim, 16.08.) und dem
+// Font-Swap stehen dort.
 
 function Leiste({
   seite, zeilen, skala, onHover, onPin, aktiv,

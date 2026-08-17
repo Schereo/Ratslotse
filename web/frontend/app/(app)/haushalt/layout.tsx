@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { HAUSHALT_FREI } from "@/lib/haushalt-frei";
+import { FortschrittMerker } from "@/components/haushalt/fortschritt-merker";
 
 // Umgebungs-Gate für den gesamten Haushalts-Bereich — die neunzehn Seiten
 // unter /haushalt (die Übersicht und achtzehn Unterseiten) sind nur auf
@@ -18,5 +19,12 @@ import { HAUSHALT_FREI } from "@/lib/haushalt-frei";
 // liegt. Hier steht deshalb nur das Gate, keine Kopf- oder Fußzeile.
 export default function HaushaltLayout({ children }: { children: React.ReactNode }) {
   if (!HAUSHALT_FREI) notFound();
-  return <>{children}</>;
+  return (
+    <>
+      {/* Merkt sich besuchte Unterseiten für den Wegweiser-Lesestand — im
+          Layout aus demselben Grund wie das Gate: einmal für alle Seiten. */}
+      <FortschrittMerker />
+      {children}
+    </>
+  );
 }

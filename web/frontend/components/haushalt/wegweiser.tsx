@@ -1,10 +1,11 @@
+"use client";
+
 // Wegweiser zu den Vertiefungsseiten des Haushalts-Bereichs.
 //
 // Die drei Karten standen als reine Textkacheln zwischen zwei großen
 // Diagramm-Panels und gingen dort unter (Tim, 16.08.). Sie sind aber der
-// einzige Weg in die Tiefe — deshalb tragen sie ein Piktogramm im
-// Primär-Tint, den Titel in der Display-Schrift und einen Pfeil, der beim
-// Überfahren mitgeht. Farbe bleibt Hafenblau: Signal-Orange ist im Haushalt
+// einzige Weg in die Tiefe — deshalb Titel in der Display-Schrift und ein
+// klarer Anfang. Farbe bleibt Hafenblau: Signal-Orange ist im Haushalt
 // dem Minus vorbehalten.
 //
 // AUS SECHS KACHELN WURDE EIN WEG (16.08., zweite Runde). Sechs gleich große
@@ -22,11 +23,8 @@
 // Die naheliegende Reparatur wäre gewesen, drei Kacheln anzuhängen. Zehn
 // durchnummerierte Karten sind aber genau das Problem, das die zweite Runde
 // gelöst hat, nur größer: Eine Nummer sagt „danach kommt elf", sie sagt nicht,
-// WOFÜR man weiterliest. Deshalb liegen die Schritte jetzt in vier benannten
+// WOFÜR man weiterliest. Deshalb liegen die Schritte in vier benannten
 // Stufen, und jede Stufe sagt in einem Satz, welche Frage sie beantwortet.
-// Die Nummern laufen durch — es bleibt ein Weg, er hat nur sichtbare
-// Abschnitte. Die Stufen tragen deshalb auch jede Erweiterung: Eine neue Seite
-// ist eine Zeile mehr in ihrer Stufe, keine weitere Kachel in einer Reihe.
 //
 //   1–6   Die Zahlen      Woher das Geld kommt, wohin es geht, was fest ist,
 //                         was einzelne Aufgaben kosten, wer sie tut — und was
@@ -40,81 +38,36 @@
 //   14–16 Mitreden        Wann entschieden wird, worüber gestritten wurde,
 //                         und was sich drehen ließe.
 //
-// „Was machen die eigentlich?" kam 08/2026 als Schritt 11 dazu und steht
-// **direkt hinter dem Gesamtabschluss**, weil es dieselbe Gesellschaft von
-// der anderen Seite zeigt: Schritt 10 sagt, wie viel Klinikum, Busse und Bäder
-// bewegen, Schritt 11 sagt, was sie damit tun und wer sie beaufsichtigt. Vor
-// dem Gesamtabschluss gelesen wäre es eine Liste von Firmennamen ohne Anlass.
+// AUS DER 16er-LISTE WERDEN VIER ETAPPEN-KARTEN (17.08., vierte Runde,
+// Boards H3-08/H4-00). Die nummerierte Liste trug bis Schritt 10 — bei
+// sechzehn wurde sie zur Pflichtlektüre: 16 Zeilen mit je zwei Textzeilen
+// sind auf jedem Gerät eine Wand. Jetzt ist die STUFE die Karte („Etappe"),
+// und die Schritte darin sind einzeilig — die Etappe ist die Einheit, die
+// man an einem Abend schafft. Drei Dinge gehören zu dieser Form:
 //
-// „Was wurde davon wirklich gebaut?" kam 08/2026 als Schritt 8 dazu und steht
-// **direkt hinter „Geplant und geworden"**: Beide sind dieselbe Gegenprobe,
-// nur für den jeweils anderen Haushalt — der Ergebnishaushalt hat seine in
-// `plan-ist`, der Finanzhaushalt hier. Vor der Prüfung, weil die sich auf
-// beide bezieht. Es ist zugleich die Seite, die Schritt 6 („Was wird
-// gebaut?") erst zu einer Aussage macht: Dort steht der Plan, hier das Ist.
+//  * **„Weiter, wo du warst."** Besuchte Seiten werden lokal gemerkt
+//    (lib/haushalt-fortschritt.ts, kein Konto nötig); der Knopf oben springt
+//    zum ersten noch nicht aufgerufenen Schritt, und erledigte Etappen
+//    tragen ihr Häkchen. „Erledigt" heißt ehrlich nur „aufgerufen" — mehr
+//    messen wir nicht.
+//  * **Mobil ein Akkordeon** (H4-00): Nur die Etappe mit dem nächsten
+//    Schritt ist offen, die anderen drei sind eine Kopfzeile mit Bilanz
+//    („4 von 4"). Der „Weiter"-Knopf steht am Kopf der Karte — bewusst NICHT
+//    als fixierter Knopf über der Tab-Leiste, wie das Board vorschlägt: Dort
+//    schwebt schon der „Nach oben"-Pfeil (components/back-to-top.tsx), und
+//    zwei konkurrierende Schwebe-Elemente über der Tab-Bar verdecken sich
+//    gegenseitig.
+//  * **Die Kurzbeschreibungen der Schritte** stehen nicht mehr als zweite
+//    Zeile in der Liste (sie waren die halbe Wand), sondern als `title` am
+//    Link — die Seite selbst erklärt sich in ihrer ersten Zeile ohnehin.
 //
-// „Was wird gebaut?" kam 08/2026 dazu — mit der ersten Schicht, die den
-// FINANZhaushalt liest. Es steht am Ende der Zahlen-Stufe und nicht vorn, weil
-// es die einzige Seite ist, die einen anderen Haushalt zeigt als die davor:
-// Erst wenn klar ist, was im Ergebnishaushalt steht, ist die Aussage „und hier
-// steht das alles NICHT drin" überhaupt eine.
-//
-// Drei Entscheidungen dahinter, die man sonst rückgängig macht:
-//
-//  * **„Was kostet eigentlich …?" bleibt hinter „Muss oder kann?".** Es ist
-//    die griffigste Seite, beantwortet aber eine Frage, die erst Sinn ergibt,
-//    wenn man weiß, dass der größte Teil des Geldes gar nicht zur Disposition
-//    steht. Das stand schon in der zweiten Runde hier und gilt weiter.
-//  * **Der Städtevergleich steht spät (Schritt 12), nicht vorn.** „Steht
-//    Oldenburg besser da als Osnabrück?" ist eine Frage, die sich erst stellt,
-//    wenn man die eigenen Zahlen kennt — und die Seite selbst besteht zur
-//    Hälfte aus der Begründung, warum der Vergleich bei den Ausgaben nicht
-//    trägt. Vorn gelesen wäre sie eine Absage an eine Frage, die noch niemand
-//    gestellt hat.
-//  * **Das Labor rutscht von Platz 4 ans Ende.** An Stellschrauben zu drehen
-//    ist der letzte Schritt, nicht der zweite: Vorher fehlt der Bezug, an dem
-//    sich ablesen ließe, ob eine Bewegung viel ist.
-//
-//  * **Die Schulden stehen am Ende des Rahmens (Schritt 13), nicht bei den
-//    Zahlen.** Sie sind die einzige Bestandsgröße im ganzen Weg: nicht was in
-//    einem Jahr floss, sondern was aus allen Jahren zusammen offen blieb. Vorn
-//    gelesen wäre das eine weitere Jahreszahl unter vielen; hinter dem Konzern
-//    gelesen hat der Leser gerade erfahren, dass „die Stadt" zwei verschiedene
-//    Abgrenzungen hat — und genau davon hängt ab, welche Schuldenzahl gilt.
-//  * **„Der Streit ums Geld" steht zwischen Terminplan und Labor (Schritt 15).**
-//    Die Seite zeigt als einzige des Bereichs keine Zahlen, sondern die
-//    Auseinandersetzung um sie — Änderungslisten, Abstimmungen, Wortbeiträge
-//    aus den Protokollen. Sie gehört hinter „Wann wird das entschieden?",
-//    weil sie dieselben Stationen noch einmal durchgeht, diesmal inhaltlich;
-//    und vor das Labor, weil man erst weiß, worum gestritten wurde, bevor man
-//    selbst an den Schrauben dreht.
-//
-// **Fünf Seiten schreiben ihre Nummer selbst in den Kicker** und müssen
-// deshalb mitgeändert werden, wenn sich die Reihenfolge hier ändert — sonst
-// widersprechen sich zwei Seiten still: `/haushalt/personal` („Schritt 5"),
-// `/haushalt/gebaut` („Schritt 8"), `/haushalt/konzern` („Schritt 10"),
-// `/haushalt/beteiligungen` („Schritt 11") und `/haushalt/streit`
-// („Schritt 15"). Genau das ist mehrfach passiert und jedes Mal nachgezogen
-// worden: „Was wird gebaut?" schob den Konzern von 7 auf 8, der Stellenplan
-// von 8 auf 9, „Was wurde davon wirklich gebaut?" (08/2026) alles ab der
-// Prüfung noch einmal um eins. Seit 17.08. hält
-// `tests/test_haushalt_schritte.py` die geschriebenen Nummern gegen die
-// gerechneten — die Kommentare in dieser Datei prüft er allerdings NICHT, die
-// bleiben Handarbeit.
-//
-// Die Schulden-Seite hängt aus demselben Grund HINTER dem Städtevergleich und
-// nicht zwischen ihm und dem Konzern: Dort eingefügt schöbe sie beide Nummern
-// ein weiteres Mal. „Der Streit ums Geld" (08/2026) steht aus demselben Grund
-// in der LETZTEN Stufe: Alles, was dort dazukommt, liegt hinter allen anderen
-// Kicker-Nummern und lässt sie in Ruhe.
-//
-// **Warum der Stellenplan zwischen „Was kostet …?" und „Was wird gebaut?"
-// steht:** Er beantwortet „wer macht die Arbeit?" — eine Frage, die sich erst
-// stellt, wenn man weiß, was die Arbeit kostet (Schritt 4). Und er gehört noch
-// vor die Investitionen, weil er wie sie zum laufenden Betrieb gehört, während
-// die Investitionen den Haushalt wechseln. Vor die Gegenprobe gehört er, weil
-// er sie lesbar macht: Unbesetzte Stellen sind eine der Erklärungen dafür,
-// dass Personalausgaben im Jahresabschluss unter dem Plan bleiben können.
+// Die REIHENFOLGE der Schritte ist unverändert — sie ist der Vertrag dieser
+// Datei. Die Begründungen je Position (warum die Schulden hinter dem
+// Vergleich stehen, der Stellenplan zwischen Produkten und Investitionen,
+// das Labor am Ende) stehen als Kommentare an den Zielen selbst.
+// `tests/test_haushalt_schritte.py` hält die selbstgeschriebenen
+// Kicker-Nummern der Seiten gegen die hier gerechnete Reihenfolge — wer
+// unten etwas einfügt, verschiebt alles danach und zieht die Kicker nach.
 //
 // **Zwei der achtzehn Unterseiten haben bewusst keinen Schritt.**
 // `/haushalt/bereich` und `/haushalt/steuer` sind Steckbriefe: Sie brauchen
@@ -125,32 +78,22 @@
 // Ziel dieses Wegweisers — von dort kommt man ja. Sie zählt nur beim
 // Umgebungs-Gate mit, das alle neunzehn Seiten deckt: `lib/haushalt-frei.ts`.)
 //
-// FORM: eine Karte, nicht zehn. Zehn Karten sind auf 375 px eine Liste ohne
-// Ende — die Stufen wären zwischen ihnen untergegangen, und genau sie sind
-// die Orientierung. Die Schritte sind deshalb Zeilen in einer Karte,
-// abschnittsweise durch eine gestrichelte Linie getrennt: Der sichtbare
-// Rhythmus ist vier, nicht zehn. Gemessen bei 375 px: 1.426 px für zehn Ziele
-// gegen 1.322 px für die sieben Kacheln vorher — 8 % mehr Höhe für 43 % mehr
-// Inhalt, also rund ein Viertel weniger Platz je Eintrag.
-//
 // Zwei Spalten ab 768 px **Container-Innenbreite**, nicht Fensterbreite
 // (Designsprache §4): Am Desktop liegt der Block neben der Seitenleiste, auf
 // dem iPad nicht — dieselbe Fensterbreite meint zwei verschiedene
-// Platzangebote. Die Polsterung der Karte zählt dabei nicht mit; ein iPad
-// hochkant (834 px Fenster → 746 px innen) bleibt deshalb einspaltig. Das ist
-// Absicht: 746 px auf zwei Spalten wären zwei schmale statt einer lesbaren.
+// Platzangebote. Und zwar TEXTSPALTEN (`columns`), kein Raster: Die Etappen
+// sind 6, 3, 4 und 3 Schritte lang — in einem Raster würde jede Zeile so
+// hoch wie ihre höhere Karte, unter der kurzen bliebe Leere stehen.
 
+import { useState } from "react";
 import Link from "next/link";
-import {
-  ArrowLeftRight, BookOpenText, Building2, CalendarDays, ChevronRight, Coins,
-  GitCompareArrows, Hammer, HardHat, Landmark, MessagesSquare, Receipt, Scale,
-  SearchCheck, SlidersHorizontal, Users,
-} from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Play } from "lucide-react";
+import { useFortschritt } from "@/lib/haushalt-fortschritt";
+import { useBreite } from "@/lib/use-breite";
 import { cn } from "@/lib/utils";
 
 type Ziel = {
   href: string;
-  Icon: typeof Coins;
   titel: string;
   text: string;
 };
@@ -162,37 +105,44 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
     ziele: [
       {
         href: "/haushalt/einnahmen",
-        Icon: Coins,
         titel: "Woher kommt das Geld?",
         text: "Alle Einnahmequellen — und bei welchen der Rat etwas zu entscheiden hat.",
       },
       {
         href: "/haushalt/bereiche",
-        Icon: BookOpenText,
         titel: "Was steckt hinter den Namen?",
         text: "„Soziales“, „Finanzmanagement“: die Teilhaushalte im Klartext, mit Betrag.",
       },
       {
+        // „Was kostet eigentlich …?" bleibt hinter „Muss oder kann?": Es ist
+        // die griffigste Seite, beantwortet aber eine Frage, die erst Sinn
+        // ergibt, wenn man weiß, dass der größte Teil des Geldes gar nicht
+        // zur Disposition steht.
         href: "/haushalt/pflicht",
-        Icon: Scale,
         titel: "Muss oder kann?",
         text: "Wie viel gesetzlich vorgeschrieben ist — und wie die Stadt selbst das sieht.",
       },
       {
         href: "/haushalt/produkte",
-        Icon: Receipt,
         titel: "Was kostet eigentlich …?",
         text: "Archiv, Feuerwehr, Schwimmbad: einzelne Aufgaben mit Kosten und Auftrag.",
       },
       {
+        // Zwischen „Was kostet …?" und „Was wird gebaut?": „Wer macht die
+        // Arbeit?" stellt sich erst, wenn man weiß, was die Arbeit kostet —
+        // und der Stellenplan gehört zum laufenden Betrieb, während die
+        // Investitionen den Haushalt wechseln. Vor die Gegenprobe, weil er
+        // sie lesbar macht: Unbesetzte Stellen erklären, warum
+        // Personalausgaben unter dem Plan bleiben können.
         href: "/haushalt/personal",
-        Icon: Users,
         titel: "Wer macht die Arbeit?",
         text: "Der Stellenplan: wie viele Stellen die Stadt vorhält — und wie viele leer stehen.",
       },
       {
+        // Am Ende der Zahlen-Stufe, weil es die einzige Seite ist, die einen
+        // ANDEREN Haushalt zeigt: Erst wenn klar ist, was im Ergebnishaushalt
+        // steht, ist „und hier steht das alles NICHT drin" eine Aussage.
         href: "/haushalt/investitionen",
-        Icon: HardHat,
         titel: "Was wird gebaut?",
         text: "Neubauten, Fahrzeuge, Grundstücke — der Haushalt, in dem die Seiten davor nicht vorkommen.",
       },
@@ -204,7 +154,6 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
     ziele: [
       {
         href: "/haushalt/plan-ist",
-        Icon: GitCompareArrows,
         titel: "Geplant und geworden",
         text: "Was am Jahresende wirklich zusammenkam — aus den Jahresabschlüssen.",
       },
@@ -214,13 +163,11 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         // `plan-ist`, der Finanzhaushalt hier. Vor der Prüfung, weil die sich
         // auf beide bezieht.
         href: "/haushalt/gebaut",
-        Icon: Hammer,
         titel: "Was wurde davon wirklich gebaut?",
         text: "Was am Jahresende tatsächlich abgeflossen ist — seit 2003, nach Auszahlungsart.",
       },
       {
         href: "/haushalt/pruefung",
-        Icon: SearchCheck,
         titel: "Die Prüfung",
         text: "Was das Rechnungsprüfungsamt an den Abschlüssen beanstandet — im Wortlaut.",
       },
@@ -233,25 +180,34 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
     ziele: [
       {
         href: "/haushalt/konzern",
-        Icon: Building2,
         titel: "Und ist das die ganze Stadt?",
         text: "Klinikum, Busse, Bäder, Gebäude: was neben dem Haushalt noch läuft.",
       },
       {
+        // Direkt hinter dem Gesamtabschluss, weil es dieselben Gesellschaften
+        // von der anderen Seite zeigt: Schritt 10 sagt, wie viel Klinikum,
+        // Busse und Bäder bewegen; hier steht, was sie damit tun. Vorher
+        // gelesen wäre es eine Liste von Firmennamen ohne Anlass.
         href: "/haushalt/beteiligungen",
-        Icon: Landmark,
         titel: "Was machen die eigentlich?",
         text: "Die Gesellschaften einzeln: Auftrag, Aufsichtsrat, Ergebnis — vom Klinikum bis zur Volkshochschule.",
       },
       {
+        // Spät, nicht vorn: „Steht Oldenburg besser da?" stellt sich erst,
+        // wenn man die eigenen Zahlen kennt — und die Seite besteht zur
+        // Hälfte aus der Begründung, warum der Ausgaben-Vergleich nicht trägt.
         href: "/haushalt/vergleich",
-        Icon: ArrowLeftRight,
         titel: "Steht Oldenburg besser da?",
         text: "Steuerkraft und Hebesätze der kreisfreien Städte — und warum Ausgaben sich nicht vergleichen lassen.",
       },
       {
+        // Am Ende des Rahmens: Die Schulden sind die einzige Bestandsgröße
+        // im ganzen Weg — was aus allen Jahren zusammen offen blieb. Hinter
+        // dem Konzern gelesen weiß man gerade, dass „die Stadt" zwei
+        // Abgrenzungen hat, und genau davon hängt ab, welche Schuldenzahl
+        // gilt. (Und: Hier eingefügt statt weiter vorn verschiebt es keine
+        // Kicker-Nummern der Seiten davor.)
         href: "/haushalt/schulden",
-        Icon: Landmark,
         titel: "Wie viel Schulden hat Oldenburg?",
         text: "Der Schuldenstand seit 1995, insgesamt und je Einwohner*in — und was er zählt.",
       },
@@ -263,19 +219,23 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
     ziele: [
       {
         href: "/haushalt/jahr",
-        Icon: CalendarDays,
         titel: "Wann wird das entschieden?",
         text: "Der Weg durch den Rat, Station für Station, aus acht Haushaltsjahren.",
       },
       {
+        // Hinter „Wann wird das entschieden?", weil die Seite dieselben
+        // Stationen noch einmal durchgeht, diesmal inhaltlich; vor dem Labor,
+        // weil man erst weiß, worum gestritten wurde, bevor man selbst an den
+        // Schrauben dreht.
         href: "/haushalt/streit",
-        Icon: MessagesSquare,
         titel: "Der Streit ums Geld",
         text: "Wer was ändern wollte, wie abgestimmt wurde — und was im Rat dazu gesagt wurde.",
       },
       {
+        // Das Labor rutschte von Platz 4 ans Ende: An Stellschrauben zu
+        // drehen ist der letzte Schritt, nicht der zweite — vorher fehlt der
+        // Bezug, an dem sich ablesen ließe, ob eine Bewegung viel ist.
         href: "/haushalt/labor",
-        Icon: SlidersHorizontal,
         titel: "Haushalts-Labor",
         text: "Selbst an den Stellschrauben drehen und sehen, was das ausmacht.",
       },
@@ -295,9 +255,110 @@ const STUFEN_NUMMERIERT = (() => {
 
 const GESAMT = STUFEN_NUMMERIERT[STUFEN_NUMMERIERT.length - 1].bis;
 
-export function Wegweiser() {
+type Zustand = "gelesen" | "naechster" | "offen";
+
+/** ✓ / ▶ / ○ — die Lesestand-Marker der Etappen-Form (H3-08). Hafenblau,
+ *  nie Signal: Ein ungelesener Schritt ist keine Abweichung. */
+function Marker({ zustand }: { zustand: Zustand }) {
   return (
-    <div className="@container/weg rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+    <span aria-hidden="true" className="flex w-4 flex-none items-center justify-center">
+      {zustand === "gelesen" ? (
+        <Check size={13} strokeWidth={2.5} className="text-primary" />
+      ) : zustand === "naechster" ? (
+        <Play size={10} className="fill-primary text-primary" />
+      ) : (
+        <span className="h-[7px] w-[7px] rounded-full border-[1.5px] border-muted-foreground/70" />
+      )}
+    </span>
+  );
+}
+
+function Station({ z, zustand }: {
+  z: Ziel & { nr: number };
+  zustand: Zustand;
+}) {
+  return (
+    <Link
+      href={z.href}
+      title={z.text}
+      className={cn(
+        "group -mx-1.5 flex min-h-[36px] items-center gap-2 rounded-lg px-1.5 py-1 transition-colors hover:bg-primary/[0.05]",
+        zustand === "naechster" && "bg-primary/[0.06]",
+      )}
+    >
+      <Marker zustand={zustand} />
+      <span className="flex-none font-mono text-[10.5px] font-medium tabular-nums text-muted-foreground">
+        {/* „1 Woher kommt das Geld?" liest eine Sprachausgabe als nackte
+            Ziffer vor — das Wort steht deshalb da, nur nicht im Bild. */}
+        <span className="sr-only">Schritt </span>{z.nr}
+      </span>
+      <span className={cn(
+        "min-w-0 flex-1 text-[13px] leading-snug",
+        zustand === "naechster" ? "font-bold" : "font-semibold",
+        zustand === "gelesen" && "text-foreground/75",
+      )}>
+        {z.titel}
+        {zustand === "gelesen" && <span className="sr-only"> (schon aufgerufen)</span>}
+        {zustand === "naechster" && <span className="sr-only"> (nächster Schritt)</span>}
+      </span>
+      <ChevronRight aria-hidden size={14} strokeWidth={2}
+        className="flex-none text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+    </Link>
+  );
+}
+
+export function Wegweiser() {
+  const besucht = useFortschritt();
+  // Gemessen statt Fenster-Breakpoint (Designsprache §4): Das Akkordeon
+  // hängt am Platz der KARTE, nicht am Gerät.
+  const { box, breite } = useBreite(1024, 280);
+  const schmal = breite < 744;
+  const [offene, setOffene] = useState<number | null>(null);
+
+  const etappen = STUFEN_NUMMERIERT.map((stufe, i) => {
+    const gelesen = stufe.ziele.filter((z) => besucht.has(z.href)).length;
+    return { ...stufe, index: i, gelesen, fertig: gelesen === stufe.ziele.length };
+  });
+  const alleZiele = etappen.flatMap((e) => e.ziele);
+  const naechster = alleZiele.find((z) => !besucht.has(z.href)) ?? null;
+  const gelesenGesamt = alleZiele.length - alleZiele.filter((z) => !besucht.has(z.href)).length;
+  const aktiverIndex = naechster
+    ? etappen.findIndex((e) => e.ziele.some((z) => z.href === naechster.href))
+    : null;
+  // Mobil ist genau eine Etappe offen: die zuletzt angetippte, sonst die mit
+  // dem nächsten Schritt, sonst die erste.
+  const offenIndex = offene ?? aktiverIndex ?? 0;
+
+  const zustandVon = (z: Ziel & { nr: number }): Zustand =>
+    besucht.has(z.href) ? "gelesen" : naechster?.href === z.href ? "naechster" : "offen";
+
+  const statusChip = (e: (typeof etappen)[number]) =>
+    e.fertig ? (
+      <span className="inline-flex items-center gap-1 font-mono text-[9.5px] font-medium uppercase tracking-[0.09em] text-primary">
+        <Check aria-hidden size={11} strokeWidth={2.5} /> erledigt
+      </span>
+    ) : e.index === aktiverIndex && gelesenGesamt > 0 ? (
+      <span className="font-mono text-[9.5px] font-medium uppercase tracking-[0.09em] text-primary">
+        Du bist hier
+      </span>
+    ) : null;
+
+  const kopfzeile = (e: (typeof etappen)[number]) => (
+    <div className="flex items-baseline justify-between gap-3">
+      <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-foreground/70">
+        Etappe {e.index + 1} · {e.kicker}
+      </p>
+      <span className="flex flex-none items-baseline gap-2.5">
+        {statusChip(e)}
+        <span className="font-mono text-[10px] font-medium tabular-nums text-muted-foreground">
+          {e.von === e.bis ? `Schritt ${e.von}` : `Schritt ${e.von}–${e.bis}`}
+        </span>
+      </span>
+    </div>
+  );
+
+  return (
+    <div ref={box} className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
       {/* Als <h2>, obwohl es wie ein Kicker aussieht: Der Block trägt darunter
           vier <h3>, und die Seite eine <h1> auf der Anzeigetafel. Ohne diese
           Stufe spränge die Gliederung von 1 auf 3. */}
@@ -305,66 +366,109 @@ export function Wegweiser() {
         Der Weg durch den Haushalt
       </h2>
       <p className="mt-1 max-w-[76ch] text-[12.5px] leading-relaxed text-muted-foreground">
-        Der Bereich hat {GESAMT} Vertiefungsseiten, und sie bauen aufeinander auf: erst die
-        Zahlen selbst, dann die Gegenprobe, dann der Blick über den Haushalt hinaus, zuletzt die
-        Frage, was sich ändern ließe. Wer zum ersten Mal hier ist, fängt oben an — einzeln
-        funktioniert aber jede Seite für sich.
+        {GESAMT} Schritte in vier Etappen, und sie bauen aufeinander auf: erst die Zahlen
+        selbst, dann die Gegenprobe, dann der Blick über den Haushalt hinaus, zuletzt die
+        Frage, was sich ändern ließe. Eine Etappe ist ein Abend — einzeln funktioniert aber
+        jede Seite für sich.
       </p>
 
-      {STUFEN_NUMMERIERT.map((stufe) => (
-        <section key={stufe.kicker} className="mt-3.5 border-t border-dashed border-border pt-3">
-          {/* Kicker links, Schritt-Spanne rechts — die ehrliche Mengenangabe
-              an derselben Stelle wie überall sonst (Designsprache §5). */}
-          <div className="flex items-baseline justify-between gap-3">
-            <h3 className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-foreground/70">
-              {stufe.kicker}
-            </h3>
-            <span className="flex-none font-mono text-[10px] font-medium tabular-nums text-muted-foreground">
-              {stufe.von === stufe.bis
-                ? `Schritt ${stufe.von}`
-                : `Schritt ${stufe.von}–${stufe.bis}`}
-            </span>
-          </div>
-          <p className="mt-0.5 max-w-[74ch] text-[12px] leading-relaxed text-muted-foreground">
-            {stufe.frage}
-          </p>
+      {/* „Weiter, wo du warst": erst ab dem ersten gemerkten Besuch — vorher
+          wäre der Knopf nur ein zweiter Weg zu Schritt 1. Der Lesestand
+          liegt im Browser (kein Konto), deshalb steht das ehrlich dabei. */}
+      {naechster && gelesenGesamt > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          <Link
+            href={naechster.href}
+            className="inline-flex min-h-[40px] items-center gap-2 rounded-xl bg-primary px-3.5 py-1.5 text-[12.5px] font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+          >
+            <Play aria-hidden size={11} className="fill-current" />
+            Weiter bei Schritt {naechster.nr} · {naechster.titel}
+          </Link>
+          <span className="text-[11px] text-muted-foreground">
+            {gelesenGesamt} von {GESAMT} aufgerufen — gemerkt nur in diesem Browser.
+          </span>
+        </div>
+      )}
+      {!naechster && (
+        <p className="mt-3 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-primary">
+          <Check aria-hidden size={14} strokeWidth={2.5} />
+          Alle {GESAMT} Schritte aufgerufen — der Weg ist durch.
+        </p>
+      )}
 
-          {/* Zwei Spalten am Container (Schwelle 768 px), nicht am Fenster.
-              Ein `grid` füllt Zeilen, die Nummern laufen also links-rechts
-              weiter — genau die Leserichtung, die sie behaupten. */}
-          <div className="mt-1.5 @3xl/weg:grid @3xl/weg:grid-cols-2 @3xl/weg:gap-x-5">
-            {stufe.ziele.map((z) => (
-              <Link key={z.href} href={z.href}
-                className="group -mx-2 flex items-start gap-3 rounded-xl px-2 py-1.5 transition-colors hover:bg-primary/[0.05]">
-                <span aria-hidden className={cn(
-                  "mt-0.5 flex h-8 w-8 flex-none items-center justify-center rounded-xl",
-                  "bg-primary/10 text-primary transition-colors group-hover:bg-primary/[0.16]",
-                )}>
-                  <z.Icon size={17} strokeWidth={2} />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-baseline gap-1.5">
-                    {/* „1 Woher kommt das Geld?" liest eine Sprachausgabe als
-                        nackte Ziffer vor. Das Wort steht deshalb da — nur
-                        nicht im Bild, wo die Spalte es schon sagt. */}
-                    <span className="flex-none font-mono text-[10.5px] font-medium tabular-nums text-muted-foreground">
-                      <span className="sr-only">Schritt </span>{z.nr}
+      {schmal ? (
+        /* Akkordeon (H4-00 mobil): nur eine Etappe offen, die anderen sind
+           eine Kopfzeile mit Bilanz. Die Bilanz ersetzt nichts — jede Etappe
+           lässt sich öffnen, ohne die offene zu verlieren geht es nicht,
+           und genau das ist der Punkt: eine Wand weniger. */
+        <div className="mt-3.5 flex flex-col">
+          {etappen.map((e) => {
+            const offen = e.index === offenIndex;
+            const panelId = `wegweiser-etappe-${e.index + 1}`;
+            return (
+              <section key={e.kicker} className="border-t border-dashed border-border pt-3 [&:not(:first-of-type)]:mt-3">
+                <button
+                  type="button"
+                  aria-expanded={offen}
+                  aria-controls={panelId}
+                  onClick={() => setOffene(offen ? -1 : e.index)}
+                  className="-mx-1.5 flex w-[calc(100%+12px)] items-center gap-2.5 rounded-lg px-1.5 py-1 text-left transition-colors hover:bg-primary/[0.05]"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-foreground/70">
+                      Etappe {e.index + 1} · {e.kicker}
                     </span>
-                    <span className="font-display text-[14px] font-bold leading-snug tracking-tight">
-                      {z.titel}
+                    <span className="mt-0.5 flex items-baseline gap-2.5">
+                      {statusChip(e) ?? (
+                        <span className="font-mono text-[9.5px] uppercase tracking-[0.09em] text-muted-foreground">
+                          {e.gelesen} von {e.ziele.length}
+                        </span>
+                      )}
+                      <span className="font-mono text-[9.5px] tabular-nums uppercase tracking-[0.09em] text-muted-foreground">
+                        Schritt {e.von}–{e.bis}
+                      </span>
                     </span>
                   </span>
-                  <span className="mt-0.5 block text-[12px] leading-relaxed text-muted-foreground">
-                    {z.text}
-                  </span>
-                </span>
-                <ChevronRight aria-hidden size={15} strokeWidth={2}
-                  className="mt-1.5 flex-none text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
-              </Link>
-            ))}
-          </div>
-        </section>
-      ))}
+                  <ChevronDown aria-hidden size={15} strokeWidth={2}
+                    className={cn("flex-none text-muted-foreground transition-transform", offen && "rotate-180")} />
+                </button>
+                <div id={panelId} hidden={!offen} className="mt-1.5">
+                  <p className="max-w-[74ch] text-[12px] leading-relaxed text-muted-foreground">
+                    {e.frage}
+                  </p>
+                  <div className="mt-1 flex flex-col">
+                    {e.ziele.map((z) => <Station key={z.href} z={z} zustand={zustandVon(z)} />)}
+                  </div>
+                </div>
+              </section>
+            );
+          })}
+        </div>
+      ) : (
+        /* Breite Fassung: vier Etappen-Karten in zwei TEXTSPALTEN — die
+           Etappen sind verschieden lang (6/3/4/3 Schritte), ein Raster ließe
+           unter den kurzen Leere stehen (Designsprache §4). Die Schwelle
+           hängt an der GEMESSENEN Kartenbreite, nicht am Fenster. */
+        <div className={cn("mt-3.5 gap-x-4", breite >= 768 && "columns-2")}>
+          {etappen.map((e) => (
+            <section
+              key={e.kicker}
+              className={cn(
+                "mb-3 break-inside-avoid rounded-xl border border-border p-3",
+                e.index === aktiverIndex && gelesenGesamt > 0 && "border-primary/35 bg-primary/[0.03]",
+              )}
+            >
+              {kopfzeile(e)}
+              <p className="mt-1 max-w-[74ch] text-[12px] leading-relaxed text-muted-foreground">
+                {e.frage}
+              </p>
+              <div className="mt-1.5 flex flex-col">
+                {e.ziele.map((z) => <Station key={z.href} z={z} zustand={zustandVon(z)} />)}
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
 
       {/* Ohne diesen Satz sähen die Schritte nach einer Lücke aus: Der
           Bereich hat achtzehn Unterseiten. Die beiden übrigen sind Steckbriefe

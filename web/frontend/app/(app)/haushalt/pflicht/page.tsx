@@ -52,7 +52,8 @@ import {
   Abgleich, PFLICHT_ERKLAERUNG, PFLICHT_LABEL, PflichtStufe, SpielraumBefund,
   abgleich, pflichtFuer, spielraumBefunde,
 } from "@/lib/haushalt-pflicht";
-import { Anteilsbalken, AnteilsbalkenSchmal, type Anteil } from "@/components/haushalt/anteilsbalken";
+import { AnteilsbalkenSchmal, type Anteil } from "@/components/haushalt/anteilsbalken";
+import { Gegenbalken } from "@/components/grafik/gegenbalken";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
@@ -220,11 +221,14 @@ export default function PflichtPage() {
             <Beleg q="plan" />
           </p>
         </div>
-        <Anteilsbalken
+        {/* Der 100-%-Balken folgt seit H4-03 der Gegenbalken-Regel (GB-04,
+            `components/grafik/`): Basis sichtbar angeschrieben, Beschriftung
+            der Segmente in der Legende (unter 10 % nie im Balken), die
+            Defizit-Marke als Signal-Strich mit Erklärsatz. */}
+        <Gegenbalken
           className="mt-3"
-          segmente={segmente}
-          gesamt={gesamtAus}
-          hoehe={16}
+          zeilen={[{ titel: `Alle Ausgaben ${jahr}`, segmente }]}
+          basis={gesamtAus}
           marke={defizit > 0 && gesamtAus > 0 ? {
             wert: defizit,
             label: `Der Strich markiert das geplante Minus: ${deMio(defizit)} Mio. €, `
@@ -278,7 +282,9 @@ export default function PflichtPage() {
           <p className="mt-2 text-[13px] leading-relaxed text-foreground/90">
             Die Stadt gibt in den Teilhaushaltsplänen zu jeder Aufgabe selbst an, wie viel Spielraum
             sie bei ihr sieht; unten steht das an jeder Zeile neben unserer Einordnung
-            <Beleg q="teilhaushalt" />.
+            <Beleg q="teilhaushalt" /> — <span aria-hidden="true">◇</span> ist ihre Angabe,{" "}
+            <span aria-hidden="true">●</span> unsere Zuordnung, jede mit eigenem Marker, weil es
+            zwei Quellen sind.
             {/* „weicht ab" statt „widerspricht": Welche der beiden Antworten
                 die richtige ist, entscheidet die Seite nicht — sie beantworten
                 zwei verschiedene Fragen (s. Lotti darunter). */}
@@ -377,6 +383,39 @@ export default function PflichtPage() {
   );
 }
 
+/** Die Doppel-Kennzeichnung (H4-03): „Muss oder kann?" hat auf dieser Seite
+ *  zweierlei Quelle — die Selbstauskunft der Stadt aus den Teilhaushalts-
+ *  plänen und unsere redaktionelle Zuordnung. Eine Farbe allein sagt nicht,
+ *  WESSEN Urteil sie kodiert; deshalb tragen beide Antworten je einen
+ *  eigenen Marker: ◇ (offen — die Angabe kommt von außen) für die Stadt,
+ *  ● (gefüllt — unsere Setzung) für uns. Die Zeile steht auf jedem Gerät bei
+ *  jedem Bereich und wird nie zusammengefasst — auch „keine Angabe" ist eine
+ *  Auskunft. Reine Text-Marker, keine Farben: Es gibt nichts zu bewerten. */
+function DoppelMarker({ stadt, wir }: { stadt: string | null; wir: string | null }) {
+  return (
+    <p className="mt-1.5 flex flex-wrap items-baseline gap-x-3.5 gap-y-0.5 font-mono text-[9.5px] font-medium uppercase tracking-[0.09em] text-muted-foreground">
+      <span className="inline-flex items-baseline gap-1">
+        <span aria-hidden="true" className="text-[11px]">◇</span>
+        <span>
+          <span className="sr-only">Selbstauskunft der </span>Stadt:{" "}
+          <span className={cn("font-semibold", stadt ? "text-foreground/85" : "font-normal italic")}>
+            {stadt ?? "keine Angabe"}
+          </span>
+        </span>
+      </span>
+      <span className="inline-flex items-baseline gap-1">
+        <span aria-hidden="true" className="text-[11px]">●</span>
+        <span>
+          <span className="sr-only">unsere Zuordnung — </span>wir:{" "}
+          <span className={cn("font-semibold", wir ? "text-foreground/85" : "font-normal italic")}>
+            {wir ?? "noch offen"}
+          </span>
+        </span>
+      </span>
+    </p>
+  );
+}
+
 /** Ein Teilhaushalt: was er kostet, wie wir ihn einordnen — und was die Stadt
  *  selbst zu seinen Aufgaben angibt. */
 function BereichsZeile({ r, groesster, produktJahr }: {
@@ -403,6 +442,10 @@ function BereichsZeile({ r, groesster, produktJahr }: {
           ) : (
             <p className="mt-1 text-[12px] italic text-muted-foreground">Noch nicht eingeordnet</p>
           )}
+          <DoppelMarker
+            stadt={befund?.dominant ? SPIELRAUM_TEXT[befund.dominant].kurz : null}
+            wir={r.stufe ? PFLICHT_LABEL[r.stufe] : null}
+          />
         </div>
         <span className="flex-none font-display text-[17px] font-bold tabular-nums">
           {deMio(r.aus)}<span className="text-[11px] font-semibold text-muted-foreground">&#8239;Mio.</span>

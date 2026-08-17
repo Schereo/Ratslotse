@@ -91,11 +91,17 @@ export type Produkt = {
   wirkungskreis?: string | null;
   zielgruppe?: string | null;
   quelle_label: string | null; quelle_url: string | null;
+  /** Jahrgänge, in denen dieses Produkt im Bestand steht — gegen
+   *  `alle_jahre` gehalten wird daraus das Abdeckungs-Badge (H4-04). */
+  jahre?: number[];
 };
 
 export type ProdukteAntwort = {
   jahr: number; produkte: Produkt[]; treffer?: number;
   abdeckung_prozent: number | null; plan_aufwendungen: number | null;
+  /** Alle Jahrgänge mit Produktebene — die Bezugsreihe der `jahre` je
+   *  Produkt. */
+  alle_jahre?: number[];
   /** Filterwerte mit Anzahl + wie viele Produkte welches Feld tragen. */
   facetten?: {
     aemter: { amt: string; anzahl: number }[];

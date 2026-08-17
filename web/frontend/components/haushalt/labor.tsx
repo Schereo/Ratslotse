@@ -30,9 +30,10 @@
 // (2023), die Simulation rechnet mit dem aktuellen Planjahr — beides zu
 // vermischen wäre eine Zahl, die es nirgends gibt.
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { RotateCcw } from "lucide-react";
+import { TABLEISTE_HOEHE } from "@/components/nav";
 import {
   HaushaltDaten, PLAN_ART_LABEL, Produkt, RUECKLAGE_MIO, bereiche, deMio,
   jahreSortiert, mio, naechstesProdukt, planGegenIst, summe,
@@ -246,7 +247,7 @@ export function Labor({ daten, produkte, produktJahr }: {
           </>
         ) : (
           <span className="text-muted-foreground">
-            Noch nichts gedreht — die Regler {kompakt ? "unten" : "links"} füllen diesen Balken.
+            Noch nichts gedreht — die Regler {kompakt ? "oben" : "links"} füllen diesen Balken.
           </span>
         )}
       </p>
@@ -289,19 +290,8 @@ export function Labor({ daten, produkte, produktJahr }: {
 
   return (
     <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[1fr_330px]">
-      {/* Mobil klebt die Kurzfassung über den Reglern: Sonst dreht man an
-          einem Regler und sieht die Wirkung erst nach dem Scrollen. */}
       {/* Regler */}
       <div className="flex flex-col gap-3">
-        {/* Mobil klebt die Kurzfassung über den Reglern: Sonst dreht man an
-            einem Regler und sieht die Wirkung erst nach dem Scrollen. Sie
-            steht INNERHALB dieser Spalte — so klebt sie nur, solange es etwas
-            zu drehen gibt, und gibt die Kontext-Karten darunter wieder frei.
-            65 px = Höhe der mobilen Kopfzeile (dieselbe Marke wie in der
-            Gründlichen Recherche). */}
-        <div className="sticky top-[65px] z-[var(--ebene-schwebend)] -mx-1 bg-background/85 px-1 py-1 backdrop-blur lg:hidden">
-          {ergebnisKarte({ kompakt: true })}
-        </div>
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="font-mono text-[10px] uppercase tracking-[0.11em] text-muted-foreground">
             Zum Ausprobieren
@@ -452,6 +442,24 @@ export function Labor({ daten, produkte, produktJahr }: {
               <Beleg q="teilhaushalt" /> — zum Einordnen der Größenordnung, nicht zum Mitrechnen.</>
             )}
           </p>
+        </div>
+
+        {/* Mobil klebt das Ergebnis am UNTEREN Rand, über der Tab-Leiste
+            (H4-16): Das Ergebnis folgt der Bewegung — der Daumen ist unten,
+            der Regler in der Mitte, die Wirkung direkt darunter, live bei
+            jedem Zug. Bis 17.08. klebte die Karte oben unter der Kopfzeile
+            und fraß dort ein Drittel des Schirms, bevor der erste Regler
+            überhaupt im Bild war. Als LETZTES Kind der Regler-Spalte klebt
+            sie nur, solange es etwas zu drehen gibt, und legt sich danach an
+            ihren Platz — dieselbe Mechanik wie die Ableseleiste des
+            Baukastens (`.gb-ablese-leiste`); die Andockkante ist
+            `TABLEISTE_HOEHE`, nie eine eigene Zahl (Designsprache § 5).
+            z-30: über der eigenen Spalte, unter Kopf- und Tab-Leiste. */}
+        <div
+          className="sticky z-30 lg:hidden"
+          style={{ bottom: `calc(${TABLEISTE_HOEHE} + 0.5rem)` } as CSSProperties}
+        >
+          {ergebnisKarte({ kompakt: true })}
         </div>
       </div>
 

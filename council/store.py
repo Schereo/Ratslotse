@@ -5093,6 +5093,25 @@ class CouncilStore:
         except sqlite3.OperationalError:
             return []
 
+    def produkt_abdeckung(self) -> dict[str, list[int]]:
+        """Je Produktnummer die Jahre, in denen sie im Bestand steht.
+
+        Nicht jedes Jahr deckt jeden Teilhaushalt (die Pläne liegen nicht für
+        jeden Jahrgang auslesbar vor) — die Trefferliste soll das je Produkt
+        ehrlich anschreiben können (Abdeckungs-Badge, H4-04), statt eine
+        durchgehende Reihe zu suggerieren. Eine Abfrage für alle Produkte:
+        Die Liste ist klein (wenige hundert Nummern), und je Treffer einzeln
+        zu fragen wäre ein N+1."""
+        out: dict[str, list[int]] = {}
+        try:
+            rows = self._conn.execute(
+                "SELECT produkt_nr, jahr FROM council_produkte ORDER BY jahr")
+        except sqlite3.OperationalError:
+            return out
+        for nr, jahr in rows:
+            out.setdefault(nr, []).append(jahr)
+        return out
+
     def save_pruefbericht(self, jahr: int, feststellungen: list[dict], herkunft) -> int:
         """Prüfungsfeststellungen eines Schlussberichts speichern.
 

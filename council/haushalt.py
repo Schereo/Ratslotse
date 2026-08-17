@@ -416,8 +416,12 @@ _BEREICH_INFO = {
     "verkehr": "Straßen, Radwege, Brücken und den Nahverkehr",
     "sicherheit": "Feuerwehr, Rettungsdienst, Ordnungsverwaltung und die Bürgerdienste vom Einwohnermeldeamt bis zum Standesamt",
     "stadtplanung": "Bauleitplanung und Stadtentwicklung",
-    "verwaltungsfuehrung": "Oberbürgermeister, Ratsbüro und Verwaltungsspitze, dazu Rechnungsprüfung und Gleichstellungsstelle",
-    "personal": "Personal, Organisation und IT der gesamten Verwaltung samt der Versorgung der Pensionärinnen und Pensionäre",
+    # Gegen den Vorbericht gelesen (H2-13): Sitzungsdienst und Presse- und
+    # Öffentlichkeitsarbeit gehören ebenfalls hierher.
+    "verwaltungsfuehrung": "Oberbürgermeister und Dezernate, Ratsbüro und Sitzungsdienst, Presse- und Öffentlichkeitsarbeit, dazu Rechnungsprüfung und Gleichstellungsstelle",
+    # Der Nachsatz ist die wichtigste Auskunft (H2-13): Der Betrag liest sich
+    # sonst wie die Lohnsumme der ganzen Stadt.
+    "personal": "Personal, Organisation und IT der gesamten Verwaltung samt der Versorgung der Pensionär*innen — nicht aber die Gehälter aller Beschäftigten, die in ihren jeweiligen Teilhaushalten stehen",
     "wirtschaft": "Wirtschaftsförderung und Standortmarketing sowie die Grundstücke und Beteiligungen der Stadt",
     "umwelt": "Grünflächen und Friedhöfe, Bauordnung sowie Natur- und Klimaschutz",
     "stiftungen": "treuhänderisch verwaltetes Stiftungsvermögen — zweckgebunden, kein frei verfügbares Geld der Stadt",

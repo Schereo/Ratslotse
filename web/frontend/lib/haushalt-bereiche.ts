@@ -72,9 +72,13 @@ export const BEREICHE: readonly Bereich[] = [
     thh: 1,
     name: "Verwaltungsführung",
     kurz: "Verwaltungsspitze",
+    // Gegen den Vorbericht gelesen (H2-13): Sitzungsdienst und Presse- und
+    // Öffentlichkeitsarbeit gehören ebenfalls hierher — beides Aufgaben, die
+    // von außen niemand unter „Verwaltungsführung" vermutet.
     klartext:
-      "Oberbürgermeister, Ratsbüro und Verwaltungsspitze — dazu die örtliche " +
-      "Rechnungsprüfung und die Gleichstellungsstelle.",
+      "Oberbürgermeister und Dezernate, Ratsbüro und Sitzungsdienst, Presse- " +
+      "und Öffentlichkeitsarbeit — dazu die örtliche Rechnungsprüfung und " +
+      "die Gleichstellungsstelle.",
     aliase: ["Verwaltungsführung"],
   },
   {
@@ -82,9 +86,12 @@ export const BEREICHE: readonly Bereich[] = [
     thh: 2,
     name: "Personal/Organisation/Digitalisierung/IT",
     kurz: "Personal & IT",
+    // Der Nachsatz ist die wichtigste Auskunft der Zeile (H2-13): 47 Mio. €
+    // für „Personal" liest sich sonst wie die Lohnsumme der ganzen Stadt.
     klartext:
-      "Personal, Organisation und IT der gesamten Verwaltung — hier stehen auch " +
-      "die Versorgungsaufwendungen für die Pensionen.",
+      "Personal, Organisation und IT der gesamten Verwaltung, dazu die " +
+      "Pensionen — nicht aber die Gehälter aller Beschäftigten, die stehen " +
+      "in ihren jeweiligen Bereichen.",
     aliase: [
       "Personal/Organisation/Digitalisierung/IT",
       "Personal- und Verwaltungsmanagement",
