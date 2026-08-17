@@ -5,6 +5,7 @@ import json
 import logging
 import math
 import time
+from collections import Counter, defaultdict
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
@@ -491,7 +492,8 @@ def haushalt_konzern(
     }
 
 
-def _lexikon_zuordnung(store: CouncilStore, namen: list[str]) -> dict[str, dict]:
+def _lexikon_zuordnung(store: CouncilStore,
+                       personen: list[dict]) -> dict[str, dict]:
     """Namen aus dem Beteiligungsbericht → Personen-Seite und Partei.
 
     Die Zuordnung gehört **hierher** und nicht in die Datenbank: Das Lexikon
@@ -511,7 +513,22 @@ def _lexikon_zuordnung(store: CouncilStore, namen: list[str]) -> dict[str, dict]
     30 Prozent, die leer ausgehen, sind zum großen Teil gar keine
     Ratspersonen: Aufsichtsräte entsenden auch Banken, Hochschulen und
     Mitgesellschafter, und die TGO Besitz benennt statt Personen ihre
-    Entsendungsrechte („Vertreter/in der Landessparkasse")."""
+    Entsendungsrechte („Vertreter/in der Landessparkasse").
+
+    **Verlinkt wird nur, wer eine Seite hat** — und das sind allein die
+    Ratsmitglieder (``art == "rat"``). Das Lexikon führt daneben
+    Verwaltungsleute und, seit Tims Auftrag vom 17.08., die Aufsichtsorgane
+    selbst; ``/council/person/{slug}`` kennt beide nicht und antwortet mit
+    404. Bis hierher zeigte der Steckbrief sechs solcher Links ins Leere,
+    darunter den des Oberbürgermeisters — er sitzt qua Amt in fast jedem
+    Aufsichtsrat, taucht in den Anwesenheitslisten aber als Verwaltung auf
+    und hat deshalb kein Mandats-Profil. Ein toter Link ist schlimmer als
+    kein Link.
+
+    Die Funktion aus dem Bericht kommt mit, weil sie die Tippfehler-Heilung
+    trägt (:meth:`CouncilStore.tippfehler_ratsmitglied`): Wo der Bericht
+    „Ratsmitglied" behauptet und sich nur um einen Buchstaben vertippt hat,
+    findet die Person ihre Seite trotzdem."""
     def ganz(anzeige: str) -> tuple[str, ...]:
         """Alle Namensteile gefaltet — für den Stichentscheid unten."""
         return tuple(sorted(CouncilStore._falte_namen(t)
@@ -527,8 +544,14 @@ def _lexikon_zuordnung(store: CouncilStore, namen: list[str]) -> dict[str, dict]
             continue
         nach_paar.setdefault((e["vorname"], e["nachname"]), []).append(e)
 
+    # Je Name die häufigste Funktion des Berichts — Eingang der Heilung unten.
+    funktionen: dict[str, Counter] = defaultdict(Counter)
+    for p in personen:
+        if p.get("funktion"):
+            funktionen[p["name"]][p["funktion"]] += 1
+
     aus: dict[str, dict] = {}
-    for name in set(namen):
+    for name in {p["name"] for p in personen}:
         vor, nach = CouncilStore.namensteile(name)
         treffer = nach_paar.get((vor, nach), []) if vor and nach else []
         if len(treffer) > 1:
@@ -541,7 +564,12 @@ def _lexikon_zuordnung(store: CouncilStore, namen: list[str]) -> dict[str, dict]
             # sind hier nicht auseinanderzuhalten.
             treffer = [e for e in treffer if ganz(e["name"] or "") == ganz(name)]
         eintrag = treffer[0] if len(treffer) == 1 else None
-        aus[name] = {"slug": eintrag["slug"] if eintrag else None,
+        if eintrag is None:
+            fn = funktionen[name].most_common(1)
+            eintrag = CouncilStore.tippfehler_ratsmitglied(
+                vor, nach, fn[0][0] if fn else None, nach_paar)
+        verlinkbar = bool(eintrag) and eintrag.get("art") == "rat"
+        aus[name] = {"slug": eintrag["slug"] if verlinkbar else None,
                      "partei": eintrag["partei"] if eintrag else None}
     return aus
 
@@ -606,7 +634,7 @@ def haushalt_beteiligungen(
     # kann, ohne die Personen durchzugehen. Wer gar keine Personen hat, hat
     # auch nichts falsch zuzuordnen.
     gerissen = {p["gesellschaft"] for p in personen if not p["funktionen_zuordenbar"]}
-    verzeichnis = _lexikon_zuordnung(store, [p["name"] for p in personen])
+    verzeichnis = _lexikon_zuordnung(store, personen)
 
     ids = sorted({z["herkunft_id"]
                   for z in (*gesellschaften, *texte, *kennzahlen, *personen,

@@ -57,8 +57,13 @@ export type PersonEintrag = {
   slug: string; name: string | null; vorname: string; nachname: string;
   /** "blocker": Gäste/Protokoll/beratende Mitglieder — nie ein Badge, aber
    *  ihr Nachname macht einen kahlen Nachnamen im Text mehrdeutig (Tims
-   *  Oltmanns-Befund 12.08.). */
-  art: "rat" | "stadt" | "blocker"; partei: string | null; rolle: string | null;
+   *  Oltmanns-Befund 12.08.).
+   *  "beteiligung": nur aus dem Beteiligungsbericht bekannt — Aufsichtsorgane
+   *  der städtischen Gesellschaften (Landkreis, Belegschaft,
+   *  Mitgesellschafter). `von`/`bis` sind hier BERICHTSJAHRGÄNGE, nicht
+   *  Sitzungsjahre, und `aktiv` heißt „steht im jüngsten Bericht". */
+  art: "rat" | "stadt" | "beteiligung" | "blocker";
+  partei: string | null; rolle: string | null;
   aktiv: boolean; von: string | null; bis: string | null;
 };
 
@@ -209,15 +214,33 @@ export function PersonBadge({ p }: { p: PersonEintrag }) {
     };
   }, [offen]);
 
+  // „beteiligung" trägt einen neutralen Punkt und KEINE Parteifarbe: Der
+  // Beteiligungsbericht nennt keine Fraktion, und eine Beschäftigten-
+  // vertreterin hat schlicht keine. Ohne den eigenen Zweig fiele sie hier in
+  // `parteiKuerzel(null)` — und das antwortet „Rat".
   const dot = !p.aktiv ? { bg: "hsl(209 10% 62%)", ring: false }
     : p.art === "stadt" ? { bg: "#0764a6", ring: false }
+    : p.art === "beteiligung" ? { bg: "hsl(209 10% 62%)", ring: true }
     : parteiDot(p.partei || "");
-  const label = !p.aktiv ? "ehem." : p.art === "stadt" ? "Stadt" : parteiKuerzel(p.partei);
+  const label = !p.aktiv ? "ehem."
+    : p.art === "stadt" ? "Stadt"
+    : p.art === "beteiligung" ? "Aufsicht"
+    : parteiKuerzel(p.partei);
   const rolle = p.rolle
-    || (p.art === "rat" ? `Ratsmitglied${p.partei ? ` · ${p.partei}` : ""}` : "Stadtverwaltung");
-  const zeitraum = p.aktiv
-    ? (p.von ? `In den Sitzungen seit ${p.von}` : null)
-    : (p.von && p.bis ? `In den Sitzungen ${p.von}–${p.bis}` : null);
+    || (p.art === "rat" ? `Ratsmitglied${p.partei ? ` · ${p.partei}` : ""}`
+      : p.art === "beteiligung" ? "Aufsichtsorgan einer städtischen Gesellschaft"
+      : "Stadtverwaltung");
+  // Der Zeitraum sagt, WORAUS wir die Person kennen. Bei den Aufsichtsorganen
+  // sind das Berichtsjahrgänge, nicht Sitzungen — „In den Sitzungen seit
+  // 2022" wäre für eine Betriebsratsvorsitzende schlicht falsch.
+  const zeitraum = p.art === "beteiligung"
+    ? (p.von && p.bis
+      ? (p.von === p.bis ? `Im Beteiligungsbericht ${p.von}`
+        : `In den Beteiligungsberichten ${p.von}–${p.bis}`)
+      : null)
+    : p.aktiv
+      ? (p.von ? `In den Sitzungen seit ${p.von}` : null)
+      : (p.von && p.bis ? `In den Sitzungen ${p.von}–${p.bis}` : null);
 
   return (
     <span ref={ref} className="relative inline-block align-baseline">

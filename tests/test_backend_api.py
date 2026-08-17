@@ -763,8 +763,9 @@ def test_beteiligungen_namensvetter_bekommt_keinen_slug():
             ]
 
     z = _lexikon_zuordnung(Lexikon(), [
-        "Dr. Sebastian Rohe", "Dr. Georg Rohe", "Rohe", "Christine Wolff",
-        "Peter Schmidt", "Vertreter/in der Landessparkasse zu Oldenburg"])
+        {"name": n, "funktion": "Ratsmitglied"} for n in (
+            "Dr. Sebastian Rohe", "Dr. Georg Rohe", "Rohe", "Christine Wolff",
+            "Peter Schmidt", "Vertreter/in der Landessparkasse zu Oldenburg")])
     # Vor- und Nachname zusammen sind eindeutig — Titel zählen nicht mit.
     assert z["Dr. Sebastian Rohe"] == {"slug": "sebastian-rohe", "partei": "Grüne"}
     assert z["Dr. Georg Rohe"] == {"slug": "georg-rohe", "partei": "CDU"}
@@ -776,6 +777,47 @@ def test_beteiligungen_namensvetter_bekommt_keinen_slug():
     assert z["Peter Schmidt"]["slug"] is None
     # Und ein Entsendungsrecht ist gar keine Person.
     assert z["Vertreter/in der Landessparkasse zu Oldenburg"]["slug"] is None
+
+
+def test_beteiligungen_verlinkt_nur_wer_eine_seite_hat():
+    """Ein Link ins Leere ist schlimmer als kein Link.
+
+    ``/council/person/{slug}`` kennt nur Mandatsträger*innen. Das Lexikon führt
+    daneben Verwaltungsleute (Amt aus den Protokoll-Notizen) und seit Tims
+    Auftrag vom 17.08. die Aufsichtsorgane selbst — beide ohne Seite. Bis
+    dahin verlinkte der Steckbrief sechs solcher Namen ins 404, darunter den
+    Oberbürgermeister: Er sitzt qua Amt in fast jedem Aufsichtsrat, steht in
+    den Anwesenheitslisten aber als Verwaltung und hat deshalb kein
+    Mandats-Profil.
+
+    Und die Gegenprobe zum Druckfehler: Wo der Bericht „Ratsmitglied" sagt und
+    sich um einen Buchstaben vertippt, findet die Person ihre Seite doch."""
+    from app.routers.council import _lexikon_zuordnung
+
+    class Lexikon:
+        def personen_lexikon(self):
+            return [
+                {"slug": "juergen-krogmann", "name": "Jürgen Krogmann",
+                 "vorname": "juergen", "nachname": "krogmann", "art": "stadt",
+                 "partei": None},
+                {"slug": "karin-harms", "name": "Karin Harms", "vorname": "karin",
+                 "nachname": "harms", "art": "beteiligung", "partei": None},
+                {"slug": "claudia-oeljeschlaeger", "name": "Claudia Oeljeschläger",
+                 "vorname": "claudia", "nachname": "oeljeschlaeger", "art": "rat",
+                 "partei": "SPD"},
+            ]
+
+    z = _lexikon_zuordnung(Lexikon(), [
+        {"name": "Jürgen Krogmann", "funktion": "Oberbürgermeister"},
+        {"name": "Karin Harms", "funktion": "Landrätin"},
+        {"name": "Claudia Oeljeschleger", "funktion": "Ratsmitglied"},
+    ])
+    # Bekannt, aber ohne Seite → kein Link.
+    assert z["Jürgen Krogmann"]["slug"] is None
+    assert z["Karin Harms"]["slug"] is None
+    # Druckfehler eines Ratsmitglieds → Link samt Partei.
+    assert z["Claudia Oeljeschleger"] == {"slug": "claudia-oeljeschlaeger",
+                                          "partei": "SPD"}
 
 
 def test_haushalt_konzern_liefert_luecke_und_gegenprobe(client):
