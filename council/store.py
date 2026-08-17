@@ -10,6 +10,7 @@ import sqlite3
 
 from .scraper import CouncilSession, AgendaItem
 from .parties import order_key, parties_for_faction
+from . import importance as _importance
 
 
 def _norm_title(t: str) -> str:
@@ -6809,12 +6810,12 @@ class CouncilStore:
     # Titles excluded from the "largest" view: accounting / whole-budget reports
     # (balance totals, not a discrete decision) and treasury operations (debt
     # refinancing / credit reporting) — neither is "the city spends X on Y".
-    _NON_SPENDING_TITLES = (
-        "jahresabschluss", "lagebericht", "gesamtabschluss", "wirtschaftsplan",
-        "haushaltsplan", "haushaltssatzung", "nachtragshaushalt", "finanzbericht",
-        "beteiligungsbericht", "jahresrechnung", "quartalsbericht", "zwischenbericht",
-        "umschuldung", "kreditrichtlinie", "kassenkredite",
-    )
+    #
+    # Die Liste lebt in `council/importance.py` (Blatt-Modul, kein Zirkel) und
+    # wird hier nur weitergereicht. Vorher stand sie ausschließlich hier — mit
+    # der Folge, dass die drei Geld-Ansichten filterten, das Geld-Signal des
+    # Wichtig-Werts aber nicht.
+    _NON_SPENDING_TITLES = _importance.NON_SPENDING_TITLES
 
     def activity_trends(self, quarters: int = 12) -> dict:
         """Council activity over time for the trends view: decisions and recognised €
