@@ -1334,6 +1334,69 @@ def test_parse_abweichungsgruende():
     assert "Laufende Verwaltungstätigkeit" not in steuern["text"]
 
 
+#: Wie die echten Jahresabschlüsse gebaut sind: Zwischen dem letzten Posten
+#: und der Finanzrechnungs-Fassung der Überschrift steht **Abschnitt 6.4**.
+#: Die Fixture oben lässt ihn weg und trifft den Fehler deshalb nicht — den
+#: hier gibt es in allen acht Jahrgängen im Bestand (17.08.2026: letzter
+#: Posten 5.371–7.176 Zeichen, längster übriger 1.378).
+JA_WARUM_MIT_FOLGEABSCHNITT = """6.3.1
+Erläuterung der erheblichen Plan / Ist-Abweichungen in der Ergebnis-
+rechnung
+
+14. Abschreibungen (-1,2 Millionen Euro, -4,10 %)
+
+Die Abschreibungen fielen geringer aus als geplant.
+
+23. außerordentliche Aufwendungen (+3,5 Millionen Euro, +313,87 %)
+
+Im Teilhaushalt 03 ergeben sich Mehraufwendungen in Höhe von 285.275 Euro,
+die durch den Abriss einer Gemeinschaftsunterkunft entstanden sind.
+
+6.4 Erläuterung der wesentlichen Positionen der Finanzrechnung der Kern-
+verwaltung
+
+Als wesentlich werden die Positionen betrachtet, die mindestens 10 % der
+Einzahlungen ausmachen. Eine nähere Beschreibung kann unter Ziffer 2.2.1.1
+des Rechenschaftsberichts nachgelesen werden.
+
+6.4.1
+Erläuterung der erheblichen Plan / Ist-Abweichungen in der Finanzrech-
+nung
+"""
+
+
+def test_letzter_posten_endet_am_folgeabschnitt():
+    """Der Erläuterungsteil hat keine eigene Schlussmarke — ohne den Schnitt
+    an der nächsten Abschnittsüberschrift schluckt der letzte Posten den
+    Abschnitt 6.4 mitsamt allem, was folgt."""
+    gruende = finanzberichte.parse_abweichungsgruende(
+        JA_WARUM_MIT_FOLGEABSCHNITT, 2020)
+    assert [g["nr"] for g in gruende] == [14, 23]
+    text = gruende[-1]["text"]
+    assert text.endswith("entstanden sind.")
+    assert "wesentlichen Positionen" not in text
+    assert "Rechenschaftsberichts" not in text
+    # Der eigene Wortlaut bleibt vollständig, auch der Betrag darin.
+    assert "285.275 Euro" in text and "Teilhaushalt 03" in text
+
+
+def test_abschnittsschnitt_verschont_kurze_erlaeuterungen():
+    """Gegenprobe zur Regel: Ein Muster, das auch die kurzen Erläuterungen
+    anschnitte, wäre zu gierig. Am Bestand greift es bei 8 von 8 letzten
+    Posten und 0 von 37 übrigen — hier die Fälle, an denen es scheitern
+    würde."""
+    schneide = finanzberichte._bis_abschnittsende
+    # Geldbeträge mit Tausenderpunkten sind keine Abschnittsnummern.
+    assert schneide("Mehrerträge von 1.049.000,00 Euro im Bereich") \
+        == "Mehrerträge von 1.049.000,00 Euro im Bereich"
+    # Verweise im Fließtext gehen klein weiter und sind keine Überschrift.
+    assert schneide("nachzulesen unter Ziffer 2.2.1.1 des Berichts") \
+        == "nachzulesen unter Ziffer 2.2.1.1 des Berichts"
+    # Eine echte Überschrift schneidet.
+    assert schneide("Ende des Textes. 6.4 Erläuterung der Positionen") \
+        == "Ende des Textes."
+
+
 def test_abweichungsgruende_brauchen_die_rechenprobe():
     """Die Überschrift nennt die Abweichung doppelt — als Betrag und als
     Prozentsatz. Beides muss zur geparsten Tabellenzeile passen."""
