@@ -307,13 +307,17 @@ def _jahr_aus_label(row: dict) -> int | None:
     return int(m.group(1)) if m else None
 
 
-#: Die zwei Ebenen eines Jahresabschlusses. Die Erläuterungen aus Abschnitt
-#: 6.3.1 sind bewusst **keine** dritte Einheit: Ob ein Jahrgang welche hat,
-#: entscheidet der Bericht (und die Rechenprobe), nicht wir — als Einheit
-#: geführt gälte jeder Jahrgang ohne Erläuterungen für immer als unvollständig
-#: und würde alle zwei Wochen neu geparst. Sie werden trotzdem nachgetragen,
-#: sobald der Jahrgang aus einem anderen Grund noch einmal gelesen wird.
-EBENEN = ("gesamt", "teilhaushalte")
+#: Die drei Ebenen eines Jahresabschlusses: die Ergebnisrechnung der
+#: Kernverwaltung, dieselbe Rechnung je Teilhaushalt und die Finanzrechnung —
+#: was gebucht wurde, wo es gebucht wurde, und was tatsächlich geflossen ist.
+#:
+#: Die Erläuterungen aus Abschnitt 6.3.1 sind bewusst **keine** vierte
+#: Einheit: Ob ein Jahrgang welche hat, entscheidet der Bericht (und die
+#: Rechenprobe), nicht wir — als Einheit geführt gälte jeder Jahrgang ohne
+#: Erläuterungen für immer als unvollständig und würde alle zwei Wochen neu
+#: geparst. Sie werden trotzdem nachgetragen, sobald der Jahrgang aus einem
+#: anderen Grund noch einmal gelesen wird.
+EBENEN = ("gesamt", "teilhaushalte", "kasse")
 
 
 def _einheiten_jahresabschluss(row: dict) -> set[tuple]:
@@ -386,7 +390,8 @@ def _jahre(store: CouncilStore, sql: str) -> list:
 
 
 def _bestand_jahresabschluss(store: CouncilStore) -> set[tuple]:
-    """Je Jahrgang bis zu zwei Einheiten: Gesamtrechnung und Teilhaushalte.
+    """Je Jahrgang bis zu drei Einheiten: Gesamtrechnung, Teilhaushalte,
+    Finanzrechnung.
 
     ``ergebnisrechnung_jahre()`` genügt hier **nicht** — es liefert „irgendeine
     Zeile" und hielte einen Jahrgang, dessen Teilhaushalts-Ebene an der
@@ -395,6 +400,8 @@ def _bestand_jahresabschluss(store: CouncilStore) -> set[tuple]:
         store, "SELECT DISTINCT jahr FROM council_ergebnisrechnung WHERE thh_nr IS NULL")}
     aus |= {(r[0], "teilhaushalte") for r in _jahre(
         store, "SELECT DISTINCT jahr FROM council_ergebnisrechnung WHERE thh_nr IS NOT NULL")}
+    aus |= {(r[0], "kasse") for r in _jahre(
+        store, "SELECT DISTINCT jahr FROM council_finanzrechnung")}
     return aus
 
 
@@ -691,7 +698,19 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
             p.warnen(f"  {jahr}: {repariert} Zeile(n) mit fehlendem Minuszeichen im Dokument — "
                      f"Betrag passte auf den Cent, Vorzeichen ergänzt")
             vorzeichen_repariert += repariert
-        gelesen[jahr] = {"posten": posten, "text": text,
+        # Die Kassensicht aus demselben Dokument, dreißig Seiten weiter. Sie
+        # hängt an ihrer eigenen Kaskade und teilt das Schicksal der
+        # Ergebnisrechnung ausdrücklich NICHT: Reißt sie, fehlt die
+        # Finanzrechnung des Jahrgangs, und „geplant gegen tatsächlich" steht
+        # trotzdem auf der Seite.
+        kasse_roh = finanzberichte.parse_finanzrechnung(text, jahr)
+        kasse, kasse_fehler, kasse_hinweise = finanzberichte.finanzprobe(kasse_roh)
+        for x in kasse_fehler:
+            p.warnen(f"  {jahr}: Finanzrechnung verworfen — {x}")
+        for x in kasse_hinweise:
+            p.sagen(f"  {jahr}: Finanzrechnung — {x}")
+
+        gelesen[jahr] = {"posten": posten, "text": text, "kasse": kasse,
                          "label": r["label"], "url": r["url"],
                          "document_id": r["document_id"]}
 
@@ -706,17 +725,31 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
         verdaechtig |= {jahr, folge}
     glieder = sum(1 for j in gelesen if j + 1 in gelesen) * 2
 
+    # Dasselbe für die Kasse: Der Endbestand eines Jahres steht im Folgejahr
+    # als Anfangsbestand. Ein gerissenes Glied kostet hier nur die
+    # Finanzrechnung der beiden Jahrgänge, nicht ihre Ergebnisrechnung — es
+    # sind verschiedene Abschnitte hinter verschiedenen Proben.
+    kassenkette = finanzberichte.kassenkette({j: v["kasse"] for j, v in gelesen.items()})
+    kasse_verdaechtig: set[int] = set()
+    for jahr, folge, warum in kassenkette:
+        p.warnen(f"  Kassen-Kette {jahr}→{folge} gerissen: {warum} — die "
+                 f"Finanzrechnung beider Jahrgänge wird nicht gespeichert")
+        kasse_verdaechtig |= {jahr, folge}
+    kassenglieder = sum(1 for j in gelesen if j + 1 in gelesen
+                        and gelesen[j]["kasse"] and gelesen[j + 1]["kasse"])
+
     neu: list[int] = []
     neue_einheiten: set[tuple] = set()
-    mit_thh = verworfen = gruende_gesamt = geschuetzt = 0
+    mit_thh = verworfen = gruende_gesamt = geschuetzt = mit_kasse = 0
     for jahr in sorted(gelesen):
         if jahr in verdaechtig:
             uebersprungen += 1
             continue
         braucht_gesamt = (jahr, "gesamt") not in vorhanden
         braucht_thh = (jahr, "teilhaushalte") not in vorhanden
-        if not (braucht_gesamt or braucht_thh):
-            continue  # beide Ebenen stehen — der Job fasst Bestand nicht an
+        braucht_kasse = (jahr, "kasse") not in vorhanden
+        if not (braucht_gesamt or braucht_thh or braucht_kasse):
+            continue  # alle Ebenen stehen — der Job fasst Bestand nicht an
         v = gelesen[jahr]
         posten, label, url = v["posten"], v["label"], v["url"]
 
@@ -795,6 +828,40 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
                         neue_einheiten.add((jahr, "teilhaushalte"))
                         mit_thh += 1
 
+            # Dritte Ebene: die Finanzrechnung. Was `finanzprobe` hier liefert,
+            # ist bereits durchgerechnet — leer heißt „Kaskade gerissen", und
+            # dann steht für diesen Jahrgang eben keine Kassensicht auf der
+            # Seite. Ein Beleg nennt jede Probe, die den Jahrgang wirklich
+            # trägt: die Ermächtigungsspalte nur, wo sie überlebt hat, die
+            # Kassen-Kette nur, wo es einen Nachbarjahrgang zum Schließen gibt.
+            if braucht_kasse and v["kasse"] and jahr not in kasse_verdaechtig:
+                alt_kasse = _anzahl(store, "SELECT COUNT(*) FROM council_finanzrechnung "
+                                           "WHERE jahr = ?", (jahr,))
+                if not bestandsschutz(p, f"{jahr} Finanzrechnung", alt_kasse,
+                                      len(v["kasse"]), schuetzen):
+                    geschuetzt += 1
+                else:
+                    rollen = {x["rolle"] for x in v["kasse"] if x.get("rolle")}
+                    proben = ["finanzkaskade"]
+                    if any(x.get("ermaechtigung") is not None for x in v["kasse"]):
+                        proben.append("finanz_ermaechtigungen")
+                    if "endbestand" in rollen:
+                        proben.append("finanz_bestandskette")
+                    if any((jahr + s) in gelesen and gelesen[jahr + s]["kasse"]
+                           for s in (-1, 1)):
+                        proben.append("kassenkette")
+                    store.save_finanzrechnung(jahr, v["kasse"], herkunft.Herkunft(
+                        probe=proben,
+                        fundstelle="Abschnitt 4.1 — Finanzrechnung der "
+                                   "Kernverwaltung (Ein- und Auszahlungen)",
+                        **anker))
+                    neue_einheiten.add((jahr, "kasse"))
+                    mit_kasse += 1
+                    saldo = next((x["ergebnis"] for x in v["kasse"]
+                                  if x["rolle"] == "finanzmittel"), None)
+                    p.sagen(f"    + Finanzrechnung: {len(v['kasse'])} Zeilen · "
+                            f"Finanzmittelsaldo {saldo/1e6:+.1f} Mio. €")
+
             # Das „Warum": Abschnitt 6.3.1 je Posten. Eintrittskarte ist der
             # Abgleich mit der Tabellenzeile — Betrag und Prozentsatz stehen in
             # der Überschrift des Blocks und müssen beide passen.
@@ -822,7 +889,7 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
                     p.sagen(f"    + {len(angenommen)} Erläuterungen zu Abweichungen")
                 elif alt_gruende:
                     geschuetzt += 1
-        if (jahr, "gesamt") in neue_einheiten or (jahr, "teilhaushalte") in neue_einheiten:
+        if any((jahr, e) in neue_einheiten for e in EBENEN):
             neu.append(jahr)
 
     return {"neue_jahrgaenge": sorted(set(neu)),
@@ -832,6 +899,9 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
             "kettenglieder_geprueft": glieder, "kette_gerissen": len(kette),
             "vorzeichen_repariert": vorzeichen_repariert,
             "bestand_geschuetzt": geschuetzt,
+            "jahre_mit_finanzrechnung": mit_kasse,
+            "kassenglieder_geprueft": kassenglieder,
+            "kassenkette_gerissen": len(kassenkette),
             "abweichungsgruende": gruende_gesamt}
 
 

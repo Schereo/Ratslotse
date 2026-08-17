@@ -135,7 +135,12 @@ def _tabellenkopf(kopf: str, jahr: int) -> dict | None:
     finde("nachtrag", r"Veränderung durch\s*Nachtrag", r"\bNachtrag\b")
     finde("gesamtermaechtigung", r"Gesamtermächtigung")
     finde("ergebnis", r"Ergebnis des Haushaltsjahres", rf"Ergebnis {jahr}")
-    finde("abweichung", r"mehr \(\+\)", r"Differenz", r"Abweichung", r"Vergleich")
+    # Der Zwischenraum vor der Klammer ist nicht verlässlich: Die
+    # Finanzrechnung 2017 schreibt „mehr(+), weniger(-)" ohne Leerzeichen, und
+    # ohne das ``\s*`` fand der Kopf dort gar keine Abweichungsspalte — der
+    # ganze Jahrgang fiel durch. Die Stelle ist nur ein Vorhandenseins-Test
+    # (die Reihenfolge kommt aus Ansatz und Ergebnis), Aufweiten also gefahrlos.
+    finde("abweichung", r"mehr\s*\(\+\)", r"Differenz", r"Abweichung", r"Vergleich")
 
     if "ergebnis" not in positionen or "abweichung" not in positionen:
         return None
@@ -437,8 +442,474 @@ def _spalten_zuordnen(zahlen: list[float], kopf: dict) -> dict | None:
             ansatz = plan
         return {"vorjahr": vorjahr, "ansatz": ansatz, "plan": plan,
                 "plan_art": art, "ergebnis": ergebnis, "abweichung": abweichung,
-                "vorzeichen_repariert": repariert}
+                "vorzeichen_repariert": repariert,
+                # Wo das gefundene Fenster in der Zahlenfolge anfängt. Die
+                # Ergebnisrechnung braucht das nicht; die Finanzrechnung liest
+                # daran die Spalte ab, die HINTER der Abweichung steht (die
+                # Ermächtigungen aus Vorjahren, s. `parse_finanzrechnung`).
+                "_fenster_start": start}
     return None
+
+
+# --- Jahresabschluss: Finanzrechnung der Kernverwaltung ---------------------
+#
+# Derselbe Bericht, dreißig Seiten weiter, und die andere Hälfte der Wahrheit.
+# Die Ergebnisrechnung oben bucht: Sie zeigt für 2024 einen Jahresüberschuss
+# von 6,1 Mio. €. Die Finanzrechnung zahlt: Im selben Dokument steht, dass die
+# Stadt am Jahresende 22,4 Mio. € weniger Geld hatte als am Anfang. Beides
+# stimmt — Abschreibungen kosten Buchwert, aber kein Bargeld, und eine
+# Investition kostet Bargeld, aber im Buchungsjahr kaum Aufwand.
+#
+# Die Tabelle hat dieselbe Grammatik wie die Ergebnisrechnung (Vorjahr,
+# Ansatz, Ergebnis, Abweichung, geprüft über die Fußnote „Spalte 6 = Spalte 5
+# − Summe (Spalte 3 + Spalte 4)"), deshalb liest sie derselbe Spaltenapparat:
+# `_tabellenkopf`, `_fenster`, `_spalten_zuordnen`. Vier Dinge sind anders,
+# und jedes davon ist beim Bauen aufgelaufen:
+#
+# 1. **Die Postennummern verschieben sich.** 2017–2020 führt die Tabelle 42
+#    Zeilen, 2021–2024 nur 41: Die Zeile „Einzahlungen aus der Veräußerung
+#    geringwertiger Vermögensgegenstände" fällt weg, und alles ab Posten 08
+#    rutscht um eins. Ein fester Nummern-Katalog wie ``ERGEBNIS_POSTEN``
+#    ginge hier also für die Hälfte der Jahrgänge daneben. Deshalb kommt die
+#    Bezeichnung aus dem **Dokument** und die Bedeutung aus :data:`ROLLEN` —
+#    das Dokument benennt seine Zeilen selbst.
+# 2. **Die Zeilen verweisen aufeinander** („18. Saldo aus laufender
+#    Verwaltungstätigkeit (Zeile 10 abzüglich Zeile 17)"). Ein Zeilensplit an
+#    zweistelligen Zahlen schneidet mitten in diesen Verweis und lässt die
+#    Zahlenkolonne dahinter liegen: Posten 18, 33, 36, 37 und 40 kamen so in
+#    keinem einzigen Jahrgang an. :data:`_VERWEIS` wirft sie vorher weg.
+# 3. **Der Seitenfuß „JA 29" sieht aus wie ein Posten.** Er steht am Ende der
+#    ersten Tabellenseite — also VOR dem echten Posten 29 auf der zweiten.
+#    Wer ihn stehen lässt, verliert „29. Sonstige Investitionstätigkeit" und
+#    damit die Summenprobe der Investitions-Auszahlungen.
+# 4. **Es gibt eine Spalte mehr:** die Ermächtigungen aus Haushaltsvorjahren.
+#    Sie ist die Antwort auf „warum wird das Geplante nicht gebaut?" — 2024
+#    stehen dort 58,8 Mio. € übertragene Baugenehmigungen neben 96,4 Mio. €
+#    tatsächlichen Auszahlungen. Sie trägt ihre eigene Summenprobe.
+#
+# Was diese Datei NICHT tut: aus Jahresüberschuss und Kassenveränderung eine
+# Differenz bilden. Diese Zahl steht in keiner Quelle und hieße nichts.
+
+#: Die Zeilen, auf die es ankommt — erkannt an dem Namen, den das Dokument
+#: ihnen selbst gibt. Stabil über beide Nummerierungen hinweg.
+#:
+#: Zwei Muster sind aufgeweitet, und beide Male sagt die Rechenprobe, dass es
+#: dieselbe Zeile ist: Die Summenzeile der Investitions-Einzahlungen heißt mal
+#: „aus", mal „für" Investitionstätigkeit, und 2017 heißt die Finanzmittel-
+#: veränderung „Finanzmittelbestand" — rechnet aber wie überall sonst
+#: Finanzmittelsaldo + Saldo der Finanzierungstätigkeit.
+ROLLEN: tuple[tuple[str, str], ...] = (
+    ("summe_ein_verwaltung", r"Summe der Einzahlungen aus laufender Verwaltungst"),
+    ("summe_aus_verwaltung", r"Summe der Auszahlungen aus laufender Verwaltungst"),
+    ("saldo_verwaltung", r"^Saldo aus laufender Verwaltungst"),
+    ("summe_ein_investition", r"Summe der Einzahlungen (?:aus|f[üu]r) Investitionst"),
+    ("summe_aus_investition", r"Summe der Auszahlungen (?:aus|f[üu]r) Investitionst"),
+    ("saldo_investition", r"^Saldo aus Investitionst"),
+    ("finanzmittel", r"^Finanzmittel-\s*[ÜU]berschuss"),
+    ("saldo_finanzierung", r"^Saldo aus Finanzierungst"),
+    ("finanzmittelveraenderung", r"^Finanzmittel(?:ver[äa]nderung|bestand)\b"),
+    ("saldo_haushaltsunwirksam", r"^Saldo aus haushaltsunwirksamen"),
+    ("anfangsbestand", r"Anfangsbestand an Zahlungsmitteln"),
+    ("endbestand", r"Endbestand an Zahlungsmitteln"),
+)
+
+#: Die sieben Zeilen, ohne die ein Jahrgang wertlos ist. Fehlt eine davon oder
+#: reißt eine ihrer Proben, kommt der ganze Jahrgang nicht herein.
+PFLICHT_ROLLEN = ("summe_ein_verwaltung", "summe_aus_verwaltung", "saldo_verwaltung",
+                  "summe_ein_investition", "summe_aus_investition",
+                  "saldo_investition", "finanzmittel")
+
+#: Alle übrigen Rollen sind Kür: Das Dokument bezeichnet sie in seiner Fußnote
+#: selbst als optional („Die Zeilen 37 bis 41 können optional ergänzt werden").
+#: Sie fehlen zu lassen ist kein Fehler; falsch zeigen wäre einer. Welche Probe
+#: welche von ihnen trägt, steht in :data:`_KUER_KETTEN`.
+
+#: Die Bestandszeilen führen im Dokument **keine** Ansatzspalte — ein
+#: Kassenbestand wird nicht veranschlagt. Was der Spaltenapparat dort als
+#: „Plan" findet, ist der Vorjahreswert oder eine Wiederholung; 2018 kam so
+#: für den Anfangsbestand ein Ansatz von 61,7 Mio. € heraus, den niemand je
+#: beschlossen hat. Für diese Rollen wird deshalb nur das Ist gespeichert.
+OHNE_ANSATZ_ROLLEN = ("saldo_haushaltsunwirksam", "anfangsbestand", "endbestand")
+
+#: Seitenfuß mitten in der Tabelle. Anders als in `_SEITENFUSS` wird hier auf
+#: derselben Zeile ersetzt und der Zeilenumbruch behalten: Die Postennummern
+#: werden am Zeilenanfang gesucht, ein geschluckter Umbruch nähme dem ersten
+#: Posten der Folgeseite seinen Anker.
+_FR_SEITENFUSS = re.compile(r"[ \t]*\bJA\s*\d{1,3}\b[ \t]*")
+
+#: Ein Querverweis der Tabelle auf ihre eigenen Zeilen — „(Zeile 10 abzüglich
+#: Zeile 17)", „(Summe a. Zeilen 37,40,41)". Er steht mitten in der
+#: Bezeichnung und enthält zweistellige Zahlen, die wie Postennummern
+#: aussehen. Was er sagt, prüft ohnehin :func:`finanzprobe` nach.
+_VERWEIS = re.compile(r"\([^()]*Zeilen?[^()]*\)")
+
+#: Beginn einer Tabellenzeile: die Postennummer am **Zeilenanfang**. Der Punkt
+#: dahinter ist optional — 2021–2024 schreibt die Stadt „35 Saldo aus
+#: Finanzierungstätigkeit" ohne ihn. Ohne den Zeilenanker wäre das zu
+#: großzügig: Die Kopfzeile nummeriert ihre Spalten („1 2 3 … 11"), und „10"
+#: und „11" von dort hatten die echten Posten 10 und 11 von 2018 verdrängt.
+_FR_POSTEN = re.compile(r"^[ \t]*(\d\d)\.?(?:\s*=)?[ \t]", re.M)
+
+#: Rundungstoleranz der Kaskade in Euro. Dieselbe wie in `strukturprobe`: Die
+#: Tabelle rechnet auf den Cent, ein Euro Luft deckt die Cent-Rundung.
+_FR_TOLERANZ = 1.0
+
+
+def _rolle(bezeichnung: str) -> str | None:
+    for name, muster in ROLLEN:
+        if re.search(muster, bezeichnung):
+            return name
+    return None
+
+
+def _leerer_ansatz(zahlen: list[float], hat_vorjahr: bool) -> dict | None:
+    """Die Zeile ohne Haushaltsansatz — erkannt an der Wiederholung.
+
+    Das Dokument rechnet ``Abweichung = Ergebnis − Ansatz``. Wo kein Ansatz
+    steht, sind Ergebnis und Abweichung deshalb **derselbe Betrag**. Gesucht
+    wird genau dieses Paar, und zwar unter zwei Bedingungen, die beide nötig
+    sind:
+
+    * **Es steht ganz vorn.** Höchstens die Vorjahresspalte darf davor liegen —
+      denn „kein Ansatz" heißt: Zwischen Vorjahr und Ergebnis ist die Zeile
+      leer. Ohne diese Bedingung schlug die Regel im Jahrgang 2018 bei Posten
+      30 zu, wo Gesamtermächtigung und Ergebnis zufällig beide 19.000.000,00 €
+      betragen — der Ansatz von 19 Mio. € wäre verloren gegangen.
+    * **Dahinter stehen nur noch Nullen.** Die breite 2018er-Tabelle wiederholt
+      ihre Beträge über mehrere Ermächtigungsspalten („13.281.900,24
+      13.281.900,24 13.281.900,24 14.488.825,34 …"); ohne diese Bedingung
+      hielte sich dort jede zweite Zeile für ansatzlos.
+
+    Die Prüfung läuft **vor** dem normalen Spaltenapparat, weil der sonst ein
+    Fenster findet, das rechnerisch aufgeht und trotzdem falsch ist: Bei
+    Posten 08 des Jahrgangs 2018 („1.850,00 | 180,00 | 180,00 | 0,00") las er
+    einen Ansatz von 180,00 € — genug, um die Summenprobe der Einzahlungen um
+    genau diesen Betrag zu reißen."""
+    # Mit Vorjahresspalte zuerst hinter ihr suchen, dann davor: Auch das
+    # Vorjahr darf leer sein („12. Versorgungsauszahlungen 6,00 6,00" im
+    # Jahrgang 2019 — zwei Zahlen für eine Zeile mit sechs Spalten).
+    for i in ((1, 0) if hat_vorjahr else (0,)):
+        if len(zahlen) > i + 1 and zahlen[i] and zahlen[i] == zahlen[i + 1] \
+                and not any(zahlen[i + 2:]):
+            return {"vorjahr": zahlen[0] if i else None,
+                    "ansatz": None, "plan": None, "plan_art": None,
+                    "ergebnis": zahlen[i], "abweichung": zahlen[i + 1],
+                    "vorzeichen_repariert": False, "_fenster_start": i}
+    return None
+
+
+#: Die Spalte mit den übertragenen Ermächtigungen. Im PDF-Text bricht das
+#: Wort selbst um („Ermächtigun\ngen aus Haushalts-\nvorjahren"), deshalb der
+#: Leerraum mitten drin.
+_ERMAECHTIGUNG_KOPF = re.compile(
+    r"Erm[äa]chtigun\s*g(?:en)?\s+aus\s+Haushaltsvorjahren")
+
+
+def _fuehrt_ermaechtigung(kopfblock: str, kopf: dict) -> bool:
+    """Steht die Ermächtigungsspalte **hinter** dem Ergebnis?
+
+    Nur dann ist sie die Zahl, die dem gefundenen Rechenfenster folgt. Der
+    Jahrgang 2018 führt sie als sechste von elf Spalten, also **vor** dem
+    Ergebnis; dort steht hinter der Abweichung stattdessen „Zu Spalte 5: Davon
+    bisher nicht bewilligte über-/außerplanmäßige Auszahlungen", und die ist
+    in jeder Zeile 0,00. Ohne diese Prüfung hätten alle Zeilen des Jahrgangs
+    2018 übertragene Ermächtigungen von 0,00 € getragen — eine Zahl, die im
+    Dokument so nicht steht (dort sind es 34,9 Mio. €).
+
+    2017 führt die Spalte gar nicht."""
+    m = _ERMAECHTIGUNG_KOPF.search(_kopf_normalisieren(kopfblock))
+    return bool(m) and m.start() > kopf["positionen"]["ergebnis"]
+
+
+def _ohne_vorjahr(zahlen: list[float], kopf: dict) -> dict | None:
+    """Die Zeile mit leerer **Vorjahres**-Spalte: drei Zahlen statt vier.
+
+    `_spalten_zuordnen` verlangt vier Werte und lässt das Fenster nie bei
+    Index 0 beginnen — beides ist richtig, solange die erste Zahl der Zeile
+    das Vorjahr ist. Steht dort nichts, bleiben genau die drei Werte übrig,
+    die die Rechenprobe braucht. Übernommen wird auch hier nur, was sie
+    erfüllt; gefunden wurde der Fall bei Posten 30 des Jahrgangs 2017
+    („122.853,13 | 100.000,00 | 22.853,13") und ohne ihn riss die
+    Summenprobe der Investitions-Auszahlungen um denselben Betrag."""
+    if len(zahlen) != 3:
+        return None
+    ohne = {**kopf, "hat_vorjahr": False}
+    for art in ohne["varianten"]:
+        gefunden = _fenster(zahlen, ohne, art)
+        if not gefunden:
+            continue
+        plan, ergebnis, abweichung, start, repariert = gefunden
+        return {"vorjahr": None, "ansatz": plan, "plan": plan, "plan_art": art,
+                "ergebnis": ergebnis, "abweichung": abweichung,
+                "vorzeichen_repariert": repariert, "_fenster_start": start}
+    return None
+
+
+def parse_finanzrechnung(text: str, jahr: int) -> list[dict]:
+    """Abschnitt 4.1 des Jahresabschlusses: was die Stadt wirklich ein- und
+    ausgezahlt hat.
+
+    Liefert je Zeile ``{nr, rolle, bezeichnung, vorjahr, ansatz, plan,
+    plan_art, ergebnis, abweichung, ermaechtigung, ist_summe}``. ``nr`` ist
+    die Nummer, die das Dokument vergibt (und die sich zwischen den
+    Jahrgängen verschiebt), ``rolle`` der stabile Name aus :data:`ROLLEN` —
+    Leser*innen und Frontend hängen an der Rolle, nie an der Nummer.
+
+    ``ermaechtigung`` ist die letzte Spalte: Geld, das aus Vorjahren
+    übertragen wurde und in diesem Jahr noch ausgegeben werden durfte. Sie
+    steht direkt hinter der Abweichung, deshalb wird sie über das Fenster
+    abgegriffen, das die Rechenprobe gefunden hat — nicht über eine
+    Positionsannahme.
+
+    Geprüft wird nichts hier: :func:`finanzprobe` entscheidet, ob der
+    Jahrgang übernommen wird."""
+    stellen = [m.start() for m in re.finditer(
+        r"Finanzrechnung\s+(?:der\s+)?Kernverwaltung", text)]
+    if not stellen:
+        return []
+    # Erster Treffer ist das Inhaltsverzeichnis; genommen wird die Fundstelle
+    # mit den meisten Beträgen dahinter — dieselbe Regel wie oben.
+    start = max(stellen, key=lambda i: len(_BETRAG.findall(text[i:i + 6000])))
+    # Dahinter folgt die Gesamtfinanzrechnung (mit Stiftungen), die eigene
+    # Werte trägt. Der Mindestabstand hält die Überschrift der eigenen
+    # Tabelle aus der Suche heraus.
+    ende = text.find("Gesamtfinanzrechnung", start + 3000)
+    block = text[start:ende if ende > 0 else start + 12000]
+
+    schnitt = re.search(r"Einzahlungen aus\s+laufender", block)
+    kopfblock = block[:schnitt.start()] if schnitt else block[:900]
+    kopf = _tabellenkopf(kopfblock, jahr)
+    if kopf is None:
+        return []
+    hat_ermaechtigung = _fuehrt_ermaechtigung(kopfblock, kopf)
+
+    teile = _FR_POSTEN.split(_VERWEIS.sub(" ", _FR_SEITENFUSS.sub("\n", block)))
+    inhalt: dict[int, str] = {}
+    for i in range(1, len(teile) - 1, 2):
+        # Erster Treffer gewinnt: Wiederholungen sind Fortsetzungsseiten.
+        inhalt.setdefault(int(teile[i]), " ".join(teile[i + 1].split()))
+
+    out: list[dict] = []
+    for nr in sorted(inhalt):
+        if not 1 <= nr <= 45:
+            continue
+        roh = inhalt[nr][:260]
+        zahlen = [_eur(z) for z in _BETRAG.findall(roh)]
+        bezeichnung = " ".join(_BETRAG.split(roh)[0].split()).strip(" .")
+        rolle = _rolle(bezeichnung)
+        werte = (_leerer_ansatz(zahlen, kopf["hat_vorjahr"])
+                 or _spalten_zuordnen(zahlen, kopf)
+                 or _ohne_vorjahr(zahlen, kopf))
+        if werte is None:
+            continue
+        werte.pop("vorzeichen_repariert", None)
+        # Die Ermächtigung steht eine Spalte hinter der Abweichung. Es gibt
+        # sie nur, wenn die Zeile dort auch wirklich noch eine Zahl trägt.
+        stelle = werte.pop("_fenster_start") + (
+            4 if werte.get("plan_art") == "ansatz_nachtrag" else 3)
+        ermaechtigung = (zahlen[stelle] if hat_ermaechtigung
+                         and stelle < len(zahlen) else None)
+        if rolle in OHNE_ANSATZ_ROLLEN:
+            # Kein Ansatz im Dokument, also auch keiner bei uns (s. o.).
+            werte.update(ansatz=None, plan=None, plan_art=None, abweichung=None)
+            ermaechtigung = None
+        out.append({"nr": nr, "rolle": rolle, "bezeichnung": bezeichnung,
+                    "jahr": jahr, "ermaechtigung": ermaechtigung,
+                    "ist_summe": 1 if rolle else 0, **werte})
+    return out
+
+
+def _bereiche(nach_rolle: dict[str, dict]) -> list[tuple[str, int, int, str]] | str:
+    """Welche Zeilen sich zu welcher Summenzeile addieren — abgeleitet aus der
+    Nummerierung des Dokuments, nicht aus einem Katalog.
+
+    Die Summenzeilen kennen wir über ihre Rolle; dazwischen liegt jeweils
+    genau der Block, den sie summieren. Dass die Salden unmittelbar hinter
+    ihrer Summenzeile stehen, ist dabei selbst eine Probe: Sitzt eine Rolle
+    an einer Nummer, die nicht zur Reihenfolge passt, wurde die falsche Zeile
+    erkannt und der Jahrgang fliegt raus.
+
+    Gibt die Blöcke zurück oder eine Begründung als Text."""
+    nr = {r: p["nr"] for r, p in nach_rolle.items()}
+    fehlend = [r for r in PFLICHT_ROLLEN if r not in nr]
+    if fehlend:
+        return "Zeilen nicht gefunden: " + ", ".join(fehlend)
+    if not (nr["saldo_verwaltung"] == nr["summe_aus_verwaltung"] + 1
+            and nr["saldo_investition"] == nr["summe_aus_investition"] + 1
+            and nr["finanzmittel"] == nr["saldo_investition"] + 1):
+        return ("Reihenfolge passt nicht zur Nummerierung: "
+                + ", ".join(f"{r}={nr[r]}" for r in PFLICHT_ROLLEN))
+    return [
+        ("Einzahlungen aus laufender Verwaltungstätigkeit",
+         1, nr["summe_ein_verwaltung"] - 1, "summe_ein_verwaltung"),
+        ("Auszahlungen aus laufender Verwaltungstätigkeit",
+         nr["summe_ein_verwaltung"] + 1, nr["summe_aus_verwaltung"] - 1,
+         "summe_aus_verwaltung"),
+        ("Einzahlungen für Investitionstätigkeit",
+         nr["saldo_verwaltung"] + 1, nr["summe_ein_investition"] - 1,
+         "summe_ein_investition"),
+        ("Auszahlungen für Investitionstätigkeit",
+         nr["summe_ein_investition"] + 1, nr["summe_aus_investition"] - 1,
+         "summe_aus_investition"),
+    ]
+
+
+#: Die drei Salden der Kaskade: ``ziel = a (±) b``.
+_SALDEN = (("summe_ein_verwaltung", "summe_aus_verwaltung", "saldo_verwaltung", -1),
+           ("summe_ein_investition", "summe_aus_investition", "saldo_investition", -1),
+           ("saldo_verwaltung", "saldo_investition", "finanzmittel", +1))
+
+#: Die Kür-Ketten: ``(glieder, ziel, was die Kette belegt)``.
+#:
+#: Das dritte Feld ist der Grund, warum die Ketten überhaupt getrennt sind.
+#: Eine Kette belegt nur die Zeilen, die es ohne sie nicht gäbe — die
+#: Bestandskette belegt die drei Bestandszeilen, die Tilgungskette den Saldo
+#: der Finanzierungstätigkeit und die Finanzmittelveränderung. Fehlen die
+#: optionalen Bestandszeilen (das Dokument erlaubt es ausdrücklich), soll die
+#: Finanzmittelveränderung deshalb bleiben: Sie hängt an der anderen Kette,
+#: und die geht auf.
+#:
+#: Die Reihenfolge ist nicht beliebig: Die Bestandskette rechnet mit der
+#: Finanzmittelveränderung. Fällt die erste Kette, ist die zweite nicht mehr
+#: belegt, auch wenn sie für sich aufginge.
+_KUER_KETTEN = (
+    (("finanzmittel", "saldo_finanzierung"), "finanzmittelveraenderung",
+     ("saldo_finanzierung", "finanzmittelveraenderung")),
+    (("anfangsbestand", "finanzmittelveraenderung", "saldo_haushaltsunwirksam"),
+     "endbestand",
+     ("anfangsbestand", "saldo_haushaltsunwirksam", "endbestand")),
+)
+
+
+def finanzprobe(posten: list[dict], toleranz: float = _FR_TOLERANZ
+                ) -> tuple[list[dict], list[str], list[str]]:
+    """Die Rechenkaskade der Finanzrechnung — die Eintrittskarte jedes
+    Jahrgangs.
+
+    Das Dokument rechnet sich neunmal selbst vor, und jede Stufe hängt an der
+    vorigen::
+
+        Summe Einzahlungen  = Σ der Einzahlungsarten
+        Summe Auszahlungen  = Σ der Auszahlungsarten
+        Saldo Verwaltung    = Einzahlungen − Auszahlungen
+        (dasselbe für die Investitionstätigkeit)
+        Finanzmittelsaldo   = Saldo Verwaltung + Saldo Investition
+        Finanzmittelveränd. = Finanzmittelsaldo + Saldo Finanzierung   (Kür)
+        Endbestand = Anfangsbestand + Veränderung + haushaltsunwirksam (Kür)
+
+    Geprüft wird in **beiden** Größen, im Ist und im Ansatz: Eine Zeile aus
+    einer falschen, in sich stimmigen Tabelle fiele sonst nicht auf.
+
+    Eine **fehlende** Einzelzeile zählt dabei als Null. Das ist keine Lücke im
+    Beweis, sondern der Beweis selbst: Fehlt eine Zeile, weil das Dokument
+    sie leer lässt (Versorgungsauszahlungen 2024, Finanzvermögensanlagen), so
+    geht die Summe auf — fehlt sie, weil wir sie falsch gelesen haben, geht
+    sie nicht auf, und der Jahrgang fliegt raus.
+
+    Die Ermächtigungen aus Vorjahren tragen dieselbe Probe noch einmal: Die
+    übertragenen Beträge der Einzelzeilen ergeben die der Summenzeile. Wo das
+    nicht aufgeht, wird die ganze Spalte verworfen — nicht der Jahrgang.
+
+    Gibt ``(uebernommen, fehler, hinweise)`` zurück. Ist ``fehler`` nicht
+    leer, gehört der Jahrgang nicht in den Bestand."""
+    nach_rolle = {p["rolle"]: p for p in posten if p.get("rolle")}
+    nach_nr = {p["nr"]: p for p in posten}
+    bereiche = _bereiche(nach_rolle)
+    if isinstance(bereiche, str):
+        return [], [bereiche], []
+
+    fehler: list[str] = []
+    hinweise: list[str] = []
+
+    def summe(von: int, bis: int, feld: str) -> float:
+        return sum(nach_nr[n].get(feld) or 0 for n in range(von, bis + 1) if n in nach_nr)
+
+    for feld, wie in (("ergebnis", "Ist"), ("plan", "Ansatz")):
+        for name, von, bis, rolle in bereiche:
+            soll, ist = nach_rolle[rolle].get(feld), summe(von, bis, feld)
+            if soll is None:
+                fehler.append(f"{wie}: {name} — Summenzeile ohne Wert")
+            elif abs(ist - soll) > toleranz:
+                fehler.append(f"{wie}: {name} — Einzelzeilen {ist:,.2f} € ≠ "
+                              f"Summenzeile {soll:,.2f} € (Δ {ist - soll:+,.2f} €)")
+        for a, b, ziel, vorzeichen in _SALDEN:
+            werte = [nach_rolle[r].get(feld) for r in (a, b, ziel)]
+            if any(v is None for v in werte):
+                fehler.append(f"{wie}: {ziel} nicht nachrechenbar — Wert fehlt")
+            elif abs((werte[0] + vorzeichen * werte[1]) - werte[2]) > toleranz:
+                fehler.append(
+                    f"{wie}: {a} {vorzeichen:+d}·{b} = "
+                    f"{werte[0] + vorzeichen * werte[1]:,.2f} € ≠ {ziel} "
+                    f"{werte[2]:,.2f} €")
+
+    # Die Ermächtigungen: eigene Probe, eigenes Schicksal.
+    traegt_ermaechtigung = True
+    for name, von, bis, rolle in bereiche:
+        soll = nach_rolle[rolle].get("ermaechtigung")
+        ist = summe(von, bis, "ermaechtigung")
+        if soll is None and not ist:
+            continue  # der Jahrgang führt diese Spalte hier nicht
+        if soll is None or abs(ist - (soll or 0)) > toleranz:
+            hinweise.append(f"Ermächtigungen verworfen: {name} — Einzelzeilen "
+                            f"{ist:,.2f} € ≠ Summenzeile "
+                            f"{'—' if soll is None else format(soll, ',.2f') + ' €'}")
+            traegt_ermaechtigung = False
+    if not traegt_ermaechtigung:
+        for p in posten:
+            p["ermaechtigung"] = None
+
+    # Die Kür: je Kette einzeln. Was nicht vollständig ist oder nicht aufgeht,
+    # verliert die Zeilen, die diese Kette belegt — der Jahrgang bleibt.
+    gestrichen: set[str] = set()
+    for glieder, ziel, lizenziert in _KUER_KETTEN:
+        alle = glieder + (ziel,)
+        werte = [nach_rolle[r].get("ergebnis") if r in nach_rolle else None
+                 for r in alle]
+        if gestrichen & set(glieder):
+            hinweise.append(f"{ziel} nicht gespeichert — die Kette davor trägt nicht")
+        elif any(v is None for v in werte):
+            fehlt = [r for r, v in zip(alle, werte) if v is None]
+            hinweise.append(f"{ziel} nicht gespeichert — {', '.join(fehlt)} fehlt")
+        elif abs(sum(werte[:-1]) - werte[-1]) > toleranz:
+            hinweise.append(f"{ziel} verworfen: {' + '.join(glieder)} = "
+                            f"{sum(werte[:-1]):,.2f} € ≠ {werte[-1]:,.2f} €")
+        else:
+            continue
+        gestrichen |= set(lizenziert)
+
+    uebernommen = [p for p in posten if p.get("rolle") not in gestrichen]
+    return (uebernommen if not fehler else []), fehler, hinweise
+
+
+def kassenkette(je_jahr: dict[int, list[dict]],
+                toleranz: float = _FR_TOLERANZ) -> list[tuple[int, int, str]]:
+    """Die Probe über Dokumentgrenzen hinweg: Was am 31.12. in der Kasse lag,
+    steht im Jahresabschluss des Folgejahres noch einmal als Anfangsbestand.
+
+    Das Gegenstück zu :func:`vorjahreskette` für die Ergebnisrechnung, und aus
+    demselben Grund wertvoll: Beide Zahlen stammen aus **verschiedenen**
+    Dokumenten, die Jahre auseinanderliegen. Ein Lesefehler in einem der
+    beiden fällt hier auf, ohne dass wir eine eigene Rechnung anstellen.
+
+    Zurück kommt die Liste der **gerissenen** Glieder als
+    ``(jahr, folgejahr, begruendung)``. Geprüft wird nur, wo beide Jahrgänge
+    ihre Bestandszeilen führen — sie sind laut Dokument optional, und ein
+    fehlendes Glied ist keine gerissene Kette."""
+    kaputt: list[tuple[int, int, str]] = []
+    for jahr in sorted(je_jahr):
+        if jahr + 1 not in je_jahr:
+            continue
+        ende = next((p.get("ergebnis") for p in je_jahr[jahr]
+                     if p.get("rolle") == "endbestand"), None)
+        anfang = next((p.get("ergebnis") for p in je_jahr[jahr + 1]
+                       if p.get("rolle") == "anfangsbestand"), None)
+        if ende is None or anfang is None:
+            continue
+        if abs(ende - anfang) > toleranz:
+            kaputt.append((jahr, jahr + 1,
+                           f"Endbestand {ende:,.2f} € ≠ Anfangsbestand des "
+                           f"Folgejahres {anfang:,.2f} €"))
+    return kaputt
 
 
 # --- Jahresabschluss: das „Warum" zu den Abweichungen -----------------------

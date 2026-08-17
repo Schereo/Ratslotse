@@ -651,6 +651,33 @@ class CouncilStore:
                         f"ALTER TABLE council_ergebnisrechnung ADD COLUMN {spalte} {typ}")
                 except sqlite3.OperationalError:
                     pass  # frisch angelegt — Spalte ist schon da
+        # Finanzrechnung der Kernverwaltung (Abschnitt 4.1 desselben
+        # Jahresabschlusses): nicht was gebucht, sondern was **gezahlt** wurde.
+        # Die Ergebnisrechnung darüber weist für 2024 einen Überschuss von
+        # 6,1 Mio. € aus, die Finanzrechnung im selben Heft einen
+        # Finanzmittel-Fehlbetrag von 22,4 Mio. € — beides stimmt, und ohne
+        # die zweite Zahl entsteht ein falscher Eindruck.
+        #
+        # `nr` ist die Nummer, die das Dokument vergibt; sie verschiebt sich
+        # zwischen den Jahrgängen um eins (2017–2020 hat die Tabelle 42
+        # Zeilen, ab 2021 nur 41). Deshalb steht daneben `rolle` — der stabile
+        # Name aus `finanzberichte.ROLLEN`, an dem Frontend und Proben hängen.
+        # `ermaechtigung` ist die Spalte „Ermächtigungen aus Haushalts-
+        # vorjahren": Geld aus früheren Jahren, das noch ausgegeben werden
+        # durfte. Sie ist NULL, wo der Jahrgang sie nicht führt oder wo ihre
+        # eigene Summenprobe gerissen ist.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_finanzrechnung ("
+            "jahr INTEGER NOT NULL, "
+            "nr INTEGER NOT NULL, "               # Zeilennummer DES DOKUMENTS
+            "rolle TEXT, "                        # stabiler Name, NULL = Einzelzeile
+            "bezeichnung TEXT NOT NULL, "         # Wortlaut des Dokuments
+            "vorjahr REAL, ansatz REAL, plan REAL, plan_art TEXT, "
+            "ergebnis REAL, abweichung REAL, ermaechtigung REAL, "
+            "ist_summe INTEGER NOT NULL DEFAULT 0, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, nr))"
+        )
         # Warum ein Posten vom Plan abweicht, in den Worten der Verwaltung:
         # Abschnitt 6.3.1 des Jahresabschlusses, je Posten. Übernommen wird
         # nur, was die Rechenprobe besteht (siehe finanzberichte).
@@ -1434,6 +1461,8 @@ class CouncilStore:
         "council_steuerkraft":          (None, "source_url", "opendata"),
         "council_einwohner":            (None, "source_url", "opendata"),
         "council_ergebnisrechnung":     ("quelle_label", "quelle_url", "ris"),
+        # Neu mit der Kassensicht, ohne Altbestand — nichts nachzutragen.
+        "council_finanzrechnung":       (None, None, "ris"),
         "council_abweichungsgruende":   ("quelle_label", "quelle_url", "ris"),
         "council_pruefbericht_quellen": ("label", "url", "ris"),
         "council_produkte":             ("quelle_label", "quelle_url", "ris"),
@@ -3906,6 +3935,8 @@ class CouncilStore:
                                  "thh_nr IS NULL", "quelle_url"),
         "ergebnisrechnung_thh": ("council_ergebnisrechnung", "jahr",
                                  "thh_nr IS NOT NULL", "quelle_url"),
+        # Dritte Ebene desselben Dokuments: Abschnitt 4.1, die Kassensicht.
+        "finanzrechnung":       ("council_finanzrechnung", "jahr", None, None),
         # Der einzige Schlüssel, hinter dem je Jahrgang MEHRERE Dokumente
         # stehen: Ein Produkt-Jahrgang verteilt sich auf rund neun
         # Teilhaushalts-Anlagen (s. finanzquellen.Finanzquelle).
@@ -4318,6 +4349,52 @@ class CouncilStore:
         try:
             return [r[0] for r in self._conn.execute(
                 "SELECT DISTINCT jahr FROM council_ergebnisrechnung ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    # --- Finanzrechnung der Kernverwaltung (council.finanzberichte) ----------
+
+    def save_finanzrechnung(self, jahr: int, zeilen: list[dict], herkunft) -> int:
+        """Die Kassensicht eines Jahrgangs ersetzen.
+
+        Übergeben wird nur, was ``finanzberichte.finanzprobe`` durchgelassen
+        hat — die Funktion streicht Ketten, die nicht aufgehen, schon vorher
+        heraus. Hier wird deshalb nichts mehr geprüft, nur geschrieben."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute("DELETE FROM council_finanzrechnung WHERE jahr = ?", (jahr,))
+            self._conn.executemany(
+                "INSERT INTO council_finanzrechnung (jahr, nr, rolle, bezeichnung, "
+                " vorjahr, ansatz, plan, plan_art, ergebnis, abweichung, "
+                " ermaechtigung, ist_summe, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                [(jahr, z["nr"], z.get("rolle"), z["bezeichnung"], z.get("vorjahr"),
+                  z.get("ansatz"), z.get("plan"), z.get("plan_art"), z.get("ergebnis"),
+                  z.get("abweichung"), z.get("ermaechtigung"),
+                  z.get("ist_summe", 0), hid, now)
+                 for z in zeilen])
+        return len(zeilen)
+
+    def get_finanzrechnung(self, jahr: int | None = None) -> list[dict]:
+        """Finanzrechnung — ein Jahr oder alle, Zeilen in Dokumentreihenfolge."""
+        try:
+            if jahr is None:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_finanzrechnung ORDER BY jahr, nr").fetchall()
+            else:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_finanzrechnung WHERE jahr = ? ORDER BY nr",
+                    (jahr,)).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [dict(r) for r in rows]
+
+    def finanzrechnung_jahre(self) -> list[int]:
+        """Jahre mit eingelesener Finanzrechnung (aufsteigend)."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT jahr FROM council_finanzrechnung ORDER BY jahr")]
         except sqlite3.OperationalError:
             return []
 
