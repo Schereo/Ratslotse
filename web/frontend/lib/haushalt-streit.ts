@@ -143,22 +143,83 @@ export function redenJeFraktion(station: StreitStation | null): { label: string;
   return [...zaehler].map(([label, n]) => ({ label, n })).sort((a, b) => b.n - a.n || a.label.localeCompare(b.label));
 }
 
-/** Alle Fraktionen/Gruppen, die in einem Jahrgang eine Änderungsliste
- *  eingebracht haben, mit ihrer Bilanz. Reihenfolge: alphabetisch — jede
- *  andere (nach Erfolg, nach Größe) wäre eine Wertung. */
-export function antragsBilanz(r: StreitRunde | null): { urheber: string; angenommen: number; abgelehnt: number }[] {
-  const bilanz = new Map<string, { angenommen: number; abgelehnt: number }>();
+/** Label der Zeile für Listen ohne erkannte Fraktion im Titel — in der
+ *  Praxis Änderungslisten einzelner Ratsmitglieder. Sie bleiben in der
+ *  Bilanz sichtbar: Wer sie wegließe, zählte nur die Fraktionen. */
+export const EINZELNE = "Einzelne Ratsmitglieder";
+
+export type BilanzStand = { ein: number; durch: number };
+export type BilanzZeile = { urheber: string; fa: BilanzStand; rat: BilanzStand };
+
+/** Die Verhandlungsbilanz eines Jahrgangs für <PunkteBilanz> (GB-09):
+ *  je Urheber, getrennt nach Finanzausschuss und Rat, wie viele
+ *  Abstimmungen über Änderungslisten es gab (`ein`) und wie viele davon
+ *  eine Mehrheit fanden (`durch`). Gezählt werden ABSTIMMUNGEN, keine
+ *  Listen — dieselbe Liste kann an beiden Stationen aufgerufen werden.
+ *
+ *  `durch` zählt nur `angenommen`; alles andere (abgelehnt, vertagt, ohne
+ *  protokolliertes Ergebnis) bleibt ein ungefüllter Punkt — die Legende der
+ *  Grafik benennt das. Verwaltungslisten zählen nicht: Die Verwaltung
+ *  schreibt ihren eigenen Entwurf fort, sie „gewinnt" keine Abstimmung.
+ *  Keine Sortierung hier — die übernimmt <PunkteBilanz> selbst (alphabetisch,
+ *  fest). */
+export function verhandlungsBilanz(r: StreitRunde | null): BilanzZeile[] {
+  const bilanz = new Map<string, BilanzZeile>();
   for (const s of r?.stationen ?? []) {
+    // Die Stationen sind in Oldenburg der Ausschuss für Finanzen und
+    // Beteiligungen und der Rat (council/store.haushalt_streit) — alles,
+    // was nicht der Rat ist, zählt deshalb zur Ausschuss-Spalte.
+    const seite: keyof Omit<BilanzZeile, "urheber"> = s.gremium === "Rat" ? "rat" : "fa";
     for (const a of s.antraege) {
-      if (a.ist_verwaltung || !a.urheber) continue;
-      const e = bilanz.get(a.urheber) ?? { angenommen: 0, abgelehnt: 0 };
-      if (a.outcome === "angenommen") e.angenommen += 1;
-      else if (a.outcome === "abgelehnt") e.abgelehnt += 1;
-      bilanz.set(a.urheber, e);
+      if (a.ist_verwaltung) continue;
+      const urheber = a.urheber ?? EINZELNE;
+      const z = bilanz.get(urheber)
+        ?? { urheber, fa: { ein: 0, durch: 0 }, rat: { ein: 0, durch: 0 } };
+      z[seite].ein += 1;
+      if (a.outcome === "angenommen") z[seite].durch += 1;
+      bilanz.set(urheber, z);
     }
   }
-  return [...bilanz].map(([urheber, e]) => ({ urheber, ...e }))
-    .sort((a, b) => a.urheber.localeCompare(b.urheber, "de"));
+  return [...bilanz.values()];
+}
+
+/** Wortbeiträge ohne Fraktionszuordnung — über ALLE Jahrgänge gezählt, denn
+ *  die Aussage („n von m tragen keine Fraktion") beschreibt den Bestand,
+ *  nicht ein Jahr. Verwaltung und Sitzungsleitung zählen zu `gesamt`, aber
+ *  nie zu `ohne`: Sitzungsleitung ist eine Rolle, keine Fraktion. */
+export function ohneZuordnung(daten: StreitDaten | null): { ohne: number; gesamt: number } {
+  let ohne = 0, gesamt = 0;
+  for (const r of daten?.runden ?? []) {
+    for (const s of r.stationen) {
+      for (const b of s.debatte) {
+        gesamt += 1;
+        if (b.rolle === "rat" && b.fraktion_unklar) ohne += 1;
+      }
+    }
+  }
+  return { ohne, gesamt };
+}
+
+/** Die ehrliche Mengenangabe der Quelle: wie viele Änderungslisten (alle,
+ *  auch die der Verwaltung) und Wortbeiträge über welchen Zeitraum im
+ *  Bestand stehen — gezählt, nicht geschrieben. */
+export function bestand(daten: StreitDaten | null): {
+  listen: number; beitraege: number; jahrgaenge: number; von: number; bis: number;
+} {
+  const runden = daten?.runden ?? [];
+  let listen = 0, beitraege = 0;
+  for (const r of runden) {
+    for (const s of r.stationen) {
+      listen += s.antraege.length;
+      beitraege += s.debatte.length;
+    }
+  }
+  const jahre = runden.map((r) => r.jahr);
+  return {
+    listen, beitraege, jahrgaenge: runden.length,
+    von: jahre.length ? Math.min(...jahre) : 0,
+    bis: jahre.length ? Math.max(...jahre) : 0,
+  };
 }
 
 export function datumLang(iso: string): string {
