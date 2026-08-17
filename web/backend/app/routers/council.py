@@ -673,8 +673,15 @@ def haushalt_dokumente(
 
     Die Fundstelle kommt aus ``council_herkunft`` und ist der eigentliche
     Gewinn: „Abschnitt 3.2" macht aus einem 300-Seiten-PDF eine nachschlagbare
-    Stelle."""
-    return {"dokumente": store.haushalt_dokumente()}
+    Stelle.
+
+    ``jahrgaenge`` kommt aus derselben Antwort statt aus einem eigenen Aufruf:
+    Es beantwortet die Nachbarfrage („welche Jahrgänge deckt diese Quelle
+    ab?"), wird an derselben Stelle gebraucht — im Quellenverzeichnis — und
+    ist eine Abfrage je Quelle, keine je Zeile. Zwei Endpunkte dafür hießen
+    zwei Rundreisen für einen Seitenfuß."""
+    return {"dokumente": store.haushalt_dokumente(),
+            "jahrgaenge": store.haushalt_jahrgaenge()}
 
 
 @router.get("/haushalt")

@@ -9,7 +9,8 @@
 // den Daten berechnet und neutral beschriftet — eine Jahreszahl mit
 // Rückgang, keine historische Deutung, die die Reihe nicht hergibt.
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useId, useState } from "react";
+import { useBreite } from "@/lib/use-breite";
 import { deMio } from "@/lib/haushalt";
 import {
   AbleseBeschreibung, AbleseFlaeche, AbleseStelle, Ableseleiste, useAblesen,
@@ -29,24 +30,10 @@ export function IstKurve({ reihe, einheit = "Mio. Euro" }: {
   einheit?: string;
 }) {
   const [tabelle, setTabelle] = useState(false);
-  // viewBox-Breite = Containerbreite, sonst staucht das SVG die Schrift mit
-  // (siehe Zeitreihe): Eine SVG-Einheit soll ein echtes Pixel sein. Gemessen
-  // mit `getBoundingClientRect`, nicht `clientWidth` — letzteres rundet auf
-  // ganze Pixel und brächte bei 486,4 px schon einen Faktor von 1,0008.
-  const box = useRef<HTMLDivElement>(null);
-  const [breite, setBreite] = useState(640);
-  useEffect(() => {
-    const el = box.current;
-    if (!el) return;
-    const pruefe = () => {
-      const w = Math.max(el.getBoundingClientRect().width, 280);
-      setBreite((alt) => (Math.abs(w - alt) > 0.5 ? w : alt));
-    };
-    pruefe();
-    const ro = new ResizeObserver(pruefe);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+  // viewBox-Breite = Containerbreite, sonst staucht das SVG die Schrift mit:
+  // Eine SVG-Einheit soll ein echtes Pixel sein. Wie gemessen wird und warum
+  // nicht mit `clientWidth`, steht in `lib/use-breite.ts`.
+  const { box, breite } = useBreite();
   const ablesen = useAblesen(reihe.length, Math.max(reihe.length - 1, 0));
   const beschreibungId = useId();
   const schmal = breite < 520;

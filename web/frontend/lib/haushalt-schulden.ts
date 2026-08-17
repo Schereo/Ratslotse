@@ -1,24 +1,8 @@
 // Schuldenzeitreihe (/haushalt/schulden) — Typen und Rechenwege.
-//
-// Der `Herkunft`-Typ steht hier absichtlich noch einmal ausgeschrieben statt
-// aus `haushalt-konzern.ts` importiert: Diese Seite soll nicht brechen, wenn
-// der Konzern-Bereich seine Typen umbaut. Dieselbe Entscheidung wie in
-// `haushalt-vergleich.ts`.
 
-export type Herkunft = {
-  id: number;
-  art: string;
-  label: string | null;
-  url: string | null;
-  fundstelle: string | null;
-  seite: number | null;
-  probe: string | null;
-  /** Die Erklärsätze zu den bestandenen Proben — kommen aus `herkunft.PROBEN`
-   *  im Backend, damit sie einmal für Leserinnen geschrieben sind. */
-  proben: string[];
-  probe_ergebnis: string | null;
-  stand: string | null;
-};
+import type { Herkunft } from "@/lib/herkunft";
+
+export type { Herkunft };
 
 export type SchuldenJahr = {
   jahr: number;

@@ -3626,6 +3626,66 @@ class CouncilStore:
              f["stand"], jetzt))
         return int(cur.lastrowid)
 
+    #: Welcher Beschluss zu einem Dokument der maßgebliche ist. Der Rat zuerst
+    #: — eine Vorlage läuft durch mehrere Gremien, aber verabschiedet wird sie
+    #: dort. Innerhalb eines Gremiums die jüngste Sitzung: Ein vertagter Punkt
+    #: kommt wieder, und es gilt, was zuletzt entschieden wurde. Dieselbe
+    #: Ordnung nutzt schon `vorlage_beschluesse` (s. u. „committee LIKE 'Rat%'").
+    _BESCHLUSS_ORDNUNG = ("ORDER BY (cs.committee LIKE 'Rat%') DESC, "
+                          "cs.session_date DESC, d.id DESC")
+
+    def beschluesse_zu_dokumenten(self, dokument_ids: list[int]) -> dict[int, dict]:
+        """Zu jedem Dokument der Ratsbeschluss, der es verabschiedet hat.
+
+        Der Weg ist dreigliedrig und steht so nirgends sonst im Code:
+        ``council_herkunft.dokument_id`` → ``council_anlagen.kvonr`` (an
+        welcher Vorlage die Anlage hängt) → ``council_decisions.kvonr`` (was
+        der Rat mit dieser Vorlage gemacht hat).
+
+        Damit wird aus „steht im Jahresabschluss 2024" ein „der Rat hat das am
+        16.09.2025 beschlossen" — dieselbe Zahl, aber mit dem Vorgang dahinter
+        statt nur mit dem Papier.
+
+        **Das Ergebnis wird mitgeliefert, nicht gefiltert.** Ein Dokument, das
+        an einer vertagten Vorlage hängt, ist keine Zahl ohne Beleg — es ist
+        eine Zahl, deren Vorgang noch läuft, und genau das soll die Seite
+        sagen können. Wer hier auf ``outcome = 'angenommen'`` einschränkte,
+        ließe die interessanteren Fälle stumm verschwinden.
+
+        Eine Anlage ohne Vorlage im Bestand liefert **keinen** Eintrag; die
+        Herkunft bleibt dann bei ihrem Dokument, und der Beleg-Chip zeigt, was
+        er hat. Erfundene Vorgänge wären der schlimmere Fehler.
+        """
+        if not dokument_ids:
+            return {}
+        platz = ",".join("?" * len(dokument_ids))
+        try:
+            rows = self._conn.execute(
+                "SELECT a.document_id, d.id AS beschluss_id, d.ksinr, d.item_number, "
+                "       d.title, d.outcome, d.vote, d.vorlage_nr, a.kvonr, "
+                "       cs.committee, cs.session_date "
+                "FROM council_anlagen a "
+                "JOIN council_decisions d ON d.kvonr = a.kvonr "
+                "JOIN council_sessions cs ON cs.ksinr = d.ksinr "
+                f"WHERE a.document_id IN ({platz}) AND d.kind = 'decision' "
+                + self._BESCHLUSS_ORDNUNG,
+                list(dokument_ids)).fetchall()
+        except sqlite3.OperationalError:
+            return {}
+        # Die Ordnung entscheidet: Der erste Treffer je Dokument gewinnt, alle
+        # weiteren sind frühere Stationen derselben Vorlage.
+        aus: dict[int, dict] = {}
+        for r in rows:
+            aus.setdefault(int(r["document_id"]), {
+                "id": r["beschluss_id"], "ksinr": r["ksinr"],
+                "kvonr": r["kvonr"], "top": r["item_number"],
+                "titel": (r["title"] or "").strip() or None,
+                "outcome": r["outcome"], "vote": r["vote"],
+                "vorlage_nr": r["vorlage_nr"],
+                "gremium": r["committee"], "datum": r["session_date"],
+            })
+        return aus
+
     def get_herkunft(self, ids: list[int] | None = None) -> list[dict]:
         """Herkunfts-Datensätze — alle oder eine Auswahl, mit den Erklärsätzen
         zu ihren Proben.
@@ -3654,6 +3714,14 @@ class CouncilStore:
             d.pop("schluessel", None)   # interner Fingerabdruck, kein Lesestoff
             d["proben"] = _h.probe_texte(d.get("probe"))
             aus.append(d)
+        # Der Ratsvorgang zu allen Dokumenten in EINER Abfrage — nicht je
+        # Datensatz eine. Ein Beleg-Apparat zeigt neun Teilhaushalts-Anlagen
+        # nebeneinander; neun Nachschläge daraus zu machen wäre ein N+1 an
+        # genau der Stelle, an der die Seite ohnehin am meisten holt.
+        beschluesse = self.beschluesse_zu_dokumenten(
+            sorted({d["dokument_id"] for d in aus if d.get("dokument_id")}))
+        for d in aus:
+            d["beschluss"] = beschluesse.get(d.get("dokument_id"))
         return aus
 
     def _herkunft_verweistabellen(self) -> list[str]:
@@ -3784,6 +3852,59 @@ class CouncilStore:
         "stellenplan":          ("council_stellenplan", "jahrgang", None, None),
     }
 
+    #: Jahresquellen, die KEIN Dokument im Ratsinformationssystem haben und
+    #: deshalb nicht in ``_DOKUMENT_QUELLEN`` stehen — Downloads von
+    #: oldenburg.de, Open Data und die Landesstatistik. Für die Frage „welche
+    #: Jahrgänge deckt diese Quelle ab?" zählen sie genauso.
+    _WEITERE_JAHRESQUELLEN: dict[str, tuple[str, str, str | None]] = {
+        "steuern":     ("council_steuern", "jahr", None),
+        "steuerkraft": ("council_steuerkraft", "jahr", None),
+        "einwohner":   ("council_einwohner", "jahr", None),
+        "schulden":    ("council_schulden", "jahr", None),
+        "gebaut":      ("council_investitionen_ist", "jahr", None),
+    }
+
+    def haushalt_jahrgaenge(self) -> dict[str, list[int]]:
+        """Je Quellenschlüssel die Jahrgänge, die **wirklich** im Bestand
+        stehen — aufsteigend, ohne Dubletten.
+
+        Wofür: Das Quellenverzeichnis schrieb seine Datenstände von Hand
+        („Jahresabschlüsse 2017–2024"), einundzwanzig Stück in
+        ``lib/haushalt-quellen.ts``, mit der Bitte im Dateikopf, sie beim
+        Nachziehen eines Haushaltsjahres zu aktualisieren. Genau das passiert
+        naturgemäß nicht zuverlässig: Ein Ingest-Lauf zieht einen Jahrgang
+        nach, die Seite behauptet weiter den alten Stand, und niemand merkt
+        es — die Angabe steht ja nicht neben den Daten, sondern in einer
+        anderen Datei.
+
+        Bewusst **nicht** über ``haushalt_dokumente`` gerechnet: Das dort
+        nötige „hat eine URL" ist eine andere Frage. Ein Jahrgang, der im
+        Bestand steht, dessen Herkunft aber keine Adresse führt, ist für den
+        Datenstand vorhanden und für den Dokumentlink nicht. Wer beides aus
+        einer Abfrage nähme, verschwiege im Datenstand genau die Jahrgänge,
+        die ohnehin schon am dünnsten belegt sind.
+
+        Was hier fehlt, bleibt in der Konstante von Hand gepflegt: Die
+        Ausgabe-Datumsangaben der Statistikstellen („Ausgabe vom 08.07.2026")
+        stehen in keiner Tabelle, und zwei Quellen sind schlicht statisch
+        (eine einzelne Ratsvorlage von 2018; „Sitzungen seit Januar 2018"
+        ohne obere Grenze)."""
+        quellen = {k: (t, j, f) for k, (t, j, f, _) in self._DOKUMENT_QUELLEN.items()}
+        quellen.update(self._WEITERE_JAHRESQUELLEN)
+        aus: dict[str, list[int]] = {}
+        for key, (tabelle, jahrspalte, filter_) in quellen.items():
+            sql = (f"SELECT DISTINCT t.{jahrspalte} AS jahr FROM {tabelle} t"
+                   + (f" WHERE {filter_}" if filter_ else "")
+                   + f" ORDER BY t.{jahrspalte}")
+            try:
+                jahre = [int(r["jahr"]) for r in self._conn.execute(sql)
+                         if r["jahr"] is not None]
+            except sqlite3.OperationalError:
+                continue  # Tabelle oder Spalte gibt es in dieser DB (noch) nicht
+            if jahre:
+                aus[key] = jahre
+        return aus
+
     def haushalt_dokumente(self) -> dict[str, list[dict]]:
         """Je Quellenschlüssel die Dokumente, Jahrgang für Jahrgang.
 
@@ -3797,13 +3918,21 @@ class CouncilStore:
         Unterschied zwischen Nachschlagen und Suchen. Fehlt die Herkunft
         (Altbestand), tritt die URL an der Datenzeile ein; fehlt auch die,
         fällt der Jahrgang weg statt mit einer erfundenen Adresse
-        dazustehen."""
+        dazustehen.
+
+        Jedes Dokument aus dem Ratsinformationssystem trägt zusätzlich seinen
+        ``beschluss`` — den Ratsvorgang, der es verabschiedet hat (s.
+        :meth:`beschluesse_zu_dokumenten`). Der Beleg sagt damit nicht nur, in
+        welchem Papier die Zahl steht, sondern wann der Rat darüber entschieden
+        hat. Bei den Schichten von oldenburg.de und vom Landesamt bleibt das
+        Feld ``None``: Die hängen an keiner Vorlage."""
         aus: dict[str, list[dict]] = {}
         for key, (tabelle, jahrspalte, filter_, alt) in self._DOKUMENT_QUELLEN.items():
             wo = [f"{filter_}"] if filter_ else []
             url = f"COALESCE(k.url, t.{alt})" if alt else "k.url"
             sql = (f"SELECT DISTINCT t.{jahrspalte} AS jahr, {url} AS url, "
-                   f" k.label AS label, k.fundstelle AS fundstelle, k.seite AS seite "
+                   f" k.label AS label, k.fundstelle AS fundstelle, k.seite AS seite, "
+                   f" k.dokument_id AS dokument_id "
                    f"FROM {tabelle} t "
                    f"LEFT JOIN council_herkunft k ON k.id = t.herkunft_id"
                    + (" WHERE " + " AND ".join(wo) if wo else "")
@@ -3815,6 +3944,18 @@ class CouncilStore:
             treffer = [r for r in rows if r["url"]]
             if treffer:
                 aus[key] = treffer
+        # Ein Nachschlag für den ganzen Bereich statt einer je Dokument: Der
+        # Apparat einer Seite zeigt bis zu neun Teilhaushalts-Anlagen, und das
+        # Verzeichnis am Fuß zeigt alle Quellen auf einmal.
+        beschluesse = self.beschluesse_zu_dokumenten(sorted(
+            {r["dokument_id"] for liste in aus.values()
+             for r in liste if r.get("dokument_id")}))
+        for liste in aus.values():
+            for r in liste:
+                # `dokument_id` war nur der Schlüssel für den Nachschlag und
+                # fliegt wieder raus: Was auf die Seite geht, ist der Vorgang,
+                # nicht die RIS-interne Nummer des Anhangs.
+                r["beschluss"] = beschluesse.get(r.pop("dokument_id", None))
         return aus
 
     # --- Stadt-Haushalt (council.haushalt) -----------------------------------
@@ -8355,10 +8496,12 @@ class CouncilStore:
             (ksinr,)).fetchone()
         debatte: list[dict] = []
         if prot and prot["raw_text"] and top:
-            abschnitt = hd.top_abschnitt(hd.saeubern(prot["raw_text"]), top, bis_unterpunkt=True)
             anwesende = [dict(a) for a in self._conn.execute(
                 "SELECT name, party, role FROM council_attendance WHERE ksinr = ?", (ksinr,)).fetchall()]
-            debatte = [b.als_dict() for b in hd.debatte(abschnitt, anwesende)]
+            # Säubern, schneiden, zerlegen — mit Gedächtnis über den Inhalt.
+            # Es bleibt beim Rechnen zur Lesezeit (s. Kopf von `haushalt_streit`);
+            # nur wird dasselbe Protokoll nicht bei jedem Aufruf neu zerlegt.
+            debatte = hd.debatte_zu_top(prot["raw_text"], top, anwesende)
 
         return {
             **st,

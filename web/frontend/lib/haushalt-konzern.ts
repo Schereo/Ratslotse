@@ -12,22 +12,13 @@
 // sonst doppelt in der Rechnung. Sie ist deshalb immer eine eigene Zeile mit
 // negativem Vorzeichen, nie ein stiller Abzug irgendwo.
 
-/** Woher eine Zeile kommt — das gemeinsame Format aller Finanz-Schichten
- *  (`council/herkunft.py`). Nachgeschlagen wird über die `herkunft_id` der
- *  Datenzeile; `proben` sind die fertigen Erklärsätze für die Leserin. */
-export type Herkunft = {
-  id: number;
-  art: string;
-  dokument_id: number | null;
-  label: string | null;
-  url: string | null;
-  fundstelle: string | null;
-  seite: number | null;
-  probe: string;
-  probe_ergebnis: string | null;
-  stand: string | null;
-  proben: string[];
-};
+/** Woher eine Zeile kommt — das gemeinsame Format aller Finanz-Schichten.
+ *  Nachgeschlagen wird über die `herkunft_id` der Datenzeile. Definition und
+ *  Begründung, warum sie NICHT je Bereich ausgeschrieben wird, in
+ *  `lib/herkunft.ts`. */
+import type { Herkunft } from "@/lib/herkunft";
+
+export type { Herkunft };
 
 export type KonzernJahr = {
   jahr: number;

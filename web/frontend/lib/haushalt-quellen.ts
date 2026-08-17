@@ -12,19 +12,69 @@
 // einzelne Zahl genau machen will, nimmt die `herkunft_id` der Zeile — nicht
 // diese Konstante.
 //
-// Beim Nachziehen eines neuen Haushaltsjahres bitte `stand` aktualisieren.
+// DER DATENSTAND KOMMT AUS DEM BESTAND, NICHT VON HAND
+//
+// Hier standen bis 08/2026 einundzwanzig Jahresspannen ausgeschrieben
+// („Jahresabschlüsse 2017–2024"), dazu im Kopf die Bitte, sie beim Nachziehen
+// eines Haushaltsjahres zu aktualisieren. Das ging erwartbar schief: Ein
+// Ingest-Lauf zieht einen Jahrgang nach, die Seite behauptet weiter den alten
+// Stand, und es fällt niemandem auf — die Angabe steht ja nicht neben den
+// Daten, sondern in dieser Datei.
+//
+// Wo die Spanne aus dem Bestand fällt, steht sie deshalb nicht mehr hier:
+// `standWort` trägt nur noch das Wort davor („Jahresabschlüsse"), die Zahlen
+// kommen aus `GET /api/council/haushalt/dokumente` (`jahrgaenge`, gerechnet
+// in `CouncilStore.haushalt_jahrgaenge`). Zusammengesetzt wird in
+// `standText()`.
+//
+// `stand` bleibt für die vier Fälle, die sich NICHT ableiten lassen, und als
+// Rückfall, solange die Antwort nicht da ist:
+//   * `hebesaetze` und `ruecklage` — ein Beschlussdatum, keine Datenspanne;
+//   * `vergleich_2018` — eine einzelne Ratsvorlage, die nie einen zweiten
+//     Jahrgang bekommt;
+//   * `ratsbeschluss` — „seit Januar 2018", nach oben offen und deshalb
+//     nicht veraltbar;
+//   * die `lsn_*`-Quellen — deren Angabe nennt die AUSGABE der Landestabelle
+//     („endgültig, Stand 26.03.2026"), nicht die Spanne ihrer Daten.
 
 export type Quelle = {
   titel: string;
   /** Wo genau im Dokument die Zahlen stehen — der Punkt, an dem man nachschlägt. */
   fundstelle: string;
   herausgeber: string;
-  /** Datenstand, nicht Abrufdatum: Was die Zahl beschreibt, nicht wann wir sie holten. */
+  /** Datenstand, nicht Abrufdatum: Was die Zahl beschreibt, nicht wann wir sie
+   *  holten. Rückfall — wo `standWort` gesetzt ist, gewinnt die gerechnete
+   *  Spanne, sobald sie vorliegt. */
   stand: string;
+  /** Das Wort vor der Jahresspanne („Jahresabschlüsse", „Haushaltsjahre").
+   *  Gesetzt heißt: Die Zahlen dahinter kommen aus dem Bestand. Leerstring,
+   *  wo die Spanne für sich steht. */
+  standWort?: string;
+  /** Was hinter der Spanne steht und nicht aus den Daten fällt — die Ausgabe
+   *  einer Statistiktabelle etwa. */
+  standZusatz?: string;
   lizenz?: string;
   url?: string;
   art: "pdf" | "csv" | "web";
 };
+
+/** Die Jahrgänge je Quelle, wie sie im Bestand stehen (aufsteigend). */
+export type Jahrgaenge = Partial<Record<QuellenSchluessel, number[]>>;
+
+/** Der Datenstand, den die Seite anschreibt.
+ *
+ *  Die gerechnete Spanne gewinnt, sobald sie da ist — sonst der von Hand
+ *  gepflegte Satz. Der Rückfall ist nicht bloß Höflichkeit gegenüber dem
+ *  Ladezustand: Vier Quellen haben gar keine ableitbare Spanne, und eine
+ *  leere Tabelle (frische Datenbank, fehlgeschlagener Ingest) darf nicht in
+ *  ein nacktes „Stand" münden. */
+export function standText(q: Quelle, jahre: number[] | undefined): string {
+  if (q.standWort === undefined || !jahre || jahre.length === 0) return q.stand;
+  const von = jahre[0];
+  const bis = jahre[jahre.length - 1];
+  const spanne = von === bis ? `${von}` : `${von}–${bis}`;
+  return [q.standWort, spanne, q.standZusatz].filter(Boolean).join(" ");
+}
 
 /** Die Schlüssel explizit statt per Inferenz: So sind die Werte einheitlich
  *  als `Quelle` getypt (inklusive optionaler Felder wie `lizenz`), und die
@@ -64,6 +114,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     fundstelle:
       "Übersicht „Ergebnishaushalt“ — ordentliche Erträge und Aufwendungen je Teilhaushalt.",
     herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
+    standWort: "Haushaltsjahre",
     stand: "Haushaltsjahre 2020–2026",
     art: "pdf",
     url: "https://www.oldenburg.de/startseite/politik/verwaltung-finanzen/finanzen.html",
@@ -77,6 +128,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "Datensatz keine Summe, gegen die wir ihn nachrechnen könnten — wir " +
       "übernehmen ihn, wie die Stadt ihn veröffentlicht.",
     herausgeber: "Stadt Oldenburg, Open-Data-Portal",
+    standWort: "",
     stand: "1998–2025",
     lizenz: "dl-de/by-2.0",
     art: "csv",
@@ -95,6 +147,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "des Datensatzes lassen wir deshalb liegen: Sie rechnen gegen die Einwohnerzahl " +
       "des zu frühen Jahres.",
     herausgeber: "Stadt Oldenburg, Open-Data-Portal",
+    standWort: "Ausgleichsjahre",
     stand: "Ausgleichsjahre 1993–2026",
     lizenz: "dl-de/by-2.0",
     art: "csv",
@@ -126,6 +179,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "Gesamtermächtigung —, steht auf der Seite dabei. " +
       "Die Dokumente hängen als Anlagen an Ratsvorlagen im Bürgerinformationssystem.",
     herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
+    standWort: "Jahresabschlüsse",
     stand: "Jahresabschlüsse 2017–2024",
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de",
@@ -137,6 +191,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "mit Produktnummer und zuständigem Amt. Die Abdeckung ist unvollständig — " +
       "nicht jeder Teilhaushalt liegt für jedes Jahr auslesbar vor.",
     herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
+    standWort: "Haushaltsjahre",
     stand: "Haushaltsjahre 2018–2025",
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de",
@@ -153,6 +208,12 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "Die Dokumente hängen als Anlagen an Ratsvorlagen im " +
       "Bürgerinformationssystem.",
     herausgeber: "Stadt Oldenburg, Amt für Personal- und Verwaltungsmanagement",
+    standWort: "Haushaltsjahre",
+    // Der Zusatz bleibt von Hand: Welcher Jahrgang seinen Teil B nicht
+    // hergibt, steht nicht in der Tabelle, sondern hängt am Textextrakt des
+    // PDFs (2026 liefert dort Glyphen statt Buchstaben, s.
+    // `council/stellenplan.py`).
+    standZusatz: "(2026 ohne Teil B)",
     stand: "Haushaltsjahre 2023–2026 (2026 ohne Teil B)",
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de",
@@ -166,6 +227,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "Textextrakt besteht aus Glyphen-Nummern, und eine zweite Kopie gibt es nicht. " +
       "Die Berichte hängen als Anlagen an Ratsvorlagen im Bürgerinformationssystem.",
     herausgeber: "Stadt Oldenburg, Rechnungsprüfungsamt",
+    standWort: "Jahresabschlüsse",
     stand: "Jahresabschlüsse 2017–2023",
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de",
@@ -188,6 +250,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "führt dort einen anderen Wert. " +
       "Die Berichte hängen als Anlagen an Ratsvorlagen im Bürgerinformationssystem.",
     herausgeber: "Stadt Oldenburg, Rechnungsprüfungsamt",
+    standWort: "Gesamtabschlüsse",
     stand: "Gesamtabschlüsse 2014–2024",
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de",
@@ -217,6 +280,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "gekennzeichnet zu sein. Auch dieser Datensatz trägt keine Summe, gegen die " +
       "wir ihn nachrechnen könnten.",
     herausgeber: "Stadt Oldenburg, Open-Data-Portal",
+    standWort: "Haushaltsjahre",
     stand: "Haushaltsjahre 2010–2025",
     lizenz: "dl-de/by-2.0",
     art: "csv",
@@ -231,6 +295,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "und ausgegeben hat — Steuern, Zuwendungen, Entgelte, Personal, Transfers. " +
       "Anders als der Plan reicht diese Ebene nicht bis ins laufende Jahr.",
     herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
+    standWort: "Jahresabschlüsse",
     stand: "Jahresabschlüsse 2017–2024",
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de",
@@ -316,6 +381,8 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "Für 2019 fehlt der Jahrgang — dort ergeben die Auszahlungsarten in der " +
       "Tabelle selbst nicht die Summe daneben.",
     herausgeber: "Stadt Oldenburg, Fachdienst Geo und Daten (Zahlen: Fachdienst Finanzen)",
+    standWort: "",
+    standZusatz: "(Ausgabe vom 08.07.2026)",
     stand: "2003–2025 (Ausgabe vom 08.07.2026)",
     art: "pdf",
     url:
@@ -335,6 +402,8 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "Der Betrag je Einwohner*in ist die Angabe der Stadt, nicht unsere Division; " +
       "die Einwohnerzahl bezieht sich auf den 31. Dezember des Vorjahres.",
     herausgeber: "Stadt Oldenburg, Fachdienst Geo und Daten (Zahlen: Fachdienst Finanzen)",
+    standWort: "",
+    standZusatz: "(Ausgabe vom 08.07.2026)",
     stand: "1995–2025 (Ausgabe vom 08.07.2026)",
     art: "pdf",
     url:
@@ -359,6 +428,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "Es sind Planzahlen: Was am Jahresende wirklich gebaut wurde, steht nicht " +
       "darin, und einzelne Vorhaben nennt der Datensatz gar nicht.",
     herausgeber: "Stadt Oldenburg, Open-Data-Portal",
+    standWort: "Haushaltsjahre",
     stand: "Haushaltsjahre 2022–2025",
     lizenz: "dl-de/by-2.0",
     art: "csv",
@@ -384,6 +454,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "Gebäudewirtschaft und Hochbau und stehen deshalb nicht in diesem " +
       "Programm.",
     herausgeber: "Stadt Oldenburg, Ratsinformationssystem",
+    standWort: "Haushaltsjahre",
     stand: "Haushaltsjahre 2019–2026",
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de/getfile.php?id=297440&type=do",

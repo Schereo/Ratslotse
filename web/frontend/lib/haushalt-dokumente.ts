@@ -17,23 +17,42 @@
 // Rückfallebene — aber wo sie greift, heißt der Link auch nicht mehr
 // „Dokument öffnen".
 
-import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
+import type { Jahrgaenge, QuellenSchluessel } from "@/lib/haushalt-quellen";
+
+// Der Ratsvorgang ist kein Typ dieser Seite: Er hängt an `council_herkunft`
+// und kommt an zwei Endpunkten heraus (hier und bei `get_herkunft`). Deshalb
+// steht er neutral in `lib/herkunft.ts` — siehe die Begründung dort.
+import type { Ratsvorgang } from "@/lib/herkunft";
+
+export type { Ratsvorgang };
 
 /** Ein konkretes Dokument hinter einer Quelle. `fundstelle` kommt aus
  *  `council_herkunft` und ist der eigentliche Gewinn: „Abschnitt 3.2" macht
- *  aus 300 Seiten eine Stelle, an der man nachschlägt. */
+ *  aus 300 Seiten eine Stelle, an der man nachschlägt.
+ *
+ *  `beschluss` ist die zweite Hälfte davon: nicht nur, in welchem Papier die
+ *  Zahl steht, sondern welcher Ratsvorgang sie verabschiedet hat. `null` bei
+ *  den Schichten von oldenburg.de und vom Landesamt — die hängen an keiner
+ *  Vorlage. */
 export type HaushaltDokument = {
   jahr: number | null;
   url: string;
   label: string | null;
   fundstelle: string | null;
   seite: number | null;
+  beschluss: Ratsvorgang | null;
 };
 
 /** Nach Quellenschlüssel. Ein Schlüssel fehlt, wo wir kein Dokument haben. */
 export type HaushaltDokumente = Partial<Record<QuellenSchluessel, HaushaltDokument[]>>;
 
-export type DokumenteAntwort = { dokumente: HaushaltDokumente };
+export type DokumenteAntwort = {
+  dokumente: HaushaltDokumente;
+  /** Je Quelle die Jahrgänge, die wirklich im Bestand stehen — die Grundlage
+   *  des Datenstands im Quellenverzeichnis (s. `standText`). Kommt aus
+   *  derselben Antwort, weil es an derselben Stelle gebraucht wird. */
+  jahrgaenge: Jahrgaenge;
+};
 
 /** Das Dokument, auf das ein Beleg zeigt — samt allem, was danebengeschrieben
  *  gehört.
@@ -54,6 +73,22 @@ export type Belegziel = {
   abweichend: boolean;
   weitere: number;
 };
+
+/** Was der Rat mit dieser Vorlage gemacht hat, als Satzanfang.
+ *
+ *  Bewusst ein Verb je Ergebnis statt eines Etiketts: „beschlossen" und
+ *  „vertagt" sind verschiedene Auskünfte, und ein neutrales „Status:
+ *  vertagt" verlangt vom Leser die Übersetzung. Unbekannte oder fehlende
+ *  Ergebnisse sagen „behandelt" — das stimmt immer und behauptet nichts. */
+export function vorgangVerb(outcome: string | null): string {
+  switch (outcome) {
+    case "angenommen": return "beschlossen";
+    case "abgelehnt": return "abgelehnt";
+    case "vertagt": return "vertagt";
+    case "zur_kenntnis": return "zur Kenntnis genommen";
+    default: return "behandelt";
+  }
+}
 
 function neuester(liste: HaushaltDokument[]): HaushaltDokument | null {
   if (!liste.length) return null;

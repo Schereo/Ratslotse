@@ -1,10 +1,5 @@
 // Ist-Investitionen (/haushalt/gebaut) — Typen und Rechenwege.
 //
-// Der `Herkunft`-Typ steht hier absichtlich noch einmal ausgeschrieben statt
-// aus `haushalt-schulden.ts` importiert: Diese Seite soll nicht brechen, wenn
-// der Schulden-Bereich seine Typen umbaut. Dieselbe Entscheidung wie dort und
-// in `haushalt-vergleich.ts`.
-//
 // DIE REGEL, DIE DIESE DATEI TRÄGT: Es gibt hier zwei Reihen, nicht eine.
 // Zum 01.01.2010 stellte die Stadt von kameraler auf doppische Buchführung um;
 // das Statistische Jahrbuch führt deshalb zwei Tabellen und begründet den
@@ -12,20 +7,9 @@
 // Mittel oder eine Veränderung ÜBER diesen Schnitt hinweg — `reihen()` teilt
 // die Daten als Erstes, und alles Weitere rechnet innerhalb einer Reihe.
 
-export type Herkunft = {
-  id: number;
-  art: string;
-  label: string | null;
-  url: string | null;
-  fundstelle: string | null;
-  seite: number | null;
-  probe: string | null;
-  /** Die Erklärsätze zu den bestandenen Proben — kommen aus `herkunft.PROBEN`
-   *  im Backend, damit sie einmal für Leserinnen geschrieben sind. */
-  proben: string[];
-  probe_ergebnis: string | null;
-  stand: string | null;
-};
+import type { Herkunft } from "@/lib/herkunft";
+
+export type { Herkunft };
 
 /** Eine Auszahlungsart mit ihrer Überschrift AUS DER QUELLE. Der Titel reist
  *  mit der Zeile, statt hier zu stehen: Die beiden Rechnungswesen benennen

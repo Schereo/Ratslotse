@@ -47,11 +47,14 @@ import {
   createContext, useContext, useState, type ReactNode,
 } from "react";
 import { ChevronRight, ExternalLink } from "lucide-react";
-import { QuellenSchluessel, QUELLEN, Quelle } from "@/lib/haushalt-quellen";
 import {
-  belegziel, belegzieleAlle, zielText,
+  QuellenSchluessel, QUELLEN, Quelle, standText, type Jahrgaenge,
+} from "@/lib/haushalt-quellen";
+import {
+  belegziel, belegzieleAlle, zielText, vorgangVerb,
   type Belegziel, type DokumenteAntwort, type HaushaltDokumente,
 } from "@/lib/haushalt-dokumente";
+import { datumLang, gremiumKurz } from "@/lib/haushalt-streit";
 import { GlossaryText } from "@/components/glossary-text";
 import { useFetch } from "@/lib/use-fetch";
 import { cn } from "@/lib/utils";
@@ -59,12 +62,15 @@ import { cn } from "@/lib/utils";
 type Kontext = {
   schluessel: QuellenSchluessel[];
   dokumente: HaushaltDokumente | undefined;
+  /** Die Jahrgänge je Quelle aus dem Bestand — daraus wird der Datenstand
+   *  gerechnet, statt ihn von Hand zu pflegen (s. `standText`). */
+  jahrgaenge: Jahrgaenge | undefined;
   /** Der Jahrgang, den die Seite gerade zeigt — `null`, wo sie keinen hat. */
   jahr: number | null;
 };
 
 const SeitenQuellen = createContext<Kontext>({
-  schluessel: [], dokumente: undefined, jahr: null,
+  schluessel: [], dokumente: undefined, jahrgaenge: undefined, jahr: null,
 });
 
 /** Die id des Verzeichnisses am Seitenfuß. Es gibt genau eines je Seite —
@@ -104,7 +110,9 @@ export function Quellenkontext({ schluessel, jahr = null, children }: {
   // und die eine, die es vergisst, zeigt wieder auf die Startseite.
   const { data } = useFetch<DokumenteAntwort>("/council/haushalt/dokumente");
   return (
-    <SeitenQuellen.Provider value={{ schluessel, dokumente: data?.dokumente, jahr }}>
+    <SeitenQuellen.Provider value={{
+      schluessel, dokumente: data?.dokumente, jahrgaenge: data?.jahrgaenge, jahr,
+    }}>
       {children}
     </SeitenQuellen.Provider>
   );
@@ -113,7 +121,7 @@ export function Quellenkontext({ schluessel, jahr = null, children }: {
 /** Beleg-Chip direkt an der Zahl. Klick öffnet die Fundstelle. */
 export function Beleg({ q, className }: { q: QuellenSchluessel; className?: string }) {
   const [offen, setOffen] = useState(false);
-  const { schluessel, dokumente, jahr } = useContext(SeitenQuellen);
+  const { schluessel, dokumente, jahrgaenge, jahr } = useContext(SeitenQuellen);
   const quelle = QUELLEN[q];
   const idx = schluessel.indexOf(q);
   // Quelle nicht angemeldet: lieber keinen Chip als eine falsche Nummer.
@@ -139,6 +147,7 @@ export function Beleg({ q, className }: { q: QuellenSchluessel; className?: stri
           <QuelleInhalt
             quelle={quelle} nr={nr}
             ziel={belegziel(dokumente, q, jahr)}
+            jahrgaenge={jahrgaenge?.[q]}
             imVerzeichnis={() => { setOffen(false); zeigeImVerzeichnis(q); }}
           />
         </span>
@@ -160,6 +169,30 @@ function Fundstelle({ ziel }: { ziel: Belegziel }) {
     <span className="mt-1.5 block text-[11px] leading-relaxed text-foreground/80">
       Im Dokument: {fundstelle}
       {seite != null && <>{fundstelle ? ", " : ""}Seite {seite}</>}
+    </span>
+  );
+}
+
+/** Der Ratsvorgang hinter dem Dokument — wo die Datenbank ihn kennt.
+ *
+ *  Die Ergänzung zu `Fundstelle`: Die sagt, WO im Papier die Zahl steht, dies
+ *  hier, WANN der Rat darüber entschieden hat. Damit hängt eine Haushaltszahl
+ *  nicht mehr nur an einem PDF, sondern an einem Vorgang, den man
+ *  weiterverfolgen kann.
+ *
+ *  Keine Farbe am Ergebnis — auch nicht rot an „abgelehnt". Der Beleg-Apparat
+ *  berichtet, er bewertet nicht (DESIGNSPRACHE § 7); ein grünes
+ *  „beschlossen" machte aus einer Herkunftsangabe eine Meinung. */
+function Vorgang({ ziel }: { ziel: Belegziel }) {
+  const b = ziel.dokument.beschluss;
+  if (!b || !b.datum) return null;
+  const gremium = b.gremium ? gremiumKurz(b.gremium) : "Der Rat";
+  return (
+    <span className="mt-1 block text-[11px] leading-relaxed text-foreground/80">
+      {gremium} hat das am {datumLang(b.datum)} {vorgangVerb(b.outcome)}
+      {b.vorlage_nr && (
+        <span className="text-muted-foreground"> · Vorlage {b.vorlage_nr}</span>
+      )}
     </span>
   );
 }
@@ -194,8 +227,9 @@ function Zeile({ ziel, quelle, klein }: {
   );
 }
 
-function QuelleInhalt({ quelle, nr, ziel, imVerzeichnis }: {
-  quelle: Quelle; nr: number; ziel: Belegziel | null; imVerzeichnis: () => void;
+function QuelleInhalt({ quelle, nr, ziel, jahrgaenge, imVerzeichnis }: {
+  quelle: Quelle; nr: number; ziel: Belegziel | null;
+  jahrgaenge: number[] | undefined; imVerzeichnis: () => void;
 }) {
   return (
     <>
@@ -206,10 +240,11 @@ function QuelleInhalt({ quelle, nr, ziel, imVerzeichnis }: {
         {quelle.fundstelle}
       </span>
       {ziel && <Fundstelle ziel={ziel} />}
+      {ziel && <Vorgang ziel={ziel} />}
       <span className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[9.5px] uppercase tracking-wide text-muted-foreground">
         <span>{quelle.herausgeber}</span>
         <span>·</span>
-        <span>Stand {quelle.stand}</span>
+        <span>Stand {standText(quelle, jahrgaenge)}</span>
         {quelle.lizenz && (<><span>·</span><span>{quelle.lizenz}</span></>)}
       </span>
       <Zeile ziel={ziel} quelle={quelle} klein />
@@ -255,7 +290,7 @@ export function Apparat({ id, kicker, zusatz, children }: {
 
 /** Quellenverzeichnis am Seitenende — die Langfassung aller benutzten Belege. */
 export function Quellenverzeichnis({ schluessel }: { schluessel: QuellenSchluessel[] }) {
-  const { dokumente, jahr } = useContext(SeitenQuellen);
+  const { dokumente, jahrgaenge, jahr } = useContext(SeitenQuellen);
   const genutzt = schluessel;
   if (!genutzt.length) return null;
   return (
@@ -289,10 +324,12 @@ export function Quellenverzeichnis({ schluessel }: { schluessel: QuellenSchluess
                   <GlossaryText text={q.fundstelle} />
                 </p>
                 <p className="mt-1 flex flex-wrap items-center gap-x-2 font-mono text-[9.5px] uppercase tracking-wide text-muted-foreground">
-                  <span>{q.herausgeber}</span><span>·</span><span>Stand {q.stand}</span>
+                  <span>{q.herausgeber}</span><span>·</span>
+                  <span>Stand {standText(q, jahrgaenge?.[k])}</span>
                   {q.lizenz && (<><span>·</span><span>{q.lizenz}</span></>)}
                 </p>
                 {ziel && <Fundstelle ziel={ziel} />}
+                {ziel && <Vorgang ziel={ziel} />}
                 <Zeile ziel={ziel} quelle={q} />
                 {weitere.length > 0 && (
                   <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5">

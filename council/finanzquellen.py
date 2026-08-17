@@ -260,6 +260,32 @@ class Finanzquelle:
             r["jahrgang"] = next(iter(sorted(e[0] for e in r["einheiten"])), None)
         return rows
 
+    def dokumente(self, store: CouncilStore, spalten: str) -> list[dict]:
+        """Die Dokumente dieser Datenart — mit **ganzem** Volltext, anders als
+        bei ``kandidaten``.
+
+        Der Griff an ``store._conn`` vorbei stand bis 08/2026 achtmal
+        gleichlautend in den ``lies_*``-Funktionen, jedes Mal mit eigenem
+        ``noqa``. Einmal genügt: Wer an der Kandidatenabfrage etwas ändert,
+        ändert sie hier, und alle Datenarten erben es.
+        """
+        sql, werte = self.erkennung.abfrage(spalten)
+        return [dict(r) for r in store._conn.execute(sql, werte)]  # noqa: SLF001
+
+    def vorhandene(self, store: CouncilStore, nur_fehlende: bool) -> set[tuple]:
+        """Welche Einheiten ein Lauf überspringen darf — leer, wenn er alles
+        neu lesen soll.
+
+        Sieht nach einem Einzeiler aus, schließt aber eine Lücke: Die
+        ``lies_*``-Funktionen riefen ihre ``_bestand_*``-Funktion bis 08/2026
+        **direkt** auf, an ihrem eigenen Registry-Eintrag vorbei. Damit gab es
+        auf die Frage „was habe ich schon?" zwei Antworten — die des Crons
+        (über ``bestand``) und die des Einlesens —, und ein Wechsel an einer
+        Stelle wäre an der anderen still unbemerkt geblieben. Genau die
+        Doppelung, gegen die es diese Registry gibt (s. Modulkopf).
+        """
+        return self.bestand(store) if nur_fehlende else set()
+
     def offene_einheiten(self, store: CouncilStore) -> set[tuple]:
         """Einheiten, für die ein Dokument vorliegt, die aber fehlen."""
         vorhanden = self.bestand(store)
@@ -635,10 +661,9 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
     Was ein Jahrgang bekommt, bekommt er in **einer** Transaktion
     (``store.transaktion()``): Ein Abbruch mittendrin ließe ihn sonst halb
     zurück, und halb sieht für den nächsten Lauf aus wie fertig."""
-    sql, werte = QUELLEN["jahresabschluss"].erkennung.abfrage(
-        "document_id, label, url, raw_text")
-    rows = store._conn.execute(sql, werte).fetchall()  # noqa: SLF001
-    vorhanden = _bestand_jahresabschluss(store) if nur_fehlende else set()
+    quelle = QUELLEN["jahresabschluss"]
+    rows = quelle.dokumente(store, "document_id, label, url, raw_text")
+    vorhanden = quelle.vorhandene(store, nur_fehlende)
 
     gelesen: dict[int, dict] = {}
     uebersprungen = vorzeichen_repariert = 0
@@ -839,9 +864,8 @@ def lies_ergebnishaushalte(store: CouncilStore, p: Protokoll,
     eine Seite es anschreiben kann; die Begründung samt Messwerten im
     Modulkopf von ``council/ergebnishaushalt.py``."""
     quelle = QUELLEN["ergebnishaushalt"]
-    sql, werte = quelle.erkennung.abfrage("document_id, label, url, raw_text")
-    rows = [dict(r) for r in store._conn.execute(sql, werte)]  # noqa: SLF001
-    vorhanden = _bestand_ergebnishaushalt(store) if nur_fehlende else set()
+    rows = quelle.dokumente(store, "document_id, label, url, raw_text")
+    vorhanden = quelle.vorhandene(store, nur_fehlende)
 
     # Die Ist-Werte der Kernverwaltung einmal holen — Grundlage der Gegenprobe.
     ist_bestand: dict[int, dict[int, float]] = {}
@@ -954,9 +978,8 @@ def lies_investitionsprogramme(store: CouncilStore, p: Protokoll,
     Einbringungs-Vorlage: Es ist der **Entwurf der Verwaltung**, nicht der
     Stand nach den Beratungen. Das steht in der Herkunft (``stand``)."""
     quelle = QUELLEN["investitionsprogramm"]
-    sql, werte = quelle.erkennung.abfrage("document_id, label, url, raw_text")
-    rows = [dict(r) for r in store._conn.execute(sql, werte)]  # noqa: SLF001
-    vorhanden = _bestand_investitionsprogramm(store) if nur_fehlende else set()
+    rows = quelle.dokumente(store, "document_id, label, url, raw_text")
+    vorhanden = quelle.vorhandene(store, nur_fehlende)
 
     je_jahrgang: dict[int, dict] = {}
     geschuetzt = verworfen = 0
@@ -1043,9 +1066,8 @@ def lies_stellenplaene(store: CouncilStore, p: Protokoll,
     städtischen Übertragsfehlers wegzuwerfen hieße, eine belegte Zahl gegen
     gar keine zu tauschen. Die Zahl steht im Protokoll."""
     quelle = QUELLEN["stellenplan"]
-    sql, werte = quelle.erkennung.abfrage("document_id, label, url, raw_text")
-    rows = [dict(r) for r in store._conn.execute(sql, werte)]  # noqa: SLF001
-    vorhanden = _bestand_stellenplan(store) if nur_fehlende else set()
+    rows = quelle.dokumente(store, "document_id, label, url, raw_text")
+    vorhanden = quelle.vorhandene(store, nur_fehlende)
 
     je_jahrgang: dict[int, dict] = {}
     neue_einheiten: set[tuple] = set()
@@ -1146,10 +1168,9 @@ def lies_schlussbericht_fundstellen(store: CouncilStore, p: Protokoll,
 
     Eine Zeile je Jahrgang, ein Dokument je Zeile — hier ist die Einheit
     tatsächlich der Jahrgang, und „da" heißt „fertig"."""
-    sql, werte = QUELLEN["rpa_fundstelle"].erkennung.abfrage(
-        "document_id, label, url, n_pages, raw_text")
-    rows = store._conn.execute(sql, werte).fetchall()  # noqa: SLF001
-    vorhanden = _bestand_schlussberichte(store) if nur_fehlende else set()
+    quelle = QUELLEN["rpa_fundstelle"]
+    rows = quelle.dokumente(store, "document_id, label, url, n_pages, raw_text")
+    vorhanden = quelle.vorhandene(store, nur_fehlende)
     neu: list[int] = []
     gefunden = unlesbar = 0
     for r in rows:
@@ -1212,10 +1233,9 @@ def lies_teilhaushalte(store: CouncilStore, p: Protokoll,
     ein Nachtragshaushalt etwa, der einen Ansatz wirklich ändert. Dann wird
     gemeldet statt still überschrieben; welcher Stand gilt, entscheidet
     niemand nebenbei in einem unbeaufsichtigten Lauf."""
-    sql, werte = QUELLEN["teilhaushalt"].erkennung.abfrage(
-        "document_id, label, url, raw_text")
-    rows = [dict(r) for r in store._conn.execute(sql, werte)]  # noqa: SLF001
-    vorhanden = _bestand_produkte(store) if nur_fehlende else set()
+    quelle = QUELLEN["teilhaushalt"]
+    rows = quelle.dokumente(store, "document_id, label, url, raw_text")
+    vorhanden = quelle.vorhandene(store, nur_fehlende)
     if nur_fehlende:
         rows = [r for r in rows if (teilhaushalt_jahrgang((r["raw_text"] or "")[:4000]),
                                     teilhaushalt_nummer(r["label"])) not in vorhanden]
@@ -1334,10 +1354,9 @@ def lies_pruefungsfeststellungen(store: CouncilStore, p: Protokoll,
     für einen Blick in den Bericht — nicht für eine gelockerte Regel."""
     from collections import Counter
 
-    sql, werte = QUELLEN["pruefungsfeststellungen"].erkennung.abfrage(
-        "document_id, label, url, raw_text")
-    rows = [dict(r) for r in store._conn.execute(sql, werte)]  # noqa: SLF001
-    vorhanden = _bestand_feststellungen(store) if nur_fehlende else set()
+    quelle = QUELLEN["pruefungsfeststellungen"]
+    rows = quelle.dokumente(store, "document_id, label, url, raw_text")
+    vorhanden = quelle.vorhandene(store, nur_fehlende)
 
     je_jahr: dict[int, dict] = {}
     geschuetzt = 0
@@ -1414,9 +1433,8 @@ def lies_konzernabschluesse(store: CouncilStore, p: Protokoll,
     Quelle geändert, und das gehört angesehen, nicht automatisch entschieden.
     """
     quelle = QUELLEN["konzernabschluss"]
-    sql, werte = quelle.erkennung.abfrage("document_id, label, url, n_pages, raw_text")
-    rows = [dict(r) for r in store._conn.execute(sql, werte)]  # noqa: SLF001
-    vorhanden = _bestand_konzernabschluss(store) if nur_fehlende else set()
+    rows = quelle.dokumente(store, "document_id, label, url, n_pages, raw_text")
+    vorhanden = quelle.vorhandene(store, nur_fehlende)
 
     je_jahr: dict[int, dict] = {}
     gelesen: dict[int, list[dict]] = {}

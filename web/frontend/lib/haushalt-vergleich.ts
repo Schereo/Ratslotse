@@ -13,23 +13,9 @@
 // und Schulden je Einwohner erfüllen es nicht: Sie messen zuerst die
 // Organisationsform. Begründung und Belege stehen in `council/staedtevergleich.py`.
 
-/** Woher eine Zeile kommt — das gemeinsame Format aller Finanz-Schichten
- *  (`council/herkunft.py`), hier noch einmal ausgeschrieben statt aus
- *  `haushalt-konzern.ts` importiert: Diese Seite soll nicht brechen, wenn der
- *  Konzern-Bereich seine Typen umbaut. */
-export type Herkunft = {
-  id: number;
-  art: string;
-  dokument_id: number | null;
-  label: string | null;
-  url: string | null;
-  fundstelle: string | null;
-  seite: number | null;
-  probe: string;
-  probe_ergebnis: string | null;
-  stand: string | null;
-  proben: string[];
-};
+import type { Herkunft } from "@/lib/herkunft";
+
+export type { Herkunft };
 
 export type VergleichStadt = {
   schluessel: string;

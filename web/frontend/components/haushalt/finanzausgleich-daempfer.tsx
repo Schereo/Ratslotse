@@ -36,7 +36,8 @@
 // steht an der Achse „Ausgleichsjahr" und nicht „Haushaltsjahr", und keine
 // Zahl von hier wird mit einem Jahr aus `council_steuern` gepaart.
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useId } from "react";
+import { useBreite } from "@/lib/use-breite";
 import { deMio } from "@/lib/haushalt";
 import { Beleg } from "@/components/haushalt/quelle";
 import {
@@ -56,23 +57,9 @@ const H = 190, Y0 = 150, YTOP = 20;
 const halo = { paintOrder: "stroke", strokeWidth: 3, strokeLinejoin: "round" } as const;
 
 export function FinanzausgleichDaempfer({ steuerkraft }: { steuerkraft: Kraft[] }) {
-  const box = useRef<HTMLDivElement>(null);
-  const [breite, setBreite] = useState(640);
-  useEffect(() => {
-    const el = box.current;
-    if (!el) return;
-    // `getBoundingClientRect`, nicht `clientWidth`: Letzteres rundet auf ganze
-    // Pixel, und schon ein Skalierungsfaktor von 1,0008 zieht die Schrift der
-    // Achsen mit (die viewBox-Falle aus `zeitreihe.tsx`).
-    const pruefe = () => {
-      const w = Math.max(el.getBoundingClientRect().width, 260);
-      setBreite((alt) => (Math.abs(w - alt) > 0.5 ? w : alt));
-    };
-    pruefe();
-    const ro = new ResizeObserver(pruefe);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+  // 260 statt der üblichen 280: Dieses Diagramm trägt keine Jahreszahlen an
+  // der Achse und bleibt deshalb zwanzig Pixel schmaler noch lesbar.
+  const { box, breite } = useBreite(640, 260);
 
   const reihe = steuerkraft
     .filter((k): k is Kraft & { messzahl: number; zuweisungen: number } =>

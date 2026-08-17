@@ -13,18 +13,9 @@
 // letzten bekannten Wert fortschreibt, erfindet Zahlen. Die Seite zeigt
 // stattdessen, was da ist, und lässt die Lücke Lücke sein.
 
-export type Herkunft = {
-  id: number;
-  art: string;
-  label: string | null;
-  url: string | null;
-  fundstelle: string | null;
-  seite: number | null;
-  probe: string;
-  probe_ergebnis: string | null;
-  stand: string | null;
-  proben?: string[];
-};
+import type { Herkunft } from "@/lib/herkunft";
+
+export type { Herkunft };
 
 export type Gesellschaft = {
   bericht_jahr: number;

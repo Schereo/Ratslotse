@@ -26,7 +26,8 @@
 // Quelle. Viel Bautätigkeit ist weder gut noch schlecht — ein hoher Balken
 // kann eine sanierte Schule sein oder eine Kapitaleinlage.
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useId, useState } from "react";
+import { useBreite } from "@/lib/use-breite";
 import {
   AbleseBeschreibung, AbleseFlaeche, AbleseStelle, Ableseleiste, useAblesen,
 } from "@/components/haushalt/ablesen";
@@ -63,23 +64,9 @@ export function GebautBalken({ jahre, fehlend, arten, titel }: {
   titel: string;
 }) {
   const [tabelle, setTabelle] = useState(false);
-  // viewBox-Breite = Containerbreite, sonst staucht das SVG die Schrift mit.
-  // `getBoundingClientRect` statt `clientWidth`: letzteres rundet auf ganze
-  // Pixel (dieselbe Messfalle wie in `schulden-kurve.tsx`).
-  const box = useRef<HTMLDivElement>(null);
-  const [breite, setBreite] = useState(640);
-  useEffect(() => {
-    const el = box.current;
-    if (!el) return;
-    const pruefe = () => {
-      const w = Math.max(el.getBoundingClientRect().width, 280);
-      setBreite((alt) => (Math.abs(w - alt) > 0.5 ? w : alt));
-    };
-    pruefe();
-    const ro = new ResizeObserver(pruefe);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+  // viewBox-Breite = Containerbreite, sonst staucht das SVG die Schrift mit
+  // (Messfalle und Epsilon: `lib/use-breite.ts`).
+  const { box, breite } = useBreite();
 
   // Alle Spalten der Reihe: belegte Jahrgänge UND die Lücken dazwischen.
   const belegt = new Map(jahre.map((z) => [z.jahr, z]));
