@@ -318,6 +318,8 @@ class CouncilStore:
         self._migrate()
         #: Läuft gerade eine geklammerte Transaktion (siehe ``transaktion``)?
         self._sammelt = False
+        #: Zwischenspeicher für ``personen_kanon`` — je Instanz, also je Anfrage.
+        self._kanon: dict[str, str] | None = None
 
     @contextlib.contextmanager
     def transaktion(self):
@@ -3399,10 +3401,14 @@ class CouncilStore:
         Gremien-Mitgliedschaften mit von/bis, neueste zuerst."""
         if not names:
             return None
-        want = {self._person_slug(n) for n in names}
+        # Gefaltet auf die kanonische Namensform (:meth:`person_slug`): Das
+        # Ratsinformationssystem führt seine Stammdaten unter genau einer Form,
+        # die Anwesenheitslisten können eine andere nennen — ohne die Faltung
+        # stünde ein Profil ohne Mandat und ohne Fraktion da.
+        want = {self.person_slug(n) for n in names}
         person = None
         for r in self._conn.execute("SELECT kpenr, name, fraktion_aktuell FROM council_persons"):
-            if self._person_slug(r["name"]) in want:
+            if self.person_slug(r["name"]) in want:
                 person = dict(r)
                 break
         if not person:
@@ -6166,7 +6172,7 @@ class CouncilStore:
         g: dict = defaultdict(lambda: {"names": Counter(), "rollen": Counter(),
                                        "first": None, "last": None})
         for r in rows:
-            sl = self._person_slug(r["name"])
+            sl = self.person_slug(r["name"])
             if not sl:
                 continue
             e = g[sl]
@@ -6181,7 +6187,7 @@ class CouncilStore:
             if sl in gesehen:  # Ratsmandat gewinnt über Gast-Auftritte der Verwaltung
                 continue
             gesehen.add(sl)
-            anzeige = self._person_anzeige(e["names"].most_common(1)[0][0])
+            anzeige = self._anzeige_name(e["names"], sl)
             vor, nach = namensteile(anzeige)
             if not nach:
                 continue
@@ -6228,7 +6234,7 @@ class CouncilStore:
                 "SELECT DISTINCT name FROM council_attendance "
                 "WHERE role NOT IN ('mitglied','vorsitz','verwaltung') "
                 "AND name IS NOT NULL AND name != ''"):
-            sl = self._person_slug(name)
+            sl = self.person_slug(name)
             if not sl or sl in gesehen:
                 continue
             gesehen.add(sl)
@@ -6297,7 +6303,7 @@ class CouncilStore:
             name = r["name"]
             if "/" in name:                      # Entsendungsrecht, kein Mensch
                 continue
-            sl = self._person_slug(name)
+            sl = self.person_slug(name)
             if not sl:
                 continue
             e = g[sl]
@@ -6310,7 +6316,7 @@ class CouncilStore:
 
         out: list[dict] = []
         for sl, e in g.items():
-            anzeige = self._person_anzeige(e["names"].most_common(1)[0][0])
+            anzeige = self._anzeige_name(e["names"], sl)
             vor, nach = self.namensteile(anzeige)
             if not vor or len(nach) < 3:
                 continue
@@ -6365,7 +6371,8 @@ class CouncilStore:
                 "ausschussvorsitzender", "ausschussvorsitzende"}
 
     @classmethod
-    def _spricht_diese_person(cls, sprecher: str, vorname: str, nachname: str) -> bool:
+    def _spricht_diese_person(cls, sprecher: str, vorname: str, nachname: str,
+                              bekannte_teile: frozenset[str] = frozenset()) -> bool:
         """Gehört dieser Sprecher-Eintrag zu genau dieser Person?
 
         Die Protokolle schreiben denselben Menschen mal „Andrea Hufeland", mal
@@ -6377,6 +6384,12 @@ class CouncilStore:
 
         Mehrere Sprecher in einem Eintrag („Christoph Baak, Dr. Esther
         Niewerth-Baumann") gelten für beide — da haben tatsächlich beide geredet.
+
+        ``bekannte_teile`` sind Namensteile, die zu **derselben** Person
+        gehören, aber nicht in dieser Namensform stehen (s.
+        :data:`council.namensformen.GRUPPEN`). Ohne sie fiele „Ratsherr Ebbeke
+        Harms" durch die Fremdnamen-Prüfung, obwohl die Person genau die ist,
+        deren Seite gerade aufgeschlagen wird.
         """
         if not nachname:
             return False
@@ -6393,7 +6406,9 @@ class CouncilStore:
         rest = [t for t in re.split(r"[^\wäöüß]+", sprecher.lower()) if len(t) > 1]
         nach_teile = set(re.split(r"[^\wäöüß]+", nachname.lower()))
         for t in rest:
-            if t in nach_teile or t.rstrip(".") in cls._HONORIFICS or t in cls._ANREDEN:
+            if (t in nach_teile or t in bekannte_teile
+                    or cls._falte_namen(t) in bekannte_teile
+                    or t.rstrip(".") in cls._HONORIFICS or t in cls._ANREDEN):
                 continue
             return False   # ein fremder Namensbestandteil → andere Person
         return True
@@ -6418,16 +6433,40 @@ class CouncilStore:
         Gremien-Filter), ``gesamt`` (ohne Filter) und ``gremien`` als Facetten
         mit Anzahl — damit die Oberfläche gleich sagen kann, wo etwas zu holen
         ist.
+
+        Gesucht wird über **alle** Namensformen der Person (s.
+        :data:`council.namensformen.GRUPPEN`): Die Protokolle schreiben denselben
+        Menschen in einer Sitzung „Tim Harms" und in der nächsten „Ratsherr
+        Ebbeke Harms" — beides gehört auf dieselbe Seite.
         """
-        teile = [t for t in name.replace(".", " ").replace(",", " ").split()
-                 if t.lower().rstrip(".") not in self._HONORIFICS
-                 and t.lower() not in self._ANREDEN]
-        if not teile:
+        def zerlegen(n: str) -> tuple[str, str] | None:
+            teile = [t for t in n.replace(".", " ").replace(",", " ").split()
+                     if t.lower().rstrip(".") not in self._HONORIFICS
+                     and t.lower() not in self._ANREDEN]
+            return (teile[-1], teile[0] if len(teile) > 1 else "") if teile else None
+
+        eigen = zerlegen(name)
+        if not eigen:
             return {"items": [], "total": 0, "gesamt": 0, "gremien": []}
-        nachname, vorname = teile[-1], (teile[0] if len(teile) > 1 else "")
-        roh = self.wortbeitraege_von_sprecher(nachname, limit=5000)
-        meine = [w for w in roh
-                 if self._spricht_diese_person(w.get("sprecher") or "", vorname, nachname)]
+        formen: list[tuple[str, str]] = [eigen]
+        bekannte_teile: set[str] = set()
+        for weitere in self.personen_namensformen(self._person_slug(name)):
+            z = zerlegen(weitere)
+            if z and z not in formen:
+                formen.append(z)
+            for t in weitere.replace(".", " ").replace(",", " ").split():
+                bekannte_teile.add(t.lower())
+                bekannte_teile.add(self._falte_namen(t))
+        bekannt = frozenset(bekannte_teile)
+
+        roh: dict = {}
+        for nachname in dict.fromkeys(n for n, _ in formen):
+            for w in self.wortbeitraege_von_sprecher(nachname, limit=5000):
+                roh[w["id"]] = w
+        meine = [w for w in roh.values()
+                 if any(self._spricht_diese_person(w.get("sprecher") or "", v, n, bekannt)
+                        for n, v in formen)]
+        meine.sort(key=lambda w: (w.get("session_date") or "", w["id"]), reverse=True)
 
         from collections import Counter
         zaehler = Counter(w["committee"] for w in meine if w.get("committee"))
@@ -6467,13 +6506,91 @@ class CouncilStore:
         toks = [t for t in re.split(r"[^a-z0-9]+", s) if t and t not in CouncilStore._HONORIFICS]
         return "-".join(toks)
 
+    # --- Eine Person, zwei Namensformen (council.namensformen) ----------------
+
+    def personen_kanon(self) -> dict[str, str]:
+        """``{Namensform → kanonische Form}`` für die geführten Gruppen.
+
+        Welche Form kanonisch ist, entscheidet die **jüngste Fundstelle** in
+        den Anwesenheitslisten — die Zuordnung selbst ist gepflegt
+        (:data:`council.namensformen.GRUPPEN`), die Anzeige nicht. Zieht eine
+        Quelle auf eine andere Form um, zieht die Seite beim nächsten
+        Protokoll von selbst mit; niemand muss eine Liste von Anzeigenamen
+        nachführen.
+
+        Gezählt wird über ``GROUP BY name`` (rund 1.300 verschiedene Namen
+        gegenüber 22.000 Zeilen) und je Instanz einmal — die Karte hängt an
+        jeder Gruppierung nach Person.
+        """
+        if self._kanon is None:
+            from council import namensformen
+            fund: dict[str, tuple[str, int]] = {}
+            for r in self._conn.execute(
+                    """SELECT a.name, MAX(cs.session_date) d, COUNT(*) n
+                       FROM council_attendance a JOIN council_sessions cs ON cs.ksinr = a.ksinr
+                       WHERE a.name IS NOT NULL AND a.name != '' GROUP BY a.name"""):
+                sl = self._person_slug(r["name"])
+                if not sl or not r["d"]:
+                    continue
+                alt = fund.get(sl)
+                fund[sl] = ((max(alt[0], r["d"]), alt[1] + r["n"]) if alt
+                            else (r["d"], r["n"]))
+            self._kanon = namensformen.kanonisch(fund)
+        return self._kanon
+
+    def person_slug(self, name: str) -> str:
+        """Slug eines Namens, auf die kanonische Namensform gefaltet.
+
+        Der Ersatz für ``_person_slug`` überall dort, wo nach Person
+        **gruppiert** wird. Ohne die Faltung bekäme dieselbe Person zwei
+        Einträge im Verzeichnis, zwei Personen-Seiten mit je einem Teil ihrer
+        Sitzungen und kein Badge in den KI-Antworten."""
+        sl = self._person_slug(name)
+        return self.personen_kanon().get(sl, sl)
+
+    def personen_namensformen(self, slug: str) -> list[str]:
+        """Die belegten Schreibweisen einer Person, die der kanonischen Form
+        zuerst — für Abgleiche, die auf **Namen** laufen statt auf Slugs
+        (Wortbeiträge, Suche im Verzeichnis)."""
+        kanon = self.personen_kanon()
+        ziel = kanon.get(slug, slug)
+        gefunden: dict[str, tuple[int, str]] = {}
+        for (name,) in self._conn.execute(
+                "SELECT DISTINCT name FROM council_attendance "
+                "WHERE name IS NOT NULL AND name != ''"):
+            sl = self._person_slug(name)
+            if kanon.get(sl, sl) != ziel:
+                continue
+            anzeige = self._person_anzeige(name)
+            gefunden.setdefault(anzeige, (0 if sl == ziel else 1, anzeige))
+        return [n for n, _ in sorted(gefunden.items(), key=lambda p: p[1])]
+
+    def _anzeige_name(self, namen, slug: str) -> str:
+        """Die anzuzeigende Schreibweise aus einem ``Counter`` von Rohnamen.
+
+        Zweistufig: Die **kanonische Namensform** bestimmt, welcher Name
+        angezeigt wird (jüngste Fundstelle, s. :meth:`personen_kanon`);
+        innerhalb dieser Form entscheidet wie eh und je die häufigste
+        Schreibweise, damit ein einzelnes „Dr." mehr oder weniger die Anzeige
+        nicht umwirft. Ohne Gruppe ändert sich dadurch nichts."""
+        from collections import Counter
+        eigene = Counter({n: c for n, c in namen.items()
+                          if self._person_slug(n) == slug})
+        return self._person_anzeige((eigene or namen).most_common(1)[0][0])
+
     def list_members(self) -> list[dict]:
         """Council members from attendance (role mitglied/vorsitz), grouped by *slug* so
         title variants of the same person ("Dr. X" and "X") merge into ONE entry (and the
         React list gets unique keys). Per person: canonical (most-frequent) name, die
         **letzte aktive Fraktion** (nicht die häufigste — Wechsler wie FDP→Volt oder
         Linke→BSW würden sonst ewig unter der alten laufen), distinct sessions attended
-        and committees served. The member directory."""
+        and committees served. The member directory.
+
+        Zusammengefasst wird über :meth:`person_slug`, also einschließlich der
+        Namensformen aus :data:`council.namensformen.GRUPPEN` — sonst stünde
+        dieselbe Person zweimal im Verzeichnis, jedes Mal mit einem Teil ihrer
+        Sitzungen. ``formen`` nennt die belegten Schreibweisen; das Verzeichnis
+        findet damit auch, wer nach der älteren sucht."""
         from collections import Counter, defaultdict
         from council.parties import classify_faction
         rows = self._conn.execute(
@@ -6484,7 +6601,7 @@ class CouncilStore:
         g: dict = defaultdict(lambda: {"names": Counter(), "ksinrs": set(), "committees": set(),
                                        "first": None, "last": None, "party_at": None})
         for r in rows:
-            sl = self._person_slug(r["name"])
+            sl = self.person_slug(r["name"])
             if not sl:
                 continue
             e = g[sl]
@@ -6501,7 +6618,8 @@ class CouncilStore:
             p = c["label"] if c["kind"] in ("partei", "gruppe") else None
             if p and (e["party_at"] is None or d >= e["party_at"][0]):
                 e["party_at"] = (d, p)
-        out = [{"slug": sl, "name": self._person_anzeige(e["names"].most_common(1)[0][0]),
+        out = [{"slug": sl, "name": self._anzeige_name(e["names"], sl),
+                "formen": sorted({self._person_anzeige(n) for n in e["names"]}),
                 "party": e["party_at"][1] if e["party_at"] else None,
                 "n": len(e["ksinrs"]), "committees": len(e["committees"]),
                 "first": e["first"], "last": e["last"]}
@@ -6514,28 +6632,35 @@ class CouncilStore:
         für Endpunkte, die nicht das ganze Profil brauchen. Ohne Anrede, wie in
         ``member_detail`` und im Verzeichnis (#419)."""
         from collections import Counter
+        slug = self.personen_kanon().get(slug, slug)
         namen = [r["name"] for r in self._conn.execute(
             "SELECT name FROM council_attendance WHERE role IN ('mitglied','vorsitz') "
             "AND name IS NOT NULL AND name != ''")]
-        passend = [n for n in namen if self._person_slug(n) == slug]
-        return self._person_anzeige(Counter(passend).most_common(1)[0][0]) if passend else None
+        passend = [n for n in namen if self.person_slug(n) == slug]
+        return self._anzeige_name(Counter(passend), slug) if passend else None
 
     def member_detail(self, slug: str) -> dict | None:
         """One member — all name variants merged by slug: party, sessions, active span,
-        committees served (with counts and chair flag) and their most recent sessions."""
+        committees served (with counts and chair flag) and their most recent sessions.
+
+        Der angefragte Slug wird zuerst auf die kanonische Namensform gefaltet
+        (:meth:`personen_kanon`): Ein geteilter Link auf die ältere Form führt
+        damit auf **dasselbe** Profil, und ``slug`` in der Antwort nennt die
+        kanonische Adresse."""
         from collections import Counter
         from council.parties import classify_faction
+        slug = self.personen_kanon().get(slug, slug)
         names = [r["name"] for r in self._conn.execute(
             "SELECT DISTINCT name FROM council_attendance WHERE role IN ('mitglied','vorsitz') "
             "AND name IS NOT NULL AND name != ''")]
-        matched = [n for n in names if self._person_slug(n) == slug]
+        matched = [n for n in names if self.person_slug(n) == slug]
         if not matched:
             return None
         ph = ",".join("?" * len(matched))
-        name = self._person_anzeige(Counter(  # canonical = most-frequent spelling
+        name = self._anzeige_name(Counter(  # kanonische Form, darin häufigste Schreibweise
             r["name"] for r in self._conn.execute(
                 f"SELECT name FROM council_attendance WHERE name IN ({ph}) AND role IN ('mitglied','vorsitz')",
-                matched)).most_common(1)[0][0])
+                matched)), slug)
         chairs = {r["committee"] for r in self._conn.execute(
             f"SELECT DISTINCT cs.committee FROM council_attendance a JOIN council_sessions cs ON cs.ksinr=a.ksinr "
             f"WHERE a.name IN ({ph}) AND a.role='vorsitz'", matched)}

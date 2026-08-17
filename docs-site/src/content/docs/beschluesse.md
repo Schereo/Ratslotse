@@ -124,6 +124,27 @@ council_memberships        -- Gremien-Mitgliedschaften je Person
 - Kontaktdaten der Personenseiten (Adresse, Telefon, Beruf) werden bewusst
   **nicht** übernommen.
 
+### Eine Person, zwei Namensformen (`council/namensformen.py`)
+
+Manche Menschen stehen in den Anwesenheitslisten unter zwei Namensformen —
+„Tim Harms" und „Tim Ebbeke Harms". Ohne Zuordnung zerfällt so eine Person in
+zwei Profile mit je einem Teil ihrer Sitzungen, und die Personen-Badges der
+KI-Antworten fallen aus (bei zwei gleich benannten Kandidaten gibt der Matcher
+absichtlich auf).
+
+- **Welche Formen zusammengehören, ist gepflegt** (`GRUPPEN`, heute drei
+  Einträge). Automatisch erkennbar wäre es — die Bedingung findet am Bestand
+  aber auch zwei verschiedene Menschen, und eine falsche Gruppe behauptete,
+  zwei reale Personen seien eine. `scripts/check_namensformen.py` liefert
+  deshalb nur den **Bericht** der Verdachtspaare; entschieden wird von Hand.
+- **Welche Form angezeigt wird, ist es nicht:** Es gewinnt die Form mit der
+  **jüngsten Fundstelle** in den Anwesenheitslisten — nie die längere, nie die
+  häufigere. Wechselt eine Quelle die Form, zieht die Anzeige beim nächsten
+  Protokoll von selbst mit.
+- Gruppiert wird über `CouncilStore.person_slug` (statt `_person_slug`); der
+  kanonische Slug ist die Adresse der Personen-Seite, die übrigen Formen
+  liefern dasselbe Profil, damit geteilte Links nicht brechen.
+
 ### Anbindung an Nutzer-Themen
 
 Beschlüsse werden gegen die Themen der Nutzer*innen klassifiziert (mit strengem
