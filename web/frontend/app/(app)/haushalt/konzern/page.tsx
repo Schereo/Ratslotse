@@ -29,7 +29,7 @@
 // verrechenbar. Wer diese Seite liest und danach 1.242 gegen 883 Mio. rechnet,
 // hat etwas falsch verstanden, das wir ihm gesagt haben müssten.
 //
-// KEINE BEWERTUNGSFARBEN, wie im ganzen Bereich (components/haushalt/hantel.tsx).
+// KEINE BEWERTUNGSFARBEN, wie im ganzen Bereich (components/grafik/hantel.tsx).
 
 import { useMemo, useState } from "react";
 import Link from "next/link";

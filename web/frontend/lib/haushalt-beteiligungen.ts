@@ -129,7 +129,7 @@ export function textVon(daten: BeteiligungsDaten | null, gesellschaft: string,
  *
  *  KEIN Vorzeichen-Farbcode und keine Pfeile: Ein Verkehrsbetrieb, der Verlust
  *  macht, erfüllt seinen Auftrag — dieselbe Begründung wie in
- *  `components/haushalt/hantel.tsx`. Das Minus steht da, weil es zur Zahl
+ *  `components/grafik/hantel.tsx`. Das Minus steht da, weil es zur Zahl
  *  gehört, nicht als Urteil. */
 export function eur(wert: number): string {
   const abs = Math.abs(wert);

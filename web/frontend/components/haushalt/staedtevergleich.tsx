@@ -16,7 +16,7 @@
 // als sie sind, hat den Zweck dieser Seite verfehlt.
 //
 // KEINE BEWERTUNGSFARBEN — die Regel des ganzen Bereichs
-// (components/haushalt/hantel.tsx), und hier besonders wichtig: Eine hohe
+// (components/grafik/hantel.tsx), und hier besonders wichtig: Eine hohe
 // Steuerkraft ist gut, ein hoher Hebesatz ist es nicht unbedingt, und ob eine
 // hohe Gewerbesteuer Stärke oder Abhängigkeit bedeutet, ist genau die Frage,
 // die diese Seite offenlässt. Grün und Rot würden sie beantworten, ohne sie

@@ -63,13 +63,19 @@ Beteiligungen), `nichtAussagen` (Kassenzettel/Pro-Kopf) oder `gemessen`
 (Zeitstrahl) führt, sind das Pflicht-Props der Grafik — eine Hantel ohne
 Erklärsatz kompiliert nicht. Gerendert werden sie über `<Einordnung>`.
 
-## Die Grafiken
+## Bisher gebaute Grafiken
 
-| Komponente | Datei | Vertrag (Kurzfassung) |
+| Grafik | Datei | Vertrag (Kurzform) |
 |---|---|---|
 | `<Zeitreihe>` (GB-01) | `zeitreihe.tsx` | Linien-Zeitreihe: `reihe: JahrPunkt[]` · `einheit` · `zweitreihe?` (dünn, gestrichelt) · `annotationen?` (ⓘ im Bild, Text IMMER darunter) · `umschalter?` (kontrolliert, mobil full-width). `d3-shape` mit `defined(vorhanden)` bricht die Linie an Lücken — Interpolation ist im Code unmöglich. Direktbeschriftung nur Endwerte, Rest über die Ableseleiste; Achse `d3-scale` nice ticks, mobil nur Dekaden. |
 | `<ZeitreiheMini>` (GB-01 mini) | `zeitreihe.tsx` | Karten-Sparkline: gleiche `defined()`-Lückenbrüche, Endpunkt-Beschriftung bleibt auf jedem Gerät (H4-11), Nulllinie bei Vorzeichenwechsel, `role="img"` mit ganzem Satz. Ohne Achsen und Ableseleiste — die große Kennzahl daneben ist die Auskunft. |
+| `<NahtSaeulen>` (GB-02) | `naht-saeulen.tsx` | `jahre {jahr, teile[] \| fehlt}[] · naht? {zwischen, text} · gruppierungMobil · einheit`. Zwei Farbwelten links/rechts der Naht (aus-/ein-Rampe), erzwungen — keine Farb-Props. Stapel bündeln nach Größe (Desktop 3, mobil 2 Gruppen), die Ableseleiste trennt ALLE Arten. Lücken: volle Säule + `<LueckenFeld>`, von der Komponente gerendert. Keine Rechnung über die Naht. Einsatz: Gebaut. |
+| `<RanglisteSchiene>` (GB-03) | `rangliste-schiene.tsx` | `zeilen {label, wert, hervorgehoben?, zusatz?}[] · schiene ("null-bis-max" \| [min, max]) · einheit · mittelmarke?`. Schiene immer sichtbar (Null-Basis); `hervorgehoben` findet, bewertet nie — eine Grün/Rot-Prop existiert nicht. Mobil wandert das Label über den Balken (eingebaut, kein Prop). Einsatz: Investitionen (mobil, via Treemap). |
+| `<Hantel>` (GB-05) | `hantel.tsx` | `zeilen {label, plan, ist, einordnung}[] · massstab ("prozent" \| "betrag") · sortierung ("abweichung" Default \| "alpha") · schwelle?`. `einordnung` ist Pflicht-FELD — eine Hantel ohne Erklärsatz kompiliert nicht (`null` = „Quelle erläutert nicht", ausgeschrieben). Verbindung immer Orange, Punkte nie farbcodiert; Achse trägt ihre Einheit selbst. Verallgemeinert aus der früheren `components/haushalt/hantel.tsx` — deren Kopfkommentar (Abweichungs-Achse, keine Log-Skala, **keine Bewertungsfarben**) ist mitgewandert und bleibt die Referenz des Bereichs. Einsatz: Plan-Ist, Bereichs-Steckbrief. |
+| `<Waffel>` (GB-06) | `waffel.tsx` | `gesamt · proQuadrat · markiert {anzahl, grund, stichtag} · einheit · grundLabel`. Markierung immer Signal-**Umriss**, nie Fläche; Stichtag und Rundungszeile rendert die Komponente. 14 Quadrate je Reihe, mobil 10 à 13 px (CSS `.gb-waffel`). Nicht interaktiv, `role="img"`. Einsatz: Personal. |
+| `<Treemap>` (GB-08) | `treemap.tsx` | `knoten {key, name, wert, gruppe, zusatz?}[] · farbe(gruppe) · buendelnAb · treffer? · aufRest?`. Fläche ∝ Gesamtsumme (`treemapSquarify`, zur Laufzeit), Rest-Kachel ist Pflicht (neutral schraffiert — gebündelt ist keine Lücke). Nur positive Werte; Verworfenes steht als Satz. Unter 520 px Containerbreite rendert sie selbst eine `<RanglisteSchiene>` — gleiche Daten, gleiche Sortierung (H4-A). Einsatz: Investitionen-Explorer. |
 | `<KettenMatrix>` (GB-10) | `ketten-matrix.tsx` | Feststellung × Jahr: `ketten` · `jahre` · `lueckenJahre` (rendern in JEDER Zeile + als `<LueckenFeld>` ÜBER der Matrix) · `marken` = Legende **aus der Quelle**, nie geraten. B/WB Signal-Orange (Abweichungs-Kategorie), H Rampen-Blau, K neutral. Mobil Karten-Liste mit Chip-Zeile, nie horizontal scrollen; Tastatur ↑/↓ je Kette, Enter klappt den Wortlaut (`detail`) auf. |
+| `<SlopePaar>` (GB-12) | `slope-paar.tsx` | `paare {label, vorher, nachher, hervorgehoben?}[] · bruchLabel (Pflicht) · vonLabel · bisLabel · einheit`. Ein Slope über einen Systembruch ohne Label ist nicht baubar; „unverändert" wird ausgeschrieben, nie als flache Linie versteckt. Mobil automatisch Delta-Liste, der Bruch bleibt Trennzeile. Einsatz: Vergleich (Grundsteuer-Sprung). |
 
 ## Zahlen (`format.ts`)
 

@@ -8,6 +8,56 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **4.459 Vorhaben, durchsuchbar.** „Was wird gebaut?"
+  (`/haushalt/investitionen`) endete bisher bei einer Liste je Bereich —
+  jetzt trägt eine Kachelfläche die Übersicht: Jede Kachel ist ein Vorhaben,
+  ihre Fläche die Gesamtsumme, ein Quadratmillimeter ist überall gleich viel
+  Geld. Die Masse der kleinen Vorhaben steht ehrlich als eigene Kachel da,
+  Suchtreffer heben sich per Umriss hervor, Jahrgang und Bereich lassen sich
+  filtern. Zwei Kästen stehen bewusst, wo man sie braucht: „Wo sind die
+  Schulen?" **vor** den Ergebnissen (Schulgebäude laufen beim Eigenbetrieb,
+  nicht in diesem Programm) und „Planzahlen, keine Beschlüsse" bei den
+  Zahlen. Auf dem Telefon ersetzt eine Rangliste die Kacheln — gleiche
+  Daten, gleiche Reihenfolge, lesbare Beschriftung. (#577)
+- **Der Sprung bei der Grundsteuer, als Bild.** Auf „Steht Oldenburg besser
+  da?" (`/haushalt/vergleich`) zeigt ein Vorher-nachher-Diagramm die
+  Hebesätze aller acht kreisfreien Städte über die Reform 2025 hinweg —
+  Oldenburg hervorgehoben, „unverändert" ausgeschrieben statt als flache
+  Linie versteckt. Mitten im Bild steht der Bruch-Marker „ab 2025 neue
+  Messbeträge": Über die Reform hinweg sind die Sätze nicht vergleichbar,
+  und die Grafik sagt das selbst, statt es einer Fußnote zu überlassen. (#577)
+- **Was der Schuldenstand im Jahr kostet.** Die Schuldenkurve
+  (`/haushalt/schulden`) trägt jetzt die Zinslast als dünne, gestrichelte
+  zweite Linie im selben Bild und auf derselben Skala — dass sie fast auf der
+  Nulllinie klebt, ist die Auskunft. Der auffälligste Knick der Reihe erklärt
+  sich direkt im Bild: „2010: 108,9 Mio. umgebucht" — Kredite wanderten an
+  einen Eigenbetrieb, kein Tilgungswunder. Die Ablesezeile zeigt Summe und
+  Zins gemeinsam. (#577)
+- **Warum ein Bereich vom Plan abwich, steht jetzt an der Abweichung.** Auf
+  „Geplant und geworden" (`/haushalt/plan-ist`) trägt jede Hantel-Zeile den
+  Satz, mit dem der Jahresabschluss selbst die Abweichung erklärt —
+  Wortlaut der Verwaltung, klar gekennzeichnet. Wo der Abschluss einen
+  Bereich nicht erläutert, steht bewusst kein Satz: Erfunden wird nichts.
+  Sortiert ist nach Größe der Abweichung, kleine Bereiche stehen hinter
+  „alle zeigen", und die Achse sagt selbst, in welcher Einheit sie misst. (#577)
+- **Aus „18 %" wird ein zählbares Bild.** Auf „Wer macht die Arbeit?"
+  (`/haushalt/personal`) steht der Stellenplan jetzt als Waffel: Ein Quadrat
+  sind zehn Stellen, die unbesetzten tragen einen orangenen Umriss — samt dem
+  Stichtag, zu dem gezählt wurde, denn die Besetzung wird immer ein Jahr
+  versetzt erhoben. Daneben je Jahrgang ein Balkenpaar aus vorgehaltenen und
+  besetzten Stellen; verrechnet wird weiterhin nichts, weil beide Zahlen zu
+  verschiedenen Zeitpunkten gehören. Der Tarif-Jahrgang 2026, den das PDF der
+  Stadt nicht lesbar hergibt, bleibt als beschriftete Lücke sichtbar stehen.
+  (#576)
+- **22 Jahrgänge Bautätigkeit in einem Bild.** „Was wurde davon wirklich
+  gebaut?" (`/haushalt/gebaut`) zeigte die zwei Rechnungswelten der Stadt
+  bisher als zwei getrennte Diagramme — jetzt stehen alle Säulen von 2003 bis
+  2025 nebeneinander, und der Systemwechsel 2009/2010 ist als gestrichelte
+  Naht im Bild: links die kamerale, rechts die doppische Welt, jede in eigenen
+  Farben, nichts wird über die Naht hinweg verrechnet. 2019 steht als
+  beschriftete Lücke im Bild, weil die Quelltabelle sich dort selbst
+  widerspricht. Jedes Jahr lässt sich zeigen, tippen oder mit den Pfeiltasten
+  ablesen — nach allen Auszahlungsarten getrennt. (#576)
 - **Ein Baukasten für alle Haushalts-Grafiken.** Bisher brachte jede Grafik
   des Haushalts-Bereichs ihre eigenen Bausteine mit; jetzt gibt es ein
   gemeinsames Fundament (`components/grafik/`), aus dem die kommenden

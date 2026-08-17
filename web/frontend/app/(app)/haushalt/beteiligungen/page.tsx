@@ -32,6 +32,12 @@
 // dynamische Segmente brauchen dort eine vorab bekannte Pfadliste. Dieselbe
 // Entscheidung wie bei /haushalt/produkte (`?nr=`) und /haushalt/bereich.
 //
+// KEINE BEWERTUNGSFARBEN, wie im ganzen Bereich
+// (components/grafik/hantel.tsx): Kein Rot für ein negatives
+// Jahresergebnis, keine Pfeile, kein Ampel-Punkt. Ein Verkehrsbetrieb, der
+// Verlust macht, erfüllt seinen Auftrag — die Stadt hält ihn dafür. Wer das
+// rot einfärbt, behauptet ein Versagen und meint eine Aufgabe.
+//
 // UND KEINE SELBSTVERGEWISSERUNG (DESIGNSPRACHE.md § 7): Die Seite zeigt
 // Fundstellen, nicht unsere Rechenproben. Eine Ausnahme, begründet: Wo eine
 // Zahl FEHLT, sagt die Seite es — das ist eine Auskunft über die Quelle.

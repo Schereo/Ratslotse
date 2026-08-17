@@ -17,7 +17,7 @@ import { ArrowRight, ChevronRight, ExternalLink } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
 import {
   ErgebnisPosten, HaushaltDaten, PLAN_ART_LABEL, PlanArt,
-  deMio, grundZuPosten, mio, pruefberichtZuJahr,
+  deMio, grundZuPosten, gruendeFuerBereich, mio, pruefberichtZuJahr,
 } from "@/lib/haushalt";
 import { PruefberichtDaten, wiederholungsketten } from "@/lib/haushalt-pruefung";
 import { Warum } from "@/components/haushalt/warum";
@@ -25,7 +25,7 @@ import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { MarkePille } from "@/components/haushalt/marke";
-import { Hantel, HantelMassstab } from "@/components/haushalt/hantel";
+import { Hantel, HantelMassstab } from "@/components/grafik/hantel";
 import { cn } from "@/lib/utils";
 
 /** Hinweis auf die Prüfung — hier und nirgends sonst, weil das
@@ -160,8 +160,17 @@ function PlanIstInner() {
   const saldoIst = (gesamt.ertrIst ?? 0) - (gesamt.aufwIst ?? 0);
   const quellen: QuellenSchluessel[] = ["jahresabschluss", "plan"];
   const pruefbericht = pruefberichtZuJahr(data, jahr);
-  // Die Einnahmearten tragen ihre Erläuterung schon inline; hier der Rest.
+  // Der Erklärsatz einer Hantel-Zeile: die jüngste Erläuterung des
+  // Abschlusses, die diesen Teilhaushalt ausdrücklich nennt — oder nichts.
+  const hantelGrund = (nr: number | null) =>
+    nr == null ? null : gruendeFuerBereich(data, jahr, nr)[0] ?? null;
+  // Die Einnahmearten tragen ihre Erläuterung schon inline, die Hanteln ihre
+  // Bereichs-Sätze (s. u.) auch; hier der Rest — nichts doppelt.
   const obenGezeigt = new Set(arten.map((p) => p.nr));
+  for (const b of bereiche) {
+    const g = hantelGrund(b.nr);
+    if (g) obenGezeigt.add(g.nr);
+  }
   const uebrigeGruende = (data.abweichungsgruende ?? [])
     .filter((g) => g.jahr === jahr && !obenGezeigt.has(g.nr))
     .sort((a, b) => Math.abs(b.delta_mio ?? 0) - Math.abs(a.delta_mio ?? 0));
@@ -324,9 +333,30 @@ function PlanIstInner() {
             </p>
           </div>
 
+          {/* Der Einordnungssatz je Hantel (H4-07) kommt aus dem Abschluss
+              selbst: Abschnitt 6.3.1 erläutert die Gesamtrechnung, nennt den
+              Bereich aber regelmäßig ausdrücklich („Im Teilhaushalt 10 …") —
+              nur diese Nennungen werden zugeordnet (`gruendeFuerBereich`),
+              nichts wird dazugedichtet. Wo der Abschluss den Bereich nicht
+              nennt, steht bewusst kein Satz: `einordnung: null` ist die
+              ehrliche Auskunft, kein vergessenes Feld. */}
           <Hantel
             massstab={massstab}
-            zeilen={bereiche.map((b) => ({ label: b.name, plan: b.aufwPlan, ist: b.aufwIst }))}
+            schwelle={8}
+            zeilen={bereiche.map((b) => {
+              const g = hantelGrund(b.nr);
+              return {
+                label: b.name, plan: b.aufwPlan, ist: b.aufwIst,
+                einordnung: g ? (
+                  <>
+                    {g.text}{" "}
+                    <span className="font-mono text-[9.5px] uppercase tracking-[0.09em] text-muted-foreground">
+                      — Jahresabschluss {jahr}, Abschnitt 6.3.1, Wortlaut der Verwaltung
+                    </span>
+                  </>
+                ) : null,
+              };
+            })}
           />
         </div>
       )}

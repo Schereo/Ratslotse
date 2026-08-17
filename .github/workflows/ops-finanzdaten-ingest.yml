@@ -62,6 +62,7 @@ jobs:
             .venv/bin/python scripts/ingest_haushalt.py
             .venv/bin/python scripts/ingest_finanzen_opendata.py
             .venv/bin/python scripts/ingest_schulden.py
+            .venv/bin/python scripts/ingest_investitionen_ist.py
             .venv/bin/python scripts/ingest_finanzberichte.py
             .venv/bin/python scripts/ingest_pruefberichte.py
             .venv/bin/python scripts/ingest_konzernabschluss.py
@@ -79,6 +80,7 @@ jobs:
                 "council_konzern_posten", "council_konzern_traeger",
                 "council_steuern", "council_steuerkraft", "council_einwohner",
                 "council_staedtevergleich", "council_investitionen",
+                "council_investitionen_ist",
                 "council_stellenplan", "council_schulden",
             ]
             print("Bestand nach dem Lauf:")
