@@ -461,10 +461,42 @@ def _netto_chart(parts: list[dict], year: int, highlight: str) -> str:
     }, ensure_ascii=False)
 
 
+def _eigen_chart(parts: list[dict], year: int, highlight: str) -> str:
+    """Balken „eigene Einnahmen je Fachbereich" (ordentliche Erträge, Mio. €).
+
+    Gezeigt werden dieselben Bereiche, aus denen die Frage ihre Optionen zieht
+    (``_fachbereiche``) — der zentrale Finanzhaushalt bleibt draußen, sonst
+    stünde neben 170 Mio. ein Balken von 529 Mio., der etwas ganz anderes misst
+    (die Steuern der ganzen Stadt). Die Auslassung steht im Titel."""
+    items = [{"label": r["bereich"], "value": _mio(r["ertraege"]),
+              **({"highlight": True} if r["bereich"] == highlight else {})}
+             for r in sorted(parts, key=lambda r: -r["ertraege"])]
+    return json.dumps({
+        "type": "bars",
+        "title": f"Eigene Einnahmen {year} je Bereich — ohne den zentralen Finanzhaushalt",
+        "unit": "Mio. Euro",
+        "items": items,
+    }, ensure_ascii=False)
+
+
+def _fachbereiche(parts: list[dict]) -> list[dict]:
+    """Die Bereiche, die tatsächlich einen Zuschuss brauchen — absteigend nach
+    eigenen Erträgen.
+
+    Der Filter ist gemessen, nicht benannt: Wer mehr einnimmt als ausgibt, ist
+    kein Fachbereich, sondern die zentrale Finanzwirtschaft (dort stehen alle
+    Steuern) bzw. das treuhänderische Stiftungsvermögen. Eine Namensliste ginge
+    beim nächsten Jahrgang still kaputt — die Stadt benennt ihre Teilhaushalte
+    um, ohne den Zuschnitt zu ändern (s. `_BEREICH_ALIASE`)."""
+    eigen = [r for r in parts
+             if r["aufwendungen"] > 5_000_000 and 0 < r["ertraege"] < r["aufwendungen"]]
+    return sorted(eigen, key=lambda r: -r["ertraege"])
+
+
 def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
     """Speicherfertige Quizfragen aus der Ergebnishaushalt-Übersicht — Gesamt,
     Defizit, große Ausgabenblöcke, Anteil (Donut), Erträge, Netto-Sicht und
-    Kostendeckung. Alle content_hashes sind STABILE Schlüssel (nicht der
+    eigene Einnahmen. Alle content_hashes sind STABILE Schlüssel (nicht der
     Fragetext), damit spätere Textfixes per refresh_quiz_payloads dieselbe
     Frage aktualisieren statt Dubletten anzulegen."""
     from council import quiz
@@ -674,43 +706,64 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
                 "content_hash": key("netto"),
             })
 
-    # 12) Kostendeckung: Was finanziert sich (teilweise) selbst?
-    deckbar = [r for r in parts
-               if r["aufwendungen"] > 5_000_000 and 0 < r["ertraege"] / r["aufwendungen"] < 1]
-    if len(deckbar) >= 4:
-        by_deckung = sorted(deckbar, key=lambda r: -(r["ertraege"] / r["aufwendungen"]))
-        d_pick = [by_deckung[0], by_deckung[len(by_deckung) // 2], by_deckung[-2], by_deckung[-1]]
-        d_pick = list({r["bereich"]: r for r in d_pick}.values())
-        if len(d_pick) == 4:
-            d_top = d_pick[0]
-            d_opts = [r["bereich"] for r in d_pick]
-            rng.shuffle(d_opts)
-            d_items = [{"label": r["bereich"],
-                        "value": round(r["ertraege"] / r["aufwendungen"] * 100),
-                        **({"highlight": True} if r["bereich"] == d_top["bereich"] else {})}
-                       for r in by_deckung]
-            qs.append({
-                "area_type": "thema", "area_key": "haushalt", "category": "ratspolitik",
-                "difficulty": "schwer", "qtype": "mc",
-                "question": (f"Welcher dieser Bereiche deckt {year} den größten Teil seiner "
-                             "Ausgaben durch eigene Einnahmen (etwa Gebühren und Erstattungen)?"),
-                "options": d_opts,
-                "correct_index": d_opts.index(d_top["bereich"]),
-                "explanation": (f"„{d_top['bereich']}“ erwirtschaftet rund "
-                                f"{round(d_top['ertraege'] / d_top['aufwendungen'] * 100)} von 100 "
-                                "ausgegebenen Euro selbst — der Rest wird aus Steuern und "
-                                "Zuweisungen finanziert."),
-                "detail": ("Kaum ein Bereich trägt sich selbst: Was nicht über Gebühren oder "
-                           "Erstattungen hereinkommt, bezahlt die Stadt aus Steuern und "
-                           "Zuweisungen. So sieht man, was gebührenfinanziert ist und was die "
-                           "Allgemeinheit trägt."),
-                "topic": "Haushalt",
-                "source_type": "stadt", "source_ref": source_url,
-                "chart": json.dumps({"type": "bars",
-                                     "title": f"Kostendeckung {year} je Teilhaushalt",
-                                     "unit": "Prozent", "items": d_items}, ensure_ascii=False),
-                "content_hash": key("deckung"),
-            })
+    # 12) Eigene Einnahmen der Fachbereiche — in Millionen, NICHT als Quote.
+    #
+    # Diese Frage hieß bis 08/2026 „Welcher Bereich deckt den größten Teil
+    # seiner Ausgaben durch eigene Einnahmen?" und antwortete in Prozent. Eine
+    # Deckungsquote behauptet aber ein Ziel, das es nicht gibt: Straßen, Kultur
+    # und Grünflächen sollen sich nicht selbst finanzieren, das ist
+    # Daseinsvorsorge. Der Haushalts-Bereich hat die Kennzahl deshalb überall
+    # abgeräumt — der Kostendeckungsgrad-Ring ist weg (Kopf von
+    # `web/frontend/app/(app)/haushalt/bereich/page.tsx`, Punkt 1), und die
+    # Bereichstabelle formuliert absolut („Ein Prozentwert wäre hier ein
+    # Maßstab, den es nicht gibt", `components/haushalt/bereichstabelle.tsx`).
+    # Hier steht dieselbe Auskunft nun genauso in Millionen: Wer bringt am
+    # meisten mit — nicht, wer „trägt sich am besten".
+    #
+    # DER SCHLÜSSEL BLEIBT `deckung`. Er benennt den SLOT, nicht den Text: Ein
+    # neuer content_hash legte per save_quiz_questions eine zweite Frage an und
+    # ließe die alte aktiv im Bestand liegen — refresh_quiz_payloads findet sie
+    # nur über genau diesen Schlüssel. Aus demselben Grund bleibt es eine
+    # MC-Frage in `schwer`: qtype und difficulty frischt der Refresh nicht auf.
+    #
+    # WAS DIE ÜBERSICHT NICHT HERGIBT: eine Aufteilung der Erträge nach Arten.
+    # Ob ein Bereich sein Geld von Bund und Land oder aus Gebühren bekommt,
+    # steht erst in der Ergebnisrechnung je Teilhaushalt
+    # (`council_ergebnisrechnung`) — und die gibt es nur für Jahre mit
+    # Jahresabschluss. Frage und Erklärung behaupten die Aufteilung deshalb
+    # nicht, sie zählen die Quellen auf und sagen im Detail, was offen bleibt.
+    fach = _fachbereiche(parts)
+    # Bei nahezu gleichem Spitzenwert wäre die Frage nicht fair beantwortbar —
+    # `_mio` rundet, zwei Bereiche stünden im Diagramm auf demselben Balken.
+    if len(fach) >= 4 and fach[0]["ertraege"] > fach[1]["ertraege"] * 1.15:
+        e_top = fach[0]
+        # Die vier stärksten — ein Feld aus Spitze und Schlusslicht machte die
+        # Antwort zur Größenschätzung, nicht zur Frage nach den Einnahmen.
+        f_opts = [r["bereich"] for r in fach[:4]]
+        rng.shuffle(f_opts)
+        qs.append({
+            "area_type": "thema", "area_key": "haushalt", "category": "ratspolitik",
+            "difficulty": "schwer", "qtype": "mc",
+            "question": (f"Welcher dieser Bereiche nimmt {year} selbst am meisten ein — "
+                         "durch Erstattungen und Zuweisungen von Bund und Land, "
+                         "Gebühren und Entgelte?"),
+            "options": f_opts,
+            "correct_index": f_opts.index(e_top["bereich"]),
+            "explanation": (f"„{e_top['bereich']}“ bringt rund {_mio(e_top['ertraege'])} Mio. Euro "
+                            "eigene Erträge mit — mehr als jeder andere Fachbereich. Ausgeben "
+                            f"tut der Bereich mit rund {_mio(e_top['aufwendungen'])} Mio. Euro "
+                            "deutlich mehr; die Differenz trägt die Allgemeinheit."),
+            "detail": ("Hohe eigene Einnahmen sind kein Zeugnis: Wo Bund und Land gesetzliche "
+                       "Leistungen mitfinanzieren, fließt viel Geld in den Haushalt — Straßen, "
+                       "Grünflächen und Kultur haben solche Quellen kaum und sollen sich auch "
+                       "nicht selbst tragen. Wie viel der Summe von Bund und Land kommt und wie "
+                       "viel aus Gebühren, schlüsselt die Übersicht des Haushaltsplans nicht "
+                       "auf; sie nennt je Teilhaushalt eine Ertragssumme."),
+            "topic": "Haushalt",
+            "source_type": "stadt", "source_ref": source_url,
+            "chart": _eigen_chart(fach, year, e_top["bereich"]),
+            "content_hash": key("deckung"),
+        })
 
     return qs
 
