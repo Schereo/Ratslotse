@@ -58,6 +58,7 @@ import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { cn } from "@/lib/utils";
+import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 
 const STUFEN: PflichtStufe[] = ["pflicht", "spielraum", "freiwillig"];
 const QUELLEN: QuellenSchluessel[] = ["plan", "teilhaushalt"];
@@ -376,6 +377,8 @@ export default function PflichtPage() {
         Einschätzung nachzuziehen. Genauer wird es je Aufgabe auf der{" "}
         <Link href="/haushalt/produkte" className="font-semibold text-primary">Produktebene</Link>.
       </p>
+
+      <SchrittWeiter href="/haushalt/pflicht" />
 
       <Quellenverzeichnis schluessel={QUELLEN} />
     </div>

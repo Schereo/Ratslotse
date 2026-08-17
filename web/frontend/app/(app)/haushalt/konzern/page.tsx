@@ -47,6 +47,7 @@ import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { GlossaryText } from "@/components/glossary-text";
 import { cn } from "@/lib/utils";
+import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 
 // Nur was auf dieser Seite auch zitiert wird: „jahresabschluss" stand hier,
 // solange der Gegenproben-Block stand — er war die einzige Stelle mit einem
@@ -316,6 +317,8 @@ export default function KonzernPage() {
           <ArrowRight size={14} strokeWidth={2}
             className="transition-transform group-hover:translate-x-0.5" />
         </Link>
+
+        <SchrittWeiter href="/haushalt/konzern" />
 
         <Quellenverzeichnis schluessel={[...QUELLEN]} />
       </div>

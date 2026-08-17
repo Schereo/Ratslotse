@@ -255,6 +255,18 @@ const STUFEN_NUMMERIERT = (() => {
 
 const GESAMT = STUFEN_NUMMERIERT[STUFEN_NUMMERIERT.length - 1].bis;
 
+/** Die Schritte als flache, nummerierte Liste — für die Weiter-Navigation am
+ *  Fuß der Detailseiten (`schritt-weiter.tsx`).
+ *
+ *  Bewusst HIER exportiert statt in eine lib verschoben: `STUFEN` ist die
+ *  einzige Quelle der Reihenfolge, und `tests/test_haushalt_schritte.py`
+ *  liest genau diese Datei, um die selbstgeschriebenen Kicker dagegen zu
+ *  halten. Eine zweite Liste woanders wäre der Anfang genau der Drift, die
+ *  der Wächter verhindern soll. */
+export const SCHRITTE: { href: string; titel: string; nr: number }[] =
+  STUFEN_NUMMERIERT.flatMap((stufe) =>
+    stufe.ziele.map((z) => ({ href: z.href, titel: z.titel, nr: z.nr })));
+
 type Zustand = "gelesen" | "naechster" | "offen";
 
 /** ✓ / ▶ / ○ — die Lesestand-Marker der Etappen-Form (H3-08). Hafenblau,

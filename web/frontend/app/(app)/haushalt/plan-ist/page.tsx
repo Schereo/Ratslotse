@@ -27,6 +27,7 @@ import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { MarkePille } from "@/components/haushalt/marke";
 import { Hantel, HantelMassstab } from "@/components/grafik/hantel";
 import { cn } from "@/lib/utils";
+import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 
 /** Hinweis auf die Prüfung — hier und nirgends sonst, weil das
  *  Rechnungsprüfungsamt genau diesen Vergleich seit Jahren beanstandet:
@@ -523,6 +524,8 @@ function PlanIstInner() {
         Es erscheinen nur Jahre, für die ein Jahresabschluss vorliegt. Für das laufende und
         das kommende Haushaltsjahr gibt es naturgemäß noch keinen.
       </p>
+
+      <SchrittWeiter href="/haushalt/plan-ist" />
 
       <Quellenverzeichnis schluessel={quellen} />
     </div>

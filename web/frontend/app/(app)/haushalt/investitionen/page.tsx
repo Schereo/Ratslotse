@@ -58,6 +58,7 @@ import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { Vorhaben } from "@/components/haushalt/vorhaben";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { cn } from "@/lib/utils";
+import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 
 const QUELLEN: QuellenSchluessel[] = ["investitionen", "investitionsprogramm"];
 
@@ -541,6 +542,8 @@ function InvestitionenInner() {
             </p>
           )}
         </section>
+
+        <SchrittWeiter href="/haushalt/investitionen" />
 
         <Quellenverzeichnis schluessel={QUELLEN} />
       </div>

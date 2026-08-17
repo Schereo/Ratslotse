@@ -60,6 +60,7 @@ import { FormZeichen, Konzernkarte } from "@/components/haushalt/konzernkarte";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { cn } from "@/lib/utils";
+import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 
 const QUELLEN = ["beteiligungsbericht"] as const;
 
@@ -465,6 +466,8 @@ function Seite() {
         <div className="flex flex-col gap-4">
           <Steckbrief daten={data} g={aktiv}
             zurueck={() => router.push("/haushalt/beteiligungen")} />
+          <SchrittWeiter href="/haushalt/beteiligungen" />
+
           <Quellenverzeichnis schluessel={[...QUELLEN]} />
         </div>
       ) : (

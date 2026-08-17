@@ -17,6 +17,7 @@ import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { Labor } from "@/components/haushalt/labor";
+import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 
 export default function LaborPage() {
   const { data, loading } = useFetch<HaushaltDaten>("/council/haushalt");
@@ -60,6 +61,8 @@ export default function LaborPage() {
         titel="Warum das kein Sparvorschlag ist"
         text="Dieses Labor rechnet mit ganzen Bereichen und festen Annahmen. Ein echter Haushalt entsteht anders: Die Verwaltung rechnet jede Position durch, Ausschüsse beraten monatelang, und am Ende stimmt der Rat ab. Was du hier siehst, ist ein Gefühl für Größenordnungen — mehr nicht, aber auch nicht weniger."
       />
+
+      <SchrittWeiter href="/haushalt/labor" />
 
       <Quellenverzeichnis schluessel={quellen} />
     </div>

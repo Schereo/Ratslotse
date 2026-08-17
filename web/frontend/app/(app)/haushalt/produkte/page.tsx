@@ -37,6 +37,7 @@ import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { GlossaryText } from "@/components/glossary-text";
 import { cn } from "@/lib/utils";
+import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 
 const QUELLEN: QuellenSchluessel[] = ["teilhaushalt", "plan"];
 const STUFEN: Spielraum[] = ["niedrig", "mittel", "hoch"];
@@ -621,6 +622,8 @@ function ProdukteInner() {
             </p>
           </div>
         </div>
+
+        <SchrittWeiter href="/haushalt/produkte" />
 
         <Quellenverzeichnis schluessel={QUELLEN} />
       </div>
