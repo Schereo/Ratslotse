@@ -54,7 +54,10 @@ export function StationsZeile({ station, rolle, children }: {
         <ErgebnisAbzeichen ergebnis={station.ergebnis} />
       </div>
       <p className="mt-1 text-[13.5px] font-bold leading-snug">{station.gremium}</p>
-      {children}
+      {/* Der Fließtext der Station hält Lesebreite — ohne Deckel lief er über
+          die volle Kartenbreite (gemessen 1.102 px ≙ rund 140 Zeichen je
+          Zeile), während der Einstiegstext derselben Seite bei 66 endet. */}
+      <div className="max-w-[76ch]">{children}</div>
     </div>
   );
 }

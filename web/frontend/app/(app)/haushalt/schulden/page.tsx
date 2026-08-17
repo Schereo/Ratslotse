@@ -73,7 +73,7 @@ function Fundstelle({ h }: { h: Herkunft | null }) {
       <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
         Woher diese Zahlen kommen
       </p>
-      <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
+      <p className="mt-1 max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
         {h.fundstelle}{h.stand ? ` · ${h.stand}` : ""}
       </p>
     </div>

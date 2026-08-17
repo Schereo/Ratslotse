@@ -28,6 +28,17 @@
 //  * **Keine Stimmgrafik.** Das Ratsinformationssystem kennt kein
 //    Stimmverhalten einzelner Ratsmitglieder, nur das Ergebnis je Abstimmung.
 //
+// EINE LESEBREITE FÜR ALLES, WAS DAS PROTOKOLL SAGT (17.08.). Diese Seite ist
+// die einzige im Bereich, deren Hauptinhalt fremder Fließtext ist — und der
+// kommt ohne jede Gliederung: 214 Wortbeiträge im Bestand, KEIN einziger mit
+// Absatzumbruch, der längste 12.392 Zeichen am Stück. Bis hierher liefen sie
+// über die volle Kartenbreite (gemessen 1.102 px ≙ rund 129 Zeichen je Zeile,
+// kursiv); aufgeklappt war das eine Wand von fast hundert Zeilen, in der das
+// Auge beim Rücksprung die Zeile verliert. Jetzt hält jeder Wortlaut 76
+// Zeichen — dieselbe Breite, die der Beteiligungs-Steckbrief für fremden
+// Fließtext führt. Das ist KEINE Kürzung: Weder Text noch Reihenfolge noch
+// die Vorschau-Regel ändern sich, nur die Spalte, in der sie stehen.
+//
 // KEIN „Stand der Daten“-Block. Der Baustein beschreibt, bis wann die neun
 // FINANZschichten reichen — auf einer Seite ohne eine einzige Zahl daraus wäre
 // das eine Angabe über fremde Daten. Die ehrliche Reichweite dieser Seite steht
@@ -103,7 +114,18 @@ function Fraktion({ label, unklar = false }: { label: string | null; unklar?: bo
 
 /** Eine Rede: Kopf (wer), Wortlaut (Protokoll), bei Bedarf aufklappbar.
  *  Der Wortlaut steht an einer Randlinie wie auf /haushalt/pruefung — so ist
- *  auf einen Blick klar, wo das Protokoll spricht und wo wir. */
+ *  auf einen Blick klar, wo das Protokoll spricht und wo wir.
+ *
+ *  DIE LESEBREITE IST HIER KEINE KOSMETIK. Protokollreden tragen im ganzen
+ *  Bestand KEINEN einzigen Absatzumbruch (214 Wortbeiträge geprüft, 0 mit
+ *  „\n") — der längste läuft über 12.392 Zeichen am Stück. Ohne Deckel nahm
+ *  der Absatz die volle Kartenbreite: gemessen 1.102 px, rund 129 Zeichen je
+ *  Zeile, kursiv. Aufgeklappt waren das knapp hundert Zeilen, bei denen das
+ *  Auge den Zeilenanfang verliert. 76 Zeichen sind die Breite, die der
+ *  Beteiligungs-Steckbrief für denselben Fall führt (Fließtext aus einer
+ *  fremden Quelle) — dieselbe Regel, damit die Seiten eine Sprache sprechen.
+ *  Gekürzt wird dadurch nichts: Der Wortlaut bleibt Zeichen für Zeichen der
+ *  des Protokolls. */
 function Rede({ b }: { b: StreitWortbeitrag }) {
   const [offen, setOffen] = useState(false);
   const { kopf, rest } = vorschau(b.text);
@@ -120,7 +142,7 @@ function Rede({ b }: { b: StreitWortbeitrag }) {
           {b.anrede}
         </span>
       </div>
-      <p className="mt-1.5 border-l-2 border-border pl-3 text-[13.5px] italic leading-relaxed text-foreground/90">
+      <p className="mt-1.5 max-w-[76ch] border-l-2 border-border pl-3 text-[13.5px] italic leading-relaxed text-foreground/90">
         {offen ? b.text : kopf}
         {!offen && rest && <span className="not-italic text-muted-foreground"> …</span>}
       </p>
@@ -128,7 +150,7 @@ function Rede({ b }: { b: StreitWortbeitrag }) {
         <button
           type="button"
           onClick={() => setOffen((o) => !o)}
-          className="mt-1.5 pl-3 text-[11.5px] font-semibold text-primary"
+          className="mt-1.5 inline-flex min-h-[32px] items-center pl-3 text-[11.5px] font-semibold text-primary"
         >
           {offen ? "Weniger" : `Ganzen Beitrag lesen (${b.zeichen.toLocaleString("de-DE")} Zeichen)`}
         </button>
@@ -147,7 +169,9 @@ function AntragsZeile({ a }: { a: StreitAntrag }) {
         ) : (
           <Fraktion label={a.urheber} />
         )}
-        <p className="mt-0.5 text-[12.5px] leading-relaxed text-muted-foreground">{a.titel}</p>
+        <p className="mt-0.5 max-w-[86ch] text-[12.5px] leading-relaxed text-muted-foreground">
+          {a.titel}
+        </p>
       </div>
       <span className="flex-none">
         <OutcomeDot outcome={(a.outcome ?? null) as DecisionOutcome | null} />
@@ -322,6 +346,10 @@ function StreitInner() {
               zeilen={bilanzZeilen}
               beleg={<Beleg q="ratsbeschluss" />}
             />
+            {/* Bewusst ohne Breitendeckel: Das ist eine Quellenzeile, keine
+                Prosa — sie wird nicht zeilenweise gelesen, sondern einmal
+                gescannt. Mit Deckel brach „214 Wortbeiträge" allein in eine
+                zweite Zeile, was schlechter aussah als die lange erste. */}
             {quelle.jahrgaenge > 0 && (
               <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
                 Ratsinformationssystem, Änderungslisten und Protokolle {quelle.von}–{quelle.bis}{" "}
@@ -350,11 +378,11 @@ function StreitInner() {
               </span>
             </div>
             {schluss.beschluss.wortlaut && (
-              <p className="mt-2 border-l-2 border-border pl-3 text-[13px] leading-relaxed text-foreground/90">
+              <p className="mt-2 max-w-[76ch] border-l-2 border-border pl-3 text-[13px] leading-relaxed text-foreground/90">
                 {schluss.beschluss.wortlaut}
               </p>
             )}
-            <p className="mt-2 text-[11.5px] leading-relaxed text-muted-foreground">
+            <p className="mt-2 max-w-[74ch] text-[11.5px] leading-relaxed text-muted-foreground">
               Wie die einzelnen Ratsmitglieder gestimmt haben, führt das Ratsinformationssystem
               nicht — es hält nur fest, ob einstimmig oder mehrheitlich beschlossen wurde und wie
               viele Gegenstimmen und Enthaltungen es gab.
@@ -424,14 +452,32 @@ function StreitInner() {
                 {datumLang(debatte.datum)}
               </span>
             </div>
+            {/* Wer wie oft zu Wort kam. Vorher lief das als nackte Wortkette
+                („Grüne 5 BSW 2 CDU 2 Für Oldenburg 2 …") über zwei Zeilen —
+                zwischen Label und Zahl stand derselbe Abstand wie zwischen
+                zwei Fraktionen, und mobil brach die Zeile mitten in einem
+                Paar. Als Chips mit dem gewohnten 8-px-Punkt (Designsprache
+                §2) hält jedes Paar zusammen und trägt dieselbe Marke wie die
+                Rede darunter. Eine Zahl, keine Wertung: Redeanteile sind
+                Geschäftsordnung, kein Zeugnis. */}
             {jeFraktion.length > 0 && (
-              <p className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11.5px] text-muted-foreground">
-                {jeFraktion.map((f) => (
-                  <span key={f.label} className="tabular-nums">
-                    {f.label} {f.n}
-                  </span>
-                ))}
-              </p>
+              <ul className="mt-2 flex flex-wrap gap-1.5">
+                {jeFraktion.map((f) => {
+                  const dot = f.label.includes("/") ? NEUTRAL : parteiDot(f.label);
+                  return (
+                    <li key={f.label}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-0.5 text-[11.5px] text-muted-foreground">
+                      <span aria-hidden className="h-2 w-2 flex-none rounded-full"
+                        style={{
+                          background: dot.bg,
+                          boxShadow: dot.ring ? "inset 0 0 0 1px rgba(0,0,0,.15)" : undefined,
+                        }} />
+                      <span className="font-medium text-foreground">{f.label}</span>
+                      <span className="tabular-nums">{f.n}</span>
+                    </li>
+                  );
+                })}
+              </ul>
             )}
             <p className="mt-2 max-w-[66ch] text-[12.5px] leading-relaxed text-muted-foreground">
               Alle Wortbeiträge des Tagesordnungspunkts, in der Reihenfolge des Protokolls. Jeder
@@ -441,7 +487,7 @@ function StreitInner() {
             <div className="mt-3 flex flex-col gap-3 border-t border-dashed border-border pt-3">
               {debatte.debatte.map((b, i) => <Rede key={i} b={b} />)}
             </div>
-            <p className="mt-3 border-t border-dashed border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground">
+            <p className="mt-3 max-w-[86ch] border-t border-dashed border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground">
               {HINWEIS_REDE}
             </p>
           </div>

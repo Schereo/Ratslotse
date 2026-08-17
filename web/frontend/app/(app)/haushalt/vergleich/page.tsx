@@ -62,7 +62,7 @@ function Fundstelle({ h }: { h: Herkunft | null }) {
       <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
         Woher diese Zahlen kommen
       </p>
-      <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
+      <p className="mt-1 max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
         {h.fundstelle}{h.stand ? ` · ${h.stand}` : ""}
       </p>
     </div>
@@ -122,10 +122,21 @@ export default function VergleichSeite() {
   // Sätze nicht vergleichbar (neue Messbeträge, neue Basis). Nur wenn BEIDE
   // Jahrgänge im Bestand sind; sonst bleibt die Rangliste allein — geraten
   // wird kein Vorjahr.
-  const rsVorjahr = rsJahr != null
+  //
+  // GEMESSEN WIRD AN DER KENNZAHL, NICHT AM JAHRGANG (Fund 17.08.). Vorher
+  // stand hier `data.jahre.realsteuern.includes(rsJahr - 1)` — und die Liste
+  // führt 2023, 2024, 2025, weil die Steuereinnahmekraft so weit zurückreicht.
+  // Die HEBESÄTZE liegen aber nur für 2025 vor. Folge: `rsVorjahr` war 2024,
+  // `grundsteuerVorher` leer, der Slope fiel auf die Rangliste zurück — und
+  // Kicker („der Sprung zur Reform"), Zeitraum-Angabe („2024 → 2025") und der
+  // Satz darunter („nicht automatisch teurer als 2024") versprachen weiter
+  // einen Vergleich, den die Seite gar nicht zeigte. Jetzt entscheidet, ob
+  // die Werte wirklich dastehen.
+  const rsVorjahrKandidat = rsJahr != null
     && (data.jahre.realsteuern ?? []).includes(rsJahr - 1) ? rsJahr - 1 : null;
-  const grundsteuerVorher = rsVorjahr != null
-    ? balken(data, "realsteuern", "hebesatz_grundsteuer_b", rsVorjahr) : [];
+  const grundsteuerVorher = rsVorjahrKandidat != null
+    ? balken(data, "realsteuern", "hebesatz_grundsteuer_b", rsVorjahrKandidat) : [];
+  const rsVorjahr = grundsteuerVorher.length > 0 ? rsVorjahrKandidat : null;
   const sprungPaare: SlopePaarZeile[] = grundsteuer
     .flatMap((z): SlopePaarZeile[] => {
       const vorher = grundsteuerVorher.find((v) => v.schluessel === z.schluessel);
@@ -200,7 +211,7 @@ export default function VergleichSeite() {
             <div className="mt-3">
               <Staedtevergleich zeilen={steuerkraft} hinweisUnter100k />
             </div>
-            <p className="mt-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
+            <p className="mt-2.5 max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
               Unsere Rechnung: Steuerkraftmesszahl geteilt durch die Einwohnerzahl, beide
               aus derselben Tabelle. Das Landesamt weist den Pro-Kopf-Wert nicht selbst aus —
               keine amtliche Kennzahl.
@@ -211,7 +222,11 @@ export default function VergleichSeite() {
 
         {grundsteuer.length > 0 && rsJahr && (
           <Abschnitt
-            kicker="Grundsteuer B — der Sprung zur Reform"
+            // Der Kicker verspricht nur, was darunter auch steht: den Sprung,
+            // solange beide Jahrgänge da sind — sonst schlicht den Hebesatz.
+            kicker={rsVorjahr != null
+              ? "Grundsteuer B — der Sprung zur Reform"
+              : "Grundsteuer B — die Hebesätze"}
             zusatz={rsVorjahr != null ? `${rsVorjahr} → ${rsJahr}` : `${rsJahr}`}
           >
             <p className="mt-1.5 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
@@ -250,12 +265,29 @@ export default function VergleichSeite() {
                 <Staedtevergleich zeilen={grundsteuer} einheit="prozent" />
               )}
             </div>
+            {/* Zwei Sätze für zwei Datenlagen. Der Bruch-Hinweis gehört an
+                einen Bruch — steht nur ein Jahrgang da, ist die ehrliche
+                Auskunft, dass der Vorher-Wert fehlt (Lücken bleiben sichtbar,
+                nie stillschweigend). */}
             <p className="mt-2.5 max-w-[76ch] text-[11.5px] leading-relaxed text-muted-foreground">
-              Über den Bruch hinweg sind die Sätze <strong>nicht</strong> vergleichbar:
-              Zum selben Zeitpunkt haben sich auch die Messbeträge geändert, auf die sie
-              angewendet werden. Ein höherer Satz {rsJahr} heißt deshalb nicht
-              automatisch „teurer als {rsVorjahr ?? "vorher"}" — er heißt zunächst nur:
-              neue Rechenbasis. Auch ein unveränderter Satz ist eine Entscheidung.
+              {rsVorjahr != null ? (
+                <>
+                  Über den Bruch hinweg sind die Sätze <strong>nicht</strong> vergleichbar:
+                  Zum selben Zeitpunkt haben sich auch die Messbeträge geändert, auf die sie
+                  angewendet werden. Ein höherer Satz {rsJahr} heißt deshalb nicht
+                  automatisch „teurer als {rsVorjahr}" — er heißt zunächst nur:
+                  neue Rechenbasis. Auch ein unveränderter Satz ist eine Entscheidung.
+                </>
+              ) : (
+                <>
+                  Das sind die Sätze <strong>nach</strong> der Grundsteuerreform. Ein
+                  Vorher-Nachher steht hier nicht: Die Hebesätze liegen uns bisher nur aus
+                  dem Realsteuervergleich {rsJahr} vor. Vergleichbar wären sie über die
+                  Reform hinweg ohnehin nicht — zum selben Zeitpunkt haben sich auch die
+                  Messbeträge geändert, auf die sie angewendet werden. Auch ein
+                  unveränderter Satz ist eine Entscheidung.
+                </>
+              )}
             </p>
             <Fundstelle h={hRealsteuern} />
           </Abschnitt>
@@ -273,7 +305,7 @@ export default function VergleichSeite() {
             </div>
             {olReihe.length > 1 && wobReihe.length > 1 && (
               <div className="mt-3.5 flex flex-col gap-1.5 rounded-xl border border-border bg-muted/30 p-3">
-                <p className="text-[12.5px] leading-relaxed text-foreground/90">
+                <p className="max-w-[76ch] text-[12.5px] leading-relaxed text-foreground/90">
                   Ist eine hohe Gewerbesteuer ein Vorteil oder ein Risiko? Wolfsburg
                   beantwortet das eindrucksvoller als jede Erklärung — dort hängt sie an
                   einem einzigen Unternehmen.

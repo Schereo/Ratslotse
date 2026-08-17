@@ -60,7 +60,7 @@ export function KonzernTraegerListe({ zeilen, verrechnung, summe }: {
               {deMio(verrechnung.betrag / 1e6)}&#8239;Mio.&nbsp;€
             </span>
           </div>
-          <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
+          <p className="mt-1 max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
             Geschäfte der Betriebe miteinander — der Zuschuss der Stadt ans Klinikum, die Miete,
             die sie ihrer Gebäudewirtschaft zahlt. In einer gemeinsamen Rechnung stünden sie
             zweimal, deshalb kommen sie wieder heraus.
