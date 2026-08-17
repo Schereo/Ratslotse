@@ -40,7 +40,7 @@ import {
 import { bereichKanon, bereichSchluessel } from "@/lib/haushalt-bereiche";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
-import { Hantel } from "@/components/haushalt/hantel";
+import { Hantel } from "@/components/grafik/hantel";
 import { Warum } from "@/components/haushalt/warum";
 import { Wasserfall, type WasserfallSchritt } from "@/components/grafik/wasserfall";
 import { BereichReiter, ReiterTafel, type Reiter } from "@/components/haushalt/bereich-reiter";
@@ -229,6 +229,10 @@ function BereichInner() {
       return {
         label: String(j) + (a?.plan_art && a.plan_art !== "ansatz" ? "*" : ""),
         plan: mio(a?.plan), ist: mio(a?.ergebnis),
+        // Kein Erklärsatz je Jahr: Die bereichsbezogenen Erläuterungen des
+        // Abschlusses stehen direkt unter der Hantel („Was der Abschluss …
+        // sagt") — ein zweiter Satz in der Zeile wäre derselbe Text zweimal.
+        einordnung: null,
       };
     })
     .filter((r) => r.plan != null && r.ist != null);
@@ -620,7 +624,9 @@ function BereichInner() {
                     beieinander, also trägt die Euro-Skala. Auf der
                     Vergleichsseite ist es umgekehrt — dort spreizen 6 bis 231
                     Mio. zu weit. */}
-                <Hantel zeilen={planIstZeilen} massstab="betrag" />
+                {/* `alpha` hält die Jahre chronologisch — eine Zeitreihe nach
+                    |Abweichung| sortiert wäre keine mehr. */}
+                <Hantel zeilen={planIstZeilen} massstab="betrag" sortierung="alpha" />
                 {abweichend.length > 0 && (
                   <p className="mt-2.5 text-[11px] leading-relaxed text-muted-foreground">
                     * In {[...new Set(abweichend.map((p) => p.jahr))].join(" und ")} vergleicht der

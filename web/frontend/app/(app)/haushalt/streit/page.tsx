@@ -22,7 +22,7 @@
 //  * **Keine Wertung, auch nicht durch Farbe.** Grün/Rot stehen ausschließlich
 //    am Abstimmungs-ERGEBNIS (angenommen/abgelehnt — das ist eine Tatsache,
 //    keine Note). Parteifarben bleiben 8-px-Punkte, nie Flächen
-//    (Designsprache §2/§7, components/haushalt/hantel.tsx).
+//    (Designsprache §2/§7, components/grafik/hantel.tsx).
 //  * **Keine Stimmgrafik.** Das Ratsinformationssystem kennt kein
 //    Stimmverhalten einzelner Ratsmitglieder, nur das Ergebnis je Abstimmung.
 //

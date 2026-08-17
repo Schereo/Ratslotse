@@ -1,30 +1,39 @@
 "use client";
 
-// /haushalt/gebaut — „Was wurde davon wirklich gebaut?"
+// /haushalt/gebaut — „Was wurde davon wirklich gebaut?" (Boards H3-03, H4-08)
 //
 // Die Gegenprobe zu /haushalt/investitionen. Dort steht, was die Stadt bauen
 // und kaufen WILL (Finanzhaushalt des Haushaltsplans, Planzahlen); hier steht,
 // was am Jahresende tatsächlich abgeflossen ist (Rechnungsergebnisse aus dem
-// Statistischen Jahrbuch).
+// Statistischen Jahrbuch). Das tragende Bild sind die <NahtSaeulen> (GB-02):
+// alle 22 Jahrgänge in EINEM Bild, der Systemwechsel 2009/2010 als sichtbare
+// Naht zwischen zwei Farbwelten — die Naht wird gezeigt, nicht geglättet,
+// und die Komponente rechnet nichts über sie hinweg.
 //
 // DIE SEITE SUBTRAHIERT NICHT, und das ist ihre wichtigste Entscheidung. Die
 // naheliegende Zahl wäre „Ist ÷ Plan = Umsetzungsquote", und sie wäre die
 // meistgelesene Zahl der Seite. Sie steht in keinem Dokument: Der Plan ist
 // nach Teilhaushalten gegliedert, das Ist nach Auszahlungsarten und
-// ausdrücklich nur für die Kernverwaltung. Keine der beiden Quellen nennt die
-// andere, keine weist eine Differenz aus. Die Seite verlinkt den Plan und
-// sagt den Grund — der Block „Warum hier keine Quote steht" ist deshalb kein
-// Kleingedrucktes, sondern eigener Inhalt.
+// ausdrücklich nur für die Kernverwaltung. Der Block „Warum hier keine Quote
+// steht" ist deshalb kein Kleingedrucktes, sondern eigener Inhalt.
 //
-// ZWEI REIHEN, NICHT EINE. Zum 01.01.2010 stellte die Stadt von kameraler auf
-// doppische Buchführung um. Das Quelldokument trennt seine Tabellen genau dort
-// und begründet es in einer Fußnote — deshalb zwei Diagramme mit zwei
-// Legenden und keine durchgehende Achse. Wer beide zu einer Reihe verbindet,
-// behauptet eine Vergleichbarkeit, die die Quelle bestreitet.
+// 2019 IST EINE LÜCKE, KEIN WERT: Die Auszahlungsarten ergeben in der
+// Quelltabelle nicht die ausgewiesene Summe daneben; der Jahrgang steht
+// deshalb nicht im Bestand (`fehlend` der API). Er bleibt als beschriftetes
+// <LueckenFeld> im Bild — lieber eine Lücke als eine Zahl, die sich selbst
+// widerspricht.
 //
-// KEINE BEWERTUNGSFARBEN (components/haushalt/hantel.tsx). Ein hoher Balken
-// ist keine gute Nachricht und ein niedriger keine schlechte: 2019 und 2020
-// stehen oben, weil ein zweistelliger Millionenbetrag unter „Sonstige
+// TODO(Datenpfad): Die H3-03-Beschriftung nennt die gemessene Differenz
+// („1,3 Mio. € Differenz im Dokument"). Der Betrag entsteht beim Ingest
+// (`council/investitionen_ist.py`, `lies()["verworfen"]`), wird aber nicht
+// gespeichert — der Endpunkt `/council/haushalt/gebaut` liefert nur die
+// Jahre. Sobald `verworfen` mit Differenz persistiert und ausgeliefert wird,
+// gehört der Betrag in den Lücken-Grund; bis dahin bleibt er weg statt
+// hart codiert.
+//
+// KEINE BEWERTUNGSFARBEN (components/grafik/hantel.tsx). Ein hoher Balken
+// ist keine gute Nachricht und ein niedriger keine schlechte: 2020 steht
+// oben, weil ein zweistelliger Millionenbetrag unter „Sonstige
 // Investitionstätigkeit" fällt — was das ist, sagt die Quelle nicht, und wir
 // erfinden es nicht dazu.
 
@@ -33,25 +42,30 @@ import Link from "next/link";
 import { ArrowRight, FileText } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
 import {
-  GebautDaten, Herkunft, artenDerReihe, deMioEuro, groessterPosten,
+  GebautDaten, Herkunft, deMioEuro, groessterPosten,
   herkunftVon, juengsteReihe, reihen,
 } from "@/lib/haushalt-gebaut";
-import { GebautBalken, tonFuer } from "@/components/haushalt/gebaut-balken";
+import { NahtSaeulen, type NahtJahr } from "@/components/grafik/naht-saeulen";
 import { Anteilsbalken } from "@/components/haushalt/anteilsbalken";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 
 const QUELLEN = ["gebaut"] as const;
 
+/** Warum ein Jahrgang fehlt — der Satz am <LueckenFeld>. Ohne Betrag, s.
+ *  TODO(Datenpfad) im Kopf dieser Datei. */
+const LUECKE_GRUND = "verworfen: die Auszahlungsarten ergeben in der "
+  + "Quelltabelle nicht die ausgewiesene Summe daneben";
+
+/** Die Töne der „Wofür"-Aufteilung — dunkel nach hell, in der Spaltenfolge
+ *  der Quelle. Neutrale Ausgaben-Rampe; sechs reichen, mehr Arten führt
+ *  keine der beiden Tabellen. */
+const TOENE = ["var(--hh-aus-0)", "var(--hh-aus-2)", "var(--hh-aus-4)",
+  "var(--hh-aus-6)", "var(--hh-aus-1)", "var(--hh-aus-3)"];
+
 /** Wo eine Angabe im Dokument steht — dieselbe Bauart wie auf der
  *  Schulden-Seite und bewusst nicht geteilt: Die Seiten sollen einander nicht
- *  brechen.
- *
- *  BEWUSST OHNE UNSERE PROBEN. Was gemessen wurde, sagt etwas über uns und
- *  nichts über die Bautätigkeit der Stadt (DESIGNSPRACHE.md § 7). Was
- *  inhaltlich aus einer gerissenen Probe folgt — dass 2019 fehlt —, steht
- *  selbstverständlich auf der Seite: Das ist eine Grenze der Zahlen und keine
- *  Auskunft über unsere Sorgfalt. */
+ *  brechen. */
 function Fundstelle({ h }: { h: Herkunft | null }) {
   if (!h?.fundstelle) return null;
   return (
@@ -71,11 +85,43 @@ export default function GebautPage() {
 
   const alle = useMemo(() => reihen(data ?? null), [data]);
   const juengste = useMemo(() => juengsteReihe(data ?? null), [data]);
-  // Die älteren Reihen — alles außer der jüngsten. Sie stehen weiter unten,
-  // hinter dem Absatz, der den Schnitt erklärt.
   const aeltere = useMemo(
     () => alle.filter((r) => r.schluessel !== juengste?.schluessel),
     [alle, juengste]);
+
+  // Die eine Reihe des Bildes: alle Jahre beider Regelwerke aufsteigend,
+  // Lücken als Daten dazwischen (GB-00-Vertrag). Werte in Mio. €.
+  const nahtJahre = useMemo<NahtJahr[]>(() => {
+    const js: NahtJahr[] = [];
+    for (const r of alle) {
+      for (const z of r.jahre) {
+        js.push({
+          jahr: z.jahr,
+          teile: z.arten.map((a) => ({ art: a.titel, wert: a.betrag / 1e6 })),
+        });
+      }
+      for (const j of r.fehlend) js.push({ jahr: j, fehlt: LUECKE_GRUND });
+    }
+    return js.sort((a, b) => a.jahr - b.jahr);
+  }, [alle]);
+
+  // Die Naht liegt zwischen dem letzten Jahr der älteren und dem ersten der
+  // jüngeren Reihe — gerechnet aus den Daten, nicht hart codiert.
+  const naht = useMemo(() => {
+    const alt = aeltere[0];
+    if (!alt || !juengste) return undefined;
+    const links = alt.jahre[alt.jahre.length - 1].jahr;
+    const rechts = juengste.jahre[0].jahr;
+    return {
+      zwischen: [links, rechts] as [number, number],
+      text: `Links ${alt.titel}, rechts ${juengste.titel} — zwei Regelwerke `
+        + `mit eigenen Auszahlungsarten und eigenen Namen. Vergleichen ja, `
+        + `verrechnen nein.`,
+    };
+  }, [aeltere, juengste]);
+
+  const alleFehlend = useMemo(
+    () => alle.flatMap((r) => r.fehlend).sort((a, b) => a - b), [alle]);
 
   if (loading) {
     return <div className="py-16 text-center text-sm text-muted-foreground">
@@ -92,10 +138,10 @@ export default function GebautPage() {
   }
 
   const letzter = juengste.jahre[juengste.jahre.length - 1];
+  const erster = nahtJahre.find((j) => !("fehlt" in j));
   const hLetzter = herkunftVon(data, letzter.herkunft_id);
   const quelleUrl = hLetzter?.url ?? null;
   const gross = groessterPosten(letzter);
-  const arten = artenDerReihe(juengste);
 
   return (
     <Quellenkontext schluessel={[...QUELLEN]} jahr={letzter.jahr}>
@@ -168,48 +214,85 @@ export default function GebautPage() {
             + "mit denen aus dem ersten Buch nicht zusammenzählen."}
         />
 
-        {/* Die Hauptreihe. */}
-        <section className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
-          <GebautBalken
-            jahre={juengste.jahre}
-            fehlend={juengste.fehlend}
-            arten={arten}
-            titel="Auszahlungen für Investitionen"
-          />
-          {juengste.fehlend.length > 0 && (
-            <p className="max-w-[76ch] border-t border-dashed border-border pt-2.5 text-[12.5px] leading-relaxed text-muted-foreground">
-              Für {juengste.fehlend.join(", ")} steht hier kein Wert: In{" "}
-              {juengste.fehlend.length === 1 ? "diesem Jahrgang ergeben" : "diesen Jahrgängen ergeben"}{" "}
-              die einzelnen Auszahlungsarten in der Quelltabelle nicht den Betrag, der
-              daneben als Summe ausgewiesen ist. Welche Zahl danebenliegt, sagt die
-              Tabelle nicht, und eine zweite Quelle für{" "}
-              {juengste.fehlend.length === 1 ? "dieses Jahr" : "diese Jahre"} gibt es
-              nicht — deshalb steht{" "}
-              {juengste.fehlend.length === 1 ? "der Jahrgang" : "stehen die Jahrgänge"}{" "}
-              gar nicht hier statt in geschätzter Höhe.
+        {/* Das tragende Bild (H3-03): alle Jahrgänge, eine Naht, die Lücke
+            beschriftet im Bild. Naht-Satz und Lücken-Felder rendert die
+            Komponente selbst — die Seite kann sie nicht wegkürzen. */}
+        <section className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+          <div>
+            <h2 className="max-w-[30ch] font-display text-[19px] font-bold leading-snug tracking-tight">
+              Was eine Stadt in zwei Jahrzehnten baut
+            </h2>
+            <p className="mt-1.5 max-w-[72ch] text-[13px] leading-relaxed text-foreground/90">
+              Tatsächlich ausgezahltes Geld für Investitionen,{" "}
+              {erster?.jahr}&nbsp;bis&nbsp;{letzter.jahr} — nicht die Pläne, sondern die
+              Kassenlage danach.{" "}
+              {naht && <>Die Naht {naht.zwischen[0]}/{naht.zwischen[1]} ist echt: Die Stadt
+              wechselte das Rechnungswesen, links und rechts zählen andere Regeln.</>}
             </p>
-          )}
+          </div>
+          <NahtSaeulen
+            jahre={nahtJahre}
+            naht={naht}
+            einheit="Mio. €"
+            titel="Auszahlungen für Investitionen"
+            beleg={<Beleg q="gebaut" />}
+          />
           <p className="max-w-[76ch] text-[11.5px] leading-relaxed text-muted-foreground">
             Alle Beträge in Euro des jeweiligen Jahres — die Teuerung ist nicht
             herausgerechnet. Ein Teil der Bewegung ist also verändertes Preisniveau.
           </p>
         </section>
 
+        {/* Die zwei Sätze zum Bild: warum die Naht bleibt, warum 2019 fehlt. */}
+        <div className="grid gap-4 breit:grid-cols-2">
+          <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+              Die Naht wird nicht geglättet
+            </p>
+            <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
+              Zum 1. Januar {juengste.jahre[0].jahr} stellte die Stadt ihr Rechnungswesen
+              von der Kameralistik auf die doppelte Buchführung um. Das Statistische
+              Jahrbuch führt die Jahre davor in einer eigenen Tabelle, mit eigenen Posten
+              und unter einem eigenen Namen — dort heißen sie „Ausgaben für eigene
+              Investitionen“, hier „Auszahlungen für Investitionstätigkeiten“. Ein
+              Verlauf, zwei Regelwerke: vergleichen ja, verrechnen nein. Die
+              Auszahlungsarten sind im Bild zu Gruppen gebündelt; die Ableseleiste
+              trennt alle.
+            </p>
+          </section>
+          <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+              {alleFehlend.length === 1
+                ? `${alleFehlend[0]} ist verworfen — im Bild, nicht in der Fußnote`
+                : "Verworfene Jahrgänge — im Bild, nicht in der Fußnote"}
+            </p>
+            <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
+              Für {alleFehlend.join(", ")} ergeben die einzelnen Auszahlungsarten in der
+              Quelltabelle nicht den Betrag, der daneben als Summe ausgewiesen ist.
+              Welche Zahl danebenliegt, sagt die Tabelle nicht, und eine zweite Quelle
+              gibt es nicht — deshalb {alleFehlend.length === 1
+                ? "steht der Jahrgang"
+                : "stehen die Jahrgänge"}{" "}
+              als beschriftete Lücke im Bild statt in geschätzter Höhe. Lieber eine
+              Lücke als eine Zahl, die sich selbst widerspricht.
+            </p>
+          </section>
+        </div>
+
         {/* Wofür — der jüngste Jahrgang aufgeschlüsselt. */}
         <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <Anteilsbalken
             titel={`Wofür ${letzter.jahr}`}
             segmente={letzter.arten.map((a, i) => ({
-              label: a.titel, wert: a.betrag / 1e6, farbe: tonFuer(i),
+              label: a.titel, wert: a.betrag / 1e6,
+              farbe: TOENE[Math.min(i, TOENE.length - 1)],
             }))}
             gesamt={letzter.insgesamt / 1e6}
           />
           {/* „Sonstige Investitionstätigkeit" ist in den jüngeren Jahrgängen
               einer der größten Posten. Was darin steckt, sagt das Jahrbuch
               nicht — und diese Grenze gehört an die Zahl, nicht in eine
-              Fußnote. Eine Vermutung wäre hier besonders verlockend und
-              besonders falsch: Der Posten sprang 2018 von 123.000 € auf
-              19 Mio. €, und dafür gibt es viele denkbare Gründe. */}
+              Fußnote. */}
           <p className="mt-3 max-w-[76ch] text-[12.5px] leading-relaxed text-muted-foreground">
             Die Bezeichnungen sind die der Quelle. Was hinter „Sonstige
             Investitionstätigkeit“ steckt, schlüsselt das Statistische Jahrbuch nicht
@@ -253,30 +336,6 @@ export default function GebautPage() {
           </p>
         </section>
 
-        {/* Die ältere Reihe — hinter dem Absatz, der den Schnitt erklärt. */}
-        {aeltere.map((r) => (
-          <section key={r.schluessel}
-            className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
-            <p className="max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
-              <strong>Davor zählte die Stadt anders.</strong> Zum 1. Januar 2010 stellte
-              sie ihr Rechnungswesen von der Kameralistik auf die doppelte Buchführung
-              um. Das Statistische Jahrbuch führt die Jahre davor deshalb in einer
-              eigenen Tabelle, mit eigenen Posten und unter einem eigenen Namen — dort
-              heißen sie „Ausgaben für eigene Investitionen“, hier „Auszahlungen für
-              Investitionstätigkeiten“. Die beiden Reihen stehen darum getrennt: Eine
-              durchgehende Linie über {r.jahre[r.jahre.length - 1].jahr}/
-              {juengste.jahre[0].jahr} hinweg behauptete eine Vergleichbarkeit, die die
-              Quelle selbst bestreitet.
-            </p>
-            <GebautBalken
-              jahre={r.jahre}
-              fehlend={r.fehlend}
-              arten={artenDerReihe(r)}
-              titel={r.titel}
-            />
-          </section>
-        ))}
-
         {/* Die Grenzen — eigener Block, nicht Kleingedrucktes. */}
         <section className="rounded-2xl border border-border border-l-[3px] border-l-signal bg-card p-4 shadow-sm">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal">
@@ -286,9 +345,9 @@ export default function GebautPage() {
             <li>
               <strong>Nicht die ganze Bautätigkeit der Stadt.</strong> Gezählt wird die
               Kernverwaltung. Was der Eigenbetrieb Gebäudewirtschaft und Hochbau baut —
-              seit 2010 ein großer Teil des städtischen Hochbaus —, steht hier nicht,
-              und die städtischen Gesellschaften ebenso wenig. Was neben dem Haushalt
-              noch läuft, zeigt{" "}
+              seit {juengste.jahre[0].jahr} ein großer Teil des städtischen Hochbaus —,
+              steht hier nicht, und die städtischen Gesellschaften ebenso wenig. Was
+              neben dem Haushalt noch läuft, zeigt{" "}
               <Link href="/haushalt/konzern" className="font-semibold text-primary">
                 „Und ist das die ganze Stadt?“
               </Link>

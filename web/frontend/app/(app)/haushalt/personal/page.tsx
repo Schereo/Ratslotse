@@ -1,38 +1,35 @@
 "use client";
 
-// /haushalt/personal — „Wer macht die Arbeit?"
+// /haushalt/personal — „Wer macht die Arbeit?" (Boards H3-01, H4-05)
 //
 // Die Seite hat eine Aussage, und sie ist die Fortsetzung eines Satzes, der
-// im Bereich schon steht: In `components/haushalt/hantel.tsx` heißt es,
+// im Bereich schon steht: In `components/grafik/hantel.tsx` heißt es,
 // Minderausgaben seien nicht automatisch gut — „nicht gebaut, Stellen
-// unbesetzt". Hier stehen diese Stellen. Personal ist der größte
-// Ausgabenblock der Stadt, und rund ein Sechstel bis ein Fünftel der Stellen
-// war am jeweiligen Stichtag nicht besetzt. Wer die Personalausgaben unter
-// Plan sieht, sieht nicht Sparsamkeit, sondern eine Suche.
+// unbesetzt". Hier stehen diese Stellen. Das tragende Bild ist die WAFFEL
+// (GB-06): ein Quadrat je zehn Stellen, die unbesetzten als Signal-Umriss —
+// aus „18 %" wird ein zählbares Bild, ohne zu bewerten.
 //
-// Leserichtung: die Lücke des jüngsten Jahres als Zahl → was ein Stellenplan
-// überhaupt ist → beide Teile über die Jahre → wo die Lücken am größten sind
-// → was diese Zahlen NICHT hergeben → Quellen.
+// DIE WAFFEL ZÄHLT DEN STICHTAGS-BESTAND, NICHT DEN PLAN. Die Besetzung
+// gehört zur Vorjahresspalte (s. lib/haushalt-stellenplan.ts): Der Plan 2026
+// nennt 815 Stellen — und daneben, wie es am 30.6.2025 aussah: 796 Stellen,
+// 143,71 davon unbesetzt. Alle Quadrate einer Waffel tragen deshalb DENSELBEN
+// Stichtag; die 815 stehen als Zahl in der Überschrift, mit ihrem eigenen
+// Datum. Eine Waffel über die Planstellen mit „besetzt"-Quadraten wäre genau
+// die Über-Kreuz-Rechnung, die diese Seite ausschließt.
 //
-// DREI DINGE, DIE HIER BEWUSST NICHT STEHEN:
+// DREI DINGE, DIE HIER BEWUSST NICHT STEHEN (als Chips auch auf der Seite):
 //
+//  * **Keine Summe A+B.** Sie steht in keinem Dokument — der Plan führt
+//    Beamt*innen und Tarifbeschäftigte getrennt, mit eigenen Tabellen.
 //  * **Keine Bewertungsfarbe an der Lücke.** Weder Rot noch Grün: Eine
 //    unbesetzte Stelle kann bedeuten, dass niemand zu finden war, dass eine
 //    Stelle absichtlich frei gehalten wird oder dass gerade jemand wechselt.
-//    Alle drei sehen in der Tabelle gleich aus. Begründung ausführlich in
-//    `components/haushalt/stellen-verlauf.tsx`.
-//  * **Kein Vergleich mit anderen Städten.** Die Stadt hat genau diesen
-//    Vergleich 2018 selbst angestellt und im selben Dokument entwertet — das
-//    steht auf `/haushalt/vergleich` samt Zitat und gehört nicht zweimal ins
-//    Frontend.
-//  * **Keine Umrechnung in Köpfe oder in Euro.** Der Plan zählt Stellen; wie
-//    viele Menschen darauf arbeiten, steht nirgends, und was eine Stelle
-//    kostet, hängt an der Besoldungsgruppe. Beides ließe sich schätzen, und
-//    beides wäre dann unsere Zahl und nicht die der Stadt.
+//  * **Keine Umrechnung in Köpfe oder in Euro.** Der Plan zählt Stellen;
+//    beides ließe sich schätzen, und beides wäre dann unsere Zahl.
 //
-// DER JAHR-UMSCHALTER STEUERT NUR DIE DETAILS. Der Verlauf zeigt immer alle
-// Jahrgänge — er IST die Entwicklung. Umgeschaltet wird, welches Jahr die
-// Kernzahl und die Liste der größten Lücken zeigen.
+// DER TEIL-UMSCHALTER erzählt einen Vergleich, keinen Wettbewerb — er
+// steuert Waffel, Jahrgangs-Paare und die Detail-Liste zugleich. Der
+// Jahr-Umschalter darunter betrifft nur die Detail-Liste.
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
@@ -44,7 +41,9 @@ import {
   deDatum, deStellen, fehlt, gesamt, groessteLuecken, herkunftVon,
   jahrgaengeMitTeil, luecke,
 } from "@/lib/haushalt-stellenplan";
-import { StellenLegende, StellenVerlauf } from "@/components/haushalt/stellen-verlauf";
+import { StellenPaare, StellenPaareLegende } from "@/components/haushalt/stellen-verlauf";
+import { Waffel } from "@/components/grafik/waffel";
+import { Einordnung } from "@/components/grafik/einordnung";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { cn } from "@/lib/utils";
@@ -53,8 +52,15 @@ const QUELLEN = ["stellenplan"] as const;
 
 /** Warum ein Teil in einem Jahrgang fehlt. „Gibt es nicht" und „steht im PDF,
  *  ist aber nicht lesbar" sind zwei verschiedene Auskünfte, und nur die
- *  zweite stimmt hier. */
-const FEHLT_GRUND = "im Dokument nicht lesbar";
+ *  zweite stimmt hier (Stellenplan 2026, Teil B). */
+const FEHLT_GRUND = "das PDF gibt hier Zeichen-Nummern statt Buchstaben aus; "
+  + "bleibt leer, bis die Stadt neu veröffentlicht";
+
+/** Unsere einzige Division auf der Seite — der unbesetzte Anteil aus
+ *  `luecke()`, gerundet auf ganze Prozent. */
+function pct(anteil: number): string {
+  return (anteil * 100).toLocaleString("de-DE", { maximumFractionDigits: 0 });
+}
 
 /** Die Herkunft einer Angabe im Klartext — dasselbe Muster wie auf
  *  /haushalt/konzern: Das Quellenverzeichnis am Seitenende beschreibt die
@@ -79,6 +85,9 @@ function Fundstelle({ daten, id }: { daten: StellenplanDaten; id: number | null 
 export default function PersonalPage() {
   const [jahr, setJahr] = useState<number | null>(null);
   const [teil, setTeil] = useState<StellenTeil>("A");
+  // Detailtabelle mobil hinter „alle Gruppen zeigen" (H4-05); ab Tablet
+  // immer offen — die Klassen dazu stehen in globals.css (gb-nur-mobil).
+  const [gruppenOffen, setGruppenOffen] = useState(false);
   const jahrgaenge = useFetch<StellenplanDaten>("/council/haushalt/stellenplan");
   const alle = jahrgaenge.data?.jahrgaenge ?? [];
   const aktJahr = jahr && alle.includes(jahr) ? jahr : alle.at(-1) ?? null;
@@ -89,8 +98,13 @@ export default function PersonalPage() {
     aktJahr ? `/council/haushalt/stellenplan?jahrgang=${aktJahr}` : null);
   const daten = detail.data ?? jahrgaenge.data;
 
+  // Eine Skala je Teil (H3-01): A und B stehen nie gleichzeitig im Bild,
+  // und innerhalb eines Teils soll die Schere über die Jahrgänge lesbar
+  // sein. Obergrenze ist der größte Wert, den ein Balken zeigen kann.
   const skala = useMemo(() => Math.max(
-    1, ...(daten?.summen ?? []).map((z) => z.stellen_vorjahr)), [daten]);
+    1, ...(daten?.summen ?? [])
+      .filter((z) => z.teil === teil)
+      .flatMap((z) => [z.stellen_plan, z.besetzt])), [daten, teil]);
 
   if (jahrgaenge.loading) {
     return <div className="py-16 text-center text-sm text-muted-foreground">
@@ -106,25 +120,34 @@ export default function PersonalPage() {
     );
   }
 
-  // Die Kernzahl nimmt den jüngsten Jahrgang, für den BEIDE Teile vorliegen —
-  // sonst stünde für 2026 „815 Stellen" da und die 1.700 Tarifstellen fehlten
-  // wortlos. Welches Jahr das ist, steht daneben.
-  const vollJahr = [...alle].reverse().find(
-    (j) => TEILE.every((t) => gesamt(daten, j, t))) ?? aktJahr;
-  const kopf = TEILE.map((t) => ({ teil: t, zeile: gesamt(daten, vollJahr, t) }))
-    .filter((x) => x.zeile);
-  const kopfLuecke = kopf.reduce(
-    (s, x) => s + (x.zeile?.nicht_besetzt ?? 0), 0);
-  const kopfStellen = kopf.reduce(
-    (s, x) => s + (x.zeile?.stellen_vorjahr ?? 0), 0);
-  const kopfStichtag = kopf[0]?.zeile?.stichtag ?? null;
-  const kopfPlan = kopf.reduce((s, x) => s + (x.zeile?.stellen_plan ?? 0), 0);
+  // Der jüngste Jahrgang, für den der GEWÄHLTE Teil vorliegt — für Teil B
+  // ist das 2025, weil 2026 im PDF nicht lesbar ist. Die Lücke selbst steht
+  // in den Jahrgangs-Zeilen, nicht versteckt in einer Fußnote.
+  const teilJahre = jahrgaengeMitTeil(daten, teil);
+  const teilNeu = teilJahre.at(-1) ?? null;
+  const kern = teilNeu ? gesamt(daten, teilNeu, teil) : null;
+  const kernLuecke = luecke(kern);
 
   const detailZeilen = detail.data?.zeilen ?? [];
   const luecken = groessteLuecken(detailZeilen, teil);
   const teilGesamt = gesamt(daten, aktJahr, teil);
   const teilFehlt = fehlt(daten, aktJahr, teil);
-  const quelleUrl = herkunftVon(daten, kopf[0]?.zeile?.herkunft_id)?.url ?? null;
+  const quelleUrl = herkunftVon(daten, kern?.herkunft_id)?.url ?? null;
+
+  // Der Vergleichs-Satz unterm Umschalter — gerechnet, nicht behauptet:
+  // erster und letzter Plan je Teil, dazu der jüngste unbesetzte Anteil.
+  const vergleich = TEILE.map((t) => {
+    const js = jahrgaengeMitTeil(daten, t);
+    const von = js.length ? gesamt(daten, js[0], t) : null;
+    const bis = js.length > 1 ? gesamt(daten, js[js.length - 1], t) : null;
+    const l = luecke(bis ?? von);
+    return von && bis && l ? {
+      teil: t,
+      spanne: `${deStellen(von.stellen_plan)} → ${deStellen(bis.stellen_plan)}`,
+      anteil: pct(l.anteil),
+    } : null;
+  });
+  const [vglA, vglB] = vergleich;
 
   return (
     <Quellenkontext schluessel={[...QUELLEN]} jahr={aktJahr}>
@@ -150,46 +173,112 @@ export default function PersonalPage() {
           )}
         </div>
 
-        {/* Die Kernaussage: der Plan, und daneben die Besetzung am Stichtag.
-            Zwei Zahlen, zwei Zeitpunkte — beide werden benannt. */}
-        <div className="flex flex-col gap-3.5 rounded-2xl border border-border bg-card p-4 shadow-sm">
-          <div>
+        {/* Das tragende Bild (H3-01): Waffel links, Jahrgangs-Paare rechts —
+            mobil untereinander, der Umschalter volle Breite (H4-05). */}
+        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2.5">
             <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-              Stellenplan {vollJahr} · Kernverwaltung
+              Stellenplan · {TEIL_LABEL[teil]}<Beleg q="stellenplan" />
             </p>
-            <p className="mt-1.5 max-w-[72ch] text-sm leading-relaxed text-foreground/90">
-              Für {vollJahr} sieht die Stadt{" "}
-              <strong>{deStellen(kopfPlan)} Stellen</strong> vor
-              <Beleg q="stellenplan" /> —{" "}
-              {kopf.map((x, i) => (
-                <span key={x.teil}>
-                  {i > 0 ? " und " : ""}
-                  {deStellen(x.zeile!.stellen_plan)} für {TEIL_LABEL[x.teil].toLowerCase()}
-                </span>
-              ))}.
-            </p>
-            {kopfStellen > 0 && (
-              <p className="mt-2 max-w-[72ch] text-sm leading-relaxed text-foreground/90">
-                Am {deDatum(kopfStichtag)} — dem Stichtag, den derselbe Plan für die Besetzung
-                nennt — waren <strong>{deStellen(kopfLuecke)} Stellen nicht besetzt</strong>,
-                von {deStellen(kopfStellen)}. Das ist rund{" "}
-                {(kopfLuecke / kopfStellen * 100).toLocaleString("de-DE", { maximumFractionDigits: 0 })}
-                &nbsp;% der Stellen, die es damals gab.
-              </p>
-            )}
+            <Segmented<StellenTeil> value={teil} onChange={setTeil}
+              className="w-full min-[480px]:w-auto [&_button]:min-h-[44px] sm:[&_button]:min-h-0"
+              options={[
+                { value: "A", label: "Teil A · Beamt*innen" },
+                { value: "B", label: "Teil B · Tarif" },
+              ]} />
           </div>
-          {/* Der Satz, um den es geht — und die einzige Stelle, an der die
-              Seite die Zahl deutet. Sie deutet sie in beide Richtungen. */}
-          <p className="max-w-[72ch] rounded-xl bg-muted/40 p-3 text-[13px] leading-relaxed text-foreground/90">
-            Unbesetzte Stellen sind weder ein Sparerfolg noch ein Versäumnis. Sie erklären
-            aber, warum die Personalausgaben im{" "}
-            <Link href="/haushalt/plan-ist" className="font-semibold text-primary">
-              Jahresabschluss
-            </Link>{" "}
-            oft unter dem Plan bleiben: Das Geld war eingeplant, die Stelle stand im Plan —
-            besetzt war sie nicht. Ob niemand zu finden war, ob gerade jemand wechselte oder
-            ob eine Stelle bewusst frei blieb, sagt der Stellenplan nicht.
-          </p>
+
+          <div className="mt-4 grid gap-6 breit:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] breit:gap-8">
+            {/* Links: die Kernzahl und die Waffel. */}
+            <div className="flex flex-col gap-3">
+              {kern && kernLuecke ? (
+                <>
+                  <h2 className="max-w-[26ch] font-display text-[21px] font-bold leading-snug tracking-tight">
+                    {deStellen(kern.stellen_plan)} Stellen hält die Stadt {teilNeu} vor —
+                    rund {pct(kernLuecke.anteil)}&nbsp;% waren zuletzt unbesetzt
+                  </h2>
+                  <p className="max-w-[58ch] text-[13px] leading-relaxed text-foreground/90">
+                    Jedes Quadrat sind zehn Stellen — gezeigt sind die{" "}
+                    {deStellen(kernLuecke.stellen)} Stellen, die es am Stichtag{" "}
+                    <strong>{deDatum(kernLuecke.stichtag)}</strong> gab; die umrandeten
+                    davon waren nicht besetzt. Die Besetzung wird immer ein Jahr
+                    versetzt erhoben.
+                  </p>
+                  <Waffel
+                    gesamt={kernLuecke.stellen}
+                    proQuadrat={10}
+                    einheit="Stellen"
+                    grundLabel="besetzt"
+                    markiert={{
+                      anzahl: kernLuecke.nicht_besetzt,
+                      grund: `unbesetzt · rund ${pct(kernLuecke.anteil)} %`,
+                      stichtag: deDatum(kernLuecke.stichtag),
+                    }}
+                  />
+                </>
+              ) : (
+                <p className="text-[13px] leading-relaxed text-muted-foreground">
+                  Für {TEIL_LABEL[teil]} liegt kein Jahrgang lesbar vor.
+                </p>
+              )}
+
+              {/* Der Kasten steht VOR der ersten Zahl-Interaktion — auf jedem
+                  Gerät (H4-05). */}
+              <div className="max-w-[58ch] rounded-xl bg-muted/40 p-3 text-[12.5px] leading-relaxed text-foreground/90">
+                <strong>Warum wir hier nicht einfach subtrahieren:</strong> Die
+                Stellenzahl gilt fürs Planjahr, die Besetzung für den Stichtag des
+                Vorjahres. „Stellen − besetzt“ über Kreuz wäre eine erfundene Zahl —
+                deshalb stehen beide Angaben getrennt, jede mit ihrem Datum.
+              </div>
+            </div>
+
+            {/* Rechts: die Schere über die Jahrgänge — Besetzung als eigene
+                Spalte, nie verrechnet. */}
+            <div className="flex min-w-0 flex-col gap-2.5">
+              <div className="flex items-baseline justify-between gap-3">
+                <h3 className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+                  Je Jahrgang
+                </h3>
+                <span className="flex-none font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+                  Stellen · besetzt
+                </span>
+              </div>
+              <StellenPaare
+                skala={skala}
+                aktJahr={teilNeu}
+                zeilen={alle.map((j) => ({
+                  jahrgang: j,
+                  zeile: gesamt(daten, j, teil),
+                  fehlt: FEHLT_GRUND,
+                }))}
+              />
+              <StellenPaareLegende />
+              {vglA && vglB && (
+                <Einordnung className="mt-1" satz={<>
+                  <strong>Der Umschalter erzählt einen Vergleich, keinen
+                  Wettbewerb:</strong> Beamt*innenstellen wachsen ({vglA.spanne}),
+                  Tarifstellen auch ({vglB.spanne}) — unbesetzt bleiben beide,
+                  zuletzt rund {vglA.anteil}&nbsp;% hier, rund {vglB.anteil}&nbsp;% dort.
+                </>} />
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* Was diese Seite bewusst nicht zeigt — sichtbar, nicht Kleingedrucktes
+            (H3-01); die Chips bleiben auf jedem Gerät stehen (H4-A). */}
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+          <span className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+            Bewusst nicht auf der Seite
+          </span>
+          {["keine Summe A+B — steht in keinem Dokument",
+            "keine Namen, keine Organigramme",
+            "keine Ist-Personalausgaben je Gruppe"].map((c) => (
+            <span key={c}
+              className="rounded-full border border-dashed border-border px-2.5 py-1 text-[11px] text-muted-foreground">
+              {c}
+            </span>
+          ))}
         </div>
 
         <LottiErklaert
@@ -202,82 +291,41 @@ export default function PersonalPage() {
             + "Stelle gibt, entscheidet der Rat."}
         />
 
-        {/* Der Verlauf — beide Teile untereinander, gemeinsame Skala. */}
-        <section className="@container/verlauf rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
-          <div className="flex items-baseline justify-between gap-3">
-            <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-              Stellen und Besetzung über die Jahre
-            </h2>
-            <span className="flex-none font-mono text-[10px] font-medium tabular-nums text-muted-foreground">
-              {alle[0]}–{alle.at(-1)}
-            </span>
-          </div>
+        {/* Der Satz, um den es geht — und die einzige Stelle, an der die
+            Seite die Zahl deutet. Sie deutet sie in beide Richtungen. */}
+        <p className="max-w-[76ch] rounded-xl bg-muted/40 p-3 text-[13px] leading-relaxed text-foreground/90">
+          Unbesetzte Stellen sind weder ein Sparerfolg noch ein Versäumnis. Sie erklären
+          aber, warum die Personalausgaben im{" "}
+          <Link href="/haushalt/plan-ist" className="font-semibold text-primary">
+            Jahresabschluss
+          </Link>{" "}
+          oft unter dem Plan bleiben: Das Geld war eingeplant, die Stelle stand im Plan —
+          besetzt war sie nicht. Ob niemand zu finden war, ob gerade jemand wechselte oder
+          ob eine Stelle bewusst frei blieb, sagt der Stellenplan nicht.
+        </p>
 
-          {TEILE.map((t) => {
-            const mit = jahrgaengeMitTeil(daten, t);
-            return (
-              <div key={t} className="mt-4 first:mt-3">
-                <h3 className="text-[13px] font-semibold">{TEIL_LABEL[t]}</h3>
-                <p className="mt-0.5 text-[11.5px] text-muted-foreground">
-                  {mit.length === alle.length
-                    ? `${mit.length} Jahrgänge`
-                    : `${mit.length} von ${alle.length} Jahrgängen — für `
-                      + `${alle.filter((j) => !mit.includes(j)).join(", ")} `
-                      + `liegt dieser Teil nicht lesbar vor`}
-                </p>
-                <div className="mt-2">
-                  <StellenVerlauf
-                    skala={skala}
-                    zeilen={alle.map((j) => ({
-                      jahrgang: j,
-                      zeile: gesamt(daten, j, t),
-                      fehlt: FEHLT_GRUND,
-                    }))}
-                  />
-                </div>
-                <div className="mt-2">
-                  <StellenLegende />
-                </div>
-              </div>
-            );
-          })}
-
-          <p className="mt-3.5 border-t border-dashed border-border pt-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
-            Links die Stellen, die der Plan für sein Haushaltsjahr vorsieht. Rechts, wie es im
-            Jahr davor aussah — der Plan nennt beides nebeneinander, weil zum Zeitpunkt der
-            Aufstellung nur rückwärts gezählt werden kann. Die Prozentzahl ist der unbesetzte
-            Anteil der Stellen des Vorjahres; sie ist unsere Division, alles andere steht so
-            im Dokument.<Beleg q="stellenplan" />
-          </p>
-        </section>
-
-        {/* Wo die Lücken am größten sind — die Einzelposten des gewählten Jahres. */}
+        {/* Wo die Lücken am größten sind — die Einzelposten des gewählten
+            Jahres, mobil hinter „alle Gruppen zeigen" (H4-05). */}
         <section className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-              Wo die Lücken am größten sind
+              Wo die Lücken am größten sind · {TEIL_LABEL[teil]}
             </h2>
-            <div className="flex flex-wrap items-center gap-2">
-              <Segmented<StellenTeil> value={teil} onChange={setTeil} options={[
-                { value: "A", label: "Beamt*innen" },
-                { value: "B", label: "Tarif" },
-              ]} />
-              {alle.length > 1 && (
-                <div className="flex flex-wrap gap-1">
-                  {alle.map((j) => (
-                    <button key={j} type="button" onClick={() => setJahr(j)}
-                      className={cn(
-                        "rounded-full border px-2.5 py-1 font-mono text-[11px] tabular-nums transition-colors",
-                        j === aktJahr
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border bg-card text-muted-foreground hover:border-primary/40",
-                      )}>
-                      {j}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            {alle.length > 1 && (
+              <div className="flex flex-wrap gap-1">
+                {alle.map((j) => (
+                  <button key={j} type="button" onClick={() => setJahr(j)}
+                    className={cn(
+                      "rounded-full border px-2.5 py-1 font-mono text-[11px] tabular-nums transition-colors",
+                      j === aktJahr
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-card text-muted-foreground hover:border-primary/40",
+                    )}>
+                    {j}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {teilFehlt ? (
@@ -298,33 +346,41 @@ export default function PersonalPage() {
                 Die acht Amtsbezeichnungen mit den meisten unbesetzten Stellen, Stand{" "}
                 {deDatum(teilGesamt?.stichtag ?? null)}.
               </p>
-              <ul className="mt-3 flex flex-col divide-y divide-border">
-                {luecken.map((z) => (
-                  <li key={`${z.lfd_nr}-${z.besoldung}`}
-                    className="flex items-baseline gap-3 py-2 first:pt-0">
-                    <span className="min-w-0 flex-1">
-                      <span className="text-[13px] font-medium">{z.bezeichnung}</span>
-                      {z.besoldung && (
-                        <span className="ml-2 font-mono text-[10.5px] text-muted-foreground">
-                          {z.besoldung}
-                        </span>
-                      )}
-                    </span>
-                    <span className="flex-none font-mono text-[12px] tabular-nums text-muted-foreground">
-                      {deStellen(z.stellen_vorjahr)} Stellen
-                    </span>
-                    <span className="w-[5.5rem] flex-none text-right font-display text-[14px] font-bold tabular-nums">
-                      {deStellen(z.nicht_besetzt)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
-                Rechts die unbesetzten Stellen, daneben wie viele es in dieser Zeile insgesamt
-                gab. Die Bezeichnungen sind Amtsbezeichnungen aus dem Besoldungsrecht, keine
-                Berufsbezeichnungen — hinter „Stadtoberinspektor/-in" steckt kein Beruf,
-                sondern eine Besoldungsstufe, auf der sehr verschiedene Aufgaben liegen.
-              </p>
+              {!gruppenOffen && (
+                <button type="button" onClick={() => setGruppenOffen(true)}
+                  className="gb-nur-mobil mt-2 text-[12px] font-semibold text-primary">
+                  Alle Gruppen zeigen
+                </button>
+              )}
+              <div className={gruppenOffen ? undefined : "gb-ab-tablet"}>
+                <ul className="mt-3 flex flex-col divide-y divide-border">
+                  {luecken.map((z) => (
+                    <li key={`${z.lfd_nr}-${z.besoldung}`}
+                      className="flex items-baseline gap-3 py-2 first:pt-0">
+                      <span className="min-w-0 flex-1">
+                        <span className="text-[13px] font-medium">{z.bezeichnung}</span>
+                        {z.besoldung && (
+                          <span className="ml-2 font-mono text-[10.5px] text-muted-foreground">
+                            {z.besoldung}
+                          </span>
+                        )}
+                      </span>
+                      <span className="flex-none font-mono text-[12px] tabular-nums text-muted-foreground">
+                        {deStellen(z.stellen_vorjahr)} Stellen
+                      </span>
+                      <span className="w-[5.5rem] flex-none text-right font-display text-[14px] font-bold tabular-nums">
+                        {deStellen(z.nicht_besetzt)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
+                  Rechts die unbesetzten Stellen, daneben wie viele es in dieser Zeile insgesamt
+                  gab. Die Bezeichnungen sind Amtsbezeichnungen aus dem Besoldungsrecht, keine
+                  Berufsbezeichnungen — hinter „Stadtoberinspektor/-in" steckt kein Beruf,
+                  sondern eine Besoldungsstufe, auf der sehr verschiedene Aufgaben liegen.
+                </p>
+              </div>
               <div className="mt-3">
                 <Fundstelle daten={daten} id={teilGesamt?.herkunft_id ?? null} />
               </div>

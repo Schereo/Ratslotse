@@ -242,7 +242,7 @@ export function Gegenbalken({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: n
         )}
         {/* Kein Grün. Ein geplanter Überschuss ist keine gute Note und ein
             geplantes Minus keine schlechte — dieselbe Regel, die für die
-            Hantel gilt (components/haushalt/hantel.tsx). Der Überschuss trug
+            Hantel gilt (components/grafik/hantel.tsx). Der Überschuss trug
             bis 16.08. den Erfolgs-Tint aus der Beschluss-Semantik und stand
             damit als Gegenstück zum orangefarbenen Minus da: gut gegen
             schlecht, ohne dass irgendwer das behaupten wollte. */}

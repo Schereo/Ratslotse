@@ -17,7 +17,7 @@
 // Entscheidung wie bei /haushalt/produkte (`?nr=`) und /haushalt/bereich.
 //
 // KEINE BEWERTUNGSFARBEN, wie im ganzen Bereich
-// (components/haushalt/hantel.tsx): Kein Rot für ein negatives
+// (components/grafik/hantel.tsx): Kein Rot für ein negatives
 // Jahresergebnis, keine Pfeile, kein Ampel-Punkt. Ein Verkehrsbetrieb, der
 // Verlust macht, erfüllt seinen Auftrag — die Stadt hält ihn dafür. Wer das
 // rot einfärbt, behauptet ein Versagen und meint eine Aufgabe.
