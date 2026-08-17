@@ -2616,6 +2616,57 @@ def haushalt_gebaut(
     }
 
 
+@router.get("/haushalt/bilanz")
+def haushalt_bilanz(
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Die Bilanz der Stadt — Abschnitt 2.1 der Jahresabschlüsse.
+
+    Die Gegenseite zu ``/haushalt/schulden``: nicht was die Stadt schuldet,
+    sondern was sie **hat** und was davon schon vergeben ist.
+
+    ``posten`` ist eine flache Liste über alle Stichtage. **An ``rolle``
+    hängen, nicht an ``nr``**: Die Gliederungsnummer der Bilanz ist bis 2020
+    römisch, ab 2021 arabisch, und ab 2021 gibt es jede Nummer auf beiden
+    Seiten — „1.1" ist auf der Aktivseite etwas anderes als auf der
+    Passivseite. ``seite`` (``aktiva``/``passiva``) und ``ebene`` (1 = die
+    neun Hauptposten, aus denen die Bilanzsumme besteht) sind die stabilen
+    Achsen.
+
+    Zwei Rollen heißen fast gleich und meinen Verschiedenes — wer sie
+    verwechselt, schreibt eine falsche Schlagzeile:
+
+    * ``pensionen_gesamt`` — Bilanzposition 3.1 „Pensionsrückstellungen und
+      ähnliche Verpflichtungen", **einschließlich Beihilfe** (31.12.2024:
+      311,79 Mio. €),
+    * ``pensionsrueckstellungen`` — Position 3.1.1, die Pensionen **allein**
+      (266,26 Mio. €); der Rest ist ``beihilferueckstellungen`` (45,53).
+
+    Die beiden ältesten Stichtage führen die Aufschlüsselung nicht — die
+    Bilanz wies damals nur den Sammelposten aus. Sie fehlen dort schlicht;
+    eine Anzeige zeigt die Lücke, statt sie zu füllen.
+
+    ``erlaeuterungen`` ist **keine Zugabe, sondern eine Auflage.** Die
+    Schulden springen 2024 von 84,4 auf 207,1 Mio. €, und das ist kein
+    Schuldenmachen, sondern eine Bilanzverlängerung aus dem Cash-Pooling
+    (138,2 Mio. €, mit Gegenposten auf der Aktivseite). Der Anhang erklärt es
+    unter ``rolle="schulden"`` selbst. **Die Zahl darf ohne diesen Text nicht
+    angezeigt werden** — dieselbe Bauart wie ``abweichungsgruende`` für die
+    Ergebnisrechnung.
+    """
+    posten = store.get_bilanz()
+    erlaeuterungen = store.get_bilanz_erlaeuterungen()
+    ids = sorted({z["herkunft_id"] for z in posten + erlaeuterungen
+                  if z["herkunft_id"] is not None})
+    return {
+        "jahre": store.bilanz_jahre(),
+        "posten": posten,
+        "erlaeuterungen": erlaeuterungen,
+        "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
+    }
+
+
 @router.get("/haushalt/schulden")
 def haushalt_schulden(
     _user: dict = Depends(require_active),

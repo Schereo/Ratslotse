@@ -10,6 +10,18 @@ Dieses Skript liest sie aus, ohne etwas herunterzuladen:
   zweimal: für die Kernverwaltung gesamt und je Teilhaushalt. Die
   Teilhaushalts-Ebene wird nur gespeichert, wenn ihre Summe zur
   Gesamtrechnung passt (``finanzberichte.summenprobe``).
+  Dasselbe Dokument trägt zwei weitere Ebenen, jede mit eigener Probe und
+  eigenem Schicksal — reißt eine, fehlt sie allein, und der Rest des
+  Jahrgangs steht trotzdem: Abschnitt 4.1 die **Finanzrechnung**
+  (``council_finanzrechnung``, was tatsächlich geflossen ist,
+  ``finanzberichte.finanzprobe``) und Abschnitt 2.1 die **Bilanz**
+  (``council_bilanz``, was am Stichtag da ist und wem es zusteht,
+  ``bilanz.bilanzprobe``) samt den Erläuterungen des Anhangs dazu
+  (``council_bilanz_erlaeuterungen``, Abschnitt 6.2.1–6.2.9). Über
+  Dokumentgrenzen hinweg laufen dabei drei Ketten: Kassen- und
+  Bilanz-Vorjahreskette und die Kreuzprobe zwischen beiden Tabellen —
+  „Liquide Mittel" der Bilanz ist der „Endbestand an Zahlungsmitteln" der
+  Finanzrechnung, gelesen von zwei getrennten Parsern.
 - **Teilhaushalts-Pläne (THH)** → ``council_produkte``: was einzelne Aufgaben
   kosten, mit Produktnummer und Amt — dazu der Steckbrief je Produkt
   (Kurzbeschreibung, Auftragsgrundlage, Grad der Beeinflussbarkeit,

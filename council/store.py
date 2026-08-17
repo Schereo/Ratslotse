@@ -691,6 +691,58 @@ class CouncilStore:
             "quelle_label TEXT, quelle_url TEXT, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (jahr, nr))"
         )
+        # Die Bilanz der Stadt (Abschnitt 2.1 desselben Jahresabschlusses):
+        # nicht was die Stadt einnimmt oder schuldet, sondern was sie **hat**
+        # — und was davon schon vergeben ist. Der größte Passivposten sind
+        # die Pensionsrückstellungen (2024: 311,79 Mio. € einschließlich
+        # Beihilfe, 266,26 Mio. € ohne), ein Vielfaches der 43,69 Mio. €
+        # Kreditschulden (council/bilanz.py).
+        #
+        # `rolle` ist der Schlüssel, nicht `nr`: Die Gliederungsnummer ist ab
+        # 2021 auf beiden Bilanzseiten dieselbe („1.1" gibt es zweimal), und
+        # bis 2020 war sie römisch. Der Name, den das Dokument der Zeile
+        # gibt, ist das einzig Stabile — deshalb steht er in `bezeichnung`
+        # im Wortlaut daneben.
+        #
+        # Kein `wert_vorjahr`: Die zweite Spalte der Bilanz ist der Stichtag
+        # davor, und der ist ein **eigener Jahrgang** in dieser Tabelle. Sie
+        # zusätzlich an der Zeile zu führen hieße, denselben Stand zweimal zu
+        # speichern — mit der Aussicht, dass die beiden eines Tages
+        # auseinanderlaufen. Gebraucht wird sie beim Einlesen (als
+        # Vorjahres-Kette über Dokumentgrenzen) und beim ältesten Jahrgang,
+        # der ausschließlich aus ihr stammt.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_bilanz ("
+            "jahr INTEGER NOT NULL, "             # Bilanzstichtag 31.12.jahr
+            "rolle TEXT NOT NULL, "               # stabiler Name (bilanz.ROLLEN)
+            "seite TEXT NOT NULL, "               # 'aktiva' | 'passiva'
+            "ebene INTEGER NOT NULL, "            # 1 = Hauptposten der Bilanzsumme
+            "nr TEXT, "                           # Gliederungsnummer DES DOKUMENTS
+            "bezeichnung TEXT NOT NULL, "         # Wortlaut des Dokuments
+            "wert REAL NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, rolle))"
+        )
+        # Was die Verwaltung zu jedem Hauptposten schreibt: Anhang 6.2.1–6.2.9
+        # desselben Dokuments, ein Abschnitt je Bilanzposition.
+        #
+        # Diese Tabelle ist keine Zierde, sondern eine Auflage. Die Bilanz
+        # 2024 weist Schulden von 207,1 Mio. € aus nach 84,4 Mio. € im
+        # Vorjahr; ohne 6.2.7 läse sich das als Verdreifachung. Der Abschnitt
+        # sagt, dass es eine Bilanzverlängerung aus dem Cash-Pooling ist,
+        # 138,2 Mio. €, mit Gegenposten auf der Aktivseite. **Die Zahl darf
+        # ohne diesen Text nicht angezeigt werden** — dieselbe Bauart wie
+        # `council_abweichungsgruende` für die Ergebnisrechnung.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_bilanz_erlaeuterungen ("
+            "jahr INTEGER NOT NULL, "
+            "rolle TEXT NOT NULL, "               # dieselbe Marke wie council_bilanz
+            "nr INTEGER NOT NULL, "               # 6.2.N
+            "ueberschrift TEXT NOT NULL, "        # Wortlaut der Abschnittsüberschrift
+            "text TEXT NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, rolle))"
+        )
         # Gesamtergebnishaushalt aus den Haushaltsplänen (RIS-Anlage 005):
         # dieselbe Postengliederung wie die Ergebnisrechnung, aber für Jahre,
         # die noch gar keinen Jahresabschluss haben (council/ergebnishaushalt.py).
@@ -1463,6 +1515,10 @@ class CouncilStore:
         "council_ergebnisrechnung":     ("quelle_label", "quelle_url", "ris"),
         # Neu mit der Kassensicht, ohne Altbestand — nichts nachzutragen.
         "council_finanzrechnung":       (None, None, "ris"),
+        # Ebenso die Bilanz und ihre Erläuterungen: erst mit der Herkunft
+        # entstanden, keine Altspalten.
+        "council_bilanz":               (None, None, "ris"),
+        "council_bilanz_erlaeuterungen": (None, None, "ris"),
         "council_abweichungsgruende":   ("quelle_label", "quelle_url", "ris"),
         "council_pruefbericht_quellen": ("label", "url", "ris"),
         "council_produkte":             ("quelle_label", "quelle_url", "ris"),
@@ -3937,6 +3993,10 @@ class CouncilStore:
                                  "thh_nr IS NOT NULL", "quelle_url"),
         # Dritte Ebene desselben Dokuments: Abschnitt 4.1, die Kassensicht.
         "finanzrechnung":       ("council_finanzrechnung", "jahr", None, None),
+        # Vierte Ebene: Abschnitt 2.1, die Bilanz. Der älteste Stichtag (2016)
+        # stammt aus der Vorjahresspalte des Abschlusses 2017 — er trägt
+        # deshalb dessen Dokument, mit eigener Fundstelle.
+        "bilanz":               ("council_bilanz", "jahr", None, None),
         # Der einzige Schlüssel, hinter dem je Jahrgang MEHRERE Dokumente
         # stehen: Ein Produkt-Jahrgang verteilt sich auf rund neun
         # Teilhaushalts-Anlagen (s. finanzquellen.Finanzquelle).
@@ -4397,6 +4457,80 @@ class CouncilStore:
                 "SELECT DISTINCT jahr FROM council_finanzrechnung ORDER BY jahr")]
         except sqlite3.OperationalError:
             return []
+
+    # --- Bilanz der Stadt (council.bilanz) -----------------------------------
+
+    def save_bilanz(self, jahr: int, posten: list[dict], herkunft) -> int:
+        """Einen Bilanzstichtag ersetzen.
+
+        Übergeben wird nur, was ``bilanz.bilanzprobe`` durchgelassen hat —
+        eine Bilanz, deren Seiten nicht aufgehen, kommt dort gar nicht erst
+        heraus. Hier wird deshalb nichts mehr geprüft, nur geschrieben."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute("DELETE FROM council_bilanz WHERE jahr = ?", (jahr,))
+            self._conn.executemany(
+                "INSERT INTO council_bilanz (jahr, rolle, seite, ebene, nr, "
+                " bezeichnung, wert, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?)",
+                [(jahr, p["rolle"], p["seite"], p["ebene"], p.get("nr"),
+                  p["bezeichnung"], p["wert"], hid, now) for p in posten])
+        return len(posten)
+
+    def get_bilanz(self, jahr: int | None = None) -> list[dict]:
+        """Bilanzposten — ein Stichtag oder alle.
+
+        Sortiert nach Jahr, dann Aktiva vor Passiva, dann in der Reihenfolge
+        des Dokuments. ``ORDER BY seite DESC`` ist kein Tippfehler: ``aktiva``
+        steht alphabetisch vor ``passiva``, und die Bilanz druckt die
+        Aktivseite zuerst — absteigend sortiert kommt genau das heraus."""
+        try:
+            sql = ("SELECT * FROM council_bilanz {} "
+                   "ORDER BY jahr, seite ASC, ebene, rolle")
+            if jahr is None:
+                rows = self._conn.execute(sql.format("")).fetchall()
+            else:
+                rows = self._conn.execute(sql.format("WHERE jahr = ?"), (jahr,)).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [dict(r) for r in rows]
+
+    def bilanz_jahre(self) -> list[int]:
+        """Bilanzstichtage im Bestand (aufsteigend)."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT jahr FROM council_bilanz ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    def save_bilanz_erlaeuterungen(self, jahr: int, abschnitte: list[dict],
+                                   herkunft) -> int:
+        """Die Erläuterungen des Anhangs zu einem Jahrgang ersetzen."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute(
+                "DELETE FROM council_bilanz_erlaeuterungen WHERE jahr = ?", (jahr,))
+            self._conn.executemany(
+                "INSERT INTO council_bilanz_erlaeuterungen (jahr, rolle, nr, "
+                " ueberschrift, text, herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?)",
+                [(jahr, a["rolle"], a["nr"], a["ueberschrift"], a["text"], hid, now)
+                 for a in abschnitte])
+        return len(abschnitte)
+
+    def get_bilanz_erlaeuterungen(self, jahr: int | None = None) -> list[dict]:
+        """Erläuterungen zur Bilanz — ein Jahrgang oder alle."""
+        try:
+            sql = ("SELECT * FROM council_bilanz_erlaeuterungen {} "
+                   "ORDER BY jahr, nr")
+            if jahr is None:
+                rows = self._conn.execute(sql.format("")).fetchall()
+            else:
+                rows = self._conn.execute(sql.format("WHERE jahr = ?"), (jahr,)).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [dict(r) for r in rows]
 
     # --- Gesamtergebnishaushalt (Planjahre, council.ergebnishaushalt) --------
 

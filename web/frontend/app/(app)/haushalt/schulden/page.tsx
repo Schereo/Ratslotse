@@ -58,8 +58,9 @@ import { Zeitreihe } from "@/components/grafik/zeitreihe";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
+import { BilanzBlock } from "@/components/haushalt/bilanz-block";
 
-const QUELLEN = ["schulden"] as const;
+const QUELLEN = ["schulden", "bilanz"] as const;
 
 /** Wo eine Angabe im Dokument steht: welcher Abschnitt, welcher Stand. Das
  *  Quellenverzeichnis am Seitenende beschreibt die Quelle der ganzen Seite;
@@ -454,6 +455,14 @@ export default function SchuldenPage() {
             )}
           </section>
         )}
+
+        {/* DIE GEGENSEITE. Bis hierher stand auf dieser Seite nur, was die
+            Stadt schuldet — und die naheliegende Anschlussfrage („kaum
+            Kredite, also keine Schulden?") beantwortet erst die Bilanz: Die
+            Pensionszusagen sind ein Vielfaches der Kredite. Der Block holt
+            seine Daten selbst und rendert nichts, solange kein
+            ausgeglichener Bilanzstichtag im Bestand steht. */}
+        <BilanzBlock />
 
         {/* Die Grenzen — eigener Block, nicht Kleingedrucktes. */}
         <section className="rounded-2xl border border-border border-l-[3px] border-l-signal bg-card p-4 shadow-sm">
