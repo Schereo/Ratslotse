@@ -143,6 +143,39 @@ PROBEN: dict[str, str] = {
         "Der Kassenbestand am Jahresende steht im Jahresabschluss des "
         "Folgejahres noch einmal als Anfangsbestand — zwei Dokumente, "
         "dieselbe Zahl.",
+    # Bilanz der Stadt, Abschnitt 2.1 desselben Jahresabschlusses
+    # (council/bilanz.py). Die erste ist die Pflicht-Probe; ohne sie kommt
+    # kein Stichtag herein. Die letzte ist die stärkste — sie stellt zwei
+    # getrennt gelesene Tabellen gegeneinander.
+    "bilanz_ausgleich":
+        "Die Bilanz geht auf: Was die Stadt hat, und was davon wem zusteht, "
+        "ergeben auf den Cent denselben Betrag. Eine Bilanz, bei der das "
+        "nicht stimmt, ist keine.",
+    "bilanzsumme_gedruckt":
+        "Die Bilanzsumme, die das Dokument unter die Tabelle druckt, ist "
+        "dieselbe, die sich aus den einzelnen Posten ergibt — eine dritte "
+        "Bestätigung neben den beiden Seiten.",
+    "rueckstellungs_gliederung":
+        "Die Rückstellungen für Pensionen und die für Beihilfe ergeben "
+        "zusammen genau den Sammelposten, den die Bilanz eine Zeile darüber "
+        "ausweist. Damit steht fest, welche der beiden Zahlen gemeint ist, "
+        "die im Umlauf sind.",
+    "bilanz_vorjahreskette":
+        "Jede Bilanz führt zwei Stichtage nebeneinander. Der ältere davon "
+        "steht im Jahresabschluss des Vorjahres noch einmal als aktueller "
+        "Stand — zwei getrennt gelesene Dokumente, für jeden Hauptposten "
+        "dieselbe Zahl.",
+    "bilanz_kassenprobe":
+        "Der Kassenbestand steht zweimal im selben Heft, zehn Seiten "
+        "auseinander und in zwei verschieden gebauten Tabellen: als "
+        "Bilanzposition „Liquide Mittel“ und als „Endbestand an "
+        "Zahlungsmitteln“ der Finanzrechnung. Beide werden getrennt gelesen "
+        "und stimmen überein.",
+    "bilanz_erlaeuterung":
+        "Der Anhang erläutert die Bilanz Position für Position. Dass jeder "
+        "Text an der Position steht, zu der er gehört, ist hier geprüft: Die "
+        "neun Abschnitte tragen die Namen der neun Hauptposten, in genau "
+        "deren Reihenfolge.",
     "abweichungstext":
         "Die Erläuterung nennt ihre Abweichung doppelt, als Betrag und als "
         "Prozentsatz; beide passen zu der Tabellenzeile, die derselbe "
@@ -337,6 +370,10 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     # Die Kassensicht aus demselben Jahresabschluss — neu, ohne Altbestand,
     # Herkunft ausschließlich über `herkunft_id`.
     "council_finanzrechnung",
+    # Die Vermögensseite aus demselben Jahresabschluss (Abschnitt 2.1) und
+    # die Erläuterungen des Anhangs dazu (6.2.1–6.2.9) — ebenso.
+    "council_bilanz",
+    "council_bilanz_erlaeuterungen",
     "council_abweichungsgruende",
     "council_pruefbericht_quellen",
     "council_produkte",

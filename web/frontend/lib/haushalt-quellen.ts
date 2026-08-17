@@ -89,6 +89,11 @@ export type QuellenSchluessel =
   // Ergebnisrechnung bucht, die Finanzrechnung zahlt. Ein gemeinsamer Eintrag
   // lüde dazu ein, ihre Zahlen für dieselben zu halten.
   | "finanzrechnung"
+  // Die Vermögensseite aus denselben Jahresabschlüssen (Abschnitt 2.1).
+  // Wieder ein eigener Schlüssel, wieder aus demselben Grund: Ergebnis- und
+  // Finanzrechnung zählen ein **Jahr**, die Bilanz einen **Stichtag**. Ihre
+  // Zahlen sind miteinander nicht verrechenbar.
+  | "bilanz"
   // A10: Städtevergleich — die einzigen Quellen des Bereichs, die nicht von
   // der Stadt Oldenburg stammen, sondern vom Land.
   | "lsn_finanzausgleich" | "lsn_realsteuern" | "vergleich_2018"
@@ -319,6 +324,27 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
     standWort: "Jahresabschlüsse",
     stand: "Jahresabschlüsse 2017–2024",
+    art: "pdf",
+    url: "https://buergerinfo.oldenburg.de",
+  },
+  bilanz: {
+    titel: "Bilanz der Stadt Oldenburg (Jahresabschlüsse)",
+    fundstelle:
+      "Abschnitt 2.1 derselben Jahresabschlüsse, im amtlichen Muster nach " +
+      "NKomVG: was die Stadt zum 31. Dezember besitzt und wem es zusteht. " +
+      "Anders als Ergebnis- und Finanzrechnung zählt diese Tabelle kein Jahr, " +
+      "sondern einen Stichtag — ihre Beträge sind mit denen der übrigen " +
+      "Seiten nicht verrechenbar. Zwei Zeilen heißen fast gleich: Position " +
+      "3.1 „Pensionsrückstellungen und ähnliche Verpflichtungen“ schließt die " +
+      "Beihilfe ein, Position 3.1.1 „Pensionsrückstellungen“ nicht; die " +
+      "beiden ältesten Stichtage führen die Aufschlüsselung noch nicht. Die " +
+      "Erläuterungen stammen aus Abschnitt 6.2 desselben Dokuments. Nicht " +
+      "enthalten sind die Anlagen zum Anhang (Anlagen-, Forderungs-, " +
+      "Schulden- und Rückstellungsübersicht) — sie stehen jenseits der " +
+      "Textmenge, die aus den PDFs übernommen wird.",
+    herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
+    standWort: "Bilanzstichtage",
+    stand: "Bilanzstichtage 2016–2024",
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de",
   },

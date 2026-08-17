@@ -69,7 +69,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Callable
 
-from council import (ergebnishaushalt, finanzberichte, herkunft,
+from council import (bilanz, ergebnishaushalt, finanzberichte, herkunft,
                      investitionsprogramm, konzernabschluss, pruefberichte,
                      stellenplan)
 from council.store import CouncilStore
@@ -307,17 +307,19 @@ def _jahr_aus_label(row: dict) -> int | None:
     return int(m.group(1)) if m else None
 
 
-#: Die drei Ebenen eines Jahresabschlusses: die Ergebnisrechnung der
-#: Kernverwaltung, dieselbe Rechnung je Teilhaushalt und die Finanzrechnung —
-#: was gebucht wurde, wo es gebucht wurde, und was tatsächlich geflossen ist.
+#: Die vier Ebenen eines Jahresabschlusses: die Ergebnisrechnung der
+#: Kernverwaltung, dieselbe Rechnung je Teilhaushalt, die Finanzrechnung und
+#: die Bilanz — was gebucht wurde, wo es gebucht wurde, was tatsächlich
+#: geflossen ist, und was am Stichtag da ist.
 #:
-#: Die Erläuterungen aus Abschnitt 6.3.1 sind bewusst **keine** vierte
-#: Einheit: Ob ein Jahrgang welche hat, entscheidet der Bericht (und die
-#: Rechenprobe), nicht wir — als Einheit geführt gälte jeder Jahrgang ohne
-#: Erläuterungen für immer als unvollständig und würde alle zwei Wochen neu
-#: geparst. Sie werden trotzdem nachgetragen, sobald der Jahrgang aus einem
-#: anderen Grund noch einmal gelesen wird.
-EBENEN = ("gesamt", "teilhaushalte", "kasse")
+#: Die **Erläuterungstexte** des Anhangs sind bewusst keine eigenen Einheiten,
+#: weder die zu den Abweichungen (6.3.1) noch die zu den Bilanzpositionen
+#: (6.2.1–6.2.9): Ob ein Jahrgang welche hat, entscheidet der Bericht (und
+#: die Zuordnungsprobe), nicht wir — als Einheit geführt gälte jeder Jahrgang
+#: ohne Erläuterungen für immer als unvollständig und würde alle zwei Wochen
+#: neu geparst. Sie werden trotzdem nachgetragen, sobald der Jahrgang aus
+#: einem anderen Grund noch einmal gelesen wird.
+EBENEN = ("gesamt", "teilhaushalte", "kasse", "bilanz")
 
 
 def _einheiten_jahresabschluss(row: dict) -> set[tuple]:
@@ -390,8 +392,8 @@ def _jahre(store: CouncilStore, sql: str) -> list:
 
 
 def _bestand_jahresabschluss(store: CouncilStore) -> set[tuple]:
-    """Je Jahrgang bis zu drei Einheiten: Gesamtrechnung, Teilhaushalte,
-    Finanzrechnung.
+    """Je Jahrgang bis zu vier Einheiten: Gesamtrechnung, Teilhaushalte,
+    Finanzrechnung, Bilanz.
 
     ``ergebnisrechnung_jahre()`` genügt hier **nicht** — es liefert „irgendeine
     Zeile" und hielte einen Jahrgang, dessen Teilhaushalts-Ebene an der
@@ -402,6 +404,13 @@ def _bestand_jahresabschluss(store: CouncilStore) -> set[tuple]:
         store, "SELECT DISTINCT jahr FROM council_ergebnisrechnung WHERE thh_nr IS NOT NULL")}
     aus |= {(r[0], "kasse") for r in _jahre(
         store, "SELECT DISTINCT jahr FROM council_finanzrechnung")}
+    # Die Bilanz zählt für das Jahr **des Dokuments**, nicht für den
+    # Stichtag: Der älteste Stichtag (2016) stammt aus der Vorjahresspalte des
+    # Abschlusses 2017 und hat kein eigenes Dokument. Stünde er hier als
+    # eigene Einheit, suchte der Cron ewig nach einem Jahresabschluss 2016.
+    aus |= {(r[0], "bilanz") for r in _jahre(
+        store, "SELECT DISTINCT jahr FROM council_bilanz WHERE jahr > "
+               "(SELECT MIN(jahr) FROM council_bilanz)")}
     return aus
 
 
@@ -710,7 +719,29 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
         for x in kasse_hinweise:
             p.sagen(f"  {jahr}: Finanzrechnung — {x}")
 
+        # Die Vermögensseite, dreißig Seiten davor (Abschnitt 2.1). Sie hängt
+        # wie die Kasse an ihrer eigenen Probe und teilt das Schicksal der
+        # Ergebnisrechnung nicht: Reißt der Bilanzausgleich, fehlt die Bilanz
+        # dieses Jahrgangs, und alles andere steht trotzdem auf der Seite.
+        bil, bil_fehler, bil_hinweise = bilanz.bilanzprobe(
+            bilanz.parse_bilanz(text, jahr))
+        for x in bil_fehler:
+            p.warnen(f"  {jahr}: Bilanz verworfen — {x}")
+        for x in bil_hinweise:
+            p.sagen(f"  {jahr}: Bilanz — {x}")
+
+        # Der Anhang dazu: 6.2.1–6.2.9, ein Abschnitt je Hauptposten. Ohne
+        # bestandene Zuordnungsprobe gar nichts — ein Erläuterungstext unter
+        # der falschen Bilanzposition wäre eine Falschaussage.
+        erl = bilanz.parse_erlaeuterungen(text, jahr)
+        erl_ok, erl_warum = bilanz.erlaeuterungsprobe(erl)
+        if not erl_ok:
+            p.warnen(f"  {jahr}: Bilanz-Erläuterungen verworfen — {erl_warum}")
+            erl = []
+
         gelesen[jahr] = {"posten": posten, "text": text, "kasse": kasse,
+                         "bilanz": bil, "erlaeuterungen": erl,
+                         "erlaeuterungsprobe": erl_warum,
                          "label": r["label"], "url": r["url"],
                          "document_id": r["document_id"]}
 
@@ -738,9 +769,44 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
     kassenglieder = sum(1 for j in gelesen if j + 1 in gelesen
                         and gelesen[j]["kasse"] and gelesen[j + 1]["kasse"])
 
+    # Und dasselbe für die Bilanz, mit zwei Proben über Dokumentgrenzen:
+    #
+    # 1. Die Vorjahres-Kette: Jede Bilanz führt zwei Stichtage nebeneinander,
+    #    der ältere muss der aktuelle des Vorjahrgangs sein — je Hauptposten.
+    # 2. Die Kreuzprobe gegen die Finanzrechnung: „Liquide Mittel" der Bilanz
+    #    ist derselbe Betrag wie „Endbestand an Zahlungsmitteln" der
+    #    Finanzrechnung. Die stärkste Probe des Bereichs, weil hier zwei
+    #    getrennt geschriebene Parser dieselbe Zahl liefern müssen.
+    #
+    # Der Anfangsbestand steht mit in der Nachschlagetabelle: Er ist der
+    # Endbestand des Vorjahres und deckt damit den ältesten Stichtag ab, der
+    # aus der Vorjahresspalte stammt und selbst keine Finanzrechnung hat.
+    bilanzen = {j: v["bilanz"] for j, v in gelesen.items() if v["bilanz"]}
+    bil_kette = bilanz.vorjahreskette(bilanzen)
+    bil_verdaechtig: set[int] = set()
+    for jahr, folge, warum in bil_kette:
+        p.warnen(f"  Bilanz-Vorjahreskette {jahr}→{folge} gerissen: {warum} — die "
+                 f"Bilanz beider Jahrgänge wird nicht gespeichert")
+        bil_verdaechtig |= {jahr, folge}
+    bilanzglieder = sum(1 for j in bilanzen if j + 1 in bilanzen)
+
+    endbestaende: dict[int, float] = {}
+    for jahr, v in gelesen.items():
+        for z in v["kasse"] or ():
+            if z.get("rolle") == "endbestand" and z.get("ergebnis") is not None:
+                endbestaende[jahr] = z["ergebnis"]
+            elif z.get("rolle") == "anfangsbestand" and z.get("ergebnis") is not None:
+                endbestaende.setdefault(jahr - 1, z["ergebnis"])
+    for jahr, warum in bilanz.kassenprobe(bilanzen, endbestaende):
+        p.warnen(f"  Bilanz {jahr}: Kreuzprobe gegen die Finanzrechnung gerissen "
+                 f"({warum}) — Bilanz wird nicht gespeichert")
+        bil_verdaechtig.add(jahr)
+    bil_kreuzproben = sum(1 for j in bilanzen if j in endbestaende)
+
     neu: list[int] = []
     neue_einheiten: set[tuple] = set()
     mit_thh = verworfen = gruende_gesamt = geschuetzt = mit_kasse = 0
+    mit_bilanz = mit_erlaeuterungen = 0
     for jahr in sorted(gelesen):
         if jahr in verdaechtig:
             uebersprungen += 1
@@ -748,7 +814,8 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
         braucht_gesamt = (jahr, "gesamt") not in vorhanden
         braucht_thh = (jahr, "teilhaushalte") not in vorhanden
         braucht_kasse = (jahr, "kasse") not in vorhanden
-        if not (braucht_gesamt or braucht_thh or braucht_kasse):
+        braucht_bilanz = (jahr, "bilanz") not in vorhanden
+        if not (braucht_gesamt or braucht_thh or braucht_kasse or braucht_bilanz):
             continue  # alle Ebenen stehen — der Job fasst Bestand nicht an
         v = gelesen[jahr]
         posten, label, url = v["posten"], v["label"], v["url"]
@@ -862,6 +929,83 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
                     p.sagen(f"    + Finanzrechnung: {len(v['kasse'])} Zeilen · "
                             f"Finanzmittelsaldo {saldo/1e6:+.1f} Mio. €")
 
+            # Vierte Ebene: die Bilanz (Abschnitt 2.1) und die Erläuterungen
+            # des Anhangs dazu (6.2.1–6.2.9). Was `bilanzprobe` liefert, ist
+            # bereits ausgeglichen; leer heißt „Aktiva ≠ Passiva", und dann
+            # steht für diesen Stichtag eben keine Vermögensseite auf der
+            # Seite. Genannt wird jede Probe, die den Jahrgang wirklich trägt.
+            if braucht_bilanz and v["bilanz"] and jahr not in bil_verdaechtig:
+                bil = v["bilanz"]
+                alt_bil = _anzahl(store, "SELECT COUNT(*) FROM council_bilanz "
+                                         "WHERE jahr = ?", (jahr,))
+                if not bestandsschutz(p, f"{jahr} Bilanz", alt_bil,
+                                      len(bil["posten"]), schuetzen):
+                    geschuetzt += 1
+                else:
+                    proben = list(bil["proben"])
+                    if any((jahr + s) in bilanzen for s in (-1, 1)):
+                        proben.append("bilanz_vorjahreskette")
+                    if jahr in endbestaende:
+                        proben.append("bilanz_kassenprobe")
+                    summe_de = f"{bil['bilanzsumme'] / 1e6:.2f}".replace(".", ",")
+                    store.save_bilanz(jahr, bil["posten"], herkunft.Herkunft(
+                        probe=proben,
+                        fundstelle=f"Abschnitt 2.1 — Bilanz der Stadt Oldenburg "
+                                   f"zum 31.12.{jahr}",
+                        probe_ergebnis=f"Aktiva und Passiva stimmen auf den Cent "
+                                       f"überein (Bilanzsumme {summe_de} Mio. €)",
+                        stand=f"31.12.{jahr}",
+                        art="ris", dokument_id=v["document_id"],
+                        label=label, url=url))
+                    neue_einheiten.add((jahr, "bilanz"))
+                    mit_bilanz += 1
+                    werte = {x["rolle"]: x["wert"] for x in bil["posten"]}
+                    p.sagen(f"    + Bilanz: {len(bil['posten'])} Posten · Bilanzsumme "
+                            f"{bil['bilanzsumme']/1e6:.1f} Mio. € · Pensionsrückstellungen "
+                            f"{werte.get('pensionen_gesamt', 0)/1e6:.1f} Mio. € "
+                            f"(davon Beihilfe {werte.get('beihilferueckstellungen', 0)/1e6:.1f})")
+
+                    # Der älteste Stichtag hat kein eigenes Dokument: 2016
+                    # steht nur in der Vorjahresspalte des Abschlusses 2017.
+                    # Er wird mitgenommen, wenn seine Spalte für sich
+                    # ausgeglichen ist — sonst nicht. Eine eigene Einheit ist
+                    # er ausdrücklich nicht (s. `_bestand_jahresabschluss`).
+                    if jahr == min(bilanzen):
+                        vorjahr = jahr - 1
+                        a = bilanz.summe(bil["posten"], bilanz.AKTIVA, "wert_vorjahr")
+                        pa = bilanz.summe(bil["posten"], bilanz.PASSIVA, "wert_vorjahr")
+                        if a and pa and abs(a - pa) <= bilanz.TOLERANZ:
+                            vorposten = [{**x, "wert": x["wert_vorjahr"]}
+                                         for x in bil["posten"]]
+                            vorproben = ["bilanz_ausgleich"]
+                            if vorjahr in endbestaende:
+                                vorproben.append("bilanz_kassenprobe")
+                            store.save_bilanz(vorjahr, vorposten, herkunft.Herkunft(
+                                probe=vorproben,
+                                fundstelle=f"Abschnitt 2.1 — Bilanz zum 31.12.{jahr}, "
+                                           f"Vorjahresspalte (Stand 31.12.{vorjahr})",
+                                probe_ergebnis=f"Aktiva und Passiva der Vorjahresspalte "
+                                               f"stimmen auf den Cent überein",
+                                stand=f"31.12.{vorjahr}",
+                                art="ris", dokument_id=v["document_id"],
+                                label=label, url=url))
+                            p.sagen(f"      + Stichtag {vorjahr} aus der "
+                                    f"Vorjahresspalte ({a/1e6:.1f} Mio. €)")
+
+                    if v["erlaeuterungen"]:
+                        store.save_bilanz_erlaeuterungen(
+                            jahr, v["erlaeuterungen"], herkunft.Herkunft(
+                                probe="bilanz_erlaeuterung",
+                                fundstelle="Abschnitt 6.2 — Erläuterung der "
+                                           "wesentlichen Bilanzpositionen",
+                                probe_ergebnis=v["erlaeuterungsprobe"],
+                                stand=f"Jahresabschluss {jahr}",
+                                art="ris", dokument_id=v["document_id"],
+                                label=label, url=url))
+                        mit_erlaeuterungen += 1
+                        p.sagen(f"      + {len(v['erlaeuterungen'])} Erläuterungen "
+                                f"zu den Bilanzpositionen")
+
             # Das „Warum": Abschnitt 6.3.1 je Posten. Eintrittskarte ist der
             # Abgleich mit der Tabellenzeile — Betrag und Prozentsatz stehen in
             # der Überschrift des Blocks und müssen beide passen.
@@ -902,6 +1046,11 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
             "jahre_mit_finanzrechnung": mit_kasse,
             "kassenglieder_geprueft": kassenglieder,
             "kassenkette_gerissen": len(kassenkette),
+            "jahre_mit_bilanz": mit_bilanz,
+            "bilanzglieder_geprueft": bilanzglieder,
+            "bilanzkette_gerissen": len(bil_kette),
+            "bilanz_kreuzproben": bil_kreuzproben,
+            "bilanz_erlaeuterungen": mit_erlaeuterungen,
             "abweichungsgruende": gruende_gesamt}
 
 
@@ -1625,7 +1774,8 @@ for _q in (
         was="Was die Stadt in einem Jahr wirklich eingenommen und ausgegeben hat — "
             "neben dem, was sie geplant hatte.",
         tabelle="council_ergebnisrechnung",
-        nebentabellen=("council_abweichungsgruende",),
+        nebentabellen=("council_abweichungsgruende", "council_finanzrechnung",
+                       "council_bilanz", "council_bilanz_erlaeuterungen"),
         erwarteter_monat=9,
         versatz=1,
         herkunft="ris",

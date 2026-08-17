@@ -3649,3 +3649,84 @@ def test_haushalt_schulden_ohne_jahresabschluss_bleibt_die_zinslast_leer(client)
     antwort = client.get("/api/council/haushalt/schulden")
     assert antwort.status_code == 200
     assert antwort.json()["zinslast"] == []
+
+
+def test_haushalt_bilanz_liefert_posten_erlaeuterungen_und_herkunft(client):
+    """Die Gegenseite zur Schuldenkurve: was die Stadt **hat**.
+
+    Drei Dinge muss der Endpunkt zusammen ausliefern, sonst steht die
+    Oberfläche vor einer Zahl, die sie nicht verantworten kann:
+
+    * die Posten mit ``rolle``, ``seite`` und ``ebene`` — an der
+      Gliederungsnummer darf nichts hängen, „1." ist ab 2021 auf der
+      Aktivseite etwas anderes als auf der Passivseite,
+    * die **Erläuterungen** des Anhangs. Für ``schulden`` sind sie keine
+      Zugabe, sondern die Bedingung: 2024 springt der Posten auf
+      207,1 Mio. €, und ohne den Cash-Pooling-Text läse sich das als
+      Verdreifachung der Schulden,
+    * die Herkunft zu beidem.
+    """
+    from council import bilanz, herkunft
+
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    try:
+        q = herkunft.Herkunft(
+            art="ris", probe=["bilanz_ausgleich", "bilanz_kassenprobe"],
+            fundstelle="Abschnitt 2.1 — Bilanz der Stadt Oldenburg zum 31.12.2024",
+            probe_ergebnis="Aktiva und Passiva stimmen auf den Cent überein",
+            stand="31.12.2024", dokument_id=295294, label="Jahresabschluss 2024",
+            url="https://example.org/ja.pdf")
+        cs.save_bilanz(2024, [
+            {"rolle": "geldschulden", "seite": bilanz.PASSIVA, "ebene": 2,
+             "nr": "2.1", "bezeichnung": "Geldschulden", "wert": 43_690_971.71},
+            {"rolle": "schulden", "seite": bilanz.PASSIVA, "ebene": 1,
+             "nr": "2", "bezeichnung": "Schulden", "wert": 207_116_175.19},
+            {"rolle": "pensionen_gesamt", "seite": bilanz.PASSIVA, "ebene": 2,
+             "nr": "3.1",
+             "bezeichnung": "Pensionsrückstellungen und ähnliche Verpflichtungen",
+             "wert": 311_789_660.00},
+            {"rolle": "liquide_mittel", "seite": bilanz.AKTIVA, "ebene": 1,
+             "nr": "4", "bezeichnung": "Liquide Mittel", "wert": 118_001_891.26},
+        ], q)
+        cs.save_bilanz_erlaeuterungen(2024, [
+            {"rolle": "schulden", "nr": 7, "ueberschrift": "Schulden",
+             "text": "… ergibt sich eine Bilanzverlängerung … 138,2 Millionen Euro."},
+        ], herkunft.Herkunft(
+            art="ris", probe="bilanz_erlaeuterung",
+            fundstelle="Abschnitt 6.2 — Erläuterung der wesentlichen Bilanzpositionen",
+            stand="Jahresabschluss 2024", dokument_id=295294,
+            label="Jahresabschluss 2024", url="https://example.org/ja.pdf"))
+
+        daten = client.get("/api/council/haushalt/bilanz").json()
+        assert daten["jahre"] == [2024]
+
+        nach_rolle = {p["rolle"]: p for p in daten["posten"]}
+        # Die beiden Zahlen, die beide „Schulden" heißen — getrennt geführt.
+        assert nach_rolle["geldschulden"]["wert"] == 43_690_971.71
+        assert nach_rolle["schulden"]["wert"] == 207_116_175.19
+        assert nach_rolle["liquide_mittel"]["seite"] == "aktiva"
+        assert nach_rolle["schulden"]["ebene"] == 1
+
+        # Ohne diesen Text darf die Seite die 207,1 Mio. € nicht zeigen.
+        erl = {e["rolle"]: e for e in daten["erlaeuterungen"]}
+        assert "Bilanzverlängerung" in erl["schulden"]["text"]
+
+        # Jede Zahl und jeder Text tragen ihren Beleg.
+        for eintrag in daten["posten"] + daten["erlaeuterungen"]:
+            assert str(eintrag["herkunft_id"]) in daten["herkunft"]
+        h = daten["herkunft"][str(nach_rolle["schulden"]["herkunft_id"])]
+        assert "bilanz_kassenprobe" in h["probe"]
+    finally:
+        cs.close()
+
+
+def test_haushalt_bilanz_ohne_bestand_bleibt_leer(client):
+    """Auf Produktion sind die Haushalts-Tabellen leer (Umgebungs-Gate). Der
+    Endpunkt darf daran nicht scheitern — die Seite lässt den Block dann
+    einfach weg, statt eine halbe Bilanz zu behaupten."""
+    _register(client)
+    antwort = client.get("/api/council/haushalt/bilanz")
+    assert antwort.status_code == 200
+    assert antwort.json() == {"jahre": [], "posten": [], "erlaeuterungen": [],
+                              "herkunft": {}}

@@ -798,6 +798,136 @@ Was der Parser **nicht** tut: aus Jahresergebnis und Kassenveränderung eine
 Differenz bilden. Diese Zahl steht in keiner Quelle und hieße nichts —
 dieselbe Regel, an der der „Kostendeckungsgrad" gescheitert ist.
 
+### Die Vermögensseite: Abschnitt 2.1 desselben Dokuments
+
+Ergebnis- und Finanzrechnung zählen ein **Jahr**. Die Bilanz zählt einen
+**Stichtag**: was die Stadt am 31. Dezember hat, und wem es zusteht. Sie ist
+die Antwort auf die naheliegendste Anschlussfrage der Schuldenseite —
+„Oldenburg hat kaum Kredite, also keine Schulden?". Zum 31.12.2024 stehen
+**43,69 Mio. €** Kredite bei Banken neben **311,79 Mio. €** Zusagen für
+Pensionen und Beihilfe. Eingelesen sind neun Stichtage **2016–2024**
+(`council_bilanz`, Parser `parse_bilanz` in `council/bilanz.py`); der älteste
+hat kein eigenes Dokument, er stammt aus der Vorjahresspalte des Abschlusses
+2017 und wird nur übernommen, wenn diese Spalte für sich ausgeglichen ist.
+
+#### Zwei Zahlen, die beide „die Pensionsrückstellungen" heißen
+
+Der Bilanzauszug 2024 schreibt untereinander:
+
+```
+3.      Rückstellungen                     329.095.270,90  337.210.902,05
+3.1     Pensionsrückstellungen und
+        ähnliche Verpflichtungen 1)        290.925.292,00  311.789.660,00
+3.1.1   Pensionsrückstellungen             249.721.281,00  266.259.316,00
+3.1.2   Beihilferückstellungen              41.204.011,00   45.530.344,00
+```
+
+**Beide Zahlen stimmen, sie messen nur Verschiedenes.** 311,79 Mio. € ist die
+Oberposition 3.1 einschließlich der Beihilfe, 266,26 Mio. € die Pension allein
+(3.1.1); die Differenz ist Position 3.1.2 und geht in jedem Jahrgang auf den
+Cent auf. Der Rechenschaftsbericht bestätigt es in Worten („für die
+Beihilferückstellungen wurden 17,10 % der Pensionsrückstellungen angesetzt" —
+45.530.344 / 266.259.316 = 17,10 %). Wer eine der beiden Zahlen zeigt, muss
+sagen welche: Deshalb heißen die Rollen `pensionen_gesamt` und
+`pensionsrueckstellungen` und nicht beide „Pension", und deshalb trägt jede
+Zeile ihren Wortlaut aus dem Dokument mit.
+
+#### Das Layout wechselt zweimal, und nicht an derselben Stelle
+
+Naheliegend wäre „bis 2020 so, ab 2021 anders". Am Bestand nachgesehen sind es
+**zwei** Änderungen in **zwei verschiedenen Jahren**:
+
+| Jahrgang | Nummerierung | Anordnung |
+|---|---|---|
+| 2017–2019 | römisch (I.–V.) | erst der ganze Aktiva-Block, dann Passiva |
+| 2020 | römisch (I.–V.) | zweispaltig ineinander verschränkt |
+| 2021–2024 | arabisch (1.–5.) | zweispaltig ineinander verschränkt |
+
+2020 ist damit der Jahrgang, den eine Fallunterscheidung „römisch =
+Blocksatz" falsch liest — und zwar lautlos, weil die Hälfte der Zeilen
+trotzdem ankommt. Verschränkt heißt: Beide Seiten teilen sich die Textzeile,
+und die rechte Spalte fängt **mitten in der Zeile** an, direkt hinter den
+Beträgen der linken:
+
+```
+1.2.3  Rücklagen aus Investitions-
+zuwendungen für nicht abnutzbare
+Vermögensgegenstände
+4.372.861,06 4.439.504,15 2.   Sachvermögen 1) 608.118.677,60 605.573.107,06
+                          └─ hier beginnt die Aktivseite wieder
+```
+
+Ein Parser, der Zeilen an `^` trennt, verliert damit jeden zweiten
+Hauptposten. Die Positionserkennung verankert deshalb nicht am Zeilenanfang,
+sondern an „steht hinter Leerraum und vor einem Buchstaben" — Beträge fangen
+nie mit einem Buchstaben an, Gliederungsnummern immer.
+
+Und die **Nummer ist als Schlüssel wertlos**: „1." gibt es ab 2021 auf beiden
+Seiten (Aktiva: Immaterielles Vermögen, Passiva: Nettoposition), und bis 2020
+war sie römisch. Erkannt werden die Zeilen deshalb wie in der Finanzrechnung
+am **Namen, den das Dokument ihnen selbst gibt** (`bilanz.ROLLEN`). Alle drei
+Layouts lesen sich damit ohne eine einzige Fallunterscheidung.
+
+#### Fünf Proben, und die letzte ist die stärkste im Bereich
+
+| Probe | Was sie prüft | Reißt sie, … |
+|---|---|---|
+| `bilanz_ausgleich` | Aktiva = Passiva, auf den Cent | … fällt der ganze Stichtag |
+| `bilanzsumme_gedruckt` | die unter die Tabelle gedruckte Summe (nur 2017–2020) | … fällt nur diese Probe |
+| `rueckstellungs_gliederung` | 3.1.1 + 3.1.2 = 3.1 | … fällt nur diese Probe |
+| `bilanz_vorjahreskette` | jeder Hauptposten steht im **Folgejahrgang** noch einmal als Vorjahr | … fällt die Bilanz beider Stichtage |
+| `bilanz_kassenprobe` | „Liquide Mittel" = „Endbestand an Zahlungsmitteln" der Finanzrechnung | … fällt dieser Stichtag |
+
+Die Kreuzprobe ist die stärkste, die der Bereich hat: Beide Tabellen stehen im
+selben Heft, aber dreißig Seiten auseinander, in verschiedenen Layouts, und
+werden von **zwei getrennt geschriebenen Parsern** gelesen
+(`council/finanzberichte.py` und `council/bilanz.py`). Wenn beide dieselbe Zahl
+herausbekommen, hat sich keiner von beiden verlesen. Am Bestand: acht von acht
+Jahrgängen, jedes Mal auf den Cent (2024: 118.001.891,26 €). Die
+Vorjahres-Kette trägt sieben Übergänge à neun Pflichtposten ohne einen Riss.
+
+Eine Fundstellen-Falle steckt schon in der Auswahl: Weiter hinten im selben
+Heft stehen die Bilanzen der neun **nicht rechtsfähigen Stiftungen**. Sie haben
+dieselbe Gliederung, dieselben Zeilennamen und gehen genauso auf — nur um
+Bilanzsummen von rund 300.000 € statt 1,48 Mrd. €. Ein Parser, der die
+erwischt, merkt es an **keiner** Rechenprobe. Genommen wird deshalb die
+Fundstelle mit den meisten Beträgen dahinter; das Inhaltsverzeichnis und die
+Stiftungen fallen beide über dieselbe Regel weg.
+
+:::caution[Die 207,1 Mio. € dürfen ohne ihren Erklärtext nicht erscheinen]
+Die Bilanz weist 2024 **Schulden von 207,1 Mio. €** aus, nach 84,4 Mio. € im
+Vorjahr. Wer das als Zahl hinschreibt, behauptet eine Verdreifachung — und die
+hat es nicht gegeben: Die Stadt ist seit 2024 zugleich Cashpool-Einheit und
+Cashpool-Führer und muss dieselben Mittel auf **beiden** Bilanzseiten
+ausweisen. Das ergibt eine Bilanzverlängerung von 138,2 Mio. € mit
+Gegenposten im Finanzvermögen (Position 3.8 Privatrechtliche Forderungen).
+Ohne den Sondereffekt sind die Schulden um 15,5 Mio. € **gesunken**.
+
+Der Jahresabschluss erklärt das in Abschnitt 6.2.7 selbst. Genau deshalb ist
+`council_bilanz_erlaeuterungen` keine Zugabe, sondern eine Auflage: Die
+Oberfläche zeigt den Schuldenwert nur, wenn sie den Wortlaut dazu hat — kein
+Text, keine Zahl. Dieselbe Bauart wie `council_abweichungsgruende` für die
+Ergebnisrechnung.
+:::
+
+Der Anhang erläutert die Bilanz Position für Position: 6.2.1 Immaterielles
+Vermögen bis 6.2.9 Passive Rechnungsabgrenzung — genau die neun Hauptposten,
+in genau deren Reihenfolge. Ein Text lässt sich nicht nachrechnen, seine
+**Zuordnung** schon, und die ist hier auch das einzige Risiko: Eine Erläuterung
+unter der falschen Bilanzposition wäre eine Falschaussage, die keine
+Rechenprobe je bemerkte. `erlaeuterungsprobe` prüft deshalb, dass die
+Überschrift von 6.2.N auf das `ROLLEN`-Muster des N-ten Hauptpostens passt —
+mit demselben Muster, mit dem der Parser oben seine Bilanzzeile erkennt.
+Besteht sie nicht, wird **kein** Text gespeichert.
+
+Was hier **nicht** gelesen wird: die über hundert Unterpositionen jenseits von
+`ROLLEN` (eine Zeile ohne Rollen-Marke ließe sich im Layout ab 2021 keiner
+Seite sicher zuordnen, und eine Bilanzzeile auf der falschen Seite wäre
+schlimmer als eine fehlende) und die Anlagen zum Anhang — Anlagen-,
+Forderungs-, Schulden- und Rückstellungsübersicht. Sie liegen jenseits der
+Textmenge, die `scripts/backfill_anlagen_texte.py` aus den PDFs übernimmt, und
+stehen in **keinem** Jahrgang im Volltext.
+
 ## Der Produkt-Steckbrief
 
 Zu jedem Produkt führen die Pläne einen Steckbrief: **Kurzbeschreibung**
