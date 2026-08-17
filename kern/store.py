@@ -7,7 +7,7 @@ import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Iterable
 
 
 logger = logging.getLogger("kern.store")
@@ -1317,19 +1317,35 @@ class Store:
             "WHERE sent_at IS NULL AND attempts >= ? ORDER BY id DESC LIMIT ?",
             (self.MAX_ZUSTELLVERSUCHE, limit))]
 
-    def notifications_sent_on(self, owner_id: int, tag: str) -> int:
+    def notifications_sent_on(self, owner_id: int, tag: str,
+                              kinds: Iterable[str] | None = None, *,
+                              ohne: bool = False) -> int:
         """Wie viele Zustellungen dieses Konto an diesem Kalendertag schon hatte.
 
         Ein Bündel zählt als EINE Zustellung, nicht als seine Einzelposten —
         sonst wäre die Grenze nach dem ersten Bündel sofort erschöpft.
+
+        ``kinds`` zählt nur diese Anlässe, mit ``ohne=True`` alles außer ihnen.
+        Damit haben die termingebundenen Anlässe ihr eigenes Tageskontingent
+        (``kern.notify.TERMINGEBUNDEN``). Tragfähig ist der Filter nur, weil
+        ``notify._zustellen_fuer`` je Sorte bündelt: Ein gemischtes Bündel wäre
+        in beiden Kontingenten eine Zustellung.
         """
+        filt, args = "", ()
+        if kinds:
+            kinds = sorted(kinds)
+            ph = ",".join("?" * len(kinds))
+            filt = f" AND kind {'NOT ' if ohne else ''}IN ({ph})"
+            args = tuple(kinds)
         einzeln = self._conn.execute(
             "SELECT COUNT(*) FROM notification_queue "
-            "WHERE owner_id = ? AND bundled = 0 AND sent_at LIKE ?", (owner_id, f"{tag}%")
+            f"WHERE owner_id = ? AND bundled = 0 AND sent_at LIKE ?{filt}",
+            (owner_id, f"{tag}%", *args)
         ).fetchone()[0]
         buendel = self._conn.execute(
             "SELECT COUNT(DISTINCT sent_at) FROM notification_queue "
-            "WHERE owner_id = ? AND bundled = 1 AND sent_at LIKE ?", (owner_id, f"{tag}%")
+            f"WHERE owner_id = ? AND bundled = 1 AND sent_at LIKE ?{filt}",
+            (owner_id, f"{tag}%", *args)
         ).fetchone()[0]
         return einzeln + buendel
 

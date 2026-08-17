@@ -366,6 +366,7 @@ blieb.
 | Grenze | Regel |
 |---|---|
 | **Zwei am Tag** | pro Person, nicht pro Anlass. Was darüber hinausgeht, nimmt die letzte freie Zustellung als **ein Bündel** mit; ein Bündel zählt als eine Zustellung. Nichts geht verloren — der Rest kommt morgen. |
+| **… außer termingebunden** | `kern.notify.TERMINGEBUNDEN` (derzeit nur `n5_vorabend`) hat einen **eigenen** Vorrat von zwei am Tag. Eine Vorabend-Erinnerung, die einen Tag später kommt, ist nicht verspätet, sondern wertlos — und weil der 18-Uhr-Lauf der letzte des Tages ist, verlor sie den Wettlauf um den gemeinsamen Topf regelmäßig (Prod, 16.08.2026: ab 18 Uhr fertig, zugestellt am Sitzungstag selbst). Innerhalb ihres Topfes gelten dieselben Regeln, also auch das Bündeln ab der dritten. Weil `notifications_sent_on()` je Topf nach `kind` zählt, bündelt `_zustellen_fuer()` nie über die Topfgrenze hinweg — ein gemischtes Bündel wäre in beiden Töpfen eine Zustellung. |
 | **Nachtruhe 21–7 Uhr** | Ortszeit (`zoneinfo`, Europe/Berlin). Was abends anfällt, bekommt `deliver_after` auf 7 Uhr. |
 | **Nie ohne Ereignis** | Es gibt keine Funktion, die ohne Ratsvorgang einreiht. Abzeichen und Quiz-Serien bleiben in der App. |
 | **Immer ein Ziel** | `url` ist Pflichtfeld; `einreihen()` wirft ohne. Antippen öffnet den Beschluss oder die Tagesordnung, nie die Startseite. |

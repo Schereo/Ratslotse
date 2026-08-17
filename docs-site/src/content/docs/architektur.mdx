@@ -76,6 +76,8 @@ App-Geräte via APNs/FCM. Fehlt das Secret eines Kanals, wird dieser still
 Kein Anlass sendet selbst: Alle reihen in `notification_queue` ein, und
 `nwz.notify.zustellen()` liefert zentral aus — unter zwei harten Grenzen
 (höchstens zwei Zustellungen pro Person und Tag, nichts zwischen 21 und 7 Uhr).
+Termingebundene Anlässe — die Vorabend-Erinnerung — zählen dabei in einem
+eigenen Topf, sonst kämen sie am Sitzungstag statt am Vortag.
 Details in [App & Konten](/docs/app-und-konten/#benachrichtigungen-sechs-anlässe-vier-grenzen).
 
 ---

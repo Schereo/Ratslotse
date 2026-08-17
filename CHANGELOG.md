@@ -977,6 +977,16 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 - **Fünf Stellen im Haushalt erklären wieder den Haushalt statt uns.** Unter den Zahlen auf „Der Konzern Stadt" und „Steht Oldenburg besser da als Osnabrück?" standen bisher unsere eigenen Rechenproben und darunter „Gemessen: 0,00 % Abweichung" — jetzt steht dort nur noch, in welchem Abschnitt des Dokuments die Zahl zu finden ist, was beim Nachschlagen im 300-Seiten-PDF hilft. Ebenso raus: „Es erscheinen nur Jahre, deren Zahlen unsere Prüfung bestehen" samt drei Rechenproben in Prosa („Plan gegen Wirklichkeit"), die Parser-Bedingung im Fuß der Prüfungs-Seite und der Betriebsablauf im Datenstand („geprüft wird alle zwei Wochen"). Auf „Muss oder kann?" entfällt die Quote, zu wie viel Prozent unsere Einordnung sich mit der Selbstauskunft der Stadt deckt; die **Abweichung** bleibt und steht jetzt vorn, denn wo beide sich widersprechen, ist das eine Auskunft über die Aufgabe. Was bleibt, ist das, was jemandem etwas sagt: die Quelle, der Hinweis auf eigene Rechnungen und echte Grenzen wie „für dieses Jahr liegt der Schlussbericht nicht in lesbarer Form vor". Die Prüfungen selbst laufen unverändert weiter — sie stehen in Tests und in der Technik-Doku. (#542)
 - **„Frag den Rat" kennt jetzt den Haushalt.** Geldfragen sahen bisher nur Beschluss-Beträge, den Haushaltsplan und die Steuereinnahmen — Jahresabschlüsse, die 377 städtischen Aufgaben samt Rechtsgrundlage, die Feststellungen des Rechnungsprüfungsamts, der Konzern Stadt und der Städtevergleich blieben unsichtbar. Jetzt zieht jede Frage genau die Quellen, die sie beantworten: „Hat die Stadt 2024 mehr ausgegeben als geplant?" bekommt den Jahresabschluss samt Begründung der Verwaltung, „Muss die Stadt das Theater betreiben?" die Rechtsgrundlage der Aufgabe, „Was kostet die Stadt insgesamt?" den Konzern statt nur den Kernhaushalt. Jede Zahl kommt mit Jahr und Fundstelle, und Fragen ohne Geldbezug bekommen weiterhin nichts davon. (#543)
 
+### Geändert
+- **Die Vorabend-Erinnerung kommt jetzt immer am Vortag.** Sie teilte sich das
+  Kontingent von zwei Meldungen am Tag mit allem anderen — und weil sie als
+  letzte des Tages um 18 Uhr eingereiht wird, verlor sie diesen Wettlauf
+  regelmäßig und kam erst am Sitzungstag selbst an. Termingebundene Meldungen
+  haben jetzt ihren eigenen Vorrat: Die Erinnerung geht raus, egal wie viel an
+  dem Tag schon kam, und sie nimmt umgekehrt keiner anderen Meldung den Platz.
+  An einem Abend mit mehreren Sitzungen wird ab der dritten weiterhin
+  gebündelt. (#585)
+
 ### Behoben
 - **„Die Tagesordnung hat sich geändert" verriet nicht, was.** Wurde zu einem
   Punkt nur die Vorlage nachgereicht — Nummer und Titel blieben gleich —, fand
