@@ -268,6 +268,17 @@ PROBEN: dict[str, str] = {
         "Die Gewinn- und Verlustrechnung der Gesellschaft schließt mit genau "
         "dem Jahresergebnis, das die Kennzahlen-Tabelle desselben Abschnitts "
         "führt.",
+    "beteiligung_spaltenprobe":
+        "Der Bericht führt die Aufsichtsorgane als zweispaltige Tabelle — "
+        "links die Namen, rechts die Ämter —, und der Textextrakt liest erst "
+        "die eine Spalte, dann die andere. Beide Listen sind gleich lang; "
+        "damit gehört der n-te Name nachweislich zum n-ten Amt. Wo die "
+        "Längen auseinanderlaufen, steht bei dieser Gesellschaft an keinem "
+        "Namen ein Amt.",
+    "beteiligung_anteilsprobe":
+        "Die Anteile der Gesellschafter ergeben zusammen genau das "
+        "Stammkapital, das dieselbe Tabelle als Summe ausweist — und ihre "
+        "Prozentsätze zusammen 100.",
     "beteiligung_ueberlappung":
         "Jeder Beteiligungsbericht führt vier bis fünf Jahre nebeneinander. "
         "Dieses Jahr steht deshalb in mehreren Berichten — verschiedene "
@@ -336,6 +347,8 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     "council_gesellschaften",
     "council_gesellschaft_texte",
     "council_gesellschaft_kennzahlen",
+    "council_gesellschaft_personen",
+    "council_gesellschaft_eigentuemer",
 )
 
 

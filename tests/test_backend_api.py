@@ -707,6 +707,76 @@ def test_haushalt_beteiligungen_liefert_texte_kennzahlen_und_herkunft(client):
     # Ungeprüft heißt nicht quellenlos: Dokument und Fundstelle stehen da.
     assert h_text["url"] and h_text["fundstelle"]
 
+    # Zwei der fünf Abschnitte sind Tabellen und kommen zerlegt heraus —
+    # sonst müsste die Seite den zweispaltigen PDF-Extrakt am Stück zeigen.
+    personen = [p for p in b["personen"] if p["gesellschaft"] == "egh"]
+    assert [p["name"] for p in personen] == ["Ruth Regina Drügemöller",
+                                             "Ingrid Kruse"]
+    assert personen[0]["gremium"] == "Betriebsausschuss"
+    assert personen[0]["vorsitz"] == "vorsitz"
+    assert personen[1]["vorsitz"] == "stellvertretung"
+    assert all(p["funktion"] == "Ratsmitglied" for p in personen)
+    # Ohne Personenverzeichnis im Testbestand gibt es keinen Treffer — und
+    # dann steht dort ausdrücklich nichts statt irgendwer.
+    assert all(p["slug"] is None and p["partei"] is None for p in personen)
+    assert egh["funktionen_zuordenbar"] is True
+
+    eigner = [e for e in b["eigentuemer"] if e["gesellschaft"] == "egh"]
+    assert [e["name"] for e in eigner] == ["Stadt Oldenburg"]
+    assert eigner[0]["anteil_prozent"] == 100.0
+    # Die Summenzeile ist die Probe und kein Gesellschafter.
+    assert not any(e["name"].startswith("Stammkapital") for e in b["eigentuemer"])
+    h_eigner = b["herkunft"][str(eigner[0]["herkunft_id"])]
+    assert h_eigner["probe"] == "beteiligung_anteilsprobe"
+
+
+def test_beteiligungen_namensvetter_bekommt_keinen_slug():
+    """Zwei Menschen mit demselben Nachnamen — dann lieber kein Link.
+
+    Der Bäderbetrieb führt 2024 „Dr. Sebastian Rohe" und „Dr. Georg Rohe"
+    nebeneinander. Wer auf den Nachnamen zuordnet, hängt einem der beiden die
+    Personen-Seite des anderen an; das wäre eine Falschaussage über einen
+    Menschen und nicht bloß eine Ungenauigkeit.
+
+    Der zweite Fall daneben ist das Gegenteil: Zwei Einträge mit identischem
+    Vor- **und** Nachnamen sind im Verzeichnis fast immer dieselbe Person mit
+    und ohne zweiten Vornamen. Dann entscheidet der ganze Name."""
+    from app.routers.council import _lexikon_zuordnung
+
+    class Lexikon:
+        def personen_lexikon(self):
+            return [
+                {"slug": "sebastian-rohe", "name": "Dr. Sebastian Rohe",
+                 "vorname": "sebastian", "nachname": "rohe", "art": "rat",
+                 "partei": "Grüne"},
+                {"slug": "georg-rohe", "name": "Georg Rohe", "vorname": "georg",
+                 "nachname": "rohe", "art": "rat", "partei": "CDU"},
+                {"slug": "christine-wolff", "name": "Christine Wolff",
+                 "vorname": "christine", "nachname": "wolff", "art": "rat",
+                 "partei": "Grüne"},
+                {"slug": "christine-berta-wolff", "name": "Christine Berta Wolff",
+                 "vorname": "christine", "nachname": "wolff", "art": "rat",
+                 "partei": "Grüne"},
+                # Ein Blocker trägt keinen Namen und darf nie gewinnen.
+                {"slug": "gast-schmidt", "name": None, "vorname": "",
+                 "nachname": "schmidt", "art": "blocker", "partei": None},
+            ]
+
+    z = _lexikon_zuordnung(Lexikon(), [
+        "Dr. Sebastian Rohe", "Dr. Georg Rohe", "Rohe", "Christine Wolff",
+        "Peter Schmidt", "Vertreter/in der Landessparkasse zu Oldenburg"])
+    # Vor- und Nachname zusammen sind eindeutig — Titel zählen nicht mit.
+    assert z["Dr. Sebastian Rohe"] == {"slug": "sebastian-rohe", "partei": "Grüne"}
+    assert z["Dr. Georg Rohe"] == {"slug": "georg-rohe", "partei": "CDU"}
+    # Ein kahler Nachname ist es nicht.
+    assert z["Rohe"]["slug"] is None
+    # Derselbe Mensch zweimal im Verzeichnis: Der gedruckte Name entscheidet.
+    assert z["Christine Wolff"]["slug"] == "christine-wolff"
+    # Gäste (Blocker) tragen keinen Vornamen und bekommen nie einen Treffer.
+    assert z["Peter Schmidt"]["slug"] is None
+    # Und ein Entsendungsrecht ist gar keine Person.
+    assert z["Vertreter/in der Landessparkasse zu Oldenburg"]["slug"] is None
+
 
 def test_haushalt_konzern_liefert_luecke_und_gegenprobe(client):
     """/haushalt/konzern trägt beide Reihen und den Abgleich dazwischen.

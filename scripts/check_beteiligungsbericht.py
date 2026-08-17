@@ -169,6 +169,7 @@ def main(db: str | None = None, heute: date | None = None, trocken: bool = False
     store = CouncilStore(Path(db or COUNCIL_DB))
     fehler: list[str] = []
     ergebnis: dict = {"gesellschaften": 0, "texte": 0, "kennzahlen": 0,
+                      "personen": 0, "eigentuemer": 0, "ohne_zuordnung": 0,
                       "verworfen": 0, "widersprueche": 0, "bestand_geschuetzt": 0,
                       "jahrgaenge": [], "konzernvergleich": 0}
     try:
@@ -261,6 +262,13 @@ def main(db: str | None = None, heute: date | None = None, trocken: bool = False
         "Gesellschaften": ergebnis["gesellschaften"],
         "Textabschnitte": ergebnis["texte"],
         "Kennzahlen": ergebnis["kennzahlen"],
+        "Aufsichtspersonen": ergebnis.get("personen", 0),
+        "Eigentümer": ergebnis.get("eigentuemer", 0),
+        # Wie oft die Spaltenprobe der Aufsichtsorgane gerissen ist. Kein
+        # Fehler, sondern eine Eigenschaft des Dokuments: Dort führt der
+        # Bericht mehr Namen als Ämter, und dann steht bei dieser
+        # Gesellschaft an keinem Namen ein Amt.
+        "Ämter nicht zuordenbar": ergebnis.get("ohne_zuordnung", 0),
         "Ohne Probe verworfen": ergebnis["verworfen"],
         "Widersprüche": ergebnis["widersprueche"],
         "Auch im Gesamtabschluss": ergebnis.get("konzernvergleich", 0),
