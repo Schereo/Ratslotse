@@ -42,6 +42,7 @@ export default defineConfig({
 					items: [
 						{ slug: 'beschluesse' },
 						{ slug: 'haushalt' },
+						{ slug: 'haushalt-quellen-recherche' },
 						{ slug: 'app-und-konten' },
 					],
 				},
