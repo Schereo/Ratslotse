@@ -796,6 +796,40 @@ class CouncilStore:
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (jahr, ebene, thh_nr))"
         )
+        # Die einzelnen Vorhaben aus Anlage 004 des Haushaltsplans
+        # (council/investitionsprogramm.py) — die Ebene unter
+        # `council_investitionen`: nicht „Schule und Bildung: 8,3 Mio. €",
+        # sondern „BBS Haarentor: Ausstattung".
+        #
+        # `ebene` trennt drei Zeilenarten, die zusammen aus einem Dokument
+        # kommen und einander stützen:
+        #   massnahme     — ein Vorhaben, mit IPSP-Element als `code`
+        #   teilhaushalt  — die Gesamtsumme des Abschnitts (Ziel der Probe)
+        #   gesamt        — die Gesamtsumme des Investitionsprogramms
+        #
+        # Gespeichert wird ausschließlich die **Gesamtinvestitionssumme**. Die
+        # Jahresraten der Tabelle sind aus dem Textextrakt nicht sicher zu
+        # holen, weil leere Zellen darin ersatzlos wegfallen — die Begründung
+        # steht im Kopf von council/investitionsprogramm.py.
+        #
+        # `code` ist '' auf den beiden Summenebenen und `thh_nr` 0 auf
+        # `gesamt` — bewusst leer statt NULL, aus demselben Grund wie bei
+        # `council_investitionen`: SQLite hielte zwei NULL-Zeilen für
+        # verschieden, der Primärschlüssel wäre dort keiner.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_investitionsmassnahmen ("
+            "jahr INTEGER NOT NULL, "              # Haushaltsjahrgang (Plan)
+            "ebene TEXT NOT NULL, "                # massnahme|teilhaushalt|gesamt
+            "thh_nr INTEGER NOT NULL DEFAULT 0, "
+            "code TEXT NOT NULL DEFAULT '', "      # IPSP-Element
+            "bezeichnung TEXT NOT NULL, "
+            "gesamtsumme REAL NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, ebene, thh_nr, code))"
+        )
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_invprog_jahr_thh "
+            "ON council_investitionsmassnahmen(jahr, thh_nr)")
         # Schlussberichte des Rechnungsprüfungsamts — nur die **Fundstelle**,
         # nicht der Inhalt: „Das Rechnungsprüfungsamt hat diesen Abschluss
         # geprüft → Schlussbericht". Eine Zeile je Jahrgang.
@@ -1349,8 +1383,13 @@ class CouncilStore:
         # Ebenso die Investitionen des Finanzhaushalts: neu, ohne Altspalten,
         # Herkunft ausschließlich über `herkunft_id`.
         "council_investitionen":        (None, "quelle_url", "opendata"),
-        # Ihr Ist-Gegenstück aus dem Statistischen Jahrbuch — anders als der
-        # Plan kommt es nicht vom Open-Data-Portal, sondern von oldenburg.de.
+        # Und die Maßnahmen aus Anlage 004: ebenfalls neu, ebenfalls ohne
+        # Altspalten. Der Eintrag muss trotzdem stehen — `_herkunft_nachtragen`
+        # schlägt hier nach, bevor es merkt, dass es nichts nachzutragen gibt.
+        "council_investitionsmassnahmen": (None, "quelle_url", "ris"),
+        # Das Ist-Gegenstück aus dem Statistischen Jahrbuch — anders als Plan
+        # und Programm kommt es weder vom Portal noch aus dem RIS, sondern von
+        # oldenburg.de.
         "council_investitionen_ist":       (None, "quelle_url", "stadt"),
         "council_investitionen_ist_arten": (None, "quelle_url", "stadt"),
         # Der Stellenplan — ebenfalls neu und ohne Altbestand.
@@ -3733,6 +3772,10 @@ class CouncilStore:
         # zwei Dokumente im Verzeichnis, wo es eines ist.
         "investitionen":        ("council_investitionen", "jahr",
                                  "t.ebene = 'teilhaushalt'", None),
+        # Alle Zeilen eines Jahrgangs teilen sich eine Herkunft; die
+        # `gesamt`-Zeile gibt es genau einmal und steht hier für das Dokument.
+        "investitionsprogramm": ("council_investitionsmassnahmen", "jahr",
+                                 "t.ebene = 'gesamt'", None),
         # Ein Jahrgang, zwei Herkünfte (Teil A und Teil B im selben PDF, aber
         # unter verschiedenen Proben). Beide zeigen auf dieselbe Datei; die
         # Fundstelle unterscheidet sie, und `DISTINCT` fasst sie deshalb nicht
@@ -4280,6 +4323,80 @@ class CouncilStore:
             return [dict(r) for r in self._conn.execute(
                 "SELECT * FROM council_investitionen" + satz
                 + " ORDER BY jahr, ebene, thh_nr", werte)]
+        except sqlite3.OperationalError:
+            return []
+
+    # --- Investitionsprogramm (Anlage 004 des Haushaltsplans) ---------------
+
+    def save_investitionsprogramm(self, jahr: int, gelesen: dict,
+                                  herkunft) -> int:
+        """Einen Jahrgang Investitionsmaßnahmen ersetzen.
+
+        Maßnahmen und beide Summenebenen zusammen, weil sie aus **einem**
+        Dokument stammen und die Summen die Ziele der Rechenproben sind. Eine
+        Herkunft für alles: Anders als beim Finanzhaushalt gibt es hier keine
+        Zeile, die von den Proben nicht gedeckt wäre — was nicht aufgeht, kommt
+        gar nicht erst herein (``investitionsprogramm.lies``).
+
+        Übergeben wird nur, was die Proben bestanden hat; diese Methode prüft
+        nichts nach, sie schreibt."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute(
+                "DELETE FROM council_investitionsmassnahmen WHERE jahr = ?",
+                (jahr,))
+            werte = []
+            for nr, a in sorted(gelesen["abschnitte"].items()):
+                for m in a["massnahmen"]:
+                    werte.append((jahr, "massnahme", nr, m["code"],
+                                  m["bezeichnung"], m["gesamtsumme"], now, hid))
+                werte.append((jahr, "teilhaushalt", nr, "", a["name"],
+                              a["summe"], now, hid))
+            werte.append((jahr, "gesamt", 0, "", "Gesamtinvestitionsprogramm",
+                          gelesen["kopfsumme"], now, hid))
+            self._conn.executemany(
+                "INSERT INTO council_investitionsmassnahmen "
+                "(jahr, ebene, thh_nr, code, bezeichnung, gesamtsumme, "
+                " fetched_at, herkunft_id) VALUES (?,?,?,?,?,?,?,?)", werte)
+        return len(werte)
+
+    def investitionsprogramm_jahre(self) -> list[int]:
+        """Jahrgänge, für die ein Investitionsprogramm vorliegt (aufsteigend).
+
+        Gezählt an der ``gesamt``-Zeile: Sie kommt nur in die Tabelle, wenn
+        alle drei Proben aufgingen, und kennzeichnet damit einen vollständigen
+        Jahrgang."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT jahr FROM council_investitionsmassnahmen "
+                "WHERE ebene = 'gesamt' ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    def get_investitionsmassnahmen(self, jahr: int | None = None,
+                                   thh_nr: int | None = None,
+                                   ebene: str | None = None) -> list[dict]:
+        """Zeilen des Investitionsprogramms — nach Jahr, Teilhaushalt, Ebene.
+
+        Ohne ``ebene`` kommen alle drei mit. Sie sind beschriftet und dürfen
+        nur so gezeigt werden: Wer die Maßnahmen addiert und das Ergebnis neben
+        die ``teilhaushalt``-Zeile stellt, zeigt zweimal dieselbe Zahl."""
+        wo, werte = [], []
+        if jahr is not None:
+            wo.append("jahr = ?")
+            werte.append(jahr)
+        if thh_nr is not None:
+            wo.append("thh_nr = ?")
+            werte.append(thh_nr)
+        if ebene is not None:
+            wo.append("ebene = ?")
+            werte.append(ebene)
+        satz = (" WHERE " + " AND ".join(wo)) if wo else ""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_investitionsmassnahmen" + satz
+                + " ORDER BY jahr, thh_nr, ebene, code", werte)]
         except sqlite3.OperationalError:
             return []
 

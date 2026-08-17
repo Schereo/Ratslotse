@@ -38,8 +38,9 @@
 // Beleg als Messwert — aber nicht als Absatz auf der Seite. Was hier steht,
 // ist die Quelle, was unsere eigene Rechnung ist, und wo die Zahlen enden.
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { Segmented } from "@/components/ui";
 import { useFetch } from "@/lib/use-fetch";
@@ -48,13 +49,20 @@ import {
   Herkunft, InvestitionenDaten, InvestitionsZeile, finanzhaushaltJahr,
   gesamtJahr, herkunftVon, investitionsAnteil, netto, reihe, teilhaushalte,
 } from "@/lib/haushalt-investitionen";
+import {
+  ProgrammDaten, anzahl, passenderJahrgang,
+} from "@/lib/haushalt-investitionsprogramm";
 import { Anteilsbalken, type Anteil } from "@/components/haushalt/anteilsbalken";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
+import { Vorhaben } from "@/components/haushalt/vorhaben";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { cn } from "@/lib/utils";
 
-const QUELLEN: QuellenSchluessel[] = ["investitionen"];
+const QUELLEN: QuellenSchluessel[] = ["investitionen", "investitionsprogramm"];
+
+/** Anker des Summen-Blocks — Ziel des Rückwegs aus den Vorhaben. */
+const ANKER_BEREICHE = "bereiche";
 
 /** Die Herkunft einer Angabe im Klartext — dieselbe Form wie auf
  *  `/haushalt/konzern`: welcher Abschnitt, welcher Stand.
@@ -88,13 +96,19 @@ function Fundstelle({ h }: { h: Herkunft | null }) {
  *  Der Balken misst an den Auszahlungen des größten Bereichs, nicht an der
  *  Gesamtsumme: Sonst wäre die längste Strecke halb so lang wie das Feld und
  *  die zehn kleinen Bereiche unsichtbar. */
-function Rang({ zeile, skala, farbe }: {
+function Rang({ zeile, skala, farbe, aufVorhaben, vorhandene }: {
   zeile: InvestitionsZeile;
   skala: number;
   /** Dieselbe Rampenstufe wie im Überblicksbalken darüber — die beiden sind
    *  sonst zwei Bilder ohne gemeinsamen Schlüssel, und der Balken wäre bloß
    *  Dekoration. Deshalb trägt er hier keine eigene Legende. */
   farbe: string;
+  /** Der Weg nach unten: von der Summe zu den einzelnen Vorhaben. */
+  aufVorhaben: (thhNr: number) => void;
+  /** Wie viele Vorhaben das Investitionsprogramm für diesen Bereich führt —
+   *  0, wenn der Jahrgang dort fehlt. Dann gibt es nichts zu öffnen, und die
+   *  Zeile bleibt eine Zeile statt zu einem Knopf zu werden, der nichts tut. */
+  vorhandene: number;
 }) {
   const aus = betrag(zeile.auszahlungen);
   const gegen = zeile.einzahlungen > 0 ? betrag(zeile.einzahlungen) : null;
@@ -130,15 +144,46 @@ function Rang({ zeile, skala, farbe }: {
           davon {gegen.wert} {gegen.einheit} durch Zuschüsse, Verkäufe oder Beiträge gedeckt
         </p>
       )}
+      {vorhandene > 0 && (
+        <button
+          type="button"
+          onClick={() => aufVorhaben(zeile.thh_nr)}
+          className="self-start text-[11px] text-primary hover:underline"
+        >
+          {vorhandene} einzelne Vorhaben ansehen
+        </button>
+      )}
     </li>
   );
 }
 
-export default function InvestitionenSeite() {
+function InvestitionenInner() {
   const { data, loading } = useFetch<InvestitionenDaten>("/council/haushalt/investitionen");
+  // Die Vorhaben kommen aus einer anderen Quelle (Haushaltsplan statt
+  // Open-Data-Portal) und reichen weiter zurück. Eigener Abruf, eigene
+  // Jahresliste — zusammengelegt wäre einer von beiden immer beschnitten.
+  const { data: programm } = useFetch<ProgrammDaten>(
+    "/council/haushalt/investitionsprogramm");
   const jahre = useMemo(() => [...(data?.jahre ?? [])].sort((a, b) => a - b), [data]);
   const [jahr, setJahr] = useState<number | null>(null);
   const aktJahr = jahr ?? (jahre.length ? jahre[jahre.length - 1] : null);
+
+  // Welcher Bereich in den Vorhaben offen ist, steht in der URL: Ein Link auf
+  // ein einzelnes Vorhaben soll teilbar sein, und der Zurück-Knopf des
+  // Browsers soll ihn schließen. Query-Parameter statt Route-Segment, weil der
+  // Export (Capacitor) keine dynamischen Segmente kennt.
+  const router = useRouter();
+  const params = useSearchParams();
+  const gewaehlterBereich = Number(params.get("bereich")) || null;
+  const setBereich = (thhNr: number | null) => {
+    const q = new URLSearchParams(params.toString());
+    if (thhNr == null) q.delete("bereich");
+    else q.set("bereich", String(thhNr));
+    const s = q.toString();
+    router.replace(s ? `/haushalt/investitionen?${s}` : "/haushalt/investitionen",
+                   { scroll: false });
+  };
+  const programmJahr = passenderJahrgang(programm?.jahre ?? [], aktJahr);
 
   const zeilen = useMemo(
     () => (aktJahr != null ? teilhaushalte(data, aktJahr) : []),
@@ -309,7 +354,10 @@ export default function InvestitionenSeite() {
           }
         />
 
-        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+        <section
+          id={ANKER_BEREICHE}
+          className="scroll-mt-20 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5"
+        >
           <div className="flex items-baseline justify-between gap-3">
             <h2 className="font-display text-[15.5px] font-bold tracking-tight">
               In welchen Bereichen
@@ -332,7 +380,19 @@ export default function InvestitionenSeite() {
 
           <ul className="mt-4 divide-y divide-[color:var(--border)]">
             {zeilen.map((z) => (
-              <Rang key={z.thh_nr} zeile={z} skala={skala} farbe={farbe(z.thh_nr)} />
+              <Rang
+                key={z.thh_nr}
+                zeile={z}
+                skala={skala}
+                farbe={farbe(z.thh_nr)}
+                vorhandene={programmJahr != null
+                  ? anzahl(programm, programmJahr, z.thh_nr) : 0}
+                aufVorhaben={(nr) => {
+                  setBereich(nr);
+                  document.getElementById("vorhaben")
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+              />
             ))}
           </ul>
 
@@ -362,6 +422,16 @@ export default function InvestitionenSeite() {
             <Fundstelle h={h} />
           </div>
         </section>
+
+        {programmJahr != null && (
+          <Vorhaben
+            daten={programm}
+            jahr={programmJahr}
+            gewaehlt={gewaehlterBereich}
+            aufWaehlen={setBereich}
+            zurueckAnker={ANKER_BEREICHE}
+          />
+        )}
 
         {zeitreihe.length > 1 && (
           <section className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
@@ -415,13 +485,29 @@ export default function InvestitionenSeite() {
           <ul className="mt-2.5 flex list-disc flex-col gap-2 pl-4 text-[12.5px] leading-relaxed text-foreground/90">
             <li>
               <strong className="font-semibold text-foreground">
-                Welches Gebäude, welche Straße — das steht hier nicht.
+                Schulgebäude stehen nicht im Investitionsprogramm.
               </strong>{" "}
-              Die Quelle nennt Summen je Bereich, keine einzelnen Vorhaben. Ob
-              eine bestimmte Schule saniert wird, beantwortet sie nicht. Was der
-              Rat dazu beschlossen hat, findest du über die{" "}
+              Der Bereich „Schule und Bildung" führt Ausstattung — Hardware,
+              Software, Einrichtung — und die berufsbildenden Schulen mit Namen.
+              Sanierung und Neubau der Schulgebäude verantwortet der
+              Eigenbetrieb Gebäudewirtschaft und Hochbau; der hat einen eigenen
+              Wirtschaftsplan, den dieser Haushalt nur erwähnt. Ob eine
+              bestimmte Schule saniert wird, ist deshalb auch hier nicht
+              beantwortet — was der Rat dazu beschlossen hat, findest du über
+              die{" "}
               <Link href="/suche" className="text-primary hover:underline">Suche</Link>{" "}
               in den Beschlüssen.
+            </li>
+            <li>
+              <strong className="font-semibold text-foreground">
+                Die beiden Summen auf dieser Seite zählen Verschiedenes.
+              </strong>{" "}
+              Oben stehen die Zahlungen eines Jahres aus dem Finanzhaushalt,
+              unten die Gesamtkosten der einzelnen Vorhaben über alle Jahre. Sie
+              müssen sich nicht decken und tun es auch nicht — der Haushaltsplan
+              schreibt selbst dazu, dass Eigenleistungen ins
+              Investitionsprogramm gehören, aber nicht in den Finanzhaushalt,
+              weil kein Geld dafür fließt.
             </li>
             <li>
               <strong className="font-semibold text-foreground">
@@ -455,5 +541,20 @@ export default function InvestitionenSeite() {
         <Quellenverzeichnis schluessel={QUELLEN} />
       </div>
     </Quellenkontext>
+  );
+}
+
+export default function InvestitionenSeite() {
+  // useSearchParams braucht eine Suspense-Grenze (Export-Konvention).
+  return (
+    <Suspense
+      fallback={
+        <div className="py-16 text-center text-sm text-muted-foreground">
+          Investitionen werden geladen …
+        </div>
+      }
+    >
+      <InvestitionenInner />
+    </Suspense>
   );
 }

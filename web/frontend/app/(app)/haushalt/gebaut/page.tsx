@@ -295,8 +295,13 @@ export default function GebautPage() {
             </li>
             <li>
               <strong>Kein einzelnes Vorhaben.</strong> Die Tabelle sagt „Baumaßnahmen:
-              16,2 Mio. €“, nicht welche Straße und welche Schule. Wer wissen will, ob
-              ein bestimmtes Gebäude saniert wurde, findet das hier nicht.
+              16,2 Mio. €“, nicht welche Straße. Einzelne Vorhaben stehen auf der
+              Planseite{" "}
+              <Link href="/haushalt/investitionen" className="font-semibold text-primary">
+                „Was wird gebaut?“
+              </Link>{" "}
+              — dort allerdings als <em>geplant</em>, nicht als abgerechnet, und ohne
+              die Schulgebäude, die beim Eigenbetrieb liegen.
             </li>
             <li>
               <strong>Ein Abfluss, kein Fortschritt.</strong> Hier steht, wann Geld die

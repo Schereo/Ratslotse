@@ -221,6 +221,22 @@ PROBEN: dict[str, str] = {
         "Die Auszahlungsarten des Jahres — Baumaßnahmen, Grundstücke, "
         "bewegliches Vermögen und die übrigen — ergeben zusammen genau den "
         "Betrag, den dieselbe Zeile daneben als Summe ausweist.",
+    # Investitionsprogramm, Anlage 004 des Haushaltsplans
+    # (council/investitionsprogramm.py). Drei Proben, die das Dokument selbst
+    # rechnet; erst wenn alle drei aufgehen, kommt ein Jahrgang herein. Die
+    # zweite ist die stärkste — sie verbindet zwei Stellen, die siebzig Seiten
+    # auseinanderliegen.
+    "investitionsprogramm_abschnitt":
+        "Die einzelnen Vorhaben eines Teilhaushalts ergeben zusammen genau die "
+        "Gesamtsumme, die das Investitionsprogramm am Ende seines Abschnitts "
+        "ausweist.",
+    "investitionsprogramm_wiederholung":
+        "Jede dieser Teilhaushaltssummen steht ein zweites Mal im Dokument — "
+        "rund siebzig Seiten früher, in der Übersicht über alle Teilhaushalte. "
+        "Beide Stellen stimmen überein.",
+    "investitionsprogramm_kopftabelle":
+        "In dieser Übersicht ergeben die Teilhaushalte zusammen genau die "
+        "Gesamtsumme des Investitionsprogramms.",
     # Schuldenzeitreihe aus Tabelle 1108 des Statistischen Jahrbuchs
     # (council/schulden.py). Die zweite ist die stärkere: Ihr Divisor kommt aus
     # einer anderen Veröffentlichung der Stadt, und 2022 ist sie die einzige,
@@ -301,9 +317,11 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     "council_ergebnishaushalt",
     # Die Investitionen des Finanzhaushalts — neu, ohne Altbestand.
     "council_investitionen",
-    # Und ihr Gegenstück, die Rechnungsergebnisse aus dem Statistischen
-    # Jahrbuch. Zwei Tabellen, weil die Arten je Jahrgang verschieden viele
-    # sind: die Summe steht in der einen, die Aufteilung in der anderen.
+    # Die einzelnen Vorhaben aus Anlage 004 des Haushaltsplans — ebenso.
+    "council_investitionsmassnahmen",
+    # Und das Ist dazu, die Rechnungsergebnisse aus dem Statistischen Jahrbuch.
+    # Zwei Tabellen, weil die Arten je Jahrgang verschieden viele sind: die
+    # Summe steht in der einen, die Aufteilung in der anderen.
     "council_investitionen_ist",
     "council_investitionen_ist_arten",
     # Der Stellenplan — ebenso.

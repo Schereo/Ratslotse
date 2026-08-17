@@ -39,7 +39,8 @@ export type QuellenSchluessel =
   | "lsn_finanzausgleich" | "lsn_realsteuern" | "vergleich_2018"
   // A11: Die Investitionen des Finanzhaushalts.
   | "investitionen"
-  // Und ihr Ist-Gegenstück aus dem Statistischen Jahrbuch. Bewusst ein
+  | "investitionsprogramm"
+  // Und das Ist-Gegenstück aus dem Statistischen Jahrbuch. Bewusst ein
   // eigener Schlüssel und nicht ein zweiter Absatz unter `investitionen`:
   // Plan und Ist sind zwei Dokumente mit zwei Abgrenzungen, und ein
   // gemeinsamer Eintrag im Quellenverzeichnis lüde dazu ein, sie als eine
@@ -362,6 +363,30 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     lizenz: "dl-de/by-2.0",
     art: "csv",
     url: "https://opendata.oldenburg.de/dataset/haushaltsplan-stadt-oldenburg-2025",
+  },
+  // A12: Das Investitionsprogramm (/haushalt/investitionen, Block „Die
+  // einzelnen Vorhaben"). Die Ebene unter A11 — und aus einer ganz anderen
+  // Quelle: nicht dem Open-Data-Portal, sondern dem Haushaltsplan selbst.
+  investitionsprogramm: {
+    titel: "Investitionsprogramm zum Haushaltsplan (Anlage 004)",
+    fundstelle:
+      "Je Teilhaushalt ein Abschnitt „Investitionen und " +
+      "Investitionsförderungsmaßnahmen“ mit einer Zeile je Vorhaben, davor das " +
+      "„Gesamtinvestitionsprogramm“ mit den Investitionssummen je Teilhaushalt. " +
+      "Übernommen wird die Spalte „Gesamtinvestitionssumme“ — die Kosten eines " +
+      "Vorhabens über alle Jahre. " +
+      "Die Jahresraten daneben (Ansatz je Planjahr, Verpflichtungsermächtigungen) " +
+      "übernehmen wir nicht: Im Textextrakt des PDFs fallen leere Zellen " +
+      "ersatzlos weg, eine Zuordnung zu den Spalten wäre geraten. " +
+      "Es sind Planzahlen aus dem Entwurf der Verwaltung, Stand der Einbringung; " +
+      "was der Rat in den Beratungen ändert, steht nicht darin. " +
+      "Sanierung und Neubau von Schulgebäuden liegen beim Eigenbetrieb " +
+      "Gebäudewirtschaft und Hochbau und stehen deshalb nicht in diesem " +
+      "Programm.",
+    herausgeber: "Stadt Oldenburg, Ratsinformationssystem",
+    stand: "Haushaltsjahre 2019–2026",
+    art: "pdf",
+    url: "https://buergerinfo.oldenburg.de/getfile.php?id=297440&type=do",
   },
   beteiligungsbericht: {
     titel: "Beteiligungsbericht der Stadt Oldenburg (§ 151 NKomVG)",

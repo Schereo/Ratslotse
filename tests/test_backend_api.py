@@ -506,6 +506,7 @@ def test_haushalt_datenstand_nennt_alle_schichten(client):
     b = client.get("/api/council/haushalt/datenstand").json()
     schichten = {s["key"]: s for s in b["schichten"]}
     assert set(schichten) == {"haushaltsplan", "ergebnishaushalt", "investitionen",
+                              "investitionsprogramm",
                               "jahresabschluss", "teilhaushalt", "stellenplan",
                               "rpa_fundstelle",
                               "pruefungsfeststellungen", "konzernabschluss",
@@ -523,6 +524,11 @@ def test_haushalt_datenstand_nennt_alle_schichten(client):
     # nach, weil er im Anlagenbestand liegt statt auf oldenburg.de.
     assert schichten["ergebnishaushalt"]["monat"] == "Oktober"
     assert schichten["ergebnishaushalt"]["automatisch"] is True
+    # Das Investitionsprogramm ist Anlage 004 desselben Plans: gleicher Takt,
+    # und der Cron zieht es selbst nach — anders als die Investitionen, die vom
+    # Open-Data-Portal kommen und deren Ebene darüber es ist.
+    assert schichten["investitionsprogramm"]["monat"] == "Oktober"
+    assert schichten["investitionsprogramm"]["automatisch"] is True
     # Der Stellenplan hängt am selben Plan und wird ebenso selbst nachgezogen.
     # Seine Einheit ist der TEIL, nicht der Jahrgang: Teil A und Teil B kommen
     # einzeln durch ihre Proben (2026 ist Teil B im PDF unlesbar).
