@@ -88,7 +88,11 @@ const _PARTEI_KUERZEL: [RegExp, string][] = [
   [/fdp\/volt/i, "FDP/Volt"], [/für oldenburg/i, "FO"], [/piraten/i, "Piraten"],
 ];
 
-function parteiKuerzel(label: string | null): string {
+/** Das kurze Parteilabel neben einem Namen. Exportiert, weil dieselbe
+ *  Schreibweise auch außerhalb der KI-Antworten gilt (Aufsichtsorgane im
+ *  Beteiligungs-Steckbrief) — zwei Listen mit „Grüne" und „GRÜNE" wären zwei
+ *  Sprachen für dieselbe Fraktion. */
+export function parteiKuerzel(label: string | null): string {
   for (const [re, k] of _PARTEI_KUERZEL) if (label && re.test(label)) return k;
   return "Rat";
 }

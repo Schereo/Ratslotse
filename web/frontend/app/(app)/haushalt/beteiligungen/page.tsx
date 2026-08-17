@@ -32,6 +32,11 @@
 // dynamische Segmente brauchen dort eine vorab bekannte Pfadliste. Dieselbe
 // Entscheidung wie bei /haushalt/produkte (`?nr=`) und /haushalt/bereich.
 //
+// DER STECKBRIEF SELBST steht in `components/haushalt/beteiligung-steckbrief.tsx`
+// — er ist kein Textausguss mehr, sondern Zahlenkopf, Anteilsstreifen und
+// Personenliste, und trägt seine Begründungen im eigenen Kopfkommentar. Diese
+// Datei bleibt die Liste: Karten, Konzernkarte, Filter.
+//
 // KEINE BEWERTUNGSFARBEN, wie im ganzen Bereich
 // (components/grafik/hantel.tsx): Kein Rot für ein negatives
 // Jahresergebnis, keine Pfeile, kein Ampel-Punkt. Ein Verkehrsbetrieb, der
@@ -45,12 +50,12 @@
 import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, ArrowRight, Building2, FileText } from "lucide-react";
+import { ArrowRight, Building2, FileText } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
 import {
-  ABSCHNITTE, BeteiligungsDaten, Gesellschaft, KENNZAHL_TITEL, Kennzahl,
-  RECHTSFORM_TITEL, Rechtsform, eur, herkunftVon, juengster, rechtsform,
-  reihen, sortiert, textVon, wertText,
+  BeteiligungsDaten, Gesellschaft, Kennzahl, RECHTSFORM_TITEL, Rechtsform,
+  auftragSatz, einordnungFuer, eur, herkunftVon, rechtsform, reihen, sortiert,
+  wertText,
 } from "@/lib/haushalt-beteiligungen";
 import type { JahrPunkt } from "@/components/grafik/daten";
 import { deZahl } from "@/components/grafik/format";
@@ -58,50 +63,12 @@ import { ZeitreiheMini } from "@/components/grafik/zeitreihe";
 import { Einordnung } from "@/components/grafik/einordnung";
 import { FormZeichen, Konzernkarte } from "@/components/haushalt/konzernkarte";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
+import { Steckbrief } from "@/components/haushalt/beteiligung-steckbrief";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { cn } from "@/lib/utils";
 import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 
 const QUELLEN = ["beteiligungsbericht"] as const;
-
-/** Der erste Satz des Unternehmensgegenstands — der ganze Absatz steht im
- *  Steckbrief. Abgeschnitten wird am Satzende, nicht nach n Zeichen. */
-function auftragSatz(daten: BeteiligungsDaten, g: Gesellschaft): string | null {
-  const gegenstand = textVon(daten, g.gesellschaft, "gegenstand");
-  if (!gegenstand) return null;
-  const glatt = gegenstand.text.replace(/\s+/g, " ");
-  return glatt.match(/^.{20,200}?\.(?=\s|$)/)?.[0] ?? glatt.slice(0, 160);
-}
-
-/** Der Pflicht-Satz unter der Zahl (GB-00 <Einordnung>): berichtet, bewertet
- *  nicht. Wo die Daten eine Aussage tragen, kommt sie aus den Daten
- *  (Gesamtabschluss-Abgleich, Ergebnisabführung); für die Betriebe, deren
- *  Auftrag die Zahl sonst verzerrte, steht die redaktionelle Einordnung der
- *  H3-Boards. Der Rückfall-Satz sagt ehrlich, dass die Zahl allein nichts
- *  benotet. */
-function einordnungFuer(daten: BeteiligungsDaten, g: Gesellschaft,
-                        ergebnisse: Kennzahl[]): string {
-  const redaktionell: Record<string, string> = {
-    vwg: "Ein Verkehrsbetrieb mit Verlust erfüllt seinen Auftrag — Busfahren soll "
-      + "bezahlbar sein, nicht profitabel.",
-    gsg: "Überschüsse bleiben im Unternehmen und finanzieren Neubau und Sanierung.",
-  };
-  if (redaktionell[g.gesellschaft]) return redaktionell[g.gesellschaft];
-
-  if (ergebnisse.length >= 2 && ergebnisse.every((k) => k.wert === 0)) {
-    return "Die Null ist Vertragslage, kein Stillstand: Der Betrieb führt sein "
-      + "Ergebnis an die Stadt ab oder bekommt es ausgeglichen.";
-  }
-  const juengstes = ergebnisse[ergebnisse.length - 1];
-  const vergleich = daten.konzernvergleich.find((z) => z.gesellschaft === g.gesellschaft);
-  if (juengstes && vergleich && vergleich.jahr === juengstes.jahr
-      && Math.abs(vergleich.differenz) <= 1000) {
-    return "Der Betrag ist deckungsgleich mit dem Gesamtabschluss — zwei Quellen, "
-      + "eine Zahl.";
-  }
-  return "Gewinn oder Verlust ist hier keine Note — welchen Auftrag die "
-    + "Gesellschaft damit erfüllt, steht in ihrem Steckbrief.";
-}
 
 /** Die Jahresergebnis-Reihe als Daten-Vertrag des Baukastens: Werte in
  *  Mio. €, ohne erfundene Zwischenjahre — was der Bericht nicht nennt,
@@ -198,176 +165,6 @@ function Karte({ daten, g, onOeffnen }: {
   );
 }
 
-/** Wo eine Angabe im Dokument steht — bei 200 Seiten der Unterschied zwischen
- *  „steht in dem PDF" und „steht auf Seite 178, Abschnitt 2.4.8". */
-function Fundstelle({ h, className }: {
-  h: ReturnType<typeof herkunftVon>; className?: string;
-}) {
-  if (!h?.fundstelle) return null;
-  const ziel = h.seite && h.url ? `${h.url}#page=${h.seite}` : h.url;
-  return (
-    <div className={cn("border-t border-dashed border-border pt-2.5", className)}>
-      <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-        Woher das stammt
-      </p>
-      <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
-        {h.label ?? "Beteiligungsbericht"}, {h.fundstelle}
-        {h.seite ? `, Seite ${h.seite}` : ""}
-        {ziel && (
-          <>
-            {" · "}
-            <a href={ziel} target="_blank" rel="noopener noreferrer"
-              className="font-semibold text-primary">
-              Dokument öffnen
-            </a>
-          </>
-        )}
-      </p>
-    </div>
-  );
-}
-
-/** Die Zeitreihe einer Kennzahl im Steckbrief — als Tabelle, und das ist
- *  keine Bequemlichkeit: Die Reihen sind vier bis acht Werte lang, teils
- *  lückenhaft, und drei Gesellschaften weisen durchgehend 0,00 € aus
- *  (Ergebnisabführung). Eine Kurve daraus zeigte vor allem die Lücken als
- *  Knicke — die Verlaufs-Form zeigt die Sparkline auf der Karte. */
-function Reihe({ daten, zeilen }: { daten: BeteiligungsDaten; zeilen: Kennzahl[] }) {
-  if (!zeilen.length) return null;
-  const h = herkunftVon(daten, zeilen[zeilen.length - 1].herkunft_id);
-  return (
-    <div>
-      <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-        {KENNZAHL_TITEL[zeilen[0].kennzahl]}
-      </p>
-      <dl className="mt-1.5 flex flex-wrap gap-x-5 gap-y-1.5">
-        {zeilen.map((k) => (
-          <div key={k.jahr} className="flex flex-col">
-            <dt className="font-mono text-[10px] tabular-nums text-muted-foreground">
-              {k.jahr}
-            </dt>
-            <dd className="font-display text-[15px] font-semibold tabular-nums">
-              {wertText(k)}
-            </dd>
-          </div>
-        ))}
-      </dl>
-      <Fundstelle h={h} className="mt-2.5" />
-    </div>
-  );
-}
-
-function Steckbrief({ daten, g, zurueck }: {
-  daten: BeteiligungsDaten; g: Gesellschaft; zurueck: () => void;
-}) {
-  const alleReihen = useMemo(() => reihen(daten, g.gesellschaft), [daten, g.gesellschaft]);
-  const vergleich = daten.konzernvergleich.find((z) => z.gesellschaft === g.gesellschaft);
-  const quote = alleReihen.get("eigenkapitalquote");
-  const ergebnis = alleReihen.get("jahresergebnis");
-  const form = rechtsform(g);
-  // Die Eigenkapitalquote des jüngsten Jahres trägt keine Probe und steht
-  // deshalb nicht im Bestand (Begründung: council/beteiligungsbericht.py).
-  // Eine stumme Lücke sähe nach Fehler aus.
-  const quoteFehlt = !!ergebnis?.length && !!quote?.length
-    && quote[quote.length - 1].jahr < ergebnis[ergebnis.length - 1].jahr;
-
-  return (
-    <div className="flex flex-col gap-4">
-      <button type="button" onClick={zurueck}
-        className="group flex items-center gap-1.5 self-start text-[13px] font-semibold text-primary">
-        <ArrowLeft size={14} strokeWidth={2}
-          className="transition-transform group-hover:-translate-x-0.5" />
-        Alle Gesellschaften
-      </button>
-
-      <div>
-        <p className="flex items-center gap-1.5 font-mono text-[10.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-          {form && <FormZeichen form={form} className="h-3 w-3" />}
-          {form ? RECHTSFORM_TITEL[form] : "Städtische Einheit"} · Bericht {g.bericht_jahr}
-        </p>
-        <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
-          {g.name}
-        </h1>
-      </div>
-
-      {ABSCHNITTE.map(({ key, titel }) => {
-        const t = textVon(daten, g.gesellschaft, key);
-        if (!t) return null;
-        return (
-          <section key={key} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-              {titel}
-            </p>
-            {/* `whitespace-pre-line`, weil der Abschnitt „Wer sie beaufsichtigt"
-                eine Namensliste ist: Zu einem Absatz verschmolzen wäre sie
-                unlesbar. Der Bericht setzt je Person eine Zeile. */}
-            <p className="mt-1.5 max-w-[76ch] whitespace-pre-line text-[13px] leading-relaxed text-foreground/90">
-              {t.text}
-            </p>
-            <Fundstelle h={herkunftVon(daten, t.herkunft_id)} className="mt-3" />
-          </section>
-        );
-      })}
-
-      <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-          Die Zahlen im Zeitverlauf
-        </p>
-        <p className="mt-1.5 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
-          Was die Gesellschaft erwirtschaftet hat und wie groß ihre Bilanz ist.
-          <Beleg q="beteiligungsbericht" />
-        </p>
-        <div className="mt-3 flex flex-col gap-4">
-          {(["jahresergebnis", "bilanzsumme", "eigenkapitalquote"] as const).map((k) => (
-            <Reihe key={k} daten={daten} zeilen={alleReihen.get(k) ?? []} />
-          ))}
-        </div>
-        {quoteFehlt && (
-          <p className="mt-3 text-[12px] leading-relaxed text-muted-foreground">
-            Für {ergebnis![ergebnis!.length - 1].jahr} steht die Eigenkapitalquote noch
-            nicht dabei: Der Bericht nennt sie, rechnet sie aber nirgends vor. Sobald sie
-            im nächsten Bericht ein zweites Mal steht, kommt sie hinzu.
-          </p>
-        )}
-      </section>
-
-      {vergleich && (
-        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            Dieselbe Gesellschaft im Gesamtabschluss
-          </p>
-          <p className="mt-1.5 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
-            Der{" "}
-            <Link href="/haushalt/konzern" className="font-semibold text-primary">
-              Gesamtabschluss
-            </Link>{" "}
-            führt {g.name} als eigenen Aufgabenträger. Er rechnet anders: Dort zählen nur
-            die ordentlichen Erträge und Aufwendungen, hier steht das vollständige
-            Jahresergebnis der Gesellschaft.
-          </p>
-          <dl className="mt-3 flex flex-wrap gap-x-8 gap-y-2">
-            <div>
-              <dt className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-                Beitrag im Konzern {vergleich.jahr}
-              </dt>
-              <dd className="font-display text-[17px] font-bold tabular-nums">
-                {eur(vergleich.konzern_beitrag)}
-              </dd>
-            </div>
-            <div>
-              <dt className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-                Jahresergebnis {vergleich.jahr}
-              </dt>
-              <dd className="font-display text-[17px] font-bold tabular-nums">
-                {eur(vergleich.jahresergebnis)}
-              </dd>
-            </div>
-          </dl>
-        </section>
-      )}
-    </div>
-  );
-}
 
 /** Formen-Filter + Suche über den Karten (H3-02 „Suche + Filter nach Form";
  *  mobil sind die Chips der Ersatz für die Konzernkarte im Fluss, H4-11). */
