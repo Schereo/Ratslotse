@@ -40,8 +40,10 @@ import { Flussbild } from "@/components/haushalt/flussbild";
 import { Kassenzettel, kassenzettelQuellen } from "@/components/haushalt/kassenzettel";
 import { Steuereuro } from "@/components/haushalt/steuereuro";
 import { Zeitreihe } from "@/components/haushalt/zeitreihe";
+import { NahtSaeulen, type NahtJahr } from "@/components/grafik/naht-saeulen";
 import {
-  HaushaltDaten,
+  AUSGABEN_QUELLE_LABEL, HaushaltDaten,
+  ausgabenKonflikte, ausgabenreihe,
   deMio, fehlendeJahre, flussJahre, jahreSortiert, mio, quellenLabel, summe,
 } from "@/lib/haushalt";
 
@@ -60,6 +62,31 @@ export default function HaushaltPage() {
     ? mio(gesamt.aufwendungen - gesamt.ertraege) : null;
   const luecken = fehlendeJahre(jahre);
   const quelle = aktJahr ? quellenLabel(zeilen, aktJahr) : null;
+
+  // --- Die lange Reihe (Datensatz 1102) ------------------------------------
+  // Alle Jahre mit Betrag, dazwischen die Lücken als Daten (GB-00-Vertrag).
+  // Werte in Mio. €, `art` ist der Titel, den die Quelle ihrem Block gibt —
+  // daraus wird die Legende, und die nennt damit beide Abgrenzungen beim
+  // Namen statt „alt"/„neu".
+  const lange = useMemo(() => (data ? ausgabenreihe(data) : []), [data]);
+  const langeJahre = useMemo<NahtJahr[]>(() => {
+    if (!data?.ausgabenreihe || lange.length < 2) return [];
+    const nach = new Map(lange.map((z) => [z.jahr, z]));
+    const js: NahtJahr[] = [];
+    for (let y = lange[0].jahr; y <= lange[lange.length - 1].jahr; y++) {
+      const z = nach.get(y);
+      js.push(z
+        ? {
+            jahr: y,
+            teile: [{
+              art: data.ausgabenreihe.regelwerke[z.regelwerk].titel,
+              wert: z.betrag / 1e6,
+            }],
+          }
+        : { jahr: y, fehlt: "kein Wert in den beiden Veröffentlichungen der Stadt" });
+    }
+    return js;
+  }, [data, lange]);
 
   // Das gewählte Jahr in die Scrollzeile holen — NUR waagerecht.
   // Sieben Jahre passen auf 375 px nicht nebeneinander, und die Voreinstellung
@@ -92,7 +119,24 @@ export default function HaushaltPage() {
     "plan",
     ...(zeigtZettel ? kassenzettelQuellen(data, aktJahr) : []),
     ...(flussJahre(data).length > 0 ? (["jahresabschluss"] as const) : []),
+    ...(langeJahre.length > 0 ? (["ausgabenreihe"] as const) : []),
   ];
+
+  // Die lange Reihe: Endpunkte, Naht und die beiden Befunde, die dazugehören.
+  // Alles gerechnet, nichts geschrieben — ein fester Satz wäre beim nächsten
+  // Jahrgang still falsch (Hausregel des Bereichs).
+  const langErster = lange[0] ?? null;
+  const langLetzter = lange[lange.length - 1] ?? null;
+  const nahtAb = data.ausgabenreihe?.naht_ab ?? null;
+  const konflikte = ausgabenKonflikte(data);
+  // Das jüngste Jahr der Reihe steht hier, bevor sein Jahresabschluss vorliegt
+  // — der eigentliche Nebengewinn dieser Quelle. Gemessen an dem, was wir an
+  // Abschlüssen haben, nicht an einer Jahreszahl im Code.
+  const juengsterAbschluss = Math.max(
+    0, ...(data.ergebnisrechnung ?? []).map((p) => p.jahr));
+  const vorDemAbschluss =
+    langLetzter && juengsterAbschluss > 0 && langLetzter.jahr > juengsterAbschluss
+      ? langLetzter.jahr : null;
 
   return (
     <Quellenkontext schluessel={quellen} jahr={aktJahr}>
@@ -246,6 +290,133 @@ export default function HaushaltPage() {
           Quelle: Beschlossene Haushaltspläne {jahre[0]}–{jahre[jahre.length - 1]}, Stadt Oldenburg · jeweils Planwerte, nicht Jahresabschluss.
         </p>
       </div>
+
+      {/* Die lange Reihe (Datensatz 1102). Sie steht NACH der Plan-Zeitreihe
+          und ersetzt sie nicht: Dort geht es um die Schere zwischen geplanten
+          Einnahmen und Ausgaben über sieben Jahre, hier um eine einzige
+          Größe über 54. Beides in ein Bild zu ziehen hieße, Plan und Ist auf
+          einer Achse zu mischen.
+
+          Die Naht 2009/2010 rendert <NahtSaeulen> selbst — samt Farbwechsel,
+          Trennlinie und dem Satz darunter. Die Seite kann sie nicht
+          wegkürzen, und die Komponente rechnet nichts über sie hinweg. */}
+      {langeJahre.length > 0 && langErster && langLetzter && data.ausgabenreihe && (
+        <section className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+          <div>
+            <h2 className="max-w-[30ch] font-display text-[19px] font-bold leading-snug tracking-tight">
+              So viel gibt die Stadt aus — seit {langErster.jahr}
+            </h2>
+            <p className="mt-1.5 max-w-[74ch] text-sm leading-relaxed text-foreground/90">
+              Die Ausgaben eines ganzen Jahres, {langErster.jahr}&nbsp;bis&nbsp;
+              {langLetzter.jahr}: von {deMio(langErster.betrag / 1e6)}&#8239;Mio.&nbsp;€
+              auf {deMio(langLetzter.betrag / 1e6)}&#8239;Mio.&nbsp;€
+              <Beleg q="ausgabenreihe" />.{" "}
+              {nahtAb != null && (
+                <>Die Naht {nahtAb - 1}/{nahtAb} ist echt: Dort wechselte die Stadt
+                ihr Rechnungswesen, und links und rechts davon zählt die Tabelle
+                etwas anderes.</>
+              )}
+            </p>
+          </div>
+          <NahtSaeulen
+            jahre={langeJahre}
+            naht={nahtAb != null ? {
+              zwischen: [nahtAb - 1, nahtAb],
+              text: `Zum 1. Januar ${nahtAb} stellte die Stadt von der `
+                + "Kameralistik auf die doppelte Buchführung um — die Fußnote "
+                + "der Tabelle nennt die Umstellung selbst. Links und rechts "
+                + "der Naht zählt sie deshalb etwas anderes; vergleichen lässt "
+                + "sich das, verrechnen nicht.",
+            } : undefined}
+            einheit="Mio. €"
+            titel="Ausgaben der Stadt Oldenburg"
+            beleg={<Beleg q="ausgabenreihe" />}
+          />
+          {/* Was links und was rechts gezählt wird — in den Worten der
+              Quelle, nicht in unseren. Die Legende der Grafik nennt die
+              beiden Titel, hier steht, was dahintersteckt. */}
+          {nahtAb != null && (
+            <dl className="grid gap-3 border-t border-dashed border-border pt-3 breit:grid-cols-2">
+              {([["kameral", `bis ${nahtAb - 1}`],
+                 ["doppik", `ab ${nahtAb}`]] as const).map(([r, spanne]) => (
+                <div key={r}>
+                  <dt className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+                    {spanne} · {data.ausgabenreihe!.regelwerke[r].titel}
+                  </dt>
+                  <dd className="mt-1 max-w-[74ch] text-[12px] leading-relaxed text-foreground/80">
+                    {data.ausgabenreihe!.regelwerke[r].abgrenzung}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          <p className="max-w-[76ch] text-[11.5px] leading-relaxed text-muted-foreground">
+            Alle Beträge in Euro des jeweiligen Jahres — die Teuerung ist nicht
+            herausgerechnet. Ein Teil der Bewegung ist also verändertes Preisniveau
+            und nicht mehr Leistung. Aus demselben Grund steht hier kein Betrag je
+            Einwohner*in: Die Einwohnerreihe hat zwei Zensus-Brüche (2011 und 2022),
+            an denen die Zahl springt, ohne dass sich etwas verändert hätte.
+          </p>
+        </section>
+      )}
+
+      {/* Die zwei Befunde zur langen Reihe: der Widerspruch zwischen den
+          Quellen und das Jahr, das es vor seinem Abschluss gibt. Beides sind
+          Eigenschaften der Quelle, keine Selbstauskunft über unsere Arbeit —
+          deshalb stehen sie als Inhalt und nicht als Fußnote. */}
+      {(konflikte.length > 0 || vorDemAbschluss) && (
+        <div className="grid gap-4 breit:grid-cols-2">
+          {konflikte.map((k) => (
+            <section key={k.jahr}
+              className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+                Zwei amtliche Quellen, zwei Beträge
+              </p>
+              <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
+                Für {k.jahr} nennt {AUSGABEN_QUELLE_LABEL[k.quelle]}{" "}
+                {deMio(k.betrag / 1e6)}&#8239;Mio.&nbsp;€,{" "}
+                {k.konflikt_quelle
+                  ? AUSGABEN_QUELLE_LABEL[k.konflikt_quelle]
+                  : "die andere Veröffentlichung"}{" "}
+                {deMio((k.konflikt_betrag ?? 0) / 1e6)}&#8239;Mio.&nbsp;€ — rund{" "}
+                {deMio(Math.abs((k.konflikt_betrag ?? 0) - k.betrag) / 1e6)}
+                &#8239;Mio.&nbsp;€ Unterschied. Im Bild steht der erste Wert:{" "}
+                {/* Nur behaupten, was diese Zeile auch belegt hat: Der Verweis
+                    auf den Abschluss steht an der Zeile als bestandene Probe.
+                    Ohne ihn trägt der Wert allein die Rechnung, die in der
+                    Tabelle selbst steht. */}
+                {k.proben.includes("ausgabenreihe_jahresabschluss") ? (
+                  <>Es ist derselbe, den auch der Jahresabschluss {k.jahr} in seiner
+                  Gesamtergebnisrechnung ausweist<Beleg q="jahresabschluss" />.</>
+                ) : (
+                  <>Er ist der einzige der beiden, der zu dem Betrag je Einwohner*in
+                  passt, den dieselbe Zeile daneben nennt.</>
+                )}{" "}
+                Die abweichende Zahl steht hier, damit sie nicht stillschweigend
+                verschwindet.{konflikte.length === 1 && (
+                  <> Es ist das einzige der {lange.length} Jahre, in dem die beiden
+                  Veröffentlichungen auseinandergehen.</>
+                )}
+              </p>
+            </section>
+          ))}
+          {vorDemAbschluss && (
+            <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+                {vorDemAbschluss} steht hier vor seinem Jahresabschluss
+              </p>
+              <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
+                Der jüngste Jahresabschluss der Stadt ist der von {juengsterAbschluss};
+                bis der von {vorDemAbschluss} beschlossen und veröffentlicht ist,
+                vergehen Monate. Die Gesamtsumme des Jahres steht in dieser Tabelle
+                trotzdem schon<Beleg q="ausgabenreihe" />. Was sich hinter ihr
+                verbirgt — welcher Bereich wie viel ausgegeben hat, wie der Plan
+                dazu stand —, steht dort nicht: Das kommt erst mit dem Abschluss.
+              </p>
+            </section>
+          )}
+        </div>
+      )}
 
       {/* Steht am Fuß und gilt für den ganzen Bereich: Wer hier ankommt, hat
           die Zahlen gesehen und fragt sich, bis wann sie reichen. */}

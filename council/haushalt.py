@@ -110,11 +110,22 @@ STEUERN_CSV_URL = ("https://opendata.oldenburg.de/sites/default/files/"
                    "1104_Steuereinnahmen_0.csv")
 STEUERKRAFT_CSV_URL = ("https://opendata.oldenburg.de/sites/default/files/"
                        "1106_Steuerkraftmesszahlen-Schl%C3%BCsselzuweisung_0.csv")
-# Aus diesem Datensatz nehmen wir NUR die Einwohnerzahl (Spalte klar
-# beschriftet). Die Aufwendungs-Spalte lassen wir bewusst liegen: Sie weicht
-# vom beschlossenen Plan ab (2024: 764,7 statt 728,2 Mio.), ist aber nirgends
-# als Ist oder Nachtrag gekennzeichnet — als „Ist“ ausgewiesen wäre sie eine
-# Behauptung. Plan-vs-Ist kommt aus den Jahresabschlüssen, wenn sie geparst sind.
+# Hier steht die Einwohnerzahl je Haushaltsjahr (Spalte klar beschriftet).
+#
+# Die Aufwendungs-Spalte derselben Datei lag bis 08/2026 bewusst liegen, mit
+# dieser Begründung: „Sie weicht vom beschlossenen Plan ab (2024: 764,7 statt
+# 728,2 Mio.), ist aber nirgends als Ist oder Nachtrag gekennzeichnet — als
+# ‚Ist‘ ausgewiesen wäre sie eine Behauptung."
+#
+# Die Beschriftung ist inzwischen gefunden — sie steht nicht im CSV, sondern im
+# PDF derselben Tabelle 1102 („Ordentliche Aufwendungen des Ergebnishaushalts
+# — Gesamtergebnisrechnung —"), und der Abgleich gegen die Jahresabschlüsse
+# geht auf den Tausender genau auf. Die Spalte wird deshalb jetzt gelesen, aber
+# NICHT hier: `council/ausgabenreihe.py` liest sie zusammen mit dem PDF und mit
+# der älteren CSV desselben Datensatzes (Verwaltungshaushalt 1972–2009), weil
+# erst die zweite Quelle die Proben liefert, an denen der Wert hängt. Was `Ist`
+# hier heißt und wo der Versatz von 0,03–0,05 % gegen `council_ergebnisrechnung`
+# herkommt, steht im Kopf jenes Moduls.
 EINWOHNER_CSV_URL = ("https://opendata.oldenburg.de/sites/default/files/"
                      "1102-Ordentliche_Aufwendungen_des_Ergebnishaushaltes_seit_2010.csv")
 
@@ -165,7 +176,8 @@ def parse_steuereinnahmen(csv_text: str) -> list[dict]:
 def parse_einwohner(csv_text: str) -> list[dict]:
     """Einwohnerzahlen je Haushaltsjahr (Stichtag 31.12. des Vorjahres) →
     ``{jahr, einwohner}``. Basis für Pro-Kopf-Einordnungen; die
-    Aufwendungs-Spalten desselben CSV bleiben ungenutzt (s. o.)."""
+    Aufwendungs-Spalten desselben CSV liest ``council/ausgabenreihe.py``
+    (s. o.)."""
     rows: list[dict] = []
     for line in csv_text.splitlines()[1:]:
         cells = [c.strip() for c in line.split(";")]
@@ -223,10 +235,9 @@ def parse_steuerkraft(csv_text: str) -> list[dict]:
     Die beiden Pro-Kopf-Spalten kommen bewusst **nicht** mit. Die Stadt
     rechnet sie gegen die Einwohnerzahl ihrer eigenen (verschobenen)
     Jahresangabe — nach dem Rücken stünde eine Ausgleichsjahr-Zahl über
-    einer Einwohnerzahl, die ein Jahr zu früh ist. Das ist derselbe Grund,
-    aus dem schon die Aufwendungs-Spalte des Datensatzes 1102 liegen bleibt:
-    lieber keine Zahl als eine, deren Beschriftung nicht trägt. Wer sie
-    braucht, teilt den Absolutwert durch ``council_einwohner``.
+    einer Einwohnerzahl, die ein Jahr zu früh ist. Es gilt hier wie überall im
+    Bereich: lieber keine Zahl als eine, deren Beschriftung nicht trägt. Wer
+    sie braucht, teilt den Absolutwert durch ``council_einwohner``.
     """
     rows: list[dict] = []
     for line in csv_text.splitlines()[1:]:

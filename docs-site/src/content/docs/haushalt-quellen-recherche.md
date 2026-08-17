@@ -112,20 +112,24 @@ Sammelberichte tragen Schwellenwerte, keine Beträge.
 **Nebenbefund:** In acht Jahren wurde **keine einzige** Nachbewilligung
 abgelehnt — 128 angenommen im Rat, 128 im Ausschuss, 0 abgelehnt.
 
-## Rang 5 — Fast geschenkt: 55 Jahre Ausgaben
+## Rang 5 — Fast geschenkt: 54 Jahre Ausgaben *(umgesetzt)*
 
-**Wir laden diese CSV bereits herunter** — und nutzen nur die
-Einwohnerspalte. Die Ausgabenspalte bleibt liegen: Verwaltungshaushalt
-1972–2009 plus ordentliche Aufwendungen 2010–2025 (2025: 850,17 Mio €).
+**Erledigt.** Die Reihe steht seit 08/2026 auf `/haushalt`; Technik und Proben
+in [Haushalt](/docs/haushalt/#die-lange-ausgabenreihe-datensatz-1102-seit-1972).
+Was die Recherche gefunden hatte und was die Umsetzung daraus gemacht hat:
 
-Gegen `council_ergebnisrechnung` geprüft: konstanter Versatz von 0,03–0,04 %.
-Bonus: Die Reihe liefert **2025**, obwohl der jüngste Jahresabschluss der von
-2024 ist.
-
-**Datenfehler gefunden:** PDF und CSV widersprechen sich in genau einem von 24
-Jahren — 2021 steht im CSV mit 613.572 T€, im PDF mit 608.910 T€. Unser
-Jahresabschluss sagt 608,695 Mio €, **der CSV-Wert ist um 4,66 Mio € falsch**.
-Der PDF↔CSV-Abgleich ist damit eine fertige Probe mit bekannter Ausnahme.
+- Der **Versatz von 0,03–0,05 %** gegen `council_ergebnisrechnung` war keine
+  Unschärfe, sondern eine Abgrenzung: Die Statistik zählt die
+  *Gesamtergebnisrechnung* (Kernhaushalt **und** nicht rechtsfähige
+  Stiftungen), unser Parser die *Ergebnisrechnung der Kernverwaltung*. Der
+  Rechenschaftsbericht rechnet die Differenz selbst vor. Gegen die
+  Gesamtergebnisrechnung stimmt die Statistik auf den Tausender genau.
+- Der **2021er-Widerspruch** ist schärfer als gedacht: 613.571.622,10 € ist auf
+  den Tausender genau der **Ansatz** des Jahres — in der Tabelle des
+  Jahresabschlusses die Spalte links vom Ergebnis. Im CSV ist dort eine Spalte
+  verrutscht. Auflösen lässt sich das ohne den Jahresabschluss, weil die
+  CSV-Zeile ihre eigene Pro-Kopf-Rechnung nicht erfüllt.
+- **2025** liefert die Reihe wie erwartet — Monate vor dem Jahresabschluss.
 
 ## Rang 6 — Trifft die Stadt ihre Steuerschätzung?
 
@@ -240,10 +244,10 @@ vermutet:
    online, das Internet Archive hat vom Statistik-Verzeichnis **null**
    Schnappschüsse. Tabellen mit nur drei Jahrgängen (1103, 0803) verlieren
    jedes Jahr ihr ältestes unwiederbringlich.
-2. **Zwei Datenfehler in amtlichen Quellen gefunden:** der 1102-CSV-Wert für
-   2021 (s. o.) und, in der LSN-Datei „Kommunale Finanzen 2024", ein
-   Braunschweiger Wert in Oldenburgs Zeile. Externe Quellen brauchen
-   Plausibilisierung wie unsere eigenen.
+2. **Zwei Datenfehler in amtlichen Quellen gefunden:** im 1102-CSV steht für
+   2021 der Ansatz statt des Ergebnisses (s. o.), und in der LSN-Datei
+   „Kommunale Finanzen 2024" steht ein Braunschweiger Wert in Oldenburgs
+   Zeile. Externe Quellen brauchen Plausibilisierung wie unsere eigenen.
 
 ## Lizenzlage
 

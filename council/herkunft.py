@@ -306,6 +306,27 @@ PROBEN: dict[str, str] = {
         "dem Open-Data-Datensatz der Stadt, ergibt den Betrag je Einwohner*in, "
         "den dieselbe Zeile nennt. Beide Seiten stammen aus verschiedenen "
         "Veröffentlichungen und beziehen sich auf denselben Stichtag.",
+    # Die lange Ausgabenreihe aus Datensatz 1102 (council/ausgabenreihe.py).
+    # Drei Proben, und sie greifen gestaffelt: Die erste trägt jede der 54
+    # Zeilen, die zweite die 24 Jahre mit zwei Quellen, die dritte die acht mit
+    # Jahresabschluss. Was ein Jahrgang bestanden hat, steht an seiner Zeile.
+    "ausgabenreihe_prokopf":
+        "Die Tabelle rechnet sich selbst vor: Der Betrag des Jahres, geteilt "
+        "durch die Einwohnerzahl derselben Zeile, ergibt den Betrag je "
+        "Einwohner*in, den dieselbe Zeile daneben ausweist. Diese Rechnung "
+        "trägt jedes Jahr der Reihe — auch die dreißig, für die es keine "
+        "zweite Quelle gibt.",
+    "ausgabenreihe_zweitquelle":
+        "Dieselbe Reihe steht an zwei Stellen: im Statistischen Jahrbuch der "
+        "Stadt und im Open-Data-Portal. Beide werden getrennt gelesen, und für "
+        "dieses Jahr nennen sie denselben Betrag.",
+    "ausgabenreihe_jahresabschluss":
+        "Der Betrag deckt sich mit dem Jahresabschluss desselben Jahres. "
+        "Verglichen wird gegen die Ergebnisrechnung der Kernverwaltung, und "
+        "die zählt eine Kleinigkeit weniger: Die Statistik nimmt die "
+        "Gesamtergebnisrechnung, also Kernhaushalt und nicht rechtsfähige "
+        "Stiftungen zusammen. Genau um deren Aufwendungen liegen die beiden "
+        "auseinander — gemessen zwischen 0,03 und 0,05 Prozent.",
     # Beteiligungsbericht nach § 151 NKomVG (council/beteiligungsbericht.py).
     # Die ersten beiden stehen im Dokument selbst, die dritte spannt sich über
     # mehrere Jahrgänge — zusammen decken sie auch das jüngste Berichtsjahr,
@@ -407,6 +428,8 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     # Die Schuldenzeitreihe aus dem Statistischen Jahrbuch — ebenfalls neu und
     # ausschließlich über `herkunft_id` belegt.
     "council_schulden",
+    # Die lange Ausgabenreihe seit 1972 (Datensatz 1102) — ebenso.
+    "council_ausgabenreihe",
     # Der Beteiligungsbericht (council/beteiligungsbericht.py). Die Texte
     # stehen bewusst mit dabei: Sie tragen `UNGEPRUEFT`, aber sie tragen eine
     # Herkunft — Dokument, Abschnitt und Seite. „Keine Probe" ist etwas

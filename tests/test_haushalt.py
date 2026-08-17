@@ -358,8 +358,8 @@ def test_save_steuerkraft_raeumt_verwaiste_jahrgaenge_ab(tmp_path, quelle):
 
 def test_parse_einwohner():
     """Einwohnerzahlen aus dem 1102-CSV — Bezugsgröße für Pro-Kopf-Angaben.
-    Die Aufwendungs-Spalten desselben CSV bleiben bewusst ungenutzt (sie sind
-    weder als Plan noch als Ist gekennzeichnet)."""
+    Die Aufwendungs-Spalte derselben Datei liest ``council/ausgabenreihe.py``
+    (dort mit ihren eigenen Proben); dieser Parser nimmt sie nicht mit."""
     csv = ("Haushaltsjahr;Einwohner am 31.12. des Vorjahres;Aufwendungen gesamt [T Euro];"
            "Aufwendungen je Einwohner [Euro]\n"
            "2010;161334;358800;2224\n"

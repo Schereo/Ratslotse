@@ -15,9 +15,10 @@ fortgeschrieben — Grundlage des Haushalts-Bereichs:
   früh, ``haushalt.parse_steuerkraft`` rückt sie aufs Ausgleichsjahr. Warum
   wir uns das trauen, steht in ``council/haushalt._STEUERKRAFT_VERSATZ``.
 - **Einwohnerzahlen seit 2010** → ``council_einwohner``. Bezugsgröße für
-  Pro-Kopf-Einordnungen. Aus demselben CSV NICHT übernommen: die
-  Aufwendungs-Spalte — sie weicht vom beschlossenen Plan ab, ohne als Ist
-  oder Nachtrag gekennzeichnet zu sein.
+  Pro-Kopf-Einordnungen. Die Aufwendungs-Spalte derselben Datei holt ein
+  eigener Lauf (``scripts/ingest_ausgabenreihe.py``): Sie braucht das
+  Jahrbuch-PDF und die ältere CSV desselben Datensatzes dazu, weil erst die
+  zweite Quelle die Proben liefert, an denen der Wert hängt.
 - **Investitionen des Finanzhaushalts 2022–2025** → ``council_investitionen``.
   Was die Stadt bauen und kaufen will, je Teilhaushalt. Die einzige dieser
   Dateien mit einer **Rechenprobe im Dokument selbst**: Die Teilhaushalte
@@ -104,8 +105,9 @@ def main() -> int:
                 url=haushalt.EINWOHNER_CSV_URL,
                 label="Einwohnerzahlen je Haushaltsjahr",
                 fundstelle="Datensatz 1102, Einwohner-Spalte (Stichtag 31.12. "
-                           "des Vorjahres) — die Aufwendungs-Spalten desselben "
-                           "Datensatzes bleiben bewusst ungenutzt",
+                           "des Vorjahres) — die Aufwendungs-Spalte derselben "
+                           "Datei ist eine eigene Schicht mit eigenen Proben "
+                           "(council_ausgabenreihe)",
                 stand=_spanne(ew)))
             print(f"Einwohnerzahlen: {n} Jahre ({_spanne(ew)}).")
         else:
