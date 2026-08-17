@@ -227,8 +227,26 @@ function PlanIstInner() {
   const planVorhanden = gesamt.ertrPlan != null && gesamt.aufwPlan != null;
   const ertrDiff = (gesamt.ertrIst ?? 0) - (gesamt.ertrPlan ?? 0);
   const aufwDiff = (gesamt.aufwIst ?? 0) - (gesamt.aufwPlan ?? 0);
-  const saldoPlan = (gesamt.ertrPlan ?? 0) - (gesamt.aufwPlan ?? 0);
-  const saldoIst = (gesamt.ertrIst ?? 0) - (gesamt.aufwIst ?? 0);
+  // DAS JAHRESERGEBNIS IST NICHT ERTRÄGE MINUS AUFWENDUNGEN.
+  //
+  // Erträge und Aufwendungen (Posten 12 und 20) sind die ORDENTLICHEN; ihre
+  // Differenz ist das ordentliche Ergebnis (Posten 21). Das Jahresergebnis
+  // ist 21 + 24, also samt außerordentlichem Ergebnis. Für 2024 sind das
+  // +34,6 gegen +6,1 Mio. € — die 28,5 Mio. € dazwischen sind das
+  // außerordentliche Ergebnis, und die Kachel hieß trotzdem „Tatsächliches
+  // Jahresergebnis".
+  //
+  // `planGegenIst()` in lib/haushalt.ts rechnet seit jeher mit 21 + 24 und
+  // begründet es im Docstring; diese Seite war die einzige Stelle, die der
+  // Regel nicht folgte. Deshalb hier derselbe Weg statt einer zweiten Formel.
+  const jahresergebnis = (art: "plan" | "ergebnis") => {
+    const teile = [21, 24].map((nr) => (data.ergebnisrechnung ?? []).find(
+      (p) => p.jahr === jahr && p.nr === nr && p.thh_nr == null));
+    if (teile.some((t) => !t || t[art] == null)) return null;
+    return teile.reduce((s, t) => s + (t![art] as number), 0) / 1e6;
+  };
+  const saldoPlan = jahresergebnis("plan");
+  const saldoIst = jahresergebnis("ergebnis");
   const kasse = kassensicht(data, jahr);
   const quellen: QuellenSchluessel[] = kasse
     ? ["jahresabschluss", "finanzrechnung", "plan"]
@@ -355,7 +373,10 @@ function PlanIstInner() {
             ihrem Plan vergleicht, steht das weiter unten.
           </p>
         )}
-        {planVorhanden && (
+        {/* Eigener Schalter, nicht `planVorhanden`: Die Kacheln hängen jetzt an
+            den Posten 21 und 24, nicht mehr an den Summen 12 und 20. Ein
+            Jahrgang kann die einen führen und die anderen nicht. */}
+        {saldoPlan != null && saldoIst != null && (
           <div className="mt-3 grid gap-2.5 border-t border-border/60 pt-3 sm:grid-cols-2">
             <div>
               <p className="text-[11.5px] text-muted-foreground">Geplantes Jahresergebnis</p>
@@ -367,6 +388,10 @@ function PlanIstInner() {
               <p className="text-[11.5px] text-muted-foreground">Tatsächliches Jahresergebnis</p>
               <p className="font-display text-[20px] font-bold tabular-nums">
                 {saldoIst > 0 ? "+" : ""}{deMio(saldoIst)}<span className="text-xs font-semibold text-muted-foreground">&#8239;Mio.</span>
+              </p>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+                Ordentliches und außerordentliches Ergebnis zusammen — nicht nur
+                die Differenz der beiden Summen darüber.
               </p>
             </div>
           </div>
