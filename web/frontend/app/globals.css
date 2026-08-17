@@ -755,6 +755,41 @@
   }
 }
 
+/* Waffel des Grafik-Baukastens (GB-06, Regel „Waffel (Personal)" aus H4-A):
+   Desktop und Tablet zeigen `--gb-waffel-desk` Quadrate je Reihe (14), unter
+   744 px — dieselbe Mobil-Schwelle wie bei der Ableseleiste — sind es
+   `--gb-waffel-mobil` (10) bei 13 px Kantenlänge. Die Spaltenzahlen kommen
+   als Props aus der Komponente; die Schwelle steht nur hier, damit sie EINE
+   Zahl bleibt. Die Zählweise (1 Quadrat = 10 Stellen) ändert sich nicht. */
+.gb-waffel {
+  display: grid;
+  grid-template-columns: repeat(var(--gb-waffel-desk, 14), var(--gb-waffel-q, 18px));
+  gap: 5px;
+  width: fit-content;
+}
+.gb-waffel .gb-waffel-q {
+  width: var(--gb-waffel-q, 18px);
+  height: var(--gb-waffel-q, 18px);
+}
+@media (max-width: 743.98px) {
+  .gb-waffel {
+    --gb-waffel-q: 13px;
+    grid-template-columns: repeat(var(--gb-waffel-mobil, 10), var(--gb-waffel-q));
+    gap: 4px;
+  }
+}
+
+/* Die Mobil-Schwelle der H4-Boards (unter 744 px) als Sichtbarkeits-Utility.
+   Tailwinds `sm`/`md` (640/768) treffen sie beide nicht; statt je Seite eine
+   eigene Media-Query zu raten, hängt „mobil weglassen heißt: hinter einen
+   Auslöser" (H4-A) an diesen zwei Klassen. `gb-nur-mobil` zeigt den Auslöser
+   nur mobil, `gb-ab-tablet` versteckt den Inhalt darunter. */
+.gb-nur-mobil { display: none; }
+@media (max-width: 743.98px) {
+  .gb-nur-mobil { display: block; }
+  .gb-ab-tablet { display: none; }
+}
+
 /* Regler im Haushalts-Labor (H-19): Der Browser bringt Tastatur- und
    Touch-Verhalten mit, die Bahn zeichnen wir selbst — nur so lassen sich
    Ist-Marke und Füllung ab dieser Marke zeigen. Deshalb ist der Input
