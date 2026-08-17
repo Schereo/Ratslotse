@@ -65,7 +65,18 @@ jobs:
             .venv/bin/python scripts/ingest_finanzberichte.py
             .venv/bin/python scripts/ingest_pruefberichte.py
             .venv/bin/python scripts/ingest_konzernabschluss.py
-            .venv/bin/python scripts/ingest_staedtevergleich.py
+
+            # ingest_staedtevergleich.py läuft hier BEWUSST NICHT mit. Es
+            # verlangt drei Datei-URLs als Pflichtargumente (--kfa,
+            # --kfa-vorjahr, --realsteuer), und die tragen beim Landesamt für
+            # Statistik undurchsichtige Download-Nummern („/download/227086"),
+            # die sich nicht vorhersagen lassen — sie stehen nur auf den
+            # Übersichtsseiten. Der Lauf brach deshalb am 17.08. mit Exit 2 ab,
+            # nachdem alles davor bereits erledigt war.
+            #
+            # Der Städtevergleich wird von Hand nachgezogen, wenn das Land eine
+            # neue Ausgabe veröffentlicht; die Adressen stehen im Kopf des
+            # Skripts.
 
             # Was danach dasteht — und vor allem, ob eine Zeile ohne Herkunft
             # durchgerutscht ist. Das ist die einzige Zahl, die null sein MUSS.
