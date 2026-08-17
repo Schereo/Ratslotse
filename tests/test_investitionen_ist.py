@@ -172,6 +172,34 @@ def test_2019_faellt_ganz_heraus():
     assert "1,304,000" not in verworfen[0]["grund"]
 
 
+def test_die_differenz_kommt_als_zahl_neben_dem_satz():
+    """Die gemessene Lücke ist eine Zahl, nicht nur ein Wort im Grund.
+
+    Der Grund ist ein Satz für Menschen („um -1.304.000 € gerissen"). Wer den
+    Betrag später auf der Seite zeigen will, müsste ihn aus diesem Satz
+    zurückparsen — eine zweite, stille Schnittstelle, die beim nächsten
+    Umformulieren bricht. Deshalb reist die Differenz als ``float`` mit,
+    vorzeichenbehaftet und in Euro: 66.595 T€ gezählt gegen 67.899 T€
+    ausgewiesen."""
+    verworfen = next(v for v in ii.lies(TABELLE)["verworfen"] if v["jahr"] == 2019)
+    assert verworfen["differenz"] == -1_304_000
+    # Und der Satz nennt dieselbe Zahl — zwei Auskünfte, eine Messung.
+    assert ii.de_zahl(verworfen["differenz"], vorzeichen=True) in verworfen["grund"]
+
+
+def test_eine_unzerlegbare_zeile_hat_KEINE_differenz():
+    """Ohne zerlegte Felder gibt es nichts zu messen — und dann steht dort
+    ``None`` und nicht ``0``.
+
+    Eine Null wäre an dieser Stelle die Behauptung „die Arten ergaben die
+    Summe genau", also das Gegenteil des Befunds."""
+    kaputt = TABELLE.replace("2017 4.933 1.574 8.150 6.750 519 123 22.049",
+                             "2017 4.933 1.574 8.150 6.750 519 22.049")
+    verworfen = next(v for v in ii.lies(kaputt)["verworfen"] if v["jahr"] == 2017)
+    assert verworfen["differenz"] is None
+    assert "zerlegbar" in verworfen["grund"]
+
+
 def test_die_luecke_wird_gemeldet(gelesen):
     """Was der Titel ankündigt und nicht ankommt, ist ein Befund.
 
@@ -230,7 +258,8 @@ def test_die_probe_ist_dem_herkunfts_register_bekannt():
 
 
 def test_beide_tabellen_stehen_im_herkunfts_register():
-    for tabelle in ("council_investitionen_ist", "council_investitionen_ist_arten"):
+    for tabelle in ("council_investitionen_ist", "council_investitionen_ist_arten",
+                    "council_investitionen_ist_verworfen"):
         assert tabelle in herkunft.HERKUNFT_TABELLEN
 
 
@@ -246,11 +275,12 @@ def store(tmp_path):
 def _speichern(store, gelesen):
     for regelwerk in ("kameral", "doppik"):
         teil = [z for z in gelesen["zeilen"] if z["regelwerk"] == regelwerk]
+        verworfen = [v for v in gelesen["verworfen"] if v["regelwerk"] == regelwerk]
         store.save_investitionen_ist(teil, herkunft.Herkunft(
             art="stadt", url=ii.TABELLE_URL,
             probe="investitionen_ist_zeilensumme",
             fundstelle=f"Tabelle {regelwerk}",
-            probe_ergebnis=f"{len(teil)} Jahrgänge"))
+            probe_ergebnis=f"{len(teil)} Jahrgänge"), verworfen=verworfen)
 
 
 def test_speichern_und_lesen(store, gelesen):
@@ -303,10 +333,43 @@ def test_ein_lauf_raeumt_die_anderen_jahrgaenge_nicht_ab(store, gelesen):
     assert len(store.get_investitionen_ist()) == 7
 
 
+def test_die_verworfenen_jahrgaenge_stehen_mit_ihrer_differenz_im_bestand(
+        store, gelesen):
+    """Die Kette, die den Betrag an die Lücke bringt: Parser → Store.
+
+    Ohne diese Zeile wüsste die Seite nur, DASS 2019 fehlt. Die Zahl daneben
+    ist der Unterschied zwischen „2019 fehlt" und „2019 fehlt, weil 1,3 Mio. €
+    auseinanderlagen" — und sie darf nirgends im Frontend stehen."""
+    _speichern(store, gelesen)
+    verworfen = store.get_investitionen_ist_verworfen()
+    assert [v["jahr"] for v in verworfen] == [2019]
+    assert verworfen[0]["regelwerk"] == "doppik"
+    assert verworfen[0]["differenz"] == -1_304_000
+    assert verworfen[0]["herkunft_id"] is not None
+    # Und der Jahrgang steht NICHT in der Reihe — die Lücke ist kein Wert.
+    assert 2019 not in [z["jahr"] for z in store.get_investitionen_ist()]
+
+
+def test_ein_geretteter_jahrgang_verliert_seinen_lueckeneintrag(store, gelesen):
+    """Korrigiert die Stadt ihre Tabelle, verschwindet die Lücke mit ihr.
+
+    Ohne das Löschen stünde derselbe Jahrgang in beiden Tabellen, und die
+    Seite zeigte eine beschriftete Lücke neben einer gezeichneten Säule."""
+    _speichern(store, gelesen)
+    assert [v["jahr"] for v in store.get_investitionen_ist_verworfen()] == [2019]
+    geheilt = ii.parse("2019 6.004 3.306 19.304 6.701 626 30.654 66.595", "doppik")
+    assert ii.zeilensumme(geheilt[0])[0], "die Testzeile muss die Probe bestehen"
+    store.save_investitionen_ist(geheilt, herkunft.Herkunft(
+        art="stadt", url=ii.TABELLE_URL, probe="investitionen_ist_zeilensumme"))
+    assert store.get_investitionen_ist_verworfen() == []
+    assert 2019 in [z["jahr"] for z in store.get_investitionen_ist()]
+
+
 def test_leere_datenbank_liefert_leer(store):
     """Ohne Ingest-Lauf keine Ausnahme, sondern nichts."""
     assert store.get_investitionen_ist() == []
     assert store.investitionen_ist_jahre() == []
+    assert store.get_investitionen_ist_verworfen() == []
     assert store.investitionen_ist_kontext() is None
 
 

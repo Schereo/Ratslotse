@@ -28,7 +28,7 @@
 // MATHE: d3-scale linear für die y-Positionen; das Entzerren der Labels
 // (SVG-Text weicht nicht von selbst aus) ist ein einfacher Durchlauf von
 // oben nach unten mit Mindestabstand — dieselbe Sorte Handarbeit wie in
-// components/haushalt/schulden-kurve.tsx.
+// components/grafik/zeitreihe.tsx.
 
 import { useId, type ReactNode } from "react";
 import { scaleLinear } from "d3-scale";

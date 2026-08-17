@@ -169,7 +169,12 @@ def main() -> int:
             geschrieben = 0
             for regelwerk in ("kameral", "doppik"):
                 teil = [z for z in zeilen if z["regelwerk"] == regelwerk]
-                if not teil:
+                verw = [v for v in ergebnis["verworfen"]
+                        if v["regelwerk"] == regelwerk]
+                # Ein Regelwerk ganz ohne Jahrgänge wird trotzdem geschrieben,
+                # WENN es verworfene hat: Sonst verlöre die Seite genau dann
+                # die Begründung ihrer Lücke, wenn alles gerissen ist.
+                if not teil and not verw:
                     continue
                 von, bis = spannen[regelwerk]
                 nummer = "1107-1" if regelwerk == "doppik" else "1107"
@@ -177,9 +182,12 @@ def main() -> int:
                 fundstelle = (f"Kapitel 11 „Verwaltung und Finanzen“, Tabelle "
                               f"{nummer} — je Jahr die Auszahlungsarten "
                               f"({arten}) und ihre Summe")
-                nachweis = (f"Jahrgänge {teil[0]['jahr']}–{teil[-1]['jahr']} "
-                            f"({len(teil)} von {bis - von + 1} angekündigten): "
-                            f"Zeilensumme bestanden")
+                nachweis = (
+                    f"Jahrgänge {teil[0]['jahr']}–{teil[-1]['jahr']} "
+                    f"({len(teil)} von {bis - von + 1} angekündigten): "
+                    f"Zeilensumme bestanden" if teil else
+                    f"Kein Jahrgang von {bis - von + 1} angekündigten hat die "
+                    f"Zeilensumme bestanden")
                 fehlt = ergebnis["fehlende_jahrgaenge"].get(regelwerk) or []
                 if fehlt:
                     # Was fehlt, gehört in den Messwert — sonst liest sich
@@ -190,13 +198,18 @@ def main() -> int:
                                  + " — dort ergeben die Auszahlungsarten in der "
                                    "Quelltabelle nicht die Summe daneben, und "
                                    "eine zweite Probe trägt diese Tabelle nicht")
+                # Die verworfenen Jahrgänge reisen mit: Ihre gemessene
+                # Differenz ist die Auskunft, die die Lücke auf der Seite
+                # beziffert — im Fließtext des Grundes wäre sie für die
+                # Oberfläche verloren.
                 geschrieben += store.save_investitionen_ist(teil, h.Herkunft(
                     art="stadt", url=url or ii.TABELLE_URL,
                     label=f"Statistisches Jahrbuch der Stadt Oldenburg, Tabelle "
                           f"{nummer} — Investitionen {von} bis {bis}",
                     stand=f"Rechnungsergebnisse {von}–{bis}",
                     probe="investitionen_ist_zeilensumme",
-                    fundstelle=fundstelle, probe_ergebnis=nachweis))
+                    fundstelle=fundstelle, probe_ergebnis=nachweis),
+                    verworfen=verw)
             print(f"  gespeichert: {geschrieben} Jahrgänge")
 
         store.herkunft_aufraeumen()

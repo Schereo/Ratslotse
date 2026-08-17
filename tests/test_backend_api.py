@@ -880,6 +880,65 @@ def test_haushalt_konzern_liefert_luecke_und_gegenprobe(client):
                                 "jahresabschluss": 799057202.86, "ok": True}]
 
 
+def test_haushalt_gebaut_beziffert_seine_luecken(client):
+    """/haushalt/gebaut liefert zu jeder Lücke die GEMESSENE Differenz.
+
+    Der Grund für diese Kette: 2019 ergeben die sechs Auszahlungsarten im
+    Jahrbuch 1,304 Mio. € weniger als die Summe daneben; der Jahrgang fällt
+    deshalb ganz heraus (``council/investitionen_ist.py``). Die Seite soll
+    nicht nur sagen, dass das Jahr fehlt, sondern wie weit es auseinanderlag —
+    und diese Zahl darf nirgends im Frontend stehen, sonst wird sie mit dem
+    nächsten Jahrbuch still falsch."""
+    from council import herkunft, investitionen_ist as ii
+
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    try:
+        zeilen = ii.parse(
+            "2018 6.377 1.977 15.885 4.536 478 19.000 48.253\n"
+            "2019 6.004 3.306 19.304 6.701 626 30.654 67.899\n"
+            "2020 9.165 1.753 16.462 8.340 495 34.266 70.481\n", "doppik")
+        gut = [z for z in zeilen if ii.zeilensumme(z)[0]]
+        assert [z["jahr"] for z in gut] == [2018, 2020], "2019 muss reißen"
+        verworfen = [{"jahr": 2019, "regelwerk": "doppik", "differenz": -1_304_000.0,
+                      "grund": "Zeilensumme um -1.304.000 € gerissen"}]
+        cs.save_investitionen_ist(gut, herkunft.Herkunft(
+            art="stadt", url="https://example.org/1107.pdf",
+            probe="investitionen_ist_zeilensumme",
+            fundstelle="Kapitel 11, Tabelle 1107-1"), verworfen=verworfen)
+    finally:
+        cs.close()
+
+    b = client.get("/api/council/haushalt/gebaut").json()
+    assert [z["jahr"] for z in b["reihe"]] == [2018, 2020]
+    assert b["fehlend"] == {"doppik": [{"jahr": 2019, "differenz": -1_304_000.0}]}
+
+
+def test_haushalt_gebaut_erfindet_keine_differenz(client):
+    """Ohne Messung im Bestand bleibt die Lücke unbeziffert.
+
+    Der Fall gibt es wirklich: Ein Jahrgang, der vor dem Ausbau dieser Schicht
+    verworfen wurde, steht in keiner Verworfen-Tabelle. Die Lücke bleibt
+    trotzdem sichtbar — mit ``differenz: null``, damit die Seite den Betrag
+    weglässt, statt einen zu schätzen."""
+    from council import herkunft, investitionen_ist as ii
+
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    try:
+        zeilen = ii.parse(
+            "2018 6.377 1.977 15.885 4.536 478 19.000 48.253\n"
+            "2020 9.165 1.753 16.462 8.340 495 34.266 70.481\n", "doppik")
+        cs.save_investitionen_ist(zeilen, herkunft.Herkunft(
+            art="stadt", url="https://example.org/1107.pdf",
+            probe="investitionen_ist_zeilensumme"))
+    finally:
+        cs.close()
+
+    b = client.get("/api/council/haushalt/gebaut").json()
+    assert b["fehlend"] == {"doppik": [{"jahr": 2019, "differenz": None}]}
+
+
 def test_sessions_carry_my_topic_items(client):
     """RL-902: Tagesordnungs-Treffer der eigenen Themen hängen an der Sitzung —
     und nur an der eigenen (fremde Owner-Treffer bleiben unsichtbar)."""
@@ -3552,12 +3611,26 @@ def test_haushalt_schulden_traegt_die_zinslast_aus_dem_jahresabschluss(client):
                              label="Jahresabschluss 2024",
                              url="https://example.org/ja.pdf"))
 
+        # Derselbe Posten 17 steht im Abschluss noch einmal je Teilhaushalt.
+        # Er darf NICHT als zweite „Zinslast" desselben Jahres herauskommen:
+        # Die Seite zeigte sonst je nach Sortierung mal die Kernverwaltung,
+        # mal einen einzelnen Teilhaushalt unter derselben Überschrift.
+        cs.save_ergebnisrechnung(2024, [
+            {"nr": schulden.POSTEN_ZINSAUFWAND,
+             "bezeichnung": "Zinsen und ähnliche Aufwendungen",
+             "ergebnis": 4_084_574.90, "ist_summe": 0},
+        ], herkunft.Herkunft(art="ris", probe="strukturprobe", dokument_id=295294,
+                             label="Jahresabschluss 2024",
+                             fundstelle="Teil-Ergebnisrechnung THH04",
+                             url="https://example.org/ja.pdf"),
+            thh_nr=4, thh_name="Finanzmanagement und Recht")
+
         antwort = client.get("/api/council/haushalt/schulden")
         assert antwort.status_code == 200
         daten = antwort.json()
 
         zins = daten["zinslast"]
-        assert [z["jahr"] for z in zins] == [2024]
+        assert [z["jahr"] for z in zins] == [2024], "je Jahr genau eine Zinslast"
         assert zins[0]["aufwand"] == 7_250_000.0
         # Die Herkunft muss mitkommen — sonst steht die Zahl ohne Beleg da.
         assert str(zins[0]["herkunft_id"]) in daten["herkunft"]
