@@ -26,7 +26,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   2019–2020"), weil nicht jedes Jahr jeden Teilhaushalt deckt; und im
   Haushalts-Labor klebt das Ergebnis auf dem Telefon jetzt unten über der
   Tab-Leiste — die Wirkung steht direkt unterm Daumen, statt oben ein
-  Drittel des Schirms zu belegen. (#PR)
+  Drittel des Schirms zu belegen. (#580)
 - **Vier weitere Formen im Grafik-Baukasten.** Der Gegenbalken (zwei
   100-%-Leisten, die sich eine einzige Basis teilen — der Maßstabsfehler,
   bei dem ein Defizit-Haushalt ausgeglichen aussieht, ist damit technisch
@@ -38,7 +38,7 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   und das verallgemeinerte Flussbild (bewusst kein Sankey: alle Kurven enden
   in der EINEN Kasse). Die Haushalts-Seiten benutzen sie bereits; für Leser
   ändert sich das Bild kaum, aber jede künftige Seite komponiert nur noch,
-  statt zu zeichnen. (#PR)
+  statt zu zeichnen. (#580)
 - **4.459 Vorhaben, durchsuchbar.** „Was wird gebaut?"
   (`/haushalt/investitionen`) endete bisher bei einer Liste je Bereich —
   jetzt trägt eine Kachelfläche die Übersicht: Jede Kachel ist ein Vorhaben,
