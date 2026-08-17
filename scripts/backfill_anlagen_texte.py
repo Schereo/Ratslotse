@@ -35,14 +35,42 @@ MIN_TEXT = 200          # darunter gilt das PDF als Scan/Bild ('empty')
 MAX_TEXT = 400_000      # Extrem-PDFs kappen (ein Gutachten reicht auch gekürzt)
 
 
-def process(db_path: Path, limit: int | None, workers: int, retry_failed: bool) -> dict:
+def finanz_muster() -> list[str]:
+    """Die Label-Muster der Finanzschichten — aus der Registry, nicht doppelt.
+
+    Der Haushalts-Bereich liest sieben Schichten aus Anlagen (Jahresabschluss,
+    Teilhaushalte, Stellenplan, …). Wer nur die braucht, muss nicht 5.500 PDFs
+    laden: Auf der Dev-VM standen deshalb drei Seiten leer, obwohl ihre Parser
+    längst liefen. Die Muster stehen in ``finanzquellen`` — hier nur geholt,
+    damit sie nicht an zwei Stellen gepflegt werden müssen.
+    """
+    from council import finanzquellen as fq
+
+    muster: list[str] = []
+    for key in fq.REIHENFOLGE:
+        erkennung = getattr(fq.QUELLEN[key], "erkennung", None)
+        if erkennung is None:
+            continue
+        muster.extend(getattr(erkennung, "label_muster", None) or ())
+    return sorted(set(muster))
+
+
+def process(db_path: Path, limit: int | None, workers: int, retry_failed: bool,
+            nur_finanz: bool = False) -> dict:
     store = CouncilStore(db_path)
     try:
         status_filter = "('listed','failed')" if retry_failed else "('listed')"
+        wo, werte = "", []
+        if nur_finanz:
+            muster = finanz_muster()
+            wo = " AND (" + " OR ".join("label LIKE ?" for _ in muster) + ")"
+            werte = muster
+            print(f"Nur Finanz-Anlagen: {', '.join(muster)}", flush=True)
         rows = store._conn.execute(
             f"SELECT document_id, url FROM council_anlagen "
-            f"WHERE status IN {status_filter} AND url IS NOT NULL "
-            f"ORDER BY document_id DESC" + (f" LIMIT {int(limit)}" if limit else "")
+            f"WHERE status IN {status_filter} AND url IS NOT NULL{wo} "
+            f"ORDER BY document_id DESC" + (f" LIMIT {int(limit)}" if limit else ""),
+            werte,
         ).fetchall()
         ok = leer = fehler = 0
 
@@ -91,9 +119,13 @@ def main() -> dict:
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--workers", type=int, default=6)
     ap.add_argument("--retry-failed", action="store_true")
+    ap.add_argument("--nur-finanz", action="store_true",
+                    help="nur Anlagen, aus denen der Haushalts-Bereich liest "
+                         "(Label-Muster aus council/finanzquellen.py)")
     ap.add_argument("--db", default=str(COUNCIL_DB))
     args = ap.parse_args()
-    stats = process(Path(args.db), args.limit, args.workers, args.retry_failed)
+    stats = process(Path(args.db), args.limit, args.workers, args.retry_failed,
+                    nur_finanz=args.nur_finanz)
     print(f"Anlagen-Texte: {stats['geladen']} mit Text, {stats['ohne_text']} ohne, "
           f"{stats['fehler']} Fehler von {stats['gesamt']}", flush=True)
     return stats
