@@ -19,25 +19,12 @@
 
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 
-/** Der Ratsvorgang hinter einem Dokument: Welches Gremium wann worüber
- *  entschieden hat.
- *
- *  `outcome` wird ungefiltert durchgereicht — auch `vertagt` oder
- *  `abgelehnt`. Eine Zahl, deren Vorgang noch läuft, ist keine Zahl ohne
- *  Beleg; sie ist eine, bei der noch nichts entschieden ist, und das gehört
- *  dahin statt weggelassen. */
-export type Ratsvorgang = {
-  id: number;
-  ksinr: number;
-  kvonr: number | null;
-  top: string | null;
-  titel: string | null;
-  outcome: string | null;
-  vote: string | null;
-  vorlage_nr: string | null;
-  gremium: string | null;
-  datum: string | null;
-};
+// Der Ratsvorgang ist kein Typ dieser Seite: Er hängt an `council_herkunft`
+// und kommt an zwei Endpunkten heraus (hier und bei `get_herkunft`). Deshalb
+// steht er neutral in `lib/herkunft.ts` — siehe die Begründung dort.
+import type { Ratsvorgang } from "@/lib/herkunft";
+
+export type { Ratsvorgang };
 
 /** Ein konkretes Dokument hinter einer Quelle. `fundstelle` kommt aus
  *  `council_herkunft` und ist der eigentliche Gewinn: „Abschnitt 3.2" macht
