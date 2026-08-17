@@ -103,23 +103,45 @@ def backup_env() -> bool:
     return True
 
 
-def dateien_spiegeln() -> int:
-    """Erzeugte Dateien, die nicht in der Datenbank stehen, in den
-    Off-Site-Spiegel legen — heute die gerenderten Planzeichnungen.
+#: Ordner unter ``data/``, die nicht in einer Datenbank stehen und trotzdem in
+#: den Off-Site-Spiegel gehören — Name → wofür.
+#:
+#: ``archiv`` ist der wichtigere der beiden: Die gerenderten Planzeichnungen
+#: ließen sich aus den PDFs neu erzeugen, das Statistik-Archiv nicht. Es
+#: enthält Ausgaben, die es nirgends mehr gibt (die Stadt führt kein
+#: Jahrbuch-Archiv, das Internet Archive hat keine Schnappschüsse); ein Archiv,
+#: das nur auf einer Festplatte liegt, ist eine Kopie und kein Archiv.
+GESPIEGELTE_ORDNER: dict[str, str] = {
+    "plaene": "Planzeichnungen",
+    "archiv": "Statistik-Archiv",
+}
 
-    Bewusst NICHT täglich in den Sicherungs-Ordner kopiert: Es sind hunderte
-    unveränderliche JPEGs. Der rsync unten überträgt ohnehin nur, was neu ist.
+
+def dateien_spiegeln() -> dict[str, int]:
+    """Erzeugte Dateien, die nicht in der Datenbank stehen, in den
+    Off-Site-Spiegel legen: die gerenderten Planzeichnungen und das
+    Statistik-Archiv.
+
+    Bewusst NICHT täglich neu kopiert, sondern gespiegelt: Es sind hunderte
+    unveränderlicher Dateien, und rsync überträgt nur, was neu ist. Der Preis
+    ist eine zweite lokale Kopie (Stand 08/2026 rund 70 MB fürs Archiv) — die
+    Alternative wäre ein zweites rsync-Ziel und damit eine zweite Stelle, an
+    der sich eine Fehlkonfiguration verstecken kann.
     """
-    quelle = DATA / "plaene"
-    if not quelle.is_dir():
-        return 0
-    ziel = BACKUP_DIR / "plaene"
-    ziel.mkdir(parents=True, exist_ok=True)
-    subprocess.run(["rsync", "-a", "--delete", f"{quelle}/", f"{ziel}/"],
-                   check=True, timeout=30 * 60)
-    n = sum(1 for _ in ziel.glob("*.jpg"))
-    print(f"✓  Planzeichnungen gespiegelt ({n} Bilder)")
-    return n
+    aus: dict[str, int] = {}
+    for ordner, label in GESPIEGELTE_ORDNER.items():
+        quelle = DATA / ordner
+        if not quelle.is_dir():
+            aus[label] = 0
+            continue
+        ziel = BACKUP_DIR / ordner
+        ziel.mkdir(parents=True, exist_ok=True)
+        subprocess.run(["rsync", "-a", "--delete", f"{quelle}/", f"{ziel}/"],
+                       check=True, timeout=30 * 60)
+        n = sum(1 for p in ziel.rglob("*") if p.is_file())
+        aus[label] = n
+        print(f"✓  {label} gespiegelt ({n} Dateien)")
+    return aus
 
 
 def main() -> dict:
@@ -135,12 +157,13 @@ def main() -> dict:
     if not gesichert:
         raise RuntimeError("keine Datenbank gefunden — es wurde nichts gesichert")
     env_dabei = backup_env()
-    bilder = dateien_spiegeln()
+    gespiegelt = dateien_spiegeln()
     offsite_sync()
     return {
         "Datenbanken gesichert": gesichert,
         "Größe (MB)": round(bytes_total / 1_000_000, 1),
-        "Planzeichnungen": bilder,
+        "Planzeichnungen": gespiegelt.get("Planzeichnungen", 0),
+        "Statistik-Archiv": gespiegelt.get("Statistik-Archiv", 0),
         ".env gesichert": "ja" if env_dabei else "nein",
         "Off-Site-Mirror": "ja" if os.environ.get("BACKUP_RSYNC_TARGET") else "nein",
     }

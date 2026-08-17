@@ -862,6 +862,14 @@ def haushalt_uebersicht(
         "jahre": {str(y): store.get_haushalt(y) for y in store.haushalt_years()},
         "steuern": store.get_steuereinnahmen(),
         "steuerkraft": store.get_steuerkraft(),
+        # Die Zeile darüber ist unvollständig, und zwar systematisch: Der
+        # Open-Data-Datensatz 1106 führt nur zwei der drei Komponenten des
+        # Finanzausgleichs (Gemeinde- und Kreisaufgaben). Die dritte —
+        # Zuweisungen für Aufgaben des übertragenen Wirkungskreises, rund 13 %
+        # der Summe — steht nur beim Land. Sie kommt hier als eigenes Feld
+        # dazu, in **Tausend Euro** und mit der Jahresangabe des Landes
+        # (Ausgleichsjahr). Näheres in council/steuerkraft.py.
+        "finanzausgleich": store.get_finanzausgleich(),
         "einwohner": store.einwohner_aktuell(),
         # Aus den Jahresabschlüssen (RIS-Anlagen): Ansatz UND Ergebnis je
         # Posten — „geplant gegen tatsächlich" und die Erträge nach Arten.

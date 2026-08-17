@@ -167,6 +167,7 @@ Die Zeitpläne stehen als Docstring im jeweiligen Skript und in
 | `remind_setup.py` | täglich `0 11 * * *` | Genau eine Service-Mail an Konten, die den Einrichtungs-Assistenten angefangen und seit 48 h nicht beendet haben. |
 | `abendmeldungen.py` | täglich `0 18 * * *` | Abend-Anlässe aus Design 30a: N5 Vorabend-Erinnerung täglich, N6 Wochenüberblick nur sonntags. Beide standardmäßig aus — sie erreichen nur, wer sie im Konto einschaltet. |
 | `check_finanzdaten.py`&nbsp;¹ | 14-tägig `30 4 * * 0` | Neue Haushalts-Jahrgänge aus dem Anlagenbestand einlesen (Jahresabschluss, Teilhaushalts-Pläne, Prüfberichte) und melden, wenn ein erwarteter Jahrgang ausbleibt. Lädt nichts herunter, ergänzt nur Fehlendes — siehe [Stadtfinanzen](/docs/haushalt/#der-bereich-hält-sich-selbst-aktuell). |
+| `archive_statistik.py` | täglich `0 4 * * *` | Sichert die amtlichen Statistik-Quellen versioniert unter `data/archiv/` — siehe unten. |
 
 ¹ **Nur auf der Dev-VM.** Der Haushalts-Bereich steht hinterm Umgebungs-Gate und
 ist auf ratslotse.de nicht sichtbar (`web/frontend/lib/haushalt-frei.ts`); seine
@@ -288,6 +289,86 @@ konsistent, ohne den laufenden Betrieb zu stoppen. Die Kopien landen unter
 Die Datenbankdateien selbst werden vom Deploy **nicht** angefasst: `data/` steht
 in der `--exclude`-Liste des rsync, genau wie `.env` und `.venv/`. Ein Deploy
 kann den Datenbestand also nicht überschreiben.
+
+**Was noch mitgesichert wird:** Nicht alles unter `data/` steht in einer
+Datenbank. `dateien_spiegeln()` legt zwei Ordner per `rsync` in
+`data/backups/` und damit in den Off-Site-Spiegel:
+
+| Ordner | Inhalt | Wiederherstellbar? |
+|---|---|---|
+| `data/plaene/` | gerenderte Planzeichnungen | ja, aber nur über einen Stapellauf über 600 Anlagen |
+| `data/archiv/` | Statistik-Archiv (s. u.) | **nein** — die Quellen sind überschrieben |
+
+---
+
+## Statistik-Archiv (`archive_statistik.py`)
+
+**Das Problem:** Die Stadt führt kein Jahrbuch-Archiv. Auf der Übersichtsseite
+steht immer nur die *jeweils neueste* Ausgabe jeder Tabelle, der Dateiname
+trägt den Jahrgang (`1103-2025-AZ.pdf`), und sobald die nächste Ausgabe
+erscheint, ist die alte Adresse ein 404 — nachgemessen am 17.08.2026 an
+`1102-2024`, `1103-2024`, `1108-2023`, `1108-2024` und `STJB2024_DS`: alle
+weg. Das Internet Archive hat vom Statistik-Verzeichnis der Stadt **null**
+Schnappschüsse. Für Tabellen mit nur drei Jahrgängen (1103 Steuern und
+Finanzzuweisungen, 0803 Sozialhilfe) ist damit jedes Jahr ein Jahrgang
+endgültig verloren. Beim Open-Data-Portal ist es dasselbe, nur leiser: Die
+Adressen sind stabil, der Inhalt wird überschrieben.
+
+**Was der Job tut:** Er sichert, er parst nichts. Drei Quellen:
+
+| Bereich | Woher | Umfang (17.08.2026) |
+|---|---|---|
+| `opendata` | `opendata.oldenburg.de/data.json` und alle darin verlinkten Dateien | 186 Dateien, 10 MB |
+| `jahrbuch` | die Übersichtsseite des Statistischen Jahrbuchs, alle Tabellen-PDFs daraus | 246 PDFs, 56 MB |
+| `kfa` | die Übersichtsseite des Kommunalen Finanzausgleichs beim LSN | 14 Mappen, 3 MB |
+
+**Keine festen Adresslisten.** Eine feste Liste zeigte nach dem nächsten
+Erscheinen auf 404-Adressen und **fände die neue Ausgabe nicht** — sie
+versagte genau in dem Moment, für den es den Job gibt. Stabil sind die
+Übersichtsseiten, nicht die Dateinamen.
+
+**Wie versioniert wird:**
+
+```
+data/archiv/jahrbuch/1103-2025-AZ.pdf/2026-08-17_9f3c1a2b4d5e.pdf
+                     └ Ordner heißt wie die Datei ┘ └ Tag ┘└ Hash ┘
+```
+
+Datum **und** Hash: Der Hash allein sagte nicht, wann eine Fassung zuerst
+auftauchte; das Datum allein legte dieselben Bytes erneut ab, sobald ein
+Server seinen `ETag` ohne Inhaltsänderung neu vergibt. Entschieden wird über
+den **Inhalts-Hash** — liegt er im Ordner, passiert nichts. Daran hängt die
+Idempotenz: Ein zweiter Lauf am selben oder an einem späteren Tag legt nichts
+doppelt ab.
+
+`data/archiv/manifest.json` hält je Adresse ETag, `Last-Modified`, Hash, Pfad,
+Erst- und Letztsichtung sowie den letzten Fehler. Es liegt bewusst **im
+Archiv** statt in der Datenbank: Ein Archiv, dessen Inhaltsverzeichnis
+woanders liegt, ist nach einer Wiederherstellung ein Haufen Hashes.
+
+**Warum täglich, wenn sich selten etwas ändert:** Weil die Änderungen in
+Schüben kommen (29 Open-Data-Datensätze am 19.06.2026, 20 am 14.07.2026) und
+Vorlauf bei einer Quelle ohne Archiv der einzige Puffer ist. Der Preis ist
+klein — gemessen:
+
+| Lauf | geladen | Dauer |
+|---|---|---|
+| erster | 72,4 MB (447 Dateien) | 2:49 min |
+| jeder weitere ohne Änderung | 0,0 MB | 34 s |
+
+Möglich macht das ein dreistufiges Sieb: das `modified`-Feld des
+Open-Data-Katalogs (kein Abruf), danach `If-None-Match`/`If-Modified-Since`
+(304, keine Bytes), zuletzt der Hash. Die LSN-Adressen schicken **weder ETag
+noch Last-Modified**; dort greift stattdessen, dass eine Download-Nummer
+unveränderlich ist — eine neue Ausgabe bekommt eine neue Nummer, auch eine
+Korrektur (KFA 2023 steht als „endgültig Korrektur" neben dem Original).
+`--ohne-vorpruefung` schaltet beide Abkürzungen ab, falls sich eine der
+Annahmen als falsch erweist.
+
+**Ein 404 beendet den Lauf nicht.** Er wird gezählt, ins Manifest geschrieben
+(mit Datum) und einmalig an `ALERT_EMAIL` gemeldet — nicht jeden Tag erneut.
+Ein 404 auf eine Jahrbuch-Adresse ist am Erscheinungstag der neuen Ausgabe der
+Normalfall; auf eine Open-Data-Adresse ist er es nicht.
 
 ---
 

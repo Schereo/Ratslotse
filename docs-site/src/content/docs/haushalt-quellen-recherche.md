@@ -240,6 +240,11 @@ vermutet:
    online, das Internet Archive hat vom Statistik-Verzeichnis **null**
    Schnappschüsse. Tabellen mit nur drei Jahrgängen (1103, 0803) verlieren
    jedes Jahr ihr ältestes unwiederbringlich.
+
+   **Erledigt seit 17.08.2026:** `scripts/archive_statistik.py` sichert die
+   Quellen täglich versioniert unter `data/archiv/` (447 Dateien, 77 MB im
+   Erstlauf) — siehe [Betrieb](/docs/betrieb/#statistik-archiv-archive_statistikpy).
+   Ab jetzt wächst die Reihe, statt zu schrumpfen.
 2. **Zwei Datenfehler in amtlichen Quellen gefunden:** der 1102-CSV-Wert für
    2021 (s. o.) und, in der LSN-Datei „Kommunale Finanzen 2024", ein
    Braunschweiger Wert in Oldenburgs Zeile. Externe Quellen brauchen
