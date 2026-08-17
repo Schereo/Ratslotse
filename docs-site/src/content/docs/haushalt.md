@@ -121,7 +121,7 @@ die es nicht zeigen:
 | `council_pruefberichte` | Prüfungsfeststellungen 2017–2023, eine Zeile je Randmarke | Schlussberichte des Rechnungsprüfungsamts — **Anlagen im RIS** | `scripts/ingest_pruefberichte.py` |
 | `council_konzern_posten` | Gesamtergebnisrechnung des **Konzerns** je Posten, 2014–2024 | Konsolidierte Gesamtabschlüsse — **Anlagen im RIS** | `scripts/ingest_konzernabschluss.py` |
 | `council_konzern_traeger` | Dieselben Summen je Aufgabenträger (Kernverwaltung, Klinikum, Eigenbetriebe …), 2017–2024, in **TEUR** | dito | dito |
-| `council_staedtevergleich` | Steuerkraft, Hebesätze und Steuereinnahmekraft der acht kreisfreien Städte je Jahrgang — Reihen `steuerkraft` und `realsteuern` | Landesamt für Statistik Niedersachsen (Kommunaler Finanzausgleich, Realsteuervergleich) | `scripts/ingest_staedtevergleich.py` |
+| `council_staedtevergleich` | Steuerkraft, Hebesätze und Steuereinnahmekraft der acht kreisfreien Städte je Jahrgang — Reihen `steuerkraft`, `realsteuern` und `finanzausgleich` (die drei Komponenten der Landeszuweisung, in TEUR) | Landesamt für Statistik Niedersachsen (Kommunaler Finanzausgleich, Realsteuervergleich) | `scripts/ingest_staedtevergleich.py` |
 | `council_investitionen_ist` | Tatsächliche Investitions-Auszahlungen je Jahr seit 2003 (**Ist**) — Summe und `regelwerk` (`kameral` bis 2009, `doppik` ab 2010) | Statistisches Jahrbuch der Stadt, Tabellen 1107 und 1107-1 (PDF von oldenburg.de) | `scripts/ingest_investitionen_ist.py` |
 | `council_investitionen_ist_arten` | Dieselben Jahrgänge nach Auszahlungsart, mit der Überschrift der Quelle — vier Arten je kameralem, sechs je doppischem Jahrgang | dito | dito |
 | `council_investitionen_ist_verworfen` | Die Jahrgänge, die die Zeilensumme **nicht** bestanden haben: Grund und gemessene `differenz` in Euro. Damit die Seite ihre Lücke beziffern kann, statt sie nur zu behaupten | dito | dito |
@@ -1825,12 +1825,62 @@ werden beim jährlichen Lauf mitgegeben:
 python scripts/ingest_staedtevergleich.py \
   --kfa <KFA N, Datei oder Adresse> \
   --kfa-vorjahr <KFA N−1> \
-  --realsteuer <Realsteuervergleich>
+  --realsteuer <Realsteuervergleich> \
+  --jahrbuch-1103 2025:79787          # optionale Gegenprobe, s. u.
 ```
 
 Der Lauf **schreibt nichts**, wenn die Zwei-Jahres-Überlappung scheitert; eine
 einzelne Stadt, deren Hebesatzprobe nicht aufgeht, fällt mit Begründung heraus,
 ohne den Jahrgang mitzunehmen.
+
+### Die dritte Komponente des Finanzausgleichs
+
+Dieselbe Datei, zweites Blatt (`9a`), gelesen von `council/steuerkraft.py`.
+Sie schließt eine Lücke, die vorher niemandem auffiel, weil sie eine Zahl
+nicht falsch, sondern **zu klein** machte.
+
+Der Open-Data-Datensatz 1106 der Stadt führt eine Spalte
+„Schluesselzuweisungen, Anordnungssoll". Nachgemessen enthält sie **exakt zwei
+von drei** Komponenten des kommunalen Finanzausgleichs:
+
+| Ausgleichsjahr | Gemeindeaufgaben | Kreisaufgaben | = Datensatz 1106 | + übertragener Wirkungskreis | = Nettobetrag |
+|---|---|---|---|---|---|
+| 2025 | 51.653 | 17.557 | 69.210 ✓ | 10.575 | **79.785** |
+| 2026 | 62.654 | 19.624 | 82.278 ✓ | 11.160 | **93.438** |
+
+(TEUR. Die dritte Komponente ist Geld dafür, dass die Stadt staatliche
+Aufgaben miterledigt — Standesamt, Melde- und Ausländerwesen, Bauaufsicht —
+und an diese Aufgaben gebunden.)
+
+**Zwei Proben:**
+
+1. `kfa_komponentenprobe` — im Dokument: Die drei Komponenten minus
+   Finanzausgleichsumlage ergeben den ausgewiesenen Nettobetrag. Geprüft für
+   alle acht kreisfreien Städte und beide Jahre, die eine Ausgabe führt;
+   8/8 in den Ausgaben 2023, 2025 und 2026.
+2. `kfa_jahrbuchabgleich` — gegen die Bücher der Stadt: Tabelle 1103 des
+   Statistischen Jahrbuchs nennt unter „Finanzzuweisungen" für **2023
+   110.049** und für **2024 109.498** TEUR — beides auf das Tausend genau der
+   Nettobetrag des Landes. Für **2025** stehen 79.785 (Land) gegen 79.787
+   (Jahrbuch); dort ist das Rechnungsergebnis der Stadt noch vorläufig.
+   Toleranz `JAHRBUCH_TOLERANZ = 0,5 %` — eng genug, dass eine vergessene
+   Komponente (13 % der Summe) sie zwangsläufig reißt.
+
+**Die Falle:** Der Kopftext der Netto-Spalte lautet „… abzüglich der
+**Finanzausgleichsumlage** im Jahr 2026)" und enthält damit den Namen einer
+Komponente. Wer die Komponenten zuerst matcht, hält die Netto-Spalte für die
+Umlage und meldet danach eine Datei ohne Nettobetrag. Zwischen den Ausgaben
+wechseln außerdem die Schreibweise der Schlüsselnummer (`403000` gegen `403`)
+und die Reihenfolge in „Euro je Einwohner/Einwohnerin"; gelesen wird deshalb
+ausschließlich über den ausgeschriebenen Tabellenkopf.
+
+**Wo es steht:** `/haushalt/einnahmen`, direkt unter der Finanzausgleichs-Kurve
+(`components/haushalt/zuweisung-dreiteilig.tsx`). Die bisherige Zahl bleibt —
+sie ist nicht falsch, sondern enger, und „Schlüsselzuweisungen" heißen genau
+die ersten beiden Teile. Der Block stellt die vollständige daneben und sagt,
+dass sie größer ist. Die Pro-Kopf-Spalte des Blattes bleibt draußen: Für das
+Ausgleichsjahr 2025 nennt die Ausgabe 2025 „452,46 € je Ew.", die Ausgabe 2026
+„452,27 €" — derselbe Nettobetrag, revidierte Einwohnerzahl.
 
 :::danger[Nicht mit `council_steuerkraft` mischen]
 Beide Tabellen führen Steuerkraftmesszahlen. **Der Jahresversatz ist seit

@@ -379,7 +379,12 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "Landeseinheitlich sind sie nicht: Gemeinden unter 100.000 Einwohner*innen " +
       "rechnen mit anderen Sätzen als die darüber. " +
       "Die Steuerkraft je Einwohner*in ist unsere eigene Division; das Landesamt " +
-      "weist sie nicht aus.",
+      "weist sie nicht aus. " +
+      "Blatt „9a“: die Zuweisungen an die acht kreisfreien Städte, aufgeteilt in " +
+      "Schlüsselzuweisungen für Gemeindeaufgaben, für Kreisaufgaben und " +
+      "Zuweisungen für Aufgaben des übertragenen Wirkungskreises, abzüglich der " +
+      "Finanzausgleichsumlage. Die dritte Komponente steht in keiner städtischen " +
+      "Veröffentlichung; der Open-Data-Datensatz 1106 führt nur die ersten beiden.",
     herausgeber: "Landesamt für Statistik Niedersachsen",
     stand: "Ausgleichsjahr 2026 (endgültig, Stand 26.03.2026)",
     lizenz: "Vervielfältigung mit Quellennachweis gestattet",

@@ -5654,6 +5654,34 @@ class CouncilStore:
             "SELECT jahr, messzahl, messzahl_je_ew, zuweisungen, zuweisungen_je_ew "
             "FROM council_steuerkraft ORDER BY jahr")]
 
+    def get_finanzausgleich(self, schluessel: str = "403000") -> list[dict]:
+        """Die drei Komponenten des Finanzausgleichs für **eine** Stadt.
+
+        Liest ``reihe='finanzausgleich'`` aus ``council_staedtevergleich`` und
+        dreht sie in eine Zeile je Ausgleichsjahr: ``{jahr,
+        zuweisungen_gemeindeaufgaben, zuweisungen_kreisaufgaben,
+        zuweisungen_uebertragener_wirkungskreis, finanzausgleichsumlage,
+        nettobetrag}``, alle in **Tausend Euro** (so führt das Blatt sie).
+
+        Warum eine eigene Lesefunktion und nicht ``get_staedtevergleich``: Die
+        Haushalts-Übersicht braucht acht Zahlen je Jahr für Oldenburg, nicht
+        die 240 Zeilen aller acht Städte. Die Übersicht ist mit 1,6 MB ohnehin
+        die schwerste Antwort des Bereichs; der Städtevergleich hat seinen
+        eigenen Endpunkt und behält ihn.
+        """
+        try:
+            rows = self._conn.execute(
+                "SELECT jahr, kennzahl, wert FROM council_staedtevergleich "
+                "WHERE reihe = 'finanzausgleich' AND schluessel = ? "
+                "ORDER BY jahr", (schluessel,)).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        nach_jahr: dict[int, dict] = {}
+        for r in rows:
+            nach_jahr.setdefault(int(r["jahr"]), {"jahr": int(r["jahr"])})[
+                r["kennzahl"]] = r["wert"]
+        return [nach_jahr[j] for j in sorted(nach_jahr)]
+
     def refresh_quiz_payloads(self, rows: list[dict]) -> int:
         """Deterministisch erzeugte Fragen (gleicher content_hash — die Haushalts-
         Fragen nutzen STABILE Schlüssel statt des Fragetexts) auffrischen: Frage,

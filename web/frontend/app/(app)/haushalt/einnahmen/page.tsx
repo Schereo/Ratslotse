@@ -22,6 +22,7 @@ import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { FinanzausgleichDaempfer } from "@/components/haushalt/finanzausgleich-daempfer";
+import { ZuweisungDreiteilig } from "@/components/haushalt/zuweisung-dreiteilig";
 import { cn } from "@/lib/utils";
 import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 
@@ -80,6 +81,10 @@ export default function EinnahmenPage() {
     return data.steuern.find((s) => s.jahr === jahr && s.art === art)?.betrag ?? null;
   };
   const zuweisungJahr = data.steuerkraft.filter((k) => k.zuweisungen != null).at(-1);
+  // Der vollständige Ausgleich aus den Tabellen des Landes (Tausend Euro).
+  // Optional: Ohne einen Lauf von scripts/ingest_staedtevergleich.py ist das
+  // Feld leer, und die Seite zeigt weiter nur die Schlüsselzuweisungen.
+  const ausgleich = (data.finanzausgleich ?? []).filter((f) => f.nettobetrag != null).at(-1);
   const gesamt = data.steuern.find((s) => s.jahr === jahr && s.art === "insgesamt")?.betrag ?? null;
 
   // Karten: Betrag aus den Daten, innerhalb der Gruppe nach Betrag sortiert
@@ -204,6 +209,12 @@ export default function EinnahmenPage() {
           bewusst keinen Faktor — Begründung im Kopf der Komponente. */}
       <FinanzausgleichDaempfer steuerkraft={data.steuerkraft} />
 
+      {/* Direkt unter der Kurve, weil er sie einordnet: Was dort als
+          „Schlüsselzuweisungen" steht, sind zwei von drei Komponenten. Der
+          Block ersetzt die Zahl nicht, er stellt die vollständige daneben
+          (council/steuerkraft.py). */}
+      <ZuweisungDreiteilig reihe={data.finanzausgleich} />
+
       {/* Der Satz verglich bis 16.08. die Steuern eines Ist-Jahres mit den
           Ausgaben eines Planjahres („deckt nur einen Teil dessen, was die
           Stadt ausgibt") — zwei Zahlen aus zwei Rechnungen, deren Differenz
@@ -219,11 +230,22 @@ export default function EinnahmenPage() {
       {gesamt != null && (
         <LottiErklaert
           titel="Was diese Beträge zusammen sind — und was nicht"
+          /* Seit 17.08. nennt der Satz den VOLLEN Ausgleich, wenn er vorliegt:
+             Die Schlüsselzuweisungen allein sind zwei von drei Komponenten,
+             und ein Satz, der ausdrücklich zusammenzählt, darf nicht die
+             engere Zahl nehmen. Fehlt der Landesbestand (frische Datenbank),
+             bleibt es bei der bisherigen Formulierung — samt dem Wort
+             „Schlüsselzuweisungen", das dann auch genau stimmt. */
           text={`Alle Steuern zusammen brachten ${jahr} rund ${deMio(gesamt / 1e6)} Millionen Euro`
-            + (zuweisungJahr?.zuweisungen
-              ? `. Dazu kommen die Schlüsselzuweisungen des Landes: für das Ausgleichsjahr `
-                + `${zuweisungJahr.jahr} rund ${deMio(zuweisungJahr.zuweisungen / 1e6)} Millionen`
-              : "")
+            + (ausgleich?.nettobetrag
+              ? `. Dazu kommen die Zuweisungen des Landes: für das Ausgleichsjahr `
+                + `${ausgleich.jahr} rund ${deMio(ausgleich.nettobetrag / 1000)} Millionen `
+                + `— Schlüsselzuweisungen für Gemeinde- und Kreisaufgaben plus die `
+                + `Zuweisungen für übertragene staatliche Aufgaben`
+              : zuweisungJahr?.zuweisungen
+                ? `. Dazu kommen die Schlüsselzuweisungen des Landes: für das Ausgleichsjahr `
+                  + `${zuweisungJahr.jahr} rund ${deMio(zuweisungJahr.zuweisungen / 1e6)} Millionen`
+                : "")
             + ". Das ist noch nicht alles, was die Stadt einnimmt: Gebühren, Kostenerstattungen"
             + " und zweckgebundene Zuschüsse kommen hinzu, und die stehen nicht in diesen"
             + " Datensätzen. Die Gesamtsumme aller Einnahmen steht auf der Übersicht."}

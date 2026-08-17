@@ -85,6 +85,17 @@ JOBS: list[dict] = [
         "max_age_h": 30 * 24,
     },
     {
+        "key": "archive_statistik",
+        "label": "Statistik-Archiv",
+        "description": "Sichert Jahrbuch-Tabellen, Open-Data-Dateien und die KFA-Tabellen des Landes versioniert unter data/archiv/ — bevor die nächste Ausgabe sie überschreibt.",
+        # Täglich, obwohl sich täglich nichts ändert: Die Quellen aktualisieren
+        # in Schüben (29 Open-Data-Datensätze am 19.06.2026, 20 am 14.07.2026),
+        # und weil es kein Archiv gibt, ist Vorlauf der einzige Puffer. Ein Lauf
+        # ohne Änderung kostet bedingte Abrufe und praktisch keine Bytes.
+        "schedule": "täglich 4 Uhr",
+        "max_age_h": 30,
+    },
+    {
         "key": "weekly_enrich",
         "label": "Wöchentliche Anreicherung",
         "description": "Entitäten, Geocoding, Embeddings, Rückblicke, Interessantheit und Tragweite in Tranchen.",

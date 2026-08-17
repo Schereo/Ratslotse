@@ -257,6 +257,21 @@ PROBEN: dict[str, str] = {
         "auf: Grundbetrag mal Hebesatz ergibt das Aufkommen, das die Tabelle "
         "ausweist. Bei der Gewerbesteuer zusätzlich, dass nach Abzug der "
         "Umlage genau der Betrag bleibt, den wir zeigen.",
+    # Die drei Komponenten des Finanzausgleichs (council/steuerkraft.py). Die
+    # zweite ist die stärkere: Sie prüft nicht innerhalb eines Dokuments,
+    # sondern eine Landesbehörde gegen die Bücher der Stadt.
+    "kfa_komponentenprobe":
+        "Die drei Bestandteile der Zuweisung — für Gemeindeaufgaben, für "
+        "Kreisaufgaben und für die übertragenen staatlichen Aufgaben — ergeben "
+        "nach Abzug der Finanzausgleichsumlage genau den Nettobetrag, den "
+        "dieselbe Zeile ausweist. Für alle acht kreisfreien Städte und beide "
+        "Jahre, die eine Ausgabe führt.",
+    "kfa_jahrbuchabgleich":
+        "Was das Land als Zuweisung festsetzt, taucht in den Büchern der Stadt "
+        "wieder auf: Tabelle 1103 des Statistischen Jahrbuchs nennt unter "
+        "„Finanzzuweisungen“ für 2023 und 2024 auf das Tausend genau denselben "
+        "Betrag. Für 2025 stehen 79.785 gegen 79.787 Tausend Euro — dort ist "
+        "das Rechnungsergebnis der Stadt noch vorläufig.",
     "lsn_dreijahresmittel":
         "Der ausgewiesene Dreijahresdurchschnitt ist tatsächlich das Mittel "
         "der drei Jahreswerte daneben — und geteilt durch die Einwohnerzahl, "

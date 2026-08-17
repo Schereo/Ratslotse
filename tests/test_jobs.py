@@ -93,6 +93,9 @@ def test_registry_deckt_die_cron_eintraege_ab():
         # Der einzige Job, der selbst herunterlädt (oldenburg.de), alle vier
         # Wochen — die Quelle erscheint einmal im Jahr.
         "check_beteiligungsbericht",
+        # Sichert die Statistik-Quellen versioniert, täglich: Die Stadt führt
+        # kein Jahrbuch-Archiv, überschriebene Ausgaben sind endgültig weg.
+        "archive_statistik",
     }
     for job in JOBS:
         assert BY_KEY[job["key"]] is job
