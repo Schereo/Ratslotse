@@ -37,6 +37,33 @@ _W_EFFORT = 0.20
 # fünfstellige Beträge zählen spürbar, sonst dominierten nur Großprojekte.
 _MONEY_CAP = 50_000_000.0
 
+# Titel, deren Betrag KEINE Ausgabe ist: Rechenwerke (Bilanz- und
+# Haushaltssummen) und Kassengeschäfte (Umschuldung, Kreditrahmen). Bei ihnen
+# stellt der Rat etwas fest oder nimmt es zur Kenntnis — er gibt kein Geld aus.
+#
+# Warum die Liste hier steht und nicht im Store: `importance` ist ein
+# Blatt-Modul ohne Projekt-Importe und damit der Ort, an dem eine solche Regel
+# ohne Zirkelschluss leben kann. `CouncilStore._NON_SPENDING_TITLES` verweist
+# hierher, damit es nicht zwei Wahrheiten gibt — genau daran ist es vorher
+# gescheitert: Der Store filterte an drei Stellen, das Geld-Signal an keiner.
+#
+# Gemessen (17.08.2026, Dev-Bestand): 259 Beschlüsse tragen einen Betrag UND
+# einen dieser Titel, 122 davon über 10 Mio €. Ein „Jahresabschluss und
+# Lagebericht 2024" über 580.193.969 € bekam dadurch das volle Geld-Signal
+# (1,00) — und damit 34 % des Wichtig-Werts — für einen Feststellungsbeschluss.
+NON_SPENDING_TITLES = (
+    "jahresabschluss", "lagebericht", "gesamtabschluss", "wirtschaftsplan",
+    "haushaltsplan", "haushaltssatzung", "nachtragshaushalt", "finanzbericht",
+    "beteiligungsbericht", "jahresrechnung", "quartalsbericht", "zwischenbericht",
+    "umschuldung", "kreditrichtlinie", "kassenkredite",
+)
+
+
+def ist_ausgabe(title: str | None) -> bool:
+    """Steht hinter dem Betrag eine Ausgabe — oder nur ein Rechenwerk?"""
+    t = (title or "").lower()
+    return not any(k in t for k in NON_SPENDING_TITLES)
+
 # Schlagworte, die auf einen verbindlichen/gewichtigen Beschluss deuten
 # (rechtssetzend oder haushaltswirksam) …
 _BINDING_WORDS = (
@@ -63,9 +90,17 @@ def _is_council_level(committee: str | None) -> bool:
     return (committee or "").strip().lower() in _COUNCIL_NAMES
 
 
-def _money_signal(amount_eur: float | None) -> float | None:
+def _money_signal(amount_eur: float | None, title: str | None = None) -> float | None:
+    """Das Geld-Signal — nur für Beträge, hinter denen eine Ausgabe steht.
+
+    Ein Rechenwerk liefert **kein** Signal (`None`), nicht etwa eine Null: Der
+    Beschluss ist deswegen nicht unwichtig, wir wissen über sein Geld nur
+    nichts. Eine Null zöge ihn aktiv nach unten, `None` nimmt das Signal aus
+    der Rechnung — dieselbe Unterscheidung wie beim fehlenden Betrag."""
     if not amount_eur or amount_eur <= 0:
         return None  # kein Betrag bekannt → Signal fehlt (nicht 0!)
+    if not ist_ausgabe(title):
+        return None  # Bilanz-/Haushaltssumme → kein Ausgabe-Signal
     return min(1.0, math.log10(amount_eur + 1.0) / math.log10(_MONEY_CAP))
 
 
@@ -138,7 +173,8 @@ def importance_breakdown(decision: dict, n_beratungen: int | None = None) -> dic
     Signal (Summe = ``score``), damit die Beschluss-Seite die Rechnung zeigen
     kann statt nur nackte Balken."""
     parts = {
-        "geld": (_W_MONEY, _money_signal(decision.get("amount_eur"))),
+        "geld": (_W_MONEY, _money_signal(decision.get("amount_eur"),
+                                         decision.get("title"))),
         "umstritten": (_W_CONTENTION, _contention_signal(
             decision.get("gegenstimmen"), decision.get("enthaltungen"),
             decision.get("vote"), decision.get("outcome"))),
