@@ -2556,23 +2556,36 @@ def haushalt_gebaut(
     Summe trüge — also fällt der ganze Jahrgang, und die Oberfläche kann die
     Lücke **benennen**, statt sie als Null zu zeichnen oder still zu
     überspringen.
+
+    Je Lücke steht dort neben dem Jahr die gemessene ``differenz`` in Euro
+    (Auszahlungsarten minus ausgewiesene Summe, vorzeichenbehaftet) — die
+    Zahl, die der Ingest-Lauf beim Verwerfen gemessen hat
+    (``council_investitionen_ist_verworfen``). Sie ist der Unterschied
+    zwischen „2019 fehlt" und „2019 fehlt, weil 1,3 Mio. € auseinanderlagen".
+    ``null``, wo der Bestand keine Messung führt: ein Jahrgang, der vor dem
+    Ausbau dieser Schicht verworfen wurde, oder eine Zeile, die sich gar
+    nicht erst zerlegen ließ. Dann bleibt der Betrag auf der Seite weg — er
+    wird nirgends geschätzt.
     """
     from council import investitionen_ist as _ii
 
     reihe = store.get_investitionen_ist()
     ids = sorted({z["herkunft_id"] for z in reihe if z["herkunft_id"] is not None})
+    gemessen = {(v["regelwerk"], v["jahr"]): v.get("differenz")
+                for v in store.get_investitionen_ist_verworfen()}
 
     # Lücken je Regelwerk: Was zwischen dem ersten und dem letzten belegten
     # Jahrgang einer Reihe fehlt, fehlt nachweislich — dafür braucht es die
     # Spanne aus dem Titel nicht. (Fiele der JÜNGSTE angekündigte Jahrgang
     # durch, sähe man ihn hier nicht; das steht dann im Beleg-Messwert der
     # Herkunft, den derselbe Lauf schreibt.)
-    fehlend: dict[str, list[int]] = {}
+    fehlend: dict[str, list[dict]] = {}
     for regelwerk in _ii.REGELWERK:
         jahre = sorted(z["jahr"] for z in reihe if z["regelwerk"] == regelwerk)
         if len(jahre) < 2:
             continue
-        luecke = [j for j in range(jahre[0], jahre[-1] + 1) if j not in set(jahre)]
+        luecke = [{"jahr": j, "differenz": gemessen.get((regelwerk, j))}
+                  for j in range(jahre[0], jahre[-1] + 1) if j not in set(jahre)]
         if luecke:
             fehlend[regelwerk] = luecke
 
@@ -2635,6 +2648,13 @@ def haushalt_schulden(
         for jahr in store.ergebnisrechnung_jahre():
             for posten in store.get_ergebnisrechnung(jahr):
                 if posten["nr"] != _s.POSTEN_ZINSAUFWAND:
+                    continue
+                # NUR die Gesamtrechnung (`thh_nr IS NULL`). Der Jahresabschluss
+                # führt denselben Posten 17 noch einmal je Teilhaushalt; ohne
+                # diesen Filter kämen je Jahr mehrere „Zinslasten" heraus, und
+                # die Seite zeigte je nach Sortierung mal die Kernverwaltung,
+                # mal einen einzelnen Teilhaushalt unter derselben Überschrift.
+                if posten.get("thh_nr") is not None:
                     continue
                 if posten.get("ergebnis") is None:
                     continue          # ein Jahrgang ohne Ist trägt hier nichts

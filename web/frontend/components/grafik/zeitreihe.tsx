@@ -17,10 +17,18 @@
 // FEHLT (weder Wert noch Lücke), bricht die Linie ebenfalls und bekommt einen
 // „?"-Kasten: lieber sichtbar unerklärt als still durchgezogen.
 //
-// DIREKTBESCHRIFTUNG NUR ENDWERTE (GB-01) — alles andere liest die
+// DIREKTBESCHRIFTUNG SPARSAM (GB-01): Endwerte immer, dazu — auf Wunsch der
+// Seite — die GRÖSSTE DIFFERENZ, also der größte Anstieg und der größte
+// Rückgang der Reihe (`spruenge`). Beides ist im Vertrag des Baukastens
+// ausdrücklich erlaubt („Endwerte, größte Differenz"); alles andere liest die
 // <Ableseleiste> (GB-00): Desktop Hover, mobil sticky Tap-Zeile, immer
 // Pfeiltasten. Kein Tooltip; was nur beim Hovern existiert, fehlt im
 // Ausdruck und in der Vorlesehilfe.
+//
+// SPRÜNGE RECHNET DIE KOMPONENTE, nicht die Seite. Das ist Absicht: Eine
+// Seite, die „2001 fiel die Schuld am stärksten" als Text trägt, wird mit dem
+// nächsten Jahrgang still falsch. Verglichen werden nur BENACHBARTE Jahre —
+// über eine Lücke hinweg gibt es keinen Sprung, sondern Unwissen.
 //
 // BREAKPOINTS EINGEBAUT, KEIN PROP (H4-A „Zeitreihe + Ableseleiste"):
 // unter 520 px Containerbreite wird die Zeichenfläche 180 px hoch, die
@@ -33,7 +41,7 @@
 // Rampenstufe — nie Signal-Orange, denn eine zweite Größe ist keine
 // Abweichung. Orange bleibt den Lücken-Markierungen vorbehalten.
 
-import { useId, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { scaleLinear } from "d3-scale";
 import { area, line } from "d3-shape";
 import { useBreite } from "@/lib/use-breite";
@@ -56,7 +64,16 @@ const TON_ZWEIT = "var(--hh-ein-1)";
 // schneidet die Kurve mitten durch die Ziffern (Muster aus `schulden-kurve`).
 const halo = { paintOrder: "stroke", strokeWidth: 3, strokeLinejoin: "round" } as const;
 
-export type ZeitreiheAnnotation = { jahr: number; text: string };
+export type ZeitreiheAnnotation = {
+  jahr: number;
+  /** Der ganze Satz — steht IMMER unter der Grafik und in der Vorlesehilfe. */
+  text: string;
+  /** Kurzform für die Marke im Bild („108,9 Mio. umgebucht"). Ohne sie
+   *  trägt die Marke nur das ⓘ. Schmal entfällt sie ohnehin: Neben einem
+   *  180 px hohen Bild ist für einen zweiten Satz kein Platz, und der ganze
+   *  steht darunter. */
+  kurz?: string;
+};
 
 export type ZeitreiheUmschalter = {
   /** Beschriftungen der Ansichten, z. B. ["absolut", "pro Kopf"]. */
@@ -95,7 +112,8 @@ function normalisiere(reihe: JahrPunkt[]): Stelle[] {
 }
 
 export function Zeitreihe({
-  reihe, einheit, ariaTitel, nachkomma = 1, format, zweitreihe, annotationen,
+  reihe, einheit, ariaTitel, titel, nachkomma = 1, format, zweitreihe,
+  annotationen, spruenge = false, vorjahresdifferenz = false, tabelle = false,
   umschalter, beleg, nullbasis = true, hinweis, className,
 }: {
   /** Punkte UND Lücken in einer Liste (Daten-Vertrag GB-00). */
@@ -105,6 +123,11 @@ export function Zeitreihe({
   /** Der Satz für die Vorlesehilfe — Pflicht, eine Grafik ohne Namen ist
    *  für den Screenreader ein leeres Rechteck. */
   ariaTitel: string;
+  /** Sichtbare Kopfzeile über dem Bild („Schulden insgesamt"). Rechts daneben
+   *  setzt die Komponente die gemessene Menge: Spanne, Zahl der Werte,
+   *  Einheit — nie „viele Jahre", immer die Zahl. Ohne `titel` keine
+   *  Kopfzeile: Eine leere Überschriftenzeile wäre ein Versprechen. */
+  titel?: string;
   nachkomma?: number;
   /** Eigenes Zahlenformat (Vorgabe: `deZahl` mit `nachkomma`). Für Reihen,
    *  deren Werte nicht als Mio. kommen — gebaut aus `format.ts`, nie aus
@@ -114,9 +137,28 @@ export function Zeitreihe({
    *  z. B. die Zinslast zur Schuldenreihe. */
   zweitreihe?: { label: string; reihe: JahrPunkt[]; format?: (wert: number) => string };
   /** Beschriftete Stellen („2010: 108,9 Mio. an Eigenbetriebe umgebucht").
-   *  Im Bild ein ⓘ-Marker, der Text steht IMMER unter der Grafik — nie nur
-   *  beim Hovern (Kein-Tooltip-Regel). */
+   *  Im Bild ein ⓘ-Marker (breit mit `kurz` daneben), der Text steht IMMER
+   *  unter der Grafik — nie nur beim Hovern (Kein-Tooltip-Regel). */
   annotationen?: ZeitreiheAnnotation[];
+  /** Den größten Anstieg und den größten Rückgang direkt beschriften.
+   *
+   *  Gerechnet aus den Daten und ausdrücklich NICHT über eine Lücke hinweg.
+   *  Die Marke trägt Signal-Orange, weil sie eine **Differenz** markiert —
+   *  keine Bewertung: Ein Rückgang kann eine abgegebene Aufgabe sein und ein
+   *  Anstieg eine sanierte Schule. Die Marke sagt „hier ist die größte
+   *  Bewegung", nicht „das ist gut". Was dahintersteckt, gehört als belegter
+   *  Satz auf die Seite (oder als `annotationen`), nicht in eine Farbe. */
+  spruenge?: boolean;
+  /** Zusätzliche Zeile in der Ableseleiste: die Veränderung zum Vorjahr.
+   *  Nur zwischen benachbarten Jahren — hinter einer Lücke bleibt sie weg,
+   *  sonst wäre die Differenz über zwei Jahre als „ggü. Vorjahr"
+   *  ausgewiesen. Ohne Signal-Marke: Jede Richtung ist gleich markiert. */
+  vorjahresdifferenz?: boolean;
+  /** Alle Werte zusätzlich als aufklappbare Tabelle unter der Grafik —
+   *  für Leser*innen, die eine Zahl abschreiben wollen, statt sie an der
+   *  Leiste abzufahren. Lücken stehen darin als „—"; ihr Grund steht wie
+   *  immer im <LueckenFeld> darunter, das nie einklappbar ist. */
+  tabelle?: boolean;
   /** Ansichts-Umschalter („absolut" / „pro Kopf") — gerendert von der
    *  Komponente (mobil full-width, H4-13), Daten wechselt die Seite. */
   umschalter?: ZeitreiheUmschalter;
@@ -130,6 +172,7 @@ export function Zeitreihe({
   className?: string;
 }) {
   const { box, breite } = useBreite();
+  const [tabelleOffen, setTabelleOffen] = useState(false);
   const stellenListe = normalisiere(reihe);
   const beschreibungId = useId();
   const ablesen = useAblesen(
@@ -141,13 +184,21 @@ export function Zeitreihe({
   const fmtZweit = zweitreihe?.format ?? fmt;
   const schmal = breite < 520;
   const fs = schmal
-    ? { achse: 13, jahr: 13, wert: 14, legende: 12.5 }
-    : { achse: 11, jahr: 11, wert: 13, legende: 12 };
+    ? { achse: 13, jahr: 13, wert: 14, legende: 12.5, marke: 12.5 }
+    : { achse: 11, jahr: 11, wert: 13, legende: 12, marke: 11 };
 
   const werte = stellenListe.filter(definiert);
   if (werte.length < 2) return null;
 
-  const zweitStellen = zweitreihe ? normalisiere(zweitreihe.reihe) : [];
+  const spanneVon = stellenListe[0].jahr;
+  const spanneBis = stellenListe[stellenListe.length - 1].jahr;
+  // Die Zweitreihe wird auf die x-Achse der Hauptreihe geklemmt: Ein Jahr
+  // außerhalb hätte keine Stelle im Bild und würde von der Skala nach
+  // draußen gerechnet — die Linie liefe aus der Zeichenfläche.
+  const zweitStellen = zweitreihe
+    ? normalisiere(zweitreihe.reihe.filter(
+        (p) => p.jahr >= spanneVon && p.jahr <= spanneBis))
+    : [];
   const zweitNach = new Map(zweitStellen.map((s) => [s.jahr, s]));
 
   // --- Skalen (d3-scale) ---------------------------------------------------
@@ -174,8 +225,8 @@ export function Zeitreihe({
   const X0 = Math.ceil(Math.max(...achsenText.map((t) => t.length)) * fs.achse * 0.62) + 9;
   const X1 = W - 16;
 
-  const von = stellenListe[0].jahr;
-  const bis = stellenListe[stellenListe.length - 1].jahr;
+  const von = spanneVon;
+  const bis = spanneBis;
   const x = (jahr: number) => X0 + ((jahr - von) / Math.max(bis - von, 1)) * (X1 - X0);
   const y = (v: number) => ySkala(v);
 
@@ -219,14 +270,139 @@ export function Zeitreihe({
     jahresmarken.push(bis);
   }
 
+  // --- Beschriftungen im Bild entzerren ------------------------------------
+  // SVG-Text weicht nicht von selbst aus. Wo mehrere Marken zusammenfallen
+  // (der Endwert und der größte Anstieg liegen regelmäßig am selben Punkt),
+  // hilft nur: Kästen grob schätzen, Belegtes sammeln, die beweglichen Marken
+  // zeilenweise ausweichen lassen. Genau messen ginge nur mit einem zweiten
+  // Render-Durchgang; die Schätzung (~0,55 der Schriftgröße je Zeichen) ist
+  // bewusst großzügig.
+  type Kasten = { x1: number; x2: number; y1: number; y2: number };
+  const textBreite = (t: string, size: number) => t.length * size * 0.55;
+  const stoert = (a: Kasten, b: Kasten) =>
+    a.x1 < b.x2 + 4 && b.x1 < a.x2 + 4 && a.y1 < b.y2 + 2 && b.y1 < a.y2 + 2;
+  /** Die erste freie Zeile über dem Punkt, sonst darunter. */
+  const ausweichen = (py: number, kasten: (ty: number) => Kasten,
+                      belegt: Kasten[]): number => {
+    const zeile = fs.marke + 4;
+    const kandidaten: number[] = [];
+    for (let n = 0; n < 6 && py - 10 - n * zeile - fs.marke > YTOP; n++) {
+      kandidaten.push(py - 10 - n * zeile);
+    }
+    kandidaten.push(Math.min(py + 9 + fs.marke, Y0 - 4));
+    return kandidaten.find((k) => !belegt.some((b) => stoert(kasten(k), b)))
+      ?? kandidaten[kandidaten.length - 1];
+  };
+
+  const endText = fmt(letzter.wert);
+  const endY = y(letzter.wert) - 10;
+  const belegt: Kasten[] = [{
+    x1: x(letzter.jahr) - 7 - textBreite(endText, fs.wert + 1),
+    x2: x(letzter.jahr) - 7,
+    y1: endY - fs.wert - 1, y2: endY + 3,
+  }];
+
+  // Die Zweitreihe beschriftet sich am eigenen Endpunkt — breit mit Name und
+  // Spanne, schmal gar nicht: Dort trägt die Legende unter dem Bild den
+  // Namen, und zwei Beschriftungen in einem 180-px-Bild überlagern sich.
+  const zweitWerte = zweitStellen.filter(definiert);
+  const zweitLetzter = zweitWerte.length
+    ? zweitWerte[zweitWerte.length - 1].punkt : null;
+  const zweitBeschriftung = !schmal && zweitreihe && zweitLetzter
+    ? (() => {
+        const text = `${zweitreihe.label} `
+          + `(${zweitWerte[0].punkt.jahr}–${zweitLetzter.jahr})`;
+        const w = textBreite(text, fs.marke);
+        const tx = Math.min(Math.max(x(zweitLetzter.jahr), X0 + w), X1);
+        const ty = y(zweitLetzter.wert) - 8;
+        belegt.push({ x1: tx - w, x2: tx, y1: ty - fs.marke, y2: ty + 3 });
+        return { text, tx, ty };
+      })()
+    : null;
+
+  // Annotations-Marken: ⓘ am oberen Rand, mit Strich zum Punkt. Breit steht
+  // die Kurzform daneben — nach rechts, wenn dort Platz ist, sonst nach links.
+  type AnnoMarke = Omit<ZeitreiheAnnotation, "kurz"> & {
+    py: number; kurz: string | null; tx: number; anker: "start" | "end";
+  };
+  const annoMarken = (annotationen ?? []).flatMap<AnnoMarke>((a) => {
+    const stelle = stellenListe.find((s) => s.jahr === a.jahr);
+    if (!stelle) return [];
+    const py = stelle.art === "wert" ? y(stelle.punkt.wert) : (Y0 + YTOP) / 2;
+    const kurz = !schmal && a.kurz ? `${a.jahr}: ${a.kurz}` : null;
+    if (!kurz) return [{ ...a, py, kurz, tx: 0, anker: "start" }];
+    const w = textBreite(kurz, fs.marke);
+    const rechts = x(a.jahr) + 11 + w <= X1;
+    const tx = rechts ? x(a.jahr) + 11 : x(a.jahr) - 11;
+    belegt.push({
+      x1: rechts ? tx : tx - w, x2: rechts ? tx + w : tx,
+      y1: YTOP + 8 - fs.marke, y2: YTOP + 12,
+    });
+    return [{ ...a, py, kurz, tx, anker: rechts ? "start" : "end" }];
+  });
+
+  // Die größte Bewegung nach oben und nach unten — gerechnet, neutral
+  // beschriftet, und NUR zwischen benachbarten Jahren: Über eine Lücke hinweg
+  // wäre der „Sprung" die Summe zweier unbekannter Bewegungen.
+  const spruengeMarken = (() => {
+    if (!spruenge) return [];
+    const deltas: { jahr: number; delta: number; wert: number }[] = [];
+    for (let i = 1; i < stellenListe.length; i++) {
+      const a = stellenListe[i - 1], b = stellenListe[i];
+      if (!definiert(a) || !definiert(b)) continue;
+      deltas.push({ jahr: b.jahr, delta: b.punkt.wert - a.punkt.wert,
+                    wert: b.punkt.wert });
+    }
+    if (!deltas.length) return [];
+    const runter = [...deltas].sort((p, q) => p.delta - q.delta)[0];
+    const rauf = [...deltas].sort((p, q) => q.delta - p.delta)[0];
+    return [runter, rauf]
+      // Steigt eine Reihe nur, sind größter Anstieg und größter „Rückgang"
+      // dieselbe Stelle — dann steht die Marke einmal.
+      .filter((m, i, alle) => alle.findIndex((n) => n.jahr === m.jahr) === i)
+      .map((m) => {
+        const text = `${m.jahr}: ${m.delta > 0 ? "+" : "−"}${fmt(Math.abs(m.delta))}`;
+        const w = textBreite(text, fs.marke);
+        return {
+          ...m, text, w,
+          mitte: Math.min(Math.max(x(m.jahr), X0 + w / 2), X1 - w / 2),
+          py: y(m.wert),
+        };
+      })
+      .sort((a, b) => a.mitte - b.mitte)
+      .map((m) => {
+        const kasten = (ty: number): Kasten => ({
+          x1: m.mitte - m.w / 2, x2: m.mitte + m.w / 2,
+          y1: ty - fs.marke, y2: ty + 3,
+        });
+        const ty = ausweichen(m.py, kasten, belegt);
+        belegt.push(kasten(ty));
+        return { ...m, ty };
+      });
+  })();
+
   // --- Ableseleiste: eine Stelle je Jahr, auch für Lücken ------------------
   const annotationNach = new Map((annotationen ?? []).map((a) => [a.jahr, a]));
-  const ableseStellen: AbleseStelle[] = stellenListe.map((s) => {
+  const ableseStellen: AbleseStelle[] = stellenListe.map((s, i) => {
     const zweit = zweitNach.get(s.jahr);
     const werteZeile: AbleseWert[] =
       s.art === "wert"
         ? [{ label: einheit, wert: fmt(s.punkt.wert), farbe: TON }]
         : [{ label: einheit, wert: "—", signal: true }];
+    // Die Veränderung zum Vorjahr — nur wenn beide Jahre einen Wert haben
+    // und wirklich benachbart sind.
+    const vorher = i > 0 ? stellenListe[i - 1] : null;
+    const delta = vorjahresdifferenz && s.art === "wert" && vorher && definiert(vorher)
+      ? s.punkt.wert - vorher.punkt.wert : null;
+    if (delta != null) {
+      werteZeile.push({
+        label: "ggü. Vorjahr",
+        wert: `${delta > 0 ? "+" : delta < 0 ? "−" : ""}${fmt(Math.abs(delta))}`,
+        // Keine Signal-Marke: Sie markierte die Bewegung als Abweichung, und
+        // „Anstieg" ist hier keine. Jede Richtung sieht gleich aus.
+        signal: false,
+      });
+    }
     if (zweitreihe) {
       werteZeile.push({
         label: zweitreihe.label,
@@ -258,6 +434,13 @@ export function Zeitreihe({
       ? `Ohne Zahl: ${luecken.map((s) =>
           `${s.jahr} (${s.art === "luecke" ? s.punkt.fehlt : "keine Angabe"})`).join(", ")}.`
       : "",
+    // Was im Bild als zweite Linie und als Marke steht, gehört auch in die
+    // Vorlesehilfe — sonst ist die Grafik für sie eine andere.
+    zweitreihe && zweitWerte.length
+      ? `Dünne zweite Reihe: ${zweitreihe.label}, `
+        + `${zweitWerte[0].jahr} bis ${zweitWerte[zweitWerte.length - 1].jahr}.`
+      : "",
+    ...(annotationen ?? []).map((a) => a.text),
   ].filter(Boolean).join(" ");
 
   return (
@@ -282,6 +465,19 @@ export function Zeitreihe({
               {o}
             </button>
           ))}
+        </div>
+      )}
+
+      {/* Kopfzeile: links, was gezeigt wird — rechts, wie viel davon
+          gemessen ist. Ehrliche Mengen sind Vertrag des Baukastens. */}
+      {titel && (
+        <div className="mb-2 flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+            {titel}
+          </p>
+          <span className="font-mono text-[10px] uppercase text-muted-foreground">
+            {von}–{bis} · {werte.length} Werte · {einheit}
+          </span>
         </div>
       )}
 
@@ -328,30 +524,60 @@ export function Zeitreihe({
         <path d={linie(stellenListe) ?? undefined} fill="none" strokeWidth={2.2}
           strokeLinejoin="round" strokeLinecap="round" style={{ stroke: TON }} />
 
-        {/* Annotationen: ⓘ im Bild, der Text steht unter der Grafik. */}
-        {(annotationen ?? []).map((a) => {
-          const stelle = stellenListe.find((s) => s.jahr === a.jahr);
-          if (!stelle) return null;
-          const py = stelle.art === "wert" ? y(stelle.punkt.wert) : (Y0 + YTOP) / 2;
-          return (
-            <g key={a.jahr}>
-              <line x1={x(a.jahr)} y1={YTOP + 8} x2={x(a.jahr)} y2={py - 8}
-                strokeWidth={1} strokeDasharray="2 3" className="stroke-foreground/40" />
-              <circle cx={x(a.jahr)} cy={YTOP + 8} r={7.5} className="fill-card stroke-foreground/45"
-                strokeWidth={1.2} />
-              <text x={x(a.jahr)} y={YTOP + 11.5} textAnchor="middle" fontSize={10} fontStyle="italic"
-                className="fill-foreground/75 font-mono">i</text>
-            </g>
-          );
-        })}
+        {/* Der Endpunkt der Zweitreihe mit ihrem Namen — breit im Bild,
+            schmal nur in der Legende darunter. */}
+        {zweitLetzter && (
+          <circle cx={x(zweitLetzter.jahr)} cy={y(zweitLetzter.wert)} r={3}
+            style={{ fill: TON_ZWEIT }} />
+        )}
+        {zweitBeschriftung && (
+          <text x={zweitBeschriftung.tx} y={zweitBeschriftung.ty} textAnchor="end"
+            fontSize={fs.marke} className="stroke-card" {...halo}
+            style={{ fill: TON_ZWEIT }}>{zweitBeschriftung.text}</text>
+        )}
 
-        {/* Direktbeschriftung NUR Endwerte (GB-01). */}
+        {/* Annotationen: ⓘ im Bild, der Text steht unter der Grafik. */}
+        {annoMarken.map((a) => (
+          <g key={a.jahr}>
+            <line x1={x(a.jahr)} y1={YTOP + 8} x2={x(a.jahr)} y2={a.py - 8}
+              strokeWidth={1} strokeDasharray="2 3" className="stroke-foreground/40" />
+            <circle cx={x(a.jahr)} cy={YTOP + 8} r={7.5} className="fill-card stroke-foreground/45"
+              strokeWidth={1.2} />
+            <text x={x(a.jahr)} y={YTOP + 11.5} textAnchor="middle" fontSize={10} fontStyle="italic"
+              className="fill-foreground/75 font-mono">i</text>
+            {a.kurz && (
+              <text x={a.tx} y={YTOP + 12} textAnchor={a.anker} fontSize={fs.marke}
+                className="fill-foreground/75 stroke-card" {...halo}>{a.kurz}</text>
+            )}
+          </g>
+        ))}
+
+        {/* Die größte Bewegung: Punkt und Führungsstrich zuerst, damit kein
+            Strich durch die Beschriftung der anderen Marke zieht. */}
+        {spruengeMarken.map((m) => (
+          <g key={`sprung-${m.jahr}`}>
+            {(Math.abs(m.mitte - x(m.jahr)) > 2 || m.ty < m.py - 13 || m.ty > m.py) && (
+              <line x1={x(m.jahr)} y1={m.py + (m.ty > m.py ? 6 : -6)}
+                x2={Math.min(Math.max(x(m.jahr), m.mitte - m.w / 2), m.mitte + m.w / 2)}
+                y2={m.ty > m.py ? m.ty - fs.marke - 2 : m.ty + 4}
+                strokeWidth={1} className="stroke-signal" opacity={0.45} />
+            )}
+            <circle cx={x(m.jahr)} cy={m.py} r={4}
+              className="fill-card stroke-signal" strokeWidth={2} />
+          </g>
+        ))}
+        {spruengeMarken.map((m) => (
+          <text key={`sprung-text-${m.jahr}`} x={m.mitte} y={m.ty} textAnchor="middle"
+            fontSize={fs.marke} className="fill-signal stroke-card" {...halo}>{m.text}</text>
+        ))}
+
+        {/* Direktbeschriftung: Endwerte immer (GB-01). */}
         <circle cx={x(erster.jahr)} cy={y(erster.wert)} r={4} className="fill-card"
           strokeWidth={2} style={{ stroke: TON }} />
         <circle cx={x(letzter.jahr)} cy={y(letzter.wert)} r={5} style={{ fill: TON }} />
-        <text x={x(letzter.jahr) - 7} y={y(letzter.wert) - 10} textAnchor="end"
+        <text x={x(letzter.jahr) - 7} y={endY} textAnchor="end"
           fontSize={fs.wert + 1} fontWeight={700} className="stroke-card" {...halo}
-          style={{ fill: TON }}>{fmt(letzter.wert)}</text>
+          style={{ fill: TON }}>{endText}</text>
 
         {jahresmarken.map((j) => (
           <text key={j} x={x(j)} y={yJahr} textAnchor="middle" fontSize={fs.jahr}
@@ -368,7 +594,13 @@ export function Zeitreihe({
           yVon={YTOP} hoehe={Y0 - YTOP} fangHoehe={yJahr + 4 - YTOP}
           marken={(i) => {
             const s = stellenListe[i];
-            return s.art === "wert" ? [{ y: y(s.punkt.wert), farbe: TON }] : [];
+            const z = zweitNach.get(s.jahr);
+            return [
+              ...(s.art === "wert" ? [{ y: y(s.punkt.wert), farbe: TON }] : []),
+              // Die Leiste zeigt beide Reihen als Wert — dann gehören auch
+              // beide Marken an den Führungsstrich.
+              ...(z?.art === "wert" ? [{ y: y(z.punkt.wert), farbe: TON_ZWEIT }] : []),
+            ];
           }}
         />
       </svg>
@@ -397,6 +629,32 @@ export function Zeitreihe({
               datum={s.art === "luecke" ? s.punkt.datum : undefined} />
           ))}
         </div>
+      )}
+
+      {/* Alle Werte zum Abschreiben. Anders als die Lücken-Hinweise darf
+          das hier eingeklappt sein: Es ist dieselbe Auskunft ein zweites
+          Mal, nicht die einzige. */}
+      {tabelle && (
+        <>
+          <button type="button" onClick={() => setTabelleOffen((t) => !t)}
+            aria-expanded={tabelleOffen} className="mt-2 text-[12px] font-semibold text-primary">
+            {tabelleOffen ? "Tabelle ausblenden"
+              : `Alle ${stellenListe.length} Werte als Tabelle`}
+          </button>
+          {tabelleOffen && (
+            <div className="mt-2 grid grid-cols-[repeat(auto-fill,minmax(104px,1fr))] gap-x-3 gap-y-1 text-[11.5px] tabular-nums">
+              {stellenListe.map((s) => (
+                <span key={s.jahr} className="flex justify-between gap-2 border-t border-border/60 py-1">
+                  <span className="font-mono text-muted-foreground">{s.jahr}</span>
+                  {/* Eine Lücke bleibt auch in der Tabelle eine Lücke. */}
+                  <span className={s.art === "wert" ? "" : "text-signal"}>
+                    {s.art === "wert" ? fmt(s.punkt.wert) : "—"}
+                  </span>
+                </span>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {/* Quellenzeile mit Beleg-Chip-Slot + Legende der Zweitreihe. */}

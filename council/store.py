@@ -1233,6 +1233,28 @@ class CouncilStore:
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (jahr, feld))"
         )
+        # Die Jahrgänge, die es NICHT in den Bestand geschafft haben — mit
+        # dem, was an ihnen gemessen wurde.
+        #
+        # Dieselbe Rolle wie `aufteilung_verworfen` in `council_schulden`, nur
+        # eine Tabelle weiter: Dort trägt die gerettete Zeile ihre Lücke in
+        # einer eigenen Spalte, hier gibt es keine Zeile, die sie tragen
+        # könnte (die Probe reißt, eine zweite gibt es nicht, also fällt der
+        # ganze Jahrgang — s. `council/investitionen_ist.py`).
+        #
+        # `differenz` ist der Grund für diese Tabelle: Ohne sie stünde die
+        # gemessene Lücke nur als Fließtext im `grund` und wäre für die Seite
+        # nicht mehr zu haben, ohne einen Satz zurückzuparsen. `NULL`, wo
+        # nichts zu messen war (eine Zeile, die sich nicht zerlegen ließ) —
+        # eine Null behauptete dort „es passte genau".
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_investitionen_ist_verworfen ("
+            "jahr INTEGER PRIMARY KEY, "
+            "regelwerk TEXT NOT NULL, "        # kameral | doppik
+            "grund TEXT NOT NULL, "            # der Satz aus dem Parser
+            "differenz REAL, "                 # Arten minus Summe, in Euro
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
+        )
         # Vorlagen-Volltexte semantisch auffindbar machen: je Vorlage mehrere
         # Chunk-Vektoren (Sachverhalt/Begründung), die die Hybrid-Suche auf die
         # zugehörigen Beschlüsse abbildet. text_hash = SHA-256 des Volltexts —
@@ -1440,6 +1462,7 @@ class CouncilStore:
         # oldenburg.de.
         "council_investitionen_ist":       (None, "quelle_url", "stadt"),
         "council_investitionen_ist_arten": (None, "quelle_url", "stadt"),
+        "council_investitionen_ist_verworfen": (None, "quelle_url", "stadt"),
         # Der Stellenplan — ebenfalls neu und ohne Altbestand.
         "council_stellenplan":          (None, "quelle_url", "ris"),
         # Und die Schuldenzeitreihe aus dem Statistischen Jahrbuch.
@@ -4912,7 +4935,8 @@ class CouncilStore:
 
     # --- Ist-Investitionen (Tabellen 1107/1107-1 des Jahrbuchs) -------------
 
-    def save_investitionen_ist(self, zeilen: list[dict], herkunft) -> int:
+    def save_investitionen_ist(self, zeilen: list[dict], herkunft,
+                               verworfen: list[dict] | None = None) -> int:
         """Investitions-Jahrgänge ersetzen — je Jahr eine Zeile plus ihre Arten.
 
         Ersetzt wird **nur, was die Lieferung mitbringt**, nicht die ganze
@@ -4925,8 +4949,16 @@ class CouncilStore:
         sonst als Karteileiche stehen und die Aufteilung summierte sich auf
         mehr als die Summe daneben.
 
-        Übergeben wird nur, was seine Probe bestanden hat — diese Methode
-        prüft nichts nach, sie schreibt."""
+        ``verworfen`` sind die Jahrgänge, die die Probe **nicht** bestanden
+        haben (``lies()["verworfen"]``): Grund und gemessene ``differenz``
+        werden mitgeschrieben, damit die Seite ihre Lücke beziffern kann
+        statt sie nur zu behaupten. Ein Jahrgang, der jetzt durchkommt,
+        verliert dabei seinen alten Lücken-Eintrag — sonst stünde er in
+        beiden Tabellen und die Seite zeigte eine Lücke, die es nicht mehr
+        gibt.
+
+        Übergeben wird an ``zeilen`` nur, was seine Probe bestanden hat —
+        diese Methode prüft nichts nach, sie schreibt."""
         from council import investitionen_ist as _ii
 
         now = datetime.utcnow().isoformat(timespec="seconds")
@@ -4952,6 +4984,16 @@ class CouncilStore:
                 "INSERT OR REPLACE INTO council_investitionen_ist_arten "
                 "(jahr, feld, titel, reihenfolge, betrag, herkunft_id, fetched_at) "
                 "VALUES (?,?,?,?,?,?,?)", arten)
+            # Ein übernommener Jahrgang ist keine Lücke mehr.
+            self._conn.executemany(
+                "DELETE FROM council_investitionen_ist_verworfen WHERE jahr = ?",
+                [(z["jahr"],) for z in zeilen])
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_investitionen_ist_verworfen "
+                "(jahr, regelwerk, grund, differenz, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?)",
+                [(v["jahr"], v["regelwerk"], v["grund"], v.get("differenz"),
+                  hid, now) for v in (verworfen or [])])
         return len(zeilen)
 
     def get_investitionen_ist(self) -> list[dict]:
@@ -4975,6 +5017,21 @@ class CouncilStore:
         for r in rows:
             r["arten"] = je_jahr.get(r["jahr"], [])
         return rows
+
+    def get_investitionen_ist_verworfen(self) -> list[dict]:
+        """Die verworfenen Jahrgänge, aufsteigend — je Jahr Grund und Differenz.
+
+        Was hier steht, steht bewusst **nicht** in der Reihe: Diese Jahrgänge
+        haben ihre Probe nicht bestanden. Die Tabelle beantwortet die eine
+        Frage, die eine Lücke im Bild aufwirft — „wie weit lag es
+        auseinander?" — und beantwortet sie mit der gemessenen Zahl statt mit
+        einem Adjektiv. Fehlt die Tabelle (frische Datenbank ohne
+        Ingest-Lauf), ist die Antwort leer statt ein Fehler."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_investitionen_ist_verworfen ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
 
     def investitionen_ist_jahre(self) -> list[int]:
         """Welche Jahrgänge im Bestand stehen — der Bestandsschutz vergleicht

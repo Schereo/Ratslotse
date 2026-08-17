@@ -124,6 +124,7 @@ die es nicht zeigen:
 | `council_staedtevergleich` | Steuerkraft, Hebesätze und Steuereinnahmekraft der acht kreisfreien Städte je Jahrgang — Reihen `steuerkraft` und `realsteuern` | Landesamt für Statistik Niedersachsen (Kommunaler Finanzausgleich, Realsteuervergleich) | `scripts/ingest_staedtevergleich.py` |
 | `council_investitionen_ist` | Tatsächliche Investitions-Auszahlungen je Jahr seit 2003 (**Ist**) — Summe und `regelwerk` (`kameral` bis 2009, `doppik` ab 2010) | Statistisches Jahrbuch der Stadt, Tabellen 1107 und 1107-1 (PDF von oldenburg.de) | `scripts/ingest_investitionen_ist.py` |
 | `council_investitionen_ist_arten` | Dieselben Jahrgänge nach Auszahlungsart, mit der Überschrift der Quelle — vier Arten je kameralem, sechs je doppischem Jahrgang | dito | dito |
+| `council_investitionen_ist_verworfen` | Die Jahrgänge, die die Zeilensumme **nicht** bestanden haben: Grund und gemessene `differenz` in Euro. Damit die Seite ihre Lücke beziffern kann, statt sie nur zu behaupten | dito | dito |
 | `council_schulden` | Schuldenstand je Jahr seit 1995 — vier Schuldenarten, Summe und Betrag je Einwohner\*in | Statistisches Jahrbuch der Stadt, Tabelle 1108 (PDF von oldenburg.de) | `scripts/ingest_schulden.py` |
 
 :::note[Zwei Tabellen zu denselben Berichten]
@@ -1817,6 +1818,17 @@ allen sieben Zahlen — anders als 2022 bei den Schulden ist hier auch die Summe
 durch nichts gedeckt. Die Seite zeichnet für das Jahr einen schraffierten
 Platzhalter mit gestricheltem Rahmen und benennt die Lücke im Text; der
 Endpunkt liefert sie als `fehlend`.
+
+**Mit ihrer Weite.** Der Ingest-Lauf schreibt die verworfenen Jahrgänge nach
+`council_investitionen_ist_verworfen` — Grund als Satz, `differenz` als Zahl
+(Arten minus ausgewiesene Summe, in Euro). `fehlend` trägt sie je Lücke mit,
+und die Seite macht daraus „verworfen: 1,3 Mio. € Differenz im Dokument".
+Dieselbe Rolle wie `aufteilung_verworfen` bei den Schulden, nur eine Tabelle
+weiter: Dort trägt die gerettete Zeile ihre Lücke selbst, hier gibt es keine
+Zeile, die sie tragen könnte. Wo der Bestand keine Messung führt, kommt
+`differenz: null` — dann nennt die Seite die Lücke **ohne** Betrag. Der Betrag
+steht an keiner Stelle im Frontend; er wird mit dem nächsten Jahrbuch neu
+gemessen oder verschwindet.
 
 ### Warum die Seite keine „Umsetzungsquote" zeigt
 

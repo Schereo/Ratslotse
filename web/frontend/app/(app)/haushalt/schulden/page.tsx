@@ -27,6 +27,22 @@
 // Schuld um 139 Mio., weil die Stadt die Stadtentwässerung abgab — kein
 // Sparerfolg. 2010 sprang eine Spalte um 100 Mio., ohne dass sich die Summe
 // bewegte — eine Umbuchung. Farbe kann das nicht unterscheiden, Text schon.
+//
+// DAS BILD IST DIE GEMEINSAME <Zeitreihe> (GB-01,
+// components/grafik/zeitreihe.tsx) und keine seiten-eigene Kurve mehr. Was
+// hier bleibt, sind die Entscheidungen, die diese Seite trifft:
+//
+//  * DIE SPRUNG-MARKEN rechnet die Grafik (`spruenge`), nicht diese Datei.
+//    Eine Seite, die „2001 fiel es am stärksten" als Text trägt, wird mit dem
+//    nächsten Jahrgang still falsch. Was HINTER den Sprüngen steckt, steht
+//    darunter als belegter Satz — im Bild steht nur die gemessene Bewegung.
+//  * DIE ZINSLINIE (H4-13) nur in der absoluten Ansicht: Einen Pro-Kopf-Zins
+//    weist keine Quelle aus, und wir dividieren nicht selbst. Sie liegt auf
+//    DERSELBEN Skala — dass sie fast auf der Nulllinie klebt, ist die
+//    Aussage und kein Darstellungsfehler.
+//  * ZWEI ANSICHTEN, weil sie über dreißig Jahre in verschiedene Richtungen
+//    zeigen (s. o.). Der Umschalter steht bewusst außerhalb der Grafik: Er
+//    wechselt die DATEN, nicht die Darstellung.
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
@@ -38,7 +54,7 @@ import {
   Ansicht, Herkunft, SchuldenDaten, aufteilungen, deEuro, herkunftVon,
   juengsteZinslast, ohneAufteilung, punkte,
 } from "@/lib/haushalt-schulden";
-import { SchuldenKurve } from "@/components/haushalt/schulden-kurve";
+import { Zeitreihe } from "@/components/grafik/zeitreihe";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
@@ -257,15 +273,29 @@ export default function SchuldenPage() {
           />
         </div>
         <section className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
-          {/* Zinslinie und 2010-Annotation direkt im Bild (H4-13): Was der
+          {/* Die gemeinsame <Zeitreihe> des Baukastens (GB-01) — nicht mehr
+              seiten-eigen: Zinslinie (`zweitreihe`), 2010-Marke
+              (`annotationen`) und die beiden größten Bewegungen (`spruenge`)
+              sind dort Vertrag.
+
+              Zinslinie und 2010-Annotation direkt im Bild (H4-13): Was der
               Bestand im Jahr kostet, auf derselben Skala — und der Knick von
               2010 mit seiner Erklärung am Ort des Knicks. Der ganze Satz samt
               Beleg steht darunter in „Zwei Sprünge, die keine Politik waren". */}
-          <SchuldenKurve
-            punkte={kurve}
-            ansicht={ansicht}
-            zweitreihe={zinsreihe}
-            zweitreiheLabel="Zinslast p. a."
+          <Zeitreihe
+            reihe={kurve}
+            titel={ansicht === "insgesamt" ? "Schulden insgesamt" : "Schulden je Einwohner*in"}
+            ariaTitel={`Schuldenstand ${erster.jahr} bis ${letzter.jahr}`}
+            einheit={ansicht === "insgesamt" ? "Mio. €" : "€ je Einwohner*in"}
+            // Millionen mit einer Stelle, Pro-Kopf-Beträge ohne — sonst stünde
+            // „1.908,0 €" an einer Zahl, die die Quelle ganzzahlig ausweist.
+            format={ansicht === "insgesamt" ? (v) => deMio(v) : deEuro}
+            spruenge
+            vorjahresdifferenz
+            tabelle
+            zweitreihe={zinsreihe && zinsreihe.length
+              ? { label: "Zinslast p. a.", reihe: zinsreihe, format: (v) => deMio(v) }
+              : undefined}
             annotationen={ansicht === "insgesamt" ? [{
               jahr: 2010,
               kurz: "108,9 Mio. umgebucht",
@@ -273,6 +303,7 @@ export default function SchuldenPage() {
                 + "Eigenbetrieb Gebäudewirtschaft — eine Spalte sprang, die Summe "
                 + "kaum. Kein Tilgungswunder.",
             }] : []}
+            hinweis="Jahr überfahren, antippen oder mit den Pfeiltasten wechseln."
           />
           {/* Die beiden Richtungen nebeneinander — der Grund, warum es den
               Umschalter überhaupt gibt. Gerechnet, nicht geschrieben. */}

@@ -23,13 +23,13 @@
 // <LueckenFeld> im Bild — lieber eine Lücke als eine Zahl, die sich selbst
 // widerspricht.
 //
-// TODO(Datenpfad): Die H3-03-Beschriftung nennt die gemessene Differenz
-// („1,3 Mio. € Differenz im Dokument"). Der Betrag entsteht beim Ingest
-// (`council/investitionen_ist.py`, `lies()["verworfen"]`), wird aber nicht
-// gespeichert — der Endpunkt `/council/haushalt/gebaut` liefert nur die
-// Jahre. Sobald `verworfen` mit Differenz persistiert und ausgeliefert wird,
-// gehört der Betrag in den Lücken-Grund; bis dahin bleibt er weg statt
-// hart codiert.
+// DER BETRAG AN DER LÜCKE KOMMT AUS DEN DATEN, nie von hier: Was der
+// Ingest-Lauf beim Verwerfen gemessen hat, steht seitdem in
+// `council_investitionen_ist_verworfen` und kommt als `differenz` je Lücke
+// mit der Antwort (`fehlend`). `lueckeGrund()` unten setzt daraus den Satz
+// zusammen — und lässt den Betrag weg, wo die API keinen liefert. Eine
+// Jahreszahl mit fest verdrahtetem Betrag wäre eine Behauptung, die beim
+// nächsten Jahrbuch still falsch wird.
 //
 // KEINE BEWERTUNGSFARBEN (components/grafik/hantel.tsx). Ein hoher Balken
 // ist keine gute Nachricht und ein niedriger keine schlechte: 2020 steht
@@ -42,7 +42,7 @@ import Link from "next/link";
 import { ArrowRight, FileText } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
 import {
-  GebautDaten, Herkunft, deMioEuro, groessterPosten,
+  GebautDaten, GebautLuecke, Herkunft, deMioEuro, groessterPosten,
   herkunftVon, juengsteReihe, reihen,
 } from "@/lib/haushalt-gebaut";
 import { NahtSaeulen, type NahtJahr } from "@/components/grafik/naht-saeulen";
@@ -53,10 +53,27 @@ import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 
 const QUELLEN = ["gebaut"] as const;
 
-/** Warum ein Jahrgang fehlt — der Satz am <LueckenFeld>. Ohne Betrag, s.
- *  TODO(Datenpfad) im Kopf dieser Datei. */
-const LUECKE_GRUND = "verworfen: die Auszahlungsarten ergeben in der "
-  + "Quelltabelle nicht die ausgewiesene Summe daneben";
+/** Warum ein Jahrgang fehlt — der Satz am <LueckenFeld>.
+ *
+ *  Mit Betrag, wo die API einen gemessenen führt („verworfen: 1,3 Mio. €
+ *  Differenz im Dokument"), und ohne, wo nicht. Der Betrag wird hier
+ *  formatiert und nirgends beziffert: Er steht in `differenz` und kommt aus
+ *  dem Lauf, der den Jahrgang verworfen hat.
+ *
+ *  Vorzeichenlos, obwohl `differenz` eines trägt: Im Satz steht, wie weit die
+ *  beiden Zahlen des Dokuments auseinanderliegen. Welche der sieben Zahlen
+ *  danebenliegt, sagt die Tabelle nicht — ein „−" behauptete, es sei die
+ *  Summe. */
+function lueckeGrund(l: GebautLuecke): string {
+  // Mit Betrag bleibt der Grund kurz: Die Zahl sagt bereits, worum es geht,
+  // und der ganze Satz steht daneben in „Verworfene Jahrgänge". Ohne Betrag
+  // muss der Grund die Auskunft allein tragen — dann wird er länger.
+  const satz = "die Auszahlungsarten ergeben in der Quelltabelle nicht die "
+    + "ausgewiesene Summe daneben";
+  if (l.differenz == null) return `verworfen: ${satz}`;
+  return `verworfen: ${deMioEuro(Math.abs(l.differenz))} Mio. € `
+    + `Differenz im Dokument`;
+}
 
 /** Die Töne der „Wofür"-Aufteilung — dunkel nach hell, in der Spaltenfolge
  *  der Quelle. Neutrale Ausgaben-Rampe; sechs reichen, mehr Arten führt
@@ -101,7 +118,7 @@ export default function GebautPage() {
           teile: z.arten.map((a) => ({ art: a.titel, wert: a.betrag / 1e6 })),
         });
       }
-      for (const j of r.fehlend) js.push({ jahr: j, fehlt: LUECKE_GRUND });
+      for (const l of r.fehlend) js.push({ jahr: l.jahr, fehlt: lueckeGrund(l) });
     }
     return js.sort((a, b) => a.jahr - b.jahr);
   }, [alle]);
@@ -122,7 +139,11 @@ export default function GebautPage() {
   }, [aeltere, juengste]);
 
   const alleFehlend = useMemo(
-    () => alle.flatMap((r) => r.fehlend).sort((a, b) => a - b), [alle]);
+    () => alle.flatMap((r) => r.fehlend).sort((a, b) => a.jahr - b.jahr), [alle]);
+  // Die gemessenen Differenzen der Lücken — nur die, die eine tragen. Der
+  // Satz unten nennt sie, wenn es sie gibt, und schweigt sonst.
+  const gemesseneLuecken = useMemo(
+    () => alleFehlend.filter((l) => l.differenz != null), [alleFehlend]);
 
   if (loading) {
     return <div className="py-16 text-center text-sm text-muted-foreground">
@@ -264,12 +285,27 @@ export default function GebautPage() {
           <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
             <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
               {alleFehlend.length === 1
-                ? `${alleFehlend[0]} ist verworfen — im Bild, nicht in der Fußnote`
+                ? `${alleFehlend[0].jahr} ist verworfen — im Bild, nicht in der Fußnote`
                 : "Verworfene Jahrgänge — im Bild, nicht in der Fußnote"}
             </p>
             <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
-              Für {alleFehlend.join(", ")} ergeben die einzelnen Auszahlungsarten in der
-              Quelltabelle nicht den Betrag, der daneben als Summe ausgewiesen ist.
+              Für {alleFehlend.map((l) => l.jahr).join(", ")} ergeben die einzelnen
+              Auszahlungsarten in der Quelltabelle nicht den Betrag, der daneben als
+              Summe ausgewiesen ist.{" "}
+              {/* Die gemessene Weite der Lücke — aus den Daten, nicht aus dem
+                  Gedächtnis. Ohne Messung im Bestand bleibt der Satz weg. */}
+              {gemesseneLuecken.length > 0 && (
+                <>Gemessen sind es{" "}
+                  {gemesseneLuecken.map((l, i) => (
+                    <span key={l.jahr}>
+                      {i > 0 && (i === gemesseneLuecken.length - 1 ? " und " : ", ")}
+                      {gemesseneLuecken.length > 1 && `${l.jahr}: `}
+                      {deMioEuro(Math.abs(l.differenz!))}&#8239;Mio.&nbsp;€
+                    </span>
+                  ))}
+                  {" "}Unterschied.{" "}
+                </>
+              )}
               Welche Zahl danebenliegt, sagt die Tabelle nicht, und eine zweite Quelle
               gibt es nicht — deshalb {alleFehlend.length === 1
                 ? "steht der Jahrgang"

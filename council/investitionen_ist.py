@@ -329,9 +329,21 @@ def lies(text: str) -> dict:
     ``zeilen``
         Die übernommenen Jahrgänge, aufsteigend. Jede trägt ihr ``regelwerk``.
     ``verworfen``
-        Jahrgänge, die die Probe nicht bestanden haben, mit Grund. Sie stehen
-        nirgends in der Datenbank — anders als bei den Schulden gibt es hier
-        keine zweite Probe, die wenigstens die Summe trüge (s. Modulkopf).
+        Jahrgänge, die die Probe nicht bestanden haben, mit ``grund`` und
+        ``differenz``. Ihre sieben Zahlen stehen nirgends in der Datenbank —
+        anders als bei den Schulden gibt es hier keine zweite Probe, die
+        wenigstens die Summe trüge (s. Modulkopf).
+
+        ``differenz`` ist die gemessene Lücke in Euro (Arten minus
+        ausgewiesene Summe, vorzeichenbehaftet) — als **Zahl** neben dem
+        Fließtext und nicht nur in ihm. Der Grund ist ein Satz für Menschen;
+        die Zahl daraus zurückzuparsen wäre eine zweite, stille Schnittstelle.
+        Dieselbe Rolle wie ``aufteilung_verworfen`` bei den Schulden
+        (``council/schulden.py``): Sie hält fest, wie groß die Lücke war,
+        damit die Seite die Lücke **beziffern** kann statt sie nur zu
+        behaupten. ``None``, wo es nichts zu messen gab — eine Zeile, die
+        sich nicht einmal in ihre Felder zerlegen ließ, hat keine Differenz,
+        und eine erfundene Null wäre dort die Behauptung „es passte genau".
     ``spannen``
         Was die Titel für jede Tabelle ankündigen.
     ``fehlende_jahrgaenge``
@@ -353,6 +365,9 @@ def lies(text: str) -> dict:
             if zeile.get("unlesbar"):
                 verworfen.append({
                     "jahr": zeile["jahr"], "regelwerk": regelwerk,
+                    # Keine Differenz: Ohne zerlegte Felder gibt es keine
+                    # Summe, die man gegen die ausgewiesene halten könnte.
+                    "differenz": None,
                     "grund": f"Zeile nicht in {len(SPALTEN[regelwerk])} Felder "
                              f"zerlegbar: {zeile['unlesbar']!r}"})
                 continue
@@ -362,6 +377,8 @@ def lies(text: str) -> dict:
             if not ok:
                 verworfen.append({
                     "jahr": zeile["jahr"], "regelwerk": regelwerk,
+                    # Die Zahl neben dem Satz — s. Rückgabe-Beschreibung.
+                    "differenz": abweichung,
                     "grund": f"Zeilensumme um "
                              f"{de_zahl(abweichung, vorzeichen=True)} € gerissen; "
                              f"eine zweite Probe trägt diese Tabelle nicht"})

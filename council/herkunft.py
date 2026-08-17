@@ -335,6 +335,10 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     # Summe steht in der einen, die Aufteilung in der anderen.
     "council_investitionen_ist",
     "council_investitionen_ist_arten",
+    # Und die Gegenprobe dazu: die verworfenen Jahrgänge mit ihrer gemessenen
+    # Differenz. Auch eine Lücke ist eine Auskunft und trägt deshalb die
+    # Herkunft des Laufs, der sie festgestellt hat.
+    "council_investitionen_ist_verworfen",
     # Der Stellenplan — ebenso.
     "council_stellenplan",
     # Die Schuldenzeitreihe aus dem Statistischen Jahrbuch — ebenfalls neu und

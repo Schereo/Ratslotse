@@ -27,6 +27,15 @@ export type GebautJahr = {
   herkunft_id: number | null;
 };
 
+/** Ein Jahr, das die Reihe ankündigt und nicht belegt.
+ *
+ *  `differenz` ist die GEMESSENE Lücke in Euro (Auszahlungsarten minus
+ *  ausgewiesene Summe, vorzeichenbehaftet) — sie kommt aus dem Ingest-Lauf,
+ *  der den Jahrgang verworfen hat, und steht nirgends im Frontend. `null`,
+ *  wo der Bestand keine Messung führt; dann nennt die Seite die Lücke ohne
+ *  Betrag, statt einen zu erfinden. */
+export type GebautLuecke = { jahr: number; differenz: number | null };
+
 export type GebautDaten = {
   reihe: GebautJahr[];
   jahre: number[];
@@ -38,7 +47,7 @@ export type GebautDaten = {
    *  null, sondern unbelegt: Ihre Zeilensumme geht in der Quelle selbst nicht
    *  auf, und anders als bei den Schulden gibt es keine zweite Probe, die
    *  wenigstens die Summe trüge. */
-  fehlend: Record<string, number[]>;
+  fehlend: Record<string, GebautLuecke[]>;
   herkunft: Record<string, Herkunft>;
 };
 
@@ -51,8 +60,9 @@ export type Reihe = {
   schluessel: string;
   titel: string;
   jahre: GebautJahr[];
-  /** Was in dieser Reihe fehlt — bereits als Jahreszahlen. */
-  fehlend: number[];
+  /** Was in dieser Reihe fehlt — je Lücke das Jahr und die gemessene
+   *  Differenz, soweit der Bestand eine führt. */
+  fehlend: GebautLuecke[];
 };
 
 /** Die Daten nach Rechnungswesen getrennt, in der Reihenfolge des Backends.
