@@ -8,6 +8,24 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Aus „18 %" wird ein zählbares Bild.** Auf „Wer macht die Arbeit?"
+  (`/haushalt/personal`) steht der Stellenplan jetzt als Waffel: Ein Quadrat
+  sind zehn Stellen, die unbesetzten tragen einen orangenen Umriss — samt dem
+  Stichtag, zu dem gezählt wurde, denn die Besetzung wird immer ein Jahr
+  versetzt erhoben. Daneben je Jahrgang ein Balkenpaar aus vorgehaltenen und
+  besetzten Stellen; verrechnet wird weiterhin nichts, weil beide Zahlen zu
+  verschiedenen Zeitpunkten gehören. Der Tarif-Jahrgang 2026, den das PDF der
+  Stadt nicht lesbar hergibt, bleibt als beschriftete Lücke sichtbar stehen.
+  (#576)
+- **22 Jahrgänge Bautätigkeit in einem Bild.** „Was wurde davon wirklich
+  gebaut?" (`/haushalt/gebaut`) zeigte die zwei Rechnungswelten der Stadt
+  bisher als zwei getrennte Diagramme — jetzt stehen alle Säulen von 2003 bis
+  2025 nebeneinander, und der Systemwechsel 2009/2010 ist als gestrichelte
+  Naht im Bild: links die kamerale, rechts die doppische Welt, jede in eigenen
+  Farben, nichts wird über die Naht hinweg verrechnet. 2019 steht als
+  beschriftete Lücke im Bild, weil die Quelltabelle sich dort selbst
+  widerspricht. Jedes Jahr lässt sich zeigen, tippen oder mit den Pfeiltasten
+  ablesen — nach allen Auszahlungsarten getrennt. (#576)
 - **Ein Baukasten für alle Haushalts-Grafiken.** Bisher brachte jede Grafik
   des Haushalts-Bereichs ihre eigenen Bausteine mit; jetzt gibt es ein
   gemeinsames Fundament (`components/grafik/`), aus dem die kommenden

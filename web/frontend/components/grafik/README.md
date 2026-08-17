@@ -63,6 +63,13 @@ Beteiligungen), `nichtAussagen` (Kassenzettel/Pro-Kopf) oder `gemessen`
 (Zeitstrahl) führt, sind das Pflicht-Props der Grafik — eine Hantel ohne
 Erklärsatz kompiliert nicht. Gerendert werden sie über `<Einordnung>`.
 
+## Bisher gebaute Grafiken
+
+| Grafik | Datei | Vertrag (Kurzform) |
+|---|---|---|
+| `<Waffel>` (GB-06) | `waffel.tsx` | `gesamt · proQuadrat · markiert {anzahl, grund, stichtag} · einheit · grundLabel`. Markierung immer Signal-**Umriss**, nie Fläche; Stichtag und Rundungszeile rendert die Komponente. 14 Quadrate je Reihe, mobil 10 à 13 px (CSS `.gb-waffel`). Nicht interaktiv, `role="img"`. Einsatz: Personal. |
+| `<NahtSaeulen>` (GB-02) | `naht-saeulen.tsx` | `jahre {jahr, teile[] \| fehlt}[] · naht? {zwischen, text} · gruppierungMobil · einheit`. Zwei Farbwelten links/rechts der Naht (aus-/ein-Rampe), erzwungen — keine Farb-Props. Stapel bündeln nach Größe (Desktop 3, mobil 2 Gruppen), die Ableseleiste trennt ALLE Arten. Lücken: volle Säule + `<LueckenFeld>`, von der Komponente gerendert. Keine Rechnung über die Naht. Einsatz: Gebaut. |
+
 ## Zahlen (`format.ts`)
 
 `Intl.NumberFormat("de-DE")`, gecacht. `deZahl` (feste Nachkommastellen),
