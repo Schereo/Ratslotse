@@ -212,6 +212,64 @@ export type HaushaltDaten = {
   produkt_jahre?: number[];
   /** Jahre mit „geplant gegen tatsächlich" je Teilhaushalt. */
   plan_ist_jahre?: number[];
+  /** Die lange Ausgabenreihe aus Datensatz 1102 — ein Betrag je Jahr seit 1972. */
+  ausgabenreihe?: Ausgabenreihe;
+};
+
+/** Die beiden Rechnungswesen, unter denen die Stadt gezählt hat. Der Wechsel
+ *  zum 1. Januar 2010 ist die Naht der langen Reihe. */
+export type Regelwerk = "kameral" | "doppik";
+
+/** Welche der beiden Veröffentlichungen den Betrag geliefert hat. Nur dort
+ *  interessant, wo sie sich widersprechen — dann steht die unterlegene Zahl
+ *  als `konflikt_betrag` daneben. */
+export type Ausgabenquelle = "pdf" | "csv";
+
+/** Wie eine Quelle auf der Seite heißt. „PDF" und „CSV" sind Dateiformate und
+ *  keine Herausgeber; im Text steht, wer die Zahl veröffentlicht.
+ *
+ *  Mit Artikel und im Nominativ, weil beide Namen im selben Satz mitten drin
+ *  stehen („… nennt das Statistische Jahrbuch X, der Open-Data-Datensatz Y").
+ *  Ohne Artikel müsste der Satz ihn setzen — und „das Statistisches Jahrbuch"
+ *  ist genau der Fehler, den eine Beschriftung aus einer Map gern produziert. */
+export const AUSGABEN_QUELLE_LABEL: Record<Ausgabenquelle, string> = {
+  pdf: "das Statistische Jahrbuch",
+  csv: "der Open-Data-Datensatz",
+};
+
+/** Ein Jahrgang der langen Reihe. `betrag` in Euro.
+ *
+ *  `proben` sind die Rechenproben, die dieser Jahrgang bestanden hat — sie
+ *  sind gestaffelt: Die dreißig ältesten Jahre hängen allein an der
+ *  Pro-Kopf-Rechnung der Quelle, die jüngeren zusätzlich am Abgleich der
+ *  beiden Veröffentlichungen und am Jahresabschluss. Die Erklärsätze dazu
+ *  kommen über die `herkunft_id` mit (`lib/herkunft.ts`).
+ *
+ *  Eine Einwohnerzahl liefert dieser Datensatz bewusst nicht: Die Reihe darf
+ *  nicht durch Einwohner geteilt werden, weil die Einwohnerreihe zwei
+ *  Zensus-Brüche hat (2011 und 2022). Die Begründung steht an der Tabelle in
+ *  `council/store.py`. */
+export type AusgabenreiheJahr = {
+  jahr: number;
+  regelwerk: Regelwerk;
+  betrag: number;
+  quelle: Ausgabenquelle;
+  proben: string[];
+  /** Was die andere Veröffentlichung für dieses Jahr nennt — nur gefüllt, wo
+   *  die beiden sich widersprechen. */
+  konflikt_betrag: number | null;
+  konflikt_quelle: Ausgabenquelle | null;
+  revidiert: 0 | 1;
+  herkunft_id: number | null;
+};
+
+export type Ausgabenreihe = {
+  zeilen: AusgabenreiheJahr[];
+  /** Das erste Jahr des neuen Rechnungswesens — die Naht liegt davor. */
+  naht_ab: number;
+  /** Je Regelwerk der Titel der Quelle und ihre Abgrenzung. Beide reisen mit
+   *  den Daten, damit die Legende nicht in zwei Sprachen existiert. */
+  regelwerke: Record<Regelwerk, { label: string; titel: string; abgrenzung: string }>;
 };
 
 /** „Geplant gegen tatsächlich" je abgeschlossenem Jahr, in Mio.
@@ -585,6 +643,26 @@ export function fehlendeJahre(vorhanden: number[]): number[] {
 
 export function summe(zeilen: HaushaltZeile[]): HaushaltZeile | undefined {
   return zeilen.find((z) => z.is_summe === 1);
+}
+
+/** Die lange Ausgabenreihe, sortiert und nur mit den Jahren, die auch einen
+ *  Betrag haben. Leer, solange die Tabelle leer ist — die Seite zeigt den
+ *  Block dann gar nicht, statt eine Achse ohne Säulen zu zeichnen.
+ *
+ *  Die API liefert bereits sortiert; hier wird trotzdem sortiert, weil die
+ *  Naht-Grafik eine aufsteigende Achse voraussetzt und ein Lesepfad, der sich
+ *  auf die Reihenfolge einer fremden Antwort verlässt, still kippt. */
+export function ausgabenreihe(daten: HaushaltDaten): AusgabenreiheJahr[] {
+  const zeilen = daten.ausgabenreihe?.zeilen ?? [];
+  return [...zeilen].sort((a, b) => a.jahr - b.jahr);
+}
+
+/** Die Jahrgänge, in denen sich die beiden Veröffentlichungen widersprechen.
+ *
+ *  Kein Nebenschauplatz, sondern Inhalt: Wo zwei amtliche Quellen für dasselbe
+ *  Jahr zwei Beträge nennen, gehört das auf die Seite — mit beiden Zahlen. */
+export function ausgabenKonflikte(daten: HaushaltDaten): AusgabenreiheJahr[] {
+  return ausgabenreihe(daten).filter((z) => z.konflikt_betrag != null);
 }
 
 export function bereiche(zeilen: HaushaltZeile[]): HaushaltZeile[] {

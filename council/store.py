@@ -1335,6 +1335,42 @@ class CouncilStore:
             "differenz REAL, "                 # Arten minus Summe, in Euro
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
         )
+        # Die lange Ausgabenreihe — Datensatz 1102, ein Betrag je Jahr seit
+        # 1972 (council/ausgabenreihe.py). Beträge in Euro; die Quelle rechnet
+        # in Tausend Euro.
+        #
+        # `regelwerk` trennt die beiden Größen an der Naht 2009/2010, genau
+        # wie in `council_investitionen_ist` und aus derselben Fußnote
+        # derselben Quelle: Links steht das Anordnungssoll des
+        # Verwaltungshaushalts, rechts die ordentlichen Aufwendungen der
+        # Gesamtergebnisrechnung.
+        #
+        # WAS HIER BEWUSST NICHT STEHT: die Einwohnerzahl und der Betrag je
+        # Einwohner*in, obwohl beide Quellen sie führen und die Pro-Kopf-Probe
+        # sie braucht. Sie bleiben im Parser. Der Grund ist keine Sparsamkeit,
+        # sondern eine Sperre: Läge der Divisor in dieser Tabelle, wäre die
+        # naheliegendste Grafik der Seite „Ausgaben pro Kopf seit 1972" — und
+        # die wäre falsch, weil die Einwohnerreihe zwei Zensus-Brüche hat
+        # (2011 und 2022, s. die Fußnote auf /haushalt/schulden). Was die API
+        # nicht liefern kann, kann das Frontend nicht versehentlich zeichnen.
+        #
+        # `konflikt_betrag` ist der Betrag, den die ANDERE Quelle für dieses
+        # Jahr nennt — gefüllt nur, wo PDF und CSV sich widersprechen (2021).
+        # Dieselbe Rolle wie `differenz` in
+        # `council_investitionen_ist_verworfen`: Er macht aus „hier gab es
+        # einen Widerspruch" eine Zahl, die die Seite anschreiben kann.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_ausgabenreihe ("
+            "jahr INTEGER PRIMARY KEY, "
+            "regelwerk TEXT NOT NULL, "        # kameral | doppik
+            "betrag REAL NOT NULL, "           # in Euro
+            "quelle TEXT NOT NULL, "           # pdf | csv — wer den Wert lieferte
+            "proben TEXT NOT NULL, "           # bestandene Proben, kommagetrennt
+            "konflikt_betrag REAL, "           # was die andere Quelle sagt
+            "konflikt_quelle TEXT, "
+            "revidiert INTEGER NOT NULL DEFAULT 0, "   # „r" der Quelle
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
+        )
         # Vorlagen-Volltexte semantisch auffindbar machen: je Vorlage mehrere
         # Chunk-Vektoren (Sachverhalt/Begründung), die die Hybrid-Suche auf die
         # zugehörigen Beschlüsse abbildet. text_hash = SHA-256 des Volltexts —
@@ -1553,6 +1589,10 @@ class CouncilStore:
         "council_stellenplan":          (None, "quelle_url", "ris"),
         # Und die Schuldenzeitreihe aus dem Statistischen Jahrbuch.
         "council_schulden":             (None, "quelle_url", "stadt"),
+        # Die lange Ausgabenreihe: zwei Quellen — das Jahrbuch der Stadt und
+        # das Open-Data-Portal —, deshalb keine feste Art. Nachzutragen ist
+        # ohnehin nichts, die Tabelle ist neu.
+        "council_ausgabenreihe":        (None, "quelle_url", None),
         # Der Beteiligungsbericht: ebenfalls erst mit der Herkunft entstanden.
         # Seine Dokumente kommen von oldenburg.de, nicht aus dem Bürgerinfo.
         "council_gesellschaften":            (None, "quelle_url", "stadt"),
@@ -4031,6 +4071,7 @@ class CouncilStore:
         "einwohner":   ("council_einwohner", "jahr", None),
         "schulden":    ("council_schulden", "jahr", None),
         "gebaut":      ("council_investitionen_ist", "jahr", None),
+        "ausgabenreihe": ("council_ausgabenreihe", "jahr", None),
     }
 
     def haushalt_jahrgaenge(self) -> dict[str, list[int]]:
@@ -5144,6 +5185,64 @@ class CouncilStore:
         except sqlite3.OperationalError:
             return []
         return [dict(r) for r in rows]
+
+    # --- Lange Ausgabenreihe (Datensatz 1102, seit 1972) --------------------
+
+    def save_ausgabenreihe(self, zeilen: list[dict], herkunft) -> int:
+        """Jahrgänge der langen Ausgabenreihe ersetzen — je Jahr eine Zeile.
+
+        Ersetzt wird **nur, was die Lieferung mitbringt**, nicht die ganze
+        Tabelle: Ein Lauf, dem ein Jahrgang an einer Probe durchgefallen ist,
+        darf den vorher gespeicherten Stand dieses Jahrgangs nicht mit
+        wegräumen (dieselbe Regel wie bei ``save_schulden``).
+
+        Übergeben wird nur, was seine Proben bestanden hat — diese Methode
+        prüft nichts nach, sie schreibt. Welche Proben das waren, kommt als
+        Liste in ``proben`` an und wird kommagetrennt gespeichert; die Namen
+        stehen in ``council/herkunft.PROBEN``.
+
+        Aufgerufen wird sie einmal je Herkunfts-Gruppe, nicht einmal für die
+        ganze Reihe: Ein Jahrgang von 1974 steht nur im Open-Data-Portal, einer
+        von 2024 zusätzlich im Jahrbuch und im Jahresabschluss — das sind
+        verschiedene Belege, und jeder soll für seine Zeilen gelten."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_ausgabenreihe "
+                "(jahr, regelwerk, betrag, quelle, proben, konflikt_betrag, "
+                " konflikt_quelle, revidiert, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?)",
+                [(z["jahr"], z["regelwerk"], z["betrag"], z["quelle"],
+                  ",".join(z.get("proben") or []), z.get("konflikt_betrag"),
+                  z.get("konflikt_quelle"), int(bool(z.get("revidiert"))),
+                  hid, now) for z in zeilen])
+        return len(zeilen)
+
+    def get_ausgabenreihe(self) -> list[dict]:
+        """Die lange Ausgabenreihe, aufsteigend nach Jahr.
+
+        ``proben`` kommt als Liste heraus, nicht als gespeicherter String —
+        das Frontend soll die Trennzeichen-Konvention nicht kennen müssen.
+        Fehlt die Tabelle (frische Datenbank ohne Ingest-Lauf), ist die Antwort
+        leer statt ein Fehler."""
+        try:
+            rows = [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_ausgabenreihe ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+        for r in rows:
+            r["proben"] = [p for p in (r.get("proben") or "").split(",") if p]
+        return rows
+
+    def ausgabenreihe_jahre(self) -> list[int]:
+        """Welche Jahrgänge im Bestand stehen — Grundlage des Bestandsschutzes
+        vor dem Schreiben (``council/finanzquellen.bestandsschutz``)."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT jahr FROM council_ausgabenreihe ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
 
     # --- Ist-Investitionen (Tabellen 1107/1107-1 des Jahrbuchs) -------------
 

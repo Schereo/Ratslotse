@@ -126,6 +126,7 @@ die es nicht zeigen:
 | `council_investitionen_ist_arten` | Dieselben Jahrgänge nach Auszahlungsart, mit der Überschrift der Quelle — vier Arten je kameralem, sechs je doppischem Jahrgang | dito | dito |
 | `council_investitionen_ist_verworfen` | Die Jahrgänge, die die Zeilensumme **nicht** bestanden haben: Grund und gemessene `differenz` in Euro. Damit die Seite ihre Lücke beziffern kann, statt sie nur zu behaupten | dito | dito |
 | `council_schulden` | Schuldenstand je Jahr seit 1995 — vier Schuldenarten, Summe und Betrag je Einwohner\*in | Statistisches Jahrbuch der Stadt, Tabelle 1108 (PDF von oldenburg.de) | `scripts/ingest_schulden.py` |
+| `council_ausgabenreihe` | Ausgaben je Jahr seit **1972** (**Ist**) — `regelwerk` (`kameral` bis 2009, `doppik` ab 2010), die bestandenen `proben` je Zeile und, wo die beiden Quellen sich widersprechen, der `konflikt_betrag` der unterlegenen. **Ohne Einwohnerzahl**, s. u. | Datensatz 1102 — Statistisches Jahrbuch, Tabelle 1102 (PDF) **und** Open-Data-Portal (zwei CSV) | `scripts/ingest_ausgabenreihe.py` |
 
 :::note[Zwei Tabellen zu denselben Berichten]
 `council_pruefbericht_quellen` hält die **Fundstelle** des Schlussberichts
@@ -141,8 +142,73 @@ Ingest-Skripte bleiben der Weg von Hand, wenn ein verbesserter Parser über den
 `council_steuern`, `council_steuerkraft`, `council_einwohner`) kommen per
 Download von oldenburg.de und bleiben Handarbeit, ebenso der Städtevergleich
 (LSN, einmal jährlich — siehe [unten](#kein-neues-paket-kein-cron)) und die
-Schuldenzeitreihe und die Ist-Investitionen (beide Statistisches Jahrbuch,
-einmal jährlich).
+Schuldenzeitreihe, die Ist-Investitionen und die lange Ausgabenreihe (alle drei
+Statistisches Jahrbuch, einmal jährlich).
+
+### Die lange Ausgabenreihe (Datensatz 1102, seit 1972)
+
+Die längste Reihe des Bereichs — 54 Jahrgänge — und die einzige, die aus
+**zwei Veröffentlichungen zugleich** kommt: dem Statistischen Jahrbuch
+(Tabelle 1102 als PDF, ab 2002) und dem Open-Data-Portal (zwei CSV-Dateien,
+ab 1972). Genau diese Doppelung macht sie prüfbar.
+
+**Drei gestaffelte Proben**, und welche ein Jahrgang bestanden hat, steht an
+seiner Zeile (`proben`):
+
+1. **Pro-Kopf-Rechnung der Quelle** — beide Dateien führen neben dem Betrag
+   eine Einwohnerzahl und einen Betrag je Einwohner\*in; Betrag ÷ Einwohnerzahl
+   muss den ausgewiesenen Wert ergeben. Trägt jede der 54 Zeilen, auch die
+   dreißig, für die es keine zweite Quelle gibt. Sie entscheidet nebenbei eine
+   Einheitenfrage: Die ältere CSV beschriftet ihre Spalte „in Euro" und meint
+   Tausend Euro — die Probe geht nur in Tausend Euro auf, und zwar in allen 38
+   Zeilen.
+2. **Jahrbuch gegen Open-Data-Portal** — in den 24 gemeinsamen Jahren müssen
+   beide denselben Betrag nennen. Sie tun es 23-mal.
+3. **Abgleich mit dem Jahresabschluss** — für die Jahre mit Abschluss gegen
+   Posten 20 der Ergebnisrechnung.
+
+**Warum der Abgleich eine Toleranz hat und keine Gleichheit.** Die Statistik
+liegt in jedem geprüften Jahrgang zwischen 0,03 und 0,05 % über
+`council_ergebnisrechnung` — 2017 um 166.253 €, 2024 um 328.936 €. Das ist
+kein Rundungsrest, sondern eine Abgrenzung: Der Jahresabschluss führt die
+Tabelle zweimal, als *Ergebnisrechnung der Kernverwaltung* (Abschnitt 3.1, das
+ist, was wir parsen) und als *Gesamtergebnisrechnung* (3.2 — im
+Rechenschaftsbericht ausgeschrieben als „Kernhaushalt und nicht rechtsfähige
+Stiftungen"). Die Statistik nimmt die zweite. Der Bericht rechnet den
+Unterschied selbst vor: „ordentliche Aufwendungen gemäß Haushaltsplan
+728.170.348,30 abzüglich Aufwendungen der nicht rechtsfähigen Stiftungen
+−286.683,03". Gegen die Gesamtergebnisrechnung stimmt die Statistik auf den
+Tausender genau (2024: 764.745.383,29 € → 764.745 T€).
+
+**Die Naht 2009/2010** ist dieselbe wie bei den Ist-Investitionen und stammt
+aus derselben Fußnote: Umstellung auf das Neue Kommunale Rechnungswesen zum
+1. Januar 2010. Links steht das *Anordnungssoll des Verwaltungshaushalts*,
+rechts sind es die *ordentlichen Aufwendungen der Gesamtergebnisrechnung*.
+Über den Schnitt zieht kein Lesepfad eine Linie, und das Modul stellt bewusst
+keine Summen-, Wachstums- oder Mittelwertfunktion bereit.
+
+**2021: zwei amtliche Quellen, zwei Beträge.** Das CSV nennt 613.572 T€, das
+PDF 608.910 T€ — 4,662 Mio. € Unterschied, der einzige Widerspruch in 24
+gemeinsamen Jahren. Auflösbar ist er, weil beide ihre Pro-Kopf-Spalte
+mitbringen: Die PDF-Zeile geht auf (608.910.000 ÷ 169.605 = 3.590,17 gegen
+ausgewiesene 3.590), die CSV-Zeile nicht (3.617,65 gegen 3.611) — sie
+widerspricht sich selbst. Der Jahresabschluss 2021 bestätigt das PDF und zeigt
+zugleich, was passiert ist: 613.571.622,10 € ist auf den Tausender genau der
+**Ansatz** des Jahres, der in der Tabelle eine Spalte links vom Ergebnis steht.
+Übernommen wird der PDF-Wert; der abweichende steht als `konflikt_betrag`
+daneben im Bestand, und die Seite nennt beide Zahlen. Ohne das PDF fällt der
+Jahrgang ganz heraus, statt still die falsche Zahl zu übernehmen.
+
+**Ohne Einwohnerzahl, und das mit Absicht.** Beide Quellen führen den Divisor,
+und die Probe braucht ihn — gespeichert wird er trotzdem nicht. Läge er in der
+Tabelle, wäre die naheliegendste Grafik „Ausgaben pro Kopf seit 1972", und die
+wäre falsch: Die Einwohnerreihe hat zwei Zensus-Brüche (2011 und 2022), an
+denen ein Pro-Kopf-Wert springt, ohne dass sich etwas verändert hätte. Was die
+API nicht liefern kann, kann das Frontend nicht versehentlich zeichnen.
+
+**Der Nebengewinn:** Die Reihe führt das gerade abgelaufene Jahr, Monate bevor
+sein Jahresabschluss vorliegt (2025: 850,17 Mio. €). Diese Jahrgänge tragen
+die dritte Probe nicht — und behaupten sie auch nicht.
 
 ## Herkunft: woher jede einzelne Zahl stammt
 

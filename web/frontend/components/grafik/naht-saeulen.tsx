@@ -157,12 +157,18 @@ export function NahtSaeulen({ jahre, naht, gruppierungMobil = 2, einheit, titel,
   const endwerte = new Set([belegte[0].jahr, belegte[belegte.length - 1].jahr]);
 
   // Jahresachse: zweistellig; mobil nur erste, letzte, Lücken — und die Naht.
+  //
+  // Das letzte Jahr steht IMMER da; ein Raster-Jahr direkt davor fällt weg.
+  // Bei 54 Säulen ist die Schrittweite 2, und die vorletzte Rasterzahl liegt
+  // dann genau eine Säule neben der letzten — im Bild stand dort „2425".
   const beschriftet = (j: NahtJahr, i: number): boolean => {
+    const letzter = jahre.length - 1;
+    if (i === letzter) return true;
     if (!schmal) {
       const schritt = Math.max(Math.ceil(20 / Math.max(xBand.step(), 1)), 1);
-      return i % schritt === 0 || i === jahre.length - 1;
+      return i % schritt === 0 && letzter - i >= schritt;
     }
-    return i === 0 || i === jahre.length - 1 || istLuecke(j);
+    return i === 0 || istLuecke(j);
   };
 
   // ── Ableseleiste: trennt ALLE Arten, auf jedem Gerät. ─────────────────────
@@ -177,17 +183,25 @@ export function NahtSaeulen({ jahre, naht, gruppierungMobil = 2, einheit, titel,
     const g = gruppen[weltVon(j.jahr)];
     const farbeVon = (art: string) =>
       g.find((x) => x.arten.includes(art))?.farbe;
+    const teile = j.teile.map((t) => ({
+      label: t.art, wert: `${deZahl(t.wert, 1)} ${einheit}`,
+      farbe: farbeVon(t.art),
+    }));
+    // Eine Reihe mit nur EINER Art (die lange Ausgabenreihe) hätte sonst
+    // zweimal denselben Betrag in der Leiste — „insgesamt 850,2" und darunter
+    // die einzige Art mit 850,2. Dann trägt die Art die Zeile allein; ihr
+    // Name sagt ohnehin mehr als das Wort „insgesamt".
+    const eineArt = teile.length === 1;
     return {
       titel: String(j.jahr),
-      werte: [
+      werte: eineArt ? teile : [
         { label: "insgesamt", wert: `${deZahl(summe(j), 1)} ${einheit}` },
-        ...j.teile.map((t) => ({
-          label: t.art, wert: `${deZahl(t.wert, 1)} ${einheit}`,
-          farbe: farbeVon(t.art),
-        })),
+        ...teile,
       ],
-      vorlesen: `${j.jahr}: insgesamt ${deZahl(summe(j), 1)} ${einheit}, davon `
-        + j.teile.map((t) => `${t.art} ${deZahl(t.wert, 1)}`).join(", ") + ".",
+      vorlesen: eineArt
+        ? `${j.jahr}: ${j.teile[0].art} ${deZahl(summe(j), 1)} ${einheit}.`
+        : `${j.jahr}: insgesamt ${deZahl(summe(j), 1)} ${einheit}, davon `
+          + j.teile.map((t) => `${t.art} ${deZahl(t.wert, 1)}`).join(", ") + ".",
     };
   });
 
@@ -255,12 +269,25 @@ export function NahtSaeulen({ jahre, naht, gruppierungMobil = 2, einheit, titel,
                     style={{ fill: s.farbe }} />
                 ) : null;
               })}
-              {endwerte.has(j.jahr) && (
-                <text x={mitte(i)} y={y(summe(j)) - 6} textAnchor="middle"
-                  fontSize={10.5} className="fill-foreground font-mono font-semibold">
-                  {deZahl(summe(j), summe(j) >= 100 ? 0 : 1)}
-                </text>
-              )}
+              {endwerte.has(j.jahr) && (() => {
+                // Die Endwerte stehen über der ersten und der letzten Säule,
+                // und beide stehen am Rand. Mittig zentriert ragt die Zahl
+                // dort aus der viewBox: Bei 54 Säulen auf 375 px war aus
+                // „76,5" ein „6,5" geworden. Am Rand rastet die Beschriftung
+                // deshalb auf die Kante ein statt auf die Säulenmitte.
+                const text = deZahl(summe(j), summe(j) >= 100 ? 0 : 1);
+                const halb = text.length * 3.2;
+                const links = mitte(i) - halb < X0;
+                const rechts = mitte(i) + halb > X1;
+                return (
+                  <text x={links ? X0 : rechts ? X1 : mitte(i)}
+                    y={y(summe(j)) - 6}
+                    textAnchor={links ? "start" : rechts ? "end" : "middle"}
+                    fontSize={10.5} className="fill-foreground font-mono font-semibold">
+                    {text}
+                  </text>
+                );
+              })()}
             </g>
           );
         })}
@@ -301,7 +328,9 @@ export function NahtSaeulen({ jahre, naht, gruppierungMobil = 2, einheit, titel,
       </svg>
 
       <Ableseleiste className="mt-2" stelle={stellen[ablesen.aktiv]} steuerung={ablesen}
-        hinweis="Jahr überfahren, antippen oder mit den Pfeiltasten wechseln — die Leiste trennt alle Arten." />
+        hinweis={"Jahr überfahren, antippen oder mit den Pfeiltasten wechseln"
+          + (belegte.some((j) => !istLuecke(j) && j.teile.length > 1)
+            ? " — die Leiste trennt alle Arten." : ".")} />
 
       {/* Legende: je Farbwelt ihre Gruppen — zwei Welten, zwei Blöcke. */}
       <div className="mt-2.5 flex flex-col gap-1.5">

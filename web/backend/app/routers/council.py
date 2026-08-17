@@ -16,6 +16,7 @@ from council.store import CouncilStore
 from council.topics import POLICY_FIELDS
 from council.goals import GOALS
 from council.parties import faction_label, normalize_party, order_key
+from council import ausgabenreihe as ausgabenreihe_mod
 from council import beteiligungsbericht, qa
 from council import ernte
 from council import importance
@@ -854,7 +855,17 @@ def haushalt_uebersicht(
       bestandene Rechenprobe samt Messwert und der Stichtag — nachschlagbar
       über die ``herkunft_id`` der einzelnen Datenzeilen,
     - ``produkt_jahre``: Jahre, für die die Produktebene vorliegt,
-    - ``plan_ist_jahre``: Jahre mit „geplant gegen tatsächlich" je Teilhaushalt.
+    - ``plan_ist_jahre``: Jahre mit „geplant gegen tatsächlich" je Teilhaushalt,
+    - ``ausgabenreihe``: die lange Reihe aus Datensatz 1102 — ein Betrag je
+      Jahr seit 1972. ``zeilen`` trägt je Jahrgang ``regelwerk`` (die Naht
+      2009/2010), die bestandenen ``proben`` und, wo die beiden Quellen sich
+      widersprechen, den Betrag der unterlegenen (``konflikt_betrag``).
+      ``regelwerke`` nennt zu jedem Regelwerk den Titel der Quelle und ihre
+      Abgrenzung — **beide gehören an jede Anzeige**: Links der Naht steht das
+      Anordnungssoll des Verwaltungshaushalts, rechts die ordentlichen
+      Aufwendungen der Gesamtergebnisrechnung, und über den Schnitt darf keine
+      Linie laufen. Eine Einwohnerzahl liefert dieser Block bewusst nicht
+      (Begründung an der Tabelle in ``council/store.py``).
 
     Fehlende Jahre (Datenlücken) fehlen schlicht in ``jahre`` — das Frontend
     zeigt Lücken ehrlich, statt zu interpolieren."""
@@ -899,6 +910,19 @@ def haushalt_uebersicht(
         # Jahre mit Teilhaushalts-Ist — füttert den Jahr-Umschalter auf
         # /haushalt/plan-ist, ohne dass das Frontend die Liste durchsucht.
         "plan_ist_jahre": store.plan_ist_jahre(),
+        # Die lange Reihe seit 1972. Die Begriffe reisen mit den Zahlen, statt
+        # im Frontend zu stehen: Sie sind Angaben der Quelle wie der Betrag
+        # selbst, und eine Legende, die es in zwei Sprachen gibt, driftet.
+        "ausgabenreihe": {
+            "zeilen": store.get_ausgabenreihe(),
+            "naht_ab": ausgabenreihe_mod.NAHT_AB,
+            "regelwerke": {
+                r: {"label": ausgabenreihe_mod.REGELWERK[r],
+                    "titel": ausgabenreihe_mod.TITEL[r],
+                    "abgrenzung": ausgabenreihe_mod.ABGRENZUNG[r]}
+                for r in ausgabenreihe_mod.REGELWERK
+            },
+        },
     }
 
 

@@ -109,6 +109,11 @@ export type QuellenSchluessel =
   // Die Schuldenzeitreihe — die einzige Quelle des Bereichs aus dem
   // Statistischen Jahrbuch der Stadt.
   | "schulden"
+  // Die lange Ausgabenreihe seit 1972 — die einzige Quelle des Bereichs, die
+  // in zwei Veröffentlichungen zugleich steht (Jahrbuch UND Open-Data-Portal)
+  // und deshalb einen gemeinsamen Eintrag braucht: Wer nur eine der beiden
+  // nennt, verschweigt die Hälfte der Reihe.
+  | "ausgabenreihe"
   // A12: Der Beteiligungsbericht — die einzige Quelle des Bereichs, die ein
   // eigener Cron von oldenburg.de herunterlädt.
   | "beteiligungsbericht";
@@ -285,10 +290,9 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "Datensatz 1102, Einwohner-Spalte — eine Zeile je Haushaltsjahr, Stichtag " +
       "jeweils der 31.12. des Vorjahres. Bezugsgröße aller Pro-Kopf-Angaben; das " +
       "jüngste Jahr mit Einwohnerzahl steht deshalb an der Zahl dabei. Die " +
-      "Aufwendungs-Spalten desselben Datensatzes bleiben bewusst ungenutzt: Sie " +
-      "weichen vom beschlossenen Plan ab, ohne als Ist oder Nachtrag " +
-      "gekennzeichnet zu sein. Auch dieser Datensatz trägt keine Summe, gegen die " +
-      "wir ihn nachrechnen könnten.",
+      "Aufwendungs-Spalte derselben Datei ist eine eigene Quelle mit eigenem " +
+      "Eintrag („Ausgaben der Stadt Oldenburg seit 1972“); die Einwohnerzahl " +
+      "hier trägt keine Rechenprobe, gegen die sie sich prüfen ließe.",
     herausgeber: "Stadt Oldenburg, Open-Data-Portal",
     standWort: "Haushaltsjahre",
     stand: "Haushaltsjahre 2010–2025",
@@ -464,6 +468,43 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     url:
       "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/" +
       "40_Stadtplanungsamt/402_Geo_und_Daten/Statistik/1108-2025-AZ.pdf",
+  },
+  ausgabenreihe: {
+    titel:
+      "Ausgaben der Stadt Oldenburg seit 1972 — Datensatz 1102 " +
+      "(Statistisches Jahrbuch und Open-Data-Portal)",
+    fundstelle:
+      "Ein Betrag je Haushaltsjahr, daneben die Einwohnerzahl zum 31.12. des " +
+      "Vorjahres und der Betrag je Einwohner*in. " +
+      "Die Reihe zerfällt in zwei Teile, und der Schnitt ist die wichtigste " +
+      "Angabe: Bis 2009 sind es die „Ausgaben des Verwaltungshaushalts“ — das " +
+      "Anordnungssoll, also was zur Zahlung angeordnet wurde; ab 2010 die " +
+      "„Ordentlichen Aufwendungen des Ergebnishaushalts“ aus der " +
+      "Gesamtergebnisrechnung, also was das Jahr verbraucht hat. " +
+      "Die Fußnote der Tabelle nennt den Grund: die Umstellung auf das Neue " +
+      "Kommunale Rechnungswesen zum 1. Januar 2010. Über diesen Schnitt " +
+      "hinweg lässt sich vergleichen, aber nicht rechnen. " +
+      "Ab 2010 zählt die Reihe den Kernhaushalt und die nicht rechtsfähigen " +
+      "Stiftungen zusammen; die Ergebnisrechnung auf den übrigen Seiten " +
+      "dieses Bereichs zählt nur den Kernhaushalt und liegt deshalb um die " +
+      "Aufwendungen der Stiftungen darunter. " +
+      "Investitionen stehen in keinem der beiden Teile — sie laufen in einer " +
+      "eigenen Rechnung. " +
+      "Die Jahre bis 2001 führt nur das Open-Data-Portal; das PDF des " +
+      "Jahrbuchs beginnt 2002. " +
+      "Für 2021 nennen die beiden Veröffentlichungen verschiedene Beträge; " +
+      "welchen wir zeigen und warum, steht bei der Grafik.",
+    herausgeber:
+      "Stadt Oldenburg, Fachdienst Geo und Daten und Open-Data-Portal " +
+      "(Zahlen: Fachdienst Finanzen)",
+    standWort: "Haushaltsjahre",
+    standZusatz: "(Jahrbuch-Ausgabe vom 08.07.2026)",
+    stand: "Haushaltsjahre 1972–2025 (Jahrbuch-Ausgabe vom 08.07.2026)",
+    lizenz: "dl-de/by-2.0",
+    art: "pdf",
+    url:
+      "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/" +
+      "40_Stadtplanungsamt/402_Geo_und_Daten/Statistik/1102-2025-AZ.pdf",
   },
   // A11: Die Investitionen des Finanzhaushalts (/haushalt/investitionen). Die
   // einzige CSV des Open-Data-Portals in diesem Verzeichnis, die eine
