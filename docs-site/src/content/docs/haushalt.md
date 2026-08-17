@@ -1340,6 +1340,63 @@ mit Dokument, Abschnitt und Seite da — „keine Probe" ist etwas anderes als
   verworfen, nicht zurechtgebogen; im Bericht 2024 beginnt dieselbe Reihe erst
   2020 und geht durch.
 
+### Zwei der fünf Abschnitte sind gar kein Fließtext
+
+„Beteiligungsverhältnisse" und „Besetzung der Aufsichtsorgane" sehen im
+Extrakt aus wie Prosa und sind Tabellen. Sie stehen deshalb zusätzlich
+zerlegt im Bestand — `council_gesellschaft_eigentuemer` und
+`council_gesellschaft_personen` —, während der Rohtext daneben stehen bleibt.
+
+**Die Aufsichtsorgane sind zweispaltig, und pypdf liest spaltenweise:** erst
+alle fünfzehn Namen untereinander, dann alle fünfzehn Ämter. Was auf der
+gedruckten Seite nebeneinander steht, liegt im Extrakt fünfzehn Zeilen
+auseinander. Zusammenführen lässt sich das nur über die Position — der n-te
+Name zum n-ten Amt —, und das ist genau dann richtig, wenn **beide Listen
+gleich lang sind**.
+
+:::caution[Die Rechenprobe, die hier gilt]
+Zahl der Namen ≠ Zahl der Ämter → **alle** Ämter dieser Gesellschaft bleiben
+leer, `funktionen_zuordenbar` ist `false`. Kein „best effort", kein
+Verschieben. Eine Liste, die um einen Platz verrutscht ist, hängt einer
+namentlich genannten Person ein Amt an, das sie nie hatte — das ist keine
+Ungenauigkeit, sondern eine Falschaussage über einen Menschen.
+:::
+
+Gemessen über die 45 Abschnitte: **44 von 45** halten die Probe
+(`beteiligung_spaltenprobe`, 502 Namen). Der eine Ausreißer ist der
+Abfallwirtschaftsbetrieb 2023 — dort nennt der Bericht selbst acht Personen
+und sieben Ämter. Drei weitere Abschnitte (TGO Besitz GmbH & Co. KG,
+2022–2024) führen gar keine Funktionsspalte, sondern Entsendungsrechte
+(„Vertreter/in der Landessparkasse"); dort gibt es nichts zuzuordnen, und
+das ist kein Befund.
+
+**Bei den Eigentümern ist die Stammkapital-Zeile die Probe, kein
+Gesellschafter.** Sie sieht im Extrakt aus wie einer (Name, Betrag, Prozent),
+ist aber die Summenzeile: `beteiligung_anteilsprobe` verlangt, dass die
+Anteile genau dieses Stammkapital ergeben **und** zusammen 100 % (Toleranz
+0,5 Prozentpunkte — sechs Anteile zu je 16,67 % sind 100,02 %). Auch hier:
+**44 von 45**. Der Ausreißer ist die Stadion Oldenburg GmbH & Co. KG 2024,
+deren Anteile 5.000 € ergeben, während die Summenzeile 25.000 € nennt. Welche
+Zahl stimmt, verrät das Dokument nicht — also kommt keine halbe
+Eigentümerliste heraus, sondern keine, und der Rohtext bleibt stehen.
+
+### Die Personen-Verlinkung entsteht beim Lesen, nicht beim Einlesen
+
+Ob „Ruth Regina Drügemöller" im Aufsichtsrat dieselbe ist wie die
+Ratsfrau auf `/council/person`, entscheidet die **API**
+(`_lexikon_zuordnung`) gegen `store.personen_lexikon()` — nicht die Datenbank.
+Das Lexikon wächst mit jedem Protokoll, der Beteiligungsbericht wird alle vier
+Wochen eingelesen; als Fremdschlüssel eingefroren zeigte ein Steckbrief bald
+auf eine Person, die inzwischen anders geführt wird.
+
+Zugeordnet wird über Vor- **und** Nachnamen, und nur bei genau einem Treffer.
+Der Bäderbetrieb führt 2024 „Dr. Sebastian Rohe" und „Dr. Georg Rohe"
+nebeneinander; wer auf den Nachnamen zuordnet, hängt einem der beiden die
+Personen-Seite des anderen an. Gemessen: **129 von 179** Namen des Berichts
+2024 bekommen einen Link (72 %). Die übrigen sind zum großen Teil gar keine
+Ratspersonen — Aufsichtsräte entsenden auch Banken, Hochschulen und
+Mitgesellschafter.
+
 ### Der Abgleich mit dem Gesamtabschluss — nachgerechnet, aber keine Probe
 
 Dieselben Gesellschaften stehen auch in `council_konzern_traeger`, dort mit

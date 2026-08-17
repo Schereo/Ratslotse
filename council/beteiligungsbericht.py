@@ -371,21 +371,24 @@ _EINHEIT = re.compile(r"\(?\s*[iI]n\s+(?:Euro|Prozent)\s*\)?|Quote|€|%", re.I)
 
 
 def _entzerren(text: str) -> str:
-    """Leerraum aus den Beträgen räumen, an genau zwei Stellen.
+    """Leerraum aus den Beträgen räumen, an genau drei Stellen.
 
     ``650 .289,04`` und ``376 .737.113,54`` stehen so im Extrakt, ebenso
-    ``2.103.265, 69``. Es ist dieselbe Sorte Schaden, die schon der
-    Gesamtabschluss zeigt (``105.667.339, 23``, s.
+    ``2.103.265, 69`` und ``25.000 ,00`` (Beteiligungsverhältnisse der
+    Weser-Ems Halle Beteiligungs-GmbH im Bericht 2023). Es ist dieselbe Sorte
+    Schaden, die schon der Gesamtabschluss zeigt (``105.667.339, 23``, s.
     ``council/konzernabschluss.py``): Der Satz bricht die Zahl, der Extraktor
     sieht ein Leerzeichen.
 
     Angefasst wird nur, was strukturell eine Zahl sein **muss**: ein Punkt mit
     genau drei folgenden Ziffern (Tausendertrennung) und ein Komma mit genau
-    zwei folgenden Ziffern (Nachkommastellen). Ein Komma im Fließtext hat
-    keine zwei Ziffern hinter sich, ein Satzpunkt keine drei."""
+    zwei folgenden Ziffern (Nachkommastellen) — davor wie dahinter. Ein Komma
+    im Fließtext hat keine zwei Ziffern hinter sich, ein Satzpunkt keine
+    drei."""
     text = text.replace("\u2013", "-").replace("\u2212", "-").replace("\u00a0", " ")
     text = re.sub(r"\s*\.\s*(?=\d{3}(?!\d))", ".", text)
-    return re.sub(r",\s+(?=\d{2}(?!\d))", ",", text)
+    text = re.sub(r",\s+(?=\d{2}(?!\d))", ",", text)
+    return re.sub(r"(?<=\d)\s+,(?=\d{2}(?!\d))", ",", text)
 
 
 def _betrag(roh: str) -> float | None:
@@ -659,6 +662,376 @@ def abschnitte(text: str) -> dict[str, str]:
     return aus
 
 
+# --- Abschnitt 3: wer die Gesellschaft beaufsichtigt ------------------------
+#
+# Der Abschnitt sieht im Extrakt aus wie Fließtext, ist aber eine Tabelle mit
+# zwei Spalten — und zwar eine, die pypdf **spaltenweise** ausliest: erst alle
+# Namen untereinander, dann alle Funktionen untereinander. Was auf der
+# gedruckten Seite nebeneinander steht, liegt im Extrakt fünfzehn Zeilen
+# auseinander.
+#
+# DIE RECHENPROBE UND WARUM SIE HART IST
+# ---------------------------------------
+# Die Spalten wieder zu paaren geht nur über die Position: der n-te Name
+# gehört zur n-ten Funktion. Das ist richtig, solange beide Listen gleich
+# lang sind — und sobald sie es nicht sind, ist jede Zuordnung um mindestens
+# einen Platz verschoben. Dann stünde an einer echten, namentlich genannten
+# Person ein Amt, das sie nie hatte. Das ist keine Ungenauigkeit, das ist
+# eine Falschaussage über einen Menschen.
+#
+# Deshalb: Zahl der Namen ≠ Zahl der Funktionen → **alle** Funktionen dieser
+# Gesellschaft bleiben ``None`` und ``funktionen_zuordenbar`` ist ``False`` —
+# auch in einem zweiten Gremium, das für sich aufgegangen wäre. Kein „best
+# effort", kein Verschieben, kein Auffüllen. Ein Name ohne Amt ist
+# unvollständig; ein Name mit dem falschen Amt ist falsch.
+
+#: Die Kopfzeile einer Gremiumsliste: „Mitglieder des Betriebsausschusses
+#: Funktion/Legitimierung". Die zweite Spaltenüberschrift ist freiwillig —
+#: die TGO Besitz GmbH & Co. KG führt gar keine Funktionsspalte.
+_GREMIUM_KOPF = re.compile(
+    r"^[ \t]*Mitglieder\s+(?:des|der)\s+(.+?)"
+    r"[ \t]*(Funktion\s*/\s*Legitim\w*)?[ \t]*$", re.M)
+
+#: Was in der Funktionsspalte steht — ein geschlossener Satz von Ämtern und
+#: Legitimationen, gemessen an allen 45 Abschnitten der Berichte 2022–2024.
+#:
+#: Er ist die Grenze zwischen den beiden Spalten: Die Namensliste endet dort,
+#: wo die erste Funktionszeile steht. Ein Muster, das aus Versehen auf einen
+#: Namen passt, schneidet die Liste zu früh ab — deshalb sind es benannte
+#: Ämter und keine Heuristik auf Groß-/Kleinschreibung.
+#:
+#: ``Vertreter`` braucht die Ausnahme: „Vertreter Mitgesellschafter" ist eine
+#: Funktion, „Vertreter/in der Norddeutschen Landesbank" dagegen ein
+#: **Sitz** in der Namensspalte der TGO Besitz — dort benennt der Bericht
+#: keine Personen, sondern Entsendungsrechte. Der Schrägstrich trennt die
+#: beiden Fälle.
+_FUNKTION = re.compile(
+    r"""^(?:
+        \d+\.[ \t]*Kreisrat            # „1. Kreisrat (Vorsitzender)"
+      | Rats(?:mitglied|frau|herr)
+      | Ober-?[Bb]ürgermeister\w*
+      | Bürgermeister\w*
+      | Stadt(?:kämmer\w+|baur\w+|rat|rätin|direktor\w*)
+      | Kreis(?:tagsmitglied|rat|rätin)
+      | Land(?:rat|rätin|tagsmitglied)
+      | Bundestagsmitglied
+      | Beschäftigtenvertret\w+
+      | Mitarbeitendenvertret\w+
+      | Arbeitnehmervertret\w+
+      | Personalrat\w*
+      | Betriebsrat\w*
+      | Vertreter(?:in)?(?![/\w])      # nicht „Vertreter/in der …"
+      | Geschäftsführ\w+
+      | geborenes[ \t]+Mitglied
+      | Aufsichtsratsmitglied
+    )\b""", re.X)
+
+#: Der Seitenrand. Neben der Tabelle steht auf derselben Seite der
+#: Steckbrief-Kasten der Gesellschaft — Anschrift, Satzungsdatum,
+#: Handelsregister, Betriebsleitung —, und pypdf hängt ihn hinten an die
+#: Spalten an. Er gehört nicht zur Aufsichtsliste.
+#:
+#: Erkannt wird der **Anfang** dieses Kastens; ab dort wird der Rest des
+#: Blocks verworfen. Zeilenweise zu filtern wäre die schwächere Regel: Der
+#: Kasten führt auch Namen („Betriebsleitung: Klaus Büscher"), und die
+#: gehörten sonst als Aufsichtspersonen in die Liste.
+_RANDMUELL = re.compile(
+    r"""^(?:
+        \d{5}[ \t]+\S                  # „26121 Oldenburg"
+      | (?:Betriebssatzung|Gesellschaftsvertrag|Satzung|Stiftungssatzung
+          |Handelsregister|Registernummer|Registergericht|Amtsgericht
+          |Geschäftsführung|Betriebsleitung|Vorstand|Internet|Stand)\b
+      | vom[ \t]*:
+      | \(?zuletzt[ \t]+geändert
+      | \d{1,2}\.[ \t]*[A-ZÄÖÜ]?\w*[ \t]+\d{4}\b   # nacktes Datum
+      | \S*\.html\b
+    )""", re.X)
+
+#: Gruppenüberschriften **innerhalb** der Namensspalte: Die Großleitstelle
+#: gehört vier Gebietskörperschaften und führt ihre Vertreter nach Träger
+#: gegliedert („Stadt Oldenburg:", „Landkreis Ammerland:"). Das sind keine
+#: Personen — und in der Funktionsspalte steht ihnen nichts gegenüber.
+_GRUPPENKOPF = re.compile(r"^[^,]{3,40}:[ \t]*$")
+
+#: Der Vorsitz, wie der Bericht ihn an den Namen hängt: „, Vorsitzende",
+#: „, stellvertretender Vorsitzender", „(Vorsitzende)". Die Grammatik
+#: schwankt (der Bäderbetrieb schreibt „stellvertretende Vorsitzender"),
+#: deshalb greift das Muster auf den Wortstamm.
+_STELLV = re.compile(r"stellv\w*\.?\s*(?:\w+\s+)?[Vv]orsitzend", re.I)
+_VORSITZ = re.compile(r"^\(?[Vv]orsitzend", re.I)
+
+#: Ein Zusatz zur Amtszeit — in Klammern oder hinter einem Komma. „(bis
+#: 30. Juni 2022)", „, ab 28.11.2023", „(für V. Finke ab 09.10.2023)".
+_ZEITRAUM = re.compile(r"^\(?(?:bis|ab|seit|vom|für|von)\b", re.I)
+
+
+@dataclass
+class Aufsichtsperson:
+    """Eine Person in einem Aufsichtsorgan — so, wie der Bericht sie führt."""
+
+    #: „Betriebsausschuss", „Aufsichtsrat", „Gesellschafterversammlung".
+    gremium: str
+    name: str
+    #: Aus der zweiten Spalte — ``None``, wenn die Rechenprobe gerissen ist
+    #: oder der Bericht für dieses Gremium keine Funktionsspalte führt.
+    funktion: str | None
+    #: ``"vorsitz"`` | ``"stellvertretung"`` | ``None``.
+    vorsitz: str | None
+    #: Amtszeit-Zusatz, wörtlich: „bis 30. Juni 2022".
+    hinweis: str | None
+    #: Position in der Liste des Berichts, je Gesellschaft fortlaufend.
+    reihenfolge: int
+
+
+def _zeilen_fuegen(rumpf: str) -> list[str]:
+    """Die Zeilen eines Blocks — Umbrüche mitten im Namen wieder zusammen.
+
+    Der Satz bricht lange Einträge um, und zwar an zwei Stellen: hinter einem
+    Komma („Dr. Sebastian Rohe, stellvertretender Vorsitzender," / „bis zum
+    27.02.2023") und mitten im Wort („stellvertretende Vor-" / „sitzende").
+    Beides zählte sonst als eigener Eintrag, und die Namensspalte wäre länger
+    als die Funktionsspalte — die Probe risse, obwohl das Dokument in Ordnung
+    ist.
+
+    Erkannt wird die Fortsetzung an ihrem **Anfang**: Sie beginnt klein. Ein
+    neuer Eintrag beginnt mit einem Großbuchstaben, einem Titel oder einer
+    Klammer — Personennamen tun das ausnahmslos."""
+    aus: list[str] = []
+    for roh in rumpf.split("\n"):
+        zeile = " ".join(roh.replace(" ", " ").split())
+        if not zeile:
+            continue
+        if aus and zeile[:1].islower():
+            if aus[-1].endswith("-"):
+                aus[-1] = aus[-1][:-1] + zeile       # „Vor-" + „sitzende"
+            else:
+                aus[-1] = f"{aus[-1]} {zeile}"
+            continue
+        aus.append(zeile)
+    return aus
+
+
+def _gremiumsname(roh: str) -> str:
+    """„Betriebsausschusses" → „Betriebsausschuss".
+
+    Die Kopfzeile steht im Genitiv, die Überschrift auf der Seite soll im
+    Nominativ stehen. Angefasst wird nur, was der Genitiv anhängt (``-es``,
+    ``-s``) — „Gesellschafterversammlung" endet auf keins von beidem und
+    bleibt, wie sie ist (auch dort, wo der Bericht „des" davorsetzt: „Mitglieder
+    des Gesellschafterversammlung" steht so in den Weser-Ems-Abschnitten)."""
+    name = " ".join((roh or "").split()).strip(" :,")
+    if name.endswith("es") and len(name) > 5:
+        return name[:-2]
+    if name.endswith("s") and not name.endswith("ss") and len(name) > 4:
+        return name[:-1]
+    return name
+
+
+def _person_zerlegen(zeile: str, gremium: str, reihenfolge: int) -> Aufsichtsperson:
+    """Eine Zeile der Namensspalte → Name, Vorsitz und Amtszeit-Zusatz.
+
+    Der Name ist, was **vor** dem ersten Komma und außerhalb aller Klammern
+    steht. Alles dahinter ist Beiwerk und wird eingeordnet: Vorsitz, Zeitraum
+    — oder, wo es weder das eine noch das andere ist („Dr. Julia Figura,
+    Stadtkämmerin"), fallengelassen. Ein Amt aus der Namensspalte in das Feld
+    ``funktion`` zu schreiben hieße, die Funktionsspalte zu übergehen, deren
+    Zuordnung gerade die Probe absichert."""
+    # „Hans -Georg Heß", „Prof. Dr. -Ing. Weisensee": Der Satz setzt Leerraum
+    # vor den Bindestrich. Das ist derselbe Schaden wie bei den Beträgen.
+    zeile = re.sub(r"\s+-\s*(?=\w)", "-", " ".join(zeile.split()))
+
+    vorsitz: str | None = None
+    hinweise: list[str] = []
+
+    def einordnen(teil: str) -> None:
+        nonlocal vorsitz
+        teil = teil.strip(" ,;")
+        if not teil:
+            return
+        if _STELLV.search(teil):
+            vorsitz = vorsitz or "stellvertretung"
+        elif _VORSITZ.match(teil):
+            vorsitz = vorsitz or "vorsitz"
+        elif _ZEITRAUM.match(teil):
+            hinweise.append(teil.strip("()"))
+
+    rest = re.sub(r"\(([^)]*)\)", lambda m: (einordnen(m.group(1)) or " "), zeile)
+    teile = [t.strip() for t in rest.split(",")]
+    for t in teile[1:]:
+        einordnen(t)
+    return Aufsichtsperson(
+        gremium=gremium, name=" ".join(teile[0].split()), funktion=None,
+        vorsitz=vorsitz, hinweis=", ".join(hinweise) or None,
+        reihenfolge=reihenfolge)
+
+
+def aufsichtsorgane(text: str) -> tuple[list[Aufsichtsperson], bool]:
+    """Abschnitt 3 zerlegen — ``(personen, funktionen_zuordenbar)``.
+
+    ``funktionen_zuordenbar`` gilt für die **ganze** Gesellschaft und ist das
+    Und über ihre Gremien: Eine GSG mit einem sauberen Aufsichtsrat und einer
+    verrutschten Gesellschafterversammlung ist nicht „halb zuordenbar".
+    Die Oberfläche zeigt dann für alle Gremien nur die Namen — und sagt das.
+
+    Ein Gremium **ohne** Funktionsspalte (die TGO Besitz GmbH & Co. KG führt
+    statt Personen Entsendungsrechte) besteht die Probe: Es wird nichts
+    zugeordnet, also kann auch nichts verrutschen. Es gäbe hier nichts zu
+    warnen — die Seite zeigt Namen ohne Ämter, weil der Bericht keine nennt."""
+    koepfe = list(_GREMIUM_KOPF.finditer(text or ""))
+    if not koepfe:
+        return [], False
+
+    personen: list[Aufsichtsperson] = []
+    zuordenbar = True
+    for i, kopf in enumerate(koepfe):
+        gremium = _gremiumsname(kopf.group(1))
+        bis = koepfe[i + 1].start() if i + 1 < len(koepfe) else len(text)
+        zeilen = _zeilen_fuegen(text[kopf.end():bis])
+
+        # Erst den Steckbrief-Kasten abschneiden, dann die Spalten trennen:
+        # Sonst stünde „Betriebsleitung: Klaus Büscher" hinter der letzten
+        # Funktionszeile und risse die Probe.
+        for n, z in enumerate(zeilen):
+            if _RANDMUELL.match(z):
+                zeilen = zeilen[:n]
+                break
+
+        stellen = [n for n, z in enumerate(zeilen) if _FUNKTION.match(z)]
+        if stellen:
+            erste, letzte = stellen[0], stellen[-1]
+            # Zwischen der ersten und der letzten Funktionszeile darf nichts
+            # anderes stehen. Steht dort doch etwas, sind die Spalten nicht
+            # sauber getrennt — und dann ist die Positionszählung wertlos.
+            geschlossen = len(stellen) == letzte - erste + 1
+            funktionen = zeilen[erste:letzte + 1] if geschlossen else []
+            namenszeilen = zeilen[:erste]
+        else:
+            funktionen = []
+            namenszeilen = zeilen
+        namenszeilen = [z for z in namenszeilen if not _GRUPPENKOPF.match(z)]
+
+        block = [_person_zerlegen(z, gremium, len(personen) + n)
+                 for n, z in enumerate(namenszeilen)]
+        haelt = len(block) == len(funktionen)
+        if haelt:
+            for p, f in zip(block, funktionen):
+                p.funktion = f
+        elif funktionen or kopf.group(2):
+            # Nur wo der Bericht eine Funktionsspalte führt, ist eine
+            # gerissene Probe ein Befund. Ohne Spalte gibt es nichts zu paaren.
+            zuordenbar = False
+        personen += block
+
+    if not zuordenbar:
+        # Und dann wirklich **alle**, auch die Gremien, die für sich in
+        # Ordnung waren: Die Seite trägt eine Angabe je Gesellschaft. Stünden
+        # im Aufsichtsrat Ämter und in der Gesellschafterversammlung darunter
+        # keine, hieße der Hinweis „hier stimmt etwas nicht" für eine Liste,
+        # die aussieht wie die andere — und niemand wüsste, welche gemeint ist.
+        for p in personen:
+            p.funktion = None
+    return personen, zuordenbar
+
+
+# --- Abschnitt 2: wem die Gesellschaft gehört -------------------------------
+
+#: Die Kopfzeilen der Tabelle. „Trägerkörperschaft" steht beim Klinikum
+#: (eine AöR hat keine Gesellschafter), „Kapitalanteil" bei den KGs.
+_EIGNER_KOPF = re.compile(
+    r"^(?:Gesellschafter|Trägerkörperschaft|Anteilseigner|Anteil|Kapitalanteil"
+    r"|in\s+Euro|in\s+Prozent)\b", re.I)
+
+#: Die Summenzeile. Sie trägt denselben Aufbau wie ein Eigentümer und ist
+#: keiner: Sie ist die Probe, gegen die die Anteile laufen.
+_STAMMKAPITAL = re.compile(r"^(?:gezeichnetes\s+)?(?:stamm|grund|start)?\s*kapital\b",
+                           re.I)
+
+#: Eine Wertzeile: irgendein Name, dann Betrag und Prozentsatz. Der Name darf
+#: fehlen — bei den Kommanditgesellschaften steht er zwei Zeilen darüber.
+_EIGNER_ZEILE = re.compile(
+    r"^(?P<name>.*?)\s*(?P<eur>\d[\d.]*,\d{2})\s+(?P<proz>\d[\d.]*,\d+)\s*$")
+
+#: Toleranz der Prozentprobe in Prozentpunkten. Der Bericht rundet auf zwei
+#: Stellen; sechs Anteile zu je 16,67 % ergeben 100,02 %, und das ist keine
+#: falsche Tabelle, sondern eine gerundete.
+TOLERANZ_PROZENT = 0.5
+
+
+def _deutsch(wert: float) -> str:
+    """``22000000.0`` → ``„22.000.000,00"`` — für den Messwert der Probe.
+
+    Der steht über die API im Beleg-Chip und wird gelesen, nicht gerechnet."""
+    ganz, _, dezimal = f"{wert:,.2f}".partition(".")
+    return f"{ganz.replace(chr(44), chr(46))},{dezimal}"
+
+
+@dataclass
+class Eigentuemer:
+    """Ein Gesellschafter mit seinem Anteil."""
+
+    name: str
+    betrag_eur: float | None
+    anteil_prozent: float | None
+    reihenfolge: int
+
+
+def beteiligungsverhaeltnisse(text: str) -> tuple[list[Eigentuemer], str | None]:
+    """Abschnitt 2 zerlegen — ``(eigentuemer, probe_ergebnis)``.
+
+    Die Probe rechnet nach, was das Dokument selbst vorrechnet: Die Anteile
+    ergeben zusammen das Stammkapital, und ihre Prozentsätze ergeben 100.
+    Beides muss stimmen. Der Prozentsatz allein wäre zu schwach (eine
+    übersehene Zeile mit 0,0 % fiele nicht auf), der Betrag allein auch (bei
+    zwei Gesellschaftern zu je der Hälfte ist eine vertauschte Zeile
+    unsichtbar).
+
+    **Die Stammkapital-Zeile ist kein Gesellschafter.** Sie sieht im Extrakt
+    aus wie einer — Name, Betrag, Prozent —, ist aber die Summenzeile. Als
+    Eigentümerin geführt hielte die Stadt Oldenburg an ihrem Eigenbetrieb
+    50 % und ein „Stammkapital" die anderen 50 %.
+
+    Reißt die Probe, kommt **nichts** zurück: keine halb gelesene Tabelle,
+    keine Zeile „wahrscheinlich". Der Rohtext steht ohnehin daneben, und ein
+    Mensch liest ihn richtig. ``probe_ergebnis`` ist der Messwert für die
+    Herkunft; es ist ``None``, wenn die Probe gerissen ist."""
+    zeilen = _zeilen_fuegen(_entzerren(text or ""))
+    for n, z in enumerate(zeilen):
+        if _RANDMUELL.match(z):
+            zeilen = zeilen[:n]
+            break
+
+    eigner: list[Eigentuemer] = []
+    summe: tuple[float, float] | None = None
+    puffer: list[str] = []
+    for zeile in zeilen:
+        if _EIGNER_KOPF.match(zeile):
+            continue
+        m = _EIGNER_ZEILE.match(zeile)
+        if not m:
+            puffer.append(zeile)
+            continue
+        eur, proz = _betrag(m.group("eur")), _betrag(m.group("proz"))
+        name = " ".join((" ".join(puffer) + " " + m.group("name")).split())
+        puffer = []
+        if eur is None or proz is None:
+            continue
+        if _STAMMKAPITAL.match(name):
+            summe = (eur, proz)
+            continue
+        eigner.append(Eigentuemer(name=name, betrag_eur=eur,
+                                  anteil_prozent=proz, reihenfolge=len(eigner)))
+
+    if not eigner or summe is None:
+        return [], None
+    delta_eur = abs(sum(e.betrag_eur or 0.0 for e in eigner) - summe[0])
+    delta_proz = abs(sum(e.anteil_prozent or 0.0 for e in eigner) - 100.0)
+    if delta_eur > TOLERANZ_EUR or delta_proz > TOLERANZ_PROZENT:
+        return [], None
+    return eigner, (f"Die Anteile ergeben das ausgewiesene Stammkapital von "
+                    f"{_deutsch(summe[0])} € (Δ {_deutsch(delta_eur)} €) und "
+                    f"zusammen {_deutsch(100.0 + delta_proz)} %")
+
+
 # --- Ein ganzer Jahrgang ----------------------------------------------------
 
 #: Rundungstoleranz der Bilanzprobe in Euro. Die Beträge stehen auf den Cent
@@ -918,6 +1291,9 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
 
     stammdaten: list[dict] = []
     texte: list[dict] = []
+    personen: list[dict] = []
+    eigentuemer: list[dict] = []
+    ohne_zuordnung: list[str] = []
     for jahr, e in sorted(gelesen.items()):
         for g in e["gesellschaften"]:
             gemeinsam = anker(e, g)
@@ -943,6 +1319,53 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
                         probe=_h.UNGEPRUEFT,
                         fundstelle=f"Abschnitt {g.gliederung} — {ueberschrift}",
                         **gemeinsam)})
+
+            # Zwei der fünf Abschnitte sind in Wahrheit Tabellen. Sie bleiben
+            # als Text stehen (die Seite zeigt sie, wo die Struktur nicht
+            # trägt) und kommen zusätzlich zerlegt herein.
+            liste, zuordenbar = aufsichtsorgane(g.abschnitte.get("aufsichtsorgane", ""))
+            if not zuordenbar and liste:
+                ohne_zuordnung.append(f"{jahr}/{g.key}")
+            for person in liste:
+                personen.append({
+                    "bericht_jahr": jahr, "gesellschaft": g.key,
+                    "reihenfolge": person.reihenfolge, "gremium": person.gremium,
+                    "name": person.name, "funktion": person.funktion,
+                    "vorsitz": person.vorsitz, "hinweis": person.hinweis,
+                    "funktionen_zuordenbar": zuordenbar,
+                    # Der Name selbst trägt keine Probe — er steht einmal im
+                    # Bericht. Geprüft ist die **Zuordnung** des Amtes; wo sie
+                    # gerissen ist, steht auch kein Amt da, und die Zeile sagt
+                    # ausdrücklich „ungeprüft" statt eine Probe zu behaupten.
+                    "herkunft": _h.Herkunft(
+                        probe=("beteiligung_spaltenprobe" if person.funktion
+                               else _h.UNGEPRUEFT),
+                        fundstelle=f"Abschnitt {g.gliederung} — "
+                                   f"{person.gremium}",
+                        probe_ergebnis=(f"{len(liste)} Namen, "
+                                        f"{len(liste)} Funktionen"
+                                        if person.funktion else None),
+                        **gemeinsam)})
+
+            eigner, anteilsprobe = beteiligungsverhaeltnisse(
+                g.abschnitte.get("beteiligungsverhaeltnisse", ""))
+            for e_ in eigner:
+                eigentuemer.append({
+                    "bericht_jahr": jahr, "gesellschaft": g.key,
+                    "reihenfolge": e_.reihenfolge, "name": e_.name,
+                    "betrag_eur": e_.betrag_eur,
+                    "anteil_prozent": e_.anteil_prozent,
+                    "herkunft": _h.Herkunft(
+                        probe="beteiligung_anteilsprobe",
+                        fundstelle=f"Abschnitt {g.gliederung} — "
+                                   f"Beteiligungsverhältnisse",
+                        probe_ergebnis=anteilsprobe,
+                        **gemeinsam)})
+
+    if ohne_zuordnung:
+        p.sagen(f"  Spaltenprobe gerissen bei {len(ohne_zuordnung)} "
+                f"Gesellschaft(en) ({', '.join(ohne_zuordnung)}) — dort stehen "
+                f"die Namen ohne Amt")
 
     kennzahlen_zeilen: list[dict] = []
     verworfen = 0
@@ -980,13 +1403,17 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
     alt = len(store.get_gesellschaft_kennzahlen())
     if not bestandsschutz(p, "Beteiligungsbericht (Kennzahlen)", alt,
                           len(kennzahlen_zeilen), schuetzen):
-        return {"gesellschaften": 0, "texte": 0, "kennzahlen": 0,
+        return {"gesellschaften": 0, "texte": 0, "kennzahlen": 0, "personen": 0,
+                "eigentuemer": 0, "ohne_zuordnung": len(ohne_zuordnung),
                 "verworfen": verworfen, "widersprueche": len(u["widersprueche"]),
                 "bestand_geschuetzt": 1, "jahrgaenge": sorted(gelesen)}
 
-    bericht = store.save_beteiligungsbericht(stammdaten, texte, kennzahlen_zeilen)
+    bericht = store.save_beteiligungsbericht(stammdaten, texte, kennzahlen_zeilen,
+                                             personen, eigentuemer)
     p.sagen(f"  gespeichert: {bericht['gesellschaften']} Gesellschafts-Einträge, "
-            f"{bericht['texte']} Textabschnitte, {bericht['kennzahlen']} Kennzahlen "
+            f"{bericht['texte']} Textabschnitte, {bericht['kennzahlen']} Kennzahlen, "
+            f"{bericht['personen']} Aufsichtspersonen, "
+            f"{bericht['eigentuemer']} Eigentümer "
             f"({verworfen} ohne Probe verworfen)")
 
     # Einordnung, keine Probe: Wie weit liegen Gesamtabschluss und
@@ -1001,4 +1428,5 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
                 f"({vergleich[0]['gesellschaft']})")
     return {**bericht, "verworfen": verworfen,
             "widersprueche": len(u["widersprueche"]), "bestand_geschuetzt": 0,
+            "ohne_zuordnung": len(ohne_zuordnung),
             "jahrgaenge": sorted(gelesen), "konzernvergleich": len(vergleich)}

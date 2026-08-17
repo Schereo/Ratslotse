@@ -521,3 +521,271 @@ def test_konzernvergleich_ist_einordnung_und_verwirft_nichts(tmp_path):
     assert abs(v[0]["differenz"]) == pytest.approx(25407.50)
     assert store.get_gesellschaft_kennzahlen("egh")
     store.close()
+
+
+# --- Abschnitt 3: Aufsichtsorgane -------------------------------------------
+#
+# Alle Fixtures hier sind wörtliche `council_gesellschaft_texte`-Inhalte aus
+# den Berichten 2022–2024, jeder mit genau einer Eigenheit.
+
+#: AWB 2023 — der Fall, für den es die Rechenprobe gibt: **acht** Namen,
+#: **sieben** „Ratsmitglied". Der Bericht selbst ist unvollständig; jede
+#: Zuordnung wäre ab der Lücke um einen Platz verschoben. Dazu zwei
+#: Zeilenumbrüche mitten im Eintrag (einer hinter dem Komma, einer im Wort)
+#: und am Ende der Steckbrief-Kasten der Seite.
+AUFSICHT_AWB_2023 = (
+    "Mitglieder des Betriebsausschusses  Funktion/Legitimierung \n"
+    "Klaus Raschke, Vorsitzender  \n"
+    "Dr. Sebastian Rohe, stellvertretender Vorsitzender, \nbis zum 27.02.2023 \n"
+    "Claudia Petra Küpker, Küpker, stellvertretende Vor-\nsitzende, ab 28.02.2023 \n"
+    "Dr. Alaa Alhamwi, bis zum 27.11.2023 \n"
+    "Ruth Regina Drügemöller, ab 28.11.2023 \n"
+    "Claudia Oeljeschleger \n"
+    "Christine Wolff, ab 28. Februar 2023 \n"
+    "Jens Lükermann  \n"
+    "Ratsmitglied  \nRatsmitglied \n \nRatsmitglied \n \nRatsmitglied \n"
+    "Ratsmitglied \n \nRatsmitglied \nRatsmitglied  \n"
+    "Abfallwirtschaftsbetrieb Stadt Oldenburg (AWB)  \n \n\n26123 Oldenburg \n\n\n\n"
+    "Betriebssatzung vom: \n \n18. Dezember 1995 \n"
+    "zuletzt geändert am 26. September 2011 \n"
+    "Betriebsleitung: Volker Schneider-Kühn \n"
+    "Torsten von Varel, stellvertretender Betriebsleiter")
+
+#: Großleitstelle 2022 — die Namensspalte ist nach Trägern gegliedert
+#: („Stadt Oldenburg:"), und diese Überschriften haben in der Funktionsspalte
+#: keine Entsprechung. Wer sie als Personen zählt, hat zwölf Namen gegen acht
+#: Ämter und verliert eine Zuordnung, die in Ordnung ist.
+AUFSICHT_GOL_2022 = (
+    "Mitglieder des Verwaltungsrates  Funktion/Legitimierung \n"
+    "Stadt Oldenburg: \nDr. Julia Figura \nMargrit Conty \n \n"
+    "Landkreis Ammerland: \nKarin Harms \nDr. Hans Fittje \n \n"
+    "Landkreis Cloppenburg: \nAnne Tapken \nHerbert Holthaus \n \n"
+    "Landkreis Oldenburg: \nChristian Wolf \nWerner Wulf \n \n"
+    "Stadtkämmerin \nRatsmitglied \n \n \nLandrätin \nKreistagsmitglied  \n \n \n"
+    "Kreisrätin \nKreistagsmitglied  \n \n \n1. Kreisrat (Vorsitzender) \n"
+    "Kreistagsmitglied \n\n26121 Oldenburg \n\n\nBetriebssatzung vom: \n \n"
+    "20. Januar 2007 \nzuletzt geändert am 15. September 2015 \n"
+    "Geschäftsführung: Frank Leenderts")
+
+#: TGO 2022 — **zwei** Gremien in einem Abschnitt, nacheinander.
+AUFSICHT_TGO_2022 = (
+    "Mitglieder der Gesellschafterversammlung   Funktion/Legitimierung \n"
+    "Jürgen Krogmann, Vorsitzender \nBernhard Ellberg \nJutta Schober-Stockmann \n"
+    "Prof. Dr. Bruder \nProf. Dr.-Ing. Weisensee \n"
+    "Oberbürgermeister \nRatsmitglied \nRatsmitglied \nVertreter Universität \n"
+    "Vertreter Hochschule \n \n"
+    "Mitglieder des Aufsichtsrates   Funktion/Legitimierung \n"
+    "Jürgen Krogmann  \nDr. Alaa Alhamwi  \nPaul Behrens  \nKlaus Raschke  \n"
+    "Bernhard Ellberg, Vorsitzender \nJutta Schober-Stockmann  \n"
+    "Prof. Dr. Bruder  \nProf. Dr.-Ing. Weisensee \n"
+    "Oberbürgermeister \nRatsmitglied \nRatsmitglied \nRatsmitglied \n"
+    "Ratsmitglied \nRatsmitglied \nVertreter Universität \nVertreter Hochschule")
+
+#: TGO Besitz 2024 — **keine** Funktionsspalte, und statt Personen benennt
+#: der Bericht Entsendungsrechte. „Vertreter/in der …" darf hier nicht als
+#: Funktion durchgehen, sonst bliebe die Namensspalte leer.
+AUFSICHT_TGO_BESITZ_2024 = (
+    "Mitglieder der Gesellschafterversammlung   \n"
+    "Vertreter/in der TGO Technologie- und Gründerzentrum Oldenburg mbH  \n"
+    "Vertreter/in der Norddeutschen Landesbank Girozentrale, Hannover \n"
+    "Vertreter/in der Oldenburgischen Landesbank AG, Oldenburg  \n"
+    "Vertreter/in von Peter Waskönig (Erben), Saterland")
+
+#: Bäderbetrieb 2024 — zwei Herren Rohe in derselben Liste. Die Vorlage für
+#: die Namensvettern-Probe der API.
+AUFSICHT_BBO_2024 = (
+    "Mitglieder des Betriebsausschusses  Funktion/Legitimierung \n"
+    "Nicolai Beerheide, Vorsitzender  \n"
+    "Rita Schilling, stellvertretende Vorsitzende \n"
+    "Dr. Sebastian Rohe \nBenno Sönke Schulz (bis 17. Juni 2024) \n"
+    "Dr. Georg Rohe (ab 17. Juni 2024) \n"
+    "Ratsmitglied \nRatsmitglied \nRatsmitglied \nRatsmitglied \nRatsmitglied")
+
+
+def test_aufsichtsorgane_paart_spalten_wenn_die_probe_haelt():
+    personen, zuordenbar = bb.aufsichtsorgane(AUFSICHT_BBO_2024)
+    assert zuordenbar
+    assert [p.name for p in personen] == [
+        "Nicolai Beerheide", "Rita Schilling", "Dr. Sebastian Rohe",
+        "Benno Sönke Schulz", "Dr. Georg Rohe"]
+    assert all(p.funktion == "Ratsmitglied" for p in personen)
+    assert all(p.gremium == "Betriebsausschuss" for p in personen)
+    assert [p.vorsitz for p in personen[:3]] == ["vorsitz", "stellvertretung", None]
+    assert personen[3].hinweis == "bis 17. Juni 2024"
+    assert personen[4].hinweis == "ab 17. Juni 2024"
+    assert [p.reihenfolge for p in personen] == [0, 1, 2, 3, 4]
+
+
+def test_aufsichtsorgane_ohne_probe_bleibt_jedes_amt_leer():
+    """Acht Namen, sieben Ämter — dann steht an **keinem** Namen ein Amt.
+
+    Der AWB-Abschnitt 2023 ist der gemessene Fall: Der Bericht selbst führt
+    eine Funktionszeile weniger, als er Personen nennt. Jede Zuordnung wäre ab
+    der Lücke um einen Platz verschoben, und das hieße, einer namentlich
+    genannten Person ein Amt anzuhängen, das sie nie hatte."""
+    personen, zuordenbar = bb.aufsichtsorgane(AUFSICHT_AWB_2023)
+    assert not zuordenbar
+    assert all(p.funktion is None for p in personen)
+    # Die Umbrüche mitten im Eintrag sind zusammengefügt, nicht gezählt.
+    assert [p.name for p in personen] == [
+        "Klaus Raschke", "Dr. Sebastian Rohe", "Claudia Petra Küpker",
+        "Dr. Alaa Alhamwi", "Ruth Regina Drügemöller", "Claudia Oeljeschleger",
+        "Christine Wolff", "Jens Lükermann"]
+    assert personen[2].vorsitz == "stellvertretung"
+    assert personen[2].hinweis == "ab 28.02.2023"
+
+
+def test_aufsichtsorgane_verwirft_den_seitenrand():
+    """Der Steckbrief-Kasten neben der Tabelle ist keine Aufsichtsperson.
+
+    Anschrift, Satzungsdatum und Betriebsleitung stehen im Extrakt hinter der
+    Funktionsspalte — und die Betriebsleitung trägt Namen. Ungefiltert säße
+    „Volker Schneider-Kühn" im Betriebsausschuss."""
+    namen = [p.name for p in bb.aufsichtsorgane(AUFSICHT_AWB_2023)[0]]
+    assert "Volker Schneider-Kühn" not in namen
+    assert "Torsten von Varel" not in namen
+    assert not any(n.startswith("26123") or "Betriebssatzung" in n
+                   or "Abfallwirtschaftsbetrieb" in n for n in namen)
+
+
+def test_aufsichtsorgane_traegergliederung_zaehlt_nicht_als_person():
+    personen, zuordenbar = bb.aufsichtsorgane(AUFSICHT_GOL_2022)
+    assert zuordenbar
+    assert "Stadt Oldenburg" not in [p.name for p in personen]
+    assert len(personen) == 8
+    assert personen[0].name == "Dr. Julia Figura"
+    assert personen[0].funktion == "Stadtkämmerin"
+    assert personen[-1].funktion == "Kreistagsmitglied"
+    assert personen[-2].funktion == "1. Kreisrat (Vorsitzender)"
+    assert {p.gremium for p in personen} == {"Verwaltungsrat"}
+
+
+def test_aufsichtsorgane_trennt_mehrere_gremien():
+    personen, zuordenbar = bb.aufsichtsorgane(AUFSICHT_TGO_2022)
+    assert zuordenbar
+    assert [p.gremium for p in personen] == (
+        ["Gesellschafterversammlung"] * 5 + ["Aufsichtsrat"] * 8)
+    # Die Reihenfolge läuft über beide Gremien durch — sie ist der Schlüssel.
+    assert [p.reihenfolge for p in personen] == list(range(13))
+    aufsichtsrat = [p for p in personen if p.gremium == "Aufsichtsrat"]
+    assert aufsichtsrat[4].vorsitz == "vorsitz"
+    assert aufsichtsrat[-1].funktion == "Vertreter Hochschule"
+
+
+def test_aufsichtsorgane_ohne_funktionsspalte_ist_kein_befund():
+    """Wo der Bericht keine Ämter nennt, ist nichts falsch zuzuordnen.
+
+    Die TGO Besitz GmbH & Co. KG führt statt Personen die Entsendungsrechte
+    ihrer Gesellschafter. Das ist kein gerissener Parser, sondern ein anders
+    gebauter Abschnitt — die Namen kommen herein, die Ämter bleiben leer, und
+    die Seite muss deshalb keine Warnung zeigen."""
+    personen, zuordenbar = bb.aufsichtsorgane(AUFSICHT_TGO_BESITZ_2024)
+    assert zuordenbar
+    assert len(personen) == 4
+    assert all(p.funktion is None for p in personen)
+    assert personen[0].name.startswith("Vertreter/in der TGO")
+
+
+# --- Abschnitt 2: Beteiligungsverhältnisse ----------------------------------
+
+#: Großleitstelle — sechs gleiche Anteile. 6 × 16,67 % sind 100,02 %, und das
+#: ist eine gerundete Tabelle und keine falsche.
+EIGNER_GOL = (
+    "Gesellschafter Anteil \nin Euro in Prozent \n"
+    "Stadt Oldenburg 20.000,00 16,67 \nLandkreis Ammerland 20.000,00 16,67 \n"
+    "Landkreis Cloppenburg 20.000,00 16,67 \nLandkreis Oldenburg 20.000,00 16,67 \n"
+    "Landkreis Wesermarsch 20.000,00 16,67 \nStadt Delmenhorst 20.000,00 16,67 \n"
+    "Stammkapital 120.000,00 100,0")
+
+#: TGO Besitz 2024 — die Namen stehen über den Zahlen und sind mitten im Wort
+#: umbrochen („Girozent-\nrale"). Dazu der Steckbrief-Kasten am Ende.
+EIGNER_TGO_BESITZ_2024 = (
+    "Gesellschafter Kapitalanteil \nin Euro in Prozent \n"
+    "TGO Technologie- und Gründerzentrum \nOldenburg GmbH (Komplementärin) \n"
+    "585.429,20 51,0 \n"
+    "Norddeutsche Landesbank Girozent-\nrale, Hannover (Kommanditistin) \n"
+    "102.258,38 8,91 \n"
+    "Oldenburgische Landesbank AG, Olden-\nburg (Kommanditistin) \n"
+    "102.258,38 8,91 \n"
+    "Landessparkasse zu Oldenburg, Olden-\nburg (Kommanditistin) \n"
+    "102.258,38 8,91 \n"
+    "Oldenburgische Landesbrandkasse, \nOldenburg (Kommanditistin) \n"
+    "102.258,38 8,91 \n"
+    "Oldenburger Volksbank eG, Oldenburg \n(Kommanditistin) \n51.129,19 4,45 \n"
+    "Peter Waskönig (Erben), Saterland \n(Kommanditist) \n51.129,19 4,45 \n"
+    "Schomaker Bauträger GmbH & Co. KG, \nDörpen (Kommanditistin) \n"
+    "51.129,19 4,45 \n"
+    "Stammkapital 1.147.850,29 100,0 \n  \n\n26129 Oldenburg  \n\n\n\n"
+    "Gesellschaftsvertrag vom: \n \n13. Dezember 2000 \n"
+    "Handelsregister: Amtsgericht Oldenburg HRA 3722")
+
+#: Stadion Oldenburg GmbH & Co. KG 2024 — die Anteile ergeben 5.000 €, die
+#: Summenzeile nennt 25.000 €. Das Dokument widerspricht sich selbst.
+EIGNER_STADION_2024 = (
+    "Gesellschafter Anteil \nin Euro in Prozent \n"
+    "Stadion Oldenburg \nBeteiligungs-GmbH  \n(Komplementärin) \n0,00 0,0 \n"
+    "Stadt Oldenburg  \n(Kommanditistin) \n5.000,00 100,0 \n"
+    "Stammkapital 25.000,00 100,0")
+
+
+def test_stammkapital_ist_kein_eigentuemer():
+    eigner, probe = bb.beteiligungsverhaeltnisse(EIGNER_GOL)
+    assert [e.name for e in eigner] == [
+        "Stadt Oldenburg", "Landkreis Ammerland", "Landkreis Cloppenburg",
+        "Landkreis Oldenburg", "Landkreis Wesermarsch", "Stadt Delmenhorst"]
+    assert all(e.betrag_eur == 20000.0 and e.anteil_prozent == 16.67
+               for e in eigner)
+    assert "120.000,00" in probe and "100,02" in probe
+
+
+def test_eigentuemer_fuegt_umbrochene_namen_zusammen():
+    eigner, probe = bb.beteiligungsverhaeltnisse(EIGNER_TGO_BESITZ_2024)
+    assert len(eigner) == 8
+    assert eigner[1].name == ("Norddeutsche Landesbank Girozentrale, Hannover "
+                              "(Kommanditistin)")
+    assert eigner[1].betrag_eur == 102258.38
+    assert eigner[0].anteil_prozent == 51.0
+    assert probe and "1.147.850,29" in probe
+    # Der Steckbrief-Kasten hinter der Tabelle ist kein Gesellschafter.
+    assert not any("Amtsgericht" in e.name or "26129" in e.name for e in eigner)
+
+
+def test_gerissene_anteilsprobe_liefert_gar_keine_eigentuemer():
+    """0,00 € + 5.000,00 € sind nicht die 25.000 €, die die Summenzeile nennt.
+
+    Der Bericht 2024 sagt das über die Stadion Oldenburg GmbH & Co. KG so.
+    Welche der beiden Zahlen stimmt, verrät die Tabelle nicht — also kommt
+    keine halbe Eigentümerliste heraus, sondern keine."""
+    eigner, probe = bb.beteiligungsverhaeltnisse(EIGNER_STADION_2024)
+    assert eigner == []
+    assert probe is None
+
+
+def test_personen_und_eigentuemer_landen_mit_herkunft_im_bestand(tmp_path):
+    store = _store(tmp_path)
+    bb.einlesen(store, {2024: {
+        "seiten": _bericht_2024(),
+        "url": "https://example.org/beteiligungsbericht_2024.pdf",
+        "label": "Beteiligungsbericht 2024"}},
+        finanzquellen.Protokoll(still=True))
+
+    personen = store.get_gesellschaft_personen()
+    assert [p["name"] for p in personen] == ["Ruth Regina Drügemöller",
+                                             "Ingrid Kruse"]
+    assert all(p["funktion"] == "Ratsmitglied" for p in personen)
+    assert all(p["funktionen_zuordenbar"] == 1 for p in personen)
+    h = store.get_herkunft([personen[0]["herkunft_id"]])[0]
+    assert h["probe"] == "beteiligung_spaltenprobe"
+    assert "Betriebsausschuss" in h["fundstelle"]
+
+    eigner = store.get_gesellschaft_eigentuemer()
+    assert [e["name"] for e in eigner] == ["Stadt Oldenburg"]
+    assert eigner[0]["betrag_eur"] == 22000000.0
+    he = store.get_herkunft([eigner[0]["herkunft_id"]])[0]
+    assert he["probe"] == "beteiligung_anteilsprobe"
+    assert "22.000.000,00" in he["probe_ergebnis"]
+
+    # Keine Zeile ohne Herkunft — auch die beiden neuen Tabellen nicht.
+    store.herkunft_aufraeumen()
+    assert store.herkunft_luecken() == {}
+    store.close()

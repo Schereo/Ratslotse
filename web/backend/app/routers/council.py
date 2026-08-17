@@ -491,6 +491,61 @@ def haushalt_konzern(
     }
 
 
+def _lexikon_zuordnung(store: CouncilStore, namen: list[str]) -> dict[str, dict]:
+    """Namen aus dem Beteiligungsbericht → Personen-Seite und Partei.
+
+    Die Zuordnung gehört **hierher** und nicht in die Datenbank: Das Lexikon
+    entsteht aus Verzeichnis und Anwesenheitslisten und ändert sich mit jedem
+    Protokoll. Als Fremdschlüssel eingefroren, zeigte ein Steckbrief von 2022
+    nächstes Jahr auf eine Person, die inzwischen anders geführt wird — der
+    Beteiligungsbericht wird aber nur alle paar Wochen neu eingelesen.
+
+    **Eindeutig oder gar nicht.** Zugeordnet wird über Vor- UND Nachnamen, und
+    nur, wenn genau ein Lexikon-Eintrag passt. Der Bäderbetrieb führt 2024
+    „Dr. Sebastian Rohe" und „Dr. Georg Rohe" nebeneinander; wer auf den
+    Nachnamen zuordnet, hängt einem der beiden die Personen-Seite des anderen
+    an. Ein fehlender Link ist ein fehlender Link; ein falscher ist eine
+    Falschaussage über einen Menschen.
+
+    Namen **ohne** Vornamen bekommen deshalb nie einen Treffer — und die rund
+    30 Prozent, die leer ausgehen, sind zum großen Teil gar keine
+    Ratspersonen: Aufsichtsräte entsenden auch Banken, Hochschulen und
+    Mitgesellschafter, und die TGO Besitz benennt statt Personen ihre
+    Entsendungsrechte („Vertreter/in der Landessparkasse")."""
+    def ganz(anzeige: str) -> tuple[str, ...]:
+        """Alle Namensteile gefaltet — für den Stichentscheid unten."""
+        return tuple(sorted(CouncilStore._falte_namen(t)
+                            for t in anzeige.replace(".", " ").split()
+                            if t.lower().rstrip(".") not in CouncilStore._HONORIFICS))
+
+    nach_paar: dict[tuple[str, str], list[dict]] = {}
+    for e in store.personen_lexikon():
+        # Blocker tragen keinen Namen, nur einen Nachnamen — sie sind für die
+        # Badge-Logik da (Gäste dürfen keinen Treffer erzeugen) und haben hier
+        # nichts zu suchen: Ohne Vornamen können sie ohnehin nicht passen.
+        if e.get("art") == "blocker" or not e.get("vorname"):
+            continue
+        nach_paar.setdefault((e["vorname"], e["nachname"]), []).append(e)
+
+    aus: dict[str, dict] = {}
+    for name in set(namen):
+        vor, nach = CouncilStore.namensteile(name)
+        treffer = nach_paar.get((vor, nach), []) if vor and nach else []
+        if len(treffer) > 1:
+            # Gleicher Vor- und Nachname, zwei Einträge — im Verzeichnis fast
+            # immer dieselbe Person mit und ohne zweiten Vornamen („Christine
+            # Wolff" und „Christine Berta Wolff", beide Grüne, überlappende
+            # Zeiträume). Dann entscheidet der **ganze** Name: Wer genau so
+            # heißt, wie der Bericht ihn druckt, gewinnt. Passen null oder
+            # zwei genau, bleibt es beim Verzicht — zwei echte Namensvettern
+            # sind hier nicht auseinanderzuhalten.
+            treffer = [e for e in treffer if ganz(e["name"] or "") == ganz(name)]
+        eintrag = treffer[0] if len(treffer) == 1 else None
+        aus[name] = {"slug": eintrag["slug"] if eintrag else None,
+                     "partei": eintrag["partei"] if eintrag else None}
+    return aus
+
+
 @router.get("/haushalt/beteiligungen")
 def haushalt_beteiligungen(
     _user: dict = Depends(require_active),
@@ -508,6 +563,18 @@ def haushalt_beteiligungen(
       Aufsichtsorgane, eigene Beteiligungen, Auswirkungen auf den Haushalt) —
       alle ausdrücklich **ungeprüft**, denn Fließtext lässt sich gegen nichts
       rechnen,
+    - ``personen``: die Aufsichtsorgane, Person für Person, mit Gremium,
+      Vorsitz, Amtszeit-Hinweis und — wo das Verzeichnis die Person
+      eindeutig kennt — ``slug`` und ``partei`` für die Personen-Seite.
+      ``funktion`` steht nur da, wo die Spaltenprobe gehalten hat; siehe
+      ``funktionen_zuordenbar`` an der Gesellschaft. Zwei der fünf Abschnitte
+      sind nämlich keine Prosa, sondern Tabellen, die der PDF-Extrakt
+      spaltenweise ausgibt (``council/beteiligungsbericht.py``),
+    - ``eigentuemer``: wem die Gesellschaft gehört, mit Betrag und Anteil.
+      **Ohne** die Stammkapital-Zeile — die ist die Summe und kein
+      Gesellschafter. Gesellschaften, deren Anteile sich nicht auf das
+      ausgewiesene Stammkapital summieren, erscheinen hier gar nicht; ihr
+      Rohtext steht weiter in ``texte``,
     - ``kennzahlen``: die Zeitreihe je Gesellschaft (Jahresergebnis,
       Bilanzsumme, Eigenkapitalquote). ``berichte`` sagt, wie viele Berichte
       denselben Wert nennen — 1 heißt „durch eine Probe im Dokument gedeckt",
@@ -529,16 +596,33 @@ def haushalt_beteiligungen(
     kennzahlen = store.get_gesellschaft_kennzahlen()
     texte = [t for g in gesellschaften
              for t in store.get_gesellschaft_texte(g["gesellschaft"])]
+    personen = store.get_gesellschaft_personen()
+    eigentuemer = store.get_gesellschaft_eigentuemer()
     vergleich = (beteiligungsbericht.konzernvergleich(store, berichtsjahre[-1])
                  if berichtsjahre else [])
 
-    ids = sorted({z["herkunft_id"] for z in (*gesellschaften, *texte, *kennzahlen)
+    # Die Probe steht an jeder Personenzeile und gilt je Gesellschaft; hier
+    # wird sie einmal an die Gesellschaft gehängt, damit die Seite sie zeigen
+    # kann, ohne die Personen durchzugehen. Wer gar keine Personen hat, hat
+    # auch nichts falsch zuzuordnen.
+    gerissen = {p["gesellschaft"] for p in personen if not p["funktionen_zuordenbar"]}
+    verzeichnis = _lexikon_zuordnung(store, [p["name"] for p in personen])
+
+    ids = sorted({z["herkunft_id"]
+                  for z in (*gesellschaften, *texte, *kennzahlen, *personen,
+                            *eigentuemer)
                   if z["herkunft_id"] is not None})
     return {
         "berichtsjahre": berichtsjahre,
         "jahre": sorted({z["jahr"] for z in kennzahlen}),
-        "gesellschaften": gesellschaften,
+        "gesellschaften": [{**g, "funktionen_zuordenbar":
+                            g["gesellschaft"] not in gerissen}
+                           for g in gesellschaften],
         "texte": texte,
+        "personen": [{**p, "funktionen_zuordenbar":
+                      bool(p["funktionen_zuordenbar"]),
+                      **verzeichnis[p["name"]]} for p in personen],
+        "eigentuemer": eigentuemer,
         "kennzahlen": kennzahlen,
         "konzernvergleich": vergleich,
         "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},

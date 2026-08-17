@@ -1048,6 +1048,52 @@ class CouncilStore:
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (bericht_jahr, gesellschaft, abschnitt))"
         )
+        # `council_gesellschaft_personen` = wer in den Aufsichtsorganen sitzt.
+        #
+        # Das steht auch im Abschnittstext, und trotzdem ist es keine
+        # Doppelung: Der Text ist der zweispaltige PDF-Extrakt — erst fünfzehn
+        # Namen, dann fünfzehn Ämter —, und was da nebeneinander gehört,
+        # entscheidet eine Rechenprobe (`beteiligungsbericht.aufsichtsorgane`).
+        # Hier steht das Ergebnis dieser Probe; der Text bleibt daneben stehen,
+        # damit ein Mensch nachlesen kann.
+        #
+        # `funktionen_zuordenbar` ist die Probe selbst und steht bewusst an
+        # JEDER Zeile, obwohl sie je Gesellschaft gilt: Wer die Personen liest,
+        # muss ohne zweite Abfrage wissen, ob das Amt daneben gedeckt ist.
+        # Ist sie 0, sind ALLE `funktion` dieser Gesellschaft NULL — nicht
+        # „die meisten". Ein falsch zugeordnetes Amt wäre eine Falschaussage
+        # über eine namentlich genannte Person.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_gesellschaft_personen ("
+            "bericht_jahr INTEGER NOT NULL, "
+            "gesellschaft TEXT NOT NULL, "
+            "reihenfolge INTEGER NOT NULL, "   # Position im Bericht
+            "gremium TEXT NOT NULL, "          # Betriebsausschuss, Aufsichtsrat, …
+            "name TEXT NOT NULL, "
+            "funktion TEXT, "                  # NULL, wenn die Probe riss
+            "vorsitz TEXT, "                   # vorsitz | stellvertretung | NULL
+            "hinweis TEXT, "                   # „bis 30. Juni 2022"
+            "funktionen_zuordenbar INTEGER NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (bericht_jahr, gesellschaft, reihenfolge))"
+        )
+        # `council_gesellschaft_eigentuemer` = wem die Gesellschaft gehört.
+        #
+        # Ohne die Summenzeile: „Stammkapital 22.000.000,00 100,0" sieht im
+        # Extrakt aus wie ein Gesellschafter und ist die Probe, gegen die die
+        # Anteile laufen. Stünde sie hier, hielte die Stadt an ihrem eigenen
+        # Eigenbetrieb die Hälfte und ein „Stammkapital" die andere.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_gesellschaft_eigentuemer ("
+            "bericht_jahr INTEGER NOT NULL, "
+            "gesellschaft TEXT NOT NULL, "
+            "reihenfolge INTEGER NOT NULL, "
+            "name TEXT NOT NULL, "
+            "betrag_eur REAL, "                # NULL, wo der Bericht nur % nennt
+            "anteil_prozent REAL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (bericht_jahr, gesellschaft, reihenfolge))"
+        )
         # `council_gesellschaft_kennzahlen` = die Zeitreihe.
         #
         # SCHLÜSSEL IST DAS BEZUGSJAHR DER KENNZAHL, NICHT DER BERICHT. Jeder
@@ -1401,6 +1447,8 @@ class CouncilStore:
         "council_gesellschaften":            (None, "quelle_url", "stadt"),
         "council_gesellschaft_texte":        (None, "quelle_url", "stadt"),
         "council_gesellschaft_kennzahlen":   (None, "quelle_url", "stadt"),
+        "council_gesellschaft_personen":     (None, "quelle_url", "stadt"),
+        "council_gesellschaft_eigentuemer":  (None, "quelle_url", "stadt"),
     }
 
     @staticmethod
@@ -4628,7 +4676,9 @@ class CouncilStore:
     # --- Beteiligungsbericht (§ 151 NKomVG) ---------------------------------
 
     def save_beteiligungsbericht(self, stammdaten: list[dict], texte: list[dict],
-                                 kennzahlen: list[dict]) -> dict:
+                                 kennzahlen: list[dict],
+                                 personen: list[dict] | None = None,
+                                 eigentuemer: list[dict] | None = None) -> dict:
         """Den **ganzen** Bestand des Beteiligungsberichts ersetzen.
 
         Ungewöhnlich für diesen Store, und mit Grund: Die Überlappungsprobe
@@ -4648,7 +4698,10 @@ class CouncilStore:
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self.transaktion():
             for tabelle in ("council_gesellschaft_kennzahlen",
-                            "council_gesellschaft_texte", "council_gesellschaften"):
+                            "council_gesellschaft_texte",
+                            "council_gesellschaft_personen",
+                            "council_gesellschaft_eigentuemer",
+                            "council_gesellschaften"):
                 self._conn.execute(f"DELETE FROM {tabelle}")
             for z in stammdaten:
                 self._conn.execute(
@@ -4673,8 +4726,28 @@ class CouncilStore:
                     (z["gesellschaft"], z["kennzahl"], z["jahr"], z["wert"],
                      z["einheit"], z["bericht_jahr"], z["berichte"], now,
                      self.merke_herkunft(z["herkunft"], fetched_at=now)))
+            for z in personen or []:
+                self._conn.execute(
+                    "INSERT INTO council_gesellschaft_personen (bericht_jahr, "
+                    " gesellschaft, reihenfolge, gremium, name, funktion, "
+                    " vorsitz, hinweis, funktionen_zuordenbar, fetched_at, "
+                    " herkunft_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                    (z["bericht_jahr"], z["gesellschaft"], z["reihenfolge"],
+                     z["gremium"], z["name"], z.get("funktion"), z.get("vorsitz"),
+                     z.get("hinweis"), int(bool(z["funktionen_zuordenbar"])), now,
+                     self.merke_herkunft(z["herkunft"], fetched_at=now)))
+            for z in eigentuemer or []:
+                self._conn.execute(
+                    "INSERT INTO council_gesellschaft_eigentuemer (bericht_jahr, "
+                    " gesellschaft, reihenfolge, name, betrag_eur, "
+                    " anteil_prozent, fetched_at, herkunft_id) "
+                    "VALUES (?,?,?,?,?,?,?,?)",
+                    (z["bericht_jahr"], z["gesellschaft"], z["reihenfolge"],
+                     z["name"], z.get("betrag_eur"), z.get("anteil_prozent"), now,
+                     self.merke_herkunft(z["herkunft"], fetched_at=now)))
         return {"gesellschaften": len(stammdaten), "texte": len(texte),
-                "kennzahlen": len(kennzahlen)}
+                "kennzahlen": len(kennzahlen), "personen": len(personen or []),
+                "eigentuemer": len(eigentuemer or [])}
 
     def beteiligungsbericht_jahre(self) -> list[int]:
         """Berichtsjahrgänge, die eingelesen sind (aufsteigend)."""
@@ -4719,6 +4792,44 @@ class CouncilStore:
         except sqlite3.OperationalError:
             return []
         return [dict(r) for r in rows]
+
+    def _gesellschaft_zeilen(self, tabelle: str, bericht_jahr: int | None,
+                             ordnung: str) -> list[dict]:
+        """Alle Zeilen einer Beteiligungs-Tabelle für **einen** Berichtsjahrgang.
+
+        Ohne Jahresangabe der jüngste — dieselbe Vorgabe wie bei
+        ``get_gesellschaften``, und aus demselben Grund: Wer fragt, wer im
+        Aufsichtsrat sitzt, meint heute und nicht 2022.
+
+        Ein Lesepfad für beide Tabellen, weil die Steckbrief-Seite ohnehin
+        alle Gesellschaften auf einmal zeigt: 45 Einzelabfragen für 500 Zeilen
+        wären eine Schleife um nichts."""
+        try:
+            if bericht_jahr is None:
+                jahre = self.beteiligungsbericht_jahre()
+                if not jahre:
+                    return []
+                bericht_jahr = jahre[-1]
+            rows = self._conn.execute(
+                f"SELECT * FROM {tabelle} WHERE bericht_jahr = ? "
+                f"ORDER BY {ordnung}", (bericht_jahr,)).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [dict(r) for r in rows]
+
+    def get_gesellschaft_personen(self, bericht_jahr: int | None = None) -> list[dict]:
+        """Die Aufsichtsorgane eines Berichtsjahrgangs, Person für Person.
+
+        ``funktionen_zuordenbar`` gilt je Gesellschaft: Ist es 0, ist
+        ``funktion`` bei **allen** ihren Personen NULL (s. Tabellenkommentar
+        und ``beteiligungsbericht.aufsichtsorgane``)."""
+        return self._gesellschaft_zeilen("council_gesellschaft_personen",
+                                         bericht_jahr, "gesellschaft, reihenfolge")
+
+    def get_gesellschaft_eigentuemer(self, bericht_jahr: int | None = None) -> list[dict]:
+        """Wem die Gesellschaften gehören — ohne die Stammkapital-Summenzeile."""
+        return self._gesellschaft_zeilen("council_gesellschaft_eigentuemer",
+                                         bericht_jahr, "gesellschaft, reihenfolge")
 
     def get_gesellschaft_kennzahlen(self, gesellschaft: str | None = None) -> list[dict]:
         """Die Kennzahlen-Zeitreihe — einer Gesellschaft oder aller."""
@@ -5908,6 +6019,27 @@ class CouncilStore:
         r"(?i)^(erste[rn]?\s+)?(oberbürgermeister(in)?|stadtkämmer(er|in)|"
         r"stadtbaur(at|ätin)|stadtr(at|ätin))$")
 
+    @classmethod
+    def namensteile(cls, anzeige: str) -> tuple[str, str]:
+        """„Dr. Ruth Regina Drügemöller" → ``("ruth", "druegemoeller")``.
+
+        (vorname_gefaltet, nachname_gefaltet) — Nachname ist das letzte Token
+        (Bindestrich-Namen sind EIN Token), Titel zählen nicht als Vorname.
+
+        Steht hier als Klassenmethode und nicht mehr als Verschachtelung in
+        :meth:`personen_lexikon`, weil sie außerhalb gebraucht wird: Wer einen
+        Namen **gegen** das Lexikon hält (die Aufsichtsorgane des
+        Beteiligungsberichts tun das), muss ihn genauso falten wie das Lexikon
+        selbst. Eine zweite, leicht abweichende Faltung träfe an den Umlauten
+        und Titeln nichts mehr — und niemand sähe es, weil ein Fehltreffer wie
+        ein fehlender Eintrag aussieht."""
+        toks = [t for t in anzeige.replace(".", " ").split()
+                if t.lower().rstrip(".") not in cls._HONORIFICS]
+        if not toks:
+            return "", ""
+        return (cls._falte_namen(toks[0]) if len(toks) > 1 else "",
+                cls._falte_namen(toks[-1]))
+
     def personen_lexikon(self) -> list[dict]:
         """Das Personen-Lexikon für die Badges im Antwort-Text (Tims Wunsch
         12.08.): Ratsmitglieder aus dem Verzeichnis (Partei, Zeitraum,
@@ -5920,22 +6052,7 @@ class CouncilStore:
         from collections import Counter, defaultdict
         from datetime import date, timedelta
         stichtag = (date.today() - timedelta(days=365)).isoformat()
-
-        def falte(t: str) -> str:
-            t = t.lower()
-            for a, b in (("ä", "ae"), ("ö", "oe"), ("ü", "ue"), ("ß", "ss")):
-                t = t.replace(a, b)
-            return t
-
-        def namensteile(anzeige: str) -> tuple[str, str]:
-            """(vorname_gefaltet, nachname_gefaltet) — Nachname ist das letzte
-            Token (Bindestrich-Namen sind EIN Token), Titel zählen nicht als
-            Vorname."""
-            toks = [t for t in anzeige.replace(".", " ").split()
-                    if t.lower().rstrip(".") not in self._HONORIFICS]
-            if not toks:
-                return "", ""
-            return falte(toks[0]) if len(toks) > 1 else "", falte(toks[-1])
+        namensteile = self.namensteile
 
         out: list[dict] = []
         gesehen: set[str] = set()
