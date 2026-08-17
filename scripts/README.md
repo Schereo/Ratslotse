@@ -55,3 +55,4 @@ Zeitpläne stehen in den jeweiligen Docstrings; maßgeblich ist die laufende
 | Skript | Zweck |
 |--------|-------|
 | `eval_ai.py` | Regressions-Guard gegen das Gold-Set (siehe [../eval/README.md](../eval/README.md)) |
+| `changelog_schnitt.py` | Versionsschnitt: die Fragmente aus `../changelog.d/` in `../CHANGELOG.md` gießen (`<x.y.z>`, `--trocken`, `--pruefen`). Läuft im Release-PR, nicht per Cron |

@@ -26,7 +26,8 @@ Seit 08/2026 ist **`main` der Prod-Stand und `dev` der Integrations-Branch**:
   `git checkout dev && git merge origin/main && git push origin dev`.
 - **Ein Release** ist ein Pull Request `dev` → `main` mit **Merge-Commit**
   (nicht squashen — sonst divergieren die Branches dauerhaft). Der
-  Versionsschnitt im Changelog und der Git-Tag gehören in diesen PR.
+  Versionsschnitt im Changelog und der Git-Tag gehören in diesen PR
+  (siehe [Changelog](#changelog)).
 - **Umgebungs-Gate:** Der Dev-Build setzt `NEXT_PUBLIC_RATSLOTSE_ENV=dev`
   (der Prod-Build nicht). Features, die nur auf der Dev-Umgebung sichtbar
   sein sollen, prüfen diese Variable und liefern auf Prod `notFound()` —
@@ -34,6 +35,48 @@ Seit 08/2026 ist **`main` der Prod-Stand und `dev` der Integrations-Branch**:
 - **Kein Force-Push auf `dev`:** Der Branch trägt gemeinsame Historie. (Bis
   08/2026 war `dev` ein beweglicher Zeiger, auf den man beliebige Stände
   force-pushen konnte — das gilt nicht mehr.)
+
+## Changelog
+
+Jeder nutzerrelevante Pull Request legt **eine Datei** unter `changelog.d/` an,
+statt in `CHANGELOG.md` zu schreiben:
+
+```markdown
+---
+kategorie: hinzugefuegt   # oder: geaendert | behoben
+---
+
+**Kernsatz fett.** Danach der Fließtext, deutsch, ohne PR-Nummer.
+```
+
+Der Grund ist ein rein mechanischer: Alle PRs schrieben bisher in dieselben
+Zeilen unter `## [Unreleased]`, also kollidierte bei parallelen Zweigen
+zuverlässig *jeder* Merge an derselben Stelle. Eine Datei je PR kollidiert nie.
+Dazu kommt, dass die PR-Nummer beim Schreiben des Eintrags noch gar nicht
+existiert — geraten wurde sie prompt falsch.
+
+**Beim Versionsschnitt** (im Release-PR `dev` → `main`) sammelt
+`scripts/changelog_schnitt.py` die Fragmente ein:
+
+```bash
+.venv/bin/python scripts/changelog_schnitt.py 1.13.0 --trocken   # anschauen
+.venv/bin/python scripts/changelog_schnitt.py 1.13.0             # schreiben
+```
+
+Das Skript hängt an jedes Fragment die Nummer des Squash-Commits, der die Datei
+angelegt hat (`git log --diff-filter=A`; findet es keine, warnt es und lässt den
+Eintrag ohne Nummer), sortiert es unter `## [x.y.z] – Datum` in seinen
+Abschnitt, löscht die Fragmente und zieht die Compare-Links am Dateiende nach.
+Anschließend wird der annotierte Tag `vx.y.z` gesetzt und gepusht.
+
+Von Hand direkt unter `## [Unreleased]` eingetragene Einträge bleiben gültig —
+sie wandern beim Schnitt unverändert mit unter die neue Version. `/changelog`
+rendert zur Build-Zeit `CHANGELOG.md` **und** die noch offenen Fragmente; für
+Leser\*innen sind beide Wege nicht unterscheidbar. Ob alle Fragmente lesbar
+sind, prüfen `tests/test_changelog_fragmente.py` und
+`scripts/changelog_schnitt.py --pruefen`.
+
+---
 
 ## Deploy-Wege
 
