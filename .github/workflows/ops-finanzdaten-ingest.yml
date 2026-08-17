@@ -92,14 +92,31 @@ jobs:
                 "council_staedtevergleich", "council_investitionen",
                 "council_stellenplan", "council_schulden",
             ]
+            # Die Jahresspalte heißt nicht überall „jahr": council_haushalt
+            # führt „year", der Stellenplan „jahrgang". Der erste Lauf meldete
+            # für beide „no such column" — deshalb wird sie hier aus dem Schema
+            # gelesen statt geraten.
+            def jahresspalte(tabelle):
+                namen = [r[1] for r in s._conn.execute(f"PRAGMA table_info({tabelle})")]
+                for kandidat in ("jahr", "jahrgang", "year"):
+                    if kandidat in namen:
+                        return kandidat
+                return None
+
             print("Bestand nach dem Lauf:")
             for t in tabellen:
                 try:
                     n = s._conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
-                    jahre = s._conn.execute(
-                        f"SELECT MIN(jahr), MAX(jahr) FROM {t}").fetchone()
-                    spanne = f"{jahre[0]}–{jahre[1]}" if jahre and jahre[0] else "—"
-                    print(f"  {t:32} {n:>6} Zeilen  {spanne}")
+                    spalte = jahresspalte(t)
+                    spanne = "—"
+                    if spalte and n:
+                        von, bis = s._conn.execute(
+                            f"SELECT MIN({spalte}), MAX({spalte}) FROM {t}").fetchone()
+                        spanne = f"{von}–{bis}" if von else "—"
+                    # Eine leere Tabelle ist keine Panne, aber eine Ansage: Die
+                    # Seite dazu steht dann ohne Daten da.
+                    print(f"  {t:32} {n:>6} Zeilen  {spanne}"
+                          + ("   ← LEER" if not n else ""))
                 except Exception as e:                      # noqa: BLE001
                     print(f"  {t:32} — {e}")
             # herkunft_luecken() liefert ein dict {Tabelle: Anzahl}, keine
