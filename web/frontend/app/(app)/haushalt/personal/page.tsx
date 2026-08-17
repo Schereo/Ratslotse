@@ -3,7 +3,7 @@
 // /haushalt/personal — „Wer macht die Arbeit?" (Boards H3-01, H4-05)
 //
 // Die Seite hat eine Aussage, und sie ist die Fortsetzung eines Satzes, der
-// im Bereich schon steht: In `components/haushalt/hantel.tsx` heißt es,
+// im Bereich schon steht: In `components/grafik/hantel.tsx` heißt es,
 // Minderausgaben seien nicht automatisch gut — „nicht gebaut, Stellen
 // unbesetzt". Hier stehen diese Stellen. Das tragende Bild ist die WAFFEL
 // (GB-06): ein Quadrat je zehn Stellen, die unbesetzten als Signal-Umriss —

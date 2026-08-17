@@ -27,7 +27,7 @@
 //     10,5 Mio. €", nicht welche Straße. Die häufigste Frage an diese Seite
 //     („wird MEINE Schule saniert?") beantwortet sie nicht, und sie sagt das.
 //
-// KEINE BEWERTUNGSFARBEN, wie im ganzen Bereich (components/haushalt/hantel.tsx):
+// KEINE BEWERTUNGSFARBEN, wie im ganzen Bereich (components/grafik/hantel.tsx):
 // Ein Bereich mit hohen Investitionen ist nicht „gut", einer mit niedrigen
 // nicht „schlecht" — in dem einen wird gerade eine Schule gebaut, im anderen
 // nicht. Die Segmente kommen aus der Ausgabenrampe, das Signal-Orange bleibt
@@ -430,6 +430,10 @@ function InvestitionenInner() {
             gewaehlt={gewaehlterBereich}
             aufWaehlen={setBereich}
             zurueckAnker={ANKER_BEREICHE}
+            // Derselbe Farbschlüssel wie im Überblicksbalken oben — die
+            // Kachelfläche des Explorers und die Rangliste je Bereich sollen
+            // denselben Teilhaushalt in derselben Rampenstufe zeigen.
+            farbeVonThh={farbe}
           />
         )}
 

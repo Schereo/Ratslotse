@@ -26,7 +26,7 @@
 // steht das Zitat wörtlich da, mit Verweis auf den Vorgang in unserem
 // Bestand und auf beide Originaldokumente.
 //
-// KEINE BEWERTUNGSFARBEN (components/haushalt/hantel.tsx) — hier besonders:
+// KEINE BEWERTUNGSFARBEN (components/grafik/hantel.tsx) — hier besonders:
 // Ob eine hohe Gewerbesteuer Stärke oder Abhängigkeit ist, ist die Frage,
 // die die Seite offenlässt. Grün und Rot beantworteten sie ungefragt.
 
@@ -40,6 +40,7 @@ import {
   juengstesJahr, platzVonOldenburg, reihe, steuerkraftJeEinwohner, veraenderung,
 } from "@/lib/haushalt-vergleich";
 import { Staedtevergleich, Zeitreihe } from "@/components/haushalt/staedtevergleich";
+import { SlopePaar, type SlopePaarZeile } from "@/components/grafik/slope-paar";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { GlossaryText } from "@/components/glossary-text";
@@ -114,6 +115,26 @@ export default function VergleichSeite() {
   const steuerkraft = skJahr ? steuerkraftJeEinwohner(data, skJahr) : [];
   const grundsteuer = rsJahr ? balken(data, "realsteuern", "hebesatz_grundsteuer_b", rsJahr) : [];
   const einnahmekraft = rsJahr ? balken(data, "realsteuern", "steuereinnahmekraft_je_ew", rsJahr) : [];
+
+  // Der Grundsteuer-Sprung (H3-07): Hebesatz vor und nach der Reform 2025 —
+  // als Slope-Paar MIT Bruch-Marker, denn über die Reform hinweg sind die
+  // Sätze nicht vergleichbar (neue Messbeträge, neue Basis). Nur wenn BEIDE
+  // Jahrgänge im Bestand sind; sonst bleibt die Rangliste allein — geraten
+  // wird kein Vorjahr.
+  const rsVorjahr = rsJahr != null
+    && (data.jahre.realsteuern ?? []).includes(rsJahr - 1) ? rsJahr - 1 : null;
+  const grundsteuerVorher = rsVorjahr != null
+    ? balken(data, "realsteuern", "hebesatz_grundsteuer_b", rsVorjahr) : [];
+  const sprungPaare: SlopePaarZeile[] = grundsteuer
+    .flatMap((z): SlopePaarZeile[] => {
+      const vorher = grundsteuerVorher.find((v) => v.schluessel === z.schluessel);
+      return vorher ? [{
+        label: z.name, vorher: vorher.wert, nachher: z.wert,
+        hervorgehoben: z.ist_oldenburg,
+      }] : [];
+    })
+    .sort((a, b) => b.vorher - a.vorher);
+  const springer = sprungPaare.filter((p) => p.vorher !== p.nachher).length;
   const platz = platzVonOldenburg(steuerkraft);
   const oldenburg = steuerkraft.find((z) => z.ist_oldenburg);
 
@@ -188,21 +209,52 @@ export default function VergleichSeite() {
         )}
 
         {grundsteuer.length > 0 && rsJahr && (
-          <Abschnitt kicker="Grundsteuer B — der Hebesatz" zusatz={`${rsJahr}`}>
+          <Abschnitt
+            kicker="Grundsteuer B — der Sprung zur Reform"
+            zusatz={rsVorjahr != null ? `${rsVorjahr} → ${rsJahr}` : `${rsJahr}`}
+          >
             <p className="mt-1.5 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
               Der <GlossaryText text="Hebesatz" /> ist ein Ratsbeschluss und keine
               Bilanzgröße — er ist damit die am klarsten vergleichbare Zahl, die es im
-              kommunalen Finanzwesen gibt. Auf denselben Messbetrag zahlt man in
-              Braunschweig deutlich mehr als hier.
+              kommunalen Finanzwesen gibt.
+              {sprungPaare.length > 0 && (
+                <>
+                  {" "}Mit der Reform {rsJahr} springt er in{" "}
+                  <strong>
+                    {springer === sprungPaare.length
+                      ? `allen ${sprungPaare.length}`
+                      : `${springer} von ${sprungPaare.length}`}
+                  </strong>{" "}
+                  kreisfreien Städten — kein Steuerbescheid: Mit der Reform gelten
+                  neue Messbeträge, und viele Städte setzten den Hebesatz neu, um
+                  aufs gleiche Aufkommen zu kommen.
+                </>
+              )}
               <Beleg q="lsn_realsteuern" />
             </p>
             <div className="mt-3">
-              <Staedtevergleich zeilen={grundsteuer} einheit="prozent" />
+              {sprungPaare.length > 0 && rsVorjahr != null ? (
+                // H3-07: Slope mit Bruch-Marker. Der Marker gehört der
+                // Komponente — ein Slope über den Systembruch ohne Label ist
+                // dort nicht baubar.
+                <SlopePaar
+                  paare={sprungPaare}
+                  vonLabel={`${rsVorjahr}`}
+                  bisLabel={`${rsJahr} · Reform`}
+                  bruchLabel={`ab ${rsJahr} neue Messbeträge`}
+                  einheit="%"
+                  beleg={<Beleg q="lsn_realsteuern" />}
+                />
+              ) : (
+                <Staedtevergleich zeilen={grundsteuer} einheit="prozent" />
+              )}
             </div>
-            <p className="mt-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
-              Diese Sätze gelten seit der Grundsteuerreform 2025 und lassen sich mit
-              früheren <strong>nicht</strong> vergleichen: Zum selben Zeitpunkt haben sich
-              auch die Messbeträge geändert, auf die sie angewendet werden.
+            <p className="mt-2.5 max-w-[76ch] text-[11.5px] leading-relaxed text-muted-foreground">
+              Über den Bruch hinweg sind die Sätze <strong>nicht</strong> vergleichbar:
+              Zum selben Zeitpunkt haben sich auch die Messbeträge geändert, auf die sie
+              angewendet werden. Ein höherer Satz {rsJahr} heißt deshalb nicht
+              automatisch „teurer als {rsVorjahr ?? "vorher"}" — er heißt zunächst nur:
+              neue Rechenbasis. Auch ein unveränderter Satz ist eine Entscheidung.
             </p>
             <Fundstelle h={hRealsteuern} />
           </Abschnitt>

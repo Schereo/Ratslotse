@@ -1889,7 +1889,7 @@ den Entzerrer.
 
 Die beiden größten Sprünge der Reihe sind **keine Politik**, und die Seite sagt
 das im Text statt es der Farbe zu überlassen (Bewertungsfarben sind im ganzen
-Bereich ausgeschlossen, s. `components/haushalt/hantel.tsx`):
+Bereich ausgeschlossen, s. `components/grafik/hantel.tsx`):
 
 - **2001, −139,1 Mio. €:** Die Stadtentwässerung ging an den
   Oldenburgisch-Ostfriesischen Wasserverband, der dabei Darlehen über
