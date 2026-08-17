@@ -368,15 +368,28 @@ export default function PflichtPage() {
         </section>
       )}
 
-      <p className="max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
-        <strong>Wie sicher ist diese Einordnung?</strong> Die Summen stammen aus dem beschlossenen
-        Haushaltsplan. Die Zuordnung zu Pflicht und Kür ist dagegen eine{" "}
-        <em>redaktionelle Einschätzung auf Ebene ganzer Teilhaushalte</em> — eine amtliche gibt es
-        nicht, und in fast jedem Bereich steckt beides. Was die Stadt selbst angibt, steht bei jedem
-        Bereich daneben; wo es unserer Einschätzung widerspricht, sagen wir das, statt die
-        Einschätzung nachzuziehen. Genauer wird es je Aufgabe auf der{" "}
-        <Link href="/haushalt/produkte" className="font-semibold text-primary">Produktebene</Link>.
-      </p>
+      {/* Der Schlusshinweis stand bis 17.08. als nackter Absatz unter lauter
+          Karten — 470 Zeichen am Stück, ohne Rahmen, ohne Kicker, als hätte
+          ihn jemand vergessen einzuräumen. Er sagt zwei verschiedene Dinge
+          (woher die Summen kommen, woher die Einordnung kommt) und steht
+          deshalb jetzt als zwei Sätze in der Kartengrammatik der Seite. Kein
+          Wort ist weggefallen. */}
+      <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+          Wie sicher ist diese Einordnung?
+        </h2>
+        <p className="mt-2 max-w-[80ch] text-[12.5px] leading-relaxed text-foreground/85">
+          Die Summen stammen aus dem beschlossenen Haushaltsplan<Beleg q="plan" />. Die Zuordnung
+          zu Pflicht und Kür ist dagegen eine <em>redaktionelle Einschätzung auf Ebene ganzer
+          Teilhaushalte</em> — eine amtliche gibt es nicht, und in fast jedem Bereich steckt beides.
+        </p>
+        <p className="mt-2 max-w-[80ch] text-[12.5px] leading-relaxed text-foreground/85">
+          Was die Stadt selbst angibt, steht bei jedem Bereich daneben; wo es unserer Einschätzung
+          widerspricht, sagen wir das, statt die Einschätzung nachzuziehen. Genauer wird es je
+          Aufgabe auf der{" "}
+          <Link href="/haushalt/produkte" className="font-semibold text-primary">Produktebene</Link>.
+        </p>
+      </section>
 
       <SchrittWeiter href="/haushalt/pflicht" />
 
@@ -420,7 +433,24 @@ function DoppelMarker({ stadt, wir }: { stadt: string | null; wir: string | null
 }
 
 /** Ein Teilhaushalt: was er kostet, wie wir ihn einordnen — und was die Stadt
- *  selbst zu seinen Aufgaben angibt. */
+ *  selbst zu seinen Aufgaben angibt.
+ *
+ *  AUFGERÄUMT AM 17.08., drei Dinge, jedes mit demselben Grund — dieselbe
+ *  Auskunft stand mehrfach in derselben Karte:
+ *
+ *   1. Der Kicker „Was die Stadt selbst angibt · Stand 2025" ist weg. Er stand
+ *      13 Mal auf der Seite und sagte, was zwei Zeilen tiefer im Satz noch
+ *      einmal steht („… sieht die Stadt kaum Spielraum"). Der Jahresstempel
+ *      geht dabei nicht verloren: Er wandert IN den Satz, also an die Aussage,
+ *      zu der er gehört — der Kopf der Seite nennt ihn ohnehin.
+ *   2. „weicht ab" steht jetzt oben an der Überschrift statt in der Mitte der
+ *      Karte. Es ist die interessanteste Auskunft der Zeile und lag unter dem
+ *      Betrag, wo man nicht danach sucht.
+ *   3. Die beiden Balken sind auseinandergezogen. Sie sahen gleich aus und
+ *      meinten Verschiedenes: der obere die Größe des Bereichs, der untere die
+ *      Zusammensetzung seiner Aufgaben nach der Angabe der Stadt. Der untere
+ *      trägt deshalb das ◇ des Doppelmarkers vorweg — dasselbe Zeichen, das
+ *      zwei Zeilen höher „das kommt von der Stadt" bedeutet. */
 function BereichsZeile({ r, groesster, produktJahr }: {
   r: Zeile; groesster: number; produktJahr: number | null;
 }) {
@@ -430,16 +460,26 @@ function BereichsZeile({ r, groesster, produktJahr }: {
     <div className="rounded-xl border border-border bg-card p-3.5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
         <div className="min-w-0 flex-1">
-          {/* `break-words`: „Personal/Organisation/Digitalisierung/IT" ist ein
-              einziges Wort ohne Leerzeichen. Ohne Umbruchfreigabe lief es auf
-              375 px in den Betrag hinein — Name und Zahl klebten ohne Lücke
-              aneinander („…/IT47,2 Mio."). */}
-          <Link
-            href={`/haushalt/bereich?name=${bereichSlug(r.z.bereich)}`}
-            className="text-[13px] font-bold leading-snug break-words hover:text-primary"
-          >
-            {kanon.name}
-          </Link>
+          <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            {/* `break-words` UND `min-w-0`: „Personal/Organisation/
+                Digitalisierung/IT" ist ein einziges Wort ohne Leerzeichen. Ohne
+                Umbruchfreigabe lief es auf 375 px in den Betrag hinein — Name
+                und Zahl klebten ohne Lücke aneinander („…/IT47,2 Mio."). Als
+                Flex-Element (seit das „weicht ab" danebensteht) reicht
+                `break-words` allein nicht: Ein Flex-Kind schrumpft ohne
+                `min-w-0` nicht unter seine längste unteilbare Stelle. */}
+            <Link
+              href={`/haushalt/bereich?name=${bereichSlug(r.z.bereich)}`}
+              className="min-w-0 text-[13px] font-bold leading-snug break-words hover:text-primary"
+            >
+              {kanon.name}
+            </Link>
+            {r.urteil === "weicht" && (
+              <span className="flex-none rounded-full bg-signal/10 px-2 py-0.5 text-[10.5px] font-semibold text-signal">
+                weicht ab
+              </span>
+            )}
+          </span>
           {r.was ? (
             <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">{r.was}</p>
           ) : (
@@ -464,22 +504,18 @@ function BereichsZeile({ r, groesster, produktJahr }: {
         />
       </div>
 
+      {/* Die Angabe der Stadt steht auf einer eigenen, abgesetzten Fläche.
+          Vorher trennte sie nur eine Haarlinie vom Ausgabenbalken darüber —
+          zwei Balken derselben Höhe und Farbfamilie direkt untereinander, die
+          Verschiedenes messen (oben die Größe des Bereichs, unten die
+          Zusammensetzung seiner Aufgaben). Die Fläche sagt: Ab hier spricht
+          eine andere Quelle. */}
       {produktJahr && (
-        <div className="mt-3 border-t border-border/60 pt-2.5">
-          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-            <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-              Was die Stadt selbst angibt · Stand {produktJahr}
-            </p>
-            {r.urteil === "weicht" && (
-              <span className="rounded-full bg-signal/10 px-2 py-0.5 text-[10.5px] font-semibold text-signal">
-                weicht ab
-              </span>
-            )}
-          </div>
+        <div className="mt-3 rounded-lg border border-border/70 bg-muted/40 p-2.5">
           {befund && befund.dominant ? (
-            <Selbstauskunft befund={befund} />
+            <Selbstauskunft befund={befund} jahr={produktJahr} />
           ) : (
-            <p className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">
+            <p className="text-[12px] leading-relaxed text-muted-foreground">
               {befund
                 ? `Die ${befund.produkte} Aufgaben dieses Bereichs tragen für ${produktJahr} keine eindeutige Angabe.`
                 : `Für ${produktJahr} liegt kein auslesbarer Teilhaushaltsplan dieses Bereichs vor — die Produktebene deckt ihn nicht ab.`}
@@ -491,7 +527,7 @@ function BereichsZeile({ r, groesster, produktJahr }: {
   );
 }
 
-function Selbstauskunft({ befund }: { befund: SpielraumBefund }) {
+function Selbstauskunft({ befund, jahr }: { befund: SpielraumBefund; jahr: number }) {
   const segmente: Anteil[] = [
     ...(["niedrig", "mittel", "hoch"] as Spielraum[]).map((s) => ({
       label: SPIELRAUM_TEXT[s].kurz, wert: befund.anteil[s], farbe: TON_SPIELRAUM[s],
@@ -503,19 +539,27 @@ function Selbstauskunft({ befund }: { befund: SpielraumBefund }) {
   const groesste = befund.groesste;
   return (
     <>
-      <AnteilsbalkenSchmal
-        className="mt-2"
-        segmente={segmente}
-        gesamt={1}
-        beschriftung={segmente
-          .filter((s) => s.wert > 0)
-          .map((s) => `${s.label} ${Math.round(s.wert * 100)} %`)
-          .join(", ")}
-      />
+      {/* Das ◇ steht vor dem Balken, nicht über ihm: Es ist dasselbe Zeichen
+          wie im Doppelmarker und sagt in einem Glyph, wessen Antwort dieser
+          Balken zeigt — ohne die Zeile darüber noch einmal zu schreiben. */}
+      <div className="flex items-center gap-2">
+        <span aria-hidden="true" className="flex-none text-[11px] leading-none text-muted-foreground">
+          ◇
+        </span>
+        <AnteilsbalkenSchmal
+          className="flex-1"
+          segmente={segmente}
+          gesamt={1}
+          beschriftung={`Selbstauskunft der Stadt, Stand ${jahr}: ` + segmente
+            .filter((s) => s.wert > 0)
+            .map((s) => `${s.label} ${Math.round(s.wert * 100)} %`)
+            .join(", ")}
+        />
+      </div>
       <p className="mt-1.5 text-[12px] leading-relaxed text-foreground/85">
         Bei <strong className="tabular-nums">{anteil}&nbsp;%</strong> der Ausgaben dieses Bereichs
         sieht die Stadt <strong>{SPIELRAUM_TEXT[dominant].kurz}</strong> ({befund.produkte}{" "}
-        {befund.produkte === 1 ? "Aufgabe" : "Aufgaben"}).
+        {befund.produkte === 1 ? "Aufgabe" : "Aufgaben"}, Stand {jahr}).
         <Beleg q="teilhaushalt" />
       </p>
       {groesste?.auftragsgrundlage && (

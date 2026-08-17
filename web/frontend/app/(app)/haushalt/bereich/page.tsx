@@ -37,7 +37,7 @@ import {
   ProdukteAntwort, betrag, bereichInfo, bereichSlug, bereiche, bereichsReihe,
   deMio, deckung, gruendeFuerBereich, jahreSortiert, mio, quellenLabel,
 } from "@/lib/haushalt";
-import { bereichKanon, bereichSchluessel } from "@/lib/haushalt-bereiche";
+import { BEREICHE, bereichKanon, bereichSchluessel } from "@/lib/haushalt-bereiche";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { Hantel } from "@/components/grafik/hantel";
@@ -156,6 +156,37 @@ function EigeneErtraege({ daten, schluessel, planEin, planJahr }: {
   );
 }
 
+/** Den Teilhaushalt zu `?name=…` finden — und zwar auch dann, wenn im Query
+ *  nicht genau der Slug steht, den die Bereichstabelle schreibt.
+ *
+ *  WARUM: Der Parameter heißt `name`, erwartet aber einen Slug. Wer den Link
+ *  weitergibt, tippt oder aus einer Fußnote abschreibt, schreibt den
+ *  Klartextnamen hinein — „?name=Finanzmanagement und Recht" lief bis 17.08.
+ *  auf „Diesen Bereich kennen wir nicht", obwohl der Name exakt so im Bestand
+ *  steht. Ein geteilter Link, der ins Leere führt, ist ein Fehler, kein
+ *  Sonderfall.
+ *
+ *  Drei Stufen, jede eine echte Fassung derselben Adresse:
+ *   1. der Slug, wie ihn `bereichSlug()` aus dem DB-Namen bildet;
+ *   2. derselbe Slug, aus dem Eingang neu gebildet — `bereichSlug()` ist auf
+ *      Slugs die Identität, fängt aber Klartext, Umlaute und Großschreibung;
+ *   3. die Alias-Liste des Wörterbuchs — ein Link aus einem Jahrgang, in dem
+ *      derselbe Teilhaushalt anders hieß, zeigt weiter auf denselben Bereich.
+ *
+ *  Geraten wird dabei nichts: Alle drei Stufen vergleichen belegte
+ *  Schreibweisen, keine Ähnlichkeiten. */
+function bereichAusParam(zeilen: HaushaltZeile[], eingang: string): HaushaltZeile | undefined {
+  if (!eingang.trim()) return undefined;
+  const liste = bereiche(zeilen);
+  const gesucht = bereichSlug(eingang);
+  const direkt = liste.find((r) => bereichSlug(r.bereich) === gesucht);
+  if (direkt) return direkt;
+  const kanon = BEREICHE.find((b) =>
+    bereichSlug(b.name) === gesucht || b.aliase.some((a) => bereichSlug(a) === gesucht));
+  if (!kanon) return undefined;
+  return liste.find((r) => bereichSchluessel(r.bereich) === kanon.schluessel);
+}
+
 function BereichInner() {
   const slug = useSearchParams().get("name") ?? "";
   const { data, loading } = useFetch<HaushaltDaten>("/council/haushalt");
@@ -165,7 +196,7 @@ function BereichInner() {
   const jahre = useMemo(() => (data ? jahreSortiert(data) : []), [data]);
   const jahr = jahre[jahre.length - 1];
   const zeilen = data && jahr ? data.jahre[String(jahr)] ?? [] : [];
-  const z = bereiche(zeilen).find((r) => bereichSlug(r.bereich) === slug);
+  const z = bereichAusParam(zeilen, slug);
   const kanon = z ? bereichKanon(z.bereich) : null;
 
   // Produktebene: das jüngste Jahr, für das sie vorliegt — und nur für diesen
@@ -461,8 +492,13 @@ function BereichInner() {
               })}
             </div>
             <p className="mt-2.5 border-t border-border/60 pt-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
-              Die {produktZeilen.length} teuersten Aufgaben dieses Bereichs nach Zuschussbedarf,
-              aus dem Teilhaushaltsplan {produktJahr}<Beleg q="teilhaushalt" />. Für das
+              {/* Bei Teilhaushalten mit genau einer bezuschussten Aufgabe stand
+                  hier „Die 1 teuersten Aufgaben" — die Zahl kommt aus den
+                  Daten, der Satz muss also beide Fälle können. */}
+              {produktZeilen.length === 1
+                ? <>Die teuerste Aufgabe dieses Bereichs nach Zuschussbedarf,</>
+                : <>Die {produktZeilen.length} teuersten Aufgaben dieses Bereichs nach Zuschussbedarf,</>}
+              {" "}aus dem Teilhaushaltsplan {produktJahr}<Beleg q="teilhaushalt" />. Für das
               Haushaltsjahr {jahr} gibt es die Produktebene noch nicht — die Stadt
               veröffentlicht sie mit den Teilplänen, und unser Bestand endet {produktJahr}.
             </p>

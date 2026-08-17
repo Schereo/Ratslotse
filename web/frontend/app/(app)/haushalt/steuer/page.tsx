@@ -17,17 +17,34 @@ import { ChevronRight, Search } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
 import { HaushaltDaten, deMio } from "@/lib/haushalt";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
-import { STEUERARTEN, SPIELRAUM_LABEL, steuerartNachSlug } from "@/lib/haushalt-steuern";
+import {
+  STEUERARTEN, SPIELRAUM_LABEL, type SteuerArt, steuerartNachSlug,
+} from "@/lib/haushalt-steuern";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { LottiErklaert, LottiVergleich } from "@/components/haushalt/lotti-erklaert";
 import { IstKurve } from "@/components/haushalt/ist-kurve";
 import { GlossaryText } from "@/components/glossary-text";
 import { cn } from "@/lib/utils";
 
+/** Die Einnahmeart zu `?art=…` — auch wenn im Query nicht der Slug steht.
+ *
+ *  Derselbe Grund wie beim Bereichs-Steckbrief: Wer den Link weitergibt oder
+ *  tippt, schreibt den Titel („Gebühren und Beiträge") statt des Slugs. Der
+ *  Vergleich läuft über eine Fassung ohne Trenn- und Sonderzeichen, auf BEIDEN
+ *  Seiten dieselbe — geraten wird nichts, nur verschieden geschrieben. */
+function steuerartFinden(eingang: string): SteuerArt | undefined {
+  const treffer = steuerartNachSlug(eingang);
+  if (treffer) return treffer;
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const gesucht = norm(eingang);
+  if (!gesucht) return undefined;
+  return STEUERARTEN.find((a) => norm(a.slug) === gesucht || norm(a.titel) === gesucht);
+}
+
 function SteuerInner() {
   const slug = useSearchParams().get("art") ?? "gewerbesteuer";
   const { data, loading } = useFetch<HaushaltDaten>("/council/haushalt");
-  const art = steuerartNachSlug(slug);
+  const art = steuerartFinden(slug);
 
   const reihe = useMemo(() => {
     if (!data || !art?.datenArt) return [];
@@ -91,6 +108,24 @@ function SteuerInner() {
             <GlossaryText text={art.kurz} />
           </p>
         </div>
+        {/* Wo keine Zahl steht, steht der Satz, dass keine dasteht — und warum.
+            Bis 17.08. fiel die Kennzahl-Karte bei „Gebühren und Beiträge"
+            ersatzlos weg: Der Steckbrief begann dann mit dem Erklärkasten, und
+            die fehlende Zahl sah aus wie eine, an die niemand gedacht hat. Auf
+            der Landkarte (/haushalt/einnahmen) trägt dieselbe Einnahmeart
+            längst ein „Betrag noch nicht eingelesen"; zwei Seiten dürfen zur
+            selben Lücke nicht Verschiedenes sagen. */}
+        {!letzte && (
+          <div className="w-full flex-none rounded-2xl border border-dashed border-border bg-card p-4 sm:w-[260px]">
+            <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+              Betrag
+            </p>
+            <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">
+              Keiner der offenen Datensätze führt diese Einnahme als eigene Zeile — deshalb
+              steht hier keine Zahl. Geschätzt wird nichts.
+            </p>
+          </div>
+        )}
         {letzte && (
           <div className="w-full flex-none rounded-2xl border border-border bg-card p-4 shadow-sm sm:w-[210px]">
             <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
@@ -120,7 +155,14 @@ function SteuerInner() {
             Spielraum: {SPIELRAUM_LABEL[art.spielraum]}
           </span>
         </div>
-        <div className="mt-3 grid gap-2 sm:grid-cols-3">
+        {/* Die Spaltenzahl folgt den Stufen, nicht umgekehrt: „Gebühren und
+            Beiträge" und die kleinen örtlichen Steuern haben zwei Stationen,
+            und ein festes Drei-Spalten-Raster ließ dafür ein Drittel der
+            Kartenbreite leer stehen. */}
+        <div className={cn(
+          "mt-3 grid gap-2",
+          art.stufen.length === 2 ? "sm:grid-cols-2" : "sm:grid-cols-3",
+        )}>
           {art.stufen.map((st) => (
             <div key={st.titel} className={cn(
               "rounded-xl border p-3",

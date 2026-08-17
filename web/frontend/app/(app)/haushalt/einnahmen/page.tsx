@@ -230,15 +230,40 @@ export default function EinnahmenPage() {
         />
       )}
 
-      <p className="text-[11.5px] leading-relaxed text-muted-foreground">
-        Die Steuerbeträge sind <strong>Ist-Werte</strong> — also abgerechnete Einnahmen, nicht die
-        Planzahlen des Haushalts. Die Aufteilung der geplanten Erträge nach Arten lesen wir
-        noch ein; bis dahin zeigen wir hier lieber, was wirklich geflossen ist. Die Einteilung
-        in drei Stufen ist unsere Einordnung nach der Rechtslage, keine amtliche Kategorie.
-        Die Schlüsselzuweisungen folgen noch einer anderen Logik: Das Land setzt sie je
-        Ausgleichsjahr fest, deshalb steht dort auch das laufende Jahr schon mit einem
-        festen Betrag — das Jahr an der Zahl sagt, welches gemeint ist.
-      </p>
+      {/* Bis 17.08. stand hier ein einziger Absatz von 550 Zeichen, ohne
+          Rahmen zwischen zwei Karten. Er beantwortet drei verschiedene Fragen
+          — welches Jahr die Beträge tragen, wessen Einteilung die drei Stufen
+          sind, warum die Schlüsselzuweisungen aus der Reihe fallen —, und wer
+          nur eine davon hatte, musste alle drei lesen. Jetzt trägt jede ihre
+          eigene Zeile; der Wortlaut ist derselbe geblieben. */}
+      <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+          Zum Lesen dieser Seite
+        </h2>
+        <dl className="mt-2.5 flex flex-col gap-2.5">
+          <div>
+            <dt className="text-[12.5px] font-semibold">Die Beträge sind Ist-Werte</dt>
+            <dd className="mt-0.5 max-w-[80ch] text-[12.5px] leading-relaxed text-muted-foreground">
+              Also abgerechnete Einnahmen, nicht die Planzahlen des Haushalts. Die Aufteilung der
+              geplanten Erträge nach Arten lesen wir noch ein; bis dahin zeigen wir hier lieber,
+              was wirklich geflossen ist.
+            </dd>
+          </div>
+          <div>
+            <dt className="text-[12.5px] font-semibold">Die drei Stufen sind unsere Einteilung</dt>
+            <dd className="mt-0.5 max-w-[80ch] text-[12.5px] leading-relaxed text-muted-foreground">
+              Sie ordnet die Einnahmen nach der Rechtslage — eine amtliche Kategorie ist das nicht.
+            </dd>
+          </div>
+          <div>
+            <dt className="text-[12.5px] font-semibold">Die Schlüsselzuweisungen zählen anders</dt>
+            <dd className="mt-0.5 max-w-[80ch] text-[12.5px] leading-relaxed text-muted-foreground">
+              Das Land setzt sie je Ausgleichsjahr fest, deshalb steht dort auch das laufende Jahr
+              schon mit einem festen Betrag — das Jahr an der Zahl sagt, welches gemeint ist.
+            </dd>
+          </div>
+        </dl>
+      </section>
 
       <SchrittWeiter href="/haushalt/einnahmen" />
 
