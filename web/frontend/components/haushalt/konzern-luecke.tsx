@@ -106,7 +106,7 @@ export function KonzernLuecke({ daten, art }: { daten: KonzernDaten; art: Luecke
           Aufteilung für dieses Jahr nicht ausgewiesen
         </span>
       </div>
-      <p className="mt-2 text-[11.5px] leading-relaxed text-muted-foreground">
+      <p className="mt-2 max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
         Alle Beträge in Mio.&nbsp;€, {art === "ertraege" ? "ordentliche Erträge" : "ordentliche Aufwendungen"}.
         Die Balkenlänge steht für die Konzernsumme des Jahres — der dunkle Teil ist
         die Kernverwaltung darin.

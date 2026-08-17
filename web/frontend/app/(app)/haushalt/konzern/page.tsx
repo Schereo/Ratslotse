@@ -78,7 +78,7 @@ function Fundstelle({ h, className }: { h: Herkunft | null; className?: string }
       <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
         Woher diese Zahlen kommen
       </p>
-      <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
+      <p className="mt-1 max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
         {h.fundstelle}{h.stand ? ` · ${h.stand}` : ""}
       </p>
     </div>
@@ -122,7 +122,7 @@ function Lueckenkopf({ daten, jahr }: { daten: KonzernDaten; jahr: number }) {
             </span>
           </div>
         </div>
-        <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted-foreground">
+        <p className="mt-1.5 max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
           Unsere Rechnung: Kernverwaltung geteilt durch Konzernsumme, beides aus derselben
           Tabelle des Prüfberichts. Keine amtliche Kennzahl — die Stadt weist sie so nicht aus.
         </p>

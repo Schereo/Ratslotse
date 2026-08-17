@@ -305,7 +305,7 @@ export default function HaushaltsjahrPage() {
             )}
           </div>
           {rh.imJahrSelbst > 0 && (
-            <p className="mt-3 border-t border-border/60 pt-3 text-[12.5px] leading-relaxed text-foreground/85">
+            <p className="mt-3 max-w-[76ch] border-t border-border/60 pt-3 text-[12.5px] leading-relaxed text-foreground/85">
               <strong>{rh.imJahrSelbst} von {rh.jahrgaenge} Haushalten</strong> wurden erst
               beschlossen, als das Haushaltsjahr bereits lief
               <Beleg q="ratsbeschluss" />. Bis dahin gilt die vorläufige Haushaltsführung: Die
@@ -401,7 +401,7 @@ function Weg({ runde }: { runde: WegRunde }) {
                 {" · "}{fach.anzahl} {fach.anzahl === 1 ? "Termin" : "Termine"}
               </span>
             </p>
-            <p className="mt-1 text-[12.5px] leading-relaxed text-foreground/85">
+            <p className="mt-1 max-w-[76ch] text-[12.5px] leading-relaxed text-foreground/85">
               {fach.von === fach.bis
                 ? deDatum(fach.von)
                 : `${deDatum(fach.von)} bis ${deDatum(fach.bis)}`}
@@ -409,9 +409,18 @@ function Weg({ runde }: { runde: WegRunde }) {
               beraten und zur Kenntnis genommen; abgestimmt wird darüber im Finanzausschuss
               und im Rat.
             </p>
-            <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted-foreground">
-              {fach.gremien.join(" · ")}
-            </p>
+            {/* Die zehn Ausschussnamen als Aufzählung statt als Wortkette:
+                Aneinandergereiht liefen sie über 1.102 px in einer Zeile, und
+                wo ein Name endet und der nächste beginnt, sagte nur ein
+                Mittelpunkt. */}
+            <ul className="mt-2 flex flex-wrap gap-1.5">
+              {fach.gremien.map((g) => (
+                <li key={g}
+                  className="rounded-full border border-border px-2.5 py-0.5 text-[11px] leading-relaxed text-muted-foreground">
+                  {g}
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       )}
@@ -485,26 +494,46 @@ function Ablauf({ titel, children }: { titel: string; children: React.ReactNode 
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
           {titel}
         </p>
-        <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">{children}</p>
+        <p className="mt-1 max-w-[76ch] text-[12.5px] leading-relaxed text-muted-foreground">
+          {children}
+        </p>
       </div>
     </div>
   );
 }
 
+/** Woher die Stationen stammen.
+ *
+ *  Bis 17.08. stand das als nackter grauer Absatz zwischen der letzten Karte
+ *  und der Schritt-Leiste — die einzige Stelle der Seite ohne Karte, und
+ *  ausgerechnet die Herkunftsangabe. Jetzt trägt sie dieselbe Form, die
+ *  /haushalt/konzern, /haushalt/schulden und der Beteiligungs-Steckbrief für
+ *  Fundstellen führen: Kicker in Versal-Mono über gestrichelter Linie, Text
+ *  in Lesebreite. Der Inhalt ist unverändert. */
 function Nachlauf() {
   return (
-    <p className="max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
-      <strong>Woher diese Stationen kommen.</strong> Aus der Beratungsfolge der Sammelvorlage
-      „Haushalt &lt;Jahr&gt; – Beschluss" im Ratsinformationssystem, dem jeweiligen
-      Tagesordnungspunkt und — wo ein Protokoll vorliegt — dem Beschluss über die
-      Haushaltssatzung. Alle gezeigten Sitzungen sind öffentlich. Was die Verwaltung intern
-      vorbereitet und was nach dem Beschluss mit der Kommunalaufsicht läuft, steht in keiner
-      Sitzung; diese beiden Schritte sind darum als Ablauf beschrieben und nicht datiert.{" "}
-      <a href="https://buergerinfo.oldenburg.de" target="_blank" rel="noopener noreferrer"
-        className="inline-flex items-center gap-1 font-semibold text-primary">
-        Bürgerinfo der Stadt
-        <ExternalLink className="h-3 w-3" />
-      </a>
-    </p>
+    <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+        Woher diese Stationen kommen
+      </p>
+      <p className="mt-1.5 max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
+        Aus der Beratungsfolge der Sammelvorlage „Haushalt &lt;Jahr&gt; – Beschluss" im
+        Ratsinformationssystem, dem jeweiligen Tagesordnungspunkt und — wo ein Protokoll
+        vorliegt — dem Beschluss über die Haushaltssatzung. Alle gezeigten Sitzungen sind
+        öffentlich. Was die Verwaltung intern vorbereitet und was nach dem Beschluss mit der
+        Kommunalaufsicht läuft, steht in keiner Sitzung; diese beiden Schritte sind darum als
+        Ablauf beschrieben und nicht datiert.
+      </p>
+      {/* Die Trennlinie gehört um den ganzen Block, nicht um den Link: Als
+          `border-t` am `<a>` selbst reichte sie nur so weit wie sein Text und
+          sah aus wie ein abgeschnittener Strich. */}
+      <div className="mt-2.5 border-t border-dashed border-border pt-2.5">
+        <a href="https://buergerinfo.oldenburg.de" target="_blank" rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-primary">
+          Bürgerinfo der Stadt
+          <ExternalLink className="h-3 w-3" />
+        </a>
+      </div>
+    </section>
   );
 }

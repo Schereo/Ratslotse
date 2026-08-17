@@ -208,7 +208,7 @@ export function PunkteBilanz({ zeilen, beleg, className }: {
           </span>
           {beleg}
         </div>
-        <p className="text-[11px] leading-relaxed text-muted-foreground">
+        <p className="max-w-[86ch] text-[11px] leading-relaxed text-muted-foreground">
           Gezählt sind Abstimmungen, keine Listen: Dieselbe Änderungsliste kann im
           Finanzausschuss und im Rat aufgerufen werden und zählt dann an beiden Stellen.
         </p>

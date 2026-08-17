@@ -29,6 +29,14 @@
 // Rechengrundlage. Sie stammen aus dem jüngsten auslesbaren Teilhaushaltsplan
 // (2023), die Simulation rechnet mit dem aktuellen Planjahr — beides zu
 // vermischen wäre eine Zahl, die es nirgends gibt.
+//
+// AUFBAU (seit 17.08.): Oben zwei Spalten — links, woran man dreht, rechts,
+// was dabei herauskommt. Darunter über die volle Breite, was das Ergebnis
+// einordnet. Vorher standen auch die beiden Einordnungs-Karten in der
+// 330-px-Spalte; sie machten die Rail dreimal so lang wie die Regler daneben
+// (gemessen 1.455 gegen 656 px Inhalt) und ließen links 794 × 823 px weiß.
+// Die Trennlinie ist nicht die Höhe, sondern die Rolle: In die Rail gehört,
+// was sich bei jedem Reglerzug mitbewegt — sonst nichts.
 
 import { useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
@@ -289,192 +297,211 @@ export function Labor({ daten, produkte, produktJahr }: {
   );
 
   return (
-    <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[1fr_330px]">
-      {/* Regler */}
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="font-mono text-[10px] uppercase tracking-[0.11em] text-muted-foreground">
-            Zum Ausprobieren
-          </span>
-          {szenarien.map((s) => {
-            const aktiv = punkte === s.punkte
-              && basis.freiwillig.every((f) => (kuerzung[f.bereich] ?? 0) === s.pct);
-            return (
-              <button key={s.label} type="button"
-                onClick={() => { setPunkte(s.punkte); setKuerzung(alle(s.pct)); }}
-                className={cn(
-                  "rounded-full border px-3 py-1 text-[12px] font-medium transition-colors",
-                  aktiv
-                    ? "border-primary/40 bg-primary/10 text-primary"
-                    : "border-border bg-card text-foreground/80 hover:border-primary/40",
-                )}>
-                {s.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Einnahmen drehen */}
-        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            Einnahmen drehen
-          </p>
-          <div className="mt-3">
-            <Regler
-              id="gewst"
-              label="Gewerbesteuer-Hebesatz"
-              wert={punkte} min={-MAX_PUNKTE} max={MAX_PUNKTE} step={5}
-              onChange={setPunkte}
-              geaendert={punkte !== 0}
-              ist={{ wert: 0, label: `heute ${GEWST_HEBESATZ} %` }}
-              marken={{ min: `${GEWST_HEBESATZ - MAX_PUNKTE} %`, max: `${GEWST_HEBESATZ + MAX_PUNKTE} %` }}
-              anzeige={
-                punkte === 0
-                  ? <span className="text-muted-foreground">{GEWST_HEBESATZ}&nbsp;%</span>
-                  : <strong className="text-signal">
-                      {GEWST_HEBESATZ + punkte}&nbsp;% ({punkte > 0 ? "+" : ""}{punkte})
-                    </strong>
-              }
-              wirkung={
-                punkte === 0 ? (
-                  <>Ein Punkt brachte {basis.gewst?.jahr} überschlagen {deMio(proPunkt)}&#8239;Mio.&nbsp;€{" "}
-                  <Beleg q="steuern" /> — bei unveränderten Gewinnen.</>
-                ) : (
-                  <>
-                    <strong className="text-foreground">
-                      {mehrEinnahmen > 0 ? "+" : ""}{deMio(mehrEinnahmen)}&#8239;Mio.&nbsp;€
-                    </strong>{" "}
-                    · {jeEinwohner(Math.abs(mehrEinnahmen))} · {anteilText(Math.abs(mehrEinnahmen))}
-                    {punkte < 0 && " zusätzlich"}.
-                    <br />
-                    Ein Betrieb mit {eur(BEISPIEL_GEWINN)}&nbsp;€ Gewerbeertrag zahlte statt{" "}
-                    {eur((BEISPIEL_GEWINN * MESSZAHL * GEWST_HEBESATZ) / 100)}&nbsp;€ dann{" "}
-                    <strong>{eur((BEISPIEL_GEWINN * MESSZAHL * (GEWST_HEBESATZ + punkte)) / 100)}&nbsp;€</strong>{" "}
-                    im Jahr — Messzahl 3,5&nbsp;% nach Bundesrecht, ohne Freibetrag.
-                  </>
-                )
-              }
-            />
-          </div>
-          {/* Gegenrichtung zum „Im Labor ausprobieren" des Steckbriefs: Wer
-              hier am Hebesatz dreht, will als Nächstes wissen, wer ihn
-              überhaupt beschließt. */}
-          <Link href="/haushalt/steuer?art=gewerbesteuer"
-            className="mt-2.5 inline-flex text-[12px] font-semibold text-primary">
-            Wer den Hebesatz beschließt →
-          </Link>
-          <div className="mt-4 rounded-xl border border-dashed border-border p-3">
-            <p className="text-[12.5px] font-semibold">Grundsteuer B</p>
-            <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
-              Hier fehlt uns der Betrag je Hebesatzpunkt: Der offene Datensatz führt Grundsteuer A
-              und B in einer Spalte zusammen. Wir schätzen ihn nicht — sobald wir die Aufteilung
-              haben, kommt der Regler dazu.
-            </p>
-          </div>
-        </div>
-
-        {/* Freiwillige Leistungen */}
-        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            Freiwillige Leistungen kürzen
-          </p>
-          <div className="mt-3 flex flex-col gap-4">
-            {basis.freiwillig.map((f) => {
-              const pct = kuerzung[f.bereich] ?? 0;
-              const betrag = Math.round(f.aus * pct) / 100;
-              const drin = produkte
-                .filter((p) => p.thh_name === f.bereich && p.ergebnis != null && p.ergebnis < 0)
-                .slice(0, 3);
-              const vergleich = naechstesProdukt(produkte, betrag, f.bereich);
+    <div className="@container/labor flex flex-col gap-3">
+      <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[1fr_330px] lg:items-start">
+        {/* Regler */}
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="font-mono text-[10px] uppercase tracking-[0.11em] text-muted-foreground">
+              Zum Ausprobieren
+            </span>
+            {szenarien.map((s) => {
+              const aktiv = punkte === s.punkte
+                && basis.freiwillig.every((f) => (kuerzung[f.bereich] ?? 0) === s.pct);
               return (
-                <Regler
-                  key={f.bereich}
-                  id={f.bereich}
-                  label={f.bereich}
-                  wert={pct} min={0} max={MAX_KUERZUNG} step={5}
-                  onChange={(v) => setKuerzung((k) => ({ ...k, [f.bereich]: v }))}
-                  geaendert={pct > 0}
-                  ist={{ wert: 0, label: "heute" }}
-                  marken={{ min: "", max: `−${MAX_KUERZUNG} %` }}
-                  anzeige={
-                    pct === 0
-                      ? <span className="text-muted-foreground">{deMio(f.aus)}&nbsp;Mio.</span>
-                      : <>
-                          <span className="text-muted-foreground line-through">{deMio(f.aus)}</span>
-                          <strong className="ml-2 text-signal">
-                            {deMio(f.aus - betrag)} (−{pct}&nbsp;%)
-                          </strong>
-                        </>
-                  }
-                  wirkung={
-                    pct === 0 ? (
-                      drin.length > 0 ? (
-                        <>Darin stecken u.&nbsp;a.{" "}
-                        {drin.map((p, i) => (
-                          <span key={p.produkt_nr}>
-                            {i > 0 && ", "}
-                            {p.produkt_name} ({deMio(-(p.ergebnis as number) / 1e6)}&#8239;Mio.)
-                          </span>
-                        ))}.</>
-                      ) : (
-                        <>{deMio(f.aus)}&#8239;Mio.&nbsp;€ Aufwand im Plan {basis.jahr}.</>
-                      )
-                    ) : (
-                      <>
-                        <strong>{deMio(betrag)}&#8239;Mio.&nbsp;€ weniger</strong> ·{" "}
-                        {jeEinwohner(betrag)} · {anteilText(betrag)}.
-                        {vergleich && (
-                          <> Ungefähr so viel, wie <strong>{vergleich.produkt_name}</strong> im
-                          ganzen Jahr kostet.</>
-                        )}
-                      </>
-                    )
-                  }
-                />
+                <button key={s.label} type="button"
+                  onClick={() => { setPunkte(s.punkte); setKuerzung(alle(s.pct)); }}
+                  className={cn(
+                    "rounded-full border px-3 py-1 text-[12px] font-medium transition-colors",
+                    aktiv
+                      ? "border-primary/40 bg-primary/10 text-primary"
+                      : "border-border bg-card text-foreground/80 hover:border-primary/40",
+                  )}>
+                  {s.label}
+                </button>
               );
             })}
           </div>
-          <p className="mt-4 text-[11.5px] leading-relaxed text-muted-foreground">
-            Nur ganze Teilhaushalte, nur prozentual: Welche Einrichtung es träfe, entscheidet kein
-            Regler — und ein Beschluss wäre das ohnehin nicht.
-            {produktJahr && (
-              <> Die einzelnen Aufgaben daneben stammen aus dem Teilhaushaltsplan {produktJahr}{" "}
-              <Beleg q="teilhaushalt" /> — zum Einordnen der Größenordnung, nicht zum Mitrechnen.</>
-            )}
-          </p>
+
+          {/* Einnahmen drehen */}
+          <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+              Einnahmen drehen
+            </p>
+            <div className="mt-3">
+              <Regler
+                id="gewst"
+                label="Gewerbesteuer-Hebesatz"
+                wert={punkte} min={-MAX_PUNKTE} max={MAX_PUNKTE} step={5}
+                onChange={setPunkte}
+                geaendert={punkte !== 0}
+                ist={{ wert: 0, label: `heute ${GEWST_HEBESATZ} %` }}
+                marken={{ min: `${GEWST_HEBESATZ - MAX_PUNKTE} %`, max: `${GEWST_HEBESATZ + MAX_PUNKTE} %` }}
+                anzeige={
+                  punkte === 0
+                    ? <span className="text-muted-foreground">{GEWST_HEBESATZ}&nbsp;%</span>
+                    : <strong className="text-signal">
+                        {GEWST_HEBESATZ + punkte}&nbsp;% ({punkte > 0 ? "+" : ""}{punkte})
+                      </strong>
+                }
+                wirkung={
+                  punkte === 0 ? (
+                    <>Ein Punkt brachte {basis.gewst?.jahr} überschlagen {deMio(proPunkt)}&#8239;Mio.&nbsp;€{" "}
+                    <Beleg q="steuern" /> — bei unveränderten Gewinnen.</>
+                  ) : (
+                    <>
+                      <strong className="text-foreground">
+                        {mehrEinnahmen > 0 ? "+" : ""}{deMio(mehrEinnahmen)}&#8239;Mio.&nbsp;€
+                      </strong>{" "}
+                      · {jeEinwohner(Math.abs(mehrEinnahmen))} · {anteilText(Math.abs(mehrEinnahmen))}
+                      {punkte < 0 && " zusätzlich"}.
+                      <br />
+                      Ein Betrieb mit {eur(BEISPIEL_GEWINN)}&nbsp;€ Gewerbeertrag zahlte statt{" "}
+                      {eur((BEISPIEL_GEWINN * MESSZAHL * GEWST_HEBESATZ) / 100)}&nbsp;€ dann{" "}
+                      <strong>{eur((BEISPIEL_GEWINN * MESSZAHL * (GEWST_HEBESATZ + punkte)) / 100)}&nbsp;€</strong>{" "}
+                      im Jahr — Messzahl 3,5&nbsp;% nach Bundesrecht, ohne Freibetrag.
+                    </>
+                  )
+                }
+              />
+            </div>
+            {/* Gegenrichtung zum „Im Labor ausprobieren" des Steckbriefs: Wer
+                hier am Hebesatz dreht, will als Nächstes wissen, wer ihn
+                überhaupt beschließt. */}
+            <Link href="/haushalt/steuer?art=gewerbesteuer"
+              className="mt-2.5 inline-flex text-[12px] font-semibold text-primary">
+              Wer den Hebesatz beschließt →
+            </Link>
+            <div className="mt-4 rounded-xl border border-dashed border-border p-3">
+              <p className="text-[12.5px] font-semibold">Grundsteuer B</p>
+              <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
+                Hier fehlt uns der Betrag je Hebesatzpunkt: Der offene Datensatz führt Grundsteuer A
+                und B in einer Spalte zusammen. Wir schätzen ihn nicht — sobald wir die Aufteilung
+                haben, kommt der Regler dazu.
+              </p>
+            </div>
+          </div>
+
+            {/* Freiwillige Leistungen */}
+          <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+              Freiwillige Leistungen kürzen
+            </p>
+            <div className="mt-3 flex flex-col gap-4">
+              {basis.freiwillig.map((f) => {
+                const pct = kuerzung[f.bereich] ?? 0;
+                const betrag = Math.round(f.aus * pct) / 100;
+                const drin = produkte
+                  .filter((p) => p.thh_name === f.bereich && p.ergebnis != null && p.ergebnis < 0)
+                  .slice(0, 3);
+                const vergleich = naechstesProdukt(produkte, betrag, f.bereich);
+                return (
+                  <Regler
+                    key={f.bereich}
+                    id={f.bereich}
+                    label={f.bereich}
+                    wert={pct} min={0} max={MAX_KUERZUNG} step={5}
+                    onChange={(v) => setKuerzung((k) => ({ ...k, [f.bereich]: v }))}
+                    geaendert={pct > 0}
+                    ist={{ wert: 0, label: "heute" }}
+                    marken={{ min: "", max: `−${MAX_KUERZUNG} %` }}
+                    anzeige={
+                      pct === 0
+                        ? <span className="text-muted-foreground">{deMio(f.aus)}&nbsp;Mio.</span>
+                        : <>
+                            <span className="text-muted-foreground line-through">{deMio(f.aus)}</span>
+                            <strong className="ml-2 text-signal">
+                              {deMio(f.aus - betrag)} (−{pct}&nbsp;%)
+                            </strong>
+                          </>
+                    }
+                    wirkung={
+                      pct === 0 ? (
+                        drin.length > 0 ? (
+                          <>Darin stecken u.&nbsp;a.{" "}
+                          {drin.map((p, i) => (
+                            <span key={p.produkt_nr}>
+                              {i > 0 && ", "}
+                              {p.produkt_name} ({deMio(-(p.ergebnis as number) / 1e6)}&#8239;Mio.)
+                            </span>
+                          ))}.</>
+                        ) : (
+                          <>{deMio(f.aus)}&#8239;Mio.&nbsp;€ Aufwand im Plan {basis.jahr}.</>
+                        )
+                      ) : (
+                        <>
+                          <strong>{deMio(betrag)}&#8239;Mio.&nbsp;€ weniger</strong> ·{" "}
+                          {jeEinwohner(betrag)} · {anteilText(betrag)}.
+                          {vergleich && (
+                            <> Ungefähr so viel, wie <strong>{vergleich.produkt_name}</strong> im
+                            ganzen Jahr kostet.</>
+                          )}
+                        </>
+                      )
+                    }
+                  />
+                );
+              })}
+            </div>
+            <p className="mt-4 text-[11.5px] leading-relaxed text-muted-foreground">
+              Nur ganze Teilhaushalte, nur prozentual: Welche Einrichtung es träfe, entscheidet kein
+              Regler — und ein Beschluss wäre das ohnehin nicht.
+              {produktJahr && (
+                <> Die einzelnen Aufgaben daneben stammen aus dem Teilhaushaltsplan {produktJahr}{" "}
+                <Beleg q="teilhaushalt" /> — zum Einordnen der Größenordnung, nicht zum Mitrechnen.</>
+              )}
+            </p>
+          </div>
+
+          {/* Mobil klebt das Ergebnis am UNTEREN Rand, über der Tab-Leiste
+              (H4-16): Das Ergebnis folgt der Bewegung — der Daumen ist unten,
+              der Regler in der Mitte, die Wirkung direkt darunter, live bei
+              jedem Zug. Bis 17.08. klebte die Karte oben unter der Kopfzeile
+              und fraß dort ein Drittel des Schirms, bevor der erste Regler
+              überhaupt im Bild war. Als LETZTES Kind der Regler-Spalte klebt
+              sie nur, solange es etwas zu drehen gibt, und legt sich danach an
+              ihren Platz — dieselbe Mechanik wie die Ableseleiste des
+              Baukastens (`.gb-ablese-leiste`); die Andockkante ist
+              `TABLEISTE_HOEHE`, nie eine eigene Zahl (Designsprache § 5).
+              z-30: über der eigenen Spalte, unter Kopf- und Tab-Leiste. */}
+          <div
+            className="sticky z-30 lg:hidden"
+            style={{ bottom: `calc(${TABLEISTE_HOEHE} + 0.5rem)` } as CSSProperties}
+          >
+            {ergebnisKarte({ kompakt: true })}
+          </div>
         </div>
 
-        {/* Mobil klebt das Ergebnis am UNTEREN Rand, über der Tab-Leiste
-            (H4-16): Das Ergebnis folgt der Bewegung — der Daumen ist unten,
-            der Regler in der Mitte, die Wirkung direkt darunter, live bei
-            jedem Zug. Bis 17.08. klebte die Karte oben unter der Kopfzeile
-            und fraß dort ein Drittel des Schirms, bevor der erste Regler
-            überhaupt im Bild war. Als LETZTES Kind der Regler-Spalte klebt
-            sie nur, solange es etwas zu drehen gibt, und legt sich danach an
-            ihren Platz — dieselbe Mechanik wie die Ableseleiste des
-            Baukastens (`.gb-ablese-leiste`); die Andockkante ist
-            `TABLEISTE_HOEHE`, nie eine eigene Zahl (Designsprache § 5).
-            z-30: über der eigenen Spalte, unter Kopf- und Tab-Leiste. */}
-        <div
-          className="sticky z-30 lg:hidden"
-          style={{ bottom: `calc(${TABLEISTE_HOEHE} + 0.5rem)` } as CSSProperties}
-        >
-          {ergebnisKarte({ kompakt: true })}
+        {/* Die Ergebnis-Spalte (Desktop) bzw. der Rückhalt unter den Reglern
+            (Mobil). Hier steht NUR, was sich beim Drehen mitbewegt — der
+            Rest ist Nachschlagestoff und steht unter dem Ganzen. */}
+        <div className="flex flex-col gap-3 lg:sticky lg:top-4 lg:self-start">
+          <div className="hidden lg:block">{ergebnisKarte({})}</div>
+          {/* Auf Mobil trägt die klebende Karte oben die Zahl — hier steht nur,
+              was sie aushält, ohne das Minus ein zweites Mal zu wiederholen. */}
+          <div className="rounded-2xl border border-border bg-card p-4 shadow-sm lg:hidden">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+              Was die Rücklage aushält
+            </p>
+            {rueckhalt({ trenner: false })}
+          </div>
         </div>
       </div>
 
-      {/* Spalte rechts (Desktop) bzw. Kontext unter den Reglern (Mobil) */}
-      <div className="flex flex-col gap-3 lg:sticky lg:top-4 lg:self-start">
-        <div className="hidden lg:block">{ergebnisKarte({})}</div>
-        {/* Auf Mobil trägt die klebende Karte oben die Zahl — hier steht nur,
-            was sie aushält, ohne das Minus ein zweites Mal zu wiederholen. */}
-        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm lg:hidden">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            Was die Rücklage aushält
-          </p>
-          {rueckhalt({ trenner: false })}
-        </div>
-
+      {/* DIE ZWEI KONTEXT-KARTEN STANDEN BIS 17.08. IN DER 330-PX-SPALTE und
+          machten sie mehr als doppelt so lang wie die Regler daneben: gemessen
+          1.455 px Inhalt rechts gegen 656 px links — 794 × 823 px weiße Fläche
+          neben zwei Karten, die sich derweil in 330 px quetschten
+          (Designsprache §4, Tims iPad-Befund 16.08.). Beide gehören auch
+          inhaltlich nicht in die Rail: Die Rail zeigt, was sich beim Drehen
+          bewegt, diese beiden stehen fest. Unter dem Ganzen haben sie die
+          volle Breite, und der Plan-Ist-Vergleich wird nebenbei lesbar statt
+          gestapelt. Zwei Spalten, weil sie parallele Einwände sind — man liest
+          sie nebeneinander, nicht nacheinander. Die Schwelle hängt am
+          CONTAINER (`@container/labor`), nicht an der Fensterbreite
+          (Designsprache §4): Am Desktop liegt das Raster neben der
+          Seitenleiste, auf dem iPad nicht. */}
+      <div className="grid gap-3 @3xl/labor:grid-cols-2 @3xl/labor:items-start">
         <PlanIst daten={daten} />
 
         {/* Immer sichtbar, nie ausklappbar. */}
@@ -482,7 +509,7 @@ export function Labor({ daten, produkte, produktJahr }: {
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
             Was dagegen rechnet
           </p>
-          <ul className="mt-2.5 space-y-2.5 text-[12px] leading-relaxed text-foreground/85">
+          <ul className="mt-2.5 max-w-[76ch] space-y-2.5 text-[12px] leading-relaxed text-foreground/85">
             <li>
               <strong>Die Umlage.</strong> Von der Gewerbesteuer geht ein Anteil an Bund und Land.
               Wie viel genau, führt der offene Datensatz nicht getrennt aus — die Zahl oben ist
@@ -513,7 +540,7 @@ export function Labor({ daten, produkte, produktJahr }: {
               Pflichtaufgaben treiben den Haushalt Jahr für Jahr — unser Modell hält sie fest.
             </li>
           </ul>
-          <p className="mt-2.5 border-t border-dashed border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground">
+          <p className="mt-2.5 max-w-[76ch] border-t border-dashed border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground">
             Deshalb ist das Ergebnis oben eine <strong>Obergrenze</strong>: In Wirklichkeit bliebe
             weniger übrig, als hier steht.
           </p>
