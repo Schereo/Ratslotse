@@ -8,6 +8,37 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Der Haushalts-Wegweiser hat jetzt ein Gedächtnis — und Etappen.** Die
+  Liste der sechzehn Schritte auf der Haushalts-Übersicht war zur Wand
+  geworden; jetzt sind es vier Etappen-Karten („Die Zahlen", „Die
+  Gegenprobe", „Der Rahmen", „Mitreden"), auf dem Telefon ein Akkordeon, bei
+  dem nur die aktuelle Etappe offen steht. Besuchte Seiten merkt sich der
+  Browser (lokal, kein Konto nötig): Erledigte Etappen tragen ihr Häkchen,
+  und ein Knopf „Weiter, wo du warst" springt zum ersten noch nicht
+  gelesenen Schritt. Dazu vier Detail-Korrekturen aus dem Board-Review:
+  Auf „Was steckt hinter den Namen?" sind Klartext und Zahlen jetzt EINE
+  Zeile je Bereich (mit Balken, umschaltbarer Sortierung und nachgeschärften
+  Erklärtexten — bei „Personal" steht jetzt dabei, dass dort nicht die
+  Gehälter aller Beschäftigten stehen); auf „Muss oder kann?" tragen die
+  Selbstauskunft der Stadt (◇) und unsere Zuordnung (●) je einen eigenen
+  Marker, weil es zwei Quellen sind; die Produktsuche sagt bei null Treffern,
+  was ähnlich klingt, und jedes Produkt trägt ein Abdeckungs-Badge („ohne
+  2019–2020"), weil nicht jedes Jahr jeden Teilhaushalt deckt; und im
+  Haushalts-Labor klebt das Ergebnis auf dem Telefon jetzt unten über der
+  Tab-Leiste — die Wirkung steht direkt unterm Daumen, statt oben ein
+  Drittel des Schirms zu belegen. (#576)
+- **Vier weitere Formen im Grafik-Baukasten.** Der Gegenbalken (zwei
+  100-%-Leisten, die sich eine einzige Basis teilen — der Maßstabsfehler,
+  bei dem ein Defizit-Haushalt ausgeglichen aussieht, ist damit technisch
+  nicht mehr baubar), der Kassenzettel (der Bon rechnet seine Rundungszeile
+  selbst, trägt den Teiler sichtbar unter dem Zettel und reist nie ohne
+  seinen „Was diese Zahl nicht ist"-Kasten), der Wasserfall (Abzüge hängen
+  an der Laufsumme, eine eingebaute Summenprobe meldet Rechenfehler der
+  Seite, und das Ergebnis wird nie rot — Zuschussbedarf ist Daseinsvorsorge)
+  und das verallgemeinerte Flussbild (bewusst kein Sankey: alle Kurven enden
+  in der EINEN Kasse). Die Haushalts-Seiten benutzen sie bereits; für Leser
+  ändert sich das Bild kaum, aber jede künftige Seite komponiert nur noch,
+  statt zu zeichnen. (#576)
 - **Ein Baukasten für alle Haushalts-Grafiken.** Bisher brachte jede Grafik
   des Haushalts-Bereichs ihre eigenen Bausteine mit; jetzt gibt es ein
   gemeinsames Fundament (`components/grafik/`), aus dem die kommenden

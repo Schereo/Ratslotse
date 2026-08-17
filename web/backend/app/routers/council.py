@@ -287,17 +287,29 @@ def haushalt_produkte(
 
     ``facetten`` liefert die Filterwerte mit Anzahl und dazu, wie viele
     Produkte überhaupt welches Steckbrief-Feld tragen: Die Seite weist die
-    Lücke aus, statt sie zu verschweigen."""
+    Lücke aus, statt sie zu verschweigen.
+
+    Jedes Produkt trägt zusätzlich ``jahre`` — die Jahrgänge, in denen es im
+    Bestand steht. Gegen ``alle_jahre`` gehalten wird daraus das
+    Abdeckungs-Badge der Trefferliste (H4-04): Ein Produkt, das erst ab 2021
+    vorliegt, soll das sagen, statt wie eine durchgehende Reihe auszusehen."""
     produkte = store.get_produkte(jahr, thh, suche=q, amt=amt,
                                   beeinflussbarkeit=spielraum)
+    abdeckung = store.produkt_abdeckung()
+    for p in produkte:
+        p["jahre"] = abdeckung.get(p["produkt_nr"], [])
+    einzeln = store.produkt(jahr, nr) if nr else None
+    if einzeln:
+        einzeln["jahre"] = abdeckung.get(einzeln["produkt_nr"], [])
     summe = sum(p["aufwendungen"] or 0 for p in store.get_produkte(jahr))
     plan = next((z for z in store.get_haushalt(jahr) if z["is_summe"]), None)
     quote = round(summe / plan["aufwendungen"] * 100, 1) if plan and plan["aufwendungen"] else None
     return {"jahr": jahr, "produkte": produkte, "abdeckung_prozent": quote,
             "plan_aufwendungen": plan["aufwendungen"] if plan else None,
             "treffer": len(produkte),
+            "alle_jahre": store.produkte_jahre(),
             "facetten": store.produkt_facetten(jahr),
-            "produkt": store.produkt(jahr, nr) if nr else None}
+            "produkt": einzeln}
 
 
 @router.get("/haushalt/stellenplan")

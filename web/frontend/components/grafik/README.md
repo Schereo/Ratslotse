@@ -63,6 +63,15 @@ Beteiligungen), `nichtAussagen` (Kassenzettel/Pro-Kopf) oder `gemessen`
 (Zeitstrahl) führt, sind das Pflicht-Props der Grafik — eine Hantel ohne
 Erklärsatz kompiliert nicht. Gerendert werden sie über `<Einordnung>`.
 
+## Die Formen (bisher gebaut)
+
+| Form | Datei | Vertrag, kurz |
+|---|---|---|
+| `<Gegenbalken>` (GB-04) | `gegenbalken.tsx` | Ein oder zwei 100-%-Leisten auf **einer** `basis` — asymmetrische 100 % sind nicht konstruierbar. `restLabel` benennt die Lücke zur Basis (Schraffur + Signal), `marke` den Differenz-Strich. Segmente < 10 % nie im Balken beschriftet; verbindlich ist die Legende darunter. `SegmentText` (gemessene Beschriftung) exportiert auch für den Tafel-Gegenbalken (`components/haushalt/gegenbalken.tsx`). |
+| `<Flussbild>` (GB-07) | `flussbild.tsx` | Quellen → **ein** Topf (→ Empfänger). Bewusst KEIN Sankey — kein Band überquert die Mitte, `d3-sankey` bleibt draußen. Mobil kippt es senkrecht (Listen-Fassung, eingebaut); kleine Posten bündeln sich in einen aufklappbaren Sammelposten, Differenz-Bänder nie. Daten und Skala liefert die Seite (Haushalts-Adapter: `components/haushalt/flussbild.tsx`). |
+| `<Kassenzettel>` (GB-13) | `kassenzettel.tsx` | `posten` · `teiler` (Bezugsgröße + Stichtag + Quelle, sichtbar **unter** dem Zettel) · `bezahltMit` · `nichtAussagen` (**Pflicht** — der Bon reist nie ohne seinen Kasten). Rundungszeile automatisch. |
+| `<Wasserfall>` (GB-14) | `wasserfall.tsx` | `schritte: {label, wert, art: start·abzug·ergebnis}` — Abzüge hängen per `cumsum` (d3-array) an der Laufsumme, kein „schwebender Balken" von Hand. Eingebaute Summenprobe meldet Rechenfehler der Seite; das Ergebnis ist nie rot (Zuschussbedarf ist Daseinsvorsorge). |
+
 ## Zahlen (`format.ts`)
 
 `Intl.NumberFormat("de-DE")`, gecacht. `deZahl` (feste Nachkommastellen),

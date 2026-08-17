@@ -42,7 +42,7 @@ import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { Hantel } from "@/components/haushalt/hantel";
 import { Warum } from "@/components/haushalt/warum";
-import { Wasserfall } from "@/components/haushalt/wasserfall";
+import { Wasserfall, type WasserfallSchritt } from "@/components/grafik/wasserfall";
 import { BereichReiter, ReiterTafel, type Reiter } from "@/components/haushalt/bereich-reiter";
 import { Datenstand } from "@/components/haushalt/datenstand";
 import { cn } from "@/lib/utils";
@@ -321,17 +321,49 @@ function BereichInner() {
 
       <ReiterTafel id="ueberblick" aktiv={aktiv} className="flex flex-col gap-4">
         <Karte>
-          <Wasserfall aus={aus} ein={ein} netto={netto} jahr={jahr} />
-          {/* Nur im Zuschuss-Fall: Der Satz knüpft an „Von 100 € Ausgaben holt
-              der Bereich X € selbst herein" an, den der Wasserfall bei einem
-              Überschuss zu Recht nicht schreibt. Ohne diese Bedingung stand
-              hier auf der Finanzmanagement-Seite ein „Bei … sind es 60 € von
-              100", das sich auf nichts bezog. */}
-          {ein < aus && d != null && vergleich?.d != null && (
+          {/* Die Rechnung als Wasserfall (GB-14, `components/grafik/`). Die
+              Schritte stellt die SEITE zusammen, weil nur sie die Richtung
+              kennt: Bei einem Überschuss dreht sich die Leserichtung um —
+              dann steht oben, was reinkommt, und die Ausgaben sind der Abzug.
+              Das Ergebnis kommt als eigener Wert mit (aus dem Rohwert
+              gerundet), nicht als `aus − ein`: Beide Beträge sind schon auf
+              0,1 Mio. gerundet, und bei den nicht rechtsfähigen Stiftungen
+              kippte durch die Doppelrundung einmal sogar die Richtung. */}
+          <Wasserfall
+            kicker={netto < 0 ? "Was reinkommt, was rausgeht" : "Was rausgeht, was reinkommt"}
+            einheit={`Mio. € ${jahr}`}
+            schritte={(netto < 0 ? [
+              { label: "Eigene Erträge des Bereichs", wert: ein, art: "start",
+                farbe: "var(--hh-ein-0)" },
+              { label: "Ausgaben des Bereichs", wert: aus, art: "abzug",
+                farbe: "var(--hh-aus-0)",
+                hinweis: "was der Bereich für seine eigenen Aufgaben braucht" },
+              { label: "Überschuss des Bereichs",
+                wert: Math.round(Math.abs(netto) * 10) / 10, art: "ergebnis",
+                hinweis: "steht dem allgemeinen Topf zur Verfügung" },
+            ] : [
+              { label: "Ausgaben des Bereichs", wert: aus, art: "start" },
+              { label: "eigene Erträge des Bereichs", wert: ein, art: "abzug",
+                hinweis: "Gebühren, Entgelte, Erstattungen und zweckgebundene Zuschüsse" },
+              { label: "trägt die Stadt",
+                wert: Math.round(Math.abs(netto) * 10) / 10, art: "ergebnis",
+                hinweis: "aus Steuermitteln, dem allgemeinen Topf aus Steuern und Schlüsselzuweisungen" },
+            ]) as WasserfallSchritt[]}
+          />
+          {/* Nur im Zuschuss-Fall: Der Prozentsatz trägt als Satz und im
+              Vergleich — bei einem Überschuss gäbe es nichts zu decken, und
+              auf der Finanzmanagement-Seite stand sonst ein „Bei … sind es
+              60 € von 100", das sich auf nichts bezog. */}
+          {ein < aus && d != null && (
             <p className="mt-2.5 max-w-[74ch] border-t border-border/60 pt-2.5 text-[12.5px] leading-relaxed text-foreground/85">
-              Bei „{bereichKanon(vergleich.r.bereich).name}“ sind es {vergleich.d}&nbsp;€ von 100.
-              Der Unterschied sagt nichts darüber, wo sparsamer gewirtschaftet wird — er hängt
-              daran, für welche Aufgaben Bund und Land Erstattungen zahlen und für welche nicht.
+              Von 100&nbsp;€ Ausgaben holt der Bereich {d}&nbsp;€ selbst herein.
+              {vergleich?.d != null && (
+                <>
+                  {" "}Bei „{bereichKanon(vergleich.r.bereich).name}“ sind es {vergleich.d}&nbsp;€ von 100.
+                  Der Unterschied sagt nichts darüber, wo sparsamer gewirtschaftet wird — er hängt
+                  daran, für welche Aufgaben Bund und Land Erstattungen zahlen und für welche nicht.
+                </>
+              )}
             </p>
           )}
         </Karte>

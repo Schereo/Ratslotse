@@ -10,6 +10,13 @@
 // (`LottiVergleich` und den Rücklagen-Hinweis), die dieselbe Zahl vorher
 // zweimal genannt haben.
 //
+// GERENDERT wird der Bon seit dem Grafik-Baukasten von
+// `components/grafik/kassenzettel.tsx` (GB-13) — dort wohnen Papierkante,
+// Bonzeilen, die automatische Rundungszeile, der sichtbare Teiler unterm
+// Zettel und der Pflicht-Kasten „Was diese Zahl nicht ist". HIER wohnt die
+// Rechnung: welcher Posten auf den Bon kommt, was er je Kopf kostet und
+// welche Karten daneben stehen.
+//
 // Sechs Dinge, die man beim Weiterbauen kennen muss:
 //
 //  1. **Die Einwohnerzahl kommt aus den Daten, nie aus dem Kopf.** Der Entwurf
@@ -38,8 +45,18 @@
 //     einen Überschuss; „aus dem Ersparten" wäre dort schlicht falsch. Der
 //     Zettel schaltet auf „bleibt übrig" um, und die Reichweite des Ersparten
 //     erscheint nur, wenn es überhaupt ein Minus gibt.
+//
+// Der Kasten „Was diese Zahl nicht ist" führt VIER Punkte: Bezugskreis,
+// Herkunft, fehlender Investitionsteil, Vergleichsfalle. „Keine Rechnung —
+// niemand überweist diesen Betrag" ist seit 16.08. gestrichen (das weiß jede
+// Leserin); beim Umzug auf den Baukasten stand kurzzeitig beides UND der
+// Bezugskreis doppelt („Geteilt wird durch alle" neben „Alle zählen mit") —
+// ein Merge-Rest, hier bereinigt.
 
 import { Beleg } from "@/components/haushalt/quelle";
+import {
+  BonZeile, Kassenzettel as KassenzettelBon, NichtAussage,
+} from "@/components/grafik/kassenzettel";
 import { BEREICH_NACH_SCHLUESSEL, bereichKanon } from "@/lib/haushalt-bereiche";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import {
@@ -49,43 +66,6 @@ import {
 import { cn } from "@/lib/utils";
 
 const de = (n: number) => n.toLocaleString("de-DE");
-
-/** Gezackte Papierkante. Rein dekorativ und deshalb bewusst das einzige
- *  Zierelement des Zettels: Der Strichcode aus dem Entwurf sähe aus, als
- *  kodierte er etwas — auf einer Seite, deren ganzer Punkt Nachprüfbarkeit
- *  ist, ist das der falsche Scherz. */
-function Papierkante({ unten }: { unten?: boolean }) {
-  const zacken = Array.from({ length: 31 }, (_, i) =>
-    `L${(i + 1) * 12} ${i % 2 === 0 ? 0 : 8}`).join(" ");
-  return (
-    <svg viewBox="0 0 372 8" preserveAspectRatio="none" aria-hidden="true"
-      className={cn("block h-2 w-full text-card", unten && "rotate-180")}>
-      <path d={`M0 8 L0 0 ${zacken} L372 8 Z`} fill="currentColor" />
-    </svg>
-  );
-}
-
-/** Eine Zeile des Bons: Bezeichnung, Punktlinie, Betrag. */
-function Bonzeile({ label, wert, einheit, ton }: {
-  label: string; wert: number; einheit?: string; ton?: "signal" | "leise";
-}) {
-  return (
-    <div className={cn(
-      "flex items-baseline gap-1.5",
-      ton === "signal" && "text-signal",
-      ton === "leise" && "text-muted-foreground",
-    )}>
-      <span className="flex-none">{label}</span>
-      <span aria-hidden="true" className={cn(
-        "min-w-3 flex-1 -translate-y-[3px] border-b border-dotted",
-        ton === "signal" ? "border-signal/50" : "border-border",
-      )} />
-      <span className="flex-none font-medium tabular-nums">
-        {de(wert)}{einheit ? <>&nbsp;{einheit}</> : null}
-      </span>
-    </div>
-  );
-}
 
 /** Ab welchem Jahr das Ersparte zu Jahresbeginn aufgebraucht wäre, bliebe das
  *  geplante Minus so. Eine Division, keine Prognose der Stadt — und `null`,
@@ -159,6 +139,34 @@ function Karte({ kicker, children, className }: {
   );
 }
 
+/** Die vier Grenzen der Pro-Kopf-Zahl — Pflicht-Prop des Bons (GB-13).
+ *  Was hier steht, muss jemandem etwas sagen, das er nicht ohnehin weiß;
+ *  geblieben ist, was überrascht (Begründung im Kopfkommentar). */
+const NICHT_AUSSAGEN: NichtAussage[] = [
+  {
+    kern: "Geteilt wird durch alle.",
+    text: "Auch durch Kinder, Rentner*innen und Menschen ohne eigenes Einkommen — "
+      + "nicht durch die Zahl der Steuerzahlenden.",
+  },
+  {
+    kern: "Das Geld kommt nicht nur aus Oldenburg.",
+    text: "Ein großer Teil sind Zuweisungen des Landes und Anteile an Bundessteuern.",
+  },
+  {
+    // Die Bon-Metapher legt nahe, man kaufe hier Dinge; der Ergebnishaushalt
+    // enthält aber keine einzige Investition.
+    kern: "Nichts Neues gebaut.",
+    text: "Der Zettel zeigt den Ergebnishaushalt, also das Laufende eines Jahres samt "
+      + "Abschreibungen auf vorhandene Gebäude. Neubauten, Fahrzeuge und Grundstücke "
+      + "stehen in einem eigenen Haushalt, den wir noch nicht eingelesen haben.",
+  },
+  {
+    kern: "Städtevergleiche hinken.",
+    text: "Oldenburg ist kreisfrei und trägt Aufgaben, die anderswo der Landkreis "
+      + "zahlt — pro Kopf steht die Stadt dadurch automatisch höher.",
+  },
+];
+
 export function Kassenzettel({ daten, jahr, einwohner, className }: {
   daten: HaushaltDaten;
   /** Das jüngste Planjahr — der Zettel läuft bewusst nur dafür (s. o.). */
@@ -185,7 +193,6 @@ export function Kassenzettel({ daten, jahr, einwohner, className }: {
     .sort((a, b) => b.euro - a.euro);
 
   const summeJeKopf = jeKopf(gesamt.aufwendungen);
-  const teileJeKopf = posten.reduce((s, p) => s + p.wert, 0);
   const einJeKopf = gesamt.ertraege != null ? jeKopf(gesamt.ertraege) : null;
   // Aus Rohwerten, nicht aus den angezeigten Millionen — sonst 403 statt 402.
   const saldoEuro = gesamt.ertraege != null ? gesamt.ertraege - gesamt.aufwendungen : null;
@@ -202,105 +209,59 @@ export function Kassenzettel({ daten, jahr, einwohner, className }: {
   const transfer = transferAnteil(daten, finanzen.thh);
   const gross = posten.slice(0, 2);
 
+  const bezahltMit: BonZeile[] | undefined = einJeKopf != null ? [
+    { label: `Einnahmen ${jahr}`, wert: einJeKopf },
+    ...(fehltEuro != null
+      ? [{ label: "aus dem Ersparten", wert: jeKopf(fehltEuro), ton: "signal" as const }] : []),
+    ...(ueberEuro != null
+      ? [{ label: "bleibt übrig", wert: jeKopf(ueberEuro) }] : []),
+  ] : undefined;
+
   return (
     <section
       aria-labelledby="kassenzettel-titel"
-      className={cn("@container/zettel rounded-2xl border border-border bg-background p-4 sm:p-5", className)}
+      className={cn("rounded-2xl border border-border bg-background p-4 sm:p-5", className)}
     >
-      <div className="flex flex-col gap-5 @3xl/zettel:flex-row @3xl/zettel:gap-7">
-
-        {/* Der Bon. Mobil steht er oben: hochkant passt er aufs Telefon
-            besser als jedes Balkendiagramm (Entwurf H2-02). */}
-        <div className="mx-auto w-full max-w-[372px] flex-none @3xl/zettel:mx-0 @3xl/zettel:w-[352px]">
-          <Papierkante />
-          <div className="bg-card px-5 pb-4 font-mono text-[11.5px] leading-none text-foreground shadow-[0_18px_40px_-22px_rgba(2,32,71,0.35)]">
-            <p className="text-center text-[12px] font-medium uppercase tracking-[0.16em]">
-              Stadt Oldenburg
-            </p>
-            <p className="mt-1.5 text-center text-[10.5px] uppercase tracking-[0.07em] text-muted-foreground">
-              Haushaltsplan {jahr}
-            </p>
-            <p className="mt-3 text-center text-[10.5px] uppercase tracking-[0.07em] text-signal">
-              je Einwohner*in<Beleg q="einwohner" />
-            </p>
-
-            <div className="mt-3 space-y-[7px] border-t border-dashed border-border pt-3">
-              {/* Sichtbar trägt die Einheit die Kopfzeile und die Summe. Wer
-                  vorgelesen bekommt, hört sonst nur „Soziales 1.603" — die
-                  Währung stünde erst zwölf Zeilen später. */}
-              <p className="sr-only">
-                Ausgaben je Bereich in Euro je Einwohner*in:
-              </p>
-              {posten.map((p) => (
-                <Bonzeile key={p.roh} label={p.kanon.kurz} wert={p.wert}
-                  ton={p.wert < 100 ? "leise" : undefined} />
-              ))}
+      <KassenzettelBon
+        titel="Stadt Oldenburg"
+        untertitel={`Haushaltsplan ${jahr}`}
+        stempel={<>je Einwohner*in<Beleg q="einwohner" /></>}
+        posten={posten.map((p) => ({
+          label: p.kanon.kurz,
+          wert: p.wert,
+          ton: p.wert < 100 ? ("leise" as const) : undefined,
+        }))}
+        summe={summeJeKopf}
+        summeLabel={<>Summe<Beleg q="plan" /></>}
+        bezahltMit={bezahltMit}
+        teiler={{
+          zahl: kopf,
+          einheit: "Einwohner*innen",
+          stichtag: `31.12.${einwohner.jahr - 1}`,
+          quelle: <>amtliche Zahl der Stadt<Beleg q="einwohner" /></>,
+        }}
+        nichtAussagen={NICHT_AUSSAGEN}
+        fuss={restJeKopf != null ? (
+          <div className="mt-3 space-y-1.5 border-t border-dashed border-border pt-3 text-[11px] text-muted-foreground">
+            {/* „Erspartes noch vorhanden 1.114 €" stand so im Entwurf und
+                war ein Rechenfehler: Das ist der Stand VOR dem Zugriff
+                dieses Jahres. Deshalb zwei Zeilen statt einer. */}
+            <div className="flex items-baseline justify-between gap-3">
+              <span>Erspartes vor diesem Jahr<Beleg q="ruecklage" /></span>
+              <span className="flex-none tabular-nums">{de(ruecklageJeKopf)}&nbsp;€</span>
             </div>
-
-            <div className="mt-3 flex items-baseline justify-between border-t border-dashed border-border pt-3">
-              <span className="text-[12px] font-medium uppercase tracking-[0.08em]">
-                Summe<Beleg q="plan" />
-              </span>
-              <span className="font-display text-[26px] font-bold leading-none tracking-tight tabular-nums">
-                {de(summeJeKopf)}&nbsp;€
+            <div className="flex items-baseline justify-between gap-3">
+              <span>danach noch</span>
+              <span className="flex-none font-medium tabular-nums text-foreground">
+                {de(restJeKopf)}&nbsp;€
               </span>
             </div>
-
-            {einJeKopf != null && (
-              <>
-                <p className="mt-3 border-t border-dashed border-border pt-3 text-[10px] uppercase tracking-[0.09em] text-muted-foreground">
-                  Bezahlt mit
-                </p>
-                <div className="mt-2.5 space-y-[7px]">
-                  <Bonzeile label={`Einnahmen ${jahr}`} wert={einJeKopf} />
-                  {fehltEuro != null && (
-                    <Bonzeile label="aus dem Ersparten" wert={jeKopf(fehltEuro)} ton="signal" />
-                  )}
-                  {ueberEuro != null && (
-                    <Bonzeile label="bleibt übrig" wert={jeKopf(ueberEuro)} />
-                  )}
-                </div>
-              </>
-            )}
-
-            {restJeKopf != null && (
-              <div className="mt-3 space-y-1.5 border-t border-dashed border-border pt-3 text-[11px] text-muted-foreground">
-                {/* „Erspartes noch vorhanden 1.114 €" stand so im Entwurf und
-                    war ein Rechenfehler: Das ist der Stand VOR dem Zugriff
-                    dieses Jahres. Deshalb zwei Zeilen statt einer. */}
-                <div className="flex items-baseline justify-between gap-3">
-                  <span>Erspartes vor diesem Jahr<Beleg q="ruecklage" /></span>
-                  <span className="flex-none tabular-nums">{de(ruecklageJeKopf)}&nbsp;€</span>
-                </div>
-                <div className="flex items-baseline justify-between gap-3">
-                  <span>danach noch</span>
-                  <span className="flex-none font-medium tabular-nums text-foreground">
-                    {de(restJeKopf)}&nbsp;€
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {teileJeKopf !== summeJeKopf && (
-              <p className="mt-2.5 text-[10px] leading-relaxed text-muted-foreground">
-                Rundung: Die Einzelposten ergeben {de(teileJeKopf)}&nbsp;€, die
-                Gesamtsumme {de(summeJeKopf)}&nbsp;€.
-              </p>
-            )}
-
-            {/* Nicht „ÜBERSICHT ERGEBNISHAUSHALT · S. 1": Der Jahrgang 2024
-                stammt aus einer CSV, nicht aus einer PDF-Seite. */}
-            <p className="mt-3 border-t border-dashed border-border pt-2.5 text-center text-[9.5px] leading-relaxed text-muted-foreground">
-              {quelle.text}
-            </p>
           </div>
-          <Papierkante unten />
-        </div>
-
-        {/* Die Einordnung. Der Kasten „Was diese Zahl nicht ist" steht bewusst
-            direkt daneben und nicht als Fußnote: Die Pro-Kopf-Zahl ist die am
-            leichtesten missbrauchbare des ganzen Bereichs. */}
-        <div className="flex min-w-0 flex-1 flex-col gap-3.5">
+        ) : undefined}
+        // Nicht „ÜBERSICHT ERGEBNISHAUSHALT · S. 1": Der Jahrgang 2024
+        // stammt aus einer CSV, nicht aus einer PDF-Seite.
+        quelle={quelle.text}
+        daneben={
           <div>
             <h2 id="kassenzettel-titel"
               className="font-display text-[21px] font-bold leading-tight tracking-tight sm:text-[25px]">
@@ -319,107 +280,59 @@ export function Kassenzettel({ daten, jahr, einwohner, className }: {
               )}.
             </p>
           </div>
-
-          <div className="rounded-2xl border border-signal/35 bg-card p-4">
-            <p className="text-[12.5px] font-bold text-signal">Was diese Zahl nicht ist</p>
-            {/* Textspalten (`columns`) statt Raster (`grid`), Designsprache §4:
-                Ein Raster füllt ZEILEN, jede Zeile wird so hoch wie ihr
-                längerer Eintrag — unter dem kürzeren bliebe eine Lücke stehen,
-                und die fünf Punkte sind sehr verschieden lang. Spalten fließen
-                von oben nach unten und balancieren sich selbst. */}
-            <ul className="mt-2.5 space-y-2.5 @2xl/zettel:columns-2 @2xl/zettel:gap-5 @2xl/zettel:space-y-0">
-              {[
-                // Was hier steht, muss jemandem etwas sagen, das er nicht ohnehin
-                // weiß. „Keine Rechnung — niemand überweist diesen Betrag" stand
-                // hier bis zum 16.08.2026 und ist gestrichen: Dass eine
-                // Pro-Kopf-Zahl keine Forderung ist, weiß jede Leserin. Geblieben
-                // ist, was überrascht — der Bezugskreis, die Herkunft, der
-                // fehlende Investitionsteil, die Vergleichsfalle.
-                ["Geteilt wird durch alle.",
-                  "Auch durch Kinder, Rentnerinnen und Menschen ohne eigenes Einkommen — "
-                  + "nicht durch die Zahl der Steuerzahlenden."],
-                // Geschütztes Leerzeichen als Zeichen, nicht als Entität: In
-                // einem JS-String bliebe `&nbsp;` wörtlich stehen. Ohne es
-                // stand auf 375 px das „€" allein in der nächsten Zeile.
-                ["Keine Rechnung.",
-                  `Niemand überweist ${de(summeJeKopf)} €. Es ist eine Division, kein Beitrag.`],
-                ["Alle zählen mit.",
-                  "Kinder, Rentner*innen, Menschen ohne eigenes Einkommen — geteilt wird durch "
-                  + "alle Einwohner*innen, nicht durch Steuerzahlende."],
-                ["Das Geld kommt nicht nur aus Oldenburg.",
-                  "Ein großer Teil sind Zuweisungen des Landes und Anteile an Bundessteuern."],
-                // Der fünfte Punkt, den der Entwurf nicht hatte. Die
-                // Bon-Metapher legt nahe, man kaufe hier Dinge; der
-                // Ergebnishaushalt enthält aber keine einzige Investition.
-                ["Nichts Neues gebaut.",
-                  "Der Zettel zeigt den Ergebnishaushalt, also das Laufende eines Jahres samt "
-                  + "Abschreibungen auf vorhandene Gebäude. Neubauten, Fahrzeuge und "
-                  + "Grundstücke stehen in einem eigenen Haushalt, den wir noch nicht "
-                  + "eingelesen haben."],
-                ["Städtevergleiche hinken.",
-                  "Oldenburg ist kreisfrei und trägt Aufgaben, die anderswo der Landkreis "
-                  + "zahlt — pro Kopf steht die Stadt dadurch automatisch höher."],
-              ].map(([fett, text]) => (
-                <li key={fett} className="flex break-inside-avoid gap-2.5 @2xl/zettel:mb-2.5">
-                  <span aria-hidden="true"
-                    className="mt-[7px] h-1.5 w-1.5 flex-none rounded-full bg-signal" />
-                  <p className="text-[12.5px] leading-relaxed text-muted-foreground">
-                    <strong className="font-semibold text-foreground">{fett}</strong> {text}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="grid gap-3.5 @2xl/zettel:grid-cols-2">
-            <Karte kicker="So wird gerechnet">
-              <p className="mt-2 text-[12.5px] leading-relaxed text-foreground/90">
-                Geplante Aufwendungen {jahr}{" "}
-                <span className="font-mono">{de(gesamt.aufwendungen)}&nbsp;€</span>
-                <Beleg q="plan" /> geteilt durch{" "}
-                <span className="font-mono">{de(kopf)}</span> Einwohner*innen
-                <Beleg q="einwohner" /> ={" "}
-                <strong className="font-semibold">{de(summeJeKopf)}&nbsp;€</strong>.
-              </p>
-              <p className="mt-2 text-[11.5px] leading-relaxed text-muted-foreground">
-                Die Einwohnerzahl ist die des Haushaltsjahrs {einwohner.jahr} — Stichtag
-                31.12.{einwohner.jahr - 1}
-                {einwohner.jahr < jahr && <>; für {jahr} führt die Stadt noch keine.
-                  Ist Oldenburg seither gewachsen, liegt der Betrag je Kopf etwas
-                  niedriger</>}. Unsere Rechnung, keine amtliche Kennzahl.
-              </p>
-            </Karte>
-
-            {fehltEuro != null && (
-              <Karte kicker="Das Ersparte">
+        }
+        danach={
+          <>
+            <div className="grid gap-3.5 @2xl/zettel:grid-cols-2">
+              <Karte kicker="So wird gerechnet">
                 <p className="mt-2 text-[12.5px] leading-relaxed text-foreground/90">
-                  Das Minus wird aus der Rücklage von rund {RUECKLAGE_MIO}&#8239;Mio.&nbsp;€
-                  gedeckt<Beleg q="ruecklage" /> — {de(ruecklageJeKopf)}&nbsp;€ je Kopf, von
-                  denen dieses Jahr {de(jeKopf(fehltEuro))}&nbsp;€ abgehen.
-                  {leerAb != null && <> Bliebe es bei einem Minus dieser Größe, wäre das
-                    Ersparte zu Beginn von {leerAb} aufgebraucht. Was dann geschieht,
-                    entscheidet der Rat.</>}
+                  Geplante Aufwendungen {jahr}{" "}
+                  <span className="font-mono">{de(gesamt.aufwendungen)}&nbsp;€</span>
+                  <Beleg q="plan" /> geteilt durch{" "}
+                  <span className="font-mono">{de(kopf)}</span> Einwohner*innen
+                  <Beleg q="einwohner" /> ={" "}
+                  <strong className="font-semibold">{de(summeJeKopf)}&nbsp;€</strong>.
                 </p>
                 <p className="mt-2 text-[11.5px] leading-relaxed text-muted-foreground">
-                  Rechnerische Reichweite, keine Prognose der Stadt. {RUECKLAGE_STAND}.
+                  Die Einwohnerzahl ist die des Haushaltsjahrs {einwohner.jahr} — Stichtag
+                  31.12.{einwohner.jahr - 1}
+                  {einwohner.jahr < jahr && <>; für {jahr} führt die Stadt noch keine.
+                    Ist Oldenburg seither gewachsen, liegt der Betrag je Kopf etwas
+                    niedriger</>}. Unsere Rechnung, keine amtliche Kennzahl.
                 </p>
               </Karte>
-            )}
-          </div>
 
-          {/* Eine Zeile des Bons liest sich anders, als sie gemeint ist. */}
-          {finanzenZeile && (
-            <p className="text-[11.5px] leading-relaxed text-muted-foreground">
-              Eine Zeile führt in die Irre: Die {de(finanzenZeile.wert)}&nbsp;€ bei{" "}
-              <strong className="font-semibold text-foreground">{finanzen.kurz}</strong> sind
-              nicht der Preis der Kämmerei. In diesem Teilhaushalt bucht die Stadt auch, was
-              sie nur weiterreicht — Gewerbesteuer- und Finanzausgleichsumlage
-              {transfer && <>; im Jahresabschluss {transfer.jahr} waren {transfer.prozent}&nbsp;%
-                der Aufwendungen dieses Bereichs solche Transferzahlungen<Beleg q="ergebnisrechnung_thh" /></>}.
-            </p>
-          )}
-        </div>
-      </div>
+              {fehltEuro != null && (
+                <Karte kicker="Das Ersparte">
+                  <p className="mt-2 text-[12.5px] leading-relaxed text-foreground/90">
+                    Das Minus wird aus der Rücklage von rund {RUECKLAGE_MIO}&#8239;Mio.&nbsp;€
+                    gedeckt<Beleg q="ruecklage" /> — {de(ruecklageJeKopf)}&nbsp;€ je Kopf, von
+                    denen dieses Jahr {de(jeKopf(fehltEuro))}&nbsp;€ abgehen.
+                    {leerAb != null && <> Bliebe es bei einem Minus dieser Größe, wäre das
+                      Ersparte zu Beginn von {leerAb} aufgebraucht. Was dann geschieht,
+                      entscheidet der Rat.</>}
+                  </p>
+                  <p className="mt-2 text-[11.5px] leading-relaxed text-muted-foreground">
+                    Rechnerische Reichweite, keine Prognose der Stadt. {RUECKLAGE_STAND}.
+                  </p>
+                </Karte>
+              )}
+            </div>
+
+            {/* Eine Zeile des Bons liest sich anders, als sie gemeint ist. */}
+            {finanzenZeile && (
+              <p className="text-[11.5px] leading-relaxed text-muted-foreground">
+                Eine Zeile führt in die Irre: Die {de(finanzenZeile.wert)}&nbsp;€ bei{" "}
+                <strong className="font-semibold text-foreground">{finanzen.kurz}</strong> sind
+                nicht der Preis der Kämmerei. In diesem Teilhaushalt bucht die Stadt auch, was
+                sie nur weiterreicht — Gewerbesteuer- und Finanzausgleichsumlage
+                {transfer && <>; im Jahresabschluss {transfer.jahr} waren {transfer.prozent}&nbsp;%
+                  der Aufwendungen dieses Bereichs solche Transferzahlungen<Beleg q="ergebnisrechnung_thh" /></>}.
+              </p>
+            )}
+          </>
+        }
+      />
     </section>
   );
 }

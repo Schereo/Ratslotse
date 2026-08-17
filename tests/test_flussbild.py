@@ -335,20 +335,25 @@ def _lies(rel: str) -> str:
 def test_viewbox_haengt_an_der_gemessenen_breite():
     """Die teuer gelernte Lehre aus der Zeitreihe: Steht in der viewBox eine
     feste Zahl und der Container ist schmaler, skaliert der Browser das ganze
-    Bild samt Schrift herunter. Die Breite muss gemessen sein."""
-    quelle = _lies("components/haushalt/flussbild.tsx")
+    Bild samt Schrift herunter. Die Breite muss gemessen sein.
+
+    Seit dem Grafik-Baukasten (GB-07) zeichnet
+    ``components/grafik/flussbild.tsx`` — die Eigenschaft wohnt dort, die
+    Haushalts-Datei ist nur noch der Adapter."""
+    quelle = _lies("components/grafik/flussbild.tsx")
     assert "const W = breite;" in quelle
     assert "viewBox={`0 0 ${W} ${H}`}" in quelle
     assert "new ResizeObserver" in quelle
 
 
 def test_schmal_wird_umgebaut_nicht_geschrumpft():
-    """Unter der Schwelle gibt es zwei gestapelte Listen statt gestauchter
-    Bänder — ein zusammengeschobenes Flussbild war schon zweimal der Befund."""
-    quelle = _lies("components/haushalt/flussbild.tsx")
+    """Unter der Schwelle gibt es gestapelte Listen statt gestauchter
+    Bänder — ein zusammengeschobenes Flussbild war schon zweimal der Befund.
+    Auch diese Regel zeichnet seit GB-07 der Baukasten."""
+    quelle = _lies("components/grafik/flussbild.tsx")
     assert "SCHWELLE_BREIT" in quelle
     assert "breite < SCHWELLE_BREIT" in quelle
-    assert "<Listen bild={zeigBild}" in quelle
+    assert "<Listen seiten={seiten}" in quelle
 
 
 def test_ohne_vollstaendige_aufschluesselung_kein_bild():
