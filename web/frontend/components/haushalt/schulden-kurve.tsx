@@ -21,7 +21,8 @@
 // absolute Reihe zu zeigen läse das Wachstum der Stadt als Schuldenaufbau;
 // nur die Pro-Kopf-Reihe zu zeigen verschwiege den absoluten Anstieg.
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useId, useState } from "react";
+import { useBreite } from "@/lib/use-breite";
 import { deMio } from "@/lib/haushalt";
 import { Ansicht, Punkt, deEuro } from "@/lib/haushalt-schulden";
 import {
@@ -48,23 +49,9 @@ export function SchuldenKurve({ punkte, ansicht }: {
   ansicht: Ansicht;
 }) {
   const [tabelle, setTabelle] = useState(false);
-  // viewBox-Breite = Containerbreite, sonst staucht das SVG die Schrift mit.
-  // `getBoundingClientRect` statt `clientWidth`: letzteres rundet auf ganze
-  // Pixel und brächte bei 486,4 px schon einen Faktor von 1,0008.
-  const box = useRef<HTMLDivElement>(null);
-  const [breite, setBreite] = useState(640);
-  useEffect(() => {
-    const el = box.current;
-    if (!el) return;
-    const pruefe = () => {
-      const w = Math.max(el.getBoundingClientRect().width, 280);
-      setBreite((alt) => (Math.abs(w - alt) > 0.5 ? w : alt));
-    };
-    pruefe();
-    const ro = new ResizeObserver(pruefe);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+  // viewBox-Breite = Containerbreite, sonst staucht das SVG die Schrift mit
+  // (Messfalle und Epsilon: `lib/use-breite.ts`).
+  const { box, breite } = useBreite();
   const ablesen = useAblesen(punkte.length, Math.max(punkte.length - 1, 0));
   const beschreibungId = useId();
   const schmal = breite < 520;
