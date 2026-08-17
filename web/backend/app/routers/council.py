@@ -826,6 +826,14 @@ def haushalt_uebersicht(
     - ``einwohner``: jüngste Einwohnerzahl (Bezugsgröße für Pro-Kopf-Angaben),
     - ``ergebnisrechnung``: Ansatz, Plan und Ergebnis je Posten aus den
       Jahresabschlüssen — Grundlage für „geplant gegen tatsächlich",
+    - ``finanzrechnung``: die Kassensicht aus demselben Jahresabschluss
+      (Abschnitt 4.1) — nicht was gebucht, sondern was **gezahlt** wurde.
+      Jede Zeile trägt neben der Nummer des Dokuments eine ``rolle``
+      (``saldo_verwaltung``, ``saldo_investition``, ``finanzmittel``, …);
+      **an der Rolle hängen, nicht an der Nummer**: Die Tabelle hat
+      2017–2020 eine Zeile mehr als ab 2021, alle Nummern ab 08
+      verschieben sich dadurch. ``ermaechtigung`` ist das aus Vorjahren
+      übertragene Geld und ``NULL``, wo der Jahrgang die Spalte nicht führt,
     - ``ergebnishaushalt``: dieselben Posten für Jahre **ohne**
       Jahresabschluss, aus dem Gesamtergebnishaushalt der Haushaltspläne.
       Jede Zeile trägt ``art`` (``ansatz`` = das Jahr, für das dieser Plan
@@ -860,6 +868,11 @@ def haushalt_uebersicht(
         # `plan` ist die Bezugsgröße der Abweichung, `ansatz` der
         # ursprüngliche Haushaltsansatz; `plan_art` sagt, welche gemeint ist.
         "ergebnisrechnung": store.get_ergebnisrechnung(),
+        # Dieselben Dokumente, Abschnitt 4.1: was tatsächlich geflossen ist.
+        # Die Ergebnisrechnung darüber weist für 2024 einen Überschuss aus,
+        # diese Tabelle im selben Heft einen Finanzmittel-Fehlbetrag — beides
+        # stimmt, und ohne die zweite Zahl entsteht ein falscher Eindruck.
+        "finanzrechnung": store.get_finanzrechnung(),
         # Die Planjahre: dieselbe Postengliederung für Jahre, die noch keinen
         # Abschluss haben. `art` trennt den Haushaltsansatz von der
         # mittelfristigen Finanzplanung — ohne diese Angabe darf keine Zahl

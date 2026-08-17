@@ -49,6 +49,39 @@ export type ErgebnisPosten = {
   quelle_label: string | null; quelle_url: string | null;
 };
 
+/** Die Zeilen der Finanzrechnung, auf die es ankommt. **An der Rolle hängen,
+ *  nicht an der Nummer:** Die Tabelle hat 2017–2020 eine Zeile mehr als ab
+ *  2021 (eine Einzahlungsart fiel weg), wodurch sich jede Nummer ab 08 um eins
+ *  verschiebt — der Finanzmittelsaldo ist 2019 die Zeile 33 und 2024 die 32. */
+export type FinanzRolle =
+  | "summe_ein_verwaltung" | "summe_aus_verwaltung" | "saldo_verwaltung"
+  | "summe_ein_investition" | "summe_aus_investition" | "saldo_investition"
+  | "finanzmittel" | "saldo_finanzierung" | "finanzmittelveraenderung"
+  | "saldo_haushaltsunwirksam" | "anfangsbestand" | "endbestand";
+
+/** Eine Zeile der Finanzrechnung der Kernverwaltung (Abschnitt 4.1 desselben
+ *  Jahresabschlusses): nicht was gebucht, sondern was **gezahlt** wurde.
+ *
+ *  `ermaechtigung` ist die Spalte „Ermächtigungen aus Haushaltsvorjahren" —
+ *  Geld aus früheren Jahren, das in diesem Jahr noch ausgegeben werden durfte.
+ *  Sie ist `null`, wo der Jahrgang die Spalte nicht führt.
+ *
+ *  Die Bestandszeilen (`anfangsbestand`, `endbestand`,
+ *  `saldo_haushaltsunwirksam`) tragen **keinen** `plan`: Ein Kassenbestand
+ *  wird nicht veranschlagt, und das Dokument lässt die Spalte dort leer. */
+export type FinanzZeile = {
+  jahr: number;
+  /** Zeilennummer des Dokuments — nur für die Fundstelle, nie zum Suchen. */
+  nr: number;
+  rolle: FinanzRolle | null;
+  bezeichnung: string;
+  vorjahr: number | null; ansatz: number | null;
+  plan: number | null; plan_art: PlanArt | null;
+  ergebnis: number | null; abweichung: number | null;
+  ermaechtigung: number | null;
+  ist_summe: 0 | 1;
+};
+
 /** Warum ein Posten vom Plan abwich — Abschnitt 6.3.1 des Jahresabschlusses,
  *  in den Worten der Verwaltung. Übernommen wird nur, was die Rechenprobe
  *  besteht: Betrag UND Prozentsatz der Überschrift müssen zur Tabellenzeile
@@ -145,6 +178,8 @@ export type HaushaltDaten = {
   einwohner: { jahr: number; einwohner: number } | null;
   /** Ansatz, Plan und Ergebnis je Posten aus den Jahresabschlüssen. */
   ergebnisrechnung?: ErgebnisPosten[];
+  /** Die Kassensicht aus denselben Jahresabschlüssen (Abschnitt 4.1). */
+  finanzrechnung?: FinanzZeile[];
   /** Warum ein Posten vom Plan abwich (Abschnitt 6.3.1). */
   abweichungsgruende?: Abweichungsgrund[];
   /** Schlussberichte des Rechnungsprüfungsamts je Jahrgang. */
@@ -189,6 +224,26 @@ export function planGegenIst(
       };
     })
     .filter((x): x is NonNullable<typeof x> => x !== null);
+}
+
+/** Die Kassensicht eines Jahres, nach Rollen aufgeschlüsselt.
+ *
+ *  Gibt `null`, wenn der Jahrgang keine Finanzrechnung im Bestand hat — dann
+ *  fehlt sie auf der Seite, statt aus den vorhandenen Zeilen zusammengerechnet
+ *  zu werden. Fehlende Rollen bleiben `undefined`; die optionalen
+ *  Bestandszeilen erlaubt das Dokument ausdrücklich wegzulassen. */
+export function kassensicht(
+  daten: HaushaltDaten, jahr: number,
+): Partial<Record<FinanzRolle, FinanzZeile>> | null {
+  const zeilen = (daten.finanzrechnung ?? []).filter((z) => z.jahr === jahr);
+  if (!zeilen.length) return null;
+  const aus: Partial<Record<FinanzRolle, FinanzZeile>> = {};
+  for (const z of zeilen) if (z.rolle) aus[z.rolle] = z;
+  // Ohne die drei Salden ist die Aussage nicht vollständig — dann lieber gar
+  // keine Kassensicht als eine halbe (die Kaskade lässt das gar nicht zu,
+  // aber der Lesepfad soll sich nicht darauf verlassen).
+  return aus.saldo_verwaltung && aus.saldo_investition && aus.finanzmittel
+    ? aus : null;
 }
 
 /** Die Erläuterung zu einem Posten eines Jahres — oder nichts. */

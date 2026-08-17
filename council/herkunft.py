@@ -120,6 +120,29 @@ PROBEN: dict[str, str] = {
     "vorjahreskette":
         "Das Ergebnis eines Jahres steht im Jahresabschluss des Folgejahres "
         "noch einmal als Vorjahreswert und stimmt damit überein.",
+    # Finanzrechnung der Kernverwaltung, Abschnitt 4.1 desselben
+    # Jahresabschlusses (council/finanzberichte.py). Die erste ist die
+    # Pflicht-Probe: Sie deckt jede Zahl ab, die auf der Seite steht. Die
+    # beiden anderen decken je eine Spalte bzw. den Schwanz der Tabelle und
+    # kosten, wenn sie reißen, nur diesen Teil.
+    "finanzkaskade":
+        "Die Finanzrechnung rechnet sich selbst vor, und jede Stufe hängt an "
+        "der vorigen: Die Einzahlungsarten ergeben die Summe der Einzahlungen, "
+        "die Auszahlungsarten die der Auszahlungen, beide zusammen den Saldo — "
+        "für die laufende Verwaltung und für die Investitionen, und beide "
+        "Salden zusammen den Finanzmittelsaldo. Geprüft im Ist wie im Ansatz.",
+    "finanz_ermaechtigungen":
+        "Auch die übertragenen Ermächtigungen aus Vorjahren addieren sich in "
+        "jedem Block auf die Summenzeile, die dieselbe Tabelle daneben "
+        "ausweist. Wo das nicht aufgeht, fehlt die Spalte ganz.",
+    "finanz_bestandskette":
+        "Die Kasse schließt: Anfangsbestand plus Finanzmittelveränderung plus "
+        "die haushaltsunwirksamen Vorgänge ergeben den Endbestand, den das "
+        "Dokument ausweist.",
+    "kassenkette":
+        "Der Kassenbestand am Jahresende steht im Jahresabschluss des "
+        "Folgejahres noch einmal als Anfangsbestand — zwei Dokumente, "
+        "dieselbe Zahl.",
     "abweichungstext":
         "Die Erläuterung nennt ihre Abweichung doppelt, als Betrag und als "
         "Prozentsatz; beide passen zu der Tabellenzeile, die derselbe "
@@ -311,6 +334,9 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     "council_steuerkraft",
     "council_einwohner",
     "council_ergebnisrechnung",
+    # Die Kassensicht aus demselben Jahresabschluss — neu, ohne Altbestand,
+    # Herkunft ausschließlich über `herkunft_id`.
+    "council_finanzrechnung",
     "council_abweichungsgruende",
     "council_pruefbericht_quellen",
     "council_produkte",

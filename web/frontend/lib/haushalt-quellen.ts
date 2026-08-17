@@ -84,6 +84,11 @@ export type QuellenSchluessel =
   | "jahresabschluss" | "teilhaushalt" | "stellenplan" | "pruefbericht"
   | "gesamtabschluss"
   | "einwohner" | "ergebnisrechnung_thh" | "ratsbeschluss"
+  // Die Kassensicht aus denselben Jahresabschlüssen. Ein eigener Schlüssel,
+  // weil es ein anderer Abschnitt mit einer anderen Abgrenzung ist: Die
+  // Ergebnisrechnung bucht, die Finanzrechnung zahlt. Ein gemeinsamer Eintrag
+  // lüde dazu ein, ihre Zahlen für dieselben zu halten.
+  | "finanzrechnung"
   // A10: Städtevergleich — die einzigen Quellen des Bereichs, die nicht von
   // der Stadt Oldenburg stammen, sondern vom Land.
   | "lsn_finanzausgleich" | "lsn_realsteuern" | "vergleich_2018"
@@ -294,6 +299,23 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "Ergebnis nebeneinander. Hier steht, was ein Bereich tatsächlich eingenommen " +
       "und ausgegeben hat — Steuern, Zuwendungen, Entgelte, Personal, Transfers. " +
       "Anders als der Plan reicht diese Ebene nicht bis ins laufende Jahr.",
+    herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
+    standWort: "Jahresabschlüsse",
+    stand: "Jahresabschlüsse 2017–2024",
+    art: "pdf",
+    url: "https://buergerinfo.oldenburg.de",
+  },
+  finanzrechnung: {
+    titel: "Finanzrechnung der Kernverwaltung (Jahresabschlüsse)",
+    fundstelle:
+      "Abschnitt 4.1 derselben Jahresabschlüsse: die Ein- und Auszahlungen des " +
+      "Jahres, getrennt nach laufender Verwaltung, Investitionen und " +
+      "Finanzierung, mit Ansatz und Ergebnis nebeneinander. Diese Tabelle " +
+      "zählt Geld, das geflossen ist — nicht Erträge und Aufwendungen. Sie " +
+      "sagt deshalb nichts über den Werteverzehr: Abschreibungen kommen darin " +
+      "nicht vor, Kreditaufnahme und Tilgung dagegen schon. Die Zeilen zum " +
+      "Kassenbestand dürfen laut Dokument fehlen und fehlen in einzelnen " +
+      "Jahrgängen auch.",
     herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
     standWort: "Jahresabschlüsse",
     stand: "Jahresabschlüsse 2017–2024",

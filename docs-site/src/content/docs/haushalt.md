@@ -712,6 +712,92 @@ gefundenen Produkte rund 82 % der geplanten Aufwendungen. Der Endpunkt
 liefert diese Quote als `abdeckung_prozent` mit, damit die Oberfläche die
 Liste nicht als Vollbild ausgeben kann.
 
+### Die Kassensicht: Abschnitt 4.1 desselben Dokuments
+
+Die Ergebnisrechnung **bucht**. Für 2024 weist sie ein Jahresergebnis von
++6,1 Mio. € aus. Dreißig Seiten weiter, in Abschnitt 4.1 desselben Berichts,
+steht die **Finanzrechnung der Kernverwaltung** — und die **zahlt**: Am
+Jahresende lagen 118,0 Mio. € in der Kasse, am Jahresanfang 143,1 Mio. €.
+Beides stimmt. Abschreibungen mindern das Ergebnis, ohne dass jemand etwas
+überweist; ein Neubau kostet sofort Geld, im Ergebnis aber erst über die
+Jahre. Wer nur die erste Zahl sieht, bekommt einen falschen Eindruck — und für
+einen Bereich, dessen Anspruch Ehrlichkeit ist, war das die unangenehmste
+Lücke. Eingelesen sind alle acht Jahrgänge **2017–2024**
+(`council_finanzrechnung`, Parser `parse_finanzrechnung`).
+
+Die Tabelle hat dieselbe Grammatik wie die Ergebnisrechnung, also liest sie
+derselbe Spaltenapparat (`_tabellenkopf`, `_fenster`, `_spalten_zuordnen`).
+Vier Dinge sind anders, und jedes davon ist beim Bauen aufgelaufen:
+
+**1. Die Postennummern verschieben sich.** 2017–2020 hat die Tabelle 42
+Zeilen, 2021–2024 nur 41: Die Einzahlungsart „Veräußerung geringwertiger
+Vermögensgegenstände" fällt weg, und alles ab Posten 08 rutscht um eins. Der
+Finanzmittelsaldo ist 2019 die Zeile **33** und 2024 die Zeile **32**. Ein
+fester Nummern-Katalog wie `ERGEBNIS_POSTEN` ginge für die Hälfte der
+Jahrgänge daneben. Deshalb kommt die Bezeichnung aus dem Dokument und die
+Bedeutung aus `finanzberichte.ROLLEN` — das Dokument benennt seine Zeilen
+selbst („= Summe der Auszahlungen aus Investitionstätigkeit"). Frontend und
+Proben hängen an der **Rolle**, nie an der Nummer.
+
+**2. Die Zeilen verweisen aufeinander.** „18. Saldo aus laufender
+Verwaltungstätigkeit (Zeile 10 abzüglich Zeile 17)" — ein Zeilensplit an
+zweistelligen Zahlen schneidet mitten in diesen Verweis und lässt die
+Zahlenkolonne dahinter liegen. Ohne `_VERWEIS` kamen die Posten 18, 33, 36,
+37 und 40 in **keinem** Jahrgang an.
+
+**3. Der Seitenfuß „JA 29" sieht aus wie ein Posten.** Er steht am Ende der
+ersten Tabellenseite, also **vor** dem echten Posten 29 auf der zweiten. Wer
+ihn stehen lässt, verliert „29. Sonstige Investitionstätigkeit" (2024:
+27,6 Mio. €) und reißt damit die Summenprobe.
+
+**4. Es gibt eine Spalte mehr:** die Ermächtigungen aus Haushaltsvorjahren.
+2024 stehen dort **58,8 Mio. €** neben 96,4 Mio. € tatsächlichen
+Investitions-Auszahlungen — bewilligtes Geld für Vorhaben, die noch nicht
+fertig sind. Das ist die Antwort auf „warum wird das Geplante nicht gebaut?".
+Gelesen wird sie nur, wenn der Tabellenkopf sie **hinter** dem Ergebnis
+führt: 2018 steht sie als sechste von elf Spalten davor, und hinter der
+Abweichung steht dort „Zu Spalte 5: Davon bisher nicht bewilligte …" mit
+0,00 € in jeder Zeile — ungeprüft hätte der Jahrgang 2018 lauter
+Ermächtigungen von 0,00 € getragen.
+
+#### Neun Proben, drei Schicksale
+
+Das Dokument rechnet sich selbst vor, und jede Stufe hängt an der vorigen
+(`finanzprobe`). Was welche Probe kostet, ist bewusst abgestuft:
+
+| Probe | Was sie prüft | Reißt sie, … |
+|---|---|---|
+| Summenzeilen (4×) | Einzahlungs- und Auszahlungsarten ergeben ihre Summe — je Block, im Ist **und** im Ansatz | … fällt der ganze Jahrgang |
+| Salden (3×) | Einzahlungen − Auszahlungen = Saldo, und beide Salden = Finanzmittelsaldo | … fällt der ganze Jahrgang |
+| Ermächtigungen | dieselbe Blocksumme für die übertragenen Beträge | … fällt die **Spalte** |
+| Tilgungskette | Finanzmittelsaldo + Saldo Finanzierung = Finanzmittelveränderung | … fallen diese zwei Zeilen |
+| Bestandskette | Anfangsbestand + Veränderung + haushaltsunwirksam = Endbestand | … fallen die drei Bestandszeilen |
+| Kassen-Kette | Endbestand steht im **Folgejahrgang** als Anfangsbestand | … fällt die Finanzrechnung beider Jahrgänge |
+
+Eine **fehlende** Einzelzeile zählt in den Summen als Null. Das ist kein Loch
+im Beweis, sondern der Beweis: Fehlt sie, weil das Dokument sie leer lässt
+(„12. Versorgungsauszahlungen" trägt 2024 nur den Vorjahreswert), geht die
+Summe auf — fehlt sie, weil wir sie falsch gelesen haben, geht sie nicht auf.
+
+Die Abstufung ist der Grund, warum trotz zweier echter Quellendefekte alle
+acht Jahrgänge im Bestand sind: **2022** verliert nur seine
+Ermächtigungsspalte, weil der PDF-Extrakt dort Leerzeichen mitten in die
+Beträge setzt („3.912. 463,20"), und die optionalen Bestandszeilen sind laut
+Fußnote des Dokuments ohnehin freiwillig („Die Zeilen 37 bis 41 können
+optional ergänzt werden").
+
+:::note[Die Bestandszeilen tragen keinen Ansatz]
+Ein Kassenbestand wird nicht veranschlagt; das Dokument lässt die
+Ansatzspalte dort leer. Was der Spaltenapparat dort findet, ist die
+Vorjahresspalte — im Jahrgang 2018 ergab das einen „Ansatz" von 61,7 Mio. €
+für den Anfangsbestand, den nie jemand beschlossen hat. Für diese drei Rollen
+wird deshalb nur das Ist gespeichert (`OHNE_ANSATZ_ROLLEN`).
+:::
+
+Was der Parser **nicht** tut: aus Jahresergebnis und Kassenveränderung eine
+Differenz bilden. Diese Zahl steht in keiner Quelle und hieße nichts —
+dieselbe Regel, an der der „Kostendeckungsgrad" gescheitert ist.
+
 ## Der Produkt-Steckbrief
 
 Zu jedem Produkt führen die Pläne einen Steckbrief: **Kurzbeschreibung**

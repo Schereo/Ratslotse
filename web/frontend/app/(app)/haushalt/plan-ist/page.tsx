@@ -47,7 +47,7 @@ import { ArrowRight, ChevronDown, ChevronRight, ExternalLink } from "lucide-reac
 import { useFetch } from "@/lib/use-fetch";
 import {
   ErgebnisPosten, HaushaltDaten, PLAN_ART_LABEL, PlanArt,
-  deMio, grundZuPosten, gruendeFuerBereich, mio, pruefberichtZuJahr,
+  deMio, grundZuPosten, gruendeFuerBereich, kassensicht, mio, pruefberichtZuJahr,
 } from "@/lib/haushalt";
 import { PruefberichtDaten, wiederholungsketten } from "@/lib/haushalt-pruefung";
 import { Warum } from "@/components/haushalt/warum";
@@ -99,6 +99,40 @@ function PruefungsHinweis() {
         <ArrowRight size={14} strokeWidth={2} className="transition-transform group-hover:translate-x-0.5" />
       </span>
     </Link>
+  );
+}
+
+/** Eine Zeile der Kassen-Rechnung: Beschriftung links, Betrag rechts.
+ *
+ *  **Keine Bewertungsfarbe.** Ein negativer Finanzmittelsaldo ist kein Rot
+ *  wert: Die Stadt investiert, und Investitionen zahlt man aus Beständen. Das
+ *  Vorzeichen steht als Zeichen da, nicht als Urteil — deshalb tragen alle
+ *  Beträge dieselbe Textfarbe, und `stark` hebt nur die Summenzeile heraus,
+ *  wie im Dokument. */
+function KassenZeile({ label, hinweis, wert, stark }: {
+  label: string; hinweis?: string; wert: number | null; stark?: boolean;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-4 py-2">
+      <dt className="min-w-0">
+        <span className={cn("text-[13.5px] leading-snug",
+          stark ? "font-semibold text-foreground" : "text-foreground/90")}>
+          {label}
+        </span>
+        {hinweis && (
+          <span className="mt-0.5 block text-[11.5px] leading-snug text-muted-foreground">
+            {hinweis}
+          </span>
+        )}
+      </dt>
+      <dd className={cn("flex-none tabular-nums",
+        stark ? "font-display text-[19px] font-bold" : "text-[15px] font-semibold")}>
+        {wert != null && wert > 0 && "+"}{deMio(wert)}
+        <span className="ml-0.5 text-[11px] font-semibold text-muted-foreground">
+          Mio.&nbsp;€
+        </span>
+      </dd>
+    </div>
   );
 }
 
@@ -195,7 +229,10 @@ function PlanIstInner() {
   const aufwDiff = (gesamt.aufwIst ?? 0) - (gesamt.aufwPlan ?? 0);
   const saldoPlan = (gesamt.ertrPlan ?? 0) - (gesamt.aufwPlan ?? 0);
   const saldoIst = (gesamt.ertrIst ?? 0) - (gesamt.aufwIst ?? 0);
-  const quellen: QuellenSchluessel[] = ["jahresabschluss", "plan"];
+  const kasse = kassensicht(data, jahr);
+  const quellen: QuellenSchluessel[] = kasse
+    ? ["jahresabschluss", "finanzrechnung", "plan"]
+    : ["jahresabschluss", "plan"];
   const pruefbericht = pruefberichtZuJahr(data, jahr);
   // Die Zeilen der Hantel. Zwei Regeln, beide oben im Kopf begründet:
   // ein Wortlaut je Erläuterung, und nichts über EINORDNUNG_GRENZE im Bild.
@@ -335,6 +372,85 @@ function PlanIstInner() {
           </div>
         )}
       </div>
+
+      {/* DIE KASSENSICHT — die andere Hälfte desselben Dokuments.
+          Die Zahlen oben stammen aus der Ergebnisrechnung: Sie bucht. Ob
+          dabei Geld geflossen ist, sagt sie nicht — Abschreibungen mindern
+          das Ergebnis, ohne dass jemand etwas überweist, und eine
+          Investition kostet sofort Geld, schlägt sich im Ergebnis aber nur
+          als Abschreibung späterer Jahre nieder. Dreißig Seiten weiter im
+          selben Bericht steht deshalb die Finanzrechnung, und für 2024 sagt
+          sie: 22,4 Mio. € weniger in der Kasse. Wer nur die obere Zahl
+          sieht, bekommt einen falschen Eindruck.
+
+          KEINE DIFFERENZ ZWISCHEN BEIDEN. Jahresergebnis und
+          Kassenveränderung werden hier nicht voneinander abgezogen — die
+          Zahl stünde in keiner Quelle und hieße nichts. Gezeigt wird die
+          Rechnung, die das Dokument selbst führt. */}
+      {kasse && (
+        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+            Und was floss wirklich?
+          </p>
+          <p className="mt-2 max-w-[70ch] text-[15px] leading-relaxed text-foreground/90">
+            Die Zahlen oben sind <strong>gebucht</strong>. Ob dabei Geld bewegt wurde,
+            steht in derselben Akte an anderer Stelle: in der Finanzrechnung
+            <Beleg q="finanzrechnung" />. Sie zählt nur, was tatsächlich ein- und
+            ausgezahlt wurde.
+          </p>
+          <dl className="mt-3 divide-y divide-border/60 border-t border-border/60">
+            <KassenZeile
+              label="Aus laufender Arbeit blieb übrig"
+              hinweis="Steuern, Gebühren und Zuweisungen minus Personal, Sachkosten und Sozialleistungen"
+              wert={mio(kasse.saldo_verwaltung?.ergebnis)} />
+            <KassenZeile
+              label="Für Investitionen floss ab"
+              hinweis={kasse.summe_aus_investition?.ergebnis != null
+                ? `${deMio(mio(kasse.summe_aus_investition.ergebnis))} Mio. € ausgezahlt für Bau, Grundstücke, Geräte und Zuschüsse — abzüglich der Einzahlungen`
+                : undefined}
+              wert={mio(kasse.saldo_investition?.ergebnis)} />
+            <KassenZeile
+              label={kasse.finanzmittel?.bezeichnung ?? "Finanzmittel-Überschuss/-Fehlbetrag"}
+              wert={mio(kasse.finanzmittel?.ergebnis)} stark />
+            {kasse.finanzmittelveraenderung && kasse.saldo_finanzierung && (
+              <KassenZeile
+                label="Nach Kredittilgung"
+                hinweis={`${deMio(mio(Math.abs(kasse.saldo_finanzierung.ergebnis ?? 0)))} Mio. € Tilgung`}
+                wert={mio(kasse.finanzmittelveraenderung.ergebnis)} />
+            )}
+          </dl>
+          {kasse.anfangsbestand?.ergebnis != null && kasse.endbestand?.ergebnis != null && (
+            <p className="mt-3 max-w-[70ch] text-[13px] leading-relaxed text-foreground/85">
+              Am 1. Januar lagen <strong>{deMio(mio(kasse.anfangsbestand.ergebnis))}&#8239;Mio.&nbsp;€</strong>{" "}
+              in der Kasse, am 31. Dezember{" "}
+              <strong>{deMio(mio(kasse.endbestand.ergebnis))}&#8239;Mio.&nbsp;€</strong>
+              <Beleg q="finanzrechnung" />.
+            </p>
+          )}
+          {/* Die Ermächtigungen sind die Antwort auf die Frage, die sich beim
+              Blick auf die Investitionszeile jede*r stellt: Warum wird das
+              Geplante nicht gebaut? Weil ein Teil des Geldes aus Vorjahren
+              stammt und die Genehmigung mitwandert — der Plan des Jahres ist
+              nicht die Grenze dessen, was ausgegeben werden darf. */}
+          {kasse.summe_aus_investition?.ermaechtigung != null && (
+            <p className="mt-3 max-w-[70ch] border-t border-border/60 pt-3 text-[13px] leading-relaxed text-foreground/85">
+              Ausgeben durfte die Stadt für Investitionen mehr als die geplanten{" "}
+              {deMio(mio(kasse.summe_aus_investition.plan))}&#8239;Mio.&nbsp;€: Weitere{" "}
+              <strong>{deMio(mio(kasse.summe_aus_investition.ermaechtigung))}&#8239;Mio.&nbsp;€</strong>{" "}
+              standen als Ermächtigungen aus Vorjahren offen — bewilligtes Geld für
+              Vorhaben, die noch nicht fertig sind, und das deshalb mit ins nächste Jahr
+              wandert<Beleg q="finanzrechnung" />.
+            </p>
+          )}
+          <p className="mt-3 max-w-[70ch] text-[12.5px] leading-relaxed text-muted-foreground">
+            Beide Rechnungen stehen im selben Jahresabschluss und widersprechen sich
+            nicht: Abschreibungen mindern das Ergebnis, ohne dass Geld fließt; ein
+            Neubau kostet sofort Geld, im Ergebnis aber erst über die Jahre. Die
+            Finanzrechnung sagt darum nichts über den Werteverzehr, die
+            Ergebnisrechnung nichts über den Kontostand.
+          </p>
+        </div>
+      )}
 
       {/* Woran „geplant" hier gemessen wird. In den meisten Jahrgängen ist
           das der Haushaltsansatz; 2018 und 2020 nicht — und das ist keine
