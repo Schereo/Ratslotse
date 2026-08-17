@@ -30,8 +30,30 @@
 //
 // Leserichtung: Was ist das → wie viel ist es (Zähler-Trio) → was heißen die
 // Marken → was steht seit Jahren offen (die Matrix) → Bericht für Bericht.
+//
+// WARUM DER JAHRESBERICHT SEIT 17.08. EINEN KOPF UND EINEN FILTER HAT: Der
+// Block „Bericht für Bericht" war die textlastigste Fläche des ganzen
+// Haushalts-Bereichs — für 2018 eine einzige Karte mit 49 Feststellungen,
+// 26.379 Zeichen und 8.808 px Höhe, alle im selben Gewicht untereinander.
+// Die Überschrift verspricht „42 Beanstandungen", und es gab keinen Weg von
+// dieser Zahl zu diesen Einträgen: Wer sie sehen wollte, musste 49 Absätze
+// lesen. Drei Änderungen, keine davon nimmt etwas weg:
+//
+//  1. **Die Jahres-Pillen stehen jetzt IM Kartenkopf.** Sie steuern genau
+//     diese Karte und standen vorher als eigener Block darüber.
+//  2. **Ein Filter „Alle / nur Beanstandungen"** mit ehrlichen Zahlen an
+//     beiden Knöpfen. Gefiltert wird im Browser aus dem schon geladenen
+//     Bestand — die Marken-Zähler oben bleiben davon unberührt. Was der
+//     Filter ausblendet, sagt eine Zeile darunter im Klartext (weglassen
+//     heißt hinter einen Auslöser, nie ersatzlos, H4-A).
+//  3. **Jeder Abschnitt des Berichts ist ein eigenes Feld** statt einer
+//     Trennlinie. 25 Abschnitte geben dem Auge 25 Landmarken; vorher lief
+//     alles als ein Strang durch.
+//
+// Nichts davon rührt an den Wortlaut oder an den Deeplink je Feststellung —
+// Textziffer und Seite sind der halbe Wert dieser Seite.
 
-import { Suspense, useMemo } from "react";
+import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ChevronRight, ExternalLink } from "lucide-react";
@@ -103,6 +125,41 @@ const LUECKEN_GRUND = "fehlt ersatzlos: Das PDF trägt keine Zeichenzuordnung, "
   + "eine zweite Kopie existiert nicht. Die Spalte bleibt trotzdem stehen — "
   + "als Lücke, nicht als Null.";
 
+/** Beanstandungen im Sinne des Berichts: erstmalige (B) und wiederholte (WB).
+ *  Hinweise (H) und Korrekturen (K) sind ausdrücklich etwas anderes — das
+ *  steht so in der Legende jedes Jahrgangs und oben auf der Seite. */
+const SCHWER = new Set(["B", "WB"]);
+
+/** Ein Abschnitt des Schlussberichts als eigenes Feld.
+ *
+ *  Die Tonfläche ist dieselbe wie im aufgeklappten Detail der Ketten-Matrix
+ *  (`bg-muted/35`) — derselbe Inhalt soll auf einer Seite nicht zweimal
+ *  verschieden aussehen. */
+function AbschnittsFeld({ textziffer, abschnitt, eintraege }: {
+  textziffer: string; abschnitt: string; eintraege: Feststellung[];
+}) {
+  const schwer = eintraege.filter((f) => SCHWER.has(f.marke)).length;
+  return (
+    <section className="rounded-xl bg-muted/35 p-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+        <h3 className="min-w-0 font-display text-[14.5px] font-bold leading-snug tracking-tight">
+          <span className="font-mono text-[11px] font-medium text-muted-foreground">
+            {textziffer}
+          </span>{" "}
+          {abschnitt}
+        </h3>
+        <span className="flex-none font-mono text-[9.5px] uppercase tracking-[0.1em] text-muted-foreground">
+          {eintraege.length} {eintraege.length === 1 ? "Feststellung" : "Feststellungen"}
+          {schwer > 0 && <>{" · "}{schwer} beanstandet</>}
+        </span>
+      </div>
+      <div className="mt-2.5 flex flex-col gap-3">
+        {eintraege.map((f) => <FeststellungsZeile key={f.lfd} f={f} />)}
+      </div>
+    </section>
+  );
+}
+
 /** Die Wiederholungsketten in den Vertrag der <KettenMatrix> (GB-10)
  *  übersetzen: je Jahr höchstens eine Zelle, und zwar die SCHWERSTE Marke
  *  des Abschnitts in diesem Jahrgang (WB vor B vor K vor H). */
@@ -127,6 +184,9 @@ function alsMatrixKetten(ketten: Kette[], jahreAnzahl: number): MatrixKette[] {
 function PruefungInner() {
   const gewaehltesJahr = Number(useSearchParams().get("jahr")) || null;
   const { data, loading } = useFetch<PruefberichtDaten>("/council/haushalt/pruefberichte");
+  // Der Filter des Jahresberichts. Zustand statt URL-Parameter: Ein geteilter
+  // Link soll den Bericht zeigen, wie er ist — vollständig.
+  const [nurSchwer, setNurSchwer] = useState(false);
 
   const jahre = data?.jahre ?? [];
   const jahr = gewaehltesJahr && jahre.includes(gewaehltesJahr) ? gewaehltesJahr : jahre.at(-1) ?? null;
@@ -135,7 +195,17 @@ function PruefungInner() {
   const matrixKetten = useMemo(
     () => alsMatrixKetten(ketten, jahre.length), [ketten, jahre.length]);
   const zahl = useMemo(() => markenZaehlen(alle), [alle]);
-  const gruppen = useMemo(() => (jahr ? nachAbschnitt(alle, jahr) : []), [alle, jahr]);
+  const imJahr = useMemo(
+    () => (jahr ? alle.filter((f) => f.jahr === jahr) : []), [alle, jahr]);
+  const schwerImJahr = useMemo(
+    () => imJahr.filter((f) => SCHWER.has(f.marke)).length, [imJahr]);
+  // Die Zahl der Abschnitte im Kartenkopf zählt IMMER den ganzen Bericht —
+  // sie beschreibt das Dokument, nicht unsere Ansicht davon.
+  const abschnitteGesamt = useMemo(
+    () => (jahr ? nachAbschnitt(imJahr, jahr).length : 0), [imJahr, jahr]);
+  const gruppen = useMemo(() => (jahr
+    ? nachAbschnitt(nurSchwer ? imJahr.filter((f) => SCHWER.has(f.marke)) : imJahr, jahr)
+    : []), [imJahr, jahr, nurSchwer]);
 
   if (loading || !data) {
     return <div className="py-16 text-center text-sm text-muted-foreground">Wird geladen …</div>;
@@ -299,44 +369,78 @@ function PruefungInner() {
         )
       )}
 
-      {/* Bericht für Bericht */}
-      <div className="flex flex-col gap-1.5">
-        <span className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-          Geprüfter Jahresabschluss
-        </span>
-        <div className="scrollbar-none -mx-1 flex items-center gap-1 overflow-x-auto px-1 py-0.5">
-          <div className="flex flex-none items-center gap-1 rounded-full border border-border bg-card p-1">
-            {jahre.map((j) => (
-              <Link key={j} href={`/haushalt/pruefung?jahr=${j}`} scroll={false}
-                className={cn("rounded-full px-3 py-1 text-[12.5px]",
-                  j === jahr ? "bg-primary font-semibold text-primary-foreground" : "text-foreground/75 hover:bg-accent")}>
-                {j}
-              </Link>
-            ))}
-          </div>
-        </div>
-      </div>
-
+      {/* Bericht für Bericht. Jahreswahl und Filter gehören IN diese Karte:
+          Sie steuern nur sie, und als eigener Block darüber sahen die
+          Jahres-Pillen aus wie eine Seiten-Navigation. */}
       <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
             Schlussbericht zum Jahresabschluss {jahr}
           </p>
           <span className="font-mono text-[10px] uppercase text-muted-foreground">
-            {alle.filter((f) => f.jahr === jahr).length} Feststellungen · {gruppen.length} Abschnitte
+            {imJahr.length} Feststellungen · {abschnitteGesamt} Abschnitte
           </span>
         </div>
-        <div className="mt-3 flex flex-col gap-4">
-          {gruppen.map((g) => (
-            <div key={g.textziffer} className="border-t border-border/60 pt-3 first:border-t-0 first:pt-0">
-              <p className="font-display text-[14.5px] font-bold leading-snug tracking-tight">
-                <span className="font-mono text-[11px] font-medium text-muted-foreground">{g.textziffer}</span>{" "}
-                {g.abschnitt}
-              </p>
-              <div className="mt-2.5 flex flex-col gap-3">
-                {g.eintraege.map((f) => <FeststellungsZeile key={f.lfd} f={f} />)}
+
+        <div className="mt-2.5 flex flex-col gap-2 border-b border-border/60 pb-3">
+          <div className="flex flex-col gap-1">
+            <span className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+              Geprüfter Jahresabschluss
+            </span>
+            <div className="scrollbar-none -mx-1 flex items-center gap-1 overflow-x-auto px-1 py-0.5">
+              <div className="flex flex-none items-center gap-1 rounded-full border border-border bg-muted/40 p-1">
+                {jahre.map((j) => (
+                  <Link key={j} href={`/haushalt/pruefung?jahr=${j}`} scroll={false}
+                    className={cn("rounded-full px-3 py-1 text-[12.5px]",
+                      j === jahr ? "bg-primary font-semibold text-primary-foreground" : "text-foreground/75 hover:bg-accent")}>
+                    {j}
+                  </Link>
+                ))}
               </div>
             </div>
+          </div>
+
+          {/* Der Weg von der Zahl oben zu den Einträgen. Keine Farbe, kein
+              Ausrufezeichen — unterschieden wird über Gewicht, wie an der
+              Marken-Pille (components/haushalt/marke.tsx). */}
+          {schwerImJahr > 0 && (
+            <div className="flex flex-col gap-1">
+              <span className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+                Zeigen
+              </span>
+              <div className="scrollbar-none -mx-1 flex items-center gap-1 overflow-x-auto px-1 py-0.5">
+                <div className="flex flex-none items-center gap-1 rounded-full border border-border bg-muted/40 p-1">
+                  {([
+                    [false, `Alle (${imJahr.length})`],
+                    [true, `Nur Beanstandungen (${schwerImJahr})`],
+                  ] as [boolean, string][]).map(([wert, text]) => (
+                    <button key={text} type="button" onClick={() => setNurSchwer(wert)}
+                      aria-pressed={nurSchwer === wert}
+                      className={cn("min-h-[32px] whitespace-nowrap rounded-full px-3 py-1 text-[12.5px]",
+                        nurSchwer === wert
+                          ? "bg-card font-semibold shadow-sm"
+                          : "text-foreground/70 hover:text-foreground")}>
+                      {text}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {nurSchwer && (
+          <p className="mt-3 max-w-[76ch] text-[12px] leading-relaxed text-muted-foreground">
+            {imJahr.length - schwerImJahr} Hinweise und Korrekturen sind gerade ausgeblendet.
+            Sie sind nicht weniger echt — nur etwas anderes: „Alle ({imJahr.length})" zeigt
+            den Bericht wieder vollständig.
+          </p>
+        )}
+
+        <div className="mt-3 flex flex-col gap-2.5">
+          {gruppen.map((g) => (
+            <AbschnittsFeld key={g.textziffer} textziffer={g.textziffer}
+              abschnitt={g.abschnitt} eintraege={g.eintraege} />
           ))}
         </div>
       </div>

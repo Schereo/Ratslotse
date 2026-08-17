@@ -22,11 +22,29 @@
 //
 // Gesucht und gefiltert wird SERVERSEITIG: Mit dem Steckbrief trägt jede der
 // knapp 400 Zeilen mehrere hundert Zeichen Fließtext.
+//
+// ZWEI FELDER SIND KEIN FLIESSTEXT (Umbau 17.08., dieselbe Einsicht wie beim
+// Beteiligungs-Steckbrief):
+//
+//  * **„Was dahintersteckt"** ist bei 111 von 507 Produkten länger als 420
+//    Zeichen, im Höchstfall 1.776 — ein einziger Absatz ohne einen
+//    Zeilenumbruch (Naturschutz, P10.554000). Er steht jetzt bis zum ersten
+//    Satzende sichtbar da, der Rest hinter einem Auslöser. Gekürzt wird die
+//    DARSTELLUNG, nie der Wortlaut (H4-A).
+//  * **„Worauf die Aufgabe beruht"** ist eine Aufzählung von Gesetzen, als
+//    Absatz gesetzt. 272 von 515 Einträgen lassen sich verlustfrei in ihre
+//    Glieder zerlegen (Trennung nur an Komma und Semikolon außerhalb von
+//    Klammern) — die stehen jetzt als Liste. Wo die Probe scheitert, weil ein
+//    Glied zu lang ist oder aus bloßen Paragraphen-Nummern besteht
+//    („§§ 2 (3),17,18,42 …"), bleibt der Absatz, wie er ist. Geraten wird
+//    nichts, und kein Wort ändert sich.
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Check, ChevronRight, Building2, Scale, Search, X } from "lucide-react";
+import {
+  Check, ChevronDown, ChevronRight, Building2, Scale, Search, X,
+} from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
 import {
   HaushaltDaten, Produkt, ProdukteAntwort, SPIELRAUM_TEXT, Spielraum,
@@ -172,6 +190,194 @@ function Treffer({ p, max, aktiv, alleJahre }: {
   );
 }
 
+/** Die Vorschau einer Produktbeschreibung: bis zu einem SATZENDE, nie mitten
+ *  im Satz.
+ *
+ *  Bewusst nicht `absatzVorschau` aus dem Beteiligungs-Steckbrief: Die schneidet
+ *  notfalls am letzten Leerzeichen vor der Grenze, weil die Berichtstexte dort
+ *  Zeilenumbrüche mitbringen. Produktbeschreibungen haben keine — der Schnitt
+ *  landete bei „…des zusammenhängenden europäischen ökologischen Netzes" und
+ *  las sich wie ein abgerissener Text. Hier gilt: das letzte Satzende vor der
+ *  Grenze, sonst das erste danach, und wenn keins in Reichweite liegt, bleibt
+ *  der ganze Absatz stehen. */
+function satzVorschau(text: string, grenze = 420): { kopf: string; rest: string } {
+  const glatt = text.replace(/\s+/g, " ").trim();
+  if (glatt.length <= grenze) return { kopf: glatt, rest: "" };
+  // Satzenden: Punkt/Ausrufe-/Fragezeichen, dem ein Großbuchstabe folgt.
+  const enden: number[] = [];
+  const suche = /[.!?]\s+(?=[A-ZÄÖÜ„])/g;
+  for (let t = suche.exec(glatt); t; t = suche.exec(glatt)) enden.push(t.index + 1);
+  const davor = [...enden].reverse().find((i) => i <= grenze && i >= grenze * 0.35);
+  const danach = enden.find((i) => i > grenze && i <= grenze * 1.6);
+  const schnitt = davor ?? danach;
+  if (schnitt == null) return { kopf: glatt, rest: "" };
+  return { kopf: glatt.slice(0, schnitt).trim(), rest: glatt.slice(schnitt).trim() };
+}
+
+/** Die Glieder einer Rechtsgrundlagen-Aufzählung — oder `null`, wenn der Text
+ *  keine ist.
+ *
+ *  Getrennt wird an Komma, Semikolon und freistehendem Gedankenstrich —
+ *  jeweils AUSSERHALB von Klammern: „EU-Richtlinien (FFH, WRRL, VRL)" bleibt
+ *  ein Glied, und „-personen" oder „-eigentümer" trennt nichts, weil der
+ *  Strich dort direkt am Wort klebt. Danach drei Proben, und jede darf die
+ *  Zerlegung verwerfen — im Zweifel bleibt der Absatz stehen:
+ *
+ *   1. mindestens drei Glieder (zwei sind keine Liste, sondern ein Satz),
+ *   2. kein Glied länger als 130 Zeichen (dann ist es Prosa mit Kommas —
+ *      „Ratsbeschluss … vom 26.04.2021 - Ratsbeschluss Klimaschutz …"),
+ *   3. mindestens vier Fünftel der Glieder enthalten ein Wort aus vier
+ *      Buchstaben. Das fängt die Paragraphen-Ketten ab („§§ 2 (3),17,18,42,
+ *      50,52a,55-60,1630 …"), die als 20 Einzelzeilen unlesbar wären. */
+function rechtsgrundlagen(text: string): string[] | null {
+  const glatt = text.replace(/\s+/g, " ").trim();
+  const glieder: string[] = [];
+  let tiefe = 0, akt = "";
+  for (let i = 0; i < glatt.length; i += 1) {
+    const z = glatt[i];
+    if (z === "(") tiefe += 1;
+    else if (z === ")") tiefe = Math.max(0, tiefe - 1);
+    // Ein Gedankenstrich trennt nur mit Leerzeichen auf BEIDEN Seiten.
+    const strich = /[-–—]/.test(z) && glatt[i - 1] === " " && glatt[i + 1] === " ";
+    if ((z === "," || z === ";" || strich) && tiefe === 0) {
+      glieder.push(akt.trim()); akt = "";
+    } else akt += z;
+  }
+  if (akt.trim()) glieder.push(akt.trim());
+  const teile = glieder.filter(Boolean);
+  if (teile.length < 3) return null;
+  if (teile.some((t) => t.length > 130)) return null;
+  const mitWort = teile.filter((t) => /[A-Za-zÄÖÜäöüß]{4,}/.test(t)).length;
+  if (mitWort < teile.length * 0.8) return null;
+  return teile;
+}
+
+/** Eine Produktbeschreibung ist bei 60 von 507 Produkten in Wahrheit eine
+ *  AUFZÄHLUNG: Der Plan setzt je Leistung eine Zeile mit Spiegelstrich, beim
+ *  Auslesen wird daraus ein Absatz voller „ - ". Wo das erkennbar ist —
+ *  mindestens zwei Spiegelstriche, jedes Glied mit Inhalt —, steht sie als
+ *  Liste; sonst bleibt sie ein Absatz. Der Wortlaut ändert sich in keinem
+ *  Fall, nur der Zeilenumbruch kommt zurück. */
+function beschreibungsTeile(text: string): { einleitung: string; punkte: string[] } | null {
+  const glatt = text.replace(/\s+/g, " ").trim();
+  const trenner = /\s[-–—•]\s/g;
+  const stellen = [...glatt.matchAll(trenner)];
+  if (stellen.length < 2) return null;
+  const erst = stellen[0].index ?? 0;
+  const punkte = glatt.slice(erst).split(trenner).map((s) => s.trim()).filter(Boolean);
+  if (punkte.length < 2 || punkte.some((p) => p.length < 8)) return null;
+  return { einleitung: glatt.slice(0, erst).trim(), punkte };
+}
+
+/** „Was dahintersteckt" — Liste, wo eine ist, sonst Prosa mit Auslöser
+ *  (dieselbe Form wie im Beteiligungs-Steckbrief). */
+function Dahinter({ text, zielgruppe }: { text: string; zielgruppe?: string | null }) {
+  const [offen, setOffen] = useState(false);
+  const liste = useMemo(() => beschreibungsTeile(text), [text]);
+  const { kopf, rest } = useMemo(() => satzVorschau(text), [text]);
+
+  return (
+    <div className="@container/steckbrief rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+          Was dahintersteckt
+        </p>
+        {liste && (
+          <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+            {liste.punkte.length} Leistungen
+          </span>
+        )}
+      </div>
+
+      {liste ? (
+        <>
+          {liste.einleitung && (
+            <p className="mt-2 max-w-[70ch] text-[13.5px] leading-relaxed text-foreground/90">
+              <GlossaryText text={liste.einleitung} />
+            </p>
+          )}
+          <ul className="mt-2 flex max-w-[74ch] flex-col gap-1.5">
+            {liste.punkte.map((punkt, i) => (
+              <li key={`${punkt.slice(0, 24)}-${i}`}
+                className="flex items-baseline gap-2 text-[13px] leading-relaxed text-foreground/90">
+                <span aria-hidden
+                  className="mt-[6px] h-1 w-1 flex-none rounded-full bg-muted-foreground/60" />
+                <span className="min-w-0"><GlossaryText text={punkt} /></span>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : (
+        <>
+          <p className="mt-2 max-w-[70ch] text-[13.5px] leading-relaxed text-foreground/90">
+            <GlossaryText text={kopf} />
+          </p>
+          {rest && (
+            <>
+              {offen && (
+                <p className="mt-2 max-w-[70ch] text-[13.5px] leading-relaxed text-foreground/90">
+                  <GlossaryText text={rest} />
+                </p>
+              )}
+              <button type="button" onClick={() => setOffen(!offen)} aria-expanded={offen}
+                className="mt-2 inline-flex min-h-[36px] items-center gap-1 text-[12.5px] font-semibold text-primary">
+                {offen ? "Wortlaut einklappen" : "Ganzen Wortlaut zeigen"}
+                <ChevronDown size={14} strokeWidth={2}
+                  className={cn("transition-transform", offen && "rotate-180")} />
+              </button>
+            </>
+          )}
+        </>
+      )}
+
+      {zielgruppe && <FuerWen text={zielgruppe} />}
+    </div>
+  );
+}
+
+/** „Für wen": bei den großen Produkten dieselbe Aufzählung in Absatzform —
+ *  „… unter anderem als: - Stadtverwaltung … - Privathaushalte, -personen
+ *  - Mieterinnen und Mieter …". Als eine Zeile gelesen wirkt das wie ein Satz,
+ *  der nicht aufhört.
+ *
+ *  Getrennt wird hier NUR am Spiegelstrich, nicht am Komma: Die Kommas stehen
+ *  INNERHALB der Glieder („Privathaushalte, -personen"). Deshalb dieselbe
+ *  Zerlegung wie bei der Beschreibung — kein Chip-Feld: ein Glied kann
+ *  130 Zeichen lang sein, und das ist kein Chip mehr. */
+function FuerWen({ text }: { text: string }) {
+  const liste = useMemo(() => beschreibungsTeile(text), [text]);
+  return (
+    <div className="mt-3 border-t border-border/60 pt-2.5">
+      <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
+        Für wen
+      </p>
+      {liste ? (
+        <>
+          {liste.einleitung && (
+            <p className="mt-1 max-w-[74ch] text-[12.5px] leading-relaxed text-muted-foreground">
+              <GlossaryText text={liste.einleitung} />
+            </p>
+          )}
+          <ul className="mt-1.5 grid gap-x-6 gap-y-1 @2xl/steckbrief:grid-cols-2">
+            {liste.punkte.map((g, i) => (
+              <li key={`${g.slice(0, 24)}-${i}`}
+                className="flex min-w-0 items-baseline gap-2 text-[12.5px] leading-snug text-muted-foreground">
+                <span aria-hidden
+                  className="mt-[3px] h-1 w-1 flex-none rounded-full bg-muted-foreground/60" />
+                <span className="min-w-0"><GlossaryText text={g} /></span>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : (
+        <p className="mt-1 max-w-[74ch] text-[12.5px] leading-relaxed text-muted-foreground">
+          <GlossaryText text={text} />
+        </p>
+      )}
+    </div>
+  );
+}
+
 /** Der Steckbrief eines Produkts — Kosten, Zuständigkeit, was drinsteckt,
  *  worauf es beruht, wie viel Spielraum. Fehlende Felder bleiben weg; eine
  *  Lücke wird nicht mit einer Vermutung gefüllt. */
@@ -248,20 +454,7 @@ function Steckbrief({ p, jahr, alleJahre }: { p: Produkt; jahr: number; alleJahr
       </div>
 
       {p.kurzbeschreibung && (
-        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-          <p className="mb-2 font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            Was dahintersteckt
-          </p>
-          <p className="max-w-[70ch] text-[13.5px] leading-relaxed text-foreground/90">
-            <GlossaryText text={p.kurzbeschreibung} />
-          </p>
-          {p.zielgruppe && (
-            <p className="mt-3 border-t border-border/60 pt-2.5 text-[12.5px] leading-relaxed text-muted-foreground">
-              <span className="font-semibold text-foreground/80">Für wen: </span>
-              <GlossaryText text={p.zielgruppe} />
-            </p>
-          )}
-        </div>
+        <Dahinter text={p.kurzbeschreibung} zielgruppe={p.zielgruppe} />
       )}
 
       {(spielraum || p.beeinflussbarkeit_roh || p.wirkungskreis) && (
@@ -308,20 +501,47 @@ function Steckbrief({ p, jahr, alleJahre }: { p: Produkt; jahr: number; alleJahr
         </div>
       )}
 
-      {p.auftragsgrundlage && (
-        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-          <p className="mb-2 flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            <Scale className="h-3.5 w-3.5" /> Worauf die Aufgabe beruht
-          </p>
-          <p className="max-w-[70ch] text-[13px] leading-relaxed text-foreground/90">
-            {p.auftragsgrundlage}
-          </p>
-          <p className="mt-2 text-[11.5px] leading-relaxed text-muted-foreground">
-            Im Wortlaut des Teilhaushaltsplans — Gesetze, Satzungen und Verträge, aus denen
-            sich die Aufgabe ergibt.<Beleg q="teilhaushalt" />
-          </p>
-        </div>
-      )}
+      {p.auftragsgrundlage && (() => {
+        const glieder = rechtsgrundlagen(p.auftragsgrundlage);
+        return (
+          <div className="@container/grundlage rounded-2xl border border-border bg-card p-4 shadow-sm">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+              <p className="flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+                <Scale className="h-3.5 w-3.5" /> Worauf die Aufgabe beruht
+              </p>
+              {glieder && (
+                <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+                  {glieder.length} Grundlagen
+                </span>
+              )}
+            </div>
+            {glieder ? (
+              /* Zwei bis drei Spalten, wo der Platz da ist: Eine einspaltige
+                 Liste aus 16 kurzen Zeilen ließe auf 1440 px rechts einen
+                 Meter frei und wäre trotzdem länger als der Absatz vorher. */
+              <ul className="mt-2.5 grid gap-x-6 gap-y-1.5 @2xl/grundlage:grid-cols-2 @5xl/grundlage:grid-cols-3">
+                {glieder.map((g, i) => (
+                  <li key={`${g}-${i}`}
+                    className="flex min-w-0 items-baseline gap-2 text-[12.5px] leading-snug text-foreground/90">
+                    <span aria-hidden
+                      className="mt-[3px] h-1 w-1 flex-none rounded-full bg-muted-foreground/60" />
+                    <span className="min-w-0">{g}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 max-w-[70ch] text-[13px] leading-relaxed text-foreground/90">
+                {p.auftragsgrundlage}
+              </p>
+            )}
+            <p className="mt-2.5 max-w-[70ch] border-t border-border/60 pt-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
+              Im Wortlaut des Teilhaushaltsplans — Gesetze, Satzungen und Verträge, aus denen
+              sich die Aufgabe ergibt{glieder && <>; der Plan zählt sie in einer Zeile auf,
+              hier steht je Eintrag eine Zeile</>}.<Beleg q="teilhaushalt" />
+            </p>
+          </div>
+        );
+      })()}
 
       <div className="rounded-2xl border border-dashed border-border bg-card p-4">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
@@ -540,7 +760,10 @@ function ProdukteInner() {
                 <X className="h-3.5 w-3.5" /> Schließen
               </button>
             </div>
-            <Steckbrief p={aktiv} jahr={jahr} alleJahre={alleJahre} />
+            {/* `key`: Der Auslöser „Ganzen Wortlaut zeigen" gehört zu DIESEM
+                Produkt — ohne Neuaufbau bliebe er beim Wechsel offen und
+                zeigte den halben Text des nächsten. */}
+            <Steckbrief key={aktiv.produkt_nr} p={aktiv} jahr={jahr} alleJahre={alleJahre} />
           </section>
         )}
         {nr && !aktiv && !loading && (

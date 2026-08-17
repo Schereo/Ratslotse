@@ -9,11 +9,41 @@
 //
 // Reihenfolge: Kernaussage → Hantel je Bereich → woran es lag (Ertragsarten)
 // → Zahlen. Bewertungsfarben gibt es nirgends (siehe components/hantel.tsx).
+//
+// EIN ABSCHNITT IST KEIN EINORDNUNGSSATZ (Befund und Umbau 17.08.). Die
+// Erläuterungen des Abschlusses sind im Median 491 Zeichen lang — acht von 45
+// aber über 2.000, und die zu den „außerordentlichen Aufwendungen" in jedem
+// Jahrgang zwischen 5.371 und 7.176. Dort hat die Verwaltung einen ganzen
+// Abschnitt unter eine Zeile gesetzt (Einzelbeträge zu Kreyenbrück Nord,
+// Käthe-Kollwitz-Straße, Fliegerhorst …). Weil dieser Text die Teilhaushalte
+// beim Namen nennt, landete er über `gruendeFuerBereich` als
+// Einordnungssatz IN der Hantel: gemessen 7.241 Zeichen und 1.645 px am
+// Stück, mitten zwischen zwei Chart-Zeilen, in fünf von acht Jahrgängen.
+//
+// Gekürzt wird er trotzdem nicht — er wandert. Ab 700 Zeichen trägt die
+// Hantel-Zeile nur noch den Hinweis, dass der Abschluss diesen Bereich
+// ausführlich erläutert; der Wortlaut steht vollständig unten unter „Warum es
+// anders kam", eingeklappt in derselben <Warum>-Grammatik wie jede andere
+// Erläuterung dieser Seite. Damit bleibt die Regel von
+// components/grafik/einordnung.tsx unangetastet: Was IN der Hantel steht,
+// steht dort ganz.
+//
+// EINE ERLÄUTERUNG STEHT NUR EINMAL IM BILD (seit 17.08.). Der Jahresabschluss
+// erläutert die Posten der GESAMTrechnung; welchen Bereich ein Absatz meint,
+// steht im Absatz selbst („Im Teilhaushalt 10 …"). Manche nennen mehrere:
+// 2024 spricht die Erläuterung zu den sonstigen Transfererträgen von
+// Teilhaushalt 10 UND 11, die zu den sonstigen ordentlichen Erträgen von 2, 4
+// und 5. `gruendeFuerBereich` ordnet sie deshalb — richtigerweise — jedem
+// genannten Bereich zu, und die Hantel druckte denselben 505-Zeichen-Absatz
+// zweimal untereinander. Das las sich wie ein Fehler. Jetzt trägt der Bereich
+// mit der größten Abweichung den Wortlaut, die weiteren einen Verweis darauf.
+// Gekürzt wird nichts: Der Einordnungssatz gehört zur Hantel und wird nie
+// abgeschnitten (H4-07, components/grafik/einordnung.tsx).
 
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ArrowRight, ChevronRight, ExternalLink } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
 import {
   ErgebnisPosten, HaushaltDaten, PLAN_ART_LABEL, PlanArt,
@@ -71,6 +101,12 @@ function PruefungsHinweis() {
     </Link>
   );
 }
+
+/** Ab hier ist eine „Erläuterung" kein Einordnungssatz mehr, sondern ein
+ *  Abschnitt — gemessen am Bestand: Median 491 Zeichen, die acht Ausreißer
+ *  über 2.000. Der Schnitt liegt bewusst dazwischen und nicht am Ausreißer,
+ *  damit ein künftiger 1.500-Zeichen-Block dieselbe Behandlung bekommt. */
+const EINORDNUNG_GRENZE = 700;
 
 type Bereich = {
   nr: number; name: string;
@@ -161,17 +197,51 @@ function PlanIstInner() {
   const saldoIst = (gesamt.ertrIst ?? 0) - (gesamt.aufwIst ?? 0);
   const quellen: QuellenSchluessel[] = ["jahresabschluss", "plan"];
   const pruefbericht = pruefberichtZuJahr(data, jahr);
-  // Der Erklärsatz einer Hantel-Zeile: die jüngste Erläuterung des
-  // Abschlusses, die diesen Teilhaushalt ausdrücklich nennt — oder nichts.
-  const hantelGrund = (nr: number | null) =>
-    nr == null ? null : gruendeFuerBereich(data, jahr, nr)[0] ?? null;
+  // Die Zeilen der Hantel. Zwei Regeln, beide oben im Kopf begründet:
+  // ein Wortlaut je Erläuterung, und nichts über EINORDNUNG_GRENZE im Bild.
+  const wortlautBei = new Map<number, string>();
+  const imBild = new Set<number>();
+  const hantelZeilen = bereiche.map((b) => {
+    const alle = b.nr == null ? [] : gruendeFuerBereich(data, jahr, b.nr);
+    const g = alle.find((x) => x.text.length <= EINORDNUNG_GRENZE);
+    let einordnung: ReactNode = null;
+    if (g) {
+      const schonBei = wortlautBei.get(g.nr);
+      if (schonBei) {
+        einordnung = (
+          <>
+            Denselben Absatz führt der Abschluss auch für <em>{schonBei}</em> — er nennt
+            beide Bereiche in einem Satz. Der Wortlaut steht dort.
+          </>
+        );
+      } else {
+        wortlautBei.set(g.nr, b.name);
+        imBild.add(g.nr);
+        einordnung = (
+          <>
+            {g.text}{" "}
+            <span className="font-mono text-[9.5px] uppercase tracking-[0.09em] text-muted-foreground">
+              — Jahresabschluss {jahr}, Abschnitt 6.3.1, Wortlaut der Verwaltung
+            </span>
+          </>
+        );
+      }
+    } else if (alle.length) {
+      einordnung = (
+        <>
+          Diesen Bereich erläutert der Abschluss ausführlich — nicht mit einem Satz,
+          sondern mit einem ganzen Abschnitt samt Einzelbeträgen. Er steht unten unter
+          <em> Warum es anders kam</em>, im Wortlaut.
+        </>
+      );
+    }
+    return { label: b.name, plan: b.aufwPlan, ist: b.aufwIst, einordnung };
+  });
+
   // Die Einnahmearten tragen ihre Erläuterung schon inline, die Hanteln ihre
-  // Bereichs-Sätze (s. u.) auch; hier der Rest — nichts doppelt.
-  const obenGezeigt = new Set(arten.map((p) => p.nr));
-  for (const b of bereiche) {
-    const g = hantelGrund(b.nr);
-    if (g) obenGezeigt.add(g.nr);
-  }
+  // Bereichs-Sätze auch; hier der Rest — nichts doppelt, aber auch nichts
+  // verloren: Was für die Hantel zu lang war, steht genau deshalb hier.
+  const obenGezeigt = new Set([...arten.map((p) => p.nr), ...imBild]);
   const uebrigeGruende = (data.abweichungsgruende ?? [])
     .filter((g) => g.jahr === jahr && !obenGezeigt.has(g.nr))
     .sort((a, b) => Math.abs(b.delta_mio ?? 0) - Math.abs(a.delta_mio ?? 0));
@@ -341,24 +411,7 @@ function PlanIstInner() {
               nichts wird dazugedichtet. Wo der Abschluss den Bereich nicht
               nennt, steht bewusst kein Satz: `einordnung: null` ist die
               ehrliche Auskunft, kein vergessenes Feld. */}
-          <Hantel
-            massstab={massstab}
-            schwelle={8}
-            zeilen={bereiche.map((b) => {
-              const g = hantelGrund(b.nr);
-              return {
-                label: b.name, plan: b.aufwPlan, ist: b.aufwIst,
-                einordnung: g ? (
-                  <>
-                    {g.text}{" "}
-                    <span className="font-mono text-[9.5px] uppercase tracking-[0.09em] text-muted-foreground">
-                      — Jahresabschluss {jahr}, Abschnitt 6.3.1, Wortlaut der Verwaltung
-                    </span>
-                  </>
-                ) : null,
-              };
-            })}
-          />
+          <Hantel massstab={massstab} schwelle={8} zeilen={hantelZeilen} />
         </div>
       )}
 
@@ -441,11 +494,25 @@ function PlanIstInner() {
           Genau diesen Vergleich beanstandet das Rechnungsprüfungsamt. */}
       <PruefungsHinweis />
 
-      {/* Nicht-Chart-Entsprechung (H-17 als Tabelle) */}
+      {/* Nicht-Chart-Entsprechung (H-17 als Tabelle). Der Auslöser stand hier
+          als nackter Link in einer sonst leeren Karte — man sah einen Knopf
+          und nicht, wozu. Jetzt trägt die Karte denselben Kopf wie die
+          anderen: Kicker links, ehrliche Zähl-/Zeitraum-Angabe rechts. */}
       <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+            Dieselben Ausgaben als Tabelle
+          </p>
+          <span className="font-mono text-[10px] uppercase text-muted-foreground">
+            {bereiche.length} Teilhaushalte · {jahr}
+          </span>
+        </div>
         <button type="button" onClick={() => setZahlenOffen((o) => !o)}
-          className="text-[12.5px] font-semibold text-primary">
-          {zahlenOffen ? "Zahlen ausblenden" : "Zahlen anzeigen"}
+          aria-expanded={zahlenOffen}
+          className="mt-1.5 inline-flex min-h-[36px] items-center gap-1 text-[12.5px] font-semibold text-primary">
+          {zahlenOffen ? "Tabelle einklappen" : "Tabelle anzeigen"}
+          <ChevronDown size={14} strokeWidth={2}
+            className={cn("transition-transform", zahlenOffen && "rotate-180")} />
         </button>
         {zahlenOffen && (
           <div className="mt-3 overflow-x-auto">
