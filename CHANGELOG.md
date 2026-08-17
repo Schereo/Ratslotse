@@ -8,6 +8,17 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Jede Haushaltszahl sagt jetzt auch, wer sie beschlossen hat.** Der kleine
+  Beleg an einer Zahl nannte bisher das Dokument und die Stelle darin — „im
+  Jahresabschluss 2024, Ergebnisrechnung der Kernverwaltung". Was fehlte, war
+  der Schritt davor: Der Rat hat dieses Papier ja irgendwann beschlossen. Genau
+  das steht nun daneben, mit Datum, Gremium und Vorlagennummer. Ausdrücklich
+  auch dann, wenn noch **nichts** entschieden ist: Ein vertagter Vorgang ist
+  keine Zahl ohne Beleg, sondern eine, bei der die Sache noch läuft — und das
+  ist die interessantere Auskunft. Wo keine Vorlage im Bestand steht, bleibt
+  die Zeile weg; ein erfundener Vorgang wäre der schlimmere Fehler. Das
+  Ergebnis trägt keine Farbe, auch nicht bei „abgelehnt" — der Beleg-Apparat
+  berichtet, er bewertet nicht. (#567)
 - **Was wurde davon wirklich gebaut?** Der Haushalts-Bereich zeigte bisher nur
   die Bau- und Kaufpläne der Stadt — was am Jahresende tatsächlich abgeflossen
   ist, stand nirgends. Die neue Seite `/haushalt/gebaut` zeigt es für die Jahre
@@ -299,6 +310,23 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   (#516)
 
 ### Geändert
+- **Der Datenstand im Quellenverzeichnis rechnet sich selbst.** Am Fuß jeder
+  Haushalts-Seite steht, welche Jahrgänge eine Quelle abdeckt
+  („Jahresabschlüsse 2017–2024"). Diese Spannen wurden von Hand gepflegt,
+  einundzwanzig Stück — und veralteten zuverlässig, sobald ein Ingest-Lauf
+  einen Jahrgang nachzog: Die Angabe stand nicht neben den Daten, sondern in
+  einer anderen Datei. Vierzehn davon fragen jetzt den Bestand. Die übrigen
+  sieben bleiben von Hand, weil sie sich gar nicht ableiten lassen — ein
+  Genehmigungsdatum, eine einzelne Ratsvorlage von 2018, die Ausgabe-Angaben
+  der Landesstatistik —, und das steht jetzt begründet dabei. (#567)
+- **Die Seite „Streit ums Geld" lädt spürbar schneller.** Sie zerlegte bei
+  jedem Aufruf rund sechzehn vollständige Ratsprotokolle neu, um die
+  Wortbeiträge herauszuholen — gut anderthalb Sekunden Rechenzeit für ein
+  Ergebnis, das jedes Mal dasselbe war. Jetzt merkt sie sich die Zerlegung
+  anhand des Protokoll-Inhalts. Die Zusage der Seite bleibt dabei unangetastet:
+  Sie führt weiter keinen eigenen Datenbestand, kann also nicht veralten, und
+  ein nachgetragenes Protokoll erscheint weiterhin sofort und ohne
+  Nacharbeit. (#567)
 - **Zwei weitere Seiten hören auf, ihre eigene Gründlichkeit vorzuführen.**
   „Was wird gebaut?" und „Wer macht die Arbeit?" zeigten unter jeder Zahl noch,
   gegen welche Rechenprobe wir sie geprüft haben — bis hin zum Messwert
@@ -356,6 +384,13 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   2026". (#PR)
 
 ### Behoben
+- **Aufräumen im Fundament des Haushalts-Bereichs**, ohne sichtbare Folgen,
+  aber gegen Fehler, die sonst beim nächsten Ausbau entstanden wären: Die
+  Einlese-Pipelines fragen ihre Datenart jetzt an einer Stelle statt an zweien
+  (vorher konnte eine Änderung an der einen von der anderen still ignoriert
+  werden); fünf Beschreibungen desselben Herkunfts-Formats sind zu einer
+  geworden, nachdem drei von ihnen bereits auseinandergelaufen waren; und die
+  Breitenmessung der Diagramme steht einmal statt viermal. (#567)
 - **Ein Testwächter fiel, weil zwei Änderungen sich nicht kannten.** Der
   Wächter über den Haushalts-Bereich prüfte, dass die Geld-Abfragen der
   KI-Frage abgesichert laufen — und suchte sie an der Stelle, an der sie beim
