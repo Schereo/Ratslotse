@@ -173,6 +173,41 @@ def test_v2_share_ertraege_ranking():
     assert by_name[wenigsten["options"][wenigsten["correct_index"]]] == min(vals)
 
 
+def test_eigene_einnahmen_absolut_und_ohne_zentralen_finanzhaushalt():
+    """Die Frage im Slot `deckung` fragt nach Millionen, nicht nach einer Quote.
+
+    Eine Deckungsquote behauptete ein Ziel, das es nicht gibt (kein Bereich soll
+    sich selbst finanzieren) — der ganze Haushalts-Bereich hat sie deshalb
+    abgeräumt. Der content_hash bleibt trotzdem `deckung-<Jahr>`: Er benennt den
+    Slot, und nur über ihn frischt refresh_quiz_payloads die bereits
+    gespeicherte Frage auf, statt eine zweite anzulegen."""
+    from council import quiz
+
+    rows = haushalt.parse_ergebnishaushalt(PAGE_2026)
+    qs = haushalt.build_questions(rows, 2026, "http://pdf")
+    q = next(x for x in qs
+             if x["content_hash"] == quiz._content_hash("thema", "haushalt", "deckung-2026"))
+    assert q["qtype"] == "mc" and q["difficulty"] == "schwer"
+    assert "Prozent" not in q["question"] and "deckt" not in q["question"]
+    assert q["options"][q["correct_index"]] == "Soziales und Gesundheit"
+
+    chart = json.loads(q["chart"])
+    assert chart["type"] == "bars" and chart["unit"] == "Mio. Euro"
+    # 169,9 Mio. Erträge → 170; absteigend, genau ein hervorgehobener Balken.
+    assert chart["items"][0] == {"label": "Soziales und Gesundheit", "value": 170,
+                                 "highlight": True}
+    werte = [it["value"] for it in chart["items"]]
+    assert werte == sorted(werte, reverse=True)
+    assert sum(1 for it in chart["items"] if it.get("highlight")) == 1
+    # Der zentrale Finanzhaushalt bleibt draußen — er nimmt mehr ein, als er
+    # ausgibt (dort stehen alle Steuern der Stadt), und stünde sonst als
+    # 529-Mio.-Balken neben Größen, die etwas anderes messen.
+    labels = [it["label"] for it in chart["items"]]
+    assert "Finanzmanagement und Recht" not in labels
+    assert "nicht rechtsfähige Stiftungen" not in labels
+    assert set(q["options"]) <= set(labels)
+
+
 def test_trend_questions():
     rows = haushalt.parse_ergebnishaushalt(PAGE_2026)
     by_year = {2020: _shift(rows, 0.66), 2023: _shift(rows, 0.80), 2026: rows}
