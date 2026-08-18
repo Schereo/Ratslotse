@@ -155,25 +155,27 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
 
   // Die beiden Stellen, an denen die Quelle selbst etwas erklärt. Der Text
   // steht unter der Grafik (Kein-Tooltip-Regel, GB-01), die Marke im Bild.
+  // JEDE Marke trägt eine Kurzform: Breit steht sie direkt an der Marke —
+  // ein nacktes ⓘ sagt dort nur, DASS etwas war, nicht was (Tims Befund
+  // 18.08.). `sprung` hat immer eine Einzelzahl — so ist er definiert (s. o.).
   const annotationen = [
     sprung?.grund
       ? {
           jahr: sprung.jahr,
-          kurz: sprung.einzelbetrag != null
-            ? `${deMio(sprung.einzelbetrag / 1e6)} Mio. €`
-            : undefined,
+          kurz: `${deMio((sprung.einzelbetrag ?? 0) / 1e6)} Mio. €`,
           text: `${sprung.jahr}: ${sprung.grund}`,
         }
       : null,
     nachgetragen
       ? {
           jahr: nachgetragen.jahr,
+          kurz: `aus dem Abschluss ${nachgetragen.jahr + 1}`,
           text: `Für ${nachgetragen.jahr} nennt der Jahresabschluss selbst keinen `
             + `Bestand; die Zahl steht als Anfangsbestand im Abschluss `
             + `${nachgetragen.jahr + 1}.`,
         }
       : null,
-  ].filter((a): a is { jahr: number; kurz?: string; text: string } => a !== null);
+  ].filter((a): a is { jahr: number; kurz: string; text: string } => a !== null);
 
   // Wie genau die Quelle je Jahrgang ist. Das gehört an die Zahlen und nicht
   // in eine Fußnote am Seitenende — die Reihe mischt zwei Darreichungsformen.

@@ -68,10 +68,13 @@ export type ZeitreiheAnnotation = {
   jahr: number;
   /** Der ganze Satz — steht IMMER unter der Grafik und in der Vorlesehilfe. */
   text: string;
-  /** Kurzform für die Marke im Bild („108,9 Mio. umgebucht"). Ohne sie
-   *  trägt die Marke nur das ⓘ. Schmal entfällt sie ohnehin: Neben einem
-   *  180 px hohen Bild ist für einen zweiten Satz kein Platz, und der ganze
-   *  steht darunter. */
+  /** Kurzform für den Chip über der Grafik („108,9 Mio. umgebucht").
+   *  Praktisch immer angeben: Ohne sie trägt der Chip nur „ⓘ Jahr", und der
+   *  sagt nur, DASS etwas war — nicht was (Tims Befund 18.08.2026). Die
+   *  Chips stehen in einem eigenen Container statt im Bild: HTML bricht um,
+   *  wo im SVG platzierte Texte bei engen Breiten ineinanderliefen. Chip
+   *  und ⓘ wählen beide das Jahr; der ganze Satz steht dann in der
+   *  Ableseleiste. */
   kurz?: string;
 };
 
@@ -367,25 +370,19 @@ export function Zeitreihe({
       })()
     : null;
 
-  // Annotations-Marken: ⓘ am oberen Rand, mit Strich zum Punkt. Breit steht
-  // die Kurzform daneben — nach rechts, wenn dort Platz ist, sonst nach links.
-  type AnnoMarke = Omit<ZeitreiheAnnotation, "kurz"> & {
-    py: number; kurz: string | null; tx: number; anker: "start" | "end";
-  };
-  const annoMarken = (annotationen ?? []).flatMap<AnnoMarke>((a) => {
-    const stelle = stellenListe.find((s) => s.jahr === a.jahr);
-    if (!stelle) return [];
+  // Annotations-Marken: ⓘ am oberen Rand, mit Strich zum Punkt. Der TEXT
+  // dazu steht nicht mehr im Bild, sondern in einer Chip-Zeile darüber
+  // (Tims Entscheid 18.08.2026): Im Bild platzierte Kurztexte liefen bei
+  // engen Breiten ineinander oder in die Marke des Nachbarn — eine
+  // Ausweich-Geometrie dafür war die Sorte Komplexität, die HTML mit
+  // flex-wrap schlicht nicht hat. Der Chip wählt beim Antippen sein Jahr,
+  // dieselbe Mechanik wie das ⓘ selbst.
+  const annoMarken = (annotationen ?? []).flatMap((a) => {
+    const idx = stellenListe.findIndex((s) => s.jahr === a.jahr);
+    if (idx < 0) return [];
+    const stelle = stellenListe[idx];
     const py = stelle.art === "wert" ? y(stelle.punkt.wert) : (Y0 + YTOP) / 2;
-    const kurz = !schmal && a.kurz ? `${a.jahr}: ${a.kurz}` : null;
-    if (!kurz) return [{ ...a, py, kurz, tx: 0, anker: "start" }];
-    const w = textBreite(kurz, fs.marke);
-    const rechts = x(a.jahr) + 11 + w <= X1;
-    const tx = rechts ? x(a.jahr) + 11 : x(a.jahr) - 11;
-    belegt.push({
-      x1: rechts ? tx : tx - w, x2: rechts ? tx + w : tx,
-      y1: YTOP + 8 - fs.marke, y2: YTOP + 12,
-    });
-    return [{ ...a, py, kurz, tx, anker: rechts ? "start" : "end" }];
+    return [{ ...a, py, idx }];
   });
 
   // Die größte Bewegung nach oben und nach unten — gerechnet, neutral
@@ -529,6 +526,37 @@ export function Zeitreihe({
         </div>
       )}
 
+      {/* Die Chip-Zeile: je Annotation ein Chip mit Jahr und Kurzform, in
+          einem eigenen Container statt im Bild — HTML bricht um, wo das SVG
+          ausweichen müsste. Der Chip WÄHLT sein Jahr (dieselbe Mechanik wie
+          das ⓘ), der ganze Satz erscheint in der Ableseleiste; der gewählte
+          Chip füllt sich synchron zum ⓘ im Bild. */}
+      {annoMarken.length > 0 && (
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {annoMarken.map((a) => {
+            const aktivesJahr = stellenListe[ablesen.aktiv]?.jahr === a.jahr;
+            return (
+              <button
+                key={a.jahr} type="button"
+                aria-pressed={aktivesJahr}
+                onClick={() => { ablesen.waehle(a.idx); ablesen.setTastatur(false); }}
+                className={cn(
+                  "inline-flex min-h-[26px] items-center gap-1.5 rounded-full border px-2.5",
+                  "text-[11px] leading-none transition-colors",
+                  aktivesJahr
+                    ? "border-foreground/70 bg-foreground/75 text-card"
+                    : "border-border bg-card text-foreground/80 hover:border-foreground/40",
+                )}
+              >
+                <span aria-hidden="true" className="font-mono text-[10px] italic">ⓘ</span>
+                <span className="font-mono text-[10px] font-semibold tabular-nums">{a.jahr}</span>
+                {a.kurz && <span className="font-medium">{a.kurz}</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <AbleseBeschreibung id={beschreibungId}>{beschreibung}</AbleseBeschreibung>
       {/* `role="group"`, nicht `img`: Die Jahres-Ziele der Ablese-Fläche
           wären in einem `img` für die Vorlesehilfe unsichtbar. */}
@@ -584,9 +612,8 @@ export function Zeitreihe({
             style={{ fill: TON_ZWEIT }}>{zweitBeschriftung.text}</text>
         )}
 
-        {/* Annotationen: ⓘ im Bild, der Satz erscheint in der Ableseleiste,
-            sobald das Jahr gewählt ist. Ein Tipp aufs ⓘ genügt — die
-            Fangfläche liegt darüber und wählt das nächstgelegene Jahr. Das
+        {/* Annotationen: ⓘ im Bild, der Kurztext im Chip darüber, der ganze
+            Satz in der Ableseleiste, sobald das Jahr gewählt ist. Das
             gewählte ⓘ füllt sich, damit sichtbar ist, WOHER die Zeile in der
             Leiste gerade kommt. */}
         {annoMarken.map((a) => {
@@ -601,10 +628,6 @@ export function Zeitreihe({
                   : "fill-card stroke-foreground/45"} />
               <text x={x(a.jahr)} y={YTOP + 11.5} textAnchor="middle" fontSize={10} fontStyle="italic"
                 className={aktivesJahr ? "fill-card font-mono" : "fill-foreground/75 font-mono"}>i</text>
-              {a.kurz && (
-                <text x={a.tx} y={YTOP + 12} textAnchor={a.anker} fontSize={fs.marke}
-                  className="fill-foreground/75 stroke-card" {...halo}>{a.kurz}</text>
-              )}
             </g>
           );
         })}
