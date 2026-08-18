@@ -45,6 +45,11 @@ const config: Config = {
            bewusst VOR beiden: Wo eine Regel doppelt gesetzt wird, gewinnt die
            gerätespezifische. */
         breit: { raw: "(min-width: 1024px)" },
+        /* weit — noch mehr reine Breite (21:9-Monitore, Tims Wunsch 18.08.):
+           Der Platz jenseits des 1280er-Deckels lag brach. Wie `breit` eine
+           reine Breiten-Frage — Lesespalten bleiben trotzdem gedeckelt,
+           `weit` verteilt nur den gewonnenen Raum (Belege-Spalte, Abstände). */
+        weit: { raw: "(min-width: 1680px)" },
         desk: { raw: "(pointer: fine) and (min-width: 1024px)" },
         tab: { raw: "(pointer: coarse) and (min-width: 1024px)" },
       },

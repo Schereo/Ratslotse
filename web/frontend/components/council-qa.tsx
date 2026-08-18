@@ -1428,7 +1428,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   // rechts. Hochkant bleibt es einspaltig, dafür ist `breit` die Breiten- und
   // nicht die Geräte-Frage.
   return (
-    <div className="mx-auto mt-3 max-w-3xl breit:grid breit:max-w-[1220px] breit:grid-cols-[minmax(0,1fr)_320px] breit:items-start breit:gap-6">
+    <div className="mx-auto mt-3 max-w-3xl breit:grid breit:max-w-[1220px] breit:grid-cols-[minmax(0,1fr)_320px] breit:items-start breit:gap-6 weit:max-w-none weit:justify-center weit:grid-cols-[minmax(0,980px)_420px] weit:gap-10">
       {/* Chat-Spalte. Die mobile min-height-Krücke (Design 2①: „Composer
           klebt auch im Empty State unten") ist seit dem FIXED-Composer
           obsolet — und machte die Seite höher als den Viewport, sodass das
