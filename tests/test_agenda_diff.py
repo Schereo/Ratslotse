@@ -142,6 +142,31 @@ def test_diff_satz_nennt_die_aenderungsarten():
     assert "eine Vorlage wurde zurückgezogen" in satz2
 
 
+def test_gleichnamige_tops_erzeugen_keine_phantom_verschiebungen():
+    """Der Befund aus der Demo-Mail vom 18.08. (Jugendhilfeausschuss 4674):
+    Nichtöffentliche Teile führen reihenweise TOPs namens „gesperrte
+    Information". Alle dockten am ERSTEN Namensvetter an — ein unveränderter
+    Block meldete „Verschoben · N 11 → N 12" und „N 11 → N 13"."""
+    items = [_i("Ö 1", "Einwohnerfragestunde"),
+             _i("N 11", "gesperrte Information"),
+             _i("N 12", "gesperrte Information"),
+             _i("N 13", "gesperrte Information")]
+    d = diff_tagesordnung(items, list(items))
+    assert not hat_aenderungen(d)
+
+    # Ein NEUER Namensvetter ist neu — nicht „verschoben".
+    mehr = items + [_i("N 14", "gesperrte Information")]
+    d2 = diff_tagesordnung(items, mehr)
+    assert [i["item_number"] for i in d2["neu"]] == ["N 14"]
+    assert d2["verschoben"] == []
+
+    # Ein weggefallener Namensvetter ist entfernt — früher unsichtbar,
+    # weil der Titel ja „noch da" war.
+    d3 = diff_tagesordnung(mehr, items)
+    assert [i["item_number"] for i in d3["entfernt"]] == ["N 14"]
+    assert d3["verschoben"] == [] and d3["neu"] == []
+
+
 def test_identisch_ist_leer_und_html_faerbt():
     items = [_i("Ö 5", "Baumschutzsatzung")]
     d = diff_tagesordnung(items, list(items))
@@ -238,5 +263,32 @@ def test_snapshot_roundtrip(tmp_path):
         store.save_agenda_snapshot(4666, "hash-a", [_i("Ö 9", "anderes")])  # ignoriert
         assert store.get_agenda_snapshot(4666, "hash-a") == items
         assert store.get_agenda_snapshot(4666, "unbekannt") is None
+    finally:
+        store.close()
+
+
+def test_aenderungs_chronik_roundtrip(tmp_path):
+    """„Zuletzt geändert" auf der Sitzungsseite (Tims Wunsch 18.08.): Der Diff
+    überlebt die JSON-Runde — Paare kommen als 2er-Listen zurück, diff_zeilen
+    und diff_satz arbeiten damit wie mit den Original-Tupeln."""
+    from council.agenda_diff import diff_zeilen
+    from council.store import CouncilStore
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        assert store.get_latest_agenda_snapshot(4666) is None
+        alt = [_i("Ö 5", "Radweg")]
+        neu = [_i("Ö 5", "Radweg", "26/0100"), _i("Ö 6", "Neubau Kita")]
+        store.save_agenda_snapshot(4666, "hash-a", alt)
+        assert store.get_latest_agenda_snapshot(4666) == alt
+
+        d = diff_tagesordnung(alt, neu)
+        store.save_agenda_change(4666, d)
+        chronik = store.agenda_changes(4666)
+        assert len(chronik) == 1
+        zeilen = diff_zeilen(chronik[0]["diff"])
+        assert {z["art"] for z in zeilen} == {"neu", "vorlage"}
+        assert diff_satz(chronik[0]["diff"]) == (
+            "Ein Punkt ist neu und eine Vorlage wurde nachgereicht.")
+        assert store.agenda_changes(999) == []
     finally:
         store.close()

@@ -40,51 +40,77 @@ def diff_tagesordnung(alt: list[dict], neu: list[dict]) -> dict:
     "umformuliert": [(alt, neu)], "vorlage": [(alt, neu)]} — Items sind dicts
     mit item_number/title/vorlage_nr (optional is_public). Welche Punkte
     verglichen werden, entscheidet der Aufrufer."""
-    alt_nach_titel: dict[str, dict] = {}
+    # Titel sind NICHT eindeutig: Nichtöffentliche Teile führen reihenweise
+    # TOPs namens „gesperrte Information". Ein Titel→Punkt-dict ließ alle
+    # Namensvettern am ERSTEN andocken — jede Änderungsmeldung einer solchen
+    # Sitzung trug Phantom-Zeilen „Verschoben · N 11 → N 12" (aufgefallen an
+    # der Demo-Mail vom 18.08.). Deshalb Kandidaten-LISTEN: erst binden sich
+    # die nummerntreuen Paare, dann die übrigen der Reihe nach.
+    alt_nach_titel: dict[str, list[dict]] = {}
     for i in alt:
-        alt_nach_titel.setdefault(_norm_titel(i.get("title")), i)
-    neu_nach_titel: dict[str, dict] = {}
+        alt_nach_titel.setdefault(_norm_titel(i.get("title")), []).append(i)
+    neu_nach_titel: dict[str, list[dict]] = {}
     for i in neu:
-        neu_nach_titel.setdefault(_norm_titel(i.get("title")), i)
+        neu_nach_titel.setdefault(_norm_titel(i.get("title")), []).append(i)
     alt_nach_nummer = {str(i.get("item_number")): i for i in alt}
 
     ergebnis = {"neu": [], "entfernt": [], "verschoben": [], "umformuliert": [],
                 "vorlage": [], "anlagen": []}
+    benutzt: set[int] = set()   # id() der verbrauchten Alt-Zeilen
+    paare: list[tuple[dict, dict]] = []
+    offen: list[dict] = []
     for i in neu:
-        t = _norm_titel(i.get("title"))
-        vorher = alt_nach_titel.get(t)
-        if vorher is not None:
-            if str(vorher.get("item_number")) != str(i.get("item_number")):
-                ergebnis["verschoben"].append((vorher, i))
-            elif _norm_vorlage(vorher.get("vorlage_nr")) != _norm_vorlage(i.get("vorlage_nr")):
-                # Der häufigste stille Fall: Ein TOP steht ohne Vorlage auf der
-                # Liste, die Verwaltung reicht sie nach. Nummer und Titel
-                # bleiben, der Tagesordnungs-Hash ändert sich trotzdem — und
-                # die Änderungsmeldung hatte dazu bis hierher kein Wort
-                # (Tims Befund 17.08.).
-                ergebnis["vorlage"].append((vorher, i))
-            elif ("anlagen" in vorher and "anlagen" in i
-                  and anlagen_schluessel(vorher.get("anlagen"))
-                  != anlagen_schluessel(i.get("anlagen"))):
-                # Anhänge kamen dazu oder verschwanden (Tims Wunsch 18.08.) —
-                # nur wenn BEIDE Stände die Anlagen kennen; alte Snapshots
-                # ohne das Feld sollen keine erfundenen Neuzugänge melden.
-                # Nach der Vorlage geprüft: Eine nachgereichte Vorlage hängt
-                # ihr PDF oft auch als Anlage an — das wäre sonst doppelt.
-                ergebnis["anlagen"].append((vorher, i))
-            continue
+        kandidaten = alt_nach_titel.get(_norm_titel(i.get("title")), [])
+        treffer = next((k for k in kandidaten if id(k) not in benutzt
+                        and str(k.get("item_number")) == str(i.get("item_number"))), None)
+        if treffer is None:
+            offen.append(i)
+        else:
+            benutzt.add(id(treffer))
+            paare.append((treffer, i))
+    rest: list[dict] = []
+    for i in offen:
+        kandidaten = [k for k in alt_nach_titel.get(_norm_titel(i.get("title")), [])
+                      if id(k) not in benutzt]
+        if kandidaten:
+            benutzt.add(id(kandidaten[0]))
+            paare.append((kandidaten[0], i))
+        else:
+            rest.append(i)
+
+    for vorher, i in paare:
+        if str(vorher.get("item_number")) != str(i.get("item_number")):
+            ergebnis["verschoben"].append((vorher, i))
+        elif _norm_vorlage(vorher.get("vorlage_nr")) != _norm_vorlage(i.get("vorlage_nr")):
+            # Der häufigste stille Fall: Ein TOP steht ohne Vorlage auf der
+            # Liste, die Verwaltung reicht sie nach. Nummer und Titel
+            # bleiben, der Tagesordnungs-Hash ändert sich trotzdem — und
+            # die Änderungsmeldung hatte dazu bis hierher kein Wort
+            # (Tims Befund 17.08.).
+            ergebnis["vorlage"].append((vorher, i))
+        elif ("anlagen" in vorher and "anlagen" in i
+              and anlagen_schluessel(vorher.get("anlagen"))
+              != anlagen_schluessel(i.get("anlagen"))):
+            # Anhänge kamen dazu oder verschwanden (Tims Wunsch 18.08.) —
+            # nur wenn BEIDE Stände die Anlagen kennen; alte Snapshots
+            # ohne das Feld sollen keine erfundenen Neuzugänge melden.
+            # Nach der Vorlage geprüft: Eine nachgereichte Vorlage hängt
+            # ihr PDF oft auch als Anlage an — das wäre sonst doppelt.
+            ergebnis["anlagen"].append((vorher, i))
+
+    for i in rest:
         # Titel neu — trägt die Nummer vorher einen ANDEREN Titel, ist der
         # Punkt umformuliert worden (gleiche Stelle, neuer Wortlaut) …
         an_nummer = alt_nach_nummer.get(str(i.get("item_number")))
-        if an_nummer is not None and _norm_titel(an_nummer.get("title")) not in neu_nach_titel:
+        if (an_nummer is not None and id(an_nummer) not in benutzt
+                and _norm_titel(an_nummer.get("title")) not in neu_nach_titel):
+            benutzt.add(id(an_nummer))
             ergebnis["umformuliert"].append((an_nummer, i))
         else:  # … sonst ist er schlicht neu.
             ergebnis["neu"].append(i)
-    umformuliert_alt = {_norm_titel(a.get("title")) for a, _ in ergebnis["umformuliert"]}
-    for i in alt:
-        t = _norm_titel(i.get("title"))
-        if t not in neu_nach_titel and t not in umformuliert_alt:
-            ergebnis["entfernt"].append(i)
+    # Entfernt ist, was keinen Partner gefunden hat — auch der überzählige
+    # Namensvetter, den die Titel-Sicht früher übersah.
+    ergebnis["entfernt"] = [i for i in alt if id(i) not in benutzt]
     return ergebnis
 
 
@@ -152,27 +178,16 @@ def _leise(text: str) -> str:
     return f"<br><span style='color:#8a8f98;font-size:13px'>{text}</span>"
 
 
-def _marke(i: dict) -> str:
-    """„nichtöffentlich" hinter dem Titel — dieselbe Auszeichnung, die die
-    Sitzungsseite in der App an den TOP hängt."""
-    return "" if i.get("is_public", True) else \
-        " <span style='color:#8a8f98;font-size:13px'>(nichtöffentlich)</span>"
-
-
-def _vorlage_zeile(a: dict, n: dict, farbe: str) -> str:
+def _vorlage_daten(a: dict, n: dict) -> tuple[str, str]:
     alt_nr, neu_nr = _norm_vorlage(a.get("vorlage_nr")), _norm_vorlage(n.get("vorlage_nr"))
-    kopf = f"TOP {_esc(n.get('item_number'))}</b> — {_esc(n.get('title'))}{_marke(n)}"
     if neu_nr and not alt_nr:
-        return _zeile(farbe, f"<b>Vorlage nachgereicht · {kopf}"
-                             + _leise(f"Vorlage {_esc(neu_nr)} liegt jetzt vor"))
+        return "Vorlage nachgereicht", f"Vorlage {neu_nr} liegt jetzt vor"
     if alt_nr and not neu_nr:
-        return _zeile(farbe, f"<b>Vorlage zurückgezogen · {kopf}"
-                             + _leise(f"vorher: Vorlage {_esc(alt_nr)}"))
-    return _zeile(farbe, f"<b>Andere Vorlage · {kopf}"
-                         + _leise(f"{_esc(alt_nr)} → {_esc(neu_nr)}"))
+        return "Vorlage zurückgezogen", f"vorher: Vorlage {alt_nr}"
+    return "Andere Vorlage", f"{alt_nr} → {neu_nr}"
 
 
-def _anlagen_zeile(a: dict, n: dict, farbe: str) -> str:
+def _anlagen_daten(a: dict, n: dict) -> tuple[str, str]:
     """Dazugekommene und verschwundene Anhänge eines TOP, mit Labels — die
     getfile-id ist die Identität, Label-Wechsel allein sind keine Meldung."""
     def _nach_id(item: dict) -> dict[str, str]:
@@ -189,18 +204,47 @@ def _anlagen_zeile(a: dict, n: dict, farbe: str) -> str:
 
     def _liste(labels: list[str]) -> str:
         rest = len(labels) - 3
-        return (", ".join(_esc(l) for l in labels[:3])
-                + (f" und {rest} weitere" if rest > 0 else ""))
+        return (", ".join(labels[:3]) + (f" und {rest} weitere" if rest > 0 else ""))
 
-    kopf = f"TOP {_esc(n.get('item_number'))}</b> — {_esc(n.get('title'))}{_marke(n)}"
     if dazu and not weg:
-        titel = "Neue Anlage" if len(dazu) == 1 else "Neue Anlagen"
-        return _zeile(farbe, f"<b>{titel} · {kopf}" + _leise(_liste(dazu)))
+        return ("Neue Anlage" if len(dazu) == 1 else "Neue Anlagen"), _liste(dazu)
     if weg and not dazu:
-        titel = "Anlage entfernt" if len(weg) == 1 else "Anlagen entfernt"
-        return _zeile(farbe, f"<b>{titel} · {kopf}" + _leise(f"entfernt: {_liste(weg)}"))
-    return _zeile(farbe, f"<b>Anlagen geändert · {kopf}"
-                         + _leise(f"neu: {_liste(dazu)} · entfernt: {_liste(weg)}"))
+        return (("Anlage entfernt" if len(weg) == 1 else "Anlagen entfernt"),
+                f"entfernt: {_liste(weg)}")
+    return "Anlagen geändert", f"neu: {_liste(dazu)} · entfernt: {_liste(weg)}"
+
+
+def diff_zeilen(diff: dict) -> list[dict]:
+    """Der Diff als neutrale Zeilen — EINE Quelle für Mail-HTML und die
+    App-Ansicht „Zuletzt geändert" (Tims Wunsch 18.08.). Je Zeile:
+    ``art`` (neu|geaendert|verschoben|vorlage|anlagen|entfernt), ``label``
+    (der fette Kopf inkl. TOP-Nummer), ``titel``, ``nichtoeffentlich`` und
+    ``detail`` (leise Zusatzzeile oder None). Alles unescaped — wer HTML
+    baut, escapet selbst."""
+    zeilen: list[dict] = []
+
+    def _z(art: str, label: str, item: dict, detail: str | None = None) -> None:
+        zeilen.append({"art": art, "label": label,
+                       "titel": str(item.get("title") or ""),
+                       "nichtoeffentlich": not item.get("is_public", True),
+                       "detail": detail})
+
+    for i in diff["neu"]:
+        _z("neu", f"Neu · TOP {i.get('item_number')}", i)
+    for a, n in diff["umformuliert"]:
+        _z("geaendert", f"Geändert · TOP {n.get('item_number')}", n,
+           f"vorher: {a.get('title')}")
+    for a, n in diff["verschoben"]:
+        _z("verschoben", f"Verschoben · TOP {a.get('item_number')} → {n.get('item_number')}", n)
+    for a, n in diff.get("vorlage", []):
+        label, detail = _vorlage_daten(a, n)
+        _z("vorlage", f"{label} · TOP {n.get('item_number')}", n, detail)
+    for a, n in diff.get("anlagen", []):
+        label, detail = _anlagen_daten(a, n)
+        _z("anlagen", f"{label} · TOP {n.get('item_number')}", n, detail)
+    for i in diff["entfernt"]:
+        _z("entfernt", f"Entfernt · TOP {i.get('item_number')}", i)
+    return zeilen
 
 
 def diff_html(diff: dict) -> str:
@@ -208,25 +252,17 @@ def diff_html(diff: dict) -> str:
     Inline-Styles, Farbbalken statt Hintergrund — übersteht Dark-Mode-Mails),
     darüber die Änderungsart in einem Satz."""
     GRUEN, GELB, ROT = "#2f9e44", "#e8a303", "#d64545"
+    farben = {"neu": GRUEN, "geaendert": GELB, "verschoben": GELB,
+              "vorlage": GELB, "anlagen": GELB, "entfernt": ROT}
     zeilen: list[str] = []
-    for i in diff["neu"]:
-        zeilen.append(_zeile(GRUEN, f"<b>Neu · TOP {_esc(i.get('item_number'))}</b> — "
-                                    f"{_esc(i.get('title'))}{_marke(i)}"))
-    for a, n in diff["umformuliert"]:
-        zeilen.append(_zeile(GELB, f"<b>Geändert · TOP {_esc(n.get('item_number'))}</b> — "
-                                   f"{_esc(n.get('title'))}{_marke(n)}"
-                                   + _leise(f"vorher: {_esc(a.get('title'))}")))
-    for a, n in diff["verschoben"]:
-        zeilen.append(_zeile(GELB, f"<b>Verschoben · TOP {_esc(a.get('item_number'))} → {_esc(n.get('item_number'))}</b>"
-                                   f" — {_esc(n.get('title'))}{_marke(n)}"))
-    for a, n in diff.get("vorlage", []):
-        zeilen.append(_vorlage_zeile(a, n, GELB))
-    for a, n in diff.get("anlagen", []):
-        zeilen.append(_anlagen_zeile(a, n, GELB))
-    for i in diff["entfernt"]:
-        zeilen.append(_zeile(ROT, f"<b>Entfernt · TOP {_esc(i.get('item_number'))}</b> — "
-                                  f"{_esc(i.get('title'))}{_marke(i)}",
-                             durchgestrichen=True))
+    for z in diff_zeilen(diff):
+        marke = (" <span style='color:#8a8f98;font-size:13px'>(nichtöffentlich)</span>"
+                 if z["nichtoeffentlich"] else "")
+        inhalt = f"<b>{_esc(z['label'])}</b> — {_esc(z['titel'])}{marke}"
+        if z["detail"]:
+            inhalt += _leise(_esc(z["detail"]))
+        zeilen.append(_zeile(farben[z["art"]], inhalt,
+                             durchgestrichen=z["art"] == "entfernt"))
     if not zeilen:
         return ""
     satz = diff_satz(diff)

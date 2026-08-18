@@ -1100,7 +1100,25 @@ def session_detail(
     session["attendance"] = store.get_attendance(ksinr)
     session["has_protocol"] = store.has_protocol(ksinr)
     session["url"] = _ratsinfo_url(ksinr)
+    # „Zuletzt geändert" (Tims Wunsch 18.08.): Die Push zur Änderungsmeldung
+    # sagt nur noch den Satz — die Einzelheiten stehen hier, aus der Chronik.
+    session["aenderungen"] = _agenda_aenderungen(store, ksinr)
     return session
+
+
+def _agenda_aenderungen(store: CouncilStore, ksinr: int) -> list[dict]:
+    from council.agenda_diff import diff_satz, diff_zeilen
+
+    out: list[dict] = []
+    try:
+        for c in store.agenda_changes(ksinr, limit=3):
+            zeilen = diff_zeilen(c["diff"])
+            if zeilen:
+                out.append({"changed_at": c["changed_at"],
+                            "satz": diff_satz(c["diff"]), "zeilen": zeilen})
+    except Exception:  # noqa: BLE001 — Chronik ist Zusatz, nie 404/500 der Sitzung
+        _log.exception("agenda_aenderungen fehlgeschlagen für %s", ksinr)
+    return out
 
 
 @router.get("/decisions")
