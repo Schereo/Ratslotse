@@ -6748,7 +6748,7 @@ class CouncilStore:
         varianten.add(gefaltet)
         teile = " OR ".join(["w.sprecher LIKE ?"] * len(varianten))
         rows = self._conn.execute(
-            f"SELECT w.id, w.sprecher, w.partei, w.art, w.top, w.text, "
+            f"SELECT w.id, w.ksinr, w.sprecher, w.partei, w.art, w.top, w.text, "
             f"       cs.committee, cs.session_date "
             f"FROM council_wortbeitraege w JOIN council_sessions cs ON cs.ksinr = w.ksinr "
             f"WHERE {teile} ORDER BY cs.session_date DESC LIMIT ?",
@@ -8765,6 +8765,19 @@ class CouncilStore:
                 WHERE w.id IN ({ph})""", ids).fetchall()
         by_id = {r["id"]: dict(r) for r in rows}
         return [by_id[i] for i in ids if i in by_id]
+
+    def protokoll_urls_fuer(self, ksinrs: list[int | None]) -> dict[int, str]:
+        """ksinr → getfile-URL des öffentlichen Protokoll-PDFs. Macht die
+        Wortbeitrags-Belege der KI-Frage nachlesbar: Jeder Beitrag stammt aus
+        genau einem Protokoll, und dessen URL steht längst in der DB."""
+        ids = sorted({int(k) for k in ksinrs if k})
+        if not ids:
+            return {}
+        ph = ",".join("?" * len(ids))
+        rows = self._conn.execute(
+            f"SELECT ksinr, document_url FROM council_protocols "
+            f"WHERE ksinr IN ({ph}) AND document_url IS NOT NULL", ids).fetchall()
+        return {r["ksinr"]: r["document_url"] for r in rows}
 
     # Sammel-TOPs: Hier landet alles, was sonst nirgends hingehört. Ein Treffer
     # darauf koppelt keine Debatte ZUR SACHE, sondern eine Wundertüte.

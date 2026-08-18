@@ -2180,7 +2180,15 @@ def test_qa_share_traegt_bausteine(client):
                      "committee": "Rat", "outcome": "angenommen"}],
         "debatten": [{"sprecher": "Ratsherr Wenzel", "partei": "SPD", "art": "rede",
                       "top": "6.1 Stadionneubau", "auszug": "Warnte vor einem Millionengrab.",
-                      "committee": "Rat", "datum": "2026-06-01"}],
+                      "committee": "Rat", "datum": "2026-06-01",
+                      "protokoll_url": "https://buergerinfo.oldenburg.de/getfile.php?id=4711&type=do"},
+                     # Der Snapshot ist öffentlich und die URL kommt vom
+                     # Client: alles außerhalb des Ratsinfo-Systems wird
+                     # verworfen statt als „Protokoll" verlinkt.
+                     {"sprecher": "Ratsfrau Muster", "partei": "CDU", "art": "rede",
+                      "top": "6.1 Stadionneubau", "auszug": "Begrüßte den Plan.",
+                      "committee": "Rat", "datum": "2026-06-01",
+                      "protokoll_url": "https://boese.example.org/phishing.pdf"}],
         "presse": [{"titel": "Stadion: Stadt informiert",
                     "url": "https://www.oldenburg.de/x", "datum": "2026-06-02"}],
         "anlagen": [{"label": "Machbarkeitsstudie", "url": "https://ris/anlage.pdf",
@@ -2197,6 +2205,9 @@ def test_qa_share_traegt_bausteine(client):
     client.cookies.clear()  # öffentlich lesbar
     body = client.get(f"/api/council/qa-share/{token}").json()
     assert body["debatten"][0]["sprecher"] == "Ratsherr Wenzel"
+    assert body["debatten"][0]["protokoll_url"] == (
+        "https://buergerinfo.oldenburg.de/getfile.php?id=4711&type=do")
+    assert body["debatten"][1]["protokoll_url"] is None
     assert body["presse"][0]["url"] == "https://www.oldenburg.de/x"
     assert body["anlagen"][0]["vorlage_nr"] == "26/0123"
     assert body["parteien"][0]["haltung"] == "dagegen"
