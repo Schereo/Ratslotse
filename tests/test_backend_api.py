@@ -1730,7 +1730,7 @@ def test_quiz_map_round_and_answer(client):
 
 # ---- email verification ----
 import hashlib  # noqa: E402
-from datetime import datetime, timedelta  # noqa: E402
+from datetime import datetime  # noqa: E402
 
 
 def test_register_marks_verified_without_email_config(client):
@@ -2217,7 +2217,6 @@ def test_qa_share_traegt_bausteine(client):
 def test_partei_meinungen_endpoint(client, monkeypatch):
     """Baustein-Endpoint (Task 30): liefert die LLM-Verdichtung; bei dünner
     Lage oder Fehlern IMMER {parteien: []} statt 500 (Zusatzbaustein)."""
-    from app.routers import council as council_router
     from council import embeddings as emb
     from council import qa as qa_mod
 
@@ -3050,7 +3049,7 @@ def test_geteilter_beschluss_ist_ohne_anmeldung_lesbar(client):
     assert "follow" not in data, "ohne Konto darf kein Verfolgen-Zustand mitkommen"
 
     # Die Sitzung dahinter (Gremium/Datum) ebenfalls.
-    s = client.get(f"/api/council/session/5150")
+    s = client.get("/api/council/session/5150")
     assert s.status_code == 200 and s.json()["committee"] == "Verkehrsausschuss"
 
 

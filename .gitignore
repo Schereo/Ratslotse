@@ -6,6 +6,7 @@ __pycache__/
 *.sqlite
 *.log
 .pytest_cache/
+.ruff_cache/
 web/frontend/.next/
 web/frontend/node_modules/
 

@@ -1,0 +1,45 @@
+# Python-Linter für die CI — bewusst NUR die Fehlerklasse „F".
+#
+# WARUM ÜBERHAUPT. pytest sieht einen ungenutzten Import nicht: Er kostet
+# nichts, bricht nichts und fällt erst auf, wenn jemand die Datei von Hand
+# liest. Beim Bauen von `council/spenden.py` (#610) ist genau das passiert —
+# ein `Sequence`, das niemand benutzte, kam durch die komplette CI. Dieselbe
+# Regelklasse meldet aber auch F821 („undefinierter Name"), und der ist kein
+# Schönheitsfehler, sondern ein NameError, der sonst erst nachts im Cron
+# auffällt. Einer steckte im Bestand (`kern/alerts.py`).
+#
+# WARUM NUR „F". Gemessen am Stand von `dev` am 18.08.2026:
+#
+#     ruff check . --select ALL   → 21.780 Funde
+#     ruff check . --select F     →      33 Funde
+#
+# Die 21.780 sind fast durchweg Geschmack, nicht Fehler: 4.368× „assert in
+# einem Test" (S101 — in einer Testsuite genau richtig), 3.280× Zeilenlänge,
+# 1.516× fehlende Rückgabe-Annotation, 814× fehlender Docstring, 554× `print`
+# in einem Kommandozeilen-Skript. Sie einzuschalten hieße, den bestehenden Code
+# umzuschreiben — das ist eine andere Entscheidung als die, einen Linter zu
+# haben, und sie gehört nicht in denselben PR.
+#
+# „F" ist die Klasse, in der ein Fund fast immer ein echter Fehler ist:
+# ungenutzte Importe (F401) und Variablen (F841), doppelte Definitionen (F811),
+# f-Strings ohne Platzhalter (F541), undefinierte Namen (F821). Kein Fund
+# dieser Klasse verlangt, Code umzuformatieren.
+#
+# WAS „F" NICHT SIEHT. Ein Import kann ungenutzt AUSSEHEN und trotzdem
+# gebraucht werden — wenn ein anderes Modul ihn über den Namensraum abholt
+# (`a.endung(…)`). Beim Einführen dieser Datei ist genau ein solcher Fall
+# umgefallen; er steht jetzt mit `# noqa: F401` und Begründung in
+# `scripts/archive_statistik.py`. Wer künftig einen F401-Fund entfernt, prüft
+# vorher, ob jemand den Namen durch das Modul hindurch benutzt — die Tests
+# fangen es, aber erst danach.
+#
+# WARUM DIESE DATEI UND KEINE pyproject.toml. Das Repo hat keine, und eine
+# anzulegen ändert mehr als die Linter-Einstellung: pytest, pip und setuptools
+# lesen sie ebenfalls. `ruff.toml` betrifft ausschließlich ruff.
+#
+# Die Auswahl steht hier ausdrücklich und verlässt sich NICHT auf ruffs
+# Voreinstellung: Die fiel in 0.16.3 deutlich breiter aus als dokumentiert
+# (1.178 Funde), und eine Voreinstellung, die sich mit dem Werkzeug ändert,
+# taugt nicht als Merge-Gate.
+[lint]
+select = ["F"]

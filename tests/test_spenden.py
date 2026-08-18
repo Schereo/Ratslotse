@@ -7,7 +7,6 @@ damit sich das im Bürgerinfo nachschlagen lässt.
 
 Der Aufbau folgt ``tests/test_ausgabenreihe.py``.
 """
-import pytest
 
 from council import herkunft, spenden
 from council.store import CouncilStore

@@ -60,7 +60,7 @@ from __future__ import annotations
 import hashlib
 import re
 from collections import OrderedDict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from council.parties import faction_label
 

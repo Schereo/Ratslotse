@@ -984,8 +984,8 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
                                 probe=vorproben,
                                 fundstelle=f"Abschnitt 2.1 — Bilanz zum 31.12.{jahr}, "
                                            f"Vorjahresspalte (Stand 31.12.{vorjahr})",
-                                probe_ergebnis=f"Aktiva und Passiva der Vorjahresspalte "
-                                               f"stimmen auf den Cent überein",
+                                probe_ergebnis="Aktiva und Passiva der Vorjahresspalte "
+                                               "stimmen auf den Cent überein",
                                 stand=f"31.12.{vorjahr}",
                                 art="ris", dokument_id=v["document_id"],
                                 label=label, url=url))

@@ -131,8 +131,14 @@ from council import schulden  # noqa: E402  — die Jahrbuch-Übersichtsseite
 # abzuschreiben. Der Job SCHREIBT weiterhin allein; er tut es nur nicht mehr
 # nach eigenen Regeln.
 from council.archiv import (  # noqa: E402
-    dateiname, endung, inhalts_hash, manifest_lesen, manifest_schreiben,
+    dateiname, inhalts_hash, manifest_lesen, manifest_schreiben,
     version_ablegen,
+    # `endung` benutzt dieser Job selbst nicht mehr (`version_ablegen` hängt die
+    # Endung inzwischen selbst an) — `tests/test_archive_statistik.py` greift die
+    # Funktion aber über den Modul-Namensraum ab (`a.endung(…)`). Der Import ist
+    # damit ein Re-Export, den kein Linter sehen kann: F401 hat ihn beim
+    # Einführen von ruff entfernt, und genau dieser Test fiel um.
+    endung,  # noqa: F401
 )
 
 JOB = "archive_statistik"

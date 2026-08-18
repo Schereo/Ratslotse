@@ -87,7 +87,10 @@ def test_analyse_faellt_bei_muell_auf_thema(monkeypatch):
 
 
 def test_analyse_kondensiert_mit_verlauf(monkeypatch):
-    calls = _llm_antwort(monkeypatch, json.dumps(
+    # Ohne Zähler-Bindung, anders als oben: Der zweite `_llm_antwort`-Aufruf
+    # weiter unten ersetzt den Stub, dieser Zähler wäre danach bedeutungslos.
+    # Was dieser Test belegt, steht in `b` — nicht in der Zahl der Aufrufe.
+    _llm_antwort(monkeypatch, json.dumps(
         {"frage": "Was kostet der Neubau der Cäcilienbrücke?",
          "begriffe": "Kosten Neubau Cäcilienbrücke", "typ": "geld", "partei": None}))
     verlauf = [{"frage": "Wie ist der Stand bei der Cäcilienbrücke?",
