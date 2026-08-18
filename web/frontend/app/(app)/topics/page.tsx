@@ -42,6 +42,18 @@ function TopicsInner() {
     queryFn: () => api.get<Topic[]>("/topics"),
   });
 
+  /* Ein Blick auf die Übersicht lässt die Bubble verstummen (Tims Wunsch
+     18.08.): Vorher blieb der Zähler an „Meine Themen" stehen, bis man JEDES
+     Thema einzeln geöffnet hatte. Was neu ist, sagt weiterhin das „n neu" an
+     den Themen selbst — das hängt am Öffnen des jeweiligen Themas.
+     Fire-and-forget: Ein Fehler darf die Seite nicht stören. */
+  useEffect(() => {
+    api.post("/topics/uebersicht-gesehen", {})
+      .then(() => qc.invalidateQueries({ queryKey: ["topics-unread"] }))
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Anklickbare Vorschläge aus den echten Daten: die häufigsten
   // Beschluss-Schlagworte der letzten sechs Monate (Backend filtert
   // bereits angelegte Themen heraus).

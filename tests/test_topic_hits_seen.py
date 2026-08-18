@@ -152,3 +152,54 @@ def test_gelesen_stand_ueberlebt_einen_reparaturlauf(tmp_path):
 
     # Das angesehene Thema bleibt still, das nie geöffnete meldet ehrlich neu.
     assert store.unseen_hit_counts(7) == {ungesehen.id: 1}
+
+
+def test_bubble_verstummt_nach_einem_blick_auf_die_uebersicht(tmp_path):
+    """Tims Wunsch 18.08.: Der Zähler an „Meine Themen" ist eine Ankündigung,
+    kein Aufgaben-Zähler — ein Blick auf die Übersicht lässt ihn verstummen.
+    Vorher blieb er stehen, bis JEDES Thema einzeln geöffnet war.
+
+    Die „n neu"-Marker an den Themen selbst bleiben davon unberührt: Sie
+    sagen, WELCHES Thema neue Treffer hat, und hängen weiter am Öffnen.
+    """
+    store = Store(tmp_path / "nwz.sqlite")
+    owner = store.create_web_user(email="a@example.org", password_hash="x",
+                                  role="user", status="active", display_name=None)
+    topic = store.add_topic(owner, "Radwege", "Ausbau von Radwegen")
+    store.save_topic_decision_matches(topic.id, owner, [(101, 0.9), (102, 0.8)])
+    assert store.neue_treffer_seit_uebersicht(owner) == 2
+
+    store.topics_uebersicht_gesehen(owner)
+    assert store.neue_treffer_seit_uebersicht(owner) == 0
+    # Die Übersicht selbst zeigt weiterhin, welches Thema neu ist.
+    assert store.unseen_hit_counts(owner) == {topic.id: 2}
+
+    # Was DANACH dazukommt, meldet sich wieder — sonst wäre die Bubble tot.
+    from datetime import datetime, timedelta, timezone
+    spaeter = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat(timespec="seconds")
+    with store._conn:
+        store._conn.execute(
+            "INSERT INTO council_topic_matches (topic_id, owner_id, decision_id, score, matched_at) "
+            "VALUES (?, ?, ?, ?, ?)", (topic.id, owner, 103, 0.7, spaeter))
+    assert store.neue_treffer_seit_uebersicht(owner) == 1
+
+    # Und das Öffnen des Themas räumt beides zugleich ab.
+    store.mark_topic_hits_seen(owner, topic.id)
+    assert store.neue_treffer_seit_uebersicht(owner) == 0
+    assert store.unseen_hit_counts(owner) == {}
+    store.close()
+
+
+def test_bubble_ohne_besuch_zaehlt_wie_bisher(tmp_path):
+    """Konten, die die Übersicht nie geöffnet haben (topics_seen_at NULL),
+    behalten ihren Zähler — der Umstieg darf keine Meldung verschlucken."""
+    store = Store(tmp_path / "nwz.sqlite")
+    owner = store.create_web_user(email="b@example.org", password_hash="x",
+                                  role="user", status="active", display_name=None)
+    topic = store.add_topic(owner, "Stadtbäume", "Baumschutz")
+    store.save_topic_decision_matches(topic.id, owner, [(201, 0.9)])
+    assert store.neue_treffer_seit_uebersicht(owner) == 1
+    # Ein gelöschtes Thema zählt auch hier nicht mit (dieselbe Falle wie oben).
+    store.delete_topic(topic.id)
+    assert store.neue_treffer_seit_uebersicht(owner) == 0
+    store.close()

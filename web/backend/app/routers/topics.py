@@ -284,9 +284,22 @@ def update_topic(
 
 @router.get("/unread-count")
 def unread_count(user: dict = Depends(require_active), store: Store = Depends(get_store)) -> dict:
-    """RL-903: Gesamtzahl ungesehener Themen-Treffer — der Orange-Zähler an
-    „Meine Themen" in der Seitenleiste."""
-    return {"total": sum(store.unseen_hit_counts(user["id"]).values())}
+    """RL-903: der Zähler an „Meine Themen" (Seitenleiste und Punkt in der
+    Tab-Leiste) — Treffer, die seit dem letzten Blick auf die Übersicht
+    dazugekommen sind. Die Bubble kündigt Neues an; wer nachgesehen hat, soll
+    sie nicht erst durch Öffnen jedes einzelnen Themas loswerden (Tims Wunsch
+    18.08.). Welches Thema neue Treffer hat, sagt weiter das „n neu" dort."""
+    return {"total": store.neue_treffer_seit_uebersicht(user["id"])}
+
+
+@router.post("/uebersicht-gesehen")
+def uebersicht_gesehen(user: dict = Depends(require_active),
+                       store: Store = Depends(get_store)) -> dict:
+    """Die Themen-Übersicht wurde geöffnet — ab jetzt zählt für die Bubble
+    nur noch, was danach dazukommt. Ältere App-Versionen rufen das nie auf;
+    für sie bleibt es beim bisherigen Verhalten."""
+    store.topics_uebersicht_gesehen(user["id"])
+    return {"ok": True}
 
 
 @router.post("/{topic_id}/seen")

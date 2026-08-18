@@ -607,6 +607,30 @@ def test_topics_work_for_active_user(client):
     assert len(client.get("/api/topics").json()) == 1
 
 
+def test_themen_bubble_verstummt_nach_uebersichtsbesuch(client):
+    """Tims Wunsch 18.08.: Ein Blick auf die Übersicht lässt den Zähler an
+    „Meine Themen" verstummen — ohne dass die „n neu"-Marker an den Themen
+    verschwinden (die sagen, WELCHES Thema neu ist)."""
+    _register(client)
+    tid = client.post("/api/topics",
+                      json={"name": "Radwege", "description": "Ausbau in Oldenburg"}).json()["id"]
+    from kern.store import Store
+    store = Store(NWZ_DB)
+    try:
+        store.save_topic_decision_matches(tid, 1, [(101, 0.9), (102, 0.8)])
+    finally:
+        store.close()
+
+    assert client.get("/api/topics/unread-count").json()["total"] == 2
+    assert client.post("/api/topics/uebersicht-gesehen", json={}).status_code == 200
+    assert client.get("/api/topics/unread-count").json()["total"] == 0
+    # Das Thema selbst meldet weiterhin seine zwei neuen Treffer.
+    assert client.get("/api/topics").json()[0]["unread_count"] == 2
+    # Ohne Login geht gar nichts.
+    client.cookies.clear()
+    assert client.post("/api/topics/uebersicht-gesehen", json={}).status_code in (401, 403)
+
+
 def test_topics_and_subscriptions_flow(client):
     _register(client)
     # add topic
