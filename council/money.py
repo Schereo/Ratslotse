@@ -1,9 +1,45 @@
-"""Extract euro amounts from council decision texts (heuristic, no LLM).
+"""Euro-Beträge aus Beschlusstexten lesen — heuristisch, ohne LLM.
 
-Conservative: only matches numbers paired with a currency token (€ / EUR / Euro),
-so it doesn't pick up dates or counts. Handles German number formatting
-(1.500.000,50) and Mio./Mrd. scaling. The "headline" amount of a decision is taken
-as the largest extracted value — it's a scale indicator, not an exact budget figure.
+Konservativ: Erkannt wird nur eine Zahl **neben einem Währungswort** (€ / EUR /
+Euro), damit weder Datum noch Stückzahl hereinfällt. Deutsche Schreibweise
+(1.500.000,50) und Mio./Mrd. inklusive. Der Betrag eines Beschlusses ist der
+größte gefundene Wert — ein Größenordnungs-Anhalt, kein Haushaltsbetrag.
+
+Wovon der Wert getragen wird
+----------------------------
+``amount_eur`` speist vier Lesewege: ``money_by_field()``,
+``largest_financial_decisions()``, ``activity_trends()`` und das Geld-Signal
+des Wichtig-Werts. Ein Fehlgriff ist deshalb nie nur eine falsche Zahl auf
+einer Seite — er hebt einen Beschluss in Ranglisten, in die er nicht gehört.
+
+Zwei Sorten Zahl, die **nicht** der Betrag eines Beschlusses sind
+-----------------------------------------------------------------
+1. **Stückpreise.** „Jahreskarte 324,00 €", „Spontanessen 3,90 €", „ein
+   1 Euro-Tagesticket": Der Beschluss setzt einen *Preis* fest. Sein Volumen
+   steht dort gar nicht — wer den Preis als Volumen nimmt, behauptet, die
+   Stadt habe über 3,90 € entschieden. Erkannt wird das am Umfeld: ein
+   Tarifwort davor (Karte, Ticket, Gebühr, Entgelt, Preis …) oder eine
+   Mengenangabe davor bzw. dahinter (pro/je Tag, Monat, Person, m² …).
+2. **Schwellen.** „… Auszahlungen und Aufwendungen **unter** 50.000 EUR",
+   „Wertgrenzen … **überschreiten**: 400.000 Euro": Die Zahl beschreibt die
+   Grenze, ab der berichtet wird, nicht das, worüber berichtet wird. Ein
+   Sammelbericht über hundert Kleinbeträge trüge sonst die Schwelle als
+   Betrag.
+
+Beide Filter arbeiten am **Fundort**, nicht am ganzen Text: Ein Beschluss darf
+neben einem Stückpreis sehr wohl ein echtes Volumen nennen, und dann soll das
+Volumen gewinnen. Deshalb wird je Fundstelle entschieden und erst danach das
+Maximum gebildet.
+
+Was bewusst **nicht** gefiltert wird
+------------------------------------
+Der Deckungsvorschlag („Als Deckungsmittel stehen … 1.600.000 € zur
+Verfügung") sieht wie ein Kandidat aus, ist aber keiner: In den gemessenen
+Texten ist die Deckungssumme regelmäßig **derselbe** Betrag wie die
+Bewilligung, und wo sie es nicht ist, steht sie für dieselbe Entscheidung.
+Ein Filter darauf verlöre echte Beträge, um eine Ungenauigkeit zu heilen, die
+sich nicht messen ließ. Er gehört in eine zweistufige Extraktion (Titel zuerst),
+nicht in dieses Blatt-Modul.
 """
 from __future__ import annotations
 
@@ -13,12 +49,74 @@ _NUM = r"(?:\d{1,3}(?:\.\d{3})+|\d+)(?:,\d+)?"
 _CUR = r"(?:€|EUR|Euro)"
 # "1,2 Mio. €" / "3 Millionen Euro" / "1,5 Mrd"
 _SCALED = re.compile(rf"({_NUM})\s*(Mio\.?|Mrd\.?|Mill?\.?|Millionen|Milliarden)\s*{_CUR}?", re.IGNORECASE)
-# Skip unit rates ("275 €/m²", "12 € pro Einwohner") — they aren't a decision's volume.
-_UNIT = r"(?!\s*(?:/|pro\s+|je\s+)\s*(?:m²|m2|qm|quadratmeter|einwohner|kopf|person|stück|stunde))"
-# "250.000 €" / "12.500,00 EUR" — non-letter lookahead (not \b, which fails after €)
-_PLAIN = re.compile(rf"({_NUM})\s*{_CUR}(?![a-zA-Z]){_UNIT}", re.IGNORECASE)
+# "250.000 €" / "12.500,00 EUR" — Nicht-Buchstabe als Vorschau (nicht \b, das
+# scheitert nach €).
+_PLAIN = re.compile(rf"({_NUM})\s*{_CUR}(?![a-zA-Z])", re.IGNORECASE)
 
-_MAX = 5_000_000_000  # sanity ceiling (Oldenburg's budget is ~1 bn)
+_MAX = 5_000_000_000  # Plausibilitätsdeckel (Oldenburgs Haushalt liegt bei ~1 Mrd.)
+
+#: So weit wird um einen Fundort herum gelesen. 70 Zeichen davor reichen für
+#: „… maximale Parkgebühr pro Tag sollte bei 6 € liegen", ohne den halben Satz
+#: davor mitzunehmen; 40 dahinter für „324,00 € pro Monat" und „€/m²".
+_VOR, _NACH = 70, 40
+
+#: Einheiten, die eine Zahl zum **Stückpreis** machen: zählbare Dinge, Personen
+#: und Messgrößen. Zeiträume stehen hier bewusst **nicht** — „jährlich
+#: 80.000 Euro Zuschuss" ist das Volumen des Beschlusses und kein Stückpreis;
+#: ein Haushalt ist von Natur aus jährlich. Diese Trennung ist der Unterschied
+#: zwischen „3,90 € je Essen" (kein Volumen) und „13.739,52 EUR jährlich"
+#: (Volumen).
+_EINHEIT = (r"m²|m2|qm|quadratmeter|kwh|stück|stk|einwohner|kopf|person|kind|"
+            r"schüler|teilnehmer|mitglied|verein|fachkraft|fall|antrag|platz|"
+            r"fahrt|essen|mahlzeit|nutzung|ausweis|karte|ticket|tonne|liter|"
+            r"km|kilometer")
+
+#: Tarifwörter im Umfeld **vor** der Zahl: „Jahreskarte 324,00 €", „maximale
+#: Parkgebühr pro Tag sollte bei 6 € liegen".
+#:
+#: Kein ``\b`` vor dem Wortstamm — deutsche Komposita kleben: „Parkgebühr",
+#: „Nutzungsentgelt", „Monatskarte". Eine Wortgrenze zu verlangen hieße, genau
+#: die Formen zu verpassen, in denen der Bestand diese Wörter schreibt.
+#:
+#: Das bloße Wort „Preis" fehlt mit Absicht: Der **Kaufpreis** eines
+#: Grundstücks ist genau das Volumen des Beschlusses (390.585 Euro für die
+#: VHS-Anteile). Aufgenommen sind deshalb nur die Zusammensetzungen, die je
+#: Einheit rechnen — qm-Preis, Stückpreis, Stundensatz.
+_TARIF_DAVOR = re.compile(
+    r"\w*(?:karte|ticket|gebühr|entgelt|tarif|eintritt)(?:en|e|s|es)?\b"
+    r"|\b(?:qm|quadratmeter|stück|einzel)-?preis(?:e|es)?\b"
+    r"|\b(?:stunden|kilometer|tages)satz(?:es)?\b",
+    re.IGNORECASE)
+
+#: Tarifwörter, die **unmittelbar** vor der Zahl stehen müssen, weil sie als
+#: Teilwort zu häufig sind, um in einem 70-Zeichen-Fenster verlässlich zu sein:
+#: „Spontanessen 3,90 €" ist ein Preis, „im Interesse … 500.000 €" nicht.
+_TARIF_DIREKT = re.compile(
+    r"\w*(?:essen|abonnement|verpflegung)\s*:?\s*$", re.IGNORECASE)
+
+#: Mengenangabe **vor** der Zahl: „pro eingestellter Fachkraft einen
+#: monatlichen Zuschuss von 250,00 Euro", „eine Tonne CO² … 195,00 €".
+_MENGE_DAVOR = re.compile(
+    rf"(?:pro|je)\s+(?:\w+\s+){{0,3}}(?:{_EINHEIT})\w*\b"
+    rf"|\beine[nrs]?\s+(?:{_EINHEIT})\w*\b",
+    re.IGNORECASE)
+
+#: Einheit **hinter** der Zahl: „275 €/m²", „12 € pro Einwohner", „1 Euro-
+#: Tagesticket". Der Bindestrich-Fall braucht den Kompositum-Vorlauf: Im
+#: Bestand steht „-Tagestickets", nicht „-Ticket".
+_MENGE_DANACH = re.compile(
+    rf"^\s*(?:/|-|pro\s+|je\s+)\s*(?:\w*?(?:karte|ticket)|{_EINHEIT})\w*",
+    re.IGNORECASE)
+
+#: Schwellenwörter vor der Zahl — „unter 50.000 EUR", „Wertgrenzen …
+#: überschreiten: 400.000 Euro". „über" fehlt bewusst: „Bericht über
+#: 50.000 EUR" wäre damit keine Schwelle, sondern ein Fehlgriff in die
+#: Gegenrichtung.
+_SCHWELLE = re.compile(
+    r"\b(?:unter|unterhalb|oberhalb)\s+(?:von\s+)?$"
+    r"|\bwertgrenzen?\b"
+    r"|\b(?:über|unter)schreiten\b",
+    re.IGNORECASE)
 
 
 def _to_float(num: str) -> float | None:
@@ -35,23 +133,40 @@ def _scale(unit: str) -> float:
     return 1e9 if (u.startswith("mrd") or "milliard" in u) else 1e6
 
 
+def _ist_stueckpreis(vor: str, nach: str) -> bool:
+    """Beschreibt diese Fundstelle einen Preis je Einheit statt eines Volumens?"""
+    return bool(_TARIF_DAVOR.search(vor) or _MENGE_DAVOR.search(vor)
+                or _MENGE_DANACH.match(nach))
+
+
+def _ist_schwelle(vor: str) -> bool:
+    """Steht die Zahl für eine Berichtsgrenze statt für einen Betrag?"""
+    return bool(_SCHWELLE.search(vor))
+
+
 def extract_amounts(text: str) -> list[float]:
-    """All euro amounts found in ``text`` (within a sane range)."""
+    """Alle Euro-Beträge des Textes, die ein Beschlussvolumen sein können.
+
+    Stückpreise und Schwellenwerte fallen am Fundort heraus (s. Modul-Kopf)."""
     if not text:
         return []
     out: list[float] = []
-    for m in _SCALED.finditer(text):
-        v = _to_float(m.group(1))
-        if v is not None:
-            out.append(v * _scale(m.group(2)))
-    for m in _PLAIN.finditer(text):
-        v = _to_float(m.group(1))
-        if v is not None:
+    for rx, skaliert in ((_SCALED, True), (_PLAIN, False)):
+        for m in rx.finditer(text):
+            v = _to_float(m.group(1))
+            if v is None:
+                continue
+            if skaliert:
+                v *= _scale(m.group(2))
+            vor = text[max(0, m.start() - _VOR):m.start()]
+            nach = text[m.end():m.end() + _NACH]
+            if _ist_stueckpreis(vor, nach) or _ist_schwelle(vor):
+                continue
             out.append(v)
     return [a for a in out if 0 < a < _MAX]
 
 
 def largest_amount(text: str) -> float | None:
-    """The largest euro amount in the text (a decision's headline financial volume)."""
+    """Der größte Euro-Betrag im Text (das finanzielle Gewicht eines Beschlusses)."""
     amounts = extract_amounts(text)
     return max(amounts) if amounts else None
