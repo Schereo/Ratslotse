@@ -132,7 +132,8 @@ function normalisiere(reihe: JahrPunkt[], treppe = false): Stelle[] {
 
 export function Zeitreihe({
   reihe, einheit, ariaTitel, titel, nachkomma = 1, format, zweitreihe,
-  annotationen, spruenge = false, vorjahresdifferenz = false, tabelle = false,
+  annotationen, spruenge = false, vorjahresdifferenz = false, differenzFormat,
+  tabelle = false,
   umschalter, beleg, nullbasis = true, hinweis, treppe = false, className,
 }: {
   /** Punkte UND Lücken in einer Liste (Daten-Vertrag GB-00). */
@@ -180,6 +181,15 @@ export function Zeitreihe({
    *  sonst wäre die Differenz über zwei Jahre als „ggü. Vorjahr"
    *  ausgewiesen. Ohne Signal-Marke: Jede Richtung ist gleich markiert. */
   vorjahresdifferenz?: boolean;
+  /** Eigenes Format NUR für diese Differenz (Vorgabe: dasselbe wie für die
+   *  Werte).
+   *
+   *  Gebraucht wird das, sobald die Reihe in Prozent läuft: Die Differenz
+   *  zwischen 54,62 % und 50,11 % sind 4,51 **Prozentpunkte**, nicht 4,51 %.
+   *  Mit demselben Format stünde dort „−4,51 %", und das liest sich als
+   *  relativer Rückgang — der wäre 8,3 %. Zwei verschiedene Zahlen unter
+   *  einer Schreibweise; deshalb darf die Differenz ihre eigene haben. */
+  differenzFormat?: (wert: number) => string;
   /** Alle Werte zusätzlich als aufklappbare Tabelle unter der Grafik —
    *  für Leser*innen, die eine Zahl abschreiben wollen, statt sie an der
    *  Leiste abzufahren. Lücken stehen darin als „—"; ihr Grund steht wie
@@ -296,6 +306,18 @@ export function Zeitreihe({
     linie.curve(kurve);
     flaeche.curve(kurve);
     zweitLinie.curve(kurve);
+  }
+
+  // Reihenbrüche (GB-00, `bruchDavor`): Die Linie darf über einen Wechsel der
+  // Definition nicht durchlaufen. `defined()` kann das nicht — es kennt nur
+  // „Punkt da / Punkt weg". Deshalb wird die Liste hier in Abschnitte
+  // zerlegt und je Abschnitt ein Pfad gezeichnet.
+  const abschnitte: Stelle[][] = [];
+  for (const s of stellenListe) {
+    const bricht = s.art === "wert"
+      && (s.punkt as JahrWert).bruchDavor != null && abschnitte.length > 0;
+    if (bricht || !abschnitte.length) abschnitte.push([]);
+    abschnitte[abschnitte.length - 1].push(s);
   }
 
   const luecken = stellenListe.filter((s) => s.art !== "wert");
@@ -441,7 +463,8 @@ export function Zeitreihe({
     if (delta != null) {
       werteZeile.push({
         label: "ggü. Vorjahr",
-        wert: `${delta > 0 ? "+" : delta < 0 ? "−" : ""}${fmt(Math.abs(delta))}`,
+        wert: `${delta > 0 ? "+" : delta < 0 ? "−" : ""}`
+          + `${(differenzFormat ?? fmt)(Math.abs(delta))}`,
         // Keine Signal-Marke: Sie markierte die Bewegung als Abweichung, und
         // „Anstieg" ist hier keine. Jede Richtung sieht gleich aus.
         signal: false,
@@ -592,13 +615,17 @@ export function Zeitreihe({
 
         {/* Fläche + Linie: `defined()` hat die Segmente an den Lücken schon
             getrennt — hier wird nur noch gezeichnet. */}
-        {nullbasis && <path d={flaeche(stellenListe) ?? undefined} style={{ fill: TON }} opacity={0.08} />}
+        {nullbasis && abschnitte.map((teil, i) => (
+          <path key={`f${i}`} d={flaeche(teil) ?? undefined} style={{ fill: TON }} opacity={0.08} />
+        ))}
         {zweitreihe && (
           <path d={zweitLinie(zweitStellen) ?? undefined} fill="none" strokeWidth={1.5}
             strokeDasharray="5 4" strokeLinecap="round" style={{ stroke: TON_ZWEIT }} />
         )}
-        <path d={linie(stellenListe) ?? undefined} fill="none" strokeWidth={2.2}
-          strokeLinejoin="round" strokeLinecap="round" style={{ stroke: TON }} />
+        {abschnitte.map((teil, i) => (
+          <path key={`l${i}`} d={linie(teil) ?? undefined} fill="none" strokeWidth={2.2}
+            strokeLinejoin="round" strokeLinecap="round" style={{ stroke: TON }} />
+        ))}
 
         {/* Der Endpunkt der Zweitreihe mit ihrem Namen — breit im Bild,
             schmal nur in der Legende darunter. */}

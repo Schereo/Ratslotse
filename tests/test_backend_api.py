@@ -509,7 +509,7 @@ def test_haushalt_datenstand_nennt_alle_schichten(client):
     assert set(schichten) == {"haushaltsplan", "ergebnishaushalt", "investitionen",
                               "investitionsprogramm",
                               "jahresabschluss", "teilhaushalt", "stellenplan",
-                              "rpa_fundstelle",
+                              "kennzahlen", "rpa_fundstelle",
                               "pruefungsfeststellungen", "konzernabschluss",
                               "beteiligungsbericht", "schulden",
                               "lsn_steuerkraft", "lsn_realsteuern"}

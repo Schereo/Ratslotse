@@ -56,11 +56,21 @@ from council.store import CouncilStore  # noqa: E402
 #: **Haushaltsjahr**, nicht das Jahr der Vorlage — der Bericht für 2024 ist
 #: eine Anlage zur Vorlage 25/0391.
 #:
-#: Die fünf älteren (2017–2021: 192336, 205649, 219465, 238770, 250437) liegen
-#: als Anlage vor, tragen aber **keinen Volltext**. Sie stehen hier bewusst
-#: nicht drin: Ein Eintrag, der bei jedem Lauf „kein Text" meldet, wäre eine
-#: Dauerwarnung ohne Handlung. Sobald der Backfill sie erfasst, kommen sie
-#: dazu — die Struktur des Kapitels ist seit 2022 unverändert.
+#: DIE FÜNF ÄLTEREN (2017–2021: 192336, 205649, 219465, 238770, 250437) STEHEN
+#: HIER NICHT — und das ist seit dem 18.08.2026 eine Messung und keine
+#: Vermutung mehr. Bis dahin hatten sie keinen Volltext (das Label-Muster der
+#: Finanzquellen kannte „Rechenschaftsbericht" nicht, s. council/
+#: finanzquellen.py); der Vermerk an dieser Stelle nahm an, sie kämen dazu,
+#: „sobald der Backfill sie erfasst — die Struktur des Kapitels ist seit 2022
+#: unverändert".
+#:
+#: Sie ist es nicht. Mit Volltext gegen ``kapitel3`` gehalten, findet der
+#: Parser dort nur **einen bis drei** der vier Entscheidungswege, und die
+#: Spaltenprobe reißt in **jedem** der fünf Jahrgänge (die investive Spalte um
+#: 0,55 bis 0,92 Mio. €). Das Kapitel gibt es, sein Tabellenlayout ist ein
+#: anderes. Wer die Reihe verlängern will, braucht dafür eigene Arbeit — bis
+#: dahin bleibt sie bei 2022–2024, statt Zahlen zu zeigen, die ihre eigene
+#: Probe nicht bestehen.
 BERICHTE: dict[int, int] = {
     2022: 265441,
     2023: 280862,

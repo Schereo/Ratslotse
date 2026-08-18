@@ -181,6 +181,67 @@ export type FinanzausgleichJahr = {
   nettobetrag?: number | null;
 };
 
+/** Ein Punkt einer Kennzahl-Reihe: der Wert aus dem jüngsten Bericht, der
+ *  dieses Jahr druckt.
+ *
+ *  `stellen` sind die **gedruckten** Nachkommastellen — 2019 stand „48%", ab
+ *  2021 „53,15%". Wer eine Reihe über diesen Wechsel zeichnet, muss ihn
+ *  anschreiben können, statt aus der glatteren Zahl eine genauere zu machen.
+ *
+ *  `fassung` nummeriert den gedruckten Rechenweg. Wechselt sie zwischen zwei
+ *  Jahren, darf über die Stelle **keine Linie laufen**: Die Stadt hat dann
+ *  etwas anderes gemessen, nicht etwas anderes herausbekommen. */
+export type KennzahlPunkt = {
+  kennzahl: string;
+  jahr: number;
+  wert: number;
+  stellen: number;
+  fassung: number | null;
+  /** Aus welchem Rechenschaftsbericht dieser Stand stammt. */
+  bericht_jahr: number;
+  herkunft_id?: number | null;
+};
+
+/** Ein gedruckter Rechenweg, im Wortlaut, mit der Spanne der Berichte, in
+ *  denen er so stand. */
+export type KennzahlFormel = {
+  kennzahl: string;
+  fassung: number;
+  /** Wie die Überschrift im Bericht lautet — nicht unser Label. */
+  ueberschrift: string;
+  formel: string;
+  von_bericht: number;
+  bis_bericht: number;
+  herkunft_id?: number | null;
+};
+
+/** Ein Unterschied zwischen zwei Berichten an derselben Stelle.
+ *
+ *  `art` ist gemessen, nicht angenommen:
+ *  - `revision` — gleicher Rechenweg, anderer Wert: die Stadt hat korrigiert.
+ *  - `definition` — anderer Rechenweg, anderer Wert: nicht dasselbe gemessen.
+ *  - `umbenennung` — anderer Rechenweg, **gleicher** Wert: nur umformuliert. */
+export type KennzahlFund = {
+  art: "revision" | "definition" | "umbenennung";
+  kennzahl: string;
+  jahr: number;
+  alt: number;
+  alt_bericht: number;
+  neu: number;
+  neu_bericht: number;
+  differenz: number;
+};
+
+export type Kennzahlen = {
+  /** Schlüssel → Klartext. Steht einmal statt an jeder der 365 Zeilen. */
+  label: Record<string, string>;
+  /** Schlüssel → „prozent" | „eur" | „anzahl". */
+  einheit: Record<string, string>;
+  reihe: KennzahlPunkt[];
+  formeln: KennzahlFormel[];
+  funde: KennzahlFund[];
+};
+
 export type HaushaltDaten = {
   jahre: Record<string, HaushaltZeile[]>;
   steuern: { jahr: number; art: string; betrag: number | null }[];
@@ -223,6 +284,9 @@ export type HaushaltDaten = {
   steuerplan?: Steuerplan;
   /** Die Realsteuer-Hebesätze je Änderungsjahr seit 1980 (Jahrbuch 1105). */
   hebesaetze?: Hebesaetze;
+  /** Die dreizehn Kennzahlen des Rechenschaftsberichts — mit den Rechenwegen,
+   *  die die Stadt danebendruckt, und den Korrekturen zwischen den Berichten. */
+  kennzahlen?: Kennzahlen;
 };
 
 /** Die Adresse der Haushalts-Übersicht, zugeschnitten auf das, was eine Seite

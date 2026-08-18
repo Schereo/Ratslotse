@@ -180,7 +180,7 @@ export default function HaushaltsjahrPage() {
 
         <div>
           <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            Stadtfinanzen Oldenburg · Schritt 14
+            Stadtfinanzen Oldenburg · Schritt 15
           </p>
           <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[25px]">
             Wann der Haushalt entschieden wird

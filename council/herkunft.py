@@ -371,6 +371,21 @@ PROBEN: dict[str, str] = {
         "Bis 2020 zeigt die Vorlage keine Umbuchungen zwischen den "
         "Vermögensarten. Was einer Position dadurch fehlt, ist einer anderen "
         "zugewachsen: Über alle Positionen hebt es sich auf null auf.",
+    "kennzahlen_gegen_bilanz":
+        "Drei der dreizehn Kennzahlen lassen sich aus der Bilanz desselben "
+        "Abschlusses nachrechnen — Anlagenintensität, Infrastrukturquote und "
+        "Eigenkapitalquote. Unser Ergebnis stimmt mit dem gedruckten auf die "
+        "letzte Nachkommastelle überein.",
+    "kennzahlen_vermoegensprobe":
+        "„Vermögen je Einwohner*in“ mal „Anzahl der "
+        "Einwohnenden“ — zwei Zeilen derselben Tabelle — ergibt genau "
+        "die Bilanzsumme ohne "
+        "Rechnungsabgrenzung, wie die Bilanz sie ausweist.",
+    "kennzahlen_ueberlappung":
+        "Jeder Rechenschaftsbericht druckt fünf Jahre, die Berichte "
+        "überlappen sich also. Wo zwei Berichte dieselbe Zahl zeigen, ist es "
+        "dieselbe Zahl — und wo nicht, hat die Stadt sie nachträglich "
+        "korrigiert; das steht dann dabei.",
     "buergschaft_kette":
         "Der Jahresabschluss nennt den Bürgschaftsbestand am Anfang und am "
         "Ende des Jahres. Der Anfangswert steht im Abschluss des Vorjahres "

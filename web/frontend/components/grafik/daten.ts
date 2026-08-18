@@ -7,8 +7,18 @@
 // interpolieren — die Union macht das zum Typsystem: Wer `wert` einer Lücke
 // lesen will, kommt am `fehlt`-Zweig nicht vorbei.
 
-/** Ein vorhandener Punkt einer Zeitreihe. */
-export type JahrWert = { jahr: number; wert: number };
+/** Ein vorhandener Punkt einer Zeitreihe.
+ *
+ *  `bruchDavor` trennt die Linie **vor** diesem Punkt: Der Wert ist da, aber
+ *  er ist mit dem davor nicht vergleichbar, weil die Quelle inzwischen etwas
+ *  anderes misst. Eine Lücke wäre dafür falsch (der Wert fehlt ja nicht),
+ *  eine durchgezogene Linie auch — sie behauptete eine Entwicklung, wo eine
+ *  Definition wechselte. Der erste Fall im Bestand: Bei der
+ *  Personalintensität fielen 2022 die Versorgungsempfänger aus dem Zähler.
+ *
+ *  Der Text ist der Grund. Er gehört an die Daten und nicht in die Seite —
+ *  dieselbe Regel wie bei `fehlt`. */
+export type JahrWert = { jahr: number; wert: number; bruchDavor?: string };
 
 /** Eine Lücke: das Jahr gibt es, den Wert nicht — und der Grund reist mit.
  *  `datum` ist der Stichtag der Feststellung, wo er bekannt ist. */

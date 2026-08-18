@@ -18,6 +18,7 @@ from council.topics import POLICY_FIELDS
 from council.goals import GOALS
 from council.parties import faction_label, order_key
 from council import ausgabenreihe as ausgabenreihe_mod
+from council import kennzahlen as kennzahlen_mod
 from council import nachbewilligungen as nachbewilligungen_mod
 from council import spenden as spenden_mod
 from council import steuertabellen
@@ -955,6 +956,23 @@ def haushalt_uebersicht(
                 for r in ausgabenreihe_mod.REGELWERK
             },
         },
+        # Die dreizehn Kennzahlen des Rechenschaftsberichts. Drei Listen, und
+        # jede hat ihren eigenen Grund:
+        #
+        # `reihe` ist die Anzeigereihe — je Kennzahl und Jahr der Wert aus dem
+        # JÜNGSTEN Bericht, der ihn druckt. `staende` ist die Belegkette: alle
+        # Stände aller sechs Berichte, aus denen sich `reihe` ergibt. Ohne die
+        # zweite Liste könnte niemand nachvollziehen, dass die Steuerquote
+        # 2021 einmal 49,05 % hieß.
+        #
+        # `formeln` sind die von der Stadt GEDRUCKTEN Rechenwege, im Wortlaut.
+        # Sie tragen `fassung`: Wechselt die Nummer zwischen zwei Berichten,
+        # darf über die Stelle keine Linie laufen.
+        #
+        # `funde` sind die Unterschiede zwischen zwei Berichten, eingeteilt in
+        # Korrektur, Definitionswechsel und bloße Umbenennung — gemessen, nicht
+        # angenommen (council/kennzahlen.py).
+        "kennzahlen": lambda: _kennzahlen(store),
         # Nachbewilligungen nach § 117 NKomVG — was beschlossen wurde,
         # nachdem der Haushalt beschlossen war. Zwei Listen, die **nicht**
         # ineinander gerechnet werden dürfen:
@@ -1049,6 +1067,62 @@ def haushalt_uebersicht(
         daten["herkunft"] = {str(h["id"]): h
                              for h in store.get_herkunft(sorted(_herkunft_ids(daten)))}
     return daten
+
+
+def _kennzahlen(store: CouncilStore) -> dict:
+    """Die Kennzahlen als Anzeigereihe, Rechenwege und Funde.
+
+    Die Einteilung der Funde entsteht **hier** und nicht im Frontend: Sie
+    hängt an der gedruckten Genauigkeit und an der Fassungsnummer, also an
+    zwei Angaben, die mit den Daten kommen. Eine zweite Fassung derselben
+    Regel im Browser wäre eine, die driftet.
+
+    ZUR NUTZLAST. Roh sind es 136 KB — 365 Stände, jeder mit Label, Einheit
+    und Zeitstempel, dazu 69 Rechenwege (sechs Berichte mal zwölf). Gesendet
+    werden 25 KB, und zwar ohne dass etwas fehlt:
+
+    * Die Label stehen **einmal** in ``label`` statt 365-mal in den Zeilen.
+    * Die Rechenwege werden zu ihren Fassungen zusammengezogen: Sechs
+      Berichte drucken denselben Satz sechsmal. Eine Fassung mit „gilt vom
+      Bericht X bis Y" sagt mehr als sechs gleiche Zeilen.
+    * Die älteren **Stände** entfallen. Was sie beweisen, steht vollständig
+      in ``funde``: jeder Unterschied zwischen zwei Berichten, mit beiden
+      Werten und beiden Berichtsjahren. Wer alle Stände braucht, liest
+      ``council_kennzahlen`` — die Tabelle behält sie.
+    """
+    staende = store.get_kennzahlen()
+    _, funde = kennzahlen_mod.ueberlappungsprobe(staende)
+
+    fassungen: dict[tuple[str, int], dict] = {}
+    for f in store.get_kennzahl_formeln():
+        schluessel = (f["kennzahl"], f["fassung"])
+        eintrag = fassungen.get(schluessel)
+        if eintrag is None:
+            fassungen[schluessel] = {
+                "kennzahl": f["kennzahl"], "fassung": f["fassung"],
+                "ueberschrift": f["ueberschrift"], "formel": f["formel"],
+                "von_bericht": f["bericht_jahr"], "bis_bericht": f["bericht_jahr"],
+                "herkunft_id": f["herkunft_id"]}
+        elif f["bericht_jahr"] > eintrag["bis_bericht"]:
+            # Der jüngste Bericht gibt Wortlaut und Beleg — er ist der, den
+            # jemand aufschlägt, wenn er nachsehen will.
+            eintrag.update(bis_bericht=f["bericht_jahr"], formel=f["formel"],
+                           ueberschrift=f["ueberschrift"],
+                           herkunft_id=f["herkunft_id"])
+        else:
+            eintrag["von_bericht"] = min(eintrag["von_bericht"], f["bericht_jahr"])
+
+    return {
+        "label": {k.key: k.label for k in kennzahlen_mod.KENNZAHLEN},
+        "einheit": {k.key: k.einheit for k in kennzahlen_mod.KENNZAHLEN},
+        "reihe": [{"kennzahl": z["kennzahl"], "jahr": z["jahr"], "wert": z["wert"],
+                   "stellen": z["stellen"], "fassung": z["fassung"],
+                   "bericht_jahr": z["bericht_jahr"], "herkunft_id": z["herkunft_id"]}
+                  for z in kennzahlen_mod.neueste(staende)],
+        "formeln": sorted(fassungen.values(),
+                          key=lambda f: (f["kennzahl"], f["fassung"])),
+        "funde": funde,
+    }
 
 
 def _ergebnisrechnung(store: CouncilStore, thh_posten: str | None) -> list[dict]:

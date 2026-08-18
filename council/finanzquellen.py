@@ -69,7 +69,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Callable
 
-from council import (anlagenspiegel, bilanz, buergschaften, ergebnishaushalt, finanzberichte,
+from council import (anlagenspiegel, bilanz, buergschaften, kennzahlen, ergebnishaushalt, finanzberichte,
                      herkunft, investitionsprogramm, konzernabschluss,
                      pruefberichte, stellenplan)
 from council.store import CouncilStore
@@ -419,6 +419,21 @@ def _bestand_produkte(store: CouncilStore) -> set[tuple]:
     die Dokumente hereinkommen."""
     return {(r[0], r[1]) for r in _jahre(
         store, "SELECT DISTINCT jahr, thh_nr FROM council_produkte WHERE thh_nr IS NOT NULL")}
+
+
+def _einheiten_kennzahlen(row: dict) -> set[tuple]:
+    """Ein Bericht = eine Einheit, auch wenn er fünf Jahrgänge zeigt.
+
+    Gezählt wird das Dokument, nicht sein Inhalt: Sonst gälte der Bericht 2024
+    als Beleg für 2020, und der ausstehende Bericht 2025 fiele nicht auf, weil
+    „2020–2024 ist ja da".
+    """
+    m = re.search(r"(20\d\d)", row.get("label") or "")
+    return {(int(m.group(1)),)} if m else set()
+
+
+def _bestand_kennzahlen(store: CouncilStore) -> set[tuple]:
+    return {(z["bericht_jahr"],) for z in store.get_kennzahlen()}
 
 
 def _bestand_schlussberichte(store: CouncilStore) -> set[tuple]:
@@ -1536,6 +1551,136 @@ def lies_anlagenspiegel(store: CouncilStore, p: Protokoll) -> dict:
             "vermoegensgruppen": gruppen_gesamt}
 
 
+def lies_kennzahlen(store: CouncilStore, p: Protokoll) -> dict:
+    """Die Kennzahlenübersicht aus den Rechenschaftsberichten (Anlage am Ende).
+
+    Ein Bericht liefert fünf Jahrgänge, und die Jahrgänge überlappen sich
+    zwischen den Berichten. Genau daraus zieht diese Schicht ihren Wert:
+
+    * :func:`kennzahlen.ueberlappungsprobe` vergleicht jede doppelt gedruckte
+      Zelle. 221 Paare stimmen exakt, sieben nicht — und diese sieben sind
+      Korrekturen, die die Stadt vorgenommen und nirgends angesagt hat.
+    * :func:`kennzahlen.gegen_bilanz` rechnet drei Quoten aus **unserer**
+      Bilanz nach; sie stimmen auf die letzte gedruckte Nachkommastelle.
+    * :func:`kennzahlen.vermoegensprobe` nimmt zwei Zeilen derselben Tabelle
+      mal — und heraus kommt die Bilanzsumme ohne Rechnungsabgrenzung.
+
+    VERWORFEN WIRD JE BERICHT, nicht insgesamt: Reißt eine Probe im Bericht
+    2022, sagt das nichts über den Bericht 2024. Die Überlappungsprobe läuft
+    dagegen erst **nach** allen Berichten — sie braucht mindestens zwei.
+    """
+    quelle = QUELLEN["kennzahlen"]
+    rows = quelle.dokumente(store, "document_id, label, url, raw_text")
+
+    # ERSTER DURCHGANG: alles lesen. Die Fassungsnummer eines Rechenwegs lässt
+    # sich erst vergeben, wenn ALLE Berichte vorliegen — sie sagt ja gerade,
+    # der wievielte Rechenweg dieser Kennzahl das über die Jahre ist. Wer je
+    # Bericht nummeriert, schreibt überall eine Eins, und der Wechsel von
+    # „Aufwand für Personal (inklusive Versorgung)" zu „Aufwendungen für
+    # aktives Personal" sähe aus wie eine Korrektur der Stadt.
+    gelesen: list[tuple[dict, int, list[dict], list[dict], list[str]]] = []
+    ohne_tabelle = 0
+    for r in rows:
+        m = re.search(r"(20\d\d)", r["label"] or "")
+        if not m:
+            continue
+        bericht_jahr = int(m.group(1))
+        text = r["raw_text"] or ""
+        zeilen, unbekannt = kennzahlen.parse_kennzahlen(text, bericht_jahr)
+        if not zeilen:
+            # 2017 und 2018 zeigen dieselben Kennzahlen nur als Diagramm. Ihre
+            # Jahrgänge stehen als Tabelle im Bericht 2019 — hier fehlt also
+            # nichts, und es ist keine Warnung wert.
+            ohne_tabelle += 1
+            continue
+        gelesen.append((r, bericht_jahr, zeilen,
+                        kennzahlen.parse_formeln(text, bericht_jahr), unbekannt))
+
+    alle_formeln = [f for _, _, _, formeln, _ in gelesen for f in formeln]
+    nummern = kennzahlen.fassungen(alle_formeln)
+
+    berichte = verworfen = 0
+    werte_gesamt = formeln_gesamt = 0
+    bilanz_geprueft = vermoegen_geprueft = 0
+    gesammelt: list[dict] = []
+
+    bilanz_posten = [dict(x) for x in store._conn.execute(  # noqa: SLF001
+        "SELECT jahr, rolle, wert FROM council_bilanz WHERE rolle IS NOT NULL")]
+
+    # ZWEITER DURCHGANG: prüfen und schreiben, Bericht für Bericht.
+    for r, bericht_jahr, zeilen, formeln, unbekannt in sorted(
+            gelesen, key=lambda g: g[1]):
+        for z in zeilen:
+            z["fassung"] = nummern.get((z["kennzahl"], bericht_jahr))
+        for f in formeln:
+            f["fassung"] = nummern[(f["kennzahl"], bericht_jahr)]
+
+        if unbekannt:
+            for u in unbekannt[:3]:
+                p.warnen(f"  Kennzahlen {bericht_jahr}: Zeile nicht zugeordnet — {u}")
+            p.warnen(f"  Rechenschaftsbericht {bericht_jahr} verworfen — "
+                     f"{len(unbekannt)} unzuordenbare Zeile(n)")
+            verworfen += 1
+            continue
+
+        bilanz_ok, bilanz_risse = kennzahlen.gegen_bilanz(zeilen, bilanz_posten)
+        verm_ok, verm_risse = kennzahlen.vermoegensprobe(zeilen, bilanz_posten)
+        if bilanz_risse or verm_risse:
+            for x in (bilanz_risse + verm_risse)[:3]:
+                p.warnen(f"  Kennzahlen {bericht_jahr}: {x}")
+            p.warnen(f"  Rechenschaftsbericht {bericht_jahr} verworfen — "
+                     f"{len(bilanz_risse) + len(verm_risse)} Gegenprobe(n) gerissen")
+            verworfen += 1
+            continue
+
+        proben = [kennzahlen.PROBE_BILANZ] if bilanz_ok else []
+        if verm_ok:
+            proben.append(kennzahlen.PROBE_VERMOEGEN)
+        bilanz_geprueft += bilanz_ok
+        vermoegen_geprueft += verm_ok
+
+        store.save_kennzahlen(
+            bericht_jahr, zeilen, formeln,
+            herkunft.Herkunft(
+                art="ris", probe=proben or herkunft.UNGEPRUEFT,
+                dokument_id=r["document_id"], label=r["label"], url=r["url"],
+                fundstelle="Anlage: Kennzahlenübersicht und Berechnungsmethoden",
+                probe_ergebnis=f"{bilanz_ok} Quoten und {verm_ok} Jahrgänge "
+                               f"gegen die Bilanz nachgerechnet",
+                stand=f"Rechenschaftsbericht {bericht_jahr}"))
+        berichte += 1
+        werte_gesamt += len(zeilen)
+        formeln_gesamt += len(formeln)
+        gesammelt += zeilen
+        jahre = sorted({z["jahr"] for z in zeilen})
+        p.sagen(f"  Bericht {bericht_jahr}: {len(zeilen)} Werte "
+                f"({jahre[0]}–{jahre[-1]}), {len(formeln)} Rechenwege")
+
+    bestaetigt, funde = kennzahlen.ueberlappungsprobe(gesammelt)
+    arten = {a: sum(1 for f in funde if f["art"] == a)
+             for a in ("revision", "definition", "umbenennung")}
+    for f in funde:
+        if f["art"] == "revision":
+            p.sagen(f"  Korrektur: {f['kennzahl']} {f['jahr']} — {f['alt']} "
+                    f"(Bericht {f['alt_bericht']}) → {f['neu']} "
+                    f"(Bericht {f['neu_bericht']})")
+    p.sagen(f"  Überlappung: {bestaetigt} Paare identisch, "
+            f"{arten['revision']} Korrekturen, "
+            f"{arten['definition']} Definitionswechsel, "
+            f"{arten['umbenennung']} bloße Umbenennungen")
+
+    return {"kennzahlen_berichte": berichte,
+            "kennzahlen_werte": werte_gesamt,
+            "kennzahlen_formeln": formeln_gesamt,
+            "kennzahlen_ohne_tabelle": ohne_tabelle,
+            "kennzahlen_verworfen": verworfen,
+            "kennzahlen_bilanz_geprueft": bilanz_geprueft,
+            "kennzahlen_vermoegen_geprueft": vermoegen_geprueft,
+            "kennzahlen_ueberlappung": bestaetigt,
+            "kennzahlen_korrekturen": arten["revision"],
+            "kennzahlen_definitionswechsel": arten["definition"]}
+
+
 def lies_schlussbericht_fundstellen(store: CouncilStore, p: Protokoll,
                                     nur_fehlende: bool = False,
                                     schuetzen: bool = True) -> dict:
@@ -1950,6 +2095,33 @@ for _q in (
         einlesen=lies_jahresabschluesse,
     ),
     Finanzquelle(
+        key="kennzahlen",
+        label="Kennzahlen des Rechenschaftsberichts",
+        was="Die dreizehn Zahlen, auf die die Stadt ihren Jahresabschluss "
+            "selbst eindampft — mit den Rechenwegen, die sie danebendruckt.",
+        tabelle="council_kennzahlen",
+        nebentabellen=("council_kennzahl_formeln",),
+        erwarteter_monat=9,
+        versatz=1,
+        herkunft="ris",
+        erkennung=Erkennung(
+            # „Rechenschaftsbericht" endet auf -chaftsbericht, das Muster der
+            # Schlussberichte auf -chlussbericht. Die Berichte 2017–2021 lagen
+            # deshalb bis 08/2026 ohne Volltext im Bestand; 2022–2024
+            # rutschten nur durch, weil ihr Titel „Jahresabschluss" enthält.
+            label_muster=("%Rechenschaftsbericht%",),
+            # Namentlich ausschließen, NICHT über „Stiftung": Der städtische
+            # Bericht heißt selbst „… der Kernverwaltung und ihrer nicht
+            # rechtsfähigen Stiftungen" und fiele mit heraus.
+            ausschluesse=("%Schlussbericht%", "%Klävemann%", "%Sozialstiftung%"),
+            mindest_seiten=60,
+        ),
+        einheit="Berichte",
+        einheiten_von=_einheiten_kennzahlen,
+        bestand=_bestand_kennzahlen,
+        einlesen=lies_kennzahlen,
+    ),
+    Finanzquelle(
         key="rpa_fundstelle",
         label="Schlussbericht des Rechnungsprüfungsamts",
         was="Der Nachweis, dass eine unabhängige Stelle diesen Abschluss geprüft hat.",
@@ -2296,7 +2468,8 @@ for _q in (
 #: Stellenplan, und aus demselben Grund.
 REIHENFOLGE = ("haushaltsplan", "ergebnishaushalt", "investitionen",
                "investitionsprogramm", "jahresabschluss", "teilhaushalt",
-               "stellenplan", "rpa_fundstelle", "pruefungsfeststellungen",
+               "stellenplan", "kennzahlen", "rpa_fundstelle",
+               "pruefungsfeststellungen",
                "konzernabschluss", "beteiligungsbericht", "schulden",
                "lsn_steuerkraft", "lsn_realsteuern")
 

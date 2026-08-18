@@ -1435,6 +1435,52 @@ class CouncilStore:
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (jahr, gruppe))"
         )
+        # Die dreizehn Kennzahlen (council/kennzahlen.py): die Anlage, mit der
+        # jeder Rechenschaftsbericht seinen Jahresabschluss zusammenfasst.
+        #
+        # `bericht_jahr` STEHT IM SCHLÜSSEL, und das ist der Kern der Tabelle:
+        # Jeder Bericht druckt fünf Jahre, die Jahrgänge stehen also mehrfach
+        # da — und nicht immer gleich. Die Steuerquote 2021 heißt im Bericht
+        # 2021 45,90 %, im Bericht 2022 49,05 % und im Bericht 2023 wieder
+        # 45,92 %. Ohne den Bericht im Schlüssel überschriebe der jüngere
+        # Stand den älteren still, und die Korrektur — die eigentliche
+        # Nachricht — wäre weg.
+        #
+        # `stellen` ist die Zahl der GEDRUCKTEN Nachkommastellen. 2019 steht
+        # „48%", ab 2021 „53,15%"; ohne diese Angabe meldete der Vergleich
+        # zweier Berichte reihenweise Abweichungen, die nur Rundung sind.
+        #
+        # `fassung` nummeriert den gedruckten Rechenweg. Wechselt er, darf
+        # über die Stelle keine Linie laufen: Aus „Aufwand für Personal
+        # (inklusive Versorgung)" wurde „Aufwendungen für aktives Personal",
+        # und die Quote fällt dadurch um rund einen Prozentpunkt.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_kennzahlen ("
+            "bericht_jahr INTEGER NOT NULL, "
+            "kennzahl TEXT NOT NULL, "
+            "jahr INTEGER NOT NULL, "
+            "label TEXT NOT NULL, "
+            "wert REAL NOT NULL, "
+            "einheit TEXT NOT NULL, "          # prozent | eur | anzahl
+            "stellen INTEGER NOT NULL, "
+            "fassung INTEGER, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (bericht_jahr, kennzahl, jahr))"
+        )
+        # Die gedruckten Rechenwege — „Ermittlung: Sachvermögen * 100 /
+        # Bilanzsumme". Eigene Tabelle, weil sie je Bericht einmal gelten und
+        # nicht je Jahrgang; und weil sie den Text tragen, den die Seite
+        # zitiert, statt einer Formel, die wir uns ausgedacht hätten.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_kennzahl_formeln ("
+            "bericht_jahr INTEGER NOT NULL, "
+            "kennzahl TEXT NOT NULL, "
+            "fassung INTEGER NOT NULL, "
+            "ueberschrift TEXT NOT NULL, "
+            "formel TEXT NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (bericht_jahr, kennzahl))"
+        )
         # Die dritte Schuldenzahl (council/integrierte_schulden.py): was der
         # ganze „Konzern Stadt" schuldet, anteilig nach Beteiligungshöhe —
         # 31.12.2024 rund 740,3 Mio. € gegen 294,9 Mio. € der Jahrbuch-Reihe.
@@ -1870,6 +1916,10 @@ class CouncilStore:
         # im Ratsinformationssystem.
         "council_buergschaften":        (None, "quelle_url", "ris"),
         "council_anlagenspiegel":       (None, "quelle_url", "ris"),
+        # Die Kennzahlen und ihre Rechenwege: Anlage des Rechenschaftsberichts,
+        # also ebenfalls ein Dokument im Ratsinformationssystem.
+        "council_kennzahlen":           (None, "quelle_url", "ris"),
+        "council_kennzahl_formeln":     (None, "quelle_url", "ris"),
         "council_vermoegensgruppen":    (None, "quelle_url", "ris"),
         # Die dritte Schuldenzahl: Tabellenband der Statistischen Ämter,
         # also weder Stadt noch Ratsinformationssystem — eigene Art "lsn"
@@ -4426,6 +4476,10 @@ class CouncilStore:
         # zusammen — genau richtig, denn ein Beleg an einer Beamtenzahl soll
         # „Teil A" sagen und nicht „Stellenplan".
         "stellenplan":          ("council_stellenplan", "jahrgang", None, None),
+        # Der einzige Schlüssel, dessen Jahresspalte NICHT das Datenjahr ist:
+        # Ein Bericht liefert fünf Jahrgänge, gehört aber zu genau einem
+        # Dokument — und das ist seines.
+        "kennzahlen":           ("council_kennzahlen", "bericht_jahr", None, None),
     }
 
     #: Jahresquellen, die KEIN Dokument im Ratsinformationssystem haben und
@@ -5649,6 +5703,57 @@ class CouncilStore:
                   z.get("einzelbetrag"), ",".join(z.get("proben") or []),
                   hid, now) for z in zeilen])
         return len(zeilen)
+
+    def save_kennzahlen(self, bericht_jahr: int, zeilen: list[dict],
+                        formeln: list[dict], herkunft) -> int:
+        """Einen Rechenschaftsbericht ersetzen — Werte und Rechenwege zusammen.
+
+        Ersetzt wird genau **dieser Bericht**, nicht die Jahrgänge, die er
+        zeigt. Der Bericht 2024 druckt 2020–2024; wer nach Datenjahr löschte,
+        risse dem Bericht 2021 vier seiner fünf Spalten heraus — und mit ihnen
+        die Vergleichsstände, aus denen die Korrekturen sichtbar werden.
+        """
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute("DELETE FROM council_kennzahlen WHERE bericht_jahr = ?",
+                               (bericht_jahr,))
+            self._conn.execute("DELETE FROM council_kennzahl_formeln WHERE bericht_jahr = ?",
+                               (bericht_jahr,))
+            self._conn.executemany(
+                "INSERT INTO council_kennzahlen "
+                "(bericht_jahr, kennzahl, jahr, label, wert, einheit, stellen, "
+                " fassung, herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                [(bericht_jahr, z["kennzahl"], z["jahr"], z["label"], z["wert"],
+                  z["einheit"], z["stellen"], z.get("fassung"), hid, now)
+                 for z in zeilen])
+            self._conn.executemany(
+                "INSERT INTO council_kennzahl_formeln "
+                "(bericht_jahr, kennzahl, fassung, ueberschrift, formel, "
+                " herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?)",
+                [(bericht_jahr, f["kennzahl"], f.get("fassung") or 1,
+                  f["ueberschrift"], f["formel"], hid, now) for f in formeln])
+        return len(zeilen)
+
+    def get_kennzahlen(self) -> list[dict]:
+        """Alle Stände aller Berichte — die Belegkette, nicht die Anzeigereihe.
+
+        Wer die Reihe will, nimmt ``council.kennzahlen.neueste``; wer die
+        Korrekturen zeigen will, braucht alle Stände.
+        """
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_kennzahlen ORDER BY kennzahl, jahr, bericht_jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    def get_kennzahl_formeln(self) -> list[dict]:
+        """Die gedruckten Rechenwege, ältester Bericht zuerst."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_kennzahl_formeln ORDER BY kennzahl, bericht_jahr")]
+        except sqlite3.OperationalError:
+            return []
 
     def save_anlagenspiegel(self, jahr: int, zeilen: list[dict], herkunft) -> int:
         """Den Anlagenspiegel eines Jahrgangs ersetzen.

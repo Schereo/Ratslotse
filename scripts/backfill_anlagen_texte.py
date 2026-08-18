@@ -33,6 +33,23 @@ from council.vorlagen import _pdf_text  # noqa: E402
 COUNCIL_DB = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlite")
 MIN_TEXT = 200          # darunter gilt das PDF als Scan/Bild ('empty')
 
+#: Mindestanteil echter Buchstaben. Darunter ist die Zeichenzuordnung der PDF
+#: kaputt, und was herauskommt, ist kein Text.
+#:
+#: DER FALL, DER DIESE SCHWELLE ERZWUNGEN HAT: Der Schlussbericht des
+#: Rechnungsprüfungsamts zum Jahresabschluss 2024 (Dokument 295296) liefert
+#: 460.084 Zeichen — und **keinen einzigen Buchstaben**. Seine Schrift bringt
+#: keine ToUnicode-Tabelle mit, deshalb extrahiert pypdf die Glyph-Nummern
+#: („/1 /2 /3 …") und Kästchen. Ohne diese Prüfung stünden 460 KB Rauschen in
+#: der Datenbank, im Volltextindex und damit in den Treffern der KI-Frage —
+#: und der Bericht sähe aus, als sei er gelesen worden.
+#:
+#: 0,05 IST GEMESSEN, NICHT GEGRIFFEN: Über die 558 Anlagen mit Volltext liegt
+#: der Median bei 0,69, das erste Perzentil bei 0,32. Unterhalb von 0,12 liegen
+#: genau zwei Dokumente — die beiden kaputten. Die Schwelle hat also nach oben
+#: den doppelten Abstand zum nächsten echten Dokument.
+MIN_BUCHSTABEN = 0.05
+
 #: Obergrenze je Anlage. Kappt Extrem-PDFs, damit ein einzelnes Gutachten die
 #: Datenbank nicht aufbläht.
 #:
@@ -58,6 +75,11 @@ MAX_TEXT = 800_000
 #: nimmt genau diese dazu. Wer die Grenze künftig erneut anhebt, trägt den alten
 #: Wert hier nach — dann findet derselbe Schalter auch jene Jahrgänge wieder.
 FRUEHERE_GRENZEN = (400_000,)
+
+
+def buchstabenanteil(text: str) -> float:
+    """Wie viel des Textes wirklich aus Buchstaben besteht (0 bis 1)."""
+    return sum(ch.isalpha() for ch in text) / len(text) if text else 0.0
 
 
 def finanz_muster() -> list[str]:
@@ -129,6 +151,10 @@ def process(db_path: Path, limit: int | None, workers: int, retry_failed: bool,
                     print(f"  [{did}] FEHLER {exc}", flush=True)
                     continue
                 text = (text or "").strip()[:MAX_TEXT]
+                # Kaputte Zeichenzuordnung zählt wie „kein Text" — sonst gilt
+                # ein Dokument als gelesen, das niemand lesen kann.
+                if text and buchstabenanteil(text) < MIN_BUCHSTABEN:
+                    text = ""
                 with store._conn:
                     if len(text) >= MIN_TEXT:
                         store._conn.execute(
