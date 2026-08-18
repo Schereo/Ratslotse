@@ -97,6 +97,217 @@ function Fundstelle({ h }: { h: Herkunft | null }) {
   );
 }
 
+/** Wofür die Stadt geradesteht — Bürgschaften neben den eigenen Schulden.
+ *
+ *  DREI ZAHLEN, DIE NUR ZUSAMMEN STIMMEN. Das Volumen allein liest sich wie
+ *  eine Rechnung, die demnächst kommt; die Rückstellung allein wie das ganze
+ *  Risiko. Deshalb stehen Bestand, eigene Geldschulden und die Rückstellung
+ *  für den erwarteten Ausfall in einer Zeile.
+ *
+ *  KEINE BEWERTUNGSFARBE. Dass der Bestand sich verdreifacht hat, ist weder
+ *  gut noch schlecht — es sind Bürgschaften für die eigenen Gesellschaften,
+ *  ohne die deren Kredite teurer würden. Die Kurve steigt, der Satz daneben
+ *  sagt warum, das Urteil bleibt bei den Lesenden.
+ *
+ *  Rendert nichts, solange kein Jahresabschluss eingelesen ist. */
+function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
+  const b = daten?.buergschaften;
+  const reihe = b?.reihe ?? [];
+  if (!reihe.length) return null;
+
+  const geld = new Map((b?.geldschulden ?? []).map((z) => [z.jahr, z.wert]));
+  const rueck = new Map((b?.rueckstellung ?? []).map((z) => [z.jahr, z.wert]));
+  const letzter = reihe[reihe.length - 1];
+  const erster = reihe[0];
+  const gsLetzt = geld.get(letzter.jahr) ?? null;
+  const rsLetzt = rueck.get(letzter.jahr) ?? null;
+  // Der Jahrgang, der den Sprung erklärt — der mit der genannten Einzelzahl.
+  const sprung = reihe.find((z) => z.einzelbetrag != null) ?? null;
+  const groesste = Math.max(...reihe.map((z) => z.bestand));
+
+  return (
+    <section className="flex flex-col gap-3.5 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+      <div>
+        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+          Wofür die Stadt außerdem geradesteht
+        </p>
+        <h2 className="mt-1 text-[17px] font-semibold leading-snug text-foreground">
+          Bürgschaften: {deMio(letzter.bestand / 1e6)}&#8239;Mio.&nbsp;€
+          {gsLetzt ? (
+            <span className="font-normal text-muted-foreground">
+              {" "}— das {(letzter.bestand / gsLetzt).toFixed(1).replace(".", ",")}-Fache
+              der eigenen Schulden
+            </span>
+          ) : null}
+        </h2>
+        <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
+          {b?.abgrenzung}
+        </p>
+      </div>
+
+      {/* Die Reihe. Zwei Balken je Jahr: wofür die Stadt geradesteht, und was
+          sie selbst schuldet. Der Vergleich IST die Aussage — 2019 lagen
+          beide fast gleichauf. */}
+      <ul className="flex flex-col gap-1.5">
+        {reihe.map((z) => {
+          const gs = geld.get(z.jahr) ?? null;
+          return (
+            <li key={z.jahr} className="flex items-center gap-2.5 text-[12px]">
+              <span className="w-9 shrink-0 font-mono text-muted-foreground">{z.jahr}</span>
+              <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2 rounded-sm bg-[var(--hh-aus-0)]"
+                    style={{ width: `${Math.max(2, (z.bestand / groesste) * 100)}%` }} />
+                  <span className="shrink-0 font-semibold tabular-nums text-foreground">
+                    {deMio(z.bestand / 1e6)}
+                  </span>
+                </span>
+                {gs ? (
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2 rounded-sm bg-[var(--hh-ein-0)] opacity-70"
+                      style={{ width: `${Math.max(2, (gs / groesste) * 100)}%` }} />
+                    <span className="shrink-0 tabular-nums text-muted-foreground">
+                      {deMio(gs / 1e6)} eigene Schulden
+                    </span>
+                  </span>
+                ) : null}
+              </span>
+              {/* Die Quelle sagt selbst, wie genau sie ist — das gehört an die
+                  Zahl, nicht in eine Fußnote am Seitenende. */}
+              {z.aus_folgejahr ? (
+                <span className="shrink-0 text-[10.5px] text-muted-foreground">
+                  aus dem Abschluss {z.jahr + 1}
+                </span>
+              ) : z.genau ? (
+                <span className="shrink-0 text-[10.5px] text-muted-foreground">
+                  auf den Cent belegt
+                </span>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+
+      {sprung?.grund ? (
+        <div className="rounded-xl border border-border bg-background/40 p-3">
+          <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+            Woher der Sprung {sprung.jahr} kommt
+          </p>
+          <p className="mt-1 max-w-[76ch] text-[12.5px] leading-relaxed text-foreground/90">
+            {sprung.grund}
+          </p>
+        </div>
+      ) : null}
+
+      {rsLetzt ? (
+        <p className="max-w-[76ch] text-[12.5px] leading-relaxed text-muted-foreground">
+          <strong className="text-foreground">Womit die Stadt rechnet:</strong>{" "}
+          Für erwartete Ausfälle stehen {deEuro(rsLetzt)}&nbsp;€ in der Bilanz
+          ({letzter.jahr}) — {((rsLetzt / letzter.bestand) * 100).toFixed(2).replace(".", ",")}&nbsp;%
+          des verbürgten Volumens. Die {deMio(letzter.bestand / 1e6)}&#8239;Mio.&nbsp;€ sind
+          also nicht das, was die Stadt zu zahlen erwartet, sondern das, wofür sie
+          im äußersten Fall einsteht.
+        </p>
+      ) : null}
+
+      <p className="max-w-[76ch] text-[12px] leading-relaxed text-muted-foreground">
+        <strong className="text-foreground">Nicht selbst addierbar.</strong>{" "}
+        Die einzelnen Bürgschafts-Beschlüsse des Rates zusammenzuzählen ergäbe eine
+        falsche Summe: Verlängerungen ersetzen einander, statt sich zu addieren.
+        Was hier steht, ist der Bestand, den die Stadt selbst als Bestand ausweist —
+        {erster.jahr === letzter.jahr ? " ein Stichtag." : ` ${reihe.length} Stichtage.`}
+      </p>
+
+      <Fundstelle h={herkunftVon(daten, letzter.herkunft_id)} />
+    </section>
+  );
+}
+
+/** Die dritte Schuldenzahl — und warum alle drei stimmen.
+ *
+ *  DIE STAFFEL IST DIE AUSSAGE. 43,7 → 294,9 → 740,3 Mio. €: Wer eine dieser
+ *  Zahlen allein hört, hält die anderen für falsch. Nebeneinander erklärt sich
+ *  jede durch das, was sie mitzählt.
+ *
+ *  ZWEI SÄTZE SIND PFLICHT und kommen aus dem Backend, nicht von hier: dass
+ *  der größte Teil aus Beteiligungen unter 50 % stammt (für die die Stadt
+ *  nicht haftet), und dass daraus keine Zeitreihe werden darf. Stünden sie im
+ *  Frontend, könnten sie hier vergessen werden, während die Zahl bleibt.
+ *
+ *  Rendert nichts ohne eingelesenen Tabellenband. */
+function DritteZahlBlock({ daten }: { daten: SchuldenDaten | null }) {
+  const i = daten?.integrierte_schulden;
+  if (!i?.stichtag) return null;
+  const s = i.stichtag;
+  const reihe = daten?.reihe ?? [];
+  // Der Rechtsträger-Wert desselben Stichtags — die mittlere der drei Zahlen.
+  const traeger = reihe.find((z) => z.jahr === s.jahr)?.insgesamt ?? null;
+
+  const stufen = [
+    { titel: "Kernhaushalt", wert: s.kernhaushalt,
+      was: "Investitionskredite der Stadtverwaltung selbst" },
+    { titel: "Stadt als Rechtsträger", wert: traeger,
+      was: "dazu die Eigenbetriebe — die Zahl oben auf dieser Seite" },
+    { titel: "Der ganze Konzern", wert: s.insgesamt,
+      was: "dazu Extrahaushalte und Beteiligungen, anteilig nach Beteiligungshöhe" },
+  ].filter((x) => x.wert != null);
+
+  return (
+    <section className="flex flex-col gap-3.5 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+      <div>
+        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+          Warum man drei Zahlen hört
+        </p>
+        <h2 className="mt-1 text-[17px] font-semibold leading-snug text-foreground">
+          43,7 · {traeger ? `${deMio(traeger / 1e6)} · ` : ""}
+          {deMio(s.insgesamt / 1e6)}&#8239;Mio.&nbsp;€ — und alle drei stimmen
+        </h2>
+        <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
+          Sie zählen Verschiedenes mit. Stand 31.12.{s.jahr}:
+        </p>
+      </div>
+
+      <ol className="flex flex-col gap-2">
+        {stufen.map((x) => (
+          <li key={x.titel}
+            className="flex flex-col gap-0.5 rounded-xl border border-border bg-background/40 p-3">
+            <span className="flex flex-wrap items-baseline justify-between gap-x-3">
+              <span className="text-[13px] font-semibold text-foreground">{x.titel}</span>
+              <span className="font-semibold tabular-nums text-foreground">
+                {deMio((x.wert as number) / 1e6)}&#8239;Mio.&nbsp;€
+              </span>
+            </span>
+            <span className="text-[12px] leading-relaxed text-muted-foreground">{x.was}</span>
+          </li>
+        ))}
+      </ol>
+
+      {/* Der Satz, ohne den die 740 Millionen falsch gelesen werden. Er steht
+          im Fließtext und nicht im Kleingedruckten — er ist die Aussage. */}
+      <p className="max-w-[76ch] text-[12.5px] leading-relaxed text-foreground/90">
+        {i.abgrenzung}
+        {i.anteil_unter_50 != null ? (
+          <>
+            {" "}Konkret sind das{" "}
+            <strong className="text-foreground">
+              {(i.anteil_unter_50 * 100).toFixed(0)}&nbsp;%
+            </strong>{" "}
+            der Summe.
+          </>
+        ) : null}
+      </p>
+
+      <p className="max-w-[76ch] text-[12px] leading-relaxed text-muted-foreground">
+        {/* Ohne eigenen Vorspann: Der Satz aus dem Backend beginnt selbst mit
+            „Nur ein Stichtag" — ein Label davor sagte dasselbe zweimal. */}
+        {i.keine_reihe}
+      </p>
+
+      <Fundstelle h={herkunftVon(daten, s.herkunft_id)} />
+    </section>
+  );
+}
+
 export default function SchuldenPage() {
   const { data, loading } = useFetch<SchuldenDaten>("/council/haushalt/schulden");
   const [ansicht, setAnsicht] = useState<Ansicht>("insgesamt");
@@ -463,6 +674,18 @@ export default function SchuldenPage() {
             seine Daten selbst und rendert nichts, solange kein
             ausgeglichener Bilanzstichtag im Bestand steht. */}
         <BilanzBlock />
+
+        {/* Wofür die Stadt geradesteht. Steht VOR den Grenzen und nicht
+            darin, obwohl es eine Grenze der Schuldenzahl ist: Es ist die
+            größere Zahl der Seite (2024 das Fünffache), und Zahlen, die
+            größer sind als die Überschrift, gehören nicht ins
+            Kleingedruckte. */}
+        <BuergschaftsBlock daten={data} />
+
+        {/* Die dritte Zahl. Steht NACH den Bürgschaften, weil sie die Frage
+            beantwortet, die die beiden davor aufwerfen: „Wenn 337 nicht alles
+            ist und 220 nicht dazuzählen — was schuldet die Stadt denn nun?" */}
+        <DritteZahlBlock daten={data} />
 
         {/* Die Grenzen — eigener Block, nicht Kleingedrucktes. */}
         <section className="rounded-2xl border border-border border-l-[3px] border-l-signal bg-card p-4 shadow-sm">

@@ -102,6 +102,12 @@ def main() -> int:
                         finanzquellen.lies_jahresabschluesse(store, p, schuetzen=schuetzen))
             print("Schlussberichte des Rechnungsprüfungsamts:")
             uebernehmen("rpa", finanzquellen.lies_schlussbericht_fundstellen(store, p))
+            # Aus denselben Dokumenten, aber an eigener Probe: wofür die Stadt
+            # geradesteht (Anhang 6.2.10). Steht nach den beiden oben, weil ein
+            # gerissener Bürgschafts-Lauf die Ergebnisrechnung nicht aufhalten
+            # darf — es sind verschiedene Abschnitte hinter verschiedenen Proben.
+            print("Bürgschaftsbestand (Eventualverbindlichkeiten):")
+            uebernehmen("buergschaft", finanzquellen.lies_buergschaften(store, p))
         if args.nur in (None, "teilhaushalte"):
             print("Teilhaushalte (Produktebene):")
             uebernehmen("teilhaushalt",

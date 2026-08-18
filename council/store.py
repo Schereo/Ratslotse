@@ -1375,6 +1375,53 @@ class CouncilStore:
             "revidiert INTEGER NOT NULL DEFAULT 0, "   # „r" der Quelle
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
         )
+        # Der Bürgschaftsbestand aus dem Jahresabschluss (council/
+        # buergschaften.py) — wofür die Stadt geradesteht, nicht was sie
+        # schuldet. 2024: 220,3 Mio. € gegen 43,7 Mio. € eigene Geldschulden.
+        #
+        # `genau` und `aus_folgejahr` sind keine Technik, sondern Angaben über
+        # die Zahl: Die Quelle nennt den Betrag 2019/2020 auf den Cent und ab
+        # 2022 nur noch gerundet („rd. 220,3 Millionen"), und 2021 nennt sie
+        # ihn überhaupt nicht — dieser Wert steht allein im Dokument des
+        # Folgejahres. Ohne beide Spalten sähen sechs verschieden belegte
+        # Jahrgänge in der Anzeige gleich aus.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_buergschaften ("
+            "jahr INTEGER PRIMARY KEY, "
+            "bestand REAL NOT NULL, "          # in Euro
+            "genau INTEGER NOT NULL, "         # 1 = auf den Cent belegt
+            "aus_folgejahr INTEGER NOT NULL, " # 1 = Anfangsbestand des Folgejahrs
+            "quelle TEXT NOT NULL, "           # anhang | tabelle
+            "grund TEXT, "                     # Begründung im Wortlaut der Stadt
+            "einzelbetrag REAL, "              # die im Grund genannte Zahl (2022)
+            "proben TEXT NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
+        )
+        # Die dritte Schuldenzahl (council/integrierte_schulden.py): was der
+        # ganze „Konzern Stadt" schuldet, anteilig nach Beteiligungshöhe —
+        # 31.12.2024 rund 740,3 Mio. € gegen 294,9 Mio. € der Jahrbuch-Reihe.
+        #
+        # EIN STICHTAG JE AUSGABE, bewusst keine Zeitreihe: Welche Unternehmen
+        # mitgerechnet werden, wechselt zwischen den Ausgaben, und die
+        # Statistischen Ämter raten selbst davon ab, Jahrgänge zu vergleichen.
+        # Die Tabelle kann trotzdem mehrere Jahre führen — sie darf nur nicht
+        # als Kurve gezeichnet werden.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_integrierte_schulden ("
+            "jahr INTEGER PRIMARY KEY, "
+            "ars TEXT NOT NULL, "              # Regionalschlüssel, nie der Name
+            "bevoelkerung REAL, "
+            "insgesamt REAL NOT NULL, je_einwohner REAL, "
+            "kernhaushalt REAL, extrahaushalte REAL, sonstige REAL, "
+            # Die Aufteilung nach Beteiligungshöhe — daraus rechnet sich der
+            # Anteil, der KEINE Haftung begründet (2024: 58 %).
+            "extra_unter_50 REAL, sonstige_unter_50 REAL, "
+            # Die Veränderung, die der Band selbst ausweist. Angabe der Quelle,
+            # nicht unsere Rechnung — deshalb gespeichert statt abgeleitet.
+            "veraenderung REAL, "
+            "proben TEXT NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
+        )
         # Nachbewilligungen nach § 117 NKomVG (council/nachbewilligungen.py).
         # Drei Tabellen, weil hier zwei verschiedene Quellen dieselbe Sache
         # beschreiben und niemals vermischt werden dürfen:
@@ -1781,6 +1828,13 @@ class CouncilStore:
         # das Open-Data-Portal —, deshalb keine feste Art. Nachzutragen ist
         # ohnehin nichts, die Tabelle ist neu.
         "council_ausgabenreihe":        (None, "quelle_url", None),
+        # Der Bürgschaftsbestand: eine Quelle, der Jahresabschluss als Anlage
+        # im Ratsinformationssystem.
+        "council_buergschaften":        (None, "quelle_url", "ris"),
+        # Die dritte Schuldenzahl: Tabellenband der Statistischen Ämter,
+        # also weder Stadt noch Ratsinformationssystem — eigene Art "lsn"
+        # wie beim Städtevergleich.
+        "council_integrierte_schulden": (None, "quelle_url", "lsn"),
         # Die Nachbewilligungen: neu, ohne Altspalten. Beide Quellen liegen im
         # Ratsinformationssystem — die Vorlagen selbst und der
         # Rechenschaftsbericht als Anlage zum Jahresabschluss.
@@ -4345,6 +4399,8 @@ class CouncilStore:
         "schulden":    ("council_schulden", "jahr", None),
         "gebaut":      ("council_investitionen_ist", "jahr", None),
         "ausgabenreihe": ("council_ausgabenreihe", "jahr", None),
+        "buergschaften": ("council_buergschaften", "jahr", None),
+        "integrierte_schulden": ("council_integrierte_schulden", "jahr", None),
         "spenden":     ("council_spenden", "jahr", None),
         "steuerplan":  ("council_steuerplan", "jahr", None),
         "hebesaetze":  ("council_hebesaetze", "jahr", None),
@@ -4835,6 +4891,20 @@ class CouncilStore:
                 [(jahr, a["rolle"], a["nr"], a["ueberschrift"], a["text"], hid, now)
                  for a in abschnitte])
         return len(abschnitte)
+
+    def get_bilanz_posten(self, rolle: str) -> list[dict]:
+        """Eine einzelne Bilanzposition über alle Stichtage.
+
+        Für Zahlen, die außerhalb der Bilanzseite gebraucht werden und dort
+        ihre Bedeutung erst bekommen — die Geldschulden neben dem
+        Bürgschaftsbestand etwa (`council/buergschaften.py`). Die ganze Bilanz
+        dafür zu holen und im Aufrufer zu filtern hieße, 131 Zeilen zu laden,
+        um drei zu benutzen."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_bilanz WHERE rolle = ? ORDER BY jahr", (rolle,))]
+        except sqlite3.OperationalError:
+            return []
 
     def get_bilanz_erlaeuterungen(self, jahr: int | None = None) -> list[dict]:
         """Erläuterungen zur Bilanz — ein Jahrgang oder alle."""
@@ -5505,6 +5575,86 @@ class CouncilStore:
         try:
             rows = [dict(r) for r in self._conn.execute(
                 "SELECT * FROM council_ausgabenreihe ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+        for r in rows:
+            r["proben"] = [p for p in (r.get("proben") or "").split(",") if p]
+        return rows
+
+    # --- Bürgschaften: wofür die Stadt geradesteht --------------------------
+
+    def save_buergschaften(self, zeilen: list[dict], herkunft) -> int:
+        """Bürgschafts-Jahrgänge ersetzen — je Jahr eine Zeile.
+
+        Wie bei ``save_ausgabenreihe`` wird nur ersetzt, was die Lieferung
+        mitbringt: Ein Lauf, dem ein Jahrgang durchgefallen ist, räumt den
+        vorher gespeicherten Stand dieses Jahrgangs nicht mit weg.
+
+        Aufgerufen wird sie **je Herkunfts-Gruppe**, nicht einmal für die
+        ganze Reihe — jeder Jahrgang steht in seinem eigenen Jahresabschluss,
+        und 2021 steht sogar in dem des Folgejahres. Ein gemeinsamer Beleg
+        wäre für fünf von sechs Zeilen der falsche."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_buergschaften "
+                "(jahr, bestand, genau, aus_folgejahr, quelle, grund, "
+                " einzelbetrag, proben, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?)",
+                [(z["jahr"], z["bestand"], int(bool(z.get("genau"))),
+                  int(bool(z.get("aus_folgejahr"))), z["quelle"], z.get("grund"),
+                  z.get("einzelbetrag"), ",".join(z.get("proben") or []),
+                  hid, now) for z in zeilen])
+        return len(zeilen)
+
+    def get_buergschaften(self) -> list[dict]:
+        """Der Bürgschaftsbestand je Jahr, aufsteigend.
+
+        ``genau`` und ``aus_folgejahr`` kommen als Wahrheitswerte heraus, nicht
+        als 0/1: Sie sind Angaben über die Belegqualität und werden im Frontend
+        als solche gelesen, nicht gerechnet."""
+        try:
+            rows = [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_buergschaften ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+        for r in rows:
+            r["proben"] = [p for p in (r.get("proben") or "").split(",") if p]
+            r["genau"] = bool(r["genau"])
+            r["aus_folgejahr"] = bool(r["aus_folgejahr"])
+        return rows
+
+    def save_integrierte_schulden(self, zeile: dict, herkunft) -> int:
+        """Einen Stichtag der integrierten Schulden ersetzen."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute(
+                "INSERT OR REPLACE INTO council_integrierte_schulden "
+                "(jahr, ars, bevoelkerung, insgesamt, je_einwohner, kernhaushalt, "
+                " extrahaushalte, sonstige, extra_unter_50, sonstige_unter_50, "
+                " veraenderung, proben, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (zeile["jahr"], zeile["ars"], zeile.get("bevoelkerung"),
+                 zeile["insgesamt"], zeile.get("je_einwohner"),
+                 zeile.get("kernhaushalt"), zeile.get("extrahaushalte"),
+                 zeile.get("sonstige"), zeile.get("extra_unter_50"),
+                 zeile.get("sonstige_unter_50"), zeile.get("insgesamt_veraenderung"),
+                 ",".join(zeile.get("proben") or []), hid, now))
+        return 1
+
+    def get_integrierte_schulden(self) -> list[dict]:
+        """Die integrierten Schulden je Stichtag, aufsteigend.
+
+        Kommt als Liste, obwohl die Anzeige nur den jüngsten Stichtag zeigt:
+        Eine zweite Ausgabe soll die erste nicht stillschweigend ersetzen —
+        wer sie vergleichen will, sieht wenigstens, dass es zwei gibt (und
+        findet in ``council/integrierte_schulden.KEINE_REIHE``, warum er es
+        besser lässt)."""
+        try:
+            rows = [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_integrierte_schulden ORDER BY jahr")]
         except sqlite3.OperationalError:
             return []
         for r in rows:

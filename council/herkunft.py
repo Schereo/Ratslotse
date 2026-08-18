@@ -348,6 +348,18 @@ PROBEN: dict[str, str] = {
     # gegeneinander —, kann aber ausfallen, ohne dass die Zeile fällt: Wenn der
     # Rat die vorgeschlagene Liste ändert, sollen Vorschlag und Beschluss
     # auseinandergehen.
+    "integrierte_schulden_kernhaushalt":
+        "Der Tabellenband der Statistischen Ämter weist die Schulden des "
+        "Kernhaushalts getrennt aus. Dieser Wert stimmt mit der "
+        "Geldschulden-Position der städtischen Bilanz überein — zwei "
+        "Behörden, zwei Wege, dieselbe Zahl.",
+    "buergschaft_kette":
+        "Der Jahresabschluss nennt den Bürgschaftsbestand am Anfang und am "
+        "Ende des Jahres. Der Anfangswert steht im Abschluss des Vorjahres "
+        "noch einmal als Endwert — zwei getrennte Dokumente, dieselbe Zahl.",
+    "buergschaft_tabelle":
+        "Der Betrag steht auf den Cent in der Übersichtstabelle des "
+        "Jahresabschlusses, nicht nur als gerundete Millionenangabe im Text.",
     "spenden_zweitstelle":
         "Der angenommene Betrag steht zweimal in derselben Vorlage: einmal im "
         "Beschlussvorschlag, einmal im Abschnitt zu den finanziellen "
