@@ -1445,6 +1445,38 @@ class CouncilStore:
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (jahr, kanal))"
         )
+        # Angenommene Zuwendungen je Ratsvorlage (council/spenden.py). Eine
+        # Zeile je Vorlage, nicht je Jahr: Der Jahreswert entsteht erst beim
+        # Lesen, und die Vorlagen-Nummer ist der Weg zur Beschluss-Seite.
+        #
+        # Was hier bewusst FEHLT: eine Spalte für die Gebenden. Die Namen
+        # stehen nur in der Anlage „Zuwendungsliste", die nicht im Bestand ist
+        # — und was die Tabelle nicht führen kann, kann die API nicht liefern
+        # und das Frontend nicht versehentlich zeigen. Das ist keine
+        # Sparsamkeit, sondern die Grenze: Der Ratsbeschluss macht die Summe
+        # öffentlich, nicht die Liste dahinter.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_spenden ("
+            "vorlage_nr TEXT PRIMARY KEY, "
+            "jahr INTEGER NOT NULL, "          # Jahr der Sitzung
+            "sitzung TEXT NOT NULL, "          # ISO-Datum
+            "betrag REAL NOT NULL, "           # in Euro, wie beschlossen
+            "gremium TEXT, "                   # Rat | Verwaltungsausschuss
+            "layout TEXT, "                    # neu | alt — welcher Abschnitt trug
+            "zweitstelle TEXT NOT NULL, "      # identisch | zerlegung
+            "proben TEXT NOT NULL, "           # bestandene Proben, kommagetrennt
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
+        )
+        # Und die Gegenprobe: die Zeilen ohne Zweitstelle, mit dem Satz, warum.
+        # Eine Lücke ist eine Auskunft — sie steht auf der Seite, statt still
+        # aus der Summe zu fehlen.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_spenden_verworfen ("
+            "vorlage_nr TEXT PRIMARY KEY, "
+            "sitzung TEXT, "
+            "grund TEXT NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
+        )
         # Was je Steuerart geplant war und was daraus wurde — Tabelle 1103 des
         # Statistischen Jahrbuchs (council/steuertabellen.py). Beträge in Euro;
         # die Quelle rechnet in Tausend Euro.
@@ -1728,6 +1760,10 @@ class CouncilStore:
         "council_nachbewilligungen":        (None, "quelle_url", "ris"),
         "council_nachbewilligung_jahre":    (None, "quelle_url", "ris"),
         "council_nachbewilligung_kanaele":  (None, "quelle_url", "ris"),
+        # Die Zuwendungen: Quelle sind Ratsvorlagen im Bürgerinfo, also „ris".
+        # Nachzutragen ist nichts, beide Tabellen sind neu.
+        "council_spenden":              (None, "quelle_url", "ris"),
+        "council_spenden_verworfen":    (None, "quelle_url", "ris"),
         # Die beiden Steuertabellen des Jahrbuchs — neu, ohne Altbestand.
         "council_steuerplan":           (None, "quelle_url", "stadt"),
         "council_hebesaetze":           (None, "quelle_url", "stadt"),
@@ -4210,6 +4246,7 @@ class CouncilStore:
         "schulden":    ("council_schulden", "jahr", None),
         "gebaut":      ("council_investitionen_ist", "jahr", None),
         "ausgabenreihe": ("council_ausgabenreihe", "jahr", None),
+        "spenden":     ("council_spenden", "jahr", None),
         "steuerplan":  ("council_steuerplan", "jahr", None),
         "hebesaetze":  ("council_hebesaetze", "jahr", None),
     }
@@ -5533,6 +5570,87 @@ class CouncilStore:
                 "SELECT jahr FROM council_ausgabenreihe ORDER BY jahr")]
         except sqlite3.OperationalError:
             return []
+
+    # --- Zuwendungen an die Stadt (aus den Ratsbeschlüssen) ----------------
+
+    def save_spenden(self, zeilen: list[dict], verworfen: list[dict],
+                     herkunft) -> int:
+        """Die geprüfte Spendenreihe schreiben — je Vorlage eine Zeile.
+
+        Anders als bei den übrigen Schichten bringt **jede Zeile ihre eigene
+        Herkunft mit** (``zeile["herkunft"]``): Jede Vorlage ist ein eigenes
+        PDF mit eigener Dokument-ID. ``herkunft`` ist die Rückfallebene für
+        die verworfenen Zeilen und für Zeilen ohne eigenen Anker — sie
+        beschreibt den Lauf, nicht ein Dokument.
+
+        ``INSERT OR REPLACE``, kein ``DELETE FROM``: Eine Teillieferung
+        (etwa nach einem abgebrochenen Volltext-Lauf) ersetzt nur, was sie
+        mitbringt, und räumt den Bestand nicht ab."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            rueck = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_spenden "
+                "(vorlage_nr, jahr, sitzung, betrag, gremium, layout, zweitstelle, "
+                " proben, herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                [(z["vorlage_nr"], z["jahr"], z["sitzung"], z["betrag"], z.get("gremium"),
+                  z.get("layout"), z["zweitstelle"], ",".join(z["proben"]),
+                  self.merke_herkunft(z["herkunft"], fetched_at=now)
+                  if z.get("herkunft") else rueck, now)
+                 for z in zeilen])
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_spenden_verworfen "
+                "(vorlage_nr, sitzung, grund, herkunft_id, fetched_at) VALUES (?,?,?,?,?)",
+                [(v["vorlage_nr"], v.get("sitzung"), v["grund"], rueck, now)
+                 for v in verworfen])
+        return len(zeilen)
+
+    def get_spenden(self) -> list[dict]:
+        """Die Spendenreihe je Vorlage, aufsteigend nach Sitzungsdatum.
+
+        ``proben`` kommt als Liste heraus. Fehlt die Tabelle (frische
+        Datenbank ohne Ingest-Lauf), ist die Antwort leer statt ein Fehler."""
+        try:
+            rows = [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_spenden ORDER BY sitzung, vorlage_nr")]
+        except sqlite3.OperationalError:
+            return []
+        for r in rows:
+            r["proben"] = [p for p in (r.get("proben") or "").split(",") if p]
+        return rows
+
+    def get_spenden_verworfen(self) -> list[dict]:
+        """Die Zeilen ohne Zweitstelle, mit dem Satz, warum sie fehlen."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_spenden_verworfen ORDER BY sitzung, vorlage_nr")]
+        except sqlite3.OperationalError:
+            return []
+
+    def spenden_jahre(self) -> list[int]:
+        """Welche Jahrgänge im Bestand stehen — Grundlage des Bestandsschutzes."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT jahr FROM council_spenden ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    def zuwendungsbeschluesse(self) -> list[dict]:
+        """Die Rohzeilen für ``council.spenden.lies()``.
+
+        Absichtlich breit gefasst (``Annahme%Zuwendung%``): Das Aussieben
+        macht ``spenden.erkenne()``, damit die Regel an einer Stelle steht und
+        nicht halb in SQL."""
+        return [dict(r) for r in self._conn.execute(
+            """SELECT d.vorlage_nr, d.title AS titel, d.beschluss, d.outcome,
+                      s.session_date AS sitzung, s.committee AS gremiensitzung,
+                      v.raw_text, v.document_id AS dokument_id,
+                      v.document_url AS dokument_url
+                 FROM council_decisions d
+                 LEFT JOIN council_sessions s ON s.ksinr = d.ksinr
+                 LEFT JOIN council_vorlagen v ON v.vorlage_nr = d.vorlage_nr
+                WHERE d.kind = 'decision' AND d.title LIKE 'Annahme%Zuwendung%'
+                ORDER BY s.session_date, d.vorlage_nr""")]
 
     # --- Steuertabellen des Jahrbuchs (1103 und 1105) -----------------------
 
