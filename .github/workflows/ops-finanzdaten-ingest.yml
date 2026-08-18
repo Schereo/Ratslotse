@@ -74,6 +74,16 @@ jobs:
             .venv/bin/python scripts/ingest_konzernabschluss.py
             .venv/bin/python scripts/ingest_investitionen_ist.py
             .venv/bin/python scripts/check_beteiligungsbericht.py
+            .venv/bin/python scripts/ingest_ausgabenreihe.py
+
+            # Das Archiv läuft ZULETZT und ist kein Ingest: Es schreibt in
+            # keine Tabelle, sondern legt die Quelldateien beiseite. Es steht
+            # trotzdem hier, weil die Stadt kein Jahrbuch-Archiv führt — nur
+            # die neueste Ausgabe liegt online, und Tabellen mit drei
+            # Jahrgängen verlieren mit jeder Ausgabe ihr ältestes Jahr. Der
+            # tägliche Cron ist der eigentliche Schutz; dieser Aufruf sorgt
+            # dafür, dass ein Ops-Lauf ihn nicht überholt.
+            .venv/bin/python scripts/archive_statistik.py
 
             # ingest_staedtevergleich.py läuft hier BEWUSST NICHT mit. Es
             # verlangt drei Datei-URLs als Pflichtargumente (--kfa,
@@ -102,6 +112,13 @@ jobs:
                 "council_stellenplan", "council_schulden",
                 "council_investitionsmassnahmen", "council_investitionen_ist",
                 "council_investitionen_ist_arten",
+                # Seit 08/2026: Finanzrechnung (#600), Bilanz (#602) und die
+                # lange Ausgabenreihe seit 1972 (#604). Eine Tabelle, die hier
+                # fehlt, fällt nur dadurch auf, dass irgendwann jemand eine
+                # leere Seite meldet — genau der Fall, den dieser Bericht
+                # verhindern soll.
+                "council_finanzrechnung", "council_bilanz",
+                "council_bilanz_erlaeuterungen", "council_ausgabenreihe",
             ]
             # Die Jahresspalte heißt nicht überall „jahr": council_haushalt
             # führt „year", der Stellenplan „jahrgang". Der erste Lauf meldete
