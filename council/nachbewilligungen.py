@@ -284,14 +284,36 @@ class Bewilligung:
     beschluesse: tuple[dict, ...] = field(default_factory=tuple)
 
     @property
+    def beschlossen(self) -> bool:
+        """Wurde die Bewilligung wirklich erteilt?
+
+        Fünf der 161 Vorlagen tragen **gar keine** Beschlusszeile (19/0528,
+        22/0925, 25/0734, 26/0365, 26/0515) — eingebracht, aber im Bestand
+        ohne Ergebnis. Sie zu summieren hieße, Beantragtes als Bewilligtes
+        auszugeben; allein 22/0925 verschöbe das Jahr 2022 um 1,4 Mio. €."""
+        return any(b.get("outcome") == "angenommen" for b in self.beschluesse)
+
+    @property
+    def nur_kenntnis(self) -> bool:
+        """Der Rat wurde nur **unterrichtet** — entschieden hat ein anderer.
+
+        Das ist keine Formalie, sondern der Punkt der ganzen Seite: „Bericht"
+        heißt Eilentscheidung oder Entscheidung des Oberbürgermeisters. Auch
+        das RIS kennt die vier Kanäle also, es sagt sie nur nicht so deutlich
+        wie der Rechenschaftsbericht."""
+        return bool(self.beschluesse) and not self.beschlossen
+
+    @property
     def zaehlt_in_summe(self) -> bool:
-        """Nur echte Bewilligungen mit Betrag gehen in eine Jahressumme."""
-        return self.art == ART_BEWILLIGUNG and self.betrag is not None
+        """Nur erteilte Bewilligungen mit Betrag gehen in eine Jahressumme."""
+        return (self.art == ART_BEWILLIGUNG and self.betrag is not None
+                and self.beschlossen)
 
     @property
     def im_rat(self) -> bool:
         """Hat der Rat selbst darüber abgestimmt?"""
         return any(str(b.get("committee", "")).startswith("Rat")
+                   and b.get("outcome") == "angenommen"
                    for b in self.beschluesse)
 
 
@@ -426,6 +448,16 @@ _VE_TEXT = re.compile(
     rf"(?:insgesamt\s+)?({_NUM})\s*Euro", re.IGNORECASE)
 _SUMMENZEILE = re.compile(rf"(?m)^\s*Summe\s+({_NUM})\s+({_NUM})\s*$")
 
+#: Der Kopf der Übersichtstabelle — und die Grenze, ab der die Kanalnamen
+#: Tabellenzeilen bedeuten und nicht Fließtext.
+#:
+#: Ohne diese Grenze verschwand ein Kanal: Der einleitende Satz des Kapitels
+#: lautet „… wurde er über **Eilentscheidungen** und die vom Oberbürgermeister
+#: … unterrichtet". Wer den Kanal per ``search`` sucht, landet dort statt in
+#: der Tabelle — und liest hinter der Prosa keine Zellen mehr. 2022 fehlten so
+#: die 180.000 € der einen Eilentscheidung, was prompt die Spaltenprobe riss.
+_TABELLENKOPF = re.compile(r"Anzahl\s+Konsumtive")
+
 #: Die vier Kanalzeilen der Übersichtstabelle. Der Textextrakt bricht sie
 #: über mehrere Zeilen um („Vom Oberbürgermeister\nentschieden\n3 42.467,80"),
 #: deshalb wird nach dem Label über Zeilengrenzen hinweg gelesen.
@@ -558,7 +590,9 @@ def kapitel3(volltext: str, jahr: int) -> Kapitel3 | None:
     summe = _SUMMENZEILE.search(text)
     if not summe:
         return None
-    kanaele = tuple(k for k in (_kanal(text, s, m)
+    kopf = _TABELLENKOPF.search(text)
+    tabelle = text[kopf.end():summe.end()] if kopf else text[:summe.end()]
+    kanaele = tuple(k for k in (_kanal(tabelle, s, m)
                                 for s, m in _KANAL_LABEL.items()) if k)
     gesamt = _GESAMT.search(text)
     auft = _AUFTEILUNG.search(text)
