@@ -55,6 +55,8 @@ import {
   juengsteZinslast, ohneAufteilung, punkte,
 } from "@/lib/haushalt-schulden";
 import { Zeitreihe } from "@/components/grafik/zeitreihe";
+import type { JahrPunkt } from "@/components/grafik/daten";
+import { deZahl } from "@/components/grafik/format";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
@@ -119,11 +121,64 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
   const rueck = new Map((b?.rueckstellung ?? []).map((z) => [z.jahr, z.wert]));
   const letzter = reihe[reihe.length - 1];
   const erster = reihe[0];
+  const gsErst = geld.get(erster.jahr) ?? null;
   const gsLetzt = geld.get(letzter.jahr) ?? null;
   const rsLetzt = rueck.get(letzter.jahr) ?? null;
   // Der Jahrgang, der den Sprung erklärt — der mit der genannten Einzelzahl.
   const sprung = reihe.find((z) => z.einzelbetrag != null) ?? null;
-  const groesste = Math.max(...reihe.map((z) => z.bestand));
+  // Der Jahrgang ohne eigene Fundstelle: Seine Zahl steht nur als
+  // Anfangsbestand im Abschluss des Folgejahres.
+  const nachgetragen = reihe.find((z) => z.aus_folgejahr) ?? null;
+
+  // BEIDE REIHEN IN EINER ZEICHENFLÄCHE. Die Aussage dieses Blocks ist kein
+  // Stichtag, sondern eine Bewegung: Was die Stadt selbst schuldet, sinkt —
+  // wofür sie geradesteht, steigt. Nebeneinander gezeichnet sieht man das;
+  // untereinander gelistet (so stand es bis 08/2026 hier) muss man es rechnen.
+  const verbuergt: JahrPunkt[] = reihe.map((z) => ({ jahr: z.jahr, wert: z.bestand / 1e6 }));
+  const eigene: JahrPunkt[] = reihe.map((z) => {
+    const w = geld.get(z.jahr);
+    return w == null
+      ? { jahr: z.jahr, fehlt: "für dieses Jahr liegt keine geparste Bilanz vor" }
+      : { jahr: z.jahr, wert: w / 1e6 };
+  });
+
+  // DIE SCHERE WIRD GEMESSEN, NICHT BEHAUPTET. Der Kernsatz stimmt nur,
+  // solange die eigenen Schulden wirklich fallen UND der Bestand wirklich
+  // steigt. Kippt eine der beiden Richtungen, fällt der Satz weg statt falsch
+  // zu werden — eine Überschrift, die ihre Daten überlebt hat, wäre der
+  // schlimmere Fehler als gar keine.
+  const schere =
+    reihe.length > 1 && gsErst != null && gsLetzt != null
+    && gsLetzt < gsErst && letzter.bestand > erster.bestand
+      ? { rueckgang: (1 - gsLetzt / gsErst) * 100, faktor: letzter.bestand / erster.bestand }
+      : null;
+
+  // Die beiden Stellen, an denen die Quelle selbst etwas erklärt. Der Text
+  // steht unter der Grafik (Kein-Tooltip-Regel, GB-01), die Marke im Bild.
+  const annotationen = [
+    sprung?.grund
+      ? {
+          jahr: sprung.jahr,
+          kurz: sprung.einzelbetrag != null
+            ? `${deMio(sprung.einzelbetrag / 1e6)} Mio. €`
+            : undefined,
+          text: `${sprung.jahr}: ${sprung.grund}`,
+        }
+      : null,
+    nachgetragen
+      ? {
+          jahr: nachgetragen.jahr,
+          text: `Für ${nachgetragen.jahr} nennt der Jahresabschluss selbst keinen `
+            + `Bestand; die Zahl steht als Anfangsbestand im Abschluss `
+            + `${nachgetragen.jahr + 1}.`,
+        }
+      : null,
+  ].filter((a): a is { jahr: number; kurz?: string; text: string } => a !== null);
+
+  // Wie genau die Quelle je Jahrgang ist. Das gehört an die Zahlen und nicht
+  // in eine Fußnote am Seitenende — die Reihe mischt zwei Darreichungsformen.
+  const cent = reihe.filter((z) => z.genau).map((z) => z.jahr);
+  const gerundet = reihe.filter((z) => !z.genau && !z.aus_folgejahr).map((z) => z.jahr);
 
   return (
     <section className="flex flex-col gap-3.5 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
@@ -132,71 +187,54 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
           Wofür die Stadt außerdem geradesteht
         </p>
         <h2 className="mt-1 text-[17px] font-semibold leading-snug text-foreground">
-          Bürgschaften: {deMio(letzter.bestand / 1e6)}&#8239;Mio.&nbsp;€
-          {gsLetzt ? (
-            <span className="font-normal text-muted-foreground">
-              {" "}— das {(letzter.bestand / gsLetzt).toFixed(1).replace(".", ",")}-Fache
-              der eigenen Schulden
-            </span>
-          ) : null}
+          {schere
+            ? "Die Stadt schuldet immer weniger — und steht für immer mehr gerade"
+            : <>Bürgschaften: {deMio(letzter.bestand / 1e6)}&#8239;Mio.&nbsp;€</>}
         </h2>
+        {schere && gsLetzt != null ? (
+          <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
+            Seit {erster.jahr} hat die Stadt ihre eigenen Geldschulden um{" "}
+            {deZahl(schere.rueckgang, 0)}&nbsp;% abgebaut — auf{" "}
+            {deMio(gsLetzt / 1e6)}&#8239;Mio.&nbsp;€. Im selben Zeitraum ist das
+            Volumen, für das sie bürgt, auf das {deZahl(schere.faktor, 1)}-Fache
+            gestiegen: {deMio(letzter.bestand / 1e6)}&#8239;Mio.&nbsp;€. Beide
+            Zahlen stehen in denselben Jahresabschlüssen.
+          </p>
+        ) : null}
         <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
           {b?.abgrenzung}
         </p>
       </div>
 
-      {/* Die Reihe. Zwei Balken je Jahr: wofür die Stadt geradesteht, und was
-          sie selbst schuldet. Der Vergleich IST die Aussage — 2019 lagen
-          beide fast gleichauf. */}
-      <ul className="flex flex-col gap-1.5">
-        {reihe.map((z) => {
-          const gs = geld.get(z.jahr) ?? null;
-          return (
-            <li key={z.jahr} className="flex items-center gap-2.5 text-[12px]">
-              <span className="w-9 shrink-0 font-mono text-muted-foreground">{z.jahr}</span>
-              <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2 rounded-sm bg-[var(--hh-aus-0)]"
-                    style={{ width: `${Math.max(2, (z.bestand / groesste) * 100)}%` }} />
-                  <span className="shrink-0 font-semibold tabular-nums text-foreground">
-                    {deMio(z.bestand / 1e6)}
-                  </span>
-                </span>
-                {gs ? (
-                  <span className="flex items-center gap-1.5">
-                    <span className="h-2 rounded-sm bg-[var(--hh-ein-0)] opacity-70"
-                      style={{ width: `${Math.max(2, (gs / groesste) * 100)}%` }} />
-                    <span className="shrink-0 tabular-nums text-muted-foreground">
-                      {deMio(gs / 1e6)} eigene Schulden
-                    </span>
-                  </span>
-                ) : null}
-              </span>
-              {/* Die Quelle sagt selbst, wie genau sie ist — das gehört an die
-                  Zahl, nicht in eine Fußnote am Seitenende. */}
-              {z.aus_folgejahr ? (
-                <span className="shrink-0 text-[10.5px] text-muted-foreground">
-                  aus dem Abschluss {z.jahr + 1}
-                </span>
-              ) : z.genau ? (
-                <span className="shrink-0 text-[10.5px] text-muted-foreground">
-                  auf den Cent belegt
-                </span>
-              ) : null}
-            </li>
-          );
-        })}
-      </ul>
+      {/* Die Schere als Bild: der Bestand als Reihe, die eigenen Schulden als
+          dünne zweite Linie IN derselben Fläche (GB-01). Zwei getrennte
+          Grafiken nebeneinander hätten zwei Maßstäbe — und damit genau den
+          Vergleich zerstört, um den es hier geht. */}
+      <Zeitreihe
+        reihe={verbuergt}
+        zweitreihe={{ label: "eigene Geldschulden", reihe: eigene }}
+        einheit="Mio. €"
+        titel="Verbürgt und selbst geschuldet"
+        ariaTitel={`Bürgschaftsbestand und eigene Geldschulden der Stadt Oldenburg, `
+          + `${erster.jahr} bis ${letzter.jahr}, in Millionen Euro`}
+        annotationen={annotationen}
+        vorjahresdifferenz
+        tabelle
+      />
 
-      {sprung?.grund ? (
-        <div className="rounded-xl border border-border bg-background/40 p-3">
-          <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            Woher der Sprung {sprung.jahr} kommt
-          </p>
-          <p className="mt-1 max-w-[76ch] text-[12.5px] leading-relaxed text-foreground/90">
-            {sprung.grund}
-          </p>
-        </div>
+      {cent.length > 0 || gerundet.length > 0 ? (
+        <p className="max-w-[76ch] text-[12px] leading-relaxed text-muted-foreground">
+          <strong className="text-foreground">Wie genau die Quelle ist.</strong>{" "}
+          {cent.length > 0 ? (
+            <>Für {cent.join(" und ")} nennt der Jahresabschluss den Betrag auf
+              den Cent{gerundet.length > 0 ? ", " : ". "}</>
+          ) : null}
+          {gerundet.length > 0 ? (
+            <>ab {gerundet[0]} nur noch auf Zehntel-Millionen gerundet („rd.").{" "}
+            </>
+          ) : null}
+          Die Reihe mischt also zwei Darreichungsformen derselben Quelle.
+        </p>
       ) : null}
 
       {rsLetzt ? (
