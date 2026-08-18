@@ -133,6 +133,10 @@ def main() -> int:
         src = haushalt.HAUSHALT_URLS.get(newest) or (by_year[newest][0].get("source_url") if by_year[newest] else "")
         questions = haushalt.build_questions(by_year[newest], newest, src)
         questions += haushalt.build_trend_questions(by_year, src)
+        # Aus dem ABSCHLUSS statt dem Plan: die drei Schuldenzahlen, die
+        # Bürgschaften und der Substanzverlust. Sie liefern nur, was in der
+        # Datenbank belegt ist — fehlt eine Quelle, fehlt ihre Frage.
+        questions += haushalt.build_abschluss_questions(store)
         n_new = store.save_quiz_questions(questions)
         # Bestehende Fragen auffrischen (z. B. Trendlinie um neue Jahre verlängern).
         n_upd = store.refresh_quiz_payloads(questions)
