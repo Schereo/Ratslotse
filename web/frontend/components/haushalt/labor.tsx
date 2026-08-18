@@ -43,7 +43,7 @@ import Link from "next/link";
 import { RotateCcw } from "lucide-react";
 import { TABLEISTE_HOEHE } from "@/components/nav";
 import {
-  HaushaltDaten, PLAN_ART_LABEL, Produkt, RUECKLAGE_MIO, bereiche, deMio,
+  HaushaltAuswahl, PLAN_ART_LABEL, Produkt, RUECKLAGE_MIO, bereiche, deMio,
   jahreSortiert, mio, naechstesProdukt, planGegenIst, summe,
 } from "@/lib/haushalt";
 import { PFLICHT_ZUORDNUNG } from "@/lib/haushalt-pflicht";
@@ -65,7 +65,7 @@ function eur(v: number): string {
 
 /** Geplant gegen tatsächlich (Jahresabschlüsse) — der Maßstab dafür, wie
  *  belastbar die Zahl ist, gegen die hier angerechnet wird. */
-function PlanIst({ daten }: { daten: HaushaltDaten }) {
+function PlanIst({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"> }) {
   const reihe = planGegenIst(daten);
   if (reihe.length < 2) return null;
   const spanne = Math.max(...reihe.flatMap((r) => [Math.abs(r.plan), Math.abs(r.ist)]));
@@ -145,7 +145,7 @@ function PlanIst({ daten }: { daten: HaushaltDaten }) {
 }
 
 export function Labor({ daten, produkte, produktJahr }: {
-  daten: HaushaltDaten;
+  daten: HaushaltAuswahl<"jahre" | "steuern" | "steuerkraft" | "einwohner" | "ergebnisrechnung">;
   produkte: Produkt[];
   produktJahr: number | null;
 }) {

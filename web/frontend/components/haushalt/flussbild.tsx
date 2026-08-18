@@ -29,7 +29,7 @@ import {
   fasseKleineZusammen,
 } from "@/components/grafik/flussbild";
 import {
-  FlussBand, FlussDaten, HaushaltDaten,
+  FlussBand, FlussDaten, HaushaltAuswahl,
   deMio, flussJahre, flussbild, mio,
 } from "@/lib/haushalt";
 import { ausblick, type Antwort as DatenstandAntwort } from "@/components/haushalt/datenstand";
@@ -105,7 +105,7 @@ function Luecke({ jahr, letztes, aufJahr }: {
 }
 
 export function Flussbild({ daten, jahr, onJahrWechsel }: {
-  daten: HaushaltDaten;
+  daten: HaushaltAuswahl<"ergebnisrechnung">;
   jahr: number;
   /** Der saubere Weg, das Angebot einzulösen — die Seite hält das Jahr.
    *  Optional, damit die Einbindung unverändert weiterläuft; ohne ihn greift

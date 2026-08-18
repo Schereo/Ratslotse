@@ -54,7 +54,7 @@ import {
 } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
 import {
-  HaushaltDaten, Produkt, ProdukteAntwort, SPIELRAUM_TEXT, Spielraum,
+  HaushaltAuswahl, haushaltUrl, Produkt, ProdukteAntwort, SPIELRAUM_TEXT, Spielraum,
   bereichSlug, betrag,
 } from "@/lib/haushalt";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
@@ -587,7 +587,7 @@ function ProdukteInner() {
     return () => clearTimeout(t);
   }, [suche]);
 
-  const uebersicht = useFetch<HaushaltDaten>("/council/haushalt");
+  const uebersicht = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(haushaltUrl(FELDER));
   // Jüngstes Jahr mit Produktebene. Die Liste kommt aus der Übersicht, damit
   // die Seite kein Jahr rät, das es nicht gibt.
   const jahr = useMemo(() => {
@@ -860,6 +860,11 @@ function ProdukteInner() {
     </Quellenkontext>
   );
 }
+
+/** Was diese Seite rendert — und damit alles, was sie holt.
+ *  Feldliste und Typ kommen aus derselben Zeile: Ein Zugriff auf ein
+ *  nicht angefordertes Feld ist ein Fehler beim Bauen, kein leerer Block. */
+const FELDER = ["produkt_jahre"] as const;
 
 export default function ProduktePage() {
   // useSearchParams braucht eine Suspense-Grenze (Export-Konvention).

@@ -46,7 +46,7 @@ import { useSearchParams } from "next/navigation";
 import { ArrowRight, ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
 import {
-  ErgebnisPosten, HaushaltDaten, PLAN_ART_LABEL, PlanArt,
+  ErgebnisPosten, HaushaltAuswahl, haushaltUrl, PLAN_ART_LABEL, PlanArt,
   deMio, grundZuPosten, gruendeFuerBereich, kassensicht, mio, pruefberichtZuJahr,
 } from "@/lib/haushalt";
 import { PruefberichtDaten, wiederholungsketten } from "@/lib/haushalt-pruefung";
@@ -154,7 +154,7 @@ type Bereich = {
 
 function PlanIstInner() {
   const gewaehltesJahr = Number(useSearchParams().get("jahr")) || null;
-  const { data, loading } = useFetch<HaushaltDaten>("/council/haushalt");
+  const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(haushaltUrl(FELDER));
   const [zahlenOffen, setZahlenOffen] = useState(false);
   const [massstab, setMassstab] = useState<HantelMassstab>("prozent");
 
@@ -766,6 +766,11 @@ function PlanIstInner() {
     </Quellenkontext>
   );
 }
+
+/** Was diese Seite rendert — und damit alles, was sie holt.
+ *  Feldliste und Typ kommen aus derselben Zeile: Ein Zugriff auf ein
+ *  nicht angefordertes Feld ist ein Fehler beim Bauen, kein leerer Block. */
+const FELDER = ["jahre", "ergebnisrechnung", "abweichungsgruende", "nachbewilligungen", "plan_ist_jahre", "finanzrechnung", "pruefbericht_quellen"] as const;
 
 export default function PlanIstPage() {
   return (

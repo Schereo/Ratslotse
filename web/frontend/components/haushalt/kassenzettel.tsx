@@ -60,7 +60,7 @@ import {
 import { BEREICH_NACH_SCHLUESSEL, bereichKanon } from "@/lib/haushalt-bereiche";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import {
-  HaushaltDaten, RUECKLAGE_MIO, RUECKLAGE_STAND,
+  HaushaltAuswahl, RUECKLAGE_MIO, RUECKLAGE_STAND,
   bereiche, deMio, mio, quellenLabel, summe,
 } from "@/lib/haushalt";
 import { cn } from "@/lib/utils";
@@ -89,7 +89,7 @@ function ruecklageLeerAb(defizitEuro: number, abJahr: number): number | null {
  *  weiterreicht (Gewerbesteuer- und Finanzausgleichsumlage). Der Anteil wird
  *  gerechnet und mit seinem Jahr angeschrieben, statt als feste Zahl zu
  *  veralten. */
-function transferAnteil(daten: HaushaltDaten, thhNr: number): {
+function transferAnteil(daten: HaushaltAuswahl<"ergebnisrechnung" | "jahre">, thhNr: number): {
   jahr: number; prozent: number;
 } | null {
   const posten = daten.ergebnisrechnung ?? [];
@@ -115,7 +115,7 @@ function transferAnteil(daten: HaushaltDaten, thhNr: number): {
  *  nichts; meldet sie eine zu wenig an, verschluckt `Beleg` den Chip
  *  stillschweigend. Deshalb sagt der Zettel es selbst — `plan` nicht, die
  *  trägt die Seite ohnehin schon für die Anzeigetafel. */
-export function kassenzettelQuellen(daten: HaushaltDaten, jahr: number): QuellenSchluessel[] {
+export function kassenzettelQuellen(daten: HaushaltAuswahl<"ergebnisrechnung" | "jahre">, jahr: number): QuellenSchluessel[] {
   const g = summe(daten.jahre[String(jahr)] ?? []);
   if (!g || g.aufwendungen == null) return [];
   const q: QuellenSchluessel[] = ["einwohner"];
@@ -168,7 +168,7 @@ const NICHT_AUSSAGEN: NichtAussage[] = [
 ];
 
 export function Kassenzettel({ daten, jahr, einwohner, className }: {
-  daten: HaushaltDaten;
+  daten: HaushaltAuswahl<"ergebnisrechnung" | "jahre">;
   /** Das jüngste Planjahr — der Zettel läuft bewusst nur dafür (s. o.). */
   jahr: number;
   /** Amtliche Bezugsgröße samt ihrem Haushaltsjahr. */

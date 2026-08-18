@@ -502,7 +502,7 @@ export type Ausgabenreihe = {
  *  Gesamtermächtigung, 2020 der Ansatz samt Nachtrag. Eine Reihe, die das
  *  vermischt, ohne es zu sagen, wäre still falsch. */
 export function planGegenIst(
-  daten: HaushaltDaten,
+  daten: HaushaltAuswahl<"ergebnisrechnung">,
 ): { jahr: number; plan: number; ist: number; delta: number; planArt: PlanArt }[] {
   const posten = daten.ergebnisrechnung ?? [];
   const jahre = [...new Set(posten.map((p) => p.jahr))].sort((a, b) => a - b);
@@ -531,7 +531,7 @@ export function planGegenIst(
  *  zu werden. Fehlende Rollen bleiben `undefined`; die optionalen
  *  Bestandszeilen erlaubt das Dokument ausdrücklich wegzulassen. */
 export function kassensicht(
-  daten: HaushaltDaten, jahr: number,
+  daten: HaushaltAuswahl<"finanzrechnung">, jahr: number,
 ): Partial<Record<FinanzRolle, FinanzZeile>> | null {
   const zeilen = (daten.finanzrechnung ?? []).filter((z) => z.jahr === jahr);
   if (!zeilen.length) return null;
@@ -546,14 +546,14 @@ export function kassensicht(
 
 /** Die Erläuterung zu einem Posten eines Jahres — oder nichts. */
 export function grundZuPosten(
-  daten: HaushaltDaten, jahr: number, nr: number,
+  daten: HaushaltAuswahl<"abweichungsgruende">, jahr: number, nr: number,
 ): Abweichungsgrund | null {
   return (daten.abweichungsgruende ?? []).find((g) => g.jahr === jahr && g.nr === nr) ?? null;
 }
 
 /** Der Schlussbericht des Rechnungsprüfungsamts zu einem Jahrgang. */
 export function pruefberichtZuJahr(
-  daten: HaushaltDaten, jahr: number,
+  daten: HaushaltAuswahl<"pruefbericht_quellen">, jahr: number,
 ): Pruefbericht | null {
   return (daten.pruefbericht_quellen ?? []).find((p) => p.jahr === jahr) ?? null;
 }
@@ -567,7 +567,7 @@ export function pruefberichtZuJahr(
  *  sie wird auf der Seite auch so angeschrieben statt als Aufteilung
  *  ausgegeben, die das Dokument nicht hergibt. */
 export function gruendeFuerBereich(
-  daten: HaushaltDaten, jahr: number, thhNr: number,
+  daten: HaushaltAuswahl<"abweichungsgruende">, jahr: number, thhNr: number,
 ): Abweichungsgrund[] {
   // „Teilhaushalt 10", „THH 10", „THH10" — mit und ohne führende Null.
   const n = String(thhNr);
@@ -650,7 +650,7 @@ const FLUSS_TOLERANZ = 50_000;
  *  Ertragsarten UND Teilhaushalte hergeben. Ein Abschluss ohne
  *  Teilhaushalts-Ebene (2019) trägt nur die halbe Grafik — die zeigen wir
  *  nicht, sonst stünde rechts nichts neben einer vollen linken Seite. */
-export function flussJahre(daten: HaushaltDaten): number[] {
+export function flussJahre(daten: HaushaltAuswahl<"ergebnisrechnung">): number[] {
   const posten = daten.ergebnisrechnung ?? [];
   return [...new Set(posten.map((p) => p.jahr))]
     .sort((a, b) => a - b)
@@ -700,7 +700,7 @@ function flussSeite(
  *  je `thh_nr`) — beide aus derselben Tabelle desselben Jahres, damit nie zwei
  *  Stände nebeneinander stehen. `null`, wenn eine Seite fehlt. */
 export function flussbild(
-  daten: HaushaltDaten, jahr: number, stand: "plan" | "ist",
+  daten: HaushaltAuswahl<"ergebnisrechnung">, jahr: number, stand: "plan" | "ist",
 ): FlussDaten | null {
   const zahl = (p: ErgebnisPosten | undefined) =>
     p ? (stand === "ist" ? p.ergebnis : p.ansatz) : null;
@@ -842,7 +842,7 @@ export function betrag(euro: number | null | undefined): { wert: string; einheit
   return { wert: Math.round(euro).toLocaleString("de-DE"), einheit: "€" };
 }
 
-export function jahreSortiert(daten: HaushaltDaten): number[] {
+export function jahreSortiert(daten: HaushaltAuswahl<"jahre">): number[] {
   return Object.keys(daten.jahre).map(Number).sort((a, b) => a - b);
 }
 
@@ -868,7 +868,7 @@ export function summe(zeilen: HaushaltZeile[]): HaushaltZeile | undefined {
  *  Die API liefert bereits sortiert; hier wird trotzdem sortiert, weil die
  *  Naht-Grafik eine aufsteigende Achse voraussetzt und ein Lesepfad, der sich
  *  auf die Reihenfolge einer fremden Antwort verlässt, still kippt. */
-export function ausgabenreihe(daten: HaushaltDaten): AusgabenreiheJahr[] {
+export function ausgabenreihe(daten: HaushaltAuswahl<"ausgabenreihe">): AusgabenreiheJahr[] {
   const zeilen = daten.ausgabenreihe?.zeilen ?? [];
   return [...zeilen].sort((a, b) => a.jahr - b.jahr);
 }
@@ -877,7 +877,7 @@ export function ausgabenreihe(daten: HaushaltDaten): AusgabenreiheJahr[] {
  *
  *  Kein Nebenschauplatz, sondern Inhalt: Wo zwei amtliche Quellen für dasselbe
  *  Jahr zwei Beträge nennen, gehört das auf die Seite — mit beiden Zahlen. */
-export function ausgabenKonflikte(daten: HaushaltDaten): AusgabenreiheJahr[] {
+export function ausgabenKonflikte(daten: HaushaltAuswahl<"ausgabenreihe">): AusgabenreiheJahr[] {
   return ausgabenreihe(daten).filter((z) => z.konflikt_betrag != null);
 }
 
@@ -899,7 +899,7 @@ export type NachbewilligungsSumme = {
 };
 
 export function nachbewilligungsJahre(
-  daten: HaushaltDaten,
+  daten: HaushaltAuswahl<"nachbewilligungen">,
 ): NachbewilligungsSumme[] {
   const jahre = new Map<number, NachbewilligungsSumme>();
   const hol = (jahr: number) => {
@@ -933,7 +933,7 @@ export function nachbewilligungsJahre(
  *  Beschluss-Seiten verlinkt. Ohne Sammelberichte und ohne
  *  Verpflichtungsermächtigungen: Die stehen auf der Seite getrennt. */
 export function nachbewilligungenFuerJahr(
-  daten: HaushaltDaten, jahr: number,
+  daten: HaushaltAuswahl<"nachbewilligungen">, jahr: number,
 ): Nachbewilligung[] {
   return (daten.nachbewilligungen?.serie ?? [])
     .filter((n) => n.jahr === jahr && n.art === "bewilligung"
@@ -976,14 +976,14 @@ export function kanalAnzahl(k: NachbewilligungsKanal): number {
  *  Das laufende Jahr hat erst die Beschlüsse bis heute; es in eine Reihe zu
  *  zeichnen, hieße einen Rückgang zu zeigen, den es nicht gibt. Es steht
  *  deshalb daneben als Satz, nicht in der Kurve. */
-export function spendenJahre(daten: HaushaltDaten): SpendenJahr[] {
+export function spendenJahre(daten: HaushaltAuswahl<"spenden">): SpendenJahr[] {
   const jahre = daten.spenden?.jahre ?? [];
   const laufend = new Date().getFullYear();
   return jahre.filter((j) => j.jahr < laufend).sort((a, b) => a.jahr - b.jahr);
 }
 
 /** Das laufende Jahr, sofern es schon Beschlüsse trägt. */
-export function spendenLaufend(daten: HaushaltDaten): SpendenJahr | null {
+export function spendenLaufend(daten: HaushaltAuswahl<"spenden">): SpendenJahr | null {
   const laufend = new Date().getFullYear();
   return (daten.spenden?.jahre ?? []).find((j) => j.jahr === laufend) ?? null;
 }
@@ -993,7 +993,7 @@ export function spendenLaufend(daten: HaushaltDaten): SpendenJahr | null {
  *  Die Aufteilung ist selbst die Auskunft: Beide Gremien behandeln ungefähr
  *  gleich viele Vorlagen, aber die Schwelle von 2.000 Euro sorgt dafür, dass
  *  fast das ganze Geld über den Rat läuft. */
-export function spendenGremien(daten: HaushaltDaten) {
+export function spendenGremien(daten: HaushaltAuswahl<"spenden">) {
   const leer = { vorlagen: 0, betrag: 0 };
   const aus = { Rat: { ...leer }, Verwaltungsausschuss: { ...leer } };
   for (const v of daten.spenden?.vorlagen ?? []) {
@@ -1029,7 +1029,7 @@ export function bereichSlug(name: string): string {
  *  Die Teilhaushalts-Zuschnitte ändern sich über die Jahre; eine kurze Reihe
  *  ist dann die ehrliche Antwort, keine fehlende. */
 export function bereichsReihe(
-  daten: HaushaltDaten, name: string,
+  daten: HaushaltAuswahl<"jahre">, name: string,
 ): { jahr: number; zeile: HaushaltZeile }[] {
   return jahreSortiert(daten)
     .map((jahr) => {

@@ -12,15 +12,20 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
-import { HaushaltDaten, ProdukteAntwort, jahreSortiert } from "@/lib/haushalt";
+import { HaushaltAuswahl, haushaltUrl, ProdukteAntwort, jahreSortiert } from "@/lib/haushalt";
 import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { Labor } from "@/components/haushalt/labor";
 import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 
+/** Was diese Seite rendert — und damit alles, was sie holt.
+ *  Feldliste und Typ kommen aus derselben Zeile: Ein Zugriff auf ein
+ *  nicht angefordertes Feld ist ein Fehler beim Bauen, kein leerer Block. */
+const FELDER = ["jahre", "produkt_jahre", "steuern", "steuerkraft", "einwohner", "ergebnisrechnung"] as const;
+
 export default function LaborPage() {
-  const { data, loading } = useFetch<HaushaltDaten>("/council/haushalt");
+  const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(haushaltUrl(FELDER));
   // Die Produktebene liegt nur für abgeschlossene Jahre vor — wir nehmen das
   // jüngste. Fehlt sie ganz, läuft das Labor ohne Vergleichsgrößen weiter.
   const produktJahr = data?.produkt_jahre?.at(-1) ?? null;

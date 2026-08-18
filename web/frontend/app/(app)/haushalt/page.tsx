@@ -42,13 +42,18 @@ import { Steuereuro } from "@/components/haushalt/steuereuro";
 import { Zeitreihe } from "@/components/haushalt/zeitreihe";
 import { NahtSaeulen, type NahtJahr } from "@/components/grafik/naht-saeulen";
 import {
-  AUSGABEN_QUELLE_LABEL, HaushaltDaten,
+  AUSGABEN_QUELLE_LABEL, HaushaltAuswahl, haushaltUrl,
   ausgabenKonflikte, ausgabenreihe,
   deMio, fehlendeJahre, flussJahre, jahreSortiert, mio, quellenLabel, summe,
 } from "@/lib/haushalt";
 
+/** Was diese Seite rendert — und damit alles, was sie holt.
+ *  Feldliste und Typ kommen aus derselben Zeile: Ein Zugriff auf ein
+ *  nicht angefordertes Feld ist ein Fehler beim Bauen, kein leerer Block. */
+const FELDER = ["jahre", "ausgabenreihe", "ergebnisrechnung", "einwohner"] as const;
+
 export default function HaushaltPage() {
-  const { data, loading } = useFetch<HaushaltDaten>("/council/haushalt");
+  const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(haushaltUrl(FELDER));
   const jahre = useMemo(() => (data ? jahreSortiert(data) : []), [data]);
   const [jahr, setJahr] = useState<number | null>(null);
   const [visual, setVisual] = useState<"balken" | "euro">("balken");

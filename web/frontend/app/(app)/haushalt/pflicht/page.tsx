@@ -44,7 +44,7 @@ import Link from "next/link";
 import { ChevronRight, Scale } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
 import {
-  HaushaltDaten, HaushaltZeile, ProdukteAntwort, SPIELRAUM_TEXT, Spielraum,
+  HaushaltAuswahl, haushaltUrl, HaushaltZeile, ProdukteAntwort, SPIELRAUM_TEXT, Spielraum,
   bereiche, bereichSlug, betrag, deMio, jahreSortiert, mio, summe,
 } from "@/lib/haushalt";
 import { BereichSchluessel, bereichKanon } from "@/lib/haushalt-bereiche";
@@ -101,8 +101,13 @@ type Zeile = {
   urteil: Abgleich;
 };
 
+/** Was diese Seite rendert — und damit alles, was sie holt.
+ *  Feldliste und Typ kommen aus derselben Zeile: Ein Zugriff auf ein
+ *  nicht angefordertes Feld ist ein Fehler beim Bauen, kein leerer Block. */
+const FELDER = ["jahre", "produkt_jahre"] as const;
+
 export default function PflichtPage() {
-  const { data, loading } = useFetch<HaushaltDaten>("/council/haushalt");
+  const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(haushaltUrl(FELDER));
 
   // Die Produktebene reicht nicht bis ins Planjahr — welches Jahr sie trägt,
   // sagt die Übersicht. Deshalb erst der zweite Aufruf, und nur wenn es

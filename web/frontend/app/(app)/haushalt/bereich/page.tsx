@@ -33,7 +33,7 @@ import { Segmented } from "@/components/ui";
 import { useFetch } from "@/lib/use-fetch";
 import { fragenHref } from "@/lib/routes";
 import {
-  ERTRAGSART_KURZ, HaushaltDaten, HaushaltZeile, PLAN_ART_LABEL, PlanArt,
+  ERTRAGSART_KURZ, HaushaltAuswahl, haushaltUrl, HaushaltZeile, PLAN_ART_LABEL, PlanArt,
   ProdukteAntwort, betrag, bereichInfo, bereichSlug, bereiche, bereichsReihe,
   deMio, deckung, gruendeFuerBereich, jahreSortiert, mio, quellenLabel,
 } from "@/lib/haushalt";
@@ -97,7 +97,7 @@ function Kopfzahl({ label, wert, ton, beleg }: {
  *  VIERTgrößte Position. Statt eines geschätzten Satzes steht hier die
  *  ausgelesene Aufteilung — mit dem Jahr, aus dem sie stammt. */
 function EigeneErtraege({ daten, schluessel, planEin, planJahr }: {
-  daten: HaushaltDaten;
+  daten: Daten;
   schluessel: string | null;
   planEin: number;
   planJahr: number;
@@ -189,7 +189,7 @@ function bereichAusParam(zeilen: HaushaltZeile[], eingang: string): HaushaltZeil
 
 function BereichInner() {
   const slug = useSearchParams().get("name") ?? "";
-  const { data, loading } = useFetch<HaushaltDaten>("/council/haushalt");
+  const { data, loading } = useFetch<Daten>(haushaltUrl(FELDER));
   const [ranking, setRanking] = useState<"netto" | "brutto">("netto");
   const [reiter, setReiter] = useState<ReiterId>("ueberblick");
 
@@ -723,6 +723,14 @@ function BereichInner() {
     </Quellenkontext>
   );
 }
+
+/** Was diese Seite rendert — und damit alles, was sie holt.
+ *  Feldliste und Typ kommen aus derselben Zeile: Ein Zugriff auf ein
+ *  nicht angefordertes Feld ist ein Fehler beim Bauen, kein leerer Block. */
+const FELDER = ["jahre", "ergebnisrechnung", "produkt_jahre", "abweichungsgruende"] as const;
+
+/** Der Ausschnitt, den diese Seite holt. */
+type Daten = HaushaltAuswahl<typeof FELDER[number]>;
 
 export default function BereichPage() {
   // useSearchParams braucht eine Suspense-Grenze (Export-Konvention).
