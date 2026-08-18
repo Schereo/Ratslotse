@@ -17,9 +17,21 @@ auf 73 %. Wer nur den ersten Bestand zeigt, zeigt eine schrumpfende Teilmenge,
 als wäre sie das Ganze.
 
 Nichts wird hier geladen — beide Quellen liegen bereits im Bestand
-(``council_vorlagen.raw_text`` und ``council_anlagen.raw_text``). Fehlt der
-Volltext einer Anlage, holt ihn ``scripts/backfill_anlagen_texte.py
---nur-finanz``; genau deshalb läuft der im Ops-Workflow **vor** diesem Skript.
+(``council_vorlagen.raw_text`` und ``council_anlagen.raw_text``).
+
+**Reihenfolge ist Pflicht, nicht Geschmack.** Die drei Rechenschaftsberichte
+liegen im Bestand als Anlage mit ``status='listed'`` und **leerem**
+``raw_text``: Sie sind verzeichnet, aber nie geladen worden. Wer dieses
+Skript ohne Vorlauf startet, bekommt die RIS-Serie und **kein einziges**
+Kapitel 3 — also genau die halbe Wahrheit, gegen die dieser Block gebaut ist
+(nur die Ratsbeschlüsse, ohne den Nenner, zu dem sie gehören). Deshalb:
+
+    python scripts/backfill_anlagen_texte.py --nur-finanz --retry-failed
+    python scripts/ingest_nachbewilligungen.py
+
+Der Ops-Workflow (``.github/workflows/ops-finanzdaten-ingest.yml``) hält
+diese Reihenfolge ein. Fehlt der Text trotzdem, sagt der Lauf es je Jahrgang
+und schreibt den Jahrgang nicht — eine leere Zeile wäre schlimmer als keine.
 
 Aufruf::
 
@@ -81,7 +93,7 @@ def _serie(store: CouncilStore, trocken: bool) -> dict:
             "vorlage_nr": b.vorlage_nr, "jahr": b.jahr, "titel": b.titel,
             "art": b.art, "kategorie": b.kategorie, "betrag": b.betrag,
             "betrag_quelle": b.betrag_quelle, "beschlossen": b.beschlossen,
-            "im_rat": b.im_rat,
+            "im_rat": b.im_rat, "ratsentscheidung": b.ratsentscheidung,
             "beschluss_id": (fuehrend or {}).get("id"),
             "gremien": sorted({str(d.get("committee") or "") for d in stationen}),
             "volltextprobe": nb.probe_volltext(b, volltexte.get(b.vorlage_nr)),

@@ -1399,7 +1399,15 @@ class CouncilStore:
             "betrag REAL, "                    # NULL bei art='schwelle'
             "betrag_quelle TEXT, "             # titel | beschlussvorschlag
             "beschlossen INTEGER NOT NULL DEFAULT 0, "
+            # Zwei Spalten, weil es zwei verschiedene Fragen sind:
+            # `im_rat` = das Plenum hat abgestimmt (die wörtliche Auskunft,
+            # die auf der Seite steht). `ratsentscheidung` = der
+            # Rechenschaftsbericht bucht es als „Beschluss des Rates" —
+            # einschließlich der Fälle, die der Finanzausschuss abschließend
+            # entscheidet. Nur die zweite darf in einen Rats-Anteil; die erste
+            # liegt 2024 um 28 % daneben (s. council/nachbewilligungen.py).
             "im_rat INTEGER NOT NULL DEFAULT 0, "
+            "ratsentscheidung INTEGER NOT NULL DEFAULT 0, "
             # Für den Link auf die vorhandene Beschluss-Seite
             # (/council/decision?id=). Der maßgebliche Beschluss ist der des
             # Rates, sonst der jüngste — dieselbe Ordnung wie anderswo.
@@ -5377,12 +5385,14 @@ class CouncilStore:
             self._conn.executemany(
                 "INSERT OR REPLACE INTO council_nachbewilligungen "
                 "(vorlage_nr, jahr, titel, art, kategorie, betrag, "
-                " betrag_quelle, beschlossen, im_rat, beschluss_id, gremien, "
+                " betrag_quelle, beschlossen, im_rat, ratsentscheidung, "
+                " beschluss_id, gremien, "
                 " volltextprobe, herkunft_id, fetched_at) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 [(z["vorlage_nr"], z.get("jahr"), z["titel"], z["art"],
                   z["kategorie"], z.get("betrag"), z.get("betrag_quelle"),
                   int(bool(z.get("beschlossen"))), int(bool(z.get("im_rat"))),
+                  int(bool(z.get("ratsentscheidung"))),
                   z.get("beschluss_id"),
                   json.dumps(z.get("gremien") or [], ensure_ascii=False),
                   int(bool(z.get("volltextprobe"))), hid, now)

@@ -105,10 +105,11 @@ Was die Proben gezeigt haben
   im Volltext derselben Vorlage noch einmal — **145 von 145**.
 * **Probe 2** (:func:`probe_ratsabgleich`, extern und die harte): Der
   Rechenschaftsbericht nennt dieselben Fälle **mit Vorlagen-Nummern**. 2023
-  und 2024 stimmt die Fallliste exakt (26/26 und 21/21). Gemessene
-  Abweichungen der Summen: 2022 **+1,31 %**, 2023 **+100 €**
-  (0,0003 %), 2024 **+2,19 %**. Die Ursachen stehen bei
-  :func:`probe_ratsabgleich` und werden **benannt statt geglättet**.
+  und 2024 stimmt die Fallliste exakt (26/26 und 21/21), 2022 fehlt genau
+  eine Vorlage (11/12). Gemessene Abweichungen der Summen: 2022 **+0,55 %**,
+  2023 **+100 €** (unter 0,01 %), 2024 **+2,19 %** — letztere auf den Cent
+  aufgelöst. Die Ursachen stehen bei :func:`probe_ratsabgleich` und werden
+  **benannt statt geglättet**.
 * **Probe 3** (:func:`probe_tabelle`, im Dokument): Die Spalten des Kapitels
   addieren sich auf seine eigene Summenzeile, und beide Spalten zusammen auf
   die Gesamtsumme im Fließtext. **2024 geht auf den Cent auf. 2022 und 2023
@@ -188,6 +189,20 @@ _EINSCHLAG = re.compile(r"(?:über|ueber|außer|ausser)planmäßig", re.IGNORECA
 def ist_nachbewilligung(titel: str) -> bool:
     """Trägt dieser Vorlagentitel eine Nachbewilligung nach § 117 NKomVG?"""
     return bool(_EINSCHLAG.search(titel or ""))
+
+
+#: Die Gremien, deren Zustimmung der Rechenschaftsbericht als „Beschluss des
+#: Rates" bucht: das Plenum und der Finanzausschuss, der in dieser Sache
+#: abschließend entscheidet.
+#:
+#: Bewusst eine kurze, benannte Liste statt „jeder Ausschuss": Ein
+#: Betriebsausschuss eines Eigenbetriebs beschließt über einen **anderen**
+#: Haushalt (zwei Zeilen im Bestand), und der gehört nicht in diese Summe.
+_RATSGREMIEN = ("Rat", "Ausschuss für Finanzen und Beteiligungen")
+
+
+def _beschliessendes_gremium(committee: str) -> bool:
+    return any(committee.startswith(g) for g in _RATSGREMIEN)
 
 
 def de_betrag(wert: float, vorzeichen: bool = False) -> str:
@@ -337,8 +352,37 @@ class Bewilligung:
 
     @property
     def im_rat(self) -> bool:
-        """Hat der Rat selbst darüber abgestimmt?"""
+        """Hat das **Plenum** selbst abgestimmt?
+
+        Die enge, wörtliche Frage. Sie ist eine Auskunft für Leser*innen
+        („diese Vorlage hat der Fachausschuss abschließend entschieden"), aber
+        sie ist **nicht** das Maß für den Rats-Anteil — dafür siehe
+        :attr:`ratsentscheidung`."""
         return any(str(b.get("committee", "")).startswith("Rat")
+                   and b.get("outcome") == "angenommen"
+                   for b in self.beschluesse)
+
+    @property
+    def ratsentscheidung(self) -> bool:
+        """Zählt der Rechenschaftsbericht das unter „Beschluss des Rates"?
+
+        **Das ist die Zahl, um die es auf der Seite geht**, und sie ist weiter
+        als die wörtliche Frage oben. Der Bericht bucht auch das, was der
+        **Ausschuss für Finanzen und Beteiligungen abschließend** entscheidet,
+        als Ratsbeschluss — der Ausschuss handelt dort in der Zuständigkeit des
+        Rates (§ 76 NKomVG).
+
+        Wie groß der Unterschied ist, hat eine Messung gegen den vollen
+        Bestand gezeigt: 2024 haben **8 der 21 Fälle keine Plenarsitzung mehr
+        gesehen** — der Rat tagte am 16.12.2024 als Haushaltssitzung mit 21
+        Punkten, und keiner davon war eine Nachbewilligung. Wer den Rats-Anteil
+        aus :attr:`im_rat` rechnet, veröffentlicht für 2024 **30.896.100 €
+        statt 43.096.100 €**, also 28 % zu wenig — und zwar ausgerechnet für
+        die Kennzahl „der Rats-Anteil sinkt".
+
+        Deshalb folgt diese Eigenschaft der Definition des Berichts und nicht
+        dem Namen des Gremiums."""
+        return any(_beschliessendes_gremium(str(b.get("committee") or ""))
                    and b.get("outcome") == "angenommen"
                    for b in self.beschluesse)
 
@@ -406,8 +450,11 @@ def jahressummen(bewilligungen: list[Bewilligung],
                  nur_rat: bool = False) -> dict[int, dict]:
     """Je Haushaltsjahr: Summe, Fallzahl und was ausdrücklich draußen blieb.
 
-    ``nur_rat=True`` zählt nur Vorlagen, über die der Rat selbst abgestimmt
-    hat. Die Verpflichtungsermächtigungen stehen **getrennt** daneben
+    ``nur_rat=True`` zählt, was der Rechenschaftsbericht als „Beschluss des
+    Rates" bucht — also auch die Fälle, die der Finanzausschuss abschließend
+    entschieden hat (:attr:`Bewilligung.ratsentscheidung`, dort steht, warum
+    die wörtliche Lesart hier 28 % danebenliegt).
+    Die Verpflichtungsermächtigungen stehen **getrennt** daneben
     (``verpflichtungen``/``verpflichtungen_betrag``) und sind in ``summe``
     nicht enthalten — dieselbe Trennung, die der Rechenschaftsbericht zieht."""
     jahre: dict[int, dict] = {}
@@ -419,7 +466,7 @@ def jahressummen(bewilligungen: list[Bewilligung],
             "sammelberichte": 0})
 
     for b in bewilligungen:
-        if b.jahr is None or (nur_rat and not b.im_rat):
+        if b.jahr is None or (nur_rat and not b.ratsentscheidung):
             continue
         # Der Eintrag entsteht erst, wenn wirklich etwas hineinfällt: Eine
         # nur beantragte Vorlage darf kein Jahr mit lauter Nullen erzeugen —
@@ -761,16 +808,60 @@ class Ratsabgleich:
 #: Vorlagen-Nummern haben die Form ``24/0834``.
 _VORLAGE_NR = re.compile(r"\b(\d{2}/\d{4})\b")
 
+#: Der Kopf einer Position in den Listen 3.1/3.2: das Datum der Verfügung,
+#: am Zeilenanfang. Daran werden die Positionen getrennt.
+_POSITIONSKOPF = re.compile(r"(?m)^\s*(\d{2}\.\d{2}\.\d{2,4})\b")
 
-def vorlagen_im_kapitel(volltext: str) -> set[str]:
-    """Alle Vorlagen-Nummern, die Kapitel 3 nennt — der Join-Schlüssel.
+#: Die Spalte „Bewilligt durch" trägt bei einem Ratsbeschluss das Wort „Rat"
+#: **allein**. Die Abgrenzung ist nötig, weil derselbe Block „Amt für
+#: Verkehr und Straßenbau" oder „Beratung" enthalten kann.
+_DURCH_RAT = re.compile(r"(?<![A-Za-zÄÖÜäöüß])Rat(?![A-Za-zÄÖÜäöüß])")
 
-    Das ist der Grund, warum diese Probe die härteste im Bereich ist: Der
-    Bericht nennt nicht nur Summen, sondern **dieselben Fälle mit ihren
-    Nummern**. Gemessen: 2023 und 2024 decken sich die Listen vollständig
-    (26/26 und 21/21, je zuzüglich des Sammelberichts fürs Vorjahr)."""
+
+def vorlagen_im_kapitel(volltext: str, nur_rat: bool = True) -> set[str]:
+    """Die Vorlagen-Nummern der **Ratsbeschlüsse** in Kapitel 3.
+
+    Das ist der Join-Schlüssel, der diese Probe zur härtesten im Bereich
+    macht: Der Bericht nennt nicht nur Summen, sondern dieselben Fälle mit
+    ihren Nummern.
+
+    **Warum nicht einfach jede Nummer im Kapitel.** Der erste Ansatz nahm
+    jedes ``\\d\\d/\\d{4}`` im Abschnitt und war messbar verrauscht: Im
+    Bericht 2022 fing er ``22/0025`` („Haushalt 2022 — Beschluss") und
+    ``22/0580`` („Aufnahme von Haushaltsvermerken") mit ein — beides keine
+    Nachbewilligungen, beide nur als **Deckungsquelle** erwähnt. Die
+    Fallliste behauptete damit Fälle, die der Bericht gar nicht als solche
+    führt.
+
+    Gelesen wird deshalb positionsweise: Die Listen 3.1 und 3.2 beginnen jede
+    Position mit dem Datum der Verfügung (:data:`_POSITIONSKOPF`), und die
+    letzte Spalte („Bewilligt durch") trägt bei einem Ratsbeschluss das Wort
+    ``Rat`` allein. Ein Block ohne dieses Wort ist eine Entscheidung des
+    Oberbürgermeisters (Vermerk ``1``), des Fachdienstes 200 oder eine
+    Eilentscheidung.
+
+    Gemessen am vollen Bestand deckt sich die Liste danach mit unserer Serie:
+    **2022 11 von 12 · 2023 26 von 26 · 2024 21 von 21.** Der eine Rest ist
+    22/0914 — und genau der erklärt zugleich die 2022er Summendifferenz
+    (:func:`probe_ratsabgleich`). Fallliste und Summe stützen sich damit
+    gegenseitig, statt nur nebeneinanderzustehen.
+
+    ``nur_rat=False`` gibt jede Nummer des Kapitels zurück — für die Frage
+    „kennt der Bericht diese Vorlage überhaupt?", die etwas anderes ist als
+    „hat der Rat sie beschlossen?"."""
     text = _kapitel3_text(volltext)
-    return set(_VORLAGE_NR.findall(text or ""))
+    if not text:
+        return set()
+    if not nur_rat:
+        return set(_VORLAGE_NR.findall(text))
+    koepfe = list(_POSITIONSKOPF.finditer(text))
+    treffer: set[str] = set()
+    for i, kopf in enumerate(koepfe):
+        ende = koepfe[i + 1].start() if i + 1 < len(koepfe) else len(text)
+        block = text[kopf.start():ende]
+        if _DURCH_RAT.search(block):
+            treffer.update(_VORLAGE_NR.findall(block))
+    return treffer
 
 
 def probe_ratsabgleich(bewilligungen: list[Bewilligung], kap: Kapitel3,
@@ -780,25 +871,45 @@ def probe_ratsabgleich(bewilligungen: list[Bewilligung], kap: Kapitel3,
     **Die gemessenen Abweichungen, mit ihren Ursachen — sie werden benannt
     statt geglättet:**
 
-    * **2023: +100 € auf 33,87 Mio.** (0,0003 %), Fallliste identisch (26/26).
-      Eine Rundung in einer einzelnen Position.
+    * **2023: +100 € auf 33,87 Mio.** (unter 0,01 %), Fallliste identisch
+      (26/26). Eine Rundung in einer einzelnen Position.
     * **2024: +2,19 %** (43.096.100,00 gegen 42.171.646,29), Fallliste
-      ebenfalls identisch (21/21) — der Unterschied steckt also **nicht** in
-      fehlenden Fällen, sondern in den Beträgen. Er hat einen erkennbaren
-      Grund: Unsere Zahl ist der Betrag, den die **Vorlage beantragt**, die des
-      Berichts der Betrag, der am Ende **je Haushaltsposition gebucht** wurde.
-      Dass die Berichtszahl auf ,29 endet und jede unserer Zahlen glatt ist,
-      zeigt es unmittelbar.
-    * **2022: +1,31 %** (24.136.742,00 gegen 23.825.742,00). Hier liegt es an
-      zwei Vorlagen: 22/0544 (180.000 €) führt der Bericht mit dem Vermerk
-      „1 und BM", also als Entscheidung des **Oberbürgermeisters**, obwohl das
-      RIS eine Rats-Beschlusszeile dazu führt; 22/0914 (131.000 €) nennt der
-      Bericht gar nicht. Zusammen genau die Differenz.
+      ebenfalls identisch (21/21). Der Unterschied steckt also nicht in
+      fehlenden Fällen, sondern in den Beträgen — und er ist **auf den Cent
+      aufgelöst**. Drei Vorlagen wurden niedriger gebucht als beantragt:
+
+      ====================  ============  ================  ==============
+      Vorlage               beantragt     gebucht           Differenz
+      ====================  ============  ================  ==============
+      24/0411                  190.000            51.500       −138.500,00
+      24/0678                  430.000           230.000       −200.000,00
+      24/0648               11.232.400     10.646.446,29       −585.953,71
+      ====================  ============  ================  ==============
+
+      Zusammen genau 924.453,71 € — die Gesamtabweichung. Bei 24/0648
+      schreibt der Bericht den Grund dazu („Reduzierung aufgrund fehlender
+      Erträge"). **Wir zählen, was die Vorlage beantragt; der Bericht zählt,
+      was gebucht wurde.** Das ist keine Unschärfe, sondern eine
+      Definitionsdifferenz — und sie erklärt zugleich, warum die Zahl des
+      Berichts auf ,29 endet und unsere glatt sind.
+    * **2022: +0,55 %** (23.956.742,00 gegen 23.825.742,00). Genau eine
+      Vorlage: **22/0914** (131.000 €, Kunstrasenplatz an der Brandenburger
+      Straße) — der Bericht führt sie in seinem Kapitel 3 nicht. Dieselbe
+      Vorlage ist auch der einzige Rest beim Nummern-Abgleich
+      (:func:`vorlagen_im_kapitel`, 11 von 12); Fallliste und Summe zeigen
+      also auf denselben Fall.
+
+      Ein zweiter Kandidat hat sich dabei von selbst erledigt: 22/0544
+      (180.000 €) führt der Bericht mit dem Vermerk „1 und BM", also als
+      Entscheidung des **Oberbürgermeisters**. Das RIS führt dazu zwar eine
+      Rats-Zeile, aber nur als *Kenntnisnahme* — und weil
+      :attr:`Bewilligung.beschlossen` einen angenommenen Beschluss verlangt,
+      fällt sie ohnehin heraus. Die beiden Quellen widersprechen sich hier
+      also nicht, sie sagen dasselbe.
 
     Die dahinterliegende Grenze gehört auf die Seite: **Wir zählen Vorlagen,
     der Bericht zählt Haushaltspositionen** — eine Vorlage kann mehrere
-    Positionen tragen, und wer eine Bewilligung rechtlich erteilt hat, steht
-    im Bericht, nicht im Sitzungsprotokoll."""
+    Positionen tragen (2024: 21 Vorlagen, 21 Positionen; 2022: 12 gegen 11)."""
     rat = kap.kanal("rat")
     passend = [b for b in bewilligungen
                if b.jahr == kap.jahr and b.zaehlt_in_summe]

@@ -214,6 +214,105 @@ export type HaushaltDaten = {
   plan_ist_jahre?: number[];
   /** Die lange Ausgabenreihe aus Datensatz 1102 — ein Betrag je Jahr seit 1972. */
   ausgabenreihe?: Ausgabenreihe;
+  /** Nachbewilligungen nach § 117 NKomVG — was beschlossen wurde, nachdem der
+   *  Haushalt beschlossen war. */
+  nachbewilligungen?: Nachbewilligungen;
+};
+
+/** Welche Sorte Nachbewilligung eine Zeile ist.
+ *
+ *  `verpflichtungsermaechtigung` bindet künftige Jahre und fließt in diesem
+ *  Jahr **nicht** — sie gehört in keine Jahressumme. `schwelle` sind die
+ *  jährlichen Sammelberichte über die Fälle unter der Wertgrenze; ihr
+ *  Titelbetrag (50.000 €) ist die Grenze, nicht die Summe, und sie tragen
+ *  deshalb gar keinen Betrag. */
+export type NachbewilligungsArt =
+  | "bewilligung" | "verpflichtungsermaechtigung" | "schwelle";
+
+/** Über- oder außerplanmäßig — und der Unterschied ist keine Wortklauberei:
+ *  **überplanmäßig** heißt, der Posten stand im Haushalt und das Geld reichte
+ *  nicht; **außerplanmäßig** heißt, den Posten gab es dort gar nicht.
+ *
+ *  Beides ist **gedeckt**. Jede dieser Vorlagen nennt in ihrem
+ *  Beschlussvorschlag, woher das Geld kommt — „außerplanmäßig" ist eine
+ *  Umwidmung, kein ungedeckter Griff in die Kasse. Wo die Seite das Wort
+ *  benutzt, muss dieser Satz in Reichweite stehen. */
+export type NachbewilligungsKategorie =
+  | "ueberplanmaessig" | "ausserplanmaessig" | "beides";
+
+/** Eine Nachbewilligung, wie das Ratsinformationssystem sie führt — je
+ *  **Vorlage** eine, nicht je Beschlusszeile: Finanzausschuss und Rat
+ *  entscheiden dieselbe Sache, 131 der 287 Zeilen sind Dubletten. */
+export type Nachbewilligung = {
+  vorlage_nr: string;
+  /** Haushaltsjahr aus dem Jahrgang der Vorlagen-Nummer, nicht aus dem
+   *  Sitzungsdatum — Januar-Vorlagen zählen zum Vorjahr. */
+  jahr: number | null;
+  titel: string;
+  art: NachbewilligungsArt;
+  kategorie: NachbewilligungsKategorie;
+  /** In Euro. `null` bei `art === "schwelle"`. */
+  betrag: number | null;
+  /** Aus welcher Stufe der Betrag stammt: dem Titel oder dem
+   *  Beschlussvorschlag der Vorlage. */
+  betrag_quelle: "titel" | "beschlussvorschlag" | null;
+  beschlossen: 0 | 1;
+  /** Hat das **Plenum** selbst abgestimmt? Die wörtliche Auskunft — taugt als
+   *  Zeilenhinweis („im Fachausschuss beschlossen"), aber **nie** als Basis
+   *  eines Rats-Anteils. */
+  im_rat: 0 | 1;
+  /** Bucht der Rechenschaftsbericht das als „Beschluss des Rates"?
+   *
+   *  Das ist die Definition, die zählt: Der Bericht rechnet auch das dazu,
+   *  was der Ausschuss für Finanzen und Beteiligungen **abschließend**
+   *  entscheidet. 2024 sind das 8 von 21 Fällen — wer stattdessen `im_rat`
+   *  summiert, zeigt 30,9 statt 43,1 Mio. € und damit 28 % zu wenig. */
+  ratsentscheidung: 0 | 1;
+  /** Ziel für den Link auf die vorhandene Beschluss-Seite. */
+  beschluss_id: number | null;
+  gremien: string[];
+  volltextprobe: 0 | 1;
+  herkunft_id: number | null;
+};
+
+/** Ein Entscheidungsweg aus Kapitel 3 des Rechenschaftsberichts. */
+export type NachbewilligungsKanal = {
+  jahr: number;
+  kanal: string;
+  /** Der Wortlaut der Stadt („Gemäß Haushaltsvermerk durch den Fachdienst
+   *  200"), nicht unsere Umschreibung. */
+  label: string;
+  anzahl_konsumtiv: number;
+  betrag_konsumtiv: number;
+  anzahl_investiv: number;
+  betrag_investiv: number;
+  herkunft_id: number | null;
+};
+
+/** Ein Haushaltsjahr aus Kapitel 3 — die Gesamtsicht, die das RIS nicht hat. */
+export type NachbewilligungsJahr = {
+  jahr: number;
+  summe_konsumtiv: number;
+  summe_investiv: number;
+  /** Was der Fließtext des Kapitels als Gesamtsumme nennt. Steht getrennt von
+   *  der Summenzeile, **weil beide 2022 auseinanderfallen** (288.000 €). Wer
+   *  nur eine der Zahlen behielte, hätte den Widerspruch weggeräumt. */
+  text_gesamt: number | null;
+  /** Verpflichtungsermächtigungen des Jahres — der Bericht zählt sie
+   *  ausdrücklich getrennt, und wir addieren sie nirgends dazu. */
+  verpflichtungen_betrag: number | null;
+  probe_ok: 0 | 1;
+  /** Im Klartext, was die Tabellenprobe gefunden hat. Steht auf der Seite,
+   *  nicht nur im Log. */
+  probe_text: string | null;
+  herkunft_id: number | null;
+  kanaele: NachbewilligungsKanal[];
+};
+
+export type Nachbewilligungen = {
+  serie: Nachbewilligung[];
+  jahre: NachbewilligungsJahr[];
+  kanaele: Record<string, string>;
 };
 
 /** Die beiden Rechnungswesen, unter denen die Stadt gezählt hat. Der Wechsel
@@ -663,6 +762,95 @@ export function ausgabenreihe(daten: HaushaltDaten): AusgabenreiheJahr[] {
  *  Jahr zwei Beträge nennen, gehört das auf die Seite — mit beiden Zahlen. */
 export function ausgabenKonflikte(daten: HaushaltDaten): AusgabenreiheJahr[] {
   return ausgabenreihe(daten).filter((z) => z.konflikt_betrag != null);
+}
+
+/** Ein Jahr der Rats-Serie: was der Rat nachbewilligt hat, und was daneben
+ *  ausdrücklich **nicht** mitgezählt wurde.
+ *
+ *  `summe` enthält nur erteilte Bewilligungen mit Betrag. Draußen bleiben:
+ *  Verpflichtungsermächtigungen (binden künftige Jahre), Sammelberichte
+ *  (tragen eine Wertgrenze statt eines Betrags) und Vorlagen ohne Beschluss
+ *  (beantragt ist nicht bewilligt). Alle drei stehen als eigene Felder
+ *  daneben, damit die Seite sie benennen kann, statt sie zu verschweigen. */
+export type NachbewilligungsSumme = {
+  jahr: number;
+  summe: number;
+  faelle: number;
+  verpflichtungen: number;
+  verpflichtungenBetrag: number;
+  sammelberichte: number;
+};
+
+export function nachbewilligungsJahre(
+  daten: HaushaltDaten,
+): NachbewilligungsSumme[] {
+  const jahre = new Map<number, NachbewilligungsSumme>();
+  const hol = (jahr: number) => {
+    let e = jahre.get(jahr);
+    if (!e) {
+      e = { jahr, summe: 0, faelle: 0, verpflichtungen: 0,
+            verpflichtungenBetrag: 0, sammelberichte: 0 };
+      jahre.set(jahr, e);
+    }
+    return e;
+  };
+  for (const n of daten.nachbewilligungen?.serie ?? []) {
+    if (n.jahr == null) continue;
+    if (n.art === "schwelle") {
+      hol(n.jahr).sammelberichte += 1;
+    } else if (n.art === "verpflichtungsermaechtigung") {
+      if (!n.beschlossen) continue;
+      const e = hol(n.jahr);
+      e.verpflichtungen += 1;
+      e.verpflichtungenBetrag += n.betrag ?? 0;
+    } else if (n.beschlossen && n.betrag != null) {
+      const e = hol(n.jahr);
+      e.summe += n.betrag;
+      e.faelle += 1;
+    }
+  }
+  return [...jahre.values()].sort((a, b) => a.jahr - b.jahr);
+}
+
+/** Die Bewilligungen eines Jahres, größte zuerst — die Liste, die auf ihre
+ *  Beschluss-Seiten verlinkt. Ohne Sammelberichte und ohne
+ *  Verpflichtungsermächtigungen: Die stehen auf der Seite getrennt. */
+export function nachbewilligungenFuerJahr(
+  daten: HaushaltDaten, jahr: number,
+): Nachbewilligung[] {
+  return (daten.nachbewilligungen?.serie ?? [])
+    .filter((n) => n.jahr === jahr && n.art === "bewilligung"
+      && n.beschlossen === 1 && n.betrag != null)
+    .sort((a, b) => (b.betrag ?? 0) - (a.betrag ?? 0));
+}
+
+/** Wie viel Prozent der Nachbewilligungen eines Jahres der Rat selbst
+ *  beschlossen hat — `null`, solange der Rechenschaftsbericht für das Jahr
+ *  fehlt.
+ *
+ *  Gerechnet wird gegen die **Summenzeile** des Kapitels, nicht gegen die
+ *  Gesamtzahl aus seinem Fließtext: Die Summenzeile ist die Zahl, für die das
+ *  Dokument mit seiner eigenen Rechnung geradesteht. Wo beide auseinander-
+ *  fallen (2022), sagt `probe_text` es an. */
+export function ratsAnteil(j: NachbewilligungsJahr): number | null {
+  const gesamt = j.summe_konsumtiv + j.summe_investiv;
+  const rat = j.kanaele.find((k) => k.kanal === "rat");
+  if (!gesamt || !rat) return null;
+  return ((rat.betrag_konsumtiv + rat.betrag_investiv) / gesamt) * 100;
+}
+
+/** Gesamtsumme eines Kapitel-3-Jahrgangs (Summenzeile beider Spalten). */
+export function nachbewilligungGesamt(j: NachbewilligungsJahr): number {
+  return j.summe_konsumtiv + j.summe_investiv;
+}
+
+/** Ein Kanal quer über beide Spalten. */
+export function kanalBetrag(k: NachbewilligungsKanal): number {
+  return k.betrag_konsumtiv + k.betrag_investiv;
+}
+
+export function kanalAnzahl(k: NachbewilligungsKanal): number {
+  return k.anzahl_konsumtiv + k.anzahl_investiv;
 }
 
 export function bereiche(zeilen: HaushaltZeile[]): HaushaltZeile[] {

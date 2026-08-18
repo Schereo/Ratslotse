@@ -395,9 +395,12 @@ def test_januar_beschluss_zaehlt_zum_vorjahr():
     nicht das Sitzungsdatum — sonst läge man 20 bis 27 Prozent daneben."""
     assert nb.haushaltsjahr("24/0834") == 2024
     assert nb.haushaltsjahr("25/0002") == 2025
-    kapitel = nb.vorlagen_im_kapitel(RB_2024)
-    assert "25/0002" in kapitel, "der Januar-Fall steht im Kapitel fürs Vorjahr"
-    assert "24/0359" in kapitel
+    # Das Kapitel für 2024 nennt eine Vorlage aus 2025 — den Sammelbericht.
+    # `nur_rat=False`, weil er kein Ratsbeschluss ist, sondern die Meldung
+    # über die Fälle unter der Wertgrenze.
+    alle = nb.vorlagen_im_kapitel(RB_2024, nur_rat=False)
+    assert "25/0002" in alle, "der Januar-Fall steht im Kapitel fürs Vorjahr"
+    assert "24/0359" in nb.vorlagen_im_kapitel(RB_2024)
 
 
 def test_ohne_beschluss_keine_summe():
@@ -607,6 +610,54 @@ def test_de_betrag_schreibt_deutsch():
     assert nb.de_betrag(-1_051_184.65, vorzeichen=True) == "−1.051.184,65"
 
 
+#: Die am vollen Bestand gemessenen Werte der Rats-Serie. Sie stehen hier,
+#: **weil ein Docstring sie schon einmal falsch behauptet hat**: Die Prosa
+#: nannte für 2022 +1,31 % / 24.136.742,00 € mit zwei Ursachen, gemessen sind
+#: es +0,55 % / 23.956.742,00 € mit einer. Der Fehler war grün durch alle
+#: Tests gelaufen, weil keiner die Zahl festnagelte. Jetzt tut es einer.
+#:
+#: Wer diese Werte ändert, ändert eine Aussage über eine amtliche Quelle —
+#: erst nachmessen, dann anfassen.
+GEMESSEN = {
+    2022: {"unsere": 23_956_742.00, "faelle": 12,
+           "bericht": 23_825_742.00, "bericht_faelle": 11,
+           "abweichung": 131_000.00},
+    2023: {"unsere": 33_871_800.00, "faelle": 26,
+           "bericht": 33_871_700.00, "bericht_faelle": 26,
+           "abweichung": 100.00},
+    2024: {"unsere": 43_096_100.00, "faelle": 21,
+           "bericht": 42_171_646.29, "bericht_faelle": 21,
+           "abweichung": 924_453.71},
+}
+
+
+@pytest.mark.parametrize("jahr", sorted(GEMESSEN))
+def test_gemessene_abweichungen_sind_festgenagelt(jahr):
+    """Die Berichtsseite der Messung — sie hängt nur am Fixture und prüft,
+    dass der Parser die Zahlen des Dokuments unverändert liest."""
+    soll = GEMESSEN[jahr]
+    kap = nb.kapitel3({2022: RB_2022, 2023: RB_2023, 2024: RB_2024}[jahr], jahr)
+    rat = kap.kanal("rat")
+    assert rat.betrag == pytest.approx(soll["bericht"])
+    assert rat.anzahl == soll["bericht_faelle"]
+    # Und die Rechnung, die daraus die Abweichung macht.
+    assert soll["unsere"] - soll["bericht"] == pytest.approx(soll["abweichung"])
+
+
+def test_2024er_abweichung_ist_auf_den_cent_erklaert():
+    """Die 2,19 % sind keine Unschärfe, sondern eine Definitionsdifferenz:
+    Wir zählen, was die Vorlage beantragt, der Bericht, was gebucht wurde.
+    Drei Vorlagen wurden niedriger gebucht — zusammen exakt die Differenz."""
+    niedriger_gebucht = [
+        ("24/0411", 190_000.00, 51_500.00),
+        ("24/0678", 430_000.00, 230_000.00),
+        ("24/0648", 11_232_400.00, 10_646_446.29),
+    ]
+    differenz = sum(beantragt - gebucht for _, beantragt, gebucht
+                    in niedriger_gebucht)
+    assert differenz == pytest.approx(GEMESSEN[2024]["abweichung"])
+
+
 def test_probe_ratsabgleich_nennt_die_fehlenden_nummern():
     """Der Bericht nennt dieselben Fälle mit Nummern — wer fehlt, wird
     benannt statt weggelassen."""
@@ -621,9 +672,64 @@ def test_probe_ratsabgleich_nennt_die_fehlenden_nummern():
     assert "24/0359" not in abgleich.nur_im_bericht
 
 
-def test_vorlagen_im_kapitel_findet_den_join_schluessel():
-    nrn = nb.vorlagen_im_kapitel(RB_2022)
-    assert {"22/0259", "22/0544", "23/0010"} <= nrn
+def test_vorlagen_im_kapitel_nimmt_nur_die_ratsbeschluesse():
+    """Nicht jede Nummer im Kapitel ist ein Fall. 22/0544 trägt den Vermerk
+    „1 und BM" (Oberbürgermeister), 23/0010 ist der Sammelbericht — beide
+    stehen im Abschnitt, sind aber keine Ratsbeschlüsse. Der erste Ansatz
+    nahm sie mit und behauptete damit Fälle, die der Bericht nicht führt."""
+    nur_rat = nb.vorlagen_im_kapitel(RB_2022)
+    assert "22/0259" in nur_rat, "der echte Ratsbeschluss"
+    assert "22/0544" not in nur_rat, "Vermerk 1 und BM = Oberbürgermeister"
+    assert "23/0010" not in nur_rat, "Sammelbericht, kein Fall"
+    # Die weite Frage ist eine andere und bleibt beantwortbar.
+    alle = nb.vorlagen_im_kapitel(RB_2022, nur_rat=False)
+    assert {"22/0259", "22/0544", "23/0010"} <= alle
+
+
+def test_vorlagen_im_kapitel_2024():
+    """2024: der Rats-Fall ist drin, die Unterrichtung des OB (Vermerk „1",
+    Sammelbericht-Nummer 25/0002) nicht."""
+    nur_rat = nb.vorlagen_im_kapitel(RB_2024)
+    assert "24/0359" in nur_rat
+    assert "25/0002" not in nur_rat
+
+
+# --- Der Rats-Anteil folgt dem Bericht, nicht dem Gremiennamen -------------
+
+def _bewilligung(nr, betrag, committee, outcome="angenommen"):
+    return nb.Bewilligung(
+        vorlage_nr=nr, titel="…", art=nb.ART_BEWILLIGUNG,
+        kategorie="ueberplanmaessig", jahr=2024, betrag=betrag,
+        betrag_quelle="titel",
+        beschluesse=({"committee": committee, "outcome": outcome},))
+
+
+def test_finanzausschuss_zaehlt_als_ratsbeschluss():
+    """**Der gefährlichste Fehler dieser Schicht.** Der Finanzausschuss
+    entscheidet abschließend, und der Rechenschaftsbericht bucht das als
+    „Beschluss des Rates". 2024 hatten 8 von 21 Fällen keine Plenarsitzung
+    mehr — wer wörtlich zählt, veröffentlicht 30.896.100 statt 43.096.100 €
+    und damit 28 % zu wenig, ausgerechnet für die Kennzahl „der Rats-Anteil
+    sinkt"."""
+    plenum = _bewilligung("24/0359", 100_000.0, "Rat")
+    ausschuss = _bewilligung("24/0834", 375_000.0,
+                             "Ausschuss für Finanzen und Beteiligungen")
+    assert plenum.im_rat and plenum.ratsentscheidung
+    assert not ausschuss.im_rat, "das Plenum hat nicht abgestimmt"
+    assert ausschuss.ratsentscheidung, "der Bericht bucht es trotzdem als Rat"
+    summen = nb.jahressummen([plenum, ausschuss], nur_rat=True)
+    assert summen[2024]["summe"] == pytest.approx(475_000.0)
+    assert summen[2024]["faelle"] == 2
+
+
+def test_fremder_ausschuss_zaehlt_nicht_als_ratsbeschluss():
+    """Ein Betriebsausschuss beschließt über den Haushalt eines
+    Eigenbetriebs — ein anderer Haushalt, nicht diese Summe."""
+    fremd = _bewilligung(
+        "24/0900", 50_000.0,
+        "Betriebsausschuss Eigenbetrieb Gebäudewirtschaft und Hochbau")
+    assert not fremd.ratsentscheidung
+    assert nb.jahressummen([fremd], nur_rat=True) == {}
 
 
 # --- Herkunft ---------------------------------------------------------------
