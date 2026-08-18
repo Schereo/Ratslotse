@@ -99,6 +99,25 @@ async function headers() {
   ];
 }
 
+// DER DEV-SERVER BAUT IN EIN EIGENES VERZEICHNIS.
+//
+// `next dev` und `next build` teilten sich bis 08/2026 `.next`. Ein Build
+// neben einem laufenden Dev-Server überschreibt dessen Chunks: Die Seite
+// liefert danach für JEDE Chunk-URL eine 404-HTML-Seite, die Konsole meldet
+// „Refused to execute script … MIME type ('text/html')", und die App bleibt
+// bei „wird geladen …" stehen. Das sieht aus wie ein Fehler im Code und ist
+// keiner — ein Reload hilft nicht, nur ein Neustart des Dev-Servers.
+//
+// Passiert ist es an einem Tag zweimal, und zwar aus dem naheliegendsten
+// Grund: Vor einem Merge prüft man mit `npm run build`, während nebenan noch
+// der Server läuft, an dem man gerade gearbeitet hat.
+//
+// Die Konfiguration als FUNKTION zu exportieren, löst das ohne Disziplin:
+// Next reicht die Phase herein, und der Dev-Server bekommt `.next-dev`.
+// `next build` und `next start` bleiben bei `.next` — Deploy, Dockerfile und
+// der rsync-Ausschluss in deploy.yml sind unberührt.
+const DEV_PHASE = "phase-development-server";
+
 const nextConfig = {
   reactStrictMode: true,
   // Don't advertise the framework in the X-Powered-By header.
@@ -116,4 +135,7 @@ const nextConfig = {
     : { rewrites, redirects, headers }),
 };
 
-export default nextConfig;
+export default (phase) => ({
+  ...nextConfig,
+  ...(phase === DEV_PHASE ? { distDir: ".next-dev" } : {}),
+});
