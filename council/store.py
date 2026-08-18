@@ -9210,7 +9210,79 @@ class CouncilStore:
             "reihe_ab": rows[0]["jahr"],
             "abgrenzung": _schulden.ABGRENZUNG,
             "beleg": self._beleg(neu.get("herkunft_id")),
+            "weitere": self._schulden_abgrenzungen(),
+            "buergschaften": self._buergschafts_kontext(),
         }
+
+    def _schulden_abgrenzungen(self) -> list[dict]:
+        """Die ANDEREN beiden Zahlen, die auch „die Schulden der Stadt" heißen.
+
+        Es gibt drei, sie unterscheiden sich um das Siebzehnfache, und jede
+        ist für ihre Abgrenzung richtig (Stand 31.12.2024):
+
+        * **43,7 Mio. €** — die Geldschulden des Kernhaushalts allein, wie sie
+          in der Bilanz des Jahresabschlusses stehen.
+        * **294,9 Mio. €** — die Stadt als Rechtsträger, also mit ihren
+          Eigenbetrieben. Das ist die Reihe des Statistischen Jahrbuchs, die
+          Zahl im Block darüber.
+        * **740,3 Mio. €** — der ganze „Konzern Stadt", anteilig nach
+          Beteiligungshöhe, aus dem Tabellenband der Statistischen Ämter.
+
+        Ohne diese Liste beantwortet die KI-Frage „Wie hoch sind die Schulden?"
+        mit **einer** Zahl, und welche das ist, entscheidet der Zufall der
+        Facette. Die drei nebeneinander sind die ehrliche Antwort — addiert
+        werden dürfen sie nie, sie enthalten einander.
+        """
+        aus: list[dict] = []
+        try:
+            r = self._conn.execute(
+                "SELECT jahr, wert FROM council_bilanz WHERE rolle = 'geldschulden' "
+                "ORDER BY jahr DESC LIMIT 1").fetchone()
+            if r:
+                aus.append({"art": "Kernhaushalt (nur Geldschulden)", "jahr": r["jahr"],
+                            "betrag": r["wert"],
+                            "quelle": "Bilanz des Jahresabschlusses"})
+        except sqlite3.OperationalError:
+            pass
+        try:
+            r = self._conn.execute(
+                "SELECT jahr, insgesamt FROM council_integrierte_schulden "
+                "ORDER BY jahr DESC LIMIT 1").fetchone()
+            if r:
+                aus.append({"art": "Konzern Stadt (anteilig, mit Beteiligungen)",
+                            "jahr": r["jahr"], "betrag": r["insgesamt"],
+                            "quelle": "Integrierte Schulden der Statistischen Ämter"})
+        except sqlite3.OperationalError:
+            pass
+        return aus
+
+    def _buergschafts_kontext(self) -> dict | None:
+        """Wofür die Stadt geradesteht — die Zahl, die in keiner Schuldenreihe steht.
+
+        Eine Bürgschaft kostet nichts, solange sie nicht gezogen wird, und
+        taucht deshalb in keiner der drei Schuldenzahlen auf. Ende 2024 waren
+        es 220,3 Mio. € — das Fünffache der eigenen Geldschulden des
+        Kernhaushalts. Wer nach den Schulden fragt, bekommt das dazu, aber
+        ausdrücklich als **eigene** Größe: Eine Bürgschaft ist keine Schuld.
+        """
+        try:
+            r = self._conn.execute(
+                "SELECT jahr, bestand, grund, herkunft_id FROM council_buergschaften "
+                "ORDER BY jahr DESC LIMIT 1").fetchone()
+        except sqlite3.OperationalError:
+            return None
+        if not r:
+            return None
+        rueck = None
+        try:
+            z = self._conn.execute(
+                "SELECT wert FROM council_bilanz WHERE rolle = 'buergschaftsrueckstellung' "
+                "AND jahr = ?", (r["jahr"],)).fetchone()
+            rueck = z["wert"] if z else None
+        except sqlite3.OperationalError:
+            pass
+        return {"jahr": r["jahr"], "bestand": r["bestand"], "grund": r["grund"],
+                "rueckstellung": rueck, "beleg": self._beleg(r["herkunft_id"])}
 
     def investitionen_fuer_begriffe(self, begriffe: list[str],
                                     limit: int = 3) -> dict | None:

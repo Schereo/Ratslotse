@@ -1190,3 +1190,76 @@ if __name__ == "__main__":  # pragma: no cover — manueller Lauf
     import sys
 
     sys.exit(_messlauf())
+
+
+def test_schuldenblock_nennt_alle_drei_abgrenzungen(tmp_path):
+    """„Wie hoch sind die Schulden?" hat drei richtige Antworten.
+
+    43,7 Mio. € (Kernhaushalt), 294,9 Mio. € (Rechtsträger mit Eigenbetrieben)
+    und 740,3 Mio. € (Konzern mit Beteiligungen) — dieselbe Frage, dreimal
+    anders abgegrenzt, ein Unterschied vom Siebzehnfachen. Bis zum 18.08.2026
+    kannte der Baustein nur die mittlere; welche Zahl in der Antwort landete,
+    entschied damit die Facette und nicht die Frage.
+
+    Der Test hält außerdem die SPALTENNAMEN fest. Beide Abfragen stehen hinter
+    einem `except sqlite3.OperationalError` — ein Tippfehler im Spaltennamen
+    fiele sonst nie auf, sondern ließe die Zahl einfach weg (genau so passiert:
+    `betrag` statt `insgesamt`).
+    """
+    from council import qa
+    from council.store import CouncilStore
+
+    store = CouncilStore(str(tmp_path / "c.sqlite"))
+    c = store._conn                                       # noqa: SLF001
+    c.execute("INSERT INTO council_schulden (jahr, insgesamt, je_einwohner, fetched_at) "
+              "VALUES (2024, 294851000, 1673, '2026-08-18')")
+    c.execute("INSERT INTO council_bilanz (jahr, rolle, seite, ebene, bezeichnung, wert, "
+              " fetched_at) VALUES (2024, 'geldschulden', 'passiva', 2, 'Geldschulden', "
+              " 43690972, '2026-08-18')")
+    c.execute("INSERT INTO council_integrierte_schulden (jahr, ars, insgesamt, proben, "
+              " fetched_at) VALUES (2024, '03403000', 740300000, '', '2026-08-18')")
+    c.execute("INSERT INTO council_buergschaften (jahr, bestand, genau, aus_folgejahr, "
+              " quelle, proben, fetched_at) "
+              "VALUES (2024, 220300000, 1, 0, 'jahresabschluss', '', '2026-08-18')")
+    c.commit()
+
+    k = store.schulden_kontext()
+    arten = {w["art"]: w["betrag"] for w in k["weitere"]}
+    assert arten["Kernhaushalt (nur Geldschulden)"] == 43_690_972
+    assert arten["Konzern Stadt (anteilig, mit Beteiligungen)"] == 740_300_000
+    assert k["buergschaften"]["bestand"] == 220_300_000
+
+    text = qa._schulden_block(k)
+    for betrag in ("294.851.000", "43.690.972", "740.300.000", "220.300.000"):
+        assert betrag in text, betrag
+    # Und die Regel, ohne die drei Zahlen nebeneinander gefährlich sind.
+    assert "NIE addieren" in text
+    assert "KEINE Schuld" in text
+
+
+def test_buergschaftsfragen_ziehen_die_schuldenquelle_ohne_oldenburg_zu_fangen():
+    """„Wofür bürgt die Stadt?" — und „Oldenburg" enthält „burg".
+
+    Die 220,3 Mio. €, für die die Stadt geradesteht, stehen in keiner der drei
+    Schuldenreihen; ohne diese Wörter beantwortete die KI-Frage die Frage mit
+    dem Ergebnishaushalt.
+
+    Der Test hält vor allem die zwei Fallen fest, in die ein kurzes Muster
+    läuft. `b[üu]rg` schlägt bei **Oldenburg** an — also bei fast jeder Frage
+    dieses Projekts. Und weil `_falte` „ü" zu „ue" macht, beginnt
+    „buergerinnen" genauso wie „buergschaft"; ein negativer Vorgriff auf „er"
+    sperrt zwar die Bürger*innen aus, lässt „oldenburg" aber durch.
+    """
+    from council import qa
+
+    for frage in ("Wofür bürgt die Stadt Oldenburg?",
+                  "Wie hoch ist der Bürgschaftsbestand?",
+                  "Für welche Kredite hat die Stadt sich verbürgt?",
+                  "Welche Eventualverbindlichkeiten hat die Stadt?"):
+        assert "schulden" in qa.geld_facetten(frage), frage
+
+    for frage in ("Wie viele Bürgerinnen und Bürger hat Oldenburg?",
+                  "Wie ist der Stand beim Bürgerbegehren?",
+                  "Was ist in Oldenburg mit dem Stadion?",
+                  "Wie viele Einwohner hat Oldenburg?"):
+        assert "schulden" not in qa.geld_facetten(frage), frage

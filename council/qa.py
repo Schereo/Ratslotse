@@ -1062,8 +1062,23 @@ _F_AUSGLEICH = re.compile(
     r"hebesatz|schluesselzuweisung|finanzausgleich|steuerkraft|\bnfag\b|"
     r"zuweisung.{0,10}land|land.{0,15}zuweisung")
 # --- Die vier Quellen, die die KI-Frage bis zum 17.08. nicht kannte ---------
+# BÜRGSCHAFTEN GEHÖREN HIERHER, denn die 220,3 Mio. €, für die die Stadt
+# geradesteht, stehen in KEINER der drei Schuldenreihen — „Wofür bürgt die
+# Stadt?" bekam bis hierher den Ergebnishaushalt.
+#
+# Gesucht wird auf dem gefalteten Text (`_falte`: ü → ue), und das Muster ist
+# eng aufgezählt statt kurz. Zwei Fallen, beide beim ersten Versuch
+# hineingelaufen:
+#
+# * **„Oldenburg" enthält „burg".** Ein Muster `b[üu]rg` hätte an JEDER Frage
+#   angeschlagen, in der die Stadt vorkommt — also an fast jeder.
+# * **„Bürgerinnen" wird zu „buergerinnen"** und beginnt damit genauso wie
+#   „buergschaft". Ein negativer Vorgriff auf „er" allein reicht nicht, weil
+#   er die Bürger*innen zwar aussperrt, „Oldenburg" aber durchlässt.
 _F_SCHULDEN = re.compile(
-    r"schulden|verschuld|entschuld|schuldenstand|\bkredit|darlehen|tilgung")
+    r"schulden|verschuld|entschuld|schuldenstand|\bkredit|darlehen|tilgung|"
+    r"\bbuergschaft|\bverbuergt|\bbuergt\b|\bbuergen\b|"
+    r"eventualverbindlichkeit|geradesteh|geradezusteh")
 _F_INVEST = re.compile(
     r"investit|investier|investiv|\bgebaut\b|\bbauen\b|neubau|baumassnahm|"
     r"finanzhaushalt|auszahlung")
@@ -1433,6 +1448,28 @@ def _schulden_block(s: dict | None) -> str:
                       "Sie ging in der Quelle selbst nicht auf und wurde deshalb "
                       "nicht übernommen. Die Gesamtsumme trägt eine eigene Probe.")
     zeilen.append(f"- Abgrenzung, gehört an jede dieser Zahlen: {s['abgrenzung']}")
+    # DIE ANDEREN BEIDEN ZAHLEN. Ohne sie beantwortet die KI-Frage „Wie hoch
+    # sind die Schulden?" mit einer von dreien, und welche es wird, entscheidet
+    # der Zufall der Facette. Nebeneinander sind sie die ehrliche Antwort.
+    for w in s.get("weitere") or []:
+        zeilen.append(f"- Dieselbe Frage, andere Abgrenzung — {w['art']} "
+                      f"{w['jahr']}: {_eur(w['betrag'])} (Quelle: {w['quelle']})")
+    if s.get("weitere"):
+        zeilen.append("  Diese Zahlen NIE addieren: Die größere enthält die "
+                      "kleinere. Wer nach „den Schulden“ fragt, bekommt die "
+                      "Abgrenzung dazu, sonst ist die Zahl beliebig.")
+    b = s.get("buergschaften")
+    if b and b.get("bestand") is not None:
+        zeile = (f"- Zusätzlich verbürgt (KEINE Schuld, sondern ein Einstehen für "
+                 f"fremde Kredite) {b['jahr']}: {_eur(b['bestand'])}")
+        if b.get("rueckstellung") is not None:
+            zeile += (f"; davon hält die Stadt {_eur(b['rueckstellung'])} als "
+                      f"Rückstellung für den erwarteten Ausfall vor")
+        zeilen.append(zeile + _beleg_text(b.get("beleg")))
+        if b.get("grund"):
+            zeilen.append(f"  - Wofür: {b['grund']}")
+        zeilen.append("  Eine Bürgschaft kostet nichts, solange sie nicht "
+                      "gezogen wird — sie gehört in keine Schuldensumme.")
     return ("\nSCHULDENSTAND (Statistisches Jahrbuch der Stadt, Tabelle 1108). Das ist\n"
             "ein BESTAND am Stichtag, kein Jahresbetrag — nie mit Aufwendungen, "
             "Erträgen\noder dem Defizit eines Haushaltsjahres verrechnen und nie als "
