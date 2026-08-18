@@ -218,15 +218,29 @@ def art(titel: str) -> str:
     return ART_BEWILLIGUNG
 
 
+#: Die verkürzte Doppelnennung: „Über- und außerplanmäßige Auszahlungen",
+#: „über- bzw. außerplanmäßige Verpflichtungsermächtigungen". Der erste Teil
+#: trägt sein „planmäßig" gar nicht selbst — wer nur nach „überplanmäßig"
+#: sucht, liest hier ausschließlich „außerplanmäßig" und stuft neun
+#: Sammelberichte falsch ein.
+_BEIDES = re.compile(
+    r"(?:über|ueber)-\s*(?:und|bzw\.?|oder)\s*(?:außer|ausser)planmäßig",
+    re.IGNORECASE)
+
+
 def kategorie(titel: str) -> str:
     """``ueberplanmaessig`` | ``ausserplanmaessig`` | ``beides``.
 
     Der Unterschied ist kein Detail: **überplanmäßig** heißt, der Posten stand
     im Haushalt, das Geld reicht nicht; **außerplanmäßig** heißt, den Posten
-    gab es gar nicht. Gedeckt sind beide."""
-    t = (titel or "").lower()
-    ueber = bool(re.search(r"(?:über|ueber)planmäßig", t))
-    ausser = bool(re.search(r"(?:außer|ausser)planmäßig", t))
+    gab es gar nicht. Gedeckt sind beide — „außerplanmäßig" ist kein
+    ungedeckter Griff in die Kasse, sondern eine Umwidmung, und jede Vorlage
+    nennt die Deckung."""
+    t = titel or ""
+    if _BEIDES.search(t):
+        return "beides"
+    ueber = bool(re.search(r"(?:über|ueber)planmäßig", t, re.IGNORECASE))
+    ausser = bool(re.search(r"(?:außer|ausser)planmäßig", t, re.IGNORECASE))
     if ueber and ausser:
         return "beides"
     return "ueberplanmaessig" if ueber else "ausserplanmaessig"
@@ -385,19 +399,28 @@ def jahressummen(bewilligungen: list[Bewilligung],
     (``verpflichtungen``/``verpflichtungen_betrag``) und sind in ``summe``
     nicht enthalten — dieselbe Trennung, die der Rechenschaftsbericht zieht."""
     jahre: dict[int, dict] = {}
+
+    def eintrag(jahr: int) -> dict:
+        return jahre.setdefault(jahr, {
+            "jahr": jahr, "summe": 0.0, "faelle": 0,
+            "verpflichtungen": 0, "verpflichtungen_betrag": 0.0,
+            "sammelberichte": 0})
+
     for b in bewilligungen:
         if b.jahr is None or (nur_rat and not b.im_rat):
             continue
-        e = jahre.setdefault(b.jahr, {
-            "jahr": b.jahr, "summe": 0.0, "faelle": 0,
-            "verpflichtungen": 0, "verpflichtungen_betrag": 0.0,
-            "sammelberichte": 0})
+        # Der Eintrag entsteht erst, wenn wirklich etwas hineinfällt: Eine
+        # nur beantragte Vorlage darf kein Jahr mit lauter Nullen erzeugen —
+        # das sähe aus wie „2022 gab es nichts" statt „hier ist nichts
+        # beschlossen worden".
         if b.art == ART_SCHWELLE:
-            e["sammelberichte"] += 1
-        elif b.art == ART_VERPFLICHTUNG:
+            eintrag(b.jahr)["sammelberichte"] += 1
+        elif b.art == ART_VERPFLICHTUNG and b.beschlossen:
+            e = eintrag(b.jahr)
             e["verpflichtungen"] += 1
             e["verpflichtungen_betrag"] += b.betrag or 0.0
         elif b.zaehlt_in_summe:
+            e = eintrag(b.jahr)
             e["summe"] += b.betrag
             e["faelle"] += 1
     return dict(sorted(jahre.items()))
