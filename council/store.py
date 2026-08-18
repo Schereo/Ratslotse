@@ -1625,6 +1625,10 @@ class CouncilStore:
         # das Open-Data-Portal —, deshalb keine feste Art. Nachzutragen ist
         # ohnehin nichts, die Tabelle ist neu.
         "council_ausgabenreihe":        (None, "quelle_url", None),
+        # Die Zuwendungen: Quelle sind Ratsvorlagen im Bürgerinfo, also „ris".
+        # Nachzutragen ist nichts, beide Tabellen sind neu.
+        "council_spenden":              (None, "quelle_url", "ris"),
+        "council_spenden_verworfen":    (None, "quelle_url", "ris"),
         # Der Beteiligungsbericht: ebenfalls erst mit der Herkunft entstanden.
         # Seine Dokumente kommen von oldenburg.de, nicht aus dem Bürgerinfo.
         "council_gesellschaften":            (None, "quelle_url", "stadt"),
@@ -4104,6 +4108,7 @@ class CouncilStore:
         "schulden":    ("council_schulden", "jahr", None),
         "gebaut":      ("council_investitionen_ist", "jahr", None),
         "ausgabenreihe": ("council_ausgabenreihe", "jahr", None),
+        "spenden":     ("council_spenden", "jahr", None),
     }
 
     def haushalt_jahrgaenge(self) -> dict[str, list[int]]:
@@ -5275,6 +5280,87 @@ class CouncilStore:
                 "SELECT jahr FROM council_ausgabenreihe ORDER BY jahr")]
         except sqlite3.OperationalError:
             return []
+
+    # --- Zuwendungen an die Stadt (aus den Ratsbeschlüssen) ----------------
+
+    def save_spenden(self, zeilen: list[dict], verworfen: list[dict],
+                     herkunft) -> int:
+        """Die geprüfte Spendenreihe schreiben — je Vorlage eine Zeile.
+
+        Anders als bei den übrigen Schichten bringt **jede Zeile ihre eigene
+        Herkunft mit** (``zeile["herkunft"]``): Jede Vorlage ist ein eigenes
+        PDF mit eigener Dokument-ID. ``herkunft`` ist die Rückfallebene für
+        die verworfenen Zeilen und für Zeilen ohne eigenen Anker — sie
+        beschreibt den Lauf, nicht ein Dokument.
+
+        ``INSERT OR REPLACE``, kein ``DELETE FROM``: Eine Teillieferung
+        (etwa nach einem abgebrochenen Volltext-Lauf) ersetzt nur, was sie
+        mitbringt, und räumt den Bestand nicht ab."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            rueck = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_spenden "
+                "(vorlage_nr, jahr, sitzung, betrag, gremium, layout, zweitstelle, "
+                " proben, herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                [(z["vorlage_nr"], z["jahr"], z["sitzung"], z["betrag"], z.get("gremium"),
+                  z.get("layout"), z["zweitstelle"], ",".join(z["proben"]),
+                  self.merke_herkunft(z["herkunft"], fetched_at=now)
+                  if z.get("herkunft") else rueck, now)
+                 for z in zeilen])
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_spenden_verworfen "
+                "(vorlage_nr, sitzung, grund, herkunft_id, fetched_at) VALUES (?,?,?,?,?)",
+                [(v["vorlage_nr"], v.get("sitzung"), v["grund"], rueck, now)
+                 for v in verworfen])
+        return len(zeilen)
+
+    def get_spenden(self) -> list[dict]:
+        """Die Spendenreihe je Vorlage, aufsteigend nach Sitzungsdatum.
+
+        ``proben`` kommt als Liste heraus. Fehlt die Tabelle (frische
+        Datenbank ohne Ingest-Lauf), ist die Antwort leer statt ein Fehler."""
+        try:
+            rows = [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_spenden ORDER BY sitzung, vorlage_nr")]
+        except sqlite3.OperationalError:
+            return []
+        for r in rows:
+            r["proben"] = [p for p in (r.get("proben") or "").split(",") if p]
+        return rows
+
+    def get_spenden_verworfen(self) -> list[dict]:
+        """Die Zeilen ohne Zweitstelle, mit dem Satz, warum sie fehlen."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_spenden_verworfen ORDER BY sitzung, vorlage_nr")]
+        except sqlite3.OperationalError:
+            return []
+
+    def spenden_jahre(self) -> list[int]:
+        """Welche Jahrgänge im Bestand stehen — Grundlage des Bestandsschutzes."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT jahr FROM council_spenden ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    def zuwendungsbeschluesse(self) -> list[dict]:
+        """Die Rohzeilen für ``council.spenden.lies()``.
+
+        Absichtlich breit gefasst (``Annahme%Zuwendung%``): Das Aussieben
+        macht ``spenden.erkenne()``, damit die Regel an einer Stelle steht und
+        nicht halb in SQL."""
+        return [dict(r) for r in self._conn.execute(
+            """SELECT d.vorlage_nr, d.title AS titel, d.beschluss, d.outcome,
+                      s.session_date AS sitzung, s.committee AS gremiensitzung,
+                      v.raw_text, v.document_id AS dokument_id,
+                      v.document_url AS dokument_url
+                 FROM council_decisions d
+                 LEFT JOIN council_sessions s ON s.ksinr = d.ksinr
+                 LEFT JOIN council_vorlagen v ON v.vorlage_nr = d.vorlage_nr
+                WHERE d.kind = 'decision' AND d.title LIKE 'Annahme%Zuwendung%'
+                ORDER BY s.session_date, d.vorlage_nr""")]
 
     # --- Ist-Investitionen (Tabellen 1107/1107-1 des Jahrbuchs) -------------
 
