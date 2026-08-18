@@ -5309,6 +5309,22 @@ class CouncilStore:
 
     # --- Nachbewilligungen nach § 117 NKomVG --------------------------------
 
+    def anlage_text(self, document_id: int) -> str | None:
+        """Der Volltext einer Anlage — oder ``None``, wenn keiner da ist.
+
+        „Kein Text" ist der Normalfall und kein Fehler: Der Bestand führt
+        Anlagen, die noch nie geladen wurden (``scripts/backfill_anlagen_texte
+        .py``), und solche, die als Scan gar keinen Text hergeben. Beide
+        sollen den Aufrufer nicht in einen Fehlerpfad zwingen, sondern in die
+        Meldung „für dieses Jahr liegt die Quelle nicht vor"."""
+        try:
+            row = self._conn.execute(
+                "SELECT raw_text FROM council_anlagen WHERE document_id = ?",
+                (document_id,)).fetchone()
+        except sqlite3.OperationalError:
+            return None
+        return (row["raw_text"] or None) if row else None
+
     def nachbewilligungs_vorlagen(self) -> tuple[list[dict], dict[str, list[dict]]]:
         """Die Rohdaten für ``council/nachbewilligungen.aus_vorlagen``.
 
@@ -5340,7 +5356,7 @@ class CouncilStore:
                 "FROM council_decisions d "
                 "JOIN council_sessions cs ON cs.ksinr = d.ksinr "
                 "WHERE d.vorlage_nr IS NOT NULL AND d.kind = 'decision' "
-                + self._BESCHLUSS_ORDNUNG.replace("d.id DESC", "d.id DESC")
+                + self._BESCHLUSS_ORDNUNG
             )]
         except sqlite3.OperationalError:
             return [], {}

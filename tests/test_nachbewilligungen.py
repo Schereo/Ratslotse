@@ -561,7 +561,9 @@ def test_probe_tabelle_meldet_die_288000_von_2022():
     assert p.spalten_ok, "die Spalten selbst stimmen"
     assert not p.gesamt_ok
     assert p.abweichung_gesamt == pytest.approx(288_000.0)
-    assert "288000.00" in p.als_text().replace(",", "")
+    # Deutsche Schreibweise — der Satz landet über `probe_ergebnis` im
+    # Beleg-Chip und damit vor Leser*innen.
+    assert "288.000,00 €" in p.als_text()
 
 
 def test_probe_tabelle_meldet_den_uebernahmerest_von_2023():
@@ -595,7 +597,14 @@ def test_probe_ratsabgleich_meldet_die_abweichung():
     assert abgleich.bericht_summe == pytest.approx(33_871_700.00)
     assert abgleich.abweichung == pytest.approx(100.0)
     assert abgleich.abweichung_prozent == pytest.approx(0.0003, abs=0.0001)
-    assert "+100" in abgleich.als_text().replace(",", "")
+    assert "+100,00 €" in abgleich.als_text()
+
+
+def test_de_betrag_schreibt_deutsch():
+    """Diese Sätze stehen im Beleg-Chip, nicht im Log."""
+    assert nb.de_betrag(288_000.0) == "288.000,00"
+    assert nb.de_betrag(288_000.0, vorzeichen=True) == "+288.000,00"
+    assert nb.de_betrag(-1_051_184.65, vorzeichen=True) == "−1.051.184,65"
 
 
 def test_probe_ratsabgleich_nennt_die_fehlenden_nummern():

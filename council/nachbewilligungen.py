@@ -190,6 +190,18 @@ def ist_nachbewilligung(titel: str) -> bool:
     return bool(_EINSCHLAG.search(titel or ""))
 
 
+def de_betrag(wert: float, vorzeichen: bool = False) -> str:
+    """Ein Betrag in deutscher Schreibweise: ``288.000,00``.
+
+    Diese Texte landen über ``probe_ergebnis`` im Beleg-Chip und damit vor
+    Leser*innen; ein englisch formatiertes ``288000.00`` stünde dort mitten in
+    einem deutschen Satz."""
+    s = f"{abs(wert):,.2f}".replace(",", "␟").replace(".", ",").replace("␟", ".")
+    if vorzeichen:
+        return ("+" if wert >= 0 else "−") + s
+    return ("−" if wert < 0 else "") + s
+
+
 def _zahl(zahl: str, skala: str | None) -> float:
     """„1.500.000,50" + „Mio." → float. Deutsche Schreibweise, ohne Fallstrick:
     der Punkt ist Tausender-, das Komma Dezimaltrennzeichen."""
@@ -656,12 +668,16 @@ class Tabellenprobe:
         teile = []
         if not self.spalten_ok:
             teile.append(
-                f"Spaltensumme weicht ab (konsumtiv "
-                f"{self.abweichung_konsumtiv:+.2f} €, investiv "
-                f"{self.abweichung_investiv:+.2f} €)")
+                f"Die Einzelzeilen ergeben nicht die Summenzeile des "
+                f"Dokuments (konsumtiv "
+                f"{de_betrag(self.abweichung_konsumtiv, vorzeichen=True)} €, "
+                f"investiv "
+                f"{de_betrag(self.abweichung_investiv, vorzeichen=True)} €)")
         if not self.gesamt_ok:
-            teile.append(f"Fließtext nennt {self.abweichung_gesamt:+.2f} € "
-                         f"mehr als die eigene Tabelle")
+            richtung = "mehr" if self.abweichung_gesamt > 0 else "weniger"
+            teile.append(
+                f"Der Fließtext nennt {de_betrag(abs(self.abweichung_gesamt))} € "
+                f"{richtung} als die Tabelle darunter")
         return "; ".join(teile) + "."
 
 
@@ -733,9 +749,13 @@ class Ratsabgleich:
         if abs(self.abweichung) < 0.005:
             return (f"{self.jahr}: identisch mit dem Rechenschaftsbericht "
                     f"({self.bericht_faelle} Fälle).")
-        return (f"{self.jahr}: {self.abweichung:+,.2f} € gegenüber dem "
-                f"Rechenschaftsbericht"
-                + (f" ({p:+.2f} %)" if p is not None else "") + ".")
+        prozent = ""
+        if p is not None:
+            prozent = (" (unter 0,01 %)" if abs(p) < 0.01
+                       else f" ({de_betrag(p, vorzeichen=True)} %)")
+        return (f"{self.jahr}: {de_betrag(self.abweichung, vorzeichen=True)} € "
+                f"gegenüber dem Rechenschaftsbericht{prozent}, "
+                f"{self.unsere_faelle} gegen {self.bericht_faelle} Fälle.")
 
 
 #: Vorlagen-Nummern haben die Form ``24/0834``.
