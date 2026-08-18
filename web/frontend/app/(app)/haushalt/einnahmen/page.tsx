@@ -364,12 +364,14 @@ export default function EinnahmenPage() {
                   {spendenOhne.length === 1 ? "Beschluss fehlt" : "Beschlüsse fehlen"} in
                   dieser Reihe
                 </dt>
+                {/* Der Satz sagt, was der Reihe FEHLT — nicht, dass wir gut
+                    geprüft haben. „Statt ungeprüft mitzuzählen" stand hier bis
+                    zuletzt und war genau die Selbstvergewisserung, die
+                    DESIGNSPRACHE.md § 7 als Anti-Pattern führt. */}
                 <dd className="mt-0.5 max-w-[80ch] text-[12.5px] leading-relaxed text-muted-foreground">
-                  Aufgenommen ist nur, was in der Vorlage ein zweites Mal steht — im
-                  Abschnitt zu den finanziellen Auswirkungen, entweder als dieselbe Zahl
-                  oder zerlegt in Geld- und Sachzuwendungen, die sich auf den Cent
-                  aufaddieren. Wo das nicht aufgeht, fehlt die Zeile, statt ungeprüft
-                  mitzuzählen:
+                  Ihre Beträge sind in den Summen oben nicht enthalten. In diesen
+                  Vorlagen steht der beschlossene Betrag entweder kein zweites Mal,
+                  oder die beiden Stellen widersprechen sich:
                 </dd>
                 {/* <LueckenFeld> statt einer eigenen Liste: Es ist die Textform
                     für Lücken im Baukasten, und sie ist bewusst nie
