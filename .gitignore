@@ -8,6 +8,9 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 web/frontend/.next/
+# Eigenes Build-Verzeichnis des Dev-Servers (next.config.mjs) — trennt
+# `next dev` von `next build`, die sich sonst .next zerlegen.
+web/frontend/.next-dev/
 web/frontend/node_modules/
 
 # Lokal installierte Agent-Skills (npx skills add …) — Fremdinhalte, nicht committen
