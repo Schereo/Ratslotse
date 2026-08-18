@@ -822,11 +822,21 @@ def build_abschluss_questions(store) -> list[dict]:
     kern = weitere.get("Kernhaushalt (nur Geldschulden)")
     konzern = weitere.get("Konzern Stadt (anteilig, mit Beteiligungen)")
     if schulden and kern and konzern:
+        # DAS JAHR GEHÖRT AN JEDE ZAHL, und hier besonders: Die drei Stände
+        # kommen aus drei Quellen mit drei Erscheinungsterminen, also nicht
+        # zwangsläufig aus demselben Jahr (das Jahrbuch war 08/2026 schon bei
+        # 2025, Bilanz und Konzern-Tabellenband noch bei 2024). Ohne Jahr
+        # nebeneinandergestellt wäre die Frage angreifbar — zu Recht.
         richtig = "Alle drei — je nachdem, was mitgezählt wird"
-        opts = [f"{_mio(kern['betrag'])} Mio. Euro",
-                f"{_mio(schulden['insgesamt'])} Mio. Euro",
-                f"{_mio(konzern['betrag'])} Mio. Euro",
+        opts = [f"{_mio(kern['betrag'])} Mio. Euro ({kern['jahr']})",
+                f"{_mio(schulden['insgesamt'])} Mio. Euro ({schulden['jahr']})",
+                f"{_mio(konzern['betrag'])} Mio. Euro ({konzern['jahr']})",
                 richtig]
+        jahre = {kern["jahr"], schulden["jahr"], konzern["jahr"]}
+        nachsatz = ("" if len(jahre) == 1 else
+                    " Die drei Stände sind nicht aus demselben Jahr: Jede Quelle "
+                    "erscheint zu ihrer eigenen Zeit, und die jüngste ist immer "
+                    "die, die vorliegt.")
         qs.append({
             "area_type": "thema", "area_key": "haushalt", "category": "ratspolitik",
             "difficulty": "schwer", "qtype": "mc",
@@ -834,10 +844,12 @@ def build_abschluss_questions(store) -> list[dict]:
             "options": opts, "correct_index": opts.index(richtig),
             "explanation": (
                 f"Alle drei Zahlen stimmen — sie zählen Verschiedenes. "
-                f"{_mio(kern['betrag'])} Mio. Euro sind die Geldschulden des "
-                f"Kernhaushalts, {_mio(schulden['insgesamt'])} Mio. Euro die der "
-                f"Stadt samt ihren Eigenbetrieben, und {_mio(konzern['betrag'])} "
-                f"Mio. Euro die des ganzen Konzerns mit allen Beteiligungen."),
+                f"{_mio(kern['betrag'])} Mio. Euro ({kern['jahr']}) sind die "
+                f"Geldschulden des Kernhaushalts, "
+                f"{_mio(schulden['insgesamt'])} Mio. Euro ({schulden['jahr']}) die "
+                f"der Stadt samt ihren Eigenbetrieben, und "
+                f"{_mio(konzern['betrag'])} Mio. Euro ({konzern['jahr']}) die des "
+                f"ganzen Konzerns mit allen Beteiligungen." + nachsatz),
             "detail": ("Wer eine Schuldenzahl nennt, muss die Abgrenzung dazusagen. "
                        "Addieren darf man sie nie: Die größere enthält die kleinere."),
             "hint": "Es kommt darauf an, wen man mitzählt.",
