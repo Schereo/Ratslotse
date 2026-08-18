@@ -1451,6 +1451,11 @@ def decision_detail(
             if not out["vorlage_url"] and v.get("kvonr"):
                 out["vorlage_url"] = _vorlage_url(v["kvonr"])
         out["anlagen"] = store.anlagen_for_vorlage_nr(d["vorlage_nr"])
+        # Wo dieser Beschluss im Haushalts-Bereich wieder auftaucht — belegt
+        # über eine echte Verknüpfung, nicht über eine Textsuche. `None` heißt
+        # „nirgends nachweisbar", und die Seite lässt die Karte dann weg.
+        out["haushalts_anschluss"] = store.haushalts_anschluss(
+            d["id"], d.get("vorlage_nr"))
         # P1: gerenderte Planzeichnung (scripts/render_plaene.py) — B-Plan-
         # Beschlüsse leben vom Bild, nicht vom Anlagen-Download. Echte
         # Planzeichnungen vor Mischdokumenten: „Begründung mit Leitplan" hat

@@ -1512,3 +1512,41 @@ def test_buergschafts_vorlagen_je_vorlage_eine_zeile(tmp_path):
     verlaengerung = v[0]
     assert verlaengerung["datum"] == "2025-12-15"
     assert verlaengerung["beschluss_id"] == 102
+
+
+def test_haushalts_anschluss_nur_wo_er_belegt_ist(tmp_path):
+    """Die Karte auf der Beschluss-Seite sagt etwas — oder sie kommt nicht.
+
+    Der pauschale Verweis „wie sich das im Gesamthaushalt ausnimmt" steht an
+    jedem Beschluss mit Finanz-Feld und ist deshalb für keinen eine Auskunft.
+    Diese Karte hängt an einer echten Verknüpfung: entweder zeigt
+    ``council_nachbewilligungen.beschluss_id`` auf genau diesen Beschluss,
+    oder seine Vorlage steht im Bürgschafts-Zeitstrahl.
+    """
+    from council.store import CouncilStore
+
+    store = CouncilStore(str(tmp_path / "c.sqlite"))
+    c = store._conn                                       # noqa: SLF001
+    c.execute("INSERT INTO council_vorlagen (kvonr, vorlage_nr, title, fetched_at) "
+              "VALUES (1, '25/0826', 'Verlängerung Ausfallbürgschaft der Stadt "
+              "Oldenburg für die Volkshochschule', '2026-08-18')")
+    c.execute("INSERT INTO council_vorlagen (kvonr, vorlage_nr, title, fetched_at) "
+              "VALUES (2, '24/0999', 'Neubau einer Schule', '2026-08-18')")
+    c.execute("INSERT INTO council_nachbewilligungen (vorlage_nr, titel, art, kategorie, "
+              " beschlossen, im_rat, ratsentscheidung, volltextprobe, betrag, jahr, "
+              " beschluss_id, gremien, fetched_at) "
+              "VALUES ('18/0187', 'Außerplanmäßige Bewilligung', 'ausserplanmaessig', "
+              " 'sonstiges', 1, 1, 1, 1, 500000.0, 2018, 812, '[]', '2026-08-18')")
+    c.commit()
+
+    # Bürgschaft: erkannt über die Vorlage.
+    a = store.haushalts_anschluss(9999, "25/0826")
+    assert a and a["art"] == "buergschaft" and a["href"] == "/haushalt/schulden"
+
+    # Nachbewilligung: erkannt über die Beschluss-Nummer, nicht über den Text.
+    a = store.haushalts_anschluss(812, "18/0187")
+    assert a and a["art"] == "nachbewilligung" and a["jahr"] == 2018
+
+    # Alles andere: nichts. Lieber keine Karte als eine, die überall gleich steht.
+    assert store.haushalts_anschluss(1, "24/0999") is None
+    assert store.haushalts_anschluss(1, None) is None

@@ -9214,6 +9214,49 @@ class CouncilStore:
             "buergschaften": self._buergschafts_kontext(),
         }
 
+    def haushalts_anschluss(self, beschluss_id: int, vorlage_nr: str | None) -> dict | None:
+        """Wo dieser Beschluss im Haushalts-Bereich wieder auftaucht.
+
+        Die Beschluss-Seite verweist seit H-21 auf den Haushalt — aber
+        pauschal („wie sich das im Gesamthaushalt ausnimmt"). Das ist für
+        jeden Beschluss derselbe Satz und deshalb für keinen eine Auskunft.
+
+        Hier steht nur, was **belegt** ist. Zwei Fälle gibt es im Bestand, und
+        beide hängen an einer echten Verknüpfung, nicht an einer Textsuche:
+
+        * **Nachbewilligung** — ``council_nachbewilligungen.beschluss_id``
+          zeigt auf genau diese Zeile. Der Betrag steht dann in der
+          Jahressumme, die ``/haushalt/plan-ist`` zeigt.
+        * **Bürgschaft** — die Vorlage steht im Zeitstrahl auf
+          ``/haushalt/schulden``.
+
+        Trifft keiner der beiden zu, kommt ``None`` — und die Seite lässt die
+        Karte weg, statt einen Satz zu zeigen, der überall gleich stünde.
+        """
+        try:
+            r = self._conn.execute(
+                "SELECT vorlage_nr, titel, betrag, jahr FROM council_nachbewilligungen "
+                "WHERE beschluss_id = ? LIMIT 1", (beschluss_id,)).fetchone()
+        except sqlite3.OperationalError:
+            r = None
+        if r:
+            return {"art": "nachbewilligung", "href": "/haushalt/plan-ist",
+                    "jahr": r["jahr"], "betrag": r["betrag"],
+                    "titel": r["titel"], "vorlage_nr": r["vorlage_nr"]}
+
+        if vorlage_nr:
+            try:
+                b = self._conn.execute(
+                    "SELECT title FROM council_vorlagen "
+                    "WHERE vorlage_nr = ? AND title LIKE '%bürgschaft%'",
+                    (vorlage_nr,)).fetchone()
+            except sqlite3.OperationalError:
+                b = None
+            if b:
+                return {"art": "buergschaft", "href": "/haushalt/schulden",
+                        "titel": b["title"], "vorlage_nr": vorlage_nr}
+        return None
+
     def buergschafts_vorlagen(self, limit: int = 40) -> list[dict]:
         """Die Ratsbeschlüsse hinter dem Bürgschaftsbestand, neueste zuerst.
 

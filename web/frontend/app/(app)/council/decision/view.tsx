@@ -253,6 +253,39 @@ function GlanceCard({
         </GlanceDisclosure>
       )}
 
+      {/* Die Anschlussstelle, die etwas SAGT. Der Satz oben steht an jedem
+          Beschluss mit Finanz-Feld und ist deshalb für keinen eine Auskunft;
+          diese Karte gibt es nur, wo eine echte Verknüpfung sie deckt —
+          entweder zeigt `council_nachbewilligungen.beschluss_id` auf genau
+          diesen Beschluss, oder seine Vorlage steht im Bürgschafts-Zeitstrahl.
+          Sonst kommt sie gar nicht (`haushalts_anschluss === null`). */}
+      {HAUSHALT_FREI && data.haushalts_anschluss && (
+        <GlanceRow>
+          <Link href={data.haushalts_anschluss.href}
+            className="group flex flex-wrap items-baseline gap-x-2 gap-y-1 rounded-xl border border-border bg-card px-3 py-2.5 transition-colors hover:border-primary/40">
+            <span className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-primary">
+              Im Haushalt
+            </span>
+            <span className="min-w-0 flex-1 text-[12.5px] leading-snug text-foreground/90">
+              {data.haushalts_anschluss.art === "nachbewilligung" ? (
+                <>
+                  Diese Entscheidung zählt zu den Nachbewilligungen
+                  {data.haushalts_anschluss.jahr ? ` ${data.haushalts_anschluss.jahr}` : ""} —
+                  Geld, das außerhalb des beschlossenen Haushalts bewilligt wurde.
+                </>
+              ) : (
+                <>
+                  Diese Bürgschaft steht im Zeitstrahl der Ratsbeschlüsse zum
+                  Bürgschaftsbestand der Stadt.
+                </>
+              )}
+            </span>
+            <ArrowRight size={14} strokeWidth={2}
+              className="flex-none text-primary transition-transform group-hover:translate-x-0.5" />
+          </Link>
+        </GlanceRow>
+      )}
+
       {d.kind !== "subvote" && data.importance_breakdown && (
         <GlanceRow>
           {/* ImportanceMeter bringt Kopfzeile, Balken und die aufklappbare
