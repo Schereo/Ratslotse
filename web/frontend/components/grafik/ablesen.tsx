@@ -138,18 +138,34 @@ export function Ableseleiste({ stelle, steuerung, hinweis, className }: {
       className={cn("gb-ablese-leiste rounded-xl border border-border bg-muted/40 px-3 py-2", className)}
       style={{ "--gb-ablese-bottom": `calc(${TABLEISTE_HOEHE} + 0.5rem)` } as CSSProperties}
     >
-      <div className="flex flex-wrap items-baseline gap-x-3.5 gap-y-1">
+      {/* ZWEI LAYOUTS, EIN MARKUP.
+          Breit läuft die Zeile um (viele kurze Werte nebeneinander). Schmal
+          ist das falsch: Sechs Einträge mit langen Namen wie „Erwerb von
+          Grundstücken und Gebäuden" ergaben Treppenstufen, in denen Name und
+          Betrag nicht mehr zusammenfanden. Unter 480 px steht deshalb jeder
+          Eintrag auf einer eigenen Zeile, Name links, Betrag rechtsbündig —
+          die Beträge stehen dann untereinander und sind vergleichbar. */}
+      <div className="flex flex-col gap-y-1 ab-lesezeile:flex-row ab-lesezeile:flex-wrap
+                      ab-lesezeile:items-baseline ab-lesezeile:gap-x-3.5">
         <span className="font-mono text-[12.5px] font-semibold uppercase tracking-[0.08em] tabular-nums">
           {stelle.titel}
         </span>
         {stelle.werte.map((w) => (
-          <span key={w.label} className="inline-flex items-baseline gap-1.5 text-[12.5px] leading-tight">
-            {w.farbe && (
-              <span aria-hidden="true" className="h-2 w-2 flex-none translate-y-[-1px] self-center rounded-full"
-                style={{ background: w.farbe }} />
-            )}
-            <span className="text-muted-foreground">{w.label}</span>
-            <span className={cn("font-semibold tabular-nums", w.signal && "text-signal")}>{w.wert}</span>
+          <span key={w.label}
+            className="flex items-baseline justify-between gap-2 text-[12.5px] leading-tight
+                       ab-lesezeile:inline-flex ab-lesezeile:justify-start ab-lesezeile:gap-1.5">
+            <span className="flex min-w-0 items-baseline gap-1.5">
+              {w.farbe && (
+                <span aria-hidden="true" className="h-2 w-2 flex-none translate-y-[-1px] self-center rounded-full"
+                  style={{ background: w.farbe }} />
+              )}
+              <span className="text-muted-foreground">{w.label}</span>
+            </span>
+            {/* `whitespace-nowrap`: Der Betrag trägt seine Einheit („0,2 Mio.
+                €"), und die darf NIE von ihrer Zahl abreißen — auf 375 px
+                stand das € sonst allein auf der nächsten Zeile. */}
+            <span className={cn("flex-none whitespace-nowrap font-semibold tabular-nums",
+                                w.signal && "text-signal")}>{w.wert}</span>
           </span>
         ))}
       </div>

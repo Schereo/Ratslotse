@@ -141,11 +141,11 @@ function AnlagenBlock({ daten }: { daten: GebautDaten | null }) {
         </p>
         <h2 className="mt-1 text-[17px] font-semibold leading-snug text-foreground">
           {v.faktor && v.faktor > 1
-            ? `Beim Infrastrukturvermögen schreibt die Stadt ${deMioEuro(v.abschreibung)} ab und baut ${deMioEuro(v.zugaenge)} zu`
+            ? `Beim Infrastrukturvermögen schreibt die Stadt ${deMioEuro(v.abschreibung)}\u2009Mio.\u00a0€ ab und baut ${deMioEuro(v.zugaenge)}\u2009Mio.\u00a0€ zu`
             : "Zugänge und Abschreibungen des Infrastrukturvermögens"}
         </h2>
         <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
-          Straßen, Brücken und Kanäle stehen mit {deMioEuro(infra.buchwert)} in der
+          Straßen, Brücken und Kanäle stehen mit {deMioEuro(infra.buchwert)}&#8239;Mio.&nbsp;€ in der
           Bilanz {jahr}. Was im Jahr dazukam, steht neben dem, was im selben Jahr
           an Wert verloren ging — beide Zahlen aus derselben Tabelle des
           Jahresabschlusses. <Beleg q="jahresabschluss" />
@@ -187,8 +187,8 @@ function AnlagenBlock({ daten }: { daten: GebautDaten | null }) {
           <p className="mt-1 max-w-[76ch] text-[12.5px] leading-relaxed text-foreground/90">
             Der Jahresabschluss gliedert das Infrastrukturvermögen weiter auf.
             Allein die Straßen, Wege und Plätze sanken von{" "}
-            {deMioEuro(strassenErst.g.buchwert_vorjahr ?? strassenErst.g.buchwert)} auf{" "}
-            {deMioEuro(strassenLetzt.g.buchwert)} — der Abschluss {jahr} nennt das
+            {deMioEuro(strassenErst.g.buchwert_vorjahr ?? strassenErst.g.buchwert)}&#8239;Mio.&nbsp;€ auf{" "}
+            {deMioEuro(strassenLetzt.g.buchwert)}&#8239;Mio.&nbsp;€ — der Abschluss {jahr} nennt das
             selbst einen <strong>Substanzverlust</strong>.
           </p>
         </div>

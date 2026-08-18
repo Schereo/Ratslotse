@@ -63,6 +63,14 @@ const config: Config = {
            es keins. */
         mobil: { raw: "(max-width: 743.98px)" },
         "ab-tablet": { raw: "(min-width: 744px)" },
+        /* Eigene Schwelle für die Ableseleiste (GB-00), NICHT `ab-tablet`:
+           Ob Name und Betrag nebeneinander passen, hängt an der Länge der
+           Namen, nicht am Gerät. Eine Reihe mit sechs Einträgen wie „Erwerb
+           von Grundstücken und Gebäuden" braucht die Zeilenform schon deutlich
+           unterhalb der Tablet-Grenze; eine mit „2025 · 60,8 Mio. €" käme
+           auch auf 400 px nebeneinander aus. 480 px ist gemessen an der
+           längsten Reihe des Bereichs (Investitionsarten). */
+        "ab-lesezeile": { raw: "(min-width: 480px)" },
       },
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],
