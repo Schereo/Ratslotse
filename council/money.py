@@ -128,17 +128,19 @@ _WERTGRENZE = re.compile(r"\bwertgrenzen?\b", re.IGNORECASE)
 #: einer Tariftabelle; ab der zweiten („Zone 1 … ab 01.01.2024 0,70 €, ab
 #: 01.01.2025 0,90 €") ist das Tarifwort aus dem Fenster gewandert.
 #:
-#: Gemessen (18.08.2026, Bestand 7.705 Beschlüsse): 175 Beschlüsse tragen ein
-#: solches Titelwort, **drei** davon nach allen übrigen Filtern noch einen
-#: Betrag — und alle drei sind Tarife (2× 540,00 € Bewohnerparkausweis,
-#: 1,30 € Parkgebühr). Die Regel kostet also keinen echten Betrag.
+#: Gemessen (18.08.2026, Bestand 7.705 Beschlüsse): 226 Beschlüsse tragen ein
+#: solches Titelwort, **fünf** davon nach allen übrigen Filtern noch einen
+#: Betrag — und alle fünf sind Preise (2× 540,00 € Bewohnerparkausweis,
+#: 1,30 € Parkgebühr, 2× 3,70 € Schulessen). Die Regel kostet keinen echten
+#: Betrag.
 #:
 #: Gegenprobe, die dieselbe Regel am **ganzen Text** verwarf: Dort träfe sie
 #: acht Beschlüsse und kostete fünf echte Beträge, darunter einen über
 #: 20 Mio. € („Rettungsschirm für die Kommunen", in dem „Gebühren" beiläufig
 #: vorkommt). Der Titel weiß, worum es geht; der Fließtext nicht.
-_TARIF_TITEL = re.compile(r"\w*(?:gebühr|entgelt|tarif|eintrittspreis|fahrpreis)\w*",
-                          re.IGNORECASE)
+_TARIF_TITEL = re.compile(
+    r"\w*(?:gebühr|entgelt|tarif|eintrittspreis|fahrpreis|verpflegung)\w*",
+    re.IGNORECASE)
 
 
 def _to_float(num: str) -> float | None:
