@@ -56,6 +56,9 @@ import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { MarkePille } from "@/components/haushalt/marke";
 import { Hantel, HantelMassstab } from "@/components/grafik/hantel";
+import {
+  NachbewilligungsBefund, NachbewilligungsBlock,
+} from "@/components/haushalt/nachbewilligungen";
 import { cn } from "@/lib/utils";
 import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 
@@ -248,9 +251,17 @@ function PlanIstInner() {
   const saldoPlan = jahresergebnis("plan");
   const saldoIst = jahresergebnis("ergebnis");
   const kasse = kassensicht(data, jahr);
-  const quellen: QuellenSchluessel[] = kasse
-    ? ["jahresabschluss", "finanzrechnung", "plan"]
-    : ["jahresabschluss", "plan"];
+  // `ratsbeschluss` kommt dazu, sobald der Nachbewilligungs-Block etwas zu
+  // zeigen hat: Seine Liste verlinkt Vorlagen aus dem Bürgerinformations-
+  // system, und ein Beleg-Chip ohne angemeldete Quelle rendert nichts (siehe
+  // `components/haushalt/quelle.tsx`) — die Zeilen stünden dann ohne Beleg da.
+  const hatNachbewilligungen = (data.nachbewilligungen?.serie ?? []).length > 0;
+  const quellen: QuellenSchluessel[] = [
+    "jahresabschluss",
+    ...(kasse ? (["finanzrechnung"] as const) : []),
+    "plan",
+    ...(hatNachbewilligungen ? (["ratsbeschluss"] as const) : []),
+  ];
   const pruefbericht = pruefberichtZuJahr(data, jahr);
   // Die Zeilen der Hantel. Zwei Regeln, beide oben im Kopf begründet:
   // ein Wortlaut je Erläuterung, und nichts über EINORDNUNG_GRENZE im Bild.
@@ -631,6 +642,14 @@ function PlanIstInner() {
         </div>
       )}
 
+      {/* Warum die Nachbewilligungen GENAU HIER stehen: „Warum es anders kam"
+          darüber erklärt die Abweichung mit den Worten des Jahresabschlusses —
+          im Nachhinein und je Posten. Dieser Block zeigt dieselbe Abweichung
+          von der anderen Seite: als Entscheidungen, die während des Jahres
+          getroffen wurden, mit Datum, Betrag und Beschluss-Seite. Erst
+          zusammen beantworten sie die Frage der Seite. */}
+      <NachbewilligungsBlock daten={data} jahr={jahr} />
+
       {/* Wer den Plan gegen das Ist gelesen hat, gehört als Nächstes hierhin:
           Genau diesen Vergleich beanstandet das Rechnungsprüfungsamt. */}
       <PruefungsHinweis />
@@ -732,6 +751,13 @@ function PlanIstInner() {
         Es erscheinen nur Jahre, für die ein Jahresabschluss vorliegt. Für das laufende und
         das kommende Haushaltsjahr gibt es naturgemäß noch keinen.
       </p>
+
+      {/* Der Nebenbefund über die ganze Reihe — er gehört zu keinem einzelnen
+          Jahr und steht deshalb hier unten, in derselben Zeilen-Grammatik wie
+          die Grenzen darüber. Nüchtern, ohne Kommentar: Die Vorlagen sind
+          vorher im Fachausschuss beraten, und was dort keine Mehrheit findet,
+          erreicht den Rat meist gar nicht erst. */}
+      <NachbewilligungsBefund daten={data} />
 
       <SchrittWeiter href="/haushalt/plan-ist" />
 
