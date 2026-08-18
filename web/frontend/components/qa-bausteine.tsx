@@ -51,6 +51,9 @@ export type DebattenHinweis = {
   /** getfile-URL des Protokoll-PDFs — ältere gespeicherte Gespräche kennen
    *  das Feld nicht, dann fehlt schlicht das Icon. */
   protokoll_url?: string | null;
+  /** PDF-Seite der Fundstelle (über den Sprecher-Namen verankert) —
+   *  null/fehlend = Link aufs ganze PDF, nie eine geratene Seite. */
+  protokoll_seite?: number | null;
 };
 
 /** Personen-Badge-Eintrag aus /council/personen-lexikon (Tims Wunsch 12.08.):
@@ -655,10 +658,18 @@ function DebattenZeile({ d, artLabel }: { d: DebattenHinweis; artLabel: Record<s
         {d.datum && <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{fmtDatumKurz(d.datum)}</span>}
         {/* Nachlesbar statt nur behauptet: leises Icon zum Protokoll-PDF —
             gleiche Trailing-Icon-Grammatik wie Anlagen/Presse, negative
-            Margins vergrößern nur die Tippfläche, nicht die Optik. */}
+            Margins vergrößern nur die Tippfläche, nicht die Optik. Mit
+            bekannter Fundstelle springt #page direkt zur Seite (Chrome/
+            Firefox/Edge; Safari öffnet dann schlicht das PDF). */}
         {d.protokoll_url && (
-          <a href={d.protokoll_url} target="_blank" rel="noopener noreferrer"
-            title="Sitzungsprotokoll öffnen (PDF)" aria-label="Sitzungsprotokoll öffnen (PDF)"
+          <a target="_blank" rel="noopener noreferrer"
+            href={d.protokoll_seite ? `${d.protokoll_url}#page=${d.protokoll_seite}` : d.protokoll_url}
+            title={d.protokoll_seite
+              ? `Sitzungsprotokoll öffnen (PDF, Seite ${d.protokoll_seite})`
+              : "Sitzungsprotokoll öffnen (PDF)"}
+            aria-label={d.protokoll_seite
+              ? `Sitzungsprotokoll öffnen (PDF, Seite ${d.protokoll_seite})`
+              : "Sitzungsprotokoll öffnen (PDF)"}
             className="-m-1.5 shrink-0 p-1.5 text-muted-foreground/60 transition-colors hover:text-primary">
             <FileDown className="h-3 w-3" aria-hidden />
           </a>

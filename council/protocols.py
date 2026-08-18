@@ -52,13 +52,24 @@ def find_protocol(ksinr: int) -> dict | None:
     return None
 
 
-def extract_pdf_text(url: str) -> tuple[str, int]:
-    """Download a PDF and return (text, n_pages)."""
+def page_offsets(seiten: list[str]) -> list[int]:
+    """Zeichen-Offsets der Seitenanfänge im mit ``"\\n"`` verklebten Text —
+    die Grundlage, um eine Fundstelle im ``raw_text`` einer PDF-Seite
+    zuzuordnen (seitengenaue Protokoll-Links, Tims Wunsch 18.08.)."""
+    offsets, pos = [], 0
+    for s in seiten:
+        offsets.append(pos)
+        pos += len(s) + 1  # +1 für das "\n" des join
+    return offsets
+
+
+def extract_pdf_text(url: str) -> tuple[str, int, list[int]]:
+    """Download a PDF and return (text, n_pages, page_offsets)."""
     r = _session.get(url, timeout=45)
     r.raise_for_status()
     reader = pypdf.PdfReader(io.BytesIO(r.content))
-    text = "\n".join(p.extract_text() or "" for p in reader.pages)
-    return text, len(reader.pages)
+    seiten = [p.extract_text() or "" for p in reader.pages]
+    return "\n".join(seiten), len(seiten), page_offsets(seiten)
 
 
 _PROMPT = """Du extrahierst strukturierte Daten aus dem Protokoll einer Stadtrats- oder \

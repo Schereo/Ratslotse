@@ -1492,6 +1492,7 @@ class QaShareDebatte(BaseModel):
     committee: str | None = Field(default=None, max_length=120)
     datum: str | None = Field(default=None, max_length=10)
     protokoll_url: str | None = Field(default=None, max_length=500)
+    protokoll_seite: int | None = Field(default=None, ge=1, le=9999)
 
     @field_validator("protokoll_url")
     @classmethod
@@ -2214,7 +2215,9 @@ def _debatten_kompakt(rows: list[dict]) -> list[dict]:
              "auszug": (d.get("text") or "")[:2000],
              "committee": d.get("committee"),
              "datum": d.get("session_date"),
-             "protokoll_url": d.get("protokoll_url")} for d in rows]
+             "protokoll_url": d.get("protokoll_url"),
+             # PDF-Seite der Fundstelle (Sprecher-Anker); None = Link ohne #page.
+             "protokoll_seite": d.get("seite")} for d in rows]
 
 
 def _turn_speichern(nwz: Store, user: dict, body: AskBody, q_suche: str,

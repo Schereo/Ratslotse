@@ -235,6 +235,66 @@ def test_protokoll_urls_fuer_ohne_url_bleibt_leer(store):
     assert rows[0]["protokoll_url"] is None
 
 
+def test_page_offsets_rechnen_mit_dem_join():
+    """Die Offsets müssen exakt zum \\n-verklebten Text passen — jede Seite
+    beginnt bei sum(len(vorher)+1)."""
+    from council.protocols import page_offsets
+    seiten = ["abc", "", "defg"]
+    offs = page_offsets(seiten)
+    text = "\n".join(seiten)
+    assert offs == [0, 4, 5]
+    assert text[offs[2]:] == "defg"
+
+
+def _protokoll_mit_seiten(store, ksinr: int, seiten: list[str]) -> None:
+    from council.protocols import page_offsets
+    import json as _json
+    store._conn.execute(
+        "UPDATE council_protocols SET raw_text = ?, n_pages = ?, page_offsets = ? "
+        "WHERE ksinr = ?",
+        ("\n".join(seiten), len(seiten), _json.dumps(page_offsets(seiten)), ksinr))
+
+
+def test_seiten_aufloesen_ankert_am_sprecher(store):
+    """Seitengenaue Fundstelle (Tims Wunsch 18.08.): Der Name ist der Anker,
+    markante Wörter schlagen die Anwesenheitsliste — und die Faltung macht
+    das Matching immun gegen PDF-Trennungs-Artefakte („Ratjen -Damerau")."""
+    seiten = [
+        "Teilnahme: Ratsfrau Dr. Ratjen -Damerau FDP, Herr Petersen SPD",
+        "TOP 5: Ratsfrau Dr. Ratjen -Damerau begrüßt die Neua u s-richtung "
+        "des Stadtmuseums; der Architektenwettbewerb solle mutige Entwürfe liefern.",
+        "TOP 6: Anderes Thema ohne die Sprecherin.",
+    ]
+    _protokoll_mit_seiten(store, 100, seiten)
+    store.save_wortbeitraege(100, [
+        {"art": "rede", "top": "5", "sprecher": "Dr. Ratjen-Damerau", "partei": "FDP",
+         "text": "Die FDP begrüßt die Neuausrichtung des Stadtmuseums und den "
+                 "Architektenwettbewerb.", "antwort": None}])
+    from council.wortbeitraege import seiten_aufloesen
+    assert seiten_aufloesen(store, 100) == 1
+    wb_id = store.search_wortbeitraege_fts("Stadtmuseums")[0][0]
+    assert store.wortbeitraege_by_ids([wb_id])[0]["seite"] == 2
+    # Idempotent: Beiträge mit Seite werden nicht erneut angefasst.
+    assert seiten_aufloesen(store, 100) == 0
+
+
+def test_seiten_aufloesen_bleibt_bei_zweifel_leer(store):
+    """Ohne Anker, ohne Offsets oder bei Gleichstand gibt es KEINE Seite —
+    ein falscher Sprung wäre schlimmer als keiner."""
+    from council.wortbeitraege import seiten_aufloesen
+    # Ohne Offsets (Altbestand): nichts passiert.
+    store.save_wortbeitraege(100, [BEITRAG])
+    assert seiten_aufloesen(store, 100) == 0
+    # Mit Offsets, aber der Sprecher steht wortgleich auf zwei Seiten und
+    # die Paraphrase entscheidet nicht → None.
+    seiten = ["Herr Petersen spricht über Radwege und Ampeln.",
+              "Herr Petersen spricht über Radwege und Ampeln."]
+    _protokoll_mit_seiten(store, 100, seiten)
+    assert seiten_aufloesen(store, 100) == 0
+    wb_id = store.search_wortbeitraege_fts("Fliegerhorst")[0][0]
+    assert store.wortbeitraege_by_ids([wb_id])[0]["seite"] is None
+
+
 def test_embeddings_version_wechselt(store):
     v0 = store.wortbeitraege_embeddings_version()
     store.save_wortbeitraege(100, [BEITRAG])

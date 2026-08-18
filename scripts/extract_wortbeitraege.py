@@ -28,7 +28,7 @@ sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
 from council.store import CouncilStore  # noqa: E402
-from council.wortbeitraege import extract_wortbeitraege  # noqa: E402
+from council.wortbeitraege import extract_wortbeitraege, seiten_aufloesen  # noqa: E402
 from kern import llm  # noqa: E402
 
 COUNCIL_DB = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlite")
@@ -60,6 +60,9 @@ def process(db_path: Path, limit: int | None, workers: int) -> dict:
                     fehler += 1
                     continue
                 n = store.save_wortbeitraege(ksinr, rows)
+                # Fundstellen-Seite gleich mit auflösen (reine CPU-Arbeit;
+                # Altbestand ohne Seiten-Offsets überspringt sich selbst).
+                seiten_aufloesen(store, ksinr)
                 ok += 1
                 beitraege += n
                 if ok % 25 == 0:
