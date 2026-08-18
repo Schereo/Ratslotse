@@ -28,6 +28,16 @@ class Settings(BaseSettings):
     # secure). Keep True for production; tests/non-localhost HTTP set it False.
     cookie_secure: bool = True
 
+    # Schnittstelle für den Social-Media-Bot (ratslotse-social, eigenes Repo,
+    # läuft auf einer anderen Maschine). Ohne Token sind die Endpunkte AUS —
+    # eine Standard-Installation exponiert nichts.
+    social_api_token: str = ""
+    # Wohin die gerenderten Karten fallen und unter welcher Adresse sie
+    # ausgeliefert werden. Instagram holt die Bilder selbst von dort ab,
+    # deshalb muss der Pfad öffentlich erreichbar sein.
+    social_media_dir: str = str(ROOT / "web" / "frontend" / "public" / "social")
+    social_media_base_url: str = "https://ratslotse.de/social"
+
     # Sign in with Apple (RL-1002): erlaubte aud-Werte des Identity-Tokens.
     # Bundle-ID deckt die native App ab, die Services ID den Browser-Flow.
     # Beide sind feste Kennungen unserer App, keine Geheimnisse — deshalb als
