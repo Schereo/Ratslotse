@@ -2309,6 +2309,147 @@ die Schulden absolut um 35,5 Mio. € gestiegen und je Einwohner\*in um 106 €
 gesunken, weil die Stadt in derselben Zeit gewachsen ist. Nur die absolute
 Reihe zu zeigen läse Bevölkerungswachstum als Schuldenaufbau.
 
+## Nachbewilligungen: was am Plan vorbei beschlossen wurde
+
+`council/nachbewilligungen.py` · Tabellen `council_nachbewilligungen`,
+`council_nachbewilligung_jahre`, `council_nachbewilligung_kanaele` · Ingest
+`scripts/ingest_nachbewilligungen.py` · Seite `/haushalt/plan-ist`
+
+Nach § 117 NKomVG braucht jede Ausgabe, die im beschlossenen Haushalt nicht
+oder nicht in dieser Höhe steht, eine eigene Bewilligung. Im
+Ratsinformationssystem sind das seit 2018 **161 Vorlagen**.
+
+### Zwei Quellen, zwei verschiedene Fragen
+
+| Quelle | Was sie beantwortet | Zeitraum |
+|---|---|---|
+| Vorlagen im RIS | Was hat der Rat beschlossen? Mit Betrag und Beschluss-Seite | seit 2018 |
+| Rechenschaftsbericht, Kapitel 3 | Wie viel wurde **insgesamt** nachbewilligt, auf welchem der vier Wege? | 2022–2024 |
+
+Der zweite Bestand ist der Grund, warum es den ersten nicht allein tun darf:
+Die Gesamtsumme stieg von 26,68 (2022) über 40,24 (2023) auf **57,49 Mio. €**
+(2024), der Anteil mit Ratsbeschluss fiel von 89 auf **73 %**. Die vier Wege
+sind Rat, Oberbürgermeister, Fachdienst 200 per Haushaltsvermerk und
+Eilentscheidung.
+
+### Die zweistufige Extraktion
+
+Stufe 1 ist der Titel, Stufe 2 der Beschlussvorschlag der Vorlage. Gemessen
+am Bestand vom 18.08.2026: **145 von 152 Einzelvorlagen (95,4 %) tragen ihren
+Betrag im Titel**, die restlichen sieben schließt der Beschlussvorschlag
+vollständig — zweistufig also **152 von 152**.
+
+Die Ausreißer, an denen ein naiver Regex scheitert, stehen alle als Fixture
+in `tests/test_nachbewilligungen.py`: „1 Million EUR" ausgeschrieben,
+„341.000 **EU**" als Tippfehler der Stadt, „450.000,00 €" mit Cent und
+Eurozeichen, „insgesamt 500.000 Euro", und die umgedrehte Wortstellung
+(„Stadion Marschweg … – Außerplanmäßige Verpflichtungsermächtigung …").
+
+Zwei Dinge, die im Bestand anders liegen, als man erwartet:
+
+- **`council_decisions.kvonr` ist durchgehend `NULL`** (8.369 von 8.369). Der
+  Join auf `council_vorlagen` läuft ausschließlich über den Text
+  `vorlage_nr`; ein Join über `kvonr` liefert schweigend null Treffer.
+- **`council_vorlagen.beschlussvorschlag` ist fast leer** (7 von 5.019
+  Zeilen). Die zweite Stufe erntet den Vorschlag deshalb aus `raw_text` — mit
+  derselben Funktion, die auch die Spalte füllt (`council/ernte.py`).
+
+### Die drei Proben
+
+1. **`nachbewilligung_volltext`** (intern) — der Titelbetrag steht im
+   Volltext derselben Vorlage noch einmal: **145 von 145**.
+2. **`nachbewilligung_ratsabgleich`** (extern, die härteste im Bereich) — der
+   Rechenschaftsbericht nennt dieselben Fälle **mit Vorlagen-Nummern**.
+3. **`nachbewilligung_tabellenprobe`** (im Dokument) — die vier Wege ergeben
+   die Summenzeile, beide Spalten zusammen die Gesamtsumme des Fließtextes.
+
+| Jahr | unsere Summe | Bericht (Rat) | Abweichung | Fallliste |
+|---|---|---|---|---|
+| 2022 | 23.956.742,00 | 23.825.742,00 | +0,55 % | 11 von 12 |
+| 2023 | 33.871.800,00 | 33.871.700,00 | +100 € | 26 von 26 |
+| 2024 | 43.096.100,00 | 42.171.646,29 | +2,19 % | 21 von 21 |
+
+**Die 2024er Abweichung ist auf den Cent aufgelöst** und keine Unschärfe,
+sondern eine Definitionsdifferenz: Drei Vorlagen wurden niedriger gebucht als
+beantragt — 24/0411 (190.000 → 51.500), 24/0678 (430.000 → 230.000) und
+24/0648 (11.232.400 → 10.646.446,29, „Reduzierung aufgrund fehlender
+Erträge"). Zusammen exakt 924.453,71 €. **Wir zählen, was die Vorlage
+beantragt; der Bericht zählt, was gebucht wurde** — deshalb endet seine Zahl
+auf ,29 und unsere sind glatt. Die 2022er Differenz ist eine einzige Vorlage
+(22/0914, 131.000 €), die der Bericht in seinem Kapitel nicht führt; sie ist
+zugleich der einzige Rest beim Nummern-Abgleich, Fallliste und Summe zeigen
+also auf denselben Fall.
+
+### Zwei Dokument-Widersprüche, beide angezeigt statt geglättet
+
+- **2022:** Der Fließtext nennt 26.969.523,30 €, seine eigene Tabelle ergibt
+  26.681.523,30 € — **288.000 € Unterschied**. Der Fließtext widerspricht
+  dabei sich selbst: Seine beiden Teilbeträge ergeben die Tabellensumme, nicht
+  seine Gesamtzahl.
+- **2023:** In der Zeile „Fachdienst 200" steht investiv **Anzahl 0 und
+  trotzdem ein Betrag von 1.051.184,65 €** — auf den Cent derselbe Wert wie
+  im Vorjahr an derselben Stelle. Die Summenzeile rechnet ihn nicht mit
+  (8.470.300,00 + 365.007,05 = 8.835.307,05 genau), der Fließtext auch nicht.
+  Drei unabhängige Signale sprechen für einen Übernahmerest aus der
+  Vorjahrestabelle; repariert wird trotzdem nichts.
+
+2024 geht beides auf den Cent auf — der Jahrgang ist die Gegenprobe dafür,
+dass die Probe nicht grundsätzlich meckert.
+
+### Drei Fallen, alle vermessen
+
+1. **Verpflichtungsermächtigungen gehören nicht in die Summe.** Sie binden
+   künftige Jahre, fließen aber nicht in diesem; der Bericht zählt sie
+   ausdrücklich getrennt. 19 Vorlagen im Bestand.
+2. **Sitzungsdatum ≠ Haushaltsjahr.** Maßgeblich ist der Jahrgang der
+   Vorlagen-Nummer: Das Kapitel für 2022 führt die Vorlage 23/0010, das für
+   2023 die 24/0029, das für 2024 die 25/0002. Naiv nach Sitzungsjahr
+   summiert liegt man 20 bis 27 % daneben.
+3. **Die Sammelberichte tragen Schwellenwerte, keine Beträge.** „… bis zu
+   50.000 Euro" ist die Grenze, unter der der Rat gar nicht entscheidet. Neun
+   solche Vorlagen; sie bekommen `art='schwelle'` und **keinen** Betrag.
+
+### „Im Rat beschlossen" heißt mehr, als es klingt
+
+Der Rechenschaftsbericht bucht auch das unter „Beschluss des Rates", was der
+**Ausschuss für Finanzen und Beteiligungen abschließend** entscheidet. 2024
+haben **8 von 21 Fällen keine Plenarsitzung mehr gesehen** — der Rat tagte am
+16.12.2024 als Haushaltssitzung mit 21 Punkten, keiner davon eine
+Nachbewilligung. Wer den Rats-Anteil aus dem Gremiennamen rechnet,
+veröffentlicht für 2024 30.896.100 statt 43.096.100 €, also **28 % zu wenig**
+— ausgerechnet für die Kennzahl „der Rats-Anteil sinkt". Deshalb trägt
+`Bewilligung` zwei Eigenschaften: `im_rat` (das Plenum hat abgestimmt, eine
+Auskunft für Leser\*innen) und `ratsentscheidung` (die Definition des
+Berichts, die einzige, die in eine Summe darf).
+
+### Die Zähleinheit ist die Vorlage
+
+287 Beschlusszeilen stehen über 156 Vorlagen — **131 Dubletten**, weil
+Finanzausschuss und Rat über dieselbe Sache abstimmen. Je Zeile gezählt wäre
+fast jeder Betrag doppelt in der Summe. Fünf Vorlagen tragen gar keine
+Beschlusszeile; beantragt ist nicht bewilligt, sie zählen nicht mit.
+
+### Betrieb
+
+Der Ingest lädt nichts nach, aber er braucht Vorlauf: Die drei
+Rechenschaftsberichte (Dokumente 265441, 280862, 295295) liegen mit
+`status='listed'` und **leerem** `raw_text` im Bestand. Ohne
+`backfill_anlagen_texte.py --nur-finanz` bleibt Kapitel 3 leer — und übrig
+bliebe genau die halbe Wahrheit, gegen die dieser Block gebaut ist. Der
+Ops-Workflow hält die Reihenfolge ein.
+
+Die fünf älteren Berichte (2017–2021: 192336, 205649, 219465, 238770, 250437)
+liegen ebenfalls als Anlage vor, ebenfalls ohne Volltext. Sobald der Backfill
+sie erfasst, kommen sie in `BERICHTE` dazu; die Struktur des Kapitels ist seit
+2022 unverändert.
+
+### Der Nebenbefund
+
+In acht Jahren wurde **keine einzige** Nachbewilligung abgelehnt. Das steht
+auf der Seite als Befund, nicht als Vorwurf: Die Vorlagen sind vorher im
+Fachausschuss beraten, und was dort keine Mehrheit findet, erreicht den Rat
+meist gar nicht erst.
+
 ## Was bewusst fehlt
 
 Der Bereich zeigt lieber eine Lücke als eine Schätzung:
