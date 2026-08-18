@@ -114,9 +114,31 @@ _MENGE_DANACH = re.compile(
 #: Gegenrichtung.
 _SCHWELLE = re.compile(
     r"\b(?:unter|unterhalb|oberhalb)\s+(?:von\s+)?$"
-    r"|\bwertgrenzen?\b"
     r"|\b(?:über|unter)schreiten\b",
     re.IGNORECASE)
+
+#: „Wertgrenze" gilt für den ganzen Beschluss, nicht nur fürs Fenster — s.
+#: :func:`_ist_schwelle`.
+_WERTGRENZE = re.compile(r"\bwertgrenzen?\b", re.IGNORECASE)
+
+#: Ein Titel, der eine **Preisentscheidung** ankündigt: „Änderung der
+#: Parkgebühren", „Festsetzung der Entgelte Fahrradsammelgarage". Solche
+#: Beschlüsse haben kein Volumen — sie setzen Preise, und ihre Zahlen sind
+#: Tarife. Der Tarif-Filter am Fundort erwischt davon nur die erste Zeile
+#: einer Tariftabelle; ab der zweiten („Zone 1 … ab 01.01.2024 0,70 €, ab
+#: 01.01.2025 0,90 €") ist das Tarifwort aus dem Fenster gewandert.
+#:
+#: Gemessen (18.08.2026, Bestand 7.705 Beschlüsse): 175 Beschlüsse tragen ein
+#: solches Titelwort, **drei** davon nach allen übrigen Filtern noch einen
+#: Betrag — und alle drei sind Tarife (2× 540,00 € Bewohnerparkausweis,
+#: 1,30 € Parkgebühr). Die Regel kostet also keinen echten Betrag.
+#:
+#: Gegenprobe, die dieselbe Regel am **ganzen Text** verwarf: Dort träfe sie
+#: acht Beschlüsse und kostete fünf echte Beträge, darunter einen über
+#: 20 Mio. € („Rettungsschirm für die Kommunen", in dem „Gebühren" beiläufig
+#: vorkommt). Der Titel weiß, worum es geht; der Fließtext nicht.
+_TARIF_TITEL = re.compile(r"\w*(?:gebühr|entgelt|tarif|eintrittspreis|fahrpreis)\w*",
+                          re.IGNORECASE)
 
 
 def _to_float(num: str) -> float | None:
@@ -135,20 +157,35 @@ def _scale(unit: str) -> float:
 
 def _ist_stueckpreis(vor: str, nach: str) -> bool:
     """Beschreibt diese Fundstelle einen Preis je Einheit statt eines Volumens?"""
-    return bool(_TARIF_DAVOR.search(vor) or _MENGE_DAVOR.search(vor)
-                or _MENGE_DANACH.match(nach))
+    return bool(_TARIF_DAVOR.search(vor) or _TARIF_DIREKT.search(vor)
+                or _MENGE_DAVOR.search(vor) or _MENGE_DANACH.match(nach))
 
 
-def _ist_schwelle(vor: str) -> bool:
-    """Steht die Zahl für eine Berichtsgrenze statt für einen Betrag?"""
-    return bool(_SCHWELLE.search(vor))
+def _ist_schwelle(vor: str, ganzer_text: str) -> bool:
+    """Steht die Zahl für eine Berichtsgrenze statt für einen Betrag?
+
+    ``Wertgrenze`` wird am **ganzen** Text geprüft, nicht am Fenster: Ein
+    Beschluss, der Wertgrenzen festsetzt, zählt sie in einer Aufzählung auf
+    („400.000 Euro bei Auftragsvergaben • 75.000 Euro bei Planungsleistungen •
+    125.000 Euro …"). Ab dem dritten Aufzählungspunkt ist das auslösende Wort
+    aus jedem Fenster gewandert — die Zahlen bleiben trotzdem Grenzen."""
+    return bool(_SCHWELLE.search(vor) or _WERTGRENZE.search(ganzer_text))
 
 
-def extract_amounts(text: str) -> list[float]:
+def ist_preisbeschluss(titel: str | None) -> bool:
+    """Kündigt der Titel eine Preisentscheidung an (Gebühren, Entgelte, Tarife)?
+
+    Dann hat der Beschluss kein Volumen, und jede Zahl darin ist ein Preis."""
+    return bool(_TARIF_TITEL.search(titel or ""))
+
+
+def extract_amounts(text: str, titel: str | None = None) -> list[float]:
     """Alle Euro-Beträge des Textes, die ein Beschlussvolumen sein können.
 
-    Stückpreise und Schwellenwerte fallen am Fundort heraus (s. Modul-Kopf)."""
-    if not text:
+    Stückpreise und Schwellenwerte fallen am Fundort heraus (s. Modul-Kopf).
+    ``titel`` ist optional und trägt die eine Entscheidung, die der Fließtext
+    nicht hergibt: ob der ganze Beschluss über Preise geht."""
+    if not text or ist_preisbeschluss(titel):
         return []
     out: list[float] = []
     for rx, skaliert in ((_SCALED, True), (_PLAIN, False)):
@@ -160,13 +197,13 @@ def extract_amounts(text: str) -> list[float]:
                 v *= _scale(m.group(2))
             vor = text[max(0, m.start() - _VOR):m.start()]
             nach = text[m.end():m.end() + _NACH]
-            if _ist_stueckpreis(vor, nach) or _ist_schwelle(vor):
+            if _ist_stueckpreis(vor, nach) or _ist_schwelle(vor, text):
                 continue
             out.append(v)
     return [a for a in out if 0 < a < _MAX]
 
 
-def largest_amount(text: str) -> float | None:
+def largest_amount(text: str, titel: str | None = None) -> float | None:
     """Der größte Euro-Betrag im Text (das finanzielle Gewicht eines Beschlusses)."""
-    amounts = extract_amounts(text)
+    amounts = extract_amounts(text, titel)
     return max(amounts) if amounts else None

@@ -1,5 +1,13 @@
-"""Tests for the heuristic € extraction (council.money)."""
-from council.money import extract_amounts, largest_amount
+"""Tests for the heuristic € extraction (council.money).
+
+Der zweite Teil („Stückpreise", „Schwellen", „Der Recall bleibt") hält die
+Musterschärfung vom 18.08.2026 fest. Jeder Fall dort ist ein **gemessener**
+Fehlgriff aus dem Bestand, mit der Beschluss-ID im Docstring — und jeder Test
+im Recall-Abschnitt ist ein echter Betrag, der genau diese Schärfung überleben
+muss. Beide Richtungen zusammen sind die Zusicherung: Fehlgriffe raus, echte
+Beträge bleiben.
+"""
+from council.money import extract_amounts, ist_preisbeschluss, largest_amount
 
 
 def test_plain_amount():
