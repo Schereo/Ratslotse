@@ -148,7 +148,9 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     standWort: "Haushaltsjahre",
     stand: "Haushaltsjahre 2020–2026",
     art: "pdf",
-    url: "https://www.oldenburg.de/startseite/politik/verwaltung-finanzen/finanzen.html",
+    // 18.08.2026 nachgezogen: Die Unterseite „…/finanzen.html" antwortet mit
+    // 404, die Übersicht darüber steht. Geprüft im Tote-Links-Lauf.
+    url: "https://www.oldenburg.de/startseite/politik/verwaltung-finanzen.html",
   },
   steuern: {
     titel: "Steuereinnahmen der Stadt Oldenburg seit 1998",
@@ -463,7 +465,9 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     stand: "Berichtsjahr 2025 (korrigierte Fassung vom 30.07.2026)",
     lizenz: "Vervielfältigung mit Quellennachweis gestattet",
     art: "csv",
-    url: "https://www.statistik.niedersachsen.de/startseite/themen/steuern_in_niedersachsen/realsteuervergleich_in_niedersachsen/realsteuervergleich-in-niedersachsen-197957.html",
+    // 18.08.2026 nachgezogen: Das Landesamt hat den Pfad um eine Ebene
+    // ergänzt („…/finanzen_steuern_personal/…"); die alte Adresse gibt 404.
+    url: "https://www.statistik.niedersachsen.de/startseite/themen/finanzen_steuern_personal/steuern_in_niedersachsen/realsteuervergleich_in_niedersachsen/",
   },
   vergleich_2018: {
     titel: "Personalentwicklung seit dem Jahr 2000 — Antrag der FDP-Fraktion und Antwort der Verwaltung",

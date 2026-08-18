@@ -2637,6 +2637,20 @@ rechtsfähigen Stiftungen".
 
 Der Bereich zeigt lieber eine Lücke als eine Schätzung:
 
+- **Fraktions-Änderungslisten — es gibt sie nicht.** Geplant war, aus den
+  Änderungslisten zum Haushaltsentwurf zu zeigen, was die Fraktionen ändern
+  wollten. Der Ladetest am 18.08.2026 hat die Prämisse widerlegt: Von den 52
+  Änderungslisten im Bestand heißt **jede einzelne** „Verwaltung I", „II" oder
+  „III" — es sind die Nachträge der Verwaltung zu ihrem eigenen Entwurf, nicht
+  die Wünsche der Fraktionen. Was Fraktionen wollen, steht in ihren Anträgen,
+  und die liest der Bereich bereits (`haushaltsantraege_kontext`).
+
+  Die Dokumente selbst sind brauchbar: Alle zwölf geprüften laden, tragen
+  Volltext mit 60–76 % Buchstabenanteil und dieselbe Tabellenstruktur (*Lfd.
+  Nr. · THH · Produkt/Leistung · Bezeichnung · Ertrag ± · Aufwand ±*). Wer
+  „Was hat sich zwischen Entwurf und Beschluss geändert?" beantworten will,
+  findet hier die Grundlage — aber unter einem anderen Namen als dem geplanten.
+
 - **Produktebene 2024 und 2025** — die Teilhaushalts-Pläne liegen als Anlage
   vor, aber ihr Tabellenlayout hat sich geändert: Zwischen „21. ordentliches
   Ergebnis" und den Zahlen stehen jetzt zwei Beschriftungszeilen

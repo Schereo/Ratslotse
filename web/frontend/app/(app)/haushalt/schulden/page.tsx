@@ -51,7 +51,8 @@ import { Segmented } from "@/components/ui";
 import { useFetch } from "@/lib/use-fetch";
 import { deMio } from "@/lib/haushalt";
 import {
-  Ansicht, Herkunft, SchuldenDaten, aufteilungen, deEuro, herkunftVon,
+  Ansicht, BuergschaftsVorlage, Herkunft, SchuldenDaten, aufteilungen, deEuro,
+  herkunftVon,
   juengsteZinslast, ohneAufteilung, punkte,
 } from "@/lib/haushalt-schulden";
 import { Zeitreihe } from "@/components/grafik/zeitreihe";
@@ -112,6 +113,80 @@ function Fundstelle({ h }: { h: Herkunft | null }) {
  *  sagt warum, das Urteil bleibt bei den Lesenden.
  *
  *  Rendert nichts, solange kein Jahresabschluss eingelesen ist. */
+/** Wörter, an denen eine Vorlage sich selbst als Fortschreibung ausweist.
+ *
+ *  Sie sind der BELEG für den Satz „nicht selbst addierbar" — und stehen
+ *  deshalb hier und nicht im Fließtext: „Verlängerung Ausfallbürgschaft über
+ *  300.000 Euro für die Volkshochschule" (25/0826) ist dieselbe Bürgschaft
+ *  wie 23/0112 zwei Jahre zuvor. Wer beide addiert, zählt 600.000 € für eine
+ *  Zusage über 300.000 €. */
+const FORTSCHREIBUNG = /verlängerung|anpassung|erhöhung|verlängert|ablösung/i;
+
+/** Der Zeitstrahl der Ratsbeschlüsse zum Bürgschaftsbestand.
+ *
+ *  KEINE SUMME, UND KEINE BALKEN. Die Versuchung wäre ein Diagramm mit
+ *  Beträgen je Beschluss — es wäre falsch: Die Vorlagen schreiben einander
+ *  fort, und eine Fläche darüber addierte, was sich ersetzt. Was bleibt, ist
+ *  die Chronologie: wann der Rat worüber entschieden hat, mit dem Weg zur
+ *  Beschluss-Seite.
+ *
+ *  Rendert nichts, solange keine Vorlage verknüpft ist. */
+function BeschlussStrahl({ vorlagen }: { vorlagen: BuergschaftsVorlage[] }) {
+  const [offen, setOffen] = useState(false);
+  if (!vorlagen.length) return null;
+  const gezeigt = offen ? vorlagen : vorlagen.slice(0, 5);
+  const fortschreibungen = vorlagen.filter((v) => FORTSCHREIBUNG.test(v.title)).length;
+
+  return (
+    <div className="border-t border-dashed border-border pt-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+          Was der Rat dazu beschlossen hat
+        </p>
+        <p className="font-mono text-[9.5px] uppercase tracking-[0.11em] text-muted-foreground">
+          {vorlagen.length} Vorlagen
+          {fortschreibungen > 0 && ` · ${fortschreibungen} davon Fortschreibungen`}
+        </p>
+      </div>
+      <ol className="mt-2 flex flex-col">
+        {gezeigt.map((v) => {
+          const fort = FORTSCHREIBUNG.test(v.title);
+          return (
+            <li key={v.vorlage_nr}
+              className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5 border-l-2 border-border py-1.5 pl-3">
+              <span className="flex-none font-mono text-[10.5px] tabular-nums text-muted-foreground">
+                {v.datum ? v.datum.slice(0, 7).split("-").reverse().join("/") : "—"}
+              </span>
+              <span className="min-w-0 flex-1 text-[12.5px] leading-snug text-foreground/90">
+                {v.beschluss_id ? (
+                  <Link href={`/council/decision?id=${v.beschluss_id}`}
+                    className="hover:text-primary">{v.title}</Link>
+                ) : v.title}
+              </span>
+              {fort && (
+                <span className="flex-none rounded border border-dashed border-border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide text-muted-foreground">
+                  schreibt fort
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+      {vorlagen.length > 5 && (
+        <button type="button" onClick={() => setOffen(!offen)}
+          className="mt-1.5 text-[12px] font-semibold text-primary">
+          {offen ? "Weniger zeigen" : `Alle ${vorlagen.length} Vorlagen zeigen`}
+        </button>
+      )}
+      <p className="mt-2 max-w-[76ch] text-[11.5px] leading-relaxed text-muted-foreground">
+        Bewusst ohne Beträge und ohne Summe: Diese Beschlüsse schreiben einander
+        fort, statt sich zu addieren. Der Bestand oben ist der Stichtagswert aus
+        dem Jahresabschluss — nicht die Summe dieser Liste.
+      </p>
+    </div>
+  );
+}
+
 function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
   const b = daten?.buergschaften;
   const reihe = b?.reihe ?? [];
@@ -257,6 +332,8 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
         Was hier steht, ist der Bestand, den die Stadt selbst als Bestand ausweist —
         {erster.jahr === letzter.jahr ? " ein Stichtag." : ` ${reihe.length} Stichtage.`}
       </p>
+
+      <BeschlussStrahl vorlagen={b?.vorlagen ?? []} />
 
       <Fundstelle h={herkunftVon(daten, letzter.herkunft_id)} />
     </section>

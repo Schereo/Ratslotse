@@ -374,6 +374,21 @@ export interface DecisionDetail {
     /** „Finanzielle Auswirkungen" aus der Vorlage (amtlicher Wortlaut). */
     finanz_check?: string | null;
   } | null;
+  /** Wo dieser Beschluss im Haushalts-Bereich wieder auftaucht — belegt über
+   *  eine echte Verknüpfung, nicht über eine Textsuche.
+   *
+   *  `null` heißt „nirgends nachweisbar", und die Seite lässt die Karte dann
+   *  weg. Der pauschale Verweis auf `/haushalt` steht für jeden Beschluss
+   *  gleich da und ist deshalb für keinen eine Auskunft; diese Karte gibt es
+   *  nur, wo sie etwas sagt. */
+  haushalts_anschluss?: {
+    art: "nachbewilligung" | "buergschaft";
+    href: string;
+    titel: string;
+    vorlage_nr: string;
+    jahr?: number | null;
+    betrag?: number | null;
+  } | null;
   /** P1: document_id der gerenderten Planzeichnung — B-Plan-Beschlüsse
    *  zeigen sie als Bild statt nur als Anlagen-Download. */
   plan_bild?: number | null;
