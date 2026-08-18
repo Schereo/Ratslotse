@@ -1305,6 +1305,28 @@ def geld_kontext(store, frage: str, begriffe: str = "", typ: str = "thema") -> d
     return aus
 
 
+#: Quell-Label → Steckbrief-Slug von /haushalt/steuer. Nur die Arten, die
+#: dort einen Steckbrief HABEN — für die übrigen (Getränke-, Vergnügungs-,
+#: sonstige Steuern) führt der Link auf die Einnahmen-Übersicht, statt auf
+#: einer Steckbrief-Seite im Fallback zu landen, die etwas anderes zeigt.
+_STEUER_SLUGS = {
+    "Gewerbesteuer (-umlage)": "gewerbesteuer",
+    "Grundsteuer A+B": "grundsteuer",
+    "Einkommensteueranteil": "einkommensteueranteil",
+    "Gemeindeanteil an der Umsatzsteuer": "umsatzsteueranteil",
+}
+
+
+def _steuer_mehr(art: str) -> dict:
+    """Das „Mehr dazu"-Ziel einer Steuerart — Steckbrief, sonst Übersicht."""
+    slug = _STEUER_SLUGS.get(art)
+    if slug:
+        return {"href": f"/haushalt/steuer?art={slug}",
+                "label": f"Der Steckbrief zur {art.split(' (')[0]}"}
+    return {"href": "/haushalt/einnahmen",
+            "label": "Woher das Geld der Stadt kommt"}
+
+
 def geld_grafik(store, geld: dict) -> dict | None:
     """Die Grafik zur Antwort — Rohreihen aus dem Store, nie vom Modell.
 
@@ -1346,6 +1368,12 @@ def geld_grafik(store, geld: dict) -> dict | None:
                 # „die Schulden der Stadt" heißen.
                 "hinweis": s.get("abgrenzung"),
                 "quelle": "Statistisches Jahrbuch der Stadt Oldenburg, Tabelle 1108",
+                # Die Anschlussstelle in den Haushalts-Bereich — dieselbe
+                # Bauart wie store.haushalts_anschluss: Der Server nennt das
+                # Ziel, das Frontend entscheidet am Gate, ob es den Link
+                # zeigt (auf Prod ist /haushalt ein 404).
+                "mehr": {"href": "/haushalt/schulden",
+                         "label": "Wie viel Schulden hat Oldenburg?"},
             }
 
     if geld.get("steuern"):
@@ -1368,6 +1396,7 @@ def geld_grafik(store, geld: dict) -> dict | None:
                 "hinweis": ("Abrechnungszahlen der Stadt, keine Planwerte — "
                             "je Jahr das, was tatsächlich eingenommen wurde."),
                 "quelle": "Statistisches Jahrbuch der Stadt Oldenburg, Ist-Steuereinnahmen",
+                "mehr": _steuer_mehr(art),
             }
     return None
 

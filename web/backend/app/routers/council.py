@@ -1755,13 +1755,23 @@ def _grafik_pruefen(g: dict | None) -> dict | None:
         return None
     if len(reihe) < 2:
         return None
+    # Der „Mehr dazu"-Link: NUR relative Ziele in den Haushalts-Bereich.
+    # Der Snapshot ist öffentlich — ein durchgereichtes href wäre sonst ein
+    # Link-Baukasten für beliebige Ziele unter unserem Absender.
+    mehr = g.get("mehr")
+    if (isinstance(mehr, dict) and isinstance(mehr.get("href"), str)
+            and mehr["href"].startswith("/haushalt")):
+        mehr = {"href": mehr["href"][:120], "label": str(mehr.get("label") or "")[:120]}
+    else:
+        mehr = None
     return {"art": str(g.get("art") or "")[:30],
             "titel": str(g.get("titel") or "")[:120],
             "einheit": str(g.get("einheit") or "")[:20],
             "nachkomma": max(0, min(int(g.get("nachkomma") or 0), 3)),
             "reihe": reihe,
             "hinweis": (str(g["hinweis"])[:500] if g.get("hinweis") else None),
-            "quelle": (str(g["quelle"])[:200] if g.get("quelle") else None)}
+            "quelle": (str(g["quelle"])[:200] if g.get("quelle") else None),
+            "mehr": mehr}
 
 
 @router.post("/qa-share", status_code=status.HTTP_201_CREATED)

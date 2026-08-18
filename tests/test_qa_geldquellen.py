@@ -1410,3 +1410,14 @@ def test_grafik_pruefung_am_share_snapshot():
     # Längen werden gekappt — der Snapshot ist kein Blob-Speicher.
     lang = _grafik_pruefen({**gut, "titel": "x" * 999})
     assert lang and len(lang["titel"]) == 120
+
+    # Der „Mehr dazu"-Link: NUR relative Ziele in den Haushalts-Bereich.
+    # Der Snapshot ist öffentlich — ein durchgereichtes href wäre sonst ein
+    # Link-Baukasten für beliebige Ziele unter unserem Absender.
+    mit = _grafik_pruefen({**gut, "mehr": {"href": "/haushalt/schulden",
+                                           "label": "Wie viel Schulden?"}})
+    assert mit and mit["mehr"]["href"] == "/haushalt/schulden"
+    for boese in ("https://boese.example", "//boese.example", "/logout",
+                  "javascript:alert(1)"):
+        geprueft = _grafik_pruefen({**gut, "mehr": {"href": boese, "label": "x"}})
+        assert geprueft and geprueft["mehr"] is None, boese

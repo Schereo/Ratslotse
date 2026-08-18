@@ -28,6 +28,7 @@ import {
 } from "@/lib/qa-belege";
 import { apiUrl, authHeaders } from "@/lib/api";
 import { Zeitreihe } from "@/components/grafik/zeitreihe";
+import { HAUSHALT_FREI } from "@/lib/haushalt-frei";
 
 /* ------------------------------ Typen ------------------------------ */
 
@@ -60,6 +61,9 @@ export type QaGrafik = {
   reihe: { jahr: number; wert: number }[];
   hinweis?: string | null;
   quelle?: string | null;
+  /** Anschlussstelle in den Haushalts-Bereich — der Link erscheint nur
+   *  hinter dem Umgebungs-Gate (auf Prod ist /haushalt ein 404). */
+  mehr?: { href: string; label: string } | null;
 };
 
 export type DebattenHinweis = {
@@ -883,12 +887,26 @@ export function GrafikKarte({ grafik }: { grafik: QaGrafik }) {
         ariaTitel={`${grafik.titel} im Verlauf, aus den Daten der Stadt`}
         tabelle
         hinweis={grafik.hinweis ?? undefined}
+        // Im Chat klebt schon die Eingabezeile am unteren Rand — eine
+        // zweite klebende Ebene schob sich darüber (Tims Befund 18.08.).
+        leisteHaftet={false}
       />
       {grafik.quelle && (
         <p className="mt-2 border-t border-dashed border-border pt-2 text-[10.5px] leading-relaxed text-muted-foreground">
           {grafik.quelle} — die Reihe kommt aus unserer Datenbank, nicht aus der
           KI-Antwort.
         </p>
+      )}
+      {/* Die Anschlussstelle: Wer mehr wissen will, bekommt die Seite, die
+          genau diese Reihe erklärt. Hinter dem Gate — auf Prod wäre der
+          Link ein 404, und ein Satz, der auf nichts zeigt, bliebe stehen. */}
+      {HAUSHALT_FREI && grafik.mehr?.href && (
+        <Link href={grafik.mehr.href}
+          className="group mt-2 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-primary">
+          Mehr dazu: {grafik.mehr.label}
+          <ArrowRight size={14} strokeWidth={2}
+            className="transition-transform group-hover:translate-x-0.5" />
+        </Link>
       )}
     </div>
   );

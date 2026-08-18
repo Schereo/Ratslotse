@@ -133,7 +133,7 @@ function normalisiere(reihe: JahrPunkt[], treppe = false): Stelle[] {
 export function Zeitreihe({
   reihe, einheit, ariaTitel, titel, nachkomma = 1, format, zweitreihe,
   annotationen, spruenge = false, vorjahresdifferenz = false, differenzFormat,
-  tabelle = false,
+  tabelle = false, leisteHaftet = true,
   umschalter, beleg, nullbasis = true, hinweis, treppe = false, className,
 }: {
   /** Punkte UND Lücken in einer Liste (Daten-Vertrag GB-00). */
@@ -203,6 +203,9 @@ export function Zeitreihe({
   /** Bestandsgrößen starten bei null (Vorgabe); reine Abstands-Reihen
    *  dürfen abschneiden. */
   nullbasis?: boolean;
+  /** Mobil-Anheftung der Ableseleiste — `false` im Chat, wo die
+   *  Eingabezeile schon am unteren Rand klebt (s. Ableseleiste). */
+  leisteHaftet?: boolean;
   /** Eigener Bedien-Hinweis unter der Ableseleiste. */
   hinweis?: string;
   /** Treppe statt Linie: Der Wert gilt bis zum nächsten Punkt und springt
@@ -715,7 +718,7 @@ export function Zeitreihe({
       {/* Der ⓘ-Zusatz hängt an JEDEM Hinweis, auch einem eigenen der Seite:
           Er wirbt für die einzige Stelle, an der der Anmerkungssatz steht —
           eine Seite, die ihn wegformuliert, versteckte ihre Annotationen. */}
-      <Ableseleiste className="mt-2" stelle={ableseStellen[ablesen.aktiv]} steuerung={ablesen}
+      <Ableseleiste haftet={leisteHaftet} className="mt-2" stelle={ableseStellen[ablesen.aktiv]} steuerung={ablesen}
         hinweis={(hinweis ?? `${einheit} · Jahr überfahren, antippen oder mit den Pfeiltasten wechseln.`)
           + ((annotationen ?? []).length ? " ⓘ-Jahre tragen eine Anmerkung." : "")} />
 
