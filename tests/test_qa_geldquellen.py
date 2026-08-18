@@ -1330,3 +1330,94 @@ def test_buergschaftsfragen_ziehen_die_schuldenquelle_ohne_oldenburg_zu_fangen()
                   "Was ist in Oldenburg mit dem Stadion?",
                   "Wie viele Einwohner hat Oldenburg?"):
         assert "schulden" not in qa.geld_facetten(frage), frage
+
+
+def test_geld_grafik_liefert_rohreihen_aus_dem_store(tmp_path):
+    """Die Grafik im Chat: Daten aus dem Store, nie vom Modell.
+
+    Drei Zusicherungen. Erstens kommt zur Schulden-Frage die volle Reihe —
+    nicht nur die zwei Stichtage, die der Prompt-Baustein nennt. Zweitens
+    gewinnt bei „Schulden und Steuern" die Schulden-Reihe: höchstens EINE
+    Grafik je Antwort, zwei wären ein Dashboard. Drittens kommt ohne Daten
+    ``None`` — auf Prod sind die Tabellen leer, und die Antwort sieht aus wie
+    bisher; das Gate erledigt sich über die Daten.
+    """
+    from council import qa
+    from council.store import CouncilStore
+
+    store = CouncilStore(str(tmp_path / "c.sqlite"))
+    c = store._conn                                       # noqa: SLF001
+    for jahr, betrag in ((1995, 190_000_000), (2024, 294_851_000), (2025, 336_994_000)):
+        c.execute("INSERT INTO council_schulden (jahr, insgesamt, fetched_at) "
+                  "VALUES (?, ?, '2026-08-18')", (jahr, betrag))
+    for jahr, betrag in ((1998, 80_000_000), (2025, 222_100_000)):
+        c.execute("INSERT INTO council_steuern (jahr, art, betrag, fetched_at) "
+                  "VALUES (?, 'Gewerbesteuer (-umlage)', ?, '2026-08-18')",
+                  (jahr, betrag))
+    c.commit()
+
+    geld = qa.geld_kontext(store, "Wie hoch sind die Schulden der Stadt?")
+    g = qa.geld_grafik(store, geld)
+    assert g and g["art"] == "schulden"
+    assert [p["jahr"] for p in g["reihe"]] == [1995, 2024, 2025]
+    assert g["reihe"][-1]["wert"] == 337.0            # Mio, gerundet
+    assert g["einheit"] == "Mio. €"
+    assert g["hinweis"], "Die Abgrenzung reist mit der Grafik"
+
+    geld = qa.geld_kontext(store, "Wie hoch sind Schulden und Gewerbesteuer?")
+    g = qa.geld_grafik(store, geld)
+    assert g and g["art"] == "schulden", "Bei beiden gewinnt der Bestand"
+
+    geld = qa.geld_kontext(store, "Wie hat sich die Gewerbesteuer entwickelt?")
+    g = qa.geld_grafik(store, geld)
+    assert g and g["art"] == "steuern"
+    assert g["reihe"][-1]["wert"] == 222.1
+
+    leer = CouncilStore(str(tmp_path / "leer.sqlite"))
+    geld = qa.geld_kontext(leer, "Wie hoch sind die Schulden der Stadt?")
+    assert qa.geld_grafik(leer, geld) is None
+
+    geld = qa.geld_kontext(store, "Was kostet die Feuerwehr?")
+    assert qa.geld_grafik(store, geld) is None
+
+
+def test_grafik_pruefung_am_share_snapshot():
+    """Der Share-Snapshot ist öffentlich — die Grafik wird deshalb geprüft.
+
+    `grafik` kommt als loses dict vom Client. Ungeprüft übernommen könnte
+    dort beliebiger Inhalt landen und über die öffentliche Share-Seite
+    ausgeliefert werden. Die Prüfung lässt nur durch, was eine Grafik aus
+    `geld_grafik` sein kann: feste Felder, feste Typen, begrenzte Längen.
+    """
+    import sys
+    sys.path.insert(0, "web/backend")
+    from app.routers.council import _grafik_pruefen
+
+    gut = {"art": "schulden", "titel": "Schuldenstand", "einheit": "Mio. €",
+           "nachkomma": 1, "reihe": [{"jahr": 1995, "wert": 190.0},
+                                     {"jahr": 2025, "wert": 337.0}],
+           "hinweis": "Stadt als Rechtsträger", "quelle": "Jahrbuch 1108"}
+    geprueft = _grafik_pruefen(gut)
+    assert geprueft and geprueft["reihe"] == gut["reihe"]
+
+    # Fremde Felder fallen weg, statt ausgeliefert zu werden.
+    assert "boese" not in (_grafik_pruefen({**gut, "boese": "<script>"}) or {})
+    # Kaputte Reihen: lieber keine Grafik als eine erfundene.
+    assert _grafik_pruefen({**gut, "reihe": [{"jahr": "x", "wert": 1}]}) is None
+    assert _grafik_pruefen({**gut, "reihe": [{"jahr": 2025, "wert": 337.0}]}) is None
+    assert _grafik_pruefen("kein dict") is None
+    assert _grafik_pruefen(None) is None
+    # Längen werden gekappt — der Snapshot ist kein Blob-Speicher.
+    lang = _grafik_pruefen({**gut, "titel": "x" * 999})
+    assert lang and len(lang["titel"]) == 120
+
+    # Der „Mehr dazu"-Link: NUR relative Ziele in den Haushalts-Bereich.
+    # Der Snapshot ist öffentlich — ein durchgereichtes href wäre sonst ein
+    # Link-Baukasten für beliebige Ziele unter unserem Absender.
+    mit = _grafik_pruefen({**gut, "mehr": {"href": "/haushalt/schulden",
+                                           "label": "Wie viel Schulden?"}})
+    assert mit and mit["mehr"]["href"] == "/haushalt/schulden"
+    for boese in ("https://boese.example", "//boese.example", "/logout",
+                  "javascript:alert(1)"):
+        geprueft = _grafik_pruefen({**gut, "mehr": {"href": boese, "label": "x"}})
+        assert geprueft and geprueft["mehr"] is None, boese

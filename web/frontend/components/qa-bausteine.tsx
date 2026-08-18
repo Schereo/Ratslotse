@@ -27,6 +27,8 @@ import {
   CITE_EXACT_RE, CITE_SOURCE, citationIds, datenEindeutschen, fmtDatumKurz,
 } from "@/lib/qa-belege";
 import { apiUrl, authHeaders } from "@/lib/api";
+import { Zeitreihe } from "@/components/grafik/zeitreihe";
+import { HAUSHALT_FREI } from "@/lib/haushalt-frei";
 
 /* ------------------------------ Typen ------------------------------ */
 
@@ -45,6 +47,25 @@ export type AnlagenHinweis = {
 
 /** Task 16: Wortbeitrag aus einem Sitzungsprotokoll (Rede, Anfrage,
  *  Einwohnerfrage oder Verwaltungs-Zusage) im Belege-Bereich. */
+/** Die Grafik zur Antwort — Rohreihen aus dem Backend, nie vom Modell.
+ *
+ *  Der Vertrag steht in `council/qa.py` (geld_grafik): Die Daten kommen aus
+ *  dem Store, mit denselben Zahlen, die auch in den Prompt gehen. Das Modell
+ *  weiß nicht einmal, dass es die Grafik gibt — sie hängt am
+ *  Quellen-Ereignis, nicht an der Antwort. */
+export type QaGrafik = {
+  art: string;
+  titel: string;
+  einheit: string;
+  nachkomma: number;
+  reihe: { jahr: number; wert: number }[];
+  hinweis?: string | null;
+  quelle?: string | null;
+  /** Anschlussstelle in den Haushalts-Bereich — der Link erscheint nur
+   *  hinter dem Umgebungs-Gate (auf Prod ist /haushalt ein 404). */
+  mehr?: { href: string; label: string } | null;
+};
+
 export type DebattenHinweis = {
   sprecher: string | null; partei: string | null; art: string;
   top: string | null; auszug: string; committee: string | null; datum: string | null;
@@ -841,6 +862,51 @@ export function ParteienListe({ parteien, ohneBeitraege = [], onFrageStellen }: 
             Verdichtet aus den Wortbeiträgen der Sitzungsprotokolle — Paraphrasen, keine wörtlichen Zitate.
           </p>
         </>
+      )}
+    </div>
+  );
+}
+
+
+/** Die Zeitreihe unter der Antwort — dieselbe Komponente wie im
+ *  Haushalts-Bereich (GB-01), mit denselben Regeln: Ableseleiste statt
+ *  Tooltip, Werte-Tabelle zum Aufklappen, keine Bewertungsfarben.
+ *
+ *  Die Quellzeile sagt ausdrücklich, dass die Grafik NICHT vom Modell
+ *  stammt — im Chat ist das die eine Verwechslung, die niemand riskieren
+ *  darf: Alles andere auf dem Bildschirm ist generierter Text. */
+export function GrafikKarte({ grafik }: { grafik: QaGrafik }) {
+  if ((grafik.reihe?.length ?? 0) < 2) return null;
+  return (
+    <div className="rounded-xl border border-border bg-card p-3">
+      <Zeitreihe
+        reihe={grafik.reihe}
+        einheit={grafik.einheit}
+        nachkomma={grafik.nachkomma}
+        titel={grafik.titel}
+        ariaTitel={`${grafik.titel} im Verlauf, aus den Daten der Stadt`}
+        tabelle
+        hinweis={grafik.hinweis ?? undefined}
+        // Im Chat klebt schon die Eingabezeile am unteren Rand — eine
+        // zweite klebende Ebene schob sich darüber (Tims Befund 18.08.).
+        leisteHaftet={false}
+      />
+      {grafik.quelle && (
+        <p className="mt-2 border-t border-dashed border-border pt-2 text-[10.5px] leading-relaxed text-muted-foreground">
+          {grafik.quelle} — die Reihe kommt aus unserer Datenbank, nicht aus der
+          KI-Antwort.
+        </p>
+      )}
+      {/* Die Anschlussstelle: Wer mehr wissen will, bekommt die Seite, die
+          genau diese Reihe erklärt. Hinter dem Gate — auf Prod wäre der
+          Link ein 404, und ein Satz, der auf nichts zeigt, bliebe stehen. */}
+      {HAUSHALT_FREI && grafik.mehr?.href && (
+        <Link href={grafik.mehr.href}
+          className="group mt-2 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-primary">
+          Mehr dazu: {grafik.mehr.label}
+          <ArrowRight size={14} strokeWidth={2}
+            className="transition-transform group-hover:translate-x-0.5" />
+        </Link>
       )}
     </div>
   );

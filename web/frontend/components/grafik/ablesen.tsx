@@ -126,16 +126,25 @@ export function useAblesen(anzahl: number, standard: number): AbleseSteuerung {
  *  scrollen. Der Abstand nach unten ist die Andockkante der Tab-Leiste
  *  (`TABLEISTE_HOEHE` aus `components/nav.tsx`) plus etwas Luft; das
  *  Verhalten selbst steht in `.gb-ablese-leiste` (app/globals.css). */
-export function Ableseleiste({ stelle, steuerung, hinweis, className }: {
+export function Ableseleiste({ stelle, steuerung, hinweis, className, haftet = true }: {
   stelle: AbleseStelle;
   steuerung: AbleseSteuerung;
   /** Womit man die Stelle wechselt; ohne Angabe steht der Standardsatz da. */
   hinweis?: string;
   className?: string;
+  /** Mobil am unteren Rand anheften (Vorgabe) — oder eben nicht.
+   *
+   *  `false` gehört überall dorthin, wo unter der Grafik schon etwas am
+   *  Rand klebt: Im Chat (/fragen) dockt die Leiste per `TABLEISTE_HOEHE`
+   *  an der Tab-Leiste an und wusste nichts von der Eingabezeile darüber —
+   *  sie schob sich beim Scrollen über das Eingabefeld (Tims Befund
+   *  18.08.2026). Zwei klebende Ebenen übereinander kann niemand lesen. */
+  haftet?: boolean;
 }) {
   return (
     <div
-      className={cn("gb-ablese-leiste rounded-xl border border-border bg-muted/40 px-3 py-2", className)}
+      className={cn(haftet && "gb-ablese-leiste",
+                    "rounded-xl border border-border bg-muted/40 px-3 py-2", className)}
       style={{ "--gb-ablese-bottom": `calc(${TABLEISTE_HOEHE} + 0.5rem)` } as CSSProperties}
     >
       {/* ZWEI LAYOUTS, EIN MARKUP.
