@@ -1,5 +1,5 @@
 """Strukturprüfung + Nachrechnen der abgeleiteten Werte in data.json."""
-import json, os, itertools, sys
+import json, os, itertools
 
 BASE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 D = json.load(open(os.path.join(BASE, "data.json"), encoding="utf-8"))
@@ -136,7 +136,7 @@ for slug in SLUGS:
 # ---- G: Wahlfakten-Konsistenz ---------------------------------------------
 wv = D["fakten"]["wahlvorschlaege"]
 if [x["slug"] for x in wv] != SLUGS:
-    w(f"reihenfolge weicht von fakten.wahlvorschlaege ab")
+    w("reihenfolge weicht von fakten.wahlvorschlaege ab")
 summe = sum(x["kandidaten"] for x in wv)
 if summe != D["fakten"]["wahl"]["kandidierende"]:
     f(f"Kandidatensumme {summe} != fakten.wahl.kandidierende {D['fakten']['wahl']['kandidierende']}")

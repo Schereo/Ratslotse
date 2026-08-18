@@ -1,5 +1,10 @@
 pytest>=8.0
 responses>=0.25
+# Python-Linter, Auswahl und Begründung stehen in `ruff.toml` (nur „F").
+# Bewusst nicht auf eine Fassung festgenagelt — dieselbe Konvention wie oben.
+# Der Preis: Eine neue ruff-Fassung kann eine F-Regel schärfen und die CI eines
+# unbeteiligten PRs rot machen. Der Fund wäre dann echt, nur zur Unzeit.
+ruff>=0.16
 # Backend tests (tests/test_backend_api.py) use FastAPI's TestClient.
 -r web/backend/requirements.txt
 httpx>=0.27

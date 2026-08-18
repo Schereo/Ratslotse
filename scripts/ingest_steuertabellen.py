@@ -350,7 +350,7 @@ def main() -> int:
                     + ", ".join(stt.PROBEN_KURZ.get(n, n) for n in proben_1105)
                     + (f"; Sprungjahr-Probe an der Aufkommensreihe für "
                        f"{gemessen}" if gemessen else "")
-                    + (f"; nicht prüfbar: "
+                    + ("; nicht prüfbar: "
                        + ", ".join(str(e["jahr"])
                                    for e in sprung["nicht_pruefbar"])
                        if sprung["nicht_pruefbar"] else ""))

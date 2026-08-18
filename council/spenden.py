@@ -321,9 +321,9 @@ def _grund(raw, abschnitt, kopf, vorschlag, teile) -> str:
                 f"oder eines der beiden Dokumente trägt einen Zahlendreher; welches, "
                 f"sagt der Bestand nicht.")
     if teile:
-        return (f"Die Teilbeträge des Finanz-Abschnitts ergeben zusammen nicht den "
-                f"beschlossenen Betrag; im Textextrakt der Vorlage fehlt mindestens "
-                f"eine Zahl.")
+        return ("Die Teilbeträge des Finanz-Abschnitts ergeben zusammen nicht den "
+                "beschlossenen Betrag; im Textextrakt der Vorlage fehlt mindestens "
+                "eine Zahl.")
     return ("Der Finanz-Abschnitt der Vorlage nennt keinen Betrag, gegen den sich "
             "der beschlossene prüfen ließe.")
 

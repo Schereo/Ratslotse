@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field, field_validator
 from council.store import CouncilStore
 from council.topics import POLICY_FIELDS
 from council.goals import GOALS
-from council.parties import faction_label, normalize_party, order_key
+from council.parties import faction_label, order_key
 from council import ausgabenreihe as ausgabenreihe_mod
 from council import nachbewilligungen as nachbewilligungen_mod
 from council import spenden as spenden_mod
@@ -2020,7 +2020,7 @@ def preview(kind: str, key: str, store: CouncilStore = Depends(get_council_store
         return {
             "title": f"{s['committee']} am {datum}" if datum else s["committee"],
             "description": (
-                f"Tagesordnung und Beschlüsse der Sitzung"
+                "Tagesordnung und Beschlüsse der Sitzung"
                 + (f" am {datum}" if datum else "")
                 + f" ({s['committee']}) — im Ratslotse verständlich aufbereitet."
             ),

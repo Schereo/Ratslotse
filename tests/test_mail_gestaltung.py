@@ -13,7 +13,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from council import watcher
-from council.ergebnisse import sitzung_href
 from kern import digest_email
 
 

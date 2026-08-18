@@ -98,7 +98,7 @@ def test_neue_station_wird_gemeldet_und_dann_nicht_mehr(dbs):
     _seed(nwz_db, council_db, alt, snapshot=mod.signature(_rows(alt)))
 
     with patch.object(mod.stammdaten, "fetch_beratungsfolge", return_value=_rows(neu)), \
-         patch("kern.delivery.deliver_message") as deliver:
+         patch("kern.delivery.deliver_message"):
         stats = mod.main()
     assert stats["Benachrichtigungen"] == 1
     html = _letzte_meldung(nwz_db)
@@ -120,7 +120,7 @@ def test_nachgetragenes_ergebnis_gilt_als_neu(dbs):
     _seed(nwz_db, council_db, offen, snapshot=mod.signature(_rows(offen)))
 
     with patch.object(mod.stammdaten, "fetch_beratungsfolge", return_value=_rows(entschieden)), \
-         patch("kern.delivery.deliver_message") as deliver:
+         patch("kern.delivery.deliver_message"):
         assert mod.main()["Benachrichtigungen"] == 1
     assert "beschlossen" in _letzte_meldung(nwz_db)
 
@@ -144,7 +144,7 @@ def test_abruf_fehler_meldet_nichts_und_friert_den_stand_nicht_ein(dbs):
     assert stats["Abruf-Fehler"] == 1
 
     with patch.object(mod.stammdaten, "fetch_beratungsfolge", return_value=_rows(neu)), \
-         patch("kern.delivery.deliver_message") as deliver2:
+         patch("kern.delivery.deliver_message"):
         assert mod.main()["Benachrichtigungen"] == 1
     assert "Rat am 20.02.2026" in _letzte_meldung(nwz_db)
 

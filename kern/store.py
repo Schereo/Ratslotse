@@ -7,7 +7,7 @@ import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
-from typing import Any, Iterable
+from typing import Iterable
 
 
 logger = logging.getLogger("kern.store")

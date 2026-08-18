@@ -1,5 +1,4 @@
 """Setzt data.json in die Vorlage ein und schreibt vergleich.html."""
-import json
 import os
 
 BASE = os.path.dirname(os.path.abspath(__file__))

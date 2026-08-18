@@ -8,7 +8,7 @@ from pathlib import Path
 
 import sqlite3
 
-from .scraper import CouncilSession, AgendaItem
+from .scraper import CouncilSession
 from .parties import order_key, parties_for_faction
 from . import importance as _importance
 

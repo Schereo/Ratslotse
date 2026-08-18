@@ -18,7 +18,16 @@ import os
 import re
 import sys
 import traceback
-from typing import Callable
+from typing import Callable, TYPE_CHECKING
+
+if TYPE_CHECKING:  # nur für Typprüfer — zur Laufzeit importiert
+    # `_record_run` nimmt einen `datetime` entgegen, holt ihn aber selbst nie:
+    # Das Modul importiert `datetime` bewusst erst IN den Funktionen, damit ein
+    # Import-Fehler nie einen Cronjob mitreißt. Ohne diesen Block zeigt die
+    # Annotation auf einen Namen, den es auf Modulebene nicht gibt — harmlos,
+    # solange `from __future__ import annotations` gilt (Annotationen bleiben
+    # Zeichenketten), aber irreführend für jeden, der sie auflösen will.
+    from datetime import datetime
 
 logger = logging.getLogger("kern.alerts")
 
@@ -61,7 +70,7 @@ def notify_admin(text: str, betreff: str = "Ratslotse – Cron-Alarm",
         logger.exception("admin alert email failed")
 
 
-def _record_run(name: str, started: "datetime", status: str,
+def _record_run(name: str, started: datetime, status: str,
                 stats: dict | None, error: str | None) -> None:
     """Den Lauf in ``job_runs`` schreiben — best effort, nie den Job stören.
 
