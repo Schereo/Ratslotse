@@ -14,12 +14,33 @@ from __future__ import annotations
 
 import json
 import os
+import re
 
 from kern import llm, prompts
 
 MODEL = os.environ.get("COUNCIL_IMPACT_MODEL", "deepseek/deepseek-v4-pro")
 BATCH_SIZE = 20
 MAX_EXCERPT_CHARS = 600
+
+#: Straßenrechtliche Formalakte: Widmung, (Teil-)Einziehung, Umstufung einer
+#: Straße machen einen längst bestehenden Zustand amtlich — für niemanden
+#: ändert sich etwas. Das LLM hielt „Widmung der Straße ‚Im Technologiepark‘"
+#: trotzdem für wichtig (Tims Befund 18.08., Wochen-Karte) — deshalb ein
+#: DETERMINISTISCHER Deckel statt Prompt-Hoffnung. \b verhindert, dass
+#: „Umwidmung" (von Mitteln) mitgefangen wird.
+_FORMALAKT_RE = re.compile(r"\b(teil)?(widmung|einziehung|umstufung)\b", re.IGNORECASE)
+_STRASSE_RE = re.compile(
+    r"(straße|strasse|weg\b|wege\b|weges\b|platz|verkehrsfläche|gehweg|radweg|fußweg)",
+    re.IGNORECASE)
+FORMALAKT_MAX = 15
+
+
+def formalakt_deckel(title: str | None) -> int | None:
+    """Score-Obergrenze für straßenrechtliche Formalakte — sonst None."""
+    t = title or ""
+    if _FORMALAKT_RE.search(t) and _STRASSE_RE.search(t):
+        return FORMALAKT_MAX
+    return None
 
 
 def _batch_text(decisions: list[dict]) -> str:
@@ -90,6 +111,7 @@ def rate_agenda_batch(items: list[dict]) -> list[tuple[int, int, str]]:
     if not items:
         return []
     valid_ids = {it["id"] for it in items}
+    _deckel_je_id = {it["id"]: formalakt_deckel(it.get("title")) for it in items}
     system = prompts.get("top_wichtigkeit_system")
     user = prompts.render("top_wichtigkeit_user", batch=_agenda_batch_text(items))
     try:
@@ -116,6 +138,11 @@ def rate_agenda_batch(items: list[dict]) -> list[tuple[int, int, str]]:
             continue
         if iid in valid_ids and 0 <= score <= 100:
             warum = str(r.get("warum") or r.get("grund") or "").strip()
+            deckel = _deckel_je_id.get(iid)
+            if deckel is not None and score > deckel:
+                score = deckel
+                warum = ("Formsache: Die Straße wird nur amtlich gewidmet oder "
+                         "eingezogen — für den Alltag ändert sich nichts.")
             out.append((iid, score, warum[:300]))
     return out
 
@@ -126,6 +153,7 @@ def rate_batch(decisions: list[dict]) -> list[tuple[int, int, str]]:
     if not decisions:
         return []
     valid_ids = {d["id"] for d in decisions}
+    deckel_je_id = {d["id"]: formalakt_deckel(d.get("title")) for d in decisions}
     system = prompts.get("impact_bewertung_system")
     user = prompts.render("impact_bewertung_user", batch=_batch_text(decisions))
     try:
@@ -151,5 +179,11 @@ def rate_batch(decisions: list[dict]) -> list[tuple[int, int, str]]:
         except (TypeError, ValueError):
             continue
         if did in valid_ids and 0 <= score <= 100:
-            out.append((did, score, str(r.get("grund") or "").strip()[:300]))
+            grund = str(r.get("grund") or "").strip()
+            deckel = deckel_je_id.get(did)
+            if deckel is not None and score > deckel:
+                score = deckel
+                grund = ("Formsache: Die Straße wird nur amtlich gewidmet oder "
+                         "eingezogen — für den Alltag ändert sich nichts.")
+            out.append((did, score, grund[:300]))
     return out

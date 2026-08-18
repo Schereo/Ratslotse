@@ -70,6 +70,34 @@ def test_rate_batch_filters_and_signals(monkeypatch):
     assert "Gremium Rat" in seen["user"] and "1.000.000" in seen["user"]
 
 
+def test_formalakt_deckel_erkennt_strassenrecht():
+    """Widmung/Einziehung/Umstufung einer Straße sind Formalakte — die
+    Wochen-Karte führte „Widmung der Straße ‚Im Technologiepark'" als wichtig
+    (Tims Befund 18.08.). Umwidmung von Geld ist KEIN Straßenrecht."""
+    assert impact.formalakt_deckel("Widmung der Straße 'Im Technologiepark'") == impact.FORMALAKT_MAX
+    assert impact.formalakt_deckel("Teileinziehung des Gehweges am Marktplatz") == impact.FORMALAKT_MAX
+    assert impact.formalakt_deckel("Umstufung der Gemeindestraße K 347") == impact.FORMALAKT_MAX
+    assert impact.formalakt_deckel("Umwidmung von Haushaltsmitteln für den Radweg") is None
+    assert impact.formalakt_deckel("Widmung des neuen Stadtteilzentrums") is None
+    assert impact.formalakt_deckel("Haushaltssatzung 2026") is None
+    assert impact.formalakt_deckel(None) is None
+
+
+def test_rate_agenda_batch_deckelt_formalakte(monkeypatch):
+    """Auch wenn das LLM die Widmung hoch bewertet, greift der Deckel — samt
+    ehrlichem Grund statt der halluzinierten Wichtig-Begründung."""
+    items = [{"id": 1, "title": "Widmung der Straße \"Im Technologiepark\"",
+              "committee": "Verkehrsausschuss"},
+             {"id": 2, "title": "Haushaltssatzung 2027", "committee": "Rat"}]
+    def fake(**kw):
+        return _fake_resp({"ratings": [{"id": 1, "score": 70, "warum": "Klingt nach Infrastruktur"},
+                                       {"id": 2, "score": 95, "warum": "Der Haushalt"}]})
+    monkeypatch.setattr(impact.llm, "chat_complete", fake)
+    out = dict((i, (s, w)) for i, s, w in impact.rate_agenda_batch(items))
+    assert out[1][0] == impact.FORMALAKT_MAX and out[1][1].startswith("Formsache")
+    assert out[2] == (95, "Der Haushalt")
+
+
 def _match_modul():
     import importlib.util, sys
     spec = importlib.util.spec_from_file_location(

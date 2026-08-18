@@ -198,6 +198,47 @@ def test_wochenvorschau_waehlt_nach_wichtigkeit(tmp_path):
         store.close()
 
 
+def test_wochenvorschau_liefert_weitere_punkte_zum_aufklappen(tmp_path):
+    """„x weitere Punkte" klappt in der Karte auf statt wegzunavigieren (Tims
+    Wunsch 18.08.) — dafür liefert die Vorschau die übrigen relevanten Punkte
+    je Sitzung mit, nach Rang sortiert und ohne die schon gezeigten."""
+    store = _vorschau_store(tmp_path)
+    try:
+        d = store.wochenvorschau(max_punkte=1)
+        assert len(d["punkte"]) == 1
+        weitere = d["weitere_je_sitzung"].get(1, [])
+        gezeigt = {(p["ksinr"], p["item_number"]) for p in d["punkte"]}
+        assert weitere, "über der Schwelle liegt mehr als ein Punkt"
+        assert all((w["ksinr"], w["item_number"]) not in gezeigt for w in weitere)
+        assert all(w["title"] for w in weitere)
+        # Ohne Deckel wandern dieselben Punkte in die Auswahl — nichts doppelt.
+        voll = store.wochenvorschau(max_punkte=99)
+        assert not voll["weitere_je_sitzung"].get(1)
+    finally:
+        store.close()
+
+
+def test_wochenvorschau_deckelt_strassen_formalakte(tmp_path):
+    """Die Widmung „Im Technologiepark" stand als „wichtig" auf der Karte —
+    der Formalakt-Deckel greift lesezeitig, auch über gespeicherte
+    Tragweite-Bewertungen hinweg."""
+    store = _vorschau_store(tmp_path)
+    try:
+        with store._conn:
+            store._conn.execute(
+                "INSERT INTO council_agenda_items (ksinr, item_number, title, vorlage_nr, kvonr, is_public) "
+                "VALUES (1, 'Ö 7', 'Widmung der Straße \"Im Technologiepark\"', '26/7', 700, 1)")
+            # Gespeicherte LLM-Fehlbewertung: 70 von 100.
+            store.save_agenda_impact(1, "Ö 7", 70, "Klingt nach Infrastruktur")
+        d = store.wochenvorschau(max_punkte=99)
+        widmung = [p for p in d["punkte"] if "Widmung" in p["title"]]
+        assert not widmung, "Formalakt darf nicht in die Auswahl"
+        assert not any("Widmung" in w["title"]
+                       for w in d["weitere_je_sitzung"].get(1, []))
+    finally:
+        store.close()
+
+
 def test_wochenvorschau_ohne_sitzungen_ist_ehrlich_leer(tmp_path):
     """Sommerpause: keine Sitzung, keine Ausgabe — die Karte fällt weg, statt
     einen Leerzustand zu zeigen."""
