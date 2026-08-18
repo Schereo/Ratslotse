@@ -46,7 +46,7 @@
 // oder bloße Paragraphen-Nummern wie „§§ 2 (3),17,18,42 …" —, bleibt der
 // Absatz, wie er ist. Geraten wird nichts, und kein Wort ändert sich.
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Fragment, Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -151,7 +151,13 @@ function Treffer({ p, max, aktiv, alleJahre }: {
   return (
     <Link
       href={`/haushalt/produkte?nr=${encodeURIComponent(p.produkt_nr)}`}
-      scroll
+      // `scroll={false}`: Ein Produkt zu öffnen ist kein Seitenwechsel — es
+      // ändert nur `?nr=`. Mit dem Vorgabeverhalten sprang der Browser an den
+      // Anfang der Seite, und wer in einer Liste von 400 Zeilen weit unten
+      // gesucht hatte, fand sich oben wieder und musste alles wiederfinden
+      // (Tims Befund 18.08.2026). Gescrollt wird jetzt gar nicht mehr: Der
+      // Steckbrief klappt direkt unter dieser Karte auf (`SteckbriefKarte`).
+      scroll={false}
       className={cn(
         // `min-w-0`: Ein Rasterkind ist von Haus aus `min-width: auto` und
         // damit so breit wie sein längster Produktname — auf 375 px schob die
@@ -570,10 +576,58 @@ function Steckbrief({ p, jahr, alleJahre }: { p: Produkt; jahr: number; alleJahr
   );
 }
 
+/** Der Steckbrief eines Produkts, eingehängt an der Karte, die ihn geöffnet hat.
+ *
+ *  WARUM NICHT ÜBER DER LISTE. Dort stand er bis zum 18.08.2026, und das war
+ *  nur haltbar, solange das Öffnen eines Produkts an den Seitenanfang sprang.
+ *  Wer weit unten in 400 Zeilen etwas gesucht hatte, verlor damit jedes Mal
+ *  seine Stelle. Hier braucht es keinen Sprung: Die Karte bleibt unter dem
+ *  Finger, und was sie erklärt, klappt darunter auf.
+ *
+ *  KEINE FOKUS-VERWALTUNG, und das ist der eigentliche Gewinn dieser
+ *  Anordnung: Weil der Steckbrief direkt HINTER der angetippten Karte im
+ *  Dokument steht, liest eine Vorlesehilfe von selbst dort weiter. Solange er
+ *  über der Liste hing, musste jemand den Fokus dorthin schieben — und Next
+ *  setzt ihn bei jedem Routenwechsel wieder zurück, auch nach einem
+ *  `setTimeout(0)`. Gemessen am 18.08.2026, dann verworfen.
+ *
+ *  `col-span-full` — im zweispaltigen Raster nimmt der Steckbrief die ganze
+ *  Breite, sonst quetschte er sich neben die nächste Karte. */
+function SteckbriefKarte({ aktiv, jahr, alleJahre, aufSchliessen }: {
+  aktiv: Produkt; jahr: number; alleJahre: number[]; aufSchliessen: () => void;
+}) {
+  return (
+    <div className="@3xl/treffer:col-span-full">
+      <section
+        aria-label={`Steckbrief ${aktiv.produkt_name}`}
+        className="rounded-2xl border border-primary/25 bg-primary/[0.03] p-3.5 sm:p-4"
+      >
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-primary">
+            Steckbrief
+          </p>
+          <button
+            type="button"
+            onClick={aufSchliessen}
+            className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-3.5 w-3.5" /> Schließen
+          </button>
+        </div>
+        {/* `key`: Der Auslöser „Ganzen Wortlaut zeigen" gehört zu DIESEM
+            Produkt — ohne Neuaufbau bliebe er beim Wechsel offen und zeigte
+            den halben Text des nächsten. */}
+        <Steckbrief key={aktiv.produkt_nr} p={aktiv} jahr={jahr} alleJahre={alleJahre} />
+      </section>
+    </div>
+  );
+}
+
 function ProdukteInner() {
   const router = useRouter();
   const params = useSearchParams();
   const nr = params.get("nr") ?? "";
+
 
   const [suche, setSuche] = useState("");
   const [entprellt, setEntprellt] = useState("");
@@ -753,26 +807,6 @@ function ProdukteInner() {
           </div>
         </div>
 
-        {/* Steckbrief: über der Liste, damit ein Treffer auf 375 px nicht
-            unterhalb von 400 Zeilen landet. */}
-        {aktiv && (
-          <section aria-label={`Steckbrief ${aktiv.produkt_name}`}
-            className="rounded-2xl border border-primary/25 bg-primary/[0.03] p-3.5 sm:p-4">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-primary">
-                Steckbrief
-              </p>
-              <button type="button" onClick={() => router.push("/haushalt/produkte")}
-                className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-muted-foreground hover:text-foreground">
-                <X className="h-3.5 w-3.5" /> Schließen
-              </button>
-            </div>
-            {/* `key`: Der Auslöser „Ganzen Wortlaut zeigen" gehört zu DIESEM
-                Produkt — ohne Neuaufbau bliebe er beim Wechsel offen und
-                zeigte den halben Text des nächsten. */}
-            <Steckbrief key={aktiv.produkt_nr} p={aktiv} jahr={jahr} alleJahre={alleJahre} />
-          </section>
-        )}
         {nr && !aktiv && !loading && (
           <p className="rounded-xl border border-dashed border-border bg-card p-4 text-center text-[12.5px] text-muted-foreground">
             Ein Produkt mit der Nummer „{nr}“ liegt für {jahr} nicht vor.
@@ -786,8 +820,14 @@ function ProdukteInner() {
           <div className="@container/treffer">
             <div className="grid gap-2 @3xl/treffer:grid-cols-2">
               {produkte.map((p) => (
-                <Treffer key={p.produkt_nr} p={p} max={maxWert} aktiv={p.produkt_nr === nr}
-                  alleJahre={alleJahre} />
+                <Fragment key={p.produkt_nr}>
+                  <Treffer p={p} max={maxWert} aktiv={p.produkt_nr === nr}
+                    alleJahre={alleJahre} />
+                  {aktiv && p.produkt_nr === nr && (
+                    <SteckbriefKarte aktiv={aktiv} jahr={jahr} alleJahre={alleJahre}
+                      aufSchliessen={() => router.push("/haushalt/produkte", { scroll: false })} />
+                  )}
+                </Fragment>
               ))}
             </div>
           </div>
