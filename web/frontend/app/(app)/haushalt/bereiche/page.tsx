@@ -26,7 +26,7 @@ import { GlossaryText } from "@/components/glossary-text";
 import { STEUERARTEN } from "@/lib/haushalt-steuern";
 import { bereichSchluessel } from "@/lib/haushalt-bereiche";
 import {
-  HaushaltDaten, HaushaltZeile, bereichSlug, bereiche, deMio, jahreSortiert, mio,
+  HaushaltAuswahl, haushaltUrl, HaushaltZeile, bereichSlug, bereiche, deMio, jahreSortiert, mio,
 } from "@/lib/haushalt";
 import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 
@@ -41,7 +41,7 @@ const QUELLEN: QuellenSchluessel[] = ["plan", "steuern", "steuerkraft", "teilhau
  *  hier wäre ein zweiter Stand derselben Aussage. */
 type Posten = { slug: string; titel: string; wer: string; mioWert: number; jahr: number };
 
-function zentralePosten(daten: HaushaltDaten): Posten[] {
+function zentralePosten(daten: Daten): Posten[] {
   const out: Posten[] = [];
   for (const s of STEUERARTEN) {
     if (s.datenArt) {
@@ -80,7 +80,7 @@ function zentralePosten(daten: HaushaltDaten): Posten[] {
 
 /** Die Sonderkachel: warum bei „Finanzmanagement und Recht" so viel steht. */
 function Finanzkachel({ z, daten, jahr }: {
-  z: HaushaltZeile; daten: HaushaltDaten; jahr: number;
+  z: HaushaltZeile; daten: Daten; jahr: number;
 }) {
   const ein = mio(z.ertraege) ?? 0;
   const aus = mio(z.aufwendungen) ?? 0;
@@ -177,8 +177,16 @@ function Finanzkachel({ z, daten, jahr }: {
   );
 }
 
+/** Was diese Seite rendert — und damit alles, was sie holt.
+ *  Feldliste und Typ kommen aus derselben Zeile: Ein Zugriff auf ein
+ *  nicht angefordertes Feld ist ein Fehler beim Bauen, kein leerer Block. */
+const FELDER = ["jahre", "produkt_jahre", "steuern", "steuerkraft"] as const;
+
+/** Der Ausschnitt, den diese Seite holt. */
+type Daten = HaushaltAuswahl<typeof FELDER[number]>;
+
 export default function BereichePage() {
-  const { data, loading } = useFetch<HaushaltDaten>("/council/haushalt");
+  const { data, loading } = useFetch<Daten>(haushaltUrl(FELDER));
 
   if (loading || !data) {
     return <div className="py-16 text-center text-sm text-muted-foreground">Haushalt wird geladen …</div>;

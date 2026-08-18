@@ -16,7 +16,7 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
-import { HaushaltDaten, deMio, spendenGremien, spendenJahre, spendenLaufend } from "@/lib/haushalt";
+import { HaushaltAuswahl, haushaltUrl, deMio, spendenGremien, spendenJahre, spendenLaufend } from "@/lib/haushalt";
 import { ZeitreiheMini } from "@/components/grafik/zeitreihe";
 import { LueckenFeld } from "@/components/grafik/luecken-feld";
 import { SPIELRAUM_LABEL, STEUERARTEN, Spielraum } from "@/lib/haushalt-steuern";
@@ -70,8 +70,13 @@ const GRUPPEN: { stufe: Spielraum; titel: string; text: string }[] = [
   },
 ];
 
+/** Was diese Seite rendert — und damit alles, was sie holt.
+ *  Feldliste und Typ kommen aus derselben Zeile: Ein Zugriff auf ein
+ *  nicht angefordertes Feld ist ein Fehler beim Bauen, kein leerer Block. */
+const FELDER = ["steuern", "steuerkraft", "finanzausgleich", "spenden"] as const;
+
 export default function EinnahmenPage() {
-  const { data, loading } = useFetch<HaushaltDaten>("/council/haushalt");
+  const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(haushaltUrl(FELDER));
 
   if (loading || !data) {
     return <div className="py-16 text-center text-sm text-muted-foreground">Einnahmen werden geladen …</div>;

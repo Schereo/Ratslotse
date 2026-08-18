@@ -15,7 +15,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ChevronRight, Search } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
-import { HaushaltDaten, deMio } from "@/lib/haushalt";
+import { HaushaltAuswahl, haushaltUrl, deMio } from "@/lib/haushalt";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import {
   STEUERARTEN, SPIELRAUM_LABEL, type SteuerArt, steuerartNachSlug,
@@ -45,7 +45,7 @@ function steuerartFinden(eingang: string): SteuerArt | undefined {
 
 function SteuerInner() {
   const slug = useSearchParams().get("art") ?? "gewerbesteuer";
-  const { data, loading } = useFetch<HaushaltDaten>("/council/haushalt");
+  const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(haushaltUrl(FELDER));
   const art = steuerartFinden(slug);
 
   const reihe = useMemo(() => {
@@ -419,6 +419,11 @@ function SteuerInner() {
     </Quellenkontext>
   );
 }
+
+/** Was diese Seite rendert — und damit alles, was sie holt.
+ *  Feldliste und Typ kommen aus derselben Zeile: Ein Zugriff auf ein
+ *  nicht angefordertes Feld ist ein Fehler beim Bauen, kein leerer Block. */
+const FELDER = ["steuern", "steuerkraft", "steuerplan", "hebesaetze", "einwohner"] as const;
 
 export default function SteuerPage() {
   return (

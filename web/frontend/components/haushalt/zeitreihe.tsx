@@ -66,7 +66,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import {
-  ErgebnisPosten, HaushaltDaten, PLAN_ART_LABEL, PlanArt,
+  ErgebnisPosten, HaushaltAuswahl, PLAN_ART_LABEL, PlanArt,
   deMio, fehlendeJahre, jahreSortiert, mio, summe,
 } from "@/lib/haushalt";
 import { Beleg } from "@/components/haushalt/quelle";
@@ -101,7 +101,7 @@ function breiteVon(el: HTMLElement | null): number | null {
   return w > 0 ? Math.max(w, 280) : null;
 }
 
-export function Zeitreihe({ daten }: { daten: HaushaltDaten }) {
+export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung" | "jahre"> }) {
   const aussen = useRef<HTMLDivElement>(null);
   const bildBox = useRef<HTMLDivElement>(null);
   // Startwerte klein: Der erste Frame läuft dann einspaltig durch, statt eine

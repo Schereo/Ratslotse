@@ -39,7 +39,7 @@ import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import {
-  HaushaltDaten, Nachbewilligung, NachbewilligungsJahr, NachbewilligungsKanal,
+  HaushaltAuswahl, Nachbewilligung, NachbewilligungsJahr, NachbewilligungsKanal,
   kanalAnzahl, kanalBetrag, nachbewilligungGesamt, nachbewilligungenFuerJahr,
   nachbewilligungsJahre, ratsAnteil,
 } from "@/lib/haushalt";
@@ -152,7 +152,7 @@ function RatsListe({ posten }: { posten: Nachbewilligung[] }) {
 }
 
 export function NachbewilligungsBlock({ daten, jahr }: {
-  daten: HaushaltDaten; jahr: number;
+  daten: HaushaltAuswahl<"nachbewilligungen">; jahr: number;
 }) {
   const alleJahre = nachbewilligungsJahre(daten);
   const unseres = alleJahre.find((j) => j.jahr === jahr);
@@ -332,7 +332,7 @@ export function NachbewilligungsBlock({ daten, jahr }: {
  *  worden. Das ist ein Befund über den Bestand, kein Vorwurf — die Vorlagen
  *  sind vorher im Fachausschuss beraten, und was dort keine Mehrheit findet,
  *  erreicht den Rat meist gar nicht erst. */
-export function NachbewilligungsBefund({ daten }: { daten: HaushaltDaten }) {
+export function NachbewilligungsBefund({ daten }: { daten: HaushaltAuswahl<"nachbewilligungen"> }) {
   const serie = (daten.nachbewilligungen?.serie ?? [])
     .filter((n) => n.art !== "schwelle");
   if (serie.length < 20) return null;
