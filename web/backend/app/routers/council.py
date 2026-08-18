@@ -17,6 +17,7 @@ from council.topics import POLICY_FIELDS
 from council.goals import GOALS
 from council.parties import faction_label, normalize_party, order_key
 from council import ausgabenreihe as ausgabenreihe_mod
+from council import nachbewilligungen as nachbewilligungen_mod
 from council import spenden as spenden_mod
 from council import steuertabellen
 from council import beteiligungsbericht, qa
@@ -945,6 +946,29 @@ def haushalt_uebersicht(
                     "abgrenzung": ausgabenreihe_mod.ABGRENZUNG[r]}
                 for r in ausgabenreihe_mod.REGELWERK
             },
+        },
+        # Nachbewilligungen nach § 117 NKomVG — was beschlossen wurde,
+        # nachdem der Haushalt beschlossen war. Zwei Listen, die **nicht**
+        # ineinander gerechnet werden dürfen:
+        #
+        # `serie` ist unser Bestand aus dem Ratsinformationssystem, je Vorlage
+        # eine Zeile (nicht je Beschlusszeile — Finanzausschuss und Rat
+        # entscheiden dieselbe Sache, und 131 der 287 Zeilen sind Dubletten).
+        # `beschluss_id` zeigt auf die vorhandene Beschluss-Seite.
+        #
+        # `jahre` ist Kapitel 3 des Rechenschaftsberichts mit seinen **vier
+        # Entscheidungswegen**. Nur dort steht die Gesamtsumme; der Rat ist
+        # eine Teilmenge davon, und sie schrumpft (88 → 73 %). Eine Anzeige,
+        # die nur `serie` zeigt, muss das dazusagen.
+        #
+        # `verpflichtungen_betrag` steht bewusst getrennt und gehört in
+        # **keine** Summe: Eine Verpflichtungsermächtigung bindet künftige
+        # Jahre, sie fließt nicht in diesem. Der Bericht zählt sie ebenso
+        # getrennt.
+        "nachbewilligungen": {
+            "serie": store.get_nachbewilligungen(),
+            "jahre": store.get_nachbewilligung_jahre(),
+            "kanaele": nachbewilligungen_mod.KANAELE,
         },
         # Zuwendungen an die Stadt. `ohne_beleg` reist mit den Zahlen mit,
         # damit die Seite die Lücke anschreiben kann, statt sie stillschweigend

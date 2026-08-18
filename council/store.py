@@ -1371,6 +1371,80 @@ class CouncilStore:
             "revidiert INTEGER NOT NULL DEFAULT 0, "   # „r" der Quelle
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
         )
+        # Nachbewilligungen nach § 117 NKomVG (council/nachbewilligungen.py).
+        # Drei Tabellen, weil hier zwei verschiedene Quellen dieselbe Sache
+        # beschreiben und niemals vermischt werden dürfen:
+        #
+        #   council_nachbewilligungen        — was der Rat beschloss (RIS)
+        #   council_nachbewilligung_jahre    — was der Rechenschaftsbericht
+        #                                      fürs Jahr insgesamt ausweist
+        #   council_nachbewilligung_kanaele  — dessen vier Entscheidungswege
+        #
+        # Die Aufteilung der beiden letzten folgt `council_investitionen_ist`
+        # und `..._arten`: Die Summe steht in der einen, die Aufteilung in der
+        # anderen. Sie hier zusammenzuziehen hieße, die Summenzeile des
+        # Dokuments viermal zu wiederholen — und die Probe, dass die Teile sie
+        # ergeben, hätte nichts mehr, wogegen sie prüfen könnte.
+        #
+        # `betrag` ist NULL, wo der Titel nur eine Wertgrenze nennt (die neun
+        # Sammelberichte). Eine 0 stünde dort für „nichts nachbewilligt" und
+        # wäre falsch; NULL heißt „diese Zeile trägt keinen Betrag".
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_nachbewilligungen ("
+            "vorlage_nr TEXT PRIMARY KEY, "
+            "jahr INTEGER, "                   # aus der Vorlagen-Nummer
+            "titel TEXT NOT NULL, "
+            "art TEXT NOT NULL, "              # bewilligung|verpflichtungs…|schwelle
+            "kategorie TEXT NOT NULL, "        # ueberplanmaessig|ausser…|beides
+            "betrag REAL, "                    # NULL bei art='schwelle'
+            "betrag_quelle TEXT, "             # titel | beschlussvorschlag
+            "beschlossen INTEGER NOT NULL DEFAULT 0, "
+            # Zwei Spalten, weil es zwei verschiedene Fragen sind:
+            # `im_rat` = das Plenum hat abgestimmt (die wörtliche Auskunft,
+            # die auf der Seite steht). `ratsentscheidung` = der
+            # Rechenschaftsbericht bucht es als „Beschluss des Rates" —
+            # einschließlich der Fälle, die der Finanzausschuss abschließend
+            # entscheidet. Nur die zweite darf in einen Rats-Anteil; die erste
+            # liegt 2024 um 28 % daneben (s. council/nachbewilligungen.py).
+            "im_rat INTEGER NOT NULL DEFAULT 0, "
+            "ratsentscheidung INTEGER NOT NULL DEFAULT 0, "
+            # Für den Link auf die vorhandene Beschluss-Seite
+            # (/council/decision?id=). Der maßgebliche Beschluss ist der des
+            # Rates, sonst der jüngste — dieselbe Ordnung wie anderswo.
+            "beschluss_id INTEGER, "
+            "gremien TEXT, "                   # JSON: wo sie beraten wurde
+            "volltextprobe INTEGER NOT NULL DEFAULT 0, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
+        )
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_nachbewilligung_jahre ("
+            "jahr INTEGER PRIMARY KEY, "
+            # Was die Summenzeile der Tabelle selbst ausweist …
+            "summe_konsumtiv REAL NOT NULL, "
+            "summe_investiv REAL NOT NULL, "
+            # … und was der Fließtext darüber behauptet. Beides wird
+            # gespeichert, gerade WEIL es 2022 auseinanderfällt: Wer nur eine
+            # der beiden Zahlen behielte, hätte den Widerspruch weggeräumt.
+            "text_gesamt REAL, "
+            "verpflichtungen_betrag REAL, "
+            # Das Ergebnis der Tabellenprobe im Klartext — es steht auf der
+            # Seite, nicht nur im Log.
+            "probe_ok INTEGER NOT NULL DEFAULT 0, "
+            "probe_text TEXT, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
+        )
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_nachbewilligung_kanaele ("
+            "jahr INTEGER NOT NULL, "
+            "kanal TEXT NOT NULL, "            # rat|oberbuergermeister|…
+            "label TEXT NOT NULL, "            # der Wortlaut der Stadt
+            "anzahl_konsumtiv INTEGER NOT NULL, "
+            "betrag_konsumtiv REAL NOT NULL, "
+            "anzahl_investiv INTEGER NOT NULL, "
+            "betrag_investiv REAL NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, kanal))"
+        )
         # Angenommene Zuwendungen je Ratsvorlage (council/spenden.py). Eine
         # Zeile je Vorlage, nicht je Jahr: Der Jahreswert entsteht erst beim
         # Lesen, und die Vorlagen-Nummer ist der Weg zur Beschluss-Seite.
@@ -1680,6 +1754,12 @@ class CouncilStore:
         # das Open-Data-Portal —, deshalb keine feste Art. Nachzutragen ist
         # ohnehin nichts, die Tabelle ist neu.
         "council_ausgabenreihe":        (None, "quelle_url", None),
+        # Die Nachbewilligungen: neu, ohne Altspalten. Beide Quellen liegen im
+        # Ratsinformationssystem — die Vorlagen selbst und der
+        # Rechenschaftsbericht als Anlage zum Jahresabschluss.
+        "council_nachbewilligungen":        (None, "quelle_url", "ris"),
+        "council_nachbewilligung_jahre":    (None, "quelle_url", "ris"),
+        "council_nachbewilligung_kanaele":  (None, "quelle_url", "ris"),
         # Die Zuwendungen: Quelle sind Ratsvorlagen im Bürgerinfo, also „ris".
         # Nachzutragen ist nichts, beide Tabellen sind neu.
         "council_spenden":              (None, "quelle_url", "ris"),
@@ -5331,6 +5411,156 @@ class CouncilStore:
         for r in rows:
             r["proben"] = [p for p in (r.get("proben") or "").split(",") if p]
         return rows
+
+    # --- Nachbewilligungen nach § 117 NKomVG --------------------------------
+
+    def anlage_text(self, document_id: int) -> str | None:
+        """Der Volltext einer Anlage — oder ``None``, wenn keiner da ist.
+
+        „Kein Text" ist der Normalfall und kein Fehler: Der Bestand führt
+        Anlagen, die noch nie geladen wurden (``scripts/backfill_anlagen_texte
+        .py``), und solche, die als Scan gar keinen Text hergeben. Beide
+        sollen den Aufrufer nicht in einen Fehlerpfad zwingen, sondern in die
+        Meldung „für dieses Jahr liegt die Quelle nicht vor"."""
+        try:
+            row = self._conn.execute(
+                "SELECT raw_text FROM council_anlagen WHERE document_id = ?",
+                (document_id,)).fetchone()
+        except sqlite3.OperationalError:
+            return None
+        return (row["raw_text"] or None) if row else None
+
+    def nachbewilligungs_vorlagen(self) -> tuple[list[dict], dict[str, list[dict]]]:
+        """Die Rohdaten für ``council/nachbewilligungen.aus_vorlagen``.
+
+        → ``(vorlagen, beschluesse)`` — **erst die Vorlagen, dann die nach
+        Vorlagen-Nummer gruppierten Beschlusszeilen**, genau in der
+        Reihenfolge, die der Parser erwartet.
+
+        Der Filter läuft über den **Titel**, nicht über eine Vorlagenart:
+        ``art`` heißt hier „Beschlussvorlage" oder „Berichtsvorlage" und sagt
+        nichts über den Inhalt. Vorgefiltert wird nur grob (SQL kennt unser
+        Muster nicht); die Feinentscheidung trifft
+        ``nachbewilligungen.ist_nachbewilligung``.
+
+        **Der Join läuft über ``vorlage_nr``, nicht über ``kvonr``.** Das ist
+        keine Stilfrage: ``council_decisions.kvonr`` ist im gesamten Bestand
+        ``NULL`` (8.369 von 8.369 Zeilen). Ein Join darüber liefert
+        schweigend null Treffer — und eine Seite, die behauptet, der Rat habe
+        nie über eine Nachbewilligung entschieden."""
+        try:
+            vorlagen = [dict(r) for r in self._conn.execute(
+                "SELECT vorlage_nr, title, beschlussvorschlag, raw_text "
+                "FROM council_vorlagen "
+                "WHERE vorlage_nr IS NOT NULL "
+                "  AND (title LIKE '%planmäßig%' OR title LIKE '%planmässig%')"
+            )]
+            rows = [dict(r) for r in self._conn.execute(
+                "SELECT d.id, d.vorlage_nr, d.outcome, d.vote, "
+                "       cs.committee, cs.session_date "
+                "FROM council_decisions d "
+                "JOIN council_sessions cs ON cs.ksinr = d.ksinr "
+                "WHERE d.vorlage_nr IS NOT NULL AND d.kind = 'decision' "
+                + self._BESCHLUSS_ORDNUNG
+            )]
+        except sqlite3.OperationalError:
+            return [], {}
+        beschluesse: dict[str, list[dict]] = {}
+        for r in rows:
+            beschluesse.setdefault(str(r["vorlage_nr"]), []).append(r)
+        return vorlagen, beschluesse
+
+    def save_nachbewilligungen(self, zeilen: list[dict], herkunft) -> int:
+        """Die RIS-Serie ersetzen — je Vorlage eine Zeile.
+
+        Wie bei ``save_schulden`` wird nur ersetzt, was die Lieferung
+        mitbringt. Übergeben wird, was der Parser gelesen hat; diese Methode
+        prüft nichts nach."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_nachbewilligungen "
+                "(vorlage_nr, jahr, titel, art, kategorie, betrag, "
+                " betrag_quelle, beschlossen, im_rat, ratsentscheidung, "
+                " beschluss_id, gremien, "
+                " volltextprobe, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                [(z["vorlage_nr"], z.get("jahr"), z["titel"], z["art"],
+                  z["kategorie"], z.get("betrag"), z.get("betrag_quelle"),
+                  int(bool(z.get("beschlossen"))), int(bool(z.get("im_rat"))),
+                  int(bool(z.get("ratsentscheidung"))),
+                  z.get("beschluss_id"),
+                  json.dumps(z.get("gremien") or [], ensure_ascii=False),
+                  int(bool(z.get("volltextprobe"))), hid, now)
+                 for z in zeilen])
+        return len(zeilen)
+
+    def save_nachbewilligung_jahr(self, jahr: dict, kanaele: list[dict],
+                                  herkunft) -> int:
+        """Ein Jahrgang aus Kapitel 3 des Rechenschaftsberichts.
+
+        Jahreszeile und Kanäle wandern zusammen in **eine** Transaktion: Ein
+        Bestand, in dem die Summenzeile eines Jahres steht und seine vier
+        Wege fehlen, wäre genau der Zustand, den die Tabellenprobe unmöglich
+        machen soll."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute(
+                "INSERT OR REPLACE INTO council_nachbewilligung_jahre "
+                "(jahr, summe_konsumtiv, summe_investiv, text_gesamt, "
+                " verpflichtungen_betrag, probe_ok, probe_text, herkunft_id, "
+                " fetched_at) VALUES (?,?,?,?,?,?,?,?,?)",
+                (jahr["jahr"], jahr["summe_konsumtiv"], jahr["summe_investiv"],
+                 jahr.get("text_gesamt"), jahr.get("verpflichtungen_betrag"),
+                 int(bool(jahr.get("probe_ok"))), jahr.get("probe_text"),
+                 hid, now))
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_nachbewilligung_kanaele "
+                "(jahr, kanal, label, anzahl_konsumtiv, betrag_konsumtiv, "
+                " anzahl_investiv, betrag_investiv, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?)",
+                [(jahr["jahr"], k["kanal"], k["label"], k["anzahl_konsumtiv"],
+                  k["betrag_konsumtiv"], k["anzahl_investiv"],
+                  k["betrag_investiv"], hid, now) for k in kanaele])
+        return len(kanaele)
+
+    def get_nachbewilligungen(self) -> list[dict]:
+        """Die RIS-Serie, chronologisch. ``gremien`` kommt als Liste heraus."""
+        try:
+            rows = [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_nachbewilligungen ORDER BY vorlage_nr")]
+        except sqlite3.OperationalError:
+            return []
+        for r in rows:
+            try:
+                r["gremien"] = json.loads(r.get("gremien") or "[]")
+            except (TypeError, ValueError):
+                r["gremien"] = []
+        return rows
+
+    def get_nachbewilligung_jahre(self) -> list[dict]:
+        """Die Jahrgänge aus dem Rechenschaftsbericht, je mit ihren Kanälen.
+
+        Die Kanäle hängen als Liste ``kanaele`` an ihrem Jahr — anders als bei
+        der Herkunft, die als eigenes Verzeichnis reist: Vier Zeilen je Jahr
+        sind keine Wiederholung, die sich zu vermeiden lohnte, und die Seite
+        liest sie ohnehin immer zusammen."""
+        try:
+            jahre = [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_nachbewilligung_jahre ORDER BY jahr")]
+            kanaele = [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_nachbewilligung_kanaele "
+                "ORDER BY jahr, rowid")]
+        except sqlite3.OperationalError:
+            return []
+        nach_jahr: dict[int, list[dict]] = {}
+        for k in kanaele:
+            nach_jahr.setdefault(int(k["jahr"]), []).append(k)
+        for j in jahre:
+            j["kanaele"] = nach_jahr.get(int(j["jahr"]), [])
+        return jahre
 
     def ausgabenreihe_jahre(self) -> list[int]:
         """Welche Jahrgänge im Bestand stehen — Grundlage des Bestandsschutzes

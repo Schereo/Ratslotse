@@ -75,6 +75,14 @@ jobs:
             .venv/bin/python scripts/ingest_investitionen_ist.py
             .venv/bin/python scripts/check_beteiligungsbericht.py
             .venv/bin/python scripts/ingest_ausgabenreihe.py
+            # Nachbewilligungen nach § 117 NKomVG. Steht NACH dem Backfill
+            # oben, und das ist keine Kosmetik: Die drei Rechenschaftsberichte
+            # (Dokumente 265441, 280862, 295295) liegen mit `status='listed'`
+            # und leerem `raw_text` im Bestand. Ohne den Backfill liest dieser
+            # Lauf nur die Ratsbeschlüsse — also die Teilmenge ohne den Nenner,
+            # zu dem sie gehört. Genau die Halbwahrheit, gegen die der Block
+            # gebaut ist.
+            .venv/bin/python scripts/ingest_nachbewilligungen.py
             # Die Zuwendungen lesen nicht aus dem Netz, sondern aus dem
             # eigenen Bestand: Beschlusszeilen plus Vorlagen-Volltexte. Ohne
             # den Volltext-Lauf oben gibt es keine Zweitstelle und damit keine
@@ -138,6 +146,14 @@ jobs:
                 # verhindern soll.
                 "council_finanzrechnung", "council_bilanz",
                 "council_bilanz_erlaeuterungen", "council_ausgabenreihe",
+                # Nachbewilligungen (§ 117 NKomVG). Die dritte Tabelle steht
+                # hier mit, obwohl ihre Zeilen an den Jahren hängen: Bleibt
+                # sie leer, während `..._jahre` gefüllt ist, hat das Kapitel
+                # seine vier Entscheidungswege nicht hergegeben — und genau
+                # die sind der Inhalt des Blocks.
+                "council_nachbewilligungen",
+                "council_nachbewilligung_jahre",
+                "council_nachbewilligung_kanaele",
                 # Die Zuwendungen an die Stadt. `council_spenden_verworfen`
                 # steht bewusst mit im Bericht: Die Zeilen ohne Zweitstelle
                 # sind Inhalt der Seite, nicht Abfall — verschwänden sie, ohne
