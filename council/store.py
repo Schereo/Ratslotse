@@ -1397,6 +1397,31 @@ class CouncilStore:
             "proben TEXT NOT NULL, "
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
         )
+        # Die dritte Schuldenzahl (council/integrierte_schulden.py): was der
+        # ganze „Konzern Stadt" schuldet, anteilig nach Beteiligungshöhe —
+        # 31.12.2024 rund 740,3 Mio. € gegen 294,9 Mio. € der Jahrbuch-Reihe.
+        #
+        # EIN STICHTAG JE AUSGABE, bewusst keine Zeitreihe: Welche Unternehmen
+        # mitgerechnet werden, wechselt zwischen den Ausgaben, und die
+        # Statistischen Ämter raten selbst davon ab, Jahrgänge zu vergleichen.
+        # Die Tabelle kann trotzdem mehrere Jahre führen — sie darf nur nicht
+        # als Kurve gezeichnet werden.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_integrierte_schulden ("
+            "jahr INTEGER PRIMARY KEY, "
+            "ars TEXT NOT NULL, "              # Regionalschlüssel, nie der Name
+            "bevoelkerung REAL, "
+            "insgesamt REAL NOT NULL, je_einwohner REAL, "
+            "kernhaushalt REAL, extrahaushalte REAL, sonstige REAL, "
+            # Die Aufteilung nach Beteiligungshöhe — daraus rechnet sich der
+            # Anteil, der KEINE Haftung begründet (2024: 58 %).
+            "extra_unter_50 REAL, sonstige_unter_50 REAL, "
+            # Die Veränderung, die der Band selbst ausweist. Angabe der Quelle,
+            # nicht unsere Rechnung — deshalb gespeichert statt abgeleitet.
+            "veraenderung REAL, "
+            "proben TEXT NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
+        )
         # Nachbewilligungen nach § 117 NKomVG (council/nachbewilligungen.py).
         # Drei Tabellen, weil hier zwei verschiedene Quellen dieselbe Sache
         # beschreiben und niemals vermischt werden dürfen:
@@ -1806,6 +1831,10 @@ class CouncilStore:
         # Der Bürgschaftsbestand: eine Quelle, der Jahresabschluss als Anlage
         # im Ratsinformationssystem.
         "council_buergschaften":        (None, "quelle_url", "ris"),
+        # Die dritte Schuldenzahl: Tabellenband der Statistischen Ämter,
+        # also weder Stadt noch Ratsinformationssystem — eigene Art "lsn"
+        # wie beim Städtevergleich.
+        "council_integrierte_schulden": (None, "quelle_url", "lsn"),
         # Die Nachbewilligungen: neu, ohne Altspalten. Beide Quellen liegen im
         # Ratsinformationssystem — die Vorlagen selbst und der
         # Rechenschaftsbericht als Anlage zum Jahresabschluss.
@@ -4371,6 +4400,7 @@ class CouncilStore:
         "gebaut":      ("council_investitionen_ist", "jahr", None),
         "ausgabenreihe": ("council_ausgabenreihe", "jahr", None),
         "buergschaften": ("council_buergschaften", "jahr", None),
+        "integrierte_schulden": ("council_integrierte_schulden", "jahr", None),
         "spenden":     ("council_spenden", "jahr", None),
         "steuerplan":  ("council_steuerplan", "jahr", None),
         "hebesaetze":  ("council_hebesaetze", "jahr", None),
@@ -5593,6 +5623,42 @@ class CouncilStore:
             r["proben"] = [p for p in (r.get("proben") or "").split(",") if p]
             r["genau"] = bool(r["genau"])
             r["aus_folgejahr"] = bool(r["aus_folgejahr"])
+        return rows
+
+    def save_integrierte_schulden(self, zeile: dict, herkunft) -> int:
+        """Einen Stichtag der integrierten Schulden ersetzen."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute(
+                "INSERT OR REPLACE INTO council_integrierte_schulden "
+                "(jahr, ars, bevoelkerung, insgesamt, je_einwohner, kernhaushalt, "
+                " extrahaushalte, sonstige, extra_unter_50, sonstige_unter_50, "
+                " veraenderung, proben, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (zeile["jahr"], zeile["ars"], zeile.get("bevoelkerung"),
+                 zeile["insgesamt"], zeile.get("je_einwohner"),
+                 zeile.get("kernhaushalt"), zeile.get("extrahaushalte"),
+                 zeile.get("sonstige"), zeile.get("extra_unter_50"),
+                 zeile.get("sonstige_unter_50"), zeile.get("insgesamt_veraenderung"),
+                 ",".join(zeile.get("proben") or []), hid, now))
+        return 1
+
+    def get_integrierte_schulden(self) -> list[dict]:
+        """Die integrierten Schulden je Stichtag, aufsteigend.
+
+        Kommt als Liste, obwohl die Anzeige nur den jüngsten Stichtag zeigt:
+        Eine zweite Ausgabe soll die erste nicht stillschweigend ersetzen —
+        wer sie vergleichen will, sieht wenigstens, dass es zwei gibt (und
+        findet in ``council/integrierte_schulden.KEINE_REIHE``, warum er es
+        besser lässt)."""
+        try:
+            rows = [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_integrierte_schulden ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+        for r in rows:
+            r["proben"] = [p for p in (r.get("proben") or "").split(",") if p]
         return rows
 
     # --- Nachbewilligungen nach § 117 NKomVG --------------------------------

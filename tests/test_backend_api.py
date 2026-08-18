@@ -3939,3 +3939,65 @@ def test_haushalt_schulden_ohne_buergschaften_bleibt_leer(client):
     _register(client)
     b = client.get("/api/council/haushalt/schulden").json()["buergschaften"]
     assert b["reihe"] == [] and b["rueckstellung"] == [] and b["geldschulden"] == []
+
+
+def test_haushalt_schulden_liefert_die_dritte_zahl_mit_ihren_warnsaetzen(client):
+    """740 Mio. € — und die zwei Sätze, ohne die sie falsch gelesen wird.
+
+    Der Tabellenband ist eine Modellrechnung: Er rechnet der Stadt anteilig zu,
+    was ihre Beteiligungen schulden. Der größere Teil davon stammt aus
+    Unternehmen unter 50 % Beteiligung, für die sie **nicht haftet**. Beide
+    Angaben kommen aus dem Backend, damit sie nicht im Frontend vergessen
+    werden können, während die Zahl bleibt.
+    """
+    from council import herkunft as h_mod
+    from council import integrierte_schulden as isch
+
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    try:
+        cs.save_integrierte_schulden({
+            "jahr": 2024, "ars": isch.ARS_OLDENBURG, "bevoelkerung": 176_336.0,
+            "insgesamt": 740_330_163.0, "je_einwohner": 4_198.41,
+            "kernhaushalt": 43_690_972.0, "extrahaushalte": 140_916_720.89,
+            "sonstige": 555_722_470.11, "extra_unter_50": 2_397_841.89,
+            "sonstige_unter_50": 431_522_725.5, "insgesamt_veraenderung": -13.6,
+            "proben": [isch.PROBE_KERNHAUSHALT],
+        }, h_mod.Herkunft(art="lsn", probe=[isch.PROBE_KERNHAUSHALT],
+                          label="Integrierte Schulden der Gemeinden",
+                          url="https://example.org/tabellenband.xlsx",
+                          fundstelle=f"Tabelle 2, Blatt {isch.BLATT}"))
+    finally:
+        cs.close()
+
+    i = client.get("/api/council/haushalt/schulden").json()["integrierte_schulden"]
+    assert i["stichtag"]["jahr"] == 2024
+    assert i["stichtag"]["insgesamt"] == 740_330_163.0
+    # Der Anteil wird gerechnet, nicht abgeschrieben — er entscheidet, wie die
+    # Zahl gelesen werden darf, und ändert sich mit jeder Ausgabe.
+    assert 0.58 < i["anteil_unter_50"] < 0.59
+    assert "haftet sie nicht" in i["abgrenzung"]
+    assert "keine Zeitreihe" in i["keine_reihe"]
+
+
+def test_integrierte_schulden_kommen_nur_mit_bestandener_kernprobe():
+    """Ohne Gegenstück in der eigenen Bilanz keine Zahl.
+
+    Die Probe prüft nicht die 740 Millionen — die kann niemand gegenrechnen —,
+    sondern dass die fremde Tabelle von DIESER Stadt handelt: Ihr getrennt
+    ausgewiesener Kernhaushalt muss der Geldschulden-Position unserer Bilanz
+    entsprechen.
+    """
+    from council import integrierte_schulden as isch
+
+    gefunden = {"jahr": 2024, "kernhaushalt": 43_690_972.0}
+    ok, warum = isch.kernprobe(gefunden, 43_690_971.71)
+    assert ok and "0.29" in warum
+
+    # Fehlt die Bilanz, gibt es kein Gegenstück — und damit keine Probe.
+    ok, warum = isch.kernprobe(gefunden, None)
+    assert not ok and "ohne Gegenstück" in warum
+
+    # Und ein echter Widerspruch fliegt auf.
+    ok, warum = isch.kernprobe(gefunden, 40_000_000.0)
+    assert not ok and "Unterschied" in warum

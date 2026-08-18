@@ -2928,6 +2928,7 @@ def haushalt_schulden(
     Null zu zeichnen oder still zu überspringen.
     """
     from council import buergschaften as _b
+    from council import integrierte_schulden as _i
     from council import schulden as _s
 
     zeilen = store.get_schulden()
@@ -2970,10 +2971,17 @@ def haushalt_schulden(
     # Ausfall (Bilanzposten 3.7). Alle drei Zahlen reisen zusammen, weil jede
     # einzelne für sich irreführt: das Volumen als drohende Zahlung gelesen,
     # die Rückstellung als Gesamtrisiko.
+    # Die dritte Schuldenzahl: was der ganze „Konzern Stadt" anteilig schuldet
+    # (740,3 Mio. € zum 31.12.2024 gegen 294,9 Mio. € der Reihe oben). Sie
+    # reist mit ihren beiden Warnsätzen, nicht ohne: Der größere Teil stammt
+    # aus Beteiligungen unter 50 %, für die die Stadt nicht haftet, und eine
+    # Zeitreihe daraus zu bauen verbietet die Quelle selbst.
+    integriert = store.get_integrierte_schulden()
+    juengste = integriert[-1] if integriert else None
     buerg = store.get_buergschaften()
     rueckstellung = store.get_bilanz_posten(_b.RUECKSTELLUNG_ROLLE) if buerg else []
     geldschulden = store.get_bilanz_posten(_b.GELDSCHULDEN_ROLLE) if buerg else []
-    ids = sorted(set(ids) | {z["herkunft_id"] for z in (*zins, *buerg,
+    ids = sorted(set(ids) | {z["herkunft_id"] for z in (*zins, *buerg, *integriert,
                                                         *rueckstellung, *geldschulden)
                              if z.get("herkunft_id") is not None})
 
@@ -2992,6 +3000,16 @@ def haushalt_schulden(
             "geldschulden": geldschulden,
             "abgrenzung": _b.ABGRENZUNG,
         },
+        # Die dritte Zahl — nur der jüngste Stichtag, und ausdrücklich ohne
+        # Reihe. `anteil_unter_50` wird hier gerechnet und nicht im Frontend:
+        # Er entscheidet, wie die Zahl gelesen werden darf, und er ändert sich
+        # mit jeder Ausgabe.
+        "integrierte_schulden": {
+            "stichtag": juengste,
+            "anteil_unter_50": _i.anteil_unter_50(juengste) if juengste else None,
+            "abgrenzung": _i.ABGRENZUNG,
+            "keine_reihe": _i.KEINE_REIHE,
+        } if juengste else None,
         # Leer, solange kein Jahresabschluss eingelesen ist — die Seite lässt
         # den Block dann weg, statt eine Null zu zeigen.
         "zinslast": zins,

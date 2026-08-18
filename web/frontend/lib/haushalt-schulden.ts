@@ -54,6 +54,25 @@ export type SchuldenDaten = {
     geldschulden: { jahr: number; wert: number | null; herkunft_id: number | null }[];
     abgrenzung: string;
   };
+  /** Die dritte Schuldenzahl — was der ganze „Konzern Stadt" anteilig
+   *  schuldet. `null`, solange der Tabellenband nicht eingelesen ist.
+   *
+   *  **Nur ein Stichtag, nie eine Kurve.** Der Berichtskreis wechselt zwischen
+   *  den Ausgaben; die Quelle rät selbst davon ab, Jahrgänge zu vergleichen.
+   *  `anteil_unter_50` kommt gerechnet aus dem Backend und ist keine
+   *  Nebensache: Er sagt, welcher Teil der Summe aus Unternehmen stammt, für
+   *  die die Stadt nicht haftet (2024: 58 %). */
+  integrierte_schulden?: {
+    stichtag: {
+      jahr: number; insgesamt: number; je_einwohner: number | null;
+      kernhaushalt: number | null; extrahaushalte: number | null;
+      sonstige: number | null; bevoelkerung: number | null;
+      veraenderung: number | null; herkunft_id: number | null;
+    };
+    anteil_unter_50: number | null;
+    abgrenzung: string;
+    keine_reihe: string;
+  } | null;
   herkunft: Record<string, Herkunft>;
 };
 
