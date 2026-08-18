@@ -27,6 +27,7 @@ export default defineConfig({
 					items: [
 						{ slug: 'architektur' },
 						{ slug: 'betrieb' },
+						{ slug: 'release-dossier' },
 					],
 				},
 				{

@@ -46,6 +46,13 @@ import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 
+//: Kleine Zahlen schreibt der Bereich aus („aus sechs Berichten"), große als
+//: Ziffern. Die Grenze liegt bei zwölf — darüber wird es zum Zungenbrecher.
+const ZAHLWORT: Record<number, string> = {
+  1: "einem", 2: "zwei", 3: "drei", 4: "vier", 5: "fünf", 6: "sechs",
+  7: "sieben", 8: "acht", 9: "neun", 10: "zehn", 11: "elf", 12: "zwölf",
+};
+
 const QUELLEN = ["kennzahlen", "bilanz"] as const;
 const FELDER = ["kennzahlen"] as const;
 type Daten = HaushaltAuswahl<(typeof FELDER)[number]>;
@@ -69,14 +76,19 @@ function Standtafel({
 }) {
   return (
     <div className="flex flex-col gap-4">
-      {GRUPPEN.map((g) => (
+      {GRUPPEN.map((g, i) => (
         <section key={g.titel} className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
             {g.titel}
           </p>
           <p className="mt-1 max-w-[70ch] text-[13px] leading-relaxed text-muted-foreground">
-            {g.frage} <span className="text-foreground/70">Eine Zahl antippen zeigt
-            ihren Verlauf.</span>
+            {g.frage}
+            {/* Der Hinweis steht EINMAL, an der ersten Gruppe. Dreimal
+                wiederholt las er sich wie eine Warnung. */}
+            {i === 0 && (
+              <span className="text-foreground/70"> Eine Zahl antippen zeigt
+              ihren Verlauf.</span>
+            )}
           </p>
           <ul className="mt-3 grid gap-2 sm:grid-cols-2 desk:grid-cols-3">
             {g.keys.map((key) => {
@@ -300,7 +312,7 @@ export default function KennzahlenSeite() {
               Am Ende jedes Rechenschaftsberichts dampft die Stadt ihren ganzen
               Jahresabschluss auf dreizehn Kennzahlen ein — und druckt darunter,
               wie sie jede davon rechnet. {jahre[0]}–{jahre[jahre.length - 1]} aus{" "}
-              {berichte.length} Berichten.
+              {ZAHLWORT[berichte.length] ?? berichte.length} Berichten.
             </p>
           </div>
           <a href={quelleUrl} target="_blank" rel="noopener noreferrer"
@@ -348,7 +360,7 @@ export default function KennzahlenSeite() {
         {korrekturen.length > 0 && (
           <p className="max-w-[78ch] text-[12.5px] leading-relaxed text-muted-foreground">
             Angezeigt wird jeweils der Wert aus dem <strong>jüngsten</strong> Bericht,
-            der das Jahr druckt. Die älteren Stände stehen weiter in unserer
+            in dem das Jahr vorkommt. Die älteren Stände stehen weiter in unserer
             Datenbank — sie sind der Beleg dafür, dass es die Korrektur gab.
           </p>
         )}
