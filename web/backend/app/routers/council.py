@@ -18,6 +18,7 @@ from council.goals import GOALS
 from council.parties import faction_label, normalize_party, order_key
 from council import ausgabenreihe as ausgabenreihe_mod
 from council import spenden as spenden_mod
+from council import steuertabellen
 from council import beteiligungsbericht, qa
 from council import ernte
 from council import importance
@@ -876,6 +877,18 @@ def haushalt_uebersicht(
       **Die Namen der Gebenden liefert dieser Block nicht**, und das ist
       keine Lücke, die sich schließt: Sie stehen nur in der Anlage
       „Zuwendungsliste", die nicht im Bestand ist (``council/spenden.py``).
+    - ``steuerplan``: je Steuerart und Jahr der Ansatz des Haushaltsplans neben
+      dem Rechnungsergebnis (Jahrbuch-Tabelle 1103). ``vorlaeufig`` ist die
+      Angabe der Quelle über sich selbst — die jüngste Spalte heißt dort
+      „vorläufiges Rechnungsergebnis". Die ``art``-Werte sind **dieselben** wie
+      in ``steuern``; daran hängt die Prüfung der Jahresbeschriftung.
+    - ``hebesaetze``: die Realsteuer-Hebesätze je **Änderungsjahr** seit 1980
+      (Tabelle 1105). Die Jahre dazwischen fehlen nicht, sie ändern nichts —
+      ein Satz gilt bis zur nächsten Änderung. Wer die Reihe zeichnet, zeichnet
+      eine Treppe und interpoliert nicht. ``bemessung_neu`` nennt die Jahre, in
+      denen sich die Bemessungsgrundlage mitänderte; **ohne diese Angabe darf
+      kein Hebesatz-Sprung angezeigt werden**, denn 2025 stieg der Satz um
+      21 %, während das Aufkommen um 4,6 % sank.
 
     Fehlende Jahre (Datenlücken) fehlen schlicht in ``jahre`` — das Frontend
     zeigt Lücken ehrlich, statt zu interpolieren."""
@@ -942,6 +955,30 @@ def haushalt_uebersicht(
             "ohne_beleg": store.get_spenden_verworfen(),
             "schwellen": [{"gremium": g, "ab": unten, "bis": oben}
                           for g, unten, oben in spenden_mod.SCHWELLEN],
+        },
+        # Die beiden Steuertabellen des Jahrbuchs (council/steuertabellen.py).
+        # Sie gehören zusammen in EINEN Block, weil sie auf derselben Seite
+        # zusammen gelesen werden: Ein Hebesatz ohne das Aufkommen daneben ist
+        # irreführend (2025: Satz +21 %, Aufkommen −4,6 %).
+        #
+        # `abgrenzung` reist mit den Zahlen, nicht im Frontend — dieselbe Regel
+        # wie bei `ausgabenreihe.regelwerke`: Eine Legende, die es in zwei
+        # Sprachen gibt, driftet.
+        "steuerplan": {
+            "zeilen": store.get_steuerplan(),
+            "abgrenzung": steuertabellen.ABGRENZUNG_1103,
+        },
+        "hebesaetze": {
+            # NUR die Änderungsjahre — die Jahre dazwischen fehlen nicht,
+            # sondern haben nichts geändert. Wer diese Reihe zeichnet, zeichnet
+            # eine TREPPE: Ein Satz gilt bis zur nächsten Änderung, und
+            # zwischen zwei Stufen wird nicht interpoliert.
+            "zeilen": store.get_hebesaetze(),
+            "abgrenzung": steuertabellen.ABGRENZUNG_1105,
+            # Jahre, in denen sich die BEMESSUNGSGRUNDLAGE mitänderte. Ohne
+            # diese Angabe liest sich „Hebesatz +21 %" als „alle zahlen 21 %
+            # mehr", und das war 2025 nachweislich falsch.
+            "bemessung_neu": steuertabellen.BEMESSUNG_NEU,
         },
     }
 
