@@ -40,51 +40,77 @@ def diff_tagesordnung(alt: list[dict], neu: list[dict]) -> dict:
     "umformuliert": [(alt, neu)], "vorlage": [(alt, neu)]} — Items sind dicts
     mit item_number/title/vorlage_nr (optional is_public). Welche Punkte
     verglichen werden, entscheidet der Aufrufer."""
-    alt_nach_titel: dict[str, dict] = {}
+    # Titel sind NICHT eindeutig: Nichtöffentliche Teile führen reihenweise
+    # TOPs namens „gesperrte Information". Ein Titel→Punkt-dict ließ alle
+    # Namensvettern am ERSTEN andocken — jede Änderungsmeldung einer solchen
+    # Sitzung trug Phantom-Zeilen „Verschoben · N 11 → N 12" (aufgefallen an
+    # der Demo-Mail vom 18.08.). Deshalb Kandidaten-LISTEN: erst binden sich
+    # die nummerntreuen Paare, dann die übrigen der Reihe nach.
+    alt_nach_titel: dict[str, list[dict]] = {}
     for i in alt:
-        alt_nach_titel.setdefault(_norm_titel(i.get("title")), i)
-    neu_nach_titel: dict[str, dict] = {}
+        alt_nach_titel.setdefault(_norm_titel(i.get("title")), []).append(i)
+    neu_nach_titel: dict[str, list[dict]] = {}
     for i in neu:
-        neu_nach_titel.setdefault(_norm_titel(i.get("title")), i)
+        neu_nach_titel.setdefault(_norm_titel(i.get("title")), []).append(i)
     alt_nach_nummer = {str(i.get("item_number")): i for i in alt}
 
     ergebnis = {"neu": [], "entfernt": [], "verschoben": [], "umformuliert": [],
                 "vorlage": [], "anlagen": []}
+    benutzt: set[int] = set()   # id() der verbrauchten Alt-Zeilen
+    paare: list[tuple[dict, dict]] = []
+    offen: list[dict] = []
     for i in neu:
-        t = _norm_titel(i.get("title"))
-        vorher = alt_nach_titel.get(t)
-        if vorher is not None:
-            if str(vorher.get("item_number")) != str(i.get("item_number")):
-                ergebnis["verschoben"].append((vorher, i))
-            elif _norm_vorlage(vorher.get("vorlage_nr")) != _norm_vorlage(i.get("vorlage_nr")):
-                # Der häufigste stille Fall: Ein TOP steht ohne Vorlage auf der
-                # Liste, die Verwaltung reicht sie nach. Nummer und Titel
-                # bleiben, der Tagesordnungs-Hash ändert sich trotzdem — und
-                # die Änderungsmeldung hatte dazu bis hierher kein Wort
-                # (Tims Befund 17.08.).
-                ergebnis["vorlage"].append((vorher, i))
-            elif ("anlagen" in vorher and "anlagen" in i
-                  and anlagen_schluessel(vorher.get("anlagen"))
-                  != anlagen_schluessel(i.get("anlagen"))):
-                # Anhänge kamen dazu oder verschwanden (Tims Wunsch 18.08.) —
-                # nur wenn BEIDE Stände die Anlagen kennen; alte Snapshots
-                # ohne das Feld sollen keine erfundenen Neuzugänge melden.
-                # Nach der Vorlage geprüft: Eine nachgereichte Vorlage hängt
-                # ihr PDF oft auch als Anlage an — das wäre sonst doppelt.
-                ergebnis["anlagen"].append((vorher, i))
-            continue
+        kandidaten = alt_nach_titel.get(_norm_titel(i.get("title")), [])
+        treffer = next((k for k in kandidaten if id(k) not in benutzt
+                        and str(k.get("item_number")) == str(i.get("item_number"))), None)
+        if treffer is None:
+            offen.append(i)
+        else:
+            benutzt.add(id(treffer))
+            paare.append((treffer, i))
+    rest: list[dict] = []
+    for i in offen:
+        kandidaten = [k for k in alt_nach_titel.get(_norm_titel(i.get("title")), [])
+                      if id(k) not in benutzt]
+        if kandidaten:
+            benutzt.add(id(kandidaten[0]))
+            paare.append((kandidaten[0], i))
+        else:
+            rest.append(i)
+
+    for vorher, i in paare:
+        if str(vorher.get("item_number")) != str(i.get("item_number")):
+            ergebnis["verschoben"].append((vorher, i))
+        elif _norm_vorlage(vorher.get("vorlage_nr")) != _norm_vorlage(i.get("vorlage_nr")):
+            # Der häufigste stille Fall: Ein TOP steht ohne Vorlage auf der
+            # Liste, die Verwaltung reicht sie nach. Nummer und Titel
+            # bleiben, der Tagesordnungs-Hash ändert sich trotzdem — und
+            # die Änderungsmeldung hatte dazu bis hierher kein Wort
+            # (Tims Befund 17.08.).
+            ergebnis["vorlage"].append((vorher, i))
+        elif ("anlagen" in vorher and "anlagen" in i
+              and anlagen_schluessel(vorher.get("anlagen"))
+              != anlagen_schluessel(i.get("anlagen"))):
+            # Anhänge kamen dazu oder verschwanden (Tims Wunsch 18.08.) —
+            # nur wenn BEIDE Stände die Anlagen kennen; alte Snapshots
+            # ohne das Feld sollen keine erfundenen Neuzugänge melden.
+            # Nach der Vorlage geprüft: Eine nachgereichte Vorlage hängt
+            # ihr PDF oft auch als Anlage an — das wäre sonst doppelt.
+            ergebnis["anlagen"].append((vorher, i))
+
+    for i in rest:
         # Titel neu — trägt die Nummer vorher einen ANDEREN Titel, ist der
         # Punkt umformuliert worden (gleiche Stelle, neuer Wortlaut) …
         an_nummer = alt_nach_nummer.get(str(i.get("item_number")))
-        if an_nummer is not None and _norm_titel(an_nummer.get("title")) not in neu_nach_titel:
+        if (an_nummer is not None and id(an_nummer) not in benutzt
+                and _norm_titel(an_nummer.get("title")) not in neu_nach_titel):
+            benutzt.add(id(an_nummer))
             ergebnis["umformuliert"].append((an_nummer, i))
         else:  # … sonst ist er schlicht neu.
             ergebnis["neu"].append(i)
-    umformuliert_alt = {_norm_titel(a.get("title")) for a, _ in ergebnis["umformuliert"]}
-    for i in alt:
-        t = _norm_titel(i.get("title"))
-        if t not in neu_nach_titel and t not in umformuliert_alt:
-            ergebnis["entfernt"].append(i)
+    # Entfernt ist, was keinen Partner gefunden hat — auch der überzählige
+    # Namensvetter, den die Titel-Sicht früher übersah.
+    ergebnis["entfernt"] = [i for i in alt if id(i) not in benutzt]
     return ergebnis
 
 
