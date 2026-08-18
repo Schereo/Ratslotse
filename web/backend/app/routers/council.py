@@ -7,6 +7,7 @@ import math
 import time
 from collections import Counter, defaultdict
 from datetime import date
+from typing import Callable
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import FileResponse, StreamingResponse
@@ -815,6 +816,7 @@ def haushalt_dokumente(
 
 @router.get("/haushalt")
 def haushalt_uebersicht(
+    felder: str | None = None,
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
 ) -> dict:
@@ -892,11 +894,19 @@ def haushalt_uebersicht(
       21 %, während das Aufkommen um 4,6 % sank.
 
     Fehlende Jahre (Datenlücken) fehlen schlicht in ``jahre`` — das Frontend
-    zeigt Lücken ehrlich, statt zu interpolieren."""
-    return {
-        "jahre": {str(y): store.get_haushalt(y) for y in store.haushalt_years()},
-        "steuern": store.get_steuereinnahmen(),
-        "steuerkraft": store.get_steuerkraft(),
+    zeigt Lücken ehrlich, statt zu interpolieren.
+
+    ``felder`` schneidet die Antwort auf das zu, was die aufrufende Seite
+    wirklich rendert (kommagetrennt, z. B. ``?felder=jahre,produkt_jahre``).
+    Ohne den Parameter kommt alles — der Vertrag von vorher gilt unverändert
+    weiter. Die Werte sind hier bewusst **Bauanweisungen** und keine fertigen
+    Listen: Ein nicht angefordertes Feld soll nicht nur ungesendet bleiben,
+    sondern gar nicht erst aus der Datenbank gelesen werden.
+    """
+    bausteine: dict[str, Callable[[], object]] = {
+        "jahre": lambda: {str(y): store.get_haushalt(y) for y in store.haushalt_years()},
+        "steuern": store.get_steuereinnahmen,
+        "steuerkraft": store.get_steuerkraft,
         # Die Zeile darüber ist unvollständig, und zwar systematisch: Der
         # Open-Data-Datensatz 1106 führt nur zwei der drei Komponenten des
         # Finanzausgleichs (Gemeinde- und Kreisaufgaben). Die dritte —
@@ -904,40 +914,34 @@ def haushalt_uebersicht(
         # der Summe — steht nur beim Land. Sie kommt hier als eigenes Feld
         # dazu, in **Tausend Euro** und mit der Jahresangabe des Landes
         # (Ausgleichsjahr). Näheres in council/steuerkraft.py.
-        "finanzausgleich": store.get_finanzausgleich(),
-        "einwohner": store.einwohner_aktuell(),
+        "finanzausgleich": store.get_finanzausgleich,
+        "einwohner": store.einwohner_aktuell,
         # Aus den Jahresabschlüssen (RIS-Anlagen): Ansatz UND Ergebnis je
         # Posten — „geplant gegen tatsächlich" und die Erträge nach Arten.
         # `plan` ist die Bezugsgröße der Abweichung, `ansatz` der
         # ursprüngliche Haushaltsansatz; `plan_art` sagt, welche gemeint ist.
-        "ergebnisrechnung": store.get_ergebnisrechnung(),
+        "ergebnisrechnung": store.get_ergebnisrechnung,
         # Dieselben Dokumente, Abschnitt 4.1: was tatsächlich geflossen ist.
         # Die Ergebnisrechnung darüber weist für 2024 einen Überschuss aus,
         # diese Tabelle im selben Heft einen Finanzmittel-Fehlbetrag — beides
         # stimmt, und ohne die zweite Zahl entsteht ein falscher Eindruck.
-        "finanzrechnung": store.get_finanzrechnung(),
+        "finanzrechnung": store.get_finanzrechnung,
         # Die Planjahre: dieselbe Postengliederung für Jahre, die noch keinen
         # Abschluss haben. `art` trennt den Haushaltsansatz von der
         # mittelfristigen Finanzplanung — ohne diese Angabe darf keine Zahl
         # aus dieser Liste angezeigt werden.
-        "ergebnishaushalt": store.get_ergebnishaushalt(),
-        "ansatz_jahre": store.ansatz_jahre(),
-        "abweichungsgruende": store.get_abweichungsgruende(),
-        "pruefbericht_quellen": store.get_pruefbericht_quellen(),
-        # Woher jede dieser Zeilen stammt: je Dokument-und-Abschnitt ein
-        # Eintrag mit Fundstelle, bestandener Rechenprobe und der stabilen
-        # `document_id`. Die Datenzeilen verweisen per `herkunft_id` darauf.
-        # Als eigene Liste statt an jede Zeile gehängt: Ein Jahrgang teilt
-        # sich eine Herkunft über rund 200 Posten.
-        "herkunft": {str(h["id"]): h for h in store.get_herkunft()},
-        "produkt_jahre": store.produkte_jahre(),
+        "ergebnishaushalt": store.get_ergebnishaushalt,
+        "ansatz_jahre": store.ansatz_jahre,
+        "abweichungsgruende": store.get_abweichungsgruende,
+        "pruefbericht_quellen": store.get_pruefbericht_quellen,
+        "produkt_jahre": store.produkte_jahre,
         # Jahre mit Teilhaushalts-Ist — füttert den Jahr-Umschalter auf
         # /haushalt/plan-ist, ohne dass das Frontend die Liste durchsucht.
-        "plan_ist_jahre": store.plan_ist_jahre(),
+        "plan_ist_jahre": store.plan_ist_jahre,
         # Die lange Reihe seit 1972. Die Begriffe reisen mit den Zahlen, statt
         # im Frontend zu stehen: Sie sind Angaben der Quelle wie der Betrag
         # selbst, und eine Legende, die es in zwei Sprachen gibt, driftet.
-        "ausgabenreihe": {
+        "ausgabenreihe": lambda: {
             "zeilen": store.get_ausgabenreihe(),
             "naht_ab": ausgabenreihe_mod.NAHT_AB,
             "regelwerke": {
@@ -965,7 +969,7 @@ def haushalt_uebersicht(
         # **keine** Summe: Eine Verpflichtungsermächtigung bindet künftige
         # Jahre, sie fließt nicht in diesem. Der Bericht zählt sie ebenso
         # getrennt.
-        "nachbewilligungen": {
+        "nachbewilligungen": lambda: {
             "serie": store.get_nachbewilligungen(),
             "jahre": store.get_nachbewilligung_jahre(),
             "kanaele": nachbewilligungen_mod.KANAELE,
@@ -973,7 +977,7 @@ def haushalt_uebersicht(
         # Zuwendungen an die Stadt. `ohne_beleg` reist mit den Zahlen mit,
         # damit die Seite die Lücke anschreiben kann, statt sie stillschweigend
         # aus der Summe zu lassen — sechs Zeilen, jede mit ihrem Grund.
-        "spenden": {
+        "spenden": lambda: {
             "jahre": _spenden_jahre(store.get_spenden()),
             "vorlagen": store.get_spenden(),
             "ohne_beleg": store.get_spenden_verworfen(),
@@ -988,11 +992,11 @@ def haushalt_uebersicht(
         # `abgrenzung` reist mit den Zahlen, nicht im Frontend — dieselbe Regel
         # wie bei `ausgabenreihe.regelwerke`: Eine Legende, die es in zwei
         # Sprachen gibt, driftet.
-        "steuerplan": {
+        "steuerplan": lambda: {
             "zeilen": store.get_steuerplan(),
             "abgrenzung": steuertabellen.ABGRENZUNG_1103,
         },
-        "hebesaetze": {
+        "hebesaetze": lambda: {
             # NUR die Änderungsjahre — die Jahre dazwischen fehlen nicht,
             # sondern haben nichts geändert. Wer diese Reihe zeichnet, zeichnet
             # eine TREPPE: Ein Satz gilt bis zur nächsten Änderung, und
@@ -1005,6 +1009,65 @@ def haushalt_uebersicht(
             "bemessung_neu": steuertabellen.BEMESSUNG_NEU,
         },
     }
+
+    gewuenscht = {f.strip() for f in (felder or "").split(",") if f.strip()}
+    unbekannt = sorted(gewuenscht - set(bausteine) - {"herkunft"})
+    if unbekannt:
+        # Lieber ein lauter Fehler als eine Seite, der still ein Block fehlt:
+        # Ein Tippfehler im `felder`-Wert wäre sonst nicht von „dieses Feld ist
+        # eben leer" zu unterscheiden — und leere Blöcke sind in diesem Bereich
+        # eine Aussage über die Daten, keine über den Aufruf.
+        raise HTTPException(400, f"Unbekannte Felder: {', '.join(unbekannt)}")
+
+    daten = {name: bau() for name, bau in bausteine.items()
+             if not gewuenscht or name in gewuenscht}
+    # Woher jede dieser Zeilen stammt: je Dokument-und-Abschnitt ein Eintrag
+    # mit Fundstelle, bestandener Rechenprobe und der stabilen `document_id`.
+    # Die Datenzeilen verweisen per `herkunft_id` darauf. Als eigene Liste
+    # statt an jede Zeile gehängt: Ein Jahrgang teilt sich eine Herkunft über
+    # rund 200 Posten.
+    #
+    # Es reisen NUR die Einträge mit, auf die eine gesendete Zeile zeigt. Bis
+    # 08/2026 ging die vollständige Tabelle mit — bei 937 Einträgen waren das
+    # 753 KB, von denen 643 Einträge (69 %) zu Zeilen gehörten, die dieser
+    # Endpunkt gar nicht liefert; sie stammen aus den neun Unter-Endpunkten,
+    # die ihre Herkunft längst so einschränken. Unsichtbar ist das, weil die
+    # Karte nirgends durchlaufen, sondern ausschließlich per `herkunft_id`
+    # nachgeschlagen wird (`lib/herkunft.ts`).
+    #
+    # Ohne `felder` bleibt sie drin, weil der Vertrag von vorher weitergilt.
+    # Angefordert wird sie derzeit von niemandem: Die acht Seiten, die diesen
+    # Endpunkt lesen, belegen ihre Zahlen über `/haushalt/dokumente` und
+    # `lib/haushalt-quellen.ts`; ihr Typ `HaushaltDaten` führt das Feld gar
+    # nicht. Das ist kein Versehen, sondern zwei Wege zum selben Zweck — der
+    # Beleg-Chip dieser Seiten hängt am Quellen-Schlüssel, nicht an der Zeile.
+    if not gewuenscht or "herkunft" in gewuenscht:
+        daten["herkunft"] = {str(h["id"]): h
+                             for h in store.get_herkunft(sorted(_herkunft_ids(daten)))}
+    return daten
+
+
+def _herkunft_ids(obj: object) -> set[int]:
+    """Jede ``herkunft_id``, die irgendwo in einer Antwort steckt.
+
+    Rekursiv und nicht als Aufzählung der bekannten Blöcke: Die Übersicht führt
+    19 davon, teils zwei Ebenen tief (``nachbewilligungen.jahre[].kanaele[]``).
+    Eine Liste zum Nachpflegen wäre die Sorte Code, die beim nächsten Block
+    vergessen wird — und der Fehler fiele erst auf, wenn irgendwo ein
+    Beleg-Chip fehlt. ``herkunft_id`` ist repo-weit der einzige Feldname, der
+    auf diese Tabelle zeigt (geprüft), also findet der Lauf alles."""
+    if isinstance(obj, dict):
+        gefunden: set[int] = set()
+        for schluessel, wert in obj.items():
+            if schluessel == "herkunft_id":
+                if wert is not None:
+                    gefunden.add(int(wert))
+            else:
+                gefunden |= _herkunft_ids(wert)
+        return gefunden
+    if isinstance(obj, (list, tuple)):
+        return set().union(*(_herkunft_ids(x) for x in obj)) if obj else set()
+    return set()
 
 
 def _spenden_jahre(vorlagen: list[dict]) -> list[dict]:
