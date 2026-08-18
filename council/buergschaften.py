@@ -83,6 +83,17 @@ ABSCHNITT = "6.2.10 Eventualverbindlichkeiten"
 #: Die Zeile der frühen Übersichtstabelle (2019/2020).
 TABELLENZEILE = "Bürgschaftsverpflichtungen"
 
+#: Was diese Zahl ist und was sie nicht ist — reist mit den Zahlen statt im
+#: Frontend zu stehen, dieselbe Regel wie bei `ausgabenreihe.ABGRENZUNG`: Eine
+#: Erklärung, die es in zwei Sprachen gibt, driftet. Und ohne sie liest sich
+#: „220 Millionen" wie eine Rechnung, die demnächst kommt.
+ABGRENZUNG = (
+    "Eine Bürgschaft ist keine Schuld der Stadt. Sie verspricht damit, für ein "
+    "Darlehen einzuspringen, das jemand anderes aufgenommen hat — meist eine "
+    "ihrer eigenen Gesellschaften. Gezahlt wird nur, wenn die zahlungsunfähig "
+    "wird. Deshalb steht der Bestand nicht in der Bilanz, sondern als "
+    "„Eventualverbindlichkeit“ im Anhang.")
+
 PROBE_KETTE = "buergschaft_kette"
 PROBE_TABELLE = "buergschaft_tabelle"
 
@@ -108,9 +119,15 @@ _EURO = re.compile(r"(\d{1,3}(?:\.\d{3})*,\d{2})")
 _SATZ = re.compile(
     r"Der\s+Bürgschaftsbestand\s+hat\s+sich\s+(?:in|im\s+Jahr)\s+(\d{4})(.{0,400}?)"
     r"(?:erhöht|verringert|verändert)", re.S)
-#: Der Grund, den das Dokument selbst nennt — nur der Satz danach, nicht mehr.
+#: Der Grund, den das Dokument selbst nennt — der VOLLSTÄNDIGE Satz, samt
+#: seiner Einleitung („Der Grund für die deutliche Erhöhung ist …"). Ein
+#: erster Entwurf schnitt die Einleitung ab und lieferte „die Übernahme von
+#: Bürgschaften …" — inhaltlich richtig, aber als kleingeschriebenes
+#: Satzfragment, das auf der Seite falsch aussieht. Den Satz zu kürzen und
+#: dann seinen ersten Buchstaben groß zu schreiben wäre die schlechtere
+#: Lösung: Das ist dann nicht mehr der Wortlaut der Stadt.
 _GRUND = re.compile(
-    r"(?:Der\s+Grund[^.]{0,60}ist|Hintergrund\s+ist)[,\s](.{0,320}?\.)", re.S)
+    r"((?:Der\s+Grund[^.]{0,60}?ist|Hintergrund\s+ist)\b.{0,320}?\.)", re.S)
 _KLINIKUM = re.compile(
     r"(\d{1,3},\d)\s*Millionen\s*Euro", re.S)
 

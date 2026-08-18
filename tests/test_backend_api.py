@@ -3893,3 +3893,49 @@ def test_haushalt_schickt_nur_belegte_herkunft(client):
     # gesendete Zeile mehr auf ihren Beleg — dann reist er auch nicht mit.
     schmal = client.get("/api/council/haushalt?felder=steuern,herkunft").json()
     assert schmal["herkunft"] == {}
+
+
+def test_haushalt_schulden_stellt_buergschaften_neben_die_eigenen_schulden(client):
+    """Die zweite, größere Zahl der Seite — und ihre beiden Bezugsgrößen.
+
+    Drei Zahlen müssen zusammen herauskommen, sonst führt jede einzelne in die
+    Irre: das verbürgte Volumen, die eigenen Geldschulden daneben und die
+    Rückstellung für den erwarteten Ausfall. Das Volumen allein liest sich wie
+    eine Rechnung, die demnächst kommt; die Rückstellung allein wie das ganze
+    Risiko.
+    """
+    from council import buergschaften as bg
+    from council import herkunft as h_mod
+
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    try:
+        cs.save_buergschaften([{
+            "jahr": 2024, "bestand": 220_300_000.0, "genau": False,
+            "aus_folgejahr": False, "quelle": "anhang",
+            "grund": "Hintergrund ist, dass die verbürgten Bestandsdarlehen "
+                     "seitens der Beteiligungen getilgt wurden.",
+            "einzelbetrag": None, "proben": [bg.PROBE_KETTE],
+        }], h_mod.Herkunft(art="ris", probe=[bg.PROBE_KETTE], dokument_id=295294,
+                           label="Jahresabschluss 2024 der Kernverwaltung",
+                           fundstelle=bg.ABSCHNITT,
+                           url="https://example.org/ja2024.pdf"))
+    finally:
+        cs.close()
+
+    b = client.get("/api/council/haushalt/schulden").json()["buergschaften"]
+    assert [z["jahr"] for z in b["reihe"]] == [2024]
+    z = b["reihe"][0]
+    assert z["bestand"] == 220_300_000.0
+    # Die Quelle rundet selbst — das muss an der Zahl stehen bleiben.
+    assert z["genau"] is False and z["aus_folgejahr"] is False
+    # Was eine Bürgschaft ist, reist mit den Zahlen statt im Frontend zu stehen.
+    assert "keine Schuld" in b["abgrenzung"]
+
+
+def test_haushalt_schulden_ohne_buergschaften_bleibt_leer(client):
+    """Auf Produktion sind die Haushalts-Tabellen leer (Umgebungs-Gate) — dann
+    zeigt die Seite den Block gar nicht, statt eine Null zu behaupten."""
+    _register(client)
+    b = client.get("/api/council/haushalt/schulden").json()["buergschaften"]
+    assert b["reihe"] == [] and b["rueckstellung"] == [] and b["geldschulden"] == []

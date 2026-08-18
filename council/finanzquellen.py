@@ -69,9 +69,9 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Callable
 
-from council import (bilanz, ergebnishaushalt, finanzberichte, herkunft,
-                     investitionsprogramm, konzernabschluss, pruefberichte,
-                     stellenplan)
+from council import (bilanz, buergschaften, ergebnishaushalt, finanzberichte,
+                     herkunft, investitionsprogramm, konzernabschluss,
+                     pruefberichte, stellenplan)
 from council.store import CouncilStore
 
 #: Wie lange nach dem erwarteten Monat ein fehlender Jahrgang als „die Stadt
@@ -1376,6 +1376,74 @@ def lies_stellenplaene(store: CouncilStore, p: Protokoll,
                                       for t in d["teile"].values()),
             "stellenplan_verworfen": verworfen,
             "stellenplan_unstimmig": unstimmig_gesamt}
+
+
+def lies_buergschaften(store: CouncilStore, p: Protokoll) -> dict:
+    """Den Bürgschaftsbestand aus den Jahresabschlüssen lesen.
+
+    Ein eigener Leser statt eines Blocks in ``lies_jahresabschluesse``, obwohl
+    er dieselben Dokumente noch einmal aufmacht: Der Bestand hängt an keiner
+    der dortigen Proben — reißt die Ergebnisrechnung eines Jahrgangs, ist sein
+    Bürgschaftsbestand trotzdem richtig, und umgekehrt. Zwei Schichten, die
+    einander nicht mitreißen sollen, gehören nicht in dieselbe Schleife.
+
+    Erst alles lesen, dann speichern: Die Kettenprobe braucht den Nachbarn
+    (``council/buergschaften.kettenprobe``), und ein Riss darf gar nicht erst
+    in den Bestand.
+    """
+    quelle = QUELLEN["jahresabschluss"]
+    rows = quelle.dokumente(store, "document_id, label, url, raw_text")
+
+    gefunden: list[dict] = []
+    beleg: dict[int, dict] = {}
+    for r in rows:
+        m = re.search(r"(20\d\d)", r["label"] or "")
+        if not m:
+            continue
+        jahr = int(m.group(1))
+        g = buergschaften.parse_bestand(r["raw_text"] or "", jahr)
+        if not g:
+            continue
+        gefunden.append(g)
+        beleg[jahr] = r
+
+    risse = buergschaften.kettenprobe(gefunden)
+    for x in risse:
+        p.warnen(f"  Bürgschafts-Kette gerissen: {x} — nichts gespeichert")
+    if risse:
+        # Anders als bei der Ergebnisrechnung fällt hier ALLES aus: Die Reihe
+        # hat sechs Zeilen, ein Widerspruch darin trifft ihre Aussage im Kern
+        # („der Bestand hat sich so und so entwickelt"). Einzelne Jahrgänge zu
+        # retten hieße, eine Entwicklung zu zeigen, die man gerade widerlegt
+        # hat.
+        return {"jahrgaenge": 0, "kette_gerissen": len(risse), "glieder": 0}
+
+    zeilen = buergschaften.reihe(gefunden)
+    glieder = sum(1 for g in gefunden if "vorjahr_bestand" in g)
+    for z in zeilen:
+        # Der Beleg ist das Dokument, in dem die Zahl STEHT — für 2021 also
+        # der Abschluss 2022. Auf den Abschluss 2021 zu zeigen wäre bequem
+        # und falsch: Dort steht sie nicht.
+        quell_jahr = z["jahr"] + 1 if z["aus_folgejahr"] else z["jahr"]
+        r = beleg.get(quell_jahr)
+        if not r:
+            continue
+        proben = [buergschaften.PROBE_TABELLE] if z["genau"] else []
+        if quell_jahr in {g["jahr"] for g in gefunden if "vorjahr_bestand" in g}:
+            proben.append(buergschaften.PROBE_KETTE)
+        einzeln = buergschaften.klinikum_betrag(z)
+        store.save_buergschaften(
+            [{**z, "einzelbetrag": einzeln, "proben": proben}],
+            herkunft.Herkunft(
+                art="ris", probe=proben or [buergschaften.PROBE_KETTE],
+                dokument_id=r["document_id"], label=r["label"], url=r["url"],
+                fundstelle=z["fundstelle"],
+                probe_ergebnis=(f"{z['bestand']/1e6:.1f} Mio. € Bestand"
+                                + ("" if z["genau"] else ", von der Quelle gerundet")),
+                stand=f"Jahresabschluss {quell_jahr}"))
+        woher = " (aus dem Folgejahr)" if z["aus_folgejahr"] else ""
+        p.sagen(f"  {z['jahr']}: {z['bestand']/1e6:7.1f} Mio. €{woher}")
+    return {"jahrgaenge": len(zeilen), "kette_gerissen": 0, "glieder": glieder}
 
 
 def lies_schlussbericht_fundstellen(store: CouncilStore, p: Protokoll,

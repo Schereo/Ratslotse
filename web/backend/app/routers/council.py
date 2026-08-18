@@ -2927,6 +2927,7 @@ def haushalt_schulden(
     Oberfläche kann den fehlenden Balken damit **erklären**, statt ihn als
     Null zu zeichnen oder still zu überspringen.
     """
+    from council import buergschaften as _b
     from council import schulden as _s
 
     zeilen = store.get_schulden()
@@ -2962,13 +2963,35 @@ def haushalt_schulden(
                 })
     except Exception:  # noqa: BLE001 — Zusatzangabe, nie Blocker für die Seite
         zins = []
-    ids = sorted(set(ids) | {z["herkunft_id"] for z in zins
-                             if z["herkunft_id"] is not None})
+
+    # Wofür die Stadt geradesteht — die zweite, größere Zahl auf dieser Seite.
+    # Sie ist KEINE Schuld: 2024 stehen 220,3 Mio. € Bürgschaften 43,7 Mio. €
+    # eigenen Geldschulden gegenüber, und die Stadt rechnet davon mit 1,3 Mio. €
+    # Ausfall (Bilanzposten 3.7). Alle drei Zahlen reisen zusammen, weil jede
+    # einzelne für sich irreführt: das Volumen als drohende Zahlung gelesen,
+    # die Rückstellung als Gesamtrisiko.
+    buerg = store.get_buergschaften()
+    rueckstellung = store.get_bilanz_posten(_b.RUECKSTELLUNG_ROLLE) if buerg else []
+    geldschulden = store.get_bilanz_posten(_b.GELDSCHULDEN_ROLLE) if buerg else []
+    ids = sorted(set(ids) | {z["herkunft_id"] for z in (*zins, *buerg,
+                                                        *rueckstellung, *geldschulden)
+                             if z.get("herkunft_id") is not None})
 
     return {
         "reihe": zeilen,
         "jahre": [z["jahr"] for z in zeilen],
         "abgrenzung": _s.ABGRENZUNG,
+        # `genau` und `aus_folgejahr` sind Angaben über den BELEG, nicht über
+        # die Zahl: 2019/2020 stehen auf den Cent im Dokument, ab 2022 rundet
+        # die Quelle selbst auf Zehntel-Millionen, und 2021 steht überhaupt
+        # nur im Abschluss des Folgejahres. Wer alle sechs gleich formatiert,
+        # behauptet eine Genauigkeit, die es für vier davon nicht gibt.
+        "buergschaften": {
+            "reihe": buerg,
+            "rueckstellung": rueckstellung,
+            "geldschulden": geldschulden,
+            "abgrenzung": _b.ABGRENZUNG,
+        },
         # Leer, solange kein Jahresabschluss eingelesen ist — die Seite lässt
         # den Block dann weg, statt eine Null zu zeigen.
         "zinslast": zins,

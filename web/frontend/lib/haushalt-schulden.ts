@@ -39,7 +39,44 @@ export type SchuldenDaten = {
    *
    *  Leer, solange kein Jahresabschluss eingelesen ist. */
   zinslast: { jahr: number; aufwand: number; herkunft_id: number | null }[];
+  /** Wofür die Stadt geradesteht — die zweite, größere Zahl dieser Seite.
+   *
+   *  Sie ist **keine Schuld**: eine Bürgschaft wird nur fällig, wenn die
+   *  verbürgte Gesellschaft nicht zahlt. Deshalb reisen drei Zahlen
+   *  zusammen, und keine darf allein stehen — das Volumen (2024: 220,3 Mio.),
+   *  die eigenen Geldschulden daneben (43,7 Mio.) und die Rückstellung für
+   *  den erwarteten Ausfall (1,3 Mio.). */
+  buergschaften?: {
+    reihe: Buergschaft[];
+    /** Bilanzposten 3.7 je Jahr — nur 2021–2024 im Bestand; die früheren
+     *  Abschlüsse gliedern die Rückstellungen anders. */
+    rueckstellung: { jahr: number; wert: number | null; herkunft_id: number | null }[];
+    geldschulden: { jahr: number; wert: number | null; herkunft_id: number | null }[];
+    abgrenzung: string;
+  };
   herkunft: Record<string, Herkunft>;
+};
+
+/** Ein Jahr Bürgschaftsbestand — mit zwei Angaben über seinen Beleg.
+ *
+ *  `genau` unterscheidet die beiden Darreichungsformen der Quelle: 2019/2020
+ *  stehen auf den Cent in einer Tabelle, ab 2022 nennt der Anhang nur noch
+ *  gerundete Millionen. `aus_folgejahr` trifft genau ein Jahr — 2021 nennt
+ *  seinen eigenen Bestand nicht, die Zahl steht nur im Abschluss von 2022.
+ *  Beides gehört an die Anzeige, sonst sehen sechs verschieden belegte
+ *  Jahrgänge gleich aus. */
+export type Buergschaft = {
+  jahr: number;
+  bestand: number;
+  genau: boolean;
+  aus_folgejahr: boolean;
+  quelle: string;
+  /** Die Begründung im Wortlaut der Stadt, wo das Dokument eine nennt. */
+  grund: string | null;
+  /** Die im Grund genannte Einzelzahl — 2022 die 135,9 Mio. fürs Klinikum. */
+  einzelbetrag: number | null;
+  proben: string[];
+  herkunft_id: number | null;
 };
 
 /** Die Zinslast des jüngsten Jahres, für das sie vorliegt — oder null.
