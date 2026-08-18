@@ -247,8 +247,27 @@ export type HaushaltDaten = {
  *  `herkunft` ist bewusst **nicht** dabei: Die Belege dieser Seiten hängen am
  *  Quellen-Schlüssel (`lib/haushalt-quellen.ts` + `/haushalt/dokumente`), nicht
  *  an der `herkunft_id` der Zeile. Wer sie doch braucht, fordert sie an. */
-export function haushaltUrl(felder: readonly (keyof HaushaltDaten)[]): string {
-  return `/council/haushalt?felder=${felder.join(",")}`;
+export function haushaltUrl(
+  felder: readonly (keyof HaushaltDaten)[],
+  /** Welche Posten der **Teilhaushalts-Ebene** die Seite aus der
+   *  Ergebnisrechnung braucht. Die Kernverwaltung kommt immer vollständig.
+   *
+   *  Der Block ist mit Abstand der größte (751 KB, davon 664 KB
+   *  Teilhaushalts-Zeilen), und fast niemand braucht ihn ganz:
+   *
+   *  * `"keine"` — nur die Kernverwaltung (`/haushalt/labor` rechnet nur mit ihr),
+   *  * `"20"` — dazu die Aufwendungen je Teilhaushalt; das Flussbild der
+   *    Übersicht zeichnet rechts genau diesen einen Posten,
+   *  * weglassen — alles (`/haushalt/plan-ist` und `/haushalt/bereich`
+   *    brauchen die volle Ebene).
+   *
+   *  Bewusst eine Aussage über die DATEN, nicht über die Ansicht: Wer morgen
+   *  einen zweiten Posten zeichnet, ändert hier eine Zahl statt am Endpunkt. */
+  thhPosten?: "keine" | string,
+): string {
+  const teile = [`felder=${felder.join(",")}`];
+  if (thhPosten !== undefined) teile.push(`thh_posten=${thhPosten}`);
+  return `/council/haushalt?${teile.join("&")}`;
 }
 
 /** Der Ausschnitt von `HaushaltDaten`, den `haushaltUrl(FELDER)` liefert. */

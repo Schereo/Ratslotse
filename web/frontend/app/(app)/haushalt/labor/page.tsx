@@ -25,7 +25,9 @@ import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 const FELDER = ["jahre", "produkt_jahre", "steuern", "steuerkraft", "einwohner", "ergebnisrechnung"] as const;
 
 export default function LaborPage() {
-  const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(haushaltUrl(FELDER));
+  // Das Labor rechnet ausschließlich mit der Kernverwaltung; die
+  // Teilhaushalts-Ebene der Ergebnisrechnung braucht es nicht.
+  const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(haushaltUrl(FELDER, "keine"));
   // Die Produktebene liegt nur für abgeschlossene Jahre vor — wir nehmen das
   // jüngste. Fehlt sie ganz, läuft das Labor ohne Vergleichsgrößen weiter.
   const produktJahr = data?.produkt_jahre?.at(-1) ?? null;

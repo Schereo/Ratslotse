@@ -817,6 +817,7 @@ def haushalt_dokumente(
 @router.get("/haushalt")
 def haushalt_uebersicht(
     felder: str | None = None,
+    thh_posten: str | None = None,
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
 ) -> dict:
@@ -898,6 +899,9 @@ def haushalt_uebersicht(
 
     ``felder`` schneidet die Antwort auf das zu, was die aufrufende Seite
     wirklich rendert (kommagetrennt, z. B. ``?felder=jahre,produkt_jahre``).
+    ``thh_posten`` schneidet zusätzlich INNERHALB der Ergebnisrechnung — sie
+    ist der größte Block, und ihre Teilhaushalts-Ebene braucht fast niemand
+    vollständig (s. :func:`_ergebnisrechnung`).
     Ohne den Parameter kommt alles — der Vertrag von vorher gilt unverändert
     weiter. Die Werte sind hier bewusst **Bauanweisungen** und keine fertigen
     Listen: Ein nicht angefordertes Feld soll nicht nur ungesendet bleiben,
@@ -920,7 +924,7 @@ def haushalt_uebersicht(
         # Posten — „geplant gegen tatsächlich" und die Erträge nach Arten.
         # `plan` ist die Bezugsgröße der Abweichung, `ansatz` der
         # ursprüngliche Haushaltsansatz; `plan_art` sagt, welche gemeint ist.
-        "ergebnisrechnung": store.get_ergebnisrechnung,
+        "ergebnisrechnung": lambda: _ergebnisrechnung(store, thh_posten),
         # Dieselben Dokumente, Abschnitt 4.1: was tatsächlich geflossen ist.
         # Die Ergebnisrechnung darüber weist für 2024 einen Überschuss aus,
         # diese Tabelle im selben Heft einen Finanzmittel-Fehlbetrag — beides
@@ -1045,6 +1049,43 @@ def haushalt_uebersicht(
         daten["herkunft"] = {str(h["id"]): h
                              for h in store.get_herkunft(sorted(_herkunft_ids(daten)))}
     return daten
+
+
+def _ergebnisrechnung(store: CouncilStore, thh_posten: str | None) -> list[dict]:
+    """Die Ergebnisrechnung, auf Wunsch ohne den Teilhaushalts-Ballast.
+
+    Die Tabelle führt zwei Ebenen in einer Liste: die Kernverwaltung
+    (``thh_nr`` = ``NULL``) und darunter dieselben Posten je Teilhaushalt. Die
+    zweite Ebene ist der Brocken — 1.381 von 1.566 Zeilen, 664 der 751 KB.
+
+    ``thh_posten`` sagt, welche Posten von der **Teilhaushalts-Ebene** gebraucht
+    werden; die Kernverwaltung kommt immer vollständig:
+
+    * ohne Angabe — alles, wie bisher (``/haushalt/plan-ist`` braucht es),
+    * ``keine`` — nur die Kernverwaltung (185 Zeilen, 87 KB),
+    * ``20`` oder ``12,20`` — nur diese Posten je Teilhaushalt.
+
+    Der letzte Fall ist der wichtigste: Das Flussbild der Übersicht zeichnet
+    rechts die Aufwendungen je Teilhaushalt, also **einen** Posten (Nr. 20).
+    Es braucht die Ebene, aber nicht ihre 170 Zeilen je Jahr — mit
+    ``thh_posten=20`` sind es 134 statt 751 KB, und das Bild ist dasselbe.
+
+    Der Parameter benennt bewusst DATEN und keine Ansicht („fluss", „labor"):
+    Eine Seite, die morgen einen zweiten Posten zeichnet, ändert eine Zahl in
+    ihrer Feldliste — nicht den Endpunkt.
+    """
+    zeilen = store.get_ergebnisrechnung()
+    if thh_posten is None:
+        return zeilen
+    if thh_posten.strip().lower() in {"keine", "kein", ""}:
+        erlaubt: set[int] = set()
+    else:
+        try:
+            erlaubt = {int(p) for p in thh_posten.split(",") if p.strip()}
+        except ValueError:
+            raise HTTPException(400, f"thh_posten erwartet Postennummern: {thh_posten}") from None
+    return [z for z in zeilen
+            if z.get("thh_nr") is None or z.get("nr") in erlaubt]
 
 
 def _herkunft_ids(obj: object) -> set[int]:

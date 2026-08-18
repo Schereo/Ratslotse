@@ -3825,6 +3825,69 @@ def test_haushalt_bleibt_ohne_spenden_ruhig(client):
     assert len(s["schwellen"]) == 3
 
 
+def test_haushalt_thh_posten_schneidet_die_ergebnisrechnung_zu(client):
+    """Die zweite Ebene der Ergebnisrechnung — der groesste Block im Bereich.
+
+    Die Tabelle fuehrt Kernverwaltung (``thh_nr`` NULL) und Teilhaushalte in
+    einer Liste; auf dev sind das 1.566 Zeilen, davon 1.381 aus der zweiten
+    Ebene. Fast keine Seite braucht sie ganz — aber das Flussbild der
+    Uebersicht braucht EINEN Posten daraus, und genau das muss der Zuschnitt
+    koennen, ohne dass jemand das Bild verliert.
+    """
+    from council import herkunft as h_mod
+
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    try:
+        h = h_mod.Herkunft(art="ris", probe="strukturprobe", dokument_id=295294,
+                           label="Jahresabschluss 2024",
+                           url="https://example.org/ja.pdf")
+        cs.save_ergebnisrechnung(2024, [
+            {"nr": 12, "bezeichnung": "Summe ordentliche Ertraege",
+             "ergebnis": 799_057_202.86, "ist_summe": 1},
+            {"nr": 20, "bezeichnung": "Summe ordentliche Aufwendungen",
+             "ergebnis": 764_400_000.0, "ist_summe": 1},
+        ], h)
+        # Zwei Teilhaushalts-Zeilen: eine, die das Flussbild braucht (Nr. 20),
+        # und eine, die nur Ballast ist.
+        cs.save_ergebnisrechnung(2024, [
+            {"nr": 20, "bezeichnung": "Summe ordentliche Aufwendungen",
+             "ergebnis": 75_300_000.0, "ist_summe": 1},
+            {"nr": 3, "bezeichnung": "Oeffentlich-rechtliche Entgelte",
+             "ergebnis": 1_200_000.0, "ist_summe": 0},
+        ], h, thh_nr=4, thh_name="Schule und Bildung")
+    finally:
+        cs.close()
+
+    def hole(**q):
+        teil = "&".join(f"{k}={v}" for k, v in q.items())
+        return client.get(f"/api/council/haushalt?felder=ergebnisrechnung&{teil}"
+                          ).json()["ergebnisrechnung"]
+
+    voll = hole()
+    assert len(voll) == 4, "ohne Parameter kommt alles — der alte Vertrag"
+
+    # `keine`: nur die Kernverwaltung.
+    kern = hole(thh_posten="keine")
+    assert {z["thh_nr"] for z in kern} == {None}
+    assert len(kern) == 2
+
+    # `20`: Kernverwaltung vollstaendig PLUS der eine Posten je Teilhaushalt —
+    # das ist der Datensatz, aus dem das Flussbild entsteht.
+    fluss = hole(thh_posten="20")
+    assert len(fluss) == 3
+    thh = [z for z in fluss if z["thh_nr"] is not None]
+    assert len(thh) == 1 and thh[0]["nr"] == 20
+    assert thh[0]["thh_name"] == "Schule und Bildung"
+    # Die Kernverwaltung wird NIE beschnitten — auch nicht auf die genannten
+    # Posten. Sonst fehlten der Uebersicht die Ertragsarten 1–11.
+    assert {z["nr"] for z in fluss if z["thh_nr"] is None} == {12, 20}
+
+    # Ein Tippfehler ist ein Fehler, keine stille Luecke — wie bei `felder`.
+    antwort = client.get("/api/council/haushalt?felder=ergebnisrechnung&thh_posten=zwanzig")
+    assert antwort.status_code == 400 and "zwanzig" in antwort.json()["detail"]
+
+
 def test_haushalt_felder_schneidet_zu_und_meldet_tippfehler(client):
     """``?felder=`` liefert genau das Angeforderte — und sonst nichts.
 

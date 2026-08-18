@@ -53,7 +53,9 @@ import {
 const FELDER = ["jahre", "ausgabenreihe", "ergebnisrechnung", "einwohner"] as const;
 
 export default function HaushaltPage() {
-  const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(haushaltUrl(FELDER));
+  // Nur den Aufwands-Posten je Teilhaushalt: Das Flussbild zeichnet rechts
+  // genau ihn. Die volle Ebene wären 795 statt 178 KB — bei identischem Bild.
+  const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(haushaltUrl(FELDER, "20"));
   const jahre = useMemo(() => (data ? jahreSortiert(data) : []), [data]);
   const [jahr, setJahr] = useState<number | null>(null);
   const [visual, setVisual] = useState<"balken" | "euro">("balken");
