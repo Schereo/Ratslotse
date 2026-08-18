@@ -1305,6 +1305,73 @@ def geld_kontext(store, frage: str, begriffe: str = "", typ: str = "thema") -> d
     return aus
 
 
+def geld_grafik(store, geld: dict) -> dict | None:
+    """Die Grafik zur Antwort — Rohreihen aus dem Store, nie vom Modell.
+
+    Der Chat kann neben dem Text strukturierte Blöcke zeigen (Debatten,
+    Presse, Steckbriefe). Das hier ist der nächste: Wo eine Frage eine
+    Zeitreihe berührt, bekommt die Antwort die Reihe als Bild dazu —
+    gerendert vom Grafik-Baukasten des Haushalts-Bereichs, mit denselben
+    Regeln (Ableseleiste, kein Tooltip, keine Bewertungsfarben).
+
+    DIE EINE REGEL, AN DER ALLES HÄNGT: Die Daten kommen aus dem Store, mit
+    denselben Zahlen, die auch in den Prompt gehen. Das Modell kann die
+    Grafik weder erfinden noch verfälschen — es weiß nicht einmal, dass es
+    sie gibt.
+
+    KURATIERTE LISTE, KEIN AUTOMATISMUS. Eine Grafik gibt es nur, wo eine
+    Reihe die Frage wirklich beantwortet — erste Ausbaustufe: Schulden
+    (Bestand seit 1995) und Steuern (Ist-Einnahmen seit 1998). Für
+    ``produkte`` oder ``pruefung`` erzwänge eine Reihe nichts. Höchstens
+    EINE Grafik je Antwort: Bei „Wie hoch sind Schulden und Steuern?"
+    gewinnt die Schulden-Reihe — sie ist die Bestandsfrage, und zwei
+    Diagramme im Chat wären ein Dashboard, kein Gespräch.
+
+    Auf Prod sind die Haushalts-Tabellen leer; dann kommt ``None``, und die
+    Antwort sieht aus wie bisher — das Gate erledigt sich über die Daten.
+    """
+    if geld.get("schulden"):
+        reihe = [{"jahr": r["jahr"], "wert": round(r["insgesamt"] / 1e6, 1)}
+                 for r in store.get_schulden() if r.get("insgesamt") is not None]
+        if len(reihe) >= 2:
+            s = geld["schulden"]
+            return {
+                "art": "schulden",
+                "titel": "Schuldenstand der Stadt",
+                "einheit": "Mio. €",
+                "nachkomma": 1,
+                "reihe": reihe,
+                # Die Abgrenzung reist mit der Grafik wie mit jeder Zahl:
+                # Ohne sie ist „337 Mio. €" eine von drei Zahlen, die alle
+                # „die Schulden der Stadt" heißen.
+                "hinweis": s.get("abgrenzung"),
+                "quelle": "Statistisches Jahrbuch der Stadt Oldenburg, Tabelle 1108",
+            }
+
+    if geld.get("steuern"):
+        # Die Art, die die Frage getroffen hat — `steuern_fuer_begriffe` hat
+        # sie schon aufgelöst („gewinnt die erste": sie ist die, nach der
+        # gefragt wurde; die weiteren sind Beifang der Synonyme).
+        art = geld["steuern"][0]["art"]
+        reihe = [{"jahr": r["jahr"], "wert": round(r["betrag"] / 1e6, 1)}
+                 for r in store.get_steuereinnahmen()
+                 if r["art"] == art and r.get("betrag") is not None]
+        if len(reihe) >= 2:
+            titel = ("Steuereinnahmen insgesamt" if art == "insgesamt"
+                     else f"{art} — Ist-Einnahmen")
+            return {
+                "art": "steuern",
+                "titel": titel,
+                "einheit": "Mio. €",
+                "nachkomma": 1,
+                "reihe": reihe,
+                "hinweis": ("Abrechnungszahlen der Stadt, keine Planwerte — "
+                            "je Jahr das, was tatsächlich eingenommen wurde."),
+                "quelle": "Statistisches Jahrbuch der Stadt Oldenburg, Ist-Steuereinnahmen",
+            }
+    return None
+
+
 # --- Die Bausteine, die daraus im Prompt werden ----------------------------
 
 def _beleg_text(b: dict | None) -> str:

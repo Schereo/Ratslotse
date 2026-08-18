@@ -1731,6 +1731,37 @@ class QaShareBody(BaseModel):
     presse: list[QaSharePresse] = Field(default_factory=list, max_length=10)
     anlagen: list[QaShareAnlage] = Field(default_factory=list, max_length=10)
     parteien: list[QaSharePartei] = Field(default_factory=list, max_length=12)
+    # Die Grafik zur Antwort (council/qa.py, geld_grafik) — als loses dict,
+    # weil der Client sie unverändert zurückreicht: Sie stammt aus DIESEM
+    # Backend, und ein zweites Schema hier wäre eine Kopie, die driftet.
+    # Begrenzt wird trotzdem: höchstens 60 Punkte, nur bekannte Felder.
+    grafik: dict | None = None
+
+
+def _grafik_pruefen(g: dict | None) -> dict | None:
+    """Nur durchlassen, was eine Grafik aus `geld_grafik` sein kann.
+
+    Der Snapshot ist öffentlich abrufbar, und `grafik` kommt als loses dict
+    vom Client — ungeprüft übernommen könnte dort beliebiger Inhalt landen
+    und über die Share-Seite ausgeliefert werden. Deshalb: feste Felder,
+    feste Typen, begrenzte Längen, alles andere fällt weg.
+    """
+    if not isinstance(g, dict):
+        return None
+    try:
+        reihe = [{"jahr": int(p["jahr"]), "wert": float(p["wert"])}
+                 for p in (g.get("reihe") or [])[:60]]
+    except (KeyError, TypeError, ValueError):
+        return None
+    if len(reihe) < 2:
+        return None
+    return {"art": str(g.get("art") or "")[:30],
+            "titel": str(g.get("titel") or "")[:120],
+            "einheit": str(g.get("einheit") or "")[:20],
+            "nachkomma": max(0, min(int(g.get("nachkomma") or 0), 3)),
+            "reihe": reihe,
+            "hinweis": (str(g["hinweis"])[:500] if g.get("hinweis") else None),
+            "quelle": (str(g["quelle"])[:200] if g.get("quelle") else None)}
 
 
 @router.post("/qa-share", status_code=status.HTTP_201_CREATED)
@@ -1750,6 +1781,7 @@ def qa_share_anlegen(
         "presse": [p.model_dump() for p in body.presse],
         "anlagen": [a.model_dump() for a in body.anlagen],
         "parteien": [p.model_dump() for p in body.parteien],
+        "grafik": _grafik_pruefen(body.grafik),
     }
     token = nwz.qa_share_anlegen(user["id"], body.frage, body.antwort,
                                  [q.model_dump() for q in body.quellen],
@@ -2408,7 +2440,8 @@ def _turn_speichern(nwz: Store, user: dict, body: AskBody, q_suche: str,
                     cited: list[int],
                     presse_rows: list[dict] | None = None,
                     debatten_rows: list[dict] | None = None,
-                    planungen: list[dict] | None = None) -> int | None:
+                    planungen: list[dict] | None = None,
+                    grafik: dict | None = None) -> int | None:
     """„Meine Gespräche" (6a): Turn ins laufende Gespräch hängen (oder eines
     eröffnen) — nur mit ausdrücklicher Einwilligung, nie als Blocker.
 
@@ -2441,7 +2474,10 @@ def _turn_speichern(nwz: Store, user: dict, body: AskBody, q_suche: str,
              "debatten": _debatten_kompakt(debatten_rows or []),
              # Der Ausblick gehört wie Presse und Debatten in den Snapshot,
              # sonst öffnet ein gespeichertes Gespräch ohne „Wie es weitergeht".
-             "planungen": planungen or []}, ensure_ascii=False)
+             "planungen": planungen or [],
+             # Und die Grafik aus demselben Grund: Ein gespeichertes Gespräch
+             # soll aussehen wie das Gespräch, aus dem es stammt.
+             "grafik": grafik}, ensure_ascii=False)
         if not nwz.qa_turn_speichern(gespraech_id, user["id"],
                                      body.question, answer_text, quellen_json):
             if neu:
@@ -2633,6 +2669,11 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # VORIGE Antwort um (eigener Prompt ohne Zusatz-Bausteine), die
             # Abfragen wären sicher umsonst.
             geld = {} if einfach else qa.geld_kontext(store, q_suche, expanded, typ)
+            # Die Grafik zur Antwort — Rohreihen aus dem Store, nie vom
+            # Modell (council/qa.py, geld_grafik). Das Modell weiß nicht
+            # einmal, dass es sie gibt: Sie hängt am Ereignis, nicht am
+            # Prompt.
+            grafik = qa.geld_grafik(store, geld) if geld else None
             # 5a/I-06: die kondensierte Frage mitschicken — der Kontext-Chip im
             # Frontend zeigt, worauf sich Anschlussfragen beziehen.
             yield _sse({"type": "sources", "mode": mode, "qtype": typ,
@@ -2647,6 +2688,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         # sehen ist, warum eine Antwort eine Zahl kannte —
                         # oder eben nicht.
                         "geldquellen": geld.get("facetten") or [],
+                        "grafik": grafik,
                         # Der Hintergrund geht IMMER in die Antwort; als eigene
                         # Karte erscheint er nur, wenn die Antwort ihn nicht
                         # ohnehin wiederholt (Definitionsfragen, Tims Befund).
@@ -2789,7 +2831,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                            candidates, cited,
                                            presse_rows=presse_rows,
                                            debatten_rows=debatten_rows,
-                                           planungen=planungen)
+                                           planungen=planungen,
+                                           grafik=grafik)
             yield _sse({"type": "done", "cited": cited, "timings": zeiten,
                         "gespraech_id": gespraech_id})
         except Exception:  # noqa: BLE001 — surface a terminal error to the client

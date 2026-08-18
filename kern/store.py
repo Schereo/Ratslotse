@@ -1556,7 +1556,10 @@ class Store:
                 "debatten": extras.get("debatten") or [],
                 "presse": extras.get("presse") or [],
                 "anlagen": extras.get("anlagen") or [],
-                "parteien": extras.get("parteien") or []}
+                "parteien": extras.get("parteien") or [],
+                # Die Grafik zur Antwort — vor diesem Nachtrag geteilte
+                # Antworten haben keine; die Seite zeigt dann keine.
+                "grafik": extras.get("grafik")}
 
     # ---- „Gründliche Recherche" (RG-10, Task 34) ---------------------------
 
