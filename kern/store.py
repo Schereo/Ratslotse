@@ -154,6 +154,9 @@ CREATE TABLE IF NOT EXISTS web_users (
     -- Eigene Spalte statt der onboarding-/badges-JSON, damit sich die drei
     -- nicht gegenseitig überschreiben.
     notify_prefs     TEXT,
+    -- Wann die Themen-Übersicht zuletzt offen war. Der Zähler an „Meine
+    -- Themen" zeigt nur, was SEITDEM dazukam; NULL = noch nie nachgesehen.
+    topics_seen_at   TEXT,
     created_at       TEXT NOT NULL
 );
 
@@ -498,6 +501,10 @@ class Store:
                     self._conn.execute("ALTER TABLE web_users ADD COLUMN nwz_fulltext_allowed INTEGER NOT NULL DEFAULT 0")
                 if "token_version" not in wu_cols:
                     self._conn.execute("ALTER TABLE web_users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0")
+                if "topics_seen_at" not in wu_cols:
+                    # NULL heißt „noch nie nachgesehen" — bestehende Konten
+                    # behalten ihre Bubble, bis sie die Übersicht öffnen.
+                    self._conn.execute("ALTER TABLE web_users ADD COLUMN topics_seen_at TEXT")
                 if "email_verified" not in wu_cols:
                     # Existing accounts predate email verification — treat them as
                     # verified so the new gate never locks anyone out.
@@ -2032,6 +2039,45 @@ class Store:
             (owner_id,),
         ).fetchall()
         return {r["topic_id"]: r["n"] for r in rows}
+
+    def neue_treffer_seit_uebersicht(self, owner_id: int) -> int:
+        """Zahl der Treffer, die seit dem letzten Besuch der Themen-Übersicht
+        dazugekommen sind — der Zähler an „Meine Themen" (Seitenleiste und
+        Punkt in der Tab-Leiste).
+
+        Bewusst NICHT dieselbe Zahl wie ``unseen_hit_counts``: Die Bubble ist
+        eine Ankündigung („da ist was Neues"), kein Aufgaben-Zähler. Sie
+        verstummt, sobald man einmal nachgesehen hat (Tims Wunsch 18.08.);
+        WELCHES Thema neue Treffer hat, sagt weiterhin das „n neu" auf der
+        Übersicht — das hängt am Öffnen des Themas und bleibt unberührt.
+
+        Ein leeres ``matched_at`` ist der Vorgabewert der Spalte und heißt
+        „schon lange bekannt" (s. ``_reparatur_matched_at``); nach dem ersten
+        Besuch zählen solche Zeilen deshalb nicht mehr mit.
+        """
+        stand = self._conn.execute(
+            "SELECT topics_seen_at FROM web_users WHERE id = ?", (owner_id,)).fetchone()
+        seit = stand["topics_seen_at"] if stand else None
+        sql = """SELECT COUNT(*) FROM council_topic_matches m
+                 JOIN topics t ON t.id = m.topic_id AND t.owner_id = m.owner_id
+                 LEFT JOIN topic_hits_seen s
+                   ON s.owner_id = m.owner_id AND s.topic_id = m.topic_id
+                      AND s.decision_id = m.decision_id
+                 WHERE m.owner_id = ? AND s.decision_id IS NULL"""
+        params: list = [owner_id]
+        if seit:
+            sql += " AND m.matched_at > ?"
+            params.append(seit)
+        return self._conn.execute(sql, params).fetchone()[0]
+
+    def topics_uebersicht_gesehen(self, owner_id: int) -> None:
+        """Merkt sich, dass die Themen-Übersicht gerade offen war — ab hier
+        zählt für die Bubble nur noch, was danach dazukommt."""
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute("UPDATE web_users SET topics_seen_at = ? WHERE id = ?",
+                               (now, owner_id))
 
     def mark_topic_hits_seen(self, owner_id: int, topic_id: int) -> int:
         """Alle aktuellen Treffer eines Themas als gesehen markieren (RL-903).
