@@ -207,6 +207,34 @@ def test_by_ids_ohne_session(store):
     assert len(rows) == 1 and rows[0]["committee"] is None
 
 
+def test_protokolle_verlinken_haengt_pdf_url_an(store):
+    """Nachlesbare Belege: qa.protokolle_verlinken reichert Wortbeitrags-
+    Zeilen um die getfile-URL ihres Protokolls an — auch auf dem Personen-
+    Pfad (wortbeitraege_von_sprecher), der ksinr dafür mitliefern muss."""
+    store._conn.execute(
+        "UPDATE council_protocols SET document_url = "
+        "'https://buergerinfo.oldenburg.de/getfile.php?id=4711&type=do' WHERE ksinr = 100")
+    store.save_wortbeitraege(100, [BEITRAG])
+    wb_id = store.search_wortbeitraege_fts("Fliegerhorst")[0][0]
+    rows = store.wortbeitraege_by_ids([wb_id])
+    qa.protokolle_verlinken(store, rows)
+    assert rows[0]["protokoll_url"].endswith("getfile.php?id=4711&type=do")
+    rows_p = store.wortbeitraege_von_sprecher("Petersen")
+    qa.protokolle_verlinken(store, rows_p)
+    assert rows_p and rows_p[0]["protokoll_url"] is not None
+
+
+def test_protokoll_urls_fuer_ohne_url_bleibt_leer(store):
+    """Alt-Bestand ohne document_url (oder unbekannte ksinr): kein Eintrag in
+    der Map, die Anreicherung setzt dann ausdrücklich None — das Frontend
+    lässt das Icon einfach weg."""
+    assert store.protokoll_urls_fuer([100, 999, None]) == {}
+    store.save_wortbeitraege(100, [BEITRAG])
+    rows = store.wortbeitraege_by_ids([store.search_wortbeitraege_fts("Fliegerhorst")[0][0]])
+    qa.protokolle_verlinken(store, rows)
+    assert rows[0]["protokoll_url"] is None
+
+
 def test_embeddings_version_wechselt(store):
     v0 = store.wortbeitraege_embeddings_version()
     store.save_wortbeitraege(100, [BEITRAG])

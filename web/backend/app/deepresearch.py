@@ -327,6 +327,9 @@ def _run(job: DeepJob, nwz_db: str, council_db: str) -> None:
                 qa.parteien_aufloesen(store, debatten_rows)
             except Exception:  # noqa: BLE001
                 pass
+            # Beleg nachlesbar machen: PDF-URL des Protokolls je Beitrag
+            # (deckungsgleich mit /ask, damit beide Wege gleich rendern).
+            qa.protokolle_verlinken(store, debatten_rows)
             try:
                 # Task 33: Anlagen (Gutachten, Konzepte) — dieser Kanal existiert
                 # NUR hier; die schnelle Frage lädt die Anlagen-Matrix nie.
@@ -388,7 +391,8 @@ def _run(job: DeepJob, nwz_db: str, council_db: str) -> None:
                                   "art": d.get("art"), "top": d.get("top"),
                                   "auszug": (d.get("text") or "")[:2000],
                                   "committee": d.get("committee"),
-                                  "datum": d.get("session_date")} for d in debatten_rows],
+                                  "datum": d.get("session_date"),
+                                  "protokoll_url": d.get("protokoll_url")} for d in debatten_rows],
             "anlagen_kompakt": [{"nr": a.get("nr"), "label": a.get("label"),
                                  "url": a.get("url"),
                                  "vorlage_nr": a.get("vorlage_nr"),

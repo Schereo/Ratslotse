@@ -10,7 +10,7 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import FileResponse, StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from council.store import CouncilStore
 from council.topics import POLICY_FIELDS
@@ -1412,6 +1412,17 @@ class QaShareDebatte(BaseModel):
     auszug: str = Field(default="", max_length=2000)
     committee: str | None = Field(default=None, max_length=120)
     datum: str | None = Field(default=None, max_length=10)
+    protokoll_url: str | None = Field(default=None, max_length=500)
+
+    @field_validator("protokoll_url")
+    @classmethod
+    def _nur_ratsinfo(cls, v: str | None) -> str | None:
+        # Der Snapshot ist öffentlich und der Client liefert die URL mit —
+        # als „Protokoll" verlinken wir deshalb ausschließlich das
+        # Ratsinfo-System, sonst ließe sich hier Beliebiges unterschieben.
+        if v and not v.startswith(f"{BASE_URL}/"):
+            return None
+        return v
 
 
 class QaSharePresse(BaseModel):
@@ -2123,7 +2134,8 @@ def _debatten_kompakt(rows: list[dict]) -> list[dict]:
              "art": d.get("art"), "top": d.get("top"),
              "auszug": (d.get("text") or "")[:2000],
              "committee": d.get("committee"),
-             "datum": d.get("session_date")} for d in rows]
+             "datum": d.get("session_date"),
+             "protokoll_url": d.get("protokoll_url")} for d in rows]
 
 
 def _turn_speichern(nwz: Store, user: dict, body: AskBody, q_suche: str,
@@ -2303,6 +2315,9 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 qa.parteien_aufloesen(store, debatten_rows)
             except Exception:  # noqa: BLE001 — Debatten sind Zusatz, nie Blocker
                 pass
+            # Beleg nachlesbar machen: jeder Beitrag bekommt die PDF-URL
+            # seines Protokolls (Tims Wunsch 18.08.).
+            qa.protokolle_verlinken(store, debatten_rows)
             # 5a/I-10: Orts-Pins für die Mini-Karte — deterministisch aus den
             # geocodierten Entitäten, nie vom Sprachmodell.
             try:
