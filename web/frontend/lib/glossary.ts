@@ -179,4 +179,42 @@ export const GLOSSARY: Record<string, string> = {
     "Anderes Wort für die Eigenkapitalmethode: Von einem Unternehmen, an dem die Stadt nur beteiligt ist, geht nicht das ganze Geschäft in die Gesamtrechnung ein, sondern nur der Anteil an seinem Wert.",
   "Vollkonsolidierung":
     "Die vollständige Aufnahme eines Betriebs in die Gesamtrechnung: Alle seine Einnahmen und Ausgaben zählen mit, so als gehörten sie der Stadt direkt.",
+  // ── Bilanz, Anlagen, Bürgschaften, Kennzahlen ──────────────────────────
+  // Diese siebzehn kamen mit den Schichten 08/2026 dazu. Jeder Begriff steht
+  // wörtlich auf mindestens einer Seite des Haushalts-Bereichs; erfundene
+  // Fachwörter gehören hier nicht hin.
+  "Bilanzsumme":
+    "Alles zusammen, was der Stadt am 31. Dezember gehört — und, von der anderen Seite gelesen, woher es finanziert ist. Für Oldenburg waren das Ende 2024 rund 1,48 Milliarden Euro. Viele Kennzahlen sind ein Anteil davon.",
+  "Bilanz":
+    "Die Aufstellung, was der Stadt an einem Stichtag gehört und wem es zusteht. Anders als der Haushalt zählt sie kein Jahr, sondern einen Tag — ihre Beträge lassen sich deshalb nicht mit Einnahmen und Ausgaben verrechnen.",
+  "Nettoposition":
+    "Das Eigenkapital der Stadt: der Teil des Vermögens, der nach Abzug aller Schulden und Verpflichtungen übrig bleibt. In der kommunalen Buchführung heißt er nicht Eigenkapital, sondern Nettoposition.",
+  "Sonderposten":
+    "Geld, das die Stadt für eine bestimmte Anschaffung bekommen hat — meist Zuschüsse von Land oder Bund. Es steht auf der Passivseite und wird über die Jahre aufgelöst, parallel zur Abnutzung dessen, was davon gebaut wurde.",
+  "Rechnungsabgrenzung":
+    "Beträge, die im alten Jahr geflossen sind, aber ins neue gehören (oder umgekehrt) — zum Beispiel eine im Dezember gezahlte Versicherung für das Folgejahr. Sie werden getrennt ausgewiesen, damit jedes Jahr trägt, was zu ihm gehört.",
+  "Sachvermögen":
+    "Alles Angefasste, was der Stadt gehört: Grundstücke, Gebäude, Straßen, Fahrzeuge, Maschinen. 2024 waren das rund 606 Millionen Euro und damit gut 41 % der Bilanzsumme.",
+  "Infrastrukturvermögen":
+    "Der Teil des Sachvermögens, der öffentlich zugänglich ist und nicht verkauft werden kann: Straßen, Wege, Plätze, Brücken, Kanäle, Gleisanlagen.",
+  "Abschreibung":
+    "Der jährlich gebuchte Wertverlust einer Anschaffung. Eine Schule kostet einmal Geld, hält aber Jahrzehnte — deshalb wird ihr Wert über die Nutzungsdauer verteilt und Jahr für Jahr ein Stück davon als Aufwand gebucht.",
+  "Buchwert":
+    "Was ein Gegenstand in den Büchern der Stadt noch wert ist: der Anschaffungspreis minus alles, was bisher abgeschrieben wurde. Nicht zu verwechseln mit dem Preis, den er am Markt brächte.",
+  "Anlagenspiegel":
+    "Die Tabelle im Jahresabschluss, die für jede Vermögensart zeigt, was im Jahr dazukam, was abging und wie viel abgeschrieben wurde. Aus ihr lässt sich ablesen, ob die Stadt schneller aufbaut, als ihr Bestand verfällt.",
+  "Bürgschaft":
+    "Ein Versprechen der Stadt, für den Kredit eines anderen einzustehen, falls der nicht zahlen kann. Es kostet zunächst nichts und taucht deshalb in keiner Ausgabe auf — Ende 2024 stand die Stadt so für 220,3 Millionen Euro gerade.",
+  "Eventualverbindlichkeit":
+    "Eine Verpflichtung, die nur unter einer Bedingung fällig wird — typischerweise eine Bürgschaft. Sie steht nicht in der Bilanz selbst, sondern in ihrem Anhang, weil offen ist, ob sie je zu zahlen ist.",
+  "Rückstellung":
+    "Geld, das die Stadt für eine absehbare, aber noch nicht fällige Zahlung zurücklegt — etwa für Pensionen ihrer Beamt*innen oder für den Teil der Bürgschaften, bei dem ein Ausfall erwartet wird.",
+  "Eigenkapitalquote":
+    "Wie viel des Vermögens der Stadt wirklich ihres ist, in Prozent der Bilanzsumme. Sie wird in zwei Fassungen gedruckt: ohne und mit den Sonderposten, also den Zuschüssen von Land und Bund.",
+  "Anlagenintensität":
+    "Welcher Anteil des Vermögens in Sachwerten steckt — Gebäuden, Straßen, Fahrzeugen. Ein hoher Wert heißt weder gut noch schlecht: Er sagt, dass viel gebunden und wenig beweglich ist.",
+  "Steuerquote":
+    "Welcher Anteil der laufenden Ausgaben durch Steuern gedeckt ist. Je höher sie liegt, desto weniger hängt die Stadt an Zuweisungen von Land und Bund.",
+  "Rechenschaftsbericht":
+    "Der erklärende Text zum Jahresabschluss: Er sagt in Worten, was die Zahlen bedeuten, warum etwas anders kam als geplant und wie viel im Jahr nachbewilligt wurde. Am Ende steht eine Anlage mit dreizehn Kennzahlen samt ihren Rechenwegen.",
 };
