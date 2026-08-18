@@ -153,8 +153,15 @@ export function Zeitreihe({
    *  z. B. die Zinslast zur Schuldenreihe. */
   zweitreihe?: { label: string; reihe: JahrPunkt[]; format?: (wert: number) => string };
   /** Beschriftete Stellen („2010: 108,9 Mio. an Eigenbetriebe umgebucht").
-   *  Im Bild ein ⓘ-Marker (breit mit `kurz` daneben), der Text steht IMMER
-   *  unter der Grafik — nie nur beim Hovern (Kein-Tooltip-Regel). */
+   *  Im Bild ein ⓘ-Marker (breit mit `kurz` daneben); der ganze Satz steht in
+   *  der **Ableseleiste**, sobald das Jahr gewählt ist — ein Tipp aufs ⓘ
+   *  genügt, weil die Fangfläche darüberliegt. Bis 08/2026 stand der Text
+   *  zusätzlich dauerhaft unter der Grafik; das doppelte Anzeigen ist auf
+   *  Tims Entscheid (18.08.2026) der Leisten-Zeile gewichen. KEIN Tooltip im
+   *  Sinn der GB-00-Regel: Die Zeile ist Text im Layout, bleibt bis zur
+   *  nächsten Wahl stehen, ist per Pfeiltasten und Finger gleich erreichbar,
+   *  und die Vorlesehilfe trägt alle Sätze weiterhin vollständig
+   *  (`aria-describedby` + `vorlesen` je Stelle). */
   annotationen?: ZeitreiheAnnotation[];
   /** Den größten Anstieg und den größten Rückgang direkt beschriften.
    *
@@ -455,6 +462,7 @@ export function Zeitreihe({
     return {
       titel: String(s.jahr) + (anno ? " ⓘ" : ""),
       werte: werteZeile,
+      anmerkung: anno?.text,
       vorlesen: [
         `${s.jahr}:`,
         s.art === "wert" ? `${fmt(s.punkt.wert)} ${einheit}.` : `keine Zahl — ${grund}.`,
@@ -576,21 +584,30 @@ export function Zeitreihe({
             style={{ fill: TON_ZWEIT }}>{zweitBeschriftung.text}</text>
         )}
 
-        {/* Annotationen: ⓘ im Bild, der Text steht unter der Grafik. */}
-        {annoMarken.map((a) => (
-          <g key={a.jahr}>
-            <line x1={x(a.jahr)} y1={YTOP + 8} x2={x(a.jahr)} y2={a.py - 8}
-              strokeWidth={1} strokeDasharray="2 3" className="stroke-foreground/40" />
-            <circle cx={x(a.jahr)} cy={YTOP + 8} r={7.5} className="fill-card stroke-foreground/45"
-              strokeWidth={1.2} />
-            <text x={x(a.jahr)} y={YTOP + 11.5} textAnchor="middle" fontSize={10} fontStyle="italic"
-              className="fill-foreground/75 font-mono">i</text>
-            {a.kurz && (
-              <text x={a.tx} y={YTOP + 12} textAnchor={a.anker} fontSize={fs.marke}
-                className="fill-foreground/75 stroke-card" {...halo}>{a.kurz}</text>
-            )}
-          </g>
-        ))}
+        {/* Annotationen: ⓘ im Bild, der Satz erscheint in der Ableseleiste,
+            sobald das Jahr gewählt ist. Ein Tipp aufs ⓘ genügt — die
+            Fangfläche liegt darüber und wählt das nächstgelegene Jahr. Das
+            gewählte ⓘ füllt sich, damit sichtbar ist, WOHER die Zeile in der
+            Leiste gerade kommt. */}
+        {annoMarken.map((a) => {
+          const aktivesJahr = stellenListe[ablesen.aktiv]?.jahr === a.jahr;
+          return (
+            <g key={a.jahr}>
+              <line x1={x(a.jahr)} y1={YTOP + 8} x2={x(a.jahr)} y2={a.py - 8}
+                strokeWidth={1} strokeDasharray="2 3" className="stroke-foreground/40" />
+              <circle cx={x(a.jahr)} cy={YTOP + 8} r={7.5} strokeWidth={1.2}
+                className={aktivesJahr
+                  ? "fill-foreground/75 stroke-foreground/75"
+                  : "fill-card stroke-foreground/45"} />
+              <text x={x(a.jahr)} y={YTOP + 11.5} textAnchor="middle" fontSize={10} fontStyle="italic"
+                className={aktivesJahr ? "fill-card font-mono" : "fill-foreground/75 font-mono"}>i</text>
+              {a.kurz && (
+                <text x={a.tx} y={YTOP + 12} textAnchor={a.anker} fontSize={fs.marke}
+                  className="fill-foreground/75 stroke-card" {...halo}>{a.kurz}</text>
+              )}
+            </g>
+          );
+        })}
 
         {/* Die größte Bewegung: Punkt und Führungsstrich zuerst, damit kein
             Strich durch die Beschriftung der anderen Marke zieht. */}
@@ -645,20 +662,12 @@ export function Zeitreihe({
         />
       </svg>
 
+      {/* Der ⓘ-Zusatz hängt an JEDEM Hinweis, auch einem eigenen der Seite:
+          Er wirbt für die einzige Stelle, an der der Anmerkungssatz steht —
+          eine Seite, die ihn wegformuliert, versteckte ihre Annotationen. */}
       <Ableseleiste className="mt-2" stelle={ableseStellen[ablesen.aktiv]} steuerung={ablesen}
-        hinweis={hinweis ?? `${einheit} · Jahr überfahren, antippen oder mit den Pfeiltasten wechseln.`} />
-
-      {/* Annotations-Texte: immer sichtbar, nie nur beim Hovern. */}
-      {(annotationen ?? []).length > 0 && (
-        <div className="mt-2 flex flex-col gap-1">
-          {annotationen!.map((a) => (
-            <p key={a.jahr} className="text-[11.5px] leading-relaxed text-muted-foreground">
-              <span className="font-mono text-[10px] font-semibold text-foreground/75">ⓘ {a.jahr}</span>
-              {" — "}{a.text}
-            </p>
-          ))}
-        </div>
-      )}
+        hinweis={(hinweis ?? `${einheit} · Jahr überfahren, antippen oder mit den Pfeiltasten wechseln.`)
+          + ((annotationen ?? []).length ? " ⓘ-Jahre tragen eine Anmerkung." : "")} />
 
       {/* Lücken beschriftet die GRAFIK (GB-00) — nie einklappbar. */}
       {luecken.length > 0 && (
