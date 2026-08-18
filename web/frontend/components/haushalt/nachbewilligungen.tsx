@@ -346,10 +346,27 @@ export function NachbewilligungsBefund({ daten }: { daten: HaushaltDaten }) {
   if (serie.length < 20) return null;
   const jahre = serie.map((n) => n.jahr).filter((j): j is number => j != null);
   const beschlossen = serie.filter((n) => n.beschlossen === 1).length;
+  // Die Differenz wird ausgeschrieben statt verschwiegen — sonst fragt sich
+  // jede*r, was mit dem Rest passiert ist, und die naheliegende Vermutung
+  // („abgelehnt") wäre genau die falsche. Es sind zwei Gruppen: Vorlagen, mit
+  // denen der Rat nur unterrichtet wurde (entschieden hat der
+  // Oberbürgermeister oder eine Eilentscheidung), und solche, zu denen im
+  // Bestand kein Ergebnis steht.
+  const unterrichtet = serie.filter(
+    (n) => n.beschlossen === 0 && n.gremien.length > 0).length;
+  const ohneErgebnis = serie.length - beschlossen - unterrichtet;
   return (
     <p className="max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
-      Über {serie.length} solcher Vorlagen ist seit {Math.min(...jahre)} beraten
-      worden; {beschlossen} wurden beschlossen, keine abgelehnt.
+      Seit {Math.min(...jahre)} sind {serie.length} solcher Vorlagen in Rat und
+      Fachausschuss aufgerufen worden. {beschlossen} wurden beschlossen, keine
+      abgelehnt.
+      {unterrichtet > 0 && (
+        <> Bei {unterrichtet} wurde der Rat nur unterrichtet — entschieden
+        hatte sie der Oberbürgermeister oder eine Eilentscheidung.</>
+      )}
+      {ohneErgebnis > 0 && (
+        <> Zu {ohneErgebnis} liegt uns kein Ergebnis vor.</>
+      )}
     </p>
   );
 }
