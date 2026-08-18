@@ -49,6 +49,13 @@ Reihen sind `{jahr, wert}`, Listen `{label, wert}`. **Lücken sind Daten**:
 sie beschriftet (`<LueckenFeld>`), keine interpoliert — `vorhanden()` ist
 das `defined`-Prädikat für d3-shape, damit Linien an Lücken abreißen.
 
+**Eine Lücke ist nicht dasselbe wie ein Stillstand.** Wo zwischen zwei
+Punkten nichts fehlt, sondern nichts passiert ist — ein Hebesatz gilt, bis
+der Rat ihn ändert —, gehört keine Lücke in die Reihe, sondern
+`<Zeitreihe treppe>`: Der Wert hält bis zum nächsten Punkt und springt dort.
+Beides sind Formen desselben Vorsatzes, nichts zu erfinden; die gerade
+Verbindung dazwischen wäre in beiden Fällen die einzige Lüge.
+
 ## Die gemeinsamen Teile (GB-00)
 
 | Baustein | Datei | Rolle |
@@ -67,7 +74,7 @@ Erklärsatz kompiliert nicht. Gerendert werden sie über `<Einordnung>`.
 
 | Grafik | Datei | Vertrag (Kurzform) |
 |---|---|---|
-| `<Zeitreihe>` (GB-01) | `zeitreihe.tsx` | Linien-Zeitreihe: `reihe: JahrPunkt[]` · `einheit` · `titel?` (Kopfzeile mit gemessener Menge) · `zweitreihe?` (dünn, gestrichelt, breit am Endpunkt beschriftet) · `annotationen?` (ⓘ im Bild, `kurz?` daneben, Text IMMER darunter) · `spruenge?` (größter Anstieg/Rückgang, GERECHNET, Signal-Orange als Differenz-Marke — nie über eine Lücke hinweg) · `vorjahresdifferenz?` (Zeile in der Ableseleiste) · `tabelle?` (alle Werte zum Abschreiben) · `umschalter?` (kontrolliert, mobil full-width). `d3-shape` mit `defined(vorhanden)` bricht die Linie an Lücken — Interpolation ist im Code unmöglich. Direktbeschriftung sparsam (Endwerte, größte Differenz), Rest über die Ableseleiste; Achse `d3-scale` nice ticks, mobil nur Dekaden. Einsatz: Schulden. |
+| `<Zeitreihe>` (GB-01) | `zeitreihe.tsx` | Linien-Zeitreihe: `reihe: JahrPunkt[]` · `einheit` · `titel?` (Kopfzeile mit gemessener Menge) · `zweitreihe?` (dünn, gestrichelt, breit am Endpunkt beschriftet) · `annotationen?` (ⓘ im Bild, `kurz?` daneben, Text IMMER darunter) · `spruenge?` (größter Anstieg/Rückgang, GERECHNET, Signal-Orange als Differenz-Marke — nie über eine Lücke hinweg) · `vorjahresdifferenz?` (Zeile in der Ableseleiste) · `tabelle?` (alle Werte zum Abschreiben) · `umschalter?` (kontrolliert, mobil full-width). `treppe?` (der Wert gilt bis zum nächsten Punkt und springt dort, `curveStepAfter`) · `d3-shape` mit `defined(vorhanden)` bricht die Linie an Lücken — Interpolation ist im Code unmöglich. Direktbeschriftung sparsam (Endwerte, größte Differenz), Rest über die Ableseleiste; Achse `d3-scale` nice ticks, mobil nur Dekaden. Einsatz: Schulden, Hebesatz-Treppe (Steuer-Steckbrief). |
 | `<ZeitreiheMini>` (GB-01 mini) | `zeitreihe.tsx` | Karten-Sparkline: gleiche `defined()`-Lückenbrüche, Endpunkt-Beschriftung bleibt auf jedem Gerät (H4-11), Nulllinie bei Vorzeichenwechsel, `role="img"` mit ganzem Satz. Ohne Achsen und Ableseleiste — die große Kennzahl daneben ist die Auskunft. |
 | `<NahtSaeulen>` (GB-02) | `naht-saeulen.tsx` | `jahre {jahr, teile[] \| fehlt}[] · naht? {zwischen, text} · gruppierungMobil · einheit`. Zwei Farbwelten links/rechts der Naht (aus-/ein-Rampe), erzwungen — keine Farb-Props. Stapel bündeln nach Größe (Desktop 3, mobil 2 Gruppen), die Ableseleiste trennt ALLE Arten. Trägt eine Reihe nur EINE Art je Jahr, fällt die Zeile „insgesamt" weg (sie stünde sonst zweimal dieselbe Zahl) und die Legende nennt statt der Arten die beiden Abgrenzungen. Lücken: volle Säule + `<LueckenFeld>`, von der Komponente gerendert. Keine Rechnung über die Naht. Die Jahresachse beschriftet immer das letzte Jahr und lässt ein Rasterjahr direkt davor weg (bei 54 Säulen stand dort sonst „2425"). Einsatz: Gebaut, Übersicht (lange Ausgabenreihe). |
 | `<RanglisteSchiene>` (GB-03) | `rangliste-schiene.tsx` | `zeilen {label, wert, hervorgehoben?, zusatz?}[] · schiene ("null-bis-max" \| [min, max]) · einheit · mittelmarke?`. Schiene immer sichtbar (Null-Basis); `hervorgehoben` findet, bewertet nie — eine Grün/Rot-Prop existiert nicht. Mobil wandert das Label über den Balken (eingebaut, kein Prop). Einsatz: Investitionen (mobil, via Treemap). |

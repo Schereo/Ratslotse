@@ -70,9 +70,22 @@ export type HantelZeile = {
 export type HantelMassstab = "prozent" | "betrag";
 export type HantelSortierung = "abweichung" | "alpha";
 
+/** Der Satz, der die Nicht-Wertung ausschreibt, wenn die Zeilen AUSGABEN sind.
+ *
+ *  Voreinstellung, weil die Hantel dafür gebaut wurde (Plan-Ist, Bereichs-
+ *  Steckbrief). Auf einer Einnahmen-Seite ist er falsch — dort ist nichts
+ *  „ausgegeben" —, deshalb ist er austauschbar und nicht fest verdrahtet. Bis
+ *  18.08.2026 war er es, und auf dem Steuer-Steckbrief stand dann unter drei
+ *  Steuerzeilen etwas von Kita-Plätzen und unbesetzten Stellen. */
+const AUSGABEN_KEINE_WERTUNG =
+  "Die Farbe bewertet nicht: Mehr ausgegeben kann ein Tarifabschluss sein oder "
+  + "mehr Kita-Plätze; weniger ausgegeben heißt oft, dass etwas nicht gebaut "
+  + "oder eine Stelle nicht besetzt wurde.";
+
 export function Hantel({
   zeilen, einheit = "Mio. €", massstab = "prozent",
   sortierung = "abweichung", schwelle, beleg,
+  wovon = "der Bereich", keineWertung = AUSGABEN_KEINE_WERTUNG,
 }: {
   zeilen: HantelZeile[];
   /** Einheit der Beträge — steht an den Skalenenden und in der Legende. */
@@ -85,6 +98,15 @@ export function Hantel({
   schwelle?: number;
   /** Beleg-Chip-Slot (GB-00) — die Seite wählt die Quelle. */
   beleg?: ReactNode;
+  /** Was eine Zeile IST, in der Legende: „der Bereich", „diese Steuer".
+   *
+   *  Ein Nominativ mit Artikel — er wird in einen Satz eingesetzt, der selbst
+   *  kein Genus kennt. („von seinem Plan" stand hier bis 18.08.2026 und
+   *  ergab „die Steuer von seinem Plan".) */
+  wovon?: string;
+  /** Der ausgeschriebene Verzicht auf eine Wertung. Er bleibt Pflicht — nur
+   *  sein Wortlaut hängt daran, worüber die Hantel spricht. */
+  keineWertung?: ReactNode;
 }) {
   const [alle, setAlle] = useState(false);
   const { box, breite } = useBreite();
@@ -283,11 +305,9 @@ export function Hantel({
         {beleg && <span>{beleg}</span>}
         <span className="basis-full text-[11px] leading-relaxed">
           {massstab === "prozent"
-            ? "Die Strecke misst, um wie viel Prozent der Bereich von seinem Plan abwich — so ist ein Bereich von 231 Mio. mit einem von 6 Mio. vergleichbar. Der Betrag steht rechts daneben."
-            : "Die Strecke misst den Betrag der Abweichung. Große Bereiche dominieren dabei; wie genau ein Bereich geplant hat, zeigt die Prozent-Ansicht besser."}{" "}
-          Die Farbe bewertet nicht: Mehr ausgegeben kann ein Tarifabschluss sein oder mehr
-          Kita-Plätze; weniger ausgegeben heißt oft, dass etwas nicht gebaut oder eine Stelle
-          nicht besetzt wurde.
+            ? `Die Strecke misst, um wie viel Prozent ${wovon} vom Plan abwich — so ist eine Zeile von 231 Mio. mit einer von 6 Mio. vergleichbar. Der Betrag steht rechts daneben.`
+            : `Die Strecke misst den Betrag der Abweichung. Große Zeilen dominieren dabei; wie genau ${wovon} beim Plan lag, zeigt die Prozent-Ansicht besser.`}{" "}
+          {keineWertung}
         </span>
       </div>
     </div>

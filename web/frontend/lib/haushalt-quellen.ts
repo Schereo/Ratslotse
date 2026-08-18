@@ -81,6 +81,10 @@ export function standText(q: Quelle, jahre: number[] | undefined): string {
  *  Union bleibt trotzdem eng genug, um Tippfehler beim Aufruf zu fangen. */
 export type QuellenSchluessel =
   | "plan" | "steuern" | "steuerkraft" | "hebesaetze" | "ruecklage"
+  // Die Plan-Seite je Steuerart (Jahrbuch 1103). Ein eigener Schlüssel neben
+  // `steuern`, weil es eine andere Tabelle mit einer anderen Grenze ist: Die
+  // Ist-Reihe führt 28 Jahrgänge, diese hier drei.
+  | "steuerplan"
   | "jahresabschluss" | "teilhaushalt" | "stellenplan" | "pruefbericht"
   | "gesamtabschluss"
   | "einwohner" | "ergebnisrechnung_thh" | "ratsbeschluss"
@@ -168,16 +172,40 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     art: "csv",
     url: "https://opendata.oldenburg.de/sites/default/files/1106_Steuerkraftmesszahlen-Schl%C3%BCsselzuweisung_0.csv",
   },
+  // Bis 18.08.2026 stand hier „eine maschinenlesbare Zeitreihe der Vorjahre
+  // gibt es noch nicht" und als Stand allein „2025". Beides ist überholt: Die
+  // Reihe stand die ganze Zeit im Statistischen Jahrbuch — in Tabelle 1105,
+  // auf demselben Blatt wie die Steuereinnahmen, die wir längst lesen.
   hebesaetze: {
-    titel: "Hebesätze der Stadt Oldenburg",
+    titel: "Realsteuer-Hebesätze der Stadt Oldenburg seit 1980",
     fundstelle:
-      "Gewerbesteuer 439 %, Grundsteuer B 539 %, Grundsteuer A 500 % — beschlossen mit der " +
-      "Haushaltssatzung. Von uns aus der städtischen Bekanntmachung übernommen; eine " +
-      "maschinenlesbare Zeitreihe der Vorjahre gibt es noch nicht.",
-    herausgeber: "Stadt Oldenburg",
-    stand: "2025",
-    art: "web",
-    url: "https://www.oldenburg.de/startseite/rathaus/informiert-bleiben/aktuelles/neue-hebesaetze.html",
+      "Tabelle 1105, je Änderungsjahr die Hebesätze für Grundsteuer A, Grundsteuer B " +
+      "und Gewerbesteuer. Die Tabelle führt nach eigener Fußnote nur die Jahre, in denen " +
+      "sich ein Satz geändert hat — neun in 45 Jahren. Zwischen zwei Änderungen gilt der " +
+      "Satz unverändert weiter; die Jahre dazwischen fehlen also nicht, sie ändern nichts. " +
+      "Was ein Hebesatz für die Zahlenden bedeutet, sagt er allein nicht: Er wirkt auf eine " +
+      "Bemessungsgrundlage, die der Bund und das Land festlegen, und die kann sich " +
+      "gleichzeitig ändern.",
+    herausgeber: "Stadt Oldenburg, Fachdienst Geo und Daten",
+    standWort: "Änderungsjahre",
+    stand: "Änderungsjahre 1980–2025",
+    art: "pdf",
+    url: "https://www.oldenburg.de/startseite/rathaus/politik-verwaltung/stadtverwaltung/statistik/statistisches-jahrbuch.html",
+  },
+  steuerplan: {
+    titel: "Steuern und Finanzzuweisungen — Plan neben Ergebnis",
+    fundstelle:
+      "Tabelle 1103, je Steuerart zwei Spalten pro Jahr: der Ansatz nach dem beschlossenen " +
+      "Haushaltsplan und das Rechnungsergebnis desselben Jahres. Wo die Tabelle ihr " +
+      "Ergebnis selbst „vorläufig“ nennt, steht das an der Zahl. " +
+      "Die Grenze der Quelle: Jede Ausgabe führt nur **drei** Jahrgänge, und die Stadt " +
+      "hält keine älteren Ausgaben online. Was wir zeigen können, wächst deshalb ab 2026 " +
+      "mit jedem Jahr — es lässt sich aber nicht rückwirkend verlängern.",
+    herausgeber: "Stadt Oldenburg, Fachdienst Geo und Daten",
+    standWort: "Haushaltsjahre",
+    stand: "Haushaltsjahre 2023–2025",
+    art: "pdf",
+    url: "https://www.oldenburg.de/startseite/rathaus/politik-verwaltung/stadtverwaltung/statistik/statistisches-jahrbuch.html",
   },
   // Beide aus dem eigenen Bestand: Die Dokumente liegen als Anlagen zu
   // Ratsvorlagen im Bürgerinfo — kein externer Download (#500).

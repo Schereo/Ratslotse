@@ -127,6 +127,8 @@ die es nicht zeigen:
 | `council_investitionen_ist_verworfen` | Die Jahrgänge, die die Zeilensumme **nicht** bestanden haben: Grund und gemessene `differenz` in Euro. Damit die Seite ihre Lücke beziffern kann, statt sie nur zu behaupten | dito | dito |
 | `council_schulden` | Schuldenstand je Jahr seit 1995 — vier Schuldenarten, Summe und Betrag je Einwohner\*in | Statistisches Jahrbuch der Stadt, Tabelle 1108 (PDF von oldenburg.de) | `scripts/ingest_schulden.py` |
 | `council_ausgabenreihe` | Ausgaben je Jahr seit **1972** (**Ist**) — `regelwerk` (`kameral` bis 2009, `doppik` ab 2010), die bestandenen `proben` je Zeile und, wo die beiden Quellen sich widersprechen, der `konflikt_betrag` der unterlegenen. **Ohne Einwohnerzahl**, s. u. | Datensatz 1102 — Statistisches Jahrbuch, Tabelle 1102 (PDF) **und** Open-Data-Portal (zwei CSV) | `scripts/ingest_ausgabenreihe.py` |
+| `council_steuerplan` | Je Steuerart und Jahr der **Ansatz des Haushaltsplans** neben dem **Rechnungsergebnis**; `vorlaeufig` ist die Angabe der Quelle über sich selbst. `art` trägt dieselbe Schreibweise wie `council_steuern` — daran hängt die Prüfung der Jahresbeschriftung | Statistisches Jahrbuch, Tabelle 1103 (PDF von oldenburg.de), **alle im Archiv gesicherten Ausgaben** | `scripts/ingest_steuertabellen.py` |
+| `council_hebesaetze` | Die Realsteuer-Hebesätze je **Änderungsjahr** seit 1980 — Grundsteuer A, Grundsteuer B, Gewerbesteuer, dazu der `vorheriger` Satz. Neun Zeilen für 45 Jahre | Statistisches Jahrbuch, Tabelle 1105 (auf demselben Blatt wie 1104) | dito |
 
 :::note[Zwei Tabellen zu denselben Berichten]
 `council_pruefbericht_quellen` hält die **Fundstelle** des Schlussberichts
@@ -209,6 +211,88 @@ API nicht liefern kann, kann das Frontend nicht versehentlich zeichnen.
 **Der Nebengewinn:** Die Reihe führt das gerade abgelaufene Jahr, Monate bevor
 sein Jahresabschluss vorliegt (2025: 850,17 Mio. €). Diese Jahrgänge tragen
 die dritte Probe nicht — und behaupten sie auch nicht.
+
+### Die Steuertabellen 1103 und 1105 — und der erste Parser, der aus dem Archiv liest
+
+Zwei Tabellen desselben Jahrbuch-Kapitels, beide für den Steuer-Steckbrief
+(`council/steuertabellen.py`):
+
+- **1103** stellt je Steuerart den **Haushaltsplan neben das
+  Rechnungsergebnis**. Das ist die einzige Stelle, an der wir die Plan-Seite je
+  Steuerart bekommen: Weder `council_ergebnishaushalt` noch
+  `council_ergebnisrechnung` schlüsseln Steuern auf, beide führen nur „Steuern
+  und ähnliche Abgaben" als eine Summe. Der Befund: Die Gewerbesteuer wurde
+  drei Jahre in Folge um über 40 % unterschätzt (2023 +42,3 %, 2024 +52,1 %,
+  2025 +42,8 %).
+- **1105** führt die **Realsteuer-Hebesätze seit 1980**, aber nur die
+  Änderungsjahre — neun Zeilen für 45 Jahre. Ein Satz gilt bis zur nächsten
+  Änderung: eine **Treppe, keine Kurve**, und dazwischen wird nichts
+  interpoliert (`<Zeitreihe treppe>`, GB-01).
+
+#### Warum dieser Parser das Archiv liest
+
+**Tabelle 1103 führt nur drei Jahrgänge.** Erscheint die Ausgabe 2026, fällt
+2023 heraus — und die Stadt hält keine alten Ausgaben online
+(`1103-2024-AZ.pdf`: 404, nachgemessen am 17.08.2026; das Internet Archive hat
+vom Statistik-Verzeichnis null Schnappschüsse). Wer nur die Live-Datei liest,
+hat für immer drei Jahre.
+
+Seit #603 sichert `scripts/archive_statistik.py` täglich jede Ausgabe. Weil der
+Dateiname den Jahrgang trägt, ist jede Ausgabe ein eigener Ordner — die alten
+bleiben stehen. `council/archiv.neueste_je_datei()` holt **je Ausgabe** ihre
+zuletzt gesicherte Fassung, älteste zuerst; bei gleichem Jahrgang gewinnt die
+jüngere (sie trägt das abgerechnete Ergebnis, wo die ältere ein vorläufiges
+auswies). Die Reihe wächst damit um einen Jahrgang pro Jahr.
+
+Mit `council/archiv.py` steht der **Aufbau** des Archivs an einer Stelle;
+`scripts/archive_statistik.py` importiert ihn von dort, statt ihn selbst zu
+definieren. Es schreibt weiterhin allein — es tut es nur nicht mehr nach
+eigenen Regeln.
+
+#### Die Jahresbeschriftung: die Lehre aus Datensatz 1106
+
+Datensatz 1106 war um ein Jahr zu früh beschriftet, und es fiel jahrelang
+niemandem auf, weil jede einzelne Zahl für sich plausibel aussah. Beide
+Tabellen hier werden deshalb gegen eine zweite Quelle gehalten, **bevor** etwas
+gespeichert wird:
+
+- **1103** — jedes Rechnungsergebnis steht ein zweites Mal in Tabelle 1104, die
+  ihre Jahre einzeln beschriftet (`council_steuern`, 1998–2025). Für 2023, 2024
+  und 2025 nennen beide in **allen sechs** Steuerarten denselben Betrag. Das ist
+  zugleich das Aufnahmekriterium: **Ein Jahrgang ohne diese Zweitquelle kommt
+  nicht herein** (`istabgleich`).
+- **1105** hat keine Tabelle mit denselben Zahlen. Geprüft wird deshalb der
+  **Zeitpunkt der Wirkung** (`sprungjahrprobe`): Wo der Grundsteuer-Hebesatz
+  stieg, muss das Aufkommen im *genannten* Jahr stärker steigen als im Jahr
+  danach.
+
+  | Änderungsjahr | Hebesatz B | Aufkommen im Jahr | im Jahr danach |
+  |---|---|---|---|
+  | 2002 | 360 → 410 | +14,55 % | +1,71 % |
+  | 2011 | 410 → 430 | +9,31 % | −0,64 % |
+  | 2015 | 430 → 445 | +8,48 % | +0,19 % |
+
+  Und die Gegenprobe: Unterstellt man die Änderung ein Jahr später, reißt die
+  Rechnung in allen drei Fällen (+1,71 gegen +1,73 · −0,64 gegen +0,56 · +0,19
+  gegen +0,81). Beide Richtungen des Versatzes sind damit ausgeschlossen, nicht
+  bloß unplausibel.
+
+  Drei der acht Änderungen sind so prüfbar. Die fünf von 1984 bis 1997 liegen
+  vor dem Beginn der Aufkommensreihe (1998), und **2025 ist es nicht** — dort
+  hat die Grundsteuerreform die Bemessungsgrundlage mitverändert
+  (`BEMESSUNG_NEU`). Das steht als Ausnahme im Code, damit der Lauf nicht in
+  dem Moment bricht, in dem 2026 in der Ist-Reihe steht.
+
+#### Der Pflicht-Kontext: Hebesatz nie ohne Aufkommen
+
+2025 stieg der Grundsteuer-B-Hebesatz von 445 auf 539 (+21 %). „Grundsteuer
++21 %" allein wäre falsch verstanden: Das **Aufkommen sank** im selben Jahr von
+34,17 auf 32,59 Mio. € (−4,6 %), weil die Reform gleichzeitig alle Messbeträge
+umstellte. Ein höherer Satz auf eine kleinere Grundlage ist nicht mehr Geld.
+
+Deshalb liefert der Endpunkt `bemessung_neu` mit, und die Seite stellt zu
+**jeder** Änderung das Aufkommen desselben Jahres daneben — nicht als Fußnote,
+sondern in derselben Zeile. Wo es keines gibt (vor 1998), steht das da.
 
 ## Herkunft: woher jede einzelne Zahl stammt
 

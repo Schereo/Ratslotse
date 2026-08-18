@@ -214,6 +214,58 @@ export type HaushaltDaten = {
   plan_ist_jahre?: number[];
   /** Die lange Ausgabenreihe aus Datensatz 1102 — ein Betrag je Jahr seit 1972. */
   ausgabenreihe?: Ausgabenreihe;
+  /** Was je Steuerart geplant war und was daraus wurde (Jahrbuch 1103). */
+  steuerplan?: Steuerplan;
+  /** Die Realsteuer-Hebesätze je Änderungsjahr seit 1980 (Jahrbuch 1105). */
+  hebesaetze?: Hebesaetze;
+};
+
+/** Plan neben Ist je Steuerart — Tabelle 1103 des Statistischen Jahrbuchs.
+ *
+ *  `art` trägt **dieselbe** Schreibweise wie `HaushaltDaten.steuern[].art`;
+ *  darüber findet ein Steckbrief seine Zeilen, und daran hängt die Prüfung der
+ *  Jahresbeschriftung im Ingest. */
+export type Steuerplan = {
+  zeilen: SteuerplanZeile[];
+  /** Was diese Zahlen umfassen — Angabe der Quelle, kein Frontend-Text. */
+  abgrenzung: string;
+};
+
+export type SteuerplanZeile = {
+  jahr: number;
+  art: string;
+  /** Ansatz der beschlossenen Haushaltssatzung, in Euro. */
+  plan: number;
+  /** Rechnungsergebnis desselben Jahres, in Euro. */
+  ist: number;
+  /** Die Quelle nennt dieses Ergebnis selbst „vorläufig" — es kann sich noch
+   *  ändern, und das gehört an die Zahl. */
+  vorlaeufig: 0 | 1;
+};
+
+/** Die Hebesatz-Treppe — Tabelle 1105.
+ *
+ *  **Nur Änderungsjahre.** Die Jahre dazwischen fehlen nicht, sie ändern
+ *  nichts: Ein Hebesatz gilt, bis der Rat ihn ändert. Diese Reihe wird deshalb
+ *  als `<Zeitreihe treppe>` gezeichnet und **nie** als gerade Linie zwischen
+ *  zwei Stufen. */
+export type Hebesaetze = {
+  zeilen: HebesatzZeile[];
+  abgrenzung: string;
+  /** Jahre, in denen sich auch die **Bemessungsgrundlage** änderte, mit dem
+   *  Grund. Ohne diese Angabe darf kein Sprung angezeigt werden: 2025 stieg
+   *  der Grundsteuer-B-Satz um 21 %, während das Aufkommen um 4,6 % sank. */
+  bemessung_neu: Record<string, string>;
+};
+
+export type HebesatzZeile = {
+  jahr: number;
+  /** „Grundsteuer A" · „Grundsteuer B" · „Gewerbesteuer". */
+  art: string;
+  /** Prozentpunkte. */
+  hebesatz: number;
+  /** Der Satz, der bis zu diesem Jahr galt — `null` in der ersten Zeile. */
+  vorheriger: number | null;
 };
 
 /** Die beiden Rechnungswesen, unter denen die Stadt gezählt hat. Der Wechsel

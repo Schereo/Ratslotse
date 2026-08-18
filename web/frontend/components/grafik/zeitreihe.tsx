@@ -43,7 +43,7 @@
 
 import { useId, useState, type ReactNode } from "react";
 import { scaleLinear } from "d3-scale";
-import { area, line } from "d3-shape";
+import { area, curveStepAfter, line } from "d3-shape";
 import { useBreite } from "@/lib/use-breite";
 import { cn } from "@/lib/utils";
 import { istLuecke, type JahrLuecke, type JahrPunkt, type JahrWert } from "./daten";
@@ -96,10 +96,26 @@ type WertStelle = Extract<Stelle, { art: "wert" }>;
 const definiert = (s: Stelle): s is WertStelle => s.art === "wert";
 
 /** Die Reihe auf den vollen Jahresbereich normalisieren — so kann kein
- *  fehlendes Jahr aus der x-Achse herausfallen und still interpoliert wirken. */
-function normalisiere(reihe: JahrPunkt[]): Stelle[] {
+ *  fehlendes Jahr aus der x-Achse herausfallen und still interpoliert wirken.
+ *
+ *  **Außer bei einer Treppe.** Dort ist ein Jahr ohne eigenen Punkt kein
+ *  fehlendes Jahr: Der Wert von vorhin gilt weiter, bis der nächste Punkt
+ *  kommt — das ist die Aussage der Quelle, nicht ihre Lücke. Die
+ *  Hebesatz-Tabelle führt neun Änderungsjahre in 45 Jahren; würde sie hier
+ *  aufgefüllt, stünden 37 Fragezeichen im Bild und die Linie risse an jedem
+ *  davon ab. Genau das tat sie, bis der Modus auch hier greift.
+ *
+ *  Die Unterscheidung, die dahinter steht: „wir wissen es nicht" (Lücke,
+ *  Schraffur, Linienbruch) gegen „es hat sich nichts geändert" (Stufe). Beide
+ *  verbieten dieselbe Interpolation, aber aus verschiedenen Gründen. */
+function normalisiere(reihe: JahrPunkt[], treppe = false): Stelle[] {
   const sortiert = [...reihe].sort((a, b) => a.jahr - b.jahr);
   if (!sortiert.length) return [];
+  if (treppe) {
+    return sortiert.map((p) => istLuecke(p)
+      ? { jahr: p.jahr, art: "luecke" as const, punkt: p }
+      : { jahr: p.jahr, art: "wert" as const, punkt: p });
+  }
   const nach = new Map(sortiert.map((p) => [p.jahr, p]));
   const aus: Stelle[] = [];
   for (let jahr = sortiert[0].jahr; jahr <= sortiert[sortiert.length - 1].jahr; jahr++) {
@@ -114,7 +130,7 @@ function normalisiere(reihe: JahrPunkt[]): Stelle[] {
 export function Zeitreihe({
   reihe, einheit, ariaTitel, titel, nachkomma = 1, format, zweitreihe,
   annotationen, spruenge = false, vorjahresdifferenz = false, tabelle = false,
-  umschalter, beleg, nullbasis = true, hinweis, className,
+  umschalter, beleg, nullbasis = true, hinweis, treppe = false, className,
 }: {
   /** Punkte UND Lücken in einer Liste (Daten-Vertrag GB-00). */
   reihe: JahrPunkt[];
@@ -169,11 +185,24 @@ export function Zeitreihe({
   nullbasis?: boolean;
   /** Eigener Bedien-Hinweis unter der Ableseleiste. */
   hinweis?: string;
+  /** Treppe statt Linie: Der Wert gilt bis zum nächsten Punkt und springt
+   *  dort — für Größen, die zwischen zwei Beschlüssen **stillstehen**.
+   *
+   *  Gebaut für die Hebesatz-Reihe (Tabelle 1105 führt nur die neun
+   *  Änderungsjahre seit 1980). Eine gerade Verbindung wäre dort keine
+   *  Vereinfachung, sondern eine falsche Aussage: Sie zeigte einen langsamen
+   *  Anstieg über zehn Jahre, wo der Rat einmal entschieden hat. Dieselbe
+   *  Regel wie beim Lückenbruch — was die Quelle nicht sagt, zeichnen wir
+   *  nicht (`curveStepAfter` aus d3-shape, GB-01).
+   *
+   *  Die Ableseleiste bleibt punktweise: Sie zeigt die Stufe und, über
+   *  `format`, seit wann sie gilt. */
+  treppe?: boolean;
   className?: string;
 }) {
   const { box, breite } = useBreite();
   const [tabelleOffen, setTabelleOffen] = useState(false);
-  const stellenListe = normalisiere(reihe);
+  const stellenListe = normalisiere(reihe, treppe);
   const beschreibungId = useId();
   const ablesen = useAblesen(
     stellenListe.length,
@@ -197,7 +226,7 @@ export function Zeitreihe({
   // draußen gerechnet — die Linie liefe aus der Zeichenfläche.
   const zweitStellen = zweitreihe
     ? normalisiere(zweitreihe.reihe.filter(
-        (p) => p.jahr >= spanneVon && p.jahr <= spanneBis))
+        (p) => p.jahr >= spanneVon && p.jahr <= spanneBis), treppe)
     : [];
   const zweitNach = new Map(zweitStellen.map((s) => [s.jahr, s]));
 
@@ -234,6 +263,12 @@ export function Zeitreihe({
   // `defined` läuft über die NORMALISIERTE Reihe: Lücken UND unerklärte Jahre
   // sind nicht defined — d3-shape beendet dort das Segment und beginnt hinter
   // der Lücke ein neues. Genau das ist der Lückenbruch des Vertrags.
+  // `treppe` tauscht nur die Kurvenform — die Geometrie bleibt dieselbe.
+  // `curveStepAfter` hält den Wert bis zum nächsten Punkt und springt dort:
+  // genau das, was ein Hebesatz tut. Eine gerade Verbindung behauptete, der
+  // Satz sei zwischen 2015 und 2025 langsam gestiegen; er stand zehn Jahre
+  // still und sprang dann.
+  const kurve = treppe ? curveStepAfter : undefined;
   const linie = line<Stelle>()
     .defined(definiert)
     .x((s) => x(s.jahr))
@@ -247,6 +282,11 @@ export function Zeitreihe({
     .defined(definiert)
     .x((s) => x(s.jahr))
     .y((s) => y((s as { punkt: JahrWert }).punkt.wert));
+  if (kurve) {
+    linie.curve(kurve);
+    flaeche.curve(kurve);
+    zweitLinie.curve(kurve);
+  }
 
   const luecken = stellenListe.filter((s) => s.art !== "wert");
   const abstand = stellenListe.length > 1 ? x(stellenListe[1].jahr) - x(von) : 60;
