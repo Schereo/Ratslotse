@@ -180,6 +180,10 @@ CREATE TABLE IF NOT EXISTS council_protocols (
     session_end   TEXT,
     raw_text      TEXT,
     n_pages       INTEGER,
+    -- Zeichen-Offsets der PDF-Seitenanfänge im raw_text (JSON-Liste) — die
+    -- Grundlage der seitengenauen Protokoll-Links. NULL im Altbestand
+    -- (Backfill: scripts/backfill_protokoll_seiten.py).
+    page_offsets  TEXT,
     model         TEXT,
     extracted_at  TEXT NOT NULL,
     status        TEXT NOT NULL DEFAULT 'ok'   -- ok | failed
@@ -670,6 +674,16 @@ class CouncilStore:
         if "wortbeitraege_extracted_at" not in wcols:
             self._conn.execute(
                 "ALTER TABLE council_protocols ADD COLUMN wortbeitraege_extracted_at TEXT")
+        if "page_offsets" not in wcols:
+            # Seitengenaue Protokoll-Links (18.08.2026): Offsets der PDF-
+            # Seitenanfänge im raw_text; Altbestand bleibt NULL bis zum
+            # Backfill (scripts/backfill_protokoll_seiten.py).
+            self._conn.execute("ALTER TABLE council_protocols ADD COLUMN page_offsets TEXT")
+        wb_cols = {r[1] for r in self._conn.execute("PRAGMA table_info(council_wortbeitraege)")}
+        if wb_cols and "seite" not in wb_cols:
+            # PDF-Seite der Fundstelle (über Sprecher-Anker aufgelöst);
+            # NULL = nicht eindeutig gefunden → Link ohne #page.
+            self._conn.execute("ALTER TABLE council_wortbeitraege ADD COLUMN seite INTEGER")
         # Aus raw_result geparste Teilvoten: welche Fraktion stimmte laut
         # Protokoll dagegen / enthielt sich. faction steht wie protokolliert
         # (Gruppen nicht aufgelöst — Fraktion≠Partei, siehe council/parties.py).
@@ -1659,6 +1673,7 @@ class CouncilStore:
         decisions: list[dict],
         attendance: list[dict],
         status: str = "ok",
+        page_offsets: list[int] | None = None,
     ) -> None:
         """Persist a parsed protocol with its decisions + attendance (replacing any
         prior rows for this session). One transaction."""
@@ -1667,10 +1682,11 @@ class CouncilStore:
             self._conn.execute(
                 "INSERT OR REPLACE INTO council_protocols "
                 "(ksinr, document_id, document_url, protocol_nr, session_start, session_end, "
-                " raw_text, n_pages, model, extracted_at, status) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                " raw_text, n_pages, page_offsets, model, extracted_at, status) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (ksinr, document.get("document_id"), document.get("url"), meta.get("protocol_nr"),
-                 meta.get("session_start"), meta.get("session_end"), raw_text, n_pages, model, now, status),
+                 meta.get("session_start"), meta.get("session_end"), raw_text, n_pages,
+                 json.dumps(page_offsets) if page_offsets else None, model, now, status),
             )
             # Teilvoten hängen an den decision-ids — vor dem Ersetzen der
             # Beschlüsse mitlöschen, sonst bleiben Waisen zurück (dieselbe
@@ -3729,7 +3745,7 @@ class CouncilStore:
         varianten.add(gefaltet)
         teile = " OR ".join(["w.sprecher LIKE ?"] * len(varianten))
         rows = self._conn.execute(
-            f"SELECT w.id, w.ksinr, w.sprecher, w.partei, w.art, w.top, w.text, "
+            f"SELECT w.id, w.ksinr, w.seite, w.sprecher, w.partei, w.art, w.top, w.text, "
             f"       cs.committee, cs.session_date "
             f"FROM council_wortbeitraege w JOIN council_sessions cs ON cs.ksinr = w.ksinr "
             f"WHERE {teile} ORDER BY cs.session_date DESC LIMIT ?",
@@ -4938,13 +4954,62 @@ class CouncilStore:
             return []
         ph = ",".join("?" * len(ids))
         rows = self._conn.execute(
-            f"""SELECT w.id, w.ksinr, w.art, w.top, w.sprecher, w.partei,
+            f"""SELECT w.id, w.ksinr, w.seite, w.art, w.top, w.sprecher, w.partei,
                        w.text, w.antwort, cs.committee, cs.session_date
                 FROM council_wortbeitraege w
                 LEFT JOIN council_sessions cs ON cs.ksinr = w.ksinr
                 WHERE w.id IN ({ph})""", ids).fetchall()
         by_id = {r["id"]: dict(r) for r in rows}
         return [by_id[i] for i in ids if i in by_id]
+
+    def protokoll_seiten_grundlage(self, ksinr: int) -> tuple[str, list[int]] | None:
+        """(raw_text, page_offsets) eines Protokolls — oder None, wenn die
+        Offsets fehlen (Altbestand vor dem Backfill)."""
+        row = self._conn.execute(
+            "SELECT raw_text, page_offsets FROM council_protocols WHERE ksinr = ?",
+            (ksinr,)).fetchone()
+        if row is None or not row["raw_text"] or not row["page_offsets"]:
+            return None
+        try:
+            offsets = json.loads(row["page_offsets"])
+        except (ValueError, TypeError):
+            return None
+        if not isinstance(offsets, list) or not offsets:
+            return None
+        return row["raw_text"], [int(o) for o in offsets]
+
+    def wortbeitraege_ohne_seite(self, ksinr: int) -> list[dict]:
+        """Beiträge eines Protokolls, deren Fundstellen-Seite noch fehlt."""
+        return [dict(r) for r in self._conn.execute(
+            "SELECT id, sprecher, text FROM council_wortbeitraege "
+            "WHERE ksinr = ? AND seite IS NULL", (ksinr,))]
+
+    def set_wortbeitrag_seite(self, wb_id: int, seite: int) -> None:
+        with self._conn:
+            self._conn.execute("UPDATE council_wortbeitraege SET seite = ? WHERE id = ?",
+                               (seite, wb_id))
+
+    def ksinr_mit_beitraegen_ohne_offsets(self, limit: int = 0) -> list[int]:
+        """Protokolle mit Wortbeiträgen, aber ohne Seiten-Offsets — die
+        Arbeitsliste des Backfills (Re-Download nötig)."""
+        sql = ("SELECT DISTINCT w.ksinr FROM council_wortbeitraege w "
+               "JOIN council_protocols p ON p.ksinr = w.ksinr "
+               "WHERE p.page_offsets IS NULL AND p.document_url IS NOT NULL "
+               "ORDER BY w.ksinr DESC")
+        if limit:
+            sql += f" LIMIT {int(limit)}"
+        return [r[0] for r in self._conn.execute(sql)]
+
+    def replace_protocol_text(self, ksinr: int, raw_text: str, n_pages: int,
+                              page_offsets: list[int]) -> None:
+        """Backfill: Volltext + Seiten-Offsets gemeinsam ersetzen — die
+        Offsets gelten exakt für DIESEN Text, getrennt gespeichert wären
+        sie wertlos."""
+        with self._conn:
+            self._conn.execute(
+                "UPDATE council_protocols SET raw_text = ?, n_pages = ?, page_offsets = ? "
+                "WHERE ksinr = ?",
+                (raw_text, n_pages, json.dumps(page_offsets), ksinr))
 
     def protokoll_urls_fuer(self, ksinrs: list[int | None]) -> dict[int, str]:
         """ksinr → getfile-URL des öffentlichen Protokoll-PDFs. Macht die
@@ -5014,7 +5079,7 @@ class CouncilStore:
             return []
         ph = ",".join("?" * len(stationen))
         rows = self._conn.execute(
-            f"""SELECT w.id, w.ksinr, w.art, w.top, w.sprecher, w.partei,
+            f"""SELECT w.id, w.ksinr, w.seite, w.art, w.top, w.sprecher, w.partei,
                        w.text, w.antwort, cs.committee, cs.session_date
                 FROM council_wortbeitraege w
                 LEFT JOIN council_sessions cs ON cs.ksinr = w.ksinr

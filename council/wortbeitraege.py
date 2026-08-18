@@ -14,6 +14,7 @@ an den Nahtstellen werden über (sprecher, text-Anfang) zusammengelegt.
 from __future__ import annotations
 
 import json
+import re
 import os
 
 from kern import llm, prompts
@@ -148,3 +149,85 @@ def extract_wortbeitraege(raw_text: str, model: str = MODEL) -> list[dict]:
                 "antwort": feld("antwort"),
             })
     return beitraege
+
+
+# ---- Seitengenaue Fundstellen (Tims Wunsch 18.08.) -------------------------
+# Die Extraktion paraphrasiert („dicht am Wortlaut", aber kein Zitat) — der
+# TEXT eines Beitrags lässt sich im PDF nicht wörtlich wiederfinden. Der
+# SPRECHER schon: Namen stehen exakt wie im Protokoll. Der Name ist deshalb
+# der Anker, markante Wörter der Paraphrase entscheiden zwischen mehreren
+# Anker-Seiten (der Name steht auch in der Anwesenheitsliste). Gefaltet wird
+# auf [a-z0-9äöüß] — das macht das Matching immun gegen die Trennungs-
+# Artefakte der PDF-Textschicht („Ratjen -Damerau", „Neua u s-richtung").
+
+
+#: Mindest-Zahl gemeinsamer Wörter, damit eine Anker-Seite als Fundstelle
+#: gilt — darunter (und bei Gleichstand) lieber kein #page als ein falsches.
+_SEITE_MIN_TREFFER = 2
+
+
+def _seiten_falte(s: str) -> str:
+    return re.sub(r"[^a-z0-9äöüß]", "", (s or "").lower())
+
+
+def _anker(sprecher: str | None) -> str | None:
+    """Der Nachname als Suchanker — das letzte Namenswort ohne Titel/Anrede,
+    gefaltet. Zu kurze Namen (< 4 Zeichen) ankern nicht zuverlässig."""
+    toks = [t for t in re.split(r"[^0-9A-Za-zÄÖÜäöüß]+", sprecher or "")
+            if t and t.lower() not in {"dr", "prof", "dipl", "ing", "med",
+                                       "herr", "frau", "ratsherr", "ratsfrau"}]
+    if not toks:
+        return None
+    kandidat = _seiten_falte(toks[-1])
+    return kandidat if len(kandidat) >= 4 else None
+
+
+def _beste_seite(sprecher: str | None, text: str, seiten_norm: list[str]) -> int | None:
+    """1-basierte PDF-Seite des Beitrags — oder None, wenn nicht eindeutig."""
+    anker = _anker(sprecher)
+    if not anker:
+        return None
+    kandidaten = [i for i, s in enumerate(seiten_norm) if anker in s]
+    if not kandidaten:
+        return None
+    if len(kandidaten) == 1:
+        return kandidaten[0] + 1
+    # Mehrere Seiten nennen den Namen (Anwesenheitsliste!) — die markanten
+    # Wörter der Paraphrase entscheiden. Die Folgeseite zählt halb mit, weil
+    # Beiträge über den Seitenumbruch laufen.
+    woerter = list(dict.fromkeys(
+        w for w in re.findall(r"[0-9a-zäöüß]{5,}", (text or "").lower())))[:30]
+    if not woerter:
+        return None
+    scores: list[tuple[float, int]] = []
+    for i in kandidaten:
+        naechste = seiten_norm[i + 1] if i + 1 < len(seiten_norm) else ""
+        s = sum(1.0 for w in woerter if _seiten_falte(w) in seiten_norm[i])
+        s += sum(0.5 for w in woerter if _seiten_falte(w) in naechste)
+        scores.append((s, i))
+    scores.sort(reverse=True)
+    best_score, best_i = scores[0]
+    if best_score < _SEITE_MIN_TREFFER:
+        return None
+    if len(scores) > 1 and scores[1][0] == best_score:
+        return None  # Gleichstand — lieber kein Sprung als ein falscher
+    return best_i + 1
+
+
+def seiten_aufloesen(store, ksinr: int) -> int:
+    """Fundstellen-Seiten für alle Beiträge eines Protokolls nachtragen.
+    Läuft nach der Extraktion (und im Backfill); ohne gespeicherte
+    Seiten-Offsets (Altbestand) passiert schlicht nichts."""
+    grundlage = store.protokoll_seiten_grundlage(ksinr)
+    if grundlage is None:
+        return 0
+    raw, offsets = grundlage
+    seiten_norm = [_seiten_falte(raw[offsets[i]: offsets[i + 1] if i + 1 < len(offsets) else len(raw)])
+                   for i in range(len(offsets))]
+    gesetzt = 0
+    for wb in store.wortbeitraege_ohne_seite(ksinr):
+        seite = _beste_seite(wb.get("sprecher"), wb.get("text") or "", seiten_norm)
+        if seite is not None:
+            store.set_wortbeitrag_seite(wb["id"], seite)
+            gesetzt += 1
+    return gesetzt

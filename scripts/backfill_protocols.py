@@ -59,10 +59,11 @@ def _process_one(scraper: CouncilScraper, ksinr: int, since: str, until: str, to
         if not session or session.session_date < since or session.session_date > until \
                 or session.session_date > today:
             return {"status": "skip", "ksinr": ksinr}
-        text, n_pages = protocols.extract_pdf_text(doc["url"])
+        text, n_pages, offsets = protocols.extract_pdf_text(doc["url"])
         data, usage = protocols.extract_protocol(text)
         return {"status": "ok", "ksinr": ksinr, "session": session, "doc": doc,
-                "text": text, "n_pages": n_pages, "data": data, "usage": usage}
+                "text": text, "n_pages": n_pages, "offsets": offsets,
+                "data": data, "usage": usage}
     except Exception as exc:  # noqa: BLE001 — surface per-protocol failures, keep going
         return {"status": "failed", "ksinr": ksinr, "doc": locals().get("doc"), "error": repr(exc)}
 
@@ -118,6 +119,7 @@ def process_range(
                  "session_end": data.get("session_end")},
                 r["text"], r["n_pages"], protocols.MODEL,
                 data.get("decisions", []), data.get("attendance", []),
+                page_offsets=r.get("offsets"),
             )
             tok_in += r["usage"].prompt_tokens
             tok_out += r["usage"].completion_tokens
