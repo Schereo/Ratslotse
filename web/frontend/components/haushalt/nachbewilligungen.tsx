@@ -35,14 +35,17 @@
 // fertig formuliert aus `council/nachbewilligungen.py`, damit Seite und Test
 // dieselbe Aussage tragen.
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import {
-  HaushaltDaten, Nachbewilligung, NachbewilligungsJahr,
+  HaushaltDaten, Nachbewilligung, NachbewilligungsJahr, NachbewilligungsKanal,
   kanalAnzahl, kanalBetrag, nachbewilligungGesamt, nachbewilligungenFuerJahr,
   nachbewilligungsJahre, ratsAnteil,
 } from "@/lib/haushalt";
+import {
+  RanglisteSchiene, type RanglisteZeile,
+} from "@/components/grafik/rangliste-schiene";
 import { Beleg } from "@/components/haushalt/quelle";
 import { decisionHref } from "@/lib/routes";
 import { cn } from "@/lib/utils";
@@ -59,49 +62,42 @@ function euro(wert: number): string {
   return wert.toLocaleString("de-DE", { maximumFractionDigits: 0 });
 }
 
-/** Der Anteilsbalken eines Entscheidungswegs.
+/** Die vier Entscheidungswege als Rangliste — `<RanglisteSchiene>` (GB-03).
  *
- *  Bewusst eine Leiste je Weg und **kein** gestapelter 100-%-Balken: Die vier
- *  Wege sind sehr ungleich groß (2024 trägt der Rat 73 %, die
- *  Eilentscheidungen 0 %), und in einem Stapel wären zwei der vier Segmente
- *  unbeschriftbar dünn. Die Rampe kommt aus den Tokens, nicht aus der
- *  Komponente.
+ *  Warum diese Form und keine eigene: Die Seite **komponiert** Grafiken aus
+ *  `components/grafik/`, sie zeichnet nicht selbst (grafik/README.md). Die
+ *  Schiene bringt genau das mit, was hier gebraucht wird — sichtbare
+ *  Null-Basis (ohne sie schwebten die Balken), `hervorgehoben` zum Finden
+ *  statt zum Bewerten, und unter 480 px wandert das Label von selbst über den
+ *  Balken. Das ist hier keine Kleinigkeit: „Gemäß Haushaltsvermerk durch den
+ *  Fachdienst 200" braucht 312 px, und abgeschnitten wäre ausgerechnet die
+ *  Auskunft weg, um die es in diesem Block geht — **wer** entschieden hat.
  *
- *  **Unter 744 px wandert das Label über den Balken** — dieselbe Regel wie
- *  bei `<RanglisteSchiene>` (grafik/README.md, H4-A). Gemessen bei 375 px:
- *  „Gemäß Haushaltsvermerk durch den Fachdienst 200" braucht 312 px und
- *  bekäme in der Spalte 175 px; abgeschnitten stünde dort „Gemäß
- *  Haushaltsvermer…" — und damit wäre ausgerechnet die Auskunft weg, um die
- *  es in diesem Block geht: **wer** entschieden hat. Ein `title`-Attribut
- *  ersetzt das nicht, auf einem Telefon gibt es keinen Hover. */
-function KanalZeile({ label, anzahl, betrag, groesster }: {
-  label: string; anzahl: number; betrag: number; groesster: number;
+ *  Und bewusst **kein** gestapelter 100-%-Balken: Die vier Wege sind sehr
+ *  ungleich groß (2024 trägt der Rat 73 %, die Eilentscheidungen 0 %), in
+ *  einem Stapel wären zwei der vier Segmente unbeschriftbar dünn.
+ *
+ *  Die Reihenfolge ist die des Rechenschaftsberichts, nicht die nach Größe:
+ *  Der Bericht führt Rat, Oberbürgermeister, Fachdienst 200, Eilentscheidung
+ *  — und `<RanglisteSchiene>` sortiert nicht selbst, sie zeigt, was sie
+ *  bekommt. Die Reihenfolge ist eine Angabe der Quelle wie die Zahlen. */
+function KanalRangliste({ kanaele, beleg }: {
+  kanaele: NachbewilligungsKanal[]; beleg: ReactNode;
 }) {
-  const anteil = groesster ? (betrag / groesster) * 100 : 0;
-  const zahlen = (
-    <span className="whitespace-nowrap text-right text-[12px] tabular-nums">
-      <span className="font-semibold">{mio(betrag)}&#8239;Mio.</span>{" "}
-      <span className="text-muted-foreground">
-        {anzahl === 1 ? "1 Fall" : `${anzahl} Fälle`}
-      </span>
-    </span>
-  );
+  const zeilen: RanglisteZeile[] = kanaele.map((k) => {
+    const anzahl = kanalAnzahl(k);
+    return {
+      label: k.label,
+      wert: kanalBetrag(k) / 1e6,
+      // Der Rat ist die Zeile, um die es geht — hervorgehoben heißt „hier
+      // schauen", nicht „das ist die gute".
+      hervorgehoben: k.kanal === "rat",
+      zusatz: anzahl === 1 ? "1 Fall" : `${anzahl} Fälle`,
+    };
+  });
   return (
-    <div className="flex flex-col gap-1 [@media(min-width:744px)]:grid [@media(min-width:744px)]:grid-cols-[minmax(150px,215px)_1fr_auto] [@media(min-width:744px)]:items-center [@media(min-width:744px)]:gap-x-3">
-      <span className="text-[12.5px] leading-snug [@media(min-width:744px)]:truncate">
-        {label}
-      </span>
-      {/* Ab 744 px löst sich diese Hülle auf (`contents`), und Balken wie
-          Zahlen werden selbst zu Rasterzellen — darunter bleibt sie eine
-          Zeile, in der beide nebeneinander unter dem Label stehen. */}
-      <div className="flex items-center gap-3 [@media(min-width:744px)]:contents">
-        <div className="h-2.5 min-w-0 flex-1 rounded-full bg-muted">
-          <div className="h-full rounded-full bg-[var(--hh-aus-5,theme(colors.primary.DEFAULT))]"
-            style={{ width: `${Math.max(anteil, betrag > 0 ? 2 : 0)}%` }} />
-        </div>
-        {zahlen}
-      </div>
-    </div>
+    <RanglisteSchiene zeilen={zeilen} einheit="Mio.&nbsp;€" nachkomma={2}
+      beleg={beleg} />
   );
 }
 
@@ -171,8 +167,6 @@ export function NachbewilligungsBlock({ daten, jahr }: {
   const anteil = bericht ? ratsAnteil(bericht) : null;
   const ratsKanal = bericht?.kanaele.find((k) => k.kanal === "rat");
   const ratsZeile = ratsKanal ? kanalBetrag(ratsKanal) : null;
-  const groesster = bericht
-    ? Math.max(...bericht.kanaele.map(kanalBetrag), 1) : 1;
   // Der Vergleichswert für den Satz über die Entwicklung: das früheste Jahr,
   // für das ein Bericht vorliegt.
   const berichte = (daten.nachbewilligungen?.jahre ?? [])
@@ -236,17 +230,15 @@ export function NachbewilligungsBlock({ daten, jahr }: {
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
             Wer zugestimmt hat
           </p>
-          <div className="mt-2.5 flex flex-col gap-2">
-            {bericht.kanaele.map((k) => (
-              <KanalZeile key={k.kanal} label={k.label} anzahl={kanalAnzahl(k)}
-                betrag={kanalBetrag(k)} groesster={groesster} />
-            ))}
+          <div className="mt-2.5">
+            <KanalRangliste kanaele={bericht.kanaele}
+              beleg={<Beleg q="jahresabschluss" />} />
           </div>
           <p className="mt-3 max-w-[74ch] text-[11.5px] leading-relaxed text-muted-foreground">
             Die vier Wege, auf denen eine Nachbewilligung zustande kommt, in
-            den Worten des Rechenschaftsberichts<Beleg q="jahresabschluss" />.
-            Nur der erste ist eine Abstimmung im Rat; die anderen entscheidet
-            die Verwaltung, der Rat wird darüber unterrichtet.
+            den Worten des Rechenschaftsberichts. Nur der erste ist eine
+            Abstimmung im Rat; die anderen entscheidet die Verwaltung, der Rat
+            wird darüber unterrichtet.
           </p>
           {bericht.verpflichtungen_betrag != null
             && bericht.verpflichtungen_betrag > 0 && (
