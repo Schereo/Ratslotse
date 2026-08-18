@@ -3,11 +3,18 @@ nur die Unterschiede, grün/gelb/rot — und ein Einschub darf nicht die halbe
 Liste gelb färben, nur weil sich Nummern verschieben."""
 from __future__ import annotations
 
-from council.agenda_diff import diff_html, diff_tagesordnung, hat_aenderungen
+from council.agenda_diff import diff_html, diff_satz, diff_tagesordnung, hat_aenderungen
 
 
 def _i(nr: str, titel: str, vorlage: str = "") -> dict:
     return {"item_number": nr, "title": titel, "vorlage_nr": vorlage}
+
+
+def _a(*ids_labels: tuple[str, str]) -> list[dict]:
+    """Anlagen-Liste aus (getfile-id, Label)-Paaren."""
+    return [{"label": label,
+             "url": f"https://buergerinfo.oldenburg.de/getfile.php?id={gid}&type=do"}
+            for gid, label in ids_labels]
 
 
 def test_nachgereichte_vorlage_ist_eine_aenderung():
@@ -67,6 +74,74 @@ def test_umformulierung_und_entfernung():
     assert hat_aenderungen(d)
 
 
+def test_neue_anlage_ist_eine_aenderung():
+    """Tims Wunsch 18.08.: Hängt an einem TOP plötzlich ein neuer Anhang
+    (Änderungsliste, Stellungnahme), soll die Mail das als Anlagen-Änderung
+    benennen — mit Label, nicht nur als Hash-Sprung."""
+    alt = [dict(_i("Ö 5", "Radweg"), anlagen=[])]
+    neu = [dict(_i("Ö 5", "Radweg"), anlagen=_a(("111", "Änderungsliste der CDU-Fraktion")))]
+    d = diff_tagesordnung(alt, neu)
+    assert len(d["anlagen"]) == 1 and hat_aenderungen(d)
+    assert d["neu"] == [] and d["vorlage"] == []
+    html = diff_html(d)
+    assert "Neue Anlage · TOP Ö 5" in html and "Änderungsliste der CDU-Fraktion" in html
+
+
+def test_anlagen_entfernt_und_getauscht():
+    alt = [dict(_i("Ö 5", "Radweg"), anlagen=_a(("111", "Lageplan")))]
+    neu = [dict(_i("Ö 5", "Radweg"), anlagen=[])]
+    assert "Anlage entfernt · TOP Ö 5" in diff_html(diff_tagesordnung(alt, neu))
+
+    alt = [dict(_i("Ö 5", "Radweg"), anlagen=_a(("111", "Lageplan")))]
+    neu = [dict(_i("Ö 5", "Radweg"), anlagen=_a(("222", "Lageplan (aktualisiert)")))]
+    html = diff_html(diff_tagesordnung(alt, neu))
+    assert "Anlagen geändert · TOP Ö 5" in html
+    assert "neu: Lageplan (aktualisiert)" in html and "entfernt: Lageplan" in html
+
+
+def test_label_wechsel_ohne_neue_id_ist_keine_aenderung():
+    """Icon- und Textlink tragen dieselbe getfile-id, Labels schwanken beim
+    Parsen — die Identität eines Anhangs ist die id, nicht der Text."""
+    alt = [dict(_i("Ö 5", "Radweg"), anlagen=_a(("111", "Anlage")))]
+    neu = [dict(_i("Ö 5", "Radweg"), anlagen=_a(("111", "Lageplan Nord")))]
+    d = diff_tagesordnung(alt, neu)
+    assert not hat_aenderungen(d)
+
+
+def test_vorlage_schlaegt_anlagen():
+    """Eine nachgereichte Vorlage hängt ihr PDF meist auch als Anlage an die
+    Zeile — das ist EINE Meldung (Vorlage), nicht zwei."""
+    alt = [dict(_i("Ö 5", "Radweg"), anlagen=[])]
+    neu = [dict(_i("Ö 5", "Radweg", "26/0100"), anlagen=_a(("111", "Vorlage")))]
+    d = diff_tagesordnung(alt, neu)
+    assert len(d["vorlage"]) == 1 and d["anlagen"] == []
+
+
+def test_diff_satz_nennt_die_aenderungsarten():
+    alt = [_i("Ö 5", "Baumschutzsatzung"),
+           _i("Ö 6", "Regentonnen"),
+           dict(_i("Ö 7", "Radweg"), anlagen=[])]
+    neu = [_i("Ö 5", "Baumschutzsatzung"),
+           _i("Ö 5.1", "Rattenbefall"),
+           dict(_i("Ö 7", "Radweg"), anlagen=_a(("111", "Lageplan")))]
+    d = diff_tagesordnung(alt, neu)
+    satz = diff_satz(d)
+    assert satz == ("Ein Punkt ist neu, die Anlagen zu einem Punkt haben sich "
+                    "geändert und ein Punkt wurde von der Tagesordnung genommen.")
+    # Der Satz steht über der Liste in der Mail.
+    assert satz in diff_html(d)
+
+    # Mehrzahl und Vorlagen-Fälle:
+    d2 = diff_tagesordnung(
+        [_i("Ö 1", "Alpha"), _i("Ö 2", "Beta"), _i("Ö 3", "Gamma", "26/0100")],
+        [_i("Ö 1", "Alpha"), _i("Ö 4", "Neu A"), _i("Ö 5", "Neu B"),
+         _i("Ö 2", "Beta", "26/0200"), _i("Ö 3", "Gamma")])
+    satz2 = diff_satz(d2)
+    assert "2 Punkte sind neu" in satz2
+    assert "eine Vorlage wurde nachgereicht" in satz2
+    assert "eine Vorlage wurde zurückgezogen" in satz2
+
+
 def test_identisch_ist_leer_und_html_faerbt():
     items = [_i("Ö 5", "Baumschutzsatzung")]
     d = diff_tagesordnung(items, list(items))
@@ -118,6 +193,40 @@ def test_alter_snapshot_erfindet_keine_neuen_punkte():
     # Mit is_public im Altstand zählt der nichtöffentliche Punkt normal mit.
     alt_neu = [{"item_number": "Ö 5", "title": "Radweg", "vorlage_nr": "", "is_public": True}]
     assert "Neu · TOP N 1" in modul._aenderungs_teil(alt_neu, jetzt)
+
+
+def test_alter_snapshot_ohne_anlagen_meldet_keine_anlagen():
+    """Snapshots von vor dem 18.08.2026 kennen keine Anhänge. Gegen den neuen
+    Stand verglichen gälte jede längst vorhandene Anlage als frisch — die
+    erste Meldung nach dem Deploy wäre wieder eine Liste erfundener
+    Neuigkeiten (dieselbe Falle wie bei is_public)."""
+    modul = _check_committees()
+    alt = [{"item_number": "Ö 5", "title": "Radweg", "vorlage_nr": "", "is_public": True}]
+    jetzt = [{"item_number": "Ö 5", "title": "Radweg", "vorlage_nr": "", "is_public": True,
+              "anlagen": _a(("111", "Lageplan"))}]
+    assert modul._aenderungs_teil(alt, jetzt) == ""
+
+    # Kennt der Altstand die Anlagen, ist der Neuzugang eine echte Meldung.
+    alt_neu = [dict(alt[0], anlagen=[])]
+    assert "Neue Anlage" in modul._aenderungs_teil(alt_neu, jetzt)
+
+
+def test_agenda_hash_zaehlt_anlagen_mit():
+    """Eine neue Anlage muss den Hash springen lassen (sonst gibt es nie eine
+    Änderungsmeldung dazu); ein bloßer Label-Wechsel derselben getfile-id
+    darf es nicht."""
+    from types import SimpleNamespace
+
+    modul = _check_committees()
+
+    def _item(anlagen):
+        return SimpleNamespace(item_number="Ö 5", title="Radweg", vorlage_nr="",
+                               is_public=True, anlagen=anlagen)
+
+    ohne = modul._agenda_hash([_item([])])
+    mit = modul._agenda_hash([_item(_a(("111", "Lageplan")))])
+    umbenannt = modul._agenda_hash([_item(_a(("111", "Lageplan Nord")))])
+    assert ohne != mit and mit == umbenannt
 
 
 def test_snapshot_roundtrip(tmp_path):
