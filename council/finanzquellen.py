@@ -69,7 +69,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Callable
 
-from council import (bilanz, buergschaften, ergebnishaushalt, finanzberichte,
+from council import (anlagenspiegel, bilanz, buergschaften, ergebnishaushalt, finanzberichte,
                      herkunft, investitionsprogramm, konzernabschluss,
                      pruefberichte, stellenplan)
 from council.store import CouncilStore
@@ -1444,6 +1444,96 @@ def lies_buergschaften(store: CouncilStore, p: Protokoll) -> dict:
         woher = " (aus dem Folgejahr)" if z["aus_folgejahr"] else ""
         p.sagen(f"  {z['jahr']}: {z['bestand']/1e6:7.1f} Mio. €{woher}")
     return {"jahrgaenge": len(zeilen), "kette_gerissen": 0, "glieder": glieder}
+
+
+def lies_anlagenspiegel(store: CouncilStore, p: Protokoll) -> dict:
+    """Den Anlagenspiegel aus den Jahresabschlüssen lesen (Abschnitt 8.1).
+
+    Wie ``lies_buergschaften`` ein eigener Leser auf denselben Dokumenten: Die
+    Tabelle hängt an keiner Probe der Ergebnisrechnung, und umgekehrt.
+
+    ANDERS ALS DIE BÜRGSCHAFTEN FÄLLT HIER NICHT ALLES AUS. Die Bürgschaften
+    sind eine Reihe, deren Aussage die Entwicklung ist — ein Widerspruch darin
+    trifft sie im Kern. Der Anlagenspiegel ist je Jahrgang eine eigene
+    Tabelle: Reißt eine Kette in 2019, sagt das nichts über 2024. Ein
+    gerissener Jahrgang wird verworfen und benannt, die übrigen bleiben.
+    """
+    quelle = QUELLEN["jahresabschluss"]
+    rows = quelle.dokumente(store, "document_id, label, url, raw_text")
+
+    jahrgaenge = verworfen = zeilen_gesamt = 0
+    geprueft = gerissen = 0
+    gruppen_gesamt = 0
+    for r in rows:
+        m = re.search(r"(20\d\d)", r["label"] or "")
+        if not m:
+            continue
+        jahr = int(m.group(1))
+        text = r["raw_text"] or ""
+        zeilen = anlagenspiegel.parse_anlagenspiegel(text, jahr)
+        if not zeilen:
+            continue
+
+        risse: list[str] = []
+        for z in zeilen:
+            ok, kaputt = anlagenspiegel.probe(z)
+            z["proben"] = ok
+            geprueft += len(ok) + len(kaputt)
+            risse += kaputt
+        saldo, umb_risse = anlagenspiegel.umbuchungsprobe(zeilen)
+        risse += umb_risse
+        # Die Gegenprobe an der Bilanz — eine andere Quelle im selben Heft.
+        bilanz_posten = [dict(x) for x in store._conn.execute(  # noqa: SLF001
+            "SELECT rolle, wert FROM council_bilanz WHERE jahr = ?", (jahr,))]
+        bilanz_risse = anlagenspiegel.gegen_bilanz(zeilen, bilanz_posten)
+        if not bilanz_risse and bilanz_posten:
+            for z in zeilen:
+                if z["nr"] in anlagenspiegel.BILANZ_ROLLE:
+                    z["proben"] = [*z["proben"], anlagenspiegel.PROBE_BILANZ]
+        risse += bilanz_risse
+
+        if risse:
+            gerissen += len(risse)
+            verworfen += 1
+            for x in risse[:3]:
+                p.warnen(f"  Anlagenspiegel {jahr}: {x}")
+            p.warnen(f"  Anlagenspiegel {jahr} verworfen — {len(risse)} Beanstandung(en)")
+            continue
+
+        if abs(saldo) <= anlagenspiegel.TOLERANZ and zeilen[0]["spalten"] == 12:
+            for z in zeilen:
+                z["proben"] = [*z["proben"], anlagenspiegel.PROBE_UMBUCHUNG]
+
+        store.save_anlagenspiegel(
+            jahr, zeilen,
+            herkunft.Herkunft(
+                art="ris", probe=sorted({x for z in zeilen for x in z["proben"]}),
+                dokument_id=r["document_id"], label=r["label"], url=r["url"],
+                fundstelle=anlagenspiegel.ABSCHNITT,
+                probe_ergebnis=f"{geprueft} Rechenwege geprüft, keiner gerissen",
+                stand=f"Jahresabschluss {jahr}"))
+        jahrgaenge += 1
+        zeilen_gesamt += len(zeilen)
+
+        gruppen = anlagenspiegel.parse_sachvermoegen_gruppen(text, jahr)
+        if gruppen:
+            store.save_vermoegensgruppen(
+                jahr, gruppen,
+                herkunft.Herkunft(
+                    art="ris", probe=[anlagenspiegel.PROBE_BUCHWERT],
+                    dokument_id=r["document_id"], label=r["label"], url=r["url"],
+                    fundstelle="Erläuterungen zum Sachvermögen",
+                    probe_ergebnis=f"{len(gruppen)} Untergruppen",
+                    stand=f"Jahresabschluss {jahr}"))
+            gruppen_gesamt += len(gruppen)
+        p.sagen(f"  {jahr}: {len(zeilen)} Positionen, {len(gruppen)} Untergruppen")
+
+    return {"anlagenspiegel_jahrgaenge": jahrgaenge,
+            "anlagenspiegel_zeilen": zeilen_gesamt,
+            "anlagenspiegel_geprueft": geprueft,
+            "anlagenspiegel_gerissen": gerissen,
+            "anlagenspiegel_verworfen": verworfen,
+            "vermoegensgruppen": gruppen_gesamt}
 
 
 def lies_schlussbericht_fundstellen(store: CouncilStore, p: Protokoll,

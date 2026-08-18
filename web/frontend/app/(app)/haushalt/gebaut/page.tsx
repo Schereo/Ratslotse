@@ -43,8 +43,11 @@ import { ArrowRight, FileText } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
 import {
   GebautDaten, GebautLuecke, Herkunft, deMioEuro, groessterPosten,
-  herkunftVon, juengsteReihe, reihen,
+  herkunftVon, infrastruktur, juengsteReihe, reihen, sachvermoegen,
+  strassen, verzehr,
 } from "@/lib/haushalt-gebaut";
+import { Gegenbalken } from "@/components/grafik/gegenbalken";
+import { LueckenFeld } from "@/components/grafik/luecken-feld";
 import { NahtSaeulen, type NahtJahr } from "@/components/grafik/naht-saeulen";
 import { Anteilsbalken } from "@/components/haushalt/anteilsbalken";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
@@ -95,6 +98,119 @@ function Fundstelle({ h }: { h: Herkunft | null }) {
         {h.fundstelle}{h.stand ? ` · ${h.stand}` : ""}
       </p>
     </div>
+  );
+}
+
+/** Was aus den Investitionen wurde — und dass der Bestand trotzdem schrumpft.
+ *
+ *  DIE ZWEITE HÄLFTE DER SEITE. Bis hierher steht, was die Stadt gebaut hat.
+ *  Ein Neubau ist aber im Jahr der Fertigstellung eine Investition und danach
+ *  vierzig Jahre Vermögen, das sich abnutzt. Erst beides zusammen beantwortet
+ *  die Frage, die eine Investitionsliste offenlässt: Baut die Stadt schneller
+ *  auf, als ihr Bestand verfällt?
+ *
+ *  KEINE BEWERTUNGSFARBE. Dass mehr abgeschrieben als zugebaut wird, ist
+ *  weder gut noch schlecht — es kann eine alternde Straße sein oder eine
+ *  abgeschlossene Sanierung, die planmäßig altert. Der Gegenbalken zeigt die
+ *  beiden Zahlen im selben Maßstab, der Satz daneben nennt den Faktor, das
+ *  Urteil bleibt bei den Lesenden.
+ *
+ *  Rendert nichts, solange kein Anlagenspiegel eingelesen ist. */
+function AnlagenBlock({ daten }: { daten: GebautDaten | null }) {
+  const a = daten?.anlagen;
+  const jahre = a?.jahre ?? [];
+  const jahr = jahre[jahre.length - 1];
+  const infra = infrastruktur(a, jahr);
+  const sach = sachvermoegen(a, jahr);
+  const v = verzehr(infra);
+  if (!a || !jahr || !infra || !v) return null;
+
+  // Die Straßenreihe gibt es erst ab 2022 — die Jahre davor sind eine Lücke
+  // der QUELLE, nicht der Daten. Sie wird benannt, nicht überbrückt.
+  const strassenReihe = jahre
+    .map((j) => ({ jahr: j, g: strassen(a, j) }))
+    .filter((x): x is { jahr: number; g: NonNullable<ReturnType<typeof strassen>> } => !!x.g);
+  const strassenErst = strassenReihe[0];
+  const strassenLetzt = strassenReihe[strassenReihe.length - 1];
+
+  return (
+    <section className="flex flex-col gap-3.5 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+      <div>
+        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+          Was daraus wurde
+        </p>
+        <h2 className="mt-1 text-[17px] font-semibold leading-snug text-foreground">
+          {v.faktor && v.faktor > 1
+            ? `Beim Infrastrukturvermögen schreibt die Stadt ${deMioEuro(v.abschreibung)}\u2009Mio.\u00a0€ ab und baut ${deMioEuro(v.zugaenge)}\u2009Mio.\u00a0€ zu`
+            : "Zugänge und Abschreibungen des Infrastrukturvermögens"}
+        </h2>
+        <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
+          Straßen, Brücken und Kanäle stehen mit {deMioEuro(infra.buchwert)}&#8239;Mio.&nbsp;€ in der
+          Bilanz {jahr}. Was im Jahr dazukam, steht neben dem, was im selben Jahr
+          an Wert verloren ging — beide Zahlen aus derselben Tabelle des
+          Jahresabschlusses. <Beleg q="jahresabschluss" />
+        </p>
+      </div>
+
+      {/* Gemeinsame Basis, damit kein Maßstabsfehler konstruierbar ist (GB-04). */}
+      <Gegenbalken
+        // Der Baustein beschriftet „Mio. €" — also kommen auch Millionen
+        // herein. Die Werte des Anlagenspiegels stehen in Euro; ohne diese
+        // Umrechnung stünde „17.036.012,7 Mio. €" da.
+        zeilen={[
+          { titel: `Abgeschrieben ${jahr}`, rampe: "aus",
+            segmente: [{ label: "Wertverlust des Jahres", wert: v.abschreibung / 1e6 }] },
+          { titel: `Zugegangen ${jahr}`, rampe: "ein",
+            segmente: [{ label: "Neu ins Vermögen", wert: v.zugaenge / 1e6 }] },
+        ]}
+        basis={Math.max(v.abschreibung, v.zugaenge) / 1e6}
+        einheit="Mio. €"
+        beleg={<Beleg q="jahresabschluss" />}
+      />
+
+      {v.faktor && (
+        <p className="max-w-[76ch] text-[12.5px] leading-relaxed text-muted-foreground">
+          <strong className="text-foreground">Das Verhältnis:</strong>{" "}
+          Auf jeden zugebauten Euro kommen{" "}
+          {v.faktor.toFixed(1).replace(".", ",")} Euro Abschreibung. Das ist kein
+          Urteil über zu wenig Investition — eine planmäßig alternde Straße sieht
+          genauso aus wie eine vernachlässigte. Was es sagt: Der Buchwert dieses
+          Vermögens sinkt.
+        </p>
+      )}
+
+      {strassenErst && strassenLetzt && strassenReihe.length > 1 ? (
+        <div className="rounded-xl border border-border bg-background/40 p-3">
+          <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+            Straßen, Wege und Plätze im Einzelnen
+          </p>
+          <p className="mt-1 max-w-[76ch] text-[12.5px] leading-relaxed text-foreground/90">
+            Der Jahresabschluss gliedert das Infrastrukturvermögen weiter auf.
+            Allein die Straßen, Wege und Plätze sanken von{" "}
+            {deMioEuro(strassenErst.g.buchwert_vorjahr ?? strassenErst.g.buchwert)}&#8239;Mio.&nbsp;€ auf{" "}
+            {deMioEuro(strassenLetzt.g.buchwert)}&#8239;Mio.&nbsp;€ — der Abschluss {jahr} nennt das
+            selbst einen <strong>Substanzverlust</strong>.
+          </p>
+        </div>
+      ) : null}
+
+      {strassenReihe.length > 0 && strassenReihe.length < jahre.length ? (
+        <LueckenFeld
+          label={`vor ${strassenReihe[0].jahr}`}
+          grund="Die Jahresabschlüsse gliedern das Infrastrukturvermögen erst ab diesem Jahrgang weiter auf. Die Gesamtsumme steht für alle Jahre da."
+        />
+      ) : null}
+
+      {sach && sach.spalten === 12 ? (
+        <p className="max-w-[76ch] text-[12px] leading-relaxed text-muted-foreground">
+          <strong className="text-foreground">Zu den älteren Jahrgängen.</strong>{" "}
+          Bis 2020 führt die Tabelle eine Spalte weniger: Verschiebungen zwischen
+          den Vermögensarten stehen dort nicht als eigene Angabe, sondern nur als
+          Differenz. Sie heben sich über alle Positionen auf null auf — geprüft,
+          bevor diese Zahlen hier stehen.
+        </p>
+      ) : null}
+    </section>
   );
 }
 
@@ -412,6 +528,8 @@ export default function GebautPage() {
             </li>
           </ul>
         </section>
+
+        <AnlagenBlock daten={data} />
 
         <Link href="/haushalt"
           className="group flex items-center gap-2 text-[13px] font-semibold text-primary">

@@ -367,8 +367,8 @@ function PlanIstInner() {
             Die Stadt hat <strong>{deMio(gesamt.ertrIst)}&#8239;Mio.&nbsp;€ eingenommen</strong> —
             geplant waren {deMio(gesamt.ertrPlan)}<Beleg q="jahresabschluss" />
             {Math.abs(ertrDiff) >= 1 && (
-              <>, also {deMio(Math.abs(ertrDiff))}&#8239;Mio. {ertrDiff > 0 ? "mehr" : "weniger"}</>
-            )}. Ausgegeben hat sie <strong>{deMio(gesamt.aufwIst)}&#8239;Mio.</strong> statt der
+              <>, also {deMio(Math.abs(ertrDiff))}&#8239;Mio.&nbsp;€ {ertrDiff > 0 ? "mehr" : "weniger"}</>
+            )}. Ausgegeben hat sie <strong>{deMio(gesamt.aufwIst)}&#8239;Mio.&nbsp;€</strong> statt der
             geplanten {deMio(gesamt.aufwPlan)}
             {Math.abs(aufwDiff) >= 1 && (
               <> ({aufwDiff > 0 ? "+" : "−"}{deMio(Math.abs(aufwDiff))})</>

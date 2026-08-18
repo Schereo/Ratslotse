@@ -48,8 +48,92 @@ export type GebautDaten = {
    *  auf, und anders als bei den Schulden gibt es keine zweite Probe, die
    *  wenigstens die Summe trüge. */
   fehlend: Record<string, GebautLuecke[]>;
+  /** Was aus den Investitionen wurde — der Anlagenspiegel des
+   *  Jahresabschlusses (Abschnitt 8.1). */
+  anlagen?: Anlagen;
   herkunft: Record<string, Herkunft>;
 };
+
+/** Eine Zeile des Anlagenspiegels: eine Vermögensposition in einem Jahr.
+ *
+ *  Die Vorzeichen sind die des Dokuments: `abgaenge`, `abschreibung` und
+ *  `abschr_ende` stehen negativ. Wer sie beim Anzeigen dreht, muss es überall
+ *  tun — eine halb gedrehte Reihe ist schlimmer als eine ungedrehte. */
+export type AnlagePosten = {
+  jahr: number;
+  /** Gliederung wie im Dokument: „1", „1.1", „2", „2.3" … */
+  nr: string;
+  bezeichnung: string;
+  /** 12 (bis 2020) oder 13. Bei 12 fehlt dem Abschreibungs-Block die
+   *  Umbuchungs-Spalte — die Abschreibungskette KANN dort nicht schließen,
+   *  und das ist eine Eigenschaft der Vorlage, kein Fehler. */
+  spalten: number;
+  ahk_anfang: number; zugaenge: number; abgaenge: number;
+  umbuchungen: number; ahk_ende: number;
+  abschr_anfang: number; abschreibung: number; aufloesungen: number;
+  zuschreibungen: number; abschr_umbuchungen: number; abschr_ende: number;
+  buchwert: number; buchwert_vorjahr: number;
+  proben: string[];
+  herkunft_id: number | null;
+};
+
+/** Eine Untergruppe des Infrastrukturvermögens — Straßen, Brücken, Gleise.
+ *  Aus einer ANDEREN Tabelle desselben Dokuments und erst ab 2022. */
+export type VermoegensGruppe = {
+  jahr: number;
+  gruppe: string;
+  buchwert: number;
+  buchwert_vorjahr: number | null;
+  herkunft_id: number | null;
+};
+
+export type Anlagen = {
+  reihe: AnlagePosten[];
+  jahre: number[];
+  gruppen: VermoegensGruppe[];
+  /** Die Jahre MIT Untergliederung — kürzer als `jahre`, und das muss die
+   *  Seite sagen dürfen, statt eine Lücke als Null zu zeichnen. */
+  gruppen_jahre: number[];
+  proben: Record<string, string>;
+};
+
+/** Die Hauptposition „Sachvermögen" eines Jahres — oder null.
+ *
+ *  Nummer „2" ist die Zeile, um die es geht: Sie enthält Gebäude, Straßen und
+ *  Fahrzeuge. Immaterielles (1) und Finanzvermögen (3) nutzen sich nicht ab. */
+export function sachvermoegen(anlagen: Anlagen | undefined, jahr: number): AnlagePosten | null {
+  return (anlagen?.reihe ?? []).find((z) => z.jahr === jahr && z.nr === "2") ?? null;
+}
+
+/** Das Infrastrukturvermögen (2.3) eines Jahres — Straßen, Brücken, Kanäle. */
+export function infrastruktur(anlagen: Anlagen | undefined, jahr: number): AnlagePosten | null {
+  return (anlagen?.reihe ?? []).find((z) => z.jahr === jahr && z.nr === "2.3") ?? null;
+}
+
+/** Baut die Stadt schneller auf, als ihr Bestand verfällt?
+ *
+ *  Gerechnet, nicht behauptet: Zugänge gegen Abschreibung derselben Zeile
+ *  desselben Jahres. `null`, wo eine der beiden Zahlen fehlt — dann sagt die
+ *  Seite nichts, statt eine Richtung zu raten. */
+export function verzehr(posten: AnlagePosten | null): {
+  zugaenge: number; abschreibung: number; saldo: number; faktor: number | null;
+} | null {
+  if (!posten) return null;
+  const abschreibung = Math.abs(posten.abschreibung);
+  if (!posten.zugaenge && !abschreibung) return null;
+  return {
+    zugaenge: posten.zugaenge,
+    abschreibung,
+    saldo: posten.zugaenge - abschreibung,
+    faktor: posten.zugaenge > 0 ? abschreibung / posten.zugaenge : null,
+  };
+}
+
+/** Die Straßen-Untergruppe eines Jahres, falls der Jahrgang sie führt. */
+export function strassen(anlagen: Anlagen | undefined, jahr: number): VermoegensGruppe | null {
+  return (anlagen?.gruppen ?? []).find(
+    (g) => g.jahr === jahr && /Straßen/i.test(g.gruppe)) ?? null;
+}
 
 export function herkunftVon(daten: GebautDaten | null, id: number | null): Herkunft | null {
   if (!daten || id == null) return null;

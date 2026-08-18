@@ -97,13 +97,13 @@ export function Tafel({ zeilen, jahr, aktuell, aktion, children }: {
           </h1>
           {fehlt != null && (
             <p className="mt-3 max-w-[52ch] text-[13.5px] leading-relaxed text-muted-foreground sm:text-[15px]">
-              {deMio(fehlt)} Millionen davon sind durch Einnahmen nicht gedeckt —
+              {deMio(fehlt)} Millionen Euro davon sind durch Einnahmen nicht gedeckt —
               sie {aktuell ? "kommen" : "kamen"} aus dem Ersparten der Stadt.
             </p>
           )}
           {ueber != null && (
             <p className="mt-3 max-w-[52ch] text-[13.5px] leading-relaxed text-muted-foreground sm:text-[15px]">
-              {aktuell ? "Geplant sind" : "Geplant waren"} {deMio(ueber)} Millionen mehr
+              {aktuell ? "Geplant sind" : "Geplant waren"} {deMio(ueber)} Millionen Euro mehr
               Einnahmen als Ausgaben. Was am Jahresende wirklich herauskam, steht
               erst im Jahresabschluss.
             </p>

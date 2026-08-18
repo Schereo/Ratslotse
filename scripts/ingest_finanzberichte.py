@@ -108,6 +108,13 @@ def main() -> int:
             # darf — es sind verschiedene Abschnitte hinter verschiedenen Proben.
             print("Bürgschaftsbestand (Eventualverbindlichkeiten):")
             uebernehmen("buergschaft", finanzquellen.lies_buergschaften(store, p))
+            # Und aus demselben Heft, ganz hinten: was aus Investitionen wird
+            # (Abschnitt 8.1). Steht NACH der Bilanz, weil seine vierte Probe
+            # den Buchwert gegen die Bilanzposition hält — läuft sie vorher,
+            # gibt es die Gegenprobe im ersten Lauf einer leeren Datenbank
+            # nicht, und der Beleg trüge eine Probe weniger.
+            print("Anlagenspiegel (was aus Investitionen wird):")
+            uebernehmen("anlagenspiegel", finanzquellen.lies_anlagenspiegel(store, p))
         if args.nur in (None, "teilhaushalte"):
             print("Teilhaushalte (Produktebene):")
             uebernehmen("teilhaushalt",

@@ -254,12 +254,12 @@ export default function EinnahmenPage() {
           text={`Alle Steuern zusammen brachten ${jahr} rund ${deMio(gesamt / 1e6)} Millionen Euro`
             + (ausgleich?.nettobetrag
               ? `. Dazu kommen die Zuweisungen des Landes: für das Ausgleichsjahr `
-                + `${ausgleich.jahr} rund ${deMio(ausgleich.nettobetrag / 1000)} Millionen `
+                + `${ausgleich.jahr} rund ${deMio(ausgleich.nettobetrag / 1000)} Millionen Euro `
                 + `— Schlüsselzuweisungen für Gemeinde- und Kreisaufgaben plus die `
                 + `Zuweisungen für übertragene staatliche Aufgaben`
               : zuweisungJahr?.zuweisungen
                 ? `. Dazu kommen die Schlüsselzuweisungen des Landes: für das Ausgleichsjahr `
-                  + `${zuweisungJahr.jahr} rund ${deMio(zuweisungJahr.zuweisungen / 1e6)} Millionen`
+                  + `${zuweisungJahr.jahr} rund ${deMio(zuweisungJahr.zuweisungen / 1e6)} Millionen Euro`
                 : "")
             + ". Das ist noch nicht alles, was die Stadt einnimmt: Gebühren, Kostenerstattungen"
             + " und zweckgebundene Zuschüsse kommen hinzu, und die stehen nicht in diesen"
