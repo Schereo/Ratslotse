@@ -1507,6 +1507,12 @@ def test_abschlussfragen_tragen_stabile_schluessel_ohne_jahr(tmp_path):
     schulden = next(q for q in fragen if "Wie hoch sind die Schulden" in q["question"])
     # Die richtige Antwort ist NICHT eine der drei Zahlen.
     assert schulden["options"][schulden["correct_index"]].startswith("Alle drei")
+    # An JEDER Zahl steht ihr Jahr. Die drei Quellen erscheinen zu
+    # verschiedenen Zeiten — das Jahrbuch war 08/2026 schon bei 2025, Bilanz
+    # und Konzern-Tabellenband noch bei 2024. Ohne Jahr nebeneinandergestellt
+    # wäre die Frage angreifbar, und zwar zu Recht.
+    for opt in schulden["options"][:3]:
+        assert "(20" in opt, opt
 
     # Stabile Schlüssel: keine Jahreszahl drin, und über zwei Läufe gleich.
     schluessel = {q["content_hash"] for q in fragen}
