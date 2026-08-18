@@ -375,6 +375,28 @@ PROBEN: dict[str, str] = {
         "Jeder Beteiligungsbericht führt vier bis fünf Jahre nebeneinander. "
         "Dieses Jahr steht deshalb in mehreren Berichten — verschiedene "
         "Veröffentlichungen, dieselbe Zahl.",
+    # Nachbewilligungen nach § 117 NKomVG (council/nachbewilligungen.py). Die
+    # zweite ist die härteste Probe des ganzen Bereichs: Sie stellt nicht zwei
+    # Stellen eines Dokuments gegeneinander, sondern unseren Bestand gegen ein
+    # amtliches Dokument — und der nennt dieselben Fälle mit Vorlagen-Nummern,
+    # also mit einem echten Schlüssel statt einer Ähnlichkeit.
+    "nachbewilligung_volltext":
+        "Der Betrag, den der Titel der Vorlage nennt, steht in ihrem Volltext "
+        "noch einmal. Damit ist ausgeschlossen, dass die Nummer aus dem Titel "
+        "eine Jahreszahl, eine Teilhaushaltsnummer oder der Deckungsbetrag "
+        "war.",
+    "nachbewilligung_ratsabgleich":
+        "Der Rechenschaftsbericht der Stadt führt dieselben Nachbewilligungen "
+        "noch einmal auf, mit ihren Vorlagen-Nummern und nach Entscheidungsweg "
+        "getrennt. Für die Jahre mit Bericht ist geprüft, ob unsere Fälle "
+        "seine sind und unsere Summe seine Summe — die gemessene Abweichung "
+        "steht dabei.",
+    "nachbewilligung_tabellenprobe":
+        "Das Kapitel rechnet sich selbst vor: Die vier Entscheidungswege "
+        "ergeben zusammen die Summenzeile der Tabelle, und beide Spalten "
+        "zusammen die Gesamtsumme, die derselbe Abschnitt im Fließtext nennt. "
+        "Wo das nicht aufgeht, widerspricht sich das Dokument — dann steht "
+        "hier, um wie viel.",
     UNGEPRUEFT:
         "Diese Angabe trägt keine Rechenprobe — es gibt im Dokument nichts, "
         "wogegen sie sich prüfen ließe. Übernommen wie veröffentlicht.",
