@@ -16,8 +16,9 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
-import { HaushaltDaten, betrag, deMio, spendenGremien, spendenJahre, spendenLaufend } from "@/lib/haushalt";
+import { HaushaltDaten, deMio, spendenGremien, spendenJahre, spendenLaufend } from "@/lib/haushalt";
 import { ZeitreiheMini } from "@/components/grafik/zeitreihe";
+import { LueckenFeld } from "@/components/grafik/luecken-feld";
 import { SPIELRAUM_LABEL, STEUERARTEN, Spielraum } from "@/lib/haushalt-steuern";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
@@ -286,11 +287,13 @@ export default function EinnahmenPage() {
               <p className="text-[12.5px] font-semibold">
                 Angenommene Zuwendungen {spendenLetztes.jahr}
               </p>
-              <p className="mt-0.5 font-display text-[26px] font-bold leading-none tabular-nums">
-                {betrag(spendenLetztes.betrag).wert}
-                <span className="ml-1 text-[13px] font-semibold text-muted-foreground">
-                  {betrag(spendenLetztes.betrag).einheit}
-                </span>
+              {/* Auf den Euro genau, nicht gerundet: Diese Summe IST exakt —
+                  sie ist die Summe von Ratsbeschlüssen, nicht eine
+                  Hochrechnung. „789 Tsd. €" wäre hier eine Ungenauigkeit, die
+                  die Quelle gar nicht hat. */}
+              <p className="mt-0.5 font-display text-[24px] font-bold leading-none tabular-nums">
+                {Math.round(spendenLetztes.betrag).toLocaleString("de-DE")}
+                <span className="ml-1 text-[13px] font-semibold text-muted-foreground">€</span>
                 <Beleg q="spenden" />
               </p>
               <p className="mt-1 text-[11.5px] text-muted-foreground">
@@ -299,14 +302,19 @@ export default function EinnahmenPage() {
             </div>
             {spendenReihe.length > 1 && (
               <div className="min-w-0 flex-1">
+                {/* Endpunkt in Tausend, wie die große Zahl daneben — zwei
+                    Einheiten in einem Block ließen die Kurve und die Kennzahl
+                    wie zwei verschiedene Reihen aussehen. */}
                 <ZeitreiheMini
                   reihe={spendenReihe.map((j) => ({ jahr: j.jahr, wert: j.betrag }))}
-                  format={(v) => `${deMio(v / 1e6)} Mio.`}
+                  format={(v) => `${Math.round(v / 1000).toLocaleString("de-DE")} Tsd.`}
                   ariaLabel={
                     `Angenommene Zuwendungen je Jahr, ${spendenReihe[0].jahr} bis `
                     + `${spendenLetztes.jahr}: von `
-                    + `${deMio(spendenReihe[0].betrag / 1e6)} auf `
-                    + `${deMio(spendenLetztes.betrag / 1e6)} Millionen Euro.`}
+                    + `${Math.round(spendenReihe[0].betrag).toLocaleString("de-DE")} auf `
+                    + `${Math.round(spendenLetztes.betrag).toLocaleString("de-DE")} Euro. `
+                    + `Höchststand ${Math.round(Math.max(...spendenReihe.map((j) => j.betrag)))
+                      .toLocaleString("de-DE")} Euro.`}
                 />
               </div>
             )}
@@ -343,10 +351,9 @@ export default function EinnahmenPage() {
               <div>
                 <dt className="text-[12.5px] font-semibold">{spendenLauf.jahr} läuft noch</dt>
                 <dd className="mt-0.5 max-w-[80ch] text-[12.5px] leading-relaxed text-muted-foreground">
-                  Bis jetzt {betrag(spendenLauf.betrag).wert}{" "}
-                  {betrag(spendenLauf.betrag).einheit} aus {spendenLauf.vorlagen}{" "}
-                  Beschlüssen. Das Jahr steht deshalb nicht in der Kurve: Es wäre ein
-                  Rückgang zu sehen, den es nicht gibt.
+                  Bis jetzt {Math.round(spendenLauf.betrag).toLocaleString("de-DE")} €
+                  aus {spendenLauf.vorlagen} Beschlüssen. Das Jahr steht deshalb nicht
+                  in der Kurve: Es wäre ein Rückgang zu sehen, den es nicht gibt.
                 </dd>
               </div>
             )}
@@ -363,16 +370,23 @@ export default function EinnahmenPage() {
                   oder zerlegt in Geld- und Sachzuwendungen, die sich auf den Cent
                   aufaddieren. Wo das nicht aufgeht, fehlt die Zeile, statt ungeprüft
                   mitzuzählen:
-                  <ul className="mt-1.5 flex flex-col gap-1">
-                    {spendenOhne.map((v) => (
-                      <li key={v.vorlage_nr} className="flex gap-2">
-                        <span className="flex-none font-mono text-[11px] tabular-nums">
-                          {v.vorlage_nr}
-                        </span>
-                        <span>{v.grund}</span>
-                      </li>
-                    ))}
-                  </ul>
+                </dd>
+                {/* <LueckenFeld> statt einer eigenen Liste: Es ist die Textform
+                    für Lücken im Baukasten, und sie ist bewusst nie
+                    einklappbar (H4-A). Sechs Sätze machen den Block länger —
+                    das ist der Preis dafür, dass keine Vorlage stillschweigend
+                    aus der Summe fällt. */}
+                <dd className="mt-1.5 flex flex-col gap-1.5">
+                  {spendenOhne.map((v) => (
+                    <LueckenFeld
+                      key={v.vorlage_nr}
+                      label={v.vorlage_nr}
+                      grund={v.grund}
+                      datum={v.sitzung
+                        ? new Date(v.sitzung).toLocaleDateString("de-DE")
+                        : undefined}
+                    />
+                  ))}
                 </dd>
               </div>
             )}
