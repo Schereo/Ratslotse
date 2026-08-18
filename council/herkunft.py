@@ -467,6 +467,13 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     "council_schulden",
     # Die lange Ausgabenreihe seit 1972 (Datensatz 1102) — ebenso.
     "council_ausgabenreihe",
+    # Nachbewilligungen nach § 117 NKomVG. Drei Tabellen aus zwei Quellen:
+    # Die erste liest das Ratsinformationssystem, die beiden anderen Kapitel 3
+    # des Rechenschaftsberichts — verschiedene Dokumente, verschiedene Proben,
+    # deshalb je eigene Herkunft.
+    "council_nachbewilligungen",
+    "council_nachbewilligung_jahre",
+    "council_nachbewilligung_kanaele",
     # Der Beteiligungsbericht (council/beteiligungsbericht.py). Die Texte
     # stehen bewusst mit dabei: Sie tragen `UNGEPRUEFT`, aber sie tragen eine
     # Herkunft — Dokument, Abschnitt und Seite. „Keine Probe" ist etwas
