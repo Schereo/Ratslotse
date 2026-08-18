@@ -142,6 +142,31 @@ def test_diff_satz_nennt_die_aenderungsarten():
     assert "eine Vorlage wurde zurückgezogen" in satz2
 
 
+def test_gleichnamige_tops_erzeugen_keine_phantom_verschiebungen():
+    """Der Befund aus der Demo-Mail vom 18.08. (Jugendhilfeausschuss 4674):
+    Nichtöffentliche Teile führen reihenweise TOPs namens „gesperrte
+    Information". Alle dockten am ERSTEN Namensvetter an — ein unveränderter
+    Block meldete „Verschoben · N 11 → N 12" und „N 11 → N 13"."""
+    items = [_i("Ö 1", "Einwohnerfragestunde"),
+             _i("N 11", "gesperrte Information"),
+             _i("N 12", "gesperrte Information"),
+             _i("N 13", "gesperrte Information")]
+    d = diff_tagesordnung(items, list(items))
+    assert not hat_aenderungen(d)
+
+    # Ein NEUER Namensvetter ist neu — nicht „verschoben".
+    mehr = items + [_i("N 14", "gesperrte Information")]
+    d2 = diff_tagesordnung(items, mehr)
+    assert [i["item_number"] for i in d2["neu"]] == ["N 14"]
+    assert d2["verschoben"] == []
+
+    # Ein weggefallener Namensvetter ist entfernt — früher unsichtbar,
+    # weil der Titel ja „noch da" war.
+    d3 = diff_tagesordnung(mehr, items)
+    assert [i["item_number"] for i in d3["entfernt"]] == ["N 14"]
+    assert d3["verschoben"] == [] and d3["neu"] == []
+
+
 def test_identisch_ist_leer_und_html_faerbt():
     items = [_i("Ö 5", "Baumschutzsatzung")]
     d = diff_tagesordnung(items, list(items))
