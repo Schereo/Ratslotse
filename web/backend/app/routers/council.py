@@ -2854,10 +2854,14 @@ def haushalt_gebaut(
     nicht erst zerlegen ließ. Dann bleibt der Betrag auf der Seite weg — er
     wird nirgends geschätzt.
     """
+    from council import anlagenspiegel as anlagenspiegel_mod
     from council import investitionen_ist as _ii
 
     reihe = store.get_investitionen_ist()
-    ids = sorted({z["herkunft_id"] for z in reihe if z["herkunft_id"] is not None})
+    anlagen = store.get_anlagenspiegel()
+    gruppen = store.get_vermoegensgruppen()
+    ids = sorted({z["herkunft_id"] for z in (*reihe, *anlagen, *gruppen)
+                  if z["herkunft_id"] is not None})
     gemessen = {(v["regelwerk"], v["jahr"]): v.get("differenz")
                 for v in store.get_investitionen_ist_verworfen()}
 
@@ -2886,6 +2890,23 @@ def haushalt_gebaut(
         "regelwerke": [{"schluessel": k, "titel": t}
                        for k, t in _ii.REGELWERK.items()],
         "fehlend": fehlend,
+        # DIE ANDERE HÄLFTE DER GESCHICHTE. Bis hierher zeigt die Seite, was
+        # die Stadt gebaut hat. Der Anlagenspiegel zeigt, was daraus wurde —
+        # und dass es trotzdem schrumpft: Was im Jahr zugeht, steht neben dem,
+        # was im selben Jahr abgeschrieben wird.
+        #
+        # `gruppen` ist die Untergliederung des Infrastrukturvermögens
+        # (Straßen, Brücken, Gleisanlagen). Sie steht in einer ANDEREN Tabelle
+        # desselben Dokuments und gibt es erst ab 2022 — deshalb ein eigener
+        # Block und keine Spalte: Wer sie als Teil der Reihe ausgäbe, machte
+        # aus einer Quellenlücke eine Datenlücke.
+        "anlagen": {
+            "reihe": anlagen,
+            "jahre": sorted({z["jahr"] for z in anlagen}),
+            "gruppen": gruppen,
+            "gruppen_jahre": sorted({g["jahr"] for g in gruppen}),
+            "proben": anlagenspiegel_mod.PROBEN,
+        },
         "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
 

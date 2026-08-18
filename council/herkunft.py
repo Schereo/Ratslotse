@@ -353,6 +353,24 @@ PROBEN: dict[str, str] = {
         "Kernhaushalts getrennt aus. Dieser Wert stimmt mit der "
         "Geldschulden-Position der städtischen Bilanz überein — zwei "
         "Behörden, zwei Wege, dieselbe Zahl.",
+    "anlagen_ahk_kette":
+        "Der Anlagenspiegel nennt Anfangsstand, Zugänge, Abgänge und "
+        "Umbuchungen einzeln — zusammen ergeben sie den ausgewiesenen "
+        "Endstand des Vermögens.",
+    "anlagen_abschreibungskette":
+        "Dieselbe Rechnung für die Abschreibungen: aufgelaufener Stand, "
+        "Abschreibung des Jahres, Auflösungen für Abgänge und Zuschreibungen "
+        "ergeben den ausgewiesenen Endstand.",
+    "anlagen_buchwert":
+        "Anschaffungswert minus aufgelaufener Abschreibung ist der Buchwert, "
+        "den die Tabelle in ihrer letzten Spalte selbst ausweist.",
+    "anlagen_gegen_bilanz":
+        "Derselbe Buchwert steht in der Bilanz desselben Jahresabschlusses — "
+        "zwei Tabellen im selben Heft, unabhängig voneinander erstellt.",
+    "anlagen_umbuchungssaldo":
+        "Bis 2020 zeigt die Vorlage keine Umbuchungen zwischen den "
+        "Vermögensarten. Was einer Position dadurch fehlt, ist einer anderen "
+        "zugewachsen: Über alle Positionen hebt es sich auf null auf.",
     "buergschaft_kette":
         "Der Jahresabschluss nennt den Bürgschaftsbestand am Anfang und am "
         "Ende des Jahres. Der Anfangswert steht im Abschluss des Vorjahres "

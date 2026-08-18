@@ -1397,6 +1397,44 @@ class CouncilStore:
             "proben TEXT NOT NULL, "
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
         )
+        # Der Anlagenspiegel (council/anlagenspiegel.py): was aus Investitionen
+        # wird. Je Jahr und Vermögensposition eine Zeile mit dreizehn Werten —
+        # Anschaffungswerte, Abschreibungen, Buchwerte.
+        #
+        # `spalten` steht bewusst DRIN, obwohl es eine Eigenschaft der Vorlage
+        # ist und keine der Zahlen: Bis 2020 fehlt dem Abschreibungs-Block die
+        # Umbuchungs-Spalte, und ohne diese Angabe sähe eine Zeile, deren
+        # Abschreibungskette gar nicht schließen KANN, aus wie eine, die es
+        # nicht tut. Die Anzeige darf den Unterschied benennen.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_anlagenspiegel ("
+            "jahr INTEGER NOT NULL, "
+            "nr TEXT NOT NULL, "               # Gliederung: 1, 1.1, 2, 2.3 …
+            "bezeichnung TEXT NOT NULL, "
+            "spalten INTEGER NOT NULL, "       # 12 (bis 2020) oder 13
+            "ahk_anfang REAL, zugaenge REAL, abgaenge REAL, "
+            "umbuchungen REAL, ahk_ende REAL, "
+            "abschr_anfang REAL, abschreibung REAL, aufloesungen REAL, "
+            "zuschreibungen REAL, abschr_umbuchungen REAL, abschr_ende REAL, "
+            "buchwert REAL, buchwert_vorjahr REAL, "
+            "proben TEXT NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, nr))"
+        )
+        # Die Untergliederung des Infrastrukturvermögens — Straßen, Brücken,
+        # Gleisanlagen. Sie steht NICHT im Anlagenspiegel (der führt
+        # Infrastruktur als eine Zeile), sondern in den Erläuterungen, und erst
+        # ab 2022 in dieser Form. Eigene Tabelle statt einer Spalte: andere
+        # Quelle im selben Dokument, andere Abdeckung.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_vermoegensgruppen ("
+            "jahr INTEGER NOT NULL, "
+            "gruppe TEXT NOT NULL, "
+            "buchwert REAL NOT NULL, "
+            "buchwert_vorjahr REAL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, gruppe))"
+        )
         # Die dritte Schuldenzahl (council/integrierte_schulden.py): was der
         # ganze „Konzern Stadt" schuldet, anteilig nach Beteiligungshöhe —
         # 31.12.2024 rund 740,3 Mio. € gegen 294,9 Mio. € der Jahrbuch-Reihe.
@@ -1831,6 +1869,8 @@ class CouncilStore:
         # Der Bürgschaftsbestand: eine Quelle, der Jahresabschluss als Anlage
         # im Ratsinformationssystem.
         "council_buergschaften":        (None, "quelle_url", "ris"),
+        "council_anlagenspiegel":       (None, "quelle_url", "ris"),
+        "council_vermoegensgruppen":    (None, "quelle_url", "ris"),
         # Die dritte Schuldenzahl: Tabellenband der Statistischen Ämter,
         # also weder Stadt noch Ratsinformationssystem — eigene Art "lsn"
         # wie beim Städtevergleich.
@@ -4400,6 +4440,8 @@ class CouncilStore:
         "gebaut":      ("council_investitionen_ist", "jahr", None),
         "ausgabenreihe": ("council_ausgabenreihe", "jahr", None),
         "buergschaften": ("council_buergschaften", "jahr", None),
+        "anlagenspiegel": ("council_anlagenspiegel", "jahr", None),
+        "vermoegensgruppen": ("council_vermoegensgruppen", "jahr", None),
         "integrierte_schulden": ("council_integrierte_schulden", "jahr", None),
         "spenden":     ("council_spenden", "jahr", None),
         "steuerplan":  ("council_steuerplan", "jahr", None),
@@ -5607,6 +5649,67 @@ class CouncilStore:
                   z.get("einzelbetrag"), ",".join(z.get("proben") or []),
                   hid, now) for z in zeilen])
         return len(zeilen)
+
+    def save_anlagenspiegel(self, jahr: int, zeilen: list[dict], herkunft) -> int:
+        """Den Anlagenspiegel eines Jahrgangs ersetzen.
+
+        Je Jahrgang ein Aufruf mit einem Beleg: Die Tabelle steht in genau
+        einem Dokument, anders als bei den Bürgschaften, wo ein Jahrgang im
+        Abschluss des Folgejahres stehen kann.
+
+        Ersetzt wird nur DIESER Jahrgang — ein Lauf, dem ein anderer
+        durchgefallen ist, räumt dessen Stand nicht mit weg.
+        """
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute("DELETE FROM council_anlagenspiegel WHERE jahr = ?", (jahr,))
+            self._conn.executemany(
+                "INSERT INTO council_anlagenspiegel "
+                "(jahr, nr, bezeichnung, spalten, ahk_anfang, zugaenge, abgaenge, "
+                " umbuchungen, ahk_ende, abschr_anfang, abschreibung, aufloesungen, "
+                " zuschreibungen, abschr_umbuchungen, abschr_ende, buchwert, "
+                " buchwert_vorjahr, proben, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                [(jahr, z["nr"], z["bezeichnung"], z["spalten"],
+                  z["ahk_anfang"], z["zugaenge"], z["abgaenge"], z["umbuchungen"],
+                  z["ahk_ende"], z["abschr_anfang"], z["abschreibung"],
+                  z["aufloesungen"], z["zuschreibungen"], z["abschr_umbuchungen"],
+                  z["abschr_ende"], z["buchwert"], z["buchwert_vorjahr"],
+                  ",".join(z.get("proben") or []), hid, now) for z in zeilen])
+        return len(zeilen)
+
+    def get_anlagenspiegel(self) -> list[dict]:
+        """Alle Zeilen, nach Jahr und Gliederung. ``proben`` als Liste."""
+        try:
+            rows = [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_anlagenspiegel ORDER BY jahr, nr")]
+        except sqlite3.OperationalError:
+            return []
+        for r in rows:
+            r["proben"] = [p for p in (r.get("proben") or "").split(",") if p]
+        return rows
+
+    def save_vermoegensgruppen(self, jahr: int, gruppen: list[dict], herkunft) -> int:
+        """Die Untergliederung des Infrastrukturvermögens eines Jahrgangs."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute("DELETE FROM council_vermoegensgruppen WHERE jahr = ?", (jahr,))
+            self._conn.executemany(
+                "INSERT INTO council_vermoegensgruppen "
+                "(jahr, gruppe, buchwert, buchwert_vorjahr, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?)",
+                [(jahr, g["gruppe"], g["buchwert"], g.get("buchwert_vorjahr"), hid, now)
+                 for g in gruppen])
+        return len(gruppen)
+
+    def get_vermoegensgruppen(self) -> list[dict]:
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_vermoegensgruppen ORDER BY jahr, gruppe")]
+        except sqlite3.OperationalError:
+            return []
 
     def get_buergschaften(self) -> list[dict]:
         """Der Bürgschaftsbestand je Jahr, aufsteigend.
