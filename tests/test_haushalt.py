@@ -1467,6 +1467,69 @@ def test_store_pruefberichte_roundtrip(tmp_path, quelle):
     store.close()
 
 
+def test_abschlussfragen_tragen_stabile_schluessel_ohne_jahr(tmp_path):
+    """Drei Fragen aus dem Jahresabschluss — und ihre Schlüssel sind fix.
+
+    Anders als bei den Plan-Fragen gehört das Jahr hier NICHT in den
+    ``content_hash``: „Wie hoch sind die Schulden?" ist mit dem nächsten
+    Abschluss dieselbe Frage mit neuen Zahlen. Mit Jahr im Schlüssel stünde
+    sie ein Jahr später ein zweites Mal im Quiz, und die alte Fassung bliebe
+    mit veralteten Beträgen daneben.
+
+    Der Test hält außerdem fest, dass nur geliefert wird, was belegt ist: Ohne
+    die dritte Schuldenzahl fehlt die Schulden-Frage ganz, statt mit zwei
+    Zahlen zu erscheinen und so das Gegenteil ihrer Aussage zu behaupten.
+    """
+    from council import haushalt
+    from council.store import CouncilStore
+
+    store = CouncilStore(str(tmp_path / "c.sqlite"))
+    c = store._conn                                       # noqa: SLF001
+    c.execute("INSERT INTO council_schulden (jahr, insgesamt, je_einwohner, fetched_at) "
+              "VALUES (2024, 294851000, 1673, '2026-08-18')")
+    c.execute("INSERT INTO council_bilanz (jahr, rolle, seite, ebene, bezeichnung, wert, "
+              " fetched_at) VALUES (2024, 'geldschulden', 'passiva', 2, 'Geldschulden', "
+              " 43690972, '2026-08-18')")
+    c.execute("INSERT INTO council_buergschaften (jahr, bestand, genau, aus_folgejahr, "
+              " quelle, proben, fetched_at) VALUES (2024, 220300000, 1, 0, "
+              " 'jahresabschluss', '', '2026-08-18')")
+    c.commit()
+
+    # Ohne die Konzern-Zahl: Bürgschafts-Frage ja, Schulden-Frage nein.
+    fragen = haushalt.build_abschluss_questions(store)
+    assert not any("Wie hoch sind die Schulden" in q["question"] for q in fragen)
+    assert any("gerade" in q["question"] for q in fragen)
+
+    c.execute("INSERT INTO council_integrierte_schulden (jahr, ars, insgesamt, proben, "
+              " fetched_at) VALUES (2024, '03403000', 740300000, '', '2026-08-18')")
+    c.commit()
+    fragen = haushalt.build_abschluss_questions(store)
+    schulden = next(q for q in fragen if "Wie hoch sind die Schulden" in q["question"])
+    # Die richtige Antwort ist NICHT eine der drei Zahlen.
+    assert schulden["options"][schulden["correct_index"]].startswith("Alle drei")
+
+    # Stabile Schlüssel: keine Jahreszahl drin, und über zwei Läufe gleich.
+    schluessel = {q["content_hash"] for q in fragen}
+    assert len(schluessel) == len(fragen)
+    assert schluessel == {q["content_hash"] for q in
+                          haushalt.build_abschluss_questions(store)}
+
+
+def test_abschlussfragen_schreiben_zahlen_deutsch():
+    """Komma statt Punkt — aber nur in der Zahl.
+
+    Zwei Anläufe sind hier an einem `.replace(".", ",")` über den fertigen
+    Satz gescheitert: Er erwischt den Punkt in „Mio." und den am Satzende mit
+    („1,30 Mio, Euro zurück,"). Deshalb geht die Umstellung durch `_komma`,
+    dem man nichts anderes als eine Zahl übergeben kann.
+    """
+    from council.haushalt import _komma
+
+    assert _komma(1.3, 2) == "1,30"
+    assert _komma(0.5866, 2) == "0,59"
+    assert _komma(3.14) == "3,1"
+
+
 def test_buergschafts_vorlagen_je_vorlage_eine_zeile(tmp_path):
     """Der Zeitstrahl zeigt Vorgänge, keine Abstimmungen.
 
