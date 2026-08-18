@@ -127,6 +127,14 @@ ROLLEN: tuple[tuple[str, str, int, str], ...] = (
      r"^Pensionsr[üu]ckst(?:ellungen)?\.?\s+und\s+[äa]hnliche\s+Verpflichtungen$"),
     ("pensionsrueckstellungen", PASSIVA, 3, r"^Pensionsr[üu]ckstellungen$"),
     ("beihilferueckstellungen", PASSIVA, 3, r"^Beihilfer[üu]ckstellungen$"),
+    # Die Gegenzahl zum Bürgschaftsbestand (`council/buergschaften.py`): Was
+    # die Stadt an Ausfall tatsächlich erwartet — 2024 rund 1,3 Mio. € gegen
+    # 220,3 Mio. € verbürgtes Volumen, also 0,6 %. Ohne diese Zeile stünde der
+    # Bestand ohne seine Einordnung da, und 220 Millionen lesen sich dann wie
+    # eine drohende Zahlung. Ebene 3: ein Unterposten der Rückstellungen, kein
+    # Hauptposten — die Bilanzsumme rührt sie nicht an.
+    ("buergschaftsrueckstellung", PASSIVA, 3,
+     r"^R[üu]ckstellungen f[üu]r drohende Verpflichtungen aus B[üu]rgschaften"),
     ("passive_rap", PASSIVA, 1, r"^Passive\s+Rechnungsabgrenzung$"),
 )
 
