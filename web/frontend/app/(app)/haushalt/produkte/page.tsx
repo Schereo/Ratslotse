@@ -46,7 +46,7 @@
 // oder bloße Paragraphen-Nummern wie „§§ 2 (3),17,18,42 …" —, bleibt der
 // Absatz, wie er ist. Geraten wird nichts, und kein Wort ändert sich.
 
-import { Fragment, Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -143,8 +143,11 @@ function aehnlichkeit(a: Set<string>, b: Set<string>): number {
 
 /** Eine Zeile der Trefferliste. Der Balken zeigt den Anteil am teuersten
  *  Treffer — Hafenblau, nicht Ampelfarben: teuer ist keine Note. */
-function Treffer({ p, max, aktiv, alleJahre }: {
+function Treffer({ p, max, aktiv, alleJahre, eingebettet = false }: {
   p: Produkt; max: number; aktiv: boolean; alleJahre: number[];
+  /** Sitzt die Karte im gemeinsamen Rahmen mit ihrem Steckbrief? Dann bringt
+   *  sie keinen eigenen mit — sonst stünden zwei Kästen ineinander. */
+  eingebettet?: boolean;
 }) {
   const n = netto(p);
   const b = betrag(Math.abs(n));
@@ -163,8 +166,13 @@ function Treffer({ p, max, aktiv, alleJahre }: {
         // damit so breit wie sein längster Produktname — auf 375 px schob die
         // Karte die ganze Seite 64 px nach rechts. Erst damit greift das
         // `truncate` der Zeilen darin.
-        "group block min-w-0 rounded-xl border border-border bg-card p-3 shadow-sm transition-colors hover:border-primary/40",
-        aktiv && "border-primary/50 bg-primary/[0.04]",
+        "group block min-w-0 p-3 transition-colors",
+        // Eingebettet trägt den Rahmen die Hülle drumherum — die Karte ist
+        // dann der KOPF einer geöffneten Karte und kein Kasten für sich.
+        eingebettet
+          ? "rounded-t-xl"
+          : cn("rounded-xl border border-border bg-card shadow-sm hover:border-primary/40",
+               aktiv && "border-primary/50 bg-primary/[0.04]"),
       )}
     >
       <div className="flex items-start justify-between gap-3">
@@ -576,50 +584,45 @@ function Steckbrief({ p, jahr, alleJahre }: { p: Produkt; jahr: number; alleJahr
   );
 }
 
-/** Der Steckbrief eines Produkts, eingehängt an der Karte, die ihn geöffnet hat.
+/** Der aufgeklappte Teil einer Produktkarte — Kosten, Zuständigkeit, Wortlaut.
  *
- *  WARUM NICHT ÜBER DER LISTE. Dort stand er bis zum 18.08.2026, und das war
- *  nur haltbar, solange das Öffnen eines Produkts an den Seitenanfang sprang.
- *  Wer weit unten in 400 Zeilen etwas gesucht hatte, verlor damit jedes Mal
- *  seine Stelle. Hier braucht es keinen Sprung: Die Karte bleibt unter dem
- *  Finger, und was sie erklärt, klappt darunter auf.
+ *  EINE KARTE, DIE SICH ÖFFNET, keine zweite darunter. Bis zum 18.08.2026
+ *  stand der Steckbrief über der Liste, dann kurz als eigene Karte unter der
+ *  angetippten — beides las sich, als sei ein neues Ding aufgetaucht. Jetzt
+ *  liegen Kopf und Inhalt in EINER Hülle: derselbe Rahmen, derselbe Ton, eine
+ *  Haarlinie dazwischen (Tims Befund 18.08.2026).
  *
- *  KEINE FOKUS-VERWALTUNG, und das ist der eigentliche Gewinn dieser
- *  Anordnung: Weil der Steckbrief direkt HINTER der angetippten Karte im
- *  Dokument steht, liest eine Vorlesehilfe von selbst dort weiter. Solange er
- *  über der Liste hing, musste jemand den Fokus dorthin schieben — und Next
- *  setzt ihn bei jedem Routenwechsel wieder zurück, auch nach einem
- *  `setTimeout(0)`. Gemessen am 18.08.2026, dann verworfen.
- *
- *  `col-span-full` — im zweispaltigen Raster nimmt der Steckbrief die ganze
- *  Breite, sonst quetschte er sich neben die nächste Karte. */
-function SteckbriefKarte({ aktiv, jahr, alleJahre, aufSchliessen }: {
+ *  KEINE FOKUS-VERWALTUNG, und das ist der Gewinn dieser Anordnung: Weil der
+ *  Steckbrief direkt hinter dem Kartenkopf im Dokument steht, liest eine
+ *  Vorlesehilfe von selbst dort weiter. Solange er über der Liste hing,
+ *  musste jemand den Fokus dorthin schieben — und Next setzt ihn bei jedem
+ *  Routenwechsel wieder zurück, auch nach einem `setTimeout(0)`. Gemessen,
+ *  dann verworfen. */
+function SteckbriefTeil({ aktiv, jahr, alleJahre, aufSchliessen }: {
   aktiv: Produkt; jahr: number; alleJahre: number[]; aufSchliessen: () => void;
 }) {
   return (
-    <div className="@3xl/treffer:col-span-full">
-      <section
-        aria-label={`Steckbrief ${aktiv.produkt_name}`}
-        className="rounded-2xl border border-primary/25 bg-primary/[0.03] p-3.5 sm:p-4"
-      >
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-primary">
-            Steckbrief
-          </p>
-          <button
-            type="button"
-            onClick={aufSchliessen}
-            className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-muted-foreground hover:text-foreground"
-          >
-            <X className="h-3.5 w-3.5" /> Schließen
-          </button>
-        </div>
-        {/* `key`: Der Auslöser „Ganzen Wortlaut zeigen" gehört zu DIESEM
-            Produkt — ohne Neuaufbau bliebe er beim Wechsel offen und zeigte
-            den halben Text des nächsten. */}
-        <Steckbrief key={aktiv.produkt_nr} p={aktiv} jahr={jahr} alleJahre={alleJahre} />
-      </section>
-    </div>
+    <section
+      aria-label={`Steckbrief ${aktiv.produkt_name}`}
+      className="border-t border-primary/20 p-3.5 sm:p-4"
+    >
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-primary">
+          Steckbrief
+        </p>
+        <button
+          type="button"
+          onClick={aufSchliessen}
+          className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-muted-foreground hover:text-foreground"
+        >
+          <X className="h-3.5 w-3.5" /> Schließen
+        </button>
+      </div>
+      {/* `key`: Der Auslöser „Ganzen Wortlaut zeigen" gehört zu DIESEM
+          Produkt — ohne Neuaufbau bliebe er beim Wechsel offen und zeigte
+          den halben Text des nächsten. */}
+      <Steckbrief key={aktiv.produkt_nr} p={aktiv} jahr={jahr} alleJahre={alleJahre} />
+    </section>
   );
 }
 
@@ -819,16 +822,26 @@ function ProdukteInner() {
              nicht — dieselbe Fensterbreite meint zwei Platzangebote. */
           <div className="@container/treffer">
             <div className="grid gap-2 @3xl/treffer:grid-cols-2">
-              {produkte.map((p) => (
-                <Fragment key={p.produkt_nr}>
-                  <Treffer p={p} max={maxWert} aktiv={p.produkt_nr === nr}
-                    alleJahre={alleJahre} />
-                  {aktiv && p.produkt_nr === nr && (
-                    <SteckbriefKarte aktiv={aktiv} jahr={jahr} alleJahre={alleJahre}
+              {produkte.map((p) => {
+                const offen = !!aktiv && p.produkt_nr === nr;
+                // Geschlossen ist die Karte ein Rasterkind wie jedes andere.
+                // Geöffnet wird sie zur Hülle: derselbe Rahmen um Kopf und
+                // Steckbrief, im zweispaltigen Raster über die volle Breite.
+                if (!offen) {
+                  return (
+                    <Treffer key={p.produkt_nr} p={p} max={maxWert} aktiv={false}
+                      alleJahre={alleJahre} />
+                  );
+                }
+                return (
+                  <div key={p.produkt_nr}
+                    className="overflow-hidden rounded-xl border border-primary/50 bg-primary/[0.04] shadow-sm @3xl/treffer:col-span-full">
+                    <Treffer p={p} max={maxWert} aktiv alleJahre={alleJahre} eingebettet />
+                    <SteckbriefTeil aktiv={aktiv} jahr={jahr} alleJahre={alleJahre}
                       aufSchliessen={() => router.push("/haushalt/produkte", { scroll: false })} />
-                  )}
-                </Fragment>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           </div>
         ) : (
