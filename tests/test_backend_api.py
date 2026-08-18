@@ -3742,3 +3742,82 @@ def test_haushalt_bilanz_ohne_bestand_bleibt_leer(client):
     assert antwort.status_code == 200
     assert antwort.json() == {"jahre": [], "posten": [], "erlaeuterungen": [],
                               "herkunft": {}}
+
+
+def test_haushalt_liefert_die_spenden_mit_luecke_und_beleg(client):
+    """Zuwendungen an die Stadt: Reihe, Aufteilung, Lücke — und die Herkunft.
+
+    Drei Dinge müssen zusammen herauskommen, sonst kann die Seite die Zahl
+    nicht verantworten:
+
+    1. die Jahresreihe, aus den einzelnen Vorlagen gerechnet,
+    2. die Zeilen **ohne** Beleg samt Grund — sonst fehlte eine Vorlage
+       stillschweigend aus der Summe,
+    3. die ``herkunft_id`` jeder Vorlage, aufgelöst in ``herkunft``.
+    """
+    from council import herkunft, spenden
+
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    try:
+        zeilen = [
+            {"vorlage_nr": "26/0207", "jahr": 2026, "sitzung": "2026-04-13",
+             "betrag": 435_941.0, "gremium": "Rat", "layout": "neu",
+             "zweitstelle": "zerlegung",
+             "proben": [spenden.ZWEITSTELLE, spenden.PROTOKOLLABGLEICH],
+             "herkunft": herkunft.Herkunft(
+                 art="ris", dokument_id=304791, probe=[spenden.ZWEITSTELLE],
+                 fundstelle=spenden.FUNDSTELLE,
+                 probe_ergebnis="421.316 + 14.625 = 435.941")},
+            {"vorlage_nr": "26/0044", "jahr": 2026, "sitzung": "2026-02-09",
+             "betrag": 1_800.0, "gremium": "Verwaltungsausschuss", "layout": "alt",
+             "zweitstelle": "identisch", "proben": [spenden.ZWEITSTELLE],
+             "herkunft": herkunft.Herkunft(
+                 art="ris", dokument_id=300001, probe=[spenden.ZWEITSTELLE],
+                 probe_ergebnis="identisch")},
+        ]
+        verworfen = [{"vorlage_nr": "23/0265", "sitzung": "2023-05-03",
+                      "grund": "Die Vorlage schlug 52.000,00 Euro vor, das Protokoll "
+                               "hält 51.500,00 Euro fest."}]
+        cs.save_spenden(zeilen, verworfen, herkunft.Herkunft(
+            art="ris", url="https://buergerinfo.example.org/vo040.asp",
+            probe=[spenden.ZWEITSTELLE], probe_ergebnis="2 Vorlagen belegt"))
+
+        daten = client.get("/api/council/haushalt").json()
+        s = daten["spenden"]
+
+        assert s["jahre"] == [{"jahr": 2026, "betrag": 437_741.0, "vorlagen": 2,
+                               "rat": 1, "verwaltungsausschuss": 1}]
+        assert [v["vorlage_nr"] for v in s["vorlagen"]] == ["26/0044", "26/0207"]
+        assert s["ohne_beleg"][0]["vorlage_nr"] == "23/0265"
+        assert "51.500,00" in s["ohne_beleg"][0]["grund"]
+        # Wer über welche einzelne Zuwendung entscheidet — reist mit den Zahlen.
+        assert {g["gremium"] for g in s["schwellen"]} == {
+            "Oberbürgermeister", "Verwaltungsausschuss", "Rat"}
+        # Ohne aufgelöste Herkunft stünde die Zahl ohne Beleg da.
+        for v in s["vorlagen"]:
+            assert str(v["herkunft_id"]) in daten["herkunft"]
+    finally:
+        cs.close()
+
+
+def test_haushalt_spenden_nennen_keine_gebenden(client):
+    """Die Grenze dieser Schicht, am Endpunkt festgehalten.
+
+    Die Namen der Spenderinnen und Spender stehen nur in der Anlage
+    „Zuwendungsliste", die wir nicht einlesen. Der Endpunkt darf sie unter
+    keinem Feldnamen liefern — auch nicht, wenn später jemand eine Spalte
+    ergänzt."""
+    _register(client)
+    s = client.get("/api/council/haushalt").json()["spenden"]
+    felder = {k.lower() for v in s["vorlagen"] for k in v} | {k.lower() for k in s}
+    for verboten in ("spender", "geber", "name", "zuwendungsgeber", "person"):
+        assert not any(verboten in f for f in felder)
+
+
+def test_haushalt_bleibt_ohne_spenden_ruhig(client):
+    """Auf Produktion sind die Haushalts-Tabellen leer (Umgebungs-Gate)."""
+    _register(client)
+    s = client.get("/api/council/haushalt").json()["spenden"]
+    assert s["jahre"] == [] and s["vorlagen"] == [] and s["ohne_beleg"] == []
+    assert len(s["schwellen"]) == 3

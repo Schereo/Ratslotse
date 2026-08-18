@@ -17,6 +17,7 @@ from council.topics import POLICY_FIELDS
 from council.goals import GOALS
 from council.parties import faction_label, normalize_party, order_key
 from council import ausgabenreihe as ausgabenreihe_mod
+from council import spenden as spenden_mod
 from council import steuertabellen
 from council import beteiligungsbericht, qa
 from council import ernte
@@ -867,6 +868,15 @@ def haushalt_uebersicht(
       Aufwendungen der Gesamtergebnisrechnung, und über den Schnitt darf keine
       Linie laufen. Eine Einwohnerzahl liefert dieser Block bewusst nicht
       (Begründung an der Tabelle in ``council/store.py``).
+    - ``spenden``: was die Stadt an Zuwendungen annimmt, aus den
+      Ratsbeschlüssen. ``jahre`` ist die Reihe (Betrag, Zahl der Vorlagen,
+      Aufteilung Rat/Verwaltungsausschuss), ``vorlagen`` die einzelnen
+      Beschlüsse mit ihrer Vorlagen-Nummer, ``ohne_beleg`` die Zeilen, die
+      ihre Zweitstelle **nicht** tragen — samt dem Satz, warum. Die
+      ``schwellen`` sagen, wer über welche Zuwendung entscheidet.
+      **Die Namen der Gebenden liefert dieser Block nicht**, und das ist
+      keine Lücke, die sich schließt: Sie stehen nur in der Anlage
+      „Zuwendungsliste", die nicht im Bestand ist (``council/spenden.py``).
     - ``steuerplan``: je Steuerart und Jahr der Ansatz des Haushaltsplans neben
       dem Rechnungsergebnis (Jahrbuch-Tabelle 1103). ``vorlaeufig`` ist die
       Angabe der Quelle über sich selbst — die jüngste Spalte heißt dort
@@ -936,6 +946,16 @@ def haushalt_uebersicht(
                 for r in ausgabenreihe_mod.REGELWERK
             },
         },
+        # Zuwendungen an die Stadt. `ohne_beleg` reist mit den Zahlen mit,
+        # damit die Seite die Lücke anschreiben kann, statt sie stillschweigend
+        # aus der Summe zu lassen — sechs Zeilen, jede mit ihrem Grund.
+        "spenden": {
+            "jahre": _spenden_jahre(store.get_spenden()),
+            "vorlagen": store.get_spenden(),
+            "ohne_beleg": store.get_spenden_verworfen(),
+            "schwellen": [{"gremium": g, "ab": unten, "bis": oben}
+                          for g, unten, oben in spenden_mod.SCHWELLEN],
+        },
         # Die beiden Steuertabellen des Jahrbuchs (council/steuertabellen.py).
         # Sie gehören zusammen in EINEN Block, weil sie auf derselben Seite
         # zusammen gelesen werden: Ein Hebesatz ohne das Aufkommen daneben ist
@@ -961,6 +981,27 @@ def haushalt_uebersicht(
             "bemessung_neu": steuertabellen.BEMESSUNG_NEU,
         },
     }
+
+
+def _spenden_jahre(vorlagen: list[dict]) -> list[dict]:
+    """Die Jahresreihe aus den Vorlagen — im Backend, nicht in der Tabelle.
+
+    Gespeichert ist je Vorlage eine Zeile; die Jahressumme daraus zu bilden
+    ist billig und hält die Tabelle frei von einer abgeleiteten Größe, die bei
+    jedem Lauf neu stimmen müsste."""
+    jahre: dict[int, dict] = {}
+    for v in vorlagen:
+        e = jahre.setdefault(v["jahr"], {"jahr": v["jahr"], "betrag": 0.0, "vorlagen": 0,
+                                         "rat": 0, "verwaltungsausschuss": 0})
+        e["betrag"] += v["betrag"]
+        e["vorlagen"] += 1
+        if v.get("gremium") == "Rat":
+            e["rat"] += 1
+        elif v.get("gremium") == "Verwaltungsausschuss":
+            e["verwaltungsausschuss"] += 1
+    for e in jahre.values():
+        e["betrag"] = round(e["betrag"], 2)
+    return [jahre[j] for j in sorted(jahre)]
 
 
 @router.get("/haushalt/weg")

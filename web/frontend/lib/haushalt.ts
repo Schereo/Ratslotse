@@ -214,10 +214,46 @@ export type HaushaltDaten = {
   plan_ist_jahre?: number[];
   /** Die lange Ausgabenreihe aus Datensatz 1102 — ein Betrag je Jahr seit 1972. */
   ausgabenreihe?: Ausgabenreihe;
+  /** Was die Stadt an Zuwendungen annimmt, aus den Ratsbeschlüssen. */
+  spenden?: Spenden;
   /** Was je Steuerart geplant war und was daraus wurde (Jahrbuch 1103). */
   steuerplan?: Steuerplan;
   /** Die Realsteuer-Hebesätze je Änderungsjahr seit 1980 (Jahrbuch 1105). */
   hebesaetze?: Hebesaetze;
+};
+
+/** Zuwendungen an die Stadt (`council/spenden.py`).
+ *
+ *  Es gibt hier **kein** Feld für die Gebenden, und das ist Absicht: Die Namen
+ *  stehen nur in der Anlage „Zuwendungsliste", die nicht im Bestand ist. Was
+ *  der Typ nicht kennt, kann die Seite nicht versehentlich zeigen. */
+export type Spenden = {
+  jahre: SpendenJahr[];
+  vorlagen: SpendenVorlage[];
+  /** Beschlusszeilen ohne Zweitstelle — mit dem Satz, warum sie fehlen. */
+  ohne_beleg: { vorlage_nr: string; sitzung?: string | null; grund: string }[];
+  /** Wer über welche **einzelne** Zuwendung entscheidet. */
+  schwellen: { gremium: string; ab: number | null; bis: number | null }[];
+};
+
+export type SpendenJahr = {
+  jahr: number;
+  betrag: number;
+  vorlagen: number;
+  rat: number;
+  verwaltungsausschuss: number;
+};
+
+export type SpendenVorlage = {
+  vorlage_nr: string;
+  jahr: number;
+  sitzung: string;
+  betrag: number;
+  gremium?: string | null;
+  /** „identisch" oder „zerlegung" — wie die Zweitstelle den Betrag belegt. */
+  zweitstelle: string;
+  proben: string[];
+  herkunft_id?: number | null;
 };
 
 /** Plan neben Ist je Steuerart — Tabelle 1103 des Statistischen Jahrbuchs.
@@ -715,6 +751,42 @@ export function ausgabenreihe(daten: HaushaltDaten): AusgabenreiheJahr[] {
  *  Jahr zwei Beträge nennen, gehört das auf die Seite — mit beiden Zahlen. */
 export function ausgabenKonflikte(daten: HaushaltDaten): AusgabenreiheJahr[] {
   return ausgabenreihe(daten).filter((z) => z.konflikt_betrag != null);
+}
+
+/** Die Spendenjahre, die **vollständig** sind — also alle bis auf das
+ *  laufende.
+ *
+ *  Das laufende Jahr hat erst die Beschlüsse bis heute; es in eine Reihe zu
+ *  zeichnen, hieße einen Rückgang zu zeigen, den es nicht gibt. Es steht
+ *  deshalb daneben als Satz, nicht in der Kurve. */
+export function spendenJahre(daten: HaushaltDaten): SpendenJahr[] {
+  const jahre = daten.spenden?.jahre ?? [];
+  const laufend = new Date().getFullYear();
+  return jahre.filter((j) => j.jahr < laufend).sort((a, b) => a.jahr - b.jahr);
+}
+
+/** Das laufende Jahr, sofern es schon Beschlüsse trägt. */
+export function spendenLaufend(daten: HaushaltDaten): SpendenJahr | null {
+  const laufend = new Date().getFullYear();
+  return (daten.spenden?.jahre ?? []).find((j) => j.jahr === laufend) ?? null;
+}
+
+/** Rat und Verwaltungsausschuss über alle belegten Vorlagen.
+ *
+ *  Die Aufteilung ist selbst die Auskunft: Beide Gremien behandeln ungefähr
+ *  gleich viele Vorlagen, aber die Schwelle von 2.000 Euro sorgt dafür, dass
+ *  fast das ganze Geld über den Rat läuft. */
+export function spendenGremien(daten: HaushaltDaten) {
+  const leer = { vorlagen: 0, betrag: 0 };
+  const aus = { Rat: { ...leer }, Verwaltungsausschuss: { ...leer } };
+  for (const v of daten.spenden?.vorlagen ?? []) {
+    const k = v.gremium === "Rat" ? "Rat"
+      : v.gremium === "Verwaltungsausschuss" ? "Verwaltungsausschuss" : null;
+    if (!k) continue;
+    aus[k].vorlagen += 1;
+    aus[k].betrag += v.betrag;
+  }
+  return aus;
 }
 
 export function bereiche(zeilen: HaushaltZeile[]): HaushaltZeile[] {

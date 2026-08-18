@@ -75,6 +75,11 @@ jobs:
             .venv/bin/python scripts/ingest_investitionen_ist.py
             .venv/bin/python scripts/check_beteiligungsbericht.py
             .venv/bin/python scripts/ingest_ausgabenreihe.py
+            # Die Zuwendungen lesen nicht aus dem Netz, sondern aus dem
+            # eigenen Bestand: Beschlusszeilen plus Vorlagen-Volltexte. Ohne
+            # den Volltext-Lauf oben gibt es keine Zweitstelle und damit keine
+            # einzige Zeile — deshalb steht das hier und nicht weiter oben.
+            .venv/bin/python scripts/ingest_spenden.py
 
             # Die beiden Steuertabellen des Jahrbuchs (1103 Plan neben Ist je
             # Steuerart, 1105 Hebesätze seit 1980). Sie stehen NACH
@@ -133,6 +138,12 @@ jobs:
                 # verhindern soll.
                 "council_finanzrechnung", "council_bilanz",
                 "council_bilanz_erlaeuterungen", "council_ausgabenreihe",
+                # Die Zuwendungen an die Stadt. `council_spenden_verworfen`
+                # steht bewusst mit im Bericht: Die Zeilen ohne Zweitstelle
+                # sind Inhalt der Seite, nicht Abfall — verschwänden sie, ohne
+                # dass es auffällt, sähe die Reihe vollständiger aus, als sie
+                # ist.
+                "council_spenden", "council_spenden_verworfen",
                 # Die beiden Steuertabellen des Jahrbuchs (#606). Bei
                 # `council_steuerplan` sagt die Jahresspanne mehr als die
                 # Zeilenzahl: Sie muss über die Zeit WACHSEN, obwohl jede
