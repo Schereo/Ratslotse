@@ -986,7 +986,9 @@ def _steuerkraft_block(k: dict | None) -> str:
 #: gar nicht da ist. Nebeneinander fallen sie zusammen oder gar nicht.
 GELD_FACETTEN = ("schulden", "stellenplan", "investitionen", "gebaut",
                  "ist", "gruende", "pruefung", "produkte", "antraege",
-                 "plan", "ansatz", "steuern", "ausgleich", "konzern", "vergleich")
+                 "plan", "ansatz", "steuern", "ausgleich", "konzern", "vergleich",
+                 # Die vier Schichten aus den Jahresabschlüssen (08/2026).
+                 "bilanz", "kassensicht", "nachbewilligungen", "kennzahlen")
 
 #: Alle Muster arbeiten auf `_falte()`-Text: kleingeschrieben, Umlaute
 #: ausgeschrieben, Satzzeichen zu Leerzeichen. Deshalb steht hier „pruef",
@@ -1062,8 +1064,44 @@ _F_AUSGLEICH = re.compile(
     r"hebesatz|schluesselzuweisung|finanzausgleich|steuerkraft|\bnfag\b|"
     r"zuweisung.{0,10}land|land.{0,15}zuweisung")
 # --- Die vier Quellen, die die KI-Frage bis zum 17.08. nicht kannte ---------
+# BÜRGSCHAFTEN GEHÖREN HIERHER, denn die 220,3 Mio. €, für die die Stadt
+# geradesteht, stehen in KEINER der drei Schuldenreihen — „Wofür bürgt die
+# Stadt?" bekam bis hierher den Ergebnishaushalt.
+#
+# Gesucht wird auf dem gefalteten Text (`_falte`: ü → ue), und das Muster ist
+# eng aufgezählt statt kurz. Zwei Fallen, beide beim ersten Versuch
+# hineingelaufen:
+#
+# * **„Oldenburg" enthält „burg".** Ein Muster `b[üu]rg` hätte an JEDER Frage
+#   angeschlagen, in der die Stadt vorkommt — also an fast jeder.
+# * **„Bürgerinnen" wird zu „buergerinnen"** und beginnt damit genauso wie
+#   „buergschaft". Ein negativer Vorgriff auf „er" allein reicht nicht, weil
+#   er die Bürger*innen zwar aussperrt, „Oldenburg" aber durchlässt.
 _F_SCHULDEN = re.compile(
-    r"schulden|verschuld|entschuld|schuldenstand|\bkredit|darlehen|tilgung")
+    r"schulden|verschuld|entschuld|schuldenstand|\bkredit|darlehen|tilgung|"
+    r"\bbuergschaft|\bverbuergt|\bbuergt\b|\bbuergen\b|"
+    r"eventualverbindlichkeit|geradesteh|geradezusteh")
+# Gesucht wird auf dem GEFALTETEN Text (`_falte`: ä→ae, ö→oe, ü→ue, ß→ss) —
+# deshalb stehen hier „ueberplanmaessig" und „anlagenintensitaet" und nicht
+# die Schreibweisen mit Umlaut.
+_F_BILANZ = re.compile(
+    r"bilanz|eigenkapital|nettoposition|anlagevermoegen|sachvermoegen|"
+    r"buchwert|abschreibung|was besitzt|was gehoert der stadt|"
+    r"rueckstellung|zurueckgestellt|zurueckgelegt|pension|sonderposten|liquide")
+# „auszahlung" steht bewusst NICHT drin: Das Wort gehört zu den Investitionen
+# und zöge die Kassensicht in jede Bau-Frage.
+_F_KASSE = re.compile(
+    r"finanzrechnung|kassensicht|kassenwirksam|liquide|liquiditaet|"
+    r"zahlungsmittel|tatsaechlich geflossen|wirklich geflossen")
+_F_NACHBEWILLIGUNG = re.compile(
+    r"nachbewilli|ueberplanmaessig|ausserplanmaessig|117 nkomvg|"
+    r"nachtraeglich bewilligt")
+# Die dreizehn beim Namen — plus das Wort „Kennzahl" selbst. Bewusst ohne
+# „quote" allein: Das steckt auch in „Impfquote" und „Abbruchquote".
+_F_KENNZAHL = re.compile(
+    r"kennzahl|eigenkapitalquote|anlagenintensitaet|infrastrukturquote|"
+    r"steuerquote|personalintensitaet|reinvestitionsquote|"
+    r"vermoegen je einwohner|vermoegen pro einwohner")
 _F_INVEST = re.compile(
     r"investit|investier|investiv|\bgebaut\b|\bbauen\b|neubau|baumassnahm|"
     r"finanzhaushalt|auszahlung")
@@ -1157,6 +1195,19 @@ def geld_facetten(frage: str, typ: str = "thema") -> set[str]:
     # Schulden?" bekam bis hierher den Ergebnishaushalt und sonst nichts.
     if _F_SCHULDEN.search(t):
         f.add("schulden")
+    # Die Bilanz zählt einen STICHTAG, keine Jahresbewegung — und ist deshalb
+    # eine eigene Quelle, so wie die Schulden es sind.
+    if _F_BILANZ.search(t):
+        f.add("bilanz")
+    # Die zweite Rechnung desselben Abschlusses. Sie kommt auch dann mit, wenn
+    # jemand nach dem Ist fragt: Für 2024 weist die eine einen Überschuss aus
+    # und die andere einen Fehlbetrag, und nur beide zusammen sind ehrlich.
+    if _F_KASSE.search(t) or "ist" in f:
+        f.add("kassensicht")
+    if _F_NACHBEWILLIGUNG.search(t):
+        f.add("nachbewilligungen")
+    if _F_KENNZAHL.search(t):
+        f.add("kennzahlen")
     # Investitionen: der ANDERE Haushalt. Bewusst kein `plan` dazu — wer
     # fragt, was gebaut wird, soll keine Ergebnishaushalt-Zahl danebengelegt
     # bekommen. Fragt jemand nach beidem („Wie viel gibt die Stadt für
@@ -1232,6 +1283,15 @@ def geld_kontext(store, frage: str, begriffe: str = "", typ: str = "thema") -> d
         aus["ansatz"] = _sicher(store.ansatz_fuer_begriffe, woerter)
     if "schulden" in facetten:
         aus["schulden"] = _sicher(store.schulden_kontext)
+    if "bilanz" in facetten:
+        aus["bilanz"] = _sicher(store.bilanz_kontext)
+    if "kassensicht" in facetten:
+        aus["kassensicht"] = _sicher(store.kassensicht_kontext)
+    if "nachbewilligungen" in facetten:
+        aus["nachbewilligungen"] = _sicher(store.nachbewilligungen_kontext,
+                                           haushaltsjahr(frage))
+    if "kennzahlen" in facetten:
+        aus["kennzahlen"] = _sicher(store.kennzahlen_kontext)
     if "investitionen" in facetten:
         aus["investitionen"] = _sicher(store.investitionen_fuer_begriffe, woerter)
     if "gebaut" in facetten:
@@ -1403,6 +1463,125 @@ def _stellen(v) -> str:
     return f"{v:,.2f}".replace(",", "\x00").replace(".", ",").replace("\x00", ".")
 
 
+def _bilanz_block(b: dict | None) -> str:
+    """Was der Stadt gehört — ein STICHTAG, kein Jahr.
+
+    Der Satz, den dieser Baustein verhindern soll: „Die Stadt hat 1,48 Mrd. €
+    und gibt 799 Mio. € aus, also bleibt …". Bilanz und Ergebnisrechnung
+    zählen Verschiedenes, und ihre Beträge sind nicht verrechenbar.
+    """
+    if not b or not b.get("bilanzsumme"):
+        return ""
+    namen = {
+        "sachvermoegen": "Sachvermögen (Grundstücke, Gebäude, Straßen, Fahrzeuge)",
+        "infrastrukturvermoegen": "davon Infrastruktur (Straßen, Wege, Brücken, Kanäle)",
+        "finanzvermoegen": "Finanzvermögen (Beteiligungen, Ausleihungen, Forderungen)",
+        "liquide_mittel": "liquide Mittel",
+        "nettoposition": "Nettoposition (das Eigenkapital der Stadt)",
+        "sonderposten": "Sonderposten (erhaltene Zuschüsse, noch nicht aufgelöst)",
+        "rueckstellungen": "Rückstellungen",
+        "pensionsrueckstellungen": "davon Pensionsrückstellungen",
+        "schulden": "Schulden und ähnliche Verbindlichkeiten",
+    }
+    zeilen = [f"- Bilanzsumme zum 31.12.{b['jahr']}: {_eur(b['bilanzsumme'])}"]
+    for rolle, wert in b.get("posten") or []:
+        zeilen.append(f"  - {namen.get(rolle, rolle)}: {_eur(wert)}")
+    return ("\nBILANZ (Jahresabschluss, Abschnitt 2.1). Das ist ein STICHTAG "
+            f"(31.12.{b['jahr']}),\nkein Haushaltsjahr: Diese Beträge NIE mit "
+            "Erträgen, Aufwendungen oder dem\nDefizit eines Jahres verrechnen. Nie "
+            "mit [id] zitieren"
+            + _beleg_text(b.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
+
+
+def _kassensicht_block(k: dict | None) -> str:
+    """Was tatsächlich geflossen ist — und warum das der Ergebnisrechnung
+    scheinbar widerspricht."""
+    if not k or not k.get("zeilen"):
+        return ""
+    zeilen = [f"- {name}: {_eur(wert)}" for name, wert, _rolle in k["zeilen"]]
+    return (f"\nKASSENSICHT (Finanzrechnung {k['jahr']}, Abschnitt 4.1 desselben "
+            "Jahresabschlusses).\nSie bucht, wenn GELD FLIESST — die "
+            "Ergebnisrechnung bucht, wenn ein Anspruch\nentsteht. Deshalb können "
+            "beide für dasselbe Jahr in verschiedene Richtungen\nzeigen (2024: dort "
+            "ein Überschuss, hier ein Fehlbetrag an Finanzmitteln), und\nbeides "
+            "stimmt. Sag dazu, welche der beiden du nennst. Nie mit [id] zitieren"
+            + _beleg_text(k.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
+
+
+def _nachbewilligungen_block(n: dict | None) -> str:
+    """Was beschlossen wurde, nachdem der Haushalt beschlossen war (§ 117 NKomVG)."""
+    if not n or not n.get("gesamt"):
+        return ""
+    namen = {"rat": "vom Rat selbst beschlossen",
+             "oberbuergermeister": "vom Oberbürgermeister",
+             "fachdienst200": "vom Fachdienst Finanzen",
+             "eilentscheidung": "als Eilentscheidung"}
+    zeilen = [f"- Nachbewilligt {n['jahr']} insgesamt: {_eur(n['gesamt'])} "
+              f"(konsumtiv {_eur(n['konsumtiv'])}, investiv {_eur(n['investiv'])})"]
+    for kanal, kons, inv in n.get("kanaele") or []:
+        summe = (kons or 0) + (inv or 0)
+        if summe:
+            anteil = f" — {summe / n['gesamt'] * 100:.0f} %" if n["gesamt"] else ""
+            zeilen.append(f"  - {namen.get(kanal, kanal)}: {_eur(summe)}{anteil}")
+    if n.get("verpflichtungen"):
+        zeilen.append(f"- Verpflichtungsermächtigungen (binden KÜNFTIGE Jahre, "
+                      f"gehören in KEINE Summe mit den Beträgen darüber): "
+                      f"{_eur(n['verpflichtungen'])}")
+    if n.get("probe_text"):
+        zeilen.append(f"- Einschränkung der Quelle: {n['probe_text']}")
+    return (f"\nNACHBEWILLIGUNGEN {n['jahr']} (§ 117 NKomVG, Rechenschaftsbericht "
+            "Kapitel 3).\nGeld, das AUSSERHALB des beschlossenen Haushalts "
+            "bewilligt wurde. Nicht mit\ndem Haushaltsplan verrechnen — es kommt "
+            "obendrauf. Nie mit [id] zitieren"
+            + _beleg_text(n.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
+
+
+def _kennzahlen_block(k: dict | None) -> str:
+    """Die dreizehn Kennzahlen — mit dem Rechenweg, den die Stadt danebendruckt.
+
+    Der einzige Block des Bereichs, der eine FORMEL mitliefert. Deshalb darf
+    die Antwort eine Quote nennen, ohne sie zu erfinden — und deshalb steht
+    dabei, wenn ein späterer Bericht eine Zahl still geändert hat.
+    """
+    if not k or not k.get("werte"):
+        return ""
+    def zeig(wert: float, einheit: str, stellen: int = 2) -> str:
+        """Eine Kennzahl so schreiben, wie der Bericht sie druckt."""
+        if einheit == "prozent":
+            return f"{wert:.{stellen}f} %".replace(".", ",")
+        if einheit == "anzahl":
+            return f"{wert:,.0f}".replace(",", ".")
+        return (f"{wert:,.{stellen}f} €".replace(",", "\u0001")
+                .replace(".", ",").replace("\u0001", "."))
+
+    zeilen = []
+    for name, wert, einheit, stellen, formel in k["werte"]:
+        if einheit == "prozent":
+            gezeigt = f"{wert:.{stellen}f} %".replace(".", ",")
+        elif einheit == "anzahl":
+            gezeigt = f"{wert:,.0f}".replace(",", ".")
+        else:
+            # Mit den GEDRUCKTEN Nachkommastellen, nicht mit `_eur`: Neben
+            # „so rechnet die Stadt" stünde sonst eine gerundete Zahl (156 €
+            # statt 156,43 €) und daneben der Rechenweg, der sie nicht ergibt.
+            gezeigt = (f"{wert:,.{stellen}f} €".replace(",", "\u0001")
+                       .replace(".", ",").replace("\u0001", "."))
+        zeile = f"- {name} {k['jahr']}: {gezeigt}"
+        if formel:
+            zeile += f" (so rechnet die Stadt: {formel})"
+        zeilen.append(zeile)
+    for name, jahr, alt, alt_b, neu, neu_b, einheit in k.get("korrekturen") or []:
+        zeilen.append(f"- ACHTUNG, später korrigiert: {name} {jahr} stand im Bericht "
+                      f"{alt_b} noch bei {zeig(alt, einheit)}, im Bericht {neu_b} bei "
+                      f"{zeig(neu, einheit)}. Nenne den jüngeren Wert und sag, dass "
+                      f"korrigiert wurde.")
+    return (f"\nKENNZAHLEN {k['jahr']} (Rechenschaftsbericht, Anlage "
+            "„Kennzahlenübersicht und\nBerechnungsmethoden“). Die Rechenwege sind "
+            "GEDRUCKT — zitiere sie, statt\neine Quote selbst zu bilden. Nie mit "
+            "[id] zitieren"
+            + _beleg_text(k.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
+
+
 def _schulden_block(s: dict | None) -> str:
     """Der Schuldenstand — ein Bestand am Stichtag.
 
@@ -1433,6 +1612,28 @@ def _schulden_block(s: dict | None) -> str:
                       "Sie ging in der Quelle selbst nicht auf und wurde deshalb "
                       "nicht übernommen. Die Gesamtsumme trägt eine eigene Probe.")
     zeilen.append(f"- Abgrenzung, gehört an jede dieser Zahlen: {s['abgrenzung']}")
+    # DIE ANDEREN BEIDEN ZAHLEN. Ohne sie beantwortet die KI-Frage „Wie hoch
+    # sind die Schulden?" mit einer von dreien, und welche es wird, entscheidet
+    # der Zufall der Facette. Nebeneinander sind sie die ehrliche Antwort.
+    for w in s.get("weitere") or []:
+        zeilen.append(f"- Dieselbe Frage, andere Abgrenzung — {w['art']} "
+                      f"{w['jahr']}: {_eur(w['betrag'])} (Quelle: {w['quelle']})")
+    if s.get("weitere"):
+        zeilen.append("  Diese Zahlen NIE addieren: Die größere enthält die "
+                      "kleinere. Wer nach „den Schulden“ fragt, bekommt die "
+                      "Abgrenzung dazu, sonst ist die Zahl beliebig.")
+    b = s.get("buergschaften")
+    if b and b.get("bestand") is not None:
+        zeile = (f"- Zusätzlich verbürgt (KEINE Schuld, sondern ein Einstehen für "
+                 f"fremde Kredite) {b['jahr']}: {_eur(b['bestand'])}")
+        if b.get("rueckstellung") is not None:
+            zeile += (f"; davon hält die Stadt {_eur(b['rueckstellung'])} als "
+                      f"Rückstellung für den erwarteten Ausfall vor")
+        zeilen.append(zeile + _beleg_text(b.get("beleg")))
+        if b.get("grund"):
+            zeilen.append(f"  - Wofür: {b['grund']}")
+        zeilen.append("  Eine Bürgschaft kostet nichts, solange sie nicht "
+                      "gezogen wird — sie gehört in keine Schuldensumme.")
     return ("\nSCHULDENSTAND (Statistisches Jahrbuch der Stadt, Tabelle 1108). Das ist\n"
             "ein BESTAND am Stichtag, kein Jahresbetrag — nie mit Aufwendungen, "
             "Erträgen\noder dem Defizit eines Haushaltsjahres verrechnen und nie als "
@@ -1588,6 +1789,10 @@ GELD_MAX_CHARS = 4500
 #: Baustein je Facette. Reihenfolge steckt in GELD_FACETTEN.
 _GELD_BAUSTEINE = {
     "schulden": ("schulden", _schulden_block),
+    "bilanz": ("bilanz", _bilanz_block),
+    "kassensicht": ("kassensicht", _kassensicht_block),
+    "nachbewilligungen": ("nachbewilligungen", _nachbewilligungen_block),
+    "kennzahlen": ("kennzahlen", _kennzahlen_block),
     "stellenplan": ("stellenplan", _stellenplan_block),
     "investitionen": ("investitionen", _investitionen_block),
     "gebaut": ("gebaut", _gebaut_block),

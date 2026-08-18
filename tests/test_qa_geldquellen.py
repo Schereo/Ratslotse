@@ -50,11 +50,17 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     ("Wie hoch sind die Personalkosten?", "geld", {"plan", "produkte", "stellenplan"}),
     ("Was sind die Baukosten der Schule?", "geld", {"plan", "produkte"}),
     # Plan gegen Ist — das kann NUR der Jahresabschluss beantworten.
-    ("Hat die Stadt 2024 mehr ausgegeben als geplant?", "geld", {"plan", "ist"}),
+    # `kassensicht` kommt seit 08/2026 mit jedem `ist` mit: Für 2024 weist die
+    # Ergebnisrechnung einen Überschuss aus und die Finanzrechnung einen
+    # Fehlbetrag an Finanzmitteln. Wer nur eine der beiden nennt, sagt die
+    # halbe Wahrheit — und zwar je nach Zufall die optimistische oder die
+    # pessimistische Hälfte.
+    ("Hat die Stadt 2024 mehr ausgegeben als geplant?", "geld",
+     {"plan", "ist", "kassensicht"}),
     # Das „Warum" steht in den Erläuterungen; die Steuer-Ist-Zahlen und der
     # NFAG-Dämpfer gehören dazu, sonst klingt jede Mehreinnahme nach Gewinn.
     ("Warum kam so viel mehr Gewerbesteuer rein?", "geld",
-     {"gruende", "ist", "steuern", "ausgleich"}),
+     {"gruende", "ist", "steuern", "ausgleich", "kassensicht"}),
     # Präzise und allein: eine Prüfbericht-Frage will keinen Haushaltsplan.
     ("Was hat das Rechnungsprüfungsamt beanstandet?", "thema", {"pruefung"}),
     # „Insgesamt" ist das Stichwort für den Konzern: der Kernhaushalt
@@ -117,6 +123,51 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     # „Debatte" ohne Haushalts-Anker ist kein Haushaltsstreit.
     ("Wie viele Anträge stellen die Fraktionen?", "thema", set()),
     ("Wer stellte den Antrag zum Radweg?", "thema", set()),
+
+    # --- Die fünfzehn Goldfragen der Jahresabschluss-Schichten (08/2026) ----
+    # Bilanz, Kassensicht, Nachbewilligungen, Kennzahlen und die drei
+    # Schuldenzahlen kamen mit den Parsern dieser Runde dazu. Ohne diese
+    # Fälle beantwortet die KI-Frage sie aus dem Ergebnishaushalt — also mit
+    # Zahlen, in denen keine davon vorkommt.
+
+    # 1–3: Die Bilanz. Ein STICHTAG, kein Jahr — und deshalb bewusst ohne
+    # `plan`: Wer nach dem Vermögen fragt, soll keine Jahresausgabe daneben
+    # bekommen, die sich damit nicht verrechnen lässt.
+    ("Wie hoch ist das Eigenkapital der Stadt Oldenburg?", "geld", {"bilanz"}),
+    ("Was besitzt die Stadt eigentlich?", "geld", {"bilanz"}),
+    ("Wie viel hat die Stadt für Pensionen zurückgestellt?", "geld", {"bilanz"}),
+
+    # 4–5: Die Kassensicht. Sie kommt auch ungefragt mit, sobald es um das Ist
+    # geht — 2024 weist die Ergebnisrechnung einen Überschuss aus und die
+    # Finanzrechnung einen Fehlbetrag, und nur beide zusammen sind ehrlich.
+    ("Wie viel Geld ist 2024 tatsächlich geflossen?", "geld", {"kassensicht"}),
+    ("Wie hoch waren die liquiden Mittel am Jahresende?", "geld",
+     {"bilanz", "kassensicht"}),   # „liquide" trifft beide Quellen — richtig so
+
+    # 6–7: Nachbewilligungen. Geld außerhalb des beschlossenen Haushalts.
+    ("Was wurde 2024 nachbewilligt?", "geld", {"nachbewilligungen"}),
+    ("Wie viel wurde überplanmäßig bewilligt?", "geld", {"nachbewilligungen"}),
+
+    # 8–10: Die Kennzahlen. Die einzige Quelle, die ihre Formeln mitliefert —
+    # „Eigenkapitalquote" zieht zusätzlich die Bilanz, aus der sie stammt.
+    ("Wie hoch ist die Eigenkapitalquote?", "geld", {"bilanz", "kennzahlen"}),
+    ("Wie hat sich die Steuerquote entwickelt?", "geld",
+     {"kennzahlen", "steuern", "ausgleich"}),
+    ("Welche Kennzahlen nennt die Stadt zu ihrem Abschluss?", "geld",
+     {"kennzahlen"}),
+
+    # 11–13: Die Bürgschaften — 220,3 Mio. €, die in keiner Schuldenreihe
+    # stehen. Sie hängen an der Schulden-Facette, weil sie nur neben den
+    # Schulden einen Sinn ergeben.
+    ("Wofür bürgt die Stadt Oldenburg?", "geld", {"schulden"}),
+    ("Wie hoch ist der Bürgschaftsbestand?", "geld", {"schulden"}),
+    ("Welche Eventualverbindlichkeiten hat die Stadt?", "geld", {"schulden"}),
+
+    # 14–15: Die Gegenprobe. Beide Fragen klingen nach Haushalt und sind
+    # keiner — „Bürgerbegehren" und „Oldenburg" haben beide „burg" im Wort,
+    # und genau daran ist das erste Bürgschafts-Muster gescheitert.
+    ("Wie ist der Stand beim Bürgerbegehren zum Schloss?", "thema", set()),
+    ("Wie viele Bürgerinnen und Bürger hat Oldenburg?", "thema", set()),
 ]
 
 #: Welche Store-Methode eine Facette anfasst. Die zweite Hälfte der Messung:
@@ -137,6 +188,10 @@ ERWARTETE_METHODEN = {
     "gebaut": "investitionen_ist_kontext",
     "stellenplan": "stellenplan_kontext",
     "antraege": "haushaltsantraege_kontext",
+    "bilanz": "bilanz_kontext",
+    "kassensicht": "kassensicht_kontext",
+    "nachbewilligungen": "nachbewilligungen_kontext",
+    "kennzahlen": "kennzahlen_kontext",
 }
 
 
@@ -154,6 +209,18 @@ class _MessStore:
     def _merken(self, name, wert):
         self.aufrufe.append(name)
         return wert
+
+    def bilanz_kontext(self):
+        return self._merken("bilanz_kontext", None)
+
+    def kassensicht_kontext(self):
+        return self._merken("kassensicht_kontext", None)
+
+    def nachbewilligungen_kontext(self, jahr=None):
+        return self._merken("nachbewilligungen_kontext", None)
+
+    def kennzahlen_kontext(self, limit=13):
+        return self._merken("kennzahlen_kontext", None)
 
     def haushalt_fuer_begriffe(self, b, limit=3):
         return self._merken("haushalt_fuer_begriffe", [])
@@ -1190,3 +1257,76 @@ if __name__ == "__main__":  # pragma: no cover — manueller Lauf
     import sys
 
     sys.exit(_messlauf())
+
+
+def test_schuldenblock_nennt_alle_drei_abgrenzungen(tmp_path):
+    """„Wie hoch sind die Schulden?" hat drei richtige Antworten.
+
+    43,7 Mio. € (Kernhaushalt), 294,9 Mio. € (Rechtsträger mit Eigenbetrieben)
+    und 740,3 Mio. € (Konzern mit Beteiligungen) — dieselbe Frage, dreimal
+    anders abgegrenzt, ein Unterschied vom Siebzehnfachen. Bis zum 18.08.2026
+    kannte der Baustein nur die mittlere; welche Zahl in der Antwort landete,
+    entschied damit die Facette und nicht die Frage.
+
+    Der Test hält außerdem die SPALTENNAMEN fest. Beide Abfragen stehen hinter
+    einem `except sqlite3.OperationalError` — ein Tippfehler im Spaltennamen
+    fiele sonst nie auf, sondern ließe die Zahl einfach weg (genau so passiert:
+    `betrag` statt `insgesamt`).
+    """
+    from council import qa
+    from council.store import CouncilStore
+
+    store = CouncilStore(str(tmp_path / "c.sqlite"))
+    c = store._conn                                       # noqa: SLF001
+    c.execute("INSERT INTO council_schulden (jahr, insgesamt, je_einwohner, fetched_at) "
+              "VALUES (2024, 294851000, 1673, '2026-08-18')")
+    c.execute("INSERT INTO council_bilanz (jahr, rolle, seite, ebene, bezeichnung, wert, "
+              " fetched_at) VALUES (2024, 'geldschulden', 'passiva', 2, 'Geldschulden', "
+              " 43690972, '2026-08-18')")
+    c.execute("INSERT INTO council_integrierte_schulden (jahr, ars, insgesamt, proben, "
+              " fetched_at) VALUES (2024, '03403000', 740300000, '', '2026-08-18')")
+    c.execute("INSERT INTO council_buergschaften (jahr, bestand, genau, aus_folgejahr, "
+              " quelle, proben, fetched_at) "
+              "VALUES (2024, 220300000, 1, 0, 'jahresabschluss', '', '2026-08-18')")
+    c.commit()
+
+    k = store.schulden_kontext()
+    arten = {w["art"]: w["betrag"] for w in k["weitere"]}
+    assert arten["Kernhaushalt (nur Geldschulden)"] == 43_690_972
+    assert arten["Konzern Stadt (anteilig, mit Beteiligungen)"] == 740_300_000
+    assert k["buergschaften"]["bestand"] == 220_300_000
+
+    text = qa._schulden_block(k)
+    for betrag in ("294.851.000", "43.690.972", "740.300.000", "220.300.000"):
+        assert betrag in text, betrag
+    # Und die Regel, ohne die drei Zahlen nebeneinander gefährlich sind.
+    assert "NIE addieren" in text
+    assert "KEINE Schuld" in text
+
+
+def test_buergschaftsfragen_ziehen_die_schuldenquelle_ohne_oldenburg_zu_fangen():
+    """„Wofür bürgt die Stadt?" — und „Oldenburg" enthält „burg".
+
+    Die 220,3 Mio. €, für die die Stadt geradesteht, stehen in keiner der drei
+    Schuldenreihen; ohne diese Wörter beantwortete die KI-Frage die Frage mit
+    dem Ergebnishaushalt.
+
+    Der Test hält vor allem die zwei Fallen fest, in die ein kurzes Muster
+    läuft. `b[üu]rg` schlägt bei **Oldenburg** an — also bei fast jeder Frage
+    dieses Projekts. Und weil `_falte` „ü" zu „ue" macht, beginnt
+    „buergerinnen" genauso wie „buergschaft"; ein negativer Vorgriff auf „er"
+    sperrt zwar die Bürger*innen aus, lässt „oldenburg" aber durch.
+    """
+    from council import qa
+
+    for frage in ("Wofür bürgt die Stadt Oldenburg?",
+                  "Wie hoch ist der Bürgschaftsbestand?",
+                  "Für welche Kredite hat die Stadt sich verbürgt?",
+                  "Welche Eventualverbindlichkeiten hat die Stadt?"):
+        assert "schulden" in qa.geld_facetten(frage), frage
+
+    for frage in ("Wie viele Bürgerinnen und Bürger hat Oldenburg?",
+                  "Wie ist der Stand beim Bürgerbegehren?",
+                  "Was ist in Oldenburg mit dem Stadion?",
+                  "Wie viele Einwohner hat Oldenburg?"):
+        assert "schulden" not in qa.geld_facetten(frage), frage
