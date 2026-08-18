@@ -11,7 +11,7 @@ import { useDebounce } from "@/lib/use-debounce";
 import { clearRecentSearches, getRecentSearches, pushRecentSearch } from "@/lib/recent-searches";
 import { offerIcs } from "@/lib/ics";
 import {
-  CouncilSession, SessionDetail, AgendaItem, CouncilDecision, DecisionOutcome, PolicyField, Topic,
+  AgendaAenderung, CouncilSession, SessionDetail, AgendaItem, CouncilDecision, DecisionOutcome, PolicyField, Topic,
 } from "@/lib/types";
 import {
   Badge, Button, Card, CardListSkeleton, DateField, EmptyState, Input, PageHeader, Pagination, Segmented, Select,
@@ -970,6 +970,53 @@ function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flash }: {
   return <li id={domId} className={cn(layout, tone)}>{body}</li>;
 }
 
+/** „Zuletzt geändert" (Tims Wunsch 18.08.): Ziel der Änderungs-Push — die
+ *  Push nennt nur den Satz, hier stehen die Einzelheiten. Farbgrammatik wie
+ *  in der Mail: Neues grün, Geändertes gelb, Entferntes rot. */
+const AENDERUNG_FARBE: Record<string, string> = {
+  neu: "border-emerald-500",
+  geaendert: "border-amber-500", verschoben: "border-amber-500",
+  vorlage: "border-amber-500", anlagen: "border-amber-500",
+  entfernt: "border-rose-400",
+};
+
+function fmtAenderungsDatum(iso: string): string {
+  return iso.length >= 10 ? `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}` : iso;
+}
+
+function AenderungenSection({ aenderungen }: { aenderungen: AgendaAenderung[] }) {
+  return (
+    <div className="mb-3 rounded-lg bg-muted/50 p-3">
+      {aenderungen.map((a, i) => (
+        <div key={i} className={cn(i > 0 && "mt-3 border-t border-border pt-3")}>
+          <p className="font-mono text-[10px] uppercase tracking-[0.11em] text-muted-foreground">
+            {i === 0 ? "Zuletzt geändert" : "Davor"} · {fmtAenderungsDatum(a.changed_at)}
+          </p>
+          <ul className="mt-1.5 space-y-1.5">
+            {a.zeilen.map((z, j) => (
+              <li key={j} className={cn("border-l-2 pl-2 text-sm leading-snug",
+                AENDERUNG_FARBE[z.art] ?? "border-border")}>
+                <span className={cn("font-medium", z.art === "entfernt" && "line-through decoration-muted-foreground/50")}>
+                  {z.label}
+                </span>
+                <span className={cn("text-muted-foreground", z.art === "entfernt" && "line-through decoration-muted-foreground/50")}>
+                  {" — "}{z.titel}
+                </span>
+                {z.nichtoeffentlich && (
+                  <span className="ml-1 text-[11px] text-muted-foreground/70">(nichtöffentlich)</span>
+                )}
+                {z.detail && (
+                  <span className="block text-[12px] text-muted-foreground/80">{z.detail}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function AttendanceSection({ detail }: { detail: SessionDetail }) {
   const att = detail.attendance ?? [];
   if (att.length === 0) return null;
@@ -995,6 +1042,11 @@ function AttendanceSection({ detail }: { detail: SessionDetail }) {
 
 function SessionsTab({ committees }: { committees: string[] }) {
   const heute = useHeute();
+  // Lokales Datum als ISO-Tag für String-Vergleiche mit session_date —
+  // `heute` selbst ist ein Date, und "2026-08-19" >= Date wäre stets false.
+  const heuteTag = heute
+    ? `${heute.getFullYear()}-${String(heute.getMonth() + 1).padStart(2, "0")}-${String(heute.getDate()).padStart(2, "0")}`
+    : null;
   // Filter überleben den Tab-Wechsel (Tims iOS-Befund 12.08.): Wer sucht und
   // kurz woanders nachsieht, will nicht neu tippen.
   const [q, setQ] = useMerker("sitzungen:q", "");
@@ -1427,6 +1479,12 @@ function SessionsTab({ committees }: { committees: string[] }) {
                           <div className="py-2"><Spinner /></div>
                         ) : (
                           <>
+                            {/* Nur bei anstehenden Sitzungen: Nach der Sitzung
+                                ist die Änderungs-Historie Verwaltungsrauschen. */}
+                            {heuteTag != null && s.session_date >= heuteTag
+                              && (d?.aenderungen?.length ?? 0) > 0 && (
+                              <AenderungenSection aenderungen={d!.aenderungen!} />
+                            )}
                             <ul className="space-y-0.5">
                               {(d?.agenda_items ?? []).map((it, i) => (
                                 <AgendaRow key={i} it={it} query={query}

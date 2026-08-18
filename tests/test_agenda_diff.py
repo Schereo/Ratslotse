@@ -265,3 +265,30 @@ def test_snapshot_roundtrip(tmp_path):
         assert store.get_agenda_snapshot(4666, "unbekannt") is None
     finally:
         store.close()
+
+
+def test_aenderungs_chronik_roundtrip(tmp_path):
+    """„Zuletzt geändert" auf der Sitzungsseite (Tims Wunsch 18.08.): Der Diff
+    überlebt die JSON-Runde — Paare kommen als 2er-Listen zurück, diff_zeilen
+    und diff_satz arbeiten damit wie mit den Original-Tupeln."""
+    from council.agenda_diff import diff_zeilen
+    from council.store import CouncilStore
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        assert store.get_latest_agenda_snapshot(4666) is None
+        alt = [_i("Ö 5", "Radweg")]
+        neu = [_i("Ö 5", "Radweg", "26/0100"), _i("Ö 6", "Neubau Kita")]
+        store.save_agenda_snapshot(4666, "hash-a", alt)
+        assert store.get_latest_agenda_snapshot(4666) == alt
+
+        d = diff_tagesordnung(alt, neu)
+        store.save_agenda_change(4666, d)
+        chronik = store.agenda_changes(4666)
+        assert len(chronik) == 1
+        zeilen = diff_zeilen(chronik[0]["diff"])
+        assert {z["art"] for z in zeilen} == {"neu", "vorlage"}
+        assert diff_satz(chronik[0]["diff"]) == (
+            "Ein Punkt ist neu und eine Vorlage wurde nachgereicht.")
+        assert store.agenda_changes(999) == []
+    finally:
+        store.close()

@@ -631,6 +631,19 @@ class CouncilStore:
         )
         self._conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_wb_ksinr ON council_wortbeitraege(ksinr)")
+        # Chronik der Tagesordnungs-Änderungen (Tims Wunsch 18.08.): Die Push
+        # sagt nur noch den Satz — WAS sich geändert hat, zeigt die
+        # Sitzungsseite aus dieser Tabelle. Eine Zeile je neuem Stand,
+        # unabhängig davon, wer wann benachrichtigt wurde.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS agenda_changes ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "ksinr INTEGER NOT NULL, "
+            "changed_at TEXT NOT NULL, "
+            "diff_json TEXT NOT NULL)"
+        )
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_agenda_changes_ksinr ON agenda_changes(ksinr)")
         self._conn.execute(
             "CREATE VIRTUAL TABLE IF NOT EXISTS council_wortbeitraege_fts "
             "USING fts5(content, tokenize=\"unicode61 remove_diacritics 2\")"
@@ -1409,6 +1422,46 @@ class CouncilStore:
             return _json.loads(row[0])
         except ValueError:
             return None
+
+    def get_latest_agenda_snapshot(self, ksinr: int) -> list[dict] | None:
+        """Der jüngste eingefrorene Stand — die Vergleichsbasis der
+        Änderungs-Chronik (unabhängig davon, wer benachrichtigt wurde)."""
+        import json as _json
+        row = self._conn.execute(
+            "SELECT items_json FROM agenda_snapshots WHERE ksinr = ? "
+            "ORDER BY created_at DESC, rowid DESC LIMIT 1", (ksinr,)).fetchone()
+        if row is None:
+            return None
+        try:
+            return _json.loads(row[0])
+        except ValueError:
+            return None
+
+    def save_agenda_change(self, ksinr: int, diff: dict) -> None:
+        """Eine erkannte Tagesordnungs-Änderung in die Chronik schreiben —
+        die Sitzungsseite zeigt daraus „Zuletzt geändert"."""
+        import json as _json
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT INTO agenda_changes (ksinr, changed_at, diff_json) VALUES (?, ?, ?)",
+                (ksinr, now, _json.dumps(diff, ensure_ascii=False)))
+
+    def agenda_changes(self, ksinr: int, limit: int = 3) -> list[dict]:
+        """Die jüngsten Änderungen einer Sitzung, neueste zuerst:
+        ``[{changed_at, diff}]`` — der Diff in der Form von
+        ``agenda_diff.diff_tagesordnung`` (Paare als 2er-Listen)."""
+        import json as _json
+        rows = self._conn.execute(
+            "SELECT changed_at, diff_json FROM agenda_changes "
+            "WHERE ksinr = ? ORDER BY id DESC LIMIT ?", (ksinr, limit)).fetchall()
+        out: list[dict] = []
+        for r in rows:
+            try:
+                out.append({"changed_at": r["changed_at"], "diff": _json.loads(r["diff_json"])})
+            except ValueError:
+                continue
+        return out
 
     def save_summary(self, ksinr: int, agenda_hash: str, summary: str) -> None:
         now = datetime.utcnow().isoformat(timespec="seconds")

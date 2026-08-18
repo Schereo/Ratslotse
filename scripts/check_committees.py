@@ -20,7 +20,8 @@ from kern.store import Store
 from kern import digest_email
 from council.store import CouncilStore
 from council.scraper import CouncilScraper
-from council.agenda_diff import anlagen_schluessel, diff_html, diff_tagesordnung, hat_aenderungen
+from council.agenda_diff import (anlagen_schluessel, diff_html, diff_satz,
+                                 diff_tagesordnung, hat_aenderungen)
 from council.committee_summary import sitzungskopf, summarize_agenda_items
 from council.ergebnisse import sitzung_href
 
@@ -89,16 +90,17 @@ def _ohne_altkopf(summary: str | None) -> str | None:
     return summary if summary is None else _ALT_KOPF.sub("", summary)
 
 
-def _aenderungs_teil(alt: list[dict] | None, jetzt: list[dict]) -> str | None:
-    """Der Diff-Block einer Änderungsmeldung — drei Ausgänge:
+def _push_kurz(html: str, limit: int = 180) -> str:
+    """HTML zu einem Push-tauglichen Kurztext einstampfen — wie
+    ``kern.delivery._plain``, nur ohne den Mail-Kopf davor."""
+    t = re.sub(r"<[^>]+>", "", html or "")
+    t = re.sub(r"\s+", " ", t).strip()
+    return (t[: limit - 1] + "…") if len(t) > limit else t
 
-    * ``None`` — keine Vergleichsbasis (Stand von vor der Snapshot-Zeit).
-      Dann geht die vollständige Tagesordnung raus, wie eh und je.
-    * ``""`` — der Hash ist anders, die Tagesordnung liest sich aber gleich
-      (etwa nur eine andere Reihenfolge im Quelltext). Dazu gibt es nichts zu
-      sagen; der Aufrufer meldet dann gar nicht.
-    * sonst die farbmarkierte Liste der Unterschiede.
-    """
+
+def _diff_fuer(alt: list[dict] | None, jetzt: list[dict]) -> dict | None:
+    """Der Diff zweier Stände mit den Migrations-Schutzgittern — oder ``None``
+    ohne Vergleichsbasis (Stand von vor der Snapshot-Zeit)."""
     if alt is None:
         return None
     # Altbestand: Snapshots von vor dem 17.08.2026 enthalten nur die
@@ -112,7 +114,22 @@ def _aenderungs_teil(alt: list[dict] | None, jetzt: list[dict]) -> str | None:
     # dann werden sie auf beiden Seiten aus dem Vergleich genommen.
     if not any("anlagen" in i for i in alt):
         jetzt = [{k: v for k, v in i.items() if k != "anlagen"} for i in jetzt]
-    d = diff_tagesordnung(alt, jetzt)
+    return diff_tagesordnung(alt, jetzt)
+
+
+def _aenderungs_teil(alt: list[dict] | None, jetzt: list[dict]) -> str | None:
+    """Der Diff-Block einer Änderungsmeldung — drei Ausgänge:
+
+    * ``None`` — keine Vergleichsbasis (Stand von vor der Snapshot-Zeit).
+      Dann geht die vollständige Tagesordnung raus, wie eh und je.
+    * ``""`` — der Hash ist anders, die Tagesordnung liest sich aber gleich
+      (etwa nur eine andere Reihenfolge im Quelltext). Dazu gibt es nichts zu
+      sagen; der Aufrufer meldet dann gar nicht.
+    * sonst die farbmarkierte Liste der Unterschiede.
+    """
+    d = _diff_fuer(alt, jetzt)
+    if d is None:
+        return None
     return diff_html(d) if hat_aenderungen(d) else ""
 
 
@@ -174,6 +191,18 @@ def main() -> dict:
                                         "url": e.get("url") or ""}
                                        for e in (i.anlagen or [])]}
                           for i in session.agenda_items]
+        # Chronik VOR dem Einfrieren: Ist dieser Hash neu, ist der bisher
+        # jüngste Snapshot der Vorher-Stand — die Sitzungsseite zeigt daraus
+        # „Zuletzt geändert" (Tims Wunsch 18.08.: die Push sagt den Satz, die
+        # App die Einzelheiten). Owner-unabhängig, eine Zeile je neuem Stand.
+        try:
+            if council_store.get_agenda_snapshot(ksinr, agenda_hash) is None:
+                basis = council_store.get_latest_agenda_snapshot(ksinr)
+                d_chronik = _diff_fuer(basis, snapshot_items)
+                if d_chronik is not None and hat_aenderungen(d_chronik):
+                    council_store.save_agenda_change(ksinr, d_chronik)
+        except Exception as exc:  # noqa: BLE001 — Chronik ist Zusatz, nie Blocker
+            print(f"  ⚠️ Änderungs-Chronik für {ksinr} fehlgeschlagen: {exc!r}")
         council_store.save_agenda_snapshot(ksinr, agenda_hash, snapshot_items)
 
         # Categorise subscribers:
@@ -255,12 +284,18 @@ def main() -> dict:
             base_message = kopf + wege
 
         subject = f"{session.committee}: Tagesordnung ist da"
+        # Push-Vorschau ohne den Mail-Kopf (Tims Wunsch 18.08.): Datum und
+        # Sitzungsort stehen dort nur im Weg — die Sache zuerst.
+        push_neu = (_push_kurz(summary) if summary
+                    else "Die Tagesordnung enthält nur Routine-Punkte." if summary == ""
+                    else None)
         for owner_id in pending_new:
             if owner_id not in targets:
                 continue
             print(f"  {session.session_date} {session.committee} → owner {owner_id} (neu)")
             notify.einreihen(nwz_store, owner_id, notify.N1_TAGESORDNUNG,
-                             subject, base_message, sitzung_href(ksinr))
+                             subject, base_message, sitzung_href(ksinr),
+                             push_text=push_neu)
             council_store.mark_notified(ksinr, owner_id, agenda_hash)
             notifications_sent += 1
 
@@ -273,16 +308,16 @@ def main() -> dict:
         # bisherige Voll-Mail.
         update_prefix = "<p><b>Die Tagesordnung hat sich geändert.</b></p>\n"
         update_subject = f"{session.committee}: Tagesordnung geändert"
-        diff_je_hash: dict[str, str | None] = {}   # Ausgänge: s. _aenderungs_teil
+        diff_je_hash: dict[str, dict | None] = {}   # Diff je Vorher-Stand; None = keine Basis
         for owner_id in pending_update:
             if owner_id not in targets:
                 continue
             last_hash = council_store.get_last_notified_hash(ksinr, owner_id) or ""
             if last_hash not in diff_je_hash:
-                diff_je_hash[last_hash] = _aenderungs_teil(
+                diff_je_hash[last_hash] = _diff_fuer(
                     council_store.get_agenda_snapshot(ksinr, last_hash), snapshot_items)
-            diff_teil = diff_je_hash[last_hash]
-            if diff_teil == "":
+            d = diff_je_hash[last_hash]
+            if d is not None and not hat_aenderungen(d):
                 # Der Hash ist anders, die Tagesordnung liest sich aber gleich
                 # (etwa nur die Reihenfolge im Quelltext). „Details einzelner
                 # Punkte wurden angepasst" stand hier früher — ein Satz, der
@@ -290,19 +325,27 @@ def main() -> dict:
                 # (Tims Befund 17.08.). Stand nachziehen, nicht melden.
                 council_store.mark_notified(ksinr, owner_id, agenda_hash)
                 continue
-            # Ohne Vergleichsbasis (Meldung von vor der Snapshot-Zeit) kommt
-            # die volle Liste — dann soll die Mail aber SAGEN, dass sie den
-            # ganzen Stand zeigt, statt so zu tun, als wäre alles davon neu
-            # (Tims Befund 18.08. an der Jugendhilfeausschuss-Mail).
-            ohne_basis = ("<p>Was genau sich geändert hat, lässt sich für diese "
-                          "Sitzung nicht mehr nachvollziehen — hier ist der "
-                          "aktuelle Stand der Tagesordnung.</p>\n")
-            nachricht = (update_prefix + kopf + diff_teil + wege) if diff_teil is not None \
-                else (update_prefix + ohne_basis + base_message)
+            if d is not None:
+                nachricht = update_prefix + kopf + diff_html(d) + wege
+                # Die Push-Vorschau nennt die Änderungsart statt Datum und
+                # Ort; die Einzelheiten zeigt die Sitzungsseite hinterm Tap
+                # (Tims Wunsch 18.08.).
+                push_kurz = diff_satz(d) or None
+            else:
+                # Ohne Vergleichsbasis (Meldung von vor der Snapshot-Zeit)
+                # kommt die volle Liste — dann soll die Mail aber SAGEN, dass
+                # sie den ganzen Stand zeigt, statt so zu tun, als wäre alles
+                # davon neu (Tims Befund 18.08. an der Jugendhilfe-Mail).
+                ohne_basis = ("<p>Was genau sich geändert hat, lässt sich für diese "
+                              "Sitzung nicht mehr nachvollziehen — hier ist der "
+                              "aktuelle Stand der Tagesordnung.</p>\n")
+                nachricht = update_prefix + ohne_basis + base_message
+                push_kurz = "Tippe für den aktuellen Stand der Tagesordnung."
             print(f"  {session.session_date} {session.committee} → owner {owner_id} "
-                  f"(Änderung{', Diff' if diff_teil is not None else ''})")
+                  f"(Änderung{', Diff' if d is not None else ''})")
             notify.einreihen(nwz_store, owner_id, notify.N1_TAGESORDNUNG,
-                             update_subject, nachricht, sitzung_href(ksinr))
+                             update_subject, nachricht, sitzung_href(ksinr),
+                             push_text=push_kurz)
             council_store.mark_notified(ksinr, owner_id, agenda_hash)
             notifications_sent += 1
 
