@@ -186,6 +186,23 @@ export interface SessionDetail extends CouncilSession {
   attendance?: Attendee[];
   has_protocol?: boolean;
   url: string;
+  /** „Zuletzt geändert"-Chronik der Tagesordnung, neueste zuerst — Ziel der
+   *  Änderungs-Push; ältere Sitzungen (vor der Chronik) haben keine. */
+  aenderungen?: AgendaAenderung[];
+}
+
+export interface AgendaAenderungZeile {
+  art: "neu" | "geaendert" | "verschoben" | "vorlage" | "anlagen" | "entfernt";
+  label: string;
+  titel: string;
+  nichtoeffentlich: boolean;
+  detail: string | null;
+}
+
+export interface AgendaAenderung {
+  changed_at: string;
+  satz: string;
+  zeilen: AgendaAenderungZeile[];
 }
 
 export interface VorlageStop {

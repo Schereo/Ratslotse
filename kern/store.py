@@ -78,6 +78,8 @@ CREATE TABLE IF NOT EXISTS notification_queue (
     deliver_after TEXT NOT NULL,
     sent_at       TEXT,
     bundled       INTEGER NOT NULL DEFAULT 0,
+    -- Eigener Kurztext für die Push-Vorschau; NULL = aus body_html ableiten.
+    push_text     TEXT,
     -- Fehlgeschlagene Zustellversuche. Solange der Versandweg klemmt (Resend
     -- down, Adresse abgelehnt), bleibt die Meldung mit sent_at IS NULL liegen
     -- und wird erneut versucht — bis MAX_VERSUCHE, damit eine dauerhaft
@@ -571,6 +573,12 @@ class Store:
                 self._conn.execute(
                     "ALTER TABLE notification_queue ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0"
                 )
+        # Eigener Kurztext für die Push-Vorschau (Tims Wunsch 18.08.): Der
+        # plattgeklopfte Mail-Text taugt dort nicht (Datum, Ort, dann erst
+        # die Sache). NULL = wie bisher aus body_html ableiten.
+        if nq_cols and "push_text" not in nq_cols:
+            with self._conn:
+                self._conn.execute("ALTER TABLE notification_queue ADD COLUMN push_text TEXT")
         self._conn.execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_web_users_apple_sub "
             "ON web_users(apple_sub) WHERE apple_sub IS NOT NULL"
@@ -1246,13 +1254,14 @@ class Store:
     # ---- Benachrichtigungs-Warteschlange (Design 30a) ----
 
     def enqueue_notification(self, owner_id: int, kind: str, title: str, body_html: str,
-                             url: str, created_at: str, deliver_after: str) -> int:
+                             url: str, created_at: str, deliver_after: str,
+                             push_text: str | None = None) -> int:
         with self._conn:
             cur = self._conn.execute(
                 "INSERT INTO notification_queue "
-                "(owner_id, kind, title, body_html, url, created_at, deliver_after) "
-                "VALUES (?,?,?,?,?,?,?)",
-                (owner_id, kind, title, body_html, url, created_at, deliver_after),
+                "(owner_id, kind, title, body_html, url, created_at, deliver_after, push_text) "
+                "VALUES (?,?,?,?,?,?,?,?)",
+                (owner_id, kind, title, body_html, url, created_at, deliver_after, push_text),
             )
         return cur.lastrowid
 
@@ -1272,7 +1281,7 @@ class Store:
         """Offene, fällige Posten — älteste zuerst, damit das Bündel am Ende die
         jüngsten trägt und die wichtigste Einzelmeldung vorne bleibt."""
         return [dict(r) for r in self._conn.execute(
-            "SELECT id, kind, title, body_html, url, created_at FROM notification_queue "
+            "SELECT id, kind, title, body_html, url, created_at, push_text FROM notification_queue "
             "WHERE owner_id = ? AND sent_at IS NULL AND attempts < ? AND deliver_after <= ? "
             "ORDER BY id",
             (owner_id, self.MAX_ZUSTELLVERSUCHE, jetzt_iso))]

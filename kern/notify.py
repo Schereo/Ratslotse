@@ -173,7 +173,7 @@ def ist_app_pfad(url: str) -> bool:
 
 
 def einreihen(store, owner_id: int, kind: str, titel: str, html: str, url: str,
-              jetzt: datetime | None = None) -> int:
+              jetzt: datetime | None = None, push_text: str | None = None) -> int:
     """Eine Benachrichtigung in die Warteschlange legen. Gibt ihre id zurück.
 
     ``url`` ist Pflicht (Grenze 4): Antippen muss den Beschluss oder die
@@ -199,6 +199,7 @@ def einreihen(store, owner_id: int, kind: str, titel: str, html: str, url: str,
         owner_id=owner_id, kind=kind, title=titel, body_html=html, url=url,
         created_at=n.isoformat(timespec="seconds"),
         deliver_after=naechstes_fenster(n).isoformat(timespec="seconds"),
+        push_text=push_text,
     )
 
 
@@ -273,7 +274,8 @@ def _zustellen_fuer(store, owner_id: int, heute: str, jetzt_iso: str) -> int:
     if not offen:
         return 0
 
-    def _abschicken(posten_ids: list[int], html: str, titel: str, url: str, gebuendelt: bool) -> bool:
+    def _abschicken(posten_ids: list[int], html: str, titel: str, url: str, gebuendelt: bool,
+                    push_text: str | None = None) -> bool:
         """Einmal zustellen und das Ergebnis verbuchen.
 
         ``deliver_message`` schluckt Fehler und meldet über den Rückgabewert,
@@ -281,7 +283,8 @@ def _zustellen_fuer(store, owner_id: int, heute: str, jetzt_iso: str) -> int:
         **nichts** rausgegangen. Früher wurde trotzdem ``sent_at`` gesetzt — ein
         Resend-Ausfall ließ Meldungen also lautlos für immer verschwinden.
         """
-        kanaele = deliver_message(owner, html, email_subject=titel, push_url=url)
+        kanaele = deliver_message(owner, html, email_subject=titel, push_url=url,
+                                  push_text=push_text)
         if not kanaele:
             store.bump_notification_attempts(posten_ids)
             logger.warning("owner %s: Zustellung erfolglos, %d Meldung(en) bleiben in der "
@@ -305,7 +308,10 @@ def _zustellen_fuer(store, owner_id: int, heute: str, jetzt_iso: str) -> int:
         rest = posten[len(einzeln):]
         n = 0
         for p in einzeln:
-            if _abschicken([p["id"]], p["body_html"], p["title"], p["url"], False):
+            # Kurztext nur bei Einzelzustellung — ein Bündel baut seinen
+            # eigenen Sammel-Text.
+            if _abschicken([p["id"]], p["body_html"], p["title"], p["url"], False,
+                           push_text=p.get("push_text")):
                 n += 1
         if rest:
             titel, html, url = _buendel(rest)
