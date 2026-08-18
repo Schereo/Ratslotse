@@ -32,8 +32,14 @@ verwechseln:
    Haushaltsvermerk, Eilentscheidungen. Vorhanden für 2022, 2023, 2024.
 
 Der Grund, warum beides gebraucht wird, steht in den Zahlen des zweiten
-Bestands: Die Gesamtsumme stieg von 26,97 (2022) über 40,24 (2023) auf
-**57,49 Mio. €** (2024), der Anteil mit Ratsbeschluss fiel von 88 auf **73 %**.
+Bestands: Die Gesamtsumme stieg von 26,68 (2022) über 40,24 (2023) auf
+**57,49 Mio. €** (2024), der Anteil mit Ratsbeschluss fiel von 89 auf **73 %**.
+
+(Für 2022 nennt der Fließtext des Berichts 26,97 Mio. €. Gerechnet wird hier
+mit **26,68**, der Summe seiner eigenen Tabelle — der Zahl also, für die das
+Dokument mit seiner eigenen Rechnung geradesteht. Der Unterschied ist der
+Widerspruch, den :func:`probe_tabelle` meldet, und er wird angezeigt, nicht
+weggerechnet.)
 Wer nur die Ratsbeschlüsse zeigt, zeigt eine schrumpfende Teilmenge, als wäre
 sie das Ganze.
 
@@ -609,7 +615,12 @@ class Kapitel3:
     def rats_anteil(self) -> float | None:
         """Wie viel Prozent der Nachbewilligungen der Rat selbst beschloss.
 
-        Die Zahl, um die es geht: 88 % (2022), 84 % (2023), **73 %** (2024)."""
+        Die Zahl, um die es geht: 89 % (2022), 84 % (2023), **73 %** (2024).
+
+        Nenner ist :attr:`gesamt`, also die **Summenzeile** des Kapitels — und
+        nicht die Gesamtzahl aus seinem Fließtext. Für 2022 unterscheiden sich
+        beide um 288.000 €; die Summenzeile ist die, die das Dokument selbst
+        nachrechnet, und nur mit ihr ergeben die vier Wege zusammen 100 %."""
         rat = self.kanal("rat")
         return (rat.betrag / self.gesamt * 100) if rat and self.gesamt else None
 
