@@ -114,6 +114,12 @@ export type QuellenSchluessel =
   // und deshalb einen gemeinsamen Eintrag braucht: Wer nur eine der beiden
   // nennt, verschweigt die Hälfte der Reihe.
   | "ausgabenreihe"
+  // Die Zuwendungen an die Stadt — die einzige Quelle des Bereichs, die kein
+  // Dokument der Statistik oder der Finanzverwaltung ist, sondern eine Reihe
+  // von Ratsbeschlüssen. Ihr eigener Eintrag, weil ihre Grenze eine andere ist
+  // als bei allen übrigen: Der Beschluss macht die Summe öffentlich, die
+  // Liste der Gebenden bleibt in einer Anlage, die wir nicht haben.
+  | "spenden"
   // A12: Der Beteiligungsbericht — die einzige Quelle des Bereichs, die ein
   // eigener Cron von oldenburg.de herunterlädt.
   | "beteiligungsbericht";
@@ -505,6 +511,33 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     url:
       "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/" +
       "40_Stadtplanungsamt/402_Geo_und_Daten/Statistik/1102-2025-AZ.pdf",
+  },
+  spenden: {
+    titel:
+      "Ratsvorlagen „Annahme von Zuwendungen“ — Beschlüsse des Rates und des " +
+      "Verwaltungsausschusses",
+    fundstelle:
+      "Acht- bis zwölfmal im Jahr beschließen Rat oder Verwaltungsausschuss, " +
+      "welche angebotenen Zuwendungen die Stadt annimmt. Der Beschluss nennt " +
+      "eine Summe („in Höhe von insgesamt … EUR laut anliegender Liste“); " +
+      "dieselbe Summe steht in der Vorlage ein zweites Mal, im Abschnitt zu " +
+      "den finanziellen Auswirkungen, dort oft zerlegt in Geldzuwendungen und " +
+      "Sachspenden. " +
+      "Wer gespendet hat und wofür, steht ausschließlich in der Anlage " +
+      "„Zuwendungsliste“ — die ist nicht Teil dessen, was wir einlesen, und " +
+      "wir zeigen deshalb die Summe und nicht die Gebenden. " +
+      "Die Reihe zählt, was beschlossen wurde, nicht was gebucht ist: Sie ist " +
+      "nicht mit einer Position der Ergebnisrechnung gleichzusetzen, die " +
+      "Zuwendungen weder getrennt ausweist noch nach demselben Stichtag " +
+      "abgrenzt.",
+    herausgeber: "Stadt Oldenburg, Amt für Controlling und Finanzen (Ratsvorlagen)",
+    standWort: "Sitzungsjahre",
+    stand: "Sitzungsjahre 2018–2026",
+    // „web": Die Quelle ist keine Datei, sondern eine Reihe von Vorlagen im
+    // Bürgerinformationssystem — jede Zeile verlinkt ihre eigene über den
+    // Beleg-Chip.
+    art: "web",
+    url: "https://buergerinfo.oldenburg.de/vo040.asp",
   },
   // A11: Die Investitionen des Finanzhaushalts (/haushalt/investitionen). Die
   // einzige CSV des Open-Data-Portals in diesem Verzeichnis, die eine

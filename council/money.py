@@ -40,6 +40,29 @@ Bewilligung, und wo sie es nicht ist, steht sie für dieselbe Entscheidung.
 Ein Filter darauf verlöre echte Beträge, um eine Ungenauigkeit zu heilen, die
 sich nicht messen ließ. Er gehört in eine zweistufige Extraktion (Titel zuerst),
 nicht in dieses Blatt-Modul.
+
+Gegengemessen: Wo der **Titel** den Betrag selbst nennt („… in Höhe von X"),
+trifft die Extraktion 277 von 280 Fällen — 98,9 %. „Der größte gewinnt" liegt
+also messbar fast nie daneben.
+
+Was übrig bleibt
+-----------------
+Drei Fehlgriffe stehen noch im Bestand, alle unter 1.001 € und alle von
+derselben Sorte — **Fördersätze in Richtlinien**, die wie ein Volumen
+formuliert sind:
+
+* 5473: „Das Begrüßungsgeld wird von 50 € auf 100 € erhöht."
+* 5091: „eine Förderung in Höhe von bis zu 500,00 Euro" (je Verein)
+* 458: „Die Mindestförderhöhe beträgt 1.000 Euro."
+
+Sie zu jagen hieße, auf „Förderung"/„bis zu" zu filtern — und genau das kostet
+echte Beträge (gemessen: 12, darunter eine Ausfallbürgschaft über *bis zu*
+116,5 Mio. €). Sie bleiben deshalb stehen und stehen hier.
+
+**Die Grenze der Messung, damit sie niemand überdehnt:** Von Hand gelesen sind
+die 30 entfernten Beträge, die 32 verbliebenen unter 2.000 € und die 280
+Titel-Probe-Zeilen. „Drei Fehlgriffe" heißt „drei in den geprüften Schichten",
+nicht „drei in allen 922".
 """
 from __future__ import annotations
 

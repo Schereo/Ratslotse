@@ -16,7 +16,8 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
-import { HaushaltDaten, deMio } from "@/lib/haushalt";
+import { HaushaltDaten, betrag, deMio, spendenGremien, spendenJahre, spendenLaufend } from "@/lib/haushalt";
+import { ZeitreiheMini } from "@/components/grafik/zeitreihe";
 import { SPIELRAUM_LABEL, STEUERARTEN, Spielraum } from "@/lib/haushalt-steuern";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
@@ -100,7 +101,15 @@ export default function EinnahmenPage() {
     .filter((g) => g.karten.length > 0);
   const frei = karten.filter((k) => k.art.spielraum === "frei").length;
 
-  const quellen: QuellenSchluessel[] = ["steuern", "steuerkraft", "hebesaetze"];
+  const spendenReihe = spendenJahre(data);
+  const spendenLauf = spendenLaufend(data);
+  const spendenGrem = spendenGremien(data);
+  const spendenOhne = data.spenden?.ohne_beleg ?? [];
+  const spendenLetztes = spendenReihe[spendenReihe.length - 1];
+  const spendenGeld = spendenGrem.Rat.betrag + spendenGrem.Verwaltungsausschuss.betrag;
+
+  const quellen: QuellenSchluessel[] = ["steuern", "steuerkraft", "hebesaetze",
+    ...(spendenReihe.length ? (["spenden"] as const) : [])];
 
   return (
     <Quellenkontext schluessel={quellen}>
@@ -250,6 +259,125 @@ export default function EinnahmenPage() {
             + " und zweckgebundene Zuschüsse kommen hinzu, und die stehen nicht in diesen"
             + " Datensätzen. Die Gesamtsumme aller Einnahmen steht auf der Übersicht."}
         />
+      )}
+
+      {/* „Auch das sind Einnahmen" — die Zuwendungen, die die Stadt annimmt.
+          Steht bewusst direkt hinter dem Erklärkasten: Dessen Schlusssatz
+          sagt, dass die Steuern nicht alles sind, und das hier ist ein Posten,
+          den sonst niemand ausweist.
+
+          Klein gehalten, und zwar aus zwei Gründen. Erstens ist der Betrag
+          klein: 0,8 Mio. € neben rund 280 Mio. € Steuern — eine große Kachel
+          behauptete ein Gewicht, das die Zahl nicht hat. Zweitens ist die
+          eigentliche Auskunft nicht die Summe, sondern die Aufteilung: gleich
+          viele Vorlagen in beiden Gremien, fast das ganze Geld beim Rat. Das
+          ist die Schwelle von 2.000 Euro, sichtbar gemacht.
+
+          Was hier NICHT steht: wer gespendet hat. Die Namen stehen nur in der
+          Anlage „Zuwendungsliste", die nicht im Bestand ist — und der Satz
+          darüber ist Teil des Blocks, nicht eine Fußnote. */}
+      {spendenLetztes && (
+        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+            Auch das sind Einnahmen
+          </h2>
+          <div className="mt-2.5 flex flex-col gap-4 @container/spenden sm:flex-row sm:items-start sm:gap-6">
+            <div className="flex-none">
+              <p className="text-[12.5px] font-semibold">
+                Angenommene Zuwendungen {spendenLetztes.jahr}
+              </p>
+              <p className="mt-0.5 font-display text-[26px] font-bold leading-none tabular-nums">
+                {betrag(spendenLetztes.betrag).wert}
+                <span className="ml-1 text-[13px] font-semibold text-muted-foreground">
+                  {betrag(spendenLetztes.betrag).einheit}
+                </span>
+                <Beleg q="spenden" />
+              </p>
+              <p className="mt-1 text-[11.5px] text-muted-foreground">
+                aus {spendenLetztes.vorlagen} Beschlüssen
+              </p>
+            </div>
+            {spendenReihe.length > 1 && (
+              <div className="min-w-0 flex-1">
+                <ZeitreiheMini
+                  reihe={spendenReihe.map((j) => ({ jahr: j.jahr, wert: j.betrag }))}
+                  format={(v) => `${deMio(v / 1e6)} Mio.`}
+                  ariaLabel={
+                    `Angenommene Zuwendungen je Jahr, ${spendenReihe[0].jahr} bis `
+                    + `${spendenLetztes.jahr}: von `
+                    + `${deMio(spendenReihe[0].betrag / 1e6)} auf `
+                    + `${deMio(spendenLetztes.betrag / 1e6)} Millionen Euro.`}
+                />
+              </div>
+            )}
+          </div>
+
+          <dl className="mt-3.5 flex flex-col gap-2.5 border-t border-border pt-3">
+            <div>
+              <dt className="text-[12.5px] font-semibold">
+                Wer entscheidet, hängt an 2.000 Euro
+              </dt>
+              <dd className="mt-0.5 max-w-[80ch] text-[12.5px] leading-relaxed text-muted-foreground">
+                Über eine einzelne Zuwendung bis 100 Euro entscheidet die
+                Oberbürgermeisterin oder der Oberbürgermeister allein, bis 2.000 Euro der
+                Verwaltungsausschuss, darüber der Rat. Beide Gremien behandeln seit 2018
+                ungefähr gleich viele Vorlagen — {spendenGrem.Rat.vorlagen} der Rat,{" "}
+                {spendenGrem.Verwaltungsausschuss.vorlagen} der Verwaltungsausschuss —,
+                aber{" "}
+                {spendenGeld > 0
+                  ? Math.round((spendenGrem.Rat.betrag / spendenGeld) * 100)
+                  : 0}{" "}
+                Prozent des Geldes laufen über den Rat.
+              </dd>
+            </div>
+            <div>
+              <dt className="text-[12.5px] font-semibold">Wir zeigen die Summe, nicht die Gebenden</dt>
+              <dd className="mt-0.5 max-w-[80ch] text-[12.5px] leading-relaxed text-muted-foreground">
+                Wer gespendet hat und wofür, steht ausschließlich in der Anlage
+                „Zuwendungsliste“ zur jeweiligen Vorlage. Die lesen wir nicht ein. Der
+                Ratsbeschluss macht die Summe öffentlich — die Liste dahinter bleibt es
+                nicht, und dabei bleibt es auch hier.
+              </dd>
+            </div>
+            {spendenLauf && (
+              <div>
+                <dt className="text-[12.5px] font-semibold">{spendenLauf.jahr} läuft noch</dt>
+                <dd className="mt-0.5 max-w-[80ch] text-[12.5px] leading-relaxed text-muted-foreground">
+                  Bis jetzt {betrag(spendenLauf.betrag).wert}{" "}
+                  {betrag(spendenLauf.betrag).einheit} aus {spendenLauf.vorlagen}{" "}
+                  Beschlüssen. Das Jahr steht deshalb nicht in der Kurve: Es wäre ein
+                  Rückgang zu sehen, den es nicht gibt.
+                </dd>
+              </div>
+            )}
+            {spendenOhne.length > 0 && (
+              <div>
+                <dt className="text-[12.5px] font-semibold">
+                  {spendenOhne.length}{" "}
+                  {spendenOhne.length === 1 ? "Beschluss fehlt" : "Beschlüsse fehlen"} in
+                  dieser Reihe
+                </dt>
+                <dd className="mt-0.5 max-w-[80ch] text-[12.5px] leading-relaxed text-muted-foreground">
+                  Aufgenommen ist nur, was in der Vorlage ein zweites Mal steht — im
+                  Abschnitt zu den finanziellen Auswirkungen, entweder als dieselbe Zahl
+                  oder zerlegt in Geld- und Sachzuwendungen, die sich auf den Cent
+                  aufaddieren. Wo das nicht aufgeht, fehlt die Zeile, statt ungeprüft
+                  mitzuzählen:
+                  <ul className="mt-1.5 flex flex-col gap-1">
+                    {spendenOhne.map((v) => (
+                      <li key={v.vorlage_nr} className="flex gap-2">
+                        <span className="flex-none font-mono text-[11px] tabular-nums">
+                          {v.vorlage_nr}
+                        </span>
+                        <span>{v.grund}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </dd>
+              </div>
+            )}
+          </dl>
+        </section>
       )}
 
       {/* Bis 17.08. stand hier ein einziger Absatz von 550 Zeichen, ohne
