@@ -2550,6 +2550,7 @@ function TeilenKnopf({ turn, zitierte }: { turn: Turn; zitierte: QaSource[] }) {
               top: (d.top ?? "")?.slice(0, 300) || null,
               auszug: (d.auszug ?? "").slice(0, 2000),
               committee: d.committee, datum: d.datum,
+              protokoll_url: d.protokoll_url?.slice(0, 500) ?? null,
             })),
             presse: (turn.presse ?? []).slice(0, 10).map((p) => ({
               titel: p.titel.slice(0, 300), url: p.url.slice(0, 500), datum: p.datum,

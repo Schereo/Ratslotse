@@ -325,6 +325,20 @@ def parteien_aufloesen(store, rows: list[dict]) -> None:
             r["partei"] = partei
 
 
+def protokolle_verlinken(store, rows: list[dict]) -> None:
+    """Wortbeitrags-Zeilen um ``protokoll_url`` ergänzen (ksinr → getfile-URL
+    des Protokoll-PDFs), damit der Beleg im Frontend nachlesbar wird. Mutiert
+    in-place wie ``parteien_aufloesen``. Eine Seitenzahl gibt es bewusst
+    nicht: Der gespeicherte Volltext kennt keine Seitengrenzen, und die
+    Extraktion paraphrasiert — ein „#page=N" wäre geraten, nicht belegt."""
+    try:
+        urls = store.protokoll_urls_fuer([r.get("ksinr") for r in rows])
+    except Exception:  # noqa: BLE001 — Verlinkung ist Zusatz, nie Blocker
+        return
+    for r in rows:
+        r["protokoll_url"] = urls.get(r.get("ksinr"))
+
+
 def finde_person(store, frage: str) -> dict | None:
     """Personen-Fragetyp: Nennt die Frage eine Ratsperson (Voll- oder
     Nachname, umlaut-gefaltet, ganze Wörter)? Liefert

@@ -16,7 +16,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, ChevronDown, ExternalLink, MessageSquarePlus } from "lucide-react";
+import { ArrowRight, ChevronDown, ExternalLink, FileDown, MessageSquarePlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { personHref } from "@/lib/routes";
 // Reine Beleg-/Datums-Logik liegt in lib/qa-belege.ts — ohne "use client",
@@ -48,6 +48,9 @@ export type AnlagenHinweis = {
 export type DebattenHinweis = {
   sprecher: string | null; partei: string | null; art: string;
   top: string | null; auszug: string; committee: string | null; datum: string | null;
+  /** getfile-URL des Protokoll-PDFs — ältere gespeicherte Gespräche kennen
+   *  das Feld nicht, dann fehlt schlicht das Icon. */
+  protokoll_url?: string | null;
 };
 
 /** Personen-Badge-Eintrag aus /council/personen-lexikon (Tims Wunsch 12.08.):
@@ -623,6 +626,16 @@ function DebattenZeile({ d, artLabel }: { d: DebattenHinweis; artLabel: Record<s
           )}
         </span>
         {d.datum && <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{fmtDatumKurz(d.datum)}</span>}
+        {/* Nachlesbar statt nur behauptet: leises Icon zum Protokoll-PDF —
+            gleiche Trailing-Icon-Grammatik wie Anlagen/Presse, negative
+            Margins vergrößern nur die Tippfläche, nicht die Optik. */}
+        {d.protokoll_url && (
+          <a href={d.protokoll_url} target="_blank" rel="noopener noreferrer"
+            title="Sitzungsprotokoll öffnen (PDF)" aria-label="Sitzungsprotokoll öffnen (PDF)"
+            className="-m-1.5 shrink-0 p-1.5 text-muted-foreground/60 transition-colors hover:text-primary">
+            <FileDown className="h-3 w-3" aria-hidden />
+          </a>
+        )}
       </p>
       <p className={cn("mt-0.5 whitespace-pre-wrap text-muted-foreground",
         !offen && lang && "line-clamp-4")}>
