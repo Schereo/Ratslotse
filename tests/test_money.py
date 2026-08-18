@@ -7,7 +7,8 @@ im Recall-Abschnitt ist ein echter Betrag, der genau diese Schärfung überleben
 muss. Beide Richtungen zusammen sind die Zusicherung: Fehlgriffe raus, echte
 Beträge bleiben.
 """
-from council.money import extract_amounts, ist_preisbeschluss, largest_amount
+from council.money import (extract_amounts, ist_preisbeschluss, ist_sammelbericht,
+                           largest_amount)
 
 
 def test_plain_amount():
@@ -130,6 +131,35 @@ def test_die_berichtsschwelle_ist_kein_betrag():
         "Unterrichtung des Rates über die über- und außerplanmäßigen Auszahlungen "
         "und Aufwendungen unter 50.000 EUR in der Zeit vom 01.01.2017 bis "
         "31.12.2017") is None
+
+
+def test_der_sammelbericht_traegt_seine_meldeschwelle_nicht_als_betrag():
+    """Beschlüsse 2355/3499/8411 …: 17 Zeilen, jede mit 50.000 € als Grenze.
+
+    Die ältere Fassung schrieb „unter 50.000 EUR", die neuere „bis zu
+    50.000 Euro" — nur die erste fiel unter die Fundort-Regel."""
+    for grenzwort in ("unter", "bis zu"):
+        titel = (f"Über- und außerplanmäßige Auszahlungen, Aufwendungen und "
+                 f"Verpflichtungsermächtigungen {grenzwort} 50.000 Euro in der "
+                 f"Zeit vom 01.01.2025 bis 30.06.2025")
+        assert ist_sammelbericht(titel), grenzwort
+        assert largest_amount(f"{titel}. Der Bericht wird zur Kenntnis genommen.",
+                              titel) is None, grenzwort
+
+
+def test_bis_zu_allein_macht_noch_keine_schwelle():
+    """Die Gegenprobe zur Sammelbericht-Regel — und ihr eigentlicher Grund.
+
+    26 Beträge im Bestand stehen hinter einem „bis zu", 14 sind Grenzen und
+    **12 sind echte Volumen**. Eine Regel auf das Wort allein kostete diese
+    zwölf. Beschlüsse 4809 (Klinikum) und 5993 (BTB)."""
+    assert largest_amount(
+        "Ausfallbürgschaft der Stadt Oldenburg für ein Darlehen der Klinikum "
+        "Oldenburg AöR in Höhe von bis zu 116,5 Millionen Euro.",
+        "Klinikum Oldenburg AöR: Ausfallbürgschaft") == 116_500_000
+    assert largest_amount(
+        "Unterstützung bis zu 1,5 Mio. Euro für den BTB (Schwimm- und Gebäudesanierung).",
+        "Bau und Sanierung von Sporthallen und Schwimmbädern") == 1_500_000
 
 
 def test_wertgrenzen_gelten_fuer_die_ganze_aufzaehlung():
