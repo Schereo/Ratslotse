@@ -1465,3 +1465,50 @@ def test_store_pruefberichte_roundtrip(tmp_path, quelle):
     assert [b["jahr"] for b in berichte] == [2023, 2024]
     assert berichte[0]["lesbar"] == 1 and berichte[1]["lesbar"] == 0
     store.close()
+
+
+def test_buergschafts_vorlagen_je_vorlage_eine_zeile(tmp_path):
+    """Der Zeitstrahl zeigt Vorgänge, keine Abstimmungen.
+
+    Finanzausschuss und Rat entscheiden dieselbe Sache; zwei Zeilen dafür
+    wären eine Dublette ohne Erkenntnisgewinn. Gezeigt wird je Vorlage der
+    JÜNGSTE Beschluss — das ist der, der gilt.
+
+    Und die Liste ist ausdrücklich keine Summe: Unter den echten Vorlagen ist
+    „Verlängerung Ausfallbürgschaft … über 300.000 Euro für die
+    Volkshochschule" dieselbe Bürgschaft wie zwei Jahre zuvor. Wer beide
+    addiert, zählt 600.000 € für eine Zusage über 300.000 €.
+    """
+    from council.store import CouncilStore
+
+    store = CouncilStore(str(tmp_path / "c.sqlite"))
+    c = store._conn                                       # noqa: SLF001
+    for kvonr, nr, titel in (
+            (1, "23/0112", "Ausfallbürgschaft der Stadt Oldenburg über 300.000 EUR "
+                           "für die Volkshochschule"),
+            (2, "25/0826", "Verlängerung Ausfallbürgschaft der Stadt Oldenburg über "
+                           "300.000 Euro für die Volkshochschule"),
+            (3, "24/0999", "Neubau einer Schule")):
+        c.execute("INSERT INTO council_vorlagen (kvonr, vorlage_nr, title, fetched_at) "
+                  "VALUES (?, ?, ?, '2026-08-18')", (kvonr, nr, titel))
+    for ksinr, datum in ((10, "2023-06-01"), (11, "2025-12-03"), (12, "2025-12-15")):
+        c.execute("INSERT INTO council_sessions (ksinr, session_date, session_time, "
+                  " committee, location, fetched_at) "
+                  "VALUES (?, ?, '17:00', 'Rat', 'Rathaus', '2026-08-18')",
+                  (ksinr, datum))
+    # Dieselbe Vorlage zweimal beschlossen — Ausschuss und Rat.
+    for did, ksinr, nr, titel in ((100, 10, "23/0112", "VHS"),
+                                  (101, 11, "25/0826", "VHS Verlängerung"),
+                                  (102, 12, "25/0826", "VHS Verlängerung")):
+        c.execute("INSERT INTO council_decisions (id, ksinr, position, vorlage_nr, "
+                  " title, kind) VALUES (?, ?, 1, ?, ?, 'decision')",
+                  (did, ksinr, nr, titel))
+    c.commit()
+
+    v = store.buergschafts_vorlagen()
+    assert [r["vorlage_nr"] for r in v] == ["25/0826", "23/0112"]   # neueste zuerst
+    assert len(v) == 2, "Die Schul-Vorlage gehört nicht dazu"
+    # Je Vorlage EIN Eintrag, und zwar der jüngste Beschluss.
+    verlaengerung = v[0]
+    assert verlaengerung["datum"] == "2025-12-15"
+    assert verlaengerung["beschluss_id"] == 102

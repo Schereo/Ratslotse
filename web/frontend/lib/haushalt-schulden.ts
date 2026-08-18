@@ -22,6 +22,17 @@ export type SchuldenJahr = {
   herkunft_id: number | null;
 };
 
+/** Ein Ratsbeschluss zu einer Bürgschaft. */
+export type BuergschaftsVorlage = {
+  vorlage_nr: string;
+  title: string;
+  document_url: string | null;
+  /** Datum der jüngsten Beratung; `null`, solange keine Sitzung verknüpft ist. */
+  datum: string | null;
+  /** Zeigt auf die vorhandene Beschluss-Seite. */
+  beschluss_id: number | null;
+};
+
 export type SchuldenDaten = {
   reihe: SchuldenJahr[];
   jahre: number[];
@@ -53,6 +64,14 @@ export type SchuldenDaten = {
     rueckstellung: { jahr: number; wert: number | null; herkunft_id: number | null }[];
     geldschulden: { jahr: number; wert: number | null; herkunft_id: number | null }[];
     abgrenzung: string;
+    /** Die Ratsbeschlüsse hinter dem Bestand — die GESCHICHTE, nicht die Summe.
+     *
+     *  Diese Beträge dürfen **nie addiert** werden, und die Liste zeigt selbst
+     *  warum: „Verlängerung Ausfallbürgschaft … über 300.000 Euro für die
+     *  Volkshochschule" ist dieselbe Bürgschaft wie zwei Jahre zuvor,
+     *  „Anpassung … Weser-Ems Halle" ändert eine bestehende. Was der Bestand
+     *  ist, sagt allein der Jahresabschluss (`reihe`). */
+    vorlagen?: BuergschaftsVorlage[];
   };
   /** Die dritte Schuldenzahl — was der ganze „Konzern Stadt" anteilig
    *  schuldet. `null`, solange der Tabellenband nicht eingelesen ist.

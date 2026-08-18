@@ -9214,6 +9214,44 @@ class CouncilStore:
             "buergschaften": self._buergschafts_kontext(),
         }
 
+    def buergschafts_vorlagen(self, limit: int = 40) -> list[dict]:
+        """Die Ratsbeschlüsse hinter dem Bürgschaftsbestand, neueste zuerst.
+
+        DIESE BETRÄGE DÜRFEN NIE ADDIERT WERDEN, und die Liste selbst zeigt
+        warum: Unter den 21 Vorlagen im Bestand ist „Verlängerung
+        Ausfallbürgschaft … über 300.000 Euro für die Volkshochschule"
+        (25/0826) dieselbe Bürgschaft wie 23/0112 zwei Jahre zuvor, und
+        „Anpassung Ausfallbürgschaft … Weser-Ems Halle" (25/0929) ändert eine
+        bestehende. Eine Summe über die Liste zählte dieselbe Zusage mehrfach.
+
+        Was der Bestand wirklich ist, sagt nur der Jahresabschluss
+        (``council_buergschaften``) — er ist eine Stichtagsgröße und keine
+        Summe von Beschlüssen. Die Liste hier ist die **Geschichte** dazu:
+        wann der Rat worüber entschieden hat.
+
+        Je Vorlage der jüngste Beschluss: Finanzausschuss und Rat entscheiden
+        dieselbe Sache, und zwei Zeilen für einen Vorgang wären eine Dublette
+        ohne Erkenntnisgewinn.
+        """
+        try:
+            rows = self._conn.execute(
+                """SELECT v.vorlage_nr, v.title, v.document_url,
+                          MAX(s.session_date) AS datum,
+                          (SELECT d2.id FROM council_decisions d2
+                            JOIN council_sessions s2 ON s2.ksinr = d2.ksinr
+                           WHERE d2.vorlage_nr = v.vorlage_nr
+                           ORDER BY s2.session_date DESC LIMIT 1) AS beschluss_id
+                     FROM council_vorlagen v
+                     LEFT JOIN council_decisions d ON d.vorlage_nr = v.vorlage_nr
+                     LEFT JOIN council_sessions s ON s.ksinr = d.ksinr
+                    WHERE v.title LIKE '%bürgschaft%'
+                    GROUP BY v.vorlage_nr
+                    ORDER BY datum DESC NULLS LAST, v.vorlage_nr DESC
+                    LIMIT ?""", (limit,)).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [dict(r) for r in rows]
+
     def _schulden_abgrenzungen(self) -> list[dict]:
         """Die ANDEREN beiden Zahlen, die auch „die Schulden der Stadt" heißen.
 

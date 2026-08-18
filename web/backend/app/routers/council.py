@@ -3135,6 +3135,11 @@ def haushalt_schulden(
             "rueckstellung": rueckstellung,
             "geldschulden": geldschulden,
             "abgrenzung": _b.ABGRENZUNG,
+            # Die Ratsbeschlüsse dahinter — als GESCHICHTE, nicht als Summe.
+            # Unter den Vorlagen sind Verlängerungen und Anpassungen derselben
+            # Bürgschaft; addiert zählte man dieselbe Zusage mehrfach. Was der
+            # Bestand ist, sagt allein der Jahresabschluss (`reihe`).
+            "vorlagen": store.buergschafts_vorlagen(),
         },
         # Die dritte Zahl — nur der jüngste Stichtag, und ausdrücklich ohne
         # Reihe. `anteil_unter_50` wird hier gerechnet und nicht im Frontend:
