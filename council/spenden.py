@@ -80,7 +80,7 @@ from __future__ import annotations
 
 import re
 from collections import Counter
-from typing import Iterable, Sequence
+from typing import Iterable
 
 #: Der Titel, an dem diese Vorlagen zu erkennen sind. Der Zusatz „ - Beschluss"
 #: kommt vor und wird mitgenommen; die Einzahl („Annahme **einer** Zuwendung")
