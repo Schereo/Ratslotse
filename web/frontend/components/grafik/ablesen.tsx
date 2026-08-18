@@ -74,6 +74,14 @@ export type AbleseStelle = {
   werte: AbleseWert[];
   /** Der ganze Satz für die Vorlesehilfe. */
   vorlesen: string;
+  /** Was an dieser Stelle passiert ist — der Anmerkungssatz zum ⓘ im Bild.
+   *  Die Leiste zeigt ihn als eigene Zeile, sobald die Stelle gewählt ist:
+   *  Ein Tipp aufs ⓘ wählt das Jahr (die Fangfläche liegt darüber), und die
+   *  Erklärung erscheint da, wo ohnehin alle Werte der Stelle stehen — statt
+   *  dauerhaft unter der Grafik (Tims Entscheid 18.08.2026). Kein Tooltip:
+   *  Die Zeile ist Text im Layout, bleibt bis zur nächsten Wahl stehen und
+   *  ist per Pfeiltasten genauso erreichbar wie per Finger. */
+  anmerkung?: string;
 };
 
 /** Ein Punkt, der bei der aktiven Stelle einen Ring bekommt. */
@@ -145,6 +153,12 @@ export function Ableseleiste({ stelle, steuerung, hinweis, className }: {
           </span>
         ))}
       </div>
+      {stelle.anmerkung && (
+        <p className="mt-1.5 max-w-[76ch] border-t border-border/60 pt-1.5 text-[11.5px] leading-relaxed text-foreground/85">
+          <span aria-hidden="true" className="mr-1 font-mono text-[10px] font-semibold text-foreground/70">ⓘ</span>
+          {stelle.anmerkung}
+        </p>
+      )}
       <p className="mt-1 text-[10.5px] leading-snug text-muted-foreground">
         {hinweis ?? "Überfahren, tippen oder mit den Pfeiltasten wechseln."}
         {steuerung.gewaehlt && <> · <button type="button" onClick={steuerung.zuruecksetzen}
