@@ -779,6 +779,143 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
     return qs
 
 
+def _komma(wert: float, stellen: int = 1) -> str:
+    """Eine Zahl deutsch schreiben — NUR die Zahl.
+
+    Es gibt in dieser Datei zwei Stellen, an denen ein `.replace(".", ",")`
+    über einen fertigen Satz lief und dabei „Mio." und den Satzpunkt mit
+    erwischte. Deshalb geht die Umstellung hier durch eine Funktion, der man
+    nichts anderes als eine Zahl übergeben kann.
+    """
+    return f"{wert:.{stellen}f}".replace(".", ",")
+
+
+def build_abschluss_questions(store) -> list[dict]:
+    """Drei Fragen aus dem Jahresabschluss — nicht aus dem Haushaltsplan.
+
+    Die übrigen Haushalts-Fragen kommen aus dem PLAN: was die Stadt ausgeben
+    will. Diese drei kommen aus dem ABSCHLUSS und den Anlagen dazu, und sie
+    beantworten Fragen, die der Plan gar nicht stellt.
+
+    Jede hat einen stabilen ``content_hash`` ohne Jahreszahl. Das ist Absicht
+    und der Unterschied zu ``build_questions``: Dort gehört das Jahr in den
+    Schlüssel, weil „der Haushalt 2025" eine andere Frage ist als „der
+    Haushalt 2026". Hier ist es immer dieselbe Frage — sie soll mit dem
+    nächsten Abschluss **aktualisiert** werden (``refresh_quiz_payloads``) und
+    nicht ein zweites Mal danebenstehen.
+
+    Liefert nur, was belegt ist: Fehlt eine Quelle, fehlt ihre Frage.
+    """
+    from council import quiz
+
+    def key(name: str) -> str:
+        return quiz._content_hash("thema", "haushalt", f"abschluss-{name}")
+
+    ris = "https://buergerinfo.oldenburg.de"
+    qs: list[dict] = []
+
+    # 1) Die drei Schuldenzahlen. Die Frage sieht aus wie eine Zahlenfrage und
+    #    ist eine Verständnisfrage — genau das ist der Punkt: „Die Schulden der
+    #    Stadt" gibt es dreimal, und alle drei sind richtig.
+    schulden = store.schulden_kontext()
+    weitere = {w["art"]: w for w in (schulden or {}).get("weitere") or []}
+    kern = weitere.get("Kernhaushalt (nur Geldschulden)")
+    konzern = weitere.get("Konzern Stadt (anteilig, mit Beteiligungen)")
+    if schulden and kern and konzern:
+        richtig = "Alle drei — je nachdem, was mitgezählt wird"
+        opts = [f"{_mio(kern['betrag'])} Mio. Euro",
+                f"{_mio(schulden['insgesamt'])} Mio. Euro",
+                f"{_mio(konzern['betrag'])} Mio. Euro",
+                richtig]
+        qs.append({
+            "area_type": "thema", "area_key": "haushalt", "category": "ratspolitik",
+            "difficulty": "schwer", "qtype": "mc",
+            "question": "Wie hoch sind die Schulden der Stadt Oldenburg?",
+            "options": opts, "correct_index": opts.index(richtig),
+            "explanation": (
+                f"Alle drei Zahlen stimmen — sie zählen Verschiedenes. "
+                f"{_mio(kern['betrag'])} Mio. Euro sind die Geldschulden des "
+                f"Kernhaushalts, {_mio(schulden['insgesamt'])} Mio. Euro die der "
+                f"Stadt samt ihren Eigenbetrieben, und {_mio(konzern['betrag'])} "
+                f"Mio. Euro die des ganzen Konzerns mit allen Beteiligungen."),
+            "detail": ("Wer eine Schuldenzahl nennt, muss die Abgrenzung dazusagen. "
+                       "Addieren darf man sie nie: Die größere enthält die kleinere."),
+            "hint": "Es kommt darauf an, wen man mitzählt.",
+            "topic": "Haushalt", "source_type": "stadt", "source_ref": ris,
+            "content_hash": key("drei-schuldenzahlen"),
+        })
+
+    # 2) Die Bürgschaften — eine Zahl, die in keiner Schuldenreihe steht.
+    buerg = (schulden or {}).get("buergschaften")
+    if buerg and buerg.get("bestand"):
+        betrag = _mio(buerg["bestand"])
+        eigene = _mio(kern["betrag"]) if kern else None
+        vergleich = (f" Das ist rund das {buerg['bestand'] / kern['betrag']:.0f}-Fache "
+                     f"der {eigene} Mio. Euro, die der Kernhaushalt selbst schuldet."
+                     if kern and kern["betrag"] else "")
+        qs.append(_estimate(
+            "Die Stadt Oldenburg steht für Kredite ihrer eigenen Gesellschaften "
+            "gerade — für wie viele Millionen Euro?",
+            betrag, lo=max(5, round(betrag * 0.15)), hi=round(betrag * 3.2, -1),
+            year=buerg["jahr"], source_url=ris, chart_json="",
+            difficulty="schwer",
+            detail=("Eine Bürgschaft kostet nichts, solange sie nicht gezogen wird — "
+                    "deshalb taucht sie in keiner Schuldenzahl auf. Sie steht im "
+                    "Anhang des Jahresabschlusses unter „Eventualverbindlichkeiten“."
+                    + vergleich),
+            hint="Mehr als die Stadt selbst an Krediten offen hat.",
+        ))
+        # Jede Zahl wird EINZELN formatiert. Ein `.replace(".", ",")` über den
+        # fertigen Satz erwischt die Punkte in „Mio." und am Satzende gleich mit
+        # („1,30 Mio, Euro zurück,“) — zweimal hineingelaufen.
+        zusatz = ""
+        if buerg.get("rueckstellung"):
+            rueck = _komma(buerg["rueckstellung"] / 1e6, 2)
+            anteil = _komma(buerg["rueckstellung"] / buerg["bestand"] * 100, 2)
+            zusatz = (f" Für den erwarteten Ausfall hält die Stadt {rueck} Mio. Euro "
+                      f"zurück — {anteil} Prozent des Bestands.")
+        qs[-1]["explanation"] = (
+            f"Zum 31.12.{buerg['jahr']} waren es {betrag} Mio. Euro." + zusatz)
+        qs[-1]["content_hash"] = key("buergschaften")
+
+    # 3) Der Substanzverlust: Was die Stadt jährlich abschreibt, gegen das, was
+    #    sie zubaut. Die Zahl kommt aus dem Anlagenspiegel und ist die Antwort
+    #    auf „Baut die Stadt schneller auf, als ihr Bestand verfällt?".
+    zeilen = [z for z in store.get_anlagenspiegel() if z.get("nr") == "2"]
+    if zeilen:
+        z = max(zeilen, key=lambda r: r["jahr"])
+        zubau, verzehr = z.get("zugaenge") or 0, abs(z.get("abschreibung") or 0)
+        if zubau > 0 and verzehr > 0:
+            faktor = verzehr / zubau
+            richtig = _komma(faktor) + " Euro"
+            opts = sorted({richtig,
+                           _komma(max(0.2, faktor / 3)) + " Euro",
+                           _komma(faktor / 1.8) + " Euro",
+                           _komma(faktor * 2) + " Euro"})
+            qs.append({
+                "area_type": "thema", "area_key": "haushalt", "category": "ratspolitik",
+                "difficulty": "schwer", "qtype": "mc",
+                "question": (f"Auf jeden Euro, den die Stadt {z['jahr']} in ihr "
+                             f"Sachvermögen — Gebäude, Straßen, Fahrzeuge — "
+                             f"investiert hat: Wie viel Wert hat im selben Jahr "
+                             f"die Abnutzung aufgezehrt?"),
+                "options": opts, "correct_index": opts.index(richtig),
+                "explanation": (
+                    f"{z['jahr']} kamen {_mio(zubau)} Mio. Euro dazu, und "
+                    f"{_mio(verzehr)} Mio. Euro wurden abgeschrieben — auf jeden "
+                    f"investierten Euro also {richtig} Wertverlust."),
+                "detail": ("Abschreibung ist der gebuchte Wertverlust einer "
+                           "Anschaffung über ihre Nutzungsdauer. Liegt sie über den "
+                           "Zugängen, verzehrt die Stadt Substanz — das ist weder "
+                           "gut noch schlecht, sondern eine Frage, wie lange es so "
+                           "weitergehen soll."),
+                "hint": "Mehr als einer.",
+                "topic": "Haushalt", "source_type": "stadt", "source_ref": ris,
+                "content_hash": key("substanzverlust"),
+            })
+    return qs
+
+
 def build_trend_questions(by_year: dict[int, list[dict]], source_url: str) -> list[dict]:
     """Zeitreihen-Fragen über mehrere Haushaltsjahre (Trend-Diagramm) —
     braucht mindestens zwei geparste Jahre. Vergleiche nur über die Summenzeile
