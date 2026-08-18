@@ -64,7 +64,14 @@ jobs:
             # vierzehn Schichten lesen aus `council_anlagen`, und dort lagen
             # 5.186 Anlagen ohne Text. `--nur-finanz` holt die 293, aus denen
             # der Haushalts-Bereich tatsächlich liest, statt aller 5.500.
-            .venv/bin/python scripts/backfill_anlagen_texte.py --nur-finanz --retry-failed
+            # `--gekappte` holt zusätzlich die Anlagen, die an einer FRÜHEREN
+            # MAX_TEXT-Grenze abgeschnitten wurden. Sie stehen auf `ok` und
+            # kämen sonst nie wieder an die Reihe — bei 400.000 Zeichen endeten
+            # die Jahresabschlüsse mitten im Dokument, vor Abschnitt 8
+            # („Anlagen zum Anhang"). Der Schalter darf dauerhaft mitlaufen:
+            # Sind die Texte einmal vollständig, ist ihre Länge krumm und der
+            # Filter greift nicht mehr.
+            .venv/bin/python scripts/backfill_anlagen_texte.py --nur-finanz --retry-failed --gekappte
 
             .venv/bin/python scripts/ingest_haushalt.py
             .venv/bin/python scripts/ingest_finanzen_opendata.py
